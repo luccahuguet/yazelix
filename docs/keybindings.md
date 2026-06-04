@@ -92,9 +92,9 @@ Use semantic remaps for Yazelix-owned actions and native sidecars for the owning
 - Helix-local bindings for managed Helix sessions: `~/.config/yazelix/helix/config.toml`
 - Terminal-emulator shortcuts: the terminal emulator config
 
-`zellij.keybindings` accepts owner-local action ids such as `bottom_popup`, `top_popup`, `menu`, `btm`, `toggle_left_sidebar`, `toggle_editor_right_sidebar_focus`, and `open_workspace_terminal`. Shared diagnostics and docs use scoped ids such as `zellij.bottom_popup`. Omitted actions keep defaults, and `[]` disables a Yazelix-owned binding. Yazelix rejects duplicate semantic Zellij keys before launch.
+`zellij.keybindings` accepts owner-local action ids such as `bottom_popup`, `top_popup`, `menu`, `toggle_left_sidebar`, `toggle_editor_right_sidebar_focus`, and `open_workspace_terminal`. Shared diagnostics and docs use scoped ids such as `zellij.bottom_popup`. Omitted actions keep defaults, and `[]` disables a Yazelix-owned binding. Yazelix rejects duplicate semantic Zellij keys before launch.
 
-`zellij.popup_commands` sets the command argv for named popup surfaces. Defaults are `bottom_popup = ["lazygit"]`, `top_popup = ["yzx", "config", "ui"]` for Yazelix's ratconfig-backed settings editor, `menu = ["yzx", "menu"]`, and `btm = ["btm"]` for the process viewer. The extra unbound personal popup slot uses `zellij.popup_program` plus the `popup` keybinding action.
+`zellij.popup_commands` sets the command argv for built-in popup surfaces. Defaults are `bottom_popup = ["lazygit"]`, `top_popup = ["yzx", "config", "ui"]` for Yazelix's ratconfig-backed settings editor, and `menu = ["yzx", "menu"]`. `zellij.custom_popups` adds user-defined popup surfaces; the default entry is `btm` with `command = ["btm"]` and `keybindings = ["Alt Shift B"]`.
 
 `zellij.native_keybindings` accepts curated native policy ids such as `scroll_mode`, `scroll_mode_unbind`, `move_tab_left`, `move_pane_down`, and `move_tab_left_unbind`. These are Yazelix's shipped conflict-remap and validation defaults for native Zellij commands. Omitted entries keep defaults, and `[]` disables one native policy entry. Managed `~/.config/yazelix/zellij.kdl` rejects `keybinds` blocks so it cannot bypass generated workspace controls.
 

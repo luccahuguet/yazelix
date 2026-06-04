@@ -672,7 +672,6 @@ fn session_config_snapshot_write_command_writes_launch_scoped_snapshot() {
         "runtime_dir": fixture.runtime_dir,
         "runtime_hash": "runtime-hash",
         "normalized_config": {
-            "popup_program": ["gitui"],
             "default_shell": "bash",
             "terminals": ["ghostty", "wezterm"]
         },
@@ -703,7 +702,6 @@ fn session_config_snapshot_write_command_writes_launch_scoped_snapshot() {
     assert_eq!(snapshot["snapshot_id"], "launch-test");
     assert_eq!(snapshot["source_config"]["hash"], "cfg-hash");
     assert_eq!(snapshot["runtime"]["hash"], "runtime-hash");
-    assert_eq!(snapshot["facts"]["popup_program"], json!(["gitui"]));
     assert_eq!(snapshot["normalized_config"]["default_shell"], "bash");
 }
 

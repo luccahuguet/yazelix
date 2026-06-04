@@ -46,6 +46,7 @@ const REPLACED_DEFAULT_SETTING_VALUES: &[(&str, &[&str])] = &[
     ),
     ("zellij.native_keybindings.move_pane_up", &["Ctrl Shift K"]),
 ];
+const OPTIONAL_ADDITIVE_DEFAULT_PATHS: &[&str] = &["zellij.custom_popups"];
 
 #[derive(Debug, Clone)]
 pub struct SettingsSurfacePaths {
@@ -442,10 +443,22 @@ fn collect_missing_default_settings(
                 collect_missing_default_settings(current_value, default_value, path, missing);
             }
             None => {
-                missing.push(MissingDefaultSetting {
-                    path: path.join("."),
-                    value: default_value.clone(),
-                });
+                if default_value.is_object() {
+                    collect_missing_default_settings(
+                        &JsonValue::Object(JsonMap::new()),
+                        default_value,
+                        path,
+                        missing,
+                    );
+                } else {
+                    let missing_path = path.join(".");
+                    if !OPTIONAL_ADDITIVE_DEFAULT_PATHS.contains(&missing_path.as_str()) {
+                        missing.push(MissingDefaultSetting {
+                            path: missing_path,
+                            value: default_value.clone(),
+                        });
+                    }
+                }
             }
         }
         path.pop();

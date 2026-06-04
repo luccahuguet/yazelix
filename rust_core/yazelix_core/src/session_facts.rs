@@ -27,7 +27,6 @@ pub struct SessionFactsData {
     pub helix_external: Option<HelixExternalPair>,
     pub yazi_command: String,
     pub ya_command: String,
-    pub popup_program: Vec<String>,
     pub popup_width_percent: i64,
     pub popup_height_percent: i64,
     pub game_of_life_cell_style: String,
@@ -53,7 +52,6 @@ impl Default for SessionFactsData {
             helix_external: None,
             yazi_command: "yazi".to_string(),
             ya_command: "ya".to_string(),
-            popup_program: vec!["lazygit".to_string()],
             popup_width_percent: 90,
             popup_height_percent: 90,
             game_of_life_cell_style: "full_block".to_string(),
@@ -76,9 +74,6 @@ impl SessionFactsData {
             yazi_command: normalized_string(config, "yazi_command")
                 .unwrap_or(defaults.yazi_command),
             ya_command: normalized_string(config, "yazi_ya_command").unwrap_or(defaults.ya_command),
-            popup_program: normalized_string_list(config, "popup_program")
-                .filter(|items| !items.is_empty())
-                .unwrap_or(defaults.popup_program),
             popup_width_percent: normalized_i64(config, "popup_width_percent")
                 .filter(|value| (1..=100).contains(value))
                 .unwrap_or(defaults.popup_width_percent),
@@ -103,10 +98,6 @@ impl SessionFactsData {
         }
         if self.ya_command.trim().is_empty() {
             self.ya_command = defaults.ya_command;
-        }
-        self.popup_program = non_empty_strings(self.popup_program);
-        if self.popup_program.is_empty() {
-            self.popup_program = defaults.popup_program;
         }
         if !(1..=100).contains(&self.popup_width_percent) {
             self.popup_width_percent = defaults.popup_width_percent;
@@ -247,9 +238,6 @@ impl SessionFactsData {
         }
 
         if let Some(zellij) = toml_section(config, "zellij") {
-            if let Some(values) = toml_string_list(zellij.get("popup_program")) {
-                self.popup_program = values;
-            }
             if let Some(value) = toml_percent(zellij.get("popup_width_percent")) {
                 self.popup_width_percent = value;
             }
@@ -374,7 +362,6 @@ mod tests {
             ("hide_sidebar_on_file_open".to_string(), json!(true)),
             ("yazi_command".to_string(), json!("yy")),
             ("yazi_ya_command".to_string(), json!("ya-test")),
-            ("popup_program".to_string(), json!(["gitui", "status"])),
             ("popup_width_percent".to_string(), json!(82)),
             ("popup_height_percent".to_string(), json!("76")),
             ("game_of_life_cell_style".to_string(), json!("dotted")),
@@ -388,7 +375,6 @@ mod tests {
         assert!(facts.hide_sidebar_on_file_open);
         assert_eq!(facts.yazi_command, "yy");
         assert_eq!(facts.ya_command, "ya-test");
-        assert_eq!(facts.popup_program, vec!["gitui", "status"]);
         assert_eq!(facts.popup_width_percent, 82);
         assert_eq!(facts.popup_height_percent, 76);
         assert_eq!(facts.game_of_life_cell_style, "dotted");

@@ -729,7 +729,7 @@ const MENU_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[MENU_COMMAND];
 
 const POPUP_COMMAND: YzxCommandMetadata = metadata(
     "yzx popup",
-    "Open or toggle the configured Yazelix popup program in Zellij",
+    "Open an explicit command in a transient Yazelix popup pane",
     YzxCommandCategory::Workspace,
     POPUP_ARGS,
     Some(YzxMenuCategory::Workspace),

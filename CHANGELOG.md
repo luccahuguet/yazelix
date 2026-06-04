@@ -9,7 +9,7 @@ Post-v17.3 work in progress
 Upgrade impact: no user action required
 
 Highlights:
-- Added a first-class `btm` process viewer popup on `Alt Shift B`, backed by the bundled `bottom` runtime tool and configurable through `zellij.popup_commands.btm` plus `zellij.keybindings.btm`
+- Added `zellij.custom_popups` for user-defined popup surfaces and moved the default `btm` process viewer popup to that surface on `Alt Shift B`
 
 ## v17.3 - 2026-06-01
 

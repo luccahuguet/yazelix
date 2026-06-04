@@ -229,17 +229,16 @@ Preview the animated welcome screen directly in the current terminal
 - Requires an interactive terminal that supports timed keypress reads via bash
 - Useful for previewing welcome styles without launching the full Yazelix UI
 
-### `yzx popup [COMMAND ...]`
+### `yzx popup <COMMAND ...>`
 Open a transient floating-pane command inside Zellij
-- Default: runs `zellij.popup_program` from `settings.jsonc`
 - Special token: `editor` resolves to the current Yazelix `editor.command` with its managed runtime/env
-- `COMMAND ...`: override the configured popup command for one invocation
+- `COMMAND ...`: command argv for this one-off popup invocation
 - Uses the current tab workspace root as cwd when available; otherwise uses the current shell cwd
 - Errors if not in Zellij
-- Named generated popup specs use `zellij.popup_commands`: `bottom_popup` defaults to `["lazygit"]`, `top_popup` defaults to `["yzx", "config", "ui"]`, `menu` defaults to `["yzx", "menu"]`, and `btm` defaults to `["btm"]`
+- Built-in generated popup specs use `zellij.popup_commands`: `bottom_popup` defaults to `["lazygit"]`, `top_popup` defaults to `["yzx", "config", "ui"]`, and `menu` defaults to `["yzx", "menu"]`
+- User-defined generated popup specs use `zellij.custom_popups`; the default entry is `btm` with `command = ["btm"]` and `keybindings = ["Alt Shift B"]`
 - Default surface keys: `Alt Shift J` for `bottom_popup`, `Alt Shift K` for `top_popup`, and `Alt Shift B` for `btm`
-- The unplaced `popup` action remains configurable and unbound by default
-- Popup panes are named `yzx_popup`, `yzx_bottom_popup`, `yzx_top_popup`, `yzx_menu`, and `yzx_btm`
+- Popup panes are named `yzx_popup`, `yzx_bottom_popup`, `yzx_top_popup`, `yzx_menu`, and `yzx_<custom id>`
 
 ### `yzx config [--path]`
 Show the active Yazelix configuration through the Rust-owned control path

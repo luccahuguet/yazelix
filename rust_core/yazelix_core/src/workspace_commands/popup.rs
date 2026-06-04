@@ -42,23 +42,14 @@ pub fn run_yzx_popup(args: &[String]) -> Result<i32, CoreError> {
     }
 
     if parsed.program.is_empty() {
-        let response = run_zellij_plugin_command(YZPP_PLUGIN_ALIAS, "toggle", "popup")?;
-        if matches!(response.trim(), "opened" | "focused" | "closed") {
-            return Ok(0);
-        }
-
-        return Err(CoreError::classified(
-            ErrorClass::Runtime,
-            "popup_toggle_failed",
-            format!("Failed to toggle the Yazelix popup pane: {response}"),
-            "Ensure the yzpp plugin is loaded and the current tab is ready, then retry.",
-            json!({ "response": response }),
+        return Err(CoreError::usage(
+            "yzx popup expects an explicit program. Use `yzx popup <program> [args...]`, or configure a persistent popup through zellij.custom_popups.",
         ));
     }
 
     let runtime_dir = runtime_dir_from_env()?;
     let runtime_env = current_process_runtime_env();
-    let popup_program = resolve_popup_runtime_argv(&parsed.program, &runtime_env)?;
+    let popup_argv = resolve_popup_runtime_argv(&parsed.program, &runtime_env)?;
     let popup_facts = compute_popup_session_facts_from_env()?;
     let popup_cwd = current_tab_workspace_root(true).unwrap_or_else(|| {
         env::current_dir()
@@ -68,8 +59,8 @@ pub fn run_yzx_popup(args: &[String]) -> Result<i32, CoreError> {
     });
     let yzx_cli = runtime_dir.join("shells").join("posix").join("yzx_cli.sh");
     let yzx_cli_text = yzx_cli.to_string_lossy().to_string();
-    let command_marker = popup_program[0].clone();
-    let popup_command = popup_command_argv_for_yazelix_runtime(&popup_program, &yzx_cli_text);
+    let command_marker = popup_argv[0].clone();
+    let popup_command = popup_command_argv_for_yazelix_runtime(&popup_argv, &yzx_cli_text);
 
     let payload = json!({
         "action": "open",
@@ -161,27 +152,27 @@ fn current_process_runtime_env() -> serde_json::Map<String, serde_json::Value> {
 }
 
 fn resolve_popup_runtime_argv(
-    popup_program: &[String],
+    popup_argv: &[String],
     runtime_env: &serde_json::Map<String, serde_json::Value>,
 ) -> Result<Vec<String>, CoreError> {
-    if popup_program.is_empty() {
+    if popup_argv.is_empty() {
         return Err(CoreError::classified(
             ErrorClass::Config,
-            "popup_program_empty",
-            "No popup program was configured for Yazelix.",
-            "Set zellij.popup_program in settings.jsonc or pass an explicit program to `yzx popup`.",
+            "popup_command_missing",
+            "No popup command was provided.",
+            "Pass an explicit command to `yzx popup`, or configure a persistent popup through zellij.custom_popups.",
             json!({}),
         ));
     }
 
-    let command = popup_program[0].trim();
-    let tail = popup_program[1..].to_vec();
+    let command = popup_argv[0].trim();
+    let tail = popup_argv[1..].to_vec();
     if command.is_empty() {
         return Err(CoreError::classified(
             ErrorClass::Config,
             "popup_command_empty",
             "Popup program command cannot be empty.",
-            "Set popup_program to a real executable or pass an explicit program to `yzx popup`.",
+            "Pass a real executable to `yzx popup`, or configure a persistent popup through zellij.custom_popups.",
             json!({}),
         ));
     }
@@ -196,7 +187,7 @@ fn resolve_popup_runtime_argv(
                 CoreError::classified(
                     ErrorClass::Config,
                     "popup_editor_unresolved",
-                    "The configured Yazelix editor could not be resolved for popup_program = [\"editor\"].",
+                    "The configured Yazelix editor could not be resolved for `yzx popup editor`.",
                     "Set editor.command in settings.jsonc or set EDITOR inside the Yazelix runtime.",
                     json!({}),
                 )
@@ -236,10 +227,10 @@ fn parse_popup_args(args: &[String]) -> Result<PopupArgs, CoreError> {
 }
 
 fn print_popup_help() {
-    println!("Open or toggle the configured Yazelix popup program in Zellij");
+    println!("Open an explicit command in a transient Yazelix popup pane");
     println!();
     println!("Usage:");
-    println!("  yzx popup [program...]");
+    println!("  yzx popup <program> [args...]");
 }
 
 fn print_popup_run_help() {

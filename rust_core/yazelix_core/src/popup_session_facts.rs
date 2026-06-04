@@ -7,7 +7,6 @@ use serde::Serialize;
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 pub struct PopupSessionFactsData {
-    pub popup_program: Vec<String>,
     pub popup_width_percent: i64,
     pub popup_height_percent: i64,
 }
@@ -15,7 +14,6 @@ pub struct PopupSessionFactsData {
 pub fn compute_popup_session_facts_from_env() -> Result<PopupSessionFactsData, CoreError> {
     let facts = compute_session_facts_from_env()?;
     Ok(PopupSessionFactsData {
-        popup_program: facts.popup_program,
         popup_width_percent: facts.popup_width_percent,
         popup_height_percent: facts.popup_height_percent,
     })

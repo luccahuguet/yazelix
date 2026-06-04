@@ -22,7 +22,10 @@ const MOVED_CURSOR_CONFIG_FIELDS: &[&str] = &[
 const REMOVED_PERSISTENT_SESSION_FIELDS: &[&str] =
     &["zellij.persistent_sessions", "zellij.session_name"];
 const REMOVED_TERMINAL_SELECTION_FIELDS: &[&str] = &["terminal.terminals"];
-const OPTIONAL_MISSING_CONFIG_PATH_PREFIXES: &[&str] = &["helix.external"];
+const REMOVED_POPUP_PROGRAM_FIELDS: &[&str] = &["zellij.popup_program"];
+const MOVED_CUSTOM_POPUP_FIELDS: &[&str] = &["zellij.popup_commands.btm", "zellij.keybindings.btm"];
+const REMOVED_GENERIC_POPUP_ACTION_FIELDS: &[&str] = &["zellij.keybindings.popup"];
+const OPTIONAL_MISSING_CONFIG_PATH_PREFIXES: &[&str] = &["helix.external", "zellij.custom_popups"];
 const REPLACED_HELIX_RUNTIME_FIELDS: &[&str] = &["helix.runtime_path"];
 
 #[derive(Debug, Clone)]
@@ -642,6 +645,39 @@ fn make_schema_diagnostic(finding: SchemaFinding) -> ConfigDiagnostic {
                     "Next: Remove terminal.terminals from ~/.config/yazelix/settings.jsonc."
                         .to_string(),
                     "Next: Choose a Yazelix terminal variant through the package or Home Manager option instead, such as programs.yazelix.terminal = \"ghostty\".".to_string(),
+                    "Next: Run `yzx doctor --verbose` to review the full config report."
+                        .to_string(),
+                ];
+            } else if REMOVED_POPUP_PROGRAM_FIELDS.contains(&finding.path.as_str()) {
+                diagnostic.headline =
+                    format!("Removed popup program config field at {}", finding.path);
+                diagnostic.detail_lines = vec![
+                    finding.message,
+                    "Next: Remove zellij.popup_program from ~/.config/yazelix/settings.jsonc."
+                        .to_string(),
+                    "Next: Add persistent popup commands through zellij.custom_popups instead."
+                        .to_string(),
+                    "Next: Use `yzx popup <program> [args...]` for one-off transient popups."
+                        .to_string(),
+                ];
+            } else if MOVED_CUSTOM_POPUP_FIELDS.contains(&finding.path.as_str()) {
+                diagnostic.headline =
+                    format!("Moved custom popup config field at {}", finding.path);
+                diagnostic.detail_lines = vec![
+                    finding.message,
+                    "Next: Move the btm popup to zellij.custom_popups with { \"id\": \"btm\", \"command\": [\"btm\"], \"keybindings\": [\"Alt Shift B\"] }.".to_string(),
+                    "Next: Keep zellij.popup_commands limited to bottom_popup, top_popup, and menu.".to_string(),
+                    "Next: Run `yzx doctor --verbose` to review the full config report."
+                        .to_string(),
+                ];
+            } else if REMOVED_GENERIC_POPUP_ACTION_FIELDS.contains(&finding.path.as_str()) {
+                diagnostic.headline =
+                    format!("Removed generic popup keybinding at {}", finding.path);
+                diagnostic.detail_lines = vec![
+                    finding.message,
+                    "Next: Remove zellij.keybindings.popup from ~/.config/yazelix/settings.jsonc."
+                        .to_string(),
+                    "Next: Add a named persistent popup through zellij.custom_popups, or run `yzx popup <program> [args...]` for one-off popups.".to_string(),
                     "Next: Run `yzx doctor --verbose` to review the full config report."
                         .to_string(),
                 ];

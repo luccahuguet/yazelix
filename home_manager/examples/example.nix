@@ -59,6 +59,18 @@
     disable_zellij_tips = true;
     zellij_rounded_corners = true;
     zellij_theme = "default"; # Optional: any built-in theme name
+    custom_popups = [
+      {
+        id = "btm";
+        command = [ "btm" ];
+        keybindings = [ "Alt Shift B" ];
+      }
+      # {
+      #   id = "btop";
+      #   command = [ "btop" ];
+      #   keybindings = [ "Alt Shift Y" ];
+      # }
+    ];
 
     # Yazi customization
     yazi_plugins = [

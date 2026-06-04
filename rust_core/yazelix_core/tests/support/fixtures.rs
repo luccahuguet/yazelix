@@ -109,7 +109,6 @@ pub fn write_session_facts_cache(
         ),
         ("yazi_command".to_string(), serde_json::json!("yazi")),
         ("ya_command".to_string(), serde_json::json!("ya")),
-        ("popup_program".to_string(), serde_json::json!(["lazygit"])),
         ("popup_width_percent".to_string(), serde_json::json!(90)),
         ("popup_height_percent".to_string(), serde_json::json!(90)),
         (
@@ -153,7 +152,6 @@ pub fn write_session_config_snapshot_with_id(
         ),
         ("yazi_command".to_string(), serde_json::json!("yazi")),
         ("yazi_ya_command".to_string(), serde_json::json!("ya")),
-        ("popup_program".to_string(), serde_json::json!(["lazygit"])),
         ("popup_width_percent".to_string(), serde_json::json!(90)),
         ("popup_height_percent".to_string(), serde_json::json!(90)),
         (
@@ -170,7 +168,6 @@ pub fn write_session_config_snapshot_with_id(
         ),
         ("yazi_command".to_string(), serde_json::json!("yazi")),
         ("ya_command".to_string(), serde_json::json!("ya")),
-        ("popup_program".to_string(), serde_json::json!(["lazygit"])),
         ("popup_width_percent".to_string(), serde_json::json!(90)),
         ("popup_height_percent".to_string(), serde_json::json!(90)),
         (

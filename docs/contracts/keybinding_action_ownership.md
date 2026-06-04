@@ -29,17 +29,15 @@ Yazelix should not provide a semantic remap when another tool owns the behavior.
 
 ## Current Implemented Surface
 
-`zellij.keybindings` is stable and remains backward-compatible:
+`zellij.keybindings` owns fixed Yazelix semantic actions:
 
 ```jsonc
 {
   "zellij": {
     "keybindings": {
-      "popup": [],
       "bottom_popup": ["Alt Shift J"],
       "top_popup": ["Alt Shift K"],
       "menu": ["Alt Shift M"],
-      "btm": ["Alt Shift B"],
       "toggle_editor_right_sidebar_focus": ["Ctrl Shift Y"],
       "toggle_left_sidebar": ["Alt Shift H"],
       "open_codex_agent_right": ["Alt Shift L"]
@@ -105,11 +103,9 @@ Rules:
 
 The Rust action registry is the shared source for Yazelix-owned action metadata that can feed generated bindings, `yzx keys`, doctor/config UI diagnostics, and future docs metadata. Registry entries use scoped action ids:
 
-- `zellij.popup`
 - `zellij.bottom_popup`
 - `zellij.top_popup`
 - `zellij.menu`
-- `zellij.btm`
 - `zellij.toggle_editor_right_sidebar_focus`
 - `zellij.toggle_left_sidebar`
 - `zellij.open_workspace_terminal`
@@ -117,7 +113,7 @@ The Rust action registry is the shared source for Yazelix-owned action metadata 
 - `yazi.open_zoxide_in_editor`
 - `editor.reveal_in_sidebar`
 
-The persisted config may stay owner-scoped for compatibility, such as `zellij.keybindings.popup`, while the registry presents full ids in shared views like `yzx keys`, doctor diagnostics, and the config UI.
+User-defined popup bindings live in `zellij.custom_popups`, not the static action registry. The default `btm` popup is a custom popup entry with `keybindings = ["Alt Shift B"]`.
 
 Each action registry entry includes:
 

@@ -94,7 +94,7 @@ Cursor presets use their own config at `~/.config/yazelix_ghostty_cursors/settin
 - When you open something from the default Yazi file-tree sidebar with Helix or Neovim, Yazelix targets the managed `editor` pane through the pane orchestrator instead of relying on pane scanning heuristics; it reuses that pane when present and creates one titled `editor` when needed
 - `yzx reveal` is the stable editor-integration surface for jumping the current file back into the managed Yazi file tree
 - `Alt+Shift+J` toggles the bottom managed popup pane through `yzpp` and refreshes the Yazi file-tree sidebar git view when that popup closes; `Alt+Shift+K` toggles the top popup slot, `Alt+Shift+M` toggles the popup command menu, `Alt+Shift+B` toggles the btm process viewer, and `Alt+Shift+C` toggles the config UI popup
-- Named popup commands live in `zellij.popup_commands`: bottom defaults to `lazygit`, top defaults to `yzx config ui` for Yazelix's ratconfig-backed JSONC settings editor, menu defaults to `yzx menu`, and btm defaults to `btm`; the extra unbound personal popup slot uses `zellij.popup_program` plus the `zellij.keybindings.popup` action
+- Built-in popup commands live in `zellij.popup_commands`: bottom defaults to `lazygit`, top defaults to `yzx config ui` for Yazelix's ratconfig-backed JSONC settings editor, and menu defaults to `yzx menu`; user-defined popups live in `zellij.custom_popups`, with `btm` shipped as the default example on `Alt+Shift+B`
 - Configure the managed editor with `editor.command` in `settings.jsonc`
 
 ## Advanced: First-Party Child Repositories
@@ -343,7 +343,7 @@ Run `yzx help` for the live command list
 
 ### Workspace Actions
 
-- `yzx popup` - Toggle the managed popup program, usually `lazygit`; the popup keybinding refreshes Yazi sidebar git state when it closes
+- `yzx popup <program> [args...]` - Open a one-off command in a transient popup pane
 - `yzx menu --popup` - Open the popup command palette, usually through `Alt+Shift+M`
 - `yzx config ui` - Open Yazelix's ratconfig-backed JSONC settings editor, usually through `Alt+Shift+C`
 - `Alt+Shift+B` - Open the bundled `btm` process viewer popup

@@ -89,6 +89,29 @@ To use Yazelix Terminal as the packaged terminal:
 
 `extra_terminal_launchers` installs additional Linux desktop entries such as `Yazelix - Ghostty`, `Yazelix - Rio`, and `Yazelix - WezTerm` without changing the active runtime identity. These entries point directly at their terminal variant packages in the Nix store, so their dependencies stay available without adding duplicate `bin/yzx` commands to the Home Manager profile. Do not include the active `terminal` value in this list; the active terminal already gets the profile-owned launcher
 
+When `manage_config = true`, Home Manager can also own user-defined popup surfaces. The default `btm` popup is expressed through `custom_popups`, so users can edit it or set the list to `[]` to remove it:
+
+```nix
+{
+  programs.yazelix = {
+    enable = true;
+    manage_config = true;
+    custom_popups = [
+      {
+        id = "btm";
+        command = [ "btm" ];
+        keybindings = [ "Alt Shift B" ];
+      }
+      {
+        id = "btop";
+        command = [ "btop" ];
+        keybindings = [ "Alt Shift Y" ];
+      }
+    ];
+  };
+}
+```
+
 Maintainers dogfooding local Yazelix Terminal changes can temporarily point the
 module at the fast yzxterm package while keeping `terminal = "yzxterm"`:
 

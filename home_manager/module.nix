@@ -235,6 +235,24 @@ let
           types.listOf types.str
         else if field.kind == "string_list_map" then
           types.attrsOf (types.listOf types.str)
+        else if field.kind == "custom_popup_list" then
+          types.listOf (types.submodule {
+            options = {
+              id = mkOption {
+                type = types.str;
+                description = "Stable custom popup id";
+              };
+              command = mkOption {
+                type = types.listOf types.str;
+                description = "Command argv used by this popup";
+              };
+              keybindings = mkOption {
+                type = types.listOf types.str;
+                default = [ ];
+                description = "Zellij key strings that toggle this popup";
+              };
+            };
+          })
         else if field.kind == "int" then
           types.int
         else if field.kind == "float" then
@@ -792,19 +810,18 @@ in
       description = "Optional short zjstatus badge shown before YAZELIX. Trimmed and capped at 8 characters.";
     };
 
-    popup_program = mkMainContractOption "zellij.popup_program" {
+    popup_commands = mkMainContractOption "zellij.popup_commands" {
       description = ''
-        Default transient popup command for `yzx popup`.
-        Use an argv-style list, eg. [ "lazygit" ], [ "editor" ] to reuse `editor.command`,
-        or [ "codex" ].
+        Commands for built-in Yazelix popup surfaces.
+        Defaults: bottom_popup = [ "lazygit" ], top_popup = [ "yzx" "config" "ui" ],
+        menu = [ "yzx" "menu" ].
       '';
     };
 
-    popup_commands = mkMainContractOption "zellij.popup_commands" {
+    custom_popups = mkMainContractOption "zellij.custom_popups" {
       description = ''
-        Commands for named Yazelix popup surfaces.
-        Defaults: bottom_popup = [ "lazygit" ], top_popup = [ "yzx" "config" "ui" ],
-        menu = [ "yzx" "menu" ], btm = [ "btm" ].
+        User-defined Yazelix popup surfaces.
+        Default: { id = "btm"; command = [ "btm" ]; keybindings = [ "Alt Shift B" ]; }.
       '';
     };
 
@@ -922,7 +939,7 @@ in
       description = ''
         Semantic remaps for Yazelix-owned Zellij actions.
 
-        Keys are action ids such as "bottom_popup", "top_popup", "menu", "btm",
+        Keys are action ids such as "bottom_popup", "top_popup", "menu",
         "toggle_left_sidebar", and "move_focus_left_or_tab"; values are lists of
         Zellij key strings. Use an empty list to disable the generated binding
         for one action.

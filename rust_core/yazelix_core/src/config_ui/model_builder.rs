@@ -1,6 +1,13 @@
 use super::*;
 use std::collections::BTreeMap;
 
+const POPUP_COMMANDS_FIELD_PATH: &str = "zellij.popup_commands";
+const BUILTIN_POPUP_COMMANDS: &[(&str, &str)] = &[
+    ("bottom_popup", "Bottom popup command"),
+    ("top_popup", "Top popup command"),
+    ("menu", "Menu popup command"),
+];
+
 pub fn build_config_ui_model(request: &ConfigUiRequest) -> Result<ConfigUiModel, CoreError> {
     let paths = primary_config_paths(&request.runtime_dir, &request.config_dir);
     let schema = read_json_file(
@@ -100,6 +107,14 @@ pub fn build_config_ui_model(request: &ConfigUiRequest) -> Result<ConfigUiModel,
         &default_value,
         &blocking_paths,
     )?;
+    append_builtin_popup_command_fields(
+        &mut fields,
+        &contract_fields,
+        config_owner,
+        &active_value,
+        &default_value,
+        &blocking_paths,
+    )?;
 
     if cursor_component_enabled {
         let cursor_choice_values = cursor_choice_values(&active_value, &default_value);
@@ -172,7 +187,9 @@ pub fn build_config_ui_model(request: &ConfigUiRequest) -> Result<ConfigUiModel,
 }
 
 pub(super) fn apply_contract_path_for_setting_path(setting_path: &str) -> &str {
-    keybinding_parent_path_for_field_path(setting_path).unwrap_or(setting_path)
+    keybinding_parent_path_for_field_path(setting_path)
+        .or_else(|| popup_commands_parent_path_for_field_path(setting_path))
+        .unwrap_or(setting_path)
 }
 
 fn active_config_path(paths: &PrimaryConfigPaths, config_override: Option<&str>) -> PathBuf {
@@ -595,6 +612,11 @@ pub(super) fn build_field_row(
 }
 
 fn edit_behavior_for_field_path(path: &str) -> ConfigUiEditBehavior {
+    if path == POPUP_COMMANDS_FIELD_PATH {
+        return ConfigUiEditBehavior::StructuredOnly {
+            notice: "Select a built-in popup row below to edit one command argv list.".to_string(),
+        };
+    }
     if is_keybinding_map_field_path(path) {
         return ConfigUiEditBehavior::StructuredOnly {
             notice: "Select an action row below to edit one binding list.".to_string(),
@@ -607,7 +629,58 @@ fn edit_behavior_for_field_path(path: &str) -> ConfigUiEditBehavior {
                     .to_string(),
         };
     }
+    if path == "zellij.custom_popups" {
+        return ConfigUiEditBehavior::StructuredOnly {
+            notice: "Custom popups are edited in settings.jsonc or Home Manager.".to_string(),
+        };
+    }
     ConfigUiEditBehavior::Default
+}
+
+fn append_builtin_popup_command_fields(
+    fields: &mut Vec<ConfigUiField>,
+    contract_fields: &BTreeMap<String, ConfigUiContractField>,
+    config_owner: ConfigUiPathOwner,
+    active_value: &JsonValue,
+    default_value: &JsonValue,
+    blocking_paths: &BTreeSet<String>,
+) -> Result<(), CoreError> {
+    let Some(parent_field) = contract_fields.get(POPUP_COMMANDS_FIELD_PATH) else {
+        return Ok(());
+    };
+    let apply_mode = if config_owner == ConfigUiPathOwner::HomeManager {
+        RuntimeApplyMode::PackageHomeManagerActivation
+    } else {
+        apply_mode_for_contract_field(parent_field)?
+    };
+    for (id, label) in BUILTIN_POPUP_COMMANDS {
+        let path = format!("{POPUP_COMMANDS_FIELD_PATH}.{id}");
+        fields.push(build_field_row(
+            &path,
+            "workspace",
+            "string_list",
+            get_json_path(active_value, &path),
+            get_json_path(default_value, &path),
+            (*label).to_string(),
+            Vec::new(),
+            parent_field.validation.clone(),
+            parent_field.rebuild_required,
+            apply_mode,
+            blocking_paths.contains(&path) || blocking_paths.contains(POPUP_COMMANDS_FIELD_PATH),
+            ConfigUiEditBehavior::FriendlyStringList,
+        ));
+    }
+    Ok(())
+}
+
+fn popup_commands_parent_path_for_field_path(path: &str) -> Option<&'static str> {
+    let id = path
+        .strip_prefix(POPUP_COMMANDS_FIELD_PATH)
+        .and_then(|rest| rest.strip_prefix('.'))?;
+    BUILTIN_POPUP_COMMANDS
+        .iter()
+        .any(|(known, _)| *known == id)
+        .then_some(POPUP_COMMANDS_FIELD_PATH)
 }
 
 pub(super) fn apply_status_for_setting(

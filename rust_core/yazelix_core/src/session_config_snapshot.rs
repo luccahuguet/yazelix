@@ -326,7 +326,6 @@ mod tests {
         let path = session_config_snapshot_path(dir.path());
         let config = JsonMap::from_iter([
             ("editor_command".to_string(), json!("nvim")),
-            ("popup_program".to_string(), json!(["gitui"])),
             ("default_shell".to_string(), json!("bash")),
             ("terminals".to_string(), json!(["ghostty", "wezterm"])),
         ]);
@@ -348,7 +347,6 @@ mod tests {
         assert_eq!(loaded.runtime.hash, "runtime-hash");
         assert_eq!(loaded.runtime.version, "v16.1");
         assert_eq!(loaded.normalized_config["editor_command"], json!("nvim"));
-        assert_eq!(loaded.facts.popup_program, vec!["gitui"]);
         assert_eq!(facts.default_shell, "bash");
         assert_eq!(facts.terminals, vec!["ghostty", "wezterm"]);
     }

@@ -40,10 +40,11 @@ const GENERATED_LAYOUT_FINGERPRINT_PREFIX: &str = "generation_fingerprint:";
 const ZELLIJ_KEYBINDINGS_CONFIG_KEY: &str = "zellij_keybindings";
 const ZELLIJ_NATIVE_KEYBINDINGS_CONFIG_KEY: &str = "zellij_native_keybindings";
 const POPUP_COMMANDS_CONFIG_KEY: &str = "popup_commands";
+const CUSTOM_POPUPS_CONFIG_KEY: &str = "custom_popups";
 const BOTTOM_POPUP_COMMAND_KEY: &str = "bottom_popup";
 const TOP_POPUP_COMMAND_KEY: &str = "top_popup";
 const MENU_POPUP_COMMAND_KEY: &str = "menu";
-const BTM_POPUP_COMMAND_KEY: &str = "btm";
+const RESERVED_POPUP_IDS: &[&str] = &["popup", "bottom_popup", "top_popup", "menu", "config"];
 
 const PANE_ORCHESTRATOR_PLUGIN_URL_PLACEHOLDER: &str = "__YAZELIX_PANE_ORCHESTRATOR_PLUGIN_URL__";
 const HOME_DIR_PLACEHOLDER: &str = "__YAZELIX_HOME_DIR__";
@@ -134,6 +135,22 @@ struct PermissionBlock {
     permissions: Vec<String>,
 }
 
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+struct CustomPopup {
+    id: String,
+    command: Vec<String>,
+    keybindings: Vec<String>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct RawCustomPopup {
+    id: String,
+    command: Vec<String>,
+    #[serde(default)]
+    keybindings: Vec<String>,
+}
+
 #[derive(Debug, Clone, Serialize)]
 struct ZellijBarRenderRequest {
     zjstatus_plugin_url: String,
@@ -200,8 +217,9 @@ pub fn generate_zellij_materialization(
     let [pane_orchestrator_artifact, zjstatus_artifact, yzpp_artifact] = &plugin_artifacts;
     let zellij_keybindings = resolve_zellij_keybindings(&config)?;
     let zellij_native_keybindings = resolve_zellij_native_keybindings(&config)?;
-    let popup_program = resolve_popup_program_config(&config);
     let popup_commands = resolve_popup_commands_config(&config)?;
+    let custom_popups = resolve_custom_popups_config(&config)?;
+    validate_custom_popup_keybindings(&zellij_keybindings, &custom_popups)?;
     let terminal_label = active_terminal_from_runtime_dir(&request.runtime_dir)?;
     let render_plan_request = build_render_plan_request(
         &config,
@@ -217,8 +235,8 @@ pub fn generate_zellij_materialization(
         &plugin_artifacts,
         &zellij_keybindings,
         &zellij_native_keybindings,
-        &popup_program,
         &popup_commands,
+        &custom_popups,
         &render_plan,
     )?;
 
@@ -251,8 +269,8 @@ pub fn generate_zellij_materialization(
         &zellij_keybindings,
         &zellij_native_keybindings,
         &render_plan,
-        &popup_program,
         &popup_commands,
+        &custom_popups,
         &pane_orchestrator_runtime_path,
         &yzpp_runtime_path,
         &generation_fingerprint,
@@ -339,35 +357,6 @@ fn string_config<'a>(
         .unwrap_or(default)
 }
 
-fn string_list_config(config: &JsonMap<String, JsonValue>, key: &str) -> Option<Vec<String>> {
-    match config.get(key) {
-        Some(JsonValue::Array(values)) => Some(
-            values
-                .iter()
-                .filter_map(JsonValue::as_str)
-                .map(ToOwned::to_owned)
-                .collect(),
-        ),
-        _ => None,
-    }
-}
-
-fn resolve_popup_program_config(config: &JsonMap<String, JsonValue>) -> Vec<String> {
-    let mut program = string_list_config(config, "popup_program")
-        .unwrap_or_else(|| vec!["lazygit".to_string()])
-        .into_iter()
-        .map(|value| value.trim().to_string())
-        .filter(|value| !value.is_empty())
-        .collect::<Vec<_>>();
-    if program.is_empty() {
-        program.push("lazygit".to_string());
-    }
-    if program.first().map(String::as_str) == Some("editor") {
-        program[0] = string_config(config, "editor_command", "hx").to_string();
-    }
-    program
-}
-
 fn default_popup_commands() -> BTreeMap<String, Vec<String>> {
     BTreeMap::from([
         (
@@ -382,7 +371,6 @@ fn default_popup_commands() -> BTreeMap<String, Vec<String>> {
             MENU_POPUP_COMMAND_KEY.to_string(),
             vec!["yzx".to_string(), "menu".to_string()],
         ),
-        (BTM_POPUP_COMMAND_KEY.to_string(), vec!["btm".to_string()]),
     ])
 }
 
@@ -409,51 +397,20 @@ fn resolve_popup_commands_config(
                 ErrorClass::Config,
                 "unknown_popup_command",
                 format!("Unsupported zellij.popup_commands entry: {name}."),
-                "Use one of: bottom_popup, top_popup, menu, btm.",
+                if name == "btm" {
+                    "Move btm to zellij.custom_popups: { \"id\": \"btm\", \"command\": [\"btm\"], \"keybindings\": [\"Alt Shift B\"] }."
+                } else {
+                    "Use one of: bottom_popup, top_popup, menu."
+                },
                 json!({ "field": format!("zellij.popup_commands.{name}") }),
             ));
         }
-        let Some(items) = raw_command.as_array() else {
-            return Err(CoreError::classified(
-                ErrorClass::Config,
-                "invalid_popup_command",
-                format!("zellij.popup_commands.{name} must be an argv list."),
-                "Use a JSON array of strings, such as [\"lazygit\"].",
-                json!({ "field": format!("zellij.popup_commands.{name}") }),
-            ));
-        };
-        let mut command = Vec::with_capacity(items.len());
-        for item in items {
-            let Some(raw_item) = item.as_str() else {
-                return Err(CoreError::classified(
-                    ErrorClass::Config,
-                    "invalid_popup_command_arg",
-                    format!("zellij.popup_commands.{name} contains a non-string argv item."),
-                    "Use command argv strings, such as [\"yzx\", \"config\", \"ui\"].",
-                    json!({ "field": format!("zellij.popup_commands.{name}"), "actual": item }),
-                ));
-            };
-            let item = raw_item.trim();
-            if item.is_empty() || item.contains('\n') || item.contains('\r') {
-                return Err(CoreError::classified(
-                    ErrorClass::Config,
-                    "invalid_popup_command_arg",
-                    format!("zellij.popup_commands.{name} contains an invalid argv item."),
-                    "Use non-empty single-line command argv strings.",
-                    json!({ "field": format!("zellij.popup_commands.{name}"), "actual": raw_item }),
-                ));
-            }
-            command.push(item.to_string());
-        }
-        if command.is_empty() {
-            return Err(CoreError::classified(
-                ErrorClass::Config,
-                "empty_popup_command",
-                format!("zellij.popup_commands.{name} cannot be empty."),
-                "Set a real command argv list, such as [\"lazygit\"], or remove the entry to use the Yazelix default.",
-                json!({ "field": format!("zellij.popup_commands.{name}") }),
-            ));
-        }
+        let mut command = parse_config_string_list(
+            Some(raw_command),
+            &format!("zellij.popup_commands.{name}"),
+            "Use a non-empty command argv list such as [\"lazygit\"], or remove the entry to use the Yazelix default.",
+            false,
+        )?;
         if command.first().map(String::as_str) == Some("editor") {
             command[0] = string_config(config, "editor_command", "hx").to_string();
         }
@@ -461,6 +418,184 @@ fn resolve_popup_commands_config(
     }
 
     Ok(resolved)
+}
+
+fn default_custom_popups() -> Vec<CustomPopup> {
+    vec![CustomPopup {
+        id: "btm".to_string(),
+        command: vec!["btm".to_string()],
+        keybindings: vec!["Alt Shift B".to_string()],
+    }]
+}
+
+fn resolve_custom_popups_config(
+    config: &JsonMap<String, JsonValue>,
+) -> Result<Vec<CustomPopup>, CoreError> {
+    let Some(raw_popups) = config.get(CUSTOM_POPUPS_CONFIG_KEY) else {
+        return Ok(default_custom_popups());
+    };
+    let items = serde_json::from_value::<Vec<RawCustomPopup>>(raw_popups.clone()).map_err(
+        |source| CoreError::classified(
+            ErrorClass::Config,
+            "invalid_custom_popups",
+            "zellij.custom_popups must be a list of popup definitions.",
+            "Use objects such as { \"id\": \"gitui\", \"command\": [\"gitui\"], \"keybindings\": [\"Alt Shift G\"] }.",
+            json!({ "field": "zellij.custom_popups", "error": source.to_string() }),
+        ),
+    )?;
+
+    let mut seen_ids = BTreeSet::new();
+    let mut popups = Vec::with_capacity(items.len());
+    for (index, item) in items.into_iter().enumerate() {
+        let path = format!("zellij.custom_popups[{index}]");
+        let id = item.id.trim().to_string();
+        if id.is_empty() {
+            return Err(CoreError::classified(
+                ErrorClass::Config,
+                "invalid_custom_popup_id",
+                format!("{path}.id must be a non-empty string."),
+                "Use a stable id such as \"gitui\".",
+                json!({ "field": format!("{path}.id") }),
+            ));
+        }
+        validate_custom_popup_id(&id, &path)?;
+        if RESERVED_POPUP_IDS.contains(&id.as_str()) {
+            return Err(CoreError::classified(
+                ErrorClass::Config,
+                "reserved_custom_popup_id",
+                format!("zellij.custom_popups id {id:?} is reserved by Yazelix."),
+                "Use zellij.popup_commands for bottom_popup, top_popup, and menu; use another id for custom popups.",
+                json!({ "field": format!("{path}.id"), "id": id }),
+            ));
+        }
+        if !seen_ids.insert(id.clone()) {
+            return Err(CoreError::classified(
+                ErrorClass::Config,
+                "duplicate_custom_popup_id",
+                format!("Duplicate zellij.custom_popups id: {id}."),
+                "Give each custom popup a unique id.",
+                json!({ "field": format!("{path}.id"), "id": id }),
+            ));
+        }
+
+        let command = normalize_config_strings(
+            item.command,
+            &format!("{path}.command"),
+            "Use a non-empty command argv list such as [\"gitui\"].",
+            false,
+        )?;
+        let mut command = command;
+        if command.first().map(String::as_str) == Some("editor") {
+            command[0] = string_config(config, "editor_command", "hx").to_string();
+        }
+        let keybindings = normalize_config_strings(
+            item.keybindings,
+            &format!("{path}.keybindings"),
+            "Use Zellij key strings such as [\"Alt Shift G\"], or [] for an unbound custom popup.",
+            true,
+        )?;
+
+        popups.push(CustomPopup {
+            id,
+            command,
+            keybindings,
+        });
+    }
+
+    Ok(popups)
+}
+
+fn validate_custom_popup_id(id: &str, path: &str) -> Result<(), CoreError> {
+    let mut chars = id.chars();
+    let first = chars.next().expect("custom popup ids are non-empty");
+    if !(first.is_ascii_alphabetic() || first == '_')
+        || !chars.all(|ch| ch.is_ascii_alphanumeric() || ch == '_')
+    {
+        return Err(CoreError::classified(
+            ErrorClass::Config,
+            "invalid_custom_popup_id",
+            format!("Invalid zellij.custom_popups id: {id}."),
+            "Use only ASCII letters, numbers, and underscores, and start with a letter or underscore.",
+            json!({ "field": format!("{path}.id"), "id": id }),
+        ));
+    }
+    Ok(())
+}
+
+fn parse_config_string_list(
+    value: Option<&JsonValue>,
+    field_path: &str,
+    remediation: &str,
+    empty_allowed: bool,
+) -> Result<Vec<String>, CoreError> {
+    let Some(value) = value else {
+        return if empty_allowed {
+            Ok(Vec::new())
+        } else {
+            Err(CoreError::classified(
+                ErrorClass::Config,
+                "missing_config_string_list",
+                format!("{field_path} is required."),
+                remediation,
+                json!({ "field": field_path }),
+            ))
+        };
+    };
+    let Some(items) = value.as_array() else {
+        return Err(CoreError::classified(
+            ErrorClass::Config,
+            "invalid_config_string_list",
+            format!("{field_path} must be a list of strings."),
+            remediation,
+            json!({ "field": field_path, "actual": value }),
+        ));
+    };
+    let mut values = Vec::with_capacity(items.len());
+    for item in items {
+        let Some(raw_item) = item.as_str() else {
+            return Err(CoreError::classified(
+                ErrorClass::Config,
+                "invalid_config_string_list_item",
+                format!("{field_path} contains a non-string item."),
+                remediation,
+                json!({ "field": field_path, "actual": item }),
+            ));
+        };
+        values.push(raw_item.to_string());
+    }
+    normalize_config_strings(values, field_path, remediation, empty_allowed)
+}
+
+fn normalize_config_strings(
+    values: Vec<String>,
+    field_path: &str,
+    remediation: &str,
+    empty_allowed: bool,
+) -> Result<Vec<String>, CoreError> {
+    let mut normalized = Vec::with_capacity(values.len());
+    for raw_item in values {
+        let item = raw_item.trim();
+        if item.is_empty() || item.contains('\n') || item.contains('\r') {
+            return Err(CoreError::classified(
+                ErrorClass::Config,
+                "invalid_config_string_list_item",
+                format!("{field_path} contains an invalid string item."),
+                remediation,
+                json!({ "field": field_path, "actual": raw_item }),
+            ));
+        }
+        normalized.push(item.to_string());
+    }
+    if !empty_allowed && normalized.is_empty() {
+        return Err(CoreError::classified(
+            ErrorClass::Config,
+            "empty_config_string_list",
+            format!("{field_path} cannot be empty."),
+            remediation,
+            json!({ "field": field_path }),
+        ));
+    }
+    Ok(normalized)
 }
 
 fn resolve_zellij_default_shell(runtime_dir: &Path, default_shell: &str) -> String {
@@ -543,8 +678,8 @@ fn render_merged_config(
     zellij_keybindings: &BTreeMap<String, Vec<String>>,
     zellij_native_keybindings: &BTreeMap<String, Vec<String>>,
     render_plan: &ZellijRenderPlanData,
-    popup_program: &[String],
     popup_commands: &BTreeMap<String, Vec<String>>,
+    custom_popups: &[CustomPopup],
     pane_orchestrator_wasm_path: &Path,
     yzpp_wasm_path: &Path,
     runtime_config_generation: &str,
@@ -559,6 +694,7 @@ fn render_merged_config(
         runtime_dir,
         zellij_keybindings,
         zellij_native_keybindings,
+        custom_popups,
     )?;
     let base_config = strip_yazelix_owned_top_level_settings(
         &extracted_blocks.config_without_semantic_blocks,
@@ -572,8 +708,8 @@ fn render_merged_config(
         pane_orchestrator_wasm_path,
         yzpp_wasm_path,
         runtime_dir,
-        popup_program,
         popup_commands,
+        custom_popups,
         render_plan.popup_width_percent,
         render_plan.popup_height_percent,
         render_plan.screen_saver_enabled,
@@ -777,8 +913,8 @@ fn build_yazelix_plugins_block(
     pane_orchestrator_wasm_path: &Path,
     yzpp_wasm_path: &Path,
     runtime_dir: &Path,
-    popup_program: &[String],
     popup_commands: &BTreeMap<String, Vec<String>>,
+    custom_popups: &[CustomPopup],
     popup_width_percent: i64,
     popup_height_percent: i64,
     screen_saver_enabled: bool,
@@ -837,8 +973,8 @@ fn build_yazelix_plugins_block(
         merged_lines.extend(render_yzpp_plugin_block(
             yzpp_wasm_path,
             runtime_dir,
-            popup_program,
             popup_commands,
+            custom_popups,
             popup_width_percent,
             popup_height_percent,
         ));
@@ -854,8 +990,8 @@ fn build_yazelix_plugins_block(
 fn render_yzpp_plugin_block(
     yzpp_wasm_path: &Path,
     runtime_dir: &Path,
-    popup_program: &[String],
     popup_commands: &BTreeMap<String, Vec<String>>,
+    custom_popups: &[CustomPopup],
     popup_width_percent: i64,
     popup_height_percent: i64,
 ) -> Vec<String> {
@@ -865,13 +1001,11 @@ fn render_yzpp_plugin_block(
         .join("yzx_cli.sh")
         .to_string_lossy()
         .to_string();
-    let popup_program = resolve_generated_popup_argv(popup_program, &yzx_cli);
     let bottom_popup_program =
         generated_popup_command(popup_commands, BOTTOM_POPUP_COMMAND_KEY, &yzx_cli);
     let top_popup_program =
         generated_popup_command(popup_commands, TOP_POPUP_COMMAND_KEY, &yzx_cli);
     let menu_program = generated_popup_command(popup_commands, MENU_POPUP_COMMAND_KEY, &yzx_cli);
-    let btm_program = generated_popup_command(popup_commands, BTM_POPUP_COMMAND_KEY, &yzx_cli);
     let mut lines = vec![
         format!(
             "    {YZPP_PLUGIN_ALIAS} location=\"file:{}\" {{",
@@ -880,16 +1014,6 @@ fn render_yzpp_plugin_block(
         "        popups {".to_string(),
     ];
 
-    append_generated_popup_spec(
-        &mut lines,
-        "popup",
-        "yzx_popup",
-        Some("yzx_popup"),
-        &popup_program,
-        popup_width_percent,
-        popup_height_percent,
-        Some(&yzx_cli),
-    );
     append_generated_popup_spec(
         &mut lines,
         "bottom_popup",
@@ -920,16 +1044,20 @@ fn render_yzpp_plugin_block(
         popup_height_percent,
         None,
     );
-    append_generated_popup_spec(
-        &mut lines,
-        "btm",
-        "yzx_btm",
-        Some("yzx_btm"),
-        &btm_program,
-        popup_width_percent,
-        popup_height_percent,
-        None,
-    );
+    for custom_popup in custom_popups {
+        let custom_popup_program = resolve_generated_popup_argv(&custom_popup.command, &yzx_cli);
+        let pane_title = format!("yzx_{}", custom_popup.id);
+        append_generated_popup_spec(
+            &mut lines,
+            &custom_popup.id,
+            &pane_title,
+            Some(&pane_title),
+            &custom_popup_program,
+            popup_width_percent,
+            popup_height_percent,
+            None,
+        );
+    }
     lines.extend([
         "            config {".to_string(),
         format!("                command {}", json_quote(&yzx_cli)),
@@ -966,18 +1094,18 @@ fn append_generated_popup_spec(
     id: &str,
     pane_title: &str,
     command_marker: Option<&str>,
-    popup_program: &[String],
+    popup_argv: &[String],
     popup_width_percent: i64,
     popup_height_percent: i64,
     on_close_yzx_cli: Option<&str>,
 ) {
     lines.push(format!("            {id} {{"));
-    if let Some(command_path) = popup_program.first() {
+    if let Some(command_path) = popup_argv.first() {
         lines.push(format!(
             "                command {}",
             json_quote(command_path)
         ));
-        for (index, arg) in popup_program.iter().skip(1).enumerate() {
+        for (index, arg) in popup_argv.iter().skip(1).enumerate() {
             lines.push(format!(
                 "                arg_{} {}",
                 index + 1,
@@ -1289,6 +1417,7 @@ fn read_yazelix_override_keybinds(
     runtime_dir: &Path,
     zellij_keybindings: &BTreeMap<String, Vec<String>>,
     zellij_native_keybindings: &BTreeMap<String, Vec<String>>,
+    custom_popups: &[CustomPopup],
 ) -> Result<Vec<String>, CoreError> {
     if !overrides_path.exists() {
         return Err(CoreError::classified(
@@ -1311,8 +1440,11 @@ fn read_yazelix_override_keybinds(
             RUNTIME_DIR_PLACEHOLDER,
             runtime_dir.to_string_lossy().as_ref(),
         );
-    let assigned_keys =
-        assigned_generated_zellij_binding_keys(zellij_keybindings, zellij_native_keybindings);
+    let assigned_keys = assigned_generated_zellij_binding_keys(
+        zellij_keybindings,
+        zellij_native_keybindings,
+        custom_popups,
+    );
     let mut keybind_lines = extract_semantic_config_blocks(&content)
         .keybind_lines
         .into_iter()
@@ -1323,7 +1455,10 @@ fn read_yazelix_override_keybinds(
             .into_iter()
             .filter(|line| !unbind_line_conflicts_with_generated_key(line, &assigned_keys)),
     );
-    keybind_lines.extend(build_semantic_zellij_keybind_lines(zellij_keybindings));
+    keybind_lines.extend(build_zellij_integration_keybind_lines(
+        zellij_keybindings,
+        custom_popups,
+    ));
     Ok(keybind_lines)
 }
 
@@ -1340,8 +1475,14 @@ fn assigned_zellij_keybinding_keys(
 fn assigned_generated_zellij_binding_keys(
     zellij_keybindings: &BTreeMap<String, Vec<String>>,
     zellij_native_keybindings: &BTreeMap<String, Vec<String>>,
+    custom_popups: &[CustomPopup],
 ) -> BTreeSet<String> {
     let mut assigned = assigned_zellij_keybinding_keys(zellij_keybindings);
+    assigned.extend(
+        custom_popups
+            .iter()
+            .flat_map(|popup| popup.keybindings.iter().cloned()),
+    );
     for spec in ZELLIJ_NATIVE_KEYBINDINGS {
         if !spec
             .blocks
@@ -1391,7 +1532,10 @@ fn quoted_kdl_strings(line: &str) -> Vec<String> {
     strings
 }
 
-fn build_semantic_zellij_keybind_lines(keybindings: &BTreeMap<String, Vec<String>>) -> Vec<String> {
+fn build_zellij_integration_keybind_lines(
+    keybindings: &BTreeMap<String, Vec<String>>,
+    custom_popups: &[CustomPopup],
+) -> Vec<String> {
     let mut by_mode = BTreeMap::<&str, Vec<String>>::new();
     for spec in ZELLIJ_ACTIONS {
         let Some(keys) = keybindings.get(spec.action.local_id) else {
@@ -1409,6 +1553,19 @@ fn build_semantic_zellij_keybind_lines(keybindings: &BTreeMap<String, Vec<String
             spec.payload,
         );
     }
+    for popup in custom_popups {
+        if popup.keybindings.is_empty() {
+            continue;
+        }
+        let mode_lines = by_mode.entry("shared").or_default();
+        push_zellij_message_bind(
+            mode_lines,
+            &popup.keybindings,
+            YZPP_PLUGIN_ALIAS,
+            "toggle",
+            Some(&popup.id),
+        );
+    }
 
     let mut lines = Vec::new();
     for (mode, binds) in by_mode {
@@ -1420,6 +1577,42 @@ fn build_semantic_zellij_keybind_lines(keybindings: &BTreeMap<String, Vec<String
         lines.push("    }".to_string());
     }
     lines
+}
+
+fn validate_custom_popup_keybindings(
+    zellij_keybindings: &BTreeMap<String, Vec<String>>,
+    custom_popups: &[CustomPopup],
+) -> Result<(), CoreError> {
+    let mut seen = BTreeMap::<String, String>::new();
+    for spec in ZELLIJ_ACTIONS {
+        if let Some(keys) = zellij_keybindings.get(spec.action.local_id) {
+            for key in keys {
+                seen.insert(key.clone(), spec.action.local_id.to_string());
+            }
+        }
+    }
+
+    for popup in custom_popups {
+        for key in &popup.keybindings {
+            if let Some(existing_action) = seen.insert(key.clone(), popup.id.clone()) {
+                return Err(CoreError::classified(
+                    ErrorClass::Config,
+                    "duplicate_custom_popup_keybinding",
+                    format!(
+                        "Zellij keybinding {key:?} is assigned to both {existing_action} and custom popup {}.",
+                        popup.id
+                    ),
+                    "Give each Yazelix Zellij action and custom popup a distinct key.",
+                    json!({
+                        "key": key,
+                        "first_action": existing_action,
+                        "second_action": format!("custom_popups.{}", popup.id),
+                    }),
+                ));
+            }
+        }
+    }
+    Ok(())
 }
 
 fn build_native_zellij_keybind_lines(keybindings: &BTreeMap<String, Vec<String>>) -> Vec<String> {
@@ -2337,8 +2530,8 @@ fn build_generation_fingerprint(
     plugin_artifacts: &[PluginArtifact; 3],
     zellij_keybindings: &BTreeMap<String, Vec<String>>,
     zellij_native_keybindings: &BTreeMap<String, Vec<String>>,
-    popup_program: &[String],
     popup_commands: &BTreeMap<String, Vec<String>>,
+    custom_popups: &[CustomPopup],
     render_plan: &ZellijRenderPlanData,
 ) -> Result<String, CoreError> {
     let overrides_path = runtime_dir
@@ -2360,8 +2553,8 @@ fn build_generation_fingerprint(
         "render_plan": render_plan,
         "zellij_keybindings": zellij_keybindings,
         "zellij_native_keybindings": zellij_native_keybindings,
-        "popup_program": popup_program,
         "popup_commands": popup_commands,
+        "custom_popups": custom_popups,
         "base_config": {
             "source": base_config_source.source,
             "path": base_config_source.path.as_ref().map(|path| path.to_string_lossy().to_string()).unwrap_or_default(),
@@ -2819,8 +3012,8 @@ keybinds {
             &sample_zellij_keybindings(),
             &sample_zellij_native_keybindings(),
             &plan,
-            &["lazygit".to_string()],
             &default_popup_commands(),
+            &default_custom_popups(),
             Path::new("/tmp/pane.wasm"),
             Path::new("/tmp/yzpp.wasm"),
             "gen-test",
@@ -2885,8 +3078,8 @@ keybinds {
             &sample_zellij_keybindings(),
             &sample_zellij_native_keybindings(),
             &plan,
-            &["lazygit".to_string()],
             &default_popup_commands(),
+            &default_custom_popups(),
             Path::new("/tmp/pane.wasm"),
             Path::new("/tmp/yzpp.wasm"),
             "gen-test",
@@ -2925,7 +3118,8 @@ keybinds {
     // Defends: the Codex agent key is orchestrator-managed so it can avoid duplicate panes and preserve layout state.
     #[test]
     fn semantic_zellij_keybindings_generate_agent_toggle() {
-        let rendered = build_semantic_zellij_keybind_lines(&sample_zellij_keybindings()).join("\n");
+        let rendered =
+            build_zellij_integration_keybind_lines(&sample_zellij_keybindings(), &[]).join("\n");
 
         assert!(rendered.contains(r#"bind "Alt Shift L" {"#));
         assert!(rendered.contains(r#"MessagePlugin "yazelix_pane_orchestrator" {"#));
@@ -2968,6 +3162,7 @@ keybinds {
             std::path::Path::new("/opt/yazelix"),
             &BTreeMap::new(),
             &keybindings,
+            &[],
         )
         .unwrap()
         .join("\n");
@@ -3143,6 +3338,7 @@ keybinds {
             std::path::Path::new("/opt/yazelix"),
             &sample_zellij_keybindings(),
             &sample_zellij_native_keybindings(),
+            &default_custom_popups(),
         )
         .unwrap();
         let merged = override_lines.join("\n");
@@ -3150,7 +3346,6 @@ keybinds {
         assert!(merged.contains("MessagePlugin \"yzpp\""));
         assert!(merged.contains("name \"toggle\""));
         assert!(merged.contains("open_workspace_terminal"));
-        assert!(!merged.contains("payload \"popup\""));
         assert!(merged.contains("payload \"bottom_popup\""));
         assert!(merged.contains("payload \"top_popup\""));
         assert!(merged.contains("payload \"menu\""));
@@ -3179,8 +3374,7 @@ keybinds {
         )
         .unwrap();
         let mut keybindings = sample_zellij_keybindings();
-        keybindings.insert("popup".to_string(), vec!["Alt p".to_string()]);
-        keybindings.insert("menu".to_string(), vec!["Alt Space".to_string()]);
+        keybindings.insert("menu".to_string(), vec!["Alt p".to_string()]);
         validate_zellij_keybindings(&keybindings).unwrap();
 
         let merged = read_yazelix_override_keybinds(
@@ -3188,14 +3382,13 @@ keybinds {
             std::path::Path::new("/opt/yazelix"),
             &keybindings,
             &sample_zellij_native_keybindings(),
+            &[],
         )
         .unwrap()
         .join("\n");
 
         assert!(!merged.contains(r#"unbind "Alt p""#));
         assert!(merged.contains(r#"bind "Alt p" {"#));
-        assert!(merged.contains(r#"payload "popup""#));
-        assert!(merged.contains(r#"bind "Alt Space" {"#));
         assert!(merged.contains(r#"payload "menu""#));
         assert!(!merged.contains(r#"bind "Alt t" {"#));
         assert!(!merged.contains(r#"bind "Alt Shift M" {"#));
@@ -3205,7 +3398,7 @@ keybinds {
     #[test]
     fn semantic_keybinds_reject_duplicate_action_keys() {
         let mut keybindings = sample_zellij_keybindings();
-        keybindings.insert("popup".to_string(), vec!["Alt Space".to_string()]);
+        keybindings.insert("bottom_popup".to_string(), vec!["Alt Space".to_string()]);
         keybindings.insert("menu".to_string(), vec!["Alt Space".to_string()]);
 
         let error = validate_zellij_keybindings(&keybindings).unwrap_err();
@@ -3230,10 +3423,8 @@ keybinds {
 
         assert_eq!(keybindings["menu"], vec!["Alt Space"]);
         assert_eq!(keybindings["toggle_left_sidebar"], Vec::<String>::new());
-        assert_eq!(keybindings["popup"], Vec::<String>::new());
         assert_eq!(keybindings["bottom_popup"], vec!["Alt Shift J"]);
         assert_eq!(keybindings["top_popup"], vec!["Alt Shift K"]);
-        assert_eq!(keybindings["btm"], vec!["Alt Shift B"]);
         assert_eq!(
             keybindings["toggle_editor_right_sidebar_focus"],
             vec!["Ctrl Shift Y"]
@@ -3260,7 +3451,37 @@ keybinds {
             vec!["nvim", "settings.md"]
         );
         assert_eq!(popup_commands[MENU_POPUP_COMMAND_KEY], vec!["yzx", "menu"]);
-        assert_eq!(popup_commands[BTM_POPUP_COMMAND_KEY], vec!["btm"]);
+    }
+
+    // Defends: custom popups generate managed yzpp specs and keybindings without expanding popup_commands.
+    #[test]
+    fn custom_popups_config_defaults_to_btm_and_resolves_editor_token() {
+        let mut config = JsonMap::new();
+        let default_popups = resolve_custom_popups_config(&config).unwrap();
+        assert_eq!(default_popups, default_custom_popups());
+
+        config.insert("editor_command".into(), json!("nvim"));
+        config.insert(
+            CUSTOM_POPUPS_CONFIG_KEY.to_string(),
+            json!([
+                {
+                    "id": "gitui",
+                    "command": ["editor", "repo.md"],
+                    "keybindings": ["Alt Shift G"],
+                }
+            ]),
+        );
+
+        let custom_popups = resolve_custom_popups_config(&config).unwrap();
+
+        assert_eq!(
+            custom_popups,
+            vec![CustomPopup {
+                id: "gitui".to_string(),
+                command: vec!["nvim".to_string(), "repo.md".to_string()],
+                keybindings: vec!["Alt Shift G".to_string()],
+            }]
+        );
     }
 
     // Regression: generated popup specs must route external tools through `popup_run` so they inherit runtime env and Yazi-sidebar cwd.
@@ -3269,8 +3490,8 @@ keybinds {
         let block = render_yzpp_plugin_block(
             std::path::Path::new("/opt/yazelix/plugins/yzpp.wasm"),
             std::path::Path::new("/opt/yazelix"),
-            &["gitui".to_string()],
             &default_popup_commands(),
+            &default_custom_popups(),
             82,
             76,
         )
@@ -3290,9 +3511,7 @@ keybinds {
         assert!(block.contains("command_marker \"yzx_btm\""));
         assert!(block.contains("arg_2 \"btm\""));
         assert!(!block.contains("arg_2 \"--pane\""));
-        assert!(block.contains("popup {"));
-        assert!(block.contains("arg_2 \"gitui\""));
-        assert!(block.contains("command_marker \"yzx_popup\""));
+        assert!(!block.contains("\n            popup {\n"));
     }
 
     // Regression: generated plugin config must carry the pane-orchestrator runtime contract and yzpp popup contract without duplicate alias injection.
@@ -3304,8 +3523,8 @@ keybinds {
             std::path::Path::new("/opt/yazelix/plugins/yazelix_pane_orchestrator.wasm"),
             std::path::Path::new("/opt/yazelix/plugins/yzpp.wasm"),
             std::path::Path::new("/opt/yazelix"),
-            &["lazygit".to_string()],
             &default_popup_commands(),
+            &default_custom_popups(),
             82,
             76,
             true,

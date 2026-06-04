@@ -113,30 +113,37 @@ The Codex usage widget includes quota-window position and official quota percent
 
 **Popup commands (`settings.jsonc`):**
 
-Yazelix exposes four named popup command slots and one extra unbound personal popup slot:
+Yazelix exposes three built-in popup command slots plus a user-defined popup list:
 
 - `bottom_popup` uses `zellij.popup_commands.bottom_popup` and defaults to `lazygit` on `Alt+Shift+J`
 - `top_popup` uses `zellij.popup_commands.top_popup` and defaults to `yzx config ui`, Yazelix's ratconfig-backed JSONC settings editor, on `Alt+Shift+K`
 - `menu` uses `zellij.popup_commands.menu` and defaults to `yzx menu` on `Alt+Shift+M`
-- `btm` uses `zellij.popup_commands.btm` and defaults to the bundled `btm` process viewer on `Alt+Shift+B`
-- `popup` uses `zellij.popup_program`, is unbound by default, and is available for one additional personal popup keybinding
+- `custom_popups` defines additional popup ids, commands, and keybindings; the default entry is `btm` on `Alt+Shift+B`
 
-For example, keep the default named surfaces and bind a personal monitor popup on `Alt+Shift+Y`:
+For example, keep the built-in surfaces and add a personal monitor popup on `Alt+Shift+Y`:
 
 ```jsonc
 {
   "zellij": {
-    "popup_program": ["btop"],
+    "custom_popups": [
+      {
+        "id": "btm",
+        "command": ["btm"],
+        "keybindings": ["Alt Shift B"]
+      },
+      {
+        "id": "btop",
+        "command": ["btop"],
+        "keybindings": ["Alt Shift Y"]
+      }
+    ],
     "popup_width_percent": 90,
-    "popup_height_percent": 90,
-    "keybindings": {
-      "popup": ["Alt Shift Y"]
-    }
+    "popup_height_percent": 90
   }
 }
 ```
 
-To change the built-in named surfaces, edit only the supported `popup_commands` entries:
+To change the built-in surfaces, edit only the supported `popup_commands` entries:
 
 ```jsonc
 {
@@ -144,14 +151,15 @@ To change the built-in named surfaces, edit only the supported `popup_commands` 
     "popup_commands": {
       "bottom_popup": ["lazygit"],
       "top_popup": ["yzx", "config", "ui"],
-      "menu": ["yzx", "menu"],
-      "btm": ["btm"]
+      "menu": ["yzx", "menu"]
     }
   }
 }
 ```
 
-`zellij.popup_commands` accepts only `bottom_popup`, `top_popup`, `menu`, and `btm`. Unsupported entries such as `extra_popup` fail fast. The config UI popup is a separate `config` action on `Alt+Shift+C`, and it opens the same ratconfig-backed `yzx config ui` editor. Popup command and geometry changes apply after Yazelix regenerates the Zellij config, so restart the window after editing them.
+Set `"custom_popups": []` to remove the default `btm` popup.
+
+`zellij.popup_commands` accepts only `bottom_popup`, `top_popup`, and `menu`. Unsupported entries such as `extra_popup` or `btm` fail fast. The config UI popup is a separate `config` action on `Alt+Shift+C`, and it opens the same ratconfig-backed `yzx config ui` editor. Popup command, custom popup, and geometry changes apply after Yazelix regenerates the Zellij config, so restart the window after editing them.
 
 For one-off commands inside an active Yazelix tab, run `yzx popup <program> [args...]`. That opens the same generic `popup` slot without changing `settings.jsonc`.
 
@@ -192,14 +200,19 @@ ui {
   "popup_commands": {
     "bottom_popup": ["lazygit"],
     "top_popup": ["yzx", "config", "ui"],
-    "menu": ["yzx", "menu"],
-    "btm": ["btm"]
+    "menu": ["yzx", "menu"]
   },
+  "custom_popups": [
+    {
+      "id": "btm",
+      "command": ["btm"],
+      "keybindings": ["Alt Shift B"]
+    }
+  ],
   "keybindings": {
     "bottom_popup": ["Alt Shift J"],
     "top_popup": ["Alt Shift K"],
     "menu": ["Alt Shift M"],
-    "btm": ["Alt Shift B"],
     "toggle_editor_right_sidebar_focus": ["Ctrl Shift Y"],
     "toggle_left_sidebar": ["Alt Shift H"],
     "move_focus_left_or_tab": ["Alt h", "Alt Left"],
@@ -208,9 +221,9 @@ ui {
 }
 ```
 
-Supported owner-local action ids are `open_workspace_terminal`, `popup`, `bottom_popup`, `top_popup`, `menu`, `btm`, `config`, `move_focus_left_or_tab`, `move_focus_right_or_tab`, `toggle_editor_sidebar_focus`, `toggle_editor_right_sidebar_focus`, `toggle_left_sidebar`, `open_codex_agent_right`, `smart_reveal`, `previous_family`, and `next_family`. `yzx keys` shows the matching scoped ids, such as `zellij.popup`. Omitted actions keep their defaults. Set an action to `[]` to disable Yazelix's generated binding for that action. Yazelix rejects duplicate keys across this semantic map before launch.
+Supported owner-local action ids are `open_workspace_terminal`, `bottom_popup`, `top_popup`, `menu`, `config`, `move_focus_left_or_tab`, `move_focus_right_or_tab`, `toggle_editor_sidebar_focus`, `toggle_editor_right_sidebar_focus`, `toggle_left_sidebar`, `open_codex_agent_right`, `smart_reveal`, `previous_family`, and `next_family`. `yzx keys` shows the matching scoped ids, such as `zellij.bottom_popup`. Omitted actions keep their defaults. Set an action to `[]` to disable Yazelix's generated binding for that action. Yazelix rejects duplicate keys across this semantic map and `zellij.custom_popups` before launch.
 
-Use `zellij.popup_commands` to change the command argv behind the named popup surfaces. The built-in defaults are bottom popup `lazygit`, top popup `yzx config ui` for Yazelix's ratconfig-backed config editor, menu `yzx menu`, and btm process viewer `btm`. Use `zellij.popup_program` plus the `popup` keybinding action for one extra unbound personal popup slot.
+Use `zellij.popup_commands` to change the command argv behind built-in popup surfaces. Use `zellij.custom_popups` to add, remove, or remap user-defined popup surfaces such as the default `btm` process viewer.
 
 For Yazelix's curated native Zellij key policy, use `zellij.native_keybindings` in `settings.jsonc`. This covers shipped remaps such as `scroll_mode` / `scroll_mode_unbind`, `session_mode` / `session_mode_unbind`, tab movement, tab jumps, pane grouping, and related Zellij-native conflict cleanup. Omitted entries keep defaults; set an entry to `[]` to disable that one bind or unbind.
 

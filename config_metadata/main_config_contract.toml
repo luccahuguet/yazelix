@@ -444,17 +444,6 @@ parser_behavior = "compact_badge_text"
 rebuild_required = false
 apply_mode = "generated_runtime_refresh"
 
-[fields."zellij.popup_program"]
-kind = "string_list"
-default = [
-  "lazygit",
-]
-parser_key = "popup_program"
-home_manager_option = "popup_program"
-parser_behavior = "direct"
-rebuild_required = false
-apply_mode = "tab_session_restart"
-
 [fields."zellij.popup_commands"]
 kind = "string_list_map"
 parser_key = "popup_commands"
@@ -467,7 +456,17 @@ apply_mode = "tab_session_restart"
 bottom_popup = ["lazygit"]
 top_popup = ["yzx", "config", "ui"]
 menu = ["yzx", "menu"]
-btm = ["btm"]
+
+[fields."zellij.custom_popups"]
+kind = "custom_popup_list"
+default = [
+  { id = "btm", command = ["btm"], keybindings = ["Alt Shift B"] },
+]
+parser_key = "custom_popups"
+home_manager_option = "custom_popups"
+parser_behavior = "direct"
+rebuild_required = false
+apply_mode = "tab_session_restart"
 
 [fields."zellij.popup_width_percent"]
 kind = "int"
@@ -600,11 +599,9 @@ apply_mode = "tab_session_restart"
 
 [fields."zellij.keybindings".default]
 open_workspace_terminal = ["Alt m"]
-popup = []
 bottom_popup = ["Alt Shift J"]
 top_popup = ["Alt Shift K"]
 menu = ["Alt Shift M"]
-btm = ["Alt Shift B"]
 config = ["Alt Shift C"]
 move_focus_left_or_tab = ["Alt h", "Alt Left"]
 move_focus_right_or_tab = ["Alt l", "Alt Right"]

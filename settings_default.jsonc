@@ -79,9 +79,6 @@
       "week"
     ],
     "custom_text": "",
-    "popup_program": [
-      "lazygit"
-    ],
     "popup_commands": {
       "bottom_popup": [
         "lazygit"
@@ -94,11 +91,19 @@
       "menu": [
         "yzx",
         "menu"
-      ],
-      "btm": [
-        "btm"
       ]
     },
+    "custom_popups": [
+      {
+        "id": "btm",
+        "command": [
+          "btm"
+        ],
+        "keybindings": [
+          "Alt Shift B"
+        ]
+      }
+    ],
     "popup_width_percent": 90,
     "popup_height_percent": 90,
     "screen_saver_enabled": false,
@@ -219,7 +224,6 @@
       "open_workspace_terminal": [
         "Alt m"
       ],
-      "popup": [],
       "bottom_popup": [
         "Alt Shift J"
       ],
@@ -228,9 +232,6 @@
       ],
       "menu": [
         "Alt Shift M"
-      ],
-      "btm": [
-        "Alt Shift B"
       ],
       "config": [
         "Alt Shift C"

@@ -415,8 +415,8 @@
         "opencode_go_usage_periods",
         "claude_usage_periods",
         "custom_text",
-        "popup_program",
         "popup_commands",
+        "custom_popups",
         "popup_width_percent",
         "popup_height_percent",
         "screen_saver_enabled",
@@ -526,15 +526,9 @@
         "custom_text": {
           "type": "string"
         },
-        "popup_program": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
         "popup_commands": {
           "type": "object",
-          "description": "Commands for named Yazelix popup surfaces",
+          "description": "Commands for built-in Yazelix popup surfaces",
           "required": [
             "bottom_popup",
             "top_popup",
@@ -559,11 +553,37 @@
               "items": {
                 "type": "string"
               }
-            },
-            "btm": {
-              "type": "array",
-              "items": {
-                "type": "string"
+            }
+          }
+        },
+        "custom_popups": {
+          "type": "array",
+          "description": "User-defined Yazelix popup surfaces",
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "command",
+              "keybindings"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+              },
+              "command": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1
+              },
+              "keybindings": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
               }
             }
           }

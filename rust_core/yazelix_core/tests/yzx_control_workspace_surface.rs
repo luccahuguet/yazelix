@@ -284,50 +284,26 @@ ya_command = "ya"
     );
 }
 
-// Defends: the default Rust-owned `yzx popup` route uses the configured yzpp popup spec so repeated invocations manage one popup instead of spawning duplicates.
-// Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
+// Defends: the deleted persistent popup_program path cannot be reached through no-arg yzx popup.
 #[test]
-fn yzx_control_popup_without_override_uses_yzpp_toggle_contract() {
+fn yzx_control_popup_without_program_errors_clearly() {
     let fixture = managed_config_fixture("");
-    let fake_bin = fixture.home_dir.join("fake-bin");
-    let zellij_log = fixture.home_dir.join("zellij.log");
-    fs::create_dir_all(&fake_bin).unwrap();
-
-    write_executable_script(
-        &fake_bin.join("zellij"),
-        &format!(
-            "#!/bin/sh\nprintf '%s\\n' \"$*\" >> \"{}\"\nprintf 'closed\\n'\nexit 0\n",
-            zellij_log.display()
-        ),
-    );
 
     let output = yzx_control_command_in_fixture(&fixture)
-        .env("PATH", prepend_path(&fake_bin))
         .env("ZELLIJ", "1")
         .arg("popup")
         .output()
         .unwrap();
 
-    assert_silent_success(&output);
-    assert!(
-        fs::read_to_string(zellij_log)
-            .unwrap()
-            .contains("action pipe --plugin yzpp --name toggle -- popup")
-    );
+    assert!(!output.status.success());
+    assert!(String::from_utf8_lossy(&output.stderr).contains("yzx popup <program>"));
 }
 
 // Defends: explicit yzx popup program requests run through the Yazelix runtime wrapper and attach the sidebar refresh close hook.
 // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 #[test]
-fn yzx_control_popup_program_opens_through_yzpp_raw_request() {
-    let fixture = managed_config_fixture(
-        r#"[zellij]
-popup_program = ["popup-probe", "hello"]
-
-[terminal]
-ghostty_trail_color = "random"
-"#,
-    );
+fn yzx_control_popup_explicit_program_opens_through_yzpp_raw_request() {
+    let fixture = managed_config_fixture("");
     let fake_bin = fixture.home_dir.join("fake-bin");
     let zellij_log = fixture.home_dir.join("zellij.log");
     fs::create_dir_all(&fake_bin).unwrap();

@@ -4,7 +4,7 @@ date = ""
 headline = "Post-v17.3 work in progress"
 manual_actions = []
 migration_ids = []
-summary = ["Added a first-class btm process viewer popup on Alt Shift B, backed by the bundled bottom runtime tool and configurable through zellij.popup_commands.btm plus zellij.keybindings.btm."]
+summary = ["Added zellij.custom_popups for user-defined popup surfaces and moved the default btm process viewer popup to that surface on Alt Shift B."]
 upgrade_impact = "no_user_action"
 version = "unreleased"
 

@@ -425,22 +425,22 @@ write_support = "settings_jsonc"
 home_manager_behavior = "read_only_in_ui"
 lifecycle = "stable"
 
-[fields."zellij.popup_program"]
+[fields."zellij.popup_commands"]
 tab = "workspace"
 group = "popup"
-label = "popup_program"
-help = "Set the command used by the Yazelix popup launcher"
-editor = "string_list"
+label = "popup_commands"
+help = "Set commands for the built-in Yazelix popup surfaces"
+editor = "object"
 default_source = "settings_default.jsonc"
 write_support = "settings_jsonc"
 home_manager_behavior = "read_only_in_ui"
 lifecycle = "stable"
 
-[fields."zellij.popup_commands"]
+[fields."zellij.custom_popups"]
 tab = "workspace"
 group = "popup"
-label = "popup_commands"
-help = "Set commands for the named Yazelix popup surfaces"
+label = "custom_popups"
+help = "Set user-defined popup surfaces with id, command, and keybindings"
 editor = "object"
 default_source = "settings_default.jsonc"
 write_support = "settings_jsonc"

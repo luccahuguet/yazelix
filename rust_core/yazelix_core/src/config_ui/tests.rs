@@ -194,7 +194,7 @@ fn zellij_keybinding_details_use_action_registry_metadata() {
     let config = tempdir().expect("config");
     write_runtime_layout(runtime.path());
     write_main_settings(runtime.path(), config.path(), |settings| {
-        settings["zellij"]["keybindings"]["popup"] = json!(["Alt x"]);
+        settings["zellij"]["keybindings"]["bottom_popup"] = json!(["Alt x"]);
         settings["zellij"]["keybindings"]["menu"] = json!([]);
         settings["zellij"]["keybindings"]["unknown_action"] = json!(["Alt z"]);
     });
@@ -208,8 +208,8 @@ fn zellij_keybinding_details_use_action_registry_metadata() {
         app.visible_rows()[app.selected_row],
     ));
 
-    assert!(details.contains("Toggle the managed popup program"));
-    assert!(details.contains("zellij.popup"));
+    assert!(details.contains("Toggle the bottom popup slot"));
+    assert!(details.contains("zellij.bottom_popup"));
     assert!(details.contains("Alt x (remapped)"));
     assert!(details.contains("Alt Shift J"));
     assert!(details.contains("Alt Shift K"));
@@ -369,13 +369,13 @@ fn keybinding_action_row_writes_single_binding_list() {
     write_runtime_layout(runtime.path());
     let settings_path = config.path().join("settings.jsonc");
     write_main_settings(runtime.path(), config.path(), |settings| {
-        settings["zellij"]["keybindings"]["popup"] = json!(["Alt x"]);
+        settings["zellij"]["keybindings"]["bottom_popup"] = json!(["Alt x"]);
     });
     let request = test_request(runtime.path(), config.path());
     let model = build_config_ui_model(&request).expect("model");
     let mut app = YazelixConfigUiApp::new(request, model);
 
-    select_field_path(&mut app, "zellij.keybindings.popup");
+    select_field_path(&mut app, "zellij.keybindings.bottom_popup");
     app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
 
     let edit = app.edit.as_mut().expect("edit");
@@ -387,7 +387,7 @@ fn keybinding_action_row_writes_single_binding_list() {
     assert!(app.edit.is_none());
     let value = read_settings_jsonc_value(&settings_path).expect("settings jsonc");
     assert_eq!(
-        get_json_path(&value, "zellij.keybindings.popup"),
+        get_json_path(&value, "zellij.keybindings.bottom_popup"),
         Some(&json!(["Alt Shift X"]))
     );
 }
