@@ -157,22 +157,10 @@ fn print_cwd_help() {
 pub(crate) fn load_workspace_command_config() -> Result<WorkspaceCommandConfig, CoreError> {
     let facts = compute_session_facts_from_env()?;
     let home_dir = home_dir_from_env()?;
-    let env_editor = env::var("EDITOR")
-        .ok()
-        .map(|value| value.trim().to_string())
-        .filter(|value| !value.is_empty());
-    let managed_helix_binary = env::var("YAZELIX_MANAGED_HELIX_BINARY")
-        .ok()
-        .map(|value| value.trim().to_string())
-        .filter(|value| !value.is_empty());
 
     Ok(WorkspaceCommandConfig {
         hide_sidebar_on_file_open: facts.hide_sidebar_on_file_open,
-        editor_kind: resolve_managed_editor_kind(
-            managed_helix_binary.as_deref(),
-            facts.editor_command.as_deref(),
-            env_editor.as_deref(),
-        ),
+        editor_kind: resolve_managed_editor_kind(facts.editor_command.as_deref()),
         yazi_command: facts.yazi_command,
         ya_command: facts.ya_command,
         home_dir,
@@ -278,19 +266,13 @@ mod tests {
     // Defends: the workspace owner keeps Helix wrapper detection so managed-editor cwd retargeting survives the public Rust owner cut.
     #[test]
     fn resolves_managed_editor_kind_for_supported_variants() {
+        assert_eq!(resolve_managed_editor_kind(None), "helix");
+        assert_eq!(resolve_managed_editor_kind(Some("hx")), "helix");
         assert_eq!(
-            resolve_managed_editor_kind(Some("/nix/store/helix"), None, None),
+            resolve_managed_editor_kind(Some("/tmp/yazelix_hx.sh")),
             "helix"
         );
-        assert_eq!(resolve_managed_editor_kind(None, Some("hx"), None), "helix");
-        assert_eq!(
-            resolve_managed_editor_kind(None, Some("/tmp/yazelix_hx.sh"), None),
-            "helix"
-        );
-        assert_eq!(
-            resolve_managed_editor_kind(None, Some("nvim"), None),
-            "neovim"
-        );
-        assert_eq!(resolve_managed_editor_kind(None, None, Some("vim")), "");
+        assert_eq!(resolve_managed_editor_kind(Some("nvim")), "neovim");
+        assert_eq!(resolve_managed_editor_kind(Some("vim")), "");
     }
 }

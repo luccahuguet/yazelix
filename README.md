@@ -185,7 +185,7 @@ For the longer project story, see [Version History](./docs/history.md)
 ## Compatibility
 - **Platform**: Linux and macOS — see the [macOS support floor contract](docs/contracts/macos_support_floor.md) for the current guaranteed macOS surfaces
 - **Terminal**: Ghostty is the default packaged terminal with Yazelix cursor trails and Yazi image previews, Yazelix Terminal is available through the experimental first-party package path, WezTerm is available through the stable alternate package path, Foot and Ratty are available through Linux package paths, and Kitty is available through a packaged runtime variant or host `PATH`
-- **Editor**: Any editor works, with Helix and Neovim getting first-class support (reveal in the Yazi file tree, open buffer in a running instance, managed editor-pane targeting) and configuration through `editor.command` in `settings.jsonc`
+- **Editor**: Yazelix Helix and Neovim get first-class support (reveal in the Yazi file tree, open buffer in a running instance, managed editor-pane targeting); other editors get plain pane launches through `editor.command`, and `helix.external` is only for Yazelix-compatible Helix forks
 - **Shell**: Bash, Fish, Zsh, or Nushell - use whichever you prefer
 
 ### Helix Integration
@@ -261,7 +261,7 @@ Yazelix uses a **layered configuration system** that safely merges your personal
   [editor]
   command = "nvim"
   ```
-- **Custom Helix fork**:
+- **Yazelix-compatible Helix fork**:
   ```toml
   [helix]
   external = { binary = "/path/to/hx", runtime_path = "/path/to/helix/runtime" }

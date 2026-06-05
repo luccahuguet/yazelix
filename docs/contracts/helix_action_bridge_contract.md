@@ -8,6 +8,10 @@ simulated terminal input.
 The bridge is the managed Helix integration seam for typed editor actions in
 the `yazelix-helix` fork and Yazelix control client.
 
+Managed Helix means the packaged Yazelix Helix fork or a fork based on it that
+keeps the same managed-config and bridge capability surface. Vanilla/upstream
+Helix is not a managed Yazelix Helix target.
+
 ## Why
 
 The current managed editor path can reuse a Helix pane by focusing it, sending
@@ -49,6 +53,10 @@ Rejected transports:
 The bridge may be implemented inside the Yazelix Helix fork directly, or behind
 a thin Helix extension module in that fork, but the supported public seam is the
 native local IPC protocol described here.
+
+`helix.external` is therefore a compatible-fork override, not a plain upstream
+Helix mode. A binary configured there must support Yazelix's `--config-dir`
+launch option and the bridge actions required by the active runtime.
 
 ## Contract Items
 

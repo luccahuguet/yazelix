@@ -117,6 +117,34 @@ if [ -z "$managed_helix_config_dir" ]; then
   exit 1
 fi
 
+if [ ! -x "$helix_binary" ]; then
+  printf '%s\n' "Error: managed Helix binary is not executable: $helix_binary" >&2
+  exit 1
+fi
+
+runtime_hx="$runtime_dir/libexec/hx"
+if [ "$helix_binary" != "$runtime_hx" ]; then
+  : >"$stderr_file"
+  if ! "$helix_binary" --config-dir "$managed_helix_config_dir" --version >/dev/null 2>"$stderr_file"; then
+    probe_stderr="$(cat "$stderr_file")"
+    case "$probe_stderr" in
+      *"unexpected double dash argument: --config-dir"*)
+        printf '%s\n' "Error: helix.external points at a Helix binary that is not Yazelix-compatible." >&2
+        printf '%s\n' "Yazelix managed Helix requires the Yazelix Helix fork or a fork based on it." >&2
+        printf '%s\n' "Vanilla/upstream Helix does not support Yazelix's --config-dir option or bridge-backed Yazi opens." >&2
+        printf '%s\n' "Use the packaged Yazelix Helix by removing helix.external, or point helix.external at a compatible Yazelix Helix fork." >&2
+        exit 1
+        ;;
+    esac
+    if [ -n "$probe_stderr" ]; then
+      cat "$stderr_file" >&2
+    else
+      printf '%s\n' "Error: external managed Helix compatibility probe failed without stderr." >&2
+    fi
+    exit 1
+  fi
+fi
+
 if [ -n "${YAZELIX_SESSION_CONFIG_PATH:-}" ]; then
   if [ ! -r "$YAZELIX_SESSION_CONFIG_PATH" ]; then
     printf '%s\n' "Error: Helix bridge session snapshot is not readable: $YAZELIX_SESSION_CONFIG_PATH" >&2

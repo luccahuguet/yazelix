@@ -29,7 +29,7 @@
     # helix_external = {
     #   binary = "/home/user/helix/target/release/hx";
     #   runtime_path = "/home/user/helix/runtime";
-    # }; # Optional: custom Helix fork binary/runtime pair
+    # }; # Optional: Yazelix-compatible Helix fork binary/runtime pair
     helix_steel_plugins = {
       enabled = [
         "recentf"

@@ -104,38 +104,42 @@ pub(crate) fn open_terminal_in_cwd_payload(cwd: &Path) -> String {
     .to_string()
 }
 
-pub(crate) fn resolve_managed_editor_kind(
-    managed_helix_binary: Option<&str>,
-    config_editor: Option<&str>,
-    env_editor: Option<&str>,
-) -> String {
-    if managed_helix_binary.is_some() {
+pub(crate) fn resolve_managed_editor_kind(config_editor: Option<&str>) -> String {
+    let Some(editor) = config_editor else {
         return "helix".to_string();
-    }
+    };
 
-    let editor = config_editor.or(env_editor).unwrap_or("");
-    let normalized = editor.trim();
-    let basename = Path::new(normalized)
-        .file_name()
-        .and_then(|name| name.to_str())
-        .unwrap_or("");
-
-    if normalized.ends_with("/hx")
-        || normalized == "hx"
-        || normalized.ends_with("/helix")
-        || normalized == "helix"
-        || basename == "yazelix_hx.sh"
-    {
+    if is_helix_command_like(editor) {
         "helix".to_string()
-    } else if normalized.ends_with("/nvim")
-        || normalized == "nvim"
-        || normalized.ends_with("/neovim")
-        || normalized == "neovim"
-    {
+    } else if is_neovim_command_like(editor) {
         "neovim".to_string()
     } else {
         String::new()
     }
+}
+
+fn is_helix_command_like(editor: &str) -> bool {
+    let normalized = editor.trim();
+    normalized.ends_with("/hx")
+        || normalized == "hx"
+        || normalized.ends_with("/helix")
+        || normalized == "helix"
+        || is_yazelix_helix_wrapper(normalized)
+}
+
+fn is_yazelix_helix_wrapper(editor: &str) -> bool {
+    Path::new(editor.trim())
+        .file_name()
+        .and_then(|name| name.to_str())
+        .is_some_and(|name| name == "yazelix_hx.sh")
+}
+
+fn is_neovim_command_like(editor: &str) -> bool {
+    let normalized = editor.trim();
+    normalized.ends_with("/nvim")
+        || normalized == "nvim"
+        || normalized.ends_with("/neovim")
+        || normalized == "neovim"
 }
 
 #[derive(Debug, Deserialize)]

@@ -14,7 +14,7 @@ Yazelix provides smart editor configuration to avoid conflicts with existing ins
 ```
 
 **If you have specific needs:**
-- Custom Helix fork → [Using A Custom Helix Fork](#using-a-custom-helix-fork)
+- Yazelix-compatible Helix fork → [Using A Custom Helix Fork](#using-a-custom-helix-fork)
 - Prefer other editors → [Using Other Editors](#using-other-editors)  
 - Runtime conflicts → See [Troubleshooting](#troubleshooting)
 
@@ -71,29 +71,26 @@ Yazelix sets your configured editor as the `EDITOR` environment variable through
 
 **Benefits:**
 - ✅ **Full integration** - All yazelix features work if the binary and runtime match
-- ✅ **Use your custom build** - Great for Helix developers
+- ✅ **Use your custom build** - Great for Yazelix Helix fork development
 
 **Notes:**
 - Leave `helix.external` as `null` to use Yazelix's bundled Helix
-- Set `helix.external` only when you need a user-owned Helix fork
+- Set `helix.external` only when you need a user-owned fork based on `luccahuguet/yazelix-helix`
 - Both `binary` and `runtime_path` are required together
+- Vanilla/upstream Helix is not a supported `helix.external` target
+- Yazelix managed Helix requires the fork-only `--config-dir` option, managed config loading, and bridge IPC used by existing-pane Yazi opens
 - `yzx doctor` reports both paths and warns that binary/runtime revision mismatches are user-owned risk
 - ⚠️ **Requires matching runtime** - Version mismatch causes startup errors
 - ⚠️ **Manual configuration** - You must specify the correct binary and runtime path
 
 **Finding your runtime path:**
 ```bash
-# Automatic detection:
-ls $(dirname $(which hx))/../share/helix/runtime
-
-# Manual check for system-installed Helix:
-which hx  # e.g., /usr/bin/hx → runtime at /usr/share/helix/runtime
-
-# For custom builds:
+# For Yazelix Helix fork builds:
 ls ~/helix/runtime  # Should contain themes/, grammars/, queries/ directories
 
-# Verify Helix can resolve a valid runtime:
-hx --health | head -n 5
+# Verify the binary supports Yazelix managed config mode:
+mkdir -p /tmp/yazelix-helix-probe
+/home/user/helix/target/release/hx --config-dir /tmp/yazelix-helix-probe --version
 ```
 
 ### Using Neovim

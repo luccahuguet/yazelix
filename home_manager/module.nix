@@ -342,11 +342,11 @@ let
             options = {
               binary = mkOption {
                 type = types.str;
-                description = "Custom Helix binary path";
+                description = "Yazelix-compatible Helix fork binary path";
               };
               runtime_path = mkOption {
                 type = types.str;
-                description = "Runtime path matching the custom Helix binary";
+                description = "Runtime path matching the Yazelix-compatible Helix fork binary";
               };
             };
           }
@@ -715,9 +715,10 @@ in
       description = ''
         Custom Helix binary/runtime pair.
 
-        Set this only when running a user-owned Helix fork. Both binary and
-        runtime_path are required because the runtime MUST match the Helix
-        binary version.
+        Set this only when running a user-owned fork based on Yazelix Helix.
+        Both binary and runtime_path are required because the runtime MUST
+        match the Helix binary version. Vanilla/upstream Helix does not support
+        Yazelix's managed --config-dir or bridge-backed Yazi open behavior.
 
         Example:
           {

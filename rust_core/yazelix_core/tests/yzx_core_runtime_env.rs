@@ -515,7 +515,7 @@ fn managed_helix_wrapper_passes_generated_config_dir() {
     .unwrap();
     make_executable(&runtime_dir.join("toolbin/jq"));
 
-    let fake_hx = tmp.path().join("hx");
+    let fake_hx = runtime_dir.join("libexec").join("hx");
     fs::write(
         &fake_hx,
         format!(
@@ -625,6 +625,86 @@ fn managed_helix_wrapper_passes_generated_config_dir() {
         fs::read_to_string(&core_log_path)
             .unwrap()
             .contains("core-arg=--show-splash\ncore-arg=false\n")
+    );
+}
+
+#[cfg(unix)]
+// Defends: helix.external is an integrated Yazelix-Helix fork surface; upstream Helix fails clearly because it does not support --config-dir.
+#[test]
+fn managed_helix_wrapper_rejects_external_binary_without_yazelix_config_dir_support() {
+    let tmp = tempdir().unwrap();
+    let runtime_dir = tmp.path().join("runtime");
+    let config_dir = tmp.path().join("config").join("yazelix");
+    let state_dir = tmp.path().join("state").join("yazelix");
+    let generated_dir = state_dir.join("configs").join("helix");
+    let generated_config = generated_dir.join("config.toml");
+    let managed_helix_config_dir = config_dir.join("helix");
+
+    fs::create_dir_all(runtime_dir.join("shells/posix")).unwrap();
+    fs::create_dir_all(runtime_dir.join("libexec")).unwrap();
+    fs::create_dir_all(runtime_dir.join("toolbin")).unwrap();
+    fs::create_dir_all(&generated_dir).unwrap();
+    fs::write(&generated_config, "theme = \"default\"\n").unwrap();
+
+    let repo_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .and_then(std::path::Path::parent)
+        .expect("repo root");
+    fs::copy(
+        repo_root.join("shells/posix/yazelix_hx.sh"),
+        runtime_dir.join("shells/posix/yazelix_hx.sh"),
+    )
+    .unwrap();
+    make_executable(&runtime_dir.join("shells/posix/yazelix_hx.sh"));
+
+    fs::write(
+        runtime_dir.join("libexec/yzx_core"),
+        "#!/bin/sh\nprintf '%s\\n' '{\"data\":{\"import_notice\":{\"lines\":[]},\"generated_path\":\"ignored-by-fake-jq\",\"managed_helix_config_dir\":\"ignored-by-fake-jq\",\"generated_steel_config_dir\":\"ignored-by-fake-jq\"}}'\n",
+    )
+    .unwrap();
+    make_executable(&runtime_dir.join("libexec/yzx_core"));
+
+    fs::write(
+        runtime_dir.join("toolbin/jq"),
+        format!(
+            "#!/bin/sh\ncase \"$2\" in\n  '.data.import_notice.lines[]?') exit 0 ;;\n  '.data.generated_path // \"\"') printf '%s\\n' '{}' ;;\n  '.data.managed_helix_config_dir // \"\"') printf '%s\\n' '{}' ;;\n  '.data.generated_steel_config_dir // \"\"') printf '%s\\n' '{}' ;;\n  *) exit 1 ;;\nesac\n",
+            generated_config.display(),
+            managed_helix_config_dir.display(),
+            generated_dir.display()
+        ),
+    )
+    .unwrap();
+    make_executable(&runtime_dir.join("toolbin/jq"));
+
+    let upstream_hx = tmp.path().join("upstream-hx");
+    fs::write(
+        &upstream_hx,
+        "#!/bin/sh\nprintf '%s\\n' 'Error: could not parse arguments' >&2\nprintf '%s\\n' 'Caused by:' >&2\nprintf '%s\\n' '    unexpected double dash argument: --config-dir' >&2\nexit 1\n",
+    )
+    .unwrap();
+    make_executable(&upstream_hx);
+
+    let output = Command::new(runtime_dir.join("shells/posix/yazelix_hx.sh"))
+        .env_clear()
+        .env("HOME", tmp.path().join("home"))
+        .env("PATH", "/usr/bin:/bin")
+        .env("YAZELIX_RUNTIME_DIR", &runtime_dir)
+        .env("YAZELIX_CONFIG_DIR", &config_dir)
+        .env("YAZELIX_STATE_DIR", &state_dir)
+        .env("YAZELIX_MANAGED_HELIX_BINARY", &upstream_hx)
+        .arg("README.md")
+        .output()
+        .unwrap();
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("helix.external points at a Helix binary that is not Yazelix-compatible"),
+        "{stderr}"
+    );
+    assert!(
+        stderr.contains("Vanilla/upstream Helix does not support Yazelix's --config-dir option"),
+        "{stderr}"
     );
 }
 
