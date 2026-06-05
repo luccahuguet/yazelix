@@ -5,6 +5,9 @@ use yazelix_maintainer::repo_canary_session::{
 use yazelix_maintainer::repo_contract_validation::sync_readme_surface;
 use yazelix_maintainer::repo_issue_sync::run_issue_sync;
 use yazelix_maintainer::repo_nu_lint::run_repo_nu_lint;
+use yazelix_maintainer::repo_release_workflow::{
+    parse_release_workflow_args, run_repo_release_workflow,
+};
 use yazelix_maintainer::repo_rust_commands::run_repo_rust_command;
 use yazelix_maintainer::repo_test_runner::{RepoTestOptions, run_repo_tests};
 use yazelix_maintainer::repo_update_workflow::{RepoUpdateOptions, run_repo_update_workflow};
@@ -94,6 +97,15 @@ fn main() {
                 );
             })
         }
+        "release" => {
+            let options = parse_release_workflow_args(args.collect()).unwrap_or_else(|error| {
+                eprintln!("{error}");
+                std::process::exit(2);
+            });
+            run_repo_release_workflow(&resolved_repo_root, &options).map(|result| {
+                println!("{}", serde_json::to_string(&result).unwrap());
+            })
+        }
         "sync-issues" => {
             let dry_run = parse_sync_issues_args(args.collect());
             run_issue_sync(&resolved_repo_root, dry_run).map(|summary| {
@@ -141,7 +153,7 @@ fn main() {
 
 fn print_usage_and_exit() -> ! {
     eprintln!(
-        "Usage: yzx_repo_maintainer [--repo-root PATH] <sync-readme-surface|run-tests|version-bump|sync-issues|dev-update|lint-nu|rust|canary-session> [options]"
+        "Usage: yzx_repo_maintainer [--repo-root PATH] <sync-readme-surface|run-tests|version-bump|release|sync-issues|dev-update|lint-nu|rust|canary-session> [options]"
     );
     std::process::exit(2);
 }

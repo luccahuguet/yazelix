@@ -13,8 +13,6 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     env:
-      BR_VERSION: 0.2.11
-      RUST_TOOLCHAIN: "1.96"
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
     steps:
       - name: Check out repository
@@ -22,48 +20,31 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set up Nushell
-        uses: hustcer/setup-nu@v3
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@v22
         with:
-          version: "0.111.0"
+          determinate: false
 
-      - name: Cache br tooling
+      - name: Cache Rust validation build artifacts
         uses: actions/cache@v5
         with:
           path: |
-            ~/.cargo/bin/br
             ~/.cargo/registry
             ~/.cargo/git
-          key: br-${{ runner.os }}-${{ env.BR_VERSION }}
+          key: beads-contract-rust-${{ runner.os }}-${{ hashFiles('rust_core/Cargo.lock', 'flake.lock') }}
           restore-keys: |
-            br-${{ runner.os }}-
+            beads-contract-rust-${{ runner.os }}-
 
-      - name: Install Rust toolchains and br
-        run: |
-          set -euo pipefail
-          rustup toolchain install "${RUST_TOOLCHAIN}" --profile minimal
-          rustup toolchain install nightly --profile minimal
-          cargo_bin="${CARGO_HOME:-$HOME/.cargo}/bin"
-          mkdir -p "$cargo_bin"
-          export PATH="$cargo_bin:$PATH"
-          stable_cargo="$(rustup which --toolchain "${RUST_TOOLCHAIN}" cargo)"
-          stable_rustc="$(rustup which --toolchain "${RUST_TOOLCHAIN}" rustc)"
-          nightly_cargo="$(rustup which --toolchain nightly cargo)"
-          nightly_rustc="$(rustup which --toolchain nightly rustc)"
-          if ! command -v br >/dev/null 2>&1 || ! br version --json | grep -q "\"version\":\"${BR_VERSION}\""; then
-            CARGO="$nightly_cargo" RUSTC="$nightly_rustc" "$nightly_cargo" install beads_rust --version "${BR_VERSION}" --locked --no-default-features
-          fi
-          {
-            echo "CARGO=$stable_cargo"
-            echo "RUSTC=$stable_rustc"
-          } >> "$GITHUB_ENV"
-          echo "$cargo_bin" >> "$GITHUB_PATH"
-          br version
+      # `br` is packaged in .#ci and published to the Yazelix Cachix cache.
+      # Keep this workflow on the repo-owned package instead of compiling br
+      # from crates.io on every scheduled contract check.
+      - name: Verify pinned Beads tooling
+        run: nix develop --accept-flake-config .#ci -c br version
 
       - name: Initialize Beads database
-        run: br sync --import-only --rebuild --json
+        run: nix develop --accept-flake-config .#ci -c br sync --import-only --rebuild --json
 
       - name: Validate contract
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: nu .github/scripts/validate_issue_bead_contract.nu
+        run: nix develop --accept-flake-config .#ci -c nu .github/scripts/validate_issue_bead_contract.nu

@@ -1,7 +1,10 @@
 name: CI
 
 on:
+  # Release tags point at commits already validated on main; avoid duplicate
+  # branch/tag CI for the same release commit.
   push:
+    tags-ignore: ["v*"]
   pull_request:
   workflow_dispatch:
     inputs:
@@ -39,17 +42,8 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Free runner disk space
-        run: |
-          set -euo pipefail
-          sudo rm -rf \
-            /opt/hostedtoolcache \
-            /usr/local/lib/android \
-            /usr/share/dotnet \
-            /opt/ghc \
-            /opt/az
-          docker system prune --all --force --volumes || true
-
+      # The always-on lane is source-contract validation, not a package build.
+      # Keep the expensive disk cleanup in Nix-heavy runtime smoke jobs below.
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@v22
         with:

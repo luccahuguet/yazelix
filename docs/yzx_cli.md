@@ -205,6 +205,7 @@ Maintainer shell commands:
 - `yzx dev sync_issues [--dry-run]`: Sync the GitHub/Beads public issue contract from a repo checkout
 - `yzx dev lint_nu [--format pretty|compact] [paths...]`: Run the repo Nu linter wrapper
 - `yzx dev bump VERSION`: Rotate release notes, update `release_metadata.toml`, sync the README version marker, create the release commit, and create the matching annotated tag
+- `yzx dev release VERSION [--dry-run] [--no-push] [--no-watch]`: Run the maintainer release transaction around `yzx dev bump`, requiring a clean GitHub/Beads contract, running release validators, pushing main plus the tag, and watching CI plus Cachix publish
 - `yzx_repo_validator validate-package-rust-test-purity`: Guard default/package-time Rust tests from host-only commands such as `nix` and `home-manager`; Nix-dependent checks belong in explicit validators or package gates
 - `yzx_repo_validator validate-workspace-session-contract`: Check built-in layout metadata, workspace runtime assets, internal Zellij command routing, pane-orchestrator pipe commands, and Yazi workspace entrypoints
 - `yzx_repo_validator validate-rust-ownership-budget`: Optional manual audit for the canonical Rust ownership manifest, unexpected `.rs` files, and historical LOC/file ceilings

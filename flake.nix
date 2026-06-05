@@ -388,6 +388,7 @@
         in
         pkgs.mkShell {
           packages = [
+            (beadsRustPackage system pkgs)
             rustToolchain
             pkgs.git
             pkgs.nushell

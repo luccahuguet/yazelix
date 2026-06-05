@@ -62,6 +62,7 @@ let
       yzx dev build_pane_orchestrator [--sync]
       yzx dev bump <version>
       yzx dev lint_nu [--format pretty|compact] [paths...]
+      yzx dev release <version> [--dry-run] [--no-push] [--no-watch]
       yzx dev rust <fmt|check|test>
       yzx dev sync_issues [--dry-run]
       yzx dev sync_yzpp_wasm
@@ -86,6 +87,9 @@ USAGE
           ;;
         lint_nu)
           run_maintainer lint-nu "$@"
+          ;;
+        release)
+          run_maintainer release "$@"
           ;;
         rust)
           run_maintainer rust "$@"

@@ -472,6 +472,7 @@ mod tests {
         for repo_only in [
             "yzx dev bump",
             "yzx dev lint_nu",
+            "yzx dev release",
             "yzx dev rust",
             "yzx dev rust fmt",
             "yzx dev rust check",

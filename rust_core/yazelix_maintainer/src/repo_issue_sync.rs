@@ -21,10 +21,6 @@ struct GithubIssue {
     created_at: String,
     #[serde(default)]
     body: String,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-struct GithubCommentsEnvelope {
     #[serde(default)]
     comments: Vec<GithubComment>,
 }
@@ -308,7 +304,7 @@ fn load_contract_github_issues() -> Result<Vec<GithubIssue>, String> {
         "--limit",
         "1000",
         "--json",
-        "number,state,title,url,createdAt,body",
+        "number,state,title,url,createdAt,body,comments",
     ])?;
     serde_json::from_str(&raw)
         .map_err(|error| format!("Failed to parse GitHub issues JSON: {error}"))
@@ -321,19 +317,6 @@ fn load_contract_beads(repo_root: &Path) -> Result<Vec<BeadIssue>, String> {
     let issues = value.get("issues").cloned().unwrap_or(value);
     serde_json::from_value(issues)
         .map_err(|error| format!("Failed to decode Beads issues: {error}"))
-}
-
-fn load_issue_comments(issue_number: i64) -> Result<Vec<GithubComment>, String> {
-    let raw = run_github_read_command(&[
-        "issue",
-        "view",
-        &issue_number.to_string(),
-        "--json",
-        "comments",
-    ])?;
-    let parsed: GithubCommentsEnvelope = serde_json::from_str(&raw)
-        .map_err(|error| format!("Failed to parse issue comments JSON: {error}"))?;
-    Ok(parsed.comments)
 }
 
 fn issue_is_in_contract(issue: &GithubIssue) -> bool {
@@ -493,8 +476,7 @@ fn collect_issue_comment_actions(
             continue;
         }
         let bead = matches[0].clone();
-        let comments = load_issue_comments(issue.number)?;
-        actions.push(plan_issue_bead_comment_sync(issue, &bead, &comments));
+        actions.push(plan_issue_bead_comment_sync(issue, &bead, &issue.comments));
     }
     Ok(actions)
 }
@@ -684,6 +666,7 @@ mod tests {
             url: url.to_string(),
             created_at: created_at.to_string(),
             body: body.to_string(),
+            comments: Vec::new(),
         }
     }
 
@@ -748,7 +731,7 @@ mod tests {
         assert_eq!(infer_issue_type_from_body(""), "task");
     }
 
-    // Regression: scheduled Bead contract validation should retry transient GitHub GraphQL failures instead of failing on one 504 while reading issue comments.
+    // Regression: scheduled Bead contract validation should retry transient GitHub GraphQL failures instead of failing on one 504 while reading GitHub issue state.
     #[test]
     fn github_cli_retry_classifier_matches_transient_failures() {
         assert!(is_transient_github_cli_failure(
@@ -786,5 +769,21 @@ mod tests {
         let action = plan_issue_bead_comment_sync(&issue, &bead, &comments);
         assert_eq!(action.kind, "update");
         assert_eq!(action.body, "Automated: Tracked in Beads as `yazelix-4`.");
+    }
+
+    // Regression: contract validation batches GitHub comment state through the issue-list payload instead of issuing one issue-view query per mapped issue.
+    #[test]
+    fn collect_issue_comment_actions_uses_embedded_issue_comments() {
+        let mut issue = github_issue(5, "OPEN", "https://example.com/5", CONTRACT_START, "");
+        issue.comments = vec![GithubComment {
+            id: "comment-id".to_string(),
+            body: "Automated: Tracked in Beads as `yazelix-5`.".to_string(),
+        }];
+        let bead = bead("yazelix-5", "open", &issue.url);
+
+        let actions = collect_issue_comment_actions(&[issue], &[bead]).unwrap();
+
+        assert_eq!(actions.len(), 1);
+        assert_eq!(actions[0].kind, "noop");
     }
 }

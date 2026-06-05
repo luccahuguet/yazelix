@@ -1,16 +1,17 @@
 name: Publish Nix Cache
 
 on:
+  # Release tags point at the same commit as the main release bump. Publishing
+  # from main caches those store paths once; tags remain release markers.
   push:
     branches: [main]
-    tags: ["v*"]
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: publish-nix-cache-${{ github.ref }}
+  group: publish-nix-cache-${{ github.sha }}
   cancel-in-progress: false
 
 jobs:
@@ -41,6 +42,7 @@ jobs:
       - name: Build cache package outputs
         run: |
           nix build --no-link --print-out-paths \
+            .#packages.x86_64-linux.br \
             .#packages.x86_64-linux.yazelix_kgp_yazi \
             .#packages.x86_64-linux.yazelix_kgp_zellij \
             .#packages.x86_64-linux.yazelix_helix \
