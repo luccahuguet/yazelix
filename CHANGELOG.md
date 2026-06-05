@@ -4,6 +4,15 @@ Short, upgrade-facing release notes live here. The longer narrative history rema
 
 ## Unreleased
 
+Post-v17.4 work in progress
+
+Upgrade impact: no user action required
+
+Highlights:
+- Reserved for post-release changes after v17.4 lands.
+
+## v17.4 - 2026-06-05
+
 Launch reliability, terminal variants, and managed Helix compatibility
 
 Upgrade impact: manual action may be required
@@ -24,6 +33,7 @@ Highlights:
 
 Manual action:
 - If `helix.external` points at upstream or vanilla Helix, remove that setting to use bundled Yazelix Helix, point it at a fork based on `luccahuguet/yazelix-helix`, or pin `v17.1` temporarily for the pre-`--config-dir` behavior
+
 
 ## v17.3 - 2026-06-01
 
