@@ -4,13 +4,26 @@ Short, upgrade-facing release notes live here. The longer narrative history rema
 
 ## Unreleased
 
-Post-v17.3 work in progress
+Launch reliability, terminal variants, and managed Helix compatibility
 
-Upgrade impact: no user action required
+Upgrade impact: manual action may be required
 
 Highlights:
-- Added `zellij.custom_popups` for user-defined popup surfaces and moved the default `btm` process viewer popup to that surface on `Alt Shift B`
-- Moved release version ownership to root `release_metadata.toml` and packaged `runtime_identity.json.version`, deleting the old Nushell constants file
+- Added `zellij.custom_popups`, moved the default `btm` process viewer popup to that surface on `Alt Shift B`, kept `btm` alive across popup toggles, and made sidebar-launched popups inherit the active Yazi cwd
+- Restored and simplified terminal variants with separate packages and desktop entries for Ghostty, Yazelix Terminal, WezTerm, Rio, and Linux-only Foot, plus Home Manager `programs.yazelix.extra_terminal_variants` for installing additional terminal launchers beside the primary runtime
+- Moved startup handoff, welcome sequencing, runtime environment generation, and release metadata ownership into Rust, deleting the obsolete Nushell startup bridge and `constants.nu` version source
+- Repaired desktop and Home Manager launch freshness by refreshing generated terminal configs, yzxterm shader assets, and launcher-visible feedback before sessions open
+- Added full runtime identity diagnostics through `yzx --version-full`, clarified active runtime ownership reporting, and documented lower-CPU Home Manager activation settings
+- Added the Helix action bridge path for reliable existing-editor-pane Yazi opens, reveals, cwd sync, directory picker behavior, and raw pane-id routing
+- Clarified that `helix.external` is only for Yazelix-compatible Helix forks with `--config-dir` support; arbitrary upstream/vanilla Helix binaries are not supported as managed Yazelix Helix targets
+- Fixed LazyGit edits so they use the Yazelix editor wrapper, respect `editor.command`, strip stale runtime-owned LazyGit config, and preserve useful cwd behavior from Yazi/sidebar popups
+- Fixed `Backspace` in Yazelix Terminal so it does not enter Zellij move mode through `Ctrl H`, and fixed the welcome prompt so any key really continues
+- Restored Linux Foot and vanilla Rio terminal support, reduced Foot's generated font size, hid the Foot titlebar, and differentiated Ghostty/terminal launcher window names for desktop switchers
+- Improved cursor and shader packaging across Ghostty and Yazelix Terminal, including shader activation refresh, shader launch-snapshot isolation, Ghostty shader compilation fixes, and fast yzxterm dogfooding outputs
+- Hardened packaging, CI, and maintainer flows with runtime closure size reporting, Cachix cache advertisement, child release validation, macOS package smoke contracts, KGP Yazi warning suppression, and stronger guidance against Linux-only assumptions in shared surfaces
+
+Manual action:
+- If `helix.external` points at upstream or vanilla Helix, remove that setting to use bundled Yazelix Helix, point it at a fork based on `luccahuguet/yazelix-helix`, or pin `v17.1` temporarily for the pre-`--config-dir` behavior
 
 ## v17.3 - 2026-06-01
 
