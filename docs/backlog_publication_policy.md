@@ -92,6 +92,6 @@ Useful audit commands:
 
 ```bash
 br list --status open --limit 0 --json
-nu .github/scripts/validate_issue_bead_contract.nu
+yzx dev validate_issue_contract
 yzx dev sync_issues --dry-run
 ```

@@ -480,6 +480,7 @@ mod tests {
             "yzx dev sync_issues",
             "yzx dev test",
             "yzx dev update",
+            "yzx dev validate_issue_contract",
         ] {
             assert!(
                 !names.contains(&repo_only),

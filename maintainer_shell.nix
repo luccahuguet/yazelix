@@ -65,6 +65,7 @@ let
       yzx dev release <version> [--dry-run] [--no-push] [--no-watch]
       yzx dev rust <fmt|check|test>
       yzx dev sync_issues [--dry-run]
+      yzx dev validate_issue_contract
       yzx dev sync_yzpp_wasm
       yzx dev test [options]
       yzx dev update [options]
@@ -96,6 +97,9 @@ USAGE
           ;;
         sync_issues)
           run_maintainer sync-issues "$@"
+          ;;
+        validate_issue_contract)
+          run_maintainer validate-issue-bead-contract "$@"
           ;;
         sync_yzpp_wasm)
           run_maintainer sync-yzpp-wasm "$@"

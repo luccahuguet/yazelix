@@ -3,7 +3,7 @@ use yazelix_maintainer::repo_canary_session::{
     CanarySessionOptions, run_disposable_canary_session,
 };
 use yazelix_maintainer::repo_contract_validation::sync_readme_surface;
-use yazelix_maintainer::repo_issue_sync::run_issue_sync;
+use yazelix_maintainer::repo_issue_sync::{run_issue_sync, validate_issue_bead_contract};
 use yazelix_maintainer::repo_nu_lint::run_repo_nu_lint;
 use yazelix_maintainer::repo_release_workflow::{
     parse_release_workflow_args, run_repo_release_workflow,
@@ -123,6 +123,9 @@ fn main() {
                 );
             })
         }
+        "validate-issue-bead-contract" => {
+            validate_issue_bead_contract(&resolved_repo_root).map(|_| ())
+        }
         "dev-update" => {
             let options = parse_dev_update_args(args.collect());
             run_repo_update_workflow(&resolved_repo_root, &options)
@@ -153,7 +156,7 @@ fn main() {
 
 fn print_usage_and_exit() -> ! {
     eprintln!(
-        "Usage: yzx_repo_maintainer [--repo-root PATH] <sync-readme-surface|run-tests|version-bump|release|sync-issues|dev-update|lint-nu|rust|canary-session> [options]"
+        "Usage: yzx_repo_maintainer [--repo-root PATH] <sync-readme-surface|run-tests|version-bump|release|sync-issues|validate-issue-bead-contract|dev-update|lint-nu|rust|canary-session> [options]"
     );
     std::process::exit(2);
 }

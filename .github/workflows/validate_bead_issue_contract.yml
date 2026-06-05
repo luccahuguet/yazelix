@@ -47,4 +47,4 @@ jobs:
       - name: Validate contract
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: nix develop --accept-flake-config .#ci -c nu .github/scripts/validate_issue_bead_contract.nu
+        run: nix develop --accept-flake-config .#ci -c cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_maintainer --bin yzx_repo_maintainer -- validate-issue-bead-contract

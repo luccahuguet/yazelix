@@ -58,6 +58,12 @@ pub struct IssueSyncSummary {
     pub comments_unchanged: usize,
 }
 
+impl IssueSyncSummary {
+    pub fn mutation_count(&self) -> usize {
+        self.created + self.reopened + self.closed + self.comments_created + self.comments_updated
+    }
+}
+
 #[derive(Debug, Clone)]
 struct IssueCommentAction {
     kind: String,
@@ -204,6 +210,13 @@ pub fn run_issue_sync(repo_root: &Path, dry_run: bool) -> Result<IssueSyncSummar
     validate_issue_bead_contract(repo_root)?;
     println!("✅ GitHub issue lifecycle is now synced into local Beads.");
     Ok(build_summary(&actions, &comment_actions))
+}
+
+pub fn validate_issue_bead_contract(repo_root: &Path) -> Result<IssueSyncSummary, String> {
+    let summary = run_issue_sync(repo_root, true)?;
+    validate_issue_sync_summary(&summary)?;
+    println!("Bead/GitHub issue contract is valid.");
+    Ok(summary)
 }
 
 fn run_command_once(program: &str, args: &[&str]) -> Result<String, CommandFailure> {
@@ -568,11 +581,6 @@ fn export_beads_jsonl(repo_root: &Path) -> Result<(), String> {
     .map(|_| ())
 }
 
-fn validate_issue_bead_contract(repo_root: &Path) -> Result<(), String> {
-    let script = repo_root.join(".github/scripts/validate_issue_bead_contract.nu");
-    run_command("nu", &[script.to_str().unwrap()]).map(|_| ())
-}
-
 fn format_issue_action(action: &IssueAction) -> String {
     match action.kind.as_str() {
         "create" => format!(
@@ -609,6 +617,17 @@ fn format_comment_action(action: &IssueCommentAction) -> String {
             "noop comment #{} -> {}",
             action.issue.number, action.bead.id
         ),
+    }
+}
+
+fn validate_issue_sync_summary(summary: &IssueSyncSummary) -> Result<(), String> {
+    let mutation_count = summary.mutation_count();
+    if mutation_count == 0 {
+        Ok(())
+    } else {
+        Err(format!(
+            "Bead/GitHub issue contract is invalid: {mutation_count} repair action(s) needed"
+        ))
     }
 }
 
@@ -785,5 +804,23 @@ mod tests {
 
         assert_eq!(actions.len(), 1);
         assert_eq!(actions[0].kind, "noop");
+    }
+
+    // Defends: the Rust-owned contract validator fails on the same mutating action count the deleted Nu wrapper treated as invalid.
+    #[test]
+    fn validate_issue_sync_summary_reports_mutations() {
+        let summary = IssueSyncSummary {
+            created: 1,
+            reopened: 2,
+            closed: 3,
+            unchanged: 99,
+            comments_created: 4,
+            comments_updated: 5,
+            comments_unchanged: 88,
+        };
+
+        assert_eq!(summary.mutation_count(), 15);
+        let error = validate_issue_sync_summary(&summary).unwrap_err();
+        assert!(error.contains("15 repair action(s) needed"));
     }
 }

@@ -391,6 +391,7 @@
             (beadsRustPackage system pkgs)
             rustToolchain
             pkgs.git
+            pkgs.github-cli
             pkgs.nushell
           ];
         };

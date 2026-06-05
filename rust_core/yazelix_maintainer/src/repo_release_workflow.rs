@@ -6,7 +6,7 @@ use crate::repo_contract_validation::{
     validate_nix_customization_api, validate_readme_version, validate_upgrade_contract,
 };
 use crate::repo_docs_validation::validate_docs_experience;
-use crate::repo_issue_sync::{IssueSyncSummary, run_issue_sync};
+use crate::repo_issue_sync::run_issue_sync;
 use crate::repo_validation::{
     ValidationReport, validate_contracts, validate_rust_test_traceability,
 };
@@ -135,7 +135,7 @@ fn result_from_bump(
 
 fn ensure_issue_contract_clean(repo_root: &Path) -> Result<(), String> {
     let summary = run_issue_sync(repo_root, true)?;
-    let mutation_count = issue_sync_mutation_count(&summary);
+    let mutation_count = summary.mutation_count();
     if mutation_count == 0 {
         Ok(())
     } else {
@@ -143,14 +143,6 @@ fn ensure_issue_contract_clean(repo_root: &Path) -> Result<(), String> {
             "GitHub/Beads contract needs {mutation_count} repair action(s). Run `yzx dev sync_issues`, commit the Beads changes, then rerun release."
         ))
     }
-}
-
-fn issue_sync_mutation_count(summary: &IssueSyncSummary) -> usize {
-    summary.created
-        + summary.reopened
-        + summary.closed
-        + summary.comments_created
-        + summary.comments_updated
 }
 
 fn run_release_validators(repo_root: &Path) -> Result<(), String> {

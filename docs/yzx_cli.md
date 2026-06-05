@@ -203,6 +203,7 @@ Maintainer shell commands:
 - `yzx dev test [--verbose] [--new-window] [--lint-only] [--profile] [--sweep] [--all]`: Run the repo test lanes
 - `yzx dev update`: Refresh repo runtime inputs, run canaries, refresh vendored runtime assets, and perform the required `--activate profile|home_manager|none` step; `--canary-only` is the only path that does not require `--activate`
 - `yzx dev sync_issues [--dry-run]`: Sync the GitHub/Beads public issue contract from a repo checkout
+- `yzx dev validate_issue_contract`: Validate the GitHub/Beads public issue contract without mutating GitHub or Beads
 - `yzx dev lint_nu [--format pretty|compact] [paths...]`: Run the repo Nu linter wrapper
 - `yzx dev bump VERSION`: Rotate release notes, update `release_metadata.toml`, sync the README version marker, create the release commit, and create the matching annotated tag
 - `yzx dev release VERSION [--dry-run] [--no-push] [--no-watch]`: Run the maintainer release transaction around `yzx dev bump`, requiring a clean GitHub/Beads contract, running release validators, pushing main plus the tag, and watching CI plus Cachix publish
