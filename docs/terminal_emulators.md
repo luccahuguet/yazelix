@@ -162,8 +162,11 @@ graphics previews, and cursor shader alignment need continued soak time.
 ### Rio
 
 Rio is the upstream path behind Yazelix Terminal. Yazelix packages it as
-`#yazelix_rio` for users who want vanilla Rio behavior with Yazelix-owned
-generated config, launch integration, and the Zellij/Yazi Kitty graphics bridge.
+`#yazelix_rio` for users who want upstream Rio with Yazelix-owned generated
+config, launch integration, and the Zellij/Yazi Kitty graphics bridge. The
+packaged config enables Rio's native trail cursor and currently forces the
+WebGPU renderer, so the native trail animation uses Rio's WebGPU block/retract
+shape rather than the default renderer's edge-style trail.
 It supports modern image paths and several useful OSC protocols, but Yazelix
 does not control its roadmap and does not apply Yazelix Terminal's cursor shader
 profile behavior to the vanilla package.
