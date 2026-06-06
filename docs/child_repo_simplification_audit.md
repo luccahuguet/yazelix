@@ -51,7 +51,7 @@ Second-pass measured snapshot, excluding `.git`, `.beads`, `target`, and `rust_p
 - `413` tracked files
 - `84,352` tokei code lines across counted files
 - `74,050` Rust code lines across `157` Rust files
-- largest tracked storage pressure remains `configs/zellij/plugins/zjstatus.wasm` at about `3.7 MiB`; this is already tracked by `yazelix-audit-deletion-extraction-candidates-i0xoh.1`
+- resolved tracked storage pressure from `configs/zellij/plugins/zjstatus.wasm` by consuming the locked upstream `zjstatus` package artifact instead of a copied main-repo wasm
 - README-only media under `assets/` is smaller but currently enters the packaged runtime through a broad `assets/*` symlink in `packaging/mk_runtime_tree.nix`
 
 Fresh follow-ups:

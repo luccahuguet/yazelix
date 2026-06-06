@@ -162,10 +162,12 @@
         let
           paneOrchestrator =
             yazelixZellijPaneOrchestrator.packages.${system}.yazelix_zellij_pane_orchestrator;
+          zjstatusPackage = zjstatus.packages.${system}.default;
           yzpp = yazelixZellijPopup.packages.${system}.yzpp;
         in
         {
           pane_orchestrator = "${paneOrchestrator}/${paneOrchestrator.wasmPath}";
+          zjstatus = "${zjstatusPackage}/bin/zjstatus.wasm";
           yzpp = "${yzpp}/${yzpp.wasmPath}";
         };
       mkYazelix =

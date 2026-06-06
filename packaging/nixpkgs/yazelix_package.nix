@@ -5,6 +5,7 @@
   yazelix_screen,
   yazelix_zellij_pane_orchestrator,
   yazelix_zellij_popup,
+  yazelix_zjstatus,
 }:
 
 # Local upstream-prep draft:
@@ -24,6 +25,7 @@ import ../mk_yazelix_package.nix {
   yaziAssets = yazelix_yazi_assets;
   zellijPluginArtifacts = {
     pane_orchestrator = "${yazelix_zellij_pane_orchestrator}/${yazelix_zellij_pane_orchestrator.wasmPath}";
+    zjstatus = "${yazelix_zjstatus}/bin/zjstatus.wasm";
     yzpp = "${yazelix_zellij_popup}/${yazelix_zellij_popup.wasmPath}";
   };
 }

@@ -14,7 +14,7 @@ The supported split is:
 | --- | --- | --- | --- |
 | `yzx`, `yzx_core`, `yzx_control` | native executable | Yazelix main repo | command routing, config, materialization, diagnostics, runtime control |
 | first-party Zellij plugins | `.wasm` artifact | plugin child repo | locked consumption, generated Zellij integration, runtime placement |
-| `zjstatus.wasm` | `.wasm` artifact | upstream `zjstatus` through the current lock | vendoring path and generated Zellij integration |
+| `zjstatus.wasm` | `.wasm` artifact | upstream `zjstatus` through the current lock | locked package consumption and generated Zellij integration |
 | `yazelix_screen` | Rust library plus standalone `yzs` package | `yazelix-screen` child repo | integrated welcome and `yzx screen` behavior |
 | `yazelix_cursors` | Rust library plus standalone `yzc` package | `yazelix-cursors` child repo | config UI, settings generation, Ghostty materialization, Yazelix Terminal cursor shaders |
 | `yazelix-terminal` | standalone terminal package and desktop wrapper | `yazelix-terminal` child repo | opt-in runtime selection, generated config path, transparency injection |

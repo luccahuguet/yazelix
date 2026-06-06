@@ -95,12 +95,6 @@ impl Drop for TempDirGuard {
 }
 
 #[derive(Debug, Clone)]
-struct ZjstatusPackage {
-    flake_ref: String,
-    store_root: PathBuf,
-}
-
-#[derive(Debug, Clone)]
 struct HomeManagerActivation {
     switch_ref: String,
 }
@@ -165,19 +159,17 @@ pub fn run_repo_update_workflow(
     } else {
         println!("✅ Synced README title/version marker and generated latest-series block");
     }
-    sync_vendored_zjstatus(repo_root)?;
-
     match activation_mode {
         UpdateActivationMode::None => {
             println!("⚠️  No local activation was requested.");
             println!(
-                "✅ Inputs, canaries, README version marker, and vendored zjstatus are in sync in the repo checkout. Review and commit the changes if everything looks good."
+                "✅ Inputs, canaries, and README version marker are in sync in the repo checkout. Review and commit the changes if everything looks good."
             );
         }
         UpdateActivationMode::Profile => {
             activate_updated_profile_runtime(repo_root)?;
             println!(
-                "✅ Inputs, canaries, README version marker, vendored zjstatus, and the local default-profile Yazelix package are in sync. Review and commit the changes if everything looks good."
+                "✅ Inputs, canaries, README version marker, and the local default-profile Yazelix package are in sync. Review and commit the changes if everything looks good."
             );
         }
         UpdateActivationMode::HomeManager => {
@@ -187,7 +179,7 @@ pub fn run_repo_update_workflow(
                 options.home_manager_attr.trim(),
             )?;
             println!(
-                "✅ Inputs, canaries, README version marker, vendored zjstatus, and the Home Manager activation at {} are in sync. Review and commit the changes if everything looks good.",
+                "✅ Inputs, canaries, README version marker, and the Home Manager activation at {} are in sync. Review and commit the changes if everything looks good.",
                 activation.switch_ref
             );
         }
@@ -292,113 +284,6 @@ fn refresh_repo_runtime_inputs(repo_root: &Path) -> Result<(), String> {
     )?;
     println!("✅ flake.lock nixpkgs input updated.");
     Ok(())
-}
-
-fn sync_vendored_zjstatus(repo_root: &Path) -> Result<(), String> {
-    let target_dir = repo_root.join("configs").join("zellij").join("plugins");
-    fs::create_dir_all(&target_dir)
-        .map_err(|error| format!("Failed to create {}: {}", target_dir.display(), error))?;
-
-    println!("🔄 Refreshing vendored zjstatus.wasm...");
-    let package = resolve_locked_zjstatus_store_root(repo_root)?;
-    let store_path = package.store_root.join("bin").join("zjstatus.wasm");
-    if !store_path.is_file() {
-        return Err(format!(
-            "zjstatus wasm not found at: {}",
-            store_path.display()
-        ));
-    }
-
-    let bytes = fs::read(&store_path)
-        .map_err(|error| format!("Failed to read {}: {}", store_path.display(), error))?;
-    if bytes.len() < 1024 {
-        return Err(format!(
-            "Nix-provided zjstatus wasm is too small to be valid (size={} bytes)",
-            bytes.len()
-        ));
-    }
-
-    let target_path = target_dir.join("zjstatus.wasm");
-    let tmp_path = target_dir.join("zjstatus.wasm.tmp");
-    fs::write(&tmp_path, bytes)
-        .map_err(|error| format!("Failed to write temporary zjstatus file: {error}"))?;
-    fs::rename(&tmp_path, &target_path).map_err(|error| {
-        format!(
-            "Failed to move {} into place: {}",
-            target_path.display(),
-            error
-        )
-    })?;
-    println!(
-        "✅ Updated vendored zjstatus at: {} (size={} bytes, source={})",
-        target_path.display(),
-        fs::metadata(&target_path)
-            .map_err(|error| format!("Failed to inspect {}: {}", target_path.display(), error))?
-            .len(),
-        package.flake_ref
-    );
-    Ok(())
-}
-
-fn resolve_locked_zjstatus_store_root(repo_root: &Path) -> Result<ZjstatusPackage, String> {
-    let lock_path = repo_root.join("flake.lock");
-    let lock_raw = fs::read_to_string(&lock_path)
-        .map_err(|error| format!("Failed to read {}: {}", lock_path.display(), error))?;
-    let lock: JsonValue = serde_json::from_str(&lock_raw)
-        .map_err(|error| format!("Invalid JSON in {}: {}", lock_path.display(), error))?;
-    let locked = &lock["nodes"]["zjstatus"]["locked"];
-    let owner = locked["owner"]
-        .as_str()
-        .ok_or_else(|| "flake.lock is missing nodes.zjstatus.locked.owner".to_string())?;
-    let repo = locked["repo"]
-        .as_str()
-        .ok_or_else(|| "flake.lock is missing nodes.zjstatus.locked.repo".to_string())?;
-    let rev = locked["rev"]
-        .as_str()
-        .ok_or_else(|| "flake.lock is missing nodes.zjstatus.locked.rev".to_string())?;
-    let system = resolve_current_system()?;
-    let flake_ref = format!("github:{owner}/{repo}/{rev}#packages.{system}.default");
-    let output = run_command_capture(
-        "nix",
-        ["build", "--no-link", "--print-out-paths", &flake_ref],
-        None,
-    )?;
-    if !output.status.success() {
-        return Err(format!(
-            "Failed to build zjstatus flake ref: {}\n{}",
-            flake_ref,
-            String::from_utf8_lossy(&output.stderr).trim()
-        ));
-    }
-    Ok(ZjstatusPackage {
-        flake_ref,
-        store_root: PathBuf::from(String::from_utf8_lossy(&output.stdout).trim()),
-    })
-}
-
-fn resolve_current_system() -> Result<String, String> {
-    let output = run_command_capture(
-        "nix",
-        [
-            "eval",
-            "--impure",
-            "--raw",
-            "--expr",
-            "builtins.currentSystem",
-        ],
-        None,
-    )?;
-    if !output.status.success() {
-        return Err(format!(
-            "Failed to resolve current Nix system\n{}",
-            String::from_utf8_lossy(&output.stderr).trim()
-        ));
-    }
-    let system = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    if system.is_empty() {
-        return Err("Failed to resolve current Nix system".to_string());
-    }
-    Ok(system)
 }
 
 fn activate_updated_profile_runtime(repo_root: &Path) -> Result<(), String> {

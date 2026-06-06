@@ -27,7 +27,6 @@ const RUNTIME_WORKSPACE_ASSETS: &[&str] = &[
 const REPO_WORKSPACE_ASSETS: &[&str] = &[
     "config_metadata/zellij_layout_families.toml",
     "configs/zellij/yazelix_overrides.kdl",
-    "configs/zellij/plugins/zjstatus.wasm",
 ];
 
 #[derive(Debug, Clone, Deserialize)]

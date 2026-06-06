@@ -13,4 +13,5 @@ import ./yazelix_package.nix {
   yazelix_zellij_pane_orchestrator =
     flake.inputs.yazelixZellijPaneOrchestrator.packages.${system}.yazelix_zellij_pane_orchestrator;
   yazelix_zellij_popup = flake.inputs.yazelixZellijPopup.packages.${system}.yzpp;
+  yazelix_zjstatus = flake.inputs.zjstatus.packages.${system}.default;
 }

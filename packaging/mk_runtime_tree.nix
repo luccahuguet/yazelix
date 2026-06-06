@@ -43,6 +43,7 @@ let
     else
       "${yaziAssets}/share/yazelix_yazi_assets";
   paneOrchestratorWasm = zellijPluginArtifacts.pane_orchestrator or null;
+  zjstatusWasm = zellijPluginArtifacts.zjstatus or null;
   yzppWasm = zellijPluginArtifacts.yzpp or null;
   requirePluginArtifact =
     name: value:
@@ -88,8 +89,8 @@ pkgs.runCommand name { } ''
     ln -s "$zellij_entry" "$out/configs/zellij/$zellij_name"
   done
   ln -s "${requirePluginArtifact "pane_orchestrator" paneOrchestratorWasm}" "$out/configs/zellij/plugins/yazelix_pane_orchestrator.wasm"
+  ln -s "${requirePluginArtifact "zjstatus" zjstatusWasm}" "$out/configs/zellij/plugins/zjstatus.wasm"
   ln -s "${requirePluginArtifact "yzpp" yzppWasm}" "$out/configs/zellij/plugins/yzpp.wasm"
-  ln -s "${src}/configs/zellij/plugins/zjstatus.wasm" "$out/configs/zellij/plugins/zjstatus.wasm"
 
   mkdir -p "$out/configs/yazi/plugins"
   for yazi_file in README.md yazelix_keymap.toml yazelix_theme.toml yazelix_yazi.toml; do

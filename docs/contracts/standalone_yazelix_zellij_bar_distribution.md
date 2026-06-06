@@ -106,7 +106,7 @@ The full Yazelix runtime consumes the `yazelix_zellij_bar` child package command
 
 The standalone package installs `zjstatus.wasm` from the child repo's pinned `zjstatus` flake input. The main Yazelix flake makes `yazelixZellijBar.inputs.zjstatus` follow the main repo's `zjstatus` input when forwarding `.#yazelix_zellij_bar`, so the forwarded standalone package uses the same upstream pin as the integrated Yazelix runtime.
 
-The main runtime still ships its managed `configs/zellij/plugins/zjstatus.wasm` for integrated Zellij layouts.
+The main runtime ships `configs/zellij/plugins/zjstatus.wasm` from the locked upstream `zjstatus` package output for integrated Zellij layouts.
 
 Yazelix keeps these integration-only responsibilities:
 
@@ -129,10 +129,10 @@ Standalone `luccahuguet/yazelix-zellij-bar` updates own the standalone package p
 Main Yazelix runtime updates own the integrated runtime pin:
 
 - update the main repo's `zjstatus` flake input
-- run the normal `yzx dev update` flow so `configs/zellij/plugins/zjstatus.wasm` is refreshed from the main lock
+- run the normal `yzx dev update` flow and package validation so the runtime consumes the new locked `zjstatus` package artifact
 - update the `yazelixZellijBar` flake input when the child package contract changes
 
-Do not manually copy `zjstatus.wasm` between the main repo and the child repo. The child package consumes its flake input, and the main repo consumes its own vendored runtime wasm.
+Do not manually copy `zjstatus.wasm` between the main repo and the child repo. Both package surfaces consume their selected `zjstatus` flake input as an artifact.
 
 ## Current Limit
 
@@ -144,7 +144,7 @@ Raw KDL remains the escape hatch for lower-level zjstatus keys.
 
 - `nix build .#yazelix_zellij_bar`
 - `cargo test` in `luccahuguet/yazelix-zellij-bar`
-- `yzx dev update --yes --activate none` for a main runtime zjstatus refresh
+- `yzx dev update --yes --activate none` for a main runtime input refresh
 - `yzx_repo_validator validate-contracts`
 
 ## Traceability

@@ -380,7 +380,7 @@ yzx screen game_of_life_gliders  # Preview the glider-swarm Game of Life welcome
 
 # Maintainer shell updates
 # These commands require `nix develop` from a Yazelix repo checkout
-yzx dev update --yes --activate profile  # Refresh all inputs, run canaries, sync pins, refresh vendored zjstatus and Yazi plugins, then activate the local repo package in the default profile
+yzx dev update --yes --activate profile  # Refresh all inputs, run canaries, sync pins and Yazi plugins, then activate the local repo package in the default profile
 yzx dev update --yes --activate none  # Refresh the repo state only and skip local activation
 yzx dev update --yes --activate home_manager --home-manager-attr 'you@host'  # Refresh the repo, update the Home Manager yazelix-hm input, then run home-manager switch
 yzx dev update --canary-only --canaries [default]  # Run only the default canary

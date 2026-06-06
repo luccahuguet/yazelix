@@ -81,7 +81,7 @@ Maintained target state:
 | Disposable session canary | `yazelix_maintainer/src/repo_canary_session.rs` | in-repo maintainer crate | reject external repo | Launches a packaged-runtime Zellij canary with isolated HOME/session state and records local evidence |
 | Sweep runner | `yazelix_maintainer/src/repo_sweep_runner.rs` | moved to `yazelix_maintainer` | reject external repo | Runs local runtime/config matrices against this checkout |
 | Test runner | `yazelix_maintainer/src/repo_test_runner.rs` | moved to `yazelix_maintainer` | reject external repo | Maintainer orchestration over local validator/test surfaces, not shipped product behavior |
-| Update workflow | `yazelix_maintainer/src/repo_update_workflow.rs` | moved to `yazelix_maintainer` | reject external repo | Writes local pins, vendored `zjstatus.wasm`, README surface, and canary materialization |
+| Update workflow | `yazelix_maintainer/src/repo_update_workflow.rs` | moved to `yazelix_maintainer` | reject external repo | Writes local pins, README surface, and canary materialization |
 | Version bump workflow | `yazelix_maintainer/src/repo_version_bump.rs` | moved to `yazelix_maintainer` | reject external repo | Transactional release policy must stay in the repo that owns tags, changelog, and upgrade notes |
 | Workspace session validator | `yazelix_maintainer/src/workspace_session_contract.rs` | moved to `yazelix_maintainer` | reject external repo | Validator-only owner; it can call runtime-owned workspace asset checks through `yazelix_core` |
 | Workspace asset checks | `workspace_asset_contract.rs` | keep in `yazelix_core` | reject external repo | Used by user-facing `yzx doctor`, so it is product runtime behavior |

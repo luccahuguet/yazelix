@@ -14,7 +14,7 @@ The child package installs:
 - `share/yazelix_zellij_bar/examples/standalone_zellij_layout.kdl`
 - `share/yazelix_zellij_bar/examples/yazelix_runtime_widgets.kdl`
 
-The standalone child repo installs `zjstatus.wasm` from its pinned `zjstatus` flake input. This main repo makes that child input follow Yazelix's own `zjstatus` pin when forwarding `#yazelix_zellij_bar`, while the integrated Yazelix runtime still refreshes `configs/zellij/plugins/zjstatus.wasm` through `yzx dev update`.
+The standalone child repo installs `zjstatus.wasm` from its pinned `zjstatus` flake input. This main repo makes that child input follow Yazelix's own `zjstatus` pin when forwarding `#yazelix_zellij_bar`, and the integrated Yazelix runtime consumes the same pinned upstream package artifact for its managed plugin path.
 
 Non-Yazelix users can install the standalone bar directly:
 

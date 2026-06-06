@@ -23,7 +23,7 @@ Locked child packages make the package lock the provenance source. The child rep
 
 Out of scope:
 
-- `zjstatus.wasm`, which is third-party vendoring through the main repo's `zjstatus` lock and update workflow
+- `zjstatus.wasm`, which is consumed as a third-party package artifact from the main repo's `zjstatus` lock
 - `yazelix-zellij-bar`, which is a child package consumed as a runtime package rather than as an integrated plugin artifact
 
 ## Contract Items
@@ -104,8 +104,8 @@ nix build .#runtime --override-input yazelixZellijPaneOrchestrator ../yazelix-ze
 1. A maintainer can tell which source revision produced packaged first-party plugin wasm artifacts from `flake.lock`
 2. Regular Yazelix package builds do not depend on adjacent mutable plugin checkouts
 3. Local plugin development uses explicit flake overrides or path inputs
-4. `zjstatus.wasm` stays on its separate third-party vendoring path
-5. `configs/zellij/plugins/` contains only Yazelix-owned vendored third-party artifacts, not copied first-party plugin wasm or sync stamps
+4. `zjstatus.wasm` stays on its separate third-party package-artifact path
+5. `configs/zellij/plugins/` contains no copied plugin wasm artifacts or sync stamps
 
 ## Verification
 
