@@ -325,7 +325,7 @@ surface and docs review rather than by a second route validator.
 - CI checks: `cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_maintainer --bin yzx_repo_validator -- validate-readme-version`
 - CI checks: `yzx_repo_validator validate-config-surface-contract`
 - CI checks: `yzx_repo_validator validate-contracts`
-- CI checks: `yzx_repo_validator validate-child-release-transaction` including child publication, Cargo source hashes, and Darwin child-package smoke contracts
+- CI checks: `yzx_repo_validator validate-child-release-transaction` including child publication, Cargo source hashes, and Darwin child-package smoke contracts. The Darwin package checks are transitional where they still inspect child build recipe markers; implementation-sensitive claims should move to child-declared package metadata or child-owned checks before main deletes those marker assertions
 - manual verification: review `.github/workflows/ci.yml` and `.pre-commit-config.yaml` against the lane definitions in this contract
 
 ## Traceability

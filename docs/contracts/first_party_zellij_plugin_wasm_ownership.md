@@ -66,7 +66,7 @@ Out of scope:
 
 #### FPW-005
 - Type: invariant
-- Status: live
+- Status: live, transitional validation
 - Owner: child release transaction
 - Statement: First-party Zellij plugin child packages consumed by Yazelix must
   instantiate on `aarch64-darwin` with `cargoBuildHook` disabled for the
@@ -74,7 +74,11 @@ Out of scope:
   `runHook preBuild`: exported `CARGO`, `RUSTC`, and `PATH`, a
   `rustc --print target-libdir --target wasm32-wasip1` preflight before
   preBuild hooks can run, and a later `--target wasm32-wasip1` Cargo build
-- Verification: validator `yzx_repo_validator validate-child-release-transaction`
+- Verification: validator `yzx_repo_validator validate-child-release-transaction`.
+  The current main-repo validator inspects child derivation markers as a
+  temporary regression guard. The target validation surface is child-declared
+  package metadata or child-owned checks that let main validate the wasm
+  contract without hardcoding child build recipe strings
 
 ## Target Architecture
 

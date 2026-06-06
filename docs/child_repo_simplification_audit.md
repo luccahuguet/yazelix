@@ -82,8 +82,16 @@ Additional evidence:
 Fresh follow-ups:
 
 1. `yazelix-audit-deletion-extraction-third-pass-c0gmk.1`: resolved by keeping only `docs/upgrade_notes.toml` plus top-level `CHANGELOG.md` in the runtime docs contract instead of linking the whole docs tree
-2. `yazelix-audit-deletion-extraction-third-pass-c0gmk.2`: replace child-release implementation-detail checks with child-declared package contracts
+2. `yazelix-audit-deletion-extraction-third-pass-c0gmk.2`: resolved as a decision to replace child-release implementation-detail checks with child-declared package contracts, without deleting the current Darwin regression guard before the child metadata exists
 3. `yazelix-audit-deletion-extraction-third-pass-c0gmk.3`: delete unreferenced font-test GIF and old demo tape assets
+
+Child-release validator decision:
+
+- Stable main-owned contracts: first-party child lock entries point at published GitHub revisions; local adjacent child checkouts are clean before a coupled release; first-party Cargo git dependencies have matching fixed-output hashes in `packaging/rust_core_helper.nix`; package outputs expose the stable runtime artifact paths Yazelix consumes
+- Transitional implementation-detail checks: `repo_child_release.rs` currently inspects Zellij plugin build phases for `dontCargoBuild`, explicit `CARGO`/`RUSTC`/`PATH`, wasm target preflight, and marker ordering, and inspects the screen package for ImageMagick/magician frame-generation markers
+- Target seam: implementation-sensitive claims move to child-owned package metadata or child-owned check outputs. Main should validate declared contract data and publication state, not exact child build recipe strings
+- Do not delete the current Darwin wasm and screen/ImageMagick checks until the child repos expose the replacement contract surface or the magician style is deleted. Dropping those guards first would turn a known regression into silent trust
+- Follow-up beads now own the actual cuts: add Zellij plugin child contract metadata, consume that metadata in the main validator, and retire the screen/ImageMagick guard after magician deletion removes the live contract
 
 Third-pass non-candidates:
 
