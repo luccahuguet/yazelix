@@ -129,20 +129,9 @@ fn prepare_nushell_syntax_home(home: &Path) -> Result<(), String> {
 
 fn collect_nushell_syntax_files(repo_root: &Path) -> Result<Vec<PathBuf>, String> {
     let mut files = Vec::new();
-    for relative_dir in [
-        "nushell/scripts/core",
-        "nushell/scripts/integrations",
-        "nushell/scripts/setup",
-        "nushell/scripts/utils",
-        "nushell/scripts/dev",
-        "nushell/scripts/dev/sweep",
-        "nushell/config",
-    ] {
-        let dir = repo_root.join(relative_dir);
-        if !dir.exists() {
-            continue;
-        }
-        collect_nushell_files_in_dir(&dir, &mut files)?;
+    let nushell_dir = repo_root.join("nushell");
+    if nushell_dir.exists() {
+        collect_nushell_files_in_dir(&nushell_dir, &mut files)?;
     }
     files.sort();
     Ok(files)
@@ -152,11 +141,16 @@ fn collect_nushell_files_in_dir(dir: &Path, files: &mut Vec<PathBuf>) -> Result<
     for entry in
         fs::read_dir(dir).map_err(|error| format!("Failed to read {}: {}", dir.display(), error))?
     {
-        let path = entry.map_err(|error| error.to_string())?.path();
-        if path.is_dir() {
+        let entry = entry.map_err(|error| error.to_string())?;
+        let path = entry.path();
+        let file_type = entry
+            .file_type()
+            .map_err(|error| format!("Failed to inspect {}: {}", path.display(), error))?;
+        if file_type.is_dir() {
+            collect_nushell_files_in_dir(&path, files)?;
             continue;
         }
-        if path.extension().and_then(|ext| ext.to_str()) == Some("nu") {
+        if file_type.is_file() && path.extension().and_then(|ext| ext.to_str()) == Some("nu") {
             files.push(path);
         }
     }
@@ -201,5 +195,24 @@ let parsed_after_generated_sources = true
             "unexpected syntax errors: {:#?}",
             report.errors
         );
+    }
+
+    // Defends: syntax validation follows the current Nushell tree instead of a
+    // stale allowlist of deleted helper directories.
+    #[test]
+    fn nushell_syntax_file_collection_is_recursive() {
+        let repo = tempfile::tempdir().expect("temp repo");
+        let paths = vec![
+            repo.path().join("nushell/config/config.nu"),
+            repo.path().join("nushell/extra/nested/custom_check.nu"),
+        ];
+        for path in &paths {
+            fs::create_dir_all(path.parent().expect("fixture parent")).expect("fixture dir");
+            fs::write(path, "").expect("fixture file");
+        }
+
+        let files = collect_nushell_syntax_files(repo.path()).expect("syntax files");
+
+        assert_eq!(files, paths);
     }
 }

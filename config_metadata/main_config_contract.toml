@@ -15,7 +15,7 @@ field_count = 49
 artifact_role = "canonical_machine_metadata"
 default_template = "settings_default.jsonc"
 home_manager_module = "home_manager/module.nix"
-loader_module = "nushell/scripts/utils/config_contract.nu"
+loader_module = "rust_core/yazelix_core/src/config_normalize.rs"
 scope_note = "Pack-surface metadata is intentionally excluded from this artifact."
 
 [rebuild]
