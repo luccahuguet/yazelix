@@ -4,7 +4,7 @@ date = ""
 headline = "Post-v17.4 work in progress"
 manual_actions = []
 migration_ids = []
-summary = ["Reserved for post-release changes after v17.4 lands."]
+summary = ["Removed the image-backed `magician` welcome and `yzx screen` style from the supported config, Home Manager, runtime asset, and idle screen-saver surfaces."]
 upgrade_impact = "no_user_action"
 version = "unreleased"
 

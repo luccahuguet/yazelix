@@ -65,7 +65,6 @@ const SCREEN_SAVER_STYLE_ALLOWED: &[&str] = &[
     "boids_predator",
     "boids_schools",
     "mandelbrot",
-    "magician",
     "game_of_life_gliders",
     "game_of_life_oscillators",
     "game_of_life_bloom",
@@ -955,12 +954,6 @@ mod tests {
         assert!(plan.screen_saver_enabled);
         assert_eq!(plan.screen_saver_idle_seconds, 120);
         assert_eq!(plan.screen_saver_style, "mandelbrot");
-
-        req.screen_saver_style = "Magician".into();
-        assert_eq!(
-            compute_zellij_render_plan(&req).unwrap().screen_saver_style,
-            "magician"
-        );
 
         req.screen_saver_idle_seconds = 5;
         assert_eq!(

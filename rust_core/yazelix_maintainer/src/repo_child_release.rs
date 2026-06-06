@@ -30,12 +30,6 @@ struct ZellijPluginWasmPackageContract {
     system: &'static str,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct ScreenPackageContract {
-    package_attr: &'static str,
-    system: &'static str,
-}
-
 const ZELLIJ_PLUGIN_WASM_PACKAGE_CONTRACTS: &[ZellijPluginWasmPackageContract] = &[
     ZellijPluginWasmPackageContract {
         package_attr: "yazelix_zellij_pane_orchestrator",
@@ -46,11 +40,6 @@ const ZELLIJ_PLUGIN_WASM_PACKAGE_CONTRACTS: &[ZellijPluginWasmPackageContract] =
         system: "aarch64-darwin",
     },
 ];
-
-const SCREEN_PACKAGE_CONTRACTS: &[ScreenPackageContract] = &[ScreenPackageContract {
-    package_attr: "yazelix_screen",
-    system: "aarch64-darwin",
-}];
 
 pub fn validate_child_release_transaction(repo_root: &Path) -> Result<ValidationReport, String> {
     let mut report = ValidationReport::default();
@@ -83,9 +72,6 @@ pub fn validate_child_release_transaction(repo_root: &Path) -> Result<Validation
     report
         .errors
         .extend(validate_zellij_plugin_wasm_package_contracts(repo_root)?);
-    report
-        .errors
-        .extend(validate_screen_package_contracts(repo_root)?);
 
     Ok(report)
 }
@@ -401,16 +387,6 @@ fn validate_zellij_plugin_wasm_package_contracts(repo_root: &Path) -> Result<Vec
     Ok(errors)
 }
 
-fn validate_screen_package_contracts(repo_root: &Path) -> Result<Vec<String>, String> {
-    let mut errors = Vec::new();
-    for contract in SCREEN_PACKAGE_CONTRACTS {
-        let metadata =
-            package_derivation_metadata(repo_root, contract.system, contract.package_attr)?;
-        errors.extend(validate_screen_derivation_with(contract, &metadata)?);
-    }
-    Ok(errors)
-}
-
 fn package_derivation_metadata(
     repo_root: &Path,
     system: &str,
@@ -555,57 +531,6 @@ fn validate_zellij_plugin_wasm_derivation_with(
     Ok(errors)
 }
 
-fn validate_screen_derivation_with(
-    contract: &ScreenPackageContract,
-    raw_metadata: &str,
-) -> Result<Vec<String>, String> {
-    let env = single_derivation_env(raw_metadata)?;
-    let mut errors = Vec::new();
-    require_derivation_system(&mut errors, contract.package_attr, contract.system, &env);
-
-    let native_build_inputs = env
-        .get("nativeBuildInputs")
-        .map(String::as_str)
-        .unwrap_or("");
-    reject_screen_phase_marker(
-        &mut errors,
-        contract,
-        "nativeBuildInputs",
-        native_build_inputs,
-        "imagemagick",
-    );
-    reject_screen_phase_marker(
-        &mut errors,
-        contract,
-        "nativeBuildInputs",
-        native_build_inputs,
-        "magick",
-    );
-
-    for phase_name in ["buildPhase", "postInstall"] {
-        let phase = env.get(phase_name).map(String::as_str).unwrap_or("");
-        reject_screen_phase_marker(&mut errors, contract, phase_name, phase, "magick");
-        reject_screen_phase_marker(
-            &mut errors,
-            contract,
-            phase_name,
-            phase,
-            "ascii_magician_1mposter_frames",
-        );
-        reject_screen_phase_marker(&mut errors, contract, phase_name, phase, "frame_%03d");
-    }
-
-    let post_install = env.get("postInstall").map(String::as_str).unwrap_or("");
-    if !post_install.contains("ascii_magician_1mposter.gif") {
-        errors.push(format!(
-            "`{}` {} postInstall must install the magician source GIF instead of generating package-time PNG frames.",
-            contract.package_attr, contract.system
-        ));
-    }
-
-    Ok(errors)
-}
-
 fn single_derivation_env(raw_metadata: &str) -> Result<HashMap<String, String>, String> {
     let parsed: JsonValue = serde_json::from_str(raw_metadata)
         .map_err(|error| format!("Invalid JSON from `nix derivation show`: {error}"))?;
@@ -704,25 +629,6 @@ fn require_build_phase_order(
     errors.push(format!(
         "`{}` {} buildPhase must {}. Expected marker `{}` before `{}`.",
         contract.package_attr, contract.system, description, before, after
-    ));
-}
-
-fn reject_screen_phase_marker(
-    errors: &mut Vec<String>,
-    contract: &ScreenPackageContract,
-    field_name: &str,
-    field_value: &str,
-    forbidden_marker: &str,
-) {
-    if !field_value
-        .to_ascii_lowercase()
-        .contains(&forbidden_marker.to_ascii_lowercase())
-    {
-        return;
-    }
-    errors.push(format!(
-        "`{}` {} {field_name} must not contain `{forbidden_marker}`; screen packages must not run ImageMagick or generate magician PNG frames during user builds.",
-        contract.package_attr, contract.system
     ));
 }
 
@@ -931,65 +837,6 @@ mod tests {
             error.contains("--print target-libdir --target wasm32-wasip1")
                 && error.contains("runHook preBuild")
         }));
-    }
-
-    // Defends: the screen package can install the source GIF on Darwin without package-time ImageMagick or expanded magician frames.
-    #[test]
-    fn screen_contract_accepts_gif_only_package_install() {
-        let contract = ScreenPackageContract {
-            package_attr: "yazelix_screen",
-            system: "aarch64-darwin",
-        };
-        let metadata = derivation_metadata_json(
-            "aarch64-darwin",
-            "",
-            &[
-                (
-                    "nativeBuildInputs",
-                    "/nix/store/rust-mixed /nix/store/cargo-install-hook.sh",
-                ),
-                (
-                    "postInstall",
-                    "install -Dm644 assets/third_party/ascii_magician_1mposter.gif \"$out/share/yazelix_screen/ascii_magician_1mposter.gif\"",
-                ),
-            ],
-        );
-
-        let errors = validate_screen_derivation_with(&contract, &metadata).unwrap();
-
-        assert!(errors.is_empty());
-    }
-
-    // Regression: issue 604 showed package-time ImageMagick frame generation can break Darwin user builds through native library loading policy.
-    #[test]
-    fn screen_contract_rejects_package_time_imagemagick_frames() {
-        let contract = ScreenPackageContract {
-            package_attr: "yazelix_screen",
-            system: "aarch64-darwin",
-        };
-        let metadata = derivation_metadata_json(
-            "aarch64-darwin",
-            "",
-            &[
-                ("nativeBuildInputs", "/nix/store/imagemagick-7.1.2-23"),
-                (
-                    "postInstall",
-                    "mkdir -p \"$out/share/yazelix_screen/ascii_magician_1mposter_frames\"\nmagick assets/third_party/ascii_magician_1mposter.gif -coalesce \"$out/share/yazelix_screen/ascii_magician_1mposter_frames/frame_%03d.png\"",
-                ),
-            ],
-        );
-
-        let errors = validate_screen_derivation_with(&contract, &metadata).unwrap();
-
-        assert!(errors.len() >= 4);
-        assert!(errors.iter().any(|error| error.contains("imagemagick")));
-        assert!(errors.iter().any(|error| error.contains("magick")));
-        assert!(
-            errors
-                .iter()
-                .any(|error| error.contains("ascii_magician_1mposter_frames"))
-        );
-        assert!(errors.iter().any(|error| error.contains("frame_%03d")));
     }
 
     // Defends: the derivation metadata gate checks the evaluated system instead of assuming the flake attr path returned the requested platform.

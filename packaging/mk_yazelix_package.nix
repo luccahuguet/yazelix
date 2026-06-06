@@ -13,7 +13,6 @@
   skipStableWrapperRedirect ? false,
   components ? { },
   extraRuntimePackages ? [ ],
-  screenAssets,
   yaziAssets ? null,
   yazelixTerminalPackage ? null,
   zellijPluginArtifacts ? { },
@@ -36,7 +35,6 @@ let
       runtimeIdentity
       components
       extraRuntimePackages
-      screenAssets
       yaziAssets
       yazelixTerminalPackage
       zellijPluginArtifacts

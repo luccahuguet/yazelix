@@ -12,7 +12,6 @@
   skipStableWrapperRedirect ? false,
   components ? { },
   extraRuntimePackages ? [ ],
-  screenAssets,
   yaziAssets ? null,
   yazelixTerminalPackage ? null,
   zellijPluginArtifacts ? { },
@@ -50,7 +49,6 @@ import ./packaging/mk_yazelix_package.nix {
     skipStableWrapperRedirect
     components
     extraRuntimePackages
-    screenAssets
     yaziAssets
     yazelixTerminalPackage
     zellijPluginArtifacts

@@ -133,7 +133,7 @@ This risk is highest for `yazelix-zellij-pane-orchestrator` and `yazelix-zellij-
 
 `yazelix-screen` and `yazelix-cursors` are consumed as Rust git dependencies and flake inputs. That means a release can involve Cargo lock updates, Nix output hashes, and flake lock updates. This friction is acceptable because both have real standalone value, but it should stay explicit in review.
 
-For `yazelix-screen`, `validate-child-release-transaction` is also the main Darwin smoke gate after a lock update: it rejects `aarch64-darwin` screen package derivations that reintroduce package-time ImageMagick or expanded magician frame generation.
+For `yazelix-screen`, `validate-child-release-transaction` validates the published lock/Cargo hash boundary. It no longer inspects package-time ImageMagick or expanded magician frame generation because Yazelix does not consume magician assets.
 
 ### Boundary Creep Risk
 

@@ -77,7 +77,7 @@ Additional evidence:
 - `packaging/mk_runtime_tree.nix` still links broad top-level trees into every runtime: `assets`, `docs`, `nushell`, `shells`, `configs`, and `config_metadata`
 - `docs/` is about `1.1 MiB` across `102` files, but runtime code found in this pass reads only `docs/upgrade_notes.toml` and top-level `CHANGELOG.md`
 - Removed `assets/font_tests/ubuntu_mono_regular_test.gif` and `assets/tapes/yazelix_v7_quick_demo.tape` after `rg` found no live references to those paths or names; the runtime preview-asset packaging bead remains separate
-- `repo_child_release.rs` is about `1,045` lines and validates child package internals through `nix derivation show` markers such as `dontCargoBuild`, `export CARGO=`, `export RUSTC=`, `magick`, and `frame_%03d`
+- `repo_child_release.rs` validates child package internals through `nix derivation show` markers such as `dontCargoBuild`, `export CARGO=`, and `export RUSTC=`
 
 Fresh follow-ups:
 
@@ -88,10 +88,10 @@ Fresh follow-ups:
 Child-release validator decision:
 
 - Stable main-owned contracts: first-party child lock entries point at published GitHub revisions; local adjacent child checkouts are clean before a coupled release; first-party Cargo git dependencies have matching fixed-output hashes in `packaging/rust_core_helper.nix`; package outputs expose the stable runtime artifact paths Yazelix consumes
-- Transitional implementation-detail checks: `repo_child_release.rs` currently inspects Zellij plugin build phases for `dontCargoBuild`, explicit `CARGO`/`RUSTC`/`PATH`, wasm target preflight, and marker ordering, and inspects the screen package for ImageMagick/magician frame-generation markers
+- Transitional implementation-detail checks: `repo_child_release.rs` currently inspects Zellij plugin build phases for `dontCargoBuild`, explicit `CARGO`/`RUSTC`/`PATH`, wasm target preflight, and marker ordering
 - Target seam: implementation-sensitive claims move to child-owned package metadata or child-owned check outputs. Main should validate declared contract data and publication state, not exact child build recipe strings
-- Do not delete the current Darwin wasm and screen/ImageMagick checks until the child repos expose the replacement contract surface or the magician style is deleted. Dropping those guards first would turn a known regression into silent trust
-- Follow-up beads now own the actual cuts: add Zellij plugin child contract metadata, consume that metadata in the main validator, and retire the screen/ImageMagick guard after magician deletion removes the live contract
+- Do not delete the current Darwin wasm checks until the child repos expose the replacement contract surface. The screen/ImageMagick guard retired with the magician style deletion because it no longer protects a live Yazelix contract
+- Follow-up beads now own the remaining cuts: add Zellij plugin child contract metadata and consume that metadata in the main validator
 
 Third-pass non-candidates:
 

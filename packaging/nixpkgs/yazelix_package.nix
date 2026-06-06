@@ -2,7 +2,6 @@
   pkgs,
   src,
   yazelix_yazi_assets,
-  yazelix_screen,
   yazelix_zellij_pane_orchestrator,
   yazelix_zellij_popup,
   yazelix_zjstatus,
@@ -21,7 +20,6 @@
 import ../mk_yazelix_package.nix {
   inherit pkgs src;
   metaPlatforms = pkgs.lib.platforms.linux;
-  screenAssets = yazelix_screen;
   yaziAssets = yazelix_yazi_assets;
   zellijPluginArtifacts = {
     pane_orchestrator = "${yazelix_zellij_pane_orchestrator}/${yazelix_zellij_pane_orchestrator.wasmPath}";

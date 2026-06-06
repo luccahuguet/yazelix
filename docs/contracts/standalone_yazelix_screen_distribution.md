@@ -14,7 +14,7 @@ The screen renderer is a reusable terminal animation crate. Keeping it in an ext
 - Yazelix `.#yzs` and `.#yazelix_screen` package/app aliases forwarded from that input
 - standalone `yzs` binary from the external `yazelix_screen` Rust crate
 - external screen README, CI, flake, Cargo lock, and examples
-- boids, Mandelbrot, Game of Life, and explicit magician animation support owned outside the Yazelix monorepo
+- boids, Mandelbrot, and Game of Life animation support owned outside the Yazelix monorepo
 
 ## Behavior
 
@@ -22,11 +22,9 @@ The screen renderer is a reusable terminal animation crate. Keeping it in an ext
 - The binary does not read `settings.jsonc` or session config snapshots.
 - The binary owns a small explicit CLI: optional style plus optional Game of Life cell style.
 - The binary enters alternate-screen/raw mode, renders frames, responds to terminal resize, exits on keypress, and restores terminal state on normal exit.
-- The binary supports the animation-engine styles available in the screen crate: `boids`, `boids_predator`, `boids_schools`, `mandelbrot`, `magician`, `game_of_life_gliders`, `game_of_life_oscillators`, `game_of_life_bloom`, and `random`.
-- Explicit `magician` uses Kitty graphics and existing or host-generated PNG frames from the packaged source GIF; the package does not bundle ImageMagick or expanded magician frames.
-- No explicit style means `random`, which skips `magician` unless those frame assets can be resolved or generated.
-- The `aarch64-darwin` package derivation must install the source GIF without
-  package-time ImageMagick or expanded magician frame generation.
+- The binary supports the non-image animation-engine styles available in the screen crate: `boids`, `boids_predator`, `boids_schools`, `mandelbrot`, `game_of_life_gliders`, `game_of_life_oscillators`, `game_of_life_bloom`, and `random`.
+- No explicit style means `random`, which rotates through the retained non-image animation families.
+- Yazelix no longer consumes or advertises image-backed `magician` support. If an older locked standalone `yzs` release still accepts `magician`, that is child-only legacy behavior until the child package removes it; Yazelix does not link its assets into the integrated runtime.
 - Library examples in the external crate run without Yazelix runtime/session/config state and demonstrate one-frame rendering plus bounded style playback.
 - Yazelix users keep using `yzx screen`; standalone users can run `yzs` directly from a vanilla terminal.
 - `yazelix_core` consumes `yazelix_screen` as an external Rust dependency instead of owning duplicate source.
@@ -46,9 +44,9 @@ The screen renderer is a reusable terminal animation crate. Keeping it in an ext
 3. In the external screen repository, `cargo run --example render_once` prints one frame without entering a Yazelix session.
 4. In the external screen repository, `nix build .#yzs` produces a package with `bin/yzs`.
 5. In Yazelix, `nix run .#yzs -- --help` prints the forwarded standalone CLI without launching a Yazelix session.
-6. In Yazelix, `yzx_repo_validator validate-child-release-transaction` rejects
-   a locked screen package that reintroduces package-time ImageMagick or
-   expanded magician frame generation on `aarch64-darwin`.
+6. In Yazelix, `yzx_repo_validator validate-child-release-transaction` validates
+   published child revisions and first-party child package contracts without
+   depending on removed magician implementation details.
 7. Existing `yzx screen` behavior remains owned by `yazelix_core` and unchanged by the standalone package.
 
 ## Release Policy

@@ -1546,7 +1546,7 @@ mod tests {
         );
         fs::create_dir_all(&config_dir).unwrap();
         let user_config = config_dir.join("settings.jsonc");
-        let original = "{ \"core\": { \"welcome_style\": \"magician\" } }\n";
+        let original = "{ \"core\": { \"welcome_style\": \"mandelbrot\" } }\n";
         fs::write(&user_config, original).unwrap();
 
         let created = create_default_settings_config_from_template(&runtime_dir, &config_dir)

@@ -10,7 +10,6 @@
   name ? "yazelix-runtime",
   components ? { },
   extraRuntimePackages ? [ ],
-  screenAssets,
   yaziAssets ? null,
   yazelixTerminalPackage ? null,
   zellijPluginArtifacts ? { },
@@ -43,7 +42,6 @@ import ./packaging/mk_runtime_tree.nix {
     runtimeIdentity
     components
     extraRuntimePackages
-    screenAssets
     yaziAssets
     yazelixTerminalPackage
     zellijPluginArtifacts

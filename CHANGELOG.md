@@ -9,7 +9,7 @@ Post-v17.4 work in progress
 Upgrade impact: no user action required
 
 Highlights:
-- Reserved for post-release changes after v17.4 lands.
+- Removed the image-backed `magician` welcome and `yzx screen` style from the supported config, Home Manager, runtime asset, and idle screen-saver surfaces
 
 ## v17.4 - 2026-06-05
 
