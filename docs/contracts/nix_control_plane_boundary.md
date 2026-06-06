@@ -16,23 +16,27 @@ rules in `docs/contracts/config_runtime_control_plane_contract.md`.
 
 ## Current Baseline
 
-Measured on `2026-06-06`:
+Measured after the Nix split pass on `2026-06-06`:
 
 | Surface | Raw lines |
 | --- | ---: |
-| All tracked `*.nix` files, excluding build outputs | 3214 |
-| `home_manager/module.nix` | 1085 |
-| `flake.nix` | 630 |
-| `packaging/runtime_tool_registry.nix` | 373 |
+| All tracked `*.nix` files, excluding build outputs | 3271 |
+| `home_manager/module.nix` | 84 |
+| `home_manager/options.nix` | 487 |
+| `home_manager/settings_contract.nix` | 272 |
+| `home_manager/runtime_integration.nix` | 244 |
+| `flake.nix` | 339 |
+| `packaging/flake_outputs.nix` | 110 |
+| `packaging/runtime_tool_registry.nix` | 424 |
 | `maintainer_shell.nix` | 201 |
 | `packaging/mk_runtime_tree.nix` | 181 |
 
 Focused `tokei` measurement for `flake.nix`, `home_manager`, `packaging`,
 `maintainer_shell.nix`, `yazelix_package.nix`, `yazelix_runtime_package.nix`,
-and `nix-ci.nix` reports `3349` Nix lines and `2896` Nix code lines across
-`26` Nix entries. The largest single-file pressure points are
-`home_manager/module.nix`, `flake.nix`, and
-`packaging/runtime_tool_registry.nix`.
+and `nix-ci.nix` reports `3271` Nix lines and `2866` Nix code lines across
+`30` Nix entries. The largest remaining single-file pressure points are
+`home_manager/options.nix`, `packaging/runtime_tool_registry.nix`, and
+`flake.nix`.
 
 ## Ownership
 
@@ -40,11 +44,11 @@ and `nix-ci.nix` reports `3349` Nix lines and `2896` Nix code lines across
 | --- | --- | --- |
 | Terminal variant package selection | `flake.nix`, `home_manager/module.nix`, package builder args | One Nix terminal-variant metadata module consumed by flake and Home Manager surfaces |
 | Terminal runtime identity | package builders plus generated runtime identity | Package builders own package identity; terminal child packages may expose stable metadata consumed by main Yazelix |
-| Home Manager options | `home_manager/module.nix` | Split into option declarations, package selection, settings rendering, desktop entries, activation/runtime materialization, and validation helpers |
-| Home Manager settings rendering | `home_manager/module.nix` | Remain Nix-owned, backed by config metadata and `validate-config-surface-contract` |
-| Home Manager activation/runtime materialization | `home_manager/module.nix` | Remain Home Manager-owned, with terminal-specific branches isolated |
-| Desktop entries | `home_manager/module.nix` | Remain Home Manager/Linux-owned, split into a focused desktop-entry module with explicit platform gates |
-| Flake packages/apps/checks/overlays | `flake.nix` | `flake.nix` wires outputs; package/check implementation lives in packaging modules |
+| Home Manager options | `home_manager/options.nix` | Option declarations/defaults stay separate from runtime integration |
+| Home Manager settings rendering | `home_manager/settings_contract.nix` | Remain Nix-owned, backed by config metadata and `validate-config-surface-contract` |
+| Home Manager activation/runtime materialization | `home_manager/runtime_integration.nix` | Remain Home Manager-owned, with terminal-specific branches isolated |
+| Desktop entries | `home_manager/runtime_integration.nix` | Remain Home Manager/Linux-owned with explicit platform gates |
+| Flake packages/apps/checks/overlays | `flake.nix`, `packaging/flake_outputs.nix`, `packaging/kgp_package_contracts.nix` | `flake.nix` wires outputs; package/check implementation lives in packaging modules |
 | KGP package contracts | inline in `flake.nix` | Move to `packaging/kgp_package_contracts.nix` |
 | Runtime tool manifest and source modes | `packaging/runtime_tool_registry.nix` | Keep Nix-owned; split only if a concrete owner appears after terminal/HM extraction |
 | Runtime tree assembly | `packaging/mk_runtime_tree.nix` | Keep package-owned; do not move runtime tree semantics into Rust |
@@ -63,6 +67,30 @@ and `nix-ci.nix` reports `3349` Nix lines and `2896` Nix code lines across
 5. Re-evaluate `packaging/runtime_tool_registry.nix` after the previous cuts;
    do not split it only to make a smaller file
 
+## Runtime Tool Registry Decision
+
+Keep `packaging/runtime_tool_registry.nix` whole for the current architecture.
+It has one coherent owner: converting the selected runtime variant and
+`runtimeToolSources` map into runtime packages, exported commands, validation
+errors, and the manifest consumed by the packaged runtime.
+
+Splitting it today would mostly separate dependent halves of the same manifest
+contract:
+
+- terminal package selection feeds the `terminal` tool entry and yzxterm
+  package identity fields
+- source-mode validation depends on the full tool metadata map
+- bundled package lists, exported commands, and `manifestJson` are projections
+  of that same validated map
+- Linux graphics wrappers and Linux-only host helper packages are platform gates
+  in the package owner, not independent user-facing modules
+
+The next valid split is narrow, not structural: if terminal child package
+metadata or graphics-wrapper policy grows again, extract that specific package
+selection adapter behind the same registry interface. Do not split tool metadata,
+source-mode validation, and manifest rendering into separate files unless a new
+consumer needs one of those artifacts independently.
+
 ## Rejected Or Deferred Cuts
 
 - Moving Nix package, derivation, platform, or Home Manager semantics into Rust
@@ -71,8 +99,9 @@ and `nix-ci.nix` reports `3349` Nix lines and `2896` Nix code lines across
 - `flake-parts` is deferred until the local ownership split proves that
   `flake.nix` still needs a framework. Adding a framework before the boundary
   split would add inputs and indirection without deleting product ownership
-- Splitting `runtime_tool_registry.nix` is deferred. It is large, but it has one
-  coherent owner today: runtime tool package/source-mode metadata
+- Splitting `runtime_tool_registry.nix` is rejected for now. It is large, but it
+  has one coherent owner today: runtime tool package/source-mode metadata,
+  validation, and manifest projection
 
 ## Verification
 
