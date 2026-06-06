@@ -103,7 +103,8 @@ pkgs.runCommand name { } ''
   for yazi_plugin in auto-layout.yazi git.yazi lazygit.yazi starship.yazi; do
     ln -s "${yaziAssetsRoot}/plugins/$yazi_plugin" "$out/configs/yazi/plugins/$yazi_plugin"
   done
-  ln -s ${src}/docs "$out/docs"
+  mkdir -p "$out/docs"
+  ln -s ${src}/docs/upgrade_notes.toml "$out/docs/upgrade_notes.toml"
   ln -s ${src}/nushell "$out/nushell"
   ln -s ${src}/shells "$out/shells"
 

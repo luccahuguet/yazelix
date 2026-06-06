@@ -14,12 +14,13 @@ let
     "assets"
     "config_metadata"
     "configs"
-    "docs"
     "nushell"
     "shells"
   ];
   includeFiles = [
     "CHANGELOG.md"
+    "docs"
+    "docs/upgrade_notes.toml"
     "yazelix_ghostty_cursors_default.toml"
     "settings_default.jsonc"
   ];

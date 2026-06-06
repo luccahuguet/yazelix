@@ -81,7 +81,7 @@ Additional evidence:
 
 Fresh follow-ups:
 
-1. `yazelix-audit-deletion-extraction-third-pass-c0gmk.1`: package minimal runtime docs instead of the whole docs tree
+1. `yazelix-audit-deletion-extraction-third-pass-c0gmk.1`: resolved by keeping only `docs/upgrade_notes.toml` plus top-level `CHANGELOG.md` in the runtime docs contract instead of linking the whole docs tree
 2. `yazelix-audit-deletion-extraction-third-pass-c0gmk.2`: replace child-release implementation-detail checks with child-declared package contracts
 3. `yazelix-audit-deletion-extraction-third-pass-c0gmk.3`: delete unreferenced font-test GIF and old demo tape assets
 
