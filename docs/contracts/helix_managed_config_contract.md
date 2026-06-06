@@ -55,6 +55,7 @@ Yazelix owns the managed Helix config tree needed for Yazelix-specific editor in
 
 - the `yzx reveal` binding
 - Yazelix-managed Steel plugin loading
+- the bundled Steel plugin repository under `configs/helix/steel_plugins/`
 - managed Helix language/theme lookup under `~/.config/yazelix/helix/`
 - curated managed-session defaults for Helix visuals, diagnostics, statusline, and editor-local helper keybindings
 
@@ -90,6 +91,21 @@ The fork tracks Helix Steel and carries only the minimal Yazelix-owned config-di
 - loader resolution from that directory for core Helix config files
 
 The fork is not a product fork for editor behavior, default keymaps, UI policy, Steel plugin APIs, language behavior, or Yazelix-specific editor features. Those should remain upstream Steel work, Yazelix runtime configuration, or Yazelix-owned Steel plugins unless a separate contract explicitly changes that boundary.
+
+## Bundled Steel Plugin Pack Boundary
+
+The default Steel plugin pack stays in the main Yazelix repo.
+
+This is intentionally not extracted into `yazelix-helix`:
+
+- the plugin pack is selected by `settings.jsonc` through `helix.steel_plugins.enabled`
+- custom user plugin manifests live beside the same surface in `helix.steel_plugins.extra`
+- Yazelix owns command visibility, startup conditions, generated `helix.scm`, generated `init.scm`, and copied plugin placement under generated state
+- the bundled pack is a curated managed-session default, not Helix fork behavior
+
+The `yazelix-helix` fork must stay a thin editor/runtime fork. It owns the ability to run a managed config directory and the Steel runtime behavior inherited from upstream Steel. It does not own Yazelix default plugin ids, plugin selection policy, splash eligibility, `yzx-new-shell`, or generated Steel entrypoint shape.
+
+Moving only `configs/helix/steel_plugins/` to the fork would be a paper extraction: it would save a small asset tree in main while forcing the child package to publish Yazelix settings semantics and release in lockstep with main whenever plugin ids, startup policy, or generated command metadata changes.
 
 ## Important Constraint
 

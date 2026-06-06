@@ -58,7 +58,7 @@ Fresh follow-ups:
 
 1. `yazelix-audit-deletion-extraction-second-pass-4z0ef.1`: resolved by replacing broad runtime `assets/*` linking with an `assets/icons` allowlist, keeping desktop icon assets live while leaving the README logo and screenshot as repo/docs-only media
 2. `yazelix-audit-deletion-extraction-second-pass-4z0ef.2`: resolved by deleting ignored per-field UI metadata keys from `config_ui_metadata.toml`; `main_config_contract.toml` remains the semantic owner for parser/default/apply behavior while the UI metadata file owns only live tab placement and help text
-3. `yazelix-audit-deletion-extraction-second-pass-4z0ef.3`: define the Helix Steel plugin-pack ownership boundary
+3. `yazelix-audit-deletion-extraction-second-pass-4z0ef.3`: resolved by keeping the default Helix Steel plugin pack in main; moving it to `yazelix-helix` would be a paper extraction because Yazelix owns plugin selection, generated Steel entrypoints, startup policy, and command visibility
 4. `yazelix-audit-deletion-extraction-second-pass-4z0ef.4`: retire legacy install-artifact repair paths by contract
 
 Second-pass non-candidates:
