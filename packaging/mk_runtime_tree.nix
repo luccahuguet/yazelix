@@ -60,13 +60,7 @@ pkgs.runCommand name { } ''
   mkdir -p "$out"
 
   mkdir -p "$out/assets"
-  for asset_entry in ${src}/assets/*; do
-    asset_name="$(basename "$asset_entry")"
-    if [ "$asset_name" = "third_party" ]; then
-      continue
-    fi
-    ln -s "$asset_entry" "$out/assets/$asset_name"
-  done
+  ln -s ${src}/assets/icons "$out/assets/icons"
   mkdir -p "$out/assets/third_party"
   if [ -e "${requireScreenAssets}/share/yazelix_screen/ascii_magician_1mposter.gif" ]; then
     ln -s "${requireScreenAssets}/share/yazelix_screen/ascii_magician_1mposter.gif" \

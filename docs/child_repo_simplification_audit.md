@@ -56,7 +56,7 @@ Second-pass measured snapshot, excluding `.git`, `.beads`, `target`, and `rust_p
 
 Fresh follow-ups:
 
-1. `yazelix-audit-deletion-extraction-second-pass-4z0ef.1`: exclude README-only preview assets from packaged runtime
+1. `yazelix-audit-deletion-extraction-second-pass-4z0ef.1`: resolved by replacing broad runtime `assets/*` linking with an `assets/icons` allowlist, keeping desktop icon assets live while leaving the README logo and screenshot as repo/docs-only media
 2. `yazelix-audit-deletion-extraction-second-pass-4z0ef.2`: reduce config metadata to one semantic source
 3. `yazelix-audit-deletion-extraction-second-pass-4z0ef.3`: define the Helix Steel plugin-pack ownership boundary
 4. `yazelix-audit-deletion-extraction-second-pass-4z0ef.4`: retire legacy install-artifact repair paths by contract
