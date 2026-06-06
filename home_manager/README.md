@@ -373,6 +373,8 @@ The prepare command archives the common file-based takeover blockers and handoff
 - `~/.local/share/applications/yazelix.desktop`
 - `~/.local/share/icons/hicolor/*/apps/yazelix.png`
 
+Old mutable `yazelix.toml`, `cursors.toml`, and `user_configs/` files are stale config inputs, not Home Manager takeover artifacts. If Yazelix reports them, move them aside manually or run `yzx reset config --yes`
+
 4. **Apply the Home Manager configuration:**
    ```bash
    home-manager switch

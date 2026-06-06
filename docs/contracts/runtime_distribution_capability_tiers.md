@@ -65,6 +65,22 @@ Yazelix recognizes four concrete runtime/distribution tiers:
 - Desktop-entry diagnostics remain valid because desktop integration is still an explicit user-visible surface.
 - Runtime-root-only mode must not warn about missing installer-owned runtime artifacts or pretend there is an installer repair path.
 
+### Install Artifact Support Matrix
+
+Yazelix keeps install-artifact diagnostics only where they defend a current install owner or a launcher path that can still shadow the current install:
+
+| Artifact or branch | Status | Owner |
+| --- | --- | --- |
+| Home Manager-owned `settings.jsonc` symlink marker | live support | Install ownership report |
+| Home Manager profile `yzx` wrapper and profile desktop entries | live support | Install ownership report |
+| Standalone default-profile Yazelix package entries during Home Manager takeover | live support | `yzx home_manager prepare` |
+| User-local desktop entries and copied desktop icons that shadow profile/Home Manager entries | live cleanup support | `yzx home_manager prepare` and desktop doctor diagnostics |
+| Legacy `~/.local/bin/yzx` wrapper and stale host-shell redirects | live cleanup diagnostics | Install ownership report and `yzx home_manager prepare` for the wrapper file only |
+| Old desktop ids such as `yazelix.desktop` or the pre-variant `com.yazelix.Yazelix.desktop` | live cleanup support | Desktop freshness and Home Manager prepare |
+| Old mutable `yazelix.toml`, `cursors.toml`, and `user_configs/` inputs | unsupported config state | Stale config diagnostics, manual cleanup, or `yzx reset config` |
+
+`yzx home_manager prepare` must not archive unsupported legacy config inputs. Those files are not install-owner artifacts after the trimmed runtime contract; they are config-surface errors handled by the stale-config diagnostic contract.
+
 ## Non-goals
 
 - reintroducing a Yazelix-owned runtime updater
@@ -77,6 +93,7 @@ Yazelix recognizes four concrete runtime/distribution tiers:
 3. Package/store runtimes do not claim they own a mutable installed runtime.
 4. Runtime-root-only doctor output does not warn about missing installer-owned runtime artifacts.
 5. The tier contract is explicit enough that later simplification work can delete installer ownership cleanly.
+6. Home Manager prepare reports only current install-owner artifacts, not unsupported old config inputs such as `yazelix.toml` or `cursors.toml`.
 
 ## Verification
 

@@ -2,7 +2,6 @@
 //! Bead: yazelix-ulb2.4.1
 
 use crate::terminal_variant::{SUPPORTED_TERMINALS, terminal_desktop_entry_file_name};
-use crate::user_config_paths;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use std::collections::HashSet;
@@ -504,31 +503,6 @@ fn collect_home_manager_prepare_artifacts(
             remove_target: None,
         });
     }
-    if let Some(config_dir) = main.parent() {
-        for (id, label, path) in [
-            (
-                "old_main_config",
-                "old yazelix.toml settings input",
-                config_dir.join(user_config_paths::OLD_MAIN_CONFIG),
-            ),
-            (
-                "old_cursor_config",
-                "old cursors.toml settings input",
-                config_dir.join(user_config_paths::CURSOR_CONFIG),
-            ),
-        ] {
-            if path.exists() && path != *main {
-                artifacts.push(HomeManagerPrepareArtifact {
-                    id: id.into(),
-                    class: "blocker".into(),
-                    label: label.into(),
-                    path: path_to_string(path),
-                    action: Some(HOME_MANAGER_PREPARE_ACTION_ARCHIVE_PATH.into()),
-                    remove_target: None,
-                });
-            }
-        }
-    }
     for entry in standalone_profile_yazelix_entries {
         let path = entry
             .store_path
@@ -979,6 +953,26 @@ mod tests {
         std::fs::write(manifest_path, raw).unwrap();
     }
 
+    fn test_request(
+        tmp: &TempDir,
+        home: &Path,
+        xdg_data: &Path,
+        main_config_path: PathBuf,
+    ) -> InstallOwnershipEvaluateRequest {
+        InstallOwnershipEvaluateRequest {
+            runtime_dir: tmp.path().join("runtime"),
+            home_dir: home.to_path_buf(),
+            user: Some("test-user".into()),
+            xdg_config_home: home.join(".config"),
+            xdg_data_home: xdg_data.to_path_buf(),
+            yazelix_state_dir: xdg_data.join("yazelix"),
+            main_config_path,
+            invoked_yzx_path: None,
+            redirected_from_stale_yzx_path: None,
+            shell_resolved_yzx_path: None,
+        }
+    }
+
     // Defends: Home Manager ownership detection still recognizes the store-symlink marker path.
     #[test]
     fn home_manager_ownership_detects_store_symlink_marker() {
@@ -1027,18 +1021,8 @@ mod tests {
             return;
         }
 
-        let report = evaluate_install_ownership_report(&InstallOwnershipEvaluateRequest {
-            runtime_dir: tmp.path().join("runtime"),
-            home_dir: home.clone(),
-            user: Some("test-user".into()),
-            xdg_config_home: home.join(".config"),
-            xdg_data_home: xdg_data.clone(),
-            yazelix_state_dir: xdg_data.join("yazelix"),
-            main_config_path: main_config,
-            invoked_yzx_path: None,
-            redirected_from_stale_yzx_path: None,
-            shell_resolved_yzx_path: None,
-        });
+        let report =
+            evaluate_install_ownership_report(&test_request(&tmp, &home, &xdg_data, main_config));
 
         assert!(report.has_home_manager_managed_install);
         assert_eq!(report.install_owner, "home-manager");
@@ -1080,18 +1064,8 @@ mod tests {
         std::fs::write(&main_config, "[core]\n").unwrap();
         std::fs::write(&profile_yzx, "#!/bin/sh\n").unwrap();
 
-        let report = evaluate_install_ownership_report(&InstallOwnershipEvaluateRequest {
-            runtime_dir: tmp.path().join("runtime"),
-            home_dir: home.clone(),
-            user: Some("test-user".into()),
-            xdg_config_home: home.join(".config"),
-            xdg_data_home: xdg_data.clone(),
-            yazelix_state_dir: xdg_data.join("yazelix"),
-            main_config_path: main_config,
-            invoked_yzx_path: None,
-            redirected_from_stale_yzx_path: None,
-            shell_resolved_yzx_path: None,
-        });
+        let report =
+            evaluate_install_ownership_report(&test_request(&tmp, &home, &xdg_data, main_config));
 
         assert!(!report.has_home_manager_managed_install);
         assert_eq!(report.install_owner, "profile");
@@ -1147,18 +1121,8 @@ mod tests {
             r#"{"elements":{"home-manager-path":{"active":true,"storePaths":["/nix/store/test-home-manager-path"]}},"version":3}"#,
         );
 
-        let report = evaluate_install_ownership_report(&InstallOwnershipEvaluateRequest {
-            runtime_dir: tmp.path().join("runtime"),
-            home_dir: home.clone(),
-            user: Some("test-user".into()),
-            xdg_config_home: home.join(".config"),
-            xdg_data_home: xdg_data.clone(),
-            yazelix_state_dir: xdg_data.join("yazelix"),
-            main_config_path: main_config,
-            invoked_yzx_path: None,
-            redirected_from_stale_yzx_path: None,
-            shell_resolved_yzx_path: None,
-        });
+        let report =
+            evaluate_install_ownership_report(&test_request(&tmp, &home, &xdg_data, main_config));
 
         assert!(!has_home_manager_managed_install(
             &home.join(".config/yazelix/settings.jsonc")
@@ -1195,18 +1159,7 @@ mod tests {
         )
         .unwrap();
 
-        let request = InstallOwnershipEvaluateRequest {
-            runtime_dir: tmp.path().join("runtime"),
-            home_dir: home.clone(),
-            user: Some("test-user".into()),
-            xdg_config_home: home.join(".config"),
-            xdg_data_home: xdg_data.clone(),
-            yazelix_state_dir: xdg_data.join("yazelix"),
-            main_config_path: main_config,
-            invoked_yzx_path: None,
-            redirected_from_stale_yzx_path: None,
-            shell_resolved_yzx_path: None,
-        };
+        let request = test_request(&tmp, &home, &xdg_data, main_config);
         let fresh = evaluate_install_ownership_report(&request);
         assert_eq!(fresh.desktop_entry_freshness.status, "ok");
 
@@ -1341,18 +1294,8 @@ mod tests {
             r#"{"elements":{"home-manager-path":{"active":true,"storePaths":["/nix/store/test-home-manager-path"]}},"version":3}"#,
         );
 
-        let report = evaluate_install_ownership_report(&InstallOwnershipEvaluateRequest {
-            runtime_dir: tmp.path().join("runtime"),
-            home_dir: home.clone(),
-            user: Some("test-user".into()),
-            xdg_config_home: home.join(".config"),
-            xdg_data_home: xdg_data.clone(),
-            yazelix_state_dir: xdg_data.join("yazelix"),
-            main_config_path: main_config,
-            invoked_yzx_path: None,
-            redirected_from_stale_yzx_path: None,
-            shell_resolved_yzx_path: None,
-        });
+        let report =
+            evaluate_install_ownership_report(&test_request(&tmp, &home, &xdg_data, main_config));
 
         assert_eq!(report.install_owner, "home-manager");
         assert_eq!(report.desktop_entry_freshness.status, "ok");
@@ -1387,18 +1330,8 @@ mod tests {
             .unwrap();
         }
 
-        let report = evaluate_install_ownership_report(&InstallOwnershipEvaluateRequest {
-            runtime_dir: tmp.path().join("runtime"),
-            home_dir: home.clone(),
-            user: Some("test-user".into()),
-            xdg_config_home: home.join(".config"),
-            xdg_data_home: xdg_data.clone(),
-            yazelix_state_dir: xdg_data.join("yazelix"),
-            main_config_path: main_config,
-            invoked_yzx_path: None,
-            redirected_from_stale_yzx_path: None,
-            shell_resolved_yzx_path: None,
-        });
+        let report =
+            evaluate_install_ownership_report(&test_request(&tmp, &home, &xdg_data, main_config));
 
         let desktop_cleanup_paths = report
             .prepare_artifacts
@@ -1430,18 +1363,8 @@ mod tests {
             r#"{"elements":{"yazelix":{"active":true,"storePaths":["/nix/store/test-yazelix"]}},"version":3}"#,
         );
 
-        let report = evaluate_install_ownership_report(&InstallOwnershipEvaluateRequest {
-            runtime_dir: tmp.path().join("runtime"),
-            home_dir: home,
-            user: Some("test-user".into()),
-            xdg_config_home: tmp.path().join("home/.config"),
-            xdg_data_home: xdg_data.clone(),
-            yazelix_state_dir: xdg_data.join("yazelix"),
-            main_config_path: main_config,
-            invoked_yzx_path: None,
-            redirected_from_stale_yzx_path: None,
-            shell_resolved_yzx_path: None,
-        });
+        let report =
+            evaluate_install_ownership_report(&test_request(&tmp, &home, &xdg_data, main_config));
 
         assert_eq!(report.standalone_profile_yazelix_entries.len(), 1);
         assert_eq!(
@@ -1458,6 +1381,32 @@ mod tests {
             Some(HOME_MANAGER_PREPARE_ACTION_REMOVE_PROFILE_ENTRY)
         );
         assert_eq!(artifact.class, "blocker");
+    }
+
+    // Defends: old mutable config inputs are stale-config diagnostics, not Home Manager takeover artifacts.
+    #[test]
+    fn prepare_artifacts_exclude_unsupported_old_config_inputs() {
+        let tmp = TempDir::new().unwrap();
+        let home = tmp.path().join("home");
+        let xdg_data = home.join(".local/share");
+        let config_dir = home.join(".config/yazelix");
+        let main_config = config_dir.join("settings.jsonc");
+        std::fs::create_dir_all(&config_dir).unwrap();
+        std::fs::write(&main_config, "{}\n").unwrap();
+        std::fs::write(config_dir.join("yazelix.toml"), "[core]\n").unwrap();
+        std::fs::write(config_dir.join("cursors.toml"), "[cursor]\n").unwrap();
+
+        let report =
+            evaluate_install_ownership_report(&test_request(&tmp, &home, &xdg_data, main_config));
+
+        let artifact_ids = report
+            .prepare_artifacts
+            .iter()
+            .map(|artifact| artifact.id.as_str())
+            .collect::<HashSet<_>>();
+        assert!(artifact_ids.contains("main_config"));
+        assert!(!artifact_ids.contains("old_main_config"));
+        assert!(!artifact_ids.contains("old_cursor_config"));
     }
 
     // Regression: doctor ownership diagnostics must flag mixed Home Manager/profile installs instead of leaving the collision to Home Manager's package error.
@@ -1490,18 +1439,8 @@ mod tests {
             return;
         }
 
-        let report = evaluate_install_ownership_report(&InstallOwnershipEvaluateRequest {
-            runtime_dir: tmp.path().join("runtime"),
-            home_dir: home,
-            user: Some("test-user".into()),
-            xdg_config_home: tmp.path().join("home/.config"),
-            xdg_data_home: xdg_data.clone(),
-            yazelix_state_dir: xdg_data.join("yazelix"),
-            main_config_path: main_config,
-            invoked_yzx_path: None,
-            redirected_from_stale_yzx_path: None,
-            shell_resolved_yzx_path: None,
-        });
+        let report =
+            evaluate_install_ownership_report(&test_request(&tmp, &home, &xdg_data, main_config));
 
         let collision = report
             .home_manager_profile_collision
