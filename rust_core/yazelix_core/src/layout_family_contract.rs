@@ -9,6 +9,7 @@ const CONTRACT_RELATIVE_PATH: &[&str] = &["config_metadata", "zellij_layout_fami
 const LAYOUTS_RELATIVE_PATH: &[&str] = &["configs", "zellij", "layouts"];
 
 #[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
 pub struct ZellijLayoutFamilyContract {
     pub schema_version: u32,
     #[serde(default)]
@@ -18,15 +19,13 @@ pub struct ZellijLayoutFamilyContract {
 }
 
 #[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
 pub struct ZellijLayoutFamily {
     pub id: String,
     pub layout_file: String,
     pub swap_layout_file: String,
-    pub sidebar_enabled: bool,
     #[serde(default)]
     pub required_pane_names: Vec<String>,
-    #[serde(default)]
-    pub required_runtime_scripts: Vec<String>,
     #[serde(default)]
     pub required_launcher_placeholders: Vec<String>,
     #[serde(default)]
@@ -34,6 +33,7 @@ pub struct ZellijLayoutFamily {
 }
 
 #[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
 pub struct ZellijAuxiliaryLayout {
     pub id: String,
     pub layout_file: String,
@@ -190,14 +190,6 @@ fn validate_family_files(
             ));
         }
     }
-    for script in &family.required_runtime_scripts {
-        if !layout.contains(script) {
-            errors.push(format!(
-                "Zellij layout `{}` for family `{}` is missing required runtime script `{script}`",
-                family.layout_file, family.id
-            ));
-        }
-    }
     for placeholder in &family.required_launcher_placeholders {
         if !layout.contains(placeholder) {
             errors.push(format!(
@@ -281,7 +273,6 @@ schema_version = 1
 id = "sidebar"
 layout_file = "yzx_side.kdl"
 swap_layout_file = "yzx_side.swap.kdl"
-sidebar_enabled = true
 required_pane_names = ["sidebar"]
 required_launcher_placeholders = ["__YAZELIX_SIDEBAR_COMMAND__", "__YAZELIX_SIDEBAR_ARGS__"]
 swap_layouts = ["single_open", "single_closed"]
@@ -323,5 +314,33 @@ swap_layouts = ["single_open", "single_closed"]
         let errors = validate_zellij_layout_family_contract(&repo).unwrap();
         assert_eq!(errors.len(), 1);
         assert!(errors[0].contains("not represented"));
+    }
+
+    // Regression: obsolete layout metadata fields must fail validation instead of becoming inert contract state.
+    #[test]
+    fn layout_family_contract_rejects_unknown_metadata_fields() {
+        let (_tmp, repo) = write_fixture_repo();
+        let contract_path = zellij_layout_family_contract_path(&repo);
+        let original = fs::read_to_string(&contract_path).unwrap();
+
+        for stale_field in [
+            "sidebar_enabled = true",
+            r#"required_runtime_scripts = ["yzx"]"#,
+        ] {
+            fs::write(
+                &contract_path,
+                original.replace(
+                    "required_pane_names = [\"sidebar\"]",
+                    &format!("required_pane_names = [\"sidebar\"]\n{stale_field}"),
+                ),
+            )
+            .unwrap();
+
+            let error = load_zellij_layout_family_contract(&repo).unwrap_err();
+            assert!(
+                error.contains("unknown field"),
+                "unexpected error for {stale_field}: {error}"
+            );
+        }
     }
 }

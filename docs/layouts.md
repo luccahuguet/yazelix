@@ -1,11 +1,9 @@
 # Zellij Layouts
 
-Yazelix ships one managed sidebar family plus hidden-start auxiliary layouts and swap-layout files:
+Yazelix ships one managed sidebar family and its swap-layout file:
 
 - `configs/zellij/layouts/yzx_side.kdl` for sidebar mode
-- `configs/zellij/layouts/yzx_side_closed.kdl` for managed-sidebar mode with the sidebar hidden at startup
 - `configs/zellij/layouts/yzx_side.swap.kdl` for sidebar swap layouts
-- `configs/zellij/layouts/yzx_side_closed.swap.kdl` for hidden-start sidebar swap layouts
 
 Set the file-open behavior in `settings.jsonc`:
 
@@ -45,7 +43,7 @@ The built-in layout family contract lives in `config_metadata/zellij_layout_fami
 
 That file is the machine-readable source for:
 
-- sidebar and hidden-sidebar startup layout ids
+- sidebar startup layout ids
 - the startup KDL file for each family
 - the swap-layout KDL file for each family
 - required managed pane names
@@ -61,8 +59,8 @@ Yazelix now copies every top-level `.kdl` file in `configs/zellij/layouts/` into
 The supported customization paths are:
 
 - Use `workspace.left_sidebar.*` and `workspace.right_sidebar.*` for custom side-surface launchers
-- Edit `yzx_side.kdl` or `yzx_side_closed.kdl` to change startup panes
-- Edit `yzx_side.swap.kdl` or `yzx_side_closed.swap.kdl` to tweak built-in swap layouts
+- Edit `yzx_side.kdl` to change startup panes
+- Edit `yzx_side.swap.kdl` to tweak built-in swap layouts
 - Add a new top-level `.kdl` file in `configs/zellij/layouts/` if you also add it to `config_metadata/zellij_layout_families.toml`
 
 Yazelix does not currently expose a second declarative layout-profile language. Keep complex custom layout work in KDL so the generated runtime, Zellij, and the workspace contract share the same source files.

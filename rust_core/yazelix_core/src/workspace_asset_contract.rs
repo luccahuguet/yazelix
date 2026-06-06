@@ -333,7 +333,6 @@ schema_version = 1
 id = "sidebar"
 layout_file = "yzx_side.kdl"
 swap_layout_file = "yzx_side.swap.kdl"
-sidebar_enabled = true
 required_pane_names = ["sidebar"]
 required_launcher_placeholders = ["__YAZELIX_SIDEBAR_COMMAND__", "__YAZELIX_SIDEBAR_ARGS__"]
 swap_layouts = ["single_open"]

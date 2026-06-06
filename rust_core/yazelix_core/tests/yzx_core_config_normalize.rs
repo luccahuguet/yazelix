@@ -107,16 +107,6 @@ fn prepare_runtime_materialization_fixture(
     .unwrap();
     fs::write(runtime_zellij_dir.join("yazelix_overrides.kdl"), "").unwrap();
     fs::write(runtime_layout_dir.join("yzx_side.kdl"), "layout { pane }\n").unwrap();
-    fs::write(
-        runtime_layout_dir.join("yzx_side_closed.kdl"),
-        "layout { pane }\n",
-    )
-    .unwrap();
-    fs::write(
-        runtime_layout_dir.join("yzx_side_closed.swap.kdl"),
-        "swap_tiled_layout name=\"single_open\" {}\n",
-    )
-    .unwrap();
     for fragment in [
         "swap_sidebar_open.kdl",
         "swap_sidebar_closed.kdl",
@@ -731,18 +721,6 @@ fn runtime_materialization_materialize_writes_generated_artifacts_and_records_st
     assert!(fixture.yazi_dir.join("init.lua").exists());
     assert!(fixture.zellij_dir.join("config.kdl").exists());
     assert!(fixture.zellij_layout_dir.join("yzx_side.kdl").exists());
-    assert!(
-        fixture
-            .zellij_layout_dir
-            .join("yzx_side_closed.kdl")
-            .exists()
-    );
-    assert!(
-        fixture
-            .zellij_layout_dir
-            .join("yzx_side_closed.swap.kdl")
-            .exists()
-    );
     let generated_layout = fs::read_to_string(fixture.zellij_layout_dir.join("yzx_side.kdl"))
         .expect("generated layout");
     let generation_fingerprint = envelope["data"]["zellij"]["generation_fingerprint"]

@@ -1,6 +1,7 @@
 use crate::action_registry::{
-    PANE_ORCHESTRATOR_PLUGIN_ALIAS, YZPP_PLUGIN_ALIAS, ZELLIJ_ACTIONS, ZELLIJ_NATIVE_KEYBINDINGS,
-    ZellijNativeKeybindingBlock,
+    PANE_ORCHESTRATOR_PLUGIN_ALIAS, YZPP_PLUGIN_ALIAS, YazelixActionMetadata, ZELLIJ_ACTIONS,
+    ZELLIJ_NATIVE_KEYBINDINGS, ZellijNativeKeybindingBlock, zellij_action_by_local_id,
+    zellij_native_keybinding_by_local_id,
 };
 use crate::bridge::{CoreError, ErrorClass};
 use crate::config_normalize::{NormalizeConfigRequest, normalize_config};
@@ -41,6 +42,22 @@ const GENERATED_LAYOUT_MARKER: &str = "GENERATED ZELLIJ LAYOUT (YAZELIX)";
 const GENERATED_LAYOUT_FINGERPRINT_PREFIX: &str = "generation_fingerprint:";
 const ZELLIJ_KEYBINDINGS_CONFIG_KEY: &str = "zellij_keybindings";
 const ZELLIJ_NATIVE_KEYBINDINGS_CONFIG_KEY: &str = "zellij_native_keybindings";
+const ZELLIJ_KEYBINDING_PARSE_POLICY: KeybindingParsePolicy = KeybindingParsePolicy {
+    namespace: "zellij.keybindings",
+    invalid_keys_code: "invalid_zellij_keybinding_keys",
+    invalid_key_code: "invalid_zellij_keybinding_key",
+    list_remediation: "Use a list such as `[\"Alt Shift J\"]`, or an empty list to disable that Yazelix action binding.",
+    item_remediation: "Use Zellij key strings such as \"Alt Shift J\" or \"Ctrl y\".",
+    invalid_item_remediation: "Use a non-empty single-line Zellij key string such as \"Alt Shift J\".",
+};
+const ZELLIJ_NATIVE_KEYBINDING_PARSE_POLICY: KeybindingParsePolicy = KeybindingParsePolicy {
+    namespace: "zellij.native_keybindings",
+    invalid_keys_code: "invalid_zellij_native_keybinding_keys",
+    invalid_key_code: "invalid_zellij_native_keybinding_key",
+    list_remediation: "Use a list such as `[\"Ctrl Alt s\"]`, or an empty list to disable that native policy binding.",
+    item_remediation: "Use Zellij key strings such as \"Ctrl Alt s\" or \"Ctrl Alt H\".",
+    invalid_item_remediation: "Use a non-empty single-line Zellij key string such as \"Ctrl Alt s\".",
+};
 const POPUP_COMMANDS_CONFIG_KEY: &str = "popup_commands";
 const CUSTOM_POPUPS_CONFIG_KEY: &str = "custom_popups";
 const BOTTOM_POPUP_COMMAND_KEY: &str = "bottom_popup";
@@ -154,6 +171,15 @@ struct RawCustomPopup {
     keybindings: Vec<String>,
     #[serde(default)]
     keep_alive: Option<bool>,
+}
+
+struct KeybindingParsePolicy {
+    namespace: &'static str,
+    invalid_keys_code: &'static str,
+    invalid_key_code: &'static str,
+    list_remediation: &'static str,
+    item_remediation: &'static str,
+    invalid_item_remediation: &'static str,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -1044,7 +1070,8 @@ fn render_yzpp_plugin_block(
         None,
     );
     for custom_popup in custom_popups {
-        let custom_popup_program = resolve_generated_popup_argv(&custom_popup.command, &yzx_cli);
+        let custom_popup_program =
+            popup_command_argv_for_yazelix_runtime(&custom_popup.command, &yzx_cli);
         let pane_title = format!("yzx_{}", custom_popup.id);
         append_generated_popup_spec(
             &mut lines,
@@ -1082,10 +1109,6 @@ fn generated_popup_command(
     let command = popup_commands
         .get(key)
         .expect("popup command defaults must cover generated popup specs");
-    resolve_generated_popup_argv(command, yzx_cli)
-}
-
-fn resolve_generated_popup_argv(command: &[String], yzx_cli: &str) -> Vec<String> {
     popup_command_argv_for_yazelix_runtime(command, yzx_cli)
 }
 
@@ -1192,35 +1215,73 @@ fn strip_yazelix_owned_top_level_settings(content: &str, owned_setting_names: &[
 }
 
 fn default_zellij_keybindings() -> BTreeMap<String, Vec<String>> {
-    ZELLIJ_ACTIONS
-        .iter()
-        .map(|spec| {
-            (
-                spec.action.local_id.to_string(),
-                spec.action
-                    .default_keys
-                    .iter()
-                    .map(|key| (*key).to_string())
-                    .collect(),
-            )
+    default_keybindings(ZELLIJ_ACTIONS.iter().map(|spec| &spec.action))
+}
+
+fn default_zellij_native_keybindings() -> BTreeMap<String, Vec<String>> {
+    default_keybindings(ZELLIJ_NATIVE_KEYBINDINGS.iter().map(|spec| &spec.action))
+}
+
+fn default_keybindings<'a>(
+    actions: impl IntoIterator<Item = &'a YazelixActionMetadata>,
+) -> BTreeMap<String, Vec<String>> {
+    actions
+        .into_iter()
+        .map(|action| {
+            let keys = action
+                .default_keys
+                .iter()
+                .map(|key| (*key).to_string())
+                .collect();
+            (action.local_id.to_string(), keys)
         })
         .collect()
 }
 
-fn default_zellij_native_keybindings() -> BTreeMap<String, Vec<String>> {
-    ZELLIJ_NATIVE_KEYBINDINGS
-        .iter()
-        .map(|spec| {
-            (
-                spec.action.local_id.to_string(),
-                spec.action
-                    .default_keys
-                    .iter()
-                    .map(|key| (*key).to_string())
-                    .collect(),
-            )
-        })
-        .collect()
+fn parse_keybinding_keys(
+    action: &str,
+    raw_keys: &JsonValue,
+    policy: &KeybindingParsePolicy,
+) -> Result<Vec<String>, CoreError> {
+    let Some(values) = raw_keys.as_array() else {
+        return Err(CoreError::classified(
+            ErrorClass::Config,
+            policy.invalid_keys_code,
+            format!(
+                "{}.{action} must be a list of Zellij key strings.",
+                policy.namespace
+            ),
+            policy.list_remediation,
+            json!({ "action": action, "actual": raw_keys }),
+        ));
+    };
+    let mut keys = Vec::with_capacity(values.len());
+    for value in values {
+        let Some(raw_key) = value.as_str() else {
+            return Err(CoreError::classified(
+                ErrorClass::Config,
+                policy.invalid_key_code,
+                format!("{}.{action} contains a non-string key.", policy.namespace),
+                policy.item_remediation,
+                json!({ "action": action, "actual": value }),
+            ));
+        };
+        let key = raw_key.trim();
+        if key.is_empty() || key.contains('\n') || key.contains('\r') {
+            return Err(CoreError::classified(
+                ErrorClass::Config,
+                policy.invalid_key_code,
+                format!(
+                    "{}.{action} contains an invalid key string.",
+                    policy.namespace
+                ),
+                policy.invalid_item_remediation,
+                json!({ "action": action, "actual": raw_key }),
+            ));
+        }
+        keys.push(key.to_string());
+    }
+    Ok(keys)
 }
 
 fn resolve_zellij_keybindings(
@@ -1242,7 +1303,7 @@ fn resolve_zellij_keybindings(
     };
 
     for (action, raw_keys) in object {
-        if !is_supported_zellij_keybinding_action(action) {
+        if zellij_action_by_local_id(action).is_none() {
             return Err(CoreError::classified(
                 ErrorClass::Config,
                 "unsupported_zellij_keybinding_action",
@@ -1250,43 +1311,17 @@ fn resolve_zellij_keybindings(
                 "Use one of the supported Yazelix Zellij action ids, or remove the unsupported keybinding entry.",
                 json!({
                     "action": action,
-                    "supported_actions": supported_zellij_keybinding_actions(),
+                    "supported_actions": ZELLIJ_ACTIONS
+                        .iter()
+                        .map(|spec| spec.action.local_id)
+                        .collect::<Vec<_>>(),
                 }),
             ));
         }
-        let Some(values) = raw_keys.as_array() else {
-            return Err(CoreError::classified(
-                ErrorClass::Config,
-                "invalid_zellij_keybinding_keys",
-                format!("zellij.keybindings.{action} must be a list of Zellij key strings."),
-                "Use a list such as `[\"Alt Shift J\"]`, or an empty list to disable that Yazelix action binding.",
-                json!({ "action": action, "actual": raw_keys }),
-            ));
-        };
-        let mut keys = Vec::with_capacity(values.len());
-        for value in values {
-            let Some(raw_key) = value.as_str() else {
-                return Err(CoreError::classified(
-                    ErrorClass::Config,
-                    "invalid_zellij_keybinding_key",
-                    format!("zellij.keybindings.{action} contains a non-string key."),
-                    "Use Zellij key strings such as \"Alt Shift J\" or \"Ctrl y\".",
-                    json!({ "action": action, "actual": value }),
-                ));
-            };
-            let key = raw_key.trim();
-            if key.is_empty() || key.contains('\n') || key.contains('\r') {
-                return Err(CoreError::classified(
-                    ErrorClass::Config,
-                    "invalid_zellij_keybinding_key",
-                    format!("zellij.keybindings.{action} contains an invalid key string."),
-                    "Use a non-empty single-line Zellij key string such as \"Alt Shift J\".",
-                    json!({ "action": action, "actual": raw_key }),
-                ));
-            }
-            keys.push(key.to_string());
-        }
-        resolved.insert(action.clone(), keys);
+        resolved.insert(
+            action.clone(),
+            parse_keybinding_keys(action, raw_keys, &ZELLIJ_KEYBINDING_PARSE_POLICY)?,
+        );
     }
 
     validate_zellij_keybindings(&resolved)?;
@@ -1311,7 +1346,7 @@ fn resolve_zellij_native_keybindings(
     };
 
     for (action, raw_keys) in object {
-        if !is_supported_zellij_native_keybinding_action(action) {
+        if zellij_native_keybinding_by_local_id(action).is_none() {
             return Err(CoreError::classified(
                 ErrorClass::Config,
                 "unsupported_zellij_native_keybinding_action",
@@ -1319,43 +1354,17 @@ fn resolve_zellij_native_keybindings(
                 "Use one of the supported Yazelix native Zellij policy ids, or remove the unsupported entry.",
                 json!({
                     "action": action,
-                    "supported_actions": supported_zellij_native_keybinding_actions(),
+                    "supported_actions": ZELLIJ_NATIVE_KEYBINDINGS
+                        .iter()
+                        .map(|spec| spec.action.local_id)
+                        .collect::<Vec<_>>(),
                 }),
             ));
         }
-        let Some(values) = raw_keys.as_array() else {
-            return Err(CoreError::classified(
-                ErrorClass::Config,
-                "invalid_zellij_native_keybinding_keys",
-                format!("zellij.native_keybindings.{action} must be a list of Zellij key strings."),
-                "Use a list such as `[\"Ctrl Alt s\"]`, or an empty list to disable that native policy binding.",
-                json!({ "action": action, "actual": raw_keys }),
-            ));
-        };
-        let mut keys = Vec::with_capacity(values.len());
-        for value in values {
-            let Some(raw_key) = value.as_str() else {
-                return Err(CoreError::classified(
-                    ErrorClass::Config,
-                    "invalid_zellij_native_keybinding_key",
-                    format!("zellij.native_keybindings.{action} contains a non-string key."),
-                    "Use Zellij key strings such as \"Ctrl Alt s\" or \"Ctrl Alt H\".",
-                    json!({ "action": action, "actual": value }),
-                ));
-            };
-            let key = raw_key.trim();
-            if key.is_empty() || key.contains('\n') || key.contains('\r') {
-                return Err(CoreError::classified(
-                    ErrorClass::Config,
-                    "invalid_zellij_native_keybinding_key",
-                    format!("zellij.native_keybindings.{action} contains an invalid key string."),
-                    "Use a non-empty single-line Zellij key string such as \"Ctrl Alt s\".",
-                    json!({ "action": action, "actual": raw_key }),
-                ));
-            }
-            keys.push(key.to_string());
-        }
-        resolved.insert(action.clone(), keys);
+        resolved.insert(
+            action.clone(),
+            parse_keybinding_keys(action, raw_keys, &ZELLIJ_NATIVE_KEYBINDING_PARSE_POLICY)?,
+        );
     }
 
     Ok(resolved)
@@ -1391,32 +1400,6 @@ fn validate_zellij_keybindings(
         }
     }
     Ok(())
-}
-
-fn is_supported_zellij_keybinding_action(action: &str) -> bool {
-    ZELLIJ_ACTIONS
-        .iter()
-        .any(|spec| spec.action.local_id == action)
-}
-
-fn supported_zellij_keybinding_actions() -> Vec<&'static str> {
-    ZELLIJ_ACTIONS
-        .iter()
-        .map(|spec| spec.action.local_id)
-        .collect()
-}
-
-fn is_supported_zellij_native_keybinding_action(action: &str) -> bool {
-    ZELLIJ_NATIVE_KEYBINDINGS
-        .iter()
-        .any(|spec| spec.action.local_id == action)
-}
-
-fn supported_zellij_native_keybinding_actions() -> Vec<&'static str> {
-    ZELLIJ_NATIVE_KEYBINDINGS
-        .iter()
-        .map(|spec| spec.action.local_id)
-        .collect()
 }
 
 fn read_yazelix_override_keybinds(
@@ -1469,22 +1452,16 @@ fn read_yazelix_override_keybinds(
     Ok(keybind_lines)
 }
 
-fn assigned_zellij_keybinding_keys(
-    keybindings: &BTreeMap<String, Vec<String>>,
-) -> BTreeSet<String> {
-    keybindings
-        .values()
-        .flatten()
-        .cloned()
-        .collect::<BTreeSet<_>>()
-}
-
 fn assigned_generated_zellij_binding_keys(
     zellij_keybindings: &BTreeMap<String, Vec<String>>,
     zellij_native_keybindings: &BTreeMap<String, Vec<String>>,
     custom_popups: &[CustomPopup],
 ) -> BTreeSet<String> {
-    let mut assigned = assigned_zellij_keybinding_keys(zellij_keybindings);
+    let mut assigned = zellij_keybindings
+        .values()
+        .flatten()
+        .cloned()
+        .collect::<BTreeSet<_>>();
     assigned.extend(
         custom_popups
             .iter()
@@ -1733,7 +1710,10 @@ fn generate_all_layouts(
         )
     })?;
     let layout_files = list_top_level_kdl_files(source_dir)?;
-    let expected_targets = expected_layout_targets_for_dir(source_dir, target_dir)?;
+    let expected_targets = layout_files
+        .iter()
+        .map(|source| Ok(target_dir.join(Path::new(required_file_name(source)?))))
+        .collect::<Result<Vec<_>, CoreError>>()?;
     remove_stale_layouts(target_dir, &expected_targets)?;
     let static_fragments = load_static_fragments(source_dir)?;
     let pane_orchestrator_plugin_url =
@@ -2167,16 +2147,6 @@ fn list_top_level_kdl_files(dir: &Path) -> Result<Vec<PathBuf>, CoreError> {
     Ok(files)
 }
 
-fn expected_layout_targets_for_dir(
-    source_layouts_dir: &Path,
-    target_dir: &Path,
-) -> Result<Vec<PathBuf>, CoreError> {
-    list_top_level_kdl_files(source_layouts_dir)?
-        .into_iter()
-        .map(|source| Ok(target_dir.join(Path::new(required_file_name(&source)?))))
-        .collect()
-}
-
 fn list_source_layout_files(source_layouts_dir: &Path) -> Result<Vec<PathBuf>, CoreError> {
     let mut paths = list_top_level_kdl_files(source_layouts_dir)?;
     let fragment_dir = source_layouts_dir.join("fragments");
@@ -2308,7 +2278,15 @@ fn sync_plugin_artifacts(
 ) -> Result<(), CoreError> {
     for artifact in plugin_artifacts.iter() {
         sync_plugin_artifact(artifact)?;
-        remove_runtime_plugins_by_prefix(artifact.prefix, Some(&artifact.runtime_path))?;
+        let plugin_dir = artifact
+            .runtime_path
+            .parent()
+            .expect("plugin artifact runtime paths include a plugin directory");
+        remove_runtime_plugins_by_prefix_in_dir(
+            plugin_dir,
+            artifact.prefix,
+            Some(&artifact.runtime_path),
+        )?;
         preserve_plugin_permissions(
             artifact.prefix,
             &artifact.tracked_path,
@@ -2329,17 +2307,6 @@ fn sync_plugin_artifact(artifact: &PluginArtifact) -> Result<(), CoreError> {
     }
 
     copy_file_atomic(&artifact.tracked_path, &artifact.runtime_path)
-}
-
-fn remove_runtime_plugins_by_prefix(
-    prefix: &str,
-    excluded_path: Option<&Path>,
-) -> Result<(), CoreError> {
-    let runtime_dir = state_dir_from_env()?
-        .join("configs")
-        .join("zellij")
-        .join("plugins");
-    remove_runtime_plugins_by_prefix_in_dir(&runtime_dir, prefix, excluded_path)
 }
 
 fn remove_runtime_plugins_by_prefix_in_dir(
@@ -3295,75 +3262,66 @@ printf '%s\n' '{"schema_version":2,"plugin_block":"CHILD_PLUGIN_BLOCK"}'
     // Zellij --default-cwd while new tabs remain home-scoped.
     #[test]
     fn startup_layouts_keep_initial_tab_distinct_from_home_scoped_new_tabs() {
-        for (name, content) in [
-            (
-                "yzx_side.kdl",
-                include_str!("../../../configs/zellij/layouts/yzx_side.kdl"),
-            ),
-            (
-                "yzx_side_closed.kdl",
-                include_str!("../../../configs/zellij/layouts/yzx_side_closed.kdl"),
-            ),
-        ] {
-            let mut default_template_line = None;
-            let mut initial_tab_line = None;
-            let mut new_tab_line = None;
-            let mut layout_depth = 0usize;
+        let name = "yzx_side.kdl";
+        let content = include_str!("../../../configs/zellij/layouts/yzx_side.kdl");
+        let mut default_template_line = None;
+        let mut initial_tab_line = None;
+        let mut new_tab_line = None;
+        let mut layout_depth = 0usize;
 
-            for (line_number, line) in content.lines().enumerate() {
-                let trimmed = line.trim();
+        for (line_number, line) in content.lines().enumerate() {
+            let trimmed = line.trim();
 
-                if layout_depth == 1 {
-                    match trimmed {
-                        "default_tab_template {" => {
-                            assert!(
-                                default_template_line.replace(line_number).is_none(),
-                                "{name} declares default_tab_template more than once"
-                            );
-                        }
-                        "tab" => {
-                            assert!(
-                                initial_tab_line.replace(line_number).is_none(),
-                                "{name} declares more than one explicit initial tab"
-                            );
-                        }
-                        r#"new_tab_template cwd="__YAZELIX_HOME_DIR__" {"# => {
-                            assert!(
-                                new_tab_line.replace(line_number).is_none(),
-                                "{name} declares home-scoped new_tab_template more than once"
-                            );
-                        }
-                        _ => {}
+            if layout_depth == 1 {
+                match trimmed {
+                    "default_tab_template {" => {
+                        assert!(
+                            default_template_line.replace(line_number).is_none(),
+                            "{name} declares default_tab_template more than once"
+                        );
                     }
+                    "tab" => {
+                        assert!(
+                            initial_tab_line.replace(line_number).is_none(),
+                            "{name} declares more than one explicit initial tab"
+                        );
+                    }
+                    r#"new_tab_template cwd="__YAZELIX_HOME_DIR__" {"# => {
+                        assert!(
+                            new_tab_line.replace(line_number).is_none(),
+                            "{name} declares home-scoped new_tab_template more than once"
+                        );
+                    }
+                    _ => {}
                 }
-
-                let closing_braces = trimmed.matches('}').count();
-                assert!(
-                    closing_braces <= layout_depth,
-                    "{name} closes more layout blocks than it opens before line {}",
-                    line_number + 1
-                );
-                layout_depth -= closing_braces;
-                layout_depth += trimmed.matches('{').count();
             }
-            assert_eq!(layout_depth, 0, "{name} leaves layout blocks unclosed");
 
-            let default_template_line = default_template_line
-                .unwrap_or_else(|| panic!("{name} missing default_tab_template"));
-            let initial_tab_line =
-                initial_tab_line.unwrap_or_else(|| panic!("{name} missing explicit initial tab"));
-            let new_tab_line = new_tab_line
-                .unwrap_or_else(|| panic!("{name} missing home-scoped new_tab_template"));
-
+            let closing_braces = trimmed.matches('}').count();
             assert!(
-                default_template_line < initial_tab_line,
-                "{name} initial tab must follow default_tab_template"
+                closing_braces <= layout_depth,
+                "{name} closes more layout blocks than it opens before line {}",
+                line_number + 1
             );
-            assert!(
-                initial_tab_line < new_tab_line,
-                "{name} initial tab must precede home-scoped new_tab_template"
-            );
+            layout_depth -= closing_braces;
+            layout_depth += trimmed.matches('{').count();
         }
+        assert_eq!(layout_depth, 0, "{name} leaves layout blocks unclosed");
+
+        let default_template_line =
+            default_template_line.unwrap_or_else(|| panic!("{name} missing default_tab_template"));
+        let initial_tab_line =
+            initial_tab_line.unwrap_or_else(|| panic!("{name} missing explicit initial tab"));
+        let new_tab_line =
+            new_tab_line.unwrap_or_else(|| panic!("{name} missing home-scoped new_tab_template"));
+
+        assert!(
+            default_template_line < initial_tab_line,
+            "{name} initial tab must follow default_tab_template"
+        );
+        assert!(
+            initial_tab_line < new_tab_line,
+            "{name} initial tab must precede home-scoped new_tab_template"
+        );
     }
 
     // Defends: generated layouts insert the child-owned zjstatus plugin block without inspecting its internals.

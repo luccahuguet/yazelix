@@ -4,7 +4,6 @@ schema_version = 1
 id = "sidebar"
 layout_file = "yzx_side.kdl"
 swap_layout_file = "yzx_side.swap.kdl"
-sidebar_enabled = true
 required_pane_names = ["sidebar"]
 required_launcher_placeholders = ["__YAZELIX_SIDEBAR_COMMAND__", "__YAZELIX_SIDEBAR_ARGS__"]
 swap_layouts = [
@@ -15,13 +14,3 @@ swap_layouts = [
   "single_closed_agent_open",
   "single_closed_agent_closed",
 ]
-
-[[auxiliary_layouts]]
-id = "sidebar_closed_startup"
-layout_file = "yzx_side_closed.kdl"
-purpose = "managed-sidebar startup layout with the sidebar initially collapsed"
-
-[[auxiliary_layouts]]
-id = "sidebar_closed_startup_swap"
-layout_file = "yzx_side_closed.swap.kdl"
-purpose = "swap layouts for the managed-sidebar startup layout with the sidebar initially collapsed"
