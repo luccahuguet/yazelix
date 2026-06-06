@@ -149,6 +149,42 @@ pub fn validate_nix_customization_api(repo_root: &Path) -> Result<ValidationRepo
     );
     require_json_bool(
         object,
+        "home_manager_yzxterm_package_override_option",
+        "Home Manager yzxterm_package must accept a terminal child package without replacing the whole Yazelix package",
+        &mut report.errors,
+    );
+    require_json_bool(
+        object,
+        "yzxterm_package_override_is_yzxterm_scoped",
+        "yzxterm package overrides must not affect non-yzxterm terminal variants",
+        &mut report.errors,
+    );
+    require_json_bool(
+        object,
+        "yzxterm_package_override_uses_package_metadata",
+        "yzxterm package overrides must derive the terminal command from child package metadata",
+        &mut report.errors,
+    );
+    require_json_bool(
+        object,
+        "yzxterm_package_override_rejects_missing_metadata",
+        "yzxterm package overrides must reject packages without yzxtermPackageMetadata",
+        &mut report.errors,
+    );
+    require_json_bool(
+        object,
+        "yzxterm_fast_child_metadata_marks_unchecked",
+        "yzxterm fast child package metadata must mark the package as fast and unchecked",
+        &mut report.errors,
+    );
+    require_json_bool(
+        object,
+        "yzxterm_release_child_metadata_marks_checked",
+        "yzxterm release child package metadata must mark the package as release and checked",
+        &mut report.errors,
+    );
+    require_json_bool(
+        object,
         "invalid_runtime_tool_rejected",
         "invalid runtimeToolSources host modes must fail during Nix evaluation",
         &mut report.errors,
@@ -316,6 +352,49 @@ fn build_nix_customization_api_expr(repo_root: &Path) -> String {
         "      }".to_string(),
         "    ];".to_string(),
         "  };".to_string(),
+        r#"  fakeYzxtermPackage = pkgs.runCommand "validator-yazelix-terminal-fast" {
+    passthru.yzxtermPackageMetadata = {
+      schema_version = 1;
+      terminal = "yazelix-terminal";
+      package_name = "validator-yazelix-terminal-fast";
+      package_profile = "fast";
+      checked_package = false;
+      metadata_path = "share/yazelix-terminal/package-metadata.json";
+      config_roots = {
+        full = "share/yazelix-terminal";
+        baseline = "share/yazelix-terminal/baseline";
+        shaders = "share/yazelix-terminal/profiles/shaders";
+      };
+      wrapper_commands = {
+        terminal = "bin/validator-yazelix-terminal";
+        desktop = "bin/validator-yazelix-terminal-desktop";
+        rio_compat = "bin/rio";
+      };
+    };
+  } ''
+    mkdir -p "$out/bin" "$out/share/yazelix-terminal"
+    touch "$out/bin/validator-yazelix-terminal-desktop"
+    chmod +x "$out/bin/validator-yazelix-terminal-desktop"
+    printf '{}' > "$out/share/yazelix-terminal/package-metadata.json"
+  '';
+  invalidYzxtermPackage = pkgs.runCommand "validator-yazelix-terminal-invalid" { } ''
+    mkdir -p "$out"
+  '';
+  hmYzxtermPackageOverride = flake.inputs.home-manager.lib.homeManagerConfiguration {
+    inherit pkgs;
+    modules = [
+      flake.homeManagerModules.yazelix
+      {
+        home.username = "validator";
+        home.homeDirectory = "/home/validator";
+        home.stateVersion = "24.11";
+        programs.yazelix.enable = true;
+        programs.yazelix.terminal = "yzxterm";
+        programs.yazelix.yzxterm_package = fakeYzxtermPackage;
+      }
+    ];
+  };"#
+            .to_string(),
         format!(
             "  steelBundledRegistry = import \"{}/packaging/runtime_tool_registry.nix\" {{",
             repo_root_literal
@@ -336,6 +415,26 @@ fn build_nix_customization_api_expr(repo_root: &Path) -> String {
         "    inherit pkgs;".to_string(),
         "    runtimeToolSources = { mise = \"bundled\"; tombi = \"bundled\"; };".to_string(),
         "  };".to_string(),
+        format!(
+            r#"  ghosttyRegistryWithInvalidYzxtermOverride = import "{}/packaging/runtime_tool_registry.nix" {{
+    inherit pkgs;
+    runtimeVariant = "ghostty";
+    yazelixTerminalPackage = invalidYzxtermPackage;
+  }};
+  yzxtermOverrideRegistry = import "{}/packaging/runtime_tool_registry.nix" {{
+    inherit pkgs;
+    runtimeVariant = "yzxterm";
+    yazelixTerminalPackage = fakeYzxtermPackage;
+  }};
+  invalidYzxtermPackageRegistry = builtins.tryEval (builtins.concatStringsSep "," ((import "{}/packaging/runtime_tool_registry.nix" {{
+    inherit pkgs;
+    runtimeVariant = "yzxterm";
+    yazelixTerminalPackage = invalidYzxtermPackage;
+  }}).exportedCommands));"#,
+            repo_root_literal, repo_root_literal, repo_root_literal
+        ),
+        "  yzxtermFastChildMetadata = flake.inputs.yazelixTerminal.packages.${system}.yazelix-terminal-fast.passthru.yzxtermPackageMetadata or {};".to_string(),
+        "  yzxtermReleaseChildMetadata = flake.inputs.yazelixTerminal.packages.${system}.yazelix-terminal.passthru.yzxtermPackageMetadata or {};".to_string(),
         "  steelAuthoringCommands = [ \"steel\" \"steel-language-server\" \"forge\" \"cargo-steel-lib\" \"repl-connect\" ];".to_string(),
         "  invalidRuntimeTool = builtins.tryEval ((flake.lib.${system}.mkYazelix { runtimeToolSources = { zellij = \"host\"; }; }).drvPath);".to_string(),
         "  unsupportedComponent = builtins.tryEval ((flake.lib.${system}.mkYazelix { components = { status_bar = false; }; }).drvPath);".to_string(),
@@ -436,6 +535,13 @@ fn build_nix_customization_api_expr(repo_root: &Path) -> String {
         "  home_manager_has_package = builtins.length hm.config.home.packages > 0;".to_string(),
         "  home_manager_terminal_option_selects_yzxterm = hmYzxterm.config.programs.yazelix.terminal == \"yzxterm\" && builtins.any (pkg: (pkg.meta.mainProgram or \"\") == \"yzx\") hmYzxterm.config.home.packages;".to_string(),
         "  home_manager_terminal_option_omits_fallback_terminal_packages = !(builtins.any (pkg: let name = pkg.name or \"\"; in pkgs.lib.hasPrefix \"ghostty-\" name || pkgs.lib.hasPrefix \"foot-\" name || pkgs.lib.hasPrefix \"kitty-\" name || pkgs.lib.hasPrefix \"rio-\" name || pkgs.lib.hasPrefix \"wezterm-\" name || pkgs.lib.hasPrefix \"ratty-\" name) hmYzxterm.config.home.packages);".to_string(),
+        r#"  home_manager_yzxterm_package_override_option = hmYzxtermPackageOverride.config.programs.yazelix.yzxterm_package.passthru.yzxtermPackageMetadata.package_name == "validator-yazelix-terminal-fast";
+  yzxterm_package_override_is_yzxterm_scoped = ghosttyRegistryWithInvalidYzxtermOverride.manifest.terminal.commands == [ "ghostty" ];
+  yzxterm_package_override_uses_package_metadata = yzxtermOverrideRegistry.terminalPackageMetadata.package_name == "validator-yazelix-terminal-fast" && builtins.elem "validator-yazelix-terminal-desktop" yzxtermOverrideRegistry.exportedCommands && yzxtermOverrideRegistry.terminalPackageRuntimeIdentity.package_profile == "yzxterm-fast";
+  yzxterm_package_override_rejects_missing_metadata = !invalidYzxtermPackageRegistry.success;
+  yzxterm_fast_child_metadata_marks_unchecked = (yzxtermFastChildMetadata.package_profile or "") == "fast" && (yzxtermFastChildMetadata.checked_package or true) == false;
+  yzxterm_release_child_metadata_marks_checked = (yzxtermReleaseChildMetadata.package_profile or "") == "release" && (yzxtermReleaseChildMetadata.checked_package or false) == true;"#
+            .to_string(),
         "  invalid_runtime_tool_rejected = !invalidRuntimeTool.success;".to_string(),
         "  unsupported_component_rejected = !unsupportedComponent.success;".to_string(),
         "  kgp_zellij_owns_cargo_deps = (kgpZellij.version or \"\") == \"0.44.3\" && (kgpZellij.cargoDeps.name or \"\") == \"zellij-0.44.3-vendor\";".to_string(),

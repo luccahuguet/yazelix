@@ -18,6 +18,55 @@ let
       pkgs."ghostty-bin"
     else
       pkgs.ghostty;
+  commandBasename = command: lib.last (lib.splitString "/" command);
+  requireYzxtermPackageMetadata =
+    package:
+    let
+      metadata = package.passthru.yzxtermPackageMetadata or null;
+    in
+    if !(builtins.isAttrs metadata) then
+      throw "Yazelix runtimeVariant yzxterm requires the terminal package to expose passthru.yzxtermPackageMetadata"
+    else if (metadata.schema_version or null) != 1 then
+      throw "Yazelix runtimeVariant yzxterm requires yzxtermPackageMetadata.schema_version = 1"
+    else if (metadata.terminal or null) != "yazelix-terminal" then
+      throw "Yazelix runtimeVariant yzxterm requires yzxtermPackageMetadata.terminal = \"yazelix-terminal\""
+    else if !(builtins.isString (metadata.package_name or null)) then
+      throw "Yazelix runtimeVariant yzxterm requires yzxtermPackageMetadata.package_name"
+    else if !(builtins.isString (metadata.package_profile or null)) then
+      throw "Yazelix runtimeVariant yzxterm requires yzxtermPackageMetadata.package_profile"
+    else if !(builtins.isBool (metadata.checked_package or null)) then
+      throw "Yazelix runtimeVariant yzxterm requires yzxtermPackageMetadata.checked_package"
+    else if !(builtins.isString (metadata.metadata_path or null)) then
+      throw "Yazelix runtimeVariant yzxterm requires yzxtermPackageMetadata.metadata_path"
+    else if !(builtins.isString (metadata.wrapper_commands.desktop or null)) then
+      throw "Yazelix runtimeVariant yzxterm requires yzxtermPackageMetadata.wrapper_commands.desktop"
+    else if !(builtins.isAttrs (metadata.config_roots or null)) then
+      throw "Yazelix runtimeVariant yzxterm requires yzxtermPackageMetadata.config_roots"
+    else
+      metadata;
+  yzxtermPackageMetadata =
+    if runtimeVariant == "yzxterm" then
+      if yazelixTerminalPackage != null then
+        requireYzxtermPackageMetadata yazelixTerminalPackage
+      else
+        throw "Yazelix runtimeVariant yzxterm requires the yazelix-terminal child package"
+    else
+      null;
+  yzxtermPackageRuntimeIdentity =
+    if yzxtermPackageMetadata == null then
+      { }
+    else
+      {
+        package_profile =
+          if yzxtermPackageMetadata.package_profile == "fast" then
+            "yzxterm-fast"
+          else
+            "yzxterm-${yzxtermPackageMetadata.package_profile}";
+        yzxterm_terminal_package = yzxtermPackageMetadata.package_name;
+        yzxterm_terminal_package_profile = yzxtermPackageMetadata.package_profile;
+        yzxterm_terminal_checked = yzxtermPackageMetadata.checked_package;
+        yzxterm_terminal_metadata_schema = yzxtermPackageMetadata.schema_version;
+      };
   terminalPackage =
     if runtimeVariant == "ghostty" then
       ghosttyPackage
@@ -38,7 +87,7 @@ let
       else
         throw "Yazelix runtimeVariant foot is only supported on Linux"
     else if runtimeVariant == "yzxterm" then
-      if yazelixTerminalPackage != null then
+      if yzxtermPackageMetadata != null then
         yazelixTerminalPackage
       else
         throw "Yazelix runtimeVariant yzxterm requires the yazelix-terminal child package"
@@ -58,7 +107,7 @@ let
     else if runtimeVariant == "foot" then
       [ "foot" ]
     else if runtimeVariant == "yzxterm" then
-      [ "yazelix-terminal-desktop" ]
+      [ (commandBasename yzxtermPackageMetadata.wrapper_commands.desktop) ]
     else
       [ ];
   linuxGraphicsWrappers =
@@ -369,5 +418,7 @@ else if disallowedOffNames != [ ] then
 else
   {
     inherit runtimeToolSourceModes tools runtimePackages exportedCommands manifest;
+    terminalPackageMetadata = yzxtermPackageMetadata;
+    terminalPackageRuntimeIdentity = yzxtermPackageRuntimeIdentity;
     manifestJson = builtins.toJSON manifest;
   }

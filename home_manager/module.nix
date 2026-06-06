@@ -89,13 +89,18 @@ let
       else
         throw "programs.yazelix.agent_usage_programs contains an unsupported agent usage program"
     ) cfg.agent_usage_programs;
-  packageBuilderArgs = {
-    inherit pkgs;
-    runtimeVariant = cfg.terminal;
-    runtimeToolSources = cfg.runtime_tool_sources;
-    components = cfg.components;
-    extraRuntimePackages = selectedAgentUsagePackages;
+  yzxtermPackageArgs = lib.optionalAttrs (cfg.yzxterm_package != null) {
+    yazelixTerminalPackage = cfg.yzxterm_package;
   };
+  packageBuilderArgs =
+    {
+      inherit pkgs;
+      runtimeVariant = cfg.terminal;
+      runtimeToolSources = cfg.runtime_tool_sources;
+      components = cfg.components;
+      extraRuntimePackages = selectedAgentUsagePackages;
+    }
+    // yzxtermPackageArgs;
   yazelixPackage =
     if cfg.package != null then
       cfg.package
@@ -610,6 +615,20 @@ in
       '';
     };
 
+    yzxterm_package = mkOption {
+      type = types.nullOr types.package;
+      default = null;
+      description = ''
+        Yazelix Terminal child package override.
+
+        Set this only for yzxterm dogfooding when you want to replace the
+        terminal child package without replacing the whole Yazelix package.
+        The package must expose passthru.yzxtermPackageMetadata. This option
+        applies only when programs.yazelix.terminal is "yzxterm" or
+        extra_terminal_launchers contains "yzxterm".
+      '';
+    };
+
     runtime_tool_sources = mkOption {
       type = types.attrsOf (types.enum runtimeToolSourceModes);
       default = { };
@@ -1031,6 +1050,17 @@ in
         {
           assertion = pkgs.stdenv.hostPlatform.isLinux || cfg.extra_terminal_launchers == [ ];
           message = "programs.yazelix.extra_terminal_launchers is only supported on Linux desktop environments";
+        }
+        {
+          assertion = cfg.yzxterm_package == null || cfg.package == null;
+          message = "programs.yazelix.yzxterm_package cannot be combined with programs.yazelix.package; use the narrow yzxterm_package override or a whole Yazelix package replacement, not both";
+        }
+        {
+          assertion =
+            cfg.yzxterm_package == null
+            || cfg.terminal == "yzxterm"
+            || builtins.elem "yzxterm" cfg.extra_terminal_launchers;
+          message = "programs.yazelix.yzxterm_package applies only when terminal = \"yzxterm\" or extra_terminal_launchers contains \"yzxterm\"";
         }
       ];
 

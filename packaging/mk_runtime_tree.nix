@@ -31,7 +31,7 @@ let
     {
       schema_version = 1;
       runtime_variant = runtimeVariant;
-    } // runtimeIdentity
+    } // runtimeIdentity // runtimeToolRegistry.terminalPackageRuntimeIdentity
   );
   runtimeBinDirs = map (pkg: "${pkg}/bin") runtimeDeps;
   escapedRuntimeBinDirs = pkgs.lib.escapeShellArgs runtimeBinDirs;

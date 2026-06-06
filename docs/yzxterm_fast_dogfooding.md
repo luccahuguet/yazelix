@@ -35,21 +35,22 @@ terminal package, but its unwrapped Rio build uses the Cargo `fast` profile and
 skips package checks. It is not release evidence.
 
 For Home Manager dogfooding, keep the yzxterm runtime settings but override only
-the package:
+the terminal child package. The example assumes a direct `yazelixTerminal` flake
+input pointing at `github:luccahuguet/yazelix-terminal`:
 
 ```nix
 {
   programs.yazelix = {
     terminal = "yzxterm";
     yzxterm_profile = "shaders";
-    package = inputs.yazelix.packages.${pkgs.stdenv.hostPlatform.system}.yzxterm_fast;
+    yzxterm_package = inputs.yazelixTerminal.packages.${pkgs.stdenv.hostPlatform.system}.yazelix-terminal-fast;
   };
 }
 ```
 
-Remove the `programs.yazelix.package` override before final release/runtime
-validation. The default Home Manager module path still uses the checked
-`yazelix-terminal` package.
+Remove the `programs.yazelix.yzxterm_package` override before final
+release/runtime validation. The default Home Manager module path still uses the
+checked `yazelix-terminal` package.
 
 ## Cheap Validation
 

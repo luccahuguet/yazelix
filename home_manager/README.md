@@ -117,16 +117,19 @@ When `manage_config = true`, Home Manager can also own user-defined popup surfac
 Set `keep_alive = true` for monitor TUIs whose process state should survive focused toggle hides. Leave it unset or set it to `false` for popups that should close on focused toggle
 
 Maintainers dogfooding local Yazelix Terminal changes can temporarily point the
-module at the fast yzxterm package while keeping `terminal = "yzxterm"`:
+module at the fast yzxterm child package while keeping `terminal = "yzxterm"`:
 
 ```nix
 {
-  programs.yazelix.package = inputs.yazelix.packages.${pkgs.stdenv.hostPlatform.system}.yzxterm_fast;
+  programs.yazelix = {
+    terminal = "yzxterm";
+    yzxterm_package = inputs.yazelixTerminal.packages.${pkgs.stdenv.hostPlatform.system}.yazelix-terminal-fast;
+  };
 }
 ```
 
-Remove this package override before final release validation; the normal module
-path uses the checked `yazelix-terminal` child package.
+Remove this child-package override before final release validation; the normal
+module path uses the checked `yazelix-terminal` child package
 
 To save space by using tools you already manage on your host, set runtime tool sources per tool:
 
