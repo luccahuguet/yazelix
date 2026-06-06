@@ -33,8 +33,8 @@ Examples:
 
 This convention is used consistently throughout:
 - Directory names: `configs/terminal_emulators/`, `nushell/scripts/core/`
-- File names: `settings_default.jsonc`, `shell_nu.nu`, `constants.nu`
-- Script names: All Nushell scripts use underscores
+- File names: `settings_default.jsonc`, `release_metadata.toml`, `yazelix_runtime_package.nix`
+- Script names: All Nushell scripts use underscores, such as `stack_prompt_guard.nu`
 
 When creating new files or directories, always use underscores to maintain consistency with the existing codebase.
 
@@ -227,7 +227,7 @@ Use this for every extraction, cleanup, refactor, validator, generated-fixture, 
 **Yazelix versioning:**
 - Follow the current project versioning scheme used in tags/releases
 - When referencing versions in documentation or migration notes, only use actual version numbers that exist
-- **Keep `YAZELIX_VERSION` in sync with git tags**: When creating a new git tag, update `nushell/scripts/utils/constants.nu` to match (e.g., `export const YAZELIX_VERSION = "v12.3"`). This version is displayed in the zjstatus bar.
+- **Keep `release_metadata.toml` in sync with git tags**: When creating a new git tag, update `release_metadata.toml` to match (for example, `version = "v17.4"`). The packaged runtime writes this into `runtime_identity.json`, and the zjstatus bar reads the version from that runtime identity.
 - **Release notes must name keybindings explicitly**: If a release changes, adds, removes, or meaningfully clarifies default keybindings, `CHANGELOG.md` and `docs/upgrade_notes.toml` must list the concrete key combinations and their actions. Do not hide keybinding changes behind vague wording like "keybinding polish" or "directional keybindings".
 - **Audit the full release range before cutting a tag**: Before writing release notes, inspect the complete commit range from the previous tag to the new tag candidate (for example `git log --oneline v17.2..HEAD` and a diff stat). `CHANGELOG.md` and `docs/upgrade_notes.toml` must summarize every user-visible feature, behavioral change, packaging/runtime change, migration or escape hatch, and important maintainer/CI/runtime-infrastructure change in that range. Do not rely on memory or only document the most recent commits.
 
