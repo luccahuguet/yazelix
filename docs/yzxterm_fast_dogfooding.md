@@ -34,6 +34,13 @@ package. That child package keeps the same wrapper/config shape as the regular
 terminal package, but its unwrapped Rio build uses the Cargo `fast` profile and
 skips package checks. It is not release evidence.
 
+The public cache publish workflow builds `runtime_yzxterm_fast` on
+`x86_64-linux`. After that workflow publishes a commit, Nix can substitute the
+fast runtime closure and the `yazelix-terminal-fast` child package from the
+Yazelix Cachix cache instead of rebuilding the WGPU terminal graph locally.
+Before a commit is published, or when using unpublished local child-repo
+changes, expect the fast runtime to build locally.
+
 For Home Manager dogfooding, keep the yzxterm runtime settings but override only
 the terminal child package. The example assumes a direct `yazelixTerminal` flake
 input pointing at `github:luccahuguet/yazelix-terminal`:
@@ -83,18 +90,35 @@ cases, `runtime_identity.json` carries `"package_profile": "yzxterm-fast"` and
 ## Further Speed Work
 
 The current fast path avoids the two observed Nix package costs by using the
-child fork's fast Cargo profile and skipping package checks. Further work should
-be evaluated separately:
+child fork's fast Cargo profile and skipping package checks. The second-stage
+main-repo improvement is binary-cache publication for `runtime_yzxterm_fast`.
+Cachix documents flake runtime closure publishing through `nix build --no-link
+--print-out-paths ... | cachix push`, which matches the existing Yazelix publish
+workflow. This keeps release validation unchanged while letting published fast
+runtime commits substitute locally. See <https://docs.cachix.org/pushing>.
+
+Use these paths according to the work being done:
+
+- Local terminal source iteration: use the child repo's Cargo/dev shell first;
+  do not start with a main-repo runtime build.
+- Main-repo yzxterm dogfooding: use `runtime_yzxterm_fast` and `yzxterm_fast`;
+  after CI publishes the commit, this should substitute from Cachix on
+  `x86_64-linux`.
+- Home Manager yzxterm dogfooding: set only `programs.yazelix.yzxterm_package`
+  to the child `yazelix-terminal-fast` package.
+- Release validation: use `runtime_yzxterm` and the default Home Manager path;
+  this consumes the checked release child package.
+
+Other build-speed approaches stay separate from the main runtime cache lane:
 
 - Linkers: `mold` is designed as a faster Unix linker for large final links, so
-  it is a plausible release-link experiment if the LTO link remains the dominant
-  cost. See <https://github.com/rui314/mold>.
+  it is a plausible child-package experiment if the terminal link remains the
+  dominant cost after cache publication. See <https://github.com/rui314/mold>.
 - Compiler caching: `sccache` supports Rust through `RUSTC_WRAPPER` and local or
-  remote caches. It may help repeated Cargo builds, but it does not remove the
-  final link step. See <https://github.com/mozilla/sccache>.
+  remote caches. It may help repeated Cargo builds, but wiring mutable compiler
+  cache state into main-repo Nix runtime packaging would add more ownership than
+  this bead needs. See <https://github.com/mozilla/sccache>.
 - Test execution: `cargo-nextest` can run Rust tests faster than `cargo test`
-  and may help move package checks into a faster explicit validation lane. See
+  and may help the child repo's explicit checked lane. It does not help the
+  existing fast package because that package already skips checks. See
   <https://nexte.st/>.
-- Binary cache: Cachix can push flake runtime closures so a published terminal
-  revision is substituted instead of rebuilt locally. See
-  <https://docs.cachix.org/pushing>.
