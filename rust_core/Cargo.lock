@@ -1439,7 +1439,7 @@ checksum = "cfe53a6657fd280eaa890a3bc59152892ffa3e30101319d168b781ed6529b049"
 [[package]]
 name = "yazelix-ratconfig"
 version = "0.1.0"
-source = "git+https://github.com/luccahuguet/yazelix-ratconfig?rev=e7e70ca23adf20f167ae07e7bc025e278ae0deda#e7e70ca23adf20f167ae07e7bc025e278ae0deda"
+source = "git+https://github.com/luccahuguet/yazelix-ratconfig?rev=180994407b3c70d9c6cb6df5b03356ae59ecafd8#180994407b3c70d9c6cb6df5b03356ae59ecafd8"
 dependencies = [
  "jsonc-parser",
  "ratatui",
@@ -1475,13 +1475,14 @@ dependencies = [
 [[package]]
 name = "yazelix_cursors"
 version = "0.1.0"
-source = "git+https://github.com/luccahuguet/yazelix-cursors?rev=aa18810939bbc072f483ade8a0e91920664ff72b#aa18810939bbc072f483ade8a0e91920664ff72b"
+source = "git+https://github.com/luccahuguet/yazelix-cursors?rev=ac498555b8560eb6c838cbab35d9456440a29b68#ac498555b8560eb6c838cbab35d9456440a29b68"
 dependencies = [
  "jsonc-parser",
  "serde",
  "serde_json",
  "thiserror 2.0.18",
  "toml",
+ "yazelix-ratconfig",
 ]
 
 [[package]]
