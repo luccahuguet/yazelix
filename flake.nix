@@ -291,6 +291,18 @@
             pkgs.nushell
           ];
         };
+      systemOutputs =
+        system:
+        let
+          pkgs = mkPkgs system;
+        in
+        import ./packaging/flake_outputs.nix {
+          inherit agentUsagePackages beadsRustPackage defaultRuntimeIdentity kgpPackages lib;
+          inherit mkYazelix pkgs runtimePackage runtimePackageWith system yazelixPackage;
+          inherit yazelixCursors yazelixScreen yazelixTerminal yazelixYaziAssets;
+          inherit yazelixZellijBar yazelixZellijPaneOrchestrator yazelixZellijPopup;
+          terminalMetadata = terminalMetadataFor pkgs;
+        };
     in
     {
       lib = forAllSystems (system: {
@@ -300,143 +312,9 @@
       overlays.default = defaultOverlay;
       overlays.yazelix = defaultOverlay;
 
-      packages = forAllSystems (
-        system:
-        let
-          pkgs = mkPkgs system;
-          terminalMetadata = terminalMetadataFor pkgs;
-          defaultRuntimeVariant = terminalMetadata.default;
-          defaultRuntimePackages = agentUsagePackages system;
-          agentUsageRuntimePackages = agentUsagePackages system;
-          terminalPackageEntries =
-            terminal:
-            [
-              {
-                name = terminalMetadata.runtimeOutput terminal;
-                value = runtimePackage system pkgs terminal defaultRuntimePackages;
-              }
-              {
-                name = terminalMetadata.packageOutput terminal;
-                value = yazelixPackage system pkgs terminal defaultRuntimePackages;
-              }
-            ];
-          terminalPackages = lib.listToAttrs (
-            lib.concatMap terminalPackageEntries terminalMetadata.supported
-          );
-          runtime_default = builtins.getAttr (terminalMetadata.runtimeOutput defaultRuntimeVariant) terminalPackages;
-          yzxtermFastRuntimeIdentity = defaultRuntimeIdentity // {
-            package_profile = "yzxterm-fast";
-            yzxterm_terminal_package = "yazelix-terminal-fast";
-          };
-          yzxtermFastTerminalPackage = yazelixTerminal.packages.${system}.yazelix-terminal-fast;
-          runtime_yzxterm_fast = runtimePackageWith system pkgs "yzxterm" defaultRuntimePackages {
-            name = "yazelix-runtime-yzxterm-fast";
-            runtimeIdentity = yzxtermFastRuntimeIdentity;
-            yazelixTerminalPackage = yzxtermFastTerminalPackage;
-          };
-          runtime_agent_tools = runtimePackage system pkgs defaultRuntimeVariant agentUsageRuntimePackages;
-          graphicsPkgs = kgpPackages.graphicsPkgs pkgs;
-          yazelix_default = builtins.getAttr (terminalMetadata.packageOutput defaultRuntimeVariant) terminalPackages;
-          yzxterm_fast = mkYazelix system {
-            pkgs = pkgs;
-            name = "yazelix-yzxterm-fast";
-            runtimeName = "yazelix-runtime-yzxterm-fast";
-            runtimeVariant = "yzxterm";
-            runtimeIdentity = yzxtermFastRuntimeIdentity;
-            extraRuntimePackages = defaultRuntimePackages;
-            skipStableWrapperRedirect = true;
-            yazelixTerminalPackage = yzxtermFastTerminalPackage;
-          };
-          yazelix_agent_tools = yazelixPackage system pkgs defaultRuntimeVariant agentUsageRuntimePackages;
-          yazelix_zellij_bar = yazelixZellijBar.packages.${system}.yazelix_zellij_bar;
-          yazelix_screen = yazelixScreen.packages.${system}.yzs;
-          yazelix_cursors = yazelixCursors.packages.${system}.yazelix_cursors;
-          yazelix_helix = kgpPackages.helixPackage system;
-          yazelix_zellij_pane_orchestrator =
-            yazelixZellijPaneOrchestrator.packages.${system}.yazelix_zellij_pane_orchestrator;
-          yazelix_zellij_popup = yazelixZellijPopup.packages.${system}.yzpp;
-          yazelix_yazi_assets = yazelixYaziAssets.packages.${system}.yazelix_yazi_assets;
-          beads_rust = beadsRustPackage system pkgs;
-        in
-        ({
-          br = beads_rust;
-          beads_rust = beads_rust;
-          default = yazelix_default;
-          runtime = runtime_default;
-          runtime_agent_tools = runtime_agent_tools;
-          runtime_yzxterm_fast = runtime_yzxterm_fast;
-          yazelix = yazelix_default;
-          yazelix_agent_tools = yazelix_agent_tools;
-          yazelix_zellij_bar = yazelix_zellij_bar;
-          yazelix_cursors = yazelix_cursors;
-          yazelix_screen = yazelix_screen;
-          yazelix_helix = yazelix_helix;
-          yazelix_kgp_yazi = graphicsPkgs.yazi-unwrapped;
-          yazelix_kgp_zellij = graphicsPkgs.zellij;
-          yzxterm_fast = yzxterm_fast;
-          yazelix_yazi_assets = yazelix_yazi_assets;
-          yazelix_zellij_pane_orchestrator = yazelix_zellij_pane_orchestrator;
-          yazelix_zellij_popup = yazelix_zellij_popup;
-          yzs = yazelix_screen;
-        } // terminalPackages)
-      );
+      packages = forAllSystems (system: (systemOutputs system).packages);
 
-      apps = forAllSystems (
-        system:
-        let
-          pkgs = mkPkgs system;
-          terminalMetadata = terminalMetadataFor pkgs;
-          terminalApps = lib.listToAttrs (
-            map (
-              terminal:
-              let
-                packageOutput = terminalMetadata.packageOutput terminal;
-              in
-              {
-                name = packageOutput;
-                value = {
-                  type = "app";
-                  program = "${self.packages.${system}.${packageOutput}}/bin/yzx";
-                };
-              }
-            ) terminalMetadata.supported
-          );
-        in
-        {
-          default = {
-            type = "app";
-            program = "${self.packages.${system}.yazelix}/bin/yzx";
-          };
-          yazelix = {
-            type = "app";
-            program = "${self.packages.${system}.yazelix}/bin/yzx";
-          };
-          yzxterm_fast = {
-            type = "app";
-            program = "${self.packages.${system}.yzxterm_fast}/bin/yzx";
-          };
-          yazelix_agent_tools = {
-            type = "app";
-            program = "${self.packages.${system}.yazelix_agent_tools}/bin/yzx";
-          };
-          yazelix_screen = {
-            type = "app";
-            program = "${self.packages.${system}.yazelix_screen}/bin/yzs";
-          };
-          yzs = {
-            type = "app";
-            program = "${self.packages.${system}.yazelix_screen}/bin/yzs";
-          };
-          yazelix_cursors = {
-            type = "app";
-            program = "${self.packages.${system}.yazelix_cursors}/bin/yzc";
-          };
-          yzc = {
-            type = "app";
-            program = "${self.packages.${system}.yazelix_cursors}/bin/yzc";
-          };
-        } // terminalApps
-      );
+      apps = forAllSystems (system: (systemOutputs system).apps);
 
       devShells = forAllSystems (
         system:
