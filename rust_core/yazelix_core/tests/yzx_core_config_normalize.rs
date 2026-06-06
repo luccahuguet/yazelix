@@ -1290,6 +1290,7 @@ color = "#ffffff"
     assert!(rio_config.contains("content = \"{{ TITLE || RELATIVE_PATH }}\""));
     assert!(rio_config.contains("opacity = 0.90"));
     assert!(rio_config.contains("opacity-cells = true"));
+    assert!(rio_config.contains("[effects]\ntrail-cursor = true"));
     assert!(rio_config.contains("mode = \"Plain\""));
 }
 

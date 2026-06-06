@@ -272,6 +272,9 @@ fn generate_rio_config(transparency: &str) -> String {
 
 confirm-before-quit = false
 
+[effects]
+trail-cursor = true
+
 [title]
 placeholder = "{}"
 content = "{{{{ TITLE || RELATIVE_PATH }}}}"
