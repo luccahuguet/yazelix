@@ -1,6 +1,12 @@
 {
   pkgs,
-  baseZellij ? if pkgs.zellij ? unwrapped then pkgs.zellij.unwrapped else pkgs.zellij,
+  baseZellij ?
+    if pkgs.zellij ? unwrapped then
+      pkgs.zellij.unwrapped
+    else if builtins.hasAttr "zellij-unwrapped" pkgs then
+      pkgs."zellij-unwrapped"
+    else
+      pkgs.zellij,
   src,
   version ? "0.44.3",
   cargoHash ? "sha256-966FpfSsF9I10SrYe3+YNsfM2kLLv+gd0/Aw8vLp4Lk=",
