@@ -84,6 +84,29 @@ Inside full Yazelix, those prerequisites are currently provided by generated Zel
 
 The current extraction gate is blocked by adapter thickness, not by the name or repository shape.
 
+2026-06-06 decision refresh: public extraction remains rejected for now. The
+current internal request model is `workspace_session.rs`, which owns pure
+payload shaping and response parsing for workspace retargeting, active-tab
+workspace roots, sidebar identity, managed editor kind resolution, and terminal
+open requests. Existing Yazelix flows already consume that seam from
+`workspace_commands.rs`, `workspace_commands/popup.rs`,
+`workspace_commands/yazi_sidebar.rs`, `zellij_commands/pipe.rs`, and
+`zellij_commands/workspace.rs`.
+
+Current direct adapter thickness measured in this pass:
+
+- `workspace_session.rs`: `340` lines
+- `workspace_commands.rs`: `278` lines
+- `workspace_asset_contract.rs`: `504` lines
+- `zellij_commands/workspace.rs`: `1005` lines
+- `pane_orchestrator_client.rs`: `86` lines
+- Direct total: `2213` lines before tests, status-cache callers, and contract docs
+
+That shape is not a child-repo extraction candidate. The reusable request seam is
+small, while the behavior users invoke still depends on Yazelix runtime paths,
+Yazi `emit-to`, editor environment construction, generated Zellij config,
+popup cwd policy, status/cache behavior, and pane-orchestrator aliases.
+
 The smallest reusable pieces are already visible:
 
 - `workspace_session.rs` owns typed parsing for active-tab workspace roots, retarget responses, sidebar identity, and pure workspace request payload shaping

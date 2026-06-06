@@ -66,7 +66,7 @@ Second-pass non-candidates:
 - Do not create another status-bar extraction bead. Runnable non-workspace widgets, provider probing/cache behavior, CPU/RAM, cursor display, and runtime plugin-block rendering already moved through the closed SP9/status beads; the remaining main adapter is workspace/session path selection and status-bus cache integration.
 - Do not move the full Helix managed config surface to `yazelix-helix`. Only the default Steel plugin-pack asset boundary is worth evaluating; managed paths, user plugin selection, and bridge/session behavior remain Yazelix product policy.
 - Do not move the full config UI adapter to `yazelix-ratconfig`. The child owns generic UI, patch, and migration primitives; Yazelix owns settings semantics, Home Manager ownership, validation, action metadata, and runtime apply behavior.
-- Do not create a public workspace child repo until `zellij_materialization`, launch ownership, and workspace request boundaries are thinner than their current adapters.
+- Do not create a public workspace child repo until `zellij_materialization`, launch ownership, and workspace request boundaries are thinner than their current adapters. `yazelix-audit-deletion-extraction-candidates-i0xoh.4` resolved the current state as internal-boundary-only: `workspace_session.rs` is the live request seam, while the direct workspace adapters still total about `2213` lines before tests/status/docs.
 
 ## 2026-06-06 Third Pass
 

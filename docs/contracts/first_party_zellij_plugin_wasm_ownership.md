@@ -66,7 +66,7 @@ Out of scope:
 
 #### FPW-005
 - Type: invariant
-- Status: live, transitional validation
+- Status: live
 - Owner: child release transaction
 - Statement: First-party Zellij plugin child packages consumed by Yazelix must
   instantiate on `aarch64-darwin` with `cargoBuildHook` disabled for the
