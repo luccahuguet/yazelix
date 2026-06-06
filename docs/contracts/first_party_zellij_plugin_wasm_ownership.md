@@ -69,16 +69,15 @@ Out of scope:
 - Status: live
 - Owner: child release transaction
 - Statement: First-party Zellij plugin child packages consumed by Yazelix must
-  instantiate on `aarch64-darwin` with `cargoBuildHook` disabled for the
-  manual wasm build and an explicit wasm-capable Rust toolchain exported before
-  `runHook preBuild`: exported `CARGO`, `RUSTC`, and `PATH`, a
-  `rustc --print target-libdir --target wasm32-wasip1` preflight before
-  preBuild hooks can run, and a later `--target wasm32-wasip1` Cargo build
-- Verification: validator `yzx_repo_validator validate-child-release-transaction`.
-  The current main-repo validator inspects child derivation markers as a
-  temporary regression guard. The target validation surface is child-declared
-  package metadata or child-owned checks that let main validate the wasm
-  contract without hardcoding child build recipe strings
+  expose `passthru.zellijPluginWasmPackageContract` on `aarch64-darwin`.
+  The contract declares the stable wasm path, `wasm32-wasip1` target, disabled
+  Cargo build hook, explicit wasm-capable Cargo/Rustc/PATH setup before
+  preBuild, wasm target-libdir preflight before preBuild, Cargo build after
+  preBuild, and non-empty wasm install check
+- Verification: validator `yzx_repo_validator validate-child-release-transaction`
+  evaluates the child package passthru contract and rejects missing, stale, or
+  extra metadata fields. The main repo must not inspect child buildPhase strings
+  to prove this package-private hardening
 
 ## Target Architecture
 

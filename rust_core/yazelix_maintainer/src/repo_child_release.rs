@@ -28,17 +28,38 @@ struct FirstPartyCargoGitDependency {
 struct ZellijPluginWasmPackageContract {
     package_attr: &'static str,
     system: &'static str,
+    plugin_name: &'static str,
+    wasm_path: &'static str,
 }
 
 const ZELLIJ_PLUGIN_WASM_PACKAGE_CONTRACTS: &[ZellijPluginWasmPackageContract] = &[
     ZellijPluginWasmPackageContract {
         package_attr: "yazelix_zellij_pane_orchestrator",
         system: "aarch64-darwin",
+        plugin_name: "yazelix-zellij-pane-orchestrator",
+        wasm_path: "share/yazelix_zellij_pane_orchestrator/yazelix_pane_orchestrator.wasm",
     },
     ZellijPluginWasmPackageContract {
         package_attr: "yazelix_zellij_popup",
         system: "aarch64-darwin",
+        plugin_name: "yazelix-zellij-popup",
+        wasm_path: "share/yazelix_zellij_popup/yzpp.wasm",
     },
+];
+
+const ZELLIJ_PLUGIN_WASM_METADATA_FIELDS: &[&str] = &[
+    "schemaVersion",
+    "pluginName",
+    "packageAttr",
+    "wasmPath",
+    "wasmTarget",
+    "cargoBuildHookDisabled",
+    "explicitCargoFromWasmToolchain",
+    "explicitRustcFromWasmToolchain",
+    "toolchainPrependedToPath",
+    "wasmTargetLibdirCheckedBeforePreBuild",
+    "cargoBuildRunsAfterPreBuild",
+    "installCheckVerifiesWasm",
 ];
 
 pub fn validate_child_release_transaction(repo_root: &Path) -> Result<ValidationReport, String> {
@@ -379,257 +400,186 @@ fn validate_zellij_plugin_wasm_package_contracts(repo_root: &Path) -> Result<Vec
     let mut errors = Vec::new();
     for contract in ZELLIJ_PLUGIN_WASM_PACKAGE_CONTRACTS {
         let metadata =
-            package_derivation_metadata(repo_root, contract.system, contract.package_attr)?;
-        errors.extend(validate_zellij_plugin_wasm_derivation_with(
+            package_passthru_metadata(repo_root, contract.system, contract.package_attr)?;
+        errors.extend(validate_zellij_plugin_wasm_package_contract_with(
             contract, &metadata,
         )?);
     }
     Ok(errors)
 }
 
-fn package_derivation_metadata(
+fn package_passthru_metadata(
     repo_root: &Path,
     system: &str,
     package_attr: &str,
 ) -> Result<String, String> {
-    let flake_attr = format!(".#packages.{system}.{package_attr}.drvPath");
+    let flake_attr = format!(".#packages.{system}.{package_attr}.passthru");
     let eval = Command::new("nix")
         .current_dir(repo_root)
-        .args(["eval", "--raw", &flake_attr, "--accept-flake-config"])
+        .args(["eval", "--json", &flake_attr, "--accept-flake-config"])
         .output()
-        .map_err(|error| format!("Failed to run `nix eval --raw {flake_attr}`: {error}"))?;
+        .map_err(|error| format!("Failed to run `nix eval --json {flake_attr}`: {error}"))?;
     if !eval.status.success() {
         return Err(format!(
-            "Failed to instantiate child package derivation `{flake_attr}`\n{}",
+            "Failed to evaluate child package passthru metadata `{flake_attr}`\n{}",
             String::from_utf8_lossy(&eval.stderr).trim()
         ));
     }
 
-    let drv_path = String::from_utf8_lossy(&eval.stdout).trim().to_string();
-    if drv_path.is_empty() {
-        return Err(format!(
-            "`nix eval --raw {flake_attr}` returned an empty drv path"
-        ));
-    }
-
-    let show = Command::new("nix")
-        .args(["derivation", "show", &drv_path])
-        .output()
-        .map_err(|error| format!("Failed to run `nix derivation show {drv_path}`: {error}"))?;
-    if !show.status.success() {
-        return Err(format!(
-            "Failed to inspect child package derivation `{drv_path}`\n{}",
-            String::from_utf8_lossy(&show.stderr).trim()
-        ));
-    }
-
-    String::from_utf8(show.stdout)
-        .map_err(|error| format!("Invalid UTF-8 from `nix derivation show {drv_path}`: {error}"))
+    String::from_utf8(eval.stdout)
+        .map_err(|error| format!("Invalid UTF-8 from `nix eval --json {flake_attr}`: {error}"))
 }
 
-fn validate_zellij_plugin_wasm_derivation_with(
+fn validate_zellij_plugin_wasm_package_contract_with(
     contract: &ZellijPluginWasmPackageContract,
-    raw_metadata: &str,
+    raw_passthru: &str,
 ) -> Result<Vec<String>, String> {
-    let env = single_derivation_env(raw_metadata)?;
+    let parsed: JsonValue = serde_json::from_str(raw_passthru)
+        .map_err(|error| format!("Invalid package passthru JSON: {error}"))?;
+    let passthru = parsed
+        .as_object()
+        .ok_or_else(|| "Package passthru metadata must be a JSON object".to_string())?;
     let mut errors = Vec::new();
-
-    require_derivation_system(&mut errors, contract.package_attr, contract.system, &env);
-    require_derivation_env_value(
-        &mut errors,
-        contract.package_attr,
-        contract.system,
-        &env,
-        "dontCargoBuild",
-        "1",
-        "disable cargoBuildHook for the manual wasm package build",
-    );
-
-    let Some(build_phase) = env.get("buildPhase") else {
+    require_passthru_wasm_path(&mut errors, contract, passthru);
+    let Some(metadata) = passthru
+        .get("zellijPluginWasmPackageContract")
+        .and_then(JsonValue::as_object)
+    else {
         errors.push(format!(
-            "`{}` {} derivation metadata has no buildPhase.",
+            "`{}` {} package passthru must expose `zellijPluginWasmPackageContract`.",
             contract.package_attr, contract.system
         ));
         return Ok(errors);
     };
 
-    require_build_phase_marker(
+    require_exact_zellij_plugin_wasm_metadata_fields(&mut errors, contract, metadata);
+    require_contract_number(&mut errors, contract, metadata, "schemaVersion", 1);
+    require_contract_string(
         &mut errors,
         contract,
-        build_phase,
-        "export CARGO=",
-        "export explicit CARGO from the combined wasm-capable Rust toolchain",
+        metadata,
+        "pluginName",
+        contract.plugin_name,
     );
-    require_build_phase_marker(
+    require_contract_string(
         &mut errors,
         contract,
-        build_phase,
-        "export PATH=",
-        "put the combined wasm-capable Rust toolchain on PATH",
+        metadata,
+        "packageAttr",
+        contract.package_attr,
     );
-    require_build_phase_marker(
+    require_contract_string(
         &mut errors,
         contract,
-        build_phase,
-        "export RUSTC=",
-        "export explicit RUSTC from the combined wasm-capable Rust toolchain",
+        metadata,
+        "wasmPath",
+        contract.wasm_path,
     );
-    require_build_phase_marker(
+    require_contract_string(
         &mut errors,
         contract,
-        build_phase,
-        "--print target-libdir --target wasm32-wasip1",
-        "check that the selected Rust toolchain has wasm32-wasip1 rust-std",
+        metadata,
+        "wasmTarget",
+        "wasm32-wasip1",
     );
-    require_build_phase_marker(
-        &mut errors,
-        contract,
-        build_phase,
-        "\"$CARGO\" build",
-        "invoke Cargo through the explicit CARGO variable",
-    );
-    require_build_phase_marker(
-        &mut errors,
-        contract,
-        build_phase,
-        "--target wasm32-wasip1",
-        "build the plugin for wasm32-wasip1",
-    );
-    require_build_phase_order(
-        &mut errors,
-        contract,
-        build_phase,
-        "export CARGO=",
-        "runHook preBuild",
-        "export the wasm-capable Cargo before preBuild hooks can run",
-    );
-    require_build_phase_order(
-        &mut errors,
-        contract,
-        build_phase,
-        "export RUSTC=",
-        "runHook preBuild",
-        "export the wasm-capable Rust compiler before preBuild hooks can run",
-    );
-    require_build_phase_order(
-        &mut errors,
-        contract,
-        build_phase,
-        "--print target-libdir --target wasm32-wasip1",
-        "runHook preBuild",
-        "verify wasm32-wasip1 rust-std before preBuild hooks can run",
-    );
-    require_build_phase_order(
-        &mut errors,
-        contract,
-        build_phase,
-        "runHook preBuild",
-        "\"$CARGO\" build",
-        "run the manual wasm build after preBuild hooks",
-    );
+    for key in [
+        "cargoBuildHookDisabled",
+        "explicitCargoFromWasmToolchain",
+        "explicitRustcFromWasmToolchain",
+        "toolchainPrependedToPath",
+        "wasmTargetLibdirCheckedBeforePreBuild",
+        "cargoBuildRunsAfterPreBuild",
+        "installCheckVerifiesWasm",
+    ] {
+        require_contract_bool(&mut errors, contract, metadata, key, true);
+    }
 
     Ok(errors)
 }
 
-fn single_derivation_env(raw_metadata: &str) -> Result<HashMap<String, String>, String> {
-    let parsed: JsonValue = serde_json::from_str(raw_metadata)
-        .map_err(|error| format!("Invalid JSON from `nix derivation show`: {error}"))?;
-    let derivations = parsed
-        .get("derivations")
-        .and_then(JsonValue::as_object)
-        .ok_or_else(|| {
-            "`nix derivation show` output is missing object `derivations`".to_string()
-        })?;
-    if derivations.len() != 1 {
-        return Err(format!(
-            "`nix derivation show` returned {} derivations; expected exactly one",
-            derivations.len()
-        ));
-    }
-    let derivation = derivations
-        .values()
-        .next()
-        .ok_or_else(|| "`nix derivation show` returned no derivation entries".to_string())?;
-    let env = derivation
-        .get("env")
-        .and_then(JsonValue::as_object)
-        .ok_or_else(|| {
-            "`nix derivation show` derivation entry is missing object `env`".to_string()
-        })?;
-
-    Ok(env
-        .iter()
-        .filter_map(|(key, value)| value.as_str().map(|value| (key.clone(), value.to_string())))
-        .collect())
-}
-
-fn require_derivation_system(
+fn require_passthru_wasm_path(
     errors: &mut Vec<String>,
-    package_attr: &str,
-    expected_system: &str,
-    env: &HashMap<String, String>,
+    contract: &ZellijPluginWasmPackageContract,
+    passthru: &serde_json::Map<String, JsonValue>,
 ) {
-    let system = env.get("system").map(String::as_str);
-    if system != Some(expected_system) {
+    let actual = passthru.get("wasmPath").and_then(JsonValue::as_str);
+    if actual != Some(contract.wasm_path) {
         errors.push(format!(
-            "`{package_attr}` derivation metadata has system {:?}; expected `{expected_system}`.",
-            system
+            "`{}` {} package passthru must expose wasmPath `{}`; found {:?}.",
+            contract.package_attr, contract.system, contract.wasm_path, actual
         ));
     }
 }
 
-fn require_derivation_env_value(
+fn require_exact_zellij_plugin_wasm_metadata_fields(
     errors: &mut Vec<String>,
-    package_attr: &str,
-    system: &str,
-    env: &HashMap<String, String>,
+    contract: &ZellijPluginWasmPackageContract,
+    metadata: &serde_json::Map<String, JsonValue>,
+) {
+    for required in ZELLIJ_PLUGIN_WASM_METADATA_FIELDS {
+        if !metadata.contains_key(*required) {
+            errors.push(format!(
+                "`{}` {} zellijPluginWasmPackageContract is missing required field `{}`.",
+                contract.package_attr, contract.system, required
+            ));
+        }
+    }
+    for actual in metadata.keys() {
+        if !ZELLIJ_PLUGIN_WASM_METADATA_FIELDS.contains(&actual.as_str()) {
+            errors.push(format!(
+                "`{}` {} zellijPluginWasmPackageContract has unsupported field `{}`.",
+                contract.package_attr, contract.system, actual
+            ));
+        }
+    }
+}
+
+fn require_contract_number(
+    errors: &mut Vec<String>,
+    contract: &ZellijPluginWasmPackageContract,
+    metadata: &serde_json::Map<String, JsonValue>,
+    key: &str,
+    expected: u64,
+) {
+    let actual = metadata.get(key).and_then(JsonValue::as_u64);
+    if actual != Some(expected) {
+        errors.push(format!(
+            "`{}` {} zellijPluginWasmPackageContract field `{}` must be {}; found {:?}.",
+            contract.package_attr, contract.system, key, expected, actual
+        ));
+    }
+}
+
+fn require_contract_string(
+    errors: &mut Vec<String>,
+    contract: &ZellijPluginWasmPackageContract,
+    metadata: &serde_json::Map<String, JsonValue>,
     key: &str,
     expected: &str,
-    description: &str,
 ) {
-    let actual = env.get(key).map(String::as_str);
-    if actual == Some(expected) {
-        return;
+    let actual = metadata.get(key).and_then(JsonValue::as_str);
+    if actual != Some(expected) {
+        errors.push(format!(
+            "`{}` {} zellijPluginWasmPackageContract field `{}` must be `{}`; found {:?}.",
+            contract.package_attr, contract.system, key, expected, actual
+        ));
     }
-    errors.push(format!(
-        "`{package_attr}` {system} derivation metadata must {description}. Expected env `{key}` = `{expected}`, found {:?}.",
-        actual
-    ));
 }
 
-fn require_build_phase_marker(
+fn require_contract_bool(
     errors: &mut Vec<String>,
     contract: &ZellijPluginWasmPackageContract,
-    build_phase: &str,
-    marker: &str,
-    description: &str,
+    metadata: &serde_json::Map<String, JsonValue>,
+    key: &str,
+    expected: bool,
 ) {
-    if build_phase.contains(marker) {
-        return;
+    let actual = metadata.get(key).and_then(JsonValue::as_bool);
+    if actual != Some(expected) {
+        errors.push(format!(
+            "`{}` {} zellijPluginWasmPackageContract field `{}` must be {}; found {:?}.",
+            contract.package_attr, contract.system, key, expected, actual
+        ));
     }
-    errors.push(format!(
-        "`{}` {} buildPhase must {}. Missing marker `{}`.",
-        contract.package_attr, contract.system, description, marker
-    ));
-}
-
-fn require_build_phase_order(
-    errors: &mut Vec<String>,
-    contract: &ZellijPluginWasmPackageContract,
-    build_phase: &str,
-    before: &str,
-    after: &str,
-    description: &str,
-) {
-    let before_index = build_phase.find(before);
-    let after_index = build_phase.find(after);
-    if matches!((before_index, after_index), (Some(left), Some(right)) if left < right) {
-        return;
-    }
-    errors.push(format!(
-        "`{}` {} buildPhase must {}. Expected marker `{}` before `{}`.",
-        contract.package_attr, contract.system, description, before, after
-    ));
 }
 
 // Test lane: maintainer
@@ -739,153 +689,137 @@ mod tests {
         ));
     }
 
-    // Regression: first-party Zellij plugin child packages must keep the explicit wasm-capable toolchain hardening that fixed macOS issue 604.
+    // Regression: first-party Zellij plugin child packages must publish the child-owned wasm package contract that replaced main-side buildPhase inspection.
     #[test]
-    fn zellij_plugin_wasm_contract_accepts_hardened_build_phase() {
-        let contract = ZellijPluginWasmPackageContract {
-            package_attr: "yazelix_zellij_popup",
-            system: "aarch64-darwin",
-        };
-        let metadata = derivation_metadata_json(
-            "aarch64-darwin",
-            r#"
-            export CARGO="/nix/store/toolchain/bin/cargo"
-            export RUSTC="/nix/store/toolchain/bin/rustc"
-            export PATH="/nix/store/toolchain/bin:$PATH"
-            wasm_target_libdir="$("$RUSTC" --print target-libdir --target wasm32-wasip1)"
-            runHook preBuild
-            "$CARGO" build --profile release --target wasm32-wasip1
-            runHook postBuild
-            "#,
-            &[("dontCargoBuild", "1")],
-        );
+    fn zellij_plugin_wasm_contract_accepts_declared_package_metadata() {
+        let contract = popup_contract();
+        let metadata = zellij_plugin_wasm_passthru_json(serde_json::json!({
+            "schemaVersion": 1,
+            "pluginName": "yazelix-zellij-popup",
+            "packageAttr": "yazelix_zellij_popup",
+            "wasmPath": "share/yazelix_zellij_popup/yzpp.wasm",
+            "wasmTarget": "wasm32-wasip1",
+            "cargoBuildHookDisabled": true,
+            "explicitCargoFromWasmToolchain": true,
+            "explicitRustcFromWasmToolchain": true,
+            "toolchainPrependedToPath": true,
+            "wasmTargetLibdirCheckedBeforePreBuild": true,
+            "cargoBuildRunsAfterPreBuild": true,
+            "installCheckVerifiesWasm": true,
+        }));
 
-        let errors = validate_zellij_plugin_wasm_derivation_with(&contract, &metadata).unwrap();
+        let errors =
+            validate_zellij_plugin_wasm_package_contract_with(&contract, &metadata).unwrap();
 
         assert!(errors.is_empty());
     }
 
-    // Regression: a child package that falls back to plain cargo must fail before another Darwin wasm target build reaches users.
+    // Regression: stale child-declared artifact paths must fail before main packages a missing wasm.
     #[test]
-    fn zellij_plugin_wasm_contract_rejects_plain_cargo_build_phase() {
-        let contract = ZellijPluginWasmPackageContract {
-            package_attr: "yazelix_zellij_popup",
-            system: "aarch64-darwin",
-        };
-        let metadata = derivation_metadata_json(
-            "aarch64-darwin",
-            r#"
-            cargo build --profile release --target wasm32-wasip1
-            "#,
-            &[],
-        );
-
-        let errors = validate_zellij_plugin_wasm_derivation_with(&contract, &metadata).unwrap();
-
-        assert!(errors.len() >= 7);
-        assert!(errors.iter().any(|error| error.contains("dontCargoBuild")));
-        assert!(errors.iter().any(|error| error.contains("export CARGO=")));
-        assert!(errors.iter().any(|error| error.contains("export RUSTC=")));
-        assert!(errors.iter().any(|error| error.contains("export PATH=")));
-        assert!(
-            errors
-                .iter()
-                .any(|error| error.contains("--print target-libdir --target wasm32-wasip1"))
-        );
-        assert!(
-            errors
-                .iter()
-                .any(|error| error.contains("\"$CARGO\" build"))
-        );
-    }
-
-    // Regression: issue 604 reproduced when runHook preBuild ran before the Fenix exports, because cargoBuildHook could use the wrong Darwin Rust.
-    #[test]
-    fn zellij_plugin_wasm_contract_rejects_prebuild_before_toolchain_setup() {
-        let contract = ZellijPluginWasmPackageContract {
-            package_attr: "yazelix_zellij_popup",
-            system: "aarch64-darwin",
-        };
-        let metadata = derivation_metadata_json(
-            "aarch64-darwin",
-            r#"
-            runHook preBuild
-            export CARGO="/nix/store/toolchain/bin/cargo"
-            export RUSTC="/nix/store/toolchain/bin/rustc"
-            export PATH="/nix/store/toolchain/bin:$PATH"
-            wasm_target_libdir="$("$RUSTC" --print target-libdir --target wasm32-wasip1)"
-            "$CARGO" build --profile release --target wasm32-wasip1
-            runHook postBuild
-            "#,
-            &[("dontCargoBuild", "1")],
-        );
-
-        let errors = validate_zellij_plugin_wasm_derivation_with(&contract, &metadata).unwrap();
-
-        assert_eq!(errors.len(), 3);
-        assert!(
-            errors
-                .iter()
-                .any(|error| error.contains("export CARGO=") && error.contains("runHook preBuild"))
-        );
-        assert!(
-            errors
-                .iter()
-                .any(|error| error.contains("export RUSTC=") && error.contains("runHook preBuild"))
-        );
-        assert!(errors.iter().any(|error| {
-            error.contains("--print target-libdir --target wasm32-wasip1")
-                && error.contains("runHook preBuild")
+    fn zellij_plugin_wasm_contract_rejects_stale_wasm_paths() {
+        let contract = popup_contract();
+        let metadata = zellij_plugin_wasm_passthru_json(serde_json::json!({
+            "schemaVersion": 1,
+            "pluginName": "yazelix-zellij-popup",
+            "packageAttr": "yazelix_zellij_popup",
+            "wasmPath": "share/yazelix_zellij_popup/old.wasm",
+            "wasmTarget": "wasm32-wasip1",
+            "cargoBuildHookDisabled": true,
+            "explicitCargoFromWasmToolchain": true,
+            "explicitRustcFromWasmToolchain": true,
+            "toolchainPrependedToPath": true,
+            "wasmTargetLibdirCheckedBeforePreBuild": true,
+            "cargoBuildRunsAfterPreBuild": true,
+            "installCheckVerifiesWasm": true,
         }));
-    }
 
-    // Defends: the derivation metadata gate checks the evaluated system instead of assuming the flake attr path returned the requested platform.
-    #[test]
-    fn zellij_plugin_wasm_contract_rejects_wrong_derivation_system() {
-        let contract = ZellijPluginWasmPackageContract {
-            package_attr: "yazelix_zellij_popup",
-            system: "aarch64-darwin",
-        };
-        let metadata = derivation_metadata_json(
-            "x86_64-linux",
-            r#"
-            export CARGO="/nix/store/toolchain/bin/cargo"
-            export RUSTC="/nix/store/toolchain/bin/rustc"
-            export PATH="/nix/store/toolchain/bin:$PATH"
-            wasm_target_libdir="$("$RUSTC" --print target-libdir --target wasm32-wasip1)"
-            runHook preBuild
-            "$CARGO" build --profile release --target wasm32-wasip1
-            runHook postBuild
-            "#,
-            &[("dontCargoBuild", "1")],
-        );
-
-        let errors = validate_zellij_plugin_wasm_derivation_with(&contract, &metadata).unwrap();
+        let errors =
+            validate_zellij_plugin_wasm_package_contract_with(&contract, &metadata).unwrap();
 
         assert_eq!(errors.len(), 1);
-        assert!(errors[0].contains("expected `aarch64-darwin`"));
+        assert!(errors[0].contains("field `wasmPath`"));
     }
 
-    fn derivation_metadata_json(
-        system: &str,
-        build_phase: &str,
-        extra_env: &[(&str, &str)],
-    ) -> String {
-        let mut env = serde_json::json!({
-            "system": system,
-            "buildPhase": build_phase,
-        });
-        let env = env.as_object_mut().expect("fixture env is object");
-        for (key, value) in extra_env {
-            env.insert((*key).to_string(), serde_json::json!(value));
-        }
+    // Regression: issue 604 remains guarded by child-declared Darwin wasm hardening metadata.
+    #[test]
+    fn zellij_plugin_wasm_contract_rejects_disabled_hardening_flags() {
+        let contract = popup_contract();
+        let metadata = zellij_plugin_wasm_passthru_json(serde_json::json!({
+            "schemaVersion": 1,
+            "pluginName": "yazelix-zellij-popup",
+            "packageAttr": "yazelix_zellij_popup",
+            "wasmPath": "share/yazelix_zellij_popup/yzpp.wasm",
+            "wasmTarget": "wasm32-wasip1",
+            "cargoBuildHookDisabled": false,
+            "explicitCargoFromWasmToolchain": false,
+            "explicitRustcFromWasmToolchain": false,
+            "toolchainPrependedToPath": false,
+            "wasmTargetLibdirCheckedBeforePreBuild": false,
+            "cargoBuildRunsAfterPreBuild": false,
+            "installCheckVerifiesWasm": false,
+        }));
 
+        let errors =
+            validate_zellij_plugin_wasm_package_contract_with(&contract, &metadata).unwrap();
+
+        assert_eq!(errors.len(), 7);
+        assert!(
+            errors
+                .iter()
+                .any(|error| error.contains("cargoBuildHookDisabled"))
+        );
+        assert!(
+            errors
+                .iter()
+                .any(|error| error.contains("explicitCargoFromWasmToolchain"))
+        );
+        assert!(
+            errors
+                .iter()
+                .any(|error| error.contains("wasmTargetLibdirCheckedBeforePreBuild"))
+        );
+    }
+
+    // Defends: child metadata must use the exact supported contract shape instead of growing unvalidated future fields.
+    #[test]
+    fn zellij_plugin_wasm_contract_rejects_unknown_metadata_fields() {
+        let contract = popup_contract();
+        let metadata = zellij_plugin_wasm_passthru_json(serde_json::json!({
+            "schemaVersion": 1,
+            "pluginName": "yazelix-zellij-popup",
+            "packageAttr": "yazelix_zellij_popup",
+            "wasmPath": "share/yazelix_zellij_popup/yzpp.wasm",
+            "wasmTarget": "wasm32-wasip1",
+            "cargoBuildHookDisabled": true,
+            "explicitCargoFromWasmToolchain": true,
+            "explicitRustcFromWasmToolchain": true,
+            "toolchainPrependedToPath": true,
+            "wasmTargetLibdirCheckedBeforePreBuild": true,
+            "cargoBuildRunsAfterPreBuild": true,
+            "installCheckVerifiesWasm": true,
+            "futureBuildPhaseHint": "do not accept this",
+        }));
+
+        let errors =
+            validate_zellij_plugin_wasm_package_contract_with(&contract, &metadata).unwrap();
+
+        assert_eq!(errors.len(), 1);
+        assert!(errors[0].contains("unsupported field `futureBuildPhaseHint`"));
+    }
+
+    fn popup_contract() -> ZellijPluginWasmPackageContract {
+        ZellijPluginWasmPackageContract {
+            package_attr: "yazelix_zellij_popup",
+            system: "aarch64-darwin",
+            plugin_name: "yazelix-zellij-popup",
+            wasm_path: "share/yazelix_zellij_popup/yzpp.wasm",
+        }
+    }
+
+    fn zellij_plugin_wasm_passthru_json(contract: JsonValue) -> String {
         serde_json::json!({
-            "derivations": {
-                "sample.drv": {
-                    "env": env,
-                },
-            },
+            "wasmPath": "share/yazelix_zellij_popup/yzpp.wasm",
+            "zellijPluginWasmPackageContract": contract,
         })
         .to_string()
     }

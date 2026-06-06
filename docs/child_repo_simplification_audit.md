@@ -82,7 +82,7 @@ Additional evidence:
 Fresh follow-ups:
 
 1. `yazelix-audit-deletion-extraction-third-pass-c0gmk.1`: resolved by keeping only `docs/upgrade_notes.toml` plus top-level `CHANGELOG.md` in the runtime docs contract instead of linking the whole docs tree
-2. `yazelix-audit-deletion-extraction-third-pass-c0gmk.2`: resolved as a decision to replace child-release implementation-detail checks with child-declared package contracts, without deleting the current Darwin regression guard before the child metadata exists
+2. `yazelix-audit-deletion-extraction-third-pass-c0gmk.2`: resolved by replacing main-side child buildPhase marker checks with child-declared Zellij wasm package metadata; the Darwin regression guard now validates package passthru contract fields instead of private build recipe strings
 3. `yazelix-audit-deletion-extraction-third-pass-c0gmk.3`: delete unreferenced font-test GIF and old demo tape assets
 
 Child-release validator decision:
