@@ -58,13 +58,13 @@ Fresh follow-ups:
 
 1. `yazelix-audit-deletion-extraction-second-pass-4z0ef.1`: resolved by replacing broad runtime `assets/*` linking with an `assets/icons` allowlist, keeping desktop icon assets live while leaving the README logo and screenshot as repo/docs-only media
 2. `yazelix-audit-deletion-extraction-second-pass-4z0ef.2`: resolved by deleting ignored per-field UI metadata keys from `config_ui_metadata.toml`; `main_config_contract.toml` remains the semantic owner for parser/default/apply behavior while the UI metadata file owns only live tab placement and help text
-3. `yazelix-audit-deletion-extraction-second-pass-4z0ef.3`: resolved by keeping the default Helix Steel plugin pack in main; moving it to `yazelix-helix` would be a paper extraction because Yazelix owns plugin selection, generated Steel entrypoints, startup policy, and command visibility
+3. `yazelix-audit-deletion-extraction-second-pass-4z0ef.3`: reopened. The previous keep-in-main decision was rejected because `yazelix-helix` should be able to stand alone as a useful editor project. Re-evaluate the Steel plugin/default asset boundary around child-owned standalone value while keeping Yazelix-specific settings policy, generated Steel entrypoints, startup policy, and command visibility in main
 4. `yazelix-audit-deletion-extraction-second-pass-4z0ef.4`: resolved by deleting unsupported old config inputs from Home Manager prepare; install-owner diagnostics now cover current profile/Home Manager/desktop/wrapper collisions while stale `yazelix.toml`, `cursors.toml`, and `user_configs/` remain config-diagnostic/manual-cleanup state
 
 Second-pass non-candidates:
 
 - Do not create another status-bar extraction bead. Runnable non-workspace widgets, provider probing/cache behavior, CPU/RAM, cursor display, and runtime plugin-block rendering already moved through the closed SP9/status beads; the remaining main adapter is workspace/session path selection and status-bus cache integration.
-- Do not move the full Helix managed config surface to `yazelix-helix`. Only the default Steel plugin-pack asset boundary is worth evaluating; managed paths, user plugin selection, and bridge/session behavior remain Yazelix product policy.
+- Do not move the full Helix managed config surface to `yazelix-helix`. The child should still be allowed to own reusable standalone editor assets, Steel defaults, and plugin-pack artifacts; managed paths, user plugin selection, and bridge/session behavior remain Yazelix product policy.
 - Do not move the full config UI adapter to `yazelix-ratconfig`. The child owns generic UI, patch, and migration primitives; Yazelix owns settings semantics, Home Manager ownership, validation, action metadata, and runtime apply behavior.
 - Do not create a public workspace child repo until `zellij_materialization`, launch ownership, and workspace request boundaries are thinner than their current adapters. `yazelix-audit-deletion-extraction-candidates-i0xoh.4` resolved the current state as internal-boundary-only: `workspace_session.rs` is the live request seam, while the direct workspace adapters still total about `2213` lines before tests/status/docs.
 

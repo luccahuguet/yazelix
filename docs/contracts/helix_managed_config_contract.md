@@ -83,39 +83,44 @@ The redirection is scoped to the Helix process, not leaked globally into the who
 
 ## Bundled Helix Fork Boundary
 
-Yazelix's bundled Helix is `luccahuguet/yazelix-helix`, a thin Helix Steel fork.
+Yazelix's bundled Helix is `luccahuguet/yazelix-helix`, a Yazelix-compatible Helix Steel fork.
 
-The fork tracks Helix Steel and carries only the minimal Yazelix-owned config-directory launch support:
+The fork must remain useful as a standalone editor project. It should not exist only as an implementation detail for this repo.
+
+The fork currently tracks Helix Steel and carries Yazelix-compatible config-directory launch support:
 
 - `hx --config-dir <path>`
 - loader resolution from that directory for core Helix config files
 
-The fork is not a product fork for editor behavior, default keymaps, UI policy, Steel plugin APIs, language behavior, or Yazelix-specific editor features. Those should remain upstream Steel work, Yazelix runtime configuration, or Yazelix-owned Steel plugins unless a separate contract explicitly changes that boundary.
+The fork may own reusable editor behavior, standalone defaults, Steel runtime behavior, and reusable Steel plugin assets when those are useful without the main Yazelix repo. The main repo should not block that standalone product value.
+
+The main Yazelix repo still owns Yazelix-specific workspace policy: settings fields, Home Manager options, generated-state placement, doctor semantics, session integration, and any command visibility or startup policy that only makes sense inside Yazelix.
 
 ## Bundled Steel Plugin Pack Boundary
 
-The default Steel plugin pack stays in the main Yazelix repo.
+The default Steel plugin pack boundary is under revision.
 
-This is intentionally not extracted into `yazelix-helix`:
+Current runtime reality: the main Yazelix repo still ships and materializes the default Steel plugin pack.
+
+Product direction: `yazelix-helix` should be able to expose a useful standalone Steel-enabled editor package. Moving reusable plugin assets or standalone defaults into `yazelix-helix` is acceptable when the child owns them as a real package artifact, not as a mirror of main-repo settings policy.
+
+The main repo remains the owner for Yazelix-specific policy:
 
 - the plugin pack is selected by `settings.jsonc` through `helix.steel_plugins.enabled`
 - custom user plugin manifests live beside the same surface in `helix.steel_plugins.extra`
 - Yazelix owns command visibility, startup conditions, generated `helix.scm`, generated `init.scm`, and copied plugin placement under generated state
-- the bundled pack is a curated managed-session default, not Helix fork behavior
 
-The `yazelix-helix` fork must stay a thin editor/runtime fork. It owns the ability to run a managed config directory and the Steel runtime behavior inherited from upstream Steel. It does not own Yazelix default plugin ids, plugin selection policy, splash eligibility, `yzx-new-shell`, or generated Steel entrypoint shape.
-
-Moving only `configs/helix/steel_plugins/` to the fork would be a paper extraction: it would save a small asset tree in main while forcing the child package to publish Yazelix settings semantics and release in lockstep with main whenever plugin ids, startup policy, or generated command metadata changes.
+A good extraction deletes main-repo asset ownership and consumes a child-owned artifact with a narrow contract. A bad extraction makes `yazelix-helix` publish main-repo settings semantics, or makes both repos mirror plugin ids, startup policy, and generated command metadata.
 
 ## Important Constraint
 
 Vanilla Helix and the upstream Steel branch support `-c/--config <file>` for `config.toml`, but they do not offer the full config-directory override surface Yazelix needs for a self-contained managed Helix session.
 
-Because of that, Yazelix's bundled Helix uses the thin fork boundary above:
+Because of that, Yazelix's bundled Helix uses the fork boundary above:
 
 - support a Yazelix-managed Helix config directory for Yazelix-managed sessions
 - keep personal `~/.config/helix` untouched unless the user explicitly imports it
-- keep the fork limited to config-directory launch support
+- keep Yazelix-specific policy in the main repo even when reusable editor assets move to `yazelix-helix`
 
 Yazelix uses `--config-dir ~/.config/yazelix/helix` for core Helix config lookup and `HELIX_STEEL_CONFIG=<generated-state>/configs/helix` for generated Steel entrypoints.
 
