@@ -395,11 +395,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1780773849,
-        "narHash": "sha256-7Njhlmz1oNJzYIwDXzESJYnQryY0HmFbTQsNftjz2wA=",
+        "lastModified": 1780774662,
+        "narHash": "sha256-5nvyeQF+dvTwN0H5BRHAxfb8cllU5R2k9m0MJ2oAqSQ=",
         "owner": "luccahuguet",
         "repo": "yazelix-cursors",
-        "rev": "ac498555b8560eb6c838cbab35d9456440a29b68",
+        "rev": "0fbd6381f790927c660dc9c260ee59cf24fba006",
         "type": "github"
       },
       "original": {
