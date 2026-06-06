@@ -68,6 +68,30 @@ Second-pass non-candidates:
 - Do not move the full config UI adapter to `yazelix-ratconfig`. The child owns generic UI, patch, and migration primitives; Yazelix owns settings semantics, Home Manager ownership, validation, action metadata, and runtime apply behavior.
 - Do not create a public workspace child repo until `zellij_materialization`, launch ownership, and workspace request boundaries are thinner than their current adapters.
 
+## 2026-06-06 Third Pass
+
+Third-pass scope was deliberately narrower than the first two passes: look for runtime payload breadth, stale tracked files, and child-repo validation seams that still make the main repo own too much.
+
+Additional evidence:
+
+- `packaging/mk_runtime_tree.nix` still links broad top-level trees into every runtime: `assets`, `docs`, `nushell`, `shells`, `configs`, and `config_metadata`
+- `docs/` is about `1.1 MiB` across `102` files, but runtime code found in this pass reads only `docs/upgrade_notes.toml` and top-level `CHANGELOG.md`
+- `assets/font_tests/ubuntu_mono_regular_test.gif` is about `448 KiB` and `assets/tapes/yazelix_v7_quick_demo.tape` is about `4 KiB`; `rg` found no live references to those paths or names
+- `repo_child_release.rs` is about `1,045` lines and validates child package internals through `nix derivation show` markers such as `dontCargoBuild`, `export CARGO=`, `export RUSTC=`, `magick`, and `frame_%03d`
+
+Fresh follow-ups:
+
+1. `yazelix-audit-deletion-extraction-third-pass-c0gmk.1`: package minimal runtime docs instead of the whole docs tree
+2. `yazelix-audit-deletion-extraction-third-pass-c0gmk.2`: replace child-release implementation-detail checks with child-declared package contracts
+3. `yazelix-audit-deletion-extraction-third-pass-c0gmk.3`: delete unreferenced font-test GIF and old demo tape assets
+
+Third-pass non-candidates:
+
+- Do not create another runtime-tool registry split bead. `yazelix-evaluate-runtime-tool-registry-decomposition-pl6g7` already closed with a keep/narrow decision: the registry is still one coherent Nix manifest owner.
+- Do not create another runtime preview asset bead. `yazelix-audit-deletion-extraction-second-pass-4z0ef.1` already covers package-runtime exclusion for README-only assets; the new asset bead is only for repo deletion of unreferenced files.
+- Do not create another Zellij materialization shrink bead. `yazelix-audit-deletion-extraction-candidates-i0xoh.5` already owns that split; any weak string-assert cleanup belongs there rather than a parallel plan.
+- Do not extract maintainer tooling as a whole. The fresh concern is narrower: main should stop asserting child package build recipes when a child-declared artifact contract can carry that evidence.
+
 ## Explicit Rejections
 
 - Do not create a standalone Yazi integration repo while the main repo still owns the same materializer paths; the existing `yazelix-yazi-assets` child repo is only the reusable asset package
