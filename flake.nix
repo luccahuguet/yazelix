@@ -185,6 +185,7 @@
           components ? { },
           extraRuntimePackages ? agentUsagePackages system,
           yaziAssets ? yazelixYaziAssets.packages.${system}.yazelix_yazi_assets,
+          yazelixCursorsPackage ? yazelixCursors.packages.${system}.yazelix_cursors,
           yazelixTerminalPackage ? yazelixTerminal.packages.${system}.yazelix-terminal,
           zellijPluginArtifacts ? zellijPluginArtifactsFor system,
           enableZellijKittyPassthrough ? false,
@@ -197,6 +198,7 @@
             inherit nixgl runtimeVariant runtimeToolSources components yaziAssets zellijPluginArtifacts;
             inherit runtimeIdentity;
             inherit name runtimeName skipStableWrapperRedirect yazelixTerminalPackage;
+            inherit yazelixCursorsPackage;
             pkgs = runtimePkgs;
             enableZellijKittyPassthrough =
               enableZellijKittyPassthrough || terminalNeedsKittyPassthrough pkgs runtimeVariant;
@@ -213,10 +215,11 @@
         {
           name ? "yazelix-runtime",
           runtimeIdentity ? defaultRuntimeIdentity,
+          yazelixCursorsPackage ? yazelixCursors.packages.${system}.yazelix_cursors,
           yazelixTerminalPackage ? yazelixTerminal.packages.${system}.yazelix-terminal,
         }:
         import ./yazelix_runtime_package.nix {
-          inherit nixgl name runtimeIdentity runtimeVariant yazelixTerminalPackage;
+          inherit nixgl name runtimeIdentity runtimeVariant yazelixCursorsPackage yazelixTerminalPackage;
           pkgs = runtimePkgsFor system pkgs runtimeVariant;
           fenixPkgs = fenix.packages.${system};
           extraRuntimePackages = [

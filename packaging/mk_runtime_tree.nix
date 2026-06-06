@@ -11,6 +11,7 @@
   extraRuntimePackages ? [ ],
   extraRuntimeCommands ? [ "tu" ],
   yaziAssets ? null,
+  yazelixCursorsPackage ? null,
   yazelixTerminalPackage ? null,
   zellijPluginArtifacts ? { },
   enableZellijKittyPassthrough ? false,
@@ -41,6 +42,30 @@ let
       "${src}/configs/yazi"
     else
       "${yaziAssets}/share/yazelix_yazi_assets";
+  cursorPackageContract =
+    if !cursorsEnabled then
+      null
+    else if yazelixCursorsPackage == null then
+      throw "Missing yazelix_cursors package for cursor runtime assets"
+    else if !(builtins.hasAttr "yazelixCursorPackageContract" yazelixCursorsPackage) then
+      throw "yazelix_cursors package is missing yazelixCursorPackageContract passthru metadata"
+    else
+      yazelixCursorsPackage.yazelixCursorPackageContract;
+  cursorShaderRoot =
+    if !cursorsEnabled then
+      null
+    else if cursorPackageContract.schemaVersion != 1 then
+      throw "Unsupported yazelix_cursors package contract schema"
+    else if cursorPackageContract.packageName != "yazelix-cursors" then
+      throw "Unexpected yazelix_cursors package contract packageName"
+    else if cursorPackageContract.shaderRoot != "share/yazelix/yazelix_cursors/shaders" then
+      throw "Unexpected yazelix_cursors shaderRoot package contract"
+    else if !(builtins.elem "yzxterm" cursorPackageContract.requiredTargets) then
+      throw "yazelix_cursors package contract does not declare the yzxterm cursor target"
+    else if !(builtins.elem "build_shaders.nu" cursorPackageContract.forbiddenShaderFiles) then
+      throw "yazelix_cursors package contract does not forbid stale build_shaders.nu shader assets"
+    else
+      "${yazelixCursorsPackage}/${cursorPackageContract.shaderRoot}";
   paneOrchestratorWasm = zellijPluginArtifacts.pane_orchestrator or null;
   zjstatusWasm = zellijPluginArtifacts.zjstatus or null;
   yzppWasm = zellijPluginArtifacts.yzpp or null;
@@ -60,10 +85,28 @@ pkgs.runCommand name { } ''
   mkdir -p "$out/configs"
   for config_entry in ${src}/configs/*; do
     config_name="$(basename "$config_entry")"
-    if [ "$config_name" = "yazi" ] || [ "$config_name" = "zellij" ]; then
+    if [ "$config_name" = "yazi" ] || [ "$config_name" = "zellij" ] || [ "$config_name" = "terminal_emulators" ]; then
       continue
     fi
     ln -s "$config_entry" "$out/configs/$config_name"
+  done
+  mkdir -p "$out/configs/terminal_emulators"
+  for terminal_entry in ${src}/configs/terminal_emulators/*; do
+    terminal_name="$(basename "$terminal_entry")"
+    if [ "$terminal_name" = "ghostty" ]; then
+      mkdir -p "$out/configs/terminal_emulators/ghostty"
+      ln -s "$terminal_entry/config" "$out/configs/terminal_emulators/ghostty/config"
+      ${pkgs.lib.optionalString cursorsEnabled ''
+        test -s "${cursorShaderRoot}/cursor_trail_common.glsl"
+        test -s "${cursorShaderRoot}/variants/reef.glsl"
+        test -s "${cursorShaderRoot}/upstream_effects/ripple_rectangle_cursor.glsl"
+        test -s "${cursorShaderRoot}/generated_effects/tail.glsl"
+        test ! -e "${cursorShaderRoot}/build_shaders.nu"
+        ln -s "${cursorShaderRoot}" "$out/configs/terminal_emulators/ghostty/shaders"
+      ''}
+    else
+      ln -s "$terminal_entry" "$out/configs/terminal_emulators/$terminal_name"
+    fi
   done
   mkdir -p "$out/configs/zellij/plugins"
   for zellij_entry in ${src}/configs/zellij/*; do

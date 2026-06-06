@@ -53,7 +53,7 @@ rustPlatform.buildRustPackage {
   cargoLock = {
     lockFile = "${src}/rust_core/Cargo.lock";
     outputHashes = {
-      "yazelix_cursors-0.1.0" = "sha256-EEJH2kZiTZyQQ3mahu5s9NUnWFEB6zxJHzsh4WUEq+M=";
+      "yazelix_cursors-0.1.0" = "sha256-7q5L0LwPdn9v1dPyUsNJxLW6QkCzsNrWPlnhUeW8+ss=";
       "yazelix-ratconfig-0.1.0" = "sha256-Fx7MebA0lMoLhcy/dKDFs7eMjpe9RWE9P9xZs3HMDhs=";
       "yazelix_screen-0.1.0" = "sha256-TV+xq3QknpgYLUyt2w1uk4MyjJzmVbRgfgd8ZUok1bc=";
     };

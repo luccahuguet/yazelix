@@ -14,6 +14,7 @@
   components ? { },
   extraRuntimePackages ? [ ],
   yaziAssets ? null,
+  yazelixCursorsPackage ? null,
   yazelixTerminalPackage ? null,
   zellijPluginArtifacts ? { },
   enableZellijKittyPassthrough ? false,
@@ -36,6 +37,7 @@ let
       components
       extraRuntimePackages
       yaziAssets
+      yazelixCursorsPackage
       yazelixTerminalPackage
       zellijPluginArtifacts
       enableZellijKittyPassthrough

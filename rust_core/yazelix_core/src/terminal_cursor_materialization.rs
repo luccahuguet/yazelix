@@ -2,7 +2,7 @@ use crate::bridge::{CoreError, ErrorClass};
 use crate::ghostty_cursor_registry::{
     CursorDefinition, CursorRegistry, DEFAULT_GHOSTTY_TRAIL_DURATION, GHOSTTY_TRAIL_DURATION_MAX,
     GHOSTTY_TRAIL_DURATION_MIN, ResolvedCursorRegistryState, YazelixCursorRegistryExt,
-    format_ghostty_trail_duration, write_ghostty_cursor_palette_shaders,
+    write_ghostty_cursor_effect_shaders, write_ghostty_cursor_palette_shaders,
 };
 use crate::runtime_component_enabled;
 use serde::Serialize;
@@ -229,46 +229,13 @@ fn sync_terminal_cursor_shader_assets(
             .output();
     }
 
-    let build_script = shaders_src.join("build_shaders.nu");
-    if build_script.exists() {
-        let build_script_name = build_script
-            .file_name()
-            .map(|s| s.to_string_lossy().into_owned())
-            .unwrap_or_else(|| "build_shaders.nu".to_string());
-        let output = Command::new("nu")
-            .arg(&build_script_name)
-            .arg(glow_level)
-            .arg(&shaders_dest)
-            .arg(effect_color_literal)
-            .arg(format_ghostty_trail_duration(trail_duration))
-            .current_dir(&shaders_src)
-            .output()
-            .map_err(|source| {
-                CoreError::io(
-                    "run_terminal_cursor_shader_build",
-                    "Failed to run terminal cursor shader build script",
-                    "Ensure Nushell is installed and accessible on PATH.",
-                    build_script.to_string_lossy(),
-                    source,
-                )
-            })?;
-
-        if !output.status.success() {
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            return Err(CoreError::classified(
-                ErrorClass::Runtime,
-                "terminal_cursor_shader_build_failed",
-                format!(
-                    "Terminal cursor shader build script failed: {}",
-                    stderr.trim()
-                ),
-                "Check the shader build script for errors and retry.",
-                serde_json::json!({"script": build_script.to_string_lossy()}),
-            ));
-        }
-    }
-
     write_ghostty_cursor_palette_shaders(&shaders_dest, registry, glow_level, trail_duration)?;
+    write_ghostty_cursor_effect_shaders(
+        &shaders_dest,
+        glow_level,
+        effect_color_literal,
+        trail_duration,
+    )?;
 
     Ok(true)
 }

@@ -28,7 +28,7 @@ sha2 = "0.10"
 time = { version = "0.3", features = ["formatting", "local-offset", "macros"] }
 thiserror = "2.0"
 toml = "0.9"
-yazelix_cursors = { git = "https://github.com/luccahuguet/yazelix-cursors", rev = "536d786d9db1ba0122e2715a04a211e9035e84d4" }
+yazelix_cursors = { git = "https://github.com/luccahuguet/yazelix-cursors", rev = "3bff479460f41b30e20ab4572c9144328f9b33da" }
 yazelix_ratconfig = { package = "yazelix-ratconfig", git = "https://github.com/luccahuguet/yazelix-ratconfig", rev = "e7e70ca23adf20f167ae07e7bc025e278ae0deda" }
 yazelix_screen = { git = "https://github.com/luccahuguet/yazelix-screen", rev = "b392d282f318aea74966db45354c3f524dee1b31" }
 

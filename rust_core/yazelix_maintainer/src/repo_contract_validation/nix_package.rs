@@ -419,10 +419,6 @@ fn verify_profile_installed_runtime(
             "runtime-local default config",
         ),
         (
-            runtime_ghostty_shader_root.join("build_shaders.nu"),
-            "runtime-local Ghostty shader builder",
-        ),
-        (
             runtime_ghostty_shader_root
                 .join("variants")
                 .join("reef.glsl"),
@@ -437,6 +433,11 @@ fn verify_profile_installed_runtime(
     ] {
         require_path_exists_abs(&path, label, errors);
     }
+    require_path_missing_abs(
+        &runtime_ghostty_shader_root.join("build_shaders.nu"),
+        "stale runtime-local Ghostty shader builder",
+        errors,
+    );
     if runtime_terminal == "yzxterm" {
         require_path_exists_abs(
             &runtime_root

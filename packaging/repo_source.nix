@@ -26,7 +26,6 @@ let
   ];
   cursorRuntimePaths = [
     "yazelix_ghostty_cursors_default.toml"
-    "configs/terminal_emulators/ghostty/shaders"
   ];
 in
 lib.cleanSourceWith {

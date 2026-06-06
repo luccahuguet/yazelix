@@ -13,6 +13,7 @@
   components ? { },
   extraRuntimePackages ? [ ],
   yaziAssets ? null,
+  yazelixCursorsPackage ? null,
   yazelixTerminalPackage ? null,
   zellijPluginArtifacts ? { },
   enableZellijKittyPassthrough ? false,
@@ -50,6 +51,7 @@ import ./packaging/mk_yazelix_package.nix {
     components
     extraRuntimePackages
     yaziAssets
+    yazelixCursorsPackage
     yazelixTerminalPackage
     zellijPluginArtifacts
     enableZellijKittyPassthrough

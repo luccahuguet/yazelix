@@ -62,6 +62,24 @@ const ZELLIJ_PLUGIN_WASM_METADATA_FIELDS: &[&str] = &[
     "installCheckVerifiesWasm",
 ];
 
+const CURSOR_PACKAGE_METADATA_FIELDS: &[&str] = &[
+    "schemaVersion",
+    "packageName",
+    "shareRoot",
+    "shaderRoot",
+    "generatedEffectRoot",
+    "requiredTargets",
+    "forbiddenShaderFiles",
+];
+
+const CURSOR_PACKAGE_REQUIRED_TARGETS: &[&str] = &[
+    "ghostty",
+    "yzxterm",
+    "rio",
+    "ratty",
+    "protocol_cursor_positions",
+];
+
 pub fn validate_child_release_transaction(repo_root: &Path) -> Result<ValidationReport, String> {
     let mut report = ValidationReport::default();
     let lock_path = repo_root.join("flake.lock");
@@ -93,6 +111,12 @@ pub fn validate_child_release_transaction(repo_root: &Path) -> Result<Validation
     report
         .errors
         .extend(validate_zellij_plugin_wasm_package_contracts(repo_root)?);
+    report
+        .errors
+        .extend(validate_cursor_package_contracts(repo_root)?);
+    report
+        .errors
+        .extend(validate_main_cursor_shader_tree_deleted(repo_root));
 
     Ok(report)
 }
@@ -408,6 +432,110 @@ fn validate_zellij_plugin_wasm_package_contracts(repo_root: &Path) -> Result<Vec
     Ok(errors)
 }
 
+fn validate_cursor_package_contracts(repo_root: &Path) -> Result<Vec<String>, String> {
+    let mut errors = Vec::new();
+    for system in ["x86_64-linux", "aarch64-darwin"] {
+        let metadata = package_passthru_metadata(repo_root, system, "yazelix_cursors")?;
+        errors.extend(validate_cursor_package_contract_with(system, &metadata)?);
+    }
+    Ok(errors)
+}
+
+fn validate_cursor_package_contract_with(
+    system: &str,
+    raw_passthru: &str,
+) -> Result<Vec<String>, String> {
+    let parsed: JsonValue = serde_json::from_str(raw_passthru)
+        .map_err(|error| format!("Invalid package passthru JSON: {error}"))?;
+    let passthru = parsed
+        .as_object()
+        .ok_or_else(|| "Package passthru metadata must be a JSON object".to_string())?;
+    let Some(metadata) = passthru
+        .get("yazelixCursorPackageContract")
+        .and_then(JsonValue::as_object)
+    else {
+        return Ok(vec![format!(
+            "`yazelix_cursors` {system} package passthru must expose `yazelixCursorPackageContract`."
+        )]);
+    };
+
+    let mut errors = Vec::new();
+    for required in CURSOR_PACKAGE_METADATA_FIELDS {
+        if !metadata.contains_key(*required) {
+            errors.push(format!(
+                "`yazelix_cursors` {system} yazelixCursorPackageContract is missing required field `{required}`."
+            ));
+        }
+    }
+    for actual in metadata.keys() {
+        if !CURSOR_PACKAGE_METADATA_FIELDS.contains(&actual.as_str()) {
+            errors.push(format!(
+                "`yazelix_cursors` {system} yazelixCursorPackageContract has unsupported field `{actual}`."
+            ));
+        }
+    }
+    require_cursor_contract_number(&mut errors, system, metadata, "schemaVersion", 1);
+    require_cursor_contract_string(
+        &mut errors,
+        system,
+        metadata,
+        "packageName",
+        "yazelix-cursors",
+    );
+    require_cursor_contract_string(
+        &mut errors,
+        system,
+        metadata,
+        "shareRoot",
+        "share/yazelix/yazelix_cursors",
+    );
+    require_cursor_contract_string(
+        &mut errors,
+        system,
+        metadata,
+        "shaderRoot",
+        "share/yazelix/yazelix_cursors/shaders",
+    );
+    require_cursor_contract_string(
+        &mut errors,
+        system,
+        metadata,
+        "generatedEffectRoot",
+        "share/yazelix/yazelix_cursors/shaders/generated_effects",
+    );
+    require_cursor_contract_string_array(
+        &mut errors,
+        system,
+        metadata,
+        "requiredTargets",
+        CURSOR_PACKAGE_REQUIRED_TARGETS,
+    );
+    require_cursor_contract_string_array(
+        &mut errors,
+        system,
+        metadata,
+        "forbiddenShaderFiles",
+        &["build_shaders.nu"],
+    );
+    Ok(errors)
+}
+
+fn validate_main_cursor_shader_tree_deleted(repo_root: &Path) -> Vec<String> {
+    let path = repo_root
+        .join("configs")
+        .join("terminal_emulators")
+        .join("ghostty")
+        .join("shaders");
+    if path.exists() {
+        vec![format!(
+            "Main repo must not own Ghostty cursor shader assets at {}; consume `yazelix_cursors` package assets instead.",
+            path.display()
+        )]
+    } else {
+        Vec::new()
+    }
+}
+
 fn package_passthru_metadata(
     repo_root: &Path,
     system: &str,
@@ -428,6 +556,59 @@ fn package_passthru_metadata(
 
     String::from_utf8(eval.stdout)
         .map_err(|error| format!("Invalid UTF-8 from `nix eval --json {flake_attr}`: {error}"))
+}
+
+fn require_cursor_contract_number(
+    errors: &mut Vec<String>,
+    system: &str,
+    metadata: &serde_json::Map<String, JsonValue>,
+    key: &str,
+    expected: u64,
+) {
+    let actual = metadata.get(key).and_then(JsonValue::as_u64);
+    if actual != Some(expected) {
+        errors.push(format!(
+            "`yazelix_cursors` {system} yazelixCursorPackageContract field `{key}` must be {expected}; found {actual:?}."
+        ));
+    }
+}
+
+fn require_cursor_contract_string(
+    errors: &mut Vec<String>,
+    system: &str,
+    metadata: &serde_json::Map<String, JsonValue>,
+    key: &str,
+    expected: &str,
+) {
+    let actual = metadata.get(key).and_then(JsonValue::as_str);
+    if actual != Some(expected) {
+        errors.push(format!(
+            "`yazelix_cursors` {system} yazelixCursorPackageContract field `{key}` must be `{expected}`; found {actual:?}."
+        ));
+    }
+}
+
+fn require_cursor_contract_string_array(
+    errors: &mut Vec<String>,
+    system: &str,
+    metadata: &serde_json::Map<String, JsonValue>,
+    key: &str,
+    expected: &[&str],
+) {
+    let actual = metadata
+        .get(key)
+        .and_then(JsonValue::as_array)
+        .map(|values| {
+            values
+                .iter()
+                .filter_map(JsonValue::as_str)
+                .collect::<Vec<_>>()
+        });
+    if actual.as_deref() != Some(expected) {
+        errors.push(format!(
+            "`yazelix_cursors` {system} yazelixCursorPackageContract field `{key}` must be {expected:?}; found {actual:?}."
+        ));
+    }
 }
 
 fn validate_zellij_plugin_wasm_package_contract_with(
@@ -586,6 +767,7 @@ fn require_contract_bool(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tempfile::tempdir;
 
     // Defends: the child-release validator scopes itself to first-party Yazelix GitHub inputs instead of every flake dependency.
     #[test]
@@ -807,6 +989,62 @@ mod tests {
         assert!(errors[0].contains("unsupported field `futureBuildPhaseHint`"));
     }
 
+    // Defends: cursor package metadata must stay exact so main cannot silently consume stale or future child artifact shapes.
+    #[test]
+    fn cursor_package_contract_accepts_declared_metadata() {
+        let metadata = cursor_package_passthru_json(serde_json::json!({
+            "schemaVersion": 1,
+            "packageName": "yazelix-cursors",
+            "shareRoot": "share/yazelix/yazelix_cursors",
+            "shaderRoot": "share/yazelix/yazelix_cursors/shaders",
+            "generatedEffectRoot": "share/yazelix/yazelix_cursors/shaders/generated_effects",
+            "requiredTargets": ["ghostty", "yzxterm", "rio", "ratty", "protocol_cursor_positions"],
+            "forbiddenShaderFiles": ["build_shaders.nu"],
+        }));
+
+        let errors = validate_cursor_package_contract_with("x86_64-linux", &metadata).unwrap();
+
+        assert!(errors.is_empty());
+    }
+
+    // Defends: child cursor package metadata cannot grow unused planning fields that main never validates.
+    #[test]
+    fn cursor_package_contract_rejects_unknown_metadata_fields() {
+        let metadata = cursor_package_passthru_json(serde_json::json!({
+            "schemaVersion": 1,
+            "packageName": "yazelix-cursors",
+            "shareRoot": "share/yazelix/yazelix_cursors",
+            "shaderRoot": "share/yazelix/yazelix_cursors/shaders",
+            "generatedEffectRoot": "share/yazelix/yazelix_cursors/shaders/generated_effects",
+            "requiredTargets": ["ghostty", "yzxterm", "rio", "ratty", "protocol_cursor_positions"],
+            "forbiddenShaderFiles": ["build_shaders.nu"],
+            "requiredRuntimeScripts": [],
+        }));
+
+        let errors = validate_cursor_package_contract_with("x86_64-linux", &metadata).unwrap();
+
+        assert_eq!(errors.len(), 1);
+        assert!(errors[0].contains("unsupported field `requiredRuntimeScripts`"));
+    }
+
+    // Regression: the main repo must not reintroduce a mirrored Ghostty cursor shader source tree after child ownership.
+    #[test]
+    fn child_release_validation_rejects_main_cursor_shader_tree() {
+        let temp = tempdir().unwrap();
+        let shader_root = temp
+            .path()
+            .join("configs")
+            .join("terminal_emulators")
+            .join("ghostty")
+            .join("shaders");
+        fs::create_dir_all(&shader_root).unwrap();
+
+        let errors = validate_main_cursor_shader_tree_deleted(temp.path());
+
+        assert_eq!(errors.len(), 1);
+        assert!(errors[0].contains("Main repo must not own Ghostty cursor shader assets"));
+    }
+
     fn popup_contract() -> ZellijPluginWasmPackageContract {
         ZellijPluginWasmPackageContract {
             package_attr: "yazelix_zellij_popup",
@@ -820,6 +1058,13 @@ mod tests {
         serde_json::json!({
             "wasmPath": "share/yazelix_zellij_popup/yzpp.wasm",
             "zellijPluginWasmPackageContract": contract,
+        })
+        .to_string()
+    }
+
+    fn cursor_package_passthru_json(contract: JsonValue) -> String {
+        serde_json::json!({
+            "yazelixCursorPackageContract": contract,
         })
         .to_string()
     }

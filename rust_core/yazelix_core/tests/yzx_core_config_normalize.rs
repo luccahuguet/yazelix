@@ -122,14 +122,7 @@ fn prepare_runtime_materialization_fixture(
     .unwrap();
     fs::write(runtime_plugin_dir.join("zjstatus.wasm"), b"wasm").unwrap();
     fs::write(runtime_plugin_dir.join("yzpp.wasm"), b"wasm").unwrap();
-    copy_dir_all(
-        &repo
-            .join("configs")
-            .join("terminal_emulators")
-            .join("ghostty")
-            .join("shaders"),
-        &runtime_ghostty_shader_dir,
-    );
+    write_runtime_cursor_shader_assets(&runtime_ghostty_shader_dir);
     fs::write(
         runtime_yzxterm_package_dir.join("config.toml"),
         r##"confirm-before-quit = false
@@ -229,17 +222,44 @@ fn write_managed_config_toml(fixture: &RuntimeMaterializationFixture, raw: &str)
     .unwrap();
 }
 
-fn copy_dir_all(src: &Path, dst: &Path) {
-    fs::create_dir_all(dst).unwrap();
-    for entry in fs::read_dir(src).unwrap() {
-        let entry = entry.unwrap();
-        let source_path = entry.path();
-        let target_path = dst.join(entry.file_name());
-        if source_path.is_dir() {
-            copy_dir_all(&source_path, &target_path);
-        } else {
-            fs::copy(&source_path, &target_path).unwrap();
-        }
+fn write_runtime_cursor_shader_assets(shader_dir: &Path) {
+    fs::create_dir_all(shader_dir.join("upstream_effects")).unwrap();
+    fs::create_dir_all(shader_dir.join("variants")).unwrap();
+    fs::write(
+        shader_dir.join("cursor_trail_common.glsl"),
+        "void renderMonoColorTrail(out vec4 fragColor, in vec2 fragCoord, vec4 color0, vec4 color1, float duration, float width, float scale) {}\n",
+    )
+    .unwrap();
+    fs::write(
+        shader_dir.join("variants").join("reef.glsl"),
+        "void mainImage(out vec4 fragColor, in vec2 fragCoord) {}\n",
+    )
+    .unwrap();
+    for (file, duration) in [
+        ("cursor_tail.glsl", "0.09"),
+        ("cursor_warp.glsl", "0.09"),
+        ("cursor_sweep.glsl", "0.09"),
+        ("ripple_cursor.glsl", "0.15"),
+        ("rectangle_boom_cursor.glsl", "0.15"),
+        ("sonic_boom_cursor.glsl", "0.15"),
+        ("ripple_rectangle_cursor.glsl", "0.15"),
+    ] {
+        fs::write(
+            shader_dir.join("upstream_effects").join(file),
+            format!(
+                "vec4 COLOR = iCurrentCursorColor;\n\
+                 vec4 TRAIL_COLOR = iCurrentCursorColor;\n\
+                 const float BLUR = 1.0;\n\
+                 const float MAX_RADIUS = 1.0;\n\
+                 const float MAX_SIZE = 1.0;\n\
+                 const float MAX_TRAIL_LENGTH = 1.0;\n\
+                 const float TRAIL_LENGTH = 1.0;\n\
+                 const float TRAIL_SIZE = 1.0;\n\
+                 const float RING_THICKNESS = 1.0;\n\
+                 const float DURATION = {duration};\n"
+            ),
+        )
+        .unwrap();
     }
 }
 
@@ -1607,12 +1627,7 @@ fn ghostty_materialization_generate_from_env_uses_normalized_config() {
     let repo = repo_root();
     let tmp = tempdir().unwrap();
     let fixture = prepare_runtime_materialization_fixture(&repo, &tmp);
-    copy_dir_all(
-        &repo
-            .join("configs")
-            .join("terminal_emulators")
-            .join("ghostty")
-            .join("shaders"),
+    write_runtime_cursor_shader_assets(
         &fixture
             .runtime_dir
             .join("configs")
