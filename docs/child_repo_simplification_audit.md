@@ -44,6 +44,30 @@ Reject a move when the main repo would still own the same behavior through a bro
 2. `yazelix-g7bs.2`: top ownership-clarity cleanup. Resolved by renaming the remaining internal helper to `popup-session-facts.compute` and `popup_session_facts.rs`, so the main repo no longer implies that popup lifecycle belongs to the pane orchestrator after `yzpp`.
 3. `yazelix-00nz`: resolved by moving generic integrated zjstatus command-definition rendering to `yazelix-zellij-bar` while Yazelix core keeps session/cache/helper ownership.
 
+## 2026-06-06 Second Pass
+
+Second-pass measured snapshot, excluding `.git`, `.beads`, `target`, and `rust_plugins` build outputs:
+
+- `413` tracked files
+- `84,352` tokei code lines across counted files
+- `74,050` Rust code lines across `157` Rust files
+- largest tracked storage pressure remains `configs/zellij/plugins/zjstatus.wasm` at about `3.7 MiB`; this is already tracked by `yazelix-audit-deletion-extraction-candidates-i0xoh.1`
+- README-only media under `assets/` is smaller but currently enters the packaged runtime through a broad `assets/*` symlink in `packaging/mk_runtime_tree.nix`
+
+Fresh follow-ups:
+
+1. `yazelix-audit-deletion-extraction-second-pass-4z0ef.1`: exclude README-only preview assets from packaged runtime
+2. `yazelix-audit-deletion-extraction-second-pass-4z0ef.2`: reduce config metadata to one semantic source
+3. `yazelix-audit-deletion-extraction-second-pass-4z0ef.3`: define the Helix Steel plugin-pack ownership boundary
+4. `yazelix-audit-deletion-extraction-second-pass-4z0ef.4`: retire legacy install-artifact repair paths by contract
+
+Second-pass non-candidates:
+
+- Do not create another status-bar extraction bead. Runnable non-workspace widgets, provider probing/cache behavior, CPU/RAM, cursor display, and runtime plugin-block rendering already moved through the closed SP9/status beads; the remaining main adapter is workspace/session path selection and status-bus cache integration.
+- Do not move the full Helix managed config surface to `yazelix-helix`. Only the default Steel plugin-pack asset boundary is worth evaluating; managed paths, user plugin selection, and bridge/session behavior remain Yazelix product policy.
+- Do not move the full config UI adapter to `yazelix-ratconfig`. The child owns generic UI, patch, and migration primitives; Yazelix owns settings semantics, Home Manager ownership, validation, action metadata, and runtime apply behavior.
+- Do not create a public workspace child repo until `zellij_materialization`, launch ownership, and workspace request boundaries are thinner than their current adapters.
+
 ## Explicit Rejections
 
 - Do not create a standalone Yazi integration repo while the main repo still owns the same materializer paths; the existing `yazelix-yazi-assets` child repo is only the reusable asset package
