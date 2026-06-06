@@ -11,12 +11,14 @@ const ALLOWED_RUST_BUDGET_STATUSES: &[&str] =
     &["canonical", "canonical_maintainer", "extension_surface"];
 
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct RustBudgetManifest {
     contract: RustBudgetContract,
     families: Vec<RustBudgetFamily>,
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct RustBudgetContract {
     measured_total_loc: usize,
     measured_total_file_count: usize,
@@ -26,6 +28,7 @@ struct RustBudgetContract {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct RustBudgetFamily {
     id: String,
     status: String,

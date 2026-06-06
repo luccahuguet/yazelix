@@ -13,6 +13,7 @@ use std::sync::OnceLock;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct YaziRenderPlanMetadata {
     sort_by_allowed: Vec<String>,
     default_plugins: Vec<String>,
@@ -115,6 +116,7 @@ fn theme_flavor_plan(resolved_theme: &str) -> ThemeFlavorPlan {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct YaziRenderPlanRequest {
     #[serde(default = "default_yazi_theme")]
     pub yazi_theme: String,
@@ -187,6 +189,25 @@ mod tests {
             yazi_sort_by: "alphabetical".into(),
             yazi_plugins: None,
         }
+    }
+
+    // Defends: the embedded yazi_render_plan.toml metadata schema rejects dead fields instead of letting metadata drift.
+    #[test]
+    fn metadata_rejects_unknown_fields() {
+        let err = toml::from_str::<YaziRenderPlanMetadata>(
+            r#"
+sort_by_allowed = ["alphabetical"]
+default_plugins = ["git"]
+themes_dark = ["dracula"]
+themes_light = ["catppuccin-latte"]
+core_plugins = ["sidebar-status"]
+stale_metadata_field = true
+"#,
+        )
+        .unwrap_err();
+
+        assert!(err.to_string().contains("unknown field"));
+        assert!(err.to_string().contains("stale_metadata_field"));
     }
 
     // Defends: invalid yazi.sort_by values fail as structured config errors instead of slipping into generated TOML.

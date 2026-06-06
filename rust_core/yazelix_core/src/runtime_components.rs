@@ -9,6 +9,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct RuntimeComponentManifestEntry {
     pub enabled: bool,
     #[allow(dead_code)]
@@ -108,6 +109,25 @@ mod tests {
 
         assert!(!runtime_component_enabled(tmp.path(), "cursors").unwrap());
         assert!(runtime_component_enabled(tmp.path(), "screen").unwrap());
+    }
+
+    // Defends: the packaged runtime component manifest fails fast on stale fields instead of letting runtime and metadata drift.
+    #[test]
+    fn component_manifest_rejects_unknown_fields() {
+        let tmp = TempDir::new().unwrap();
+        std::fs::write(
+            tmp.path().join("runtime_components.json"),
+            r#"{ "screen": { "enabled": true, "disableable": true, "notes": [], "stale": true } }"#,
+        )
+        .unwrap();
+
+        let err = read_runtime_component_manifest(tmp.path()).unwrap_err();
+        let details = err.details();
+        let detail = details["error"].as_str().unwrap_or_default();
+
+        assert_eq!(err.code(), "parse_runtime_component_manifest");
+        assert!(detail.contains("unknown field"));
+        assert!(detail.contains("stale"));
     }
 
     // Regression: disabled public runtime surfaces fail with a component-specific error instead of falling through to missing assets.

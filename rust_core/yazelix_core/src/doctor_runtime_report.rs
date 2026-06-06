@@ -23,6 +23,7 @@ const CHAFA_PROBE_UNSAFE_FEATURE: &str = "chafa_probe_unsafe";
 const OPTIONAL_HOST_INTEGRATION_NOTE: &str = "optional_host_integration";
 
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct SharedRuntimePreflightInput {
     pub zellij_layout_path: PathBuf,
     #[serde(default)]
@@ -34,6 +35,7 @@ pub struct SharedRuntimePreflightInput {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct DoctorRuntimeEvaluateRequest {
     pub runtime_dir: PathBuf,
     pub yazelix_state_dir: PathBuf,
@@ -69,12 +71,19 @@ pub struct DoctorRuntimeEvaluateData {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct RuntimeToolManifestEntry {
     pub source: String,
     #[serde(default)]
     pub commands: Vec<String>,
     #[serde(default)]
     pub required_commands: Vec<String>,
+    #[allow(dead_code)]
+    #[serde(default)]
+    pub hostable: bool,
+    #[allow(dead_code)]
+    #[serde(default)]
+    pub disableable: bool,
     #[serde(default)]
     pub notes: Vec<String>,
 }

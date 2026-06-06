@@ -187,6 +187,7 @@ fn default_shell_label() -> String {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct ZellijRenderPlanRequest {
     #[serde(default = "default_left_sidebar_width_percent")]
     pub left_sidebar_width_percent: i64,

@@ -20,6 +20,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct RuntimeMaterializationPlanRequest {
     pub config_path: PathBuf,
     pub default_config_path: PathBuf,
@@ -45,6 +46,7 @@ pub struct RuntimeMaterializationApplyRequest {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
 pub struct RuntimeArtifact {
     pub label: String,
     pub path: String,
@@ -89,6 +91,7 @@ pub struct RuntimeMaterializationRepairRunData {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct RuntimeMaterializationRepairEvaluateRequest {
     pub plan: RuntimeMaterializationPlanRequest,
     pub force: bool,

@@ -32,11 +32,13 @@ impl Default for RepoTestOptions {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct TestSuiteInventory {
     default: DefaultSuiteInventory,
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct DefaultSuiteInventory {
     #[serde(default)]
     nextest_suites: Vec<TestSuite>,
@@ -45,6 +47,7 @@ struct DefaultSuiteInventory {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct TestSuite {
     name: String,
     manifest_path: String,

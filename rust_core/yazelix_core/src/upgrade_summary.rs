@@ -7,12 +7,17 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct UpgradeNotesRegistry {
     #[serde(default)]
     releases: BTreeMap<String, UpgradeNoteEntry>,
+    #[allow(dead_code)]
+    #[serde(default)]
+    series: BTreeMap<String, UpgradeSeriesEntry>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct UpgradeNoteEntry {
     #[serde(default)]
     pub version: String,
@@ -27,7 +32,23 @@ pub struct UpgradeNoteEntry {
     #[serde(default)]
     pub migration_ids: Vec<String>,
     #[serde(default)]
+    pub acknowledged_guarded_changes: Vec<String>,
+    #[serde(default)]
     pub manual_actions: Vec<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct UpgradeSeriesEntry {
+    #[allow(dead_code)]
+    #[serde(default)]
+    version: String,
+    #[allow(dead_code)]
+    #[serde(default)]
+    headline: String,
+    #[allow(dead_code)]
+    #[serde(default)]
+    summary: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]

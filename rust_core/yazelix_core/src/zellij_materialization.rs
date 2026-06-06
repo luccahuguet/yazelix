@@ -63,6 +63,34 @@ const BOTTOM_POPUP_COMMAND_KEY: &str = "bottom_popup";
 const TOP_POPUP_COMMAND_KEY: &str = "top_popup";
 const MENU_POPUP_COMMAND_KEY: &str = "menu";
 const RESERVED_POPUP_IDS: &[&str] = &["popup", "bottom_popup", "top_popup", "menu", "config"];
+const ZELLIJ_RENDER_PLAN_CONFIG_KEYS: &[&str] = &[
+    "left_sidebar_width_percent",
+    "left_sidebar_command",
+    "left_sidebar_args",
+    "right_sidebar_width_percent",
+    "right_sidebar_command",
+    "right_sidebar_args",
+    "popup_width_percent",
+    "popup_height_percent",
+    "screen_saver_enabled",
+    "screen_saver_idle_seconds",
+    "screen_saver_style",
+    "zellij_widget_tray",
+    "zellij_custom_text",
+    "zellij_theme",
+    "zellij_pane_frames",
+    "zellij_rounded_corners",
+    "disable_zellij_tips",
+    "support_kitty_keyboard_protocol",
+    "zellij_default_mode",
+    "zellij_tab_label_mode",
+    "zellij_claude_usage_display",
+    "zellij_codex_usage_display",
+    "zellij_opencode_go_usage_display",
+    "zellij_claude_usage_periods",
+    "zellij_codex_usage_periods",
+    "zellij_opencode_go_usage_periods",
+];
 
 const PANE_ORCHESTRATOR_PLUGIN_URL_PLACEHOLDER: &str = "__YAZELIX_PANE_ORCHESTRATOR_PLUGIN_URL__";
 const HOME_DIR_PLACEHOLDER: &str = "__YAZELIX_HOME_DIR__";
@@ -301,7 +329,14 @@ fn build_render_plan_request(
     resolved_default_shell: &str,
     terminal_label: &str,
 ) -> Result<ZellijRenderPlanRequest, CoreError> {
-    let mut request = config.clone();
+    let mut request = ZELLIJ_RENDER_PLAN_CONFIG_KEYS
+        .iter()
+        .filter_map(|key| {
+            config
+                .get(*key)
+                .map(|value| ((*key).to_string(), value.clone()))
+        })
+        .collect::<JsonMap<String, JsonValue>>();
     request.insert(
         "yazelix_layout_dir".to_string(),
         json!(layout_dir.to_string_lossy()),

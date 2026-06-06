@@ -23,6 +23,7 @@ fn default_reveal_binding_expected() -> String {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct HelixDoctorEvaluateRequest {
     pub home_dir: PathBuf,
     pub runtime_dir: PathBuf,

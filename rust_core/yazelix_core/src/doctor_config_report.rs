@@ -11,6 +11,7 @@ use serde_json::Value;
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct DoctorConfigEvaluateRequest {
     pub config_dir: PathBuf,
     pub runtime_dir: PathBuf,

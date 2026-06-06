@@ -27,6 +27,7 @@ use yazelix_screen::{
 const ASCII_ART_DATA_JSON: &str = include_str!("../assets/ascii_art_data.json");
 
 #[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct AsciiArtData {
     style_catalog: Vec<StyleCatalogEntry>,
     logo_welcome_specs: HashMap<String, LogoWelcomeSpec>,
@@ -34,6 +35,7 @@ struct AsciiArtData {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct StyleCatalogEntry {
     name: String,
     welcome: bool,
@@ -42,6 +44,7 @@ struct StyleCatalogEntry {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct LogoWelcomeSpec {
     minimum_inner_width: usize,
     title_text: String,
@@ -52,6 +55,7 @@ struct LogoWelcomeSpec {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct BoidsWelcomeSpec {
     body_height: usize,
 }

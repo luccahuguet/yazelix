@@ -36,6 +36,7 @@ pub enum YzxExternBridgeSyncStatus {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct YzxExternBridgeState {
     schema_version: u8,
     source_fingerprint: String,

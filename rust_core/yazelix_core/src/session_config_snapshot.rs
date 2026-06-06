@@ -14,6 +14,7 @@ pub const SESSION_CONFIG_SNAPSHOT_FILE_NAME: &str = "config_snapshot.json";
 pub const SESSION_CONFIG_SNAPSHOT_PATH_ENV: &str = "YAZELIX_SESSION_CONFIG_PATH";
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct SessionConfigSnapshotData {
     pub schema_version: u64,
     pub snapshot_id: String,
@@ -25,12 +26,14 @@ pub struct SessionConfigSnapshotData {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
 pub struct SessionConfigSourceMetadata {
     pub path: String,
     pub hash: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
 pub struct SessionRuntimeMetadata {
     pub dir: String,
     pub hash: String,
@@ -50,6 +53,7 @@ pub struct SessionConfigSnapshotWriteRequest<'a> {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct SessionConfigSnapshotCreateRequest {
     pub state_dir: PathBuf,
     pub snapshot_id: String,
@@ -381,6 +385,34 @@ mod tests {
             schema_error.details()["expected_schema_version"],
             json!(SESSION_CONFIG_SNAPSHOT_SCHEMA_VERSION)
         );
+    }
+
+    // Defends: generated session snapshot state rejects unknown fields instead of accepting stale schema baggage.
+    #[test]
+    fn session_config_snapshot_loader_rejects_unknown_fields() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("stale_snapshot.json");
+        fs::write(
+            &path,
+            json!({
+                "schema_version": SESSION_CONFIG_SNAPSHOT_SCHEMA_VERSION,
+                "snapshot_id": "launch-unknown",
+                "created_at_unix_seconds": 1,
+                "source_config": { "path": "/config", "hash": "cfg" },
+                "runtime": { "dir": "/runtime", "hash": "runtime", "version": "v16.1" },
+                "normalized_config": {},
+                "facts": SessionFactsData::default(),
+                "stale_snapshot_field": true,
+            })
+            .to_string(),
+        )
+        .unwrap();
+
+        let error = load_session_config_snapshot_from_path(&path).unwrap_err();
+
+        assert_eq!(error.code(), "session_config_snapshot_parse");
+        assert!(error.to_string().contains("unknown field"));
+        assert!(error.to_string().contains("stale_snapshot_field"));
     }
 
     // Defends: launch-time snapshot creation uses one state-scoped file per launch id and rejects path-like ids.

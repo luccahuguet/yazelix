@@ -30,6 +30,7 @@ const REPO_WORKSPACE_ASSETS: &[&str] = &[
 ];
 
 #[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct WorkspaceAssetEvaluateRequest {
     pub runtime_dir: PathBuf,
     pub state_dir: PathBuf,

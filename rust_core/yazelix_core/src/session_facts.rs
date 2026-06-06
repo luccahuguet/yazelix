@@ -19,6 +19,7 @@ const SESSION_FACTS_SCHEMA_VERSION: u64 = 1;
 const SESSION_FACTS_PATH_ENV: &str = "YAZELIX_SESSION_FACTS_PATH";
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
 pub struct SessionFactsData {
     pub hide_sidebar_on_file_open: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -35,6 +36,7 @@ pub struct SessionFactsData {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct SessionFactsCache {
     schema_version: u64,
     #[serde(rename = "source_config_file")]

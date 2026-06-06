@@ -1163,7 +1163,7 @@ fn prepare_rust_startup() {
         let mut keybindings = TomlTable::new();
         let mut defaults = TomlTable::new();
         defaults.insert(
-            "popup".to_string(),
+            "bottom_popup".to_string(),
             TomlValue::Array(vec![TomlValue::String("Alt x".to_string())]),
         );
         defaults.insert(
@@ -1180,7 +1180,7 @@ fn prepare_rust_startup() {
         let contract_defaults =
             load_contract_keybinding_defaults(&contract, "zellij.keybindings").unwrap();
         assert_eq!(
-            contract_defaults.get("popup"),
+            contract_defaults.get("bottom_popup"),
             Some(&vec!["Alt x".to_string()])
         );
 
@@ -1207,7 +1207,7 @@ fn prepare_rust_startup() {
         assert!(
             errors
                 .iter()
-                .any(|error| error.contains("default mismatch for `popup`"))
+                .any(|error| error.contains("default mismatch for `bottom_popup`"))
         );
     }
 

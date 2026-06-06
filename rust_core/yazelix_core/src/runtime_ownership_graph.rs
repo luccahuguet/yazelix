@@ -82,6 +82,7 @@ pub struct ValidationCommandEntry {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct RuntimeToolManifestEntry {
     source: String,
     commands: Vec<String>,
@@ -92,6 +93,7 @@ struct RuntimeToolManifestEntry {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct RuntimeComponentManifestEntry {
     enabled: bool,
     disableable: bool,

@@ -17,6 +17,7 @@ const NIXGL_WRAPPER_CANDIDATES: &[(&str, &[&str])] = &[
 const HOST_NIXGL_COMMANDS: &[&str] = &["nixGL", "nixGLDefault", "nixGLMesa", "nixGLIntel"];
 
 #[derive(Debug, Deserialize, Default)]
+#[serde(deny_unknown_fields)]
 pub struct RuntimeContractEvaluateRequest {
     #[serde(default)]
     pub working_dir: Option<WorkingDirCheckRequest>,
@@ -31,18 +32,21 @@ pub struct RuntimeContractEvaluateRequest {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct StartupLaunchPreflightRequest {
     pub startup: Option<StartupPreflightPayload>,
     pub launch: Option<LaunchPreflightPayload>,
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct StartupPreflightPayload {
     pub working_dir: PathBuf,
     pub runtime_script: RuntimeScriptCheckRequest,
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct LaunchPreflightPayload {
     pub working_dir: PathBuf,
     #[serde(default)]
@@ -71,6 +75,7 @@ pub struct StartupLaunchPreflightData {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct WorkingDirCheckRequest {
     pub kind: WorkingDirKind,
     pub path: PathBuf,
@@ -84,6 +89,7 @@ pub enum WorkingDirKind {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct RuntimeScriptCheckRequest {
     pub id: String,
     pub label: String,
@@ -92,12 +98,14 @@ pub struct RuntimeScriptCheckRequest {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct GeneratedLayoutCheckRequest {
     pub owner_surface: String,
     pub path: PathBuf,
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct TerminalSupportCheckRequest {
     pub owner_surface: String,
     #[serde(default)]
@@ -109,6 +117,7 @@ pub struct TerminalSupportCheckRequest {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct LinuxGhosttyDesktopGraphicsRequest {
     pub owner_surface: String,
     #[serde(default)]
@@ -838,6 +847,23 @@ mod tests {
             permissions.set_mode(0o755);
             fs::set_permissions(path, permissions).unwrap();
         }
+    }
+
+    // Defends: owned runtime-contract request JSON rejects stale fields instead of silently ignoring contract drift.
+    #[test]
+    fn runtime_contract_request_rejects_unknown_fields() {
+        let err = serde_json::from_value::<RuntimeContractEvaluateRequest>(serde_json::json!({
+            "working_dir": null,
+            "runtime_scripts": [],
+            "generated_layout": null,
+            "terminal_support": null,
+            "linux_ghostty_desktop_graphics_support": null,
+            "stale_runtime_contract_field": true,
+        }))
+        .unwrap_err();
+
+        assert!(err.to_string().contains("unknown field"));
+        assert!(err.to_string().contains("stale_runtime_contract_field"));
     }
 
     // Defends: shared runtime-contract evaluation reports missing working-dir, script, and layout assets in one batch.

@@ -13,6 +13,7 @@ const HANDOFF_DIR: &str = "startup_handoff";
 const LATEST_FILE: &str = "latest.json";
 
 #[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
 pub struct StartupHandoffCaptureRequest {
     pub state_dir: PathBuf,
     pub working_dir: String,
@@ -30,6 +31,7 @@ pub struct StartupHandoffCaptureRequest {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
 pub struct StartupHandoffArtifact {
     pub label: String,
     pub path: String,

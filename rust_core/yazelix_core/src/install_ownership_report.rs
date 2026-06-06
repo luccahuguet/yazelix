@@ -14,6 +14,7 @@ pub const HOME_MANAGER_PREPARE_ACTION_ARCHIVE_PATH: &str = "archive_path";
 pub const HOME_MANAGER_PREPARE_ACTION_REMOVE_PROFILE_ENTRY: &str = "remove_profile_entry";
 
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct InstallOwnershipEvaluateRequest {
     pub runtime_dir: PathBuf,
     pub home_dir: PathBuf,

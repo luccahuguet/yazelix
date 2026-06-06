@@ -64,23 +64,9 @@
     }
   },
   "boids_welcome_specs": {
-    "narrow": { "minimum_inner_width": 22, "body_height": 4, "caption": "flocking..." },
-    "medium": { "minimum_inner_width": 34, "body_height": 5, "caption": "flocking..." },
-    "wide": { "minimum_inner_width": 58, "body_height": 5, "caption": "flocking..." },
-    "hero": { "minimum_inner_width": 58, "body_height": 7, "caption": "flocking..." }
-  },
-  "game_of_life_specs": {
-    "narrow": { "minimum_inner_width": 22, "welcome_minimum_body_height": 8, "screen_minimum_body_height": 8 },
-    "medium": { "minimum_inner_width": 34, "welcome_minimum_body_height": 12, "screen_minimum_body_height": 12 },
-    "wide": { "minimum_inner_width": 58, "welcome_minimum_body_height": 14, "screen_minimum_body_height": 14 },
-    "hero": { "minimum_inner_width": 58, "welcome_minimum_body_height": 16, "screen_minimum_body_height": 16 }
-  },
-  "game_of_life_shapes": {
-    "right_glider": [[1, 0], [2, 1], [0, 2], [1, 2], [2, 2]],
-    "blinker": [[0, 0], [1, 0], [2, 0]],
-    "toad": [[1, 0], [2, 0], [3, 0], [0, 1], [1, 1], [2, 1]],
-    "beacon": [[0, 0], [1, 0], [0, 1], [1, 1], [2, 2], [3, 2], [2, 3], [3, 3]],
-    "r_pentomino": [[1, 0], [2, 0], [0, 1], [1, 1], [1, 2]],
-    "acorn": [[1, 0], [3, 1], [0, 2], [1, 2], [4, 2], [5, 2], [6, 2]]
+    "narrow": { "body_height": 4 },
+    "medium": { "body_height": 5 },
+    "wide": { "body_height": 5 },
+    "hero": { "body_height": 7 }
   }
 }
