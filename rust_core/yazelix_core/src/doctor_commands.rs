@@ -75,6 +75,47 @@ pub struct DoctorReportData {
     pub summary: DoctorReportSummary,
 }
 
+#[derive(Debug, Clone, Copy)]
+struct DoctorJson<'a>(&'a Value);
+
+type DoctorFinding<'a> = DoctorJson<'a>;
+
+impl<'a> DoctorJson<'a> {
+    fn new(value: &'a Value) -> Self {
+        Self(value)
+    }
+    fn field(self, field: &str) -> &'a str {
+        self.0.get(field).and_then(Value::as_str).unwrap_or("")
+    }
+    fn bool_field(self, field: &str) -> bool {
+        self.0.get(field).and_then(Value::as_bool).unwrap_or(false)
+    }
+    fn status(self) -> &'a str {
+        self.field("status")
+    }
+    fn message(self) -> &'a str {
+        self.field("message")
+    }
+    fn fix_available(self) -> bool {
+        self.bool_field("fix_available")
+    }
+    fn fix_action(self) -> Option<&'a str> {
+        self.0.get("fix_action").and_then(Value::as_str)
+    }
+    fn conflicts(self) -> impl Iterator<Item = DoctorJson<'a>> + 'a {
+        self.0
+            .get("conflicts")
+            .and_then(Value::as_array)
+            .into_iter()
+            .flatten()
+            .map(DoctorJson::new)
+    }
+}
+
+fn doctor_findings(results: &[Value]) -> impl Iterator<Item = DoctorFinding<'_>> {
+    results.iter().map(DoctorFinding::new)
+}
+
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 struct RecoveryPlanSummary {
     action_count: usize,
@@ -85,13 +126,13 @@ struct RecoveryPlanSummary {
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 struct RecoveryPlanAction {
-    id: String,
+    id: &'static str,
     severity: String,
-    problem: String,
+    problem: &'static str,
     evidence: Vec<String>,
-    commands: Vec<String>,
+    commands: &'static [&'static str],
     safe_to_run_automatically: bool,
-    rationale: String,
+    rationale: &'static str,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
@@ -658,26 +699,24 @@ fn serialize_value<T: Serialize>(value: &T) -> Result<Value, CoreError> {
 }
 
 fn summarize_doctor_results(results: &[Value]) -> DoctorReportSummary {
-    let error_count = results
-        .iter()
-        .filter(|result| result_status(result) == "error")
-        .count();
-    let warning_count = results
-        .iter()
-        .filter(|result| result_status(result) == "warning")
-        .count();
-    let info_count = results
-        .iter()
-        .filter(|result| result_status(result) == "info")
-        .count();
-    let ok_count = results
-        .iter()
-        .filter(|result| result_status(result) == "ok")
-        .count();
-    let fixable_count = results
-        .iter()
-        .filter(|result| result_fix_available(result))
-        .count();
+    let mut error_count = 0;
+    let mut warning_count = 0;
+    let mut info_count = 0;
+    let mut ok_count = 0;
+    let mut fixable_count = 0;
+
+    for finding in doctor_findings(results) {
+        match finding.status() {
+            "error" => error_count += 1,
+            "warning" => warning_count += 1,
+            "info" => info_count += 1,
+            "ok" => ok_count += 1,
+            _ => {}
+        }
+        if finding.fix_available() {
+            fixable_count += 1;
+        }
+    }
 
     DoctorReportSummary {
         error_count,
@@ -689,64 +728,18 @@ fn summarize_doctor_results(results: &[Value]) -> DoctorReportSummary {
     }
 }
 
-fn result_status(result: &Value) -> &str {
-    result.get("status").and_then(Value::as_str).unwrap_or("")
-}
-
-fn result_fix_available(result: &Value) -> bool {
-    result
-        .get("fix_available")
-        .and_then(Value::as_bool)
-        .unwrap_or(false)
-}
-
-fn result_message(result: &Value) -> &str {
-    result.get("message").and_then(Value::as_str).unwrap_or("")
-}
-
-fn result_details(result: &Value) -> Option<&str> {
-    result.get("details").and_then(Value::as_str)
-}
-
-fn result_fix_action(result: &Value) -> Option<&str> {
-    result.get("fix_action").and_then(Value::as_str)
-}
-
-fn needs_default_settings_config_creation(results: &[Value]) -> bool {
-    results
-        .iter()
-        .any(|result| result_fix_action(result) == Some(CREATE_DEFAULT_SETTINGS_CONFIG_FIX_ACTION))
-}
-
 fn has_fix_action(results: &[Value], action: &str) -> bool {
-    results
-        .iter()
-        .any(|result| result_fix_action(result) == Some(action))
+    doctor_findings(results).any(|finding| finding.fix_action() == Some(action))
 }
 
 fn needs_helix_runtime_conflict_backup(results: &[Value]) -> bool {
-    results.iter().any(|result| {
-        matches!(result_status(result), "error" | "warning")
-            && result_message(result).contains("runtime")
-            && result_fix_available(result)
-            && result
-                .get("conflicts")
-                .and_then(Value::as_array)
-                .map(|conflicts| {
-                    conflicts.iter().any(|conflict| {
-                        conflict
-                            .get("severity")
-                            .and_then(Value::as_str)
-                            .unwrap_or("")
-                            == "error"
-                            && conflict
-                                .get("path")
-                                .and_then(Value::as_str)
-                                .map(|path| !path.is_empty())
-                                .unwrap_or(false)
-                    })
-                })
-                .unwrap_or(false)
+    doctor_findings(results).any(|finding| {
+        matches!(finding.status(), "error" | "warning")
+            && finding.message().contains("runtime")
+            && finding.fix_available()
+            && finding.conflicts().any(|conflict| {
+                conflict.field("severity") == "error" && !conflict.field("path").is_empty()
+            })
     })
 }
 
@@ -772,7 +765,7 @@ fn build_doctor_repair_plan(results: &[Value]) -> DoctorRepairPlan {
             stable_json_event: "doctor_repair.helix_runtime_conflict.backup",
         });
     }
-    if needs_default_settings_config_creation(results) {
+    if has_fix_action(results, CREATE_DEFAULT_SETTINGS_CONFIG_FIX_ACTION) {
         actions.push(DoctorRepairAction {
             id: CREATE_DEFAULT_SETTINGS_CONFIG_FIX_ACTION,
             summary: "Create missing settings.jsonc from shipped defaults",
@@ -938,103 +931,121 @@ fn build_recovery_plan(report: &DoctorReportData) -> RecoveryPlanReport {
 }
 
 fn recovery_action_for_doctor_result(result: &Value) -> Option<RecoveryPlanAction> {
-    let message = result_message(result);
-    let details = result_details(result).unwrap_or("");
-    let fix_action = result_fix_action(result).unwrap_or("");
+    let finding = DoctorFinding::new(result);
+    let message = finding.message();
+    let details = finding.field("details");
+    let fix_action = finding.fix_action().unwrap_or("");
     let evidence = evidence_lines(message, details);
 
     if fix_action == "repair_generated_runtime_state"
         || message.contains("Generated workspace assets are missing or stale")
     {
-        return Some(RecoveryPlanAction {
-            id: "repair_generated_runtime_state".into(),
-            severity: normalize_recovery_severity(result_status(result)),
-            problem: "Generated workspace assets are missing, stale, or out of sync with the active runtime".into(),
+        return Some(recovery_action(
+            "repair_generated_runtime_state",
+            finding,
+            "Generated workspace assets are missing, stale, or out of sync with the active runtime",
             evidence,
-            commands: vec!["yzx doctor --fix".into(), "yzx restart".into()],
-            safe_to_run_automatically: true,
-            rationale: "`yzx doctor --fix` only regenerates Yazelix-owned generated runtime state for this finding; restart makes Zellij load the fresh assets.".into(),
-        });
+            &["yzx doctor --fix", "yzx restart"],
+            true,
+            "`yzx doctor --fix` only regenerates Yazelix-owned generated runtime state for this finding; restart makes Zellij load the fresh assets.",
+        ));
     }
 
     if message.contains("default Nix profile still contains standalone Yazelix packages")
         || details.contains("Home Manager now owns this Yazelix install")
     {
-        return Some(RecoveryPlanAction {
-            id: "resolve_home_manager_profile_collision".into(),
-            severity: normalize_recovery_severity(result_status(result)),
-            problem: "Home Manager ownership conflicts with standalone Yazelix packages in the default Nix profile".into(),
+        return Some(recovery_action(
+            "resolve_home_manager_profile_collision",
+            finding,
+            "Home Manager ownership conflicts with standalone Yazelix packages in the default Nix profile",
             evidence,
-            commands: vec![
-                "yzx home_manager prepare --apply".into(),
-                "home-manager switch".into(),
-            ],
-            safe_to_run_automatically: false,
-            rationale: "This changes package ownership and can remove profile entries, so the user should run it deliberately from the Home Manager-owned setup.".into(),
-        });
+            &["yzx home_manager prepare --apply", "home-manager switch"],
+            false,
+            "This changes package ownership and can remove profile entries, so the user should run it deliberately from the Home Manager-owned setup.",
+        ));
     }
 
     if message.contains("stale host-shell yzx function or alias")
         || message.contains("stale user-local yzx wrapper")
         || message.contains("shadows the profile-owned Yazelix command")
     {
-        return Some(RecoveryPlanAction {
-            id: "remove_shadowed_yzx_launcher".into(),
-            severity: normalize_recovery_severity(result_status(result)),
-            problem: "A stale shell function, alias, or local wrapper is shadowing the current Yazelix command".into(),
+        return Some(recovery_action(
+            "remove_shadowed_yzx_launcher",
+            finding,
+            "A stale shell function, alias, or local wrapper is shadowing the current Yazelix command",
             evidence,
-            commands: vec![
-                "command yzx doctor --fix-plan".into(),
-                "yzx home_manager prepare --apply".into(),
+            &[
+                "command yzx doctor --fix-plan",
+                "yzx home_manager prepare --apply",
             ],
-            safe_to_run_automatically: false,
-            rationale: "The exact stale definition usually lives in a user shell startup file, so Yazelix should not edit it implicitly.".into(),
-        });
+            false,
+            "The exact stale definition usually lives in a user shell startup file, so Yazelix should not edit it implicitly.",
+        ));
     }
 
     if message.contains("pane-orchestrator plugin permissions not granted") {
-        return Some(RecoveryPlanAction {
-            id: "repair_zellij_plugin_permissions".into(),
-            severity: normalize_recovery_severity(result_status(result)),
-            problem: "The active Zellij session has not granted Yazelix pane-orchestrator permissions".into(),
+        return Some(recovery_action(
+            "repair_zellij_plugin_permissions",
+            finding,
+            "The active Zellij session has not granted Yazelix pane-orchestrator permissions",
             evidence,
-            commands: vec!["yzx doctor --fix".into(), "yzx restart".into()],
-            safe_to_run_automatically: false,
-            rationale: "Permission seeding is safe, but restarting the interactive session should be an explicit user action.".into(),
-        });
+            &["yzx doctor --fix", "yzx restart"],
+            false,
+            "Permission seeding is safe, but restarting the interactive session should be an explicit user action.",
+        ));
     }
 
     if message.contains("pane-orchestrator session state is not ready")
         || message.contains("Could not contact the Yazelix pane-orchestrator plugin")
         || message.contains("pane-orchestrator returned an unexpected response")
     {
-        return Some(RecoveryPlanAction {
-            id: "restart_broken_zellij_session".into(),
-            severity: normalize_recovery_severity(result_status(result)),
-            problem: "The active Zellij session is stale, initializing, or returning invalid Yazelix plugin state".into(),
+        return Some(recovery_action(
+            "restart_broken_zellij_session",
+            finding,
+            "The active Zellij session is stale, initializing, or returning invalid Yazelix plugin state",
             evidence,
-            commands: vec!["yzx restart".into(), "yzx doctor --verbose".into()],
-            safe_to_run_automatically: false,
-            rationale: "Restarting can close panes, so the plan reports the exact recovery path without doing it automatically.".into(),
-        });
+            &["yzx restart", "yzx doctor --verbose"],
+            false,
+            "Restarting can close panes, so the plan reports the exact recovery path without doing it automatically.",
+        ));
     }
 
     if details.contains("Failure class: host-dependency problem")
         || message.contains("missing required")
         || message.contains("command not found")
     {
-        return Some(RecoveryPlanAction {
-            id: "repair_missing_runtime_tool".into(),
-            severity: normalize_recovery_severity(result_status(result)),
-            problem: "A required runtime command or host dependency is missing for the active Yazelix mode".into(),
+        return Some(recovery_action(
+            "repair_missing_runtime_tool",
+            finding,
+            "A required runtime command or host dependency is missing for the active Yazelix mode",
             evidence,
-            commands: vec!["yzx inspect --json".into(), "yzx doctor --verbose".into()],
-            safe_to_run_automatically: false,
-            rationale: "Missing tools depend on the install owner and platform; inspect plus verbose doctor gives the exact active runtime and failing dependency before package changes.".into(),
-        });
+            &["yzx inspect --json", "yzx doctor --verbose"],
+            false,
+            "Missing tools depend on the install owner and platform; inspect plus verbose doctor gives the exact active runtime and failing dependency before package changes.",
+        ));
     }
 
     None
+}
+
+fn recovery_action(
+    id: &'static str,
+    finding: DoctorFinding<'_>,
+    problem: &'static str,
+    evidence: Vec<String>,
+    commands: &'static [&'static str],
+    safe_to_run_automatically: bool,
+    rationale: &'static str,
+) -> RecoveryPlanAction {
+    RecoveryPlanAction {
+        id,
+        severity: normalize_recovery_severity(finding.status()),
+        problem,
+        evidence,
+        commands,
+        safe_to_run_automatically,
+        rationale,
+    }
 }
 
 fn evidence_lines(message: &str, details: &str) -> Vec<String> {
@@ -1095,7 +1106,7 @@ fn render_recovery_plan(plan: &RecoveryPlanReport) {
             }
         );
         println!("  Commands:");
-        for command in &action.commands {
+        for command in action.commands {
             println!("    {command}");
         }
         println!("  Why: {}", action.rationale);
@@ -1107,18 +1118,18 @@ fn render_doctor_report(report: &DoctorReportData, verbose: bool) {
     println!("🔍 Running Yazelix Health Checks...\n");
 
     for result in &report.results {
-        let icon = match result_status(result) {
+        let finding = DoctorFinding::new(result);
+        let icon = match finding.status() {
             "ok" => "✅",
             "info" => "ℹ️ ",
             "warning" => "⚠️ ",
             "error" => "❌",
             _ => "•",
         };
-        println!("{icon} {}", result_message(result));
+        println!("{icon} {}", finding.message());
         if verbose {
-            if let Some(details) =
-                result_details(result).filter(|details| !details.trim().is_empty())
-            {
+            let details = finding.field("details");
+            if !details.trim().is_empty() {
                 println!("   {details}");
             }
         }
@@ -1139,7 +1150,8 @@ fn render_doctor_report(report: &DoctorReportData, verbose: bool) {
 
 fn print_runtime_conflict_fix_commands(results: &[Value]) {
     for result in results {
-        if result_status(result) != "error" || !result_message(result).contains("runtime") {
+        let finding = DoctorFinding::new(result);
+        if finding.status() != "error" || !finding.message().contains("runtime") {
             continue;
         }
         let Some(commands) = result.get("fix_commands").and_then(Value::as_array) else {
@@ -1192,31 +1204,20 @@ fn run_doctor_repair_action(
 
 fn repair_helix_runtime_conflicts(results: &[Value]) -> Result<bool, CoreError> {
     let mut any_failed = false;
-    for result in results {
-        let status = result.get("status").and_then(Value::as_str).unwrap_or("");
-        let message = result.get("message").and_then(Value::as_str).unwrap_or("");
-        let fix_available = result
-            .get("fix_available")
-            .and_then(Value::as_bool)
-            .unwrap_or(false);
-        let conflicts = result.get("conflicts").and_then(Value::as_array);
-
-        if !matches!(status, "error" | "warning") || !message.contains("runtime") || !fix_available
+    for finding in doctor_findings(results) {
+        if !matches!(finding.status(), "error" | "warning")
+            || !finding.message().contains("runtime")
+            || !finding.fix_available()
         {
             continue;
         }
-        let Some(conflicts) = conflicts else { continue };
 
-        for conflict in conflicts {
-            let severity = conflict
-                .get("severity")
-                .and_then(Value::as_str)
-                .unwrap_or("");
-            let path = conflict.get("path").and_then(Value::as_str).unwrap_or("");
-            let name = conflict.get("name").and_then(Value::as_str).unwrap_or("");
-            if severity != "error" || path.is_empty() {
+        for conflict in finding.conflicts() {
+            let path = conflict.field("path");
+            if conflict.field("severity") != "error" || path.is_empty() {
                 continue;
             }
+            let name = conflict.field("name");
             let backup = format!("{path}.backup");
             match fs::rename(path, &backup) {
                 Ok(()) => println!("✅ Moved {name} from {path} to {backup}"),
@@ -1533,18 +1534,6 @@ mod tests {
         assert!(parsed.json);
     }
 
-    // Regression: install-owner prose mentioning the default Nix profile must not trigger config creation.
-    #[test]
-    fn doctor_fix_ignores_default_profile_info_for_config_creation() {
-        let results = vec![json!({
-            "status": "info",
-            "message": "Install owner: default Nix profile",
-            "fix_available": false
-        })];
-
-        assert!(!needs_default_settings_config_creation(&results));
-    }
-
     // Defends: stale or repeated doctor findings cannot overwrite an existing managed settings.jsonc.
     #[test]
     fn default_settings_config_creation_does_not_overwrite_existing_file() {
@@ -1750,7 +1739,7 @@ mod tests {
         let ids = plan
             .actions
             .iter()
-            .map(|action| action.id.as_str())
+            .map(|action| action.id)
             .collect::<Vec<_>>();
 
         assert_eq!(
@@ -1764,7 +1753,7 @@ mod tests {
         );
         assert_eq!(
             plan.actions[0].commands,
-            vec!["yzx doctor --fix", "yzx restart"]
+            &["yzx doctor --fix", "yzx restart"]
         );
         assert!(plan.actions[0].safe_to_run_automatically);
         assert_eq!(
