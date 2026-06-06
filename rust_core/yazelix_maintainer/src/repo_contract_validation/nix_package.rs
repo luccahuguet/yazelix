@@ -419,9 +419,7 @@ fn verify_profile_installed_runtime(
             "runtime-local default config",
         ),
         (
-            runtime_ghostty_shader_root
-                .join("variants")
-                .join("reef.glsl"),
+            runtime_ghostty_shader_root.join("cursor_trail_reef.glsl"),
             "runtime-local Ghostty trail shader variant",
         ),
         (

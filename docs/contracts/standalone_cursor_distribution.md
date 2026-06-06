@@ -38,7 +38,7 @@ Previous alternatives considered:
 - The package output contains complete GLSL files under `share/yazelix/yazelix_cursors/shaders/`
 - The package output contains examples under `share/yazelix/yazelix_cursors/examples/`
 - The package output contains `bin/yzc`
-- The package passthru exposes `yazelixCursorPackageContract` with the exact shader root, generated effect root, required targets, and forbidden stale shader files
+- The package passthru exposes `yazelixCursorPackageContract` with the exact shader root, generated effect root, required targets, required shader files, and forbidden stale shader files
 - The package and runtime shader roots must not include `build_shaders.nu`; shader generation is Rust-owned
 - `yzc list-targets` exposes the child-owned target model for Ghostty, yzxterm, Rio, Ratty, and protocol cursor positions
 - Users opt in by running `yzc init`, `yzc generate ghostty`, then adding `config-file = ~/.config/yazelix_ghostty_cursors/ghostty.conf` to their Ghostty config

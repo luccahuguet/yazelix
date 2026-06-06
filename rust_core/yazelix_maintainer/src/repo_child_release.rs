@@ -69,6 +69,7 @@ const CURSOR_PACKAGE_METADATA_FIELDS: &[&str] = &[
     "shaderRoot",
     "generatedEffectRoot",
     "requiredTargets",
+    "requiredShaderFiles",
     "forbiddenShaderFiles",
 ];
 
@@ -78,6 +79,13 @@ const CURSOR_PACKAGE_REQUIRED_TARGETS: &[&str] = &[
     "rio",
     "ratty",
     "protocol_cursor_positions",
+];
+
+const CURSOR_PACKAGE_REQUIRED_SHADER_FILES: &[&str] = &[
+    "cursor_trail_common.glsl",
+    "cursor_trail_reef.glsl",
+    "upstream_effects/ripple_rectangle_cursor.glsl",
+    "generated_effects/tail.glsl",
 ];
 
 pub fn validate_child_release_transaction(repo_root: &Path) -> Result<ValidationReport, String> {
@@ -509,6 +517,13 @@ fn validate_cursor_package_contract_with(
         metadata,
         "requiredTargets",
         CURSOR_PACKAGE_REQUIRED_TARGETS,
+    );
+    require_cursor_contract_string_array(
+        &mut errors,
+        system,
+        metadata,
+        "requiredShaderFiles",
+        CURSOR_PACKAGE_REQUIRED_SHADER_FILES,
     );
     require_cursor_contract_string_array(
         &mut errors,
@@ -992,15 +1007,7 @@ mod tests {
     // Defends: cursor package metadata must stay exact so main cannot silently consume stale or future child artifact shapes.
     #[test]
     fn cursor_package_contract_accepts_declared_metadata() {
-        let metadata = cursor_package_passthru_json(serde_json::json!({
-            "schemaVersion": 1,
-            "packageName": "yazelix-cursors",
-            "shareRoot": "share/yazelix/yazelix_cursors",
-            "shaderRoot": "share/yazelix/yazelix_cursors/shaders",
-            "generatedEffectRoot": "share/yazelix/yazelix_cursors/shaders/generated_effects",
-            "requiredTargets": ["ghostty", "yzxterm", "rio", "ratty", "protocol_cursor_positions"],
-            "forbiddenShaderFiles": ["build_shaders.nu"],
-        }));
+        let metadata = cursor_package_passthru_json(valid_cursor_package_contract_json());
 
         let errors = validate_cursor_package_contract_with("x86_64-linux", &metadata).unwrap();
 
@@ -1010,21 +1017,30 @@ mod tests {
     // Defends: child cursor package metadata cannot grow unused planning fields that main never validates.
     #[test]
     fn cursor_package_contract_rejects_unknown_metadata_fields() {
-        let metadata = cursor_package_passthru_json(serde_json::json!({
-            "schemaVersion": 1,
-            "packageName": "yazelix-cursors",
-            "shareRoot": "share/yazelix/yazelix_cursors",
-            "shaderRoot": "share/yazelix/yazelix_cursors/shaders",
-            "generatedEffectRoot": "share/yazelix/yazelix_cursors/shaders/generated_effects",
-            "requiredTargets": ["ghostty", "yzxterm", "rio", "ratty", "protocol_cursor_positions"],
-            "forbiddenShaderFiles": ["build_shaders.nu"],
-            "requiredRuntimeScripts": [],
-        }));
+        let mut contract = valid_cursor_package_contract_json();
+        contract
+            .as_object_mut()
+            .expect("test fixture is an object")
+            .insert("requiredRuntimeScripts".to_string(), serde_json::json!([]));
+        let metadata = cursor_package_passthru_json(contract);
 
         let errors = validate_cursor_package_contract_with("x86_64-linux", &metadata).unwrap();
 
         assert_eq!(errors.len(), 1);
         assert!(errors[0].contains("unsupported field `requiredRuntimeScripts`"));
+    }
+
+    fn valid_cursor_package_contract_json() -> JsonValue {
+        serde_json::json!({
+            "schemaVersion": 1,
+            "packageName": "yazelix-cursors",
+            "shareRoot": "share/yazelix/yazelix_cursors",
+            "shaderRoot": "share/yazelix/yazelix_cursors/shaders",
+            "generatedEffectRoot": "share/yazelix/yazelix_cursors/shaders/generated_effects",
+            "requiredTargets": CURSOR_PACKAGE_REQUIRED_TARGETS,
+            "requiredShaderFiles": CURSOR_PACKAGE_REQUIRED_SHADER_FILES,
+            "forbiddenShaderFiles": ["build_shaders.nu"],
+        })
     }
 
     // Regression: the main repo must not reintroduce a mirrored Ghostty cursor shader source tree after child ownership.

@@ -93,6 +93,8 @@ let
       throw "yazelix_cursors package contract does not declare the yzxterm cursor target"
     else if !(builtins.elem "build_shaders.nu" cursorPackageContract.forbiddenShaderFiles) then
       throw "yazelix_cursors package contract does not forbid stale build_shaders.nu shader assets"
+    else if !(builtins.hasAttr "requiredShaderFiles" cursorPackageContract) then
+      throw "yazelix_cursors package contract does not declare requiredShaderFiles"
     else
       "${yazelixCursorsPackage}/${cursorPackageContract.shaderRoot}";
   paneOrchestratorWasm = zellijPluginArtifacts.pane_orchestrator or null;
@@ -187,10 +189,7 @@ pkgs.runCommand name { } ''
     if [ "$terminal_name" = "ghostty" ]; then
       link_runtime_input "$terminal_entry/config" "configs/terminal_emulators/ghostty/config"
       ${pkgs.lib.optionalString cursorsEnabled ''
-        test -s "${cursorShaderRoot}/cursor_trail_common.glsl"
-        test -s "${cursorShaderRoot}/variants/reef.glsl"
-        test -s "${cursorShaderRoot}/upstream_effects/ripple_rectangle_cursor.glsl"
-        test -s "${cursorShaderRoot}/generated_effects/tail.glsl"
+        ${pkgs.lib.concatMapStringsSep "\n        " (shaderFile: ''test -s "${cursorShaderRoot}/${shaderFile}"'') cursorPackageContract.requiredShaderFiles}
         test ! -e "${cursorShaderRoot}/build_shaders.nu"
         link_runtime_input "${cursorShaderRoot}" "configs/terminal_emulators/ghostty/shaders"
       ''}
