@@ -261,10 +261,7 @@ fn reset_config_adjacency_report(
     for entry in entries {
         let entry = entry.map_err(|source| io_err(config_dir, source))?;
         let name = entry.file_name().to_string_lossy().to_string();
-        if name == SETTINGS_CONFIG
-            || name == "tombi.toml"
-            || name.starts_with("settings.jsonc.backup-")
-        {
+        if name == SETTINGS_CONFIG || name.starts_with("settings.jsonc.backup-") {
             continue;
         }
         if current_managed.contains(&name) {

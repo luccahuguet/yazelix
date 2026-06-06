@@ -1,7 +1,6 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 use tempfile::TempDir;
-use yazelix_core::active_config_surface::TOML_TOOLING_CONFIG_FILENAME;
 
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
@@ -59,7 +58,6 @@ pub fn write_runtime_contract_assets(repo: &Path, runtime_dir: &Path) {
         runtime_dir.join("config_metadata/main_config_contract.toml"),
     )
     .unwrap();
-    fs::write(runtime_dir.join(TOML_TOOLING_CONFIG_FILENAME), "[format]\n").unwrap();
     fs::write(runtime_dir.join("runtime_variant"), "ghostty\n").unwrap();
     fs::write(
         runtime_dir.join("runtime_identity.json"),

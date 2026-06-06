@@ -47,7 +47,6 @@ This inventory lists the canonical contracts under `docs/contracts/`. It is not 
 | `terminal_launch_contract.md` | Terminal launch/process-boundary behavior |
 | `terminal_override_layers.md` | Terminal override layers |
 | `test_suite_governance.md` | Governed test lane, strength, and retention rules |
-| `toml_tooling_contract.md` | Runtime TOML tooling behavior |
 | `upgrade_notes_contract.md` | Structured upgrade notes |
 | `v15_trimmed_runtime_contract.md` | Current trimmed runtime branch contract |
 | `welcome_screen_style_contract.md` | Welcome and screen style behavior |

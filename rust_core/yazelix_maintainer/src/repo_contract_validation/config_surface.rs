@@ -1,9 +1,8 @@
 use super::{
     HOME_MANAGER_MODULE_DECLARATION_PATH, MAIN_CONTRACT_RELATIVE_PATH, MAIN_TEMPLATE_RELATIVE_PATH,
-    MODULE_RELATIVE_PATH, TOML_TOOLING_CONFIG_RELATIVE_PATH, create_unique_temp_dir,
-    escape_nix_string, format_json_value, format_toml_value, get_nested_toml_value,
-    json_values_equal, read_toml_file, run_nix_eval, set_nested_toml_value, sorted_keys,
-    split_field_path, toml_to_json, toml_values_equal,
+    MODULE_RELATIVE_PATH, create_unique_temp_dir, escape_nix_string, format_json_value,
+    format_toml_value, get_nested_toml_value, json_values_equal, read_toml_file, run_nix_eval,
+    set_nested_toml_value, sorted_keys, split_field_path, toml_to_json, toml_values_equal,
 };
 use crate::repo_validation::ValidationReport;
 use serde_json::{Map as JsonMap, Value as JsonValue};
@@ -994,11 +993,7 @@ fn setup_config_state_fixture(repo_root: &Path) -> Result<ConfigStateFixture, St
     fs::create_dir_all(&home_root)
         .map_err(|error| format!("Failed to create {}: {}", home_root.display(), error))?;
 
-    for relative_path in [
-        TOML_TOOLING_CONFIG_RELATIVE_PATH,
-        MAIN_TEMPLATE_RELATIVE_PATH,
-        MAIN_CONTRACT_RELATIVE_PATH,
-    ] {
+    for relative_path in [MAIN_TEMPLATE_RELATIVE_PATH, MAIN_CONTRACT_RELATIVE_PATH] {
         copy_fixture_file(repo_root, &runtime_root, relative_path)?;
         copy_fixture_file(repo_root, &runtime_root_alt, relative_path)?;
     }

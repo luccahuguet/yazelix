@@ -7,7 +7,6 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use tempfile::{TempDir, tempdir};
 use yazelix_core::{
-    active_config_surface::TOML_TOOLING_CONFIG_FILENAME,
     ghostty_cursor_registry::CursorRegistry,
     settings_surface::{read_settings_jsonc_value, render_default_settings_jsonc},
     user_config_paths::shared_cursor_config,
@@ -380,10 +379,10 @@ fn config_normalize_prints_one_error_json_envelope() {
     assert_eq!(envelope["error"]["code"], "unsupported_config");
 }
 
-// Defends: config-surface.resolve bootstraps the canonical managed config and TOML tooling support through the Rust active-config owner.
+// Defends: config-surface.resolve bootstraps the canonical managed config through the Rust active-config owner.
 // Contract: CRCP-004
 #[test]
-fn config_surface_resolve_bootstraps_managed_config_and_toml_tooling_support() {
+fn config_surface_resolve_bootstraps_managed_config() {
     let repo = repo_root();
     let tmp = tempdir().unwrap();
     let runtime_dir = prepare_doctor_config_runtime_fixture(&repo, &tmp);
@@ -405,7 +404,6 @@ fn config_surface_resolve_bootstraps_managed_config_and_toml_tooling_support() {
     assert_eq!(envelope["status"], "ok");
 
     let managed_config = config_dir.join("settings.jsonc");
-    let managed_toml_tooling_config = config_dir.join(TOML_TOOLING_CONFIG_FILENAME);
     assert_eq!(
         envelope["data"]["config_file"],
         managed_config.to_string_lossy().to_string()
@@ -414,10 +412,6 @@ fn config_surface_resolve_bootstraps_managed_config_and_toml_tooling_support() {
     assert!(managed_value.get("core").is_some());
     assert!(managed_value.get("cursors").is_none());
     assert!(shared_cursor_config(&config_dir).exists());
-    assert_eq!(
-        fs::read_to_string(&managed_toml_tooling_config).unwrap(),
-        fs::read_to_string(runtime_dir.join(TOML_TOOLING_CONFIG_FILENAME)).unwrap()
-    );
 }
 
 // Defends: config.normalize rejects removed config surfaces without mutating the active config file or creating backup churn.

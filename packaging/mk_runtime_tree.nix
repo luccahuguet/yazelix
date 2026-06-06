@@ -114,7 +114,6 @@ pkgs.runCommand name { } ''
   ln -s ${src}/shells "$out/shells"
 
   ln -s ${src}/CHANGELOG.md "$out/CHANGELOG.md"
-  ln -s ${src}/tombi.toml "$out/tombi.toml"
   ln -s ${src}/settings_default.jsonc "$out/settings_default.jsonc"
   ${pkgs.lib.optionalString cursorsEnabled ''
     ln -s ${src}/yazelix_ghostty_cursors_default.toml "$out/yazelix_ghostty_cursors_default.toml"

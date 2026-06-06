@@ -1,8 +1,7 @@
 //! Interactive first-run config generator for `yzx onboard`.
 
 use crate::active_config_surface::{
-    PrimaryConfigPaths, ensure_managed_toml_tooling_config, primary_config_paths,
-    validate_primary_config_surface,
+    PrimaryConfigPaths, primary_config_paths, validate_primary_config_surface,
 };
 use crate::bridge::{CoreError, ErrorClass};
 use crate::control_plane::{config_dir_from_env, runtime_dir_from_env};
@@ -465,10 +464,6 @@ fn write_onboard_config(
     force: bool,
 ) -> Result<(), CoreError> {
     validate_primary_config_surface(paths)?;
-    ensure_managed_toml_tooling_config(
-        &paths.runtime_toml_tooling_config,
-        &paths.managed_toml_tooling_config,
-    )?;
 
     if paths.user_config.exists() && !force {
         return Err(CoreError::classified(
@@ -578,14 +573,12 @@ fn onboard_settings_shape_error() -> CoreError {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::active_config_surface::TOML_TOOLING_CONFIG_FILENAME;
     use tempfile::tempdir;
 
     fn test_paths(root: &std::path::Path) -> PrimaryConfigPaths {
         let runtime = root.join("runtime");
         let config = root.join("config");
         fs::create_dir_all(runtime.join("config_metadata")).unwrap();
-        fs::write(runtime.join(TOML_TOOLING_CONFIG_FILENAME), "[format]\n").unwrap();
         fs::write(runtime.join("settings_default.jsonc"), "").unwrap();
         fs::write(
             runtime.join("config_metadata/main_config_contract.toml"),

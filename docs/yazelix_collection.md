@@ -90,7 +90,7 @@ Regular Yazelix users do not need to install or wire these repositories separate
 - [carapace](https://github.com/rsteube/carapace-bin) — Cross-shell completion engine used by generated shell initializers.
 - [mise](https://mise.jdx.dev/) — Host-managed runtime/version manager integration loaded by generated shell initializers when `mise` is on `PATH`.
 - [macchina](https://github.com/Macchina-CLI/macchina) — System information helper used by the optional welcome-screen machine summary.
-- [tombi](https://tombi-toml.github.io/tombi/) — Host-managed TOML formatter/linter used with Yazelix's shipped `tombi.toml` tooling config.
+- [tombi](https://tombi-toml.github.io/tombi/) — Optional host-managed TOML formatter/linter integration.
 - [jq](https://github.com/jqlang/jq) — JSON helper used by bundled runtime flows and Yazi plugins.
 - [fd](https://github.com/sharkdp/fd) — Fast file search helper used by Yazi and runtime tooling.
 - [ripgrep](https://github.com/BurntSushi/ripgrep) — Fast text search helper used by Yazi and runtime tooling.

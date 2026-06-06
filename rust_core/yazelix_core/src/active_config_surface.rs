@@ -10,10 +10,7 @@ use crate::settings_surface::{
 use serde::Serialize;
 use serde_json::json;
 use std::fs;
-use std::io::{self, Write};
 use std::path::{Path, PathBuf};
-
-pub const TOML_TOOLING_CONFIG_FILENAME: &str = "tombi.toml";
 
 #[derive(Debug, Clone, Serialize)]
 pub struct ActiveConfigPaths {
@@ -21,7 +18,6 @@ pub struct ActiveConfigPaths {
     pub user_config: PathBuf,
     pub user_cursor_config: PathBuf,
     pub legacy_user_config: PathBuf,
-    pub managed_toml_tooling_config: PathBuf,
     pub config_file: PathBuf,
     pub default_config_path: PathBuf,
     pub default_cursor_config_path: PathBuf,
@@ -40,18 +36,6 @@ pub struct PrimaryConfigPaths {
     pub default_cursor_config_path: PathBuf,
     pub contract_path: PathBuf,
     pub settings_schema_path: PathBuf,
-    pub runtime_toml_tooling_config: PathBuf,
-    pub managed_toml_tooling_config: PathBuf,
-}
-
-fn io_err(path: &Path, source: io::Error) -> CoreError {
-    CoreError::io(
-        "control_config_io",
-        "Could not access a Yazelix config path",
-        "Fix permissions or restore the missing path, then retry.",
-        path.display().to_string(),
-        source,
-    )
 }
 
 pub fn primary_config_paths(runtime_dir: &Path, config_dir: &Path) -> PrimaryConfigPaths {
@@ -67,8 +51,6 @@ pub fn primary_config_paths(runtime_dir: &Path, config_dir: &Path) -> PrimaryCon
         .join("config_metadata")
         .join("main_config_contract.toml");
     let settings_schema_path = settings_schema_path(runtime_dir);
-    let runtime_toml_tooling_config = runtime_dir.join(TOML_TOOLING_CONFIG_FILENAME);
-    let managed_toml_tooling_config = config_dir.join(TOML_TOOLING_CONFIG_FILENAME);
 
     PrimaryConfigPaths {
         user_config_dir,
@@ -80,8 +62,6 @@ pub fn primary_config_paths(runtime_dir: &Path, config_dir: &Path) -> PrimaryCon
         default_cursor_config_path,
         contract_path,
         settings_schema_path,
-        runtime_toml_tooling_config,
-        managed_toml_tooling_config,
     }
 }
 
@@ -124,10 +104,6 @@ pub fn resolve_active_config_paths(
         &paths.default_cursor_config_path,
         cursor_component_enabled,
     )?;
-    ensure_managed_toml_tooling_config(
-        &paths.runtime_toml_tooling_config,
-        &paths.managed_toml_tooling_config,
-    )?;
 
     let config_file = match config_override {
         Some(raw) if !raw.trim().is_empty() => PathBuf::from(raw.trim()),
@@ -161,56 +137,12 @@ pub fn resolve_active_config_paths(
         user_config: paths.user_config,
         user_cursor_config: paths.user_cursor_config,
         legacy_user_config: paths.legacy_user_config,
-        managed_toml_tooling_config: paths.managed_toml_tooling_config,
         config_file,
         default_config_path: paths.default_config_path,
         default_cursor_config_path: paths.default_cursor_config_path,
         contract_path: paths.contract_path,
         settings_schema_path: paths.settings_schema_path,
     })
-}
-
-pub fn ensure_managed_toml_tooling_config(
-    runtime_src: &Path,
-    managed: &Path,
-) -> Result<(), CoreError> {
-    if !runtime_src.exists() {
-        return Err(CoreError::classified(
-            ErrorClass::Config,
-            "missing_runtime_toml_tooling_config",
-            format!(
-                "Yazelix runtime is missing the TOML tooling config at {}.",
-                runtime_src.display()
-            ),
-            "Reinstall Yazelix so the runtime includes the managed TOML tooling config.",
-            json!({ "path": runtime_src.display().to_string() }),
-        ));
-    }
-
-    let source_content = fs::read_to_string(runtime_src).map_err(|e| io_err(runtime_src, e))?;
-
-    let should_write = match fs::read_to_string(managed) {
-        Ok(existing) => existing != source_content,
-        Err(e) if e.kind() == io::ErrorKind::NotFound => true,
-        Err(e) => return Err(io_err(managed, e)),
-    };
-
-    if should_write {
-        if let Some(parent) = managed.parent() {
-            fs::create_dir_all(parent).map_err(|e| io_err(parent, e))?;
-        }
-        let mut f = fs::File::create(managed).map_err(|e| io_err(managed, e))?;
-        f.write_all(source_content.as_bytes())
-            .map_err(|e| io_err(managed, e))?;
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::PermissionsExt;
-            let mode = fs::Permissions::from_mode(0o644);
-            let _ = fs::set_permissions(managed, mode);
-        }
-    }
-
-    Ok(())
 }
 
 // Test lane: default
@@ -248,11 +180,6 @@ mod tests {
         )
         .expect("write contract");
         fs::write(
-            runtime_dir.join(TOML_TOOLING_CONFIG_FILENAME),
-            "array_auto_expand = true\n",
-        )
-        .expect("write TOML tooling config");
-        fs::write(
             runtime_dir.join("runtime_components.json"),
             r#"{
               "cursors": { "enabled": true, "disableable": true, "notes": [] },
@@ -262,9 +189,9 @@ mod tests {
         .expect("write runtime component manifest");
     }
 
-    // Defends: Rust active-config-surface resolution bootstraps settings.jsonc and TOML tooling support when the canonical surface is missing.
+    // Defends: Rust active-config-surface resolution bootstraps settings.jsonc when the canonical surface is missing.
     #[test]
-    fn bootstraps_missing_managed_config_and_toml_tooling_support() {
+    fn bootstraps_missing_managed_config() {
         let runtime = tempdir().expect("runtime dir");
         let config = tempdir().expect("config dir");
         write_runtime_layout(runtime.path());
@@ -277,10 +204,6 @@ mod tests {
         assert!(rendered.contains("\"core\""));
         assert!(!rendered.contains("\"cursors\""));
         assert!(resolved.user_cursor_config.exists());
-        assert_eq!(
-            fs::read_to_string(&resolved.managed_toml_tooling_config).unwrap(),
-            fs::read_to_string(runtime.path().join(TOML_TOOLING_CONFIG_FILENAME)).unwrap()
-        );
         assert_eq!(
             resolved.user_cursor_config,
             config.path().join("yazelix_ghostty_cursors/settings.jsonc")
@@ -306,11 +229,6 @@ mod tests {
             "[fields]\n",
         )
         .expect("write contract");
-        fs::write(
-            runtime.path().join(TOML_TOOLING_CONFIG_FILENAME),
-            "array_auto_expand = true\n",
-        )
-        .expect("write TOML tooling config");
         fs::write(
             runtime.path().join("runtime_components.json"),
             r#"{

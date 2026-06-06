@@ -20,7 +20,6 @@ let
   ];
   includeFiles = [
     "CHANGELOG.md"
-    "tombi.toml"
     "yazelix_ghostty_cursors_default.toml"
     "settings_default.jsonc"
   ];

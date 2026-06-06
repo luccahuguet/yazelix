@@ -37,7 +37,6 @@ const MAIN_TEMPLATE_RELATIVE_PATH: &str = "settings_default.jsonc";
 const MODULE_RELATIVE_PATH: &str = "home_manager/module.nix";
 const HOME_MANAGER_MODULE_DECLARATION_PATH: &str = "yazelix/home_manager/module.nix";
 const MAIN_CONTRACT_RELATIVE_PATH: &str = "config_metadata/main_config_contract.toml";
-const TOML_TOOLING_CONFIG_RELATIVE_PATH: &str = "tombi.toml";
 
 pub fn validate_nushell_syntax(
     repo_root: &Path,

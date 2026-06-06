@@ -251,11 +251,6 @@ mod tests {
         )
         .expect("cursor defaults");
         fs::write(
-            runtime.join(crate::active_config_surface::TOML_TOOLING_CONFIG_FILENAME),
-            include_str!("../../../tombi.toml"),
-        )
-        .expect("tombi config");
-        fs::write(
             runtime.join("runtime_components.json"),
             r#"{
               "cursors": { "enabled": true, "disableable": true, "notes": [] },

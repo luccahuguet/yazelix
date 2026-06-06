@@ -1,9 +1,7 @@
 //! Config-surface doctor findings (presence, legacy surfaces, stale schema diagnostics).
 //! Bead: yazelix-ulb2.4.4
 
-use crate::active_config_surface::{
-    ensure_managed_toml_tooling_config, primary_config_paths, validate_primary_config_surface,
-};
+use crate::active_config_surface::{primary_config_paths, validate_primary_config_surface};
 use crate::bridge::{CoreError, ErrorClass};
 use crate::config_normalize::{
     ConfigDiagnostic, ConfigDiagnosticReport, NormalizeConfigRequest, normalize_config,
@@ -43,22 +41,6 @@ pub fn evaluate_doctor_config_report(
     let legacy_nix_config = request.config_dir.join("yazelix.nix");
 
     if let Err(error) = validate_primary_config_surface(&paths) {
-        return DoctorConfigEvaluateData {
-            findings: vec![DoctorConfigFinding {
-                status: "error".into(),
-                message: "Could not reconcile Yazelix config surfaces".into(),
-                details: Some(format_surface_reconcile_error(&error)),
-                fix_available: false,
-                fix_action: None,
-                config_diagnostic_report: None,
-            }],
-        };
-    }
-
-    if let Err(error) = ensure_managed_toml_tooling_config(
-        &paths.runtime_toml_tooling_config,
-        &paths.managed_toml_tooling_config,
-    ) {
         return DoctorConfigEvaluateData {
             findings: vec![DoctorConfigFinding {
                 status: "error".into(),
@@ -277,11 +259,6 @@ fn format_surface_reconcile_error(error: &CoreError) -> String {
                 lines.push(format!("old nested main: {legacy_main}"));
             }
         }
-        "missing_runtime_toml_tooling_config" => {
-            if let Some(path) = details.get("path").and_then(Value::as_str) {
-                lines.push(format!("runtime support file: {path}"));
-            }
-        }
         _ => {
             if let Some(path) = details.get("path").and_then(Value::as_str) {
                 lines.push(path.to_string());
@@ -344,7 +321,6 @@ mod tests {
             "{ \"core\": {} }\n",
         )
         .unwrap();
-        std::fs::write(runtime_dir.join("tombi.toml"), "").unwrap();
 
         let report = evaluate_doctor_config_report(&DoctorConfigEvaluateRequest {
             config_dir,
