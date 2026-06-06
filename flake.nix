@@ -133,6 +133,8 @@
         _module.args.nixgl = nixgl;
         _module.args.fenixPkgs = fenix.packages.${pkgs.stdenv.hostPlatform.system};
         _module.args.mkYazelixPackage = mkYazelix pkgs.stdenv.hostPlatform.system;
+        _module.args.yazelixHelixPackage =
+          kgpPackages.helixPackage pkgs.stdenv.hostPlatform.system;
         _module.args.yazelixCursorsPackage =
           yazelixCursors.packages.${pkgs.stdenv.hostPlatform.system}.yazelix_cursors;
         _module.args.yazelixTerminalPackage =
@@ -185,6 +187,7 @@
           components ? { },
           extraRuntimePackages ? agentUsagePackages system,
           yaziAssets ? yazelixYaziAssets.packages.${system}.yazelix_yazi_assets,
+          yazelixHelixPackage ? kgpPackages.helixPackage system,
           yazelixCursorsPackage ? yazelixCursors.packages.${system}.yazelix_cursors,
           yazelixTerminalPackage ? yazelixTerminal.packages.${system}.yazelix-terminal,
           zellijPluginArtifacts ? zellijPluginArtifactsFor system,
@@ -198,7 +201,7 @@
             inherit nixgl runtimeVariant runtimeToolSources components yaziAssets zellijPluginArtifacts;
             inherit runtimeIdentity;
             inherit name runtimeName skipStableWrapperRedirect yazelixTerminalPackage;
-            inherit yazelixCursorsPackage;
+            inherit yazelixHelixPackage yazelixCursorsPackage;
             pkgs = runtimePkgs;
             enableZellijKittyPassthrough =
               enableZellijKittyPassthrough || terminalNeedsKittyPassthrough pkgs runtimeVariant;
@@ -215,11 +218,12 @@
         {
           name ? "yazelix-runtime",
           runtimeIdentity ? defaultRuntimeIdentity,
+          yazelixHelixPackage ? kgpPackages.helixPackage system,
           yazelixCursorsPackage ? yazelixCursors.packages.${system}.yazelix_cursors,
           yazelixTerminalPackage ? yazelixTerminal.packages.${system}.yazelix-terminal,
         }:
         import ./yazelix_runtime_package.nix {
-          inherit nixgl name runtimeIdentity runtimeVariant yazelixCursorsPackage yazelixTerminalPackage;
+          inherit nixgl name runtimeIdentity runtimeVariant yazelixHelixPackage yazelixCursorsPackage yazelixTerminalPackage;
           pkgs = runtimePkgsFor system pkgs runtimeVariant;
           fenixPkgs = fenix.packages.${system};
           extraRuntimePackages = [

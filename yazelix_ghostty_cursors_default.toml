@@ -20,7 +20,6 @@ enabled_cursors = [
   "ocean",
   "forest",
   "sunset",
-  "neon",
   "eclipse",
   "dusk",
   "orchid",
@@ -58,7 +57,6 @@ kitty_enable_cursor = true
 # Expected color fields:
 # - mono: one base color; optional accent_color and cursor_color overrides
 # - split: two colors, divider = "vertical" or "horizontal", transition = "soft" or "hard"
-# - curated_template: no user colors, keeps a hand-tuned shader by name
 
 # Blaze: warm golden mono trail with a hot derived accent
 [[cursor]]
@@ -95,13 +93,6 @@ color = "#3bd17a"
 name = "sunset"
 family = "mono"
 color = "#ff7a59"
-
-# Neon: hand-tuned cyan-blue neon template
-[[cursor]]
-name = "neon"
-family = "curated_template"
-template = "neon"
-cursor_color = "#0090ff"
 
 # Eclipse: soft vertical split between deep indigo and gold
 [[cursor]]

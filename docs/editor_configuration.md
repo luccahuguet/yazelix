@@ -50,8 +50,8 @@ Yazelix sets your configured editor as the `EDITOR` environment variable through
 **How it works:**
 - Yazelix uses its own Nix-provided Helix binary (`/nix/store/.../bin/hx`)
 - Runtime is automatically set to the matching version (`/nix/store/.../share/helix/runtime`)
-- The bundled editor is the thin `luccahuguet/yazelix-helix` Steel fork
-- That fork tracks Helix Steel and carries the small `--config-dir` override Yazelix needs for managed sessions
+- The bundled editor is the `luccahuguet/yazelix-helix` Steel fork
+- That fork is currently thin but usable without Yazelix, tracks Helix Steel, carries the `--config-dir` override Yazelix needs for managed sessions, and packages reusable Steel plugin defaults
 - Managed Helix source files live under `~/.config/yazelix/helix/`, including `config.toml`, `languages.toml`, `themes/`, and custom Steel plugin files
 - Custom Yazelix-managed themes belong in `~/.config/yazelix/helix/themes/`; native `~/.config/helix/themes/` remains outside Yazelix, and `~/.config/yazelix/user_conf/helix/themes/` is unsupported legacy state
 - No interference with your system's Helix installation
@@ -159,7 +159,7 @@ mkdir -p /tmp/yazelix-helix-probe
 
 **Steel plugins:**
 - Place custom Steel files below `~/.config/yazelix/helix/steel_plugins`
-- Select bundled plugins with `helix.steel_plugins.enabled`
+- Select child-packaged bundled plugins with `helix.steel_plugins.enabled`
 - Declare custom plugins in `helix.steel_plugins.extra`
 - Only `public_commands` appear in Helix command completion
 - `internal_commands` can be imported for plugin use without leaking into completion

@@ -11,6 +11,7 @@
   extraRuntimePackages ? [ ],
   extraRuntimeCommands ? [ "tu" ],
   yaziAssets ? null,
+  yazelixHelixPackage ? null,
   yazelixCursorsPackage ? null,
   yazelixTerminalPackage ? null,
   zellijPluginArtifacts ? { },
@@ -42,6 +43,34 @@ let
       "${src}/configs/yazi"
     else
       "${yaziAssets}/share/yazelix_yazi_assets";
+  requiredSteelPluginIds = [
+    "recentf"
+    "splash"
+    "spacemacs_theme"
+    "keymaps"
+    "labelled_buffers"
+  ];
+  expectedHelixSteelPluginRoot = "share/yazelix_helix/steel_plugins";
+  helixPackageContract =
+    if yazelixHelixPackage == null then
+      throw "Missing yazelix_helix package for Helix Steel plugin defaults"
+    else if !(builtins.hasAttr "yazelixHelixPackageContract" yazelixHelixPackage) then
+      throw "yazelix_helix package is missing yazelixHelixPackageContract passthru metadata"
+    else
+      yazelixHelixPackage.yazelixHelixPackageContract;
+  helixSteelPluginRoot =
+    if !(builtins.hasAttr "schemaVersion" helixPackageContract) || helixPackageContract.schemaVersion != 1 then
+      throw "Unsupported yazelix_helix package contract schema"
+    else if !(builtins.hasAttr "packageName" helixPackageContract) || helixPackageContract.packageName != "yazelix-helix" then
+      throw "Unexpected yazelix_helix package contract packageName"
+    else if !(builtins.hasAttr "steelPluginRoot" helixPackageContract) || helixPackageContract.steelPluginRoot != expectedHelixSteelPluginRoot then
+      throw "Unexpected yazelix_helix steelPluginRoot package contract"
+    else if !(builtins.hasAttr "pluginIds" helixPackageContract) then
+      throw "yazelix_helix package contract does not declare pluginIds"
+    else if !(pkgs.lib.all (pluginId: builtins.elem pluginId helixPackageContract.pluginIds) requiredSteelPluginIds) then
+      throw "yazelix_helix package contract does not declare all required Steel plugin ids"
+    else
+      "${yazelixHelixPackage}/${helixPackageContract.steelPluginRoot}";
   cursorPackageContract =
     if !cursorsEnabled then
       null
@@ -75,37 +104,98 @@ let
       throw "Missing first-party Zellij plugin package artifact `${name}`"
     else
       value;
+  runtimeInputLinks =
+    [
+      {
+        source = "${src}/assets/icons";
+        target = "assets/icons";
+      }
+      {
+        source = "${src}/config_metadata";
+        target = "config_metadata";
+      }
+      {
+        source = "${src}/docs/upgrade_notes.toml";
+        target = "docs/upgrade_notes.toml";
+      }
+      {
+        source = "${src}/nushell";
+        target = "nushell";
+      }
+      {
+        source = "${src}/shells";
+        target = "shells";
+      }
+      {
+        source = "${src}/CHANGELOG.md";
+        target = "CHANGELOG.md";
+      }
+      {
+        source = "${src}/settings_default.jsonc";
+        target = "settings_default.jsonc";
+      }
+    ]
+    ++ pkgs.lib.optional cursorsEnabled {
+      source = "${src}/yazelix_ghostty_cursors_default.toml";
+      target = "yazelix_ghostty_cursors_default.toml";
+    };
+  renderRuntimeInputLink =
+    { source, target }:
+    ''
+      link_runtime_input ${pkgs.lib.escapeShellArg source} ${pkgs.lib.escapeShellArg target}
+    '';
+  renderedRuntimeInputLinks = pkgs.lib.concatMapStrings renderRuntimeInputLink runtimeInputLinks;
 in
 pkgs.runCommand name { } ''
   mkdir -p "$out"
 
-  mkdir -p "$out/assets"
-  ln -s ${src}/assets/icons "$out/assets/icons"
-  ln -s ${src}/config_metadata "$out/config_metadata"
+  link_runtime_input() {
+    source_path="$1"
+    target_path="$out/$2"
+    mkdir -p "$(dirname "$target_path")"
+    ln -s "$source_path" "$target_path"
+  }
+
+  replace_runtime_link() {
+    source_path="$1"
+    target_path="$out/$2"
+    mkdir -p "$(dirname "$target_path")"
+    ln -sfn "$source_path" "$target_path"
+  }
+
+  ${renderedRuntimeInputLinks}
   mkdir -p "$out/configs"
   for config_entry in ${src}/configs/*; do
     config_name="$(basename "$config_entry")"
-    if [ "$config_name" = "yazi" ] || [ "$config_name" = "zellij" ] || [ "$config_name" = "terminal_emulators" ]; then
+    if [ "$config_name" = "helix" ] || [ "$config_name" = "yazi" ] || [ "$config_name" = "zellij" ] || [ "$config_name" = "terminal_emulators" ]; then
       continue
     fi
-    ln -s "$config_entry" "$out/configs/$config_name"
+    link_runtime_input "$config_entry" "configs/$config_name"
   done
+  mkdir -p "$out/configs/helix"
+  for helix_entry in ${src}/configs/helix/*; do
+    helix_name="$(basename "$helix_entry")"
+    if [ "$helix_name" = "steel_plugins" ]; then
+      continue
+    fi
+    link_runtime_input "$helix_entry" "configs/helix/$helix_name"
+  done
+  link_runtime_input "${helixSteelPluginRoot}" "configs/helix/steel_plugins"
   mkdir -p "$out/configs/terminal_emulators"
   for terminal_entry in ${src}/configs/terminal_emulators/*; do
     terminal_name="$(basename "$terminal_entry")"
     if [ "$terminal_name" = "ghostty" ]; then
-      mkdir -p "$out/configs/terminal_emulators/ghostty"
-      ln -s "$terminal_entry/config" "$out/configs/terminal_emulators/ghostty/config"
+      link_runtime_input "$terminal_entry/config" "configs/terminal_emulators/ghostty/config"
       ${pkgs.lib.optionalString cursorsEnabled ''
         test -s "${cursorShaderRoot}/cursor_trail_common.glsl"
         test -s "${cursorShaderRoot}/variants/reef.glsl"
         test -s "${cursorShaderRoot}/upstream_effects/ripple_rectangle_cursor.glsl"
         test -s "${cursorShaderRoot}/generated_effects/tail.glsl"
         test ! -e "${cursorShaderRoot}/build_shaders.nu"
-        ln -s "${cursorShaderRoot}" "$out/configs/terminal_emulators/ghostty/shaders"
+        link_runtime_input "${cursorShaderRoot}" "configs/terminal_emulators/ghostty/shaders"
       ''}
     else
-      ln -s "$terminal_entry" "$out/configs/terminal_emulators/$terminal_name"
+      link_runtime_input "$terminal_entry" "configs/terminal_emulators/$terminal_name"
     fi
   done
   mkdir -p "$out/configs/zellij/plugins"
@@ -114,34 +204,24 @@ pkgs.runCommand name { } ''
     if [ "$zellij_name" = "plugins" ]; then
       continue
     fi
-    ln -s "$zellij_entry" "$out/configs/zellij/$zellij_name"
+    link_runtime_input "$zellij_entry" "configs/zellij/$zellij_name"
   done
-  ln -s "${requirePluginArtifact "pane_orchestrator" paneOrchestratorWasm}" "$out/configs/zellij/plugins/yazelix_pane_orchestrator.wasm"
-  ln -s "${requirePluginArtifact "zjstatus" zjstatusWasm}" "$out/configs/zellij/plugins/zjstatus.wasm"
-  ln -s "${requirePluginArtifact "yzpp" yzppWasm}" "$out/configs/zellij/plugins/yzpp.wasm"
+  link_runtime_input "${requirePluginArtifact "pane_orchestrator" paneOrchestratorWasm}" "configs/zellij/plugins/yazelix_pane_orchestrator.wasm"
+  link_runtime_input "${requirePluginArtifact "zjstatus" zjstatusWasm}" "configs/zellij/plugins/zjstatus.wasm"
+  link_runtime_input "${requirePluginArtifact "yzpp" yzppWasm}" "configs/zellij/plugins/yzpp.wasm"
 
   mkdir -p "$out/configs/yazi/plugins"
   for yazi_file in README.md yazelix_keymap.toml yazelix_theme.toml yazelix_yazi.toml; do
-    ln -s "${src}/configs/yazi/$yazi_file" "$out/configs/yazi/$yazi_file"
+    link_runtime_input "${src}/configs/yazi/$yazi_file" "configs/yazi/$yazi_file"
   done
   for yazi_plugin in sidebar-state.yazi sidebar-status.yazi zoxide-editor.yazi; do
-    ln -s "${src}/configs/yazi/plugins/$yazi_plugin" "$out/configs/yazi/plugins/$yazi_plugin"
+    link_runtime_input "${src}/configs/yazi/plugins/$yazi_plugin" "configs/yazi/plugins/$yazi_plugin"
   done
-  ln -s "${yaziAssetsRoot}/flavors" "$out/configs/yazi/flavors"
-  ln -s "${yaziAssetsRoot}/yazelix_starship.toml" "$out/configs/yazi/yazelix_starship.toml"
+  link_runtime_input "${yaziAssetsRoot}/flavors" "configs/yazi/flavors"
+  link_runtime_input "${yaziAssetsRoot}/yazelix_starship.toml" "configs/yazi/yazelix_starship.toml"
   for yazi_plugin in auto-layout.yazi git.yazi lazygit.yazi starship.yazi; do
-    ln -s "${yaziAssetsRoot}/plugins/$yazi_plugin" "$out/configs/yazi/plugins/$yazi_plugin"
+    link_runtime_input "${yaziAssetsRoot}/plugins/$yazi_plugin" "configs/yazi/plugins/$yazi_plugin"
   done
-  mkdir -p "$out/docs"
-  ln -s ${src}/docs/upgrade_notes.toml "$out/docs/upgrade_notes.toml"
-  ln -s ${src}/nushell "$out/nushell"
-  ln -s ${src}/shells "$out/shells"
-
-  ln -s ${src}/CHANGELOG.md "$out/CHANGELOG.md"
-  ln -s ${src}/settings_default.jsonc "$out/settings_default.jsonc"
-  ${pkgs.lib.optionalString cursorsEnabled ''
-    ln -s ${src}/yazelix_ghostty_cursors_default.toml "$out/yazelix_ghostty_cursors_default.toml"
-  ''}
   printf '%s\n' ${pkgs.lib.escapeShellArg runtimeVariant} > "$out/runtime_variant"
   printf '%s\n' ${pkgs.lib.escapeShellArg runtimeIdentityJson} > "$out/runtime_identity.json"
   printf '%s\n' ${pkgs.lib.escapeShellArg runtimeComponentRegistry.manifestJson} > "$out/runtime_components.json"
@@ -151,9 +231,7 @@ pkgs.runCommand name { } ''
     touch "$out/runtime_features/zellij_kitty_passthrough"
   ''}
   ${pkgs.lib.optionalString (runtimeVariant == "yzxterm" && yazelixTerminalPackage != null) ''
-    mkdir -p "$out/share"
-    ln -sfn "${yazelixTerminalPackage}/share/yazelix-terminal" \
-      "$out/share/yazelix-terminal"
+    replace_runtime_link "${yazelixTerminalPackage}/share/yazelix-terminal" "share/yazelix-terminal"
   ''}
 
   mkdir -p "$out/libexec"
@@ -161,26 +239,26 @@ pkgs.runCommand name { } ''
     if [ -d "$bin_dir" ]; then
       for entry in "$bin_dir"/*; do
         [ -e "$entry" ] || continue
-        ln -sfn "$entry" "$out/libexec/$(basename "$entry")"
+        replace_runtime_link "$entry" "libexec/$(basename "$entry")"
       done
     fi
   done
   ${pkgs.lib.optionalString (rustCoreHelper != null) ''
-    ln -sfn "${rustCoreHelper}/bin/yzx" "$out/libexec/yzx"
-    ln -sfn "${rustCoreHelper}/bin/yzx_core" "$out/libexec/yzx_core"
-    ln -sfn "${rustCoreHelper}/bin/yzx_control" "$out/libexec/yzx_control"
+    replace_runtime_link "${rustCoreHelper}/bin/yzx" "libexec/yzx"
+    replace_runtime_link "${rustCoreHelper}/bin/yzx_core" "libexec/yzx_core"
+    replace_runtime_link "${rustCoreHelper}/bin/yzx_control" "libexec/yzx_control"
   ''}
 
   mkdir -p "$out/toolbin"
   for command_name in ${escapedExportedRuntimeCommands}; do
     if [ -e "$out/libexec/$command_name" ]; then
-      ln -sfn "$out/libexec/$command_name" "$out/toolbin/$command_name"
+      replace_runtime_link "$out/libexec/$command_name" "toolbin/$command_name"
     fi
   done
   if [ -x "$out/shells/posix/yazelix_hx.sh" ] && [ -e "$out/libexec/hx" ]; then
-    ln -sfn "$out/shells/posix/yazelix_hx.sh" "$out/toolbin/hx"
+    replace_runtime_link "$out/shells/posix/yazelix_hx.sh" "toolbin/hx"
     if [ -e "$out/toolbin/helix" ]; then
-      ln -sfn "$out/shells/posix/yazelix_hx.sh" "$out/toolbin/helix"
+      replace_runtime_link "$out/shells/posix/yazelix_hx.sh" "toolbin/helix"
     fi
   fi
 

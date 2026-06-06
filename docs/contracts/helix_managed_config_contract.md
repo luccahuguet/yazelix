@@ -55,7 +55,7 @@ Yazelix owns the managed Helix config tree needed for Yazelix-specific editor in
 
 - the `yzx reveal` binding
 - Yazelix-managed Steel plugin loading
-- the bundled Steel plugin repository under `configs/helix/steel_plugins/`
+- selection and generated materialization of the child-packaged bundled Steel plugin repository
 - managed Helix language/theme lookup under `~/.config/yazelix/helix/`
 - curated managed-session defaults for Helix visuals, diagnostics, statusline, and editor-local helper keybindings
 
@@ -83,9 +83,11 @@ The redirection is scoped to the Helix process, not leaked globally into the who
 
 ## Bundled Helix Fork Boundary
 
-Yazelix's bundled Helix is `luccahuguet/yazelix-helix`, a Yazelix-compatible Helix Steel fork.
+Yazelix's bundled Helix is `luccahuguet/yazelix-helix`, currently a thin Yazelix-compatible Helix Steel fork.
 
 The fork must remain useful as a standalone editor project. It should not exist only as an implementation detail for this repo.
+
+Thinness is the current implementation shape, not a long-term constraint. The fork may grow when reusable editor behavior or defaults are useful outside Yazelix-managed sessions.
 
 The fork currently tracks Helix Steel and carries Yazelix-compatible config-directory launch support:
 
@@ -98,19 +100,31 @@ The main Yazelix repo still owns Yazelix-specific workspace policy: settings fie
 
 ## Bundled Steel Plugin Pack Boundary
 
-The default Steel plugin pack boundary is under revision.
+The reusable default Steel plugin repository is owned by `yazelix-helix`.
 
-Current runtime reality: the main Yazelix repo still ships and materializes the default Steel plugin pack.
+The child package exposes a Nix passthru contract named
+`yazelixHelixPackageContract`:
 
-Product direction: `yazelix-helix` should be able to expose a useful standalone Steel-enabled editor package. Moving reusable plugin assets or standalone defaults into `yazelix-helix` is acceptable when the child owns them as a real package artifact, not as a mirror of main-repo settings policy.
+```nix
+{
+  schemaVersion = 1;
+  packageName = "yazelix-helix";
+  steelPluginRoot = "share/yazelix_helix/steel_plugins";
+  pluginIds = [ "recentf" "splash" "spacemacs_theme" "keymaps" "labelled_buffers" ];
+}
+```
+
+Main Yazelix validates that contract during runtime-tree construction and links
+the child-owned root into the runtime as `configs/helix/steel_plugins`. The main
+repo must not keep a mirrored copy of those reusable plugin files.
 
 The main repo remains the owner for Yazelix-specific policy:
 
-- the plugin pack is selected by `settings.jsonc` through `helix.steel_plugins.enabled`
+- the child-packaged plugin pack is selected by `settings.jsonc` through `helix.steel_plugins.enabled`
 - custom user plugin manifests live beside the same surface in `helix.steel_plugins.extra`
 - Yazelix owns command visibility, startup conditions, generated `helix.scm`, generated `init.scm`, and copied plugin placement under generated state
 
-A good extraction deletes main-repo asset ownership and consumes a child-owned artifact with a narrow contract. A bad extraction makes `yazelix-helix` publish main-repo settings semantics, or makes both repos mirror plugin ids, startup policy, and generated command metadata.
+A good extraction deletes main-repo asset ownership and consumes a child-owned artifact with a narrow contract. A bad extraction makes `yazelix-helix` publish main-repo settings semantics, or makes both repos mirror startup policy and generated command metadata.
 
 ## Important Constraint
 

@@ -107,6 +107,27 @@ The current evaluated matrix is:
 
 Do not add a toggle whose only effect is hiding Home Manager options or removing a forwarded flake output. A toggle must change package contents, generated runtime behavior, or validation in a way users can feel.
 
+## Terminal Launcher Naming Decision
+
+The current Home Manager surface uses `programs.yazelix.terminal` for the single profile-owned runtime and `programs.yazelix.extra_terminal_launchers` for additional launcher entries. If this surface is reshaped, use this structure:
+
+```nix
+programs.yazelix.terminals = {
+  active_runtime = "ratty";
+  launchers = [ "ghostty" "rio" "foot" "wezterm" ];
+};
+```
+
+`active_runtime` names the one packaged runtime that owns the profile `yzx`, runtime identity, generated runtime state, and primary launcher. `launchers` names additional app-launch surfaces for terminal-specific runtime packages without changing the active runtime identity and without installing duplicate profile `bin/yzx` commands.
+
+Keep the implementation invariant: each launcher points at the selected terminal variant package in the Nix store. The launcher must not call the profile-owned `yzx` unless it intentionally wants the active runtime. The profile `yzx` remains singular.
+
+Avoid replacement names that imply the wrong contract:
+- `alternates`: sounds like fallback behavior
+- `enabled`, `available`, or `installed`: implies every listed terminal is equally available through profile `yzx`
+- `desktop_entries`: names the Linux implementation instead of the cross-platform app-launch concept
+- `desktop_launchers`: clearer than `desktop_entries`, but still too Linux-desktop-specific for future macOS app-bundle or Dock/Launchpad integration
+
 ## Component Audit Outcome
 
 The 2026-05-08 optional child-component audit keeps the current defaults fully integrated and does not add a hot-path toggle immediately.

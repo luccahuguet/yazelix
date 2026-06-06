@@ -8,6 +8,7 @@ in
 import ./yazelix_package.nix {
   inherit pkgs;
   src = repoRoot;
+  yazelix_helix = flake.inputs.yazelixHelix.packages.${system}.yazelix_helix;
   yazelix_screen = flake.inputs.yazelixScreen.packages.${system}.yzs;
   yazelix_yazi_assets = flake.inputs.yazelixYaziAssets.packages.${system}.yazelix_yazi_assets;
   yazelix_zellij_pane_orchestrator =

@@ -86,7 +86,7 @@ let
                   "splash"
                   "spacemacs_theme"
                 ];
-                description = "Bundled Helix Steel plugin ids to load from the Yazelix plugin repository";
+                description = "Bundled Helix Steel plugin ids to load from the packaged yazelix-helix plugin repository";
               };
               extra = mkOption {
                 type = types.listOf (types.submodule {

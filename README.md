@@ -103,6 +103,8 @@ Yazelix keeps this repo as the integrated workspace/runtime and splits focused s
 
 Regular Yazelix users do not need to install, configure, or understand these child repos separately; the normal Yazelix package already integrates the pieces it uses
 
+Maintainer fork status, child-repo ownership tables, and README delta rules live in [Fork and child-repo maintenance](./docs/contracts/fork_child_repo_maintenance.md)
+
 Reusable child repos:
 
 - [yazelix-screen](https://github.com/luccahuguet/yazelix-screen) — Terminal animation engine used by Yazelix welcome/screen styles and exposed here as `#yzs` and `#yazelix_screen`
@@ -143,6 +145,8 @@ See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all pr
 Special thanks to [soderluk](https://github.com/soderluk) for grinding with me through unstable periods of Yazelix, when things that should work were not working. His many reports had very high value for the development of Yazelix
 
 Special thanks to [tag-und-nacht](https://github.com/tag-und-nacht) for very detailed macOS, Home Manager, theming, and configuration reports that helped sharpen Yazelix's cross-platform support and user-config story
+
+Special thanks to [TyceHerrman](https://github.com/TyceHerrman) for exceptionally detailed macOS and Nix packaging reports, including tested local workarounds and proposed fixes that helped harden Yazelix's Darwin builds, child-repo release flow, runtime-tool sourcing, and bundled KGP package behavior
 
 If Yazelix is useful to you, you can support its development on [GitHub Sponsors](https://github.com/sponsors/luccahuguet)
 
@@ -191,7 +195,7 @@ For the longer project story, see [Version History](./docs/history.md)
 ### Helix Integration
 Yazelix-managed Helix sessions ship a curated Helix-local config with `Alt+r` bound to `yzx reveal`; Yazelix reserves `Alt+r` globally: in the managed editor it forwards `Alt+r` into Helix for reveal, outside the editor it falls back to the editor/left-sidebar focus flow, and `Ctrl+y`, `Ctrl+Shift+Y`, plus `Alt+Shift+H` remain the dedicated workspace navigation keys
 
-Yazelix's bundled Helix is the thin [yazelix-helix](https://github.com/luccahuguet/yazelix-helix) Steel fork: it tracks Helix Steel and carries the small `--config-dir` override Yazelix needs to point managed sessions at the generated Helix config directory without taking over `~/.config/helix`
+Yazelix's bundled Helix is the [yazelix-helix](https://github.com/luccahuguet/yazelix-helix) Steel fork: it is currently thin but usable without Yazelix, tracks Helix Steel, carries the `--config-dir` override Yazelix needs to point managed sessions at the generated Helix config directory without taking over `~/.config/helix`, and packages reusable Steel plugin defaults
 
 📖 **[Complete Helix Keybindings Guide →](./docs/helix_keybindings.md)** - Recommended keybindings for enhanced editing experience
 

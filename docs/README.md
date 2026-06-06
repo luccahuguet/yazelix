@@ -30,6 +30,7 @@ Use this page as the docs front door. It points to current user guides first, th
 - [Architecture map](./architecture_map.md)
 - [Documentation architecture](./documentation_architecture.md)
 - [Contract inventory](./contracts/contracts_inventory.md)
+- [Fork and child-repo maintenance](./contracts/fork_child_repo_maintenance.md)
 
 ## Maintainer Fast Path
 
@@ -54,6 +55,7 @@ behavior contracts.
 - [Subsystem code inventory](./subsystem_code_inventory.md)
 - [LOC extraction scorecard](./loc_extraction_scorecard.md)
 - [Child repo simplification audit](./child_repo_simplification_audit.md)
+- [Fork and child-repo maintenance](./contracts/fork_child_repo_maintenance.md)
 - [Zed architecture lessons](./zed_architecture_lessons.md)
 - [Package sizes](./package_sizes.md)
 - [Upgrade notes data](./upgrade_notes.toml)

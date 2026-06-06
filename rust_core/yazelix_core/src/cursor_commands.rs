@@ -85,40 +85,40 @@ fn trail_summary(registry: &CursorRegistry) -> String {
 }
 
 fn cursor_definition_summary(definition: &CursorDefinition) -> String {
-    match definition.family {
-        CursorFamily::Mono => format!(
+    if definition.family == CursorFamily::Mono {
+        format!(
             "{}: mono base={} accent={} cursor={}",
             definition.name,
             definition.colors[0].hex,
             definition.colors[1].hex,
             definition.cursor_color.hex
-        ),
-        CursorFamily::Split => {
-            let divider = definition
-                .divider
-                .expect("validated split cursor definitions always have a divider");
-            let transition = definition
-                .transition
-                .expect("validated split cursor definitions always have a transition");
-            let (first_label, second_label) = split_color_labels(divider);
-            format!(
-                "{}: split divider={} transition={} {}={} {}={} cursor={}",
-                definition.name,
-                split_divider_label(divider),
-                split_transition_label(transition),
-                first_label,
-                definition.colors[0].hex,
-                second_label,
-                definition.colors[1].hex,
-                definition.cursor_color.hex
-            )
-        }
-        CursorFamily::CuratedTemplate => format!(
-            "{}: curated_template template={} cursor={}",
+        )
+    } else if definition.family == CursorFamily::Split {
+        let divider = definition
+            .divider
+            .expect("validated split cursor definitions always have a divider");
+        let transition = definition
+            .transition
+            .expect("validated split cursor definitions always have a transition");
+        let (first_label, second_label) = split_color_labels(divider);
+        format!(
+            "{}: split divider={} transition={} {}={} {}={} cursor={}",
             definition.name,
-            definition.template.as_deref().unwrap_or("unknown"),
+            split_divider_label(divider),
+            split_transition_label(transition),
+            first_label,
+            definition.colors[0].hex,
+            second_label,
+            definition.colors[1].hex,
             definition.cursor_color.hex
-        ),
+        )
+    } else {
+        format!(
+            "{}: unsupported family={} cursor={}",
+            definition.name,
+            definition.family_name(),
+            definition.cursor_color.hex
+        )
     }
 }
 

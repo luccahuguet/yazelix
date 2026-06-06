@@ -120,6 +120,67 @@ fn private_control_usage_lines() -> impl Iterator<Item = String> {
     .into_iter()
 }
 
+type ControlHandlerFn = fn(&[String]) -> Result<i32, CoreError>;
+
+struct ControlHandler {
+    name: &'static str,
+    run: ControlHandlerFn,
+}
+
+enum ControlCommand {
+    Handler(&'static ControlHandler),
+    Env,
+    Run,
+    Edit,
+    Unsupported(String),
+}
+
+macro_rules! control_handlers {
+    ($(($name:expr, $run:path)),+ $(,)?) => {
+        const CONTROL_HANDLERS: &[ControlHandler] = &[
+            $(ControlHandler { name: $name, run: $run },)+
+        ];
+    };
+}
+
+control_handlers!(
+    ("agent", run_yzx_agent),
+    ("config", run_yzx_config),
+    ("cursors", run_yzx_cursors),
+    ("cwd", run_yzx_cwd),
+    ("desktop", run_yzx_desktop),
+    ("dev", run_yzx_dev),
+    ("doctor", run_yzx_doctor),
+    ("enter", run_yzx_enter),
+    (
+        "generate_shell_initializers",
+        run_generate_shell_initializers
+    ),
+    ("helix", run_yzx_helix),
+    ("home_manager", run_yzx_home_manager),
+    ("import", run_yzx_import),
+    ("inspect", run_inspect),
+    ("keys", run_yzx_keys),
+    ("launch", run_yzx_launch),
+    ("menu", run_yzx_menu),
+    ("onboard", run_yzx_onboard),
+    ("popup", run_yzx_popup),
+    ("popup_run", run_yzx_popup_run),
+    ("profile", run_profile),
+    ("reveal", run_yzx_reveal),
+    ("reset", run_yzx_reset),
+    ("restart", run_yzx_restart),
+    ("screen", run_yzx_screen),
+    ("sidebar", run_yzx_sidebar),
+    ("sponsor", run_yzx_sponsor),
+    ("status", run_status),
+    ("tutor", run_yzx_tutor),
+    ("update", run_yzx_update),
+    ("whats_new", run_yzx_whats_new),
+    ("why", run_yzx_why),
+    ("zellij", run_zellij),
+);
+
 const YAZELIX_DESCRIPTION: &str = "Yazi + Zellij + Helix integrated terminal environment";
 const STATUS_VERSION_TOOLS: &[(&str, &str)] = &[
     ("yazi", "yazi"),
@@ -1567,73 +1628,68 @@ fn run_zellij(args: &[String]) -> Result<i32, CoreError> {
     }
 }
 
+fn classify_control_command(command_name: String) -> ControlCommand {
+    match command_name.as_str() {
+        "env" => ControlCommand::Env,
+        "run" => ControlCommand::Run,
+        "edit" => ControlCommand::Edit,
+        _ => find_control_handler(&command_name)
+            .map(ControlCommand::Handler)
+            .unwrap_or(ControlCommand::Unsupported(command_name)),
+    }
+}
+
+fn find_control_handler(command_name: &str) -> Option<&'static ControlHandler> {
+    CONTROL_HANDLERS
+        .iter()
+        .find(|handler| handler.name == command_name)
+}
+
+fn is_single_help_arg(args: &[String]) -> bool {
+    args.len() == 1 && matches!(args[0].as_str(), "--help" | "-h" | "help")
+}
+
+fn dispatch_control_command(command: ControlCommand, args: &[String]) -> Result<i32, CoreError> {
+    match command {
+        ControlCommand::Env => run_helpable_control_command(args, print_env_help, run_env),
+        ControlCommand::Run => run_helpable_control_command(args, print_run_help, run_run),
+        ControlCommand::Edit => run_edit_command(args),
+        ControlCommand::Handler(handler) => (handler.run)(args),
+        ControlCommand::Unsupported(command_name) => {
+            eprintln!("Unknown yzx_control subcommand: {command_name}");
+            usage();
+        }
+    }
+}
+
+fn run_helpable_control_command(
+    args: &[String],
+    print_help: fn(),
+    run: ControlHandlerFn,
+) -> Result<i32, CoreError> {
+    if is_single_help_arg(args) {
+        print_help();
+        Ok(0)
+    } else {
+        run(args)
+    }
+}
+
+fn run_edit_command(args: &[String]) -> Result<i32, CoreError> {
+    if args.first().map(String::as_str) == Some("config") {
+        run_yzx_edit_config(&args[1..])
+    } else {
+        run_yzx_edit(args)
+    }
+}
+
 fn main() {
     let mut argv: Vec<String> = std::env::args().skip(1).collect();
     if argv.is_empty() {
         usage();
     }
     let sub = argv.remove(0);
-    let code = match sub.as_str() {
-        "env" => {
-            if argv.len() == 1 && matches!(argv[0].as_str(), "--help" | "-h" | "help") {
-                print_env_help();
-                Ok(0)
-            } else {
-                run_env(&argv)
-            }
-        }
-        "run" => {
-            if argv.len() == 1 && matches!(argv[0].as_str(), "--help" | "-h" | "help") {
-                print_run_help();
-                Ok(0)
-            } else {
-                run_run(&argv)
-            }
-        }
-        "agent" => run_yzx_agent(&argv),
-        "config" => run_yzx_config(&argv),
-        "cursors" => run_yzx_cursors(&argv),
-        "cwd" => run_yzx_cwd(&argv),
-        "desktop" => run_yzx_desktop(&argv),
-        "dev" => run_yzx_dev(&argv),
-        "doctor" => run_yzx_doctor(&argv),
-        "edit" => {
-            if argv.first().map(String::as_str) == Some("config") {
-                run_yzx_edit_config(&argv[1..])
-            } else {
-                run_yzx_edit(&argv)
-            }
-        }
-        "enter" => run_yzx_enter(&argv),
-        "generate_shell_initializers" => run_generate_shell_initializers(&argv),
-        "helix" => run_yzx_helix(&argv),
-        "inspect" => run_inspect(&argv),
-        "status" => run_status(&argv),
-        "launch" => run_yzx_launch(&argv),
-        "home_manager" => run_yzx_home_manager(&argv),
-        "import" => run_yzx_import(&argv),
-        "keys" => run_yzx_keys(&argv),
-        "menu" => run_yzx_menu(&argv),
-        "onboard" => run_yzx_onboard(&argv),
-        "popup" => run_yzx_popup(&argv),
-        "popup_run" => run_yzx_popup_run(&argv),
-        "sidebar" => run_yzx_sidebar(&argv),
-        "profile" => run_profile(&argv),
-        "zellij" => run_zellij(&argv),
-        "reveal" => run_yzx_reveal(&argv),
-        "reset" => run_yzx_reset(&argv),
-        "restart" => run_yzx_restart(&argv),
-        "screen" => run_yzx_screen(&argv),
-        "why" => run_yzx_why(&argv),
-        "sponsor" => run_yzx_sponsor(&argv),
-        "tutor" => run_yzx_tutor(&argv),
-        "update" => run_yzx_update(&argv),
-        "whats_new" => run_yzx_whats_new(&argv),
-        _ => {
-            eprintln!("Unknown yzx_control subcommand: {sub}");
-            usage();
-        }
-    };
+    let code = dispatch_control_command(classify_control_command(sub), &argv);
 
     match code {
         Ok(c) => std::process::exit(c),
@@ -1676,6 +1732,35 @@ mod tests {
         assert_eq!(error.class().as_str(), "usage");
         assert!(error.message().contains("repo-only maintainer command"));
         assert!(error.remediation().contains("maintainer shell"));
+    }
+
+    // Defends: yzx_control keeps ordinary public commands on the table-driven handler path after dispatch refactors.
+    #[test]
+    fn classifies_public_command_as_handler() {
+        match classify_control_command("status".to_string()) {
+            ControlCommand::Handler(handler) => assert_eq!(handler.name, "status"),
+            ControlCommand::Env
+            | ControlCommand::Run
+            | ControlCommand::Edit
+            | ControlCommand::Unsupported(_) => panic!("expected status handler"),
+        }
+    }
+
+    // Defends: yzx_control keeps special command families out of the generic handler table when they need local routing.
+    #[test]
+    fn classifies_special_control_commands() {
+        assert!(matches!(
+            classify_control_command("env".to_string()),
+            ControlCommand::Env
+        ));
+        assert!(matches!(
+            classify_control_command("run".to_string()),
+            ControlCommand::Run
+        ));
+        assert!(matches!(
+            classify_control_command("edit".to_string()),
+            ControlCommand::Edit
+        ));
     }
 
     // Defends: startup config rendering still includes the blocking diagnostic details promised by the public control-plane surface.

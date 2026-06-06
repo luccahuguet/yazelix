@@ -6,6 +6,7 @@
   mkYazelixPackage ? null,
   nixgl ? null,
   pkgs,
+  yazelixHelixPackage ? null,
   yazelixCursorsPackage ? null,
   ...
 }:
@@ -51,6 +52,7 @@ let
       options
       pkgs
       terminalMetadata
+      yazelixHelixPackage
       yazelixCursorsPackage
       ;
   };

@@ -8,6 +8,7 @@
   options,
   pkgs,
   terminalMetadata,
+  yazelixHelixPackage ? null,
   yazelixCursorsPackage ? null,
 }:
 
@@ -52,6 +53,7 @@ let
       runtimeToolSources = cfg.runtime_tool_sources;
       components = cfg.components;
       extraRuntimePackages = selectedAgentUsagePackages;
+      inherit yazelixHelixPackage;
     }
     // yzxtermPackageArgs;
   yazelixPackage =

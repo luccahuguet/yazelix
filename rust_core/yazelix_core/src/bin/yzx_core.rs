@@ -17,16 +17,16 @@ use yazelix_core::{
     DoctorRuntimeEvaluateRequest, ErrorClass, GhosttyMaterializationRequest,
     HelixDoctorEvaluateRequest, HelixMaterializationRequest, InstallOwnershipEvaluateRequest,
     LaunchMaterializationRequest, NormalizeConfigRequest, PopupSessionFactsData,
-    RecordConfigStateRequest, RuntimeContractEvaluateRequest, RuntimeMaterializationPlanRequest,
-    RuntimeMaterializationRepairEvaluateRequest, RuntimeMaterializationRepairRunData,
-    RuntimeOwnershipGraphRequest, RuntimeRepairDirective, SessionConfigSnapshotCreateRequest,
-    StartupFactsData, StartupHandoffCaptureRequest, StartupLaunchPreflightRequest,
-    TerminalMaterializationRequest, YaziMaterializationRequest, YaziRenderPlanRequest,
-    YzxExternBridgeSyncRequest, ZellijMaterializationRequest, ZellijRenderPlanRequest,
-    capture_startup_handoff_context, compute_config_state, compute_integration_facts_from_env,
-    compute_popup_session_facts_from_env, compute_runtime_env, compute_runtime_ownership_graph,
-    compute_startup_facts_from_env, compute_status_report, compute_yazi_render_plan,
-    compute_zellij_render_plan, current_release_headline, error_envelope,
+    RecordConfigStateRequest, RuntimeContractEvaluateRequest, RuntimeEnvComputeRequest,
+    RuntimeMaterializationPlanRequest, RuntimeMaterializationRepairEvaluateRequest,
+    RuntimeMaterializationRepairRunData, RuntimeOwnershipGraphRequest, RuntimeRepairDirective,
+    SessionConfigSnapshotCreateRequest, StartupFactsData, StartupHandoffCaptureRequest,
+    StartupLaunchPreflightRequest, TerminalMaterializationRequest, YaziMaterializationRequest,
+    YaziRenderPlanRequest, YzxExternBridgeSyncRequest, ZellijMaterializationRequest,
+    ZellijRenderPlanRequest, capture_startup_handoff_context, compute_config_state,
+    compute_integration_facts_from_env, compute_popup_session_facts_from_env, compute_runtime_env,
+    compute_runtime_ownership_graph, compute_startup_facts_from_env, compute_status_report,
+    compute_yazi_render_plan, compute_zellij_render_plan, current_release_headline, error_envelope,
     evaluate_doctor_config_report, evaluate_doctor_runtime_report, evaluate_helix_doctor_report,
     evaluate_install_ownership_report, evaluate_runtime_contract,
     evaluate_startup_launch_preflight, generate_ghostty_materialization,
@@ -80,6 +80,96 @@ const UNKNOWN_COMMAND: &str = "unknown";
 struct RuntimeMaterializationRepairCommand {
     request: RuntimeMaterializationRepairEvaluateRequest,
     summary: bool,
+}
+
+#[derive(Default)]
+struct ConfigContractRuntimeArgs {
+    config_path: Option<PathBuf>,
+    default_config_path: Option<PathBuf>,
+    contract_path: Option<PathBuf>,
+    runtime_dir: Option<PathBuf>,
+}
+
+#[derive(Default)]
+struct ConfigStateComputeArgs {
+    paths: ConfigContractRuntimeArgs,
+    state_path: Option<PathBuf>,
+    from_env: bool,
+}
+
+#[derive(Default)]
+struct ConfigStateRecordArgs {
+    config_file: Option<String>,
+    managed_config_path: Option<PathBuf>,
+    state_path: Option<PathBuf>,
+    config_hash: Option<String>,
+    runtime_hash: Option<String>,
+    from_env: bool,
+}
+
+#[derive(Default)]
+struct InstallOwnershipArgs {
+    request_json: Option<String>,
+    from_env: bool,
+    runtime_dir: Option<PathBuf>,
+}
+
+#[derive(Default)]
+struct RuntimeEnvArgs {
+    request_json: Option<String>,
+    config_json: Option<String>,
+    from_env: bool,
+}
+
+#[derive(Default)]
+struct StatusComputeArgs {
+    paths: ConfigContractRuntimeArgs,
+    state_path: Option<PathBuf>,
+    yazi_config_dir: Option<PathBuf>,
+    zellij_config_dir: Option<PathBuf>,
+    zellij_layout_dir: Option<PathBuf>,
+    layout_override: Option<String>,
+    yazelix_version: Option<String>,
+    yazelix_description: Option<String>,
+}
+
+#[derive(Default)]
+struct YaziMaterializationArgs {
+    paths: ConfigContractRuntimeArgs,
+    yazi_config_dir: Option<PathBuf>,
+    sync_static_assets: bool,
+}
+
+#[derive(Default)]
+struct ZellijMaterializationArgs {
+    paths: ConfigContractRuntimeArgs,
+    zellij_config_dir: Option<PathBuf>,
+    seed_plugin_permissions: bool,
+}
+
+#[derive(Default)]
+struct HelixMaterializationArgs {
+    runtime_dir: Option<PathBuf>,
+    config_dir: Option<PathBuf>,
+    state_dir: Option<PathBuf>,
+    show_splash: bool,
+}
+
+#[derive(Default)]
+struct GhosttyMaterializationArgs {
+    runtime_dir: Option<PathBuf>,
+    config_dir: Option<PathBuf>,
+    state_dir: Option<PathBuf>,
+    transparency: Option<String>,
+    cursor_config_path: Option<PathBuf>,
+    from_env: bool,
+}
+
+#[derive(Default)]
+struct TerminalMaterializationArgs {
+    paths: ConfigContractRuntimeArgs,
+    state_dir: Option<PathBuf>,
+    from_env: bool,
 }
 
 enum ErrorOutputMode {
@@ -481,107 +571,117 @@ fn run_config_surface_resolve(mut parser: lexopt::Parser) -> Result<(), CoreErro
     write_success_envelope(CONFIG_SURFACE_RESOLVE_COMMAND, data)
 }
 
-fn run_config_state_compute(mut parser: lexopt::Parser) -> Result<(), CoreError> {
-    let mut config_path: Option<PathBuf> = None;
-    let mut default_config_path: Option<PathBuf> = None;
-    let mut contract_path: Option<PathBuf> = None;
-    let mut runtime_dir: Option<PathBuf> = None;
-    let mut state_path: Option<PathBuf> = None;
-    let mut from_env = false;
+fn run_config_state_compute(parser: lexopt::Parser) -> Result<(), CoreError> {
+    let request = config_state_compute_request_from_args(take_config_state_compute_args(parser)?)?;
+    let data = compute_config_state(&request)?;
+    write_success_envelope(CONFIG_STATE_COMPUTE_COMMAND, data)
+}
 
+fn take_config_state_compute_args(
+    mut parser: lexopt::Parser,
+) -> Result<ConfigStateComputeArgs, CoreError> {
+    let mut args = ConfigStateComputeArgs::default();
     while let Some(arg) = parser
         .next()
         .map_err(|error| CoreError::usage(error.to_string()))?
     {
-        match arg {
-            Long("config") => config_path = Some(parser_path_value(&mut parser)?),
-            Long("default-config") => default_config_path = Some(parser_path_value(&mut parser)?),
-            Long("contract") => contract_path = Some(parser_path_value(&mut parser)?),
-            Long("runtime-dir") => runtime_dir = Some(parser_path_value(&mut parser)?),
-            Long("state-path") => state_path = Some(parser_path_value(&mut parser)?),
-            Long("from-env") => from_env = true,
-            _ => return Err(CoreError::usage(format!("Unexpected argument: {arg:?}"))),
+        let option = parsed_long_option(arg)?;
+        if parse_config_contract_runtime_option(&option.name, &mut parser, &mut args.paths)? {
+            continue;
+        }
+        match option.name.as_str() {
+            "state-path" => args.state_path = Some(parser_path_value(&mut parser)?),
+            "from-env" => args.from_env = true,
+            _ => return Err(option.unexpected_error()),
         }
     }
+    Ok(args)
+}
 
-    let explicit_args_present = config_path.is_some()
-        || default_config_path.is_some()
-        || contract_path.is_some()
-        || runtime_dir.is_some()
-        || state_path.is_some();
+fn config_state_compute_request_from_args(
+    args: ConfigStateComputeArgs,
+) -> Result<ComputeConfigStateRequest, CoreError> {
+    let explicit_args_present =
+        config_contract_runtime_args_present(&args.paths) || args.state_path.is_some();
 
-    let request = if from_env {
+    if args.from_env {
         if explicit_args_present {
             return Err(CoreError::usage(
                 "Use either --from-env or explicit config-state.compute paths, not both.",
             ));
         }
-        config_state_compute_request_from_env(config_override_from_env().as_deref())?
-    } else {
-        ComputeConfigStateRequest {
-            config_path: config_path.ok_or_else(|| CoreError::usage("Missing --config path"))?,
-            default_config_path: default_config_path
-                .ok_or_else(|| CoreError::usage("Missing --default-config path"))?,
-            contract_path: contract_path
-                .ok_or_else(|| CoreError::usage("Missing --contract path"))?,
-            runtime_dir: runtime_dir
-                .ok_or_else(|| CoreError::usage("Missing --runtime-dir path"))?,
-            state_path: state_path.ok_or_else(|| CoreError::usage("Missing --state-path path"))?,
-        }
-    };
-    let data = compute_config_state(&request)?;
-    write_success_envelope(CONFIG_STATE_COMPUTE_COMMAND, data)
+        return config_state_compute_request_from_env(config_override_from_env().as_deref());
+    }
+
+    Ok(ComputeConfigStateRequest {
+        config_path: required_path(args.paths.config_path, "Missing --config path")?,
+        default_config_path: required_path(
+            args.paths.default_config_path,
+            "Missing --default-config path",
+        )?,
+        contract_path: required_path(args.paths.contract_path, "Missing --contract path")?,
+        runtime_dir: required_path(args.paths.runtime_dir, "Missing --runtime-dir path")?,
+        state_path: required_path(args.state_path, "Missing --state-path path")?,
+    })
 }
 
-fn run_config_state_record(mut parser: lexopt::Parser) -> Result<(), CoreError> {
-    let mut config_file: Option<String> = None;
-    let mut managed_config_path: Option<PathBuf> = None;
-    let mut state_path: Option<PathBuf> = None;
-    let mut config_hash: Option<String> = None;
-    let mut runtime_hash: Option<String> = None;
-    let mut from_env = false;
+fn run_config_state_record(parser: lexopt::Parser) -> Result<(), CoreError> {
+    let request = config_state_record_request_from_args(take_config_state_record_args(parser)?)?;
+    let data = record_config_state(&request)?;
+    write_success_envelope(CONFIG_STATE_RECORD_COMMAND, data)
+}
 
+fn take_config_state_record_args(
+    mut parser: lexopt::Parser,
+) -> Result<ConfigStateRecordArgs, CoreError> {
+    let mut args = ConfigStateRecordArgs::default();
     while let Some(arg) = parser
         .next()
         .map_err(|error| CoreError::usage(error.to_string()))?
     {
         match arg {
-            Long("config-file") => config_file = Some(parser_string_value(&mut parser)?),
-            Long("managed-config") => managed_config_path = Some(parser_path_value(&mut parser)?),
-            Long("state-path") => state_path = Some(parser_path_value(&mut parser)?),
-            Long("config-hash") => config_hash = Some(parser_string_value(&mut parser)?),
-            Long("runtime-hash") => runtime_hash = Some(parser_string_value(&mut parser)?),
-            Long("from-env") => from_env = true,
-            _ => return Err(CoreError::usage(format!("Unexpected argument: {arg:?}"))),
+            Long("config-file") => args.config_file = Some(parser_string_value(&mut parser)?),
+            Long("managed-config") => {
+                args.managed_config_path = Some(parser_path_value(&mut parser)?)
+            }
+            Long("state-path") => args.state_path = Some(parser_path_value(&mut parser)?),
+            Long("config-hash") => args.config_hash = Some(parser_string_value(&mut parser)?),
+            Long("runtime-hash") => args.runtime_hash = Some(parser_string_value(&mut parser)?),
+            Long("from-env") => args.from_env = true,
+            _ => return Err(unexpected_argument(arg)),
         }
     }
+    Ok(args)
+}
 
-    let explicit_args_present = managed_config_path.is_some() || state_path.is_some();
+fn config_state_record_request_from_args(
+    args: ConfigStateRecordArgs,
+) -> Result<RecordConfigStateRequest, CoreError> {
+    let explicit_args_present = args.managed_config_path.is_some() || args.state_path.is_some();
 
-    let config_file = config_file.ok_or_else(|| CoreError::usage("Missing --config-file path"))?;
-    let config_hash = config_hash.ok_or_else(|| CoreError::usage("Missing --config-hash value"))?;
-    let runtime_hash =
-        runtime_hash.ok_or_else(|| CoreError::usage("Missing --runtime-hash value"))?;
+    let config_file = required_string(args.config_file, "Missing --config-file path")?;
+    let config_hash = required_string(args.config_hash, "Missing --config-hash value")?;
+    let runtime_hash = required_string(args.runtime_hash, "Missing --runtime-hash value")?;
 
-    let request = if from_env {
+    if args.from_env {
         if explicit_args_present {
             return Err(CoreError::usage(
                 "Use either --from-env or explicit config-state.record paths, not both.",
             ));
         }
-        config_state_record_request_from_env(config_file, config_hash, runtime_hash)?
-    } else {
-        RecordConfigStateRequest {
-            config_file,
-            managed_config_path: managed_config_path
-                .ok_or_else(|| CoreError::usage("Missing --managed-config path"))?,
-            state_path: state_path.ok_or_else(|| CoreError::usage("Missing --state-path path"))?,
-            config_hash,
-            runtime_hash,
-        }
-    };
-    let data = record_config_state(&request)?;
-    write_success_envelope(CONFIG_STATE_RECORD_COMMAND, data)
+        return config_state_record_request_from_env(config_file, config_hash, runtime_hash);
+    }
+
+    Ok(RecordConfigStateRequest {
+        config_file,
+        managed_config_path: required_path(
+            args.managed_config_path,
+            "Missing --managed-config path",
+        )?,
+        state_path: required_path(args.state_path, "Missing --state-path path")?,
+        config_hash,
+        runtime_hash,
+    })
 }
 
 fn run_runtime_contract_evaluate(mut parser: lexopt::Parser) -> Result<(), CoreError> {
@@ -645,59 +745,53 @@ fn run_doctor_runtime_evaluate(mut parser: lexopt::Parser) -> Result<(), CoreErr
     write_success_envelope(DOCTOR_RUNTIME_EVALUATE_COMMAND, data)
 }
 
-fn run_install_ownership_evaluate(mut parser: lexopt::Parser) -> Result<(), CoreError> {
-    let mut request_json: Option<String> = None;
-    let mut from_env = false;
-    let mut runtime_dir: Option<PathBuf> = None;
+fn run_install_ownership_evaluate(parser: lexopt::Parser) -> Result<(), CoreError> {
+    let request = install_ownership_request_from_args(take_install_ownership_args(parser)?)?;
+    let data = evaluate_install_ownership_report(&request);
+    write_success_envelope(INSTALL_OWNERSHIP_EVALUATE_COMMAND, data)
+}
 
+fn take_install_ownership_args(
+    mut parser: lexopt::Parser,
+) -> Result<InstallOwnershipArgs, CoreError> {
+    let mut args = InstallOwnershipArgs::default();
     while let Some(arg) = parser
         .next()
         .map_err(|error| CoreError::usage(error.to_string()))?
     {
         match arg {
-            Long("request-json") => request_json = Some(parser_string_value(&mut parser)?),
-            Long("from-env") => from_env = true,
-            Long("runtime-dir") => runtime_dir = Some(parser_path_value(&mut parser)?),
-            _ => return Err(CoreError::usage(format!("Unexpected argument: {arg:?}"))),
+            Long("request-json") => args.request_json = Some(parser_string_value(&mut parser)?),
+            Long("from-env") => args.from_env = true,
+            Long("runtime-dir") => args.runtime_dir = Some(parser_path_value(&mut parser)?),
+            _ => return Err(unexpected_argument(arg)),
         }
     }
+    Ok(args)
+}
 
-    let request = match (from_env, request_json) {
-        (true, Some(_)) => {
-            return Err(CoreError::usage(
-                "Use either --from-env or --request-json for install-ownership.evaluate, not both.",
-            ));
-        }
-        (true, None) => match runtime_dir {
+fn install_ownership_request_from_args(
+    args: InstallOwnershipArgs,
+) -> Result<InstallOwnershipEvaluateRequest, CoreError> {
+    match (args.from_env, args.request_json) {
+        (true, Some(_)) => Err(CoreError::usage(
+            "Use either --from-env or --request-json for install-ownership.evaluate, not both.",
+        )),
+        (true, None) => Ok(match args.runtime_dir {
             Some(runtime_dir) => install_ownership_request_from_env_with_runtime_dir(runtime_dir)?,
             None => install_ownership_request_from_env()?,
-        },
+        }),
         (false, Some(request_json)) => {
-            if runtime_dir.is_some() {
+            if args.runtime_dir.is_some() {
                 return Err(CoreError::usage(
                     "Use --runtime-dir only with --from-env for install-ownership.evaluate.",
                 ));
             }
-            serde_json::from_str::<InstallOwnershipEvaluateRequest>(&request_json).map_err(
-                |error| {
-                    CoreError::classified(
-                        ErrorClass::Usage,
-                        "invalid_request_json",
-                        format!("Invalid install-ownership request JSON: {error}"),
-                        "Pass one valid JSON payload via --request-json.",
-                        serde_json::json!({}),
-                    )
-                },
-            )?
+            deserialize_json_request(&request_json, "install-ownership")
         }
-        (false, None) => {
-            return Err(CoreError::usage(
-                "Missing --request-json payload or --from-env for install-ownership.evaluate.",
-            ));
-        }
-    };
-    let data = evaluate_install_ownership_report(&request);
-    write_success_envelope(INSTALL_OWNERSHIP_EVALUATE_COMMAND, data)
+        (false, None) => Err(CoreError::usage(
+            "Missing --request-json payload or --from-env for install-ownership.evaluate.",
+        )),
+    }
 }
 
 fn run_zellij_render_plan_compute(mut parser: lexopt::Parser) -> Result<(), CoreError> {
@@ -716,216 +810,250 @@ fn run_yazi_render_plan_compute(mut parser: lexopt::Parser) -> Result<(), CoreEr
     write_success_envelope(YAZI_RENDER_PLAN_COMPUTE_COMMAND, data)
 }
 
-fn run_yazi_materialization_generate(mut parser: lexopt::Parser) -> Result<(), CoreError> {
-    let mut config_path: Option<PathBuf> = None;
-    let mut default_config_path: Option<PathBuf> = None;
-    let mut contract_path: Option<PathBuf> = None;
-    let mut runtime_dir: Option<PathBuf> = None;
-    let mut yazi_config_dir: Option<PathBuf> = None;
-    let mut sync_static_assets = false;
-
-    while let Some(arg) = parser
-        .next()
-        .map_err(|error| CoreError::usage(error.to_string()))?
-    {
-        match arg {
-            Long("config") => config_path = Some(parser_path_value(&mut parser)?),
-            Long("default-config") => default_config_path = Some(parser_path_value(&mut parser)?),
-            Long("contract") => contract_path = Some(parser_path_value(&mut parser)?),
-            Long("runtime-dir") => runtime_dir = Some(parser_path_value(&mut parser)?),
-            Long("yazi-config-dir") => yazi_config_dir = Some(parser_path_value(&mut parser)?),
-            Long("sync-static-assets") => sync_static_assets = true,
-            _ => return Err(CoreError::usage(format!("Unexpected argument: {arg:?}"))),
-        }
-    }
-
-    let request = YaziMaterializationRequest {
-        config_path: config_path.ok_or_else(|| CoreError::usage("Missing --config path"))?,
-        default_config_path: default_config_path
-            .ok_or_else(|| CoreError::usage("Missing --default-config path"))?,
-        contract_path: contract_path.ok_or_else(|| CoreError::usage("Missing --contract path"))?,
-        runtime_dir: runtime_dir.ok_or_else(|| CoreError::usage("Missing --runtime-dir path"))?,
-        yazi_config_dir: yazi_config_dir
-            .ok_or_else(|| CoreError::usage("Missing --yazi-config-dir path"))?,
-        sync_static_assets,
-    };
+fn run_yazi_materialization_generate(parser: lexopt::Parser) -> Result<(), CoreError> {
+    let request = yazi_materialization_request_from_args(take_yazi_materialization_args(parser)?)?;
     let data = generate_yazi_materialization(&request)?;
     write_success_envelope(YAZI_MATERIALIZATION_GENERATE_COMMAND, data)
 }
 
-fn run_zellij_materialization_generate(mut parser: lexopt::Parser) -> Result<(), CoreError> {
-    let mut config_path: Option<PathBuf> = None;
-    let mut default_config_path: Option<PathBuf> = None;
-    let mut contract_path: Option<PathBuf> = None;
-    let mut runtime_dir: Option<PathBuf> = None;
-    let mut zellij_config_dir: Option<PathBuf> = None;
-    let mut seed_plugin_permissions = false;
-
+fn take_yazi_materialization_args(
+    mut parser: lexopt::Parser,
+) -> Result<YaziMaterializationArgs, CoreError> {
+    let mut args = YaziMaterializationArgs::default();
     while let Some(arg) = parser
         .next()
         .map_err(|error| CoreError::usage(error.to_string()))?
     {
-        match arg {
-            Long("config") => config_path = Some(parser_path_value(&mut parser)?),
-            Long("default-config") => default_config_path = Some(parser_path_value(&mut parser)?),
-            Long("contract") => contract_path = Some(parser_path_value(&mut parser)?),
-            Long("runtime-dir") => runtime_dir = Some(parser_path_value(&mut parser)?),
-            Long("zellij-config-dir") => zellij_config_dir = Some(parser_path_value(&mut parser)?),
-            Long("seed-plugin-permissions") => seed_plugin_permissions = true,
-            _ => return Err(CoreError::usage(format!("Unexpected argument: {arg:?}"))),
+        let option = parsed_long_option(arg)?;
+        if parse_config_contract_runtime_option(&option.name, &mut parser, &mut args.paths)? {
+            continue;
+        }
+        match option.name.as_str() {
+            "yazi-config-dir" => args.yazi_config_dir = Some(parser_path_value(&mut parser)?),
+            "sync-static-assets" => args.sync_static_assets = true,
+            _ => return Err(option.unexpected_error()),
         }
     }
+    Ok(args)
+}
 
-    let request = ZellijMaterializationRequest {
-        config_path: config_path.ok_or_else(|| CoreError::usage("Missing --config path"))?,
-        default_config_path: default_config_path
-            .ok_or_else(|| CoreError::usage("Missing --default-config path"))?,
-        contract_path: contract_path.ok_or_else(|| CoreError::usage("Missing --contract path"))?,
-        runtime_dir: runtime_dir.ok_or_else(|| CoreError::usage("Missing --runtime-dir path"))?,
-        zellij_config_dir: zellij_config_dir
-            .ok_or_else(|| CoreError::usage("Missing --zellij-config-dir path"))?,
-        seed_plugin_permissions,
-    };
+fn yazi_materialization_request_from_args(
+    args: YaziMaterializationArgs,
+) -> Result<YaziMaterializationRequest, CoreError> {
+    Ok(YaziMaterializationRequest {
+        config_path: required_path(args.paths.config_path, "Missing --config path")?,
+        default_config_path: required_path(
+            args.paths.default_config_path,
+            "Missing --default-config path",
+        )?,
+        contract_path: required_path(args.paths.contract_path, "Missing --contract path")?,
+        runtime_dir: required_path(args.paths.runtime_dir, "Missing --runtime-dir path")?,
+        yazi_config_dir: required_path(args.yazi_config_dir, "Missing --yazi-config-dir path")?,
+        sync_static_assets: args.sync_static_assets,
+    })
+}
+
+fn run_zellij_materialization_generate(parser: lexopt::Parser) -> Result<(), CoreError> {
+    let request =
+        zellij_materialization_request_from_args(take_zellij_materialization_args(parser)?)?;
     let data = generate_zellij_materialization(&request)?;
     write_success_envelope(ZELLIJ_MATERIALIZATION_GENERATE_COMMAND, data)
 }
 
-fn run_helix_materialization_generate(mut parser: lexopt::Parser) -> Result<(), CoreError> {
-    let mut runtime_dir: Option<PathBuf> = None;
-    let mut config_dir: Option<PathBuf> = None;
-    let mut state_dir: Option<PathBuf> = None;
-    let mut show_splash = false;
-
+fn take_zellij_materialization_args(
+    mut parser: lexopt::Parser,
+) -> Result<ZellijMaterializationArgs, CoreError> {
+    let mut args = ZellijMaterializationArgs::default();
     while let Some(arg) = parser
         .next()
         .map_err(|error| CoreError::usage(error.to_string()))?
     {
-        match arg {
-            Long("runtime-dir") => runtime_dir = Some(parser_path_value(&mut parser)?),
-            Long("config-dir") => config_dir = Some(parser_path_value(&mut parser)?),
-            Long("state-dir") => state_dir = Some(parser_path_value(&mut parser)?),
-            Long("show-splash") => show_splash = parser_bool_value(&mut parser)?,
-            _ => return Err(CoreError::usage(format!("Unexpected argument: {arg:?}"))),
+        let option = parsed_long_option(arg)?;
+        if parse_config_contract_runtime_option(&option.name, &mut parser, &mut args.paths)? {
+            continue;
+        }
+        match option.name.as_str() {
+            "zellij-config-dir" => args.zellij_config_dir = Some(parser_path_value(&mut parser)?),
+            "seed-plugin-permissions" => args.seed_plugin_permissions = true,
+            _ => return Err(option.unexpected_error()),
         }
     }
 
-    let request = HelixMaterializationRequest {
-        runtime_dir: runtime_dir.ok_or_else(|| CoreError::usage("Missing --runtime-dir path"))?,
-        config_dir: config_dir.ok_or_else(|| CoreError::usage("Missing --config-dir path"))?,
-        state_dir: state_dir.ok_or_else(|| CoreError::usage("Missing --state-dir path"))?,
-        show_splash,
-    };
+    Ok(args)
+}
+
+fn zellij_materialization_request_from_args(
+    args: ZellijMaterializationArgs,
+) -> Result<ZellijMaterializationRequest, CoreError> {
+    Ok(ZellijMaterializationRequest {
+        config_path: required_path(args.paths.config_path, "Missing --config path")?,
+        default_config_path: required_path(
+            args.paths.default_config_path,
+            "Missing --default-config path",
+        )?,
+        contract_path: required_path(args.paths.contract_path, "Missing --contract path")?,
+        runtime_dir: required_path(args.paths.runtime_dir, "Missing --runtime-dir path")?,
+        zellij_config_dir: required_path(
+            args.zellij_config_dir,
+            "Missing --zellij-config-dir path",
+        )?,
+        seed_plugin_permissions: args.seed_plugin_permissions,
+    })
+}
+
+fn run_helix_materialization_generate(parser: lexopt::Parser) -> Result<(), CoreError> {
+    let request =
+        helix_materialization_request_from_args(take_helix_materialization_args(parser)?)?;
     let data = generate_helix_materialization(&request)?;
     write_success_envelope(HELIX_MATERIALIZATION_GENERATE_COMMAND, data)
 }
 
-fn run_ghostty_materialization_generate(mut parser: lexopt::Parser) -> Result<(), CoreError> {
-    let mut runtime_dir: Option<PathBuf> = None;
-    let mut config_dir: Option<PathBuf> = None;
-    let mut state_dir: Option<PathBuf> = None;
-    let mut transparency: Option<String> = None;
-    let mut cursor_config_path: Option<PathBuf> = None;
-    let mut from_env = false;
-
+fn take_helix_materialization_args(
+    mut parser: lexopt::Parser,
+) -> Result<HelixMaterializationArgs, CoreError> {
+    let mut args = HelixMaterializationArgs::default();
     while let Some(arg) = parser
         .next()
         .map_err(|error| CoreError::usage(error.to_string()))?
     {
         match arg {
-            Long("from-env") => from_env = true,
-            Long("runtime-dir") => runtime_dir = Some(parser_path_value(&mut parser)?),
-            Long("config-dir") => config_dir = Some(parser_path_value(&mut parser)?),
-            Long("state-dir") => state_dir = Some(parser_path_value(&mut parser)?),
-            Long("transparency") => transparency = Some(parser_string_value(&mut parser)?),
-            Long("cursor-config") => cursor_config_path = Some(parser_path_value(&mut parser)?),
-            _ => return Err(CoreError::usage(format!("Unexpected argument: {arg:?}"))),
+            Long("runtime-dir") => args.runtime_dir = Some(parser_path_value(&mut parser)?),
+            Long("config-dir") => args.config_dir = Some(parser_path_value(&mut parser)?),
+            Long("state-dir") => args.state_dir = Some(parser_path_value(&mut parser)?),
+            Long("show-splash") => args.show_splash = parser_bool_value(&mut parser)?,
+            _ => return Err(unexpected_argument(arg)),
         }
     }
+    Ok(args)
+}
 
-    let explicit_args_present = runtime_dir.is_some()
-        || config_dir.is_some()
-        || state_dir.is_some()
-        || transparency.is_some()
-        || cursor_config_path.is_some();
+fn helix_materialization_request_from_args(
+    args: HelixMaterializationArgs,
+) -> Result<HelixMaterializationRequest, CoreError> {
+    Ok(HelixMaterializationRequest {
+        runtime_dir: required_path(args.runtime_dir, "Missing --runtime-dir path")?,
+        config_dir: required_path(args.config_dir, "Missing --config-dir path")?,
+        state_dir: required_path(args.state_dir, "Missing --state-dir path")?,
+        show_splash: args.show_splash,
+    })
+}
 
-    let request = if from_env {
+fn run_ghostty_materialization_generate(parser: lexopt::Parser) -> Result<(), CoreError> {
+    let request =
+        ghostty_materialization_request_from_args(take_ghostty_materialization_args(parser)?)?;
+    let data = generate_ghostty_materialization(&request)?;
+    write_success_envelope(GHOSTTY_MATERIALIZATION_GENERATE_COMMAND, data)
+}
+
+fn take_ghostty_materialization_args(
+    mut parser: lexopt::Parser,
+) -> Result<GhosttyMaterializationArgs, CoreError> {
+    let mut args = GhosttyMaterializationArgs::default();
+    while let Some(arg) = parser
+        .next()
+        .map_err(|error| CoreError::usage(error.to_string()))?
+    {
+        match arg {
+            Long("from-env") => args.from_env = true,
+            Long("runtime-dir") => args.runtime_dir = Some(parser_path_value(&mut parser)?),
+            Long("config-dir") => args.config_dir = Some(parser_path_value(&mut parser)?),
+            Long("state-dir") => args.state_dir = Some(parser_path_value(&mut parser)?),
+            Long("transparency") => args.transparency = Some(parser_string_value(&mut parser)?),
+            Long("cursor-config") => {
+                args.cursor_config_path = Some(parser_path_value(&mut parser)?)
+            }
+            _ => return Err(unexpected_argument(arg)),
+        }
+    }
+    Ok(args)
+}
+
+fn ghostty_materialization_request_from_args(
+    args: GhosttyMaterializationArgs,
+) -> Result<GhosttyMaterializationRequest, CoreError> {
+    let explicit_args_present = args.runtime_dir.is_some()
+        || args.config_dir.is_some()
+        || args.state_dir.is_some()
+        || args.transparency.is_some()
+        || args.cursor_config_path.is_some();
+
+    if args.from_env {
         if explicit_args_present {
             return Err(CoreError::usage(
                 "Use either --from-env or explicit ghostty-materialization.generate flags, not both.",
             ));
         }
-        ghostty_materialization_request_from_env(config_override_from_env().as_deref())?
-    } else {
-        GhosttyMaterializationRequest {
-            runtime_dir: runtime_dir
-                .ok_or_else(|| CoreError::usage("Missing --runtime-dir path"))?,
-            config_dir: config_dir.ok_or_else(|| CoreError::usage("Missing --config-dir path"))?,
-            state_dir: state_dir.ok_or_else(|| CoreError::usage("Missing --state-dir path"))?,
-            transparency: transparency.ok_or_else(|| CoreError::usage("Missing --transparency"))?,
-            cursor_config_path: cursor_config_path
-                .ok_or_else(|| CoreError::usage("Missing --cursor-config path"))?,
-        }
-    };
-    let data = generate_ghostty_materialization(&request)?;
-    write_success_envelope(GHOSTTY_MATERIALIZATION_GENERATE_COMMAND, data)
+        return ghostty_materialization_request_from_env(config_override_from_env().as_deref());
+    }
+
+    Ok(GhosttyMaterializationRequest {
+        runtime_dir: required_path(args.runtime_dir, "Missing --runtime-dir path")?,
+        config_dir: required_path(args.config_dir, "Missing --config-dir path")?,
+        state_dir: required_path(args.state_dir, "Missing --state-dir path")?,
+        transparency: required_string(args.transparency, "Missing --transparency")?,
+        cursor_config_path: required_path(args.cursor_config_path, "Missing --cursor-config path")?,
+    })
 }
 
-fn run_terminal_materialization_generate(mut parser: lexopt::Parser) -> Result<(), CoreError> {
-    let mut config_path: Option<PathBuf> = None;
-    let mut default_config_path: Option<PathBuf> = None;
-    let mut contract_path: Option<PathBuf> = None;
-    let mut runtime_dir: Option<PathBuf> = None;
-    let mut state_dir: Option<PathBuf> = None;
-    let mut from_env = false;
+fn run_terminal_materialization_generate(parser: lexopt::Parser) -> Result<(), CoreError> {
+    let request =
+        terminal_materialization_request_from_args(take_terminal_materialization_args(parser)?)?;
+    let data = generate_terminal_materialization(&request)?;
+    write_success_envelope(TERMINAL_MATERIALIZATION_GENERATE_COMMAND, data)
+}
 
+fn take_terminal_materialization_args(
+    mut parser: lexopt::Parser,
+) -> Result<TerminalMaterializationArgs, CoreError> {
+    let mut args = TerminalMaterializationArgs::default();
     while let Some(arg) = parser
         .next()
         .map_err(|error| CoreError::usage(error.to_string()))?
     {
-        match arg {
-            Long("from-env") => from_env = true,
-            Long("config") => config_path = Some(parser_path_value(&mut parser)?),
-            Long("default-config") => default_config_path = Some(parser_path_value(&mut parser)?),
-            Long("contract") => contract_path = Some(parser_path_value(&mut parser)?),
-            Long("runtime-dir") => runtime_dir = Some(parser_path_value(&mut parser)?),
-            Long("state-dir") => state_dir = Some(parser_path_value(&mut parser)?),
-            _ => return Err(CoreError::usage(format!("Unexpected argument: {arg:?}"))),
+        let option = parsed_long_option(arg)?;
+        if parse_config_contract_runtime_option(&option.name, &mut parser, &mut args.paths)? {
+            continue;
+        }
+        match option.name.as_str() {
+            "from-env" => args.from_env = true,
+            "state-dir" => args.state_dir = Some(parser_path_value(&mut parser)?),
+            _ => return Err(option.unexpected_error()),
         }
     }
+    Ok(args)
+}
 
-    let explicit_args_present = config_path.is_some()
-        || default_config_path.is_some()
-        || contract_path.is_some()
-        || runtime_dir.is_some()
-        || state_dir.is_some();
+fn terminal_materialization_request_from_args(
+    args: TerminalMaterializationArgs,
+) -> Result<TerminalMaterializationRequest, CoreError> {
+    let explicit_args_present =
+        config_contract_runtime_args_present(&args.paths) || args.state_dir.is_some();
 
-    let request = if from_env {
+    if args.from_env {
         if explicit_args_present {
             return Err(CoreError::usage(
                 "Use either --from-env or explicit terminal-materialization.generate paths, not both.",
             ));
         }
-        terminal_materialization_request_from_env(config_override_from_env().as_deref())?
-    } else {
-        let runtime_dir =
-            runtime_dir.ok_or_else(|| CoreError::usage("Missing --runtime-dir path"))?;
-        let terminal = active_terminal_from_runtime_dir(&runtime_dir)?;
-        let config_path = config_path.ok_or_else(|| CoreError::usage("Missing --config path"))?;
-        TerminalMaterializationRequest {
-            cursor_config_path: config_path.clone(),
-            config_path,
-            default_config_path: default_config_path
-                .ok_or_else(|| CoreError::usage("Missing --default-config path"))?,
-            contract_path: contract_path
-                .ok_or_else(|| CoreError::usage("Missing --contract path"))?,
-            runtime_dir,
-            state_dir: state_dir.ok_or_else(|| CoreError::usage("Missing --state-dir path"))?,
-            terminals: vec![terminal],
-            yzxterm_profile: YzxtermProfile::Full,
-        }
-    };
-    let data = generate_terminal_materialization(&request)?;
-    write_success_envelope(TERMINAL_MATERIALIZATION_GENERATE_COMMAND, data)
+        return terminal_materialization_request_from_env(config_override_from_env().as_deref());
+    }
+
+    let runtime_dir = required_path(args.paths.runtime_dir, "Missing --runtime-dir path")?;
+    let terminal = active_terminal_from_runtime_dir(&runtime_dir)?;
+    let config_path = required_path(args.paths.config_path, "Missing --config path")?;
+    Ok(TerminalMaterializationRequest {
+        cursor_config_path: config_path.clone(),
+        config_path,
+        default_config_path: required_path(
+            args.paths.default_config_path,
+            "Missing --default-config path",
+        )?,
+        contract_path: required_path(args.paths.contract_path, "Missing --contract path")?,
+        runtime_dir,
+        state_dir: required_path(args.state_dir, "Missing --state-dir path")?,
+        terminals: vec![terminal],
+        yzxterm_profile: YzxtermProfile::Full,
+    })
 }
 
 fn run_launch_materialization_prepare(mut parser: lexopt::Parser) -> Result<(), CoreError> {
@@ -958,53 +1086,50 @@ fn run_launch_materialization_prepare(mut parser: lexopt::Parser) -> Result<(), 
     write_success_envelope(LAUNCH_MATERIALIZATION_PREPARE_COMMAND, data)
 }
 
-fn run_runtime_env_compute(mut parser: lexopt::Parser) -> Result<(), CoreError> {
-    let mut request_json: Option<String> = None;
-    let mut config_json: Option<String> = None;
-    let mut from_env = false;
+fn run_runtime_env_compute(parser: lexopt::Parser) -> Result<(), CoreError> {
+    let request = runtime_env_request_from_args(take_runtime_env_args(parser)?)?;
+    let data = compute_runtime_env(&request)?;
+    write_success_envelope(RUNTIME_ENV_COMPUTE_COMMAND, data)
+}
 
+fn take_runtime_env_args(mut parser: lexopt::Parser) -> Result<RuntimeEnvArgs, CoreError> {
+    let mut args = RuntimeEnvArgs::default();
     while let Some(arg) = parser
         .next()
         .map_err(|error| CoreError::usage(error.to_string()))?
     {
         match arg {
-            Long("request-json") => request_json = Some(parser_string_value(&mut parser)?),
-            Long("config-json") => config_json = Some(parser_string_value(&mut parser)?),
-            Long("from-env") => from_env = true,
-            _ => return Err(CoreError::usage(format!("Unexpected argument: {arg:?}"))),
+            Long("request-json") => args.request_json = Some(parser_string_value(&mut parser)?),
+            Long("config-json") => args.config_json = Some(parser_string_value(&mut parser)?),
+            Long("from-env") => args.from_env = true,
+            _ => return Err(unexpected_argument(arg)),
         }
     }
+    Ok(args)
+}
 
-    let request = if from_env {
-        if request_json.is_some() {
+fn runtime_env_request_from_args(
+    args: RuntimeEnvArgs,
+) -> Result<RuntimeEnvComputeRequest, CoreError> {
+    if args.from_env {
+        if args.request_json.is_some() {
             return Err(CoreError::usage(
                 "Use either --from-env or --request-json for runtime-env.compute, not both.",
             ));
         }
-        runtime_env_request_from_env(
-            config_json.as_deref(),
+        return runtime_env_request_from_env(
+            args.config_json.as_deref(),
             config_override_from_env().as_deref(),
-        )?
-    } else {
-        if config_json.is_some() {
-            return Err(CoreError::usage(
-                "runtime-env.compute only accepts --config-json together with --from-env.",
-            ));
-        }
-        let request_json =
-            request_json.ok_or_else(|| CoreError::usage("Missing --request-json payload"))?;
-        serde_json::from_str(&request_json).map_err(|error| {
-            CoreError::classified(
-                ErrorClass::Usage,
-                "invalid_request_json",
-                format!("Invalid runtime-env request JSON: {error}"),
-                "Pass one valid JSON payload via --request-json.",
-                serde_json::json!({}),
-            )
-        })?
-    };
-    let data = compute_runtime_env(&request)?;
-    write_success_envelope(RUNTIME_ENV_COMPUTE_COMMAND, data)
+        );
+    }
+
+    if args.config_json.is_some() {
+        return Err(CoreError::usage(
+            "runtime-env.compute only accepts --config-json together with --from-env.",
+        ));
+    }
+    let request_json = required_string(args.request_json, "Missing --request-json payload")?;
+    deserialize_json_request(&request_json, "runtime-env")
 }
 
 fn run_integration_facts_compute(parser: lexopt::Parser) -> Result<(), CoreError> {
@@ -1080,67 +1205,55 @@ fn run_runtime_materialization_repair(
     }
 }
 
-fn run_status_compute(mut parser: lexopt::Parser) -> Result<(), CoreError> {
-    let mut config_path: Option<PathBuf> = None;
-    let mut default_config_path: Option<PathBuf> = None;
-    let mut contract_path: Option<PathBuf> = None;
-    let mut runtime_dir: Option<PathBuf> = None;
-    let mut state_path: Option<PathBuf> = None;
-    let mut yazi_config_dir: Option<PathBuf> = None;
-    let mut zellij_config_dir: Option<PathBuf> = None;
-    let mut zellij_layout_dir: Option<PathBuf> = None;
-    let mut layout_override: Option<String> = None;
-    let mut yazelix_version: Option<String> = None;
-    let mut yazelix_description: Option<String> = None;
+fn run_status_compute(parser: lexopt::Parser) -> Result<(), CoreError> {
+    let args = take_status_compute_args(parser)?;
+    let version =
+        required_nonempty_string(&args.yazelix_version, "Missing --yazelix-version")?.to_string();
+    let description =
+        required_nonempty_string(&args.yazelix_description, "Missing --yazelix-description")?
+            .to_string();
+    let request = status_compute_request_from_args(args)?;
+    let data = compute_status_report(&request, &version, &description)?;
+    write_success_envelope(STATUS_COMPUTE_COMMAND, data)
+}
 
+fn take_status_compute_args(mut parser: lexopt::Parser) -> Result<StatusComputeArgs, CoreError> {
+    let mut args = StatusComputeArgs::default();
     while let Some(arg) = parser
         .next()
         .map_err(|error| CoreError::usage(error.to_string()))?
     {
-        match arg {
-            Long("config") => config_path = Some(parser_path_value(&mut parser)?),
-            Long("default-config") => default_config_path = Some(parser_path_value(&mut parser)?),
-            Long("contract") => contract_path = Some(parser_path_value(&mut parser)?),
-            Long("runtime-dir") => runtime_dir = Some(parser_path_value(&mut parser)?),
-            Long("state-path") => state_path = Some(parser_path_value(&mut parser)?),
-            Long("yazi-config-dir") => yazi_config_dir = Some(parser_path_value(&mut parser)?),
-            Long("zellij-config-dir") => zellij_config_dir = Some(parser_path_value(&mut parser)?),
-            Long("zellij-layout-dir") => zellij_layout_dir = Some(parser_path_value(&mut parser)?),
-            Long("layout-override") => layout_override = Some(parser_string_value(&mut parser)?),
-            Long("yazelix-version") => yazelix_version = Some(parser_string_value(&mut parser)?),
-            Long("yazelix-description") => {
-                yazelix_description = Some(parser_string_value(&mut parser)?)
+        let option = parsed_long_option(arg)?;
+        if parse_config_contract_runtime_option(&option.name, &mut parser, &mut args.paths)? {
+            continue;
+        }
+        match option.name.as_str() {
+            "state-path" => args.state_path = Some(parser_path_value(&mut parser)?),
+            "yazi-config-dir" => args.yazi_config_dir = Some(parser_path_value(&mut parser)?),
+            "zellij-config-dir" => args.zellij_config_dir = Some(parser_path_value(&mut parser)?),
+            "zellij-layout-dir" => args.zellij_layout_dir = Some(parser_path_value(&mut parser)?),
+            "layout-override" => args.layout_override = Some(parser_string_value(&mut parser)?),
+            "yazelix-version" => args.yazelix_version = Some(parser_string_value(&mut parser)?),
+            "yazelix-description" => {
+                args.yazelix_description = Some(parser_string_value(&mut parser)?)
             }
-            _ => return Err(CoreError::usage(format!("Unexpected argument: {arg:?}"))),
+            _ => return Err(option.unexpected_error()),
         }
     }
+    Ok(args)
+}
 
-    let request = RuntimeMaterializationPlanRequest {
-        config_path: config_path.ok_or_else(|| CoreError::usage("Missing --config path"))?,
-        default_config_path: default_config_path
-            .ok_or_else(|| CoreError::usage("Missing --default-config path"))?,
-        contract_path: contract_path.ok_or_else(|| CoreError::usage("Missing --contract path"))?,
-        runtime_dir: runtime_dir.ok_or_else(|| CoreError::usage("Missing --runtime-dir path"))?,
-        state_path: state_path.ok_or_else(|| CoreError::usage("Missing --state-path path"))?,
-        yazi_config_dir: yazi_config_dir
-            .ok_or_else(|| CoreError::usage("Missing --yazi-config-dir path"))?,
-        zellij_config_dir: zellij_config_dir
-            .ok_or_else(|| CoreError::usage("Missing --zellij-config-dir path"))?,
-        zellij_layout_dir: zellij_layout_dir
-            .ok_or_else(|| CoreError::usage("Missing --zellij-layout-dir path"))?,
-        zellij_permissions_cache_path: None,
-        layout_override,
-    };
-    let version = yazelix_version
-        .as_deref()
-        .filter(|s| !s.trim().is_empty())
-        .ok_or_else(|| CoreError::usage("Missing --yazelix-version"))?;
-    let description = yazelix_description
-        .as_deref()
-        .filter(|s| !s.trim().is_empty())
-        .ok_or_else(|| CoreError::usage("Missing --yazelix-description"))?;
-    let data = compute_status_report(&request, version, description)?;
-    write_success_envelope(STATUS_COMPUTE_COMMAND, data)
+fn status_compute_request_from_args(
+    args: StatusComputeArgs,
+) -> Result<RuntimeMaterializationPlanRequest, CoreError> {
+    into_runtime_plan_request(
+        args.paths,
+        args.state_path,
+        args.yazi_config_dir,
+        args.zellij_config_dir,
+        args.zellij_layout_dir,
+        args.layout_override,
+    )
 }
 
 fn take_request_json(parser: &mut lexopt::Parser) -> Result<String, CoreError> {
@@ -1283,6 +1396,97 @@ fn parser_bool_value(parser: &mut lexopt::Parser) -> Result<bool, CoreError> {
             "Boolean argument value must be true or false, got `{other}`"
         ))),
     }
+}
+
+struct ParsedLongOption {
+    name: String,
+    unexpected_message: String,
+}
+
+impl ParsedLongOption {
+    fn unexpected_error(&self) -> CoreError {
+        CoreError::usage(self.unexpected_message.clone())
+    }
+}
+
+fn parsed_long_option(arg: lexopt::Arg<'_>) -> Result<ParsedLongOption, CoreError> {
+    let unexpected_message = format!("Unexpected argument: {arg:?}");
+    match arg {
+        Long(name) => Ok(ParsedLongOption {
+            name: name.to_string(),
+            unexpected_message,
+        }),
+        _ => Err(CoreError::usage(unexpected_message)),
+    }
+}
+
+fn unexpected_argument(arg: lexopt::Arg) -> CoreError {
+    CoreError::usage(format!("Unexpected argument: {arg:?}"))
+}
+
+fn required_path(value: Option<PathBuf>, message: &'static str) -> Result<PathBuf, CoreError> {
+    value.ok_or_else(|| CoreError::usage(message))
+}
+
+fn required_string(value: Option<String>, message: &'static str) -> Result<String, CoreError> {
+    value.ok_or_else(|| CoreError::usage(message))
+}
+
+fn required_nonempty_string<'a>(
+    value: &'a Option<String>,
+    message: &'static str,
+) -> Result<&'a str, CoreError> {
+    value
+        .as_deref()
+        .filter(|s| !s.trim().is_empty())
+        .ok_or_else(|| CoreError::usage(message))
+}
+
+fn parse_config_contract_runtime_option(
+    option: &str,
+    parser: &mut lexopt::Parser,
+    paths: &mut ConfigContractRuntimeArgs,
+) -> Result<bool, CoreError> {
+    match option {
+        "config" => paths.config_path = Some(parser_path_value(parser)?),
+        "default-config" => paths.default_config_path = Some(parser_path_value(parser)?),
+        "contract" => paths.contract_path = Some(parser_path_value(parser)?),
+        "runtime-dir" => paths.runtime_dir = Some(parser_path_value(parser)?),
+        _ => return Ok(false),
+    }
+    Ok(true)
+}
+
+fn config_contract_runtime_args_present(paths: &ConfigContractRuntimeArgs) -> bool {
+    paths.config_path.is_some()
+        || paths.default_config_path.is_some()
+        || paths.contract_path.is_some()
+        || paths.runtime_dir.is_some()
+}
+
+fn into_runtime_plan_request(
+    paths: ConfigContractRuntimeArgs,
+    state_path: Option<PathBuf>,
+    yazi_config_dir: Option<PathBuf>,
+    zellij_config_dir: Option<PathBuf>,
+    zellij_layout_dir: Option<PathBuf>,
+    layout_override: Option<String>,
+) -> Result<RuntimeMaterializationPlanRequest, CoreError> {
+    Ok(RuntimeMaterializationPlanRequest {
+        config_path: required_path(paths.config_path, "Missing --config path")?,
+        default_config_path: required_path(
+            paths.default_config_path,
+            "Missing --default-config path",
+        )?,
+        contract_path: required_path(paths.contract_path, "Missing --contract path")?,
+        runtime_dir: required_path(paths.runtime_dir, "Missing --runtime-dir path")?,
+        state_path: required_path(state_path, "Missing --state-path path")?,
+        yazi_config_dir: required_path(yazi_config_dir, "Missing --yazi-config-dir path")?,
+        zellij_config_dir: required_path(zellij_config_dir, "Missing --zellij-config-dir path")?,
+        zellij_layout_dir: required_path(zellij_layout_dir, "Missing --zellij-layout-dir path")?,
+        zellij_permissions_cache_path: None,
+        layout_override,
+    })
 }
 
 fn write_success_envelope<T: serde::Serialize>(command: &str, data: T) -> Result<(), CoreError> {
@@ -1480,6 +1684,68 @@ mod tests {
         assert_eq!(
             error.error.message(),
             "Unsupported helper command: missing.helper"
+        );
+    }
+
+    // Defends: status.compute reports the same required identity error after parser/request-builder split.
+    #[test]
+    fn status_compute_requires_version_identity() {
+        let error = run_status_compute(lexopt::Parser::from_args([
+            "--config",
+            "/tmp/settings.jsonc",
+            "--default-config",
+            "/tmp/default.jsonc",
+            "--contract",
+            "/tmp/contract.toml",
+            "--runtime-dir",
+            "/tmp/runtime",
+            "--state-path",
+            "/tmp/state.json",
+            "--yazi-config-dir",
+            "/tmp/yazi",
+            "--zellij-config-dir",
+            "/tmp/zellij",
+            "--zellij-layout-dir",
+            "/tmp/layouts",
+            "--yazelix-description",
+            "Yazelix",
+        ]))
+        .expect_err("missing version should fail before status computation");
+
+        assert_eq!(error.message(), "Missing --yazelix-version");
+    }
+
+    // Defends: terminal-materialization.generate still rejects mixed from-env and explicit path modes.
+    #[test]
+    fn terminal_materialization_rejects_from_env_with_explicit_paths() {
+        let error = terminal_materialization_request_from_args(TerminalMaterializationArgs {
+            paths: ConfigContractRuntimeArgs {
+                runtime_dir: Some(PathBuf::from("/tmp/runtime")),
+                ..Default::default()
+            },
+            from_env: true,
+            ..Default::default()
+        })
+        .expect_err("from-env with explicit path should fail");
+
+        assert_eq!(
+            error.message(),
+            "Use either --from-env or explicit terminal-materialization.generate paths, not both."
+        );
+    }
+
+    // Defends: runtime-env.compute keeps --config-json scoped to the from-env request path.
+    #[test]
+    fn runtime_env_rejects_config_json_without_from_env() {
+        let error = runtime_env_request_from_args(RuntimeEnvArgs {
+            config_json: Some("{}".to_string()),
+            ..Default::default()
+        })
+        .expect_err("config-json without from-env should fail");
+
+        assert_eq!(
+            error.message(),
+            "runtime-env.compute only accepts --config-json together with --from-env."
         );
     }
 }

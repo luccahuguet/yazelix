@@ -14,6 +14,7 @@
   components ? { },
   extraRuntimePackages ? [ ],
   yaziAssets ? null,
+  yazelixHelixPackage ? null,
   yazelixCursorsPackage ? null,
   yazelixTerminalPackage ? null,
   zellijPluginArtifacts ? { },
@@ -37,6 +38,7 @@ let
       components
       extraRuntimePackages
       yaziAssets
+      yazelixHelixPackage
       yazelixCursorsPackage
       yazelixTerminalPackage
       zellijPluginArtifacts

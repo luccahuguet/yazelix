@@ -14,6 +14,8 @@ The extraction state is `complete_jsonc_first`.
 
 The separate `yazelix-ratconfig` repository owns the reusable code and tests. Yazelix consumes the published child crate through Cargo/Nix dependency metadata, and the old in-repo reusable `rust_core/yazelix_core/src/yazelix_ratconfig/` implementation has been deleted instead of kept as a duplicate copy.
 
+The TOML adapter decision is `accepted_child_generic`. `yazelix-ratconfig` may support TOML text adapters, TOML contract-state reconciliation, TOML examples, and TOML tests when those APIs stay project-agnostic. Main Yazelix must not add a `settings.toml` input, TOML migration path, or TOML Home Manager/runtime semantics unless a separate Yazelix product contract explicitly changes the main config surface.
+
 Future work should treat the child crate as the reusable owner and the main repo as a Yazelix adapter. If the boundary is painful, improve the child API or revise the contract; do not recreate a local mirror in the main repo.
 
 ## Child Repo Ownership
@@ -91,6 +93,16 @@ Supported first operations:
 
 Unsupported patch shapes must fail clearly instead of silently rewriting the whole document. When a project wants a whole-file rewrite, that must be an explicit adapter decision.
 
+## TOML Adapter Decision
+
+TOML support belongs in `yazelix-ratconfig` when it stays generic:
+
+- The child crate may use `toml` and `toml_edit` so TOML parsing and comment-preserving text edits are not recreated by hand.
+- TOML and JSONC must share the same contract semantics for rename, delete, add-default, transform, joined-state reads/writes, manual blockers, and contract-id checks.
+- TOML-specific limits are adapter errors, not alternate migration behavior. Examples include rejecting JSON `null` because TOML has no null value and refusing to patch through a parent path that is not a TOML table.
+- The main Yazelix repo consumes the child API for `settings.jsonc` only. It does not offer or document a main `settings.toml` config file.
+- A future Yazelix-specific TOML sidecar would need its own contract, owner, validation path, and user migration story. The reusable child adapter alone does not authorize that product surface.
+
 ## Migration Contract
 
 Ratconfig migrations are config arithmetic over a document.
@@ -104,7 +116,7 @@ The first migration engine should support simple deterministic operations:
 
 The engine owns operation semantics and ordering. The application owns which migrations apply to its config version and how to write the result atomically.
 
-More complex array reshaping, broad type migrations, cross-file migrations, and TOML support are future decisions.
+More complex array reshaping, broad type migrations, cross-file migrations, and application-specific TOML config surfaces are future decisions.
 
 ## Verification
 
@@ -112,6 +124,7 @@ Before extraction:
 
 - generic ratconfig tests prove model/edit/render behavior without Yazelix dependencies
 - JSONC patch tests prove comment-preserving set/unset behavior
+- TOML adapter tests prove comment-preserving set/unset behavior, shared migration semantics, unsupported-value errors, and joined contract-state reconciliation
 - one non-Yazelix fixture exercises bool, scalar select, multiselect, diagnostics, and JSONC editing
 
 After extraction:

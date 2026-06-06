@@ -23,6 +23,36 @@ fn steel_command_names(data: &HelixMaterializationData, visibility: &str) -> Vec
         .collect()
 }
 
+const STEEL_PLUGIN_MANIFEST_FIXTURE: &str = r#"[[plugins]]
+id = "recentf"
+source = "cogs/recentf.scm"
+public_commands = ["recentf-open-files"]
+internal_commands = ["recentf-snapshot"]
+startup_commands = ["recentf-snapshot"]
+command_descriptions = { "recentf-open-files" = "Open a picker for recently visited Helix files", "recentf-snapshot" = "Refresh and persist the recent-file cache" }
+
+[[plugins]]
+id = "splash"
+source = "splash.scm"
+internal_commands = ["show-splash"]
+startup_commands = ["show-splash"]
+startup_condition = "show_splash"
+command_descriptions = { "show-splash" = "Render the optional Yazelix splash overlay" }
+
+[[plugins]]
+id = "spacemacs_theme"
+source = "cogs/themes/spacemacs.scm"
+
+[[plugins]]
+id = "keymaps"
+source = "cogs/keymaps.scm"
+
+[[plugins]]
+id = "labelled_buffers"
+source = "cogs/labelled-buffers.scm"
+support_files = ["cogs/keymaps.scm"]
+"#;
+
 fn write_runtime_layout(runtime_dir: &Path) {
     fs::create_dir_all(runtime_dir.join("configs/helix")).unwrap();
     fs::create_dir_all(runtime_dir.join("config_metadata")).unwrap();
@@ -43,27 +73,27 @@ fn write_runtime_layout(runtime_dir: &Path) {
         ),
         (
             "configs/helix/steel_plugins/manifest.toml",
-            include_str!("../../../../configs/helix/steel_plugins/manifest.toml"),
+            STEEL_PLUGIN_MANIFEST_FIXTURE,
         ),
         (
             "configs/helix/steel_plugins/cogs/recentf.scm",
-            include_str!("../../../../configs/helix/steel_plugins/cogs/recentf.scm"),
+            "(provide recentf-open-files recentf-snapshot)\n",
         ),
         (
             "configs/helix/steel_plugins/cogs/keymaps.scm",
-            include_str!("../../../../configs/helix/steel_plugins/cogs/keymaps.scm"),
+            "(provide keymap)\n",
         ),
         (
             "configs/helix/steel_plugins/cogs/labelled-buffers.scm",
-            include_str!("../../../../configs/helix/steel_plugins/cogs/labelled-buffers.scm"),
+            "(provide open-labelled-buffer)\n",
         ),
         (
             "configs/helix/steel_plugins/splash.scm",
-            include_str!("../../../../configs/helix/steel_plugins/splash.scm"),
+            "(provide show-splash)\n",
         ),
         (
             "configs/helix/steel_plugins/cogs/themes/spacemacs.scm",
-            include_str!("../../../../configs/helix/steel_plugins/cogs/themes/spacemacs.scm"),
+            "(provide built-theme)\n",
         ),
     ] {
         fs::write(runtime_dir.join(path), content).unwrap();

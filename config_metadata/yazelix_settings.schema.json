@@ -124,7 +124,7 @@
         },
         "steel_plugins": {
           "type": "object",
-          "description": "Bundled Helix Steel plugin ids plus user-owned plugin manifests copied from ~/.config/yazelix/helix/steel_plugins",
+          "description": "Child-packaged bundled Helix Steel plugin ids plus user-owned plugin manifests copied from ~/.config/yazelix/helix/steel_plugins",
           "required": [
             "enabled",
             "extra"
@@ -806,8 +806,7 @@
                 "type": "string",
                 "enum": [
                   "mono",
-                  "split",
-                  "curated_template"
+                  "split"
                 ]
               },
               "color": {
@@ -835,9 +834,6 @@
                   "soft",
                   "hard"
                 ]
-              },
-              "template": {
-                "type": "string"
               },
               "cursor_color": {
                 "type": "string"
