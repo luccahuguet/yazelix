@@ -241,34 +241,19 @@ fn config_ui_metadata_covers_visible_fields_and_tabs() {
         visible_paths
     );
 
-    let allowed_editors = [
-        "toggle",
-        "enum_picker",
-        "multi_select",
-        "text",
-        "string_list",
-        "integer",
-        "float",
-        "read_only",
-        "list",
-        "object",
-        "object_list",
-    ]
-    .into_iter()
-    .collect::<std::collections::BTreeSet<_>>();
+    let ignored_field_keys = [
+        "group",
+        "label",
+        "editor",
+        "default_source",
+        "write_support",
+        "home_manager_behavior",
+        "lifecycle",
+        "advanced",
+    ];
     for (path, value) in metadata_fields {
         let table = value.as_table().expect("field table");
-        for key in [
-            "tab",
-            "group",
-            "label",
-            "help",
-            "editor",
-            "default_source",
-            "write_support",
-            "home_manager_behavior",
-            "lifecycle",
-        ] {
+        for key in ["tab", "help"] {
             assert!(
                 table
                     .get(key)
@@ -281,10 +266,12 @@ fn config_ui_metadata_covers_visible_fields_and_tabs() {
             tab_order.contains(&table["tab"].as_str().expect("field tab")),
             "{path} uses unknown tab"
         );
-        assert!(
-            allowed_editors.contains(table["editor"].as_str().expect("field editor")),
-            "{path} uses unknown editor"
-        );
+        for key in ignored_field_keys {
+            assert!(
+                !table.contains_key(key),
+                "{path} carries ignored config UI metadata key {key}"
+            );
+        }
     }
 }
 

@@ -1,6 +1,6 @@
 # User-facing metadata for the Yazelix config UI.
-# Parser semantics live in main_config_contract.toml; this file owns labels,
-# grouping, editor affordances, and UI-only lifecycle notes.
+# Parser semantics live in main_config_contract.toml. Field tables here own the
+# tab placement and help text consumed by the current config UI.
 
 tab_order = [
   "general",
@@ -62,678 +62,247 @@ help = "Low-level runtime paths and settings most users should not need"
 
 [fields."core.debug_mode"]
 tab = "general"
-group = "diagnostics"
-label = "debug_mode"
 help = "Enable verbose Yazelix diagnostics for troubleshooting runtime behavior"
-editor = "toggle"
-default_source = "settings_default.jsonc"
-write_support = "settings_jsonc"
-home_manager_behavior = "read_only_in_ui"
-lifecycle = "stable"
 
 [fields."core.skip_welcome_screen"]
 tab = "general"
-group = "startup"
-label = "skip_welcome_screen"
 help = "Skip the starter welcome screen during launch and restart"
-editor = "toggle"
-default_source = "settings_default.jsonc"
-write_support = "settings_jsonc"
-home_manager_behavior = "read_only_in_ui"
-lifecycle = "stable"
 
 [fields."core.show_macchina_on_welcome"]
 tab = "general"
-group = "startup"
-label = "show_macchina_on_welcome"
 help = "Show the macchina system summary on the welcome screen"
-editor = "toggle"
-default_source = "settings_default.jsonc"
-write_support = "settings_jsonc"
-home_manager_behavior = "read_only_in_ui"
-lifecycle = "stable"
 
 [fields."core.game_of_life_cell_style"]
 tab = "general"
-group = "welcome"
-label = "game_of_life_cell_style"
 help = "Choose the glyph style for Game of Life welcome animations"
-editor = "enum_picker"
-default_source = "settings_default.jsonc"
-write_support = "settings_jsonc"
-home_manager_behavior = "read_only_in_ui"
-lifecycle = "stable"
 
 [fields."core.welcome_style"]
 tab = "general"
-group = "welcome"
-label = "welcome_style"
 help = "Choose the welcome animation, or randomize among supported styles"
-editor = "enum_picker"
-default_source = "settings_default.jsonc"
-write_support = "settings_jsonc"
-home_manager_behavior = "read_only_in_ui"
-lifecycle = "stable"
 
 [fields."core.welcome_duration_seconds"]
 tab = "general"
-group = "welcome"
-label = "welcome_duration_seconds"
 help = "Set how long the welcome screen stays visible before Yazelix launches"
-editor = "float"
-default_source = "settings_default.jsonc"
-write_support = "settings_jsonc"
-home_manager_behavior = "read_only_in_ui"
-lifecycle = "stable"
 
 [fields."helix.external"]
 tab = "advanced"
-group = "runtime_paths"
-label = "helix_external"
 help = "Use a Yazelix-compatible Helix fork binary together with its matching runtime path"
-editor = "object"
-default_source = "settings_default.jsonc"
-write_support = "settings_jsonc"
-home_manager_behavior = "read_only_in_ui"
-lifecycle = "stable"
-advanced = true
 
 [fields."helix.steel_plugins"]
 tab = "editor"
-group = "helix_plugins"
-label = "steel_plugins"
 help = "Choose bundled Helix Steel plugins and declare extra user-owned plugin manifests"
-editor = "object"
-default_source = "settings_default.jsonc"
-write_support = "settings_jsonc"
-home_manager_behavior = "read_only_in_ui"
-lifecycle = "experimental"
-advanced = true
 
 [fields."editor.command"]
 tab = "editor"
-group = "command"
-label = "editor_command"
 help = "Override the editor command Yazelix uses when opening files"
-editor = "text"
-default_source = "settings_default.jsonc"
-write_support = "settings_jsonc"
-home_manager_behavior = "read_only_in_ui"
-lifecycle = "stable"
 
 [fields."editor.hide_sidebar_on_file_open"]
 tab = "editor"
-group = "sidebar"
-label = "hide_sidebar_on_file_open"
 help = "Hide the sidebar when opening a file in the editor"
-editor = "toggle"
-default_source = "settings_default.jsonc"
-write_support = "settings_jsonc"
-home_manager_behavior = "read_only_in_ui"
-lifecycle = "stable"
 
 [fields."workspace.left_sidebar.command"]
 tab = "workspace"
-group = "left_sidebar"
-label = "left_sidebar.command"
 help = "Set the command used to start the left sidebar pane"
-editor = "text"
-default_source = "settings_default.jsonc"
-write_support = "settings_jsonc"
-home_manager_behavior = "read_only_in_ui"
-lifecycle = "stable"
 
 [fields."workspace.left_sidebar.args"]
 tab = "workspace"
-group = "left_sidebar"
-label = "left_sidebar.args"
 help = "Set the arguments passed to the left sidebar command"
-editor = "string_list"
-default_source = "settings_default.jsonc"
-write_support = "settings_jsonc"
-home_manager_behavior = "read_only_in_ui"
-lifecycle = "stable"
 
 [fields."workspace.left_sidebar.width_percent"]
 tab = "workspace"
-group = "left_sidebar"
-label = "left_sidebar.width_percent"
 help = "Set the left sidebar pane width as a percentage of the tab"
-editor = "integer"
-default_source = "settings_default.jsonc"
-write_support = "settings_jsonc"
-home_manager_behavior = "read_only_in_ui"
-lifecycle = "stable"
 
 [fields."workspace.right_sidebar.command"]
 tab = "workspace"
-group = "right_sidebar"
-label = "right_sidebar.command"
 help = "Set the command used to start the right sidebar pane"
-editor = "text"
-default_source = "settings_default.jsonc"
-write_support = "settings_jsonc"
-home_manager_behavior = "read_only_in_ui"
-lifecycle = "stable"
 
 [fields."workspace.right_sidebar.args"]
 tab = "workspace"
-group = "right_sidebar"
-label = "right_sidebar.args"
 help = "Set the arguments passed to the right sidebar command"
-editor = "string_list"
-default_source = "settings_default.jsonc"
-write_support = "settings_jsonc"
-home_manager_behavior = "read_only_in_ui"
-lifecycle = "stable"
 
 [fields."workspace.right_sidebar.width_percent"]
 tab = "workspace"
-group = "right_sidebar"
-label = "right_sidebar.width_percent"
 help = "Set the right sidebar pane width as a percentage of the tab"
-editor = "integer"
-default_source = "settings_default.jsonc"
-write_support = "settings_jsonc"
-home_manager_behavior = "read_only_in_ui"
-lifecycle = "stable"
 
 [fields."shell.default_shell"]
 tab = "shell"
-group = "default_shell"
-label = "default_shell"
 help = "Choose the shell used for new Yazelix shell panes and generated shell hooks"
-editor = "enum_picker"
-default_source = "settings_default.jsonc"
-write_support = "settings_jsonc"
-home_manager_behavior = "read_only_in_ui"
-lifecycle = "stable"
 
 [fields."terminal.config_mode"]
 tab = "terminal"
-group = "ownership"
-label = "terminal_config_mode"
 help = "Choose whether Yazelix owns generated terminal config files"
-editor = "enum_picker"
-default_source = "settings_default.jsonc"
-write_support = "settings_jsonc"
-home_manager_behavior = "read_only_in_ui"
-lifecycle = "stable"
 
 [fields."terminal.transparency"]
 tab = "appearance"
-group = "terminal"
-label = "transparency"
 help = "Choose the generated terminal background transparency level"
-editor = "enum_picker"
-default_source = "settings_default.jsonc"
-write_support = "settings_jsonc"
-home_manager_behavior = "read_only_in_ui"
-lifecycle = "stable"
 
 [fields."zellij.disable_tips"]
 tab = "appearance"
-group = "zellij_chrome"
-label = "disable_zellij_tips"
 help = "Hide Zellij tip text in generated Yazelix layouts"
-editor = "toggle"
-default_source = "settings_default.jsonc"
-write_support = "settings_jsonc"
-home_manager_behavior = "read_only_in_ui"
-lifecycle = "stable"
 
 [fields."zellij.pane_frames"]
 tab = "appearance"
-group = "zellij_chrome"
-label = "pane_frames"
 help = "Show or hide Zellij pane frames in generated layouts"
-editor = "toggle"
-default_source = "settings_default.jsonc"
-write_support = "settings_jsonc"
-home_manager_behavior = "read_only_in_ui"
-lifecycle = "stable"
 
 [fields."zellij.rounded_corners"]
 tab = "appearance"
-group = "zellij_chrome"
-label = "rounded_corners"
 help = "Use rounded borders in generated Zellij pane frames"
-editor = "toggle"
-default_source = "settings_default.jsonc"
-write_support = "settings_jsonc"
-home_manager_behavior = "read_only_in_ui"
-lifecycle = "stable"
 
 [fields."zellij.support_kitty_keyboard_protocol"]
 tab = "appearance"
-group = "zellij_chrome"
-label = "support_kitty_keyboard_protocol"
 help = "Enable Zellij support for the Kitty keyboard protocol"
-editor = "toggle"
-default_source = "settings_default.jsonc"
-write_support = "settings_jsonc"
-home_manager_behavior = "read_only_in_ui"
-lifecycle = "stable"
 
 [fields."zellij.theme"]
 tab = "appearance"
-group = "theme"
-label = "theme"
 help = "Choose the Zellij theme used by generated Yazelix sessions"
-editor = "text"
-default_source = "settings_default.jsonc"
-write_support = "settings_jsonc"
-home_manager_behavior = "read_only_in_ui"
-lifecycle = "stable"
 
 [fields."zellij.widget_tray"]
 tab = "status_bar"
-group = "widgets"
-label = "widget_tray"
 help = "Choose which widgets appear in the Yazelix status bar"
-editor = "multi_select"
-default_source = "settings_default.jsonc"
-write_support = "settings_jsonc"
-home_manager_behavior = "read_only_in_ui"
-lifecycle = "stable"
 
 [fields."zellij.tab_label_mode"]
 tab = "status_bar"
-group = "labels"
-label = "tab_label_mode"
 help = "Choose how tab labels are rendered in the Yazelix status bar"
-editor = "enum_picker"
-default_source = "settings_default.jsonc"
-write_support = "settings_jsonc"
-home_manager_behavior = "read_only_in_ui"
-lifecycle = "stable"
 
 [fields."zellij.codex_usage_display"]
 tab = "status_bar"
-group = "ai_usage"
-label = "codex_usage_display"
 help = "Choose how Codex usage appears in the status bar"
-editor = "enum_picker"
-default_source = "settings_default.jsonc"
-write_support = "settings_jsonc"
-home_manager_behavior = "read_only_in_ui"
-lifecycle = "stable"
 
 [fields."zellij.codex_usage_periods"]
 tab = "status_bar"
-group = "ai_usage"
-label = "codex_usage_periods"
 help = "Choose which Codex quota periods appear in the status bar"
-editor = "multi_select"
-default_source = "settings_default.jsonc"
-write_support = "settings_jsonc"
-home_manager_behavior = "read_only_in_ui"
-lifecycle = "stable"
 
 [fields."zellij.claude_usage_display"]
 tab = "status_bar"
-group = "ai_usage"
-label = "claude_usage_display"
 help = "Choose how Claude usage appears in the status bar"
-editor = "enum_picker"
-default_source = "settings_default.jsonc"
-write_support = "settings_jsonc"
-home_manager_behavior = "read_only_in_ui"
-lifecycle = "stable"
 
 [fields."zellij.claude_usage_periods"]
 tab = "status_bar"
-group = "ai_usage"
-label = "claude_usage_periods"
 help = "Choose which Claude quota periods appear in the status bar"
-editor = "multi_select"
-default_source = "settings_default.jsonc"
-write_support = "settings_jsonc"
-home_manager_behavior = "read_only_in_ui"
-lifecycle = "stable"
 
 [fields."zellij.opencode_go_usage_display"]
 tab = "status_bar"
-group = "ai_usage"
-label = "opencode_go_usage_display"
 help = "Choose how OpenCode Go usage appears in the status bar"
-editor = "enum_picker"
-default_source = "settings_default.jsonc"
-write_support = "settings_jsonc"
-home_manager_behavior = "read_only_in_ui"
-lifecycle = "stable"
 
 [fields."zellij.opencode_go_usage_periods"]
 tab = "status_bar"
-group = "ai_usage"
-label = "opencode_go_usage_periods"
 help = "Choose which OpenCode Go quota periods appear in the status bar"
-editor = "multi_select"
-default_source = "settings_default.jsonc"
-write_support = "settings_jsonc"
-home_manager_behavior = "read_only_in_ui"
-lifecycle = "stable"
 
 [fields."zellij.custom_text"]
 tab = "status_bar"
-group = "custom_text"
-label = "custom_text"
 help = "Set custom compact text shown in the Yazelix status bar"
-editor = "text"
-default_source = "settings_default.jsonc"
-write_support = "settings_jsonc"
-home_manager_behavior = "read_only_in_ui"
-lifecycle = "stable"
 
 [fields."zellij.popup_commands"]
 tab = "workspace"
-group = "popup"
-label = "popup_commands"
 help = "Set commands for the built-in Yazelix popup surfaces"
-editor = "object"
-default_source = "settings_default.jsonc"
-write_support = "settings_jsonc"
-home_manager_behavior = "read_only_in_ui"
-lifecycle = "stable"
 
 [fields."zellij.popup_commands.bottom_popup"]
 tab = "workspace"
-group = "popup"
-label = "bottom_popup"
 help = "Set the command argv for the bottom popup surface"
-editor = "string_list"
-default_source = "settings_default.jsonc"
-write_support = "settings_jsonc"
-home_manager_behavior = "read_only_in_ui"
-lifecycle = "stable"
 
 [fields."zellij.popup_commands.top_popup"]
 tab = "workspace"
-group = "popup"
-label = "top_popup"
 help = "Set the command argv for the top popup surface"
-editor = "string_list"
-default_source = "settings_default.jsonc"
-write_support = "settings_jsonc"
-home_manager_behavior = "read_only_in_ui"
-lifecycle = "stable"
 
 [fields."zellij.popup_commands.menu"]
 tab = "workspace"
-group = "popup"
-label = "menu"
 help = "Set the command argv for the menu popup surface"
-editor = "string_list"
-default_source = "settings_default.jsonc"
-write_support = "settings_jsonc"
-home_manager_behavior = "read_only_in_ui"
-lifecycle = "stable"
 
 [fields."zellij.custom_popups"]
 tab = "workspace"
-group = "popup"
-label = "custom_popups"
 help = "Set user-defined popup surfaces with id, command, keybindings, and keep_alive"
-editor = "object"
-default_source = "settings_default.jsonc"
-write_support = "settings_jsonc"
-home_manager_behavior = "read_only_in_ui"
-lifecycle = "stable"
 
 [fields."zellij.popup_width_percent"]
 tab = "workspace"
-group = "popup"
-label = "popup_width_percent"
 help = "Set popup width as a percentage of the terminal"
-editor = "integer"
-default_source = "settings_default.jsonc"
-write_support = "settings_jsonc"
-home_manager_behavior = "read_only_in_ui"
-lifecycle = "stable"
 
 [fields."zellij.popup_height_percent"]
 tab = "workspace"
-group = "popup"
-label = "popup_height_percent"
 help = "Set popup height as a percentage of the terminal"
-editor = "integer"
-default_source = "settings_default.jsonc"
-write_support = "settings_jsonc"
-home_manager_behavior = "read_only_in_ui"
-lifecycle = "stable"
 
 [fields."zellij.screen_saver_enabled"]
 tab = "appearance"
-group = "screen_saver"
-label = "screen_saver_enabled"
 help = "Enable the idle Yazelix screen saver"
-editor = "toggle"
-default_source = "settings_default.jsonc"
-write_support = "settings_jsonc"
-home_manager_behavior = "read_only_in_ui"
-lifecycle = "stable"
 
 [fields."zellij.screen_saver_idle_seconds"]
 tab = "appearance"
-group = "screen_saver"
-label = "screen_saver_idle_seconds"
 help = "Set the idle time before the screen saver opens"
-editor = "integer"
-default_source = "settings_default.jsonc"
-write_support = "settings_jsonc"
-home_manager_behavior = "read_only_in_ui"
-lifecycle = "stable"
 
 [fields."zellij.screen_saver_style"]
 tab = "appearance"
-group = "screen_saver"
-label = "screen_saver_style"
 help = "Choose the screen saver animation, or randomize among supported styles"
-editor = "enum_picker"
-default_source = "settings_default.jsonc"
-write_support = "settings_jsonc"
-home_manager_behavior = "read_only_in_ui"
-lifecycle = "stable"
 
 [fields."zellij.default_mode"]
 tab = "workspace"
-group = "mode"
-label = "default_mode"
 help = "Choose the Zellij mode Yazelix enters after launch"
-editor = "enum_picker"
-default_source = "settings_default.jsonc"
-write_support = "settings_jsonc"
-home_manager_behavior = "read_only_in_ui"
-lifecycle = "stable"
 
 [fields."zellij.keybindings"]
 tab = "keybindings"
-group = "zellij"
-label = "zellij_keybindings"
 help = "Remap Yazelix-owned Zellij actions without copying the full Zellij keybind block"
-editor = "object"
-default_source = "settings_default.jsonc"
-write_support = "settings_jsonc"
-home_manager_behavior = "read_only_in_ui"
-lifecycle = "stable"
 
 [fields."zellij.native_keybindings"]
 tab = "keybindings"
-group = "zellij"
-label = "native_keybindings"
 help = "Remap Yazelix's curated native Zellij key policy without copying the full Zellij keybind block"
-editor = "object"
-default_source = "settings_default.jsonc"
-write_support = "settings_jsonc"
-home_manager_behavior = "read_only_in_ui"
-lifecycle = "stable"
 
 [fields."yazi.command"]
 tab = "file_manager"
-group = "command"
-label = "yazi_command"
 help = "Override the Yazi command Yazelix launches in the sidebar"
-editor = "text"
-default_source = "settings_default.jsonc"
-write_support = "settings_jsonc"
-home_manager_behavior = "read_only_in_ui"
-lifecycle = "stable"
 
 [fields."yazi.ya_command"]
 tab = "file_manager"
-group = "command"
-label = "ya_command"
 help = "Override the ya helper command used by Yazi plugin management"
-editor = "text"
-default_source = "settings_default.jsonc"
-write_support = "settings_jsonc"
-home_manager_behavior = "read_only_in_ui"
-lifecycle = "stable"
 
 [fields."yazi.plugins"]
 tab = "file_manager"
-group = "plugins"
-label = "plugins"
 help = "Choose which curated Yazi plugins Yazelix installs"
-editor = "string_list"
-default_source = "settings_default.jsonc"
-write_support = "settings_jsonc"
-home_manager_behavior = "read_only_in_ui"
-lifecycle = "stable"
 
 [fields."yazi.theme"]
 tab = "file_manager"
-group = "theme"
-label = "theme"
 help = "Choose the generated Yazi flavor or theme mode"
-editor = "text"
-default_source = "settings_default.jsonc"
-write_support = "settings_jsonc"
-home_manager_behavior = "read_only_in_ui"
-lifecycle = "stable"
 
 [fields."yazi.sort_by"]
 tab = "file_manager"
-group = "sorting"
-label = "sort_by"
 help = "Choose the default Yazi sort key"
-editor = "enum_picker"
-default_source = "settings_default.jsonc"
-write_support = "settings_jsonc"
-home_manager_behavior = "read_only_in_ui"
-lifecycle = "stable"
 
 [fields."yazi.keybindings"]
 tab = "keybindings"
-group = "yazi"
-label = "yazi_keybindings"
 help = "Remap Yazelix-owned Yazi integration action bindings without taking ownership of arbitrary Yazi-native keymaps or multi-key sequences"
-editor = "object"
-default_source = "settings_default.jsonc"
-write_support = "settings_jsonc"
-home_manager_behavior = "read_only_in_ui"
-lifecycle = "stable"
 
 [fields."cursors.schema_version"]
 tab = "cursors"
-group = "registry"
-label = "schema_version"
 help = "Internal cursor schema version used by Yazelix"
-editor = "read_only"
-default_source = "yazelix_ghostty_cursors_default.toml"
-write_support = "read_only"
-home_manager_behavior = "read_only_in_ui"
-lifecycle = "stable"
-advanced = true
 
 [fields."cursors.enabled_cursors"]
 tab = "cursors"
-group = "active_cursors"
-label = "enabled_cursors"
 help = "Choose which Yazelix cursor presets are generated"
-editor = "string_list"
-default_source = "yazelix_ghostty_cursors_default.toml"
-write_support = "settings_jsonc"
-home_manager_behavior = "read_only_in_ui"
-lifecycle = "stable"
 
 [fields."cursors.settings.trail"]
 tab = "cursors"
-group = "effects"
-label = "trail"
 help = "Choose the cursor preset used as the active trail cursor"
-editor = "text"
-default_source = "yazelix_ghostty_cursors_default.toml"
-write_support = "settings_jsonc"
-home_manager_behavior = "read_only_in_ui"
-lifecycle = "stable"
 
 [fields."cursors.settings.trail_effect"]
 tab = "cursors"
-group = "effects"
-label = "trail_effect"
 help = "Choose how the cursor trail animates between positions"
-editor = "enum_picker"
-default_source = "yazelix_ghostty_cursors_default.toml"
-write_support = "settings_jsonc"
-home_manager_behavior = "read_only_in_ui"
-lifecycle = "stable"
 
 [fields."cursors.settings.mode_effect"]
 tab = "cursors"
-group = "effects"
-label = "mode_effect"
 help = "Choose the animation used when cursor mode changes"
-editor = "enum_picker"
-default_source = "yazelix_ghostty_cursors_default.toml"
-write_support = "settings_jsonc"
-home_manager_behavior = "read_only_in_ui"
-lifecycle = "stable"
 
 [fields."cursors.settings.glow"]
 tab = "cursors"
-group = "effects"
-label = "glow"
 help = "Choose the Ghostty cursor glow intensity"
-editor = "enum_picker"
-default_source = "yazelix_ghostty_cursors_default.toml"
-write_support = "settings_jsonc"
-home_manager_behavior = "read_only_in_ui"
-lifecycle = "stable"
 
 [fields."cursors.settings.duration"]
 tab = "cursors"
-group = "effects"
-label = "duration"
 help = "Set cursor animation duration in seconds"
-editor = "float"
-default_source = "yazelix_ghostty_cursors_default.toml"
-write_support = "settings_jsonc"
-home_manager_behavior = "read_only_in_ui"
-lifecycle = "stable"
 
 [fields."cursors.settings.kitty_enable_cursor"]
 tab = "cursors"
-group = "compatibility"
-label = "kitty_enable_cursor"
 help = "Enable cursor shader generation for Kitty-compatible cursor config"
-editor = "toggle"
-default_source = "yazelix_ghostty_cursors_default.toml"
-write_support = "settings_jsonc"
-home_manager_behavior = "read_only_in_ui"
-lifecycle = "stable"
 
 [fields."cursors.cursor"]
 tab = "cursors"
-group = "registry"
-label = "cursor_registry"
 help = "Edit the cursor preset registry used by generated Ghostty cursor configs"
-editor = "list"
-default_source = "yazelix_ghostty_cursors_default.toml"
-write_support = "settings_jsonc"
-home_manager_behavior = "read_only_in_ui"
-lifecycle = "stable"
-advanced = true
 
 [sidecars."helix/config.toml"]
 tab = "editor"
