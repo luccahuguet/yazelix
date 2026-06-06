@@ -60,7 +60,11 @@ fn seed_startup_materialization_runtime_assets(fixture: &support::fixtures::Mana
     )
     .unwrap();
     fs::create_dir_all(fixture.runtime_dir.join("configs/zellij/plugins")).unwrap();
-    for wasm in ["yazelix_pane_orchestrator.wasm", "yzpp.wasm"] {
+    for wasm in [
+        "yazelix_pane_orchestrator.wasm",
+        "zjstatus.wasm",
+        "yzpp.wasm",
+    ] {
         fs::write(
             fixture
                 .runtime_dir
