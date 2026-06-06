@@ -76,7 +76,7 @@ Additional evidence:
 
 - `packaging/mk_runtime_tree.nix` still links broad top-level trees into every runtime: `assets`, `docs`, `nushell`, `shells`, `configs`, and `config_metadata`
 - `docs/` is about `1.1 MiB` across `102` files, but runtime code found in this pass reads only `docs/upgrade_notes.toml` and top-level `CHANGELOG.md`
-- `assets/font_tests/ubuntu_mono_regular_test.gif` is about `448 KiB` and `assets/tapes/yazelix_v7_quick_demo.tape` is about `4 KiB`; `rg` found no live references to those paths or names
+- Removed `assets/font_tests/ubuntu_mono_regular_test.gif` and `assets/tapes/yazelix_v7_quick_demo.tape` after `rg` found no live references to those paths or names; the runtime preview-asset packaging bead remains separate
 - `repo_child_release.rs` is about `1,045` lines and validates child package internals through `nix derivation show` markers such as `dontCargoBuild`, `export CARGO=`, `export RUSTC=`, `magick`, and `frame_%03d`
 
 Fresh follow-ups:
