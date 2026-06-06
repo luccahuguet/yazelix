@@ -15,46 +15,26 @@ with lib;
 
 let
   cfg = config.programs.yazelix;
-  defaultTerminal = "ghostty";
+  terminalMetadata = import ../packaging/terminal_variants.nix {
+    inherit (pkgs.stdenv.hostPlatform) isLinux;
+  };
+  defaultTerminal = terminalMetadata.default;
   runtimeToolSourceModes = [
     "bundled"
     "host"
     "off"
   ];
-  terminalVariants = [
-    "ghostty"
-    "kitty"
-    "rio"
-    "yzxterm"
-    "wezterm"
-  ] ++ lib.optionals pkgs.stdenv.hostPlatform.isLinux [ "foot" "ratty" ];
+  terminalVariants = terminalMetadata.supported;
   yzxtermProfiles = [
     "full"
     "baseline"
     "shaders"
   ];
-  terminalDesktopLabel =
-    terminal:
-    {
-      ghostty = "Ghostty";
-      kitty = "Kitty";
-      rio = "Rio";
-      yzxterm = "Yzxterm";
-      wezterm = "WezTerm";
-      foot = "Foot";
-      ratty = "Ratty";
-    }.${terminal};
-  terminalDesktopIdSuffix =
-    terminal:
-    {
-      ghostty = "Ghostty";
-      kitty = "Kitty";
-      rio = "Rio";
-      yzxterm = "Yzxterm";
-      wezterm = "WezTerm";
-      foot = "Foot";
-      ratty = "Ratty";
-    }.${terminal};
+  terminalDesktopLabel = terminalMetadata.desktopLabel;
+  terminalDesktopIdSuffix = terminalMetadata.desktopIdSuffix;
+  terminalDescriptionBullets = lib.concatMapStringsSep "\n" (
+    terminal: ''        - "${terminal}": ${terminalMetadata.description terminal}''
+  ) terminalVariants;
   desktopEntryKey = terminal: "com.yazelix.Yazelix.${terminalDesktopIdSuffix terminal}";
   desktopEntryName = terminal: "New Yazelix - ${terminalDesktopLabel terminal}";
   componentEnabled = name: cfg.components.${name} or true;
@@ -578,13 +558,7 @@ in
       description = ''
         Packaged Yazelix terminal variant.
 
-        - "ghostty": default packaged terminal with Yazelix cursor trails, Ghostty config effects, and Yazi image previews through Zellij
-        - "kitty": packaged Kitty terminal with generated Kitty config and the Yazelix Zellij/Yazi Kitty graphics bridge
-        - "rio": packaged vanilla Rio terminal with generated Rio config and the Yazelix Zellij/Yazi Kitty graphics bridge
-        - "wezterm": explicit alternate packaged terminal
-        - "yzxterm": experimental Yazelix-owned Rio fork with Rio trail cursor defaults and opt-in shader support
-        - "foot": Linux packaged Foot terminal with generated Foot config
-        - "ratty": experimental Linux packaged terminal with Ratty and the Yazelix Zellij/Yazi Kitty graphics bridge
+${terminalDescriptionBullets}
       '';
     };
 

@@ -149,6 +149,14 @@
       kgpPackages = import ./packaging/kgp_packages.nix {
         inherit yazelixZellij yazelixYazi yazelixHelix;
       };
+      terminalMetadataFor =
+        pkgs:
+        import ./packaging/terminal_variants.nix {
+          inherit (pkgs.stdenv.hostPlatform) isLinux;
+        };
+      terminalNeedsKittyPassthrough =
+        pkgs: runtimeVariant:
+        builtins.elem runtimeVariant (terminalMetadataFor pkgs).kittyPassthrough;
       zellijPluginArtifactsFor =
         system:
         let
@@ -190,13 +198,7 @@
             inherit name runtimeName screenAssets skipStableWrapperRedirect yazelixTerminalPackage;
             pkgs = runtimePkgs;
             enableZellijKittyPassthrough =
-              enableZellijKittyPassthrough || builtins.elem runtimeVariant [
-                "ghostty"
-                "kitty"
-                "rio"
-                "ratty"
-                "yzxterm"
-              ];
+              enableZellijKittyPassthrough || terminalNeedsKittyPassthrough pkgs runtimeVariant;
             extraRuntimePackages = [
               yazelixZellijBar.packages.${system}.yazelix_zellij_bar
             ] ++ extraRuntimePackages;
@@ -222,13 +224,7 @@
           screenAssets = yazelixScreen.packages.${system}.yzs;
           yaziAssets = yazelixYaziAssets.packages.${system}.yazelix_yazi_assets;
           zellijPluginArtifacts = zellijPluginArtifactsFor system;
-          enableZellijKittyPassthrough = builtins.elem runtimeVariant [
-            "ghostty"
-            "kitty"
-            "rio"
-            "ratty"
-            "yzxterm"
-          ];
+          enableZellijKittyPassthrough = terminalNeedsKittyPassthrough pkgs runtimeVariant;
         };
       runtimePackage = system: pkgs: runtimeVariant: extraRuntimePackages:
         runtimePackageWith system pkgs runtimeVariant extraRuntimePackages { };
@@ -241,13 +237,7 @@
         let
           helixPkgs = kgpPackages.helixPkgs system pkgs;
         in
-        if builtins.elem runtimeVariant [
-          "ghostty"
-          "kitty"
-          "rio"
-          "ratty"
-          "yzxterm"
-        ] then
+        if terminalNeedsKittyPassthrough pkgs runtimeVariant then
           kgpPackages.graphicsPkgs helixPkgs
         else
           helixPkgs;
@@ -314,22 +304,26 @@
         system:
         let
           pkgs = mkPkgs system;
-          defaultRuntimeVariant = "ghostty";
+          terminalMetadata = terminalMetadataFor pkgs;
+          defaultRuntimeVariant = terminalMetadata.default;
           defaultRuntimePackages = agentUsagePackages system;
           agentUsageRuntimePackages = agentUsagePackages system;
-          linuxTerminalPackages = lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux {
-            runtime_foot = runtimePackage system pkgs "foot" defaultRuntimePackages;
-            yazelix_foot = yazelixPackage system pkgs "foot" defaultRuntimePackages;
-            runtime_ratty = runtimePackage system pkgs "ratty" defaultRuntimePackages;
-            yazelix_ratty = yazelixPackage system pkgs "ratty" defaultRuntimePackages;
-          };
-          runtime_default = runtimePackage system pkgs defaultRuntimeVariant defaultRuntimePackages;
-          runtime_ghostty = runtimePackage system pkgs "ghostty" defaultRuntimePackages;
-          runtime_kitty = runtimePackage system pkgs "kitty" defaultRuntimePackages;
-          runtime_rio = runtimePackage system pkgs "rio" defaultRuntimePackages;
-          runtime_wezterm = runtimePackage system pkgs "wezterm" defaultRuntimePackages;
-          runtime_yzxterm =
-            runtimePackage system pkgs "yzxterm" defaultRuntimePackages;
+          terminalPackageEntries =
+            terminal:
+            [
+              {
+                name = terminalMetadata.runtimeOutput terminal;
+                value = runtimePackage system pkgs terminal defaultRuntimePackages;
+              }
+              {
+                name = terminalMetadata.packageOutput terminal;
+                value = yazelixPackage system pkgs terminal defaultRuntimePackages;
+              }
+            ];
+          terminalPackages = lib.listToAttrs (
+            lib.concatMap terminalPackageEntries terminalMetadata.supported
+          );
+          runtime_default = builtins.getAttr (terminalMetadata.runtimeOutput defaultRuntimeVariant) terminalPackages;
           yzxtermFastRuntimeIdentity = defaultRuntimeIdentity // {
             package_profile = "yzxterm-fast";
             yzxterm_terminal_package = "yazelix-terminal-fast";
@@ -342,12 +336,7 @@
           };
           runtime_agent_tools = runtimePackage system pkgs defaultRuntimeVariant agentUsageRuntimePackages;
           graphicsPkgs = kgpPackages.graphicsPkgs pkgs;
-          yazelix_default = yazelixPackage system pkgs defaultRuntimeVariant defaultRuntimePackages;
-          yazelix_ghostty = yazelixPackage system pkgs "ghostty" defaultRuntimePackages;
-          yazelix_kitty = yazelixPackage system pkgs "kitty" defaultRuntimePackages;
-          yazelix_rio = yazelixPackage system pkgs "rio" defaultRuntimePackages;
-          yazelix_wezterm = yazelixPackage system pkgs "wezterm" defaultRuntimePackages;
-          yzxterm = yazelixPackage system pkgs "yzxterm" defaultRuntimePackages;
+          yazelix_default = builtins.getAttr (terminalMetadata.packageOutput defaultRuntimeVariant) terminalPackages;
           yzxterm_fast = mkYazelix system {
             pkgs = pkgs;
             name = "yazelix-yzxterm-fast";
@@ -375,37 +364,43 @@
           default = yazelix_default;
           runtime = runtime_default;
           runtime_agent_tools = runtime_agent_tools;
-          runtime_ghostty = runtime_ghostty;
-          runtime_kitty = runtime_kitty;
-          runtime_rio = runtime_rio;
-          runtime_wezterm = runtime_wezterm;
-          runtime_yzxterm = runtime_yzxterm;
           runtime_yzxterm_fast = runtime_yzxterm_fast;
           yazelix = yazelix_default;
           yazelix_agent_tools = yazelix_agent_tools;
           yazelix_zellij_bar = yazelix_zellij_bar;
           yazelix_cursors = yazelix_cursors;
-          yazelix_ghostty = yazelix_ghostty;
-          yazelix_kitty = yazelix_kitty;
-          yazelix_rio = yazelix_rio;
           yazelix_screen = yazelix_screen;
           yazelix_helix = yazelix_helix;
           yazelix_kgp_yazi = graphicsPkgs.yazi-unwrapped;
           yazelix_kgp_zellij = graphicsPkgs.zellij;
-          yazelix_wezterm = yazelix_wezterm;
-          yzxterm = yzxterm;
           yzxterm_fast = yzxterm_fast;
           yazelix_yazi_assets = yazelix_yazi_assets;
           yazelix_zellij_pane_orchestrator = yazelix_zellij_pane_orchestrator;
           yazelix_zellij_popup = yazelix_zellij_popup;
           yzs = yazelix_screen;
-        } // linuxTerminalPackages)
+        } // terminalPackages)
       );
 
       apps = forAllSystems (
         system:
         let
           pkgs = mkPkgs system;
+          terminalMetadata = terminalMetadataFor pkgs;
+          terminalApps = lib.listToAttrs (
+            map (
+              terminal:
+              let
+                packageOutput = terminalMetadata.packageOutput terminal;
+              in
+              {
+                name = packageOutput;
+                value = {
+                  type = "app";
+                  program = "${self.packages.${system}.${packageOutput}}/bin/yzx";
+                };
+              }
+            ) terminalMetadata.supported
+          );
         in
         {
           default = {
@@ -415,26 +410,6 @@
           yazelix = {
             type = "app";
             program = "${self.packages.${system}.yazelix}/bin/yzx";
-          };
-          yazelix_ghostty = {
-            type = "app";
-            program = "${self.packages.${system}.yazelix_ghostty}/bin/yzx";
-          };
-          yazelix_wezterm = {
-            type = "app";
-            program = "${self.packages.${system}.yazelix_wezterm}/bin/yzx";
-          };
-          yazelix_kitty = {
-            type = "app";
-            program = "${self.packages.${system}.yazelix_kitty}/bin/yzx";
-          };
-          yazelix_rio = {
-            type = "app";
-            program = "${self.packages.${system}.yazelix_rio}/bin/yzx";
-          };
-          yzxterm = {
-            type = "app";
-            program = "${self.packages.${system}.yzxterm}/bin/yzx";
           };
           yzxterm_fast = {
             type = "app";
@@ -460,17 +435,7 @@
             type = "app";
             program = "${self.packages.${system}.yazelix_cursors}/bin/yzc";
           };
-        }
-        // lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux {
-          yazelix_foot = {
-            type = "app";
-            program = "${self.packages.${system}.yazelix_foot}/bin/yzx";
-          };
-          yazelix_ratty = {
-            type = "app";
-            program = "${self.packages.${system}.yazelix_ratty}/bin/yzx";
-          };
-        }
+        } // terminalApps
       );
 
       devShells = forAllSystems (
