@@ -12,25 +12,24 @@ use crate::popup_runtime_command::popup_command_argv_for_yazelix_runtime;
 use crate::runtime_component_enabled;
 use crate::terminal_variant::active_terminal_from_runtime_dir;
 use crate::user_config_paths;
+use crate::zellij_materialization_io::{
+    hash_file, hash_text, read_text, read_text_if_exists, write_text_atomic,
+};
+pub(crate) use crate::zellij_plugin_materialization::zellij_permissions_cache_path;
+use crate::zellij_plugin_materialization::{
+    PluginArtifact, resolve_plugin_artifacts, sync_plugin_artifacts,
+};
 use crate::zellij_render_plan::{
     TopLevelSetting, ZellijRenderPlanData, ZellijRenderPlanRequest, compute_zellij_render_plan,
 };
-use directories::ProjectDirs;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map as JsonMap, Value as JsonValue, json};
-use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-const PANE_ORCHESTRATOR_PLUGIN_PREFIX: &str = PANE_ORCHESTRATOR_PLUGIN_ALIAS;
-const PANE_ORCHESTRATOR_WASM_NAME: &str = "yazelix_pane_orchestrator.wasm";
-const ZJSTATUS_PLUGIN_PREFIX: &str = "zjstatus";
-const ZJSTATUS_WASM_NAME: &str = "zjstatus.wasm";
-const YZPP_PLUGIN_PREFIX: &str = YZPP_PLUGIN_ALIAS;
-const YZPP_WASM_NAME: &str = "yzpp.wasm";
 const GENERATION_METADATA_NAME: &str = ".yazelix_generation.json";
 const GENERATION_FINGERPRINT_SCHEMA_VERSION: u64 = 8;
 const GENERATED_CONFIG_MARKERS: &[&str] = &[
@@ -72,29 +71,6 @@ const ZJSTATUS_TAB_TEMPLATE_PLACEHOLDER: &str = "__YAZELIX_ZJSTATUS_TAB_TEMPLATE
 const ZJSTATUS_BAR_RENDER_COMMAND: &str = "render-yazelix-runtime";
 const ZJSTATUS_BAR_RENDER_SCHEMA_VERSION: u64 = 2;
 
-const PANE_ORCHESTRATOR_REQUIRED_PERMISSIONS: &[&str] = &[
-    "ReadApplicationState",
-    "OpenTerminalsOrPlugins",
-    "ChangeApplicationState",
-    "RunCommands",
-    "WriteToStdin",
-    "ReadCliPipes",
-    "MessageAndLaunchOtherPlugins",
-    "ReadSessionEnvironmentVariables",
-];
-const ZJSTATUS_REQUIRED_PERMISSIONS: &[&str] = &[
-    "ReadApplicationState",
-    "ChangeApplicationState",
-    "RunCommands",
-];
-const YZPP_REQUIRED_PERMISSIONS: &[&str] = &[
-    "ReadApplicationState",
-    "ChangeApplicationState",
-    "OpenTerminalsOrPlugins",
-    "RunCommands",
-    "ReadCliPipes",
-];
-
 #[derive(Debug, Clone)]
 pub struct ZellijMaterializationRequest {
     pub config_path: PathBuf,
@@ -127,17 +103,6 @@ struct ZellijBaseConfigSource {
 }
 
 #[derive(Debug, Clone)]
-struct PluginArtifact {
-    name: &'static str,
-    prefix: &'static str,
-    wasm_name: &'static str,
-    tracked_path: PathBuf,
-    tracked_hash: String,
-    runtime_path: PathBuf,
-    required_permissions: &'static [&'static str],
-}
-
-#[derive(Debug, Clone)]
 struct ExtractedSemanticBlocks {
     config_without_semantic_blocks: String,
     load_plugin_lines: Vec<String>,
@@ -146,12 +111,6 @@ struct ExtractedSemanticBlocks {
     keybinds_block_present: bool,
     keybinds_clear_defaults: bool,
     ui_lines: Vec<String>,
-}
-
-#[derive(Debug, Clone)]
-struct PermissionBlock {
-    path: String,
-    permissions: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
@@ -219,9 +178,12 @@ pub fn generate_zellij_materialization(
         include_missing: true,
     })?;
     let config = normalized.normalized_config;
-    if !runtime_component_enabled(&request.runtime_dir, "screen")?
-        && bool_config(&config, "screen_saver_enabled", false)
-    {
+    let screen_saver_enabled = match config.get("screen_saver_enabled") {
+        Some(JsonValue::Bool(value)) => *value,
+        Some(JsonValue::String(value)) => value == "true",
+        _ => false,
+    };
+    if !runtime_component_enabled(&request.runtime_dir, "screen")? && screen_saver_enabled {
         return Err(CoreError::classified(
             ErrorClass::Config,
             "disabled_screen_component_screen_saver",
@@ -368,14 +330,6 @@ fn build_render_plan_request(
     })
 }
 
-fn bool_config(config: &JsonMap<String, JsonValue>, key: &str, default: bool) -> bool {
-    match config.get(key) {
-        Some(JsonValue::Bool(value)) => *value,
-        Some(JsonValue::String(value)) => value == "true",
-        _ => default,
-    }
-}
-
 fn string_config<'a>(
     config: &'a JsonMap<String, JsonValue>,
     key: &str,
@@ -390,17 +344,14 @@ fn string_config<'a>(
 
 fn default_popup_commands() -> BTreeMap<String, Vec<String>> {
     BTreeMap::from([
-        (
-            BOTTOM_POPUP_COMMAND_KEY.to_string(),
-            vec!["lazygit".to_string()],
-        ),
+        (BOTTOM_POPUP_COMMAND_KEY.to_string(), vec!["lazygit".into()]),
         (
             TOP_POPUP_COMMAND_KEY.to_string(),
-            vec!["yzx".to_string(), "config".to_string(), "ui".to_string()],
+            vec!["yzx".into(), "config".into(), "ui".into()],
         ),
         (
             MENU_POPUP_COMMAND_KEY.to_string(),
-            vec!["yzx".to_string(), "menu".to_string()],
+            vec!["yzx".into(), "menu".into()],
         ),
     ])
 }
@@ -454,8 +405,8 @@ fn resolve_popup_commands_config(
 fn default_custom_popups() -> Vec<CustomPopup> {
     vec![CustomPopup {
         id: "btm".to_string(),
-        command: vec!["btm".to_string()],
-        keybindings: vec!["Alt Shift B".to_string()],
+        command: vec!["btm".into()],
+        keybindings: vec!["Alt Shift B".into()],
         keep_alive: true,
     }]
 }
@@ -2198,305 +2149,6 @@ fn remove_stale_layouts(target_dir: &Path, expected_targets: &[PathBuf]) -> Resu
     Ok(())
 }
 
-fn resolve_plugin_artifacts(
-    runtime_dir: &Path,
-    state_dir: &Path,
-) -> Result<[PluginArtifact; 3], CoreError> {
-    let plugin_dir = state_dir.join("configs").join("zellij").join("plugins");
-    let [pane_orchestrator, zjstatus, yzpp] = [
-        (
-            "pane_orchestrator",
-            PANE_ORCHESTRATOR_PLUGIN_PREFIX,
-            PANE_ORCHESTRATOR_WASM_NAME,
-            PANE_ORCHESTRATOR_REQUIRED_PERMISSIONS,
-        ),
-        (
-            "zjstatus",
-            ZJSTATUS_PLUGIN_PREFIX,
-            ZJSTATUS_WASM_NAME,
-            ZJSTATUS_REQUIRED_PERMISSIONS,
-        ),
-        (
-            "yzpp",
-            YZPP_PLUGIN_PREFIX,
-            YZPP_WASM_NAME,
-            YZPP_REQUIRED_PERMISSIONS,
-        ),
-    ]
-    .map(|(name, prefix, wasm_name, permissions)| {
-        resolve_plugin_artifact(
-            runtime_dir,
-            &plugin_dir,
-            name,
-            prefix,
-            wasm_name,
-            permissions,
-        )
-    });
-    Ok([pane_orchestrator?, zjstatus?, yzpp?])
-}
-
-fn resolve_plugin_artifact(
-    runtime_dir: &Path,
-    plugin_dir: &Path,
-    name: &'static str,
-    prefix: &'static str,
-    wasm_name: &'static str,
-    required_permissions: &'static [&'static str],
-) -> Result<PluginArtifact, CoreError> {
-    let tracked_path = runtime_dir
-        .join("configs")
-        .join("zellij")
-        .join("plugins")
-        .join(wasm_name);
-    if !tracked_path.exists() {
-        return Err(CoreError::classified(
-            ErrorClass::Io,
-            "missing_tracked_zellij_plugin",
-            format!(
-                "Tracked {name} wasm not found at: {}",
-                tracked_path.to_string_lossy()
-            ),
-            "Reinstall Yazelix so the runtime includes all tracked Zellij plugin wasm artifacts.",
-            json!({ "path": tracked_path.to_string_lossy(), "plugin": name }),
-        ));
-    }
-    Ok(PluginArtifact {
-        name,
-        prefix,
-        wasm_name,
-        tracked_hash: hash_file(&tracked_path)?,
-        runtime_path: plugin_dir.join(wasm_name),
-        tracked_path,
-        required_permissions,
-    })
-}
-
-fn sync_plugin_artifacts(
-    plugin_artifacts: &[PluginArtifact; 3],
-    seed_plugin_permissions: bool,
-) -> Result<(), CoreError> {
-    for artifact in plugin_artifacts.iter() {
-        sync_plugin_artifact(artifact)?;
-        let plugin_dir = artifact
-            .runtime_path
-            .parent()
-            .expect("plugin artifact runtime paths include a plugin directory");
-        remove_runtime_plugins_by_prefix_in_dir(
-            plugin_dir,
-            artifact.prefix,
-            Some(&artifact.runtime_path),
-        )?;
-        preserve_plugin_permissions(
-            artifact.prefix,
-            &artifact.tracked_path,
-            &artifact.runtime_path,
-            artifact.required_permissions,
-        )?;
-    }
-    if seed_plugin_permissions {
-        upsert_plugin_permission_blocks(plugin_artifacts)?;
-    }
-    Ok(())
-}
-
-fn sync_plugin_artifact(artifact: &PluginArtifact) -> Result<(), CoreError> {
-    if artifact.runtime_path.exists() && hash_file(&artifact.runtime_path)? == artifact.tracked_hash
-    {
-        return Ok(());
-    }
-
-    copy_file_atomic(&artifact.tracked_path, &artifact.runtime_path)
-}
-
-fn remove_runtime_plugins_by_prefix_in_dir(
-    runtime_dir: &Path,
-    prefix: &str,
-    excluded_path: Option<&Path>,
-) -> Result<(), CoreError> {
-    if !runtime_dir.exists() {
-        return Ok(());
-    }
-    let excluded = excluded_path.map(|path| path.to_path_buf());
-    for entry in fs::read_dir(runtime_dir).map_err(|source| {
-        CoreError::io(
-            "read_zellij_plugin_runtime_dir",
-            "Could not inspect the managed Zellij plugin directory",
-            "Check permissions for the Yazelix state directory and retry.",
-            runtime_dir.to_string_lossy(),
-            source,
-        )
-    })? {
-        let path = entry
-            .map_err(|source| {
-                CoreError::io(
-                    "read_zellij_plugin_runtime_entry",
-                    "Could not inspect a managed Zellij plugin entry",
-                    "Check permissions for the Yazelix state directory and retry.",
-                    runtime_dir.to_string_lossy(),
-                    source,
-                )
-            })?
-            .path();
-        if excluded.as_ref().is_some_and(|excluded| excluded == &path) {
-            continue;
-        }
-        let file_name = path
-            .file_name()
-            .and_then(|name| name.to_str())
-            .unwrap_or("");
-        if plugin_name_matches_prefix(file_name, prefix) {
-            fs::remove_file(&path).map_err(|source| {
-                CoreError::io(
-                    "remove_stale_zellij_plugin",
-                    "Could not remove a stale managed Zellij plugin",
-                    "Check permissions for the Yazelix state directory and retry.",
-                    path.to_string_lossy(),
-                    source,
-                )
-            })?;
-        }
-    }
-    Ok(())
-}
-
-fn plugin_name_matches_prefix(file_name: &str, prefix: &str) -> bool {
-    file_name == format!("{prefix}.wasm")
-        || (file_name.starts_with(&format!("{prefix}_")) && file_name.ends_with(".wasm"))
-}
-fn preserve_plugin_permissions(
-    prefix: &str,
-    tracked_path: &Path,
-    runtime_path: &Path,
-    required_permissions: &[&str],
-) -> Result<(), CoreError> {
-    let permissions_cache_path = zellij_permissions_cache_path()?;
-    if !permissions_cache_path.exists() {
-        return Ok(());
-    }
-    let blocks = parse_permission_blocks(&read_text(
-        &permissions_cache_path,
-        "read_zellij_permissions_cache",
-    )?);
-    let matching = blocks
-        .iter()
-        .any(|block| plugin_name_matches_prefix(path_basename(&block.path), prefix));
-    if !matching {
-        return Ok(());
-    }
-    let mut retained = blocks
-        .into_iter()
-        .filter(|block| !plugin_name_matches_prefix(path_basename(&block.path), prefix))
-        .map(|block| build_permission_block(&block.path, &block.permissions))
-        .collect::<Vec<_>>();
-    retained.extend(required_permission_blocks(
-        tracked_path,
-        runtime_path,
-        required_permissions,
-    ));
-    write_text_atomic(&permissions_cache_path, &retained.join("\n\n"))?;
-    Ok(())
-}
-
-fn parse_permission_blocks(content: &str) -> Vec<PermissionBlock> {
-    let mut blocks = Vec::new();
-    let mut current_path: Option<String> = None;
-    let mut current_permissions = Vec::new();
-    for line in content.lines() {
-        let trimmed = line.trim();
-        if current_path.is_none() {
-            if let Some(path) = trimmed
-                .strip_prefix('"')
-                .and_then(|rest| rest.split('"').next())
-            {
-                if trimmed.ends_with('{') {
-                    current_path = Some(path.to_string());
-                    current_permissions.clear();
-                }
-            }
-            continue;
-        }
-        if trimmed == "}" {
-            if let Some(path) = current_path.take() {
-                blocks.push(PermissionBlock {
-                    path,
-                    permissions: current_permissions.clone(),
-                });
-                current_permissions.clear();
-            }
-            continue;
-        }
-        if !trimmed.is_empty() {
-            current_permissions.push(trimmed.to_string());
-        }
-    }
-    blocks
-}
-
-fn build_permission_block(plugin_path: &str, permissions: &[String]) -> String {
-    std::iter::once(format!("\"{plugin_path}\" {{"))
-        .chain(
-            permissions
-                .iter()
-                .map(|permission| format!("    {permission}")),
-        )
-        .chain(std::iter::once("}".to_string()))
-        .collect::<Vec<_>>()
-        .join("\n")
-}
-
-fn upsert_plugin_permission_blocks(
-    plugin_artifacts: &[PluginArtifact; 3],
-) -> Result<(), CoreError> {
-    let permissions_cache_path = zellij_permissions_cache_path()?;
-    let existing_blocks = if permissions_cache_path.exists() {
-        parse_permission_blocks(&read_text(
-            &permissions_cache_path,
-            "read_zellij_permissions_cache",
-        )?)
-    } else {
-        Vec::new()
-    };
-    let managed_prefixes = plugin_artifacts
-        .iter()
-        .map(|artifact| artifact.prefix)
-        .collect::<BTreeSet<_>>();
-    let mut updated = existing_blocks
-        .into_iter()
-        .filter(|block| {
-            !managed_prefixes
-                .iter()
-                .any(|prefix| plugin_name_matches_prefix(path_basename(&block.path), prefix))
-        })
-        .map(|block| build_permission_block(&block.path, &block.permissions))
-        .collect::<Vec<_>>();
-
-    for artifact in plugin_artifacts.iter() {
-        updated.extend(required_permission_blocks(
-            &artifact.tracked_path,
-            &artifact.runtime_path,
-            artifact.required_permissions,
-        ));
-    }
-
-    write_text_atomic(&permissions_cache_path, &updated.join("\n\n"))
-}
-
-fn required_permission_blocks(
-    tracked_path: &Path,
-    runtime_path: &Path,
-    required_permissions: &[&str],
-) -> [String; 2] {
-    let permissions = required_permissions
-        .iter()
-        .map(|permission| (*permission).to_string())
-        .collect::<Vec<_>>();
-    [
-        build_permission_block(&tracked_path.to_string_lossy(), &permissions),
-        build_permission_block(&runtime_path.to_string_lossy(), &permissions),
-    ]
-}
-
 fn build_generation_fingerprint(
     runtime_dir: &Path,
     base_config_source: &ZellijBaseConfigSource,
@@ -2618,19 +2270,6 @@ pub(crate) fn generated_zellij_layout_has_yazelix_markers(
     Ok(true)
 }
 
-fn copy_file_atomic(source: &Path, target: &Path) -> Result<(), CoreError> {
-    let bytes = fs::read(source).map_err(|source_err| {
-        CoreError::io(
-            "read_zellij_plugin_source",
-            "Could not read tracked Zellij plugin artifact",
-            "Reinstall Yazelix so the runtime includes readable Zellij plugin artifacts.",
-            source.to_string_lossy(),
-            source_err,
-        )
-    })?;
-    write_bytes_atomic(target, &bytes)
-}
-
 fn required_file_name(path: &Path) -> Result<&std::ffi::OsStr, CoreError> {
     path.file_name().ok_or_else(|| {
         CoreError::classified(
@@ -2643,126 +2282,8 @@ fn required_file_name(path: &Path) -> Result<&std::ffi::OsStr, CoreError> {
     })
 }
 
-fn write_text_atomic(path: &Path, content: &str) -> Result<(), CoreError> {
-    write_bytes_atomic(path, content.as_bytes())
-}
-
-fn write_bytes_atomic(path: &Path, content: &[u8]) -> Result<(), CoreError> {
-    let parent = path.parent().ok_or_else(|| {
-        CoreError::classified(
-            ErrorClass::Internal,
-            "invalid_zellij_output_path",
-            "Generated Zellij output path has no parent directory",
-            "Report this as a Yazelix internal error.",
-            json!({ "path": path.to_string_lossy() }),
-        )
-    })?;
-    fs::create_dir_all(parent).map_err(|source| {
-        CoreError::io(
-            "create_zellij_output_parent",
-            "Could not create parent directory for generated Zellij output",
-            "Check permissions for the Yazelix state directory and retry.",
-            parent.to_string_lossy(),
-            source,
-        )
-    })?;
-    let temporary_path = path.with_file_name(format!(
-        ".{}.yazelix-tmp-{}-{}",
-        path.file_name()
-            .and_then(|name| name.to_str())
-            .unwrap_or("zellij"),
-        std::process::id(),
-        SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .map(|duration| duration.as_nanos())
-            .unwrap_or(0)
-    ));
-    fs::write(&temporary_path, content).map_err(|source| {
-        CoreError::io(
-            "write_zellij_output_temp",
-            "Could not write temporary generated Zellij output",
-            "Check permissions for the Yazelix state directory and retry.",
-            temporary_path.to_string_lossy(),
-            source,
-        )
-    })?;
-    fs::rename(&temporary_path, path).map_err(|source| {
-        CoreError::io(
-            "rename_zellij_output_temp",
-            "Could not replace generated Zellij output",
-            "Check permissions for the Yazelix state directory and retry.",
-            path.to_string_lossy(),
-            source,
-        )
-    })
-}
-
-fn read_text(path: &Path, code: &str) -> Result<String, CoreError> {
-    fs::read_to_string(path).map_err(|source| {
-        CoreError::io(
-            code,
-            "Could not read a Zellij materialization input",
-            "Check permissions or reinstall Yazelix if a runtime input is missing.",
-            path.to_string_lossy(),
-            source,
-        )
-    })
-}
-
-fn read_text_if_exists(path: &Path) -> Result<String, CoreError> {
-    if path.exists() {
-        read_text(path, "read_zellij_optional_input")
-    } else {
-        Ok(String::new())
-    }
-}
-
-fn hash_file(path: &Path) -> Result<String, CoreError> {
-    let bytes = fs::read(path).map_err(|source| {
-        CoreError::io(
-            "hash_zellij_input",
-            "Could not hash a Zellij materialization input",
-            "Check permissions or reinstall Yazelix if a runtime input is missing.",
-            path.to_string_lossy(),
-            source,
-        )
-    })?;
-    Ok(hash_bytes(&bytes))
-}
-
-fn hash_text(value: &str) -> String {
-    hash_bytes(value.as_bytes())
-}
-
-fn hash_bytes(value: &[u8]) -> String {
-    let digest = Sha256::digest(value);
-    let mut output = String::with_capacity(digest.len() * 2);
-    for byte in digest {
-        output.push_str(&format!("{byte:02x}"));
-    }
-    output
-}
-
 fn json_quote(value: impl AsRef<str>) -> String {
     serde_json::to_string(value.as_ref()).unwrap_or_else(|_| "\"\"".to_string())
-}
-
-fn path_basename(path: &str) -> &str {
-    path.rsplit('/').next().unwrap_or(path)
-}
-
-pub(crate) fn zellij_permissions_cache_path() -> Result<PathBuf, CoreError> {
-    ProjectDirs::from("org", "Zellij Contributors", "Zellij")
-        .map(|dirs| dirs.cache_dir().join("permissions.kdl"))
-        .ok_or_else(|| {
-            CoreError::classified(
-                ErrorClass::Runtime,
-                "resolve_zellij_permissions_cache",
-                "Could not resolve Zellij's plugin permission cache directory.",
-                "Ensure HOME is set, then retry.",
-                json!({}),
-            )
-        })
 }
 
 fn timestamp_for_metadata() -> String {
@@ -2832,18 +2353,6 @@ mod tests {
 
     fn sample_zellij_native_keybindings() -> BTreeMap<String, Vec<String>> {
         default_zellij_native_keybindings()
-    }
-
-    // Regression: macOS Zellij reads plugin permissions from ProjectDirs' Library/Caches path, not ~/.cache/zellij.
-    #[cfg(target_os = "macos")]
-    #[test]
-    fn zellij_permissions_cache_path_uses_macos_cache_location() {
-        let path = zellij_permissions_cache_path()
-            .unwrap()
-            .to_string_lossy()
-            .to_string();
-
-        assert!(path.ends_with("/Library/Caches/org.Zellij-Contributors.Zellij/permissions.kdl"));
     }
 
     // Defends: semantic block extraction removes first-class KDL blocks while preserving unrelated top-level lines.
@@ -3345,17 +2854,6 @@ printf '%s\n' '{"schema_version":2,"plugin_block":"CHILD_PLUGIN_BLOCK"}'
         assert!(rendered.contains(r#"plugin location="file:/tmp/zjstatus.wasm" {"#));
         assert!(rendered.contains(r#"pipe_workspace_format "child-owned-workspace""#));
         assert!(!rendered.contains("__YAZELIX_ZJSTATUS_TAB_TEMPLATE__"));
-    }
-
-    // Regression: legacy plugin permission blocks are recognized by both stable and hashed wasm names.
-    #[test]
-    fn plugin_prefix_matches_stable_and_hashed_names() {
-        assert!(plugin_name_matches_prefix("zjstatus.wasm", "zjstatus"));
-        assert!(plugin_name_matches_prefix(
-            "zjstatus_abc123.wasm",
-            "zjstatus"
-        ));
-        assert!(!plugin_name_matches_prefix("not_zjstatus.wasm", "zjstatus"));
     }
 
     // Regression: semantic keybinding generation routes popup/menu/config to yzpp while keeping workspace actions on the pane orchestrator.

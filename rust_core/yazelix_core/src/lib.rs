@@ -74,6 +74,8 @@ pub mod yazi_materialization;
 pub mod yazi_render_plan;
 pub mod zellij_commands;
 pub mod zellij_materialization;
+pub(crate) mod zellij_materialization_io;
+pub(crate) mod zellij_plugin_materialization;
 pub mod zellij_render_plan;
 
 pub use action_registry::{
