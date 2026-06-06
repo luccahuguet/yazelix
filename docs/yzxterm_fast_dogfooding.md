@@ -97,6 +97,19 @@ Cachix documents flake runtime closure publishing through `nix build --no-link
 workflow. This keeps release validation unchanged while letting published fast
 runtime commits substitute locally. See <https://docs.cachix.org/pushing>.
 
+Post-cache dry-run evidence from June 6, 2026:
+
+- main repo dirty `nix build .#runtime_yzxterm_fast --dry-run` reported only 3
+  derivations to build and 55 fetched paths; the `yazelix-terminal-fast` and
+  `yazelix-terminal-fast-unwrapped` child paths were fetched/substituted
+- child repo `nix build .#yazelix-terminal-fast --dry-run` from an unpublished
+  local checkout still reported 60 derivations to build and 141 fetched paths
+
+That means the normal main-repo dogfooding bottleneck is already handled by the
+cache lane once CI has published the commit. The remaining expensive case is
+unpublished child source iteration, and that belongs to `yazelix-terminal`, not
+to main Yazelix runtime packaging.
+
 Use these paths according to the work being done:
 
 - Local terminal source iteration: use the child repo's Cargo/dev shell first;
@@ -111,14 +124,28 @@ Use these paths according to the work being done:
 
 Other build-speed approaches stay separate from the main runtime cache lane:
 
-- Linkers: `mold` is designed as a faster Unix linker for large final links, so
-  it is a plausible child-package experiment if the terminal link remains the
-  dominant cost after cache publication. See <https://github.com/rui314/mold>.
-- Compiler caching: `sccache` supports Rust through `RUSTC_WRAPPER` and local or
-  remote caches. It may help repeated Cargo builds, but wiring mutable compiler
-  cache state into main-repo Nix runtime packaging would add more ownership than
-  this bead needs. See <https://github.com/mozilla/sccache>.
-- Test execution: `cargo-nextest` can run Rust tests faster than `cargo test`
-  and may help the child repo's explicit checked lane. It does not help the
-  existing fast package because that package already skips checks. See
-  <https://nexte.st/>.
+- Compiler caching: `sccache` supports Rust through Cargo's `rustc-wrapper` /
+  `RUSTC_WRAPPER` setting and local or remote caches. It is the best first child
+  experiment for repeated local Cargo builds, but it should be opt-in and
+  child-dev-only because it introduces mutable cache state. See
+  <https://doc.rust-lang.org/cargo/reference/config.html#buildrustc-wrapper>
+  and <https://github.com/mozilla/sccache>.
+- Linkers: `mold` is designed as a faster Unix linker for large final links and
+  documents a Rust/Linux `target.'cfg(target_os = "linux")'` configuration. It
+  is plausible only if timing proves final link dominates the child fast build.
+  Keep it Linux-gated and child-owned. See <https://github.com/rui314/mold>.
+- Linkers: LLVM `lld` is a broader portable linker candidate and Cargo supports
+  per-target or per-`cfg` linker configuration. Prefer `lld` over `mold` only if
+  the child needs a less Linux-specific experiment. See <https://lld.llvm.org/>
+  and <https://doc.rust-lang.org/cargo/reference/config.html#targettriplelinker>.
+- Test execution: `cargo-nextest` can help the checked child lane, but it does
+  not help `yazelix-terminal-fast` because that package already sets
+  `doCheck = false`. Nixpkgs also documents that `checkType = "debug"` compiles
+  once for build and again for checks, which matches the release-path cost we
+  are intentionally avoiding in fast packages. See
+  <https://nixos.org/manual/nixpkgs/unstable/#rust>.
+
+Do not wire `sccache`, `mold`, or `lld` into the main `runtime_yzxterm_fast`
+package by default. A child experiment can expose a separate explicitly named
+package or dev shell after it records before/after timings for the child build
+phase it claims to improve.
