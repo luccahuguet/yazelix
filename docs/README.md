@@ -11,11 +11,13 @@ Use this page as the docs front door. It points to current user guides first, th
 | Learn the command surface | [yzx CLI](./yzx_cli.md) |
 | Learn keybindings | [Keybindings](./keybindings.md) |
 | Customize config, terminals, editors, and shells | [Customization](./customization.md) |
+| Check terminal, editor, shell, platform, and install support | [Compatibility matrix](./compatibility_matrix.md) |
 | Fix a broken launch or stale config | [Troubleshooting](./troubleshooting.md) |
 
 ## User Guides
 
 - [Terminal emulators](./terminal_emulators.md)
+- [Compatibility matrix](./compatibility_matrix.md)
 - [Editor configuration](./editor_configuration.md)
 - [Yazi configuration](./yazi-configuration.md)
 - [Zellij configuration](./zellij-configuration.md)
