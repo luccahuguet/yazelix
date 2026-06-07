@@ -24,7 +24,7 @@ The screen renderer is a reusable terminal animation crate. Keeping it in an ext
 - The binary enters alternate-screen/raw mode, renders frames, responds to terminal resize, exits on keypress, and restores terminal state on normal exit.
 - The binary supports the non-image animation-engine styles available in the screen crate: `boids`, `boids_predator`, `boids_schools`, `mandelbrot`, `game_of_life_gliders`, `game_of_life_oscillators`, `game_of_life_bloom`, and `random`.
 - No explicit style means `random`, which rotates through the retained non-image animation families.
-- Yazelix no longer consumes or advertises image-backed `magician` support. If an older locked standalone `yzs` release still accepts `magician`, that is child-only legacy behavior until the child package removes it; Yazelix does not link its assets into the integrated runtime.
+- Yazelix Screen does not consume or advertise image-backed `magician` support. The standalone `yzs` package rejects `magician`, does not list it in help or README output, and does not ship the old GIF asset.
 - Library examples in the external crate run without Yazelix runtime/session/config state and demonstrate one-frame rendering plus bounded style playback.
 - Yazelix users keep using `yzx screen`; standalone users can run `yzs` directly from a vanilla terminal.
 - `yazelix_core` consumes `yazelix_screen` as an external Rust dependency instead of owning duplicate source.
