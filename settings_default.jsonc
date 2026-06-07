@@ -44,6 +44,7 @@
   },
   "terminal": {
     "config_mode": "yazelix",
+    "emoji_style": "noto",
     "transparency": "medium"
   },
   "zellij": {

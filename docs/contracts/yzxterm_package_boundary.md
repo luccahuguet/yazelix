@@ -48,7 +48,7 @@ names, or make other terminal variants depend on yzxterm internals.
   This is a yzxterm-only generated-config adapter, not a generic Rio config
   owner and not package identity inference
 - Main Yazelix stable inputs for that adapter are limited to the selected
-  yzxterm profile, selected yzxterm emoji fallback preset, terminal order,
+  yzxterm profile, selected `terminal.emoji_style` yzxterm emoji fallback preset, terminal order,
   runtime and state directories, terminal transparency, active cursor color,
   and generated cursor shader snapshot paths
 - The child package remains the owner of profile template roots, wrapper

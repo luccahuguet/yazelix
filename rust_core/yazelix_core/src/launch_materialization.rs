@@ -14,7 +14,8 @@ use crate::ghostty_materialization::{
 use crate::runtime_component_enabled;
 use crate::terminal_materialization::{
     TerminalGeneratedConfig, TerminalMaterializationRequest, YzxtermEmojiFont, YzxtermProfile,
-    generate_terminal_materialization, yzxterm_emoji_font_from_env, yzxterm_profile_from_env,
+    generate_terminal_materialization, yzxterm_emoji_font_override_from_env,
+    yzxterm_profile_from_env,
 };
 use crate::terminal_variant::active_terminal_from_runtime_dir;
 use serde::Serialize;
@@ -39,7 +40,7 @@ pub struct LaunchMaterializationRequest {
     pub desktop_fast_path: bool,
     pub force_terminal_config_generation: bool,
     pub yzxterm_profile: YzxtermProfile,
-    pub yzxterm_emoji_font: YzxtermEmojiFont,
+    pub yzxterm_emoji_font: Option<YzxtermEmojiFont>,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
@@ -86,7 +87,7 @@ pub fn launch_materialization_request_from_env(
         active_terminal,
         desktop_fast_path,
         force_terminal_config_generation,
-        yzxterm_emoji_font: yzxterm_emoji_font_from_env()?,
+        yzxterm_emoji_font: yzxterm_emoji_font_override_from_env()?,
         yzxterm_profile: yzxterm_profile_from_env()?,
     })
 }

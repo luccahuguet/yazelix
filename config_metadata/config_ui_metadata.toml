@@ -132,6 +132,10 @@ help = "Choose the shell used for new Yazelix shell panes and generated shell ho
 tab = "terminal"
 help = "Choose whether Yazelix owns generated terminal config files"
 
+[fields."terminal.emoji_style"]
+tab = "terminal"
+help = "Choose the Yazelix Terminal emoji glyph style for fresh yzxterm windows"
+
 [fields."terminal.transparency"]
 tab = "appearance"
 help = "Choose the generated terminal background transparency level"

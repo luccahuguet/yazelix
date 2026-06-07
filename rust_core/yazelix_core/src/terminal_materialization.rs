@@ -42,7 +42,7 @@ pub struct TerminalMaterializationRequest {
     pub state_dir: PathBuf,
     pub terminals: Vec<String>,
     pub yzxterm_profile: YzxtermProfile,
-    pub yzxterm_emoji_font: YzxtermEmojiFont,
+    pub yzxterm_emoji_font: Option<YzxtermEmojiFont>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -330,12 +330,14 @@ pub fn yzxterm_profile_from_env() -> Result<YzxtermProfile, CoreError> {
     parse_yzxterm_profile(&raw)
 }
 
-pub fn yzxterm_emoji_font_from_env() -> Result<YzxtermEmojiFont, CoreError> {
-    let raw = std::env::var("YAZELIX_TERMINAL_EMOJI_FONT")
+pub fn yzxterm_emoji_font_override_from_env() -> Result<Option<YzxtermEmojiFont>, CoreError> {
+    let Some(raw) = std::env::var("YAZELIX_TERMINAL_EMOJI_FONT")
         .ok()
         .filter(|value| !value.trim().is_empty())
-        .unwrap_or_else(|| "noto".to_string());
-    parse_yzxterm_emoji_font(&raw)
+    else {
+        return Ok(None);
+    };
+    parse_yzxterm_emoji_font(&raw).map(Some)
 }
 
 fn parse_yzxterm_profile(raw: &str) -> Result<YzxtermProfile, CoreError> {
@@ -366,6 +368,20 @@ fn parse_yzxterm_emoji_font(raw: &str) -> Result<YzxtermEmojiFont, CoreError> {
             "Unsupported YAZELIX_TERMINAL_EMOJI_FONT: {other}. Use noto, twitter, or serenityos."
         ))),
     }
+}
+
+fn yzxterm_emoji_font_from_config(
+    config: &serde_json::Map<String, serde_json::Value>,
+    env_override: Option<YzxtermEmojiFont>,
+) -> Result<YzxtermEmojiFont, CoreError> {
+    if let Some(emoji_font) = env_override {
+        return Ok(emoji_font);
+    }
+    let raw = config
+        .get("terminal_emoji_style")
+        .and_then(serde_json::Value::as_str)
+        .unwrap_or("noto");
+    parse_yzxterm_emoji_font(raw)
 }
 
 fn yzxterm_emoji_config_root(package_root: &Path, emoji_font: YzxtermEmojiFont) -> PathBuf {
@@ -651,6 +667,7 @@ pub fn generate_terminal_materialization(
         .get("transparency")
         .and_then(|v| v.as_str())
         .unwrap_or("none");
+    let yzxterm_emoji_font = yzxterm_emoji_font_from_config(config, request.yzxterm_emoji_font)?;
 
     let config_dir = config_dir_from_env()?;
     crate::managed_user_config_stubs::ensure_terminal_override_stubs(
@@ -800,7 +817,7 @@ pub fn generate_terminal_materialization(
                         cursor_state,
                         shader_paths,
                         request.yzxterm_profile,
-                        request.yzxterm_emoji_font,
+                        yzxterm_emoji_font,
                     )?,
                 )?;
                 generated.push(TerminalGeneratedConfig {

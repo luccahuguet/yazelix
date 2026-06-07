@@ -365,9 +365,10 @@
     },
     "terminal": {
       "type": "object",
-      "description": "Active terminal transparency and config ownership settings",
+      "description": "Active terminal transparency, glyph, and config ownership settings",
       "required": [
         "config_mode",
+        "emoji_style",
         "transparency"
       ],
       "additionalProperties": false,
@@ -377,6 +378,14 @@
           "enum": [
             "yazelix",
             "user"
+          ]
+        },
+        "emoji_style": {
+          "type": "string",
+          "enum": [
+            "noto",
+            "twitter",
+            "serenityos"
           ]
         },
         "transparency": {

@@ -95,8 +95,8 @@ ${terminalDescriptionBullets}
     type = types.enum yzxtermEmojiFonts;
     default = "noto";
     description = ''
-      Yazelix Terminal emoji fallback preset used by generated runtime configs
-      and Linux desktop entries.
+      Declarative Home Manager value for terminal.emoji_style, used by
+      generated Yazelix Terminal runtime configs and Linux desktop entries.
 
       - "noto": current Noto Color Emoji fallback
       - "twitter": Twitter/Twemoji color emoji fallback

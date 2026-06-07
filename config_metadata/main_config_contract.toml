@@ -11,7 +11,7 @@
 [contract]
 version = 1
 surface = "main"
-field_count = 49
+field_count = 50
 artifact_role = "canonical_machine_metadata"
 default_template = "settings_default.jsonc"
 home_manager_module = "home_manager/module.nix"
@@ -224,6 +224,21 @@ validation = "enum"
 allowed_values = [
   "yazelix",
   "user",
+]
+rebuild_required = false
+apply_mode = "shell_terminal_restart"
+
+[fields."terminal.emoji_style"]
+kind = "string"
+default = "noto"
+parser_key = "terminal_emoji_style"
+home_manager_option = "yzxterm_emoji_font"
+parser_behavior = "direct"
+validation = "enum"
+allowed_values = [
+  "noto",
+  "twitter",
+  "serenityos",
 ]
 rebuild_required = false
 apply_mode = "shell_terminal_restart"

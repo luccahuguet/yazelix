@@ -130,7 +130,8 @@ Out of scope:
   is derived from the packaged
   child profile selected by `YAZELIX_TERMINAL_PROFILE` or
   `YAZELIX_TERMINAL_EFFECTS` and the child emoji fallback preset selected by
-  `YAZELIX_TERMINAL_EMOJI_FONT`. `full` keeps Rio trail cursor and strips
+  `terminal.emoji_style`, with `YAZELIX_TERMINAL_EMOJI_FONT` acting as the
+  explicit Home Manager/launcher override. `full` keeps Rio trail cursor and strips
   packaged `custom-shader` entries, `baseline` uses the packaged no-effects
   profile, and `shaders` uses the packaged shader profile while replacing
   packaged shader references with the generated Rio decoration shader for the
@@ -158,6 +159,7 @@ Out of scope:
   and `rust_core/yazelix_core/tests/yzx_core_config_normalize.rs`
   (`terminal_materialization_generate_from_env_writes_generated_configs`,
   `terminal_materialization_yzxterm_emoji_font_selects_child_config_root`,
+  `terminal_materialization_yzxterm_emoji_style_selects_child_config_root`,
   `terminal_materialization_yzxterm_shader_profile_injects_rio_decoration_shader`)
 - Source: `docs/installation.md`; `docs/terminal_emulators.md`
 

@@ -1135,6 +1135,7 @@ mod tests {
         assert_eq!(config.get("helix_external").unwrap(), &JsonValue::Null);
         assert_eq!(config.get("zellij_pane_frames").unwrap(), "true");
         assert_eq!(config.get("game_of_life_cell_style").unwrap(), "full_block");
+        assert_eq!(config.get("terminal_emoji_style").unwrap(), "noto");
         assert_eq!(config.get("welcome_duration_seconds").unwrap(), 4.0);
 
         let contract = read_toml_table(

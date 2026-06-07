@@ -10,7 +10,7 @@ use yazelix_core::control_plane::{
     runtime_materialization_plan_request_from_env, state_dir_from_env,
     terminal_materialization_request_from_env,
 };
-use yazelix_core::terminal_materialization::{YzxtermEmojiFont, YzxtermProfile};
+use yazelix_core::terminal_materialization::YzxtermProfile;
 use yazelix_core::terminal_variant::active_terminal_from_runtime_dir;
 use yazelix_core::{
     ComputeConfigStateRequest, CoreError, DoctorConfigEvaluateRequest,
@@ -1052,7 +1052,7 @@ fn terminal_materialization_request_from_args(
         runtime_dir,
         state_dir: required_path(args.state_dir, "Missing --state-dir path")?,
         terminals: vec![terminal],
-        yzxterm_emoji_font: YzxtermEmojiFont::Noto,
+        yzxterm_emoji_font: None,
         yzxterm_profile: YzxtermProfile::Full,
     })
 }

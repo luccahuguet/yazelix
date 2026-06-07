@@ -1614,6 +1614,76 @@ color = "#3bd17a"
     assert!(yzxterm_config.contains("cursor_trail_forest.glsl"));
 }
 
+// Defends: mutable settings.jsonc can select the yzxterm child-owned emoji style without depending on a Home Manager launch env override.
+#[test]
+fn terminal_materialization_yzxterm_emoji_style_selects_child_config_root() {
+    let repo = repo_root();
+    let tmp = tempdir().unwrap();
+    let fixture = prepare_runtime_materialization_fixture(&repo, &tmp);
+    fs::write(fixture.runtime_dir.join("runtime_variant"), "yzxterm\n").unwrap();
+
+    write_managed_config_toml(
+        &fixture,
+        &[
+            "[terminal]",
+            "transparency = \"medium\"",
+            "emoji_style = \"serenityos\"",
+        ]
+        .join("\n"),
+    );
+    write_cursor_sidecar(
+        &fixture,
+        r##"
+schema_version = 1
+enabled_cursors = ["forest"]
+
+[settings]
+trail = "forest"
+trail_effect = "tail"
+mode_effect = "ripple"
+glow = "high"
+duration = 1.5
+kitty_enable_cursor = true
+
+[[cursor]]
+name = "forest"
+family = "mono"
+color = "#3bd17a"
+"##,
+    );
+
+    let output = runtime_materialization_command(&fixture, "terminal-materialization.generate")
+        .env("YAZELIX_TERMINAL_PROFILE", "shaders")
+        .arg("--from-env")
+        .output()
+        .unwrap();
+
+    if !output.status.success() {
+        panic!(
+            "stdout={}\nstderr={}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    assert!(output.stderr.is_empty());
+
+    let yzxterm_config = fs::read_to_string(
+        fixture
+            .state_dir
+            .join("configs")
+            .join("terminal_emulators")
+            .join("yzxterm")
+            .join("config.toml"),
+    )
+    .unwrap();
+    assert!(yzxterm_config.contains("SerenityOS Emoji"));
+    assert!(!yzxterm_config.contains("Twitter Color Emoji"));
+    assert!(yzxterm_config.contains("opacity = 0.85"));
+    assert!(yzxterm_config.contains("cursor = \"#3bd17a\""));
+    assert!(yzxterm_config.contains("custom-shader = ["));
+    assert!(yzxterm_config.contains("cursor_trail_forest.glsl"));
+}
+
 // Defends: invalid yzxterm emoji font preset names fail clearly instead of silently using the default package config.
 #[test]
 fn terminal_materialization_yzxterm_rejects_unknown_emoji_font() {
