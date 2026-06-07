@@ -4,6 +4,15 @@ Short, upgrade-facing release notes live here. The longer narrative history rema
 
 ## Unreleased
 
+Post-v17.5 work in progress
+
+Upgrade impact: no user action required
+
+Highlights:
+- Reserved for post-release changes after v17.5 lands.
+
+## v17.5 - 2026-06-07
+
 Popup reliability, keyboard repair, and child-owned runtime cleanup
 
 Upgrade impact: manual action may be required
@@ -20,6 +29,7 @@ Highlights:
 
 Manual action:
 - If your config explicitly sets `core.welcome_style = "magician"` or `zellij.screen_saver_style = "magician"`, or your Home Manager settings set `welcome_style = "magician"` or `screen_saver_style = "magician"`, choose a retained style such as `random`, `mandelbrot`, `boids`, `boids_predator`, `boids_schools`, `game_of_life_gliders`, `game_of_life_oscillators`, `game_of_life_bloom`, or `logo`
+
 
 ## v17.4 - 2026-06-05
 
