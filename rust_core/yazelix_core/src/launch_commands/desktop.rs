@@ -723,6 +723,7 @@ fn acknowledge_desktop_failure(error_text: &str) {
 mod tests {
     use super::*;
 
+    // Regression: yzxterm desktop entries need terminal-specific startup class names so desktop switchers do not merge them with Ghostty windows.
     #[test]
     fn render_desktop_entry_uses_terminal_specific_startup_class_for_yzxterm() {
         let ghostty_entry = render_desktop_entry(Path::new("/tmp/yzx"), "ghostty");
