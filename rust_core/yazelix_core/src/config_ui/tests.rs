@@ -392,6 +392,231 @@ fn keybinding_action_row_writes_single_binding_list() {
     );
 }
 
+// Defends: custom popup definitions have a structured config UI instead of forcing the whole JSON array into one edit line.
+#[test]
+fn custom_popup_rows_expose_structured_editor() {
+    let runtime = tempdir().expect("runtime");
+    let config = tempdir().expect("config");
+    write_runtime_layout(runtime.path());
+    let request = test_request(runtime.path(), config.path());
+    let model = build_config_ui_model(&request).expect("model");
+    let parent = model_field(&model, CUSTOM_POPUPS_FIELD_PATH);
+    let add = model_field(&model, "zellij.custom_popups.$add");
+    let overview = model_field(&model, "zellij.custom_popups.btm");
+    let command = model_field(&model, "zellij.custom_popups.btm.command");
+    let keybindings = model_field(&model, "zellij.custom_popups.btm.keybindings");
+    let keep_alive = model_field(&model, "zellij.custom_popups.btm.keep_alive");
+
+    assert_eq!(
+        parent.edit_behavior,
+        ConfigUiEditBehavior::StructuredOnly {
+            notice: "Select a custom popup row below to edit one popup definition.".to_string()
+        }
+    );
+    assert_eq!(add.kind, "string");
+    assert_eq!(overview.kind, "custom_popup");
+    assert_eq!(
+        overview.edit_behavior,
+        ConfigUiEditBehavior::StructuredOnly {
+            notice:
+                "Select a custom popup child row to edit it, or press u on the popup row to remove it."
+                    .to_string()
+        }
+    );
+    assert_eq!(command.kind, "string_list");
+    assert_eq!(command.current_value, "[\"btm\"]");
+    assert_eq!(edit_input_for_field(command), "btm");
+    assert_eq!(keybindings.kind, "string_list");
+    assert_eq!(edit_input_for_field(keybindings), "Alt Shift B");
+    assert_eq!(keep_alive.kind, "bool");
+    assert_eq!(keep_alive.current_value, "true");
+}
+
+// Defends: editing one custom popup child row rewrites zellij.custom_popups as a validated list while preserving sibling popup definitions.
+#[test]
+fn custom_popup_child_rows_write_parent_popup_list() {
+    let runtime = tempdir().expect("runtime");
+    let config = tempdir().expect("config");
+    write_runtime_layout(runtime.path());
+    let settings_path = config.path().join("settings.jsonc");
+    write_main_settings(runtime.path(), config.path(), |settings| {
+        settings["zellij"]["custom_popups"] = json!([
+            {
+                "id": "btm",
+                "command": ["btm"],
+                "keybindings": ["Alt Shift B"],
+                "keep_alive": true
+            },
+            {
+                "id": "gitui",
+                "command": ["gitui"],
+                "keybindings": [],
+                "keep_alive": false
+            }
+        ]);
+    });
+    let request = test_request(runtime.path(), config.path());
+    let model = build_config_ui_model(&request).expect("model");
+    let mut app = YazelixConfigUiApp::new(request, model);
+
+    app.write_field_value(
+        "zellij.custom_popups.gitui.command",
+        &json!(["gitui", "--watch"]),
+    )
+    .expect("write command");
+    app.write_field_value(
+        "zellij.custom_popups.gitui.keybindings",
+        &json!(["Alt Shift G"]),
+    )
+    .expect("write keybindings");
+    app.write_field_value("zellij.custom_popups.gitui.keep_alive", &json!(true))
+        .expect("write keep alive");
+
+    let value = read_settings_jsonc_value(&settings_path).expect("settings jsonc");
+    assert_eq!(
+        get_json_path(&value, "zellij.custom_popups"),
+        Some(&json!([
+            {
+                "id": "btm",
+                "command": ["btm"],
+                "keybindings": ["Alt Shift B"],
+                "keep_alive": true
+            },
+            {
+                "id": "gitui",
+                "command": ["gitui", "--watch"],
+                "keybindings": ["Alt Shift G"],
+                "keep_alive": true
+            }
+        ]))
+    );
+}
+
+// Regression: adding or removing custom popups must use the parent list patch, not synthetic JSON paths that do not exist in settings.jsonc.
+#[test]
+fn custom_popup_add_and_remove_rows_patch_parent_popup_list() {
+    let runtime = tempdir().expect("runtime");
+    let config = tempdir().expect("config");
+    write_runtime_layout(runtime.path());
+    let settings_path = config.path().join("settings.jsonc");
+    let request = test_request(runtime.path(), config.path());
+    let model = build_config_ui_model(&request).expect("model");
+    let mut app = YazelixConfigUiApp::new(request, model);
+
+    app.write_field_value("zellij.custom_popups.$add", &json!("gitui"))
+        .expect("add popup");
+    select_field_path(&mut app, "zellij.custom_popups.btm");
+    app.handle_key(KeyEvent::new(KeyCode::Char('u'), KeyModifiers::NONE));
+
+    let value = read_settings_jsonc_value(&settings_path).expect("settings jsonc");
+    assert_eq!(
+        get_json_path(&value, "zellij.custom_popups"),
+        Some(&json!([
+            {
+                "id": "gitui",
+                "command": ["gitui"],
+                "keybindings": [],
+                "keep_alive": false
+            }
+        ]))
+    );
+    assert_eq!(
+        model_field(&app.model, "zellij.custom_popups.gitui.command").current_value,
+        "[\"gitui\"]"
+    );
+    assert!(
+        app.model
+            .fields
+            .iter()
+            .all(|field| field.path != "zellij.custom_popups.btm")
+    );
+}
+
+// Regression: the config UI must reject custom popup keybinding conflicts through the same materialization rule before it writes settings.jsonc.
+#[test]
+fn custom_popup_duplicate_keybinding_fails_before_write() {
+    let runtime = tempdir().expect("runtime");
+    let config = tempdir().expect("config");
+    write_runtime_layout(runtime.path());
+    let settings_path = config.path().join("settings.jsonc");
+    let request = test_request(runtime.path(), config.path());
+    let model = build_config_ui_model(&request).expect("model");
+    let mut app = YazelixConfigUiApp::new(request, model);
+
+    let error = app
+        .write_field_value(
+            "zellij.custom_popups.btm.keybindings",
+            &json!(["Alt Shift J"]),
+        )
+        .unwrap_err();
+
+    assert_eq!(error.code(), "duplicate_custom_popup_keybinding");
+    assert!(!settings_path.exists());
+}
+
+// Regression: custom popup id and command validation must run before the config UI persists the parent list rewrite.
+#[test]
+fn custom_popup_invalid_identity_and_command_fail_before_write() {
+    let runtime = tempdir().expect("runtime");
+    let config = tempdir().expect("config");
+    write_runtime_layout(runtime.path());
+    let settings_path = config.path().join("settings.jsonc");
+    let request = test_request(runtime.path(), config.path());
+    let model = build_config_ui_model(&request).expect("model");
+    let mut app = YazelixConfigUiApp::new(request, model);
+
+    let duplicate_id = app
+        .write_field_value("zellij.custom_popups.$add", &json!("btm"))
+        .unwrap_err();
+    assert_eq!(duplicate_id.code(), "duplicate_custom_popup_id");
+    assert!(!settings_path.exists());
+
+    let reserved_id = app
+        .write_field_value("zellij.custom_popups.$add", &json!("bottom_popup"))
+        .unwrap_err();
+    assert_eq!(reserved_id.code(), "reserved_custom_popup_id");
+    assert!(!settings_path.exists());
+
+    let empty_command = app
+        .write_field_value("zellij.custom_popups.btm.command", &json!([]))
+        .unwrap_err();
+    assert_eq!(empty_command.code(), "empty_config_string_list");
+    assert!(!settings_path.exists());
+}
+
+// Defends: custom popup pseudo-rows do not bypass the Home Manager read-only settings boundary.
+#[cfg(unix)]
+#[test]
+fn home_manager_owned_custom_popup_rows_are_read_only() {
+    let runtime = tempdir().expect("runtime");
+    let config = tempdir().expect("config");
+    write_runtime_layout(runtime.path());
+    let hm_dir = config.path().join("profile-home-manager-files");
+    fs::create_dir_all(&hm_dir).expect("home manager dir");
+    let hm_settings = hm_dir.join("settings.jsonc");
+    fs::write(
+        &hm_settings,
+        render_default_settings_jsonc(&runtime.path().join("settings_default.jsonc")).unwrap(),
+    )
+    .expect("home manager settings");
+    std::os::unix::fs::symlink(&hm_settings, config.path().join("settings.jsonc"))
+        .expect("settings symlink");
+    let original = fs::read_to_string(&hm_settings).expect("hm settings raw");
+    let request = test_request(runtime.path(), config.path());
+    let model = build_config_ui_model(&request).expect("model");
+    let mut app = YazelixConfigUiApp::new(request, model);
+
+    let error = app
+        .write_field_value("zellij.custom_popups.$add", &json!("gitui"))
+        .unwrap_err();
+
+    assert_eq!(error.code(), "home_manager_owned_config");
+    assert_eq!(
+        fs::read_to_string(&hm_settings).expect("hm settings raw"),
+        original
+    );
+}
+
 // Defends: the same structured keybinding map treatment covers Yazi actions instead of leaving a second raw object editor in the keybindings tab.
 #[test]
 fn yazi_keybinding_details_use_action_registry_metadata() {

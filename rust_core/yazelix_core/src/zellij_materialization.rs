@@ -526,6 +526,14 @@ fn resolve_custom_popups_config(
     Ok(popups)
 }
 
+pub(crate) fn validate_zellij_custom_popup_config(
+    config: &JsonMap<String, JsonValue>,
+) -> Result<(), CoreError> {
+    let zellij_keybindings = resolve_zellij_keybindings(config)?;
+    let custom_popups = resolve_custom_popups_config(config)?;
+    validate_custom_popup_keybindings(&zellij_keybindings, &custom_popups)
+}
+
 fn validate_custom_popup_id(id: &str, path: &str) -> Result<(), CoreError> {
     let mut chars = id.chars();
     let first = chars.next().expect("custom popup ids are non-empty");

@@ -137,6 +137,9 @@ impl YazelixConfigUiApp {
         setting_path: &str,
         value: &JsonValue,
     ) -> Result<ConfigUiWriteOutcome, CoreError> {
+        if custom_popup_path(setting_path).is_some() {
+            return self.write_custom_popup_field_value(setting_path, value);
+        }
         self.ensure_editable_config(setting_path)?;
         let target = self.edit_target(setting_path);
         let raw = self.read_edit_target_or_default(&target)?;
@@ -146,6 +149,9 @@ impl YazelixConfigUiApp {
     }
 
     fn unset_field_value(&mut self, setting_path: &str) -> Result<ConfigUiWriteOutcome, CoreError> {
+        if custom_popup_path(setting_path).is_some() {
+            return self.unset_custom_popup_field_value(setting_path);
+        }
         self.ensure_editable_config(setting_path)?;
         let target = self.edit_target(setting_path);
         let raw = self.read_edit_target_or_default(&target)?;
@@ -158,6 +164,55 @@ impl YazelixConfigUiApp {
                 unset_settings_jsonc_value_text(&target.path, &raw, &target.path_in_file)?
             }
         };
+        self.finish_field_write(setting_path, &target, outcome)
+    }
+
+    fn write_custom_popup_field_value(
+        &mut self,
+        setting_path: &str,
+        value: &JsonValue,
+    ) -> Result<ConfigUiWriteOutcome, CoreError> {
+        self.ensure_editable_config(CUSTOM_POPUPS_FIELD_PATH)?;
+        let target = self.edit_target(CUSTOM_POPUPS_FIELD_PATH);
+        let raw = self.read_edit_target_or_default(&target)?;
+        let root = parse_jsonc_value(&target.path, &raw)?;
+        let default_value =
+            default_main_setting_value_for_ui(&self.request, CUSTOM_POPUPS_FIELD_PATH)?;
+        let Some(next_value) =
+            custom_popup_list_value_after_write(&root, &default_value, setting_path, value)?
+        else {
+            return Err(unsupported_custom_popup_edit_path(setting_path));
+        };
+        let outcome = set_settings_jsonc_value_text(
+            &target.path,
+            &raw,
+            CUSTOM_POPUPS_FIELD_PATH,
+            &next_value,
+        )?;
+        self.finish_field_write(setting_path, &target, outcome)
+    }
+
+    fn unset_custom_popup_field_value(
+        &mut self,
+        setting_path: &str,
+    ) -> Result<ConfigUiWriteOutcome, CoreError> {
+        self.ensure_editable_config(CUSTOM_POPUPS_FIELD_PATH)?;
+        let target = self.edit_target(CUSTOM_POPUPS_FIELD_PATH);
+        let raw = self.read_edit_target_or_default(&target)?;
+        let root = parse_jsonc_value(&target.path, &raw)?;
+        let default_value =
+            default_main_setting_value_for_ui(&self.request, CUSTOM_POPUPS_FIELD_PATH)?;
+        let Some(next_value) =
+            custom_popup_list_value_after_unset(&root, &default_value, setting_path)?
+        else {
+            return Err(unsupported_custom_popup_edit_path(setting_path));
+        };
+        let outcome = set_settings_jsonc_value_text(
+            &target.path,
+            &raw,
+            CUSTOM_POPUPS_FIELD_PATH,
+            &next_value,
+        )?;
         self.finish_field_write(setting_path, &target, outcome)
     }
 
@@ -389,6 +444,16 @@ fn apply_error_notice(error: &CoreError) -> String {
     } else {
         format!("Apply pending: {} {}", error.message(), remediation)
     }
+}
+
+fn unsupported_custom_popup_edit_path(setting_path: &str) -> CoreError {
+    CoreError::classified(
+        ErrorClass::Usage,
+        "unsupported_custom_popup_edit_path",
+        format!("{setting_path} is not a supported custom popup editor row."),
+        "Select a custom popup add row, overview row, or child field row.",
+        json!({ "path": setting_path }),
+    )
 }
 
 fn terminal_err(source: io::Error) -> CoreError {

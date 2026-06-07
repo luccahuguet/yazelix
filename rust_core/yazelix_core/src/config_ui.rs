@@ -2,6 +2,7 @@
 
 mod app;
 mod apply_adapter;
+mod custom_popups;
 mod details;
 mod keybindings;
 mod model_builder;
@@ -53,6 +54,7 @@ pub use app::run_config_ui;
 #[cfg(test)]
 use app::write_notice_text;
 use apply_adapter::apply_after_field_write;
+use custom_popups::*;
 use details::render_details;
 use keybindings::*;
 pub use model_builder::build_config_ui_model;

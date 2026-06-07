@@ -35,6 +35,8 @@ pub(super) fn field_detail_lines(field: &ConfigUiField) -> Vec<Line<'static>> {
         keybinding_map_detail_lines(field)
     } else if let Some(action) = keybinding_action_metadata_for_field_path(&field.path) {
         keybinding_action_detail_lines(field, action)
+    } else if let Some(lines) = custom_popup_detail_lines(field) {
+        lines
     } else {
         default_field_detail_lines(field)
     }

@@ -115,6 +115,14 @@ pub fn build_config_ui_model(request: &ConfigUiRequest) -> Result<ConfigUiModel,
         &default_value,
         &blocking_paths,
     )?;
+    append_custom_popup_fields(
+        &mut fields,
+        &contract_fields,
+        config_owner,
+        &active_value,
+        &default_value,
+        &blocking_paths,
+    )?;
 
     if cursor_component_enabled {
         let cursor_choice_values = cursor_choice_values(&active_value, &default_value);
@@ -189,6 +197,7 @@ pub fn build_config_ui_model(request: &ConfigUiRequest) -> Result<ConfigUiModel,
 pub(super) fn apply_contract_path_for_setting_path(setting_path: &str) -> &str {
     keybinding_parent_path_for_field_path(setting_path)
         .or_else(|| popup_commands_parent_path_for_field_path(setting_path))
+        .or_else(|| custom_popups_parent_path_for_field_path(setting_path))
         .unwrap_or(setting_path)
 }
 
@@ -629,9 +638,9 @@ fn edit_behavior_for_field_path(path: &str) -> ConfigUiEditBehavior {
                     .to_string(),
         };
     }
-    if path == "zellij.custom_popups" {
+    if path == CUSTOM_POPUPS_FIELD_PATH {
         return ConfigUiEditBehavior::StructuredOnly {
-            notice: "Custom popups are edited in settings.jsonc or Home Manager.".to_string(),
+            notice: "Select a custom popup row below to edit one popup definition.".to_string(),
         };
     }
     ConfigUiEditBehavior::Default
@@ -892,12 +901,15 @@ pub(super) fn validate_patched_settings_for_ui(
                 source,
             )
         })?;
-        crate::config_normalize::normalize_config(&NormalizeConfigRequest {
+        let normalized = crate::config_normalize::normalize_config(&NormalizeConfigRequest {
             config_path: temp_config,
             default_config_path: paths.default_config_path.clone(),
             contract_path: paths.contract_path.clone(),
             include_missing: true,
         })?;
+        crate::zellij_materialization::validate_zellij_custom_popup_config(
+            &normalized.normalized_config,
+        )?;
         Ok(())
     })();
     let _ = fs::remove_dir_all(&temp_dir);

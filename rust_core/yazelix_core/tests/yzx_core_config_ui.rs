@@ -233,6 +233,17 @@ fn config_ui_metadata_covers_visible_fields_and_tabs() {
             .iter()
             .map(|spec| format!("yazi.keybindings.{}", spec.action.local_id)),
     );
+    expected_paths.extend(
+        [
+            "zellij.custom_popups.$add",
+            "zellij.custom_popups.btm",
+            "zellij.custom_popups.btm.command",
+            "zellij.custom_popups.btm.id",
+            "zellij.custom_popups.btm.keep_alive",
+            "zellij.custom_popups.btm.keybindings",
+        ]
+        .map(str::to_string),
+    );
     assert_eq!(
         expected_paths
             .iter()
