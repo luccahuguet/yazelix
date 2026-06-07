@@ -651,6 +651,7 @@ mod tests {
     }
   },
   "zellij": {
+    "support_kitty_keyboard_protocol": true,
     "native_keybindings": {
       "move_tab_left": ["Ctrl Alt h"],
       "move_tab_right": ["Ctrl Alt l"],
@@ -690,6 +691,10 @@ mod tests {
             Some("yazelix.settings")
         );
         assert!(value.get("cursors").is_none());
+        assert_eq!(
+            value["zellij"]["support_kitty_keyboard_protocol"].as_bool(),
+            Some(true)
+        );
         let cursor_value = read_settings_jsonc_value(
             &config.path().join("yazelix_ghostty_cursors/settings.jsonc"),
         )
@@ -729,6 +734,40 @@ mod tests {
             Some("yazelix.settings")
         );
         assert!(value.get("cursors").is_none());
+    }
+
+    // Regression: Ctrl-Alt native movement defaults require unambiguous modified-key encoding, so old false defaults migrate on writable configs.
+    #[test]
+    fn repairs_kitty_keyboard_protocol_default_in_existing_settings_jsonc() {
+        let runtime = tempdir().unwrap();
+        let config = tempdir().unwrap();
+        let (main, cursor) = write_defaults(runtime.path());
+        fs::write(
+            config.path().join("settings.jsonc"),
+            r#"{
+  "zellij": {
+    "support_kitty_keyboard_protocol": false
+  }
+}
+"#,
+        )
+        .unwrap();
+
+        let path = ensure_settings_config(config.path(), &main, &cursor).unwrap();
+        let value = read_settings_jsonc_value(&path).unwrap();
+        let applied_changes = value["ratconfig"]["contract"]["applied_change_ids"]
+            .as_array()
+            .unwrap();
+
+        assert_eq!(
+            value["zellij"]["support_kitty_keyboard_protocol"].as_bool(),
+            Some(true)
+        );
+        assert!(
+            applied_changes
+                .iter()
+                .any(|change| change.as_str() == Some("enable-kitty-keyboard-protocol-default"))
+        );
     }
 
     // Regression: writable settings generated before the Ctrl+Alt movement policy receive the new non-Ghostty-conflicting defaults without overwriting user remaps.

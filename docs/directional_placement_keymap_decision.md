@@ -105,13 +105,15 @@ upstream keys.
 
 ## Terminal Behavior
 
-`Alt+Shift+h/j/k/l` is the safer default placement layer. It avoids control-key
-ASCII ambiguity and has prior runtime feedback as the more reliable layer while
+`Alt+Shift+h/j/k/l` is the safer default placement layer when the Kitty keyboard
+protocol is unavailable. It avoids control-key ASCII ambiguity and has prior
+runtime feedback as the more reliable layer while
 `zellij.support_kitty_keyboard_protocol = false`.
 
-`Ctrl+Shift+h/j/k/l` is accepted for structural movement because it preserves
-the same hjkl direction language without consuming the `Alt+Shift` placement
-surface.
+Yazelix's default structural movement layer uses `Ctrl+Alt+h/j/k/l`, so the
+supported default is now `zellij.support_kitty_keyboard_protocol = true`. This
+keeps modified-letter chords distinct instead of letting terminals collapse them
+to plain text input such as `h` or `j`.
 
 Ghostty supports the Kitty keyboard protocol. No extra Ghostty setting is
 required by this decision, but the implementation should test both
@@ -126,18 +128,19 @@ WezTerm, the matching WezTerm config must be documented too:
 config.enable_kitty_keyboard = true
 ```
 
-Do not enable Zellij's kitty-keyboard setting globally just to make this keymap
-work until the normal Yazelix terminal matrix proves it is stable.
+Keep `zellij.support_kitty_keyboard_protocol` available as an escape hatch. If a
+user hits dead-key, compose-key, or AltGr problems in their terminal, they can
+set it to `false` and remap the affected structural movement keys.
 
 ## Ctrl+Shift+Y
 
 Ship `Ctrl+Shift+Y` as the default trial binding for right-sidebar focus.
 
 Without the Kitty keyboard protocol, Ctrl+Shift-letter chords may be
-indistinguishable from Ctrl-letter chords in terminal input. Since Yazelix's
-current default is `zellij.support_kitty_keyboard_protocol = false`, this may
-collide with the existing `Ctrl+y` left sidebar/editor focus action in some
-terminal paths.
+indistinguishable from Ctrl-letter chords in terminal input. Yazelix's current
+default enables the protocol, but users who opt out may still see this collide
+with the existing `Ctrl+y` left sidebar/editor focus action in some terminal
+paths.
 
 The right-sidebar focus action remains semantic and remappable through
 `zellij.keybindings.toggle_editor_right_sidebar_focus`. If the default aliases
@@ -147,8 +150,9 @@ the underlying pane-orchestrator command.
 ## AltGr And International Layouts
 
 `Ctrl+Alt` is commonly equivalent to AltGr on international keyboard layouts.
-That is why the accepted structural movement layer uses `Ctrl+Shift` instead of
-`Ctrl+Alt`.
+The current structural movement layer keeps `Ctrl+Alt+h/j/k/l` because the
+default terminal path needs distinct native movement keys without reusing the
+placement layer. The actions remain remappable for users with AltGr conflicts.
 
 Placement visibility stays on `Alt+Shift` because it is more likely to be
 usable on non-US layouts. All accepted actions must remain remappable through
@@ -163,8 +167,9 @@ semantic config so users with AltGr conflicts can choose local keys.
   compatibility aliases.
 - `yzx keys`, README/docs keybinding surfaces, config UI descriptions, and
   Home Manager defaults should stay aligned with the action registry.
-- Manual terminal testing should still cover Ghostty and WezTerm with
-  `zellij.support_kitty_keyboard_protocol = false` and `true`.
+- Manual terminal testing should still cover Ghostty, yzxterm/Ratty, and WezTerm
+  with `zellij.support_kitty_keyboard_protocol = true`; test `false` as the
+  documented opt-out path.
 - For WezTerm plus kitty-keyboard mode, test with `enable_kitty_keyboard = true`.
 
 ## Evidence Checked

@@ -58,7 +58,7 @@ fn zellij_render_plan_emits_ok_envelope() {
         .iter()
         .find(|s| s["name"] == "support_kitty_keyboard_protocol")
         .unwrap();
-    assert_eq!(kitty["value"], "false");
+    assert_eq!(kitty["value"], "true");
 }
 
 // Defends: zellij-render-plan.compute rejects out-of-range sidebar width with a single config-class error envelope.

@@ -127,7 +127,7 @@ fn default_string_true() -> String {
 }
 
 fn default_support_kitty_keyboard_protocol() -> String {
-    "false".into()
+    "true".into()
 }
 
 fn default_zellij_default_mode() -> String {
@@ -223,7 +223,7 @@ pub struct ZellijRenderPlanRequest {
     pub zellij_rounded_corners: String,
     #[serde(default = "default_string_true")]
     pub disable_zellij_tips: String,
-    /// Matches `config_metadata/main_config_contract.toml` (`zellij.support_kitty_keyboard_protocol` default false).
+    /// Matches `config_metadata/main_config_contract.toml` (`zellij.support_kitty_keyboard_protocol` default true).
     #[serde(default = "default_support_kitty_keyboard_protocol")]
     pub support_kitty_keyboard_protocol: String,
     #[serde(default = "default_zellij_default_mode")]
@@ -984,20 +984,20 @@ mod tests {
 
     // Regression: omitted JSON fields use config-contract defaults so machine callers cannot drift from main_config_contract.toml.
     #[test]
-    fn omitted_support_kitty_keyboard_protocol_defaults_to_contract_false() {
+    fn omitted_support_kitty_keyboard_protocol_defaults_to_contract_true() {
         let json = serde_json::json!({
             "yazelix_layout_dir": "/tmp/yazelix/layouts",
             "resolved_default_shell": "/bin/sh",
         });
         let req: ZellijRenderPlanRequest = serde_json::from_value(json).unwrap();
-        assert_eq!(req.support_kitty_keyboard_protocol, "false");
+        assert_eq!(req.support_kitty_keyboard_protocol, "true");
         let plan = compute_zellij_render_plan(&req).unwrap();
         let kitty = plan
             .enforced_top_level_settings
             .iter()
             .find(|s| s.name == "support_kitty_keyboard_protocol")
             .unwrap();
-        assert_eq!(kitty.value, "false");
+        assert_eq!(kitty.value, "true");
     }
 
     // Regression: status widget labels must never be empty, even when config values are paths or omitted.

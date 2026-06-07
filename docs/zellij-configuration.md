@@ -25,7 +25,7 @@ The merger prefers your **Yazelix-managed Zellij config** when present, then fal
 1. **User config**: `~/.config/yazelix/zellij.kdl` (if it exists). This managed sidecar is for native Zellij settings that Yazelix does not render from `settings.jsonc`. If missing, Yazelix reads `~/.config/zellij/config.kdl` as a read-only fallback. If neither exists, Yazelix falls back to `zellij setup --dump-config`.
 2. **Dynamic Yazelix settings**: Generated from `settings.jsonc` (e.g., `zellij.theme`, `zellij.rounded_corners`, and `zellij.pane_frames`) and appended after the user config so they win.
 3. **Enforced Yazelix settings**: Always appended last to guarantee required behavior:
-   - `support_kitty_keyboard_protocol` set from `settings.jsonc` (default: false)
+   - `support_kitty_keyboard_protocol` set from `settings.jsonc` (default: true)
    - `default_layout` set to Yazelix’s layout file (absolute path)
    - `layout_dir` set to Yazelix’s generated layouts directory
 

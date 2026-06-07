@@ -50,7 +50,7 @@
     "disable_tips": true,
     "pane_frames": true,
     "rounded_corners": true,
-    "support_kitty_keyboard_protocol": false,
+    "support_kitty_keyboard_protocol": true,
     "theme": "default",
     "widget_tray": [
       "editor",

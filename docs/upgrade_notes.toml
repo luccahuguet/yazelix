@@ -3,8 +3,8 @@ acknowledged_guarded_changes = []
 date = ""
 headline = "Post-v17.4 work in progress"
 manual_actions = []
-migration_ids = ["repair-native-movement-key-spelling"]
-summary = ["Removed the image-backed `magician` welcome and `yzx screen` style from the supported config, Home Manager, runtime asset, and idle screen-saver surfaces.", "Repaired native Zellij movement defaults so Ctrl Alt h/j/k/l use lowercase Zellij key names and restored Ctrl h for entering move mode by default."]
+migration_ids = ["repair-native-movement-key-spelling", "enable-kitty-keyboard-protocol-default"]
+summary = ["Removed the image-backed `magician` welcome and `yzx screen` style from the supported config, Home Manager, runtime asset, and idle screen-saver surfaces.", "Repaired native Zellij movement defaults so Ctrl Alt h/j/k/l use lowercase Zellij key names, restored Ctrl h for entering move mode by default, and enabled Zellij Kitty keyboard protocol support by default so those modified-letter chords are encoded unambiguously."]
 upgrade_impact = "no_user_action"
 version = "unreleased"
 

@@ -12,7 +12,7 @@ use yazelix_ratconfig::migration::{MigrationError, MigrationOp};
 pub const SETTINGS_CONTRACT_ID: &str = "yazelix.settings";
 pub const SETTINGS_CONTRACT_STATE_PATH: &str = "ratconfig.contract";
 const SETTINGS_CONTRACT_BASELINE_VERSION: u64 = 1;
-const SETTINGS_CONTRACT_CURRENT_VERSION: u64 = 5;
+const SETTINGS_CONTRACT_CURRENT_VERSION: u64 = 6;
 const OPTIONAL_ADDITIVE_DEFAULT_PATHS: &[&str] = &["zellij.custom_popups"];
 
 const LEGACY_SIDEBAR_SETTING_RENAMES: &[(&str, &str)] = &[
@@ -135,6 +135,15 @@ fn settings_contract_for_defaults(defaults: &JsonValue) -> ConfigContract {
                     },
                 ],
             ),
+            ContractChange::automatic(
+                "enable-kitty-keyboard-protocol-default",
+                5,
+                6,
+                vec![MigrationOp::Transform {
+                    path: "zellij.support_kitty_keyboard_protocol".to_string(),
+                    transform: enable_kitty_keyboard_protocol_default,
+                }],
+            ),
         ],
     }
 }
@@ -198,6 +207,17 @@ fn lowercase_move_pane_up_default(value: &JsonValue) -> Result<Option<JsonValue>
 
 fn clear_move_mode_unbind_default(value: &JsonValue) -> Result<Option<JsonValue>, String> {
     replace_default_keybinding_with_value(value, "Ctrl h", json!([]))
+}
+
+fn enable_kitty_keyboard_protocol_default(value: &JsonValue) -> Result<Option<JsonValue>, String> {
+    let enabled = value
+        .as_bool()
+        .ok_or_else(|| "expected a boolean setting".to_string())?;
+    if enabled {
+        Ok(None)
+    } else {
+        Ok(Some(json!(true)))
+    }
 }
 
 fn replace_default_keybinding(

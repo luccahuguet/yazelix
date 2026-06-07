@@ -69,7 +69,7 @@ fn config_set_and_unset_edit_settings_jsonc() {
 
     let value = read_settings_jsonc_value(&settings_path).expect("settings after unset");
     assert_eq!(value["editor"]["hide_sidebar_on_file_open"], json!(false));
-    assert_eq!(value["ratconfig"]["contract"]["version"].as_u64(), Some(4));
+    assert_eq!(value["ratconfig"]["contract"]["version"].as_u64(), Some(6));
 }
 
 // Regression: live-with-pane-refresh config saves emit a versioned pane-orchestrator reload payload instead of leaving the saved value silently inactive.

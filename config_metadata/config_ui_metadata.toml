@@ -150,7 +150,7 @@ help = "Use rounded borders in generated Zellij pane frames"
 
 [fields."zellij.support_kitty_keyboard_protocol"]
 tab = "appearance"
-help = "Enable Zellij support for the Kitty keyboard protocol"
+help = "Enable Zellij Kitty keyboard protocol support for unambiguous modified-key handling"
 
 [fields."zellij.theme"]
 tab = "appearance"

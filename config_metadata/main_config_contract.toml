@@ -276,7 +276,7 @@ apply_mode = "tab_session_restart"
 
 [fields."zellij.support_kitty_keyboard_protocol"]
 kind = "bool"
-default = false
+default = true
 parser_key = "support_kitty_keyboard_protocol"
 home_manager_option = "support_kitty_keyboard_protocol"
 parser_behavior = "bool_to_string"
