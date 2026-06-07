@@ -23,9 +23,28 @@ Forks are reviewed periodically. They are not permanent by default unless their 
 | Fork repo | Upstream project | Why forked | Current local delta | Status | Review cadence | Removal/upstreaming gate | Primary contract |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | [`yazelix-helix`](https://github.com/luccahuguet/yazelix-helix) | Helix Steel / Helix | Ship a standalone Steel-enabled Helix fork that can also satisfy Yazelix-managed config-directory launches | `--config-dir`, reusable Steel plugin defaults, and Yazelix bridge hooks behind explicit runtime flags | Active fork | Monthly or before Helix-sensitive releases | Upstream reusable pieces when accepted, but do not remove the fork while its standalone Steel/defaults value is higher than upstream plus main-repo adapters | [`helix_managed_config_contract.md`](./helix_managed_config_contract.md), [`helix_action_bridge_contract.md`](./helix_action_bridge_contract.md) |
-| [`yazelix-terminal`](https://github.com/luccahuguet/yazelix-terminal) | Rio | Dogfood a first-party terminal path with Yazelix-controlled package metadata and profile/shader boundaries | yzxterm package profile, wrapper commands, metadata passthru, profile templates, and shader ABI | Experimental active fork | Monthly while dogfooding, and before yzxterm runtime release evidence | Graduate to stable only after release-profile validation and real user value; upstream or delete local terminal deltas that become Rio-owned | [`yzxterm_package_boundary.md`](./yzxterm_package_boundary.md), [`yzxterm_fast_dogfooding.md`](../yzxterm_fast_dogfooding.md) |
+| [`yazelix-terminal`](https://github.com/luccahuguet/yazelix-terminal) | Rio | Dogfood a first-party Rust terminal path with Yazelix-controlled package metadata, profiles, protocol coverage, notifications, Kitty graphics, and cursor shaders | yzxterm package profiles, desktop wrapper, metadata passthru, BELL/terminal notification behavior, Rio trail defaults, `yazelix-cursors` shader support, Kitty graphics support, and shader ABI | Experimental active fork | Monthly while dogfooding, and before yzxterm runtime release evidence | Graduate to stable only after release-profile validation and real user value; upstream or delete local terminal deltas that become Rio-owned | [`yzxterm_package_boundary.md`](./yzxterm_package_boundary.md), [`yzxterm_fast_dogfooding.md`](../yzxterm_fast_dogfooding.md) |
 | [`yazelix-zellij`](https://github.com/luccahuguet/yazelix-zellij) | Zellij | Restore Yazi image previews through Kitty graphics passthrough in the default Ghostty runtime | Temporary KGP preview branch selected by Yazelix package outputs | Temporary fork | Monthly and whenever upstream Zellij changes Kitty graphics behavior | Drop and archive once upstream Zellij supports the required Kitty graphics path directly enough for Yazelix to return to upstream packages | [`v15_trimmed_runtime_contract.md`](./v15_trimmed_runtime_contract.md) |
 | Yazelix Yazi graphics fork | Yazi | Pair with the temporary Zellij graphics path so managed Yazi previews work in the default runtime | Temporary Yazi-side graphics integration branch selected by Yazelix package outputs | Temporary fork | Monthly and whenever upstream Yazi/Zellij graphics integration changes | Drop and archive with `yazelix-zellij` when upstream support is sufficient for the managed preview path | [`yazi_integration_boundary.md`](./yazi_integration_boundary.md) |
+
+## Upstream Review Cadence
+
+Fork reviews are maintainer-owned and evidence-driven. The default cadence is monthly, but release-sensitive forks should also be reviewed before a Yazelix release that changes their runtime behavior, and quiet forks may defer a month when the review evidence says there is no user-value, security, build, or fork-delta reason to update.
+
+Minimum review checklist:
+
+- inspect upstream commits, releases, and relevant PRs since the last reviewed point
+- inspect the Yazelix local delta and whether any patches can be upstreamed, deleted, or narrowed
+- decide update, defer, upstream, remove, or archive
+- record package or lock impact
+- create follow-up work only for concrete repo edits, upstream PRs, lock updates, or contract changes
+
+| Fork repo | Upstream source | Owner | Cadence | Review evidence location |
+| --- | --- | --- | --- | --- |
+| `yazelix-helix` | `helix-editor/helix` plus the active Helix Steel branch used by the fork | Yazelix maintainer | Monthly or before Helix-sensitive Yazelix releases | Maintainer review record or child README/`YAZELIX.md` update when the fork delta changes |
+| `yazelix-terminal` | `raphamorim/rio` | Yazelix maintainer | Monthly while yzxterm is actively dogfooded, and before yzxterm release-gate decisions | Terminal-repo review record, plus `docs/yazelix/fork_feature_verification.md` for release evidence |
+| `yazelix-zellij` | `zellij-org/zellij` | Yazelix maintainer | Monthly and whenever upstream Zellij changes Kitty graphics behavior | Maintainer review record and child README update when the temporary graphics delta changes |
+| Yazi graphics fork | `sxyazi/yazi` | Yazelix maintainer | Monthly with `yazelix-zellij`, and whenever upstream Yazi preview behavior changes | Maintainer review record and child README update when the temporary graphics delta changes |
 
 ## Child Repo Inventory
 
@@ -61,14 +80,27 @@ Ordinary child repos do not need an upstream fork delta block, but their README 
 
 Shared agent workflow belongs in the main repository `AGENTS.md`. A child repo `AGENTS.md` should point back to the main instructions and keep only child-specific guidance.
 
+## Child AGENTS.md Pointer Policy
+
+The main Yazelix `AGENTS.md` is the canonical shared policy source for agent workflow, issue-tracker usage, verification philosophy, command-surface policy, and cross-repo release transactions.
+
+Every active fork and ordinary child repo should carry a short local `AGENTS.md` that:
+
+- links to `https://github.com/luccahuguet/yazelix/blob/main/AGENTS.md`
+- tells agents to read `../yazelix/AGENTS.md` first when working from sibling local checkouts
+- keeps only child-specific scope, build commands, artifact names, upstream-sync notes, release gates, or caveats
+- avoids copying long shared main-policy sections that would drift, such as issue-tracker workflow, verification requirements, command-surface policy, or cross-repo release transactions
+
+If a child repo has no local exceptions, its `AGENTS.md` should contain only the pointer and a short statement that the main policy applies.
+
 ## README Delta Audit
 
 | Repo | Current protocol state | Follow-up |
 | --- | --- | --- |
-| `yazelix-helix` | Partial: the README says the fork is thin, standalone-usable, and points to `YAZELIX.md`, but it does not yet expose the full structured delta/cadence/gate block | Direct child README update required |
-| `yazelix-terminal` | Needs structured experimental fork delta block | Direct child README update required |
-| `yazelix-zellij` | Needs structured temporary fork delta block | Direct child README update required |
-| Yazelix Yazi graphics fork | Needs structured temporary fork delta block | Direct child README update required |
+| `yazelix-helix` | Structured active-fork delta block present in the child README | Keep current during monthly fork reviews |
+| `yazelix-terminal` | Structured experimental active-fork delta block present in the child README | Keep current during monthly yzxterm reviews |
+| `yazelix-zellij` | Structured temporary-fork delta block present in the child README | Keep current until the upstream-removal gate closes |
+| Yazelix Yazi graphics fork | Structured temporary-fork delta block present in the child README | Keep current with the paired `yazelix-zellij` fork |
 
 ## Review Evidence
 
