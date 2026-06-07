@@ -54,7 +54,7 @@ const ZELLIJ_NATIVE_KEYBINDING_PARSE_POLICY: KeybindingParsePolicy = KeybindingP
     invalid_keys_code: "invalid_zellij_native_keybinding_keys",
     invalid_key_code: "invalid_zellij_native_keybinding_key",
     list_remediation: "Use a list such as `[\"Ctrl Alt s\"]`, or an empty list to disable that native policy binding.",
-    item_remediation: "Use Zellij key strings such as \"Ctrl Alt s\" or \"Ctrl Alt H\".",
+    item_remediation: "Use Zellij key strings such as \"Ctrl Alt s\" or \"Ctrl Alt h\".",
     invalid_item_remediation: "Use a non-empty single-line Zellij key string such as \"Ctrl Alt s\".",
 };
 const POPUP_COMMANDS_CONFIG_KEY: &str = "popup_commands";
@@ -2620,15 +2620,15 @@ keybinds {
             build_native_zellij_keybind_lines(&sample_zellij_native_keybindings()).join("\n");
 
         assert!(rendered.contains(r#"unbind "Alt i""#));
-        assert!(rendered.contains(r#"bind "Ctrl Alt H" { MoveTab "Left"; }"#));
-        assert!(rendered.contains(r#"bind "Ctrl Alt L" { MoveTab "Right"; }"#));
-        assert!(rendered.contains(r#"bind "Ctrl Alt J" { MovePane "Down"; }"#));
-        assert!(rendered.contains(r#"bind "Ctrl Alt K" { MovePane "Up"; }"#));
+        assert!(rendered.contains(r#"bind "Ctrl Alt h" { MoveTab "Left"; }"#));
+        assert!(rendered.contains(r#"bind "Ctrl Alt l" { MoveTab "Right"; }"#));
+        assert!(rendered.contains(r#"bind "Ctrl Alt j" { MovePane "Down"; }"#));
+        assert!(rendered.contains(r#"bind "Ctrl Alt k" { MovePane "Up"; }"#));
         assert!(rendered.contains(r#"unbind "Alt p""#));
         assert!(rendered.contains(r#"bind "Ctrl Alt p" { TogglePaneInGroup; }"#));
         assert!(rendered.contains(r#"bind "Alt 1" { GoToTab 1; }"#));
         assert!(!rendered.contains(r#"Run "yzx" "agent""#));
-        assert!(rendered.contains(r#"unbind "Ctrl h""#));
+        assert!(!rendered.contains(r#"unbind "Ctrl h""#));
         assert!(rendered.contains(r#"bind "Ctrl Alt s" { SwitchToMode "Scroll"; }"#));
         assert!(rendered.contains(r#"bind "Ctrl Alt s" { SwitchToMode "Normal"; }"#));
         assert!(rendered.contains(r#"unbind "Ctrl b""#));

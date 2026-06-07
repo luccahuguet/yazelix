@@ -12,7 +12,7 @@ use yazelix_ratconfig::migration::{MigrationError, MigrationOp};
 pub const SETTINGS_CONTRACT_ID: &str = "yazelix.settings";
 pub const SETTINGS_CONTRACT_STATE_PATH: &str = "ratconfig.contract";
 const SETTINGS_CONTRACT_BASELINE_VERSION: u64 = 1;
-const SETTINGS_CONTRACT_CURRENT_VERSION: u64 = 4;
+const SETTINGS_CONTRACT_CURRENT_VERSION: u64 = 5;
 const OPTIONAL_ADDITIVE_DEFAULT_PATHS: &[&str] = &["zellij.custom_popups"];
 
 const LEGACY_SIDEBAR_SETTING_RENAMES: &[(&str, &str)] = &[
@@ -108,6 +108,33 @@ fn settings_contract_for_defaults(defaults: &JsonValue) -> ConfigContract {
                 ],
             ),
             ContractChange::automatic("add-current-default-settings", 3, 4, add_default_ops),
+            ContractChange::automatic(
+                "repair-native-movement-key-spelling",
+                4,
+                5,
+                vec![
+                    MigrationOp::Transform {
+                        path: "zellij.native_keybindings.move_tab_left".to_string(),
+                        transform: lowercase_move_tab_left_default,
+                    },
+                    MigrationOp::Transform {
+                        path: "zellij.native_keybindings.move_tab_right".to_string(),
+                        transform: lowercase_move_tab_right_default,
+                    },
+                    MigrationOp::Transform {
+                        path: "zellij.native_keybindings.move_pane_down".to_string(),
+                        transform: lowercase_move_pane_down_default,
+                    },
+                    MigrationOp::Transform {
+                        path: "zellij.native_keybindings.move_pane_up".to_string(),
+                        transform: lowercase_move_pane_up_default,
+                    },
+                    MigrationOp::Transform {
+                        path: "zellij.native_keybindings.move_mode_unbind".to_string(),
+                        transform: clear_move_mode_unbind_default,
+                    },
+                ],
+            ),
         ],
     }
 }
@@ -153,16 +180,44 @@ fn replace_move_pane_up_default(value: &JsonValue) -> Result<Option<JsonValue>, 
     replace_default_keybinding(value, "Ctrl Shift K", "Ctrl Alt K")
 }
 
+fn lowercase_move_tab_left_default(value: &JsonValue) -> Result<Option<JsonValue>, String> {
+    replace_default_keybinding(value, "Ctrl Alt H", "Ctrl Alt h")
+}
+
+fn lowercase_move_tab_right_default(value: &JsonValue) -> Result<Option<JsonValue>, String> {
+    replace_default_keybinding(value, "Ctrl Alt L", "Ctrl Alt l")
+}
+
+fn lowercase_move_pane_down_default(value: &JsonValue) -> Result<Option<JsonValue>, String> {
+    replace_default_keybinding(value, "Ctrl Alt J", "Ctrl Alt j")
+}
+
+fn lowercase_move_pane_up_default(value: &JsonValue) -> Result<Option<JsonValue>, String> {
+    replace_default_keybinding(value, "Ctrl Alt K", "Ctrl Alt k")
+}
+
+fn clear_move_mode_unbind_default(value: &JsonValue) -> Result<Option<JsonValue>, String> {
+    replace_default_keybinding_with_value(value, "Ctrl h", json!([]))
+}
+
 fn replace_default_keybinding(
     value: &JsonValue,
     old_default: &str,
     current_default: &str,
 ) -> Result<Option<JsonValue>, String> {
+    replace_default_keybinding_with_value(value, old_default, json!([current_default]))
+}
+
+fn replace_default_keybinding_with_value(
+    value: &JsonValue,
+    old_default: &str,
+    current_value: JsonValue,
+) -> Result<Option<JsonValue>, String> {
     let values = value
         .as_array()
         .ok_or_else(|| "expected a keybinding array".to_string())?;
     if values.len() == 1 && values[0].as_str() == Some(old_default) {
-        Ok(Some(json!([current_default])))
+        Ok(Some(current_value))
     } else {
         Ok(None)
     }

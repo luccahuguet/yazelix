@@ -121,13 +121,13 @@
         "Alt i"
       ],
       "move_tab_left": [
-        "Ctrl Alt H"
+        "Ctrl Alt h"
       ],
       "move_tab_right_unbind": [
         "Alt o"
       ],
       "move_tab_right": [
-        "Ctrl Alt L"
+        "Ctrl Alt l"
       ],
       // Leave Alt+n available to Helix selection flow instead of Zellij new-pane.
       "new_pane_unbind": [
@@ -172,10 +172,10 @@
         "Alt w"
       ],
       "move_pane_down": [
-        "Ctrl Alt J"
+        "Ctrl Alt j"
       ],
       "move_pane_up": [
-        "Ctrl Alt K"
+        "Ctrl Alt k"
       ],
       // Terminal-specific Helix selection-cycle conflict workaround.
       "selection_cycle_unbind": [
@@ -192,10 +192,8 @@
       "toggle_group_marking": [
         "Ctrl Alt Shift P"
       ],
-      // Keep Backspace-as-Ctrl-H terminal encodings out of Zellij move mode.
-      "move_mode_unbind": [
-        "Ctrl h"
-      ],
+      // Optional: set this to ["Ctrl h"] only for terminals that encode Backspace as Ctrl-H.
+      "move_mode_unbind": [],
       // Move locked mode away from Ctrl+g in normal/default modes for CLI prompt flows.
       "locked_mode_unbind": [
         "Ctrl g"

@@ -10,6 +10,7 @@ Upgrade impact: no user action required
 
 Highlights:
 - Removed the image-backed `magician` welcome and `yzx screen` style from the supported config, Home Manager, runtime asset, and idle screen-saver surfaces
+- Repaired native Zellij movement defaults so `Ctrl Alt h/j/k/l` use lowercase Zellij key names and restored `Ctrl h` for entering move mode by default
 
 ## v17.4 - 2026-06-05
 

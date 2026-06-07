@@ -652,10 +652,10 @@ mod tests {
   },
   "zellij": {
     "native_keybindings": {
-      "move_tab_left": ["Ctrl Alt H"],
-      "move_tab_right": ["Ctrl Alt L"],
-      "move_pane_down": ["Ctrl Alt J"],
-      "move_pane_up": ["Ctrl Alt K"]
+      "move_tab_left": ["Ctrl Alt h"],
+      "move_tab_right": ["Ctrl Alt l"],
+      "move_pane_down": ["Ctrl Alt j"],
+      "move_pane_up": ["Ctrl Alt k"]
     }
   }
 }
@@ -745,7 +745,8 @@ mod tests {
       "move_tab_left": ["Ctrl Shift H"],
       "move_tab_right": ["Alt l"],
       "move_pane_down": ["Alt j"],
-      "move_pane_up": ["Ctrl Shift K"]
+      "move_pane_up": ["Ctrl Shift K"],
+      "move_mode_unbind": ["Ctrl h"]
     }
   }
 }
@@ -758,7 +759,7 @@ mod tests {
 
         assert_eq!(
             value["zellij"]["native_keybindings"]["move_tab_left"],
-            json!(["Ctrl Alt H"])
+            json!(["Ctrl Alt h"])
         );
         assert_eq!(
             value["zellij"]["native_keybindings"]["move_tab_right"],
@@ -770,7 +771,54 @@ mod tests {
         );
         assert_eq!(
             value["zellij"]["native_keybindings"]["move_pane_up"],
-            json!(["Ctrl Alt K"])
+            json!(["Ctrl Alt k"])
+        );
+        assert_eq!(
+            value["zellij"]["native_keybindings"]["move_mode_unbind"],
+            json!([])
+        );
+    }
+
+    // Regression: Zellij treats uppercase letter key names as shifted keys, so old current defaults must be lowercased.
+    #[test]
+    fn repairs_uppercase_native_movement_defaults_in_existing_settings_jsonc() {
+        let runtime = tempdir().unwrap();
+        let config = tempdir().unwrap();
+        let (main, cursor) = write_defaults(runtime.path());
+        fs::write(
+            config.path().join("settings.jsonc"),
+            r#"{
+  "zellij": {
+    "native_keybindings": {
+      "move_tab_left": ["Ctrl Alt H"],
+      "move_tab_right": ["Ctrl Alt L"],
+      "move_pane_down": ["Ctrl Alt J"],
+      "move_pane_up": ["Ctrl Alt K"]
+    }
+  }
+}
+"#,
+        )
+        .unwrap();
+
+        let path = ensure_settings_config(config.path(), &main, &cursor).unwrap();
+        let value = read_settings_jsonc_value(&path).unwrap();
+
+        assert_eq!(
+            value["zellij"]["native_keybindings"]["move_tab_left"],
+            json!(["Ctrl Alt h"])
+        );
+        assert_eq!(
+            value["zellij"]["native_keybindings"]["move_tab_right"],
+            json!(["Ctrl Alt l"])
+        );
+        assert_eq!(
+            value["zellij"]["native_keybindings"]["move_pane_down"],
+            json!(["Ctrl Alt j"])
+        );
+        assert_eq!(
+            value["zellij"]["native_keybindings"]["move_pane_up"],
+            json!(["Ctrl Alt k"])
         );
     }
 
