@@ -22,6 +22,11 @@ let
   terminalDesktopIdSuffix = terminalMetadata.desktopIdSuffix;
   desktopEntryKey = terminal: "com.yazelix.Yazelix.${terminalDesktopIdSuffix terminal}";
   desktopEntryName = terminal: "New Yazelix - ${terminalDesktopLabel terminal}";
+  startupWmClassFor =
+    terminal:
+    if terminal == "yzxterm"
+    then desktopEntryKey terminal
+    else "com.yazelix.Yazelix";
   yzxtermProfileActiveFor = terminal: terminal == "yzxterm" && cfg.yzxterm_profile != "full";
   yzxtermProfileActive = yzxtermProfileActiveFor cfg.terminal;
   yzxtermProfileExport =
@@ -115,6 +120,7 @@ let
     let
       envVars =
         lib.optional skipStableWrapperRedirect "YAZELIX_SKIP_STABLE_WRAPPER_REDIRECT=1"
+        ++ lib.optional (terminal == "yzxterm") "YAZELIX_TERMINAL_APP_ID=${startupWmClassFor terminal}"
         ++ lib.optional (yzxtermProfileActiveFor terminal) "YAZELIX_TERMINAL_PROFILE=${cfg.yzxterm_profile}";
     in
     "${lib.optionalString (envVars != [ ]) "env ${lib.concatStringsSep " " envVars} "}${yzxPath} desktop launch";
@@ -129,7 +135,7 @@ let
       type = "Application";
       terminal = true;
       settings = {
-        StartupWMClass = "com.yazelix.Yazelix";
+        StartupWMClass = startupWmClassFor terminal;
       };
     };
   extraDesktopEntries = lib.listToAttrs (

@@ -124,8 +124,10 @@ Out of scope:
   `yazelix-terminal-desktop` wrapper, passes the generated config directory
   with `YAZELIX_TERMINAL_CONFIG`, clears ambient `RIO_CONFIG_HOME` at that
   process boundary, marks the child environment for Yazelix Terminal
-  sanitization, and does not add an outer Yazelix graphics wrapper around the
-  child wrapper. Generated Yazelix Terminal config is derived from the packaged
+  sanitization, passes `YAZELIX_TERMINAL_APP_ID` so the terminal window matches
+  the integrated Yazelix desktop entry, and does not add an outer Yazelix
+  graphics wrapper around the child wrapper. Generated Yazelix Terminal config
+  is derived from the packaged
   child profile selected by `YAZELIX_TERMINAL_PROFILE` or
   `YAZELIX_TERMINAL_EFFECTS`: `full` keeps Rio trail cursor and strips packaged
   `custom-shader` entries, `baseline` uses the packaged no-effects profile, and

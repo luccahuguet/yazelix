@@ -16,17 +16,19 @@ use crate::control_plane::{
     state_dir_from_env,
 };
 use crate::launch_materialization::{
-    LaunchMaterializationData, launch_materialization_request_from_env,
-    prepare_launch_materialization,
+    launch_materialization_request_from_env, prepare_launch_materialization,
+    LaunchMaterializationData,
 };
 use crate::runtime_contract::{
-    LaunchPreflightPayload, StartupLaunchPreflightRequest, evaluate_startup_launch_preflight,
+    evaluate_startup_launch_preflight, LaunchPreflightPayload, StartupLaunchPreflightRequest,
 };
 use crate::runtime_env::compute_runtime_env;
 use crate::runtime_materialization::{
-    RuntimeMaterializationRepairEvaluateRequest, repair_runtime_materialization,
+    repair_runtime_materialization, RuntimeMaterializationRepairEvaluateRequest,
 };
-use crate::terminal_variant::{active_terminal_from_runtime_dir, terminal_display_name};
+use crate::terminal_variant::{
+    active_terminal_from_runtime_dir, terminal_display_name, terminal_startup_wm_class,
+};
 use std::path::{Path, PathBuf};
 
 const YAZELIX_TERMINAL_CHILD_ENV_SANITIZE: &str = "YAZELIX_TERMINAL_CHILD_ENV_SANITIZE";
@@ -325,6 +327,10 @@ fn yzxterm_process_boundary_env(
             YAZELIX_TERMINAL_CHILD_ENV_SANITIZE.to_string(),
             Some("1".to_string()),
         ),
+        (
+            "YAZELIX_TERMINAL_APP_ID".to_string(),
+            Some(terminal_startup_wm_class("yzxterm")),
+        ),
     ])
 }
 
@@ -517,7 +523,7 @@ mod tests {
 
     // Defends: yzxterm gets Yazelix config only at the terminal process boundary, while ambient host Rio config is cleared.
     #[test]
-    fn yzxterm_process_boundary_env_clears_host_rio_config() {
+    fn yzxterm_process_boundary_env_clears_host_rio_config_and_sets_app_id() {
         let env = yzxterm_process_boundary_env(Path::new(
             "/state/configs/terminal_emulators/yzxterm/config.toml",
         ))
@@ -534,6 +540,10 @@ mod tests {
                 (
                     YAZELIX_TERMINAL_CHILD_ENV_SANITIZE.to_string(),
                     Some("1".to_string())
+                ),
+                (
+                    "YAZELIX_TERMINAL_APP_ID".to_string(),
+                    Some("com.yazelix.Yazelix.Yzxterm".to_string())
                 ),
             ]
         );

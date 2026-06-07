@@ -58,6 +58,13 @@ pub fn terminal_desktop_entry_id(terminal: &str) -> String {
     )
 }
 
+pub fn terminal_startup_wm_class(terminal: &str) -> String {
+    match terminal {
+        "yzxterm" => terminal_desktop_entry_id(terminal),
+        _ => "com.yazelix.Yazelix".to_string(),
+    }
+}
+
 pub fn terminal_desktop_entry_file_name(terminal: &str) -> String {
     format!("{}.desktop", terminal_desktop_entry_id(terminal))
 }
@@ -132,5 +139,10 @@ mod tests {
             "Yazelix - Ghostty · work"
         );
         assert_eq!(terminal_window_title("yzxterm", None), "Yazelix - Yzxterm");
+        assert_eq!(
+            terminal_startup_wm_class("yzxterm"),
+            "com.yazelix.Yazelix.Yzxterm"
+        );
+        assert_eq!(terminal_startup_wm_class("ghostty"), "com.yazelix.Yazelix");
     }
 }

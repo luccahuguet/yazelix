@@ -1,14 +1,15 @@
 use super::launch::run_launch_flow;
 use super::process::find_command;
-use super::terminal::{WINDOW_CLASS, current_platform_name};
+use super::terminal::current_platform_name;
 use crate::bridge::{CoreError, ErrorClass};
 use crate::control_plane::{config_override_from_env, home_dir_from_env, runtime_dir_from_env};
 use crate::install_ownership_env::install_ownership_request_from_env_with_runtime_dir;
 use crate::install_ownership_report::{
-    InstallOwnershipEvaluateData, evaluate_install_ownership_report,
+    evaluate_install_ownership_report, InstallOwnershipEvaluateData,
 };
 use crate::terminal_variant::{
-    active_terminal_from_runtime_dir, terminal_desktop_entry_file_name, terminal_desktop_entry_name,
+    active_terminal_from_runtime_dir, terminal_desktop_entry_file_name,
+    terminal_desktop_entry_name, terminal_startup_wm_class,
 };
 use std::fs;
 use std::io::{self, Write};
@@ -301,7 +302,10 @@ pub(super) fn render_desktop_entry(launcher_path: &Path, active_terminal: &str) 
         format!("Name={}", terminal_desktop_entry_name(active_terminal)),
         "Comment=Yazi + Zellij + Helix integrated terminal environment".to_string(),
         "Icon=yazelix".to_string(),
-        format!("StartupWMClass={WINDOW_CLASS}"),
+        format!(
+            "StartupWMClass={}",
+            terminal_startup_wm_class(active_terminal)
+        ),
         "Terminal=true".to_string(),
         "X-Yazelix-Managed=true".to_string(),
         format!(
@@ -718,6 +722,17 @@ fn acknowledge_desktop_failure(error_text: &str) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn render_desktop_entry_uses_terminal_specific_startup_class_for_yzxterm() {
+        let ghostty_entry = render_desktop_entry(Path::new("/tmp/yzx"), "ghostty");
+        assert!(ghostty_entry.contains("Name=New Yazelix - Ghostty"));
+        assert!(ghostty_entry.contains("StartupWMClass=com.yazelix.Yazelix"));
+
+        let yzxterm_entry = render_desktop_entry(Path::new("/tmp/yzx"), "yzxterm");
+        assert!(yzxterm_entry.contains("Name=New Yazelix - Yzxterm"));
+        assert!(yzxterm_entry.contains("StartupWMClass=com.yazelix.Yazelix.Yzxterm"));
+    }
 
     #[cfg(unix)]
     fn set_read_only(path: &Path) {
