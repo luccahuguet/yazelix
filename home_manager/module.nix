@@ -33,6 +33,11 @@ let
     "baseline"
     "shaders"
   ];
+  yzxtermEmojiFonts = [
+    "noto"
+    "twitter"
+    "serenityos"
+  ];
 
   settingsContract = import ./settings_contract.nix { inherit cfg lib; };
   inherit (settingsContract)
@@ -68,6 +73,7 @@ in
       runtimeToolSourceModes
       terminalDescriptionBullets
       terminalVariants
+      yzxtermEmojiFonts
       yzxtermProfiles
       ;
     inherit (runtimeIntegration) agentUsageProgramNames;

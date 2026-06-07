@@ -27,11 +27,17 @@ let
     if terminal == "yzxterm"
     then desktopEntryKey terminal
     else "com.yazelix.Yazelix";
-  yzxtermProfileActiveFor = terminal: terminal == "yzxterm" && cfg.yzxterm_profile != "full";
+  yzxtermActiveFor = terminal: terminal == "yzxterm";
+  yzxtermConfigured =
+    yzxtermActiveFor cfg.terminal || builtins.elem "yzxterm" extraTerminalLaunchers;
+  yzxtermProfileActiveFor = terminal: yzxtermActiveFor terminal && cfg.yzxterm_profile != "full";
   yzxtermProfileActive = yzxtermProfileActiveFor cfg.terminal;
   yzxtermProfileExport =
     lib.optionalString yzxtermProfileActive
       "export YAZELIX_TERMINAL_PROFILE=${cfg.yzxterm_profile}";
+  yzxtermEmojiFontExport =
+    lib.optionalString yzxtermConfigured
+      "export YAZELIX_TERMINAL_EMOJI_FONT=${cfg.yzxterm_emoji_font}";
 
   agentUsageProgramNames = [
     "tokenusage"
@@ -108,6 +114,7 @@ let
       terminalPackage = yazelixPackageForTerminal terminal;
       terminalEnv =
         ''PATH="${terminalPackage}/toolbin:${terminalPackage}/libexec:${terminalPackage}/bin:${runtimeConfigGenerationPath}:$PATH" YAZELIX_RUNTIME_DIR="${terminalPackage}"''
+        + lib.optionalString (yzxtermActiveFor terminal) " YAZELIX_TERMINAL_EMOJI_FONT=${cfg.yzxterm_emoji_font}"
         + lib.optionalString (yzxtermProfileActiveFor terminal) " YAZELIX_TERMINAL_PROFILE=${cfg.yzxterm_profile}";
     in
     ''
@@ -121,6 +128,7 @@ let
       envVars =
         lib.optional skipStableWrapperRedirect "YAZELIX_SKIP_STABLE_WRAPPER_REDIRECT=1"
         ++ lib.optional (terminal == "yzxterm") "YAZELIX_TERMINAL_APP_ID=${startupWmClassFor terminal}"
+        ++ lib.optional (terminal == "yzxterm") "YAZELIX_TERMINAL_EMOJI_FONT=${cfg.yzxterm_emoji_font}"
         ++ lib.optional (yzxtermProfileActiveFor terminal) "YAZELIX_TERMINAL_PROFILE=${cfg.yzxterm_profile}";
     in
     "${lib.optionalString (envVars != [ ]) "env ${lib.concatStringsSep " " envVars} "}${yzxPath} desktop launch";
@@ -210,9 +218,14 @@ in
 
   baseConfig = {
     home.packages = [ yazelixPackage ] ++ cursorGeneratorPackage;
-    home.sessionVariables = mkIf yzxtermProfileActive {
-      YAZELIX_TERMINAL_PROFILE = mkDefault cfg.yzxterm_profile;
-    };
+    home.sessionVariables = mkMerge [
+      (mkIf yzxtermConfigured {
+        YAZELIX_TERMINAL_EMOJI_FONT = mkDefault cfg.yzxterm_emoji_font;
+      })
+      (mkIf yzxtermProfileActive {
+        YAZELIX_TERMINAL_PROFILE = mkDefault cfg.yzxterm_profile;
+      })
+    ];
     inherit assertions;
 
     xdg.dataFile."icons/hicolor/48x48/apps/yazelix.png".source =
@@ -230,6 +243,7 @@ in
       export YAZELIX_CONFIG_DIR="${managedConfigRoot}"
       export YAZELIX_STATE_DIR="${stateRoot}"
       export YAZELIX_LOGS_DIR="${logsPath}"
+      ${yzxtermEmojiFontExport}
       ${yzxtermProfileExport}
 
       $DRY_RUN_CMD ${runtimeYzxCore} runtime-materialization.repair --from-env --force --summary

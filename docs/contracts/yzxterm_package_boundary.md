@@ -14,6 +14,7 @@ names, or make other terminal variants depend on yzxterm internals.
 | --- | --- |
 | yzxterm binary wrapper behavior | `yazelix-terminal` child package |
 | yzxterm profile config templates | `yazelix-terminal` child package |
+| yzxterm emoji fallback presets and bundled font paths | `yazelix-terminal` child package |
 | yzxterm shader asset layout and ABI | `yazelix-terminal` child package |
 | yzxterm package metadata schema and values | `yazelix-terminal` child package |
 | runtime variant selection | main Yazelix Nix package builders |
@@ -28,7 +29,8 @@ names, or make other terminal variants depend on yzxterm internals.
 - A yzxterm runtime package must receive a terminal package that exposes
   `passthru.yzxtermPackageMetadata`
 - The metadata must include schema version, package name, package profile,
-  checked/release status, metadata path, wrapper commands, and config roots
+  checked/release status, metadata path, wrapper commands, config roots,
+  supported emoji fallback presets, and the emoji-font wrapper env name
 - Main Yazelix derives the yzxterm launch command and runtime identity package
   fields from that metadata, not from terminal package names or child config
   files
@@ -46,11 +48,12 @@ names, or make other terminal variants depend on yzxterm internals.
   This is a yzxterm-only generated-config adapter, not a generic Rio config
   owner and not package identity inference
 - Main Yazelix stable inputs for that adapter are limited to the selected
-  yzxterm profile, terminal order, runtime and state directories, terminal
-  transparency, active cursor color, and generated cursor shader snapshot
-  paths
+  yzxterm profile, selected yzxterm emoji fallback preset, terminal order,
+  runtime and state directories, terminal transparency, active cursor color,
+  and generated cursor shader snapshot paths
 - The child package remains the owner of profile template roots, wrapper
-  behavior, shader ABI, shader file layout, and the meaning of package metadata
+  behavior, emoji font fallback roots, shader ABI, shader file layout, and the
+  meaning of package metadata
 - If the child package later exposes a stable config-composition API, it may
   replace the main-side adapter. Until then, the main-side adapter is the
   supported boundary and must fail clearly when packaged profile TOML is missing
@@ -66,7 +69,7 @@ names, or make other terminal variants depend on yzxterm internals.
 | Rio | writes generated upstream Rio config from stable Yazelix settings | Rio owns config semantics |
 | Ratty | writes generated Ratty config and launch argv | Ratty owns config semantics and RGP/GPU behavior |
 | Foot | writes generated Linux-only `foot.ini` | Foot owns config semantics |
-| yzxterm | reads the child-owned profile template and applies stable Yazelix transparency, cursor color, and generated shader snapshot paths | `yazelix-terminal` owns wrapper behavior, profile templates, shader ABI, shader asset layout, and package metadata |
+| yzxterm | reads the selected child-owned profile and emoji-fallback template, then applies stable Yazelix transparency, cursor color, and generated shader snapshot paths | `yazelix-terminal` owns wrapper behavior, profile templates, emoji fallback presets, shader ABI, shader asset layout, and package metadata |
 
 ## Verification
 

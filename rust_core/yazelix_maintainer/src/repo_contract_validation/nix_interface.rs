@@ -365,10 +365,20 @@ fn build_nix_customization_api_expr(repo_root: &Path) -> String {
         baseline = "share/yazelix-terminal/baseline";
         shaders = "share/yazelix-terminal/profiles/shaders";
       };
+      supported_emoji_fonts = [ "noto" "twitter" "serenityos" ];
+      default_emoji_font = "noto";
+      emoji_fonts = {
+        noto = { family = "Noto Color Emoji"; config_roots = { full = "share/yazelix-terminal"; baseline = "share/yazelix-terminal/baseline"; shaders = "share/yazelix-terminal/profiles/shaders"; }; };
+        twitter = { family = "Twitter Color Emoji"; config_roots = { full = "share/yazelix-terminal/emoji/twitter"; baseline = "share/yazelix-terminal/emoji/twitter/baseline"; shaders = "share/yazelix-terminal/emoji/twitter/profiles/shaders"; }; };
+        serenityos = { family = "SerenityOS Emoji"; config_roots = { full = "share/yazelix-terminal/emoji/serenityos"; baseline = "share/yazelix-terminal/emoji/serenityos/baseline"; shaders = "share/yazelix-terminal/emoji/serenityos/profiles/shaders"; }; };
+      };
       wrapper_commands = {
         terminal = "bin/validator-yazelix-terminal";
         desktop = "bin/validator-yazelix-terminal-desktop";
         rio_compat = "bin/rio";
+      };
+      wrapper_env = {
+        emoji_font = "YAZELIX_TERMINAL_EMOJI_FONT";
       };
     };
   } ''

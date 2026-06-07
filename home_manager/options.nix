@@ -6,6 +6,7 @@
   runtimeToolSourceModes,
   terminalDescriptionBullets,
   terminalVariants,
+  yzxtermEmojiFonts,
   yzxtermProfiles,
 }:
 
@@ -87,6 +88,19 @@ ${terminalDescriptionBullets}
       - "full": Rio trail cursor defaults without custom shaders
       - "baseline": no cursor effects
       - "shaders": Rio trail cursor plus generated Yazelix cursor shaders
+    '';
+  };
+
+  yzxterm_emoji_font = mkOption {
+    type = types.enum yzxtermEmojiFonts;
+    default = "noto";
+    description = ''
+      Yazelix Terminal emoji fallback preset used by generated runtime configs
+      and Linux desktop entries.
+
+      - "noto": current Noto Color Emoji fallback
+      - "twitter": Twitter/Twemoji color emoji fallback
+      - "serenityos": SerenityOS emoji fallback
     '';
   };
 

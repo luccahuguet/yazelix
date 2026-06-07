@@ -42,6 +42,16 @@ let
       throw "Yazelix runtimeVariant yzxterm requires yzxtermPackageMetadata.wrapper_commands.desktop"
     else if !(builtins.isAttrs (metadata.config_roots or null)) then
       throw "Yazelix runtimeVariant yzxterm requires yzxtermPackageMetadata.config_roots"
+    else if !(builtins.isList (metadata.supported_emoji_fonts or null)) then
+      throw "Yazelix runtimeVariant yzxterm requires yzxtermPackageMetadata.supported_emoji_fonts"
+    else if !(builtins.elem "noto" metadata.supported_emoji_fonts) then
+      throw "Yazelix runtimeVariant yzxterm requires yzxtermPackageMetadata.supported_emoji_fonts to include noto"
+    else if !(builtins.elem "twitter" metadata.supported_emoji_fonts) then
+      throw "Yazelix runtimeVariant yzxterm requires yzxtermPackageMetadata.supported_emoji_fonts to include twitter"
+    else if !(builtins.elem "serenityos" metadata.supported_emoji_fonts) then
+      throw "Yazelix runtimeVariant yzxterm requires yzxtermPackageMetadata.supported_emoji_fonts to include serenityos"
+    else if !(builtins.isString (metadata.wrapper_env.emoji_font or null)) then
+      throw "Yazelix runtimeVariant yzxterm requires yzxtermPackageMetadata.wrapper_env.emoji_font"
     else
       metadata;
   yzxtermPackageMetadata =

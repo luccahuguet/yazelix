@@ -418,6 +418,10 @@ fn validate_home_manager_desktop_entry_contract(repo_root: &Path) -> Result<Vec<
         .get("sessionProfile")
         .and_then(JsonValue::as_str)
         .unwrap_or_default();
+    let shader_session_emoji_font = shader_entry
+        .get("sessionEmojiFont")
+        .and_then(JsonValue::as_str)
+        .unwrap_or_default();
     if !shader_entry
         .get("terminal")
         .and_then(JsonValue::as_bool)
@@ -428,9 +432,11 @@ fn validate_home_manager_desktop_entry_contract(repo_root: &Path) -> Result<Vec<
                 .to_string(),
         );
     }
-    if shader_exec != "env YAZELIX_TERMINAL_PROFILE=shaders /tmp/profile/bin/yzx desktop launch" {
+    if shader_exec
+        != "env YAZELIX_TERMINAL_APP_ID=com.yazelix.Yazelix.Yzxterm YAZELIX_TERMINAL_EMOJI_FONT=twitter YAZELIX_TERMINAL_PROFILE=shaders /tmp/profile/bin/yzx desktop launch"
+    {
         errors.push(format!(
-            "Home Manager shader yzxterm profile desktop entry Exec mismatch: expected env YAZELIX_TERMINAL_PROFILE=shaders /tmp/profile/bin/yzx desktop launch, got {}",
+            "Home Manager shader yzxterm profile desktop entry Exec mismatch: expected app id, emoji font, and shader profile env, got {}",
             format_json_value(&JsonValue::String(shader_exec.to_string()))
         ));
     }
@@ -444,6 +450,12 @@ fn validate_home_manager_desktop_entry_contract(repo_root: &Path) -> Result<Vec<
         errors.push(format!(
             "Home Manager shader yzxterm profile session variable mismatch: expected shaders, got {}",
             format_json_value(&JsonValue::String(shader_session_profile.to_string()))
+        ));
+    }
+    if shader_session_emoji_font != "twitter" {
+        errors.push(format!(
+            "Home Manager yzxterm emoji font session variable mismatch: expected twitter, got {}",
+            format_json_value(&JsonValue::String(shader_session_emoji_font.to_string()))
         ));
     }
     let package_count = extra_entry
@@ -509,6 +521,12 @@ fn validate_home_manager_desktop_entry_contract(repo_root: &Path) -> Result<Vec<
                 format_json_value(&JsonValue::String(exec.to_string()))
             ));
         }
+        if terminal == "yzxterm" && !exec.contains("YAZELIX_TERMINAL_EMOJI_FONT=twitter") {
+            errors.push(format!(
+                "Home Manager extra yzxterm desktop entry Exec must pass the configured yzxterm emoji font, got {}",
+                format_json_value(&JsonValue::String(exec.to_string()))
+            ));
+        }
         if !entry
             .get("terminal")
             .and_then(JsonValue::as_bool)
@@ -557,6 +575,15 @@ fn validate_home_manager_activation_contract(repo_root: &Path) -> Result<Vec<Str
                 .to_string(),
         );
     }
+    if !yzxterm_line
+        .map(|line| line.contains("YAZELIX_TERMINAL_EMOJI_FONT=twitter"))
+        .unwrap_or(false)
+    {
+        errors.push(
+            "Home Manager activation must pass yzxterm_emoji_font to extra yzxterm launcher materialization"
+                .to_string(),
+        );
+    }
     if !materialization_lines
         .iter()
         .all(|line| line.contains("/libexec/yzx_core"))
@@ -594,6 +621,7 @@ fn build_home_manager_activation_expr(repo_root: &Path) -> String {
     lines.extend([
         "      { config.programs.yazelix.extra_terminal_launchers = [ \"yzxterm\" ]; }".to_string(),
         "      { config.programs.yazelix.yzxterm_profile = \"shaders\"; }".to_string(),
+        "      { config.programs.yazelix.yzxterm_emoji_font = \"twitter\"; }".to_string(),
         "    ];".to_string(),
         "  };".to_string(),
         "in eval.config.home.activation.yazelixGeneratedRuntimeConfigs.data".to_string(),
@@ -880,6 +908,9 @@ fn build_home_manager_desktop_entry_expr(
             "      {{ config.programs.yazelix.yzxterm_profile = \"{}\"; }}",
             escape_nix_string(profile)
         ));
+        lines.push(
+            "      { config.programs.yazelix.yzxterm_emoji_font = \"twitter\"; }".to_string(),
+        );
     }
     if let Some(terminal) = active_terminal {
         lines.push(format!(
@@ -927,6 +958,8 @@ fn build_home_manager_desktop_entry_expr(
         "  exec = entry.exec or \"\";".to_string(),
         "  terminal = entry.terminal or false;".to_string(),
         "  sessionProfile = eval.config.home.sessionVariables.YAZELIX_TERMINAL_PROFILE or \"\";"
+            .to_string(),
+        "  sessionEmojiFont = eval.config.home.sessionVariables.YAZELIX_TERMINAL_EMOJI_FONT or \"\";"
             .to_string(),
         "  packageCount = builtins.length eval.config.home.packages;".to_string(),
         "  ghostty = { present = builtins.hasAttr ghosttyKey entries; name = ghosttyEntry.name or \"\"; exec = ghosttyEntry.exec or \"\"; terminal = ghosttyEntry.terminal or false; };".to_string(),

@@ -73,6 +73,7 @@ fn prepare_runtime_materialization_fixture(
     let runtime_yzxterm_baseline_dir = runtime_yzxterm_package_dir.join("baseline");
     let runtime_yzxterm_shader_profile_dir =
         runtime_yzxterm_package_dir.join("profiles").join("shaders");
+    let runtime_yzxterm_emoji_dir = runtime_yzxterm_package_dir.join("emoji");
     fs::create_dir_all(managed_config.parent().unwrap()).unwrap();
     fs::create_dir_all(managed_zellij_config.parent().unwrap()).unwrap();
     fs::create_dir_all(&zellij_layout_dir).unwrap();
@@ -86,6 +87,7 @@ fn prepare_runtime_materialization_fixture(
     fs::create_dir_all(&runtime_yzxterm_package_dir).unwrap();
     fs::create_dir_all(&runtime_yzxterm_baseline_dir).unwrap();
     fs::create_dir_all(&runtime_yzxterm_shader_profile_dir).unwrap();
+    fs::create_dir_all(&runtime_yzxterm_emoji_dir).unwrap();
     write_runtime_contract_assets(repo, &runtime_dir);
     fs::write(
         runtime_shell_dir.join("yazelix_nu.sh"),
@@ -123,50 +125,15 @@ fn prepare_runtime_materialization_fixture(
     fs::write(runtime_plugin_dir.join("zjstatus.wasm"), b"wasm").unwrap();
     fs::write(runtime_plugin_dir.join("yzpp.wasm"), b"wasm").unwrap();
     write_runtime_cursor_shader_assets(&runtime_ghostty_shader_dir);
-    fs::write(
-        runtime_yzxterm_package_dir.join("config.toml"),
-        r##"confirm-before-quit = false
-
-[renderer]
-backend = "Webgpu"
-custom-shader = ["/nix/store/demo/cursor_trail_dusk.glsl"]
-
-[window]
-decorations = "Disabled"
-
-[effects]
-trail-cursor = true
-"##,
-    )
-    .unwrap();
-    fs::write(
-        runtime_yzxterm_baseline_dir.join("config.toml"),
-        r##"confirm-before-quit = false
-
-[renderer]
-backend = "Webgpu"
-
-[window]
-decorations = "Disabled"
-"##,
-    )
-    .unwrap();
-    fs::write(
-        runtime_yzxterm_shader_profile_dir.join("config.toml"),
-        r##"confirm-before-quit = false
-
-[renderer]
-backend = "Webgpu"
-custom-shader = ["/nix/store/demo/cursor_trail_dusk.glsl"]
-
-[window]
-decorations = "Disabled"
-
-[effects]
-trail-cursor = true
-"##,
-    )
-    .unwrap();
+    write_yzxterm_package_profile_set(&runtime_yzxterm_package_dir, None);
+    write_yzxterm_package_profile_set(
+        &runtime_yzxterm_emoji_dir.join("twitter"),
+        Some("Twitter Color Emoji"),
+    );
+    write_yzxterm_package_profile_set(
+        &runtime_yzxterm_emoji_dir.join("serenityos"),
+        Some("SerenityOS Emoji"),
+    );
     fs::write(
         &managed_config,
         render_default_settings_jsonc(&runtime_dir.join("settings_default.jsonc")).unwrap(),
@@ -184,6 +151,74 @@ trail-cursor = true
         zellij_dir,
         zellij_layout_dir,
     }
+}
+
+fn write_yzxterm_package_profile_set(root: &Path, emoji_family: Option<&str>) {
+    let baseline_dir = root.join("baseline");
+    let shader_profile_dir = root.join("profiles").join("shaders");
+    fs::create_dir_all(root).unwrap();
+    fs::create_dir_all(&baseline_dir).unwrap();
+    fs::create_dir_all(&shader_profile_dir).unwrap();
+    let fonts = emoji_family
+        .map(|family| {
+            format!(
+                r#"
+[fonts]
+symbol-map = [{{ start = "1F000", end = "1FB00", font-family = "{family}" }}]
+"#
+            )
+        })
+        .unwrap_or_default();
+    fs::write(
+        root.join("config.toml"),
+        format!(
+            r##"confirm-before-quit = false
+{fonts}
+[renderer]
+backend = "Webgpu"
+custom-shader = ["/nix/store/demo/cursor_trail_dusk.glsl"]
+
+[window]
+decorations = "Disabled"
+
+[effects]
+trail-cursor = true
+"##
+        ),
+    )
+    .unwrap();
+    fs::write(
+        baseline_dir.join("config.toml"),
+        format!(
+            r##"confirm-before-quit = false
+{fonts}
+[renderer]
+backend = "Webgpu"
+
+[window]
+decorations = "Disabled"
+"##
+        ),
+    )
+    .unwrap();
+    fs::write(
+        shader_profile_dir.join("config.toml"),
+        format!(
+            r##"confirm-before-quit = false
+{fonts}
+[renderer]
+backend = "Webgpu"
+custom-shader = ["/nix/store/demo/cursor_trail_dusk.glsl"]
+
+[window]
+decorations = "Disabled"
+
+[effects]
+trail-cursor = true
+"##
+        ),
+    )
+    .unwrap();
 }
 
 fn write_fake_zellij_bar_widget(path: &Path) {
@@ -1170,6 +1205,7 @@ color = "#3bd17a"
         .arg("--from-env")
         .env_remove("YAZELIX_TERMINAL_PROFILE")
         .env_remove("YAZELIX_TERMINAL_EFFECTS")
+        .env_remove("YAZELIX_TERMINAL_EMOJI_FONT")
         .output()
         .unwrap();
 
@@ -1400,6 +1436,7 @@ color = "#ffffff"
         .arg("--from-env")
         .env_remove("YAZELIX_TERMINAL_PROFILE")
         .env_remove("YAZELIX_TERMINAL_EFFECTS")
+        .env_remove("YAZELIX_TERMINAL_EMOJI_FONT")
         .output()
         .unwrap();
 
@@ -1472,6 +1509,7 @@ color = "#3bd17a"
 
     let output = runtime_materialization_command(&fixture, "terminal-materialization.generate")
         .env("YAZELIX_TERMINAL_PROFILE", "shaders")
+        .env_remove("YAZELIX_TERMINAL_EMOJI_FONT")
         .arg("--from-env")
         .output()
         .unwrap();
@@ -1508,6 +1546,116 @@ color = "#3bd17a"
     assert!(!yzxterm_config.contains("generated_effects/tail.glsl"));
     assert!(!yzxterm_config.contains("generated_effects/ripple.glsl"));
     assert!(!yzxterm_config.contains("/nix/store/demo/cursor_trail_dusk.glsl"));
+}
+
+// Defends: yzxterm generated configs can select a child-owned emoji font profile root without losing main-owned transparency, cursor color, or shader edits.
+#[test]
+fn terminal_materialization_yzxterm_emoji_font_selects_child_config_root() {
+    let repo = repo_root();
+    let tmp = tempdir().unwrap();
+    let fixture = prepare_runtime_materialization_fixture(&repo, &tmp);
+    fs::write(fixture.runtime_dir.join("runtime_variant"), "yzxterm\n").unwrap();
+
+    write_managed_config_toml(
+        &fixture,
+        &["[terminal]", "transparency = \"medium\""].join("\n"),
+    );
+    write_cursor_sidecar(
+        &fixture,
+        r##"
+schema_version = 1
+enabled_cursors = ["forest"]
+
+[settings]
+trail = "forest"
+trail_effect = "tail"
+mode_effect = "ripple"
+glow = "high"
+duration = 1.5
+kitty_enable_cursor = true
+
+[[cursor]]
+name = "forest"
+family = "mono"
+color = "#3bd17a"
+"##,
+    );
+
+    let output = runtime_materialization_command(&fixture, "terminal-materialization.generate")
+        .env("YAZELIX_TERMINAL_PROFILE", "shaders")
+        .env("YAZELIX_TERMINAL_EMOJI_FONT", "twitter")
+        .arg("--from-env")
+        .output()
+        .unwrap();
+
+    if !output.status.success() {
+        panic!(
+            "stdout={}\nstderr={}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    assert!(output.stderr.is_empty());
+
+    let yzxterm_config = fs::read_to_string(
+        fixture
+            .state_dir
+            .join("configs")
+            .join("terminal_emulators")
+            .join("yzxterm")
+            .join("config.toml"),
+    )
+    .unwrap();
+    assert!(yzxterm_config.contains("Twitter Color Emoji"));
+    assert!(!yzxterm_config.contains("SerenityOS Emoji"));
+    assert!(yzxterm_config.contains("opacity = 0.85"));
+    assert!(yzxterm_config.contains("cursor = \"#3bd17a\""));
+    assert!(yzxterm_config.contains("custom-shader = ["));
+    assert!(yzxterm_config.contains("cursor_trail_forest.glsl"));
+}
+
+// Defends: invalid yzxterm emoji font preset names fail clearly instead of silently using the default package config.
+#[test]
+fn terminal_materialization_yzxterm_rejects_unknown_emoji_font() {
+    let repo = repo_root();
+    let tmp = tempdir().unwrap();
+    let fixture = prepare_runtime_materialization_fixture(&repo, &tmp);
+    fs::write(fixture.runtime_dir.join("runtime_variant"), "yzxterm\n").unwrap();
+    write_managed_config_toml(&fixture, "[terminal]\n");
+    write_cursor_sidecar(
+        &fixture,
+        r##"
+schema_version = 1
+enabled_cursors = ["snow"]
+
+[settings]
+trail = "snow"
+trail_effect = "none"
+mode_effect = "none"
+glow = "medium"
+duration = 1.0
+kitty_enable_cursor = false
+
+[[cursor]]
+name = "snow"
+family = "mono"
+color = "#ffffff"
+"##,
+    );
+
+    let output = runtime_materialization_command(&fixture, "terminal-materialization.generate")
+        .env("YAZELIX_TERMINAL_EMOJI_FONT", "whatsapp")
+        .arg("--from-env")
+        .output()
+        .unwrap();
+
+    let envelope: Value = error_envelope(&output, 64);
+    assert_eq!(envelope["command"], "terminal-materialization.generate");
+    assert_eq!(envelope["error"]["class"], "usage");
+    assert_eq!(
+        envelope["error"]["message"],
+        "Unsupported YAZELIX_TERMINAL_EMOJI_FONT: whatsapp. Use noto, twitter, or serenityos."
+    );
 }
 
 // Regression: yzxterm shader activation must replace stale copied shader assets after a runtime update instead of reusing the old shader directory.
@@ -1555,6 +1703,7 @@ color = "#3bd17a"
 
     let output = runtime_materialization_command(&fixture, "terminal-materialization.generate")
         .env("YAZELIX_TERMINAL_PROFILE", "shaders")
+        .env_remove("YAZELIX_TERMINAL_EMOJI_FONT")
         .arg("--from-env")
         .output()
         .unwrap();

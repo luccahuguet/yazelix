@@ -66,6 +66,7 @@ If you already have your own Home Manager flake, the minimal setup is:
     enable = true;
     terminal = "ghostty"; # Default; use "kitty", "rio", "yzxterm", "wezterm", or Linux-only "foot"/"ratty" for alternate packaged terminal paths
     yzxterm_profile = "full"; # Default; use "baseline" or "shaders" for Yazelix Terminal profile selection
+    yzxterm_emoji_font = "noto"; # Default; use "twitter" or "serenityos" to dogfood alternate yzxterm emoji fallbacks
     # Customize other options as needed - see example.nix
     # Set manage_config = true if you want Home Manager to own settings.jsonc
   };
@@ -80,12 +81,15 @@ To use Yazelix Terminal as the packaged terminal:
     enable = true;
     terminal = "yzxterm";
     yzxterm_profile = "shaders";
+    yzxterm_emoji_font = "twitter";
     extra_terminal_launchers = [ "ghostty" "rio" "wezterm" ];
   };
 }
 ```
 
 `terminal` controls the packaged terminal Yazelix launches. There is no fallback to another packaged terminal when this option is selected; a missing or mispackaged terminal fails clearly. `yzxterm_profile` controls Yazelix Terminal's generated profile for activation, desktop launches, and new shell sessions: `full` keeps Rio trail cursor without custom shaders, `baseline` disables effects, and `shaders` enables the generated Yazelix cursor shader chain
+
+`yzxterm_emoji_font` controls Yazelix Terminal's packaged emoji fallback for activation, desktop launches, and new shell sessions. `noto` is the compatible default, `twitter` selects Twitter/Twemoji color emoji, and `serenityos` selects SerenityOS emoji. The setting applies only to yzxterm; other terminal variants keep their own font behavior.
 
 `extra_terminal_launchers` installs additional Linux desktop entries such as `New Yazelix - Ghostty`, `New Yazelix - Rio`, and `New Yazelix - WezTerm` without changing the active runtime identity. These entries point directly at their terminal variant packages in the Nix store, so their dependencies stay available without adding duplicate `bin/yzx` commands to the Home Manager profile. Do not include the active `terminal` value in this list; the active terminal already gets the profile-owned launcher
 

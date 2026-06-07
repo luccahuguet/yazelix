@@ -46,7 +46,7 @@ See [Terminal Emulator Comparison](./terminal_emulators.md) for a detailed break
 **Yazelix Terminal**
 - Experimental Rio-derived Rust first-party terminal path
 - Provided by `#yzxterm` and by `programs.yazelix.terminal = "yzxterm"`
-- Uses the packaged `yazelix-terminal-desktop` wrapper, generated Yazelix config, BELL notifications, protocol coverage, Kitty graphics, Rio trail cursor defaults, opt-in `yazelix-cursors` shader support through `programs.yazelix.yzxterm_profile = "shaders"`, and `terminal.transparency`
+- Uses the packaged `yazelix-terminal-desktop` wrapper, generated Yazelix config, BELL notifications, protocol coverage, Kitty graphics, Rio trail cursor defaults, opt-in `yazelix-cursors` shader support through `programs.yazelix.yzxterm_profile = "shaders"`, yzxterm emoji fallback selection through `programs.yazelix.yzxterm_emoji_font`, and `terminal.transparency`
 - Reference: https://github.com/luccahuguet/yazelix-terminal
 
 **Rio**
