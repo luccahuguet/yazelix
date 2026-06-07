@@ -108,10 +108,10 @@ Yazelix already had a floating command-palette popup, but no coherent popup mode
 - `zellij.custom_popups` is a list of user-defined popup specs with `id`,
   `command`, `keybindings`, and optional `keep_alive`.
 - The default custom popup is `{ id = "btm", command = ["btm"], keybindings = ["Alt Shift B"], keep_alive = true }`.
-- `keep_alive = true` makes focused toggle hide the popup without killing the
-  child process. Explicit close still closes the pane. Omitted `keep_alive`
-  defaults to true for the default-shaped `btm` popup and false for other
-  custom popups.
+- `keep_alive = true` makes focused toggle suppress that popup pane without
+  killing the child process or hiding the whole floating layer. Explicit close
+  still closes the pane. Omitted `keep_alive` defaults to true for the
+  default-shaped `btm` popup and false for other custom popups.
 - Popup geometry is user-configurable through `zellij.popup_width_percent` and `zellij.popup_height_percent`.
 - Popup width and height percentages must be integers in the range `1..100`.
 - The default popup width and height are both `90`.
@@ -128,8 +128,9 @@ Yazelix already had a floating command-palette popup, but no coherent popup mode
 - `Alt+Shift+K` does the same for the semantic top popup slot, which defaults
   to `yzx config ui`, Yazelix's ratconfig-backed JSONC settings editor.
 - `Alt+Shift+B` toggles the semantic btm popup slot. It defaults to the bundled
-  `btm` process viewer through `zellij.custom_popups` and hides instead of
-  closing on focused toggle so process graphs can keep their history.
+  `btm` process viewer through `zellij.custom_popups` and suppresses that pane
+  instead of closing it on focused toggle so process graphs can keep their
+  history.
 - When `Alt+Shift+J` closes the configured popup pane, Yazelix runs `yzx sidebar
   refresh` through an `on_close` hook so lazygit-style workflows refresh the
   managed Yazi sidebar.
