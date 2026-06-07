@@ -154,10 +154,15 @@ validates Ghostty-compatible cursor shaders, Yazelix host mode, event-mode
 cursor animation, Kitty graphics, Sixel, iTerm2 images, OSC 133, OSC 66, OSC 99,
 OSC 52, OSC 21, OSC 22, Kitty keyboard, Kitty multiple cursors, safe Kitty file
 transfer, OSC 5522 text clipboard, DECCARA, and unscrolling.
+For Yazelix workflows, that already puts it ahead of vanilla Rio on protocol
+coverage, cursor/shader integration, package metadata, BELL/notification
+behavior, and stack image-preview fixes.
 
 Its main weakness is not protocol ambition. The risk is release maturity:
 Wayland/windowing/GPU behavior, packaged desktop launch, input responsiveness,
 graphics previews, and cursor shader alignment need continued soak time.
+The experimental release closeout is recorded in
+`yazelix-terminal` at `docs/yazelix/release_closeout_2026_06.md`.
 
 ### Rio
 
