@@ -9,6 +9,7 @@ Use Beads Rust (`br`) as the agent memory and triage layer for Yazelix work.
 - Use `AGENTS.md` as the single durable source of agent workflow rules and command-surface policy.
 - Use `br ready` to find unblocked work and `br show <id>` for detailed issue context instead of manually reconstructing project state from `.beads`.
 - Use `br` for all issue mutations: create, update, close, dependency management.
+- Use `docs/child_repo_beads_ownership_policy.md` as the durable policy for whether main Yazelix Beads, child-repo Beads, or both should track cross-repo work.
 - `br` uses `.beads/issues.jsonl` as the tracked durable interchange file and a local ignored SQLite database at `.beads/beads.db`.
 - Run `br sync --import-only --rebuild` after a fresh checkout or suspicious local database state, and `br sync --flush-only` before committing if you need an explicit JSONL refresh.
 - Never fire `br` write commands in parallel from multiple tools or subshells at once; serialize issue mutations and sync operations.
@@ -142,6 +143,7 @@ When creating new files or directories, always use underscores to maintain consi
 
 ## Cross-Repo Release Transactions
 
+- Use `docs/child_repo_beads_ownership_policy.md` for the Beads ownership split around child source edits, main integration parents, GitHub issue mapping, and release transaction evidence.
 - Treat a main-repo `flake.lock` update that consumes a child-repo change as a coupled release transaction, not as a local-only integration. Trivial child-only docs, tests, CI, or internal package changes can be handled in the child repo by themselves.
 - Local `--override-input` validation is only a development smoke test because it can pass against unpublished child commits. Before committing, closing beads, or pushing the main repo for a coupled change, push the child repo first, update the main `flake.lock` to that GitHub revision, and run the main validation without overrides.
 - Close Beads and flush `.beads/issues.jsonl` with the published main change, after manual test approval when the coupled runtime change is non-trivial. If the main lock update or no-overrides validation fails after the child push, leave the child commit published but unused unless the child repo itself needs a fix or revert.
