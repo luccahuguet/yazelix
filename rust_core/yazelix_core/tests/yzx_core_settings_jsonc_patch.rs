@@ -136,7 +136,7 @@ fn inserts_structured_values_without_rewriting_document() {
             {
                 "id": "zenith",
                 "command": ["zenith"],
-                "keybindings": ["Alt Shift B"],
+                "keybindings": ["Alt Shift I"],
                 "keep_alive": true
             }
         ]),

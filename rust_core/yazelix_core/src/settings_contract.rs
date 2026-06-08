@@ -13,7 +13,7 @@ use yazelix_ratconfig::migration::{MigrationError, MigrationOp};
 pub const SETTINGS_CONTRACT_ID: &str = "yazelix.settings";
 pub const SETTINGS_CONTRACT_STATE_PATH: &str = "ratconfig.contract";
 const SETTINGS_CONTRACT_BASELINE_VERSION: u64 = 1;
-const SETTINGS_CONTRACT_CURRENT_VERSION: u64 = 7;
+const SETTINGS_CONTRACT_CURRENT_VERSION: u64 = 8;
 const OPTIONAL_ADDITIVE_DEFAULT_PATHS: &[&str] = &["zellij.custom_popups"];
 
 const LEGACY_SIDEBAR_SETTING_RENAMES: &[(&str, &str)] = &[
@@ -154,6 +154,15 @@ fn settings_contract_for_defaults(defaults: &JsonValue) -> ConfigContract {
                     transform: replace_default_btm_popup_with_zenith,
                 }],
             ),
+            ContractChange::automatic(
+                "move-default-zenith-popup-to-information-key",
+                7,
+                8,
+                vec![MigrationOp::Transform {
+                    path: "zellij.custom_popups".to_string(),
+                    transform: move_default_zenith_popup_to_information_key,
+                }],
+            ),
         ],
     }
 }
@@ -245,7 +254,7 @@ fn replace_default_btm_popup_with_zenith(value: &JsonValue) -> Result<Option<Jso
                 next.push(json!({
                     "id": "zenith",
                     "command": ["zenith"],
-                    "keybindings": ["Alt Shift B"],
+                    "keybindings": ["Alt Shift I"],
                     "keep_alive": true,
                 }));
             }
@@ -267,6 +276,46 @@ fn is_zenith_popup(value: &JsonValue) -> bool {
         .and_then(|object| object.get("id"))
         .and_then(JsonValue::as_str)
         == Some("zenith")
+}
+
+fn move_default_zenith_popup_to_information_key(
+    value: &JsonValue,
+) -> Result<Option<JsonValue>, String> {
+    let popups = value
+        .as_array()
+        .ok_or_else(|| "expected a custom popup array".to_string())?;
+    let mut changed = false;
+    let mut next = Vec::with_capacity(popups.len());
+
+    for popup in popups {
+        if is_default_zenith_popup_on_bottom_key(popup) {
+            let mut migrated = popup.clone();
+            migrated["keybindings"] = json!(["Alt Shift I"]);
+            next.push(migrated);
+            changed = true;
+        } else {
+            next.push(popup.clone());
+        }
+    }
+
+    if changed {
+        Ok(Some(JsonValue::Array(next)))
+    } else {
+        Ok(None)
+    }
+}
+
+fn is_default_zenith_popup_on_bottom_key(value: &JsonValue) -> bool {
+    let Some(object) = value.as_object() else {
+        return false;
+    };
+    object.get("id").and_then(JsonValue::as_str) == Some("zenith")
+        && string_array_equals(object.get("command"), &["zenith"])
+        && string_array_equals(object.get("keybindings"), &["Alt Shift B"])
+        && object
+            .get("keep_alive")
+            .map(|value| value.as_bool() == Some(true) || value.is_null())
+            .unwrap_or(true)
 }
 
 fn is_default_btm_popup(value: &JsonValue) -> bool {
@@ -472,6 +521,45 @@ mod tests {
                 {
                     "id": "zenith",
                     "command": ["zenith"],
+                    "keybindings": ["Alt Shift I"],
+                    "keep_alive": true
+                }
+            ])
+        );
+    }
+
+    // Regression: the short-lived default Zenith binding follows the information mnemonic without touching user-owned popup shapes.
+    #[test]
+    fn rewrites_default_zenith_popup_to_information_key() {
+        let migrated = move_default_zenith_popup_to_information_key(&json!([
+            {
+                "id": "zenith",
+                "command": ["zenith"],
+                "keybindings": ["Alt Shift B"],
+                "keep_alive": true
+            },
+            {
+                "id": "zenith",
+                "command": ["zenith", "--layout", "process"],
+                "keybindings": ["Alt Shift B"],
+                "keep_alive": true
+            }
+        ]))
+        .unwrap()
+        .unwrap();
+
+        assert_eq!(
+            migrated,
+            json!([
+                {
+                    "id": "zenith",
+                    "command": ["zenith"],
+                    "keybindings": ["Alt Shift I"],
+                    "keep_alive": true
+                },
+                {
+                    "id": "zenith",
+                    "command": ["zenith", "--layout", "process"],
                     "keybindings": ["Alt Shift B"],
                     "keep_alive": true
                 }

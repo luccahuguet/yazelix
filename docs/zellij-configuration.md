@@ -118,7 +118,7 @@ Yazelix exposes three built-in popup command slots plus a user-defined popup lis
 - `bottom_popup` uses `zellij.popup_commands.bottom_popup` and defaults to `lazygit` on `Alt+Shift+J`
 - `top_popup` uses `zellij.popup_commands.top_popup` and defaults to `yzx config ui`, Yazelix's ratconfig-backed JSONC settings editor, on `Alt+Shift+K`
 - `menu` uses `zellij.popup_commands.menu` and defaults to `yzx menu` on `Alt+Shift+M`
-- `custom_popups` defines additional popup ids, commands, keybindings, and optional keep-alive behavior; the default entry is `zenith` on `Alt+Shift+B`
+- `custom_popups` defines additional popup ids, commands, keybindings, and optional keep-alive behavior; the default entry is `zenith` on `Alt+Shift+I`
 
 For example, keep the built-in surfaces and the default Zenith monitor popup, then add a personal monitor popup on `Alt+Shift+Y`:
 
@@ -129,7 +129,7 @@ For example, keep the built-in surfaces and the default Zenith monitor popup, th
       {
         "id": "zenith",
         "command": ["zenith"],
-        "keybindings": ["Alt Shift B"],
+        "keybindings": ["Alt Shift I"],
         "keep_alive": true
       },
       {
@@ -208,7 +208,7 @@ ui {
     {
       "id": "zenith",
       "command": ["zenith"],
-      "keybindings": ["Alt Shift B"],
+      "keybindings": ["Alt Shift I"],
       "keep_alive": true
     }
   ],

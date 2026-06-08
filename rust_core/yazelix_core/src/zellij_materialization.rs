@@ -415,7 +415,7 @@ fn resolve_popup_commands_config(
                 "unknown_popup_command",
                 format!("Unsupported zellij.popup_commands entry: {name}."),
                 if name == "zenith" {
-                    "Move zenith to zellij.custom_popups: { \"id\": \"zenith\", \"command\": [\"zenith\"], \"keybindings\": [\"Alt Shift B\"], \"keep_alive\": true }."
+                    "Move zenith to zellij.custom_popups: { \"id\": \"zenith\", \"command\": [\"zenith\"], \"keybindings\": [\"Alt Shift I\"], \"keep_alive\": true }."
                 } else {
                     "Use one of: bottom_popup, top_popup, menu."
                 },
@@ -441,7 +441,7 @@ fn default_custom_popups() -> Vec<CustomPopup> {
     vec![CustomPopup {
         id: "zenith".to_string(),
         command: vec!["zenith".into()],
-        keybindings: vec!["Alt Shift B".into()],
+        keybindings: vec!["Alt Shift I".into()],
         keep_alive: true,
     }]
 }
@@ -3055,7 +3055,7 @@ keybinds {
                 {
                     "id": "zenith",
                     "command": ["zenith"],
-                    "keybindings": ["Alt Shift B"],
+                    "keybindings": ["Alt Shift I"],
                 },
                 {
                     "id": "btop",
@@ -3080,7 +3080,7 @@ keybinds {
                 CustomPopup {
                     id: "zenith".to_string(),
                     command: vec!["zenith".to_string()],
-                    keybindings: vec!["Alt Shift B".to_string()],
+                    keybindings: vec!["Alt Shift I".to_string()],
                     keep_alive: true,
                 },
                 CustomPopup {

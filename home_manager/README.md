@@ -104,7 +104,7 @@ When `manage_config = true`, Home Manager can also own user-defined popup surfac
       {
         id = "zenith";
         command = [ "zenith" ];
-        keybindings = [ "Alt Shift B" ];
+        keybindings = [ "Alt Shift I" ];
         keep_alive = true;
       }
       {

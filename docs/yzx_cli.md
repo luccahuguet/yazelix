@@ -238,8 +238,8 @@ Open a transient floating-pane command inside Zellij
 - Uses the current tab workspace root as cwd when available; otherwise uses the current shell cwd
 - Errors if not in Zellij
 - Built-in generated popup specs use `zellij.popup_commands`: `bottom_popup` defaults to `["lazygit"]`, `top_popup` defaults to `["yzx", "config", "ui"]`, and `menu` defaults to `["yzx", "menu"]`
-- User-defined generated popup specs use `zellij.custom_popups`; the default entry is `zenith` with `command = ["zenith"]`, `keybindings = ["Alt Shift B"]`, and `keep_alive = true`
-- Default surface keys: `Alt Shift J` for `bottom_popup`, `Alt Shift K` for `top_popup`, and `Alt Shift B` for `zenith`
+- User-defined generated popup specs use `zellij.custom_popups`; the default entry is `zenith` with `command = ["zenith"]`, `keybindings = ["Alt Shift I"]`, and `keep_alive = true`
+- Default surface keys: `Alt Shift J` for `bottom_popup`, `Alt Shift K` for `top_popup`, and `Alt Shift I` for `zenith`
 - Popup panes are named `yzx_popup`, `yzx_bottom_popup`, `yzx_top_popup`, `yzx_menu`, and `yzx_<custom id>`
 
 ### `yzx config [--path]`

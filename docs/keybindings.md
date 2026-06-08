@@ -21,7 +21,7 @@ The `Alt+Shift+H/J/K/L` layer follows Vim-style spatial placement: `H` is the le
 | Alt+Shift+J              | Toggle the bottom popup       |
 | Alt+Shift+K              | Toggle the top popup          |
 | Alt+Shift+L              | Toggle the right Codex agent sidebar |
-| Alt+Shift+B              | Toggle the keep-alive Zenith process viewer popup |
+| Alt+Shift+I              | Toggle the keep-alive Zenith process information popup |
 | Ctrl+y                   | Toggle editor/left sidebar focus |
 | Ctrl+Shift+Y             | Toggle editor/right agent focus |
 | Alt+[ / Alt+]            | Previous/next layout family; usually no visible effect with the packaged single family |
@@ -31,7 +31,7 @@ The `Alt+Shift+H/J/K/L` layer follows Vim-style spatial placement: `H` is the le
 |--------------------------|-------------------------------|-------|
 | **Alt+Shift+M**          | **Yazelix menu**              | opens yzx command palette popup |
 | **Alt+Shift+J/K**        | **Bottom/top popup**          | opens, focuses, or closes the configured named popup command |
-| **Alt+Shift+B**          | **Zenith process viewer**        | opens, focuses, or hides the bundled process viewer popup |
+| **Alt+Shift+I**          | **Zenith process information**   | opens, focuses, or hides the bundled process information popup |
 | **Ctrl+Alt+g**           | **Locked mode**               | ⚠️ Remapped (was Ctrl+g) |
 | Ctrl+p                   | Pane mode                     | ✅ Original (no conflict) |
 | Ctrl+n                   | Resize mode                   | ✅ Original (no conflict) |
@@ -44,7 +44,7 @@ The `Alt+Shift+H/J/K/L` layer follows Vim-style spatial placement: `H` is the le
 - **Tab walking**: Alt+w/q walks (focuses) next/previous tab, like browser tab switching.
 - **Tab moving**: Ctrl+Alt+H/L moves the current tab left/right.
 - **Pane moving**: Ctrl+Alt+J/K moves the current pane down/up.
-- **Surface toggles**: Alt+Shift+H/J/K/L maps to left sidebar, bottom popup, top popup, and right sidebar; Alt+Shift+B toggles the keep-alive Zenith process viewer.
+- **Surface toggles**: Alt+Shift+H/J/K/L maps to left sidebar, bottom popup, top popup, and right sidebar; Alt+Shift+I toggles the keep-alive Zenith process information popup.
 - **Direct tab access**: Alt+1 through Alt+9 jumps directly to a tab.
 
 If you find a conflict, please open an issue
@@ -65,7 +65,7 @@ If you find a conflict, please open an issue
 - **Zellij**:
   - `Alt+Shift+F` toggles pane fullscreen
   - `Alt+Shift+H/J/K/L` toggles the left sidebar, bottom popup, top popup, and right Codex agent sidebar
-  - `Alt+Shift+B` toggles the keep-alive Zenith process viewer popup
+  - `Alt+Shift+I` toggles the keep-alive Zenith process information popup
   - `Alt+[` / `Alt+]` selects the previous/next layout family; with the packaged single managed sidebar family, those keys usually keep the visible layout unchanged
   - `Ctrl+Alt+H/L` moves the current tab left/right
   - `Ctrl+Alt+J/K` moves the current pane down/up
@@ -94,7 +94,7 @@ Use semantic remaps for Yazelix-owned actions and native sidecars for the owning
 
 `zellij.keybindings` accepts owner-local action ids such as `bottom_popup`, `top_popup`, `menu`, `toggle_left_sidebar`, `toggle_editor_right_sidebar_focus`, and `open_workspace_terminal`. Shared diagnostics and docs use scoped ids such as `zellij.bottom_popup`. Omitted actions keep defaults, and `[]` disables a Yazelix-owned binding. Yazelix rejects duplicate semantic Zellij keys before launch.
 
-`zellij.popup_commands` sets the command argv for built-in popup surfaces. Defaults are `bottom_popup = ["lazygit"]`, `top_popup = ["yzx", "config", "ui"]` for Yazelix's ratconfig-backed settings editor, and `menu = ["yzx", "menu"]`. `zellij.custom_popups` adds user-defined popup surfaces; the default entry is keep-alive `zenith` with `command = ["zenith"]` and `keybindings = ["Alt Shift B"]`.
+`zellij.popup_commands` sets the command argv for built-in popup surfaces. Defaults are `bottom_popup = ["lazygit"]`, `top_popup = ["yzx", "config", "ui"]` for Yazelix's ratconfig-backed settings editor, and `menu = ["yzx", "menu"]`. `zellij.custom_popups` adds user-defined popup surfaces; the default entry is keep-alive `zenith` with `command = ["zenith"]` and `keybindings = ["Alt Shift I"]`.
 
 `zellij.native_keybindings` accepts curated native policy ids such as `scroll_mode`, `scroll_mode_unbind`, `move_tab_left`, `move_pane_down`, and `move_tab_left_unbind`. These are Yazelix's shipped conflict-remap and validation defaults for native Zellij commands. Omitted entries keep defaults, and `[]` disables one native policy entry. Managed `~/.config/yazelix/zellij.kdl` rejects `keybinds` blocks so it cannot bypass generated workspace controls.
 

@@ -474,7 +474,7 @@ menu = ["yzx", "menu"]
 [fields."zellij.custom_popups"]
 kind = "custom_popup_list"
 default = [
-  { id = "zenith", command = ["zenith"], keybindings = ["Alt Shift B"], keep_alive = true },
+  { id = "zenith", command = ["zenith"], keybindings = ["Alt Shift I"], keep_alive = true },
 ]
 parser_key = "custom_popups"
 home_manager_option = "custom_popups"

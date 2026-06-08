@@ -363,7 +363,7 @@ ${terminalDescriptionBullets}
   custom_popups = mkMainContractOption "zellij.custom_popups" {
     description = ''
       User-defined Yazelix popup surfaces.
-      Default: { id = "zenith"; command = [ "zenith" ]; keybindings = [ "Alt Shift B" ]; keep_alive = true; }.
+      Default: { id = "zenith"; command = [ "zenith" ]; keybindings = [ "Alt Shift I" ]; keep_alive = true; }.
     '';
   };
 

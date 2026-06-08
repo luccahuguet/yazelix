@@ -10,7 +10,7 @@ Upgrade impact: manual action may be required
 
 Highlights:
 - Moved the shared cursor settings namespace from `~/.config/yazelix_ghostty_cursors/settings.jsonc` to `~/.config/yazelix_cursors/settings.jsonc`, and renamed the packaged default template to `yazelix_cursors_default.toml`
-- Replaced the default `Alt Shift B` process monitor popup and bundled runtime tool from `bottom` / `btm` to `zenith`; bottom and SysWatch remain good custom-popup alternatives
+- Replaced the default process monitor popup and bundled runtime tool from `bottom` / `btm` to `zenith`, with the Zenith information popup on `Alt Shift I`; bottom and SysWatch remain good custom-popup alternatives
 
 Manual action:
 - Move existing cursor settings from `~/.config/yazelix_ghostty_cursors/settings.jsonc` to `~/.config/yazelix_cursors/settings.jsonc`, or run `yzc init` / relaunch Yazelix to create a fresh cursor settings file

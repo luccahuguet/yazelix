@@ -88,7 +88,7 @@ Maintainer-facing fork status, child-repo ownership tables, README delta rules, 
 - [zoxide](https://github.com/ajeetdsouza/zoxide) — Directory jumper used from the shell, Yazi's native `Z` flow, and Yazelix's `Alt+z` direct-open Yazi flow.
 - [starship](https://starship.rs) — Prompt engine configured for the managed shells and surfaced inside Yazi through `starship.yazi`.
 - [lazygit](https://github.com/jesseduffield/lazygit) — Default managed popup command, normally toggled with `Alt+Shift+J`.
-- [Zenith](https://github.com/bvaisvil/zenith) — Bundled process viewer for the managed process popup, normally toggled with `Alt+Shift+B`.
+- [Zenith](https://github.com/bvaisvil/zenith) — Bundled process information viewer for the managed process popup, normally toggled with `Alt+Shift+I`.
 - [bottom](https://github.com/ClementTsang/bottom) and [SysWatch](https://github.com/matthart1983/syswatch) — Good process monitor alternatives for users who prefer a custom popup command.
 - [Steel](https://github.com/mattwparas/steel) — Scheme runtime and authoring tools for Yazelix-managed Helix Steel plugins.
 - [carapace](https://github.com/rsteube/carapace-bin) — Cross-shell completion engine used by generated shell initializers.

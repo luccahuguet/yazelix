@@ -427,7 +427,7 @@ fn custom_popup_rows_expose_structured_editor() {
     assert_eq!(command.current_value, "[\"zenith\"]");
     assert_eq!(edit_input_for_field(command), "zenith");
     assert_eq!(keybindings.kind, "string_list");
-    assert_eq!(edit_input_for_field(keybindings), "Alt Shift B");
+    assert_eq!(edit_input_for_field(keybindings), "Alt Shift I");
     assert_eq!(keep_alive.kind, "bool");
     assert_eq!(keep_alive.current_value, "true");
 }
@@ -444,7 +444,7 @@ fn custom_popup_child_rows_write_parent_popup_list() {
             {
                 "id": "zenith",
                 "command": ["zenith"],
-                "keybindings": ["Alt Shift B"],
+                "keybindings": ["Alt Shift I"],
                 "keep_alive": true
             },
             {
@@ -479,7 +479,7 @@ fn custom_popup_child_rows_write_parent_popup_list() {
             {
                 "id": "zenith",
                 "command": ["zenith"],
-                "keybindings": ["Alt Shift B"],
+                "keybindings": ["Alt Shift I"],
                 "keep_alive": true
             },
             {

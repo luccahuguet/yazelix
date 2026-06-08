@@ -64,7 +64,7 @@
       {
         id = "zenith";
         command = [ "zenith" ];
-        keybindings = [ "Alt Shift B" ];
+        keybindings = [ "Alt Shift I" ];
         keep_alive = true;
       }
       # {

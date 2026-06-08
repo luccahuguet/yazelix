@@ -92,12 +92,12 @@ Yazelix runs the workspace as a directional Zellij layout: the editor stays cent
 - **Zellij orchestration:** Zellij owns the workspace, with a managed sidebar and your chosen editor in the managed `editor` pane
 - **Sidebar language:** `sidebar` means the generic side-surface slot; the default sidebar is a Yazi file tree
 - **Spatial toggles:** `Alt+Shift+H/J/K/L` follows the Helix/Vim `h/j/k/l` mnemonic: `H` is left and toggles the left sidebar, `J` is down and toggles the bottom popup, `K` is up and toggles the top popup, and `L` is right and toggles the right agent sidebar. For popups, down/up describes the lower/upper slot mental model, not a literal animation direction
-- **Extra popups:** `Alt+Shift+M/B/C` covers the non-directional popups: `M` opens the command menu, `B` toggles the [Zenith](https://github.com/bvaisvil/zenith) process viewer, and `C` opens the config UI
+- **Extra popups:** `Alt+Shift+M/I/C` covers the non-directional popups: `M` opens the command menu, `I` toggles the [Zenith](https://github.com/bvaisvil/zenith) process information viewer, and `C` opens the config UI
 - **Focus toggles:** `Ctrl+y` toggles focus between the left sidebar and editor, and `Ctrl+Shift+Y` toggles focus between the editor and right agent sidebar
 - **Layout cycling:** `Alt+[` and `Alt+]` are reserved for previous/next layout-family cycling, but the packaged runtime ships one managed sidebar family, so those bindings usually keep the visible layout unchanged; see [Layouts](./docs/layouts.md)
 - **Editor targeting:** Opening from the default Yazi file-tree sidebar with Helix or Neovim targets the managed `editor` pane through the pane orchestrator instead of relying on pane scanning heuristics; it reuses that pane when present and creates one titled `editor` when needed
 - **Reveal flow:** `yzx reveal` is the stable editor-integration surface for jumping the current file back into the managed Yazi file tree
-- **Popup commands:** Built-in popup commands live in `zellij.popup_commands`: bottom defaults to [lazygit](https://github.com/jesseduffield/lazygit), top defaults to `yzx config ui` for Yazelix's ratconfig-backed JSONC settings editor, and menu defaults to `yzx menu`; user-defined popups live in `zellij.custom_popups`, with keep-alive [Zenith](https://github.com/bvaisvil/zenith) shipped as the default process monitor on `Alt+Shift+B`. [bottom](https://github.com/ClementTsang/bottom) and [SysWatch](https://github.com/matthart1983/syswatch) are good alternatives for custom popups
+- **Popup commands:** Built-in popup commands live in `zellij.popup_commands`: bottom defaults to [lazygit](https://github.com/jesseduffield/lazygit), top defaults to `yzx config ui` for Yazelix's ratconfig-backed JSONC settings editor, and menu defaults to `yzx menu`; user-defined popups live in `zellij.custom_popups`, with keep-alive [Zenith](https://github.com/bvaisvil/zenith) shipped as the default process information monitor on `Alt+Shift+I`. [bottom](https://github.com/ClementTsang/bottom) and [SysWatch](https://github.com/matthart1983/syswatch) are good alternatives for custom popups
 - **Editor command:** Configure the managed editor with `editor.command` in `settings.jsonc`
 
 ## Advanced: First-Party Child Repositories
@@ -357,7 +357,7 @@ Run `yzx help` for the live command list
 - `yzx popup <program> [args...]` - Open a one-off command in a transient popup pane
 - `yzx menu --popup` - Open the popup command palette, usually through `Alt+Shift+M`
 - `yzx config ui` - Open Yazelix's ratconfig-backed JSONC settings editor, usually through `Alt+Shift+C`
-- `Alt+Shift+B` - Open the bundled Zenith process viewer popup
+- `Alt+Shift+I` - Open the bundled Zenith process information popup
 - `yzx sidebar refresh` - Refresh the managed Yazi sidebar file tree and status widgets
 
 ### Config and Recovery
@@ -438,7 +438,7 @@ Yazelix uses Zellij as the workspace layer, so the most important bindings are g
 | `Alt+Shift+J` | Toggle the bottom managed popup command, usually `lazygit`, and refresh the Yazi file-tree sidebar git state when the popup keybinding closes it |
 | `Alt+Shift+K` | Toggle the top managed popup command, usually `yzx config ui`, Yazelix's ratconfig-backed settings editor |
 | `Alt+Shift+M` | Open the `yzx` command palette popup |
-| `Alt+Shift+B` | Toggle the keep-alive Zenith process viewer popup |
+| `Alt+Shift+I` | Toggle the keep-alive Zenith process information popup |
 | `Alt+Shift+C` | Open the Yazelix config UI popup |
 | `Alt+1..9` | Jump directly to tabs 1 through 9 |
 | `Alt+w` / `Alt+q` | Move to the next or previous tab |

@@ -305,7 +305,7 @@ fn root_command_rows() -> Vec<TableRow> {
         zellij_action_row("bottom_popup"),
         zellij_action_row("top_popup"),
         zellij_action_row("menu"),
-        table_row(&["Alt+Shift+B", "Toggle the keep-alive Zenith custom popup"]),
+        table_row(&["Alt+Shift+I", "Toggle the keep-alive Zenith custom popup"]),
         zellij_action_row("config"),
     ]
 }
@@ -726,7 +726,7 @@ mod tests {
         assert!(rendered.contains("Toggle the keep-alive Zenith custom popup"));
         assert!(rendered.contains("yazi.open_zoxide_in_editor"));
         assert!(rendered.contains("Alt+Shift+M"));
-        assert!(rendered.contains("Alt+Shift+B"));
+        assert!(rendered.contains("Alt+Shift+I"));
         assert!(rendered.contains("Alt+z"));
         assert!(rendered.contains("Alt+Shift+C"));
         assert!(rendered.contains("Open the Yazelix command palette popup"));

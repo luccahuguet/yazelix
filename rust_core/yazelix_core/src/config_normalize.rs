@@ -665,7 +665,7 @@ fn make_schema_diagnostic(finding: SchemaFinding) -> ConfigDiagnostic {
                     format!("Moved custom popup config field at {}", finding.path);
                 diagnostic.detail_lines = vec![
                     finding.message,
-                    "Next: Move the Zenith popup to zellij.custom_popups with { \"id\": \"zenith\", \"command\": [\"zenith\"], \"keybindings\": [\"Alt Shift B\"], \"keep_alive\": true }.".to_string(),
+                    "Next: Move the Zenith popup to zellij.custom_popups with { \"id\": \"zenith\", \"command\": [\"zenith\"], \"keybindings\": [\"Alt Shift I\"], \"keep_alive\": true }.".to_string(),
                     "Next: Keep zellij.popup_commands limited to bottom_popup, top_popup, and menu.".to_string(),
                     "Next: Run `yzx doctor --verbose` to review the full config report."
                         .to_string(),
