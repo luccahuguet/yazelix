@@ -21,7 +21,7 @@ let
   defaultTerminal = terminalMetadata.default;
   terminalVariants = terminalMetadata.supported;
   terminalDescriptionBullets = lib.concatMapStringsSep "\n" (
-    terminal: ''        - "${terminal}": ${terminalMetadata.description terminal}''
+    terminal: "        - \"${terminal}\": ${terminalMetadata.description terminal}"
   ) terminalVariants;
   runtimeToolSourceModes = [
     "bundled"
