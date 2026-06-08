@@ -87,16 +87,16 @@ Cursor presets use their own config at `~/.config/yazelix_ghostty_cursors/settin
 
 ## Workspace Model
 
-Yazelix runs the workspace as a directional Zellij layout: the editor stays central, sidebars live at the edges, and the `Alt+Shift` toggle layer uses the Helix/Vim `h/j/k/l` mnemonic: left, down, up, right. For popups, down/up is a mental model for the lower and upper popup slots, not a literal animation direction.
+Yazelix runs the workspace as a directional Zellij layout: the editor stays central, sidebars live at the edges, and popup surfaces give immediate access to common tools without leaving the workspace.
 
 - Zellij orchestrates the workspace, with a managed sidebar and your chosen editor in the managed `editor` pane
 - In Yazelix docs, `sidebar` means the generic side-surface slot; the default sidebar is a Yazi file tree
-- `Alt+Shift+H/J/K/L` uses the Helix/Vim direction mnemonic as the spatial surface layer: `H` is left and toggles the left sidebar, `J` is down and toggles the bottom popup, `K` is up and toggles the top popup, and `L` is right and toggles the right agent sidebar
+- `Alt+Shift+H/J/K/L` is the spatial toggle layer and follows the Helix/Vim `h/j/k/l` mnemonic: `H` is left and toggles the left sidebar, `J` is down and toggles the bottom popup, `K` is up and toggles the top popup, and `L` is right and toggles the right agent sidebar. For popups, down/up describes the lower/upper slot mental model, not a literal animation direction
+- `Alt+Shift+M/B/C` covers the non-directional popups: `M` opens the command menu, `B` toggles the btm process viewer, and `C` opens the config UI
 - Use `Ctrl+y` to toggle focus between the left sidebar and editor, and `Ctrl+Shift+Y` to toggle focus between the editor and right agent sidebar
 - `Alt+[` and `Alt+]` are reserved for previous/next layout-family cycling, but the packaged runtime ships one managed sidebar family, so those bindings usually keep the visible layout unchanged; see [Layouts](./docs/layouts.md)
 - When you open something from the default Yazi file-tree sidebar with Helix or Neovim, Yazelix targets the managed `editor` pane through the pane orchestrator instead of relying on pane scanning heuristics; it reuses that pane when present and creates one titled `editor` when needed
 - `yzx reveal` is the stable editor-integration surface for jumping the current file back into the managed Yazi file tree
-- `Alt+Shift+J` toggles the bottom managed popup pane through `yzpp` and refreshes the Yazi file-tree sidebar git view when that popup closes; `Alt+Shift+K` toggles the top popup slot, `Alt+Shift+M` toggles the popup command menu, `Alt+Shift+B` toggles the btm process viewer, and `Alt+Shift+C` toggles the config UI popup
 - Built-in popup commands live in `zellij.popup_commands`: bottom defaults to `lazygit`, top defaults to `yzx config ui` for Yazelix's ratconfig-backed JSONC settings editor, and menu defaults to `yzx menu`; user-defined popups live in `zellij.custom_popups`, with keep-alive `btm` shipped as the default example on `Alt+Shift+B`
 - Configure the managed editor with `editor.command` in `settings.jsonc`
 
