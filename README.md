@@ -87,10 +87,9 @@ Cursor presets use their own config at `~/.config/yazelix_ghostty_cursors/settin
 
 ## Workspace Model
 
-- Yazelix follows the Helix/Vim direction mnemonic: `h` is left, `j` is down, `k` is up, and `l` is right
 - Zellij orchestrates the workspace, with a managed sidebar and your chosen editor in the managed `editor` pane
 - In Yazelix docs, `sidebar` means the generic side-surface slot; the default sidebar is a Yazi file tree
-- `Alt+Shift+H/J/K/L` is the spatial surface layer: `H` toggles the left sidebar, `J` toggles the bottom popup, `K` toggles the top popup, and `L` toggles the right agent sidebar
+- `Alt+Shift+H/J/K/L` uses the Helix/Vim direction mnemonic as the spatial surface layer: `H` is left and toggles the left sidebar, `J` is down and toggles the bottom popup, `K` is up and toggles the top popup, and `L` is right and toggles the right agent sidebar
 - Use `Ctrl+y` to toggle focus between the left sidebar and editor, and `Ctrl+Shift+Y` to toggle focus between the editor and right agent sidebar
 - `Alt+[` and `Alt+]` are reserved for previous/next layout-family cycling, but the packaged runtime ships one managed sidebar family, so those bindings usually keep the visible layout unchanged; see [Layouts](./docs/layouts.md)
 - When you open something from the default Yazi file-tree sidebar with Helix or Neovim, Yazelix targets the managed `editor` pane through the pane orchestrator instead of relying on pane scanning heuristics; it reuses that pane when present and creates one titled `editor` when needed
