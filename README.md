@@ -87,6 +87,8 @@ Cursor presets use their own config at `~/.config/yazelix_ghostty_cursors/settin
 
 ## Workspace Model
 
+Yazelix runs the workspace as a directional Zellij layout: the editor stays central, sidebars live to the sides, and popups open above or below through a Helix/Vim-inspired `Alt+Shift` layer.
+
 - Zellij orchestrates the workspace, with a managed sidebar and your chosen editor in the managed `editor` pane
 - In Yazelix docs, `sidebar` means the generic side-surface slot; the default sidebar is a Yazi file tree
 - `Alt+Shift+H/J/K/L` uses the Helix/Vim direction mnemonic as the spatial surface layer: `H` is left and toggles the left sidebar, `J` is down and toggles the bottom popup, `K` is up and toggles the top popup, and `L` is right and toggles the right agent sidebar
