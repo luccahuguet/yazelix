@@ -940,6 +940,7 @@ mod tests {
         let err = ensure_settings_config(config.path(), &main, &cursor).unwrap_err();
 
         assert_eq!(err.code(), "settings_contract_destination_exists");
+        assert!(err.remediation().contains("yzx reset config"));
     }
 
     // Defends: automatic repair does not guess when old and new sidebar fields both carry values.
@@ -967,6 +968,7 @@ mod tests {
         let err = ensure_settings_config(config.path(), &main, &cursor).unwrap_err();
 
         assert_eq!(err.code(), "settings_contract_destination_exists");
+        assert!(err.remediation().contains("yzx reset config"));
     }
 
     // Defends: Home Manager-owned settings report deterministic reconciliation work without mutating the generated file.

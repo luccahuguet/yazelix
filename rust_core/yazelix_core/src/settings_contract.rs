@@ -373,7 +373,7 @@ fn contract_error_to_core_error(source_path: &Path, error: ContractError) -> Cor
         format!(
             "Yazelix could not reconcile settings.jsonc with the {SETTINGS_CONTRACT_ID} contract."
         ),
-        "Update the reported stale settings manually, then retry. Yazelix only applies deterministic contract rewrites when every affected path is unambiguous.",
+        "Update the reported stale settings manually, then retry. Use `yzx reset config` only as a blunt fallback. Yazelix only applies deterministic contract rewrites when every affected path is unambiguous.",
         json!({
             "path": source_path.display().to_string(),
             "state_path": SETTINGS_CONTRACT_STATE_PATH,
