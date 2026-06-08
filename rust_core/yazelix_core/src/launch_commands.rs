@@ -20,6 +20,49 @@ mod terminal;
 
 use desktop::*;
 
+pub(super) const RUNTIME_RELAUNCH_CLEARED_ENV_KEYS: &[&str] = &[
+    "IN_YAZELIX_SHELL",
+    "RIO_CONFIG_HOME",
+    "YAZELIX_BOOTSTRAP_RUNTIME_DIR",
+    "YAZELIX_CURSOR_COLOR",
+    "YAZELIX_CURSOR_DIVIDER",
+    "YAZELIX_CURSOR_FAMILY",
+    "YAZELIX_CURSOR_NAME",
+    "YAZELIX_CURSOR_PRIMARY_COLOR",
+    "YAZELIX_CURSOR_SECONDARY_COLOR",
+    "YAZELIX_DIR",
+    "YAZELIX_INVOKED_YZX_PATH",
+    "YAZELIX_NU_BIN",
+    "YAZELIX_REDIRECTED_FROM_STALE_YZX_PATH",
+    "YAZELIX_RUNTIME_DIR",
+    "YAZELIX_SESSION_CONFIG_PATH",
+    "YAZELIX_SESSION_FACTS_PATH",
+    "YAZELIX_SKIP_STABLE_WRAPPER_REDIRECT",
+    "YAZELIX_STARTUP_PROFILE_SKIP_WELCOME",
+    "YAZELIX_STATUS_BAR_CACHE_PATH",
+    "YAZELIX_TERMINAL",
+    "YAZELIX_TERMINAL_APP_ID",
+    "YAZELIX_TERMINAL_CONFIG",
+    "YAZELIX_YZX_BIN",
+    "YAZELIX_YZX_CONTROL_BIN",
+    "YAZELIX_YZX_CORE_BIN",
+    "YAZI_ID",
+    "ZELLIJ",
+    "ZELLIJ_DEFAULT_LAYOUT",
+    "ZELLIJ_PANE_ID",
+    "ZELLIJ_SESSION_NAME",
+    "ZELLIJ_TAB_NAME",
+    "ZELLIJ_TAB_POSITION",
+];
+
+pub(super) fn current_runtime_yzx_launcher(runtime_dir: &Path) -> PathBuf {
+    let bin_yzx = runtime_dir.join("bin").join("yzx");
+    if bin_yzx.exists() {
+        return bin_yzx;
+    }
+    runtime_dir.join("shells").join("posix").join("yzx_cli.sh")
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 struct DesktopArgs {
     subcommand: Option<String>,
@@ -761,10 +804,11 @@ mod tests {
         assert!(missing.contains("Application Support/com.mitchellh.ghostty/config"));
     }
 
-    // Invariant: restart must relaunch through the stable owner without leaking old window runtime/session helper env.
+    // Invariant: runtime handoffs must not leak old window runtime/session helper env.
     #[test]
     fn restart_launch_clears_stale_runtime_session_and_helper_env() {
         for key in [
+            "RIO_CONFIG_HOME",
             "YAZELIX_BOOTSTRAP_RUNTIME_DIR",
             "YAZELIX_CURSOR_COLOR",
             "YAZELIX_CURSOR_DIVIDER",
@@ -772,20 +816,48 @@ mod tests {
             "YAZELIX_CURSOR_NAME",
             "YAZELIX_CURSOR_PRIMARY_COLOR",
             "YAZELIX_CURSOR_SECONDARY_COLOR",
+            "YAZELIX_INVOKED_YZX_PATH",
+            "YAZELIX_REDIRECTED_FROM_STALE_YZX_PATH",
             "YAZELIX_RUNTIME_DIR",
             "YAZELIX_SESSION_CONFIG_PATH",
             "YAZELIX_SESSION_FACTS_PATH",
+            "YAZELIX_SKIP_STABLE_WRAPPER_REDIRECT",
             "YAZELIX_STARTUP_PROFILE_SKIP_WELCOME",
             "YAZELIX_STATUS_BAR_CACHE_PATH",
+            "YAZELIX_TERMINAL_APP_ID",
+            "YAZELIX_TERMINAL_CONFIG",
             "YAZELIX_YZX_BIN",
             "YAZELIX_YZX_CONTROL_BIN",
             "YAZELIX_YZX_CORE_BIN",
         ] {
             assert!(
-                RESTART_LAUNCH_CLEARED_ENV_KEYS.contains(&key),
-                "restart launch must clear stale {key}"
+                RUNTIME_RELAUNCH_CLEARED_ENV_KEYS.contains(&key),
+                "runtime handoff must clear stale {key}"
             );
         }
+    }
+
+    // Regression: restart must prefer the current packaged runtime launcher instead of the stable Home Manager wrapper, so secondary terminal variants keep their identity.
+    #[test]
+    fn current_runtime_yzx_launcher_prefers_runtime_bin_yzx() {
+        let tmp = TempDir::new().unwrap();
+        let runtime_dir = tmp.path().join("runtime");
+        let bin_yzx = runtime_dir.join("bin/yzx");
+        fs::create_dir_all(bin_yzx.parent().unwrap()).unwrap();
+        fs::write(&bin_yzx, "#!/bin/sh\n").unwrap();
+
+        assert_eq!(current_runtime_yzx_launcher(&runtime_dir), bin_yzx);
+    }
+
+    // Defends: source checkouts without a packaged bin wrapper can still use the POSIX runtime CLI helper.
+    #[test]
+    fn current_runtime_yzx_launcher_falls_back_to_posix_helper() {
+        let runtime_dir = Path::new("/repo/runtime");
+
+        assert_eq!(
+            current_runtime_yzx_launcher(runtime_dir),
+            PathBuf::from("/repo/runtime/shells/posix/yzx_cli.sh")
+        );
     }
 
     // Defends: desktop entry rendering keeps a quoted launcher path and terminal-backed starter window so spaces do not corrupt the Exec owner surface and pre-terminal failures stay visible.

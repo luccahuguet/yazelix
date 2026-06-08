@@ -81,7 +81,8 @@ const LAUNCH_FLAGS: &[YzxCommandParameter] = &[
     named("config", None, "path", true),
     named("with", None, "string", true),
     switch("home", None),
-    named("terminal", Some("t"), "string", true),
+    named("term", Some("t"), "string", true),
+    named("terminal", None, "string", true),
     switch("verbose", None),
 ];
 const RESTART_FLAGS: &[YzxCommandParameter] = &[

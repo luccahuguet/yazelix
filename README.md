@@ -76,9 +76,11 @@ The supported product in this branch is the v17 Yazelix line
 
 ## Everyday Model
 
-After installation, keep three things in mind:
+After installation, keep this model in mind:
 
 - Edit `~/.config/yazelix/settings.jsonc` for the main workspace settings
+- Use `Alt+Shift+C` for the config UI popup when you want to inspect or edit settings without leaving the workspace
+- Use the popup layer for immediate tools: `Alt+Shift+J` for the bottom popup, usually `lazygit`, `Alt+Shift+K` for the top popup, `Alt+Shift+M` for the command menu, and `Alt+Shift+B` for the process viewer
 - Treat generated runtime state under `~/.local/share/yazelix` as Yazelix-owned output
 - Relaunch the window, or run `yzx restart`, after changing settings that affect live panes
 
@@ -339,6 +341,7 @@ Run `yzx help` for the live command list
 - `yzx enter` - Start Yazelix in the current terminal
 - `yzx launch --path DIR` - Launch from a specific directory
 - `yzx launch --home` - Launch from the home directory
+- `yzx launch --term ghostty` - Launch an installed packaged terminal variant
 - `yzx launch --config ./minimal.jsonc` - Start one window from an alternate complete settings file
 - `yzx launch --with editor.command=nvim` - Override one settings field for this window only
 - `yzx launch --verbose` - Print detailed launch diagnostics

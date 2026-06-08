@@ -3,44 +3,14 @@ use super::config_override::{
 };
 use super::create_sidebar_bootstrap_file;
 use super::process::{command_output_with_overrides, print_completed_output};
+use super::{current_runtime_yzx_launcher, RUNTIME_RELAUNCH_CLEARED_ENV_KEYS};
 use crate::bridge::CoreError;
 use crate::control_plane::{config_override_from_env, runtime_dir_from_env};
-use crate::install_ownership_env::install_ownership_request_from_env_with_runtime_dir;
-use crate::install_ownership_report::evaluate_install_ownership_report;
 use crate::sidebar_bootstrap::SIDEBAR_BOOTSTRAP_CWD_ENV;
-use std::path::PathBuf;
 use std::process::Command;
 use std::thread;
 use std::time::Duration;
 
-pub(super) const RESTART_LAUNCH_CLEARED_ENV_KEYS: &[&str] = &[
-    "IN_YAZELIX_SHELL",
-    "YAZELIX_BOOTSTRAP_RUNTIME_DIR",
-    "YAZELIX_DIR",
-    "YAZELIX_NU_BIN",
-    "YAZELIX_CURSOR_COLOR",
-    "YAZELIX_CURSOR_DIVIDER",
-    "YAZELIX_CURSOR_FAMILY",
-    "YAZELIX_CURSOR_NAME",
-    "YAZELIX_CURSOR_PRIMARY_COLOR",
-    "YAZELIX_CURSOR_SECONDARY_COLOR",
-    "YAZELIX_RUNTIME_DIR",
-    "YAZELIX_SESSION_CONFIG_PATH",
-    "YAZELIX_SESSION_FACTS_PATH",
-    "YAZELIX_STARTUP_PROFILE_SKIP_WELCOME",
-    "YAZELIX_STATUS_BAR_CACHE_PATH",
-    "YAZELIX_TERMINAL",
-    "YAZELIX_YZX_BIN",
-    "YAZELIX_YZX_CONTROL_BIN",
-    "YAZELIX_YZX_CORE_BIN",
-    "YAZI_ID",
-    "ZELLIJ",
-    "ZELLIJ_DEFAULT_LAYOUT",
-    "ZELLIJ_PANE_ID",
-    "ZELLIJ_SESSION_NAME",
-    "ZELLIJ_TAB_NAME",
-    "ZELLIJ_TAB_POSITION",
-];
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub(super) struct RestartArgs {
     pub(super) config: Option<String>,
@@ -78,9 +48,6 @@ pub(super) fn run_restart(args: &[String]) -> Result<i32, CoreError> {
     }
 
     let runtime_dir = runtime_dir_from_env()?;
-    let report = evaluate_install_ownership_report(
-        &install_ownership_request_from_env_with_runtime_dir(runtime_dir.clone())?,
-    );
     let inherited_config_override = config_override_from_env();
     let config_override = prepare_session_config_override(
         parsed
@@ -89,14 +56,17 @@ pub(super) fn run_restart(args: &[String]) -> Result<i32, CoreError> {
             .or(inherited_config_override.as_deref()),
         &parsed.with_overrides,
     )?;
-    let launcher = report
-        .stable_yzx_wrapper
-        .map(PathBuf::from)
-        .unwrap_or_else(|| runtime_dir.join("shells").join("posix").join("yzx_cli.sh"));
-    let mut restart_extra_env = vec![(
-        SIDEBAR_BOOTSTRAP_CWD_ENV.to_string(),
-        Some(restart_file.to_string_lossy().into_owned()),
-    )];
+    let launcher = current_runtime_yzx_launcher(&runtime_dir);
+    let mut restart_extra_env = vec![
+        (
+            SIDEBAR_BOOTSTRAP_CWD_ENV.to_string(),
+            Some(restart_file.to_string_lossy().into_owned()),
+        ),
+        (
+            "YAZELIX_SKIP_STABLE_WRAPPER_REDIRECT".to_string(),
+            Some("1".to_string()),
+        ),
+    ];
     if parsed.skip_welcome {
         restart_extra_env.push((
             "YAZELIX_STARTUP_PROFILE_SKIP_WELCOME".to_string(),
@@ -120,14 +90,14 @@ pub(super) fn run_restart(args: &[String]) -> Result<i32, CoreError> {
                 source,
             )
         })?,
-        RESTART_LAUNCH_CLEARED_ENV_KEYS,
+        RUNTIME_RELAUNCH_CLEARED_ENV_KEYS,
         &restart_extra_env,
         "restart_launch",
         "Retry the restart from a working Yazelix install, or relaunch manually with `yzx launch`.",
     )?;
     if !output.status.success() {
         print_completed_output(&output);
-        eprintln!("❌ Failed to relaunch Yazelix through the stable owner wrapper.");
+        eprintln!("❌ Failed to relaunch Yazelix through the current runtime launcher.");
         return Ok(output.status.code().unwrap_or(1));
     }
 

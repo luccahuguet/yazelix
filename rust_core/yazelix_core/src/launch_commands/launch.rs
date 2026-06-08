@@ -4,10 +4,12 @@ use super::config_override::{
     config_override_extra_env, prepare_session_config_override, resolve_cli_config_override,
 };
 use super::process::{
-    render_launch_failure, run_desktop_deferred_launch_probe, run_detached_launch_probe,
+    command_output_with_overrides, print_completed_output, render_launch_failure,
+    run_desktop_deferred_launch_probe, run_detached_launch_probe,
 };
 use super::resolve_requested_working_dir;
 use super::terminal::{build_launch_command_argv, resolve_terminal_config_path};
+use super::RUNTIME_RELAUNCH_CLEARED_ENV_KEYS;
 use crate::bridge::{CoreError, ErrorClass};
 use crate::config_state::compute_config_state;
 use crate::control_plane::{
@@ -27,8 +29,10 @@ use crate::runtime_materialization::{
     repair_runtime_materialization, RuntimeMaterializationRepairEvaluateRequest,
 };
 use crate::terminal_variant::{
-    active_terminal_from_runtime_dir, terminal_display_name, terminal_startup_wm_class,
+    active_terminal_from_runtime_dir, normalize_terminal_id, terminal_desktop_entry_file_name,
+    terminal_display_name, terminal_startup_wm_class, SUPPORTED_TERMINALS,
 };
+use std::fs;
 use std::path::{Path, PathBuf};
 
 const YAZELIX_TERMINAL_CHILD_ENV_SANITIZE: &str = "YAZELIX_TERMINAL_CHILD_ENV_SANITIZE";
@@ -36,6 +40,7 @@ const YAZELIX_TERMINAL_CHILD_ENV_SANITIZE: &str = "YAZELIX_TERMINAL_CHILD_ENV_SA
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 struct LaunchArgs {
     path: Option<String>,
+    terminal: Option<String>,
     config: Option<String>,
     with_overrides: Vec<String>,
     home: bool,
@@ -58,6 +63,13 @@ pub(super) fn run_launch(args: &[String]) -> Result<i32, CoreError> {
             .or(inherited_config_override.as_deref()),
         &parsed.with_overrides,
     )?;
+    if let Some(requested_terminal) = parsed.terminal.as_deref() {
+        return run_explicit_terminal_launch(
+            &parsed,
+            requested_terminal,
+            config_override.as_deref(),
+        );
+    }
     run_launch_flow(
         parsed.path.as_deref(),
         config_override.as_deref(),
@@ -66,6 +78,341 @@ pub(super) fn run_launch(args: &[String]) -> Result<i32, CoreError> {
         false,
         &[],
     )
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct PackagedTerminalLauncher {
+    launcher: PathBuf,
+    env: Vec<(String, Option<String>)>,
+    desktop_path: PathBuf,
+}
+
+fn run_explicit_terminal_launch(
+    parsed: &LaunchArgs,
+    requested_terminal: &str,
+    config_override: Option<&str>,
+) -> Result<i32, CoreError> {
+    let runtime_dir = runtime_dir_from_env()?;
+    let active_terminal = active_terminal_from_runtime_dir(&runtime_dir)?;
+    if requested_terminal == active_terminal {
+        return run_launch_flow(
+            parsed.path.as_deref(),
+            config_override,
+            parsed.home,
+            parsed.verbose,
+            false,
+            &[],
+        );
+    }
+
+    let home_dir = home_dir_from_env()?;
+    let launcher = resolve_profile_terminal_launcher(&home_dir, requested_terminal)?;
+    let argv = explicit_terminal_launch_argv(&launcher.launcher, parsed, config_override);
+    let mut extra_env = launcher.env;
+    extra_env.push((
+        "YAZELIX_SKIP_STABLE_WRAPPER_REDIRECT".to_string(),
+        Some("1".to_string()),
+    ));
+    if requested_terminal != "yzxterm" {
+        extra_env.extend([
+            ("YAZELIX_TERMINAL_EMOJI_FONT".to_string(), None),
+            ("YAZELIX_TERMINAL_EFFECTS".to_string(), None),
+            ("YAZELIX_TERMINAL_PROFILE".to_string(), None),
+        ]);
+    }
+
+    let cwd = std::env::current_dir().map_err(|source| {
+        CoreError::io(
+            "launch_cwd",
+            "Could not read the current working directory.",
+            "cd into a valid directory, then retry.",
+            ".",
+            source,
+        )
+    })?;
+    let output = command_output_with_overrides(
+        &argv,
+        None,
+        &cwd,
+        RUNTIME_RELAUNCH_CLEARED_ENV_KEYS,
+        &extra_env,
+        "terminal_variant_launch",
+        "Install the requested Yazelix terminal variant through Home Manager and retry.",
+    )?;
+    if !output.status.success() {
+        print_completed_output(&output);
+        eprintln!(
+            "❌ Failed to launch Yazelix terminal variant '{}' through {}.",
+            terminal_display_name(requested_terminal),
+            launcher.desktop_path.display()
+        );
+        return Ok(output.status.code().unwrap_or(1));
+    }
+    if parsed.verbose {
+        println!(
+            "✅ Launch request sent to {}",
+            terminal_display_name(requested_terminal)
+        );
+    }
+    Ok(0)
+}
+
+fn explicit_terminal_launch_argv(
+    launcher_path: &Path,
+    parsed: &LaunchArgs,
+    config_override: Option<&str>,
+) -> Vec<String> {
+    let mut argv = vec![
+        launcher_path.to_string_lossy().into_owned(),
+        "launch".to_string(),
+    ];
+    if parsed.home {
+        argv.push("--home".to_string());
+    }
+    if let Some(path) = parsed.path.as_deref() {
+        argv.extend(["--path".to_string(), path.to_string()]);
+    }
+    if let Some(config) = config_override {
+        argv.extend(["--config".to_string(), config.to_string()]);
+    }
+    if parsed.verbose {
+        argv.push("--verbose".to_string());
+    }
+    argv
+}
+
+fn resolve_profile_terminal_launcher(
+    home_dir: &Path,
+    terminal: &str,
+) -> Result<PackagedTerminalLauncher, CoreError> {
+    let candidates = profile_terminal_desktop_entry_candidates(home_dir, terminal);
+    for candidate in &candidates {
+        if !candidate.exists() {
+            continue;
+        }
+        let raw = fs::read_to_string(candidate).map_err(|source| {
+            CoreError::io(
+                "read_terminal_launcher_desktop_entry",
+                format!(
+                    "Could not read Yazelix terminal launcher desktop entry {}.",
+                    candidate.display()
+                ),
+                "Regenerate the Home Manager profile and retry.",
+                candidate.display().to_string(),
+                source,
+            )
+        })?;
+        let exec = desktop_entry_exec_value(&raw).ok_or_else(|| {
+            CoreError::classified(
+                ErrorClass::Runtime,
+                "missing_terminal_launcher_exec",
+                format!(
+                    "Yazelix terminal launcher {} has no Exec= command.",
+                    candidate.display()
+                ),
+                "Regenerate the Home Manager profile and retry.",
+                serde_json::json!({ "desktop_entry": candidate }),
+            )
+        })?;
+        let launcher = parse_packaged_terminal_launcher_exec(candidate, terminal, &exec)?;
+        if fs::symlink_metadata(&launcher.launcher).is_err() {
+            return Err(CoreError::classified(
+                ErrorClass::Runtime,
+                "missing_packaged_terminal_launcher",
+                format!(
+                    "Yazelix terminal variant '{}' points at missing launcher {}.",
+                    terminal_display_name(terminal),
+                    launcher.launcher.display()
+                ),
+                "Rebuild Home Manager so the extra terminal launcher points at a live Yazelix package.",
+                serde_json::json!({
+                    "terminal": terminal,
+                    "desktop_entry": candidate,
+                    "launcher": launcher.launcher,
+                }),
+            ));
+        }
+        return Ok(launcher);
+    }
+
+    Err(CoreError::classified(
+        ErrorClass::Runtime,
+        "missing_packaged_terminal_variant",
+        format!(
+            "Yazelix terminal variant '{}' is not installed as a packaged launcher.",
+            terminal_display_name(terminal)
+        ),
+        format!(
+            "Add '{}' to programs.yazelix.extra_terminal_launchers or make it programs.yazelix.terminal, rebuild Home Manager, then retry.",
+            terminal
+        ),
+        serde_json::json!({
+            "terminal": terminal,
+            "checked_desktop_entries": candidates,
+        }),
+    ))
+}
+
+fn profile_terminal_desktop_entry_candidates(home_dir: &Path, terminal: &str) -> Vec<PathBuf> {
+    let file_name = terminal_desktop_entry_file_name(terminal);
+    let mut candidates = vec![home_dir
+        .join(".nix-profile")
+        .join("share")
+        .join("applications")
+        .join(&file_name)];
+    if let Ok(user) = std::env::var("USER") {
+        let trimmed = user.trim();
+        if !trimmed.is_empty() {
+            candidates.push(
+                PathBuf::from("/etc/profiles/per-user")
+                    .join(trimmed)
+                    .join("share")
+                    .join("applications")
+                    .join(file_name),
+            );
+        }
+    }
+    candidates
+}
+
+fn desktop_entry_exec_value(raw: &str) -> Option<String> {
+    raw.lines()
+        .find_map(|line| line.trim().strip_prefix("Exec="))
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(ToOwned::to_owned)
+}
+
+fn parse_packaged_terminal_launcher_exec(
+    desktop_path: &Path,
+    terminal: &str,
+    exec: &str,
+) -> Result<PackagedTerminalLauncher, CoreError> {
+    let tokens = split_desktop_exec_tokens(exec)?;
+    let mut index = 0;
+    let mut env = Vec::new();
+    if tokens.first().map(String::as_str) == Some("env") {
+        index = 1;
+        while let Some(token) = tokens.get(index) {
+            let Some((key, value)) = parse_env_assignment(token) else {
+                break;
+            };
+            env.push((key.to_string(), Some(value.to_string())));
+            index += 1;
+        }
+    }
+    let Some(launcher) = tokens.get(index) else {
+        return Err(unsupported_desktop_exec(desktop_path, terminal, exec));
+    };
+    let trailing = &tokens[index + 1..];
+    if trailing != ["desktop", "launch"] {
+        return Err(unsupported_desktop_exec(desktop_path, terminal, exec));
+    }
+
+    let launcher = PathBuf::from(launcher);
+    if !launcher.is_absolute() {
+        return Err(CoreError::classified(
+            ErrorClass::Runtime,
+            "relative_terminal_launcher",
+            format!(
+                "Yazelix terminal launcher {} uses a relative Exec= launcher.",
+                desktop_path.display()
+            ),
+            "Regenerate the Home Manager profile so the desktop entry points at a packaged Yazelix launcher.",
+            serde_json::json!({
+                "terminal": terminal,
+                "desktop_entry": desktop_path,
+                "exec": exec,
+            }),
+        ));
+    }
+
+    Ok(PackagedTerminalLauncher {
+        launcher,
+        env,
+        desktop_path: desktop_path.to_path_buf(),
+    })
+}
+
+fn unsupported_desktop_exec(desktop_path: &Path, terminal: &str, exec: &str) -> CoreError {
+    CoreError::classified(
+        ErrorClass::Runtime,
+        "unsupported_terminal_launcher_exec",
+        format!(
+            "Yazelix terminal launcher {} has an unsupported Exec= command.",
+            desktop_path.display()
+        ),
+        "Regenerate the Home Manager profile so the desktop entry uses a packaged Yazelix launcher.",
+        serde_json::json!({
+            "terminal": terminal,
+            "desktop_entry": desktop_path,
+            "exec": exec,
+        }),
+    )
+}
+
+fn parse_env_assignment(token: &str) -> Option<(&str, &str)> {
+    let (key, value) = token.split_once('=')?;
+    let mut chars = key.chars();
+    let first = chars.next()?;
+    if !(first == '_' || first.is_ascii_alphabetic()) {
+        return None;
+    }
+    if !chars.all(|ch| ch == '_' || ch.is_ascii_alphanumeric()) {
+        return None;
+    }
+    Some((key, value))
+}
+
+fn split_desktop_exec_tokens(exec: &str) -> Result<Vec<String>, CoreError> {
+    let mut tokens = Vec::new();
+    let mut current = String::new();
+    let mut token_started = false;
+    let mut in_quotes = false;
+    let mut chars = exec.chars().peekable();
+
+    while let Some(ch) = chars.next() {
+        if in_quotes {
+            match ch {
+                '"' => in_quotes = false,
+                '\\' => current.push(chars.next().unwrap_or('\\')),
+                other => current.push(other),
+            }
+            token_started = true;
+            continue;
+        }
+
+        match ch {
+            '"' => {
+                in_quotes = true;
+                token_started = true;
+            }
+            '\\' => {
+                current.push(chars.next().unwrap_or('\\'));
+                token_started = true;
+            }
+            other if other.is_whitespace() => {
+                if token_started {
+                    tokens.push(std::mem::take(&mut current));
+                    token_started = false;
+                }
+            }
+            other => {
+                current.push(other);
+                token_started = true;
+            }
+        }
+    }
+
+    if in_quotes {
+        return Err(CoreError::usage(format!(
+            "Unterminated quoted string in desktop Exec= command: {exec}"
+        )));
+    }
+    if token_started {
+        tokens.push(current);
+    }
+    Ok(tokens)
 }
 
 fn repair_desktop_runtime_state_if_required(
@@ -414,6 +761,25 @@ fn parse_launch_args(args: &[String]) -> Result<LaunchArgs, CoreError> {
             "--help" | "-h" | "help" => parsed.help = true,
             "--home" => parsed.home = true,
             "--verbose" => parsed.verbose = true,
+            "--term" | "--terminal" | "-t" => {
+                index += 1;
+                let value = args.get(index).ok_or_else(|| {
+                    CoreError::usage(
+                        "Missing value for yzx launch --term. Try `yzx launch --help`.",
+                    )
+                })?;
+                if parsed.terminal.is_some() {
+                    return Err(CoreError::usage(
+                        "yzx launch accepts at most one terminal selector.",
+                    ));
+                }
+                parsed.terminal = Some(normalize_terminal_id(value).ok_or_else(|| {
+                    CoreError::usage(format!(
+                        "Unsupported yzx launch terminal '{value}'. Supported terminals: {}.",
+                        SUPPORTED_TERMINALS.join(", ")
+                    ))
+                })?);
+            }
             "--path" | "-p" => {
                 index += 1;
                 let value = args.get(index).ok_or_else(|| {
@@ -470,8 +836,11 @@ fn print_launch_help() {
     println!();
     println!("Usage:");
     println!(
-        "  yzx launch [--path <dir> | --home] [--config <file>] [--with key=value] [--verbose]"
+        "  yzx launch [-t <terminal>] [--path <dir> | --home] [--config <file>] [--with key=value] [--verbose]"
     );
+    println!();
+    println!("Options:");
+    println!("  -t, --term, --terminal    Launch an installed packaged terminal variant");
 }
 
 fn render_argv_for_display(argv: &[String]) -> String {
@@ -495,7 +864,7 @@ mod tests {
     use super::super::config_override::resolve_config_override_path;
     use super::*;
 
-    // Defends: Rust launch arg parsing keeps public path/config/session override flags without reintroducing terminal selection.
+    // Defends: Rust launch arg parsing keeps public path/config/session override flags and packaged terminal selection.
     #[test]
     fn parse_launch_args_accepts_supported_flags() {
         let expected_config = resolve_config_override_path(
@@ -511,14 +880,139 @@ mod tests {
             "settings.jsonc".into(),
             "--with".into(),
             "editor.command=nvim".into(),
+            "-t".into(),
+            "Ghostty".into(),
             "--verbose".into(),
         ])
         .unwrap();
 
         assert_eq!(parsed.path.as_deref(), Some("/tmp/demo"));
+        assert_eq!(parsed.terminal.as_deref(), Some("ghostty"));
         assert_eq!(parsed.config.as_deref(), Some(expected_config.as_str()));
         assert_eq!(parsed.with_overrides, vec!["editor.command=nvim"]);
         assert!(parsed.verbose);
+    }
+
+    // Defends: every documented terminal selector spelling maps to the same packaged-variant field.
+    #[test]
+    fn parse_launch_args_accepts_terminal_selector_aliases() {
+        for flag in ["-t", "--term", "--terminal"] {
+            let parsed = parse_launch_args(&[flag.into(), "yzxterm".into()]).unwrap();
+            assert_eq!(parsed.terminal.as_deref(), Some("yzxterm"));
+        }
+    }
+
+    // Defends: explicit terminal selection does not revive unsupported host-terminal fallback names.
+    #[test]
+    fn parse_launch_args_rejects_unsupported_terminal_selector() {
+        let err = parse_launch_args(&["--term".into(), "alacritty".into()]).unwrap_err();
+
+        assert_eq!(err.code(), "invalid_arguments");
+        assert!(err.message().contains("Unsupported yzx launch terminal"));
+        assert!(err.message().contains("ghostty"));
+        assert!(err.message().contains("yzxterm"));
+    }
+
+    // Defends: cross-variant launch forwards one materialized config override and leaves terminal selection behind to avoid recursion.
+    #[test]
+    fn explicit_terminal_launch_argv_replaces_term_and_with_with_config() {
+        let parsed = LaunchArgs {
+            path: Some("/tmp/work".to_string()),
+            terminal: Some("ghostty".to_string()),
+            config: None,
+            with_overrides: vec!["editor.command=nvim".to_string()],
+            home: false,
+            verbose: true,
+            help: false,
+        };
+
+        let argv = explicit_terminal_launch_argv(
+            Path::new("/nix/store/yazelix-ghostty/bin/yzx"),
+            &parsed,
+            Some("/state/config_overrides/session/settings.jsonc"),
+        );
+
+        assert_eq!(
+            argv,
+            vec![
+                "/nix/store/yazelix-ghostty/bin/yzx",
+                "launch",
+                "--path",
+                "/tmp/work",
+                "--config",
+                "/state/config_overrides/session/settings.jsonc",
+                "--verbose",
+            ]
+        );
+        assert!(!argv.contains(&"--term".to_string()));
+        assert!(!argv.contains(&"--with".to_string()));
+    }
+
+    // Defends: Home Manager extra launchers can carry env assignments before the packaged yzx launcher.
+    #[test]
+    fn parse_packaged_terminal_launcher_exec_accepts_env_and_quoted_path() {
+        let desktop_path = Path::new(
+            "/home/demo/.nix-profile/share/applications/com.yazelix.Yazelix.Yzxterm.desktop",
+        );
+        let parsed = parse_packaged_terminal_launcher_exec(
+            desktop_path,
+            "yzxterm",
+            r#"env YAZELIX_SKIP_STABLE_WRAPPER_REDIRECT=1 YAZELIX_TERMINAL_PROFILE=shaders "/nix/store/with space/bin/yzx" desktop launch"#,
+        )
+        .unwrap();
+
+        assert_eq!(
+            parsed.launcher,
+            PathBuf::from("/nix/store/with space/bin/yzx")
+        );
+        assert_eq!(
+            parsed.env,
+            vec![
+                (
+                    "YAZELIX_SKIP_STABLE_WRAPPER_REDIRECT".to_string(),
+                    Some("1".to_string())
+                ),
+                (
+                    "YAZELIX_TERMINAL_PROFILE".to_string(),
+                    Some("shaders".to_string())
+                ),
+            ]
+        );
+        assert_eq!(parsed.desktop_path, desktop_path);
+    }
+
+    // Regression: --term must resolve installed Yazelix package launchers from profile desktop entries, not host PATH terminal commands.
+    #[test]
+    fn resolve_profile_terminal_launcher_reads_home_manager_profile_entry() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let home = tmp.path().join("home");
+        let launcher = tmp.path().join("store/yazelix-ghostty/bin/yzx");
+        let desktop_entry = home
+            .join(".nix-profile/share/applications")
+            .join(terminal_desktop_entry_file_name("ghostty"));
+        std::fs::create_dir_all(launcher.parent().unwrap()).unwrap();
+        std::fs::create_dir_all(desktop_entry.parent().unwrap()).unwrap();
+        std::fs::write(&launcher, "#!/bin/sh\n").unwrap();
+        std::fs::write(
+            &desktop_entry,
+            format!(
+                "[Desktop Entry]\nName=New Yazelix - Ghostty\nExec=env YAZELIX_SKIP_STABLE_WRAPPER_REDIRECT=1 {} desktop launch\n",
+                launcher.display()
+            ),
+        )
+        .unwrap();
+
+        let resolved = resolve_profile_terminal_launcher(&home, "ghostty").unwrap();
+
+        assert_eq!(resolved.launcher, launcher);
+        assert_eq!(
+            resolved.env,
+            vec![(
+                "YAZELIX_SKIP_STABLE_WRAPPER_REDIRECT".to_string(),
+                Some("1".to_string())
+            )]
+        );
+        assert_eq!(resolved.desktop_path, desktop_entry);
     }
 
     // Defends: yzxterm gets Yazelix config only at the terminal process boundary, while ambient host Rio config is cleared.

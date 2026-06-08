@@ -63,7 +63,7 @@ release gate `yazelix-5br5o.18`.
 | Owner | Support level | Terminal selection | Update behavior |
 | --- | --- | --- | --- |
 | Nix profile package | `supported` | Choose one flake output such as `#yazelix`, `#yazelix_ghostty`, `#yzxterm`, `#yazelix_rio`, `#yazelix_wezterm`, `#yazelix_kitty`, `#yazelix_foot`, or `#yazelix_ratty` | `yzx update upstream` owns default profile updates |
-| Home Manager | `supported` | `programs.yazelix.terminal` selects one active packaged runtime; `extra_terminal_launchers` adds Linux desktop launchers without changing active runtime identity | `yzx update home_manager` prints the Home Manager update path |
+| Home Manager | `supported` | `programs.yazelix.terminal` selects one active packaged runtime; `extra_terminal_launchers` adds Linux desktop launchers and `yzx launch --term` targets without changing active runtime identity | `yzx update home_manager` prints the Home Manager update path |
 | Manual or host-only launch | `best-effort` | Host `PATH` terminal choices are user-owned unless selected through a package/Home Manager variant | Install into a profile or enable Home Manager before relying on Yazelix update ownership |
 
 ## Current Boundary Notes
