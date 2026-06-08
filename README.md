@@ -92,12 +92,12 @@ Yazelix runs the workspace as a directional Zellij layout: the editor stays cent
 - **Zellij orchestration:** Zellij owns the workspace, with a managed sidebar and your chosen editor in the managed `editor` pane
 - **Sidebar language:** `sidebar` means the generic side-surface slot; the default sidebar is a Yazi file tree
 - **Spatial toggles:** `Alt+Shift+H/J/K/L` follows the Helix/Vim `h/j/k/l` mnemonic: `H` is left and toggles the left sidebar, `J` is down and toggles the bottom popup, `K` is up and toggles the top popup, and `L` is right and toggles the right agent sidebar. For popups, down/up describes the lower/upper slot mental model, not a literal animation direction
-- **Extra popups:** `Alt+Shift+M/B/C` covers the non-directional popups: `M` opens the command menu, `B` toggles the btm process viewer, and `C` opens the config UI
+- **Extra popups:** `Alt+Shift+M/B/C` covers the non-directional popups: `M` opens the command menu, `B` toggles the [bottom](https://github.com/ClementTsang/bottom) (`btm`) process viewer, and `C` opens the config UI
 - **Focus toggles:** `Ctrl+y` toggles focus between the left sidebar and editor, and `Ctrl+Shift+Y` toggles focus between the editor and right agent sidebar
 - **Layout cycling:** `Alt+[` and `Alt+]` are reserved for previous/next layout-family cycling, but the packaged runtime ships one managed sidebar family, so those bindings usually keep the visible layout unchanged; see [Layouts](./docs/layouts.md)
 - **Editor targeting:** Opening from the default Yazi file-tree sidebar with Helix or Neovim targets the managed `editor` pane through the pane orchestrator instead of relying on pane scanning heuristics; it reuses that pane when present and creates one titled `editor` when needed
 - **Reveal flow:** `yzx reveal` is the stable editor-integration surface for jumping the current file back into the managed Yazi file tree
-- **Popup commands:** Built-in popup commands live in `zellij.popup_commands`: bottom defaults to `lazygit`, top defaults to `yzx config ui` for Yazelix's ratconfig-backed JSONC settings editor, and menu defaults to `yzx menu`; user-defined popups live in `zellij.custom_popups`, with keep-alive `btm` shipped as the default example on `Alt+Shift+B`
+- **Popup commands:** Built-in popup commands live in `zellij.popup_commands`: bottom defaults to [lazygit](https://github.com/jesseduffield/lazygit), top defaults to `yzx config ui` for Yazelix's ratconfig-backed JSONC settings editor, and menu defaults to `yzx menu`; user-defined popups live in `zellij.custom_popups`, with keep-alive [bottom](https://github.com/ClementTsang/bottom) (`btm`) shipped as the default example on `Alt+Shift+B`
 - **Editor command:** Configure the managed editor with `editor.command` in `settings.jsonc`
 
 ## Advanced: First-Party Child Repositories
