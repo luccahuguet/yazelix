@@ -414,7 +414,7 @@ theme = "term16_dark"  # Recommended transparent theme
 
 Yazelix layouts are Zellij layouts with Yazelix-owned pane identity layered on top: a managed `sidebar` pane, a managed `editor` pane, and sidebar-aware swap layouts that can collapse, widen, or refocus panes without losing workspace state
 
-The default left sidebar is a Yazi file tree launched by `yzx sidebar yazi`, and the default right sidebar launches host-installed `codex`. `workspace.left_sidebar.*` and `workspace.right_sidebar.*` control each side pane command, args, and width; `editor.hide_sidebar_on_file_open` can collapse the left sidebar after opening files
+The default left sidebar is a Yazi file tree launched by `yzx sidebar yazi`, and the default right sidebar launches `yzx agent`. `yzx agent` starts host-installed `codex` when available, otherwise it opens a normal shell with setup guidance. `workspace.left_sidebar.*` and `workspace.right_sidebar.*` control each side pane command, args, and width, so the right sidebar can run another agent or any other terminal command; `editor.hide_sidebar_on_file_open` can collapse the left sidebar after opening files
 
 The packaged runtime ships one managed sidebar family. `Alt+[` and `Alt+]` are still bound to previous/next layout-family cycling, but with one family they usually leave the visible layout unchanged. Use `Alt+Shift+H/J/K/L` for everyday surface toggles and `Ctrl+y` / `Ctrl+Shift+Y` for sidebar/editor focus
 
@@ -429,12 +429,12 @@ Yazelix uses Zellij as the workspace layer, so the most important bindings are g
 | Keybinding | What It Does |
 |------------|--------------|
 | `Ctrl+y` | Toggle focus between the managed editor and left sidebar, which defaults to a Yazi file tree |
-| `Ctrl+Shift+Y` | Toggle focus between the managed editor and right Codex agent sidebar |
+| `Ctrl+Shift+Y` | Toggle focus between the managed editor and right agent sidebar |
 | `Alt+Shift+H` | Show or hide the left sidebar |
 | `Alt+r` | Smart reveal/focus key; forwards into the editor when appropriate |
 | `Alt+[` / `Alt+]` | Previous/next layout family; with the packaged single family this usually has no visible effect |
 | `Alt+m` | Open a new terminal in the current tab workspace root |
-| `Alt+Shift+L` | Toggle the managed Codex agent sidebar |
+| `Alt+Shift+L` | Toggle the managed right agent sidebar |
 | `Alt+Shift+J` | Toggle the bottom managed popup command, usually `lazygit`, and refresh the Yazi file-tree sidebar git state when the popup keybinding closes it |
 | `Alt+Shift+K` | Toggle the top managed popup command, usually `yzx config ui`, Yazelix's ratconfig-backed settings editor |
 | `Alt+Shift+M` | Open the `yzx` command palette popup |

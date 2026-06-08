@@ -170,7 +170,7 @@ apply_mode = "tab_session_restart"
 
 [fields."workspace.right_sidebar.command"]
 kind = "string"
-default = "codex"
+default = "yzx"
 parser_key = "right_sidebar_command"
 home_manager_option = "right_sidebar_command"
 parser_behavior = "direct"
@@ -179,7 +179,7 @@ apply_mode = "tab_session_restart"
 
 [fields."workspace.right_sidebar.args"]
 kind = "string_list"
-default = []
+default = ["agent"]
 parser_key = "right_sidebar_args"
 home_manager_option = "right_sidebar_args"
 parser_behavior = "direct"

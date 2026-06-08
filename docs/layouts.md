@@ -19,8 +19,8 @@ Set the file-open behavior in `settings.jsonc`:
       "width_percent": 20
     },
     "right_sidebar": {
-      "command": "codex",
-      "args": [],
+      "command": "yzx",
+      "args": ["agent"],
       "width_percent": 40
     }
   }
@@ -33,9 +33,9 @@ The directional surface layer follows HJKL placement: `Alt+Shift+H` toggles the 
 
 `workspace.left_sidebar.width_percent` controls the open left sidebar width as a percentage of the tab. With the default launcher, that sidebar is the Yazi file tree. Valid range: `1` to `48`.
 
-`workspace.right_sidebar.width_percent` controls the open right sidebar width as a percentage of the tab. The default right sidebar launches `codex` from the host `PATH`; Yazelix does not install Codex by default. Valid range: `1` to `48`.
+`workspace.right_sidebar.width_percent` controls the open right sidebar width as a percentage of the tab. The default right sidebar launches `yzx agent`, which starts host-installed `codex` when it is on `PATH` and otherwise opens a normal shell with setup guidance. Valid range: `1` to `48`.
 
-`workspace.left_sidebar.command` / `args` and `workspace.right_sidebar.command` / `args` control the terminal side surfaces launched in the managed sidebar slots. Set `args` explicitly for tools that need them, such as `["status"]` for `lazygit status`. Custom launchers still run inside managed panes named `sidebar` and `agent`; the pane orchestrator keeps owning sidebar identity, focus, and layout state.
+`workspace.left_sidebar.command` / `args` and `workspace.right_sidebar.command` / `args` control the terminal side surfaces launched in the managed sidebar slots. Set `args` explicitly for tools that need them, such as `["status"]` for `lazygit status`. The right sidebar can run another agent or any non-agent terminal command. Custom launchers still run inside managed panes named `sidebar` and `agent`; the pane orchestrator keeps owning sidebar identity, focus, and layout state.
 
 ## Layout Metadata
 

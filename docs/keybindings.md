@@ -20,7 +20,7 @@ The `Alt+Shift+H/J/K/L` layer follows Vim-style spatial placement: `H` is the le
 | Alt+Shift+H              | Toggle the left sidebar       |
 | Alt+Shift+J              | Toggle the bottom popup       |
 | Alt+Shift+K              | Toggle the top popup          |
-| Alt+Shift+L              | Toggle the right Codex agent sidebar |
+| Alt+Shift+L              | Toggle the right agent sidebar |
 | Alt+Shift+I              | Toggle the keep-alive Zenith process information popup |
 | Ctrl+y                   | Toggle editor/left sidebar focus |
 | Ctrl+Shift+Y             | Toggle editor/right agent focus |
@@ -64,7 +64,7 @@ If you find a conflict, please open an issue
 ## Yazelix Custom Keybindings
 - **Zellij**:
   - `Alt+Shift+F` toggles pane fullscreen
-  - `Alt+Shift+H/J/K/L` toggles the left sidebar, bottom popup, top popup, and right Codex agent sidebar
+  - `Alt+Shift+H/J/K/L` toggles the left sidebar, bottom popup, top popup, and right agent sidebar
   - `Alt+Shift+I` toggles the keep-alive Zenith process information popup
   - `Alt+[` / `Alt+]` selects the previous/next layout family; with the packaged single managed sidebar family, those keys usually keep the visible layout unchanged
   - `Ctrl+Alt+H/L` moves the current tab left/right

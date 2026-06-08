@@ -645,8 +645,8 @@ mod tests {
       "width_percent": 20
     },
     "right_sidebar": {
-      "command": "codex",
-      "args": [],
+      "command": "yzx",
+      "args": ["agent"],
       "width_percent": 40
     }
   },
@@ -904,7 +904,11 @@ mod tests {
         );
         assert_eq!(
             value["workspace"]["right_sidebar"]["command"].as_str(),
-            Some("codex")
+            Some("yzx")
+        );
+        assert_eq!(
+            value["workspace"]["right_sidebar"]["args"][0].as_str(),
+            Some("agent")
         );
         assert_eq!(
             value["ratconfig"]["contract"]["applied_change_ids"][0].as_str(),

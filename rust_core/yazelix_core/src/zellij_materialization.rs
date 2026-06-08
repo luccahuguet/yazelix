@@ -2353,8 +2353,8 @@ mod tests {
             left_sidebar_command: "yzx".into(),
             left_sidebar_args: vec!["sidebar".into(), "yazi".into()],
             right_sidebar_width_percent: 40,
-            right_sidebar_command: "codex".into(),
-            right_sidebar_args: Vec::new(),
+            right_sidebar_command: "yzx".into(),
+            right_sidebar_args: vec!["agent".into()],
             popup_width_percent: 90,
             popup_height_percent: 90,
             screen_saver_enabled: false,
@@ -3140,8 +3140,8 @@ keybinds {
             true,
             180,
             "mandelbrot",
-            "codex",
-            &["--model".to_string(), "gpt-5.5".to_string()],
+            "yzx",
+            &["agent".to_string()],
             "gen-test",
         );
 
@@ -3153,9 +3153,8 @@ keybinds {
         assert!(block.contains("screen_saver_idle_seconds \"180\""));
         assert!(block.contains("screen_saver_style \"mandelbrot\""));
         assert!(block.contains("runtime_config_generation \"gen-test\""));
-        assert!(block.contains("right_sidebar_command \"codex\""));
-        assert!(block.contains("right_sidebar_arg_1 \"--model\""));
-        assert!(block.contains("right_sidebar_arg_2 \"gpt-5.5\""));
+        assert!(block.contains("right_sidebar_command \"yzx\""));
+        assert!(block.contains("right_sidebar_arg_1 \"agent\""));
         assert!(block.contains("yzpp location=\"file:/opt/yazelix/plugins/yzpp.wasm\""));
         assert!(block.contains("bottom_popup {"));
         assert!(block.contains("pane_title \"yzx_bottom_popup\""));

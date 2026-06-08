@@ -13,7 +13,7 @@ use yazelix_ratconfig::migration::{MigrationError, MigrationOp};
 pub const SETTINGS_CONTRACT_ID: &str = "yazelix.settings";
 pub const SETTINGS_CONTRACT_STATE_PATH: &str = "ratconfig.contract";
 const SETTINGS_CONTRACT_BASELINE_VERSION: u64 = 1;
-const SETTINGS_CONTRACT_CURRENT_VERSION: u64 = 8;
+const SETTINGS_CONTRACT_CURRENT_VERSION: u64 = 9;
 const OPTIONAL_ADDITIVE_DEFAULT_PATHS: &[&str] = &["zellij.custom_popups"];
 
 const LEGACY_SIDEBAR_SETTING_RENAMES: &[(&str, &str)] = &[
@@ -161,6 +161,15 @@ fn settings_contract_for_defaults(defaults: &JsonValue) -> ConfigContract {
                 vec![MigrationOp::Transform {
                     path: "zellij.custom_popups".to_string(),
                     transform: move_default_zenith_popup_to_information_key,
+                }],
+            ),
+            ContractChange::automatic(
+                "route-default-right-sidebar-through-yzx-agent",
+                8,
+                9,
+                vec![MigrationOp::Transform {
+                    path: "workspace.right_sidebar".to_string(),
+                    transform: route_default_right_sidebar_through_yzx_agent,
                 }],
             ),
         ],
@@ -316,6 +325,33 @@ fn is_default_zenith_popup_on_bottom_key(value: &JsonValue) -> bool {
             .get("keep_alive")
             .map(|value| value.as_bool() == Some(true) || value.is_null())
             .unwrap_or(true)
+}
+
+fn route_default_right_sidebar_through_yzx_agent(
+    value: &JsonValue,
+) -> Result<Option<JsonValue>, String> {
+    let Some(object) = value.as_object() else {
+        return Err("expected a right sidebar object".to_string());
+    };
+    if object.get("command").and_then(JsonValue::as_str) != Some("codex")
+        || !string_array_is_empty_or_absent(object.get("args"))
+    {
+        return Ok(None);
+    }
+
+    let mut next = object.clone();
+    next.insert("command".to_string(), json!("yzx"));
+    next.insert("args".to_string(), json!(["agent"]));
+    Ok(Some(JsonValue::Object(next)))
+}
+
+fn string_array_is_empty_or_absent(value: Option<&JsonValue>) -> bool {
+    match value {
+        None => true,
+        Some(JsonValue::Array(values)) => values.is_empty(),
+        Some(JsonValue::Null) => true,
+        Some(_) => false,
+    }
 }
 
 fn is_default_btm_popup(value: &JsonValue) -> bool {
@@ -565,6 +601,40 @@ mod tests {
                 }
             ])
         );
+    }
+
+    // Regression: the old raw Codex sidebar default routes through yzx agent so missing Codex can render an actionable pane.
+    #[test]
+    fn routes_default_right_sidebar_through_yzx_agent() {
+        let migrated = route_default_right_sidebar_through_yzx_agent(&json!({
+            "command": "codex",
+            "args": [],
+            "width_percent": 40
+        }))
+        .unwrap()
+        .unwrap();
+
+        assert_eq!(
+            migrated,
+            json!({
+                "command": "yzx",
+                "args": ["agent"],
+                "width_percent": 40
+            })
+        );
+    }
+
+    // Defends: user-owned Codex sidebar arguments are not rewritten as if they were the old default.
+    #[test]
+    fn preserves_custom_codex_right_sidebar_args() {
+        let migrated = route_default_right_sidebar_through_yzx_agent(&json!({
+            "command": "codex",
+            "args": ["--model", "gpt-5.5"],
+            "width_percent": 40
+        }))
+        .unwrap();
+
+        assert_eq!(migrated, None);
     }
 
     // Defends: user-owned btm customizations are not rewritten merely because they share the old default id.

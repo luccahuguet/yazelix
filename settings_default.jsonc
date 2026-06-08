@@ -34,8 +34,10 @@
       "width_percent": 20
     },
     "right_sidebar": {
-      "command": "codex",
-      "args": [],
+      "command": "yzx",
+      "args": [
+        "agent"
+      ],
       "width_percent": 40
     }
   },

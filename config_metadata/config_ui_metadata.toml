@@ -114,11 +114,11 @@ help = "Set the left sidebar pane width as a percentage of the tab"
 
 [fields."workspace.right_sidebar.command"]
 tab = "workspace"
-help = "Set the command used to start the right sidebar pane"
+help = "Set the command used to start the right sidebar pane; this can be an agent or any terminal command"
 
 [fields."workspace.right_sidebar.args"]
 tab = "workspace"
-help = "Set the arguments passed to the right sidebar command"
+help = "Set the arguments passed to the right sidebar command; the default is agent for yzx agent"
 
 [fields."workspace.right_sidebar.width_percent"]
 tab = "workspace"

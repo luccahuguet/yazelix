@@ -338,7 +338,7 @@ pub const ZELLIJ_ACTIONS: &[ZellijActionSpec] = &[
     zellij_action(
         "open_codex_agent_right",
         "zellij.open_codex_agent_right",
-        "Toggle the managed Codex agent sidebar",
+        "Toggle the managed right agent sidebar",
         "shared_except \"locked\"",
         "toggle_agent_sidebar",
         None,

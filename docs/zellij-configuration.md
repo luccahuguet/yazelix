@@ -244,15 +244,15 @@ Managed `~/.config/yazelix/zellij.kdl` rejects all `keybinds` blocks. A read-onl
       "width_percent": 20
     },
     "right_sidebar": {
-      "command": "codex",
-      "args": [],
+      "command": "yzx",
+      "args": ["agent"],
       "width_percent": 40
     }
   }
 }
 ```
 
-The default left sidebar launches the managed Yazi file-tree adapter through `yzx sidebar yazi`. The default right sidebar launches host-installed `codex`. You can point either managed sidebar slot at another terminal side surface by changing its `command` and `args`. The panes remain managed so the pane orchestrator keeps one owner for focus and layout state.
+The default left sidebar launches the managed Yazi file-tree adapter through `yzx sidebar yazi`. The default right sidebar launches `yzx agent`, which starts host-installed `codex` when available and otherwise opens a normal shell with setup guidance. You can point either managed sidebar slot at another terminal side surface by changing its `command` and `args`; the right sidebar can run another agent or any non-agent command. The panes remain managed so the pane orchestrator keeps one owner for focus and layout state.
 
 ## Current Yazelix Defaults
 

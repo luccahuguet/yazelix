@@ -11,6 +11,7 @@ Upgrade impact: manual action may be required
 Highlights:
 - Moved the shared cursor settings namespace from `~/.config/yazelix_ghostty_cursors/settings.jsonc` to `~/.config/yazelix_cursors/settings.jsonc`, and renamed the packaged default template to `yazelix_cursors_default.toml`
 - Replaced the default process monitor popup and bundled runtime tool from `bottom` / `btm` to `zenith`, with the Zenith information popup on `Alt Shift I`; bottom and SysWatch remain good custom-popup alternatives
+- Routed the default right sidebar through `yzx agent`, so missing Codex opens an actionable shell placeholder instead of failing; users can configure another agent or any other terminal command for the managed right sidebar
 
 Manual action:
 - Move existing cursor settings from `~/.config/yazelix_ghostty_cursors/settings.jsonc` to `~/.config/yazelix_cursors/settings.jsonc`, or run `yzc init` / relaunch Yazelix to create a fresh cursor settings file

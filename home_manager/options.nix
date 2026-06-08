@@ -269,11 +269,11 @@ ${terminalDescriptionBullets}
   };
 
   right_sidebar_command = mkMainContractOption "workspace.right_sidebar.command" {
-    description = "Terminal command used for the managed right sidebar pane. Defaults to host-installed Codex.";
+    description = "Terminal command used for the managed right sidebar pane. Defaults to yzx agent.";
   };
 
   right_sidebar_args = mkMainContractOption "workspace.right_sidebar.args" {
-    description = "Arguments passed to the managed right sidebar command.";
+    description = "Arguments passed to the managed right sidebar command. Defaults to [ \"agent\" ].";
   };
 
   right_sidebar_width_percent = mkMainContractOption "workspace.right_sidebar.width_percent" {

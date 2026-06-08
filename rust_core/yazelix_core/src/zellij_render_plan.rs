@@ -77,7 +77,8 @@ const CLAUDE_CODEX_USAGE_PERIODS_ALLOWED: &[&str] = &["5h", "week"];
 const OPENCODE_GO_USAGE_PERIODS_ALLOWED: &[&str] = &["5h", "week", "month"];
 pub const DEFAULT_LEFT_SIDEBAR_COMMAND: &str = "yzx";
 pub const DEFAULT_LEFT_SIDEBAR_YAZI_ARGS: &[&str] = &["sidebar", "yazi"];
-pub const DEFAULT_RIGHT_SIDEBAR_COMMAND: &str = "codex";
+pub const DEFAULT_RIGHT_SIDEBAR_COMMAND: &str = "yzx";
+pub const DEFAULT_RIGHT_SIDEBAR_AGENT_ARGS: &[&str] = &["agent"];
 
 fn default_left_sidebar_width_percent() -> i64 {
     DEFAULT_LEFT_SIDEBAR_WIDTH_PERCENT
@@ -103,7 +104,10 @@ fn default_left_sidebar_args() -> Vec<String> {
 }
 
 fn default_right_sidebar_args() -> Vec<String> {
-    Vec::new()
+    DEFAULT_RIGHT_SIDEBAR_AGENT_ARGS
+        .iter()
+        .map(|arg| (*arg).to_string())
+        .collect()
 }
 
 fn default_popup_percent() -> i64 {
@@ -361,7 +365,7 @@ fn validate_sidebar_launcher(field: &str, command: &str) -> Result<(), CoreError
             ErrorClass::Config,
             "invalid_sidebar_command",
             format!("{field} must not be empty"),
-            "Set the sidebar command to a terminal command such as `nu`, `yazi`, `codex`, or another side-surface launcher.",
+            "Set the sidebar command to a terminal command such as `yzx`, `nu`, `yazi`, `codex`, or another side-surface launcher.",
             serde_json::json!({ "field": field }),
         ))
     }
@@ -767,7 +771,7 @@ mod tests {
             left_sidebar_command: "yzx".into(),
             left_sidebar_args: default_left_sidebar_args(),
             right_sidebar_width_percent: 40,
-            right_sidebar_command: "codex".into(),
+            right_sidebar_command: DEFAULT_RIGHT_SIDEBAR_COMMAND.into(),
             right_sidebar_args: default_right_sidebar_args(),
             popup_width_percent: 90,
             popup_height_percent: 90,
