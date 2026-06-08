@@ -113,7 +113,7 @@ The Rust action registry is the shared source for Yazelix-owned action metadata 
 - `yazi.open_zoxide_in_editor`
 - `editor.reveal_in_sidebar`
 
-User-defined popup bindings live in `zellij.custom_popups`, not the static action registry. The default `btm` popup is a custom popup entry with `keybindings = ["Alt Shift B"]` and `keep_alive = true`.
+User-defined popup bindings live in `zellij.custom_popups`, not the static action registry. The default `zenith` popup is a custom popup entry with `keybindings = ["Alt Shift B"]` and `keep_alive = true`.
 
 Each action registry entry includes:
 

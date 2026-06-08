@@ -1,5 +1,6 @@
 // Test lane: default
 
+use super::RUNTIME_RELAUNCH_CLEARED_ENV_KEYS;
 use super::config_override::{
     config_override_extra_env, prepare_session_config_override, resolve_cli_config_override,
 };
@@ -9,7 +10,6 @@ use super::process::{
 };
 use super::resolve_requested_working_dir;
 use super::terminal::{build_launch_command_argv, resolve_terminal_config_path};
-use super::RUNTIME_RELAUNCH_CLEARED_ENV_KEYS;
 use crate::bridge::{CoreError, ErrorClass};
 use crate::config_state::compute_config_state;
 use crate::control_plane::{
@@ -18,19 +18,19 @@ use crate::control_plane::{
     state_dir_from_env,
 };
 use crate::launch_materialization::{
-    launch_materialization_request_from_env, prepare_launch_materialization,
-    LaunchMaterializationData,
+    LaunchMaterializationData, launch_materialization_request_from_env,
+    prepare_launch_materialization,
 };
 use crate::runtime_contract::{
-    evaluate_startup_launch_preflight, LaunchPreflightPayload, StartupLaunchPreflightRequest,
+    LaunchPreflightPayload, StartupLaunchPreflightRequest, evaluate_startup_launch_preflight,
 };
 use crate::runtime_env::compute_runtime_env;
 use crate::runtime_materialization::{
-    repair_runtime_materialization, RuntimeMaterializationRepairEvaluateRequest,
+    RuntimeMaterializationRepairEvaluateRequest, repair_runtime_materialization,
 };
 use crate::terminal_variant::{
-    active_terminal_from_runtime_dir, normalize_terminal_id, terminal_desktop_entry_file_name,
-    terminal_display_name, terminal_startup_wm_class, SUPPORTED_TERMINALS,
+    SUPPORTED_TERMINALS, active_terminal_from_runtime_dir, normalize_terminal_id,
+    terminal_desktop_entry_file_name, terminal_display_name, terminal_startup_wm_class,
 };
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -255,11 +255,13 @@ fn resolve_profile_terminal_launcher(
 
 fn profile_terminal_desktop_entry_candidates(home_dir: &Path, terminal: &str) -> Vec<PathBuf> {
     let file_name = terminal_desktop_entry_file_name(terminal);
-    let mut candidates = vec![home_dir
-        .join(".nix-profile")
-        .join("share")
-        .join("applications")
-        .join(&file_name)];
+    let mut candidates = vec![
+        home_dir
+            .join(".nix-profile")
+            .join("share")
+            .join("applications")
+            .join(&file_name),
+    ];
     if let Ok(user) = std::env::var("USER") {
         let trimmed = user.trim();
         if !trimmed.is_empty() {

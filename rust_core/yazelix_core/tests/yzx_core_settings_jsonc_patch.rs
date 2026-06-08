@@ -134,8 +134,8 @@ fn inserts_structured_values_without_rewriting_document() {
         "zellij.custom_popups",
         &json!([
             {
-                "id": "btm",
-                "command": ["btm"],
+                "id": "zenith",
+                "command": ["zenith"],
                 "keybindings": ["Alt Shift B"],
                 "keep_alive": true
             }
@@ -148,7 +148,7 @@ fn inserts_structured_values_without_rewriting_document() {
     let parsed = parse_jsonc_value(settings_path(), &outcome.text).expect("parse");
     assert_eq!(
         parsed["zellij"]["custom_popups"][0]["command"],
-        json!(["btm"])
+        json!(["zenith"])
     );
 }
 

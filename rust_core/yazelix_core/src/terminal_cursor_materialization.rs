@@ -122,7 +122,7 @@ fn validate_terminal_cursor_trail_duration(duration: f64) -> Result<(), CoreErro
                 "Invalid cursor settings.duration value '{}'. Expected a number from {} to {}.",
                 duration, GHOSTTY_TRAIL_DURATION_MIN, GHOSTTY_TRAIL_DURATION_MAX
             ),
-            "Update ~/.config/yazelix_ghostty_cursors/settings.jsonc with a supported cursor trail duration multiplier, then retry.",
+            "Update ~/.config/yazelix_cursors/settings.jsonc with a supported cursor trail duration multiplier, then retry.",
             serde_json::json!({
                 "field": "settings.duration",
                 "actual": duration.to_string(),

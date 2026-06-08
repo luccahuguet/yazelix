@@ -83,7 +83,7 @@ After installation, keep this model in mind:
 - Treat generated runtime state under `~/.local/share/yazelix` as Yazelix-owned output
 - Relaunch the window, or run `yzx restart`, after changing settings that affect live panes
 
-Cursor presets use their own config at `~/.config/yazelix_ghostty_cursors/settings.jsonc`. Deeper Yazi, Zellij, Helix, terminal, and shell overrides also live under `~/.config/yazelix/`, but the main settings file is the first place to look
+Cursor presets use their own config at `~/.config/yazelix_cursors/settings.jsonc`. Deeper Yazi, Zellij, Helix, terminal, and shell overrides also live under `~/.config/yazelix/`, but the main settings file is the first place to look
 
 ## Workspace Model
 
@@ -92,12 +92,12 @@ Yazelix runs the workspace as a directional Zellij layout: the editor stays cent
 - **Zellij orchestration:** Zellij owns the workspace, with a managed sidebar and your chosen editor in the managed `editor` pane
 - **Sidebar language:** `sidebar` means the generic side-surface slot; the default sidebar is a Yazi file tree
 - **Spatial toggles:** `Alt+Shift+H/J/K/L` follows the Helix/Vim `h/j/k/l` mnemonic: `H` is left and toggles the left sidebar, `J` is down and toggles the bottom popup, `K` is up and toggles the top popup, and `L` is right and toggles the right agent sidebar. For popups, down/up describes the lower/upper slot mental model, not a literal animation direction
-- **Extra popups:** `Alt+Shift+M/B/C` covers the non-directional popups: `M` opens the command menu, `B` toggles the [bottom](https://github.com/ClementTsang/bottom) (`btm`) process viewer, and `C` opens the config UI. The tool name `bottom` is an unfortunate coincidence; it is unrelated to the bottom-popup direction mnemonic
+- **Extra popups:** `Alt+Shift+M/B/C` covers the non-directional popups: `M` opens the command menu, `B` toggles the [Zenith](https://github.com/bvaisvil/zenith) process viewer, and `C` opens the config UI
 - **Focus toggles:** `Ctrl+y` toggles focus between the left sidebar and editor, and `Ctrl+Shift+Y` toggles focus between the editor and right agent sidebar
 - **Layout cycling:** `Alt+[` and `Alt+]` are reserved for previous/next layout-family cycling, but the packaged runtime ships one managed sidebar family, so those bindings usually keep the visible layout unchanged; see [Layouts](./docs/layouts.md)
 - **Editor targeting:** Opening from the default Yazi file-tree sidebar with Helix or Neovim targets the managed `editor` pane through the pane orchestrator instead of relying on pane scanning heuristics; it reuses that pane when present and creates one titled `editor` when needed
 - **Reveal flow:** `yzx reveal` is the stable editor-integration surface for jumping the current file back into the managed Yazi file tree
-- **Popup commands:** Built-in popup commands live in `zellij.popup_commands`: bottom defaults to [lazygit](https://github.com/jesseduffield/lazygit), top defaults to `yzx config ui` for Yazelix's ratconfig-backed JSONC settings editor, and menu defaults to `yzx menu`; user-defined popups live in `zellij.custom_popups`, with keep-alive [bottom](https://github.com/ClementTsang/bottom) (`btm`) shipped as the default example on `Alt+Shift+B`
+- **Popup commands:** Built-in popup commands live in `zellij.popup_commands`: bottom defaults to [lazygit](https://github.com/jesseduffield/lazygit), top defaults to `yzx config ui` for Yazelix's ratconfig-backed JSONC settings editor, and menu defaults to `yzx menu`; user-defined popups live in `zellij.custom_popups`, with keep-alive [Zenith](https://github.com/bvaisvil/zenith) shipped as the default process monitor on `Alt+Shift+B`. [bottom](https://github.com/ClementTsang/bottom) and [SysWatch](https://github.com/matthart1983/syswatch) are good alternatives for custom popups
 - **Editor command:** Configure the managed editor with `editor.command` in `settings.jsonc`
 
 ## Advanced: First-Party Child Repositories
@@ -245,7 +245,7 @@ Yazelix shines over SSH: the TUI stack (Zellij, Yazi, Helix) runs cleanly withou
 
 Yazelix uses a **layered configuration system** that safely merges your personal settings with Yazelix defaults:
 
-- **Core settings**: Edit `~/.config/yazelix/settings.jsonc` for shell, editor, terminal, Zellij, and Yazi settings, edit `~/.config/yazelix_ghostty_cursors/settings.jsonc` for cursor settings, run `yzx config set/unset` for safe scalar and string-list edits, or run `yzx config ui`, Yazelix's ratconfig-backed JSONC settings editor, to inspect and edit explicit/defaulted values and stale-field diagnostics
+- **Core settings**: Edit `~/.config/yazelix/settings.jsonc` for shell, editor, terminal, Zellij, and Yazi settings, edit `~/.config/yazelix_cursors/settings.jsonc` for cursor settings, run `yzx config set/unset` for safe scalar and string-list edits, or run `yzx config ui`, Yazelix's ratconfig-backed JSONC settings editor, to inspect and edit explicit/defaulted values and stale-field diagnostics
 - **Yazi customization**: Use the built-in `yazi` settings in `settings.jsonc` for things like plugins, theme, sorting, and binary overrides, and use the managed Yazi home at `~/.config/yazelix/yazi/` for `yazi.toml`, `keymap.toml`, `init.lua`, packages, plugins, and flavors (see [Yazi Configuration](./docs/yazi-configuration.md))
 - **Zellij customization**: Use the built-in `zellij` settings in `settings.jsonc` for Yazelix-owned Zellij knobs, keybindings, theme, and rounded corners, and use `~/.config/yazelix/zellij.kdl` for deeper native Zellij settings that Yazelix does not render (see [Zellij Configuration](./docs/zellij-configuration.md))
 - **Status bar widgets**: Configure `[zellij].widget_tray` to order or hide `editor`, `shell`, `term`, `workspace`, `cursor`, usage, `cpu`, and `ram` widgets; the default cursor widget renders mono presets as colored `█ name` and split presets as one-cell split glyphs from the launch-scoped Ghostty cursor fact
@@ -301,13 +301,13 @@ yzx env --no-shell
 See the full catalog of tools and integrations in the Yazelix Collection:
 [docs/yazelix_collection.md](./docs/yazelix_collection.md)
 - **Essential tools**: [Yazi](https://github.com/sxyazi/yazi) (file manager), [Zellij](https://github.com/zellij-org/zellij) (terminal multiplexer), [Helix](https://helix-editor.com) (editor), shells (bash/nushell, plus your preferred shell), [fzf](https://github.com/junegunn/fzf), [zoxide](https://github.com/ajeetdsouza/zoxide), [Starship](https://starship.rs)
-- **Bundled helpers**: [lazygit](https://github.com/jesseduffield/lazygit) (or `lg`), [bottom](https://github.com/ClementTsang/bottom) (`btm`), [carapace](https://github.com/carapace-sh/carapace-bin), [macchina](https://github.com/Macchina-CLI/macchina), and the fixed helper tooling behind the packaged runtime
+- **Bundled helpers**: [lazygit](https://github.com/jesseduffield/lazygit) (or `lg`), [Zenith](https://github.com/bvaisvil/zenith), [carapace](https://github.com/carapace-sh/carapace-bin), [macchina](https://github.com/Macchina-CLI/macchina), and the fixed helper tooling behind the packaged runtime
 - **Host-managed helpers**: `mise` and `tombi` are expected from the host `PATH` by default when those integrations are used
 - **Yazi preview helpers**: `p7zip`, `jq`, `poppler`, `fd`, `ripgrep` are part of the fixed runtime surface
 - **Environment setup**: Proper paths, variables, and shell configurations
 
 **Customize Your Installation:**
-If you followed [step 3 in the installation guide](./docs/installation.md#step-3-configure-your-installation-optional), you already have your `~/.config/yazelix/settings.jsonc` config file ready, you can modify it anytime and restart Yazelix to apply changes. Main options live in that file; cursor presets live in `~/.config/yazelix_ghostty_cursors/settings.jsonc`
+If you followed [step 3 in the installation guide](./docs/installation.md#step-3-configure-your-installation-optional), you already have your `~/.config/yazelix/settings.jsonc` config file ready, you can modify it anytime and restart Yazelix to apply changes. Main options live in that file; cursor presets live in `~/.config/yazelix_cursors/settings.jsonc`
 
 **Terminal Emulator Selection:**
 - **Ghostty** (default packaged preference): Modern, fast terminal written in Zig with Yazelix cursor trails and Yazi image previews
@@ -357,7 +357,7 @@ Run `yzx help` for the live command list
 - `yzx popup <program> [args...]` - Open a one-off command in a transient popup pane
 - `yzx menu --popup` - Open the popup command palette, usually through `Alt+Shift+M`
 - `yzx config ui` - Open Yazelix's ratconfig-backed JSONC settings editor, usually through `Alt+Shift+C`
-- `Alt+Shift+B` - Open the bundled `btm` process viewer popup
+- `Alt+Shift+B` - Open the bundled Zenith process viewer popup
 - `yzx sidebar refresh` - Refresh the managed Yazi sidebar file tree and status widgets
 
 ### Config and Recovery
@@ -438,7 +438,7 @@ Yazelix uses Zellij as the workspace layer, so the most important bindings are g
 | `Alt+Shift+J` | Toggle the bottom managed popup command, usually `lazygit`, and refresh the Yazi file-tree sidebar git state when the popup keybinding closes it |
 | `Alt+Shift+K` | Toggle the top managed popup command, usually `yzx config ui`, Yazelix's ratconfig-backed settings editor |
 | `Alt+Shift+M` | Open the `yzx` command palette popup |
-| `Alt+Shift+B` | Toggle the keep-alive `btm` process viewer popup |
+| `Alt+Shift+B` | Toggle the keep-alive Zenith process viewer popup |
 | `Alt+Shift+C` | Open the Yazelix config UI popup |
 | `Alt+1..9` | Jump directly to tabs 1 through 9 |
 | `Alt+w` / `Alt+q` | Move to the next or previous tab |

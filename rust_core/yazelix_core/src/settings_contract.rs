@@ -1,3 +1,4 @@
+// Test lane: default
 //! Yazelix adapter for ratconfig deterministic `settings.jsonc` contracts.
 
 use crate::bridge::{CoreError, ErrorClass};
@@ -12,7 +13,7 @@ use yazelix_ratconfig::migration::{MigrationError, MigrationOp};
 pub const SETTINGS_CONTRACT_ID: &str = "yazelix.settings";
 pub const SETTINGS_CONTRACT_STATE_PATH: &str = "ratconfig.contract";
 const SETTINGS_CONTRACT_BASELINE_VERSION: u64 = 1;
-const SETTINGS_CONTRACT_CURRENT_VERSION: u64 = 6;
+const SETTINGS_CONTRACT_CURRENT_VERSION: u64 = 7;
 const OPTIONAL_ADDITIVE_DEFAULT_PATHS: &[&str] = &["zellij.custom_popups"];
 
 const LEGACY_SIDEBAR_SETTING_RENAMES: &[(&str, &str)] = &[
@@ -144,6 +145,15 @@ fn settings_contract_for_defaults(defaults: &JsonValue) -> ConfigContract {
                     transform: enable_kitty_keyboard_protocol_default,
                 }],
             ),
+            ContractChange::automatic(
+                "replace-default-btm-popup-with-zenith",
+                6,
+                7,
+                vec![MigrationOp::Transform {
+                    path: "zellij.custom_popups".to_string(),
+                    transform: replace_default_btm_popup_with_zenith,
+                }],
+            ),
         ],
     }
 }
@@ -218,6 +228,69 @@ fn enable_kitty_keyboard_protocol_default(value: &JsonValue) -> Result<Option<Js
     } else {
         Ok(Some(json!(true)))
     }
+}
+
+fn replace_default_btm_popup_with_zenith(value: &JsonValue) -> Result<Option<JsonValue>, String> {
+    let popups = value
+        .as_array()
+        .ok_or_else(|| "expected a custom popup array".to_string())?;
+    let mut changed = false;
+    let has_zenith = popups.iter().any(is_zenith_popup);
+    let mut next = Vec::with_capacity(popups.len());
+
+    for popup in popups {
+        if is_default_btm_popup(popup) {
+            changed = true;
+            if !has_zenith {
+                next.push(json!({
+                    "id": "zenith",
+                    "command": ["zenith"],
+                    "keybindings": ["Alt Shift B"],
+                    "keep_alive": true,
+                }));
+            }
+        } else {
+            next.push(popup.clone());
+        }
+    }
+
+    if changed {
+        Ok(Some(JsonValue::Array(next)))
+    } else {
+        Ok(None)
+    }
+}
+
+fn is_zenith_popup(value: &JsonValue) -> bool {
+    value
+        .as_object()
+        .and_then(|object| object.get("id"))
+        .and_then(JsonValue::as_str)
+        == Some("zenith")
+}
+
+fn is_default_btm_popup(value: &JsonValue) -> bool {
+    let Some(object) = value.as_object() else {
+        return false;
+    };
+    object.get("id").and_then(JsonValue::as_str) == Some("btm")
+        && string_array_equals(object.get("command"), &["btm"])
+        && string_array_equals(object.get("keybindings"), &["Alt Shift B"])
+        && object
+            .get("keep_alive")
+            .map(|value| value.as_bool() == Some(true) || value.is_null())
+            .unwrap_or(true)
+}
+
+fn string_array_equals(value: Option<&JsonValue>, expected: &[&str]) -> bool {
+    let Some(values) = value.and_then(JsonValue::as_array) else {
+        return false;
+    };
+    values.len() == expected.len()
+        && values
+            .iter()
+            .zip(expected)
+            .all(|(actual, expected)| actual.as_str() == Some(*expected))
 }
 
 fn replace_default_keybinding(
@@ -372,5 +445,53 @@ fn migration_error_detail(error: &MigrationError) -> JsonValue {
             "path": path,
             "message": message,
         }),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Regression: the old default process popup must migrate to Zenith when users carry an explicit default-shaped btm entry.
+    #[test]
+    fn rewrites_default_btm_popup_to_zenith() {
+        let migrated = replace_default_btm_popup_with_zenith(&json!([
+            {
+                "id": "btm",
+                "command": ["btm"],
+                "keybindings": ["Alt Shift B"],
+                "keep_alive": true
+            }
+        ]))
+        .unwrap()
+        .unwrap();
+
+        assert_eq!(
+            migrated,
+            json!([
+                {
+                    "id": "zenith",
+                    "command": ["zenith"],
+                    "keybindings": ["Alt Shift B"],
+                    "keep_alive": true
+                }
+            ])
+        );
+    }
+
+    // Defends: user-owned btm customizations are not rewritten merely because they share the old default id.
+    #[test]
+    fn preserves_custom_btm_popup() {
+        let migrated = replace_default_btm_popup_with_zenith(&json!([
+            {
+                "id": "btm",
+                "command": ["btm", "--basic"],
+                "keybindings": ["Alt Shift B"],
+                "keep_alive": true
+            }
+        ]))
+        .unwrap();
+
+        assert_eq!(migrated, None);
     }
 }

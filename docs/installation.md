@@ -209,7 +209,7 @@ hx ~/.config/yazelix/settings.jsonc
 The packaged runtime ships a fixed toolset instead of configurable dependency groups. The package includes:
 - the core Yazelix stack: `zellij`, `yazi`, `helix`, `nu`, `bash`, `fish`, `zsh`
 - Helix Steel authoring helpers: `steel`, `steel-language-server`, `forge`, `cargo-steel-lib`, `repl-connect`
-- the default CLI helpers: `fzf`, `zoxide`, `starship`, `lazygit`, `btm`, `carapace`, `macchina`
+- the default CLI helpers: `fzf`, `zoxide`, `starship`, `lazygit`, `zenith`, `carapace`, `macchina`
 - host-managed helper integrations: `mise` and `tombi`
 - the default Yazi preview helpers: `p7zip`, `jq`, `fd`, `ripgrep`, `poppler`
 - one packaged terminal variant: Ghostty by default with the Yazelix Zellij/Yazi graphics bridge, experimental Yazelix Terminal through `#yzxterm`, vanilla Rio through `#yazelix_rio`, WezTerm through `#yazelix_wezterm`, Kitty through `#yazelix_kitty`, Linux Foot through `#yazelix_foot`, or experimental Linux Ratty through `#yazelix_ratty`
@@ -386,7 +386,7 @@ Home Manager is the recommended granular path:
     enable = true;
     runtime_tool_sources = {
       lazygit = "host";
-      bottom = "host";
+      zenith = "host";
       helix = "host";
       yazi = "host";
       ripgrep = "host";
@@ -409,7 +409,7 @@ inputs.yazelix.lib.${system}.mkYazelix {
   inherit pkgs;
   runtimeToolSources = {
     lazygit = "host";
-    bottom = "host";
+    zenith = "host";
     helix = "host";
   };
 }
@@ -440,7 +440,7 @@ Home Manager and `mkYazelix` also accept component toggles for `cursors` and `sc
 
 ### Recommended Tools (enabled by default)
 - [lazygit](https://github.com/jesseduffield/lazygit) (or `lg`)
-- [bottom](https://github.com/ClementTsang/bottom) (`btm`)
+- [Zenith](https://github.com/bvaisvil/zenith)
 - [cargo-update](https://github.com/nabijaczleweli/cargo-update)
 - [ouch](https://github.com/ouch-org/ouch)
 - [atuin](https://github.com/atuinsh/atuin) (shell history manager)
@@ -472,7 +472,7 @@ Check installed tool versions: `yzx status --versions`
 Run diagnostics: `yzx doctor` - Automated health checks and fixes
 
 ### Customization
-If you followed step 5, you already have your `~/.config/yazelix/settings.jsonc` config file ready. You can modify it anytime and restart Yazelix to apply changes. Main options live in that file; cursor presets live in `~/.config/yazelix_ghostty_cursors/settings.jsonc`.
+If you followed step 5, you already have your `~/.config/yazelix/settings.jsonc` config file ready. You can modify it anytime and restart Yazelix to apply changes. Main options live in that file; cursor presets live in `~/.config/yazelix_cursors/settings.jsonc`.
 
 For complete customization options, see the [Customization Guide](./customization.md).
 

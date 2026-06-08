@@ -238,8 +238,8 @@ Open a transient floating-pane command inside Zellij
 - Uses the current tab workspace root as cwd when available; otherwise uses the current shell cwd
 - Errors if not in Zellij
 - Built-in generated popup specs use `zellij.popup_commands`: `bottom_popup` defaults to `["lazygit"]`, `top_popup` defaults to `["yzx", "config", "ui"]`, and `menu` defaults to `["yzx", "menu"]`
-- User-defined generated popup specs use `zellij.custom_popups`; the default entry is `btm` with `command = ["btm"]`, `keybindings = ["Alt Shift B"]`, and `keep_alive = true`
-- Default surface keys: `Alt Shift J` for `bottom_popup`, `Alt Shift K` for `top_popup`, and `Alt Shift B` for `btm`
+- User-defined generated popup specs use `zellij.custom_popups`; the default entry is `zenith` with `command = ["zenith"]`, `keybindings = ["Alt Shift B"]`, and `keep_alive = true`
+- Default surface keys: `Alt Shift J` for `bottom_popup`, `Alt Shift K` for `top_popup`, and `Alt Shift B` for `zenith`
 - Popup panes are named `yzx_popup`, `yzx_bottom_popup`, `yzx_top_popup`, `yzx_menu`, and `yzx_<custom id>`
 
 ### `yzx config [--path]`
@@ -259,14 +259,14 @@ Open Yazelix's ratconfig-backed JSONC settings browser and editor
 Set a supported config value without rewriting the whole file
 - Preserves unrelated comments and formatting
 - Accepts JSON literals such as `true`, `20`, `"bash"`, or `["ghostty"]`
-- Writes normal settings to `~/.config/yazelix/settings.jsonc` and `cursors.*` paths to `~/.config/yazelix_ghostty_cursors/settings.jsonc`
+- Writes normal settings to `~/.config/yazelix/settings.jsonc` and `cursors.*` paths to `~/.config/yazelix_cursors/settings.jsonc`
 - Validates the patched config or cursor registry before writing
 - Refuses Home Manager-owned, read-only, non-`settings.jsonc`, or unsafe object/array edits
 
 ### `yzx config unset <settings.path>`
 Remove an explicit config value so Yazelix uses the default
 - Preserves unrelated comments and formatting
-- Writes normal settings to `~/.config/yazelix/settings.jsonc` and `cursors.*` paths to `~/.config/yazelix_ghostty_cursors/settings.jsonc`
+- Writes normal settings to `~/.config/yazelix/settings.jsonc` and `cursors.*` paths to `~/.config/yazelix_cursors/settings.jsonc`
 - Validates the patched config or cursor registry before writing
 - Leaves the file unchanged when the value is already absent
 
@@ -295,7 +295,7 @@ Inspect Yazelix cursor presets and resolved colors
 ### `yzx edit <target> [--print]`
 Open one of the managed config surfaces through explicit or fuzzy target selection
 - Supported targets include `config`, `cursors`, `helix`, `zellij`, `yazi`, `yazi-keymap`, and `yazi-init`
-- `cursors` opens `~/.config/yazelix_ghostty_cursors/settings.jsonc` for full cursor registry edits
+- `cursors` opens `~/.config/yazelix_cursors/settings.jsonc` for full cursor registry edits
 - Yazi targets stay inside `~/.config/yazelix/yazi/` and do not expose host-owned `~/.config/yazi/` files
 - `--print`: print the resolved managed path without opening
 
@@ -308,7 +308,7 @@ Replace `settings.jsonc` with a fresh copy of the shipped settings template
 - Only replaces `~/.config/yazelix/settings.jsonc`
 - Preserves managed override sidecars such as `helix/`, `zellij.kdl`, `yazi/`, `terminal_*.conf|toml|ini`, and `shell_*.sh|zsh|fish|nu`
 - Preserves unknown adjacent files under `~/.config/yazelix/` and prints a warning instead of deleting or adopting them
-- Cursor presets live in `~/.config/yazelix_ghostty_cursors/settings.jsonc`; `reset config` only resets the main Yazelix settings file
+- Cursor presets live in `~/.config/yazelix_cursors/settings.jsonc`; `reset config` only resets the main Yazelix settings file
 
 ### `yzx help`
 Show command reference

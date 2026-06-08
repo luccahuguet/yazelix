@@ -1,6 +1,6 @@
 # Zed, VS Code, and Cursor Integration
 
-Use Yazelix tools (Nushell, zoxide, starship, lazygit, btm, etc.) directly from your editor's built-in terminal. Two configurations are supported:
+Use Yazelix tools (Nushell, zoxide, starship, lazygit, zenith, etc.) directly from your editor's built-in terminal. Two configurations are supported:
 
 - **Optional profile**: add a named Yazelix terminal without replacing your default
 - **Default terminal**: make Yazelix your editor's default integrated terminal

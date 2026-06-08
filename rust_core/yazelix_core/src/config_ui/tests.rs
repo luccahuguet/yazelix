@@ -34,7 +34,7 @@ fn write_runtime_layout(runtime: &Path) {
     fs::write(runtime.join("runtime_variant"), "ghostty\n").expect("runtime variant");
     fs::write(
         runtime.join(DEFAULT_CURSOR_CONFIG_FILENAME),
-        include_str!("../../../../yazelix_ghostty_cursors_default.toml"),
+        include_str!("../../../../yazelix_cursors_default.toml"),
     )
     .expect("cursor defaults");
     fs::write(
@@ -402,10 +402,10 @@ fn custom_popup_rows_expose_structured_editor() {
     let model = build_config_ui_model(&request).expect("model");
     let parent = model_field(&model, CUSTOM_POPUPS_FIELD_PATH);
     let add = model_field(&model, "zellij.custom_popups.$add");
-    let overview = model_field(&model, "zellij.custom_popups.btm");
-    let command = model_field(&model, "zellij.custom_popups.btm.command");
-    let keybindings = model_field(&model, "zellij.custom_popups.btm.keybindings");
-    let keep_alive = model_field(&model, "zellij.custom_popups.btm.keep_alive");
+    let overview = model_field(&model, "zellij.custom_popups.zenith");
+    let command = model_field(&model, "zellij.custom_popups.zenith.command");
+    let keybindings = model_field(&model, "zellij.custom_popups.zenith.keybindings");
+    let keep_alive = model_field(&model, "zellij.custom_popups.zenith.keep_alive");
 
     assert_eq!(
         parent.edit_behavior,
@@ -424,8 +424,8 @@ fn custom_popup_rows_expose_structured_editor() {
         }
     );
     assert_eq!(command.kind, "string_list");
-    assert_eq!(command.current_value, "[\"btm\"]");
-    assert_eq!(edit_input_for_field(command), "btm");
+    assert_eq!(command.current_value, "[\"zenith\"]");
+    assert_eq!(edit_input_for_field(command), "zenith");
     assert_eq!(keybindings.kind, "string_list");
     assert_eq!(edit_input_for_field(keybindings), "Alt Shift B");
     assert_eq!(keep_alive.kind, "bool");
@@ -442,8 +442,8 @@ fn custom_popup_child_rows_write_parent_popup_list() {
     write_main_settings(runtime.path(), config.path(), |settings| {
         settings["zellij"]["custom_popups"] = json!([
             {
-                "id": "btm",
-                "command": ["btm"],
+                "id": "zenith",
+                "command": ["zenith"],
                 "keybindings": ["Alt Shift B"],
                 "keep_alive": true
             },
@@ -477,8 +477,8 @@ fn custom_popup_child_rows_write_parent_popup_list() {
         get_json_path(&value, "zellij.custom_popups"),
         Some(&json!([
             {
-                "id": "btm",
-                "command": ["btm"],
+                "id": "zenith",
+                "command": ["zenith"],
                 "keybindings": ["Alt Shift B"],
                 "keep_alive": true
             },
@@ -505,7 +505,7 @@ fn custom_popup_add_and_remove_rows_patch_parent_popup_list() {
 
     app.write_field_value("zellij.custom_popups.$add", &json!("gitui"))
         .expect("add popup");
-    select_field_path(&mut app, "zellij.custom_popups.btm");
+    select_field_path(&mut app, "zellij.custom_popups.zenith");
     app.handle_key(KeyEvent::new(KeyCode::Char('u'), KeyModifiers::NONE));
 
     let value = read_settings_jsonc_value(&settings_path).expect("settings jsonc");
@@ -528,7 +528,7 @@ fn custom_popup_add_and_remove_rows_patch_parent_popup_list() {
         app.model
             .fields
             .iter()
-            .all(|field| field.path != "zellij.custom_popups.btm")
+            .all(|field| field.path != "zellij.custom_popups.zenith")
     );
 }
 
@@ -545,7 +545,7 @@ fn custom_popup_duplicate_keybinding_fails_before_write() {
 
     let error = app
         .write_field_value(
-            "zellij.custom_popups.btm.keybindings",
+            "zellij.custom_popups.zenith.keybindings",
             &json!(["Alt Shift J"]),
         )
         .unwrap_err();
@@ -566,7 +566,7 @@ fn custom_popup_invalid_identity_and_command_fail_before_write() {
     let mut app = YazelixConfigUiApp::new(request, model);
 
     let duplicate_id = app
-        .write_field_value("zellij.custom_popups.$add", &json!("btm"))
+        .write_field_value("zellij.custom_popups.$add", &json!("zenith"))
         .unwrap_err();
     assert_eq!(duplicate_id.code(), "duplicate_custom_popup_id");
     assert!(!settings_path.exists());
@@ -578,7 +578,7 @@ fn custom_popup_invalid_identity_and_command_fail_before_write() {
     assert!(!settings_path.exists());
 
     let empty_command = app
-        .write_field_value("zellij.custom_popups.btm.command", &json!([]))
+        .write_field_value("zellij.custom_popups.zenith.command", &json!([]))
         .unwrap_err();
     assert_eq!(empty_command.code(), "empty_config_string_list");
     assert!(!settings_path.exists());

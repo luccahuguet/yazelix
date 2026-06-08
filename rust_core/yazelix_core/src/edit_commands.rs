@@ -69,12 +69,12 @@ fn get_edit_targets(config_dir: &Path) -> Vec<EditTarget> {
             aliases: &[
                 "cursors",
                 "cursor",
-                "ghostty-cursors",
-                "ghostty cursors",
+                "yazelix-cursors",
+                "yazelix cursors",
                 "cursor settings",
-                "yazelix_ghostty_cursors",
+                "yazelix_cursors",
             ],
-            search: "cursors cursor ghostty cursor settings yazelix_ghostty_cursors settings.jsonc",
+            search: "cursors cursor yazelix cursor settings yazelix_cursors settings.jsonc",
         },
         EditTarget {
             id: "helix",

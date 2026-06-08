@@ -8,7 +8,7 @@ with lib;
 let
   mainConfigContract = builtins.fromTOML (builtins.readFile ../config_metadata/main_config_contract.toml);
   mainContractFields = mainConfigContract.fields;
-  defaultCursorConfig = builtins.fromTOML (builtins.readFile ../yazelix_ghostty_cursors_default.toml);
+  defaultCursorConfig = builtins.fromTOML (builtins.readFile ../yazelix_cursors_default.toml);
 
   attrOr =
     attrs: name: fallback:

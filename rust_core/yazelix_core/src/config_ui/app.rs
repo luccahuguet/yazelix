@@ -321,7 +321,7 @@ impl YazelixConfigUiApp {
                         CoreError::io(
                             "read_default_cursor_config_for_ui_edit",
                             "Could not read the default Yazelix cursor settings",
-                            "Reinstall Yazelix so the runtime includes yazelix_ghostty_cursors_default.toml.",
+                            "Reinstall Yazelix so the runtime includes yazelix_cursors_default.toml.",
                             self.model.default_cursor_config_path.display().to_string(),
                             source,
                         )

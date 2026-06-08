@@ -35,7 +35,7 @@ let
           relativePath == "rust_core"
           || relativePath == "config_metadata"
           || relativePath == "settings_default.jsonc"
-          || relativePath == "yazelix_ghostty_cursors_default.toml"
+          || relativePath == "yazelix_cursors_default.toml"
           || isZellijStatusTemplateSource
           || lib.hasPrefix "rust_core/" relativePath
           || lib.hasPrefix "config_metadata/" relativePath;

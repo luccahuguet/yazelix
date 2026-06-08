@@ -118,17 +118,17 @@ Yazelix exposes three built-in popup command slots plus a user-defined popup lis
 - `bottom_popup` uses `zellij.popup_commands.bottom_popup` and defaults to `lazygit` on `Alt+Shift+J`
 - `top_popup` uses `zellij.popup_commands.top_popup` and defaults to `yzx config ui`, Yazelix's ratconfig-backed JSONC settings editor, on `Alt+Shift+K`
 - `menu` uses `zellij.popup_commands.menu` and defaults to `yzx menu` on `Alt+Shift+M`
-- `custom_popups` defines additional popup ids, commands, keybindings, and optional keep-alive behavior; the default entry is `btm` on `Alt+Shift+B`
+- `custom_popups` defines additional popup ids, commands, keybindings, and optional keep-alive behavior; the default entry is `zenith` on `Alt+Shift+B`
 
-For example, keep the built-in surfaces and add a personal monitor popup on `Alt+Shift+Y`:
+For example, keep the built-in surfaces and the default Zenith monitor popup, then add a personal monitor popup on `Alt+Shift+Y`:
 
 ```jsonc
 {
   "zellij": {
     "custom_popups": [
       {
-        "id": "btm",
-        "command": ["btm"],
+        "id": "zenith",
+        "command": ["zenith"],
         "keybindings": ["Alt Shift B"],
         "keep_alive": true
       },
@@ -159,9 +159,9 @@ To change the built-in surfaces, edit only the supported `popup_commands` entrie
 }
 ```
 
-Set `"custom_popups": []` to remove the default `btm` popup. Set `"keep_alive": true` for monitor TUIs that should hide on focused toggle without restarting their process. Omitted `keep_alive` values default to true for the default-shaped `btm` popup and false for other custom popups.
+Set `"custom_popups": []` to remove the default `zenith` popup. Set `"keep_alive": true` for monitor TUIs that should hide on focused toggle without restarting their process. Omitted `keep_alive` values default to true for the default-shaped `zenith` popup and false for other custom popups.
 
-`zellij.popup_commands` accepts only `bottom_popup`, `top_popup`, and `menu`. Unsupported entries such as `extra_popup` or `btm` fail fast. The config UI popup is a separate `config` action on `Alt+Shift+C`, and it opens the same ratconfig-backed `yzx config ui` editor. Popup command, custom popup, and geometry changes apply after Yazelix regenerates the Zellij config, so restart the window after editing them.
+`zellij.popup_commands` accepts only `bottom_popup`, `top_popup`, and `menu`. Unsupported entries such as `extra_popup` or `zenith` fail fast. The config UI popup is a separate `config` action on `Alt+Shift+C`, and it opens the same ratconfig-backed `yzx config ui` editor. Popup command, custom popup, and geometry changes apply after Yazelix regenerates the Zellij config, so restart the window after editing them.
 
 For one-off commands inside an active Yazelix tab, run `yzx popup <program> [args...]`. That opens the same generic `popup` slot without changing `settings.jsonc`.
 
@@ -206,8 +206,8 @@ ui {
   },
   "custom_popups": [
     {
-      "id": "btm",
-      "command": ["btm"],
+      "id": "zenith",
+      "command": ["zenith"],
       "keybindings": ["Alt Shift B"],
       "keep_alive": true
     }
@@ -226,7 +226,7 @@ ui {
 
 Supported owner-local action ids are `open_workspace_terminal`, `bottom_popup`, `top_popup`, `menu`, `config`, `move_focus_left_or_tab`, `move_focus_right_or_tab`, `toggle_editor_sidebar_focus`, `toggle_editor_right_sidebar_focus`, `toggle_left_sidebar`, `open_codex_agent_right`, `smart_reveal`, `previous_family`, and `next_family`. `yzx keys` shows the matching scoped ids, such as `zellij.bottom_popup`. Omitted actions keep their defaults. Set an action to `[]` to disable Yazelix's generated binding for that action. Yazelix rejects duplicate keys across this semantic map and `zellij.custom_popups` before launch.
 
-Use `zellij.popup_commands` to change the command argv behind built-in popup surfaces. Use `zellij.custom_popups` to add, remove, or remap user-defined popup surfaces such as the default keep-alive `btm` process viewer.
+Use `zellij.popup_commands` to change the command argv behind built-in popup surfaces. Use `zellij.custom_popups` to add, remove, or remap user-defined popup surfaces such as the default keep-alive Zenith process viewer.
 
 For Yazelix's curated native Zellij key policy, use `zellij.native_keybindings` in `settings.jsonc`. This covers shipped remaps such as `scroll_mode` / `scroll_mode_unbind`, `session_mode` / `session_mode_unbind`, tab movement, tab jumps, pane grouping, and related Zellij-native conflict cleanup. Omitted entries keep defaults; set an entry to `[]` to disable that one bind or unbind.
 

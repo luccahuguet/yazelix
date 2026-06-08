@@ -546,7 +546,7 @@ fn string_list_from_value(value: &JsonValue, setting_path: &str) -> Result<Vec<S
 }
 
 fn default_keep_alive(id: &str, command: &[String]) -> bool {
-    id == "btm" && command.len() == 1 && command[0] == "btm"
+    id == "zenith" && command.len() == 1 && command[0] == "zenith"
 }
 
 fn bool_label(value: bool) -> &'static str {

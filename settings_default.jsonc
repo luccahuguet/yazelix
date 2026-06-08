@@ -96,9 +96,9 @@
     },
     "custom_popups": [
       {
-        "id": "btm",
+        "id": "zenith",
         "command": [
-          "btm"
+          "zenith"
         ],
         "keybindings": [
           "Alt Shift B"

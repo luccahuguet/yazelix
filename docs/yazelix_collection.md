@@ -88,7 +88,8 @@ Maintainer-facing fork status, child-repo ownership tables, README delta rules, 
 - [zoxide](https://github.com/ajeetdsouza/zoxide) — Directory jumper used from the shell, Yazi's native `Z` flow, and Yazelix's `Alt+z` direct-open Yazi flow.
 - [starship](https://starship.rs) — Prompt engine configured for the managed shells and surfaced inside Yazi through `starship.yazi`.
 - [lazygit](https://github.com/jesseduffield/lazygit) — Default managed popup command, normally toggled with `Alt+Shift+J`.
-- [bottom](https://github.com/ClementTsang/bottom) — Bundled `btm` process viewer for the managed process popup, normally toggled with `Alt+Shift+B`.
+- [Zenith](https://github.com/bvaisvil/zenith) — Bundled process viewer for the managed process popup, normally toggled with `Alt+Shift+B`.
+- [bottom](https://github.com/ClementTsang/bottom) and [SysWatch](https://github.com/matthart1983/syswatch) — Good process monitor alternatives for users who prefer a custom popup command.
 - [Steel](https://github.com/mattwparas/steel) — Scheme runtime and authoring tools for Yazelix-managed Helix Steel plugins.
 - [carapace](https://github.com/rsteube/carapace-bin) — Cross-shell completion engine used by generated shell initializers.
 - [mise](https://mise.jdx.dev/) — Host-managed runtime/version manager integration loaded by generated shell initializers when `mise` is on `PATH`.
@@ -120,7 +121,7 @@ Plugin catalog: https://github.com/yazi-rs/plugins
 
 ## User Configuration Surfaces
 
-- [`settings.jsonc`](../config_metadata/yazelix_settings.schema.json) — Canonical semantic settings inventory; main settings live under `~/.config/yazelix/settings.jsonc` and cursor presets live under `~/.config/yazelix_ghostty_cursors/settings.jsonc`
+- [`settings.jsonc`](../config_metadata/yazelix_settings.schema.json) — Canonical semantic settings inventory; main settings live under `~/.config/yazelix/settings.jsonc` and cursor presets live under `~/.config/yazelix_cursors/settings.jsonc`
 - [Yazi configuration](./yazi-configuration.md) — Personal Yazi config overlays under `~/.config/yazelix/yazi/`
 - [Zellij configuration](./zellij-configuration.md) — `settings.jsonc` for Yazelix-owned Zellij behavior plus `~/.config/yazelix/zellij.kdl` for native settings Yazelix does not render
 - [Terminal overrides](./terminal_emulators.md) — Terminal-native override files for Ghostty and Kitty, with Yazelix Terminal, Foot, and Ratty using generated config or native user-mode config

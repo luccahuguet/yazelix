@@ -13,7 +13,7 @@ Yazelix already had a floating command-palette popup, but no coherent popup mode
 - Add `yzx popup <command ...>`
 - Add `zellij.popup_commands` and `zellij.custom_popups` to `settings.jsonc` / Home Manager
 - Bind built-in popup commands to semantic bottom, top, and menu defaults
-- Ship `btm` as the default `zellij.custom_popups` example on `Alt+Shift+B`
+- Ship `zenith` as the default `zellij.custom_popups` process monitor on `Alt+Shift+B`
 - Keep the command-palette popup as a separate flow
 - Reuse the configured `yzpp` popup model for popup, menu, and config UI panes
 - Keep Yazelix-specific side effects, such as sidebar refresh, outside the plain
@@ -56,7 +56,7 @@ Yazelix already had a floating command-palette popup, but no coherent popup mode
 - Statement: `Alt+Shift+J` toggles the default bottom managed popup pane
   instead of spawning duplicates forever, while `Alt+Shift+M` toggles the
   configured `menu` popup command and `Alt+Shift+B` toggles the default
-  `btm` custom popup
+  `zenith` custom popup
 - Verification: automated `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core yzpp_popup_specs_use_distinct_popup_commands`;
   automated `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core semantic_keybinds_route_popup_actions_to_yzpp`
 
@@ -107,11 +107,11 @@ Yazelix already had a floating command-palette popup, but no coherent popup mode
   editor, and `menu = ["yzx", "menu"]`.
 - `zellij.custom_popups` is a list of user-defined popup specs with `id`,
   `command`, `keybindings`, and optional `keep_alive`.
-- The default custom popup is `{ id = "btm", command = ["btm"], keybindings = ["Alt Shift B"], keep_alive = true }`.
+- The default custom popup is `{ id = "zenith", command = ["zenith"], keybindings = ["Alt Shift B"], keep_alive = true }`.
 - `keep_alive = true` makes focused toggle suppress that popup pane without
   killing the child process or hiding the whole floating layer. Explicit close
   still closes the pane. Omitted `keep_alive` defaults to true for the
-  default-shaped `btm` popup and false for other custom popups.
+  default-shaped `zenith` popup and false for other custom popups.
 - Popup geometry is user-configurable through `zellij.popup_width_percent` and `zellij.popup_height_percent`.
 - Popup width and height percentages must be integers in the range `1..100`.
 - The default popup width and height are both `90`.
@@ -127,8 +127,8 @@ Yazelix already had a floating command-palette popup, but no coherent popup mode
 - `Alt+Shift+J` opens one managed bottom popup pane when it is missing, focuses it when it exists but is unfocused, and closes it when it is focused.
 - `Alt+Shift+K` does the same for the semantic top popup slot, which defaults
   to `yzx config ui`, Yazelix's ratconfig-backed JSONC settings editor.
-- `Alt+Shift+B` toggles the semantic btm popup slot. It defaults to the bundled
-  `btm` process viewer through `zellij.custom_popups` and suppresses that pane
+- `Alt+Shift+B` toggles the semantic Zenith popup slot. It defaults to the bundled
+  Zenith process viewer through `zellij.custom_popups` and suppresses that pane
   instead of closing it on focused toggle so process graphs can keep their
   history.
 - When `Alt+Shift+J` closes the configured popup pane, Yazelix runs `yzx sidebar
@@ -244,13 +244,13 @@ The `yzpp` raw pipe path still accepts generated JSON through `name "transient_p
 - integration tests: `yzx popup <command ...>` routes transient popup requests to `yzpp`
   with a fake Zellij binary
 - integration tests: generated Zellij config contains the integrated `yzpp`
-  plugin block, bottom_popup/top_popup/menu/btm/config specs, and sidebar
+  plugin block, bottom_popup/top_popup/menu/zenith/config specs, and sidebar
   refresh hook
 - CI checks: `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core --test yzx_control_workspace_surface`
 - contract validator: `yzx_repo_validator validate-contracts`
 - manual verification: `Alt+Shift+J` toggles the bottom managed popup,
   `Alt+Shift+K` toggles the top managed popup, `Alt+Shift+M` opens the menu,
-  `Alt+Shift+B` toggles the keep-alive btm process viewer, and `Alt+Shift+C`
+  `Alt+Shift+B` toggles the keep-alive Zenith process viewer, and `Alt+Shift+C`
   opens the config UI
 
 ## Traceability

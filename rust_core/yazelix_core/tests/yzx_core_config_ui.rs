@@ -41,7 +41,7 @@ fn write_runtime_layout(runtime: &Path) {
     fs::write(runtime.join("runtime_variant"), "ghostty\n").expect("runtime variant");
     fs::write(
         runtime.join(DEFAULT_CURSOR_CONFIG_FILENAME),
-        include_str!("../../../yazelix_ghostty_cursors_default.toml"),
+        include_str!("../../../yazelix_cursors_default.toml"),
     )
     .expect("cursor defaults");
     fs::write(
@@ -236,11 +236,11 @@ fn config_ui_metadata_covers_visible_fields_and_tabs() {
     expected_paths.extend(
         [
             "zellij.custom_popups.$add",
-            "zellij.custom_popups.btm",
-            "zellij.custom_popups.btm.command",
-            "zellij.custom_popups.btm.id",
-            "zellij.custom_popups.btm.keep_alive",
-            "zellij.custom_popups.btm.keybindings",
+            "zellij.custom_popups.zenith",
+            "zellij.custom_popups.zenith.command",
+            "zellij.custom_popups.zenith.id",
+            "zellij.custom_popups.zenith.keep_alive",
+            "zellij.custom_popups.zenith.keybindings",
         ]
         .map(str::to_string),
     );

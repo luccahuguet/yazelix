@@ -202,7 +202,7 @@ help = "Set commands for the built-in Yazelix popup surfaces"
 
 [fields."zellij.popup_commands.bottom_popup"]
 tab = "workspace"
-help = "Set the command argv for the bottom popup surface"
+help = "Set the command argv for the bottom popup slot"
 
 [fields."zellij.popup_commands.top_popup"]
 tab = "workspace"

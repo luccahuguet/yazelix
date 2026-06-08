@@ -401,7 +401,7 @@ fn read_config_for_edit_or_default(
                 CoreError::io(
                     "read_default_cursor_config_for_edit",
                     "Could not read the default Yazelix cursor settings",
-                    "Reinstall Yazelix so the runtime includes yazelix_ghostty_cursors_default.toml.",
+                    "Reinstall Yazelix so the runtime includes yazelix_cursors_default.toml.",
                     paths.default_cursor_config_path.display().to_string(),
                     source,
                 )

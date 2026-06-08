@@ -158,7 +158,7 @@ let
       [ yazelixCursorsPackage ]
     else
       [ ];
-  cursorConfigRoot = "${config.xdg.configHome}/yazelix_ghostty_cursors";
+  cursorConfigRoot = "${config.xdg.configHome}/yazelix_cursors";
   cursorConfigPath = "${cursorConfigRoot}/settings.jsonc";
   cursorGeneratorActivation = lib.optionalString (cursorGeneratorPackage != [ ]) ''
         if [ -f ${lib.escapeShellArg cursorConfigPath} ]; then

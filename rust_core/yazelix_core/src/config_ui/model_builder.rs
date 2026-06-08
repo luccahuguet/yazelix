@@ -267,7 +267,7 @@ fn read_cursor_config_value(path: &Path) -> Result<JsonValue, CoreError> {
         CoreError::io(
             "read_config_ui_cursor_config",
             "Could not read the Yazelix cursor settings",
-            "Fix permissions for ~/.config/yazelix_ghostty_cursors/settings.jsonc, then retry.",
+            "Fix permissions for ~/.config/yazelix_cursors/settings.jsonc, then retry.",
             path.display().to_string(),
             source,
         )
@@ -280,7 +280,7 @@ fn read_default_cursor_config_value(path: &Path) -> Result<JsonValue, CoreError>
         CoreError::io(
             "read_config_ui_default_cursor_config",
             "Could not read the default Yazelix cursor settings",
-            "Reinstall Yazelix so the runtime includes yazelix_ghostty_cursors_default.toml.",
+            "Reinstall Yazelix so the runtime includes yazelix_cursors_default.toml.",
             path.display().to_string(),
             source,
         )
@@ -783,7 +783,7 @@ fn collect_sidecars(config_dir: &Path) -> Vec<ConfigUiSidecar> {
     let cursor_path = crate::user_config_paths::shared_cursor_config(config_dir);
     let cursor_present = fs::symlink_metadata(&cursor_path).is_ok();
     sidecars.push(ConfigUiSidecar {
-        name: "yazelix_ghostty_cursors/settings.jsonc".to_string(),
+        name: "yazelix_cursors/settings.jsonc".to_string(),
         owner: classify_path_owner(&cursor_path, cursor_present),
         read_only: path_is_read_only(&cursor_path),
         path: cursor_path,

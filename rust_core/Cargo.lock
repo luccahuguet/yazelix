@@ -1475,7 +1475,7 @@ dependencies = [
 [[package]]
 name = "yazelix_cursors"
 version = "0.1.0"
-source = "git+https://github.com/luccahuguet/yazelix-cursors?rev=99569c7bd163663fcd6f319cf39851bd5794c5be#99569c7bd163663fcd6f319cf39851bd5794c5be"
+source = "git+https://github.com/luccahuguet/yazelix-cursors?rev=3047edb0e1b64bc663c195e9b29b57bdce0b8112#3047edb0e1b64bc663c195e9b29b57bdce0b8112"
 dependencies = [
  "jsonc-parser",
  "serde",

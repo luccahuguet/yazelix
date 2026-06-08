@@ -239,10 +239,10 @@ let
         requiredCommands = [ "lazygit" ];
         hostable = true;
       };
-      bottom = makeTool {
-        package = pkgs.bottom;
-        commands = [ "btm" ];
-        requiredCommands = [ "btm" ];
+      zenith = makeTool {
+        package = pkgs.zenith;
+        commands = [ "zenith" ];
+        requiredCommands = [ "zenith" ];
         hostable = true;
       };
       carapace = makeTool {

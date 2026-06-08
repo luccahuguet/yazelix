@@ -10,7 +10,7 @@ The source repository is [`luccahuguet/yazelix-cursors`](https://github.com/lucc
 
 ## Decision
 
-Yazelix should ship `yazelix_cursors` from a separate standalone repository. The external repository owns reusable cursor registry parsing, validation, resolution, Ghostty-compatible palette/effect shader generation, shader assets, `yzc`, flake packaging, and CI. `ghostty_cursor_registry.rs` remains the Yazelix-specific loader for `~/.config/yazelix_ghostty_cursors/settings.jsonc`; legacy embedded cursor settings are rejected rather than migrated in the main runtime.
+Yazelix should ship `yazelix_cursors` from a separate standalone repository. The external repository owns reusable cursor registry parsing, validation, resolution, Ghostty-compatible palette/effect shader generation, shader assets, `yzc`, flake packaging, and CI. `ghostty_cursor_registry.rs` remains the Yazelix-specific loader for `~/.config/yazelix_cursors/settings.jsonc`; legacy embedded cursor settings are rejected rather than migrated in the main runtime.
 
 Selected repository and package name: `yazelix-cursors` / `yazelix_cursors`
 
@@ -23,13 +23,13 @@ Previous alternatives considered:
 ## Scope
 
 - `.#yazelix_cursors` flake package
-- generated cursor palette shaders from the extracted `yazelix_ghostty_cursors_default.toml`
+- generated cursor palette shaders from the extracted `yazelix_cursors_default.toml`
 - generated Ghostty-compatible cursor effect shaders
 - terminal target metadata for Ghostty, yzxterm, Rio, Ratty, and protocol cursor positions
 - example Ghostty config snippets under the package output
 - `yzc init`, `yzc list`, `yzc list-targets`, `yzc inspect`, and `yzc generate ghostty`
-- standalone cursor config at `~/.config/yazelix_ghostty_cursors/settings.jsonc`
-- generated Ghostty include at `~/.config/yazelix_ghostty_cursors/ghostty.conf`
+- standalone cursor config at `~/.config/yazelix_cursors/settings.jsonc`
+- generated Ghostty include at `~/.config/yazelix_cursors/ghostty.conf`
 - license and provenance notes for shipped and adapted shaders
 - a stable import path back into the main Yazelix runtime
 
@@ -41,9 +41,9 @@ Previous alternatives considered:
 - The package passthru exposes `yazelixCursorPackageContract` with the exact shader root, generated effect root, required targets, required shader files, and forbidden stale shader files
 - The package and runtime shader roots must not include `build_shaders.nu`; shader generation is Rust-owned
 - `yzc list-targets` exposes the child-owned target model for Ghostty, yzxterm, Rio, Ratty, and protocol cursor positions
-- Users opt in by running `yzc init`, `yzc generate ghostty`, then adding `config-file = ~/.config/yazelix_ghostty_cursors/ghostty.conf` to their Ghostty config
-- `yzc init` creates `~/.config/yazelix_ghostty_cursors/settings.jsonc` and does not overwrite an existing config
-- `yzc generate ghostty` copies packaged shaders into `~/.config/yazelix_ghostty_cursors/shaders/`, regenerates data-driven palette and effect shaders from the standalone settings, and writes `~/.config/yazelix_ghostty_cursors/ghostty.conf`
+- Users opt in by running `yzc init`, `yzc generate ghostty`, then adding `config-file = ~/.config/yazelix_cursors/ghostty.conf` to their Ghostty config
+- `yzc init` creates `~/.config/yazelix_cursors/settings.jsonc` and does not overwrite an existing config
+- `yzc generate ghostty` copies packaged shaders into `~/.config/yazelix_cursors/shaders/`, regenerates data-driven palette and effect shaders from the standalone settings, and writes `~/.config/yazelix_cursors/ghostty.conf`
 - The package does not edit user Ghostty config files
 - The package provides standalone random resolution when `yzc generate ghostty` runs; it does not provide Yazelix runtime per-window reroll behavior
 - The package is generated from the same cursor registry and Ghostty palette generator used by Yazelix
@@ -86,7 +86,7 @@ Yazelix must consume Ghostty-compatible shader assets from the locked `yazelix_c
 
 ## Provenance
 
-The shader direction is inspired by the public Ghostty cursor shader ecosystem, including `ghostty-cursor-shaders`. Yazelix-generated palette shaders are derived from `yazelix_ghostty_cursors_default.toml` and the first-party Ghostty materialization code. Vendored or adapted shader files in `luccahuguet/yazelix-cursors` must keep nearby provenance notes.
+The shader direction is inspired by the public Ghostty cursor shader ecosystem, including `ghostty-cursor-shaders`. Yazelix-generated palette shaders are derived from `yazelix_cursors_default.toml` and the first-party Ghostty materialization code. Vendored or adapted shader files in `luccahuguet/yazelix-cursors` must keep nearby provenance notes.
 
 ## Non-Goals
 

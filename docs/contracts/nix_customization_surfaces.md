@@ -26,7 +26,7 @@ It may expose typed options such as:
 
 ```nix
 programs.yazelix.runtime_tool_sources.lazygit = "host";
-programs.yazelix.runtime_tool_sources.bottom = "host";
+programs.yazelix.runtime_tool_sources.zenith = "host";
 ```
 
 Home Manager options should translate into the same package-builder arguments used by non-Home-Manager users.
@@ -42,7 +42,7 @@ inputs.yazelix.lib.${system}.mkYazelix {
   inherit pkgs;
   runtimeToolSources = {
     lazygit = "host";
-    bottom = "host";
+    zenith = "host";
   };
   components = {
     screen = true;
@@ -96,7 +96,7 @@ The current evaluated matrix is:
 | `extra_terminal_launchers = [ "ghostty" "wezterm" ... ]` | `[]` | Implemented in Home Manager: installs additional Linux desktop launchers without changing the active runtime identity | Each extra entry points directly at that terminal variant package in the Nix store, so dependencies remain available without adding duplicate profile `bin/yzx` commands | Keep implemented |
 | `yzxterm_profile = "full"`, `"baseline"`, or `"shaders"` | `full` | Implemented in Home Manager: selects the generated Yazelix Terminal profile for activation, Linux desktop launches, and new shell sessions | `full` keeps Rio trail cursor without custom shaders, `baseline` disables effects, and `shaders` passes `YAZELIX_TERMINAL_PROFILE=shaders` directly into activation, the desktop entry, and the Home Manager session so app-launcher and shell environments do not decide the profile | Keep implemented |
 | `yzxterm_emoji_font = "noto"`, `"twitter"`, or `"serenityos"` | `noto` | Implemented in Home Manager: declarative value for `terminal.emoji_style`, selecting a child-owned Yazelix Terminal emoji fallback preset for activation, Linux desktop launches, and new shell sessions | Main Yazelix passes `YAZELIX_TERMINAL_EMOJI_FONT` for managed launch surfaces and otherwise reads `terminal.emoji_style`; yzxterm owns the bundled font paths, font family names, and Rio font fallback semantics | Keep implemented |
-| `components.cursors` | enabled | Implemented partial package omission: cursor shader assets and `yazelix_ghostty_cursors_default.toml` are removed from the runtime tree; cursor registry code remains linked into `yazelix_core` until crate-level feature gates exist | Ghostty config generation omits Yazelix cursor shaders, cursor sidecar bootstrap is skipped, config UI hides cursor fields, Home Manager rejects cursor config ownership, and launch facts report `n/a` | Keep implemented |
+| `components.cursors` | enabled | Implemented partial package omission: cursor shader assets and `yazelix_cursors_default.toml` are removed from the runtime tree; cursor registry code remains linked into `yazelix_core` until crate-level feature gates exist | Ghostty config generation omits Yazelix cursor shaders, cursor sidecar bootstrap is skipped, config UI hides cursor fields, Home Manager rejects cursor config ownership, and launch facts report `n/a` | Keep implemented |
 | `components.screen` | enabled | Implemented behavior toggle: welcome/screen rendering remains linked into `yazelix_core` until crate-level feature gates exist | Home Manager requires `core.skip_welcome_screen = true` and rejects enabled screen saver settings; Zellij materialization rejects screen saver when disabled; `yzx screen` returns a disabled-component error | Keep implemented |
 | Helix Steel authoring tools | bundled | Implemented `off`: omits `steel`, `steel-language-server`, `forge`, `cargo-steel-lib`, and `repl-connect`; implemented `host`: relies on host `steel` and `steel-language-server` | Managed Helix Steel plugin execution still uses the bundled Helix fork and generated config, so disabling these commands affects authoring/debugging only | Keep implemented |
 | `components.status_bar` / integrated zjstatus | enabled | Not accepted yet: `zjstatus.wasm` is a real runtime asset, but the top/status bar is part of the current Zellij layout contract | Defer until layout ownership and barless/native Zellij layout behavior are designed; hiding widgets through `zellij.widget_tray` is not a package-saving toggle | Defer |

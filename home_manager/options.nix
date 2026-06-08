@@ -45,7 +45,7 @@ with lib;
     type = types.bool;
     default = false;
     description = ''
-      Whether Home Manager generates ~/.config/yazelix_ghostty_cursors/settings.jsonc.
+      Whether Home Manager generates ~/.config/yazelix_cursors/settings.jsonc.
 
       Cursor settings are independent from the main Yazelix settings file so
       the standalone yzc command and full Yazelix can share one cursor source.
@@ -130,7 +130,7 @@ ${terminalDescriptionBullets}
       - "host": omit the package/export and rely on the inherited host PATH
       - "off": omit the package/export when the tool explicitly supports disabling
 
-      Host mode is supported for leaf tools such as lazygit, bottom, helix, steel,
+      Host mode is supported for leaf tools such as lazygit, zenith, helix, steel,
       neovim, yazi, fzf, zoxide, starship, carapace, macchina, mise, tombi, git, jq,
       fd, and ripgrep. Bootstrap tools such as Nushell, Zellij, the selected
       terminal, Nix, POSIX utilities, and graphics wrappers remain bundled.
@@ -188,7 +188,7 @@ ${terminalDescriptionBullets}
       - "yazelix": use Yazelix-managed configs in ~/.local/share/yazelix (default)
       - "user": load the terminal's native user config path and fail if it does not exist
 
-      Cursor presets and cursor effects live in ~/.config/yazelix_ghostty_cursors/settings.jsonc
+      Cursor presets and cursor effects live in ~/.config/yazelix_cursors/settings.jsonc
     '';
   };
 
@@ -363,7 +363,7 @@ ${terminalDescriptionBullets}
   custom_popups = mkMainContractOption "zellij.custom_popups" {
     description = ''
       User-defined Yazelix popup surfaces.
-      Default: { id = "btm"; command = [ "btm" ]; keybindings = [ "Alt Shift B" ]; keep_alive = true; }.
+      Default: { id = "zenith"; command = [ "zenith" ]; keybindings = [ "Alt Shift B" ]; keep_alive = true; }.
     '';
   };
 

@@ -21,11 +21,11 @@ let
     "CHANGELOG.md"
     "docs"
     "docs/upgrade_notes.toml"
-    "yazelix_ghostty_cursors_default.toml"
+    "yazelix_cursors_default.toml"
     "settings_default.jsonc"
   ];
   cursorRuntimePaths = [
-    "yazelix_ghostty_cursors_default.toml"
+    "yazelix_cursors_default.toml"
   ];
 in
 lib.cleanSourceWith {

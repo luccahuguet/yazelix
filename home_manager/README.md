@@ -93,7 +93,7 @@ To use Yazelix Terminal as the packaged terminal:
 
 `extra_terminal_launchers` installs additional Linux desktop entries such as `New Yazelix - Ghostty`, `New Yazelix - Rio`, and `New Yazelix - WezTerm` without changing the active runtime identity. These entries point directly at their terminal variant packages in the Nix store, so their dependencies stay available without adding duplicate `bin/yzx` commands to the Home Manager profile. `yzx launch --term <terminal>` uses these packaged launchers for non-active terminal variants. Do not include the active `terminal` value in this list; the active terminal already gets the profile-owned launcher
 
-When `manage_config = true`, Home Manager can also own user-defined popup surfaces. The default `btm` popup is expressed through `custom_popups`, so users can edit it or set the list to `[]` to remove it:
+When `manage_config = true`, Home Manager can also own user-defined popup surfaces. The default `zenith` popup is expressed through `custom_popups`, so users can edit it or set the list to `[]` to remove it:
 
 ```nix
 {
@@ -102,8 +102,8 @@ When `manage_config = true`, Home Manager can also own user-defined popup surfac
     manage_config = true;
     custom_popups = [
       {
-        id = "btm";
-        command = [ "btm" ];
+        id = "zenith";
+        command = [ "zenith" ];
         keybindings = [ "Alt Shift B" ];
         keep_alive = true;
       }
@@ -143,7 +143,7 @@ To save space by using tools you already manage on your host, set runtime tool s
     enable = true;
     runtime_tool_sources = {
       lazygit = "host";
-      bottom = "host";
+      zenith = "host";
       helix = "host";
       steel = "host";
       yazi = "host";
@@ -154,7 +154,7 @@ To save space by using tools you already manage on your host, set runtime tool s
 }
 ```
 
-Omitted tools stay `bundled`, except `mise` and `tombi`, which default to `host`. Host mode is for leaf tools such as `lazygit`, `bottom`, `helix`, `steel`, `neovim`, `yazi`, `fzf`, `zoxide`, `starship`, `carapace`, `macchina`, `mise`, `tombi`, `git`, `jq`, `fd`, and `ripgrep`. Bootstrap tools such as Nushell, Zellij, the selected terminal, Nix, POSIX utilities, and graphics wrappers remain bundled
+Omitted tools stay `bundled`, except `mise` and `tombi`, which default to `host`. Host mode is for leaf tools such as `lazygit`, `zenith`, `helix`, `steel`, `neovim`, `yazi`, `fzf`, `zoxide`, `starship`, `carapace`, `macchina`, `mise`, `tombi`, `git`, `jq`, `fd`, and `ripgrep`. Bootstrap tools such as Nushell, Zellij, the selected terminal, Nix, POSIX utilities, and graphics wrappers remain bundled
 
 Run `yzx doctor` after switching. Doctor reads the runtime manifest and warns when a required host-sourced command is missing from `PATH`; default optional integrations such as `mise` and `tombi` are informational when absent.
 
@@ -217,7 +217,7 @@ For a smaller advanced Home Manager install, host-source tools you already manag
       fd = "host";
       ripgrep = "host";
       lazygit = "host";
-      bottom = "host";
+      zenith = "host";
       p7zip = "off";
       poppler = "off";
       resvg = "off";
@@ -468,4 +468,4 @@ This module follows Yazelix's configuration structure defined by `config_metadat
 3. Test with both new and existing Yazelix installations
 4. Ensure type safety and proper defaults
 
-Cursor presets and effects live in `~/.config/yazelix_ghostty_cursors/settings.jsonc`. Set `programs.yazelix.manage_cursor_config = true` only when you want Home Manager to own that cursor registry.
+Cursor presets and effects live in `~/.config/yazelix_cursors/settings.jsonc`. Set `programs.yazelix.manage_cursor_config = true` only when you want Home Manager to own that cursor registry.

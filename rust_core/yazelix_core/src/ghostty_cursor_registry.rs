@@ -72,7 +72,7 @@ impl YazelixCursorRegistryExt for CursorRegistry {
                         "Could not parse Yazelix cursor settings in {}.",
                         path.display()
                     ),
-                    "Fix the embedded cursors object in settings.jsonc or move it to ~/.config/yazelix_ghostty_cursors/settings.jsonc.",
+                    "Fix the embedded cursors object in settings.jsonc or move it to ~/.config/yazelix_cursors/settings.jsonc.",
                     json!({
                         "path": path.display().to_string(),
                         "error": format!("{error:?}"),
@@ -102,7 +102,7 @@ fn cursor_settings_jsonc_error(path: &Path, error: yazelix_cursors::CursorError)
                 "Could not parse Yazelix cursor settings in {}.",
                 path.display()
             ),
-            "Fix ~/.config/yazelix_ghostty_cursors/settings.jsonc or run `yzc init` after moving the broken file aside.",
+            "Fix ~/.config/yazelix_cursors/settings.jsonc or run `yzc init` after moving the broken file aside.",
             json!({
                 "path": path.display().to_string(),
                 "error": format!("{error:?}"),

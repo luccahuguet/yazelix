@@ -86,7 +86,7 @@ in
       xdg.configFile."yazelix/settings.jsonc".text = settingsJsonc;
     })
     (mkIf cfg.manage_cursor_config {
-      xdg.configFile."yazelix_ghostty_cursors/settings.jsonc".text = cursorSettingsJsonc;
+      xdg.configFile."yazelix_cursors/settings.jsonc".text = cursorSettingsJsonc;
     })
   ]);
 }

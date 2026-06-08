@@ -1,5 +1,5 @@
 # Yazelix-owned default cursor registry
-# Copied to ~/.config/yazelix_ghostty_cursors/settings.jsonc on first run
+# Copied to ~/.config/yazelix_cursors/settings.jsonc on first run
 #
 # The main ~/.config/yazelix/settings.jsonc does not carry Ghostty cursor settings
 # Cursor selection, effects, duration, glow, Kitty fallback, and cursor

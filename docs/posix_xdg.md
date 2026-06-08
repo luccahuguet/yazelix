@@ -26,7 +26,7 @@ Yazelix does not use `$XDG_STATE_HOME` for the main generated state root. The st
   - `terminal_ghostty.conf`, `terminal_kitty.conf` - managed terminal override surfaces
   - `shell_bash.sh`, `shell_zsh.zsh`, `shell_fish.fish`, `shell_nu.nu` - managed shell hook surfaces
 
-- Shared Ghostty cursor config, usually `~/.config/yazelix_ghostty_cursors`
+- Shared Yazelix cursor config, usually `~/.config/yazelix_cursors`
   - `settings.jsonc` - standalone cursor preset config used by Yazelix and `yzc`
 
 - Generated state root, usually `~/.local/share/yazelix`

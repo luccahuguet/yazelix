@@ -9,7 +9,7 @@ use std::path::{Path, PathBuf};
 pub const SETTINGS_CONFIG: &str = "settings.jsonc";
 pub const OLD_MAIN_CONFIG: &str = "yazelix.toml";
 pub const CURSOR_CONFIG: &str = "cursors.toml";
-pub const SHARED_CURSOR_CONFIG_DIR: &str = "yazelix_ghostty_cursors";
+pub const SHARED_CURSOR_CONFIG_DIR: &str = "yazelix_cursors";
 pub const SHARED_CURSOR_SETTINGS_CONFIG: &str = "settings.jsonc";
 pub const HELIX_CONFIG_DIR: &str = "helix";
 pub const HELIX_CONFIG: &str = "helix/config.toml";

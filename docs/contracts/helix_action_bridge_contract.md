@@ -332,7 +332,7 @@ These actions remain Zellij or pane-orchestrator owned:
 - `previous_family`
 - `open_workspace_terminal`
 - `open_terminal_in_cwd`
-- popup, menu, config UI, and `btm` pane lifecycle
+- popup, menu, config UI, and Zenith pane lifecycle
 - status-bar state and screen-saver launch
 - workspace retargeting as the top-level user action
 

@@ -138,8 +138,8 @@ let
       }
     ]
     ++ pkgs.lib.optional cursorsEnabled {
-      source = "${src}/yazelix_ghostty_cursors_default.toml";
-      target = "yazelix_ghostty_cursors_default.toml";
+      source = "${src}/yazelix_cursors_default.toml";
+      target = "yazelix_cursors_default.toml";
     };
   renderRuntimeInputLink =
     { source, target }:

@@ -414,8 +414,8 @@ fn resolve_popup_commands_config(
                 ErrorClass::Config,
                 "unknown_popup_command",
                 format!("Unsupported zellij.popup_commands entry: {name}."),
-                if name == "btm" {
-                    "Move btm to zellij.custom_popups: { \"id\": \"btm\", \"command\": [\"btm\"], \"keybindings\": [\"Alt Shift B\"], \"keep_alive\": true }."
+                if name == "zenith" {
+                    "Move zenith to zellij.custom_popups: { \"id\": \"zenith\", \"command\": [\"zenith\"], \"keybindings\": [\"Alt Shift B\"], \"keep_alive\": true }."
                 } else {
                     "Use one of: bottom_popup, top_popup, menu."
                 },
@@ -439,8 +439,8 @@ fn resolve_popup_commands_config(
 
 fn default_custom_popups() -> Vec<CustomPopup> {
     vec![CustomPopup {
-        id: "btm".to_string(),
-        command: vec!["btm".into()],
+        id: "zenith".to_string(),
+        command: vec!["zenith".into()],
         keybindings: vec!["Alt Shift B".into()],
         keep_alive: true,
     }]
@@ -512,7 +512,7 @@ fn resolve_custom_popups_config(
             "Use Zellij key strings such as [\"Alt Shift G\"], or [] for an unbound custom popup.",
             true,
         )?;
-        let default_keep_alive = id == "btm" && command.len() == 1 && command[0] == "btm";
+        let default_keep_alive = id == "zenith" && command.len() == 1 && command[0] == "zenith";
         let keep_alive = item.keep_alive.unwrap_or(default_keep_alive);
 
         popups.push(CustomPopup {
@@ -2931,7 +2931,7 @@ keybinds {
         assert!(merged.contains("payload \"bottom_popup\""));
         assert!(merged.contains("payload \"top_popup\""));
         assert!(merged.contains("payload \"menu\""));
-        assert!(merged.contains("payload \"btm\""));
+        assert!(merged.contains("payload \"zenith\""));
         assert!(merged.contains("payload \"config\""));
         assert!(merged.contains("MessagePlugin \"yazelix_pane_orchestrator\""));
         assert!(merged.contains("toggle_editor_sidebar_focus"));
@@ -3037,7 +3037,7 @@ keybinds {
 
     // Defends: custom popups generate managed yzpp specs and keybindings without expanding popup_commands.
     #[test]
-    fn custom_popups_config_defaults_to_btm_and_resolves_editor_token() {
+    fn custom_popups_config_defaults_to_zenith_and_resolves_editor_token() {
         let mut config = JsonMap::new();
         let default_popups = resolve_custom_popups_config(&config).unwrap();
         assert_eq!(default_popups, default_custom_popups());
@@ -3053,8 +3053,8 @@ keybinds {
                     "keep_alive": true,
                 },
                 {
-                    "id": "btm",
-                    "command": ["btm"],
+                    "id": "zenith",
+                    "command": ["zenith"],
                     "keybindings": ["Alt Shift B"],
                 },
                 {
@@ -3078,8 +3078,8 @@ keybinds {
                     keep_alive: true,
                 },
                 CustomPopup {
-                    id: "btm".to_string(),
-                    command: vec!["btm".to_string()],
+                    id: "zenith".to_string(),
+                    command: vec!["zenith".to_string()],
                     keybindings: vec!["Alt Shift B".to_string()],
                     keep_alive: true,
                 },
@@ -3115,10 +3115,10 @@ keybinds {
         assert!(block.contains("arg_2 \"ui\""));
         assert!(block.contains("menu {"));
         assert!(block.contains("arg_1 \"menu\""));
-        assert!(block.contains("btm {"));
-        assert!(block.contains("pane_title \"yzx_btm\""));
-        assert!(block.contains("command_marker \"yzx_btm\""));
-        assert!(block.contains("arg_2 \"btm\""));
+        assert!(block.contains("zenith {"));
+        assert!(block.contains("pane_title \"yzx_zenith\""));
+        assert!(block.contains("command_marker \"yzx_zenith\""));
+        assert!(block.contains("arg_2 \"zenith\""));
         assert!(block.contains("toggle_close_behavior \"hide\""));
         assert!(!block.contains("arg_2 \"--pane\""));
         assert!(!block.contains("\n            popup {\n"));
@@ -3163,10 +3163,10 @@ keybinds {
         assert!(block.contains("top_popup {"));
         assert!(block.contains("pane_title \"yzx_top_popup\""));
         assert!(block.contains("command_marker \"yzx_top_popup\""));
-        assert!(block.contains("btm {"));
-        assert!(block.contains("pane_title \"yzx_btm\""));
-        assert!(block.contains("command_marker \"yzx_btm\""));
-        assert!(block.contains("arg_2 \"btm\""));
+        assert!(block.contains("zenith {"));
+        assert!(block.contains("pane_title \"yzx_zenith\""));
+        assert!(block.contains("command_marker \"yzx_zenith\""));
+        assert!(block.contains("arg_2 \"zenith\""));
         assert!(block.contains("toggle_close_behavior \"hide\""));
         assert!(block.contains("arg_1 \"popup_run\""));
         assert!(block.contains("arg_2 \"lazygit\""));

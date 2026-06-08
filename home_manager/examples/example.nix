@@ -20,7 +20,7 @@
     # Terminal behavior for the selected packaged terminal
     terminal_config_mode = "yazelix"; # Optional: "yazelix" or "user"
     yzxterm_emoji_font = "noto"; # Optional yzxterm terminal.emoji_style: "noto", "twitter", or "serenityos"
-    # Cursor presets and effects live in ~/.config/yazelix_ghostty_cursors/settings.jsonc
+    # Cursor presets and effects live in ~/.config/yazelix_cursors/settings.jsonc
     transparency = "medium"; # Optional: "none".."super_high"
 
     # Editor configuration
@@ -62,8 +62,8 @@
     zellij_theme = "default"; # Optional: any built-in theme name
     custom_popups = [
       {
-        id = "btm";
-        command = [ "btm" ];
+        id = "zenith";
+        command = [ "zenith" ];
         keybindings = [ "Alt Shift B" ];
         keep_alive = true;
       }
