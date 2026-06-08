@@ -79,8 +79,7 @@ The supported product in this branch is the v17 Yazelix line
 After installation, keep this model in mind:
 
 - Edit `~/.config/yazelix/settings.jsonc` for the main workspace settings
-- Use `Alt+Shift+C` for the config UI popup when you want to inspect or edit settings without leaving the workspace
-- Use the popup layer for immediate tools: `Alt+Shift+J` for the bottom popup, usually `lazygit`, `Alt+Shift+K` for the top popup, `Alt+Shift+M` for the command menu, and `Alt+Shift+B` for the process viewer
+- Use `Alt+Shift+<key>` as the workspace toggle layer for sidebars and popups, including quick access to tools like LazyGit, the process viewer, the command menu, and the config UI on `Alt+Shift+C`
 - Treat generated runtime state under `~/.local/share/yazelix` as Yazelix-owned output
 - Relaunch the window, or run `yzx restart`, after changing settings that affect live panes
 
@@ -88,6 +87,7 @@ Cursor presets use their own config at `~/.config/yazelix_ghostty_cursors/settin
 
 ## Workspace Model
 
+- Yazelix follows the Helix/Vim direction mnemonic: `h` is left, `j` is down, `k` is up, and `l` is right
 - Zellij orchestrates the workspace, with a managed sidebar and your chosen editor in the managed `editor` pane
 - In Yazelix docs, `sidebar` means the generic side-surface slot; the default sidebar is a Yazi file tree
 - `Alt+Shift+H/J/K/L` is the spatial surface layer: `H` toggles the left sidebar, `J` toggles the bottom popup, `K` toggles the top popup, and `L` toggles the right agent sidebar
