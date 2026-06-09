@@ -30,7 +30,9 @@ Without a written contract, future fixes will keep rediscovering the same questi
 - Owner: non-persistent launch/session boundary
 - Statement: Each Yazelix launch
   creates an independent live session. That includes current-terminal startup,
-  `yzx launch`, and desktop launch flows
+  `yzx launch`, and desktop launch flows. Zellij remains the source of truth
+  for generated session names; Yazelix passes terminal title prefix metadata so
+  Zellij can expose the final OS window title without pane-title pollution
 - Verification: automated
   `nu nushell/scripts/dev/test_yzx_workspace_commands.nu`
 
@@ -72,6 +74,14 @@ Without a written contract, future fixes will keep rediscovering the same questi
 - Each non-persistent Yazelix entrypoint creates its own live session.
   - This includes new-window launch flows such as `yzx launch` and desktop launch.
   - This also includes current-terminal startup through `yzx enter`.
+- New-window launch flows keep Zellij as the session-name owner.
+  - If `YAZELIX_ZELLIJ_SESSION_NAME` is explicit, Zellij receives that session name.
+  - Otherwise, Zellij generates the non-persistent session name.
+  - Yazelix passes `YAZELIX_TERMINAL_WINDOW_TITLE_PREFIX` so the forked Zellij
+    runtime can emit terminal titles shaped as `Yazelix - <terminal> - <session>`.
+  - Terminal-specific launch/config surfaces must not pin a title in a way that
+    blocks the forked Zellij title sequence; Ghostty intentionally leaves
+    `title` unset for this reason.
 - Non-persistent windows share durable state, not one live session.
   - Shared durable state includes user config, installed/runtime code, generated configs, recorded launch-profile state, and rebuild hashes.
   - Live session state includes the active Zellij session, attached clients, in-session activation markers, and tab-local workspace state.

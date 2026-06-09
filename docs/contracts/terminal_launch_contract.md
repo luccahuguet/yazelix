@@ -74,11 +74,18 @@ Out of scope:
 - Owner: `terminal_launcher.nu`
 - Statement: Ghostty launch keeps Linux-only GTK/X11 flags on Linux, omits
   those flags on macOS, and routes Linux Ghostty through the runtime
-  `yazelix_ghostty.sh` environment wrapper
+  `yazelix_ghostty.sh` environment wrapper. Ghostty launch argv and generated
+  Ghostty config do not set a fixed title, because Ghostty treats configured
+  titles as authoritative and would ignore the Zellij-owned title escape
+  sequence that carries the live session name.
 - Verification: automated
   `nushell/scripts/dev/test_yzx_generated_configs.nu`
   (`test_ghostty_linux_launch_command_keeps_linux_specific_flags`,
-  `test_ghostty_macos_launch_command_omits_linux_specific_flags`)
+  `test_ghostty_macos_launch_command_omits_linux_specific_flags`); automated
+  Rust tests in `rust_core/yazelix_core/src/launch_commands.rs`
+  (`ghostty_launch_does_not_force_window_title`) and
+  `rust_core/yazelix_core/tests/yzx_core_config_normalize.rs`
+  (`ghostty_materialization_generate_from_env_uses_normalized_config`)
 - Source: `docs/contracts/runtime_dependency_preflight_contract.md`
 
 #### TLAUNCH-004
@@ -117,16 +124,19 @@ Out of scope:
 #### TLAUNCH-006
 - Type: behavior
 - Status: live
-- Owner: Rust terminal materialization, Rust launch preflight, and the
-  `yazelix-terminal` child wrapper
+- Owner: Rust terminal materialization, Rust launch preflight, the
+  `yazelix-terminal` child wrapper, and the Yazelix Zellij fork
 - Statement: Yazelix Terminal launch uses the config id
   `yzxterm`, resolves the executable command as the child-owned
   `yazelix-terminal-desktop` wrapper, passes the generated config directory
   with `YAZELIX_TERMINAL_CONFIG`, clears ambient `RIO_CONFIG_HOME` at that
   process boundary, marks the child environment for Yazelix Terminal
   sanitization, passes `YAZELIX_TERMINAL_APP_ID` so the terminal window matches
-  the integrated Yazelix desktop entry, and does not add an outer Yazelix
-  graphics wrapper around the child wrapper. Generated Yazelix Terminal config
+  the integrated Yazelix desktop entry, passes
+  `YAZELIX_TERMINAL_WINDOW_TITLE_PREFIX` so the forked Zellij runtime can emit
+  OS window titles shaped as `Yazelix - Yzxterm - <session>` instead of
+  pane/tab titles, and does not add an outer Yazelix graphics wrapper around
+  the child wrapper. Generated Yazelix Terminal config
   is derived from the packaged
   child profile selected by `YAZELIX_TERMINAL_PROFILE` or
   `YAZELIX_TERMINAL_EFFECTS` and the child emoji fallback preset selected by
@@ -154,7 +164,8 @@ Out of scope:
   `rust_core/yazelix_core/src/launch_commands.rs`
   (`yzxterm_launch_command_uses_child_wrapper_without_outer_graphics_wrapper`),
   `rust_core/yazelix_core/src/launch_commands/launch.rs`
-  (`yzxterm_process_boundary_env_clears_host_rio_config`),
+  (`terminal_window_title_prefix_names_selected_terminal`,
+  `yzxterm_process_boundary_env_clears_host_rio_config`),
   `rust_core/yazelix_core/src/launch_materialization.rs`
   (`yzxterm_shader_profile_uses_scoped_terminal_state_dir`),
   and `rust_core/yazelix_core/tests/yzx_core_config_normalize.rs`

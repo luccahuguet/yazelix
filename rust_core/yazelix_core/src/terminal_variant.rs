@@ -80,7 +80,7 @@ pub fn terminal_window_title(terminal: &str, session_name: Option<&str>) -> Stri
         .filter(|name| !name.is_empty())
         .filter(|name| !name.eq_ignore_ascii_case("unknown"))
     {
-        Some(name) => format!("{base} · {name}"),
+        Some(name) => format!("{base} - {name}"),
         None => base,
     }
 }
@@ -136,7 +136,7 @@ mod tests {
         assert_eq!(terminal_window_title("ghostty", None), "Yazelix - Ghostty");
         assert_eq!(
             terminal_window_title("ghostty", Some("work")),
-            "Yazelix - Ghostty · work"
+            "Yazelix - Ghostty - work"
         );
         assert_eq!(terminal_window_title("yzxterm", None), "Yazelix - Yzxterm");
         assert_eq!(

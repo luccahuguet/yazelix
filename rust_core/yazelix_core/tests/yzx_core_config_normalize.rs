@@ -1940,6 +1940,11 @@ color = "#3bd17a"
         .join("terminal_emulators")
         .join("ghostty");
     let generated_config = fs::read_to_string(ghostty_dir.join("config")).unwrap();
+    assert!(
+        !generated_config
+            .lines()
+            .any(|line| line.trim_start().starts_with("title ="))
+    );
     assert!(generated_config.contains("# Ghostty trail duration multiplier: 1.5"));
     assert!(generated_config.contains(&format!(
         "custom-shader = {}",

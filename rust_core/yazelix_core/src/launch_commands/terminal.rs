@@ -250,7 +250,6 @@ pub(super) fn build_launch_command_argv(
                     terminal.command.clone(),
                     "--config-default-files=false".to_string(),
                     format!("--config-file={config_string}"),
-                    format!("--title={title}"),
                 ]
             } else {
                 vec![
@@ -260,7 +259,6 @@ pub(super) fn build_launch_command_argv(
                     "--gtk-single-instance=false".to_string(),
                     format!("--class={WINDOW_CLASS}"),
                     format!("--x11-instance-name={X11_INSTANCE}"),
-                    format!("--title={title}"),
                 ]
             };
             ghostty.extend(working_dir_args);

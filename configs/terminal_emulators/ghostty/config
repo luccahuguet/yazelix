@@ -47,10 +47,9 @@
 # resize-overlay-duration = 4s 200ms
 
 
-# Yazelix branding for desktop environment recognition
+# Yazelix desktop identity
 class = com.yazelix.Yazelix
 x11-instance-name = yazelix
-title = Yazelix - Ghostty
 
 # Theme and styling
 theme = "Abernathy"

@@ -177,10 +177,9 @@ fn build_ghostty_config_without_cursor(
     Ok(format!(
         r#"{}
 
-# Yazelix branding for desktop environment recognition
+# Yazelix desktop identity
 class = {}
 x11-instance-name = {}
-title = Yazelix - Ghostty
 
 # Theme and styling
 theme = "{}"
@@ -217,10 +216,9 @@ fn build_ghostty_config(
     Ok(format!(
         r#"{}
 
-# Yazelix branding for desktop environment recognition
+# Yazelix desktop identity
 class = {}
 x11-instance-name = {}
-title = Yazelix - Ghostty
 
 # Theme and styling
 theme = "{}"

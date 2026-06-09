@@ -619,13 +619,13 @@ mod tests {
             },
             &config_path,
             Path::new("/tmp/project"),
-            None,
+            Some("session-a"),
         )
         .unwrap();
 
         assert_eq!(argv[0], "yazelix-terminal-desktop");
         assert_eq!(argv[1], "--title-placeholder");
-        assert_eq!(argv[2], "Yazelix - Yzxterm");
+        assert_eq!(argv[2], "Yazelix - Yzxterm - session-a");
         assert!(argv.iter().any(|arg| arg == "--yazelix"));
         assert_eq!(
             argv.windows(2)
@@ -749,6 +749,46 @@ mod tests {
             crate::terminal_variant::active_terminal_from_runtime_dir(runtime.path()).unwrap_err();
         assert_eq!(error.code(), "unsupported_terminal_variant");
         assert!(error.message().contains("warpterm"));
+    }
+
+    // Defends: Ghostty must honor the Zellij-owned OSC title instead of pinning the launch-time placeholder title.
+    #[test]
+    fn ghostty_launch_does_not_force_window_title() {
+        let runtime = TempDir::new().unwrap();
+        let startup = runtime
+            .path()
+            .join("shells")
+            .join("posix")
+            .join("start_yazelix.sh");
+        fs::create_dir_all(startup.parent().unwrap()).unwrap();
+        fs::write(&startup, "#!/bin/sh\n").unwrap();
+        let config_path = runtime.path().join("ghostty/config");
+
+        let argv = build_launch_command_argv(
+            runtime.path(),
+            &crate::runtime_contract::TerminalCandidate {
+                terminal: "ghostty".to_string(),
+                name: "Ghostty".to_string(),
+                command: "ghostty".to_string(),
+            },
+            &config_path,
+            Path::new("/tmp"),
+            None,
+        )
+        .unwrap();
+
+        let ghostty_index = argv.iter().position(|arg| arg == "ghostty").unwrap_or(0);
+        let ghostty_args = &argv[ghostty_index..];
+        assert!(
+            !ghostty_args
+                .iter()
+                .any(|arg| arg == "--title" || arg.starts_with("--title="))
+        );
+        assert_eq!(ghostty_args[ghostty_args.len() - 2], "-e");
+        assert_eq!(
+            ghostty_args[ghostty_args.len() - 1],
+            startup.to_string_lossy().as_ref()
+        );
     }
 
     // Defends: Ghostty user-mode config discovery follows upstream file-name and macOS path candidates instead of hard-coding the old config name.

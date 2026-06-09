@@ -434,6 +434,27 @@ fn repair_desktop_runtime_state_if_required(
     Ok(())
 }
 
+fn normalize_launch_session_name(raw: &str) -> Option<String> {
+    let trimmed = raw.trim();
+    if trimmed.is_empty() || trimmed.eq_ignore_ascii_case("unknown") {
+        return None;
+    }
+    Some(trimmed.to_string())
+}
+
+fn window_title_session_name_from_env(desktop_fast_path: bool) -> Option<String> {
+    if desktop_fast_path {
+        return None;
+    }
+    std::env::var("YAZELIX_ZELLIJ_SESSION_NAME")
+        .ok()
+        .and_then(|value| normalize_launch_session_name(&value))
+}
+
+fn terminal_window_title_prefix(terminal: &str) -> String {
+    format!("Yazelix - {} - ", terminal_display_name(terminal))
+}
+
 pub(super) fn run_launch_flow(
     requested_path: Option<&str>,
     config_override: Option<&str>,
@@ -496,11 +517,7 @@ pub(super) fn run_launch_flow(
         &config_state.config,
     )?)?;
     let runtime_env = runtime_data.runtime_env;
-    let window_title_session_name = if desktop_fast_path {
-        None
-    } else {
-        std::env::var("YAZELIX_ZELLIJ_SESSION_NAME").ok()
-    };
+    let window_title_session_name = window_title_session_name_from_env(desktop_fast_path);
 
     let mut failures = Vec::new();
     for candidate in terminal_candidates {
@@ -540,6 +557,10 @@ pub(super) fn run_launch_flow(
             (
                 "YAZELIX_TERMINAL".to_string(),
                 Some(candidate.terminal.clone()),
+            ),
+            (
+                "YAZELIX_TERMINAL_WINDOW_TITLE_PREFIX".to_string(),
+                Some(terminal_window_title_prefix(&candidate.terminal)),
             ),
             (
                 "YAZELIX_CURSOR_NAME".to_string(),
@@ -895,6 +916,34 @@ mod tests {
         assert!(parsed.verbose);
     }
 
+    // Defends: explicit launch session names are available for the initial terminal title.
+    #[test]
+    fn window_title_session_name_keeps_explicit_session() {
+        assert_eq!(
+            normalize_launch_session_name(" work ").as_deref(),
+            Some("work")
+        );
+    }
+
+    // Defends: desktop launch waits for Zellij's emitted session title instead of inheriting stale ambient state.
+    #[test]
+    fn window_title_session_name_omits_desktop_fast_path_env() {
+        assert_eq!(window_title_session_name_from_env(true), None);
+    }
+
+    // Defends: Zellij receives the terminal-specific prefix needed to emit the final OS title.
+    #[test]
+    fn terminal_window_title_prefix_names_selected_terminal() {
+        assert_eq!(
+            terminal_window_title_prefix("ghostty"),
+            "Yazelix - Ghostty - "
+        );
+        assert_eq!(
+            terminal_window_title_prefix("yzxterm"),
+            "Yazelix - Yzxterm - "
+        );
+    }
+
     // Defends: every documented terminal selector spelling maps to the same packaged-variant field.
     #[test]
     fn parse_launch_args_accepts_terminal_selector_aliases() {
@@ -1096,7 +1145,7 @@ mod tests {
             vec![
                 "rio".to_string(),
                 "--title-placeholder".to_string(),
-                "Yazelix - Rio · work".to_string(),
+                "Yazelix - Rio - work".to_string(),
                 "--working-dir".to_string(),
                 working_dir.to_string_lossy().into_owned(),
                 "-e".to_string(),
