@@ -54,7 +54,7 @@ const ZELLIJ_PLUGIN_WASM_METADATA_FIELDS: &[&str] = &[
     "wasmPath",
     "wasmTarget",
     "cargoBuildHookDisabled",
-    "wasmToolchainPreservedAcrossPreBuild",
+    "preBuildPreservesNixRustToolchain",
     "cargoBuildSerialized",
     "installCheckVerifiesWasm",
 ];
@@ -677,7 +677,7 @@ fn validate_zellij_plugin_wasm_package_contract_with(
     );
     for key in [
         "cargoBuildHookDisabled",
-        "wasmToolchainPreservedAcrossPreBuild",
+        "preBuildPreservesNixRustToolchain",
         "cargoBuildSerialized",
         "installCheckVerifiesWasm",
     ] {
@@ -891,7 +891,7 @@ mod tests {
             "wasmPath": "share/yazelix_zellij_popup/yzpp.wasm",
             "wasmTarget": "wasm32-wasip1",
             "cargoBuildHookDisabled": true,
-            "wasmToolchainPreservedAcrossPreBuild": true,
+            "preBuildPreservesNixRustToolchain": true,
             "cargoBuildSerialized": true,
             "installCheckVerifiesWasm": true,
         }));
@@ -913,7 +913,7 @@ mod tests {
             "wasmPath": "share/yazelix_zellij_popup/old.wasm",
             "wasmTarget": "wasm32-wasip1",
             "cargoBuildHookDisabled": true,
-            "wasmToolchainPreservedAcrossPreBuild": true,
+            "preBuildPreservesNixRustToolchain": true,
             "cargoBuildSerialized": true,
             "installCheckVerifiesWasm": true,
         }));
@@ -936,7 +936,7 @@ mod tests {
             "wasmPath": "share/yazelix_zellij_popup/yzpp.wasm",
             "wasmTarget": "wasm32-wasip1",
             "cargoBuildHookDisabled": false,
-            "wasmToolchainPreservedAcrossPreBuild": false,
+            "preBuildPreservesNixRustToolchain": false,
             "cargoBuildSerialized": false,
             "installCheckVerifiesWasm": false,
         }));
@@ -953,7 +953,7 @@ mod tests {
         assert!(
             errors
                 .iter()
-                .any(|error| error.contains("wasmToolchainPreservedAcrossPreBuild"))
+                .any(|error| error.contains("preBuildPreservesNixRustToolchain"))
         );
         assert!(
             errors
@@ -973,7 +973,7 @@ mod tests {
             "wasmPath": "share/yazelix_zellij_popup/yzpp.wasm",
             "wasmTarget": "wasm32-wasip1",
             "cargoBuildHookDisabled": true,
-            "wasmToolchainPreservedAcrossPreBuild": true,
+            "preBuildPreservesNixRustToolchain": true,
             "cargoBuildSerialized": true,
             "installCheckVerifiesWasm": true,
             "futureBuildPhaseHint": "do not accept this",
