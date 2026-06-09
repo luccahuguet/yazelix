@@ -49,8 +49,9 @@ names, or make other terminal variants depend on yzxterm internals.
   owner and not package identity inference
 - Main Yazelix stable inputs for that adapter are limited to the selected
   yzxterm profile, selected `terminal.emoji_style` yzxterm emoji fallback preset, terminal order,
-  runtime and state directories, terminal transparency, active cursor color,
-  and generated cursor shader snapshot paths
+  runtime and state directories, terminal transparency, yzxterm cell-opacity
+  policy, Yazelix ANSI palette, active cursor color, and generated cursor shader
+  snapshot paths
 - The child package remains the owner of profile template roots, wrapper
   behavior, emoji font fallback roots, shader ABI, shader file layout, and the
   meaning of package metadata
@@ -69,7 +70,7 @@ names, or make other terminal variants depend on yzxterm internals.
 | Rio | writes generated upstream Rio config from stable Yazelix settings | Rio owns config semantics |
 | Ratty | writes generated Ratty config and launch argv | Ratty owns config semantics and RGP/GPU behavior |
 | Foot | writes generated Linux-only `foot.ini` | Foot owns config semantics |
-| yzxterm | reads the selected child-owned profile and emoji-fallback template, then applies stable Yazelix transparency, cursor color, and generated shader snapshot paths | `yazelix-terminal` owns wrapper behavior, profile templates, emoji fallback presets, shader ABI, shader asset layout, and package metadata |
+| yzxterm | reads the selected child-owned profile and emoji-fallback template, then applies stable Yazelix transparency, cell-opacity policy, ANSI palette, cursor color, and generated shader snapshot paths | `yazelix-terminal` owns wrapper behavior, profile templates, emoji fallback presets, shader ABI, shader asset layout, and package metadata |
 
 ## Verification
 

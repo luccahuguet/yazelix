@@ -21,6 +21,26 @@ const YAZELIX_THEME: &str = "Abernathy";
 const RIO_BACKGROUND: &str = "#1f1f28";
 const RIO_FOREGROUND: &str = "#dcd7ba";
 const FONT_FIRACODE: &str = "FiraCode Nerd Font";
+const YZXTERM_COLOR_PALETTE: &[(&str, &str)] = &[
+    ("background", RIO_BACKGROUND),
+    ("foreground", RIO_FOREGROUND),
+    ("black", "#000000"),
+    ("red", "#cd3131"),
+    ("green", "#0dbc79"),
+    ("yellow", "#e5e510"),
+    ("blue", "#2472c8"),
+    ("magenta", "#bc3fbc"),
+    ("cyan", "#11a8cd"),
+    ("white", "#e5e5e5"),
+    ("light-black", "#666666"),
+    ("light-red", "#f14c4c"),
+    ("light-green", "#23d18b"),
+    ("light-yellow", "#f5f543"),
+    ("light-blue", "#3b8eea"),
+    ("light-magenta", "#d670d6"),
+    ("light-cyan", "#29b8db"),
+    ("light-white", "#ffffff"),
+];
 
 const TRANSPARENCY_VALUES: &[(&str, &str)] = &[
     ("none", "1.0"),
@@ -418,6 +438,39 @@ fn shader_paths_to_toml(shader_paths: &[String]) -> toml::Value {
     )
 }
 
+fn yzxterm_config_table_mut<'a>(
+    table: &'a mut toml::Table,
+    section: &'static str,
+    error_code: &'static str,
+    package_config: &Path,
+) -> Result<&'a mut toml::Table, CoreError> {
+    table
+        .entry(section)
+        .or_insert_with(|| toml::Value::Table(toml::map::Map::new()))
+        .as_table_mut()
+        .ok_or_else(|| {
+            CoreError::classified(
+                crate::bridge::ErrorClass::Runtime,
+                error_code,
+                format!(
+                    "The packaged Yazelix Terminal config at {} has a non-table [{section}] value.",
+                    package_config.display()
+                ),
+                "Reinstall the Yazelix runtime or rebuild it from a valid yazelix-terminal package.",
+                serde_json::json!({}),
+            )
+        })
+}
+
+fn insert_yzxterm_color_palette(colors: &mut toml::Table) {
+    for (key, value) in YZXTERM_COLOR_PALETTE {
+        colors.insert(
+            (*key).to_string(),
+            toml::Value::String((*value).to_string()),
+        );
+    }
+}
+
 fn generate_yzxterm_config(
     runtime_dir: &Path,
     transparency: &str,
@@ -461,44 +514,22 @@ fn generate_yzxterm_config(
                 serde_json::json!({ "error": source.to_string() }),
             )
         })?;
-    let window = table
-        .entry("window")
-        .or_insert_with(|| toml::Value::Table(toml::map::Map::new()))
-        .as_table_mut()
-        .ok_or_else(|| {
-            CoreError::classified(
-                crate::bridge::ErrorClass::Runtime,
-                "invalid_yzxterm_window_config",
-                format!(
-                    "The packaged Yazelix Terminal config at {} has a non-table [window] value.",
-                    package_config.display()
-                ),
-                "Reinstall the Yazelix runtime or rebuild it from a valid yazelix-terminal package.",
-                serde_json::json!({}),
-            )
-        })?;
+    let window = yzxterm_config_table_mut(
+        &mut table,
+        "window",
+        "invalid_yzxterm_window_config",
+        &package_config,
+    )?;
     window.insert("opacity".to_string(), toml::Value::Float(opacity));
-    window.insert(
-        "opacity-cells".to_string(),
-        toml::Value::Boolean(transparency != "none"),
-    );
+    // Preserve window transparency without alpha-blending ANSI/UI cells.
+    window.insert("opacity-cells".to_string(), toml::Value::Boolean(false));
 
-    let renderer = table
-        .entry("renderer")
-        .or_insert_with(|| toml::Value::Table(toml::map::Map::new()))
-        .as_table_mut()
-        .ok_or_else(|| {
-            CoreError::classified(
-                crate::bridge::ErrorClass::Runtime,
-                "invalid_yzxterm_renderer_config",
-                format!(
-                    "The packaged Yazelix Terminal config at {} has a non-table [renderer] value.",
-                    package_config.display()
-                ),
-                "Reinstall the Yazelix runtime or rebuild it from a valid yazelix-terminal package.",
-                serde_json::json!({}),
-            )
-        })?;
+    let renderer = yzxterm_config_table_mut(
+        &mut table,
+        "renderer",
+        "invalid_yzxterm_renderer_config",
+        &package_config,
+    )?;
     match profile {
         YzxtermProfile::Full | YzxtermProfile::Baseline => {
             renderer.remove("custom-shader");
@@ -515,23 +546,14 @@ fn generate_yzxterm_config(
         }
     }
 
+    let colors = yzxterm_config_table_mut(
+        &mut table,
+        "colors",
+        "invalid_yzxterm_colors_config",
+        &package_config,
+    )?;
+    insert_yzxterm_color_palette(colors);
     if let Some(color_hex) = cursor_state.and_then(|state| state.selected_color_hex.as_deref()) {
-        let colors = table
-            .entry("colors")
-            .or_insert_with(|| toml::Value::Table(toml::map::Map::new()))
-            .as_table_mut()
-            .ok_or_else(|| {
-                CoreError::classified(
-                    crate::bridge::ErrorClass::Runtime,
-                    "invalid_yzxterm_colors_config",
-                    format!(
-                        "The packaged Yazelix Terminal config at {} has a non-table [colors] value.",
-                        package_config.display()
-                    ),
-                    "Reinstall the Yazelix runtime or rebuild it from a valid yazelix-terminal package.",
-                    serde_json::json!({}),
-                )
-            })?;
         colors.insert(
             "cursor".to_string(),
             toml::Value::String(color_hex.to_string()),

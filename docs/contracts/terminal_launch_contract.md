@@ -142,11 +142,12 @@ Out of scope:
   while full and baseline profiles use the stable generated config root.
   Launch-scoped shader snapshots are retained as ordinary Yazelix state for the
   user session and may be pruned by future maintenance; running terminals must
-  not depend on a mutable shared shader directory. The generated config injects the current
-  `terminal.transparency` as `[window].opacity` with cell opacity enabled
-  whenever transparency is not `none`. The generated yzxterm config is
-  Yazelix-owned state; it must not become the host Rio config for plain `rio`
-  launches.
+  not depend on a mutable shared shader directory. The generated config injects
+  the current `terminal.transparency` as `[window].opacity`, injects the
+  Yazelix ANSI palette, and keeps yzxterm cell opacity disabled so foreground and
+  explicit UI-background cells stay crisp while the window background remains
+  transparent. The generated yzxterm config is Yazelix-owned state; it must not
+  become the host Rio config for plain `rio` launches.
 - Verification: automated Rust tests in
   `rust_core/yazelix_core/src/runtime_contract.rs`
   (`launch_preflight_maps_yzxterm_to_child_wrapper_command`),

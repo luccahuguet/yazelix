@@ -1474,7 +1474,7 @@ color = "#ffffff"
     assert!(!yzxterm_config.contains("cursor_trail_dusk.glsl"));
 }
 
-// Regression: Yazelix-managed yzxterm launches pass YAZELIX_TERMINAL_CONFIG, so the runtime must materialize the requested Rio decoration shader itself.
+// Regression: Yazelix-managed yzxterm launches pass YAZELIX_TERMINAL_CONFIG, so the runtime must materialize transparency, crisp colors, and the requested Rio decoration shader itself.
 #[test]
 fn terminal_materialization_yzxterm_shader_profile_injects_rio_decoration_shader() {
     let repo = repo_root();
@@ -1536,9 +1536,28 @@ color = "#3bd17a"
             .join("config.toml"),
     )
     .unwrap();
+    let yzxterm_toml = toml::from_str::<toml::Value>(&yzxterm_config).unwrap();
+    assert_eq!(yzxterm_toml["window"]["opacity"].as_float(), Some(0.85));
+    assert_eq!(
+        yzxterm_toml["window"]["opacity-cells"].as_bool(),
+        Some(false)
+    );
+    assert_eq!(
+        yzxterm_toml["colors"]["background"].as_str(),
+        Some("#1f1f28")
+    );
+    assert_eq!(
+        yzxterm_toml["colors"]["foreground"].as_str(),
+        Some("#dcd7ba")
+    );
+    assert_eq!(yzxterm_toml["colors"]["green"].as_str(), Some("#0dbc79"));
+    assert_eq!(
+        yzxterm_toml["colors"]["light-green"].as_str(),
+        Some("#23d18b")
+    );
     assert!(yzxterm_config.contains("backend = \"Webgpu\""));
     assert!(yzxterm_config.contains("opacity = 0.85"));
-    assert!(yzxterm_config.contains("opacity-cells = true"));
+    assert!(yzxterm_config.contains("opacity-cells = false"));
     assert!(yzxterm_config.contains("trail-cursor = true"));
     assert!(yzxterm_config.contains("cursor = \"#3bd17a\""));
     assert!(yzxterm_config.contains("custom-shader = ["));
@@ -1654,6 +1673,7 @@ color = "#3bd17a"
 
     let output = runtime_materialization_command(&fixture, "terminal-materialization.generate")
         .env("YAZELIX_TERMINAL_PROFILE", "shaders")
+        .env_remove("YAZELIX_TERMINAL_EMOJI_FONT")
         .arg("--from-env")
         .output()
         .unwrap();
