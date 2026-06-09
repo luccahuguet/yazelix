@@ -1548,7 +1548,7 @@ color = "#3bd17a"
     );
     assert_eq!(
         yzxterm_toml["colors"]["foreground"].as_str(),
-        Some("#dcd7ba")
+        Some("#e5e5e5")
     );
     assert_eq!(yzxterm_toml["colors"]["green"].as_str(), Some("#0dbc79"));
     assert_eq!(

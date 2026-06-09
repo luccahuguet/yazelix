@@ -20,10 +20,11 @@ use std::path::{Path, PathBuf};
 const YAZELIX_THEME: &str = "Abernathy";
 const RIO_BACKGROUND: &str = "#1f1f28";
 const RIO_FOREGROUND: &str = "#dcd7ba";
+const YZXTERM_FOREGROUND: &str = "#e5e5e5";
 const FONT_FIRACODE: &str = "FiraCode Nerd Font";
 const YZXTERM_COLOR_PALETTE: &[(&str, &str)] = &[
     ("background", RIO_BACKGROUND),
-    ("foreground", RIO_FOREGROUND),
+    ("foreground", YZXTERM_FOREGROUND),
     ("black", "#000000"),
     ("red", "#cd3131"),
     ("green", "#0dbc79"),
