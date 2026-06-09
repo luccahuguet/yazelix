@@ -522,8 +522,9 @@ fn generate_yzxterm_config(
         &package_config,
     )?;
     window.insert("opacity".to_string(), toml::Value::Float(opacity));
-    // Preserve window transparency without alpha-blending ANSI/UI cells.
-    window.insert("opacity-cells".to_string(), toml::Value::Boolean(false));
+    // Let full-screen TUIs such as Yazi and Zellij blend their painted
+    // backgrounds with the same wallpaper/window opacity as plain cells.
+    window.insert("opacity-cells".to_string(), toml::Value::Boolean(true));
 
     let renderer = yzxterm_config_table_mut(
         &mut table,

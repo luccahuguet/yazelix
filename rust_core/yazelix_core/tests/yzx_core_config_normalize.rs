@@ -1540,7 +1540,7 @@ color = "#3bd17a"
     assert_eq!(yzxterm_toml["window"]["opacity"].as_float(), Some(0.85));
     assert_eq!(
         yzxterm_toml["window"]["opacity-cells"].as_bool(),
-        Some(false)
+        Some(true)
     );
     assert_eq!(
         yzxterm_toml["colors"]["background"].as_str(),
@@ -1557,7 +1557,7 @@ color = "#3bd17a"
     );
     assert!(yzxterm_config.contains("backend = \"Webgpu\""));
     assert!(yzxterm_config.contains("opacity = 0.85"));
-    assert!(yzxterm_config.contains("opacity-cells = false"));
+    assert!(yzxterm_config.contains("opacity-cells = true"));
     assert!(yzxterm_config.contains("trail-cursor = true"));
     assert!(yzxterm_config.contains("cursor = \"#3bd17a\""));
     assert!(yzxterm_config.contains("custom-shader = ["));
