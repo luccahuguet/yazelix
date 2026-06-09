@@ -1537,7 +1537,7 @@ color = "#3bd17a"
     )
     .unwrap();
     let yzxterm_toml = toml::from_str::<toml::Value>(&yzxterm_config).unwrap();
-    assert_eq!(yzxterm_toml["window"]["opacity"].as_float(), Some(0.85));
+    assert_eq!(yzxterm_toml["window"]["opacity"].as_float(), Some(0.80));
     assert_eq!(
         yzxterm_toml["window"]["opacity-cells"].as_bool(),
         Some(true)
@@ -1556,7 +1556,7 @@ color = "#3bd17a"
         Some("#23d18b")
     );
     assert!(yzxterm_config.contains("backend = \"Webgpu\""));
-    assert!(yzxterm_config.contains("opacity = 0.85"));
+    assert!(yzxterm_config.contains("opacity = 0.8"));
     assert!(yzxterm_config.contains("opacity-cells = true"));
     assert!(yzxterm_config.contains("trail-cursor = true"));
     assert!(yzxterm_config.contains("cursor = \"#3bd17a\""));
@@ -1627,7 +1627,7 @@ color = "#3bd17a"
     .unwrap();
     assert!(yzxterm_config.contains("Twitter Color Emoji"));
     assert!(!yzxterm_config.contains("SerenityOS Emoji"));
-    assert!(yzxterm_config.contains("opacity = 0.85"));
+    assert!(yzxterm_config.contains("opacity = 0.8"));
     assert!(yzxterm_config.contains("cursor = \"#3bd17a\""));
     assert!(yzxterm_config.contains("custom-shader = ["));
     assert!(yzxterm_config.contains("cursor_trail_forest.glsl"));
@@ -1698,7 +1698,7 @@ color = "#3bd17a"
     .unwrap();
     assert!(yzxterm_config.contains("SerenityOS Emoji"));
     assert!(!yzxterm_config.contains("Twitter Color Emoji"));
-    assert!(yzxterm_config.contains("opacity = 0.85"));
+    assert!(yzxterm_config.contains("opacity = 0.8"));
     assert!(yzxterm_config.contains("cursor = \"#3bd17a\""));
     assert!(yzxterm_config.contains("custom-shader = ["));
     assert!(yzxterm_config.contains("cursor_trail_forest.glsl"));

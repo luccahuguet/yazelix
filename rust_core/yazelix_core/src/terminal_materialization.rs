@@ -53,6 +53,16 @@ const TRANSPARENCY_VALUES: &[(&str, &str)] = &[
     ("super_high", "0.60"),
 ];
 
+const YZXTERM_TRANSPARENCY_VALUES: &[(&str, &str)] = &[
+    ("none", "1.0"),
+    ("very_low", "0.90"),
+    ("low", "0.85"),
+    ("medium", "0.80"),
+    ("high", "0.75"),
+    ("very_high", "0.65"),
+    ("super_high", "0.55"),
+];
+
 #[derive(Debug, Clone)]
 pub struct TerminalMaterializationRequest {
     pub config_path: PathBuf,
@@ -95,6 +105,14 @@ pub struct TerminalMaterializationData {
 
 fn get_opacity_value(transparency: &str) -> &str {
     TRANSPARENCY_VALUES
+        .iter()
+        .find(|(k, _)| *k == transparency)
+        .map(|(_, v)| *v)
+        .unwrap_or("1.0")
+}
+
+fn get_yzxterm_opacity_value(transparency: &str) -> &str {
+    YZXTERM_TRANSPARENCY_VALUES
         .iter()
         .find(|(k, _)| *k == transparency)
         .map(|(_, v)| *v)
@@ -502,7 +520,7 @@ fn generate_yzxterm_config(
             serde_json::json!({ "error": source.to_string() }),
         )
     })?;
-    let opacity = get_opacity_value(transparency)
+    let opacity = get_yzxterm_opacity_value(transparency)
         .parse::<f64>()
         .map_err(|source| {
             CoreError::classified(
