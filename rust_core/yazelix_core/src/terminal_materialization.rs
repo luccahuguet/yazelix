@@ -18,28 +18,27 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 const YAZELIX_THEME: &str = "Abernathy";
-const RIO_BACKGROUND: &str = "#1f1f28";
-const RIO_FOREGROUND: &str = "#dcd7ba";
-const YZXTERM_FOREGROUND: &str = "#e5e5e5";
+const ABERNATHY_BACKGROUND: &str = "#111416";
+const ABERNATHY_FOREGROUND: &str = "#eeeeec";
 const FONT_FIRACODE: &str = "FiraCode Nerd Font";
 const YZXTERM_COLOR_PALETTE: &[(&str, &str)] = &[
-    ("background", RIO_BACKGROUND),
-    ("foreground", YZXTERM_FOREGROUND),
+    ("background", ABERNATHY_BACKGROUND),
+    ("foreground", ABERNATHY_FOREGROUND),
     ("black", "#000000"),
-    ("red", "#cd3131"),
-    ("green", "#0dbc79"),
-    ("yellow", "#e5e510"),
-    ("blue", "#2472c8"),
-    ("magenta", "#bc3fbc"),
-    ("cyan", "#11a8cd"),
-    ("white", "#e5e5e5"),
-    ("light-black", "#666666"),
-    ("light-red", "#f14c4c"),
-    ("light-green", "#23d18b"),
-    ("light-yellow", "#f5f543"),
-    ("light-blue", "#3b8eea"),
-    ("light-magenta", "#d670d6"),
-    ("light-cyan", "#29b8db"),
+    ("red", "#cd0000"),
+    ("green", "#00cd00"),
+    ("yellow", "#cdcd00"),
+    ("blue", "#1093f5"),
+    ("magenta", "#cd00cd"),
+    ("cyan", "#00cdcd"),
+    ("white", "#faebd7"),
+    ("light-black", "#404040"),
+    ("light-red", "#ff0000"),
+    ("light-green", "#00ff00"),
+    ("light-yellow", "#ffff00"),
+    ("light-blue", "#11b5f6"),
+    ("light-magenta", "#ff00ff"),
+    ("light-cyan", "#00ffff"),
     ("light-white", "#ffffff"),
 ];
 
@@ -51,16 +50,6 @@ const TRANSPARENCY_VALUES: &[(&str, &str)] = &[
     ("high", "0.80"),
     ("very_high", "0.70"),
     ("super_high", "0.60"),
-];
-
-const YZXTERM_TRANSPARENCY_VALUES: &[(&str, &str)] = &[
-    ("none", "1.0"),
-    ("very_low", "0.90"),
-    ("low", "0.85"),
-    ("medium", "0.80"),
-    ("high", "0.75"),
-    ("very_high", "0.65"),
-    ("super_high", "0.55"),
 ];
 
 #[derive(Debug, Clone)]
@@ -105,14 +94,6 @@ pub struct TerminalMaterializationData {
 
 fn get_opacity_value(transparency: &str) -> &str {
     TRANSPARENCY_VALUES
-        .iter()
-        .find(|(k, _)| *k == transparency)
-        .map(|(_, v)| *v)
-        .unwrap_or("1.0")
-}
-
-fn get_yzxterm_opacity_value(transparency: &str) -> &str {
-    YZXTERM_TRANSPARENCY_VALUES
         .iter()
         .find(|(k, _)| *k == transparency)
         .map(|(_, v)| *v)
@@ -340,6 +321,22 @@ size = 18.0
 [colors]
 background = "{}"
 foreground = "{}"
+black = "#000000"
+red = "#cd0000"
+green = "#00cd00"
+yellow = "#cdcd00"
+blue = "#1093f5"
+magenta = "#cd00cd"
+cyan = "#00cdcd"
+white = "#faebd7"
+light-black = "#404040"
+light-red = "#ff0000"
+light-green = "#00ff00"
+light-yellow = "#ffff00"
+light-blue = "#11b5f6"
+light-magenta = "#ff00ff"
+light-cyan = "#00ffff"
+light-white = "#ffffff"
 
 [navigation]
 mode = "Plain"
@@ -351,8 +348,8 @@ backend = "Webgpu"
         opacity,
         transparency != "none",
         FONT_FIRACODE,
-        RIO_BACKGROUND,
-        RIO_FOREGROUND,
+        ABERNATHY_BACKGROUND,
+        ABERNATHY_FOREGROUND,
     )
 }
 
@@ -520,7 +517,7 @@ fn generate_yzxterm_config(
             serde_json::json!({ "error": source.to_string() }),
         )
     })?;
-    let opacity = get_yzxterm_opacity_value(transparency)
+    let opacity = get_opacity_value(transparency)
         .parse::<f64>()
         .map_err(|source| {
             CoreError::classified(
