@@ -71,7 +71,7 @@ Out of scope:
 - Statement: First-party Zellij plugin child packages consumed by Yazelix must
   expose `passthru.zellijPluginWasmPackageContract` on `aarch64-darwin`.
   The contract declares the stable wasm path, `wasm32-wasip1` target, disabled
-  Cargo build hook, wasm-capable Cargo/Rustc/PATH setup after `preBuild`,
+  Cargo build hook, preserved wasm-capable Cargo/Rustc/PATH across `preBuild`,
   serialized Cargo build, and non-empty wasm install check
 - Verification: validator `yzx_repo_validator validate-child-release-transaction`
   evaluates the child package passthru contract and rejects missing, stale, or
