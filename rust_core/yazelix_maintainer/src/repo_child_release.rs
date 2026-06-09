@@ -54,11 +54,8 @@ const ZELLIJ_PLUGIN_WASM_METADATA_FIELDS: &[&str] = &[
     "wasmPath",
     "wasmTarget",
     "cargoBuildHookDisabled",
-    "explicitCargoFromWasmToolchain",
-    "explicitRustcFromWasmToolchain",
-    "toolchainPrependedToPath",
-    "wasmTargetLibdirCheckedBeforePreBuild",
-    "cargoBuildRunsAfterPreBuild",
+    "wasmToolchainPinnedAfterPreBuild",
+    "cargoBuildSerialized",
     "installCheckVerifiesWasm",
 ];
 
@@ -680,11 +677,8 @@ fn validate_zellij_plugin_wasm_package_contract_with(
     );
     for key in [
         "cargoBuildHookDisabled",
-        "explicitCargoFromWasmToolchain",
-        "explicitRustcFromWasmToolchain",
-        "toolchainPrependedToPath",
-        "wasmTargetLibdirCheckedBeforePreBuild",
-        "cargoBuildRunsAfterPreBuild",
+        "wasmToolchainPinnedAfterPreBuild",
+        "cargoBuildSerialized",
         "installCheckVerifiesWasm",
     ] {
         require_contract_bool(&mut errors, contract, metadata, key, true);
@@ -897,11 +891,8 @@ mod tests {
             "wasmPath": "share/yazelix_zellij_popup/yzpp.wasm",
             "wasmTarget": "wasm32-wasip1",
             "cargoBuildHookDisabled": true,
-            "explicitCargoFromWasmToolchain": true,
-            "explicitRustcFromWasmToolchain": true,
-            "toolchainPrependedToPath": true,
-            "wasmTargetLibdirCheckedBeforePreBuild": true,
-            "cargoBuildRunsAfterPreBuild": true,
+            "wasmToolchainPinnedAfterPreBuild": true,
+            "cargoBuildSerialized": true,
             "installCheckVerifiesWasm": true,
         }));
 
@@ -922,11 +913,8 @@ mod tests {
             "wasmPath": "share/yazelix_zellij_popup/old.wasm",
             "wasmTarget": "wasm32-wasip1",
             "cargoBuildHookDisabled": true,
-            "explicitCargoFromWasmToolchain": true,
-            "explicitRustcFromWasmToolchain": true,
-            "toolchainPrependedToPath": true,
-            "wasmTargetLibdirCheckedBeforePreBuild": true,
-            "cargoBuildRunsAfterPreBuild": true,
+            "wasmToolchainPinnedAfterPreBuild": true,
+            "cargoBuildSerialized": true,
             "installCheckVerifiesWasm": true,
         }));
 
@@ -948,18 +936,15 @@ mod tests {
             "wasmPath": "share/yazelix_zellij_popup/yzpp.wasm",
             "wasmTarget": "wasm32-wasip1",
             "cargoBuildHookDisabled": false,
-            "explicitCargoFromWasmToolchain": false,
-            "explicitRustcFromWasmToolchain": false,
-            "toolchainPrependedToPath": false,
-            "wasmTargetLibdirCheckedBeforePreBuild": false,
-            "cargoBuildRunsAfterPreBuild": false,
+            "wasmToolchainPinnedAfterPreBuild": false,
+            "cargoBuildSerialized": false,
             "installCheckVerifiesWasm": false,
         }));
 
         let errors =
             validate_zellij_plugin_wasm_package_contract_with(&contract, &metadata).unwrap();
 
-        assert_eq!(errors.len(), 7);
+        assert_eq!(errors.len(), 4);
         assert!(
             errors
                 .iter()
@@ -968,12 +953,12 @@ mod tests {
         assert!(
             errors
                 .iter()
-                .any(|error| error.contains("explicitCargoFromWasmToolchain"))
+                .any(|error| error.contains("wasmToolchainPinnedAfterPreBuild"))
         );
         assert!(
             errors
                 .iter()
-                .any(|error| error.contains("wasmTargetLibdirCheckedBeforePreBuild"))
+                .any(|error| error.contains("cargoBuildSerialized"))
         );
     }
 
@@ -988,11 +973,8 @@ mod tests {
             "wasmPath": "share/yazelix_zellij_popup/yzpp.wasm",
             "wasmTarget": "wasm32-wasip1",
             "cargoBuildHookDisabled": true,
-            "explicitCargoFromWasmToolchain": true,
-            "explicitRustcFromWasmToolchain": true,
-            "toolchainPrependedToPath": true,
-            "wasmTargetLibdirCheckedBeforePreBuild": true,
-            "cargoBuildRunsAfterPreBuild": true,
+            "wasmToolchainPinnedAfterPreBuild": true,
+            "cargoBuildSerialized": true,
             "installCheckVerifiesWasm": true,
             "futureBuildPhaseHint": "do not accept this",
         }));
