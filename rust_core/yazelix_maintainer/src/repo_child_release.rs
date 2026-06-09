@@ -55,6 +55,7 @@ const ZELLIJ_PLUGIN_WASM_METADATA_FIELDS: &[&str] = &[
     "wasmTarget",
     "cargoBuildHookDisabled",
     "preBuildPreservesNixRustToolchain",
+    "wasmTargetRustcEnvPinned",
     "cargoBuildSerialized",
     "installCheckVerifiesWasm",
 ];
@@ -678,6 +679,7 @@ fn validate_zellij_plugin_wasm_package_contract_with(
     for key in [
         "cargoBuildHookDisabled",
         "preBuildPreservesNixRustToolchain",
+        "wasmTargetRustcEnvPinned",
         "cargoBuildSerialized",
         "installCheckVerifiesWasm",
     ] {
@@ -892,6 +894,7 @@ mod tests {
             "wasmTarget": "wasm32-wasip1",
             "cargoBuildHookDisabled": true,
             "preBuildPreservesNixRustToolchain": true,
+            "wasmTargetRustcEnvPinned": true,
             "cargoBuildSerialized": true,
             "installCheckVerifiesWasm": true,
         }));
@@ -914,6 +917,7 @@ mod tests {
             "wasmTarget": "wasm32-wasip1",
             "cargoBuildHookDisabled": true,
             "preBuildPreservesNixRustToolchain": true,
+            "wasmTargetRustcEnvPinned": true,
             "cargoBuildSerialized": true,
             "installCheckVerifiesWasm": true,
         }));
@@ -937,6 +941,7 @@ mod tests {
             "wasmTarget": "wasm32-wasip1",
             "cargoBuildHookDisabled": false,
             "preBuildPreservesNixRustToolchain": false,
+            "wasmTargetRustcEnvPinned": false,
             "cargoBuildSerialized": false,
             "installCheckVerifiesWasm": false,
         }));
@@ -944,7 +949,7 @@ mod tests {
         let errors =
             validate_zellij_plugin_wasm_package_contract_with(&contract, &metadata).unwrap();
 
-        assert_eq!(errors.len(), 4);
+        assert_eq!(errors.len(), 5);
         assert!(
             errors
                 .iter()
@@ -954,6 +959,11 @@ mod tests {
             errors
                 .iter()
                 .any(|error| error.contains("preBuildPreservesNixRustToolchain"))
+        );
+        assert!(
+            errors
+                .iter()
+                .any(|error| error.contains("wasmTargetRustcEnvPinned"))
         );
         assert!(
             errors
@@ -974,6 +984,7 @@ mod tests {
             "wasmTarget": "wasm32-wasip1",
             "cargoBuildHookDisabled": true,
             "preBuildPreservesNixRustToolchain": true,
+            "wasmTargetRustcEnvPinned": true,
             "cargoBuildSerialized": true,
             "installCheckVerifiesWasm": true,
             "futureBuildPhaseHint": "do not accept this",

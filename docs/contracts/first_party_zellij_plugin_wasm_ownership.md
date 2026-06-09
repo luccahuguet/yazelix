@@ -72,7 +72,8 @@ Out of scope:
   expose `passthru.zellijPluginWasmPackageContract` on `aarch64-darwin`.
   The contract declares the stable wasm path, `wasm32-wasip1` target, disabled
   Cargo build hook, preservation of the Nix-provided Rust toolchain across
-  `preBuild`, serialized Cargo build, and non-empty wasm install check
+  `preBuild`, wasm-target Rustc environment pinning, serialized Cargo build,
+  and non-empty wasm install check
 - Verification: validator `yzx_repo_validator validate-child-release-transaction`
   evaluates the child package passthru contract and rejects missing, stale, or
   extra metadata fields. The main repo must not inspect child buildPhase strings
