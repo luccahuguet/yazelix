@@ -3,7 +3,7 @@
 use crate::bridge::{CoreError, ErrorClass};
 use crate::terminal_control;
 use crossterm::{
-    event::{self, Event},
+    event::{self, Event, KeyEventKind},
     style::Color,
 };
 use serde::Deserialize;
@@ -11,6 +11,7 @@ use std::collections::HashMap;
 use std::io;
 use std::path::Path;
 use std::sync::OnceLock;
+use std::thread::sleep;
 use std::time::{Duration, Instant};
 pub use yazelix_screen::GameOfLifeCellStyle;
 use yazelix_screen::{
@@ -25,6 +26,8 @@ use yazelix_screen::{
 };
 
 const ASCII_ART_DATA_JSON: &str = include_str!("../assets/ascii_art_data.json");
+const TERMINAL_SIZE_SETTLE_TIMEOUT: Duration = Duration::from_millis(120);
+const TERMINAL_SIZE_SETTLE_SAMPLE: Duration = Duration::from_millis(20);
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -449,6 +452,24 @@ fn welcome_sequence(
     }
 }
 
+fn welcome_frame_delay(
+    resolved_style: &str,
+    playback_duration: Duration,
+    frame_count: usize,
+) -> Duration {
+    match resolved_style {
+        style if is_game_of_life_style(style) => Duration::from_millis(220),
+        style if is_boids_style(style) => Duration::from_millis(70),
+        MANDELBROT_STYLE => mandelbrot_frame_delay(),
+        _ => {
+            let divisor = frame_count.max(1) as u32;
+            playback_duration
+                .checked_div(divisor)
+                .unwrap_or_else(|| Duration::from_millis(120))
+        }
+    }
+}
+
 fn trim_resting_frame(mut frames: Vec<Vec<String>>) -> Vec<Vec<String>> {
     if frames.len() <= 1 {
         frames
@@ -475,6 +496,28 @@ fn screen_cycle_frames_non_game_of_life(
     }
 }
 
+fn current_terminal_size() -> (usize, usize) {
+    (terminal_width(), terminal_height())
+}
+
+fn settled_terminal_size() -> (usize, usize) {
+    let started = Instant::now();
+    let mut previous = current_terminal_size();
+
+    loop {
+        sleep(TERMINAL_SIZE_SETTLE_SAMPLE);
+        let current = current_terminal_size();
+        if current == previous || started.elapsed() >= TERMINAL_SIZE_SETTLE_TIMEOUT {
+            return current;
+        }
+        previous = current;
+    }
+}
+
+fn is_front_door_keypress(event: &Event) -> bool {
+    matches!(event, Event::Key(key) if key.kind == KeyEventKind::Press)
+}
+
 fn poll_for_keypress(timeout: Duration) -> Result<bool, CoreError> {
     if !event::poll(timeout).map_err(|source| {
         CoreError::io(
@@ -488,7 +531,7 @@ fn poll_for_keypress(timeout: Duration) -> Result<bool, CoreError> {
         return Ok(false);
     }
 
-    match event::read().map_err(|source| {
+    let event = event::read().map_err(|source| {
         CoreError::io(
             "front_door_keypress_read",
             "Failed to read front-door terminal input.",
@@ -496,10 +539,8 @@ fn poll_for_keypress(timeout: Duration) -> Result<bool, CoreError> {
             ".",
             source,
         )
-    })? {
-        Event::Key(_) => Ok(true),
-        _ => Ok(false),
-    }
+    })?;
+    Ok(is_front_door_keypress(&event))
 }
 
 fn map_front_door_flush_error(source: io::Error) -> CoreError {
@@ -529,20 +570,23 @@ fn raw_mode_guard() -> Result<ScreenRawModeGuard, CoreError> {
 }
 
 fn play_inline_frames(
-    frames: &[Vec<String>],
+    mut frames: Vec<Vec<String>>,
     frame_delay: Duration,
-    width: usize,
+    mut width: usize,
+    mut height: usize,
+    mut rebuild_frames: impl FnMut(usize, usize) -> Vec<Vec<String>>,
 ) -> Result<(), CoreError> {
     if frames.is_empty() {
         return Ok(());
     }
 
     println!();
-    let max_frame_height = frames.iter().map(Vec::len).max().unwrap_or(0);
-    let last_index = frames.len().saturating_sub(1);
-    let resting_logo = get_logo_welcome_frame(width);
+    let mut index = 0usize;
 
-    for (index, frame) in frames.iter().enumerate() {
+    while index < frames.len() {
+        let max_frame_height = frames.iter().map(Vec::len).max().unwrap_or(0);
+        let last_index = frames.len().saturating_sub(1);
+        let frame = &frames[index];
         let mut padded = frame.clone();
         while padded.len() < max_frame_height {
             padded.push(String::new());
@@ -558,13 +602,21 @@ fn play_inline_frames(
 
         if index < last_index {
             if poll_for_keypress(frame_delay)? {
-                print!("{}", terminal_control::clear_screen_newline_sequence());
-                for line in &resting_logo {
-                    println!("{line}");
-                }
-                flush_stdout()?;
+                redraw_resting_logo_for_current_size()?;
                 return Ok(());
             }
+
+            let current_size = current_terminal_size();
+            if current_size != (width, height) {
+                (width, height) = current_size;
+                frames = rebuild_frames(width, height);
+                index = 0;
+                print!("{}", terminal_control::clear_screen_sequence());
+                flush_stdout()?;
+                println!();
+                continue;
+            }
+
             print!(
                 "{}",
                 terminal_control::move_up_sequence(max_frame_height + 1)
@@ -576,9 +628,19 @@ fn play_inline_frames(
             );
         }
         flush_stdout()?;
+        index += 1;
     }
 
     Ok(())
+}
+
+fn redraw_resting_logo_for_current_size() -> Result<(), CoreError> {
+    let (width, _) = current_terminal_size();
+    print!("{}", terminal_control::clear_screen_sequence());
+    for line in get_logo_welcome_frame(width) {
+        println!("{line}");
+    }
+    flush_stdout()
 }
 
 fn inline_printable_line(line: &str) -> &str {
@@ -688,8 +750,7 @@ fn play_welcome_style_inner(
     cell_style: GameOfLifeCellStyle,
 ) -> Result<(), CoreError> {
     let _raw = raw_mode_guard()?;
-    let width = terminal_width();
-    let height = terminal_height();
+    let (width, height) = settled_terminal_size();
     let resolved_style = resolve_welcome_style(style, None)?;
     let playback_duration = if resolved_style == "logo" {
         Duration::from_millis(500)
@@ -715,18 +776,16 @@ fn play_welcome_style_inner(
         playback_duration,
         cell_style,
     );
-    let frame_delay = match resolved_style.as_str() {
-        style if is_game_of_life_style(style) => Duration::from_millis(220),
-        style if is_boids_style(style) => Duration::from_millis(70),
-        MANDELBROT_STYLE => mandelbrot_frame_delay(),
-        _ => {
-            let divisor = frames.len().max(1) as u32;
-            playback_duration
-                .checked_div(divisor)
-                .unwrap_or_else(|| Duration::from_millis(120))
-        }
-    };
-    play_inline_frames(&frames, frame_delay, width)
+    let frame_delay = welcome_frame_delay(&resolved_style, playback_duration, frames.len());
+    play_inline_frames(frames, frame_delay, width, height, |width, height| {
+        welcome_sequence(
+            &resolved_style,
+            width,
+            height,
+            playback_duration,
+            cell_style,
+        )
+    })
 }
 
 pub fn run_screen_surface(style: Option<&str>) -> Result<i32, CoreError> {
@@ -865,6 +924,7 @@ fn run_screen_surface_inner(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crossterm::event::{KeyCode, KeyEvent, KeyEventState, KeyModifiers};
 
     fn trimmed_frame_line_width(line: &str) -> usize {
         visible_line_width(line.trim())
@@ -1045,5 +1105,55 @@ mod tests {
             visible_line_width(inline_printable_line(&center_text("YAZELIX", 120))),
             63
         );
+    }
+
+    // Test lane: default
+    // Regression: yzxterm startup resize/release events must not count as an early welcome-skip keypress.
+    #[test]
+    fn front_door_skip_accepts_only_key_press_events() {
+        let repeat = Event::Key(KeyEvent {
+            code: KeyCode::Char('x'),
+            modifiers: KeyModifiers::NONE,
+            kind: KeyEventKind::Repeat,
+            state: KeyEventState::NONE,
+        });
+        let release = Event::Key(KeyEvent {
+            code: KeyCode::Char('x'),
+            modifiers: KeyModifiers::NONE,
+            kind: KeyEventKind::Release,
+            state: KeyEventState::NONE,
+        });
+
+        assert!(is_front_door_keypress(&Event::Key(KeyEvent::new(
+            KeyCode::Char('x'),
+            KeyModifiers::NONE
+        ))));
+        assert!(!is_front_door_keypress(&repeat));
+        assert!(!is_front_door_keypress(&release));
+        assert!(!is_front_door_keypress(&Event::Resize(120, 40)));
+    }
+
+    // Test lane: default
+    // Regression: inline animated welcome sizing derives from the current width, not a fixed startup frame.
+    #[test]
+    fn welcome_sequence_rebuild_changes_frame_width_after_resize() {
+        let narrow = welcome_sequence(
+            "boids_predator",
+            50,
+            24,
+            Duration::from_millis(210),
+            GameOfLifeCellStyle::FullBlock,
+        );
+        let wide = welcome_sequence(
+            "boids_predator",
+            120,
+            40,
+            Duration::from_millis(210),
+            GameOfLifeCellStyle::FullBlock,
+        );
+
+        assert_eq!(visible_line_width(&narrow[0][0]), 49);
+        assert_eq!(visible_line_width(&wide[0][0]), 119);
+        assert!(wide[0].len() > narrow[0].len());
     }
 }

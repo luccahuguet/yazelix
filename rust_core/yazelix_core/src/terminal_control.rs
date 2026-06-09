@@ -78,9 +78,9 @@ pub(crate) fn clear_current_line_println_sequence(line: &str) -> String {
     })
 }
 
-pub(crate) fn clear_screen_newline_sequence() -> String {
+pub(crate) fn clear_screen_sequence() -> String {
     command_string(|output| {
-        queue!(output, MoveTo(0, 0), Clear(ClearType::All), Print("\n"))?;
+        queue!(output, MoveTo(0, 0), Clear(ClearType::All))?;
         Ok(())
     })
 }

@@ -25,9 +25,10 @@ permissions:
   contents: read
 
 jobs:
-  validate:
-    # Always-on fast lane. Keep this strong enough for branch protection and
-    # routine pushes, but do not make every commit pay for cold install/runtime smoke.
+  source_contracts:
+    # Always-on source-contract lane. Keep this strong enough for branch
+    # protection and routine pushes, while independent Nix-heavy validators run
+    # in parallel jobs below.
     runs-on: ubuntu-latest
     timeout-minutes: 12
     env:
@@ -55,6 +56,7 @@ jobs:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
+            rust_core/target
           key: rust-validation-${{ runner.os }}-${{ hashFiles('rust_core/Cargo.lock', 'flake.lock') }}
           restore-keys: |
             rust-validation-${{ runner.os }}-
@@ -97,8 +99,80 @@ jobs:
       - name: Validate top-level flake interface
         run: nix develop .#ci -c ./rust_core/target/debug/yzx_repo_validator validate-flake-interface
 
+  nix_customization_api:
+    # Nix-heavy release validator split out of the source-contract lane so
+    # release feedback can arrive in parallel without weakening evidence.
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+      YAZELIX_DIR: ${{ github.workspace }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@v22
+        with:
+          determinate: false
+
+      - name: Cache Rust validation build artifacts
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            rust_core/target
+          key: rust-validation-${{ runner.os }}-${{ hashFiles('rust_core/Cargo.lock', 'flake.lock') }}
+          restore-keys: |
+            rust-validation-${{ runner.os }}-
+
+      - name: Build maintainer validator
+        run: nix develop .#ci -c cargo build --quiet --manifest-path rust_core/Cargo.toml -p yazelix_maintainer --bin yzx_repo_validator
+
       - name: Validate Nix customization API
         run: nix develop .#ci -c ./rust_core/target/debug/yzx_repo_validator validate-nix-customization-api
+
+  child_release_transaction:
+    # Child publication/package-boundary validation can run independently from
+    # the source-contract and Nix-customization lanes.
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+      YAZELIX_DIR: ${{ github.workspace }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@v22
+        with:
+          determinate: false
+
+      - name: Cache Rust validation build artifacts
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            rust_core/target
+          key: rust-validation-${{ runner.os }}-${{ hashFiles('rust_core/Cargo.lock', 'flake.lock') }}
+          restore-keys: |
+            rust-validation-${{ runner.os }}-
+
+      - name: Build maintainer validator
+        run: nix develop .#ci -c cargo build --quiet --manifest-path rust_core/Cargo.toml -p yazelix_maintainer --bin yzx_repo_validator
 
       - name: Validate child release transaction and Darwin child package smoke contracts
         run: nix develop .#ci -c ./rust_core/target/debug/yzx_repo_validator validate-child-release-transaction
@@ -107,8 +181,8 @@ jobs:
     # Manual maintainer gate for Home Manager/runtime activation behavior.
     # Routine pushes stay on the faster source-contract lane, while Nix CI and
     # the cache publisher keep covering package buildability.
-    needs: [validate]
-    if: ${{ needs.validate.result == 'success' && (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.run_runtime_smoke)) }}
+    needs: [source_contracts, nix_customization_api, child_release_transaction]
+    if: ${{ needs.source_contracts.result == 'success' && needs.nix_customization_api.result == 'success' && needs.child_release_transaction.result == 'success' && (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.run_runtime_smoke)) }}
     runs-on: ubuntu-latest
     timeout-minutes: 12
     env:
@@ -150,8 +224,8 @@ jobs:
     # Full cold profile-install/rebuild smoke. Keep it explicit because the
     # runtime closure can be substitution-sensitive and much more expensive
     # than the source-contract lane.
-    needs: [validate]
-    if: ${{ needs.validate.result == 'success' && (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.run_cold_install)) }}
+    needs: [source_contracts, nix_customization_api, child_release_transaction]
+    if: ${{ needs.source_contracts.result == 'success' && needs.nix_customization_api.result == 'success' && needs.child_release_transaction.result == 'success' && (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.run_cold_install)) }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:

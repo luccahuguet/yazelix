@@ -321,11 +321,9 @@ surface and docs review rather than by a second route validator.
 - integration tests: `yzx dev test`
 - integration tests: `nix develop -c cargo nextest run --profile ci --manifest-path rust_core/Cargo.toml -p yazelix_core`
 - integration tests: `nix develop -c cargo nextest run --profile ci --manifest-path ../yazelix-zellij-pane-orchestrator/Cargo.toml --lib`
-- CI checks: `yzx_repo_validator validate-rust-test-traceability`
-- CI checks: `cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_maintainer --bin yzx_repo_validator -- validate-readme-version`
-- CI checks: `yzx_repo_validator validate-config-surface-contract`
-- CI checks: `yzx_repo_validator validate-contracts`
-- CI checks: `yzx_repo_validator validate-child-release-transaction` including child publication, Cargo source hashes, and Darwin child-package smoke contracts. First-party Zellij plugin Darwin wasm checks consume child-declared package metadata instead of inspecting child build recipe markers
+- CI job `source_contracts`: `yzx_repo_validator validate-nushell-syntax`, `validate-readme-version`, `validate-upgrade-contract --ci`, `validate-config-surface-contract`, `validate-contracts`, `validate-docs-experience`, `validate-rust-test-traceability`, and `validate-flake-interface`
+- CI job `nix_customization_api`: `yzx_repo_validator validate-nix-customization-api`
+- CI job `child_release_transaction`: `yzx_repo_validator validate-child-release-transaction` including child publication, Cargo source hashes, and Darwin child-package smoke contracts. First-party Zellij plugin Darwin wasm checks consume child-declared package metadata instead of inspecting child build recipe markers
 - manual verification: review `.github/workflows/ci.yml` and `.pre-commit-config.yaml` against the lane definitions in this contract
 
 ## Traceability
