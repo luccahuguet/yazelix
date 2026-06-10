@@ -49,3 +49,35 @@ jobs:
             .#packages.x86_64-linux.yazelix \
             .#packages.x86_64-linux.runtime_yzxterm_fast \
             .#packages.x86_64-linux.yazelix_wezterm
+
+  publish_aarch64_darwin:
+    if: github.repository == 'luccahuguet/yazelix'
+    runs-on: macos-15
+    timeout-minutes: 90
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@v22
+        with:
+          determinate: false
+
+      - name: Configure Cachix
+        uses: cachix/cachix-action@v17
+        with:
+          name: yazelix
+          authToken: "${{ secrets.CACHIX_AUTH_TOKEN }}"
+
+      - name: Build Darwin cache package outputs
+        run: |
+          nix build --no-link --print-out-paths \
+            .#packages.aarch64-darwin.yazelix_kgp_yazi \
+            .#packages.aarch64-darwin.yazelix_kgp_zellij \
+            .#packages.aarch64-darwin.yazelix_helix \
+            .#packages.aarch64-darwin.yazelix

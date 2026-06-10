@@ -145,6 +145,15 @@ The publish workflow builds selected `x86_64-linux` outputs. Local incremental N
 
 The previous workflow also listed `yazelix_ghostty`, `yazelix_agent_tools`, and `yazelix_screen`; those measured as zero incremental unique NAR in workflow order and are no longer explicit publish targets. Further storage relief should come from shrinking the default runtime closure, especially host-tool-manager references, and from Cachix retention policy.
 
+The publish workflow also builds a selective `aarch64-darwin` lane for macOS users:
+
+- `yazelix_kgp_yazi`
+- `yazelix_kgp_zellij`
+- `yazelix_helix`
+- `yazelix`
+
+The Darwin lane intentionally starts with the default supported install path and expensive editor/Zellij/Yazi package outputs rather than every terminal variant or dev/check output. Expand it only after measuring runner time, disk pressure, and Cachix storage churn.
+
 Cachix-side policy from the current docs:
 
 - [pushing runtime closure](https://docs.cachix.org/pushing#pushing-runtime-closure) is the documented flake path for selected packages
