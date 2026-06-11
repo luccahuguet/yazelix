@@ -79,6 +79,30 @@ pub fn validate_nix_customization_api(repo_root: &Path) -> Result<ValidationRepo
         "overlays.default must expose a yazelix package with yzx as the main program",
         &mut report.errors,
     );
+    require_json_bool(
+        object,
+        "default_package_allows_substitutes",
+        "default flake package must allow substitutes so published Cachix paths can be used",
+        &mut report.errors,
+    );
+    require_json_bool(
+        object,
+        "default_package_does_not_prefer_local_build",
+        "default flake package must not prefer local builds over published substitutes",
+        &mut report.errors,
+    );
+    require_json_bool(
+        object,
+        "mk_default_package_allows_substitutes",
+        "lib.<system>.mkYazelix default package must allow substitutes so published Cachix paths can be used",
+        &mut report.errors,
+    );
+    require_json_bool(
+        object,
+        "mk_default_package_does_not_prefer_local_build",
+        "lib.<system>.mkYazelix default package must not prefer local builds over published substitutes",
+        &mut report.errors,
+    );
     require_json_string(
         object,
         "home_manager_runtime_tool_source",
@@ -534,6 +558,10 @@ fn build_nix_customization_api_expr(repo_root: &Path) -> String {
         "  default_main_program = defaultPackage.meta.mainProgram or \"\";".to_string(),
         "  mk_default_main_program = mkDefaultPackage.meta.mainProgram or \"\";".to_string(),
         "  overlay_main_program = overlayPkgs.yazelix.meta.mainProgram or \"\";".to_string(),
+        "  default_package_allows_substitutes = (defaultPackage.allowSubstitutes or true) == true;".to_string(),
+        "  default_package_does_not_prefer_local_build = (defaultPackage.preferLocalBuild or false) == false;".to_string(),
+        "  mk_default_package_allows_substitutes = (mkDefaultPackage.allowSubstitutes or true) == true;".to_string(),
+        "  mk_default_package_does_not_prefer_local_build = (mkDefaultPackage.preferLocalBuild or false) == false;".to_string(),
         "  home_manager_runtime_tool_source = hm.config.programs.yazelix.runtime_tool_sources.helix or \"\";".to_string(),
         "  home_manager_steel_tool_source = hm.config.programs.yazelix.runtime_tool_sources.steel or \"\";".to_string(),
         "  steel_bundled_exports_authoring_commands = builtins.all (command: builtins.elem command steelBundledRegistry.exportedCommands) steelAuthoringCommands;".to_string(),
