@@ -46,7 +46,7 @@
       flake = false;
     };
     yazelixYazi = {
-      url = "github:luccahuguet/yazelix-yazi/yazelix-kgp-preview-0";
+      url = "github:luccahuguet/yazelix-yazi/yazelix-kgp-preview-1";
       flake = false;
     };
     yazelixHelix = {

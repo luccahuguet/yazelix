@@ -478,16 +478,16 @@
     "yazelixYazi": {
       "flake": false,
       "locked": {
-        "lastModified": 1779432435,
-        "narHash": "sha256-x3i/TU1cKGny+KUoyLKbESNaqCnKTKCy9Kj4pJnL//8=",
+        "lastModified": 1781293312,
+        "narHash": "sha256-pWhNCZJKCZXZ3xRvt9qhmL6iUzcxticeeTdoQ2b4k/4=",
         "owner": "luccahuguet",
         "repo": "yazelix-yazi",
-        "rev": "f6db84cf6e8e1da531377c4f382c531c9c03aca8",
+        "rev": "2ef0cadf25f3c06c725a760a3f5755003be81e50",
         "type": "github"
       },
       "original": {
         "owner": "luccahuguet",
-        "ref": "yazelix-kgp-preview-0",
+        "ref": "yazelix-kgp-preview-1",
         "repo": "yazelix-yazi",
         "type": "github"
       }
