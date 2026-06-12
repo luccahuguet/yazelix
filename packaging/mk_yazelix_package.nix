@@ -49,6 +49,8 @@ let
 in
 pkgs.symlinkJoin {
   inherit name;
+  allowSubstitutes = true;
+  preferLocalBuild = false;
   paths = [ runtime ];
 
   nativeBuildInputs = [ pkgs.makeWrapper ];
