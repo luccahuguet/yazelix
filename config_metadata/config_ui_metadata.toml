@@ -54,7 +54,7 @@ help = "Future action and keybinding ownership controls"
 
 [tabs.shell]
 label = "shell"
-help = "Default shell and generated shell hooks"
+help = "Default shell and generated shell hook surfaces"
 
 [tabs.advanced]
 label = "advanced"
@@ -126,7 +126,7 @@ help = "Set the right sidebar pane width as a percentage of the tab"
 
 [fields."shell.default_shell"]
 tab = "shell"
-help = "Choose the shell used for new Yazelix shell panes and generated shell hooks"
+help = "Choose the shell used for new Yazelix shell panes; xonsh must be installed on the host"
 
 [fields."terminal.config_mode"]
 tab = "terminal"
@@ -381,5 +381,11 @@ owner = "user_or_home_manager"
 [sidecars."shell_nu.nu"]
 tab = "shell"
 label = "shell_nu.nu"
+action = "edit_sidecar"
+owner = "user_or_home_manager"
+
+[sidecars."shell_xonsh.xsh"]
+tab = "shell"
+label = "shell_xonsh.xsh"
 action = "edit_sidecar"
 owner = "user_or_home_manager"

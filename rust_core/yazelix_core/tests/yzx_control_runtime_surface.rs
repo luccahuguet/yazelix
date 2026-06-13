@@ -315,6 +315,71 @@ default_shell = "fish"
     assert!(fixture.state_dir.join("logs").is_dir());
 }
 
+// Defends: host-owned xonsh default shell fails before launch when the host does not provide xonsh.
+#[test]
+fn yzx_enter_setup_only_reports_missing_host_xonsh_default_shell() {
+    let fixture = managed_config_fixture(
+        r#"[shell]
+default_shell = "xonsh"
+"#,
+    );
+    let empty_path = fixture.home_dir.join("empty-path");
+    fs::create_dir_all(&empty_path).unwrap();
+
+    let output = yzx_control_command_in_fixture(&fixture)
+        .env("PATH", &empty_path)
+        .arg("enter")
+        .arg("--setup-only")
+        .output()
+        .unwrap();
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(stderr.contains("Configured shell.default_shell is xonsh"));
+    assert!(stderr.contains("Install xonsh on the host"));
+    assert!(!fixture.config_dir.join("shell_xonsh.xsh").exists());
+}
+
+// Defends: selecting host-owned xonsh as the default shell still generates the xonsh hook surfaces.
+#[test]
+fn yzx_enter_setup_only_accepts_host_xonsh_default_shell() {
+    let fixture = managed_config_fixture(
+        r#"[shell]
+default_shell = "xonsh"
+"#,
+    );
+    let plugin_path = fixture
+        .runtime_dir
+        .join("configs/zellij/plugins/zjstatus.wasm");
+    fs::create_dir_all(plugin_path.parent().unwrap()).unwrap();
+    fs::write(&plugin_path, "").unwrap();
+
+    let fake_bin = fixture.home_dir.join("fake-bin");
+    write_executable_script(&fake_bin.join("xonsh"), "#!/bin/sh\nexit 0\n");
+
+    let output = yzx_control_command_in_fixture(&fixture)
+        .env("PATH", &fake_bin)
+        .arg("enter")
+        .arg("--setup-only")
+        .output()
+        .unwrap();
+
+    assert_eq!(
+        output.status.code(),
+        Some(0),
+        "stderr:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(output.stderr.is_empty());
+
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("Generated 0 shell initializers"));
+    assert!(fixture.config_dir.join("shell_xonsh.xsh").exists());
+
+    let generated = fixture.home_dir.join(".local/share/yazelix/initializers");
+    assert!(generated.join("xonsh/yazelix_init.xsh").exists());
+}
+
 // Regression: Rust startup handoff creates the launch snapshot and recomputes runtime env from helix.external without invoking the deleted Nu bridge.
 #[test]
 fn yzx_enter_uses_rust_startup_snapshot_env_without_nu_bridge() {

@@ -223,7 +223,8 @@ What it does not ship anymore:
 - heavyweight media helpers such as `ffmpeg` or ImageMagick
 
 #### Configuration Options
-- **Custom shells**: Set `default_shell` to your preference (`"nu"`, `"bash"`, `"fish"`, `"zsh"`)
+- **Custom shells**: Set `default_shell` to your preference (`"nu"`, `"bash"`, `"fish"`, `"zsh"`, `"xonsh"`); xonsh must be installed on the host and available on `PATH`
+- **Host xonsh hooks**: Yazelix generates xonsh initializers, but xonsh remains host-installed and native xonsh startup must source `~/.config/yazelix/shell_xonsh.xsh`
 - **Terminal package**: choose a flake output such as `#yazelix`, `#yzxterm`, `#yazelix_rio`, `#yazelix_wezterm`, `#yazelix_kitty`, `#yazelix_foot`, or set Home Manager `programs.yazelix.terminal`
 - **Terminal launch**: Ghostty is first in the default terminal list for Yazelix cursor trails and Yazi image previews; Yazelix Terminal, Rio, WezTerm, Kitty, Foot, and Ratty remain available through explicit runtime variants or host `PATH`
 - **Editor choice**: Configure your editor (see [Editor Configuration](./editor_configuration.md))

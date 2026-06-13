@@ -125,7 +125,7 @@ Plugin catalog: https://github.com/yazi-rs/plugins
 - [Yazi configuration](./yazi-configuration.md) — Personal Yazi config overlays under `~/.config/yazelix/yazi/`
 - [Zellij configuration](./zellij-configuration.md) — `settings.jsonc` for Yazelix-owned Zellij behavior plus `~/.config/yazelix/zellij.kdl` for native settings Yazelix does not render
 - [Terminal overrides](./terminal_emulators.md) — Terminal-native override files for Ghostty and Kitty, with Yazelix Terminal, Foot, and Ratty using generated config or native user-mode config
-- [Managed shell hooks](./customization.md) — Yazelix-only shell hook files for Bash, Zsh, Fish, and Nushell, with managed paths listed in [POSIX/XDG Paths](./posix_xdg.md).
+- [Managed shell hooks](./customization.md) — Yazelix-only shell hook files for Bash, Zsh, Fish, Nushell, and host-owned xonsh initializers, with managed paths listed in [POSIX/XDG Paths](./posix_xdg.md).
 
 ## Runtime Boundary
 

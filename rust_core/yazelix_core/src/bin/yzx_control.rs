@@ -1778,7 +1778,7 @@ mod tests {
                 fix_available: false,
                 headline: "Invalid config value at shell.default_shell".to_string(),
                 detail_lines: vec![
-                    "Expected one of: nu, bash, fish, zsh".to_string(),
+                    "Expected one of: nu, bash, fish, xonsh, zsh".to_string(),
                     "Next: Update the field manually".to_string(),
                 ],
             }],
@@ -1792,7 +1792,7 @@ mod tests {
         let rendered = render_startup_config_error(&report);
         assert!(rendered.contains("Blocking issues: 1"));
         assert!(rendered.contains("Invalid config value at shell.default_shell"));
-        assert!(rendered.contains("Expected one of: nu, bash, fish, zsh"));
+        assert!(rendered.contains("Expected one of: nu, bash, fish, xonsh, zsh"));
         assert!(rendered.contains("Failure class: config problem."));
         assert!(!rendered.contains("Known migration"));
         assert!(!rendered.contains("yzx doctor --fix"));

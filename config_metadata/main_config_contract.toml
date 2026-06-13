@@ -209,6 +209,7 @@ allowed_values = [
   "nu",
   "bash",
   "fish",
+  "xonsh",
   "zsh",
 ]
 rebuild_required = false

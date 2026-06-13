@@ -741,6 +741,8 @@ fn run_runtime_setup(
     default_shell: &str,
     quiet: bool,
 ) -> Result<(), CoreError> {
+    ensure_default_shell_available(default_shell)?;
+
     let state_dir = state_dir_from_env()?;
     let log_dir = setup_log_dir(&state_dir)?;
     fs::create_dir_all(&state_dir).map_err(|source| {
@@ -800,6 +802,49 @@ fn run_runtime_setup(
     }
 
     Ok(())
+}
+
+fn ensure_default_shell_available(default_shell: &str) -> Result<(), CoreError> {
+    let shell = default_shell.trim().to_lowercase();
+    if shell != "xonsh" || command_available_on_path("xonsh") {
+        return Ok(());
+    }
+
+    Err(CoreError::classified(
+        ErrorClass::Runtime,
+        "host_default_shell_missing",
+        "Configured shell.default_shell is xonsh, but xonsh was not found on PATH.",
+        "Install xonsh on the host or change shell.default_shell to nu, bash, fish, or zsh.",
+        serde_json::json!({
+            "shell": "xonsh",
+            "command": "xonsh",
+        }),
+    ))
+}
+
+fn command_available_on_path(command: &str) -> bool {
+    std::env::var_os("PATH")
+        .into_iter()
+        .flat_map(|path| std::env::split_paths(&path).collect::<Vec<_>>())
+        .any(|dir| is_executable_command(&dir.join(command)))
+}
+
+#[cfg(unix)]
+fn is_executable_command(path: &Path) -> bool {
+    let Ok(metadata) = fs::metadata(path) else {
+        return false;
+    };
+    if !metadata.is_file() {
+        return false;
+    }
+
+    use std::os::unix::fs::PermissionsExt;
+    metadata.permissions().mode() & 0o111 != 0
+}
+
+#[cfg(not(unix))]
+fn is_executable_command(path: &Path) -> bool {
+    path.is_file()
 }
 
 fn setup_shells(default_shell: &str) -> Vec<String> {

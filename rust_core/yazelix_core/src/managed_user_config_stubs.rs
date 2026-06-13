@@ -22,6 +22,20 @@ const NU_HOOK: &str = r#"# Yazelix-managed Nushell hook
 # Add Nushell-only commands for Yazelix sessions here
 "#;
 
+const XONSH_HOOK: &str = r#"# Yazelix-managed Xonsh hook
+# Source this file from ~/.xonshrc or ~/.config/xonsh/rc.xsh
+# Add Xonsh-only commands for Yazelix sessions below
+
+import os as _yazelix_os
+
+_yazelix_init = _yazelix_os.path.expanduser("~/.local/share/yazelix/initializers/xonsh/yazelix_init.xsh")
+if _yazelix_os.path.isfile(_yazelix_init) and _yazelix_os.path.getsize(_yazelix_init) > 0:
+    execx(open(_yazelix_init, encoding="utf-8").read(), "exec", __xonsh__.ctx, filename=_yazelix_init)
+
+del _yazelix_init
+del _yazelix_os
+"#;
+
 const GHOSTTY_OVERRIDE: &str = r#"# Yazelix-managed Ghostty overrides
 # Add terminal-native Ghostty settings for Yazelix windows here
 "#;
@@ -67,6 +81,7 @@ pub(crate) fn ensure_shell_hook_stubs(
             "zsh" => ensure_stub_with_legacy(config_dir, shell, ZSH_HOOK)?,
             "fish" => ensure_stub_with_legacy(config_dir, shell, FISH_HOOK)?,
             "nu" => ensure_stub_with_legacy(config_dir, shell, NU_HOOK)?,
+            "xonsh" => ensure_current_shell_stub(config_dir, shell, XONSH_HOOK)?,
             _ => {}
         }
     }
@@ -98,6 +113,15 @@ fn ensure_stub_with_legacy(config_dir: &Path, shell: &str, content: &str) -> Res
         &format!("Yazelix {shell} shell hook"),
     )?;
     write_stub_if_missing(&path, content)
+}
+
+fn ensure_current_shell_stub(
+    config_dir: &Path,
+    shell: &str,
+    content: &str,
+) -> Result<(), CoreError> {
+    let current = user_config_paths::shell_hook(config_dir, shell).expect("supported shell");
+    write_stub_if_missing(&current, content)
 }
 
 fn ensure_terminal_stub_with_legacy(
@@ -174,10 +198,19 @@ mod tests {
     fn shell_hook_stubs_are_limited_to_requested_shells() {
         let config = tempdir().expect("config");
 
-        ensure_shell_hook_stubs(config.path(), &["bash".to_string(), "nu".to_string()]).unwrap();
+        ensure_shell_hook_stubs(
+            config.path(),
+            &["bash".to_string(), "nu".to_string(), "xonsh".to_string()],
+        )
+        .unwrap();
 
         assert!(config.path().join("shell_bash.sh").exists());
         assert!(config.path().join("shell_nu.nu").exists());
+        assert!(
+            fs::read_to_string(config.path().join("shell_xonsh.xsh"))
+                .unwrap()
+                .contains("yazelix_init.xsh")
+        );
         assert!(!config.path().join("shell_fish.fish").exists());
         assert!(!config.path().join("shell_zsh.zsh").exists());
     }

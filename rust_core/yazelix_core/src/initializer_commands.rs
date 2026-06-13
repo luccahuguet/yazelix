@@ -44,6 +44,13 @@ pub(crate) struct ShellInitializerRun {
     pub messages: Vec<String>,
 }
 
+fn default_shells_to_configure() -> Vec<String> {
+    ["nu", "bash", "fish", "zsh", "xonsh"]
+        .into_iter()
+        .map(str::to_string)
+        .collect()
+}
+
 fn shell_initializer_dirs(home: &Path) -> Vec<ShellConfig> {
     let base = home
         .join(".local")
@@ -73,6 +80,12 @@ fn shell_initializer_dirs(home: &Path) -> Vec<ShellConfig> {
             name: "zsh",
             dir: base.join("zsh"),
             ext: "zsh",
+            tool_overrides: &[],
+        },
+        ShellConfig {
+            name: "xonsh",
+            dir: base.join("xonsh"),
+            ext: "xsh",
             tool_overrides: &[],
         },
     ]
@@ -511,17 +524,14 @@ pub fn run_generate_shell_initializers(args: &[String]) -> Result<i32, CoreError
         println!("  yzx_control generate_shell_initializers [shells...]");
         println!();
         println!("Arguments:");
-        println!("  shells    Comma-separated list of shells (nu,bash,fish,zsh). Defaults to all.");
+        println!(
+            "  shells    Comma-separated list of shells (nu,bash,fish,zsh,xonsh). Defaults to all."
+        );
         return Ok(0);
     }
 
     if shells_to_configure.is_empty() {
-        shells_to_configure = vec![
-            "nu".to_string(),
-            "bash".to_string(),
-            "fish".to_string(),
-            "zsh".to_string(),
-        ];
+        shells_to_configure = default_shells_to_configure();
     }
 
     let quiet = std::env::var("YAZELIX_QUIET_MODE").as_deref() == Ok("true");
@@ -573,8 +583,24 @@ after
     fn shell_initializer_dirs_filters_by_name() {
         let home = Path::new("/tmp/home");
         let all = shell_initializer_dirs(home);
-        assert_eq!(all.len(), 4);
+        assert_eq!(all.len(), 5);
         assert!(all.iter().any(|s| s.name == "nu"));
         assert!(all.iter().any(|s| s.name == "bash"));
+        let xonsh = all.iter().find(|s| s.name == "xonsh").expect("xonsh");
+        assert_eq!(xonsh.ext, "xsh");
+        assert!(xonsh.dir.ends_with("initializers/xonsh"));
+    }
+
+    // Defends: the no-argument initializer command covers all generated shell surfaces.
+    #[test]
+    fn default_shells_include_host_owned_xonsh_initializers() {
+        let shells = default_shells_to_configure();
+        assert_eq!(
+            shells,
+            ["nu", "bash", "fish", "zsh", "xonsh"]
+                .into_iter()
+                .map(str::to_string)
+                .collect::<Vec<_>>()
+        );
     }
 }

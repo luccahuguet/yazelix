@@ -184,10 +184,11 @@ Managed inputs:
 - `~/.config/yazelix/shell_zsh.zsh`
 - `~/.config/yazelix/shell_fish.fish`
 - `~/.config/yazelix/shell_nu.nu`
+- `~/.config/yazelix/shell_xonsh.xsh`
 
 Native sources:
 
-- user shell rc files such as `.bashrc`, `.zshrc`, Fish config, or Nushell config
+- user shell rc files such as `.bashrc`, `.zshrc`, Fish config, Nushell config, or xonsh rc files
 
 Statuses:
 
@@ -199,7 +200,8 @@ Rules:
 
 - Yazelix does not source native shell rc files implicitly
 - Yazelix does not import native shell rc files
-- shell hooks are opt-in managed sidecars scoped to Yazelix shells
+- Bash, Zsh, Fish, and Nushell hooks are opt-in managed sidecars scoped to Yazelix shells
+- Xonsh is host-owned; `shell.default_shell = "xonsh"` requires host `xonsh` on `PATH`, and native xonsh startup must source `shell_xonsh.xsh`
 
 ## Config UI Display Rules
 

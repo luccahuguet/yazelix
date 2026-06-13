@@ -24,7 +24,7 @@ Yazelix does not use `$XDG_STATE_HOME` for the main generated state root. The st
   - `zellij.kdl` - managed native Zellij sidecar for settings Yazelix does not render
   - `yazi/` - managed Yazi home containing `yazi.toml`, `keymap.toml`, `init.lua`, `package.toml`, `plugins/`, and `flavors/`
   - `terminal_ghostty.conf`, `terminal_kitty.conf` - managed terminal override surfaces
-  - `shell_bash.sh`, `shell_zsh.zsh`, `shell_fish.fish`, `shell_nu.nu` - managed shell hook surfaces
+  - `shell_bash.sh`, `shell_zsh.zsh`, `shell_fish.fish`, `shell_nu.nu`, `shell_xonsh.xsh` - managed shell hook surfaces
 
 - Shared Yazelix cursor config, usually `~/.config/yazelix_cursors`
   - `settings.jsonc` - standalone cursor preset config used by Yazelix and `yzc`
@@ -34,7 +34,7 @@ Yazelix does not use `$XDG_STATE_HOME` for the main generated state root. The st
   - `configs/zellij/` - generated Zellij config, layouts, and plugin artifacts
   - `configs/helix/` - generated managed Helix config
   - `configs/terminal_emulators/` - generated terminal config files
-  - `initializers/` - generated shell, starship, zoxide, optional host `mise`, and carapace init scripts
+  - `initializers/` - generated shell, starship, zoxide, optional host `atuin`/`mise`, and carapace init scripts
   - `logs/` - runtime setup, launch, and welcome output
   - `profiles/startup/` - startup profiler reports and saved baselines
   - `sessions/` - per-session facts used by runtime integrations

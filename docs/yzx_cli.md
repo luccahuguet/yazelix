@@ -1,6 +1,6 @@
 # yzx Command Line Interface
 
-Shell-agnostic CLI for Yazelix management. Works across bash, fish, zsh, and nushell.
+Shell-agnostic CLI for Yazelix management. Works across bash, fish, zsh, nushell, and host-owned xonsh.
 
 ## Commands
 
@@ -308,7 +308,7 @@ Replace `settings.jsonc` with a fresh copy of the shipped settings template
 - `--no-backup`: discard the previous config file instead of renaming it to a backup first
 - Use this as a blunt recovery path when `yzx doctor` reports stale config fields
 - Only replaces `~/.config/yazelix/settings.jsonc`
-- Preserves managed override sidecars such as `helix/`, `zellij.kdl`, `yazi/`, `terminal_*.conf|toml|ini`, and `shell_*.sh|zsh|fish|nu`
+- Preserves managed override sidecars such as `helix/`, `zellij.kdl`, `yazi/`, `terminal_*.conf|toml|ini`, and `shell_*.sh|zsh|fish|nu|xsh`
 - Preserves unknown adjacent files under `~/.config/yazelix/` and prints a warning instead of deleting or adopting them
 - Cursor presets live in `~/.config/yazelix_cursors/settings.jsonc`; `reset config` only resets the main Yazelix settings file
 

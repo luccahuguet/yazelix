@@ -1148,6 +1148,18 @@ mod tests {
         assert_eq!(config.len(), fields.len() + 1);
     }
 
+    // Defends: host-owned xonsh is a valid default-shell enum without being bundled by Yazelix.
+    #[test]
+    fn accepts_xonsh_as_default_shell_enum_value() {
+        let path = write_user_config("[shell]\ndefault_shell = \"xonsh\"\n");
+        let data = normalize_config(&request_for(path)).unwrap();
+
+        assert_eq!(
+            data.normalized_config.get("default_shell").unwrap(),
+            "xonsh"
+        );
+    }
+
     // Defends: the hidden ratconfig contract state is accepted as metadata but never reaches runtime config.
     #[test]
     fn ignores_hidden_ratconfig_contract_state_during_normalization() {

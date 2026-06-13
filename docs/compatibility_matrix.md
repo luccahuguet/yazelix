@@ -48,6 +48,7 @@ release gate `yazelix-5br5o.18`.
 | Bash | `supported` | `shell.default_shell = "bash"` | Supported generated initializer path |
 | Fish | `supported` | `shell.default_shell = "fish"` | Supported generated initializer path |
 | Zsh | `supported` | `shell.default_shell = "zsh"` | Supported generated initializer path |
+| Xonsh | `supported`, host-owned | `shell.default_shell = "xonsh"` | Yazelix generates `xonsh/yazelix_init.xsh` and `shell_xonsh.xsh`; the host must provide `xonsh` on `PATH` and source the hook from xonsh rc for native startup integration |
 | Other shells | `unsupported` as `default_shell` enum values | not accepted | Use one of the supported enum values, or launch another shell manually inside a pane |
 
 ## Platform Matrix

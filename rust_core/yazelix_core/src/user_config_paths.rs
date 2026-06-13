@@ -28,6 +28,7 @@ pub const SHELL_BASH_HOOK: &str = "shell_bash.sh";
 pub const SHELL_ZSH_HOOK: &str = "shell_zsh.zsh";
 pub const SHELL_FISH_HOOK: &str = "shell_fish.fish";
 pub const SHELL_NU_HOOK: &str = "shell_nu.nu";
+pub const SHELL_XONSH_HOOK: &str = "shell_xonsh.xsh";
 
 pub const CURRENT_MANAGED_CONFIG_FILE_NAMES: &[&str] = &[
     SETTINGS_CONFIG,
@@ -45,6 +46,7 @@ pub const CURRENT_MANAGED_CONFIG_FILE_NAMES: &[&str] = &[
     SHELL_ZSH_HOOK,
     SHELL_FISH_HOOK,
     SHELL_NU_HOOK,
+    SHELL_XONSH_HOOK,
 ];
 
 pub const LEGACY_CONFIG_ENTRY_NAMES: &[&str] = &[
@@ -225,6 +227,7 @@ pub fn shell_hook(config_dir: &Path, shell: &str) -> Option<PathBuf> {
         "zsh" => Some(config_dir.join(SHELL_ZSH_HOOK)),
         "fish" => Some(config_dir.join(SHELL_FISH_HOOK)),
         "nu" => Some(config_dir.join(SHELL_NU_HOOK)),
+        "xonsh" => Some(config_dir.join(SHELL_XONSH_HOOK)),
         _ => None,
     }
 }

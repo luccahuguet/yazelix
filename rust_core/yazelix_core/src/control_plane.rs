@@ -500,9 +500,11 @@ pub fn shell_command(runtime_dir: &Path, login: bool, shell_name: &str) -> Vec<S
         ("nu", false) => vec!["nu".into()],
         ("bash", true) => vec!["bash".into(), "--login".into()],
         ("fish", true) => vec!["fish".into(), "-l".into()],
+        ("xonsh", true) => vec!["xonsh".into(), "--login".into()],
         ("zsh", true) => vec!["zsh".into(), "-l".into()],
         ("bash", false) => vec!["bash".into()],
         ("fish", false) => vec!["fish".into()],
+        ("xonsh", false) => vec!["xonsh".into()],
         ("zsh", false) => vec!["zsh".into()],
         (_, true) => vec![normalized],
         (_, false) => vec![normalized],
@@ -736,6 +738,15 @@ mod tests {
         let rt = Path::new("/opt/yazelix");
         let argv = shell_command(rt, false, "nu");
         assert_eq!(argv, vec!["nu".to_string()]);
+    }
+
+    // Test lane: default
+    // Defends: host-owned xonsh default shell launches through xonsh's login entrypoint without a Yazelix wrapper.
+    #[test]
+    fn shell_command_login_xonsh_uses_host_xonsh() {
+        let rt = Path::new("/opt/yazelix");
+        let argv = shell_command(rt, true, "xonsh");
+        assert_eq!(argv, vec!["xonsh".to_string(), "--login".to_string()]);
     }
 
     // Defends: explicit `YAZELIX_CONFIG_DIR` still expands `~` before path use.

@@ -451,6 +451,7 @@ fn shell_statuses(request: &NativeConfigStatusRequest) -> Vec<NativeConfigStatus
         ("zsh", user_config_paths::SHELL_ZSH_HOOK),
         ("fish", user_config_paths::SHELL_FISH_HOOK),
         ("nu", user_config_paths::SHELL_NU_HOOK),
+        ("xonsh", user_config_paths::SHELL_XONSH_HOOK),
     ];
     let mut entries = shells
         .into_iter()
@@ -709,6 +710,26 @@ mod tests {
         assert_eq!(find(&entries, "yazi.package").status, "native_available");
         assert_eq!(find(&entries, "yazi.flavors").status, "native_available");
         assert_eq!(find(&entries, "helix.input").status, "native_available");
+    }
+
+    // Defends: host-owned xonsh still exposes Yazelix's managed xonsh hook surface.
+    #[test]
+    fn xonsh_shell_hook_is_reported_as_managed_shell_surface() {
+        let tmp = TempDir::new().unwrap();
+        let req = request(&tmp);
+        let hook = req.config_dir.join(user_config_paths::SHELL_XONSH_HOOK);
+        fs::create_dir_all(hook.parent().unwrap()).unwrap();
+        fs::write(&hook, "# xonsh hook\n").unwrap();
+
+        let entries = classify_native_config_statuses(&req);
+        let xonsh = find(&entries, "shell.xonsh.hook");
+
+        assert_eq!(xonsh.status, "managed_override");
+        assert_eq!(
+            xonsh.active_path.as_deref(),
+            Some(path_string(&hook).as_str())
+        );
+        assert_eq!(xonsh.allowed_action, "edit_managed");
     }
 
     // Defends: declarative settings ownership uses the shared contract label consumed by both doctor and config UI.

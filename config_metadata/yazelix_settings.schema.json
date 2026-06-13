@@ -356,6 +356,7 @@
             "nu",
             "bash",
             "fish",
+            "xonsh",
             "zsh"
           ]
         }
