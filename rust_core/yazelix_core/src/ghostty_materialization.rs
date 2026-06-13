@@ -290,6 +290,7 @@ pub fn generate_ghostty_materialization(
             runtime_dir: request.runtime_dir.clone(),
             state_dir: request.state_dir.clone(),
             cursor_config_path: request.cursor_config_path.clone(),
+            appearance_mode: request.appearance_mode.clone(),
         })?;
     let cursor_state = cursor_data.cursor_state;
     let config_content = build_ghostty_config(request, &ghostty_dir, &cursor_state)?;

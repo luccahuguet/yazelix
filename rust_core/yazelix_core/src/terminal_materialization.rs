@@ -1085,6 +1085,7 @@ pub fn generate_terminal_materialization(
         runtime_dir: request.runtime_dir.clone(),
         state_dir: request.state_dir.clone(),
         cursor_config_path: request.cursor_config_path.clone(),
+        appearance_mode: appearance_mode.to_string(),
     };
 
     let mut generated = Vec::new();

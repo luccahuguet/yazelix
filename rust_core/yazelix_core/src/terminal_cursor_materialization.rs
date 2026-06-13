@@ -15,6 +15,7 @@ pub struct TerminalCursorMaterializationRequest {
     pub runtime_dir: PathBuf,
     pub state_dir: PathBuf,
     pub cursor_config_path: PathBuf,
+    pub appearance_mode: String,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq)]
@@ -88,7 +89,7 @@ pub fn generate_terminal_cursor_materialization(
     }
 
     let registry = CursorRegistry::load(&request.cursor_config_path)?;
-    let registry_state = registry.resolve();
+    let registry_state = registry.resolve_for_appearance(&request.appearance_mode);
     validate_terminal_cursor_trail_duration(registry_state.duration)?;
     let cursor_state = build_terminal_cursor_render_state(&registry_state);
     let shaders_synced = sync_terminal_cursor_shader_assets(

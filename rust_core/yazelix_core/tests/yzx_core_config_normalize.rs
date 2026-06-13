@@ -1432,6 +1432,69 @@ fn terminal_materialization_ghostty_auto_appearance_writes_theme_pair() {
     assert!(ghostty_config.contains("theme = \"dark:Abernathy,light:Catppuccin Latte\""));
 }
 
+// Regression: light appearance random cursor materialization skips snow while preserving explicit dark-mode availability.
+#[test]
+fn terminal_materialization_light_random_cursor_skips_snow() {
+    let repo = repo_root();
+    let tmp = tempdir().unwrap();
+    let fixture = prepare_runtime_materialization_fixture(&repo, &tmp);
+
+    write_managed_config_toml(&fixture, &["[appearance]", "mode = \"light\""].join("\n"));
+    write_cursor_sidecar(
+        &fixture,
+        r##"
+schema_version = 1
+enabled_cursors = ["snow", "blaze"]
+
+[settings]
+trail = "random"
+trail_effect = "tail"
+mode_effect = "ripple"
+glow = "medium"
+duration = 1.0
+kitty_enable_cursor = true
+
+[[cursor]]
+name = "snow"
+family = "mono"
+color = "#ffffff"
+
+[[cursor]]
+name = "blaze"
+family = "mono"
+color = "#ffb929"
+"##,
+    );
+
+    let output = runtime_materialization_command(&fixture, "terminal-materialization.generate")
+        .arg("--from-env")
+        .env_remove("YAZELIX_TERMINAL_PROFILE")
+        .env_remove("YAZELIX_TERMINAL_EFFECTS")
+        .env_remove("YAZELIX_TERMINAL_EMOJI_FONT")
+        .output()
+        .unwrap();
+
+    if !output.status.success() {
+        panic!(
+            "stdout={}\nstderr={}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    assert!(output.stderr.is_empty());
+
+    let envelope: Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(envelope["command"], "terminal-materialization.generate");
+    assert_eq!(
+        envelope["data"]["cursor"]["cursor_state"]["selected_color"],
+        "blaze"
+    );
+    assert_eq!(
+        envelope["data"]["cursor"]["cursor_state"]["selected_color_hex"],
+        "#ffb929"
+    );
+}
+
 // Defends: WezTerm receives a native appearance query for automatic system appearance.
 #[test]
 fn terminal_materialization_wezterm_auto_appearance_writes_gui_query() {
