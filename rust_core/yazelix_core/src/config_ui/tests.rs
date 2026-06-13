@@ -304,7 +304,7 @@ fn cursor_enabled_cursors_opens_multi_choice_picker_and_writes_cursor_config() {
 
     assert_eq!(field.kind, "string_list");
     assert!(field.allowed_values.contains(&"blaze".to_string()));
-    assert!(field.allowed_values.contains(&"snow".to_string()));
+    assert!(field.allowed_values.contains(&"midnight".to_string()));
 
     let mut app = YazelixConfigUiApp::new(request, model);
     select_field_path(&mut app, "cursors.enabled_cursors");
@@ -324,7 +324,11 @@ fn cursor_enabled_cursors_opens_multi_choice_picker_and_writes_cursor_config() {
         .and_then(JsonValue::as_array)
         .expect("enabled cursors");
     assert!(!enabled.iter().any(|value| value.as_str() == Some("blaze")));
-    assert!(enabled.iter().any(|value| value.as_str() == Some("snow")));
+    assert!(
+        enabled
+            .iter()
+            .any(|value| value.as_str() == Some("midnight"))
+    );
 }
 
 // Defends: dynamic cursor trail selection is a single-select picker over none, random, and enabled cursor names.
