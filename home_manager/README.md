@@ -255,7 +255,7 @@ Feature tradeoffs:
 - `steel = "off"` removes Steel authoring commands
 - `p7zip`, `poppler`, and `resvg` disable archive, PDF, and SVG preview helpers
 - `components.screen = false` removes `yzx screen` and requires welcome and screen-saver behavior to stay disabled
-- `components.cursors = false` removes Yazelix cursor shader assets and cursor facts report `n/a`
+- `components.cursors = false` removes Yazelix cursor shader assets and hides cursor fields from the config UI
 - `agent_usage_programs = [ ]` is correct only when `claude_usage` and `codex_usage` are removed from `zellij_widget_tray` or intentionally host-provided
 
 See [Package sizes](../docs/package_sizes.md) for the reporter command and current closure measurements

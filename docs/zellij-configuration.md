@@ -88,7 +88,6 @@ simplified_ui true
       "editor",
       "shell",
       "term",
-      "cursor",
       "codex_usage",
       "cpu",
       "ram"
@@ -107,7 +106,7 @@ Comment out any line to hide that widget. Order matters. Restart Yazelix to rege
 
 `tab_label_mode = "full"` keeps the default tab index plus tab name labels. Set it to `"compact"` when a workspace/root widget already shows the project context and tabs should use only index plus fullscreen/sync/floating state indicators.
 
-`editor`, `shell`, and `term` render static labels from the active Yazelix config. `workspace`, `cursor`, and usage widgets read window-local cached facts so separate Yazelix windows keep independent status-bar state. The cursor widget renders mono presets as colored `█ name` and split presets as one-cell vertical or horizontal split glyphs from the launch-scoped Ghostty cursor fact; it shows `none` when Ghostty cursor trails are disabled, `n/a` outside Yazelix-managed Ghostty cursor sessions, and no segment while the cache is missing. CPU and RAM use bundled runtime helper scripts; RAM reads Nushell `sys mem` data instead of scraping the welcome-screen machine summary.
+`editor`, `shell`, and `term` render static labels from the active Yazelix config. `workspace` and usage widgets read window-local cached facts so separate Yazelix windows keep independent status-bar state. Cursor preset inspection and editing live in `yzx config ui` instead of the status bar. CPU and RAM use bundled runtime helper scripts; RAM reads Nushell `sys mem` data instead of scraping the welcome-screen machine summary.
 
 The Codex usage widget includes quota-window position and official quota percentages by default, for example `[codex 2h20m/5h 49% · 4d5h/7d 80%]`; with `codex_usage_display = "both"` it also shows token totals as `[codex 2h20m/5h 138M 49% · 4d5h/7d 1.34B 80%]`. The Claude usage widget combines local token totals with official quota percentages, for example `[claude 5h|15.5M|75% wk|66.6M|65%]`. Configure Codex and Claude windows with `codex_usage_periods` and `claude_usage_periods`; supported values are `5h` and `week`. The OpenCode Go widget reads OpenCode's local SQLite database directly and renders the compact 5h/week/month shape with the `go` label. Claude and Codex widgets use `tu` from tokenusage, which ships with the packaged runtime by default.
 

@@ -72,7 +72,7 @@ Detailed budget families:
 
 ## Current Boundaries
 
-`zellij_commands.rs` is a small export shell. Pipe/get-root commands live under `zellij_commands/pipe.rs`, workspace/editor/terminal flows live under `zellij_commands/workspace.rs`, status command adapters live under `zellij_commands/status.rs`, cache IO lives under `zellij_commands/status/cache.rs`, cursor/workspace widget rendering lives under `zellij_commands/status/widgets.rs`, and status regressions live under `zellij_commands/status/tests/{widgets,cache}.rs`. Provider usage widget implementation lives in `yazelix-zellij-bar`.
+`zellij_commands.rs` is a small export shell. Pipe/get-root commands live under `zellij_commands/pipe.rs`, workspace/editor/terminal flows live under `zellij_commands/workspace.rs`, status command adapters live under `zellij_commands/status.rs`, cache IO lives under `zellij_commands/status/cache.rs`, workspace widget rendering lives under `zellij_commands/status/widgets.rs`, and status regressions live under `zellij_commands/status/tests/{widgets,cache}.rs`. Provider usage widget implementation lives in `yazelix-zellij-bar`.
 
 `workspace_commands.rs` keeps `yzx cwd`, session config loading, managed-editor kind detection, zoxide/path resolution, and current-tab retargeting. `workspace_commands/popup.rs` owns the `yzpp`-backed popup adapter, and `workspace_commands/yazi_sidebar.rs` owns reveal/sidebar refresh, sidebar focus, `ya emit-to`, and command availability. Shared workspace target-directory, tab-name, and retarget-payload shaping live in `workspace_session.rs`.
 

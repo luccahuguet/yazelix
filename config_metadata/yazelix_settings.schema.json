@@ -483,7 +483,6 @@
               "shell",
               "term",
               "workspace",
-              "cursor",
               "claude_usage",
               "codex_usage",
               "opencode_go_usage",

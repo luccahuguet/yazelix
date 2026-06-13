@@ -14,9 +14,7 @@ The supported boundary is runnable-standalone-first for every non-workspace widg
 | generic `mode`, `tabs`, `session`, `datetime`, brand, tab-label, compact/full bar, and command-placeholder rendering | `yazelix_zellij_bar` child package command surface | Keep child |
 | standalone preset/template packaging and package-local `zjstatus.wasm` path substitution | `yazelix_zellij_bar` child repo | Keep child |
 | widget tray token validation and generic dynamic placeholders such as `{pipe_workspace}` and bar-owned command placeholders | `yazelix_zellij_bar` child package command surface | Keep child |
-| integrated plugin block, including workspace pipe format, cursor, Claude, Codex, OpenCode Go, CPU, RAM, and version command definitions | `yazelix_zellij_bar_widget render-yazelix-runtime` rendered from the child runtime KDL template plus Yazelix-supplied typed config | Keep child |
-| cursor status widget text, glyph display, env reading, `yzc current` fallback, and standalone stdout command | `yazelix_zellij_bar` child repo plus `yazelix-cursors` facts API | Move child |
-| cursor cache path discovery and first-paint hydration from Yazelix session state | Yazelix core status adapter | Keep adapter |
+| integrated plugin block, including workspace pipe format, Claude, Codex, OpenCode Go, CPU, RAM, and version command definitions | `yazelix_zellij_bar_widget render-yazelix-runtime` rendered from the child runtime KDL template plus Yazelix-supplied typed config | Keep child |
 | status-bus schema decode and inspect-session rendering | Yazelix core plus pane-orchestrator producer | Keep adapter |
 | window-local `status_bar_cache.json` writes, heartbeat merges, and cache path discovery | Yazelix core | Keep adapter |
 | provider usage display models, summary formatting, quota/tokens modes, cached-fact widget rendering, cache schemas, locking, freshness/backoff, provider probing, and standalone stdout commands | `yazelix_zellij_bar` child repo | Move child |
@@ -66,9 +64,9 @@ The supported boundary is runnable-standalone-first for every non-workspace widg
 #### SBO-006
 - Type: boundary
 - Status: live
-- Owner: `yazelix_zellij_bar` child repo plus Yazelix core status adapter
-- Statement: Cursor widget implementation belongs to `yazelix_zellij_bar` when supplied with cursor facts compatible with `yazelix-cursors`. This includes display rendering, env reading, automatic `yzc current --format env` fallback, and a standalone stdout command. Yazelix core owns only launch-scoped environment-derived first-paint hydration and session integration. `yazelix-cursors` remains the owner of cursor schemes, assets, and non-Zellij cursor distribution
-- Verification: automated `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core status_cache`
+- Owner: `yazelix-cursors`, terminal materialization, and ratconfig-backed configuration UI
+- Statement: Cursor configuration, effects, and preset inspection are not status-bar widget surfaces. The status bar does not render cursor preset names, swatches, glyphs, or `yzc current` output. `yazelix-cursors` remains the owner of cursor schemes and assets, while terminal materialization applies them and ratconfig exposes inspection/editing.
+- Verification: automated `cargo test` in `luccahuguet/yazelix-zellij-bar` and `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core zellij_render_plan`
 
 #### SBO-007
 - Type: boundary
@@ -97,7 +95,7 @@ Delete-first order:
 
 1. Delete direct pane-orchestrator-per-paint widget commands that the generated templates no longer use
 2. Delete or demote weak tests that defend old command names instead of current cache behavior
-3. Move runnable non-workspace widget commands to `yazelix_zellij_bar`: CPU, RAM, cursor, Claude, Codex, and OpenCode Go
+3. Move runnable non-workspace widget commands to `yazelix_zellij_bar`: CPU, RAM, Claude, Codex, and OpenCode Go
 4. Delete provider usage refreshers, cache schemas, lock/backoff implementation, and CPU/RAM scripts from Yazelix once the child command surface exists
 5. Keep pane-orchestrator facts, workspace rendering, generated layout integration, session-specific path selection, and runtime path discovery in the integrated runtime unless a future contract defines a reusable status bus
 

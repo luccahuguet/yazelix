@@ -67,7 +67,7 @@ Recommendation: keep separate.
 
 This is one of the strongest standalone boundaries. It owns a real cursor workflow through `yzc init`, `yzc generate ghostty`, generated shader assets, standalone JSONC settings, and examples. Yazelix consumes the same registry and shader logic for config UI, settings rendering, Ghostty materialization, Yazelix Terminal shader assets, and `yzx cursors`.
 
-The main risks are dual consumption through flake and Cargo, plus the fact that cursor facts also feed the status bar. Those are manageable because the ownership line is clear: cursor schemes, shader generation, standalone cursor config, and `yzc` belong to the child; Yazelix owns per-window randomization, integrated terminal materialization, and config UI composition.
+The main risks are dual consumption through flake and Cargo. Those are manageable because the ownership line is clear: cursor schemes, shader generation, standalone cursor config, and `yzc` belong to the child; Yazelix owns per-window randomization, integrated terminal materialization, and config UI composition.
 
 Boundary rule: do not broaden this repo into generic terminal config. Keep it cursor-preset and shader-output owned; terminal launch, windowing, and config materialization stay in the terminal-specific owners.
 

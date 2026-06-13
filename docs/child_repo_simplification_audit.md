@@ -63,7 +63,7 @@ Fresh follow-ups:
 
 Second-pass non-candidates:
 
-- Do not create another status-bar extraction bead. Runnable non-workspace widgets, provider probing/cache behavior, CPU/RAM, cursor display, and runtime plugin-block rendering already moved through the closed SP9/status beads; the remaining main adapter is workspace/session path selection and status-bus cache integration.
+- Do not create another status-bar extraction bead. Runnable non-workspace widgets, provider probing/cache behavior, CPU/RAM, and runtime plugin-block rendering already moved through the closed SP9/status beads; the remaining main adapter is workspace/session path selection and status-bus cache integration.
 - Do not move the full Helix managed config surface to `yazelix-helix`. The child should still be allowed to own reusable standalone editor assets, Steel defaults, and plugin-pack artifacts; managed paths, user plugin selection, and bridge/session behavior remain Yazelix product policy.
 - Do not move the full config UI adapter to `yazelix-ratconfig`. The child owns generic UI, patch, and migration primitives; Yazelix owns settings semantics, Home Manager ownership, validation, action metadata, and runtime apply behavior.
 - Do not create a public workspace child repo until `zellij_materialization`, launch ownership, and workspace request boundaries are thinner than their current adapters. `yazelix-audit-deletion-extraction-candidates-i0xoh.4` resolved the current state as internal-boundary-only: `workspace_session.rs` is the live request seam, while the direct workspace adapters still total about `2213` lines before tests/status/docs.
@@ -104,7 +104,7 @@ Third-pass non-candidates:
 
 - Do not create a standalone Yazi integration repo while the main repo still owns the same materializer paths; the existing `yazelix-yazi-assets` child repo is only the reusable asset package
 - Do not move `config_ui.rs` wholesale to `yazelix-ratconfig`; Home Manager/native status, settings metadata, action registry detail text, validation, file writes, and runtime apply behavior are Yazelix-specific
-- Do not move status-cache paths or pane-orchestrator payloads to `yazelix_zellij_bar`; provider usage polling and cursor display are child-owned when they run from explicit standalone facts, provider tools, or `yazelix-cursors`
+- Do not move status-cache paths or pane-orchestrator payloads to `yazelix_zellij_bar`; provider usage polling is child-owned when it runs from explicit standalone facts or provider tools
 - Do not split maintainer tooling only to call it back through wrappers from this repo; that would make the workflow worse without reducing user runtime ownership
 - Do not preserve old popup command/config names that have not been released or that have no current caller; stale aliases are budget debt
 

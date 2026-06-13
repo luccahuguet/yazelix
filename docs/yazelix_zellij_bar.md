@@ -33,14 +33,11 @@ Use the child README for Zellij layout examples and custom command-widget config
 The standalone non-workspace widget commands are intentionally short:
 
 ```bash
-yazelix_zellij_bar_widget cursor
 yazelix_zellij_bar_widget codex
 yazelix_zellij_bar_widget claude
 yazelix_zellij_bar_widget opencode_go
 yazelix_zellij_bar_widget cpu
 yazelix_zellij_bar_widget ram
 ```
-
-The cursor widget reads `YAZELIX_CURSOR_*` environment facts first. Outside Yazelix it then asks `yzc current --format env` when `yazelix-cursors` is installed on `PATH`. If neither source exists, it prints nothing instead of failing the bar.
 
 Workspace remains Yazelix-only. The other widgets run without `yzx`, `yzx_control`, Nushell, Yazelix runtime cache paths, or Yazelix session state.

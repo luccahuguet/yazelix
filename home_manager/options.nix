@@ -322,7 +322,7 @@ ${terminalDescriptionBullets}
   };
 
   zellij_widget_tray = mkMainContractOption "zellij.widget_tray" {
-    description = "Zjstatus widget tray order (editor/shell/term/workspace/cursor/usage/cpu/ram); dynamic entries read from a window-local cache";
+    description = "Zjstatus widget tray order (editor/shell/term/workspace/usage/cpu/ram); dynamic entries read from a window-local cache";
   };
 
   zellij_tab_label_mode = mkMainContractOption "zellij.tab_label_mode" {

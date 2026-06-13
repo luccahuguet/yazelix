@@ -494,15 +494,15 @@ fn config_normalize_defaults_missing_appearance_to_dark() {
     );
 }
 
-// Regression: config.normalize accepts every documented widget_tray value, including the cursor widget added to the bar renderer.
+// Regression: config.normalize accepts documented dynamic widget_tray values.
 #[test]
-fn config_normalize_accepts_cursor_widget_tray_entry() {
+fn config_normalize_accepts_dynamic_widget_tray_entry() {
     let repo = repo_root();
     let tmp = tempdir().unwrap();
     let config_path = tmp.path().join("yazelix.toml");
     fs::write(
         &config_path,
-        "[zellij]\nwidget_tray = [\"editor\", \"cursor\", \"cpu\"]\n",
+        "[zellij]\nwidget_tray = [\"editor\", \"workspace\", \"cpu\"]\n",
     )
     .unwrap();
 
@@ -520,7 +520,7 @@ fn config_normalize_accepts_cursor_widget_tray_entry() {
     let envelope: Value = ok_envelope(&output);
     assert_eq!(
         envelope["data"]["normalized_config"]["zellij_widget_tray"],
-        json!(["editor", "cursor", "cpu"])
+        json!(["editor", "workspace", "cpu"])
     );
 }
 

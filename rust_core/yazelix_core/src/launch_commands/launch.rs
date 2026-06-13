@@ -563,45 +563,6 @@ pub(super) fn run_launch_flow(
                 "YAZELIX_TERMINAL_WINDOW_TITLE_PREFIX".to_string(),
                 Some(terminal_window_title_prefix(&candidate.terminal)),
             ),
-            (
-                "YAZELIX_CURSOR_NAME".to_string(),
-                Some(launch_cursor_name_for_terminal(
-                    &materialization,
-                    &candidate.terminal,
-                )),
-            ),
-            (
-                "YAZELIX_CURSOR_COLOR".to_string(),
-                launch_cursor_color_for_terminal(&materialization, &candidate.terminal),
-            ),
-            (
-                "YAZELIX_CURSOR_FAMILY".to_string(),
-                launch_cursor_fact_for_terminal(
-                    &materialization.ghostty_cursor_family,
-                    &candidate.terminal,
-                ),
-            ),
-            (
-                "YAZELIX_CURSOR_DIVIDER".to_string(),
-                launch_cursor_fact_for_terminal(
-                    &materialization.ghostty_cursor_divider,
-                    &candidate.terminal,
-                ),
-            ),
-            (
-                "YAZELIX_CURSOR_PRIMARY_COLOR".to_string(),
-                launch_cursor_fact_for_terminal(
-                    &materialization.ghostty_cursor_primary_color_hex,
-                    &candidate.terminal,
-                ),
-            ),
-            (
-                "YAZELIX_CURSOR_SECONDARY_COLOR".to_string(),
-                launch_cursor_fact_for_terminal(
-                    &materialization.ghostty_cursor_secondary_color_hex,
-                    &candidate.terminal,
-                ),
-            ),
         ];
         if candidate.terminal == "yzxterm" {
             extra_env.extend(yzxterm_process_boundary_env(&config_path)?);
@@ -740,41 +701,6 @@ fn resolve_materialized_terminal_config_path(
         .iter()
         .find(|entry| entry.terminal == terminal)
         .map(|entry| PathBuf::from(&entry.path))
-}
-
-fn launch_cursor_name_for_terminal(
-    materialization: &LaunchMaterializationData,
-    terminal: &str,
-) -> String {
-    if terminal_uses_yazelix_cursor(terminal) {
-        materialization
-            .ghostty_cursor_name
-            .as_deref()
-            .filter(|name| !name.trim().is_empty())
-            .unwrap_or("n/a")
-            .to_string()
-    } else {
-        "n/a".to_string()
-    }
-}
-
-fn launch_cursor_color_for_terminal(
-    materialization: &LaunchMaterializationData,
-    terminal: &str,
-) -> Option<String> {
-    launch_cursor_fact_for_terminal(&materialization.ghostty_cursor_color_hex, terminal)
-}
-
-fn launch_cursor_fact_for_terminal(value: &Option<String>, terminal: &str) -> Option<String> {
-    if terminal_uses_yazelix_cursor(terminal) {
-        value.clone()
-    } else {
-        None
-    }
-}
-
-fn terminal_uses_yazelix_cursor(terminal: &str) -> bool {
-    matches!(terminal, "ghostty" | "yzxterm")
 }
 
 fn parse_launch_args(args: &[String]) -> Result<LaunchArgs, CoreError> {
@@ -1218,12 +1144,6 @@ mod tests {
                 path: "/state/terminal_launches/123/configs/terminal_emulators/ghostty/config"
                     .to_string(),
             }],
-            ghostty_cursor_name: None,
-            ghostty_cursor_color_hex: None,
-            ghostty_cursor_family: None,
-            ghostty_cursor_divider: None,
-            ghostty_cursor_primary_color_hex: None,
-            ghostty_cursor_secondary_color_hex: None,
             rerolled_ghostty_cursor: false,
         };
 
@@ -1235,90 +1155,6 @@ mod tests {
         );
         assert_eq!(
             resolve_materialized_terminal_config_path(&materialization, "wezterm"),
-            None
-        );
-    }
-
-    // Defends: launch publishes compact current-cursor facts for terminals that consume Yazelix cursor shaders and a clear n/a fallback elsewhere.
-    #[test]
-    fn launch_cursor_name_is_terminal_scoped() {
-        let materialization = LaunchMaterializationData {
-            terminal_config_mode: "yazelix".to_string(),
-            selected_terminals: vec!["ghostty".to_string()],
-            generated_terminals: Vec::new(),
-            ghostty_cursor_name: Some("reef".to_string()),
-            ghostty_cursor_color_hex: Some("#00ff66".to_string()),
-            ghostty_cursor_family: Some("split".to_string()),
-            ghostty_cursor_divider: Some("vertical".to_string()),
-            ghostty_cursor_primary_color_hex: Some("#00e6ff".to_string()),
-            ghostty_cursor_secondary_color_hex: Some("#00ff66".to_string()),
-            rerolled_ghostty_cursor: false,
-        };
-        let missing = LaunchMaterializationData {
-            ghostty_cursor_name: None,
-            ghostty_cursor_color_hex: None,
-            ghostty_cursor_family: None,
-            ghostty_cursor_divider: None,
-            ghostty_cursor_primary_color_hex: None,
-            ghostty_cursor_secondary_color_hex: None,
-            ..materialization.clone()
-        };
-
-        assert_eq!(
-            launch_cursor_name_for_terminal(&materialization, "ghostty"),
-            "reef"
-        );
-        assert_eq!(
-            launch_cursor_name_for_terminal(&materialization, "yzxterm"),
-            "reef"
-        );
-        assert_eq!(
-            launch_cursor_name_for_terminal(&materialization, "wezterm"),
-            "n/a"
-        );
-        assert_eq!(launch_cursor_name_for_terminal(&missing, "ghostty"), "n/a");
-        assert_eq!(launch_cursor_name_for_terminal(&missing, "yzxterm"), "n/a");
-        assert_eq!(
-            launch_cursor_color_for_terminal(&materialization, "ghostty"),
-            Some("#00ff66".to_string())
-        );
-        assert_eq!(
-            launch_cursor_color_for_terminal(&materialization, "yzxterm"),
-            Some("#00ff66".to_string())
-        );
-        assert_eq!(
-            launch_cursor_color_for_terminal(&materialization, "wezterm"),
-            None
-        );
-        assert_eq!(launch_cursor_color_for_terminal(&missing, "ghostty"), None);
-        assert_eq!(
-            launch_cursor_fact_for_terminal(&materialization.ghostty_cursor_family, "ghostty"),
-            Some("split".to_string())
-        );
-        assert_eq!(
-            launch_cursor_fact_for_terminal(&materialization.ghostty_cursor_family, "yzxterm"),
-            Some("split".to_string())
-        );
-        assert_eq!(
-            launch_cursor_fact_for_terminal(&materialization.ghostty_cursor_divider, "ghostty"),
-            Some("vertical".to_string())
-        );
-        assert_eq!(
-            launch_cursor_fact_for_terminal(
-                &materialization.ghostty_cursor_primary_color_hex,
-                "ghostty"
-            ),
-            Some("#00e6ff".to_string())
-        );
-        assert_eq!(
-            launch_cursor_fact_for_terminal(
-                &materialization.ghostty_cursor_secondary_color_hex,
-                "ghostty"
-            ),
-            Some("#00ff66".to_string())
-        );
-        assert_eq!(
-            launch_cursor_fact_for_terminal(&materialization.ghostty_cursor_family, "wezterm"),
             None
         );
     }

@@ -128,7 +128,7 @@ The measured lean profile host-sources large leaf tools, disables optional helpe
 - disabled `steel` removes Steel authoring commands
 - disabled `p7zip`, `poppler`, and `resvg` reduce archive/PDF/SVG preview helpers
 - disabled `screen` removes `yzx screen` and requires skipping welcome/screen-saver behavior
-- disabled `cursors` removes Yazelix cursor shader assets and cursor facts report `n/a`
+- disabled `cursors` removes Yazelix cursor shader assets and hides cursor fields from the config UI
 - `agent_usage_programs = []` is only correct when Codex and Claude usage widgets are removed or intentionally host-provided
 
 ## Cachix Publish Size

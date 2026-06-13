@@ -5,9 +5,7 @@ use crate::active_config_surface::resolve_active_config_paths;
 use crate::bridge::CoreError;
 use crate::config_normalize::{NormalizeConfigRequest, normalize_config};
 use crate::control_plane::{config_dir_from_env, runtime_dir_from_env, state_dir_from_env};
-use crate::ghostty_cursor_registry::{
-    CursorRegistry, ResolvedCursorRegistryState, YazelixCursorRegistryExt,
-};
+use crate::ghostty_cursor_registry::{CursorRegistry, YazelixCursorRegistryExt};
 use crate::ghostty_materialization::{
     GhosttyMaterializationRequest, generate_ghostty_materialization,
 };
@@ -48,12 +46,6 @@ pub struct LaunchMaterializationData {
     pub terminal_config_mode: String,
     pub selected_terminals: Vec<String>,
     pub generated_terminals: Vec<TerminalGeneratedConfig>,
-    pub ghostty_cursor_name: Option<String>,
-    pub ghostty_cursor_color_hex: Option<String>,
-    pub ghostty_cursor_family: Option<String>,
-    pub ghostty_cursor_divider: Option<String>,
-    pub ghostty_cursor_primary_color_hex: Option<String>,
-    pub ghostty_cursor_secondary_color_hex: Option<String>,
     pub rerolled_ghostty_cursor: bool,
 }
 
@@ -123,12 +115,6 @@ pub fn prepare_launch_materialization(
     );
 
     let mut generated_terminals = Vec::new();
-    let mut ghostty_cursor_name = None;
-    let mut ghostty_cursor_color_hex = None;
-    let mut ghostty_cursor_family = None;
-    let mut ghostty_cursor_divider = None;
-    let mut ghostty_cursor_primary_color_hex = None;
-    let mut ghostty_cursor_secondary_color_hex = None;
     if plan.should_generate_terminal_configs {
         let terminal_state_dir = terminal_materialization_state_dir_for_launch(
             &plan,
@@ -147,23 +133,9 @@ pub fn prepare_launch_materialization(
             yzxterm_emoji_font: request.yzxterm_emoji_font,
             yzxterm_profile: request.yzxterm_profile,
         })?;
-        if plan_uses_yazelix_ghostty_cursor(&plan) {
-            if let Some(cursor_data) = terminal_data.cursor.as_ref() {
-                ghostty_cursor_name = cursor_data.cursor_state.selected_color.clone();
-                ghostty_cursor_color_hex = cursor_data.cursor_state.selected_color_hex.clone();
-                ghostty_cursor_family = cursor_data.cursor_state.selected_family.clone();
-                ghostty_cursor_divider = cursor_data.cursor_state.selected_divider.clone();
-                ghostty_cursor_primary_color_hex =
-                    cursor_data.cursor_state.selected_primary_color_hex.clone();
-                ghostty_cursor_secondary_color_hex = cursor_data
-                    .cursor_state
-                    .selected_secondary_color_hex
-                    .clone();
-            }
-        }
         generated_terminals = terminal_data.generated;
     } else if plan.should_reroll_ghostty_cursor {
-        let ghostty_data = generate_ghostty_materialization(&GhosttyMaterializationRequest {
+        generate_ghostty_materialization(&GhosttyMaterializationRequest {
             runtime_dir: request.runtime_dir.clone(),
             config_dir: request.config_dir.clone(),
             state_dir: request.state_dir.clone(),
@@ -171,24 +143,6 @@ pub fn prepare_launch_materialization(
             appearance_mode: string_config(&normalized, "appearance_mode", "dark"),
             cursor_config_path,
         })?;
-        ghostty_cursor_name = ghostty_data.cursor_state.selected_color;
-        ghostty_cursor_color_hex = ghostty_data.cursor_state.selected_color_hex;
-        ghostty_cursor_family = ghostty_data.cursor_state.selected_family;
-        ghostty_cursor_divider = ghostty_data.cursor_state.selected_divider;
-        ghostty_cursor_primary_color_hex = ghostty_data.cursor_state.selected_primary_color_hex;
-        ghostty_cursor_secondary_color_hex = ghostty_data.cursor_state.selected_secondary_color_hex;
-    } else if plan_uses_yazelix_ghostty_cursor(&plan) && cursors_enabled {
-        let cursor_state = cursor_registry
-            .as_ref()
-            .expect("cursor registry is loaded when cursors are enabled")
-            .resolve();
-        ghostty_cursor_name = resolved_ghostty_cursor_name(&cursor_state);
-        ghostty_cursor_color_hex = resolved_ghostty_cursor_color_hex(&cursor_state);
-        ghostty_cursor_family = resolved_ghostty_cursor_family(&cursor_state);
-        ghostty_cursor_divider = resolved_ghostty_cursor_divider(&cursor_state);
-        ghostty_cursor_primary_color_hex = resolved_ghostty_cursor_primary_color_hex(&cursor_state);
-        ghostty_cursor_secondary_color_hex =
-            resolved_ghostty_cursor_secondary_color_hex(&cursor_state);
     }
 
     let rerolled_ghostty_cursor = launch_rerolled_yazelix_cursor(&plan, ghostty_random_requested);
@@ -197,12 +151,6 @@ pub fn prepare_launch_materialization(
         terminal_config_mode: plan.terminal_config_mode,
         selected_terminals: plan.selected_terminals,
         generated_terminals,
-        ghostty_cursor_name,
-        ghostty_cursor_color_hex,
-        ghostty_cursor_family,
-        ghostty_cursor_divider,
-        ghostty_cursor_primary_color_hex,
-        ghostty_cursor_secondary_color_hex,
         rerolled_ghostty_cursor,
     })
 }
@@ -269,59 +217,6 @@ fn launch_scoped_terminal_state_dir(state_dir: &Path) -> PathBuf {
     state_dir
         .join("terminal_launches")
         .join(format!("{}-{nanos}-{sequence}", std::process::id()))
-}
-
-fn resolved_ghostty_cursor_name(state: &ResolvedCursorRegistryState) -> Option<String> {
-    if state.trail_disabled {
-        Some("none".to_string())
-    } else {
-        state
-            .selected_cursor
-            .as_ref()
-            .map(|cursor| cursor.name.clone())
-    }
-}
-
-fn resolved_ghostty_cursor_color_hex(state: &ResolvedCursorRegistryState) -> Option<String> {
-    state
-        .selected_cursor
-        .as_ref()
-        .map(|cursor| cursor.cursor_color_hex().to_string())
-}
-
-fn resolved_ghostty_cursor_family(state: &ResolvedCursorRegistryState) -> Option<String> {
-    state
-        .selected_cursor
-        .as_ref()
-        .map(|cursor| cursor.family_name().to_string())
-}
-
-fn resolved_ghostty_cursor_divider(state: &ResolvedCursorRegistryState) -> Option<String> {
-    state
-        .selected_cursor
-        .as_ref()
-        .and_then(|cursor| cursor.divider_name())
-        .map(str::to_string)
-}
-
-fn resolved_ghostty_cursor_primary_color_hex(
-    state: &ResolvedCursorRegistryState,
-) -> Option<String> {
-    state
-        .selected_cursor
-        .as_ref()
-        .and_then(|cursor| cursor.split_primary_color_hex())
-        .map(str::to_string)
-}
-
-fn resolved_ghostty_cursor_secondary_color_hex(
-    state: &ResolvedCursorRegistryState,
-) -> Option<String> {
-    state
-        .selected_cursor
-        .as_ref()
-        .and_then(|cursor| cursor.split_secondary_color_hex())
-        .map(str::to_string)
 }
 
 fn build_launch_materialization_plan(

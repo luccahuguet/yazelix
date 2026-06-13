@@ -71,7 +71,6 @@ The generic preset keeps common zjstatus placeholders available without Yazelix:
 - term
 - custom text
 - compact/full tab labels and bar layout policy
-- cursor display from `YAZELIX_CURSOR_*` env facts or `yzc current --format env`
 - CPU and RAM stdout widgets
 - Claude usage display, cache, lock/backoff, and tokenusage probing from explicit cache paths or XDG defaults
 - Codex usage display, cache, lock/backoff, and tokenusage probing from explicit cache paths or XDG defaults
@@ -84,7 +83,6 @@ AI widgets are provider-driven widgets. A standalone user may run `yazelix_zelli
 Yazelix-specific widgets are widgets that depend on Yazelix runtime helpers, session snapshots, or cached facts:
 
 - workspace
-- Yazelix-managed cursor first-paint environment hydration
 - Yazelix-managed Claude/Codex/OpenCode Go cache path selection and session settings
 - generated full-runtime command wiring
 
@@ -98,11 +96,9 @@ Expensive provider commands should be cached or throttled outside zjstatus. The 
 
 Standalone users can use the same widget contract without Yazelix by using `yazelix_zellij_bar_widget` commands directly in zjstatus command widgets. The minimal standalone contract is explicit paths/env in, styled text out; `yazelix_zellij_bar` must not require `~/.config/yazelix`, `~/.local/share/yazelix`, `yzx_control`, or launch-scoped Yazelix cache paths for non-workspace widget behavior.
 
-The cursor widget does not own a normal bar-specific cursor fact file. It reads `YAZELIX_CURSOR_*` env facts first, then uses `yzc current --format env` when `yazelix-cursors` is available on `PATH`. `yazelix-cursors` remains the cursor source of truth outside Yazelix.
-
 ## Main Runtime Consumption
 
-The full Yazelix runtime consumes the `yazelix_zellij_bar` child package command surface for integrated zjstatus plugin-block rendering, simple fact widgets, CPU/RAM, cursor display, and cached provider usage widgets. Integrated layout materialization calls `yazelix_zellij_bar_widget render-yazelix-runtime` with typed runtime bar config; the child renders its runtime KDL template and Yazelix inserts the returned plugin block.
+The full Yazelix runtime consumes the `yazelix_zellij_bar` child package command surface for integrated zjstatus plugin-block rendering, simple fact widgets, CPU/RAM, and cached provider usage widgets. Integrated layout materialization calls `yazelix_zellij_bar_widget render-yazelix-runtime` with typed runtime bar config; the child renders its runtime KDL template and Yazelix inserts the returned plugin block.
 
 The standalone package installs `zjstatus.wasm` from the child repo's pinned `zjstatus` flake input. The main Yazelix flake makes `yazelixZellijBar.inputs.zjstatus` follow the main repo's `zjstatus` input when forwarding `.#yazelix_zellij_bar`, so the forwarded standalone package uses the same upstream pin as the integrated Yazelix runtime.
 

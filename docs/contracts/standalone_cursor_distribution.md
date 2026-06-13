@@ -62,7 +62,6 @@ Yazelix continues to own:
 - main `~/.config/yazelix/settings.jsonc` runtime schema and config UI metadata
 - generated Ghostty config materialization
 - invoking runtime random cursor selection
-- status-bar cursor widget facts
 - terminal package selection
 - runtime state placement for launch-scoped yzxterm shader snapshots
 

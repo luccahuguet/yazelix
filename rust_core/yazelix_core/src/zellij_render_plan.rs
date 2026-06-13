@@ -51,7 +51,6 @@ const WIDGET_TRAY_ALLOWED: &[&str] = &[
     "shell",
     "term",
     "workspace",
-    "cursor",
     "claude_usage",
     "codex_usage",
     "opencode_go_usage",
@@ -176,7 +175,6 @@ fn default_widget_tray() -> Vec<String> {
         "editor".into(),
         "shell".into(),
         "term".into(),
-        "cursor".into(),
         "codex_usage".into(),
         "cpu".into(),
         "ram".into(),
@@ -904,7 +902,6 @@ mod tests {
         let mut req = sample_request();
         req.zellij_widget_tray = Some(vec![
             "workspace".into(),
-            "cursor".into(),
             "claude_usage".into(),
             "codex_usage".into(),
             "opencode_go_usage".into(),
@@ -915,7 +912,6 @@ mod tests {
             plan.widget_tray,
             vec![
                 "workspace",
-                "cursor",
                 "claude_usage",
                 "codex_usage",
                 "opencode_go_usage"
@@ -923,15 +919,7 @@ mod tests {
         );
         assert_eq!(
             default_widget_tray(),
-            vec![
-                "editor",
-                "shell",
-                "term",
-                "cursor",
-                "codex_usage",
-                "cpu",
-                "ram"
-            ]
+            vec!["editor", "shell", "term", "codex_usage", "cpu", "ram"]
         );
     }
 
