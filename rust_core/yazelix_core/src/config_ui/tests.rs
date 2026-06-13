@@ -305,6 +305,7 @@ fn cursor_enabled_cursors_opens_multi_choice_picker_and_writes_cursor_config() {
     assert_eq!(field.kind, "string_list");
     assert!(field.allowed_values.contains(&"blaze".to_string()));
     assert!(field.allowed_values.contains(&"snow".to_string()));
+    assert!(field.allowed_values.contains(&"ice".to_string()));
     assert!(field.allowed_values.contains(&"midnight".to_string()));
 
     let mut app = YazelixConfigUiApp::new(request, model);
@@ -326,6 +327,7 @@ fn cursor_enabled_cursors_opens_multi_choice_picker_and_writes_cursor_config() {
         .expect("enabled cursors");
     assert!(!enabled.iter().any(|value| value.as_str() == Some("blaze")));
     assert!(enabled.iter().any(|value| value.as_str() == Some("snow")));
+    assert!(enabled.iter().any(|value| value.as_str() == Some("ice")));
     assert!(
         enabled
             .iter()

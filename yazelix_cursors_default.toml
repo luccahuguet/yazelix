@@ -16,6 +16,7 @@ schema_version = 1
 enabled_cursors = [
   "blaze",
   "snow",
+  "ice",
   "midnight",
   "cosmic",
   "ocean",
@@ -70,6 +71,12 @@ color = "#ffb929"
 name = "snow"
 family = "mono"
 color = "#ffffff"
+
+# Ice: crisp cyan-blue mono trail with a cool derived accent
+[[cursor]]
+name = "ice"
+family = "mono"
+color = "#38bdf8"
 
 # Midnight: deep blue-black mono trail with a muted slate derived accent
 [[cursor]]
