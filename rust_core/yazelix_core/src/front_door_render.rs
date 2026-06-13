@@ -1,5 +1,6 @@
 //! Front-door rendering and screen playback for Rust-owned welcome/tutor/report UX.
 
+use crate::appearance_mode::{APPEARANCE_MODE_DARK, APPEARANCE_MODE_LIGHT};
 use crate::bridge::{CoreError, ErrorClass};
 use crate::terminal_control;
 use crossterm::{
@@ -28,6 +29,61 @@ use yazelix_screen::{
 const ASCII_ART_DATA_JSON: &str = include_str!("../assets/ascii_art_data.json");
 const TERMINAL_SIZE_SETTLE_TIMEOUT: Duration = Duration::from_millis(120);
 const TERMINAL_SIZE_SETTLE_SAMPLE: Duration = Duration::from_millis(20);
+
+#[derive(Debug, Clone, Copy)]
+struct WelcomePalette {
+    logo: [Color; 5],
+    body: Color,
+    accent: Color,
+    footer: Color,
+    border: Color,
+    hint: Color,
+}
+
+const fn rgb(r: u8, g: u8, b: u8) -> Color {
+    Color::Rgb { r, g, b }
+}
+
+const DARK_WELCOME_PALETTE: WelcomePalette = WelcomePalette {
+    logo: [
+        Color::Red,
+        Color::Green,
+        Color::Yellow,
+        Color::Blue,
+        Color::Magenta,
+    ],
+    body: Color::Green,
+    accent: Color::Blue,
+    footer: Color::Yellow,
+    border: Color::Magenta,
+    hint: Color::Magenta,
+};
+
+const LIGHT_WELCOME_PALETTE: WelcomePalette = WelcomePalette {
+    logo: [
+        rgb(178, 77, 87),
+        rgb(47, 125, 50),
+        rgb(154, 90, 0),
+        rgb(30, 102, 245),
+        rgb(124, 63, 151),
+    ],
+    body: rgb(76, 79, 105),
+    accent: rgb(30, 102, 245),
+    footer: rgb(162, 79, 0),
+    border: rgb(157, 75, 140),
+    hint: rgb(157, 75, 140),
+};
+
+fn welcome_palette_for_appearance(appearance_mode: &str) -> WelcomePalette {
+    if appearance_mode
+        .trim()
+        .eq_ignore_ascii_case(APPEARANCE_MODE_LIGHT)
+    {
+        LIGHT_WELCOME_PALETTE
+    } else {
+        DARK_WELCOME_PALETTE
+    }
+}
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -189,28 +245,21 @@ fn welcome_inner_width(designed_width: usize) -> usize {
     designed_width
 }
 
-fn colorize_logo_text(text: &str) -> String {
-    let palette = [
-        Color::Red,
-        Color::Green,
-        Color::Yellow,
-        Color::Blue,
-        Color::Magenta,
-    ];
+fn colorize_logo_text(text: &str, palette: WelcomePalette) -> String {
     text.chars()
         .enumerate()
         .map(|(index, ch)| {
             if ch == ' ' {
                 " ".to_string()
             } else {
-                terminal_control::styled(ch, palette[index % palette.len()])
+                terminal_control::styled(ch, palette.logo[index % palette.logo.len()])
             }
         })
         .collect::<Vec<_>>()
         .join("")
 }
 
-fn colorize_body_line(text: &str) -> String {
+fn colorize_body_line(text: &str, palette: WelcomePalette) -> String {
     const ACCENTS: &[&str] = &[
         "reproducible",
         "declarative",
@@ -230,26 +279,26 @@ fn colorize_body_line(text: &str) -> String {
             .filter_map(|needle| remaining.find(needle).map(|index| (index, *needle)))
             .min_by_key(|(index, _)| *index)
         else {
-            out.push_str(&terminal_control::styled(remaining, Color::Green));
+            out.push_str(&terminal_control::styled(remaining, palette.body));
             break;
         };
 
         if index > 0 {
             let (plain, rest) = remaining.split_at(index);
-            out.push_str(&terminal_control::styled(plain, Color::Green));
+            out.push_str(&terminal_control::styled(plain, palette.body));
             remaining = rest;
             continue;
         }
 
-        out.push_str(&terminal_control::styled(needle, Color::Blue));
+        out.push_str(&terminal_control::styled(needle, palette.accent));
         remaining = &remaining[needle.len()..];
     }
 
     out
 }
 
-fn colorize_footer_text(text: &str) -> String {
-    terminal_control::styled(text, Color::Yellow)
+fn colorize_footer_text(text: &str, palette: WelcomePalette) -> String {
+    terminal_control::styled(text, palette.footer)
 }
 
 fn make_border(inner_width: usize) -> String {
@@ -281,6 +330,7 @@ fn build_logo_card_frame(
     inner_width: usize,
     shown_body_count: usize,
     accent: &str,
+    palette: WelcomePalette,
 ) -> Vec<String> {
     let content_width = frame_content_width(inner_width);
     let title_text = if accent == "hint" {
@@ -290,9 +340,9 @@ fn build_logo_card_frame(
     };
     let title_plain = center_text(title_text, content_width);
     let title_colored = if accent == "hint" {
-        terminal_control::styled_dim(title_plain, Color::Magenta)
+        terminal_control::styled_dim(title_plain, palette.hint)
     } else {
-        colorize_logo_text(&title_plain)
+        colorize_logo_text(&title_plain, palette)
     };
 
     let body_lines = spec
@@ -307,18 +357,18 @@ fn build_logo_card_frame(
             };
 
             if index < shown_body_count {
-                colorize_body_line(&aligned)
+                colorize_body_line(&aligned, palette)
             } else {
                 terminal_control::styled_dim_default(pad_text_right("", content_width))
             }
         })
         .collect::<Vec<_>>();
 
-    let footer = colorize_footer_text(&center_text(&spec.footer, content_width));
+    let footer = colorize_footer_text(&center_text(&spec.footer, content_width), palette);
     let mut out = Vec::new();
     out.push(terminal_control::styled(
         format!("╭{}╮", make_border(inner_width)),
-        Color::Magenta,
+        palette.border,
     ));
     out.push(title_colored);
     for line in body_lines {
@@ -327,42 +377,84 @@ fn build_logo_card_frame(
     out.push(footer);
     out.push(terminal_control::styled(
         format!("╰{}╯", make_border(inner_width)),
-        Color::Magenta,
+        palette.border,
     ));
     out
 }
 
 fn get_logo_welcome_frame(width: usize) -> Vec<String> {
+    get_logo_welcome_frame_with_palette(width, welcome_palette_for_appearance(APPEARANCE_MODE_DARK))
+}
+
+fn get_logo_welcome_frame_with_palette(width: usize, palette: WelcomePalette) -> Vec<String> {
     let variant = get_logo_welcome_variant(width);
     let spec = logo_spec(variant, width);
     let inner_width = welcome_inner_width(spec.minimum_inner_width);
     center_frame_lines(
-        build_logo_card_frame(spec, inner_width, spec.body_lines.len(), "full"),
+        build_logo_card_frame(spec, inner_width, spec.body_lines.len(), "full", palette),
         width,
     )
 }
 
 fn get_logo_animation_frames(width: usize) -> Vec<Vec<String>> {
+    get_logo_animation_frames_with_palette(
+        width,
+        welcome_palette_for_appearance(APPEARANCE_MODE_DARK),
+    )
+}
+
+fn get_logo_animation_frames_with_palette(
+    width: usize,
+    palette: WelcomePalette,
+) -> Vec<Vec<String>> {
     let variant = get_logo_welcome_variant(width);
     let spec = logo_spec(variant, width);
     let inner_width = welcome_inner_width(spec.minimum_inner_width);
     vec![
-        center_frame_lines(build_logo_card_frame(spec, inner_width, 0, "hint"), width),
-        center_frame_lines(build_logo_card_frame(spec, inner_width, 0, "full"), width),
-        center_frame_lines(build_logo_card_frame(spec, inner_width, 1, "full"), width),
         center_frame_lines(
-            build_logo_card_frame(spec, inner_width, spec.body_lines.len(), "full"),
+            build_logo_card_frame(spec, inner_width, 0, "hint", palette),
+            width,
+        ),
+        center_frame_lines(
+            build_logo_card_frame(spec, inner_width, 0, "full", palette),
+            width,
+        ),
+        center_frame_lines(
+            build_logo_card_frame(spec, inner_width, 1, "full", palette),
+            width,
+        ),
+        center_frame_lines(
+            build_logo_card_frame(spec, inner_width, spec.body_lines.len(), "full", palette),
             width,
         ),
     ]
 }
 
+#[cfg(test)]
 fn build_boids_frame(
     width: usize,
     height: usize,
     duration: Duration,
     cell_style: GameOfLifeCellStyle,
     variant: BoidsVariant,
+) -> Vec<Vec<String>> {
+    build_boids_frame_with_palette(
+        width,
+        height,
+        duration,
+        cell_style,
+        variant,
+        welcome_palette_for_appearance(APPEARANCE_MODE_DARK),
+    )
+}
+
+fn build_boids_frame_with_palette(
+    width: usize,
+    height: usize,
+    duration: Duration,
+    cell_style: GameOfLifeCellStyle,
+    variant: BoidsVariant,
+    palette: WelcomePalette,
 ) -> Vec<Vec<String>> {
     let size_class = get_logo_welcome_variant(width);
     let spec = boids_spec(size_class);
@@ -388,7 +480,7 @@ fn build_boids_frame(
         animation.advance_frame();
     }
 
-    frames.push(get_logo_welcome_frame(width));
+    frames.push(get_logo_welcome_frame_with_palette(width, palette));
     frames
 }
 
@@ -399,6 +491,7 @@ fn boids_welcome_body_height(spec: &BoidsWelcomeSpec, terminal_height: usize) ->
         .max(1)
 }
 
+#[cfg(test)]
 fn welcome_sequence(
     resolved_style: &str,
     width: usize,
@@ -406,15 +499,34 @@ fn welcome_sequence(
     duration: Duration,
     cell_style: GameOfLifeCellStyle,
 ) -> Vec<Vec<String>> {
+    welcome_sequence_with_palette(
+        resolved_style,
+        width,
+        height,
+        duration,
+        cell_style,
+        welcome_palette_for_appearance(APPEARANCE_MODE_DARK),
+    )
+}
+
+fn welcome_sequence_with_palette(
+    resolved_style: &str,
+    width: usize,
+    height: usize,
+    duration: Duration,
+    cell_style: GameOfLifeCellStyle,
+    palette: WelcomePalette,
+) -> Vec<Vec<String>> {
     match resolved_style {
-        "static" => vec![get_logo_welcome_frame(width)],
-        "logo" => get_logo_animation_frames(width),
-        style if is_boids_style(style) => build_boids_frame(
+        "static" => vec![get_logo_welcome_frame_with_palette(width, palette)],
+        "logo" => get_logo_animation_frames_with_palette(width, palette),
+        style if is_boids_style(style) => build_boids_frame_with_palette(
             width,
             height,
             duration,
             cell_style,
             BoidsVariant::from_style_name(style).expect("validated boids style"),
+            palette,
         ),
         style if is_game_of_life_style(style) => {
             let variant = get_logo_welcome_variant(width);
@@ -445,10 +557,10 @@ fn welcome_sequence(
                     &cells,
                 ));
             }
-            frames.push(get_logo_welcome_frame(width));
+            frames.push(get_logo_welcome_frame_with_palette(width, palette));
             frames
         }
-        _ => vec![get_logo_welcome_frame(width)],
+        _ => vec![get_logo_welcome_frame_with_palette(width, palette)],
     }
 }
 
@@ -732,7 +844,7 @@ pub fn play_welcome_style_with_cell_style(
     duration: Duration,
     cell_style: GameOfLifeCellStyle,
 ) -> Result<(), CoreError> {
-    play_welcome_style_inner(style, duration, cell_style)
+    play_welcome_style_inner(style, duration, cell_style, APPEARANCE_MODE_DARK)
 }
 
 pub fn play_welcome_style_with_runtime_dir(
@@ -741,16 +853,27 @@ pub fn play_welcome_style_with_runtime_dir(
     cell_style: GameOfLifeCellStyle,
     _runtime_dir: &Path,
 ) -> Result<(), CoreError> {
-    play_welcome_style_inner(style, duration, cell_style)
+    play_welcome_style_inner(style, duration, cell_style, APPEARANCE_MODE_DARK)
+}
+
+pub fn play_welcome_style_with_appearance(
+    style: &str,
+    duration: Duration,
+    cell_style: GameOfLifeCellStyle,
+    appearance_mode: &str,
+) -> Result<(), CoreError> {
+    play_welcome_style_inner(style, duration, cell_style, appearance_mode)
 }
 
 fn play_welcome_style_inner(
     style: &str,
     duration: Duration,
     cell_style: GameOfLifeCellStyle,
+    appearance_mode: &str,
 ) -> Result<(), CoreError> {
     let _raw = raw_mode_guard()?;
     let (width, height) = settled_terminal_size();
+    let palette = welcome_palette_for_appearance(appearance_mode);
     let resolved_style = resolve_welcome_style(style, None)?;
     let playback_duration = if resolved_style == "logo" {
         Duration::from_millis(500)
@@ -759,7 +882,7 @@ fn play_welcome_style_inner(
     };
 
     if resolved_style == "static" {
-        for line in get_logo_welcome_frame(width) {
+        for line in get_logo_welcome_frame_with_palette(width, palette) {
             println!("{line}");
         }
         println!();
@@ -769,21 +892,23 @@ fn play_welcome_style_inner(
         return play_mandelbrot_welcome_screen(playback_duration);
     }
 
-    let frames = welcome_sequence(
+    let frames = welcome_sequence_with_palette(
         &resolved_style,
         width,
         height,
         playback_duration,
         cell_style,
+        palette,
     );
     let frame_delay = welcome_frame_delay(&resolved_style, playback_duration, frames.len());
     play_inline_frames(frames, frame_delay, width, height, |width, height| {
-        welcome_sequence(
+        welcome_sequence_with_palette(
             &resolved_style,
             width,
             height,
             playback_duration,
             cell_style,
+            palette,
         )
     })
 }
@@ -1028,6 +1153,20 @@ mod tests {
                 "static"
             );
         }
+    }
+
+    // Regression: light appearance must not render the welcome card with dark-mode ANSI green/magenta defaults.
+    #[test]
+    fn light_welcome_palette_uses_readable_ansi_rgb_roles() {
+        let frame = get_logo_welcome_frame_with_palette(
+            120,
+            welcome_palette_for_appearance(APPEARANCE_MODE_LIGHT),
+        );
+        let joined = frame.join("\n");
+
+        assert!(joined.contains("\u{1b}[38;2;76;79;105m"));
+        assert!(joined.contains("\u{1b}[38;2;30;102;245mreproducible"));
+        assert!(joined.contains("\u{1b}[38;2;157;75;140m"));
     }
 
     // Regression: the deleted image-backed magician style must not remain accepted through config or CLI style resolution.

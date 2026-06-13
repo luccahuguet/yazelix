@@ -258,7 +258,11 @@ fn write_fake_zellij_bar_widget(path: &Path) {
         r#"#!/bin/sh
 [ "$1" = "render-yazelix-runtime" ] || exit 11
 [ "$2" = "--json" ] || exit 12
-printf '%s\n' '{"schema_version":2,"plugin_block":"plugin location=\"file:/fake/zjstatus.wasm\" {}"}'
+case "$3" in
+  *'"appearance_mode":"dark"'*) ;;
+  *) exit 13 ;;
+esac
+printf '%s\n' '{"schema_version":3,"plugin_block":"plugin location=\"file:/fake/zjstatus.wasm\" {}"}'
 "#,
     )
     .unwrap();

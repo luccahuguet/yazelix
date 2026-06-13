@@ -1,6 +1,7 @@
 // Test lane: default
 //! Rust-owned startup/session config facts for shell-owned launch paths.
 
+use crate::appearance_mode::APPEARANCE_MODE_DARK;
 use crate::bridge::CoreError;
 use crate::control_plane::{
     config_dir_from_env, config_override_from_env, load_normalized_config_for_control,
@@ -22,6 +23,7 @@ pub struct StartupFactsData {
     pub skip_welcome_screen: bool,
     pub welcome_style: String,
     pub game_of_life_cell_style: String,
+    pub appearance_mode: String,
     pub welcome_duration_seconds: f64,
     pub show_macchina_on_welcome: bool,
     pub terminals: Vec<String>,
@@ -52,6 +54,7 @@ pub fn compute_startup_facts_from_config(
             "game_of_life_cell_style",
             DEFAULT_GAME_OF_LIFE_CELL_STYLE,
         ),
+        appearance_mode: string_config(normalized, "appearance_mode", APPEARANCE_MODE_DARK),
         welcome_duration_seconds: float_config(normalized, "welcome_duration_seconds", 4.0),
         show_macchina_on_welcome: bool_config(normalized, "show_macchina_on_welcome", false),
         terminals: vec![active_terminal_from_runtime_dir(runtime_dir)?],
@@ -113,6 +116,7 @@ mod tests {
         config.insert("skip_welcome_screen".into(), json!("true"));
         config.insert("welcome_style".into(), json!("minimal"));
         config.insert("game_of_life_cell_style".into(), json!("dotted"));
+        config.insert("appearance_mode".into(), json!("light"));
         config.insert("welcome_duration_seconds".into(), json!("2.5"));
         config.insert("show_macchina_on_welcome".into(), json!("false"));
         config.insert("terminal_config_mode".into(), json!("user"));
@@ -132,6 +136,10 @@ mod tests {
                 DEFAULT_GAME_OF_LIFE_CELL_STYLE
             ),
             "dotted"
+        );
+        assert_eq!(
+            string_config(&config, "appearance_mode", APPEARANCE_MODE_DARK),
+            "light"
         );
         assert_eq!(
             string_config(

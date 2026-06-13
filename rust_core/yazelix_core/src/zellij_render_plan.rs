@@ -284,6 +284,7 @@ pub struct TopLevelSetting {
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 pub struct ZellijRenderPlanData {
     pub default_layout_name: String,
+    pub appearance_mode: String,
     pub left_sidebar_width_percent: i64,
     pub left_sidebar_command: String,
     pub left_sidebar_args: Vec<String>,
@@ -736,6 +737,7 @@ pub fn compute_zellij_render_plan(
 
     Ok(ZellijRenderPlanData {
         default_layout_name,
+        appearance_mode: request.appearance_mode.trim().to_ascii_lowercase(),
         left_sidebar_width_percent: request.left_sidebar_width_percent,
         left_sidebar_command: request.left_sidebar_command.trim().to_string(),
         left_sidebar_args: effective_left_sidebar_args(
@@ -1023,6 +1025,7 @@ mod tests {
         let mut req = sample_request();
         req.appearance_mode = "light".into();
         let plan = compute_zellij_render_plan(&req).unwrap();
+        assert_eq!(plan.appearance_mode, "light");
         let theme = plan
             .dynamic_top_level_settings
             .iter()

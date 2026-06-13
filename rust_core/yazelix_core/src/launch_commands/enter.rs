@@ -12,7 +12,7 @@ use crate::control_plane::{
     runtime_dir_from_env, runtime_env_request, runtime_materialization_plan_request_from_env,
     state_dir_from_env, zellij_default_shell_from_runtime,
 };
-use crate::front_door_render::{GameOfLifeCellStyle, play_welcome_style_with_runtime_dir};
+use crate::front_door_render::{GameOfLifeCellStyle, play_welcome_style_with_appearance};
 use crate::initializer_commands::generate_shell_initializers_for_env;
 use crate::runtime_contract::evaluate_startup_working_dir_preflight;
 use crate::runtime_env::compute_runtime_env;
@@ -218,7 +218,7 @@ fn show_startup_presentation(
     Ok(())
 }
 
-fn play_welcome_art(runtime_dir: &Path, facts: &StartupFactsData) -> Result<(), CoreError> {
+fn play_welcome_art(_runtime_dir: &Path, facts: &StartupFactsData) -> Result<(), CoreError> {
     let duration = Duration::from_millis((facts.welcome_duration_seconds.max(0.0) * 1000.0) as u64);
     let cell_style = GameOfLifeCellStyle::parse(&facts.game_of_life_cell_style).map_err(|err| {
         CoreError::classified(
@@ -229,7 +229,12 @@ fn play_welcome_art(runtime_dir: &Path, facts: &StartupFactsData) -> Result<(), 
             serde_json::json!({ "style": err.normalized() }),
         )
     })?;
-    play_welcome_style_with_runtime_dir(&facts.welcome_style, duration, cell_style, runtime_dir)?;
+    play_welcome_style_with_appearance(
+        &facts.welcome_style,
+        duration,
+        cell_style,
+        &facts.appearance_mode,
+    )?;
     if facts.show_macchina_on_welcome {
         let status = Command::new("macchina")
             .args([

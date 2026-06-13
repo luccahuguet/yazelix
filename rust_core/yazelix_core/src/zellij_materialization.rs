@@ -98,7 +98,7 @@ const HOME_DIR_PLACEHOLDER: &str = "__YAZELIX_HOME_DIR__";
 const RUNTIME_DIR_PLACEHOLDER: &str = "__YAZELIX_RUNTIME_DIR__";
 const ZJSTATUS_TAB_TEMPLATE_PLACEHOLDER: &str = "__YAZELIX_ZJSTATUS_TAB_TEMPLATE__";
 const ZJSTATUS_BAR_RENDER_COMMAND: &str = "render-yazelix-runtime";
-const ZJSTATUS_BAR_RENDER_SCHEMA_VERSION: u64 = 2;
+const ZJSTATUS_BAR_RENDER_SCHEMA_VERSION: u64 = 3;
 
 #[derive(Debug, Clone)]
 pub struct ZellijMaterializationRequest {
@@ -178,6 +178,7 @@ struct ZellijBarRenderRequest {
     shell_label: String,
     terminal_label: String,
     custom_text: String,
+    appearance_mode: String,
     tab_label_mode: String,
     nu_bin: String,
     yzx_control_bin: String,
@@ -1761,6 +1762,7 @@ fn render_integrated_zjstatus_bar(
         shell_label: render_plan.shell_label.clone(),
         terminal_label: render_plan.terminal_label.clone(),
         custom_text: render_plan.custom_text.clone(),
+        appearance_mode: render_plan.appearance_mode.clone(),
         tab_label_mode: render_plan.tab_label_mode.clone(),
         nu_bin: resolve_zjstatus_nu_bin(runtime_dir),
         yzx_control_bin: resolve_zjstatus_yzx_control_bin(runtime_dir),
@@ -2726,7 +2728,11 @@ case "$3" in
   *'"codex_usage_periods":["5h","week"]'*) ;;
   *) exit 15 ;;
 esac
-printf '%s\n' '{"schema_version":2,"plugin_block":"CHILD_PLUGIN_BLOCK"}'
+case "$3" in
+  *'"appearance_mode":"dark"'*) ;;
+  *) exit 16 ;;
+esac
+printf '%s\n' '{"schema_version":3,"plugin_block":"CHILD_PLUGIN_BLOCK"}'
 "#,
         )
         .unwrap();

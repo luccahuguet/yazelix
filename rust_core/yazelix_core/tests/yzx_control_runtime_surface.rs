@@ -79,7 +79,7 @@ fn seed_startup_materialization_runtime_assets(fixture: &support::fixtures::Mana
             .runtime_dir
             .join("libexec")
             .join("yazelix_zellij_bar_widget"),
-        "#!/bin/sh\nprintf '%s\\n' '{\"schema_version\":2,\"plugin_block\":\"pane size=1 { plugin location=\\\"file:/tmp/zjstatus.wasm\\\" }\"}'\n",
+        "#!/bin/sh\nprintf '%s\\n' '{\"schema_version\":3,\"plugin_block\":\"pane size=1 { plugin location=\\\"file:/tmp/zjstatus.wasm\\\" }\"}'\n",
     );
     fs::create_dir_all(fixture.runtime_dir.join("shells").join("posix")).unwrap();
 }
