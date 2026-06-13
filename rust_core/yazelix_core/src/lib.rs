@@ -1,6 +1,7 @@
 pub mod action_registry;
 pub mod active_config_surface;
 pub mod agent_commands;
+pub mod appearance_mode;
 pub(crate) mod atomic_fs;
 pub mod bridge;
 pub mod cli_render;

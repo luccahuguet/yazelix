@@ -140,6 +140,10 @@ help = "Choose the Yazelix Terminal emoji glyph style for fresh yzxterm windows"
 tab = "appearance"
 help = "Choose the generated terminal background transparency level"
 
+[fields."appearance.mode"]
+tab = "appearance"
+help = "Choose dark mode, light mode, or terminal-supported automatic system appearance"
+
 [fields."zellij.disable_tips"]
 tab = "appearance"
 help = "Hide Zellij tip text in generated Yazelix layouts"

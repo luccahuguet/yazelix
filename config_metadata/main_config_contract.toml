@@ -11,7 +11,7 @@
 [contract]
 version = 1
 surface = "main"
-field_count = 50
+field_count = 51
 artifact_role = "canonical_machine_metadata"
 default_template = "settings_default.jsonc"
 home_manager_module = "home_manager/module.nix"
@@ -261,6 +261,21 @@ allowed_values = [
 ]
 rebuild_required = false
 apply_mode = "shell_terminal_restart"
+
+[fields."appearance.mode"]
+kind = "string"
+default = "dark"
+parser_key = "appearance_mode"
+home_manager_option = "appearance_mode"
+parser_behavior = "direct"
+validation = "enum"
+allowed_values = [
+  "dark",
+  "light",
+  "auto",
+]
+rebuild_required = false
+apply_mode = "tab_session_restart"
 
 [fields."zellij.disable_tips"]
 kind = "bool"

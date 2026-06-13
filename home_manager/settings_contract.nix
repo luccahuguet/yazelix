@@ -222,6 +222,7 @@ let
     "workspace"
     "shell"
     "terminal"
+    "appearance"
     "zellij"
     "yazi"
     "ratconfig"

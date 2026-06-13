@@ -35,6 +35,9 @@ let
   yzxtermProfileExport =
     lib.optionalString yzxtermProfileActive
       "export YAZELIX_TERMINAL_PROFILE=${cfg.yzxterm_profile}";
+  yzxtermAppearanceExport =
+    lib.optionalString yzxtermConfigured
+      "export YAZELIX_TERMINAL_APPEARANCE=${cfg.appearance_mode}";
   yzxtermEmojiFontExport =
     lib.optionalString yzxtermConfigured
       "export YAZELIX_TERMINAL_EMOJI_FONT=${cfg.yzxterm_emoji_font}";
@@ -114,6 +117,7 @@ let
       terminalPackage = yazelixPackageForTerminal terminal;
       terminalEnv =
         ''PATH="${terminalPackage}/toolbin:${terminalPackage}/libexec:${terminalPackage}/bin:${runtimeConfigGenerationPath}:$PATH" YAZELIX_RUNTIME_DIR="${terminalPackage}"''
+        + lib.optionalString (yzxtermActiveFor terminal) " YAZELIX_TERMINAL_APPEARANCE=${cfg.appearance_mode}"
         + lib.optionalString (yzxtermActiveFor terminal) " YAZELIX_TERMINAL_EMOJI_FONT=${cfg.yzxterm_emoji_font}"
         + lib.optionalString (yzxtermProfileActiveFor terminal) " YAZELIX_TERMINAL_PROFILE=${cfg.yzxterm_profile}";
     in
@@ -128,6 +132,7 @@ let
       envVars =
         lib.optional skipStableWrapperRedirect "YAZELIX_SKIP_STABLE_WRAPPER_REDIRECT=1"
         ++ lib.optional (terminal == "yzxterm") "YAZELIX_TERMINAL_APP_ID=${startupWmClassFor terminal}"
+        ++ lib.optional (terminal == "yzxterm") "YAZELIX_TERMINAL_APPEARANCE=${cfg.appearance_mode}"
         ++ lib.optional (terminal == "yzxterm") "YAZELIX_TERMINAL_EMOJI_FONT=${cfg.yzxterm_emoji_font}"
         ++ lib.optional (yzxtermProfileActiveFor terminal) "YAZELIX_TERMINAL_PROFILE=${cfg.yzxterm_profile}";
     in
@@ -220,6 +225,7 @@ in
     home.packages = [ yazelixPackage ] ++ cursorGeneratorPackage;
     home.sessionVariables = mkMerge [
       (mkIf yzxtermConfigured {
+        YAZELIX_TERMINAL_APPEARANCE = mkDefault cfg.appearance_mode;
         YAZELIX_TERMINAL_EMOJI_FONT = mkDefault cfg.yzxterm_emoji_font;
       })
       (mkIf yzxtermProfileActive {
@@ -243,6 +249,7 @@ in
       export YAZELIX_CONFIG_DIR="${managedConfigRoot}"
       export YAZELIX_STATE_DIR="${stateRoot}"
       export YAZELIX_LOGS_DIR="${logsPath}"
+      ${yzxtermAppearanceExport}
       ${yzxtermEmojiFontExport}
       ${yzxtermProfileExport}
 

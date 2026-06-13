@@ -141,23 +141,26 @@ Out of scope:
   child profile selected by `YAZELIX_TERMINAL_PROFILE` or
   `YAZELIX_TERMINAL_EFFECTS` and the child emoji fallback preset selected by
   `terminal.emoji_style`, with `YAZELIX_TERMINAL_EMOJI_FONT` acting as the
-  explicit Home Manager/launcher override. `full` keeps Rio trail cursor and strips
-  packaged `custom-shader` entries, `baseline` uses the packaged no-effects
-  profile, and `shaders` uses the packaged shader profile while replacing
-  packaged shader references with the generated Rio decoration shader for the
-  active cursor settings. `noto` uses the default packaged profile roots, while
-  `twitter` and `serenityos` use matching child-owned profile roots under
-  `share/yazelix-terminal/emoji/`. Shader-profile launches use a launch-scoped
-  generated config and shader directory under `terminal_launches/<launch-id>/`,
-  while full and baseline profiles use the stable generated config root.
+  explicit Home Manager/launcher override, and the global `appearance.mode`.
+  `full` keeps Rio trail cursor and strips packaged `custom-shader` entries,
+  `baseline` uses the packaged no-effects profile, and `shaders` uses the
+  packaged shader profile while replacing packaged shader references with the
+  generated Rio decoration shader for the active cursor settings. `noto` uses
+  the default packaged profile roots, while `twitter` and `serenityos` use
+  matching child-owned profile roots under `share/yazelix-terminal/emoji/`.
+  Shader-profile launches use a launch-scoped generated config and shader
+  directory under `terminal_launches/<launch-id>/`, while full and baseline
+  profiles use the stable generated config root.
   Launch-scoped shader snapshots are retained as ordinary Yazelix state for the
   user session and may be pruned by future maintenance; running terminals must
   not depend on a mutable shared shader directory. The generated config injects
-  the current `terminal.transparency` as `[window].opacity`, injects the
-  Yazelix ANSI palette, and keeps yzxterm cell opacity disabled so foreground and
-  explicit UI-background cells stay crisp while the window background remains
-  transparent. The generated yzxterm config is Yazelix-owned state; it must not
-  become the host Rio config for plain `rio` launches.
+  the current `terminal.transparency` as `[window].opacity`, copies child-owned
+  dark/light theme files into the generated config root, writes `force-theme`
+  for static dark/light appearance, preserves child adaptive themes for
+  `appearance.mode = "auto"`, and keeps yzxterm cell opacity disabled so
+  foreground and explicit UI-background cells stay crisp while the window
+  background remains transparent. The generated yzxterm config is Yazelix-owned
+  state; it must not become the host Rio config for plain `rio` launches.
 - Verification: automated Rust tests in
   `rust_core/yazelix_core/src/runtime_contract.rs`
   (`launch_preflight_maps_yzxterm_to_child_wrapper_command`),

@@ -49,6 +49,9 @@
     "emoji_style": "noto",
     "transparency": "medium"
   },
+  "appearance": {
+    "mode": "dark"
+  },
   "zellij": {
     "disable_tips": true,
     "pane_frames": true,

@@ -25,7 +25,8 @@ const REMOVED_TERMINAL_SELECTION_FIELDS: &[&str] = &["terminal.terminals"];
 const REMOVED_POPUP_PROGRAM_FIELDS: &[&str] = &["zellij.popup_program"];
 const MOVED_CUSTOM_POPUP_FIELDS: &[&str] = &["zellij.popup_commands.btm", "zellij.keybindings.btm"];
 const REMOVED_GENERIC_POPUP_ACTION_FIELDS: &[&str] = &["zellij.keybindings.popup"];
-const OPTIONAL_MISSING_CONFIG_PATH_PREFIXES: &[&str] = &["helix.external", "zellij.custom_popups"];
+const OPTIONAL_MISSING_CONFIG_PATH_PREFIXES: &[&str] =
+    &["appearance", "helix.external", "zellij.custom_popups"];
 const REPLACED_HELIX_RUNTIME_FIELDS: &[&str] = &["helix.runtime_path"];
 
 #[derive(Debug, Clone)]

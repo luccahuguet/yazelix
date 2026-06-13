@@ -1,3 +1,4 @@
+use crate::appearance_mode::ghostty_theme;
 use crate::atomic_fs::write_text_atomic;
 use crate::bridge::CoreError;
 use crate::ghostty_cursor_registry::format_ghostty_trail_duration;
@@ -16,7 +17,6 @@ use std::path::{Path, PathBuf};
 
 const YAZELIX_WINDOW_CLASS: &str = "com.yazelix.Yazelix";
 const YAZELIX_X11_INSTANCE: &str = "yazelix";
-const YAZELIX_THEME: &str = "Abernathy";
 // Font constant available for future terminal materialization
 // const FONT_FIRACODE: &str = "FiraCode Nerd Font";
 
@@ -42,6 +42,7 @@ pub struct GhosttyMaterializationRequest {
     pub config_dir: PathBuf,
     pub state_dir: PathBuf,
     pub transparency: String,
+    pub appearance_mode: String,
     pub cursor_config_path: PathBuf,
 }
 
@@ -198,7 +199,7 @@ config-file = ?"{}"
         GHOSTTY_CONFIG_HEADER,
         YAZELIX_WINDOW_CLASS,
         YAZELIX_X11_INSTANCE,
-        YAZELIX_THEME,
+        ghostty_theme(&request.appearance_mode),
         build_ghostty_transparency(&request.transparency),
         override_path,
     ))
@@ -239,7 +240,7 @@ config-file = ?"{}"
         GHOSTTY_CONFIG_HEADER,
         YAZELIX_WINDOW_CLASS,
         YAZELIX_X11_INSTANCE,
-        YAZELIX_THEME,
+        ghostty_theme(&request.appearance_mode),
         build_ghostty_transparency(&request.transparency),
         build_ghostty_cursor_palette(ghostty_dir, cursor_state),
         build_ghostty_trail_duration(cursor_state.trail_duration),

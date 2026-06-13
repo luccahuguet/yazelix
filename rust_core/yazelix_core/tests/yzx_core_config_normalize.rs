@@ -159,6 +159,9 @@ fn write_yzxterm_package_profile_set(root: &Path, emoji_family: Option<&str>) {
     fs::create_dir_all(root).unwrap();
     fs::create_dir_all(&baseline_dir).unwrap();
     fs::create_dir_all(&shader_profile_dir).unwrap();
+    write_yzxterm_package_themes(root);
+    write_yzxterm_package_themes(&baseline_dir);
+    write_yzxterm_package_themes(&shader_profile_dir);
     let fonts = emoji_family
         .map(|family| {
             format!(
@@ -173,6 +176,7 @@ symbol-map = [{{ start = "1F000", end = "1FB00", font-family = "{family}" }}]
         root.join("config.toml"),
         format!(
             r##"confirm-before-quit = false
+adaptive-theme = {{ dark = "yazelix-dark", light = "yazelix-light" }}
 {fonts}
 [renderer]
 backend = "Webgpu"
@@ -191,6 +195,7 @@ trail-cursor = true
         baseline_dir.join("config.toml"),
         format!(
             r##"confirm-before-quit = false
+adaptive-theme = {{ dark = "yazelix-dark", light = "yazelix-light" }}
 {fonts}
 [renderer]
 backend = "Webgpu"
@@ -205,6 +210,7 @@ decorations = "Disabled"
         shader_profile_dir.join("config.toml"),
         format!(
             r##"confirm-before-quit = false
+adaptive-theme = {{ dark = "yazelix-dark", light = "yazelix-light" }}
 {fonts}
 [renderer]
 backend = "Webgpu"
@@ -217,6 +223,31 @@ decorations = "Disabled"
 trail-cursor = true
 "##
         ),
+    )
+    .unwrap();
+}
+
+fn write_yzxterm_package_themes(root: &Path) {
+    let themes_dir = root.join("themes");
+    fs::create_dir_all(&themes_dir).unwrap();
+    fs::write(
+        themes_dir.join("yazelix-dark.toml"),
+        r##"[colors]
+background = "#0F0D0E"
+foreground = "#FFFFFF"
+cursor = "#F712FF"
+green = "#2AD947"
+"##,
+    )
+    .unwrap();
+    fs::write(
+        themes_dir.join("yazelix-light.toml"),
+        r##"[colors]
+background = "#FAF7F2"
+foreground = "#1F2428"
+cursor = "#0B78D0"
+green = "#116329"
+"##,
     )
     .unwrap();
 }
@@ -245,6 +276,61 @@ fn write_cursor_sidecar(fixture: &RuntimeMaterializationFixture, raw: &str) {
     fs::create_dir_all(cursor_path.parent().unwrap()).unwrap();
     let registry = CursorRegistry::parse_str(&cursor_path, raw).unwrap();
     fs::write(cursor_path, render_cursor_settings_jsonc(&registry)).unwrap();
+}
+
+fn write_basic_cursor_sidecar(fixture: &RuntimeMaterializationFixture, color_hex: &str) {
+    write_cursor_sidecar(
+        fixture,
+        &format!(
+            r##"
+schema_version = 1
+enabled_cursors = ["test"]
+
+[settings]
+trail = "test"
+trail_effect = "none"
+mode_effect = "none"
+glow = "medium"
+duration = 1.0
+kitty_enable_cursor = false
+
+[[cursor]]
+name = "test"
+family = "mono"
+color = "{color_hex}"
+"##
+        ),
+    );
+}
+
+fn read_generated_yzxterm_config(fixture: &RuntimeMaterializationFixture) -> toml::Value {
+    let raw = fs::read_to_string(
+        fixture
+            .state_dir
+            .join("configs")
+            .join("terminal_emulators")
+            .join("yzxterm")
+            .join("config.toml"),
+    )
+    .unwrap();
+    toml::from_str(&raw).unwrap()
+}
+
+fn read_generated_yzxterm_theme(
+    fixture: &RuntimeMaterializationFixture,
+    theme_name: &str,
+) -> toml::Value {
+    let raw = fs::read_to_string(
+        fixture
+            .state_dir
+            .join("configs")
+            .join("terminal_emulators")
+            .join("yzxterm")
+            .join("themes")
+            .join(theme_name),
+    )
+    .unwrap();
+    toml::from_str(&raw).unwrap()
 }
 
 fn write_managed_config_toml(fixture: &RuntimeMaterializationFixture, raw: &str) {
@@ -366,6 +452,41 @@ fn config_normalize_prints_one_success_json_envelope() {
     assert_eq!(
         envelope["data"]["normalized_config"]["terminal_config_mode"],
         "yazelix"
+    );
+}
+
+// Regression: configs written before appearance.mode normalize to the dark default instead of becoming stale.
+#[test]
+fn config_normalize_defaults_missing_appearance_to_dark() {
+    let repo = repo_root();
+    let tmp = tempdir().unwrap();
+    let config_path = tmp.path().join("settings.jsonc");
+    fs::write(
+        &config_path,
+        r#"{
+  "terminal": {
+    "transparency": "none"
+  }
+}
+"#,
+    )
+    .unwrap();
+
+    let output = yzx_core_command()
+        .arg("config.normalize")
+        .arg("--config")
+        .arg(&config_path)
+        .arg("--default-config")
+        .arg(repo.join("settings_default.jsonc"))
+        .arg("--contract")
+        .arg(repo.join("config_metadata/main_config_contract.toml"))
+        .output()
+        .unwrap();
+
+    let envelope: Value = ok_envelope(&output);
+    assert_eq!(
+        envelope["data"]["normalized_config"]["appearance_mode"],
+        "dark"
     );
 }
 
@@ -1261,6 +1382,101 @@ color = "#3bd17a"
     );
 }
 
+// Defends: Ghostty receives a native dark/light theme pair for automatic system appearance.
+#[test]
+fn terminal_materialization_ghostty_auto_appearance_writes_theme_pair() {
+    let repo = repo_root();
+    let tmp = tempdir().unwrap();
+    let fixture = prepare_runtime_materialization_fixture(&repo, &tmp);
+
+    write_managed_config_toml(
+        &fixture,
+        &[
+            "[terminal]",
+            "transparency = \"none\"",
+            "",
+            "[appearance]",
+            "mode = \"auto\"",
+        ]
+        .join("\n"),
+    );
+    write_basic_cursor_sidecar(&fixture, "#3bd17a");
+
+    let output = runtime_materialization_command(&fixture, "terminal-materialization.generate")
+        .arg("--from-env")
+        .output()
+        .unwrap();
+
+    if !output.status.success() {
+        panic!(
+            "stdout={}\nstderr={}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    assert!(output.stderr.is_empty());
+
+    let ghostty_config = fs::read_to_string(
+        fixture
+            .state_dir
+            .join("configs")
+            .join("terminal_emulators")
+            .join("ghostty")
+            .join("config"),
+    )
+    .unwrap();
+    assert!(ghostty_config.contains("theme = \"dark:Abernathy,light:Catppuccin Latte\""));
+}
+
+// Defends: WezTerm receives a native appearance query for automatic system appearance.
+#[test]
+fn terminal_materialization_wezterm_auto_appearance_writes_gui_query() {
+    let repo = repo_root();
+    let tmp = tempdir().unwrap();
+    let fixture = prepare_runtime_materialization_fixture(&repo, &tmp);
+    fs::write(fixture.runtime_dir.join("runtime_variant"), "wezterm\n").unwrap();
+
+    write_managed_config_toml(
+        &fixture,
+        &[
+            "[terminal]",
+            "transparency = \"none\"",
+            "",
+            "[appearance]",
+            "mode = \"auto\"",
+        ]
+        .join("\n"),
+    );
+    write_basic_cursor_sidecar(&fixture, "#3bd17a");
+
+    let output = runtime_materialization_command(&fixture, "terminal-materialization.generate")
+        .arg("--from-env")
+        .output()
+        .unwrap();
+
+    if !output.status.success() {
+        panic!(
+            "stdout={}\nstderr={}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    assert!(output.stderr.is_empty());
+
+    let wezterm_config = fs::read_to_string(
+        fixture
+            .state_dir
+            .join("configs")
+            .join("terminal_emulators")
+            .join("wezterm")
+            .join(".wezterm.lua"),
+    )
+    .unwrap();
+    assert!(wezterm_config.contains("wezterm.gui.get_appearance()"));
+    assert!(wezterm_config.contains("return 'Abernathy'"));
+    assert!(wezterm_config.contains("return 'Catppuccin Latte'"));
+}
+
 // Defends: vanilla Rio runtime metadata materializes a Rio-native config at the path launch binds through RIO_CONFIG_HOME.
 #[test]
 fn terminal_materialization_rio_uses_rio_config_toml() {
@@ -1333,6 +1549,55 @@ color = "#ffffff"
     assert!(rio_config.contains("mode = \"Plain\""));
 }
 
+// Defends: static light appearance switches Rio's generated palette without changing launch metadata.
+#[test]
+fn terminal_materialization_rio_light_appearance_uses_light_palette() {
+    let repo = repo_root();
+    let tmp = tempdir().unwrap();
+    let fixture = prepare_runtime_materialization_fixture(&repo, &tmp);
+    fs::write(fixture.runtime_dir.join("runtime_variant"), "rio\n").unwrap();
+
+    write_managed_config_toml(
+        &fixture,
+        &[
+            "[terminal]",
+            "transparency = \"none\"",
+            "",
+            "[appearance]",
+            "mode = \"light\"",
+        ]
+        .join("\n"),
+    );
+    write_basic_cursor_sidecar(&fixture, "#ffffff");
+
+    let output = runtime_materialization_command(&fixture, "terminal-materialization.generate")
+        .arg("--from-env")
+        .output()
+        .unwrap();
+
+    if !output.status.success() {
+        panic!(
+            "stdout={}\nstderr={}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    assert!(output.stderr.is_empty());
+
+    let rio_config = fs::read_to_string(
+        fixture
+            .state_dir
+            .join("configs")
+            .join("terminal_emulators")
+            .join("rio")
+            .join("config.toml"),
+    )
+    .unwrap();
+    assert!(rio_config.contains("background = \"#eff1f5\""));
+    assert!(rio_config.contains("foreground = \"#4c4f69\""));
+    assert!(rio_config.contains("blue = \"#1e66f5\""));
+}
+
 // Defends: Linux Foot runtime metadata materializes a Foot-native config at the active launch path.
 #[test]
 fn terminal_materialization_foot_uses_foot_ini() {
@@ -1399,7 +1664,60 @@ color = "#ffffff"
     assert!(foot_config.contains("[csd]"));
     assert!(foot_config.contains("preferred=none"));
     assert!(foot_config.contains("size=0"));
+    assert!(foot_config.contains("initial-color-theme=dark"));
     assert!(foot_config.contains("[colors-dark]"));
+    assert!(foot_config.contains("[colors-light]"));
+}
+
+// Defends: static light appearance selects Foot's light color section while preserving generated Foot config ownership.
+#[test]
+fn terminal_materialization_foot_light_appearance_selects_light_theme() {
+    let repo = repo_root();
+    let tmp = tempdir().unwrap();
+    let fixture = prepare_runtime_materialization_fixture(&repo, &tmp);
+    fs::write(fixture.runtime_dir.join("runtime_variant"), "foot\n").unwrap();
+
+    write_managed_config_toml(
+        &fixture,
+        &[
+            "[terminal]",
+            "transparency = \"low\"",
+            "",
+            "[appearance]",
+            "mode = \"light\"",
+        ]
+        .join("\n"),
+    );
+    write_basic_cursor_sidecar(&fixture, "#ffffff");
+
+    let output = runtime_materialization_command(&fixture, "terminal-materialization.generate")
+        .arg("--from-env")
+        .output()
+        .unwrap();
+
+    if !output.status.success() {
+        panic!(
+            "stdout={}\nstderr={}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    assert!(output.stderr.is_empty());
+
+    let foot_config = fs::read_to_string(
+        fixture
+            .state_dir
+            .join("configs")
+            .join("terminal_emulators")
+            .join("foot")
+            .join("foot.ini"),
+    )
+    .unwrap();
+    assert!(foot_config.contains("initial-color-theme=light"));
+    assert!(foot_config.contains("[colors-light]"));
+    assert!(foot_config.contains("background=eff1f5"));
+    assert!(foot_config.contains("foreground=4c4f69"));
+    assert!(foot_config.contains("regular4=1e66f5"));
 }
 
 // Regression: yzxterm-only sessions keep active cursor color without injecting cursor shaders.
@@ -1469,15 +1787,128 @@ color = "#ffffff"
             .join("config.toml"),
     )
     .unwrap();
-    assert!(yzxterm_config.contains("cursor = \"#ffffff\""));
+    assert!(yzxterm_config.contains("force-theme = \"dark\""));
     assert!(!yzxterm_config.contains("custom-shader"));
     assert!(!yzxterm_config.contains("cursor_trail_snow.glsl"));
     assert!(!yzxterm_config.contains("generated_effects/warp.glsl"));
     assert!(!yzxterm_config.contains("generated_effects/ripple_rectangle.glsl"));
     assert!(!yzxterm_config.contains("cursor_trail_dusk.glsl"));
+    let dark_theme = read_generated_yzxterm_theme(&fixture, "yazelix-dark.toml");
+    let light_theme = read_generated_yzxterm_theme(&fixture, "yazelix-light.toml");
+    assert_eq!(dark_theme["colors"]["cursor"].as_str(), Some("#ffffff"));
+    assert_eq!(light_theme["colors"]["cursor"].as_str(), Some("#ffffff"));
 }
 
-// Regression: Yazelix-managed yzxterm launches pass YAZELIX_TERMINAL_CONFIG, so the runtime must materialize transparency, crisp colors, and the requested Rio decoration shader itself.
+// Defends: packaged yzxterm light appearance uses the child-owned light theme instead of synthesized main-repo colors.
+#[test]
+fn terminal_materialization_yzxterm_light_appearance_selects_child_light_theme() {
+    let repo = repo_root();
+    let tmp = tempdir().unwrap();
+    let fixture = prepare_runtime_materialization_fixture(&repo, &tmp);
+    fs::write(fixture.runtime_dir.join("runtime_variant"), "yzxterm\n").unwrap();
+
+    write_managed_config_toml(
+        &fixture,
+        &[
+            "[terminal]",
+            "transparency = \"none\"",
+            "",
+            "[appearance]",
+            "mode = \"light\"",
+        ]
+        .join("\n"),
+    );
+    write_basic_cursor_sidecar(&fixture, "#00aaff");
+
+    let output = runtime_materialization_command(&fixture, "terminal-materialization.generate")
+        .arg("--from-env")
+        .env_remove("YAZELIX_TERMINAL_PROFILE")
+        .env_remove("YAZELIX_TERMINAL_EFFECTS")
+        .env_remove("YAZELIX_TERMINAL_EMOJI_FONT")
+        .output()
+        .unwrap();
+
+    if !output.status.success() {
+        panic!(
+            "stdout={}\nstderr={}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    assert!(output.stderr.is_empty());
+
+    let config = read_generated_yzxterm_config(&fixture);
+    let table = config.as_table().unwrap();
+    let adaptive = table["adaptive-theme"].as_table().unwrap();
+    assert_eq!(table["force-theme"].as_str(), Some("light"));
+    assert_eq!(adaptive["dark"].as_str(), Some("yazelix-dark"));
+    assert_eq!(adaptive["light"].as_str(), Some("yazelix-light"));
+    assert!(table.get("colors").is_none());
+    assert!(table.get("adaptive_colors").is_none());
+    let dark_theme = read_generated_yzxterm_theme(&fixture, "yazelix-dark.toml");
+    let light_theme = read_generated_yzxterm_theme(&fixture, "yazelix-light.toml");
+    assert_eq!(dark_theme["colors"]["background"].as_str(), Some("#0F0D0E"));
+    assert_eq!(
+        light_theme["colors"]["background"].as_str(),
+        Some("#FAF7F2")
+    );
+    assert_eq!(dark_theme["colors"]["cursor"].as_str(), Some("#00aaff"));
+    assert_eq!(light_theme["colors"]["cursor"].as_str(), Some("#00aaff"));
+}
+
+// Defends: packaged yzxterm auto appearance preserves the child-owned adaptive theme pair.
+#[test]
+fn terminal_materialization_yzxterm_auto_appearance_preserves_child_adaptive_theme() {
+    let repo = repo_root();
+    let tmp = tempdir().unwrap();
+    let fixture = prepare_runtime_materialization_fixture(&repo, &tmp);
+    fs::write(fixture.runtime_dir.join("runtime_variant"), "yzxterm\n").unwrap();
+
+    write_managed_config_toml(
+        &fixture,
+        &[
+            "[terminal]",
+            "transparency = \"none\"",
+            "",
+            "[appearance]",
+            "mode = \"auto\"",
+        ]
+        .join("\n"),
+    );
+    write_basic_cursor_sidecar(&fixture, "#88cc44");
+
+    let output = runtime_materialization_command(&fixture, "terminal-materialization.generate")
+        .arg("--from-env")
+        .env_remove("YAZELIX_TERMINAL_PROFILE")
+        .env_remove("YAZELIX_TERMINAL_EFFECTS")
+        .env_remove("YAZELIX_TERMINAL_EMOJI_FONT")
+        .output()
+        .unwrap();
+
+    if !output.status.success() {
+        panic!(
+            "stdout={}\nstderr={}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    assert!(output.stderr.is_empty());
+
+    let config = read_generated_yzxterm_config(&fixture);
+    let table = config.as_table().unwrap();
+    let adaptive = table["adaptive-theme"].as_table().unwrap();
+    assert!(table.get("force-theme").is_none());
+    assert_eq!(adaptive["dark"].as_str(), Some("yazelix-dark"));
+    assert_eq!(adaptive["light"].as_str(), Some("yazelix-light"));
+    assert!(table.get("colors").is_none());
+    assert!(table.get("adaptive_colors").is_none());
+    let dark_theme = read_generated_yzxterm_theme(&fixture, "yazelix-dark.toml");
+    let light_theme = read_generated_yzxterm_theme(&fixture, "yazelix-light.toml");
+    assert_eq!(dark_theme["colors"]["cursor"].as_str(), Some("#88cc44"));
+    assert_eq!(light_theme["colors"]["cursor"].as_str(), Some("#88cc44"));
+}
+
+// Regression: Yazelix-managed yzxterm launches pass YAZELIX_TERMINAL_CONFIG, so the runtime must materialize transparency, child themes, and the requested Rio decoration shader itself.
 #[test]
 fn terminal_materialization_yzxterm_shader_profile_injects_rio_decoration_shader() {
     let repo = repo_root();
@@ -1545,29 +1976,21 @@ color = "#3bd17a"
         yzxterm_toml["window"]["opacity-cells"].as_bool(),
         Some(true)
     );
-    assert_eq!(
-        yzxterm_toml["colors"]["background"].as_str(),
-        Some("#111416")
-    );
-    assert_eq!(
-        yzxterm_toml["colors"]["foreground"].as_str(),
-        Some("#eeeeec")
-    );
-    assert_eq!(yzxterm_toml["colors"]["green"].as_str(), Some("#00cd00"));
-    assert_eq!(
-        yzxterm_toml["colors"]["light-green"].as_str(),
-        Some("#00ff00")
-    );
+    assert_eq!(yzxterm_toml["force-theme"].as_str(), Some("dark"));
+    assert!(yzxterm_toml.get("colors").is_none());
     assert!(yzxterm_config.contains("backend = \"Webgpu\""));
     assert!(yzxterm_config.contains("opacity = 0.85"));
     assert!(yzxterm_config.contains("opacity-cells = true"));
     assert!(yzxterm_config.contains("trail-cursor = true"));
-    assert!(yzxterm_config.contains("cursor = \"#3bd17a\""));
     assert!(yzxterm_config.contains("custom-shader = ["));
     assert!(yzxterm_config.contains("cursor_trail_forest.glsl"));
     assert!(!yzxterm_config.contains("generated_effects/tail.glsl"));
     assert!(!yzxterm_config.contains("generated_effects/ripple.glsl"));
     assert!(!yzxterm_config.contains("/nix/store/demo/cursor_trail_dusk.glsl"));
+    let dark_theme = read_generated_yzxterm_theme(&fixture, "yazelix-dark.toml");
+    let light_theme = read_generated_yzxterm_theme(&fixture, "yazelix-light.toml");
+    assert_eq!(dark_theme["colors"]["cursor"].as_str(), Some("#3bd17a"));
+    assert_eq!(light_theme["colors"]["cursor"].as_str(), Some("#3bd17a"));
 }
 
 // Defends: yzxterm generated configs can select a child-owned emoji font profile root without losing main-owned transparency, cursor color, or shader edits.
@@ -1631,9 +2054,10 @@ color = "#3bd17a"
     assert!(yzxterm_config.contains("Twitter Color Emoji"));
     assert!(!yzxterm_config.contains("SerenityOS Emoji"));
     assert!(yzxterm_config.contains("opacity = 0.85"));
-    assert!(yzxterm_config.contains("cursor = \"#3bd17a\""));
     assert!(yzxterm_config.contains("custom-shader = ["));
     assert!(yzxterm_config.contains("cursor_trail_forest.glsl"));
+    let dark_theme = read_generated_yzxterm_theme(&fixture, "yazelix-dark.toml");
+    assert_eq!(dark_theme["colors"]["cursor"].as_str(), Some("#3bd17a"));
 }
 
 // Defends: mutable settings.jsonc can select the yzxterm child-owned emoji style without depending on a Home Manager launch env override.
@@ -1702,9 +2126,10 @@ color = "#3bd17a"
     assert!(yzxterm_config.contains("SerenityOS Emoji"));
     assert!(!yzxterm_config.contains("Twitter Color Emoji"));
     assert!(yzxterm_config.contains("opacity = 0.85"));
-    assert!(yzxterm_config.contains("cursor = \"#3bd17a\""));
     assert!(yzxterm_config.contains("custom-shader = ["));
     assert!(yzxterm_config.contains("cursor_trail_forest.glsl"));
+    let dark_theme = read_generated_yzxterm_theme(&fixture, "yazelix-dark.toml");
+    assert_eq!(dark_theme["colors"]["cursor"].as_str(), Some("#3bd17a"));
 }
 
 // Defends: invalid yzxterm emoji font preset names fail clearly instead of silently using the default package config.
@@ -1881,7 +2306,14 @@ fn ghostty_materialization_generate_from_env_uses_normalized_config() {
 
     write_managed_config_toml(
         &fixture,
-        &["[terminal]", "transparency = \"high\""].join("\n"),
+        &[
+            "[terminal]",
+            "transparency = \"high\"",
+            "",
+            "[appearance]",
+            "mode = \"light\"",
+        ]
+        .join("\n"),
     );
     write_cursor_sidecar(
         &fixture,
@@ -1940,6 +2372,7 @@ color = "#3bd17a"
         .join("terminal_emulators")
         .join("ghostty");
     let generated_config = fs::read_to_string(ghostty_dir.join("config")).unwrap();
+    assert!(generated_config.contains("theme = \"Catppuccin Latte\""));
     assert!(
         !generated_config
             .lines()

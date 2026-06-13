@@ -422,6 +422,10 @@ fn validate_home_manager_desktop_entry_contract(repo_root: &Path) -> Result<Vec<
         .get("sessionEmojiFont")
         .and_then(JsonValue::as_str)
         .unwrap_or_default();
+    let shader_session_appearance = shader_entry
+        .get("sessionAppearance")
+        .and_then(JsonValue::as_str)
+        .unwrap_or_default();
     if !shader_entry
         .get("terminal")
         .and_then(JsonValue::as_bool)
@@ -433,10 +437,10 @@ fn validate_home_manager_desktop_entry_contract(repo_root: &Path) -> Result<Vec<
         );
     }
     if shader_exec
-        != "env YAZELIX_TERMINAL_APP_ID=com.yazelix.Yazelix.Yzxterm YAZELIX_TERMINAL_EMOJI_FONT=twitter YAZELIX_TERMINAL_PROFILE=shaders /tmp/profile/bin/yzx desktop launch"
+        != "env YAZELIX_TERMINAL_APP_ID=com.yazelix.Yazelix.Yzxterm YAZELIX_TERMINAL_APPEARANCE=light YAZELIX_TERMINAL_EMOJI_FONT=twitter YAZELIX_TERMINAL_PROFILE=shaders /tmp/profile/bin/yzx desktop launch"
     {
         errors.push(format!(
-            "Home Manager shader yzxterm profile desktop entry Exec mismatch: expected app id, emoji font, and shader profile env, got {}",
+            "Home Manager shader yzxterm profile desktop entry Exec mismatch: expected app id, appearance, emoji font, and shader profile env, got {}",
             format_json_value(&JsonValue::String(shader_exec.to_string()))
         ));
     }
@@ -456,6 +460,12 @@ fn validate_home_manager_desktop_entry_contract(repo_root: &Path) -> Result<Vec<
         errors.push(format!(
             "Home Manager yzxterm emoji font session variable mismatch: expected twitter, got {}",
             format_json_value(&JsonValue::String(shader_session_emoji_font.to_string()))
+        ));
+    }
+    if shader_session_appearance != "light" {
+        errors.push(format!(
+            "Home Manager yzxterm appearance session variable mismatch: expected light, got {}",
+            format_json_value(&JsonValue::String(shader_session_appearance.to_string()))
         ));
     }
     let package_count = extra_entry
@@ -521,6 +531,12 @@ fn validate_home_manager_desktop_entry_contract(repo_root: &Path) -> Result<Vec<
                 format_json_value(&JsonValue::String(exec.to_string()))
             ));
         }
+        if terminal == "yzxterm" && !exec.contains("YAZELIX_TERMINAL_APPEARANCE=light") {
+            errors.push(format!(
+                "Home Manager extra yzxterm desktop entry Exec must pass the configured appearance mode, got {}",
+                format_json_value(&JsonValue::String(exec.to_string()))
+            ));
+        }
         if terminal == "yzxterm" && !exec.contains("YAZELIX_TERMINAL_EMOJI_FONT=twitter") {
             errors.push(format!(
                 "Home Manager extra yzxterm desktop entry Exec must pass the configured yzxterm emoji font, got {}",
@@ -576,6 +592,15 @@ fn validate_home_manager_activation_contract(repo_root: &Path) -> Result<Vec<Str
         );
     }
     if !yzxterm_line
+        .map(|line| line.contains("YAZELIX_TERMINAL_APPEARANCE=light"))
+        .unwrap_or(false)
+    {
+        errors.push(
+            "Home Manager activation must pass appearance_mode to extra yzxterm launcher materialization"
+                .to_string(),
+        );
+    }
+    if !yzxterm_line
         .map(|line| line.contains("YAZELIX_TERMINAL_EMOJI_FONT=twitter"))
         .unwrap_or(false)
     {
@@ -621,6 +646,7 @@ fn build_home_manager_activation_expr(repo_root: &Path) -> String {
     lines.extend([
         "      { config.programs.yazelix.extra_terminal_launchers = [ \"yzxterm\" ]; }".to_string(),
         "      { config.programs.yazelix.yzxterm_profile = \"shaders\"; }".to_string(),
+        "      { config.programs.yazelix.appearance_mode = \"light\"; }".to_string(),
         "      { config.programs.yazelix.yzxterm_emoji_font = \"twitter\"; }".to_string(),
         "    ];".to_string(),
         "  };".to_string(),
@@ -908,6 +934,7 @@ fn build_home_manager_desktop_entry_expr(
             "      {{ config.programs.yazelix.yzxterm_profile = \"{}\"; }}",
             escape_nix_string(profile)
         ));
+        lines.push("      { config.programs.yazelix.appearance_mode = \"light\"; }".to_string());
         lines.push(
             "      { config.programs.yazelix.yzxterm_emoji_font = \"twitter\"; }".to_string(),
         );
@@ -958,6 +985,8 @@ fn build_home_manager_desktop_entry_expr(
         "  exec = entry.exec or \"\";".to_string(),
         "  terminal = entry.terminal or false;".to_string(),
         "  sessionProfile = eval.config.home.sessionVariables.YAZELIX_TERMINAL_PROFILE or \"\";"
+            .to_string(),
+        "  sessionAppearance = eval.config.home.sessionVariables.YAZELIX_TERMINAL_APPEARANCE or \"\";"
             .to_string(),
         "  sessionEmojiFont = eval.config.home.sessionVariables.YAZELIX_TERMINAL_EMOJI_FONT or \"\";"
             .to_string(),

@@ -1,5 +1,19 @@
 # Styling and Themes
 
+## Yazelix Appearance Mode
+
+Set the global generated appearance in `~/.config/yazelix/settings.jsonc`:
+
+```jsonc
+{
+  "appearance": {
+    "mode": "dark" // "dark", "light", or "auto"
+  }
+}
+```
+
+`dark` is the default. `light` switches generated terminal colors and the default Zellij/Yazi themes to light palettes where that terminal supports them, while preserving explicit `zellij.theme` and `yazi.theme` choices. `auto` uses native automatic system appearance in Ghostty, WezTerm, and yzxterm; yzxterm owns its packaged dark/light themes in the terminal child package, and main Yazelix copies those themes into generated yzxterm config roots.
+
 ## Terminal Transparency
 
 WezTerm includes transparency by default:

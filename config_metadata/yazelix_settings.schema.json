@@ -12,6 +12,7 @@
     "workspace",
     "shell",
     "terminal",
+    "appearance",
     "zellij",
     "yazi"
   ],
@@ -403,6 +404,27 @@
       },
       "x-yazelix": {
         "tab": "terminal"
+      }
+    },
+    "appearance": {
+      "type": "object",
+      "description": "Global Yazelix appearance mode used by generated themes",
+      "required": [
+        "mode"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": [
+            "dark",
+            "light",
+            "auto"
+          ]
+        }
+      },
+      "x-yazelix": {
+        "tab": "appearance"
       }
     },
     "zellij": {

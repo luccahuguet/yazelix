@@ -1,6 +1,7 @@
 //! Shared logic for the `yzx_control` CLI (`yzx env` / `yzx run`).
 
 use crate::active_config_surface::{primary_config_paths, resolve_active_config_paths};
+use crate::appearance_mode::appearance_mode_from_config;
 use crate::bridge::{CoreError, ErrorClass};
 use crate::helix_external::HelixExternalPair;
 use crate::runtime_env::RuntimePathInput;
@@ -410,6 +411,7 @@ pub fn ghostty_materialization_request_from_env(
             .and_then(|value| value.as_str())
             .unwrap_or("none")
             .to_string(),
+        appearance_mode: appearance_mode_from_config(&normalized).to_string(),
         cursor_config_path: paths.user_cursor_config,
     })
 }

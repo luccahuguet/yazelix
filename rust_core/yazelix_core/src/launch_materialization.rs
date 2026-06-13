@@ -168,6 +168,7 @@ pub fn prepare_launch_materialization(
             config_dir: request.config_dir.clone(),
             state_dir: request.state_dir.clone(),
             transparency: string_config(&normalized, "transparency", "none"),
+            appearance_mode: string_config(&normalized, "appearance_mode", "dark"),
             cursor_config_path,
         })?;
         ghostty_cursor_name = ghostty_data.cursor_state.selected_color;

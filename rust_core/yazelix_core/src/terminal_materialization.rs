@@ -1,3 +1,7 @@
+use crate::appearance_mode::{
+    APPEARANCE_MODE_AUTO, APPEARANCE_MODE_DARK, APPEARANCE_MODE_LIGHT, WEZTERM_THEME_DARK,
+    WEZTERM_THEME_LIGHT, appearance_mode_from_config, auto_mode, static_light_mode, wezterm_theme,
+};
 use crate::atomic_fs::write_text_atomic;
 use crate::bridge::CoreError;
 use crate::config_normalize::{NormalizeConfigRequest, normalize_config};
@@ -20,8 +24,10 @@ use std::path::{Path, PathBuf};
 const YAZELIX_THEME: &str = "Abernathy";
 const ABERNATHY_BACKGROUND: &str = "#111416";
 const ABERNATHY_FOREGROUND: &str = "#eeeeec";
+const CATPPUCCIN_LATTE_BACKGROUND: &str = "#eff1f5";
+const CATPPUCCIN_LATTE_FOREGROUND: &str = "#4c4f69";
 const FONT_FIRACODE: &str = "FiraCode Nerd Font";
-const YZXTERM_COLOR_PALETTE: &[(&str, &str)] = &[
+const TERMINAL_DARK_COLOR_PALETTE: &[(&str, &str)] = &[
     ("background", ABERNATHY_BACKGROUND),
     ("foreground", ABERNATHY_FOREGROUND),
     ("black", "#000000"),
@@ -39,6 +45,46 @@ const YZXTERM_COLOR_PALETTE: &[(&str, &str)] = &[
     ("light-blue", "#11b5f6"),
     ("light-magenta", "#ff00ff"),
     ("light-cyan", "#00ffff"),
+    ("light-white", "#ffffff"),
+];
+const CATPPUCCIN_LATTE_COLOR_PALETTE: &[(&str, &str)] = &[
+    ("background", CATPPUCCIN_LATTE_BACKGROUND),
+    ("foreground", CATPPUCCIN_LATTE_FOREGROUND),
+    ("black", "#5c5f77"),
+    ("red", "#d20f39"),
+    ("green", "#40a02b"),
+    ("yellow", "#df8e1d"),
+    ("blue", "#1e66f5"),
+    ("magenta", "#ea76cb"),
+    ("cyan", "#179299"),
+    ("white", "#acb0be"),
+    ("light-black", "#6c6f85"),
+    ("light-red", "#d20f39"),
+    ("light-green", "#40a02b"),
+    ("light-yellow", "#df8e1d"),
+    ("light-blue", "#1e66f5"),
+    ("light-magenta", "#ea76cb"),
+    ("light-cyan", "#179299"),
+    ("light-white", "#bcc0cc"),
+];
+const FOOT_DARK_COLOR_PALETTE: &[(&str, &str)] = &[
+    ("background", "#1f1f28"),
+    ("foreground", "#dcd7ba"),
+    ("black", "#000000"),
+    ("red", "#cd3131"),
+    ("green", "#0dbc79"),
+    ("yellow", "#e5e510"),
+    ("blue", "#2472c8"),
+    ("magenta", "#bc3fbc"),
+    ("cyan", "#11a8cd"),
+    ("white", "#e5e5e5"),
+    ("light-black", "#666666"),
+    ("light-red", "#f14c4c"),
+    ("light-green", "#23d18b"),
+    ("light-yellow", "#f5f543"),
+    ("light-blue", "#3b8eea"),
+    ("light-magenta", "#d670d6"),
+    ("light-cyan", "#29b8db"),
     ("light-white", "#ffffff"),
 ];
 
@@ -143,7 +189,46 @@ fn build_transparency(transparency: &str, format: &str, key: &str) -> String {
     }
 }
 
-fn generate_wezterm_config(transparency: &str) -> String {
+fn terminal_palette_for_appearance(
+    appearance_mode: &str,
+) -> &'static [(&'static str, &'static str)] {
+    if static_light_mode(appearance_mode) {
+        CATPPUCCIN_LATTE_COLOR_PALETTE
+    } else {
+        TERMINAL_DARK_COLOR_PALETTE
+    }
+}
+
+fn palette_color(palette: &'static [(&'static str, &'static str)], key: &str) -> &'static str {
+    palette
+        .iter()
+        .find(|(candidate, _)| *candidate == key)
+        .map(|(_, value)| *value)
+        .expect("terminal palette must define every generated color key")
+}
+
+fn foot_color(value: &str) -> &str {
+    value.strip_prefix('#').unwrap_or(value)
+}
+
+fn generate_wezterm_color_scheme(appearance_mode: &str) -> String {
+    if auto_mode(appearance_mode) {
+        return format!(
+            r##"local function yazelix_color_scheme_for_appearance(appearance)
+  if appearance:find("Dark") then
+    return '{}'
+  end
+  return '{}'
+end
+config.color_scheme = yazelix_color_scheme_for_appearance(wezterm.gui.get_appearance())"##,
+            WEZTERM_THEME_DARK, WEZTERM_THEME_LIGHT
+        );
+    }
+
+    format!("config.color_scheme = '{}'", wezterm_theme(appearance_mode))
+}
+
+fn generate_wezterm_config(transparency: &str, appearance_mode: &str) -> String {
     format!(
         r##"-- WezTerm configuration for Yazelix
 local wezterm = require 'wezterm'
@@ -151,7 +236,7 @@ local config = wezterm.config_builder()
 
 config.window_decorations = "NONE"
 config.window_padding = {{ left = 0, right = 0, top = 10, bottom = 0 }}
-config.color_scheme = '{}'
+{}
 
 -- Hide tab bar (Zellij handles tabs)
 config.enable_tab_bar = false
@@ -162,7 +247,7 @@ config.enable_tab_bar = false
 -- Cursor trails: Not supported in WezTerm
 
 return config"##,
-        YAZELIX_THEME,
+        generate_wezterm_color_scheme(appearance_mode),
         build_transparency(transparency, "lua", ""),
     )
 }
@@ -252,13 +337,21 @@ white = "#ffffff"
     )
 }
 
-fn generate_foot_config(transparency: &str) -> String {
+fn generate_foot_config(transparency: &str, appearance_mode: &str) -> String {
     let alpha = get_opacity_value(transparency);
+    let initial_color_theme = if static_light_mode(appearance_mode) {
+        "light"
+    } else {
+        "dark"
+    };
+    let dark = FOOT_DARK_COLOR_PALETTE;
+    let light = CATPPUCCIN_LATTE_COLOR_PALETTE;
     format!(
         r##"# Foot configuration for Yazelix
 
 term=xterm-256color
 font={}:size=14
+initial-color-theme={}
 
 [cursor]
 style=block
@@ -269,32 +362,93 @@ preferred=none
 size=0
 
 [colors-dark]
-background=1f1f28
-foreground=dcd7ba
+background={}
+foreground={}
 alpha={}
-regular0=000000
-regular1=cd3131
-regular2=0dbc79
-regular3=e5e510
-regular4=2472c8
-regular5=bc3fbc
-regular6=11a8cd
-regular7=e5e5e5
-bright0=666666
-bright1=f14c4c
-bright2=23d18b
-bright3=f5f543
-bright4=3b8eea
-bright5=d670d6
-bright6=29b8db
-bright7=ffffff
+regular0={}
+regular1={}
+regular2={}
+regular3={}
+regular4={}
+regular5={}
+regular6={}
+regular7={}
+bright0={}
+bright1={}
+bright2={}
+bright3={}
+bright4={}
+bright5={}
+bright6={}
+bright7={}
+
+[colors-light]
+background={}
+foreground={}
+alpha={}
+regular0={}
+regular1={}
+regular2={}
+regular3={}
+regular4={}
+regular5={}
+regular6={}
+regular7={}
+bright0={}
+bright1={}
+bright2={}
+bright3={}
+bright4={}
+bright5={}
+bright6={}
+bright7={}
 "##,
-        FONT_FIRACODE, alpha,
+        FONT_FIRACODE,
+        initial_color_theme,
+        foot_color(palette_color(dark, "background")),
+        foot_color(palette_color(dark, "foreground")),
+        alpha,
+        foot_color(palette_color(dark, "black")),
+        foot_color(palette_color(dark, "red")),
+        foot_color(palette_color(dark, "green")),
+        foot_color(palette_color(dark, "yellow")),
+        foot_color(palette_color(dark, "blue")),
+        foot_color(palette_color(dark, "magenta")),
+        foot_color(palette_color(dark, "cyan")),
+        foot_color(palette_color(dark, "white")),
+        foot_color(palette_color(dark, "light-black")),
+        foot_color(palette_color(dark, "light-red")),
+        foot_color(palette_color(dark, "light-green")),
+        foot_color(palette_color(dark, "light-yellow")),
+        foot_color(palette_color(dark, "light-blue")),
+        foot_color(palette_color(dark, "light-magenta")),
+        foot_color(palette_color(dark, "light-cyan")),
+        foot_color(palette_color(dark, "light-white")),
+        foot_color(palette_color(light, "background")),
+        foot_color(palette_color(light, "foreground")),
+        alpha,
+        foot_color(palette_color(light, "black")),
+        foot_color(palette_color(light, "red")),
+        foot_color(palette_color(light, "green")),
+        foot_color(palette_color(light, "yellow")),
+        foot_color(palette_color(light, "blue")),
+        foot_color(palette_color(light, "magenta")),
+        foot_color(palette_color(light, "cyan")),
+        foot_color(palette_color(light, "white")),
+        foot_color(palette_color(light, "light-black")),
+        foot_color(palette_color(light, "light-red")),
+        foot_color(palette_color(light, "light-green")),
+        foot_color(palette_color(light, "light-yellow")),
+        foot_color(palette_color(light, "light-blue")),
+        foot_color(palette_color(light, "light-magenta")),
+        foot_color(palette_color(light, "light-cyan")),
+        foot_color(palette_color(light, "light-white")),
     )
 }
 
-fn generate_rio_config(transparency: &str) -> String {
+fn generate_rio_config(transparency: &str, appearance_mode: &str) -> String {
     let opacity = get_opacity_value(transparency);
+    let palette = terminal_palette_for_appearance(appearance_mode);
     format!(
         r##"# Rio configuration for Yazelix
 
@@ -321,22 +475,22 @@ size = 18.0
 [colors]
 background = "{}"
 foreground = "{}"
-black = "#000000"
-red = "#cd0000"
-green = "#00cd00"
-yellow = "#cdcd00"
-blue = "#1093f5"
-magenta = "#cd00cd"
-cyan = "#00cdcd"
-white = "#faebd7"
-light-black = "#404040"
-light-red = "#ff0000"
-light-green = "#00ff00"
-light-yellow = "#ffff00"
-light-blue = "#11b5f6"
-light-magenta = "#ff00ff"
-light-cyan = "#00ffff"
-light-white = "#ffffff"
+black = "{}"
+red = "{}"
+green = "{}"
+yellow = "{}"
+blue = "{}"
+magenta = "{}"
+cyan = "{}"
+white = "{}"
+light-black = "{}"
+light-red = "{}"
+light-green = "{}"
+light-yellow = "{}"
+light-blue = "{}"
+light-magenta = "{}"
+light-cyan = "{}"
+light-white = "{}"
 
 [navigation]
 mode = "Plain"
@@ -348,8 +502,24 @@ backend = "Webgpu"
         opacity,
         transparency != "none",
         FONT_FIRACODE,
-        ABERNATHY_BACKGROUND,
-        ABERNATHY_FOREGROUND,
+        palette_color(palette, "background"),
+        palette_color(palette, "foreground"),
+        palette_color(palette, "black"),
+        palette_color(palette, "red"),
+        palette_color(palette, "green"),
+        palette_color(palette, "yellow"),
+        palette_color(palette, "blue"),
+        palette_color(palette, "magenta"),
+        palette_color(palette, "cyan"),
+        palette_color(palette, "white"),
+        palette_color(palette, "light-black"),
+        palette_color(palette, "light-red"),
+        palette_color(palette, "light-green"),
+        palette_color(palette, "light-yellow"),
+        palette_color(palette, "light-blue"),
+        palette_color(palette, "light-magenta"),
+        palette_color(palette, "light-cyan"),
+        palette_color(palette, "light-white"),
     )
 }
 
@@ -478,13 +648,201 @@ fn yzxterm_config_table_mut<'a>(
         })
 }
 
-fn insert_yzxterm_color_palette(colors: &mut toml::Table) {
-    for (key, value) in YZXTERM_COLOR_PALETTE {
-        colors.insert(
-            (*key).to_string(),
-            toml::Value::String((*value).to_string()),
-        );
+fn copy_dir_all(src: &Path, dst: &Path) -> std::io::Result<()> {
+    fs::create_dir_all(dst)?;
+    for entry in fs::read_dir(src)? {
+        let entry = entry?;
+        let src_path = entry.path();
+        let dst_path = dst.join(entry.file_name());
+        let file_type = entry.file_type()?;
+        if file_type.is_dir() {
+            copy_dir_all(&src_path, &dst_path)?;
+        } else if file_type.is_file() {
+            fs::copy(&src_path, &dst_path)?;
+        }
     }
+    Ok(())
+}
+
+fn remove_path_if_exists(path: &Path, operation: &'static str) -> Result<(), CoreError> {
+    let Ok(metadata) = fs::symlink_metadata(path) else {
+        return Ok(());
+    };
+
+    if metadata.is_dir() && !metadata.file_type().is_symlink() {
+        fs::remove_dir_all(path).map_err(|source| {
+            CoreError::io(
+                operation,
+                "Could not remove the stale generated Yazelix Terminal themes directory",
+                "Remove the stale generated yzxterm themes directory, then rerun `yzx refresh`.",
+                path.to_string_lossy(),
+                source,
+            )
+        })
+    } else {
+        fs::remove_file(path).map_err(|source| {
+            CoreError::io(
+                operation,
+                "Could not remove the stale generated Yazelix Terminal themes path",
+                "Remove the stale generated yzxterm themes path, then rerun `yzx refresh`.",
+                path.to_string_lossy(),
+                source,
+            )
+        })
+    }
+}
+
+fn patch_yzxterm_theme_cursor(theme_path: &Path, color_hex: &str) -> Result<(), CoreError> {
+    let raw = fs::read_to_string(theme_path).map_err(|source| {
+        CoreError::io(
+            "read_yzxterm_theme",
+            "Could not read a copied Yazelix Terminal theme",
+            "Reinstall the Yazelix runtime so the yazelix-terminal child themes are present.",
+            theme_path.to_string_lossy(),
+            source,
+        )
+    })?;
+    let mut table = toml::from_str::<toml::Table>(&raw).map_err(|source| {
+        CoreError::classified(
+            crate::bridge::ErrorClass::Runtime,
+            "parse_yzxterm_theme",
+            format!(
+                "The packaged Yazelix Terminal theme at {} is not valid TOML.",
+                theme_path.display()
+            ),
+            "Reinstall the Yazelix runtime or rebuild it from a valid yazelix-terminal package.",
+            serde_json::json!({ "error": source.to_string() }),
+        )
+    })?;
+    table
+        .get_mut("colors")
+        .and_then(toml::Value::as_table_mut)
+        .ok_or_else(|| {
+            CoreError::classified(
+                crate::bridge::ErrorClass::Runtime,
+                "invalid_yzxterm_theme_colors",
+                format!(
+                    "The packaged Yazelix Terminal theme at {} is missing a [colors] table or has a non-table [colors] value.",
+                    theme_path.display()
+                ),
+                "Reinstall the Yazelix runtime or rebuild it from a valid yazelix-terminal package.",
+                serde_json::json!({}),
+            )
+        })?
+        .insert(
+            "cursor".to_string(),
+            toml::Value::String(color_hex.to_string()),
+        );
+    let rendered = toml::to_string_pretty(&toml::Value::Table(table)).map_err(|source| {
+        CoreError::classified(
+            crate::bridge::ErrorClass::Internal,
+            "render_yzxterm_theme",
+            "Could not render a generated Yazelix Terminal theme.",
+            "Report this Yazelix bug with the current settings.jsonc.",
+            serde_json::json!({ "error": source.to_string() }),
+        )
+    })?;
+    write_text_atomic(theme_path, &rendered)
+}
+
+fn copy_yzxterm_themes(
+    package_config: &Path,
+    generated_config_dir: &Path,
+    cursor_color_hex: Option<&str>,
+) -> Result<(), CoreError> {
+    let package_root = package_config.parent().ok_or_else(|| {
+        CoreError::classified(
+            crate::bridge::ErrorClass::Runtime,
+            "invalid_yzxterm_package_config_path",
+            format!(
+                "Packaged Yazelix Terminal config path has no parent directory: {}.",
+                package_config.display()
+            ),
+            "Reinstall the Yazelix runtime or rebuild it from a valid yazelix-terminal package.",
+            serde_json::json!({}),
+        )
+    })?;
+    let source = package_root.join("themes");
+    if !source.is_dir() {
+        return Err(CoreError::classified(
+            crate::bridge::ErrorClass::Runtime,
+            "missing_yzxterm_themes",
+            format!(
+                "The packaged Yazelix Terminal config at {} does not have a sibling themes directory.",
+                package_config.display()
+            ),
+            "Reinstall Yazelix with a yazelix-terminal package that advertises and ships its appearance themes.",
+            serde_json::json!({ "themes_dir": source.to_string_lossy() }),
+        ));
+    }
+
+    let destination = generated_config_dir.join("themes");
+    remove_path_if_exists(&destination, "remove_yzxterm_themes")?;
+    copy_dir_all(&source, &destination).map_err(|source_error| {
+        CoreError::io(
+            "copy_yzxterm_themes",
+            "Could not copy packaged Yazelix Terminal themes into the generated config root",
+            "Check permissions for the generated Yazelix state directory, then rerun `yzx refresh`.",
+            destination.to_string_lossy(),
+            source_error,
+        )
+    })?;
+
+    if let Some(color_hex) = cursor_color_hex {
+        for theme in ["yazelix-dark.toml", "yazelix-light.toml"] {
+            patch_yzxterm_theme_cursor(&destination.join(theme), color_hex)?;
+        }
+    }
+
+    Ok(())
+}
+
+fn apply_yzxterm_appearance(
+    table: &mut toml::Table,
+    package_config: &Path,
+    appearance_mode: &str,
+) -> Result<(), CoreError> {
+    if !matches!(
+        table.get("adaptive-theme"),
+        Some(toml::Value::Table(adaptive))
+            if adaptive.contains_key("dark") && adaptive.contains_key("light")
+    ) {
+        return Err(CoreError::classified(
+            crate::bridge::ErrorClass::Runtime,
+            "missing_yzxterm_adaptive_theme",
+            format!(
+                "The packaged Yazelix Terminal config at {} does not declare adaptive-theme dark/light themes.",
+                package_config.display()
+            ),
+            "Reinstall Yazelix with a yazelix-terminal package that advertises and ships dark/light/auto appearance support.",
+            serde_json::json!({}),
+        ));
+    }
+
+    match appearance_mode {
+        APPEARANCE_MODE_AUTO => {
+            table.remove("force-theme");
+        }
+        APPEARANCE_MODE_LIGHT => {
+            table.insert(
+                "force-theme".to_string(),
+                toml::Value::String(APPEARANCE_MODE_LIGHT.to_string()),
+            );
+        }
+        APPEARANCE_MODE_DARK => {
+            table.insert(
+                "force-theme".to_string(),
+                toml::Value::String(APPEARANCE_MODE_DARK.to_string()),
+            );
+        }
+        _ => {
+            table.insert(
+                "force-theme".to_string(),
+                toml::Value::String(APPEARANCE_MODE_DARK.to_string()),
+            );
+        }
+    }
+    Ok(())
 }
 
 fn generate_yzxterm_config(
@@ -494,6 +852,8 @@ fn generate_yzxterm_config(
     shader_paths: &[String],
     profile: YzxtermProfile,
     emoji_font: YzxtermEmojiFont,
+    appearance_mode: &str,
+    generated_config_dir: &Path,
 ) -> Result<String, CoreError> {
     let package_config = yzxterm_package_config_path(runtime_dir, profile, emoji_font);
     let raw = fs::read_to_string(&package_config).map_err(|source| {
@@ -517,6 +877,8 @@ fn generate_yzxterm_config(
             serde_json::json!({ "error": source.to_string() }),
         )
     })?;
+    let cursor_color_hex = cursor_state.and_then(|state| state.selected_color_hex.as_deref());
+    copy_yzxterm_themes(&package_config, generated_config_dir, cursor_color_hex)?;
     let opacity = get_opacity_value(transparency)
         .parse::<f64>()
         .map_err(|source| {
@@ -563,19 +925,7 @@ fn generate_yzxterm_config(
         }
     }
 
-    let colors = yzxterm_config_table_mut(
-        &mut table,
-        "colors",
-        "invalid_yzxterm_colors_config",
-        &package_config,
-    )?;
-    insert_yzxterm_color_palette(colors);
-    if let Some(color_hex) = cursor_state.and_then(|state| state.selected_color_hex.as_deref()) {
-        colors.insert(
-            "cursor".to_string(),
-            toml::Value::String(color_hex.to_string()),
-        );
-    }
+    apply_yzxterm_appearance(&mut table, &package_config, appearance_mode)?;
 
     toml::to_string_pretty(&toml::Value::Table(table)).map_err(|source| {
         CoreError::classified(
@@ -706,6 +1056,7 @@ pub fn generate_terminal_materialization(
         .get("transparency")
         .and_then(|v| v.as_str())
         .unwrap_or("none");
+    let appearance_mode = appearance_mode_from_config(config);
     let yzxterm_emoji_font = yzxterm_emoji_font_from_config(config, request.yzxterm_emoji_font)?;
 
     let config_dir = config_dir_from_env()?;
@@ -727,6 +1078,7 @@ pub fn generate_terminal_materialization(
         config_dir: config_dir.clone(),
         state_dir: request.state_dir.clone(),
         transparency: transparency.to_string(),
+        appearance_mode: appearance_mode.to_string(),
         cursor_config_path: request.cursor_config_path.clone(),
     };
     let cursor_request = TerminalCursorMaterializationRequest {
@@ -764,7 +1116,10 @@ pub fn generate_terminal_materialization(
                     )
                 })?;
                 let path = wezterm_dir.join(".wezterm.lua");
-                write_text_atomic(&path, &generate_wezterm_config(transparency))?;
+                write_text_atomic(
+                    &path,
+                    &generate_wezterm_config(transparency, appearance_mode),
+                )?;
                 generated.push(TerminalGeneratedConfig {
                     terminal: "wezterm".to_string(),
                     path: path.to_string_lossy().into_owned(),
@@ -782,7 +1137,7 @@ pub fn generate_terminal_materialization(
                     )
                 })?;
                 let path = rio_dir.join("config.toml");
-                write_text_atomic(&path, &generate_rio_config(transparency))?;
+                write_text_atomic(&path, &generate_rio_config(transparency, appearance_mode))?;
                 generated.push(TerminalGeneratedConfig {
                     terminal: "rio".to_string(),
                     path: path.to_string_lossy().into_owned(),
@@ -818,7 +1173,7 @@ pub fn generate_terminal_materialization(
                     )
                 })?;
                 let path = foot_dir.join("foot.ini");
-                write_text_atomic(&path, &generate_foot_config(transparency))?;
+                write_text_atomic(&path, &generate_foot_config(transparency, appearance_mode))?;
                 generated.push(TerminalGeneratedConfig {
                     terminal: "foot".to_string(),
                     path: path.to_string_lossy().into_owned(),
@@ -857,6 +1212,8 @@ pub fn generate_terminal_materialization(
                         shader_paths,
                         request.yzxterm_profile,
                         yzxterm_emoji_font,
+                        appearance_mode,
+                        &yzxterm_dir,
                     )?,
                 )?;
                 generated.push(TerminalGeneratedConfig {

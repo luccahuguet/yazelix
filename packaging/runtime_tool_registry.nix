@@ -50,6 +50,18 @@ let
       throw "Yazelix runtimeVariant yzxterm requires yzxtermPackageMetadata.supported_emoji_fonts to include twitter"
     else if !(builtins.elem "serenityos" metadata.supported_emoji_fonts) then
       throw "Yazelix runtimeVariant yzxterm requires yzxtermPackageMetadata.supported_emoji_fonts to include serenityos"
+    else if !(builtins.isList (metadata.supported_appearance_modes or null)) then
+      throw "Yazelix runtimeVariant yzxterm requires yzxtermPackageMetadata.supported_appearance_modes"
+    else if !(builtins.elem "dark" metadata.supported_appearance_modes) then
+      throw "Yazelix runtimeVariant yzxterm requires yzxtermPackageMetadata.supported_appearance_modes to include dark"
+    else if !(builtins.elem "light" metadata.supported_appearance_modes) then
+      throw "Yazelix runtimeVariant yzxterm requires yzxtermPackageMetadata.supported_appearance_modes to include light"
+    else if !(builtins.elem "auto" metadata.supported_appearance_modes) then
+      throw "Yazelix runtimeVariant yzxterm requires yzxtermPackageMetadata.supported_appearance_modes to include auto"
+    else if (metadata.default_appearance_mode or null) != "dark" then
+      throw "Yazelix runtimeVariant yzxterm requires yzxtermPackageMetadata.default_appearance_mode = \"dark\""
+    else if !(builtins.isString (metadata.wrapper_env.appearance or null)) then
+      throw "Yazelix runtimeVariant yzxterm requires yzxtermPackageMetadata.wrapper_env.appearance"
     else if !(builtins.isString (metadata.wrapper_env.emoji_font or null)) then
       throw "Yazelix runtimeVariant yzxterm requires yzxtermPackageMetadata.wrapper_env.emoji_font"
     else
@@ -76,6 +88,10 @@ let
         yzxterm_terminal_package_profile = yzxtermPackageMetadata.package_profile;
         yzxterm_terminal_checked = yzxtermPackageMetadata.checked_package;
         yzxterm_terminal_metadata_schema = yzxtermPackageMetadata.schema_version;
+        yzxterm_terminal_supported_appearance_modes =
+          yzxtermPackageMetadata.supported_appearance_modes;
+        yzxterm_terminal_default_appearance_mode =
+          yzxtermPackageMetadata.default_appearance_mode;
       };
   terminalPackage =
     if runtimeVariant == "ghostty" then

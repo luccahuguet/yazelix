@@ -391,6 +391,8 @@ fn build_nix_customization_api_expr(repo_root: &Path) -> String {
       };
       supported_emoji_fonts = [ "noto" "twitter" "serenityos" ];
       default_emoji_font = "noto";
+      supported_appearance_modes = [ "dark" "light" "auto" ];
+      default_appearance_mode = "dark";
       emoji_fonts = {
         noto = { family = "Noto Color Emoji"; config_roots = { full = "share/yazelix-terminal"; baseline = "share/yazelix-terminal/baseline"; shaders = "share/yazelix-terminal/profiles/shaders"; }; };
         twitter = { family = "Twitter Color Emoji"; config_roots = { full = "share/yazelix-terminal/emoji/twitter"; baseline = "share/yazelix-terminal/emoji/twitter/baseline"; shaders = "share/yazelix-terminal/emoji/twitter/profiles/shaders"; }; };
@@ -402,6 +404,7 @@ fn build_nix_customization_api_expr(repo_root: &Path) -> String {
         rio_compat = "bin/rio";
       };
       wrapper_env = {
+        appearance = "YAZELIX_TERMINAL_APPEARANCE";
         emoji_font = "YAZELIX_TERMINAL_EMOJI_FONT";
       };
     };
@@ -575,10 +578,10 @@ fn build_nix_customization_api_expr(repo_root: &Path) -> String {
         "  home_manager_terminal_option_omits_fallback_terminal_packages = !(builtins.any (pkg: let name = pkg.name or \"\"; in pkgs.lib.hasPrefix \"ghostty-\" name || pkgs.lib.hasPrefix \"foot-\" name || pkgs.lib.hasPrefix \"kitty-\" name || pkgs.lib.hasPrefix \"rio-\" name || pkgs.lib.hasPrefix \"wezterm-\" name || pkgs.lib.hasPrefix \"ratty-\" name) hmYzxterm.config.home.packages);".to_string(),
         r#"  home_manager_yzxterm_package_override_option = hmYzxtermPackageOverride.config.programs.yazelix.yzxterm_package.passthru.yzxtermPackageMetadata.package_name == "validator-yazelix-terminal-fast";
   yzxterm_package_override_is_yzxterm_scoped = ghosttyRegistryWithInvalidYzxtermOverride.manifest.terminal.commands == [ "ghostty" ];
-  yzxterm_package_override_uses_package_metadata = yzxtermOverrideRegistry.terminalPackageMetadata.package_name == "validator-yazelix-terminal-fast" && builtins.elem "validator-yazelix-terminal-desktop" yzxtermOverrideRegistry.exportedCommands && yzxtermOverrideRegistry.terminalPackageRuntimeIdentity.package_profile == "yzxterm-fast";
+  yzxterm_package_override_uses_package_metadata = yzxtermOverrideRegistry.terminalPackageMetadata.package_name == "validator-yazelix-terminal-fast" && builtins.elem "validator-yazelix-terminal-desktop" yzxtermOverrideRegistry.exportedCommands && yzxtermOverrideRegistry.terminalPackageRuntimeIdentity.package_profile == "yzxterm-fast" && yzxtermOverrideRegistry.terminalPackageRuntimeIdentity.yzxterm_terminal_supported_appearance_modes == [ "dark" "light" "auto" ] && yzxtermOverrideRegistry.terminalPackageRuntimeIdentity.yzxterm_terminal_default_appearance_mode == "dark";
   yzxterm_package_override_rejects_missing_metadata = !invalidYzxtermPackageRegistry.success;
-  yzxterm_fast_child_metadata_marks_unchecked = (yzxtermFastChildMetadata.package_profile or "") == "fast" && (yzxtermFastChildMetadata.checked_package or true) == false;
-  yzxterm_release_child_metadata_marks_checked = (yzxtermReleaseChildMetadata.package_profile or "") == "release" && (yzxtermReleaseChildMetadata.checked_package or false) == true;"#
+  yzxterm_fast_child_metadata_marks_unchecked = (yzxtermFastChildMetadata.package_profile or "") == "fast" && (yzxtermFastChildMetadata.checked_package or true) == false && (yzxtermFastChildMetadata.supported_appearance_modes or []) == [ "dark" "light" "auto" ] && (yzxtermFastChildMetadata.default_appearance_mode or "") == "dark" && (yzxtermFastChildMetadata.wrapper_env.appearance or "") == "YAZELIX_TERMINAL_APPEARANCE";
+  yzxterm_release_child_metadata_marks_checked = (yzxtermReleaseChildMetadata.package_profile or "") == "release" && (yzxtermReleaseChildMetadata.checked_package or false) == true && (yzxtermReleaseChildMetadata.supported_appearance_modes or []) == [ "dark" "light" "auto" ] && (yzxtermReleaseChildMetadata.default_appearance_mode or "") == "dark" && (yzxtermReleaseChildMetadata.wrapper_env.appearance or "") == "YAZELIX_TERMINAL_APPEARANCE";"#
             .to_string(),
         "  invalid_runtime_tool_rejected = !invalidRuntimeTool.success;".to_string(),
         "  unsupported_component_rejected = !unsupportedComponent.success;".to_string(),

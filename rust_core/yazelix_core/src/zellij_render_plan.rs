@@ -1,5 +1,6 @@
 //! Typed Zellij render-plan data for generated Zellij config and layout KDL.
 
+use crate::appearance_mode::{APPEARANCE_MODE_DARK, ZELLIJ_THEME_LIGHT, appearance_default_theme};
 use crate::bridge::{CoreError, ErrorClass};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
@@ -126,6 +127,10 @@ fn default_zellij_theme() -> String {
     "default".into()
 }
 
+fn default_appearance_mode() -> String {
+    APPEARANCE_MODE_DARK.into()
+}
+
 fn default_string_true() -> String {
     "true".into()
 }
@@ -221,6 +226,8 @@ pub struct ZellijRenderPlanRequest {
     pub zellij_custom_text: Option<String>,
     #[serde(default = "default_zellij_theme")]
     pub zellij_theme: String,
+    #[serde(default = "default_appearance_mode")]
+    pub appearance_mode: String,
     #[serde(default = "default_string_true")]
     pub zellij_pane_frames: String,
     #[serde(default = "default_string_true")]
@@ -666,7 +673,12 @@ pub fn compute_zellij_render_plan(
         request.right_sidebar_width_percent,
     );
 
-    let theme = pick_theme(&request.zellij_theme);
+    let theme_config = appearance_default_theme(
+        &request.zellij_theme,
+        ZELLIJ_THEME_LIGHT,
+        &request.appearance_mode,
+    );
+    let theme = pick_theme(&theme_config);
     let pane_frames_value = if bool_setting_from_string(&request.zellij_pane_frames) {
         "true"
     } else {
@@ -781,6 +793,7 @@ mod tests {
             zellij_widget_tray: None,
             zellij_custom_text: None,
             zellij_theme: "default".into(),
+            appearance_mode: APPEARANCE_MODE_DARK.into(),
             zellij_pane_frames: "true".into(),
             zellij_rounded_corners: "true".into(),
             disable_zellij_tips: "true".into(),
@@ -1002,6 +1015,29 @@ mod tests {
             .find(|s| s.name == "support_kitty_keyboard_protocol")
             .unwrap();
         assert_eq!(kitty.value, "true");
+    }
+
+    // Defends: light appearance changes only the implicit default Zellij theme, preserving explicit user choices.
+    #[test]
+    fn light_appearance_changes_default_theme_only() {
+        let mut req = sample_request();
+        req.appearance_mode = "light".into();
+        let plan = compute_zellij_render_plan(&req).unwrap();
+        let theme = plan
+            .dynamic_top_level_settings
+            .iter()
+            .find(|setting| setting.name == "theme")
+            .unwrap();
+        assert_eq!(theme.value, "\"catppuccin-latte\"");
+
+        req.zellij_theme = "dracula".into();
+        let plan = compute_zellij_render_plan(&req).unwrap();
+        let theme = plan
+            .dynamic_top_level_settings
+            .iter()
+            .find(|setting| setting.name == "theme")
+            .unwrap();
+        assert_eq!(theme.value, "\"dracula\"");
     }
 
     // Regression: status widget labels must never be empty, even when config values are paths or omitted.

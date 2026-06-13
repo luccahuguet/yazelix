@@ -115,6 +115,7 @@ fn run_explicit_terminal_launch(
     ));
     if requested_terminal != "yzxterm" {
         extra_env.extend([
+            ("YAZELIX_TERMINAL_APPEARANCE".to_string(), None),
             ("YAZELIX_TERMINAL_EMOJI_FONT".to_string(), None),
             ("YAZELIX_TERMINAL_EFFECTS".to_string(), None),
             ("YAZELIX_TERMINAL_PROFILE".to_string(), None),
@@ -1008,7 +1009,7 @@ mod tests {
         let parsed = parse_packaged_terminal_launcher_exec(
             desktop_path,
             "yzxterm",
-            r#"env YAZELIX_SKIP_STABLE_WRAPPER_REDIRECT=1 YAZELIX_TERMINAL_PROFILE=shaders "/nix/store/with space/bin/yzx" desktop launch"#,
+            r#"env YAZELIX_SKIP_STABLE_WRAPPER_REDIRECT=1 YAZELIX_TERMINAL_APPEARANCE=light YAZELIX_TERMINAL_PROFILE=shaders "/nix/store/with space/bin/yzx" desktop launch"#,
         )
         .unwrap();
 
@@ -1022,6 +1023,10 @@ mod tests {
                 (
                     "YAZELIX_SKIP_STABLE_WRAPPER_REDIRECT".to_string(),
                     Some("1".to_string())
+                ),
+                (
+                    "YAZELIX_TERMINAL_APPEARANCE".to_string(),
+                    Some("light".to_string())
                 ),
                 (
                     "YAZELIX_TERMINAL_PROFILE".to_string(),

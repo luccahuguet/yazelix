@@ -16,6 +16,7 @@ names, or make other terminal variants depend on yzxterm internals.
 | yzxterm profile config templates | `yazelix-terminal` child package |
 | yzxterm emoji fallback presets and bundled font paths | `yazelix-terminal` child package |
 | yzxterm shader asset layout and ABI | `yazelix-terminal` child package |
+| yzxterm dark/light themes and adaptive appearance behavior | `yazelix-terminal` child package |
 | yzxterm package metadata schema and values | `yazelix-terminal` child package |
 | runtime variant selection | main Yazelix Nix package builders |
 | Home Manager terminal selection | main Yazelix Home Manager module |
@@ -30,10 +31,15 @@ names, or make other terminal variants depend on yzxterm internals.
   `passthru.yzxtermPackageMetadata`
 - The metadata must include schema version, package name, package profile,
   checked/release status, metadata path, wrapper commands, config roots,
-  supported emoji fallback presets, and the emoji-font wrapper env name
+  supported emoji fallback presets, supported appearance modes, default
+  appearance mode, the appearance wrapper env name, and the emoji-font wrapper
+  env name
 - Main Yazelix derives the yzxterm launch command and runtime identity package
   fields from that metadata, not from terminal package names or child config
   files
+- Main Yazelix requires yzxterm metadata to advertise `dark`, `light`, and
+  `auto` appearance support before exposing yzxterm as a first-class target for
+  global `appearance.mode`
 - `programs.yazelix.yzxterm_package` overrides only the yzxterm child package.
   It must not require replacing `programs.yazelix.package`
 - The override is invalid unless the active terminal or an extra terminal
@@ -49,12 +55,12 @@ names, or make other terminal variants depend on yzxterm internals.
   owner and not package identity inference
 - Main Yazelix stable inputs for that adapter are limited to the selected
   yzxterm profile, selected `terminal.emoji_style` yzxterm emoji fallback preset, terminal order,
-  runtime and state directories, terminal transparency, yzxterm cell-opacity
-  policy, Yazelix ANSI palette, active cursor color, and generated cursor shader
+  runtime and state directories, terminal transparency, global appearance mode,
+  yzxterm cell-opacity policy, active cursor color, and generated cursor shader
   snapshot paths
 - The child package remains the owner of profile template roots, wrapper
-  behavior, emoji font fallback roots, shader ABI, shader file layout, and the
-  meaning of package metadata
+  behavior, emoji font fallback roots, dark/light themes, adaptive appearance
+  behavior, shader ABI, shader file layout, and the meaning of package metadata
 - If the child package later exposes a stable config-composition API, it may
   replace the main-side adapter. Until then, the main-side adapter is the
   supported boundary and must fail clearly when packaged profile TOML is missing
@@ -70,7 +76,7 @@ names, or make other terminal variants depend on yzxterm internals.
 | Rio | writes generated upstream Rio config from stable Yazelix settings | Rio owns config semantics |
 | Ratty | writes generated Ratty config and launch argv | Ratty owns config semantics and RGP/GPU behavior |
 | Foot | writes generated Linux-only `foot.ini` | Foot owns config semantics |
-| yzxterm | reads the selected child-owned profile and emoji-fallback template, then applies stable Yazelix transparency, cell-opacity policy, ANSI palette, cursor color, and generated shader snapshot paths | `yazelix-terminal` owns wrapper behavior, profile templates, emoji fallback presets, shader ABI, shader asset layout, and package metadata |
+| yzxterm | reads the selected child-owned profile and emoji-fallback template, copies child-owned dark/light themes into the generated config root, then applies stable Yazelix transparency, appearance selection, cell-opacity policy, cursor color, and generated shader snapshot paths | `yazelix-terminal` owns wrapper behavior, profile templates, emoji fallback presets, dark/light theme palettes, adaptive appearance behavior, shader ABI, shader asset layout, and package metadata |
 
 ## Verification
 

@@ -206,6 +206,16 @@ ${terminalDescriptionBullets}
     '';
   };
 
+  appearance_mode = mkMainContractOption "appearance.mode" {
+    description = ''
+      Global appearance mode for generated Yazelix themes.
+
+      - "dark": keep the default dark Yazelix palette
+      - "light": use light defaults where Yazelix owns the generated theme
+      - "auto": use terminal-supported system appearance switching where available
+    '';
+  };
+
   editor_command = mkMainContractOption "editor.command" {
     description = ''
       Editor command - yazelix will always set this as EDITOR.

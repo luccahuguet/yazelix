@@ -1,6 +1,7 @@
 mod writer;
 
 use crate::action_registry::YAZI_ACTIONS;
+use crate::appearance_mode::appearance_mode_from_config;
 use crate::bridge::{CoreError, ErrorClass};
 use crate::config_normalize::{NormalizeConfigRequest, normalize_config};
 use crate::control_plane::config_dir_from_env;
@@ -143,6 +144,7 @@ fn build_yazi_render_plan_request(
             .and_then(JsonValue::as_str)
             .unwrap_or("default")
             .to_string(),
+        appearance_mode: appearance_mode_from_config(normalized).to_string(),
         yazi_sort_by: normalized
             .get("yazi_sort_by")
             .and_then(JsonValue::as_str)

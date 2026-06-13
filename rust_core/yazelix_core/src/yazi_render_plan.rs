@@ -6,6 +6,7 @@
 //! (embedded at compile time). Shared `sort_by` / default plugin defaults are parity-checked against
 //! `config_metadata/main_config_contract.toml` in integration tests.
 
+use crate::appearance_mode::{APPEARANCE_MODE_DARK, YAZI_THEME_LIGHT, appearance_default_theme};
 use crate::bridge::{CoreError, ErrorClass};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
@@ -44,6 +45,10 @@ fn default_yazi_sort_by() -> String {
 
 fn default_yazi_plugins() -> Vec<String> {
     yazi_render_plan_metadata().default_plugins.clone()
+}
+
+fn default_appearance_mode() -> String {
+    APPEARANCE_MODE_DARK.into()
 }
 
 fn pick_index(len: usize) -> usize {
@@ -120,6 +125,8 @@ fn theme_flavor_plan(resolved_theme: &str) -> ThemeFlavorPlan {
 pub struct YaziRenderPlanRequest {
     #[serde(default = "default_yazi_theme")]
     pub yazi_theme: String,
+    #[serde(default = "default_appearance_mode")]
+    pub appearance_mode: String,
     #[serde(default = "default_yazi_sort_by")]
     pub yazi_sort_by: String,
     #[serde(default)]
@@ -159,7 +166,12 @@ pub fn compute_yazi_render_plan(
         .clone()
         .unwrap_or_else(default_yazi_plugins);
     let git_plugin_enabled = yazi_plugins.iter().any(|p| p == "git");
-    let resolved_theme = resolve_yazi_theme(&request.yazi_theme);
+    let theme_config = appearance_default_theme(
+        &request.yazi_theme,
+        YAZI_THEME_LIGHT,
+        &request.appearance_mode,
+    );
+    let resolved_theme = resolve_yazi_theme(&theme_config);
     let theme_flavor = theme_flavor_plan(&resolved_theme);
     let load_order = merged_plugin_load_order(&yazi_plugins);
     let core_plugins = yazi_render_plan_metadata().core_plugins.clone();
@@ -186,6 +198,7 @@ mod tests {
     fn sample_request() -> YaziRenderPlanRequest {
         YaziRenderPlanRequest {
             yazi_theme: "default".into(),
+            appearance_mode: APPEARANCE_MODE_DARK.into(),
             yazi_sort_by: "alphabetical".into(),
             yazi_plugins: None,
         }
@@ -237,6 +250,25 @@ stale_metadata_field = true
         let plan = compute_yazi_render_plan(&sample_request()).unwrap();
         assert_eq!(plan.resolved_theme, "default");
         assert_eq!(plan.theme_flavor, ThemeFlavorPlan::None);
+    }
+
+    // Defends: light appearance changes only the implicit default Yazi theme, preserving explicit user choices.
+    #[test]
+    fn light_appearance_changes_default_theme_only() {
+        let mut req = sample_request();
+        req.appearance_mode = "light".into();
+        let plan = compute_yazi_render_plan(&req).unwrap();
+        assert_eq!(plan.resolved_theme, "catppuccin-latte");
+        assert_eq!(
+            plan.theme_flavor,
+            ThemeFlavorPlan::Uniform {
+                flavor: "catppuccin-latte".into()
+            }
+        );
+
+        req.yazi_theme = "dracula".into();
+        let plan = compute_yazi_render_plan(&req).unwrap();
+        assert_eq!(plan.resolved_theme, "dracula");
     }
 
     // Defends: concrete non-default themes map to a uniform dark/light flavor block for theme.toml.

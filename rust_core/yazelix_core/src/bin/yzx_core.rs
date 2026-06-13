@@ -3,6 +3,7 @@ use serde::de::DeserializeOwned;
 use std::io::Write;
 use std::path::PathBuf;
 use yazelix_core::active_config_surface::resolve_active_config_paths;
+use yazelix_core::appearance_mode::APPEARANCE_MODE_DARK;
 use yazelix_core::control_plane::{
     config_dir_from_env, config_override_from_env, config_state_compute_request_from_env,
     config_state_record_request_from_env, ghostty_materialization_request_from_env,
@@ -991,6 +992,7 @@ fn ghostty_materialization_request_from_args(
         config_dir: required_path(args.config_dir, "Missing --config-dir path")?,
         state_dir: required_path(args.state_dir, "Missing --state-dir path")?,
         transparency: required_string(args.transparency, "Missing --transparency")?,
+        appearance_mode: APPEARANCE_MODE_DARK.to_string(),
         cursor_config_path: required_path(args.cursor_config_path, "Missing --cursor-config path")?,
     })
 }
