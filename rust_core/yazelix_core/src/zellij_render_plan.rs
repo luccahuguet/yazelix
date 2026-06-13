@@ -896,6 +896,16 @@ mod tests {
         assert!(compute_zellij_render_plan(&req).is_err());
     }
 
+    // Regression: the retired cursor status widget must not survive as a generated layout entry.
+    #[test]
+    fn rejects_retired_cursor_tray_widget() {
+        let mut req = sample_request();
+        req.zellij_widget_tray = Some(vec!["editor".into(), "cursor".into()]);
+        let error = compute_zellij_render_plan(&req).unwrap_err();
+
+        assert_eq!(error.code(), "invalid_widget_tray_entry");
+    }
+
     // Defends: supported dynamic widgets are accepted as optional extension points while Codex usage stays in the default tray.
     #[test]
     fn accepts_dynamic_tray_widgets_with_codex_defaulted() {

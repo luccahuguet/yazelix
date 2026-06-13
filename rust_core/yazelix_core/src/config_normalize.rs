@@ -1395,6 +1395,21 @@ open_directory_as_workspace_pane = []
         );
     }
 
+    // Regression: the retired cursor status widget is rejected before Zellij layout generation.
+    #[test]
+    fn rejects_retired_cursor_widget_tray_value() {
+        let path = write_user_config("[zellij]\nwidget_tray = [\"editor\", \"cursor\"]\n");
+        let error = normalize_config(&request_for(path)).unwrap_err();
+
+        assert_eq!(error.class().as_str(), "config");
+        assert_eq!(error.code(), "unsupported_config");
+        let details = error.details();
+        assert_eq!(
+            details["blocking_diagnostics"][0]["headline"],
+            "Unsupported config value at zellij.widget_tray"
+        );
+    }
+
     // Regression: startup-style strict normalization rejects missing mandatory fields with a fixable diagnostic.
     #[test]
     fn rejects_missing_fields_when_requested() {

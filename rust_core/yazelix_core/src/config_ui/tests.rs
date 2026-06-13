@@ -140,21 +140,13 @@ fn list_fields_edit_from_full_json_not_display_summary() {
     let model = build_config_ui_model(&request).expect("model");
     let field = model_field(&model, "zellij.widget_tray");
 
-    assert_eq!(field.current_value, "[7 items]");
+    assert_eq!(field.current_value, "[6 items]");
     assert_eq!(field.apply_status.summary, "after Yazelix restart");
     let input = edit_input_for_field(field);
     assert!(input.starts_with("[\"editor\",\"shell\",\"term\""));
     assert_eq!(
         parse_edit_input(field, &input).expect("string list"),
-        json!([
-            "editor",
-            "shell",
-            "term",
-            "cursor",
-            "codex_usage",
-            "cpu",
-            "ram"
-        ])
+        json!(["editor", "shell", "term", "codex_usage", "cpu", "ram"])
     );
 }
 
@@ -777,6 +769,7 @@ fn enum_string_list_picker_toggles_subvalues_with_space() {
     let details = lines_text(&render_details(&app.ui, UiRowRef::Field(edit.field_index)));
     assert!(details.contains("> [x] editor"));
     assert!(details.contains("  [ ] workspace"));
+    assert!(!details.contains("cursor"));
 
     app.handle_key(KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE));
     app.handle_key(KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE));
@@ -792,7 +785,6 @@ fn enum_string_list_picker_toggles_subvalues_with_space() {
             "shell",
             "term",
             "workspace",
-            "cursor",
             "codex_usage",
             "cpu",
             "ram"
@@ -810,7 +802,6 @@ fn enum_string_list_picker_toggles_subvalues_with_space() {
             "shell",
             "term",
             "workspace",
-            "cursor",
             "codex_usage",
             "cpu",
             "ram"

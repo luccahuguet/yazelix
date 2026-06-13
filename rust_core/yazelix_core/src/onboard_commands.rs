@@ -28,8 +28,8 @@ struct OnboardCliArgs {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct Choice {
-    label: &'static str,
-    value: &'static str,
+    label: String,
+    value: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -161,10 +161,10 @@ pub fn run_yzx_onboard(args: &[String]) -> Result<i32, CoreError> {
         return Ok(0);
     }
 
-    let answers = run_interactive_onboarding()?;
     let runtime_dir = runtime_dir_from_env()?;
     let config_dir = config_dir_from_env()?;
     let paths = primary_config_paths(&runtime_dir, &config_dir);
+    let answers = run_interactive_onboarding(&paths.contract_path)?;
     let generated = build_onboard_config(&answers, &paths.default_config_path)?;
     if parsed.dry_run {
         print!("{generated}");
@@ -213,7 +213,7 @@ fn print_onboard_help() {
     println!("      --dry-run  Print the generated config instead of writing it");
 }
 
-fn run_interactive_onboarding() -> Result<OnboardAnswers, CoreError> {
+fn run_interactive_onboarding(contract_path: &Path) -> Result<OnboardAnswers, CoreError> {
     println!("Yazelix onboard");
     println!("Use arrow keys to move, Space to toggle multi-select choices, Enter to confirm.");
     println!("Press q or Esc to abort.");
@@ -223,7 +223,7 @@ fn run_interactive_onboarding() -> Result<OnboardAnswers, CoreError> {
     let shell = ask_single(shell_question())?;
     let editor_command = ask_single(editor_question())?;
     let hide_sidebar_on_file_open = ask_single(sidebar_file_open_question())? == "true";
-    let widget_tray = ask_multi(widget_tray_question())?;
+    let widget_tray = ask_multi(widget_tray_question(contract_path)?)?;
 
     Ok(OnboardAnswers {
         shell,
@@ -241,7 +241,7 @@ fn ask_single(question: SingleQuestion) -> Result<String, CoreError> {
             PromptOutcome::Continue => {}
             PromptOutcome::SingleSelected(index) => {
                 finish_prompt_line()?;
-                return Ok(question.choices[index].value.to_string());
+                return Ok(question.choices[index].value.clone());
             }
             PromptOutcome::Aborted => return Err(onboard_aborted_error()),
             PromptOutcome::MultiSelected(_) => unreachable!("single prompt cannot select multi"),
@@ -259,7 +259,7 @@ fn ask_multi(question: MultiQuestion) -> Result<Vec<String>, CoreError> {
                 finish_prompt_line()?;
                 return Ok(indexes
                     .into_iter()
-                    .map(|index| question.choices[index].value.to_string())
+                    .map(|index| question.choices[index].value.clone())
                     .collect());
             }
             PromptOutcome::Aborted => return Err(onboard_aborted_error()),
@@ -375,29 +375,11 @@ fn single_question(
         choices: choices
             .iter()
             .map(|(label, value)| Choice {
-                label: *label,
-                value: *value,
+                label: (*label).to_string(),
+                value: (*value).to_string(),
             })
             .collect(),
         default_index,
-    }
-}
-
-fn multi_question(
-    prompt: &'static str,
-    choices: &[(&'static str, &'static str)],
-    selected: &[bool],
-) -> MultiQuestion {
-    MultiQuestion {
-        prompt,
-        choices: choices
-            .iter()
-            .map(|(label, value)| Choice {
-                label: *label,
-                value: *value,
-            })
-            .collect(),
-        selected: selected.to_vec(),
     }
 }
 
@@ -434,28 +416,136 @@ fn sidebar_file_open_question() -> SingleQuestion {
     )
 }
 
-fn widget_tray_question() -> MultiQuestion {
-    multi_question(
-        "Status-bar widgets",
-        &[
-            ("Editor", "editor"),
-            ("Shell", "shell"),
-            ("Terminal", "term"),
-            ("Workspace", "workspace"),
-            ("Cursor preset", "cursor"),
-            ("Claude 5h/week usage and quota", "claude_usage"),
-            ("Codex 5h/week reset timing and quota", "codex_usage"),
-            (
-                "OpenCode Go 5h/week/month usage and quota",
-                "opencode_go_usage",
-            ),
-            ("CPU", "cpu"),
-            ("RAM", "ram"),
-        ],
-        &[
-            true, true, true, false, false, false, false, false, true, true,
-        ],
-    )
+fn widget_tray_question(contract_path: &Path) -> Result<MultiQuestion, CoreError> {
+    let (allowed_values, default_values) = widget_tray_contract_values(contract_path)?;
+    let choices = allowed_values
+        .iter()
+        .map(|value| {
+            widget_tray_label(value).map(|label| Choice {
+                label: label.to_string(),
+                value: value.clone(),
+            })
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    let selected = allowed_values
+        .iter()
+        .map(|value| default_values.contains(value))
+        .collect();
+
+    Ok(MultiQuestion {
+        prompt: "Status-bar widgets",
+        choices,
+        selected,
+    })
+}
+
+fn widget_tray_label(value: &str) -> Result<&'static str, CoreError> {
+    match value {
+        "editor" => Ok("Editor"),
+        "shell" => Ok("Shell"),
+        "term" => Ok("Terminal"),
+        "workspace" => Ok("Workspace"),
+        "claude_usage" => Ok("Claude 5h/week usage and quota"),
+        "codex_usage" => Ok("Codex 5h/week reset timing and quota"),
+        "opencode_go_usage" => Ok("OpenCode Go 5h/week/month usage and quota"),
+        "cpu" => Ok("CPU"),
+        "ram" => Ok("RAM"),
+        other => Err(CoreError::classified(
+            ErrorClass::Internal,
+            "missing_onboard_widget_label",
+            format!("Status-bar widget {other} has no onboarding label."),
+            "Add an onboarding label for every zellij.widget_tray allowed value.",
+            json!({ "widget": other }),
+        )),
+    }
+}
+
+fn widget_tray_contract_values(
+    contract_path: &Path,
+) -> Result<(Vec<String>, Vec<String>), CoreError> {
+    let raw = fs::read_to_string(contract_path).map_err(|error| {
+        CoreError::io(
+            "read_onboard_widget_contract",
+            "Could not read the Yazelix config contract for onboarding",
+            "Reinstall Yazelix so config_metadata/main_config_contract.toml is available.",
+            contract_path.display().to_string(),
+            error,
+        )
+    })?;
+    let contract = ::toml::from_str::<::toml::Table>(&raw).map_err(|source| {
+        CoreError::classified(
+            ErrorClass::Runtime,
+            "invalid_onboard_widget_contract",
+            "Could not parse the Yazelix config contract for onboarding.",
+            "Reinstall Yazelix so config_metadata/main_config_contract.toml is valid.",
+            json!({ "path": contract_path.display().to_string(), "source": source.to_string() }),
+        )
+    })?;
+    let field = contract
+        .get("fields")
+        .and_then(::toml::Value::as_table)
+        .and_then(|fields| fields.get("zellij.widget_tray"))
+        .and_then(::toml::Value::as_table)
+        .ok_or_else(|| {
+            CoreError::classified(
+                ErrorClass::Runtime,
+                "missing_onboard_widget_contract_field",
+                "The Yazelix config contract is missing zellij.widget_tray.",
+                "Reinstall Yazelix so config_metadata/main_config_contract.toml is current.",
+                json!({ "path": contract_path.display().to_string() }),
+            )
+        })?;
+    let allowed_values = widget_tray_contract_string_array(field, "allowed_values", contract_path)?;
+    let default_values = widget_tray_contract_string_array(field, "default", contract_path)?;
+    for value in &default_values {
+        if !allowed_values.contains(value) {
+            return Err(CoreError::classified(
+                ErrorClass::Runtime,
+                "invalid_onboard_widget_contract_default",
+                format!("zellij.widget_tray default contains unsupported value: {value}."),
+                "Fix config_metadata/main_config_contract.toml, then retry.",
+                json!({ "path": contract_path.display().to_string(), "widget": value }),
+            ));
+        }
+    }
+
+    Ok((allowed_values, default_values))
+}
+
+fn widget_tray_contract_string_array(
+    field: &::toml::Table,
+    key: &str,
+    contract_path: &Path,
+) -> Result<Vec<String>, CoreError> {
+    field
+        .get(key)
+        .and_then(::toml::Value::as_array)
+        .ok_or_else(|| {
+            CoreError::classified(
+                ErrorClass::Runtime,
+                "invalid_onboard_widget_contract_field",
+                format!("zellij.widget_tray is missing a {key} array."),
+                "Fix config_metadata/main_config_contract.toml, then retry.",
+                json!({ "path": contract_path.display().to_string(), "key": key }),
+            )
+        })?
+        .iter()
+        .map(|value| {
+            value.as_str().map(ToOwned::to_owned).ok_or_else(|| {
+                CoreError::classified(
+                    ErrorClass::Runtime,
+                    "invalid_onboard_widget_contract_value",
+                    format!("zellij.widget_tray {key} contains a non-string value."),
+                    "Fix config_metadata/main_config_contract.toml, then retry.",
+                    json!({
+                        "path": contract_path.display().to_string(),
+                        "key": key,
+                        "value": value.to_string()
+                    }),
+                )
+            })
+        })
+        .collect()
 }
 
 fn write_onboard_config(
@@ -588,6 +678,12 @@ mod tests {
         primary_config_paths(&runtime, &config)
     }
 
+    fn repo_contract_path() -> std::path::PathBuf {
+        Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../..")
+            .join("config_metadata/main_config_contract.toml")
+    }
+
     // Defends: single-choice onboarding prompts support arrow-style navigation before confirmation.
     #[test]
     fn prompt_state_selects_single_choice_with_navigation() {
@@ -632,10 +728,34 @@ mod tests {
         let labels = question
             .choices
             .iter()
-            .map(|choice| choice.label)
+            .map(|choice| choice.label.as_str())
             .collect::<Vec<_>>();
 
         assert_eq!(labels, vec!["Yazelix Helix (recommended)", "Neovim", "Vim"]);
+    }
+
+    // Regression: first-run onboarding derives the status-widget choices from the config contract and cannot retain retired values.
+    #[test]
+    fn widget_tray_question_matches_contract_and_excludes_retired_cursor_widget() {
+        let contract_path = repo_contract_path();
+        let (allowed, defaults) = widget_tray_contract_values(&contract_path).unwrap();
+        let question = widget_tray_question(&contract_path).unwrap();
+        let values = question
+            .choices
+            .iter()
+            .map(|choice| choice.value.clone())
+            .collect::<Vec<_>>();
+        let selected = question
+            .choices
+            .iter()
+            .zip(question.selected.iter())
+            .filter_map(|(choice, selected)| selected.then_some(choice.value.clone()))
+            .collect::<Vec<_>>();
+
+        assert_eq!(values, allowed);
+        assert_eq!(selected, defaults);
+        assert_eq!(question.selected.len(), question.choices.len());
+        assert!(!values.contains(&"cursor".to_string()));
     }
 
     // Defends: onboarding emits valid settings.jsonc with current supported main config fields.
