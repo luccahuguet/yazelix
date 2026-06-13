@@ -40,49 +40,51 @@ struct WelcomePalette {
     hint: Color,
 }
 
-const fn rgb(r: u8, g: u8, b: u8) -> Color {
-    Color::Rgb { r, g, b }
+impl WelcomePalette {
+    const DARK: Self = Self {
+        logo: [
+            Color::Red,
+            Color::Green,
+            Color::Yellow,
+            Color::Blue,
+            Color::Magenta,
+        ],
+        body: Color::Green,
+        accent: Color::Blue,
+        footer: Color::Yellow,
+        border: Color::Magenta,
+        hint: Color::Magenta,
+    };
+
+    const LIGHT: Self = Self {
+        logo: [
+            rgb(178, 77, 87),
+            rgb(47, 125, 50),
+            rgb(154, 90, 0),
+            rgb(30, 102, 245),
+            rgb(124, 63, 151),
+        ],
+        body: rgb(76, 79, 105),
+        accent: rgb(30, 102, 245),
+        footer: rgb(162, 79, 0),
+        border: rgb(157, 75, 140),
+        hint: rgb(157, 75, 140),
+    };
+
+    fn for_appearance(appearance_mode: &str) -> Self {
+        if appearance_mode
+            .trim()
+            .eq_ignore_ascii_case(APPEARANCE_MODE_LIGHT)
+        {
+            Self::LIGHT
+        } else {
+            Self::DARK
+        }
+    }
 }
 
-const DARK_WELCOME_PALETTE: WelcomePalette = WelcomePalette {
-    logo: [
-        Color::Red,
-        Color::Green,
-        Color::Yellow,
-        Color::Blue,
-        Color::Magenta,
-    ],
-    body: Color::Green,
-    accent: Color::Blue,
-    footer: Color::Yellow,
-    border: Color::Magenta,
-    hint: Color::Magenta,
-};
-
-const LIGHT_WELCOME_PALETTE: WelcomePalette = WelcomePalette {
-    logo: [
-        rgb(178, 77, 87),
-        rgb(47, 125, 50),
-        rgb(154, 90, 0),
-        rgb(30, 102, 245),
-        rgb(124, 63, 151),
-    ],
-    body: rgb(76, 79, 105),
-    accent: rgb(30, 102, 245),
-    footer: rgb(162, 79, 0),
-    border: rgb(157, 75, 140),
-    hint: rgb(157, 75, 140),
-};
-
-fn welcome_palette_for_appearance(appearance_mode: &str) -> WelcomePalette {
-    if appearance_mode
-        .trim()
-        .eq_ignore_ascii_case(APPEARANCE_MODE_LIGHT)
-    {
-        LIGHT_WELCOME_PALETTE
-    } else {
-        DARK_WELCOME_PALETTE
-    }
+const fn rgb(r: u8, g: u8, b: u8) -> Color {
+    Color::Rgb { r, g, b }
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -383,7 +385,7 @@ fn build_logo_card_frame(
 }
 
 fn get_logo_welcome_frame(width: usize) -> Vec<String> {
-    get_logo_welcome_frame_with_palette(width, welcome_palette_for_appearance(APPEARANCE_MODE_DARK))
+    get_logo_welcome_frame_with_palette(width, WelcomePalette::for_appearance(APPEARANCE_MODE_DARK))
 }
 
 fn get_logo_welcome_frame_with_palette(width: usize, palette: WelcomePalette) -> Vec<String> {
@@ -399,7 +401,7 @@ fn get_logo_welcome_frame_with_palette(width: usize, palette: WelcomePalette) ->
 fn get_logo_animation_frames(width: usize) -> Vec<Vec<String>> {
     get_logo_animation_frames_with_palette(
         width,
-        welcome_palette_for_appearance(APPEARANCE_MODE_DARK),
+        WelcomePalette::for_appearance(APPEARANCE_MODE_DARK),
     )
 }
 
@@ -444,7 +446,7 @@ fn build_boids_frame(
         duration,
         cell_style,
         variant,
-        welcome_palette_for_appearance(APPEARANCE_MODE_DARK),
+        WelcomePalette::for_appearance(APPEARANCE_MODE_DARK),
     )
 }
 
@@ -505,7 +507,7 @@ fn welcome_sequence(
         height,
         duration,
         cell_style,
-        welcome_palette_for_appearance(APPEARANCE_MODE_DARK),
+        WelcomePalette::for_appearance(APPEARANCE_MODE_DARK),
     )
 }
 
@@ -873,7 +875,7 @@ fn play_welcome_style_inner(
 ) -> Result<(), CoreError> {
     let _raw = raw_mode_guard()?;
     let (width, height) = settled_terminal_size();
-    let palette = welcome_palette_for_appearance(appearance_mode);
+    let palette = WelcomePalette::for_appearance(appearance_mode);
     let resolved_style = resolve_welcome_style(style, None)?;
     let playback_duration = if resolved_style == "logo" {
         Duration::from_millis(500)
@@ -1160,7 +1162,7 @@ mod tests {
     fn light_welcome_palette_uses_readable_ansi_rgb_roles() {
         let frame = get_logo_welcome_frame_with_palette(
             120,
-            welcome_palette_for_appearance(APPEARANCE_MODE_LIGHT),
+            WelcomePalette::for_appearance(APPEARANCE_MODE_LIGHT),
         );
         let joined = frame.join("\n");
 
