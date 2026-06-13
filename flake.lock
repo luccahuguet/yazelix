@@ -542,11 +542,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1781378089,
-        "narHash": "sha256-4WaRQWGBVecQISe8mUvo+yEE5wZw68xP9hRfVWsznkk=",
+        "lastModified": 1781381503,
+        "narHash": "sha256-lFSnuKpxXsSUnQYZkJsx4nXtVrJk7DjIPX4yadPLvTc=",
         "owner": "luccahuguet",
         "repo": "yazelix-zellij-bar",
-        "rev": "0d2e9976581a2737dda18811b28c3b92c7f4aac2",
+        "rev": "45315b290ff7c1b769b5c8d73aedbb61ce40b387",
         "type": "github"
       },
       "original": {
