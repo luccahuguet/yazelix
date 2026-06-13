@@ -16,7 +16,7 @@ export YAZELIX_STATE_DIR="${YAZELIX_STATE_DIR:-$xdg_data_home/yazelix}"
 export YAZELIX_LOGS_DIR="${YAZELIX_LOGS_DIR:-$YAZELIX_STATE_DIR/logs}"
 
 if [ -f "$runtime_dir/runtime_features/zellij_kitty_passthrough" ]; then
-  export YAZELIX_ZELLIJ_KITTY_PASSTHROUGH=1
+  export YAZI_ZELLIJ_KITTY_PASSTHROUGH=1
 fi
 
 scrub_yazelix_workspace_child_gui_env() {

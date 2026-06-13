@@ -129,7 +129,7 @@ done
 printf 'YAZELIX_RUNTIME_DIR=%s\n' "$YAZELIX_RUNTIME_DIR"
 printf 'YAZELIX_MANAGED_HELIX_BINARY=%s\n' "$YAZELIX_MANAGED_HELIX_BINARY"
 printf 'YAZELIX_NU_BIN=%s\n' "${YAZELIX_NU_BIN-unset}"
-printf 'YAZELIX_ZELLIJ_KITTY_PASSTHROUGH=%s\n' "${YAZELIX_ZELLIJ_KITTY_PASSTHROUGH-unset}"
+printf 'YAZI_ZELLIJ_KITTY_PASSTHROUGH=%s\n' "${YAZI_ZELLIJ_KITTY_PASSTHROUGH-unset}"
 "#,
     );
 
@@ -181,7 +181,7 @@ printf 'YAZELIX_ZELLIJ_KITTY_PASSTHROUGH=%s\n' "${YAZELIX_ZELLIJ_KITTY_PASSTHROU
         runtime_dir.join("libexec/hx").to_string_lossy()
     )));
     assert!(stdout.contains("YAZELIX_NU_BIN=unset"));
-    assert!(stdout.contains("YAZELIX_ZELLIJ_KITTY_PASSTHROUGH=1"));
+    assert!(stdout.contains("YAZI_ZELLIJ_KITTY_PASSTHROUGH=1"));
 }
 
 // Regression: the Ghostty launch wrapper must not expose runtime-private libexec helpers such as nix ahead of the host Nix.

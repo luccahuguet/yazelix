@@ -5,7 +5,7 @@
   manSrc ? baseYaziUnwrapped.passthru.srcs.man_src,
   sourceRoot ? "yazi-yazelix-kgp-src",
   version ? "26.5.6",
-  cargoHash ? "sha256-gc0uEMNJ+eCIymXK10+Swi11xuyP5cj6MbLLB/ZDgXw=",
+  cargoHash ? "sha256-TvBQqWrO0HJfK0wloVW+7XebK7xPp95JDAL3dGsz1Zg=",
 }:
 
 let
