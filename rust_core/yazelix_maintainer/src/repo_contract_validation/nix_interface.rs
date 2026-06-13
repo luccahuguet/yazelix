@@ -243,19 +243,6 @@ pub fn validate_nix_customization_api(repo_root: &Path) -> Result<ValidationRepo
         "KGP Zellij package must fall back to pkgs.zellij-unwrapped when pkgs.zellij is a wrapper without passthru.unwrapped",
         &mut report.errors,
     );
-    require_json_bool(
-        object,
-        "kgp_yazi_owns_cargo_deps",
-        "KGP Yazi package must own source-coupled Cargo vendor deps instead of inheriting consumer pkgs.yazi-unwrapped cargoDeps",
-        &mut report.errors,
-    );
-    require_json_bool(
-        object,
-        "kgp_yazi_clears_consumer_patches",
-        "KGP Yazi package must clear consumer pkgs.yazi-unwrapped patch hooks when it swaps to the KGP source",
-        &mut report.errors,
-    );
-
     Ok(report)
 }
 
@@ -497,14 +484,7 @@ fn build_nix_customization_api_expr(repo_root: &Path) -> String {
         "          postPatch = throw \"consumer pkgs.zellij-unwrapped postPatch leaked into Yazelix graphics runtime\";".to_string(),
         "          installCheckPhase = throw \"consumer pkgs.zellij-unwrapped installCheckPhase leaked into Yazelix graphics runtime\";".to_string(),
         "        });".to_string(),
-        "      } else { }) // {".to_string(),
-        "        yazi-unwrapped = prev.yazi-unwrapped.overrideAttrs (_old: {".to_string(),
-        "          cargoDeps = throw \"consumer pkgs.yazi-unwrapped cargoDeps leaked into Yazelix graphics runtime\";".to_string(),
-        "          patches = throw \"consumer pkgs.yazi-unwrapped patches leaked into Yazelix graphics runtime\";".to_string(),
-        "          prePatch = throw \"consumer pkgs.yazi-unwrapped prePatch leaked into Yazelix graphics runtime\";".to_string(),
-        "          postPatch = throw \"consumer pkgs.yazi-unwrapped postPatch leaked into Yazelix graphics runtime\";".to_string(),
-        "        });".to_string(),
-        "      })".to_string(),
+        "      } else { }))".to_string(),
         "    ];".to_string(),
         "  };".to_string(),
         "  wrappedNoPassthruConsumerPkgs = import flake.inputs.nixpkgs {".to_string(),
@@ -527,10 +507,6 @@ fn build_nix_customization_api_expr(repo_root: &Path) -> String {
         "      })".to_string(),
         "    ];".to_string(),
         "  };".to_string(),
-        "  yaziCodeSrc = builtins.path {".to_string(),
-        "    path = flake.inputs.yazelixYazi;".to_string(),
-        "    name = \"yazi-yazelix-kgp-src\";".to_string(),
-        "  };".to_string(),
         "  wrappedNoPassthruZellijBase = zellijBuildBase wrappedNoPassthruConsumerPkgs wrappedNoPassthruConsumerPkgs.zellij;".to_string(),
         format!(
             "  kgpZellij = import \"{}/packaging/yazelix_kgp_zellij.nix\" {{",
@@ -547,14 +523,6 @@ fn build_nix_customization_api_expr(repo_root: &Path) -> String {
         "    pkgs = wrappedNoPassthruConsumerPkgs;".to_string(),
         "    baseZellij = wrappedNoPassthruZellijBase;".to_string(),
         "    src = flake.inputs.yazelixZellij;".to_string(),
-        "  };".to_string(),
-        format!(
-            "  kgpYazi = import \"{}/packaging/yazelix_kgp_yazi.nix\" {{",
-            repo_root_literal
-        ),
-        "    pkgs = poisonedConsumerPkgs;".to_string(),
-        "    baseYaziUnwrapped = poisonedConsumerPkgs.yazi-unwrapped;".to_string(),
-        "    codeSrc = yaziCodeSrc;".to_string(),
         "  };".to_string(),
         "in {".to_string(),
         "  has_mk_yazelix = builtins.hasAttr \"mkYazelix\" flake.lib.${system};".to_string(),
@@ -589,8 +557,6 @@ fn build_nix_customization_api_expr(repo_root: &Path) -> String {
         "  kgp_zellij_clears_consumer_patches = (kgpZellij.patches or []) == [] && (kgpZellij.prePatch or \"\") == \"\" && (kgpZellij.postPatch or \"\") == \"\";".to_string(),
         "  kgp_zellij_owns_install_check = (kgpZellij.installCheckPhase or \"\") == \"runHook preInstallCheck\\nrunHook postInstallCheck\\n\";".to_string(),
         "  kgp_zellij_uses_unwrapped_package_when_wrapper_lacks_passthru = (wrappedNoPassthruZellijBase.__yazelix_test_base or \"\") == \"zellij-unwrapped\" && (kgpZellijWrappedNoPassthru.version or \"\") == \"0.44.3\" && (kgpZellijWrappedNoPassthru.cargoDeps.name or \"\") == \"zellij-0.44.3-vendor\";".to_string(),
-        "  kgp_yazi_owns_cargo_deps = (kgpYazi.version or \"\") == \"26.5.6\" && (kgpYazi.cargoDeps.name or \"\") == \"yazi-26.5.6-vendor\";".to_string(),
-        "  kgp_yazi_clears_consumer_patches = (kgpYazi.patches or []) == [] && (kgpYazi.prePatch or \"\") == \"\" && (kgpYazi.postPatch or \"\") == \"\";".to_string(),
         "}".to_string(),
     ]
     .join("\n")

@@ -1067,7 +1067,7 @@ fn build_graphics_preview_strategy_finding(
                 status: "ok".into(),
                 message: "Graphics previews: Yazelix Kitty passthrough bridge is active".into(),
                 details: Some(format!(
-                    "{}\nPreview strategy: Yazi image previews use Kitty graphics through the packaged Zellij/Yazi bridge.",
+                    "{}\nPreview strategy: managed upstream Yazi launches with a scoped Kitty adapter env through the packaged Zellij bridge.",
                     details.join("\n")
                 )),
                 fix_available: false,
@@ -1082,9 +1082,9 @@ fn build_graphics_preview_strategy_finding(
         if bridge_marker && zellij_present && host_yazi_present {
             return DoctorRuntimeDoctorFinding {
                 status: "warning".into(),
-                message: "Graphics previews: host-sourced Yazi is available, but bundled Yazelix Yazi is the fully supported Kitty bridge path".into(),
+                message: "Graphics previews: host-sourced Yazi is available, but the fully supported Kitty bridge path uses runtime-packaged upstream Yazi".into(),
                 details: Some(format!(
-                    "{}\nPreview strategy: Ghostty/Ratty can use the packaged Zellij bridge, but host-sourced Yazi is not treated as equivalent to bundled Yazelix KGP Yazi without a capability check.",
+                    "{}\nPreview strategy: Ghostty/Ratty can use the packaged Zellij bridge with scoped managed-Yazi launch env, but host-sourced Yazi is not treated as equivalent without a capability check.",
                     details.join("\n")
                 )),
                 fix_available: false,
@@ -1102,7 +1102,7 @@ fn build_graphics_preview_strategy_finding(
                 "Graphics previews: selected terminal expects the Yazelix Kitty bridge, but the runtime is incomplete"
                     .into(),
             details: Some(format!(
-                "{}\nExpected combination: Ghostty or Ratty plus runtime-owned Zellij/Yazi Kitty passthrough marker.",
+                "{}\nExpected combination: Ghostty or Ratty plus runtime-owned Zellij Kitty passthrough marker.",
                 details.join("\n")
             )),
             fix_available: false,
@@ -1618,7 +1618,7 @@ mod tests {
         );
     }
 
-    // Regression: host-sourced Yazi is allowed, but it is not equivalent to bundled Yazelix KGP Yazi for Ghostty/Ratty graphics support.
+    // Regression: host-sourced Yazi is allowed, but it is not equivalent to runtime-packaged upstream Yazi for Ghostty/Ratty graphics support.
     #[test]
     fn graphics_strategy_warns_for_host_sourced_yazi() {
         let tmp = TempDir::new().unwrap();

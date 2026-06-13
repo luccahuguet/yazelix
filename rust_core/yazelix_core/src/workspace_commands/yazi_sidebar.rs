@@ -12,6 +12,10 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+const ZELLIJ_KITTY_PASSTHROUGH_FEATURE: &str = "zellij_kitty_passthrough";
+const ZELLIJ_SESSION_NAME_ENV: &str = "ZELLIJ_SESSION_NAME";
+const KITTY_WINDOW_ID_ENV: &str = "KITTY_WINDOW_ID";
+
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 struct RevealArgs {
     target: Option<String>,
@@ -135,19 +139,33 @@ fn launch_yazi_sidebar() -> Result<i32, CoreError> {
         .or_else(|| env::current_dir().ok())
         .unwrap_or_else(|| config.home_dir.clone());
     let command_path = resolve_command_path(&config.yazi_command, &config.home_dir);
-    let status = Command::new(&command_path)
-        .arg(target_dir)
-        .status()
-        .map_err(|source| {
-            CoreError::io(
-                "launch_yazi_sidebar",
-                "Could not launch the configured Yazi sidebar command",
-                "Check yazi.command and the Yazelix runtime PATH, then retry.",
-                command_path,
-                source,
-            )
-        })?;
+    let runtime_dir = env::var_os("YAZELIX_RUNTIME_DIR").map(PathBuf::from);
+    let mut command = Command::new(&command_path);
+    configure_yazi_graphics_env(&mut command, runtime_dir.as_deref());
+    let status = command.arg(target_dir).status().map_err(|source| {
+        CoreError::io(
+            "launch_yazi_sidebar",
+            "Could not launch the configured Yazi sidebar command",
+            "Check yazi.command and the Yazelix runtime PATH, then retry.",
+            command_path,
+            source,
+        )
+    })?;
     Ok(status.code().unwrap_or(1))
+}
+
+fn configure_yazi_graphics_env(command: &mut Command, runtime_dir: Option<&Path>) {
+    if runtime_dir.is_some_and(runtime_has_zellij_kitty_passthrough) {
+        command.env(ZELLIJ_SESSION_NAME_ENV, "");
+        command.env(KITTY_WINDOW_ID_ENV, "1");
+    }
+}
+
+fn runtime_has_zellij_kitty_passthrough(runtime_dir: &Path) -> bool {
+    runtime_dir
+        .join("runtime_features")
+        .join(ZELLIJ_KITTY_PASSTHROUGH_FEATURE)
+        .is_file()
 }
 
 fn consume_bootstrap_sidebar_cwd(home_dir: &Path) -> Option<PathBuf> {
@@ -425,7 +443,56 @@ mod tests {
 
     use super::*;
     use crate::sidebar_bootstrap::sidebar_bootstrap_owner_dir;
+    use std::collections::BTreeMap;
     use tempfile::TempDir;
+
+    fn command_envs(command: &Command) -> BTreeMap<String, Option<String>> {
+        command
+            .get_envs()
+            .map(|(key, value)| {
+                (
+                    key.to_string_lossy().into_owned(),
+                    value.map(|value| value.to_string_lossy().into_owned()),
+                )
+            })
+            .collect()
+    }
+
+    // Regression: upstream Yazi can use Kitty graphics under Yazelix's Zellij bridge when the launch env hides Zellij from Yazi only.
+    #[test]
+    fn yazi_launch_env_enables_kitty_adapter_for_passthrough_runtime() {
+        let tmp = TempDir::new().expect("tmp");
+        fs::create_dir_all(tmp.path().join("runtime_features")).expect("runtime features");
+        fs::write(
+            tmp.path()
+                .join("runtime_features")
+                .join(ZELLIJ_KITTY_PASSTHROUGH_FEATURE),
+            "",
+        )
+        .expect("feature marker");
+
+        let mut command = Command::new("yazi");
+        configure_yazi_graphics_env(&mut command, Some(tmp.path()));
+
+        let envs = command_envs(&command);
+        assert_eq!(
+            envs.get(ZELLIJ_SESSION_NAME_ENV),
+            Some(&Some(String::new()))
+        );
+        assert_eq!(envs.get(KITTY_WINDOW_ID_ENV), Some(&Some("1".to_string())));
+    }
+
+    // Invariant: runtimes without the explicit Zellij Kitty bridge marker keep upstream Yazi's normal Zellij adapter filtering.
+    #[test]
+    fn yazi_launch_env_leaves_plain_zellij_runtime_unchanged() {
+        let tmp = TempDir::new().expect("tmp");
+        let mut command = Command::new("yazi");
+        configure_yazi_graphics_env(&mut command, Some(tmp.path()));
+
+        let envs = command_envs(&command);
+        assert!(!envs.contains_key(ZELLIJ_SESSION_NAME_ENV));
+        assert!(!envs.contains_key(KITTY_WINDOW_ID_ENV));
+    }
 
     // Defends: sidebar startup consumes and deletes only Yazelix-owned one-shot cwd files.
     #[test]

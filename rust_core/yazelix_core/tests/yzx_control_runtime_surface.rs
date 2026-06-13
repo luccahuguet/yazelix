@@ -181,7 +181,7 @@ printf 'YAZI_ZELLIJ_KITTY_PASSTHROUGH=%s\n' "${YAZI_ZELLIJ_KITTY_PASSTHROUGH-uns
         runtime_dir.join("libexec/hx").to_string_lossy()
     )));
     assert!(stdout.contains("YAZELIX_NU_BIN=unset"));
-    assert!(stdout.contains("YAZI_ZELLIJ_KITTY_PASSTHROUGH=1"));
+    assert!(stdout.contains("YAZI_ZELLIJ_KITTY_PASSTHROUGH=unset"));
 }
 
 // Regression: the Ghostty launch wrapper must not expose runtime-private libexec helpers such as nix ahead of the host Nix.

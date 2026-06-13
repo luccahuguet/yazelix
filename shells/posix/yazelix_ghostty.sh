@@ -19,10 +19,6 @@ fi
 
 export PATH
 
-if [ -f "$runtime_dir/runtime_features/zellij_kitty_passthrough" ]; then
-  export YAZI_ZELLIJ_KITTY_PASSTHROUGH=1
-fi
-
 if [ -n "${WAYLAND_DISPLAY:-}" ]; then
   use_simple_im=0
 

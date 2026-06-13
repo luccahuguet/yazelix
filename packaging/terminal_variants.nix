@@ -11,12 +11,12 @@ let
     kitty = {
       desktop_label = "Kitty";
       kitty_passthrough = true;
-      description = "packaged Kitty terminal with generated Kitty config and the Yazelix Zellij/Yazi Kitty graphics bridge";
+      description = "packaged Kitty terminal with generated Kitty config and the Yazelix Zellij Kitty graphics bridge";
     };
     rio = {
       desktop_label = "Rio";
       kitty_passthrough = true;
-      description = "packaged vanilla Rio terminal with generated Rio config and the Yazelix Zellij/Yazi Kitty graphics bridge";
+      description = "packaged vanilla Rio terminal with generated Rio config and the Yazelix Zellij Kitty graphics bridge";
     };
     yzxterm = {
       desktop_label = "Yzxterm";
@@ -36,7 +36,7 @@ let
       desktop_label = "Ratty";
       kitty_passthrough = true;
       linux_only = true;
-      description = "experimental Linux packaged terminal with Ratty and the Yazelix Zellij/Yazi Kitty graphics bridge";
+      description = "experimental Linux packaged terminal with Ratty and the Yazelix Zellij Kitty graphics bridge";
     };
   };
   supported =

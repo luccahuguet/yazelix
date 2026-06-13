@@ -19,7 +19,7 @@ It guarantees that everyone gets the exact same versions of tools (Yazi, Zellij,
 ## Supported Terminal Emulators
 Yazelix provides one packaged terminal at a time. The default `#yazelix` package uses Ghostty so Yazelix cursor trails, Ghostty config effects, and Yazi image previews through Zellij are present on first run. Yazelix Terminal is available through `#yzxterm` or `programs.yazelix.terminal = "yzxterm"` as the experimental Rio-derived path for the future first-party terminal. Vanilla Rio is available through `#yazelix_rio` or `programs.yazelix.terminal = "rio"` for users who prefer upstream Rio terminal behavior. WezTerm remains available through `#yazelix_wezterm` or `programs.yazelix.terminal = "wezterm"` for users who prefer the stable alternate packaged terminal path. Kitty is available through `#yazelix_kitty` or `programs.yazelix.terminal = "kitty"` for users who want the reference Kitty protocol terminal as a packaged runtime. Foot is available on Linux through `#yazelix_foot` or `programs.yazelix.terminal = "foot"` for users who want a lightweight Wayland terminal path. Ratty is available on Linux through `#yazelix_ratty` or `programs.yazelix.terminal = "ratty"` as an experimental packaged terminal path. Yazelix does not fall back to another terminal when a selected variant is missing or mispackaged.
 
-The Ghostty image-preview path pins temporary Yazelix forks of Zellij and Yazi. Those forks are expected to be dropped and archived once upstream Zellij supports the required Kitty graphics path directly enough for Yazelix to return to upstream packages.
+The Ghostty image-preview path pins a temporary Yazelix Zellij fork and launches managed upstream Yazi with a scoped Kitty adapter environment. The Zellij fork is expected to be dropped and archived once upstream Zellij supports the required Kitty graphics path directly enough for Yazelix to return to upstream Zellij.
 
 See [Terminal Emulator Comparison](./terminal_emulators.md) for a detailed breakdown of strengths, gaps, and platform support.
 
@@ -52,7 +52,7 @@ See [Terminal Emulator Comparison](./terminal_emulators.md) for a detailed break
 **Rio**
 - Upstream Rio terminal packaged as a Yazelix runtime
 - Provided by `#yazelix_rio` or by `programs.yazelix.terminal = "rio"`
-- Uses generated Rio config, `terminal.transparency`, and the Yazelix Zellij/Yazi Kitty graphics bridge
+- Uses generated Rio config, `terminal.transparency`, and the Yazelix Zellij Kitty graphics bridge
 - Reference: https://github.com/raphamorim/rio
 
 **Kitty**
@@ -115,7 +115,7 @@ Set `eval-cores` to 0 to use all cores, or 1 to disable.
 
 ### Use the Yazelix Binary Cache
 
-Yazelix publishes selected `x86_64-linux` and `aarch64-darwin` package builds to the public Cachix cache at `https://yazelix.cachix.org`. The cache includes the default Yazelix package plus expensive Yazelix Helix, KGP Yazi, and KGP Zellij runtime packages when CI has published the current revision. The flake advertises this cache through `nixConfig`, so interactive Nix commands can prompt you to accept the substituter and trusted public key. After you accept it, Nix uses the cache automatically for matching store paths. The cache is optional: Nix still builds from source when the cache is unavailable or does not contain the requested output.
+Yazelix publishes selected `x86_64-linux` and `aarch64-darwin` package builds to the public Cachix cache at `https://yazelix.cachix.org`. The cache includes the default Yazelix package plus expensive Yazelix Helix and KGP Zellij runtime packages when CI has published the current revision. The flake advertises this cache through `nixConfig`, so interactive Nix commands can prompt you to accept the substituter and trusted public key. After you accept it, Nix uses the cache automatically for matching store paths. The cache is optional: Nix still builds from source when the cache is unavailable or does not contain the requested output.
 
 For noninteractive installs, pass `--accept-flake-config` to the Nix command that evaluates the Yazelix flake:
 
@@ -212,7 +212,7 @@ The packaged runtime ships a fixed toolset instead of configurable dependency gr
 - the default CLI helpers: `fzf`, `zoxide`, `starship`, `lazygit`, `zenith`, `carapace`, `macchina`
 - host-managed helper integrations: `mise` and `tombi`
 - the default Yazi preview helpers: `p7zip`, `jq`, `fd`, `ripgrep`, `poppler`
-- one packaged terminal variant: Ghostty by default with the Yazelix Zellij/Yazi graphics bridge, experimental Yazelix Terminal through `#yzxterm`, vanilla Rio through `#yazelix_rio`, WezTerm through `#yazelix_wezterm`, Kitty through `#yazelix_kitty`, Linux Foot through `#yazelix_foot`, or experimental Linux Ratty through `#yazelix_ratty`
+- one packaged terminal variant: Ghostty by default with the Yazelix Zellij graphics bridge, experimental Yazelix Terminal through `#yzxterm`, vanilla Rio through `#yazelix_rio`, WezTerm through `#yazelix_wezterm`, Kitty through `#yazelix_kitty`, Linux Foot through `#yazelix_foot`, or experimental Linux Ratty through `#yazelix_ratty`
 
 When you enter `yzx env`, Yazelix exports that curated tool surface to your shell. Runtime-private helpers stay under `libexec/` so host apps launched from Yazelix do not inherit shadowing tools like `dirname` ahead of the system PATH.
 

@@ -168,7 +168,7 @@ The experimental release closeout is recorded in
 
 Rio is the upstream path behind Yazelix Terminal. Yazelix packages it as
 `#yazelix_rio` for users who want upstream Rio with Yazelix-owned generated
-config, launch integration, and the Zellij/Yazi Kitty graphics bridge. The
+config, launch integration, and the Zellij Kitty graphics bridge. The
 packaged config enables Rio's native trail cursor and currently forces the
 WebGPU renderer, so the native trail animation uses Rio's WebGPU block/retract
 shape rather than the default renderer's edge-style trail.
@@ -189,7 +189,7 @@ parity.
 Ratty is not trying to be the safest all-purpose terminal in this comparison.
 Its value is that it proves a different frontier: GPU-rendered terminal UI plus
 inline 3D objects through Ratty Graphics Protocol. Yazelix packages it on Linux
-as an experimental runtime and can use the Yazelix Zellij/Yazi Kitty graphics
+as an experimental runtime and can use the Yazelix Zellij Kitty graphics
 bridge, but Yazelix does not claim RGP passthrough inside Zellij.
 
 ### Kitty

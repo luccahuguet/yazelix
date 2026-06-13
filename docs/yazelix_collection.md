@@ -26,7 +26,7 @@ Yazelix is built on a focused terminal-workspace stack. This catalog lists the p
 - `#yazelix_foot` — Linux Foot runtime package for users who prefer Foot terminal behavior
 - `#yazelix_ratty` — Experimental Linux Ratty runtime package for users who want Ratty terminal behavior
 - `#runtime`, `#runtime_ghostty`, `#runtime_yzxterm`, `#runtime_yzxterm_fast`, `#runtime_wezterm`, `#runtime_kitty`, `#runtime_rio`, `#runtime_foot`, `#runtime_ratty` — Runtime-only package outputs used by the wrapper packages, validation surfaces, and maintainer yzxterm dogfooding
-- `#yazelix_kgp_yazi` and `#yazelix_kgp_zellij` — KGP-enabled Yazi and Zellij package outputs used by the Ghostty runtime and cache publication workflow
+- `#yazelix_kgp_zellij` — KGP-enabled Zellij package output used by Kitty-passthrough runtime variants and cache publication workflow
 - `#yazelix_agent_tools` and `#runtime_agent_tools` — Compatibility runtime variants for the default package shape with bundled agent usage helpers
 - `#yazelix_zellij_bar` — Standalone Zellij/zjstatus bar preset forwarded from `luccahuguet/yazelix-zellij-bar`, including `yazelix_zellij_bar_widget` and package-local `zjstatus.wasm`
 - `#yzs` and `#yazelix_screen` — Standalone terminal animation package forwarded from `luccahuguet/yazelix-screen` for the Yazelix screen engines outside Zellij and outside a full Yazelix session
@@ -49,7 +49,7 @@ Maintainer-facing fork status, child-repo ownership tables, README delta rules, 
 - [yazelix-ratconfig](https://github.com/luccahuguet/yazelix-ratconfig) — Reusable Ratatui config editor crate for JSONC-backed settings, consumed by Yazelix config UI while Yazelix keeps settings schema, Home Manager ownership, validation, and runtime apply behavior in this repo.
 - [yazelix-zellij-popup](https://github.com/luccahuguet/yazelix-zellij-popup) — Standalone Zellij popup plugin for plain-Zellij users; its child flake package `#yzpp` installs `share/yazelix_zellij_popup/yzpp.wasm`, this repo forwards it as `#yazelix_zellij_popup`, and regular Yazelix sessions package the same `yzpp.wasm` for popup, menu, and config UI panes.
 - [yazelix-yazi-assets](https://github.com/luccahuguet/yazelix-yazi-assets) — Standalone Yazi flavor and reusable plugin asset pack consumed by Yazelix Yazi runtime generation and exposed from this repo as `#yazelix_yazi_assets`.
-- [yazelix-zellij](https://github.com/luccahuguet/yazelix-zellij) and [yazelix-yazi](https://github.com/luccahuguet/yazelix-yazi) — Temporary product integration forks consumed by the default Ghostty runtime so Yazi image previews can use Kitty graphics through Zellij; these forks should be dropped and archived once upstream Zellij supports the required Kitty graphics path directly enough for Yazelix to return to upstream packages.
+- [yazelix-zellij](https://github.com/luccahuguet/yazelix-zellij) — Temporary product integration fork consumed by Kitty-passthrough runtime variants so upstream Yazi image previews can use Kitty graphics through Zellij; this fork should be dropped and archived once upstream Zellij supports the required Kitty graphics path directly enough for Yazelix to return to upstream Zellij.
 
 ## Core Workspace Stack
 
@@ -66,11 +66,11 @@ Maintainer-facing fork status, child-repo ownership tables, README delta rules, 
 
 - [Ghostty](https://ghostty.org/) — Default packaged terminal runtime. Yazelix uses Ghostty for the first-party cursor trail, mode-change shader experience, and Yazi image previews through Zellij.
 - [Yazelix Terminal](https://github.com/luccahuguet/yazelix-terminal) — Experimental packaged first-party Rust terminal through `#yzxterm` and `terminal = "yzxterm"`, with generated config, transparency mapping, BELL notifications, protocol coverage, Kitty graphics, Rio trail cursor defaults, and opt-in `yazelix-cursors` shader support.
-- [Rio](https://github.com/raphamorim/rio) — Packaged upstream Rio terminal through `#yazelix_rio` and `terminal = "rio"`, with generated Yazelix config and the Yazelix Zellij/Yazi Kitty graphics bridge.
+- [Rio](https://github.com/raphamorim/rio) — Packaged upstream Rio terminal through `#yazelix_rio` and `terminal = "rio"`, with generated Yazelix config and the Yazelix Zellij Kitty graphics bridge.
 - [WezTerm](https://wezfurlong.org/wezterm/) — Packaged alternate terminal through `#yazelix_wezterm` and `terminal = "wezterm"`, useful for users who prefer WezTerm terminal behavior.
 - [Foot](https://codeberg.org/dnkl/foot) — Linux packaged terminal through `#yazelix_foot` and `terminal = "foot"`, with generated Yazelix config.
-- [Ratty](https://github.com/orhun/ratty) — Experimental Linux packaged terminal through `#yazelix_ratty` and `terminal = "ratty"`, with generated Yazelix config and the Yazelix Zellij/Yazi Kitty graphics bridge. Yazelix does not claim Ratty Graphics Protocol passthrough inside Zellij.
-- [Kitty](https://sw.kovidgoyal.net/kitty/) — Packaged alternate terminal through `#yazelix_kitty` and `terminal = "kitty"`, with generated Yazelix config and the Yazelix Zellij/Yazi Kitty graphics bridge.
+- [Ratty](https://github.com/orhun/ratty) — Experimental Linux packaged terminal through `#yazelix_ratty` and `terminal = "ratty"`, with generated Yazelix config and the Yazelix Zellij Kitty graphics bridge. Yazelix does not claim Ratty Graphics Protocol passthrough inside Zellij.
+- [Kitty](https://sw.kovidgoyal.net/kitty/) — Packaged alternate terminal through `#yazelix_kitty` and `terminal = "kitty"`, with generated Yazelix config and the Yazelix Zellij Kitty graphics bridge.
 - [ghostty-cursor-shaders](https://github.com/sahaj-b/ghostty-cursor-shaders) — Upstream inspiration for the Yazelix-managed Ghostty-compatible cursor shader system. Yazelix vendors/adapts the shader direction through `settings.jsonc` cursor settings, generated config, and the standalone `#yazelix_cursors` package.
 
 ## Editors And Shells

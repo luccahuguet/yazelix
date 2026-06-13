@@ -221,7 +221,6 @@
         "yazelixHelix": "yazelixHelix",
         "yazelixScreen": "yazelixScreen",
         "yazelixTerminal": "yazelixTerminal",
-        "yazelixYazi": "yazelixYazi",
         "yazelixYaziAssets": "yazelixYaziAssets",
         "yazelixZellij": "yazelixZellij",
         "yazelixZellijBar": "yazelixZellijBar",
@@ -472,23 +471,6 @@
       "original": {
         "owner": "luccahuguet",
         "repo": "yazelix-terminal",
-        "type": "github"
-      }
-    },
-    "yazelixYazi": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1781383737,
-        "narHash": "sha256-/RohdXLt6kYnXsy7Djw5ofzxITFR0ppCO+QqrckrJvw=",
-        "owner": "luccahuguet",
-        "repo": "yazelix-yazi",
-        "rev": "70b072080e6a32e172c78176ca8173442e4c3391",
-        "type": "github"
-      },
-      "original": {
-        "owner": "luccahuguet",
-        "ref": "yazi-zellij-kitty-passthrough",
-        "repo": "yazelix-yazi",
         "type": "github"
       }
     },

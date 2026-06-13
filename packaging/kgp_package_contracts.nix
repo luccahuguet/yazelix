@@ -33,14 +33,7 @@ let
           }
         else
           { })
-        // {
-          yazi-unwrapped = prev.yazi-unwrapped.overrideAttrs (_old: {
-            cargoDeps = throw "consumer pkgs.yazi-unwrapped cargoDeps leaked into Yazelix KGP Yazi";
-            patches = throw "consumer pkgs.yazi-unwrapped patches leaked into Yazelix KGP Yazi";
-            prePatch = throw "consumer pkgs.yazi-unwrapped prePatch leaked into Yazelix KGP Yazi";
-            postPatch = throw "consumer pkgs.yazi-unwrapped postPatch leaked into Yazelix KGP Yazi";
-          });
-        })
+      )
     ];
   };
   wrappedNoPassthruConsumerPkgs = import nixpkgs {
@@ -75,7 +68,6 @@ let
     kgpPackages.zellijBuildBase wrappedNoPassthruConsumerPkgs wrappedNoPassthruConsumerPkgs.zellij;
   kgpZellijWrappedNoPassthru =
     kgpPackages.mkZellij wrappedNoPassthruConsumerPkgs wrappedNoPassthruZellijBase;
-  kgpYazi = kgpPackages.mkYazi poisonedConsumerPkgs poisonedConsumerPkgs.yazi-unwrapped;
 in
 assert (wrappedNoPassthruZellijBase.__yazelix_test_base or "") == "zellij-unwrapped";
 assert (kgpZellijWrappedNoPassthru.version or "") == "0.44.3";
@@ -89,11 +81,6 @@ assert (kgpZellij.installCheckPhase or "") == ''
   runHook preInstallCheck
   runHook postInstallCheck
 '';
-assert (kgpYazi.version or "") == "26.5.6";
-assert (kgpYazi.cargoDeps.name or "") == "yazi-26.5.6-vendor";
-assert (kgpYazi.patches or [ ]) == [ ];
-assert (kgpYazi.prePatch or "") == "";
-assert (kgpYazi.postPatch or "") == "";
 pkgs.runCommand "yazelix-kgp-package-contracts" { } ''
   touch "$out"
 ''

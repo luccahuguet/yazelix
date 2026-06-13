@@ -121,7 +121,7 @@ Reusable child repos:
 
 Temporary integration forks:
 
-- [yazelix-zellij](https://github.com/luccahuguet/yazelix-zellij) and [yazelix-yazi](https://github.com/luccahuguet/yazelix-yazi) — Default Ghostty-runtime source forks that restore Yazi image previews through Kitty graphics passthrough in Zellij; these forks are expected to be dropped and archived once upstream Zellij supports the required path directly enough for Yazelix to return to upstream packages
+- [yazelix-zellij](https://github.com/luccahuguet/yazelix-zellij) — Temporary default Ghostty-runtime Zellij fork that restores Yazi image previews through Kitty graphics passthrough; managed Yazi launches use upstream Yazi with a scoped `ZELLIJ_SESSION_NAME="" KITTY_WINDOW_ID=1` process env while this fork is active
 
 ## Why Yazelix
 Yazelix is a reproducible terminal IDE built around Zellij, Yazi, and your configured editor. It gives you one packaged workspace with a managed Yazi file tree, a stable editor pane, optional right agent sidebar, directional popup surfaces, and a fixed runtime toolset that behaves the same locally or over SSH
@@ -132,7 +132,7 @@ Configuration lives in JSONC at `~/.config/yazelix/settings.jsonc`, with `yzx co
 
 First-party child packages own focused pieces of the stack: screen rendering, Ghostty cursors, the Zellij bar, the popup plugin, the pane orchestrator wasm, and Yazi assets. The normal Yazelix package wires them together automatically
 
-Ghostty is the default packaged terminal for cursor trails and Yazi image previews, with temporary Yazelix Zellij/Yazi forks carrying the Kitty graphics passthrough until upstream support is enough to drop them. Yazelix Terminal is the experimental first-party Rust terminal path, with generated transparency config, BELL notifications, protocol coverage, Kitty graphics, Rio trail cursor defaults, and opt-in `yazelix-cursors` shader support. WezTerm is the stable packaged alternate, Foot and Ratty are Linux packaged alternates, and Kitty is available as a packaged runtime variant or as a host `PATH` terminal
+Ghostty is the default packaged terminal for cursor trails and Yazi image previews, with a temporary Yazelix Zellij fork carrying Kitty graphics passthrough while managed Yazi stays on upstream/nixpkgs Yazi. Yazelix Terminal is the experimental first-party Rust terminal path, with generated transparency config, BELL notifications, protocol coverage, Kitty graphics, Rio trail cursor defaults, and opt-in `yazelix-cursors` shader support. WezTerm is the stable packaged alternate, Foot and Ratty are Linux packaged alternates, and Kitty is available as a packaged runtime variant or as a host `PATH` terminal
 
 Get everything running in less than 10 minutes with no extra dependencies beyond Nix
 
@@ -315,7 +315,7 @@ If you followed [step 3 in the installation guide](./docs/installation.md#step-3
 - **WezTerm** (explicit packaged alternate path): Rust terminal with strong graphics support and Sixel compatibility
 - **Ratty** (experimental Linux packaged path): GPU-rendered terminal with Kitty graphics support and inline 3D graphics
 - **Foot** (Linux packaged path): lightweight Wayland terminal with generated Yazelix config
-- **Kitty** (explicit packaged alternate path): Fast, feature-rich, GPU-accelerated terminal with generated Kitty config and the Yazelix Zellij/Yazi Kitty graphics bridge
+- **Kitty** (explicit packaged alternate path): Fast, feature-rich, GPU-accelerated terminal with generated Kitty config and the Yazelix Zellij Kitty graphics bridge
 - **Terminal package contract**: each package or Home Manager `programs.yazelix.terminal` value selects one terminal; Yazelix does not fall back to another terminal when that variant is missing or mispackaged
 
 [See the full Customization Guide here.](./docs/customization.md)

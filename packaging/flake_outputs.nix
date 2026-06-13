@@ -41,7 +41,6 @@ let
     runtimeIdentity = yzxtermFastRuntimeIdentity;
     yazelixTerminalPackage = yzxtermFastTerminalPackage;
   };
-  graphicsPkgs = kgpPackages.graphicsPkgs pkgs;
   yazelix_default = builtins.getAttr (terminalMetadata.packageOutput defaultRuntimeVariant) terminalPackages;
   yzxterm_fast = mkYazelix system {
     inherit pkgs;
@@ -74,8 +73,7 @@ let
       default = yazelix_default;
       runtime = runtime_default;
       yazelix = yazelix_default;
-      yazelix_kgp_yazi = graphicsPkgs.yazi-unwrapped;
-      yazelix_kgp_zellij = graphicsPkgs.zellij;
+      yazelix_kgp_zellij = (kgpPackages.graphicsPkgs pkgs).zellij;
       yzs = yazelix_screen;
     }
     // terminalPackages;

@@ -103,18 +103,18 @@ Measured yzxterm runtime:
 
 The option surface should be explicit instead of hidden behind `runtime_tool_sources`: a future package option should choose a graphics wrapper source such as bundled, host, or none, with launch rendering and doctor diagnostics tested per terminal variant. Default behavior should not change until desktop launch reliability is preserved.
 
-## KGP Yazi Shape
+## Yazi Package Shape
 
 The runtime includes both a Yazi wrapper path and a Yazi unwrapped path. This is the normal nixpkgs Yazi package shape, not accidental duplicate ownership.
 
 Observed current shape:
 
 - `libexec/yazi` points to the wrapped Yazi package
-- `libexec/ya` points to the KGP unwrapped package
+- `libexec/ya` points to the unwrapped Yazi helper package
 - the wrapper references the unwrapped binary plus preview helpers such as `ffmpeg-headless`, `file`, `chafa`, `jq`, `poppler-utils`, `imagemagick`, and `fd`
 - a base nixpkgs Yazi package from the same flake input also has wrapper plus unwrapped paths
 
-There is no obvious safe deletion in the wrapper/unwrapped pair while preserving KGP image-preview behavior. Users who prefer storage savings over bundled KGP Yazi can set `runtime_tool_sources.yazi = "host"` and then rely on host Yazi support.
+There is no obvious safe deletion in the wrapper/unwrapped pair while preserving upstream Yazi image-preview behavior. Users who prefer storage savings over runtime-packaged Yazi can set `runtime_tool_sources.yazi = "host"` and then rely on host Yazi support.
 
 ## Lean Home Manager Profile
 
@@ -137,7 +137,6 @@ The publish workflow builds selected `x86_64-linux` outputs. Local incremental N
 
 | Output | Closure | Incremental unique NAR | Decision |
 | --- | ---: | ---: | --- |
-| `yazelix_kgp_yazi` | 77 MiB | 77 MiB | Keep publishing explicitly for the expensive KGP Yazi output |
 | `yazelix_kgp_zellij` | 102 MiB | 56 MiB | Keep publishing explicitly for the expensive KGP Zellij output |
 | `yazelix_helix` | 328 MiB | 282 MiB | Keep publishing explicitly for the expensive Helix fork output |
 | `yazelix` | 3.1 GiB | 2.7 GiB | Keep: main supported install path |
@@ -147,12 +146,11 @@ The previous workflow also listed `yazelix_ghostty`, `yazelix_agent_tools`, and 
 
 The publish workflow also builds a selective `aarch64-darwin` lane for macOS users:
 
-- `yazelix_kgp_yazi`
 - `yazelix_kgp_zellij`
 - `yazelix_helix`
 - `yazelix`
 
-The Darwin lane intentionally starts with the default supported install path and expensive editor/Zellij/Yazi package outputs rather than every terminal variant or dev/check output. Expand it only after measuring runner time, disk pressure, and Cachix storage churn.
+The Darwin lane intentionally starts with the default supported install path and expensive editor/Zellij package outputs rather than every terminal variant or dev/check output. Expand it only after measuring runner time, disk pressure, and Cachix storage churn.
 
 Cachix-side policy from the current docs:
 

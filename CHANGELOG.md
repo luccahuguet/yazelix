@@ -15,6 +15,7 @@ Highlights:
 - Hardened `yzx dev release` so it auto-syncs GitHub issues into Beads when needed, pushes `main` before the release tag, waits for `CI` plus `Publish Nix Cache`, and splits slow release validators across parallel CI jobs
 - Fixed yzxterm welcome rendering so startup-size races no longer leave the welcome card tiny or corrupt the banner when a key is pressed during the animation
 - Kept yzxterm window transparency while making generated welcome and ANSI colors render crisp instead of washed out by per-cell alpha blending
+- Dropped the temporary Yazelix Yazi fork from the runtime package graph; managed Yazi launches now use upstream/nixpkgs Yazi with a scoped Kitty adapter environment when the Yazelix Zellij passthrough bridge is active
 
 Manual action:
 - Move existing cursor settings from `~/.config/yazelix_ghostty_cursors/settings.jsonc` to `~/.config/yazelix_cursors/settings.jsonc`, or run `yzc init` / relaunch Yazelix to create a fresh cursor settings file

@@ -45,10 +45,6 @@
       url = "github:luccahuguet/yazelix-zellij/yazelix_kgp_preview";
       flake = false;
     };
-    yazelixYazi = {
-      url = "github:luccahuguet/yazelix-yazi/yazi-zellij-kitty-passthrough";
-      flake = false;
-    };
     yazelixHelix = {
       url = "github:luccahuguet/yazelix-helix";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -85,7 +81,6 @@
       yazelixZellijBar,
       yazelixYaziAssets,
       yazelixZellij,
-      yazelixYazi,
       yazelixHelix,
       yazelixTerminal,
       yazelixZellijPaneOrchestrator,
@@ -149,7 +144,7 @@
           (import ./packaging/tokenusage.nix { inherit pkgs; })
         ];
       kgpPackages = import ./packaging/kgp_packages.nix {
-        inherit yazelixZellij yazelixYazi yazelixHelix;
+        inherit yazelixZellij yazelixHelix;
       };
       terminalMetadataFor =
         pkgs:

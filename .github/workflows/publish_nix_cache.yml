@@ -43,7 +43,6 @@ jobs:
         run: |
           nix build --no-link --print-out-paths \
             .#packages.x86_64-linux.br \
-            .#packages.x86_64-linux.yazelix_kgp_yazi \
             .#packages.x86_64-linux.yazelix_kgp_zellij \
             .#packages.x86_64-linux.yazelix_helix \
             .#packages.x86_64-linux.yazelix \
@@ -77,7 +76,6 @@ jobs:
       - name: Build Darwin cache package outputs
         run: |
           nix build --no-link --print-out-paths \
-            .#packages.aarch64-darwin.yazelix_kgp_yazi \
             .#packages.aarch64-darwin.yazelix_kgp_zellij \
             .#packages.aarch64-darwin.yazelix_helix \
             .#packages.aarch64-darwin.yazelix
