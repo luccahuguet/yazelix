@@ -13,7 +13,7 @@ use yazelix_ratconfig::migration::{MigrationError, MigrationOp};
 pub const SETTINGS_CONTRACT_ID: &str = "yazelix.settings";
 pub const SETTINGS_CONTRACT_STATE_PATH: &str = "ratconfig.contract";
 const SETTINGS_CONTRACT_BASELINE_VERSION: u64 = 1;
-const SETTINGS_CONTRACT_CURRENT_VERSION: u64 = 9;
+pub const SETTINGS_CONTRACT_CURRENT_VERSION: u64 = 10;
 const OPTIONAL_ADDITIVE_DEFAULT_PATHS: &[&str] = &["zellij.custom_popups"];
 
 const LEGACY_SIDEBAR_SETTING_RENAMES: &[(&str, &str)] = &[
@@ -170,6 +170,15 @@ fn settings_contract_for_defaults(defaults: &JsonValue) -> ConfigContract {
                 vec![MigrationOp::Transform {
                     path: "workspace.right_sidebar".to_string(),
                     transform: route_default_right_sidebar_through_yzx_agent,
+                }],
+            ),
+            ContractChange::automatic(
+                "remove-retired-cursor-widget-tray-value",
+                9,
+                10,
+                vec![MigrationOp::Transform {
+                    path: "zellij.widget_tray".to_string(),
+                    transform: remove_retired_cursor_widget_tray_value,
                 }],
             ),
         ],
@@ -343,6 +352,28 @@ fn route_default_right_sidebar_through_yzx_agent(
     next.insert("command".to_string(), json!("yzx"));
     next.insert("args".to_string(), json!(["agent"]));
     Ok(Some(JsonValue::Object(next)))
+}
+
+fn remove_retired_cursor_widget_tray_value(value: &JsonValue) -> Result<Option<JsonValue>, String> {
+    let items = value
+        .as_array()
+        .ok_or_else(|| "expected a widget_tray array".to_string())?;
+    let mut changed = false;
+    let mut next = Vec::with_capacity(items.len());
+
+    for item in items {
+        if item.as_str() == Some("cursor") {
+            changed = true;
+        } else {
+            next.push(item.clone());
+        }
+    }
+
+    if changed {
+        Ok(Some(JsonValue::Array(next)))
+    } else {
+        Ok(None)
+    }
 }
 
 fn string_array_is_empty_or_absent(value: Option<&JsonValue>) -> bool {
@@ -536,6 +567,62 @@ fn migration_error_detail(error: &MigrationError) -> JsonValue {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use yazelix_ratconfig::contract::plan_contract_migration;
+    use yazelix_ratconfig::jsonc::{get_json_path, parse_jsonc_value};
+
+    // Defends: every ratconfig version bump has a real linear migration or manual blocker.
+    #[test]
+    fn settings_contract_versions_are_linear_and_nonempty() {
+        let defaults_path =
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("../../settings_default.jsonc");
+        let defaults = read_settings_jsonc_value(&defaults_path).unwrap();
+        let contract = settings_contract_for_defaults(&defaults);
+        let plan = plan_contract_migration(&contract, SETTINGS_CONTRACT_BASELINE_VERSION).unwrap();
+
+        assert_eq!(plan.to_version, SETTINGS_CONTRACT_CURRENT_VERSION);
+        assert_eq!(
+            plan.changes.len() as u64,
+            SETTINGS_CONTRACT_CURRENT_VERSION - SETTINGS_CONTRACT_BASELINE_VERSION
+        );
+        assert!(
+            contract
+                .changes
+                .iter()
+                .all(|change| !change.operations.is_empty() || !change.manual_steps.is_empty())
+        );
+    }
+
+    // Regression: retiring the cursor status widget must not strand joined configs with a rejected enum value.
+    #[test]
+    fn removes_retired_cursor_status_widget_from_joined_config() {
+        let contract = settings_contract_for_defaults(&json!({}));
+        let raw = r#"{
+  "zellij": {
+    "widget_tray": ["editor", "cursor", "ram"]
+  }
+}
+"#;
+
+        let migrated =
+            join_jsonc_contract_text_from_version(raw, &contract, SETTINGS_CONTRACT_STATE_PATH, 9)
+                .unwrap();
+        let value = parse_jsonc_value(&migrated.text).unwrap();
+
+        assert_eq!(
+            get_json_path(&value, "zellij.widget_tray"),
+            Some(&json!(["editor", "ram"]))
+        );
+        assert_eq!(
+            get_json_path(&value, "ratconfig.contract.version"),
+            Some(&json!(SETTINGS_CONTRACT_CURRENT_VERSION))
+        );
+        assert!(
+            migrated
+                .applied_changes
+                .iter()
+                .any(|change| change.id == "remove-retired-cursor-widget-tray-value")
+        );
+    }
 
     // Regression: the old default process popup must migrate to Zenith when users carry an explicit default-shaped btm entry.
     #[test]

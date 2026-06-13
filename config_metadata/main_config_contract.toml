@@ -10,6 +10,7 @@
 
 [contract]
 version = 1
+ratconfig_contract_version = 10
 surface = "main"
 field_count = 51
 artifact_role = "canonical_machine_metadata"

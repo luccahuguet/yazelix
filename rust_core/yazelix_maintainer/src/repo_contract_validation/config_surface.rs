@@ -7,13 +7,16 @@ use super::{
 use crate::repo_validation::ValidationReport;
 use serde_json::{Map as JsonMap, Value as JsonValue};
 use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 use toml::{Table as TomlTable, Value as TomlValue};
 use yazelix_core::config_state::{
     ComputeConfigStateRequest, ConfigStateData, RecordConfigStateRequest, compute_config_state,
     record_config_state,
 };
+use yazelix_core::settings_contract::SETTINGS_CONTRACT_CURRENT_VERSION;
 use yazelix_core::settings_surface::{
     read_config_table, read_settings_jsonc_value, render_settings_jsonc_value,
 };
@@ -26,6 +29,7 @@ pub fn validate_config_surface_contract(repo_root: &Path) -> Result<ValidationRe
     let mut report = ValidationReport::default();
     for errors in [
         validate_main_contract_parity(repo_root)?,
+        validate_ratconfig_contract_guard(repo_root)?,
         validate_zellij_keybinding_registry_defaults(repo_root)?,
         validate_zellij_native_keybinding_registry_defaults(repo_root)?,
         validate_yazi_keybinding_registry_defaults(repo_root)?,
@@ -237,6 +241,258 @@ fn validate_main_contract_apply_mode(
             runtime_apply_mode_codes().join(", ")
         ));
     }
+}
+
+fn validate_ratconfig_contract_guard(repo_root: &Path) -> Result<Vec<String>, String> {
+    let contract = read_toml_file(&repo_root.join(MAIN_CONTRACT_RELATIVE_PATH))?;
+    let mut errors = Vec::new();
+    match main_contract_ratconfig_version(&contract) {
+        Some(version) if version == SETTINGS_CONTRACT_CURRENT_VERSION => {}
+        Some(version) => errors.push(format!(
+            "main_config_contract.toml declares ratconfig_contract_version = {version}, but settings_contract.rs exposes SETTINGS_CONTRACT_CURRENT_VERSION = {SETTINGS_CONTRACT_CURRENT_VERSION}"
+        )),
+        None => errors.push(
+            "main_config_contract.toml [contract] must declare ratconfig_contract_version"
+                .to_string(),
+        ),
+    }
+    errors.extend(validate_ratconfig_contract_diff_guard(
+        repo_root,
+        &contract,
+        SETTINGS_CONTRACT_CURRENT_VERSION,
+    )?);
+    Ok(errors)
+}
+
+fn validate_ratconfig_contract_diff_guard(
+    repo_root: &Path,
+    current_contract: &TomlTable,
+    current_version: u64,
+) -> Result<Vec<String>, String> {
+    let diff_base = config_surface_diff_base();
+    validate_ratconfig_contract_diff_guard_from_base(
+        repo_root,
+        current_contract,
+        current_version,
+        &diff_base,
+    )
+}
+
+fn validate_ratconfig_contract_diff_guard_from_base(
+    repo_root: &Path,
+    current_contract: &TomlTable,
+    current_version: u64,
+    diff_base: &str,
+) -> Result<Vec<String>, String> {
+    if !git_ref_exists(repo_root, &diff_base)? {
+        return Ok(Vec::new());
+    }
+    let Some(previous_raw) =
+        load_file_from_git_ref(repo_root, &diff_base, MAIN_CONTRACT_RELATIVE_PATH)?
+    else {
+        return Ok(Vec::new());
+    };
+    let previous_contract = toml::from_str::<TomlTable>(&previous_raw).map_err(|error| {
+        format!("Failed to parse {diff_base}:{MAIN_CONTRACT_RELATIVE_PATH} as TOML: {error}")
+    })?;
+    let changes = semantic_main_config_contract_changes(&previous_contract, current_contract);
+    if changes.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let previous_version = main_contract_ratconfig_version(&previous_contract).or_else(|| {
+        previous_settings_contract_version(repo_root, &diff_base)
+            .ok()
+            .flatten()
+    });
+    let Some(previous_version) = previous_version else {
+        return Ok(vec![format!(
+            "main_config_contract.toml changed user-facing settings semantics, but the validator could not determine the previous ratconfig contract version from {diff_base}"
+        )]);
+    };
+    if current_version <= previous_version {
+        return Ok(vec![format!(
+            "main_config_contract.toml changed user-facing settings semantics without a ratconfig migration or manual blocker: {}. Bump SETTINGS_CONTRACT_CURRENT_VERSION and add a matching ContractChange in settings_contract.rs, or encode the change as a ratconfig manual migration when automation is unsafe.",
+            changes.join("; ")
+        )]);
+    }
+
+    Ok(Vec::new())
+}
+
+fn semantic_main_config_contract_changes(
+    previous_contract: &TomlTable,
+    current_contract: &TomlTable,
+) -> Vec<String> {
+    let previous_fields = main_contract_fields(previous_contract);
+    let current_fields = main_contract_fields(current_contract);
+    let mut changes = Vec::new();
+
+    for field_path in previous_fields.keys() {
+        if !current_fields.contains_key(field_path) {
+            changes.push(format!("removed field `{field_path}`"));
+        }
+    }
+    for field_path in current_fields.keys() {
+        if !previous_fields.contains_key(field_path) {
+            changes.push(format!("added field `{field_path}`"));
+        }
+    }
+    for (field_path, previous_field) in &previous_fields {
+        let Some(current_field) = current_fields.get(field_path) else {
+            continue;
+        };
+        for key in [
+            "kind",
+            "default",
+            "parser_key",
+            "parser_behavior",
+            "validation",
+            "nullable",
+            "home_manager_default_is_null",
+            "emit_in_default_template",
+            "min",
+            "max",
+        ] {
+            if previous_field.get(key) != current_field.get(key) {
+                changes.push(format!("changed `{field_path}.{key}`"));
+            }
+        }
+        for key in ["allowed_values", "allowed_symbols"] {
+            changes.extend(removed_string_list_values(
+                previous_field,
+                current_field,
+                field_path,
+                key,
+            ));
+        }
+    }
+
+    changes
+}
+
+fn main_contract_fields(contract: &TomlTable) -> BTreeMap<String, TomlTable> {
+    contract
+        .get("fields")
+        .and_then(TomlValue::as_table)
+        .map(|fields| {
+            fields
+                .iter()
+                .filter_map(|(path, value)| {
+                    value.as_table().map(|field| (path.clone(), field.clone()))
+                })
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+fn removed_string_list_values(
+    previous_field: &TomlTable,
+    current_field: &TomlTable,
+    field_path: &str,
+    key: &str,
+) -> Vec<String> {
+    let previous = string_values(previous_field.get(key));
+    let current = string_values(current_field.get(key));
+    previous
+        .difference(&current)
+        .map(|value| format!("removed `{field_path}.{key}` value `{value}`"))
+        .collect()
+}
+
+fn string_values(value: Option<&TomlValue>) -> BTreeSet<String> {
+    value
+        .and_then(TomlValue::as_array)
+        .map(|values| {
+            values
+                .iter()
+                .filter_map(TomlValue::as_str)
+                .map(ToOwned::to_owned)
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+fn main_contract_ratconfig_version(contract: &TomlTable) -> Option<u64> {
+    contract
+        .get("contract")
+        .and_then(TomlValue::as_table)
+        .and_then(|table| table.get("ratconfig_contract_version"))
+        .and_then(TomlValue::as_integer)
+        .and_then(|value| u64::try_from(value).ok())
+}
+
+fn config_surface_diff_base() -> String {
+    if let Ok(base_ref) = env::var("GITHUB_BASE_REF") {
+        let trimmed = base_ref.trim();
+        if !trimmed.is_empty() {
+            return format!("origin/{trimmed}");
+        }
+    }
+    "HEAD~1".to_string()
+}
+
+fn previous_settings_contract_version(
+    repo_root: &Path,
+    git_ref: &str,
+) -> Result<Option<u64>, String> {
+    let Some(source) = load_file_from_git_ref(
+        repo_root,
+        git_ref,
+        "rust_core/yazelix_core/src/settings_contract.rs",
+    )?
+    else {
+        return Ok(None);
+    };
+    Ok(settings_contract_version_from_source(&source))
+}
+
+fn settings_contract_version_from_source(source: &str) -> Option<u64> {
+    source.lines().find_map(|line| {
+        if !line.contains("SETTINGS_CONTRACT_CURRENT_VERSION") {
+            return None;
+        }
+        line.split_once('=')
+            .and_then(|(_, value)| value.trim().trim_end_matches(';').trim().parse().ok())
+    })
+}
+
+fn git_ref_exists(repo_root: &Path, git_ref: &str) -> Result<bool, String> {
+    let output = Command::new("git")
+        .args([
+            "-C",
+            &repo_root.display().to_string(),
+            "rev-parse",
+            "--verify",
+            git_ref,
+        ])
+        .output()
+        .map_err(|error| format!("Failed to run `git rev-parse` for {git_ref}: {error}"))?;
+    Ok(output.status.success())
+}
+
+fn load_file_from_git_ref(
+    repo_root: &Path,
+    git_ref: &str,
+    relative_path: &str,
+) -> Result<Option<String>, String> {
+    let output = Command::new("git")
+        .args([
+            "-C",
+            &repo_root.display().to_string(),
+            "show",
+            &format!("{git_ref}:{relative_path}"),
+        ])
+        .output()
+        .map_err(|error| {
+            format!("Failed to run `git show` for {git_ref}:{relative_path}: {error}")
+        })?;
+    if !output.status.success() {
+        return Ok(None);
+    }
+    String::from_utf8(output.stdout)
+        .map(Some)
+        .map_err(|error| format!("Failed to decode {git_ref}:{relative_path} as UTF-8: {error}"))
 }
 
 fn validate_zellij_keybinding_registry_defaults(repo_root: &Path) -> Result<Vec<String>, String> {
@@ -1214,6 +1470,165 @@ fn prepare_rust_startup() {
         errors.clear();
         validate_main_contract_apply_mode("core.debug_mode", &field, &mut errors);
         assert!(errors.is_empty());
+    }
+
+    // Test lane: maintainer
+    // Defends: removing accepted settings values requires a ratconfig migration or manual blocker.
+    #[test]
+    fn main_contract_semantic_diff_reports_removed_enum_values() {
+        let previous = toml::from_str::<TomlTable>(
+            r#"
+[contract]
+ratconfig_contract_version = 9
+
+[fields."zellij.widget_tray"]
+kind = "string_list"
+default = ["editor", "cursor"]
+parser_key = "zellij_widget_tray"
+parser_behavior = "direct"
+validation = "enum_string_list"
+allowed_values = ["editor", "cursor"]
+"#,
+        )
+        .unwrap();
+        let current = toml::from_str::<TomlTable>(
+            r#"
+[contract]
+ratconfig_contract_version = 9
+
+[fields."zellij.widget_tray"]
+kind = "string_list"
+default = ["editor"]
+parser_key = "zellij_widget_tray"
+parser_behavior = "direct"
+validation = "enum_string_list"
+allowed_values = ["editor"]
+"#,
+        )
+        .unwrap();
+
+        let changes = semantic_main_config_contract_changes(&previous, &current);
+
+        assert!(changes.iter().any(|change| {
+            change.contains("removed `zellij.widget_tray.allowed_values` value `cursor`")
+        }));
+        assert!(
+            changes
+                .iter()
+                .any(|change| change.contains("changed `zellij.widget_tray.default`"))
+        );
+    }
+
+    // Test lane: maintainer
+    // Defends: adding an accepted enum value stays backward-compatible and does not force a ratconfig bump.
+    #[test]
+    fn main_contract_semantic_diff_allows_added_enum_values() {
+        let previous = toml::from_str::<TomlTable>(
+            r#"
+[fields."core.welcome_style"]
+kind = "string"
+default = "random"
+parser_key = "welcome_style"
+parser_behavior = "direct"
+validation = "enum"
+allowed_values = ["static", "random"]
+"#,
+        )
+        .unwrap();
+        let current = toml::from_str::<TomlTable>(
+            r#"
+[fields."core.welcome_style"]
+kind = "string"
+default = "random"
+parser_key = "welcome_style"
+parser_behavior = "direct"
+validation = "enum"
+allowed_values = ["static", "random", "boids"]
+"#,
+        )
+        .unwrap();
+
+        assert!(semantic_main_config_contract_changes(&previous, &current).is_empty());
+    }
+
+    // Test lane: maintainer
+    // Defends: source parsing for the Git diff guard follows the Rust-owned ratconfig version constant.
+    #[test]
+    fn settings_contract_version_parser_reads_public_const() {
+        let source = "pub const SETTINGS_CONTRACT_CURRENT_VERSION: u64 = 42;";
+
+        assert_eq!(settings_contract_version_from_source(source), Some(42));
+    }
+
+    // Test lane: maintainer
+    // Regression: CI must reject a contract shrink when the ratconfig version did not advance.
+    #[test]
+    fn ratconfig_diff_guard_rejects_contract_change_without_version_bump() {
+        let repo = tempfile::tempdir().unwrap();
+        let root = repo.path();
+        fs::create_dir_all(root.join("config_metadata")).unwrap();
+        fs::create_dir_all(root.join("rust_core/yazelix_core/src")).unwrap();
+        let previous_contract = r#"
+[contract]
+ratconfig_contract_version = 9
+
+[fields."zellij.widget_tray"]
+kind = "string_list"
+default = ["editor", "cursor"]
+parser_key = "zellij_widget_tray"
+parser_behavior = "direct"
+validation = "enum_string_list"
+allowed_values = ["editor", "cursor"]
+"#;
+        fs::write(
+            root.join("config_metadata/main_config_contract.toml"),
+            previous_contract,
+        )
+        .unwrap();
+        fs::write(
+            root.join("rust_core/yazelix_core/src/settings_contract.rs"),
+            "const SETTINGS_CONTRACT_CURRENT_VERSION: u64 = 9;\n",
+        )
+        .unwrap();
+        run_fixture_git(root, &["init", "--quiet"]);
+        run_fixture_git(root, &["config", "user.email", "codex@example.com"]);
+        run_fixture_git(root, &["config", "user.name", "Codex"]);
+        run_fixture_git(root, &["add", "-A"]);
+        run_fixture_git(root, &["commit", "--quiet", "-m", "baseline"]);
+
+        let current_contract = toml::from_str::<TomlTable>(
+            r#"
+[contract]
+ratconfig_contract_version = 9
+
+[fields."zellij.widget_tray"]
+kind = "string_list"
+default = ["editor"]
+parser_key = "zellij_widget_tray"
+parser_behavior = "direct"
+validation = "enum_string_list"
+allowed_values = ["editor"]
+"#,
+        )
+        .unwrap();
+
+        let errors =
+            validate_ratconfig_contract_diff_guard_from_base(root, &current_contract, 9, "HEAD")
+                .unwrap();
+
+        assert_eq!(errors.len(), 1);
+        assert!(errors[0].contains("without a ratconfig migration or manual blocker"));
+        assert!(errors[0].contains("removed `zellij.widget_tray.allowed_values` value `cursor`"));
+    }
+
+    fn run_fixture_git(repo_root: &Path, args: &[&str]) {
+        let status = std::process::Command::new("git")
+            .arg("-C")
+            .arg(repo_root)
+            .args(args)
+            .status()
+            .unwrap();
+        assert!(status.success(), "git command failed: {args:?}");
     }
 
     // Test lane: maintainer
