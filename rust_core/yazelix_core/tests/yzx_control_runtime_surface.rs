@@ -8,19 +8,11 @@ use std::process::{Command, Stdio};
 
 mod support;
 
-use support::commands::{apply_managed_config_env, yzx_control_bin_path, yzx_control_command};
+use support::commands::{yzx_control_bin_path, yzx_control_command_in_fixture};
 use support::fixtures::{
     managed_config_fixture, prepend_path, repo_root, write_executable_script,
     write_session_config_snapshot,
 };
-
-fn yzx_control_command_in_fixture(
-    fixture: &support::fixtures::ManagedConfigFixture,
-) -> assert_cmd::Command {
-    let mut command = yzx_control_command();
-    apply_managed_config_env(&mut command, fixture);
-    command
-}
 
 fn write_default_profile_manifest(fixture: &support::fixtures::ManagedConfigFixture, raw: &str) {
     let manifest_path = fixture.home_dir.join(".nix-profile").join("manifest.json");

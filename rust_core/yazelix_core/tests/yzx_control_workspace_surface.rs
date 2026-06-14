@@ -12,19 +12,11 @@ use std::{
 
 mod support;
 
-use support::commands::{apply_managed_config_env, yzx_control_command};
+use support::commands::yzx_control_command_in_fixture;
 use support::fixtures::{
     managed_config_fixture, prepend_path, write_executable_script, write_session_config_snapshot,
     write_session_config_snapshot_with_id,
 };
-
-fn yzx_control_command_in_fixture(
-    fixture: &support::fixtures::ManagedConfigFixture,
-) -> assert_cmd::Command {
-    let mut command = yzx_control_command();
-    apply_managed_config_env(&mut command, fixture);
-    command
-}
 
 fn assert_success(output: &Output) {
     assert_eq!(

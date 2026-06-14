@@ -44,3 +44,9 @@ pub fn yzx_core_command_in_fixture(
     apply_managed_config_env(&mut command, fixture);
     command
 }
+
+pub fn yzx_control_command_in_fixture(fixture: &ManagedConfigFixture) -> Command {
+    let mut command = yzx_control_command();
+    apply_managed_config_env(&mut command, fixture);
+    command
+}
