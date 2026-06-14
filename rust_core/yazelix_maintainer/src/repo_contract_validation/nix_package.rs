@@ -613,8 +613,9 @@ fn verify_profile_installed_runtime(
         &[
             "run",
             &yzx_core_arg,
-            "launch-materialization.prepare",
+            "runtime-materialization.repair",
             "--from-env",
+            "--force",
         ],
     )?;
     if !materialization_result.status.success() {

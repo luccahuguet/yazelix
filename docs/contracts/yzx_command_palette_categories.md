@@ -40,12 +40,12 @@ Without a palette-specific contract, the menu renderer will keep accreting one-o
 The command inventory for this contract comes from the Rust-owned metadata surface:
 
 - `rust_core/yazelix_core/src/command_metadata.rs`
-- `yzx_core yzx-command-metadata.list`
+- `rust_core/yazelix_core/src/public_command_surface.rs`
 
 Sanity check:
 
 ```bash
-rust_core/target/debug/yzx_core yzx-command-metadata.list
+cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core menu_commands::tests
 ```
 
 This contract intentionally excludes:
@@ -209,7 +209,7 @@ The two models should agree on inventory, but they intentionally optimize for di
   - [v15_trimmed_runtime_contract.md](./v15_trimmed_runtime_contract.md)
   - [architecture_map.md](../architecture_map.md)
 - command-surface sanity check:
-  - `rust_core/target/debug/yzx_core yzx-command-metadata.list`
+  - `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core menu_commands::tests`
 - contract validation:
   - `yzx_repo_validator validate-contracts`
 

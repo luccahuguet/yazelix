@@ -70,16 +70,15 @@ repository.
 
 ## LOC Scorecard
 
-Current Yazi surface measured on 2026-05-08:
+Current Yazi surface measured on 2026-06-14:
 
 | Surface | Lines | Notes |
 | --- | ---: | --- |
-| `rust_core/yazelix_core/src/yazi_materialization.rs` | 567 | Yazelix adapter for config normalization, managed paths, semantic keybindings, and legacy guard |
-| `rust_core/yazelix_core/src/yazi_materialization/writer.rs` | 957 | Private generated Yazi config-pack writer and asset sync boundary |
-| `rust_core/yazelix_core/src/yazi_render_plan.rs` | 276 | Small enough to keep until a config-pack writer exists |
-| `rust_core/yazelix_core/tests/yzx_core_yazi_materialization.rs` | 459 | Behavior coverage for generated files, assets, keybindings, and legacy rejection |
-| `rust_core/yazelix_core/tests/yzx_core_yazi_render_plan.rs` | 58 | Machine CLI envelope coverage |
-| `configs/yazi/` | 356 | Main repo keeps only Yazelix base templates and sidebar/editor integration plugins |
+| `rust_core/yazelix_core/src/yazi_materialization.rs` | 695 | Yazelix adapter for config normalization, managed paths, semantic keybindings, and legacy guard |
+| `rust_core/yazelix_core/src/yazi_materialization/writer.rs` | 917 | Private generated Yazi config-pack writer and asset sync boundary |
+| `rust_core/yazelix_core/src/yazi_render_plan.rs` | 329 | Small enough to keep until a config-pack writer exists |
+| `rust_core/yazelix_core/tests/yzx_core_yazi_materialization.rs` | 620 | Behavior coverage for generated files, assets, keybindings, and legacy rejection |
+| `configs/yazi/` | 379 | Main repo keeps only Yazelix base templates and sidebar/editor integration plugins |
 | `yazelix-yazi-assets/` | 6,822 | Child repo package containing 24 flavors, reusable Yazi plugins, Starship config, package metadata, lockfile, and pinned upstream refresh metadata |
 
 Main-repo `configs/yazi/` shrank by `6,157` raw lines. Future reduction comes

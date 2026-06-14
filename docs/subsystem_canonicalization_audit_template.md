@@ -30,7 +30,7 @@ Use one row per behavior:
 
 | Behavior | Current contract or source | Current owner | Current verification | Candidate surviving owner |
 | --- | --- | --- | --- | --- |
-| example | `CRCP-001` | Rust `yzx_core config.normalize` | `test_yzx_generated_configs.nu` + `yzx_core_config_normalize.rs` | same |
+| example | `CRCP-001` | Rust config normalization library | `config_normalize.rs` + `yzx_control_runtime_surface.rs` | same |
 
 Rules:
 

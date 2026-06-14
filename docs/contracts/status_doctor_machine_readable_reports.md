@@ -30,11 +30,11 @@ That shape made future deletion harder because the data and the prose were bundl
 #### SDR-001
 - Type: behavior
 - Status: live
-- Owner: Rust `status.compute` plus Nushell human renderer
+- Owner: Rust `status_report` plus the public `yzx status` renderer
 - Statement: `yzx status --json` emits one typed JSON report whose `summary`
   contains the same runtime summary that the human table renders
 - Verification: automated
-  `nushell/scripts/dev/test_yzx_core_commands.nu`
+  `rust_core/yazelix_core/tests/yzx_control_runtime_surface.rs`
 
 #### SDR-002
 - Type: behavior

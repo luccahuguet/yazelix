@@ -76,7 +76,7 @@ This contract covers:
 - Verification: automated
   `nu nushell/scripts/dev/test_yzx_yazi_commands.nu`; automated
   `nu nushell/scripts/dev/test_yzx_workspace_commands.nu`; automated
-  `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core --test yzx_core_owned_facts`
+  `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core --test yzx_control_workspace_surface`
 
 ## Behavior
 

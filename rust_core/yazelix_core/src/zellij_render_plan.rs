@@ -888,7 +888,7 @@ mod tests {
         assert_eq!(plan.left_sidebar_args, vec!["status"]);
     }
 
-    // Defends: widget tray entries are validated against the same allowed set as config.normalize.
+    // Defends: widget tray entries are validated against the same allowed set as config normalization.
     #[test]
     fn rejects_invalid_tray_widget() {
         let mut req = sample_request();

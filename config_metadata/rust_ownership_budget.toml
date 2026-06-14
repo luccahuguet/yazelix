@@ -1,8 +1,8 @@
 [contract]
-measured_total_loc = 80894
-measured_total_file_count = 157
-current_total_loc_max = 80894
-current_total_file_count_max = 157
+measured_total_loc = 79799
+measured_total_file_count = 153
+current_total_loc_max = 79799
+current_total_file_count_max = 153
 hard_target_loc = 60000
 
 [[families]]
@@ -167,11 +167,11 @@ allowed_paths = [
 id = "core_integration_tests"
 status = "canonical"
 owner_bead = "yazelix-9opk.4"
-measured_loc = 8249
-measured_files = 21
-max_loc = 8249
+measured_loc = 7154
+measured_files = 17
+max_loc = 7154
 target_loc = 4500
-max_files = 21
+max_files = 17
 allowed_paths = [
   "rust_core/yazelix_core/tests/support/commands.rs",
   "rust_core/yazelix_core/tests/support/envelopes.rs",
@@ -183,16 +183,12 @@ allowed_paths = [
   "rust_core/yazelix_core/tests/yzx_control_public_commands.rs",
   "rust_core/yazelix_core/tests/yzx_control_runtime_surface.rs",
   "rust_core/yazelix_core/tests/yzx_control_workspace_surface.rs",
-  "rust_core/yazelix_core/tests/yzx_core_command_metadata.rs",
   "rust_core/yazelix_core/tests/yzx_core_config_edit.rs",
   "rust_core/yazelix_core/tests/yzx_core_config_normalize.rs",
   "rust_core/yazelix_core/tests/yzx_core_config_ui.rs",
-  "rust_core/yazelix_core/tests/yzx_core_owned_facts.rs",
   "rust_core/yazelix_core/tests/yzx_core_runtime_env.rs",
   "rust_core/yazelix_core/tests/yzx_core_settings_jsonc_patch.rs",
   "rust_core/yazelix_core/tests/yzx_core_yazi_materialization.rs",
-  "rust_core/yazelix_core/tests/yzx_core_yazi_render_plan.rs",
-  "rust_core/yazelix_core/tests/yzx_core_zellij_render_plan.rs",
   "rust_core/yazelix_core/tests/yzx_root_version.rs",
 ]
 

@@ -11,15 +11,19 @@ use tempfile::tempdir;
 
 mod support;
 
-use support::commands::yzx_core_command;
-use support::envelopes::{error_envelope, ok_envelope};
+use yazelix_core::{RuntimeEnvComputeData, RuntimeEnvComputeRequest, compute_runtime_env};
 
 const YAZELIX_LAZYGIT_CONFIG: &str = "os:\n  edit: '$EDITOR -- {{filename}}'\n  editAtLine: '$EDITOR -- {{filename}}:{{line}}'\n  editAtLineAndWait: '$EDITOR -- {{filename}}:{{line}}'\n  editInTerminal: true\n  openDirInEditor: '$EDITOR -- {{dir}}'\n";
 
-// Defends: runtime-env.compute returns one machine-readable env envelope with filtered PATH entries and managed Helix wrapping.
+fn runtime_env_data(request: Value) -> RuntimeEnvComputeData {
+    let request: RuntimeEnvComputeRequest = serde_json::from_value(request).unwrap();
+    compute_runtime_env(&request).unwrap()
+}
+
+// Defends: runtime env computation returns filtered PATH entries and managed Helix wrapping.
 // Contract: CRCP-002
 #[test]
-fn runtime_env_compute_prints_machine_readable_env_envelope() {
+fn runtime_env_compute_returns_filtered_env() {
     let tmp = tempdir().unwrap();
     let runtime_dir = tmp.path().join("runtime");
     let home_dir = tmp.path().join("home");
@@ -47,14 +51,7 @@ fn runtime_env_compute_prints_machine_readable_env_envelope() {
         },
     });
 
-    let output = yzx_core_command()
-        .arg("runtime-env.compute")
-        .arg("--request-json")
-        .arg(request.to_string())
-        .output()
-        .unwrap();
-
-    let envelope: Value = ok_envelope(&output);
+    let data = runtime_env_data(request);
     let expected_wrapper = runtime_dir
         .join("shells")
         .join("posix")
@@ -72,58 +69,26 @@ fn runtime_env_compute_prints_machine_readable_env_envelope() {
         .to_string_lossy()
         .to_string();
 
-    assert_eq!(envelope["schema_version"], 1);
-    assert_eq!(envelope["command"], "runtime-env.compute");
-    assert_eq!(envelope["status"], "ok");
-    assert_eq!(envelope["data"]["editor_kind"], "helix");
+    assert_eq!(data.editor_kind, "helix");
     assert_eq!(
-        envelope["data"]["path_entries"],
-        json!([
+        data.path_entries,
+        vec![
             runtime_toolbin.to_string_lossy().to_string(),
             runtime_bin.to_string_lossy().to_string(),
-            "/usr/local/bin",
-            "/usr/bin"
-        ])
+            "/usr/local/bin".to_string(),
+            "/usr/bin".to_string()
+        ]
     );
+    assert_eq!(data.runtime_env["PATH"], json!(data.path_entries));
+    assert_eq!(data.runtime_env["EDITOR"], expected_wrapper);
+    assert_eq!(data.runtime_env["VISUAL"], expected_wrapper);
     assert_eq!(
-        envelope["data"]["runtime_env"]["PATH"],
-        envelope["data"]["path_entries"]
-    );
-    assert_eq!(envelope["data"]["runtime_env"]["EDITOR"], expected_wrapper);
-    assert_eq!(envelope["data"]["runtime_env"]["VISUAL"], expected_wrapper);
-    assert_eq!(
-        envelope["data"]["runtime_env"]["YAZELIX_MANAGED_HELIX_BINARY"],
+        data.runtime_env["YAZELIX_MANAGED_HELIX_BINARY"],
         "/tmp/custom/bin/hx"
     );
-    assert_eq!(
-        envelope["data"]["runtime_env"]["HELIX_RUNTIME"],
-        "/tmp/helix-runtime"
-    );
-    assert_eq!(
-        envelope["data"]["runtime_env"]["YAZI_CONFIG_HOME"],
-        expected_home
-    );
-    assert_eq!(
-        envelope["data"]["runtime_env"]["ZELLIJ_DEFAULT_LAYOUT"],
-        "yzx_side"
-    );
-}
-
-// Defends: runtime-env.compute rejects malformed JSON request payloads with one usage envelope.
-// Contract: CRCP-002
-#[test]
-fn runtime_env_compute_rejects_invalid_request_json() {
-    let output = yzx_core_command()
-        .arg("runtime-env.compute")
-        .arg("--request-json")
-        .arg("{")
-        .output()
-        .unwrap();
-
-    let envelope: Value = error_envelope(&output, 64);
-    assert_eq!(envelope["command"], "runtime-env.compute");
-    assert_eq!(envelope["error"]["class"], "usage");
-    assert_eq!(envelope["error"]["code"], "invalid_request_json");
+    assert_eq!(data.runtime_env["HELIX_RUNTIME"], "/tmp/helix-runtime");
+    assert_eq!(data.runtime_env["YAZI_CONFIG_HOME"], expected_home);
+    assert_eq!(data.runtime_env["ZELLIJ_DEFAULT_LAYOUT"], "yzx_side");
 }
 
 // Defends: custom Helix binaries cannot bypass the required binary/runtime pair contract at runtime-env assembly.
@@ -137,86 +102,11 @@ fn runtime_env_compute_rejects_bare_custom_helix_binary() {
         "editor_command": "/tmp/custom/bin/hx"
     });
 
-    let output = yzx_core_command()
-        .arg("runtime-env.compute")
-        .arg("--request-json")
-        .arg(request.to_string())
-        .output()
-        .unwrap();
+    let request: RuntimeEnvComputeRequest = serde_json::from_value(request).unwrap();
+    let error = compute_runtime_env(&request).unwrap_err();
 
-    let envelope: Value = error_envelope(&output, 65);
-    assert_eq!(envelope["command"], "runtime-env.compute");
-    assert_eq!(envelope["error"]["class"], "config");
-    assert_eq!(envelope["error"]["code"], "helix_external_required");
-}
-
-// Defends: runtime-env.compute can build the canonical runtime env from process env plus optional config JSON without Nu request assembly.
-// Contract: CRCP-002
-#[test]
-fn runtime_env_compute_from_env_accepts_config_json() {
-    let tmp = tempdir().unwrap();
-    let runtime_dir = tmp.path().join("runtime");
-    let home_dir = tmp.path().join("home");
-
-    fs::create_dir_all(runtime_dir.join("toolbin")).unwrap();
-    fs::create_dir_all(runtime_dir.join("bin")).unwrap();
-    fs::create_dir_all(&home_dir).unwrap();
-
-    let runtime_toolbin = runtime_dir.join("toolbin");
-    let runtime_bin = runtime_dir.join("bin");
-    let config_json = json!({
-        "helix_external": {
-            "binary": "/tmp/managed/bin/hx",
-            "runtime_path": "/tmp/managed-helix-runtime"
-        },
-    });
-
-    let output = yzx_core_command()
-        .env_clear()
-        .env("HOME", &home_dir)
-        .env(
-            "PATH",
-            format!("{}:{}", runtime_toolbin.display(), runtime_bin.display()),
-        )
-        .env("YAZELIX_RUNTIME_DIR", &runtime_dir)
-        .arg("runtime-env.compute")
-        .arg("--from-env")
-        .arg("--config-json")
-        .arg(config_json.to_string())
-        .output()
-        .unwrap();
-
-    let envelope: Value = ok_envelope(&output);
-    let expected_wrapper = runtime_dir
-        .join("shells")
-        .join("posix")
-        .join("yazelix_hx.sh")
-        .to_string_lossy()
-        .to_string();
-
-    assert_eq!(envelope["status"], "ok");
-    assert_eq!(envelope["command"], "runtime-env.compute");
-    assert_eq!(
-        envelope["data"]["runtime_env"]["PATH"],
-        json!([
-            runtime_toolbin.to_string_lossy().to_string(),
-            runtime_bin.to_string_lossy().to_string(),
-        ])
-    );
-    assert_eq!(envelope["data"]["runtime_env"]["EDITOR"], expected_wrapper);
-    assert_eq!(envelope["data"]["runtime_env"]["VISUAL"], expected_wrapper);
-    assert_eq!(
-        envelope["data"]["runtime_env"]["YAZELIX_MANAGED_HELIX_BINARY"],
-        "/tmp/managed/bin/hx"
-    );
-    assert_eq!(
-        envelope["data"]["runtime_env"]["ZELLIJ_DEFAULT_LAYOUT"],
-        "yzx_side"
-    );
-    assert_eq!(
-        envelope["data"]["runtime_env"]["HELIX_RUNTIME"],
-        "/tmp/managed-helix-runtime"
-    );
+    assert_eq!(error.class().as_str(), "config");
+    assert_eq!(error.code(), "helix_external_required");
 }
 
 // Defends: the shipped Lazygit config uses Yazelix's exported editor command instead of the literal `helix` preset command.
@@ -253,22 +143,12 @@ fn runtime_env_compute_adds_lazygit_base_config_before_user_config() {
     fs::write(&runtime_lazygit_config, YAZELIX_LAZYGIT_CONFIG).unwrap();
     fs::write(&user_lazygit_config, "gui:\n  showIcons: true\n").unwrap();
 
-    let output = yzx_core_command()
-        .arg("runtime-env.compute")
-        .arg("--request-json")
-        .arg(
-            json!({
-                "runtime_dir": runtime_dir,
-                "home_dir": home_dir
-            })
-            .to_string(),
-        )
-        .output()
-        .unwrap();
-
-    let envelope: Value = ok_envelope(&output);
+    let data = runtime_env_data(json!({
+        "runtime_dir": runtime_dir,
+        "home_dir": home_dir
+    }));
     assert_eq!(
-        envelope["data"]["runtime_env"]["LG_CONFIG_FILE"],
+        data.runtime_env["LG_CONFIG_FILE"],
         format!(
             "{},{}",
             runtime_lazygit_config.to_string_lossy(),
@@ -292,23 +172,13 @@ fn runtime_env_compute_preserves_existing_lazygit_config_file_list() {
     fs::create_dir_all(&home_dir).unwrap();
     fs::write(&runtime_lazygit_config, YAZELIX_LAZYGIT_CONFIG).unwrap();
 
-    let output = yzx_core_command()
-        .arg("runtime-env.compute")
-        .arg("--request-json")
-        .arg(
-            json!({
-                "runtime_dir": runtime_dir,
-                "home_dir": home_dir,
-                "current_lazygit_config_file": "/tmp/base.yml,/tmp/theme.yml"
-            })
-            .to_string(),
-        )
-        .output()
-        .unwrap();
-
-    let envelope: Value = ok_envelope(&output);
+    let data = runtime_env_data(json!({
+        "runtime_dir": runtime_dir,
+        "home_dir": home_dir,
+        "current_lazygit_config_file": "/tmp/base.yml,/tmp/theme.yml"
+    }));
     assert_eq!(
-        envelope["data"]["runtime_env"]["LG_CONFIG_FILE"],
+        data.runtime_env["LG_CONFIG_FILE"],
         format!(
             "{},/tmp/base.yml,/tmp/theme.yml",
             runtime_lazygit_config.to_string_lossy()
@@ -340,28 +210,18 @@ fn runtime_env_compute_strips_inherited_yazelix_lazygit_configs() {
     fs::write(&old_runtime_lazygit_config, "os:\n  editPreset: helix\n").unwrap();
     fs::write(&user_lazygit_config, "gui:\n  showIcons: true\n").unwrap();
 
-    let output = yzx_core_command()
-        .arg("runtime-env.compute")
-        .arg("--request-json")
-        .arg(
-            json!({
-                "runtime_dir": runtime_dir,
-                "home_dir": home_dir,
-                "current_lazygit_config_file": format!(
-                    "{},{},{}",
-                    old_runtime_lazygit_config.to_string_lossy(),
-                    old_runtime_lazygit_config.to_string_lossy(),
-                    user_lazygit_config.to_string_lossy(),
-                )
-            })
-            .to_string(),
+    let data = runtime_env_data(json!({
+        "runtime_dir": runtime_dir,
+        "home_dir": home_dir,
+        "current_lazygit_config_file": format!(
+            "{},{},{}",
+            old_runtime_lazygit_config.to_string_lossy(),
+            old_runtime_lazygit_config.to_string_lossy(),
+            user_lazygit_config.to_string_lossy(),
         )
-        .output()
-        .unwrap();
-
-    let envelope: Value = ok_envelope(&output);
+    }));
     assert_eq!(
-        envelope["data"]["runtime_env"]["LG_CONFIG_FILE"],
+        data.runtime_env["LG_CONFIG_FILE"],
         format!(
             "{},{}",
             runtime_lazygit_config.to_string_lossy(),
@@ -387,25 +247,16 @@ fn runtime_env_compute_does_not_force_lazygit_helix_for_neovim() {
     fs::write(&runtime_lazygit_config, YAZELIX_LAZYGIT_CONFIG).unwrap();
     fs::write(&user_lazygit_config, "gui:\n  showIcons: true\n").unwrap();
 
-    let output = yzx_core_command()
-        .arg("runtime-env.compute")
-        .arg("--request-json")
-        .arg(
-            json!({
-                "runtime_dir": runtime_dir,
-                "home_dir": home_dir,
-                "editor_command": "nvim"
-            })
-            .to_string(),
-        )
-        .output()
-        .unwrap();
+    let data = runtime_env_data(json!({
+        "runtime_dir": runtime_dir,
+        "home_dir": home_dir,
+        "editor_command": "nvim"
+    }));
 
-    let envelope: Value = ok_envelope(&output);
-    assert_eq!(envelope["data"]["editor_kind"], "neovim");
-    assert_eq!(envelope["data"]["runtime_env"]["EDITOR"], "nvim");
-    assert_eq!(envelope["data"]["runtime_env"]["VISUAL"], "nvim");
-    assert!(envelope["data"]["runtime_env"]["LG_CONFIG_FILE"].is_null());
+    assert_eq!(data.editor_kind, "neovim");
+    assert_eq!(data.runtime_env["EDITOR"], "nvim");
+    assert_eq!(data.runtime_env["VISUAL"], "nvim");
+    assert!(data.runtime_env.get("LG_CONFIG_FILE").is_none());
 }
 
 // Defends: default bundled Helix uses the private raw binary behind the public managed `hx` wrapper.
@@ -419,29 +270,19 @@ fn runtime_env_compute_points_default_helix_wrapper_at_private_binary() {
     fs::create_dir_all(runtime_dir.join("libexec")).unwrap();
     fs::create_dir_all(&home_dir).unwrap();
 
-    let output = yzx_core_command()
-        .arg("runtime-env.compute")
-        .arg("--request-json")
-        .arg(
-            json!({
-                "runtime_dir": runtime_dir,
-                "home_dir": home_dir
-            })
-            .to_string(),
-        )
-        .output()
-        .unwrap();
-
-    let envelope: Value = ok_envelope(&output);
+    let data = runtime_env_data(json!({
+        "runtime_dir": runtime_dir,
+        "home_dir": home_dir
+    }));
     assert_eq!(
-        envelope["data"]["runtime_env"]["EDITOR"],
+        data.runtime_env["EDITOR"],
         tmp.path()
             .join("runtime/shells/posix/yazelix_hx.sh")
             .to_string_lossy()
             .to_string()
     );
     assert_eq!(
-        envelope["data"]["runtime_env"]["YAZELIX_MANAGED_HELIX_BINARY"],
+        data.runtime_env["YAZELIX_MANAGED_HELIX_BINARY"],
         tmp.path()
             .join("runtime/libexec/hx")
             .to_string_lossy()

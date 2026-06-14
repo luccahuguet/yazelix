@@ -141,29 +141,15 @@ Calls should use structured argv execution. They must not assemble inline quoted
 
 ### Command Shape
 
-Helper commands track the Rust-owned slices:
+`yzx_core` is intentionally narrow. It only exposes helper commands that still need subprocess execution from packaged runtime glue:
 
-- `config.normalize`
-- `config-state.compute`
-- `config-state.record`
-- `runtime-contract.evaluate`
-- `startup-launch-preflight.evaluate`
-- `runtime-env.compute`
-- `runtime-materialization.plan`
-- `runtime-materialization.materialize`
 - `runtime-materialization.repair`
-- `status.compute`
-- `install-ownership.evaluate`
-- `zellij-render-plan.compute`
-- `yazi-render-plan.compute`
-- `yazi-materialization.generate`
-- `zellij-materialization.generate`
-- `yzx-command-metadata.list`
-- `yzx-command-metadata.externs`
-- `yzx-command-metadata.sync-externs`
-- `yzx-command-metadata.help`
+- `helix-materialization.generate`
+- `terminal-materialization.generate`
 
-The exact user-facing `yzx` commands do not change when these helper commands land. Nushell maps the public command flow onto helper command ids internally.
+Config normalization, runtime-env derivation, status reporting, command metadata, render plans, ownership reports, and most materializers are Rust library/public-command owners, not helper command contracts. Do not recreate `yzx_core` commands for those slices unless a surviving subprocess boundary needs them.
+
+The exact user-facing `yzx` commands do not change when helper commands land or disappear. Public command flows should call Rust in-process through `yzx`/`yzx_control` when possible; only the remaining runtime glue maps to helper command ids internally.
 
 Each helper call receives explicit paths for every owned surface it needs, such as:
 
@@ -184,7 +170,7 @@ Success envelope:
 ```json
 {
   "schema_version": 1,
-  "command": "config.normalize",
+  "command": "runtime-materialization.repair",
   "status": "ok",
   "data": {},
   "warnings": []
@@ -200,7 +186,7 @@ Failure envelope:
 ```json
 {
   "schema_version": 1,
-  "command": "config.normalize",
+  "command": "terminal-materialization.generate",
   "status": "error",
   "error": {
     "class": "config",
@@ -248,15 +234,15 @@ Rust may return optional metrics inside the success `data`, but those metrics ar
 
 The generated Nushell `yzx` extern bridge is startup-owned glue, not command business logic. Normal launch/setup refreshes it from the Rust-owned setup preflight before the Nushell startup handoff.
 
-Warm startup must not pay command metadata rendering when the generated extern bridge is already current. The Rust-owned sync command should perform only cheap generated-state checks, such as a Rust helper fingerprint and generated-file hash, before reusing the existing bridge.
+Warm startup must not pay command metadata rendering when the generated extern bridge is already current. The Rust-owned sync path should perform only cheap generated-state checks, such as a Rust helper fingerprint and generated-file hash, before reusing the existing bridge.
 
-When the command metadata is missing or stale, the Rust sync path renders generated extern content from Rust-owned metadata and updates the bridge plus fingerprint; the same behavior remains exposed through `yzx_core yzx-command-metadata.sync-externs` for explicit helper use. It must not spawn Nushell to inspect `core/yazelix.nu` or reconstitute a second command registry. Successful regeneration updates the generated bridge and its fingerprint atomically enough that a later warm startup can skip rendering and writes.
+When the command metadata is missing or stale, the Rust sync path renders generated extern content from Rust-owned metadata and updates the bridge plus fingerprint. It must not spawn Nushell to inspect `core/yazelix.nu` or reconstitute a second command registry. Successful regeneration updates the generated bridge and its fingerprint atomically enough that a later warm startup can skip rendering and writes.
 
 Refresh failure must be non-destructive. If a previous generated bridge exists, keep it instead of replacing it with an empty placeholder. If no bridge exists yet, create a minimal placeholder so managed Nushell config can still source the file and show the generation warning.
 
 ### Materialization And Writes
 
-Rust may still expose smaller planning helpers when that is the cleanest seam, but a migration only counts once Rust owns the real writer lifecycle end-to-end. The landed runtime materialization cut proved that the bridge can collapse from a plan/apply split into one Rust-owned `plan` plus full-owner `materialize` and `repair` commands when the owner boundary becomes clear.
+Rust may still expose a small helper when that is the cleanest subprocess seam, but a migration only counts once Rust owns the real writer lifecycle end-to-end. The landed runtime materialization cut proved that the bridge can collapse from split planning/apply helpers into one repair helper when the owner boundary becomes clear.
 
 When Rust writes files, it must preserve the existing ownership rules:
 

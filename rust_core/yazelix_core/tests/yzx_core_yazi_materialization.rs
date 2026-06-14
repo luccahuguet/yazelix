@@ -1,11 +1,14 @@
 // Test lane: maintainer
 
-use assert_cmd::Command;
 use serde_json::Value;
 use std::fs;
 use std::path::PathBuf;
+use std::sync::{Mutex, OnceLock};
 use tempfile::tempdir;
 use yazelix_core::settings_surface::read_settings_jsonc_value;
+use yazelix_core::{
+    CoreError, YaziMaterializationData, YaziMaterializationRequest, generate_yazi_materialization,
+};
 
 fn repo_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -116,35 +119,46 @@ desc = "Open lazygit"
 }
 
 fn run_yazi_materialization_generate(
-    home: &std::path::Path,
-    config_root: &std::path::Path,
     config_path: &std::path::Path,
     repo: &std::path::Path,
     runtime_dir: &std::path::Path,
     output_dir: &std::path::Path,
     sync_static_assets: bool,
-) -> std::process::Output {
-    let mut command = Command::cargo_bin("yzx_core").unwrap();
-    command
-        .env("HOME", home)
-        .env("XDG_CONFIG_HOME", home.join(".config"))
-        .env("XDG_DATA_HOME", home.join(".local").join("share"))
-        .env("YAZELIX_CONFIG_DIR", config_root)
-        .arg("yazi-materialization.generate")
-        .arg("--config")
-        .arg(config_path)
-        .arg("--default-config")
-        .arg(repo.join("settings_default.jsonc"))
-        .arg("--contract")
-        .arg(repo.join("config_metadata/main_config_contract.toml"))
-        .arg("--runtime-dir")
-        .arg(runtime_dir)
-        .arg("--yazi-config-dir")
-        .arg(output_dir);
-    if sync_static_assets {
-        command.arg("--sync-static-assets");
+) -> Result<YaziMaterializationData, CoreError> {
+    let _guard = yazi_materialization_env_lock().lock().unwrap();
+    let previous_config_dir = std::env::var_os("YAZELIX_CONFIG_DIR");
+    let config_dir = config_path
+        .parent()
+        .expect("managed settings path has a config dir");
+    // Tests serialize calls before mutating process env for this control-plane boundary.
+    unsafe {
+        std::env::set_var("YAZELIX_CONFIG_DIR", config_dir);
     }
-    command.output().unwrap()
+
+    let result = generate_yazi_materialization(&YaziMaterializationRequest {
+        config_path: config_path.to_path_buf(),
+        default_config_path: repo.join("settings_default.jsonc"),
+        contract_path: repo.join("config_metadata/main_config_contract.toml"),
+        runtime_dir: runtime_dir.to_path_buf(),
+        yazi_config_dir: output_dir.to_path_buf(),
+        sync_static_assets,
+    });
+
+    match previous_config_dir {
+        Some(value) => unsafe {
+            std::env::set_var("YAZELIX_CONFIG_DIR", value);
+        },
+        None => unsafe {
+            std::env::remove_var("YAZELIX_CONFIG_DIR");
+        },
+    }
+
+    result
+}
+
+fn yazi_materialization_env_lock() -> &'static Mutex<()> {
+    static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+    LOCK.get_or_init(|| Mutex::new(()))
 }
 
 // Regression: the zoxide editor plugin must not bake a generated Nix store path to yzx_control into copied Lua assets.
@@ -171,7 +185,7 @@ fn bundled_sidebar_state_plugin_restores_saved_zellij_session_for_pipe_commands(
     assert!(plugin.contains(r#""register_sidebar_yazi_state""#));
 }
 
-// Defends: yazi-materialization.generate Rust-owns the generated Yazi surface, bundled assets, and runtime placeholder rendering end-to-end.
+// Defends: Yazi materialization Rust-owns the generated surface, bundled assets, and runtime placeholder rendering end-to-end.
 #[test]
 fn yazi_materialization_generate_writes_managed_surface_and_assets() {
     let repo = repo_root();
@@ -191,39 +205,14 @@ plugins = ["git", "starship"]
     );
     prepare_runtime_fixture(&runtime_dir);
 
-    let output = Command::cargo_bin("yzx_core")
-        .unwrap()
-        .env("HOME", &home)
-        .env("XDG_CONFIG_HOME", home.join(".config"))
-        .env("XDG_DATA_HOME", home.join(".local").join("share"))
-        .env("YAZELIX_CONFIG_DIR", &config_root)
-        .arg("yazi-materialization.generate")
-        .arg("--config")
-        .arg(&config_path)
-        .arg("--default-config")
-        .arg(repo.join("settings_default.jsonc"))
-        .arg("--contract")
-        .arg(repo.join("config_metadata/main_config_contract.toml"))
-        .arg("--runtime-dir")
-        .arg(&runtime_dir)
-        .arg("--yazi-config-dir")
-        .arg(&output_dir)
-        .arg("--sync-static-assets")
-        .output()
-        .unwrap();
+    let data =
+        run_yazi_materialization_generate(&config_path, &repo, &runtime_dir, &output_dir, true)
+            .unwrap();
 
-    assert!(
-        output.status.success(),
-        "stderr: {}",
-        String::from_utf8_lossy(&output.stderr)
-    );
-    let envelope: Value = serde_json::from_slice(&output.stdout).unwrap();
-    assert_eq!(envelope["command"], "yazi-materialization.generate");
-    assert_eq!(envelope["status"], "ok");
-    assert_eq!(envelope["data"]["resolved_theme"], "tokyo-night");
-    assert_eq!(envelope["data"]["sort_by"], "modified");
-    assert_eq!(envelope["data"]["synced_static_assets"], true);
-    assert_eq!(envelope["data"]["missing_plugins"], serde_json::json!([]));
+    assert_eq!(data.resolved_theme, "tokyo-night");
+    assert_eq!(data.sort_by, "modified");
+    assert!(data.synced_static_assets);
+    assert_eq!(data.missing_plugins, Vec::<String>::new());
 
     let yazi_toml = fs::read_to_string(output_dir.join("yazi.toml")).unwrap();
     let init_lua = fs::read_to_string(output_dir.join("init.lua")).unwrap();
@@ -272,20 +261,9 @@ theme = "tokyo-night"
     );
     prepare_runtime_fixture(&runtime_dir);
 
-    let first = run_yazi_materialization_generate(
-        &home,
-        &config_root,
-        &config_path,
-        &repo,
-        &runtime_dir,
-        &output_dir,
-        true,
-    );
-    assert!(
-        first.status.success(),
-        "stderr: {}",
-        String::from_utf8_lossy(&first.stderr)
-    );
+    let first =
+        run_yazi_materialization_generate(&config_path, &repo, &runtime_dir, &output_dir, true);
+    first.unwrap();
 
     let plugin_main = output_dir
         .join("plugins")
@@ -297,41 +275,17 @@ theme = "tokyo-night"
         .join("warm_skip_sentinel");
     fs::write(&sentinel, "warm asset marker\n").unwrap();
 
-    let warm = run_yazi_materialization_generate(
-        &home,
-        &config_root,
-        &config_path,
-        &repo,
-        &runtime_dir,
-        &output_dir,
-        false,
-    );
-    assert!(
-        warm.status.success(),
-        "stderr: {}",
-        String::from_utf8_lossy(&warm.stderr)
-    );
-    let warm_envelope: Value = serde_json::from_slice(&warm.stdout).unwrap();
-    assert_eq!(warm_envelope["data"]["synced_static_assets"], false);
+    let warm =
+        run_yazi_materialization_generate(&config_path, &repo, &runtime_dir, &output_dir, false);
+    let warm = warm.unwrap();
+    assert!(!warm.synced_static_assets);
     assert!(sentinel.exists());
 
     fs::write(&plugin_main, "return 'stale generated plugin'\n").unwrap();
-    let repair = run_yazi_materialization_generate(
-        &home,
-        &config_root,
-        &config_path,
-        &repo,
-        &runtime_dir,
-        &output_dir,
-        false,
-    );
-    assert!(
-        repair.status.success(),
-        "stderr: {}",
-        String::from_utf8_lossy(&repair.stderr)
-    );
-    let repair_envelope: Value = serde_json::from_slice(&repair.stdout).unwrap();
-    assert_eq!(repair_envelope["data"]["synced_static_assets"], true);
+    let repair =
+        run_yazi_materialization_generate(&config_path, &repo, &runtime_dir, &output_dir, false);
+    let repair = repair.unwrap();
+    assert!(repair.synced_static_assets);
     assert_eq!(fs::read_to_string(plugin_main).unwrap(), "return 'ok'\n");
 }
 
@@ -366,20 +320,8 @@ fn yazi_materialization_syncs_symlinked_bundled_plugin_dirs() {
     fs::create_dir_all(&target_plugin).unwrap();
     fs::write(target_plugin.join("main.lua"), "return 'stale plugin'\n").unwrap();
 
-    let output = run_yazi_materialization_generate(
-        &home,
-        &config_root,
-        &config_path,
-        &repo,
-        &runtime_dir,
-        &output_dir,
-        true,
-    );
-    assert!(
-        output.status.success(),
-        "stderr: {}",
-        String::from_utf8_lossy(&output.stderr)
-    );
+    run_yazi_materialization_generate(&config_path, &repo, &runtime_dir, &output_dir, true)
+        .unwrap();
 
     assert_eq!(
         fs::read_to_string(target_plugin.join("main.lua")).unwrap(),
@@ -412,33 +354,10 @@ plugins = ["clipboard"]
     fs::create_dir_all(&plugin_dir).unwrap();
     fs::write(plugin_dir.join("main.lua"), "return {}\n").unwrap();
 
-    let output = Command::cargo_bin("yzx_core")
-        .unwrap()
-        .env("HOME", &home)
-        .env("XDG_CONFIG_HOME", home.join(".config"))
-        .env("XDG_DATA_HOME", home.join(".local").join("share"))
-        .env("YAZELIX_CONFIG_DIR", &config_root)
-        .arg("yazi-materialization.generate")
-        .arg("--config")
-        .arg(&config_path)
-        .arg("--default-config")
-        .arg(repo.join("settings_default.jsonc"))
-        .arg("--contract")
-        .arg(repo.join("config_metadata/main_config_contract.toml"))
-        .arg("--runtime-dir")
-        .arg(&runtime_dir)
-        .arg("--yazi-config-dir")
-        .arg(&output_dir)
-        .output()
-        .unwrap();
-
-    assert!(
-        output.status.success(),
-        "stderr: {}",
-        String::from_utf8_lossy(&output.stderr)
-    );
-    let envelope: Value = serde_json::from_slice(&output.stdout).unwrap();
-    assert_eq!(envelope["data"]["missing_plugins"], serde_json::json!([]));
+    let data =
+        run_yazi_materialization_generate(&config_path, &repo, &runtime_dir, &output_dir, false)
+            .unwrap();
+    assert_eq!(data.missing_plugins, Vec::<String>::new());
     assert!(output_dir.join("plugins/clipboard.yazi/main.lua").exists());
 
     let init_lua = fs::read_to_string(output_dir.join("init.lua")).unwrap();
@@ -465,31 +384,8 @@ ratio = [1, 4, 0]
     )
     .unwrap();
 
-    let output = Command::cargo_bin("yzx_core")
-        .unwrap()
-        .env("HOME", &home)
-        .env("XDG_CONFIG_HOME", home.join(".config"))
-        .env("XDG_DATA_HOME", home.join(".local").join("share"))
-        .env("YAZELIX_CONFIG_DIR", &config_root)
-        .arg("yazi-materialization.generate")
-        .arg("--config")
-        .arg(&config_path)
-        .arg("--default-config")
-        .arg(repo.join("settings_default.jsonc"))
-        .arg("--contract")
-        .arg(repo.join("config_metadata/main_config_contract.toml"))
-        .arg("--runtime-dir")
-        .arg(&runtime_dir)
-        .arg("--yazi-config-dir")
-        .arg(&output_dir)
-        .output()
+    run_yazi_materialization_generate(&config_path, &repo, &runtime_dir, &output_dir, false)
         .unwrap();
-
-    assert!(
-        output.status.success(),
-        "stderr: {}",
-        String::from_utf8_lossy(&output.stderr)
-    );
     let generated_yazi = fs::read_to_string(output_dir.join("yazi.toml")).unwrap();
     let parsed_yazi: toml::Value = toml::from_str(&generated_yazi).unwrap();
     assert_eq!(
@@ -520,31 +416,8 @@ open_zoxide_in_editor = ["<A-x>", "<A-s>"]
     );
     prepare_runtime_fixture(&runtime_dir);
 
-    let output = Command::cargo_bin("yzx_core")
-        .unwrap()
-        .env("HOME", &home)
-        .env("XDG_CONFIG_HOME", home.join(".config"))
-        .env("XDG_DATA_HOME", home.join(".local").join("share"))
-        .env("YAZELIX_CONFIG_DIR", &config_root)
-        .arg("yazi-materialization.generate")
-        .arg("--config")
-        .arg(&config_path)
-        .arg("--default-config")
-        .arg(repo.join("settings_default.jsonc"))
-        .arg("--contract")
-        .arg(repo.join("config_metadata/main_config_contract.toml"))
-        .arg("--runtime-dir")
-        .arg(&runtime_dir)
-        .arg("--yazi-config-dir")
-        .arg(&output_dir)
-        .output()
+    run_yazi_materialization_generate(&config_path, &repo, &runtime_dir, &output_dir, false)
         .unwrap();
-
-    assert!(
-        output.status.success(),
-        "stderr: {}",
-        String::from_utf8_lossy(&output.stderr)
-    );
     let generated_keymap = fs::read_to_string(output_dir.join("keymap.toml")).unwrap();
     let parsed_keymap: toml::Value = toml::from_str(&generated_keymap).unwrap();
     let mgr_append = parsed_keymap
@@ -597,30 +470,11 @@ open_zoxide_in_editor = ["<A-x>"]
     );
     prepare_runtime_fixture(&runtime_dir);
 
-    let output = Command::cargo_bin("yzx_core")
-        .unwrap()
-        .env("HOME", &home)
-        .env("XDG_CONFIG_HOME", home.join(".config"))
-        .env("XDG_DATA_HOME", home.join(".local").join("share"))
-        .env("YAZELIX_CONFIG_DIR", &config_root)
-        .arg("yazi-materialization.generate")
-        .arg("--config")
-        .arg(&config_path)
-        .arg("--default-config")
-        .arg(repo.join("settings_default.jsonc"))
-        .arg("--contract")
-        .arg(repo.join("config_metadata/main_config_contract.toml"))
-        .arg("--runtime-dir")
-        .arg(&runtime_dir)
-        .arg("--yazi-config-dir")
-        .arg(&output_dir)
-        .output()
-        .unwrap();
-
-    assert_eq!(output.status.code(), Some(65));
-    let envelope: Value = serde_json::from_slice(&output.stderr).unwrap();
-    assert_eq!(envelope["error"]["code"], "duplicate_yazi_keybinding");
-    assert_eq!(envelope["error"]["details"]["key"], "<A-x>");
+    let error =
+        run_yazi_materialization_generate(&config_path, &repo, &runtime_dir, &output_dir, false)
+            .unwrap_err();
+    assert_eq!(error.code(), "duplicate_yazi_keybinding");
+    assert_eq!(error.details()["key"], "<A-x>");
 }
 
 // Regression: user Yazi keymap sections that are absent from Yazelix's bundled base keymap still survive materialization.
@@ -662,31 +516,8 @@ desc = "Previous completion"
     )
     .unwrap();
 
-    let output = Command::cargo_bin("yzx_core")
-        .unwrap()
-        .env("HOME", &home)
-        .env("XDG_CONFIG_HOME", home.join(".config"))
-        .env("XDG_DATA_HOME", home.join(".local").join("share"))
-        .env("YAZELIX_CONFIG_DIR", &config_root)
-        .arg("yazi-materialization.generate")
-        .arg("--config")
-        .arg(&config_path)
-        .arg("--default-config")
-        .arg(repo.join("settings_default.jsonc"))
-        .arg("--contract")
-        .arg(repo.join("config_metadata/main_config_contract.toml"))
-        .arg("--runtime-dir")
-        .arg(&runtime_dir)
-        .arg("--yazi-config-dir")
-        .arg(&output_dir)
-        .output()
+    run_yazi_materialization_generate(&config_path, &repo, &runtime_dir, &output_dir, false)
         .unwrap();
-
-    assert!(
-        output.status.success(),
-        "stderr: {}",
-        String::from_utf8_lossy(&output.stderr)
-    );
     let generated_keymap = fs::read_to_string(output_dir.join("keymap.toml")).unwrap();
     let parsed_keymap: toml::Value = toml::from_str(&generated_keymap).unwrap();
 
@@ -741,7 +572,7 @@ desc = "Previous completion"
     );
 }
 
-// Defends: yazi-materialization.generate rejects legacy Yazi override ownership instead of silently adopting configs/yazi/user.
+// Defends: Yazi materialization rejects legacy override ownership instead of silently adopting configs/yazi/user.
 #[test]
 fn yazi_materialization_generate_rejects_legacy_override_surface() {
     let repo = repo_root();
@@ -756,33 +587,12 @@ fn yazi_materialization_generate_rejects_legacy_override_surface() {
     fs::create_dir_all(&legacy_override_dir).unwrap();
     fs::write(legacy_override_dir.join("init.lua"), "return 'legacy'\n").unwrap();
 
-    let output = Command::cargo_bin("yzx_core")
-        .unwrap()
-        .env("HOME", &home)
-        .env("XDG_CONFIG_HOME", home.join(".config"))
-        .env("XDG_DATA_HOME", home.join(".local").join("share"))
-        .env("YAZELIX_CONFIG_DIR", &config_root)
-        .arg("yazi-materialization.generate")
-        .arg("--config")
-        .arg(&config_path)
-        .arg("--default-config")
-        .arg(repo.join("settings_default.jsonc"))
-        .arg("--contract")
-        .arg(repo.join("config_metadata/main_config_contract.toml"))
-        .arg("--runtime-dir")
-        .arg(&runtime_dir)
-        .arg("--yazi-config-dir")
-        .arg(&output_dir)
-        .output()
-        .unwrap();
-
-    assert_eq!(output.status.code(), Some(65));
-    let envelope: Value = serde_json::from_slice(&output.stderr).unwrap();
-    assert_eq!(envelope["command"], "yazi-materialization.generate");
-    assert_eq!(envelope["status"], "error");
-    assert_eq!(envelope["error"]["class"], "config");
-    assert_eq!(envelope["error"]["code"], "legacy_yazi_user_override");
-    let message = envelope["error"]["message"].as_str().unwrap();
+    let error =
+        run_yazi_materialization_generate(&config_path, &repo, &runtime_dir, &output_dir, false)
+            .unwrap_err();
+    assert_eq!(error.class().as_str(), "config");
+    assert_eq!(error.code(), "legacy_yazi_user_override");
+    let message = error.message();
     assert!(message.contains("yzx import yazi"));
     assert!(message.contains("~/.config/yazelix/"));
 }
@@ -800,30 +610,11 @@ fn yazi_materialization_generate_rejects_old_flat_yazi_sidecars() {
     prepare_runtime_fixture(&runtime_dir);
     fs::write(config_root.join("yazi_keymap.toml"), "[mgr]\n").unwrap();
 
-    let output = Command::cargo_bin("yzx_core")
-        .unwrap()
-        .env("HOME", &home)
-        .env("XDG_CONFIG_HOME", home.join(".config"))
-        .env("XDG_DATA_HOME", home.join(".local").join("share"))
-        .env("YAZELIX_CONFIG_DIR", &config_root)
-        .arg("yazi-materialization.generate")
-        .arg("--config")
-        .arg(&config_path)
-        .arg("--default-config")
-        .arg(repo.join("settings_default.jsonc"))
-        .arg("--contract")
-        .arg(repo.join("config_metadata/main_config_contract.toml"))
-        .arg("--runtime-dir")
-        .arg(&runtime_dir)
-        .arg("--yazi-config-dir")
-        .arg(&output_dir)
-        .output()
-        .unwrap();
-
-    assert_eq!(output.status.code(), Some(65));
-    let envelope: Value = serde_json::from_slice(&output.stderr).unwrap();
-    assert_eq!(envelope["error"]["code"], "flat_yazi_user_override");
-    let message = envelope["error"]["message"].as_str().unwrap();
+    let error =
+        run_yazi_materialization_generate(&config_path, &repo, &runtime_dir, &output_dir, false)
+            .unwrap_err();
+    assert_eq!(error.code(), "flat_yazi_user_override");
+    let message = error.message();
     assert!(message.contains("yazi_keymap.toml"));
     assert!(message.contains("~/.config/yazelix/yazi/"));
 }

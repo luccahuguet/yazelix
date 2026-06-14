@@ -13,8 +13,7 @@ verification paths, and deletion implications explicit.
 Config, runtime, and control-plane glue are a good pilot because they touch all
 of the protocol pressure points at once:
 
-- Rust `yzx_core` already owns typed config normalization and runtime-env
-  evaluation
+- Rust already owns typed config normalization and runtime-env evaluation
 - the former Nushell bridge layer was deleted after Rust took direct startup and
   helper-transport ownership
 - packaged runtime and source-checkout helper resolution must preserve a sharp
@@ -27,8 +26,9 @@ of the protocol pressure points at once:
 ## Scope
 
 - typed config normalization ownership
-- the explicit boundary for `runtime-env.compute`
-- `yzx_core` helper resolution and transport failure behavior
+- the explicit runtime-env derivation boundary
+- `yzx_core` helper resolution and transport failure behavior for the
+  remaining helper-only slices
 - config-surface parity between `settings_default.jsonc` and
   `home_manager/module.nix`
 - pilot findings about weak traceability and duplicate-owner debt
@@ -39,18 +39,15 @@ of the protocol pressure points at once:
 #### CRCP-001
 - Type: ownership
 - Status: live
-- Owner: Rust `yzx_core config.normalize`
+- Owner: Rust config normalization library used by the public launch/setup
+  paths
 - Statement: Typed normalization of the managed main Yazelix config is
-  Rust-owned. Remaining Nushell callers may use helper transport, but they must
-  not become second semantic owners for default merging, schema interpretation,
-  or diagnostic classification.
+  Rust-owned. Callers must not become second semantic owners for default
+  merging, schema interpretation, or diagnostic classification.
 - Verification: automated
-  `rust_core/yazelix_core/tests/yzx_core_config_normalize.rs`
-  (`config.normalize` success and error envelope tests); automated
-  `nushell/scripts/dev/test_yzx_generated_configs.nu`
-  (`installed runtimes use the packaged Rust config helper`, `packaged helper
-  failures must be visible`, `packaged runtimes must include yzx_core`);
-  validator `yzx_repo_validator validate-contracts`
+  `rust_core/yazelix_core/src/config_normalize.rs`; automated
+  `rust_core/yazelix_core/tests/yzx_control_runtime_surface.rs`; validator
+  `yzx_repo_validator validate-contracts`
 - Source: `docs/contracts/rust_nushell_bridge_contract.md`;
   `docs/contracts/v15_trimmed_runtime_contract.md`
 - Deletion note: future bridge collapse must not reintroduce Nushell
@@ -59,16 +56,13 @@ of the protocol pressure points at once:
 #### CRCP-002
 - Type: boundary
 - Status: live
-- Owner: Rust `yzx_core runtime-env.compute`
+- Owner: Rust runtime-env library used by public launch/setup paths
 - Statement: Runtime env evaluation is Rust-owned. Any remaining shell caller
-  must pass explicit inputs or process environment through the helper boundary;
-  derived runtime-env policy stays in `runtime-env.compute` and must not be
-  re-derived by Nu callers.
+  must pass explicit inputs or process environment through one request
+  boundary; derived runtime-env policy must not be re-derived by Nu callers.
 - Verification: automated
   `rust_core/yazelix_core/tests/yzx_core_runtime_env.rs`; automated
-  `nushell/scripts/dev/test_yzx_core_commands.nu`
-  (`yzx run must forward dash-prefixed child args`, `yzx run must not consume
-  child --verbose flags`); validator
+  `rust_core/yazelix_core/tests/yzx_control_runtime_surface.rs`; validator
   `yzx_repo_validator validate-contracts`
 - Source: `docs/contracts/rust_nushell_bridge_contract.md`;
   `docs/contracts/cross_language_runtime_ownership.md`
@@ -81,17 +75,11 @@ of the protocol pressure points at once:
 - Status: live
 - Owner: Nushell and POSIX helper-resolution bridge
 - Statement: Packaged runtimes must prefer
-  `$YAZELIX_RUNTIME_DIR/libexec/yzx_core`. Source checkouts may use
-  `YAZELIX_YZX_CORE_BIN` or the freshest local helper build, but missing or
-  broken helpers must fail loudly and must not silently revive the deleted
-  Nushell parser.
+  `$YAZELIX_RUNTIME_DIR/libexec/yzx_core` for the remaining helper-only
+  runtime glue. Source checkouts may use `YAZELIX_YZX_CORE_BIN` or the freshest
+  local helper build, but missing or broken helpers must fail loudly and must
+  not silently revive deleted Nushell parser logic.
 - Verification: automated
-  `nushell/scripts/dev/test_yzx_generated_configs.nu`
-  (`installed runtimes use the packaged Rust config helper`, `packaged runtimes
-  must include yzx_core`, `source checkouts can use an explicit yzx_core
-  helper`, `source checkouts without yzx_core must fail clearly`,
-  `source-checkout helper fallback must prefer the freshest local yzx_core
-  build`); validator
   `cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_maintainer --bin yzx_repo_validator -- validate-installed-runtime-contract`
 - Source: `docs/contracts/rust_nushell_bridge_contract.md`;
   `docs/contracts/runtime_root_contract.md`

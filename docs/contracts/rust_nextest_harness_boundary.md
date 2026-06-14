@@ -75,7 +75,6 @@ The first implementation slice should create these concrete support files:
 The first intended consumers are:
 
 - `yzx_core_config_normalize.rs`
-- `yzx_core_owned_facts.rs`
 - `yzx_control_public_commands.rs`
 - the next migration lanes for generated-config, workspace/session/doctor, and
   managed-config contract assertions
@@ -94,7 +93,7 @@ That support now backs the Rust-owned replacements added in:
 
 - `yzx_control_runtime_surface.rs`
 - `yzx_control_workspace_surface.rs`
-- `yzx_core_command_metadata.rs`
+- `command_metadata::tests`
 
 ## Nextest Compatibility Rules
 

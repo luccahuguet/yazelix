@@ -121,9 +121,9 @@ The adapter does not own durable workspace state. It publishes observations, and
   and startup/session toggles instead of reparsing the full config in each
   command or wrapper path
 - Verification: automated
-  `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core popup_session_facts`; automated
-  `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core integration_facts`; automated
-  `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core --test yzx_core_owned_facts`
+  `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core session_facts::tests`; automated
+  `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core workspace_commands::tests`; automated
+  `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core --test yzx_control_workspace_surface`
 
 #### WSS-006
 - Type: invariant
@@ -386,14 +386,16 @@ If the answer is unclear, the feature is probably crossing the boundary incorrec
 ## Verification
 
 - `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core --test yzx_control_workspace_surface`
-- `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core --test yzx_core_owned_facts`
+- `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core session_facts::tests`
+- `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core workspace_commands::tests`
 - `cargo test --manifest-path ../yazelix-zellij-pane-orchestrator/Cargo.toml --lib`
 - `yzx_repo_validator validate-workspace-session-contract`
 - `yzx_repo_validator validate-contracts`
 
 ## Traceability
 - Defended by: `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core --test yzx_control_workspace_surface`
-- Defended by: `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core --test yzx_core_owned_facts`
+- Defended by: `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core session_facts::tests`
+- Defended by: `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core workspace_commands::tests`
 - Defended by: `cargo test --manifest-path ../yazelix-zellij-pane-orchestrator/Cargo.toml --lib`
 - Defended by: `yzx_repo_validator validate-workspace-session-contract`
 

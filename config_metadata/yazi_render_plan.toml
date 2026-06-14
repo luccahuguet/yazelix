@@ -1,4 +1,4 @@
-# Machine-readable Yazi render-plan inputs consumed by `yzx_core` (`yazi-render-plan.compute`).
+# Machine-readable Yazi render-plan inputs consumed by the Rust Yazi render-plan module.
 #
 # Theme palettes support `random-dark` / `random-light` in settings.jsonc. Core plugins are always
 # prepended to the user plugin list for generated init.lua.
