@@ -78,6 +78,12 @@ struct CommandFailure {
     message: String,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum BeadCloseResult {
+    Closed,
+    Skipped,
+}
+
 pub fn run_issue_sync(repo_root: &Path, dry_run: bool) -> Result<IssueSyncSummary, String> {
     let github_issues = load_contract_github_issues()?;
     let beads = load_contract_beads(repo_root)?;
@@ -134,6 +140,7 @@ pub fn run_issue_sync(repo_root: &Path, dry_run: bool) -> Result<IssueSyncSummar
     if !mutating_actions.is_empty() {
         println!("🔄 Syncing GitHub issue lifecycle into local Beads...");
     }
+    let mut pending_close_actions = Vec::new();
     for action in &mutating_actions {
         match action.kind.as_str() {
             "create" => {
@@ -143,7 +150,7 @@ pub fn run_issue_sync(repo_root: &Path, dry_run: bool) -> Result<IssueSyncSummar
                     created.id, action.issue.number
                 );
                 if action.issue.state != "OPEN" {
-                    close_bead(repo_root, &created.id, "Closed on GitHub")?;
+                    close_created_bead(repo_root, &created.id, &action.issue)?;
                     println!(
                         "  ✅ Closed {} to match GitHub issue #{}",
                         created.id, action.issue.number
@@ -159,20 +166,12 @@ pub fn run_issue_sync(repo_root: &Path, dry_run: bool) -> Result<IssueSyncSummar
                 );
             }
             "close" => {
-                close_bead(
-                    repo_root,
-                    &action.bead.as_ref().unwrap().id,
-                    "Closed on GitHub",
-                )?;
-                println!(
-                    "  ✅ Closed {} for GitHub issue #{}",
-                    action.bead.as_ref().unwrap().id,
-                    action.issue.number
-                );
+                pending_close_actions.push(action.clone());
             }
             _ => {}
         }
     }
+    close_planned_beads(repo_root, pending_close_actions)?;
 
     export_beads_jsonl(repo_root)?;
 
@@ -528,8 +527,81 @@ fn reopen_bead(repo_root: &Path, bead: &BeadIssue) -> Result<(), String> {
     .map(|_| ())
 }
 
-fn close_bead(repo_root: &Path, bead_id: &str, reason: &str) -> Result<(), String> {
-    run_beads_command(repo_root, &["close", bead_id, "--reason", reason, "--json"]).map(|_| ())
+fn close_bead_with_result(
+    repo_root: &Path,
+    bead_id: &str,
+    reason: &str,
+) -> Result<BeadCloseResult, String> {
+    match run_beads_command(repo_root, &["close", bead_id, "--reason", reason, "--json"]) {
+        Ok(_) => Ok(BeadCloseResult::Closed),
+        Err(error) if is_beads_nothing_to_do_failure(&error) => Ok(BeadCloseResult::Skipped),
+        Err(error) => Err(error),
+    }
+}
+
+fn close_created_bead(repo_root: &Path, bead_id: &str, issue: &GithubIssue) -> Result<(), String> {
+    match close_bead_with_result(repo_root, bead_id, "Closed on GitHub")? {
+        BeadCloseResult::Closed => Ok(()),
+        BeadCloseResult::Skipped => Err(format!(
+            "Beads skipped closing newly created Bead {bead_id} for closed GitHub issue #{}",
+            issue.number
+        )),
+    }
+}
+
+fn close_planned_beads(repo_root: &Path, actions: Vec<IssueAction>) -> Result<(), String> {
+    let mut pending = actions;
+    while !pending.is_empty() {
+        let mut skipped = Vec::new();
+        let mut closed_any = false;
+        for action in pending {
+            let Some(bead) = action.bead.as_ref() else {
+                return Err(format!(
+                    "Planned close action for GitHub issue #{} is missing its Bead mapping",
+                    action.issue.number
+                ));
+            };
+            match close_bead_with_result(repo_root, &bead.id, "Closed on GitHub")? {
+                BeadCloseResult::Closed => {
+                    closed_any = true;
+                    println!(
+                        "  ✅ Closed {} for GitHub issue #{}",
+                        bead.id, action.issue.number
+                    );
+                }
+                BeadCloseResult::Skipped => skipped.push(action),
+            }
+        }
+        if skipped.is_empty() {
+            return Ok(());
+        }
+        if !closed_any {
+            return Err(format!(
+                "Beads skipped closing {} issue(s): {}",
+                skipped.len(),
+                skipped
+                    .iter()
+                    .map(|action| action.bead.as_ref().unwrap().id.clone())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ));
+        }
+        pending = skipped;
+    }
+    Ok(())
+}
+
+fn is_beads_nothing_to_do_failure(message: &str) -> bool {
+    let Some((_, json)) = message.split_once('\n') else {
+        return false;
+    };
+    let Ok(value) = serde_json::from_str::<Value>(json.trim()) else {
+        return false;
+    };
+    value
+        .pointer("/error/code")
+        .and_then(Value::as_str)
+        .is_some_and(|code| code == "NOTHING_TO_DO")
 }
 
 fn create_issue_comment(action: &IssueCommentAction) -> Result<(), String> {
@@ -772,6 +844,23 @@ mod tests {
         ));
         assert!(!is_transient_github_cli_failure(
             "gh issue list failed\nGraphQL: Could not resolve to a Repository with the name 'missing'"
+        ));
+    }
+
+    // Regression: release-time issue sync can retry a close action after Beads skips it because a same-batch blocker is still open.
+    #[test]
+    fn beads_nothing_to_do_close_failure_is_retryable() {
+        let failure = r#"br close yazelix-example --reason Closed on GitHub --json failed
+{
+  "error": {
+    "code": "NOTHING_TO_DO",
+    "message": "Nothing to do: all 1 issue(s) skipped"
+  }
+}"#;
+
+        assert!(is_beads_nothing_to_do_failure(failure));
+        assert!(!is_beads_nothing_to_do_failure(
+            "br close yazelix-example failed\nnot json"
         ));
     }
 
