@@ -1125,7 +1125,7 @@ mod tests {
             .expect("diagnostic for path")
     }
 
-    // Defends: config normalization keeps the parser-owned default keys and value transforms stable.
+    // Defends: config normalization keeps parser-owned defaults and value transforms stable.
     #[test]
     fn normalizes_default_config_with_parser_keys_and_transforms() {
         let repo = repo_root();
@@ -1133,6 +1133,7 @@ mod tests {
         let config = data.normalized_config;
 
         assert_eq!(config.get("default_shell").unwrap(), "nu");
+        assert_eq!(config.get("appearance_mode").unwrap(), "dark");
         assert_eq!(config.get("helix_external").unwrap(), &JsonValue::Null);
         assert_eq!(config.get("zellij_pane_frames").unwrap(), "true");
         assert_eq!(config.get("game_of_life_cell_style").unwrap(), "full_block");
@@ -1146,6 +1147,13 @@ mod tests {
         .unwrap();
         let fields = load_contract_fields(&contract).unwrap();
         assert_eq!(config.len(), fields.len() + 1);
+
+        let partial_config = write_user_config("[terminal]\ntransparency = \"none\"\n");
+        let partial = normalize_config(&request_for(partial_config)).unwrap();
+        assert_eq!(
+            partial.normalized_config.get("appearance_mode").unwrap(),
+            "dark"
+        );
     }
 
     // Defends: host-owned xonsh is a valid default-shell enum without being bundled by Yazelix.
@@ -1369,16 +1377,47 @@ open_directory_as_workspace_pane = []
     // Defends: removed config surfaces fail as unsupported config instead of being silently accepted.
     #[test]
     fn rejects_removed_unknown_config_surfaces_without_migration() {
-        let path = write_user_config("[shell]\nenable_atuin = true\n");
-        let error = normalize_config(&request_for(path)).unwrap_err();
+        for (raw_config, expected_headline) in [
+            (
+                "[ascii]\nmode = \"animated\"\n",
+                "Unknown config field at ascii",
+            ),
+            (
+                "[shell]\nenable_atuin = true\n",
+                "Unknown config field at shell.enable_atuin",
+            ),
+            (
+                "[packs]\nenabled = [\"git\"]\nuser_packages = [\"docker\"]\n\n[packs.declarations]\ngit = [\"gh\", \"prek\"]\n",
+                "Unknown config field at packs",
+            ),
+            (
+                "[zellij]\npersistent_sessions = true\n",
+                "Removed persistent-session config field at zellij.persistent_sessions",
+            ),
+            (
+                "[zellij]\nsession_name = \"demo\"\n",
+                "Removed persistent-session config field at zellij.session_name",
+            ),
+            (
+                "[editor]\ninitial_sidebar_state = \"closed\"\n",
+                "Unknown config field at editor.initial_sidebar_state",
+            ),
+            (
+                "[editor]\nenable_sidebar = false\n",
+                "Unknown config field at editor.enable_sidebar",
+            ),
+        ] {
+            let path = write_user_config(raw_config);
+            let error = normalize_config(&request_for(path)).unwrap_err();
 
-        assert_eq!(error.class().as_str(), "config");
-        assert_eq!(error.code(), "unsupported_config");
-        let details = error.details();
-        assert_eq!(
-            details["blocking_diagnostics"][0]["headline"],
-            "Unknown config field at shell.enable_atuin"
-        );
+            assert_eq!(error.class().as_str(), "config");
+            assert_eq!(error.code(), "unsupported_config");
+            let details = error.details();
+            assert_eq!(
+                details["blocking_diagnostics"][0]["headline"],
+                expected_headline
+            );
+        }
     }
 
     // Defends: invalid enum values produce structured diagnostics instead of generic parse failures.
@@ -1395,9 +1434,17 @@ open_directory_as_workspace_pane = []
         );
     }
 
-    // Regression: the retired cursor status widget is rejected before Zellij layout generation.
+    // Regression: dynamic status widgets normalize, while the retired cursor widget is rejected before Zellij layout generation.
     #[test]
-    fn rejects_retired_cursor_widget_tray_value() {
+    fn normalizes_dynamic_widget_tray_and_rejects_retired_cursor_value() {
+        let valid_path =
+            write_user_config("[zellij]\nwidget_tray = [\"editor\", \"workspace\", \"cpu\"]\n");
+        let data = normalize_config(&request_for(valid_path)).unwrap();
+        assert_eq!(
+            data.normalized_config.get("zellij_widget_tray").unwrap(),
+            &json!(["editor", "workspace", "cpu"])
+        );
+
         let path = write_user_config("[zellij]\nwidget_tray = [\"editor\", \"cursor\"]\n");
         let error = normalize_config(&request_for(path)).unwrap_err();
 

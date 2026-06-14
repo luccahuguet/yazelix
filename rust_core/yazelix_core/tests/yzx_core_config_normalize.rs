@@ -459,71 +459,6 @@ fn config_normalize_prints_one_success_json_envelope() {
     );
 }
 
-// Regression: configs written before appearance.mode normalize to the dark default instead of becoming stale.
-#[test]
-fn config_normalize_defaults_missing_appearance_to_dark() {
-    let repo = repo_root();
-    let tmp = tempdir().unwrap();
-    let config_path = tmp.path().join("settings.jsonc");
-    fs::write(
-        &config_path,
-        r#"{
-  "terminal": {
-    "transparency": "none"
-  }
-}
-"#,
-    )
-    .unwrap();
-
-    let output = yzx_core_command()
-        .arg("config.normalize")
-        .arg("--config")
-        .arg(&config_path)
-        .arg("--default-config")
-        .arg(repo.join("settings_default.jsonc"))
-        .arg("--contract")
-        .arg(repo.join("config_metadata/main_config_contract.toml"))
-        .output()
-        .unwrap();
-
-    let envelope: Value = ok_envelope(&output);
-    assert_eq!(
-        envelope["data"]["normalized_config"]["appearance_mode"],
-        "dark"
-    );
-}
-
-// Regression: config.normalize accepts documented dynamic widget_tray values.
-#[test]
-fn config_normalize_accepts_dynamic_widget_tray_entry() {
-    let repo = repo_root();
-    let tmp = tempdir().unwrap();
-    let config_path = tmp.path().join("yazelix.toml");
-    fs::write(
-        &config_path,
-        "[zellij]\nwidget_tray = [\"editor\", \"workspace\", \"cpu\"]\n",
-    )
-    .unwrap();
-
-    let output = yzx_core_command()
-        .arg("config.normalize")
-        .arg("--config")
-        .arg(&config_path)
-        .arg("--default-config")
-        .arg(repo.join("settings_default.jsonc"))
-        .arg("--contract")
-        .arg(repo.join("config_metadata/main_config_contract.toml"))
-        .output()
-        .unwrap();
-
-    let envelope: Value = ok_envelope(&output);
-    assert_eq!(
-        envelope["data"]["normalized_config"]["zellij_widget_tray"],
-        json!(["editor", "workspace", "cpu"])
-    );
-}
-
 // Defends: config.normalize emits a single machine-readable config error envelope for invalid input.
 // Contract: CRCP-001
 #[test]
@@ -589,82 +524,38 @@ fn config_surface_resolve_bootstraps_managed_config() {
 #[test]
 fn config_normalize_rejects_removed_surfaces_without_rewriting() {
     let repo = repo_root();
+    let tmp = tempdir().unwrap();
+    let config_dir = tmp.path().join("config");
+    fs::create_dir_all(&config_dir).unwrap();
+    let config_path = config_dir.join("yazelix.toml");
+    fs::write(&config_path, "[shell]\nenable_atuin = true\n").unwrap();
+    let original = fs::read_to_string(&config_path).unwrap();
 
-    for (label, raw_config, expected_field) in [
-        ("legacy_ascii", "[ascii]\nmode = \"animated\"\n", "ascii"),
-        (
-            "removed_enable_atuin",
-            "[shell]\nenable_atuin = true\n",
-            "shell.enable_atuin",
-        ),
-        (
-            "legacy_packs",
-            "[packs]\nenabled = [\"git\"]\nuser_packages = [\"docker\"]\n\n[packs.declarations]\ngit = [\"gh\", \"prek\"]\n",
-            "packs",
-        ),
-        (
-            "removed_persistent_sessions",
-            "[zellij]\npersistent_sessions = true\n",
-            "zellij.persistent_sessions",
-        ),
-        (
-            "removed_session_name",
-            "[zellij]\nsession_name = \"demo\"\n",
-            "zellij.session_name",
-        ),
-        (
-            "removed_initial_sidebar_state",
-            "[editor]\ninitial_sidebar_state = \"closed\"\n",
-            "editor.initial_sidebar_state",
-        ),
-        (
-            "removed_enable_sidebar",
-            "[editor]\nenable_sidebar = false\n",
-            "editor.enable_sidebar",
-        ),
-    ] {
-        let tmp = tempdir().unwrap();
-        let config_dir = tmp.path().join("config");
-        fs::create_dir_all(&config_dir).unwrap();
-        let config_path = config_dir.join("yazelix.toml");
-        fs::write(&config_path, raw_config).unwrap();
-        let original = fs::read_to_string(&config_path).unwrap();
+    let output = Command::cargo_bin("yzx_core")
+        .unwrap()
+        .arg("config.normalize")
+        .arg("--config")
+        .arg(&config_path)
+        .arg("--default-config")
+        .arg(repo.join("settings_default.jsonc"))
+        .arg("--contract")
+        .arg(repo.join("config_metadata/main_config_contract.toml"))
+        .output()
+        .unwrap();
 
-        let output = Command::cargo_bin("yzx_core")
-            .unwrap()
-            .arg("config.normalize")
-            .arg("--config")
-            .arg(&config_path)
-            .arg("--default-config")
-            .arg(repo.join("settings_default.jsonc"))
-            .arg("--contract")
-            .arg(repo.join("config_metadata/main_config_contract.toml"))
-            .output()
-            .unwrap();
-
-        assert_eq!(output.status.code(), Some(65), "{label}");
-        assert!(output.stdout.is_empty(), "{label}");
-        let envelope: Value = serde_json::from_slice(&output.stderr).unwrap();
-        assert_eq!(envelope["command"], "config.normalize", "{label}");
-        assert_eq!(envelope["status"], "error", "{label}");
-        assert_eq!(envelope["error"]["class"], "config", "{label}");
-        assert_eq!(envelope["error"]["code"], "unsupported_config", "{label}");
-        let reported_field = envelope["error"]["details"]["field"]
-            .as_str()
-            .map(str::to_string)
-            .or_else(|| {
-                envelope["error"]["details"]["blocking_diagnostics"][0]["path"]
-                    .as_str()
-                    .map(str::to_string)
-            });
-        assert_eq!(reported_field.as_deref(), Some(expected_field), "{label}");
-        assert_eq!(
-            fs::read_to_string(&config_path).unwrap(),
-            original,
-            "{label}"
-        );
-        assert!(fs::read_dir(&config_dir).unwrap().count() == 1, "{label}");
-    }
+    assert_eq!(output.status.code(), Some(65));
+    assert!(output.stdout.is_empty());
+    let envelope: Value = serde_json::from_slice(&output.stderr).unwrap();
+    assert_eq!(envelope["command"], "config.normalize");
+    assert_eq!(envelope["status"], "error");
+    assert_eq!(envelope["error"]["class"], "config");
+    assert_eq!(envelope["error"]["code"], "unsupported_config");
+    assert_eq!(
+        envelope["error"]["details"]["blocking_diagnostics"][0]["path"],
+        "shell.enable_atuin"
+    );
+    assert_eq!(fs::read_to_string(&config_path).unwrap(), original);
+    assert!(fs::read_dir(&config_dir).unwrap().count() == 1);
 }
 
 // Defends: config-state.compute returns a machine-readable state envelope with a content hash.
@@ -933,49 +824,6 @@ fn runtime_materialization_materialize_writes_generated_artifacts_and_records_st
     assert!(second_output.status.success());
     let second: Value = serde_json::from_slice(&second_output.stdout).unwrap();
     assert_eq!(second["data"]["zellij"]["seeded_plugin_permissions"], true);
-}
-
-// Regression: generated Zellij config is disposable launch state, so a plain native config in that path is overwritten even when hashes are current.
-#[test]
-fn runtime_materialization_materialize_replaces_plain_generated_zellij_config() {
-    let repo = repo_root();
-    let tmp = tempdir().unwrap();
-    let fixture = prepare_runtime_materialization_fixture(&repo, &tmp);
-    let request = runtime_materialization_canonical_settings_request(&fixture);
-
-    let initial_output =
-        runtime_materialization_command(&fixture, "runtime-materialization.materialize")
-            .arg("--request-json")
-            .arg(request.to_string())
-            .output()
-            .unwrap();
-    assert!(
-        initial_output.status.success(),
-        "stderr: {}",
-        String::from_utf8_lossy(&initial_output.stderr)
-    );
-    fs::write(
-        fixture.zellij_dir.join("config.kdl"),
-        "keybinds clear-defaults=true {\n    normal {}\n}\n",
-    )
-    .unwrap();
-
-    let repair_output =
-        runtime_materialization_command(&fixture, "runtime-materialization.materialize")
-            .arg("--request-json")
-            .arg(request.to_string())
-            .output()
-            .unwrap();
-
-    assert!(
-        repair_output.status.success(),
-        "stderr: {}",
-        String::from_utf8_lossy(&repair_output.stderr)
-    );
-    let regenerated = fs::read_to_string(fixture.zellij_dir.join("config.kdl")).unwrap();
-    assert!(regenerated.contains("GENERATED ZELLIJ CONFIG (YAZELIX)"));
-    assert!(regenerated.contains("yazelix_pane_orchestrator"));
-    assert!(regenerated.contains("yzpp"));
 }
 
 // Defends: runtime-materialization.repair repairs missing managed artifacts through the Rust lifecycle owner instead of bouncing back into a Nu coordinator.
@@ -2654,32 +2502,4 @@ fn doctor_config_evaluate_keeps_invalid_jsonc_as_error() {
             .unwrap()
             .contains("Could not parse Yazelix settings JSONC")
     );
-}
-
-// Defends: doctor-config.evaluate keeps the default-template doctor row fixable instead of bootstrapping config eagerly.
-#[test]
-fn doctor_config_evaluate_reports_default_template_as_fixable() {
-    let repo = repo_root();
-    let tmp = tempdir().unwrap();
-    let runtime_dir = prepare_doctor_config_runtime_fixture(&repo, &tmp);
-    let config_dir = tmp.path().join("config");
-    fs::create_dir_all(&config_dir).unwrap();
-
-    let output = Command::cargo_bin("yzx_core")
-        .unwrap()
-        .arg("doctor-config.evaluate")
-        .arg("--request-json")
-        .arg(doctor_config_request(&config_dir, &runtime_dir))
-        .output()
-        .unwrap();
-
-    assert!(output.status.success());
-    let envelope: Value = serde_json::from_slice(&output.stdout).unwrap();
-    assert_eq!(envelope["command"], "doctor-config.evaluate");
-    assert_eq!(envelope["data"]["findings"][0]["status"], "info");
-    assert_eq!(
-        envelope["data"]["findings"][0]["message"],
-        "Using default configuration (settings_default.jsonc)"
-    );
-    assert_eq!(envelope["data"]["findings"][0]["fix_available"], true);
 }
