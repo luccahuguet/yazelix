@@ -1,6 +1,7 @@
 // Test lane: default
 //! `yzx import` family implemented in Rust for `yzx_control`.
 
+use crate::backup_timestamp::compact_utc_backup_timestamp;
 use crate::bridge::{CoreError, ErrorClass};
 use crate::control_plane::{config_dir_from_env, home_dir_from_env, state_dir_from_env};
 use crate::user_config_paths;
@@ -9,7 +10,6 @@ use serde_json::json;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
-use std::time::{SystemTime, UNIX_EPOCH};
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 struct ImportArgs {
@@ -137,34 +137,6 @@ fn io_err(path: &Path, source: io::Error, code: &str) -> CoreError {
         path.display().to_string(),
         source,
     )
-}
-
-fn backup_timestamp() -> String {
-    let epoch_secs = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|d| d.as_secs() as i64)
-        .unwrap_or(0);
-    let days = epoch_secs.div_euclid(86_400);
-    let seconds_of_day = epoch_secs.rem_euclid(86_400);
-    let (year, month, day) = civil_from_days(days);
-    let hour = seconds_of_day / 3_600;
-    let minute = (seconds_of_day % 3_600) / 60;
-    let second = seconds_of_day % 60;
-    format!("{year:04}{month:02}{day:02}_{hour:02}{minute:02}{second:02}")
-}
-
-fn civil_from_days(days_since_epoch: i64) -> (i32, u32, u32) {
-    let z = days_since_epoch + 719_468;
-    let era = if z >= 0 { z } else { z - 146_096 } / 146_097;
-    let doe = z - era * 146_097;
-    let yoe = (doe - doe / 1_460 + doe / 36_524 - doe / 146_096) / 365;
-    let y = yoe + era * 400;
-    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
-    let mp = (5 * doy + 2) / 153;
-    let day = doy - (153 * mp + 2) / 5 + 1;
-    let month = mp + if mp < 10 { 3 } else { -9 };
-    let year = y + if month <= 2 { 1 } else { 0 };
-    (year as i32, month as u32, day as u32)
 }
 
 fn source_matches_kind(entry: &ImportEntry) -> Result<bool, CoreError> {
@@ -369,7 +341,7 @@ fn import_target(
         }
     }
 
-    let timestamp = backup_timestamp();
+    let timestamp = compact_utc_backup_timestamp();
     let mut backup_records = Vec::new();
 
     for entry in &existing_sources {
@@ -606,22 +578,5 @@ mod tests {
             }
             other => panic!("unexpected error: {other:?}"),
         }
-    }
-
-    // Defends: backup timestamp format stays human-readable after the Rust owner cut.
-    #[test]
-    fn formats_import_backup_timestamp() {
-        assert_eq!(format_backup_timestamp(0), "19700101_000000");
-        assert_eq!(format_backup_timestamp(1_713_398_400), "20240418_000000");
-    }
-
-    fn format_backup_timestamp(epoch_secs: i64) -> String {
-        let days = epoch_secs.div_euclid(86_400);
-        let seconds_of_day = epoch_secs.rem_euclid(86_400);
-        let (year, month, day) = civil_from_days(days);
-        let hour = seconds_of_day / 3_600;
-        let minute = (seconds_of_day % 3_600) / 60;
-        let second = seconds_of_day % 60;
-        format!("{year:04}{month:02}{day:02}_{hour:02}{minute:02}{second:02}")
     }
 }
