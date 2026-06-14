@@ -259,7 +259,6 @@ fn resolve_requested_working_dir(path: Option<&str>, home: bool) -> Result<PathB
 #[cfg(test)]
 mod tests {
     use super::config_override::*;
-    use super::desktop::*;
     use super::process::*;
     use super::restart::*;
     use super::terminal::*;
