@@ -323,13 +323,21 @@ fn read_generated_yzxterm_config(fixture: &RuntimeMaterializationFixture) -> tom
 }
 
 fn read_generated_yzxterm_config_text(fixture: &RuntimeMaterializationFixture) -> String {
+    read_generated_terminal_config_text(fixture, "yzxterm", "config.toml")
+}
+
+fn read_generated_terminal_config_text(
+    fixture: &RuntimeMaterializationFixture,
+    terminal: &str,
+    file_name: &str,
+) -> String {
     fs::read_to_string(
         fixture
             .state_dir
             .join("configs")
             .join("terminal_emulators")
-            .join("yzxterm")
-            .join("config.toml"),
+            .join(terminal)
+            .join(file_name),
     )
     .unwrap()
 }
@@ -611,15 +619,7 @@ fn terminal_materialization_ghostty_auto_appearance_writes_theme_pair() {
 
     generate_terminal_materialization(&fixture);
 
-    let ghostty_config = fs::read_to_string(
-        fixture
-            .state_dir
-            .join("configs")
-            .join("terminal_emulators")
-            .join("ghostty")
-            .join("config"),
-    )
-    .unwrap();
+    let ghostty_config = read_generated_terminal_config_text(&fixture, "ghostty", "config");
     assert!(ghostty_config.contains("theme = \"dark:Abernathy,light:Catppuccin Latte\""));
 }
 
@@ -694,15 +694,7 @@ fn terminal_materialization_wezterm_auto_appearance_writes_gui_query() {
 
     generate_terminal_materialization(&fixture);
 
-    let wezterm_config = fs::read_to_string(
-        fixture
-            .state_dir
-            .join("configs")
-            .join("terminal_emulators")
-            .join("wezterm")
-            .join(".wezterm.lua"),
-    )
-    .unwrap();
+    let wezterm_config = read_generated_terminal_config_text(&fixture, "wezterm", ".wezterm.lua");
     assert!(wezterm_config.contains("wezterm.gui.get_appearance()"));
     assert!(wezterm_config.contains("return 'Abernathy'"));
     assert!(wezterm_config.contains("return 'Catppuccin Latte'"));
@@ -730,15 +722,7 @@ fn terminal_materialization_rio_uses_rio_config_toml() {
     assert_eq!(envelope["status"], "ok");
     assert_eq!(envelope["data"]["generated"][0]["terminal"], "rio");
 
-    let rio_config = fs::read_to_string(
-        fixture
-            .state_dir
-            .join("configs")
-            .join("terminal_emulators")
-            .join("rio")
-            .join("config.toml"),
-    )
-    .unwrap();
+    let rio_config = read_generated_terminal_config_text(&fixture, "rio", "config.toml");
     let rio_toml = toml::from_str::<toml::Value>(&rio_config).unwrap();
     assert!(rio_config.contains("placeholder = \"Yazelix - Rio\""));
     assert!(rio_config.contains("content = \"{{ TITLE || RELATIVE_PATH }}\""));
@@ -823,15 +807,7 @@ fn terminal_materialization_rio_light_appearance_uses_light_palette() {
 
     generate_terminal_materialization(&fixture);
 
-    let rio_config = fs::read_to_string(
-        fixture
-            .state_dir
-            .join("configs")
-            .join("terminal_emulators")
-            .join("rio")
-            .join("config.toml"),
-    )
-    .unwrap();
+    let rio_config = read_generated_terminal_config_text(&fixture, "rio", "config.toml");
     assert!(rio_config.contains("background = \"#eff1f5\""));
     assert!(rio_config.contains("foreground = \"#4c4f69\""));
     assert!(rio_config.contains("blue = \"#1e66f5\""));
@@ -858,15 +834,7 @@ fn terminal_materialization_foot_uses_foot_ini() {
     assert_eq!(envelope["status"], "ok");
     assert_eq!(envelope["data"]["generated"][0]["terminal"], "foot");
 
-    let foot_config = fs::read_to_string(
-        fixture
-            .state_dir
-            .join("configs")
-            .join("terminal_emulators")
-            .join("foot")
-            .join("foot.ini"),
-    )
-    .unwrap();
+    let foot_config = read_generated_terminal_config_text(&fixture, "foot", "foot.ini");
     assert!(foot_config.contains("font=FiraCode Nerd Font:size=14"));
     assert!(foot_config.contains("alpha=0.90"));
     assert!(foot_config.contains("[csd]"));
@@ -900,15 +868,7 @@ fn terminal_materialization_foot_light_appearance_selects_light_theme() {
 
     generate_terminal_materialization(&fixture);
 
-    let foot_config = fs::read_to_string(
-        fixture
-            .state_dir
-            .join("configs")
-            .join("terminal_emulators")
-            .join("foot")
-            .join("foot.ini"),
-    )
-    .unwrap();
+    let foot_config = read_generated_terminal_config_text(&fixture, "foot", "foot.ini");
     assert!(foot_config.contains("initial-color-theme=light"));
     assert!(foot_config.contains("[colors-light]"));
     assert!(foot_config.contains("background=eff1f5"));
@@ -1236,14 +1196,6 @@ fn terminal_materialization_uses_cursor_sidecar_for_kitty_toggle() {
     write_snow_plain_cursor_sidecar(&fixture);
 
     generate_terminal_materialization(&fixture);
-    let kitty_config = fs::read_to_string(
-        fixture
-            .state_dir
-            .join("configs")
-            .join("terminal_emulators")
-            .join("kitty")
-            .join("kitty.conf"),
-    )
-    .unwrap();
+    let kitty_config = read_generated_terminal_config_text(&fixture, "kitty", "kitty.conf");
     assert!(kitty_config.contains("# cursor_trail 0  # disabled in settings.jsonc"));
 }
