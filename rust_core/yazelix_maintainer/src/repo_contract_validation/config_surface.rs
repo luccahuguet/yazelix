@@ -25,6 +25,24 @@ use yazelix_core::{
     ZELLIJ_NATIVE_KEYBINDINGS, runtime_apply_mode_codes,
 };
 
+const YZXTERM_ENV_REQUIREMENTS: [(&str, &str, &str); 3] = [
+    (
+        "YAZELIX_TERMINAL_PROFILE=shaders",
+        "the configured yzxterm profile",
+        "yzxterm_profile",
+    ),
+    (
+        "YAZELIX_TERMINAL_APPEARANCE=light",
+        "the configured appearance mode",
+        "appearance_mode",
+    ),
+    (
+        "YAZELIX_TERMINAL_EMOJI_FONT=twitter",
+        "the configured yzxterm emoji font",
+        "yzxterm_emoji_font",
+    ),
+];
+
 pub fn validate_config_surface_contract(repo_root: &Path) -> Result<ValidationReport, String> {
     let mut report = ValidationReport::default();
     for errors in [
@@ -781,23 +799,15 @@ fn validate_home_manager_desktop_entry_contract(repo_root: &Path) -> Result<Vec<
                 format_json_value(&JsonValue::String(exec.to_string()))
             ));
         }
-        if terminal == "yzxterm" && !exec.contains("YAZELIX_TERMINAL_PROFILE=shaders") {
-            errors.push(format!(
-                "Home Manager extra yzxterm desktop entry Exec must pass the configured yzxterm profile, got {}",
-                format_json_value(&JsonValue::String(exec.to_string()))
-            ));
-        }
-        if terminal == "yzxterm" && !exec.contains("YAZELIX_TERMINAL_APPEARANCE=light") {
-            errors.push(format!(
-                "Home Manager extra yzxterm desktop entry Exec must pass the configured appearance mode, got {}",
-                format_json_value(&JsonValue::String(exec.to_string()))
-            ));
-        }
-        if terminal == "yzxterm" && !exec.contains("YAZELIX_TERMINAL_EMOJI_FONT=twitter") {
-            errors.push(format!(
-                "Home Manager extra yzxterm desktop entry Exec must pass the configured yzxterm emoji font, got {}",
-                format_json_value(&JsonValue::String(exec.to_string()))
-            ));
+        if terminal == "yzxterm" {
+            for (needle, desktop_label, _) in YZXTERM_ENV_REQUIREMENTS {
+                if !exec.contains(needle) {
+                    errors.push(format!(
+                        "Home Manager extra yzxterm desktop entry Exec must pass {desktop_label}, got {}",
+                        format_json_value(&JsonValue::String(exec.to_string()))
+                    ));
+                }
+            }
         }
         if !entry
             .get("terminal")
@@ -838,32 +848,15 @@ fn validate_home_manager_activation_contract(repo_root: &Path) -> Result<Vec<Str
                 .to_string(),
         );
     }
-    if !yzxterm_line
-        .map(|line| line.contains("YAZELIX_TERMINAL_PROFILE=shaders"))
-        .unwrap_or(false)
-    {
-        errors.push(
-            "Home Manager activation must pass yzxterm_profile to extra yzxterm launcher materialization"
-                .to_string(),
-        );
-    }
-    if !yzxterm_line
-        .map(|line| line.contains("YAZELIX_TERMINAL_APPEARANCE=light"))
-        .unwrap_or(false)
-    {
-        errors.push(
-            "Home Manager activation must pass appearance_mode to extra yzxterm launcher materialization"
-                .to_string(),
-        );
-    }
-    if !yzxterm_line
-        .map(|line| line.contains("YAZELIX_TERMINAL_EMOJI_FONT=twitter"))
-        .unwrap_or(false)
-    {
-        errors.push(
-            "Home Manager activation must pass yzxterm_emoji_font to extra yzxterm launcher materialization"
-                .to_string(),
-        );
+    for (needle, _, option_name) in YZXTERM_ENV_REQUIREMENTS {
+        if !yzxterm_line
+            .map(|line| line.contains(needle))
+            .unwrap_or(false)
+        {
+            errors.push(format!(
+                "Home Manager activation must pass {option_name} to extra yzxterm launcher materialization"
+            ));
+        }
     }
     if !materialization_lines
         .iter()
