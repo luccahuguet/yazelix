@@ -319,7 +319,11 @@ color = "#ffffff"
 }
 
 fn read_generated_yzxterm_config(fixture: &RuntimeMaterializationFixture) -> toml::Value {
-    let raw = fs::read_to_string(
+    toml::from_str(&read_generated_yzxterm_config_text(fixture)).unwrap()
+}
+
+fn read_generated_yzxterm_config_text(fixture: &RuntimeMaterializationFixture) -> String {
+    fs::read_to_string(
         fixture
             .state_dir
             .join("configs")
@@ -327,8 +331,7 @@ fn read_generated_yzxterm_config(fixture: &RuntimeMaterializationFixture) -> tom
             .join("yzxterm")
             .join("config.toml"),
     )
-    .unwrap();
-    toml::from_str(&raw).unwrap()
+    .unwrap()
 }
 
 fn read_generated_yzxterm_theme(
@@ -956,15 +959,7 @@ color = "#ffffff"
         "snow"
     );
 
-    let yzxterm_config = fs::read_to_string(
-        fixture
-            .state_dir
-            .join("configs")
-            .join("terminal_emulators")
-            .join("yzxterm")
-            .join("config.toml"),
-    )
-    .unwrap();
+    let yzxterm_config = read_generated_yzxterm_config_text(&fixture);
     assert!(yzxterm_config.contains("force-theme = \"dark\""));
     assert!(!yzxterm_config.contains("custom-shader"));
     assert!(!yzxterm_config.contains("cursor_trail_snow.glsl"));
@@ -1080,15 +1075,7 @@ fn terminal_materialization_yzxterm_shader_profile_injects_rio_decoration_shader
     assert_eq!(envelope["command"], "terminal-materialization.generate");
     assert_eq!(envelope["status"], "ok");
 
-    let yzxterm_config = fs::read_to_string(
-        fixture
-            .state_dir
-            .join("configs")
-            .join("terminal_emulators")
-            .join("yzxterm")
-            .join("config.toml"),
-    )
-    .unwrap();
+    let yzxterm_config = read_generated_yzxterm_config_text(&fixture);
     let yzxterm_toml = toml::from_str::<toml::Value>(&yzxterm_config).unwrap();
     assert_eq!(yzxterm_toml["window"]["opacity"].as_float(), Some(0.85));
     assert_eq!(
@@ -1132,15 +1119,7 @@ fn terminal_materialization_yzxterm_emoji_font_selects_child_config_root() {
             .env("YAZELIX_TERMINAL_EMOJI_FONT", "twitter");
     });
 
-    let yzxterm_config = fs::read_to_string(
-        fixture
-            .state_dir
-            .join("configs")
-            .join("terminal_emulators")
-            .join("yzxterm")
-            .join("config.toml"),
-    )
-    .unwrap();
+    let yzxterm_config = read_generated_yzxterm_config_text(&fixture);
     assert!(yzxterm_config.contains("Twitter Color Emoji"));
     assert!(!yzxterm_config.contains("SerenityOS Emoji"));
     assert!(yzxterm_config.contains("opacity = 0.85"));
@@ -1175,15 +1154,7 @@ fn terminal_materialization_yzxterm_emoji_style_selects_child_config_root() {
             .env_remove("YAZELIX_TERMINAL_EMOJI_FONT");
     });
 
-    let yzxterm_config = fs::read_to_string(
-        fixture
-            .state_dir
-            .join("configs")
-            .join("terminal_emulators")
-            .join("yzxterm")
-            .join("config.toml"),
-    )
-    .unwrap();
+    let yzxterm_config = read_generated_yzxterm_config_text(&fixture);
     assert!(yzxterm_config.contains("SerenityOS Emoji"));
     assert!(!yzxterm_config.contains("Twitter Color Emoji"));
     assert!(yzxterm_config.contains("opacity = 0.85"));
