@@ -7,6 +7,22 @@ use std::process::Command;
 
 const CODEX_AGENT_COMMAND: &str = "codex";
 const PLACEHOLDER_SHELL_CANDIDATES: &[&str] = &["nu", "bash", "sh"];
+const MISSING_CODEX_PLACEHOLDER: &str = "\
+Yazelix right sidebar
+
+Codex is not installed or is not on PATH.
+This pane is a normal shell; run any command here, or configure the managed right sidebar.
+
+Agent examples:
+  yzx config set workspace.right_sidebar.command opencode
+  yzx config set workspace.right_sidebar.command claude
+
+The right sidebar command does not have to be an AI agent:
+  yzx config set workspace.right_sidebar.command nu
+  yzx config ui
+
+Starting a shell...
+";
 
 pub fn run_yzx_agent(args: &[String]) -> Result<i32, CoreError> {
     if args.len() == 1 && matches!(args[0].as_str(), "--help" | "-h" | "help") {
@@ -55,41 +71,9 @@ fn print_agent_help() {
 
 fn print_missing_codex_placeholder() -> Result<(), CoreError> {
     let mut stdout = io::stdout();
-    writeln!(stdout, "Yazelix right sidebar").map_err(render_placeholder_error)?;
-    writeln!(stdout).map_err(render_placeholder_error)?;
-    writeln!(stdout, "Codex is not installed or is not on PATH.")
+    stdout
+        .write_all(MISSING_CODEX_PLACEHOLDER.as_bytes())
         .map_err(render_placeholder_error)?;
-    writeln!(
-        stdout,
-        "This pane is a normal shell; run any command here, or configure the managed right sidebar."
-    )
-    .map_err(render_placeholder_error)?;
-    writeln!(stdout).map_err(render_placeholder_error)?;
-    writeln!(stdout, "Agent examples:").map_err(render_placeholder_error)?;
-    writeln!(
-        stdout,
-        "  yzx config set workspace.right_sidebar.command opencode"
-    )
-    .map_err(render_placeholder_error)?;
-    writeln!(
-        stdout,
-        "  yzx config set workspace.right_sidebar.command claude"
-    )
-    .map_err(render_placeholder_error)?;
-    writeln!(stdout).map_err(render_placeholder_error)?;
-    writeln!(
-        stdout,
-        "The right sidebar command does not have to be an AI agent:"
-    )
-    .map_err(render_placeholder_error)?;
-    writeln!(
-        stdout,
-        "  yzx config set workspace.right_sidebar.command nu"
-    )
-    .map_err(render_placeholder_error)?;
-    writeln!(stdout, "  yzx config ui").map_err(render_placeholder_error)?;
-    writeln!(stdout).map_err(render_placeholder_error)?;
-    writeln!(stdout, "Starting a shell...").map_err(render_placeholder_error)?;
     stdout.flush().map_err(render_placeholder_error)
 }
 
