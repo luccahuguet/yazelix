@@ -578,14 +578,11 @@ pub(super) fn run_launch_flow(
                 terminal_transparency,
             )?);
         }
-        if let Ok(value) = std::env::var("YAZELIX_SWEEP_TEST_ID") {
-            if !value.trim().is_empty() {
-                extra_env.push(("YAZELIX_SWEEP_TEST_ID".to_string(), Some(value)));
-            }
-        }
-        if let Ok(value) = std::env::var("YAZELIX_LAYOUT_OVERRIDE") {
-            if !value.trim().is_empty() {
-                extra_env.push(("YAZELIX_LAYOUT_OVERRIDE".to_string(), Some(value)));
+        for key in ["YAZELIX_SWEEP_TEST_ID", "YAZELIX_LAYOUT_OVERRIDE"] {
+            if let Ok(value) = std::env::var(key) {
+                if !value.trim().is_empty() {
+                    extra_env.push((key.to_string(), Some(value)));
+                }
             }
         }
         extra_env.extend(config_override_extra_env(config_override));
