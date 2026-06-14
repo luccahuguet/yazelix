@@ -79,11 +79,7 @@ pub fn build_config_ui_model(request: &ConfigUiRequest) -> Result<ConfigUiModel,
         let default = get_json_path(&default_value, &field.path)
             .cloned()
             .or_else(|| field.default_value.clone());
-        let apply_mode = if config_owner == ConfigUiPathOwner::HomeManager {
-            RuntimeApplyMode::PackageHomeManagerActivation
-        } else {
-            apply_mode_for_contract_field(field)?
-        };
+        let apply_mode = apply_mode_for_config_owner(config_owner, field)?;
         fields.push(build_field_row(
             &field.path,
             &metadata.tab,
@@ -360,7 +356,7 @@ fn load_contract_fields(path: &Path) -> Result<BTreeMap<String, ConfigUiContract
     })
 }
 
-pub(super) fn apply_mode_for_contract_field(
+fn apply_mode_for_contract_field(
     field: &ConfigUiContractField,
 ) -> Result<RuntimeApplyMode, CoreError> {
     field
@@ -375,6 +371,17 @@ pub(super) fn apply_mode_for_contract_field(
                 json!({ "field": field.path }),
             )
         })
+}
+
+pub(super) fn apply_mode_for_config_owner(
+    config_owner: ConfigUiPathOwner,
+    field: &ConfigUiContractField,
+) -> Result<RuntimeApplyMode, CoreError> {
+    if config_owner == ConfigUiPathOwner::HomeManager {
+        Ok(RuntimeApplyMode::PackageHomeManagerActivation)
+    } else {
+        apply_mode_for_contract_field(field)
+    }
 }
 
 fn config_ui_metadata_path(settings_schema_path: &Path) -> PathBuf {
@@ -657,11 +664,7 @@ fn append_builtin_popup_command_fields(
     let Some(parent_field) = contract_fields.get(POPUP_COMMANDS_FIELD_PATH) else {
         return Ok(());
     };
-    let apply_mode = if config_owner == ConfigUiPathOwner::HomeManager {
-        RuntimeApplyMode::PackageHomeManagerActivation
-    } else {
-        apply_mode_for_contract_field(parent_field)?
-    };
+    let apply_mode = apply_mode_for_config_owner(config_owner, parent_field)?;
     for (id, label) in BUILTIN_POPUP_COMMANDS {
         let path = format!("{POPUP_COMMANDS_FIELD_PATH}.{id}");
         fields.push(build_field_row(

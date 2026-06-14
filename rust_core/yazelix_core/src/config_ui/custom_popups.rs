@@ -33,11 +33,7 @@ pub(super) fn append_custom_popup_fields(
     let Some(parent_field) = contract_fields.get(CUSTOM_POPUPS_FIELD_PATH) else {
         return Ok(());
     };
-    let apply_mode = if config_owner == ConfigUiPathOwner::HomeManager {
-        RuntimeApplyMode::PackageHomeManagerActivation
-    } else {
-        apply_mode_for_contract_field(parent_field)?
-    };
+    let apply_mode = apply_mode_for_config_owner(config_owner, parent_field)?;
     fields.push(build_field_row(
         ADD_CUSTOM_POPUP_FIELD_PATH,
         "workspace",

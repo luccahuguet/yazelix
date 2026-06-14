@@ -59,7 +59,7 @@ use details::render_details;
 use keybindings::*;
 pub use model_builder::build_config_ui_model;
 use model_builder::{
-    apply_contract_path_for_setting_path, apply_mode_for_contract_field, build_field_row,
+    apply_contract_path_for_setting_path, apply_mode_for_config_owner, build_field_row,
     classify_path_owner, default_main_setting_value_for_ui, default_main_settings_text_for_ui,
     path_is_read_only, path_present, read_settings_for_edit, validate_patched_settings_for_ui,
     write_settings_edit,

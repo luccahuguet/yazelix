@@ -262,11 +262,7 @@ pub(super) fn append_keybinding_surface_action_fields(
     let Some(parent_field) = contract_fields.get(parent_path) else {
         return Ok(());
     };
-    let apply_mode = if config_owner == ConfigUiPathOwner::HomeManager {
-        RuntimeApplyMode::PackageHomeManagerActivation
-    } else {
-        apply_mode_for_contract_field(parent_field)?
-    };
+    let apply_mode = apply_mode_for_config_owner(config_owner, parent_field)?;
     for action in keybinding_actions_for_parent_path(parent_path) {
         let path = format!("{parent_path}.{}", action.local_id);
         let default = get_json_path(default_value, &path)
