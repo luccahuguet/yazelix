@@ -4,18 +4,25 @@ Short, upgrade-facing release notes live here. The longer narrative history rema
 
 ## Unreleased
 
-Post-v17.5 work in progress
+Upstream Yazi, adaptive appearance, and release hardening
 
 Upgrade impact: manual action may be required
 
 Highlights:
 - Moved the shared cursor settings namespace from `~/.config/yazelix_ghostty_cursors/settings.jsonc` to `~/.config/yazelix_cursors/settings.jsonc`, and renamed the packaged default template to `yazelix_cursors_default.toml`
+- Added adaptive appearance support across Yazelix and Yazelix Terminal, including dark, light, and auto terminal modes, appearance-aware welcome surfaces, `ice` and `midnight` cursor presets, and safer light-mode random cursor selection
 - Replaced the default process monitor popup and bundled runtime tool from `bottom` / `btm` to `zenith`, with the Zenith information popup on `Alt Shift I`; bottom and SysWatch remain good custom-popup alternatives
 - Routed the default right sidebar through `yzx agent`, so missing Codex opens an actionable shell placeholder instead of failing; users can configure another agent or any other terminal command for the managed right sidebar
+- Added host-owned `xonsh` shell support for generated initializer hooks and optional `shell.default_shell = "xonsh"` without bundling xonsh in the Yazelix runtime
+- Dropped the temporary Yazelix Yazi fork from the runtime package graph; managed Yazi launches use upstream/nixpkgs Yazi with a scoped Kitty adapter environment while Yazelix restores the real Zellij session for sidebar state and `Alt z` zoxide-to-editor control commands
+- Kept `Shift Z` on native Yazi zoxide behavior while preserving Yazelix's separate `Alt z` editor-pane jump flow
+- Removed the cursor widget from the status bar and guarded retired status-bar widget config paths with clearer errors
+- Used Zellij session names in terminal window titles so desktop switchers distinguish sessions
 - Hardened `yzx dev release` so it auto-syncs GitHub issues into Beads when needed, pushes `main` before the release tag, waits for `CI` plus `Publish Nix Cache`, and splits slow release validators across parallel CI jobs
 - Fixed yzxterm welcome rendering so startup-size races no longer leave the welcome card tiny or corrupt the banner when a key is pressed during the animation
 - Kept yzxterm window transparency while making generated welcome and ANSI colors render crisp instead of washed out by per-cell alpha blending
-- Dropped the temporary Yazelix Yazi fork from the runtime package graph; managed Yazi launches now use upstream/nixpkgs Yazi with a scoped Kitty adapter environment when the Yazelix Zellij passthrough bridge is active
+- Published Darwin package outputs to Cachix, tightened wasm plugin package toolchain preservation, and kept the Yazelix wrapper substitutable in Nix package overrides
+- Guarded ratconfig/settings contract migration changes so unsupported or stale config fields fail with clearer reset guidance
 
 Manual action:
 - Move existing cursor settings from `~/.config/yazelix_ghostty_cursors/settings.jsonc` to `~/.config/yazelix_cursors/settings.jsonc`, or run `yzc init` / relaunch Yazelix to create a fresh cursor settings file
