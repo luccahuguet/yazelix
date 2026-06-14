@@ -24,6 +24,15 @@ struct ToolConfig {
     init_args: &'static [&'static str],
 }
 
+impl ToolConfig {
+    fn status(&self, required: &'static str, optional: &'static str) -> &'static str {
+        match self.required {
+            true => required,
+            false => optional,
+        }
+    }
+}
+
 const TOOL_CONFIGS: &[ToolConfig] = &[
     ToolConfig {
         name: "starship",
@@ -52,7 +61,7 @@ const TOOL_CONFIGS: &[ToolConfig] = &[
     },
 ];
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Default, Serialize)]
 struct InitializerResult {
     status: String,
     tool: String,
@@ -247,6 +256,12 @@ fn write_text_atomic(path: &Path, content: &str) -> Result<(), CoreError> {
     Ok(())
 }
 
+fn remove_output_file(path: &Path) {
+    if path.exists() {
+        let _ = fs::remove_file(path);
+    }
+}
+
 fn generate_initializers(
     home: &Path,
     shells_to_configure: &[String],
@@ -284,20 +299,13 @@ fn generate_initializers(
                 .unwrap_or(shell.name);
 
             if !find_on_path(tool.name) {
-                if output_file.exists() {
-                    let _ = fs::remove_file(&output_file);
-                }
+                remove_output_file(&output_file);
                 shell_results.push(InitializerResult {
-                    status: if tool.required {
-                        "required-missing".into()
-                    } else {
-                        "missing".into()
-                    },
+                    status: tool.status("required-missing", "missing").into(),
                     tool: tool.name.into(),
                     shell: shell.name.into(),
                     reason: Some("tool not found".into()),
-                    error: None,
-                    file: None,
+                    ..Default::default()
                 });
                 continue;
             }
@@ -306,62 +314,45 @@ fn generate_initializers(
                 Ok(raw) => {
                     let content = normalize_initializer_content(shell.name, &raw);
                     if let Err(e) = write_text_atomic(&output_file, &content) {
-                        if output_file.exists() {
-                            let _ = fs::remove_file(&output_file);
-                        }
+                        remove_output_file(&output_file);
                         shell_results.push(InitializerResult {
-                            status: if tool.required {
-                                "required-failed".into()
-                            } else {
-                                "failed".into()
-                            },
+                            status: tool.status("required-failed", "failed").into(),
                             tool: tool.name.into(),
                             shell: shell.name.into(),
-                            reason: None,
                             error: Some(e.message()),
-                            file: None,
+                            ..Default::default()
                         });
                         continue;
                     }
-                    successful_files
-                        .push((tool.required, output_file.to_string_lossy().to_string()));
+                    let output_file = output_file.to_string_lossy().to_string();
+                    successful_files.push((tool.required, output_file.clone()));
                     shell_results.push(InitializerResult {
                         status: "success".into(),
                         tool: tool.name.into(),
                         shell: shell.name.into(),
-                        reason: None,
-                        error: None,
-                        file: Some(output_file.to_string_lossy().to_string()),
+                        file: Some(output_file),
+                        ..Default::default()
                     });
                 }
                 Err(err) => {
-                    if output_file.exists() {
-                        let _ = fs::remove_file(&output_file);
-                    }
+                    remove_output_file(&output_file);
                     shell_results.push(InitializerResult {
-                        status: if tool.required {
-                            "required-failed".into()
-                        } else {
-                            "failed".into()
-                        },
+                        status: tool.status("required-failed", "failed").into(),
                         tool: tool.name.into(),
                         shell: shell.name.into(),
-                        reason: None,
                         error: Some(err),
-                        file: None,
+                        ..Default::default()
                     });
                 }
             }
         }
 
-        // Build aggregate initializer
         let aggregate_file = shell.dir.join(format!("yazelix_init.{}", shell.ext));
         let mut aggregate = format!(
             "# Yazelix aggregate initializer for {}\n# Concatenates generated initializers for available tools.\n",
             shell.name
         );
 
-        // Add warnings for required issues
         for r in &shell_results {
             if matches!(r.status.as_str(), "required-missing" | "required-failed") {
                 let message = r
@@ -378,7 +369,6 @@ fn generate_initializers(
             }
         }
 
-        // Nushell PATH preservation
         if shell.name == "nu" {
             aggregate.push_str(
                 "\n# Preserve the inherited PATH before Yazelix-managed initializers modify it\n",
@@ -387,7 +377,6 @@ fn generate_initializers(
             aggregate.push_str("\n# --- Tool initializers below ---\n\n");
         }
 
-        // Concatenate successful initializers: required first
         let mut ordered = successful_files;
         ordered.sort_by_key(|(required, _)| if *required { 0 } else { 1 });
         for (_, path) in &ordered {
@@ -414,11 +403,9 @@ fn generate_initializers(
 
         shell_results.push(InitializerResult {
             status: "aggregate".into(),
-            tool: String::new(),
             shell: shell.name.into(),
-            reason: None,
-            error: None,
             file: Some(aggregate_file.to_string_lossy().to_string()),
+            ..Default::default()
         });
 
         all_results.extend(shell_results);
