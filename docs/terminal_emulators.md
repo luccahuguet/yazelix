@@ -171,8 +171,8 @@ Rio is the upstream path behind Yazelix Terminal. Yazelix packages it as
 config, launch integration, and the Zellij Kitty graphics bridge. The
 packaged config enables Rio's native trail cursor, leaves renderer backend
 selection to Rio's platform default, maps `terminal.transparency` to Rio's
-supported window opacity setting, and points Rio at packaged Nerd Font and
-emoji fallback directories.
+supported window and cell opacity settings, and points Rio at packaged Nerd
+Font and emoji fallback directories.
 It supports modern image paths and several useful OSC protocols, but Yazelix
 does not control its roadmap and does not apply Yazelix Terminal's cursor shader
 profile behavior to the vanilla package.

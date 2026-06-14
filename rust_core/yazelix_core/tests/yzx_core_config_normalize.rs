@@ -1610,7 +1610,7 @@ color = "#ffffff"
     assert!(rio_config.contains("placeholder = \"Yazelix - Rio\""));
     assert!(rio_config.contains("content = \"{{ TITLE || RELATIVE_PATH }}\""));
     assert_eq!(rio_toml["window"]["opacity"].as_float(), Some(0.90));
-    assert!(rio_toml["window"].get("opacity-cells").is_none());
+    assert_eq!(rio_toml["window"]["opacity-cells"].as_bool(), Some(true));
     assert_eq!(
         rio_toml["fonts"]["family"].as_str(),
         Some("FiraCode Nerd Font")
@@ -1662,6 +1662,7 @@ color = "#ffffff"
     assert!(rio_config.contains("foreground = \"#eeeeec\""));
     assert!(rio_config.contains("light-blue = \"#11b5f6\""));
     assert!(rio_config.contains("[effects]\ntrail-cursor = true"));
+    assert!(rio_config.contains("opacity-cells = true"));
     assert!(rio_config.contains("mode = \"Plain\""));
     assert!(rio_toml.get("renderer").is_none());
 }

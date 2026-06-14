@@ -476,6 +476,7 @@ width = 960
 height = 620
 decorations = "Disabled"
 opacity = {}
+opacity-cells = true
 
 [fonts]
 family = "{}"
