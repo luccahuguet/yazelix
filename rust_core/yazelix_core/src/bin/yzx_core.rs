@@ -14,21 +14,19 @@ use yazelix_core::control_plane::{
 use yazelix_core::terminal_materialization::YzxtermProfile;
 use yazelix_core::terminal_variant::active_terminal_from_runtime_dir;
 use yazelix_core::{
-    ComputeConfigStateRequest, CoreError, DoctorConfigEvaluateRequest,
-    DoctorRuntimeEvaluateRequest, ErrorClass, GhosttyMaterializationRequest,
-    HelixDoctorEvaluateRequest, HelixMaterializationRequest, InstallOwnershipEvaluateRequest,
-    LaunchMaterializationRequest, NormalizeConfigRequest, PopupSessionFactsData,
-    RecordConfigStateRequest, RuntimeContractEvaluateRequest, RuntimeEnvComputeRequest,
-    RuntimeMaterializationPlanRequest, RuntimeMaterializationRepairEvaluateRequest,
-    RuntimeMaterializationRepairRunData, RuntimeOwnershipGraphRequest, RuntimeRepairDirective,
-    SessionConfigSnapshotCreateRequest, StartupFactsData, StartupHandoffCaptureRequest,
-    StartupLaunchPreflightRequest, TerminalMaterializationRequest, YaziMaterializationRequest,
-    YaziRenderPlanRequest, YzxExternBridgeSyncRequest, ZellijMaterializationRequest,
-    ZellijRenderPlanRequest, capture_startup_handoff_context, compute_config_state,
-    compute_integration_facts_from_env, compute_popup_session_facts_from_env, compute_runtime_env,
-    compute_runtime_ownership_graph, compute_startup_facts_from_env, compute_status_report,
-    compute_yazi_render_plan, compute_zellij_render_plan, current_release_headline, error_envelope,
-    evaluate_doctor_config_report, evaluate_doctor_runtime_report, evaluate_helix_doctor_report,
+    ComputeConfigStateRequest, CoreError, ErrorClass, GhosttyMaterializationRequest,
+    HelixMaterializationRequest, InstallOwnershipEvaluateRequest, LaunchMaterializationRequest,
+    NormalizeConfigRequest, PopupSessionFactsData, RecordConfigStateRequest,
+    RuntimeContractEvaluateRequest, RuntimeEnvComputeRequest, RuntimeMaterializationPlanRequest,
+    RuntimeMaterializationRepairEvaluateRequest, RuntimeMaterializationRepairRunData,
+    RuntimeOwnershipGraphRequest, RuntimeRepairDirective, SessionConfigSnapshotCreateRequest,
+    StartupFactsData, StartupHandoffCaptureRequest, StartupLaunchPreflightRequest,
+    TerminalMaterializationRequest, YaziMaterializationRequest, YaziRenderPlanRequest,
+    YzxExternBridgeSyncRequest, ZellijMaterializationRequest, ZellijRenderPlanRequest,
+    capture_startup_handoff_context, compute_config_state, compute_integration_facts_from_env,
+    compute_popup_session_facts_from_env, compute_runtime_env, compute_runtime_ownership_graph,
+    compute_startup_facts_from_env, compute_status_report, compute_yazi_render_plan,
+    compute_zellij_render_plan, current_release_headline, error_envelope,
     evaluate_install_ownership_report, evaluate_runtime_contract,
     evaluate_startup_launch_preflight, generate_ghostty_materialization,
     generate_helix_materialization, generate_terminal_materialization,
@@ -58,9 +56,6 @@ const RUNTIME_MATERIALIZATION_MATERIALIZE_COMMAND: &str = "runtime-materializati
 const RUNTIME_MATERIALIZATION_REPAIR_COMMAND: &str = "runtime-materialization.repair";
 const STATUS_COMPUTE_COMMAND: &str = "status.compute";
 const INSTALL_OWNERSHIP_EVALUATE_COMMAND: &str = "install-ownership.evaluate";
-const DOCTOR_CONFIG_EVALUATE_COMMAND: &str = "doctor-config.evaluate";
-const DOCTOR_HELIX_EVALUATE_COMMAND: &str = "doctor-helix.evaluate";
-const DOCTOR_RUNTIME_EVALUATE_COMMAND: &str = "doctor-runtime.evaluate";
 const ZELLIJ_RENDER_PLAN_COMPUTE_COMMAND: &str = "zellij-render-plan.compute";
 const YAZI_RENDER_PLAN_COMPUTE_COMMAND: &str = "yazi-render-plan.compute";
 const YAZI_MATERIALIZATION_GENERATE_COMMAND: &str = "yazi-materialization.generate";
@@ -288,9 +283,6 @@ standard_command_handlers!(
         INSTALL_OWNERSHIP_EVALUATE_COMMAND,
         run_install_ownership_evaluate
     ),
-    (DOCTOR_CONFIG_EVALUATE_COMMAND, run_doctor_config_evaluate),
-    (DOCTOR_HELIX_EVALUATE_COMMAND, run_doctor_helix_evaluate),
-    (DOCTOR_RUNTIME_EVALUATE_COMMAND, run_doctor_runtime_evaluate),
     (
         ZELLIJ_RENDER_PLAN_COMPUTE_COMMAND,
         run_zellij_render_plan_compute
@@ -720,30 +712,6 @@ fn run_startup_launch_preflight_evaluate(mut parser: lexopt::Parser) -> Result<(
         deserialize_json_request(&request_json, "startup-launch-preflight")?;
     let data = evaluate_startup_launch_preflight(&request)?;
     write_success_envelope(STARTUP_LAUNCH_PREFLIGHT_EVALUATE_COMMAND, data)
-}
-
-fn run_doctor_helix_evaluate(mut parser: lexopt::Parser) -> Result<(), CoreError> {
-    let request_json = take_request_json(&mut parser)?;
-    let request: HelixDoctorEvaluateRequest =
-        deserialize_json_request(&request_json, "doctor-helix")?;
-    let data = evaluate_helix_doctor_report(&request);
-    write_success_envelope(DOCTOR_HELIX_EVALUATE_COMMAND, data)
-}
-
-fn run_doctor_config_evaluate(mut parser: lexopt::Parser) -> Result<(), CoreError> {
-    let request_json = take_request_json(&mut parser)?;
-    let request: DoctorConfigEvaluateRequest =
-        deserialize_json_request(&request_json, "doctor-config")?;
-    let data = evaluate_doctor_config_report(&request);
-    write_success_envelope(DOCTOR_CONFIG_EVALUATE_COMMAND, data)
-}
-
-fn run_doctor_runtime_evaluate(mut parser: lexopt::Parser) -> Result<(), CoreError> {
-    let request_json = take_request_json(&mut parser)?;
-    let request: DoctorRuntimeEvaluateRequest =
-        deserialize_json_request(&request_json, "doctor-runtime")?;
-    let data = evaluate_doctor_runtime_report(&request);
-    write_success_envelope(DOCTOR_RUNTIME_EVALUATE_COMMAND, data)
 }
 
 fn run_install_ownership_evaluate(parser: lexopt::Parser) -> Result<(), CoreError> {

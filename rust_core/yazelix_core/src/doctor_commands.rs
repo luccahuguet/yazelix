@@ -149,29 +149,6 @@ const HELIX_RUNTIME_CONFLICT_REPAIR_ACTION: &str = "backup_helix_runtime_conflic
 const REPAIR_GENERATED_RUNTIME_STATE_FIX_ACTION: &str = "repair_generated_runtime_state";
 const SEED_ZELLIJ_PLUGIN_PERMISSIONS_FIX_ACTION: &str = "seed_zellij_plugin_permissions";
 
-#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
-struct DoctorRepairPlan {
-    schema_version: u8,
-    consent: DoctorRepairConsent,
-    actions: Vec<DoctorRepairAction>,
-}
-
-#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
-struct DoctorRepairConsent {
-    mode: &'static str,
-    required_flag: &'static str,
-}
-
-#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
-struct DoctorRepairAction {
-    id: &'static str,
-    summary: &'static str,
-    preflight: Vec<&'static str>,
-    backup_or_rollback_evidence: Vec<&'static str>,
-    idempotence_checks: Vec<&'static str>,
-    stable_json_event: &'static str,
-}
-
 #[derive(Debug, Deserialize)]
 struct SessionManagedPanes {
     #[serde(default)]
@@ -743,94 +720,21 @@ fn needs_helix_runtime_conflict_backup(results: &[Value]) -> bool {
     })
 }
 
-fn build_doctor_repair_plan(results: &[Value]) -> DoctorRepairPlan {
+fn doctor_repair_action_ids(results: &[Value]) -> Vec<&'static str> {
     let mut actions = Vec::new();
     if needs_helix_runtime_conflict_backup(results) {
-        actions.push(DoctorRepairAction {
-            id: HELIX_RUNTIME_CONFLICT_REPAIR_ACTION,
-            summary: "Move conflicting Helix runtime paths aside with .backup suffixes",
-            preflight: vec![
-                "doctor finding status is error or warning",
-                "finding message names a runtime conflict",
-                "conflict entry has severity error and a non-empty path",
-            ],
-            backup_or_rollback_evidence: vec![
-                "the original path is renamed to the same path with a .backup suffix",
-                "rollback is renaming the .backup path back to the original path",
-            ],
-            idempotence_checks: vec![
-                "only conflicts still reported by the current doctor result are moved",
-                "missing or already-moved paths fail visibly instead of being ignored",
-            ],
-            stable_json_event: "doctor_repair.helix_runtime_conflict.backup",
-        });
+        actions.push(HELIX_RUNTIME_CONFLICT_REPAIR_ACTION);
     }
     if has_fix_action(results, CREATE_DEFAULT_SETTINGS_CONFIG_FIX_ACTION) {
-        actions.push(DoctorRepairAction {
-            id: CREATE_DEFAULT_SETTINGS_CONFIG_FIX_ACTION,
-            summary: "Create missing settings.jsonc from shipped defaults",
-            preflight: vec![
-                "doctor finding declares create_default_settings_config",
-                "runtime and config directories resolve from the active environment",
-            ],
-            backup_or_rollback_evidence: vec![
-                "settings.jsonc is created with create_new and never overwrites an existing file",
-                "rollback is removing the newly created settings.jsonc",
-            ],
-            idempotence_checks: vec![
-                "skip when settings.jsonc already exists",
-                "render defaults from the active runtime template before writing",
-            ],
-            stable_json_event: "doctor_repair.config.create_default_settings",
-        });
+        actions.push(CREATE_DEFAULT_SETTINGS_CONFIG_FIX_ACTION);
     }
     if has_fix_action(results, REPAIR_GENERATED_RUNTIME_STATE_FIX_ACTION) {
-        actions.push(DoctorRepairAction {
-            id: REPAIR_GENERATED_RUNTIME_STATE_FIX_ACTION,
-            summary: "Repair Yazelix-owned generated runtime state",
-            preflight: vec![
-                "doctor finding declares repair_generated_runtime_state",
-                "runtime materialization plan resolves from the active environment",
-            ],
-            backup_or_rollback_evidence: vec![
-                "repair operates only on Yazelix-owned generated runtime state",
-                "rollback is rerunning materialization from the active runtime and config",
-            ],
-            idempotence_checks: vec![
-                "runtime repair directive can return Noop when generated state is current",
-                "repair runs without force so unrelated state is not regenerated",
-            ],
-            stable_json_event: "doctor_repair.runtime_state.repair",
-        });
+        actions.push(REPAIR_GENERATED_RUNTIME_STATE_FIX_ACTION);
     }
     if has_fix_action(results, SEED_ZELLIJ_PLUGIN_PERMISSIONS_FIX_ACTION) {
-        actions.push(DoctorRepairAction {
-            id: SEED_ZELLIJ_PLUGIN_PERMISSIONS_FIX_ACTION,
-            summary: "Seed bundled Zellij plugin permissions",
-            preflight: vec![
-                "doctor finding declares seed_zellij_plugin_permissions",
-                "active config paths resolve before materialization",
-            ],
-            backup_or_rollback_evidence: vec![
-                "materialization updates the Zellij permissions cache for Yazelix-owned bundled plugins",
-                "rollback is removing the Yazelix plugin permission cache entry and restarting Zellij",
-            ],
-            idempotence_checks: vec![
-                "permission seeding is derived from the active runtime and config paths",
-                "rerunning the action rewrites the same Yazelix-owned permission state",
-            ],
-            stable_json_event: "doctor_repair.zellij_permissions.seed",
-        });
+        actions.push(SEED_ZELLIJ_PLUGIN_PERMISSIONS_FIX_ACTION);
     }
-
-    DoctorRepairPlan {
-        schema_version: 1,
-        consent: DoctorRepairConsent {
-            mode: "explicit_cli_flag",
-            required_flag: "yzx doctor --fix",
-        },
-        actions,
-    }
+    actions
 }
 
 fn create_default_settings_config_from_template(
@@ -1171,9 +1075,8 @@ fn run_doctor_fix_flow(verbose: bool, results: &[Value]) -> Result<i32, CoreErro
     println!("\n🔧 Attempting to auto-fix issues...\n");
 
     let mut any_failed = false;
-    let repair_plan = build_doctor_repair_plan(results);
-    for action in &repair_plan.actions {
-        if run_doctor_repair_action(action.id, verbose, results)? {
+    for action_id in doctor_repair_action_ids(results) {
+        if run_doctor_repair_action(action_id, verbose, results)? {
             any_failed = true;
         }
     }
@@ -1575,74 +1478,7 @@ mod tests {
         );
     }
 
-    // Defends: every automatic doctor mutation has stable consent, preflight, rollback, and idempotence metadata.
-    #[test]
-    fn repair_plan_records_guardrails_for_automatic_actions() {
-        let results = vec![
-            json!({
-                "status": "error",
-                "message": "Helix runtime conflict",
-                "fix_available": true,
-                "conflicts": [{
-                    "severity": "error",
-                    "path": "/tmp/helix/runtime",
-                    "name": "runtime"
-                }]
-            }),
-            json!({
-                "status": "error",
-                "message": "Missing generated config",
-                "fix_available": true,
-                "fix_action": CREATE_DEFAULT_SETTINGS_CONFIG_FIX_ACTION
-            }),
-            json!({
-                "status": "error",
-                "message": "Generated workspace assets are missing or stale",
-                "fix_available": true,
-                "fix_action": REPAIR_GENERATED_RUNTIME_STATE_FIX_ACTION
-            }),
-            json!({
-                "status": "error",
-                "message": "Yazelix pane-orchestrator plugin permissions not granted",
-                "fix_available": true,
-                "fix_action": SEED_ZELLIJ_PLUGIN_PERMISSIONS_FIX_ACTION
-            }),
-        ];
-
-        let plan = build_doctor_repair_plan(&results);
-        let ids = plan
-            .actions
-            .iter()
-            .map(|action| action.id)
-            .collect::<Vec<_>>();
-
-        assert_eq!(plan.schema_version, 1);
-        assert_eq!(plan.consent.required_flag, "yzx doctor --fix");
-        assert_eq!(
-            ids,
-            vec![
-                HELIX_RUNTIME_CONFLICT_REPAIR_ACTION,
-                CREATE_DEFAULT_SETTINGS_CONFIG_FIX_ACTION,
-                REPAIR_GENERATED_RUNTIME_STATE_FIX_ACTION,
-                SEED_ZELLIJ_PLUGIN_PERMISSIONS_FIX_ACTION,
-            ]
-        );
-        for action in &plan.actions {
-            assert!(!action.preflight.is_empty());
-            assert!(!action.backup_or_rollback_evidence.is_empty());
-            assert!(!action.idempotence_checks.is_empty());
-            assert!(action.stable_json_event.starts_with("doctor_repair."));
-        }
-
-        let serialized = serde_json::to_value(&plan).unwrap();
-        assert_eq!(serialized["schema_version"], 1);
-        assert_eq!(
-            serialized["consent"]["mode"],
-            serde_json::Value::String("explicit_cli_flag".into())
-        );
-    }
-
-    // Defends: guarded repair metadata does not accidentally publish the unsupported JSON mutation path.
+    // Defends: doctor keeps the unsupported JSON mutation path closed.
     #[test]
     fn json_fix_remains_unsupported() {
         let error = run_yzx_doctor(&["--json".into(), "--fix".into()]).unwrap_err();

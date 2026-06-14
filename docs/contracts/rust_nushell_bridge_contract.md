@@ -153,9 +153,6 @@ Helper commands track the Rust-owned slices:
 - `runtime-materialization.materialize`
 - `runtime-materialization.repair`
 - `status.compute`
-- `doctor-config.evaluate`
-- `doctor-helix.evaluate`
-- `doctor-runtime.evaluate`
 - `install-ownership.evaluate`
 - `zellij-render-plan.compute`
 - `yazi-render-plan.compute`
