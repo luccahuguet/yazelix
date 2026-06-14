@@ -2,36 +2,33 @@ use lexopt::prelude::*;
 use serde::de::DeserializeOwned;
 use std::io::Write;
 use std::path::PathBuf;
-use yazelix_core::appearance_mode::APPEARANCE_MODE_DARK;
 use yazelix_core::control_plane::{
     config_override_from_env, config_state_compute_request_from_env,
-    config_state_record_request_from_env, ghostty_materialization_request_from_env,
-    read_yazelix_version_from_runtime, runtime_dir_from_env, runtime_env_request_from_env,
+    config_state_record_request_from_env, runtime_dir_from_env, runtime_env_request_from_env,
     runtime_materialization_plan_request_from_env, terminal_materialization_request_from_env,
 };
 use yazelix_core::terminal_materialization::YzxtermProfile;
 use yazelix_core::terminal_variant::active_terminal_from_runtime_dir;
 use yazelix_core::{
-    ComputeConfigStateRequest, CoreError, ErrorClass, GhosttyMaterializationRequest,
-    HelixMaterializationRequest, InstallOwnershipEvaluateRequest, LaunchMaterializationRequest,
-    NormalizeConfigRequest, PopupSessionFactsData, RecordConfigStateRequest,
-    RuntimeContractEvaluateRequest, RuntimeEnvComputeRequest, RuntimeMaterializationPlanRequest,
+    ComputeConfigStateRequest, CoreError, ErrorClass, HelixMaterializationRequest,
+    InstallOwnershipEvaluateRequest, LaunchMaterializationRequest, NormalizeConfigRequest,
+    PopupSessionFactsData, RecordConfigStateRequest, RuntimeContractEvaluateRequest,
+    RuntimeEnvComputeRequest, RuntimeMaterializationPlanRequest,
     RuntimeMaterializationRepairEvaluateRequest, RuntimeMaterializationRepairRunData,
-    RuntimeOwnershipGraphRequest, RuntimeRepairDirective, SessionConfigSnapshotCreateRequest,
-    StartupFactsData, StartupLaunchPreflightRequest, TerminalMaterializationRequest,
-    YaziMaterializationRequest, YaziRenderPlanRequest, YzxExternBridgeSyncRequest,
-    ZellijMaterializationRequest, ZellijRenderPlanRequest, compute_config_state,
-    compute_popup_session_facts_from_env, compute_runtime_env, compute_runtime_ownership_graph,
-    compute_startup_facts_from_env, compute_status_report, compute_yazi_render_plan,
+    RuntimeOwnershipGraphRequest, RuntimeRepairDirective, StartupLaunchPreflightRequest,
+    TerminalMaterializationRequest, YaziMaterializationRequest, YaziRenderPlanRequest,
+    YzxExternBridgeSyncRequest, ZellijMaterializationRequest, ZellijRenderPlanRequest,
+    compute_config_state, compute_popup_session_facts_from_env, compute_runtime_env,
+    compute_runtime_ownership_graph, compute_status_report, compute_yazi_render_plan,
     compute_zellij_render_plan, error_envelope, evaluate_install_ownership_report,
-    evaluate_runtime_contract, evaluate_startup_launch_preflight, generate_ghostty_materialization,
-    generate_helix_materialization, generate_terminal_materialization,
-    generate_yazi_materialization, generate_zellij_materialization,
-    install_ownership_request_from_env, install_ownership_request_from_env_with_runtime_dir,
-    launch_materialization_request_from_env, materialize_runtime_state, normalize_config,
-    plan_runtime_materialization, prepare_launch_materialization, record_config_state,
-    render_yzx_help, repair_runtime_materialization, success_envelope, sync_yzx_extern_bridge,
-    write_session_config_snapshot_for_launch, yzx_command_metadata, yzx_command_metadata_data,
+    evaluate_runtime_contract, evaluate_startup_launch_preflight, generate_helix_materialization,
+    generate_terminal_materialization, generate_yazi_materialization,
+    generate_zellij_materialization, install_ownership_request_from_env,
+    install_ownership_request_from_env_with_runtime_dir, launch_materialization_request_from_env,
+    materialize_runtime_state, normalize_config, plan_runtime_materialization,
+    prepare_launch_materialization, record_config_state, render_yzx_help,
+    repair_runtime_materialization, success_envelope, sync_yzx_extern_bridge, yzx_command_metadata,
+    yzx_command_metadata_data,
 };
 
 const CONFIG_NORMALIZE_COMMAND: &str = "config.normalize";
@@ -41,8 +38,6 @@ const RUNTIME_CONTRACT_EVALUATE_COMMAND: &str = "runtime-contract.evaluate";
 const STARTUP_LAUNCH_PREFLIGHT_EVALUATE_COMMAND: &str = "startup-launch-preflight.evaluate";
 const RUNTIME_ENV_COMPUTE_COMMAND: &str = "runtime-env.compute";
 const POPUP_SESSION_FACTS_COMPUTE_COMMAND: &str = "popup-session-facts.compute";
-const STARTUP_FACTS_COMPUTE_COMMAND: &str = "startup-facts.compute";
-const SESSION_CONFIG_SNAPSHOT_WRITE_COMMAND: &str = "session-config-snapshot.write";
 const RUNTIME_MATERIALIZATION_PLAN_COMMAND: &str = "runtime-materialization.plan";
 const RUNTIME_MATERIALIZATION_MATERIALIZE_COMMAND: &str = "runtime-materialization.materialize";
 const RUNTIME_MATERIALIZATION_REPAIR_COMMAND: &str = "runtime-materialization.repair";
@@ -53,7 +48,6 @@ const YAZI_RENDER_PLAN_COMPUTE_COMMAND: &str = "yazi-render-plan.compute";
 const YAZI_MATERIALIZATION_GENERATE_COMMAND: &str = "yazi-materialization.generate";
 const ZELLIJ_MATERIALIZATION_GENERATE_COMMAND: &str = "zellij-materialization.generate";
 const HELIX_MATERIALIZATION_GENERATE_COMMAND: &str = "helix-materialization.generate";
-const GHOSTTY_MATERIALIZATION_GENERATE_COMMAND: &str = "ghostty-materialization.generate";
 const TERMINAL_MATERIALIZATION_GENERATE_COMMAND: &str = "terminal-materialization.generate";
 const LAUNCH_MATERIALIZATION_PREPARE_COMMAND: &str = "launch-materialization.prepare";
 const YZX_COMMAND_METADATA_LIST_COMMAND: &str = "yzx-command-metadata.list";
@@ -139,16 +133,6 @@ struct HelixMaterializationArgs {
     config_dir: Option<PathBuf>,
     state_dir: Option<PathBuf>,
     show_splash: bool,
-}
-
-#[derive(Default)]
-struct GhosttyMaterializationArgs {
-    runtime_dir: Option<PathBuf>,
-    config_dir: Option<PathBuf>,
-    state_dir: Option<PathBuf>,
-    transparency: Option<String>,
-    cursor_config_path: Option<PathBuf>,
-    from_env: bool,
 }
 
 #[derive(Default)]
@@ -249,11 +233,6 @@ standard_command_handlers!(
         POPUP_SESSION_FACTS_COMPUTE_COMMAND,
         run_popup_session_facts_compute
     ),
-    (STARTUP_FACTS_COMPUTE_COMMAND, run_startup_facts_compute),
-    (
-        SESSION_CONFIG_SNAPSHOT_WRITE_COMMAND,
-        run_session_config_snapshot_write
-    ),
     (
         RUNTIME_MATERIALIZATION_PLAN_COMMAND,
         run_runtime_materialization_plan
@@ -286,10 +265,6 @@ standard_command_handlers!(
     (
         HELIX_MATERIALIZATION_GENERATE_COMMAND,
         run_helix_materialization_generate
-    ),
-    (
-        GHOSTTY_MATERIALIZATION_GENERATE_COMMAND,
-        run_ghostty_materialization_generate
     ),
     (
         TERMINAL_MATERIALIZATION_GENERATE_COMMAND,
@@ -830,64 +805,6 @@ fn helix_materialization_request_from_args(
     })
 }
 
-fn run_ghostty_materialization_generate(parser: lexopt::Parser) -> Result<(), CoreError> {
-    let request =
-        ghostty_materialization_request_from_args(take_ghostty_materialization_args(parser)?)?;
-    let data = generate_ghostty_materialization(&request)?;
-    write_success_envelope(GHOSTTY_MATERIALIZATION_GENERATE_COMMAND, data)
-}
-
-fn take_ghostty_materialization_args(
-    mut parser: lexopt::Parser,
-) -> Result<GhosttyMaterializationArgs, CoreError> {
-    let mut args = GhosttyMaterializationArgs::default();
-    while let Some(arg) = parser
-        .next()
-        .map_err(|error| CoreError::usage(error.to_string()))?
-    {
-        match arg {
-            Long("from-env") => args.from_env = true,
-            Long("runtime-dir") => args.runtime_dir = Some(parser_path_value(&mut parser)?),
-            Long("config-dir") => args.config_dir = Some(parser_path_value(&mut parser)?),
-            Long("state-dir") => args.state_dir = Some(parser_path_value(&mut parser)?),
-            Long("transparency") => args.transparency = Some(parser_string_value(&mut parser)?),
-            Long("cursor-config") => {
-                args.cursor_config_path = Some(parser_path_value(&mut parser)?)
-            }
-            _ => return Err(unexpected_argument(arg)),
-        }
-    }
-    Ok(args)
-}
-
-fn ghostty_materialization_request_from_args(
-    args: GhosttyMaterializationArgs,
-) -> Result<GhosttyMaterializationRequest, CoreError> {
-    let explicit_args_present = args.runtime_dir.is_some()
-        || args.config_dir.is_some()
-        || args.state_dir.is_some()
-        || args.transparency.is_some()
-        || args.cursor_config_path.is_some();
-
-    if args.from_env {
-        if explicit_args_present {
-            return Err(CoreError::usage(
-                "Use either --from-env or explicit ghostty-materialization.generate flags, not both.",
-            ));
-        }
-        return ghostty_materialization_request_from_env(config_override_from_env().as_deref());
-    }
-
-    Ok(GhosttyMaterializationRequest {
-        runtime_dir: required_path(args.runtime_dir, "Missing --runtime-dir path")?,
-        config_dir: required_path(args.config_dir, "Missing --config-dir path")?,
-        state_dir: required_path(args.state_dir, "Missing --state-dir path")?,
-        transparency: required_string(args.transparency, "Missing --transparency")?,
-        appearance_mode: APPEARANCE_MODE_DARK.to_string(),
-        cursor_config_path: required_path(args.cursor_config_path, "Missing --cursor-config path")?,
-    })
-}
-
 fn run_terminal_materialization_generate(parser: lexopt::Parser) -> Result<(), CoreError> {
     let request =
         terminal_materialization_request_from_args(take_terminal_materialization_args(parser)?)?;
@@ -1030,21 +947,6 @@ fn run_popup_session_facts_compute(parser: lexopt::Parser) -> Result<(), CoreErr
     ensure_no_args(parser)?;
     let data: PopupSessionFactsData = compute_popup_session_facts_from_env()?;
     write_success_envelope(POPUP_SESSION_FACTS_COMPUTE_COMMAND, data)
-}
-
-fn run_startup_facts_compute(parser: lexopt::Parser) -> Result<(), CoreError> {
-    ensure_no_args(parser)?;
-    let data: StartupFactsData = compute_startup_facts_from_env()?;
-    write_success_envelope(STARTUP_FACTS_COMPUTE_COMMAND, data)
-}
-
-fn run_session_config_snapshot_write(mut parser: lexopt::Parser) -> Result<(), CoreError> {
-    let request_json = take_request_json(&mut parser)?;
-    let request: SessionConfigSnapshotCreateRequest =
-        deserialize_json_request(&request_json, "session-config-snapshot.write")?;
-    let version = read_yazelix_version_from_runtime(&request.runtime_dir)?;
-    let data = write_session_config_snapshot_for_launch(&request, &version)?;
-    write_success_envelope(SESSION_CONFIG_SNAPSHOT_WRITE_COMMAND, data)
 }
 
 fn run_runtime_materialization_plan(mut parser: lexopt::Parser) -> Result<(), CoreError> {
