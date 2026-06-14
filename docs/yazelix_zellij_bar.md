@@ -29,7 +29,7 @@ From this repo, the forwarded package remains:
 nix build .#yazelix_zellij_bar
 ```
 
-Use the child README for Zellij layout examples and custom command-widget configuration. KDL is the customization surface for standalone users. Integrated Yazelix calls `yazelix_zellij_bar_widget render-yazelix-runtime --json <config>` to render the child-owned runtime KDL template into a complete zjstatus plugin block for generated layouts. The integrated template replaces zjstatus `{tabs}` with a child-owned `command_yazelix_tabs` widget that reads the launch-scoped status-bar cache once per second, so activity labels animate without making the pane orchestrator repaint tab names on every frame.
+Use the child README for Zellij layout examples and custom command-widget configuration. KDL is the customization surface for standalone users. Integrated Yazelix calls `yazelix_zellij_bar_widget render-yazelix-runtime --json <config>` to render the child-owned runtime KDL template into a complete zjstatus plugin block for generated layouts. The integrated template keeps zjstatus `{tabs}` for event-driven tab identity, focus updates, creation/deletion updates, click handling, and upstream terminal-bell styling. The child-owned `tabs` command remains a renderer probe for the launch-scoped activity snapshot cache while the default AI-activity bridge stays on native tab-name decoration.
 
 The standalone non-workspace widget commands are intentionally short:
 
@@ -41,4 +41,4 @@ yazelix_zellij_bar_widget cpu
 yazelix_zellij_bar_widget ram
 ```
 
-Workspace and integrated animated tabs remain Yazelix-only because they depend on pane-orchestrator session facts. The other widgets run without `yzx`, `yzx_control`, Nushell, Yazelix runtime cache paths, or Yazelix session state.
+Workspace and AI-activity snapshots remain Yazelix-only because they depend on pane-orchestrator session facts. The other widgets run without `yzx`, `yzx_control`, Nushell, Yazelix runtime cache paths, or Yazelix session state.

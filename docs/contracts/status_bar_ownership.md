@@ -23,7 +23,8 @@ The supported boundary is runnable-standalone-first for every non-workspace widg
 | live sidebar/editor/workspace facts | pane orchestrator | Keep producer |
 | active-tab workspace pipe message and label content | pane orchestrator | Keep producer |
 | all-tab activity facts | pane orchestrator snapshot written through the window-local status-bar cache; `get_all_tab_activity_state` remains the direct diagnostic/read seam | Keep producer |
-| activity tab-strip presentation | `yazelix_zellij_bar` command widget renderer reading `status_bar_cache.json`; native tab-name mutation remains fallback | Move child |
+| activity tab-label presentation | native Zellij tab-name mutation as the current bridge; `yazelix_zellij_bar` owns pure label rendering and diagnostic cache rendering | Keep bridge |
+| terminal-bell tab presentation | upstream zjstatus `{tabs}` with child-owned generated `tab_normal_bell` and `tab_normal_flashing_bell` style-only formats | Keep native |
 | direct `status-bus-workspace` zjstatus command | none | Deleted |
 
 ## Contract Items
@@ -95,12 +96,11 @@ The supported boundary is runnable-standalone-first for every non-workspace widg
 - Type: boundary
 - Status: live
 - Owner: pane orchestrator plus native Zellij tab names
-- Statement: Native activity tab decoration is the fallback bridge into the
-  current zjstatus `{tabs}` widget and a backup for the child-owned integrated
-  tab-strip command widget. The pane orchestrator owns registered
-  activity facts and recognized spinner-prefixed terminal titles, reduces them
-  to alert, busy, or idle, then mutates the affected Zellij tab name only when
-  that reduced visible state changes.
+- Statement: Native activity tab decoration is the current bridge into the
+  zjstatus `{tabs}` widget. The pane orchestrator owns registered activity facts
+  and recognized spinner-prefixed terminal titles, reduces them to alert, busy,
+  or idle, then mutates the affected Zellij tab name only when that reduced
+  visible state changes.
   Alert takes priority over busy, and busy takes priority over no marker. The
   orchestrator remembers spinner-prefixed terminal-title activity by producing
   pane, promotes completed off-focus activity to `[!] `, and clears it only when
@@ -124,14 +124,19 @@ The supported boundary is runnable-standalone-first for every non-workspace widg
   status-cache-write` stores that snapshot under `tab_activity` in the same
   launch-scoped `status_bar_cache.json` used by other Yazelix bar widgets,
   while preserving heartbeat facts and the previous tab-activity snapshot when
-  a cache write omits a new tab-activity payload. The integrated child runtime template replaces
-  zjstatus `{tabs}` with `{command_yazelix_tabs}`. That command runs
-  `yazelix_zellij_bar_widget tabs` once per second, reads the same cache, and
-  uses the child-owned pure renderer to draw the whole tab strip with
-  fixed-width busy animation. Upstream zjstatus v0.23.0 still cannot interleave
-  external all-tab state into its built-in `{tabs}` widget, so native tab-name
-  mutation remains the fallback bridge described by SBO-010 until the integrated
-  command-widget path is proven better in normal use
+  a cache write omits a new tab-activity payload. The integrated child runtime
+  template keeps zjstatus `{tabs}` as the live tab source, because that path is
+  driven by Zellij `TabUpdate` events and owns correct focus, creation, deletion,
+  and truncation behavior. The generated `{tabs}` formats also use upstream
+  zjstatus bell fields for style-only terminal-BEL presentation, which is
+  separate from Yazelix AI-activity facts and does not add `[!]` marker text.
+  `yazelix_zellij_bar_widget tabs` remains a
+  child-owned renderer probe for the all-tab activity snapshot contract, but it
+  is not the default integrated tab strip. Upstream zjstatus v0.23.0 still
+  cannot interleave external all-tab state into its built-in `{tabs}` widget, so
+  native tab-name mutation remains the bridge described by SBO-010 until Yazelix
+  owns an event-driven tab renderer or zjstatus consumes the snapshot in its
+  native tab path
 - Verification: automated
   `cargo test` in `luccahuguet/yazelix-zellij-bar` and
   `cargo test --manifest-path ../yazelix-zellij-pane-orchestrator/Cargo.toml --lib`

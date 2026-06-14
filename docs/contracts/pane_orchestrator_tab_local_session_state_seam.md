@@ -190,8 +190,8 @@ The native tab-name bridge is a fallback, not the long-term rendering owner.
 For bar-owned rendering, `get_all_tab_activity_state` returns a separate
 versioned JSON payload. The pane orchestrator writes the same payload into the
 launch-scoped status-bar cache through `yzx_control zellij status-cache-write`,
-so the integrated `command_yazelix_tabs` widget can render from the same
-heartbeat/cache path as the other Yazelix bar widgets:
+so the child-owned renderer and any future event-driven bar bridge can consume
+the same facts as the other Yazelix bar widgets:
 
 ```json
 {
@@ -226,10 +226,11 @@ bar should render; when the fallback bridge has already mutated a native tab
 name, the orchestrator uses its recorded base name instead of exposing the
 decorated display name as source truth. `active`, `is_fullscreen_active`,
 `is_sync_panes_active`, and `has_floating_panes` carry the built-in tab facts
-needed when the child-owned command renders the whole integrated tab strip
-instead of the built-in zjstatus `{tabs}` placeholder. The all-tab payload
-carries facts and state only. Presentation strings such as `[!]`, `[...]`,
-colors, animation frames, and tab-label spacing belong to
+needed by a future event-driven tab renderer. The default integrated bar still
+uses the built-in zjstatus `{tabs}` placeholder for live tab identity, focus,
+creation/deletion updates, click handling, and terminal-bell styling.
+The all-tab payload carries facts and state only. Presentation strings such as
+`[!]`, `[...]`, colors, animation frames, and tab-label spacing belong to
 `yazelix_zellij_bar`.
 
 The markers are deliberately ASCII. Terminal-title activity is an input signal,
@@ -375,10 +376,11 @@ contract. This slice is only about the read contract.
 11. Shared agent-usage cache and lock filenames are scoped by provider cache
     schema version, so runtime versions with different cache contracts do not
     read from or write to the same files.
-12. The integrated activity tab strip is rendered by `yazelix_zellij_bar_widget
-    tabs` from the status-bar cache on the normal command-widget interval. The
-    pane orchestrator updates facts only when state changes; it must not rename
-    tabs once per animation frame.
+12. The integrated bar keeps zjstatus `{tabs}` as the live tab strip. The
+    `yazelix_zellij_bar_widget tabs` command is a renderer probe for the
+    status-cache activity snapshot, not the default runtime path. The pane
+    orchestrator updates facts only when state changes; it must not rename tabs
+    once per animation frame.
 
 ## Verification
 
