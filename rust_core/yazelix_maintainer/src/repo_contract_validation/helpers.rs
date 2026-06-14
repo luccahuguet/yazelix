@@ -387,32 +387,7 @@ pub(super) fn json_values_equal(left: &JsonValue, right: &JsonValue) -> bool {
 }
 
 pub(super) fn toml_values_equal(left: &TomlValue, right: &TomlValue) -> bool {
-    match (left, right) {
-        (TomlValue::String(left), TomlValue::String(right)) => left == right,
-        (TomlValue::Integer(left), TomlValue::Integer(right)) => left == right,
-        (TomlValue::Float(left), TomlValue::Float(right)) => left == right,
-        (TomlValue::Integer(left), TomlValue::Float(right))
-        | (TomlValue::Float(right), TomlValue::Integer(left)) => (*left as f64) == *right,
-        (TomlValue::Boolean(left), TomlValue::Boolean(right)) => left == right,
-        (TomlValue::Datetime(left), TomlValue::Datetime(right)) => left == right,
-        (TomlValue::Array(left), TomlValue::Array(right)) => {
-            left.len() == right.len()
-                && left
-                    .iter()
-                    .zip(right.iter())
-                    .all(|(left, right)| toml_values_equal(left, right))
-        }
-        (TomlValue::Table(left), TomlValue::Table(right)) => {
-            left.len() == right.len()
-                && left.iter().all(|(key, left_value)| {
-                    right
-                        .get(key)
-                        .map(|right_value| toml_values_equal(left_value, right_value))
-                        .unwrap_or(false)
-                })
-        }
-        _ => false,
-    }
+    json_values_equal(&toml_to_json(left), &toml_to_json(right))
 }
 
 pub(super) fn format_json_value(value: &JsonValue) -> String {
