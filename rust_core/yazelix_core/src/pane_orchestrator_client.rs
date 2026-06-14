@@ -2,10 +2,14 @@
 
 use crate::bridge::{CoreError, ErrorClass};
 use serde_json::json;
+use std::env;
+use std::ffi::OsString;
 use std::process::Command;
 
 pub(crate) const PANE_ORCHESTRATOR_PLUGIN_ALIAS: &str = "yazelix_pane_orchestrator";
 pub(crate) const YZPP_PLUGIN_ALIAS: &str = "yzpp";
+const YAZELIX_ZELLIJ_SESSION_NAME_ENV: &str = "YAZELIX_ZELLIJ_SESSION_NAME";
+const ZELLIJ_SESSION_NAME_ENV: &str = "ZELLIJ_SESSION_NAME";
 
 pub(crate) fn run_pane_orchestrator_command(
     command_name: &str,
@@ -44,7 +48,9 @@ fn run_zellij_plugin_command_with_error(
     command_label: &'static str,
     recovery: &'static str,
 ) -> Result<String, CoreError> {
-    let output = Command::new("zellij")
+    let mut command = Command::new("zellij");
+    configure_zellij_control_session_env(&mut command);
+    let output = command
         .args([
             "action",
             "pipe",
@@ -83,4 +89,68 @@ fn run_zellij_plugin_command_with_error(
     }
 
     Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+}
+
+pub(crate) fn configure_zellij_control_session_env(command: &mut Command) {
+    if let Some(session_name) = zellij_session_name_override_for_control_command(
+        env::var_os(ZELLIJ_SESSION_NAME_ENV),
+        env::var_os(YAZELIX_ZELLIJ_SESSION_NAME_ENV),
+    ) {
+        command.env(ZELLIJ_SESSION_NAME_ENV, session_name);
+    }
+}
+
+fn zellij_session_name_override_for_control_command(
+    current_session_name: Option<OsString>,
+    saved_session_name: Option<OsString>,
+) -> Option<OsString> {
+    if current_session_name.is_some_and(|value| !value.is_empty()) {
+        return None;
+    }
+
+    saved_session_name.filter(|value| !value.is_empty())
+}
+
+// Test lane: default
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Regression: managed Yazi blanks ZELLIJ_SESSION_NAME for graphics detection but saves the real session for Yazelix control subprocesses.
+    #[test]
+    fn zellij_control_restores_saved_session_when_current_session_is_empty() {
+        assert_eq!(
+            zellij_session_name_override_for_control_command(
+                Some(OsString::from("")),
+                Some(OsString::from("real-session")),
+            ),
+            Some(OsString::from("real-session"))
+        );
+        assert_eq!(
+            zellij_session_name_override_for_control_command(
+                None,
+                Some(OsString::from("real-session")),
+            ),
+            Some(OsString::from("real-session"))
+        );
+    }
+
+    // Invariant: callers already attached to a concrete Zellij session keep their native session env unchanged.
+    #[test]
+    fn zellij_control_keeps_existing_nonempty_session() {
+        assert_eq!(
+            zellij_session_name_override_for_control_command(
+                Some(OsString::from("current-session")),
+                Some(OsString::from("saved-session")),
+            ),
+            None
+        );
+        assert_eq!(
+            zellij_session_name_override_for_control_command(
+                Some(OsString::from("")),
+                Some(OsString::from("")),
+            ),
+            None
+        );
+    }
 }

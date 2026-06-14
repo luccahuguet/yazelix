@@ -238,6 +238,39 @@ fn yzx_control_zellij_status_bus_json_reads_versioned_snapshot() {
     assert_eq!(snapshot["managed_panes"]["editor_pane_id"], "terminal:7");
 }
 
+// Regression: managed Yazi clears ZELLIJ_SESSION_NAME for graphics detection, but yzx_control must restore the saved session when piping to Zellij.
+#[test]
+fn yzx_control_zellij_pipe_restores_saved_session_name_from_managed_yazi_env() {
+    let fixture = managed_config_fixture("");
+    let fake_bin = fixture.home_dir.join("fake-bin");
+    let zellij_env_log = fixture.home_dir.join("zellij-env.log");
+    fs::create_dir_all(&fake_bin).unwrap();
+    write_executable_script(
+        &fake_bin.join("zellij"),
+        &format!(
+            "#!/bin/sh\nprintf '%s\\n' \"ZELLIJ_SESSION_NAME=${{ZELLIJ_SESSION_NAME-unset}}\" > \"{}\"\nprintf '%s\\n' '{{\"schema_version\":1}}'\n",
+            zellij_env_log.display()
+        ),
+    );
+
+    let output = yzx_control_command_in_fixture(&fixture)
+        .env("PATH", prepend_path(&fake_bin))
+        .env("ZELLIJ", "0")
+        .env("ZELLIJ_SESSION_NAME", "")
+        .env("YAZELIX_ZELLIJ_SESSION_NAME", "real-session")
+        .arg("zellij")
+        .arg("status-bus")
+        .arg("--json")
+        .output()
+        .unwrap();
+
+    assert_success(&output);
+    assert_eq!(
+        fs::read_to_string(zellij_env_log).unwrap().trim(),
+        "ZELLIJ_SESSION_NAME=real-session"
+    );
+}
+
 // Defends: the public Rust-owned `yzx reveal` route uses the pane-orchestrator session snapshot as the only sidebar identity source and then focuses the sidebar.
 #[test]
 fn yzx_control_reveal_uses_session_snapshot_and_focuses_sidebar() {
@@ -1031,7 +1064,7 @@ ya_command = "ya"
     write_executable_script(
         &fake_bin.join("zellij"),
         &format!(
-            "#!/bin/sh\nif [ \"$1\" = \"action\" ] && [ \"$2\" = \"pipe\" ]; then\n  printf '%s\\n' \"$6\" >> \"{}\"\n  case \"$6\" in\n    retarget_workspace)\n      printf '%s' \"$8\" > \"{}\"\n      printf '%s\\n' '{{\"status\":\"ok\",\"editor_status\":\"skipped\",\"sidebar_yazi_id\":\"plugin-sidebar-yazi-123\",\"sidebar_yazi_cwd\":\"/home/sidebar\"}}'\n      exit 0\n      ;;\n    get_active_tab_session_state)\n      printf '%s\\n' '{{\"schema_version\":1,\"managed_panes\":{{\"editor_pane_id\":null,\"sidebar_pane_id\":\"terminal:8\"}},\"layout\":{{\"sidebar_collapsed\":false}}}}'\n      exit 0\n      ;;\n  esac\nfi\nif [ \"$1\" = \"run\" ]; then\n  printf '%s\\n' \"$*\" >> \"{}\"\n  exit 0\nfi\nprintf 'unexpected zellij args: %s\\n' \"$*\" >&2\nexit 1\n",
+            "#!/bin/sh\nif [ \"$1\" = \"action\" ] && [ \"$2\" = \"pipe\" ]; then\n  printf '%s\\n' \"$6\" >> \"{}\"\n  case \"$6\" in\n    retarget_workspace)\n      printf '%s' \"$8\" > \"{}\"\n      printf '%s\\n' '{{\"status\":\"ok\",\"editor_status\":\"skipped\",\"sidebar_yazi_id\":\"plugin-sidebar-yazi-123\",\"sidebar_yazi_cwd\":\"/home/sidebar\"}}'\n      exit 0\n      ;;\n    get_active_tab_session_state)\n      printf '%s\\n' '{{\"schema_version\":1,\"managed_panes\":{{\"editor_pane_id\":null,\"sidebar_pane_id\":\"terminal:8\"}},\"layout\":{{\"sidebar_collapsed\":false}}}}'\n      exit 0\n      ;;\n  esac\nfi\nif [ \"$1\" = \"run\" ]; then\n  printf 'session=%s %s\\n' \"${{ZELLIJ_SESSION_NAME-unset}}\" \"$*\" >> \"{}\"\n  exit 0\nfi\nprintf 'unexpected zellij args: %s\\n' \"$*\" >&2\nexit 1\n",
             zellij_commands_log.display(),
             retarget_payload_log.display(),
             zellij_run_log.display()
@@ -1042,6 +1075,8 @@ ya_command = "ya"
     let output = yzx_control_command_in_fixture(&fixture)
         .env("PATH", prepend_path(&fake_bin))
         .env("ZELLIJ", "1")
+        .env("ZELLIJ_SESSION_NAME", "")
+        .env("YAZELIX_ZELLIJ_SESSION_NAME", "real-session")
         .env("YAZI_ID", "current-yazi")
         .arg("zellij")
         .arg("open-editor-cwd")
@@ -1064,6 +1099,7 @@ ya_command = "ya"
     assert!(retarget_payload["editor"].is_null());
 
     let run_log = fs::read_to_string(zellij_run_log).unwrap();
+    assert!(run_log.contains("session=real-session"));
     assert!(run_log.contains("--name editor"));
     assert!(run_log.contains(&format!("--cwd {}", target_dir.display())));
     assert!(run_log.contains("YAZI_ID=current-yazi"));

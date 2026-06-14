@@ -55,8 +55,17 @@ local function trim(value)
 	return tostring(value):gsub("^%s+", ""):gsub("%s+$", "")
 end
 
+local function zellij_command()
+	local command = Command("zellij")
+	local session_name = os.getenv("YAZELIX_ZELLIJ_SESSION_NAME")
+	if session_name and session_name ~= "" then
+		command:env("ZELLIJ_SESSION_NAME", session_name)
+	end
+	return command
+end
+
 local function pipe_sidebar_state_registration(payload)
-	local output = Command("zellij")
+	local output = zellij_command()
 		:arg({
 			"action",
 			"pipe",

@@ -7,7 +7,9 @@ use crate::control_plane::{
     home_dir_from_env, json_map_to_child_env, runtime_dir_from_env, runtime_env_request,
 };
 use crate::helix_bridge_client::{HelixBridgeActionTarget, send_helix_bridge_action_to_target};
-use crate::pane_orchestrator_client::run_pane_orchestrator_command;
+use crate::pane_orchestrator_client::{
+    configure_zellij_control_session_env, run_pane_orchestrator_command,
+};
 use crate::session_facts::compute_session_facts_from_env;
 use crate::workspace_commands::{compute_integration_facts_from_env, sync_sidebar_to_directory};
 use crate::workspace_session::{
@@ -422,7 +424,9 @@ fn run_zellij_editor_pane(
     editor_argv: &[String],
 ) -> Result<(), CoreError> {
     let env_args = build_editor_pane_env_assignments(runtime_env, yazi_id);
-    let output = Command::new("zellij")
+    let mut command = Command::new("zellij");
+    configure_zellij_control_session_env(&mut command);
+    let output = command
         .arg("run")
         .arg("--name")
         .arg(EDITOR_PANE_NAME)

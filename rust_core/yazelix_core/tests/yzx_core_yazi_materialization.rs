@@ -159,6 +159,18 @@ fn bundled_zoxide_editor_resolves_yzx_control_from_runtime_env() {
     assert!(!plugin.contains("__YAZELIX_RUNTIME_DIR__/libexec/yzx_control"));
 }
 
+// Regression: the sidebar state plugin runs under managed Yazi's graphics-filtered env and must restore the saved Zellij session before piping to the pane orchestrator.
+#[test]
+fn bundled_sidebar_state_plugin_restores_saved_zellij_session_for_pipe_commands() {
+    let plugin =
+        fs::read_to_string(repo_root().join("configs/yazi/plugins/sidebar-state.yazi/main.lua"))
+            .unwrap();
+
+    assert!(plugin.contains(r#"os.getenv("YAZELIX_ZELLIJ_SESSION_NAME")"#));
+    assert!(plugin.contains(r#"command:env("ZELLIJ_SESSION_NAME", session_name)"#));
+    assert!(plugin.contains(r#""register_sidebar_yazi_state""#));
+}
+
 // Defends: yazi-materialization.generate Rust-owns the generated Yazi surface, bundled assets, and runtime placeholder rendering end-to-end.
 #[test]
 fn yazi_materialization_generate_writes_managed_surface_and_assets() {

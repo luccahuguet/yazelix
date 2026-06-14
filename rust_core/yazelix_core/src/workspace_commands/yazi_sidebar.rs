@@ -8,11 +8,14 @@ use crate::sidebar_bootstrap::{SIDEBAR_BOOTSTRAP_CWD_ENV, is_sidebar_bootstrap_f
 use crate::workspace_session::{SidebarState, parse_active_sidebar_state};
 use serde_json::json;
 use std::env;
+use std::ffi::OsString;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
 const ZELLIJ_KITTY_PASSTHROUGH_FEATURE: &str = "zellij_kitty_passthrough";
+const YAZELIX_RUNTIME_DIR_ENV: &str = "YAZELIX_RUNTIME_DIR";
+const YAZELIX_ZELLIJ_SESSION_NAME_ENV: &str = "YAZELIX_ZELLIJ_SESSION_NAME";
 const ZELLIJ_SESSION_NAME_ENV: &str = "ZELLIJ_SESSION_NAME";
 const KITTY_WINDOW_ID_ENV: &str = "KITTY_WINDOW_ID";
 
@@ -139,8 +142,9 @@ fn launch_yazi_sidebar() -> Result<i32, CoreError> {
         .or_else(|| env::current_dir().ok())
         .unwrap_or_else(|| config.home_dir.clone());
     let command_path = resolve_command_path(&config.yazi_command, &config.home_dir);
-    let runtime_dir = env::var_os("YAZELIX_RUNTIME_DIR").map(PathBuf::from);
+    let runtime_dir = sidebar_runtime_dir();
     let mut command = Command::new(&command_path);
+    configure_yazi_runtime_env(&mut command, runtime_dir.as_deref());
     configure_yazi_graphics_env(&mut command, runtime_dir.as_deref());
     let status = command.arg(target_dir).status().map_err(|source| {
         CoreError::io(
@@ -154,11 +158,71 @@ fn launch_yazi_sidebar() -> Result<i32, CoreError> {
     Ok(status.code().unwrap_or(1))
 }
 
+fn configure_yazi_runtime_env(command: &mut Command, runtime_dir: Option<&Path>) {
+    if let Some(runtime_dir) = runtime_dir {
+        command.env(YAZELIX_RUNTIME_DIR_ENV, runtime_dir);
+    }
+}
+
 fn configure_yazi_graphics_env(command: &mut Command, runtime_dir: Option<&Path>) {
+    configure_yazi_graphics_env_with_session(
+        command,
+        runtime_dir,
+        zellij_control_session_name_from_env(),
+    );
+}
+
+fn configure_yazi_graphics_env_with_session(
+    command: &mut Command,
+    runtime_dir: Option<&Path>,
+    session_name: Option<OsString>,
+) {
     if runtime_dir.is_some_and(runtime_has_zellij_kitty_passthrough) {
+        configure_yazi_zellij_control_session_env(command, session_name);
         command.env(ZELLIJ_SESSION_NAME_ENV, "");
         command.env(KITTY_WINDOW_ID_ENV, "1");
     }
+}
+
+fn configure_yazi_zellij_control_session_env(
+    command: &mut Command,
+    session_name: Option<OsString>,
+) {
+    if let Some(session_name) = session_name.filter(|value| !value.is_empty()) {
+        command.env(YAZELIX_ZELLIJ_SESSION_NAME_ENV, session_name);
+    }
+}
+
+fn zellij_control_session_name_from_env() -> Option<OsString> {
+    env::var_os(ZELLIJ_SESSION_NAME_ENV)
+        .filter(|value| !value.is_empty())
+        .or_else(|| env::var_os(YAZELIX_ZELLIJ_SESSION_NAME_ENV).filter(|value| !value.is_empty()))
+}
+
+fn sidebar_runtime_dir() -> Option<PathBuf> {
+    env::var_os(YAZELIX_RUNTIME_DIR_ENV)
+        .filter(|value| !value.is_empty())
+        .map(PathBuf::from)
+        .or_else(infer_runtime_dir_from_current_exe)
+}
+
+fn infer_runtime_dir_from_current_exe() -> Option<PathBuf> {
+    let exe = env::current_exe().ok()?;
+    runtime_dir_from_helper_exe(&exe)
+}
+
+fn runtime_dir_from_helper_exe(exe: &Path) -> Option<PathBuf> {
+    let file_name = exe.file_name()?.to_str()?;
+    if file_name != "yzx" && file_name != "yzx_control" {
+        return None;
+    }
+
+    let libexec_dir = exe.parent()?;
+    if libexec_dir.file_name()?.to_str()? != "libexec" {
+        return None;
+    }
+
+    libexec_dir.parent().map(Path::to_path_buf)
 }
 
 fn runtime_has_zellij_kitty_passthrough(runtime_dir: &Path) -> bool {
@@ -472,14 +536,54 @@ mod tests {
         .expect("feature marker");
 
         let mut command = Command::new("yazi");
-        configure_yazi_graphics_env(&mut command, Some(tmp.path()));
+        configure_yazi_graphics_env_with_session(
+            &mut command,
+            Some(tmp.path()),
+            Some(OsString::from("real-zellij-session")),
+        );
 
         let envs = command_envs(&command);
         assert_eq!(
             envs.get(ZELLIJ_SESSION_NAME_ENV),
             Some(&Some(String::new()))
         );
+        assert_eq!(
+            envs.get(YAZELIX_ZELLIJ_SESSION_NAME_ENV),
+            Some(&Some("real-zellij-session".to_string()))
+        );
         assert_eq!(envs.get(KITTY_WINDOW_ID_ENV), Some(&Some("1".to_string())));
+    }
+
+    // Regression: managed Yazi plugins must keep access to the current runtime even when Zellij starts panes without the full Yazelix env.
+    #[test]
+    fn yazi_launch_env_sets_runtime_dir_for_plugin_commands() {
+        let tmp = TempDir::new().expect("tmp");
+        let mut command = Command::new("yazi");
+        configure_yazi_runtime_env(&mut command, Some(tmp.path()));
+
+        let envs = command_envs(&command);
+        assert_eq!(
+            envs.get(YAZELIX_RUNTIME_DIR_ENV),
+            Some(&Some(tmp.path().to_string_lossy().into_owned()))
+        );
+    }
+
+    // Defends: packaged libexec helpers can recover their runtime root without trusting inherited pane env.
+    #[test]
+    fn runtime_dir_inference_accepts_packaged_libexec_helpers() {
+        let runtime = PathBuf::from("/nix/store/example-yazelix");
+        assert_eq!(
+            runtime_dir_from_helper_exe(&runtime.join("libexec").join("yzx_control")),
+            Some(runtime.clone())
+        );
+        assert_eq!(
+            runtime_dir_from_helper_exe(&runtime.join("libexec").join("yzx")),
+            Some(runtime)
+        );
+        assert_eq!(
+            runtime_dir_from_helper_exe(Path::new("/tmp/yazelix/target/debug/yzx_control")),
+            None
+        );
     }
 
     // Invariant: runtimes without the explicit Zellij Kitty bridge marker keep upstream Yazi's normal Zellij adapter filtering.
