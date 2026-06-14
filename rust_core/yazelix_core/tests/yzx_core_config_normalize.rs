@@ -294,6 +294,52 @@ color = "{color_hex}"
     );
 }
 
+fn write_forest_effect_cursor_sidecar(fixture: &RuntimeMaterializationFixture) {
+    write_cursor_sidecar(
+        fixture,
+        r##"
+schema_version = 1
+enabled_cursors = ["forest"]
+
+[settings]
+trail = "forest"
+trail_effect = "tail"
+mode_effect = "ripple"
+glow = "high"
+duration = 1.5
+kitty_enable_cursor = true
+
+[[cursor]]
+name = "forest"
+family = "mono"
+color = "#3bd17a"
+"##,
+    );
+}
+
+fn write_snow_plain_cursor_sidecar(fixture: &RuntimeMaterializationFixture) {
+    write_cursor_sidecar(
+        fixture,
+        r##"
+schema_version = 1
+enabled_cursors = ["snow"]
+
+[settings]
+trail = "snow"
+trail_effect = "none"
+mode_effect = "none"
+glow = "medium"
+duration = 1.0
+kitty_enable_cursor = false
+
+[[cursor]]
+name = "snow"
+family = "mono"
+color = "#ffffff"
+"##,
+    );
+}
+
 fn read_generated_yzxterm_config(fixture: &RuntimeMaterializationFixture) -> toml::Value {
     let raw = fs::read_to_string(
         fixture
@@ -515,26 +561,7 @@ fn terminal_materialization_generate_from_env_writes_generated_configs() {
         &fixture,
         &["[terminal]", "transparency = \"low\""].join("\n"),
     );
-    write_cursor_sidecar(
-        &fixture,
-        r##"
-schema_version = 1
-enabled_cursors = ["forest"]
-
-[settings]
-trail = "forest"
-trail_effect = "tail"
-mode_effect = "ripple"
-glow = "high"
-duration = 1.5
-kitty_enable_cursor = true
-
-[[cursor]]
-name = "forest"
-family = "mono"
-color = "#3bd17a"
-"##,
-    );
+    write_forest_effect_cursor_sidecar(&fixture);
 
     let output = generate_terminal_materialization_clean_terminal_env(&fixture);
 
@@ -713,26 +740,7 @@ fn terminal_materialization_rio_uses_rio_config_toml() {
         &fixture,
         &["[terminal]", "transparency = \"low\""].join("\n"),
     );
-    write_cursor_sidecar(
-        &fixture,
-        r##"
-schema_version = 1
-enabled_cursors = ["snow"]
-
-[settings]
-trail = "snow"
-trail_effect = "none"
-mode_effect = "none"
-glow = "medium"
-duration = 1.0
-kitty_enable_cursor = false
-
-[[cursor]]
-name = "snow"
-family = "mono"
-color = "#ffffff"
-"##,
-    );
+    write_snow_plain_cursor_sidecar(&fixture);
 
     let output = generate_terminal_materialization(&fixture);
 
@@ -860,26 +868,7 @@ fn terminal_materialization_foot_uses_foot_ini() {
         &fixture,
         &["[terminal]", "transparency = \"low\""].join("\n"),
     );
-    write_cursor_sidecar(
-        &fixture,
-        r##"
-schema_version = 1
-enabled_cursors = ["snow"]
-
-[settings]
-trail = "snow"
-trail_effect = "none"
-mode_effect = "none"
-glow = "medium"
-duration = 1.0
-kitty_enable_cursor = false
-
-[[cursor]]
-name = "snow"
-family = "mono"
-color = "#ffffff"
-"##,
-    );
+    write_snow_plain_cursor_sidecar(&fixture);
 
     let output = generate_terminal_materialization(&fixture);
 
@@ -1101,26 +1090,7 @@ fn terminal_materialization_yzxterm_shader_profile_injects_rio_decoration_shader
         &fixture,
         &["[terminal]", "transparency = \"medium\""].join("\n"),
     );
-    write_cursor_sidecar(
-        &fixture,
-        r##"
-schema_version = 1
-enabled_cursors = ["forest"]
-
-[settings]
-trail = "forest"
-trail_effect = "tail"
-mode_effect = "ripple"
-glow = "high"
-duration = 1.5
-kitty_enable_cursor = true
-
-[[cursor]]
-name = "forest"
-family = "mono"
-color = "#3bd17a"
-"##,
-    );
+    write_forest_effect_cursor_sidecar(&fixture);
 
     let output = generate_terminal_materialization_with(&fixture, |command| {
         command
@@ -1176,26 +1146,7 @@ fn terminal_materialization_yzxterm_emoji_font_selects_child_config_root() {
         &fixture,
         &["[terminal]", "transparency = \"medium\""].join("\n"),
     );
-    write_cursor_sidecar(
-        &fixture,
-        r##"
-schema_version = 1
-enabled_cursors = ["forest"]
-
-[settings]
-trail = "forest"
-trail_effect = "tail"
-mode_effect = "ripple"
-glow = "high"
-duration = 1.5
-kitty_enable_cursor = true
-
-[[cursor]]
-name = "forest"
-family = "mono"
-color = "#3bd17a"
-"##,
-    );
+    write_forest_effect_cursor_sidecar(&fixture);
 
     generate_terminal_materialization_with(&fixture, |command| {
         command
@@ -1238,26 +1189,7 @@ fn terminal_materialization_yzxterm_emoji_style_selects_child_config_root() {
         ]
         .join("\n"),
     );
-    write_cursor_sidecar(
-        &fixture,
-        r##"
-schema_version = 1
-enabled_cursors = ["forest"]
-
-[settings]
-trail = "forest"
-trail_effect = "tail"
-mode_effect = "ripple"
-glow = "high"
-duration = 1.5
-kitty_enable_cursor = true
-
-[[cursor]]
-name = "forest"
-family = "mono"
-color = "#3bd17a"
-"##,
-    );
+    write_forest_effect_cursor_sidecar(&fixture);
 
     generate_terminal_materialization_with(&fixture, |command| {
         command
@@ -1291,26 +1223,7 @@ fn terminal_materialization_yzxterm_rejects_unknown_emoji_font() {
     let fixture = prepare_runtime_materialization_fixture(&repo, &tmp);
     fs::write(fixture.runtime_dir.join("runtime_variant"), "yzxterm\n").unwrap();
     write_managed_config_toml(&fixture, "[terminal]\n");
-    write_cursor_sidecar(
-        &fixture,
-        r##"
-schema_version = 1
-enabled_cursors = ["snow"]
-
-[settings]
-trail = "snow"
-trail_effect = "none"
-mode_effect = "none"
-glow = "medium"
-duration = 1.0
-kitty_enable_cursor = false
-
-[[cursor]]
-name = "snow"
-family = "mono"
-color = "#ffffff"
-"##,
-    );
+    write_snow_plain_cursor_sidecar(&fixture);
 
     let output = runtime_materialization_command(&fixture, "terminal-materialization.generate")
         .env("YAZELIX_TERMINAL_EMOJI_FONT", "whatsapp")
@@ -1336,26 +1249,7 @@ fn terminal_materialization_yzxterm_shader_profile_replaces_stale_shader_assets(
     fs::write(fixture.runtime_dir.join("runtime_variant"), "yzxterm\n").unwrap();
 
     write_managed_config_toml(&fixture, "[terminal]\n");
-    write_cursor_sidecar(
-        &fixture,
-        r##"
-schema_version = 1
-enabled_cursors = ["forest"]
-
-[settings]
-trail = "forest"
-trail_effect = "tail"
-mode_effect = "ripple"
-glow = "high"
-duration = 1.5
-kitty_enable_cursor = true
-
-[[cursor]]
-name = "forest"
-family = "mono"
-color = "#3bd17a"
-"##,
-    );
+    write_forest_effect_cursor_sidecar(&fixture);
     let shader_dir = fixture
         .state_dir
         .join("configs")
@@ -1390,26 +1284,7 @@ fn terminal_materialization_uses_cursor_sidecar_for_kitty_toggle() {
     fs::write(fixture.runtime_dir.join("runtime_variant"), "kitty\n").unwrap();
 
     write_managed_config_toml(&fixture, "[terminal]\n");
-    write_cursor_sidecar(
-        &fixture,
-        r##"
-schema_version = 1
-enabled_cursors = ["snow"]
-
-[settings]
-trail = "snow"
-trail_effect = "none"
-mode_effect = "none"
-glow = "medium"
-duration = 1.0
-kitty_enable_cursor = false
-
-[[cursor]]
-name = "snow"
-family = "mono"
-color = "#ffffff"
-"##,
-    );
+    write_snow_plain_cursor_sidecar(&fixture);
 
     generate_terminal_materialization(&fixture);
     let kitty_config = fs::read_to_string(
