@@ -3,6 +3,7 @@ use crate::action_registry::{
     ZELLIJ_NATIVE_KEYBINDINGS, ZellijNativeKeybindingBlock, zellij_action_by_local_id,
     zellij_native_keybinding_by_local_id,
 };
+use crate::backup_timestamp::epoch_millis_timestamp;
 use crate::bridge::{CoreError, ErrorClass};
 use crate::config_normalize::{NormalizeConfigRequest, normalize_config};
 use crate::control_plane::{
@@ -28,7 +29,6 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::time::{SystemTime, UNIX_EPOCH};
 
 const GENERATION_METADATA_NAME: &str = ".yazelix_generation.json";
 const GENERATION_FINGERPRINT_SCHEMA_VERSION: u64 = 8;
@@ -2264,7 +2264,7 @@ fn record_generation_fingerprint(
     let metadata_path = merged_config_dir.join(GENERATION_METADATA_NAME);
     let content = serde_json::to_string(&json!({
         "fingerprint": fingerprint,
-        "generated_at": timestamp_for_metadata(),
+        "generated_at": epoch_millis_timestamp(),
     }))
     .map_err(|source| {
         CoreError::classified(
@@ -2330,13 +2330,6 @@ fn required_file_name(path: &Path) -> Result<&std::ffi::OsStr, CoreError> {
 
 fn json_quote(value: impl AsRef<str>) -> String {
     serde_json::to_string(value.as_ref()).unwrap_or_else(|_| "\"\"".to_string())
-}
-
-fn timestamp_for_metadata() -> String {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|duration| duration.as_millis().to_string())
-        .unwrap_or_else(|_| "0".to_string())
 }
 
 // Test lane: maintainer

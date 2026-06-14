@@ -1,5 +1,6 @@
 //! `yzx home_manager` family implemented in Rust for `yzx_control`.
 
+use crate::backup_timestamp::epoch_millis_timestamp;
 use crate::bridge::{CoreError, ErrorClass};
 use crate::install_ownership_env::install_ownership_request_from_env;
 use crate::install_ownership_report::{
@@ -10,7 +11,6 @@ use serde_json::json;
 use std::fs;
 use std::io::{self, BufRead, Write};
 use std::process::Command;
-use std::time::{SystemTime, UNIX_EPOCH};
 
 const HOME_MANAGER_PREPARE_BACKUP_LABEL: &str = "home-manager-prepare";
 
@@ -140,18 +140,11 @@ fn print_no_artifacts_message() {
     println!("  home-manager switch");
 }
 
-fn backup_timestamp() -> String {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|duration| duration.as_millis().to_string())
-        .unwrap_or_else(|_| "0".to_string())
-}
-
 fn archive_artifacts(
     artifacts: &[HomeManagerPrepareArtifact],
     backup_label: &str,
 ) -> Result<Vec<ArchivedArtifact>, CoreError> {
-    let timestamp = backup_timestamp();
+    let timestamp = epoch_millis_timestamp();
     let mut archived = Vec::with_capacity(artifacts.len());
 
     for artifact in artifacts {

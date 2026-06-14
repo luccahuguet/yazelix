@@ -9,6 +9,13 @@ pub(crate) fn compact_utc_backup_timestamp() -> String {
     compact_utc_backup_timestamp_from_epoch_secs(epoch_secs)
 }
 
+pub(crate) fn epoch_millis_timestamp() -> String {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|duration| duration.as_millis().to_string())
+        .unwrap_or_else(|_| "0".to_string())
+}
+
 fn compact_utc_backup_timestamp_from_epoch_secs(epoch_secs: i64) -> String {
     let days = epoch_secs.div_euclid(86_400);
     let seconds_of_day = epoch_secs.rem_euclid(86_400);
