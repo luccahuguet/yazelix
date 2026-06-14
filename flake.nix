@@ -17,6 +17,10 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     nixgl.url = "github:guibou/nixGL";
+    rio = {
+      url = "github:raphamorim/rio/v0.4.7";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     fenix = {
       url = "github:nix-community/fenix";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -75,6 +79,7 @@
       nixpkgs,
       home-manager,
       nixgl,
+      rio,
       fenix,
       yazelixScreen,
       yazelixCursors,
@@ -113,6 +118,7 @@
         inputs = {
           nixpkgs = inputIdentity nixpkgs;
           home_manager = inputIdentity home-manager;
+          rio = inputIdentity rio;
           fenix = inputIdentity fenix;
           yazelix_screen = inputIdentity yazelixScreen;
           yazelix_cursors = inputIdentity yazelixCursors;
@@ -126,6 +132,7 @@
       };
       homeManagerModule = { pkgs, ... }: {
         _module.args.nixgl = nixgl;
+        _module.args.rioPackage = rio.packages.${pkgs.stdenv.hostPlatform.system}.rio;
         _module.args.fenixPkgs = fenix.packages.${pkgs.stdenv.hostPlatform.system};
         _module.args.mkYazelixPackage = mkYazelix pkgs.stdenv.hostPlatform.system;
         _module.args.yazelixHelixPackage =
@@ -182,6 +189,7 @@
           components ? { },
           extraRuntimePackages ? agentUsagePackages system,
           yaziAssets ? yazelixYaziAssets.packages.${system}.yazelix_yazi_assets,
+          rioPackage ? rio.packages.${system}.rio,
           yazelixHelixPackage ? kgpPackages.helixPackage system,
           yazelixCursorsPackage ? yazelixCursors.packages.${system}.yazelix_cursors,
           yazelixTerminalPackage ? yazelixTerminal.packages.${system}.yazelix-terminal,
@@ -195,7 +203,7 @@
           {
             inherit nixgl runtimeVariant runtimeToolSources components yaziAssets zellijPluginArtifacts;
             inherit runtimeIdentity;
-            inherit name runtimeName skipStableWrapperRedirect yazelixTerminalPackage;
+            inherit name rioPackage runtimeName skipStableWrapperRedirect yazelixTerminalPackage;
             inherit yazelixHelixPackage yazelixCursorsPackage;
             pkgs = runtimePkgs;
             enableZellijKittyPassthrough =
@@ -213,12 +221,13 @@
         {
           name ? "yazelix-runtime",
           runtimeIdentity ? defaultRuntimeIdentity,
+          rioPackage ? rio.packages.${system}.rio,
           yazelixHelixPackage ? kgpPackages.helixPackage system,
           yazelixCursorsPackage ? yazelixCursors.packages.${system}.yazelix_cursors,
           yazelixTerminalPackage ? yazelixTerminal.packages.${system}.yazelix-terminal,
         }:
         import ./yazelix_runtime_package.nix {
-          inherit nixgl name runtimeIdentity runtimeVariant yazelixHelixPackage yazelixCursorsPackage yazelixTerminalPackage;
+          inherit nixgl name rioPackage runtimeIdentity runtimeVariant yazelixHelixPackage yazelixCursorsPackage yazelixTerminalPackage;
           pkgs = runtimePkgsFor system pkgs runtimeVariant;
           fenixPkgs = fenix.packages.${system};
           extraRuntimePackages = [

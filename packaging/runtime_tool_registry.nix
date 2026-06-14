@@ -1,6 +1,7 @@
 {
   pkgs,
   nixgl ? null,
+  rioPackage ? pkgs.rio,
   runtimeVariant ? "ghostty",
   runtimeToolSources ? { },
   yazelixTerminalPackage ? null,
@@ -19,86 +20,79 @@ let
     else
       pkgs.ghostty;
   commandBasename = command: lib.last (lib.splitString "/" command);
-  yazelixTerminalRuntimeVariants = [
-    "rio"
-    "yzxterm"
-  ];
-  requireYazelixTerminalPackageMetadata =
-    variant:
+  requireYzxtermPackageMetadata =
     package:
     let
       metadata = package.passthru.yzxtermPackageMetadata or null;
     in
     if !(builtins.isAttrs metadata) then
-      throw "Yazelix runtimeVariant ${variant} requires the terminal package to expose passthru.yzxtermPackageMetadata"
+      throw "Yazelix runtimeVariant yzxterm requires the terminal package to expose passthru.yzxtermPackageMetadata"
     else if (metadata.schema_version or null) != 1 then
-      throw "Yazelix runtimeVariant ${variant} requires yzxtermPackageMetadata.schema_version = 1"
+      throw "Yazelix runtimeVariant yzxterm requires yzxtermPackageMetadata.schema_version = 1"
     else if (metadata.terminal or null) != "yazelix-terminal" then
-      throw "Yazelix runtimeVariant ${variant} requires yzxtermPackageMetadata.terminal = \"yazelix-terminal\""
+      throw "Yazelix runtimeVariant yzxterm requires yzxtermPackageMetadata.terminal = \"yazelix-terminal\""
     else if !(builtins.isString (metadata.package_name or null)) then
-      throw "Yazelix runtimeVariant ${variant} requires yzxtermPackageMetadata.package_name"
+      throw "Yazelix runtimeVariant yzxterm requires yzxtermPackageMetadata.package_name"
     else if !(builtins.isString (metadata.package_profile or null)) then
-      throw "Yazelix runtimeVariant ${variant} requires yzxtermPackageMetadata.package_profile"
+      throw "Yazelix runtimeVariant yzxterm requires yzxtermPackageMetadata.package_profile"
     else if !(builtins.isBool (metadata.checked_package or null)) then
-      throw "Yazelix runtimeVariant ${variant} requires yzxtermPackageMetadata.checked_package"
+      throw "Yazelix runtimeVariant yzxterm requires yzxtermPackageMetadata.checked_package"
     else if !(builtins.isString (metadata.metadata_path or null)) then
-      throw "Yazelix runtimeVariant ${variant} requires yzxtermPackageMetadata.metadata_path"
+      throw "Yazelix runtimeVariant yzxterm requires yzxtermPackageMetadata.metadata_path"
     else if !(builtins.isString (metadata.wrapper_commands.desktop or null)) then
-      throw "Yazelix runtimeVariant ${variant} requires yzxtermPackageMetadata.wrapper_commands.desktop"
-    else if !(builtins.isString (metadata.wrapper_commands.rio_compat or null)) then
-      throw "Yazelix runtimeVariant ${variant} requires yzxtermPackageMetadata.wrapper_commands.rio_compat"
+      throw "Yazelix runtimeVariant yzxterm requires yzxtermPackageMetadata.wrapper_commands.desktop"
     else if !(builtins.isAttrs (metadata.config_roots or null)) then
-      throw "Yazelix runtimeVariant ${variant} requires yzxtermPackageMetadata.config_roots"
+      throw "Yazelix runtimeVariant yzxterm requires yzxtermPackageMetadata.config_roots"
     else if !(builtins.isList (metadata.supported_emoji_fonts or null)) then
-      throw "Yazelix runtimeVariant ${variant} requires yzxtermPackageMetadata.supported_emoji_fonts"
+      throw "Yazelix runtimeVariant yzxterm requires yzxtermPackageMetadata.supported_emoji_fonts"
     else if !(builtins.elem "noto" metadata.supported_emoji_fonts) then
-      throw "Yazelix runtimeVariant ${variant} requires yzxtermPackageMetadata.supported_emoji_fonts to include noto"
+      throw "Yazelix runtimeVariant yzxterm requires yzxtermPackageMetadata.supported_emoji_fonts to include noto"
     else if !(builtins.elem "twitter" metadata.supported_emoji_fonts) then
-      throw "Yazelix runtimeVariant ${variant} requires yzxtermPackageMetadata.supported_emoji_fonts to include twitter"
+      throw "Yazelix runtimeVariant yzxterm requires yzxtermPackageMetadata.supported_emoji_fonts to include twitter"
     else if !(builtins.elem "serenityos" metadata.supported_emoji_fonts) then
-      throw "Yazelix runtimeVariant ${variant} requires yzxtermPackageMetadata.supported_emoji_fonts to include serenityos"
+      throw "Yazelix runtimeVariant yzxterm requires yzxtermPackageMetadata.supported_emoji_fonts to include serenityos"
     else if !(builtins.isList (metadata.supported_appearance_modes or null)) then
-      throw "Yazelix runtimeVariant ${variant} requires yzxtermPackageMetadata.supported_appearance_modes"
+      throw "Yazelix runtimeVariant yzxterm requires yzxtermPackageMetadata.supported_appearance_modes"
     else if !(builtins.elem "dark" metadata.supported_appearance_modes) then
-      throw "Yazelix runtimeVariant ${variant} requires yzxtermPackageMetadata.supported_appearance_modes to include dark"
+      throw "Yazelix runtimeVariant yzxterm requires yzxtermPackageMetadata.supported_appearance_modes to include dark"
     else if !(builtins.elem "light" metadata.supported_appearance_modes) then
-      throw "Yazelix runtimeVariant ${variant} requires yzxtermPackageMetadata.supported_appearance_modes to include light"
+      throw "Yazelix runtimeVariant yzxterm requires yzxtermPackageMetadata.supported_appearance_modes to include light"
     else if !(builtins.elem "auto" metadata.supported_appearance_modes) then
-      throw "Yazelix runtimeVariant ${variant} requires yzxtermPackageMetadata.supported_appearance_modes to include auto"
+      throw "Yazelix runtimeVariant yzxterm requires yzxtermPackageMetadata.supported_appearance_modes to include auto"
     else if (metadata.default_appearance_mode or null) != "dark" then
-      throw "Yazelix runtimeVariant ${variant} requires yzxtermPackageMetadata.default_appearance_mode = \"dark\""
+      throw "Yazelix runtimeVariant yzxterm requires yzxtermPackageMetadata.default_appearance_mode = \"dark\""
     else if !(builtins.isString (metadata.wrapper_env.appearance or null)) then
-      throw "Yazelix runtimeVariant ${variant} requires yzxtermPackageMetadata.wrapper_env.appearance"
+      throw "Yazelix runtimeVariant yzxterm requires yzxtermPackageMetadata.wrapper_env.appearance"
     else if !(builtins.isString (metadata.wrapper_env.emoji_font or null)) then
-      throw "Yazelix runtimeVariant ${variant} requires yzxtermPackageMetadata.wrapper_env.emoji_font"
+      throw "Yazelix runtimeVariant yzxterm requires yzxtermPackageMetadata.wrapper_env.emoji_font"
     else
       metadata;
-  yazelixTerminalPackageMetadata =
-    if builtins.elem runtimeVariant yazelixTerminalRuntimeVariants then
+  yzxtermPackageMetadata =
+    if runtimeVariant == "yzxterm" then
       if yazelixTerminalPackage != null then
-        requireYazelixTerminalPackageMetadata runtimeVariant yazelixTerminalPackage
+        requireYzxtermPackageMetadata yazelixTerminalPackage
       else
-        throw "Yazelix runtimeVariant ${runtimeVariant} requires the yazelix-terminal child package"
+        throw "Yazelix runtimeVariant yzxterm requires the yazelix-terminal child package"
     else
       null;
   yzxtermPackageRuntimeIdentity =
-    if runtimeVariant != "yzxterm" || yazelixTerminalPackageMetadata == null then
+    if yzxtermPackageMetadata == null then
       { }
     else
       {
         package_profile =
-          if yazelixTerminalPackageMetadata.package_profile == "fast" then
+          if yzxtermPackageMetadata.package_profile == "fast" then
             "yzxterm-fast"
           else
-            "yzxterm-${yazelixTerminalPackageMetadata.package_profile}";
-        yzxterm_terminal_package = yazelixTerminalPackageMetadata.package_name;
-        yzxterm_terminal_package_profile = yazelixTerminalPackageMetadata.package_profile;
-        yzxterm_terminal_checked = yazelixTerminalPackageMetadata.checked_package;
-        yzxterm_terminal_metadata_schema = yazelixTerminalPackageMetadata.schema_version;
+            "yzxterm-${yzxtermPackageMetadata.package_profile}";
+        yzxterm_terminal_package = yzxtermPackageMetadata.package_name;
+        yzxterm_terminal_package_profile = yzxtermPackageMetadata.package_profile;
+        yzxterm_terminal_checked = yzxtermPackageMetadata.checked_package;
+        yzxterm_terminal_metadata_schema = yzxtermPackageMetadata.schema_version;
         yzxterm_terminal_supported_appearance_modes =
-          yazelixTerminalPackageMetadata.supported_appearance_modes;
+          yzxtermPackageMetadata.supported_appearance_modes;
         yzxterm_terminal_default_appearance_mode =
-          yazelixTerminalPackageMetadata.default_appearance_mode;
+          yzxtermPackageMetadata.default_appearance_mode;
       };
   terminalPackage =
     if runtimeVariant == "ghostty" then
@@ -106,10 +100,7 @@ let
     else if runtimeVariant == "kitty" then
       pkgs.kitty
     else if runtimeVariant == "rio" then
-      if yazelixTerminalPackageMetadata != null then
-        yazelixTerminalPackage
-      else
-        throw "Yazelix runtimeVariant rio requires the yazelix-terminal child package"
+      rioPackage
     else if runtimeVariant == "wezterm" then
       pkgs.wezterm
     else if runtimeVariant == "ratty" then
@@ -123,7 +114,7 @@ let
       else
         throw "Yazelix runtimeVariant foot is only supported on Linux"
     else if runtimeVariant == "yzxterm" then
-      if yazelixTerminalPackageMetadata != null then
+      if yzxtermPackageMetadata != null then
         yazelixTerminalPackage
       else
         throw "Yazelix runtimeVariant yzxterm requires the yazelix-terminal child package"
@@ -135,7 +126,7 @@ let
     else if runtimeVariant == "kitty" then
       [ "kitty" ]
     else if runtimeVariant == "rio" then
-      [ (commandBasename yazelixTerminalPackageMetadata.wrapper_commands.rio_compat) ]
+      [ "rio" ]
     else if runtimeVariant == "wezterm" then
       [ "wezterm" ]
     else if runtimeVariant == "ratty" then
@@ -143,7 +134,7 @@ let
     else if runtimeVariant == "foot" then
       [ "foot" ]
     else if runtimeVariant == "yzxterm" then
-      [ (commandBasename yazelixTerminalPackageMetadata.wrapper_commands.desktop) ]
+      [ (commandBasename yzxtermPackageMetadata.wrapper_commands.desktop) ]
     else
       [ ];
   linuxGraphicsWrappers =
@@ -454,7 +445,7 @@ else if disallowedOffNames != [ ] then
 else
   {
     inherit runtimeToolSourceModes tools runtimePackages exportedCommands manifest;
-    terminalPackageMetadata = yazelixTerminalPackageMetadata;
+    terminalPackageMetadata = yzxtermPackageMetadata;
     terminalPackageRuntimeIdentity = yzxtermPackageRuntimeIdentity;
     manifestJson = builtins.toJSON manifest;
   }

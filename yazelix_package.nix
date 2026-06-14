@@ -13,6 +13,7 @@
   components ? { },
   extraRuntimePackages ? [ ],
   yaziAssets ? null,
+  rioPackage ? pkgs.rio,
   yazelixHelixPackage ? null,
   yazelixCursorsPackage ? null,
   yazelixTerminalPackage ? null,
@@ -52,6 +53,7 @@ import ./packaging/mk_yazelix_package.nix {
     components
     extraRuntimePackages
     yaziAssets
+    rioPackage
     yazelixHelixPackage
     yazelixCursorsPackage
     yazelixTerminalPackage

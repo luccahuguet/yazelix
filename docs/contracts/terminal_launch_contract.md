@@ -227,5 +227,28 @@ Out of scope:
   `rust_core/yazelix_core/tests/yzx_core_config_normalize.rs`
   (`terminal_materialization_foot_uses_foot_ini`)
 
+#### TLAUNCH-009
+- Type: behavior
+- Status: live
+- Owner: Rust terminal materialization and Rust launch preflight
+- Statement: Rio is the upstream packaged terminal variant selected by
+  `terminal = "rio"` or `#yazelix_rio`; it must not depend on the
+  `yazelix-terminal` child package or yzxterm metadata. Generated Rio config is
+  written under the Yazelix state directory and launched through
+  `RIO_CONFIG_HOME`, with `terminal.transparency` mapped to Rio window and cell
+  opacity. On Linux, when transparency is enabled and an X display exists,
+  Yazelix sets `WINIT_UNIX_BACKEND=x11` and clears `WAYLAND_DISPLAY` for the Rio
+  process so upstream Rio uses XWayland; this works around upstream Rio issue
+  https://github.com/raphamorim/rio/issues/1644 where COSMIC/Wayland ignores
+  background opacity. If transparency is `none`, or no X display is available,
+  Yazelix leaves Rio's backend selection untouched.
+- Verification: automated Rust tests in
+  `rust_core/yazelix_core/src/launch_commands/launch.rs`
+  (`rio_process_boundary_env_points_at_selected_config_dir`,
+  `rio_process_boundary_env_forces_x11_for_transparent_linux_launches`,
+  `rio_process_boundary_env_keeps_default_backend_without_x11_display`) and
+  `rust_core/yazelix_core/tests/yzx_core_config_normalize.rs`
+  (`terminal_materialization_rio_uses_rio_config_toml`)
+
 ## Traceability
 - Defended by: `yzx_repo_validator validate-contracts`

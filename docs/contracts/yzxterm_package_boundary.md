@@ -3,11 +3,10 @@
 ## Summary
 
 Yazelix Terminal is a child-owned Rio-derived terminal package. Main Yazelix may
-select that package, include it in the yzxterm and Rio-compatible runtime
-variants, expose a narrow Home Manager override for dogfooding, and consume
-stable package metadata. Main Yazelix must not parse yzxterm shader files, infer
-package profiles from store names, or make unrelated terminal variants depend on
-yzxterm internals.
+select that package, include it in one terminal runtime variant, expose a narrow
+Home Manager override for dogfooding, and consume stable package metadata. Main
+Yazelix must not parse yzxterm shader files, infer package profiles from store
+names, or make other terminal variants depend on yzxterm internals.
 
 ## Ownership
 
@@ -19,7 +18,6 @@ yzxterm internals.
 | yzxterm shader asset layout and ABI | `yazelix-terminal` child package |
 | yzxterm dark/light themes and adaptive appearance behavior | `yazelix-terminal` child package |
 | yzxterm package metadata schema and values | `yazelix-terminal` child package |
-| Rio-compatible child package command | `yazelix-terminal` child package |
 | runtime variant selection | main Yazelix Nix package builders |
 | Home Manager terminal selection | main Yazelix Home Manager module |
 | Home Manager yzxterm package override | main Yazelix Home Manager module, yzxterm-only |
@@ -29,16 +27,16 @@ yzxterm internals.
 
 ## Contract
 
-- A yzxterm or Rio-compatible runtime package must receive a terminal package
-  that exposes `passthru.yzxtermPackageMetadata`
+- A yzxterm runtime package must receive a terminal package that exposes
+  `passthru.yzxtermPackageMetadata`
 - The metadata must include schema version, package name, package profile,
   checked/release status, metadata path, wrapper commands, config roots,
   supported emoji fallback presets, supported appearance modes, default
   appearance mode, the appearance wrapper env name, and the emoji-font wrapper
   env name
-- Main Yazelix derives the yzxterm launch command, Rio-compatible command, and
-  yzxterm runtime identity package fields from that metadata, not from terminal
-  package names or child config files
+- Main Yazelix derives the yzxterm launch command and runtime identity package
+  fields from that metadata, not from terminal package names or child config
+  files
 - Main Yazelix requires yzxterm metadata to advertise `dark`, `light`, and
   `auto` appearance support before exposing yzxterm as a first-class target for
   global `appearance.mode`
@@ -46,9 +44,8 @@ yzxterm internals.
   It must not require replacing `programs.yazelix.package`
 - The override is invalid unless the active terminal or an extra terminal
   launcher includes `yzxterm`
-- Non-yzxterm terminal variants must ignore the yzxterm override. The Rio
-  runtime may require child package metadata only for the locked child package
-  selected by the main package builder, not for the yzxterm override
+- Non-yzxterm terminal variants must ignore the yzxterm override and must not
+  require yzxterm metadata
 - Fast/local yzxterm packages must be visibly detectable through
   `runtime_identity.json`; release packages must also report whether the child
   package was checked
@@ -76,7 +73,7 @@ yzxterm internals.
 | Ghostty | writes generated Ghostty config, cursor palette includes, and shader references from Yazelix cursor state | Ghostty owns config semantics and shader runtime behavior |
 | Kitty | writes generated Kitty config and optional user override include | Kitty owns config semantics and terminal-native cursor behavior |
 | WezTerm | writes generated `.wezterm.lua` from stable Yazelix settings | WezTerm owns Lua config semantics |
-| Rio | writes generated Rio config from stable Yazelix settings and launches the child-owned Rio-compatible command | `yazelix-terminal` owns the binary/wrapper package; Rio owns config semantics |
+| Rio | writes generated upstream Rio config from stable Yazelix settings | Rio owns config semantics |
 | Ratty | writes generated Ratty config and launch argv | Ratty owns config semantics and RGP/GPU behavior |
 | Foot | writes generated Linux-only `foot.ini` | Foot owns config semantics |
 | yzxterm | reads the selected child-owned profile and emoji-fallback template, copies child-owned dark/light themes into the generated config root, then applies stable Yazelix transparency, appearance selection, cell-opacity policy, cursor color, and generated shader snapshot paths | `yazelix-terminal` owns wrapper behavior, profile templates, emoji fallback presets, dark/light theme palettes, adaptive appearance behavior, shader ABI, shader asset layout, and package metadata |

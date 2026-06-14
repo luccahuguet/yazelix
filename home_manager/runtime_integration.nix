@@ -7,6 +7,7 @@
   nixgl ? null,
   options,
   pkgs,
+  rioPackage ? pkgs.rio,
   terminalMetadata,
   yazelixHelixPackage ? null,
   yazelixCursorsPackage ? null,
@@ -67,7 +68,7 @@ let
       runtimeToolSources = cfg.runtime_tool_sources;
       components = cfg.components;
       extraRuntimePackages = selectedAgentUsagePackages;
-      inherit yazelixHelixPackage;
+      inherit rioPackage yazelixHelixPackage;
     }
     // yzxtermPackageArgs;
   yazelixPackage =

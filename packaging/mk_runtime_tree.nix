@@ -11,6 +11,7 @@
   extraRuntimePackages ? [ ],
   extraRuntimeCommands ? [ "tu" ],
   yaziAssets ? null,
+  rioPackage ? pkgs.rio,
   yazelixHelixPackage ? null,
   yazelixCursorsPackage ? null,
   yazelixTerminalPackage ? null,
@@ -20,7 +21,7 @@
 
 let
   runtimeToolRegistry = import ./runtime_tool_registry.nix {
-    inherit pkgs nixgl runtimeVariant runtimeToolSources yazelixTerminalPackage;
+    inherit pkgs nixgl rioPackage runtimeVariant runtimeToolSources yazelixTerminalPackage;
   };
   runtimeComponentRegistry = import ./runtime_component_registry.nix {
     lib = pkgs.lib;

@@ -12,7 +12,7 @@ The default runtime includes:
 - host-managed helper integrations: `mise`, `tombi`
 - preview/search helpers: `p7zip`, `jq`, `fd`, `ripgrep`, `poppler`, `resvg`
 - system helpers required by runtime wrappers and validators: `git`, `nix`, `coreutils`, `findutils`, `gnugrep`, `gnused`, `util-linux`
-- one packaged terminal variant: Ghostty in `#yazelix` and `#yazelix_ghostty`, experimental Yazelix Terminal in `#yzxterm`, the Rio-compatible child-package path in `#yazelix_rio`, WezTerm in `#yazelix_wezterm`, Kitty in `#yazelix_kitty`, Linux Foot in `#yazelix_foot`, or experimental Linux Ratty in `#yazelix_ratty`
+- one packaged terminal variant: Ghostty in `#yazelix` and `#yazelix_ghostty`, experimental Yazelix Terminal in `#yzxterm`, vanilla Rio in `#yazelix_rio`, WezTerm in `#yazelix_wezterm`, Kitty in `#yazelix_kitty`, Linux Foot in `#yazelix_foot`, or experimental Linux Ratty in `#yazelix_ratty`
 - `tokenusage` for the default Codex and Claude status widgets
 
 It does not ship:

@@ -14,6 +14,7 @@
   components ? { },
   extraRuntimePackages ? [ ],
   yaziAssets ? null,
+  rioPackage ? pkgs.rio,
   yazelixHelixPackage ? null,
   yazelixCursorsPackage ? null,
   yazelixTerminalPackage ? null,
@@ -38,6 +39,7 @@ let
       components
       extraRuntimePackages
       yaziAssets
+      rioPackage
       yazelixHelixPackage
       yazelixCursorsPackage
       yazelixTerminalPackage

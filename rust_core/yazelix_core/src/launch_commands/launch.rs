@@ -518,6 +518,11 @@ pub(super) fn run_launch_flow(
         &config_state.config,
     )?)?;
     let runtime_env = runtime_data.runtime_env;
+    let terminal_transparency = config_state
+        .config
+        .get("transparency")
+        .and_then(|value| value.as_str())
+        .unwrap_or("none");
     let window_title_session_name = window_title_session_name_from_env(desktop_fast_path);
 
     let mut failures = Vec::new();
@@ -568,7 +573,10 @@ pub(super) fn run_launch_flow(
             extra_env.extend(yzxterm_process_boundary_env(&config_path)?);
         }
         if candidate.terminal == "rio" {
-            extra_env.extend(rio_process_boundary_env(&config_path)?);
+            extra_env.extend(rio_process_boundary_env(
+                &config_path,
+                terminal_transparency,
+            )?);
         }
         if let Ok(value) = std::env::var("YAZELIX_SWEEP_TEST_ID") {
             if !value.trim().is_empty() {
@@ -668,6 +676,19 @@ fn yzxterm_process_boundary_env(
 
 fn rio_process_boundary_env(
     config_path: &Path,
+    transparency: &str,
+) -> Result<Vec<(String, Option<String>)>, CoreError> {
+    rio_process_boundary_env_for_display(
+        config_path,
+        transparency,
+        std::env::var_os("DISPLAY").is_some(),
+    )
+}
+
+fn rio_process_boundary_env_for_display(
+    config_path: &Path,
+    transparency: &str,
+    x11_display_available: bool,
 ) -> Result<Vec<(String, Option<String>)>, CoreError> {
     let config_dir = config_path.parent().ok_or_else(|| {
         CoreError::classified(
@@ -682,10 +703,27 @@ fn rio_process_boundary_env(
         )
     })?;
 
-    Ok(vec![(
+    let mut env = vec![(
         "RIO_CONFIG_HOME".to_string(),
         Some(config_dir.to_string_lossy().into_owned()),
-    )])
+    )];
+    if rio_should_force_x11_for_transparency(transparency, x11_display_available) {
+        env.push(("WINIT_UNIX_BACKEND".to_string(), Some("x11".to_string())));
+        env.push(("WAYLAND_DISPLAY".to_string(), None));
+    }
+    Ok(env)
+}
+
+fn rio_should_force_x11_for_transparency(transparency: &str, x11_display_available: bool) -> bool {
+    #[cfg(target_os = "linux")]
+    {
+        transparency.trim() != "none" && x11_display_available
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        let _ = (transparency, x11_display_available);
+        false
+    }
 }
 
 fn resolve_materialized_terminal_config_path(
@@ -1025,12 +1063,13 @@ mod tests {
         );
     }
 
-    // Defends: Rio-compatible launch uses RIO_CONFIG_HOME instead of ambient host config or yzxterm-only env.
+    // Defends: vanilla Rio uses Rio's supported RIO_CONFIG_HOME lookup instead of ambient host config or yzxterm-only env.
     #[test]
     fn rio_process_boundary_env_points_at_selected_config_dir() {
-        let env = rio_process_boundary_env(Path::new(
-            "/state/configs/terminal_emulators/rio/config.toml",
-        ))
+        let env = rio_process_boundary_env(
+            Path::new("/state/configs/terminal_emulators/rio/config.toml"),
+            "none",
+        )
         .unwrap();
 
         assert_eq!(
@@ -1042,7 +1081,50 @@ mod tests {
         );
     }
 
-    // Defends: Rio-compatible launch keeps Rio's CLI shape instead of yzxterm-only flags.
+    // Regression: upstream Rio 0.4.5+ ignores opacity on COSMIC Wayland; transparent Linux launches use XWayland when available.
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn rio_process_boundary_env_forces_x11_for_transparent_linux_launches() {
+        let env = rio_process_boundary_env_for_display(
+            Path::new("/state/configs/terminal_emulators/rio/config.toml"),
+            "low",
+            true,
+        )
+        .unwrap();
+
+        assert_eq!(
+            env,
+            vec![
+                (
+                    "RIO_CONFIG_HOME".to_string(),
+                    Some("/state/configs/terminal_emulators/rio".to_string())
+                ),
+                ("WINIT_UNIX_BACKEND".to_string(), Some("x11".to_string())),
+                ("WAYLAND_DISPLAY".to_string(), None),
+            ]
+        );
+    }
+
+    // Defends: pure Wayland sessions without DISPLAY still launch vanilla Rio instead of forcing an unavailable backend.
+    #[test]
+    fn rio_process_boundary_env_keeps_default_backend_without_x11_display() {
+        let env = rio_process_boundary_env_for_display(
+            Path::new("/state/configs/terminal_emulators/rio/config.toml"),
+            "high",
+            false,
+        )
+        .unwrap();
+
+        assert_eq!(
+            env,
+            vec![(
+                "RIO_CONFIG_HOME".to_string(),
+                Some("/state/configs/terminal_emulators/rio".to_string())
+            )]
+        );
+    }
+
+    // Defends: vanilla Rio launches through Rio's own CLI shape instead of yzxterm-only flags.
     #[test]
     fn rio_launch_argv_uses_selected_config_and_working_dir() {
         let tmp = tempfile::TempDir::new().unwrap();

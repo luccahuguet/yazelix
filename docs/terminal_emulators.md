@@ -44,7 +44,7 @@ they are not feature/protocol capabilities by themselves.
 | Yazelix Terminal | 94 | 23 | 1 | 1 | Best feature/protocol coverage and first-party control; still experimental |
 | Kitty | 76 | 18 | 2 | 5 | Strong protocol reference and packaged alternate; no first-party control |
 | Ghostty | 60 | 15 | 0 | 10 | Best mature default today; strongest shader story; fewer Kitty frontier protocols |
-| Rio | 48 | 11 | 2 | 12 | Rio-compatible child-package path with modern image/protocol support; less Yazelix soak than Ghostty |
+| Rio | 48 | 11 | 2 | 12 | Upstream Rio path with modern image/protocol support; less Yazelix soak than Ghostty |
 | WezTerm | 48 | 11 | 2 | 12 | Stable alternate with broad image support; fewer modern Kitty extensions |
 | Ratty | 28 | 6 | 2 | 17 | Experimental but uniquely interesting because of inline 3D graphics |
 
@@ -154,7 +154,7 @@ validates Ghostty-compatible cursor shaders, Yazelix host mode, event-mode
 cursor animation, Kitty graphics, Sixel, iTerm2 images, OSC 133, OSC 66, OSC 99,
 OSC 52, OSC 21, OSC 22, Kitty keyboard, Kitty multiple cursors, safe Kitty file
 transfer, OSC 5522 text clipboard, DECCARA, and unscrolling.
-For Yazelix workflows, that already puts it ahead of upstream Rio on protocol
+For Yazelix workflows, that already puts it ahead of vanilla Rio on protocol
 coverage, cursor/shader integration, package metadata, BELL/notification
 behavior, and stack image-preview fixes.
 
@@ -166,16 +166,17 @@ The experimental release closeout is recorded in
 
 ### Rio
 
-Rio is the Rio-compatible path backed by the `yazelix-terminal` child package.
-Yazelix packages it as `#yazelix_rio` for users who want Rio CLI/config
-semantics with Yazelix-owned generated config, launch integration, and the
-Zellij Kitty graphics bridge. The packaged config enables Rio's native trail
-cursor, leaves renderer backend selection to Rio's platform default, maps
-`terminal.transparency` to Rio's supported window and cell opacity settings, and
-points Rio at packaged Nerd Font and emoji fallback directories.
-It supports modern image paths and several useful OSC protocols while avoiding
-the separate `yzxterm` desktop wrapper, profile selection, and cursor shader
-profile behavior.
+Rio is the upstream path behind Yazelix Terminal. Yazelix packages it as
+`#yazelix_rio` for users who want upstream Rio with Yazelix-owned generated
+config, launch integration, and the Zellij Kitty graphics bridge. The
+packaged config enables Rio's native trail cursor, maps `terminal.transparency`
+to Rio's supported window and cell opacity settings, and points Rio at packaged
+Nerd Font and emoji fallback directories. On Linux, transparent Rio launches use
+XWayland when an X display is available because upstream Rio currently ignores
+background opacity on COSMIC/Wayland.
+It supports modern image paths and several useful OSC protocols, but Yazelix
+does not control its roadmap and does not apply Yazelix Terminal's cursor shader
+profile behavior to the vanilla package.
 
 ### WezTerm
 

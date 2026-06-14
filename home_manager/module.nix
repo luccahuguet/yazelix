@@ -6,6 +6,7 @@
   mkYazelixPackage ? null,
   nixgl ? null,
   pkgs,
+  rioPackage ? pkgs.rio,
   yazelixHelixPackage ? null,
   yazelixCursorsPackage ? null,
   ...
@@ -56,6 +57,7 @@ let
       nixgl
       options
       pkgs
+      rioPackage
       terminalMetadata
       yazelixHelixPackage
       yazelixCursorsPackage

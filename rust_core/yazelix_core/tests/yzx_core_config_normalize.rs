@@ -1544,7 +1544,7 @@ fn terminal_materialization_wezterm_auto_appearance_writes_gui_query() {
     assert!(wezterm_config.contains("return 'Catppuccin Latte'"));
 }
 
-// Defends: Rio-compatible runtime metadata materializes a Rio-native config at the path launch binds through RIO_CONFIG_HOME.
+// Defends: vanilla Rio runtime metadata materializes a Rio-native config at the path launch binds through RIO_CONFIG_HOME.
 // Regression: stale Rio options must not make the terminal reject Yazelix-owned opacity and font settings.
 #[test]
 fn terminal_materialization_rio_uses_rio_config_toml() {
