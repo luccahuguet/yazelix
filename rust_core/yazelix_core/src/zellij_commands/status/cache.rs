@@ -110,6 +110,18 @@ pub(in crate::zellij_commands) fn build_status_bar_cache_at(status_bus: Value, n
     })
 }
 
+pub(in crate::zellij_commands) fn build_status_bar_cache_with_tab_activity_at(
+    status_bus: Value,
+    tab_activity: Option<Value>,
+    now: u64,
+) -> Value {
+    let mut cache = build_status_bar_cache_at(status_bus, now);
+    if let Some(tab_activity) = tab_activity {
+        cache["tab_activity"] = tab_activity;
+    }
+    cache
+}
+
 pub(in crate::zellij_commands) fn unix_time_seconds() -> u64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)

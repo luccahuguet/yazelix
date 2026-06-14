@@ -40,17 +40,23 @@ yazelix_zellij_bar_widget claude
 yazelix_zellij_bar_widget opencode_go
 yazelix_zellij_bar_widget cpu
 yazelix_zellij_bar_widget ram
+yazelix_zellij_bar_widget tabs --cache <status-bar-cache> --mode full|compact
 ```
 
 Long flags are escape hatches, not the common standalone configuration.
+The `tabs` command is for the full Yazelix runtime or embedders that provide a
+compatible status-bar cache; the standalone generic preset keeps zjstatus
+`{tabs}`.
 
 ## Renderer API
 
 The Rust crate also owns pure renderers used by the integrated Yazelix runtime.
 Tab activity rendering accepts explicit `idle`, `busy`, or `alert` facts and
 returns plain label text such as `[2] [...] agent`. It must not call `yzx`,
-inspect pane-orchestrator state, read status-cache files, or depend on zjstatus
-runtime internals. The main runtime supplies facts; this crate owns how those
+inspect pane-orchestrator state, or depend on zjstatus runtime internals. The
+status-cache tab-strip command may read an explicit cache file or
+`YAZELIX_STATUS_BAR_CACHE_PATH` because the full runtime supplies that cache as
+its fact transport. The main runtime supplies facts; this crate owns how those
 facts become tab text.
 
 ## State files

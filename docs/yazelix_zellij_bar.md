@@ -10,6 +10,7 @@ The child package installs:
 - `share/yazelix_zellij_bar/zjstatus.wasm`
 - `share/yazelix_zellij_bar/yazelix_zellij_bar.kdl`
 - `share/yazelix_zellij_bar/yazelix_zellij_bar.template.kdl`
+- `share/yazelix_zellij_bar/yazelix_runtime_bar.template.kdl`
 - `share/yazelix_zellij_bar/examples/custom_command_widgets.kdl`
 - `share/yazelix_zellij_bar/examples/standalone_zellij_layout.kdl`
 - `share/yazelix_zellij_bar/examples/yazelix_runtime_widgets.kdl`
@@ -28,7 +29,7 @@ From this repo, the forwarded package remains:
 nix build .#yazelix_zellij_bar
 ```
 
-Use the child README for Zellij layout examples and custom command-widget configuration. KDL is the customization surface for standalone users. Integrated Yazelix calls `yazelix_zellij_bar_widget render-yazelix-runtime --json <config>` to render the child-owned runtime KDL template into a complete zjstatus plugin block for generated layouts.
+Use the child README for Zellij layout examples and custom command-widget configuration. KDL is the customization surface for standalone users. Integrated Yazelix calls `yazelix_zellij_bar_widget render-yazelix-runtime --json <config>` to render the child-owned runtime KDL template into a complete zjstatus plugin block for generated layouts. The integrated template replaces zjstatus `{tabs}` with a child-owned `command_yazelix_tabs` widget that reads the launch-scoped status-bar cache once per second, so activity labels animate without making the pane orchestrator repaint tab names on every frame.
 
 The standalone non-workspace widget commands are intentionally short:
 
@@ -40,4 +41,4 @@ yazelix_zellij_bar_widget cpu
 yazelix_zellij_bar_widget ram
 ```
 
-Workspace remains Yazelix-only. The other widgets run without `yzx`, `yzx_control`, Nushell, Yazelix runtime cache paths, or Yazelix session state.
+Workspace and integrated animated tabs remain Yazelix-only because they depend on pane-orchestrator session facts. The other widgets run without `yzx`, `yzx_control`, Nushell, Yazelix runtime cache paths, or Yazelix session state.

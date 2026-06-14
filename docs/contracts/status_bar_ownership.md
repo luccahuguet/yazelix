@@ -22,8 +22,8 @@ The supported boundary is runnable-standalone-first for every non-workspace widg
 | CPU/RAM command widgets | `yazelix_zellij_bar` child repo | Move child |
 | live sidebar/editor/workspace facts | pane orchestrator | Keep producer |
 | active-tab workspace pipe message and label content | pane orchestrator | Keep producer |
-| all-tab activity facts | pane orchestrator `get_all_tab_activity_state` pipe | Keep producer |
-| activity tab-label presentation | `yazelix_zellij_bar` pure renderer; native tab-name mutation remains fallback for current zjstatus tabs | Move child |
+| all-tab activity facts | pane orchestrator snapshot written through the window-local status-bar cache; `get_all_tab_activity_state` remains the direct diagnostic/read seam | Keep producer |
+| activity tab-strip presentation | `yazelix_zellij_bar` command widget renderer reading `status_bar_cache.json`; native tab-name mutation remains fallback | Move child |
 | direct `status-bus-workspace` zjstatus command | none | Deleted |
 
 ## Contract Items
@@ -96,7 +96,8 @@ The supported boundary is runnable-standalone-first for every non-workspace widg
 - Status: live
 - Owner: pane orchestrator plus native Zellij tab names
 - Statement: Native activity tab decoration is the fallback bridge into the
-  current zjstatus `{tabs}` widget. The pane orchestrator owns registered
+  current zjstatus `{tabs}` widget and a backup for the child-owned integrated
+  tab-strip command widget. The pane orchestrator owns registered
   activity facts and recognized spinner-prefixed terminal titles, reduces them
   to alert, busy, or idle, then mutates the affected Zellij tab name only when
   that reduced visible state changes.
@@ -116,21 +117,25 @@ The supported boundary is runnable-standalone-first for every non-workspace widg
 - Status: live
 - Owner: pane orchestrator plus `yazelix_zellij_bar` child repo
 - Statement: The durable activity-bar direction is facts first, rendering
-  second. The pane orchestrator exposes `get_all_tab_activity_state` as a
-  versioned all-tabs JSON snapshot containing tab id, tab position, clean base
-  tab name, reduced `idle` / `busy` / `alert` activity state, and underlying
-  activity facts. `yazelix_zellij_bar` owns pure tab activity label rendering
-  from that reduced state. Upstream zjstatus v0.23.0 renders `{tabs}` only from
-  Zellij `TabInfo` placeholders such as `{name}`, `{index}`,
-  `{floating_indicator}`, `{fullscreen_indicator}`, and `{sync_indicator}`.
-  Its command and pipe widgets are separate bar widgets, so they can render
-  text adjacent to `{tabs}` but cannot interleave an external all-tab activity
-  map into each tab label. Until Yazelix ships a native bar renderer or changes
-  the zjstatus tabs widget, the clean zjstatus integration remains the native
-  tab-name fallback described by SBO-010
+  second. The pane orchestrator produces a versioned all-tabs JSON snapshot
+  containing tab id, tab position, clean base tab name, active-tab flag,
+  fullscreen/sync/floating indicators, reduced `idle` / `busy` / `alert`
+  activity state, and underlying activity facts. `yzx_control zellij
+  status-cache-write` stores that snapshot under `tab_activity` in the same
+  launch-scoped `status_bar_cache.json` used by other Yazelix bar widgets,
+  while preserving heartbeat facts and the previous tab-activity snapshot when
+  a cache write omits a new tab-activity payload. The integrated child runtime template replaces
+  zjstatus `{tabs}` with `{command_yazelix_tabs}`. That command runs
+  `yazelix_zellij_bar_widget tabs` once per second, reads the same cache, and
+  uses the child-owned pure renderer to draw the whole tab strip with
+  fixed-width busy animation. Upstream zjstatus v0.23.0 still cannot interleave
+  external all-tab state into its built-in `{tabs}` widget, so native tab-name
+  mutation remains the fallback bridge described by SBO-010 until the integrated
+  command-widget path is proven better in normal use
 - Verification: automated
   `cargo test` in `luccahuguet/yazelix-zellij-bar` and
   `cargo test --manifest-path ../yazelix-zellij-pane-orchestrator/Cargo.toml --lib`
+  plus `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core status_cache`
 
 ## Deletion And Extraction Plan
 

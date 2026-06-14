@@ -17,6 +17,7 @@ pub(super) use widgets::*;
 
 pub(super) const STATUS_BUS_SCHEMA_VERSION: i64 = 1;
 pub(super) const STATUS_BAR_CACHE_SCHEMA_VERSION: i64 = 1;
+pub(super) const TAB_ACTIVITY_SNAPSHOT_SCHEMA_VERSION: i64 = 1;
 pub(super) const ORCHESTRATOR_HEARTBEAT_SCHEMA_VERSION: i64 = 1;
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub(super) struct ZellijInspectSessionArgs {
@@ -34,6 +35,7 @@ pub(super) struct ZellijStatusBusArgs {
 pub(super) struct ZellijStatusCacheWriteArgs {
     path: Option<PathBuf>,
     payload: Option<String>,
+    tab_activity_payload: Option<String>,
     help: bool,
 }
 
@@ -134,6 +136,15 @@ pub(super) fn parse_zellij_status_cache_write_args(
                         .to_string(),
                 );
             }
+            "--tab-activity-payload" => {
+                parsed.tab_activity_payload = Some(
+                    iter.next()
+                        .ok_or_else(|| {
+                            CoreError::usage("--tab-activity-payload requires a value".to_string())
+                        })?
+                        .to_string(),
+                );
+            }
             "-h" | "--help" | "help" => parsed.help = true,
             other if other.starts_with('-') => {
                 return Err(CoreError::usage(format!(
@@ -142,7 +153,7 @@ pub(super) fn parse_zellij_status_cache_write_args(
             }
             _ => {
                 return Err(CoreError::usage(
-                    "zellij status-cache-write accepts only --path and --payload".to_string(),
+                    "zellij status-cache-write accepts only --path, --payload, and --tab-activity-payload".to_string(),
                 ));
             }
         }
@@ -230,7 +241,9 @@ pub(super) fn print_zellij_status_cache_write_help() {
     println!("Write the window-local cached status-bar facts");
     println!();
     println!("Usage:");
-    println!("  yzx_control zellij status-cache-write --payload <json> [--path <path>]");
+    println!(
+        "  yzx_control zellij status-cache-write --payload <json> [--tab-activity-payload <json>] [--path <path>]"
+    );
 }
 
 pub(super) fn print_zellij_status_cache_widget_help() {
@@ -343,9 +356,14 @@ pub fn run_zellij_status_cache_write(args: &[String]) -> Result<i32, CoreError> 
         .or_else(status_bar_cache_path_from_env)
         .ok_or_else(missing_status_bar_cache_path_error)?;
     let status_bus = decode_status_bus_snapshot(payload)?;
+    let tab_activity = parsed
+        .tab_activity_payload
+        .as_deref()
+        .map(decode_tab_activity_snapshot)
+        .transpose()?;
     let now = unix_time_seconds();
-    let mut cache = build_status_bar_cache_at(status_bus, now);
     let previous_cache = read_status_bar_cache_value(&path);
+    let mut cache = build_status_bar_cache_with_tab_activity_at(status_bus, tab_activity, now);
     if let Some(heartbeat) = previous_cache
         .as_ref()
         .and_then(|cache| cache.get("orchestrator_heartbeat"))
@@ -353,8 +371,58 @@ pub fn run_zellij_status_cache_write(args: &[String]) -> Result<i32, CoreError> 
     {
         cache["orchestrator_heartbeat"] = heartbeat;
     }
+    if cache.get("tab_activity").is_none() {
+        if let Some(tab_activity) = previous_cache
+            .as_ref()
+            .and_then(|cache| cache.get("tab_activity"))
+            .cloned()
+        {
+            cache["tab_activity"] = tab_activity;
+        }
+    }
     write_status_bar_cache_value(&path, &cache)?;
     Ok(0)
+}
+
+pub(in crate::zellij_commands) fn decode_tab_activity_snapshot(
+    raw: &str,
+) -> Result<Value, CoreError> {
+    let value: Value = serde_json::from_str(raw).map_err(|error| {
+        CoreError::classified(
+            ErrorClass::Runtime,
+            "invalid_tab_activity_payload",
+            format!("Invalid Yazelix tab activity payload: {error}"),
+            "Restart Yazelix so the status-bar cache producer and consumer agree on tab activity format.",
+            json!({ "payload": raw }),
+        )
+    })?;
+    let schema_version = value
+        .get("schema_version")
+        .and_then(Value::as_i64)
+        .ok_or_else(|| {
+            CoreError::classified(
+                ErrorClass::Runtime,
+                "missing_tab_activity_schema_version",
+                "Yazelix tab activity payload is missing schema_version.",
+                "Rebuild the pane orchestrator wasm so consumers can validate the tab activity schema.",
+                json!({ "payload": value.clone() }),
+            )
+        })?;
+    if schema_version != TAB_ACTIVITY_SNAPSHOT_SCHEMA_VERSION {
+        return Err(CoreError::classified(
+            ErrorClass::Runtime,
+            "unsupported_tab_activity_schema_version",
+            format!("Unsupported Yazelix tab activity schema_version: {schema_version}."),
+            format!(
+                "This Yazelix build supports tab activity schema_version {TAB_ACTIVITY_SNAPSHOT_SCHEMA_VERSION}. Update Yazelix or rebuild the pane orchestrator wasm so producer and consumer match."
+            ),
+            json!({
+                "expected": TAB_ACTIVITY_SNAPSHOT_SCHEMA_VERSION,
+                "actual": schema_version,
+            }),
+        ));
+    }
+    Ok(value)
 }
 
 pub fn run_zellij_status_cache_heartbeat(args: &[String]) -> Result<i32, CoreError> {

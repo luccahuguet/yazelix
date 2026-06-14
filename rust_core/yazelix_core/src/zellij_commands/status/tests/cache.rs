@@ -121,6 +121,85 @@ fn status_cache_write_preserves_existing_heartbeat() {
     );
 }
 
+// Defends: the status-cache write path carries all-tab activity on the same cache bus as existing widgets.
+#[test]
+fn status_cache_write_records_tab_activity_payload() {
+    let temp = tempfile::tempdir().unwrap();
+    let cache_path = temp.path().join("window_a").join("status_bar_cache.json");
+
+    run_zellij_status_cache_write(&[
+        "--path".to_string(),
+        cache_path.display().to_string(),
+        "--payload".to_string(),
+        STATUS_CACHE_TEST_PAYLOAD.to_string(),
+        "--tab-activity-payload".to_string(),
+        r#"{"schema_version":1,"tabs":[{"tab_id":20,"tab_position":1,"base_name":"agent","active":false,"activity_state":"busy"}]}"#
+            .to_string(),
+    ])
+    .unwrap();
+
+    let cache = read_status_bar_cache_value(&cache_path).unwrap();
+    assert_eq!(
+        cache
+            .pointer("/tab_activity/tabs/0/activity_state")
+            .and_then(Value::as_str),
+        Some("busy")
+    );
+}
+
+// Regression: older status-cache writers must not erase tab activity used by the integrated bar-owned tab strip.
+#[test]
+fn status_cache_write_without_tab_activity_preserves_existing_tab_activity() {
+    let temp = tempfile::tempdir().unwrap();
+    let cache_path = temp.path().join("window_a").join("status_bar_cache.json");
+    let mut cache = build_status_bar_cache_with_tab_activity_at(
+        status_cache_test_status_bus(),
+        Some(json!({
+            "schema_version": 1,
+            "tabs": [
+                {
+                    "tab_id": 20,
+                    "tab_position": 1,
+                    "base_name": "agent",
+                    "active": false,
+                    "activity_state": "alert"
+                }
+            ]
+        })),
+        1_000,
+    );
+    merge_orchestrator_heartbeat_into_cache(
+        &mut cache,
+        json!({
+            "schema_version": 1,
+            "heartbeat_at_unix_seconds": 2_000
+        }),
+    );
+    write_status_bar_cache_value(&cache_path, &cache).unwrap();
+
+    run_zellij_status_cache_write(&[
+        "--path".to_string(),
+        cache_path.display().to_string(),
+        "--payload".to_string(),
+        STATUS_CACHE_TEST_PAYLOAD.to_string(),
+    ])
+    .unwrap();
+
+    let updated_cache = read_status_bar_cache_value(&cache_path).unwrap();
+    assert_eq!(
+        updated_cache
+            .pointer("/tab_activity/tabs/0/activity_state")
+            .and_then(Value::as_str),
+        Some("alert")
+    );
+    assert_eq!(
+        updated_cache
+            .pointer("/orchestrator_heartbeat/heartbeat_at_unix_seconds")
+            .and_then(Value::as_u64),
+        Some(2_000)
+    );
+}
+
 // Regression: zjstatus command execution can strip direct Yazelix cache env even though its Zellij parent still carries the launch env.
 #[test]
 fn status_cache_path_can_be_recovered_from_process_environ_bytes() {

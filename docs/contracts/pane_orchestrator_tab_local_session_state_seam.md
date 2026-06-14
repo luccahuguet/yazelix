@@ -45,8 +45,8 @@ consumers can stop depending on debug payload shape or ad-hoc re-derivation.
 - Yazelix control transport/client helpers that should consume the new seam first
 - docs that define the owner boundary and bootstrap policy
 - AI activity extension facts and their tab-name decoration product surface;
-  this contract exposes all-tab activity facts for a future bar-owned renderer,
-  while native tab-name decoration remains the current fallback bridge
+  this contract exposes all-tab activity facts for the bar-owned integrated
+  renderer, while native tab-name decoration remains the fallback bridge
 
 ## Rust Dependency Gate
 
@@ -188,7 +188,10 @@ intentionally hides tab names, so it also hides this activity marker.
 
 The native tab-name bridge is a fallback, not the long-term rendering owner.
 For bar-owned rendering, `get_all_tab_activity_state` returns a separate
-versioned JSON payload:
+versioned JSON payload. The pane orchestrator writes the same payload into the
+launch-scoped status-bar cache through `yzx_control zellij status-cache-write`,
+so the integrated `command_yazelix_tabs` widget can render from the same
+heartbeat/cache path as the other Yazelix bar widgets:
 
 ```json
 {
@@ -198,7 +201,11 @@ versioned JSON payload:
       "tab_id": 30,
       "tab_position": 2,
       "base_name": "agent",
+      "active": false,
       "activity_state": "alert",
+      "is_fullscreen_active": false,
+      "is_sync_panes_active": false,
+      "has_floating_panes": true,
       "activity": [
         {
           "tab_position": 2,
@@ -217,9 +224,13 @@ versioned JSON payload:
 priority as native tab-name decoration. `base_name` is the clean tab name the
 bar should render; when the fallback bridge has already mutated a native tab
 name, the orchestrator uses its recorded base name instead of exposing the
-decorated display name as source truth. The all-tab payload carries facts and
-state only. Presentation strings such as `[!]`, `[...]`, colors, and tab-label
-spacing belong to `yazelix_zellij_bar`.
+decorated display name as source truth. `active`, `is_fullscreen_active`,
+`is_sync_panes_active`, and `has_floating_panes` carry the built-in tab facts
+needed when the child-owned command renders the whole integrated tab strip
+instead of the built-in zjstatus `{tabs}` placeholder. The all-tab payload
+carries facts and state only. Presentation strings such as `[!]`, `[...]`,
+colors, animation frames, and tab-label spacing belong to
+`yazelix_zellij_bar`.
 
 The markers are deliberately ASCII. Terminal-title activity is an input signal,
 not tab-label text, because high-frequency terminal-title animation must not
@@ -348,8 +359,9 @@ contract. This slice is only about the read contract.
    animation frame. Completed terminal-title activity clears only when the
    producing pane is focused again or disappears.
 8. The pane orchestrator writes active-tab status facts to a launch-scoped
-   status-bar cache, and zjstatus dynamic widgets read only that cache instead
-   of opening pane-orchestrator pipes from the bar.
+   status-bar cache, writes all-tab activity facts into the same cache, and
+   zjstatus dynamic widgets read only that cache instead of opening
+   pane-orchestrator pipes from the bar.
 9. The `cursor` widget reads the launch-scoped cursor fact from that cache and
    renders a compact cursor glyph plus the resolved preset name.
 10. Agent-usage facts are produced by throttled cache writers with provider
@@ -363,6 +375,10 @@ contract. This slice is only about the read contract.
 11. Shared agent-usage cache and lock filenames are scoped by provider cache
     schema version, so runtime versions with different cache contracts do not
     read from or write to the same files.
+12. The integrated activity tab strip is rendered by `yazelix_zellij_bar_widget
+    tabs` from the status-bar cache on the normal command-widget interval. The
+    pane orchestrator updates facts only when state changes; it must not rename
+    tabs once per animation frame.
 
 ## Verification
 

@@ -85,7 +85,7 @@ AI widgets are provider-driven widgets. A standalone user may run `yazelix_zelli
 Yazelix-specific widgets are widgets that depend on Yazelix runtime helpers, session snapshots, or cached facts:
 
 - workspace
-- pane-orchestrator all-tab activity snapshots
+- pane-orchestrator all-tab activity snapshots and integrated animated tab-strip rendering
 - Yazelix-managed Claude/Codex/OpenCode Go cache path selection and session settings
 - generated full-runtime command wiring
 
@@ -101,7 +101,7 @@ Standalone users can use the same widget contract without Yazelix by using `yaze
 
 ## Main Runtime Consumption
 
-The full Yazelix runtime consumes the `yazelix_zellij_bar` child package command surface for integrated zjstatus plugin-block rendering, simple fact widgets, CPU/RAM, and cached provider usage widgets. Integrated layout materialization calls `yazelix_zellij_bar_widget render-yazelix-runtime` with typed runtime bar config; the child renders its runtime KDL template and Yazelix inserts the returned plugin block.
+The full Yazelix runtime consumes the `yazelix_zellij_bar` child package command surface for integrated zjstatus plugin-block rendering, simple fact widgets, CPU/RAM, cached provider usage widgets, and the integrated tab strip. Integrated layout materialization calls `yazelix_zellij_bar_widget render-yazelix-runtime` with typed runtime bar config; the child renders its runtime KDL template and Yazelix inserts the returned plugin block. In that integrated template, `{command_yazelix_tabs}` replaces the built-in `{tabs}` placeholder and runs `yazelix_zellij_bar_widget tabs` once per second against the launch-scoped status-bar cache.
 
 The standalone package installs `zjstatus.wasm` from the child repo's pinned `zjstatus` flake input. The main Yazelix flake makes `yazelixZellijBar.inputs.zjstatus` follow the main repo's `zjstatus` input when forwarding `.#yazelix_zellij_bar`, so the forwarded standalone package uses the same upstream pin as the integrated Yazelix runtime.
 
@@ -143,10 +143,11 @@ Raw KDL remains the escape hatch for lower-level zjstatus keys.
 The pinned zjstatus tabs widget renders each tab from Zellij `TabInfo`
 placeholders. Its pipe and command widgets can render external text elsewhere in
 the bar, but they cannot merge an all-tabs activity snapshot into each tab label
-without a zjstatus code change. The activity-label renderer in
-`yazelix_zellij_bar` is therefore a reusable pure renderer for the future native
-or extended bar path; the current integrated zjstatus path still sees activity
-through native tab names.
+without a zjstatus code change. The generic standalone preset therefore keeps
+`{tabs}`. The integrated Yazelix runtime uses a command widget that renders the
+whole tab strip from `status_bar_cache.json`, including reduced activity state
+and fixed-width busy animation, while native tab-name decoration remains the
+fallback path.
 
 ## Verification
 
