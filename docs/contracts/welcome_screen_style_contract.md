@@ -21,6 +21,8 @@ The retained public shape is:
   families while never choosing `static` or `logo`
 - `yzx screen random` uses the same animation-family pool as welcome `random`
   while never choosing `static` or `logo`
+- startup status copy keeps rich emoji labels for capable terminals, while Rio
+  gets plain text labels to avoid its current emoji fallback rendering glitches
 - `boids` remains an alias for `boids_predator`
 - `magician` is deleted from the Yazelix welcome, `yzx screen`, runtime asset,
   config, Home Manager, and idle screen-saver surfaces
@@ -128,6 +130,16 @@ Out of scope:
   and Rust owns the final prompt/logging boundary before Zellij handoff
 - Verification: automated Rust `yzx_control_front_door.rs`;
   manual startup review for current-shell and `yzx enter` flows
+
+#### FRONT-007
+- Type: behavior
+- Status: live
+- Owner: Rust startup message construction in `launch_commands/enter.rs`
+- Statement: The startup status copy is terminal-aware: Ghostty, WezTerm, and
+  yzxterm keep rich emoji labels, while Rio uses ASCII labels for the same
+  facts so the welcome summary does not depend on Rio's current emoji fallback
+  quality
+- Verification: automated Rust `launch_commands::enter` tests
 
 ## Remaining Front-Door Floor
 

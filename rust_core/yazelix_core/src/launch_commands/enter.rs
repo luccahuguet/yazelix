@@ -394,33 +394,66 @@ fn build_welcome_message(
     runtime_version: &str,
     facts: &StartupFactsData,
 ) -> Vec<String> {
+    let plain = use_plain_welcome_message(facts);
     let mut lines = vec![
         String::new(),
-        format!("🎉 Welcome to Yazelix {runtime_version}!"),
+        if plain {
+            format!("Welcome: Yazelix {runtime_version}")
+        } else {
+            format!("🎉 Welcome to Yazelix {runtime_version}!")
+        },
     ];
     let headline = current_release_headline(runtime_dir, runtime_version).unwrap_or_default();
     if !headline.trim().is_empty() {
         lines.push(headline);
     }
     lines.extend([
-        flake_last_updated_line(runtime_dir),
-        "✨ Now with Nix auto-setup, lazygit, Starship, and markdown-oxide".to_string(),
-        "🆕 Creating new Zellij session".to_string(),
+        flake_last_updated_line(runtime_dir, plain),
+        if plain {
+            "Now: Nix auto-setup, lazygit, Starship, and markdown-oxide".to_string()
+        } else {
+            "✨ Now with Nix auto-setup, lazygit, Starship, and markdown-oxide".to_string()
+        },
+        if plain {
+            "Session: creating new Zellij session".to_string()
+        } else {
+            "🆕 Creating new Zellij session".to_string()
+        },
         format!(
-            "🖥️  Preferred host terminal: {}",
+            "{}{}",
+            if plain {
+                "Terminal: preferred host terminal: "
+            } else {
+                "🖥️  Preferred host terminal: "
+            },
             facts
                 .terminals
                 .first()
                 .map(String::as_str)
                 .unwrap_or("unknown")
         ),
-        "⚠️  First run: Yazelix pre-seeds bundled Zellij plugin permissions before launch. If Zellij still prompts, answer yes; troubleshooting covers cache-reset recovery.".to_string(),
-        "💡 Quick tips: Use Alt+Shift+H/J/K/L for the left sidebar, bottom popup, top popup, and right sidebar; use Ctrl+Y and Ctrl+Shift+Y for sidebar/editor focus".to_string(),
+        if plain {
+            "First run: Yazelix pre-seeds bundled Zellij plugin permissions before launch. If Zellij still prompts, answer yes; troubleshooting covers cache-reset recovery.".to_string()
+        } else {
+            "⚠️  First run: Yazelix pre-seeds bundled Zellij plugin permissions before launch. If Zellij still prompts, answer yes; troubleshooting covers cache-reset recovery.".to_string()
+        },
+        if plain {
+            "Quick tips: Use Alt+Shift+H/J/K/L for the left sidebar, bottom popup, top popup, and right sidebar; use Ctrl+Y and Ctrl+Shift+Y for sidebar/editor focus".to_string()
+        } else {
+            "💡 Quick tips: Use Alt+Shift+H/J/K/L for the left sidebar, bottom popup, top popup, and right sidebar; use Ctrl+Y and Ctrl+Shift+Y for sidebar/editor focus".to_string()
+        },
     ]);
     lines
 }
 
-fn flake_last_updated_line(runtime_dir: &Path) -> String {
+fn use_plain_welcome_message(facts: &StartupFactsData) -> bool {
+    facts
+        .terminals
+        .first()
+        .is_some_and(|terminal| terminal == "rio")
+}
+
+fn flake_last_updated_line(runtime_dir: &Path, plain: bool) -> String {
     let days = runtime_dir
         .join("flake.nix")
         .metadata()
@@ -428,9 +461,11 @@ fn flake_last_updated_line(runtime_dir: &Path) -> String {
         .ok()
         .and_then(|modified| SystemTime::now().duration_since(modified).ok())
         .map(|duration| duration.as_secs() / 86_400);
-    match days {
-        Some(days) => format!("🕒 Flake last updated: {days} day(s) ago"),
-        None => "🕒 Flake last updated: unknown".to_string(),
+    match (plain, days) {
+        (true, Some(days)) => format!("Flake: last updated {days} day(s) ago"),
+        (true, None) => "Flake: last updated unknown".to_string(),
+        (false, Some(days)) => format!("🕒 Flake last updated: {days} day(s) ago"),
+        (false, None) => "🕒 Flake last updated: unknown".to_string(),
     }
 }
 
@@ -632,9 +667,62 @@ fn require_existing_file(path: &str, label: &str) -> Result<String, CoreError> {
 mod tests {
     // Test lane: default
 
-    use super::{is_welcome_keypress, wait_for_welcome_keypress_from_events};
+    use super::{
+        build_welcome_message, is_welcome_keypress, wait_for_welcome_keypress_from_events,
+    };
+    use crate::startup_facts::StartupFactsData;
     use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind, KeyEventState, KeyModifiers};
     use std::collections::VecDeque;
+
+    fn startup_facts_for_terminal(terminal: &str) -> StartupFactsData {
+        StartupFactsData {
+            default_shell: "nu".to_string(),
+            debug_mode: false,
+            skip_welcome_screen: false,
+            welcome_style: "static".to_string(),
+            game_of_life_cell_style: "full_block".to_string(),
+            appearance_mode: "dark".to_string(),
+            welcome_duration_seconds: 0.0,
+            show_macchina_on_welcome: false,
+            terminals: vec![terminal.to_string()],
+            terminal_config_mode: "yazelix".to_string(),
+        }
+    }
+
+    // Regression: Rio's current emoji fallback can render the welcome status icons as odd text glyphs, so Rio gets plain startup copy.
+    #[test]
+    fn rio_welcome_message_uses_plain_terminal_stable_copy() {
+        let runtime_dir = tempfile::tempdir().unwrap();
+        let message = build_welcome_message(
+            runtime_dir.path(),
+            "v-test",
+            &startup_facts_for_terminal("rio"),
+        )
+        .join("\n");
+
+        assert!(message.is_ascii(), "{message}");
+        assert!(message.contains("Welcome: Yazelix v-test"));
+        assert!(message.contains("Flake: last updated unknown"));
+        assert!(message.contains("Terminal: preferred host terminal: rio"));
+    }
+
+    // Defends: capable terminals keep the richer emoji welcome copy instead of inheriting Rio's fallback.
+    #[test]
+    fn non_rio_welcome_messages_keep_rich_copy() {
+        let runtime_dir = tempfile::tempdir().unwrap();
+        for terminal in ["ghostty", "wezterm", "yzxterm"] {
+            let message = build_welcome_message(
+                runtime_dir.path(),
+                "v-test",
+                &startup_facts_for_terminal(terminal),
+            )
+            .join("\n");
+
+            assert!(message.contains("🎉 Welcome to Yazelix v-test!"));
+            assert!(message.contains("🕒 Flake last updated: unknown"));
+            assert!(message.contains(&format!("🖥️  Preferred host terminal: {terminal}")));
+        }
+    }
 
     // Defends: the welcome prompt's "any key" contract accepts a non-Enter key without waiting for a newline.
     #[test]
