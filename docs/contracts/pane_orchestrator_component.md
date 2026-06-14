@@ -95,12 +95,15 @@ The orchestrator accepts these pipe command names:
 - `next_family`
 - `previous_family`
 - `toggle_sidebar`
+- `toggle_agent_sidebar`
 - `hide_sidebar`
 - `register_sidebar_yazi_state`
+- `register_ai_pane_activity`
 - `get_active_tab_session_state`
 - `retarget_workspace`
 - `open_terminal_in_cwd`
 - `open_workspace_terminal`
+- `reload_runtime_config`
 - `maintainer_debug_editor_state`
 - `debug_write_literal`
 - `debug_send_escape`
@@ -121,6 +124,26 @@ The plugin reads these configuration keys from Zellij plugin configuration:
 `runtime_dir` is session-local plugin state. The generated Zellij config must set it on the loaded pane-orchestrator plugin instance for that session, and direct `MessagePlugin` bindings or `zellij action pipe` calls must target that loaded instance by alias instead of re-supplying `runtime_dir` on each message. Popup geometry belongs to the generated `yzpp` specs, not the pane-orchestrator plugin config.
 
 The screen-saver keys are opt-in. When enabled, the plugin watches Zellij-wide input activity and opens a full-tab `yzx screen` command pane after the configured idle threshold. The plugin owns only inactivity/session orchestration; the `yzx screen` process remains the single renderer and animation contract.
+
+### Activity Tab Decoration
+
+The pane orchestrator owns tab-local activity decoration for native Zellij tab
+names. Registered AI facts from `register_ai_pane_activity` reduce to a single
+visible tab state: `stale` facts render `[!] `, active/thinking facts or live
+spinner-prefixed terminal titles render `[...] `, and idle/unknown/no facts
+render no marker. Alert takes priority over busy, and busy takes priority over
+no marker. The orchestrator must not mirror every spinner frame into the tab
+name, and native tab-name writes are coalesced and rate-limited.
+Spinner-prefixed terminal title activity is remembered by producing pane: if
+the title stops indicating activity while that pane is not focused, the pane
+becomes `stale` and the tab renders `[!] ` until the user focuses that
+producing pane or the pane disappears. When facts become inactive, unknown, or
+acknowledged by producing-pane focus, the plugin restores the recorded base tab
+name.
+
+The status bar child still owns tab label formats. The orchestrator must not
+add a parallel bar widget for this state unless a future contract defines a
+multi-tab status-bus surface.
 
 ### Runtime And Wrapper Paths
 

@@ -22,6 +22,7 @@ The supported boundary is runnable-standalone-first for every non-workspace widg
 | CPU/RAM command widgets | `yazelix_zellij_bar` child repo | Move child |
 | live sidebar/editor/workspace facts | pane orchestrator | Keep producer |
 | active-tab workspace pipe message and label content | pane orchestrator | Keep producer |
+| activity tab-name decoration | pane orchestrator through native Zellij tab names; visible in bar modes that render `{name}` | Keep producer |
 | direct `status-bus-workspace` zjstatus command | none | Deleted |
 
 ## Contract Items
@@ -88,6 +89,25 @@ The supported boundary is runnable-standalone-first for every non-workspace widg
 - Owner: `yazelix_zellij_bar` child repo
 - Statement: A non-workspace widget is not standalone unless a non-Yazelix user can run it through a `yazelix_zellij_bar_widget` command or equivalent child-owned API without `yzx`, `yzx_control`, `~/.config/yazelix`, `~/.local/share/yazelix`, pane-orchestrator state, or Yazelix launch-scoped cache paths
 - Verification: automated `cargo test` in `luccahuguet/yazelix-zellij-bar`
+
+#### SBO-010
+- Type: boundary
+- Status: live
+- Owner: pane orchestrator plus native Zellij tab names
+- Statement: Activity tab decoration is not a status-bar widget. The pane
+  orchestrator owns registered activity facts and recognized spinner-prefixed
+  terminal titles, reduces them to `[!] `, `[...] `, or no marker, then mutates
+  the affected Zellij tab name only when that reduced visible state changes.
+  Alert takes priority over busy, and busy takes priority over no marker. The
+  orchestrator remembers spinner-prefixed terminal-title activity by producing
+  pane, promotes completed off-focus activity to `[!] `, and clears it only when
+  the producing pane is focused again or disappears. The bar child continues to
+  own tab formats and only displays the marker when the selected tab label mode
+  includes `{name}`. High-frequency terminal-title animation must not be
+  mirrored into high-frequency tab renaming, and native tab-name writes must be
+  coalesced and rate-limited
+- Verification: automated
+  `cargo test --manifest-path ../yazelix-zellij-pane-orchestrator/Cargo.toml --lib`
 
 ## Deletion And Extraction Plan
 
