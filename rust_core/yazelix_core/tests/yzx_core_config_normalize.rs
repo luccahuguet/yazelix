@@ -1545,6 +1545,7 @@ fn terminal_materialization_wezterm_auto_appearance_writes_gui_query() {
 }
 
 // Defends: vanilla Rio runtime metadata materializes a Rio-native config at the path launch binds through RIO_CONFIG_HOME.
+// Regression: stale Rio options must not make the terminal reject Yazelix-owned opacity and font settings.
 #[test]
 fn terminal_materialization_rio_uses_rio_config_toml() {
     let repo = repo_root();
@@ -1605,15 +1606,64 @@ color = "#ffffff"
             .join("config.toml"),
     )
     .unwrap();
+    let rio_toml = toml::from_str::<toml::Value>(&rio_config).unwrap();
     assert!(rio_config.contains("placeholder = \"Yazelix - Rio\""));
     assert!(rio_config.contains("content = \"{{ TITLE || RELATIVE_PATH }}\""));
-    assert!(rio_config.contains("opacity = 0.90"));
-    assert!(rio_config.contains("opacity-cells = true"));
+    assert_eq!(rio_toml["window"]["opacity"].as_float(), Some(0.90));
+    assert!(rio_toml["window"].get("opacity-cells").is_none());
+    assert_eq!(
+        rio_toml["fonts"]["family"].as_str(),
+        Some("FiraCode Nerd Font")
+    );
+    let rio_font_root = fixture
+        .runtime_dir
+        .join("share")
+        .join("yazelix")
+        .join("rio_fonts");
+    let expected_fira_dir = rio_font_root
+        .join("fira_code_nerd")
+        .to_string_lossy()
+        .into_owned();
+    let expected_symbols_dir = rio_font_root
+        .join("symbols_nerd")
+        .to_string_lossy()
+        .into_owned();
+    let expected_emoji_dir = rio_font_root
+        .join("noto_color_emoji")
+        .to_string_lossy()
+        .into_owned();
+    let additional_dirs = rio_toml["fonts"]["additional-dirs"].as_array().unwrap();
+    assert_eq!(additional_dirs.len(), 3);
+    assert_eq!(
+        additional_dirs[0].as_str(),
+        Some(expected_fira_dir.as_str())
+    );
+    assert_eq!(
+        additional_dirs[1].as_str(),
+        Some(expected_symbols_dir.as_str())
+    );
+    assert_eq!(
+        additional_dirs[2].as_str(),
+        Some(expected_emoji_dir.as_str())
+    );
+    assert_eq!(
+        rio_toml["fonts"]["extras"][0]["family"].as_str(),
+        Some("Symbols Nerd Font Mono")
+    );
+    assert_eq!(
+        rio_toml["fonts"]["extras"][1]["family"].as_str(),
+        Some("Symbols Nerd Font")
+    );
+    assert_eq!(
+        rio_toml["fonts"]["emoji"]["family"].as_str(),
+        Some("Noto Color Emoji")
+    );
     assert!(rio_config.contains("background = \"#111416\""));
     assert!(rio_config.contains("foreground = \"#eeeeec\""));
     assert!(rio_config.contains("light-blue = \"#11b5f6\""));
     assert!(rio_config.contains("[effects]\ntrail-cursor = true"));
     assert!(rio_config.contains("mode = \"Plain\""));
+    assert!(rio_toml.get("renderer").is_none());
 }
 
 // Defends: static light appearance switches Rio's generated palette without changing launch metadata.

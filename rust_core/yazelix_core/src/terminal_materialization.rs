@@ -27,6 +27,13 @@ const ABERNATHY_FOREGROUND: &str = "#eeeeec";
 const CATPPUCCIN_LATTE_BACKGROUND: &str = "#eff1f5";
 const CATPPUCCIN_LATTE_FOREGROUND: &str = "#4c4f69";
 const FONT_FIRACODE: &str = "FiraCode Nerd Font";
+const FONT_SYMBOLS_NERD_MONO: &str = "Symbols Nerd Font Mono";
+const FONT_SYMBOLS_NERD: &str = "Symbols Nerd Font";
+const FONT_NOTO_COLOR_EMOJI: &str = "Noto Color Emoji";
+const RIO_FONT_ROOT: &str = "share/yazelix/rio_fonts";
+const RIO_FIRA_CODE_FONT_DIR: &str = "fira_code_nerd";
+const RIO_SYMBOLS_FONT_DIR: &str = "symbols_nerd";
+const RIO_EMOJI_FONT_DIR: &str = "noto_color_emoji";
 const TERMINAL_DARK_COLOR_PALETTE: &[(&str, &str)] = &[
     ("background", ABERNATHY_BACKGROUND),
     ("foreground", ABERNATHY_FOREGROUND),
@@ -446,9 +453,12 @@ bright7={}
     )
 }
 
-fn generate_rio_config(transparency: &str, appearance_mode: &str) -> String {
+fn generate_rio_config(runtime_dir: &Path, transparency: &str, appearance_mode: &str) -> String {
     let opacity = get_opacity_value(transparency);
     let palette = terminal_palette_for_appearance(appearance_mode);
+    let fira_code_dir = rio_font_dir(runtime_dir, RIO_FIRA_CODE_FONT_DIR);
+    let symbols_dir = rio_font_dir(runtime_dir, RIO_SYMBOLS_FONT_DIR);
+    let emoji_dir = rio_font_dir(runtime_dir, RIO_EMOJI_FONT_DIR);
     format!(
         r##"# Rio configuration for Yazelix
 
@@ -466,11 +476,13 @@ width = 960
 height = 620
 decorations = "Disabled"
 opacity = {}
-opacity-cells = {}
 
 [fonts]
 family = "{}"
 size = 18.0
+additional-dirs = ["{}", "{}", "{}"]
+extras = [{{ family = "{}" }}, {{ family = "{}" }}]
+emoji = {{ family = "{}" }}
 
 [colors]
 background = "{}"
@@ -494,14 +506,16 @@ light-white = "{}"
 
 [navigation]
 mode = "Plain"
-
-[renderer]
-backend = "Webgpu"
 "##,
         get_terminal_title("rio"),
         opacity,
-        transparency != "none",
         FONT_FIRACODE,
+        fira_code_dir.to_string_lossy(),
+        symbols_dir.to_string_lossy(),
+        emoji_dir.to_string_lossy(),
+        FONT_SYMBOLS_NERD_MONO,
+        FONT_SYMBOLS_NERD,
+        FONT_NOTO_COLOR_EMOJI,
         palette_color(palette, "background"),
         palette_color(palette, "foreground"),
         palette_color(palette, "black"),
@@ -521,6 +535,10 @@ backend = "Webgpu"
         palette_color(palette, "light-cyan"),
         palette_color(palette, "light-white"),
     )
+}
+
+fn rio_font_dir(runtime_dir: &Path, font_dir: &str) -> PathBuf {
+    runtime_dir.join(RIO_FONT_ROOT).join(font_dir)
 }
 
 pub fn yzxterm_profile_from_env() -> Result<YzxtermProfile, CoreError> {
@@ -1138,7 +1156,10 @@ pub fn generate_terminal_materialization(
                     )
                 })?;
                 let path = rio_dir.join("config.toml");
-                write_text_atomic(&path, &generate_rio_config(transparency, appearance_mode))?;
+                write_text_atomic(
+                    &path,
+                    &generate_rio_config(&request.runtime_dir, transparency, appearance_mode),
+                )?;
                 generated.push(TerminalGeneratedConfig {
                     terminal: "rio".to_string(),
                     path: path.to_string_lossy().into_owned(),

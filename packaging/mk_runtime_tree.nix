@@ -140,7 +140,21 @@ let
     ++ pkgs.lib.optional cursorsEnabled {
       source = "${src}/yazelix_cursors_default.toml";
       target = "yazelix_cursors_default.toml";
-    };
+    }
+    ++ pkgs.lib.optionals (runtimeVariant == "rio") [
+      {
+        source = "${pkgs.nerd-fonts.fira-code}/share/fonts/truetype/NerdFonts/FiraCode";
+        target = "share/yazelix/rio_fonts/fira_code_nerd";
+      }
+      {
+        source = "${pkgs.nerd-fonts.symbols-only}/share/fonts/truetype/NerdFonts/Symbols";
+        target = "share/yazelix/rio_fonts/symbols_nerd";
+      }
+      {
+        source = "${pkgs.noto-fonts-color-emoji}/share/fonts/noto";
+        target = "share/yazelix/rio_fonts/noto_color_emoji";
+      }
+    ];
   renderRuntimeInputLink =
     { source, target }:
     ''
