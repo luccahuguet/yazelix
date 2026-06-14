@@ -6,28 +6,6 @@ use std::process::{self, Command, Output};
 use std::time::{SystemTime, UNIX_EPOCH};
 use toml::{Table as TomlTable, Value as TomlValue};
 
-pub(super) fn require_path_exists(
-    repo_root: &Path,
-    relative_path: &str,
-    label: &str,
-    errors: &mut Vec<String>,
-) {
-    if !repo_root.join(relative_path).exists() {
-        errors.push(format!("Missing {}: {}", label, relative_path));
-    }
-}
-
-pub(super) fn require_path_missing(
-    repo_root: &Path,
-    relative_path: &str,
-    label: &str,
-    errors: &mut Vec<String>,
-) {
-    if repo_root.join(relative_path).exists() {
-        errors.push(format!("Unexpected {}: {}", label, relative_path));
-    }
-}
-
 pub(super) fn require_path_missing_abs(path: &Path, label: &str, errors: &mut Vec<String>) {
     if path.exists() {
         errors.push(format!("Unexpected {}: {}", label, path.display()));

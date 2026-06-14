@@ -1,7 +1,7 @@
 use super::{
     build_flake_output_path, command_output_summary, create_unique_temp_dir, escape_nix_string,
-    require_list_contains, require_list_not_contains, require_path_exists, require_path_exists_abs,
-    require_path_missing, run_nix_eval, run_repo_command,
+    require_list_contains, require_list_not_contains, require_path_exists_abs, run_nix_eval,
+    run_repo_command,
 };
 use crate::repo_validation::ValidationReport;
 use serde_json::Value as JsonValue;
@@ -23,14 +23,16 @@ fn validate_installed_runtime_contract_inner(repo_root: &Path) -> Result<Vec<Str
     let desktop_deferred_launch_probe = "shells/posix/desktop_deferred_launch_probe.sh";
     let detached_launch_probe = "shells/posix/detached_launch_probe.sh";
     let flake_path = "flake.nix";
+    let legacy_installer = "shells/posix/install_yazelix.sh.in";
 
-    require_path_exists(repo_root, flake_path, "flake definition", &mut errors);
-    require_path_missing(
-        repo_root,
-        "shells/posix/install_yazelix.sh.in",
-        "legacy flake installer template",
-        &mut errors,
-    );
+    if !repo_root.join(flake_path).exists() {
+        errors.push(format!("Missing flake definition: {flake_path}"));
+    }
+    if repo_root.join(legacy_installer).exists() {
+        errors.push(format!(
+            "Unexpected legacy flake installer template: {legacy_installer}"
+        ));
+    }
 
     if !errors.is_empty() {
         return Ok(errors);
