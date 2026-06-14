@@ -59,8 +59,6 @@ pub struct UpgradeSummaryReport {
     pub changelog_path: String,
     pub state_path: String,
     pub last_seen_version: Option<String>,
-    pub matching_migrations: Vec<String>,
-    pub matching_migration_ids: Vec<String>,
     pub output: String,
 }
 
@@ -488,8 +486,6 @@ pub fn build_upgrade_summary_report(
             changelog_path: changelog_path.display().to_string(),
             state_path: state_path.display().to_string(),
             last_seen_version,
-            matching_migrations: Vec::new(),
-            matching_migration_ids: Vec::new(),
             output: String::new(),
         });
     };
@@ -502,8 +498,6 @@ pub fn build_upgrade_summary_report(
         changelog_path: changelog_path.display().to_string(),
         state_path: state_path.display().to_string(),
         last_seen_version,
-        matching_migrations: Vec::new(),
-        matching_migration_ids: Vec::new(),
         output,
     })
 }
@@ -615,8 +609,6 @@ pub fn show_known_changes_since_installed_runtime(
         changelog_path: changelog_path.display().to_string(),
         state_path: state_path.display().to_string(),
         last_seen_version,
-        matching_migrations: Vec::new(),
-        matching_migration_ids: Vec::new(),
         output,
     };
 
