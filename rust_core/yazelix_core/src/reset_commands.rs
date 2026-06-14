@@ -2,35 +2,27 @@
 //! `yzx reset` family implemented in Rust for `yzx_control`.
 
 use crate::active_config_surface::primary_config_paths;
-use crate::bridge::{CoreError, ErrorClass};
+use crate::bridge::CoreError;
 use crate::control_plane::{config_dir_from_env, runtime_dir_from_env};
 use crate::settings_surface::render_default_settings_jsonc;
 use crate::user_config_paths::{
     CURRENT_MANAGED_CONFIG_FILE_NAMES, LEGACY_CONFIG_ENTRY_NAMES, SETTINGS_CONFIG,
 };
-use serde_json::json;
 use std::collections::BTreeSet;
 use std::fs;
 use std::io::{self, BufRead, Write};
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
+const RESET_CONFIG_COMMAND: &str = "yzx reset config";
+const RESET_CONFIG_DISPLAY_NAME: &str = "main Yazelix config";
+const RESET_CONFIG_FILE_NAME: &str = "settings.jsonc";
+
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 struct ResetArgs {
     yes: bool,
     no_backup: bool,
     help: bool,
-}
-
-#[derive(Debug, Clone)]
-struct ResetSurface {
-    command: &'static str,
-    display_name: &'static str,
-    target_file_name: &'static str,
-    default_path: PathBuf,
-    target_path: PathBuf,
-    missing_default_code: &'static str,
-    missing_default_remediation: &'static str,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -59,20 +51,7 @@ fn run_reset_config(args: &[String]) -> Result<i32, CoreError> {
     let paths = primary_config_paths(&runtime_dir, &config_dir);
     let adjacency_report = reset_config_adjacency_report(&config_dir)?;
     let content = render_default_settings_jsonc(&paths.default_config_path)?;
-    reset_surface_with_content(
-        args,
-        ResetSurface {
-            command: "yzx reset config",
-            display_name: "main Yazelix config",
-            target_file_name: "settings.jsonc",
-            default_path: paths.default_config_path,
-            target_path: paths.user_config,
-            missing_default_code: "missing_default_config",
-            missing_default_remediation: "Reinstall Yazelix or restore settings_default.jsonc in the runtime, then retry.",
-        },
-        content,
-        Some(adjacency_report),
-    )
+    reset_config_with_content(args, paths.user_config, content, adjacency_report)
 }
 
 fn parse_reset_args(args: &[String], command: &str) -> Result<ResetArgs, CoreError> {
@@ -107,68 +86,49 @@ fn print_reset_help() {
     println!("  reset config preserves managed override sidecars and unknown adjacent files");
 }
 
-fn print_reset_surface_help(surface: &ResetSurface) {
-    println!(
-        "Replace the {} with a fresh shipped template",
-        surface.display_name
-    );
+fn print_reset_config_help() {
+    println!("Replace the {RESET_CONFIG_DISPLAY_NAME} with a fresh shipped template");
     println!();
     println!("Usage:");
-    println!("  {} [--yes] [--no-backup]", surface.command);
+    println!("  {RESET_CONFIG_COMMAND} [--yes] [--no-backup]");
     println!();
     println!("Flags:");
     println!("      --yes        Skip confirmation prompt");
     println!("      --no-backup  Replace the file without writing a timestamped backup first");
 }
 
-fn reset_surface_with_content(
+fn reset_config_with_content(
     args: &[String],
-    surface: ResetSurface,
+    target_path: PathBuf,
     content: String,
-    adjacency_report: Option<ResetConfigAdjacencyReport>,
+    adjacency_report: ResetConfigAdjacencyReport,
 ) -> Result<i32, CoreError> {
-    let parsed = parse_reset_args(args, surface.command)?;
+    let parsed = parse_reset_args(args, RESET_CONFIG_COMMAND)?;
     if parsed.help {
-        print_reset_surface_help(&surface);
+        print_reset_config_help();
         return Ok(0);
     }
 
-    let target_exists = surface.target_path.exists();
+    let target_exists = target_path.exists();
     let removed_without_backup = parsed.no_backup && target_exists;
 
-    if !surface.default_path.exists() {
-        return Err(CoreError::classified(
-            ErrorClass::Config,
-            surface.missing_default_code,
-            format!(
-                "Default {} not found: {}",
-                surface.display_name,
-                surface.default_path.display()
-            ),
-            surface.missing_default_remediation,
-            json!({ "path": surface.default_path.display().to_string() }),
-        ));
-    }
-
-    if let Some(report) = adjacency_report.as_ref() {
-        print_reset_config_adjacency_warnings(report, &surface);
-    }
+    print_reset_config_adjacency_warnings(&adjacency_report);
 
     if !parsed.yes {
         println!(
             "⚠️  This replaces {} with a fresh shipped template.",
-            surface.target_file_name
+            RESET_CONFIG_FILE_NAME
         );
         if target_exists && !parsed.no_backup {
             println!(
                 "   Your current {} will be backed up first.",
-                surface.target_file_name
+                RESET_CONFIG_FILE_NAME
             );
         }
         if target_exists && parsed.no_backup {
             println!(
                 "   Your current {} will be removed without a backup.",
-                surface.target_file_name
+                RESET_CONFIG_FILE_NAME
             );
         }
         print!("Continue? [y/N]: ");
@@ -180,38 +140,38 @@ fn reset_surface_with_content(
     }
 
     let backup_path = if target_exists && !parsed.no_backup {
-        let path = backup_path(&surface.target_path, surface.target_file_name);
-        fs::rename(&surface.target_path, &path).map_err(|source| {
+        let path = backup_path(&target_path, RESET_CONFIG_FILE_NAME);
+        fs::rename(&target_path, &path).map_err(|source| {
             CoreError::io(
                 "reset_backup",
                 format!(
                     "Could not back up the current {} at {}.",
-                    surface.display_name,
-                    surface.target_path.display()
+                    RESET_CONFIG_DISPLAY_NAME,
+                    target_path.display()
                 ),
                 format!(
                     "Fix permissions or move the file manually, then retry `{}`.",
-                    surface.command
+                    RESET_CONFIG_COMMAND
                 ),
-                surface.target_path.display().to_string(),
+                target_path.display().to_string(),
                 source,
             )
         })?;
         Some(path)
     } else if target_exists && parsed.no_backup {
-        fs::remove_file(&surface.target_path).map_err(|source| {
+        fs::remove_file(&target_path).map_err(|source| {
             CoreError::io(
                 "reset_remove_existing",
                 format!(
                     "Could not remove the current {} at {}.",
-                    surface.display_name,
-                    surface.target_path.display()
+                    RESET_CONFIG_DISPLAY_NAME,
+                    target_path.display()
                 ),
                 format!(
                     "Fix permissions or remove the file manually, then retry `{} --no-backup`.",
-                    surface.command
+                    RESET_CONFIG_COMMAND
                 ),
-                surface.target_path.display().to_string(),
+                target_path.display().to_string(),
                 source,
             )
         })?;
@@ -220,15 +180,15 @@ fn reset_surface_with_content(
         None
     };
 
-    write_reset_surface(&surface.target_path, &content)?;
+    write_reset_surface(&target_path, &content)?;
 
     if let Some(path) = backup_path {
         println!("✅ Backed up previous file to: {}", path.display());
     }
     println!(
         "✅ Replaced {} with a fresh template: {}",
-        surface.target_file_name,
-        surface.target_path.display()
+        RESET_CONFIG_FILE_NAME,
+        target_path.display()
     );
     if removed_without_backup {
         println!("⚠️  Previous file was removed without backup.");
@@ -279,15 +239,12 @@ fn reset_config_adjacency_report(
     Ok(report)
 }
 
-fn print_reset_config_adjacency_warnings(
-    report: &ResetConfigAdjacencyReport,
-    surface: &ResetSurface,
-) {
+fn print_reset_config_adjacency_warnings(report: &ResetConfigAdjacencyReport) {
     if !report.managed_overrides.is_empty() {
         println!(
             "Warning: {} only replaces {}. Managed override files were left untouched: {}.",
-            surface.command,
-            surface.target_file_name,
+            RESET_CONFIG_COMMAND,
+            RESET_CONFIG_FILE_NAME,
             report.managed_overrides.join(", ")
         );
         println!(
