@@ -71,6 +71,8 @@ The generic preset keeps common zjstatus placeholders available without Yazelix:
 - term
 - custom text
 - compact/full tab labels and bar layout policy
+- pure tab activity label rendering from explicit `idle`, `busy`, or `alert`
+  facts
 - CPU and RAM stdout widgets
 - Claude usage display, cache, lock/backoff, and tokenusage probing from explicit cache paths or XDG defaults
 - Codex usage display, cache, lock/backoff, and tokenusage probing from explicit cache paths or XDG defaults
@@ -83,6 +85,7 @@ AI widgets are provider-driven widgets. A standalone user may run `yazelix_zelli
 Yazelix-specific widgets are widgets that depend on Yazelix runtime helpers, session snapshots, or cached facts:
 
 - workspace
+- pane-orchestrator all-tab activity snapshots
 - Yazelix-managed Claude/Codex/OpenCode Go cache path selection and session settings
 - generated full-runtime command wiring
 
@@ -109,6 +112,7 @@ Yazelix keeps these integration-only responsibilities:
 - launch-scoped status-cache paths
 - refresh command scheduling
 - session snapshot hydration
+- pane-orchestrator all-tab activity snapshot transport
 - `yzx_control` transport
 - generated layout policy for full Yazelix sessions
 - workspace facts until a generic fallback exists
@@ -135,6 +139,14 @@ Do not manually copy `zjstatus.wasm` between the main repo and the child repo. B
 zjstatus layout blocks do not provide a native include or variable layer. The current distribution therefore favors one small generic preset and copyable KDL snippets over a growing family of generated files.
 
 Raw KDL remains the escape hatch for lower-level zjstatus keys.
+
+The pinned zjstatus tabs widget renders each tab from Zellij `TabInfo`
+placeholders. Its pipe and command widgets can render external text elsewhere in
+the bar, but they cannot merge an all-tabs activity snapshot into each tab label
+without a zjstatus code change. The activity-label renderer in
+`yazelix_zellij_bar` is therefore a reusable pure renderer for the future native
+or extended bar path; the current integrated zjstatus path still sees activity
+through native tab names.
 
 ## Verification
 

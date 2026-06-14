@@ -44,6 +44,15 @@ yazelix_zellij_bar_widget ram
 
 Long flags are escape hatches, not the common standalone configuration.
 
+## Renderer API
+
+The Rust crate also owns pure renderers used by the integrated Yazelix runtime.
+Tab activity rendering accepts explicit `idle`, `busy`, or `alert` facts and
+returns plain label text such as `[2] [...] agent`. It must not call `yzx`,
+inspect pane-orchestrator state, read status-cache files, or depend on zjstatus
+runtime internals. The main runtime supplies facts; this crate owns how those
+facts become tab text.
+
 ## State files
 
 Provider caches live under the user's cache directory:

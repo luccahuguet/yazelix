@@ -22,7 +22,8 @@ The supported boundary is runnable-standalone-first for every non-workspace widg
 | CPU/RAM command widgets | `yazelix_zellij_bar` child repo | Move child |
 | live sidebar/editor/workspace facts | pane orchestrator | Keep producer |
 | active-tab workspace pipe message and label content | pane orchestrator | Keep producer |
-| activity tab-name decoration | pane orchestrator through native Zellij tab names; visible in bar modes that render `{name}` | Keep producer |
+| all-tab activity facts | pane orchestrator `get_all_tab_activity_state` pipe | Keep producer |
+| activity tab-label presentation | `yazelix_zellij_bar` pure renderer; native tab-name mutation remains fallback for current zjstatus tabs | Move child |
 | direct `status-bus-workspace` zjstatus command | none | Deleted |
 
 ## Contract Items
@@ -94,10 +95,11 @@ The supported boundary is runnable-standalone-first for every non-workspace widg
 - Type: boundary
 - Status: live
 - Owner: pane orchestrator plus native Zellij tab names
-- Statement: Activity tab decoration is not a status-bar widget. The pane
-  orchestrator owns registered activity facts and recognized spinner-prefixed
-  terminal titles, reduces them to `[!] `, `[...] `, or no marker, then mutates
-  the affected Zellij tab name only when that reduced visible state changes.
+- Statement: Native activity tab decoration is the fallback bridge into the
+  current zjstatus `{tabs}` widget. The pane orchestrator owns registered
+  activity facts and recognized spinner-prefixed terminal titles, reduces them
+  to alert, busy, or idle, then mutates the affected Zellij tab name only when
+  that reduced visible state changes.
   Alert takes priority over busy, and busy takes priority over no marker. The
   orchestrator remembers spinner-prefixed terminal-title activity by producing
   pane, promotes completed off-focus activity to `[!] `, and clears it only when
@@ -107,6 +109,27 @@ The supported boundary is runnable-standalone-first for every non-workspace widg
   mirrored into high-frequency tab renaming, and native tab-name writes must be
   coalesced and rate-limited
 - Verification: automated
+  `cargo test --manifest-path ../yazelix-zellij-pane-orchestrator/Cargo.toml --lib`
+
+#### SBO-011
+- Type: boundary
+- Status: live
+- Owner: pane orchestrator plus `yazelix_zellij_bar` child repo
+- Statement: The durable activity-bar direction is facts first, rendering
+  second. The pane orchestrator exposes `get_all_tab_activity_state` as a
+  versioned all-tabs JSON snapshot containing tab id, tab position, clean base
+  tab name, reduced `idle` / `busy` / `alert` activity state, and underlying
+  activity facts. `yazelix_zellij_bar` owns pure tab activity label rendering
+  from that reduced state. Upstream zjstatus v0.23.0 renders `{tabs}` only from
+  Zellij `TabInfo` placeholders such as `{name}`, `{index}`,
+  `{floating_indicator}`, `{fullscreen_indicator}`, and `{sync_indicator}`.
+  Its command and pipe widgets are separate bar widgets, so they can render
+  text adjacent to `{tabs}` but cannot interleave an external all-tab activity
+  map into each tab label. Until Yazelix ships a native bar renderer or changes
+  the zjstatus tabs widget, the clean zjstatus integration remains the native
+  tab-name fallback described by SBO-010
+- Verification: automated
+  `cargo test` in `luccahuguet/yazelix-zellij-bar` and
   `cargo test --manifest-path ../yazelix-zellij-pane-orchestrator/Cargo.toml --lib`
 
 ## Deletion And Extraction Plan

@@ -38,14 +38,15 @@ consumers can stop depending on debug payload shape or ad-hoc re-derivation.
 ## Scope
 
 - pane orchestrator Rust source in the external `yazelix-zellij-pane-orchestrator` project
-- one new pipe command for active-tab session state, with a stable typed JSON
-  response
+- versioned pipe commands for active-tab session state and all-tab activity
+  state, with stable typed JSON responses
 - shared serde types in the orchestrator crate when that improves local
   correctness or test clarity
 - Yazelix control transport/client helpers that should consume the new seam first
 - docs that define the owner boundary and bootstrap policy
 - AI activity extension facts and their tab-name decoration product surface;
-  this contract does not expose a separate activity bar widget
+  this contract exposes all-tab activity facts for a future bar-owned renderer,
+  while native tab-name decoration remains the current fallback bridge
 
 ## Rust Dependency Gate
 
@@ -78,6 +79,7 @@ the implementation notes before continuing.
 Add a new pipe command:
 
 - `get_active_tab_session_state`
+- `get_all_tab_activity_state`
 
 Do **not** promote `maintainer_debug_editor_state` into the long-term stable
 contract just because it is close to the needed payload. Keep debug commands
@@ -183,6 +185,41 @@ This uses Zellij's native tab name as the bridge into the status bar. The
 `yazelix_zellij_bar` child repo still owns tab label formatting and only renders
 the marker when the selected tab label mode includes `{name}`. Compact tab mode
 intentionally hides tab names, so it also hides this activity marker.
+
+The native tab-name bridge is a fallback, not the long-term rendering owner.
+For bar-owned rendering, `get_all_tab_activity_state` returns a separate
+versioned JSON payload:
+
+```json
+{
+  "schema_version": 1,
+  "tabs": [
+    {
+      "tab_id": 30,
+      "tab_position": 2,
+      "base_name": "agent",
+      "activity_state": "alert",
+      "activity": [
+        {
+          "tab_position": 2,
+          "provider": "terminal-title",
+          "pane_id": "terminal:12",
+          "activity": "stale",
+          "state": "stale"
+        }
+      ]
+    }
+  ]
+}
+```
+
+`activity_state` is reduced to `"alert"`, `"busy"`, or `"idle"` with the same
+priority as native tab-name decoration. `base_name` is the clean tab name the
+bar should render; when the fallback bridge has already mutated a native tab
+name, the orchestrator uses its recorded base name instead of exposing the
+decorated display name as source truth. The all-tab payload carries facts and
+state only. Presentation strings such as `[!]`, `[...]`, colors, and tab-label
+spacing belong to `yazelix_zellij_bar`.
 
 The markers are deliberately ASCII. Terminal-title activity is an input signal,
 not tab-label text, because high-frequency terminal-title animation must not
