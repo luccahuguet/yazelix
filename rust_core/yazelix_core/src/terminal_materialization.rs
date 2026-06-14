@@ -1060,6 +1060,31 @@ sync_to_monitor yes
     )
 }
 
+fn write_single_terminal_config(
+    generated_dir: &Path,
+    terminal: &str,
+    display_name: &str,
+    file_name: &str,
+    content: String,
+) -> Result<TerminalGeneratedConfig, CoreError> {
+    let dir = generated_dir.join(terminal);
+    fs::create_dir_all(&dir).map_err(|source| {
+        CoreError::io(
+            format!("create_{terminal}_dir"),
+            format!("Could not create {display_name} output directory"),
+            "Check permissions for the Yazelix state directory.",
+            dir.to_string_lossy(),
+            source,
+        )
+    })?;
+    let path = dir.join(file_name);
+    write_text_atomic(&path, &content)?;
+    Ok(TerminalGeneratedConfig {
+        terminal: terminal.to_string(),
+        path: path.to_string_lossy().into_owned(),
+    })
+}
+
 pub fn generate_terminal_materialization(
     request: &TerminalMaterializationRequest,
 ) -> Result<TerminalMaterializationData, CoreError> {
@@ -1125,82 +1150,40 @@ pub fn generate_terminal_materialization(
                 });
             }
             "wezterm" => {
-                let wezterm_dir = generated_dir.join("wezterm");
-                fs::create_dir_all(&wezterm_dir).map_err(|source| {
-                    CoreError::io(
-                        "create_wezterm_dir",
-                        "Could not create WezTerm output directory",
-                        "Check permissions for the Yazelix state directory.",
-                        wezterm_dir.to_string_lossy(),
-                        source,
-                    )
-                })?;
-                let path = wezterm_dir.join(".wezterm.lua");
-                write_text_atomic(
-                    &path,
-                    &generate_wezterm_config(transparency, appearance_mode),
-                )?;
-                generated.push(TerminalGeneratedConfig {
-                    terminal: "wezterm".to_string(),
-                    path: path.to_string_lossy().into_owned(),
-                });
+                generated.push(write_single_terminal_config(
+                    &generated_dir,
+                    "wezterm",
+                    "WezTerm",
+                    ".wezterm.lua",
+                    generate_wezterm_config(transparency, appearance_mode),
+                )?);
             }
             "rio" => {
-                let rio_dir = generated_dir.join("rio");
-                fs::create_dir_all(&rio_dir).map_err(|source| {
-                    CoreError::io(
-                        "create_rio_dir",
-                        "Could not create Rio output directory",
-                        "Check permissions for the Yazelix state directory.",
-                        rio_dir.to_string_lossy(),
-                        source,
-                    )
-                })?;
-                let path = rio_dir.join("config.toml");
-                write_text_atomic(
-                    &path,
-                    &generate_rio_config(&request.runtime_dir, transparency, appearance_mode),
-                )?;
-                generated.push(TerminalGeneratedConfig {
-                    terminal: "rio".to_string(),
-                    path: path.to_string_lossy().into_owned(),
-                });
+                generated.push(write_single_terminal_config(
+                    &generated_dir,
+                    "rio",
+                    "Rio",
+                    "config.toml",
+                    generate_rio_config(&request.runtime_dir, transparency, appearance_mode),
+                )?);
             }
             "ratty" => {
-                let ratty_dir = generated_dir.join("ratty");
-                fs::create_dir_all(&ratty_dir).map_err(|source| {
-                    CoreError::io(
-                        "create_ratty_dir",
-                        "Could not create Ratty output directory",
-                        "Check permissions for the Yazelix state directory.",
-                        ratty_dir.to_string_lossy(),
-                        source,
-                    )
-                })?;
-                let path = ratty_dir.join("ratty.toml");
-                write_text_atomic(&path, &generate_ratty_config(transparency))?;
-                generated.push(TerminalGeneratedConfig {
-                    terminal: "ratty".to_string(),
-                    path: path.to_string_lossy().into_owned(),
-                });
+                generated.push(write_single_terminal_config(
+                    &generated_dir,
+                    "ratty",
+                    "Ratty",
+                    "ratty.toml",
+                    generate_ratty_config(transparency),
+                )?);
             }
             "foot" => {
-                let foot_dir = generated_dir.join("foot");
-                fs::create_dir_all(&foot_dir).map_err(|source| {
-                    CoreError::io(
-                        "create_foot_dir",
-                        "Could not create Foot output directory",
-                        "Check permissions for the Yazelix state directory.",
-                        foot_dir.to_string_lossy(),
-                        source,
-                    )
-                })?;
-                let path = foot_dir.join("foot.ini");
-                write_text_atomic(&path, &generate_foot_config(transparency, appearance_mode))?;
-                generated.push(TerminalGeneratedConfig {
-                    terminal: "foot".to_string(),
-                    path: path.to_string_lossy().into_owned(),
-                });
+                generated.push(write_single_terminal_config(
+                    &generated_dir,
+                    "foot",
+                    "Foot",
+                    "foot.ini",
+                    generate_foot_config(transparency, appearance_mode),
+                )?);
             }
             "yzxterm" => {
                 let yzxterm_dir = generated_dir.join("yzxterm");
@@ -1245,30 +1228,18 @@ pub fn generate_terminal_materialization(
                 });
             }
             "kitty" => {
-                let kitty_dir = generated_dir.join("kitty");
-                fs::create_dir_all(&kitty_dir).map_err(|source| {
-                    CoreError::io(
-                        "create_kitty_dir",
-                        "Could not create Kitty output directory",
-                        "Check permissions for the Yazelix state directory.",
-                        kitty_dir.to_string_lossy(),
-                        source,
-                    )
-                })?;
                 let override_path = get_terminal_override_path(&config_dir, "kitty")?;
-                let path = kitty_dir.join("kitty.conf");
-                write_text_atomic(
-                    &path,
-                    &generate_kitty_config(
+                generated.push(write_single_terminal_config(
+                    &generated_dir,
+                    "kitty",
+                    "Kitty",
+                    "kitty.conf",
+                    generate_kitty_config(
                         transparency,
                         kitty_enable_cursor,
                         override_path.as_deref(),
                     ),
-                )?;
-                generated.push(TerminalGeneratedConfig {
-                    terminal: "kitty".to_string(),
-                    path: path.to_string_lossy().into_owned(),
-                });
+                )?);
             }
             _ => {}
         }
