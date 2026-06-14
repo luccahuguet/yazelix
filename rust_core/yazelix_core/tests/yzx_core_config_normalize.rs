@@ -140,6 +140,23 @@ fn prepare_runtime_materialization_fixture(
     }
 }
 
+fn prepare_materialization_fixture() -> (TempDir, RuntimeMaterializationFixture) {
+    let repo = repo_root();
+    let tmp = tempdir().unwrap();
+    let fixture = prepare_runtime_materialization_fixture(&repo, &tmp);
+    (tmp, fixture)
+}
+
+fn prepare_terminal_variant_fixture(variant: &str) -> (TempDir, RuntimeMaterializationFixture) {
+    let (tmp, fixture) = prepare_materialization_fixture();
+    fs::write(
+        fixture.runtime_dir.join("runtime_variant"),
+        format!("{variant}\n"),
+    )
+    .unwrap();
+    (tmp, fixture)
+}
+
 fn write_yzxterm_package_profile_set(root: &Path, emoji_family: Option<&str>) {
     let baseline_dir = root.join("baseline");
     let shader_profile_dir = root.join("profiles").join("shaders");
@@ -480,9 +497,7 @@ fn generate_terminal_materialization_clean_terminal_env(
 // Defends: runtime-materialization.repair --summary keeps the Home Manager activation path human-readable instead of dumping the full JSON envelope.
 #[test]
 fn runtime_materialization_repair_summary_prints_one_human_line() {
-    let repo = repo_root();
-    let tmp = tempdir().unwrap();
-    let fixture = prepare_runtime_materialization_fixture(&repo, &tmp);
+    let (_tmp, fixture) = prepare_materialization_fixture();
 
     let output = runtime_materialization_command(&fixture, "runtime-materialization.repair")
         .arg("--from-env")
@@ -508,9 +523,7 @@ fn runtime_materialization_repair_summary_prints_one_human_line() {
 // Defends: runtime-materialization.repair --summary keeps activation failures human-readable instead of dumping the raw JSON envelope.
 #[test]
 fn runtime_materialization_repair_summary_prints_human_config_error() {
-    let repo = repo_root();
-    let tmp = tempdir().unwrap();
-    let fixture = prepare_runtime_materialization_fixture(&repo, &tmp);
+    let (_tmp, fixture) = prepare_materialization_fixture();
     write_managed_config_toml(
         &fixture,
         &["[terminal]", "not_a_real_terminal_option = true"].join("\n"),
@@ -542,9 +555,7 @@ fn runtime_materialization_repair_summary_prints_human_config_error() {
 // Defends: terminal-materialization.generate resolves the active packaged terminal from runtime metadata.
 #[test]
 fn terminal_materialization_generate_from_env_writes_generated_configs() {
-    let repo = repo_root();
-    let tmp = tempdir().unwrap();
-    let fixture = prepare_runtime_materialization_fixture(&repo, &tmp);
+    let (_tmp, fixture) = prepare_materialization_fixture();
 
     write_managed_config_toml(
         &fixture,
@@ -600,9 +611,7 @@ fn terminal_materialization_generate_from_env_writes_generated_configs() {
 // Defends: Ghostty receives a native dark/light theme pair for automatic system appearance.
 #[test]
 fn terminal_materialization_ghostty_auto_appearance_writes_theme_pair() {
-    let repo = repo_root();
-    let tmp = tempdir().unwrap();
-    let fixture = prepare_runtime_materialization_fixture(&repo, &tmp);
+    let (_tmp, fixture) = prepare_materialization_fixture();
 
     write_managed_config_toml(
         &fixture,
@@ -626,9 +635,7 @@ fn terminal_materialization_ghostty_auto_appearance_writes_theme_pair() {
 // Regression: light appearance random cursor materialization skips snow while preserving explicit dark-mode availability.
 #[test]
 fn terminal_materialization_light_random_cursor_skips_snow() {
-    let repo = repo_root();
-    let tmp = tempdir().unwrap();
-    let fixture = prepare_runtime_materialization_fixture(&repo, &tmp);
+    let (_tmp, fixture) = prepare_materialization_fixture();
 
     write_managed_config_toml(&fixture, &["[appearance]", "mode = \"light\""].join("\n"));
     write_cursor_sidecar(
@@ -674,10 +681,7 @@ color = "#ffb929"
 // Defends: WezTerm receives a native appearance query for automatic system appearance.
 #[test]
 fn terminal_materialization_wezterm_auto_appearance_writes_gui_query() {
-    let repo = repo_root();
-    let tmp = tempdir().unwrap();
-    let fixture = prepare_runtime_materialization_fixture(&repo, &tmp);
-    fs::write(fixture.runtime_dir.join("runtime_variant"), "wezterm\n").unwrap();
+    let (_tmp, fixture) = prepare_terminal_variant_fixture("wezterm");
 
     write_managed_config_toml(
         &fixture,
@@ -704,10 +708,7 @@ fn terminal_materialization_wezterm_auto_appearance_writes_gui_query() {
 // Regression: stale Rio options must not make the terminal reject Yazelix-owned opacity and font settings.
 #[test]
 fn terminal_materialization_rio_uses_rio_config_toml() {
-    let repo = repo_root();
-    let tmp = tempdir().unwrap();
-    let fixture = prepare_runtime_materialization_fixture(&repo, &tmp);
-    fs::write(fixture.runtime_dir.join("runtime_variant"), "rio\n").unwrap();
+    let (_tmp, fixture) = prepare_terminal_variant_fixture("rio");
 
     write_managed_config_toml(
         &fixture,
@@ -787,10 +788,7 @@ fn terminal_materialization_rio_uses_rio_config_toml() {
 // Defends: static light appearance switches Rio's generated palette without changing launch metadata.
 #[test]
 fn terminal_materialization_rio_light_appearance_uses_light_palette() {
-    let repo = repo_root();
-    let tmp = tempdir().unwrap();
-    let fixture = prepare_runtime_materialization_fixture(&repo, &tmp);
-    fs::write(fixture.runtime_dir.join("runtime_variant"), "rio\n").unwrap();
+    let (_tmp, fixture) = prepare_terminal_variant_fixture("rio");
 
     write_managed_config_toml(
         &fixture,
@@ -816,10 +814,7 @@ fn terminal_materialization_rio_light_appearance_uses_light_palette() {
 // Defends: Linux Foot runtime metadata materializes a Foot-native config at the active launch path.
 #[test]
 fn terminal_materialization_foot_uses_foot_ini() {
-    let repo = repo_root();
-    let tmp = tempdir().unwrap();
-    let fixture = prepare_runtime_materialization_fixture(&repo, &tmp);
-    fs::write(fixture.runtime_dir.join("runtime_variant"), "foot\n").unwrap();
+    let (_tmp, fixture) = prepare_terminal_variant_fixture("foot");
 
     write_managed_config_toml(
         &fixture,
@@ -848,10 +843,7 @@ fn terminal_materialization_foot_uses_foot_ini() {
 // Defends: static light appearance selects Foot's light color section while preserving generated Foot config ownership.
 #[test]
 fn terminal_materialization_foot_light_appearance_selects_light_theme() {
-    let repo = repo_root();
-    let tmp = tempdir().unwrap();
-    let fixture = prepare_runtime_materialization_fixture(&repo, &tmp);
-    fs::write(fixture.runtime_dir.join("runtime_variant"), "foot\n").unwrap();
+    let (_tmp, fixture) = prepare_terminal_variant_fixture("foot");
 
     write_managed_config_toml(
         &fixture,
@@ -879,10 +871,7 @@ fn terminal_materialization_foot_light_appearance_selects_light_theme() {
 // Regression: yzxterm-only sessions keep active cursor color without injecting cursor shaders.
 #[test]
 fn terminal_materialization_yzxterm_only_uses_rio_trail_without_cursor_shaders() {
-    let repo = repo_root();
-    let tmp = tempdir().unwrap();
-    let fixture = prepare_runtime_materialization_fixture(&repo, &tmp);
-    fs::write(fixture.runtime_dir.join("runtime_variant"), "yzxterm\n").unwrap();
+    let (_tmp, fixture) = prepare_terminal_variant_fixture("yzxterm");
 
     write_managed_config_toml(
         &fixture,
@@ -935,10 +924,7 @@ color = "#ffffff"
 // Defends: packaged yzxterm light appearance uses the child-owned light theme instead of synthesized main-repo colors.
 #[test]
 fn terminal_materialization_yzxterm_light_appearance_selects_child_light_theme() {
-    let repo = repo_root();
-    let tmp = tempdir().unwrap();
-    let fixture = prepare_runtime_materialization_fixture(&repo, &tmp);
-    fs::write(fixture.runtime_dir.join("runtime_variant"), "yzxterm\n").unwrap();
+    let (_tmp, fixture) = prepare_terminal_variant_fixture("yzxterm");
 
     write_managed_config_toml(
         &fixture,
@@ -977,10 +963,7 @@ fn terminal_materialization_yzxterm_light_appearance_selects_child_light_theme()
 // Defends: packaged yzxterm auto appearance preserves the child-owned adaptive theme pair.
 #[test]
 fn terminal_materialization_yzxterm_auto_appearance_preserves_child_adaptive_theme() {
-    let repo = repo_root();
-    let tmp = tempdir().unwrap();
-    let fixture = prepare_runtime_materialization_fixture(&repo, &tmp);
-    fs::write(fixture.runtime_dir.join("runtime_variant"), "yzxterm\n").unwrap();
+    let (_tmp, fixture) = prepare_terminal_variant_fixture("yzxterm");
 
     write_managed_config_toml(
         &fixture,
@@ -1014,10 +997,7 @@ fn terminal_materialization_yzxterm_auto_appearance_preserves_child_adaptive_the
 // Regression: Yazelix-managed yzxterm launches pass YAZELIX_TERMINAL_CONFIG, so the runtime must materialize transparency, child themes, and the requested Rio decoration shader itself.
 #[test]
 fn terminal_materialization_yzxterm_shader_profile_injects_rio_decoration_shader() {
-    let repo = repo_root();
-    let tmp = tempdir().unwrap();
-    let fixture = prepare_runtime_materialization_fixture(&repo, &tmp);
-    fs::write(fixture.runtime_dir.join("runtime_variant"), "yzxterm\n").unwrap();
+    let (_tmp, fixture) = prepare_terminal_variant_fixture("yzxterm");
 
     write_managed_config_toml(
         &fixture,
@@ -1062,10 +1042,7 @@ fn terminal_materialization_yzxterm_shader_profile_injects_rio_decoration_shader
 // Defends: yzxterm generated configs can select a child-owned emoji font profile root without losing main-owned transparency, cursor color, or shader edits.
 #[test]
 fn terminal_materialization_yzxterm_emoji_font_selects_child_config_root() {
-    let repo = repo_root();
-    let tmp = tempdir().unwrap();
-    let fixture = prepare_runtime_materialization_fixture(&repo, &tmp);
-    fs::write(fixture.runtime_dir.join("runtime_variant"), "yzxterm\n").unwrap();
+    let (_tmp, fixture) = prepare_terminal_variant_fixture("yzxterm");
 
     write_managed_config_toml(
         &fixture,
@@ -1092,10 +1069,7 @@ fn terminal_materialization_yzxterm_emoji_font_selects_child_config_root() {
 // Defends: mutable settings.jsonc can select the yzxterm child-owned emoji style without depending on a Home Manager launch env override.
 #[test]
 fn terminal_materialization_yzxterm_emoji_style_selects_child_config_root() {
-    let repo = repo_root();
-    let tmp = tempdir().unwrap();
-    let fixture = prepare_runtime_materialization_fixture(&repo, &tmp);
-    fs::write(fixture.runtime_dir.join("runtime_variant"), "yzxterm\n").unwrap();
+    let (_tmp, fixture) = prepare_terminal_variant_fixture("yzxterm");
 
     write_managed_config_toml(
         &fixture,
@@ -1127,10 +1101,7 @@ fn terminal_materialization_yzxterm_emoji_style_selects_child_config_root() {
 // Defends: invalid yzxterm emoji font preset names fail clearly instead of silently using the default package config.
 #[test]
 fn terminal_materialization_yzxterm_rejects_unknown_emoji_font() {
-    let repo = repo_root();
-    let tmp = tempdir().unwrap();
-    let fixture = prepare_runtime_materialization_fixture(&repo, &tmp);
-    fs::write(fixture.runtime_dir.join("runtime_variant"), "yzxterm\n").unwrap();
+    let (_tmp, fixture) = prepare_terminal_variant_fixture("yzxterm");
     write_managed_config_toml(&fixture, "[terminal]\n");
     write_snow_plain_cursor_sidecar(&fixture);
 
@@ -1152,10 +1123,7 @@ fn terminal_materialization_yzxterm_rejects_unknown_emoji_font() {
 // Regression: yzxterm shader activation must replace stale copied shader assets after a runtime update instead of reusing the old shader directory.
 #[test]
 fn terminal_materialization_yzxterm_shader_profile_replaces_stale_shader_assets() {
-    let repo = repo_root();
-    let tmp = tempdir().unwrap();
-    let fixture = prepare_runtime_materialization_fixture(&repo, &tmp);
-    fs::write(fixture.runtime_dir.join("runtime_variant"), "yzxterm\n").unwrap();
+    let (_tmp, fixture) = prepare_terminal_variant_fixture("yzxterm");
 
     write_managed_config_toml(&fixture, "[terminal]\n");
     write_forest_effect_cursor_sidecar(&fixture);
@@ -1187,10 +1155,7 @@ fn terminal_materialization_yzxterm_shader_profile_replaces_stale_shader_assets(
 // Defends: Kitty cursor fallback is controlled by the settings cursor registry's binary kitty_enable_cursor setting.
 #[test]
 fn terminal_materialization_uses_cursor_sidecar_for_kitty_toggle() {
-    let repo = repo_root();
-    let tmp = tempdir().unwrap();
-    let fixture = prepare_runtime_materialization_fixture(&repo, &tmp);
-    fs::write(fixture.runtime_dir.join("runtime_variant"), "kitty\n").unwrap();
+    let (_tmp, fixture) = prepare_terminal_variant_fixture("kitty");
 
     write_managed_config_toml(&fixture, "[terminal]\n");
     write_snow_plain_cursor_sidecar(&fixture);
