@@ -159,55 +159,33 @@ symbol-map = [{{ start = "1F000", end = "1FB00", font-family = "{family}" }}]
             )
         })
         .unwrap_or_default();
+    write_yzxterm_package_config(&root.join("config.toml"), &fonts, true);
+    write_yzxterm_package_config(&baseline_dir.join("config.toml"), &fonts, false);
+    write_yzxterm_package_config(&shader_profile_dir.join("config.toml"), &fonts, true);
+}
+
+fn write_yzxterm_package_config(path: &Path, fonts: &str, shader_profile: bool) {
+    let shader = if shader_profile {
+        "\ncustom-shader = [\"/nix/store/demo/cursor_trail_dusk.glsl\"]"
+    } else {
+        ""
+    };
+    let effects = if shader_profile {
+        "\n\n[effects]\ntrail-cursor = true"
+    } else {
+        ""
+    };
     fs::write(
-        root.join("config.toml"),
+        path,
         format!(
             r##"confirm-before-quit = false
 adaptive-theme = {{ dark = "yazelix-dark", light = "yazelix-light" }}
 {fonts}
 [renderer]
-backend = "Webgpu"
-custom-shader = ["/nix/store/demo/cursor_trail_dusk.glsl"]
+backend = "Webgpu"{shader}
 
 [window]
-decorations = "Disabled"
-
-[effects]
-trail-cursor = true
-"##
-        ),
-    )
-    .unwrap();
-    fs::write(
-        baseline_dir.join("config.toml"),
-        format!(
-            r##"confirm-before-quit = false
-adaptive-theme = {{ dark = "yazelix-dark", light = "yazelix-light" }}
-{fonts}
-[renderer]
-backend = "Webgpu"
-
-[window]
-decorations = "Disabled"
-"##
-        ),
-    )
-    .unwrap();
-    fs::write(
-        shader_profile_dir.join("config.toml"),
-        format!(
-            r##"confirm-before-quit = false
-adaptive-theme = {{ dark = "yazelix-dark", light = "yazelix-light" }}
-{fonts}
-[renderer]
-backend = "Webgpu"
-custom-shader = ["/nix/store/demo/cursor_trail_dusk.glsl"]
-
-[window]
-decorations = "Disabled"
-
-[effects]
-trail-cursor = true
+decorations = "Disabled"{effects}
 "##
         ),
     )
