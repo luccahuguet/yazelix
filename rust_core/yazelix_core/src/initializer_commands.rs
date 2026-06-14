@@ -22,9 +22,35 @@ struct ToolConfig {
     name: &'static str,
     required: bool,
     init_args: &'static [&'static str],
-    /// Optional shell name override for specific tools.
-    shell_override: Option<&'static str>,
 }
+
+const TOOL_CONFIGS: &[ToolConfig] = &[
+    ToolConfig {
+        name: "starship",
+        required: true,
+        init_args: &["init"],
+    },
+    ToolConfig {
+        name: "zoxide",
+        required: true,
+        init_args: &["init"],
+    },
+    ToolConfig {
+        name: "atuin",
+        required: false,
+        init_args: &["init"],
+    },
+    ToolConfig {
+        name: "mise",
+        required: false,
+        init_args: &["activate"],
+    },
+    ToolConfig {
+        name: "carapace",
+        required: false,
+        init_args: &["_carapace"],
+    },
+];
 
 #[derive(Debug, Clone, Serialize)]
 struct InitializerResult {
@@ -91,41 +117,6 @@ fn shell_initializer_dirs(home: &Path) -> Vec<ShellConfig> {
     ]
 }
 
-fn tool_configs() -> Vec<ToolConfig> {
-    vec![
-        ToolConfig {
-            name: "starship",
-            required: true,
-            init_args: &["init"],
-            shell_override: None,
-        },
-        ToolConfig {
-            name: "zoxide",
-            required: true,
-            init_args: &["init"],
-            shell_override: None,
-        },
-        ToolConfig {
-            name: "atuin",
-            required: false,
-            init_args: &["init"],
-            shell_override: None,
-        },
-        ToolConfig {
-            name: "mise",
-            required: false,
-            init_args: &["activate"],
-            shell_override: None,
-        },
-        ToolConfig {
-            name: "carapace",
-            required: false,
-            init_args: &["_carapace"],
-            shell_override: None,
-        },
-    ]
-}
-
 fn find_on_path(command: &str) -> bool {
     if let Ok(path_var) = std::env::var("PATH") {
         for entry in std::env::split_paths(&path_var) {
@@ -138,12 +129,11 @@ fn find_on_path(command: &str) -> bool {
 }
 
 fn run_tool_init(tool: &ToolConfig, shell_name: &str) -> Result<String, String> {
-    let effective_shell = tool.shell_override.unwrap_or(shell_name);
     let args: Vec<&str> = tool
         .init_args
         .iter()
         .copied()
-        .chain(std::iter::once(effective_shell))
+        .chain(std::iter::once(shell_name))
         .collect();
 
     let output = Command::new(tool.name)
@@ -265,7 +255,6 @@ fn generate_initializers(
         .into_iter()
         .filter(|s| shells_to_configure.iter().any(|wanted| wanted == s.name))
         .collect();
-    let tools = tool_configs();
     let mut all_results = Vec::new();
 
     for shell in &shells {
@@ -285,14 +274,13 @@ fn generate_initializers(
         let mut shell_results = Vec::new();
         let mut successful_files = Vec::new();
 
-        for tool in &tools {
+        for tool in TOOL_CONFIGS {
             let output_file = shell.dir.join(format!("{}_init.{}", tool.name, shell.ext));
             let effective_shell = shell
                 .tool_overrides
                 .iter()
                 .find(|(t, _)| *t == tool.name)
                 .map(|(_, s)| *s)
-                .or(tool.shell_override)
                 .unwrap_or(shell.name);
 
             if !find_on_path(tool.name) {
