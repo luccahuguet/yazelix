@@ -2,14 +2,12 @@ use lexopt::prelude::*;
 use serde::de::DeserializeOwned;
 use std::io::Write;
 use std::path::PathBuf;
-use yazelix_core::active_config_surface::resolve_active_config_paths;
 use yazelix_core::appearance_mode::APPEARANCE_MODE_DARK;
 use yazelix_core::control_plane::{
-    config_dir_from_env, config_override_from_env, config_state_compute_request_from_env,
+    config_override_from_env, config_state_compute_request_from_env,
     config_state_record_request_from_env, ghostty_materialization_request_from_env,
     read_yazelix_version_from_runtime, runtime_dir_from_env, runtime_env_request_from_env,
-    runtime_materialization_plan_request_from_env, state_dir_from_env,
-    terminal_materialization_request_from_env,
+    runtime_materialization_plan_request_from_env, terminal_materialization_request_from_env,
 };
 use yazelix_core::terminal_materialization::YzxtermProfile;
 use yazelix_core::terminal_variant::active_terminal_from_runtime_dir;
@@ -20,36 +18,30 @@ use yazelix_core::{
     RuntimeContractEvaluateRequest, RuntimeEnvComputeRequest, RuntimeMaterializationPlanRequest,
     RuntimeMaterializationRepairEvaluateRequest, RuntimeMaterializationRepairRunData,
     RuntimeOwnershipGraphRequest, RuntimeRepairDirective, SessionConfigSnapshotCreateRequest,
-    StartupFactsData, StartupHandoffCaptureRequest, StartupLaunchPreflightRequest,
-    TerminalMaterializationRequest, YaziMaterializationRequest, YaziRenderPlanRequest,
-    YzxExternBridgeSyncRequest, ZellijMaterializationRequest, ZellijRenderPlanRequest,
-    capture_startup_handoff_context, compute_config_state, compute_integration_facts_from_env,
+    StartupFactsData, StartupLaunchPreflightRequest, TerminalMaterializationRequest,
+    YaziMaterializationRequest, YaziRenderPlanRequest, YzxExternBridgeSyncRequest,
+    ZellijMaterializationRequest, ZellijRenderPlanRequest, compute_config_state,
     compute_popup_session_facts_from_env, compute_runtime_env, compute_runtime_ownership_graph,
     compute_startup_facts_from_env, compute_status_report, compute_yazi_render_plan,
-    compute_zellij_render_plan, current_release_headline, error_envelope,
-    evaluate_install_ownership_report, evaluate_runtime_contract,
-    evaluate_startup_launch_preflight, generate_ghostty_materialization,
+    compute_zellij_render_plan, error_envelope, evaluate_install_ownership_report,
+    evaluate_runtime_contract, evaluate_startup_launch_preflight, generate_ghostty_materialization,
     generate_helix_materialization, generate_terminal_materialization,
     generate_yazi_materialization, generate_zellij_materialization,
     install_ownership_request_from_env, install_ownership_request_from_env_with_runtime_dir,
-    launch_materialization_request_from_env, materialize_runtime_state,
-    maybe_show_first_run_upgrade_summary, normalize_config, plan_runtime_materialization,
-    prepare_launch_materialization, record_config_state, render_yzx_help,
-    repair_runtime_materialization, success_envelope, sync_yzx_extern_bridge,
+    launch_materialization_request_from_env, materialize_runtime_state, normalize_config,
+    plan_runtime_materialization, prepare_launch_materialization, record_config_state,
+    render_yzx_help, repair_runtime_materialization, success_envelope, sync_yzx_extern_bridge,
     write_session_config_snapshot_for_launch, yzx_command_metadata, yzx_command_metadata_data,
 };
 
 const CONFIG_NORMALIZE_COMMAND: &str = "config.normalize";
-const CONFIG_SURFACE_RESOLVE_COMMAND: &str = "config-surface.resolve";
 const CONFIG_STATE_COMPUTE_COMMAND: &str = "config-state.compute";
 const CONFIG_STATE_RECORD_COMMAND: &str = "config-state.record";
 const RUNTIME_CONTRACT_EVALUATE_COMMAND: &str = "runtime-contract.evaluate";
 const STARTUP_LAUNCH_PREFLIGHT_EVALUATE_COMMAND: &str = "startup-launch-preflight.evaluate";
 const RUNTIME_ENV_COMPUTE_COMMAND: &str = "runtime-env.compute";
-const INTEGRATION_FACTS_COMPUTE_COMMAND: &str = "integration-facts.compute";
 const POPUP_SESSION_FACTS_COMPUTE_COMMAND: &str = "popup-session-facts.compute";
 const STARTUP_FACTS_COMPUTE_COMMAND: &str = "startup-facts.compute";
-const STARTUP_HANDOFF_CAPTURE_COMMAND: &str = "startup-handoff.capture";
 const SESSION_CONFIG_SNAPSHOT_WRITE_COMMAND: &str = "session-config-snapshot.write";
 const RUNTIME_MATERIALIZATION_PLAN_COMMAND: &str = "runtime-materialization.plan";
 const RUNTIME_MATERIALIZATION_MATERIALIZE_COMMAND: &str = "runtime-materialization.materialize";
@@ -69,8 +61,6 @@ const YZX_COMMAND_METADATA_EXTERNS_COMMAND: &str = "yzx-command-metadata.externs
 const YZX_COMMAND_METADATA_SYNC_EXTERNS_COMMAND: &str = "yzx-command-metadata.sync-externs";
 const YZX_COMMAND_METADATA_HELP_COMMAND: &str = "yzx-command-metadata.help";
 const RUNTIME_OWNERSHIP_GRAPH_COMMAND: &str = "runtime-ownership.graph";
-const UPGRADE_SUMMARY_HEADLINE_COMMAND: &str = "upgrade-summary.headline";
-const UPGRADE_SUMMARY_FIRST_RUN_COMMAND: &str = "upgrade-summary.first-run";
 const UNKNOWN_COMMAND: &str = "unknown";
 
 struct RuntimeMaterializationRepairCommand {
@@ -244,7 +234,6 @@ macro_rules! standard_command_handlers {
 
 standard_command_handlers!(
     (CONFIG_NORMALIZE_COMMAND, run_config_normalize),
-    (CONFIG_SURFACE_RESOLVE_COMMAND, run_config_surface_resolve),
     (CONFIG_STATE_COMPUTE_COMMAND, run_config_state_compute),
     (CONFIG_STATE_RECORD_COMMAND, run_config_state_record),
     (
@@ -257,15 +246,10 @@ standard_command_handlers!(
     ),
     (RUNTIME_ENV_COMPUTE_COMMAND, run_runtime_env_compute),
     (
-        INTEGRATION_FACTS_COMPUTE_COMMAND,
-        run_integration_facts_compute
-    ),
-    (
         POPUP_SESSION_FACTS_COMPUTE_COMMAND,
         run_popup_session_facts_compute
     ),
     (STARTUP_FACTS_COMPUTE_COMMAND, run_startup_facts_compute),
-    (STARTUP_HANDOFF_CAPTURE_COMMAND, run_startup_handoff_capture),
     (
         SESSION_CONFIG_SNAPSHOT_WRITE_COMMAND,
         run_session_config_snapshot_write
@@ -332,14 +316,6 @@ standard_command_handlers!(
         run_yzx_command_metadata_help
     ),
     (RUNTIME_OWNERSHIP_GRAPH_COMMAND, run_runtime_ownership_graph),
-    (
-        UPGRADE_SUMMARY_HEADLINE_COMMAND,
-        run_upgrade_summary_headline
-    ),
-    (
-        UPGRADE_SUMMARY_FIRST_RUN_COMMAND,
-        run_upgrade_summary_first_run
-    ),
 );
 
 fn run() -> Result<(), Box<CommandError>> {
@@ -411,29 +387,6 @@ fn dispatch_helper_command(
             CoreError::usage(format!("Unsupported helper command: {command_name}")),
         )),
     }
-}
-
-fn run_upgrade_summary_headline(parser: lexopt::Parser) -> Result<(), CoreError> {
-    ensure_no_args(parser)?;
-    let runtime_dir = runtime_dir_from_env()?;
-    let version = read_yazelix_version_from_runtime(&runtime_dir)?;
-    let headline = current_release_headline(&runtime_dir, &version)?;
-    write_success_envelope(
-        UPGRADE_SUMMARY_HEADLINE_COMMAND,
-        serde_json::json!({
-            "version": version,
-            "headline": headline,
-        }),
-    )
-}
-
-fn run_upgrade_summary_first_run(parser: lexopt::Parser) -> Result<(), CoreError> {
-    ensure_no_args(parser)?;
-    let runtime_dir = runtime_dir_from_env()?;
-    let state_dir = state_dir_from_env()?;
-    let version = read_yazelix_version_from_runtime(&runtime_dir)?;
-    let data = maybe_show_first_run_upgrade_summary(&runtime_dir, &state_dir, &version)?;
-    write_success_envelope(UPGRADE_SUMMARY_FIRST_RUN_COMMAND, data)
 }
 
 fn run_yzx_command_metadata_list(parser: lexopt::Parser) -> Result<(), CoreError> {
@@ -532,36 +485,6 @@ fn run_config_normalize(mut parser: lexopt::Parser) -> Result<(), CoreError> {
     };
     let data = normalize_config(&request)?;
     write_success_envelope(CONFIG_NORMALIZE_COMMAND, data)
-}
-
-fn run_config_surface_resolve(mut parser: lexopt::Parser) -> Result<(), CoreError> {
-    let mut runtime_dir: Option<PathBuf> = None;
-    let mut config_dir: Option<PathBuf> = None;
-    let mut config_override: Option<String> = None;
-
-    while let Some(arg) = parser
-        .next()
-        .map_err(|error| CoreError::usage(error.to_string()))?
-    {
-        match arg {
-            Long("runtime-dir") => runtime_dir = Some(parser_path_value(&mut parser)?),
-            Long("config-dir") => config_dir = Some(parser_path_value(&mut parser)?),
-            Long("config-override") => config_override = Some(parser_string_value(&mut parser)?),
-            _ => return Err(CoreError::usage(format!("Unexpected argument: {arg:?}"))),
-        }
-    }
-
-    let runtime_dir = match runtime_dir {
-        Some(path) => path,
-        None => runtime_dir_from_env()?,
-    };
-    let config_dir = match config_dir {
-        Some(path) => path,
-        None => config_dir_from_env()?,
-    };
-    let config_override = config_override.or_else(config_override_from_env);
-    let data = resolve_active_config_paths(&runtime_dir, &config_dir, config_override.as_deref())?;
-    write_success_envelope(CONFIG_SURFACE_RESOLVE_COMMAND, data)
 }
 
 fn run_config_state_compute(parser: lexopt::Parser) -> Result<(), CoreError> {
@@ -1103,12 +1026,6 @@ fn runtime_env_request_from_args(
     deserialize_json_request(&request_json, "runtime-env")
 }
 
-fn run_integration_facts_compute(parser: lexopt::Parser) -> Result<(), CoreError> {
-    ensure_no_args(parser)?;
-    let data = compute_integration_facts_from_env()?;
-    write_success_envelope(INTEGRATION_FACTS_COMPUTE_COMMAND, data)
-}
-
 fn run_popup_session_facts_compute(parser: lexopt::Parser) -> Result<(), CoreError> {
     ensure_no_args(parser)?;
     let data: PopupSessionFactsData = compute_popup_session_facts_from_env()?;
@@ -1119,14 +1036,6 @@ fn run_startup_facts_compute(parser: lexopt::Parser) -> Result<(), CoreError> {
     ensure_no_args(parser)?;
     let data: StartupFactsData = compute_startup_facts_from_env()?;
     write_success_envelope(STARTUP_FACTS_COMPUTE_COMMAND, data)
-}
-
-fn run_startup_handoff_capture(mut parser: lexopt::Parser) -> Result<(), CoreError> {
-    let request_json = take_request_json(&mut parser)?;
-    let request: StartupHandoffCaptureRequest =
-        deserialize_json_request(&request_json, "startup-handoff.capture")?;
-    let data = capture_startup_handoff_context(&request)?;
-    write_success_envelope(STARTUP_HANDOFF_CAPTURE_COMMAND, data)
 }
 
 fn run_session_config_snapshot_write(mut parser: lexopt::Parser) -> Result<(), CoreError> {

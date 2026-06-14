@@ -7,8 +7,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use tempfile::{TempDir, tempdir};
 use yazelix_core::{
-    ghostty_cursor_registry::CursorRegistry,
-    settings_surface::{read_settings_jsonc_value, render_default_settings_jsonc},
+    ghostty_cursor_registry::CursorRegistry, settings_surface::render_default_settings_jsonc,
     user_config_paths::shared_cursor_config,
 };
 use yazelix_cursors::render_cursor_settings_jsonc;
@@ -19,11 +18,6 @@ use support::commands::yzx_core_command;
 use support::envelopes::{error_envelope, ok_envelope};
 use support::fixtures::{repo_root, write_runtime_contract_assets};
 
-fn prepare_doctor_config_runtime_fixture(repo: &Path, tmp: &TempDir) -> PathBuf {
-    let runtime_dir = tmp.path().join("runtime");
-    write_runtime_contract_assets(repo, &runtime_dir);
-    runtime_dir
-}
 struct RuntimeMaterializationFixture {
     home_dir: PathBuf,
     runtime_dir: PathBuf,
@@ -475,41 +469,6 @@ fn config_normalize_prints_one_error_json_envelope() {
     assert_eq!(envelope["command"], "config.normalize");
     assert_eq!(envelope["error"]["class"], "config");
     assert_eq!(envelope["error"]["code"], "unsupported_config");
-}
-
-// Defends: config-surface.resolve bootstraps the canonical managed config through the Rust active-config owner.
-// Contract: CRCP-004
-#[test]
-fn config_surface_resolve_bootstraps_managed_config() {
-    let repo = repo_root();
-    let tmp = tempdir().unwrap();
-    let runtime_dir = prepare_doctor_config_runtime_fixture(&repo, &tmp);
-    let config_dir = tmp.path().join("config");
-
-    let output = Command::cargo_bin("yzx_core")
-        .unwrap()
-        .arg("config-surface.resolve")
-        .arg("--runtime-dir")
-        .arg(&runtime_dir)
-        .arg("--config-dir")
-        .arg(&config_dir)
-        .output()
-        .unwrap();
-
-    assert!(output.status.success());
-    let envelope: Value = serde_json::from_slice(&output.stdout).unwrap();
-    assert_eq!(envelope["command"], "config-surface.resolve");
-    assert_eq!(envelope["status"], "ok");
-
-    let managed_config = config_dir.join("settings.jsonc");
-    assert_eq!(
-        envelope["data"]["config_file"],
-        managed_config.to_string_lossy().to_string()
-    );
-    let managed_value = read_settings_jsonc_value(&managed_config).unwrap();
-    assert!(managed_value.get("core").is_some());
-    assert!(managed_value.get("cursors").is_none());
-    assert!(shared_cursor_config(&config_dir).exists());
 }
 
 // Defends: config.normalize rejects removed config surfaces without mutating the active config file or creating backup churn.

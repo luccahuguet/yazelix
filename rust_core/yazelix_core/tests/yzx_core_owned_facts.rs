@@ -7,71 +7,7 @@ use support::commands::yzx_core_command_in_fixture;
 use support::envelopes::ok_envelope;
 use support::fixtures::{
     managed_config_fixture, write_session_config_snapshot, write_session_config_snapshot_with_id,
-    write_session_facts_cache,
 };
-
-// Defends: integration-facts.compute returns the Rust-owned sidebar, editor-kind, and Yazi command payload directly.
-// Contract: WSS-005, SOE-004
-#[test]
-fn integration_facts_compute_reports_sidebar_editor_and_yazi_payload() {
-    let fixture = managed_config_fixture(
-        r#"[editor]
-command = "nvim"
-hide_sidebar_on_file_open = true
-
-[yazi]
-command = "yy"
-ya_command = "ya-test"
-"#,
-    );
-
-    let output = yzx_core_command_in_fixture(&fixture, "integration-facts.compute")
-        .output()
-        .unwrap();
-    let envelope: Value = ok_envelope(&output);
-
-    assert_eq!(envelope["command"], "integration-facts.compute");
-    assert_eq!(envelope["data"]["hide_sidebar_on_file_open"], true);
-    assert_eq!(envelope["data"]["managed_editor_kind"], "neovim");
-    assert_eq!(envelope["data"]["yazi_command"], "yy");
-    assert_eq!(envelope["data"]["ya_command"], "ya-test");
-}
-
-// Regression: integration facts come from the per-session snapshot so an older running window survives newer config fields.
-// Contract: WSS-005, SOE-004
-#[test]
-fn integration_facts_compute_prefers_session_snapshot_over_stale_config() {
-    let fixture = managed_config_fixture(
-        r#"[editor]
-command = "vim"
-
-[yazi]
-command = "config-yazi"
-ya_command = "config-ya"
-
-[terminal]
-ghostty_trail_color = "random"
-"#,
-    );
-    let snapshot = write_session_config_snapshot(
-        &fixture,
-        &[
-            ("editor_command", serde_json::json!("nvim")),
-            ("yazi_command", serde_json::json!("cached-yazi")),
-            ("ya_command", serde_json::json!("cached-ya")),
-        ],
-    );
-
-    let output = yzx_core_command_in_fixture(&fixture, "integration-facts.compute")
-        .env("YAZELIX_SESSION_CONFIG_PATH", snapshot)
-        .output()
-        .unwrap();
-    let envelope: Value = ok_envelope(&output);
-
-    assert_eq!(envelope["data"]["managed_editor_kind"], "neovim");
-    assert_eq!(envelope["data"]["yazi_command"], "cached-yazi");
-    assert_eq!(envelope["data"]["ya_command"], "cached-ya");
-}
 
 // Defends: popup-session-facts.compute keeps popup geometry under one Rust-owned facts surface for transient popup requests.
 #[test]
@@ -159,35 +95,6 @@ ghostty_trail_color = "random"
 
     assert_eq!(old_envelope["data"]["popup_width_percent"], 41);
     assert_eq!(new_envelope["data"]["popup_width_percent"], 77);
-}
-
-// Regression: already-open windows from the pre-snapshot implementation can still provide their legacy facts cache.
-#[test]
-fn integration_facts_compute_accepts_legacy_facts_cache_for_already_open_windows() {
-    let fixture = managed_config_fixture(
-        r#"[editor]
-command = "vim"
-
-[terminal]
-ghostty_trail_color = "random"
-"#,
-    );
-    let cache = write_session_facts_cache(
-        &fixture,
-        &[
-            ("editor_command", serde_json::json!("nvim")),
-            ("yazi_command", serde_json::json!("legacy-yazi")),
-        ],
-    );
-
-    let output = yzx_core_command_in_fixture(&fixture, "integration-facts.compute")
-        .env("YAZELIX_SESSION_FACTS_PATH", cache)
-        .output()
-        .unwrap();
-    let envelope: Value = ok_envelope(&output);
-
-    assert_eq!(envelope["data"]["managed_editor_kind"], "neovim");
-    assert_eq!(envelope["data"]["yazi_command"], "legacy-yazi");
 }
 
 // Defends: startup-facts.compute returns retained welcome/session facts and the package-selected terminal without Nushell-side config parsing.
