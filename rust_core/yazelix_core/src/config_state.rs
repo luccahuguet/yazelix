@@ -392,12 +392,7 @@ fn write_json_atomic(path: &Path, value: &JsonValue) -> Result<(), CoreError> {
 }
 
 fn sha256_hex(input: &str) -> String {
-    let digest = Sha256::digest(input.as_bytes());
-    let mut output = String::with_capacity(digest.len() * 2);
-    for byte in digest {
-        output.push_str(&format!("{byte:02x}"));
-    }
-    output
+    format!("{:x}", Sha256::digest(input.as_bytes()))
 }
 
 fn path_to_string(path: &Path) -> String {

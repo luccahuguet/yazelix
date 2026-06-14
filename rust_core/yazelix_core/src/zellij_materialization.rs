@@ -2457,53 +2457,48 @@ ui { pane_frames { hide_session_name true } }
     // Defends: managed zellij.kdl remains a native settings sidecar, not a second keybinding owner.
     #[test]
     fn managed_zellij_keybind_blocks_are_rejected() {
-        let err = validate_base_config_keybinding_policy(&ZellijBaseConfigSource {
-            source: "managed".to_string(),
-            path: Some(PathBuf::from("/home/user/.config/yazelix/zellij.kdl")),
-            content: r#"keybinds clear-defaults=true {
+        let cases: &[(&str, &str, &[&str])] = &[
+            (
+                r#"keybinds clear-defaults=true {
     locked { bind "Ctrl `" { SwitchToMode "Normal"; } }
 }
-"#
-            .to_string(),
-        })
-        .unwrap_err();
-
-        match err {
-            CoreError::Classified {
-                code,
-                message,
-                remediation,
-                ..
-            } => {
-                assert_eq!(code, "managed_zellij_keybinds_unsupported");
-                assert!(message.contains("keybinds clear-defaults=true"));
-                assert!(remediation.contains("zellij.keybindings"));
-                assert!(remediation.contains("settings.jsonc"));
-            }
-            other => panic!("unexpected error: {other:?}"),
-        }
-    }
-
-    // Defends: even ordinary managed keybinds blocks are rejected so managed config cannot bypass generated workspace controls.
-    #[test]
-    fn managed_zellij_plain_keybind_blocks_are_rejected() {
-        let err = validate_base_config_keybinding_policy(&ZellijBaseConfigSource {
-            source: "managed".to_string(),
-            path: Some(PathBuf::from("/home/user/.config/yazelix/zellij.kdl")),
-            content: r#"keybinds {
+"#,
+                "keybinds clear-defaults=true",
+                &["zellij.keybindings", "settings.jsonc"],
+            ),
+            (
+                r#"keybinds {
     normal { bind "Alt t" { ToggleFloatingPanes; } }
 }
-"#
-            .to_string(),
-        })
-        .unwrap_err();
+"#,
+                "`keybinds` block",
+                &[],
+            ),
+        ];
 
-        match err {
-            CoreError::Classified { code, message, .. } => {
-                assert_eq!(code, "managed_zellij_keybinds_unsupported");
-                assert!(message.contains("`keybinds` block"));
+        for &(content, message_fragment, remediation_fragments) in cases {
+            let err = validate_base_config_keybinding_policy(&ZellijBaseConfigSource {
+                source: "managed".to_string(),
+                path: Some(PathBuf::from("/home/user/.config/yazelix/zellij.kdl")),
+                content: content.to_string(),
+            })
+            .unwrap_err();
+
+            match err {
+                CoreError::Classified {
+                    code,
+                    message,
+                    remediation,
+                    ..
+                } => {
+                    assert_eq!(code, "managed_zellij_keybinds_unsupported");
+                    assert!(message.contains(message_fragment));
+                    for expected in remediation_fragments {
+                        assert!(remediation.contains(expected));
+                    }
+                }
+                other => panic!("unexpected error: {other:?}"),
             }
-            other => panic!("unexpected error: {other:?}"),
         }
     }
 

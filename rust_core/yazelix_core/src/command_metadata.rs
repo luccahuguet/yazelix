@@ -419,12 +419,7 @@ fn write_text_atomic(path: &Path, content: &str) -> Result<(), CoreError> {
 }
 
 fn sha256_hex(input: &[u8]) -> String {
-    let digest = Sha256::digest(input);
-    let mut output = String::with_capacity(digest.len() * 2);
-    for byte in digest {
-        output.push_str(&format!("{byte:02x}"));
-    }
-    output
+    format!("{:x}", Sha256::digest(input))
 }
 
 fn system_time_string(value: SystemTime) -> Option<String> {
