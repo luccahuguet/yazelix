@@ -4,6 +4,15 @@ Short, upgrade-facing release notes live here. The longer narrative history rema
 
 ## Unreleased
 
+Post-v17.6 work in progress
+
+Upgrade impact: no user action required
+
+Highlights:
+- Reserved for post-release changes after v17.6 lands.
+
+## v17.6 - 2026-06-13
+
 Upstream Yazi, adaptive appearance, and release hardening
 
 Upgrade impact: manual action may be required
@@ -26,6 +35,7 @@ Highlights:
 
 Manual action:
 - Move existing cursor settings from `~/.config/yazelix_ghostty_cursors/settings.jsonc` to `~/.config/yazelix_cursors/settings.jsonc`, or run `yzc init` / relaunch Yazelix to create a fresh cursor settings file
+
 
 ## v17.5 - 2026-06-07
 
