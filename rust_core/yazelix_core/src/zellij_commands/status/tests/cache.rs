@@ -29,7 +29,6 @@ fn status_cache_round_trip_renders_cached_workspace_fact() {
 }
 
 // Defends: heartbeat updates merge into the window-local cache without replacing status-bus or usage facts.
-// Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 #[test]
 fn status_cache_heartbeat_merge_preserves_cached_session_facts() {
     let mut cache = build_status_bar_cache_at(status_cache_test_status_bus(), 1_000);

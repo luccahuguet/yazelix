@@ -645,7 +645,6 @@ fn yazi_keybinding_details_use_action_registry_metadata() {
 }
 
 // Defends: machine-readable apply modes from main_config_contract.toml reach clear user-facing takes-effect labels.
-// Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 #[test]
 fn model_exposes_apply_statuses_from_contract() {
     let runtime = tempdir().expect("runtime");

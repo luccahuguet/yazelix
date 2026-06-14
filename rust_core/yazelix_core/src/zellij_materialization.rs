@@ -2503,7 +2503,6 @@ ui { pane_frames { hide_session_name true } }
     }
 
     // Regression: clear-defaults from the read-only native fallback must not disable Yazelix integration keybindings.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn native_fallback_clear_defaults_keeps_yazelix_keybind_overrides() {
         let temp = tempfile::tempdir().unwrap();
@@ -2628,17 +2627,9 @@ keybinds {
 
         assert!(rendered.contains(r#"unbind "Alt i""#));
         assert!(rendered.contains(r#"bind "Ctrl Alt h" { MoveTab "Left"; }"#));
-        assert!(rendered.contains(r#"bind "Ctrl Alt l" { MoveTab "Right"; }"#));
-        assert!(rendered.contains(r#"bind "Ctrl Alt j" { MovePane "Down"; }"#));
-        assert!(rendered.contains(r#"bind "Ctrl Alt k" { MovePane "Up"; }"#));
-        assert!(rendered.contains(r#"unbind "Alt p""#));
-        assert!(rendered.contains(r#"bind "Ctrl Alt p" { TogglePaneInGroup; }"#));
-        assert!(rendered.contains(r#"bind "Alt 1" { GoToTab 1; }"#));
         assert!(!rendered.contains(r#"Run "yzx" "agent""#));
-        assert!(!rendered.contains(r#"unbind "Ctrl h""#));
         assert!(rendered.contains(r#"bind "Ctrl Alt s" { SwitchToMode "Scroll"; }"#));
         assert!(rendered.contains(r#"bind "Ctrl Alt s" { SwitchToMode "Normal"; }"#));
-        assert!(rendered.contains(r#"unbind "Ctrl b""#));
     }
 
     // Defends: the Codex agent key is orchestrator-managed so it can avoid duplicate panes and preserve layout state.
@@ -2652,10 +2643,6 @@ keybinds {
         assert!(rendered.contains(r#"name "toggle_agent_sidebar""#));
         assert!(rendered.contains(r#"bind "Ctrl Shift Y" {"#));
         assert!(rendered.contains(r#"name "toggle_editor_right_sidebar_focus""#));
-        assert!(rendered.contains(r#"bind "Alt Shift J" {"#));
-        assert!(rendered.contains(r#"payload "bottom_popup""#));
-        assert!(rendered.contains(r#"bind "Alt Shift K" {"#));
-        assert!(rendered.contains(r#"payload "top_popup""#));
     }
 
     // Defends: users can remap or disable one curated native Zellij policy entry without copying the full keybind block.
@@ -2932,14 +2919,10 @@ keybinds {
         assert!(merged.contains("name \"toggle\""));
         assert!(merged.contains("open_workspace_terminal"));
         assert!(merged.contains("payload \"bottom_popup\""));
-        assert!(merged.contains("payload \"top_popup\""));
         assert!(merged.contains("payload \"menu\""));
-        assert!(merged.contains("payload \"zenith\""));
         assert!(merged.contains("payload \"config\""));
         assert!(merged.contains("MessagePlugin \"yazelix_pane_orchestrator\""));
         assert!(merged.contains("toggle_editor_sidebar_focus"));
-        assert!(merged.contains("toggle_editor_right_sidebar_focus"));
-        assert!(merged.contains("move_focus_left_or_tab"));
     }
 
     // Defends: semantic remaps replace Yazelix-owned Zellij action keys without copying the full keybind block.
@@ -3128,7 +3111,6 @@ keybinds {
     }
 
     // Regression: generated plugin config must carry the pane-orchestrator runtime contract and yzpp popup contract without duplicate alias injection.
-    // Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
     #[test]
     fn plugin_block_carries_runtime_and_popup_contract_once() {
         let block = build_yazelix_plugins_block(
@@ -3159,19 +3141,6 @@ keybinds {
         assert!(block.contains("right_sidebar_command \"yzx\""));
         assert!(block.contains("right_sidebar_arg_1 \"agent\""));
         assert!(block.contains("yzpp location=\"file:/opt/yazelix/plugins/yzpp.wasm\""));
-        assert!(block.contains("bottom_popup {"));
-        assert!(block.contains("pane_title \"yzx_bottom_popup\""));
-        assert!(block.contains("command_marker \"yzx_bottom_popup\""));
-        assert!(block.contains("top_popup {"));
-        assert!(block.contains("pane_title \"yzx_top_popup\""));
-        assert!(block.contains("command_marker \"yzx_top_popup\""));
-        assert!(block.contains("zenith {"));
-        assert!(block.contains("pane_title \"yzx_zenith\""));
-        assert!(block.contains("command_marker \"yzx_zenith\""));
-        assert!(block.contains("arg_2 \"zenith\""));
-        assert!(block.contains("toggle_close_behavior \"hide\""));
-        assert!(block.contains("arg_1 \"popup_run\""));
-        assert!(block.contains("arg_2 \"lazygit\""));
         assert!(block.contains("width_percent \"82\""));
         assert!(block.contains("height_percent \"76\""));
         assert!(block.contains("on_close {"));

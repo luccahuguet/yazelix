@@ -333,7 +333,6 @@ fn yzx_control_popup_without_program_errors_clearly() {
 }
 
 // Defends: explicit yzx popup program requests run through the Yazelix runtime wrapper and attach the sidebar refresh close hook.
-// Strength: defect=2 behavior=2 resilience=1 cost=1 uniqueness=2 total=8/10
 #[test]
 fn yzx_control_popup_explicit_program_opens_through_yzpp_raw_request() {
     let fixture = managed_config_fixture("");
