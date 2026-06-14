@@ -16,7 +16,7 @@ let
     rio = {
       desktop_label = "Rio";
       kitty_passthrough = true;
-      description = "packaged vanilla Rio terminal with generated Rio config and the Yazelix Zellij Kitty graphics bridge";
+      description = "Rio-compatible Yazelix Terminal child package path with generated Rio config and the Yazelix Zellij Kitty graphics bridge";
     };
     yzxterm = {
       desktop_label = "Yzxterm";

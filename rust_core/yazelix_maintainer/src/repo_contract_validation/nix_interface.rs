@@ -197,6 +197,18 @@ pub fn validate_nix_customization_api(repo_root: &Path) -> Result<ValidationRepo
     );
     require_json_bool(
         object,
+        "rio_runtime_uses_child_rio_compat_command",
+        "Rio runtime must derive its rio command from the terminal child package metadata",
+        &mut report.errors,
+    );
+    require_json_bool(
+        object,
+        "rio_runtime_rejects_missing_child_metadata",
+        "Rio runtime must reject terminal child packages without yzxtermPackageMetadata",
+        &mut report.errors,
+    );
+    require_json_bool(
+        object,
         "yzxterm_fast_child_metadata_marks_unchecked",
         "yzxterm fast child package metadata must mark the package as fast and unchecked",
         &mut report.errors,
@@ -450,12 +462,26 @@ fn build_nix_customization_api_expr(repo_root: &Path) -> String {
     runtimeVariant = "yzxterm";
     yazelixTerminalPackage = fakeYzxtermPackage;
   }};
+  rioOverrideRegistry = import "{}/packaging/runtime_tool_registry.nix" {{
+    inherit pkgs;
+    runtimeVariant = "rio";
+    yazelixTerminalPackage = fakeYzxtermPackage;
+  }};
   invalidYzxtermPackageRegistry = builtins.tryEval (builtins.concatStringsSep "," ((import "{}/packaging/runtime_tool_registry.nix" {{
     inherit pkgs;
     runtimeVariant = "yzxterm";
     yazelixTerminalPackage = invalidYzxtermPackage;
+  }}).exportedCommands));
+  invalidRioPackageRegistry = builtins.tryEval (builtins.concatStringsSep "," ((import "{}/packaging/runtime_tool_registry.nix" {{
+    inherit pkgs;
+    runtimeVariant = "rio";
+    yazelixTerminalPackage = invalidYzxtermPackage;
   }}).exportedCommands));"#,
-            repo_root_literal, repo_root_literal, repo_root_literal
+            repo_root_literal,
+            repo_root_literal,
+            repo_root_literal,
+            repo_root_literal,
+            repo_root_literal
         ),
         "  yzxtermFastChildMetadata = flake.inputs.yazelixTerminal.packages.${system}.yazelix-terminal-fast.passthru.yzxtermPackageMetadata or {};".to_string(),
         "  yzxtermReleaseChildMetadata = flake.inputs.yazelixTerminal.packages.${system}.yazelix-terminal.passthru.yzxtermPackageMetadata or {};".to_string(),
@@ -548,6 +574,8 @@ fn build_nix_customization_api_expr(repo_root: &Path) -> String {
   yzxterm_package_override_is_yzxterm_scoped = ghosttyRegistryWithInvalidYzxtermOverride.manifest.terminal.commands == [ "ghostty" ];
   yzxterm_package_override_uses_package_metadata = yzxtermOverrideRegistry.terminalPackageMetadata.package_name == "validator-yazelix-terminal-fast" && builtins.elem "validator-yazelix-terminal-desktop" yzxtermOverrideRegistry.exportedCommands && yzxtermOverrideRegistry.terminalPackageRuntimeIdentity.package_profile == "yzxterm-fast" && yzxtermOverrideRegistry.terminalPackageRuntimeIdentity.yzxterm_terminal_supported_appearance_modes == [ "dark" "light" "auto" ] && yzxtermOverrideRegistry.terminalPackageRuntimeIdentity.yzxterm_terminal_default_appearance_mode == "dark";
   yzxterm_package_override_rejects_missing_metadata = !invalidYzxtermPackageRegistry.success;
+  rio_runtime_uses_child_rio_compat_command = rioOverrideRegistry.terminalPackageMetadata.package_name == "validator-yazelix-terminal-fast" && rioOverrideRegistry.manifest.terminal.commands == [ "rio" ] && builtins.elem "rio" rioOverrideRegistry.exportedCommands && rioOverrideRegistry.terminalPackageRuntimeIdentity == {};
+  rio_runtime_rejects_missing_child_metadata = !invalidRioPackageRegistry.success;
   yzxterm_fast_child_metadata_marks_unchecked = (yzxtermFastChildMetadata.package_profile or "") == "fast" && (yzxtermFastChildMetadata.checked_package or true) == false && (yzxtermFastChildMetadata.supported_appearance_modes or []) == [ "dark" "light" "auto" ] && (yzxtermFastChildMetadata.default_appearance_mode or "") == "dark" && (yzxtermFastChildMetadata.wrapper_env.appearance or "") == "YAZELIX_TERMINAL_APPEARANCE";
   yzxterm_release_child_metadata_marks_checked = (yzxtermReleaseChildMetadata.package_profile or "") == "release" && (yzxtermReleaseChildMetadata.checked_package or false) == true && (yzxtermReleaseChildMetadata.supported_appearance_modes or []) == [ "dark" "light" "auto" ] && (yzxtermReleaseChildMetadata.default_appearance_mode or "") == "dark" && (yzxtermReleaseChildMetadata.wrapper_env.appearance or "") == "YAZELIX_TERMINAL_APPEARANCE";"#
             .to_string(),

@@ -1025,7 +1025,7 @@ mod tests {
         );
     }
 
-    // Defends: vanilla Rio uses Rio's supported RIO_CONFIG_HOME lookup instead of ambient host config or yzxterm-only env.
+    // Defends: Rio-compatible launch uses RIO_CONFIG_HOME instead of ambient host config or yzxterm-only env.
     #[test]
     fn rio_process_boundary_env_points_at_selected_config_dir() {
         let env = rio_process_boundary_env(Path::new(
@@ -1042,7 +1042,7 @@ mod tests {
         );
     }
 
-    // Defends: vanilla Rio launches through Rio's own CLI shape instead of yzxterm-only flags.
+    // Defends: Rio-compatible launch keeps Rio's CLI shape instead of yzxterm-only flags.
     #[test]
     fn rio_launch_argv_uses_selected_config_and_working_dir() {
         let tmp = tempfile::TempDir::new().unwrap();
