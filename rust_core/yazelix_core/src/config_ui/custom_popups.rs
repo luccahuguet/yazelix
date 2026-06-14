@@ -85,7 +85,7 @@ fn push_custom_popup_rows(
     default: Option<&ConfigUiCustomPopup>,
     popup: &ConfigUiCustomPopup,
 ) {
-    let overview_path = custom_popup_overview_path(&popup.id);
+    let overview_path = format!("{CUSTOM_POPUPS_FIELD_PATH}.{}", popup.id);
     let current_overview = current.map(custom_popup_value);
     let default_overview = default.map(custom_popup_value);
     fields.push(build_field_row(
@@ -303,7 +303,8 @@ pub(super) fn custom_popup_list_value_after_write(
     let Some(path) = custom_popup_path(setting_path) else {
         return Ok(None);
     };
-    let mut popups = custom_popup_effective_list(root, default_value);
+    let current = get_json_path(root, CUSTOM_POPUPS_FIELD_PATH);
+    let mut popups = custom_popup_list(current.or(Some(default_value)));
     match path {
         CustomPopupPath::Add => {
             let id = string_value(value, setting_path)?.trim().to_string();
@@ -372,7 +373,8 @@ pub(super) fn custom_popup_list_value_after_unset(
             json!({ "path": setting_path }),
         ));
     };
-    let mut popups = custom_popup_effective_list(root, default_value);
+    let current = get_json_path(root, CUSTOM_POPUPS_FIELD_PATH);
+    let mut popups = custom_popup_list(current.or(Some(default_value)));
     let original_len = popups.len();
     popups.retain(|popup| popup.id != id);
     if popups.len() == original_len {
@@ -385,14 +387,6 @@ pub(super) fn custom_popup_list_value_after_unset(
         ));
     }
     Ok(Some(custom_popup_list_value(&popups)))
-}
-
-fn custom_popup_effective_list(
-    root: &JsonValue,
-    default_value: &JsonValue,
-) -> Vec<ConfigUiCustomPopup> {
-    let current = get_json_path(root, CUSTOM_POPUPS_FIELD_PATH);
-    custom_popup_list(current.or(Some(default_value)))
 }
 
 fn custom_popup_list_from_field(field: &ConfigUiField) -> Vec<ConfigUiCustomPopup> {
@@ -501,10 +495,6 @@ fn custom_popup_value(popup: &ConfigUiCustomPopup) -> JsonValue {
 
 fn string_list_value(values: &[String]) -> JsonValue {
     JsonValue::Array(values.iter().cloned().map(JsonValue::String).collect())
-}
-
-fn custom_popup_overview_path(id: &str) -> String {
-    format!("{CUSTOM_POPUPS_FIELD_PATH}.{id}")
 }
 
 fn string_value<'a>(value: &'a JsonValue, setting_path: &str) -> Result<&'a str, CoreError> {
