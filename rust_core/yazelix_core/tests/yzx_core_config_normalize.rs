@@ -407,6 +407,41 @@ fn runtime_materialization_command(
         .env("YAZELIX_RUNTIME_DIR", &fixture.runtime_dir);
     command
 }
+
+fn generate_terminal_materialization_with(
+    fixture: &RuntimeMaterializationFixture,
+    configure: impl FnOnce(&mut Command),
+) -> std::process::Output {
+    let mut command = runtime_materialization_command(fixture, "terminal-materialization.generate");
+    configure(&mut command);
+    let output = command.arg("--from-env").output().unwrap();
+    if !output.status.success() {
+        panic!(
+            "stdout={}\nstderr={}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    assert!(output.stderr.is_empty());
+    output
+}
+
+fn generate_terminal_materialization(
+    fixture: &RuntimeMaterializationFixture,
+) -> std::process::Output {
+    generate_terminal_materialization_with(fixture, |_| {})
+}
+
+fn generate_terminal_materialization_clean_terminal_env(
+    fixture: &RuntimeMaterializationFixture,
+) -> std::process::Output {
+    generate_terminal_materialization_with(fixture, |command| {
+        command
+            .env_remove("YAZELIX_TERMINAL_PROFILE")
+            .env_remove("YAZELIX_TERMINAL_EFFECTS")
+            .env_remove("YAZELIX_TERMINAL_EMOJI_FONT");
+    })
+}
 // Defends: runtime-materialization.repair --summary keeps the Home Manager activation path human-readable instead of dumping the full JSON envelope.
 #[test]
 fn runtime_materialization_repair_summary_prints_one_human_line() {
@@ -501,22 +536,7 @@ color = "#3bd17a"
 "##,
     );
 
-    let output = runtime_materialization_command(&fixture, "terminal-materialization.generate")
-        .arg("--from-env")
-        .env_remove("YAZELIX_TERMINAL_PROFILE")
-        .env_remove("YAZELIX_TERMINAL_EFFECTS")
-        .env_remove("YAZELIX_TERMINAL_EMOJI_FONT")
-        .output()
-        .unwrap();
-
-    if !output.status.success() {
-        panic!(
-            "stdout={}\nstderr={}",
-            String::from_utf8_lossy(&output.stdout),
-            String::from_utf8_lossy(&output.stderr)
-        );
-    }
-    assert!(output.stderr.is_empty());
+    let output = generate_terminal_materialization_clean_terminal_env(&fixture);
 
     let envelope: Value = serde_json::from_slice(&output.stdout).unwrap();
     assert_eq!(envelope["command"], "terminal-materialization.generate");
@@ -581,19 +601,7 @@ fn terminal_materialization_ghostty_auto_appearance_writes_theme_pair() {
     );
     write_basic_cursor_sidecar(&fixture, "#3bd17a");
 
-    let output = runtime_materialization_command(&fixture, "terminal-materialization.generate")
-        .arg("--from-env")
-        .output()
-        .unwrap();
-
-    if !output.status.success() {
-        panic!(
-            "stdout={}\nstderr={}",
-            String::from_utf8_lossy(&output.stdout),
-            String::from_utf8_lossy(&output.stderr)
-        );
-    }
-    assert!(output.stderr.is_empty());
+    generate_terminal_materialization(&fixture);
 
     let ghostty_config = fs::read_to_string(
         fixture
@@ -641,22 +649,7 @@ color = "#ffb929"
 "##,
     );
 
-    let output = runtime_materialization_command(&fixture, "terminal-materialization.generate")
-        .arg("--from-env")
-        .env_remove("YAZELIX_TERMINAL_PROFILE")
-        .env_remove("YAZELIX_TERMINAL_EFFECTS")
-        .env_remove("YAZELIX_TERMINAL_EMOJI_FONT")
-        .output()
-        .unwrap();
-
-    if !output.status.success() {
-        panic!(
-            "stdout={}\nstderr={}",
-            String::from_utf8_lossy(&output.stdout),
-            String::from_utf8_lossy(&output.stderr)
-        );
-    }
-    assert!(output.stderr.is_empty());
+    let output = generate_terminal_materialization_clean_terminal_env(&fixture);
 
     let envelope: Value = serde_json::from_slice(&output.stdout).unwrap();
     assert_eq!(envelope["command"], "terminal-materialization.generate");
@@ -691,19 +684,7 @@ fn terminal_materialization_wezterm_auto_appearance_writes_gui_query() {
     );
     write_basic_cursor_sidecar(&fixture, "#3bd17a");
 
-    let output = runtime_materialization_command(&fixture, "terminal-materialization.generate")
-        .arg("--from-env")
-        .output()
-        .unwrap();
-
-    if !output.status.success() {
-        panic!(
-            "stdout={}\nstderr={}",
-            String::from_utf8_lossy(&output.stdout),
-            String::from_utf8_lossy(&output.stderr)
-        );
-    }
-    assert!(output.stderr.is_empty());
+    generate_terminal_materialization(&fixture);
 
     let wezterm_config = fs::read_to_string(
         fixture
@@ -753,19 +734,7 @@ color = "#ffffff"
 "##,
     );
 
-    let output = runtime_materialization_command(&fixture, "terminal-materialization.generate")
-        .arg("--from-env")
-        .output()
-        .unwrap();
-
-    if !output.status.success() {
-        panic!(
-            "stdout={}\nstderr={}",
-            String::from_utf8_lossy(&output.stdout),
-            String::from_utf8_lossy(&output.stderr)
-        );
-    }
-    assert!(output.stderr.is_empty());
+    let output = generate_terminal_materialization(&fixture);
 
     let envelope: Value = serde_json::from_slice(&output.stdout).unwrap();
     assert_eq!(envelope["command"], "terminal-materialization.generate");
@@ -863,19 +832,7 @@ fn terminal_materialization_rio_light_appearance_uses_light_palette() {
     );
     write_basic_cursor_sidecar(&fixture, "#ffffff");
 
-    let output = runtime_materialization_command(&fixture, "terminal-materialization.generate")
-        .arg("--from-env")
-        .output()
-        .unwrap();
-
-    if !output.status.success() {
-        panic!(
-            "stdout={}\nstderr={}",
-            String::from_utf8_lossy(&output.stdout),
-            String::from_utf8_lossy(&output.stderr)
-        );
-    }
-    assert!(output.stderr.is_empty());
+    generate_terminal_materialization(&fixture);
 
     let rio_config = fs::read_to_string(
         fixture
@@ -924,19 +881,7 @@ color = "#ffffff"
 "##,
     );
 
-    let output = runtime_materialization_command(&fixture, "terminal-materialization.generate")
-        .arg("--from-env")
-        .output()
-        .unwrap();
-
-    if !output.status.success() {
-        panic!(
-            "stdout={}\nstderr={}",
-            String::from_utf8_lossy(&output.stdout),
-            String::from_utf8_lossy(&output.stderr)
-        );
-    }
-    assert!(output.stderr.is_empty());
+    let output = generate_terminal_materialization(&fixture);
 
     let envelope: Value = serde_json::from_slice(&output.stdout).unwrap();
     assert_eq!(envelope["command"], "terminal-materialization.generate");
@@ -983,19 +928,7 @@ fn terminal_materialization_foot_light_appearance_selects_light_theme() {
     );
     write_basic_cursor_sidecar(&fixture, "#ffffff");
 
-    let output = runtime_materialization_command(&fixture, "terminal-materialization.generate")
-        .arg("--from-env")
-        .output()
-        .unwrap();
-
-    if !output.status.success() {
-        panic!(
-            "stdout={}\nstderr={}",
-            String::from_utf8_lossy(&output.stdout),
-            String::from_utf8_lossy(&output.stderr)
-        );
-    }
-    assert!(output.stderr.is_empty());
+    generate_terminal_materialization(&fixture);
 
     let foot_config = fs::read_to_string(
         fixture
@@ -1046,22 +979,7 @@ color = "#ffffff"
 "##,
     );
 
-    let output = runtime_materialization_command(&fixture, "terminal-materialization.generate")
-        .arg("--from-env")
-        .env_remove("YAZELIX_TERMINAL_PROFILE")
-        .env_remove("YAZELIX_TERMINAL_EFFECTS")
-        .env_remove("YAZELIX_TERMINAL_EMOJI_FONT")
-        .output()
-        .unwrap();
-
-    if !output.status.success() {
-        panic!(
-            "stdout={}\nstderr={}",
-            String::from_utf8_lossy(&output.stdout),
-            String::from_utf8_lossy(&output.stderr)
-        );
-    }
-    assert!(output.stderr.is_empty());
+    let output = generate_terminal_materialization_clean_terminal_env(&fixture);
 
     let envelope: Value = serde_json::from_slice(&output.stdout).unwrap();
     assert_eq!(envelope["command"], "terminal-materialization.generate");
@@ -1113,22 +1031,7 @@ fn terminal_materialization_yzxterm_light_appearance_selects_child_light_theme()
     );
     write_basic_cursor_sidecar(&fixture, "#00aaff");
 
-    let output = runtime_materialization_command(&fixture, "terminal-materialization.generate")
-        .arg("--from-env")
-        .env_remove("YAZELIX_TERMINAL_PROFILE")
-        .env_remove("YAZELIX_TERMINAL_EFFECTS")
-        .env_remove("YAZELIX_TERMINAL_EMOJI_FONT")
-        .output()
-        .unwrap();
-
-    if !output.status.success() {
-        panic!(
-            "stdout={}\nstderr={}",
-            String::from_utf8_lossy(&output.stdout),
-            String::from_utf8_lossy(&output.stderr)
-        );
-    }
-    assert!(output.stderr.is_empty());
+    generate_terminal_materialization_clean_terminal_env(&fixture);
 
     let config = read_generated_yzxterm_config(&fixture);
     let table = config.as_table().unwrap();
@@ -1170,22 +1073,7 @@ fn terminal_materialization_yzxterm_auto_appearance_preserves_child_adaptive_the
     );
     write_basic_cursor_sidecar(&fixture, "#88cc44");
 
-    let output = runtime_materialization_command(&fixture, "terminal-materialization.generate")
-        .arg("--from-env")
-        .env_remove("YAZELIX_TERMINAL_PROFILE")
-        .env_remove("YAZELIX_TERMINAL_EFFECTS")
-        .env_remove("YAZELIX_TERMINAL_EMOJI_FONT")
-        .output()
-        .unwrap();
-
-    if !output.status.success() {
-        panic!(
-            "stdout={}\nstderr={}",
-            String::from_utf8_lossy(&output.stdout),
-            String::from_utf8_lossy(&output.stderr)
-        );
-    }
-    assert!(output.stderr.is_empty());
+    generate_terminal_materialization_clean_terminal_env(&fixture);
 
     let config = read_generated_yzxterm_config(&fixture);
     let table = config.as_table().unwrap();
@@ -1234,21 +1122,11 @@ color = "#3bd17a"
 "##,
     );
 
-    let output = runtime_materialization_command(&fixture, "terminal-materialization.generate")
-        .env("YAZELIX_TERMINAL_PROFILE", "shaders")
-        .env_remove("YAZELIX_TERMINAL_EMOJI_FONT")
-        .arg("--from-env")
-        .output()
-        .unwrap();
-
-    if !output.status.success() {
-        panic!(
-            "stdout={}\nstderr={}",
-            String::from_utf8_lossy(&output.stdout),
-            String::from_utf8_lossy(&output.stderr)
-        );
-    }
-    assert!(output.stderr.is_empty());
+    let output = generate_terminal_materialization_with(&fixture, |command| {
+        command
+            .env("YAZELIX_TERMINAL_PROFILE", "shaders")
+            .env_remove("YAZELIX_TERMINAL_EMOJI_FONT");
+    });
 
     let envelope: Value = serde_json::from_slice(&output.stdout).unwrap();
     assert_eq!(envelope["command"], "terminal-materialization.generate");
@@ -1319,21 +1197,11 @@ color = "#3bd17a"
 "##,
     );
 
-    let output = runtime_materialization_command(&fixture, "terminal-materialization.generate")
-        .env("YAZELIX_TERMINAL_PROFILE", "shaders")
-        .env("YAZELIX_TERMINAL_EMOJI_FONT", "twitter")
-        .arg("--from-env")
-        .output()
-        .unwrap();
-
-    if !output.status.success() {
-        panic!(
-            "stdout={}\nstderr={}",
-            String::from_utf8_lossy(&output.stdout),
-            String::from_utf8_lossy(&output.stderr)
-        );
-    }
-    assert!(output.stderr.is_empty());
+    generate_terminal_materialization_with(&fixture, |command| {
+        command
+            .env("YAZELIX_TERMINAL_PROFILE", "shaders")
+            .env("YAZELIX_TERMINAL_EMOJI_FONT", "twitter");
+    });
 
     let yzxterm_config = fs::read_to_string(
         fixture
@@ -1391,21 +1259,11 @@ color = "#3bd17a"
 "##,
     );
 
-    let output = runtime_materialization_command(&fixture, "terminal-materialization.generate")
-        .env("YAZELIX_TERMINAL_PROFILE", "shaders")
-        .env_remove("YAZELIX_TERMINAL_EMOJI_FONT")
-        .arg("--from-env")
-        .output()
-        .unwrap();
-
-    if !output.status.success() {
-        panic!(
-            "stdout={}\nstderr={}",
-            String::from_utf8_lossy(&output.stdout),
-            String::from_utf8_lossy(&output.stderr)
-        );
-    }
-    assert!(output.stderr.is_empty());
+    generate_terminal_materialization_with(&fixture, |command| {
+        command
+            .env("YAZELIX_TERMINAL_PROFILE", "shaders")
+            .env_remove("YAZELIX_TERMINAL_EMOJI_FONT");
+    });
 
     let yzxterm_config = fs::read_to_string(
         fixture
@@ -1512,21 +1370,11 @@ color = "#3bd17a"
     )
     .unwrap();
 
-    let output = runtime_materialization_command(&fixture, "terminal-materialization.generate")
-        .env("YAZELIX_TERMINAL_PROFILE", "shaders")
-        .env_remove("YAZELIX_TERMINAL_EMOJI_FONT")
-        .arg("--from-env")
-        .output()
-        .unwrap();
-
-    if !output.status.success() {
-        panic!(
-            "stdout={}\nstderr={}",
-            String::from_utf8_lossy(&output.stdout),
-            String::from_utf8_lossy(&output.stderr)
-        );
-    }
-    assert!(output.stderr.is_empty());
+    generate_terminal_materialization_with(&fixture, |command| {
+        command
+            .env("YAZELIX_TERMINAL_PROFILE", "shaders")
+            .env_remove("YAZELIX_TERMINAL_EMOJI_FONT");
+    });
 
     assert!(!shader_dir.join("stale_only.glsl").exists());
     let forest_shader = fs::read_to_string(shader_dir.join("cursor_trail_forest.glsl")).unwrap();
@@ -1563,13 +1411,7 @@ color = "#ffffff"
 "##,
     );
 
-    let output = runtime_materialization_command(&fixture, "terminal-materialization.generate")
-        .arg("--from-env")
-        .output()
-        .unwrap();
-
-    assert!(output.status.success());
-    assert!(output.stderr.is_empty());
+    generate_terminal_materialization(&fixture);
     let kitty_config = fs::read_to_string(
         fixture
             .state_dir
