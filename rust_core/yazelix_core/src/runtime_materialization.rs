@@ -104,12 +104,6 @@ pub enum RuntimeRepairDirective {
     },
 }
 
-#[derive(Debug, Clone, Serialize)]
-pub struct RuntimeMaterializationRepairEvaluateData {
-    pub plan: RuntimeMaterializationPlanData,
-    pub repair: RuntimeRepairDirective,
-}
-
 pub fn plan_runtime_materialization(
     request: &RuntimeMaterializationPlanRequest,
 ) -> Result<RuntimeMaterializationPlanData, CoreError> {
@@ -205,14 +199,6 @@ pub fn plan_runtime_materialization(
     })
 }
 
-pub fn evaluate_runtime_materialization_repair(
-    request: &RuntimeMaterializationRepairEvaluateRequest,
-) -> Result<RuntimeMaterializationRepairEvaluateData, CoreError> {
-    let plan = plan_runtime_materialization_for_repair(request)?;
-    let repair = build_repair_directive(&plan, request.force);
-    Ok(RuntimeMaterializationRepairEvaluateData { plan, repair })
-}
-
 pub fn materialize_runtime_state(
     request: &RuntimeMaterializationPlanRequest,
 ) -> Result<RuntimeMaterializationRunData, CoreError> {
@@ -225,24 +211,21 @@ pub fn repair_runtime_materialization(
 ) -> Result<RuntimeMaterializationRepairRunData, CoreError> {
     let plan = plan_runtime_materialization_for_repair(request)?;
     let repair = build_repair_directive(&plan, request.force);
-
-    match &repair {
-        RuntimeRepairDirective::Noop { .. } => Ok(RuntimeMaterializationRepairRunData {
-            status: "noop".to_string(),
-            plan,
-            repair,
-            materialization: None,
-        }),
-        RuntimeRepairDirective::Regenerate { result_status, .. } => {
-            let materialization = materialize_runtime_state_from_plan(&request.plan, plan.clone())?;
-            Ok(RuntimeMaterializationRepairRunData {
-                status: result_status.clone(),
-                plan,
-                repair,
-                materialization: Some(materialization),
-            })
-        }
-    }
+    let status = repair.result_status().to_string();
+    let materialization = if repair.should_materialize() {
+        Some(materialize_runtime_state_from_plan(
+            &request.plan,
+            plan.clone(),
+        )?)
+    } else {
+        None
+    };
+    Ok(RuntimeMaterializationRepairRunData {
+        status,
+        plan,
+        repair,
+        materialization,
+    })
 }
 
 fn plan_runtime_materialization_for_repair(
@@ -349,6 +332,19 @@ fn build_repair_directive(
         missing_artifacts_detail_line,
         success_lines,
         result_status,
+    }
+}
+
+impl RuntimeRepairDirective {
+    fn result_status(&self) -> &str {
+        match self {
+            Self::Noop { .. } => "noop",
+            Self::Regenerate { result_status, .. } => result_status,
+        }
+    }
+
+    fn should_materialize(&self) -> bool {
+        matches!(self, Self::Regenerate { .. })
     }
 }
 
@@ -755,15 +751,15 @@ mod tests {
         touch_plan_artifacts(&plan);
         mirror_yazi_static_assets(&fixture.runtime_dir, &fixture.yazi_dir);
 
-        let evaluated =
-            evaluate_runtime_materialization_repair(&RuntimeMaterializationRepairEvaluateRequest {
-                plan: fixture.request,
-                force: false,
-            })
-            .unwrap();
+        let request = RuntimeMaterializationRepairEvaluateRequest {
+            plan: fixture.request,
+            force: false,
+        };
+        let plan = plan_runtime_materialization_for_repair(&request).unwrap();
+        let repair = build_repair_directive(&plan, request.force);
 
-        assert_eq!(evaluated.plan.status, "noop");
-        match evaluated.repair {
+        assert_eq!(plan.status, "noop");
+        match repair {
             RuntimeRepairDirective::Noop { lines } => {
                 assert_eq!(lines.len(), 2);
             }
@@ -782,15 +778,15 @@ mod tests {
         let plan_after = plan_recorded_fixture(&fixture);
         assert_eq!(plan_after.status, "noop");
 
-        let evaluated =
-            evaluate_runtime_materialization_repair(&RuntimeMaterializationRepairEvaluateRequest {
-                plan: fixture.request,
-                force: true,
-            })
-            .unwrap();
+        let request = RuntimeMaterializationRepairEvaluateRequest {
+            plan: fixture.request,
+            force: true,
+        };
+        let plan = plan_runtime_materialization_for_repair(&request).unwrap();
+        let repair = build_repair_directive(&plan, request.force);
 
-        assert!(evaluated.plan.should_sync_static_assets);
-        match evaluated.repair {
+        assert!(plan.should_sync_static_assets);
+        match repair {
             RuntimeRepairDirective::Regenerate {
                 reason,
                 missing_artifacts_detail_line,

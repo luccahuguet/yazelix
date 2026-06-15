@@ -1213,7 +1213,6 @@ mod tests {
     fn materialized_yazelix_config_path_wins_for_launch() {
         let materialization = LaunchMaterializationData {
             terminal_config_mode: "yazelix".to_string(),
-            selected_terminals: vec!["ghostty".to_string()],
             generated_terminals: vec![crate::terminal_materialization::TerminalGeneratedConfig {
                 terminal: "ghostty".to_string(),
                 path: "/state/terminal_launches/123/configs/terminal_emulators/ghostty/config"

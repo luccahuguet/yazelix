@@ -38,16 +38,8 @@ pub struct LaunchMaterializationRequest {
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 pub struct LaunchMaterializationData {
     pub terminal_config_mode: String,
-    pub selected_terminals: Vec<String>,
     pub generated_terminals: Vec<TerminalGeneratedConfig>,
     pub rerolled_ghostty_cursor: bool,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct LaunchMaterializationPlan {
-    terminal_config_mode: String,
-    selected_terminals: Vec<String>,
-    should_generate_terminal_configs: bool,
 }
 
 pub fn launch_materialization_request_from_env(
@@ -89,16 +81,19 @@ pub fn prepare_launch_materialization(
         .as_ref()
         .map(CursorRegistry::is_random_request)
         .unwrap_or(false);
-    let plan = build_launch_materialization_plan(
+    let terminal_config_mode = string_config(
         normalized,
-        &request.active_terminal,
-        request.desktop_fast_path,
+        "terminal_config_mode",
+        DEFAULT_TERMINAL_CONFIG_MODE,
     );
+    let generate_terminal_configs =
+        should_generate_terminal_configs(&terminal_config_mode, request.desktop_fast_path);
 
     let mut generated_terminals = Vec::new();
-    if plan.should_generate_terminal_configs {
+    if generate_terminal_configs {
         let terminal_state_dir = terminal_materialization_state_dir_for_launch(
-            &plan,
+            &terminal_config_mode,
+            &request.active_terminal,
             &request.state_dir,
             ghostty_random_requested,
             request.yzxterm_profile,
@@ -110,29 +105,28 @@ pub fn prepare_launch_materialization(
             contract_path: request.contract_path.clone(),
             runtime_dir: request.runtime_dir.clone(),
             state_dir: terminal_state_dir,
-            terminals: plan.selected_terminals.clone(),
+            terminals: vec![request.active_terminal.clone()],
             yzxterm_emoji_font: request.yzxterm_emoji_font,
             yzxterm_profile: request.yzxterm_profile,
         })?;
         generated_terminals = terminal_data.generated;
     }
 
-    let rerolled_ghostty_cursor = launch_rerolled_yazelix_cursor(&plan, ghostty_random_requested);
+    let rerolled_ghostty_cursor = launch_rerolled_yazelix_cursor(
+        generate_terminal_configs,
+        &request.active_terminal,
+        ghostty_random_requested,
+    );
 
     Ok(LaunchMaterializationData {
-        terminal_config_mode: plan.terminal_config_mode,
-        selected_terminals: plan.selected_terminals,
+        terminal_config_mode,
         generated_terminals,
         rerolled_ghostty_cursor,
     })
 }
 
-fn plan_uses_yazelix_ghostty_cursor(plan: &LaunchMaterializationPlan) -> bool {
-    plan.terminal_config_mode == "yazelix"
-        && plan
-            .selected_terminals
-            .iter()
-            .any(|terminal| terminal_uses_yazelix_cursor(terminal))
+fn uses_yazelix_ghostty_cursor(terminal_config_mode: &str, terminal: &str) -> bool {
+    terminal_config_mode == "yazelix" && terminal_uses_yazelix_cursor(terminal)
 }
 
 fn terminal_uses_yazelix_cursor(terminal: &str) -> bool {
@@ -140,26 +134,24 @@ fn terminal_uses_yazelix_cursor(terminal: &str) -> bool {
 }
 
 fn launch_rerolled_yazelix_cursor(
-    plan: &LaunchMaterializationPlan,
+    should_generate_terminal_configs: bool,
+    terminal: &str,
     ghostty_random_requested: bool,
 ) -> bool {
-    plan.should_generate_terminal_configs
-        && plan
-            .selected_terminals
-            .iter()
-            .any(|terminal| terminal_uses_yazelix_cursor(terminal))
+    should_generate_terminal_configs
+        && terminal_uses_yazelix_cursor(terminal)
         && ghostty_random_requested
 }
 
 fn terminal_materialization_state_dir_for_launch(
-    plan: &LaunchMaterializationPlan,
+    terminal_config_mode: &str,
+    terminal: &str,
     state_dir: &Path,
     ghostty_random_requested: bool,
     yzxterm_profile: YzxtermProfile,
 ) -> PathBuf {
-    if plan.should_generate_terminal_configs
-        && plan_uses_yazelix_ghostty_cursor(plan)
-        && (ghostty_random_requested || plan_uses_yzxterm_shader_profile(plan, yzxterm_profile))
+    if uses_yazelix_ghostty_cursor(terminal_config_mode, terminal)
+        && (ghostty_random_requested || uses_yzxterm_shader_profile(terminal, yzxterm_profile))
     {
         return launch_scoped_terminal_state_dir(state_dir);
     }
@@ -167,15 +159,8 @@ fn terminal_materialization_state_dir_for_launch(
     state_dir.to_path_buf()
 }
 
-fn plan_uses_yzxterm_shader_profile(
-    plan: &LaunchMaterializationPlan,
-    yzxterm_profile: YzxtermProfile,
-) -> bool {
-    yzxterm_profile == YzxtermProfile::Shaders
-        && plan
-            .selected_terminals
-            .iter()
-            .any(|terminal| terminal == "yzxterm")
+fn uses_yzxterm_shader_profile(terminal: &str, yzxterm_profile: YzxtermProfile) -> bool {
+    yzxterm_profile == YzxtermProfile::Shaders && terminal == "yzxterm"
 }
 
 fn launch_scoped_terminal_state_dir(state_dir: &Path) -> PathBuf {
@@ -190,25 +175,8 @@ fn launch_scoped_terminal_state_dir(state_dir: &Path) -> PathBuf {
         .join(format!("{}-{nanos}-{sequence}", std::process::id()))
 }
 
-fn build_launch_materialization_plan(
-    normalized: &JsonMap<String, JsonValue>,
-    active_terminal: &str,
-    desktop_fast_path: bool,
-) -> LaunchMaterializationPlan {
-    let terminal_config_mode = string_config(
-        normalized,
-        "terminal_config_mode",
-        DEFAULT_TERMINAL_CONFIG_MODE,
-    );
-    let selected_terminals = vec![active_terminal.to_string()];
-
-    let should_generate_terminal_configs = !desktop_fast_path || terminal_config_mode == "yazelix";
-
-    LaunchMaterializationPlan {
-        terminal_config_mode,
-        selected_terminals,
-        should_generate_terminal_configs,
-    }
+fn should_generate_terminal_configs(terminal_config_mode: &str, desktop_fast_path: bool) -> bool {
+    !desktop_fast_path || terminal_config_mode == "yazelix"
 }
 
 fn string_config(config: &JsonMap<String, JsonValue>, key: &str, default: &str) -> String {
@@ -236,75 +204,51 @@ mod tests {
     // Regression: desktop fast-path launch regenerates existing Yazelix terminal configs before terminal handoff, because stale generated files can point at old runtime assets.
     #[test]
     fn desktop_fast_path_regenerates_existing_terminal_configs() {
-        let temp = tempdir().unwrap();
-        let ghostty_dir = temp
-            .path()
-            .join("configs")
-            .join("terminal_emulators")
-            .join("ghostty");
-        std::fs::create_dir_all(&ghostty_dir).unwrap();
-        std::fs::write(ghostty_dir.join("config"), "existing").unwrap();
         let config = config_with_mode("yazelix");
-
-        let plan = build_launch_materialization_plan(&config, "ghostty", true);
-
-        assert_eq!(
-            plan,
-            LaunchMaterializationPlan {
-                terminal_config_mode: "yazelix".to_string(),
-                selected_terminals: vec!["ghostty".to_string()],
-                should_generate_terminal_configs: true,
-            }
+        let mode = string_config(
+            &config,
+            "terminal_config_mode",
+            DEFAULT_TERMINAL_CONFIG_MODE,
         );
+
+        assert!(should_generate_terminal_configs(&mode, true));
     }
 
     // Defends: non-desktop launch materialization regenerates only the caller-provided active terminal.
     #[test]
     fn full_launch_materialization_uses_active_terminal_from_request() {
         let config = config_with_mode("user");
-
-        let plan = build_launch_materialization_plan(&config, "ghostty", false);
-
-        assert_eq!(
-            plan,
-            LaunchMaterializationPlan {
-                terminal_config_mode: "user".to_string(),
-                selected_terminals: vec!["ghostty".to_string()],
-                should_generate_terminal_configs: true,
-            }
+        let mode = string_config(
+            &config,
+            "terminal_config_mode",
+            DEFAULT_TERMINAL_CONFIG_MODE,
         );
-        assert!(!plan_uses_yazelix_ghostty_cursor(&plan));
+
+        assert_eq!(mode, "user");
+        assert!(should_generate_terminal_configs(&mode, false));
+        assert!(!uses_yazelix_ghostty_cursor(&mode, "ghostty"));
     }
 
     // Regression: yzxterm consumes the same Yazelix cursor materialization facts as Ghostty.
     #[test]
     fn yzxterm_launch_materialization_uses_yazelix_cursor() {
-        let config = config_with_mode("yazelix");
-
-        let plan = build_launch_materialization_plan(&config, "yzxterm", false);
-
-        assert_eq!(plan.selected_terminals, vec!["yzxterm".to_string()]);
-        assert!(plan_uses_yazelix_ghostty_cursor(&plan));
+        assert!(uses_yazelix_ghostty_cursor("yazelix", "yzxterm"));
     }
 
     // Regression: yzxterm random cursor launches reroll the same Yazelix cursor state as Ghostty, so launch facts and verbose reporting stay accurate.
     #[test]
     fn yzxterm_random_cursor_launch_reports_reroll() {
-        let config = config_with_mode("yazelix");
-        let plan = build_launch_materialization_plan(&config, "yzxterm", false);
-
-        assert!(launch_rerolled_yazelix_cursor(&plan, true));
+        assert!(launch_rerolled_yazelix_cursor(true, "yzxterm", true));
     }
 
     // Regression: random cursor launches use a launch-scoped terminal config root so opening a new window cannot rewrite config watched by existing Ghostty/yzxterm windows.
     #[test]
     fn random_cursor_launch_uses_scoped_terminal_state_dir() {
         let temp = tempdir().unwrap();
-        let config = config_with_mode("yazelix");
-        let plan = build_launch_materialization_plan(&config, "ghostty", false);
 
         let terminal_state_dir = terminal_materialization_state_dir_for_launch(
-            &plan,
+            "yazelix",
+            "ghostty",
             temp.path(),
             true,
             YzxtermProfile::Full,
@@ -318,11 +262,10 @@ mod tests {
     #[test]
     fn named_cursor_launch_uses_stable_terminal_state_dir() {
         let temp = tempdir().unwrap();
-        let config = config_with_mode("yazelix");
-        let plan = build_launch_materialization_plan(&config, "ghostty", false);
 
         let terminal_state_dir = terminal_materialization_state_dir_for_launch(
-            &plan,
+            "yazelix",
+            "ghostty",
             temp.path(),
             false,
             YzxtermProfile::Full,
@@ -335,17 +278,17 @@ mod tests {
     #[test]
     fn yzxterm_shader_profile_uses_scoped_terminal_state_dir() {
         let temp = tempdir().unwrap();
-        let config = config_with_mode("yazelix");
-        let plan = build_launch_materialization_plan(&config, "yzxterm", false);
 
         let first = terminal_materialization_state_dir_for_launch(
-            &plan,
+            "yazelix",
+            "yzxterm",
             temp.path(),
             false,
             YzxtermProfile::Shaders,
         );
         let second = terminal_materialization_state_dir_for_launch(
-            &plan,
+            "yazelix",
+            "yzxterm",
             temp.path(),
             false,
             YzxtermProfile::Shaders,
@@ -362,11 +305,10 @@ mod tests {
     #[test]
     fn yzxterm_without_shader_profile_uses_stable_terminal_state_dir() {
         let temp = tempdir().unwrap();
-        let config = config_with_mode("yazelix");
-        let plan = build_launch_materialization_plan(&config, "yzxterm", false);
 
         let terminal_state_dir = terminal_materialization_state_dir_for_launch(
-            &plan,
+            "yazelix",
+            "yzxterm",
             temp.path(),
             false,
             YzxtermProfile::Full,
