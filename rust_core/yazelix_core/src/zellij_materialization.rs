@@ -125,6 +125,52 @@ pub struct ZellijMaterializationData {
 }
 
 #[derive(Debug, Clone)]
+struct ZellijConfigPackRenderRequest {
+    base_config_content: String,
+    override_keybinds: Vec<String>,
+    render_plan: ZellijRenderPlanData,
+    popup_commands: BTreeMap<String, Vec<String>>,
+    custom_popups: Vec<CustomPopup>,
+    layout_source_present: bool,
+    layout_templates: Vec<ZellijConfigPackLayoutTemplate>,
+    static_fragments: BTreeMap<String, String>,
+    zjstatus_plugin_block: String,
+    pane_orchestrator_wasm_path: PathBuf,
+    yzpp_wasm_path: PathBuf,
+    home_dir: PathBuf,
+    runtime_dir: PathBuf,
+    generation_fingerprint: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct ZellijConfigPackLayoutTemplate {
+    relative_path: String,
+    content: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct ZellijConfigPackRenderedFile {
+    relative_path: String,
+    content: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct ZellijConfigPackRenderOutput {
+    merged_config: String,
+    layout_source_present: bool,
+    layout_files: Vec<ZellijConfigPackRenderedFile>,
+    generation_fingerprint: String,
+    diagnostics: Vec<String>,
+}
+
+#[derive(Debug, Clone)]
+struct ZellijConfigPackLayoutSources {
+    source_present: bool,
+    templates: Vec<ZellijConfigPackLayoutTemplate>,
+    static_fragments: BTreeMap<String, String>,
+}
+
+#[derive(Debug, Clone)]
 struct ZellijBaseConfigSource {
     source: String,
     path: Option<PathBuf>,
@@ -277,29 +323,45 @@ pub fn generate_zellij_materialization(
     let pane_orchestrator_runtime_path = pane_orchestrator_artifact.runtime_path.clone();
     let zjstatus_runtime_path = zjstatus_artifact.runtime_path.clone();
     let yzpp_runtime_path = yzpp_artifact.runtime_path.clone();
-    let generated_layouts = generate_all_layouts(
-        &source_layouts_dir,
-        &layout_dir,
+    let overrides_path = request
+        .runtime_dir
+        .join("configs")
+        .join("zellij")
+        .join("yazelix_overrides.kdl");
+    let override_keybinds = read_yazelix_override_keybinds(
+        &overrides_path,
         &request.runtime_dir,
-        &render_plan,
-        &pane_orchestrator_runtime_path,
-        &zjstatus_runtime_path,
-        &generation_fingerprint,
-    )?;
-    let merged_config = render_merged_config(
-        &request.runtime_dir,
-        &base_config_source.content,
         &zellij_keybindings,
         &zellij_native_keybindings,
-        &render_plan,
-        &popup_commands,
         &custom_popups,
-        &pane_orchestrator_runtime_path,
-        &yzpp_runtime_path,
-        &generation_fingerprint,
     )?;
-    write_text_atomic(&merged_config_path, &merged_config)?;
-    record_generation_fingerprint(&request.zellij_config_dir, &generation_fingerprint)?;
+    let layout_sources = read_config_pack_layout_sources(&source_layouts_dir)?;
+    let zjstatus_plugin_url = format!("file:{}", zjstatus_runtime_path.to_string_lossy());
+    let zjstatus_plugin_block =
+        render_integrated_zjstatus_bar(&request.runtime_dir, &render_plan, &zjstatus_plugin_url)?;
+    let config_pack_request = ZellijConfigPackRenderRequest {
+        base_config_content: base_config_source.content.clone(),
+        override_keybinds,
+        render_plan,
+        popup_commands,
+        custom_popups,
+        layout_source_present: layout_sources.source_present,
+        layout_templates: layout_sources.templates,
+        static_fragments: layout_sources.static_fragments,
+        zjstatus_plugin_block,
+        pane_orchestrator_wasm_path: pane_orchestrator_runtime_path.clone(),
+        yzpp_wasm_path: yzpp_runtime_path.clone(),
+        home_dir: home_dir_from_env()?,
+        runtime_dir: request.runtime_dir.clone(),
+        generation_fingerprint,
+    };
+    let config_pack_output = render_zellij_config_pack(&config_pack_request)?;
+    let generated_layouts =
+        write_zellij_config_pack_output(&merged_config_path, &layout_dir, &config_pack_output)?;
+    record_generation_fingerprint(
+        &request.zellij_config_dir,
+        &config_pack_output.generation_fingerprint,
+    )?;
 
     Ok(ZellijMaterializationData {
         merged_config_path: merged_config_path.to_string_lossy().to_string(),
@@ -309,7 +371,7 @@ pub fn generate_zellij_materialization(
             .path
             .map(|path| path.to_string_lossy().to_string())
             .unwrap_or_default(),
-        generation_fingerprint,
+        generation_fingerprint: config_pack_output.generation_fingerprint.clone(),
         pane_orchestrator_runtime_path: pane_orchestrator_runtime_path
             .to_string_lossy()
             .to_string(),
@@ -693,8 +755,7 @@ fn resolve_base_config_source() -> Result<ZellijBaseConfigSource, CoreError> {
 fn render_merged_config(
     runtime_dir: &Path,
     base_config_content: &str,
-    zellij_keybindings: &BTreeMap<String, Vec<String>>,
-    zellij_native_keybindings: &BTreeMap<String, Vec<String>>,
+    override_keybinds: &[String],
     render_plan: &ZellijRenderPlanData,
     popup_commands: &BTreeMap<String, Vec<String>>,
     custom_popups: &[CustomPopup],
@@ -703,23 +764,12 @@ fn render_merged_config(
     runtime_config_generation: &str,
 ) -> Result<String, CoreError> {
     let extracted_blocks = extract_semantic_config_blocks(base_config_content);
-    let overrides_path = runtime_dir
-        .join("configs")
-        .join("zellij")
-        .join("yazelix_overrides.kdl");
-    let override_keybinds = read_yazelix_override_keybinds(
-        &overrides_path,
-        runtime_dir,
-        zellij_keybindings,
-        zellij_native_keybindings,
-        custom_popups,
-    )?;
     let base_config = strip_yazelix_owned_top_level_settings(
         &extracted_blocks.config_without_semantic_blocks,
         &render_plan.owned_top_level_setting_names,
     );
     let merged_keybinds =
-        build_merged_keybinds_block(&extracted_blocks.keybind_lines, &override_keybinds);
+        build_merged_keybinds_block(&extracted_blocks.keybind_lines, override_keybinds);
     let merged_ui = build_yazelix_ui_block(&extracted_blocks.ui_lines, &render_plan.rounded_value);
     let plugins_block = build_yazelix_plugins_block(
         &extracted_blocks.plugin_lines,
@@ -1684,60 +1734,121 @@ fn block_with_lines(name: &str, lines: &[String]) -> String {
         .join("\n")
 }
 
-fn generate_all_layouts(
+fn read_config_pack_layout_sources(
     source_dir: &Path,
-    target_dir: &Path,
-    runtime_dir: &Path,
-    render_plan: &ZellijRenderPlanData,
-    pane_orchestrator_wasm_path: &Path,
-    zjstatus_wasm_path: &Path,
-    generation_fingerprint: &str,
-) -> Result<Vec<PathBuf>, CoreError> {
+) -> Result<ZellijConfigPackLayoutSources, CoreError> {
     if !source_dir.exists() {
+        return Ok(ZellijConfigPackLayoutSources {
+            source_present: false,
+            templates: Vec::new(),
+            static_fragments: BTreeMap::new(),
+        });
+    }
+    let templates = list_top_level_kdl_files(source_dir)?
+        .into_iter()
+        .map(|path| {
+            Ok(ZellijConfigPackLayoutTemplate {
+                relative_path: required_utf8_file_name(&path)?,
+                content: read_text(&path, "read_zellij_layout")?,
+            })
+        })
+        .collect::<Result<Vec<_>, CoreError>>()?;
+    Ok(ZellijConfigPackLayoutSources {
+        source_present: true,
+        templates,
+        static_fragments: load_static_fragments(source_dir)?,
+    })
+}
+
+fn render_zellij_config_pack(
+    request: &ZellijConfigPackRenderRequest,
+) -> Result<ZellijConfigPackRenderOutput, CoreError> {
+    Ok(ZellijConfigPackRenderOutput {
+        merged_config: render_merged_config(
+            &request.runtime_dir,
+            &request.base_config_content,
+            &request.override_keybinds,
+            &request.render_plan,
+            &request.popup_commands,
+            &request.custom_popups,
+            &request.pane_orchestrator_wasm_path,
+            &request.yzpp_wasm_path,
+            &request.generation_fingerprint,
+        )?,
+        layout_source_present: request.layout_source_present,
+        layout_files: render_config_pack_layouts(request)?,
+        generation_fingerprint: request.generation_fingerprint.clone(),
+        diagnostics: Vec::new(),
+    })
+}
+
+fn render_config_pack_layouts(
+    request: &ZellijConfigPackRenderRequest,
+) -> Result<Vec<ZellijConfigPackRenderedFile>, CoreError> {
+    let pane_orchestrator_plugin_url = format!(
+        "file:{}",
+        request.pane_orchestrator_wasm_path.to_string_lossy()
+    );
+    request
+        .layout_templates
+        .iter()
+        .map(|template| {
+            let rendered = render_layout_template(
+                &template.content,
+                &request.static_fragments,
+                &request.zjstatus_plugin_block,
+                &pane_orchestrator_plugin_url,
+                &request.home_dir,
+                &request.runtime_dir,
+                &request.render_plan,
+            )?;
+            Ok(ZellijConfigPackRenderedFile {
+                relative_path: template.relative_path.clone(),
+                content: format!(
+                    "{}{}",
+                    generated_zellij_layout_header(&request.generation_fingerprint),
+                    rendered
+                ),
+            })
+        })
+        .collect()
+}
+
+fn write_zellij_config_pack_output(
+    merged_config_path: &Path,
+    layout_dir: &Path,
+    output: &ZellijConfigPackRenderOutput,
+) -> Result<Vec<PathBuf>, CoreError> {
+    if !output.diagnostics.is_empty() {
+        return Err(CoreError::classified(
+            ErrorClass::Internal,
+            "zellij_config_pack_render_diagnostics",
+            "Zellij config pack rendering produced diagnostics.",
+            "Report this as a Yazelix internal error.",
+            json!({ "diagnostics": &output.diagnostics }),
+        ));
+    }
+    write_text_atomic(merged_config_path, &output.merged_config)?;
+    if !output.layout_source_present {
         return Ok(Vec::new());
     }
-    fs::create_dir_all(target_dir).map_err(|source| {
+    fs::create_dir_all(layout_dir).map_err(|source| {
         CoreError::io(
             "create_zellij_layout_dir",
             "Could not create generated Zellij layout directory",
             "Check permissions for the Yazelix state directory and retry.",
-            target_dir.to_string_lossy(),
+            layout_dir.to_string_lossy(),
             source,
         )
     })?;
-    let layout_files = list_top_level_kdl_files(source_dir)?;
-    let expected_targets = layout_files
+    let expected_targets = output
+        .layout_files
         .iter()
-        .map(|source| Ok(target_dir.join(Path::new(required_file_name(source)?))))
-        .collect::<Result<Vec<_>, CoreError>>()?;
-    remove_stale_layouts(target_dir, &expected_targets)?;
-    let static_fragments = load_static_fragments(source_dir)?;
-    let pane_orchestrator_plugin_url =
-        format!("file:{}", pane_orchestrator_wasm_path.to_string_lossy());
-    let zjstatus_plugin_url = format!("file:{}", zjstatus_wasm_path.to_string_lossy());
-    let zjstatus_plugin_block =
-        render_integrated_zjstatus_bar(runtime_dir, render_plan, &zjstatus_plugin_url)?;
-    let home_dir = home_dir_from_env()?;
-
-    for (source, target) in layout_files.iter().zip(expected_targets.iter()) {
-        let content = read_text(source, "read_zellij_layout")?;
-        let rendered = render_layout_template(
-            &content,
-            &static_fragments,
-            &zjstatus_plugin_block,
-            &pane_orchestrator_plugin_url,
-            &home_dir,
-            runtime_dir,
-            render_plan,
-        )?;
-        write_text_atomic(
-            target,
-            &format!(
-                "{}{}",
-                generated_zellij_layout_header(generation_fingerprint),
-                rendered
-            ),
-        )?;
+        .map(|file| layout_dir.join(&file.relative_path))
+        .collect::<Vec<_>>();
+    remove_stale_layouts(layout_dir, &expected_targets)?;
+    for (file, target) in output.layout_files.iter().zip(expected_targets.iter()) {
+        write_text_atomic(target, &file.content)?;
     }
 
     Ok(expected_targets)
@@ -2328,6 +2439,19 @@ fn required_file_name(path: &Path) -> Result<&std::ffi::OsStr, CoreError> {
     })
 }
 
+fn required_utf8_file_name(path: &Path) -> Result<String, CoreError> {
+    let file_name = required_file_name(path)?;
+    file_name.to_str().map(str::to_string).ok_or_else(|| {
+        CoreError::classified(
+            ErrorClass::Internal,
+            "non_utf8_zellij_input_file_name",
+            "A Zellij materialization input file name is not valid UTF-8",
+            "Report this as a Yazelix internal error.",
+            json!({ "path": path.to_string_lossy() }),
+        )
+    })
+}
+
 fn json_quote(value: impl AsRef<str>) -> String {
     serde_json::to_string(value.as_ref()).unwrap_or_else(|_| "\"\"".to_string())
 }
@@ -2520,14 +2644,21 @@ keybinds {
         .unwrap();
         let plan =
             sample_render_plan_for_widgets(vec!["workspace"], "hx", "/nix/store/bin/nu", "ghostty");
+        let override_keybinds = read_yazelix_override_keybinds(
+            &overrides_dir.join("yazelix_overrides.kdl"),
+            runtime_dir,
+            &sample_zellij_keybindings(),
+            &sample_zellij_native_keybindings(),
+            &default_custom_popups(),
+        )
+        .unwrap();
         let rendered = render_merged_config(
             runtime_dir,
             r#"keybinds clear-defaults=true {
     normal { bind "Alt h" { MoveFocusOrTab "left"; } }
 }
 "#,
-            &sample_zellij_keybindings(),
-            &sample_zellij_native_keybindings(),
+            &override_keybinds,
             &plan,
             &default_popup_commands(),
             &default_custom_popups(),
@@ -2578,6 +2709,14 @@ keybinds {
         .unwrap();
         let plan =
             sample_render_plan_for_widgets(vec!["workspace"], "hx", "/nix/store/bin/nu", "ghostty");
+        let override_keybinds = read_yazelix_override_keybinds(
+            &overrides_dir.join("yazelix_overrides.kdl"),
+            runtime_dir,
+            &sample_zellij_keybindings(),
+            &sample_zellij_native_keybindings(),
+            &default_custom_popups(),
+        )
+        .unwrap();
         let rendered = render_merged_config(
             runtime_dir,
             r#"keybinds {
@@ -2592,8 +2731,7 @@ keybinds {
     }
 }
 "#,
-            &sample_zellij_keybindings(),
-            &sample_zellij_native_keybindings(),
+            &override_keybinds,
             &plan,
             &default_popup_commands(),
             &default_custom_popups(),
