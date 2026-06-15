@@ -63,16 +63,16 @@ pub(super) fn write_yazi_config_pack(
     if should_sync_static_assets {
         sync_bundled_yazi_assets(request.source_dir, request.output_dir, request.runtime_dir)?;
     }
-    sync_managed_user_yazi_plugins(
-        request.user_plugins_dir,
-        &request.output_dir.join("plugins"),
-        request.runtime_dir,
-    )?;
-    sync_managed_user_yazi_flavors(
-        request.user_flavors_dir,
-        &request.output_dir.join("flavors"),
-        request.runtime_dir,
-    )?;
+    for (source_root, child) in [
+        (request.user_plugins_dir, "plugins"),
+        (request.user_flavors_dir, "flavors"),
+    ] {
+        sync_named_child_directories(
+            source_root,
+            &request.output_dir.join(child),
+            request.runtime_dir,
+        )?;
+    }
 
     let (init_status, missing_plugins, user_init_appended) = write_generated_init_lua(request)?;
     managed_files.push(init_status);
@@ -441,22 +441,6 @@ fn sync_bundled_yazi_assets(
         &output_dir.join("yazelix_starship.toml"),
     )?;
     Ok(())
-}
-
-fn sync_managed_user_yazi_plugins(
-    source_root: &Path,
-    target_root: &Path,
-    runtime_dir: &Path,
-) -> Result<(), CoreError> {
-    sync_named_child_directories(source_root, target_root, runtime_dir)
-}
-
-fn sync_managed_user_yazi_flavors(
-    source_root: &Path,
-    target_root: &Path,
-    runtime_dir: &Path,
-) -> Result<(), CoreError> {
-    sync_named_child_directories(source_root, target_root, runtime_dir)
 }
 
 fn sync_named_child_directories(

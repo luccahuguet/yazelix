@@ -1,7 +1,7 @@
 [contract]
-measured_total_loc = 82374
+measured_total_loc = 82315
 measured_total_file_count = 158
-current_total_loc_max = 82374
+current_total_loc_max = 82315
 current_total_file_count_max = 158
 hard_target_loc = 60000
 
@@ -34,9 +34,9 @@ allowed_paths = [
 id = "core_config_ui_and_materialization"
 status = "canonical"
 owner_bead = "yazelix-ryx4.6"
-measured_loc = 26350
+measured_loc = 26334
 measured_files = 57
-max_loc = 26350
+max_loc = 26334
 target_loc = 14000
 max_files = 57
 allowed_paths = [
@@ -172,9 +172,9 @@ allowed_paths = [
 id = "core_integration_tests"
 status = "canonical"
 owner_bead = "yazelix-9opk.4"
-measured_loc = 6725
+measured_loc = 6682
 measured_files = 17
-max_loc = 6725
+max_loc = 6682
 target_loc = 4500
 max_files = 17
 allowed_paths = [
