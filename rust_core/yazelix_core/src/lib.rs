@@ -167,8 +167,9 @@ pub use public_command_surface::{
 pub use reset_commands::run_yzx_reset;
 pub use runtime_apply_mode::{RuntimeApplyMode, runtime_apply_mode_codes};
 pub use runtime_components::{
-    RuntimeComponentManifestEntry, read_runtime_component_manifest,
-    require_runtime_component_enabled, runtime_component_enabled,
+    RuntimeComponentManifestEntry, RuntimeToolManifestEntry,
+    read_optional_runtime_component_manifest, read_optional_runtime_tool_manifest,
+    read_runtime_component_manifest, require_runtime_component_enabled, runtime_component_enabled,
 };
 pub use runtime_contract::{
     GeneratedLayoutCheckRequest, LaunchPreflightPayload, LinuxGhosttyDesktopGraphicsRequest,

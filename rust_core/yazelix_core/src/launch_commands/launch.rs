@@ -491,11 +491,7 @@ pub(super) fn run_launch_flow(
     let working_dir = PathBuf::from(preflight.working_dir);
     let terminal_candidates = preflight.terminal_candidates.unwrap_or_default();
 
-    let req = launch_materialization_request_from_env(
-        desktop_fast_path,
-        desktop_fast_path && config_state.needs_refresh,
-        config_override,
-    )?;
+    let req = launch_materialization_request_from_env(desktop_fast_path, config_override)?;
     let materialization = prepare_launch_materialization(&req, &config_state.config)?;
     if !desktop_fast_path && !materialization.generated_terminals.is_empty() {
         let generated = materialization

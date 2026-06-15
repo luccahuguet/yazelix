@@ -2,7 +2,10 @@
 //! Bead: yazelix-ulb2.4.3
 
 use crate::bridge::CoreError;
-use crate::runtime_components::read_runtime_component_manifest;
+use crate::runtime_components::{
+    read_optional_runtime_tool_manifest, read_runtime_component_manifest,
+    runtime_tool_is_optional_host_integration, runtime_tool_required_commands,
+};
 use crate::runtime_contract::{
     GeneratedLayoutCheckRequest, LinuxGhosttyDesktopGraphicsRequest, RuntimeCheckData,
     RuntimeContractEvaluateRequest, RuntimeScriptCheckRequest, TerminalSupportCheckRequest,
@@ -10,7 +13,6 @@ use crate::runtime_contract::{
 };
 use crate::settings_surface::DEFAULT_SETTINGS_CONFIG_FILENAME;
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
 use std::env;
 use std::ffi::OsString;
 use std::fs;
@@ -20,7 +22,6 @@ use std::time::UNIX_EPOCH;
 const ZELLIJ_KITTY_PASSTHROUGH_FEATURE: &str = "zellij_kitty_passthrough";
 const CHAFA_PROBE_SAFE_FEATURE: &str = "chafa_probe_safe";
 const CHAFA_PROBE_UNSAFE_FEATURE: &str = "chafa_probe_unsafe";
-const OPTIONAL_HOST_INTEGRATION_NOTE: &str = "optional_host_integration";
 
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -68,24 +69,6 @@ pub struct DoctorRuntimeDoctorFinding {
 pub struct DoctorRuntimeEvaluateData {
     pub distribution: DoctorRuntimeDoctorFinding,
     pub shared_runtime_preflight: Vec<DoctorRuntimeDoctorFinding>,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(deny_unknown_fields)]
-struct RuntimeToolManifestEntry {
-    pub source: String,
-    #[serde(default)]
-    pub commands: Vec<String>,
-    #[serde(default)]
-    pub required_commands: Vec<String>,
-    #[allow(dead_code)]
-    #[serde(default)]
-    pub hostable: bool,
-    #[allow(dead_code)]
-    #[serde(default)]
-    pub disableable: bool,
-    #[serde(default)]
-    pub notes: Vec<String>,
 }
 
 pub fn evaluate_doctor_runtime_report(
@@ -157,10 +140,6 @@ pub fn evaluate_doctor_runtime_report(
     }
 }
 
-fn runtime_tools_manifest_path(runtime_dir: &Path) -> PathBuf {
-    runtime_dir.join("runtime_tools.json")
-}
-
 fn effective_command_search_paths(configured_paths: &[PathBuf]) -> Vec<PathBuf> {
     if !configured_paths.is_empty() {
         return configured_paths.to_vec();
@@ -192,43 +171,6 @@ fn is_executable_command(path: &Path) -> bool {
     path.is_file()
 }
 
-fn read_runtime_tool_manifest(
-    runtime_dir: &Path,
-) -> Result<Option<BTreeMap<String, RuntimeToolManifestEntry>>, String> {
-    let manifest_path = runtime_tools_manifest_path(runtime_dir);
-    let raw = match fs::read_to_string(&manifest_path) {
-        Ok(raw) => raw,
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
-        Err(error) => {
-            return Err(format!(
-                "Could not read runtime tool manifest at {}: {error}",
-                manifest_path.display()
-            ));
-        }
-    };
-
-    serde_json::from_str(&raw).map(Some).map_err(|error| {
-        format!(
-            "Could not parse runtime tool manifest at {}: {error}",
-            manifest_path.display()
-        )
-    })
-}
-
-fn runtime_tool_required_commands(tool: &RuntimeToolManifestEntry) -> &[String] {
-    if tool.required_commands.is_empty() {
-        &tool.commands
-    } else {
-        &tool.required_commands
-    }
-}
-
-fn runtime_tool_is_optional_host_integration(tool: &RuntimeToolManifestEntry) -> bool {
-    tool.notes
-        .iter()
-        .any(|note| note == OPTIONAL_HOST_INTEGRATION_NOTE)
-}
-
 fn format_path_list(command_search_paths: &[PathBuf]) -> String {
     if command_search_paths.is_empty() {
         return "No command search paths were available.".into();
@@ -245,14 +187,14 @@ fn build_host_runtime_tool_findings(
     runtime_dir: &Path,
     command_search_paths: &[PathBuf],
 ) -> Vec<DoctorRuntimeDoctorFinding> {
-    let manifest = match read_runtime_tool_manifest(runtime_dir) {
+    let manifest = match read_optional_runtime_tool_manifest(runtime_dir) {
         Ok(Some(manifest)) => manifest,
         Ok(None) => return Vec::new(),
         Err(error) => {
             return vec![DoctorRuntimeDoctorFinding {
                 status: "warning".into(),
                 message: "Runtime tool manifest could not be read".into(),
-                details: Some(error),
+                details: Some(error.message()),
                 fix_available: false,
                 fix_action: None,
                 capability_tier: None,
@@ -336,7 +278,7 @@ fn build_runtime_tool_source_findings(
 }
 
 fn build_disabled_runtime_tool_findings(runtime_dir: &Path) -> Vec<DoctorRuntimeDoctorFinding> {
-    let manifest = match read_runtime_tool_manifest(runtime_dir) {
+    let manifest = match read_optional_runtime_tool_manifest(runtime_dir) {
         Ok(Some(manifest)) => manifest,
         Ok(None) => return Vec::new(),
         Err(_) => return Vec::new(),
@@ -1006,7 +948,7 @@ fn terminal_uses_yazelix_kitty_bridge(terminal: &str) -> bool {
 }
 
 fn host_runtime_yazi_available(runtime_dir: &Path, command_search_paths: &[PathBuf]) -> bool {
-    let manifest = match read_runtime_tool_manifest(runtime_dir) {
+    let manifest = match read_optional_runtime_tool_manifest(runtime_dir) {
         Ok(Some(manifest)) => manifest,
         Ok(None) | Err(_) => return false,
     };

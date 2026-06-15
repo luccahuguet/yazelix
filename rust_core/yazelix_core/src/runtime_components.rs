@@ -1,53 +1,158 @@
 // Test lane: default
-//! Runtime component manifest helpers.
+//! Runtime self-description manifest helpers.
 
 use crate::bridge::{CoreError, ErrorClass};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::collections::BTreeMap;
 use std::fs;
+use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 
-#[derive(Debug, Clone, Deserialize)]
+const OPTIONAL_HOST_INTEGRATION_NOTE: &str = "optional_host_integration";
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum MissingManifest {
+    Error,
+    Ok,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
-pub struct RuntimeComponentManifestEntry {
-    pub enabled: bool,
-    #[allow(dead_code)]
+pub struct RuntimeToolManifestEntry {
+    pub source: String,
+    #[serde(default)]
+    pub commands: Vec<String>,
+    #[serde(default)]
+    pub required_commands: Vec<String>,
+    #[serde(default)]
+    pub hostable: bool,
+    #[serde(default)]
     pub disableable: bool,
-    #[allow(dead_code)]
+    #[serde(default)]
     pub notes: Vec<String>,
 }
 
-fn runtime_components_manifest_path(runtime_dir: &Path) -> PathBuf {
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct RuntimeComponentManifestEntry {
+    pub enabled: bool,
+    pub disableable: bool,
+    pub notes: Vec<String>,
+}
+
+pub(crate) fn runtime_components_manifest_path(runtime_dir: &Path) -> PathBuf {
     runtime_dir.join("runtime_components.json")
+}
+
+pub fn runtime_tools_manifest_path(runtime_dir: &Path) -> PathBuf {
+    runtime_dir.join("runtime_tools.json")
+}
+
+fn read_optional_runtime_manifest<T>(
+    path: &Path,
+    missing_manifest: MissingManifest,
+    read_code: &'static str,
+    read_message: &'static str,
+    read_remediation: &'static str,
+    parse_code: &'static str,
+    parse_message: &'static str,
+    parse_remediation: &'static str,
+) -> Result<Option<BTreeMap<String, T>>, CoreError>
+where
+    T: for<'de> Deserialize<'de>,
+{
+    let raw = match fs::read_to_string(path) {
+        Ok(raw) => raw,
+        Err(source)
+            if source.kind() == ErrorKind::NotFound && missing_manifest == MissingManifest::Ok =>
+        {
+            return Ok(None);
+        }
+        Err(source) => {
+            return Err(CoreError::io(
+                read_code,
+                read_message,
+                read_remediation,
+                path.to_string_lossy(),
+                source,
+            ));
+        }
+    };
+
+    serde_json::from_str(&raw).map(Some).map_err(|source| {
+        CoreError::classified(
+            ErrorClass::Runtime,
+            parse_code,
+            parse_message,
+            parse_remediation,
+            json!({
+                "path": path.to_string_lossy(),
+                "error": source.to_string(),
+            }),
+        )
+    })
 }
 
 pub fn read_runtime_component_manifest(
     runtime_dir: &Path,
 ) -> Result<BTreeMap<String, RuntimeComponentManifestEntry>, CoreError> {
     let manifest_path = runtime_components_manifest_path(runtime_dir);
-    let raw = fs::read_to_string(&manifest_path).map_err(|source| {
-        CoreError::io(
-            "read_runtime_component_manifest",
-            "Could not read the Yazelix runtime component manifest",
-            "Reinstall Yazelix so runtime_components.json is present in the runtime root.",
-            manifest_path.to_string_lossy(),
-            source,
-        )
-    })?;
+    read_optional_runtime_manifest(
+        &manifest_path,
+        MissingManifest::Error,
+        "read_runtime_component_manifest",
+        "Could not read the Yazelix runtime component manifest",
+        "Reinstall Yazelix so runtime_components.json is present in the runtime root.",
+        "parse_runtime_component_manifest",
+        "Could not parse the Yazelix runtime component manifest.",
+        "Reinstall Yazelix so runtime_components.json is valid.",
+    )?
+    .ok_or_else(|| unreachable!("required manifest helper returns an error when missing"))
+}
 
-    serde_json::from_str(&raw).map_err(|source| {
-        CoreError::classified(
-            ErrorClass::Runtime,
-            "parse_runtime_component_manifest",
-            "Could not parse the Yazelix runtime component manifest.",
-            "Reinstall Yazelix so runtime_components.json is valid.",
-            json!({
-                "path": manifest_path.to_string_lossy(),
-                "error": source.to_string(),
-            }),
-        )
-    })
+pub fn read_optional_runtime_component_manifest(
+    runtime_dir: &Path,
+) -> Result<Option<BTreeMap<String, RuntimeComponentManifestEntry>>, CoreError> {
+    read_optional_runtime_manifest(
+        &runtime_components_manifest_path(runtime_dir),
+        MissingManifest::Ok,
+        "read_runtime_component_manifest",
+        "Could not read the Yazelix runtime component manifest",
+        "Reinstall Yazelix so runtime_components.json is present in the runtime root.",
+        "parse_runtime_component_manifest",
+        "Could not parse the Yazelix runtime component manifest.",
+        "Reinstall Yazelix so runtime_components.json is valid.",
+    )
+}
+
+pub fn read_optional_runtime_tool_manifest(
+    runtime_dir: &Path,
+) -> Result<Option<BTreeMap<String, RuntimeToolManifestEntry>>, CoreError> {
+    read_optional_runtime_manifest(
+        &runtime_tools_manifest_path(runtime_dir),
+        MissingManifest::Ok,
+        "read_runtime_tool_manifest",
+        "Could not read the Yazelix runtime tool manifest",
+        "Reinstall Yazelix so runtime_tools.json is present and readable.",
+        "parse_runtime_tool_manifest",
+        "Could not parse the Yazelix runtime tool manifest.",
+        "Reinstall Yazelix so runtime_tools.json is valid.",
+    )
+}
+
+pub(crate) fn runtime_tool_required_commands(tool: &RuntimeToolManifestEntry) -> &[String] {
+    if tool.required_commands.is_empty() {
+        &tool.commands
+    } else {
+        &tool.required_commands
+    }
+}
+
+pub(crate) fn runtime_tool_is_optional_host_integration(tool: &RuntimeToolManifestEntry) -> bool {
+    tool.notes
+        .iter()
+        .any(|note| note == OPTIONAL_HOST_INTEGRATION_NOTE)
 }
 
 pub fn runtime_component_enabled(runtime_dir: &Path, component: &str) -> Result<bool, CoreError> {

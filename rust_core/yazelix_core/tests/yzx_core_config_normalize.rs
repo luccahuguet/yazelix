@@ -488,6 +488,14 @@ fn generate_terminal_materialization_clean_terminal_env(
             .env_remove("YAZELIX_TERMINAL_EMOJI_FONT");
     })
 }
+
+fn ok_terminal_materialization_envelope(output: &std::process::Output) -> Value {
+    let envelope: Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(envelope["command"], "terminal-materialization.generate");
+    assert_eq!(envelope["status"], "ok");
+    envelope
+}
+
 // Defends: runtime-materialization.repair --summary keeps the Home Manager activation path human-readable instead of dumping the full JSON envelope.
 #[test]
 fn runtime_materialization_repair_summary_prints_one_human_line() {
@@ -559,9 +567,7 @@ fn terminal_materialization_generate_from_env_writes_generated_configs() {
 
     let output = generate_terminal_materialization_clean_terminal_env(&fixture);
 
-    let envelope: Value = serde_json::from_slice(&output.stdout).unwrap();
-    assert_eq!(envelope["command"], "terminal-materialization.generate");
-    assert_eq!(envelope["status"], "ok");
+    ok_terminal_materialization_envelope(&output);
     assert!(generated_terminal_dir(&fixture, "ghostty").exists());
     for terminal in ["rio", "yzxterm", "ratty", "kitty", "foot"] {
         assert!(!generated_terminal_dir(&fixture, terminal).exists());
@@ -626,8 +632,7 @@ color = "#ffb929"
 
     let output = generate_terminal_materialization_clean_terminal_env(&fixture);
 
-    let envelope: Value = serde_json::from_slice(&output.stdout).unwrap();
-    assert_eq!(envelope["command"], "terminal-materialization.generate");
+    let envelope = ok_terminal_materialization_envelope(&output);
     assert_eq!(
         envelope["data"]["cursor"]["cursor_state"]["selected_color"],
         "blaze"
@@ -678,9 +683,7 @@ fn terminal_materialization_rio_uses_rio_config_toml() {
 
     let output = generate_terminal_materialization(&fixture);
 
-    let envelope: Value = serde_json::from_slice(&output.stdout).unwrap();
-    assert_eq!(envelope["command"], "terminal-materialization.generate");
-    assert_eq!(envelope["status"], "ok");
+    let envelope = ok_terminal_materialization_envelope(&output);
     assert_eq!(envelope["data"]["generated"][0]["terminal"], "rio");
 
     let rio_config = read_generated_terminal_config_text(&fixture, "rio", "config.toml");
@@ -784,9 +787,7 @@ fn terminal_materialization_foot_uses_foot_ini() {
 
     let output = generate_terminal_materialization(&fixture);
 
-    let envelope: Value = serde_json::from_slice(&output.stdout).unwrap();
-    assert_eq!(envelope["command"], "terminal-materialization.generate");
-    assert_eq!(envelope["status"], "ok");
+    let envelope = ok_terminal_materialization_envelope(&output);
     assert_eq!(envelope["data"]["generated"][0]["terminal"], "foot");
 
     let foot_config = read_generated_terminal_config_text(&fixture, "foot", "foot.ini");
@@ -860,9 +861,7 @@ color = "#ffffff"
 
     let output = generate_terminal_materialization_clean_terminal_env(&fixture);
 
-    let envelope: Value = serde_json::from_slice(&output.stdout).unwrap();
-    assert_eq!(envelope["command"], "terminal-materialization.generate");
-    assert_eq!(envelope["status"], "ok");
+    let envelope = ok_terminal_materialization_envelope(&output);
     assert_eq!(
         envelope["data"]["cursor"]["cursor_state"]["selected_color"],
         "snow"
@@ -971,9 +970,7 @@ fn terminal_materialization_yzxterm_shader_profile_injects_rio_decoration_shader
             .env_remove("YAZELIX_TERMINAL_EMOJI_FONT");
     });
 
-    let envelope: Value = serde_json::from_slice(&output.stdout).unwrap();
-    assert_eq!(envelope["command"], "terminal-materialization.generate");
-    assert_eq!(envelope["status"], "ok");
+    ok_terminal_materialization_envelope(&output);
 
     let yzxterm_config = read_generated_yzxterm_config_text(&fixture);
     let yzxterm_toml = toml::from_str::<toml::Value>(&yzxterm_config).unwrap();

@@ -1,14 +1,14 @@
 // Test lane: maintainer
 
-use crate::bridge::{CoreError, ErrorClass};
+use crate::bridge::CoreError;
 use crate::public_command_surface::{
     YzxPublicRootRoute, classify_yzx_root_route, yzx_command_metadata,
 };
+use crate::runtime_components::{
+    read_optional_runtime_component_manifest, read_optional_runtime_tool_manifest,
+    runtime_components_manifest_path, runtime_tools_manifest_path,
+};
 use serde::{Deserialize, Serialize};
-use serde_json::json;
-use std::collections::BTreeMap;
-use std::fs;
-use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 
 const SCHEMA_VERSION: u8 = 1;
@@ -79,25 +79,6 @@ pub struct ValidationCommandEntry {
     pub subsystem: String,
     pub command: String,
     pub owner: String,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(deny_unknown_fields)]
-struct RuntimeToolManifestEntry {
-    source: String,
-    commands: Vec<String>,
-    required_commands: Vec<String>,
-    hostable: bool,
-    disableable: bool,
-    notes: Vec<String>,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(deny_unknown_fields)]
-struct RuntimeComponentManifestEntry {
-    enabled: bool,
-    disableable: bool,
-    notes: Vec<String>,
 }
 
 pub fn compute_runtime_ownership_graph(
@@ -206,8 +187,8 @@ fn generated_state_owners() -> Vec<SurfaceOwnerEntry> {
 fn runtime_tool_manifest(
     runtime_dir: &Path,
 ) -> Result<RuntimeManifestSection<RuntimeToolOwnerEntry>, CoreError> {
-    let path = runtime_dir.join("runtime_tools.json");
-    let Some(entries) = read_optional_manifest::<RuntimeToolManifestEntry>(&path)? else {
+    let path = runtime_tools_manifest_path(runtime_dir);
+    let Some(entries) = read_optional_runtime_tool_manifest(runtime_dir)? else {
         return missing_manifest(
             path,
             "runtime tool manifest is available in packaged runtimes",
@@ -235,8 +216,8 @@ fn runtime_tool_manifest(
 fn runtime_component_manifest(
     runtime_dir: &Path,
 ) -> Result<RuntimeManifestSection<RuntimeComponentOwnerEntry>, CoreError> {
-    let path = runtime_dir.join("runtime_components.json");
-    let Some(entries) = read_optional_manifest::<RuntimeComponentManifestEntry>(&path)? else {
+    let path = runtime_components_manifest_path(runtime_dir);
+    let Some(entries) = read_optional_runtime_component_manifest(runtime_dir)? else {
         return missing_manifest(
             path,
             "runtime component manifest is available in packaged runtimes",
@@ -255,38 +236,6 @@ fn runtime_component_manifest(
             })
             .collect(),
         note: None,
-    })
-}
-
-fn read_optional_manifest<T>(path: &Path) -> Result<Option<BTreeMap<String, T>>, CoreError>
-where
-    T: for<'de> Deserialize<'de>,
-{
-    let raw = match fs::read_to_string(path) {
-        Ok(raw) => raw,
-        Err(source) if source.kind() == ErrorKind::NotFound => return Ok(None),
-        Err(source) => {
-            return Err(CoreError::io(
-                "read_runtime_ownership_manifest",
-                "Could not read a Yazelix runtime ownership manifest.",
-                "Reinstall Yazelix so packaged runtime manifests are readable.",
-                path.to_string_lossy(),
-                source,
-            ));
-        }
-    };
-
-    serde_json::from_str(&raw).map(Some).map_err(|source| {
-        CoreError::classified(
-            ErrorClass::Runtime,
-            "parse_runtime_ownership_manifest",
-            "Could not parse a Yazelix runtime ownership manifest.",
-            "Reinstall Yazelix so packaged runtime manifests are valid JSON.",
-            json!({
-                "path": path.to_string_lossy(),
-                "error": source.to_string(),
-            }),
-        )
     })
 }
 
@@ -342,6 +291,7 @@ fn validation_commands() -> Vec<ValidationCommandEntry> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs;
     use tempfile::TempDir;
 
     // Defends: the ownership graph exposes public command routing from the Rust command metadata source.

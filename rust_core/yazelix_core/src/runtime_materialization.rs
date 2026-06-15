@@ -35,16 +35,6 @@ pub struct RuntimeMaterializationPlanRequest {
     pub layout_override: Option<String>,
 }
 
-#[derive(Debug, Clone)]
-pub struct RuntimeMaterializationApplyRequest {
-    pub config_file: String,
-    pub managed_config_path: PathBuf,
-    pub state_path: PathBuf,
-    pub config_hash: String,
-    pub runtime_hash: String,
-    pub expected_artifacts: Vec<RuntimeArtifact>,
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct RuntimeArtifact {
@@ -95,12 +85,6 @@ pub struct RuntimeMaterializationRepairRunData {
 pub struct RuntimeMaterializationRepairEvaluateRequest {
     pub plan: RuntimeMaterializationPlanRequest,
     pub force: bool,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-enum RepairSuccessKind {
-    RepairedMissingArtifacts,
-    Repaired,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
@@ -295,14 +279,12 @@ fn materialize_runtime_state_from_plan(
 
     let config_dir = config_dir_from_env()?;
     let managed_config_path = primary_config_paths(&request.runtime_dir, &config_dir).user_config;
-    let apply = apply_runtime_materialization(&RuntimeMaterializationApplyRequest {
-        config_file: plan.config_state.config_file.clone(),
+    let apply = apply_runtime_materialization(
+        &plan.config_state,
         managed_config_path,
-        state_path: request.state_path.clone(),
-        config_hash: plan.config_state.config_hash.clone(),
-        runtime_hash: plan.config_state.runtime_hash.clone(),
-        expected_artifacts: plan.expected_artifacts.clone(),
-    })?;
+        request.state_path.clone(),
+        &plan.expected_artifacts,
+    )?;
 
     Ok(RuntimeMaterializationRunData {
         plan,
@@ -346,23 +328,19 @@ fn build_repair_directive(
             None
         };
 
-    let success_kind = if !force && plan.status == "repair_missing_artifacts" {
-        RepairSuccessKind::RepairedMissingArtifacts
-    } else {
-        RepairSuccessKind::Repaired
-    };
-    let (result_status, success_lines) = match success_kind {
-        RepairSuccessKind::RepairedMissingArtifacts => (
+    let (result_status, success_lines) = if !force && plan.status == "repair_missing_artifacts" {
+        (
             "repaired_missing_artifacts".to_string(),
             vec!["✅ Repaired the missing generated runtime artifacts.".to_string()],
-        ),
-        RepairSuccessKind::Repaired => (
+        )
+    } else {
+        (
             "repaired".to_string(),
             vec![
                 "✅ Generated runtime state repaired.".to_string(),
                 "   Generated Yazi/Zellij state now matches the active runtime config.".to_string(),
             ],
-        ),
+        )
     };
 
     RuntimeRepairDirective::Regenerate {
@@ -374,11 +352,14 @@ fn build_repair_directive(
     }
 }
 
-pub fn apply_runtime_materialization(
-    request: &RuntimeMaterializationApplyRequest,
+fn apply_runtime_materialization(
+    config_state: &ConfigStateData,
+    managed_config_path: PathBuf,
+    state_path: PathBuf,
+    expected_artifacts: &[RuntimeArtifact],
 ) -> Result<RuntimeMaterializationApplyData, CoreError> {
     let mut missing_artifacts = Vec::new();
-    for artifact in &request.expected_artifacts {
+    for artifact in expected_artifacts {
         if runtime_artifact_needs_repair(artifact)? {
             missing_artifacts.push(artifact.clone());
         }
@@ -394,16 +375,16 @@ pub fn apply_runtime_materialization(
     }
 
     let record = record_config_state(&RecordConfigStateRequest {
-        config_file: request.config_file.clone(),
-        managed_config_path: request.managed_config_path.clone(),
-        state_path: request.state_path.clone(),
-        config_hash: request.config_hash.clone(),
-        runtime_hash: request.runtime_hash.clone(),
+        config_file: config_state.config_file.clone(),
+        managed_config_path,
+        state_path,
+        config_hash: config_state.config_hash.clone(),
+        runtime_hash: config_state.runtime_hash.clone(),
     })?;
 
     Ok(RuntimeMaterializationApplyData {
         recorded: record.recorded,
-        checked_artifacts: request.expected_artifacts.len(),
+        checked_artifacts: expected_artifacts.len(),
     })
 }
 
@@ -566,25 +547,36 @@ mod tests {
     fn apply_rejects_missing_expected_artifacts() {
         let dir = tempdir().expect("tempdir");
         let state_path = dir.path().join("state/rebuild_hash");
-        let error = apply_runtime_materialization(&RuntimeMaterializationApplyRequest {
+        let config_state = ConfigStateData {
+            config: serde_json::Map::new(),
             config_file: dir
                 .path()
                 .join("yazelix.toml")
                 .to_string_lossy()
                 .to_string(),
-            managed_config_path: dir.path().join("yazelix.toml"),
-            state_path,
+            needs_refresh: false,
+            refresh_reason: "current".to_string(),
+            config_changed: false,
+            inputs_changed: false,
+            inputs_require_refresh: false,
             config_hash: "cfg".to_string(),
             runtime_hash: "runtime".to_string(),
-            expected_artifacts: vec![RuntimeArtifact {
-                label: "generated Yazi config".to_string(),
-                path: dir
-                    .path()
-                    .join("configs/yazi/yazi.toml")
-                    .to_string_lossy()
-                    .to_string(),
-            }],
-        })
+            combined_hash: "combined".to_string(),
+        };
+        let expected_artifacts = vec![RuntimeArtifact {
+            label: "generated Yazi config".to_string(),
+            path: dir
+                .path()
+                .join("configs/yazi/yazi.toml")
+                .to_string_lossy()
+                .to_string(),
+        }];
+        let error = apply_runtime_materialization(
+            &config_state,
+            dir.path().join("yazelix.toml"),
+            state_path,
+            &expected_artifacts,
+        )
         .unwrap_err();
 
         assert_eq!(error.class().as_str(), "runtime");
