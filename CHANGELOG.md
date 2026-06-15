@@ -4,6 +4,15 @@ Short, upgrade-facing release notes live here. The longer narrative history rema
 
 ## Unreleased
 
+Post-v17.7 work in progress
+
+Upgrade impact: no user action required
+
+Highlights:
+- Reserved for post-release changes after v17.7 lands.
+
+## v17.7 - 2026-06-15
+
 Spartan runtime thinning, child config packs, and tab activity fixes
 
 Upgrade impact: no user action required
@@ -15,6 +24,7 @@ Highlights:
 - Refreshed the screen runtime and prey sprite package pins through the current composite sprite set
 - Repaired yzxterm/Rio transparency and opacity handling for TUI backgrounds while keeping the generated welcome and ANSI colors readable
 - Removed the obsolete NixCI file and tightened maintainer/runtime safety guidance, including the rule that agents must not run `yzx restart` against a live user session
+
 
 ## v17.6 - 2026-06-13
 
