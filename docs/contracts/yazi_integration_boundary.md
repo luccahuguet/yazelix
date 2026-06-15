@@ -28,6 +28,7 @@ sidebar registration, and explicit rejection of legacy override paths.
 | `yazelix-yazi-assets/flavors/*` | Bundled Yazi flavor catalog | Child asset package; optional Home Manager/runtime component toggles can decide whether a full Yazelix install links it |
 | `yazelix-yazi-assets/plugins/git.yazi`, `lazygit.yazi`, `starship.yazi` | Bundled reusable Yazi plugin pack | Child asset package; vendored update workflow belongs with the child repo, not Yazelix core |
 | `yazelix-yazi-assets/plugins/auto-layout.yazi` | Yazelix-maintained Yazi sidebar fit behavior | Child asset package, still part of the default Yazelix runtime because the managed sidebar expects it |
+| `yazelix-yazi-assets/config_metadata/yazi_assets_manifest.toml` | Child-declared reusable asset manifest | Consume from the child package when the main renderer stops hard-coding asset shape |
 | `sidebar-status.yazi`, `sidebar-state.yazi`, `zoxide-editor.yazi` | Yazelix editor/sidebar integration | Keep in Yazelix until pane-orchestrator protocol is separately extracted |
 | `yazi_materialization.rs` adapter | Yazelix runtime materializer | Keep in Yazelix; it resolves settings, the managed Yazi home, semantic action ids, managed output paths, and legacy ownership errors |
 | `yazi_materialization/writer.rs` generated file writes | Private Yazelix writer boundary | Keep private; it writes the generated Yazi config pack from already-resolved adapter inputs |
@@ -60,6 +61,9 @@ The asset pack movement is complete: `configs/yazi/` in this repository keeps
 only Yazelix-owned base templates and sidebar/editor plugins, while the packaged
 runtime links reusable flavors, Starship config, `auto-layout.yazi`, `git.yazi`,
 `lazygit.yazi`, and `starship.yazi` from `yazelix-yazi-assets`.
+The asset child also publishes `config_metadata/yazi_assets_manifest.toml` so a
+future config-pack renderer can consume child-owned asset shape instead of
+recreating plugin/flavor lists in main.
 
 The private writer/adapter split is complete, but the writer is not yet a
 public config-pack API. It still receives Yazelix-managed output roots and

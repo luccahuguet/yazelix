@@ -127,7 +127,7 @@ Boundary rule: pure render/merge/template behavior stays in the child. Main owns
 
 Recommendation: keep separate.
 
-The asset repo is a strong data/package boundary. It owns reusable Yazi flavors, reusable upstream or Yazelix-maintained plugins, the Starship config used by Yazi, vendored plugin metadata, and a package shape with install checks. The main repo now keeps the Yazelix-specific sidebar/editor plugins and materialization logic, which is the right split.
+The asset repo is a strong data/package boundary. It owns reusable Yazi flavors, reusable upstream or Yazelix-maintained plugins, the Starship config used by Yazi, vendored plugin metadata, `config_metadata/yazi_assets_manifest.toml`, and a package shape with install checks. The main repo now keeps the Yazelix-specific sidebar/editor plugins and materialization logic, which is the right split.
 
 This repo should not grow into full Yazi integration unless the main repo adapter gets much thinner. A full Yazi integration child would need to own managed roots, output paths, editor opener preservation, semantic keybindings, pane-orchestrator registration, and legacy guardrails. Those are still Yazelix product behavior.
 
@@ -137,7 +137,7 @@ Boundary rule: reusable flavors and reusable plugins stay in the child. Sidebar 
 
 Decision date: 2026-06-15
 
-If a Yazi config-pack owner becomes worthwhile, prefer extending `yazelix-yazi-assets` over creating `yazelix-yazi-config-pack`. The accepted expansion is narrow: asset manifests, templates, reusable plugin/flavor shape, fixture rendering, and package checks that can be consumed as a concrete artifact/API.
+If a Yazi config-pack owner becomes worthwhile, prefer extending `yazelix-yazi-assets` over creating `yazelix-yazi-config-pack`. The accepted expansion is narrow: the published asset manifest, templates, reusable plugin/flavor shape, fixture rendering, and package checks that can be consumed as a concrete artifact/API.
 
 Keep a separate `yazelix-yazi-config-pack` repo as a rejected default. Reconsider it only if the renderer becomes reusable without the asset pack, has a distinct package/API surface, and can delete main-repo code without moving Yazelix runtime policy out of main.
 
