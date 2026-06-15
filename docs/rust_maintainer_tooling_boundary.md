@@ -110,6 +110,38 @@ Keep `yazelix_maintainer` in this repository for now. An off-repo `yazelix-dev` 
 
 The better next move is to shrink and split maintainer validation by domain inside this repository. Reconsider an external `yazelix-dev` only if a future pass finds a genuinely generic tool that can work against arbitrary checkouts with a stable machine contract.
 
+## Runtime Tools Child Boundary
+
+Decision date: 2026-06-15
+
+`yazelix-runtime-tools` is the preferred name for a possible future child repo. `yazelix-dev` is rejected because it sounds like it owns `yzx dev`, maintainer workflows, or repo-local validation, which must stay in this repository.
+
+The positive boundary for `yazelix-runtime-tools` is installed-runtime and package-output introspection:
+
+- runtime identity and self-description schemas
+- stable readers for packaged runtime metadata
+- installed-runtime/package comparison helpers
+- runtime support bundles for users, support, and agents
+- schema validation libraries that consume packaged artifacts without reading arbitrary source-tree internals
+
+The negative boundary is strict. `yazelix-runtime-tools` must not own:
+
+- installed or repo-local `yzx dev` command implementations
+- `yzx_repo_validator` or `yzx_repo_maintainer`
+- release bumping, update workflows, Beads/GitHub sync, or CI validator dispatch
+- validators whose truth depends on the current checkout's docs, Nix files, tests, Beads policy, or source layout
+- source-contract checks that must be compiled from the same commit they validate
+
+Promote this child only after all of these are true:
+
+- runtime identity and package metadata schemas are stable enough for an external consumer
+- at least one real consumer needs installed-runtime queries outside the main repo
+- the proposed child consumes runtime/package artifacts instead of source-tree internals
+- main can delete duplicated runtime self-description, support-bundle, or package-inspection ownership
+- cross-repo release evidence is cheaper than keeping the code in `yazelix_core` or `yazelix_maintainer`
+
+Do not promote the child if it would mostly host checkout-coupled validators. Those stay in `yazelix_maintainer` and should be shrunk in place.
+
 ### Module Residency Matrix
 
 | Module or binary | Raw lines | Selected residency | Off-repo LOC effect | Version-skew risk | CI/devShell impact | User-runtime impact |
