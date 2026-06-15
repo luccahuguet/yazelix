@@ -4,12 +4,17 @@ Short, upgrade-facing release notes live here. The longer narrative history rema
 
 ## Unreleased
 
-Post-v17.6 work in progress
+Spartan runtime thinning, child config packs, and tab activity fixes
 
 Upgrade impact: no user action required
 
 Highlights:
-- Reserved for post-release changes after v17.6 lands.
+- Cut roughly 9.6k net Rust lines from the main repo by deleting stale `yzx_core` wrappers, broad duplicate tests, one-use launch/materialization scaffolding, doctor bridge layers, and local render-plan ownership that no longer belonged in Yazelix
+- Consumed child-owned Zellij and Yazi config-pack renderers, removed copied Zellij layout fragments and Yazi render-plan files from the main repo, and documented the child repo promotion gates that keep future extractions honest
+- Fixed pane-orchestrator tab activity decorations so inactive tabs update when agents finish thinking or pane commands start and stop, instead of waiting for the tab to be visited
+- Refreshed the screen runtime and prey sprite package pins through the current composite sprite set
+- Repaired yzxterm/Rio transparency and opacity handling for TUI backgrounds while keeping the generated welcome and ANSI colors readable
+- Removed the obsolete NixCI file and tightened maintainer/runtime safety guidance, including the rule that agents must not run `yzx restart` against a live user session
 
 ## v17.6 - 2026-06-13
 
