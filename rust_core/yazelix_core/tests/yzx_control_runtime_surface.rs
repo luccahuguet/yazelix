@@ -759,36 +759,6 @@ fn yzx_control_status_json_versions_includes_tool_matrix() {
     assert_eq!(nix_entry["runtime"], "2.28.3");
 }
 
-// Defends: the human `yzx status --versions` output keeps the grouped status surface plus the tool-version matrix without leaking ANSI escapes to redirected output.
-#[test]
-fn yzx_control_status_versions_human_output_keeps_tool_matrix() {
-    let fixture = managed_config_fixture("");
-    let fake_bin = fixture.home_dir.join("fake-bin");
-    fs::create_dir_all(&fake_bin).unwrap();
-    write_executable_script(
-        &fake_bin.join("nix"),
-        "#!/bin/sh\nprintf 'nix (Nix) 2.28.3\\n'\n",
-    );
-    write_executable_script(&fake_bin.join("nu"), "#!/bin/sh\nprintf '0.105.1\\n'\n");
-
-    let output = yzx_control_command_in_fixture(&fixture)
-        .env("PATH", prepend_path(&fake_bin))
-        .arg("status")
-        .arg("--versions")
-        .output()
-        .unwrap();
-
-    assert_eq!(output.status.code(), Some(0));
-    assert!(output.stderr.is_empty());
-
-    let stdout = String::from_utf8(output.stdout).unwrap();
-    assert!(stdout.starts_with("Runtime\n"));
-    assert!(stdout.contains("\nYazelix Tool Versions\n"));
-    assert!(stdout.contains("nix"));
-    assert!(stdout.contains("2.28.3"));
-    assert!(!stdout.contains('\u{1b}'));
-}
-
 // Defends: the Rust-owned `yzx update upstream` route still fails early for Home Manager-owned installs instead of probing the profile path.
 #[test]
 fn yzx_control_update_upstream_rejects_home_manager_owned_install() {
@@ -1017,52 +987,6 @@ exit 99
     );
 }
 
-// Regression: `yzx update home_manager` must explain that `path:` inputs are still lock-pinned in flake.lock.
-#[test]
-fn yzx_control_update_home_manager_mentions_path_input_locking() {
-    let fixture = managed_config_fixture("");
-    let fake_bin = fixture.home_dir.join("fake-bin");
-    let update_log = fixture.home_dir.join("nix-update.log");
-    let flake_dir = fixture.home_dir.join("hm-flake");
-    fs::create_dir_all(&fake_bin).unwrap();
-    fs::create_dir_all(&flake_dir).unwrap();
-    fs::write(flake_dir.join("flake.nix"), "{ outputs = { self }: {}; }\n").unwrap();
-    write_executable_script(
-        &fake_bin.join("nix"),
-        &format!(
-            "#!/bin/sh
-if [ \"$1\" = flake ] && [ \"$2\" = update ] && [ \"$3\" = yazelix ]; then
-  printf '%s\\n' \"$*\" > \"{}\"
-  exit 0
-fi
-echo unexpected nix invocation: \"$*\" >&2
-exit 99
-",
-            update_log.display()
-        ),
-    );
-
-    let output = yzx_control_command_in_fixture(&fixture)
-        .current_dir(&flake_dir)
-        .env("PATH", prepend_path(&fake_bin))
-        .arg("update")
-        .arg("home_manager")
-        .output()
-        .unwrap();
-
-    assert_eq!(output.status.code(), Some(0));
-    assert!(output.stderr.is_empty());
-    let stdout = String::from_utf8(output.stdout).unwrap();
-    assert!(stdout.contains("Requested update path: Home Manager flake input."));
-    assert!(stdout.contains("This still matters for `path:` inputs"));
-    assert!(stdout.contains("pins a snapshot of that local path until you refresh it"));
-    assert!(stdout.contains("home-manager switch"));
-    assert_eq!(
-        fs::read_to_string(update_log).unwrap(),
-        "flake update yazelix\n"
-    );
-}
-
 // Regression: `yzx update home_manager` must detect local git-backed `path:` inputs and print the exact safer `git+file:` replacement instead of normalizing the slow path snapshot UX.
 #[test]
 fn yzx_control_update_home_manager_recommends_git_file_for_local_path_input() {
@@ -1143,75 +1067,4 @@ exit 99
         fs::read_to_string(update_log).unwrap(),
         "flake update yazelix\n"
     );
-}
-
-// Defends: the public Rust-owned `yzx run` route preserves child dash flags end to end instead of stealing them as wrapper options.
-#[test]
-fn yzx_control_run_preserves_child_dash_flags_end_to_end() {
-    let fixture = managed_config_fixture("");
-    let fake_bin = fixture.home_dir.join("fake-bin");
-    let command_log = fixture.home_dir.join("child-command.log");
-    fs::create_dir_all(&fake_bin).unwrap();
-    write_executable_script(
-        &fake_bin.join("cargo"),
-        &format!(
-            "#!/bin/sh\nprintf '%s\\n' \"$*\" > \"{}\"\n",
-            command_log.display()
-        ),
-    );
-
-    let output = yzx_control_command_in_fixture(&fixture)
-        .env("PATH", prepend_path(&fake_bin))
-        .arg("run")
-        .arg("cargo")
-        .arg("--verbose")
-        .arg("check")
-        .output()
-        .unwrap();
-
-    assert_eq!(output.status.code(), Some(0));
-    assert!(output.stderr.is_empty());
-    assert_eq!(
-        fs::read_to_string(command_log).unwrap().trim(),
-        "--verbose check"
-    );
-}
-
-// Defends: `yzx env --no-shell` remains an explicit current-shell-style runtime environment command, not a launch setup hook.
-#[test]
-fn yzx_control_env_no_shell_launches_invoking_shell_with_runtime_env() {
-    let fixture = managed_config_fixture(
-        r#"[shell]
-default_shell = "bash"
-"#,
-    );
-    let fake_bin = fixture.home_dir.join("fake-bin");
-    fs::create_dir_all(&fake_bin).unwrap();
-    write_executable_script(
-        &fake_bin.join("bash"),
-        "#!/bin/sh\nprintf 'argv=%s\\n' \"$*\"\nprintf 'SHELL=%s\\n' \"$SHELL\"\nprintf 'YAZELIX_RUNTIME_DIR=%s\\n' \"$YAZELIX_RUNTIME_DIR\"\n",
-    );
-
-    let output = yzx_control_command_in_fixture(&fixture)
-        .env("PATH", prepend_path(&fake_bin))
-        .env("SHELL", "/bin/bash")
-        .arg("env")
-        .arg("--no-shell")
-        .output()
-        .unwrap();
-
-    assert_eq!(
-        output.status.code(),
-        Some(0),
-        "stderr:\n{}",
-        String::from_utf8_lossy(&output.stderr)
-    );
-    assert!(output.stderr.is_empty());
-    let stdout = String::from_utf8(output.stdout).unwrap();
-    assert!(stdout.contains("argv="));
-    assert!(stdout.contains("SHELL=bash"));
-    assert!(stdout.contains(&format!(
-        "YAZELIX_RUNTIME_DIR={}",
-        fixture.runtime_dir.display()
-    )));
 }

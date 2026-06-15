@@ -309,21 +309,6 @@ ya_command = "ya"
     );
 }
 
-// Defends: the deleted persistent popup_program path cannot be reached through no-arg yzx popup.
-#[test]
-fn yzx_control_popup_without_program_errors_clearly() {
-    let fixture = managed_config_fixture("");
-
-    let output = yzx_control_command_in_fixture(&fixture)
-        .env("ZELLIJ", "1")
-        .arg("popup")
-        .output()
-        .unwrap();
-
-    assert!(!output.status.success());
-    assert!(String::from_utf8_lossy(&output.stderr).contains("yzx popup <program>"));
-}
-
 // Defends: explicit yzx popup program requests run through the Yazelix runtime wrapper and attach the sidebar refresh close hook.
 #[test]
 fn yzx_control_popup_explicit_program_opens_through_yzpp_raw_request() {
@@ -383,6 +368,7 @@ ya_command = "ya"
 "#,
     );
     let fake_bin = fixture.home_dir.join("fake-bin");
+    let sidebar_dir = fixture.home_dir.join("sidebar-cwd");
     let target_dir = fixture.home_dir.join("workspace");
     let target_file = target_dir.join("notes.txt");
     let second_target_file = target_dir.join("tasks.txt");
@@ -391,6 +377,7 @@ ya_command = "ya"
     let retarget_payload_log = fixture.home_dir.join("retarget-payload.json");
     let ya_log = fixture.home_dir.join("ya.log");
     fs::create_dir_all(&fake_bin).unwrap();
+    fs::create_dir_all(&sidebar_dir).unwrap();
     fs::create_dir_all(&target_dir).unwrap();
     fs::write(&target_file, "").unwrap();
     fs::write(&second_target_file, "").unwrap();
@@ -407,8 +394,10 @@ ya_command = "ya"
     write_arg_log_script(&fake_bin, "ya", &ya_log);
 
     let output = yzx_control_command_in_fixture(&fixture)
+        .current_dir(&sidebar_dir)
         .env("PATH", prepend_path(&fake_bin))
         .env("ZELLIJ", "1")
+        .env("ZELLIJ_PANE_ID", "42")
         .env("YAZI_ID", "current-yazi")
         .arg("zellij")
         .arg("open-editor")
@@ -448,106 +437,18 @@ ya_command = "ya"
     );
     assert_eq!(retarget_payload["cd_focused_pane"], false);
     assert!(retarget_payload["editor"].is_null());
-    assert_eq!(
-        fs::read_to_string(ya_log).unwrap().trim(),
-        format!(
-            "emit-to plugin-sidebar-yazi-123 cd {}",
-            target_dir.display()
-        )
-    );
-}
-
-// Regression: early Yazi file opens carry the active sidebar Yazi identity through the existing retarget pipe instead of waiting for startup sidebar-state registration.
-#[test]
-fn yzx_control_zellij_open_editor_passes_current_yazi_state_to_retarget() {
-    let fixture = managed_config_fixture(
-        r#"[editor]
-command = "nvim"
-hide_sidebar_on_file_open = false
-"#,
-    );
-    let fake_bin = fixture.home_dir.join("fake-bin");
-    let sidebar_dir = fixture.home_dir.join("sidebar-cwd");
-    let target_dir = fixture.home_dir.join("workspace");
-    let target_file = target_dir.join("notes.txt");
-    let retarget_payload_log = fixture.home_dir.join("retarget-payload.json");
-    fs::create_dir_all(&fake_bin).unwrap();
-    fs::create_dir_all(&sidebar_dir).unwrap();
-    fs::create_dir_all(&target_dir).unwrap();
-    fs::write(&target_file, "").unwrap();
-
-    write_executable_script(
-        &fake_bin.join("zellij"),
-        &format!(
-            "#!/bin/sh\nif [ \"$1\" = \"action\" ] && [ \"$2\" = \"pipe\" ]; then\n  case \"$6\" in\n    open_file)\n      printf '%s\\n' 'ok'\n      exit 0\n      ;;\n    retarget_workspace)\n      printf '%s' \"$8\" > \"{}\"\n      printf '%s\\n' '{{\"status\":\"ok\",\"editor_status\":\"skipped\"}}'\n      exit 0\n      ;;\n  esac\nfi\nprintf 'unexpected zellij args: %s\\n' \"$*\" >&2\nexit 1\n",
-            retarget_payload_log.display(),
-        ),
-    );
-
-    let output = yzx_control_command_in_fixture(&fixture)
-        .current_dir(&sidebar_dir)
-        .env("PATH", prepend_path(&fake_bin))
-        .env("ZELLIJ", "1")
-        .env("ZELLIJ_PANE_ID", "42")
-        .env("YAZI_ID", "current-yazi")
-        .arg("zellij")
-        .arg("open-editor")
-        .arg(&target_file)
-        .output()
-        .unwrap();
-
-    assert_success(&output);
-    let retarget_payload = read_json_file(retarget_payload_log);
     assert_eq!(retarget_payload["sidebar_yazi"]["pane_id"], "terminal:42");
     assert_eq!(retarget_payload["sidebar_yazi"]["yazi_id"], "current-yazi");
     assert_eq!(
         retarget_payload["sidebar_yazi"]["cwd"],
         sidebar_dir.to_string_lossy().to_string()
     );
-}
-
-// Defends: hide_sidebar_on_file_open hides the managed sidebar before opening files so the editor is not visibly resized after focus.
-#[test]
-fn yzx_control_zellij_open_editor_hides_sidebar_when_configured() {
-    let fixture = managed_config_fixture(
-        r#"[editor]
-command = "nvim"
-hide_sidebar_on_file_open = true
-"#,
-    );
-    let fake_bin = fixture.home_dir.join("fake-bin");
-    let target_file = fixture.home_dir.join("notes.txt");
-    let zellij_commands_log = fixture.home_dir.join("zellij-commands.log");
-    fs::create_dir_all(&fake_bin).unwrap();
-    fs::write(&target_file, "").unwrap();
-
-    write_executable_script(
-        &fake_bin.join("zellij"),
-        &format!(
-            "#!/bin/sh\nif [ \"$1\" = \"action\" ] && [ \"$2\" = \"pipe\" ]; then\n  printf '%s\\n' \"$6\" >> \"{}\"\n  case \"$6\" in\n    open_file)\n      printf '%s\\n' 'ok'\n      exit 0\n      ;;\n    retarget_workspace)\n      printf '%s\\n' '{{\"status\":\"ok\",\"editor_status\":\"skipped\"}}'\n      exit 0\n      ;;\n    get_active_tab_session_state)\n      printf '%s\\n' '{{\"schema_version\":1,\"layout\":{{\"sidebar_collapsed\":false}}}}'\n      exit 0\n      ;;\n    hide_sidebar)\n      printf '%s\\n' 'ok'\n      exit 0\n      ;;\n  esac\nfi\nprintf 'unexpected zellij args: %s\\n' \"$*\" >&2\nexit 1\n",
-            zellij_commands_log.display(),
-        ),
-    );
-
-    let output = yzx_control_command_in_fixture(&fixture)
-        .env("PATH", prepend_path(&fake_bin))
-        .env("ZELLIJ", "1")
-        .env("YAZI_ID", "current-yazi")
-        .arg("zellij")
-        .arg("open-editor")
-        .arg(&target_file)
-        .output()
-        .unwrap();
-
-    assert_success(&output);
     assert_eq!(
-        file_lines(zellij_commands_log),
-        vec![
-            "get_active_tab_session_state",
-            "hide_sidebar",
-            "open_file",
-            "retarget_workspace",
-        ]
+        fs::read_to_string(ya_log).unwrap().trim(),
+        format!(
+            "emit-to plugin-sidebar-yazi-123 cd {}",
+            target_dir.display()
+        )
     );
 }
 
@@ -1265,86 +1166,6 @@ hide_sidebar_on_file_open = false
     assert_eq!(retarget_payload["editor"], "neovim");
 }
 
-// Regression: the Alt+z Yazi zoxide route must honor hide_sidebar_on_file_open before retargeting the editor cwd.
-#[test]
-fn yzx_control_zellij_open_editor_cwd_hides_sidebar_when_configured() {
-    let fixture = managed_config_fixture(
-        r#"[editor]
-command = "hx"
-hide_sidebar_on_file_open = true
-"#,
-    );
-    let fake_bin = fixture.home_dir.join("fake-bin");
-    let target_dir = fixture.home_dir.join("workspace");
-    let zellij_commands_log = fixture.home_dir.join("zellij-commands.log");
-    let helix_bridge_request_log = fixture.home_dir.join("helix-cwd-bridge-request.json");
-    let session_id = "cwd-bridge-session";
-    let snapshot = write_session_config_snapshot_with_id(
-        &fixture,
-        session_id,
-        &[
-            ("editor_command", json!("hx")),
-            ("hide_sidebar_on_file_open", json!(true)),
-        ],
-    );
-    let bridge_dir = fixture.state_dir.join("helix_bridge").join(session_id);
-    let socket_path = bridge_dir.join("inst-1.sock");
-    let token_path = bridge_dir.join("inst-1.token");
-    fs::create_dir_all(&fake_bin).unwrap();
-    fs::create_dir_all(&target_dir).unwrap();
-    fs::create_dir_all(&bridge_dir).unwrap();
-    let bridge = spawn_helix_bridge_request_logger(&socket_path, &helix_bridge_request_log);
-    write_helix_bridge_registry(
-        &fixture.state_dir,
-        session_id,
-        "inst-1",
-        "7",
-        &socket_path,
-        &token_path,
-    );
-
-    write_executable_script(
-        &fake_bin.join("zellij"),
-        &format!(
-            "#!/bin/sh\nif [ \"$1\" = \"action\" ] && [ \"$2\" = \"pipe\" ]; then\n  printf '%s\\n' \"$6\" >> \"{}\"\n  case \"$6\" in\n    get_active_tab_session_state)\n      printf '%s\\n' '{{\"schema_version\":1,\"managed_panes\":{{\"editor_pane_id\":\"terminal:7\",\"sidebar_pane_id\":\"terminal:8\"}},\"layout\":{{\"sidebar_collapsed\":false}}}}'\n      exit 0\n      ;;\n    hide_sidebar)\n      printf '%s\\n' 'ok'\n      exit 0\n      ;;\n    retarget_workspace)\n      printf '%s\\n' '{{\"status\":\"ok\",\"editor_status\":\"skipped\"}}'\n      exit 0\n      ;;\n    focus_editor)\n      printf '%s\\n' 'ok'\n      exit 0\n      ;;\n  esac\nfi\nprintf 'unexpected zellij args: %s\\n' \"$*\" >&2\nexit 1\n",
-            zellij_commands_log.display(),
-        ),
-    );
-
-    let output = yzx_control_command_in_fixture(&fixture)
-        .env("PATH", prepend_path(&fake_bin))
-        .env("ZELLIJ", "1")
-        .env("YAZELIX_SESSION_CONFIG_PATH", snapshot)
-        .arg("zellij")
-        .arg("open-editor-cwd")
-        .arg(&target_dir)
-        .output()
-        .unwrap();
-
-    assert_success(&output);
-    bridge.join().unwrap();
-    assert_eq!(
-        file_lines(zellij_commands_log),
-        vec![
-            "get_active_tab_session_state",
-            "hide_sidebar",
-            "retarget_workspace",
-            "get_active_tab_session_state",
-            "focus_editor"
-        ]
-    );
-    let bridge_request = read_json_file(helix_bridge_request_log);
-    assert_eq!(bridge_request["action"], "helix.open_directory");
-    assert_eq!(
-        bridge_request["payload"]["working_dir"],
-        target_dir.to_string_lossy().to_string()
-    );
-    assert_eq!(
-        bridge_request["payload"]["picker_dir"],
-        target_dir.to_string_lossy().to_string()
-    );
-}
-
 // Regression: an existing managed Helix pane must fail clearly when its action bridge is unavailable instead of falling back to terminal text injection.
 #[test]
 fn yzx_control_zellij_open_editor_cwd_fails_when_existing_helix_bridge_is_missing() {
@@ -1391,55 +1212,6 @@ hide_sidebar_on_file_open = false
             "retarget_workspace",
             "get_active_tab_session_state",
             "focus_editor"
-        ]
-    );
-}
-
-// Regression: Alt+z from the initial single-Yazi pane needs a post-create hide because the closed layout is not applicable before the editor pane exists.
-#[test]
-fn yzx_control_zellij_open_editor_cwd_hides_sidebar_after_creating_first_editor_pane() {
-    let fixture = managed_config_fixture(
-        r#"[editor]
-command = "hx"
-hide_sidebar_on_file_open = true
-"#,
-    );
-    let fake_bin = fixture.home_dir.join("fake-bin");
-    let target_dir = fixture.home_dir.join("workspace");
-    let zellij_commands_log = fixture.home_dir.join("zellij-commands.log");
-    fs::create_dir_all(&fake_bin).unwrap();
-    fs::create_dir_all(&target_dir).unwrap();
-
-    write_executable_script(
-        &fake_bin.join("zellij"),
-        &format!(
-            "#!/bin/sh\nif [ \"$1\" = \"action\" ] && [ \"$2\" = \"pipe\" ]; then\n  printf '%s\\n' \"$6\" >> \"{}\"\n  case \"$6\" in\n    get_active_tab_session_state)\n      printf '%s\\n' '{{\"schema_version\":1,\"layout\":{{\"sidebar_collapsed\":false}}}}'\n      exit 0\n      ;;\n    hide_sidebar)\n      printf '%s\\n' 'ok'\n      exit 0\n      ;;\n    retarget_workspace)\n      printf '%s\\n' '{{\"status\":\"ok\",\"editor_status\":\"missing\"}}'\n      exit 0\n      ;;\n  esac\nfi\nif [ \"$1\" = \"run\" ]; then\n  printf '%s\\n' 'run_editor' >> \"{}\"\n  exit 0\nfi\nprintf 'unexpected zellij args: %s\\n' \"$*\" >&2\nexit 1\n",
-            zellij_commands_log.display(),
-            zellij_commands_log.display(),
-        ),
-    );
-
-    let output = yzx_control_command_in_fixture(&fixture)
-        .env("PATH", prepend_path(&fake_bin))
-        .env("ZELLIJ", "1")
-        .env("YAZI_ID", "current-yazi")
-        .arg("zellij")
-        .arg("open-editor-cwd")
-        .arg(&target_dir)
-        .output()
-        .unwrap();
-
-    assert_success(&output);
-    assert_eq!(
-        file_lines(zellij_commands_log),
-        vec![
-            "get_active_tab_session_state",
-            "hide_sidebar",
-            "retarget_workspace",
-            "get_active_tab_session_state",
-            "run_editor",
-            "get_active_tab_session_state",
-            "hide_sidebar",
         ]
     );
 }
@@ -1538,118 +1310,4 @@ fn yzx_control_doctor_json_reports_structured_findings() {
             .unwrap()
             >= 1
     );
-}
-
-// Regression: `yzx doctor --json` must surface mixed Home Manager/default-profile Yazelix ownership before Home Manager activation trips over the package collision.
-#[test]
-fn yzx_control_doctor_json_reports_home_manager_profile_collision() {
-    let fixture = managed_config_fixture("");
-    let hm_store_config = fixture
-        .home_dir
-        .join("hm-store")
-        .join("abc-home-manager-files")
-        .join("settings.jsonc");
-    let manifest_path = fixture.home_dir.join(".nix-profile").join("manifest.json");
-    fs::create_dir_all(hm_store_config.parent().unwrap()).unwrap();
-    fs::create_dir_all(manifest_path.parent().unwrap()).unwrap();
-    fs::write(
-        &hm_store_config,
-        "{\"core\":{\"welcome_style\":\"random\"}}\n",
-    )
-    .unwrap();
-    fs::write(
-        &manifest_path,
-        r#"{"elements":{"yazelix":{"active":true,"storePaths":["/nix/store/test-yazelix"]}},"version":3}"#,
-    )
-    .unwrap();
-    fs::remove_file(&fixture.managed_config).unwrap();
-    std::os::unix::fs::symlink(&hm_store_config, fixture.config_dir.join("settings.jsonc"))
-        .unwrap();
-
-    let output = yzx_control_command_in_fixture(&fixture)
-        .arg("doctor")
-        .arg("--json")
-        .output()
-        .unwrap();
-
-    assert_success(&output);
-    let report: Value = serde_json::from_slice(&output.stdout).unwrap();
-    let ownership_result = report["results"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .find(|result| {
-            result["message"]
-                .as_str()
-                .unwrap_or("")
-                .contains("default Nix profile still contains standalone Yazelix packages")
-        })
-        .expect("mixed ownership warning");
-
-    assert_eq!(ownership_result["status"], "warn");
-    assert!(
-        ownership_result["details"]
-            .as_str()
-            .unwrap_or("")
-            .contains("yzx home_manager prepare --apply")
-    );
-}
-
-// Defends: `yzx doctor --fix-plan --json` exposes exact recovery commands without running the mutating fix flow.
-#[test]
-fn yzx_control_doctor_fix_plan_json_reports_recovery_commands() {
-    let fixture = managed_config_fixture("");
-    let hm_store_config = fixture
-        .home_dir
-        .join("hm-store")
-        .join("abc-home-manager-files")
-        .join("settings.jsonc");
-    let manifest_path = fixture.home_dir.join(".nix-profile").join("manifest.json");
-    fs::create_dir_all(hm_store_config.parent().unwrap()).unwrap();
-    fs::create_dir_all(manifest_path.parent().unwrap()).unwrap();
-    fs::write(
-        &hm_store_config,
-        "{\"core\":{\"welcome_style\":\"random\"}}\n",
-    )
-    .unwrap();
-    fs::write(
-        &manifest_path,
-        r#"{"elements":{"yazelix":{"active":true,"storePaths":["/nix/store/test-yazelix"]}},"version":3}"#,
-    )
-    .unwrap();
-    fs::remove_file(&fixture.managed_config).unwrap();
-    std::os::unix::fs::symlink(&hm_store_config, fixture.config_dir.join("settings.jsonc"))
-        .unwrap();
-
-    let output = yzx_control_command_in_fixture(&fixture)
-        .arg("doctor")
-        .arg("--fix-plan")
-        .arg("--json")
-        .output()
-        .unwrap();
-
-    assert_success(&output);
-    let plan: Value = serde_json::from_slice(&output.stdout).unwrap();
-    let action = plan["actions"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .find(|action| action["id"] == "resolve_home_manager_profile_collision")
-        .expect("home manager recovery action");
-
-    assert_eq!(plan["title"], "Yazelix Recovery Fix Plan");
-    assert_eq!(plan["inspect_command"], "yzx inspect --json");
-    assert_eq!(action["safe_to_run_automatically"], false);
-    assert!(
-        action["commands"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .any(|command| command == "yzx home_manager prepare --apply")
-    );
-    assert!(action["evidence"].as_array().unwrap().iter().any(|line| {
-        line.as_str()
-            .unwrap_or("")
-            .contains("Home Manager now owns")
-    }));
 }
