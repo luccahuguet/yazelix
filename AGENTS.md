@@ -120,6 +120,7 @@ When creating new files or directories, always use underscores to maintain consi
   3. Build only the touched package output when needed, such as `nix build .#yazelix_kgp_zellij --no-link --no-write-lock-file`.
   4. Run `nix build .#runtime_ghostty --no-link --no-write-lock-file` once as the final package gate after the smaller checks pass.
 - Avoid launching multiple `nix develop`, `nix eval`, or package-build commands in parallel during validation. They contend on Nix eval caches, store locks, and Cargo/Nix build directories, which makes the session slower and noisier than serialized checks.
+- **Do not run `yzx restart` as an agent.** It kills the user's live Zellij session. If a runtime change needs a fresh Yazelix session, ask the maintainer to launch one or explicitly approve the destructive restart first.
 - For yzxterm runtime updates, expect `nix build .#runtime_yzxterm --no-link --no-write-lock-file` and the normal Home Manager switch to build the terminal through release LTO and package tests when the terminal input changes. Treat that path as a final runtime gate. Use focused terminal-repo Rust checks and builds before switching, and when improving this path, research current Rust/Nix build-speed tools instead of assuming the bottleneck is only one command.
 - Do not run yzxterm-related compile-heavy commands (`cargo`, `nix build`, or Home Manager switch) again until the rebuild-speed optimization beads are addressed, unless the maintainer explicitly overrides this gate for a specific command.
 - For yzxterm dogfooding after that gate is addressed, prefer the explicit fast outputs `#runtime_yzxterm_fast` and `#yzxterm_fast`; see `docs/yzxterm_fast_dogfooding.md`. Do not treat those fast outputs as release evidence.
@@ -158,7 +159,7 @@ When creating new files or directories, always use underscores to maintain consi
   ```
 - Follow the cross-repo release transaction rule before landing any main-repo lock update that consumes a new pane-orchestrator child commit.
 - **Do not treat `cargo test` or `cargo check` as sufficient verification for live plugin behavior.** They only validate the Rust source. Real behavior changes require the packaged wasm, runtime build validation, and a fresh Yazelix session.
-- After switching to a new packaged plugin wasm, prefer `yzx restart` or a fresh Yazelix window. Avoid in-place plugin reloads as the default validation path because they can leave the current session in a broken permission state.
+- After switching to a new packaged plugin wasm, use a fresh Yazelix window for live validation. Do not run `yzx restart` unless the maintainer explicitly approves killing the current Zellij session.
 - Run `yzx_repo_validator validate-workspace-session-contract` or `yzx dev test` before committing pane-orchestrator integration work; the validator checks generated workspace assets against the packaged runtime shape.
 - Built-in Zellij layout templates live in the `yazelix-zellij-config-pack` child repo. After changing them, push the child repo, update the main lock/dependency pins, and run `yzx_repo_validator validate-workspace-session-contract`; `yzx doctor` validates generated layouts against the consumed child pack.
 
