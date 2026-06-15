@@ -22,8 +22,9 @@ The pane orchestrator is the highest-risk boundary because it owns real workspac
 - `docs/contracts/status_bar_ownership.md`
 - `docs/contracts/floating_tui_panes.md`
 - `docs/contracts/yazelix_zellij_pane_orchestrator_extraction.md`
+- `docs/contracts/zellij_config_pack_boundary.md`
 - `docs/contracts/yazi_integration_boundary.md`
-- Adjacent checkouts for `yazelix-screen`, `yazelix-cursors`, `yazelix-terminal`, `yazelix-ratconfig`, `yazelix-zellij-bar`, `yazelix-zellij-pane-orchestrator`, `yazelix-zellij-popup`, and `yazelix-yazi-assets`
+- Adjacent checkouts for `yazelix-screen`, `yazelix-cursors`, `yazelix-terminal`, `yazelix-ratconfig`, `yazelix-zellij-bar`, `yazelix-zellij-pane-orchestrator`, `yazelix-zellij-popup`, `yazelix-zellij-config-pack`, and `yazelix-yazi-assets`
 
 ## Scoring
 
@@ -47,6 +48,7 @@ Scores use `1..5`, where `5` is the healthier result for a separate child reposi
 | `yazelix-zellij-bar` | 4 | 3 | 4 | 4 | 3 | 4 | Keep separate with adapter discipline |
 | `yazelix-zellij-pane-orchestrator` | 3 | 2 | 5 | 3 | 2 | 4 | Keep separate, revise boundary discipline |
 | `yazelix-zellij-popup` | 5 | 5 | 5 | 5 | 4 | 4 | Keep separate |
+| `yazelix-zellij-config-pack` | 2 | 4 | 4 | 5 | 3 | 5 | Keep separate as a deletion boundary |
 | `yazelix-yazi-assets` | 4 | 5 | 5 | 5 | 4 | 5 | Keep separate |
 
 ## Per-Repo Evaluation
@@ -111,6 +113,16 @@ The main repo's role is correctly narrow: package `yzpp.wasm`, generate integrat
 
 Boundary rule: configured popup lifecycle belongs in `yzpp`. Yazelix owns generated popup specs, command selection, semantic bindings, and integration hooks.
 
+### `yazelix-zellij-config-pack`
+
+Recommendation: keep separate as a deletion boundary.
+
+The config-pack repo is less standalone than popup or screen, but it has a clear ownership payoff: deterministic Zellij config/layout rendering, bundled layout templates, layout fragments, and renderer fixture tests no longer live in the main repo. Main Yazelix is now a request builder plus filesystem writer around the child renderer.
+
+The coupling is acceptable because the child receives explicit structured inputs and does not read Yazelix runtime directories, Home Manager state, live Zellij state, or adjacent source checkouts. Release friction is real because main consumes both the Cargo git crate and flake input; treat every update as a child release transaction.
+
+Boundary rule: pure render/merge/template behavior stays in the child. Main owns settings normalization, action/keybinding policy, plugin artifact resolution, status-bar request construction, generated-state writes, doctor repair decisions, and workspace/session behavior.
+
 ### `yazelix-yazi-assets`
 
 Recommendation: keep separate.
@@ -171,6 +183,7 @@ Use this priority order for future boundary pressure:
 1. Keep `yazelix-zellij-pane-orchestrator` honest about standalone versus Yazelix-only commands.
 2. Keep `yazelix-ratconfig` as a reusable config editor crate and prevent Yazelix schema/apply policy from leaking into it.
 3. Keep `yazelix-zellij-bar` as a command/artifact boundary and prevent widget implementation from returning to the main repo.
-4. Keep `yazelix-yazi-assets` asset-only unless a real config-pack API emerges.
-5. Treat `yazelix-screen`, `yazelix-cursors`, and Rust git child crates as release transactions, not local cleanup.
-6. Keep `yazelix-zellij-popup` narrow and generic; it is the model child boundary.
+4. Keep `yazelix-zellij-config-pack` as the Zellij renderer/template owner and prevent fallback copies from returning to main.
+5. Keep `yazelix-yazi-assets` asset-only unless a real config-pack API emerges.
+6. Treat `yazelix-screen`, `yazelix-cursors`, and Rust git child crates as release transactions, not local cleanup.
+7. Keep `yazelix-zellij-popup` narrow and generic; it is the model child boundary.

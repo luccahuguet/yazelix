@@ -16,6 +16,7 @@
   yazelixTerminal,
   yazelixYaziAssets,
   yazelixZellijBar,
+  yazelixZellijConfigPack,
   yazelixZellijPaneOrchestrator,
   yazelixZellijPopup,
 }:
@@ -58,6 +59,8 @@ let
   yazelix_screen = yazelixScreen.packages.${system}.yzs;
   yazelix_cursors = yazelixCursors.packages.${system}.yazelix_cursors;
   yazelix_helix = kgpPackages.helixPackage system;
+  yazelix_zellij_config_pack =
+    yazelixZellijConfigPack.packages.${system}.yazelix_zellij_config_pack;
   yazelix_zellij_pane_orchestrator =
     yazelixZellijPaneOrchestrator.packages.${system}.yazelix_zellij_pane_orchestrator;
   yazelix_zellij_popup = yazelixZellijPopup.packages.${system}.yzpp;
@@ -68,7 +71,7 @@ let
       br = beads_rust;
       inherit beads_rust runtime_agent_tools runtime_yzxterm_fast yzxterm_fast;
       inherit yazelix_agent_tools yazelix_cursors yazelix_helix yazelix_screen;
-      inherit yazelix_yazi_assets yazelix_zellij_bar;
+      inherit yazelix_yazi_assets yazelix_zellij_bar yazelix_zellij_config_pack;
       inherit yazelix_zellij_pane_orchestrator yazelix_zellij_popup;
       default = yazelix_default;
       runtime = runtime_default;

@@ -25,18 +25,11 @@ let
         relativePath = lib.removePrefix ((toString src) + "/") (toString path);
         isBuildArtifact =
           relativePath == "rust_core/target" || lib.hasPrefix "rust_core/target/" relativePath;
-        isZellijStatusTemplateSource =
-          relativePath == "configs"
-          || relativePath == "configs/zellij"
-          || relativePath == "configs/zellij/layouts"
-          || relativePath == "configs/zellij/layouts/fragments"
-          || relativePath == "configs/zellij/layouts/fragments/zjstatus_tab_template.kdl";
         isRustCoreSource =
           relativePath == "rust_core"
           || relativePath == "config_metadata"
           || relativePath == "settings_default.jsonc"
           || relativePath == "yazelix_cursors_default.toml"
-          || isZellijStatusTemplateSource
           || lib.hasPrefix "rust_core/" relativePath
           || lib.hasPrefix "config_metadata/" relativePath;
       in
@@ -56,6 +49,7 @@ rustPlatform.buildRustPackage {
       "yazelix_cursors-0.1.0" = "sha256-4IOvm1p3A6W0uC3+Y+jp1B2y8mYNp1G7bXQzMbNYMT0=";
       "yazelix-ratconfig-0.1.0" = "sha256-H1BTLSH81nCq4dw4PDshxHvhcXbMR+Uv4o0632EXwK8=";
       "yazelix_screen-0.1.0" = "sha256-vTSwxsIas5khfqTmM8WeeYJPf8ZwL3UwMv7WJFu44C4=";
+      "yazelix_zellij_config_pack-0.1.0" = "sha256-H7m+a0B8dpGU/UP+YMWLJz2Nwz78p3WAusrfGu6YPKs=";
     };
   };
   buildAndTestSubdir = "rust_core";

@@ -1,16 +1,15 @@
 //! User-facing workspace asset drift checks for `yzx doctor`.
 
-use crate::layout_family_contract::{
-    expected_zellij_generated_layout_files, validate_zellij_layout_family_contract,
-};
 use crate::zellij_materialization::{
     generated_zellij_config_has_yazelix_markers, generated_zellij_layout_has_yazelix_markers,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use sha2::{Digest, Sha256};
+use std::collections::BTreeSet;
 use std::fs;
 use std::path::{Path, PathBuf};
+use yazelix_zellij_config_pack as zellij_config_pack;
 
 const ZELLIJ_PLUGIN_WASMS: &[&str] = &[
     "yazelix_pane_orchestrator.wasm",
@@ -18,16 +17,12 @@ const ZELLIJ_PLUGIN_WASMS: &[&str] = &[
     "yzpp.wasm",
 ];
 const RUNTIME_WORKSPACE_ASSETS: &[&str] = &[
-    "config_metadata/zellij_layout_families.toml",
     "configs/zellij/yazelix_overrides.kdl",
     "configs/zellij/plugins/yazelix_pane_orchestrator.wasm",
     "configs/zellij/plugins/zjstatus.wasm",
     "configs/zellij/plugins/yzpp.wasm",
 ];
-const REPO_WORKSPACE_ASSETS: &[&str] = &[
-    "config_metadata/zellij_layout_families.toml",
-    "configs/zellij/yazelix_overrides.kdl",
-];
+const REPO_WORKSPACE_ASSETS: &[&str] = &["configs/zellij/yazelix_overrides.kdl"];
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -54,7 +49,6 @@ pub fn evaluate_workspace_asset_report(
 ) -> Vec<WorkspaceAssetFinding> {
     vec![
         runtime_workspace_assets_finding(&request.runtime_dir),
-        layout_family_contract_finding(&request.runtime_dir),
         generated_workspace_state_finding(&request.runtime_dir, &request.state_dir),
     ]
 }
@@ -71,7 +65,6 @@ pub fn validate_workspace_assets_for_repo(repo_root: &Path) -> Result<Vec<String
                 )
             }),
     );
-    errors.extend(validate_zellij_layout_family_contract(repo_root)?);
     Ok(errors)
 }
 
@@ -81,7 +74,9 @@ fn runtime_workspace_assets_finding(runtime_dir: &Path) -> WorkspaceAssetFinding
         return WorkspaceAssetFinding {
             status: "ok".into(),
             message: "Workspace runtime assets are present".into(),
-            details: Some("Zellij layouts, plugin artifacts, and layout metadata are available in the active runtime.".into()),
+            details: Some(
+                "Zellij overrides and plugin artifacts are available in the active runtime.".into(),
+            ),
             fix_available: false,
             fix_action: None,
             owner_surface: "doctor".into(),
@@ -103,41 +98,6 @@ fn runtime_workspace_assets_finding(runtime_dir: &Path) -> WorkspaceAssetFinding
         fix_action: None,
         owner_surface: "doctor".into(),
         workspace_asset_check: "runtime_workspace_assets".into(),
-    }
-}
-
-fn layout_family_contract_finding(runtime_dir: &Path) -> WorkspaceAssetFinding {
-    match validate_zellij_layout_family_contract(runtime_dir) {
-        Ok(errors) if errors.is_empty() => WorkspaceAssetFinding {
-            status: "ok".into(),
-            message: "Built-in Zellij layout family contract is valid".into(),
-            details: Some(
-                "The active runtime layout metadata matches the shipped KDL layout templates."
-                    .into(),
-            ),
-            fix_available: false,
-            fix_action: None,
-            owner_surface: "doctor".into(),
-            workspace_asset_check: "zellij_layout_family_contract".into(),
-        },
-        Ok(errors) => WorkspaceAssetFinding {
-            status: "error".into(),
-            message: "Built-in Zellij layout family contract is inconsistent".into(),
-            details: Some(errors.join("\n")),
-            fix_available: false,
-            fix_action: None,
-            owner_surface: "doctor".into(),
-            workspace_asset_check: "zellij_layout_family_contract".into(),
-        },
-        Err(error) => WorkspaceAssetFinding {
-            status: "error".into(),
-            message: "Could not evaluate built-in Zellij layout family contract".into(),
-            details: Some(error),
-            fix_available: false,
-            fix_action: None,
-            owner_surface: "doctor".into(),
-            workspace_asset_check: "zellij_layout_family_contract".into(),
-        },
     }
 }
 
@@ -177,37 +137,30 @@ fn generated_workspace_state_finding(
         Err(error) => issues.push(error.clone()),
     }
 
-    match expected_zellij_generated_layout_files(runtime_dir) {
-        Ok(expected_layouts) => {
-            let generated_layouts_dir = zellij_state_dir.join("layouts");
-            for layout in expected_layouts {
-                let generated = generated_layouts_dir.join(&layout);
-                if !generated.is_file() {
-                    issues.push(format!(
-                        "missing generated Zellij layout: {}",
-                        generated.display()
-                    ));
-                    continue;
-                }
-                match generated_zellij_layout_has_yazelix_markers(
-                    &generated,
-                    generation_fingerprint.as_ref().ok().and_then(Option::as_deref),
-                ) {
-                    Ok(true) => {}
-                    Ok(false) => issues.push(format!(
-                        "invalid generated Zellij layout missing Yazelix generation markers or current fingerprint: {}",
-                        generated.display()
-                    )),
-                    Err(error) => issues.push(format!(
-                        "could not validate generated Zellij layout: {}",
-                        error.message()
-                    )),
-                }
-            }
+    let generated_layouts_dir = zellij_state_dir.join("layouts");
+    for layout in expected_zellij_generated_layout_files() {
+        let generated = generated_layouts_dir.join(&layout);
+        if !generated.is_file() {
+            issues.push(format!(
+                "missing generated Zellij layout: {}",
+                generated.display()
+            ));
+            continue;
         }
-        Err(error) => issues.push(format!(
-            "could not resolve expected generated Zellij layouts: {error}"
-        )),
+        match generated_zellij_layout_has_yazelix_markers(
+            &generated,
+            generation_fingerprint.as_ref().ok().and_then(Option::as_deref),
+        ) {
+            Ok(true) => {}
+            Ok(false) => issues.push(format!(
+                "invalid generated Zellij layout missing Yazelix generation markers or current fingerprint: {}",
+                generated.display()
+            )),
+            Err(error) => issues.push(format!(
+                "could not validate generated Zellij layout: {}",
+                error.message()
+            )),
+        }
     }
 
     for wasm_name in ZELLIJ_PLUGIN_WASMS {
@@ -299,6 +252,13 @@ fn missing_workspace_assets(root: &Path, assets: &[&str]) -> Vec<PathBuf> {
         .collect()
 }
 
+fn expected_zellij_generated_layout_files() -> BTreeSet<String> {
+    zellij_config_pack::bundled_layout_templates()
+        .into_iter()
+        .map(|template| template.relative_path)
+        .collect()
+}
+
 fn file_sha256_hex(path: &Path) -> Result<String, String> {
     let bytes =
         fs::read(path).map_err(|error| format!("failed to read {}: {error}", path.display()))?;
@@ -316,36 +276,11 @@ mod tests {
         let root = tmp.path();
         let runtime = root.join("runtime");
         let state = root.join("state");
-        let runtime_layouts = runtime.join("configs").join("zellij").join("layouts");
         let runtime_plugins = runtime.join("configs").join("zellij").join("plugins");
         let state_zellij = state.join("configs").join("zellij");
-        fs::create_dir_all(runtime.join("config_metadata")).unwrap();
-        fs::create_dir_all(&runtime_layouts).unwrap();
         fs::create_dir_all(&runtime_plugins).unwrap();
         fs::create_dir_all(state_zellij.join("layouts")).unwrap();
         fs::create_dir_all(state_zellij.join("plugins")).unwrap();
-        fs::write(
-            runtime
-                .join("config_metadata")
-                .join("zellij_layout_families.toml"),
-            r#"
-schema_version = 1
-[[layout_families]]
-id = "sidebar"
-layout_file = "yzx_side.kdl"
-swap_layout_file = "yzx_side.swap.kdl"
-required_pane_names = ["sidebar"]
-required_launcher_placeholders = ["__YAZELIX_SIDEBAR_COMMAND__", "__YAZELIX_SIDEBAR_ARGS__"]
-swap_layouts = ["single_open"]
-"#,
-        )
-        .unwrap();
-        fs::write(runtime_layouts.join("yzx_side.kdl"), r#"layout { pane name="sidebar" { command __YAZELIX_SIDEBAR_COMMAND__ __YAZELIX_SIDEBAR_ARGS__ } }"#).unwrap();
-        fs::write(
-            runtime_layouts.join("yzx_side.swap.kdl"),
-            r#"swap_tiled_layout name="single_open" {}"#,
-        )
-        .unwrap();
         fs::write(
             runtime
                 .join("configs")

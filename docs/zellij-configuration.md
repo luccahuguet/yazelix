@@ -29,7 +29,7 @@ The merger prefers your **Yazelix-managed Zellij config** when present, then fal
    - `default_layout` set to Yazelix’s layout file (absolute path)
    - `layout_dir` set to Yazelix’s generated layouts directory
 
-Layouts are copied into `~/.local/share/yazelix/configs/zellij/layouts`, and the merged config is written to `~/.local/share/yazelix/configs/zellij/config.kdl` on every launch. Yazelix also passes an absolute `--default-layout` at launch for extra safety.
+Layouts are rendered from the `yazelix-zellij-config-pack` child pack into `~/.local/share/yazelix/configs/zellij/layouts`, and the merged config is written to `~/.local/share/yazelix/configs/zellij/config.kdl` on every launch. Yazelix also passes an absolute `--default-layout` at launch for extra safety.
 
 `~/.config/yazelix/zellij.kdl` must not contain a `keybinds` block. Yazelix rejects managed `keybinds` blocks, including `keybinds clear-defaults=true`, because they create a second keybinding owner and can bypass managed workspace controls. Use `zellij.keybindings` and `zellij.native_keybindings` in `settings.jsonc` for Yazelix sessions. Use plain `zellij` outside Yazelix if you want full native keybinding ownership.
 

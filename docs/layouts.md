@@ -1,9 +1,9 @@
 # Zellij Layouts
 
-Yazelix ships one managed sidebar family and its swap-layout file:
+Yazelix ships one managed sidebar family from the `yazelix-zellij-config-pack` child repo:
 
-- `configs/zellij/layouts/yzx_side.kdl` for sidebar mode
-- `configs/zellij/layouts/yzx_side.swap.kdl` for sidebar swap layouts
+- `yzx_side.kdl` for sidebar mode
+- `yzx_side.swap.kdl` for sidebar swap layouts
 
 Set the file-open behavior in `settings.jsonc`:
 
@@ -37,11 +37,11 @@ The directional surface layer follows HJKL placement: `Alt+Shift+H` toggles the 
 
 `workspace.left_sidebar.command` / `args` and `workspace.right_sidebar.command` / `args` control the terminal side surfaces launched in the managed sidebar slots. Set `args` explicitly for tools that need them, such as `["status"]` for `lazygit status`. The right sidebar can run another agent or any non-agent terminal command. Custom launchers still run inside managed panes named `sidebar` and `agent`; the pane orchestrator keeps owning sidebar identity, focus, and layout state.
 
-## Layout Metadata
+## Layout Ownership
 
-The built-in layout family contract lives in `config_metadata/zellij_layout_families.toml`
+The built-in layout templates live in the `yazelix-zellij-config-pack` child repo. Main Yazelix consumes the child renderer and validates generated layout freshness through the child pack's bundled template names.
 
-That file is the machine-readable source for:
+The child pack is the machine-readable source for:
 
 - sidebar startup layout ids
 - the startup KDL file for each family
@@ -50,18 +50,15 @@ That file is the machine-readable source for:
 - required side-surface launcher placeholders
 - the swap layout names that Yazelix family-aware controls expect
 
-Run `yzx_repo_validator validate-workspace-session-contract` after changing built-in layout files or layout metadata
+After changing built-in layouts, push the child repo, update the main lock and Cargo pins, then run `yzx_repo_validator validate-workspace-session-contract`
 
 ## Supported Customization
-
-Yazelix now copies every top-level `.kdl` file in `configs/zellij/layouts/` into the generated runtime layout directory on launch. That means adding a new top-level layout file is supported without updating a hardcoded copy list.
 
 The supported customization paths are:
 
 - Use `workspace.left_sidebar.*` and `workspace.right_sidebar.*` for custom side-surface launchers
-- Edit `yzx_side.kdl` to change startup panes
-- Edit `yzx_side.swap.kdl` to tweak built-in swap layouts
-- Add a new top-level `.kdl` file in `configs/zellij/layouts/` if you also add it to `config_metadata/zellij_layout_families.toml`
+- Edit `yzx_side.kdl` in the child repo to change startup panes
+- Edit `yzx_side.swap.kdl` in the child repo to tweak built-in swap layouts
 
 Yazelix does not currently expose a second declarative layout-profile language. Keep complex custom layout work in KDL so the generated runtime, Zellij, and the workspace contract share the same source files.
 
@@ -81,5 +78,5 @@ So the current rule is:
 ## Tips
 
 - Use `Alt+Shift+F` to toggle pane fullscreen temporarily
-- Keep custom launch layouts as top-level `.kdl` files under `configs/zellij/layouts/`
+- Keep custom launch layouts in the config-pack child repo when they are meant to ship with Yazelix
 - Keep sidebar-family changes inside the built-in families unless you are also updating the pane orchestrator

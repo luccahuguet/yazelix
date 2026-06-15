@@ -2,28 +2,27 @@
 
 ## Summary
 
-`yazelix-zellij-config-pack` is a possible future child repository for a
-deterministic Zellij config and layout renderer. It is not approved as a child
-repo until main Yazelix first becomes a thin adapter around an explicit
-request/response boundary and the move deletes real main-repo ownership.
+`yazelix-zellij-config-pack` is the child repository for deterministic Zellij
+config and layout rendering. Main Yazelix consumes the published child crate and
+flake package, then writes the rendered output into the active state directory.
 
-The child may own pure rendering. Main Yazelix keeps product policy, runtime
+The child owns pure rendering. Main Yazelix keeps product policy, runtime
 integration, filesystem materialization, plugin artifact resolution, doctor and
 repair behavior, and live workspace/session behavior.
 
 ## Ownership
 
-| Surface | Owner Before Promotion | Owner After Promotion |
-| --- | --- | --- |
-| Settings normalization and defaults | Main Yazelix | Main Yazelix |
-| Runtime identity, package paths, and generated state roots | Main Yazelix | Main Yazelix |
-| Zellij action registry policy and supported keybinding semantics | Main Yazelix | Main Yazelix |
-| Pane-orchestrator, popup, and status-bar package/artifact resolution | Main Yazelix plus existing child repos | Main Yazelix plus existing child repos |
-| Live tab, pane, workspace, status-bus, and session facts | Pane orchestrator plus Main Yazelix adapters | Pane orchestrator plus Main Yazelix adapters |
-| Filesystem writes, repair decisions, doctor checks, and permission seeding | Main Yazelix | Main Yazelix |
-| Layout templates and layout-family metadata that are not product policy | Main Yazelix | `yazelix-zellij-config-pack` |
-| Deterministic KDL config/layout rendering and merge mechanics | Main Yazelix | `yazelix-zellij-config-pack` |
-| Config-pack fixture and equivalence tests | Main Yazelix | `yazelix-zellij-config-pack`, with main keeping integration tests |
+| Surface | Owner |
+| --- | --- |
+| Settings normalization and defaults | Main Yazelix |
+| Runtime identity, package paths, and generated state roots | Main Yazelix |
+| Zellij action registry policy and supported keybinding semantics | Main Yazelix |
+| Pane-orchestrator, popup, and status-bar package/artifact resolution | Main Yazelix plus existing child repos |
+| Live tab, pane, workspace, status-bus, and session facts | Pane orchestrator plus Main Yazelix adapters |
+| Filesystem writes, repair decisions, doctor checks, and permission seeding | Main Yazelix |
+| Layout templates and layout-family metadata that are not product policy | `yazelix-zellij-config-pack` |
+| Deterministic KDL config/layout rendering and merge mechanics | `yazelix-zellij-config-pack` |
+| Config-pack fixture and equivalence tests | `yazelix-zellij-config-pack`, with main keeping integration tests |
 
 ## Boundary
 
@@ -41,14 +40,12 @@ The request is structured data supplied by main Yazelix. It may include:
 - resolved plugin URLs or package paths selected by main
 - child-rendered status-bar plugin block text from `yazelix_zellij_bar`
 - popup command/block data selected by main
-- layout family id, layout fragments, and selected built-in layout names
 - deterministic generation metadata such as schema version and fingerprint input
 
 The output is structured data returned to main. It may include:
 
 - rendered `config.kdl`
 - rendered layout files keyed by layout name
-- expected artifact metadata for equivalence tests
 - warnings or validation errors for malformed render input
 - a renderer schema/version field
 
@@ -68,13 +65,13 @@ The child renderer must not read or infer:
 If the renderer needs one of those facts, main must resolve it before the
 request is built or the boundary is not ready for extraction.
 
-## Promotion Gates
+## Consumption Gates
 
-Do not create or consume `yazelix-zellij-config-pack` until all gates pass:
+Main may consume a config-pack revision only when all gates pass:
 
-1. Main has an in-repo pure renderer adapter that accepts explicit structured
-   input and produces deterministic config/layout output
-2. Existing generated Zellij output has equivalence tests for representative
+1. The child renderer accepts explicit structured input and produces
+   deterministic config/layout output
+2. Generated Zellij output has equivalence tests for representative
    default, custom popup, native merge, status-bar, and layout-fragment cases
 3. The renderer has no hidden filesystem, environment, runtime, Home Manager,
    live Zellij, or adjacent-checkout reads
@@ -82,28 +79,28 @@ Do not create or consume `yazelix-zellij-config-pack` until all gates pass:
    pane-orchestrator artifacts are consumed from their existing child owners
 5. Main keeps only policy, path resolution, artifact resolution, writes,
    doctor/repair, and integration validation
-6. The extraction deletes main Rust/assets/tests/metadata ownership instead of
-   adding wrappers, mirrors, or fallback copies
+6. Main deletes Rust/assets/tests/metadata ownership instead of adding wrappers,
+   mirrors, or fallback copies
 7. Local override validation is treated only as a smoke test; main closes the
    integration only after consuming a published child revision without overrides
 
 ## Deletion Bar
 
-Promotion must remove real main ownership. A valid extraction should delete or
-stop owning at least one of these groups in main:
+Consumption must remove real main ownership. A valid child update should keep
+main from owning these groups:
 
 - pure KDL rendering and merge mechanics
 - layout template rendering that does not encode main product policy
 - config-pack fixture tests that can run without a Yazelix checkout
 - renderer-owned layout-family metadata
 
-It is not a valid extraction if main still keeps parallel renderer code,
+It is not a valid child consumption if main keeps parallel renderer code,
 fallback config/layout templates, generated mirrors, or validators of similar
 size to the code moved out.
 
 ## Verification
 
-Before promotion:
+Main verification:
 
 - `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core zellij_materialization`
 - `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core zellij_render_plan`
@@ -111,7 +108,7 @@ Before promotion:
   layouts or plugin placement are touched
 - `shells/posix/yazelix_loc_scorecard.sh <base> HEAD` for deletion evidence
 
-After promotion:
+Child release transaction verification:
 
 - child repo checks pass locally and in CI
 - main consumes a published child revision through `flake.lock`

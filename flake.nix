@@ -41,6 +41,11 @@
       inputs.fenix.follows = "fenix";
       inputs.zjstatus.follows = "zjstatus";
     };
+    yazelixZellijConfigPack = {
+      url = "github:luccahuguet/yazelix-zellij-config-pack";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.fenix.follows = "fenix";
+    };
     yazelixYaziAssets = {
       url = "github:luccahuguet/yazelix-yazi-assets";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -90,6 +95,7 @@
       yazelixTerminal,
       yazelixZellijPaneOrchestrator,
       yazelixZellijPopup,
+      yazelixZellijConfigPack,
       zjstatus,
     }:
     let
@@ -123,6 +129,7 @@
           yazelix_screen = inputIdentity yazelixScreen;
           yazelix_cursors = inputIdentity yazelixCursors;
           yazelix_zellij_bar = inputIdentity yazelixZellijBar;
+          yazelix_zellij_config_pack = inputIdentity yazelixZellijConfigPack;
           yazelix_yazi_assets = inputIdentity yazelixYaziAssets;
           yazelix_helix = inputIdentity yazelixHelix;
           yazelix_terminal = inputIdentity yazelixTerminal;
@@ -260,6 +267,8 @@
         {
           yazelix = mkYazelix system { pkgs = final; };
           yazelix_zellij_bar = yazelixZellijBar.packages.${system}.yazelix_zellij_bar;
+          yazelix_zellij_config_pack =
+            yazelixZellijConfigPack.packages.${system}.yazelix_zellij_config_pack;
           yazelix_yazi_assets = yazelixYaziAssets.packages.${system}.yazelix_yazi_assets;
           yazelix_helix = kgpPackages.helixPackage system;
           yazelix_zellij_pane_orchestrator =
@@ -311,7 +320,8 @@
           inherit agentUsagePackages beadsRustPackage defaultRuntimeIdentity kgpPackages lib;
           inherit mkYazelix pkgs runtimePackage runtimePackageWith system yazelixPackage;
           inherit yazelixCursors yazelixScreen yazelixTerminal yazelixYaziAssets;
-          inherit yazelixZellijBar yazelixZellijPaneOrchestrator yazelixZellijPopup;
+          inherit yazelixZellijBar yazelixZellijConfigPack yazelixZellijPaneOrchestrator;
+          inherit yazelixZellijPopup;
           terminalMetadata = terminalMetadataFor pkgs;
         };
     in

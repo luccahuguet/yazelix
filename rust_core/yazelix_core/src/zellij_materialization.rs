@@ -9,12 +9,11 @@ use crate::config_normalize::{NormalizeConfigRequest, normalize_config};
 use crate::control_plane::{
     config_dir_from_env, home_dir_from_env, state_dir_from_env, zellij_default_shell_from_runtime,
 };
-use crate::popup_runtime_command::popup_command_argv_for_yazelix_runtime;
 use crate::runtime_component_enabled;
 use crate::terminal_variant::active_terminal_from_runtime_dir;
 use crate::user_config_paths;
 use crate::zellij_materialization_io::{
-    hash_file, hash_text, read_text, read_text_if_exists, write_text_atomic,
+    hash_text, read_text, read_text_if_exists, write_text_atomic,
 };
 pub(crate) use crate::zellij_plugin_materialization::zellij_permissions_cache_path;
 use crate::zellij_plugin_materialization::{
@@ -29,6 +28,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use yazelix_zellij_config_pack as zellij_config_pack;
 
 const GENERATION_METADATA_NAME: &str = ".yazelix_generation.json";
 const GENERATION_FINGERPRINT_SCHEMA_VERSION: u64 = 8;
@@ -93,36 +93,6 @@ const ZELLIJ_RENDER_PLAN_CONFIG_KEYS: &[&str] = &[
     "zellij_opencode_go_usage_periods",
 ];
 
-const PANE_ORCHESTRATOR_PLUGIN_URL_PLACEHOLDER: &str = "__YAZELIX_PANE_ORCHESTRATOR_PLUGIN_URL__";
-const HOME_DIR_PLACEHOLDER: &str = "__YAZELIX_HOME_DIR__";
-const RUNTIME_DIR_PLACEHOLDER: &str = "__YAZELIX_RUNTIME_DIR__";
-const ZJSTATUS_TAB_TEMPLATE_PLACEHOLDER: &str = "__YAZELIX_ZJSTATUS_TAB_TEMPLATE__";
-const ZELLIJ_CONFIG_PACK_STATIC_FRAGMENTS: &[(&str, &str)] = &[
-    (
-        "__YAZELIX_SWAP_SIDEBAR_OPEN__",
-        "fragments/swap_sidebar_open.kdl",
-    ),
-    (
-        "__YAZELIX_SWAP_SIDEBAR_CLOSED__",
-        "fragments/swap_sidebar_closed.kdl",
-    ),
-    (
-        "__YAZELIX_SWAP_AGENT_OPEN__",
-        "fragments/swap_agent_open.kdl",
-    ),
-    (
-        "__YAZELIX_SWAP_AGENT_CLOSED__",
-        "fragments/swap_agent_closed.kdl",
-    ),
-];
-const ZELLIJ_CONFIG_PACK_REQUIRED_LAYOUT_PLACEHOLDERS: &[&str] = &[
-    ZJSTATUS_TAB_TEMPLATE_PLACEHOLDER,
-    PANE_ORCHESTRATOR_PLUGIN_URL_PLACEHOLDER,
-    HOME_DIR_PLACEHOLDER,
-    RUNTIME_DIR_PLACEHOLDER,
-    "__YAZELIX_SIDEBAR_COMMAND__",
-    "__YAZELIX_SIDEBAR_ARGS__",
-];
 const ZJSTATUS_BAR_RENDER_COMMAND: &str = "render-yazelix-runtime";
 const ZJSTATUS_BAR_RENDER_SCHEMA_VERSION: u64 = 3;
 
@@ -151,51 +121,6 @@ pub struct ZellijMaterializationData {
 }
 
 #[derive(Debug, Clone)]
-struct ZellijConfigPackRenderRequest {
-    base_config_content: String,
-    override_keybinds: Vec<String>,
-    render_plan: ZellijRenderPlanData,
-    popup_commands: BTreeMap<String, Vec<String>>,
-    custom_popups: Vec<CustomPopup>,
-    layout_source_present: bool,
-    layout_templates: Vec<ZellijConfigPackLayoutTemplate>,
-    static_fragments: BTreeMap<String, String>,
-    zjstatus_plugin_block: String,
-    pane_orchestrator_wasm_path: PathBuf,
-    yzpp_wasm_path: PathBuf,
-    home_dir: PathBuf,
-    runtime_dir: PathBuf,
-    generation_fingerprint: String,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct ZellijConfigPackLayoutTemplate {
-    relative_path: String,
-    content: String,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct ZellijConfigPackRenderedFile {
-    relative_path: String,
-    content: String,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct ZellijConfigPackRenderOutput {
-    merged_config: String,
-    layout_source_present: bool,
-    layout_files: Vec<ZellijConfigPackRenderedFile>,
-    generation_fingerprint: String,
-}
-
-#[derive(Debug, Clone)]
-struct ZellijConfigPackLayoutSources {
-    source_present: bool,
-    templates: Vec<ZellijConfigPackLayoutTemplate>,
-    static_fragments: BTreeMap<String, String>,
-}
-
-#[derive(Debug, Clone)]
 struct ZellijBaseConfigSource {
     source: String,
     path: Option<PathBuf>,
@@ -204,13 +129,9 @@ struct ZellijBaseConfigSource {
 
 #[derive(Debug, Clone)]
 struct ExtractedSemanticBlocks {
-    config_without_semantic_blocks: String,
-    load_plugin_lines: Vec<String>,
-    plugin_lines: Vec<String>,
     keybind_lines: Vec<String>,
     keybinds_block_present: bool,
     keybinds_clear_defaults: bool,
-    ui_lines: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
@@ -296,11 +217,6 @@ pub fn generate_zellij_materialization(
     let state_dir = state_dir_from_env()?;
     let merged_config_path = request.zellij_config_dir.join("config.kdl");
     let layout_dir = request.zellij_config_dir.join("layouts");
-    let source_layouts_dir = request
-        .runtime_dir
-        .join("configs")
-        .join("zellij")
-        .join("layouts");
     let resolved_default_shell = zellij_default_shell_from_runtime(
         &request.runtime_dir,
         string_config(&config, "default_shell", "nu"),
@@ -325,7 +241,6 @@ pub fn generate_zellij_materialization(
     let generation_fingerprint = build_generation_fingerprint(
         &request.runtime_dir,
         &base_config_source,
-        &source_layouts_dir,
         &plugin_artifacts,
         &zellij_keybindings,
         &zellij_native_keybindings,
@@ -360,27 +275,37 @@ pub fn generate_zellij_materialization(
         &zellij_native_keybindings,
         &custom_popups,
     )?;
-    let layout_sources = read_config_pack_layout_sources(&source_layouts_dir)?;
     let zjstatus_plugin_url = format!("file:{}", zjstatus_runtime_path.to_string_lossy());
     let zjstatus_plugin_block =
         render_integrated_zjstatus_bar(&request.runtime_dir, &render_plan, &zjstatus_plugin_url)?;
-    let config_pack_request = ZellijConfigPackRenderRequest {
+    let config_pack_request = zellij_config_pack::ZellijConfigPackRenderRequest {
         base_config_content: base_config_source.content.clone(),
         override_keybinds,
-        render_plan,
+        render_plan: child_render_plan(&render_plan),
         popup_commands,
-        custom_popups,
-        layout_source_present: layout_sources.source_present,
-        layout_templates: layout_sources.templates,
-        static_fragments: layout_sources.static_fragments,
+        custom_popups: child_custom_popups(&custom_popups),
+        layout_templates: None,
+        static_fragments: None,
         zjstatus_plugin_block,
-        pane_orchestrator_wasm_path: pane_orchestrator_runtime_path.clone(),
-        yzpp_wasm_path: yzpp_runtime_path.clone(),
-        home_dir: home_dir_from_env()?,
-        runtime_dir: request.runtime_dir.clone(),
+        pane_orchestrator_plugin_url: format!(
+            "file:{}",
+            pane_orchestrator_runtime_path.to_string_lossy()
+        ),
+        yzpp_plugin_url: format!("file:{}", yzpp_runtime_path.to_string_lossy()),
+        home_dir: home_dir_from_env()?.to_string_lossy().to_string(),
+        runtime_dir: request.runtime_dir.to_string_lossy().to_string(),
         generation_fingerprint,
     };
-    let config_pack_output = render_zellij_config_pack(&config_pack_request)?;
+    let config_pack_output = zellij_config_pack::render_zellij_config_pack(&config_pack_request)
+        .map_err(|message| {
+            CoreError::classified(
+                ErrorClass::Internal,
+                "render_zellij_config_pack",
+                format!("Zellij config-pack renderer failed: {message}"),
+                "Report this as a Yazelix internal error.",
+                json!({ "error": message }),
+            )
+        })?;
     let generated_layouts =
         write_zellij_config_pack_output(&merged_config_path, &layout_dir, &config_pack_output)?;
     record_generation_fingerprint(
@@ -452,6 +377,88 @@ fn build_render_plan_request(
             json!({}),
         )
     })
+}
+
+fn child_render_plan(
+    render_plan: &ZellijRenderPlanData,
+) -> zellij_config_pack::ZellijRenderPlanData {
+    zellij_config_pack::ZellijRenderPlanData {
+        owned_top_level_setting_names: render_plan.owned_top_level_setting_names.clone(),
+        dynamic_top_level_settings: child_top_level_settings(
+            &render_plan.dynamic_top_level_settings,
+        ),
+        enforced_top_level_settings: child_top_level_settings(
+            &render_plan.enforced_top_level_settings,
+        ),
+        rounded_value: render_plan.rounded_value.clone(),
+        popup_width_percent: render_plan.popup_width_percent,
+        popup_height_percent: render_plan.popup_height_percent,
+        screen_saver_enabled: render_plan.screen_saver_enabled,
+        screen_saver_idle_seconds: render_plan.screen_saver_idle_seconds,
+        screen_saver_style: render_plan.screen_saver_style.clone(),
+        right_sidebar_command: render_plan.right_sidebar_command.clone(),
+        right_sidebar_args: render_plan.right_sidebar_args.clone(),
+        left_sidebar_command: render_plan.left_sidebar_command.clone(),
+        left_sidebar_args: render_plan.left_sidebar_args.clone(),
+        layout_percentages: zellij_config_pack::ZellijLayoutPercentages {
+            left_sidebar_width_percent: render_plan
+                .layout_percentages
+                .left_sidebar_width_percent
+                .clone(),
+            right_sidebar_width_percent: render_plan
+                .layout_percentages
+                .right_sidebar_width_percent
+                .clone(),
+            open_content_width_percent: render_plan
+                .layout_percentages
+                .open_content_width_percent
+                .clone(),
+            closed_content_width_percent: render_plan
+                .layout_percentages
+                .closed_content_width_percent
+                .clone(),
+            left_open_right_open_content_width_percent: render_plan
+                .layout_percentages
+                .left_open_right_open_content_width_percent
+                .clone(),
+            left_open_right_closed_content_width_percent: render_plan
+                .layout_percentages
+                .left_open_right_closed_content_width_percent
+                .clone(),
+            left_closed_right_open_content_width_percent: render_plan
+                .layout_percentages
+                .left_closed_right_open_content_width_percent
+                .clone(),
+            left_closed_right_closed_content_width_percent: render_plan
+                .layout_percentages
+                .left_closed_right_closed_content_width_percent
+                .clone(),
+        },
+    }
+}
+
+fn child_top_level_settings(
+    settings: &[TopLevelSetting],
+) -> Vec<zellij_config_pack::TopLevelSetting> {
+    settings
+        .iter()
+        .map(|setting| zellij_config_pack::TopLevelSetting {
+            name: setting.name.clone(),
+            value: setting.value.clone(),
+        })
+        .collect()
+}
+
+fn child_custom_popups(popups: &[CustomPopup]) -> Vec<zellij_config_pack::CustomPopup> {
+    popups
+        .iter()
+        .map(|popup| zellij_config_pack::CustomPopup {
+            id: popup.id.clone(),
+            command: popup.command.clone(),
+            keybindings: popup.keybindings.clone(),
+            keep_alive: popup.keep_alive,
+        })
+        .collect()
 }
 
 fn string_config<'a>(
@@ -777,87 +784,10 @@ fn resolve_base_config_source() -> Result<ZellijBaseConfigSource, CoreError> {
     })
 }
 
-fn render_merged_config(
-    runtime_dir: &Path,
-    base_config_content: &str,
-    override_keybinds: &[String],
-    render_plan: &ZellijRenderPlanData,
-    popup_commands: &BTreeMap<String, Vec<String>>,
-    custom_popups: &[CustomPopup],
-    pane_orchestrator_wasm_path: &Path,
-    yzpp_wasm_path: &Path,
-    runtime_config_generation: &str,
-) -> Result<String, CoreError> {
-    let extracted_blocks = extract_semantic_config_blocks(base_config_content);
-    let base_config = strip_yazelix_owned_top_level_settings(
-        &extracted_blocks.config_without_semantic_blocks,
-        &render_plan.owned_top_level_setting_names,
-    );
-    let merged_keybinds =
-        build_merged_keybinds_block(&extracted_blocks.keybind_lines, override_keybinds);
-    let merged_ui = build_yazelix_ui_block(&extracted_blocks.ui_lines, &render_plan.rounded_value);
-    let plugins_block = build_yazelix_plugins_block(
-        &extracted_blocks.plugin_lines,
-        pane_orchestrator_wasm_path,
-        yzpp_wasm_path,
-        runtime_dir,
-        popup_commands,
-        custom_popups,
-        render_plan.popup_width_percent,
-        render_plan.popup_height_percent,
-        render_plan.screen_saver_enabled,
-        render_plan.screen_saver_idle_seconds,
-        &render_plan.screen_saver_style,
-        &render_plan.right_sidebar_command,
-        &render_plan.right_sidebar_args,
-        runtime_config_generation,
-    );
-    let load_plugins_block = build_yazelix_load_plugins_block(&extracted_blocks.load_plugin_lines);
-
-    Ok([
-        "// ========================================".to_string(),
-        "// GENERATED ZELLIJ CONFIG (YAZELIX)".to_string(),
-        "// ========================================".to_string(),
-        "// Source preference:".to_string(),
-        "//   1) ~/.config/yazelix/zellij.kdl (Yazelix-managed override)".to_string(),
-        "//   2) ~/.config/zellij/config.kdl (native fallback, read-only)".to_string(),
-        "//   3) zellij setup --dump-config (defaults)".to_string(),
-        "//".to_string(),
-        "// Generated: 1970-01-01 00:00:00".to_string(),
-        "// ========================================".to_string(),
-        String::new(),
-        base_config,
-        String::new(),
-        merged_keybinds,
-        String::new(),
-        plugins_block,
-        String::new(),
-        merged_ui,
-        String::new(),
-        render_top_level_settings_block(
-            "// === YAZELIX DYNAMIC SETTINGS (from settings.jsonc) ===",
-            &render_plan.dynamic_top_level_settings,
-        ),
-        String::new(),
-        render_top_level_settings_block(
-            "// === YAZELIX ENFORCED SETTINGS ===",
-            &render_plan.enforced_top_level_settings,
-        ),
-        String::new(),
-        "// === YAZELIX BACKGROUND PLUGINS ===".to_string(),
-        load_plugins_block,
-    ]
-    .join("\n"))
-}
-
 fn extract_semantic_config_blocks(config_content: &str) -> ExtractedSemanticBlocks {
-    let mut stripped_lines = Vec::new();
-    let mut load_plugin_lines = Vec::new();
-    let mut plugin_lines = Vec::new();
     let mut keybind_lines = Vec::new();
     let mut keybinds_block_present = false;
     let mut keybinds_clear_defaults = false;
-    let mut ui_lines = Vec::new();
     let mut active_block = String::new();
     let mut brace_depth: i64 = 0;
 
@@ -886,33 +816,17 @@ fn extract_semantic_config_blocks(config_content: &str) -> ExtractedSemanticBloc
                         .trim_start_matches('{')
                         .trim_end_matches('}')
                         .trim();
-                    if !inline_body.is_empty() {
-                        push_semantic_line(
-                            block,
-                            inline_body.to_string(),
-                            &mut load_plugin_lines,
-                            &mut plugin_lines,
-                            &mut keybind_lines,
-                            &mut ui_lines,
-                        );
+                    if block == "keybinds" && !inline_body.is_empty() {
+                        keybind_lines.push(inline_body.to_string());
                     }
                     active_block.clear();
                     brace_depth = 0;
                 }
-            } else {
-                stripped_lines.push(line.to_string());
             }
         } else {
             brace_depth += open_braces - close_braces;
-            if brace_depth > 0 {
-                push_semantic_line(
-                    &active_block,
-                    line.to_string(),
-                    &mut load_plugin_lines,
-                    &mut plugin_lines,
-                    &mut keybind_lines,
-                    &mut ui_lines,
-                );
+            if brace_depth > 0 && active_block == "keybinds" {
+                keybind_lines.push(line.to_string());
             } else {
                 active_block.clear();
             }
@@ -920,13 +834,9 @@ fn extract_semantic_config_blocks(config_content: &str) -> ExtractedSemanticBloc
     }
 
     ExtractedSemanticBlocks {
-        config_without_semantic_blocks: stripped_lines.join("\n"),
-        load_plugin_lines,
-        plugin_lines,
         keybind_lines,
         keybinds_block_present,
         keybinds_clear_defaults,
-        ui_lines,
     }
 }
 
@@ -972,317 +882,6 @@ fn validate_base_config_keybinding_policy(
 fn keybinds_declares_clear_defaults(line: &str) -> bool {
     let header = line.split('{').next().unwrap_or(line);
     header.contains("clear-defaults=true") || header.contains("clear-defaults = true")
-}
-
-fn push_semantic_line(
-    block: &str,
-    line: String,
-    load_plugin_lines: &mut Vec<String>,
-    plugin_lines: &mut Vec<String>,
-    keybind_lines: &mut Vec<String>,
-    ui_lines: &mut Vec<String>,
-) {
-    match block {
-        "load_plugins" => load_plugin_lines.push(line),
-        "plugins" => plugin_lines.push(line),
-        "keybinds" => keybind_lines.push(line),
-        "ui" => ui_lines.push(line),
-        _ => {}
-    }
-}
-
-fn build_yazelix_load_plugins_block(existing_lines: &[String]) -> String {
-    let mut merged_lines = existing_lines.to_vec();
-    for alias in [PANE_ORCHESTRATOR_PLUGIN_ALIAS, YZPP_PLUGIN_ALIAS] {
-        if !merged_lines.iter().any(|line| line.trim() == alias) {
-            merged_lines.push(format!("  {alias}"));
-        }
-    }
-    block_with_lines("load_plugins", &merged_lines)
-}
-
-fn build_yazelix_plugins_block(
-    existing_lines: &[String],
-    pane_orchestrator_wasm_path: &Path,
-    yzpp_wasm_path: &Path,
-    runtime_dir: &Path,
-    popup_commands: &BTreeMap<String, Vec<String>>,
-    custom_popups: &[CustomPopup],
-    popup_width_percent: i64,
-    popup_height_percent: i64,
-    screen_saver_enabled: bool,
-    screen_saver_idle_seconds: i64,
-    screen_saver_style: &str,
-    right_sidebar_command: &str,
-    right_sidebar_args: &[String],
-    runtime_config_generation: &str,
-) -> String {
-    let mut merged_lines = existing_lines.to_vec();
-    let alias_present = merged_lines
-        .iter()
-        .any(|line| line.contains(&format!("{PANE_ORCHESTRATOR_PLUGIN_ALIAS} location=")));
-    if !alias_present {
-        merged_lines.extend([
-            format!(
-                "    {PANE_ORCHESTRATOR_PLUGIN_ALIAS} location=\"file:{}\" {{",
-                pane_orchestrator_wasm_path.to_string_lossy()
-            ),
-            format!(
-                "        runtime_dir {}",
-                json_quote(&runtime_dir.to_string_lossy())
-            ),
-            format!("        screen_saver_enabled \"{screen_saver_enabled}\""),
-            format!("        screen_saver_idle_seconds \"{screen_saver_idle_seconds}\""),
-            format!(
-                "        screen_saver_style {}",
-                json_quote(screen_saver_style)
-            ),
-            format!(
-                "        runtime_config_generation {}",
-                json_quote(runtime_config_generation)
-            ),
-        ]);
-        merged_lines.push(format!(
-            "        right_sidebar_command {}",
-            json_quote(expand_runtime_placeholder(
-                right_sidebar_command,
-                runtime_dir
-            ))
-        ));
-        for (index, arg) in right_sidebar_args.iter().enumerate() {
-            merged_lines.push(format!(
-                "        right_sidebar_arg_{} {}",
-                index + 1,
-                json_quote(expand_runtime_placeholder(arg, runtime_dir))
-            ));
-        }
-        merged_lines.push("    }".to_string());
-    }
-
-    let yzpp_present = merged_lines
-        .iter()
-        .any(|line| line.contains(&format!("{YZPP_PLUGIN_ALIAS} location=")));
-    if !yzpp_present {
-        merged_lines.extend(render_yzpp_plugin_block(
-            yzpp_wasm_path,
-            runtime_dir,
-            popup_commands,
-            custom_popups,
-            popup_width_percent,
-            popup_height_percent,
-        ));
-    }
-
-    if merged_lines.is_empty() {
-        String::new()
-    } else {
-        block_with_lines("plugins", &merged_lines)
-    }
-}
-
-fn render_yzpp_plugin_block(
-    yzpp_wasm_path: &Path,
-    runtime_dir: &Path,
-    popup_commands: &BTreeMap<String, Vec<String>>,
-    custom_popups: &[CustomPopup],
-    popup_width_percent: i64,
-    popup_height_percent: i64,
-) -> Vec<String> {
-    let yzx_cli = runtime_dir
-        .join("shells")
-        .join("posix")
-        .join("yzx_cli.sh")
-        .to_string_lossy()
-        .to_string();
-    let bottom_popup_program =
-        generated_popup_command(popup_commands, BOTTOM_POPUP_COMMAND_KEY, &yzx_cli);
-    let top_popup_program =
-        generated_popup_command(popup_commands, TOP_POPUP_COMMAND_KEY, &yzx_cli);
-    let menu_program = generated_popup_command(popup_commands, MENU_POPUP_COMMAND_KEY, &yzx_cli);
-    let mut lines = vec![
-        format!(
-            "    {YZPP_PLUGIN_ALIAS} location=\"file:{}\" {{",
-            yzpp_wasm_path.to_string_lossy()
-        ),
-        "        popups {".to_string(),
-    ];
-
-    append_generated_popup_spec(
-        &mut lines,
-        "bottom_popup",
-        "yzx_bottom_popup",
-        Some("yzx_bottom_popup"),
-        &bottom_popup_program,
-        popup_width_percent,
-        popup_height_percent,
-        None,
-        Some(&yzx_cli),
-    );
-    append_generated_popup_spec(
-        &mut lines,
-        "top_popup",
-        "yzx_top_popup",
-        Some("yzx_top_popup"),
-        &top_popup_program,
-        popup_width_percent,
-        popup_height_percent,
-        None,
-        None,
-    );
-    append_generated_popup_spec(
-        &mut lines,
-        "menu",
-        "yzx_menu",
-        Some("yzx menu"),
-        &menu_program,
-        popup_width_percent,
-        popup_height_percent,
-        None,
-        None,
-    );
-    for custom_popup in custom_popups {
-        let custom_popup_program =
-            popup_command_argv_for_yazelix_runtime(&custom_popup.command, &yzx_cli);
-        let pane_title = format!("yzx_{}", custom_popup.id);
-        append_generated_popup_spec(
-            &mut lines,
-            &custom_popup.id,
-            &pane_title,
-            Some(&pane_title),
-            &custom_popup_program,
-            popup_width_percent,
-            popup_height_percent,
-            custom_popup.keep_alive.then_some("hide"),
-            None,
-        );
-    }
-    lines.extend([
-        "            config {".to_string(),
-        format!("                command {}", json_quote(&yzx_cli)),
-        "                arg_1 \"config\"".to_string(),
-        "                arg_2 \"ui\"".to_string(),
-        "                pane_title \"yzx_config\"".to_string(),
-        "                command_marker \"yzx config ui\"".to_string(),
-        format!("                width_percent \"{popup_width_percent}\""),
-        format!("                height_percent \"{popup_height_percent}\""),
-        "            }".to_string(),
-        "        }".to_string(),
-        "    }".to_string(),
-    ]);
-    lines
-}
-
-fn generated_popup_command(
-    popup_commands: &BTreeMap<String, Vec<String>>,
-    key: &str,
-    yzx_cli: &str,
-) -> Vec<String> {
-    let command = popup_commands
-        .get(key)
-        .expect("popup command defaults must cover generated popup specs");
-    popup_command_argv_for_yazelix_runtime(command, yzx_cli)
-}
-
-fn append_generated_popup_spec(
-    lines: &mut Vec<String>,
-    id: &str,
-    pane_title: &str,
-    command_marker: Option<&str>,
-    popup_argv: &[String],
-    popup_width_percent: i64,
-    popup_height_percent: i64,
-    toggle_close_behavior: Option<&str>,
-    on_close_yzx_cli: Option<&str>,
-) {
-    lines.push(format!("            {id} {{"));
-    if let Some(command_path) = popup_argv.first() {
-        lines.push(format!(
-            "                command {}",
-            json_quote(command_path)
-        ));
-        for (index, arg) in popup_argv.iter().skip(1).enumerate() {
-            lines.push(format!(
-                "                arg_{} {}",
-                index + 1,
-                json_quote(arg)
-            ));
-        }
-        let marker = command_marker.unwrap_or(command_path);
-        lines.push(format!(
-            "                command_marker {}",
-            json_quote(marker)
-        ));
-    }
-    lines.extend([
-        format!("                pane_title {}", json_quote(pane_title)),
-        format!("                width_percent \"{popup_width_percent}\""),
-        format!("                height_percent \"{popup_height_percent}\""),
-    ]);
-    if let Some(toggle_close_behavior) = toggle_close_behavior {
-        lines.push(format!(
-            "                toggle_close_behavior {}",
-            json_quote(toggle_close_behavior)
-        ));
-    }
-    if let Some(yzx_cli) = on_close_yzx_cli {
-        lines.extend([
-            "                on_close {".to_string(),
-            format!("                    command {}", json_quote(yzx_cli)),
-            "                    arg_1 \"sidebar\"".to_string(),
-            "                    arg_2 \"refresh\"".to_string(),
-            "                }".to_string(),
-        ]);
-    }
-    lines.push("            }".to_string());
-}
-
-fn build_merged_keybinds_block(existing_lines: &[String], override_lines: &[String]) -> String {
-    let mut merged = existing_lines.to_vec();
-    merged.extend_from_slice(override_lines);
-    if merged.is_empty() {
-        String::new()
-    } else {
-        block_with_lines("keybinds", &merged)
-    }
-}
-
-fn build_yazelix_ui_block(existing_ui_lines: &[String], rounded_value: &str) -> String {
-    let existing_ui_text = existing_ui_lines.join("\n");
-    let hide_session_name = existing_ui_text.contains("hide_session_name true");
-    let mut lines = vec![
-        "ui {".to_string(),
-        "    pane_frames {".to_string(),
-        format!("        rounded_corners {rounded_value}"),
-    ];
-    if hide_session_name {
-        lines.push("        hide_session_name true".to_string());
-    }
-    lines.extend(["    }".to_string(), "}".to_string()]);
-    lines.join("\n")
-}
-
-fn render_top_level_settings_block(header: &str, settings: &[TopLevelSetting]) -> String {
-    std::iter::once(header.to_string())
-        .chain(
-            settings
-                .iter()
-                .map(|setting| format!("{} {}", setting.name, setting.value)),
-        )
-        .collect::<Vec<_>>()
-        .join("\n")
-}
-
-fn strip_yazelix_owned_top_level_settings(content: &str, owned_setting_names: &[String]) -> String {
-    content
-        .lines()
-        .filter(|line| {
-            let trimmed = line.trim();
-            !owned_setting_names
-                .iter()
-                .any(|name| trimmed.starts_with(&format!("{name} ")))
-        })
-        .collect::<Vec<_>>()
-        .join("\n")
 }
 
 fn default_zellij_keybindings() -> BTreeMap<String, Vec<String>> {
@@ -1498,7 +1097,7 @@ fn read_yazelix_override_keybinds(
             PANE_ORCHESTRATOR_PLUGIN_ALIAS,
         )
         .replace(
-            RUNTIME_DIR_PLACEHOLDER,
+            "__YAZELIX_RUNTIME_DIR__",
             runtime_dir.to_string_lossy().as_ref(),
         );
     let assigned_keys = assigned_generated_zellij_binding_keys(
@@ -1751,102 +1350,12 @@ fn push_zellij_message_bind(
     lines.push("        }".to_string());
 }
 
-fn block_with_lines(name: &str, lines: &[String]) -> String {
-    std::iter::once(format!("{name} {{"))
-        .chain(lines.iter().cloned())
-        .chain(std::iter::once("}".to_string()))
-        .collect::<Vec<_>>()
-        .join("\n")
-}
-
-fn read_config_pack_layout_sources(
-    source_dir: &Path,
-) -> Result<ZellijConfigPackLayoutSources, CoreError> {
-    if !source_dir.exists() {
-        return Ok(ZellijConfigPackLayoutSources {
-            source_present: false,
-            templates: Vec::new(),
-            static_fragments: BTreeMap::new(),
-        });
-    }
-    let templates = list_top_level_kdl_files(source_dir)?
-        .into_iter()
-        .map(|path| {
-            Ok(ZellijConfigPackLayoutTemplate {
-                relative_path: required_utf8_file_name(&path)?,
-                content: read_text(&path, "read_zellij_layout")?,
-            })
-        })
-        .collect::<Result<Vec<_>, CoreError>>()?;
-    Ok(ZellijConfigPackLayoutSources {
-        source_present: true,
-        templates,
-        static_fragments: load_static_fragments(source_dir)?,
-    })
-}
-
-fn render_zellij_config_pack(
-    request: &ZellijConfigPackRenderRequest,
-) -> Result<ZellijConfigPackRenderOutput, CoreError> {
-    Ok(ZellijConfigPackRenderOutput {
-        merged_config: render_merged_config(
-            &request.runtime_dir,
-            &request.base_config_content,
-            &request.override_keybinds,
-            &request.render_plan,
-            &request.popup_commands,
-            &request.custom_popups,
-            &request.pane_orchestrator_wasm_path,
-            &request.yzpp_wasm_path,
-            &request.generation_fingerprint,
-        )?,
-        layout_source_present: request.layout_source_present,
-        layout_files: render_config_pack_layouts(request)?,
-        generation_fingerprint: request.generation_fingerprint.clone(),
-    })
-}
-
-fn render_config_pack_layouts(
-    request: &ZellijConfigPackRenderRequest,
-) -> Result<Vec<ZellijConfigPackRenderedFile>, CoreError> {
-    let pane_orchestrator_plugin_url = format!(
-        "file:{}",
-        request.pane_orchestrator_wasm_path.to_string_lossy()
-    );
-    request
-        .layout_templates
-        .iter()
-        .map(|template| {
-            let rendered = render_layout_template(
-                &template.content,
-                &request.static_fragments,
-                &request.zjstatus_plugin_block,
-                &pane_orchestrator_plugin_url,
-                &request.home_dir,
-                &request.runtime_dir,
-                &request.render_plan,
-            )?;
-            Ok(ZellijConfigPackRenderedFile {
-                relative_path: template.relative_path.clone(),
-                content: format!(
-                    "{}{}",
-                    generated_zellij_layout_header(&request.generation_fingerprint),
-                    rendered
-                ),
-            })
-        })
-        .collect()
-}
-
 fn write_zellij_config_pack_output(
     merged_config_path: &Path,
     layout_dir: &Path,
-    output: &ZellijConfigPackRenderOutput,
+    output: &zellij_config_pack::ZellijConfigPackRenderOutput,
 ) -> Result<Vec<PathBuf>, CoreError> {
     write_text_atomic(merged_config_path, &output.merged_config)?;
-    if !output.layout_source_present {
-        return Ok(Vec::new());
-    }
     fs::create_dir_all(layout_dir).map_err(|source| {
         CoreError::io(
             "create_zellij_layout_dir",
@@ -1867,12 +1376,6 @@ fn write_zellij_config_pack_output(
     }
 
     Ok(expected_targets)
-}
-
-fn generated_zellij_layout_header(generation_fingerprint: &str) -> String {
-    format!(
-        "// {GENERATED_LAYOUT_MARKER}\n// {GENERATED_LAYOUT_FINGERPRINT_PREFIX} {generation_fingerprint}\n"
-    )
 }
 
 fn render_integrated_zjstatus_bar(
@@ -1980,122 +1483,6 @@ fn render_integrated_zjstatus_bar(
     Ok(envelope.plugin_block)
 }
 
-fn render_layout_template(
-    content: &str,
-    static_fragments: &BTreeMap<String, String>,
-    zjstatus_plugin_block: &str,
-    pane_orchestrator_plugin_url: &str,
-    home_dir: &Path,
-    runtime_dir: &Path,
-    render_plan: &ZellijRenderPlanData,
-) -> Result<String, CoreError> {
-    let mut updated = apply_static_fragments(content, static_fragments);
-    let replacements = [
-        (
-            ZJSTATUS_TAB_TEMPLATE_PLACEHOLDER,
-            zjstatus_plugin_block.to_string(),
-        ),
-        (
-            PANE_ORCHESTRATOR_PLUGIN_URL_PLACEHOLDER,
-            pane_orchestrator_plugin_url.to_string(),
-        ),
-        (HOME_DIR_PLACEHOLDER, home_dir.to_string_lossy().to_string()),
-        (
-            RUNTIME_DIR_PLACEHOLDER,
-            runtime_dir.to_string_lossy().to_string(),
-        ),
-        (
-            "__YAZELIX_SIDEBAR_COMMAND__",
-            json_quote(expand_runtime_placeholder(
-                &render_plan.left_sidebar_command,
-                runtime_dir,
-            )),
-        ),
-        (
-            "__YAZELIX_SIDEBAR_ARGS__",
-            render_sidebar_args(&render_plan.left_sidebar_args, runtime_dir),
-        ),
-        (
-            "__YAZELIX_SIDEBAR_WIDTH_PERCENT__",
-            render_plan
-                .layout_percentages
-                .left_sidebar_width_percent
-                .clone(),
-        ),
-        (
-            "__YAZELIX_AGENT_WIDTH_PERCENT__",
-            render_plan
-                .layout_percentages
-                .right_sidebar_width_percent
-                .clone(),
-        ),
-        (
-            "__YAZELIX_OPEN_CONTENT_WIDTH_PERCENT__",
-            render_plan
-                .layout_percentages
-                .open_content_width_percent
-                .clone(),
-        ),
-        (
-            "__YAZELIX_CLOSED_CONTENT_WIDTH_PERCENT__",
-            render_plan
-                .layout_percentages
-                .closed_content_width_percent
-                .clone(),
-        ),
-        (
-            "__YAZELIX_OPEN_AGENT_OPEN_CONTENT_WIDTH_PERCENT__",
-            render_plan
-                .layout_percentages
-                .left_open_right_open_content_width_percent
-                .clone(),
-        ),
-        (
-            "__YAZELIX_OPEN_AGENT_CLOSED_CONTENT_WIDTH_PERCENT__",
-            render_plan
-                .layout_percentages
-                .left_open_right_closed_content_width_percent
-                .clone(),
-        ),
-        (
-            "__YAZELIX_CLOSED_AGENT_OPEN_CONTENT_WIDTH_PERCENT__",
-            render_plan
-                .layout_percentages
-                .left_closed_right_open_content_width_percent
-                .clone(),
-        ),
-        (
-            "__YAZELIX_CLOSED_AGENT_CLOSED_CONTENT_WIDTH_PERCENT__",
-            render_plan
-                .layout_percentages
-                .left_closed_right_closed_content_width_percent
-                .clone(),
-        ),
-    ];
-    for (placeholder, value) in replacements {
-        updated = updated.replace(placeholder, &value);
-    }
-    for placeholder in ZELLIJ_CONFIG_PACK_REQUIRED_LAYOUT_PLACEHOLDERS {
-        if updated.contains(placeholder) {
-            return Err(CoreError::classified(
-                ErrorClass::Internal,
-                "unexpanded_zellij_layout_placeholder",
-                "Failed to expand a Zellij layout placeholder",
-                "Report this as a Yazelix internal error.",
-                json!({ "placeholder": placeholder }),
-            ));
-        }
-    }
-    Ok(updated)
-}
-
-fn expand_runtime_placeholder(value: &str, runtime_dir: &Path) -> String {
-    value.replace(
-        RUNTIME_DIR_PLACEHOLDER,
-        runtime_dir.to_string_lossy().as_ref(),
-    )
-}
-
 fn resolve_zjstatus_nu_bin(runtime_dir: &Path) -> String {
     let runtime_nu = runtime_dir.join("libexec").join("nu");
     if runtime_nu.is_file() {
@@ -2158,106 +1545,6 @@ fn env_path_if_file(variable: &str) -> Option<PathBuf> {
     path.is_file().then_some(path)
 }
 
-fn render_sidebar_args(args: &[String], runtime_dir: &Path) -> String {
-    if args.is_empty() {
-        String::new()
-    } else {
-        format!(
-            "args {}",
-            args.iter()
-                .map(|arg| json_quote(expand_runtime_placeholder(arg, runtime_dir)))
-                .collect::<Vec<_>>()
-                .join(" ")
-        )
-    }
-}
-
-fn load_static_fragments(source_dir: &Path) -> Result<BTreeMap<String, String>, CoreError> {
-    let mut fragments = BTreeMap::new();
-    for (placeholder, relative_path) in ZELLIJ_CONFIG_PACK_STATIC_FRAGMENTS {
-        let path = source_dir.join(relative_path);
-        if !path.exists() {
-            return Err(CoreError::classified(
-                ErrorClass::Io,
-                "missing_zellij_layout_fragment",
-                format!(
-                    "Missing required layout fragment: {}",
-                    path.to_string_lossy()
-                ),
-                "Reinstall Yazelix so the runtime includes all Zellij layout fragments.",
-                json!({ "path": path.to_string_lossy() }),
-            ));
-        }
-        fragments.insert(
-            placeholder.to_string(),
-            read_text(&path, "read_zellij_fragment")?,
-        );
-    }
-    Ok(fragments)
-}
-
-fn apply_static_fragments(content: &str, fragments: &BTreeMap<String, String>) -> String {
-    let mut updated = content.to_string();
-    for (placeholder, value) in fragments {
-        if !updated.contains(placeholder) {
-            continue;
-        }
-        let fragment_lines = value.lines().collect::<Vec<_>>();
-        updated = updated
-            .lines()
-            .map(|line| {
-                if line.contains(placeholder) {
-                    let indent = line
-                        .chars()
-                        .take_while(|ch| ch.is_whitespace())
-                        .collect::<String>();
-                    fragment_lines
-                        .iter()
-                        .map(|fragment_line| format!("{indent}{fragment_line}"))
-                        .collect::<Vec<_>>()
-                        .join("\n")
-                } else {
-                    line.to_string()
-                }
-            })
-            .collect::<Vec<_>>()
-            .join("\n");
-    }
-    updated
-}
-
-fn list_top_level_kdl_files(dir: &Path) -> Result<Vec<PathBuf>, CoreError> {
-    if !dir.exists() {
-        return Ok(Vec::new());
-    }
-    let mut files = fs::read_dir(dir)
-        .map_err(|source| {
-            CoreError::io(
-                "read_zellij_layout_source_dir",
-                "Could not read Zellij layout source directory",
-                "Reinstall Yazelix so the runtime includes readable Zellij layouts.",
-                dir.to_string_lossy(),
-                source,
-            )
-        })?
-        .filter_map(Result::ok)
-        .map(|entry| entry.path())
-        .filter(|path| path.extension().and_then(|ext| ext.to_str()) == Some("kdl"))
-        .collect::<Vec<_>>();
-    files.sort();
-    Ok(files)
-}
-
-fn list_source_layout_files(source_layouts_dir: &Path) -> Result<Vec<PathBuf>, CoreError> {
-    let mut paths = list_top_level_kdl_files(source_layouts_dir)?;
-    let fragment_dir = source_layouts_dir.join("fragments");
-    if fragment_dir.exists() {
-        paths.extend(list_top_level_kdl_files(&fragment_dir)?);
-    }
-    paths.sort();
-    Ok(paths)
-}
-
 fn remove_stale_layouts(target_dir: &Path, expected_targets: &[PathBuf]) -> Result<(), CoreError> {
     if !target_dir.exists() {
         return Ok(());
@@ -2302,7 +1589,6 @@ fn remove_stale_layouts(target_dir: &Path, expected_targets: &[PathBuf]) -> Resu
 fn build_generation_fingerprint(
     runtime_dir: &Path,
     base_config_source: &ZellijBaseConfigSource,
-    source_layouts_dir: &Path,
     plugin_artifacts: &[PluginArtifact; 3],
     zellij_keybindings: &BTreeMap<String, Vec<String>>,
     zellij_native_keybindings: &BTreeMap<String, Vec<String>>,
@@ -2314,17 +1600,9 @@ fn build_generation_fingerprint(
         .join("configs")
         .join("zellij")
         .join("yazelix_overrides.kdl");
-    let layout_sources = list_source_layout_files(source_layouts_dir)?
-        .into_iter()
-        .map(|path| {
-            Ok(json!({
-                "path": path.to_string_lossy(),
-                "hash": hash_file(&path)?,
-            }))
-        })
-        .collect::<Result<Vec<_>, CoreError>>()?;
     let fingerprint_payload = json!({
         "schema_version": GENERATION_FINGERPRINT_SCHEMA_VERSION,
+        "zellij_config_pack_renderer_schema_version": zellij_config_pack::RENDERER_SCHEMA_VERSION,
         "runtime_dir": runtime_dir.to_string_lossy(),
         "render_plan": render_plan,
         "zellij_keybindings": zellij_keybindings,
@@ -2337,7 +1615,6 @@ fn build_generation_fingerprint(
             "hash": hash_text(&base_config_source.content),
         },
         "overrides_hash": hash_text(&read_text_if_exists(&overrides_path)?),
-        "layout_sources": layout_sources,
         "plugins": plugin_artifacts.iter().map(|artifact| {
             json!({
                 "name": artifact.name,
@@ -2420,31 +1697,6 @@ pub(crate) fn generated_zellij_layout_has_yazelix_markers(
     Ok(true)
 }
 
-fn required_file_name(path: &Path) -> Result<&std::ffi::OsStr, CoreError> {
-    path.file_name().ok_or_else(|| {
-        CoreError::classified(
-            ErrorClass::Internal,
-            "missing_zellij_input_file_name",
-            "A Zellij materialization input path has no file name",
-            "Report this as a Yazelix internal error.",
-            json!({ "path": path.to_string_lossy() }),
-        )
-    })
-}
-
-fn required_utf8_file_name(path: &Path) -> Result<String, CoreError> {
-    let file_name = required_file_name(path)?;
-    file_name.to_str().map(str::to_string).ok_or_else(|| {
-        CoreError::classified(
-            ErrorClass::Internal,
-            "non_utf8_zellij_input_file_name",
-            "A Zellij materialization input file name is not valid UTF-8",
-            "Report this as a Yazelix internal error.",
-            json!({ "path": path.to_string_lossy() }),
-        )
-    })
-}
-
 fn json_quote(value: impl AsRef<str>) -> String {
     serde_json::to_string(value.as_ref()).unwrap_or_else(|_| "\"\"".to_string())
 }
@@ -2453,7 +1705,6 @@ fn json_quote(value: impl AsRef<str>) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::zellij_render_plan::DEFAULT_LEFT_SIDEBAR_YAZI_ARGS;
 
     fn sample_render_plan_for_widgets(
         widget_tray: Vec<&str>,
@@ -2498,12 +1749,6 @@ mod tests {
         .unwrap()
     }
 
-    fn sample_zjstatus_plugin_block() -> &'static str {
-        r#"plugin location="file:/tmp/zjstatus.wasm" {
-    pipe_workspace_format "child-owned-workspace"
-}"#
-    }
-
     fn sample_zellij_keybindings() -> BTreeMap<String, Vec<String>> {
         default_zellij_keybindings()
     }
@@ -2512,7 +1757,7 @@ mod tests {
         default_zellij_native_keybindings()
     }
 
-    // Defends: semantic block extraction removes first-class KDL blocks while preserving unrelated top-level lines.
+    // Defends: managed override parsing keeps keybind block facts while ignoring child-owned semantic blocks.
     #[test]
     fn extracts_semantic_blocks() {
         let extracted = extract_semantic_config_blocks(
@@ -2525,22 +1770,11 @@ ui { pane_frames { hide_session_name true } }
         );
         assert!(
             extracted
-                .config_without_semantic_blocks
-                .contains("scroll_buffer_size 123")
-        );
-        assert!(
-            extracted
                 .keybind_lines
                 .iter()
                 .any(|line| line.contains("Ctrl y"))
         );
         assert!(extracted.keybinds_block_present);
-        assert!(
-            extracted
-                .ui_lines
-                .iter()
-                .any(|line| line.contains("hide_session_name"))
-        );
         assert!(!extracted.keybinds_clear_defaults);
     }
 
@@ -2612,82 +1846,6 @@ ui { pane_frames { hide_session_name true } }
         }
     }
 
-    // Regression: clear-defaults from the read-only native fallback must not disable Yazelix integration keybindings.
-    #[test]
-    fn native_fallback_clear_defaults_keeps_yazelix_keybind_overrides() {
-        let temp = tempfile::tempdir().unwrap();
-        let runtime_dir = temp.path();
-        let overrides_dir = runtime_dir.join("configs").join("zellij");
-        std::fs::create_dir_all(&overrides_dir).unwrap();
-        std::fs::write(
-            overrides_dir.join("yazelix_overrides.kdl"),
-            r#"
-keybinds {
-    normal {
-        bind "Alt Shift M" {
-            MessagePlugin "yzpp" {
-                name "toggle"
-                payload "menu"
-            }
-        }
-    }
-}
-"#,
-        )
-        .unwrap();
-        let plan =
-            sample_render_plan_for_widgets(vec!["workspace"], "hx", "/nix/store/bin/nu", "ghostty");
-        let override_keybinds = read_yazelix_override_keybinds(
-            &overrides_dir.join("yazelix_overrides.kdl"),
-            runtime_dir,
-            &sample_zellij_keybindings(),
-            &sample_zellij_native_keybindings(),
-            &default_custom_popups(),
-        )
-        .unwrap();
-        let rendered = render_merged_config(
-            runtime_dir,
-            r#"keybinds clear-defaults=true {
-    normal { bind "Alt h" { MoveFocusOrTab "left"; } }
-}
-"#,
-            &override_keybinds,
-            &plan,
-            &default_popup_commands(),
-            &default_custom_popups(),
-            Path::new("/tmp/pane.wasm"),
-            Path::new("/tmp/yzpp.wasm"),
-            "gen-test",
-        )
-        .unwrap();
-
-        assert!(rendered.contains("keybinds {"));
-        assert!(!rendered.contains("keybinds clear-defaults=true"));
-        assert!(rendered.contains("MoveFocusOrTab"));
-        assert!(rendered.contains("Alt Shift M"));
-        assert!(rendered.contains("MessagePlugin \"yzpp\""));
-        assert!(rendered.contains("payload \"menu\""));
-    }
-
-    // Defends: ordinary native/default Zellij keybinding customization keeps Yazelix integration bindings appended.
-    #[test]
-    fn ordinary_keybinds_keep_yazelix_overrides() {
-        let existing_lines = vec![r#"    normal { bind "Alt Shift H" { Write 27; } }"#.to_string()];
-        let override_lines = vec![
-            r#"    shared_except "locked" {"#.to_string(),
-            r#"        bind "Alt Shift H" { MessagePlugin "yazelix_pane_orchestrator" { name "toggle_sidebar" } }"#.to_string(),
-            r#"    }"#.to_string(),
-        ];
-
-        let merged = build_merged_keybinds_block(&existing_lines, &override_lines);
-
-        assert!(merged.starts_with("keybinds {"));
-        assert!(!merged.starts_with("keybinds clear-defaults=true"));
-        assert!(merged.contains("Write 27"));
-        assert!(merged.contains("MessagePlugin"));
-        assert!(merged.contains("toggle_sidebar"));
-    }
-
     // Regression: native Zellij mode leaders remain user/Zellij-owned instead of being reasserted by Yazelix overrides after a native fallback remap.
     #[test]
     fn native_fallback_zellij_remap_can_remove_ctrl_n_resize_leader() {
@@ -2700,8 +1858,6 @@ keybinds {
             include_str!("../../../configs/zellij/yazelix_overrides.kdl"),
         )
         .unwrap();
-        let plan =
-            sample_render_plan_for_widgets(vec!["workspace"], "hx", "/nix/store/bin/nu", "ghostty");
         let override_keybinds = read_yazelix_override_keybinds(
             &overrides_dir.join("yazelix_overrides.kdl"),
             runtime_dir,
@@ -2710,32 +1866,8 @@ keybinds {
             &default_custom_popups(),
         )
         .unwrap();
-        let rendered = render_merged_config(
-            runtime_dir,
-            r#"keybinds {
-    shared_except "resize" "locked" {
-        unbind "Ctrl n"
-        bind "Ctrl Alt n" { SwitchToMode "Resize"; }
-    }
+        let rendered = override_keybinds.join("\n");
 
-    resize {
-        unbind "Ctrl n"
-        bind "Ctrl Alt n" { SwitchToMode "Normal"; }
-    }
-}
-"#,
-            &override_keybinds,
-            &plan,
-            &default_popup_commands(),
-            &default_custom_popups(),
-            Path::new("/tmp/pane.wasm"),
-            Path::new("/tmp/yzpp.wasm"),
-            "gen-test",
-        )
-        .unwrap();
-
-        assert!(rendered.contains(r#"bind "Ctrl Alt n" { SwitchToMode "Resize"; }"#));
-        assert!(rendered.contains(r#"bind "Ctrl Alt n" { SwitchToMode "Normal"; }"#));
         assert!(!rendered.contains(r#"bind "Ctrl n" { SwitchToMode "Resize"; }"#));
         assert!(!rendered.contains(r#"bind "Ctrl n" { SwitchToMode "Normal"; }"#));
         assert!(rendered.contains(r#"bind "Ctrl Alt s" { SwitchToMode "Scroll"; }"#));
@@ -2861,115 +1993,16 @@ printf '%s\n' '{"schema_version":3,"plugin_block":"CHILD_PLUGIN_BLOCK"}'
         assert_eq!(plugin_block, "CHILD_PLUGIN_BLOCK");
     }
 
-    // Defends: the config-pack renderer boundary preserves representative config and layout behavior during extraction.
-    #[test]
-    fn renders_config_pack_request_without_placeholder_drift() {
-        let mut plan =
-            sample_render_plan_for_widgets(vec!["editor"], "hx", "/nix/store/bin/nu", "ghostty");
-        plan.left_sidebar_command = "__YAZELIX_RUNTIME_DIR__/bin/custom-sidebar".into();
-        plan.left_sidebar_args = vec!["--root".into(), "__YAZELIX_RUNTIME_DIR__/side".into()];
-        let mut static_fragments = BTreeMap::new();
-        static_fragments.insert(
-            "__YAZELIX_SWAP_SIDEBAR_OPEN__".to_string(),
-            r#"pane name="fragmented-sidebar" { command "sidebar-fragment" }"#.to_string(),
-        );
-        let request = ZellijConfigPackRenderRequest {
-            base_config_content:
-                "scroll_buffer_size 100\nkeybinds { normal { bind \"Alt h\" { MoveFocusOrTab \"left\"; } } }\n"
-                    .to_string(),
-            override_keybinds: vec![
-                r#"    normal { bind "Alt X" { SwitchToMode "Normal"; } }"#.to_string(),
-            ],
-            render_plan: plan,
-            popup_commands: default_popup_commands(),
-            custom_popups: vec![CustomPopup {
-                id: "gitui".to_string(),
-                command: vec!["gitui".to_string()],
-                keybindings: vec!["Alt Shift G".to_string()],
-                keep_alive: false,
-            }],
-            layout_source_present: true,
-            layout_templates: vec![ZellijConfigPackLayoutTemplate {
-                relative_path: "yzx_side.kdl".to_string(),
-                content: r#"layout {
-    __YAZELIX_ZJSTATUS_TAB_TEMPLATE__
-    __YAZELIX_SWAP_SIDEBAR_OPEN__
-    pane cwd="__YAZELIX_HOME_DIR__" { plugin location="__YAZELIX_PANE_ORCHESTRATOR_PLUGIN_URL__" }
-    pane { command __YAZELIX_SIDEBAR_COMMAND__ __YAZELIX_SIDEBAR_ARGS__ }
-}"#
-                .to_string(),
-            }],
-            static_fragments,
-            zjstatus_plugin_block: sample_zjstatus_plugin_block().to_string(),
-            pane_orchestrator_wasm_path: PathBuf::from("/nix/store/pane.wasm"),
-            yzpp_wasm_path: PathBuf::from("/nix/store/yzpp.wasm"),
-            home_dir: PathBuf::from("/home/user"),
-            runtime_dir: PathBuf::from("/opt/yazelix"),
-            generation_fingerprint: "gen-test".to_string(),
-        };
-        let output = render_zellij_config_pack(&request).unwrap();
-        let rendered_layout = &output.layout_files[0].content;
-
-        assert_eq!(output.layout_files[0].relative_path, "yzx_side.kdl");
-        assert!(output.merged_config.contains("scroll_buffer_size 100"));
-        assert!(output.merged_config.contains("Alt X"));
-        assert!(output.merged_config.contains("gitui"));
-        assert!(output.merged_config.contains("file:/nix/store/yzpp.wasm"));
-        assert!(rendered_layout.starts_with(&generated_zellij_layout_header("gen-test")));
-        assert!(rendered_layout.contains("fragmented-sidebar"));
-        assert!(rendered_layout.contains(r#"plugin location="file:/tmp/zjstatus.wasm" {"#));
-        assert!(rendered_layout.contains(r#"plugin location="file:/nix/store/pane.wasm""#));
-        assert!(rendered_layout.contains(r#"pane cwd="/home/user" {"#));
-        assert!(rendered_layout.contains(r#"command "/opt/yazelix/bin/custom-sidebar""#));
-        assert!(rendered_layout.contains(r#"args "--root" "/opt/yazelix/side""#));
-        for placeholder in ZELLIJ_CONFIG_PACK_REQUIRED_LAYOUT_PLACEHOLDERS {
-            assert!(!rendered_layout.contains(placeholder));
-        }
-        assert!(!rendered_layout.contains("__YAZELIX_SWAP_SIDEBAR_OPEN__"));
-    }
-
-    // Regression: custom sidebar apps must not receive the default Yazi launcher args from normalized config.
-    #[test]
-    fn renders_custom_sidebar_command_without_implicit_yazi_launcher_args() {
-        let mut config = JsonMap::new();
-        config.insert("left_sidebar_command".into(), json!("lazygit"));
-        config.insert(
-            "left_sidebar_args".into(),
-            json!(DEFAULT_LEFT_SIDEBAR_YAZI_ARGS),
-        );
-        let request = build_render_plan_request(
-            &config,
-            std::path::Path::new("/tmp/yazelix/layouts"),
-            "/nix/store/bin/nu",
-            "ghostty",
-        )
-        .unwrap();
-        let plan = compute_zellij_render_plan(&request).unwrap();
-        let rendered = render_layout_template(
-            r#"pane name="sidebar" {
-    command __YAZELIX_SIDEBAR_COMMAND__
-            __YAZELIX_SIDEBAR_ARGS__
-}"#,
-            &BTreeMap::new(),
-            sample_zjstatus_plugin_block(),
-            "",
-            std::path::Path::new("/home/user"),
-            std::path::Path::new("/opt/yazelix"),
-            &plan,
-        )
-        .unwrap();
-
-        assert!(rendered.contains(r#"command "lazygit""#));
-        assert!(!rendered.contains("args "));
-        assert!(!rendered.contains(r#"args "sidebar" "yazi""#));
-    }
-
     // Regression: startup layouts declare the initial tab explicitly so launch cwd stays owned by
     // Zellij --default-cwd while new tabs remain home-scoped.
     #[test]
     fn startup_layouts_keep_initial_tab_distinct_from_home_scoped_new_tabs() {
         let name = "yzx_side.kdl";
-        let content = include_str!("../../../configs/zellij/layouts/yzx_side.kdl");
+        let content = zellij_config_pack::bundled_layout_templates()
+            .into_iter()
+            .find(|template| template.relative_path == name)
+            .unwrap_or_else(|| panic!("child config pack missing {name}"))
+            .content;
         let mut default_template_line = None;
         let mut initial_tab_line = None;
         let mut new_tab_line = None;
@@ -3218,82 +2251,5 @@ keybinds {
                 }
             ]
         );
-    }
-
-    // Regression: generated popup specs must route external tools through `popup_run` so they inherit runtime env and Yazi-sidebar cwd.
-    #[test]
-    fn yzpp_popup_specs_use_distinct_popup_commands() {
-        let block = render_yzpp_plugin_block(
-            std::path::Path::new("/opt/yazelix/plugins/yzpp.wasm"),
-            std::path::Path::new("/opt/yazelix"),
-            &default_popup_commands(),
-            &default_custom_popups(),
-            82,
-            76,
-        )
-        .join("\n");
-
-        assert!(block.contains("bottom_popup {"));
-        assert!(block.contains("command \"/opt/yazelix/shells/posix/yzx_cli.sh\""));
-        assert!(block.contains("arg_1 \"popup_run\""));
-        assert!(block.contains("arg_2 \"lazygit\""));
-        assert!(block.contains("top_popup {"));
-        assert!(block.contains("arg_1 \"config\""));
-        assert!(block.contains("arg_2 \"ui\""));
-        assert!(block.contains("menu {"));
-        assert!(block.contains("arg_1 \"menu\""));
-        assert!(block.contains("zenith {"));
-        assert!(block.contains("pane_title \"yzx_zenith\""));
-        assert!(block.contains("command_marker \"yzx_zenith\""));
-        assert!(block.contains("arg_2 \"zenith\""));
-        assert!(block.contains("toggle_close_behavior \"hide\""));
-        assert!(!block.contains("arg_2 \"--pane\""));
-        assert!(!block.contains("\n            popup {\n"));
-    }
-
-    // Regression: generated plugin config must carry the pane-orchestrator runtime contract and yzpp popup contract without duplicate alias injection.
-    #[test]
-    fn plugin_block_carries_runtime_and_popup_contract_once() {
-        let block = build_yazelix_plugins_block(
-            &[],
-            std::path::Path::new("/opt/yazelix/plugins/yazelix_pane_orchestrator.wasm"),
-            std::path::Path::new("/opt/yazelix/plugins/yzpp.wasm"),
-            std::path::Path::new("/opt/yazelix"),
-            &default_popup_commands(),
-            &default_custom_popups(),
-            82,
-            76,
-            true,
-            180,
-            "mandelbrot",
-            "yzx",
-            &["agent".to_string()],
-            "gen-test",
-        );
-
-        assert!(block.contains("yazelix_pane_orchestrator location=\"file:/opt/yazelix/plugins/yazelix_pane_orchestrator.wasm\""));
-        assert!(block.contains("runtime_dir \"/opt/yazelix\""));
-        assert!(!block.contains("popup_width_percent"));
-        assert!(!block.contains("popup_height_percent"));
-        assert!(block.contains("screen_saver_enabled \"true\""));
-        assert!(block.contains("screen_saver_idle_seconds \"180\""));
-        assert!(block.contains("screen_saver_style \"mandelbrot\""));
-        assert!(block.contains("runtime_config_generation \"gen-test\""));
-        assert!(block.contains("right_sidebar_command \"yzx\""));
-        assert!(block.contains("right_sidebar_arg_1 \"agent\""));
-        assert!(block.contains("yzpp location=\"file:/opt/yazelix/plugins/yzpp.wasm\""));
-        assert!(block.contains("width_percent \"82\""));
-        assert!(block.contains("height_percent \"76\""));
-        assert!(block.contains("on_close {"));
-        assert!(block.contains("arg_1 \"sidebar\""));
-        assert!(block.contains("arg_2 \"refresh\""));
-        assert!(!block.contains("widget_tray_segment"));
-        assert!(!block.contains("custom_text_segment"));
-        assert!(!block.contains("sidebar_width_percent"));
-        assert_eq!(
-            block.matches("yazelix_pane_orchestrator location=").count(),
-            1
-        );
-        assert_eq!(block.matches("yzpp location=").count(), 1);
     }
 }

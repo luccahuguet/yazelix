@@ -160,7 +160,7 @@ When creating new files or directories, always use underscores to maintain consi
 - **Do not treat `cargo test` or `cargo check` as sufficient verification for live plugin behavior.** They only validate the Rust source. Real behavior changes require the packaged wasm, runtime build validation, and a fresh Yazelix session.
 - After switching to a new packaged plugin wasm, prefer `yzx restart` or a fresh Yazelix window. Avoid in-place plugin reloads as the default validation path because they can leave the current session in a broken permission state.
 - Run `yzx_repo_validator validate-workspace-session-contract` or `yzx dev test` before committing pane-orchestrator integration work; the validator checks generated workspace assets against the packaged runtime shape.
-- When changing built-in Zellij layouts, update `config_metadata/zellij_layout_families.toml` and run `yzx_repo_validator validate-workspace-session-contract`; the same contract feeds workspace asset drift checks in `yzx doctor`.
+- Built-in Zellij layout templates live in the `yazelix-zellij-config-pack` child repo. After changing them, push the child repo, update the main lock/dependency pins, and run `yzx_repo_validator validate-workspace-session-contract`; `yzx doctor` validates generated layouts against the consumed child pack.
 
 ## Rust Dependency Gate
 

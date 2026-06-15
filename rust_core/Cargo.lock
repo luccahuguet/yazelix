@@ -1470,6 +1470,7 @@ dependencies = [
  "yazelix-ratconfig",
  "yazelix_cursors",
  "yazelix_screen",
+ "yazelix_zellij_config_pack",
 ]
 
 [[package]]
@@ -1502,6 +1503,15 @@ version = "0.1.0"
 source = "git+https://github.com/luccahuguet/yazelix-screen?rev=bebc5498e12473ffe909c2105a904a5e4a937208#bebc5498e12473ffe909c2105a904a5e4a937208"
 dependencies = [
  "crossterm",
+]
+
+[[package]]
+name = "yazelix_zellij_config_pack"
+version = "0.1.0"
+source = "git+https://github.com/luccahuguet/yazelix-zellij-config-pack?rev=149d2e730a7e100fc630a78d755437a3a9379ce3#149d2e730a7e100fc630a78d755437a3a9379ce3"
+dependencies = [
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

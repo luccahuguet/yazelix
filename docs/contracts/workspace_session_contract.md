@@ -128,14 +128,14 @@ The adapter does not own durable workspace state. It publishes observations, and
 #### WSS-006
 - Type: invariant
 - Status: live
-- Owner: built-in Zellij layout family metadata
-- Statement: Built-in Zellij layout family behavior is described by
-  `config_metadata/zellij_layout_families.toml`, and top-level built-in layout
-  KDL files must stay represented there so startup layouts, swap layouts, and
-  family-aware controls do not drift through scattered strings
+- Owner: `yazelix-zellij-config-pack`
+- Statement: Built-in Zellij layout family behavior is rendered by the consumed
+  config-pack child crate. Main Yazelix must not keep parallel built-in layout
+  templates or metadata; generated workspace-state checks derive expected
+  layout file names from the child pack.
 - Verification: automated
   `yzx_repo_validator validate-workspace-session-contract`; automated
-  `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core layout_family_contract::tests`
+  `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core zellij_materialization::tests::startup_layouts_keep_initial_tab_distinct_from_home_scoped_new_tabs`
 
 #### WSS-007
 - Type: behavior

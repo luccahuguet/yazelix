@@ -282,6 +282,7 @@
         "yazelixYaziAssets": "yazelixYaziAssets",
         "yazelixZellij": "yazelixZellij",
         "yazelixZellijBar": "yazelixZellijBar",
+        "yazelixZellijConfigPack": "yazelixZellijConfigPack",
         "yazelixZellijPaneOrchestrator": "yazelixZellijPaneOrchestrator",
         "yazelixZellijPopup": "yazelixZellijPopup",
         "zjstatus": "zjstatus"
@@ -628,6 +629,29 @@
       "original": {
         "owner": "luccahuguet",
         "repo": "yazelix-zellij-bar",
+        "type": "github"
+      }
+    },
+    "yazelixZellijConfigPack": {
+      "inputs": {
+        "fenix": [
+          "fenix"
+        ],
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1781494153,
+        "narHash": "sha256-H7m+a0B8dpGU/UP+YMWLJz2Nwz78p3WAusrfGu6YPKs=",
+        "owner": "luccahuguet",
+        "repo": "yazelix-zellij-config-pack",
+        "rev": "149d2e730a7e100fc630a78d755437a3a9379ce3",
+        "type": "github"
+      },
+      "original": {
+        "owner": "luccahuguet",
+        "repo": "yazelix-zellij-config-pack",
         "type": "github"
       }
     },
