@@ -1,20 +1,32 @@
 // Test lane: default
 
 use super::*;
+use std::path::Path;
+
+fn status_cache_path(temp: &tempfile::TempDir) -> PathBuf {
+    temp.path().join("window_a").join("status_bar_cache.json")
+}
+
+fn run_status_cache_write(cache_path: &Path, tab_activity_payload: Option<&str>) {
+    let mut args = vec![
+        "--path".to_string(),
+        cache_path.display().to_string(),
+        "--payload".to_string(),
+        STATUS_CACHE_TEST_PAYLOAD.to_string(),
+    ];
+    if let Some(payload) = tab_activity_payload {
+        args.extend(["--tab-activity-payload".to_string(), payload.to_string()]);
+    }
+    run_zellij_status_cache_write(&args).unwrap();
+}
 
 // Regression: zjstatus reads dynamic widgets from a local cache instead of invoking Zellij pipes from every bar command.
 #[test]
 fn status_cache_round_trip_renders_cached_workspace_fact() {
     let temp = tempfile::tempdir().unwrap();
-    let cache_path = temp.path().join("window_a").join("status_bar_cache.json");
+    let cache_path = status_cache_path(&temp);
 
-    run_zellij_status_cache_write(&[
-        "--path".to_string(),
-        cache_path.display().to_string(),
-        "--payload".to_string(),
-        STATUS_CACHE_TEST_PAYLOAD.to_string(),
-    ])
-    .unwrap();
+    run_status_cache_write(&cache_path, None);
     let cache = read_status_bar_cache_value(&cache_path).unwrap();
 
     assert_eq!(
@@ -91,7 +103,7 @@ fn status_cache_heartbeat_merge_preserves_cached_session_facts() {
 #[test]
 fn status_cache_write_preserves_existing_heartbeat() {
     let temp = tempfile::tempdir().unwrap();
-    let cache_path = temp.path().join("window_a").join("status_bar_cache.json");
+    let cache_path = status_cache_path(&temp);
     let mut cache = build_status_bar_cache_at(status_cache_test_status_bus(), 1_000);
     merge_orchestrator_heartbeat_into_cache(
         &mut cache,
@@ -103,13 +115,7 @@ fn status_cache_write_preserves_existing_heartbeat() {
     );
     write_status_bar_cache_value(&cache_path, &cache).unwrap();
 
-    run_zellij_status_cache_write(&[
-        "--path".to_string(),
-        cache_path.display().to_string(),
-        "--payload".to_string(),
-        STATUS_CACHE_TEST_PAYLOAD.to_string(),
-    ])
-    .unwrap();
+    run_status_cache_write(&cache_path, None);
 
     let updated_cache = read_status_bar_cache_value(&cache_path).unwrap();
     assert_eq!(
@@ -124,18 +130,14 @@ fn status_cache_write_preserves_existing_heartbeat() {
 #[test]
 fn status_cache_write_records_tab_activity_payload() {
     let temp = tempfile::tempdir().unwrap();
-    let cache_path = temp.path().join("window_a").join("status_bar_cache.json");
+    let cache_path = status_cache_path(&temp);
 
-    run_zellij_status_cache_write(&[
-        "--path".to_string(),
-        cache_path.display().to_string(),
-        "--payload".to_string(),
-        STATUS_CACHE_TEST_PAYLOAD.to_string(),
-        "--tab-activity-payload".to_string(),
-        r#"{"schema_version":1,"tabs":[{"tab_id":20,"tab_position":1,"base_name":"agent","active":false,"activity_state":"busy"}]}"#
-            .to_string(),
-    ])
-    .unwrap();
+    run_status_cache_write(
+        &cache_path,
+        Some(
+            r#"{"schema_version":1,"tabs":[{"tab_id":20,"tab_position":1,"base_name":"agent","active":false,"activity_state":"busy"}]}"#,
+        ),
+    );
 
     let cache = read_status_bar_cache_value(&cache_path).unwrap();
     assert_eq!(
@@ -150,7 +152,7 @@ fn status_cache_write_records_tab_activity_payload() {
 #[test]
 fn status_cache_write_without_tab_activity_preserves_existing_tab_activity() {
     let temp = tempfile::tempdir().unwrap();
-    let cache_path = temp.path().join("window_a").join("status_bar_cache.json");
+    let cache_path = status_cache_path(&temp);
     let mut cache = build_status_bar_cache_with_tab_activity_at(
         status_cache_test_status_bus(),
         Some(json!({
@@ -176,13 +178,7 @@ fn status_cache_write_without_tab_activity_preserves_existing_tab_activity() {
     );
     write_status_bar_cache_value(&cache_path, &cache).unwrap();
 
-    run_zellij_status_cache_write(&[
-        "--path".to_string(),
-        cache_path.display().to_string(),
-        "--payload".to_string(),
-        STATUS_CACHE_TEST_PAYLOAD.to_string(),
-    ])
-    .unwrap();
+    run_status_cache_write(&cache_path, None);
 
     let updated_cache = read_status_bar_cache_value(&cache_path).unwrap();
     assert_eq!(

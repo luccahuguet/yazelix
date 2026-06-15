@@ -484,9 +484,7 @@ pub fn run_zellij_status_cache_widget(args: &[String]) -> Result<i32, CoreError>
     let Some(cache) = read_status_bar_cache_value(&path) else {
         return Ok(0);
     };
-    print_optional_zjstatus_segment(render_status_cache_widget_for_yazelix_owned_widgets(
-        &cache, widget,
-    )?);
+    print_optional_zjstatus_segment(render_status_cache_widget(&cache, widget)?);
     Ok(0)
 }
 
