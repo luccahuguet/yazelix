@@ -186,7 +186,6 @@ struct ZellijConfigPackRenderOutput {
     layout_source_present: bool,
     layout_files: Vec<ZellijConfigPackRenderedFile>,
     generation_fingerprint: String,
-    diagnostics: Vec<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -1804,7 +1803,6 @@ fn render_zellij_config_pack(
         layout_source_present: request.layout_source_present,
         layout_files: render_config_pack_layouts(request)?,
         generation_fingerprint: request.generation_fingerprint.clone(),
-        diagnostics: Vec::new(),
     })
 }
 
@@ -1845,15 +1843,6 @@ fn write_zellij_config_pack_output(
     layout_dir: &Path,
     output: &ZellijConfigPackRenderOutput,
 ) -> Result<Vec<PathBuf>, CoreError> {
-    if !output.diagnostics.is_empty() {
-        return Err(CoreError::classified(
-            ErrorClass::Internal,
-            "zellij_config_pack_render_diagnostics",
-            "Zellij config pack rendering produced diagnostics.",
-            "Report this as a Yazelix internal error.",
-            json!({ "diagnostics": &output.diagnostics }),
-        ));
-    }
     write_text_atomic(merged_config_path, &output.merged_config)?;
     if !output.layout_source_present {
         return Ok(Vec::new());
