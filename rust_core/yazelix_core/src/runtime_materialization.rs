@@ -144,48 +144,32 @@ pub fn plan_runtime_materialization(
         Some(path) => path.clone(),
         None => zellij_permissions_cache_path()?,
     };
-    let expected_artifacts = vec![
-        RuntimeArtifact {
-            label: "generated Yazi config".to_string(),
-            path: request
-                .yazi_config_dir
-                .join("yazi.toml")
-                .to_string_lossy()
-                .to_string(),
-        },
-        RuntimeArtifact {
-            label: "generated Yazi keymap".to_string(),
-            path: request
-                .yazi_config_dir
-                .join("keymap.toml")
-                .to_string_lossy()
-                .to_string(),
-        },
-        RuntimeArtifact {
-            label: "generated Yazi init.lua".to_string(),
-            path: request
-                .yazi_config_dir
-                .join("init.lua")
-                .to_string_lossy()
-                .to_string(),
-        },
-        RuntimeArtifact {
-            label: "generated Zellij config".to_string(),
-            path: request
-                .zellij_config_dir
-                .join("config.kdl")
-                .to_string_lossy()
-                .to_string(),
-        },
-        RuntimeArtifact {
-            label: "generated Zellij layout".to_string(),
-            path: zellij_layout_path.clone(),
-        },
-        RuntimeArtifact {
-            label: "Zellij plugin permissions cache".to_string(),
-            path: zellij_permissions_path.to_string_lossy().to_string(),
-        },
-    ];
+    let expected_artifacts = [
+        (
+            "generated Yazi config",
+            request.yazi_config_dir.join("yazi.toml"),
+        ),
+        (
+            "generated Yazi keymap",
+            request.yazi_config_dir.join("keymap.toml"),
+        ),
+        (
+            "generated Yazi init.lua",
+            request.yazi_config_dir.join("init.lua"),
+        ),
+        (
+            "generated Zellij config",
+            request.zellij_config_dir.join("config.kdl"),
+        ),
+        (
+            "generated Zellij layout",
+            PathBuf::from(&zellij_layout_path),
+        ),
+        ("Zellij plugin permissions cache", zellij_permissions_path),
+    ]
+    .into_iter()
+    .map(runtime_artifact)
+    .collect::<Vec<_>>();
     let mut missing_artifacts = Vec::new();
     for artifact in &expected_artifacts {
         if runtime_artifact_needs_repair(artifact)? {
@@ -196,14 +180,10 @@ pub fn plan_runtime_materialization(
         && missing_artifacts.is_empty()
         && generated_yazi_static_assets_missing(&request.runtime_dir, &request.yazi_config_dir)?
     {
-        missing_artifacts.push(RuntimeArtifact {
-            label: "generated Yazi static assets".to_string(),
-            path: request
-                .yazi_config_dir
-                .join("plugins")
-                .to_string_lossy()
-                .to_string(),
-        });
+        missing_artifacts.push(runtime_artifact((
+            "generated Yazi static assets",
+            request.yazi_config_dir.join("plugins"),
+        )));
     }
 
     let (status, reason) = if config_state.needs_refresh {
@@ -458,6 +438,13 @@ fn is_missing_file(path: &Path) -> bool {
     }
 }
 
+fn runtime_artifact((label, path): (&str, PathBuf)) -> RuntimeArtifact {
+    RuntimeArtifact {
+        label: label.to_string(),
+        path: path.to_string_lossy().to_string(),
+    }
+}
+
 fn runtime_artifact_needs_repair(artifact: &RuntimeArtifact) -> Result<bool, CoreError> {
     let path = Path::new(&artifact.path);
     if is_missing_file(path) {
@@ -508,15 +495,19 @@ mod tests {
         }
     }
 
-    // Defends: runtime materialization stays on the repair-missing-artifacts path when hashes are current but files are absent.
-    #[test]
-    fn plan_marks_missing_artifacts_without_forcing_refresh_when_state_is_current() {
-        let dir = tempdir().expect("tempdir");
+    struct RecordedPlanFixture {
+        request: RuntimeMaterializationPlanRequest,
+        runtime_dir: PathBuf,
+        yazi_dir: PathBuf,
+        zellij_dir: PathBuf,
+    }
+
+    fn recorded_plan_fixture(root: &Path) -> RecordedPlanFixture {
         let runtime_dir = repo_root();
         let config_path = runtime_dir.join("settings_default.jsonc");
-        let state_path = dir.path().join("state/rebuild_hash");
-        let yazi_dir = dir.path().join("configs/yazi");
-        let zellij_dir = dir.path().join("configs/zellij");
+        let state_path = root.join("state/rebuild_hash");
+        let yazi_dir = root.join("configs/yazi");
+        let zellij_dir = root.join("configs/zellij");
         let zellij_layout_dir = zellij_dir.join("layouts");
 
         fs::create_dir_all(&zellij_layout_dir).unwrap();
@@ -532,20 +523,36 @@ mod tests {
             config_file: config_path.to_string_lossy().to_string(),
             managed_config_path: config_path.clone(),
             state_path: state_path.clone(),
-            config_hash: baseline.config_hash.clone(),
-            runtime_hash: baseline.runtime_hash.clone(),
+            config_hash: baseline.config_hash,
+            runtime_hash: baseline.runtime_hash,
         })
         .unwrap();
 
-        let plan = plan_runtime_materialization(&plan_request_for(
-            config_path,
+        RecordedPlanFixture {
+            request: plan_request_for(
+                config_path,
+                runtime_dir.clone(),
+                state_path,
+                yazi_dir.clone(),
+                zellij_dir.clone(),
+                zellij_layout_dir,
+            ),
             runtime_dir,
-            state_path,
             yazi_dir,
             zellij_dir,
-            zellij_layout_dir,
-        ))
-        .unwrap();
+        }
+    }
+
+    fn plan_recorded_fixture(fixture: &RecordedPlanFixture) -> RuntimeMaterializationPlanData {
+        plan_runtime_materialization(&fixture.request).unwrap()
+    }
+
+    // Defends: runtime materialization stays on the repair-missing-artifacts path when hashes are current but files are absent.
+    #[test]
+    fn plan_marks_missing_artifacts_without_forcing_refresh_when_state_is_current() {
+        let dir = tempdir().expect("tempdir");
+        let fixture = recorded_plan_fixture(dir.path());
+        let plan = plan_recorded_fixture(&fixture);
 
         assert!(!plan.config_state.needs_refresh);
         assert_eq!(plan.status, "repair_missing_artifacts");
@@ -657,45 +664,13 @@ mod tests {
     #[test]
     fn plan_marks_missing_or_stale_yazi_static_assets_without_forcing_refresh() {
         let dir = tempdir().expect("tempdir");
-        let runtime_dir = repo_root();
-        let config_path = runtime_dir.join("settings_default.jsonc");
-        let state_path = dir.path().join("state/rebuild_hash");
-        let yazi_dir = dir.path().join("configs/yazi");
-        let zellij_dir = dir.path().join("configs/zellij");
-        let zellij_layout_dir = zellij_dir.join("layouts");
-
-        fs::create_dir_all(&zellij_layout_dir).unwrap();
-        let baseline = compute_config_state(&ComputeConfigStateRequest {
-            config_path: config_path.clone(),
-            default_config_path: runtime_dir.join("settings_default.jsonc"),
-            contract_path: runtime_dir.join("config_metadata/main_config_contract.toml"),
-            runtime_dir: runtime_dir.clone(),
-            state_path: state_path.clone(),
-        })
-        .unwrap();
-        record_config_state(&RecordConfigStateRequest {
-            config_file: config_path.to_string_lossy().to_string(),
-            managed_config_path: config_path.clone(),
-            state_path: state_path.clone(),
-            config_hash: baseline.config_hash.clone(),
-            runtime_hash: baseline.runtime_hash.clone(),
-        })
-        .unwrap();
-
-        let request = plan_request_for(
-            config_path,
-            runtime_dir.clone(),
-            state_path,
-            yazi_dir.clone(),
-            zellij_dir,
-            zellij_layout_dir,
-        );
-        let initial_plan = plan_runtime_materialization(&request).unwrap();
+        let fixture = recorded_plan_fixture(dir.path());
+        let initial_plan = plan_recorded_fixture(&fixture);
         touch_plan_artifacts(&initial_plan);
-        mirror_yazi_static_assets(&runtime_dir, &yazi_dir);
-        fs::remove_file(yazi_dir.join("plugins/sidebar-state.yazi/main.lua")).unwrap();
+        mirror_yazi_static_assets(&fixture.runtime_dir, &fixture.yazi_dir);
+        fs::remove_file(fixture.yazi_dir.join("plugins/sidebar-state.yazi/main.lua")).unwrap();
 
-        let plan = plan_runtime_materialization(&request).unwrap();
+        let plan = plan_recorded_fixture(&fixture);
 
         assert!(!plan.config_state.needs_refresh);
         assert_eq!(plan.status, "repair_missing_artifacts");
@@ -707,14 +682,14 @@ mod tests {
             "generated Yazi static assets"
         );
 
-        mirror_yazi_static_assets(&runtime_dir, &yazi_dir);
+        mirror_yazi_static_assets(&fixture.runtime_dir, &fixture.yazi_dir);
         fs::write(
-            yazi_dir.join("plugins/sidebar-state.yazi/main.lua"),
+            fixture.yazi_dir.join("plugins/sidebar-state.yazi/main.lua"),
             "return 'stale generated plugin'\n",
         )
         .unwrap();
 
-        let stale_plan = plan_runtime_materialization(&request).unwrap();
+        let stale_plan = plan_recorded_fixture(&fixture);
 
         assert!(!stale_plan.config_state.needs_refresh);
         assert_eq!(stale_plan.status, "repair_missing_artifacts");
@@ -731,42 +706,10 @@ mod tests {
     #[test]
     fn plan_marks_missing_zellij_plugin_permissions_without_forcing_refresh() {
         let dir = tempdir().expect("tempdir");
-        let runtime_dir = repo_root();
-        let config_path = runtime_dir.join("settings_default.jsonc");
-        let state_path = dir.path().join("state/rebuild_hash");
-        let yazi_dir = dir.path().join("configs/yazi");
-        let zellij_dir = dir.path().join("configs/zellij");
-        let zellij_layout_dir = zellij_dir.join("layouts");
-
-        fs::create_dir_all(&zellij_layout_dir).unwrap();
-        let baseline = compute_config_state(&ComputeConfigStateRequest {
-            config_path: config_path.clone(),
-            default_config_path: runtime_dir.join("settings_default.jsonc"),
-            contract_path: runtime_dir.join("config_metadata/main_config_contract.toml"),
-            runtime_dir: runtime_dir.clone(),
-            state_path: state_path.clone(),
-        })
-        .unwrap();
-        record_config_state(&RecordConfigStateRequest {
-            config_file: config_path.to_string_lossy().to_string(),
-            managed_config_path: config_path.clone(),
-            state_path: state_path.clone(),
-            config_hash: baseline.config_hash.clone(),
-            runtime_hash: baseline.runtime_hash.clone(),
-        })
-        .unwrap();
-
-        let request = plan_request_for(
-            config_path,
-            runtime_dir.clone(),
-            state_path,
-            yazi_dir.clone(),
-            zellij_dir,
-            zellij_layout_dir,
-        );
-        let initial_plan = plan_runtime_materialization(&request).unwrap();
+        let fixture = recorded_plan_fixture(dir.path());
+        let initial_plan = plan_recorded_fixture(&fixture);
         touch_plan_artifacts(&initial_plan);
-        mirror_yazi_static_assets(&runtime_dir, &yazi_dir);
+        mirror_yazi_static_assets(&fixture.runtime_dir, &fixture.yazi_dir);
         let permissions_artifact = initial_plan
             .expected_artifacts
             .iter()
@@ -774,7 +717,7 @@ mod tests {
             .expect("permissions artifact");
         fs::remove_file(&permissions_artifact.path).unwrap();
 
-        let plan = plan_runtime_materialization(&request).unwrap();
+        let plan = plan_recorded_fixture(&fixture);
 
         assert!(!plan.config_state.needs_refresh);
         assert_eq!(plan.status, "repair_missing_artifacts");
@@ -791,49 +734,17 @@ mod tests {
     #[test]
     fn plan_marks_plain_native_zellij_config_for_repair_without_forcing_refresh() {
         let dir = tempdir().expect("tempdir");
-        let runtime_dir = repo_root();
-        let config_path = runtime_dir.join("settings_default.jsonc");
-        let state_path = dir.path().join("state/rebuild_hash");
-        let yazi_dir = dir.path().join("configs/yazi");
-        let zellij_dir = dir.path().join("configs/zellij");
-        let zellij_layout_dir = zellij_dir.join("layouts");
-
-        fs::create_dir_all(&zellij_layout_dir).unwrap();
-        let baseline = compute_config_state(&ComputeConfigStateRequest {
-            config_path: config_path.clone(),
-            default_config_path: runtime_dir.join("settings_default.jsonc"),
-            contract_path: runtime_dir.join("config_metadata/main_config_contract.toml"),
-            runtime_dir: runtime_dir.clone(),
-            state_path: state_path.clone(),
-        })
-        .unwrap();
-        record_config_state(&RecordConfigStateRequest {
-            config_file: config_path.to_string_lossy().to_string(),
-            managed_config_path: config_path.clone(),
-            state_path: state_path.clone(),
-            config_hash: baseline.config_hash.clone(),
-            runtime_hash: baseline.runtime_hash.clone(),
-        })
-        .unwrap();
-
-        let request = plan_request_for(
-            config_path,
-            runtime_dir.clone(),
-            state_path,
-            yazi_dir.clone(),
-            zellij_dir.clone(),
-            zellij_layout_dir,
-        );
-        let initial_plan = plan_runtime_materialization(&request).unwrap();
+        let fixture = recorded_plan_fixture(dir.path());
+        let initial_plan = plan_recorded_fixture(&fixture);
         touch_plan_artifacts(&initial_plan);
-        mirror_yazi_static_assets(&runtime_dir, &yazi_dir);
+        mirror_yazi_static_assets(&fixture.runtime_dir, &fixture.yazi_dir);
         fs::write(
-            zellij_dir.join("config.kdl"),
+            fixture.zellij_dir.join("config.kdl"),
             "keybinds clear-defaults=true {\n    normal {}\n}\n",
         )
         .unwrap();
 
-        let plan = plan_runtime_materialization(&request).unwrap();
+        let plan = plan_recorded_fixture(&fixture);
 
         assert!(!plan.config_state.needs_refresh);
         assert_eq!(plan.status, "repair_missing_artifacts");
@@ -847,53 +758,14 @@ mod tests {
     #[test]
     fn repair_evaluate_is_noop_when_plan_is_noop_and_not_forced() {
         let dir = tempdir().expect("tempdir");
-        let runtime_dir = repo_root();
-        let config_path = runtime_dir.join("settings_default.jsonc");
-        let state_path = dir.path().join("state/rebuild_hash");
-        let yazi_dir = dir.path().join("configs/yazi");
-        let zellij_dir = dir.path().join("configs/zellij");
-        let zellij_layout_dir = zellij_dir.join("layouts");
-
-        fs::create_dir_all(&zellij_layout_dir).unwrap();
-        let baseline = compute_config_state(&ComputeConfigStateRequest {
-            config_path: config_path.clone(),
-            default_config_path: runtime_dir.join("settings_default.jsonc"),
-            contract_path: runtime_dir.join("config_metadata/main_config_contract.toml"),
-            runtime_dir: runtime_dir.clone(),
-            state_path: state_path.clone(),
-        })
-        .unwrap();
-        record_config_state(&RecordConfigStateRequest {
-            config_file: config_path.to_string_lossy().to_string(),
-            managed_config_path: config_path.clone(),
-            state_path: state_path.clone(),
-            config_hash: baseline.config_hash.clone(),
-            runtime_hash: baseline.runtime_hash.clone(),
-        })
-        .unwrap();
-
-        let plan = plan_runtime_materialization(&plan_request_for(
-            config_path.clone(),
-            runtime_dir.clone(),
-            state_path.clone(),
-            yazi_dir.clone(),
-            zellij_dir.clone(),
-            zellij_layout_dir.clone(),
-        ))
-        .unwrap();
+        let fixture = recorded_plan_fixture(dir.path());
+        let plan = plan_recorded_fixture(&fixture);
         touch_plan_artifacts(&plan);
-        mirror_yazi_static_assets(&runtime_dir, &yazi_dir);
+        mirror_yazi_static_assets(&fixture.runtime_dir, &fixture.yazi_dir);
 
         let evaluated =
             evaluate_runtime_materialization_repair(&RuntimeMaterializationRepairEvaluateRequest {
-                plan: plan_request_for(
-                    config_path,
-                    runtime_dir,
-                    state_path,
-                    yazi_dir,
-                    zellij_dir,
-                    zellij_layout_dir,
-                ),
+                plan: fixture.request,
                 force: false,
             })
             .unwrap();
@@ -911,63 +783,16 @@ mod tests {
     #[test]
     fn repair_evaluate_regenerates_when_forced_even_if_plan_is_noop() {
         let dir = tempdir().expect("tempdir");
-        let runtime_dir = repo_root();
-        let config_path = runtime_dir.join("settings_default.jsonc");
-        let state_path = dir.path().join("state/rebuild_hash");
-        let yazi_dir = dir.path().join("configs/yazi");
-        let zellij_dir = dir.path().join("configs/zellij");
-        let zellij_layout_dir = zellij_dir.join("layouts");
-
-        fs::create_dir_all(&zellij_layout_dir).unwrap();
-        let baseline = compute_config_state(&ComputeConfigStateRequest {
-            config_path: config_path.clone(),
-            default_config_path: runtime_dir.join("settings_default.jsonc"),
-            contract_path: runtime_dir.join("config_metadata/main_config_contract.toml"),
-            runtime_dir: runtime_dir.clone(),
-            state_path: state_path.clone(),
-        })
-        .unwrap();
-        record_config_state(&RecordConfigStateRequest {
-            config_file: config_path.to_string_lossy().to_string(),
-            managed_config_path: config_path.clone(),
-            state_path: state_path.clone(),
-            config_hash: baseline.config_hash.clone(),
-            runtime_hash: baseline.runtime_hash.clone(),
-        })
-        .unwrap();
-
-        let plan_before = plan_runtime_materialization(&plan_request_for(
-            config_path.clone(),
-            runtime_dir.clone(),
-            state_path.clone(),
-            yazi_dir.clone(),
-            zellij_dir.clone(),
-            zellij_layout_dir.clone(),
-        ))
-        .unwrap();
+        let fixture = recorded_plan_fixture(dir.path());
+        let plan_before = plan_recorded_fixture(&fixture);
         touch_plan_artifacts(&plan_before);
-        mirror_yazi_static_assets(&runtime_dir, &yazi_dir);
-        let plan_after = plan_runtime_materialization(&plan_request_for(
-            config_path.clone(),
-            runtime_dir.clone(),
-            state_path.clone(),
-            yazi_dir.clone(),
-            zellij_dir.clone(),
-            zellij_layout_dir.clone(),
-        ))
-        .unwrap();
+        mirror_yazi_static_assets(&fixture.runtime_dir, &fixture.yazi_dir);
+        let plan_after = plan_recorded_fixture(&fixture);
         assert_eq!(plan_after.status, "noop");
 
         let evaluated =
             evaluate_runtime_materialization_repair(&RuntimeMaterializationRepairEvaluateRequest {
-                plan: plan_request_for(
-                    config_path,
-                    runtime_dir,
-                    state_path,
-                    yazi_dir,
-                    zellij_dir,
-                    zellij_layout_dir,
-                ),
+                plan: fixture.request,
                 force: true,
             })
             .unwrap();
