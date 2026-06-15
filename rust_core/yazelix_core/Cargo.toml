@@ -30,7 +30,7 @@ thiserror = "2.0"
 toml = "0.9"
 yazelix_cursors = { git = "https://github.com/luccahuguet/yazelix-cursors", rev = "2ea858a681ae15e1d4c9eb649fcdbcdf00843d3c" }
 yazelix_ratconfig = { package = "yazelix-ratconfig", git = "https://github.com/luccahuguet/yazelix-ratconfig", rev = "180994407b3c70d9c6cb6df5b03356ae59ecafd8" }
-yazelix_screen = { git = "https://github.com/luccahuguet/yazelix-screen", rev = "b392d282f318aea74966db45354c3f524dee1b31" }
+yazelix_screen = { git = "https://github.com/luccahuguet/yazelix-screen", rev = "1d60803496ba65feb1f580d448bddca99534c7ac" }
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Security", "Win32_Storage_FileSystem", "Win32_System_IO", "Win32_System_Pipes"] }
