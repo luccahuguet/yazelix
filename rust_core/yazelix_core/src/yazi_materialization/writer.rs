@@ -2,6 +2,7 @@ use crate::atomic_fs::{write_bytes_atomic, write_text_atomic};
 use crate::bridge::{CoreError, ErrorClass};
 use crate::yazi_render_plan::{ThemeFlavorPlan, YaziRenderPlanData};
 use serde_json::json;
+use std::collections::BTreeSet;
 use std::fs;
 use std::path::Path;
 use toml::Value as TomlValue;
@@ -35,6 +36,33 @@ pub(super) struct YaziConfigPackWriteData {
     pub managed_files: Vec<YaziManagedFileStatus>,
 }
 
+struct YaziConfigPackTemplateData {
+    yazi_toml: toml::Table,
+    theme_toml: toml::Table,
+    keymap_toml: toml::Table,
+}
+
+pub(super) struct YaziConfigPackRenderRequest<'a> {
+    templates: &'a YaziConfigPackTemplateData,
+    pub runtime_dir: &'a Path,
+    pub starship_config_path: &'a Path,
+    pub render_plan: &'a YaziRenderPlanData,
+    pub user_yazi_config: Option<&'a toml::Table>,
+    pub user_keymap: Option<&'a toml::Table>,
+    pub user_init_lua: Option<&'a str>,
+    pub semantic_keymap: &'a toml::Table,
+    pub available_plugins: &'a BTreeSet<String>,
+}
+
+pub(super) struct YaziConfigPackRenderOutput {
+    pub yazi_toml: String,
+    pub theme_toml: String,
+    pub keymap_toml: String,
+    pub init_lua: String,
+    pub missing_plugins: Vec<String>,
+    pub user_init_appended: bool,
+}
+
 pub(super) fn write_yazi_config_pack(
     request: &YaziConfigPackWriteRequest<'_>,
 ) -> Result<YaziConfigPackWriteData, CoreError> {
@@ -48,12 +76,7 @@ pub(super) fn write_yazi_config_pack(
         )
     })?;
 
-    let mut managed_files = vec![
-        write_generated_yazi_toml(request)?,
-        write_generated_theme_toml(request)?,
-        write_generated_keymap_toml(request)?,
-    ];
-
+    let templates = read_yazi_config_pack_templates(request.source_dir)?;
     let should_sync_static_assets = request.sync_static_assets
         || bundled_yazi_assets_missing(
             request.source_dir,
@@ -74,35 +97,112 @@ pub(super) fn write_yazi_config_pack(
         )?;
     }
 
-    let (init_status, missing_plugins, user_init_appended) = write_generated_init_lua(request)?;
-    managed_files.push(init_status);
+    let available_plugins = available_requested_plugins(
+        &request.output_dir.join("plugins"),
+        &request.render_plan.init_lua.load_order,
+    );
+    let rendered = render_yazi_config_pack(&YaziConfigPackRenderRequest {
+        templates: &templates,
+        runtime_dir: request.runtime_dir,
+        starship_config_path: &request.output_dir.join("yazelix_starship.toml"),
+        render_plan: request.render_plan,
+        user_yazi_config: request.user_yazi_config,
+        user_keymap: request.user_keymap,
+        user_init_lua: request.user_init_lua,
+        semantic_keymap: request.semantic_keymap,
+        available_plugins: &available_plugins,
+    })?;
+    let managed_files = vec![
+        write_managed_text_if_changed(&request.output_dir.join("yazi.toml"), &rendered.yazi_toml)?,
+        write_managed_text_if_changed(
+            &request.output_dir.join("theme.toml"),
+            &rendered.theme_toml,
+        )?,
+        write_managed_text_if_changed(
+            &request.output_dir.join("keymap.toml"),
+            &rendered.keymap_toml,
+        )?,
+        write_managed_text_if_changed(&request.output_dir.join("init.lua"), &rendered.init_lua)?,
+    ];
 
     Ok(YaziConfigPackWriteData {
-        missing_plugins,
+        missing_plugins: rendered.missing_plugins,
         synced_static_assets: should_sync_static_assets,
-        user_init_appended,
+        user_init_appended: rendered.user_init_appended,
         managed_files,
     })
 }
 
-fn write_generated_yazi_toml(
-    request: &YaziConfigPackWriteRequest<'_>,
-) -> Result<YaziManagedFileStatus, CoreError> {
-    let base_path = request.source_dir.join("yazelix_yazi.toml");
-    let base_config = read_required_toml_table(
-        &base_path,
+fn read_yazi_config_pack_templates(
+    source_dir: &Path,
+) -> Result<YaziConfigPackTemplateData, CoreError> {
+    let yazi_toml = read_required_toml_table(
+        &source_dir.join("yazelix_yazi.toml"),
         "read_yazi_base_config",
         "Could not read the bundled Yazi base config",
         "Reinstall Yazelix so the runtime includes configs/yazi/yazelix_yazi.toml.",
     )?;
-
-    let mut final_config = if let Some(user_config) = request.user_yazi_config {
-        merge_yazi_toml_config(base_config.clone(), user_config.clone())
+    let theme_path = source_dir.join("yazelix_theme.toml");
+    let theme_toml = if theme_path.exists() {
+        read_required_toml_table(
+            &theme_path,
+            "read_yazi_theme_base",
+            "Could not read the bundled Yazi theme base config",
+            "Reinstall Yazelix so the runtime includes configs/yazi/yazelix_theme.toml.",
+        )?
     } else {
-        base_config.clone()
+        toml::Table::new()
+    };
+    let keymap_toml = read_required_toml_table(
+        &source_dir.join("yazelix_keymap.toml"),
+        "read_yazi_keymap_base",
+        "Could not read the bundled Yazi keymap config",
+        "Reinstall Yazelix so the runtime includes configs/yazi/yazelix_keymap.toml.",
+    )?;
+
+    Ok(YaziConfigPackTemplateData {
+        yazi_toml,
+        theme_toml,
+        keymap_toml,
+    })
+}
+
+fn available_requested_plugins(plugins_dir: &Path, plugin_names: &[String]) -> BTreeSet<String> {
+    plugin_names
+        .iter()
+        .filter(|name| plugins_dir.join(format!("{name}.yazi")).exists())
+        .cloned()
+        .collect()
+}
+
+pub(super) fn render_yazi_config_pack(
+    request: &YaziConfigPackRenderRequest<'_>,
+) -> Result<YaziConfigPackRenderOutput, CoreError> {
+    let yazi_toml = render_generated_yazi_toml(request)?;
+    let theme_toml = render_generated_theme_toml(request)?;
+    let keymap_toml = render_generated_keymap_toml(request)?;
+    let (init_lua, missing_plugins, user_init_appended) = render_generated_init_lua(request);
+
+    Ok(YaziConfigPackRenderOutput {
+        yazi_toml,
+        theme_toml,
+        keymap_toml,
+        init_lua,
+        missing_plugins,
+        user_init_appended,
+    })
+}
+
+fn render_generated_yazi_toml(
+    request: &YaziConfigPackRenderRequest<'_>,
+) -> Result<String, CoreError> {
+    let mut final_config = if let Some(user_config) = request.user_yazi_config {
+        merge_yazi_toml_config(request.templates.yazi_toml.clone(), user_config.clone())
+    } else {
+        request.templates.yazi_toml.clone()
     };
 
-    preserve_yazelix_edit_opener(&base_config, &mut final_config);
+    preserve_yazelix_edit_opener(&request.templates.yazi_toml, &mut final_config);
     if !request.render_plan.git_plugin_enabled {
         final_config.remove("plugin");
     }
@@ -134,25 +234,13 @@ fn write_generated_yazi_toml(
         &toml_to_string_pretty(&TomlValue::Table(final_config))?,
         request.runtime_dir,
     );
-    let target = request.output_dir.join("yazi.toml");
-    write_managed_text_if_changed(&target, &format!("{header}{config_content}"))
+    Ok(format!("{header}{config_content}"))
 }
 
-fn write_generated_theme_toml(
-    request: &YaziConfigPackWriteRequest<'_>,
-) -> Result<YaziManagedFileStatus, CoreError> {
-    let source_path = request.source_dir.join("yazelix_theme.toml");
-    let mut base_theme = if source_path.exists() {
-        read_required_toml_table(
-            &source_path,
-            "read_yazi_theme_base",
-            "Could not read the bundled Yazi theme base config",
-            "Reinstall Yazelix so the runtime includes configs/yazi/yazelix_theme.toml.",
-        )?
-    } else {
-        toml::Table::new()
-    };
-
+fn render_generated_theme_toml(
+    request: &YaziConfigPackRenderRequest<'_>,
+) -> Result<String, CoreError> {
+    let mut base_theme = request.templates.theme_toml.clone();
     if let ThemeFlavorPlan::Uniform { flavor } = &request.render_plan.theme_flavor {
         let mut flavor_table = toml::Table::new();
         flavor_table.insert("dark".into(), TomlValue::String(flavor.clone()));
@@ -179,20 +267,13 @@ fn write_generated_theme_toml(
     } else {
         toml_to_string_pretty(&TomlValue::Table(base_theme))?
     };
-    let target = request.output_dir.join("theme.toml");
-    write_managed_text_if_changed(&target, &format!("{header}{config_content}"))
+    Ok(format!("{header}{config_content}"))
 }
 
-fn write_generated_keymap_toml(
-    request: &YaziConfigPackWriteRequest<'_>,
-) -> Result<YaziManagedFileStatus, CoreError> {
-    let base_path = request.source_dir.join("yazelix_keymap.toml");
-    let mut base_keymap = read_required_toml_table(
-        &base_path,
-        "read_yazi_keymap_base",
-        "Could not read the bundled Yazi keymap config",
-        "Reinstall Yazelix so the runtime includes configs/yazi/yazelix_keymap.toml.",
-    )?;
+fn render_generated_keymap_toml(
+    request: &YaziConfigPackRenderRequest<'_>,
+) -> Result<String, CoreError> {
+    let mut base_keymap = request.templates.keymap_toml.clone();
     base_keymap = merge_yazi_keymap(base_keymap, request.semantic_keymap.clone());
 
     let final_keymap = if let Some(user_keymap) = request.user_keymap {
@@ -215,20 +296,18 @@ fn write_generated_keymap_toml(
         &toml_to_string_pretty(&TomlValue::Table(final_keymap))?,
         request.runtime_dir,
     );
-    let target = request.output_dir.join("keymap.toml");
-    write_managed_text_if_changed(&target, &format!("{header}{keymap_content}"))
+    Ok(format!("{header}{keymap_content}"))
 }
 
-fn write_generated_init_lua(
-    request: &YaziConfigPackWriteRequest<'_>,
-) -> Result<(YaziManagedFileStatus, Vec<String>, bool), CoreError> {
-    let plugins_dir = request.output_dir.join("plugins");
+fn render_generated_init_lua(
+    request: &YaziConfigPackRenderRequest<'_>,
+) -> (String, Vec<String>, bool) {
     let core_plugins = &request.render_plan.init_lua.core_plugins;
     let all_plugins = &request.render_plan.init_lua.load_order;
     let (valid_plugins, missing_plugins): (Vec<_>, Vec<_>) = all_plugins
         .iter()
         .cloned()
-        .partition(|name| plugins_dir.join(format!("{name}.yazi")).exists());
+        .partition(|name| request.available_plugins.contains(name));
 
     let requires = valid_plugins
         .iter()
@@ -236,10 +315,9 @@ fn write_generated_init_lua(
             if core_plugins.contains(name) {
                 format!("-- Core plugin (always loaded)\nrequire(\"{name}\"):setup()")
             } else if name == "starship" {
-                let starship_config_path = request.output_dir.join("yazelix_starship.toml");
                 format!(
                     "-- User plugin (from settings.jsonc)\nrequire(\"starship\"):setup({{\n    config_file = \"{}\"\n}})",
-                    starship_config_path.to_string_lossy()
+                    request.starship_config_path.to_string_lossy()
                 )
             } else {
                 let local_name = name.replace('-', "_");
@@ -283,9 +361,7 @@ fn write_generated_init_lua(
     }
 
     let final_content = render_runtime_root_placeholders(&final_content, request.runtime_dir);
-    let target = request.output_dir.join("init.lua");
-    let status = write_managed_text_if_changed(&target, &final_content)?;
-    Ok((status, missing_plugins, user_init_appended))
+    (final_content, missing_plugins, user_init_appended)
 }
 
 fn generated_header(comment: &str, title: &str, body: &[&str]) -> String {
