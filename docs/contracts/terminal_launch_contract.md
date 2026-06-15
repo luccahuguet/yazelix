@@ -84,8 +84,8 @@ Out of scope:
   `test_ghostty_macos_launch_command_omits_linux_specific_flags`); automated
   Rust tests in `rust_core/yazelix_core/src/launch_commands.rs`
   (`ghostty_launch_does_not_force_window_title`) and
-  `rust_core/yazelix_core/tests/yzx_core_config_normalize.rs`
-  (`ghostty_materialization_generate_from_env_uses_normalized_config`)
+  `rust_core/yazelix_core/src/launch_materialization.rs`
+  (`full_launch_materialization_uses_active_terminal_from_request`)
 - Source: `docs/contracts/runtime_dependency_preflight_contract.md`
 
 #### TLAUNCH-004
@@ -116,9 +116,7 @@ Out of scope:
 - Verification: automated Rust tests in
   `rust_core/yazelix_core/src/launch_commands.rs`
   (`ratty_launch_command_keeps_command_last`,
-  `ratty_launch_command_prefers_runtime_vulkan_wrapper`) and
-  `rust_core/yazelix_core/tests/yzx_core_config_normalize.rs`
-  (`terminal_materialization_generate_from_env_writes_generated_configs`)
+  `ratty_launch_command_prefers_runtime_vulkan_wrapper`)
 - Source: `docs/installation.md`; `docs/terminal_emulators.md`
 
 #### TLAUNCH-006
@@ -170,12 +168,8 @@ Out of scope:
   (`terminal_window_title_prefix_names_selected_terminal`,
   `yzxterm_process_boundary_env_clears_host_rio_config`),
   `rust_core/yazelix_core/src/launch_materialization.rs`
-  (`yzxterm_shader_profile_uses_scoped_terminal_state_dir`),
-  and `rust_core/yazelix_core/tests/yzx_core_config_normalize.rs`
-  (`terminal_materialization_generate_from_env_writes_generated_configs`,
-  `terminal_materialization_yzxterm_emoji_font_selects_child_config_root`,
-  `terminal_materialization_yzxterm_emoji_style_selects_child_config_root`,
-  `terminal_materialization_yzxterm_shader_profile_injects_rio_decoration_shader`)
+  (`yzxterm_shader_profile_uses_scoped_terminal_state_dir`,
+  `yzxterm_without_shader_profile_uses_stable_terminal_state_dir`)
 - Source: `docs/installation.md`; `docs/terminal_emulators.md`
 
 #### TLAUNCH-007
@@ -223,9 +217,7 @@ Out of scope:
   Foot config maps Yazelix transparency into Foot color alpha.
 - Verification: automated Rust tests in
   `rust_core/yazelix_core/src/launch_commands/launch.rs`
-  (`foot_launch_argv_uses_selected_config_and_working_dir`) and
-  `rust_core/yazelix_core/tests/yzx_core_config_normalize.rs`
-  (`terminal_materialization_foot_uses_foot_ini`)
+  (`foot_launch_argv_uses_selected_config_and_working_dir`)
 
 #### TLAUNCH-009
 - Type: behavior
@@ -246,9 +238,8 @@ Out of scope:
   `rust_core/yazelix_core/src/launch_commands/launch.rs`
   (`rio_process_boundary_env_points_at_selected_config_dir`,
   `rio_process_boundary_env_forces_x11_for_transparent_linux_launches`,
-  `rio_process_boundary_env_keeps_default_backend_without_x11_display`) and
-  `rust_core/yazelix_core/tests/yzx_core_config_normalize.rs`
-  (`terminal_materialization_rio_uses_rio_config_toml`)
+  `rio_process_boundary_env_keeps_default_backend_without_x11_display`,
+  `rio_launch_argv_uses_selected_config_and_working_dir`)
 
 ## Traceability
 - Defended by: `yzx_repo_validator validate-contracts`

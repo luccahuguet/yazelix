@@ -76,7 +76,6 @@ pub mod zellij_commands;
 pub mod zellij_materialization;
 pub(crate) mod zellij_materialization_io;
 pub(crate) mod zellij_plugin_materialization;
-pub mod zellij_render_plan;
 
 pub use action_registry::{
     PANE_ORCHESTRATOR_PLUGIN_ALIAS, YAZI_ACTIONS, YazelixActionBackend, YazelixActionDisablePolicy,
@@ -224,6 +223,10 @@ pub use workspace_session::IntegrationFactsData;
 pub use yazelix_yazi_assets::{
     YaziRenderPlanData, YaziRenderPlanRequest, compute_yazi_render_plan,
 };
+pub use yazelix_zellij_config_pack::{
+    MANAGED_SIDEBAR_LAYOUT_NAME, ZellijRenderPlanData, ZellijRenderPlanRequest,
+    compute_zellij_render_plan,
+};
 pub use yazi_materialization::{
     YaziManagedFileStatus, YaziMaterializationData, YaziMaterializationRequest,
     generate_yazi_materialization,
@@ -236,8 +239,4 @@ pub use zellij_commands::{
 };
 pub use zellij_materialization::{
     ZellijMaterializationData, ZellijMaterializationRequest, generate_zellij_materialization,
-};
-pub use zellij_render_plan::{
-    MANAGED_SIDEBAR_LAYOUT_NAME, ZellijRenderPlanData, ZellijRenderPlanRequest,
-    compute_zellij_render_plan,
 };

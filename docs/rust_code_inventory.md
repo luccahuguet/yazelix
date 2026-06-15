@@ -43,7 +43,6 @@ Detailed budget families:
 | File | Raw lines | Current owner | Disposition |
 | --- | ---: | --- | --- |
 | `rust_core/yazelix_core/src/zellij_materialization.rs` | 3,688 | generated Zellij config materialization | Keep until keybinding ownership and layout-generation contracts settle |
-| `rust_core/yazelix_core/tests/yzx_core_config_normalize.rs` | 1,893 | config/materialization integration tests | Split by behavior family; do not delete without replacement coverage |
 | `rust_core/yazelix_core/src/doctor_commands.rs` | 1,779 | doctor orchestration | Split report rendering from fix orchestration only after doctor behavior stabilizes |
 | `rust_core/yazelix_core/src/doctor_runtime_report.rs` | 1,758 | runtime doctor reporting | Collapse duplicate report/fix plumbing before adding more checks |
 | `rust_core/yazelix_core/src/bin/yzx_control.rs` | 1,715 | public control-plane command implementation | Split only if routing remains obvious |
@@ -61,7 +60,6 @@ Detailed budget families:
 | `rust_core/yazelix_core/src/runtime_contract.rs` | 1,081 | runtime manifest and optional component ownership | Keep until component opt-out behavior stabilizes |
 | `rust_core/yazelix_maintainer/src/repo_validation.rs` | 1,047 | validator shell and repo policy checks | Keep lean; avoid rebuilding deleted trivia parsers |
 | `rust_core/yazelix_maintainer/src/repo_child_release.rs` | 1,045 | child release validation | Keep in repo until child-declared release contracts shrink it |
-| `rust_core/yazelix_core/src/zellij_render_plan.rs` | 1,038 | typed Zellij render plan | Keep as source of truth for materialization fingerprints |
 | `rust_core/yazelix_core/src/zellij_commands/workspace.rs` | 1,005 | workspace command adapter | Keep thinning config/runtime path policy before any workspace extraction |
 | `rust_core/yazelix_core/src/runtime_materialization.rs` | 989 | generated runtime materialization | Keep while generated-state contract is local |
 | `rust_core/yazelix_maintainer/src/repo_contract_validation/nix_package.rs` | 979 | Nix package validator | Split by package contract family when it grows again |

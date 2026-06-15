@@ -74,7 +74,7 @@ The first implementation slice should create these concrete support files:
 
 The first intended consumers are:
 
-- `yzx_core_config_normalize.rs`
+- `yzx_control_runtime_surface.rs`
 - `yzx_control_public_commands.rs`
 - the next migration lanes for generated-config, workspace/session/doctor, and
   managed-config contract assertions

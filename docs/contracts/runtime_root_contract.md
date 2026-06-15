@@ -151,13 +151,15 @@ This contract keeps those boundaries explicit.
 
 ## Verification
 
-- config/runtime path checks in `rust_core/yazelix_core/tests/yzx_core_config_normalize.rs`
+- config/runtime path checks in `rust_core/yazelix_core/tests/yzx_control_runtime_surface.rs`
+  and `rust_core/yazelix_core/tests/yzx_core_runtime_env.rs`
 - workspace/runtime launch checks in `rust_core/yazelix_core/tests/yzx_control_workspace_surface.rs`
 - maintainer-shell runtime-boundary checks in `nushell/scripts/dev/test_yzx_maintainer.nu`
 - installed-runtime validation through `yzx_repo_validator validate-installed-runtime-contract`
 
 ## Traceability
-- Defended by: `cargo nextest run --manifest-path rust_core/Cargo.toml -p yazelix_core --test yzx_core_config_normalize`
+- Defended by: `cargo nextest run --manifest-path rust_core/Cargo.toml -p yazelix_core --test yzx_control_runtime_surface`
+- Defended by: `cargo nextest run --manifest-path rust_core/Cargo.toml -p yazelix_core --test yzx_core_runtime_env`
 - Defended by: `cargo nextest run --manifest-path rust_core/Cargo.toml -p yazelix_core --test yzx_control_workspace_surface`
 - Defended by: `nu nushell/scripts/dev/test_yzx_maintainer.nu`
 - Defended by: `cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_maintainer --bin yzx_repo_validator -- validate-installed-runtime-contract`

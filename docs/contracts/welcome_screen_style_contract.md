@@ -128,8 +128,9 @@ Out of scope:
 - Owner: Rust startup path in `launch_commands/enter.rs`
 - Statement: Welcome playback remains explicit about skip versus launch gating,
   and Rust owns the final prompt/logging boundary before Zellij handoff
-- Verification: automated Rust `yzx_control_front_door.rs`;
-  manual startup review for current-shell and `yzx enter` flows
+- Verification: automated Rust `launch_commands/enter.rs` and
+  `front_door_render` tests; manual startup review for current-shell and
+  `yzx enter` flows
 
 #### FRONT-007
 - Type: behavior

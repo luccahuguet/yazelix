@@ -103,7 +103,7 @@ size to the code moved out.
 Main verification:
 
 - `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core zellij_materialization`
-- `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core zellij_render_plan`
+- `cargo test` in `luccahuguet/yazelix-zellij-config-pack`
 - `yzx_repo_validator validate-workspace-session-contract` when workspace
   layouts or plugin placement are touched
 - `shells/posix/yazelix_loc_scorecard.sh <base> HEAD` for deletion evidence

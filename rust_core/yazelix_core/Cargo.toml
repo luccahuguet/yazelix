@@ -32,7 +32,7 @@ yazelix_cursors = { git = "https://github.com/luccahuguet/yazelix-cursors", rev 
 yazelix_ratconfig = { package = "yazelix-ratconfig", git = "https://github.com/luccahuguet/yazelix-ratconfig", rev = "180994407b3c70d9c6cb6df5b03356ae59ecafd8" }
 yazelix_screen = { git = "https://github.com/luccahuguet/yazelix-screen", rev = "bebc5498e12473ffe909c2105a904a5e4a937208" }
 yazelix_yazi_assets = { git = "https://github.com/luccahuguet/yazelix-yazi-assets", rev = "0190035d7203251411917d0e9100a9c54f3dd907" }
-yazelix_zellij_config_pack = { git = "https://github.com/luccahuguet/yazelix-zellij-config-pack", rev = "149d2e730a7e100fc630a78d755437a3a9379ce3" }
+yazelix_zellij_config_pack = { git = "https://github.com/luccahuguet/yazelix-zellij-config-pack", rev = "a9e12aadae42bcdc6f68b47ad3785e45d5be3e55" }
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Security", "Win32_Storage_FileSystem", "Win32_System_IO", "Win32_System_Pipes"] }

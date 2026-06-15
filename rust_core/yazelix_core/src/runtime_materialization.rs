@@ -13,11 +13,11 @@ use crate::zellij_materialization::{
     ZellijMaterializationData, ZellijMaterializationRequest, generate_zellij_materialization,
     generated_zellij_config_has_yazelix_markers, zellij_permissions_cache_path,
 };
-use crate::zellij_render_plan::MANAGED_SIDEBAR_LAYOUT_NAME;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::fs;
 use std::path::{Path, PathBuf};
+use yazelix_zellij_config_pack::MANAGED_SIDEBAR_LAYOUT_NAME;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]

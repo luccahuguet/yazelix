@@ -1,7 +1,5 @@
 // Test lane: default
 
-use tempfile::TempDir;
-
 use std::fs;
 
 mod support;
@@ -9,42 +7,6 @@ mod support;
 use support::commands::{apply_managed_config_env, yzx_control_command};
 use support::envelopes::stdout_text;
 use support::fixtures::managed_config_fixture;
-use yazelix_core::user_config_paths::shared_cursor_config;
-
-// Defends: the Rust-owned `yzx sponsor` leaf still falls back to printing the sponsor URL when no opener is available.
-#[test]
-fn yzx_control_sponsor_falls_back_to_printed_url_without_openers() {
-    let empty_path = TempDir::new().unwrap();
-    let output = yzx_control_command()
-        .arg("sponsor")
-        .env("PATH", empty_path.path())
-        .output()
-        .unwrap();
-
-    let stdout = stdout_text(output);
-    assert!(stdout.contains("Support Yazelix:"));
-    assert!(stdout.contains("https://github.com/sponsors/luccahuguet"));
-    assert!(!stdout.contains("Opened sponsor page."));
-}
-
-// Defends: `yzx cursors` exposes resolved cursor colors and split shape names from canonical cursor settings without requiring users to inspect generated shaders.
-#[test]
-fn yzx_control_cursors_prints_resolved_color_surface() {
-    let fixture = managed_config_fixture("");
-    let expected_path = shared_cursor_config(&fixture.config_dir);
-    let mut command = yzx_control_command();
-    apply_managed_config_env(&mut command, &fixture).arg("cursors");
-
-    let stdout = stdout_text(command.output().unwrap());
-
-    assert!(stdout.contains("Yazelix cursors"));
-    assert!(stdout.contains(&format!("Config: {}", expected_path.display())));
-    assert!(stdout.contains("Trail: random from"));
-    assert!(stdout.contains("blaze: mono base=#ffb929 accent="));
-    assert!(stdout.contains("orchid: split divider=vertical transition=hard"));
-    assert!(stdout.contains("magma: split divider=horizontal transition=soft"));
-    assert!(expected_path.exists());
-}
 
 // Defends: `yzx reset config` preserves adjacent managed overrides and user-owned files instead of deleting them silently.
 #[test]

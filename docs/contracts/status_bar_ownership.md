@@ -69,7 +69,7 @@ The supported boundary is runnable-standalone-first for every non-workspace widg
 - Status: live
 - Owner: `yazelix-cursors`, terminal materialization, and ratconfig-backed configuration UI
 - Statement: Cursor configuration, effects, and preset inspection are not status-bar widget surfaces. The status bar does not render cursor preset names, swatches, glyphs, or `yzc current` output. `yazelix-cursors` remains the owner of cursor schemes and assets, while terminal materialization applies them and ratconfig exposes inspection/editing.
-- Verification: automated `cargo test` in `luccahuguet/yazelix-zellij-bar` and `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core zellij_render_plan`
+- Verification: automated `cargo test` in `luccahuguet/yazelix-zellij-bar` and `luccahuguet/yazelix-zellij-config-pack`
 
 #### SBO-007
 - Type: boundary

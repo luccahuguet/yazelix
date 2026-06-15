@@ -19,16 +19,16 @@ pub(crate) use crate::zellij_plugin_materialization::zellij_permissions_cache_pa
 use crate::zellij_plugin_materialization::{
     PluginArtifact, resolve_plugin_artifacts, sync_plugin_artifacts,
 };
-use crate::zellij_render_plan::{
-    TopLevelSetting, ZellijRenderPlanData, ZellijRenderPlanRequest, compute_zellij_render_plan,
-};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map as JsonMap, Value as JsonValue, json};
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use yazelix_zellij_config_pack as zellij_config_pack;
+use yazelix_zellij_config_pack::{
+    self as zellij_config_pack, ZellijRenderPlanData, ZellijRenderPlanError,
+    ZellijRenderPlanRequest, compute_zellij_render_plan,
+};
 
 const GENERATION_METADATA_NAME: &str = ".yazelix_generation.json";
 const GENERATION_FINGERPRINT_SCHEMA_VERSION: u64 = 8;
@@ -237,7 +237,8 @@ pub fn generate_zellij_materialization(
         &resolved_default_shell,
         &terminal_label,
     )?;
-    let render_plan = compute_zellij_render_plan(&render_plan_request)?;
+    let render_plan = compute_zellij_render_plan(&render_plan_request)
+        .map_err(zellij_render_plan_error_to_core)?;
     let generation_fingerprint = build_generation_fingerprint(
         &request.runtime_dir,
         &base_config_source,
@@ -281,7 +282,7 @@ pub fn generate_zellij_materialization(
     let config_pack_request = zellij_config_pack::ZellijConfigPackRenderRequest {
         base_config_content: base_config_source.content.clone(),
         override_keybinds,
-        render_plan: child_render_plan(&render_plan),
+        render_plan: render_plan.clone(),
         popup_commands,
         custom_popups: child_custom_popups(&custom_popups),
         layout_templates: None,
@@ -379,76 +380,6 @@ fn build_render_plan_request(
     })
 }
 
-fn child_render_plan(
-    render_plan: &ZellijRenderPlanData,
-) -> zellij_config_pack::ZellijRenderPlanData {
-    zellij_config_pack::ZellijRenderPlanData {
-        owned_top_level_setting_names: render_plan.owned_top_level_setting_names.clone(),
-        dynamic_top_level_settings: child_top_level_settings(
-            &render_plan.dynamic_top_level_settings,
-        ),
-        enforced_top_level_settings: child_top_level_settings(
-            &render_plan.enforced_top_level_settings,
-        ),
-        rounded_value: render_plan.rounded_value.clone(),
-        popup_width_percent: render_plan.popup_width_percent,
-        popup_height_percent: render_plan.popup_height_percent,
-        screen_saver_enabled: render_plan.screen_saver_enabled,
-        screen_saver_idle_seconds: render_plan.screen_saver_idle_seconds,
-        screen_saver_style: render_plan.screen_saver_style.clone(),
-        right_sidebar_command: render_plan.right_sidebar_command.clone(),
-        right_sidebar_args: render_plan.right_sidebar_args.clone(),
-        left_sidebar_command: render_plan.left_sidebar_command.clone(),
-        left_sidebar_args: render_plan.left_sidebar_args.clone(),
-        layout_percentages: zellij_config_pack::ZellijLayoutPercentages {
-            left_sidebar_width_percent: render_plan
-                .layout_percentages
-                .left_sidebar_width_percent
-                .clone(),
-            right_sidebar_width_percent: render_plan
-                .layout_percentages
-                .right_sidebar_width_percent
-                .clone(),
-            open_content_width_percent: render_plan
-                .layout_percentages
-                .open_content_width_percent
-                .clone(),
-            closed_content_width_percent: render_plan
-                .layout_percentages
-                .closed_content_width_percent
-                .clone(),
-            left_open_right_open_content_width_percent: render_plan
-                .layout_percentages
-                .left_open_right_open_content_width_percent
-                .clone(),
-            left_open_right_closed_content_width_percent: render_plan
-                .layout_percentages
-                .left_open_right_closed_content_width_percent
-                .clone(),
-            left_closed_right_open_content_width_percent: render_plan
-                .layout_percentages
-                .left_closed_right_open_content_width_percent
-                .clone(),
-            left_closed_right_closed_content_width_percent: render_plan
-                .layout_percentages
-                .left_closed_right_closed_content_width_percent
-                .clone(),
-        },
-    }
-}
-
-fn child_top_level_settings(
-    settings: &[TopLevelSetting],
-) -> Vec<zellij_config_pack::TopLevelSetting> {
-    settings
-        .iter()
-        .map(|setting| zellij_config_pack::TopLevelSetting {
-            name: setting.name.clone(),
-            value: setting.value.clone(),
-        })
-        .collect()
-}
-
 fn child_custom_popups(popups: &[CustomPopup]) -> Vec<zellij_config_pack::CustomPopup> {
     popups
         .iter()
@@ -459,6 +390,16 @@ fn child_custom_popups(popups: &[CustomPopup]) -> Vec<zellij_config_pack::Custom
             keep_alive: popup.keep_alive,
         })
         .collect()
+}
+
+fn zellij_render_plan_error_to_core(error: ZellijRenderPlanError) -> CoreError {
+    CoreError::classified(
+        ErrorClass::Config,
+        error.code(),
+        error.message(),
+        error.remediation(),
+        error.details().clone(),
+    )
 }
 
 fn string_config<'a>(

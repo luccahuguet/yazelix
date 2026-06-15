@@ -1,10 +1,10 @@
 use crate::bridge::{CoreError, ErrorClass};
 use crate::helix_external::{HelixExternalPair, is_custom_helix_binary_command, is_helix_command};
-use crate::zellij_render_plan::MANAGED_SIDEBAR_LAYOUT_NAME;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map as JsonMap, Value as JsonValue};
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
+use yazelix_zellij_config_pack::MANAGED_SIDEBAR_LAYOUT_NAME;
 
 #[derive(Debug, Deserialize)]
 pub struct RuntimeEnvComputeRequest {

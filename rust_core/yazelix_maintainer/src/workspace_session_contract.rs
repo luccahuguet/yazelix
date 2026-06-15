@@ -85,7 +85,6 @@ fn validate_pane_orchestrator_pipe_surface(repo_root: &Path) -> Result<Vec<Strin
 }
 
 fn validate_yazi_workspace_entrypoints(repo_root: &Path) -> Result<Vec<String>, String> {
-    let yazi_config = read_repo_file(repo_root, &["configs", "yazi", "yazelix_yazi.toml"])?;
     let zoxide_editor_plugin = read_repo_file(
         repo_root,
         &[
@@ -97,12 +96,6 @@ fn validate_yazi_workspace_entrypoints(repo_root: &Path) -> Result<Vec<String>, 
         ],
     )?;
     let mut errors = Vec::new();
-    if !yazi_config.contains("yzx_control zellij open-editor ") {
-        errors.push(
-            "Bundled Yazi config no longer references required workspace entrypoint `yzx_control zellij open-editor`"
-                .to_string(),
-        );
-    }
     if !zoxide_editor_plugin.contains("\"zellij\"")
         || !zoxide_editor_plugin.contains("\"open-editor-cwd\"")
     {
@@ -154,30 +147,21 @@ mod tests {
         }
     }
 
-    // Regression: the workspace validator must check bundled Yazi entrypoint files, not incidental Rust test fixture strings.
+    // Regression: the workspace validator must check main-owned Yazi plugin entrypoints, not incidental Rust test fixture strings.
     #[test]
-    fn yazi_workspace_entrypoint_validation_checks_bundled_yazi_config() {
+    fn yazi_workspace_entrypoint_validation_checks_main_owned_yazi_plugin() {
         let temp = tempdir().unwrap();
-        let yazi_dir = temp.path().join("configs").join("yazi");
-        let plugin_dir = yazi_dir.join("plugins").join("zoxide-editor.yazi");
+        let plugin_dir = temp.path().join("configs/yazi/plugins/zoxide-editor.yazi");
         fs::create_dir_all(&plugin_dir).unwrap();
         fs::write(
-            yazi_dir.join("yazelix_yazi.toml"),
-            r#"[opener]
-edit = [{ run = "hx \"$1\"" }]
-"#,
-        )
-        .unwrap();
-        fs::write(
             plugin_dir.join("main.lua"),
-            r#"local runtime_dir = os.getenv("YAZELIX_RUNTIME_DIR")
-Command(runtime_dir .. "/libexec/yzx_control"):arg({ "zellij", "open-editor-cwd", target_dir })"#,
+            r#"Command("/nix/store/demo/libexec/yzx_control"):arg({ "zellij", "open-editor-cwd", target_dir })"#,
         )
         .unwrap();
 
         let errors = validate_yazi_workspace_entrypoints(temp.path()).unwrap();
 
         assert_eq!(errors.len(), 1);
-        assert!(errors[0].contains("Bundled Yazi config"));
+        assert!(errors[0].contains("must resolve yzx_control from YAZELIX_RUNTIME_DIR"));
     }
 }

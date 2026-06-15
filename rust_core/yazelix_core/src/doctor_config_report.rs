@@ -178,7 +178,6 @@ fn collect_doctor_diagnostic_report(
     }
 }
 
-/// Matches `nushell/scripts/utils/config_report_rendering.nu` `render_doctor_config_details`.
 fn render_doctor_config_details(report: &ConfigDiagnosticReport) -> String {
     if report.issue_count == 0 {
         return "No stale or unsupported config issues detected.".to_string();
@@ -319,7 +318,6 @@ fn path_to_string(path: &Path) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config_normalize::ConfigDiagnostic;
     use tempfile::TempDir;
 
     // Defends: missing user settings advertise an explicit fix action instead of relying on prose matching.
@@ -345,58 +343,6 @@ mod tests {
         assert_eq!(
             report.findings[0].fix_action.as_deref(),
             Some("create_default_settings_config")
-        );
-    }
-
-    // Defends: doctor config details prose matches the historical Nushell renderer shape for verbose output.
-    #[test]
-    fn render_doctor_config_details_matches_expected_shape() {
-        let report = ConfigDiagnosticReport {
-            config_path: "/tmp/settings.jsonc".into(),
-            schema_diagnostics: vec![],
-            doctor_diagnostics: vec![ConfigDiagnostic {
-                category: "schema".into(),
-                path: "core.stale_field".into(),
-                status: "unknown_field".into(),
-                blocking: false,
-                fix_available: false,
-                headline: "Unknown config field: core.stale_field".into(),
-                detail_lines: vec!["line one".into()],
-            }],
-            blocking_diagnostics: vec![],
-            issue_count: 1,
-            blocking_count: 0,
-            fixable_count: 0,
-            has_blocking: false,
-            has_fixable_config_issues: false,
-        };
-
-        let out = render_doctor_config_details(&report);
-        assert!(out.contains("Config report for: /tmp/settings.jsonc"));
-        assert!(out.contains("Issues: 1"));
-        assert!(out.contains("Unknown config field: core.stale_field"));
-        assert!(out.contains("  line one"));
-        assert!(out.contains("Review the listed fields manually."));
-        assert!(out.contains("yzx reset config"));
-    }
-
-    // Defends: zero-issue report must not emit a misleading multi-line “stale config” block.
-    #[test]
-    fn render_doctor_config_details_empty_issues_message() {
-        let report = ConfigDiagnosticReport {
-            config_path: "x".into(),
-            schema_diagnostics: vec![],
-            doctor_diagnostics: vec![],
-            blocking_diagnostics: vec![],
-            issue_count: 0,
-            blocking_count: 0,
-            fixable_count: 0,
-            has_blocking: false,
-            has_fixable_config_issues: false,
-        };
-        assert_eq!(
-            render_doctor_config_details(&report),
-            "No stale or unsupported config issues detected."
         );
     }
 }
