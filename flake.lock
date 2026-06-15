@@ -555,11 +555,11 @@
         "systems": "systems_3"
       },
       "locked": {
-        "lastModified": 1781386151,
-        "narHash": "sha256-5sTogxy2Oqy0VILCMFt7HuS8+hOMbnRELZDagbmNlIs=",
+        "lastModified": 1781491321,
+        "narHash": "sha256-rHtkSIZuFMiZKJmw+M5IvZp+6plQ4+ER0eRxfhsC1x0=",
         "owner": "luccahuguet",
         "repo": "yazelix-terminal",
-        "rev": "b7ebe7e2b388025ce86f5f85296d0586700cc1b5",
+        "rev": "722af9920ed97d579fe3a25be8cd9463db4ef0ff",
         "type": "github"
       },
       "original": {
