@@ -907,9 +907,10 @@ fn generate_yzxterm_config(
         &package_config,
     )?;
     window.insert("opacity".to_string(), toml::Value::Float(opacity));
-    // Let full-screen TUIs such as Yazi and Zellij blend their painted
-    // backgrounds with the same wallpaper/window opacity as plain cells.
-    window.insert("opacity-cells".to_string(), toml::Value::Boolean(true));
+    // Keep full-screen TUI cell backgrounds from compounding over the
+    // already-translucent window background. yzxterm's default background
+    // path carries the configured opacity; explicit cells should stay crisp.
+    window.insert("opacity-cells".to_string(), toml::Value::Boolean(false));
 
     let renderer = yzxterm_config_table_mut(
         &mut table,

@@ -977,13 +977,13 @@ fn terminal_materialization_yzxterm_shader_profile_injects_rio_decoration_shader
     assert_eq!(yzxterm_toml["window"]["opacity"].as_float(), Some(0.85));
     assert_eq!(
         yzxterm_toml["window"]["opacity-cells"].as_bool(),
-        Some(true)
+        Some(false)
     );
     assert_eq!(yzxterm_toml["force-theme"].as_str(), Some("dark"));
     assert!(yzxterm_toml.get("colors").is_none());
     assert!(yzxterm_config.contains("backend = \"Webgpu\""));
     assert!(yzxterm_config.contains("opacity = 0.85"));
-    assert!(yzxterm_config.contains("opacity-cells = true"));
+    assert!(yzxterm_config.contains("opacity-cells = false"));
     assert!(yzxterm_config.contains("trail-cursor = true"));
     assert!(yzxterm_config.contains("custom-shader = ["));
     assert!(yzxterm_config.contains("cursor_trail_forest.glsl"));
