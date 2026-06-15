@@ -31,10 +31,11 @@ Measured after the Nix split pass on `2026-06-06`:
 | `maintainer_shell.nix` | 201 |
 | `packaging/mk_runtime_tree.nix` | 181 |
 
-Focused `tokei` measurement for `flake.nix`, `home_manager`, `packaging`,
-`maintainer_shell.nix`, `yazelix_package.nix`, `yazelix_runtime_package.nix`,
-and `nix-ci.nix` reports `3271` Nix lines and `2866` Nix code lines across
-`30` Nix entries. The largest remaining single-file pressure points are
+Current focused `tokei` measurement for `flake.nix`, `home_manager`,
+`packaging`, `maintainer_shell.nix`, `yazelix_package.nix`, and
+`yazelix_runtime_package.nix` reports `3444` Nix lines and `3049` Nix code
+lines across `28` Nix entries. The largest remaining single-file pressure
+points are
 `home_manager/options.nix`, `packaging/runtime_tool_registry.nix`, and
 `flake.nix`.
 

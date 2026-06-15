@@ -179,8 +179,8 @@ jobs:
 
   integration:
     # Manual maintainer gate for Home Manager/runtime activation behavior.
-    # Routine pushes stay on the faster source-contract lane, while Nix CI and
-    # the cache publisher keep covering package buildability.
+    # Routine pushes stay on the faster source-contract lane, while the cache
+    # publisher keeps covering package buildability.
     needs: [source_contracts, nix_customization_api, child_release_transaction]
     if: ${{ needs.source_contracts.result == 'success' && needs.nix_customization_api.result == 'success' && needs.child_release_transaction.result == 'success' && (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.run_runtime_smoke)) }}
     runs-on: ubuntu-latest
