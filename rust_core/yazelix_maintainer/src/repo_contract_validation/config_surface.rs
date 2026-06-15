@@ -634,22 +634,45 @@ fn load_contract_keybinding_defaults(
     Ok(parsed)
 }
 
+fn json_map_str_field<'a>(value: &'a JsonMap<String, JsonValue>, field: &str) -> &'a str {
+    value
+        .get(field)
+        .and_then(JsonValue::as_str)
+        .unwrap_or_default()
+}
+
+fn json_map_bool_field(value: &JsonMap<String, JsonValue>, field: &str) -> bool {
+    value
+        .get(field)
+        .and_then(JsonValue::as_bool)
+        .unwrap_or(false)
+}
+
+fn json_map_i64_field(value: &JsonMap<String, JsonValue>, field: &str) -> i64 {
+    value
+        .get(field)
+        .and_then(JsonValue::as_i64)
+        .unwrap_or_default()
+}
+
+fn json_map_object_field<'a>(
+    value: &'a JsonMap<String, JsonValue>,
+    field: &str,
+) -> Option<&'a JsonMap<String, JsonValue>> {
+    value.get(field).and_then(JsonValue::as_object)
+}
+
+fn format_json_string(value: &str) -> String {
+    format_json_value(&JsonValue::String(value.to_string()))
+}
+
 fn validate_home_manager_desktop_entry_contract(repo_root: &Path) -> Result<Vec<String>, String> {
     let entry = load_home_manager_desktop_entry_contract(repo_root)?;
     let shader_entry = load_home_manager_desktop_entry_contract_with_profile(repo_root, "shaders")?;
     let extra_entry = load_home_manager_extra_terminal_launchers_contract(repo_root)?;
-    let is_present = entry
-        .get("present")
-        .and_then(JsonValue::as_bool)
-        .unwrap_or(false);
-    let actual_exec = entry
-        .get("exec")
-        .and_then(JsonValue::as_str)
-        .unwrap_or_default();
-    let actual_name = entry
-        .get("name")
-        .and_then(JsonValue::as_str)
-        .unwrap_or_default();
+    let is_present = json_map_bool_field(&entry, "present");
+    let actual_exec = json_map_str_field(&entry, "exec");
+    let actual_name = json_map_str_field(&entry, "name");
     let mut errors = Vec::new();
 
     if !is_present {
@@ -659,15 +682,11 @@ fn validate_home_manager_desktop_entry_contract(repo_root: &Path) -> Result<Vec<
     if actual_name != "New Yazelix - Ghostty" {
         errors.push(format!(
             "Home Manager Ghostty desktop entry name mismatch: expected New Yazelix - Ghostty, got {}",
-            format_json_value(&JsonValue::String(actual_name.to_string()))
+            format_json_string(actual_name)
         ));
     }
 
-    if !entry
-        .get("terminal")
-        .and_then(JsonValue::as_bool)
-        .unwrap_or(false)
-    {
+    if !json_map_bool_field(&entry, "terminal") {
         errors.push(
             "Home Manager desktop entry must set terminal = true so pre-terminal config failures stay visible"
                 .to_string(),
@@ -677,34 +696,15 @@ fn validate_home_manager_desktop_entry_contract(repo_root: &Path) -> Result<Vec<
     if actual_exec != "/tmp/profile/bin/yzx desktop launch" {
         errors.push(format!(
             "Home Manager desktop entry Exec mismatch: expected /tmp/profile/bin/yzx desktop launch, got {}",
-            format_json_value(&JsonValue::String(actual_exec.to_string()))
+            format_json_string(actual_exec)
         ));
     }
-    let shader_exec = shader_entry
-        .get("exec")
-        .and_then(JsonValue::as_str)
-        .unwrap_or_default();
-    let shader_name = shader_entry
-        .get("name")
-        .and_then(JsonValue::as_str)
-        .unwrap_or_default();
-    let shader_session_profile = shader_entry
-        .get("sessionProfile")
-        .and_then(JsonValue::as_str)
-        .unwrap_or_default();
-    let shader_session_emoji_font = shader_entry
-        .get("sessionEmojiFont")
-        .and_then(JsonValue::as_str)
-        .unwrap_or_default();
-    let shader_session_appearance = shader_entry
-        .get("sessionAppearance")
-        .and_then(JsonValue::as_str)
-        .unwrap_or_default();
-    if !shader_entry
-        .get("terminal")
-        .and_then(JsonValue::as_bool)
-        .unwrap_or(false)
-    {
+    let shader_exec = json_map_str_field(&shader_entry, "exec");
+    let shader_name = json_map_str_field(&shader_entry, "name");
+    let shader_session_profile = json_map_str_field(&shader_entry, "sessionProfile");
+    let shader_session_emoji_font = json_map_str_field(&shader_entry, "sessionEmojiFont");
+    let shader_session_appearance = json_map_str_field(&shader_entry, "sessionAppearance");
+    if !json_map_bool_field(&shader_entry, "terminal") {
         errors.push(
             "Home Manager yzxterm desktop entry must set terminal = true so pre-terminal config failures stay visible"
                 .to_string(),
@@ -715,37 +715,34 @@ fn validate_home_manager_desktop_entry_contract(repo_root: &Path) -> Result<Vec<
     {
         errors.push(format!(
             "Home Manager shader yzxterm profile desktop entry Exec mismatch: expected app id, appearance, emoji font, and shader profile env, got {}",
-            format_json_value(&JsonValue::String(shader_exec.to_string()))
+            format_json_string(shader_exec)
         ));
     }
     if shader_name != "New Yazelix - Yzxterm" {
         errors.push(format!(
             "Home Manager yzxterm desktop entry name mismatch: expected New Yazelix - Yzxterm, got {}",
-            format_json_value(&JsonValue::String(shader_name.to_string()))
+            format_json_string(shader_name)
         ));
     }
     if shader_session_profile != "shaders" {
         errors.push(format!(
             "Home Manager shader yzxterm profile session variable mismatch: expected shaders, got {}",
-            format_json_value(&JsonValue::String(shader_session_profile.to_string()))
+            format_json_string(shader_session_profile)
         ));
     }
     if shader_session_emoji_font != "twitter" {
         errors.push(format!(
             "Home Manager yzxterm emoji font session variable mismatch: expected twitter, got {}",
-            format_json_value(&JsonValue::String(shader_session_emoji_font.to_string()))
+            format_json_string(shader_session_emoji_font)
         ));
     }
     if shader_session_appearance != "light" {
         errors.push(format!(
             "Home Manager yzxterm appearance session variable mismatch: expected light, got {}",
-            format_json_value(&JsonValue::String(shader_session_appearance.to_string()))
+            format_json_string(shader_session_appearance)
         ));
     }
-    let package_count = extra_entry
-        .get("packageCount")
-        .and_then(JsonValue::as_i64)
-        .unwrap_or_default();
+    let package_count = json_map_i64_field(&extra_entry, "packageCount");
     if package_count != 1 {
         errors.push(format!(
             "Home Manager extra terminal launchers must not add duplicate profile packages: expected 1 active package, got {package_count}"
@@ -758,45 +755,36 @@ fn validate_home_manager_desktop_entry_contract(repo_root: &Path) -> Result<Vec<
         ("rio", "New Yazelix - Rio"),
         ("wezterm", "New Yazelix - WezTerm"),
     ] {
-        let entry = extra_entry
-            .get(terminal)
-            .and_then(JsonValue::as_object)
-            .cloned()
-            .unwrap_or_default();
-        if !entry
-            .get("present")
-            .and_then(JsonValue::as_bool)
-            .unwrap_or(false)
-        {
+        let Some(entry) = json_map_object_field(&extra_entry, terminal) else {
+            errors.push(format!(
+                "Home Manager extra {terminal} desktop entry must be generated"
+            ));
+            continue;
+        };
+        if !json_map_bool_field(entry, "present") {
             errors.push(format!(
                 "Home Manager extra {terminal} desktop entry must be generated"
             ));
             continue;
         }
-        let name = entry
-            .get("name")
-            .and_then(JsonValue::as_str)
-            .unwrap_or_default();
+        let name = json_map_str_field(entry, "name");
         if name != expected_name {
             errors.push(format!(
                 "Home Manager extra {terminal} desktop entry name mismatch: expected {expected_name}, got {}",
-                format_json_value(&JsonValue::String(name.to_string()))
+                format_json_string(name)
             ));
         }
-        let exec = entry
-            .get("exec")
-            .and_then(JsonValue::as_str)
-            .unwrap_or_default();
+        let exec = json_map_str_field(entry, "exec");
         if !exec.ends_with("/bin/yzx desktop launch") || exec.contains("/tmp/profile/bin/yzx") {
             errors.push(format!(
                 "Home Manager extra {terminal} desktop entry Exec must point at the terminal package store yzx, got {}",
-                format_json_value(&JsonValue::String(exec.to_string()))
+                format_json_string(exec)
             ));
         }
         if !exec.starts_with("env YAZELIX_SKIP_STABLE_WRAPPER_REDIRECT=1 ") {
             errors.push(format!(
                 "Home Manager extra {terminal} desktop entry Exec must disable stable-profile redirects for intentional variant package launches, got {}",
-                format_json_value(&JsonValue::String(exec.to_string()))
+                format_json_string(exec)
             ));
         }
         if terminal == "yzxterm" {
@@ -804,16 +792,12 @@ fn validate_home_manager_desktop_entry_contract(repo_root: &Path) -> Result<Vec<
                 if !exec.contains(needle) {
                     errors.push(format!(
                         "Home Manager extra yzxterm desktop entry Exec must pass {desktop_label}, got {}",
-                        format_json_value(&JsonValue::String(exec.to_string()))
+                        format_json_string(exec)
                     ));
                 }
             }
         }
-        if !entry
-            .get("terminal")
-            .and_then(JsonValue::as_bool)
-            .unwrap_or(false)
-        {
+        if !json_map_bool_field(entry, "terminal") {
             errors.push(format!(
                 "Home Manager extra {terminal} desktop entry must set terminal = true so pre-terminal config failures stay visible"
             ));
