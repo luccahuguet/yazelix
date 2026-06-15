@@ -1501,7 +1501,7 @@ dependencies = [
 [[package]]
 name = "yazelix_screen"
 version = "0.1.0"
-source = "git+https://github.com/luccahuguet/yazelix-screen?rev=bebc5498e12473ffe909c2105a904a5e4a937208#bebc5498e12473ffe909c2105a904a5e4a937208"
+source = "git+https://github.com/luccahuguet/yazelix-screen?rev=465c23bc428818c92a3e51cce009394608bea3ae#465c23bc428818c92a3e51cce009394608bea3ae"
 dependencies = [
  "crossterm",
 ]
