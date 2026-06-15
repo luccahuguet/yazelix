@@ -127,14 +127,6 @@ struct ControlHandler {
     run: ControlHandlerFn,
 }
 
-enum ControlCommand {
-    Handler(&'static ControlHandler),
-    Env,
-    Run,
-    Edit,
-    Unsupported(String),
-}
-
 macro_rules! control_handlers {
     ($(($name:expr, $run:path)),+ $(,)?) => {
         const CONTROL_HANDLERS: &[ControlHandler] = &[
@@ -151,7 +143,9 @@ control_handlers!(
     ("desktop", run_yzx_desktop),
     ("dev", run_yzx_dev),
     ("doctor", run_yzx_doctor),
+    ("edit", run_edit_command),
     ("enter", run_yzx_enter),
+    ("env", run_env_control),
     (
         "generate_shell_initializers",
         run_generate_shell_initializers
@@ -170,6 +164,7 @@ control_handlers!(
     ("reveal", run_yzx_reveal),
     ("reset", run_yzx_reset),
     ("restart", run_yzx_restart),
+    ("run", run_run_control),
     ("screen", run_yzx_screen),
     ("sidebar", run_yzx_sidebar),
     ("sponsor", run_yzx_sponsor),
@@ -1628,17 +1623,6 @@ fn run_zellij(args: &[String]) -> Result<i32, CoreError> {
     }
 }
 
-fn classify_control_command(command_name: String) -> ControlCommand {
-    match command_name.as_str() {
-        "env" => ControlCommand::Env,
-        "run" => ControlCommand::Run,
-        "edit" => ControlCommand::Edit,
-        _ => find_control_handler(&command_name)
-            .map(ControlCommand::Handler)
-            .unwrap_or(ControlCommand::Unsupported(command_name)),
-    }
-}
-
 fn find_control_handler(command_name: &str) -> Option<&'static ControlHandler> {
     CONTROL_HANDLERS
         .iter()
@@ -1649,17 +1633,12 @@ fn is_single_help_arg(args: &[String]) -> bool {
     args.len() == 1 && matches!(args[0].as_str(), "--help" | "-h" | "help")
 }
 
-fn dispatch_control_command(command: ControlCommand, args: &[String]) -> Result<i32, CoreError> {
-    match command {
-        ControlCommand::Env => run_helpable_control_command(args, print_env_help, run_env),
-        ControlCommand::Run => run_helpable_control_command(args, print_run_help, run_run),
-        ControlCommand::Edit => run_edit_command(args),
-        ControlCommand::Handler(handler) => (handler.run)(args),
-        ControlCommand::Unsupported(command_name) => {
-            eprintln!("Unknown yzx_control subcommand: {command_name}");
-            usage();
-        }
+fn dispatch_control_command(command_name: &str, args: &[String]) -> Result<i32, CoreError> {
+    if let Some(handler) = find_control_handler(command_name) {
+        return (handler.run)(args);
     }
+    eprintln!("Unknown yzx_control subcommand: {command_name}");
+    usage();
 }
 
 fn run_helpable_control_command(
@@ -1673,6 +1652,14 @@ fn run_helpable_control_command(
     } else {
         run(args)
     }
+}
+
+fn run_env_control(args: &[String]) -> Result<i32, CoreError> {
+    run_helpable_control_command(args, print_env_help, run_env)
+}
+
+fn run_run_control(args: &[String]) -> Result<i32, CoreError> {
+    run_helpable_control_command(args, print_run_help, run_run)
 }
 
 fn run_edit_command(args: &[String]) -> Result<i32, CoreError> {
@@ -1689,7 +1676,7 @@ fn main() {
         usage();
     }
     let sub = argv.remove(0);
-    let code = dispatch_control_command(classify_control_command(sub), &argv);
+    let code = dispatch_control_command(&sub, &argv);
 
     match code {
         Ok(c) => std::process::exit(c),
@@ -1737,30 +1724,8 @@ mod tests {
     // Defends: yzx_control keeps ordinary public commands on the table-driven handler path after dispatch refactors.
     #[test]
     fn classifies_public_command_as_handler() {
-        match classify_control_command("status".to_string()) {
-            ControlCommand::Handler(handler) => assert_eq!(handler.name, "status"),
-            ControlCommand::Env
-            | ControlCommand::Run
-            | ControlCommand::Edit
-            | ControlCommand::Unsupported(_) => panic!("expected status handler"),
-        }
-    }
-
-    // Defends: yzx_control keeps special command families out of the generic handler table when they need local routing.
-    #[test]
-    fn classifies_special_control_commands() {
-        assert!(matches!(
-            classify_control_command("env".to_string()),
-            ControlCommand::Env
-        ));
-        assert!(matches!(
-            classify_control_command("run".to_string()),
-            ControlCommand::Run
-        ));
-        assert!(matches!(
-            classify_control_command("edit".to_string()),
-            ControlCommand::Edit
-        ));
+        let handler = find_control_handler("status").unwrap();
+        assert_eq!(handler.name, "status");
     }
 
     // Defends: startup config rendering still includes the blocking diagnostic details promised by the public control-plane surface.
