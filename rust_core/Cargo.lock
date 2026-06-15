@@ -1501,7 +1501,7 @@ dependencies = [
 [[package]]
 name = "yazelix_screen"
 version = "0.1.0"
-source = "git+https://github.com/luccahuguet/yazelix-screen?rev=465c23bc428818c92a3e51cce009394608bea3ae#465c23bc428818c92a3e51cce009394608bea3ae"
+source = "git+https://github.com/luccahuguet/yazelix-screen?rev=f29e841ff6f0fd741baffce290ada7ff3984afb4#f29e841ff6f0fd741baffce290ada7ff3984afb4"
 dependencies = [
  "crossterm",
 ]
@@ -1518,7 +1518,7 @@ dependencies = [
 [[package]]
 name = "yazelix_zellij_config_pack"
 version = "0.1.0"
-source = "git+https://github.com/luccahuguet/yazelix-zellij-config-pack?rev=a9e12aadae42bcdc6f68b47ad3785e45d5be3e55#a9e12aadae42bcdc6f68b47ad3785e45d5be3e55"
+source = "git+https://github.com/luccahuguet/yazelix-zellij-config-pack?rev=df33d134860f20944100f750f0f34b2510a55f53#df33d134860f20944100f750f0f34b2510a55f53"
 dependencies = [
  "serde",
  "serde_json",
