@@ -642,11 +642,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1781503426,
-        "narHash": "sha256-dSS7KiyWpnV4wzWblL+zQYaEf02UKCtJLwjwTqO6ZbA=",
+        "lastModified": 1781537627,
+        "narHash": "sha256-diyuVlab9RFfk7pgmfgIE0b71eYsLvbfznDvzUh3Vok=",
         "owner": "luccahuguet",
         "repo": "yazelix-zellij-config-pack",
-        "rev": "df33d134860f20944100f750f0f34b2510a55f53",
+        "rev": "78d1e70a71c1cf4e5e9126e1904c544c0ae636af",
         "type": "github"
       },
       "original": {
