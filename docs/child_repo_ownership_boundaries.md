@@ -127,21 +127,21 @@ Boundary rule: pure render/merge/template behavior stays in the child. Main owns
 
 Recommendation: keep separate.
 
-The asset repo is a strong data/package boundary. It owns reusable Yazi flavors, reusable upstream or Yazelix-maintained plugins, the Starship config used by Yazi, vendored plugin metadata, `config_metadata/yazi_assets_manifest.toml`, and a package shape with install checks. The main repo now keeps the Yazelix-specific sidebar/editor plugins and materialization logic, which is the right split.
+The asset repo is a strong data/package boundary. It owns reusable Yazi flavors, reusable upstream or Yazelix-maintained plugins, the Starship config used by Yazi, vendored plugin metadata, `config_metadata/yazi_assets_manifest.toml`, the Yazi render-plan metadata, generated config templates, pure config-pack rendering, and a package shape with install checks. The main repo now keeps the Yazelix-specific sidebar/editor plugins and the runtime materialization adapter.
 
-This repo should not grow into full Yazi integration unless the main repo adapter gets much thinner. A full Yazi integration child would need to own managed roots, output paths, editor opener preservation, semantic keybindings, pane-orchestrator registration, and legacy guardrails. Those are still Yazelix product behavior.
+This repo should not grow into full Yazi integration unless the main repo adapter gets much thinner. A full Yazi integration child would need to own managed roots, output paths, semantic keybindings, pane-orchestrator registration, and legacy guardrails. Those are still Yazelix product behavior.
 
-Boundary rule: reusable flavors and reusable plugins stay in the child. Sidebar state, zoxide-to-editor, managed editor opener preservation, semantic keymap expansion, and generated output ownership stay in Yazelix.
+Boundary rule: reusable flavors, reusable plugins, render-plan data, templates, and pure generated config-pack rendering stay in the child. Sidebar state, zoxide-to-editor, semantic keymap expansion, and generated output ownership stay in Yazelix.
 
 #### Yazi Config-Pack Decision
 
 Decision date: 2026-06-15
 
-If a Yazi config-pack owner becomes worthwhile, prefer extending `yazelix-yazi-assets` over creating `yazelix-yazi-config-pack`. The accepted expansion is narrow: the published asset manifest, templates, reusable plugin/flavor shape, fixture rendering, and package checks that can be consumed as a concrete artifact/API.
+The Yazi config-pack owner is now `yazelix-yazi-assets`, not a separate `yazelix-yazi-config-pack` repository. The accepted expansion is narrow: the published asset manifest, templates, render-plan metadata, reusable plugin/flavor shape, fixture rendering, and package checks are consumed as a concrete artifact/API.
 
 Keep a separate `yazelix-yazi-config-pack` repo as a rejected default. Reconsider it only if the renderer becomes reusable without the asset pack, has a distinct package/API surface, and can delete main-repo code without moving Yazelix runtime policy out of main.
 
-The config-pack owner must not own managed roots, Yazelix output paths, editor opener preservation, semantic keybinding policy, pane-orchestrator registration, or legacy guardrails until those are reduced to explicit adapter inputs. Those remain main-repo product behavior.
+The config-pack owner must not own managed roots, Yazelix output paths, semantic keybinding policy, pane-orchestrator registration, or legacy guardrails until those are reduced to explicit adapter inputs. Those remain main-repo product behavior.
 
 Decision criteria for a future readiness audit:
 
@@ -150,7 +150,7 @@ Decision criteria for a future readiness audit:
 - lower release friction than a second Yazi child repo
 - measurable main-repo deletion or duplicated-truth removal
 - local equivalence tests that prove generated Yazi output is unchanged
-- no parallel metadata lists for plugins, flavors, or generated config templates
+- no parallel metadata lists for plugins, flavors, generated config templates, or render-plan metadata
 
 ## Cross-Repo Risks
 
@@ -184,6 +184,6 @@ Use this priority order for future boundary pressure:
 2. Keep `yazelix-ratconfig` as a reusable config editor crate and prevent Yazelix schema/apply policy from leaking into it.
 3. Keep `yazelix-zellij-bar` as a command/artifact boundary and prevent widget implementation from returning to the main repo.
 4. Keep `yazelix-zellij-config-pack` as the Zellij renderer/template owner and prevent fallback copies from returning to main.
-5. Keep `yazelix-yazi-assets` asset-only unless a real config-pack API emerges.
+5. Keep Yazi pure config-pack rendering in `yazelix-yazi-assets` and prevent fallback copies from returning to main.
 6. Treat `yazelix-screen`, `yazelix-cursors`, and Rust git child crates as release transactions, not local cleanup.
 7. Keep `yazelix-zellij-popup` narrow and generic; it is the model child boundary.

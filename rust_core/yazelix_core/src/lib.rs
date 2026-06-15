@@ -72,7 +72,6 @@ pub mod workspace_asset_contract;
 pub mod workspace_commands;
 pub mod workspace_session;
 pub mod yazi_materialization;
-pub mod yazi_render_plan;
 pub mod zellij_commands;
 pub mod zellij_materialization;
 pub(crate) mod zellij_materialization_io;
@@ -222,11 +221,13 @@ pub use workspace_commands::{
     run_yzx_reveal, run_yzx_sidebar,
 };
 pub use workspace_session::IntegrationFactsData;
+pub use yazelix_yazi_assets::{
+    YaziRenderPlanData, YaziRenderPlanRequest, compute_yazi_render_plan,
+};
 pub use yazi_materialization::{
     YaziManagedFileStatus, YaziMaterializationData, YaziMaterializationRequest,
     generate_yazi_materialization,
 };
-pub use yazi_render_plan::{YaziRenderPlanData, YaziRenderPlanRequest, compute_yazi_render_plan};
 pub use zellij_commands::{
     run_zellij_get_workspace_root, run_zellij_inspect_session, run_zellij_open_editor,
     run_zellij_open_editor_cwd, run_zellij_open_terminal, run_zellij_pipe, run_zellij_retarget,

@@ -1470,6 +1470,7 @@ dependencies = [
  "yazelix-ratconfig",
  "yazelix_cursors",
  "yazelix_screen",
+ "yazelix_yazi_assets",
  "yazelix_zellij_config_pack",
 ]
 
@@ -1503,6 +1504,15 @@ version = "0.1.0"
 source = "git+https://github.com/luccahuguet/yazelix-screen?rev=bebc5498e12473ffe909c2105a904a5e4a937208#bebc5498e12473ffe909c2105a904a5e4a937208"
 dependencies = [
  "crossterm",
+]
+
+[[package]]
+name = "yazelix_yazi_assets"
+version = "0.1.0"
+source = "git+https://github.com/luccahuguet/yazelix-yazi-assets?rev=0190035d7203251411917d0e9100a9c54f3dd907#0190035d7203251411917d0e9100a9c54f3dd907"
+dependencies = [
+ "serde",
+ "toml",
 ]
 
 [[package]]

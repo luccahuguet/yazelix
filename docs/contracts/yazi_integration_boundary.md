@@ -7,33 +7,34 @@ configuration, bundled Yazi plugins, and future Yazi extraction work.
 
 Do not extract full Yazi integration as a public child repository yet.
 
-The reusable Yazi flavor and plugin asset pack lives in
+The reusable Yazi flavor, plugin, and config-pack renderer lives in
 `yazelix-yazi-assets`. Regular Yazelix users still get the same integrated
-flavors and plugins through the packaged runtime; the child repo exists so
-non-Yazelix users can consume those assets without adopting the full Yazelix
-workspace.
+generated config, flavors, and plugins through the packaged runtime; the child
+repo exists so non-Yazelix users can consume those assets and the pure renderer
+without adopting the full Yazelix workspace.
 
 The remaining materializer is split into a private Yazelix adapter and a
 private writer, but it still owns too much Yazelix-specific behavior for a
 public Yazi integration extraction: managed config roots, state-dir generation,
-semantic Yazelix keybindings, editor opener preservation, pane-orchestrator
-sidebar registration, and explicit rejection of legacy override paths.
+semantic Yazelix keybindings, pane-orchestrator sidebar registration, and
+explicit rejection of legacy override paths.
 
 ## Boundary Matrix
 
 | Surface | Current owner | Future movement |
 | --- | --- | --- |
-| `yazi_render_plan.rs` | Generic Yazi render-plan semantics with Yazelix metadata inputs | Candidate for a private generic Yazi config-pack boundary after asset ownership is slimmed |
-| `config_metadata/yazi_render_plan.toml` | Shared machine metadata for sort, default plugins, core plugins, and random theme palettes | Candidate for the same config-pack boundary |
+| `yazelix-yazi-assets/src/lib.rs` render-plan API | Generic Yazi render-plan semantics, validation, template loading, and pure config-pack rendering | Child crate consumed by main through Cargo git dependency |
+| `yazelix-yazi-assets/config_metadata/yazi_render_plan.toml` | Shared machine metadata for sort, default plugins, core plugins, and random theme palettes | Child-owned metadata embedded in the child crate |
+| `yazelix-yazi-assets/config_templates/*` | Generated Yazi base config, theme, and keymap templates | Child-owned templates embedded in the child crate |
 | `yazelix-yazi-assets/flavors/*` | Bundled Yazi flavor catalog | Child asset package; optional Home Manager/runtime component toggles can decide whether a full Yazelix install links it |
 | `yazelix-yazi-assets/plugins/git.yazi`, `lazygit.yazi`, `starship.yazi` | Bundled reusable Yazi plugin pack | Child asset package; vendored update workflow belongs with the child repo, not Yazelix core |
 | `yazelix-yazi-assets/plugins/auto-layout.yazi` | Yazelix-maintained Yazi sidebar fit behavior | Child asset package, still part of the default Yazelix runtime because the managed sidebar expects it |
-| `yazelix-yazi-assets/config_metadata/yazi_assets_manifest.toml` | Child-declared reusable asset manifest | Consume from the child package when the main renderer stops hard-coding asset shape |
+| `yazelix-yazi-assets/config_metadata/yazi_assets_manifest.toml` | Child-declared reusable asset manifest | Child package shape contract for runtime asset linking |
 | `sidebar-status.yazi`, `sidebar-state.yazi`, `zoxide-editor.yazi` | Yazelix editor/sidebar integration | Keep in Yazelix until pane-orchestrator protocol is separately extracted |
 | `yazi_materialization.rs` adapter | Yazelix runtime materializer | Keep in Yazelix; it resolves settings, the managed Yazi home, semantic action ids, managed output paths, and legacy ownership errors |
-| `yazi_materialization/writer.rs` generated file writes | Private Yazelix writer boundary | Keep private; it writes the generated Yazi config pack from already-resolved adapter inputs |
+| `yazi_materialization/writer.rs` generated file writes | Private Yazelix writer boundary | Keep private; it calls the child renderer, writes generated outputs, and syncs packaged child assets from the runtime tree |
 | `yazi_materialization.rs` semantic keymap expansion | Yazelix action registry adapter | Keep in Yazelix; it depends on Yazelix-owned action ids and generated integration commands |
-| `[opener].edit` preservation | Yazelix managed editor contract | Keep in Yazelix; native Yazi config must not replace the managed editor open path |
+| `[opener].edit` preservation | Child renderer behavior for the Yazelix config-pack template | Keep in the child renderer unless the full adapter boundary moves |
 | Managed Yazi home under `~/.config/yazelix/yazi/` | Yazelix user Yazi config ownership | Keep in Yazelix; import, config UI, and Yazi package state use this vocabulary |
 | Generated output under `~/.local/share/yazelix/configs/yazi/` | Yazelix runtime state | Keep in Yazelix; it is not a user-editable source tree |
 | `repo_update_workflow.rs` vendored plugin refresh | Removed from Yazelix main repo | Recreate only inside `yazelix-yazi-assets` if the child repo needs automated upstream refresh |
@@ -57,41 +58,40 @@ guard that prevents silent adoption of old mutable config locations.
 
 Full Yazi integration extraction is deferred.
 
-The asset pack movement is complete: `configs/yazi/` in this repository keeps
-only Yazelix-owned base templates and sidebar/editor plugins, while the packaged
-runtime links reusable flavors, Starship config, `auto-layout.yazi`, `git.yazi`,
-`lazygit.yazi`, and `starship.yazi` from `yazelix-yazi-assets`.
-The asset child also publishes `config_metadata/yazi_assets_manifest.toml` so a
-future config-pack renderer can consume child-owned asset shape instead of
-recreating plugin/flavor lists in main.
+The asset and config-pack movement is complete: `configs/yazi/` in this
+repository keeps only the README and Yazelix-owned sidebar/editor plugins, while
+the packaged runtime links reusable flavors, Starship config, `auto-layout.yazi`,
+`git.yazi`, `lazygit.yazi`, and `starship.yazi` from `yazelix-yazi-assets`.
+The child crate owns render-plan metadata, generated config templates, TOML/Lua
+merge behavior, and equivalence tests.
 
-The private writer/adapter split is complete, but the writer is not yet a
-public config-pack API. It still receives Yazelix-managed output roots and
-contains runtime-placeholder rendering plus opener-preservation policy. Only
-after the adapter is thin should a public Yazi integration repository be
-considered. The asset child repo should not grow a generated mirror in this
-repository.
+The private writer/adapter split is complete, but the writer is not a public
+Yazi integration API. It still receives Yazelix-managed output roots, reads
+managed sidecars, expands semantic keybindings, and owns runtime-state writes.
+Only after the adapter is thin should a public Yazi integration repository be
+considered. Main must not grow fallback copies of child templates, renderer
+logic, or render-plan metadata.
 
 ## LOC Scorecard
 
-Current Yazi surface measured on 2026-06-14:
+Current Yazi surface measured on 2026-06-15:
 
 | Surface | Lines | Notes |
 | --- | ---: | --- |
-| `rust_core/yazelix_core/src/yazi_materialization.rs` | 695 | Yazelix adapter for config normalization, managed paths, semantic keybindings, and legacy guard |
-| `rust_core/yazelix_core/src/yazi_materialization/writer.rs` | 917 | Private generated Yazi config-pack writer and asset sync boundary |
-| `rust_core/yazelix_core/src/yazi_render_plan.rs` | 329 | Small enough to keep until a config-pack writer exists |
-| `rust_core/yazelix_core/tests/yzx_core_yazi_materialization.rs` | 620 | Behavior coverage for generated files, assets, keybindings, and legacy rejection |
-| `configs/yazi/` | 379 | Main repo keeps only Yazelix base templates and sidebar/editor integration plugins |
-| `yazelix-yazi-assets/` | 6,822 | Child repo package containing 24 flavors, reusable Yazi plugins, Starship config, package metadata, lockfile, and pinned upstream refresh metadata |
+| `rust_core/yazelix_core/src/yazi_materialization.rs` | 656 | Yazelix adapter for config normalization, managed paths, semantic keybindings, and legacy guard |
+| `rust_core/yazelix_core/src/yazi_materialization/writer.rs` | 586 | Private writer that calls the child renderer and syncs runtime assets |
+| `rust_core/yazelix_core/tests/yzx_core_yazi_materialization.rs` | 546 | Behavior coverage for generated files, assets, keybindings, and legacy rejection |
+| `configs/yazi/` | 349 | Main repo keeps only README and sidebar/editor integration plugins |
+| `yazelix-yazi-assets/` | 7,952 | Child repo package containing 24 flavors, reusable Yazi plugins, Starship config, render-plan metadata, generated config templates, package metadata, lockfile, and pinned upstream refresh metadata |
 
-Main-repo `configs/yazi/` shrank by `6,157` raw lines. Future reduction comes
-from optionalizing the asset package and splitting the current Rust materializer,
-not from re-creating asset mirrors in this repository.
+Main-repo `configs/yazi/` and Rust config-pack ownership shrank. Future
+reduction comes from thinning the remaining adapter and broad tests, not from
+re-creating asset or renderer mirrors in this repository.
 
 ## Verification
 
 - `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core yazi_materialization`
-- `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core yazi_render_plan`
+- `cargo test` in `yazelix-yazi-assets`
+- `nix build .#yazelix_yazi_assets --no-link --no-write-lock-file`
 - `yzx_repo_validator validate-contracts`
 - `yzx_repo_validator validate-docs-experience`

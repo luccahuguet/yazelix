@@ -6,13 +6,13 @@ use crate::bridge::{CoreError, ErrorClass};
 use crate::config_normalize::{NormalizeConfigRequest, normalize_config};
 use crate::control_plane::config_dir_from_env;
 use crate::user_config_paths;
-use crate::yazi_render_plan::{YaziRenderPlanRequest, compute_yazi_render_plan};
 use serde::Serialize;
 use serde_json::{Map as JsonMap, Value as JsonValue, json};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use toml::Value as TomlValue;
 pub use writer::YaziManagedFileStatus;
+use yazelix_yazi_assets::{YaziConfigPackError, YaziRenderPlanRequest, compute_yazi_render_plan};
 
 const YAZI_KEYBINDINGS_CONFIG_KEY: &str = "yazi_keybindings";
 
@@ -58,7 +58,8 @@ pub fn generate_yazi_materialization(
     })?;
     let render_plan = compute_yazi_render_plan(&build_yazi_render_plan_request(
         &normalized.normalized_config,
-    ))?;
+    ))
+    .map_err(map_yazi_config_pack_error)?;
     let yazi_keybindings = resolve_yazi_keybindings(&normalized.normalized_config)?;
     let config_dir = config_dir_from_env()?;
     crate::managed_user_config_stubs::ensure_yazi_surface_stub(&config_dir)?;
@@ -119,6 +120,36 @@ pub fn generated_yazi_static_assets_missing(
         yazi_config_dir,
         runtime_dir,
     )
+}
+
+fn map_yazi_config_pack_error(source: YaziConfigPackError) -> CoreError {
+    match source {
+        YaziConfigPackError::InvalidSortBy { sort_by, allowed } => CoreError::classified(
+            ErrorClass::Config,
+            "invalid_yazi_sort_by",
+            format!("yazi_sort_by must be one of {allowed:?} (got {sort_by:?})"),
+            "Set [yazi].sort_by to a documented value.",
+            json!({
+                "field": "yazi.sort_by",
+                "allowed": allowed,
+                "actual": sort_by,
+            }),
+        ),
+        YaziConfigPackError::InvalidEmbeddedToml { asset, message } => CoreError::classified(
+            ErrorClass::Internal,
+            "invalid_yazi_config_pack_template",
+            format!("Could not parse embedded Yazi config-pack asset {asset}: {message}"),
+            "Report this as a Yazelix packaging error.",
+            json!({ "asset": asset, "source": message }),
+        ),
+        YaziConfigPackError::SerializeToml { message } => CoreError::classified(
+            ErrorClass::Internal,
+            "serialize_yazi_toml",
+            format!("Could not serialize generated Yazi content: {message}"),
+            "Report this as a Yazelix internal error.",
+            json!({ "source": message }),
+        ),
+    }
 }
 
 fn build_yazi_render_plan_request(
@@ -527,173 +558,8 @@ fn yazi_keymap_entry(spec: &crate::action_registry::YaziActionSpec, key: &str) -
 #[cfg(test)]
 mod tests {
     use super::*;
-    use pretty_assertions::assert_eq;
-    use std::collections::BTreeSet;
     use std::fs;
     use tempfile::tempdir;
-
-    // Defends: the pure Yazi config-pack renderer preserves generated TOML/Lua behavior before child extraction.
-    #[test]
-    fn render_yazi_config_pack_preserves_generated_contracts() {
-        let temp = tempdir().unwrap();
-        let runtime_dir = temp.path().join("runtime");
-        let starship_config_path = temp.path().join("state/yazelix_starship.toml");
-        let render_plan = compute_yazi_render_plan(&YaziRenderPlanRequest {
-            yazi_theme: "dracula".to_string(),
-            appearance_mode: "dark".to_string(),
-            yazi_sort_by: "modified".to_string(),
-            yazi_plugins: Some(vec![
-                "git".to_string(),
-                "starship".to_string(),
-                "missing-plugin".to_string(),
-            ]),
-        })
-        .unwrap();
-        let available_plugins = render_plan
-            .init_lua
-            .load_order
-            .iter()
-            .filter(|name| *name != "missing-plugin")
-            .cloned()
-            .collect::<BTreeSet<_>>();
-        let templates = writer::YaziConfigPackTemplateData {
-            yazi_toml: toml::from_str::<toml::Table>(
-                r#"
-[opener]
-edit = [{ run = "__YAZELIX_RUNTIME_DIR__/libexec/yzx_control zellij open-editor %s" }]
-
-[mgr]
-ratio = [1, 4, 3]
-
-[[plugin.prepend_fetchers]]
-url = "*"
-run = "git"
-group = "git"
-"#,
-            )
-            .unwrap(),
-            theme_toml: toml::from_str::<toml::Table>("[status]\noverall = { bg = \"black\" }\n")
-                .unwrap(),
-            keymap_toml: toml::from_str::<toml::Table>(
-                r#"[[mgr.prepend_keymap]]
-on = ["g", "l"]
-run = "plugin lazygit"
-desc = "Open lazygit"
-"#,
-            )
-            .unwrap(),
-        };
-        let user_yazi_config = toml::from_str::<toml::Table>(
-            r#"
-[opener]
-edit = [{ run = "user-edit" }]
-open = [{ run = "user-open" }]
-
-[mgr]
-ratio = [1, 4, 0]
-
-[[plugin.prepend_fetchers]]
-url = "*/"
-run = "extra"
-group = "extra"
-"#,
-        )
-        .unwrap();
-        let semantic_keymap = toml::from_str::<toml::Table>(
-            r#"[[mgr.append_keymap]]
-on = ["<A-x>"]
-run = "plugin zoxide-editor"
-desc = "Open zoxide in editor"
-"#,
-        )
-        .unwrap();
-        let user_keymap = toml::from_str::<toml::Table>(
-            r#"[[input.append_keymap]]
-on = ["<Esc>"]
-run = "close"
-desc = "Close input"
-"#,
-        )
-        .unwrap();
-        let rendered = writer::render_yazi_config_pack(&writer::YaziConfigPackRenderRequest {
-            templates: &templates,
-            runtime_dir: &runtime_dir,
-            starship_config_path: &starship_config_path,
-            render_plan: &render_plan,
-            user_yazi_config: Some(&user_yazi_config),
-            user_keymap: Some(&user_keymap),
-            user_init_lua: Some("-- user init\nreturn true\n"),
-            semantic_keymap: &semantic_keymap,
-            available_plugins: &available_plugins,
-        })
-        .unwrap();
-        let parsed_yazi = toml::from_str::<TomlValue>(&rendered.yazi_toml).unwrap();
-        let parsed_keymap = toml::from_str::<TomlValue>(&rendered.keymap_toml).unwrap();
-
-        assert_eq!(
-            parsed_yazi
-                .get("opener")
-                .and_then(TomlValue::as_table)
-                .and_then(|opener| opener.get("edit"))
-                .and_then(TomlValue::as_array)
-                .and_then(|entries| entries.first())
-                .and_then(|entry| entry.get("run"))
-                .and_then(TomlValue::as_str),
-            Some(
-                format!(
-                    "{}/libexec/yzx_control zellij open-editor %s",
-                    runtime_dir.to_string_lossy()
-                )
-                .as_str()
-            )
-        );
-        assert_eq!(
-            parsed_yazi
-                .get("mgr")
-                .and_then(TomlValue::as_table)
-                .and_then(|mgr| mgr.get("ratio"))
-                .and_then(TomlValue::as_array)
-                .unwrap(),
-            &vec![1.into(), 4.into(), 0.into()]
-        );
-        assert_eq!(
-            parsed_yazi
-                .get("manager")
-                .and_then(TomlValue::as_table)
-                .and_then(|mgr| mgr.get("sort_by"))
-                .and_then(TomlValue::as_str),
-            Some("modified")
-        );
-        assert_eq!(
-            parsed_keymap
-                .get("mgr")
-                .and_then(|section| section.get("append_keymap"))
-                .and_then(TomlValue::as_array)
-                .and_then(|entries| entries.first())
-                .and_then(|entry| entry.get("run"))
-                .and_then(TomlValue::as_str),
-            Some("plugin zoxide-editor")
-        );
-        assert_eq!(
-            parsed_keymap
-                .get("input")
-                .and_then(|section| section.get("append_keymap"))
-                .and_then(TomlValue::as_array)
-                .and_then(|entries| entries.first())
-                .and_then(|entry| entry.get("run"))
-                .and_then(TomlValue::as_str),
-            Some("close")
-        );
-        assert_eq!(rendered.missing_plugins, vec!["missing-plugin"]);
-        assert!(rendered.init_lua.contains("require(\"starship\")"));
-        assert!(
-            rendered
-                .init_lua
-                .contains(starship_config_path.to_string_lossy().as_ref())
-        );
-        assert!(rendered.init_lua.contains("-- user init"));
-        assert!(!rendered.yazi_toml.contains("__YAZELIX_RUNTIME_DIR__"));
-    }
 
     // Defends: missing bundled asset targets are detected so warm Yazi generation can self-heal deleted files.
     #[test]

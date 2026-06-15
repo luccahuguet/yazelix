@@ -56,37 +56,6 @@ fn prepare_runtime_fixture(runtime_dir: &Path) {
     fs::create_dir_all(yazi_dir.join("flavors")).unwrap();
 
     fs::write(
-        yazi_dir.join("yazelix_yazi.toml"),
-        r#"[mgr]
-ratio = [1, 4, 3]
-
-[opener]
-edit = [
-  { run = '__YAZELIX_RUNTIME_DIR__/libexec/yzx_control zellij open-editor %s', desc = "Open File with configured editor (with Zellij integration)" },
-]
-
-[[plugin.prepend_fetchers]]
-url = "*"
-run = "git"
-group = "git"
-"#,
-    )
-    .unwrap();
-    fs::write(
-        yazi_dir.join("yazelix_keymap.toml"),
-        r#"[[mgr.prepend_keymap]]
-on = ["g", "l"]
-run = "plugin lazygit"
-desc = "Open lazygit"
-"#,
-    )
-    .unwrap();
-    fs::write(
-        yazi_dir.join("yazelix_theme.toml"),
-        "[status]\noverall = { bg = \"black\" }\n",
-    )
-    .unwrap();
-    fs::write(
         yazi_dir.join("yazelix_starship.toml"),
         "# YAZELIX STARSHIP CONFIG FOR YAZI SIDEBAR\n",
     )

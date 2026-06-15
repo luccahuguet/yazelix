@@ -91,9 +91,9 @@ Then add the plugin name to `settings.jsonc`:
 }
 ```
 
-Yazelix's bundled flavor catalog is packaged by `yazelix-yazi-assets`; the upstream Yazi flavor docs are at https://yazi-rs.github.io/docs/flavors/overview
+Yazelix's bundled flavor catalog and generated Yazi config-pack renderer are packaged by `yazelix-yazi-assets`; the upstream Yazi flavor docs are at https://yazi-rs.github.io/docs/flavors/overview
 
-The curated `random-dark` / `random-light` flavor names used by Yazelix live in `config_metadata/yazi_render_plan.toml` (defaults and `sort_by` validation stay in `config_metadata/main_config_contract.toml`).
+The curated `random-dark` / `random-light` flavor names, defaults, and `sort_by` validation live in the child config-pack crate.
 
 Leave the field unset, or set `theme = "default"`, to keep Yazi's upstream built-in theme.
 

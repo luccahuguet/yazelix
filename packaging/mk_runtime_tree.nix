@@ -225,7 +225,7 @@ pkgs.runCommand name { } ''
   link_runtime_input "${requirePluginArtifact "yzpp" yzppWasm}" "configs/zellij/plugins/yzpp.wasm"
 
   mkdir -p "$out/configs/yazi/plugins"
-  for yazi_file in README.md yazelix_keymap.toml yazelix_theme.toml yazelix_yazi.toml; do
+  for yazi_file in README.md; do
     link_runtime_input "${src}/configs/yazi/$yazi_file" "configs/yazi/$yazi_file"
   done
   for yazi_plugin in sidebar-state.yazi sidebar-status.yazi zoxide-editor.yazi; do

@@ -1,4 +1,0 @@
-[[mgr.prepend_keymap]]
-on = [ "g", "l" ]
-run = "plugin lazygit"
-desc = "Open lazygit"

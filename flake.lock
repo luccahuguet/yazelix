@@ -576,11 +576,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1780800333,
-        "narHash": "sha256-Kwkg0YS+Fgxv14pxkz3k6c93UbVn2q0eA3shbOenPac=",
+        "lastModified": 1781498216,
+        "narHash": "sha256-46vNIjYKL6tByQf1Pcy1ynll/A7AKJ4lrMXn7LM5yqc=",
         "owner": "luccahuguet",
         "repo": "yazelix-yazi-assets",
-        "rev": "964937a79a20f443ed4201d864577a59ba122cff",
+        "rev": "0190035d7203251411917d0e9100a9c54f3dd907",
         "type": "github"
       },
       "original": {

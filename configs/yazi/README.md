@@ -1,14 +1,14 @@
 # Yazelix Yazi Configuration
 
-Yazelix provides a managed Yazi configuration built from `settings.jsonc`, flat sidecar overrides under `~/.config/yazelix/`, Yazelix-owned sidebar/editor plugins, and the packaged `yazelix-yazi-assets` flavor/plugin pack
+Yazelix provides a managed Yazi configuration built from `settings.jsonc`, managed sidecar overrides under `~/.config/yazelix/yazi/`, Yazelix-owned sidebar/editor plugins, and the packaged `yazelix-yazi-assets` config-pack/flavor/plugin pack
 
 ## Quick Start
 
 ```bash
-# Create only the flat sidecar files you need:
-#   ~/.config/yazelix/yazi.toml
-#   ~/.config/yazelix/yazi_keymap.toml
-#   ~/.config/yazelix/yazi_init.lua
+# Create only the sidecar files you need:
+#   ~/.config/yazelix/yazi/yazi.toml
+#   ~/.config/yazelix/yazi/keymap.toml
+#   ~/.config/yazelix/yazi/init.lua
 ```
 
 ## Documentation
@@ -17,7 +17,5 @@ For the complete configuration guide, see [Yazi Configuration Documentation](../
 
 ## Current Defaults
 
-- Layout ratio optimized for sidebar mode (20% terminal width)
-- Git integration showing file status
-- Editor integration with Zellij
-- Custom status bar (courtesy of Yazi's creator!)
+- Config-pack templates live in `yazelix-yazi-assets`
+- Main keeps sidebar/editor integration plugins
