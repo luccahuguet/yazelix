@@ -838,28 +838,17 @@ fn apply_yzxterm_appearance(
         ));
     }
 
-    match appearance_mode {
-        APPEARANCE_MODE_AUTO => {
-            table.remove("force-theme");
-        }
-        APPEARANCE_MODE_LIGHT => {
-            table.insert(
-                "force-theme".to_string(),
-                toml::Value::String(APPEARANCE_MODE_LIGHT.to_string()),
-            );
-        }
-        APPEARANCE_MODE_DARK => {
-            table.insert(
-                "force-theme".to_string(),
-                toml::Value::String(APPEARANCE_MODE_DARK.to_string()),
-            );
-        }
-        _ => {
-            table.insert(
-                "force-theme".to_string(),
-                toml::Value::String(APPEARANCE_MODE_DARK.to_string()),
-            );
-        }
+    if let Some(theme) = match appearance_mode {
+        APPEARANCE_MODE_AUTO => None,
+        APPEARANCE_MODE_LIGHT => Some(APPEARANCE_MODE_LIGHT),
+        _ => Some(APPEARANCE_MODE_DARK),
+    } {
+        table.insert(
+            "force-theme".to_string(),
+            toml::Value::String(theme.to_string()),
+        );
+    } else {
+        table.remove("force-theme");
     }
     Ok(())
 }

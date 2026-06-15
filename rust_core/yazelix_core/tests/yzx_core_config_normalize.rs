@@ -158,14 +158,6 @@ fn prepare_terminal_variant_fixture(variant: &str) -> (TempDir, RuntimeMateriali
 }
 
 fn write_yzxterm_package_profile_set(root: &Path, emoji_family: Option<&str>) {
-    let baseline_dir = root.join("baseline");
-    let shader_profile_dir = root.join("profiles").join("shaders");
-    fs::create_dir_all(root).unwrap();
-    fs::create_dir_all(&baseline_dir).unwrap();
-    fs::create_dir_all(&shader_profile_dir).unwrap();
-    write_yzxterm_package_themes(root);
-    write_yzxterm_package_themes(&baseline_dir);
-    write_yzxterm_package_themes(&shader_profile_dir);
     let fonts = emoji_family
         .map(|family| {
             format!(
@@ -176,9 +168,15 @@ symbol-map = [{{ start = "1F000", end = "1FB00", font-family = "{family}" }}]
             )
         })
         .unwrap_or_default();
-    write_yzxterm_package_config(&root.join("config.toml"), &fonts, true);
-    write_yzxterm_package_config(&baseline_dir.join("config.toml"), &fonts, false);
-    write_yzxterm_package_config(&shader_profile_dir.join("config.toml"), &fonts, true);
+    for (profile_root, shader_profile) in [
+        (root.to_path_buf(), true),
+        (root.join("baseline"), false),
+        (root.join("profiles").join("shaders"), true),
+    ] {
+        fs::create_dir_all(&profile_root).unwrap();
+        write_yzxterm_package_themes(&profile_root);
+        write_yzxterm_package_config(&profile_root.join("config.toml"), &fonts, shader_profile);
+    }
 }
 
 fn write_yzxterm_package_config(path: &Path, fonts: &str, shader_profile: bool) {
@@ -343,20 +341,20 @@ fn read_generated_yzxterm_config_text(fixture: &RuntimeMaterializationFixture) -
     read_generated_terminal_config_text(fixture, "yzxterm", "config.toml")
 }
 
+fn generated_terminal_dir(fixture: &RuntimeMaterializationFixture, terminal: &str) -> PathBuf {
+    fixture
+        .state_dir
+        .join("configs")
+        .join("terminal_emulators")
+        .join(terminal)
+}
+
 fn read_generated_terminal_config_text(
     fixture: &RuntimeMaterializationFixture,
     terminal: &str,
     file_name: &str,
 ) -> String {
-    fs::read_to_string(
-        fixture
-            .state_dir
-            .join("configs")
-            .join("terminal_emulators")
-            .join(terminal)
-            .join(file_name),
-    )
-    .unwrap()
+    fs::read_to_string(generated_terminal_dir(fixture, terminal).join(file_name)).unwrap()
 }
 
 fn read_generated_yzxterm_theme(
@@ -364,11 +362,7 @@ fn read_generated_yzxterm_theme(
     theme_name: &str,
 ) -> toml::Value {
     let raw = fs::read_to_string(
-        fixture
-            .state_dir
-            .join("configs")
-            .join("terminal_emulators")
-            .join("yzxterm")
+        generated_terminal_dir(fixture, "yzxterm")
             .join("themes")
             .join(theme_name),
     )
@@ -568,44 +562,10 @@ fn terminal_materialization_generate_from_env_writes_generated_configs() {
     let envelope: Value = serde_json::from_slice(&output.stdout).unwrap();
     assert_eq!(envelope["command"], "terminal-materialization.generate");
     assert_eq!(envelope["status"], "ok");
-    assert!(
-        fixture
-            .state_dir
-            .join("configs")
-            .join("terminal_emulators")
-            .join("ghostty")
-            .exists()
-    );
-    assert!(
-        !fixture
-            .state_dir
-            .join("configs/terminal_emulators/rio")
-            .exists()
-    );
-    assert!(
-        !fixture
-            .state_dir
-            .join("configs/terminal_emulators/yzxterm")
-            .exists()
-    );
-    assert!(
-        !fixture
-            .state_dir
-            .join("configs/terminal_emulators/ratty")
-            .exists()
-    );
-    assert!(
-        !fixture
-            .state_dir
-            .join("configs/terminal_emulators/kitty")
-            .exists()
-    );
-    assert!(
-        !fixture
-            .state_dir
-            .join("configs/terminal_emulators/foot")
-            .exists()
-    );
+    assert!(generated_terminal_dir(&fixture, "ghostty").exists());
+    for terminal in ["rio", "yzxterm", "ratty", "kitty", "foot"] {
+        assert!(!generated_terminal_dir(&fixture, terminal).exists());
+    }
 }
 
 // Defends: Ghostty receives a native dark/light theme pair for automatic system appearance.
@@ -1127,12 +1087,7 @@ fn terminal_materialization_yzxterm_shader_profile_replaces_stale_shader_assets(
 
     write_managed_config_toml(&fixture, "[terminal]\n");
     write_forest_effect_cursor_sidecar(&fixture);
-    let shader_dir = fixture
-        .state_dir
-        .join("configs")
-        .join("terminal_emulators")
-        .join("ghostty")
-        .join("shaders");
+    let shader_dir = generated_terminal_dir(&fixture, "ghostty").join("shaders");
     fs::create_dir_all(&shader_dir).unwrap();
     fs::write(shader_dir.join("stale_only.glsl"), "old runtime shader").unwrap();
     fs::write(
