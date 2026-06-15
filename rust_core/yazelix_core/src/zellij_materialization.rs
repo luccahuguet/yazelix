@@ -97,23 +97,23 @@ const PANE_ORCHESTRATOR_PLUGIN_URL_PLACEHOLDER: &str = "__YAZELIX_PANE_ORCHESTRA
 const HOME_DIR_PLACEHOLDER: &str = "__YAZELIX_HOME_DIR__";
 const RUNTIME_DIR_PLACEHOLDER: &str = "__YAZELIX_RUNTIME_DIR__";
 const ZJSTATUS_TAB_TEMPLATE_PLACEHOLDER: &str = "__YAZELIX_ZJSTATUS_TAB_TEMPLATE__";
-const ZELLIJ_CONFIG_PACK_STATIC_FRAGMENTS: &[ZellijConfigPackStaticFragmentSpec] = &[
-    ZellijConfigPackStaticFragmentSpec {
-        placeholder: "__YAZELIX_SWAP_SIDEBAR_OPEN__",
-        relative_path: "fragments/swap_sidebar_open.kdl",
-    },
-    ZellijConfigPackStaticFragmentSpec {
-        placeholder: "__YAZELIX_SWAP_SIDEBAR_CLOSED__",
-        relative_path: "fragments/swap_sidebar_closed.kdl",
-    },
-    ZellijConfigPackStaticFragmentSpec {
-        placeholder: "__YAZELIX_SWAP_AGENT_OPEN__",
-        relative_path: "fragments/swap_agent_open.kdl",
-    },
-    ZellijConfigPackStaticFragmentSpec {
-        placeholder: "__YAZELIX_SWAP_AGENT_CLOSED__",
-        relative_path: "fragments/swap_agent_closed.kdl",
-    },
+const ZELLIJ_CONFIG_PACK_STATIC_FRAGMENTS: &[(&str, &str)] = &[
+    (
+        "__YAZELIX_SWAP_SIDEBAR_OPEN__",
+        "fragments/swap_sidebar_open.kdl",
+    ),
+    (
+        "__YAZELIX_SWAP_SIDEBAR_CLOSED__",
+        "fragments/swap_sidebar_closed.kdl",
+    ),
+    (
+        "__YAZELIX_SWAP_AGENT_OPEN__",
+        "fragments/swap_agent_open.kdl",
+    ),
+    (
+        "__YAZELIX_SWAP_AGENT_CLOSED__",
+        "fragments/swap_agent_closed.kdl",
+    ),
 ];
 const ZELLIJ_CONFIG_PACK_REQUIRED_LAYOUT_PLACEHOLDERS: &[&str] = &[
     ZJSTATUS_TAB_TEMPLATE_PLACEHOLDER,
@@ -194,12 +194,6 @@ struct ZellijConfigPackLayoutSources {
     source_present: bool,
     templates: Vec<ZellijConfigPackLayoutTemplate>,
     static_fragments: BTreeMap<String, String>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct ZellijConfigPackStaticFragmentSpec {
-    placeholder: &'static str,
-    relative_path: &'static str,
 }
 
 #[derive(Debug, Clone)]
@@ -2191,8 +2185,8 @@ fn render_sidebar_args(args: &[String], runtime_dir: &Path) -> String {
 
 fn load_static_fragments(source_dir: &Path) -> Result<BTreeMap<String, String>, CoreError> {
     let mut fragments = BTreeMap::new();
-    for spec in ZELLIJ_CONFIG_PACK_STATIC_FRAGMENTS {
-        let path = source_dir.join(spec.relative_path);
+    for (placeholder, relative_path) in ZELLIJ_CONFIG_PACK_STATIC_FRAGMENTS {
+        let path = source_dir.join(relative_path);
         if !path.exists() {
             return Err(CoreError::classified(
                 ErrorClass::Io,
@@ -2206,7 +2200,7 @@ fn load_static_fragments(source_dir: &Path) -> Result<BTreeMap<String, String>, 
             ));
         }
         fragments.insert(
-            spec.placeholder.to_string(),
+            placeholder.to_string(),
             read_text(&path, "read_zellij_fragment")?,
         );
     }
