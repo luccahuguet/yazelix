@@ -1,17 +1,17 @@
 [contract]
-measured_total_loc = 79799
-measured_total_file_count = 153
-current_total_loc_max = 79799
-current_total_file_count_max = 153
+measured_total_loc = 82374
+measured_total_file_count = 158
+current_total_loc_max = 82374
+current_total_file_count_max = 158
 hard_target_loc = 60000
 
 [[families]]
 id = "core_cli_and_public_surface"
 status = "canonical"
 owner_bead = "yazelix-ykti.1"
-measured_loc = 8713
+measured_loc = 7983
 measured_files = 13
-max_loc = 8713
+max_loc = 7983
 target_loc = 7000
 max_files = 13
 allowed_paths = [
@@ -34,14 +34,16 @@ allowed_paths = [
 id = "core_config_ui_and_materialization"
 status = "canonical"
 owner_bead = "yazelix-ryx4.6"
-measured_loc = 24548
-measured_files = 54
-max_loc = 24548
+measured_loc = 26350
+measured_files = 57
+max_loc = 26350
 target_loc = 14000
-max_files = 54
+max_files = 57
 allowed_paths = [
   "rust_core/yazelix_core/src/active_config_surface.rs",
+  "rust_core/yazelix_core/src/appearance_mode.rs",
   "rust_core/yazelix_core/src/atomic_fs.rs",
+  "rust_core/yazelix_core/src/backup_timestamp.rs",
   "rust_core/yazelix_core/src/config_apply.rs",
   "rust_core/yazelix_core/src/config_commands.rs",
   "rust_core/yazelix_core/src/config_normalize.rs",
@@ -49,6 +51,7 @@ allowed_paths = [
   "rust_core/yazelix_core/src/config_ui.rs",
   "rust_core/yazelix_core/src/config_ui/app.rs",
   "rust_core/yazelix_core/src/config_ui/apply_adapter.rs",
+  "rust_core/yazelix_core/src/config_ui/custom_popups.rs",
   "rust_core/yazelix_core/src/config_ui/details.rs",
   "rust_core/yazelix_core/src/config_ui/keybindings.rs",
   "rust_core/yazelix_core/src/config_ui/model_builder.rs",
@@ -100,9 +103,9 @@ allowed_paths = [
 id = "core_diagnostics_and_recovery"
 status = "canonical"
 owner_bead = "yazelix-ykti.2"
-measured_loc = 8347
+measured_loc = 8123
 measured_files = 8
-max_loc = 8347
+max_loc = 8123
 target_loc = 4500
 max_files = 8
 allowed_paths = [
@@ -120,11 +123,11 @@ allowed_paths = [
 id = "core_workspace_and_pane_integration"
 status = "canonical"
 owner_bead = "yazelix-w032.3"
-measured_loc = 17642
-measured_files = 35
-max_loc = 17642
+measured_loc = 18691
+measured_files = 37
+max_loc = 18691
 target_loc = 11000
-max_files = 35
+max_files = 37
 allowed_paths = [
   "rust_core/yazelix_core/src/action_registry.rs",
   "rust_core/yazelix_core/src/helix_bridge_client.rs",
@@ -160,6 +163,8 @@ allowed_paths = [
   "rust_core/yazelix_core/src/zellij_commands/status/widgets.rs",
   "rust_core/yazelix_core/src/zellij_commands/workspace.rs",
   "rust_core/yazelix_core/src/zellij_materialization.rs",
+  "rust_core/yazelix_core/src/zellij_materialization_io.rs",
+  "rust_core/yazelix_core/src/zellij_plugin_materialization.rs",
   "rust_core/yazelix_core/src/zellij_render_plan.rs",
 ]
 
@@ -167,9 +172,9 @@ allowed_paths = [
 id = "core_integration_tests"
 status = "canonical"
 owner_bead = "yazelix-9opk.4"
-measured_loc = 7154
+measured_loc = 6725
 measured_files = 17
-max_loc = 7154
+max_loc = 6725
 target_loc = 4500
 max_files = 17
 allowed_paths = [
@@ -196,9 +201,9 @@ allowed_paths = [
 id = "maintainer_tooling_and_validators"
 status = "canonical_maintainer"
 owner_bead = "yazelix-9opk.5.1"
-measured_loc = 13156
+measured_loc = 14263
 measured_files = 25
-max_loc = 13156
+max_loc = 14263
 target_loc = 9000
 max_files = 25
 allowed_paths = [
