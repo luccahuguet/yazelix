@@ -2861,31 +2861,71 @@ printf '%s\n' '{"schema_version":3,"plugin_block":"CHILD_PLUGIN_BLOCK"}'
         assert_eq!(plugin_block, "CHILD_PLUGIN_BLOCK");
     }
 
-    // Defends: the managed sidebar launcher is a generated config concern rather than a hardcoded Yazi script in layout templates.
+    // Defends: the config-pack renderer boundary preserves representative config and layout behavior during extraction.
     #[test]
-    fn renders_configured_sidebar_launcher_placeholders() {
+    fn renders_config_pack_request_without_placeholder_drift() {
         let mut plan =
             sample_render_plan_for_widgets(vec!["editor"], "hx", "/nix/store/bin/nu", "ghostty");
         plan.left_sidebar_command = "__YAZELIX_RUNTIME_DIR__/bin/custom-sidebar".into();
         plan.left_sidebar_args = vec!["--root".into(), "__YAZELIX_RUNTIME_DIR__/side".into()];
-        let rendered = render_layout_template(
-            r#"pane name="sidebar" {
-    command __YAZELIX_SIDEBAR_COMMAND__
-            __YAZELIX_SIDEBAR_ARGS__
-}"#,
-            &BTreeMap::new(),
-            sample_zjstatus_plugin_block(),
-            "",
-            std::path::Path::new("/home/user"),
-            std::path::Path::new("/opt/yazelix"),
-            &plan,
-        )
-        .unwrap();
+        let mut static_fragments = BTreeMap::new();
+        static_fragments.insert(
+            "__YAZELIX_SWAP_SIDEBAR_OPEN__".to_string(),
+            r#"pane name="fragmented-sidebar" { command "sidebar-fragment" }"#.to_string(),
+        );
+        let request = ZellijConfigPackRenderRequest {
+            base_config_content:
+                "scroll_buffer_size 100\nkeybinds { normal { bind \"Alt h\" { MoveFocusOrTab \"left\"; } } }\n"
+                    .to_string(),
+            override_keybinds: vec![
+                r#"    normal { bind "Alt X" { SwitchToMode "Normal"; } }"#.to_string(),
+            ],
+            render_plan: plan,
+            popup_commands: default_popup_commands(),
+            custom_popups: vec![CustomPopup {
+                id: "gitui".to_string(),
+                command: vec!["gitui".to_string()],
+                keybindings: vec!["Alt Shift G".to_string()],
+                keep_alive: false,
+            }],
+            layout_source_present: true,
+            layout_templates: vec![ZellijConfigPackLayoutTemplate {
+                relative_path: "yzx_side.kdl".to_string(),
+                content: r#"layout {
+    __YAZELIX_ZJSTATUS_TAB_TEMPLATE__
+    __YAZELIX_SWAP_SIDEBAR_OPEN__
+    pane cwd="__YAZELIX_HOME_DIR__" { plugin location="__YAZELIX_PANE_ORCHESTRATOR_PLUGIN_URL__" }
+    pane { command __YAZELIX_SIDEBAR_COMMAND__ __YAZELIX_SIDEBAR_ARGS__ }
+}"#
+                .to_string(),
+            }],
+            static_fragments,
+            zjstatus_plugin_block: sample_zjstatus_plugin_block().to_string(),
+            pane_orchestrator_wasm_path: PathBuf::from("/nix/store/pane.wasm"),
+            yzpp_wasm_path: PathBuf::from("/nix/store/yzpp.wasm"),
+            home_dir: PathBuf::from("/home/user"),
+            runtime_dir: PathBuf::from("/opt/yazelix"),
+            generation_fingerprint: "gen-test".to_string(),
+        };
+        let output = render_zellij_config_pack(&request).unwrap();
+        let rendered_layout = &output.layout_files[0].content;
 
-        assert!(rendered.contains(r#"command "/opt/yazelix/bin/custom-sidebar""#));
-        assert!(rendered.contains(r#"args "--root" "/opt/yazelix/side""#));
-        assert!(!rendered.contains("__YAZELIX_SIDEBAR_COMMAND__"));
-        assert!(!rendered.contains("__YAZELIX_SIDEBAR_ARGS__"));
+        assert_eq!(output.layout_files[0].relative_path, "yzx_side.kdl");
+        assert!(output.merged_config.contains("scroll_buffer_size 100"));
+        assert!(output.merged_config.contains("Alt X"));
+        assert!(output.merged_config.contains("gitui"));
+        assert!(output.merged_config.contains("file:/nix/store/yzpp.wasm"));
+        assert!(rendered_layout.starts_with(&generated_zellij_layout_header("gen-test")));
+        assert!(rendered_layout.contains("fragmented-sidebar"));
+        assert!(rendered_layout.contains(r#"plugin location="file:/tmp/zjstatus.wasm" {"#));
+        assert!(rendered_layout.contains(r#"plugin location="file:/nix/store/pane.wasm""#));
+        assert!(rendered_layout.contains(r#"pane cwd="/home/user" {"#));
+        assert!(rendered_layout.contains(r#"command "/opt/yazelix/bin/custom-sidebar""#));
+        assert!(rendered_layout.contains(r#"args "--root" "/opt/yazelix/side""#));
+        for placeholder in ZELLIJ_CONFIG_PACK_REQUIRED_LAYOUT_PLACEHOLDERS {
+            assert!(!rendered_layout.contains(placeholder));
+        }
+        assert!(!rendered_layout.contains("__YAZELIX_SWAP_SIDEBAR_OPEN__"));
     }
 
     // Regression: custom sidebar apps must not receive the default Yazi launcher args from normalized config.
@@ -2988,29 +3028,6 @@ printf '%s\n' '{"schema_version":3,"plugin_block":"CHILD_PLUGIN_BLOCK"}'
             initial_tab_line < new_tab_line,
             "{name} initial tab must precede home-scoped new_tab_template"
         );
-    }
-
-    // Defends: generated layouts insert the child-owned zjstatus plugin block without inspecting its internals.
-    #[test]
-    fn substitutes_child_zjstatus_plugin_block() {
-        let plan =
-            sample_render_plan_for_widgets(vec!["workspace"], "hx", "/nix/store/bin/nu", "ghostty");
-        let rendered = render_layout_template(
-            r#"pane size=1 borderless=true {
-    __YAZELIX_ZJSTATUS_TAB_TEMPLATE__
-}"#,
-            &BTreeMap::new(),
-            sample_zjstatus_plugin_block(),
-            "file:/tmp/pane.wasm",
-            std::path::Path::new("/home/user"),
-            std::path::Path::new("/opt/yazelix"),
-            &plan,
-        )
-        .unwrap();
-
-        assert!(rendered.contains(r#"plugin location="file:/tmp/zjstatus.wasm" {"#));
-        assert!(rendered.contains(r#"pipe_workspace_format "child-owned-workspace""#));
-        assert!(!rendered.contains("__YAZELIX_ZJSTATUS_TAB_TEMPLATE__"));
     }
 
     // Regression: semantic keybinding generation routes popup/menu/config to yzpp while keeping workspace actions on the pane orchestrator.
