@@ -528,16 +528,39 @@ fn yazi_keymap_entry(spec: &crate::action_registry::YaziActionSpec, key: &str) -
 mod tests {
     use super::*;
     use pretty_assertions::assert_eq;
+    use std::collections::BTreeSet;
     use std::fs;
     use tempfile::tempdir;
 
-    // Regression: Yazi TOML sidecar arrays replace generated defaults, while opener.edit stays Yazelix-owned.
+    // Defends: the pure Yazi config-pack renderer preserves generated TOML/Lua behavior before child extraction.
     #[test]
-    fn deep_merge_replaces_arrays_and_preserves_base_edit_opener() {
-        let base = toml::from_str::<toml::Table>(
-            r#"
+    fn render_yazi_config_pack_preserves_generated_contracts() {
+        let temp = tempdir().unwrap();
+        let runtime_dir = temp.path().join("runtime");
+        let starship_config_path = temp.path().join("state/yazelix_starship.toml");
+        let render_plan = compute_yazi_render_plan(&YaziRenderPlanRequest {
+            yazi_theme: "dracula".to_string(),
+            appearance_mode: "dark".to_string(),
+            yazi_sort_by: "modified".to_string(),
+            yazi_plugins: Some(vec![
+                "git".to_string(),
+                "starship".to_string(),
+                "missing-plugin".to_string(),
+            ]),
+        })
+        .unwrap();
+        let available_plugins = render_plan
+            .init_lua
+            .load_order
+            .iter()
+            .filter(|name| *name != "missing-plugin")
+            .cloned()
+            .collect::<BTreeSet<_>>();
+        let templates = writer::YaziConfigPackTemplateData {
+            yazi_toml: toml::from_str::<toml::Table>(
+                r#"
 [opener]
-edit = [{ run = "base-edit" }]
+edit = [{ run = "__YAZELIX_RUNTIME_DIR__/libexec/yzx_control zellij open-editor %s" }]
 
 [mgr]
 ratio = [1, 4, 3]
@@ -547,9 +570,20 @@ url = "*"
 run = "git"
 group = "git"
 "#,
-        )
-        .unwrap();
-        let user = toml::from_str::<toml::Table>(
+            )
+            .unwrap(),
+            theme_toml: toml::from_str::<toml::Table>("[status]\noverall = { bg = \"black\" }\n")
+                .unwrap(),
+            keymap_toml: toml::from_str::<toml::Table>(
+                r#"[[mgr.prepend_keymap]]
+on = ["g", "l"]
+run = "plugin lazygit"
+desc = "Open lazygit"
+"#,
+            )
+            .unwrap(),
+        };
+        let user_yazi_config = toml::from_str::<toml::Table>(
             r#"
 [opener]
 edit = [{ run = "user-edit" }]
@@ -565,23 +599,56 @@ group = "extra"
 "#,
         )
         .unwrap();
-
-        let mut merged = writer::merge_yazi_toml_config(base.clone(), user);
-        writer::preserve_yazelix_edit_opener(&base, &mut merged);
+        let semantic_keymap = toml::from_str::<toml::Table>(
+            r#"[[mgr.append_keymap]]
+on = ["<A-x>"]
+run = "plugin zoxide-editor"
+desc = "Open zoxide in editor"
+"#,
+        )
+        .unwrap();
+        let user_keymap = toml::from_str::<toml::Table>(
+            r#"[[input.append_keymap]]
+on = ["<Esc>"]
+run = "close"
+desc = "Close input"
+"#,
+        )
+        .unwrap();
+        let rendered = writer::render_yazi_config_pack(&writer::YaziConfigPackRenderRequest {
+            templates: &templates,
+            runtime_dir: &runtime_dir,
+            starship_config_path: &starship_config_path,
+            render_plan: &render_plan,
+            user_yazi_config: Some(&user_yazi_config),
+            user_keymap: Some(&user_keymap),
+            user_init_lua: Some("-- user init\nreturn true\n"),
+            semantic_keymap: &semantic_keymap,
+            available_plugins: &available_plugins,
+        })
+        .unwrap();
+        let parsed_yazi = toml::from_str::<TomlValue>(&rendered.yazi_toml).unwrap();
+        let parsed_keymap = toml::from_str::<TomlValue>(&rendered.keymap_toml).unwrap();
 
         assert_eq!(
-            merged
+            parsed_yazi
                 .get("opener")
                 .and_then(TomlValue::as_table)
                 .and_then(|opener| opener.get("edit"))
-                .unwrap(),
-            base.get("opener")
-                .and_then(TomlValue::as_table)
-                .and_then(|opener| opener.get("edit"))
-                .unwrap()
+                .and_then(TomlValue::as_array)
+                .and_then(|entries| entries.first())
+                .and_then(|entry| entry.get("run"))
+                .and_then(TomlValue::as_str),
+            Some(
+                format!(
+                    "{}/libexec/yzx_control zellij open-editor %s",
+                    runtime_dir.to_string_lossy()
+                )
+                .as_str()
+            )
         );
         assert_eq!(
-            merged
+            parsed_yazi
                 .get("mgr")
                 .and_then(TomlValue::as_table)
                 .and_then(|mgr| mgr.get("ratio"))
@@ -590,17 +657,42 @@ group = "extra"
             &vec![1.into(), 4.into(), 0.into()]
         );
         assert_eq!(
-            merged
-                .get("plugin")
+            parsed_yazi
+                .get("manager")
                 .and_then(TomlValue::as_table)
-                .and_then(|plugin| plugin.get("prepend_fetchers"))
-                .and_then(TomlValue::as_array)
-                .and_then(|fetchers| fetchers.first())
-                .and_then(TomlValue::as_table)
-                .and_then(|fetcher| fetcher.get("group"))
+                .and_then(|mgr| mgr.get("sort_by"))
                 .and_then(TomlValue::as_str),
-            Some("extra")
+            Some("modified")
         );
+        assert_eq!(
+            parsed_keymap
+                .get("mgr")
+                .and_then(|section| section.get("append_keymap"))
+                .and_then(TomlValue::as_array)
+                .and_then(|entries| entries.first())
+                .and_then(|entry| entry.get("run"))
+                .and_then(TomlValue::as_str),
+            Some("plugin zoxide-editor")
+        );
+        assert_eq!(
+            parsed_keymap
+                .get("input")
+                .and_then(|section| section.get("append_keymap"))
+                .and_then(TomlValue::as_array)
+                .and_then(|entries| entries.first())
+                .and_then(|entry| entry.get("run"))
+                .and_then(TomlValue::as_str),
+            Some("close")
+        );
+        assert_eq!(rendered.missing_plugins, vec!["missing-plugin"]);
+        assert!(rendered.init_lua.contains("require(\"starship\")"));
+        assert!(
+            rendered
+                .init_lua
+                .contains(starship_config_path.to_string_lossy().as_ref())
+        );
+        assert!(rendered.init_lua.contains("-- user init"));
+        assert!(!rendered.yazi_toml.contains("__YAZELIX_RUNTIME_DIR__"));
     }
 
     // Defends: missing bundled asset targets are detected so warm Yazi generation can self-heal deleted files.

@@ -36,14 +36,14 @@ pub(super) struct YaziConfigPackWriteData {
     pub managed_files: Vec<YaziManagedFileStatus>,
 }
 
-struct YaziConfigPackTemplateData {
-    yazi_toml: toml::Table,
-    theme_toml: toml::Table,
-    keymap_toml: toml::Table,
+pub(super) struct YaziConfigPackTemplateData {
+    pub(super) yazi_toml: toml::Table,
+    pub(super) theme_toml: toml::Table,
+    pub(super) keymap_toml: toml::Table,
 }
 
 pub(super) struct YaziConfigPackRenderRequest<'a> {
-    templates: &'a YaziConfigPackTemplateData,
+    pub(super) templates: &'a YaziConfigPackTemplateData,
     pub runtime_dir: &'a Path,
     pub starship_config_path: &'a Path,
     pub render_plan: &'a YaziRenderPlanData,
