@@ -148,7 +148,6 @@ const AGENT_COMMAND: YzxCommandMetadata = metadata(
         "Launch host-installed Codex when available, otherwise show an actionable right-sidebar shell placeholder.",
     ),
 );
-const AGENT_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[AGENT_COMMAND];
 
 const ENV_COMMAND: YzxCommandMetadata = metadata(
     "yzx env",
@@ -207,8 +206,6 @@ const UPDATE_UPSTREAM_COMMAND: YzxCommandMetadata = metadata(
     Some("Upgrade the active default-profile Yazelix package."),
 );
 
-const ENV_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[ENV_COMMAND];
-const RUN_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[RUN_COMMAND];
 const INSPECT_COMMAND: YzxCommandMetadata = metadata(
     "yzx inspect",
     "Inspect active Yazelix runtime truth",
@@ -219,8 +216,6 @@ const INSPECT_COMMAND: YzxCommandMetadata = metadata(
         "Emit a stable runtime/config/install/session report for humans, agents, and diagnostics.",
     ),
 );
-const INSPECT_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[INSPECT_COMMAND];
-const STATUS_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[STATUS_COMMAND];
 const DOCTOR_COMMAND: YzxCommandMetadata = metadata(
     "yzx doctor",
     "Run health checks and diagnostics",
@@ -229,13 +224,6 @@ const DOCTOR_COMMAND: YzxCommandMetadata = metadata(
     Some(YzxMenuCategory::System),
     None,
 );
-const DOCTOR_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[DOCTOR_COMMAND];
-const UPDATE_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[
-    UPDATE_ROOT_COMMAND,
-    UPDATE_HOME_MANAGER_COMMAND,
-    UPDATE_NIX_COMMAND,
-    UPDATE_UPSTREAM_COMMAND,
-];
 const CONFIG_ROOT_COMMAND: YzxCommandMetadata = metadata(
     "yzx config",
     "Show the active Yazelix configuration",
@@ -268,12 +256,6 @@ const CONFIG_UNSET_COMMAND: YzxCommandMetadata = metadata(
     Some(YzxMenuCategory::Config),
     Some("Remove an explicit value so Yazelix falls back to the shipped default."),
 );
-const CONFIG_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[
-    CONFIG_ROOT_COMMAND,
-    CONFIG_UI_COMMAND,
-    CONFIG_SET_COMMAND,
-    CONFIG_UNSET_COMMAND,
-];
 const RESET_ROOT_COMMAND: YzxCommandMetadata = metadata(
     "yzx reset",
     "Show Yazelix reset targets",
@@ -290,7 +272,6 @@ const RESET_CONFIG_COMMAND: YzxCommandMetadata = metadata(
     Some(YzxMenuCategory::Config),
     Some("Reset settings.jsonc back to the shipped default."),
 );
-const RESET_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[RESET_ROOT_COMMAND, RESET_CONFIG_COMMAND];
 const CURSORS_COMMAND: YzxCommandMetadata = metadata(
     "yzx cursors",
     "Inspect Yazelix cursor presets and resolved colors",
@@ -299,7 +280,6 @@ const CURSORS_COMMAND: YzxCommandMetadata = metadata(
     Some(YzxMenuCategory::Config),
     Some("Show the active settings.jsonc cursor registry, effects, and resolved preset colors."),
 );
-const CURSORS_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[CURSORS_COMMAND];
 const HOME_MANAGER_ROOT_COMMAND: YzxCommandMetadata = metadata(
     "yzx home_manager",
     "Show Yazelix Home Manager takeover helpers",
@@ -316,8 +296,6 @@ const HOME_MANAGER_PREPARE_COMMAND: YzxCommandMetadata = metadata(
     Some(YzxMenuCategory::System),
     Some("Preview or archive manual-install artifacts before Home Manager takeover."),
 );
-const HOME_MANAGER_FAMILY_COMMANDS: &[YzxCommandMetadata] =
-    &[HOME_MANAGER_ROOT_COMMAND, HOME_MANAGER_PREPARE_COMMAND];
 const SPONSOR_COMMAND: YzxCommandMetadata = metadata(
     "yzx sponsor",
     "Open the Yazelix sponsor page or print its URL",
@@ -326,7 +304,6 @@ const SPONSOR_COMMAND: YzxCommandMetadata = metadata(
     Some(YzxMenuCategory::Help),
     Some("Show the sponsorship links and support message."),
 );
-const SPONSOR_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[SPONSOR_COMMAND];
 const WHY_COMMAND: YzxCommandMetadata = metadata(
     "yzx why",
     "Elevator pitch: Why Yazelix",
@@ -335,7 +312,6 @@ const WHY_COMMAND: YzxCommandMetadata = metadata(
     Some(YzxMenuCategory::Help),
     None,
 );
-const WHY_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[WHY_COMMAND];
 const SCREEN_COMMAND: YzxCommandMetadata = metadata(
     "yzx screen",
     "Show an animated Yazelix full-terminal screen",
@@ -344,7 +320,6 @@ const SCREEN_COMMAND: YzxCommandMetadata = metadata(
     Some(YzxMenuCategory::Workspace),
     Some("Preview the animated welcome screen directly in the current terminal."),
 );
-const SCREEN_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[SCREEN_COMMAND];
 const TUTOR_ROOT_COMMAND: YzxCommandMetadata = metadata(
     "yzx tutor",
     "Show the Yazelix guided overview",
@@ -425,18 +400,6 @@ const TUTOR_NUSHELL_COMMAND: YzxCommandMetadata = metadata(
     Some(YzxMenuCategory::Help),
     None,
 );
-const TUTOR_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[
-    TUTOR_ROOT_COMMAND,
-    TUTOR_BEGIN_COMMAND,
-    TUTOR_LIST_COMMAND,
-    TUTOR_WORKSPACE_COMMAND,
-    TUTOR_DISCOVERY_COMMAND,
-    TUTOR_TOOL_TUTORS_COMMAND,
-    TUTOR_HELIX_COMMAND,
-    TUTOR_HX_COMMAND,
-    TUTOR_NU_COMMAND,
-    TUTOR_NUSHELL_COMMAND,
-];
 const WHATS_NEW_COMMAND: YzxCommandMetadata = metadata(
     "yzx whats_new",
     "Show Yazelix changes since the installed runtime",
@@ -445,7 +408,6 @@ const WHATS_NEW_COMMAND: YzxCommandMetadata = metadata(
     Some(YzxMenuCategory::Help),
     Some("Show bundled release notes newer than the installed runtime."),
 );
-const WHATS_NEW_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[WHATS_NEW_COMMAND];
 const IMPORT_ROOT_COMMAND: YzxCommandMetadata = metadata(
     "yzx import",
     "Import native config files into Yazelix-managed override paths",
@@ -478,12 +440,6 @@ const IMPORT_ZELLIJ_COMMAND: YzxCommandMetadata = metadata(
     Some(YzxMenuCategory::Config),
     None,
 );
-const IMPORT_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[
-    IMPORT_ROOT_COMMAND,
-    IMPORT_HELIX_COMMAND,
-    IMPORT_YAZI_COMMAND,
-    IMPORT_ZELLIJ_COMMAND,
-];
 const EDIT_ROOT_COMMAND: YzxCommandMetadata = metadata(
     "yzx edit",
     "Open a Yazelix-managed config surface in the configured editor",
@@ -500,7 +456,6 @@ const EDIT_CONFIG_COMMAND: YzxCommandMetadata = metadata(
     Some(YzxMenuCategory::Config),
     Some("Open the active Yazelix config file."),
 );
-const EDIT_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[EDIT_ROOT_COMMAND, EDIT_CONFIG_COMMAND];
 
 const ONBOARD_COMMAND: YzxCommandMetadata = metadata(
     "yzx onboard",
@@ -512,39 +467,100 @@ const ONBOARD_COMMAND: YzxCommandMetadata = metadata(
         "Interactive setup for core editor, shell, terminal, sidebar, session, and status-bar choices.",
     ),
 );
-const ONBOARD_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[ONBOARD_COMMAND];
 
 const RUST_CONTROL_FAMILIES: &[YzxRustControlFamily] = &[
-    rust_control_family("agent", AGENT_FAMILY_COMMANDS),
-    rust_control_family("config", CONFIG_FAMILY_COMMANDS),
-    rust_control_family("cursors", CURSORS_FAMILY_COMMANDS),
-    rust_control_family("desktop", DESKTOP_FAMILY_COMMANDS),
+    rust_control_family("agent", &[AGENT_COMMAND]),
+    rust_control_family(
+        "config",
+        &[
+            CONFIG_ROOT_COMMAND,
+            CONFIG_UI_COMMAND,
+            CONFIG_SET_COMMAND,
+            CONFIG_UNSET_COMMAND,
+        ],
+    ),
+    rust_control_family("cursors", &[CURSORS_COMMAND]),
+    rust_control_family(
+        "desktop",
+        &[
+            DESKTOP_ROOT_COMMAND,
+            DESKTOP_INSTALL_COMMAND,
+            DESKTOP_LAUNCH_COMMAND,
+            DESKTOP_UNINSTALL_COMMAND,
+            DESKTOP_MACOS_PREVIEW_INSTALL_COMMAND,
+            DESKTOP_MACOS_PREVIEW_UNINSTALL_COMMAND,
+        ],
+    ),
     rust_control_family("dev", DEV_RUST_CONTROL_COMMANDS),
-    rust_control_family("edit", EDIT_FAMILY_COMMANDS),
-    rust_control_family("enter", ENTER_FAMILY_COMMANDS),
-    rust_control_family("env", ENV_FAMILY_COMMANDS),
-    rust_control_family("import", IMPORT_FAMILY_COMMANDS),
-    rust_control_family("inspect", INSPECT_FAMILY_COMMANDS),
-    rust_control_family("launch", LAUNCH_FAMILY_COMMANDS),
-    rust_control_family("menu", MENU_FAMILY_COMMANDS),
-    rust_control_family("onboard", ONBOARD_FAMILY_COMMANDS),
-    rust_control_family("run", RUN_FAMILY_COMMANDS),
-    rust_control_family("popup", POPUP_FAMILY_COMMANDS),
+    rust_control_family("edit", &[EDIT_ROOT_COMMAND, EDIT_CONFIG_COMMAND]),
+    rust_control_family("enter", &[ENTER_COMMAND]),
+    rust_control_family("env", &[ENV_COMMAND]),
+    rust_control_family(
+        "import",
+        &[
+            IMPORT_ROOT_COMMAND,
+            IMPORT_HELIX_COMMAND,
+            IMPORT_YAZI_COMMAND,
+            IMPORT_ZELLIJ_COMMAND,
+        ],
+    ),
+    rust_control_family("inspect", &[INSPECT_COMMAND]),
+    rust_control_family("launch", &[LAUNCH_COMMAND]),
+    rust_control_family("menu", &[MENU_COMMAND]),
+    rust_control_family("onboard", &[ONBOARD_COMMAND]),
+    rust_control_family("run", &[RUN_COMMAND]),
+    rust_control_family("popup", &[POPUP_COMMAND]),
     rust_control_family("popup_run", &[]),
-    rust_control_family("sidebar", SIDEBAR_FAMILY_COMMANDS),
-    rust_control_family("reveal", REVEAL_FAMILY_COMMANDS),
-    rust_control_family("reset", RESET_FAMILY_COMMANDS),
-    rust_control_family("restart", RESTART_FAMILY_COMMANDS),
-    rust_control_family("screen", SCREEN_FAMILY_COMMANDS),
-    rust_control_family("status", STATUS_FAMILY_COMMANDS),
-    rust_control_family("tutor", TUTOR_FAMILY_COMMANDS),
-    rust_control_family("doctor", DOCTOR_FAMILY_COMMANDS),
-    rust_control_family("home_manager", HOME_MANAGER_FAMILY_COMMANDS),
-    rust_control_family("keys", KEYS_FAMILY_COMMANDS),
-    rust_control_family("sponsor", SPONSOR_FAMILY_COMMANDS),
-    rust_control_family("update", UPDATE_FAMILY_COMMANDS),
-    rust_control_family("whats_new", WHATS_NEW_FAMILY_COMMANDS),
-    rust_control_family("why", WHY_FAMILY_COMMANDS),
+    rust_control_family("sidebar", &[SIDEBAR_YAZI_COMMAND, SIDEBAR_REFRESH_COMMAND]),
+    rust_control_family("reveal", &[REVEAL_COMMAND]),
+    rust_control_family("reset", &[RESET_ROOT_COMMAND, RESET_CONFIG_COMMAND]),
+    rust_control_family("restart", &[RESTART_COMMAND]),
+    rust_control_family("screen", &[SCREEN_COMMAND]),
+    rust_control_family("status", &[STATUS_COMMAND]),
+    rust_control_family(
+        "tutor",
+        &[
+            TUTOR_ROOT_COMMAND,
+            TUTOR_BEGIN_COMMAND,
+            TUTOR_LIST_COMMAND,
+            TUTOR_WORKSPACE_COMMAND,
+            TUTOR_DISCOVERY_COMMAND,
+            TUTOR_TOOL_TUTORS_COMMAND,
+            TUTOR_HELIX_COMMAND,
+            TUTOR_HX_COMMAND,
+            TUTOR_NU_COMMAND,
+            TUTOR_NUSHELL_COMMAND,
+        ],
+    ),
+    rust_control_family("doctor", &[DOCTOR_COMMAND]),
+    rust_control_family(
+        "home_manager",
+        &[HOME_MANAGER_ROOT_COMMAND, HOME_MANAGER_PREPARE_COMMAND],
+    ),
+    rust_control_family(
+        "keys",
+        &[
+            KEYS_ROOT_COMMAND,
+            KEYS_HELIX_COMMAND,
+            KEYS_HX_COMMAND,
+            KEYS_NU_COMMAND,
+            KEYS_NUSHELL_COMMAND,
+            KEYS_YAZI_COMMAND,
+            KEYS_YZX_COMMAND,
+        ],
+    ),
+    rust_control_family("sponsor", &[SPONSOR_COMMAND]),
+    rust_control_family(
+        "update",
+        &[
+            UPDATE_ROOT_COMMAND,
+            UPDATE_HOME_MANAGER_COMMAND,
+            UPDATE_NIX_COMMAND,
+            UPDATE_UPSTREAM_COMMAND,
+        ],
+    ),
+    rust_control_family("whats_new", &[WHATS_NEW_COMMAND]),
+    rust_control_family("why", &[WHY_COMMAND]),
 ];
 
 const DESKTOP_ROOT_COMMAND: YzxCommandMetadata = metadata(
@@ -595,15 +611,6 @@ const DESKTOP_MACOS_PREVIEW_UNINSTALL_COMMAND: YzxCommandMetadata = metadata(
     Some(YzxMenuCategory::System),
     Some("Remove the Yazelix-managed experimental macOS launcher preview."),
 );
-const DESKTOP_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[
-    DESKTOP_ROOT_COMMAND,
-    DESKTOP_INSTALL_COMMAND,
-    DESKTOP_LAUNCH_COMMAND,
-    DESKTOP_UNINSTALL_COMMAND,
-    DESKTOP_MACOS_PREVIEW_INSTALL_COMMAND,
-    DESKTOP_MACOS_PREVIEW_UNINSTALL_COMMAND,
-];
-
 const DEV_ROOT_COMMAND: YzxCommandMetadata = metadata(
     "yzx dev",
     "Runtime diagnostics",
@@ -642,7 +649,6 @@ const ENTER_COMMAND: YzxCommandMetadata = metadata(
     Some(YzxMenuCategory::Session),
     None,
 );
-const ENTER_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[ENTER_COMMAND];
 
 const KEYS_ROOT_COMMAND: YzxCommandMetadata = metadata(
     "yzx keys",
@@ -700,16 +706,6 @@ const KEYS_YZX_COMMAND: YzxCommandMetadata = metadata(
     Some(YzxMenuCategory::Help),
     None,
 );
-const KEYS_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[
-    KEYS_ROOT_COMMAND,
-    KEYS_HELIX_COMMAND,
-    KEYS_HX_COMMAND,
-    KEYS_NU_COMMAND,
-    KEYS_NUSHELL_COMMAND,
-    KEYS_YAZI_COMMAND,
-    KEYS_YZX_COMMAND,
-];
-
 const LAUNCH_COMMAND: YzxCommandMetadata = metadata(
     "yzx launch",
     "Launch Yazelix",
@@ -718,7 +714,6 @@ const LAUNCH_COMMAND: YzxCommandMetadata = metadata(
     Some(YzxMenuCategory::Session),
     None,
 );
-const LAUNCH_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[LAUNCH_COMMAND];
 
 const MENU_COMMAND: YzxCommandMetadata = metadata(
     "yzx menu",
@@ -728,7 +723,6 @@ const MENU_COMMAND: YzxCommandMetadata = metadata(
     None,
     None,
 );
-const MENU_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[MENU_COMMAND];
 
 const POPUP_COMMAND: YzxCommandMetadata = metadata(
     "yzx popup",
@@ -738,7 +732,6 @@ const POPUP_COMMAND: YzxCommandMetadata = metadata(
     Some(YzxMenuCategory::Workspace),
     Some("Open a floating terminal tool pane, for example `yzx popup lazygit`."),
 );
-const POPUP_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[POPUP_COMMAND];
 
 const SIDEBAR_REFRESH_COMMAND: YzxCommandMetadata = metadata(
     "yzx sidebar refresh",
@@ -756,8 +749,6 @@ const SIDEBAR_YAZI_COMMAND: YzxCommandMetadata = metadata(
     Some(YzxMenuCategory::Workspace),
     Some("Launch the managed Yazi file-tree sidebar."),
 );
-const SIDEBAR_FAMILY_COMMANDS: &[YzxCommandMetadata] =
-    &[SIDEBAR_YAZI_COMMAND, SIDEBAR_REFRESH_COMMAND];
 
 const RESTART_COMMAND: YzxCommandMetadata = metadata(
     "yzx restart",
@@ -767,7 +758,6 @@ const RESTART_COMMAND: YzxCommandMetadata = metadata(
     Some(YzxMenuCategory::Session),
     Some("Restart Yazelix. Use `--skip` or `-s` to skip the welcome screen once."),
 );
-const RESTART_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[RESTART_COMMAND];
 
 const REVEAL_COMMAND: YzxCommandMetadata = metadata(
     "yzx reveal",
@@ -777,7 +767,6 @@ const REVEAL_COMMAND: YzxCommandMetadata = metadata(
     Some(YzxMenuCategory::Workspace),
     Some("Reveal a path in the managed Yazi sidebar."),
 );
-const REVEAL_FAMILY_COMMANDS: &[YzxCommandMetadata] = &[REVEAL_COMMAND];
 
 pub fn yzx_command_metadata() -> Vec<YzxCommandMetadata> {
     let mut commands = vec![ROOT_COMMAND];
@@ -902,66 +891,32 @@ const fn rust_control_family(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::BTreeSet;
 
-    // Defends: the public Rust root keeps the already migrated control-plane family on the Rust-owned path.
+    fn assert_rust_control(args: &[&str]) {
+        let argv = args
+            .iter()
+            .map(|arg| (*arg).to_string())
+            .collect::<Vec<_>>();
+        assert_eq!(
+            classify_yzx_root_route(&argv).unwrap(),
+            YzxPublicRootRoute::RustControl
+        );
+    }
+
+    // Defends: every metadata-owned command root routes through the Rust control plane.
     #[test]
-    fn classifies_rust_owned_control_family_at_root() {
-        assert_eq!(
-            classify_yzx_root_route(&["env".into(), "--no-shell".into()]).unwrap(),
-            YzxPublicRootRoute::RustControl
-        );
-        assert_eq!(
-            classify_yzx_root_route(&["config".into(), "--path".into()]).unwrap(),
-            YzxPublicRootRoute::RustControl
-        );
-        assert_eq!(
-            classify_yzx_root_route(&["reset".into(), "config".into(), "--yes".into()]).unwrap(),
-            YzxPublicRootRoute::RustControl
-        );
-        assert_eq!(
-            classify_yzx_root_route(&["cursors".into()]).unwrap(),
-            YzxPublicRootRoute::RustControl
-        );
-        assert_eq!(
-            classify_yzx_root_route(&["run".into(), "rg".into()]).unwrap(),
-            YzxPublicRootRoute::RustControl
-        );
-        assert_eq!(
-            classify_yzx_root_route(&["agent".into()]).unwrap(),
-            YzxPublicRootRoute::RustControl
-        );
-        assert_eq!(
-            classify_yzx_root_route(&["reveal".into(), "/tmp/file".into()]).unwrap(),
-            YzxPublicRootRoute::RustControl
-        );
-        assert_eq!(
-            classify_yzx_root_route(&["doctor".into(), "--json".into()]).unwrap(),
-            YzxPublicRootRoute::RustControl
-        );
-        assert_eq!(
-            classify_yzx_root_route(&["update".into(), "nix".into()]).unwrap(),
-            YzxPublicRootRoute::RustControl
-        );
-        assert_eq!(
-            classify_yzx_root_route(&["home_manager".into(), "prepare".into()]).unwrap(),
-            YzxPublicRootRoute::RustControl
-        );
-        assert_eq!(
-            classify_yzx_root_route(&["keys".into(), "helix".into()]).unwrap(),
-            YzxPublicRootRoute::RustControl
-        );
-        assert_eq!(
-            classify_yzx_root_route(&["keys".into(), "yazi".into()]).unwrap(),
-            YzxPublicRootRoute::RustControl
-        );
-        assert_eq!(
-            classify_yzx_root_route(&["sponsor".into()]).unwrap(),
-            YzxPublicRootRoute::RustControl
-        );
-        assert_eq!(
-            classify_yzx_root_route(&["why".into()]).unwrap(),
-            YzxPublicRootRoute::RustControl
-        );
+    fn classifies_metadata_command_roots_at_root() {
+        let mut roots = yzx_command_metadata()
+            .into_iter()
+            .filter_map(|command| command.name.strip_prefix("yzx "))
+            .filter_map(|tail| tail.split_whitespace().next())
+            .collect::<BTreeSet<_>>();
+        roots.insert("popup_run");
+
+        for root in roots {
+            assert_rust_control(&[root]);
+        }
     }
 
     // Defends: the shared root classifier preserves no-arg help, help flags, and all supported version flags.
@@ -1006,57 +961,35 @@ mod tests {
     // Defends: grouped Rust-owned families route through yzx_control instead of reviving direct Nu module ownership.
     #[test]
     fn routes_grouped_rust_family_to_control_plane() {
-        let argv = [String::from("desktop"), String::from("launch")];
-        let route = classify_yzx_root_route(&argv).unwrap();
-        assert!(matches!(route, YzxPublicRootRoute::RustControl));
-
-        let menu_argv = [String::from("menu")];
-        let route = classify_yzx_root_route(&menu_argv).unwrap();
-        assert!(matches!(route, YzxPublicRootRoute::RustControl));
-
-        let popup_run_argv = [String::from("popup_run"), String::from("--help")];
-        let route = classify_yzx_root_route(&popup_run_argv).unwrap();
-        assert!(matches!(route, YzxPublicRootRoute::RustControl));
+        for args in [
+            &["desktop", "launch"][..],
+            &["menu"][..],
+            &["popup_run", "--help"][..],
+        ] {
+            assert_rust_control(args);
+        }
     }
 
     // Regression: grouped Rust-owned families route through the Rust control plane even for help aliases.
     #[test]
     fn routes_grouped_help_aliases_to_control_plane() {
-        let dev_argv = [
-            String::from("dev"),
-            String::from("help"),
-            String::from("ignored"),
-        ];
-        let route = classify_yzx_root_route(&dev_argv).unwrap();
-        assert!(matches!(route, YzxPublicRootRoute::RustControl));
-
-        let import_argv = [String::from("import"), String::from("--help")];
-        let route = classify_yzx_root_route(&import_argv).unwrap();
-        assert!(matches!(route, YzxPublicRootRoute::RustControl));
+        for args in [&["dev", "help", "ignored"][..], &["import", "--help"][..]] {
+            assert_rust_control(args);
+        }
     }
 
     // Regression: the direct route planner must preserve alias leaves and the family-specific missing-subcommand contract.
     #[test]
     fn preserves_alias_and_missing_subcommand_contracts() {
-        let edit_argv = [String::from("edit"), String::from("config")];
-        let route = classify_yzx_root_route(&edit_argv).unwrap();
-        assert!(matches!(route, YzxPublicRootRoute::RustControl));
-
-        let tutor_argv = [String::from("tutor"), String::from("nushell")];
-        let route = classify_yzx_root_route(&tutor_argv).unwrap();
-        assert!(matches!(route, YzxPublicRootRoute::RustControl));
-
-        let screen_argv = [String::from("screen"), String::from("logo")];
-        let route = classify_yzx_root_route(&screen_argv).unwrap();
-        assert!(matches!(route, YzxPublicRootRoute::RustControl));
-
-        let desktop_argv = [String::from("desktop")];
-        let desktop_route = classify_yzx_root_route(&desktop_argv).unwrap();
-        assert!(matches!(desktop_route, YzxPublicRootRoute::RustControl));
-
-        let dev_argv = [String::from("dev"), String::from("not-a-subcommand")];
-        let route = classify_yzx_root_route(&dev_argv).unwrap();
-        assert!(matches!(route, YzxPublicRootRoute::RustControl));
+        for args in [
+            &["edit", "config"][..],
+            &["tutor", "nushell"][..],
+            &["screen", "logo"][..],
+            &["desktop"][..],
+            &["dev", "not-a-subcommand"][..],
+        ] {
+            assert_rust_control(args);
+        }
     }
 
     // Regression: menu visibility and menu categories come from the shared Rust command surface instead of a second Nushell-owned map.
