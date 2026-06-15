@@ -1,7 +1,7 @@
 [contract]
-measured_total_loc = 76561
+measured_total_loc = 76542
 measured_total_file_count = 151
-current_total_loc_max = 76561
+current_total_loc_max = 76542
 current_total_file_count_max = 151
 hard_target_loc = 60000
 
@@ -102,9 +102,9 @@ allowed_paths = [
 id = "core_diagnostics_and_recovery"
 status = "canonical"
 owner_bead = "yazelix-ykti.2"
-measured_loc = 7951
+measured_loc = 7932
 measured_files = 8
-max_loc = 7951
+max_loc = 7932
 target_loc = 4500
 max_files = 8
 allowed_paths = [

@@ -389,13 +389,7 @@ fn compute_doctor_report_from_env() -> Result<DoctorReportData, CoreError> {
     results.extend(config_findings);
     results.extend(native_config_findings);
     results.extend(workspace_asset_findings);
-    results.extend(
-        install_report
-            .wrapper_shadowing
-            .iter()
-            .map(serialize_value)
-            .collect::<Result<Vec<_>, _>>()?,
-    );
+    results.extend(serialize_values(&install_report.wrapper_shadowing)?);
     results.push(serialize_value(&install_report.install_owner_diagnostic)?);
     if let Some(collision) = install_report.home_manager_profile_collision.as_ref() {
         results.push(serialize_value(collision)?);
@@ -511,17 +505,9 @@ fn collect_runtime_doctor_findings(
     });
 
     let mut results = Vec::new();
-    results.push(
-        serialize_value(&data.distribution).expect("runtime distribution finding should serialize"),
-    );
+    results.push(expect_serialized_value(&data.distribution));
     results.extend(extra);
-    results.extend(
-        data.shared_runtime_preflight
-            .iter()
-            .map(serialize_value)
-            .collect::<Result<Vec<_>, _>>()
-            .expect("runtime preflight findings should serialize"),
-    );
+    results.extend(expect_serialized_values(&data.shared_runtime_preflight));
     results
 }
 
@@ -568,25 +554,14 @@ fn collect_helix_doctor_findings(
     };
     let data = evaluate_helix_doctor_report(&request);
     let mut results = Vec::new();
-    results.push(
-        serialize_value(&data.runtime_conflicts).expect("helix runtime finding should serialize"),
-    );
+    results.push(expect_serialized_value(&data.runtime_conflicts));
     if let Some(runtime_health) = &data.runtime_health {
-        results
-            .push(serialize_value(runtime_health).expect("helix runtime health should serialize"));
+        results.push(expect_serialized_value(runtime_health));
     }
     if let Some(external_pair) = &data.external_pair {
-        results.push(
-            serialize_value(external_pair).expect("helix external pair finding should serialize"),
-        );
+        results.push(expect_serialized_value(external_pair));
     }
-    results.extend(
-        data.managed_integration
-            .iter()
-            .map(serialize_value)
-            .collect::<Result<Vec<_>, _>>()
-            .expect("helix managed findings should serialize"),
-    );
+    results.extend(expect_serialized_values(&data.managed_integration));
     results
 }
 
@@ -595,11 +570,7 @@ fn collect_config_doctor_findings(runtime_dir: &Path, config_dir: &Path) -> Vec<
         config_dir: config_dir.to_path_buf(),
         runtime_dir: runtime_dir.to_path_buf(),
     });
-    data.findings
-        .iter()
-        .map(serialize_value)
-        .collect::<Result<Vec<_>, _>>()
-        .expect("config findings should serialize")
+    expect_serialized_values(&data.findings)
 }
 
 fn collect_native_config_status_findings(
@@ -670,14 +641,12 @@ fn native_config_status_finding(entries: Vec<NativeConfigStatusEntry>) -> Value 
 }
 
 fn collect_workspace_asset_doctor_findings(runtime_dir: &Path, state_dir: &Path) -> Vec<Value> {
-    evaluate_workspace_asset_report(&WorkspaceAssetEvaluateRequest {
-        runtime_dir: runtime_dir.to_path_buf(),
-        state_dir: state_dir.to_path_buf(),
-    })
-    .iter()
-    .map(serialize_value)
-    .collect::<Result<Vec<_>, _>>()
-    .expect("workspace asset findings should serialize")
+    expect_serialized_values(&evaluate_workspace_asset_report(
+        &WorkspaceAssetEvaluateRequest {
+            runtime_dir: runtime_dir.to_path_buf(),
+            state_dir: state_dir.to_path_buf(),
+        },
+    ))
 }
 
 fn platform_name_for_runtime_doctor() -> String {
@@ -698,6 +667,18 @@ fn serialize_value<T: Serialize>(value: &T) -> Result<Value, CoreError> {
             json!({}),
         )
     })
+}
+
+fn serialize_values<T: Serialize>(values: &[T]) -> Result<Vec<Value>, CoreError> {
+    values.iter().map(serialize_value).collect()
+}
+
+fn expect_serialized_value<T: Serialize>(value: &T) -> Value {
+    serialize_value(value).expect("doctor finding should serialize")
+}
+
+fn expect_serialized_values<T: Serialize>(values: &[T]) -> Vec<Value> {
+    serialize_values(values).expect("doctor findings should serialize")
 }
 
 fn summarize_doctor_results(results: &[Value]) -> DoctorReportSummary {
