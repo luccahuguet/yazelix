@@ -3,7 +3,6 @@
 
 use crate::active_config_surface::resolve_active_config_paths;
 use crate::bridge::CoreError;
-use crate::config_normalize::{NormalizeConfigRequest, normalize_config};
 use crate::control_plane::{config_dir_from_env, runtime_dir_from_env, state_dir_from_env};
 use crate::ghostty_cursor_registry::{CursorRegistry, YazelixCursorRegistryExt};
 use crate::ghostty_materialization::{
@@ -86,14 +85,8 @@ pub fn launch_materialization_request_from_env(
 
 pub fn prepare_launch_materialization(
     request: &LaunchMaterializationRequest,
+    normalized: &JsonMap<String, JsonValue>,
 ) -> Result<LaunchMaterializationData, CoreError> {
-    let normalized = normalize_config(&NormalizeConfigRequest {
-        config_path: request.config_path.clone(),
-        default_config_path: request.default_config_path.clone(),
-        contract_path: request.contract_path.clone(),
-        include_missing: true,
-    })?
-    .normalized_config;
     let cursor_config_path = request.cursor_config_path.clone();
     let cursors_enabled = runtime_component_enabled(&request.runtime_dir, "cursors")?;
     let cursor_registry = if cursors_enabled {
@@ -106,7 +99,7 @@ pub fn prepare_launch_materialization(
         .map(CursorRegistry::is_random_request)
         .unwrap_or(false);
     let plan = build_launch_materialization_plan(
-        &normalized,
+        normalized,
         &request.active_terminal,
         request.desktop_fast_path,
         request.force_terminal_config_generation,

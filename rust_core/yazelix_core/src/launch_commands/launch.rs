@@ -496,7 +496,7 @@ pub(super) fn run_launch_flow(
         desktop_fast_path && config_state.needs_refresh,
         config_override,
     )?;
-    let materialization = prepare_launch_materialization(&req)?;
+    let materialization = prepare_launch_materialization(&req, &config_state.config)?;
     if !desktop_fast_path && !materialization.generated_terminals.is_empty() {
         let generated = materialization
             .generated_terminals
