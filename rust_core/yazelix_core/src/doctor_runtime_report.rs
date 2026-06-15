@@ -65,6 +65,47 @@ pub struct DoctorRuntimeDoctorFinding {
     pub owner_surface: Option<String>,
 }
 
+impl DoctorRuntimeDoctorFinding {
+    fn new(status: impl Into<String>, message: impl Into<String>) -> Self {
+        Self {
+            status: status.into(),
+            message: message.into(),
+            details: None,
+            fix_available: false,
+            fix_action: None,
+            capability_tier: None,
+            capability_mode: None,
+            runtime_contract_check: None,
+            owner_surface: None,
+        }
+    }
+
+    fn with_details(mut self, details: impl Into<String>) -> Self {
+        self.details = Some(details.into());
+        self
+    }
+
+    fn with_capability_tier(mut self, tier: impl Into<String>) -> Self {
+        self.capability_tier = Some(tier.into());
+        self
+    }
+
+    fn with_capability_mode(mut self, mode: impl Into<String>) -> Self {
+        self.capability_mode = Some(mode.into());
+        self
+    }
+
+    fn with_runtime_contract_check(mut self, check: impl Into<String>) -> Self {
+        self.runtime_contract_check = Some(check.into());
+        self
+    }
+
+    fn with_owner_surface(mut self, surface: impl Into<String>) -> Self {
+        self.owner_surface = Some(surface.into());
+        self
+    }
+}
+
 #[derive(Debug, Serialize)]
 pub struct DoctorRuntimeEvaluateData {
     pub distribution: DoctorRuntimeDoctorFinding,
@@ -98,17 +139,13 @@ pub fn evaluate_doctor_runtime_report(
             &request.runtime_dir,
         ) {
             Ok(v) => v,
-            Err(e) => vec![DoctorRuntimeDoctorFinding {
-                status: "error".into(),
-                message: "Shared runtime preflight evaluation failed".into(),
-                details: Some(e.to_string()),
-                fix_available: false,
-                fix_action: None,
-                capability_tier: None,
-                capability_mode: None,
-                runtime_contract_check: None,
-                owner_surface: None,
-            }],
+            Err(e) => vec![
+                DoctorRuntimeDoctorFinding::new(
+                    "error",
+                    "Shared runtime preflight evaluation failed",
+                )
+                .with_details(e.to_string()),
+            ],
         },
     };
     if let Some(shared) = &request.shared_runtime {
@@ -191,17 +228,15 @@ fn build_host_runtime_tool_findings(
         Ok(Some(manifest)) => manifest,
         Ok(None) => return Vec::new(),
         Err(error) => {
-            return vec![DoctorRuntimeDoctorFinding {
-                status: "warning".into(),
-                message: "Runtime tool manifest could not be read".into(),
-                details: Some(error.message()),
-                fix_available: false,
-                fix_action: None,
-                capability_tier: None,
-                capability_mode: None,
-                runtime_contract_check: Some("runtime_tool_manifest".into()),
-                owner_surface: Some("runtime_tool_sources".into()),
-            }];
+            return vec![
+                DoctorRuntimeDoctorFinding::new(
+                    "warning",
+                    "Runtime tool manifest could not be read",
+                )
+                .with_details(error.message())
+                .with_runtime_contract_check("runtime_tool_manifest")
+                .with_owner_surface("runtime_tool_sources"),
+            ];
         }
     };
 
@@ -217,52 +252,41 @@ fn build_host_runtime_tool_findings(
                 .collect::<Vec<_>>();
 
             if missing_commands.is_empty() {
-                DoctorRuntimeDoctorFinding {
-                    status: "ok".into(),
-                    message: format!("Host runtime tool available: {name}"),
-                    details: Some(format!(
+                DoctorRuntimeDoctorFinding::new(
+                    "ok",
+                    format!("Host runtime tool available: {name}"),
+                )
+                .with_details(format!(
                         "Found required command(s): {}",
                         required_commands.join(", ")
-                    )),
-                    fix_available: false,
-                    fix_action: None,
-                    capability_tier: None,
-                    capability_mode: None,
-                    runtime_contract_check: Some(format!("host_runtime_tool:{name}")),
-                    owner_surface: Some("runtime_tool_sources".into()),
-                }
+                    ))
+                .with_runtime_contract_check(format!("host_runtime_tool:{name}"))
+                .with_owner_surface("runtime_tool_sources")
             } else if runtime_tool_is_optional_host_integration(&tool) {
-                DoctorRuntimeDoctorFinding {
-                    status: "info".into(),
-                    message: format!("Optional host runtime tool unavailable: {name}"),
-                    details: Some(format!(
+                DoctorRuntimeDoctorFinding::new(
+                    "info",
+                    format!("Optional host runtime tool unavailable: {name}"),
+                )
+                .with_details(format!(
                         "Missing optional command(s): {}\nInstall the command on the host if you use this integration.\nSearched PATH entries:\n{}",
                         missing_commands.join(", "),
                         format_path_list(command_search_paths)
-                    )),
-                    fix_available: false,
-                    fix_action: None,
-                    capability_tier: None,
-                    capability_mode: Some("optional_host_runtime_tool_missing".into()),
-                    runtime_contract_check: Some(format!("host_runtime_tool:{name}")),
-                    owner_surface: Some("runtime_tool_sources".into()),
-                }
+                    ))
+                .with_capability_mode("optional_host_runtime_tool_missing")
+                .with_runtime_contract_check(format!("host_runtime_tool:{name}"))
+                .with_owner_surface("runtime_tool_sources")
             } else {
-                DoctorRuntimeDoctorFinding {
-                    status: "warning".into(),
-                    message: format!("Host runtime tool missing: {name}"),
-                    details: Some(format!(
+                DoctorRuntimeDoctorFinding::new(
+                    "warning",
+                    format!("Host runtime tool missing: {name}"),
+                )
+                .with_details(format!(
                         "Missing required command(s): {}\nSearched PATH entries:\n{}",
                         missing_commands.join(", "),
                         format_path_list(command_search_paths)
-                    )),
-                    fix_available: false,
-                    fix_action: None,
-                    capability_tier: None,
-                    capability_mode: None,
-                    runtime_contract_check: Some(format!("host_runtime_tool:{name}")),
-                    owner_surface: Some("runtime_tool_sources".into()),
-                }
+                    ))
+                .with_runtime_contract_check(format!("host_runtime_tool:{name}"))
+                .with_owner_surface("runtime_tool_sources")
             }
         })
         .collect()
@@ -287,19 +311,15 @@ fn build_disabled_runtime_tool_findings(runtime_dir: &Path) -> Vec<DoctorRuntime
     manifest
         .into_iter()
         .filter(|(_, tool)| tool.source == "off")
-        .map(|(name, tool)| DoctorRuntimeDoctorFinding {
-            status: "info".into(),
-            message: format!("Runtime tool disabled: {name}"),
-            details: Some(format!(
-                "Yazelix intentionally omitted command(s): {}",
-                tool.commands.join(", ")
-            )),
-            fix_available: false,
-            fix_action: None,
-            capability_tier: None,
-            capability_mode: Some("off".into()),
-            runtime_contract_check: Some(format!("disabled_runtime_tool:{name}")),
-            owner_surface: Some("runtime_tool_sources".into()),
+        .map(|(name, tool)| {
+            DoctorRuntimeDoctorFinding::new("info", format!("Runtime tool disabled: {name}"))
+                .with_details(format!(
+                    "Yazelix intentionally omitted command(s): {}",
+                    tool.commands.join(", ")
+                ))
+                .with_capability_mode("off")
+                .with_runtime_contract_check(format!("disabled_runtime_tool:{name}"))
+                .with_owner_surface("runtime_tool_sources")
         })
         .collect()
 }
@@ -315,18 +335,14 @@ fn build_disabled_runtime_component_findings(
     manifest
         .into_iter()
         .filter(|(_, component)| !component.enabled)
-        .map(|(name, _)| DoctorRuntimeDoctorFinding {
-            status: "info".into(),
-            message: format!("Runtime component disabled: {name}"),
-            details: Some(format!(
-                "Yazelix intentionally omitted or bypassed the {name} runtime component."
-            )),
-            fix_available: false,
-            fix_action: None,
-            capability_tier: None,
-            capability_mode: Some("off".into()),
-            runtime_contract_check: Some(format!("disabled_runtime_component:{name}")),
-            owner_surface: Some("components".into()),
+        .map(|(name, _)| {
+            DoctorRuntimeDoctorFinding::new("info", format!("Runtime component disabled: {name}"))
+                .with_details(format!(
+                    "Yazelix intentionally omitted or bypassed the {name} runtime component."
+                ))
+                .with_capability_mode("off")
+                .with_runtime_contract_check(format!("disabled_runtime_component:{name}"))
+                .with_owner_surface("components")
         })
         .collect()
 }
@@ -401,20 +417,19 @@ fn deleted_transient_paths_in_initializer(path: &Path) -> Vec<String> {
 fn build_shell_initializer_findings(state_dir: &Path) -> Vec<DoctorRuntimeDoctorFinding> {
     let root = shell_initializers_root(state_dir);
     if !root.exists() {
-        return vec![DoctorRuntimeDoctorFinding {
-            status: "info".into(),
-            message: "Shell initializers have not been generated yet".into(),
-            details: Some(format!(
+        return vec![
+            DoctorRuntimeDoctorFinding::new(
+                "info",
+                "Shell initializers have not been generated yet",
+            )
+            .with_details(format!(
                 "Expected generated initializers under {}. They are created by `yzx enter` and by Home Manager activation.",
                 root.display()
-            )),
-            fix_available: false,
-            fix_action: None,
-            capability_tier: None,
-            capability_mode: Some("missing_generated_initializers".into()),
-            runtime_contract_check: Some("shell_initializer_stale_paths".into()),
-            owner_surface: Some("shell_initializers".into()),
-        }];
+            ))
+            .with_capability_mode("missing_generated_initializers")
+            .with_runtime_contract_check("shell_initializer_stale_paths")
+            .with_owner_surface("shell_initializers"),
+        ];
     }
 
     let stale = collect_initializer_files(&root)
@@ -427,36 +442,34 @@ fn build_shell_initializer_findings(state_dir: &Path) -> Vec<DoctorRuntimeDoctor
         .collect::<Vec<_>>();
 
     if stale.is_empty() {
-        return vec![DoctorRuntimeDoctorFinding {
-            status: "ok".into(),
-            message: "Shell initializers do not reference deleted transient runtime paths".into(),
-            details: Some(format!(
+        return vec![
+            DoctorRuntimeDoctorFinding::new(
+                "ok",
+                "Shell initializers do not reference deleted transient runtime paths",
+            )
+            .with_details(format!(
                 "Checked generated initializers under {}",
                 root.display()
-            )),
-            fix_available: false,
-            fix_action: None,
-            capability_tier: None,
-            capability_mode: Some("generated_initializers_current".into()),
-            runtime_contract_check: Some("shell_initializer_stale_paths".into()),
-            owner_surface: Some("shell_initializers".into()),
-        }];
+            ))
+            .with_capability_mode("generated_initializers_current")
+            .with_runtime_contract_check("shell_initializer_stale_paths")
+            .with_owner_surface("shell_initializers"),
+        ];
     }
 
-    vec![DoctorRuntimeDoctorFinding {
-        status: "warning".into(),
-        message: "Shell initializers reference deleted transient runtime paths".into(),
-        details: Some(format!(
+    vec![
+        DoctorRuntimeDoctorFinding::new(
+            "warning",
+            "Shell initializers reference deleted transient runtime paths",
+        )
+        .with_details(format!(
             "{}\nRepair: run `yzx_control generate_shell_initializers` from the active profile runtime, or reapply Home Manager so activation regenerates them.",
             stale.join("\n")
-        )),
-        fix_available: false,
-        fix_action: None,
-        capability_tier: None,
-        capability_mode: Some("stale_generated_initializers".into()),
-        runtime_contract_check: Some("shell_initializer_stale_paths".into()),
-        owner_surface: Some("shell_initializers".into()),
-    }]
+        ))
+        .with_capability_mode("stale_generated_initializers")
+        .with_runtime_contract_check("shell_initializer_stale_paths")
+        .with_owner_surface("shell_initializers"),
+    ]
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -587,20 +600,19 @@ fn build_yzxterm_launch_log_findings(
             return Vec::new();
         }
 
-        return vec![DoctorRuntimeDoctorFinding {
-            status: "info".into(),
-            message: "Yazelix Terminal desktop launch logs have not been captured yet".into(),
-            details: Some(format!(
+        return vec![
+            DoctorRuntimeDoctorFinding::new(
+                "info",
+                "Yazelix Terminal desktop launch logs have not been captured yet",
+            )
+            .with_details(format!(
                 "Expected yzxterm desktop launch logs under {} after launching the yzxterm runtime from a desktop entry.",
                 log_dir.display()
-            )),
-            fix_available: false,
-            fix_action: None,
-            capability_tier: None,
-            capability_mode: Some("no_yzxterm_launch_logs".into()),
-            runtime_contract_check: Some("yzxterm_launch_logs".into()),
-            owner_surface: Some("terminal_launch_logs".into()),
-        }];
+            ))
+            .with_capability_mode("no_yzxterm_launch_logs")
+            .with_runtime_contract_check("yzxterm_launch_logs")
+            .with_owner_surface("terminal_launch_logs"),
+        ];
     }
 
     let details = render_launch_log_summaries(&logs);
@@ -608,68 +620,64 @@ fn build_yzxterm_launch_log_findings(
         .iter()
         .any(|log| log.status == LaunchLogStatus::LifetimeCaptured)
     {
-        return vec![DoctorRuntimeDoctorFinding {
-            status: "ok".into(),
-            message: "Yazelix Terminal desktop launch lifetime evidence is available".into(),
-            details: Some(details),
-            fix_available: false,
-            fix_action: None,
-            capability_tier: None,
-            capability_mode: Some("yzxterm_launch_lifetime_captured".into()),
-            runtime_contract_check: Some("yzxterm_launch_logs".into()),
-            owner_surface: Some("terminal_launch_logs".into()),
-        }];
+        return vec![
+            DoctorRuntimeDoctorFinding::new(
+                "ok",
+                "Yazelix Terminal desktop launch lifetime evidence is available",
+            )
+            .with_details(details)
+            .with_capability_mode("yzxterm_launch_lifetime_captured")
+            .with_runtime_contract_check("yzxterm_launch_logs")
+            .with_owner_surface("terminal_launch_logs"),
+        ];
     }
 
     if logs
         .iter()
         .any(|log| log.status == LaunchLogStatus::LifetimeWatching)
     {
-        return vec![DoctorRuntimeDoctorFinding {
-            status: "ok".into(),
-            message: "Yazelix Terminal desktop launch lifetime watcher is active".into(),
-            details: Some(details),
-            fix_available: false,
-            fix_action: None,
-            capability_tier: None,
-            capability_mode: Some("yzxterm_launch_lifetime_watching".into()),
-            runtime_contract_check: Some("yzxterm_launch_logs".into()),
-            owner_surface: Some("terminal_launch_logs".into()),
-        }];
+        return vec![
+            DoctorRuntimeDoctorFinding::new(
+                "ok",
+                "Yazelix Terminal desktop launch lifetime watcher is active",
+            )
+            .with_details(details)
+            .with_capability_mode("yzxterm_launch_lifetime_watching")
+            .with_runtime_contract_check("yzxterm_launch_logs")
+            .with_owner_surface("terminal_launch_logs"),
+        ];
     }
 
     if logs
         .iter()
         .any(|log| log.status == LaunchLogStatus::MetadataOnly)
     {
-        return vec![DoctorRuntimeDoctorFinding {
-            status: "warning".into(),
-            message: "Yazelix Terminal desktop launch logs lack lifetime evidence".into(),
-            details: Some(format!(
+        return vec![
+            DoctorRuntimeDoctorFinding::new(
+                "warning",
+                "Yazelix Terminal desktop launch logs lack lifetime evidence",
+            )
+            .with_details(format!(
                 "{details}\nRelaunch yzxterm from the desktop entry to start the lifetime watcher; metadata-only logs cannot prove final exit status or signal."
-            )),
-            fix_available: false,
-            fix_action: None,
-            capability_tier: None,
-            capability_mode: Some("yzxterm_launch_logs_metadata_only".into()),
-            runtime_contract_check: Some("yzxterm_launch_logs".into()),
-            owner_surface: Some("terminal_launch_logs".into()),
-        }];
+            ))
+            .with_capability_mode("yzxterm_launch_logs_metadata_only")
+            .with_runtime_contract_check("yzxterm_launch_logs")
+            .with_owner_surface("terminal_launch_logs"),
+        ];
     }
 
-    vec![DoctorRuntimeDoctorFinding {
-        status: "warning".into(),
-        message: "Yazelix Terminal desktop launch logs are stale or missing metadata".into(),
-        details: Some(format!(
+    vec![
+        DoctorRuntimeDoctorFinding::new(
+            "warning",
+            "Yazelix Terminal desktop launch logs are stale or missing metadata",
+        )
+        .with_details(format!(
             "{details}\nRelaunch yzxterm from the desktop entry to capture argv, config environment, terminal PID, and early exit status."
-        )),
-        fix_available: false,
-        fix_action: None,
-        capability_tier: None,
-        capability_mode: Some("yzxterm_launch_logs_legacy".into()),
-        runtime_contract_check: Some("yzxterm_launch_logs".into()),
-        owner_surface: Some("terminal_launch_logs".into()),
-    }]
+        ))
+        .with_capability_mode("yzxterm_launch_logs_legacy")
+        .with_runtime_contract_check("yzxterm_launch_logs")
+        .with_owner_surface("terminal_launch_logs"),
+    ]
 }
 
 fn is_package_runtime_root(runtime_dir: &Path) -> bool {
@@ -713,17 +721,10 @@ fn distribution_finding(
         )
     };
 
-    DoctorRuntimeDoctorFinding {
-        status: "info".into(),
-        message: message.into(),
-        details: Some(details.into()),
-        fix_available: false,
-        fix_action: None,
-        capability_tier: Some(tier.into()),
-        capability_mode: Some(mode.into()),
-        runtime_contract_check: None,
-        owner_surface: None,
-    }
+    DoctorRuntimeDoctorFinding::new("info", message)
+        .with_details(details)
+        .with_capability_tier(tier)
+        .with_capability_mode(mode)
 }
 
 fn normalize_failure_class(class: &str) -> String {
@@ -775,17 +776,10 @@ fn runtime_check_to_doctor_finding(
         check.severity.clone()
     };
 
-    let mut finding = DoctorRuntimeDoctorFinding {
-        status,
-        message: check.message.clone(),
-        details,
-        fix_available: false,
-        fix_action: None,
-        capability_tier: None,
-        capability_mode: None,
-        runtime_contract_check: Some(check.id.clone()),
-        owner_surface: Some(check.owner_surface.clone()),
-    };
+    let mut finding = DoctorRuntimeDoctorFinding::new(status, check.message.clone())
+        .with_runtime_contract_check(check.id.clone())
+        .with_owner_surface(check.owner_surface.clone());
+    finding.details = details;
 
     if check.id == "generated_layout"
         && check.status != "ok"
@@ -908,17 +902,16 @@ fn build_host_rio_env_isolation_finding_from_values(
         return None;
     }
 
-    Some(DoctorRuntimeDoctorFinding {
-        status: "warning".into(),
-        message: "Host Rio environment may be contaminated by Yazelix Terminal launch state".into(),
-        details: Some(details.join("\n")),
-        fix_available: false,
-        fix_action: None,
-        capability_tier: None,
-        capability_mode: Some("host_rio_env_contamination".into()),
-        runtime_contract_check: Some("host_rio_env_isolation".into()),
-        owner_surface: Some("terminal_runtime_env".into()),
-    })
+    Some(
+        DoctorRuntimeDoctorFinding::new(
+            "warning",
+            "Host Rio environment may be contaminated by Yazelix Terminal launch state",
+        )
+        .with_details(details.join("\n"))
+        .with_capability_mode("host_rio_env_contamination")
+        .with_runtime_contract_check("host_rio_env_isolation")
+        .with_owner_surface("terminal_runtime_env"),
+    )
 }
 
 fn runtime_feature_path(runtime_dir: &Path, feature: &str) -> PathBuf {
@@ -1005,122 +998,94 @@ fn build_graphics_preview_strategy_finding(
 
     if terminal_uses_yazelix_kitty_bridge(&terminal) {
         if bridge_marker && zellij_present && yazi_present {
-            return DoctorRuntimeDoctorFinding {
-                status: "ok".into(),
-                message: "Graphics previews: Yazelix Kitty passthrough bridge is active".into(),
-                details: Some(format!(
+            return DoctorRuntimeDoctorFinding::new(
+                "ok",
+                "Graphics previews: Yazelix Kitty passthrough bridge is active",
+            )
+            .with_details(format!(
                     "{}\nPreview strategy: managed upstream Yazi launches with a scoped Kitty adapter env through the packaged Zellij bridge.",
                     details.join("\n")
-                )),
-                fix_available: false,
-                fix_action: None,
-                capability_tier: Some("full".into()),
-                capability_mode: Some("kitty_passthrough_bridge".into()),
-                runtime_contract_check: Some("runtime_graphics_preview_strategy".into()),
-                owner_surface: Some("runtime_graphics".into()),
-            };
+                ))
+            .with_capability_tier("full")
+            .with_capability_mode("kitty_passthrough_bridge")
+            .with_runtime_contract_check("runtime_graphics_preview_strategy")
+            .with_owner_surface("runtime_graphics");
         }
 
         if bridge_marker && zellij_present && host_yazi_present {
-            return DoctorRuntimeDoctorFinding {
-                status: "warning".into(),
-                message: "Graphics previews: host-sourced Yazi is available, but the fully supported Kitty bridge path uses runtime-packaged upstream Yazi".into(),
-                details: Some(format!(
+            return DoctorRuntimeDoctorFinding::new(
+                "warning",
+                "Graphics previews: host-sourced Yazi is available, but the fully supported Kitty bridge path uses runtime-packaged upstream Yazi",
+            )
+            .with_details(format!(
                     "{}\nPreview strategy: Ghostty/Ratty can use the packaged Zellij bridge with scoped managed-Yazi launch env, but host-sourced Yazi is not treated as equivalent without a capability check.",
                     details.join("\n")
-                )),
-                fix_available: false,
-                fix_action: None,
-                capability_tier: Some("degraded".into()),
-                capability_mode: Some("kitty_passthrough_bridge_host_yazi".into()),
-                runtime_contract_check: Some("runtime_graphics_preview_strategy".into()),
-                owner_surface: Some("runtime_graphics".into()),
-            };
+                ))
+            .with_capability_tier("degraded")
+            .with_capability_mode("kitty_passthrough_bridge_host_yazi")
+            .with_runtime_contract_check("runtime_graphics_preview_strategy")
+            .with_owner_surface("runtime_graphics");
         }
 
-        return DoctorRuntimeDoctorFinding {
-            status: "warning".into(),
-            message:
-                "Graphics previews: selected terminal expects the Yazelix Kitty bridge, but the runtime is incomplete"
-                    .into(),
-            details: Some(format!(
+        return DoctorRuntimeDoctorFinding::new(
+            "warning",
+            "Graphics previews: selected terminal expects the Yazelix Kitty bridge, but the runtime is incomplete",
+        )
+        .with_details(format!(
                 "{}\nExpected combination: Ghostty or Ratty plus runtime-owned Zellij Kitty passthrough marker.",
                 details.join("\n")
-            )),
-            fix_available: false,
-            fix_action: None,
-            capability_tier: Some("degraded".into()),
-            capability_mode: Some("kitty_passthrough_bridge_incomplete".into()),
-            runtime_contract_check: Some("runtime_graphics_preview_strategy".into()),
-            owner_surface: Some("runtime_graphics".into()),
-        };
+            ))
+        .with_capability_tier("degraded")
+        .with_capability_mode("kitty_passthrough_bridge_incomplete")
+        .with_runtime_contract_check("runtime_graphics_preview_strategy")
+        .with_owner_surface("runtime_graphics");
     }
 
-    DoctorRuntimeDoctorFinding {
-        status: "info".into(),
-        message: "Graphics previews: no Yazelix Kitty passthrough bridge is expected".into(),
-        details: Some(format!(
+    DoctorRuntimeDoctorFinding::new(
+        "info",
+        "Graphics previews: no Yazelix Kitty passthrough bridge is expected",
+    )
+    .with_details(format!(
             "{}\nPreview strategy: this diagnostic only validates the Ghostty/Ratty Kitty bridge path. Other terminal preview behavior is terminal-native or outside the current Yazelix graphics contract.",
             details.join("\n")
-        )),
-        fix_available: false,
-        fix_action: None,
-        capability_tier: Some("unknown".into()),
-        capability_mode: Some("terminal_native_or_unmanaged".into()),
-        runtime_contract_check: Some("runtime_graphics_preview_strategy".into()),
-        owner_surface: Some("runtime_graphics".into()),
-    }
+        ))
+    .with_capability_tier("unknown")
+    .with_capability_mode("terminal_native_or_unmanaged")
+    .with_runtime_contract_check("runtime_graphics_preview_strategy")
+    .with_owner_surface("runtime_graphics")
 }
 
 fn build_chafa_probe_safety_finding(runtime_dir: &Path) -> DoctorRuntimeDoctorFinding {
     if runtime_feature_enabled(runtime_dir, CHAFA_PROBE_UNSAFE_FEATURE) {
-        return DoctorRuntimeDoctorFinding {
-            status: "warning".into(),
-            message: "Chafa probe safety: unsafe probe marker present".into(),
-            details: Some(
+        return DoctorRuntimeDoctorFinding::new(
+            "warning",
+            "Chafa probe safety: unsafe probe marker present",
+        )
+        .with_details(
                 "This is separate from Kitty graphics capability. Do not use Chafa probing as proof that Zellij/Yazi image previews are supported in this runtime."
-                    .into(),
-            ),
-            fix_available: false,
-            fix_action: None,
-            capability_tier: None,
-            capability_mode: Some("chafa_probe_unsafe".into()),
-            runtime_contract_check: Some("runtime_chafa_probe_safety".into()),
-            owner_surface: Some("runtime_graphics".into()),
-        };
+        )
+        .with_capability_mode("chafa_probe_unsafe")
+        .with_runtime_contract_check("runtime_chafa_probe_safety")
+        .with_owner_surface("runtime_graphics");
     }
 
     if runtime_feature_enabled(runtime_dir, CHAFA_PROBE_SAFE_FEATURE) {
-        return DoctorRuntimeDoctorFinding {
-            status: "ok".into(),
-            message: "Chafa probe safety: safe probe marker present".into(),
-            details: Some(
+        return DoctorRuntimeDoctorFinding::new("ok", "Chafa probe safety: safe probe marker present")
+            .with_details(
                 "This only means Chafa probing is safe to run. Kitty graphics bridge support is reported separately."
-                    .into(),
-            ),
-            fix_available: false,
-            fix_action: None,
-            capability_tier: None,
-            capability_mode: Some("chafa_probe_safe".into()),
-            runtime_contract_check: Some("runtime_chafa_probe_safety".into()),
-            owner_surface: Some("runtime_graphics".into()),
-        };
+            )
+            .with_capability_mode("chafa_probe_safe")
+            .with_runtime_contract_check("runtime_chafa_probe_safety")
+            .with_owner_surface("runtime_graphics");
     }
 
-    DoctorRuntimeDoctorFinding {
-        status: "info".into(),
-        message: "Chafa probe safety: no Chafa probe is active".into(),
-        details: Some(
+    DoctorRuntimeDoctorFinding::new("info", "Chafa probe safety: no Chafa probe is active")
+        .with_details(
             "Yazelix is not using a Chafa ghost-keypress probe for this runtime. Kitty graphics support is determined from the terminal and runtime bridge markers instead."
-                .into(),
-        ),
-        fix_available: false,
-        fix_action: None,
-        capability_tier: None,
-        capability_mode: Some("chafa_probe_not_used".into()),
-        runtime_contract_check: Some("runtime_chafa_probe_safety".into()),
-        owner_surface: Some("runtime_graphics".into()),
-    }
+        )
+        .with_capability_mode("chafa_probe_not_used")
+        .with_runtime_contract_check("runtime_chafa_probe_safety")
+        .with_owner_surface("runtime_graphics")
 }
 
 // Test lane: default

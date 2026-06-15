@@ -41,6 +41,22 @@ pub struct DoctorInstallResult {
     pub fix_available: bool,
 }
 
+impl DoctorInstallResult {
+    fn new(status: impl Into<String>, message: impl Into<String>) -> Self {
+        Self {
+            status: status.into(),
+            message: message.into(),
+            details: None,
+            fix_available: false,
+        }
+    }
+
+    fn with_details(mut self, details: impl Into<String>) -> Self {
+        self.details = Some(details.into());
+        self
+    }
+}
+
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 pub struct HomeManagerPrepareArtifact {
     pub id: String,
@@ -577,12 +593,13 @@ fn check_home_manager_profile_collision(
         "Home Manager now owns this Yazelix install, but the default Nix profile still contains standalone Yazelix package entries.\nRemove them with `yzx home_manager prepare --apply` before the next `home-manager switch`, or run `nix profile remove {}` yourself.",
         remove_targets.join(" ")
     );
-    Some(DoctorInstallResult {
-        status: "warn".into(),
-        message: "The default Nix profile still contains standalone Yazelix packages alongside the Home Manager install".into(),
-        details: Some(details),
-        fix_available: false,
-    })
+    Some(
+        DoctorInstallResult::new(
+            "warn",
+            "The default Nix profile still contains standalone Yazelix packages alongside the Home Manager install",
+        )
+        .with_details(details),
+    )
 }
 
 fn build_install_owner_diagnostic(
@@ -629,12 +646,7 @@ fn build_install_owner_diagnostic(
     };
     details.push(update_detail.into());
 
-    DoctorInstallResult {
-        status: "info".into(),
-        message: message.into(),
-        details: Some(details.join("\n")),
-        fix_available: false,
-    }
+    DoctorInstallResult::new("info", message).with_details(details.join("\n"))
 }
 
 fn get_desktop_entry_exec(desktop_path: &Path) -> Option<String> {
@@ -758,12 +770,8 @@ fn check_desktop_entry_freshness(
         } else {
             "Run `yzx desktop install` if you want application-launcher integration.".into()
         };
-        return DoctorInstallResult {
-            status: "info".into(),
-            message: "Yazelix desktop entry not installed".into(),
-            details: Some(details),
-            fix_available: false,
-        };
+        return DoctorInstallResult::new("info", "Yazelix desktop entry not installed")
+            .with_details(details);
     };
 
     let local_exec = local_path.as_deref().and_then(get_desktop_entry_exec);
@@ -775,20 +783,17 @@ fn check_desktop_entry_freshness(
         && !desktop_entry_exec_matches_expected(local_exec.as_deref(), &expected)
         && desktop_entry_exec_matches_expected(profile_exec.as_deref(), &expected)
     {
-        return DoctorInstallResult {
-            status: "warning".into(),
-            message:
-                "A stale user-local Yazelix desktop entry shadows the Home Manager desktop entry"
-                    .into(),
-            details: Some(format!(
+        return DoctorInstallResult::new(
+            "warning",
+            "A stale user-local Yazelix desktop entry shadows the Home Manager desktop entry",
+        )
+        .with_details(format!(
                 "Shadowing local entry: {}\nLocal Exec: {}\nHome Manager entry: {}\nProfile Exec: {}\nRemove the shadowing local entry with `yzx desktop uninstall`, then reapply your Home Manager configuration if the profile desktop entry is missing or stale.",
                 path_to_string(local_path.as_ref().expect("local desktop path")),
                 local_exec.as_deref().unwrap_or("<missing>"),
                 path_to_string(profile_path.as_ref().expect("profile desktop path")),
                 profile_exec.as_deref().unwrap_or("<missing>"),
-            )),
-            fix_available: false,
-        };
+            ));
     }
 
     let desktop_exec = if Some(&dp) == local_path.as_ref() {
@@ -803,50 +808,43 @@ fn check_desktop_entry_freshness(
     };
 
     if desktop_exec.is_none() {
-        return DoctorInstallResult {
-            status: "warning".into(),
-            message: "Yazelix desktop entry is invalid".into(),
-            details: Some(format!(
+        return DoctorInstallResult::new("warning", "Yazelix desktop entry is invalid")
+            .with_details(format!(
                 "The installed desktop entry has no Exec line. {repair_hint}"
-            )),
-            fix_available: false,
-        };
+            ));
     }
 
     let de = desktop_exec.as_deref().unwrap();
     if !desktop_entry_exec_matches_expected(Some(de), &expected) {
-        return DoctorInstallResult {
-            status: "warning".into(),
-            message: "Yazelix desktop entry does not use the expected launcher path".into(),
-            details: Some(format!(
-                "Desktop entry Exec: {de}\nExpected one of: {}\n{repair_hint}",
-                expected.join(", ")
-            )),
-            fix_available: false,
-        };
+        return DoctorInstallResult::new(
+            "warning",
+            "Yazelix desktop entry does not use the expected launcher path",
+        )
+        .with_details(format!(
+            "Desktop entry Exec: {de}\nExpected one of: {}\n{repair_hint}",
+            expected.join(", ")
+        ));
     }
 
     if !desktop_entry_terminal_enabled(&dp) {
         let terminal_value =
             get_desktop_entry_terminal_value(&dp).unwrap_or_else(|| "<missing>".into());
-        return DoctorInstallResult {
-            status: "warning".into(),
-            message: "Yazelix desktop entry cannot show prelaunch failures".into(),
-            details: Some(format!(
+        return DoctorInstallResult::new(
+            "warning",
+            "Yazelix desktop entry cannot show prelaunch failures",
+        )
+        .with_details(format!(
                 "Desktop entry: {}\nTerminal: {}\nTerminal=false can hide config and generated-state errors that happen before the selected terminal is spawned. Yazelix desktop entries should use Terminal=true as a starter window until a dedicated graphical prelaunch surface exists.\n{repair_hint}",
                 path_to_string(&dp),
                 terminal_value
-            )),
-            fix_available: false,
-        };
+            ));
     }
 
-    DoctorInstallResult {
-        status: "ok".into(),
-        message: "Yazelix desktop entry uses the expected launcher path".into(),
-        details: Some(path_to_string(&dp)),
-        fix_available: false,
-    }
+    DoctorInstallResult::new(
+        "ok",
+        "Yazelix desktop entry uses the expected launcher path",
+    )
+    .with_details(path_to_string(&dp))
 }
 
 fn absolutize_base(home_dir: &Path, path: &Path) -> PathBuf {
@@ -896,13 +894,13 @@ fn check_wrapper_shadowing(
                 "A stale host-shell function or alias is still shadowing `yzx` in at least one shell startup file".into(),
                 "Open a fresh shell after removing the old Yazelix-managed shell block, or bypass host-shell functions with `command yzx` until cleanup is complete".into(),
             ];
-            out.push(DoctorInstallResult {
-                status: "warning".into(),
-                message: "A stale host-shell yzx function or alias is shadowing the current profile command"
-                    .into(),
-                details: Some(details_lines.join("\n")),
-                fix_available: false,
-            });
+            out.push(
+                DoctorInstallResult::new(
+                    "warning",
+                    "A stale host-shell yzx function or alias is shadowing the current profile command",
+                )
+                .with_details(details_lines.join("\n")),
+            );
             return out;
         }
     }
@@ -931,12 +929,13 @@ fn check_wrapper_shadowing(
         "If you are migrating to Home Manager, run `yzx home_manager prepare --apply`, then rerun `home-manager switch`".into(),
         "If a profile install owns this runtime, remove the stale `~/.local/bin/yzx` wrapper and keep the profile-owned `yzx` command".into(),
     ];
-    out.push(DoctorInstallResult {
-        status: "warning".into(),
-        message: "A stale user-local yzx wrapper shadows the profile-owned Yazelix command".into(),
-        details: Some(details_lines.join("\n")),
-        fix_available: false,
-    });
+    out.push(
+        DoctorInstallResult::new(
+            "warning",
+            "A stale user-local yzx wrapper shadows the profile-owned Yazelix command",
+        )
+        .with_details(details_lines.join("\n")),
+    );
     out
 }
 

@@ -30,6 +30,35 @@ pub struct DoctorConfigFinding {
     pub config_diagnostic_report: Option<ConfigDiagnosticReport>,
 }
 
+impl DoctorConfigFinding {
+    fn new(status: impl Into<String>, message: impl Into<String>) -> Self {
+        Self {
+            status: status.into(),
+            message: message.into(),
+            details: None,
+            fix_available: false,
+            fix_action: None,
+            config_diagnostic_report: None,
+        }
+    }
+
+    fn with_details(mut self, details: impl Into<String>) -> Self {
+        self.details = Some(details.into());
+        self
+    }
+
+    fn with_fix_action(mut self, action: impl Into<String>) -> Self {
+        self.fix_available = true;
+        self.fix_action = Some(action.into());
+        self
+    }
+
+    fn with_diagnostic_report(mut self, report: ConfigDiagnosticReport) -> Self {
+        self.config_diagnostic_report = Some(report);
+        self
+    }
+}
+
 #[derive(Debug, Serialize)]
 pub struct DoctorConfigEvaluateData {
     pub findings: Vec<DoctorConfigFinding>,
@@ -43,26 +72,18 @@ pub fn evaluate_doctor_config_report(
 
     if let Err(error) = validate_primary_config_surface(&paths) {
         return DoctorConfigEvaluateData {
-            findings: vec![DoctorConfigFinding {
-                status: "error".into(),
-                message: "Could not reconcile Yazelix config surfaces".into(),
-                details: Some(format_surface_reconcile_error(&error)),
-                fix_available: false,
-                fix_action: None,
-                config_diagnostic_report: None,
-            }],
+            findings: vec![
+                DoctorConfigFinding::new("error", "Could not reconcile Yazelix config surfaces")
+                    .with_details(format_surface_reconcile_error(&error)),
+            ],
         };
     }
 
     if paths.user_config.exists() {
-        let mut findings = vec![DoctorConfigFinding {
-            status: "ok".into(),
-            message: "Using custom settings.jsonc configuration".into(),
-            details: Some(path_to_string(&paths.user_config)),
-            fix_available: false,
-            fix_action: None,
-            config_diagnostic_report: None,
-        }];
+        let mut findings = vec![
+            DoctorConfigFinding::new("ok", "Using custom settings.jsonc configuration")
+                .with_details(path_to_string(&paths.user_config)),
+        ];
 
         let diagnostic_request = NormalizeConfigRequest {
             config_path: paths.user_config.clone(),
@@ -74,28 +95,27 @@ pub fn evaluate_doctor_config_report(
         match collect_doctor_diagnostic_report(&diagnostic_request) {
             Ok(report) if report.issue_count > 0 => {
                 let details = render_doctor_config_details(&report);
-                findings.push(DoctorConfigFinding {
-                    status: "warning".into(),
-                    message: format!(
-                        "Stale or unsupported settings.jsonc entries detected ({} issues)",
-                        report.issue_count
-                    ),
-                    details: Some(details),
-                    fix_available: false,
-                    fix_action: None,
-                    config_diagnostic_report: Some(report),
-                });
+                findings.push(
+                    DoctorConfigFinding::new(
+                        "warning",
+                        format!(
+                            "Stale or unsupported settings.jsonc entries detected ({} issues)",
+                            report.issue_count
+                        ),
+                    )
+                    .with_details(details)
+                    .with_diagnostic_report(report),
+                );
             }
             Ok(_) => {}
             Err(error) => {
-                findings.push(DoctorConfigFinding {
-                    status: "error".into(),
-                    message: "Could not validate settings.jsonc against the current schema".into(),
-                    details: Some(format_validation_error(&error)),
-                    fix_available: false,
-                    fix_action: None,
-                    config_diagnostic_report: None,
-                });
+                findings.push(
+                    DoctorConfigFinding::new(
+                        "error",
+                        "Could not validate settings.jsonc against the current schema",
+                    )
+                    .with_details(format_validation_error(&error)),
+                );
             }
         }
 
@@ -104,39 +124,31 @@ pub fn evaluate_doctor_config_report(
 
     if legacy_nix_config.exists() {
         return DoctorConfigEvaluateData {
-            findings: vec![DoctorConfigFinding {
-                status: "warning".into(),
-                message: "Legacy yazelix.nix configuration detected".into(),
-                details: Some(path_to_string(&legacy_nix_config)),
-                fix_available: false,
-                fix_action: None,
-                config_diagnostic_report: None,
-            }],
+            findings: vec![
+                DoctorConfigFinding::new("warning", "Legacy yazelix.nix configuration detected")
+                    .with_details(path_to_string(&legacy_nix_config)),
+            ],
         };
     }
 
     if paths.default_config_path.exists() {
         return DoctorConfigEvaluateData {
-            findings: vec![DoctorConfigFinding {
-                status: "info".into(),
-                message: "Using default configuration (settings_default.jsonc)".into(),
-                details: Some("Yazelix can create settings.jsonc from the shipped defaults".into()),
-                fix_available: true,
-                fix_action: Some("create_default_settings_config".into()),
-                config_diagnostic_report: None,
-            }],
+            findings: vec![
+                DoctorConfigFinding::new(
+                    "info",
+                    "Using default configuration (settings_default.jsonc)",
+                )
+                .with_details("Yazelix can create settings.jsonc from the shipped defaults")
+                .with_fix_action("create_default_settings_config"),
+            ],
         };
     }
 
     DoctorConfigEvaluateData {
-        findings: vec![DoctorConfigFinding {
-            status: "error".into(),
-            message: "No configuration file found".into(),
-            details: Some("Neither settings.jsonc nor settings_default.jsonc exists".into()),
-            fix_available: false,
-            fix_action: None,
-            config_diagnostic_report: None,
-        }],
+        findings: vec![
+            DoctorConfigFinding::new("error", "No configuration file found")
+                .with_details("Neither settings.jsonc nor settings_default.jsonc exists"),
+        ],
     }
 }
 

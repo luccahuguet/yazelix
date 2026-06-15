@@ -67,6 +67,35 @@ pub struct HelixDoctorFinding {
     pub conflicts: Vec<HelixRuntimeConflictEntry>,
 }
 
+impl HelixDoctorFinding {
+    fn new(status: impl Into<String>, message: impl Into<String>) -> Self {
+        Self {
+            status: status.into(),
+            message: message.into(),
+            details: None,
+            fix_available: false,
+            fix_commands: Vec::new(),
+            conflicts: Vec::new(),
+        }
+    }
+
+    fn with_details(mut self, details: impl Into<String>) -> Self {
+        self.details = Some(details.into());
+        self
+    }
+
+    fn with_fix_commands(mut self, commands: Vec<String>) -> Self {
+        self.fix_available = !commands.is_empty();
+        self.fix_commands = commands;
+        self
+    }
+
+    fn with_conflicts(mut self, conflicts: Vec<HelixRuntimeConflictEntry>) -> Self {
+        self.conflicts = conflicts;
+        self
+    }
+}
+
 #[derive(Debug, Serialize)]
 pub struct HelixDoctorEvaluateData {
     pub runtime_conflicts: HelixDoctorFinding,
@@ -185,14 +214,8 @@ fn evaluate_runtime_conflicts(request: &HelixDoctorEvaluateRequest) -> HelixDoct
     }
 
     if conflicts.is_empty() {
-        return HelixDoctorFinding {
-            status: "ok".into(),
-            message: "No conflicting Helix runtime directories found".into(),
-            details: Some("Helix runtime search order will behave as intended".into()),
-            fix_available: false,
-            fix_commands: vec![],
-            conflicts: vec![],
-        };
+        return HelixDoctorFinding::new("ok", "No conflicting Helix runtime directories found")
+            .with_details("Helix runtime search order will behave as intended");
     }
 
     let status = if has_high_priority_conflict {
@@ -207,9 +230,9 @@ fn evaluate_runtime_conflicts(request: &HelixDoctorEvaluateRequest) -> HelixDoct
         .join(", ");
 
     let message = if has_high_priority_conflict {
-        "HIGH PRIORITY: ~/.config/helix/runtime will override the intended Helix runtime".into()
+        "HIGH PRIORITY: ~/.config/helix/runtime will override the intended Helix runtime"
     } else {
-        "Lower priority runtime directories found".into()
+        "Lower priority runtime directories found"
     };
 
     let fix_commands = if has_high_priority_conflict {
@@ -224,16 +247,12 @@ fn evaluate_runtime_conflicts(request: &HelixDoctorEvaluateRequest) -> HelixDoct
         vec![]
     };
 
-    HelixDoctorFinding {
-        status: status.into(),
-        message,
-        details: Some(format!(
+    HelixDoctorFinding::new(status, message)
+        .with_details(format!(
             "Conflicting runtimes: {conflict_details}. Helix searches in priority order and will use files from higher priority directories, potentially breaking syntax highlighting."
-        )),
-        fix_available: has_high_priority_conflict,
-        fix_commands,
-        conflicts,
-    }
+        ))
+        .with_fix_commands(fix_commands)
+        .with_conflicts(conflicts)
 }
 
 fn evaluate_runtime_health(request: &HelixDoctorEvaluateRequest) -> HelixDoctorFinding {
@@ -241,16 +260,8 @@ fn evaluate_runtime_health(request: &HelixDoctorEvaluateRequest) -> HelixDoctorF
     let primary_runtime = all_runtimes.first().cloned();
 
     let Some(primary) = primary_runtime else {
-        return HelixDoctorFinding {
-            status: "error".into(),
-            message: "Helix runtime could not be resolved".into(),
-            details: Some(
-                "Helix did not report any valid runtime directory in `hx --health`".into(),
-            ),
-            fix_available: false,
-            fix_commands: vec![],
-            conflicts: vec![],
-        };
+        return HelixDoctorFinding::new("error", "Helix runtime could not be resolved")
+            .with_details("Helix did not report any valid runtime directory in `hx --health`");
     };
 
     let required_dirs = ["grammars", "queries", "themes"];
@@ -265,17 +276,14 @@ fn evaluate_runtime_health(request: &HelixDoctorEvaluateRequest) -> HelixDoctorF
         .collect();
 
     if !missing_dirs.is_empty() {
-        return HelixDoctorFinding {
-            status: "error".into(),
-            message: format!("Missing required directories: {}", missing_dirs.join(", ")),
-            details: Some(format!(
+        return HelixDoctorFinding::new(
+            "error",
+            format!("Missing required directories: {}", missing_dirs.join(", ")),
+        )
+        .with_details(format!(
                 "The effective Helix runtime at {} is incomplete (note: Nix may split runtime across multiple paths)",
                 primary.display()
-            )),
-            fix_available: false,
-            fix_commands: vec![],
-            conflicts: vec![],
-        };
+            ));
     }
 
     let grammar_count: usize = all_runtimes
@@ -287,14 +295,11 @@ fn evaluate_runtime_health(request: &HelixDoctorEvaluateRequest) -> HelixDoctorF
         .sum();
 
     if grammar_count < 200 {
-        return HelixDoctorFinding {
-            status: "warning".into(),
-            message: format!("Only {grammar_count} grammar files found (expected 200+)"),
-            details: Some("Some languages may not have syntax highlighting".into()),
-            fix_available: false,
-            fix_commands: vec![],
-            conflicts: vec![],
-        };
+        return HelixDoctorFinding::new(
+            "warning",
+            format!("Only {grammar_count} grammar files found (expected 200+)"),
+        )
+        .with_details("Some languages may not have syntax highlighting");
     }
 
     let tutor_exists = all_runtimes
@@ -302,24 +307,15 @@ fn evaluate_runtime_health(request: &HelixDoctorEvaluateRequest) -> HelixDoctorF
         .any(|runtime_path| runtime_path.join("tutor").exists());
 
     if !tutor_exists {
-        return HelixDoctorFinding {
-            status: "warning".into(),
-            message: "Helix tutor file missing".into(),
-            details: Some("Tutorial will not be available".into()),
-            fix_available: false,
-            fix_commands: vec![],
-            conflicts: vec![],
-        };
+        return HelixDoctorFinding::new("warning", "Helix tutor file missing")
+            .with_details("Tutorial will not be available");
     }
 
-    HelixDoctorFinding {
-        status: "ok".into(),
-        message: format!("Helix runtime healthy with {grammar_count} grammars"),
-        details: Some(format!("Primary runtime directory: {}", primary.display())),
-        fix_available: false,
-        fix_commands: vec![],
-        conflicts: vec![],
-    }
+    HelixDoctorFinding::new(
+        "ok",
+        format!("Helix runtime healthy with {grammar_count} grammars"),
+    )
+    .with_details(format!("Primary runtime directory: {}", primary.display()))
 }
 
 fn evaluate_external_pair(request: &HelixDoctorEvaluateRequest) -> Option<HelixDoctorFinding> {
@@ -347,34 +343,26 @@ fn evaluate_external_pair(request: &HelixDoctorEvaluateRequest) -> Option<HelixD
     }
 
     if !problems.is_empty() {
-        return Some(HelixDoctorFinding {
-            status: "error".into(),
-            message: "External Helix binary/runtime pair is invalid".into(),
-            details: Some(format!(
+        return Some(
+            HelixDoctorFinding::new("error", "External Helix binary/runtime pair is invalid")
+                .with_details(format!(
                 "Binary: {}\nRuntime: {}\nProblems:\n- {}\nNext: set helix.external to a matching Helix binary and runtime_path, or null to use the bundled Yazelix Helix.",
                 binary.display(),
                 runtime.display(),
                 problems.join("\n- ")
             )),
-            fix_available: false,
-            fix_commands: vec![],
-            conflicts: vec![],
-        });
+        );
     }
 
-    Some(HelixDoctorFinding {
-        status: "warning".into(),
-        message: "External Helix binary/runtime pair is user-owned".into(),
-        details: Some(format!(
+    Some(
+        HelixDoctorFinding::new("warning", "External Helix binary/runtime pair is user-owned")
+            .with_details(format!(
             "Binary: {}\nRuntime: {}\nYazelix will launch this binary with HELIX_RUNTIME set to this runtime path, but cannot prove both came from the same Helix revision. Binary/runtime mismatches are user-owned risk; run `{} --health` after changing either path.",
             binary.display(),
             runtime.display(),
             binary.display()
         )),
-        fix_available: false,
-        fix_commands: vec![],
-        conflicts: vec![],
-    })
+    )
 }
 
 fn normal_binding_from_json(config: &Value, key: &str) -> Option<String> {
@@ -411,32 +399,26 @@ fn read_normal_bindings_from_toml_file(path: &Path) -> Result<BTreeMap<String, S
 }
 
 fn stale_generated_config_finding(path: &Path) -> HelixDoctorFinding {
-    HelixDoctorFinding {
-        status: "warning".into(),
-        message: "Managed Helix generated config is stale or invalid".into(),
-        details: Some(format!(
+    HelixDoctorFinding::new(
+        "warning",
+        "Managed Helix generated config is stale or invalid",
+    )
+    .with_details(format!(
             "Generated config: {}\nExpected `A-r` to run `yzx reveal` and `:` to enter Helix command mode.\nLaunch a managed Helix session again to regenerate it.",
             path.display()
-        )),
-        fix_available: false,
-        fix_commands: vec![],
-        conflicts: vec![],
-    }
+        ))
 }
 
 fn unreadable_generated_config_finding(path: &Path, error: &str) -> HelixDoctorFinding {
-    HelixDoctorFinding {
-        status: "warning".into(),
-        message: "Managed Helix generated config could not be read".into(),
-        details: Some(format!(
-            "Generated config: {}\nUnderlying error: {}",
-            path.display(),
-            error
-        )),
-        fix_available: false,
-        fix_commands: vec![],
-        conflicts: vec![],
-    }
+    HelixDoctorFinding::new(
+        "warning",
+        "Managed Helix generated config could not be read",
+    )
+    .with_details(format!(
+        "Generated config: {}\nUnderlying error: {}",
+        path.display(),
+        error
+    ))
 }
 
 fn provided_steel_symbols(module: &str) -> Vec<String> {
@@ -495,17 +477,14 @@ fn generated_steel_dir(request: &HelixDoctorEvaluateRequest) -> Option<PathBuf> 
 
 fn evaluate_managed_steel_surface(request: &HelixDoctorEvaluateRequest) -> HelixDoctorFinding {
     let Some(steel_dir) = generated_steel_dir(request) else {
-        return HelixDoctorFinding {
-            status: "warning".into(),
-            message: "Managed Helix Steel config path could not be resolved".into(),
-            details: Some(format!(
-                "Generated Helix config path has no parent directory: {}",
-                request.generated_helix_config_path.display()
-            )),
-            fix_available: false,
-            fix_commands: vec![],
-            conflicts: vec![],
-        };
+        return HelixDoctorFinding::new(
+            "warning",
+            "Managed Helix Steel config path could not be resolved",
+        )
+        .with_details(format!(
+            "Generated Helix config path has no parent directory: {}",
+            request.generated_helix_config_path.display()
+        ));
     };
 
     let raw_hx = request.runtime_dir.join("libexec").join("hx");
@@ -520,51 +499,39 @@ fn evaluate_managed_steel_surface(request: &HelixDoctorEvaluateRequest) -> Helix
         if !init_module_path.exists() {
             missing.push(init_module_path.display().to_string());
         }
-        return HelixDoctorFinding {
-            status: "warning".into(),
-            message: "Managed Helix Steel entrypoints are missing".into(),
-            details: Some(format!(
+        return HelixDoctorFinding::new("warning", "Managed Helix Steel entrypoints are missing")
+            .with_details(format!(
                 "Missing files:\n- {}\nLaunch a managed Helix session again to regenerate the Steel config surface.",
                 missing.join("\n- ")
-            )),
-            fix_available: false,
-            fix_commands: vec![],
-            conflicts: vec![],
-        };
+            ));
     }
 
     let helix_module = match fs::read_to_string(&helix_module_path) {
         Ok(raw) => raw,
         Err(error) => {
-            return HelixDoctorFinding {
-                status: "warning".into(),
-                message: "Managed Helix Steel command module could not be read".into(),
-                details: Some(format!(
-                    "Steel module: {}\nUnderlying error: {}",
-                    helix_module_path.display(),
-                    error
-                )),
-                fix_available: false,
-                fix_commands: vec![],
-                conflicts: vec![],
-            };
+            return HelixDoctorFinding::new(
+                "warning",
+                "Managed Helix Steel command module could not be read",
+            )
+            .with_details(format!(
+                "Steel module: {}\nUnderlying error: {}",
+                helix_module_path.display(),
+                error
+            ));
         }
     };
     let init_module = match fs::read_to_string(&init_module_path) {
         Ok(raw) => raw,
         Err(error) => {
-            return HelixDoctorFinding {
-                status: "warning".into(),
-                message: "Managed Helix Steel init module could not be read".into(),
-                details: Some(format!(
-                    "Steel init: {}\nUnderlying error: {}",
-                    init_module_path.display(),
-                    error
-                )),
-                fix_available: false,
-                fix_commands: vec![],
-                conflicts: vec![],
-            };
+            return HelixDoctorFinding::new(
+                "warning",
+                "Managed Helix Steel init module could not be read",
+            )
+            .with_details(format!(
+                "Steel init: {}\nUnderlying error: {}",
+                init_module_path.display(),
+                error
+            ));
         }
     };
 
@@ -645,20 +612,14 @@ fn evaluate_managed_steel_surface(request: &HelixDoctorEvaluateRequest) -> Helix
     }
 
     if errors.is_empty() && warnings.is_empty() {
-        return HelixDoctorFinding {
-            status: "ok".into(),
-            message: "Managed Helix Steel command surface is healthy".into(),
-            details: Some(format!(
+        return HelixDoctorFinding::new("ok", "Managed Helix Steel command surface is healthy")
+            .with_details(format!(
                 "Steel module: {}\nSteel init: {}\nPublic commands: {}\nCommand metadata:\n- {}",
                 helix_module_path.display(),
                 init_module_path.display(),
                 provided.join(", "),
                 metadata.join("\n- ")
-            )),
-            fix_available: false,
-            fix_commands: vec![],
-            conflicts: vec![],
-        };
+            ));
     }
 
     let status = if errors.is_empty() {
@@ -681,14 +642,8 @@ fn evaluate_managed_steel_surface(request: &HelixDoctorEvaluateRequest) -> Helix
         metadata.join("\n- ")
     ));
 
-    HelixDoctorFinding {
-        status: status.into(),
-        message: "Managed Helix Steel command surface is unhealthy".into(),
-        details: Some(details.join("\n\n")),
-        fix_available: false,
-        fix_commands: vec![],
-        conflicts: vec![],
-    }
+    HelixDoctorFinding::new(status, "Managed Helix Steel command surface is unhealthy")
+        .with_details(details.join("\n\n"))
 }
 
 fn evaluate_managed_integration(request: &HelixDoctorEvaluateRequest) -> Vec<HelixDoctorFinding> {
@@ -706,30 +661,28 @@ fn evaluate_managed_integration(request: &HelixDoctorEvaluateRequest) -> Vec<Hel
     let expected_reveal_binding = request.reveal_binding_expected.as_str();
 
     if !managed.exists() && native.exists() {
-        out.push(HelixDoctorFinding {
-            status: "info".into(),
-            message: "Personal Helix config has not been imported into Yazelix-managed Helix".into(),
-            details: Some(format!(
+        out.push(
+            HelixDoctorFinding::new(
+                "info",
+                "Personal Helix config has not been imported into Yazelix-managed Helix",
+            )
+            .with_details(format!(
                 "Native config: {}\nManaged config: {}\nRun `yzx import helix` if you want Yazelix-managed Helix sessions to reuse that personal config.",
                 native.display(),
                 managed.display()
             )),
-            fix_available: false,
-            fix_commands: vec![],
-            conflicts: vec![],
-        });
+        );
     }
 
     if let Some(ref err) = request.build_managed_config_error {
         if !err.trim().is_empty() {
-            out.push(HelixDoctorFinding {
-                status: "error".into(),
-                message: "Managed Helix config contract could not be built".into(),
-                details: Some(err.clone()),
-                fix_available: false,
-                fix_commands: vec![],
-                conflicts: vec![],
-            });
+            out.push(
+                HelixDoctorFinding::new(
+                    "error",
+                    "Managed Helix config contract could not be built",
+                )
+                .with_details(err.clone()),
+            );
             return out;
         }
     }
@@ -740,18 +693,17 @@ fn evaluate_managed_integration(request: &HelixDoctorEvaluateRequest) -> Vec<Hel
         match build_managed_helix_contract_json(&request.runtime_dir, &request.config_dir) {
             Ok(expected) => expected,
             Err(error) => {
-                out.push(HelixDoctorFinding {
-                    status: "error".into(),
-                    message: "Managed Helix config contract could not be built".into(),
-                    details: Some(format!(
+                out.push(
+                    HelixDoctorFinding::new(
+                        "error",
+                        "Managed Helix config contract could not be built",
+                    )
+                    .with_details(format!(
                         "{}\nNext: {}",
                         error.message(),
                         error.remediation()
                     )),
-                    fix_available: false,
-                    fix_commands: vec![],
-                    conflicts: vec![],
-                });
+                );
                 return out;
             }
         }
@@ -760,50 +712,45 @@ fn evaluate_managed_integration(request: &HelixDoctorEvaluateRequest) -> Vec<Hel
     if normal_binding_from_json(&expected, REVEAL_KEY).as_deref()
         != Some(expected_reveal_binding.trim())
     {
-        out.push(HelixDoctorFinding {
-            status: "error".into(),
-            message: "Managed Helix config contract lost the Yazelix reveal binding".into(),
-            details: Some(
+        out.push(
+            HelixDoctorFinding::new(
+                "error",
+                "Managed Helix config contract lost the Yazelix reveal binding",
+            )
+            .with_details(
                 "The expected managed Helix config no longer enforces `A-r = :sh yzx reveal \"%{buffer_name}\"`."
-                    .into(),
             ),
-            fix_available: false,
-            fix_commands: vec![],
-            conflicts: vec![],
-        });
+        );
         return out;
     }
 
     if normal_binding_from_json(&expected, MANAGED_COMMAND_MODE_KEY).as_deref()
         != Some(MANAGED_COMMAND_MODE_COMMAND)
     {
-        out.push(HelixDoctorFinding {
-            status: "error".into(),
-            message: "Managed Helix config contract lost the command-mode binding".into(),
-            details: Some(
+        out.push(
+            HelixDoctorFinding::new(
+                "error",
+                "Managed Helix config contract lost the command-mode binding",
+            )
+            .with_details(
                 "The expected managed Helix config no longer enforces `: = command_mode`, which the Yazi-to-Helix opener requires."
-                    .into(),
             ),
-            fix_available: false,
-            fix_commands: vec![],
-            conflicts: vec![],
-        });
+        );
         return out;
     }
 
     let generated = &request.generated_helix_config_path;
     if !generated.exists() {
-        out.push(HelixDoctorFinding {
-            status: "info".into(),
-            message: "Managed Helix config has not been materialized yet".into(),
-            details: Some(format!(
+        out.push(
+            HelixDoctorFinding::new(
+                "info",
+                "Managed Helix config has not been materialized yet",
+            )
+            .with_details(format!(
                 "Expected generated config: {}\nThis is normal before the first managed Helix launch. Yazelix will generate it on demand.",
                 generated.display()
             )),
-            fix_available: false,
-            fix_commands: vec![],
-            conflicts: vec![],
-        });
+        );
         return out;
     }
 
@@ -828,14 +775,10 @@ fn evaluate_managed_integration(request: &HelixDoctorEvaluateRequest) -> Vec<Hel
         return out;
     }
 
-    out.push(HelixDoctorFinding {
-        status: "ok".into(),
-        message: "Managed Helix reveal integration is healthy".into(),
-        details: Some(generated.display().to_string()),
-        fix_available: false,
-        fix_commands: vec![],
-        conflicts: vec![],
-    });
+    out.push(
+        HelixDoctorFinding::new("ok", "Managed Helix reveal integration is healthy")
+            .with_details(generated.display().to_string()),
+    );
     out.push(evaluate_managed_steel_surface(request));
 
     out

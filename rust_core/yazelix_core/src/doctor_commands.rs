@@ -116,6 +116,34 @@ fn doctor_findings(results: &[Value]) -> impl Iterator<Item = DoctorFinding<'_>>
     results.iter().map(DoctorFinding::new)
 }
 
+fn doctor_finding_json(
+    status: impl Into<String>,
+    message: impl Into<String>,
+    details: impl Into<Value>,
+) -> Value {
+    json!({
+        "status": status.into(),
+        "message": message.into(),
+        "details": details.into(),
+        "fix_available": false
+    })
+}
+
+fn doctor_fixable_finding_json(
+    status: impl Into<String>,
+    message: impl Into<String>,
+    details: impl Into<Value>,
+    fix_action: impl Into<String>,
+) -> Value {
+    json!({
+        "status": status.into(),
+        "message": message.into(),
+        "details": details.into(),
+        "fix_available": true,
+        "fix_action": fix_action.into()
+    })
+}
+
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 struct RecoveryPlanSummary {
     action_count: usize,
@@ -444,32 +472,29 @@ fn collect_runtime_doctor_findings(
                         platform_name: platform_name_for_runtime_doctor(),
                     }),
                     Err(error) => {
-                        extra.push(json!({
-                                "status": "error",
-                                "message": "Could not resolve the selected packaged terminal from runtime metadata",
-                                "details": error.message(),
-                                "fix_available": false
-                            }));
+                        extra.push(doctor_finding_json(
+                            "error",
+                            "Could not resolve the selected packaged terminal from runtime metadata",
+                            error.message(),
+                        ));
                         None
                     }
                 },
                 Err(error) => {
-                    extra.push(json!({
-                        "status": "error",
-                        "message": "Could not resolve the managed Zellij layout path from the Rust materialization plan",
-                        "details": error.message(),
-                        "fix_available": false
-                    }));
+                    extra.push(doctor_finding_json(
+                        "error",
+                        "Could not resolve the managed Zellij layout path from the Rust materialization plan",
+                        error.message(),
+                    ));
                     None
                 }
             },
             Err(error) => {
-                extra.push(json!({
-                    "status": "error",
-                    "message": "Could not resolve the managed Zellij layout path from the Rust materialization plan",
-                    "details": error.message(),
-                    "fix_available": false
-                }));
+                extra.push(doctor_finding_json(
+                    "error",
+                    "Could not resolve the managed Zellij layout path from the Rust materialization plan",
+                    error.message(),
+                ));
                 None
             }
         }
@@ -1241,12 +1266,11 @@ fn collect_zellij_plugin_health_findings(
     _normalized_config: Option<&serde_json::Map<String, Value>>,
 ) -> Vec<Value> {
     if env::var_os("ZELLIJ").is_none() {
-        return vec![json!({
-            "status": "info",
-            "message": "Zellij plugin health check skipped (not inside Zellij)",
-            "details": "Run `yzx doctor` from inside the affected Yazelix session to verify Yazelix orchestrator permissions and managed pane detection.",
-            "fix_available": false
-        })];
+        return vec![doctor_finding_json(
+            "info",
+            "Zellij plugin health check skipped (not inside Zellij)",
+            "Run `yzx doctor` from inside the affected Yazelix session to verify Yazelix orchestrator permissions and managed pane detection.",
+        )];
     }
 
     let output = Command::new("zellij")
@@ -1265,25 +1289,25 @@ fn collect_zellij_plugin_health_findings(
     let output = match output {
         Ok(output) => output,
         Err(error) => {
-            return vec![json!({
-                "status": "warning",
-                "message": "Could not contact the Yazelix pane-orchestrator plugin",
-                "details": format!("Run this from inside the affected Yazelix session after fully restarting it. Underlying error: {error}"),
-                "fix_available": false
-            })];
+            return vec![doctor_finding_json(
+                "warning",
+                "Could not contact the Yazelix pane-orchestrator plugin",
+                format!(
+                    "Run this from inside the affected Yazelix session after fully restarting it. Underlying error: {error}"
+                ),
+            )];
         }
     };
 
     if !output.status.success() {
-        return vec![json!({
-            "status": "warning",
-            "message": "Could not contact the Yazelix pane-orchestrator plugin",
-            "details": format!(
+        return vec![doctor_finding_json(
+            "warning",
+            "Could not contact the Yazelix pane-orchestrator plugin",
+            format!(
                 "Run this from inside the affected Yazelix session after fully restarting it. Underlying error: {}",
                 String::from_utf8_lossy(&output.stderr).trim()
             ),
-            "fix_available": false
-        })];
+        )];
     }
 
     let raw = String::from_utf8_lossy(&output.stdout).trim().to_string();
@@ -1298,12 +1322,11 @@ fn collect_zellij_plugin_health_findings(
             },
             true,
         ),
-        "not_ready" | "missing" => vec![json!({
-            "status": "warning",
-            "message": "Yazelix pane-orchestrator session state is not ready yet",
-            "details": "The plugin responded before tab/workspace state was available. Wait a moment and rerun `yzx doctor` inside this Yazelix session.",
-            "fix_available": false
-        })],
+        "not_ready" | "missing" => vec![doctor_finding_json(
+            "warning",
+            "Yazelix pane-orchestrator session state is not ready yet",
+            "The plugin responded before tab/workspace state was available. Wait a moment and rerun `yzx doctor` inside this Yazelix session.",
+        )],
         _ => match serde_json::from_str::<ActiveTabSessionStateV1>(&raw) {
             Ok(session) => build_zellij_plugin_health_findings(
                 &ZellijPluginState {
@@ -1315,12 +1338,11 @@ fn collect_zellij_plugin_health_findings(
                 },
                 true,
             ),
-            Err(_) => vec![json!({
-                "status": "warning",
-                "message": "Yazelix pane-orchestrator returned an unexpected response",
-                "details": format!("Unexpected payload: {raw}"),
-                "fix_available": false
-            })],
+            Err(_) => vec![doctor_finding_json(
+                "warning",
+                "Yazelix pane-orchestrator returned an unexpected response",
+                format!("Unexpected payload: {raw}"),
+            )],
         },
     }
 }
@@ -1332,70 +1354,69 @@ fn build_zellij_plugin_health_findings(
     let mut results = Vec::new();
 
     if !plugin_state.permissions_granted {
-        results.push(json!({
-            "status": "error",
-            "message": "Yazelix pane-orchestrator plugin permissions not granted",
-            "details": "Yazelix normally pre-seeds bundled Zellij plugin permissions before launch. If the cache was deleted or Zellij is already prompting, run `yzx doctor --fix` and restart Yazelix; if a live prompt remains, focus the top zjstatus bar and press `y`, and answer yes to the Yazelix orchestrator popup. Yazelix workspace bindings like `Alt+m`, `Alt+Shift+H/J/K/L`, `Ctrl+y`, `Ctrl+Shift+Y`, `Alt+r`, `Alt+[`, and `Alt+]` depend on the orchestrator.",
-            "fix_available": true,
-            "fix_action": "seed_zellij_plugin_permissions"
-        }));
+        results.push(doctor_fixable_finding_json(
+            "error",
+            "Yazelix pane-orchestrator plugin permissions not granted",
+            "Yazelix normally pre-seeds bundled Zellij plugin permissions before launch. If the cache was deleted or Zellij is already prompting, run `yzx doctor --fix` and restart Yazelix; if a live prompt remains, focus the top zjstatus bar and press `y`, and answer yes to the Yazelix orchestrator popup. Yazelix workspace bindings like `Alt+m`, `Alt+Shift+H/J/K/L`, `Ctrl+y`, `Ctrl+Shift+Y`, `Alt+r`, `Alt+[`, and `Alt+]` depend on the orchestrator.",
+            SEED_ZELLIJ_PLUGIN_PERMISSIONS_FIX_ACTION,
+        ));
     } else {
-        results.push(json!({
-            "status": "ok",
-            "message": "Yazelix pane-orchestrator permissions granted",
-            "details": "The orchestrator plugin can handle Yazelix tab and pane actions in this Zellij session.",
-            "fix_available": false
-        }));
+        results.push(doctor_finding_json(
+            "ok",
+            "Yazelix pane-orchestrator permissions granted",
+            "The orchestrator plugin can handle Yazelix tab and pane actions in this Zellij session.",
+        ));
     }
 
     if plugin_state.active_tab_position.is_none() {
-        results.push(json!({
-            "status": "warning",
-            "message": "Yazelix pane-orchestrator does not see an active tab yet",
-            "details": "The plugin may still be initializing. Wait a moment and rerun `yzx doctor` inside this Yazelix session.",
-            "fix_available": false
-        }));
+        results.push(doctor_finding_json(
+            "warning",
+            "Yazelix pane-orchestrator does not see an active tab yet",
+            "The plugin may still be initializing. Wait a moment and rerun `yzx doctor` inside this Yazelix session.",
+        ));
         return results;
     }
 
     if sidebar_enabled {
         if plugin_state.sidebar_pane_id.trim().is_empty() {
-            results.push(json!({
-                "status": "warning",
-                "message": "Managed sidebar pane not detected in the current tab",
-                "details": "`Alt+Shift+H`, `Ctrl+y`, `Ctrl+Shift+Y`, and reveal flows may not work until the current tab uses a Yazelix managed-sidebar layout.",
-                "fix_available": false
-            }));
+            results.push(doctor_finding_json(
+                "warning",
+                "Managed sidebar pane not detected in the current tab",
+                "`Alt+Shift+H`, `Ctrl+y`, `Ctrl+Shift+Y`, and reveal flows may not work until the current tab uses a Yazelix managed-sidebar layout.",
+            ));
         } else {
-            results.push(json!({
-                "status": "ok",
-                "message": format!("Managed sidebar pane detected: {}", plugin_state.sidebar_pane_id),
-                "details": format!(
+            results.push(doctor_finding_json(
+                "ok",
+                format!(
+                    "Managed sidebar pane detected: {}",
+                    plugin_state.sidebar_pane_id
+                ),
+                format!(
                     "Layout state: {}",
                     plugin_state
                         .active_swap_layout_name
                         .as_deref()
                         .unwrap_or("unknown")
                 ),
-                "fix_available": false
-            }));
+            ));
         }
     }
 
     if plugin_state.editor_pane_id.trim().is_empty() {
-        results.push(json!({
-            "status": "info",
-            "message": "Managed editor pane not detected in the current tab",
-            "details": "This is normal until you open a managed Helix or Neovim editor pane in the current tab. An editor started manually from an ordinary shell pane does not count as the managed editor pane.",
-            "fix_available": false
-        }));
+        results.push(doctor_finding_json(
+            "info",
+            "Managed editor pane not detected in the current tab",
+            "This is normal until you open a managed Helix or Neovim editor pane in the current tab. An editor started manually from an ordinary shell pane does not count as the managed editor pane.",
+        ));
     } else {
-        results.push(json!({
-            "status": "ok",
-            "message": format!("Managed editor pane detected: {}", plugin_state.editor_pane_id),
-            "details": Value::Null,
-            "fix_available": false
-        }));
+        results.push(doctor_finding_json(
+            "ok",
+            format!(
+                "Managed editor pane detected: {}",
+                plugin_state.editor_pane_id
+            ),
+            Value::Null,
+        ));
     }
 
     results
