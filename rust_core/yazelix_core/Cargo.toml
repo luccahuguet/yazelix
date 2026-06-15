@@ -30,7 +30,7 @@ thiserror = "2.0"
 toml = "0.9"
 yazelix_cursors = { git = "https://github.com/luccahuguet/yazelix-cursors", rev = "2ea858a681ae15e1d4c9eb649fcdbcdf00843d3c" }
 yazelix_ratconfig = { package = "yazelix-ratconfig", git = "https://github.com/luccahuguet/yazelix-ratconfig", rev = "180994407b3c70d9c6cb6df5b03356ae59ecafd8" }
-yazelix_screen = { git = "https://github.com/luccahuguet/yazelix-screen", rev = "59cbf5dab6c59a4416c4168ac4c3a9769d46ee16" }
+yazelix_screen = { git = "https://github.com/luccahuguet/yazelix-screen", rev = "94f0936171c2d9f65813b6fbdf41cbbd97b8f200" }
 yazelix_yazi_assets = { git = "https://github.com/luccahuguet/yazelix-yazi-assets", rev = "0190035d7203251411917d0e9100a9c54f3dd907" }
 yazelix_zellij_config_pack = { git = "https://github.com/luccahuguet/yazelix-zellij-config-pack", rev = "df33d134860f20944100f750f0f34b2510a55f53" }
 
