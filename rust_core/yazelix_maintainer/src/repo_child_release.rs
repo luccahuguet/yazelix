@@ -53,6 +53,7 @@ const ZELLIJ_PLUGIN_WASM_METADATA_FIELDS: &[&str] = &[
     "packageAttr",
     "wasmPath",
     "wasmTarget",
+    "cargoAuditableDisabled",
     "cargoBuildHookDisabled",
     "preBuildPreservesNixRustToolchain",
     "wasmTargetRustcEnvPinned",
@@ -677,6 +678,7 @@ fn validate_zellij_plugin_wasm_package_contract_with(
         "wasm32-wasip1",
     );
     for key in [
+        "cargoAuditableDisabled",
         "cargoBuildHookDisabled",
         "preBuildPreservesNixRustToolchain",
         "wasmTargetRustcEnvPinned",
@@ -892,6 +894,7 @@ mod tests {
             "packageAttr": "yazelix_zellij_popup",
             "wasmPath": "share/yazelix_zellij_popup/yzpp.wasm",
             "wasmTarget": "wasm32-wasip1",
+            "cargoAuditableDisabled": true,
             "cargoBuildHookDisabled": true,
             "preBuildPreservesNixRustToolchain": true,
             "wasmTargetRustcEnvPinned": true,
@@ -915,6 +918,7 @@ mod tests {
             "packageAttr": "yazelix_zellij_popup",
             "wasmPath": "share/yazelix_zellij_popup/old.wasm",
             "wasmTarget": "wasm32-wasip1",
+            "cargoAuditableDisabled": true,
             "cargoBuildHookDisabled": true,
             "preBuildPreservesNixRustToolchain": true,
             "wasmTargetRustcEnvPinned": true,
@@ -939,6 +943,7 @@ mod tests {
             "packageAttr": "yazelix_zellij_popup",
             "wasmPath": "share/yazelix_zellij_popup/yzpp.wasm",
             "wasmTarget": "wasm32-wasip1",
+            "cargoAuditableDisabled": false,
             "cargoBuildHookDisabled": false,
             "preBuildPreservesNixRustToolchain": false,
             "wasmTargetRustcEnvPinned": false,
@@ -949,7 +954,12 @@ mod tests {
         let errors =
             validate_zellij_plugin_wasm_package_contract_with(&contract, &metadata).unwrap();
 
-        assert_eq!(errors.len(), 5);
+        assert_eq!(errors.len(), 6);
+        assert!(
+            errors
+                .iter()
+                .any(|error| error.contains("cargoAuditableDisabled"))
+        );
         assert!(
             errors
                 .iter()
@@ -982,6 +992,7 @@ mod tests {
             "packageAttr": "yazelix_zellij_popup",
             "wasmPath": "share/yazelix_zellij_popup/yzpp.wasm",
             "wasmTarget": "wasm32-wasip1",
+            "cargoAuditableDisabled": true,
             "cargoBuildHookDisabled": true,
             "preBuildPreservesNixRustToolchain": true,
             "wasmTargetRustcEnvPinned": true,
