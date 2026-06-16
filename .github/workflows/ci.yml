@@ -1,10 +1,10 @@
 name: CI
 
 on:
-  # Release tags point at commits already validated on main; avoid duplicate
-  # branch/tag CI for the same release commit.
+  # Release tags point at commits already validated on main; run CI for branch
+  # pushes and PRs, not tag pushes.
   push:
-    tags-ignore: ["v*"]
+    branches: ["**"]
   pull_request:
   workflow_dispatch:
     inputs:
