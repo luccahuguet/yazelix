@@ -80,7 +80,7 @@ When creating new files or directories, always use underscores to maintain consi
 
 - Prefer the GitHub CLI (`gh`) for inspecting issues, PRs, comments, and repo metadata instead of scraping GitHub pages manually.
 - Use `gh` first when interacting with GitHub state from this repository unless the task specifically requires browser-only behavior.
-- Prefix non-automated agent-authored GitHub issue comments with `Agent context: posted by Lucca's Codex coding agent on behalf of the Yazelix maintainers. Model: <model>. Effort: <effort>. Surface: Codex.`
+- Prefix non-automated agent-authored GitHub issue comments with `Agent context: posted by Lucca's Codex coding agent on behalf of the Yazelix maintainers. Model: <model>. Effort: <effort>. Surface: Codex.` When unsure, use `Model: GPT-5.5. Effort: xhigh.`
 - GitHub and Beads have a shared-subset contract:
   - GitHub owns the public issue, discussion thread, and open/closed lifecycle.
   - Beads owns planning metadata: dependencies, priority, labels, design notes, acceptance criteria, and execution history.
