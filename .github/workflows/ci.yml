@@ -177,6 +177,36 @@ jobs:
       - name: Validate child release transaction and Darwin child package smoke contracts
         run: nix develop .#ci -c ./rust_core/target/debug/yzx_repo_validator validate-child-release-transaction
 
+  darwin_wasm_package_smoke:
+    name: Darwin wasm package smoke
+    # Required Darwin signal for first-party Zellij wasm plugins. Keep this
+    # narrower than the cache-publishing workflow so ordinary PR CI stays
+    # read-only and does not depend on Cachix secrets.
+    runs-on: macos-15
+    timeout-minutes: 45
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+      YAZELIX_DIR: ${{ github.workspace }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@v22
+        with:
+          determinate: false
+
+      - name: Build Darwin first-party Zellij wasm packages
+        run: |
+          nix build --no-link --no-write-lock-file \
+            .#packages.aarch64-darwin.yazelix_zellij_pane_orchestrator \
+            .#packages.aarch64-darwin.yazelix_zellij_popup
+
   integration:
     # Manual maintainer gate for Home Manager/runtime activation behavior.
     # Routine pushes stay on the faster source-contract lane, while the cache
