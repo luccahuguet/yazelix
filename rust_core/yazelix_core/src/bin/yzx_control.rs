@@ -66,6 +66,7 @@ use yazelix_core::run_zellij_open_editor;
 use yazelix_core::run_zellij_open_editor_cwd;
 use yazelix_core::run_zellij_open_terminal;
 use yazelix_core::run_zellij_pipe;
+use yazelix_core::run_zellij_refresh_terminal_title_activity;
 use yazelix_core::run_zellij_retarget;
 use yazelix_core::run_zellij_status_bus;
 use yazelix_core::run_zellij_status_cache_heartbeat;
@@ -1608,6 +1609,7 @@ fn run_zellij(args: &[String]) -> Result<i32, CoreError> {
         "status-cache-write" => run_zellij_status_cache_write(&argv),
         "status-cache-heartbeat" => run_zellij_status_cache_heartbeat(&argv),
         "status-cache-widget" => run_zellij_status_cache_widget(&argv),
+        "refresh-terminal-title-activity" => run_zellij_refresh_terminal_title_activity(&argv),
         "retarget" => run_zellij_retarget(&argv),
         "open-editor" => run_zellij_open_editor(&argv),
         "open-editor-cwd" => run_zellij_open_editor_cwd(&argv),

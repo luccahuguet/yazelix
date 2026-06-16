@@ -7,7 +7,9 @@ mod pipe;
 mod status;
 mod workspace;
 
-pub use pipe::{run_zellij_get_workspace_root, run_zellij_pipe};
+pub use pipe::{
+    run_zellij_get_workspace_root, run_zellij_pipe, run_zellij_refresh_terminal_title_activity,
+};
 pub use status::{
     probe_active_tab_session_state, run_zellij_inspect_session, run_zellij_status_bus,
     run_zellij_status_cache_heartbeat, run_zellij_status_cache_widget,
@@ -26,6 +28,7 @@ pub const INTERNAL_ZELLIJ_CONTROL_SUBCOMMANDS: &[&str] = &[
     "status-cache-write",
     "status-cache-heartbeat",
     "status-cache-widget",
+    "refresh-terminal-title-activity",
     "retarget",
     "open-editor",
     "open-editor-cwd",

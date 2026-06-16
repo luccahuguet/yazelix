@@ -263,6 +263,53 @@ fn yzx_control_zellij_pipe_restores_saved_session_name_from_managed_yazi_env() {
     );
 }
 
+// Regression: hidden-tab activity refresh uses Zellij's session pane snapshot and pipes a reduced terminal-title payload back to the pane orchestrator.
+#[test]
+fn yzx_control_refresh_terminal_title_activity_pipes_reduced_pane_snapshot() {
+    let fixture = managed_config_fixture("");
+    let fake_bin = fixture.home_dir.join("fake-bin");
+    let zellij_commands_log = fixture.home_dir.join("zellij-commands.log");
+    let snapshot_payload_log = fixture.home_dir.join("snapshot-payload.json");
+    fs::create_dir_all(&fake_bin).unwrap();
+    write_executable_script(
+        &fake_bin.join("zellij"),
+        &format!(
+            "#!/bin/sh\nif [ \"$1\" = \"action\" ] && [ \"$2\" = \"list-panes\" ]; then\n  printf 'list-panes session=%s args=%s\\n' \"${{ZELLIJ_SESSION_NAME-unset}}\" \"$*\" >> \"{}\"\n  printf '%s\\n' '[{{\"id\":3,\"is_plugin\":true,\"is_focused\":false,\"exited\":false,\"title\":\"plugin\",\"tab_id\":0}},{{\"id\":7,\"is_plugin\":false,\"is_focused\":false,\"exited\":false,\"title\":\"codex thinking\",\"tab_id\":2}},{{\"id\":8,\"is_plugin\":false,\"is_focused\":true,\"exited\":true,\"title\":\"old\",\"tab_id\":2}},{{\"id\":9,\"is_plugin\":false,\"is_focused\":false,\"exited\":false,\"title\":\"missing tab\"}}]'\n  exit 0\nfi\nif [ \"$1\" = \"action\" ] && [ \"$2\" = \"pipe\" ]; then\n  printf 'pipe session=%s plugin=%s name=%s\\n' \"${{ZELLIJ_SESSION_NAME-unset}}\" \"$4\" \"$6\" >> \"{}\"\n  printf '%s' \"$8\" > \"{}\"\n  printf '%s\\n' 'ok'\n  exit 0\nfi\nprintf 'unexpected zellij args: %s\\n' \"$*\" >&2\nexit 1\n",
+            zellij_commands_log.display(),
+            zellij_commands_log.display(),
+            snapshot_payload_log.display(),
+        ),
+    );
+
+    let output = yzx_control_command_in_fixture(&fixture)
+        .env("PATH", prepend_path(&fake_bin))
+        .env("ZELLIJ", "1")
+        .env("ZELLIJ_SESSION_NAME", "")
+        .env("YAZELIX_ZELLIJ_SESSION_NAME", "real-session")
+        .arg("zellij")
+        .arg("refresh-terminal-title-activity")
+        .output()
+        .unwrap();
+
+    assert_silent_success(&output);
+    assert_eq!(
+        file_lines(zellij_commands_log),
+        vec![
+            "list-panes session=real-session args=action list-panes --json --tab --state",
+            "pipe session=real-session plugin=yazelix_pane_orchestrator name=reconcile_terminal_title_activity_snapshot",
+        ]
+    );
+    assert_eq!(
+        read_json_file(snapshot_payload_log),
+        json!([{
+            "tab_id": 2,
+            "pane_id": 7,
+            "title": "codex thinking",
+            "is_focused": false,
+        }])
+    );
+}
+
 // Defends: the public Rust-owned `yzx reveal` route uses the pane-orchestrator session snapshot as the only sidebar identity source and then focuses the sidebar.
 #[test]
 fn yzx_control_reveal_uses_session_snapshot_and_focuses_sidebar() {

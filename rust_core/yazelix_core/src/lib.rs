@@ -233,8 +233,9 @@ pub use yazi_materialization::{
 };
 pub use zellij_commands::{
     run_zellij_get_workspace_root, run_zellij_inspect_session, run_zellij_open_editor,
-    run_zellij_open_editor_cwd, run_zellij_open_terminal, run_zellij_pipe, run_zellij_retarget,
-    run_zellij_status_bus, run_zellij_status_cache_heartbeat, run_zellij_status_cache_widget,
+    run_zellij_open_editor_cwd, run_zellij_open_terminal, run_zellij_pipe,
+    run_zellij_refresh_terminal_title_activity, run_zellij_retarget, run_zellij_status_bus,
+    run_zellij_status_cache_heartbeat, run_zellij_status_cache_widget,
     run_zellij_status_cache_write,
 };
 pub use zellij_materialization::{
