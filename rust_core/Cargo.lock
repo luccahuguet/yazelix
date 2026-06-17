@@ -1518,7 +1518,7 @@ dependencies = [
 [[package]]
 name = "yazelix_zellij_config_pack"
 version = "0.1.0"
-source = "git+https://github.com/luccahuguet/yazelix-zellij-config-pack?rev=78d1e70a71c1cf4e5e9126e1904c544c0ae636af#78d1e70a71c1cf4e5e9126e1904c544c0ae636af"
+source = "git+https://github.com/luccahuguet/yazelix-zellij-config-pack?rev=29fd6520e71d8175cf0b0a00664c1d9c5fb4dc58#29fd6520e71d8175cf0b0a00664c1d9c5fb4dc58"
 dependencies = [
  "serde",
  "serde_json",
