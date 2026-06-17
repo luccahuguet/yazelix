@@ -1,19 +1,19 @@
 use crate::appearance_mode::{
-    APPEARANCE_MODE_AUTO, APPEARANCE_MODE_DARK, APPEARANCE_MODE_LIGHT, WEZTERM_THEME_DARK,
-    WEZTERM_THEME_LIGHT, appearance_mode_from_config, auto_mode, static_light_mode, wezterm_theme,
+    appearance_mode_from_config, auto_mode, static_light_mode, wezterm_theme, APPEARANCE_MODE_AUTO,
+    APPEARANCE_MODE_DARK, APPEARANCE_MODE_LIGHT, WEZTERM_THEME_DARK, WEZTERM_THEME_LIGHT,
 };
 use crate::atomic_fs::write_text_atomic;
 use crate::bridge::CoreError;
-use crate::config_normalize::{NormalizeConfigRequest, normalize_config};
+use crate::config_normalize::{normalize_config, NormalizeConfigRequest};
 use crate::control_plane::config_dir_from_env;
 use crate::ghostty_cursor_registry::{CursorRegistry, YazelixCursorRegistryExt};
 use crate::ghostty_materialization::{
-    GhosttyMaterializationData, GhosttyMaterializationRequest, generate_ghostty_materialization,
+    generate_ghostty_materialization, GhosttyMaterializationData, GhosttyMaterializationRequest,
 };
 use crate::runtime_component_enabled;
 use crate::terminal_cursor_materialization::{
-    TerminalCursorMaterializationData, TerminalCursorMaterializationRequest, TerminalCursorState,
     cursor_shader_paths_for_state, generate_terminal_cursor_materialization,
+    TerminalCursorMaterializationData, TerminalCursorMaterializationRequest, TerminalCursorState,
 };
 use crate::terminal_variant::terminal_window_title;
 use crate::user_config_paths;
@@ -678,10 +678,10 @@ fn yzxterm_config_table_mut<'a>(
                 crate::bridge::ErrorClass::Runtime,
                 error_code,
                 format!(
-                    "The packaged Yazelix Terminal config at {} has a non-table [{section}] value.",
+                    "The packaged Mars config at {} has a non-table [{section}] value.",
                     package_config.display()
                 ),
-                "Reinstall the Yazelix runtime or rebuild it from a valid yazelix-terminal package.",
+                "Reinstall the Yazelix runtime or rebuild it from a valid Mars package.",
                 serde_json::json!({}),
             )
         })
@@ -712,8 +712,8 @@ fn remove_path_if_exists(path: &Path, operation: &'static str) -> Result<(), Cor
         fs::remove_dir_all(path).map_err(|source| {
             CoreError::io(
                 operation,
-                "Could not remove the stale generated Yazelix Terminal themes directory",
-                "Remove the stale generated yzxterm themes directory, then rerun `yzx refresh`.",
+                "Could not remove the stale generated Mars themes directory",
+                "Remove the stale generated Mars themes directory, then rerun `yzx refresh`.",
                 path.to_string_lossy(),
                 source,
             )
@@ -722,8 +722,8 @@ fn remove_path_if_exists(path: &Path, operation: &'static str) -> Result<(), Cor
         fs::remove_file(path).map_err(|source| {
             CoreError::io(
                 operation,
-                "Could not remove the stale generated Yazelix Terminal themes path",
-                "Remove the stale generated yzxterm themes path, then rerun `yzx refresh`.",
+                "Could not remove the stale generated Mars themes path",
+                "Remove the stale generated Mars themes path, then rerun `yzx refresh`.",
                 path.to_string_lossy(),
                 source,
             )
@@ -735,8 +735,8 @@ fn patch_yzxterm_theme_cursor(theme_path: &Path, color_hex: &str) -> Result<(), 
     let raw = fs::read_to_string(theme_path).map_err(|source| {
         CoreError::io(
             "read_yzxterm_theme",
-            "Could not read a copied Yazelix Terminal theme",
-            "Reinstall the Yazelix runtime so the yazelix-terminal child themes are present.",
+            "Could not read a copied Mars theme",
+            "Reinstall the Yazelix runtime so the Mars child themes are present.",
             theme_path.to_string_lossy(),
             source,
         )
@@ -746,10 +746,10 @@ fn patch_yzxterm_theme_cursor(theme_path: &Path, color_hex: &str) -> Result<(), 
             crate::bridge::ErrorClass::Runtime,
             "parse_yzxterm_theme",
             format!(
-                "The packaged Yazelix Terminal theme at {} is not valid TOML.",
+                "The packaged Mars theme at {} is not valid TOML.",
                 theme_path.display()
             ),
-            "Reinstall the Yazelix runtime or rebuild it from a valid yazelix-terminal package.",
+            "Reinstall the Yazelix runtime or rebuild it from a valid Mars package.",
             serde_json::json!({ "error": source.to_string() }),
         )
     })?;
@@ -761,10 +761,10 @@ fn patch_yzxterm_theme_cursor(theme_path: &Path, color_hex: &str) -> Result<(), 
                 crate::bridge::ErrorClass::Runtime,
                 "invalid_yzxterm_theme_colors",
                 format!(
-                    "The packaged Yazelix Terminal theme at {} is missing a [colors] table or has a non-table [colors] value.",
+                    "The packaged Mars theme at {} is missing a [colors] table or has a non-table [colors] value.",
                     theme_path.display()
                 ),
-                "Reinstall the Yazelix runtime or rebuild it from a valid yazelix-terminal package.",
+                "Reinstall the Yazelix runtime or rebuild it from a valid Mars package.",
                 serde_json::json!({}),
             )
         })?
@@ -776,7 +776,7 @@ fn patch_yzxterm_theme_cursor(theme_path: &Path, color_hex: &str) -> Result<(), 
         CoreError::classified(
             crate::bridge::ErrorClass::Internal,
             "render_yzxterm_theme",
-            "Could not render a generated Yazelix Terminal theme.",
+            "Could not render a generated Mars theme.",
             "Report this Yazelix bug with the current settings.jsonc.",
             serde_json::json!({ "error": source.to_string() }),
         )
@@ -794,10 +794,10 @@ fn copy_yzxterm_themes(
             crate::bridge::ErrorClass::Runtime,
             "invalid_yzxterm_package_config_path",
             format!(
-                "Packaged Yazelix Terminal config path has no parent directory: {}.",
+                "Packaged Mars config path has no parent directory: {}.",
                 package_config.display()
             ),
-            "Reinstall the Yazelix runtime or rebuild it from a valid yazelix-terminal package.",
+            "Reinstall the Yazelix runtime or rebuild it from a valid Mars package.",
             serde_json::json!({}),
         )
     })?;
@@ -807,10 +807,10 @@ fn copy_yzxterm_themes(
             crate::bridge::ErrorClass::Runtime,
             "missing_yzxterm_themes",
             format!(
-                "The packaged Yazelix Terminal config at {} does not have a sibling themes directory.",
+                "The packaged Mars config at {} does not have a sibling themes directory.",
                 package_config.display()
             ),
-            "Reinstall Yazelix with a yazelix-terminal package that advertises and ships its appearance themes.",
+            "Reinstall Yazelix with a Mars package that advertises and ships its appearance themes.",
             serde_json::json!({ "themes_dir": source.to_string_lossy() }),
         ));
     }
@@ -820,7 +820,7 @@ fn copy_yzxterm_themes(
     copy_dir_all(&source, &destination).map_err(|source_error| {
         CoreError::io(
             "copy_yzxterm_themes",
-            "Could not copy packaged Yazelix Terminal themes into the generated config root",
+            "Could not copy packaged Mars themes into the generated config root",
             "Check permissions for the generated Yazelix state directory, then rerun `yzx refresh`.",
             destination.to_string_lossy(),
             source_error,
@@ -850,10 +850,10 @@ fn apply_yzxterm_appearance(
             crate::bridge::ErrorClass::Runtime,
             "missing_yzxterm_adaptive_theme",
             format!(
-                "The packaged Yazelix Terminal config at {} does not declare adaptive-theme dark/light themes.",
+                "The packaged Mars config at {} does not declare adaptive-theme dark/light themes.",
                 package_config.display()
             ),
-            "Reinstall Yazelix with a yazelix-terminal package that advertises and ships dark/light/auto appearance support.",
+            "Reinstall Yazelix with a Mars package that advertises and ships dark/light/auto appearance support.",
             serde_json::json!({}),
         ));
     }
@@ -887,8 +887,8 @@ fn generate_yzxterm_config(
     let raw = fs::read_to_string(&package_config).map_err(|source| {
         CoreError::io(
             "read_yzxterm_package_config",
-            "Could not read the packaged Yazelix Terminal config",
-            "Reinstall the Yazelix runtime so the yazelix-terminal child package is present.",
+            "Could not read the packaged Mars config",
+            "Reinstall the Yazelix runtime so the Mars child package is present.",
             package_config.to_string_lossy(),
             source,
         )
@@ -898,10 +898,10 @@ fn generate_yzxterm_config(
             crate::bridge::ErrorClass::Runtime,
             "parse_yzxterm_package_config",
             format!(
-                "The packaged Yazelix Terminal config at {} is not valid TOML.",
+                "The packaged Mars config at {} is not valid TOML.",
                 package_config.display()
             ),
-            "Reinstall the Yazelix runtime or rebuild it from a valid yazelix-terminal package.",
+            "Reinstall the Yazelix runtime or rebuild it from a valid Mars package.",
             serde_json::json!({ "error": source.to_string() }),
         )
     })?;
@@ -913,9 +913,7 @@ fn generate_yzxterm_config(
             CoreError::classified(
                 crate::bridge::ErrorClass::Internal,
                 "parse_yzxterm_opacity",
-                format!(
-                    "Could not parse Yazelix Terminal opacity for transparency '{transparency}'."
-                ),
+                format!("Could not parse Mars opacity for transparency '{transparency}'."),
                 "Report this Yazelix bug with the active settings.jsonc.",
                 serde_json::json!({ "error": source.to_string() }),
             )
@@ -960,7 +958,7 @@ fn generate_yzxterm_config(
         CoreError::classified(
             crate::bridge::ErrorClass::Internal,
             "render_yzxterm_config",
-            "Could not render the generated Yazelix Terminal config.",
+            "Could not render the generated Mars config.",
             "Report this Yazelix bug with the current settings.jsonc.",
             serde_json::json!({ "error": source.to_string() }),
         )
@@ -1200,7 +1198,7 @@ pub fn generate_terminal_materialization(
                 fs::create_dir_all(&yzxterm_dir).map_err(|source| {
                     CoreError::io(
                         "create_yzxterm_dir",
-                        "Could not create Yazelix Terminal output directory",
+                        "Could not create Mars output directory",
                         "Check permissions for the Yazelix state directory.",
                         yzxterm_dir.to_string_lossy(),
                         source,
@@ -1412,12 +1410,10 @@ mod tests {
 
         assert!(rendered.contains("SerenityOS Emoji"));
         assert!(!rendered.contains("Noto Color Emoji"));
-        assert!(
-            generated_dir
-                .join("themes")
-                .join("yazelix-dark.toml")
-                .is_file()
-        );
+        assert!(generated_dir
+            .join("themes")
+            .join("yazelix-dark.toml")
+            .is_file());
     }
 
     fn write_yzxterm_profile_config(path: &Path, emoji_family: &str) {

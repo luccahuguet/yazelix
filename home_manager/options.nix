@@ -82,8 +82,8 @@ ${terminalDescriptionBullets}
     type = types.enum yzxtermProfiles;
     default = "full";
     description = ''
-      Yazelix Terminal profile used by generated runtime configs and the
-      Linux desktop entry.
+      Mars profile used by generated runtime configs and the Linux desktop
+      entry.
 
       - "full": Rio trail cursor defaults without custom shaders
       - "baseline": no cursor effects
@@ -96,7 +96,7 @@ ${terminalDescriptionBullets}
     default = "noto";
     description = ''
       Declarative Home Manager value for terminal.emoji_style, used by
-      generated Yazelix Terminal runtime configs and Linux desktop entries.
+      generated Mars runtime configs and Linux desktop entries.
 
       - "noto": current Noto Color Emoji fallback
       - "twitter": Twitter/Twemoji color emoji fallback
@@ -108,11 +108,11 @@ ${terminalDescriptionBullets}
     type = types.nullOr types.package;
     default = null;
     description = ''
-      Yazelix Terminal child package override.
+      Mars child package override.
 
       Set this only for yzxterm dogfooding when you want to replace the
       terminal child package without replacing the whole Yazelix package.
-      The package must expose passthru.yzxtermPackageMetadata. This option
+      The package must expose passthru.marsPackageMetadata. This option
       applies only when programs.yazelix.terminal is "yzxterm" or
       extra_terminal_launchers contains "yzxterm".
     '';

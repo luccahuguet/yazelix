@@ -1,63 +1,63 @@
-# Yzxterm Package Boundary
+# Mars Package Boundary
 
 ## Summary
 
-Yazelix Terminal is a child-owned Rio-derived terminal package. Main Yazelix may
-select that package, include it in one terminal runtime variant, expose a narrow
-Home Manager override for dogfooding, and consume stable package metadata. Main
-Yazelix must not parse yzxterm shader files, infer package profiles from store
-names, or make other terminal variants depend on yzxterm internals.
+Mars is a child-owned Rio-derived terminal package. Main Yazelix may select that
+package, include it in one terminal runtime variant, expose a narrow Home
+Manager override for dogfooding, and consume stable package metadata. Main
+Yazelix must not parse Mars shader files, infer package profiles from store
+names, or make other terminal variants depend on Mars internals.
 
 ## Ownership
 
 | Concern | Owner |
 | --- | --- |
-| yzxterm binary wrapper behavior | `yazelix-terminal` child package |
-| yzxterm profile config templates | `yazelix-terminal` child package |
-| yzxterm emoji fallback presets and bundled font paths | `yazelix-terminal` child package |
-| yzxterm shader asset layout and ABI | `yazelix-terminal` child package |
-| yzxterm dark/light themes and adaptive appearance behavior | `yazelix-terminal` child package |
-| yzxterm package metadata schema and values | `yazelix-terminal` child package |
+| Mars binary wrapper behavior | `yazelix-terminal` child package |
+| Mars profile config templates | `yazelix-terminal` child package |
+| Mars emoji fallback presets and bundled font paths | `yazelix-terminal` child package |
+| Mars shader asset layout and ABI | `yazelix-terminal` child package |
+| Mars dark/light themes and adaptive appearance behavior | `yazelix-terminal` child package |
+| Mars package metadata schema and values | `yazelix-terminal` child package |
 | runtime variant selection | main Yazelix Nix package builders |
 | Home Manager terminal selection | main Yazelix Home Manager module |
-| Home Manager yzxterm package override | main Yazelix Home Manager module, yzxterm-only |
-| runtime identity enrichment from yzxterm metadata | main Yazelix runtime package assembly |
+| Home Manager yzxterm package override | main Yazelix Home Manager module, Mars-only |
+| runtime identity enrichment from Mars metadata | main Yazelix runtime package assembly |
 | generic terminal materialization requests | main Yazelix Rust runtime control plane |
-| yzxterm generated-config adapter for stable Yazelix inputs | main Yazelix Rust runtime control plane, yzxterm-only branch |
+| Mars generated-config adapter for stable Yazelix inputs | main Yazelix Rust runtime control plane, yzxterm-only branch |
 
 ## Contract
 
 - A yzxterm runtime package must receive a terminal package that exposes
-  `passthru.yzxtermPackageMetadata`
+  `passthru.marsPackageMetadata`
 - The metadata must include schema version, package name, package profile,
   checked/release status, metadata path, wrapper commands, config roots,
   supported emoji fallback presets, supported appearance modes, default
   appearance mode, the appearance wrapper env name, and the emoji-font wrapper
   env name
-- Main Yazelix derives the yzxterm launch command and runtime identity package
+- Main Yazelix derives the Mars launch command and runtime identity package
   fields from that metadata, not from terminal package names or child config
   files
-- Main Yazelix requires yzxterm metadata to advertise `dark`, `light`, and
-  `auto` appearance support before exposing yzxterm as a first-class target for
+- Main Yazelix requires Mars metadata to advertise `dark`, `light`, and `auto`
+  appearance support before exposing Mars as a first-class target for
   global `appearance.mode`
-- `programs.yazelix.yzxterm_package` overrides only the yzxterm child package.
+- `programs.yazelix.yzxterm_package` overrides only the Mars child package.
   It must not require replacing `programs.yazelix.package`
 - The override is invalid unless the active terminal or an extra terminal
   launcher includes `yzxterm`
 - Non-yzxterm terminal variants must ignore the yzxterm override and must not
-  require yzxterm metadata
-- Fast/local yzxterm packages must be visibly detectable through
+  require Mars metadata
+- Fast/local Mars packages must be visibly detectable through
   `runtime_identity.json`; release packages must also report whether the child
   package was checked
-- Main Yazelix may read the selected packaged yzxterm profile TOML as a
+- Main Yazelix may read the selected packaged Mars profile TOML as a
   template, validate its table shape, and apply stable Yazelix inputs to it.
-  This is a yzxterm-only generated-config adapter, not a generic Rio config
+  This is a Mars-only generated-config adapter, not a generic Rio config
   owner and not package identity inference
-- Main Yazelix stable inputs for that adapter are limited to the selected
-  yzxterm profile, selected `terminal.emoji_style` yzxterm emoji fallback preset, terminal order,
-  runtime and state directories, terminal transparency, global appearance mode,
-  yzxterm cell-opacity policy, active cursor color, and generated cursor shader
-  snapshot paths
+- Main Yazelix stable inputs for that adapter are limited to the selected Mars
+  profile, selected `terminal.emoji_style` Mars emoji fallback preset, terminal
+  order, runtime and state directories, terminal transparency, global
+  appearance mode, Mars cell-opacity policy, active cursor color, and generated
+  cursor shader snapshot paths
 - The child package remains the owner of profile template roots, wrapper
   behavior, emoji font fallback roots, dark/light themes, adaptive appearance
   behavior, shader ABI, shader file layout, and the meaning of package metadata
@@ -76,7 +76,7 @@ names, or make other terminal variants depend on yzxterm internals.
 | Rio | writes generated upstream Rio config from stable Yazelix settings | Rio owns config semantics |
 | Ratty | writes generated Ratty config and launch argv | Ratty owns config semantics and RGP/GPU behavior |
 | Foot | writes generated Linux-only `foot.ini` | Foot owns config semantics |
-| yzxterm | reads the selected child-owned profile and emoji-fallback template, copies child-owned dark/light themes into the generated config root, then applies stable Yazelix transparency, appearance selection, cell-opacity policy, cursor color, and generated shader snapshot paths | `yazelix-terminal` owns wrapper behavior, profile templates, emoji fallback presets, dark/light theme palettes, adaptive appearance behavior, shader ABI, shader asset layout, and package metadata |
+| yzxterm | reads the selected child-owned Mars profile and emoji-fallback template, copies child-owned dark/light themes into the generated config root, then applies stable Yazelix transparency, appearance selection, cell-opacity policy, cursor color, and generated shader snapshot paths | `yazelix-terminal` owns wrapper behavior, profile templates, emoji fallback presets, dark/light theme palettes, adaptive appearance behavior, shader ABI, shader asset layout, and package metadata |
 
 ## Verification
 

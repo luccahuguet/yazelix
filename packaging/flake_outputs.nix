@@ -34,9 +34,9 @@ let
   runtime_default = builtins.getAttr (terminalMetadata.runtimeOutput defaultRuntimeVariant) terminalPackages;
   yzxtermFastRuntimeIdentity = defaultRuntimeIdentity // {
     package_profile = "yzxterm-fast";
-    yzxterm_terminal_package = "yazelix-terminal-fast";
+    yzxterm_terminal_package = "mars-fast";
   };
-  yzxtermFastTerminalPackage = yazelixTerminal.packages.${system}.yazelix-terminal-fast;
+  yzxtermFastTerminalPackage = yazelixTerminal.packages.${system}.mars-fast;
   runtime_yzxterm_fast = runtimePackageWith system pkgs "yzxterm" defaultRuntimePackages {
     name = "yazelix-runtime-yzxterm-fast";
     runtimeIdentity = yzxtermFastRuntimeIdentity;

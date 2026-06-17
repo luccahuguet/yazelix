@@ -192,13 +192,13 @@ pub fn validate_nix_customization_api(repo_root: &Path) -> Result<ValidationRepo
     require_json_bool(
         object,
         "yzxterm_package_override_rejects_missing_metadata",
-        "yzxterm package overrides must reject packages without yzxtermPackageMetadata",
+        "yzxterm package overrides must reject packages without marsPackageMetadata",
         &mut report.errors,
     );
     require_json_bool(
         object,
         "rio_runtime_uses_configured_upstream_package",
-        "Rio runtime must use the configured upstream Rio package and must not depend on yzxterm metadata",
+        "Rio runtime must use the configured upstream Rio package and must not depend on Mars metadata",
         &mut report.errors,
     );
     require_json_bool(
@@ -369,11 +369,11 @@ fn build_nix_customization_api_expr(repo_root: &Path) -> String {
         "      }".to_string(),
         "    ];".to_string(),
         "  };".to_string(),
-        r#"  fakeYzxtermPackage = pkgs.runCommand "validator-yazelix-terminal-fast" {
-    passthru.yzxtermPackageMetadata = {
+        r#"  fakeYzxtermPackage = pkgs.runCommand "validator-mars-fast" {
+    passthru.marsPackageMetadata = {
       schema_version = 1;
-      terminal = "yazelix-terminal";
-      package_name = "validator-yazelix-terminal-fast";
+      terminal = "mars";
+      package_name = "validator-mars-fast";
       package_profile = "fast";
       checked_package = false;
       metadata_path = "share/yazelix-terminal/package-metadata.json";
@@ -392,8 +392,8 @@ fn build_nix_customization_api_expr(repo_root: &Path) -> String {
         serenityos = { family = "SerenityOS Emoji"; config_roots = { full = "share/yazelix-terminal/emoji/serenityos"; baseline = "share/yazelix-terminal/emoji/serenityos/baseline"; shaders = "share/yazelix-terminal/emoji/serenityos/profiles/shaders"; }; };
       };
       wrapper_commands = {
-        terminal = "bin/validator-yazelix-terminal";
-        desktop = "bin/validator-yazelix-terminal-desktop";
+        terminal = "bin/validator-mars";
+        desktop = "bin/validator-mars-desktop";
       };
       wrapper_env = {
         appearance = "YAZELIX_TERMINAL_APPEARANCE";
@@ -402,11 +402,11 @@ fn build_nix_customization_api_expr(repo_root: &Path) -> String {
     };
   } ''
     mkdir -p "$out/bin" "$out/share/yazelix-terminal"
-    touch "$out/bin/validator-yazelix-terminal-desktop"
-    chmod +x "$out/bin/validator-yazelix-terminal-desktop"
+    touch "$out/bin/validator-mars-desktop"
+    chmod +x "$out/bin/validator-mars-desktop"
     printf '{}' > "$out/share/yazelix-terminal/package-metadata.json"
   '';
-  invalidYzxtermPackage = pkgs.runCommand "validator-yazelix-terminal-invalid" { } ''
+  invalidYzxtermPackage = pkgs.runCommand "validator-mars-invalid" { } ''
     mkdir -p "$out"
   '';
   fakeRioPackage = pkgs.runCommand "validator-rio-0.4.7" { } ''
@@ -472,8 +472,8 @@ fn build_nix_customization_api_expr(repo_root: &Path) -> String {
   }};"#,
             repo_root_literal, repo_root_literal, repo_root_literal, repo_root_literal
         ),
-        "  yzxtermFastChildMetadata = flake.inputs.yazelixTerminal.packages.${system}.yazelix-terminal-fast.passthru.yzxtermPackageMetadata or {};".to_string(),
-        "  yzxtermReleaseChildMetadata = flake.inputs.yazelixTerminal.packages.${system}.yazelix-terminal.passthru.yzxtermPackageMetadata or {};".to_string(),
+        "  yzxtermFastChildMetadata = flake.inputs.yazelixTerminal.packages.${system}.mars-fast.passthru.marsPackageMetadata or {};".to_string(),
+        "  yzxtermReleaseChildMetadata = flake.inputs.yazelixTerminal.packages.${system}.mars.passthru.marsPackageMetadata or {};".to_string(),
         "  steelAuthoringCommands = [ \"steel\" \"steel-language-server\" \"forge\" \"cargo-steel-lib\" \"repl-connect\" ];".to_string(),
         "  invalidRuntimeTool = builtins.tryEval ((flake.lib.${system}.mkYazelix { runtimeToolSources = { zellij = \"host\"; }; }).drvPath);".to_string(),
         "  unsupportedComponent = builtins.tryEval ((flake.lib.${system}.mkYazelix { components = { status_bar = false; }; }).drvPath);".to_string(),
@@ -559,9 +559,9 @@ fn build_nix_customization_api_expr(repo_root: &Path) -> String {
         "  home_manager_has_package = builtins.length hm.config.home.packages > 0;".to_string(),
         "  home_manager_terminal_option_selects_yzxterm = hmYzxterm.config.programs.yazelix.terminal == \"yzxterm\" && builtins.any (pkg: (pkg.meta.mainProgram or \"\") == \"yzx\") hmYzxterm.config.home.packages;".to_string(),
         "  home_manager_terminal_option_omits_fallback_terminal_packages = !(builtins.any (pkg: let name = pkg.name or \"\"; in pkgs.lib.hasPrefix \"ghostty-\" name || pkgs.lib.hasPrefix \"foot-\" name || pkgs.lib.hasPrefix \"kitty-\" name || pkgs.lib.hasPrefix \"rio-\" name || pkgs.lib.hasPrefix \"wezterm-\" name || pkgs.lib.hasPrefix \"ratty-\" name) hmYzxterm.config.home.packages);".to_string(),
-        r#"  home_manager_yzxterm_package_override_option = hmYzxtermPackageOverride.config.programs.yazelix.yzxterm_package.passthru.yzxtermPackageMetadata.package_name == "validator-yazelix-terminal-fast";
+        r#"  home_manager_yzxterm_package_override_option = hmYzxtermPackageOverride.config.programs.yazelix.yzxterm_package.passthru.marsPackageMetadata.package_name == "validator-mars-fast";
   yzxterm_package_override_is_yzxterm_scoped = ghosttyRegistryWithInvalidYzxtermOverride.manifest.terminal.commands == [ "ghostty" ];
-  yzxterm_package_override_uses_package_metadata = yzxtermOverrideRegistry.terminalPackageMetadata.package_name == "validator-yazelix-terminal-fast" && builtins.elem "validator-yazelix-terminal-desktop" yzxtermOverrideRegistry.exportedCommands && yzxtermOverrideRegistry.terminalPackageRuntimeIdentity.package_profile == "yzxterm-fast" && yzxtermOverrideRegistry.terminalPackageRuntimeIdentity.yzxterm_terminal_supported_appearance_modes == [ "dark" "light" "auto" ] && yzxtermOverrideRegistry.terminalPackageRuntimeIdentity.yzxterm_terminal_default_appearance_mode == "dark";
+  yzxterm_package_override_uses_package_metadata = yzxtermOverrideRegistry.terminalPackageMetadata.package_name == "validator-mars-fast" && builtins.elem "validator-mars-desktop" yzxtermOverrideRegistry.exportedCommands && yzxtermOverrideRegistry.terminalPackageRuntimeIdentity.package_profile == "yzxterm-fast" && yzxtermOverrideRegistry.terminalPackageRuntimeIdentity.yzxterm_terminal_supported_appearance_modes == [ "dark" "light" "auto" ] && yzxtermOverrideRegistry.terminalPackageRuntimeIdentity.yzxterm_terminal_default_appearance_mode == "dark";
   yzxterm_package_override_rejects_missing_metadata = !invalidYzxtermPackageRegistry.success;
   rio_runtime_uses_configured_upstream_package = rioOverrideRegistry.tools.terminal.package == fakeRioPackage && rioOverrideRegistry.tools.terminal.commands == [ "rio" ] && rioOverrideRegistry.terminalPackageMetadata == null;
   yzxterm_fast_child_metadata_marks_unchecked = (yzxtermFastChildMetadata.package_profile or "") == "fast" && (yzxtermFastChildMetadata.checked_package or true) == false && (yzxtermFastChildMetadata.supported_appearance_modes or []) == [ "dark" "light" "auto" ] && (yzxtermFastChildMetadata.default_appearance_mode or "") == "dark" && (yzxtermFastChildMetadata.wrapper_env.appearance or "") == "YAZELIX_TERMINAL_APPEARANCE";

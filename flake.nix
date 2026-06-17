@@ -147,7 +147,7 @@
         _module.args.yazelixCursorsPackage =
           yazelixCursors.packages.${pkgs.stdenv.hostPlatform.system}.yazelix_cursors;
         _module.args.yazelixTerminalPackage =
-          yazelixTerminal.packages.${pkgs.stdenv.hostPlatform.system}.yazelix-terminal;
+          yazelixTerminal.packages.${pkgs.stdenv.hostPlatform.system}.mars;
         imports = [ ./home_manager/module.nix ];
       };
       agentUsagePackages = system:
@@ -199,7 +199,7 @@
           rioPackage ? rio.packages.${system}.rio,
           yazelixHelixPackage ? kgpPackages.helixPackage system,
           yazelixCursorsPackage ? yazelixCursors.packages.${system}.yazelix_cursors,
-          yazelixTerminalPackage ? yazelixTerminal.packages.${system}.yazelix-terminal,
+          yazelixTerminalPackage ? yazelixTerminal.packages.${system}.mars,
           zellijPluginArtifacts ? zellijPluginArtifactsFor system,
           enableZellijKittyPassthrough ? false,
         }:
@@ -231,7 +231,7 @@
           rioPackage ? rio.packages.${system}.rio,
           yazelixHelixPackage ? kgpPackages.helixPackage system,
           yazelixCursorsPackage ? yazelixCursors.packages.${system}.yazelix_cursors,
-          yazelixTerminalPackage ? yazelixTerminal.packages.${system}.yazelix-terminal,
+          yazelixTerminalPackage ? yazelixTerminal.packages.${system}.mars,
         }:
         import ./yazelix_runtime_package.nix {
           inherit nixgl name rioPackage runtimeIdentity runtimeVariant yazelixHelixPackage yazelixCursorsPackage yazelixTerminalPackage;

@@ -7,7 +7,7 @@ A Home Manager module for [Yazelix](https://github.com/luccahuguet/yazelix) that
 - **Leaves `settings.jsonc` mutable by default** so users can edit it directly
 - **Can generate `settings.jsonc`** from Home Manager options when `manage_config = true`, including the hidden deterministic ratconfig contract state Yazelix requires
 - **Adds `yzx` to the Home Manager profile** through the packaged Yazelix runtime
-- **Selects one packaged terminal** with Ghostty by default, vanilla Rio, WezTerm, and Kitty as alternates, Yazelix Terminal as the experimental Rio-derived path, and Foot/Ratty as Linux options through `terminal`
+- **Selects one packaged terminal** with Ghostty by default, Mars as the Rio-derived path, vanilla Rio, WezTerm, and Kitty as alternates, and Foot/Ratty as Linux options through `terminal`
 - **Installs icons and, on Linux, a desktop entry** that target the managed runtime
 - **Keeps the config surface type-safe** with Home Manager validation
 
@@ -65,7 +65,7 @@ If you already have your own Home Manager flake, the minimal setup is:
   programs.yazelix = {
     enable = true;
     terminal = "ghostty"; # Default; use "kitty", "rio", "yzxterm", "wezterm", or Linux-only "foot"/"ratty" for alternate packaged terminal paths
-    yzxterm_profile = "full"; # Default; use "baseline" or "shaders" for Yazelix Terminal profile selection
+    yzxterm_profile = "full"; # Default; use "baseline" or "shaders" for Mars profile selection
     yzxterm_emoji_font = "noto"; # Default; use "twitter" or "serenityos" to dogfood alternate yzxterm emoji fallbacks
     # Customize other options as needed - see example.nix
     # Set manage_config = true if you want Home Manager to own settings.jsonc
@@ -73,7 +73,7 @@ If you already have your own Home Manager flake, the minimal setup is:
 }
 ```
 
-To use Yazelix Terminal as the packaged terminal:
+To use Mars as the packaged terminal:
 
 ```nix
 {
@@ -87,9 +87,9 @@ To use Yazelix Terminal as the packaged terminal:
 }
 ```
 
-`terminal` controls the packaged terminal Yazelix launches. There is no fallback to another packaged terminal when this option is selected; a missing or mispackaged terminal fails clearly. `yzxterm_profile` controls Yazelix Terminal's generated profile for activation, desktop launches, and new shell sessions: `full` keeps Rio trail cursor without custom shaders, `baseline` disables effects, and `shaders` enables the generated Yazelix cursor shader chain
+`terminal` controls the packaged terminal Yazelix launches. There is no fallback to another packaged terminal when this option is selected; a missing or mispackaged terminal fails clearly. `yzxterm_profile` controls the generated Mars profile for activation, desktop launches, and new shell sessions: `full` keeps Rio trail cursor without custom shaders, `baseline` disables effects, and `shaders` enables the generated Yazelix cursor shader chain
 
-`yzxterm_emoji_font` is the Home Manager declarative value for `terminal.emoji_style`. Home Manager applies it to generated Yazelix Terminal configs during activation and desktop launches with an explicit managed-source marker, and still exports `YAZELIX_TERMINAL_EMOJI_FONT` for direct child-wrapper use in new shell sessions. Mutable Yazelix config edits remain authoritative for ad hoc main-repo materialization unless `manage_config = true` makes Home Manager own `settings.jsonc`. `noto` is the compatible default, `twitter` selects Twitter/Twemoji color emoji, and `serenityos` selects SerenityOS emoji. The setting applies only to yzxterm; other terminal variants keep their own font behavior
+`yzxterm_emoji_font` is the Home Manager declarative value for `terminal.emoji_style`. Home Manager applies it to generated Mars configs during activation and desktop launches with an explicit managed-source marker, and still exports `YAZELIX_TERMINAL_EMOJI_FONT` for direct child-wrapper use in new shell sessions. Mutable Yazelix config edits remain authoritative for ad hoc main-repo materialization unless `manage_config = true` makes Home Manager own `settings.jsonc`. `noto` is the compatible default, `twitter` selects Twitter/Twemoji color emoji, and `serenityos` selects SerenityOS emoji. The setting applies only to yzxterm; other terminal variants keep their own font behavior
 
 `extra_terminal_launchers` installs additional Linux desktop entries such as `New Yazelix - Ghostty`, `New Yazelix - Rio`, and `New Yazelix - WezTerm` without changing the active runtime identity. These entries point directly at their terminal variant packages in the Nix store, so their dependencies stay available without adding duplicate `bin/yzx` commands to the Home Manager profile. `yzx launch --term <terminal>` uses these packaged launchers for non-active terminal variants. Do not include the active `terminal` value in this list; the active terminal already gets the profile-owned launcher
 
@@ -120,20 +120,20 @@ When `manage_config = true`, Home Manager can also own user-defined popup surfac
 
 Set `keep_alive = true` for monitor TUIs whose process state should survive focused toggle hides. Leave it unset or set it to `false` for popups that should close on focused toggle
 
-Maintainers dogfooding local Yazelix Terminal changes can temporarily point the
-module at the fast yzxterm child package while keeping `terminal = "yzxterm"`:
+Maintainers dogfooding local Mars changes can temporarily point the module at
+the fast yzxterm child package while keeping `terminal = "yzxterm"`:
 
 ```nix
 {
   programs.yazelix = {
     terminal = "yzxterm";
-    yzxterm_package = inputs.yazelixTerminal.packages.${pkgs.stdenv.hostPlatform.system}.yazelix-terminal-fast;
+    yzxterm_package = inputs.yazelixTerminal.packages.${pkgs.stdenv.hostPlatform.system}.mars-fast;
   };
 }
 ```
 
 Remove this child-package override before final release validation; the normal
-module path uses the checked `yazelix-terminal` child package
+module path uses the checked `mars` child package
 
 To save space by using tools you already manage on your host, set runtime tool sources per tool:
 

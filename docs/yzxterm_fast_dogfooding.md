@@ -1,8 +1,8 @@
-# Yazelix Terminal Fast Dogfooding
+# Mars Fast Dogfooding
 
-This is a maintainer workflow for local Yazelix Terminal iteration. It keeps the
-normal release/runtime path intact and adds an explicit fast path for terminal
-fork dogfooding.
+This is a maintainer workflow for local Mars iteration. It keeps the normal
+release/runtime path intact and adds an explicit fast path for terminal fork
+dogfooding.
 
 ## Slow Path
 
@@ -15,10 +15,10 @@ home-manager switch --flake .#lucca@loqness
 
 Use it for final runtime validation and shareable releases. When the
 `yazelixTerminal` input changes, this path consumes the checked
-`yazelix-terminal` child package. The child package builds `rioterm` with the
-release Cargo profile, including LTO and one codegen unit, then runs the package
-test phase. In the observed June 3, 2026 update, the final release-LTO link and
-the separate test graph rebuild were the expensive steps.
+`mars` child package. The child package builds Mars with the release Cargo
+profile, including LTO and one codegen unit, then runs the package test phase.
+In the observed June 3, 2026 update, the final release-LTO link and the
+separate test graph rebuild were the expensive steps.
 
 ## Fast Path
 
@@ -29,15 +29,15 @@ nix build .#runtime_yzxterm_fast --no-link --no-write-lock-file
 nix run .#yzxterm_fast -- launch
 ```
 
-`runtime_yzxterm_fast` and `yzxterm_fast` use the `yazelix-terminal-fast` child
-package. That child package keeps the same wrapper/config shape as the regular
-terminal package, but its unwrapped Rio build uses the Cargo `fast` profile and
-skips package checks. It is not release evidence.
+`runtime_yzxterm_fast` and `yzxterm_fast` use the `mars-fast` child package.
+That child package keeps the same wrapper/config shape as the regular terminal
+package, but its unwrapped Mars build uses the Cargo `fast` profile and skips
+package checks. It is not release evidence.
 
 The public cache publish workflow builds `runtime_yzxterm_fast` on
 `x86_64-linux`. After that workflow publishes a commit, Nix can substitute the
-fast runtime closure and the `yazelix-terminal-fast` child package from the
-Yazelix Cachix cache instead of rebuilding the WGPU terminal graph locally.
+fast runtime closure and the `mars-fast` child package from the Yazelix Cachix
+cache instead of rebuilding the WGPU terminal graph locally.
 Before a commit is published, or when using unpublished local child-repo
 changes, expect the fast runtime to build locally.
 
@@ -50,14 +50,14 @@ input pointing at `github:luccahuguet/yazelix-terminal`:
   programs.yazelix = {
     terminal = "yzxterm";
     yzxterm_profile = "shaders";
-    yzxterm_package = inputs.yazelixTerminal.packages.${pkgs.stdenv.hostPlatform.system}.yazelix-terminal-fast;
+    yzxterm_package = inputs.yazelixTerminal.packages.${pkgs.stdenv.hostPlatform.system}.mars-fast;
   };
 }
 ```
 
 Remove the `programs.yazelix.yzxterm_package` override before final
 release/runtime validation. The default Home Manager module path still uses the
-checked `yazelix-terminal` package.
+checked `mars` package.
 
 ## Cheap Validation
 
@@ -85,7 +85,7 @@ protects stale `/nix/store/.../bin/yzx` invocations, so `nix run
 runtime dir. When the fast package is installed through the Home Manager package
 override, plain `yzx status --versions` should show the fast runtime. In both
 cases, `runtime_identity.json` carries `"package_profile": "yzxterm-fast"` and
-`"yzxterm_terminal_package": "yazelix-terminal-fast"`.
+`"yzxterm_terminal_package": "mars-fast"`.
 
 ## Further Speed Work
 
@@ -100,9 +100,9 @@ runtime commits substitute locally. See <https://docs.cachix.org/pushing>.
 Post-cache dry-run evidence from June 6, 2026:
 
 - main repo dirty `nix build .#runtime_yzxterm_fast --dry-run` reported only 3
-  derivations to build and 55 fetched paths; the `yazelix-terminal-fast` and
-  `yazelix-terminal-fast-unwrapped` child paths were fetched/substituted
-- child repo `nix build .#yazelix-terminal-fast --dry-run` from an unpublished
+  derivations to build and 55 fetched paths; the `mars-fast` and
+  `mars-fast-unwrapped` child paths were fetched/substituted
+- child repo `nix build .#mars-fast --dry-run` from an unpublished
   local checkout still reported 60 derivations to build and 141 fetched paths
 
 That means the normal main-repo dogfooding bottleneck is already handled by the
@@ -118,7 +118,7 @@ Use these paths according to the work being done:
   after CI publishes the commit, this should substitute from Cachix on
   `x86_64-linux`.
 - Home Manager yzxterm dogfooding: set only `programs.yazelix.yzxterm_package`
-  to the child `yazelix-terminal-fast` package.
+  to the child `mars-fast` package.
 - Release validation: use `runtime_yzxterm` and the default Home Manager path;
   this consumes the checked release child package.
 
@@ -139,7 +139,7 @@ Other build-speed approaches stay separate from the main runtime cache lane:
   the child needs a less Linux-specific experiment. See <https://lld.llvm.org/>
   and <https://doc.rust-lang.org/cargo/reference/config.html#targettriplelinker>.
 - Test execution: `cargo-nextest` can help the checked child lane, but it does
-  not help `yazelix-terminal-fast` because that package already sets
+  not help `mars-fast` because that package already sets
   `doCheck = false`. Nixpkgs also documents that `checkType = "debug"` compiles
   once for build and again for checks, which matches the release-path cost we
   are intentionally avoiding in fast packages. See
