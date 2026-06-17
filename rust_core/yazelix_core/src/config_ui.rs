@@ -64,12 +64,12 @@ use model_builder::{
     path_is_read_only, path_present, read_settings_for_edit, validate_patched_settings_for_ui,
     write_settings_edit,
 };
-pub use yazelix_ratconfig::{
+pub use ratconfig::{
     ConfigUiApplyStatus, ConfigUiContractField, ConfigUiDiagnostic, ConfigUiField,
     ConfigUiFieldMetadata, ConfigUiMetadata, ConfigUiModel, ConfigUiNativeStatus,
     ConfigUiPathOwner, ConfigUiSchemaField, ConfigUiSidecar, ConfigUiValueState,
 };
-use yazelix_ratconfig::{draw_config_ui_with_details, *};
+use ratconfig::{draw_config_ui_with_details, *};
 
 const DEFAULT_TABS: &[&str] = &[
     "general",

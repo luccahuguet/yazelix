@@ -736,6 +736,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "ratconfig"
+version = "0.1.0"
+source = "git+https://github.com/luccahuguet/ratconfig?rev=71dfb2d86acface4a7ff318eb0ffed01be9fe1fb#71dfb2d86acface4a7ff318eb0ffed01be9fe1fb"
+dependencies = [
+ "jsonc-parser",
+ "ratatui",
+ "serde_json",
+ "toml",
+ "toml_edit",
+]
+
+[[package]]
 name = "redox_syscall"
 version = "0.5.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1437,18 +1449,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cfe53a6657fd280eaa890a3bc59152892ffa3e30101319d168b781ed6529b049"
 
 [[package]]
-name = "yazelix-ratconfig"
-version = "0.1.0"
-source = "git+https://github.com/luccahuguet/yazelix-ratconfig?rev=180994407b3c70d9c6cb6df5b03356ae59ecafd8#180994407b3c70d9c6cb6df5b03356ae59ecafd8"
-dependencies = [
- "jsonc-parser",
- "ratatui",
- "serde_json",
- "toml",
- "toml_edit",
-]
-
-[[package]]
 name = "yazelix_core"
 version = "0.1.0"
 dependencies = [
@@ -1459,6 +1459,7 @@ dependencies = [
  "lexopt",
  "pretty_assertions",
  "ratatui",
+ "ratconfig",
  "serde",
  "serde_json",
  "sha2",
@@ -1467,7 +1468,6 @@ dependencies = [
  "time",
  "toml",
  "windows-sys 0.61.2",
- "yazelix-ratconfig",
  "yazelix_cursors",
  "yazelix_screen",
  "yazelix_yazi_assets",
@@ -1477,14 +1477,14 @@ dependencies = [
 [[package]]
 name = "yazelix_cursors"
 version = "0.1.0"
-source = "git+https://github.com/luccahuguet/yazelix-cursors?rev=2ea858a681ae15e1d4c9eb649fcdbcdf00843d3c#2ea858a681ae15e1d4c9eb649fcdbcdf00843d3c"
+source = "git+https://github.com/luccahuguet/yazelix-cursors?rev=9455b3352dfed812a4a60026b10b6e603f8d064f#9455b3352dfed812a4a60026b10b6e603f8d064f"
 dependencies = [
  "jsonc-parser",
+ "ratconfig",
  "serde",
  "serde_json",
  "thiserror 2.0.18",
  "toml",
- "yazelix-ratconfig",
 ]
 
 [[package]]

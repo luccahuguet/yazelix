@@ -54,7 +54,7 @@ This inventory lists the canonical contracts under `docs/contracts/`. It is not 
 | `workspace_session_contract.md` | Workspace tab, sidebar, and session-truth behavior |
 | `yazi_integration_boundary.md` | Yazi config pack versus Yazelix editor/sidebar integration boundary |
 | `yazelix_zellij_pane_orchestrator_extraction.md` | Standalone Zellij plugin extraction boundary for the pane orchestrator |
-| `yazelix_ratconfig_extraction.md` | Reusable `yazelix-ratconfig` child-crate boundary for config UI, JSONC patching, and migration primitives |
+| `ratconfig_extraction.md` | Reusable `ratconfig` child-crate boundary for config UI, JSONC patching, and migration primitives |
 | `yazelix_workspace_extraction.md` | Workspace extraction boundary for future `yazelix_workspace` |
 | `zellij_config_pack_boundary.md` | Child-owned Zellij config/layout renderer boundary |
 | `yzx_command_palette_categories.md` | Command-palette grouping and exclusion behavior |

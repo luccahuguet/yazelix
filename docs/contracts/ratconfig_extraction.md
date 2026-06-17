@@ -1,8 +1,8 @@
-# Yazelix Ratconfig Extraction
+# Ratconfig Extraction
 
 ## Summary
 
-`yazelix-ratconfig` is a first-party Rust child repository for reusable Ratatui config editing.
+`ratconfig` is a first-party Rust child repository for reusable Ratatui config editing.
 
 The child repo owns the project-agnostic config UI core: model, navigation, edit state, rendering, JSONC patch primitives, TOML text adapters, and deterministic contract/migration primitives. Yazelix remains the first consumer and keeps only the adapter code that knows about Yazelix settings, Home Manager ownership, runtime refreshes, and generated config behavior.
 
@@ -12,9 +12,9 @@ JSONC is Yazelix's only main-settings persistence format because `settings.jsonc
 
 The extraction state is `complete_jsonc_first`.
 
-The separate `yazelix-ratconfig` repository owns the reusable code and tests. Yazelix consumes the published child crate through Cargo/Nix dependency metadata, and the old in-repo reusable `rust_core/yazelix_core/src/yazelix_ratconfig/` implementation has been deleted instead of kept as a duplicate copy.
+The separate `ratconfig` repository owns the reusable code and tests. Yazelix consumes the published child crate through Cargo/Nix dependency metadata, and the old in-repo reusable `rust_core/yazelix_core/src/ratconfig/` implementation has been deleted instead of kept as a duplicate copy.
 
-The TOML adapter decision is `accepted_child_generic`. `yazelix-ratconfig` may support TOML text adapters, TOML contract-state reconciliation, TOML examples, and TOML tests when those APIs stay project-agnostic. Main Yazelix must not add a `settings.toml` input, TOML migration path, or TOML Home Manager/runtime semantics unless a separate Yazelix product contract explicitly changes the main config surface.
+The TOML adapter decision is `accepted_child_generic`. `ratconfig` may support TOML text adapters, TOML contract-state reconciliation, TOML examples, and TOML tests when those APIs stay project-agnostic. Main Yazelix must not add a `settings.toml` input, TOML migration path, or TOML Home Manager/runtime semantics unless a separate Yazelix product contract explicitly changes the main config surface.
 
 Future work should treat the child crate as the reusable owner and the main repo as a Yazelix adapter. If the boundary is painful, improve the child API or revise the contract; do not recreate a local mirror in the main repo.
 
@@ -95,7 +95,7 @@ Unsupported patch shapes must fail clearly instead of silently rewriting the who
 
 ## TOML Adapter Decision
 
-TOML support belongs in `yazelix-ratconfig` when it stays generic:
+TOML support belongs in `ratconfig` when it stays generic:
 
 - The child crate may use `toml` and `toml_edit` so TOML parsing and comment-preserving text edits are not recreated by hand.
 - TOML and JSONC must share the same contract semantics for rename, delete, add-default, transform, joined-state reads/writes, manual blockers, and contract-id checks.

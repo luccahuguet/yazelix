@@ -3,12 +3,12 @@
 
 use crate::bridge::{CoreError, ErrorClass};
 use crate::settings_surface::read_settings_jsonc_value;
-use serde_json::{Value as JsonValue, json};
-use std::path::Path;
-use yazelix_ratconfig::contract::{
+use ratconfig::contract::{
     ConfigContract, ContractChange, ContractError, join_jsonc_contract_text_from_version,
 };
-use yazelix_ratconfig::migration::{MigrationError, MigrationOp};
+use ratconfig::migration::{MigrationError, MigrationOp};
+use serde_json::{Value as JsonValue, json};
+use std::path::Path;
 
 pub const SETTINGS_CONTRACT_ID: &str = "yazelix.settings";
 pub const SETTINGS_CONTRACT_STATE_PATH: &str = "ratconfig.contract";
@@ -60,7 +60,7 @@ pub fn reconcile_settings_contract_text(
             .iter()
             .map(|change| change.id.clone())
             .collect(),
-        state_changed: outcome.state_mutation != yazelix_ratconfig::patch::PatchMutation::Unchanged,
+        state_changed: outcome.state_mutation != ratconfig::patch::PatchMutation::Unchanged,
     })
 }
 
@@ -567,8 +567,8 @@ fn migration_error_detail(error: &MigrationError) -> JsonValue {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use yazelix_ratconfig::contract::plan_contract_migration;
-    use yazelix_ratconfig::jsonc::{get_json_path, parse_jsonc_value};
+    use ratconfig::contract::plan_contract_migration;
+    use ratconfig::jsonc::{get_json_path, parse_jsonc_value};
 
     // Defends: every ratconfig version bump has a real linear migration or manual blocker.
     #[test]

@@ -159,12 +159,12 @@ First-party child repos, Ghostty image previews, and JSONC workspace config
 Upgrade impact: no user action required
 
 Highlights:
-- Established the first-party child-repo architecture across `yazelix-screen`, `yazelix-ghostty-cursors`, `yazelix-zellij-popup`, `yazelix-zellij-bar`, `yazelix-zellij-pane-orchestrator`, `yazelix-yazi-assets`, and `yazelix-ratconfig`
+- Established the first-party child-repo architecture across `yazelix-screen`, `yazelix-ghostty-cursors`, `yazelix-zellij-popup`, `yazelix-zellij-bar`, `yazelix-zellij-pane-orchestrator`, `yazelix-yazi-assets`, and `ratconfig`
 - Replaced copied source, copied wasm, duplicated widget code, and vendored Yazi assets with locked child-owned packages and artifacts consumed by the main runtime
 - Promoted Ghostty back to the default packaged terminal and made restored Yazi image previews through Zellij the default-terminal goal; the temporary first-party `yazelix-zellij` and `yazelix-yazi` Kitty-graphics passthrough forks landed after this tag and are documented in `v17.1`
 - Switched the package baseline to `nixpkgs-unstable` and pulled in newer Yazi/Chafa behavior that avoids the Chafa terminal-probe ghost-keypress regression
 - Made `settings.jsonc` the canonical user config, backed by `settings_default.jsonc`, JSON schema coverage, strict unknown-field diagnostics, additive repair, and complete Home Manager rendering
-- Upgraded `yzx config ui` into a structured JSONC settings editor with scalar pickers, keybinding rows, safer parse-error behavior, popup launch through `Alt Shift C`, and generic config UI machinery owned by `yazelix-ratconfig`
+- Upgraded `yzx config ui` into a structured JSONC settings editor with scalar pickers, keybinding rows, safer parse-error behavior, popup launch through `Alt Shift C`, and generic config UI machinery owned by `ratconfig`
 - Added the directional workspace keymap: `Alt Shift H` toggles the left sidebar, `Alt Shift J` opens the bottom popup, `Alt Shift K` opens the top popup, `Alt Shift L` opens the right Codex agent sidebar, and `Alt Shift M` opens the menu popup
 - Added managed focus/reveal keys: `Ctrl y` switches between editor and left sidebar, `Ctrl Shift Y` switches between editor and right sidebar, and `Alt r` smart-reveals in the editor or falls back to editor/left-sidebar focus
 - Made Yazelix and native Zellij key policies data-driven through `settings.jsonc`, including remappable native defaults such as `Ctrl Alt g/s/o` for locked/scroll/session modes, `Ctrl Shift H/L` for tab movement, `Alt 1..9` for tab jumps, `Ctrl Alt p` for pane groups, and `Alt Shift F` for focus fullscreen

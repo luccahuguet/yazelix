@@ -4,7 +4,7 @@ use crate::bridge::{CoreError, ErrorClass};
 use serde_json::{Value as JsonValue, json};
 use std::path::Path;
 
-pub use yazelix_ratconfig::jsonc::{
+pub use ratconfig::jsonc::{
     PatchError as SettingsJsoncPatchError, PatchMutation as SettingsJsoncPatchMutation,
     PatchOutcome as SettingsJsoncPatchOutcome, jsonc_parse_options, set_jsonc_value_text,
     unset_jsonc_value_text,

@@ -24,7 +24,7 @@ The pane orchestrator is the highest-risk boundary because it owns real workspac
 - `docs/contracts/yazelix_zellij_pane_orchestrator_extraction.md`
 - `docs/contracts/zellij_config_pack_boundary.md`
 - `docs/contracts/yazi_integration_boundary.md`
-- Adjacent checkouts for `yazelix-screen`, `yazelix-cursors`, `yazelix-terminal`, `yazelix-ratconfig`, `yazelix-zellij-bar`, `yazelix-zellij-pane-orchestrator`, `yazelix-zellij-popup`, `yazelix-zellij-config-pack`, and `yazelix-yazi-assets`
+- Adjacent checkouts for `yazelix-screen`, `yazelix-cursors`, `yazelix-terminal`, `ratconfig`, `yazelix-zellij-bar`, `yazelix-zellij-pane-orchestrator`, `yazelix-zellij-popup`, `yazelix-zellij-config-pack`, and `yazelix-yazi-assets`
 
 ## Scoring
 
@@ -44,7 +44,7 @@ Scores use `1..5`, where `5` is the healthier result for a separate child reposi
 | `yazelix-screen` | 4 | 5 | 4 | 4 | 3 | 5 | Keep separate |
 | `yazelix-cursors` | 5 | 4 | 4 | 4 | 3 | 5 | Keep separate |
 | `yazelix-terminal` | 4 | 3 | 4 | 4 | 2 | 4 | Keep separate while experimental |
-| `yazelix-ratconfig` | 4 | 4 | 3 | 5 | 3 | 5 | Keep separate with Yazelix adapter discipline |
+| `ratconfig` | 4 | 4 | 3 | 5 | 3 | 5 | Keep separate with Yazelix adapter discipline |
 | `yazelix-zellij-bar` | 4 | 3 | 4 | 4 | 3 | 4 | Keep separate with adapter discipline |
 | `yazelix-zellij-pane-orchestrator` | 3 | 2 | 5 | 3 | 2 | 4 | Keep separate, revise boundary discipline |
 | `yazelix-zellij-popup` | 5 | 5 | 5 | 5 | 4 | 4 | Keep separate |
@@ -73,7 +73,7 @@ The main risks are dual consumption through flake and Cargo. Those are manageabl
 
 Boundary rule: do not broaden this repo into generic terminal config. Keep it cursor-preset and shader-output owned; terminal launch, windowing, and config materialization stay in the terminal-specific owners.
 
-### `yazelix-ratconfig`
+### `ratconfig`
 
 Recommendation: keep separate with Yazelix adapter discipline.
 
@@ -176,12 +176,12 @@ Keep the current child repository set separate.
 
 Do not merge any current child repo back now.
 
-Do not create a new child repo for Yazi integration, workspace state, or runtime control until the main repo owner has first become a thin adapter with a concrete artifact/API seam. `yazelix-ratconfig` is the accepted config UI exception because the reusable editor/JSONC owner has moved out and Yazelix now keeps only product-specific adapter behavior.
+Do not create a new child repo for Yazi integration, workspace state, or runtime control until the main repo owner has first become a thin adapter with a concrete artifact/API seam. `ratconfig` is the accepted config UI exception because the reusable editor/JSONC owner has moved out and Yazelix now keeps only product-specific adapter behavior.
 
 Use this priority order for future boundary pressure:
 
 1. Keep `yazelix-zellij-pane-orchestrator` honest about standalone versus Yazelix-only commands.
-2. Keep `yazelix-ratconfig` as a reusable config editor crate and prevent Yazelix schema/apply policy from leaking into it.
+2. Keep `ratconfig` as a reusable config editor crate and prevent Yazelix schema/apply policy from leaking into it.
 3. Keep `yazelix-zellij-bar` as a command/artifact boundary and prevent widget implementation from returning to the main repo.
 4. Keep `yazelix-zellij-config-pack` as the Zellij renderer/template owner and prevent fallback copies from returning to main.
 5. Keep Yazi pure config-pack rendering in `yazelix-yazi-assets` and prevent fallback copies from returning to main.

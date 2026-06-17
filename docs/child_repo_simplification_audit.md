@@ -9,7 +9,7 @@ Use this with [LOC extraction scorecard](./loc_extraction_scorecard.md) and [Rus
 - Rust budget ceiling: `73,083` raw tracked Rust lines across `140` files
 - Long-term Rust hard target: `60,000` raw tracked Rust lines
 - Largest pressure families: `core_config_ui_and_materialization` at `20,624` raw lines and `core_workspace_and_pane_integration` at `16,689` raw lines
-- Current child repos already integrated: `yazelix-screen`, `yazelix-cursors`, `yazelix-terminal`, `yazelix-ratconfig`, `yazelix-zellij-bar`, `yazelix-zellij-popup`, and `yazelix-yazi-assets`
+- Current child repos already integrated: `yazelix-screen`, `yazelix-cursors`, `yazelix-terminal`, `ratconfig`, `yazelix-zellij-bar`, `yazelix-zellij-popup`, and `yazelix-yazi-assets`
 - Popup lifecycle ownership has moved to `yazelix-zellij-popup`; remaining main-repo popup work should be thin generated-spec/config integration plus Yazelix-specific close hooks
 
 ## Ranking Rules
@@ -34,7 +34,7 @@ Reject a move when the main repo would still own the same behavior through a bro
 | 5 | Split launch process execution and desktop/macOS adapters | Thin adapter | `launch_commands.rs` | Mostly organization first; unlocks later workspace extraction but should not claim LOC success unless deletion follows | Keep `yazelix-0nvl.1` |
 | 6 | Split restart and enter flow after launch helper extraction | Thin adapter | `launch_commands.rs`, front-door launch dispatch | Same as rank 5; useful only if it shrinks the workspace extraction boundary | Keep `yazelix-0nvl.2` sequenced after `yazelix-0nvl.1` |
 | 7 | Evaluate barless/native status component toggle | Defer | Zellij layout families, `zjstatus.wasm`, Home Manager component toggles | Real package/storage impact if accepted, but risky before layout ownership is stable | Keep `yazelix-jhu5` deferred |
-| 8 | Public `yazelix-ratconfig` extraction | Move to child repo / thin adapter | `config_ui.rs`, deleted `yazelix_ratconfig/*` staging module | Reusable model/editor/render, JSONC patching, and migration primitives moved to child while Yazelix-specific schema, Home Manager/native status, validation, and apply behavior stayed local | Resolved by `yazelix-ylt4` |
+| 8 | Public `ratconfig` extraction | Move to child repo / thin adapter | `config_ui.rs`, deleted `ratconfig/*` staging module | Reusable model/editor/render, JSONC patching, and migration primitives moved to child while Yazelix-specific schema, Home Manager/native status, validation, and apply behavior stayed local | Resolved by `yazelix-ylt4` |
 | 9 | Move maintainer tooling to a child repo | Defer / reject now | `yazelix_maintainer`, validators, release/update workflow | Would likely harm maintainer workflow and add cross-repo validator coupling before deleting code | Keep in repo; split validator domains and delete trivia first |
 | 10 | Extract `yazelix_workspace` publicly | Defer | `zellij_commands.rs`, `launch_commands.rs`, workspace/session state, pane orchestrator client | Highest theoretical LOC impact, highest coupling | Defer until launch, layout ownership, and Zellij materialization shrinkage land |
 
@@ -65,7 +65,7 @@ Second-pass non-candidates:
 
 - Do not create another status-bar extraction bead. Runnable non-workspace widgets, provider probing/cache behavior, CPU/RAM, and runtime plugin-block rendering already moved through the closed SP9/status beads; the remaining main adapter is workspace/session path selection and status-bus cache integration.
 - Do not move the full Helix managed config surface to `yazelix-helix`. The child should still be allowed to own reusable standalone editor assets, Steel defaults, and plugin-pack artifacts; managed paths, user plugin selection, and bridge/session behavior remain Yazelix product policy.
-- Do not move the full config UI adapter to `yazelix-ratconfig`. The child owns generic UI, patch, and migration primitives; Yazelix owns settings semantics, Home Manager ownership, validation, action metadata, and runtime apply behavior.
+- Do not move the full config UI adapter to `ratconfig`. The child owns generic UI, patch, and migration primitives; Yazelix owns settings semantics, Home Manager ownership, validation, action metadata, and runtime apply behavior.
 - Do not create a public workspace child repo until `zellij_materialization`, launch ownership, and workspace request boundaries are thinner than their current adapters. `yazelix-audit-deletion-extraction-candidates-i0xoh.4` resolved the current state as internal-boundary-only: `workspace_session.rs` is the live request seam, while the direct workspace adapters still total about `2213` lines before tests/status/docs.
 
 ## 2026-06-06 Third Pass
@@ -103,7 +103,7 @@ Third-pass non-candidates:
 ## Explicit Rejections
 
 - Do not create a standalone Yazi integration repo while the main repo still owns the same materializer paths; the existing `yazelix-yazi-assets` child repo is only the reusable asset package
-- Do not move `config_ui.rs` wholesale to `yazelix-ratconfig`; Home Manager/native status, settings metadata, action registry detail text, validation, file writes, and runtime apply behavior are Yazelix-specific
+- Do not move `config_ui.rs` wholesale to `ratconfig`; Home Manager/native status, settings metadata, action registry detail text, validation, file writes, and runtime apply behavior are Yazelix-specific
 - Do not move status-cache paths or pane-orchestrator payloads to `yazelix_zellij_bar`; provider usage polling is child-owned when it runs from explicit standalone facts or provider tools
 - Do not split maintainer tooling only to call it back through wrappers from this repo; that would make the workflow worse without reducing user runtime ownership
 - Do not preserve old popup command/config names that have not been released or that have no current caller; stale aliases are budget debt
