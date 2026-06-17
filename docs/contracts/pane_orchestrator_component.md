@@ -129,15 +129,16 @@ The screen-saver keys are opt-in. When enabled, the plugin watches Zellij-wide i
 
 The pane orchestrator owns tab-local activity decoration for native Zellij tab
 names. Registered AI facts from `register_ai_pane_activity` reduce to a single
-visible tab state: `stale` facts render `[!] `, active/thinking facts or live
-spinner-prefixed terminal titles render `[...] `, and idle/unknown/no facts
-render no marker. Alert takes priority over busy, and busy takes priority over
-no marker. The orchestrator must not mirror every spinner frame into the tab
-name, and native tab-name writes are coalesced and rate-limited.
+visible tab state: `stale` facts render the `✓` suffix, active/thinking facts or
+live spinner-prefixed terminal titles render the `·` suffix, and
+idle/unknown/no facts render no marker. Stale takes priority over busy, and busy
+takes priority over no marker. The orchestrator must not mirror every spinner
+frame into the tab name, and native tab-name writes are coalesced and
+rate-limited.
 Spinner-prefixed terminal title activity is remembered by producing pane: if
 the title stops indicating activity while that pane is not focused, the pane
-becomes `stale` and the tab renders `[!] ` until the user focuses that
-producing pane or the pane disappears. When facts become inactive, unknown, or
+becomes `stale` and the tab renders `✓` until the user focuses that producing
+pane or the pane disappears. When facts become inactive, unknown, or
 acknowledged by producing-pane focus, the plugin restores the recorded base tab
 name.
 

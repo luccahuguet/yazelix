@@ -101,9 +101,9 @@ The supported boundary is runnable-standalone-first for every non-workspace widg
   and recognized spinner-prefixed terminal titles, reduces them to alert, busy,
   or idle, then mutates the affected Zellij tab name only when that reduced
   visible state changes.
-  Alert takes priority over busy, and busy takes priority over no marker. The
+  Stale takes priority over busy, and busy takes priority over no marker. The
   orchestrator remembers spinner-prefixed terminal-title activity by producing
-  pane, promotes completed off-focus activity to `[!] `, and clears it only when
+  pane, promotes completed off-focus activity to `✓`, and clears it only when
   the producing pane is focused again or disappears. The bar child continues to
   own tab formats and only displays the marker when the selected tab label mode
   includes `{name}`. High-frequency terminal-title animation must not be
@@ -129,7 +129,8 @@ The supported boundary is runnable-standalone-first for every non-workspace widg
   driven by Zellij `TabUpdate` events and owns correct focus, creation, deletion,
   and truncation behavior. The generated `{tabs}` formats also use upstream
   zjstatus bell fields for style-only terminal-BEL presentation, which is
-  separate from Yazelix AI-activity facts and does not add `[!]` marker text.
+  separate from Yazelix AI-activity facts and does not add Yazelix activity
+  marker text.
   `yazelix_zellij_bar_widget tabs` remains a
   child-owned renderer probe for the all-tab activity snapshot contract, but it
   is not the default integrated tab strip. Upstream zjstatus v0.23.0 still
