@@ -42,6 +42,9 @@ let
   yzxtermEmojiFontExport =
     lib.optionalString yzxtermConfigured
       "export YAZELIX_TERMINAL_EMOJI_FONT=${cfg.yzxterm_emoji_font}";
+  yzxtermEmojiFontSourceExport =
+    lib.optionalString yzxtermConfigured
+      "export YAZELIX_TERMINAL_EMOJI_FONT_SOURCE=home-manager";
 
   agentUsageProgramNames = [
     "tokenusage"
@@ -120,6 +123,7 @@ let
         ''PATH="${terminalPackage}/toolbin:${terminalPackage}/libexec:${terminalPackage}/bin:${runtimeConfigGenerationPath}:$PATH" YAZELIX_RUNTIME_DIR="${terminalPackage}"''
         + lib.optionalString (yzxtermActiveFor terminal) " YAZELIX_TERMINAL_APPEARANCE=${cfg.appearance_mode}"
         + lib.optionalString (yzxtermActiveFor terminal) " YAZELIX_TERMINAL_EMOJI_FONT=${cfg.yzxterm_emoji_font}"
+        + lib.optionalString (yzxtermActiveFor terminal) " YAZELIX_TERMINAL_EMOJI_FONT_SOURCE=home-manager"
         + lib.optionalString (yzxtermProfileActiveFor terminal) " YAZELIX_TERMINAL_PROFILE=${cfg.yzxterm_profile}";
     in
     ''
@@ -135,6 +139,7 @@ let
         ++ lib.optional (terminal == "yzxterm") "YAZELIX_TERMINAL_APP_ID=${startupWmClassFor terminal}"
         ++ lib.optional (terminal == "yzxterm") "YAZELIX_TERMINAL_APPEARANCE=${cfg.appearance_mode}"
         ++ lib.optional (terminal == "yzxterm") "YAZELIX_TERMINAL_EMOJI_FONT=${cfg.yzxterm_emoji_font}"
+        ++ lib.optional (terminal == "yzxterm") "YAZELIX_TERMINAL_EMOJI_FONT_SOURCE=home-manager"
         ++ lib.optional (yzxtermProfileActiveFor terminal) "YAZELIX_TERMINAL_PROFILE=${cfg.yzxterm_profile}";
     in
     "${lib.optionalString (envVars != [ ]) "env ${lib.concatStringsSep " " envVars} "}${yzxPath} desktop launch";
@@ -252,6 +257,7 @@ in
       export YAZELIX_LOGS_DIR="${logsPath}"
       ${yzxtermAppearanceExport}
       ${yzxtermEmojiFontExport}
+      ${yzxtermEmojiFontSourceExport}
       ${yzxtermProfileExport}
 
       $DRY_RUN_CMD ${runtimeYzxCore} runtime-materialization.repair --from-env --force --summary

@@ -6,6 +6,7 @@ use crate::control_plane::{home_dir_from_env, state_dir_from_env};
 use crate::sidebar_bootstrap::{
     SIDEBAR_BOOTSTRAP_CWD_ENV, is_sidebar_bootstrap_file, sidebar_bootstrap_owner_dir,
 };
+use crate::terminal_materialization::YZXTERM_EMOJI_ENV_KEYS;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -43,6 +44,8 @@ pub(super) const RUNTIME_RELAUNCH_CLEARED_ENV_KEYS: &[&str] = &[
     "YAZELIX_TERMINAL",
     "YAZELIX_TERMINAL_APP_ID",
     "YAZELIX_TERMINAL_CONFIG",
+    YZXTERM_EMOJI_ENV_KEYS[0],
+    YZXTERM_EMOJI_ENV_KEYS[1],
     "YAZELIX_YZX_BIN",
     "YAZELIX_YZX_CONTROL_BIN",
     "YAZELIX_YZX_CORE_BIN",
@@ -865,6 +868,8 @@ mod tests {
             "YAZELIX_STATUS_BAR_CACHE_PATH",
             "YAZELIX_TERMINAL_APP_ID",
             "YAZELIX_TERMINAL_CONFIG",
+            YZXTERM_EMOJI_ENV_KEYS[0],
+            YZXTERM_EMOJI_ENV_KEYS[1],
             "YAZELIX_YZX_BIN",
             "YAZELIX_YZX_CONTROL_BIN",
             "YAZELIX_YZX_CORE_BIN",

@@ -139,7 +139,9 @@ Out of scope:
   child profile selected by `YAZELIX_TERMINAL_PROFILE` or
   `YAZELIX_TERMINAL_EFFECTS` and the child emoji fallback preset selected by
   `terminal.emoji_style`, with `YAZELIX_TERMINAL_EMOJI_FONT` acting as the
-  explicit Home Manager/launcher override, and the global `appearance.mode`.
+  explicit Home Manager/launcher override only when paired with
+  `YAZELIX_TERMINAL_EMOJI_FONT_SOURCE=home-manager`, and the global
+  `appearance.mode`.
   `full` keeps Rio trail cursor and strips packaged `custom-shader` entries,
   `baseline` uses the packaged no-effects profile, and `shaders` uses the
   packaged shader profile while replacing packaged shader references with the

@@ -29,6 +29,9 @@ use crate::runtime_env::compute_runtime_env;
 use crate::runtime_materialization::{
     RuntimeMaterializationRepairEvaluateRequest, repair_runtime_materialization,
 };
+use crate::terminal_materialization::{
+    YZXTERM_EMOJI_ENV_KEYS, YZXTERM_EMOJI_FONT_ENV, YZXTERM_EMOJI_FONT_SOURCE_ENV,
+};
 use crate::terminal_variant::{
     SUPPORTED_TERMINALS, active_terminal_from_runtime_dir, normalize_terminal_id,
     terminal_desktop_entry_file_name, terminal_display_name, terminal_startup_wm_class,
@@ -117,7 +120,8 @@ fn run_explicit_terminal_launch(
     if requested_terminal != "yzxterm" {
         extra_env.extend([
             ("YAZELIX_TERMINAL_APPEARANCE".to_string(), None),
-            ("YAZELIX_TERMINAL_EMOJI_FONT".to_string(), None),
+            (YZXTERM_EMOJI_FONT_ENV.to_string(), None),
+            (YZXTERM_EMOJI_FONT_SOURCE_ENV.to_string(), None),
             ("YAZELIX_TERMINAL_EFFECTS".to_string(), None),
             ("YAZELIX_TERMINAL_PROFILE".to_string(), None),
         ]);
@@ -738,7 +742,7 @@ fn yzxterm_process_boundary_env(
         )
     })?;
 
-    Ok(vec![
+    let mut env = vec![
         ("RIO_CONFIG_HOME".to_string(), None),
         (
             "YAZELIX_TERMINAL_CONFIG".to_string(),
@@ -752,7 +756,13 @@ fn yzxterm_process_boundary_env(
             "YAZELIX_TERMINAL_APP_ID".to_string(),
             Some(terminal_startup_wm_class("yzxterm")),
         ),
-    ])
+    ];
+    env.extend(
+        YZXTERM_EMOJI_ENV_KEYS
+            .iter()
+            .map(|key| ((*key).to_string(), None)),
+    );
+    Ok(env)
 }
 
 fn rio_process_boundary_env(
@@ -1054,7 +1064,7 @@ mod tests {
         let parsed = parse_packaged_terminal_launcher_exec(
             desktop_path,
             "yzxterm",
-            r#"env YAZELIX_SKIP_STABLE_WRAPPER_REDIRECT=1 YAZELIX_TERMINAL_APPEARANCE=light YAZELIX_TERMINAL_PROFILE=shaders "/nix/store/with space/bin/yzx" desktop launch"#,
+            r#"env YAZELIX_SKIP_STABLE_WRAPPER_REDIRECT=1 YAZELIX_TERMINAL_APPEARANCE=light YAZELIX_TERMINAL_EMOJI_FONT=serenityos YAZELIX_TERMINAL_EMOJI_FONT_SOURCE=home-manager YAZELIX_TERMINAL_PROFILE=shaders "/nix/store/with space/bin/yzx" desktop launch"#,
         )
         .unwrap();
 
@@ -1072,6 +1082,14 @@ mod tests {
                 (
                     "YAZELIX_TERMINAL_APPEARANCE".to_string(),
                     Some("light".to_string())
+                ),
+                (
+                    YZXTERM_EMOJI_FONT_ENV.to_string(),
+                    Some("serenityos".to_string())
+                ),
+                (
+                    YZXTERM_EMOJI_FONT_SOURCE_ENV.to_string(),
+                    Some("home-manager".to_string())
                 ),
                 (
                     "YAZELIX_TERMINAL_PROFILE".to_string(),
@@ -1140,6 +1158,8 @@ mod tests {
                     "YAZELIX_TERMINAL_APP_ID".to_string(),
                     Some("com.yazelix.Yazelix.Yzxterm".to_string())
                 ),
+                (YZXTERM_EMOJI_FONT_ENV.to_string(), None),
+                (YZXTERM_EMOJI_FONT_SOURCE_ENV.to_string(), None),
             ]
         );
     }

@@ -34,6 +34,11 @@ const RIO_FONT_ROOT: &str = "share/yazelix/rio_fonts";
 const RIO_FIRA_CODE_FONT_DIR: &str = "fira_code_nerd";
 const RIO_SYMBOLS_FONT_DIR: &str = "symbols_nerd";
 const RIO_EMOJI_FONT_DIR: &str = "noto_color_emoji";
+pub(crate) const YZXTERM_EMOJI_FONT_ENV: &str = "YAZELIX_TERMINAL_EMOJI_FONT";
+pub(crate) const YZXTERM_EMOJI_FONT_SOURCE_ENV: &str = "YAZELIX_TERMINAL_EMOJI_FONT_SOURCE";
+pub(crate) const YZXTERM_EMOJI_ENV_KEYS: [&str; 2] =
+    [YZXTERM_EMOJI_FONT_ENV, YZXTERM_EMOJI_FONT_SOURCE_ENV];
+const YZXTERM_EMOJI_FONT_SOURCE_HOME_MANAGER: &str = "home-manager";
 const TERMINAL_DARK_COLOR_PALETTE: &[(&str, &str)] = &[
     ("background", ABERNATHY_BACKGROUND),
     ("foreground", ABERNATHY_FOREGROUND),
@@ -556,11 +561,26 @@ pub fn yzxterm_profile_from_env() -> Result<YzxtermProfile, CoreError> {
 }
 
 pub fn yzxterm_emoji_font_override_from_env() -> Result<Option<YzxtermEmojiFont>, CoreError> {
-    let Some(raw) = std::env::var("YAZELIX_TERMINAL_EMOJI_FONT")
+    let Some(source) = std::env::var(YZXTERM_EMOJI_FONT_SOURCE_ENV)
         .ok()
         .filter(|value| !value.trim().is_empty())
     else {
         return Ok(None);
+    };
+
+    if source.trim() != YZXTERM_EMOJI_FONT_SOURCE_HOME_MANAGER {
+        return Err(CoreError::usage(format!(
+            "Unsupported {YZXTERM_EMOJI_FONT_SOURCE_ENV}: {source}. Use {YZXTERM_EMOJI_FONT_SOURCE_HOME_MANAGER}."
+        )));
+    }
+
+    let Some(raw) = std::env::var(YZXTERM_EMOJI_FONT_ENV)
+        .ok()
+        .filter(|value| !value.trim().is_empty())
+    else {
+        return Err(CoreError::usage(format!(
+            "{YZXTERM_EMOJI_FONT_SOURCE_ENV}={YZXTERM_EMOJI_FONT_SOURCE_HOME_MANAGER} requires {YZXTERM_EMOJI_FONT_ENV}."
+        )));
     };
     parse_yzxterm_emoji_font(&raw).map(Some)
 }
@@ -590,7 +610,7 @@ fn parse_yzxterm_emoji_font(raw: &str) -> Result<YzxtermEmojiFont, CoreError> {
         "serenityos" | "SerenityOS" | "SERENITYOS" | "serenity" | "Serenity" | "SERENITY"
         | "serenity-os" | "Serenity-OS" | "SERENITY-OS" => Ok(YzxtermEmojiFont::SerenityOs),
         other => Err(CoreError::usage(format!(
-            "Unsupported YAZELIX_TERMINAL_EMOJI_FONT: {other}. Use noto, twitter, or serenityos."
+            "Unsupported {YZXTERM_EMOJI_FONT_ENV}: {other}. Use noto, twitter, or serenityos."
         ))),
     }
 }
@@ -1240,4 +1260,200 @@ pub fn generate_terminal_materialization(
         ghostty: ghostty_data,
         cursor: cursor_data,
     })
+}
+
+#[cfg(test)]
+// Test lane: default
+mod tests {
+    use super::*;
+    use serde_json::{Map as JsonMap, Value as JsonValue};
+    use std::ffi::OsString;
+    use std::sync::{Mutex, OnceLock};
+
+    fn env_lock() -> &'static Mutex<()> {
+        static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+        LOCK.get_or_init(|| Mutex::new(()))
+    }
+
+    struct EnvRestore(Vec<(&'static str, Option<OsString>)>);
+
+    impl Drop for EnvRestore {
+        fn drop(&mut self) {
+            for (key, value) in self.0.drain(..) {
+                restore_env(key, value);
+            }
+        }
+    }
+
+    fn with_env<T>(values: &[(&str, Option<&str>)], test: impl FnOnce() -> T) -> T {
+        let _guard = env_lock().lock().unwrap();
+        let keys = YZXTERM_EMOJI_ENV_KEYS;
+        let previous = keys
+            .iter()
+            .map(|key| (*key, std::env::var_os(key)))
+            .collect::<Vec<_>>();
+        let _restore = EnvRestore(previous);
+
+        for key in keys {
+            // Tests serialize process-env mutation through `env_lock`.
+            unsafe {
+                std::env::remove_var(key);
+            }
+        }
+        for (key, value) in values {
+            if let Some(value) = value {
+                // Tests serialize process-env mutation through `env_lock`.
+                unsafe {
+                    std::env::set_var(key, value);
+                }
+            }
+        }
+
+        test()
+    }
+
+    fn restore_env(key: &str, value: Option<OsString>) {
+        match value {
+            Some(value) => unsafe {
+                std::env::set_var(key, value);
+            },
+            None => unsafe {
+                std::env::remove_var(key);
+            },
+        }
+    }
+
+    fn config_with_emoji_style(style: &str) -> JsonMap<String, JsonValue> {
+        let mut config = JsonMap::new();
+        config.insert(
+            "terminal_emoji_style".to_string(),
+            JsonValue::String(style.to_string()),
+        );
+        config
+    }
+
+    // Regression: stale terminal wrapper env from an existing shell/session must not override mutable settings.jsonc.
+    #[test]
+    fn yzxterm_emoji_env_without_source_is_not_a_materialization_override() {
+        with_env(&[(YZXTERM_EMOJI_FONT_ENV, Some("twitter"))], || {
+            assert_eq!(yzxterm_emoji_font_override_from_env().unwrap(), None);
+
+            let config = config_with_emoji_style("serenityos");
+            assert_eq!(
+                yzxterm_emoji_font_from_config(
+                    &config,
+                    yzxterm_emoji_font_override_from_env().unwrap(),
+                )
+                .unwrap(),
+                YzxtermEmojiFont::SerenityOs,
+            );
+        });
+    }
+
+    // Defends: Home Manager activation and desktop launchers can still pass an explicit active yzxterm emoji preset.
+    #[test]
+    fn yzxterm_emoji_home_manager_source_is_a_materialization_override() {
+        with_env(
+            &[
+                (YZXTERM_EMOJI_FONT_ENV, Some("serenityos")),
+                (
+                    YZXTERM_EMOJI_FONT_SOURCE_ENV,
+                    Some(YZXTERM_EMOJI_FONT_SOURCE_HOME_MANAGER),
+                ),
+            ],
+            || {
+                assert_eq!(
+                    yzxterm_emoji_font_override_from_env().unwrap(),
+                    Some(YzxtermEmojiFont::SerenityOs),
+                );
+
+                let config = config_with_emoji_style("twitter");
+                assert_eq!(
+                    yzxterm_emoji_font_from_config(
+                        &config,
+                        yzxterm_emoji_font_override_from_env().unwrap(),
+                    )
+                    .unwrap(),
+                    YzxtermEmojiFont::SerenityOs,
+                );
+            },
+        );
+    }
+
+    // Defends: selecting serenityos reads the child-owned emoji/serenityos profile root, not the default Noto root.
+    #[test]
+    fn yzxterm_serenityos_config_uses_child_emoji_profile_root() {
+        let temp = tempfile::tempdir().unwrap();
+        let runtime = temp.path();
+        let package_root = runtime.join("share").join("yazelix-terminal");
+        write_yzxterm_profile_config(&package_root.join("config.toml"), "Noto Color Emoji");
+        write_yzxterm_profile_config(
+            &package_root
+                .join("emoji")
+                .join("serenityos")
+                .join("config.toml"),
+            "SerenityOS Emoji",
+        );
+        write_theme_files(&package_root.join("themes"));
+        write_theme_files(&package_root.join("emoji").join("serenityos").join("themes"));
+
+        let generated_dir = temp.path().join("generated");
+        let rendered = generate_yzxterm_config(
+            runtime,
+            "none",
+            None,
+            &[],
+            YzxtermProfile::Full,
+            YzxtermEmojiFont::SerenityOs,
+            APPEARANCE_MODE_DARK,
+            &generated_dir,
+        )
+        .unwrap();
+
+        assert!(rendered.contains("SerenityOS Emoji"));
+        assert!(!rendered.contains("Noto Color Emoji"));
+        assert!(
+            generated_dir
+                .join("themes")
+                .join("yazelix-dark.toml")
+                .is_file()
+        );
+    }
+
+    fn write_yzxterm_profile_config(path: &Path, emoji_family: &str) {
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        fs::write(
+            path,
+            format!(
+                r#"
+confirm-before-quit = true
+force-theme = "dark"
+
+[adaptive-theme]
+dark = "yazelix-dark"
+light = "yazelix-light"
+
+[window]
+decorations = "Disabled"
+
+[renderer]
+backend = "Webgpu"
+
+[fonts]
+family = "FiraCode Nerd Font"
+
+[[fonts.additional-dirs]]
+path = "/fonts/{emoji_family}"
+"#
+            ),
+        )
+        .unwrap();
+    }
+
+    fn write_theme_files(path: &Path) {
+        fs::create_dir_all(path).unwrap();
+        for file_name in ["yazelix-dark.toml", "yazelix-light.toml"] {
+            fs::write(path.join(file_name), "[colors]\ncursor = '#ffffff'\n").unwrap();
+        }
+    }
 }
