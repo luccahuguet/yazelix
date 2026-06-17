@@ -122,8 +122,8 @@ Out of scope:
 #### TLAUNCH-006
 - Type: behavior
 - Status: live
-- Owner: Rust terminal materialization, Rust launch preflight, the
-  `yazelix-terminal` child wrapper, and the Yazelix Zellij fork
+- Owner: Rust terminal materialization, Rust launch preflight, the Mars child
+  wrapper, and the Yazelix Zellij fork
 - Statement: Yazelix Terminal launch uses the config id
   `yzxterm`, resolves the executable command as the child-owned
   `yazelix-terminal-desktop` wrapper, passes the generated config directory
@@ -179,8 +179,7 @@ Out of scope:
 - Status: live
 - Owner: Rust desktop launch plus
   `shells/posix/desktop_deferred_launch_probe.sh`; inner child-process PID
-  evidence beyond the terminal process belongs to the `yazelix-terminal` child
-  wrapper
+  evidence beyond the terminal process belongs to the Mars child wrapper
 - Statement: Desktop-deferred Yazelix Terminal launches write bounded per-launch
   logs under `YAZELIX_STATE_DIR/logs/terminal_launch`. The log name is based on
   the executable basename, so yzxterm logs use
@@ -227,7 +226,7 @@ Out of scope:
 - Owner: Rust terminal materialization and Rust launch preflight
 - Statement: Rio is the upstream packaged terminal variant selected by
   `terminal = "rio"` or `#yazelix_rio`; it must not depend on the
-  `yazelix-terminal` child package or yzxterm metadata. Generated Rio config is
+  `mars` child package or yzxterm metadata. Generated Rio config is
   written under the Yazelix state directory and launched through
   `RIO_CONFIG_HOME`, with `terminal.transparency` mapped to Rio window and cell
   opacity. On Linux, when transparency is enabled and an X display exists,

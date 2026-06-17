@@ -17,7 +17,7 @@ The supported split is:
 | `zjstatus.wasm` | `.wasm` artifact | upstream `zjstatus` through the current lock | locked package consumption and generated Zellij integration |
 | `yazelix_screen` | Rust library plus standalone `yzs` package | `yazelix-screen` child repo | integrated welcome and `yzx screen` behavior |
 | `yazelix_cursors` | Rust library plus standalone `yzc` package | `yazelix-cursors` child repo | config UI, settings generation, Ghostty materialization, Yazelix Terminal cursor shaders |
-| `yazelix-terminal` | standalone terminal package and desktop wrapper | `yazelix-terminal` child repo | opt-in runtime selection, generated config path, transparency injection |
+| `mars` | standalone terminal package and desktop wrapper | `mars` child repo | opt-in runtime selection, generated config path, transparency injection |
 | `yazelix_zellij_bar` | standalone package artifacts and widget binary | `yazelix-zellij-bar` child repo | integrated status-bar adapter and runtime path selection |
 
 ## Contract Items

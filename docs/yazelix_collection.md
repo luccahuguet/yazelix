@@ -18,7 +18,7 @@ Yazelix is built on a focused terminal-workspace stack. This catalog lists the p
 
 - `#yazelix` — The default flake package and app, backed by the Ghostty runtime variant
 - `#yazelix_ghostty` — Explicit Ghostty runtime package, equivalent to the default packaged terminal variant
-- `#yzxterm` — Experimental Yazelix Terminal runtime package backed by the `yazelix-terminal` child repository
+- `#yzxterm` — Experimental Yazelix Terminal runtime package backed by the `mars` child repository
 - `#yzxterm_fast` — Maintainer-only Yazelix Terminal dogfooding package that uses the child fork's fast profile; not release evidence
 - `#yazelix_wezterm` — Explicit WezTerm runtime package for users who prefer WezTerm terminal behavior
 - `#yazelix_kitty` — Explicit Kitty runtime package for users who prefer Kitty terminal behavior
@@ -43,7 +43,7 @@ Maintainer-facing fork status, child-repo ownership tables, README delta rules, 
 - [yazelix-screen](https://github.com/luccahuguet/yazelix-screen) — Standalone terminal animation engine consumed by Yazelix welcome/screen rendering and exposed from this repo as `#yzs` and `#yazelix_screen`.
 - [yazelix-cursors](https://github.com/luccahuguet/yazelix-cursors) — Standalone cursor preset, Ghostty-compatible shader, and `yzc` CLI repository consumed by Yazelix cursor settings and exposed from this repo as `#yzc` and `#yazelix_cursors`.
 - [yazelix-helix](https://github.com/luccahuguet/yazelix-helix) — Currently thin but standalone-usable Steel-enabled Helix fork with `--config-dir`, Yazelix bridge hooks behind explicit runtime flags, and packaged reusable Steel plugin defaults consumed by Yazelix managed Helix sessions; exposed from this repo as `#yazelix_helix`.
-- [yazelix-terminal](https://github.com/luccahuguet/mars) — Experimental Rio-derived Rust terminal emulator with BELL notifications, Kitty graphics, protocol coverage, Rio trails, and `yazelix-cursors` shader support; consumed by the opt-in Yazelix Terminal runtime and exposed from this repo as `#yzxterm` and `#runtime_yzxterm`; maintainer fast dogfooding outputs are `#yzxterm_fast` and `#runtime_yzxterm_fast`.
+- [mars](https://github.com/luccahuguet/mars) — Experimental Rio-derived Rust terminal emulator with strong Nix packaging, BELL notifications, Kitty graphics, protocol coverage, Rio trails, and `yazelix-cursors` shader support; consumed by the opt-in Yazelix Terminal runtime and exposed from this repo as `#yzxterm` and `#runtime_yzxterm`; maintainer fast dogfooding outputs are `#yzxterm_fast` and `#runtime_yzxterm_fast`.
 - [yazelix-zellij-bar](https://github.com/luccahuguet/yazelix-zellij-bar) — Standalone Zellij/zjstatus bar preset consumed by Yazelix tab/status rendering and exposed from this repo as `#yazelix_zellij_bar`.
 - [yazelix-zellij-pane-orchestrator](https://github.com/luccahuguet/yazelix-zellij-pane-orchestrator) — First-party Zellij plugin wasm that owns managed pane identity, editor/sidebar handoff, focus actions, and layout-family commands, exposed from this repo as `#yazelix_zellij_pane_orchestrator`.
 - [ratconfig](https://github.com/luccahuguet/ratconfig) — Reusable Ratatui config editor crate for JSONC-backed settings, consumed by Yazelix config UI while Yazelix keeps settings schema, Home Manager ownership, validation, and runtime apply behavior in this repo.
@@ -65,7 +65,7 @@ Maintainer-facing fork status, child-repo ownership tables, README delta rules, 
 ## Terminal Emulators
 
 - [Ghostty](https://ghostty.org/) — Default packaged terminal runtime. Yazelix uses Ghostty for the first-party cursor trail, mode-change shader experience, and Yazi image previews through Zellij.
-- [Yazelix Terminal](https://github.com/luccahuguet/mars) — Experimental packaged first-party Rust terminal through `#yzxterm` and `terminal = "yzxterm"`, with generated config, transparency mapping, BELL notifications, protocol coverage, Kitty graphics, Rio trail cursor defaults, and opt-in `yazelix-cursors` shader support.
+- [Mars Terminal](https://github.com/luccahuguet/mars) — Experimental packaged first-party Rust terminal through `#yzxterm` and `terminal = "yzxterm"`, with generated config, Nix-owned package profiles, transparency mapping, BELL notifications, protocol coverage, Kitty graphics, Rio trail cursor defaults, and opt-in `yazelix-cursors` shader support.
 - [Rio](https://github.com/raphamorim/rio) — Packaged upstream Rio terminal through `#yazelix_rio` and `terminal = "rio"`, with generated Yazelix config and the Yazelix Zellij Kitty graphics bridge.
 - [WezTerm](https://wezfurlong.org/wezterm/) — Packaged alternate terminal through `#yazelix_wezterm` and `terminal = "wezterm"`, useful for users who prefer WezTerm terminal behavior.
 - [Foot](https://codeberg.org/dnkl/foot) — Linux packaged terminal through `#yazelix_foot` and `terminal = "foot"`, with generated Yazelix config.

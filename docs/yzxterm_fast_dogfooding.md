@@ -107,8 +107,8 @@ Post-cache dry-run evidence from June 6, 2026:
 
 That means the normal main-repo dogfooding bottleneck is already handled by the
 cache lane once CI has published the commit. The remaining expensive case is
-unpublished child source iteration, and that belongs to `yazelix-terminal`, not
-to main Yazelix runtime packaging.
+unpublished child source iteration, and that belongs to `mars`, not to main
+Yazelix runtime packaging.
 
 Use these paths according to the work being done:
 

@@ -12,12 +12,12 @@ names, or make other terminal variants depend on Mars internals.
 
 | Concern | Owner |
 | --- | --- |
-| Mars binary wrapper behavior | `yazelix-terminal` child package |
-| Mars profile config templates | `yazelix-terminal` child package |
-| Mars emoji fallback presets and bundled font paths | `yazelix-terminal` child package |
-| Mars shader asset layout and ABI | `yazelix-terminal` child package |
-| Mars dark/light themes and adaptive appearance behavior | `yazelix-terminal` child package |
-| Mars package metadata schema and values | `yazelix-terminal` child package |
+| Mars binary wrapper behavior | `mars` child package |
+| Mars profile config templates | `mars` child package |
+| Mars emoji fallback presets and bundled font paths | `mars` child package |
+| Mars shader asset layout and ABI | `mars` child package |
+| Mars dark/light themes and adaptive appearance behavior | `mars` child package |
+| Mars package metadata schema and values | `mars` child package |
 | runtime variant selection | main Yazelix Nix package builders |
 | Home Manager terminal selection | main Yazelix Home Manager module |
 | Home Manager yzxterm package override | main Yazelix Home Manager module, Mars-only |
@@ -76,7 +76,7 @@ names, or make other terminal variants depend on Mars internals.
 | Rio | writes generated upstream Rio config from stable Yazelix settings | Rio owns config semantics |
 | Ratty | writes generated Ratty config and launch argv | Ratty owns config semantics and RGP/GPU behavior |
 | Foot | writes generated Linux-only `foot.ini` | Foot owns config semantics |
-| yzxterm | reads the selected child-owned Mars profile and emoji-fallback template, copies child-owned dark/light themes into the generated config root, then applies stable Yazelix transparency, appearance selection, cell-opacity policy, cursor color, and generated shader snapshot paths | `yazelix-terminal` owns wrapper behavior, profile templates, emoji fallback presets, dark/light theme palettes, adaptive appearance behavior, shader ABI, shader asset layout, and package metadata |
+| yzxterm | reads the selected child-owned Mars profile and emoji-fallback template, copies child-owned dark/light themes into the generated config root, then applies stable Yazelix transparency, appearance selection, cell-opacity policy, cursor color, and generated shader snapshot paths | `mars` owns wrapper behavior, profile templates, emoji fallback presets, dark/light theme palettes, adaptive appearance behavior, shader ABI, shader asset layout, and package metadata |
 
 ## Verification
 

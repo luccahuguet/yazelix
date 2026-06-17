@@ -488,6 +488,6 @@ For complete customization options, see the [Customization Guide](./customizatio
 
 - The `--impure` flag in `nix develop` allows access to the HOME environment variable, necessary for config paths
 - Tweak configs to make them yours; this is just a starting point!
-- For extra configuration, see: [Yazelix Terminal](https://github.com/luccahuguet/mars), [WezTerm Docs](https://wezfurlong.org/wezterm/config/files.html), [Foot config](https://man.archlinux.org/man/foot.ini.5.en), and [Ratty config](https://github.com/orhun/ratty/blob/main/config/ratty.toml)
+- For extra configuration, see: [Mars Terminal](https://github.com/luccahuguet/mars), [WezTerm Docs](https://wezfurlong.org/wezterm/config/files.html), [Foot config](https://man.archlinux.org/man/foot.ini.5.en), and [Ratty config](https://github.com/orhun/ratty/blob/main/config/ratty.toml)
 - Add more swap layouts by changing the `yazelix-zellij-config-pack` child repo
 - Use `lazygit`, it's great

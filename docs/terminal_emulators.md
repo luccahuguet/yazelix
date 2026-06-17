@@ -162,7 +162,7 @@ Its main weakness is not protocol ambition. The risk is release maturity:
 Wayland/windowing/GPU behavior, packaged desktop launch, input responsiveness,
 graphics previews, and cursor shader alignment need continued soak time.
 The experimental release closeout is recorded in
-`yazelix-terminal` at `docs/yazelix/release_closeout_2026_06.md`.
+`mars` at `docs/yazelix/release_closeout_2026_06.md`.
 
 ### Rio
 
