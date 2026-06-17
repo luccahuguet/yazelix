@@ -18,6 +18,7 @@ pub mod doctor_commands;
 pub mod doctor_config_report;
 pub mod doctor_helix_report;
 pub mod doctor_runtime_report;
+pub(crate) mod doctor_zellij_plugin_health;
 pub mod edit_commands;
 pub mod front_door_commands;
 pub mod front_door_render;

@@ -10,6 +10,10 @@ use crate::doctor_helix_report::{HelixDoctorEvaluateRequest, evaluate_helix_doct
 use crate::doctor_runtime_report::{
     DoctorRuntimeEvaluateRequest, SharedRuntimePreflightInput, evaluate_doctor_runtime_report,
 };
+use crate::doctor_zellij_plugin_health::{
+    SEED_ZELLIJ_PLUGIN_PERMISSIONS_FIX_ACTION, evaluate_zellij_plugin_health,
+    seed_zellij_plugin_permissions, zellij_plugin_health_request_from_env,
+};
 use crate::helix_external::HelixExternalPair;
 use crate::install_ownership_env::install_ownership_request_from_env_with_runtime_dir;
 use crate::native_config_status::{
@@ -26,20 +30,16 @@ use crate::user_config_paths;
 use crate::workspace_asset_contract::{
     WorkspaceAssetEvaluateRequest, evaluate_workspace_asset_report,
 };
-use crate::zellij_materialization::{
-    ZellijMaterializationRequest, generate_zellij_materialization, zellij_permissions_cache_path,
-};
 use crate::{
     DoctorConfigEvaluateRequest, NormalizeConfigRequest, evaluate_doctor_config_report,
     evaluate_install_ownership_report, normalize_config, plan_runtime_materialization,
 };
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use serde_json::{Value, json};
 use std::env;
 use std::fs;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
-use std::process::Command;
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 enum DoctorTarget {
@@ -129,21 +129,6 @@ fn doctor_finding_json(
     })
 }
 
-fn doctor_fixable_finding_json(
-    status: impl Into<String>,
-    message: impl Into<String>,
-    details: impl Into<Value>,
-    fix_action: impl Into<String>,
-) -> Value {
-    json!({
-        "status": status.into(),
-        "message": message.into(),
-        "details": details.into(),
-        "fix_available": true,
-        "fix_action": fix_action.into()
-    })
-}
-
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 struct RecoveryPlanSummary {
     action_count: usize,
@@ -175,37 +160,6 @@ struct RecoveryPlanReport {
 const CREATE_DEFAULT_SETTINGS_CONFIG_FIX_ACTION: &str = "create_default_settings_config";
 const HELIX_RUNTIME_CONFLICT_REPAIR_ACTION: &str = "backup_helix_runtime_conflicts";
 const REPAIR_GENERATED_RUNTIME_STATE_FIX_ACTION: &str = "repair_generated_runtime_state";
-const SEED_ZELLIJ_PLUGIN_PERMISSIONS_FIX_ACTION: &str = "seed_zellij_plugin_permissions";
-
-#[derive(Debug, Deserialize)]
-struct SessionManagedPanes {
-    #[serde(default)]
-    editor_pane_id: Option<String>,
-    #[serde(default)]
-    sidebar_pane_id: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-struct SessionLayout {
-    #[serde(default)]
-    active_swap_layout_name: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-struct ActiveTabSessionStateV1 {
-    active_tab_position: usize,
-    managed_panes: SessionManagedPanes,
-    layout: SessionLayout,
-}
-
-#[derive(Debug, Clone)]
-struct ZellijPluginState {
-    permissions_granted: bool,
-    active_tab_position: Option<usize>,
-    sidebar_pane_id: String,
-    editor_pane_id: String,
-    active_swap_layout_name: Option<String>,
-}
 
 pub fn run_yzx_doctor(args: &[String]) -> Result<i32, CoreError> {
     let parsed = parse_doctor_cli_args(args)?;
@@ -381,7 +335,7 @@ fn compute_doctor_report_from_env() -> Result<DoctorReportData, CoreError> {
     )?;
     let workspace_asset_findings =
         collect_workspace_asset_doctor_findings(&runtime_dir, &state_dir);
-    let zellij_findings = collect_zellij_plugin_health_findings(normalized_config.as_ref());
+    let zellij_findings = collect_zellij_plugin_health_findings(normalized_config.as_ref())?;
 
     let mut results = Vec::new();
     results.extend(runtime_findings);
@@ -1206,201 +1160,12 @@ fn repair_generated_runtime_state(verbose: bool) -> Result<bool, CoreError> {
     Ok(false)
 }
 
-fn seed_zellij_plugin_permissions() -> Result<bool, CoreError> {
-    let runtime_dir = runtime_dir_from_env()?;
-    let config_dir = config_dir_from_env()?;
-    let state_dir = state_dir_from_env()?;
-    let paths = resolve_active_config_paths(
-        &runtime_dir,
-        &config_dir,
-        config_override_from_env().as_deref(),
-    )?;
-    let zellij_config_dir = state_dir.join("configs").join("zellij");
-    let req = ZellijMaterializationRequest {
-        config_path: paths.config_file,
-        default_config_path: paths.default_config_path,
-        contract_path: paths.contract_path,
-        runtime_dir: runtime_dir.clone(),
-        zellij_config_dir,
-        seed_plugin_permissions: true,
-    };
-    match generate_zellij_materialization(&req) {
-        Ok(_) => {
-            let cache_path = zellij_permissions_cache_path()?;
-            println!(
-                "✅ Seeded Yazelix plugin permissions in: {}",
-                cache_path.display()
-            );
-        }
-        Err(err) => {
-            println!(
-                "❌ Failed to seed Yazelix plugin permissions: {}",
-                err.message()
-            );
-            return Ok(true);
-        }
-    }
-    Ok(false)
-}
-
 fn collect_zellij_plugin_health_findings(
     _normalized_config: Option<&serde_json::Map<String, Value>>,
-) -> Vec<Value> {
-    if env::var_os("ZELLIJ").is_none() {
-        return vec![doctor_finding_json(
-            "info",
-            "Zellij plugin health check skipped (not inside Zellij)",
-            "Run `yzx doctor` from inside the affected Yazelix session to verify Yazelix orchestrator permissions and managed pane detection.",
-        )];
-    }
-
-    let output = Command::new("zellij")
-        .args([
-            "action",
-            "pipe",
-            "--plugin",
-            "yazelix_pane_orchestrator",
-            "--name",
-            "get_active_tab_session_state",
-            "--",
-            "",
-        ])
-        .output();
-
-    let output = match output {
-        Ok(output) => output,
-        Err(error) => {
-            return vec![doctor_finding_json(
-                "warning",
-                "Could not contact the Yazelix pane-orchestrator plugin",
-                format!(
-                    "Run this from inside the affected Yazelix session after fully restarting it. Underlying error: {error}"
-                ),
-            )];
-        }
-    };
-
-    if !output.status.success() {
-        return vec![doctor_finding_json(
-            "warning",
-            "Could not contact the Yazelix pane-orchestrator plugin",
-            format!(
-                "Run this from inside the affected Yazelix session after fully restarting it. Underlying error: {}",
-                String::from_utf8_lossy(&output.stderr).trim()
-            ),
-        )];
-    }
-
-    let raw = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    match raw.as_str() {
-        "permissions_denied" => build_zellij_plugin_health_findings(
-            &ZellijPluginState {
-                permissions_granted: false,
-                active_tab_position: None,
-                sidebar_pane_id: String::new(),
-                editor_pane_id: String::new(),
-                active_swap_layout_name: None,
-            },
-            true,
-        ),
-        "not_ready" | "missing" => vec![doctor_finding_json(
-            "warning",
-            "Yazelix pane-orchestrator session state is not ready yet",
-            "The plugin responded before tab/workspace state was available. Wait a moment and rerun `yzx doctor` inside this Yazelix session.",
-        )],
-        _ => match serde_json::from_str::<ActiveTabSessionStateV1>(&raw) {
-            Ok(session) => build_zellij_plugin_health_findings(
-                &ZellijPluginState {
-                    permissions_granted: true,
-                    active_tab_position: Some(session.active_tab_position),
-                    sidebar_pane_id: session.managed_panes.sidebar_pane_id.unwrap_or_default(),
-                    editor_pane_id: session.managed_panes.editor_pane_id.unwrap_or_default(),
-                    active_swap_layout_name: session.layout.active_swap_layout_name,
-                },
-                true,
-            ),
-            Err(_) => vec![doctor_finding_json(
-                "warning",
-                "Yazelix pane-orchestrator returned an unexpected response",
-                format!("Unexpected payload: {raw}"),
-            )],
-        },
-    }
-}
-
-fn build_zellij_plugin_health_findings(
-    plugin_state: &ZellijPluginState,
-    sidebar_enabled: bool,
-) -> Vec<Value> {
-    let mut results = Vec::new();
-
-    if !plugin_state.permissions_granted {
-        results.push(doctor_fixable_finding_json(
-            "error",
-            "Yazelix pane-orchestrator plugin permissions not granted",
-            "Yazelix normally pre-seeds bundled Zellij plugin permissions before launch. If the cache was deleted or Zellij is already prompting, run `yzx doctor --fix` and restart Yazelix; if a live prompt remains, focus the top zjstatus bar and press `y`, and answer yes to the Yazelix orchestrator popup. Yazelix workspace bindings like `Alt+m`, `Alt+Shift+H/J/K/L`, `Ctrl+y`, `Ctrl+Shift+Y`, `Alt+r`, `Alt+[`, and `Alt+]` depend on the orchestrator.",
-            SEED_ZELLIJ_PLUGIN_PERMISSIONS_FIX_ACTION,
-        ));
-    } else {
-        results.push(doctor_finding_json(
-            "ok",
-            "Yazelix pane-orchestrator permissions granted",
-            "The orchestrator plugin can handle Yazelix tab and pane actions in this Zellij session.",
-        ));
-    }
-
-    if plugin_state.active_tab_position.is_none() {
-        results.push(doctor_finding_json(
-            "warning",
-            "Yazelix pane-orchestrator does not see an active tab yet",
-            "The plugin may still be initializing. Wait a moment and rerun `yzx doctor` inside this Yazelix session.",
-        ));
-        return results;
-    }
-
-    if sidebar_enabled {
-        if plugin_state.sidebar_pane_id.trim().is_empty() {
-            results.push(doctor_finding_json(
-                "warning",
-                "Managed sidebar pane not detected in the current tab",
-                "`Alt+Shift+H`, `Ctrl+y`, `Ctrl+Shift+Y`, and reveal flows may not work until the current tab uses a Yazelix managed-sidebar layout.",
-            ));
-        } else {
-            results.push(doctor_finding_json(
-                "ok",
-                format!(
-                    "Managed sidebar pane detected: {}",
-                    plugin_state.sidebar_pane_id
-                ),
-                format!(
-                    "Layout state: {}",
-                    plugin_state
-                        .active_swap_layout_name
-                        .as_deref()
-                        .unwrap_or("unknown")
-                ),
-            ));
-        }
-    }
-
-    if plugin_state.editor_pane_id.trim().is_empty() {
-        results.push(doctor_finding_json(
-            "info",
-            "Managed editor pane not detected in the current tab",
-            "This is normal until you open a managed Helix or Neovim editor pane in the current tab. An editor started manually from an ordinary shell pane does not count as the managed editor pane.",
-        ));
-    } else {
-        results.push(doctor_finding_json(
-            "ok",
-            format!(
-                "Managed editor pane detected: {}",
-                plugin_state.editor_pane_id
-            ),
-            Value::Null,
-        ));
-    }
-
-    results
+) -> Result<Vec<Value>, CoreError> {
+    serialize_values(&evaluate_zellij_plugin_health(
+        &zellij_plugin_health_request_from_env(),
+    ))
 }
 
 // Test lane: default
@@ -1516,29 +1281,6 @@ mod tests {
                 .any(|entry| entry["surface"] == "terminal.ghostty.input"
                     && entry["status"] == "native_required_missing")
         );
-    }
-
-    // Defends: the Rust doctor port preserves the Zellij permission-denied finding and fix action instead of dropping the live-session seam.
-    #[test]
-    fn zellij_permissions_denied_stays_fixable() {
-        let findings = build_zellij_plugin_health_findings(
-            &ZellijPluginState {
-                permissions_granted: false,
-                active_tab_position: None,
-                sidebar_pane_id: String::new(),
-                editor_pane_id: String::new(),
-                active_swap_layout_name: None,
-            },
-            true,
-        );
-
-        assert_eq!(findings.len(), 2);
-        assert_eq!(findings[0]["status"], "error");
-        assert_eq!(
-            findings[0]["fix_action"].as_str(),
-            Some("seed_zellij_plugin_permissions")
-        );
-        assert_eq!(findings[1]["status"], "warning");
     }
 
     // Defends: the recovery plan maps known high-friction failures to exact non-mutating recovery commands.
