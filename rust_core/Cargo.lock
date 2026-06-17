@@ -738,7 +738,7 @@ dependencies = [
 [[package]]
 name = "ratconfig"
 version = "0.1.0"
-source = "git+https://github.com/luccahuguet/ratconfig?rev=71dfb2d86acface4a7ff318eb0ffed01be9fe1fb#71dfb2d86acface4a7ff318eb0ffed01be9fe1fb"
+source = "git+https://github.com/luccahuguet/ratconfig?rev=3a3facf8f52e2ba09a506449202603d56d8d5f6d#3a3facf8f52e2ba09a506449202603d56d8d5f6d"
 dependencies = [
  "jsonc-parser",
  "ratatui",
@@ -1477,7 +1477,7 @@ dependencies = [
 [[package]]
 name = "yazelix_cursors"
 version = "0.1.0"
-source = "git+https://github.com/luccahuguet/yazelix-cursors?rev=9455b3352dfed812a4a60026b10b6e603f8d064f#9455b3352dfed812a4a60026b10b6e603f8d064f"
+source = "git+https://github.com/luccahuguet/yazelix-cursors?rev=a1fb61bdbc981c6fb2f455bd6bab4e2244f0eb1d#a1fb61bdbc981c6fb2f455bd6bab4e2244f0eb1d"
 dependencies = [
  "jsonc-parser",
  "ratconfig",

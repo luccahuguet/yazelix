@@ -2,6 +2,7 @@ use super::*;
 use std::collections::BTreeMap;
 
 const POPUP_COMMANDS_FIELD_PATH: &str = "zellij.popup_commands";
+const YAZELIX_SCHEMA_EXTENSION_KEY: &str = "x-yazelix";
 const BUILTIN_POPUP_COMMANDS: &[(&str, &str)] = &[
     ("bottom_popup", "Bottom popup command"),
     ("top_popup", "Top popup command"),
@@ -15,7 +16,7 @@ pub fn build_config_ui_model(request: &ConfigUiRequest) -> Result<ConfigUiModel,
         "read_settings_schema",
         "Could not read the Yazelix settings schema",
     )?;
-    let schema_tab_order = schema_tabs(&schema, DEFAULT_TABS);
+    let schema_tab_order = schema_tabs(&schema, YAZELIX_SCHEMA_EXTENSION_KEY, DEFAULT_TABS);
     let ui_metadata =
         load_config_ui_metadata(&config_ui_metadata_path(&paths.settings_schema_path))?;
     ensure_ui_metadata_tabs_match_schema(&ui_metadata.tabs, &schema_tab_order)?;
