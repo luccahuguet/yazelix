@@ -723,7 +723,7 @@ fn acknowledge_desktop_failure(error_text: &str) {
 mod tests {
     use super::*;
 
-    // Regression: yzxterm desktop entries need terminal-specific startup class names so desktop switchers do not merge them with Ghostty windows.
+    // Regression: Mars desktop entries need terminal-specific startup class names so desktop switchers do not merge them with Ghostty windows.
     #[test]
     fn render_desktop_entry_uses_terminal_specific_startup_class_for_yzxterm() {
         let ghostty_entry = render_desktop_entry(Path::new("/tmp/yzx"), "ghostty");
@@ -731,8 +731,8 @@ mod tests {
         assert!(ghostty_entry.contains("StartupWMClass=com.yazelix.Yazelix"));
 
         let yzxterm_entry = render_desktop_entry(Path::new("/tmp/yzx"), "yzxterm");
-        assert!(yzxterm_entry.contains("Name=New Yazelix - Yzxterm"));
-        assert!(yzxterm_entry.contains("StartupWMClass=com.yazelix.Yazelix.Yzxterm"));
+        assert!(yzxterm_entry.contains("Name=New Yazelix - Mars"));
+        assert!(yzxterm_entry.contains("StartupWMClass=com.yazelix.Yazelix.Mars"));
     }
 
     #[cfg(unix)]

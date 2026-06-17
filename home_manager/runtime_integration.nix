@@ -3,6 +3,7 @@
   cfg,
   fenixPkgs ? null,
   lib,
+  marsTerminalPackage ? null,
   mkYazelixPackage ? null,
   nixgl ? null,
   options,
@@ -21,16 +22,27 @@ let
   runtimeToolSource = name: cfg.runtime_tool_sources.${name} or "bundled";
   terminalDesktopLabel = terminalMetadata.desktopLabel;
   terminalDesktopIdSuffix = terminalMetadata.desktopIdSuffix;
+  marsTerminalVariant = "yzxterm";
   desktopEntryKey = terminal: "com.yazelix.Yazelix.${terminalDesktopIdSuffix terminal}";
   desktopEntryName = terminal: "New Yazelix - ${terminalDesktopLabel terminal}";
   startupWmClassFor =
     terminal:
-    if terminal == "yzxterm"
+    if terminal == marsTerminalVariant
     then desktopEntryKey terminal
     else "com.yazelix.Yazelix";
-  yzxtermActiveFor = terminal: terminal == "yzxterm";
+  yzxtermActiveFor = terminal: terminal == marsTerminalVariant;
+  extraTerminalLaunchers = lib.unique cfg.extra_terminal_launchers;
+  marsDesktopPackage =
+    if cfg.yzxterm_package != null then cfg.yzxterm_package else marsTerminalPackage;
+  marsDesktopEntriesSupported = isLinux && marsDesktopPackage != null;
+  implicitMarsTerminalLauncher =
+    marsDesktopEntriesSupported
+    && cfg.terminal != marsTerminalVariant
+    && !(builtins.elem marsTerminalVariant extraTerminalLaunchers);
+  desktopTerminalLaunchers =
+    extraTerminalLaunchers ++ lib.optional implicitMarsTerminalLauncher marsTerminalVariant;
   yzxtermConfigured =
-    yzxtermActiveFor cfg.terminal || builtins.elem "yzxterm" extraTerminalLaunchers;
+    yzxtermActiveFor cfg.terminal || builtins.elem marsTerminalVariant desktopTerminalLaunchers;
   yzxtermProfileActiveFor = terminal: yzxtermActiveFor terminal && cfg.yzxterm_profile != "full";
   yzxtermProfileActive = yzxtermProfileActiveFor cfg.terminal;
   yzxtermProfileExport =
@@ -61,8 +73,8 @@ let
         throw "programs.yazelix.agent_usage_programs contains an unsupported agent usage program"
     ) cfg.agent_usage_programs;
 
-  yzxtermPackageArgs = lib.optionalAttrs (cfg.yzxterm_package != null) {
-    marsTerminalPackage = cfg.yzxterm_package;
+  yzxtermPackageArgs = lib.optionalAttrs (marsDesktopPackage != null) {
+    marsTerminalPackage = marsDesktopPackage;
   };
   packageBuilderArgs =
     {
@@ -109,8 +121,7 @@ let
         }
       );
 
-  extraTerminalLaunchers = lib.unique cfg.extra_terminal_launchers;
-  activationTerminalVariants = [ cfg.terminal ] ++ extraTerminalLaunchers;
+  activationTerminalVariants = [ cfg.terminal ] ++ desktopTerminalLaunchers;
   runtimeConfigGenerationPath = lib.makeBinPath [
     pkgs.coreutils
     pkgs.zellij
@@ -136,11 +147,15 @@ let
     let
       envVars =
         lib.optional skipStableWrapperRedirect "YAZELIX_SKIP_STABLE_WRAPPER_REDIRECT=1"
-        ++ lib.optional (terminal == "yzxterm") "YAZELIX_TERMINAL_APP_ID=${startupWmClassFor terminal}"
-        ++ lib.optional (terminal == "yzxterm") "YAZELIX_TERMINAL_APPEARANCE=${cfg.appearance_mode}"
-        ++ lib.optional (terminal == "yzxterm") "YAZELIX_TERMINAL_EMOJI_FONT=${cfg.yzxterm_emoji_font}"
-        ++ lib.optional (terminal == "yzxterm") "YAZELIX_TERMINAL_EMOJI_FONT_SOURCE=home-manager"
-        ++ lib.optional (yzxtermProfileActiveFor terminal) "YAZELIX_TERMINAL_PROFILE=${cfg.yzxterm_profile}";
+        ++ lib.optional (terminal == marsTerminalVariant) "YAZELIX_TERMINAL_APP_ID=${startupWmClassFor terminal}"
+        ++ lib.optional (terminal == marsTerminalVariant) "YAZELIX_TERMINAL_APPEARANCE=${cfg.appearance_mode}"
+        ++ lib.optional (terminal == marsTerminalVariant) "YAZELIX_TERMINAL_EMOJI_FONT=${cfg.yzxterm_emoji_font}"
+        ++ lib.optional (terminal == marsTerminalVariant) "YAZELIX_TERMINAL_EMOJI_FONT_SOURCE=home-manager"
+        ++ lib.optional (terminal == marsTerminalVariant) "MARS_APP_ID=${startupWmClassFor terminal}"
+        ++ lib.optional (terminal == marsTerminalVariant) "MARS_APPEARANCE=${cfg.appearance_mode}"
+        ++ lib.optional (terminal == marsTerminalVariant) "MARS_EMOJI_FONT=${cfg.yzxterm_emoji_font}"
+        ++ lib.optional (yzxtermProfileActiveFor terminal) "YAZELIX_TERMINAL_PROFILE=${cfg.yzxterm_profile}"
+        ++ lib.optional (yzxtermProfileActiveFor terminal) "MARS_PROFILE=${cfg.yzxterm_profile}";
     in
     "${lib.optionalString (envVars != [ ]) "env ${lib.concatStringsSep " " envVars} "}${yzxPath} desktop launch";
   desktopEntryFor =
@@ -161,8 +176,9 @@ let
     map (terminal: {
       name = desktopEntryKey terminal;
       value = desktopEntryFor terminal "${yazelixPackageForTerminal terminal}/bin/yzx" true;
-    }) extraTerminalLaunchers
+    }) desktopTerminalLaunchers
   );
+  marsDesktopPackages = lib.optional marsDesktopEntriesSupported marsDesktopPackage;
 
   cursorGeneratorPackage =
     if componentEnabled "cursors" && yazelixCursorsPackage != null then
@@ -219,8 +235,9 @@ let
       assertion =
         cfg.yzxterm_package == null
         || cfg.terminal == "yzxterm"
-        || builtins.elem "yzxterm" cfg.extra_terminal_launchers;
-      message = "programs.yazelix.yzxterm_package applies only when terminal = \"yzxterm\" or extra_terminal_launchers contains \"yzxterm\"";
+        || builtins.elem "yzxterm" cfg.extra_terminal_launchers
+        || implicitMarsTerminalLauncher;
+      message = "programs.yazelix.yzxterm_package applies only when terminal = \"yzxterm\" or when the Mars desktop launcher is installed";
     }
   ];
 in
@@ -228,14 +245,17 @@ in
   inherit agentUsageProgramNames;
 
   baseConfig = {
-    home.packages = [ yazelixPackage ] ++ cursorGeneratorPackage;
+    home.packages = [ yazelixPackage ] ++ cursorGeneratorPackage ++ marsDesktopPackages;
     home.sessionVariables = mkMerge [
       (mkIf yzxtermConfigured {
         YAZELIX_TERMINAL_APPEARANCE = mkDefault cfg.appearance_mode;
         YAZELIX_TERMINAL_EMOJI_FONT = mkDefault cfg.yzxterm_emoji_font;
+        MARS_APPEARANCE = mkDefault cfg.appearance_mode;
+        MARS_EMOJI_FONT = mkDefault cfg.yzxterm_emoji_font;
       })
       (mkIf yzxtermProfileActive {
         YAZELIX_TERMINAL_PROFILE = mkDefault cfg.yzxterm_profile;
+        MARS_PROFILE = mkDefault cfg.yzxterm_profile;
       })
     ];
     inherit assertions;

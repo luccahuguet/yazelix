@@ -1074,7 +1074,7 @@ mod tests {
         );
     }
 
-    // Defends: yzxterm is a config id whose executable command is the child-owned desktop wrapper.
+    // Defends: yzxterm is a config id whose executable command is the child-owned Mars desktop wrapper.
     #[test]
     fn launch_preflight_maps_yzxterm_to_child_wrapper_command() {
         let temp = tempdir().unwrap();
@@ -1082,7 +1082,7 @@ mod tests {
         fs::create_dir_all(&work).unwrap();
         let host_bin = temp.path().join("host-bin");
         fs::create_dir_all(&host_bin).unwrap();
-        write_executable(&host_bin.join("yazelix-terminal-desktop"));
+        write_executable(&host_bin.join("mars-desktop"));
 
         let data = evaluate_startup_launch_preflight(&StartupLaunchPreflightRequest {
             startup: None,
@@ -1101,7 +1101,7 @@ mod tests {
             .and_then(|candidates| candidates.first())
             .unwrap();
         assert_eq!(candidate.terminal, "yzxterm");
-        assert_eq!(candidate.command, "yazelix-terminal-desktop");
-        assert_eq!(candidate.name, "Yzxterm");
+        assert_eq!(candidate.command, "mars-desktop");
+        assert_eq!(candidate.name, "Mars");
     }
 }

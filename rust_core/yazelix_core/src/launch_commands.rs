@@ -44,6 +44,15 @@ pub(super) const RUNTIME_RELAUNCH_CLEARED_ENV_KEYS: &[&str] = &[
     "YAZELIX_TERMINAL",
     "YAZELIX_TERMINAL_APP_ID",
     "YAZELIX_TERMINAL_CONFIG",
+    "MARS_APP_ID",
+    "MARS_APPEARANCE",
+    "MARS_CHILD_ENV_SANITIZE",
+    "MARS_CONFIG",
+    "MARS_EFFECTS",
+    "MARS_EMOJI_FONT",
+    "MARS_GRAPHICS_WRAPPER",
+    "MARS_PROFILE",
+    "MARS_RENDER_STRATEGY",
     YZXTERM_EMOJI_ENV_KEYS[0],
     YZXTERM_EMOJI_ENV_KEYS[1],
     "YAZELIX_YZX_BIN",
@@ -616,8 +625,8 @@ mod tests {
             runtime.path(),
             &crate::runtime_contract::TerminalCandidate {
                 terminal: "yzxterm".to_string(),
-                name: "Yzxterm".to_string(),
-                command: "yazelix-terminal-desktop".to_string(),
+                name: "Mars".to_string(),
+                command: "mars-desktop".to_string(),
             },
             &config_path,
             Path::new("/tmp/project"),
@@ -625,9 +634,9 @@ mod tests {
         )
         .unwrap();
 
-        assert_eq!(argv[0], "yazelix-terminal-desktop");
+        assert_eq!(argv[0], "mars-desktop");
         assert_eq!(argv[1], "--title-placeholder");
-        assert_eq!(argv[2], "Yazelix - Yzxterm - session-a");
+        assert_eq!(argv[2], "Yazelix - Mars - session-a");
         assert!(argv.iter().any(|arg| arg == "--yazelix"));
         assert_eq!(
             argv.windows(2)
@@ -644,18 +653,16 @@ mod tests {
     fn launch_probe_log_path_uses_command_basename() {
         let state = TempDir::new().unwrap();
 
-        let log = get_launch_probe_log_path(
-            state.path(),
-            "/nix/store/test-yazelix/bin/yazelix-terminal-desktop",
-        )
-        .unwrap();
+        let log =
+            get_launch_probe_log_path(state.path(), "/nix/store/test-yazelix/bin/mars-desktop")
+                .unwrap();
 
         assert!(log.starts_with(state.path().join("logs/terminal_launch")));
         assert!(
             log.file_name()
                 .and_then(|name| name.to_str())
                 .unwrap_or_default()
-                .starts_with("yazelix_terminal_desktop_")
+                .starts_with("mars_desktop_")
         );
     }
 
@@ -868,6 +875,15 @@ mod tests {
             "YAZELIX_STATUS_BAR_CACHE_PATH",
             "YAZELIX_TERMINAL_APP_ID",
             "YAZELIX_TERMINAL_CONFIG",
+            "MARS_APP_ID",
+            "MARS_APPEARANCE",
+            "MARS_CHILD_ENV_SANITIZE",
+            "MARS_CONFIG",
+            "MARS_EFFECTS",
+            "MARS_EMOJI_FONT",
+            "MARS_GRAPHICS_WRAPPER",
+            "MARS_PROFILE",
+            "MARS_RENDER_STRATEGY",
             YZXTERM_EMOJI_ENV_KEYS[0],
             YZXTERM_EMOJI_ENV_KEYS[1],
             "YAZELIX_YZX_BIN",

@@ -1,19 +1,19 @@
 use crate::appearance_mode::{
-    appearance_mode_from_config, auto_mode, static_light_mode, wezterm_theme, APPEARANCE_MODE_AUTO,
-    APPEARANCE_MODE_DARK, APPEARANCE_MODE_LIGHT, WEZTERM_THEME_DARK, WEZTERM_THEME_LIGHT,
+    APPEARANCE_MODE_AUTO, APPEARANCE_MODE_DARK, APPEARANCE_MODE_LIGHT, WEZTERM_THEME_DARK,
+    WEZTERM_THEME_LIGHT, appearance_mode_from_config, auto_mode, static_light_mode, wezterm_theme,
 };
 use crate::atomic_fs::write_text_atomic;
 use crate::bridge::CoreError;
-use crate::config_normalize::{normalize_config, NormalizeConfigRequest};
+use crate::config_normalize::{NormalizeConfigRequest, normalize_config};
 use crate::control_plane::config_dir_from_env;
 use crate::ghostty_cursor_registry::{CursorRegistry, YazelixCursorRegistryExt};
 use crate::ghostty_materialization::{
-    generate_ghostty_materialization, GhosttyMaterializationData, GhosttyMaterializationRequest,
+    GhosttyMaterializationData, GhosttyMaterializationRequest, generate_ghostty_materialization,
 };
 use crate::runtime_component_enabled;
 use crate::terminal_cursor_materialization::{
-    cursor_shader_paths_for_state, generate_terminal_cursor_materialization,
     TerminalCursorMaterializationData, TerminalCursorMaterializationRequest, TerminalCursorState,
+    cursor_shader_paths_for_state, generate_terminal_cursor_materialization,
 };
 use crate::terminal_variant::terminal_window_title;
 use crate::user_config_paths;
@@ -629,29 +629,87 @@ fn yzxterm_emoji_font_from_config(
     parse_yzxterm_emoji_font(raw)
 }
 
-fn yzxterm_emoji_config_root(package_root: &Path, emoji_font: YzxtermEmojiFont) -> PathBuf {
-    match emoji_font {
-        YzxtermEmojiFont::Noto => package_root.to_path_buf(),
-        YzxtermEmojiFont::Twitter => package_root.join("emoji").join("twitter"),
-        YzxtermEmojiFont::SerenityOs => package_root.join("emoji").join("serenityos"),
-    }
-}
-
 fn yzxterm_package_config_path(
     runtime_dir: &Path,
     profile: YzxtermProfile,
     emoji_font: YzxtermEmojiFont,
-) -> PathBuf {
-    let package_root = runtime_dir.join("share").join("yazelix-terminal");
-    let config_root = yzxterm_emoji_config_root(&package_root, emoji_font);
-    match profile {
-        YzxtermProfile::Full => config_root.join("config.toml"),
-        YzxtermProfile::Baseline => config_root.join("baseline").join("config.toml"),
-        YzxtermProfile::Shaders => config_root
-            .join("profiles")
-            .join("shaders")
-            .join("config.toml"),
+) -> Result<PathBuf, CoreError> {
+    let metadata_path = runtime_dir
+        .join("share")
+        .join("mars")
+        .join("package-metadata.json");
+    let raw = fs::read_to_string(&metadata_path).map_err(|source| {
+        CoreError::io(
+            "read_mars_package_metadata",
+            "Could not read the packaged Mars metadata",
+            "Reinstall the Yazelix runtime so the Mars child package metadata is present.",
+            metadata_path.to_string_lossy(),
+            source,
+        )
+    })?;
+    let metadata = serde_json::from_str::<serde_json::Value>(&raw).map_err(|source| {
+        CoreError::classified(
+            crate::bridge::ErrorClass::Runtime,
+            "parse_mars_package_metadata",
+            format!(
+                "The packaged Mars metadata at {} is not valid JSON.",
+                metadata_path.display()
+            ),
+            "Reinstall the Yazelix runtime or rebuild it from a valid Mars package.",
+            serde_json::json!({ "error": source.to_string() }),
+        )
+    })?;
+    let emoji_key = match emoji_font {
+        YzxtermEmojiFont::Noto => "noto",
+        YzxtermEmojiFont::Twitter => "twitter",
+        YzxtermEmojiFont::SerenityOs => "serenityos",
+    };
+    let profile_key = match profile {
+        YzxtermProfile::Full => "full",
+        YzxtermProfile::Baseline => "baseline",
+        YzxtermProfile::Shaders => "shaders",
+    };
+    let config_root = metadata
+        .get("emoji_fonts")
+        .and_then(serde_json::Value::as_object)
+        .and_then(|fonts| fonts.get(emoji_key))
+        .and_then(|font| font.get("config_roots"))
+        .and_then(serde_json::Value::as_object)
+        .and_then(|roots| roots.get(profile_key))
+        .and_then(serde_json::Value::as_str)
+        .ok_or_else(|| {
+            CoreError::classified(
+                crate::bridge::ErrorClass::Runtime,
+                "missing_mars_package_config_root",
+                format!(
+                    "The packaged Mars metadata at {} does not declare the {emoji_key}/{profile_key} config root.",
+                    metadata_path.display()
+                ),
+                "Reinstall Yazelix with a Mars package that advertises its profile config roots.",
+                serde_json::json!({
+                    "metadata_path": metadata_path.to_string_lossy(),
+                    "emoji_font": emoji_key,
+                    "profile": profile_key,
+                }),
+            )
+        })?;
+    let config_root = Path::new(config_root);
+    if config_root.is_absolute() {
+        return Err(CoreError::classified(
+            crate::bridge::ErrorClass::Runtime,
+            "absolute_mars_package_config_root",
+            format!(
+                "The packaged Mars metadata at {} declares an absolute {emoji_key}/{profile_key} config root.",
+                metadata_path.display()
+            ),
+            "Rebuild Mars so package metadata uses runtime-relative config roots.",
+            serde_json::json!({
+                "metadata_path": metadata_path.to_string_lossy(),
+                "config_root": config_root.to_string_lossy(),
+            }),
+        ));
     }
+    Ok(runtime_dir.join(config_root).join("config.toml"))
 }
 
 fn shader_paths_to_toml(shader_paths: &[String]) -> toml::Value {
@@ -883,7 +941,7 @@ fn generate_yzxterm_config(
     appearance_mode: &str,
     generated_config_dir: &Path,
 ) -> Result<String, CoreError> {
-    let package_config = yzxterm_package_config_path(runtime_dir, profile, emoji_font);
+    let package_config = yzxterm_package_config_path(runtime_dir, profile, emoji_font)?;
     let raw = fs::read_to_string(&package_config).map_err(|source| {
         CoreError::io(
             "read_yzxterm_package_config",
@@ -1383,7 +1441,8 @@ mod tests {
     fn yzxterm_serenityos_config_uses_child_emoji_profile_root() {
         let temp = tempfile::tempdir().unwrap();
         let runtime = temp.path();
-        let package_root = runtime.join("share").join("yazelix-terminal");
+        let package_root = runtime.join("share").join("mars");
+        write_mars_package_metadata(&package_root);
         write_yzxterm_profile_config(&package_root.join("config.toml"), "Noto Color Emoji");
         write_yzxterm_profile_config(
             &package_root
@@ -1410,10 +1469,39 @@ mod tests {
 
         assert!(rendered.contains("SerenityOS Emoji"));
         assert!(!rendered.contains("Noto Color Emoji"));
-        assert!(generated_dir
-            .join("themes")
-            .join("yazelix-dark.toml")
-            .is_file());
+        assert!(
+            generated_dir
+                .join("themes")
+                .join("yazelix-dark.toml")
+                .is_file()
+        );
+    }
+
+    fn write_mars_package_metadata(package_root: &Path) {
+        fs::create_dir_all(package_root).unwrap();
+        fs::write(
+            package_root.join("package-metadata.json"),
+            r#"{
+  "emoji_fonts": {
+    "noto": {
+      "config_roots": {
+        "full": "share/mars",
+        "baseline": "share/mars/baseline",
+        "shaders": "share/mars/profiles/shaders"
+      }
+    },
+    "serenityos": {
+      "config_roots": {
+        "full": "share/mars/emoji/serenityos",
+        "baseline": "share/mars/emoji/serenityos/baseline",
+        "shaders": "share/mars/emoji/serenityos/profiles/shaders"
+      }
+    }
+  }
+}
+"#,
+        )
+        .unwrap();
     }
 
     fn write_yzxterm_profile_config(path: &Path, emoji_family: &str) {

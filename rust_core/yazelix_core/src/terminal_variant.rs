@@ -16,7 +16,7 @@ pub fn normalize_terminal_id(raw: &str) -> Option<String> {
 
 pub fn terminal_command_name(terminal: &str) -> &str {
     match terminal {
-        "yzxterm" => "yazelix-terminal-desktop",
+        "yzxterm" => "mars-desktop",
         other => other,
     }
 }
@@ -26,7 +26,7 @@ pub fn terminal_display_name(terminal: &str) -> String {
         "ghostty" => "Ghostty".to_string(),
         "rio" => "Rio".to_string(),
         "wezterm" => "WezTerm".to_string(),
-        "yzxterm" => "Yzxterm".to_string(),
+        "yzxterm" => "Mars".to_string(),
         "ratty" => "Ratty".to_string(),
         "kitty" => "Kitty".to_string(),
         "foot" => "Foot".to_string(),
@@ -43,7 +43,7 @@ pub fn terminal_desktop_id_suffix(terminal: &str) -> String {
         "ghostty" => "Ghostty".to_string(),
         "rio" => "Rio".to_string(),
         "wezterm" => "WezTerm".to_string(),
-        "yzxterm" => "Yzxterm".to_string(),
+        "yzxterm" => "Mars".to_string(),
         "ratty" => "Ratty".to_string(),
         "kitty" => "Kitty".to_string(),
         "foot" => "Foot".to_string(),
@@ -138,10 +138,10 @@ mod tests {
             terminal_window_title("ghostty", Some("work")),
             "Yazelix - Ghostty - work"
         );
-        assert_eq!(terminal_window_title("yzxterm", None), "Yazelix - Yzxterm");
+        assert_eq!(terminal_window_title("yzxterm", None), "Yazelix - Mars");
         assert_eq!(
             terminal_startup_wm_class("yzxterm"),
-            "com.yazelix.Yazelix.Yzxterm"
+            "com.yazelix.Yazelix.Mars"
         );
         assert_eq!(terminal_startup_wm_class("ghostty"), "com.yazelix.Yazelix");
     }

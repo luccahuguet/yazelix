@@ -40,6 +40,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 const YAZELIX_TERMINAL_CHILD_ENV_SANITIZE: &str = "YAZELIX_TERMINAL_CHILD_ENV_SANITIZE";
+const MARS_CHILD_ENV_SANITIZE: &str = "MARS_CHILD_ENV_SANITIZE";
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 struct LaunchArgs {
@@ -745,17 +746,17 @@ fn yzxterm_process_boundary_env(
     let mut env = vec![
         ("RIO_CONFIG_HOME".to_string(), None),
         (
-            "YAZELIX_TERMINAL_CONFIG".to_string(),
+            "MARS_CONFIG".to_string(),
             Some(config_dir.to_string_lossy().into_owned()),
         ),
+        (MARS_CHILD_ENV_SANITIZE.to_string(), Some("1".to_string())),
         (
-            YAZELIX_TERMINAL_CHILD_ENV_SANITIZE.to_string(),
-            Some("1".to_string()),
-        ),
-        (
-            "YAZELIX_TERMINAL_APP_ID".to_string(),
+            "MARS_APP_ID".to_string(),
             Some(terminal_startup_wm_class("yzxterm")),
         ),
+        ("YAZELIX_TERMINAL_CONFIG".to_string(), None),
+        (YAZELIX_TERMINAL_CHILD_ENV_SANITIZE.to_string(), None),
+        ("YAZELIX_TERMINAL_APP_ID".to_string(), None),
     ];
     env.extend(
         YZXTERM_EMOJI_ENV_KEYS
@@ -994,10 +995,7 @@ mod tests {
             terminal_window_title_prefix("ghostty"),
             "Yazelix - Ghostty - "
         );
-        assert_eq!(
-            terminal_window_title_prefix("yzxterm"),
-            "Yazelix - Yzxterm - "
-        );
+        assert_eq!(terminal_window_title_prefix("yzxterm"), "Yazelix - Mars - ");
     }
 
     // Defends: every documented terminal selector spelling maps to the same packaged-variant field.
@@ -1059,12 +1057,12 @@ mod tests {
     #[test]
     fn parse_packaged_terminal_launcher_exec_accepts_env_and_quoted_path() {
         let desktop_path = Path::new(
-            "/home/demo/.nix-profile/share/applications/com.yazelix.Yazelix.Yzxterm.desktop",
+            "/home/demo/.nix-profile/share/applications/com.yazelix.Yazelix.Mars.desktop",
         );
         let parsed = parse_packaged_terminal_launcher_exec(
             desktop_path,
             "yzxterm",
-            r#"env YAZELIX_SKIP_STABLE_WRAPPER_REDIRECT=1 YAZELIX_TERMINAL_APPEARANCE=light YAZELIX_TERMINAL_EMOJI_FONT=serenityos YAZELIX_TERMINAL_EMOJI_FONT_SOURCE=home-manager YAZELIX_TERMINAL_PROFILE=shaders "/nix/store/with space/bin/yzx" desktop launch"#,
+            r#"env YAZELIX_SKIP_STABLE_WRAPPER_REDIRECT=1 YAZELIX_TERMINAL_APP_ID=com.yazelix.Yazelix.Mars YAZELIX_TERMINAL_APPEARANCE=light YAZELIX_TERMINAL_EMOJI_FONT=serenityos YAZELIX_TERMINAL_EMOJI_FONT_SOURCE=home-manager MARS_APP_ID=com.yazelix.Yazelix.Mars MARS_APPEARANCE=light MARS_EMOJI_FONT=serenityos YAZELIX_TERMINAL_PROFILE=shaders MARS_PROFILE=shaders "/nix/store/with space/bin/yzx" desktop launch"#,
         )
         .unwrap();
 
@@ -1080,6 +1078,10 @@ mod tests {
                     Some("1".to_string())
                 ),
                 (
+                    "YAZELIX_TERMINAL_APP_ID".to_string(),
+                    Some("com.yazelix.Yazelix.Mars".to_string())
+                ),
+                (
                     "YAZELIX_TERMINAL_APPEARANCE".to_string(),
                     Some("light".to_string())
                 ),
@@ -1092,9 +1094,19 @@ mod tests {
                     Some("home-manager".to_string())
                 ),
                 (
+                    "MARS_APP_ID".to_string(),
+                    Some("com.yazelix.Yazelix.Mars".to_string())
+                ),
+                ("MARS_APPEARANCE".to_string(), Some("light".to_string())),
+                (
+                    "MARS_EMOJI_FONT".to_string(),
+                    Some("serenityos".to_string())
+                ),
+                (
                     "YAZELIX_TERMINAL_PROFILE".to_string(),
                     Some("shaders".to_string())
                 ),
+                ("MARS_PROFILE".to_string(), Some("shaders".to_string())),
             ]
         );
         assert_eq!(parsed.desktop_path, desktop_path);
@@ -1147,17 +1159,17 @@ mod tests {
             vec![
                 ("RIO_CONFIG_HOME".to_string(), None),
                 (
-                    "YAZELIX_TERMINAL_CONFIG".to_string(),
+                    "MARS_CONFIG".to_string(),
                     Some("/state/configs/terminal_emulators/yzxterm".to_string())
                 ),
+                (MARS_CHILD_ENV_SANITIZE.to_string(), Some("1".to_string())),
                 (
-                    YAZELIX_TERMINAL_CHILD_ENV_SANITIZE.to_string(),
-                    Some("1".to_string())
+                    "MARS_APP_ID".to_string(),
+                    Some("com.yazelix.Yazelix.Mars".to_string())
                 ),
-                (
-                    "YAZELIX_TERMINAL_APP_ID".to_string(),
-                    Some("com.yazelix.Yazelix.Yzxterm".to_string())
-                ),
+                ("YAZELIX_TERMINAL_CONFIG".to_string(), None),
+                (YAZELIX_TERMINAL_CHILD_ENV_SANITIZE.to_string(), None),
+                ("YAZELIX_TERMINAL_APP_ID".to_string(), None),
                 (YZXTERM_EMOJI_FONT_ENV.to_string(), None),
                 (YZXTERM_EMOJI_FONT_SOURCE_ENV.to_string(), None),
             ]

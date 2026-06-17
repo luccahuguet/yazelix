@@ -376,35 +376,35 @@ fn build_nix_customization_api_expr(repo_root: &Path) -> String {
       package_name = "validator-mars-fast";
       package_profile = "fast";
       checked_package = false;
-      metadata_path = "share/yazelix-terminal/package-metadata.json";
+      metadata_path = "share/mars/package-metadata.json";
       config_roots = {
-        full = "share/yazelix-terminal";
-        baseline = "share/yazelix-terminal/baseline";
-        shaders = "share/yazelix-terminal/profiles/shaders";
+        full = "share/mars";
+        baseline = "share/mars/baseline";
+        shaders = "share/mars/profiles/shaders";
       };
       supported_emoji_fonts = [ "noto" "twitter" "serenityos" ];
       default_emoji_font = "noto";
       supported_appearance_modes = [ "dark" "light" "auto" ];
       default_appearance_mode = "dark";
       emoji_fonts = {
-        noto = { family = "Noto Color Emoji"; config_roots = { full = "share/yazelix-terminal"; baseline = "share/yazelix-terminal/baseline"; shaders = "share/yazelix-terminal/profiles/shaders"; }; };
-        twitter = { family = "Twitter Color Emoji"; config_roots = { full = "share/yazelix-terminal/emoji/twitter"; baseline = "share/yazelix-terminal/emoji/twitter/baseline"; shaders = "share/yazelix-terminal/emoji/twitter/profiles/shaders"; }; };
-        serenityos = { family = "SerenityOS Emoji"; config_roots = { full = "share/yazelix-terminal/emoji/serenityos"; baseline = "share/yazelix-terminal/emoji/serenityos/baseline"; shaders = "share/yazelix-terminal/emoji/serenityos/profiles/shaders"; }; };
+        noto = { family = "Noto Color Emoji"; config_roots = { full = "share/mars"; baseline = "share/mars/baseline"; shaders = "share/mars/profiles/shaders"; }; };
+        twitter = { family = "Twitter Color Emoji"; config_roots = { full = "share/mars/emoji/twitter"; baseline = "share/mars/emoji/twitter/baseline"; shaders = "share/mars/emoji/twitter/profiles/shaders"; }; };
+        serenityos = { family = "SerenityOS Emoji"; config_roots = { full = "share/mars/emoji/serenityos"; baseline = "share/mars/emoji/serenityos/baseline"; shaders = "share/mars/emoji/serenityos/profiles/shaders"; }; };
       };
       wrapper_commands = {
         terminal = "bin/validator-mars";
         desktop = "bin/validator-mars-desktop";
       };
       wrapper_env = {
-        appearance = "YAZELIX_TERMINAL_APPEARANCE";
-        emoji_font = "YAZELIX_TERMINAL_EMOJI_FONT";
+        appearance = "MARS_APPEARANCE";
+        emoji_font = "MARS_EMOJI_FONT";
       };
     };
   } ''
-    mkdir -p "$out/bin" "$out/share/yazelix-terminal"
+    mkdir -p "$out/bin" "$out/share/mars"
     touch "$out/bin/validator-mars-desktop"
     chmod +x "$out/bin/validator-mars-desktop"
-    printf '{}' > "$out/share/yazelix-terminal/package-metadata.json"
+    printf '{}' > "$out/share/mars/package-metadata.json"
   '';
   invalidYzxtermPackage = pkgs.runCommand "validator-mars-invalid" { } ''
     mkdir -p "$out"
@@ -564,8 +564,8 @@ fn build_nix_customization_api_expr(repo_root: &Path) -> String {
   yzxterm_package_override_uses_package_metadata = yzxtermOverrideRegistry.terminalPackageMetadata.package_name == "validator-mars-fast" && builtins.elem "validator-mars-desktop" yzxtermOverrideRegistry.exportedCommands && yzxtermOverrideRegistry.terminalPackageRuntimeIdentity.package_profile == "yzxterm-fast" && yzxtermOverrideRegistry.terminalPackageRuntimeIdentity.yzxterm_terminal_supported_appearance_modes == [ "dark" "light" "auto" ] && yzxtermOverrideRegistry.terminalPackageRuntimeIdentity.yzxterm_terminal_default_appearance_mode == "dark";
   yzxterm_package_override_rejects_missing_metadata = !invalidYzxtermPackageRegistry.success;
   rio_runtime_uses_configured_upstream_package = rioOverrideRegistry.tools.terminal.package == fakeRioPackage && rioOverrideRegistry.tools.terminal.commands == [ "rio" ] && rioOverrideRegistry.terminalPackageMetadata == null;
-  yzxterm_fast_child_metadata_marks_unchecked = (yzxtermFastChildMetadata.package_profile or "") == "fast" && (yzxtermFastChildMetadata.checked_package or true) == false && (yzxtermFastChildMetadata.supported_appearance_modes or []) == [ "dark" "light" "auto" ] && (yzxtermFastChildMetadata.default_appearance_mode or "") == "dark" && (yzxtermFastChildMetadata.wrapper_env.appearance or "") == "YAZELIX_TERMINAL_APPEARANCE";
-  yzxterm_release_child_metadata_marks_checked = (yzxtermReleaseChildMetadata.package_profile or "") == "release" && (yzxtermReleaseChildMetadata.checked_package or false) == true && (yzxtermReleaseChildMetadata.supported_appearance_modes or []) == [ "dark" "light" "auto" ] && (yzxtermReleaseChildMetadata.default_appearance_mode or "") == "dark" && (yzxtermReleaseChildMetadata.wrapper_env.appearance or "") == "YAZELIX_TERMINAL_APPEARANCE";"#
+  yzxterm_fast_child_metadata_marks_unchecked = (yzxtermFastChildMetadata.package_profile or "") == "fast" && (yzxtermFastChildMetadata.checked_package or true) == false && (yzxtermFastChildMetadata.supported_appearance_modes or []) == [ "dark" "light" "auto" ] && (yzxtermFastChildMetadata.default_appearance_mode or "") == "dark" && (yzxtermFastChildMetadata.wrapper_env.appearance or "") == "MARS_APPEARANCE";
+  yzxterm_release_child_metadata_marks_checked = (yzxtermReleaseChildMetadata.package_profile or "") == "release" && (yzxtermReleaseChildMetadata.checked_package or false) == true && (yzxtermReleaseChildMetadata.supported_appearance_modes or []) == [ "dark" "light" "auto" ] && (yzxtermReleaseChildMetadata.default_appearance_mode or "") == "dark" && (yzxtermReleaseChildMetadata.wrapper_env.appearance or "") == "MARS_APPEARANCE";"#
             .to_string(),
         "  invalid_runtime_tool_rejected = !invalidRuntimeTool.success;".to_string(),
         "  unsupported_component_rejected = !unsupportedComponent.success;".to_string(),

@@ -322,7 +322,7 @@ fn verify_profile_installed_runtime(
         _ => "ghostty",
     };
     let runtime_terminal_command = match runtime_terminal {
-        "yzxterm" => "yazelix-terminal-desktop",
+        "yzxterm" => "mars-desktop",
         other => other,
     };
     let runtime_yzx_cli = runtime_root.join("shells").join("posix").join("yzx_cli.sh");
@@ -438,11 +438,8 @@ fn verify_profile_installed_runtime(
     );
     if runtime_terminal == "yzxterm" {
         require_path_exists_abs(
-            &runtime_root
-                .join("share")
-                .join("yazelix-terminal")
-                .join("config.toml"),
-            "runtime-local Yazelix Terminal packaged config",
+            &runtime_root.join("share").join("mars").join("config.toml"),
+            "runtime-local Mars packaged config",
             errors,
         );
     }

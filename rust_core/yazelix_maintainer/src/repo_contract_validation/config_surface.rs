@@ -711,16 +711,16 @@ fn validate_home_manager_desktop_entry_contract(repo_root: &Path) -> Result<Vec<
         );
     }
     if shader_exec
-        != "env YAZELIX_TERMINAL_APP_ID=com.yazelix.Yazelix.Yzxterm YAZELIX_TERMINAL_APPEARANCE=light YAZELIX_TERMINAL_EMOJI_FONT=twitter YAZELIX_TERMINAL_EMOJI_FONT_SOURCE=home-manager YAZELIX_TERMINAL_PROFILE=shaders /tmp/profile/bin/yzx desktop launch"
+        != "env YAZELIX_TERMINAL_APP_ID=com.yazelix.Yazelix.Mars YAZELIX_TERMINAL_APPEARANCE=light YAZELIX_TERMINAL_EMOJI_FONT=twitter YAZELIX_TERMINAL_EMOJI_FONT_SOURCE=home-manager MARS_APP_ID=com.yazelix.Yazelix.Mars MARS_APPEARANCE=light MARS_EMOJI_FONT=twitter YAZELIX_TERMINAL_PROFILE=shaders MARS_PROFILE=shaders /tmp/profile/bin/yzx desktop launch"
     {
         errors.push(format!(
-            "Home Manager shader yzxterm profile desktop entry Exec mismatch: expected app id, appearance, emoji font, emoji source, and shader profile env, got {}",
+            "Home Manager shader Mars profile desktop entry Exec mismatch: expected app id, appearance, emoji font, emoji source, and shader profile env, got {}",
             format_json_string(shader_exec)
         ));
     }
-    if shader_name != "New Yazelix - Yzxterm" {
+    if shader_name != "New Yazelix - Mars" {
         errors.push(format!(
-            "Home Manager yzxterm desktop entry name mismatch: expected New Yazelix - Yzxterm, got {}",
+            "Home Manager Mars desktop entry name mismatch: expected New Yazelix - Mars, got {}",
             format_json_string(shader_name)
         ));
     }
@@ -743,15 +743,21 @@ fn validate_home_manager_desktop_entry_contract(repo_root: &Path) -> Result<Vec<
         ));
     }
     let package_count = json_map_i64_field(&extra_entry, "packageCount");
-    if package_count != 1 {
+    if package_count != 2 {
         errors.push(format!(
-            "Home Manager extra terminal launchers must not add duplicate profile packages: expected 1 active package, got {package_count}"
+            "Home Manager extra terminal launchers must only add the active Yazelix package plus vanilla Mars package: expected 2 profile packages, got {package_count}"
         ));
+    }
+    if !json_map_bool_field(&extra_entry, "vanillaMarsPackage") {
+        errors.push(
+            "Home Manager must include the vanilla Mars package so mars.desktop reaches the profile"
+                .to_string(),
+        );
     }
     for (terminal, expected_name) in [
         ("ghostty", "New Yazelix - Ghostty"),
         ("foot", "New Yazelix - Foot"),
-        ("yzxterm", "New Yazelix - Yzxterm"),
+        ("yzxterm", "New Yazelix - Mars"),
         ("rio", "New Yazelix - Rio"),
         ("wezterm", "New Yazelix - WezTerm"),
     ] {
@@ -1156,8 +1162,9 @@ fn build_home_manager_desktop_entry_expr(
         "let".to_string(),
         "  pkgs = import <nixpkgs> { system = \"x86_64-linux\"; };".to_string(),
         "  lib = pkgs.lib;".to_string(),
+        "  fakeMarsPackage = pkgs.runCommand \"mars-vanilla\" { meta.mainProgram = \"mars\"; } \"mkdir -p $out/share/applications; touch $out/share/applications/mars.desktop\";".to_string(),
         "  eval = lib.evalModules {".to_string(),
-        "    specialArgs = { inherit pkgs; nixgl = null; yazelixCursorsPackage = null; marsTerminalPackage = null; mkYazelixPackage = args: pkgs.runCommand (args.name or \"yazelix\") {} \"mkdir -p $out/bin; touch $out/bin/yzx\"; };".to_string(),
+        "    specialArgs = { inherit pkgs; nixgl = null; yazelixCursorsPackage = null; marsTerminalPackage = fakeMarsPackage; mkYazelixPackage = args: pkgs.runCommand (args.name or \"yazelix\") {} \"mkdir -p $out/bin; touch $out/bin/yzx\"; };".to_string(),
         "    modules = [".to_string(),
         format!("      (builtins.toPath \"{}\")", module_path),
     ];
@@ -1193,7 +1200,7 @@ fn build_home_manager_desktop_entry_expr(
         Some("kitty") => "com.yazelix.Yazelix.Kitty",
         Some("rio") => "com.yazelix.Yazelix.Rio",
         Some("wezterm") => "com.yazelix.Yazelix.WezTerm",
-        Some("yzxterm") => "com.yazelix.Yazelix.Yzxterm",
+        Some("yzxterm") => "com.yazelix.Yazelix.Mars",
         _ => "com.yazelix.Yazelix.Ghostty",
     };
     lines.extend([
@@ -1202,7 +1209,7 @@ fn build_home_manager_desktop_entry_expr(
         format!("  entryKey = \"{}\";", entry_key),
         "  ghosttyKey = \"com.yazelix.Yazelix.Ghostty\";".to_string(),
         "  footKey = \"com.yazelix.Yazelix.Foot\";".to_string(),
-        "  yzxtermKey = \"com.yazelix.Yazelix.Yzxterm\";".to_string(),
+        "  yzxtermKey = \"com.yazelix.Yazelix.Mars\";".to_string(),
         "  rioKey = \"com.yazelix.Yazelix.Rio\";".to_string(),
         "  weztermKey = \"com.yazelix.Yazelix.WezTerm\";".to_string(),
         "  entries = eval.config.xdg.desktopEntries;".to_string(),
@@ -1224,6 +1231,7 @@ fn build_home_manager_desktop_entry_expr(
         "  sessionEmojiFont = eval.config.home.sessionVariables.YAZELIX_TERMINAL_EMOJI_FONT or \"\";"
             .to_string(),
         "  packageCount = builtins.length eval.config.home.packages;".to_string(),
+        "  vanillaMarsPackage = builtins.any (pkg: (pkg.meta.mainProgram or \"\") == \"mars\") eval.config.home.packages;".to_string(),
         "  ghostty = { present = builtins.hasAttr ghosttyKey entries; name = ghosttyEntry.name or \"\"; exec = ghosttyEntry.exec or \"\"; terminal = ghosttyEntry.terminal or false; };".to_string(),
         "  foot = { present = builtins.hasAttr footKey entries; name = footEntry.name or \"\"; exec = footEntry.exec or \"\"; terminal = footEntry.terminal or false; };".to_string(),
         "  yzxterm = { present = builtins.hasAttr yzxtermKey entries; name = yzxtermEntry.name or \"\"; exec = yzxtermEntry.exec or \"\"; terminal = yzxtermEntry.terminal or false; };".to_string(),

@@ -4,6 +4,7 @@
   options,
   fenixPkgs ? null,
   mkYazelixPackage ? null,
+  marsTerminalPackage ? null,
   nixgl ? null,
   pkgs,
   rioPackage ? pkgs.rio,
@@ -53,6 +54,7 @@ let
       config
       fenixPkgs
       lib
+      marsTerminalPackage
       mkYazelixPackage
       nixgl
       options

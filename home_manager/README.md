@@ -89,9 +89,11 @@ To use Mars as the packaged terminal:
 
 `terminal` controls the packaged terminal Yazelix launches. There is no fallback to another packaged terminal when this option is selected; a missing or mispackaged terminal fails clearly. `yzxterm_profile` controls the generated Mars profile for activation, desktop launches, and new shell sessions: `full` keeps Rio trail cursor without custom shaders, `baseline` disables effects, and `shaders` enables the generated Yazelix cursor shader chain
 
-`yzxterm_emoji_font` is the Home Manager declarative value for `terminal.emoji_style`. Home Manager applies it to generated Mars configs during activation and desktop launches with an explicit managed-source marker, and still exports `YAZELIX_TERMINAL_EMOJI_FONT` for direct child-wrapper use in new shell sessions. Mutable Yazelix config edits remain authoritative for ad hoc main-repo materialization unless `manage_config = true` makes Home Manager own `settings.jsonc`. `noto` is the compatible default, `twitter` selects Twitter/Twemoji color emoji, and `serenityos` selects SerenityOS emoji. The setting applies only to yzxterm; other terminal variants keep their own font behavior
+`yzxterm_emoji_font` is the Home Manager declarative value for `terminal.emoji_style`. Home Manager applies it to generated Mars configs during activation and desktop launches with an explicit managed-source marker, and exports both `YAZELIX_TERMINAL_EMOJI_FONT` for main materialization and `MARS_EMOJI_FONT` for the Mars child wrapper. Mutable Yazelix config edits remain authoritative for ad hoc main-repo materialization unless `manage_config = true` makes Home Manager own `settings.jsonc`. `noto` is the compatible default, `twitter` selects Twitter/Twemoji color emoji, and `serenityos` selects SerenityOS emoji. The setting applies only to yzxterm; other terminal variants keep their own font behavior
 
 `extra_terminal_launchers` installs additional Linux desktop entries such as `New Yazelix - Ghostty`, `New Yazelix - Rio`, and `New Yazelix - WezTerm` without changing the active runtime identity. These entries point directly at their terminal variant packages in the Nix store, so their dependencies stay available without adding duplicate `bin/yzx` commands to the Home Manager profile. `yzx launch --term <terminal>` uses these packaged launchers for non-active terminal variants. Do not include the active `terminal` value in this list; the active terminal already gets the profile-owned launcher
+
+On Linux, the module also installs the vanilla Mars child package so `Mars Terminal` appears from `mars.desktop`. When Mars is not the active terminal, Home Manager also creates `New Yazelix - Mars` as an integrated Yazelix launcher
 
 When `manage_config = true`, Home Manager can also own user-defined popup surfaces. The default `zenith` popup is expressed through `custom_popups`, so users can edit it or set the list to `[]` to remove it:
 
@@ -337,7 +339,7 @@ Manual validation on April 8, 2026 covered both a lived-in account and a throwaw
 - Set `programs.yazelix.manage_config = true` only if you want Home Manager to own generated Yazelix settings through a symlink into the Home Manager profile
 - The managed `yzx` command resolves through the Home Manager profile, typically `~/.nix-profile/bin/yzx`, rather than through a legacy user-local wrapper path.
 - The active runtime root resolves directly from the packaged Yazelix runtime in the Home Manager profile/store path, not through a manual-install runtime symlink.
-- On Linux, the Home Manager desktop entry comes from the Home Manager profile, typically `~/.nix-profile/share/applications/com.yazelix.Yazelix.Ghostty.desktop`, rather than from `yzx desktop install`
+- On Linux, the Home Manager desktop entries come from the Home Manager profile, including the active Yazelix entry, `com.yazelix.Yazelix.Mars.desktop`, and the vanilla `mars.desktop`
 - Optional `extra_terminal_launchers` entries also live in the Home Manager profile and point at their terminal variant store packages instead of installing extra profile `yzx` commands
 - A stale legacy `~/.local/bin/yzx` wrapper can still shadow the profile-owned command on `PATH` after migration; archive it with `yzx home_manager prepare --apply` or remove it manually so `yzx` resolves to the Home Manager profile path.
 - Old manual desktop-entry files under `~/.local/share/applications/` can linger after migration; they are not Home Manager-owned and will shadow the Home Manager profile entry until you remove them.
@@ -425,7 +427,7 @@ If Home Manager still reports an unexpected unmanaged-file collision outside tho
 - Check that `~/.config/yazelix/settings.jsonc` was created
 - By default, that file should be a normal writable file, not a Home Manager store symlink
 - Check that `~/.nix-profile/bin/yzx` exists and that your Home Manager profile bin dir is on your `PATH`
-- On Linux, check that `~/.nix-profile/share/applications/com.yazelix.Yazelix.Ghostty.desktop` exists if you expect desktop-launcher integration through Home Manager
+- On Linux, check that `~/.nix-profile/share/applications/com.yazelix.Yazelix.Ghostty.desktop`, `~/.nix-profile/share/applications/com.yazelix.Yazelix.Mars.desktop`, and `~/.nix-profile/share/applications/mars.desktop` exist if you expect desktop-launcher integration through Home Manager
 - Verify Home Manager configuration syntax
 - Run `home-manager switch` to apply changes
 

@@ -19,9 +19,9 @@ let
       description = "packaged upstream Rio terminal with generated Rio config, transparency support, and the Yazelix Zellij Kitty graphics bridge";
     };
     yzxterm = {
-      desktop_label = "Yzxterm";
+      desktop_label = "Mars";
       kitty_passthrough = true;
-      description = "experimental Yazelix-owned Rio fork with Rio trail cursor defaults and opt-in shader support";
+      description = "experimental Mars Terminal runtime with Rio trail cursor defaults and opt-in shader support";
     };
     wezterm = {
       desktop_label = "WezTerm";

@@ -46,7 +46,7 @@ See [Terminal Emulator Comparison](./terminal_emulators.md) for a detailed break
 **Yazelix Terminal**
 - Experimental Rio-derived Rust first-party terminal path
 - Provided by `#yzxterm` and by `programs.yazelix.terminal = "yzxterm"`
-- Uses the packaged `yazelix-terminal-desktop` wrapper, generated Yazelix config, BELL notifications, protocol coverage, Kitty graphics, Rio trail cursor defaults, opt-in `yazelix-cursors` shader support through `programs.yazelix.yzxterm_profile = "shaders"`, yzxterm emoji fallback selection through `terminal.emoji_style` or `programs.yazelix.yzxterm_emoji_font`, and `terminal.transparency`
+- Uses the packaged `mars-desktop` wrapper, generated Yazelix config, BELL notifications, protocol coverage, Kitty graphics, Rio trail cursor defaults, opt-in `yazelix-cursors` shader support through `programs.yazelix.yzxterm_profile = "shaders"`, yzxterm emoji fallback selection through `terminal.emoji_style` or `programs.yazelix.yzxterm_emoji_font`, and `terminal.transparency`
 - Reference: https://github.com/luccahuguet/mars
 
 **Rio**
@@ -279,7 +279,7 @@ yzx desktop install
 
 After this, you can search for "Yazelix" in your application launcher and launch it directly.
 `yzx desktop install` points the desktop entry at the active Yazelix runtime launcher, and `yzx desktop uninstall` removes that user-local desktop integration again.
-For Home Manager installs on Linux, do not run `yzx desktop install`; the Home Manager module owns the profile desktop entry. Use `yzx desktop uninstall` only to remove a stale user-local entry that shadows the Home Manager launcher.
+For Home Manager installs on Linux, do not run `yzx desktop install`; the Home Manager module owns the profile desktop entries, including the active Yazelix launcher, `New Yazelix - Mars`, and the vanilla `Mars Terminal` entry. Use `yzx desktop uninstall` only to remove a stale user-local entry that shadows the Home Manager launcher.
 
 For better icon quality, see [desktop_icon_setup.md](./desktop_icon_setup.md).
 

@@ -126,13 +126,13 @@ Out of scope:
   wrapper, and the Yazelix Zellij fork
 - Statement: Yazelix Terminal launch uses the config id
   `yzxterm`, resolves the executable command as the child-owned
-  `yazelix-terminal-desktop` wrapper, passes the generated config directory
-  with `YAZELIX_TERMINAL_CONFIG`, clears ambient `RIO_CONFIG_HOME` at that
-  process boundary, marks the child environment for Yazelix Terminal
-  sanitization, passes `YAZELIX_TERMINAL_APP_ID` so the terminal window matches
+  `mars-desktop` wrapper, passes the generated config directory
+  with `MARS_CONFIG`, clears ambient `RIO_CONFIG_HOME` at that
+  process boundary, marks the child environment for Mars
+  sanitization, passes `MARS_APP_ID` so the terminal window matches
   the integrated Yazelix desktop entry, passes
   `YAZELIX_TERMINAL_WINDOW_TITLE_PREFIX` so the forked Zellij runtime can emit
-  OS window titles shaped as `Yazelix - Yzxterm - <session>` instead of
+  OS window titles shaped as `Yazelix - Mars - <session>` instead of
   pane/tab titles, and does not add an outer Yazelix graphics wrapper around
   the child wrapper. Generated Yazelix Terminal config
   is derived from the packaged

@@ -90,7 +90,7 @@ Current launch behavior:
 
 - Ghostty, WezTerm, Kitty, and Ratty launch commands may prepend a graphics wrapper
 - Ratty prefers the Vulkan wrapper because its renderer needs a Vulkan-capable adapter
-- Yazelix Terminal does not add an outer Yazelix graphics wrapper around the child-owned `yazelix-terminal-desktop` wrapper
+- Yazelix Terminal does not add an outer Yazelix graphics wrapper around the child-owned `mars-desktop` wrapper
 
 Measured yzxterm runtime:
 

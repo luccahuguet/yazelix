@@ -245,7 +245,7 @@ pkgs.runCommand name { } ''
     touch "$out/runtime_features/zellij_kitty_passthrough"
   ''}
   ${pkgs.lib.optionalString (runtimeVariant == "yzxterm" && marsTerminalPackage != null) ''
-    replace_runtime_link "${marsTerminalPackage}/share/yazelix-terminal" "share/yazelix-terminal"
+    replace_runtime_link "${marsTerminalPackage}/share/mars" "share/mars"
   ''}
 
   mkdir -p "$out/libexec"

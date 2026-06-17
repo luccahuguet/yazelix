@@ -1269,7 +1269,7 @@ mod tests {
         let profile_yzx = home.join(".nix-profile/bin/yzx");
         let profile_apps = home.join(".nix-profile/share/applications");
         let extra_desktop = profile_apps.join("com.yazelix.Yazelix.Ghostty.desktop");
-        let active_desktop = profile_apps.join("com.yazelix.Yazelix.Yzxterm.desktop");
+        let active_desktop = profile_apps.join("com.yazelix.Yazelix.Mars.desktop");
 
         std::fs::create_dir_all(main_config.parent().unwrap()).unwrap();
         std::fs::create_dir_all(profile_yzx.parent().unwrap()).unwrap();
@@ -1284,7 +1284,7 @@ mod tests {
         std::fs::write(
             &active_desktop,
             format!(
-                "[Desktop Entry]\nName=New Yazelix - Yzxterm\nTerminal=true\nExec=env YAZELIX_TERMINAL_PROFILE=shaders {} desktop launch\n",
+                "[Desktop Entry]\nName=New Yazelix - Mars\nTerminal=true\nExec=env YAZELIX_TERMINAL_PROFILE=shaders {} desktop launch\n",
                 profile_yzx.display()
             ),
         )
