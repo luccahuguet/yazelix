@@ -9,7 +9,8 @@ Post-v17.7 work in progress
 Upgrade impact: no user action required
 
 Highlights:
-- Reserved for post-release changes after v17.7 lands.
+- Renamed the Rio-derived first-party terminal runtime surface to Mars across package outputs, Home Manager options, runtime metadata, launch environment, desktop entries, and docs
+- Updated the Mars, Yazelix Cursors, and Zellij pane-orchestrator child pins so Mars owns the terminal package identity, standard desktop icon sizes, cursor shader target contract, and compact AI activity tab markers
 
 ## v17.7 - 2026-06-15
 
