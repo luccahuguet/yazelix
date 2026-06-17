@@ -161,7 +161,7 @@ pub fn validate_nix_customization_api(repo_root: &Path) -> Result<ValidationRepo
     );
     require_json_bool(
         object,
-        "home_manager_terminal_option_selects_yzxterm",
+        "home_manager_terminal_option_selects_mars",
         "Home Manager programs.yazelix.terminal must select the packaged terminal variant",
         &mut report.errors,
     );
@@ -173,26 +173,26 @@ pub fn validate_nix_customization_api(repo_root: &Path) -> Result<ValidationRepo
     );
     require_json_bool(
         object,
-        "home_manager_yzxterm_package_override_option",
-        "Home Manager yzxterm_package must accept a terminal child package without replacing the whole Yazelix package",
+        "home_manager_mars_package_override_option",
+        "Home Manager mars_package must accept a terminal child package without replacing the whole Yazelix package",
         &mut report.errors,
     );
     require_json_bool(
         object,
-        "yzxterm_package_override_is_yzxterm_scoped",
-        "yzxterm package overrides must not affect non-yzxterm terminal variants",
+        "mars_package_override_is_mars_scoped",
+        "mars package overrides must not affect non-mars terminal variants",
         &mut report.errors,
     );
     require_json_bool(
         object,
-        "yzxterm_package_override_uses_package_metadata",
-        "yzxterm package overrides must derive the terminal command from child package metadata",
+        "mars_package_override_uses_package_metadata",
+        "mars package overrides must derive the terminal command from child package metadata",
         &mut report.errors,
     );
     require_json_bool(
         object,
-        "yzxterm_package_override_rejects_missing_metadata",
-        "yzxterm package overrides must reject packages without marsPackageMetadata",
+        "mars_package_override_rejects_missing_metadata",
+        "mars package overrides must reject packages without marsPackageMetadata",
         &mut report.errors,
     );
     require_json_bool(
@@ -203,14 +203,14 @@ pub fn validate_nix_customization_api(repo_root: &Path) -> Result<ValidationRepo
     );
     require_json_bool(
         object,
-        "yzxterm_fast_child_metadata_marks_unchecked",
-        "yzxterm fast child package metadata must mark the package as fast and unchecked",
+        "mars_fast_child_metadata_marks_unchecked",
+        "mars fast child package metadata must mark the package as fast and unchecked",
         &mut report.errors,
     );
     require_json_bool(
         object,
-        "yzxterm_release_child_metadata_marks_checked",
-        "yzxterm release child package metadata must mark the package as release and checked",
+        "mars_release_child_metadata_marks_checked",
+        "mars release child package metadata must mark the package as release and checked",
         &mut report.errors,
     );
     require_json_bool(
@@ -355,7 +355,7 @@ fn build_nix_customization_api_expr(repo_root: &Path) -> String {
         "      }".to_string(),
         "    ];".to_string(),
         "  };".to_string(),
-        "  hmYzxterm = flake.inputs.home-manager.lib.homeManagerConfiguration {".to_string(),
+        "  hmMars = flake.inputs.home-manager.lib.homeManagerConfiguration {".to_string(),
         "    inherit pkgs;".to_string(),
         "    modules = [".to_string(),
         "      flake.homeManagerModules.yazelix".to_string(),
@@ -365,11 +365,11 @@ fn build_nix_customization_api_expr(repo_root: &Path) -> String {
         "        home.stateVersion = \"24.11\";".to_string(),
         "        programs.yazelix.enable = true;".to_string(),
         "        programs.yazelix.manage_config = true;".to_string(),
-        "        programs.yazelix.terminal = \"yzxterm\";".to_string(),
+        "        programs.yazelix.terminal = \"mars\";".to_string(),
         "      }".to_string(),
         "    ];".to_string(),
         "  };".to_string(),
-        r#"  fakeYzxtermPackage = pkgs.runCommand "validator-mars-fast" {
+        r#"  fakeMarsPackage = pkgs.runCommand "validator-mars-fast" {
     passthru.marsPackageMetadata = {
       schema_version = 1;
       terminal = "mars";
@@ -406,7 +406,7 @@ fn build_nix_customization_api_expr(repo_root: &Path) -> String {
     chmod +x "$out/bin/validator-mars-desktop"
     printf '{}' > "$out/share/mars/package-metadata.json"
   '';
-  invalidYzxtermPackage = pkgs.runCommand "validator-mars-invalid" { } ''
+  invalidMarsPackage = pkgs.runCommand "validator-mars-invalid" { } ''
     mkdir -p "$out"
   '';
   fakeRioPackage = pkgs.runCommand "validator-rio-0.4.7" { } ''
@@ -414,7 +414,7 @@ fn build_nix_customization_api_expr(repo_root: &Path) -> String {
     touch "$out/bin/rio"
     chmod +x "$out/bin/rio"
   '';
-  hmYzxtermPackageOverride = flake.inputs.home-manager.lib.homeManagerConfiguration {
+  hmMarsPackageOverride = flake.inputs.home-manager.lib.homeManagerConfiguration {
     inherit pkgs;
     modules = [
       flake.homeManagerModules.yazelix
@@ -423,8 +423,8 @@ fn build_nix_customization_api_expr(repo_root: &Path) -> String {
         home.homeDirectory = "/home/validator";
         home.stateVersion = "24.11";
         programs.yazelix.enable = true;
-        programs.yazelix.terminal = "yzxterm";
-        programs.yazelix.yzxterm_package = fakeYzxtermPackage;
+        programs.yazelix.terminal = "mars";
+        programs.yazelix.mars_package = fakeMarsPackage;
       }
     ];
   };"#
@@ -450,20 +450,20 @@ fn build_nix_customization_api_expr(repo_root: &Path) -> String {
         "    runtimeToolSources = { mise = \"bundled\"; tombi = \"bundled\"; };".to_string(),
         "  };".to_string(),
         format!(
-            r#"  ghosttyRegistryWithInvalidYzxtermOverride = import "{}/packaging/runtime_tool_registry.nix" {{
+            r#"  ghosttyRegistryWithInvalidMarsOverride = import "{}/packaging/runtime_tool_registry.nix" {{
     inherit pkgs;
     runtimeVariant = "ghostty";
-    marsTerminalPackage = invalidYzxtermPackage;
+    marsTerminalPackage = invalidMarsPackage;
   }};
-  yzxtermOverrideRegistry = import "{}/packaging/runtime_tool_registry.nix" {{
+  marsOverrideRegistry = import "{}/packaging/runtime_tool_registry.nix" {{
     inherit pkgs;
-    runtimeVariant = "yzxterm";
-    marsTerminalPackage = fakeYzxtermPackage;
+    runtimeVariant = "mars";
+    marsTerminalPackage = fakeMarsPackage;
   }};
-  invalidYzxtermPackageRegistry = builtins.tryEval (builtins.concatStringsSep "," ((import "{}/packaging/runtime_tool_registry.nix" {{
+  invalidMarsPackageRegistry = builtins.tryEval (builtins.concatStringsSep "," ((import "{}/packaging/runtime_tool_registry.nix" {{
     inherit pkgs;
-    runtimeVariant = "yzxterm";
-    marsTerminalPackage = invalidYzxtermPackage;
+    runtimeVariant = "mars";
+    marsTerminalPackage = invalidMarsPackage;
   }}).exportedCommands));
   rioOverrideRegistry = import "{}/packaging/runtime_tool_registry.nix" {{
     inherit pkgs;
@@ -472,8 +472,8 @@ fn build_nix_customization_api_expr(repo_root: &Path) -> String {
   }};"#,
             repo_root_literal, repo_root_literal, repo_root_literal, repo_root_literal
         ),
-        "  yzxtermFastChildMetadata = flake.inputs.marsTerminal.packages.${system}.mars-fast.passthru.marsPackageMetadata or {};".to_string(),
-        "  yzxtermReleaseChildMetadata = flake.inputs.marsTerminal.packages.${system}.mars.passthru.marsPackageMetadata or {};".to_string(),
+        "  marsFastChildMetadata = flake.inputs.marsTerminal.packages.${system}.mars-fast.passthru.marsPackageMetadata or {};".to_string(),
+        "  marsReleaseChildMetadata = flake.inputs.marsTerminal.packages.${system}.mars.passthru.marsPackageMetadata or {};".to_string(),
         "  steelAuthoringCommands = [ \"steel\" \"steel-language-server\" \"forge\" \"cargo-steel-lib\" \"repl-connect\" ];".to_string(),
         "  invalidRuntimeTool = builtins.tryEval ((flake.lib.${system}.mkYazelix { runtimeToolSources = { zellij = \"host\"; }; }).drvPath);".to_string(),
         "  unsupportedComponent = builtins.tryEval ((flake.lib.${system}.mkYazelix { components = { status_bar = false; }; }).drvPath);".to_string(),
@@ -557,15 +557,15 @@ fn build_nix_customization_api_expr(repo_root: &Path) -> String {
         "  host_default_tools_not_exported = !(builtins.elem \"mise\" steelBundledRegistry.exportedCommands) && !(builtins.elem \"tombi\" steelBundledRegistry.exportedCommands);".to_string(),
         "  host_default_tools_can_be_bundled = hostDefaultToolsBundledRegistry.manifest.mise.source == \"bundled\" && hostDefaultToolsBundledRegistry.manifest.tombi.source == \"bundled\" && builtins.elem \"mise\" hostDefaultToolsBundledRegistry.exportedCommands && builtins.elem \"tombi\" hostDefaultToolsBundledRegistry.exportedCommands;".to_string(),
         "  home_manager_has_package = builtins.length hm.config.home.packages > 0;".to_string(),
-        "  home_manager_terminal_option_selects_yzxterm = hmYzxterm.config.programs.yazelix.terminal == \"yzxterm\" && builtins.any (pkg: (pkg.meta.mainProgram or \"\") == \"yzx\") hmYzxterm.config.home.packages;".to_string(),
-        "  home_manager_terminal_option_omits_fallback_terminal_packages = !(builtins.any (pkg: let name = pkg.name or \"\"; in pkgs.lib.hasPrefix \"ghostty-\" name || pkgs.lib.hasPrefix \"foot-\" name || pkgs.lib.hasPrefix \"kitty-\" name || pkgs.lib.hasPrefix \"rio-\" name || pkgs.lib.hasPrefix \"wezterm-\" name || pkgs.lib.hasPrefix \"ratty-\" name) hmYzxterm.config.home.packages);".to_string(),
-        r#"  home_manager_yzxterm_package_override_option = hmYzxtermPackageOverride.config.programs.yazelix.yzxterm_package.passthru.marsPackageMetadata.package_name == "validator-mars-fast";
-  yzxterm_package_override_is_yzxterm_scoped = ghosttyRegistryWithInvalidYzxtermOverride.manifest.terminal.commands == [ "ghostty" ];
-  yzxterm_package_override_uses_package_metadata = yzxtermOverrideRegistry.terminalPackageMetadata.package_name == "validator-mars-fast" && builtins.elem "validator-mars-desktop" yzxtermOverrideRegistry.exportedCommands && yzxtermOverrideRegistry.terminalPackageRuntimeIdentity.package_profile == "yzxterm-fast" && yzxtermOverrideRegistry.terminalPackageRuntimeIdentity.yzxterm_terminal_supported_appearance_modes == [ "dark" "light" "auto" ] && yzxtermOverrideRegistry.terminalPackageRuntimeIdentity.yzxterm_terminal_default_appearance_mode == "dark";
-  yzxterm_package_override_rejects_missing_metadata = !invalidYzxtermPackageRegistry.success;
+        "  home_manager_terminal_option_selects_mars = hmMars.config.programs.yazelix.terminal == \"mars\" && builtins.any (pkg: (pkg.meta.mainProgram or \"\") == \"yzx\") hmMars.config.home.packages;".to_string(),
+        "  home_manager_terminal_option_omits_fallback_terminal_packages = !(builtins.any (pkg: let name = pkg.name or \"\"; in pkgs.lib.hasPrefix \"ghostty-\" name || pkgs.lib.hasPrefix \"foot-\" name || pkgs.lib.hasPrefix \"kitty-\" name || pkgs.lib.hasPrefix \"rio-\" name || pkgs.lib.hasPrefix \"wezterm-\" name || pkgs.lib.hasPrefix \"ratty-\" name) hmMars.config.home.packages);".to_string(),
+        r#"  home_manager_mars_package_override_option = hmMarsPackageOverride.config.programs.yazelix.mars_package.passthru.marsPackageMetadata.package_name == "validator-mars-fast";
+  mars_package_override_is_mars_scoped = ghosttyRegistryWithInvalidMarsOverride.manifest.terminal.commands == [ "ghostty" ];
+  mars_package_override_uses_package_metadata = marsOverrideRegistry.terminalPackageMetadata.package_name == "validator-mars-fast" && builtins.elem "validator-mars-desktop" marsOverrideRegistry.exportedCommands && marsOverrideRegistry.terminalPackageRuntimeIdentity.package_profile == "mars-fast" && marsOverrideRegistry.terminalPackageRuntimeIdentity.mars_terminal_supported_appearance_modes == [ "dark" "light" "auto" ] && marsOverrideRegistry.terminalPackageRuntimeIdentity.mars_terminal_default_appearance_mode == "dark";
+  mars_package_override_rejects_missing_metadata = !invalidMarsPackageRegistry.success;
   rio_runtime_uses_configured_upstream_package = rioOverrideRegistry.tools.terminal.package == fakeRioPackage && rioOverrideRegistry.tools.terminal.commands == [ "rio" ] && rioOverrideRegistry.terminalPackageMetadata == null;
-  yzxterm_fast_child_metadata_marks_unchecked = (yzxtermFastChildMetadata.package_profile or "") == "fast" && (yzxtermFastChildMetadata.checked_package or true) == false && (yzxtermFastChildMetadata.supported_appearance_modes or []) == [ "dark" "light" "auto" ] && (yzxtermFastChildMetadata.default_appearance_mode or "") == "dark" && (yzxtermFastChildMetadata.wrapper_env.appearance or "") == "MARS_APPEARANCE";
-  yzxterm_release_child_metadata_marks_checked = (yzxtermReleaseChildMetadata.package_profile or "") == "release" && (yzxtermReleaseChildMetadata.checked_package or false) == true && (yzxtermReleaseChildMetadata.supported_appearance_modes or []) == [ "dark" "light" "auto" ] && (yzxtermReleaseChildMetadata.default_appearance_mode or "") == "dark" && (yzxtermReleaseChildMetadata.wrapper_env.appearance or "") == "MARS_APPEARANCE";"#
+  mars_fast_child_metadata_marks_unchecked = (marsFastChildMetadata.package_profile or "") == "fast" && (marsFastChildMetadata.checked_package or true) == false && (marsFastChildMetadata.supported_appearance_modes or []) == [ "dark" "light" "auto" ] && (marsFastChildMetadata.default_appearance_mode or "") == "dark" && (marsFastChildMetadata.wrapper_env.appearance or "") == "MARS_APPEARANCE";
+  mars_release_child_metadata_marks_checked = (marsReleaseChildMetadata.package_profile or "") == "release" && (marsReleaseChildMetadata.checked_package or false) == true && (marsReleaseChildMetadata.supported_appearance_modes or []) == [ "dark" "light" "auto" ] && (marsReleaseChildMetadata.default_appearance_mode or "") == "dark" && (marsReleaseChildMetadata.wrapper_env.appearance or "") == "MARS_APPEARANCE";"#
             .to_string(),
         "  invalid_runtime_tool_rejected = !invalidRuntimeTool.success;".to_string(),
         "  unsupported_component_rejected = !unsupportedComponent.success;".to_string(),

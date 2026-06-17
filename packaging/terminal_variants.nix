@@ -1,7 +1,7 @@
 { isLinux }:
 
 let
-  order = [ "ghostty" "kitty" "rio" "yzxterm" "wezterm" "foot" "ratty" ];
+  order = [ "ghostty" "kitty" "rio" "mars" "wezterm" "foot" "ratty" ];
   variants = {
     ghostty = {
       desktop_label = "Ghostty";
@@ -18,7 +18,7 @@ let
       kitty_passthrough = true;
       description = "packaged upstream Rio terminal with generated Rio config, transparency support, and the Yazelix Zellij Kitty graphics bridge";
     };
-    yzxterm = {
+    mars = {
       desktop_label = "Mars";
       kitty_passthrough = true;
       description = "experimental Mars Terminal runtime with Rio trail cursor defaults and opt-in shader support";
@@ -50,6 +50,6 @@ in
   desktopLabel = field "desktop_label";
   description = field "description";
   kittyPassthrough = builtins.filter (terminal: variants.${terminal}.kitty_passthrough or false) supported;
-  packageOutput = terminal: if terminal == "yzxterm" then "yzxterm" else "yazelix_${terminal}";
+  packageOutput = terminal: if terminal == "mars" then "mars" else "yazelix_${terminal}";
   runtimeOutput = terminal: "runtime_${terminal}";
 }

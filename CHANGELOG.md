@@ -22,7 +22,7 @@ Highlights:
 - Consumed child-owned Zellij and Yazi config-pack renderers, removed copied Zellij layout fragments and Yazi render-plan files from the main repo, and documented the child repo promotion gates that keep future extractions honest
 - Fixed pane-orchestrator tab activity decorations so inactive tabs update when agents finish thinking or pane commands start and stop, instead of waiting for the tab to be visited
 - Refreshed the screen runtime and prey sprite package pins through the current composite sprite set
-- Repaired yzxterm/Rio transparency and opacity handling for TUI backgrounds while keeping the generated welcome and ANSI colors readable
+- Repaired mars/Rio transparency and opacity handling for TUI backgrounds while keeping the generated welcome and ANSI colors readable
 - Removed the obsolete NixCI file and tightened maintainer/runtime safety guidance, including the rule that agents must not run `yzx restart` against a live user session
 
 
@@ -34,7 +34,7 @@ Upgrade impact: manual action may be required
 
 Highlights:
 - Moved the shared cursor settings namespace from `~/.config/yazelix_ghostty_cursors/settings.jsonc` to `~/.config/yazelix_cursors/settings.jsonc`, and renamed the packaged default template to `yazelix_cursors_default.toml`
-- Added adaptive appearance support across Yazelix and Yazelix Terminal, including dark, light, and auto terminal modes, appearance-aware welcome surfaces, `ice` and `midnight` cursor presets, and safer light-mode random cursor selection
+- Added adaptive appearance support across Yazelix and Mars Terminal, including dark, light, and auto terminal modes, appearance-aware welcome surfaces, `ice` and `midnight` cursor presets, and safer light-mode random cursor selection
 - Replaced the default process monitor popup and bundled runtime tool from `bottom` / `btm` to `zenith`, with the Zenith information popup on `Alt Shift I`; bottom and SysWatch remain good custom-popup alternatives
 - Routed the default right sidebar through `yzx agent`, so missing Codex opens an actionable shell placeholder instead of failing; users can configure another agent or any other terminal command for the managed right sidebar
 - Added host-owned `xonsh` shell support for generated initializer hooks and optional `shell.default_shell = "xonsh"` without bundling xonsh in the Yazelix runtime
@@ -43,8 +43,8 @@ Highlights:
 - Removed the cursor widget from the status bar and guarded retired status-bar widget config paths with clearer errors
 - Used Zellij session names in terminal window titles so desktop switchers distinguish sessions
 - Hardened `yzx dev release` so it auto-syncs GitHub issues into Beads when needed, pushes `main` before the release tag, waits for `CI` plus `Publish Nix Cache`, and splits slow release validators across parallel CI jobs
-- Fixed yzxterm welcome rendering so startup-size races no longer leave the welcome card tiny or corrupt the banner when a key is pressed during the animation
-- Kept yzxterm window transparency while making generated welcome and ANSI colors render crisp instead of washed out by per-cell alpha blending
+- Fixed mars welcome rendering so startup-size races no longer leave the welcome card tiny or corrupt the banner when a key is pressed during the animation
+- Kept mars window transparency while making generated welcome and ANSI colors render crisp instead of washed out by per-cell alpha blending
 - Published Darwin package outputs to Cachix, tightened wasm plugin package toolchain preservation, and kept the Yazelix wrapper substitutable in Nix package overrides
 - Guarded ratconfig/settings contract migration changes so unsupported or stale config fields fail with clearer reset guidance
 
@@ -61,11 +61,11 @@ Upgrade impact: manual action may be required
 Highlights:
 - Made `zellij.custom_popups` fully editable in `yzx config ui`, including popup id, command argv, keybindings, and `keep_alive`, while the default `btm` process viewer keeps its process state and restores the larger popup geometry across focused toggles
 - Repaired native Zellij movement defaults so `Ctrl Alt h` and `Ctrl Alt l` move tabs, `Ctrl Alt j` and `Ctrl Alt k` move panes, `Ctrl h` remains available for Zellij move mode, and `zellij.support_kitty_keyboard_protocol = true` is the default for unambiguous modified-letter input
-- Added `terminal.emoji_style` and Home Manager `programs.yazelix.yzxterm_emoji_font` for Yazelix Terminal emoji fallback selection, with `noto`, `twitter`, and `serenityos` values, and refreshed yzxterm runtime pins, desktop identity, polished icons, and fast dogfooding cache guidance
+- Added `terminal.emoji_style` and Home Manager `programs.yazelix.mars_emoji_font` for Mars Terminal emoji fallback selection, with `noto`, `twitter`, and `serenityos` values, and refreshed mars runtime pins, desktop identity, polished icons, and fast dogfooding cache guidance
 - Removed the image-backed `magician` welcome, `yzx screen`, standalone `yzs`, runtime asset, Home Manager, and idle screen-saver surfaces so retained screen styles are text/animation-engine owned instead of GIF-backed
 - Moved more shipped artifacts and package contracts to child-owned outputs, including cursor shader generation, Zellij plugin wasm metadata, Steel plugin defaults, and minimal runtime docs, while deleting stale copied wasm, shader trees, media assets, and runtime artifact repair paths from the main repo
 - Split Nix and Home Manager ownership into smaller modules for flake outputs, terminal variant metadata, runtime integration, settings rendering, KGP package contracts, and package customization surfaces
-- Hardened maintainer automation with Rust-owned release workflow helpers, GitHub/Beads issue contract validation, stronger child-release validators, readme/version/upgrade-note checks, and CI/cache behavior that avoids duplicate release-tag runs while publishing the fast yzxterm runtime cache output
+- Hardened maintainer automation with Rust-owned release workflow helpers, GitHub/Beads issue contract validation, stronger child-release validators, readme/version/upgrade-note checks, and CI/cache behavior that avoids duplicate release-tag runs while publishing the fast mars runtime cache output
 - Refactored Zellij materialization around smaller plugin/materialization modules, stricter runtime metadata parsing, and clearer stale generated-layout cleanup
 
 Manual action:
@@ -80,16 +80,16 @@ Upgrade impact: manual action may be required
 
 Highlights:
 - Added `zellij.custom_popups`, moved the default `btm` process viewer popup to that surface on `Alt Shift B`, kept `btm` alive across popup toggles, and made sidebar-launched popups inherit the active Yazi cwd
-- Restored and simplified terminal variants with separate packages and desktop entries for Ghostty, Yazelix Terminal, WezTerm, Rio, and Linux-only Foot, plus Home Manager `programs.yazelix.extra_terminal_variants` for installing additional terminal launchers beside the primary runtime
+- Restored and simplified terminal variants with separate packages and desktop entries for Ghostty, Mars Terminal, WezTerm, Rio, and Linux-only Foot, plus Home Manager `programs.yazelix.extra_terminal_variants` for installing additional terminal launchers beside the primary runtime
 - Moved startup handoff, welcome sequencing, runtime environment generation, and release metadata ownership into Rust, deleting the obsolete Nushell startup bridge and `constants.nu` version source
-- Repaired desktop and Home Manager launch freshness by refreshing generated terminal configs, yzxterm shader assets, and launcher-visible feedback before sessions open
+- Repaired desktop and Home Manager launch freshness by refreshing generated terminal configs, mars shader assets, and launcher-visible feedback before sessions open
 - Added full runtime identity diagnostics through `yzx --version-full`, clarified active runtime ownership reporting, and documented lower-CPU Home Manager activation settings
 - Added the Helix action bridge path for reliable existing-editor-pane Yazi opens, reveals, cwd sync, directory picker behavior, and raw pane-id routing
 - Clarified that `helix.external` is only for Yazelix-compatible Helix forks with `--config-dir` support; arbitrary upstream/vanilla Helix binaries are not supported as managed Yazelix Helix targets
 - Fixed LazyGit edits so they use the Yazelix editor wrapper, respect `editor.command`, strip stale runtime-owned LazyGit config, and preserve useful cwd behavior from Yazi/sidebar popups
-- Fixed `Backspace` in Yazelix Terminal so it does not enter Zellij move mode through `Ctrl H`, and fixed the welcome prompt so any key really continues
+- Fixed `Backspace` in Mars Terminal so it does not enter Zellij move mode through `Ctrl H`, and fixed the welcome prompt so any key really continues
 - Restored Linux Foot and vanilla Rio terminal support, reduced Foot's generated font size, hid the Foot titlebar, and differentiated Ghostty/terminal launcher window names for desktop switchers
-- Improved cursor and shader packaging across Ghostty and Yazelix Terminal, including shader activation refresh, shader launch-snapshot isolation, Ghostty shader compilation fixes, and fast yzxterm dogfooding outputs
+- Improved cursor and shader packaging across Ghostty and Mars Terminal, including shader activation refresh, shader launch-snapshot isolation, Ghostty shader compilation fixes, and fast mars dogfooding outputs
 - Hardened packaging, CI, and maintainer flows with runtime closure size reporting, Cachix cache advertisement, child release validation, macOS package smoke contracts, KGP Yazi warning suppression, and stronger guidance against Linux-only assumptions in shared surfaces
 
 Manual action:
@@ -98,16 +98,16 @@ Manual action:
 
 ## v17.3 - 2026-06-01
 
-Helix Steel plugins, Yazelix Terminal runtime, and shared cursors
+Helix Steel plugins, Mars Terminal runtime, and shared cursors
 
 Upgrade impact: no user action required
 
 Highlights:
-- Added the experimental packaged Yazelix Terminal runtime as `#yzxterm` and `#runtime_yzxterm`, backed by the `yazelix-terminal` child repo and exposed through `programs.yazelix.runtime_variant = "yzxterm"`
-- Renamed the standalone cursor child repository from `yazelix-ghostty-cursors` to `yazelix-cursors` now that Yazelix Terminal consumes the same cursor shader package; the old cursor flake output names are not kept as aliases
-- Updated the Yazelix Terminal runtime input, split terminal cursor materialization, and made `yzxterm` honor the shared cursor settings path for shader/trail behavior
-- Dropped Alacritty and Foot from the maintained terminal set, polished Yazelix Terminal docs wording, and refreshed the terminal emulator comparison matrix around protocols, packaging, and 3D graphics
-- Added `programs.yazelix.extra_terminal_variants` for Home Manager users who want to install additional bundled terminal emulator packages, such as Ghostty beside a `yzxterm` primary runtime, without adding duplicate `yzx` wrappers
+- Added the experimental packaged Mars Terminal runtime as `#mars` and `#runtime_mars`, backed by the `mars` child repo and exposed through `programs.yazelix.runtime_variant = "mars"`
+- Renamed the standalone cursor child repository from `yazelix-ghostty-cursors` to `yazelix-cursors` now that Mars Terminal consumes the same cursor shader package; the old cursor flake output names are not kept as aliases
+- Updated the Mars Terminal runtime input, split terminal cursor materialization, and made `mars` honor the shared cursor settings path for shader/trail behavior
+- Dropped Alacritty and Foot from the maintained terminal set, polished Mars Terminal docs wording, and refreshed the terminal emulator comparison matrix around protocols, packaging, and 3D graphics
+- Added `programs.yazelix.extra_terminal_variants` for Home Manager users who want to install additional bundled terminal emulator packages, such as Ghostty beside a `mars` primary runtime, without adding duplicate `yzx` wrappers
 - Added Kitty as a packaged runtime variant through `#yazelix_kitty`, `#runtime_kitty`, and `programs.yazelix.runtime_variant = "kitty"`
 - Repaired the KGP graphics runtime path with wrapped nixpkgs Zellij support, KGP Zellij/Yazi package-base and hook fixes, Zellij cursor replay consumption, and clearer host-Yazi graphics diagnostics
 - Added the Helix Steel plugin system through the `yazelix-helix` fork, including the managed Steel plugin surface, curated managed Helix defaults, bundled Steel authoring tools, steel-enabled Helix pinning, and non-Steel managed-Helix diagnostics
@@ -147,7 +147,7 @@ Highlights:
 - Rust-owned `yzx menu`, launch setup preflight, canary session validation, and guarded doctor config repair while continuing to shrink shell-owned runtime paths
 - Updated `yzx screen` and welcome visuals after v17, including recursive Mandelbrot work, the magician GIF/Kitty-graphics renderer, a four-second welcome default, boids height fixes, and experimental Ratty runtime/cursor probes
 - Added Yazelix-owned `yazelix-zellij` and `yazelix-yazi` package forks after `v17` specifically to carry the Kitty Graphics Protocol passthrough path that restores Yazi image previews through Zellij; then tightened their KGP package boundaries, Cargo hash validation, typed terminal controls, terminal launch contracts, and follow-up planning for cursor placement
-- Recorded the Rio-based `yazelix-terminal` direction, including cursor-shader parity as the first gate, protocol parity planning, and Rio/Yazi image-preview risk
+- Recorded the Rio-based `mars` direction, including cursor-shader parity as the first gate, protocol parity planning, and Rio/Yazi image-preview risk
 - Verified that stock Helix and the Steel branch still lack a true config-dir override, recorded the scoped-XDG caveat, and planned the bundled Yazelix Helix Steel fork plus external binary/runtime-pair escape hatch
 - Treat `v17.1` as the pre-Steel pin for users who are not ready to move to the future bundled Yazelix Helix Steel editor line
 

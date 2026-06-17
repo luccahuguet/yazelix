@@ -6,8 +6,8 @@
   runtimeToolSourceModes,
   terminalDescriptionBullets,
   terminalVariants,
-  yzxtermEmojiFonts,
-  yzxtermProfiles,
+  marsEmojiFonts,
+  marsProfiles,
 }:
 
 with lib;
@@ -78,8 +78,8 @@ ${terminalDescriptionBullets}
     '';
   };
 
-  yzxterm_profile = mkOption {
-    type = types.enum yzxtermProfiles;
+  mars_profile = mkOption {
+    type = types.enum marsProfiles;
     default = "full";
     description = ''
       Mars profile used by generated runtime configs and the Linux desktop
@@ -91,8 +91,8 @@ ${terminalDescriptionBullets}
     '';
   };
 
-  yzxterm_emoji_font = mkOption {
-    type = types.enum yzxtermEmojiFonts;
+  mars_emoji_font = mkOption {
+    type = types.enum marsEmojiFonts;
     default = "noto";
     description = ''
       Declarative Home Manager value for terminal.emoji_style, used by
@@ -104,17 +104,17 @@ ${terminalDescriptionBullets}
     '';
   };
 
-  yzxterm_package = mkOption {
+  mars_package = mkOption {
     type = types.nullOr types.package;
     default = null;
     description = ''
       Mars child package override.
 
-      Set this only for yzxterm dogfooding when you want to replace the
+      Set this only for mars dogfooding when you want to replace the
       terminal child package without replacing the whole Yazelix package.
       The package must expose passthru.marsPackageMetadata. This option
-      applies only when programs.yazelix.terminal is "yzxterm" or
-      extra_terminal_launchers contains "yzxterm".
+      applies only when programs.yazelix.terminal is "mars" or
+      extra_terminal_launchers contains "mars".
     '';
   };
 

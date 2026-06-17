@@ -1249,7 +1249,7 @@ mod tests {
     }
 
     // Test lane: default
-    // Regression: yzxterm startup resize/release events must not count as an early welcome-skip keypress.
+    // Regression: mars startup resize/release events must not count as an early welcome-skip keypress.
     #[test]
     fn front_door_skip_accepts_only_key_press_events() {
         let repeat = Event::Key(KeyEvent {

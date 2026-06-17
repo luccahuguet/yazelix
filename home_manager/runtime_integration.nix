@@ -22,7 +22,7 @@ let
   runtimeToolSource = name: cfg.runtime_tool_sources.${name} or "bundled";
   terminalDesktopLabel = terminalMetadata.desktopLabel;
   terminalDesktopIdSuffix = terminalMetadata.desktopIdSuffix;
-  marsTerminalVariant = "yzxterm";
+  marsTerminalVariant = "mars";
   desktopEntryKey = terminal: "com.yazelix.Yazelix.${terminalDesktopIdSuffix terminal}";
   desktopEntryName = terminal: "New Yazelix - ${terminalDesktopLabel terminal}";
   startupWmClassFor =
@@ -30,10 +30,10 @@ let
     if terminal == marsTerminalVariant
     then desktopEntryKey terminal
     else "com.yazelix.Yazelix";
-  yzxtermActiveFor = terminal: terminal == marsTerminalVariant;
+  marsActiveFor = terminal: terminal == marsTerminalVariant;
   extraTerminalLaunchers = lib.unique cfg.extra_terminal_launchers;
   marsDesktopPackage =
-    if cfg.yzxterm_package != null then cfg.yzxterm_package else marsTerminalPackage;
+    if cfg.mars_package != null then cfg.mars_package else marsTerminalPackage;
   marsDesktopEntriesSupported = isLinux && marsDesktopPackage != null;
   implicitMarsTerminalLauncher =
     marsDesktopEntriesSupported
@@ -41,22 +41,22 @@ let
     && !(builtins.elem marsTerminalVariant extraTerminalLaunchers);
   desktopTerminalLaunchers =
     extraTerminalLaunchers ++ lib.optional implicitMarsTerminalLauncher marsTerminalVariant;
-  yzxtermConfigured =
-    yzxtermActiveFor cfg.terminal || builtins.elem marsTerminalVariant desktopTerminalLaunchers;
-  yzxtermProfileActiveFor = terminal: yzxtermActiveFor terminal && cfg.yzxterm_profile != "full";
-  yzxtermProfileActive = yzxtermProfileActiveFor cfg.terminal;
-  yzxtermProfileExport =
-    lib.optionalString yzxtermProfileActive
-      "export YAZELIX_TERMINAL_PROFILE=${cfg.yzxterm_profile}";
-  yzxtermAppearanceExport =
-    lib.optionalString yzxtermConfigured
-      "export YAZELIX_TERMINAL_APPEARANCE=${cfg.appearance_mode}";
-  yzxtermEmojiFontExport =
-    lib.optionalString yzxtermConfigured
-      "export YAZELIX_TERMINAL_EMOJI_FONT=${cfg.yzxterm_emoji_font}";
-  yzxtermEmojiFontSourceExport =
-    lib.optionalString yzxtermConfigured
-      "export YAZELIX_TERMINAL_EMOJI_FONT_SOURCE=home-manager";
+  marsConfigured =
+    marsActiveFor cfg.terminal || builtins.elem marsTerminalVariant desktopTerminalLaunchers;
+  marsProfileActiveFor = terminal: marsActiveFor terminal && cfg.mars_profile != "full";
+  marsProfileActive = marsProfileActiveFor cfg.terminal;
+  marsProfileExport =
+    lib.optionalString marsProfileActive
+      "export MARS_PROFILE=${cfg.mars_profile}";
+  marsAppearanceExport =
+    lib.optionalString marsConfigured
+      "export MARS_APPEARANCE=${cfg.appearance_mode}";
+  marsEmojiFontExport =
+    lib.optionalString marsConfigured
+      "export MARS_EMOJI_FONT=${cfg.mars_emoji_font}";
+  marsEmojiFontSourceExport =
+    lib.optionalString marsConfigured
+      "export MARS_EMOJI_FONT_SOURCE=home-manager";
 
   agentUsageProgramNames = [
     "tokenusage"
@@ -73,7 +73,7 @@ let
         throw "programs.yazelix.agent_usage_programs contains an unsupported agent usage program"
     ) cfg.agent_usage_programs;
 
-  yzxtermPackageArgs = lib.optionalAttrs (marsDesktopPackage != null) {
+  marsPackageArgs = lib.optionalAttrs (marsDesktopPackage != null) {
     marsTerminalPackage = marsDesktopPackage;
   };
   packageBuilderArgs =
@@ -85,7 +85,7 @@ let
       extraRuntimePackages = selectedAgentUsagePackages;
       inherit rioPackage yazelixHelixPackage;
     }
-    // yzxtermPackageArgs;
+    // marsPackageArgs;
   yazelixPackage =
     if cfg.package != null then
       cfg.package
@@ -132,10 +132,10 @@ let
       terminalPackage = yazelixPackageForTerminal terminal;
       terminalEnv =
         ''PATH="${terminalPackage}/toolbin:${terminalPackage}/libexec:${terminalPackage}/bin:${runtimeConfigGenerationPath}:$PATH" YAZELIX_RUNTIME_DIR="${terminalPackage}"''
-        + lib.optionalString (yzxtermActiveFor terminal) " YAZELIX_TERMINAL_APPEARANCE=${cfg.appearance_mode}"
-        + lib.optionalString (yzxtermActiveFor terminal) " YAZELIX_TERMINAL_EMOJI_FONT=${cfg.yzxterm_emoji_font}"
-        + lib.optionalString (yzxtermActiveFor terminal) " YAZELIX_TERMINAL_EMOJI_FONT_SOURCE=home-manager"
-        + lib.optionalString (yzxtermProfileActiveFor terminal) " YAZELIX_TERMINAL_PROFILE=${cfg.yzxterm_profile}";
+        + lib.optionalString (marsActiveFor terminal) " MARS_APPEARANCE=${cfg.appearance_mode}"
+        + lib.optionalString (marsActiveFor terminal) " MARS_EMOJI_FONT=${cfg.mars_emoji_font}"
+        + lib.optionalString (marsActiveFor terminal) " MARS_EMOJI_FONT_SOURCE=home-manager"
+        + lib.optionalString (marsProfileActiveFor terminal) " MARS_PROFILE=${cfg.mars_profile}";
     in
     ''
           $DRY_RUN_CMD env ${terminalEnv} ${terminalPackage}/libexec/yzx_core terminal-materialization.generate --from-env >/dev/null
@@ -147,15 +147,11 @@ let
     let
       envVars =
         lib.optional skipStableWrapperRedirect "YAZELIX_SKIP_STABLE_WRAPPER_REDIRECT=1"
-        ++ lib.optional (terminal == marsTerminalVariant) "YAZELIX_TERMINAL_APP_ID=${startupWmClassFor terminal}"
-        ++ lib.optional (terminal == marsTerminalVariant) "YAZELIX_TERMINAL_APPEARANCE=${cfg.appearance_mode}"
-        ++ lib.optional (terminal == marsTerminalVariant) "YAZELIX_TERMINAL_EMOJI_FONT=${cfg.yzxterm_emoji_font}"
-        ++ lib.optional (terminal == marsTerminalVariant) "YAZELIX_TERMINAL_EMOJI_FONT_SOURCE=home-manager"
         ++ lib.optional (terminal == marsTerminalVariant) "MARS_APP_ID=${startupWmClassFor terminal}"
         ++ lib.optional (terminal == marsTerminalVariant) "MARS_APPEARANCE=${cfg.appearance_mode}"
-        ++ lib.optional (terminal == marsTerminalVariant) "MARS_EMOJI_FONT=${cfg.yzxterm_emoji_font}"
-        ++ lib.optional (yzxtermProfileActiveFor terminal) "YAZELIX_TERMINAL_PROFILE=${cfg.yzxterm_profile}"
-        ++ lib.optional (yzxtermProfileActiveFor terminal) "MARS_PROFILE=${cfg.yzxterm_profile}";
+        ++ lib.optional (terminal == marsTerminalVariant) "MARS_EMOJI_FONT=${cfg.mars_emoji_font}"
+        ++ lib.optional (terminal == marsTerminalVariant) "MARS_EMOJI_FONT_SOURCE=home-manager"
+        ++ lib.optional (marsProfileActiveFor terminal) "MARS_PROFILE=${cfg.mars_profile}";
     in
     "${lib.optionalString (envVars != [ ]) "env ${lib.concatStringsSep " " envVars} "}${yzxPath} desktop launch";
   desktopEntryFor =
@@ -228,16 +224,16 @@ let
       message = "programs.yazelix.extra_terminal_launchers is only supported on Linux desktop environments";
     }
     {
-      assertion = cfg.yzxterm_package == null || cfg.package == null;
-      message = "programs.yazelix.yzxterm_package cannot be combined with programs.yazelix.package; use the narrow yzxterm_package override or a whole Yazelix package replacement, not both";
+      assertion = cfg.mars_package == null || cfg.package == null;
+      message = "programs.yazelix.mars_package cannot be combined with programs.yazelix.package; use the narrow mars_package override or a whole Yazelix package replacement, not both";
     }
     {
       assertion =
-        cfg.yzxterm_package == null
-        || cfg.terminal == "yzxterm"
-        || builtins.elem "yzxterm" cfg.extra_terminal_launchers
+        cfg.mars_package == null
+        || cfg.terminal == "mars"
+        || builtins.elem "mars" cfg.extra_terminal_launchers
         || implicitMarsTerminalLauncher;
-      message = "programs.yazelix.yzxterm_package applies only when terminal = \"yzxterm\" or when the Mars desktop launcher is installed";
+      message = "programs.yazelix.mars_package applies only when terminal = \"mars\" or when the Mars desktop launcher is installed";
     }
   ];
 in
@@ -247,15 +243,12 @@ in
   baseConfig = {
     home.packages = [ yazelixPackage ] ++ cursorGeneratorPackage ++ marsDesktopPackages;
     home.sessionVariables = mkMerge [
-      (mkIf yzxtermConfigured {
-        YAZELIX_TERMINAL_APPEARANCE = mkDefault cfg.appearance_mode;
-        YAZELIX_TERMINAL_EMOJI_FONT = mkDefault cfg.yzxterm_emoji_font;
+      (mkIf marsConfigured {
         MARS_APPEARANCE = mkDefault cfg.appearance_mode;
-        MARS_EMOJI_FONT = mkDefault cfg.yzxterm_emoji_font;
+        MARS_EMOJI_FONT = mkDefault cfg.mars_emoji_font;
       })
-      (mkIf yzxtermProfileActive {
-        YAZELIX_TERMINAL_PROFILE = mkDefault cfg.yzxterm_profile;
-        MARS_PROFILE = mkDefault cfg.yzxterm_profile;
+      (mkIf marsProfileActive {
+        MARS_PROFILE = mkDefault cfg.mars_profile;
       })
     ];
     inherit assertions;
@@ -275,10 +268,10 @@ in
       export YAZELIX_CONFIG_DIR="${managedConfigRoot}"
       export YAZELIX_STATE_DIR="${stateRoot}"
       export YAZELIX_LOGS_DIR="${logsPath}"
-      ${yzxtermAppearanceExport}
-      ${yzxtermEmojiFontExport}
-      ${yzxtermEmojiFontSourceExport}
-      ${yzxtermProfileExport}
+      ${marsAppearanceExport}
+      ${marsEmojiFontExport}
+      ${marsEmojiFontSourceExport}
+      ${marsProfileExport}
 
       $DRY_RUN_CMD ${runtimeYzxCore} runtime-materialization.repair --from-env --force --summary
 ${terminalMaterializationActivation}

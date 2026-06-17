@@ -101,7 +101,7 @@ v14 is the final historical Yazelix Classic release. It is no longer a supported
 - **Enhanced UI Controls** – Configurable Zellij options: `disable_zellij_tips` (default: true), `zellij_rounded_corners` (default: true).
 - **Streamlined Startup** – Welcome screen disabled by default for faster launches (info still logged).
 - **Sweep Testing Framework** – Matrix testing for all shell/terminal/feature combinations (`yzx sweep shells|terminals|all`).
-- **Terminal Detection** – Proper terminal identification via `YAZELIX_TERMINAL` environment variable.
+- **Terminal Detection** – Proper terminal identification via `MARS` environment variable.
 - **Conditional Shell Hooks** – Shell hooks load Yazelix tooling only inside managed shells, preventing surprises in regular terminals.
 - **Yazi Directory Sync** – Opening files from Yazi moves the sidebar to the file’s parent directory so the view stays in sync with editor context.
 - **Simplified Clipboard** – Replaced the custom clipboard module with Nushell’s standard library implementation and added the `clp` helper command. `clp` just calls `clip copy`

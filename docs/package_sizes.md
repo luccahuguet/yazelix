@@ -12,7 +12,7 @@ The default runtime includes:
 - host-managed helper integrations: `mise`, `tombi`
 - preview/search helpers: `p7zip`, `jq`, `fd`, `ripgrep`, `poppler`, `resvg`
 - system helpers required by runtime wrappers and validators: `git`, `nix`, `coreutils`, `findutils`, `gnugrep`, `gnused`, `util-linux`
-- one packaged terminal variant: Ghostty in `#yazelix` and `#yazelix_ghostty`, experimental Yazelix Terminal in `#yzxterm`, vanilla Rio in `#yazelix_rio`, WezTerm in `#yazelix_wezterm`, Kitty in `#yazelix_kitty`, Linux Foot in `#yazelix_foot`, or experimental Linux Ratty in `#yazelix_ratty`
+- one packaged terminal variant: Ghostty in `#yazelix` and `#yazelix_ghostty`, experimental Mars Terminal in `#mars`, vanilla Rio in `#yazelix_rio`, WezTerm in `#yazelix_wezterm`, Kitty in `#yazelix_kitty`, Linux Foot in `#yazelix_foot`, or experimental Linux Ratty in `#yazelix_ratty`
 - `tokenusage` for the default Codex and Claude status widgets
 
 It does not ship:
@@ -35,7 +35,7 @@ Only use `--build` when the command should first realize a flake output:
 
 ```bash
 shells/posix/yazelix_runtime_size_report.sh --build .#yazelix
-shells/posix/yazelix_runtime_size_report.sh --build .#yzxterm --top 40 --direct-top 60
+shells/posix/yazelix_runtime_size_report.sh --build .#mars --top 40 --direct-top 60
 ```
 
 The reporter depends only on normal maintainer/runtime shell tools: `nix`, `nix-store`, `jq`, `awk`, `sort`, `head`, `wc`, `sed`, `tr`, `readlink`, and `mktemp`. It uses `numfmt` when available.
@@ -44,7 +44,7 @@ For a quick total-only check, `nix path-info -S` is still useful:
 
 ```bash
 nix path-info -S .#yazelix --extra-experimental-features "nix-command flakes"
-nix path-info -S .#yzxterm --extra-experimental-features "nix-command flakes"
+nix path-info -S .#mars --extra-experimental-features "nix-command flakes"
 nix path-info -S .#yazelix_rio --extra-experimental-features "nix-command flakes"
 nix path-info -S .#yazelix_wezterm --extra-experimental-features "nix-command flakes"
 nix path-info -S .#yazelix_kitty --extra-experimental-features "nix-command flakes"
@@ -84,22 +84,22 @@ Disabling 32-bit nixGL support removes the large duplicate Mesa/LLVM families fr
 
 ## Linux Graphics Wrappers
 
-The Linux runtime registry currently imports `nixGL` when the platform is Linux and the flake input is present, with `enable32bits = false` and `enableIntelX86Extensions = false`. It adds 64-bit-only `nixgl_mesa` for Linux runtimes and 64-bit-only `nixvulkan_mesa` for Ratty and Yazelix Terminal package variants.
+The Linux runtime registry currently imports `nixGL` when the platform is Linux and the flake input is present, with `enable32bits = false` and `enableIntelX86Extensions = false`. It adds 64-bit-only `nixgl_mesa` for Linux runtimes and 64-bit-only `nixvulkan_mesa` for Ratty and Mars Terminal package variants.
 
 Current launch behavior:
 
 - Ghostty, WezTerm, Kitty, and Ratty launch commands may prepend a graphics wrapper
 - Ratty prefers the Vulkan wrapper because its renderer needs a Vulkan-capable adapter
-- Yazelix Terminal does not add an outer Yazelix graphics wrapper around the child-owned `mars-desktop` wrapper
+- Mars Terminal does not add an outer Yazelix graphics wrapper around the child-owned `mars-desktop` wrapper
 
-Measured yzxterm runtime:
+Measured mars runtime:
 
 | Shape | Closure |
 | --- | ---: |
 | Previous combined GL plus Vulkan wrappers with 32-bit support | 2.1 GiB |
 | Current combined 64-bit-only GL plus Vulkan wrappers | 1.1 GiB |
-| Current default yzxterm package | 2.7 GiB |
-| Approximate no-wrapper yzxterm closure if both wrapper closures were host-sourced | 1.7 GiB |
+| Current default mars package | 2.7 GiB |
+| Approximate no-wrapper mars closure if both wrapper closures were host-sourced | 1.7 GiB |
 
 The option surface should be explicit instead of hidden behind `runtime_tool_sources`: a future package option should choose a graphics wrapper source such as bundled, host, or none, with launch rendering and doctor diagnostics tested per terminal variant. Default behavior should not change until desktop launch reliability is preserved.
 

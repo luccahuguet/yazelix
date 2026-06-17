@@ -32,26 +32,26 @@ let
     ];
   terminalPackages = lib.listToAttrs (lib.concatMap terminalPackageEntries terminalMetadata.supported);
   runtime_default = builtins.getAttr (terminalMetadata.runtimeOutput defaultRuntimeVariant) terminalPackages;
-  yzxtermFastRuntimeIdentity = defaultRuntimeIdentity // {
-    package_profile = "yzxterm-fast";
-    yzxterm_terminal_package = "mars-fast";
+  marsFastRuntimeIdentity = defaultRuntimeIdentity // {
+    package_profile = "mars-fast";
+    mars_terminal_package = "mars-fast";
   };
-  yzxtermFastTerminalPackage = marsTerminal.packages.${system}.mars-fast;
-  runtime_yzxterm_fast = runtimePackageWith system pkgs "yzxterm" defaultRuntimePackages {
-    name = "yazelix-runtime-yzxterm-fast";
-    runtimeIdentity = yzxtermFastRuntimeIdentity;
-    marsTerminalPackage = yzxtermFastTerminalPackage;
+  marsFastTerminalPackage = marsTerminal.packages.${system}.mars-fast;
+  runtime_mars_fast = runtimePackageWith system pkgs "mars" defaultRuntimePackages {
+    name = "yazelix-runtime-mars-fast";
+    runtimeIdentity = marsFastRuntimeIdentity;
+    marsTerminalPackage = marsFastTerminalPackage;
   };
   yazelix_default = builtins.getAttr (terminalMetadata.packageOutput defaultRuntimeVariant) terminalPackages;
-  yzxterm_fast = mkYazelix system {
+  mars_fast = mkYazelix system {
     inherit pkgs;
-    name = "yazelix-yzxterm-fast";
-    runtimeName = "yazelix-runtime-yzxterm-fast";
-    runtimeVariant = "yzxterm";
-    runtimeIdentity = yzxtermFastRuntimeIdentity;
+    name = "yazelix-mars-fast";
+    runtimeName = "yazelix-runtime-mars-fast";
+    runtimeVariant = "mars";
+    runtimeIdentity = marsFastRuntimeIdentity;
     extraRuntimePackages = defaultRuntimePackages;
     skipStableWrapperRedirect = true;
-    marsTerminalPackage = yzxtermFastTerminalPackage;
+    marsTerminalPackage = marsFastTerminalPackage;
   };
   runtime_agent_tools = runtimePackage system pkgs defaultRuntimeVariant defaultRuntimePackages;
   yazelix_agent_tools = yazelixPackage system pkgs defaultRuntimeVariant defaultRuntimePackages;
@@ -69,7 +69,7 @@ let
   packages =
     {
       br = beads_rust;
-      inherit beads_rust runtime_agent_tools runtime_yzxterm_fast yzxterm_fast;
+      inherit beads_rust runtime_agent_tools runtime_mars_fast mars_fast;
       inherit yazelix_agent_tools yazelix_cursors yazelix_helix yazelix_screen;
       inherit yazelix_yazi_assets yazelix_zellij_bar yazelix_zellij_config_pack;
       inherit yazelix_zellij_pane_orchestrator yazelix_zellij_popup;
@@ -100,7 +100,7 @@ in
     {
       default = yzxApp "yazelix";
       yazelix = yzxApp "yazelix";
-      yzxterm_fast = yzxApp "yzxterm_fast";
+      mars_fast = yzxApp "mars_fast";
       yazelix_agent_tools = yzxApp "yazelix_agent_tools";
       yazelix_screen = appFor "yazelix_screen" "yzs";
       yzs = appFor "yazelix_screen" "yzs";

@@ -29,7 +29,7 @@ pub(super) fn generated_terminal_config_path(state_dir: &Path, terminal: &str) -
     match terminal {
         "ghostty" => root.join("ghostty").join("config"),
         "wezterm" => root.join("wezterm").join(".wezterm.lua"),
-        "yzxterm" => root.join("yzxterm").join("config.toml"),
+        "mars" => root.join("mars").join("config.toml"),
         "rio" => root.join("rio").join("config.toml"),
         "ratty" => root.join("ratty").join("ratty.toml"),
         "kitty" => root.join("kitty").join("kitty.conf"),
@@ -87,9 +87,7 @@ pub(super) fn user_terminal_config_candidates_for_platform(
             home_dir.join(".wezterm.lua"),
             home_dir.join(".config").join("wezterm").join("wezterm.lua"),
         ]),
-        "yzxterm" => Ok(vec![
-            xdg_config_home.join("yazelix-terminal").join("config.toml"),
-        ]),
+        "mars" => Ok(vec![xdg_config_home.join("mars").join("config.toml")]),
         "rio" => Ok(vec![xdg_config_home.join("rio").join("config.toml")]),
         "ratty" => Ok(vec![xdg_config_home.join("ratty").join("ratty.toml")]),
         "foot" => Ok(vec![xdg_config_home.join("foot").join("foot.ini")]),
@@ -148,7 +146,7 @@ pub(super) fn get_working_dir_args(terminal: &str, working_dir: &Path) -> Vec<St
     match terminal {
         "ghostty" => vec![format!("--working-directory={wd}")],
         "wezterm" => vec!["--cwd".to_string(), wd],
-        "yzxterm" => vec!["--working-dir".to_string(), wd],
+        "mars" => vec!["--working-dir".to_string(), wd],
         "rio" => vec!["--working-dir".to_string(), wd],
         "ratty" => vec![],
         "kitty" => vec![format!("--directory={wd}")],
@@ -289,17 +287,17 @@ pub(super) fn build_launch_command_argv(
             wezterm.push(startup_script.to_string_lossy().into_owned());
             maybe_prepend(wezterm, graphics_wrapper)
         }
-        "yzxterm" => {
-            let mut yzxterm = vec![
+        "mars" => {
+            let mut mars = vec![
                 terminal.command.clone(),
                 "--title-placeholder".to_string(),
                 title,
                 "--yazelix".to_string(),
             ];
-            yzxterm.extend(working_dir_args);
-            yzxterm.push("-e".to_string());
-            yzxterm.push(startup_script.to_string_lossy().into_owned());
-            yzxterm
+            mars.extend(working_dir_args);
+            mars.push("-e".to_string());
+            mars.push(startup_script.to_string_lossy().into_owned());
+            mars
         }
         "rio" => {
             let mut rio = vec![

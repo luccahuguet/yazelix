@@ -82,7 +82,7 @@ write_launch_header() {
     printf 'starter_parent_pid=%s\n' "$parent_pid"
     printf 'helper_pid=%s\n' "$$"
     printf 'cwd=%s\n' "$(pwd)"
-    printf 'YAZELIX_TERMINAL_CONFIG=%s\n' "${YAZELIX_TERMINAL_CONFIG:-}"
+    printf 'MARS_CONFIG=%s\n' "${MARS_CONFIG:-}"
     printf 'RIO_CONFIG_HOME=%s\n' "${RIO_CONFIG_HOME:-}"
     printf 'argv:\n'
     for arg in "$@"; do

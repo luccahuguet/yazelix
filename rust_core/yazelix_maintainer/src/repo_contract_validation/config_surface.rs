@@ -25,21 +25,21 @@ use yazelix_core::{
     ZELLIJ_NATIVE_KEYBINDINGS, runtime_apply_mode_codes,
 };
 
-const YZXTERM_ENV_REQUIREMENTS: [(&str, &str, &str); 3] = [
+const MARS_ENV_REQUIREMENTS: [(&str, &str, &str); 3] = [
     (
-        "YAZELIX_TERMINAL_PROFILE=shaders",
-        "the configured yzxterm profile",
-        "yzxterm_profile",
+        "MARS_PROFILE=shaders",
+        "the configured mars profile",
+        "mars_profile",
     ),
     (
-        "YAZELIX_TERMINAL_APPEARANCE=light",
+        "MARS_APPEARANCE=light",
         "the configured appearance mode",
         "appearance_mode",
     ),
     (
-        "YAZELIX_TERMINAL_EMOJI_FONT=twitter",
-        "the configured yzxterm emoji font",
-        "yzxterm_emoji_font",
+        "MARS_EMOJI_FONT=twitter",
+        "the configured mars emoji font",
+        "mars_emoji_font",
     ),
 ];
 
@@ -706,12 +706,12 @@ fn validate_home_manager_desktop_entry_contract(repo_root: &Path) -> Result<Vec<
     let shader_session_appearance = json_map_str_field(&shader_entry, "sessionAppearance");
     if !json_map_bool_field(&shader_entry, "terminal") {
         errors.push(
-            "Home Manager yzxterm desktop entry must set terminal = true so pre-terminal config failures stay visible"
+            "Home Manager mars desktop entry must set terminal = true so pre-terminal config failures stay visible"
                 .to_string(),
         );
     }
     if shader_exec
-        != "env YAZELIX_TERMINAL_APP_ID=com.yazelix.Yazelix.Mars YAZELIX_TERMINAL_APPEARANCE=light YAZELIX_TERMINAL_EMOJI_FONT=twitter YAZELIX_TERMINAL_EMOJI_FONT_SOURCE=home-manager MARS_APP_ID=com.yazelix.Yazelix.Mars MARS_APPEARANCE=light MARS_EMOJI_FONT=twitter YAZELIX_TERMINAL_PROFILE=shaders MARS_PROFILE=shaders /tmp/profile/bin/yzx desktop launch"
+        != "env MARS_APP_ID=com.yazelix.Yazelix.Mars MARS_APPEARANCE=light MARS_EMOJI_FONT=twitter MARS_EMOJI_FONT_SOURCE=home-manager MARS_PROFILE=shaders /tmp/profile/bin/yzx desktop launch"
     {
         errors.push(format!(
             "Home Manager shader Mars profile desktop entry Exec mismatch: expected app id, appearance, emoji font, emoji source, and shader profile env, got {}",
@@ -726,19 +726,19 @@ fn validate_home_manager_desktop_entry_contract(repo_root: &Path) -> Result<Vec<
     }
     if shader_session_profile != "shaders" {
         errors.push(format!(
-            "Home Manager shader yzxterm profile session variable mismatch: expected shaders, got {}",
+            "Home Manager shader mars profile session variable mismatch: expected shaders, got {}",
             format_json_string(shader_session_profile)
         ));
     }
     if shader_session_emoji_font != "twitter" {
         errors.push(format!(
-            "Home Manager yzxterm emoji font session variable mismatch: expected twitter, got {}",
+            "Home Manager mars emoji font session variable mismatch: expected twitter, got {}",
             format_json_string(shader_session_emoji_font)
         ));
     }
     if shader_session_appearance != "light" {
         errors.push(format!(
-            "Home Manager yzxterm appearance session variable mismatch: expected light, got {}",
+            "Home Manager mars appearance session variable mismatch: expected light, got {}",
             format_json_string(shader_session_appearance)
         ));
     }
@@ -757,7 +757,7 @@ fn validate_home_manager_desktop_entry_contract(repo_root: &Path) -> Result<Vec<
     for (terminal, expected_name) in [
         ("ghostty", "New Yazelix - Ghostty"),
         ("foot", "New Yazelix - Foot"),
-        ("yzxterm", "New Yazelix - Mars"),
+        ("mars", "New Yazelix - Mars"),
         ("rio", "New Yazelix - Rio"),
         ("wezterm", "New Yazelix - WezTerm"),
     ] {
@@ -793,11 +793,11 @@ fn validate_home_manager_desktop_entry_contract(repo_root: &Path) -> Result<Vec<
                 format_json_string(exec)
             ));
         }
-        if terminal == "yzxterm" {
-            for (needle, desktop_label, _) in YZXTERM_ENV_REQUIREMENTS {
+        if terminal == "mars" {
+            for (needle, desktop_label, _) in MARS_ENV_REQUIREMENTS {
                 if !exec.contains(needle) {
                     errors.push(format!(
-                        "Home Manager extra yzxterm desktop entry Exec must pass {desktop_label}, got {}",
+                        "Home Manager extra mars desktop entry Exec must pass {desktop_label}, got {}",
                         format_json_string(exec)
                     ));
                 }
@@ -829,22 +829,18 @@ fn validate_home_manager_activation_contract(repo_root: &Path) -> Result<Vec<Str
             materialization_lines.len()
         ));
     }
-    let yzxterm_line = materialization_lines
+    let mars_line = materialization_lines
         .iter()
-        .find(|line| line.contains("-yazelix-yzxterm/"));
-    if yzxterm_line.is_none() {
+        .find(|line| line.contains("-yazelix-mars/"));
+    if mars_line.is_none() {
         errors.push(
-            "Home Manager activation must materialize the extra yzxterm launcher runtime"
-                .to_string(),
+            "Home Manager activation must materialize the extra mars launcher runtime".to_string(),
         );
     }
-    for (needle, _, option_name) in YZXTERM_ENV_REQUIREMENTS {
-        if !yzxterm_line
-            .map(|line| line.contains(needle))
-            .unwrap_or(false)
-        {
+    for (needle, _, option_name) in MARS_ENV_REQUIREMENTS {
+        if !mars_line.map(|line| line.contains(needle)).unwrap_or(false) {
             errors.push(format!(
-                "Home Manager activation must pass {option_name} to extra yzxterm launcher materialization"
+                "Home Manager activation must pass {option_name} to extra mars launcher materialization"
             ));
         }
     }
@@ -883,10 +879,10 @@ fn build_home_manager_activation_expr(repo_root: &Path) -> String {
     ];
     lines.extend(standalone_home_manager_eval_fixture_module(true, true));
     lines.extend([
-        "      { config.programs.yazelix.extra_terminal_launchers = [ \"yzxterm\" ]; }".to_string(),
-        "      { config.programs.yazelix.yzxterm_profile = \"shaders\"; }".to_string(),
+        "      { config.programs.yazelix.extra_terminal_launchers = [ \"mars\" ]; }".to_string(),
+        "      { config.programs.yazelix.mars_profile = \"shaders\"; }".to_string(),
         "      { config.programs.yazelix.appearance_mode = \"light\"; }".to_string(),
-        "      { config.programs.yazelix.yzxterm_emoji_font = \"twitter\"; }".to_string(),
+        "      { config.programs.yazelix.mars_emoji_font = \"twitter\"; }".to_string(),
         "    ];".to_string(),
         "  };".to_string(),
         "in eval.config.home.activation.yazelixGeneratedRuntimeConfigs.data".to_string(),
@@ -1121,14 +1117,10 @@ fn load_home_manager_desktop_entry_contract(
 
 fn load_home_manager_desktop_entry_contract_with_profile(
     repo_root: &Path,
-    yzxterm_profile: &str,
+    mars_profile: &str,
 ) -> Result<JsonMap<String, JsonValue>, String> {
-    let expr = build_home_manager_desktop_entry_expr(
-        repo_root,
-        Some(yzxterm_profile),
-        &[],
-        Some("yzxterm"),
-    );
+    let expr =
+        build_home_manager_desktop_entry_expr(repo_root, Some(mars_profile), &[], Some("mars"));
     let result = run_nix_eval(repo_root, &expr)?;
     result.as_object().cloned().ok_or_else(|| {
         "Home Manager desktop-entry evaluation did not return a JSON object".to_string()
@@ -1141,7 +1133,7 @@ fn load_home_manager_extra_terminal_launchers_contract(
     let expr = build_home_manager_desktop_entry_expr(
         repo_root,
         Some("shaders"),
-        &["ghostty", "yzxterm", "foot", "rio", "wezterm"],
+        &["ghostty", "mars", "foot", "rio", "wezterm"],
         Some("kitty"),
     );
     let result = run_nix_eval(repo_root, &expr)?;
@@ -1152,7 +1144,7 @@ fn load_home_manager_extra_terminal_launchers_contract(
 
 fn build_home_manager_desktop_entry_expr(
     repo_root: &Path,
-    yzxterm_profile: Option<&str>,
+    mars_profile: Option<&str>,
     extra_launchers: &[&str],
     active_terminal: Option<&str>,
 ) -> String {
@@ -1169,15 +1161,13 @@ fn build_home_manager_desktop_entry_expr(
         format!("      (builtins.toPath \"{}\")", module_path),
     ];
     lines.extend(standalone_home_manager_eval_fixture_module(true, true));
-    if let Some(profile) = yzxterm_profile {
+    if let Some(profile) = mars_profile {
         lines.push(format!(
-            "      {{ config.programs.yazelix.yzxterm_profile = \"{}\"; }}",
+            "      {{ config.programs.yazelix.mars_profile = \"{}\"; }}",
             escape_nix_string(profile)
         ));
         lines.push("      { config.programs.yazelix.appearance_mode = \"light\"; }".to_string());
-        lines.push(
-            "      { config.programs.yazelix.yzxterm_emoji_font = \"twitter\"; }".to_string(),
-        );
+        lines.push("      { config.programs.yazelix.mars_emoji_font = \"twitter\"; }".to_string());
     }
     if let Some(terminal) = active_terminal {
         lines.push(format!(
@@ -1200,7 +1190,7 @@ fn build_home_manager_desktop_entry_expr(
         Some("kitty") => "com.yazelix.Yazelix.Kitty",
         Some("rio") => "com.yazelix.Yazelix.Rio",
         Some("wezterm") => "com.yazelix.Yazelix.WezTerm",
-        Some("yzxterm") => "com.yazelix.Yazelix.Mars",
+        Some("mars") => "com.yazelix.Yazelix.Mars",
         _ => "com.yazelix.Yazelix.Ghostty",
     };
     lines.extend([
@@ -1209,14 +1199,14 @@ fn build_home_manager_desktop_entry_expr(
         format!("  entryKey = \"{}\";", entry_key),
         "  ghosttyKey = \"com.yazelix.Yazelix.Ghostty\";".to_string(),
         "  footKey = \"com.yazelix.Yazelix.Foot\";".to_string(),
-        "  yzxtermKey = \"com.yazelix.Yazelix.Mars\";".to_string(),
+        "  marsKey = \"com.yazelix.Yazelix.Mars\";".to_string(),
         "  rioKey = \"com.yazelix.Yazelix.Rio\";".to_string(),
         "  weztermKey = \"com.yazelix.Yazelix.WezTerm\";".to_string(),
         "  entries = eval.config.xdg.desktopEntries;".to_string(),
         "  entry = if builtins.hasAttr entryKey entries then builtins.getAttr entryKey entries else {};".to_string(),
         "  ghosttyEntry = if builtins.hasAttr ghosttyKey entries then builtins.getAttr ghosttyKey entries else {};".to_string(),
         "  footEntry = if builtins.hasAttr footKey entries then builtins.getAttr footKey entries else {};".to_string(),
-        "  yzxtermEntry = if builtins.hasAttr yzxtermKey entries then builtins.getAttr yzxtermKey entries else {};".to_string(),
+        "  marsEntry = if builtins.hasAttr marsKey entries then builtins.getAttr marsKey entries else {};".to_string(),
         "  rioEntry = if builtins.hasAttr rioKey entries then builtins.getAttr rioKey entries else {};".to_string(),
         "  weztermEntry = if builtins.hasAttr weztermKey entries then builtins.getAttr weztermKey entries else {};".to_string(),
         "in {".to_string(),
@@ -1224,17 +1214,17 @@ fn build_home_manager_desktop_entry_expr(
         "  name = entry.name or \"\";".to_string(),
         "  exec = entry.exec or \"\";".to_string(),
         "  terminal = entry.terminal or false;".to_string(),
-        "  sessionProfile = eval.config.home.sessionVariables.YAZELIX_TERMINAL_PROFILE or \"\";"
+        "  sessionProfile = eval.config.home.sessionVariables.MARS_PROFILE or \"\";"
             .to_string(),
-        "  sessionAppearance = eval.config.home.sessionVariables.YAZELIX_TERMINAL_APPEARANCE or \"\";"
+        "  sessionAppearance = eval.config.home.sessionVariables.MARS_APPEARANCE or \"\";"
             .to_string(),
-        "  sessionEmojiFont = eval.config.home.sessionVariables.YAZELIX_TERMINAL_EMOJI_FONT or \"\";"
+        "  sessionEmojiFont = eval.config.home.sessionVariables.MARS_EMOJI_FONT or \"\";"
             .to_string(),
         "  packageCount = builtins.length eval.config.home.packages;".to_string(),
         "  vanillaMarsPackage = builtins.any (pkg: (pkg.meta.mainProgram or \"\") == \"mars\") eval.config.home.packages;".to_string(),
         "  ghostty = { present = builtins.hasAttr ghosttyKey entries; name = ghosttyEntry.name or \"\"; exec = ghosttyEntry.exec or \"\"; terminal = ghosttyEntry.terminal or false; };".to_string(),
         "  foot = { present = builtins.hasAttr footKey entries; name = footEntry.name or \"\"; exec = footEntry.exec or \"\"; terminal = footEntry.terminal or false; };".to_string(),
-        "  yzxterm = { present = builtins.hasAttr yzxtermKey entries; name = yzxtermEntry.name or \"\"; exec = yzxtermEntry.exec or \"\"; terminal = yzxtermEntry.terminal or false; };".to_string(),
+        "  mars = { present = builtins.hasAttr marsKey entries; name = marsEntry.name or \"\"; exec = marsEntry.exec or \"\"; terminal = marsEntry.terminal or false; };".to_string(),
         "  rio = { present = builtins.hasAttr rioKey entries; name = rioEntry.name or \"\"; exec = rioEntry.exec or \"\"; terminal = rioEntry.terminal or false; };".to_string(),
         "  wezterm = { present = builtins.hasAttr weztermKey entries; name = weztermEntry.name or \"\"; exec = weztermEntry.exec or \"\"; terminal = weztermEntry.terminal or false; };".to_string(),
         "}".to_string(),

@@ -163,7 +163,7 @@ pub fn evaluate_doctor_runtime_report(
         &request.runtime_dir,
     ));
     shared_runtime_preflight.extend(build_shell_initializer_findings(&request.yazelix_state_dir));
-    shared_runtime_preflight.extend(build_yzxterm_launch_log_findings(
+    shared_runtime_preflight.extend(build_mars_launch_log_findings(
         &request.yazelix_state_dir,
         &request.runtime_dir,
     ));
@@ -498,7 +498,7 @@ impl LaunchLogStatus {
     }
 }
 
-fn yzxterm_launch_log_dir(state_dir: &Path) -> PathBuf {
+fn mars_launch_log_dir(state_dir: &Path) -> PathBuf {
     state_dir.join("logs").join("terminal_launch")
 }
 
@@ -506,13 +506,13 @@ fn runtime_variant_path(runtime_dir: &Path) -> PathBuf {
     runtime_dir.join("runtime_variant")
 }
 
-fn runtime_variant_is_yzxterm(runtime_dir: &Path) -> bool {
+fn runtime_variant_is_mars(runtime_dir: &Path) -> bool {
     fs::read_to_string(runtime_variant_path(runtime_dir))
-        .map(|raw| raw.trim() == "yzxterm")
+        .map(|raw| raw.trim() == "mars")
         .unwrap_or(false)
 }
 
-fn is_yzxterm_launch_log(path: &Path) -> bool {
+fn is_mars_launch_log(path: &Path) -> bool {
     path.file_name()
         .and_then(|name| name.to_str())
         .is_some_and(|name| name.starts_with("yazelix_terminal_desktop_") && name.ends_with(".log"))
@@ -550,15 +550,15 @@ fn classify_launch_log(path: &Path) -> LaunchLogStatus {
     LaunchLogStatus::MetadataOnly
 }
 
-fn collect_yzxterm_launch_logs(state_dir: &Path) -> Vec<LaunchLogSummary> {
-    let log_dir = yzxterm_launch_log_dir(state_dir);
+fn collect_mars_launch_logs(state_dir: &Path) -> Vec<LaunchLogSummary> {
+    let log_dir = mars_launch_log_dir(state_dir);
     let mut logs = fs::read_dir(log_dir)
         .ok()
         .into_iter()
         .flatten()
         .flatten()
         .map(|entry| entry.path())
-        .filter(|path| path.is_file() && is_yzxterm_launch_log(path))
+        .filter(|path| path.is_file() && is_mars_launch_log(path))
         .map(|path| LaunchLogSummary {
             modified_seconds: launch_log_modified_seconds(&path),
             status: classify_launch_log(&path),
@@ -589,28 +589,28 @@ fn render_launch_log_summaries(logs: &[LaunchLogSummary]) -> String {
         .join("\n")
 }
 
-fn build_yzxterm_launch_log_findings(
+fn build_mars_launch_log_findings(
     state_dir: &Path,
     runtime_dir: &Path,
 ) -> Vec<DoctorRuntimeDoctorFinding> {
-    let log_dir = yzxterm_launch_log_dir(state_dir);
-    let logs = collect_yzxterm_launch_logs(state_dir);
+    let log_dir = mars_launch_log_dir(state_dir);
+    let logs = collect_mars_launch_logs(state_dir);
     if logs.is_empty() {
-        if !runtime_variant_is_yzxterm(runtime_dir) {
+        if !runtime_variant_is_mars(runtime_dir) {
             return Vec::new();
         }
 
         return vec![
             DoctorRuntimeDoctorFinding::new(
                 "info",
-                "Yazelix Terminal desktop launch logs have not been captured yet",
+                "Mars Terminal desktop launch logs have not been captured yet",
             )
             .with_details(format!(
-                "Expected yzxterm desktop launch logs under {} after launching the yzxterm runtime from a desktop entry.",
+                "Expected mars desktop launch logs under {} after launching the mars runtime from a desktop entry.",
                 log_dir.display()
             ))
-            .with_capability_mode("no_yzxterm_launch_logs")
-            .with_runtime_contract_check("yzxterm_launch_logs")
+            .with_capability_mode("no_mars_launch_logs")
+            .with_runtime_contract_check("mars_launch_logs")
             .with_owner_surface("terminal_launch_logs"),
         ];
     }
@@ -623,11 +623,11 @@ fn build_yzxterm_launch_log_findings(
         return vec![
             DoctorRuntimeDoctorFinding::new(
                 "ok",
-                "Yazelix Terminal desktop launch lifetime evidence is available",
+                "Mars Terminal desktop launch lifetime evidence is available",
             )
             .with_details(details)
-            .with_capability_mode("yzxterm_launch_lifetime_captured")
-            .with_runtime_contract_check("yzxterm_launch_logs")
+            .with_capability_mode("mars_launch_lifetime_captured")
+            .with_runtime_contract_check("mars_launch_logs")
             .with_owner_surface("terminal_launch_logs"),
         ];
     }
@@ -639,11 +639,11 @@ fn build_yzxterm_launch_log_findings(
         return vec![
             DoctorRuntimeDoctorFinding::new(
                 "ok",
-                "Yazelix Terminal desktop launch lifetime watcher is active",
+                "Mars Terminal desktop launch lifetime watcher is active",
             )
             .with_details(details)
-            .with_capability_mode("yzxterm_launch_lifetime_watching")
-            .with_runtime_contract_check("yzxterm_launch_logs")
+            .with_capability_mode("mars_launch_lifetime_watching")
+            .with_runtime_contract_check("mars_launch_logs")
             .with_owner_surface("terminal_launch_logs"),
         ];
     }
@@ -655,13 +655,13 @@ fn build_yzxterm_launch_log_findings(
         return vec![
             DoctorRuntimeDoctorFinding::new(
                 "warning",
-                "Yazelix Terminal desktop launch logs lack lifetime evidence",
+                "Mars Terminal desktop launch logs lack lifetime evidence",
             )
             .with_details(format!(
-                "{details}\nRelaunch yzxterm from the desktop entry to start the lifetime watcher; metadata-only logs cannot prove final exit status or signal."
+                "{details}\nRelaunch mars from the desktop entry to start the lifetime watcher; metadata-only logs cannot prove final exit status or signal."
             ))
-            .with_capability_mode("yzxterm_launch_logs_metadata_only")
-            .with_runtime_contract_check("yzxterm_launch_logs")
+            .with_capability_mode("mars_launch_logs_metadata_only")
+            .with_runtime_contract_check("mars_launch_logs")
             .with_owner_surface("terminal_launch_logs"),
         ];
     }
@@ -669,13 +669,13 @@ fn build_yzxterm_launch_log_findings(
     vec![
         DoctorRuntimeDoctorFinding::new(
             "warning",
-            "Yazelix Terminal desktop launch logs are stale or missing metadata",
+            "Mars Terminal desktop launch logs are stale or missing metadata",
         )
         .with_details(format!(
-            "{details}\nRelaunch yzxterm from the desktop entry to capture argv, config environment, terminal PID, and early exit status."
+            "{details}\nRelaunch mars from the desktop entry to capture argv, config environment, terminal PID, and early exit status."
         ))
-        .with_capability_mode("yzxterm_launch_logs_legacy")
-        .with_runtime_contract_check("yzxterm_launch_logs")
+        .with_capability_mode("mars_launch_logs_legacy")
+        .with_runtime_contract_check("mars_launch_logs")
         .with_owner_surface("terminal_launch_logs"),
     ]
 }
@@ -868,9 +868,9 @@ fn build_runtime_graphics_findings(
 fn build_host_rio_env_isolation_finding() -> Option<DoctorRuntimeDoctorFinding> {
     build_host_rio_env_isolation_finding_from_values(
         env::var_os("RIO_CONFIG_HOME"),
-        env::var_os("YAZELIX_TERMINAL_CONFIG"),
-        env::var_os("YAZELIX_TERMINAL_LD_LIBRARY_PATH_PREFIX"),
-        env::var_os("YAZELIX_TERMINAL_HOST_LD_LIBRARY_PATH"),
+        env::var_os("MARS_CONFIG"),
+        env::var_os("MARS_LD_LIBRARY_PATH_PREFIX"),
+        env::var_os("MARS_HOST_LD_LIBRARY_PATH"),
     )
 }
 
@@ -884,18 +884,15 @@ fn build_host_rio_env_isolation_finding_from_values(
 
     if let Some(value) = rio_config_home {
         let value = value.to_string_lossy();
-        if value.contains("terminal_emulators/yzxterm") || yazelix_terminal_config.is_some() {
+        if value.contains("terminal_emulators/mars") || yazelix_terminal_config.is_some() {
             details.push(format!("RIO_CONFIG_HOME={value}"));
         }
     }
     if let Some(value) = yazelix_terminal_config {
-        details.push(format!(
-            "YAZELIX_TERMINAL_CONFIG={}",
-            value.to_string_lossy()
-        ));
+        details.push(format!("MARS_CONFIG={}", value.to_string_lossy()));
     }
     if loader_prefix.is_some() || host_loader_snapshot.is_some() {
-        details.push("Yazelix Terminal package loader environment is present in the shell.".into());
+        details.push("Mars Terminal package loader environment is present in the shell.".into());
     }
 
     if details.is_empty() {
@@ -905,7 +902,7 @@ fn build_host_rio_env_isolation_finding_from_values(
     Some(
         DoctorRuntimeDoctorFinding::new(
             "warning",
-            "Host Rio environment may be contaminated by Yazelix Terminal launch state",
+            "Host Rio environment may be contaminated by Mars Terminal launch state",
         )
         .with_details(details.join("\n"))
         .with_capability_mode("host_rio_env_contamination")
@@ -937,7 +934,7 @@ fn selected_terminal(terminals: &[String]) -> String {
 }
 
 fn terminal_uses_yazelix_kitty_bridge(terminal: &str) -> bool {
-    matches!(terminal, "ghostty" | "kitty" | "rio" | "yzxterm" | "ratty")
+    matches!(terminal, "ghostty" | "kitty" | "rio" | "mars" | "ratty")
 }
 
 fn host_runtime_yazi_available(runtime_dir: &Path, command_search_paths: &[PathBuf]) -> bool {
@@ -1159,9 +1156,9 @@ mod tests {
         assert!(details.contains("yzx_control generate_shell_initializers"));
     }
 
-    // Defends: doctor can point users at concrete yzxterm desktop lifetime evidence after a window disappears.
+    // Defends: doctor can point users at concrete mars desktop lifetime evidence after a window disappears.
     #[test]
-    fn yzxterm_launch_log_finding_reports_lifetime_logs() {
+    fn mars_launch_log_finding_reports_lifetime_logs() {
         let tmp = TempDir::new().unwrap();
         let state = tmp.path().join("state");
         let runtime = tmp.path().join("runtime");
@@ -1176,17 +1173,17 @@ mod tests {
         )
         .unwrap();
 
-        let findings = build_yzxterm_launch_log_findings(&state, &runtime);
+        let findings = build_mars_launch_log_findings(&state, &runtime);
 
         assert_eq!(findings.len(), 1);
         assert_eq!(findings[0].status, "ok");
         assert_eq!(
             findings[0].runtime_contract_check.as_deref(),
-            Some("yzxterm_launch_logs")
+            Some("mars_launch_logs")
         );
         assert_eq!(
             findings[0].capability_mode.as_deref(),
-            Some("yzxterm_launch_lifetime_captured")
+            Some("mars_launch_lifetime_captured")
         );
         assert!(
             findings[0]
@@ -1197,9 +1194,9 @@ mod tests {
         );
     }
 
-    // Regression: old short-probe metadata is not enough to diagnose a vanished yzxterm window.
+    // Regression: old short-probe metadata is not enough to diagnose a vanished mars window.
     #[test]
-    fn yzxterm_launch_log_finding_warns_on_metadata_only_logs() {
+    fn mars_launch_log_finding_warns_on_metadata_only_logs() {
         let tmp = TempDir::new().unwrap();
         let state = tmp.path().join("state");
         let runtime = tmp.path().join("runtime");
@@ -1214,39 +1211,39 @@ mod tests {
         )
         .unwrap();
 
-        let findings = build_yzxterm_launch_log_findings(&state, &runtime);
+        let findings = build_mars_launch_log_findings(&state, &runtime);
 
         assert_eq!(findings.len(), 1);
         assert_eq!(findings[0].status, "warning");
         assert_eq!(
             findings[0].capability_mode.as_deref(),
-            Some("yzxterm_launch_logs_metadata_only")
+            Some("mars_launch_logs_metadata_only")
         );
         let details = findings[0].details.as_deref().unwrap_or_default();
         assert!(details.contains("evidence=metadata_only"));
         assert!(details.contains("cannot prove final exit status or signal"));
     }
 
-    // Defends: non-yzxterm runtimes do not receive irrelevant missing-log doctor findings.
+    // Defends: non-mars runtimes do not receive irrelevant missing-log doctor findings.
     #[test]
-    fn yzxterm_launch_log_finding_is_scoped_to_yzxterm_runtime() {
+    fn mars_launch_log_finding_is_scoped_to_mars_runtime() {
         let tmp = TempDir::new().unwrap();
         let state = tmp.path().join("state");
         let runtime = tmp.path().join("runtime");
         std::fs::create_dir_all(&runtime).unwrap();
         std::fs::write(runtime.join("runtime_variant"), "ghostty\n").unwrap();
 
-        let findings = build_yzxterm_launch_log_findings(&state, &runtime);
+        let findings = build_mars_launch_log_findings(&state, &runtime);
 
         assert!(findings.is_empty());
     }
 
-    // Defends: doctor reports when a Yazelix shell would make plain host Rio read the generated yzxterm config.
+    // Defends: doctor reports when a Yazelix shell would make plain host Rio read the generated mars config.
     #[test]
-    fn host_rio_env_isolation_reports_yzxterm_contamination() {
+    fn host_rio_env_isolation_reports_mars_contamination() {
         let finding = build_host_rio_env_isolation_finding_from_values(
-            Some("/home/user/.local/share/yazelix/configs/terminal_emulators/yzxterm".into()),
-            Some("/home/user/.local/share/yazelix/configs/terminal_emulators/yzxterm".into()),
+            Some("/home/user/.local/share/yazelix/configs/terminal_emulators/mars".into()),
+            Some("/home/user/.local/share/yazelix/configs/terminal_emulators/mars".into()),
             None,
             None,
         )
@@ -1262,7 +1259,7 @@ mod tests {
                 .details
                 .as_deref()
                 .unwrap()
-                .contains("terminal_emulators/yzxterm")
+                .contains("terminal_emulators/mars")
         );
     }
 

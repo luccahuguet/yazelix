@@ -36,7 +36,7 @@ const DESKTOP_LAUNCH_CLEARED_ENV_KEYS: &[&str] = &[
     "YAZELIX_CURSOR_PRIMARY_COLOR",
     "YAZELIX_CURSOR_SECONDARY_COLOR",
     "YAZELIX_NU_BIN",
-    "YAZELIX_TERMINAL",
+    "MARS",
     "YAZELIX_ZELLIJ_SESSION_NAME",
     "YAZI_ID",
     "ZELLIJ",
@@ -725,14 +725,14 @@ mod tests {
 
     // Regression: Mars desktop entries need terminal-specific startup class names so desktop switchers do not merge them with Ghostty windows.
     #[test]
-    fn render_desktop_entry_uses_terminal_specific_startup_class_for_yzxterm() {
+    fn render_desktop_entry_uses_terminal_specific_startup_class_for_mars() {
         let ghostty_entry = render_desktop_entry(Path::new("/tmp/yzx"), "ghostty");
         assert!(ghostty_entry.contains("Name=New Yazelix - Ghostty"));
         assert!(ghostty_entry.contains("StartupWMClass=com.yazelix.Yazelix"));
 
-        let yzxterm_entry = render_desktop_entry(Path::new("/tmp/yzx"), "yzxterm");
-        assert!(yzxterm_entry.contains("Name=New Yazelix - Mars"));
-        assert!(yzxterm_entry.contains("StartupWMClass=com.yazelix.Yazelix.Mars"));
+        let mars_entry = render_desktop_entry(Path::new("/tmp/yzx"), "mars");
+        assert!(mars_entry.contains("Name=New Yazelix - Mars"));
+        assert!(mars_entry.contains("StartupWMClass=com.yazelix.Yazelix.Mars"));
     }
 
     #[cfg(unix)]

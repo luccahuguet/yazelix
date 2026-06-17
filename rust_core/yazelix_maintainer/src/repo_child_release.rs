@@ -74,7 +74,7 @@ const CURSOR_PACKAGE_METADATA_FIELDS: &[&str] = &[
 
 const CURSOR_PACKAGE_REQUIRED_TARGETS: &[&str] = &[
     "ghostty",
-    "yzxterm",
+    "mars",
     "rio",
     "ratty",
     "protocol_cursor_positions",

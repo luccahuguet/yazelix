@@ -34,11 +34,10 @@ const RIO_FONT_ROOT: &str = "share/yazelix/rio_fonts";
 const RIO_FIRA_CODE_FONT_DIR: &str = "fira_code_nerd";
 const RIO_SYMBOLS_FONT_DIR: &str = "symbols_nerd";
 const RIO_EMOJI_FONT_DIR: &str = "noto_color_emoji";
-pub(crate) const YZXTERM_EMOJI_FONT_ENV: &str = "YAZELIX_TERMINAL_EMOJI_FONT";
-pub(crate) const YZXTERM_EMOJI_FONT_SOURCE_ENV: &str = "YAZELIX_TERMINAL_EMOJI_FONT_SOURCE";
-pub(crate) const YZXTERM_EMOJI_ENV_KEYS: [&str; 2] =
-    [YZXTERM_EMOJI_FONT_ENV, YZXTERM_EMOJI_FONT_SOURCE_ENV];
-const YZXTERM_EMOJI_FONT_SOURCE_HOME_MANAGER: &str = "home-manager";
+pub(crate) const MARS_EMOJI_FONT_ENV: &str = "MARS_EMOJI_FONT";
+pub(crate) const MARS_EMOJI_FONT_SOURCE_ENV: &str = "MARS_EMOJI_FONT_SOURCE";
+pub(crate) const MARS_EMOJI_ENV_KEYS: [&str; 2] = [MARS_EMOJI_FONT_ENV, MARS_EMOJI_FONT_SOURCE_ENV];
+const MARS_EMOJI_FONT_SOURCE_HOME_MANAGER: &str = "home-manager";
 const TERMINAL_DARK_COLOR_PALETTE: &[(&str, &str)] = &[
     ("background", ABERNATHY_BACKGROUND),
     ("foreground", ABERNATHY_FOREGROUND),
@@ -119,19 +118,19 @@ pub struct TerminalMaterializationRequest {
     pub runtime_dir: PathBuf,
     pub state_dir: PathBuf,
     pub terminals: Vec<String>,
-    pub yzxterm_profile: YzxtermProfile,
-    pub yzxterm_emoji_font: Option<YzxtermEmojiFont>,
+    pub mars_profile: MarsProfile,
+    pub mars_emoji_font: Option<MarsEmojiFont>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum YzxtermProfile {
+pub enum MarsProfile {
     Full,
     Baseline,
     Shaders,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum YzxtermEmojiFont {
+pub enum MarsEmojiFont {
     Noto,
     Twitter,
     SerenityOs,
@@ -547,78 +546,78 @@ fn rio_font_dir(runtime_dir: &Path, font_dir: &str) -> PathBuf {
     runtime_dir.join(RIO_FONT_ROOT).join(font_dir)
 }
 
-pub fn yzxterm_profile_from_env() -> Result<YzxtermProfile, CoreError> {
-    let raw = std::env::var("YAZELIX_TERMINAL_PROFILE")
+pub fn mars_profile_from_env() -> Result<MarsProfile, CoreError> {
+    let raw = std::env::var("MARS_PROFILE")
         .ok()
         .filter(|value| !value.trim().is_empty())
         .or_else(|| {
-            std::env::var("YAZELIX_TERMINAL_EFFECTS")
+            std::env::var("MARS_EFFECTS")
                 .ok()
                 .filter(|value| !value.trim().is_empty())
         })
         .unwrap_or_else(|| "full".to_string());
-    parse_yzxterm_profile(&raw)
+    parse_mars_profile(&raw)
 }
 
-pub fn yzxterm_emoji_font_override_from_env() -> Result<Option<YzxtermEmojiFont>, CoreError> {
-    let Some(source) = std::env::var(YZXTERM_EMOJI_FONT_SOURCE_ENV)
+pub fn mars_emoji_font_override_from_env() -> Result<Option<MarsEmojiFont>, CoreError> {
+    let Some(source) = std::env::var(MARS_EMOJI_FONT_SOURCE_ENV)
         .ok()
         .filter(|value| !value.trim().is_empty())
     else {
         return Ok(None);
     };
 
-    if source.trim() != YZXTERM_EMOJI_FONT_SOURCE_HOME_MANAGER {
+    if source.trim() != MARS_EMOJI_FONT_SOURCE_HOME_MANAGER {
         return Err(CoreError::usage(format!(
-            "Unsupported {YZXTERM_EMOJI_FONT_SOURCE_ENV}: {source}. Use {YZXTERM_EMOJI_FONT_SOURCE_HOME_MANAGER}."
+            "Unsupported {MARS_EMOJI_FONT_SOURCE_ENV}: {source}. Use {MARS_EMOJI_FONT_SOURCE_HOME_MANAGER}."
         )));
     }
 
-    let Some(raw) = std::env::var(YZXTERM_EMOJI_FONT_ENV)
+    let Some(raw) = std::env::var(MARS_EMOJI_FONT_ENV)
         .ok()
         .filter(|value| !value.trim().is_empty())
     else {
         return Err(CoreError::usage(format!(
-            "{YZXTERM_EMOJI_FONT_SOURCE_ENV}={YZXTERM_EMOJI_FONT_SOURCE_HOME_MANAGER} requires {YZXTERM_EMOJI_FONT_ENV}."
+            "{MARS_EMOJI_FONT_SOURCE_ENV}={MARS_EMOJI_FONT_SOURCE_HOME_MANAGER} requires {MARS_EMOJI_FONT_ENV}."
         )));
     };
-    parse_yzxterm_emoji_font(&raw).map(Some)
+    parse_mars_emoji_font(&raw).map(Some)
 }
 
-fn parse_yzxterm_profile(raw: &str) -> Result<YzxtermProfile, CoreError> {
+fn parse_mars_profile(raw: &str) -> Result<MarsProfile, CoreError> {
     match raw.trim() {
         "" | "full" | "Full" | "FULL" | "effects" | "Effects" | "EFFECTS" | "default"
-        | "Default" | "DEFAULT" => Ok(YzxtermProfile::Full),
+        | "Default" | "DEFAULT" => Ok(MarsProfile::Full),
         "baseline" | "Baseline" | "BASELINE" | "no-effects" | "no_effects" | "none" | "None"
-        | "NONE" | "0" => Ok(YzxtermProfile::Baseline),
+        | "NONE" | "0" => Ok(MarsProfile::Baseline),
         "shader" | "Shader" | "SHADER" | "shaders" | "Shaders" | "SHADERS" | "cursor-shaders"
-        | "cursor_shaders" | "ghostty-shaders" | "ghostty_shaders" => Ok(YzxtermProfile::Shaders),
+        | "cursor_shaders" | "ghostty-shaders" | "ghostty_shaders" => Ok(MarsProfile::Shaders),
         other => Err(CoreError::usage(format!(
-            "Unsupported YAZELIX_TERMINAL_PROFILE/YAZELIX_TERMINAL_EFFECTS: {other}. Use full, default, baseline, no-effects, shaders, none, or 0."
+            "Unsupported MARS_PROFILE/MARS_EFFECTS: {other}. Use full, default, baseline, no-effects, shaders, none, or 0."
         ))),
     }
 }
 
-fn parse_yzxterm_emoji_font(raw: &str) -> Result<YzxtermEmojiFont, CoreError> {
+fn parse_mars_emoji_font(raw: &str) -> Result<MarsEmojiFont, CoreError> {
     match raw.trim() {
         "" | "noto" | "Noto" | "NOTO" | "default" | "Default" | "DEFAULT" => {
-            Ok(YzxtermEmojiFont::Noto)
+            Ok(MarsEmojiFont::Noto)
         }
         "twitter" | "Twitter" | "TWITTER" | "twemoji" | "Twemoji" | "TWEMOJI" => {
-            Ok(YzxtermEmojiFont::Twitter)
+            Ok(MarsEmojiFont::Twitter)
         }
         "serenityos" | "SerenityOS" | "SERENITYOS" | "serenity" | "Serenity" | "SERENITY"
-        | "serenity-os" | "Serenity-OS" | "SERENITY-OS" => Ok(YzxtermEmojiFont::SerenityOs),
+        | "serenity-os" | "Serenity-OS" | "SERENITY-OS" => Ok(MarsEmojiFont::SerenityOs),
         other => Err(CoreError::usage(format!(
-            "Unsupported {YZXTERM_EMOJI_FONT_ENV}: {other}. Use noto, twitter, or serenityos."
+            "Unsupported {MARS_EMOJI_FONT_ENV}: {other}. Use noto, twitter, or serenityos."
         ))),
     }
 }
 
-fn yzxterm_emoji_font_from_config(
+fn mars_emoji_font_from_config(
     config: &serde_json::Map<String, serde_json::Value>,
-    env_override: Option<YzxtermEmojiFont>,
-) -> Result<YzxtermEmojiFont, CoreError> {
+    env_override: Option<MarsEmojiFont>,
+) -> Result<MarsEmojiFont, CoreError> {
     if let Some(emoji_font) = env_override {
         return Ok(emoji_font);
     }
@@ -626,13 +625,13 @@ fn yzxterm_emoji_font_from_config(
         .get("terminal_emoji_style")
         .and_then(serde_json::Value::as_str)
         .unwrap_or("noto");
-    parse_yzxterm_emoji_font(raw)
+    parse_mars_emoji_font(raw)
 }
 
-fn yzxterm_package_config_path(
+fn mars_package_config_path(
     runtime_dir: &Path,
-    profile: YzxtermProfile,
-    emoji_font: YzxtermEmojiFont,
+    profile: MarsProfile,
+    emoji_font: MarsEmojiFont,
 ) -> Result<PathBuf, CoreError> {
     let metadata_path = runtime_dir
         .join("share")
@@ -660,14 +659,14 @@ fn yzxterm_package_config_path(
         )
     })?;
     let emoji_key = match emoji_font {
-        YzxtermEmojiFont::Noto => "noto",
-        YzxtermEmojiFont::Twitter => "twitter",
-        YzxtermEmojiFont::SerenityOs => "serenityos",
+        MarsEmojiFont::Noto => "noto",
+        MarsEmojiFont::Twitter => "twitter",
+        MarsEmojiFont::SerenityOs => "serenityos",
     };
     let profile_key = match profile {
-        YzxtermProfile::Full => "full",
-        YzxtermProfile::Baseline => "baseline",
-        YzxtermProfile::Shaders => "shaders",
+        MarsProfile::Full => "full",
+        MarsProfile::Baseline => "baseline",
+        MarsProfile::Shaders => "shaders",
     };
     let config_root = metadata
         .get("emoji_fonts")
@@ -721,7 +720,7 @@ fn shader_paths_to_toml(shader_paths: &[String]) -> toml::Value {
     )
 }
 
-fn yzxterm_config_table_mut<'a>(
+fn mars_config_table_mut<'a>(
     table: &'a mut toml::Table,
     section: &'static str,
     error_code: &'static str,
@@ -789,10 +788,10 @@ fn remove_path_if_exists(path: &Path, operation: &'static str) -> Result<(), Cor
     }
 }
 
-fn patch_yzxterm_theme_cursor(theme_path: &Path, color_hex: &str) -> Result<(), CoreError> {
+fn patch_mars_theme_cursor(theme_path: &Path, color_hex: &str) -> Result<(), CoreError> {
     let raw = fs::read_to_string(theme_path).map_err(|source| {
         CoreError::io(
-            "read_yzxterm_theme",
+            "read_mars_theme",
             "Could not read a copied Mars theme",
             "Reinstall the Yazelix runtime so the Mars child themes are present.",
             theme_path.to_string_lossy(),
@@ -802,7 +801,7 @@ fn patch_yzxterm_theme_cursor(theme_path: &Path, color_hex: &str) -> Result<(), 
     let mut table = toml::from_str::<toml::Table>(&raw).map_err(|source| {
         CoreError::classified(
             crate::bridge::ErrorClass::Runtime,
-            "parse_yzxterm_theme",
+            "parse_mars_theme",
             format!(
                 "The packaged Mars theme at {} is not valid TOML.",
                 theme_path.display()
@@ -817,7 +816,7 @@ fn patch_yzxterm_theme_cursor(theme_path: &Path, color_hex: &str) -> Result<(), 
         .ok_or_else(|| {
             CoreError::classified(
                 crate::bridge::ErrorClass::Runtime,
-                "invalid_yzxterm_theme_colors",
+                "invalid_mars_theme_colors",
                 format!(
                     "The packaged Mars theme at {} is missing a [colors] table or has a non-table [colors] value.",
                     theme_path.display()
@@ -833,7 +832,7 @@ fn patch_yzxterm_theme_cursor(theme_path: &Path, color_hex: &str) -> Result<(), 
     let rendered = toml::to_string_pretty(&toml::Value::Table(table)).map_err(|source| {
         CoreError::classified(
             crate::bridge::ErrorClass::Internal,
-            "render_yzxterm_theme",
+            "render_mars_theme",
             "Could not render a generated Mars theme.",
             "Report this Yazelix bug with the current settings.jsonc.",
             serde_json::json!({ "error": source.to_string() }),
@@ -842,7 +841,7 @@ fn patch_yzxterm_theme_cursor(theme_path: &Path, color_hex: &str) -> Result<(), 
     write_text_atomic(theme_path, &rendered)
 }
 
-fn copy_yzxterm_themes(
+fn copy_mars_themes(
     package_config: &Path,
     generated_config_dir: &Path,
     cursor_color_hex: Option<&str>,
@@ -850,7 +849,7 @@ fn copy_yzxterm_themes(
     let package_root = package_config.parent().ok_or_else(|| {
         CoreError::classified(
             crate::bridge::ErrorClass::Runtime,
-            "invalid_yzxterm_package_config_path",
+            "invalid_mars_package_config_path",
             format!(
                 "Packaged Mars config path has no parent directory: {}.",
                 package_config.display()
@@ -863,7 +862,7 @@ fn copy_yzxterm_themes(
     if !source.is_dir() {
         return Err(CoreError::classified(
             crate::bridge::ErrorClass::Runtime,
-            "missing_yzxterm_themes",
+            "missing_mars_themes",
             format!(
                 "The packaged Mars config at {} does not have a sibling themes directory.",
                 package_config.display()
@@ -874,10 +873,10 @@ fn copy_yzxterm_themes(
     }
 
     let destination = generated_config_dir.join("themes");
-    remove_path_if_exists(&destination, "remove_yzxterm_themes")?;
+    remove_path_if_exists(&destination, "remove_mars_themes")?;
     copy_dir_all(&source, &destination).map_err(|source_error| {
         CoreError::io(
-            "copy_yzxterm_themes",
+            "copy_mars_themes",
             "Could not copy packaged Mars themes into the generated config root",
             "Check permissions for the generated Yazelix state directory, then rerun `yzx refresh`.",
             destination.to_string_lossy(),
@@ -887,14 +886,14 @@ fn copy_yzxterm_themes(
 
     if let Some(color_hex) = cursor_color_hex {
         for theme in ["yazelix-dark.toml", "yazelix-light.toml"] {
-            patch_yzxterm_theme_cursor(&destination.join(theme), color_hex)?;
+            patch_mars_theme_cursor(&destination.join(theme), color_hex)?;
         }
     }
 
     Ok(())
 }
 
-fn apply_yzxterm_appearance(
+fn apply_mars_appearance(
     table: &mut toml::Table,
     package_config: &Path,
     appearance_mode: &str,
@@ -906,7 +905,7 @@ fn apply_yzxterm_appearance(
     ) {
         return Err(CoreError::classified(
             crate::bridge::ErrorClass::Runtime,
-            "missing_yzxterm_adaptive_theme",
+            "missing_mars_adaptive_theme",
             format!(
                 "The packaged Mars config at {} does not declare adaptive-theme dark/light themes.",
                 package_config.display()
@@ -931,20 +930,20 @@ fn apply_yzxterm_appearance(
     Ok(())
 }
 
-fn generate_yzxterm_config(
+fn generate_mars_config(
     runtime_dir: &Path,
     transparency: &str,
     cursor_state: Option<&TerminalCursorState>,
     shader_paths: &[String],
-    profile: YzxtermProfile,
-    emoji_font: YzxtermEmojiFont,
+    profile: MarsProfile,
+    emoji_font: MarsEmojiFont,
     appearance_mode: &str,
     generated_config_dir: &Path,
 ) -> Result<String, CoreError> {
-    let package_config = yzxterm_package_config_path(runtime_dir, profile, emoji_font)?;
+    let package_config = mars_package_config_path(runtime_dir, profile, emoji_font)?;
     let raw = fs::read_to_string(&package_config).map_err(|source| {
         CoreError::io(
-            "read_yzxterm_package_config",
+            "read_mars_package_config",
             "Could not read the packaged Mars config",
             "Reinstall the Yazelix runtime so the Mars child package is present.",
             package_config.to_string_lossy(),
@@ -954,7 +953,7 @@ fn generate_yzxterm_config(
     let mut table = toml::from_str::<toml::Table>(&raw).map_err(|source| {
         CoreError::classified(
             crate::bridge::ErrorClass::Runtime,
-            "parse_yzxterm_package_config",
+            "parse_mars_package_config",
             format!(
                 "The packaged Mars config at {} is not valid TOML.",
                 package_config.display()
@@ -964,41 +963,41 @@ fn generate_yzxterm_config(
         )
     })?;
     let cursor_color_hex = cursor_state.and_then(|state| state.selected_color_hex.as_deref());
-    copy_yzxterm_themes(&package_config, generated_config_dir, cursor_color_hex)?;
+    copy_mars_themes(&package_config, generated_config_dir, cursor_color_hex)?;
     let opacity = get_opacity_value(transparency)
         .parse::<f64>()
         .map_err(|source| {
             CoreError::classified(
                 crate::bridge::ErrorClass::Internal,
-                "parse_yzxterm_opacity",
+                "parse_mars_opacity",
                 format!("Could not parse Mars opacity for transparency '{transparency}'."),
                 "Report this Yazelix bug with the active settings.jsonc.",
                 serde_json::json!({ "error": source.to_string() }),
             )
         })?;
-    let window = yzxterm_config_table_mut(
+    let window = mars_config_table_mut(
         &mut table,
         "window",
-        "invalid_yzxterm_window_config",
+        "invalid_mars_window_config",
         &package_config,
     )?;
     window.insert("opacity".to_string(), toml::Value::Float(opacity));
     // Keep full-screen TUI cell backgrounds from compounding over the
-    // already-translucent window background. yzxterm's default background
+    // already-translucent window background. mars's default background
     // path carries the configured opacity; explicit cells should stay crisp.
     window.insert("opacity-cells".to_string(), toml::Value::Boolean(false));
 
-    let renderer = yzxterm_config_table_mut(
+    let renderer = mars_config_table_mut(
         &mut table,
         "renderer",
-        "invalid_yzxterm_renderer_config",
+        "invalid_mars_renderer_config",
         &package_config,
     )?;
     match profile {
-        YzxtermProfile::Full | YzxtermProfile::Baseline => {
+        MarsProfile::Full | MarsProfile::Baseline => {
             renderer.remove("custom-shader");
         }
-        YzxtermProfile::Shaders => {
+        MarsProfile::Shaders => {
             if shader_paths.is_empty() {
                 renderer.remove("custom-shader");
             } else {
@@ -1010,12 +1009,12 @@ fn generate_yzxterm_config(
         }
     }
 
-    apply_yzxterm_appearance(&mut table, &package_config, appearance_mode)?;
+    apply_mars_appearance(&mut table, &package_config, appearance_mode)?;
 
     toml::to_string_pretty(&toml::Value::Table(table)).map_err(|source| {
         CoreError::classified(
             crate::bridge::ErrorClass::Internal,
-            "render_yzxterm_config",
+            "render_mars_config",
             "Could not render the generated Mars config.",
             "Report this Yazelix bug with the current settings.jsonc.",
             serde_json::json!({ "error": source.to_string() }),
@@ -1167,7 +1166,7 @@ pub fn generate_terminal_materialization(
         .and_then(|v| v.as_str())
         .unwrap_or("none");
     let appearance_mode = appearance_mode_from_config(config);
-    let yzxterm_emoji_font = yzxterm_emoji_font_from_config(config, request.yzxterm_emoji_font)?;
+    let mars_emoji_font = mars_emoji_font_from_config(config, request.mars_emoji_font)?;
 
     let config_dir = config_dir_from_env()?;
     crate::managed_user_config_stubs::ensure_terminal_override_stubs(
@@ -1251,19 +1250,19 @@ pub fn generate_terminal_materialization(
                     generate_foot_config(transparency, appearance_mode),
                 )?);
             }
-            "yzxterm" => {
-                let yzxterm_dir = generated_dir.join("yzxterm");
-                fs::create_dir_all(&yzxterm_dir).map_err(|source| {
+            "mars" => {
+                let mars_dir = generated_dir.join("mars");
+                fs::create_dir_all(&mars_dir).map_err(|source| {
                     CoreError::io(
-                        "create_yzxterm_dir",
+                        "create_mars_dir",
                         "Could not create Mars output directory",
                         "Check permissions for the Yazelix state directory.",
-                        yzxterm_dir.to_string_lossy(),
+                        mars_dir.to_string_lossy(),
                         source,
                     )
                 })?;
-                let path = yzxterm_dir.join("config.toml");
-                let yzxterm_cursor_data = if cursors_enabled {
+                let path = mars_dir.join("config.toml");
+                let mars_cursor_data = if cursors_enabled {
                     Some(ensure_terminal_cursor_materialization(
                         &mut cursor_data,
                         &cursor_request,
@@ -1271,25 +1270,25 @@ pub fn generate_terminal_materialization(
                 } else {
                     None
                 };
-                let cursor_state = yzxterm_cursor_data.map(|data| &data.cursor_state);
-                let shader_paths = yzxterm_cursor_data
+                let cursor_state = mars_cursor_data.map(|data| &data.cursor_state);
+                let shader_paths = mars_cursor_data
                     .map(|data| data.shader_paths.as_slice())
                     .unwrap_or_default();
                 write_text_atomic(
                     &path,
-                    &generate_yzxterm_config(
+                    &generate_mars_config(
                         &request.runtime_dir,
                         transparency,
                         cursor_state,
                         shader_paths,
-                        request.yzxterm_profile,
-                        yzxterm_emoji_font,
+                        request.mars_profile,
+                        mars_emoji_font,
                         appearance_mode,
-                        &yzxterm_dir,
+                        &mars_dir,
                     )?,
                 )?;
                 generated.push(TerminalGeneratedConfig {
-                    terminal: "yzxterm".to_string(),
+                    terminal: "mars".to_string(),
                     path: path.to_string_lossy().into_owned(),
                 });
             }
@@ -1343,7 +1342,7 @@ mod tests {
 
     fn with_env<T>(values: &[(&str, Option<&str>)], test: impl FnOnce() -> T) -> T {
         let _guard = env_lock().lock().unwrap();
-        let keys = YZXTERM_EMOJI_ENV_KEYS;
+        let keys = MARS_EMOJI_ENV_KEYS;
         let previous = keys
             .iter()
             .map(|key| (*key, std::env::var_os(key)))
@@ -1390,47 +1389,44 @@ mod tests {
 
     // Regression: stale terminal wrapper env from an existing shell/session must not override mutable settings.jsonc.
     #[test]
-    fn yzxterm_emoji_env_without_source_is_not_a_materialization_override() {
-        with_env(&[(YZXTERM_EMOJI_FONT_ENV, Some("twitter"))], || {
-            assert_eq!(yzxterm_emoji_font_override_from_env().unwrap(), None);
+    fn mars_emoji_env_without_source_is_not_a_materialization_override() {
+        with_env(&[(MARS_EMOJI_FONT_ENV, Some("twitter"))], || {
+            assert_eq!(mars_emoji_font_override_from_env().unwrap(), None);
 
             let config = config_with_emoji_style("serenityos");
             assert_eq!(
-                yzxterm_emoji_font_from_config(
-                    &config,
-                    yzxterm_emoji_font_override_from_env().unwrap(),
-                )
-                .unwrap(),
-                YzxtermEmojiFont::SerenityOs,
+                mars_emoji_font_from_config(&config, mars_emoji_font_override_from_env().unwrap(),)
+                    .unwrap(),
+                MarsEmojiFont::SerenityOs,
             );
         });
     }
 
-    // Defends: Home Manager activation and desktop launchers can still pass an explicit active yzxterm emoji preset.
+    // Defends: Home Manager activation and desktop launchers can still pass an explicit active mars emoji preset.
     #[test]
-    fn yzxterm_emoji_home_manager_source_is_a_materialization_override() {
+    fn mars_emoji_home_manager_source_is_a_materialization_override() {
         with_env(
             &[
-                (YZXTERM_EMOJI_FONT_ENV, Some("serenityos")),
+                (MARS_EMOJI_FONT_ENV, Some("serenityos")),
                 (
-                    YZXTERM_EMOJI_FONT_SOURCE_ENV,
-                    Some(YZXTERM_EMOJI_FONT_SOURCE_HOME_MANAGER),
+                    MARS_EMOJI_FONT_SOURCE_ENV,
+                    Some(MARS_EMOJI_FONT_SOURCE_HOME_MANAGER),
                 ),
             ],
             || {
                 assert_eq!(
-                    yzxterm_emoji_font_override_from_env().unwrap(),
-                    Some(YzxtermEmojiFont::SerenityOs),
+                    mars_emoji_font_override_from_env().unwrap(),
+                    Some(MarsEmojiFont::SerenityOs),
                 );
 
                 let config = config_with_emoji_style("twitter");
                 assert_eq!(
-                    yzxterm_emoji_font_from_config(
+                    mars_emoji_font_from_config(
                         &config,
-                        yzxterm_emoji_font_override_from_env().unwrap(),
+                        mars_emoji_font_override_from_env().unwrap(),
                     )
                     .unwrap(),
-                    YzxtermEmojiFont::SerenityOs,
+                    MarsEmojiFont::SerenityOs,
                 );
             },
         );
@@ -1438,13 +1434,13 @@ mod tests {
 
     // Defends: selecting serenityos reads the child-owned emoji/serenityos profile root, not the default Noto root.
     #[test]
-    fn yzxterm_serenityos_config_uses_child_emoji_profile_root() {
+    fn mars_serenityos_config_uses_child_emoji_profile_root() {
         let temp = tempfile::tempdir().unwrap();
         let runtime = temp.path();
         let package_root = runtime.join("share").join("mars");
         write_mars_package_metadata(&package_root);
-        write_yzxterm_profile_config(&package_root.join("config.toml"), "Noto Color Emoji");
-        write_yzxterm_profile_config(
+        write_mars_profile_config(&package_root.join("config.toml"), "Noto Color Emoji");
+        write_mars_profile_config(
             &package_root
                 .join("emoji")
                 .join("serenityos")
@@ -1455,13 +1451,13 @@ mod tests {
         write_theme_files(&package_root.join("emoji").join("serenityos").join("themes"));
 
         let generated_dir = temp.path().join("generated");
-        let rendered = generate_yzxterm_config(
+        let rendered = generate_mars_config(
             runtime,
             "none",
             None,
             &[],
-            YzxtermProfile::Full,
-            YzxtermEmojiFont::SerenityOs,
+            MarsProfile::Full,
+            MarsEmojiFont::SerenityOs,
             APPEARANCE_MODE_DARK,
             &generated_dir,
         )
@@ -1504,7 +1500,7 @@ mod tests {
         .unwrap();
     }
 
-    fn write_yzxterm_profile_config(path: &Path, emoji_family: &str) {
+    fn write_mars_profile_config(path: &Path, emoji_family: &str) {
         fs::create_dir_all(path.parent().unwrap()).unwrap();
         fs::write(
             path,

@@ -710,7 +710,7 @@ mod tests {
     #[test]
     fn non_rio_welcome_messages_keep_rich_copy() {
         let runtime_dir = tempfile::tempdir().unwrap();
-        for terminal in ["ghostty", "wezterm", "yzxterm"] {
+        for terminal in ["ghostty", "wezterm", "mars"] {
             let message = build_welcome_message(
                 runtime_dir.path(),
                 "v-test",

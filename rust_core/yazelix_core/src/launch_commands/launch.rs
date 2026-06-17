@@ -30,7 +30,7 @@ use crate::runtime_materialization::{
     RuntimeMaterializationRepairEvaluateRequest, repair_runtime_materialization,
 };
 use crate::terminal_materialization::{
-    YZXTERM_EMOJI_ENV_KEYS, YZXTERM_EMOJI_FONT_ENV, YZXTERM_EMOJI_FONT_SOURCE_ENV,
+    MARS_EMOJI_ENV_KEYS, MARS_EMOJI_FONT_ENV, MARS_EMOJI_FONT_SOURCE_ENV,
 };
 use crate::terminal_variant::{
     SUPPORTED_TERMINALS, active_terminal_from_runtime_dir, normalize_terminal_id,
@@ -39,7 +39,6 @@ use crate::terminal_variant::{
 use std::fs;
 use std::path::{Path, PathBuf};
 
-const YAZELIX_TERMINAL_CHILD_ENV_SANITIZE: &str = "YAZELIX_TERMINAL_CHILD_ENV_SANITIZE";
 const MARS_CHILD_ENV_SANITIZE: &str = "MARS_CHILD_ENV_SANITIZE";
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -118,13 +117,13 @@ fn run_explicit_terminal_launch(
         "YAZELIX_SKIP_STABLE_WRAPPER_REDIRECT".to_string(),
         Some("1".to_string()),
     ));
-    if requested_terminal != "yzxterm" {
+    if requested_terminal != "mars" {
         extra_env.extend([
-            ("YAZELIX_TERMINAL_APPEARANCE".to_string(), None),
-            (YZXTERM_EMOJI_FONT_ENV.to_string(), None),
-            (YZXTERM_EMOJI_FONT_SOURCE_ENV.to_string(), None),
-            ("YAZELIX_TERMINAL_EFFECTS".to_string(), None),
-            ("YAZELIX_TERMINAL_PROFILE".to_string(), None),
+            ("MARS_APPEARANCE".to_string(), None),
+            (MARS_EMOJI_FONT_ENV.to_string(), None),
+            (MARS_EMOJI_FONT_SOURCE_ENV.to_string(), None),
+            ("MARS_EFFECTS".to_string(), None),
+            ("MARS_PROFILE".to_string(), None),
         ]);
     }
 
@@ -698,17 +697,14 @@ fn launch_candidate_extra_env(
             "YAZELIX_RUNTIME_DIR".to_string(),
             Some(plan.runtime_dir.to_string_lossy().into_owned()),
         ),
+        ("MARS".to_string(), Some(candidate.terminal.clone())),
         (
-            "YAZELIX_TERMINAL".to_string(),
-            Some(candidate.terminal.clone()),
-        ),
-        (
-            "YAZELIX_TERMINAL_WINDOW_TITLE_PREFIX".to_string(),
+            "MARS_WINDOW_TITLE_PREFIX".to_string(),
             Some(terminal_window_title_prefix(&candidate.terminal)),
         ),
     ];
-    if candidate.terminal == "yzxterm" {
-        extra_env.extend(yzxterm_process_boundary_env(config_path)?);
+    if candidate.terminal == "mars" {
+        extra_env.extend(mars_process_boundary_env(config_path)?);
     }
     if candidate.terminal == "rio" {
         extra_env.extend(rio_process_boundary_env(
@@ -727,15 +723,15 @@ fn launch_candidate_extra_env(
     Ok(extra_env)
 }
 
-fn yzxterm_process_boundary_env(
+fn mars_process_boundary_env(
     config_path: &Path,
 ) -> Result<Vec<(String, Option<String>)>, CoreError> {
     let config_dir = config_path.parent().ok_or_else(|| {
         CoreError::classified(
             ErrorClass::Runtime,
-            "invalid_yzxterm_config_path",
+            "invalid_mars_config_path",
             format!(
-                "Generated Yazelix Terminal config path has no parent directory: {}.",
+                "Generated Mars Terminal config path has no parent directory: {}.",
                 config_path.display()
             ),
             "Regenerate Yazelix runtime state with `yzx refresh`, then retry.",
@@ -752,14 +748,11 @@ fn yzxterm_process_boundary_env(
         (MARS_CHILD_ENV_SANITIZE.to_string(), Some("1".to_string())),
         (
             "MARS_APP_ID".to_string(),
-            Some(terminal_startup_wm_class("yzxterm")),
+            Some(terminal_startup_wm_class("mars")),
         ),
-        ("YAZELIX_TERMINAL_CONFIG".to_string(), None),
-        (YAZELIX_TERMINAL_CHILD_ENV_SANITIZE.to_string(), None),
-        ("YAZELIX_TERMINAL_APP_ID".to_string(), None),
     ];
     env.extend(
-        YZXTERM_EMOJI_ENV_KEYS
+        MARS_EMOJI_ENV_KEYS
             .iter()
             .map(|key| ((*key).to_string(), None)),
     );
@@ -995,15 +988,15 @@ mod tests {
             terminal_window_title_prefix("ghostty"),
             "Yazelix - Ghostty - "
         );
-        assert_eq!(terminal_window_title_prefix("yzxterm"), "Yazelix - Mars - ");
+        assert_eq!(terminal_window_title_prefix("mars"), "Yazelix - Mars - ");
     }
 
     // Defends: every documented terminal selector spelling maps to the same packaged-variant field.
     #[test]
     fn parse_launch_args_accepts_terminal_selector_aliases() {
         for flag in ["-t", "--term", "--terminal"] {
-            let parsed = parse_launch_args(&[flag.into(), "yzxterm".into()]).unwrap();
-            assert_eq!(parsed.terminal.as_deref(), Some("yzxterm"));
+            let parsed = parse_launch_args(&[flag.into(), "mars".into()]).unwrap();
+            assert_eq!(parsed.terminal.as_deref(), Some("mars"));
         }
     }
 
@@ -1015,7 +1008,7 @@ mod tests {
         assert_eq!(err.code(), "invalid_arguments");
         assert!(err.message().contains("Unsupported yzx launch terminal"));
         assert!(err.message().contains("ghostty"));
-        assert!(err.message().contains("yzxterm"));
+        assert!(err.message().contains("mars"));
     }
 
     // Defends: cross-variant launch forwards one materialized config override and leaves terminal selection behind to avoid recursion.
@@ -1061,8 +1054,8 @@ mod tests {
         );
         let parsed = parse_packaged_terminal_launcher_exec(
             desktop_path,
-            "yzxterm",
-            r#"env YAZELIX_SKIP_STABLE_WRAPPER_REDIRECT=1 YAZELIX_TERMINAL_APP_ID=com.yazelix.Yazelix.Mars YAZELIX_TERMINAL_APPEARANCE=light YAZELIX_TERMINAL_EMOJI_FONT=serenityos YAZELIX_TERMINAL_EMOJI_FONT_SOURCE=home-manager MARS_APP_ID=com.yazelix.Yazelix.Mars MARS_APPEARANCE=light MARS_EMOJI_FONT=serenityos YAZELIX_TERMINAL_PROFILE=shaders MARS_PROFILE=shaders "/nix/store/with space/bin/yzx" desktop launch"#,
+            "mars",
+            r#"env YAZELIX_SKIP_STABLE_WRAPPER_REDIRECT=1 MARS_APP_ID=com.yazelix.Yazelix.Mars MARS_APPEARANCE=light MARS_EMOJI_FONT=serenityos MARS_EMOJI_FONT_SOURCE=home-manager MARS_PROFILE=shaders "/nix/store/with space/bin/yzx" desktop launch"#,
         )
         .unwrap();
 
@@ -1078,33 +1071,17 @@ mod tests {
                     Some("1".to_string())
                 ),
                 (
-                    "YAZELIX_TERMINAL_APP_ID".to_string(),
-                    Some("com.yazelix.Yazelix.Mars".to_string())
-                ),
-                (
-                    "YAZELIX_TERMINAL_APPEARANCE".to_string(),
-                    Some("light".to_string())
-                ),
-                (
-                    YZXTERM_EMOJI_FONT_ENV.to_string(),
-                    Some("serenityos".to_string())
-                ),
-                (
-                    YZXTERM_EMOJI_FONT_SOURCE_ENV.to_string(),
-                    Some("home-manager".to_string())
-                ),
-                (
                     "MARS_APP_ID".to_string(),
                     Some("com.yazelix.Yazelix.Mars".to_string())
                 ),
                 ("MARS_APPEARANCE".to_string(), Some("light".to_string())),
                 (
-                    "MARS_EMOJI_FONT".to_string(),
+                    MARS_EMOJI_FONT_ENV.to_string(),
                     Some("serenityos".to_string())
                 ),
                 (
-                    "YAZELIX_TERMINAL_PROFILE".to_string(),
-                    Some("shaders".to_string())
+                    MARS_EMOJI_FONT_SOURCE_ENV.to_string(),
+                    Some("home-manager".to_string())
                 ),
                 ("MARS_PROFILE".to_string(), Some("shaders".to_string())),
             ]
@@ -1146,11 +1123,11 @@ mod tests {
         assert_eq!(resolved.desktop_path, desktop_entry);
     }
 
-    // Defends: yzxterm gets Yazelix config only at the terminal process boundary, while ambient host Rio config is cleared.
+    // Defends: mars gets Yazelix config only at the terminal process boundary, while ambient host Rio config is cleared.
     #[test]
-    fn yzxterm_process_boundary_env_clears_host_rio_config_and_sets_app_id() {
-        let env = yzxterm_process_boundary_env(Path::new(
-            "/state/configs/terminal_emulators/yzxterm/config.toml",
+    fn mars_process_boundary_env_clears_host_rio_config_and_sets_app_id() {
+        let env = mars_process_boundary_env(Path::new(
+            "/state/configs/terminal_emulators/mars/config.toml",
         ))
         .unwrap();
 
@@ -1160,23 +1137,20 @@ mod tests {
                 ("RIO_CONFIG_HOME".to_string(), None),
                 (
                     "MARS_CONFIG".to_string(),
-                    Some("/state/configs/terminal_emulators/yzxterm".to_string())
+                    Some("/state/configs/terminal_emulators/mars".to_string())
                 ),
                 (MARS_CHILD_ENV_SANITIZE.to_string(), Some("1".to_string())),
                 (
                     "MARS_APP_ID".to_string(),
                     Some("com.yazelix.Yazelix.Mars".to_string())
                 ),
-                ("YAZELIX_TERMINAL_CONFIG".to_string(), None),
-                (YAZELIX_TERMINAL_CHILD_ENV_SANITIZE.to_string(), None),
-                ("YAZELIX_TERMINAL_APP_ID".to_string(), None),
-                (YZXTERM_EMOJI_FONT_ENV.to_string(), None),
-                (YZXTERM_EMOJI_FONT_SOURCE_ENV.to_string(), None),
+                (MARS_EMOJI_FONT_ENV.to_string(), None),
+                (MARS_EMOJI_FONT_SOURCE_ENV.to_string(), None),
             ]
         );
     }
 
-    // Defends: vanilla Rio uses Rio's supported RIO_CONFIG_HOME lookup instead of ambient host config or yzxterm-only env.
+    // Defends: vanilla Rio uses Rio's supported RIO_CONFIG_HOME lookup instead of ambient host config or mars-only env.
     #[test]
     fn rio_process_boundary_env_points_at_selected_config_dir() {
         let env = rio_process_boundary_env(
@@ -1237,7 +1211,7 @@ mod tests {
         );
     }
 
-    // Defends: vanilla Rio launches through Rio's own CLI shape instead of yzxterm-only flags.
+    // Defends: vanilla Rio launches through Rio's own CLI shape instead of mars-only flags.
     #[test]
     fn rio_launch_argv_uses_selected_config_and_working_dir() {
         let tmp = tempfile::TempDir::new().unwrap();

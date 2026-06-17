@@ -4,7 +4,7 @@ set -eu
 test_id="${YAZELIX_SWEEP_TEST_ID:-unknown}"
 session_name="${ZELLIJ_SESSION_NAME:-unknown}"
 result_file="/tmp/yazelix_sweep_result_${test_id}.json"
-terminal="${YAZELIX_TERMINAL:-unknown}"
+terminal="${MARS:-unknown}"
 
 json_escape() {
     printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'

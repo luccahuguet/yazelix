@@ -722,7 +722,7 @@ fn desktop_entry_exec_matches_expected(exec: Option<&str>, expected: &[String]) 
 }
 
 fn strip_supported_desktop_exec_env(exec: &str) -> &str {
-    let Some(rest) = exec.strip_prefix("env YAZELIX_TERMINAL_PROFILE=") else {
+    let Some(rest) = exec.strip_prefix("env MARS_PROFILE=") else {
         return exec;
     };
     rest.find(char::is_whitespace)
@@ -1166,7 +1166,7 @@ mod tests {
         std::fs::write(
             &desktop,
             format!(
-                "[Desktop Entry]\nName=Yazelix\nTerminal=true\nExec=env YAZELIX_TERMINAL_PROFILE=shaders {exec}\n"
+                "[Desktop Entry]\nName=Yazelix\nTerminal=true\nExec=env MARS_PROFILE=shaders {exec}\n"
             ),
         )
         .unwrap();
@@ -1284,7 +1284,7 @@ mod tests {
         std::fs::write(
             &active_desktop,
             format!(
-                "[Desktop Entry]\nName=New Yazelix - Mars\nTerminal=true\nExec=env YAZELIX_TERMINAL_PROFILE=shaders {} desktop launch\n",
+                "[Desktop Entry]\nName=New Yazelix - Mars\nTerminal=true\nExec=env MARS_PROFILE=shaders {} desktop launch\n",
                 profile_yzx.display()
             ),
         )

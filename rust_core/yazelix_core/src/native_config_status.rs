@@ -552,7 +552,7 @@ pub fn generated_terminal_config_path(state_dir: &Path, terminal: &str) -> PathB
     match terminal {
         "ghostty" => root.join("ghostty").join("config"),
         "wezterm" => root.join("wezterm").join(".wezterm.lua"),
-        "yzxterm" => root.join("yzxterm").join("config.toml"),
+        "mars" => root.join("mars").join("config.toml"),
         "ratty" => root.join("ratty").join("ratty.toml"),
         "kitty" => root.join("kitty").join("kitty.conf"),
         "foot" => root.join("foot").join("foot.ini"),
@@ -588,9 +588,7 @@ pub fn user_terminal_config_candidates(
             home_dir.join(".wezterm.lua"),
             xdg_config_home.join("wezterm").join("wezterm.lua"),
         ]),
-        "yzxterm" => Ok(vec![
-            xdg_config_home.join("yazelix-terminal").join("config.toml"),
-        ]),
+        "mars" => Ok(vec![xdg_config_home.join("mars").join("config.toml")]),
         "ratty" => Ok(vec![xdg_config_home.join("ratty").join("ratty.toml")]),
         "foot" => Ok(vec![xdg_config_home.join("foot").join("foot.ini")]),
         other => Err(format!("Unsupported terminal config lookup: {other}")),
@@ -668,23 +666,23 @@ mod tests {
         );
     }
 
-    // Defends: Yazelix Terminal's native user-mode lookup points at its child-owned config directory.
+    // Defends: Mars Terminal's native user-mode lookup points at its child-owned config directory.
     #[test]
-    fn yzxterm_user_mode_uses_child_native_config_path() {
+    fn mars_user_mode_uses_child_native_config_path() {
         let tmp = TempDir::new().unwrap();
         let mut req = request(&tmp);
         req.terminal_config_mode = "user".to_string();
-        req.active_terminal = "yzxterm".to_string();
+        req.active_terminal = "mars".to_string();
 
         let entries = classify_native_config_statuses(&req);
-        let terminal = find(&entries, "terminal.yzxterm.input");
+        let terminal = find(&entries, "terminal.mars.input");
 
         assert_eq!(terminal.status, "native_required_missing");
         assert!(
             terminal
                 .native_paths
                 .iter()
-                .any(|path| path.ends_with("yazelix-terminal/config.toml"))
+                .any(|path| path.ends_with("mars/config.toml"))
         );
     }
 

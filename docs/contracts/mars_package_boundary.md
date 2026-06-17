@@ -20,14 +20,14 @@ names, or make other terminal variants depend on Mars internals.
 | Mars package metadata schema and values | `mars` child package |
 | runtime variant selection | main Yazelix Nix package builders |
 | Home Manager terminal selection | main Yazelix Home Manager module |
-| Home Manager yzxterm package override | main Yazelix Home Manager module, Mars-only |
+| Home Manager mars package override | main Yazelix Home Manager module, Mars-only |
 | runtime identity enrichment from Mars metadata | main Yazelix runtime package assembly |
 | generic terminal materialization requests | main Yazelix Rust runtime control plane |
-| Mars generated-config adapter for stable Yazelix inputs | main Yazelix Rust runtime control plane, yzxterm-only branch |
+| Mars generated-config adapter for stable Yazelix inputs | main Yazelix Rust runtime control plane, mars-only branch |
 
 ## Contract
 
-- A yzxterm runtime package must receive a terminal package that exposes
+- A mars runtime package must receive a terminal package that exposes
   `passthru.marsPackageMetadata`
 - The metadata must include schema version, package name, package profile,
   checked/release status, metadata path, wrapper commands, config roots,
@@ -40,11 +40,11 @@ names, or make other terminal variants depend on Mars internals.
 - Main Yazelix requires Mars metadata to advertise `dark`, `light`, and `auto`
   appearance support before exposing Mars as a first-class target for
   global `appearance.mode`
-- `programs.yazelix.yzxterm_package` overrides only the Mars child package.
+- `programs.yazelix.mars_package` overrides only the Mars child package.
   It must not require replacing `programs.yazelix.package`
 - The override is invalid unless the active terminal or an extra terminal
-  launcher includes `yzxterm`
-- Non-yzxterm terminal variants must ignore the yzxterm override and must not
+  launcher includes `mars`
+- Non-mars terminal variants must ignore the mars override and must not
   require Mars metadata
 - Fast/local Mars packages must be visibly detectable through
   `runtime_identity.json`; release packages must also report whether the child
@@ -76,15 +76,15 @@ names, or make other terminal variants depend on Mars internals.
 | Rio | writes generated upstream Rio config from stable Yazelix settings | Rio owns config semantics |
 | Ratty | writes generated Ratty config and launch argv | Ratty owns config semantics and RGP/GPU behavior |
 | Foot | writes generated Linux-only `foot.ini` | Foot owns config semantics |
-| yzxterm | reads the selected child-owned Mars profile and emoji-fallback template, copies child-owned dark/light themes into the generated config root, then applies stable Yazelix transparency, appearance selection, cell-opacity policy, cursor color, and generated shader snapshot paths | `mars` owns wrapper behavior, profile templates, emoji fallback presets, dark/light theme palettes, adaptive appearance behavior, shader ABI, shader asset layout, and package metadata |
+| mars | reads the selected child-owned Mars profile and emoji-fallback template, copies child-owned dark/light themes into the generated config root, then applies stable Yazelix transparency, appearance selection, cell-opacity policy, cursor color, and generated shader snapshot paths | `mars` owns wrapper behavior, profile templates, emoji fallback presets, dark/light theme palettes, adaptive appearance behavior, shader ABI, shader asset layout, and package metadata |
 
 ## Verification
 
 - `yzx_repo_validator validate-nix-customization-api`
 - `yzx_repo_validator validate-config-surface-contract`
-- focused Nix eval of yzxterm runtime-tool registry metadata handling
-- focused Home Manager eval for yzxterm package override assertions and extra
+- focused Nix eval of mars runtime-tool registry metadata handling
+- focused Home Manager eval for mars package override assertions and extra
   terminal launcher behavior
-- `yzx dev rust test terminal_materialization` when Rust yzxterm
+- `yzx dev rust test terminal_materialization` when Rust mars
   materialization logic changes
 - `yzx_repo_validator validate-contracts` when this boundary text changes

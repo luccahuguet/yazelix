@@ -7,9 +7,8 @@ use crate::control_plane::{config_dir_from_env, runtime_dir_from_env, state_dir_
 use crate::ghostty_cursor_registry::{CursorRegistry, YazelixCursorRegistryExt};
 use crate::runtime_component_enabled;
 use crate::terminal_materialization::{
-    TerminalGeneratedConfig, TerminalMaterializationRequest, YzxtermEmojiFont, YzxtermProfile,
-    generate_terminal_materialization, yzxterm_emoji_font_override_from_env,
-    yzxterm_profile_from_env,
+    MarsEmojiFont, MarsProfile, TerminalGeneratedConfig, TerminalMaterializationRequest,
+    generate_terminal_materialization, mars_emoji_font_override_from_env, mars_profile_from_env,
 };
 use crate::terminal_variant::active_terminal_from_runtime_dir;
 use serde::Serialize;
@@ -31,8 +30,8 @@ pub struct LaunchMaterializationRequest {
     pub state_dir: PathBuf,
     pub active_terminal: String,
     pub desktop_fast_path: bool,
-    pub yzxterm_profile: YzxtermProfile,
-    pub yzxterm_emoji_font: Option<YzxtermEmojiFont>,
+    pub mars_profile: MarsProfile,
+    pub mars_emoji_font: Option<MarsEmojiFont>,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
@@ -61,8 +60,8 @@ pub fn launch_materialization_request_from_env(
         state_dir,
         active_terminal,
         desktop_fast_path,
-        yzxterm_emoji_font: yzxterm_emoji_font_override_from_env()?,
-        yzxterm_profile: yzxterm_profile_from_env()?,
+        mars_emoji_font: mars_emoji_font_override_from_env()?,
+        mars_profile: mars_profile_from_env()?,
     })
 }
 
@@ -96,7 +95,7 @@ pub fn prepare_launch_materialization(
             &request.active_terminal,
             &request.state_dir,
             ghostty_random_requested,
-            request.yzxterm_profile,
+            request.mars_profile,
         );
         let terminal_data = generate_terminal_materialization(&TerminalMaterializationRequest {
             config_path: request.config_path.clone(),
@@ -106,8 +105,8 @@ pub fn prepare_launch_materialization(
             runtime_dir: request.runtime_dir.clone(),
             state_dir: terminal_state_dir,
             terminals: vec![request.active_terminal.clone()],
-            yzxterm_emoji_font: request.yzxterm_emoji_font,
-            yzxterm_profile: request.yzxterm_profile,
+            mars_emoji_font: request.mars_emoji_font,
+            mars_profile: request.mars_profile,
         })?;
         generated_terminals = terminal_data.generated;
     }
@@ -130,7 +129,7 @@ fn uses_yazelix_ghostty_cursor(terminal_config_mode: &str, terminal: &str) -> bo
 }
 
 fn terminal_uses_yazelix_cursor(terminal: &str) -> bool {
-    matches!(terminal, "ghostty" | "yzxterm")
+    matches!(terminal, "ghostty" | "mars")
 }
 
 fn launch_rerolled_yazelix_cursor(
@@ -148,10 +147,10 @@ fn terminal_materialization_state_dir_for_launch(
     terminal: &str,
     state_dir: &Path,
     ghostty_random_requested: bool,
-    yzxterm_profile: YzxtermProfile,
+    mars_profile: MarsProfile,
 ) -> PathBuf {
     if uses_yazelix_ghostty_cursor(terminal_config_mode, terminal)
-        && (ghostty_random_requested || uses_yzxterm_shader_profile(terminal, yzxterm_profile))
+        && (ghostty_random_requested || uses_mars_shader_profile(terminal, mars_profile))
     {
         return launch_scoped_terminal_state_dir(state_dir);
     }
@@ -159,8 +158,8 @@ fn terminal_materialization_state_dir_for_launch(
     state_dir.to_path_buf()
 }
 
-fn uses_yzxterm_shader_profile(terminal: &str, yzxterm_profile: YzxtermProfile) -> bool {
-    yzxterm_profile == YzxtermProfile::Shaders && terminal == "yzxterm"
+fn uses_mars_shader_profile(terminal: &str, mars_profile: MarsProfile) -> bool {
+    mars_profile == MarsProfile::Shaders && terminal == "mars"
 }
 
 fn launch_scoped_terminal_state_dir(state_dir: &Path) -> PathBuf {
@@ -229,19 +228,19 @@ mod tests {
         assert!(!uses_yazelix_ghostty_cursor(&mode, "ghostty"));
     }
 
-    // Regression: yzxterm consumes the same Yazelix cursor materialization facts as Ghostty.
+    // Regression: mars consumes the same Yazelix cursor materialization facts as Ghostty.
     #[test]
-    fn yzxterm_launch_materialization_uses_yazelix_cursor() {
-        assert!(uses_yazelix_ghostty_cursor("yazelix", "yzxterm"));
+    fn mars_launch_materialization_uses_yazelix_cursor() {
+        assert!(uses_yazelix_ghostty_cursor("yazelix", "mars"));
     }
 
-    // Regression: yzxterm random cursor launches reroll the same Yazelix cursor state as Ghostty, so launch facts and verbose reporting stay accurate.
+    // Regression: mars random cursor launches reroll the same Yazelix cursor state as Ghostty, so launch facts and verbose reporting stay accurate.
     #[test]
-    fn yzxterm_random_cursor_launch_reports_reroll() {
-        assert!(launch_rerolled_yazelix_cursor(true, "yzxterm", true));
+    fn mars_random_cursor_launch_reports_reroll() {
+        assert!(launch_rerolled_yazelix_cursor(true, "mars", true));
     }
 
-    // Regression: random cursor launches use a launch-scoped terminal config root so opening a new window cannot rewrite config watched by existing Ghostty/yzxterm windows.
+    // Regression: random cursor launches use a launch-scoped terminal config root so opening a new window cannot rewrite config watched by existing Ghostty/mars windows.
     #[test]
     fn random_cursor_launch_uses_scoped_terminal_state_dir() {
         let temp = tempdir().unwrap();
@@ -251,7 +250,7 @@ mod tests {
             "ghostty",
             temp.path(),
             true,
-            YzxtermProfile::Full,
+            MarsProfile::Full,
         );
 
         assert_ne!(terminal_state_dir, temp.path());
@@ -268,30 +267,30 @@ mod tests {
             "ghostty",
             temp.path(),
             false,
-            YzxtermProfile::Full,
+            MarsProfile::Full,
         );
 
         assert_eq!(terminal_state_dir, temp.path());
     }
 
-    // Regression: yzxterm shader profile uses launch-scoped shader/config snapshots even with a named cursor, so opening another yzxterm window cannot rewrite GLSL files used by an existing one.
+    // Regression: mars shader profile uses launch-scoped shader/config snapshots even with a named cursor, so opening another mars window cannot rewrite GLSL files used by an existing one.
     #[test]
-    fn yzxterm_shader_profile_uses_scoped_terminal_state_dir() {
+    fn mars_shader_profile_uses_scoped_terminal_state_dir() {
         let temp = tempdir().unwrap();
 
         let first = terminal_materialization_state_dir_for_launch(
             "yazelix",
-            "yzxterm",
+            "mars",
             temp.path(),
             false,
-            YzxtermProfile::Shaders,
+            MarsProfile::Shaders,
         );
         let second = terminal_materialization_state_dir_for_launch(
             "yazelix",
-            "yzxterm",
+            "mars",
             temp.path(),
             false,
-            YzxtermProfile::Shaders,
+            MarsProfile::Shaders,
         );
 
         assert_ne!(first, temp.path());
@@ -301,17 +300,17 @@ mod tests {
         assert!(second.starts_with(temp.path().join("terminal_launches")));
     }
 
-    // Defends: yzxterm profiles that do not load custom cursor shaders keep using the stable generated config root.
+    // Defends: mars profiles that do not load custom cursor shaders keep using the stable generated config root.
     #[test]
-    fn yzxterm_without_shader_profile_uses_stable_terminal_state_dir() {
+    fn mars_without_shader_profile_uses_stable_terminal_state_dir() {
         let temp = tempdir().unwrap();
 
         let terminal_state_dir = terminal_materialization_state_dir_for_launch(
             "yazelix",
-            "yzxterm",
+            "mars",
             temp.path(),
             false,
-            YzxtermProfile::Full,
+            MarsProfile::Full,
         );
 
         assert_eq!(terminal_state_dir, temp.path());

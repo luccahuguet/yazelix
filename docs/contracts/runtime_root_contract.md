@@ -13,7 +13,7 @@ These roots line up with three filesystem-backed kinds of state plus one process
 3. Materialized/generated state
    - generated configs, initializers, logs, rebuild hashes, and other derived artifacts under `~/.local/share/yazelix`
 4. Live session activation state
-   - process-local markers such as `IN_YAZELIX_SHELL`, `YAZELIX_TERMINAL`, Zellij session markers, and maintainer-shell activation markers from `nix develop`
+   - process-local markers such as `IN_YAZELIX_SHELL`, `MARS`, Zellij session markers, and maintainer-shell activation markers from `nix develop`
 
 ## Why
 
@@ -75,7 +75,7 @@ This contract keeps those boundaries explicit.
 - Status: live
 - Owner: session/runtime activation logic across startup and CLI entrypoints
 - Statement: Live session activation markers such as `IN_YAZELIX_SHELL`,
-  `YAZELIX_TERMINAL`, and `ZELLIJ_*` are process-local activation state, not a
+  `MARS`, and `ZELLIJ_*` are process-local activation state, not a
   persisted runtime root and not a substitute for the explicit runtime/config
   roots
 - Verification: automated
@@ -116,7 +116,7 @@ This contract keeps those boundaries explicit.
   - It is the materialized result of combining user intent with the shipped runtime.
 - Live session activation state has no canonical filesystem root.
   - It is the current process-local activation of a runtime/session.
-  - It includes values such as `IN_YAZELIX_SHELL`, `YAZELIX_TERMINAL`, `ZELLIJ`, `ZELLIJ_SESSION_NAME`, `ZELLIJ_PANE_ID`, and related session-local markers.
+  - It includes values such as `IN_YAZELIX_SHELL`, `MARS`, `ZELLIJ`, `ZELLIJ_SESSION_NAME`, `ZELLIJ_PANE_ID`, and related session-local markers.
   - Maintainer shells may also carry extra activation markers from `nix develop`, but that is maintainer activation state, not normal user runtime truth.
   - It must not be treated as persisted runtime truth.
 - `YAZELIX_DIR` is a legacy compatibility alias only.

@@ -122,9 +122,9 @@ When creating new files or directories, always use underscores to maintain consi
   4. Run `nix build .#runtime_ghostty --no-link --no-write-lock-file` once as the final package gate after the smaller checks pass.
 - Avoid launching multiple `nix develop`, `nix eval`, or package-build commands in parallel during validation. They contend on Nix eval caches, store locks, and Cargo/Nix build directories, which makes the session slower and noisier than serialized checks.
 - **Do not run `yzx restart` as an agent.** It kills the user's live Zellij session. If a runtime change needs a fresh Yazelix session, ask the maintainer to launch one or explicitly approve the destructive restart first.
-- For yzxterm runtime updates, expect `nix build .#runtime_yzxterm --no-link --no-write-lock-file` and the normal Home Manager switch to build the terminal through release LTO and package tests when the terminal input changes. Treat that path as a final runtime gate. Use focused terminal-repo Rust checks and builds before switching, and when improving this path, research current Rust/Nix build-speed tools instead of assuming the bottleneck is only one command.
-- Do not run yzxterm-related compile-heavy commands (`cargo`, `nix build`, or Home Manager switch) again until the rebuild-speed optimization beads are addressed, unless the maintainer explicitly overrides this gate for a specific command.
-- For yzxterm dogfooding after that gate is addressed, prefer the explicit fast outputs `#runtime_yzxterm_fast` and `#yzxterm_fast`; see `docs/yzxterm_fast_dogfooding.md`. Do not treat those fast outputs as release evidence.
+- For mars runtime updates, expect `nix build .#runtime_mars --no-link --no-write-lock-file` and the normal Home Manager switch to build the terminal through release LTO and package tests when the terminal input changes. Treat that path as a final runtime gate. Use focused terminal-repo Rust checks and builds before switching, and when improving this path, research current Rust/Nix build-speed tools instead of assuming the bottleneck is only one command.
+- Do not run mars-related compile-heavy commands (`cargo`, `nix build`, or Home Manager switch) again until the rebuild-speed optimization beads are addressed, unless the maintainer explicitly overrides this gate for a specific command.
+- For mars dogfooding after that gate is addressed, prefer the explicit fast outputs `#runtime_mars_fast` and `#mars_fast`; see `docs/mars_fast_dogfooding.md`. Do not treat those fast outputs as release evidence.
 
 ## Shell Boundary Rule
 

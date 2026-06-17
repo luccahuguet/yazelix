@@ -64,9 +64,9 @@ If you already have your own Home Manager flake, the minimal setup is:
 {
   programs.yazelix = {
     enable = true;
-    terminal = "ghostty"; # Default; use "kitty", "rio", "yzxterm", "wezterm", or Linux-only "foot"/"ratty" for alternate packaged terminal paths
-    yzxterm_profile = "full"; # Default; use "baseline" or "shaders" for Mars profile selection
-    yzxterm_emoji_font = "noto"; # Default; use "twitter" or "serenityos" to dogfood alternate yzxterm emoji fallbacks
+    terminal = "ghostty"; # Default; use "kitty", "rio", "mars", "wezterm", or Linux-only "foot"/"ratty" for alternate packaged terminal paths
+    mars_profile = "full"; # Default; use "baseline" or "shaders" for Mars profile selection
+    mars_emoji_font = "noto"; # Default; use "twitter" or "serenityos" to dogfood alternate mars emoji fallbacks
     # Customize other options as needed - see example.nix
     # Set manage_config = true if you want Home Manager to own settings.jsonc
   };
@@ -79,17 +79,17 @@ To use Mars as the packaged terminal:
 {
   programs.yazelix = {
     enable = true;
-    terminal = "yzxterm";
-    yzxterm_profile = "shaders";
-    yzxterm_emoji_font = "twitter";
+    terminal = "mars";
+    mars_profile = "shaders";
+    mars_emoji_font = "twitter";
     extra_terminal_launchers = [ "ghostty" "rio" "wezterm" ];
   };
 }
 ```
 
-`terminal` controls the packaged terminal Yazelix launches. There is no fallback to another packaged terminal when this option is selected; a missing or mispackaged terminal fails clearly. `yzxterm_profile` controls the generated Mars profile for activation, desktop launches, and new shell sessions: `full` keeps Rio trail cursor without custom shaders, `baseline` disables effects, and `shaders` enables the generated Yazelix cursor shader chain
+`terminal` controls the packaged terminal Yazelix launches. There is no fallback to another packaged terminal when this option is selected; a missing or mispackaged terminal fails clearly. `mars_profile` controls the generated Mars profile for activation, desktop launches, and new shell sessions: `full` keeps Rio trail cursor without custom shaders, `baseline` disables effects, and `shaders` enables the generated Yazelix cursor shader chain
 
-`yzxterm_emoji_font` is the Home Manager declarative value for `terminal.emoji_style`. Home Manager applies it to generated Mars configs during activation and desktop launches with an explicit managed-source marker, and exports both `YAZELIX_TERMINAL_EMOJI_FONT` for main materialization and `MARS_EMOJI_FONT` for the Mars child wrapper. Mutable Yazelix config edits remain authoritative for ad hoc main-repo materialization unless `manage_config = true` makes Home Manager own `settings.jsonc`. `noto` is the compatible default, `twitter` selects Twitter/Twemoji color emoji, and `serenityos` selects SerenityOS emoji. The setting applies only to yzxterm; other terminal variants keep their own font behavior
+`mars_emoji_font` is the Home Manager declarative value for `terminal.emoji_style`. Home Manager applies it to generated Mars configs during activation and desktop launches with an explicit managed-source marker, and exports `MARS_EMOJI_FONT` for Mars materialization. Mutable Yazelix config edits remain authoritative for ad hoc main-repo materialization unless `manage_config = true` makes Home Manager own `settings.jsonc`. `noto` is the compatible default, `twitter` selects Twitter/Twemoji color emoji, and `serenityos` selects SerenityOS emoji. The setting applies only to mars; other terminal variants keep their own font behavior
 
 `extra_terminal_launchers` installs additional Linux desktop entries such as `New Yazelix - Ghostty`, `New Yazelix - Rio`, and `New Yazelix - WezTerm` without changing the active runtime identity. These entries point directly at their terminal variant packages in the Nix store, so their dependencies stay available without adding duplicate `bin/yzx` commands to the Home Manager profile. `yzx launch --term <terminal>` uses these packaged launchers for non-active terminal variants. Do not include the active `terminal` value in this list; the active terminal already gets the profile-owned launcher
 
@@ -123,13 +123,13 @@ When `manage_config = true`, Home Manager can also own user-defined popup surfac
 Set `keep_alive = true` for monitor TUIs whose process state should survive focused toggle hides. Leave it unset or set it to `false` for popups that should close on focused toggle
 
 Maintainers dogfooding local Mars changes can temporarily point the module at
-the fast yzxterm child package while keeping `terminal = "yzxterm"`:
+the fast mars child package while keeping `terminal = "mars"`:
 
 ```nix
 {
   programs.yazelix = {
-    terminal = "yzxterm";
-    yzxterm_package = inputs.marsTerminal.packages.${pkgs.stdenv.hostPlatform.system}.mars-fast;
+    terminal = "mars";
+    mars_package = inputs.marsTerminal.packages.${pkgs.stdenv.hostPlatform.system}.mars-fast;
   };
 }
 ```

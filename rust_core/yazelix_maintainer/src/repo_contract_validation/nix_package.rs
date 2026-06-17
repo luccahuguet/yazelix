@@ -318,11 +318,11 @@ fn verify_profile_installed_runtime(
         "rio" => "rio",
         "wezterm" => "wezterm",
         "ratty" => "ratty",
-        "yzxterm" => "yzxterm",
+        "mars" => "mars",
         _ => "ghostty",
     };
     let runtime_terminal_command = match runtime_terminal {
-        "yzxterm" => "mars-desktop",
+        "mars" => "mars-desktop",
         other => other,
     };
     let runtime_yzx_cli = runtime_root.join("shells").join("posix").join("yzx_cli.sh");
@@ -380,13 +380,13 @@ fn verify_profile_installed_runtime(
         .join("terminal_emulators")
         .join("rio")
         .join("config.toml");
-    let generated_yzxterm_config = temp_home
+    let generated_mars_config = temp_home
         .join(".local")
         .join("share")
         .join("yazelix")
         .join("configs")
         .join("terminal_emulators")
-        .join("yzxterm")
+        .join("mars")
         .join("config.toml");
     let generated_ratty_config = temp_home
         .join(".local")
@@ -436,7 +436,7 @@ fn verify_profile_installed_runtime(
         "stale runtime-local Ghostty shader builder",
         errors,
     );
-    if runtime_terminal == "yzxterm" {
+    if runtime_terminal == "mars" {
         require_path_exists_abs(
             &runtime_root.join("share").join("mars").join("config.toml"),
             "runtime-local Mars packaged config",
@@ -496,7 +496,7 @@ fn verify_profile_installed_runtime(
             "runtime tool `nixGLMesa`",
             errors,
         );
-        if (runtime_terminal == "ratty" || runtime_terminal == "yzxterm")
+        if (runtime_terminal == "ratty" || runtime_terminal == "mars")
             && !runtime_libexec.join("nixVulkanMesa").exists()
             && !runtime_libexec.join("nixVulkanIntel").exists()
         {
@@ -660,10 +660,10 @@ fn verify_profile_installed_runtime(
             "generated Ratty config for selected runtime variant",
             errors,
         );
-    } else if runtime_terminal == "yzxterm" {
+    } else if runtime_terminal == "mars" {
         require_path_exists_abs(
-            &generated_yzxterm_config,
-            "generated Yazelix Terminal config for selected runtime variant",
+            &generated_mars_config,
+            "generated Mars Terminal config for selected runtime variant",
             errors,
         );
     }

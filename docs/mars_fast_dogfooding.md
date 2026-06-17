@@ -9,7 +9,7 @@ dogfooding.
 The release path remains:
 
 ```sh
-nix build .#runtime_yzxterm --no-link --no-write-lock-file
+nix build .#runtime_mars --no-link --no-write-lock-file
 home-manager switch --flake .#lucca@loqness
 ```
 
@@ -25,37 +25,37 @@ separate test graph rebuild were the expensive steps.
 For local dogfooding of terminal-only changes, use the explicit fast outputs:
 
 ```sh
-nix build .#runtime_yzxterm_fast --no-link --no-write-lock-file
-nix run .#yzxterm_fast -- launch
+nix build .#runtime_mars_fast --no-link --no-write-lock-file
+nix run .#mars_fast -- launch
 ```
 
-`runtime_yzxterm_fast` and `yzxterm_fast` use the `mars-fast` child package.
+`runtime_mars_fast` and `mars_fast` use the `mars-fast` child package.
 That child package keeps the same wrapper/config shape as the regular terminal
 package, but its unwrapped Mars build uses the Cargo `fast` profile and skips
 package checks. It is not release evidence.
 
-The public cache publish workflow builds `runtime_yzxterm_fast` on
+The public cache publish workflow builds `runtime_mars_fast` on
 `x86_64-linux`. After that workflow publishes a commit, Nix can substitute the
 fast runtime closure and the `mars-fast` child package from the Yazelix Cachix
 cache instead of rebuilding the WGPU terminal graph locally.
 Before a commit is published, or when using unpublished local child-repo
 changes, expect the fast runtime to build locally.
 
-For Home Manager dogfooding, keep the yzxterm runtime settings but override only
+For Home Manager dogfooding, keep the mars runtime settings but override only
 the terminal child package. The example assumes a direct `marsTerminal` flake
 input pointing at `github:luccahuguet/mars`:
 
 ```nix
 {
   programs.yazelix = {
-    terminal = "yzxterm";
-    yzxterm_profile = "shaders";
-    yzxterm_package = inputs.marsTerminal.packages.${pkgs.stdenv.hostPlatform.system}.mars-fast;
+    terminal = "mars";
+    mars_profile = "shaders";
+    mars_package = inputs.marsTerminal.packages.${pkgs.stdenv.hostPlatform.system}.mars-fast;
   };
 }
 ```
 
-Remove the `programs.yazelix.yzxterm_package` override before final
+Remove the `programs.yazelix.mars_package` override before final
 release/runtime validation. The default Home Manager module path still uses the
 checked `mars` package.
 
@@ -65,33 +65,33 @@ Before building, use eval-only checks to confirm the fast outputs are present:
 
 ```sh
 system="$(nix eval --raw --impure --expr builtins.currentSystem)"
-nix eval --raw ".#packages.${system}.runtime_yzxterm_fast.name"
-nix eval --raw ".#packages.${system}.yzxterm_fast.name"
+nix eval --raw ".#packages.${system}.runtime_mars_fast.name"
+nix eval --raw ".#packages.${system}.mars_fast.name"
 ```
 
 After the rebuild-speed gate is satisfied and a build is acceptable, validate the
 fast runtime with:
 
 ```sh
-nix build .#runtime_yzxterm_fast --no-link --no-write-lock-file
-nix build .#yzxterm_fast --no-link --no-write-lock-file
-nix run .#yzxterm_fast -- status --versions
-YAZELIX_TERMINAL_PROFILE=shaders nix run .#yzxterm_fast -- launch
+nix build .#runtime_mars_fast --no-link --no-write-lock-file
+nix build .#mars_fast --no-link --no-write-lock-file
+nix run .#mars_fast -- status --versions
+MARS_PROFILE=shaders nix run .#mars_fast -- launch
 ```
 
-The `yzxterm_fast` package bypasses the stable-profile redirect that normally
+The `mars_fast` package bypasses the stable-profile redirect that normally
 protects stale `/nix/store/.../bin/yzx` invocations, so `nix run
-.#yzxterm_fast -- status --versions` should report a `yazelix-yzxterm-fast`
+.#mars_fast -- status --versions` should report a `yazelix-mars-fast`
 runtime dir. When the fast package is installed through the Home Manager package
 override, plain `yzx status --versions` should show the fast runtime. In both
-cases, `runtime_identity.json` carries `"package_profile": "yzxterm-fast"` and
-`"yzxterm_terminal_package": "mars-fast"`.
+cases, `runtime_identity.json` carries `"package_profile": "mars-fast"` and
+`"mars_terminal_package": "mars-fast"`.
 
 ## Further Speed Work
 
 The current fast path avoids the two observed Nix package costs by using the
 child fork's fast Cargo profile and skipping package checks. The second-stage
-main-repo improvement is binary-cache publication for `runtime_yzxterm_fast`.
+main-repo improvement is binary-cache publication for `runtime_mars_fast`.
 Cachix documents flake runtime closure publishing through `nix build --no-link
 --print-out-paths ... | cachix push`, which matches the existing Yazelix publish
 workflow. This keeps release validation unchanged while letting published fast
@@ -99,7 +99,7 @@ runtime commits substitute locally. See <https://docs.cachix.org/pushing>.
 
 Post-cache dry-run evidence from June 6, 2026:
 
-- main repo dirty `nix build .#runtime_yzxterm_fast --dry-run` reported only 3
+- main repo dirty `nix build .#runtime_mars_fast --dry-run` reported only 3
   derivations to build and 55 fetched paths; the `mars-fast` and
   `mars-fast-unwrapped` child paths were fetched/substituted
 - child repo `nix build .#mars-fast --dry-run` from an unpublished
@@ -114,12 +114,12 @@ Use these paths according to the work being done:
 
 - Local terminal source iteration: use the child repo's Cargo/dev shell first;
   do not start with a main-repo runtime build.
-- Main-repo yzxterm dogfooding: use `runtime_yzxterm_fast` and `yzxterm_fast`;
+- Main-repo mars dogfooding: use `runtime_mars_fast` and `mars_fast`;
   after CI publishes the commit, this should substitute from Cachix on
   `x86_64-linux`.
-- Home Manager yzxterm dogfooding: set only `programs.yazelix.yzxterm_package`
+- Home Manager mars dogfooding: set only `programs.yazelix.mars_package`
   to the child `mars-fast` package.
-- Release validation: use `runtime_yzxterm` and the default Home Manager path;
+- Release validation: use `runtime_mars` and the default Home Manager path;
   this consumes the checked release child package.
 
 Other build-speed approaches stay separate from the main runtime cache lane:
@@ -145,7 +145,7 @@ Other build-speed approaches stay separate from the main runtime cache lane:
   are intentionally avoiding in fast packages. See
   <https://nixos.org/manual/nixpkgs/unstable/#rust>.
 
-Do not wire `sccache`, `mold`, or `lld` into the main `runtime_yzxterm_fast`
+Do not wire `sccache`, `mold`, or `lld` into the main `runtime_mars_fast`
 package by default. A child experiment can expose a separate explicitly named
 package or dev shell after it records before/after timings for the child build
 phase it claims to improve.

@@ -77,7 +77,7 @@ Without a written contract, future fixes will keep rediscovering the same questi
 - New-window launch flows keep Zellij as the session-name owner.
   - If `YAZELIX_ZELLIJ_SESSION_NAME` is explicit, Zellij receives that session name.
   - Otherwise, Zellij generates the non-persistent session name.
-  - Yazelix passes `YAZELIX_TERMINAL_WINDOW_TITLE_PREFIX` so the forked Zellij
+  - Yazelix passes `MARS_WINDOW_TITLE_PREFIX` so the forked Zellij
     runtime can emit terminal titles shaped as `Yazelix - <terminal> - <session>`.
   - Terminal-specific launch/config surfaces must not pin a title in a way that
     blocks the forked Zellij title sequence; Ghostty intentionally leaves

@@ -54,7 +54,7 @@ Profile launch sequence and identify performance bottlenecks
 ### `yzx launch [-t TERMINAL] [--path DIR] [--home] [--config FILE] [--with KEY=VALUE] [--verbose]`
 Launch Yazelix with directory and mode options
 - Default: Launch new terminal in current directory
-- `-t, --term, --terminal TERMINAL`: Launch an installed packaged terminal variant such as `ghostty` or `yzxterm`
+- `-t, --term, --terminal TERMINAL`: Launch an installed packaged terminal variant such as `ghostty` or `mars`
 - `--path DIR`: Start in specific directory
 - `--home`: Start in home directory
 - `--config FILE`: Use an alternate complete `settings.jsonc` for this window

@@ -6,7 +6,7 @@ use crate::control_plane::{home_dir_from_env, state_dir_from_env};
 use crate::sidebar_bootstrap::{
     SIDEBAR_BOOTSTRAP_CWD_ENV, is_sidebar_bootstrap_file, sidebar_bootstrap_owner_dir,
 };
-use crate::terminal_materialization::YZXTERM_EMOJI_ENV_KEYS;
+use crate::terminal_materialization::MARS_EMOJI_ENV_KEYS;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -41,20 +41,18 @@ pub(super) const RUNTIME_RELAUNCH_CLEARED_ENV_KEYS: &[&str] = &[
     "YAZELIX_SKIP_STABLE_WRAPPER_REDIRECT",
     "YAZELIX_STARTUP_PROFILE_SKIP_WELCOME",
     "YAZELIX_STATUS_BAR_CACHE_PATH",
-    "YAZELIX_TERMINAL",
-    "YAZELIX_TERMINAL_APP_ID",
-    "YAZELIX_TERMINAL_CONFIG",
+    "MARS",
     "MARS_APP_ID",
+    "MARS_CONFIG",
     "MARS_APPEARANCE",
     "MARS_CHILD_ENV_SANITIZE",
-    "MARS_CONFIG",
     "MARS_EFFECTS",
     "MARS_EMOJI_FONT",
     "MARS_GRAPHICS_WRAPPER",
     "MARS_PROFILE",
     "MARS_RENDER_STRATEGY",
-    YZXTERM_EMOJI_ENV_KEYS[0],
-    YZXTERM_EMOJI_ENV_KEYS[1],
+    MARS_EMOJI_ENV_KEYS[0],
+    MARS_EMOJI_ENV_KEYS[1],
     "YAZELIX_YZX_BIN",
     "YAZELIX_YZX_CONTROL_BIN",
     "YAZELIX_YZX_CORE_BIN",
@@ -597,17 +595,17 @@ mod tests {
     #[test]
     fn active_terminal_reads_runtime_variant_metadata() {
         let runtime = TempDir::new().unwrap();
-        fs::write(runtime.path().join("runtime_variant"), "yzxterm\n").unwrap();
+        fs::write(runtime.path().join("runtime_variant"), "mars\n").unwrap();
 
         assert_eq!(
             crate::terminal_variant::active_terminal_from_runtime_dir(runtime.path()).unwrap(),
-            "yzxterm"
+            "mars"
         );
     }
 
-    // Defends: Yazelix Terminal launch is child-wrapper owned, while Yazelix still supplies cwd, title, host mode, and the startup command.
+    // Defends: Mars Terminal launch is child-wrapper owned, while Yazelix still supplies cwd, title, host mode, and the startup command.
     #[test]
-    fn yzxterm_launch_command_uses_child_wrapper_without_outer_graphics_wrapper() {
+    fn mars_launch_command_uses_child_wrapper_without_outer_graphics_wrapper() {
         let runtime = TempDir::new().unwrap();
         let startup = runtime
             .path()
@@ -624,7 +622,7 @@ mod tests {
         let argv = build_launch_command_argv(
             runtime.path(),
             &crate::runtime_contract::TerminalCandidate {
-                terminal: "yzxterm".to_string(),
+                terminal: "mars".to_string(),
                 name: "Mars".to_string(),
                 command: "mars-desktop".to_string(),
             },
@@ -648,7 +646,7 @@ mod tests {
         assert_eq!(argv[argv.len() - 1], startup.to_string_lossy().as_ref());
     }
 
-    // Defends: desktop launch logs use the terminal executable basename, so yzxterm diagnostics can find them reliably.
+    // Defends: desktop launch logs use the terminal executable basename, so mars diagnostics can find them reliably.
     #[test]
     fn launch_probe_log_path_uses_command_basename() {
         let state = TempDir::new().unwrap();
@@ -873,19 +871,17 @@ mod tests {
             "YAZELIX_SKIP_STABLE_WRAPPER_REDIRECT",
             "YAZELIX_STARTUP_PROFILE_SKIP_WELCOME",
             "YAZELIX_STATUS_BAR_CACHE_PATH",
-            "YAZELIX_TERMINAL_APP_ID",
-            "YAZELIX_TERMINAL_CONFIG",
             "MARS_APP_ID",
+            "MARS_CONFIG",
             "MARS_APPEARANCE",
             "MARS_CHILD_ENV_SANITIZE",
-            "MARS_CONFIG",
             "MARS_EFFECTS",
             "MARS_EMOJI_FONT",
             "MARS_GRAPHICS_WRAPPER",
             "MARS_PROFILE",
             "MARS_RENDER_STRATEGY",
-            YZXTERM_EMOJI_ENV_KEYS[0],
-            YZXTERM_EMOJI_ENV_KEYS[1],
+            MARS_EMOJI_ENV_KEYS[0],
+            MARS_EMOJI_ENV_KEYS[1],
             "YAZELIX_YZX_BIN",
             "YAZELIX_YZX_CONTROL_BIN",
             "YAZELIX_YZX_CORE_BIN",

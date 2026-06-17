@@ -982,9 +982,7 @@ mod tests {
                 .details
                 .as_deref()
                 .unwrap_or_default()
-                .contains(
-                    "Supported terminals: ghostty, yzxterm, rio, wezterm, ratty, kitty, foot"
-                )
+                .contains("Supported terminals: ghostty, mars, rio, wezterm, ratty, kitty, foot")
         );
     }
 
@@ -1074,9 +1072,9 @@ mod tests {
         );
     }
 
-    // Defends: yzxterm is a config id whose executable command is the child-owned Mars desktop wrapper.
+    // Defends: mars is a config id whose executable command is the child-owned Mars desktop wrapper.
     #[test]
-    fn launch_preflight_maps_yzxterm_to_child_wrapper_command() {
+    fn launch_preflight_maps_mars_to_child_wrapper_command() {
         let temp = tempdir().unwrap();
         let work = temp.path().join("work");
         fs::create_dir_all(&work).unwrap();
@@ -1088,7 +1086,7 @@ mod tests {
             startup: None,
             launch: Some(LaunchPreflightPayload {
                 working_dir: work.clone(),
-                requested_terminal: "yzxterm".to_string(),
+                requested_terminal: "mars".to_string(),
                 terminals: vec!["ghostty".to_string()],
                 command_search_paths: vec![host_bin],
             }),
@@ -1100,7 +1098,7 @@ mod tests {
             .as_ref()
             .and_then(|candidates| candidates.first())
             .unwrap();
-        assert_eq!(candidate.terminal, "yzxterm");
+        assert_eq!(candidate.terminal, "mars");
         assert_eq!(candidate.command, "mars-desktop");
         assert_eq!(candidate.name, "Mars");
     }

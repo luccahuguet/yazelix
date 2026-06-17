@@ -40,8 +40,8 @@ pub(super) fn run_restart(args: &[String]) -> Result<i32, CoreError> {
         })?,
     )?;
 
-    let is_yzxterm = std::env::var_os("YAZELIX_TERMINAL").is_some();
-    if is_yzxterm {
+    let is_mars = std::env::var_os("MARS").is_some();
+    if is_mars {
         println!("🔄 Restarting Yazelix...");
     } else {
         println!("🔄 Restarting Yazelix (opening new window)...");

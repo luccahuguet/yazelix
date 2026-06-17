@@ -124,30 +124,30 @@ Out of scope:
 - Status: live
 - Owner: Rust terminal materialization, Rust launch preflight, the Mars child
   wrapper, and the Yazelix Zellij fork
-- Statement: Yazelix Terminal launch uses the config id
-  `yzxterm`, resolves the executable command as the child-owned
+- Statement: Mars Terminal launch uses the config id
+  `mars`, resolves the executable command as the child-owned
   `mars-desktop` wrapper, passes the generated config directory
   with `MARS_CONFIG`, clears ambient `RIO_CONFIG_HOME` at that
   process boundary, marks the child environment for Mars
   sanitization, passes `MARS_APP_ID` so the terminal window matches
   the integrated Yazelix desktop entry, passes
-  `YAZELIX_TERMINAL_WINDOW_TITLE_PREFIX` so the forked Zellij runtime can emit
+  `MARS_WINDOW_TITLE_PREFIX` so the forked Zellij runtime can emit
   OS window titles shaped as `Yazelix - Mars - <session>` instead of
   pane/tab titles, and does not add an outer Yazelix graphics wrapper around
-  the child wrapper. Generated Yazelix Terminal config
+  the child wrapper. Generated Mars Terminal config
   is derived from the packaged
-  child profile selected by `YAZELIX_TERMINAL_PROFILE` or
-  `YAZELIX_TERMINAL_EFFECTS` and the child emoji fallback preset selected by
-  `terminal.emoji_style`, with `YAZELIX_TERMINAL_EMOJI_FONT` acting as the
+  child profile selected by `MARS_PROFILE` or
+  `MARS_EFFECTS` and the child emoji fallback preset selected by
+  `terminal.emoji_style`, with `MARS_EMOJI_FONT` acting as the
   explicit Home Manager/launcher override only when paired with
-  `YAZELIX_TERMINAL_EMOJI_FONT_SOURCE=home-manager`, and the global
+  `MARS_EMOJI_FONT_SOURCE=home-manager`, and the global
   `appearance.mode`.
   `full` keeps Rio trail cursor and strips packaged `custom-shader` entries,
   `baseline` uses the packaged no-effects profile, and `shaders` uses the
   packaged shader profile while replacing packaged shader references with the
   generated Rio decoration shader for the active cursor settings. `noto` uses
   the default packaged profile roots, while `twitter` and `serenityos` use
-  matching child-owned profile roots under `share/yazelix-terminal/emoji/`.
+  matching child-owned profile roots under `share/mars/emoji/`.
   Shader-profile launches use a launch-scoped generated config and shader
   directory under `terminal_launches/<launch-id>/`, while full and baseline
   profiles use the stable generated config root.
@@ -157,21 +157,21 @@ Out of scope:
   the current `terminal.transparency` as `[window].opacity`, copies child-owned
   dark/light theme files into the generated config root, writes `force-theme`
   for static dark/light appearance, preserves child adaptive themes for
-  `appearance.mode = "auto"`, and keeps yzxterm cell opacity disabled so
+  `appearance.mode = "auto"`, and keeps mars cell opacity disabled so
   foreground and explicit UI-background cells stay crisp while the window
-  background remains transparent. The generated yzxterm config is Yazelix-owned
+  background remains transparent. The generated mars config is Yazelix-owned
   state; it must not become the host Rio config for plain `rio` launches.
 - Verification: automated Rust tests in
   `rust_core/yazelix_core/src/runtime_contract.rs`
-  (`launch_preflight_maps_yzxterm_to_child_wrapper_command`),
+  (`launch_preflight_maps_mars_to_child_wrapper_command`),
   `rust_core/yazelix_core/src/launch_commands.rs`
-  (`yzxterm_launch_command_uses_child_wrapper_without_outer_graphics_wrapper`),
+  (`mars_launch_command_uses_child_wrapper_without_outer_graphics_wrapper`),
   `rust_core/yazelix_core/src/launch_commands/launch.rs`
   (`terminal_window_title_prefix_names_selected_terminal`,
-  `yzxterm_process_boundary_env_clears_host_rio_config`),
+  `mars_process_boundary_env_clears_host_rio_config`),
   `rust_core/yazelix_core/src/launch_materialization.rs`
-  (`yzxterm_shader_profile_uses_scoped_terminal_state_dir`,
-  `yzxterm_without_shader_profile_uses_stable_terminal_state_dir`)
+  (`mars_shader_profile_uses_scoped_terminal_state_dir`,
+  `mars_without_shader_profile_uses_stable_terminal_state_dir`)
 - Source: `docs/installation.md`; `docs/terminal_emulators.md`
 
 #### TLAUNCH-007
@@ -180,9 +180,9 @@ Out of scope:
 - Owner: Rust desktop launch plus
   `shells/posix/desktop_deferred_launch_probe.sh`; inner child-process PID
   evidence beyond the terminal process belongs to the Mars child wrapper
-- Statement: Desktop-deferred Yazelix Terminal launches write bounded per-launch
+- Statement: Desktop-deferred Mars Terminal launches write bounded per-launch
   logs under `YAZELIX_STATE_DIR/logs/terminal_launch`. The log name is based on
-  the executable basename, so yzxterm logs use
+  the executable basename, so mars logs use
   `yazelix_terminal_desktop_*.log`. Each fresh log records timestamps, argv,
   config environment, helper PID, terminal-or-wrapper PID, captured
   stdout/stderr, any early exit status observable by the desktop helper, and
@@ -194,7 +194,7 @@ Out of scope:
   the only process boundary that can observe the inner Rio child PID. Doctor
   reports final lifetime evidence, active lifetime watchers, metadata-only
   logs, stale/missing metadata, or no captured launch evidence for active
-  yzxterm runtimes without warning unrelated terminal variants. A log ending
+  mars runtimes without warning unrelated terminal variants. A log ending
   after short-probe metadata such as
   `exit_status=not_observed_after_probe_window` is not sufficient crash
   observability.
@@ -203,9 +203,9 @@ Out of scope:
   (`desktop_deferred_launch_helper_records_lifetime_status`,
   `launch_probe_log_path_uses_command_basename`) and
   `rust_core/yazelix_core/src/doctor_runtime_report.rs`
-  (`yzxterm_launch_log_finding_reports_lifetime_logs`,
-  `yzxterm_launch_log_finding_warns_on_metadata_only_logs`,
-  `yzxterm_launch_log_finding_is_scoped_to_yzxterm_runtime`)
+  (`mars_launch_log_finding_reports_lifetime_logs`,
+  `mars_launch_log_finding_warns_on_metadata_only_logs`,
+  `mars_launch_log_finding_is_scoped_to_mars_runtime`)
 
 #### TLAUNCH-008
 - Type: behavior
@@ -226,7 +226,7 @@ Out of scope:
 - Owner: Rust terminal materialization and Rust launch preflight
 - Statement: Rio is the upstream packaged terminal variant selected by
   `terminal = "rio"` or `#yazelix_rio`; it must not depend on the
-  `mars` child package or yzxterm metadata. Generated Rio config is
+  `mars` child package or mars metadata. Generated Rio config is
   written under the Yazelix state directory and launched through
   `RIO_CONFIG_HOME`, with `terminal.transparency` mapped to Rio window and cell
   opacity. On Linux, when transparency is enabled and an X display exists,

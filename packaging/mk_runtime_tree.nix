@@ -90,8 +90,8 @@ let
       throw "Unexpected yazelix_cursors package contract packageName"
     else if cursorPackageContract.shaderRoot != "share/yazelix/yazelix_cursors/shaders" then
       throw "Unexpected yazelix_cursors shaderRoot package contract"
-    else if !(builtins.elem "yzxterm" cursorPackageContract.requiredTargets) then
-      throw "yazelix_cursors package contract does not declare the yzxterm cursor target"
+    else if !(builtins.elem "mars" cursorPackageContract.requiredTargets) then
+      throw "yazelix_cursors package contract does not declare the mars cursor target"
     else if !(builtins.elem "build_shaders.nu" cursorPackageContract.forbiddenShaderFiles) then
       throw "yazelix_cursors package contract does not forbid stale build_shaders.nu shader assets"
     else if !(builtins.hasAttr "requiredShaderFiles" cursorPackageContract) then
@@ -244,7 +244,7 @@ pkgs.runCommand name { } ''
     mkdir -p "$out/runtime_features"
     touch "$out/runtime_features/zellij_kitty_passthrough"
   ''}
-  ${pkgs.lib.optionalString (runtimeVariant == "yzxterm" && marsTerminalPackage != null) ''
+  ${pkgs.lib.optionalString (runtimeVariant == "mars" && marsTerminalPackage != null) ''
     replace_runtime_link "${marsTerminalPackage}/share/mars" "share/mars"
   ''}
 

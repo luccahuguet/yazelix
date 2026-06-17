@@ -30,12 +30,12 @@ let
     "host"
     "off"
   ];
-  yzxtermProfiles = [
+  marsProfiles = [
     "full"
     "baseline"
     "shaders"
   ];
-  yzxtermEmojiFonts = [
+  marsEmojiFonts = [
     "noto"
     "twitter"
     "serenityos"
@@ -77,8 +77,8 @@ in
       runtimeToolSourceModes
       terminalDescriptionBullets
       terminalVariants
-      yzxtermEmojiFonts
-      yzxtermProfiles
+      marsEmojiFonts
+      marsProfiles
       ;
     inherit (runtimeIntegration) agentUsageProgramNames;
   };
