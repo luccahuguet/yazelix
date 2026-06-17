@@ -711,10 +711,10 @@ fn validate_home_manager_desktop_entry_contract(repo_root: &Path) -> Result<Vec<
         );
     }
     if shader_exec
-        != "env YAZELIX_TERMINAL_APP_ID=com.yazelix.Yazelix.Yzxterm YAZELIX_TERMINAL_APPEARANCE=light YAZELIX_TERMINAL_EMOJI_FONT=twitter YAZELIX_TERMINAL_PROFILE=shaders /tmp/profile/bin/yzx desktop launch"
+        != "env YAZELIX_TERMINAL_APP_ID=com.yazelix.Yazelix.Yzxterm YAZELIX_TERMINAL_APPEARANCE=light YAZELIX_TERMINAL_EMOJI_FONT=twitter YAZELIX_TERMINAL_EMOJI_FONT_SOURCE=home-manager YAZELIX_TERMINAL_PROFILE=shaders /tmp/profile/bin/yzx desktop launch"
     {
         errors.push(format!(
-            "Home Manager shader yzxterm profile desktop entry Exec mismatch: expected app id, appearance, emoji font, and shader profile env, got {}",
+            "Home Manager shader yzxterm profile desktop entry Exec mismatch: expected app id, appearance, emoji font, emoji source, and shader profile env, got {}",
             format_json_string(shader_exec)
         ));
     }

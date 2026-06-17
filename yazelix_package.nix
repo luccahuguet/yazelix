@@ -16,7 +16,7 @@
   rioPackage ? pkgs.rio,
   yazelixHelixPackage ? null,
   yazelixCursorsPackage ? null,
-  yazelixTerminalPackage ? null,
+  marsTerminalPackage ? null,
   zellijPluginArtifacts ? { },
   enableZellijKittyPassthrough ? false,
 }:
@@ -56,7 +56,7 @@ import ./packaging/mk_yazelix_package.nix {
     rioPackage
     yazelixHelixPackage
     yazelixCursorsPackage
-    yazelixTerminalPackage
+    marsTerminalPackage
     zellijPluginArtifacts
     enableZellijKittyPassthrough
     ;
