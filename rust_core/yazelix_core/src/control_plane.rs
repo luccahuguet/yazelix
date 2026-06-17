@@ -300,6 +300,7 @@ pub fn runtime_materialization_plan_request_from_env(
         zellij_config_dir,
         zellij_permissions_cache_path: Some(zellij_permissions_cache_path()?),
         layout_override: runtime_materialization_layout_override_from_env(),
+        session_terminal_label: None,
     })
 }
 

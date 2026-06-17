@@ -104,6 +104,7 @@ pub struct ZellijMaterializationRequest {
     pub runtime_dir: PathBuf,
     pub zellij_config_dir: PathBuf,
     pub seed_plugin_permissions: bool,
+    pub session_terminal_label: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
@@ -229,7 +230,14 @@ pub fn generate_zellij_materialization(
     let popup_commands = resolve_popup_commands_config(&config)?;
     let custom_popups = resolve_custom_popups_config(&config)?;
     validate_custom_popup_keybindings(&zellij_keybindings, &custom_popups)?;
-    let terminal_label = active_terminal_from_runtime_dir(&request.runtime_dir)?;
+    let terminal_label = request
+        .session_terminal_label
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(ToOwned::to_owned)
+        .map(Ok)
+        .unwrap_or_else(|| active_terminal_from_runtime_dir(&request.runtime_dir))?;
     let render_plan_request = build_render_plan_request(
         &config,
         &layout_dir,
@@ -311,6 +319,7 @@ pub fn generate_zellij_materialization(
     record_generation_fingerprint(
         &request.zellij_config_dir,
         &config_pack_output.generation_fingerprint,
+        &render_plan.terminal_label,
     )?;
 
     Ok(ZellijMaterializationData {
@@ -1389,10 +1398,12 @@ fn build_generation_fingerprint(
 fn record_generation_fingerprint(
     merged_config_dir: &Path,
     fingerprint: &str,
+    session_terminal_label: &str,
 ) -> Result<(), CoreError> {
     let metadata_path = merged_config_dir.join(GENERATION_METADATA_NAME);
     let content = serde_json::to_string(&json!({
         "fingerprint": fingerprint,
+        "session_terminal_label": session_terminal_label,
         "generated_at": epoch_millis_timestamp(),
     }))
     .map_err(|source| {

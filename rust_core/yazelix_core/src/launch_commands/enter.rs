@@ -24,6 +24,7 @@ use crate::startup_facts::{StartupFactsData, compute_startup_facts_from_config};
 use crate::startup_handoff::{
     StartupHandoffArtifact, StartupHandoffCaptureRequest, capture_startup_handoff_context,
 };
+use crate::terminal_variant::{SESSION_TERMINAL_ENV, current_session_terminal_label_from_env};
 use crate::upgrade_summary::{current_release_headline, maybe_show_first_run_upgrade_summary};
 use crossterm::event::{Event, KeyEventKind};
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
@@ -66,7 +67,9 @@ pub(super) fn run_enter(args: &[String]) -> Result<i32, CoreError> {
     let normalized =
         load_normalized_config_for_control(&runtime_dir, &config_dir, config_override.as_deref())?;
     let default_shell = default_shell_from_config(&normalized);
-    let startup_facts = compute_startup_facts_from_config(&runtime_dir, &normalized)?;
+    let session_terminal_label = current_session_terminal_label_from_env();
+    let mut startup_facts = compute_startup_facts_from_config(&runtime_dir, &normalized)?;
+    startup_facts.terminals = vec![session_terminal_label.clone()];
 
     if parsed.verbose {
         println!("🔍 start_yazelix: verbose mode enabled");
@@ -91,6 +94,7 @@ pub(super) fn run_enter(args: &[String]) -> Result<i32, CoreError> {
         &runtime_dir,
         &working_dir,
         config_override.as_deref(),
+        &session_terminal_label,
         parsed.verbose,
     )?;
     extra_env.extend(startup.extra_env);
@@ -510,12 +514,14 @@ fn prepare_rust_startup(
     runtime_dir: &Path,
     working_dir: &Path,
     config_override: Option<&str>,
+    session_terminal_label: &str,
     verbose: bool,
 ) -> Result<RustStartupPlan, CoreError> {
     let state_dir = state_dir_from_env()?;
-    let materialization = materialize_runtime_state(
-        &runtime_materialization_plan_request_from_env(config_override)?,
-    )?;
+    let mut materialization_request =
+        runtime_materialization_plan_request_from_env(config_override)?;
+    materialization_request.session_terminal_label = Some(session_terminal_label.to_string());
+    let materialization = materialize_runtime_state(&materialization_request)?;
     if verbose && materialization.plan.status != "noop" {
         println!("✅ Generated runtime state materialized.");
     }
@@ -588,6 +594,10 @@ fn prepare_rust_startup(
             (
                 "YAZELIX_STATUS_BAR_CACHE_PATH".to_string(),
                 Some(status_bar_cache_path),
+            ),
+            (
+                SESSION_TERMINAL_ENV.to_string(),
+                Some(session_terminal_label.to_string()),
             ),
         ],
         profile_exit_before_zellij: bool_env("YAZELIX_STARTUP_PROFILE_EXIT_BEFORE_ZELLIJ"),

@@ -481,6 +481,68 @@ command = ""
     assert!(!log.contains("/stale/"), "{log}");
 }
 
+// Regression: `yzx enter` uses the actual host terminal for the status bar instead of the configured packaged runtime variant.
+#[test]
+fn yzx_enter_uses_detected_host_terminal_for_status_bar_label() {
+    let fixture = managed_config_fixture("");
+    fs::write(fixture.runtime_dir.join("runtime_variant"), "ratty\n").unwrap();
+    fs::write(
+        fixture.runtime_dir.join("runtime_identity.json"),
+        r#"{"schema_version":1,"version":"v-test","runtime_variant":"ratty"}"#,
+    )
+    .unwrap();
+    seed_startup_materialization_runtime_assets(&fixture);
+
+    let fake_bin = fixture.home_dir.join("fake-bin");
+    let workspace = fixture.home_dir.join("workspace");
+    let zellij_log = fixture.home_dir.join("zellij-startup.log");
+    let bar_request = fixture.home_dir.join("zellij-bar-request.json");
+    fs::create_dir_all(&fake_bin).unwrap();
+    fs::create_dir_all(&workspace).unwrap();
+
+    write_executable_script(
+        &fixture
+            .runtime_dir
+            .join("libexec")
+            .join("yazelix_zellij_bar_widget"),
+        &format!(
+            "#!/bin/sh\n[ \"$1\" = \"render-yazelix-runtime\" ] || exit 11\n[ \"$2\" = \"--json\" ] || exit 12\nprintf '%s' \"$3\" > '{}'\nprintf '%s\\n' '{{\"schema_version\":3,\"plugin_block\":\"CHILD_PLUGIN_BLOCK\"}}'\n",
+            bar_request.display()
+        ),
+    );
+    write_executable_script(
+        &fake_bin.join("zellij"),
+        &format!(
+            "#!/bin/sh\nif [ \"$1\" = \"setup\" ] && [ \"$2\" = \"--dump-config\" ]; then exit 0; fi\nprintf 'YAZELIX_SESSION_TERMINAL=%s\\n' \"${{YAZELIX_SESSION_TERMINAL-unset}}\" > '{}'\nexit 0\n",
+            zellij_log.display()
+        ),
+    );
+
+    let output = yzx_control_command_in_fixture(&fixture)
+        .env("PATH", prepend_path(&fake_bin))
+        .env("TERM_PROGRAM", "WezTerm")
+        .env("YAZELIX_STARTUP_PROFILE_SKIP_WELCOME", "true")
+        .arg("enter")
+        .arg("--path")
+        .arg(&workspace)
+        .output()
+        .unwrap();
+
+    assert_eq!(
+        output.status.code(),
+        Some(0),
+        "stderr:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(output.stderr.is_empty());
+    let request: Value = serde_json::from_str(&fs::read_to_string(bar_request).unwrap()).unwrap();
+    assert_eq!(request["terminal_label"], "wezterm");
+    assert_ne!(request["terminal_label"], "ratty");
+
+    let log = fs::read_to_string(zellij_log).unwrap();
+    assert!(log.contains("YAZELIX_SESSION_TERMINAL=wezterm"), "{log}");
+}
+
 // Defends: the public Rust-owned `yzx status --json` surface keeps the typed runtime summary instead of a wrapper-shaped blob.
 #[test]
 fn yzx_control_status_json_reports_typed_summary() {

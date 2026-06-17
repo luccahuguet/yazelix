@@ -206,6 +206,7 @@ pub fn runtime_materialization_request(
         zellij_layout_dir: zellij_config_dir.join("layouts"),
         zellij_permissions_cache_path: None,
         layout_override: None,
+        session_terminal_label: None,
     })
 }
 
@@ -635,6 +636,7 @@ apply_mode = "generated_runtime_refresh"
                 zellij_layout_dir: temp.path().join("configs/zellij/layouts"),
                 zellij_permissions_cache_path: Some(temp.path().join("permissions.kdl")),
                 layout_override: None,
+                session_terminal_label: None,
             }),
             pane_orchestrator_refresh: None,
         };

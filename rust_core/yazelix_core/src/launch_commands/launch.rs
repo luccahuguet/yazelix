@@ -33,8 +33,9 @@ use crate::terminal_materialization::{
     MARS_EMOJI_ENV_KEYS, MARS_EMOJI_FONT_ENV, MARS_EMOJI_FONT_SOURCE_ENV,
 };
 use crate::terminal_variant::{
-    SUPPORTED_TERMINALS, active_terminal_from_runtime_dir, normalize_terminal_id,
-    terminal_desktop_entry_file_name, terminal_display_name, terminal_startup_wm_class,
+    SESSION_TERMINAL_ENV, SUPPORTED_TERMINALS, active_terminal_from_runtime_dir,
+    normalize_terminal_id, terminal_desktop_entry_file_name, terminal_display_name,
+    terminal_startup_wm_class,
 };
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -698,6 +699,10 @@ fn launch_candidate_extra_env(
             Some(plan.runtime_dir.to_string_lossy().into_owned()),
         ),
         ("MARS".to_string(), Some(candidate.terminal.clone())),
+        (
+            SESSION_TERMINAL_ENV.to_string(),
+            Some(candidate.terminal.clone()),
+        ),
         (
             "MARS_WINDOW_TITLE_PREFIX".to_string(),
             Some(terminal_window_title_prefix(&candidate.terminal)),

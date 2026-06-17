@@ -141,6 +141,7 @@ pub(crate) fn seed_zellij_plugin_permissions() -> Result<bool, CoreError> {
         runtime_dir,
         zellij_config_dir,
         seed_plugin_permissions: true,
+        session_terminal_label: None,
     };
     match generate_zellij_materialization(&req) {
         Ok(_) => {

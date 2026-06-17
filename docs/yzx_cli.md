@@ -64,6 +64,8 @@ Launch Yazelix with directory and mode options
 ### `yzx enter [--path DIR] [--home] [--config FILE] [--with KEY=VALUE] [--verbose]`
 Start Yazelix in the current terminal
 - Default: Start in the current terminal and current directory
+- The status-bar terminal widget reports the detected host terminal for this session, not merely the packaged runtime variant
+- If the host terminal is ambiguous or unsupported, the session terminal label is `unknown`
 - `--path DIR`: Start in specific directory
 - `--home`: Start in home directory
 - `--config FILE`: Use an alternate complete `settings.jsonc` for this current-terminal session

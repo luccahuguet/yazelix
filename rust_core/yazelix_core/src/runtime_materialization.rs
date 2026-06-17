@@ -33,6 +33,8 @@ pub struct RuntimeMaterializationPlanRequest {
     #[serde(default)]
     pub zellij_permissions_cache_path: Option<PathBuf>,
     pub layout_override: Option<String>,
+    #[serde(default)]
+    pub session_terminal_label: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -154,6 +156,14 @@ pub fn plan_runtime_materialization(
             missing_artifacts.push(artifact.clone());
         }
     }
+    if let Some(label) = normalized_session_terminal_label(&request.session_terminal_label) {
+        if !generated_zellij_terminal_label_matches(&request.zellij_config_dir, &label)? {
+            missing_artifacts.push(runtime_artifact((
+                "generated Zellij terminal label",
+                zellij_generation_metadata_path(&request.zellij_config_dir),
+            )));
+        }
+    }
     if !config_state.needs_refresh
         && missing_artifacts.is_empty()
         && generated_yazi_static_assets_missing(&request.runtime_dir, &request.yazi_config_dir)?
@@ -258,6 +268,7 @@ fn materialize_runtime_state_from_plan(
         runtime_dir: request.runtime_dir.clone(),
         zellij_config_dir: request.zellij_config_dir.clone(),
         seed_plugin_permissions: true,
+        session_terminal_label: request.session_terminal_label.clone(),
     })?;
 
     let config_dir = config_dir_from_env()?;
@@ -433,6 +444,44 @@ fn runtime_artifact_needs_repair(artifact: &RuntimeArtifact) -> Result<bool, Cor
     Ok(false)
 }
 
+fn normalized_session_terminal_label(raw: &Option<String>) -> Option<String> {
+    raw.as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(ToOwned::to_owned)
+}
+
+fn zellij_generation_metadata_path(zellij_config_dir: &Path) -> PathBuf {
+    zellij_config_dir.join("generation_metadata.json")
+}
+
+fn generated_zellij_terminal_label_matches(
+    zellij_config_dir: &Path,
+    expected_label: &str,
+) -> Result<bool, CoreError> {
+    let path = zellij_generation_metadata_path(zellij_config_dir);
+    let Ok(raw) = fs::read_to_string(&path) else {
+        return Ok(false);
+    };
+    let value: serde_json::Value = serde_json::from_str(&raw).map_err(|source| {
+        CoreError::classified(
+            ErrorClass::Runtime,
+            "zellij_generation_metadata_parse",
+            format!(
+                "Could not parse generated Zellij metadata {}: {source}",
+                path.display()
+            ),
+            "Regenerate the managed Zellij config with `yzx enter` or `yzx doctor --fix`.",
+            json!({ "path": path.to_string_lossy() }),
+        )
+    })?;
+    Ok(value
+        .get("session_terminal_label")
+        .and_then(serde_json::Value::as_str)
+        .map(str::trim)
+        == Some(expected_label))
+}
+
 // Test lane: maintainer
 #[cfg(test)]
 mod tests {
@@ -469,6 +518,7 @@ mod tests {
             zellij_layout_dir,
             zellij_permissions_cache_path: Some(state_path.with_file_name("permissions.kdl")),
             layout_override: None,
+            session_terminal_label: None,
         }
     }
 
@@ -740,6 +790,54 @@ mod tests {
         assert_eq!(plan.should_sync_static_assets, false);
         assert_eq!(plan.missing_artifacts.len(), 1);
         assert_eq!(plan.missing_artifacts[0].label, "generated Zellij config");
+    }
+
+    // Regression: current-terminal enter can change the status-bar terminal label without changing settings.jsonc or the runtime path.
+    #[test]
+    fn plan_marks_stale_zellij_terminal_label_for_repair_without_forcing_refresh() {
+        let dir = tempdir().expect("tempdir");
+        let mut fixture = recorded_plan_fixture(dir.path());
+        let initial_plan = plan_recorded_fixture(&fixture);
+        touch_plan_artifacts(&initial_plan);
+        mirror_yazi_static_assets(&fixture.runtime_dir, &fixture.yazi_dir);
+        fs::write(
+            zellij_generation_metadata_path(&fixture.zellij_dir),
+            serde_json::json!({
+                "fingerprint": "previous",
+                "session_terminal_label": "ratty",
+                "generated_at": 1,
+            })
+            .to_string(),
+        )
+        .unwrap();
+        fixture.request.session_terminal_label = Some("wezterm".to_string());
+
+        let plan = plan_recorded_fixture(&fixture);
+
+        assert!(!plan.config_state.needs_refresh);
+        assert_eq!(plan.status, "repair_missing_artifacts");
+        assert_eq!(plan.should_regenerate, true);
+        assert_eq!(plan.should_sync_static_assets, false);
+        assert_eq!(plan.missing_artifacts.len(), 1);
+        assert_eq!(
+            plan.missing_artifacts[0].label,
+            "generated Zellij terminal label"
+        );
+
+        fs::write(
+            zellij_generation_metadata_path(&fixture.zellij_dir),
+            serde_json::json!({
+                "fingerprint": "current",
+                "session_terminal_label": "wezterm",
+                "generated_at": 2,
+            })
+            .to_string(),
+        )
+        .unwrap();
+        let current_plan = plan_recorded_fixture(&fixture);
+
+        assert_eq!(current_plan.status, "noop");
+        assert!(current_plan.missing_artifacts.is_empty());
     }
 
     // Defends: repair evaluation returns a noop directive when the plan is noop and force is false.
