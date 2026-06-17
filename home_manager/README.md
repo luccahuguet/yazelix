@@ -127,7 +127,7 @@ the fast yzxterm child package while keeping `terminal = "yzxterm"`:
 {
   programs.yazelix = {
     terminal = "yzxterm";
-    yzxterm_package = inputs.yazelixTerminal.packages.${pkgs.stdenv.hostPlatform.system}.mars-fast;
+    yzxterm_package = inputs.marsTerminal.packages.${pkgs.stdenv.hostPlatform.system}.mars-fast;
   };
 }
 ```

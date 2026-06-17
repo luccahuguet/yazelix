@@ -453,17 +453,17 @@ fn build_nix_customization_api_expr(repo_root: &Path) -> String {
             r#"  ghosttyRegistryWithInvalidYzxtermOverride = import "{}/packaging/runtime_tool_registry.nix" {{
     inherit pkgs;
     runtimeVariant = "ghostty";
-    yazelixTerminalPackage = invalidYzxtermPackage;
+    marsTerminalPackage = invalidYzxtermPackage;
   }};
   yzxtermOverrideRegistry = import "{}/packaging/runtime_tool_registry.nix" {{
     inherit pkgs;
     runtimeVariant = "yzxterm";
-    yazelixTerminalPackage = fakeYzxtermPackage;
+    marsTerminalPackage = fakeYzxtermPackage;
   }};
   invalidYzxtermPackageRegistry = builtins.tryEval (builtins.concatStringsSep "," ((import "{}/packaging/runtime_tool_registry.nix" {{
     inherit pkgs;
     runtimeVariant = "yzxterm";
-    yazelixTerminalPackage = invalidYzxtermPackage;
+    marsTerminalPackage = invalidYzxtermPackage;
   }}).exportedCommands));
   rioOverrideRegistry = import "{}/packaging/runtime_tool_registry.nix" {{
     inherit pkgs;
@@ -472,8 +472,8 @@ fn build_nix_customization_api_expr(repo_root: &Path) -> String {
   }};"#,
             repo_root_literal, repo_root_literal, repo_root_literal, repo_root_literal
         ),
-        "  yzxtermFastChildMetadata = flake.inputs.yazelixTerminal.packages.${system}.mars-fast.passthru.marsPackageMetadata or {};".to_string(),
-        "  yzxtermReleaseChildMetadata = flake.inputs.yazelixTerminal.packages.${system}.mars.passthru.marsPackageMetadata or {};".to_string(),
+        "  yzxtermFastChildMetadata = flake.inputs.marsTerminal.packages.${system}.mars-fast.passthru.marsPackageMetadata or {};".to_string(),
+        "  yzxtermReleaseChildMetadata = flake.inputs.marsTerminal.packages.${system}.mars.passthru.marsPackageMetadata or {};".to_string(),
         "  steelAuthoringCommands = [ \"steel\" \"steel-language-server\" \"forge\" \"cargo-steel-lib\" \"repl-connect\" ];".to_string(),
         "  invalidRuntimeTool = builtins.tryEval ((flake.lib.${system}.mkYazelix { runtimeToolSources = { zellij = \"host\"; }; }).drvPath);".to_string(),
         "  unsupportedComponent = builtins.tryEval ((flake.lib.${system}.mkYazelix { components = { status_bar = false; }; }).drvPath);".to_string(),

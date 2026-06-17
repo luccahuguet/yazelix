@@ -871,7 +871,7 @@ fn build_home_manager_activation_expr(repo_root: &Path) -> String {
         "  pkgs = import <nixpkgs> { system = \"x86_64-linux\"; };".to_string(),
         "  lib = pkgs.lib.extend (_: super: { hm = { dag = { entryAfter = after: data: { inherit after data; }; }; }; });".to_string(),
         "  eval = lib.evalModules {".to_string(),
-        "    specialArgs = { inherit pkgs; nixgl = null; yazelixCursorsPackage = null; yazelixTerminalPackage = null; mkYazelixPackage = args: pkgs.runCommand (args.name or \"yazelix\") {} ''mkdir -p $out/bin $out/libexec $out/toolbin; touch $out/bin/yzx $out/libexec/yzx_core $out/libexec/yzx_control''; };".to_string(),
+        "    specialArgs = { inherit pkgs; nixgl = null; yazelixCursorsPackage = null; marsTerminalPackage = null; mkYazelixPackage = args: pkgs.runCommand (args.name or \"yazelix\") {} ''mkdir -p $out/bin $out/libexec $out/toolbin; touch $out/bin/yzx $out/libexec/yzx_core $out/libexec/yzx_control''; };".to_string(),
         "    modules = [".to_string(),
         format!("      (builtins.toPath \"{}\")", module_path),
     ];
@@ -1157,7 +1157,7 @@ fn build_home_manager_desktop_entry_expr(
         "  pkgs = import <nixpkgs> { system = \"x86_64-linux\"; };".to_string(),
         "  lib = pkgs.lib;".to_string(),
         "  eval = lib.evalModules {".to_string(),
-        "    specialArgs = { inherit pkgs; nixgl = null; yazelixCursorsPackage = null; yazelixTerminalPackage = null; mkYazelixPackage = args: pkgs.runCommand (args.name or \"yazelix\") {} \"mkdir -p $out/bin; touch $out/bin/yzx\"; };".to_string(),
+        "    specialArgs = { inherit pkgs; nixgl = null; yazelixCursorsPackage = null; marsTerminalPackage = null; mkYazelixPackage = args: pkgs.runCommand (args.name or \"yazelix\") {} \"mkdir -p $out/bin; touch $out/bin/yzx\"; };".to_string(),
         "    modules = [".to_string(),
         format!("      (builtins.toPath \"{}\")", module_path),
     ];

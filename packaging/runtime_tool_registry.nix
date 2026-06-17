@@ -4,7 +4,7 @@
   rioPackage ? pkgs.rio,
   runtimeVariant ? "ghostty",
   runtimeToolSources ? { },
-  yazelixTerminalPackage ? null,
+  marsTerminalPackage ? null,
 }:
 
 let
@@ -69,8 +69,8 @@ let
       metadata;
   marsPackageMetadata =
     if runtimeVariant == "yzxterm" then
-      if yazelixTerminalPackage != null then
-        requireMarsPackageMetadata yazelixTerminalPackage
+      if marsTerminalPackage != null then
+        requireMarsPackageMetadata marsTerminalPackage
       else
         throw "Yazelix runtimeVariant yzxterm requires the Mars terminal child package"
     else
@@ -115,7 +115,7 @@ let
         throw "Yazelix runtimeVariant foot is only supported on Linux"
     else if runtimeVariant == "yzxterm" then
       if marsPackageMetadata != null then
-        yazelixTerminalPackage
+        marsTerminalPackage
       else
         throw "Yazelix runtimeVariant yzxterm requires the Mars terminal child package"
     else

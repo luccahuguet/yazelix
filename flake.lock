@@ -74,7 +74,7 @@
     },
     "flake-utils": {
       "inputs": {
-        "systems": "systems"
+        "systems": "systems_2"
       },
       "locked": {
         "lastModified": 1731533236,
@@ -164,6 +164,29 @@
         "type": "github"
       }
     },
+    "marsTerminal": {
+      "inputs": {
+        "flake-parts": "flake-parts",
+        "nixpkgs": [
+          "nixpkgs"
+        ],
+        "rust-overlay": "rust-overlay",
+        "systems": "systems"
+      },
+      "locked": {
+        "lastModified": 1781708140,
+        "narHash": "sha256-P8RjQTkEkPhzM6+XXHjadOeoXC8vOgbYGibXB0HzPAU=",
+        "owner": "luccahuguet",
+        "repo": "mars",
+        "rev": "a96e9508f93f149ec10207d93ceaaab98f09c076",
+        "type": "github"
+      },
+      "original": {
+        "owner": "luccahuguet",
+        "repo": "mars",
+        "type": "github"
+      }
+    },
     "nixgl": {
       "inputs": {
         "flake-utils": "flake-utils",
@@ -246,12 +269,12 @@
     },
     "rio": {
       "inputs": {
-        "flake-parts": "flake-parts",
+        "flake-parts": "flake-parts_2",
         "nixpkgs": [
           "nixpkgs"
         ],
-        "rust-overlay": "rust-overlay",
-        "systems": "systems_2"
+        "rust-overlay": "rust-overlay_2",
+        "systems": "systems_3"
       },
       "locked": {
         "lastModified": 1781041818,
@@ -272,13 +295,13 @@
       "inputs": {
         "fenix": "fenix",
         "home-manager": "home-manager",
+        "marsTerminal": "marsTerminal",
         "nixgl": "nixgl",
         "nixpkgs": "nixpkgs_2",
         "rio": "rio",
         "yazelixCursors": "yazelixCursors",
         "yazelixHelix": "yazelixHelix",
         "yazelixScreen": "yazelixScreen",
-        "yazelixTerminal": "yazelixTerminal",
         "yazelixYaziAssets": "yazelixYaziAssets",
         "yazelixZellij": "yazelixZellij",
         "yazelixZellijBar": "yazelixZellijBar",
@@ -308,6 +331,27 @@
     "rust-overlay": {
       "inputs": {
         "nixpkgs": [
+          "marsTerminal",
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1780110990,
+        "narHash": "sha256-6QBThUi7SuK+dgA+DCaEkQGZN4kYx6DpXmK45+MG9zI=",
+        "owner": "oxalica",
+        "repo": "rust-overlay",
+        "rev": "85570ef134d92a8702de6afd1f6f0209c863fa91",
+        "type": "github"
+      },
+      "original": {
+        "owner": "oxalica",
+        "repo": "rust-overlay",
+        "type": "github"
+      }
+    },
+    "rust-overlay_2": {
+      "inputs": {
+        "nixpkgs": [
           "rio",
           "nixpkgs"
         ]
@@ -326,7 +370,7 @@
         "type": "github"
       }
     },
-    "rust-overlay_2": {
+    "rust-overlay_3": {
       "inputs": {
         "nixpkgs": [
           "yazelixHelix",
@@ -339,27 +383,6 @@
         "owner": "oxalica",
         "repo": "rust-overlay",
         "rev": "20fd44bc663daa53a2575e01293e24e681d62244",
-        "type": "github"
-      },
-      "original": {
-        "owner": "oxalica",
-        "repo": "rust-overlay",
-        "type": "github"
-      }
-    },
-    "rust-overlay_3": {
-      "inputs": {
-        "nixpkgs": [
-          "yazelixTerminal",
-          "nixpkgs"
-        ]
-      },
-      "locked": {
-        "lastModified": 1780110990,
-        "narHash": "sha256-6QBThUi7SuK+dgA+DCaEkQGZN4kYx6DpXmK45+MG9zI=",
-        "owner": "oxalica",
-        "repo": "rust-overlay",
-        "rev": "85570ef134d92a8702de6afd1f6f0209c863fa91",
         "type": "github"
       },
       "original": {
@@ -507,7 +530,7 @@
         "nixpkgs": [
           "nixpkgs"
         ],
-        "rust-overlay": "rust-overlay_2"
+        "rust-overlay": "rust-overlay_3"
       },
       "locked": {
         "lastModified": 1781091164,
@@ -543,29 +566,6 @@
       "original": {
         "owner": "luccahuguet",
         "repo": "yazelix-screen",
-        "type": "github"
-      }
-    },
-    "yazelixTerminal": {
-      "inputs": {
-        "flake-parts": "flake-parts_2",
-        "nixpkgs": [
-          "nixpkgs"
-        ],
-        "rust-overlay": "rust-overlay_3",
-        "systems": "systems_3"
-      },
-      "locked": {
-        "lastModified": 1781704161,
-        "narHash": "sha256-nxkR3lt+mDQDJyQ7U0zZgO8FSCo3VGg/CzW2rUWghHs=",
-        "owner": "luccahuguet",
-        "repo": "yazelix-terminal",
-        "rev": "2a971157d199653842e29bb938634784647f84ee",
-        "type": "github"
-      },
-      "original": {
-        "owner": "luccahuguet",
-        "repo": "yazelix-terminal",
         "type": "github"
       }
     },

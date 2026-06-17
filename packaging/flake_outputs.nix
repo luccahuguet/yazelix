@@ -13,7 +13,7 @@
   yazelixCursors,
   yazelixPackage,
   yazelixScreen,
-  yazelixTerminal,
+  marsTerminal,
   yazelixYaziAssets,
   yazelixZellijBar,
   yazelixZellijConfigPack,
@@ -36,11 +36,11 @@ let
     package_profile = "yzxterm-fast";
     yzxterm_terminal_package = "mars-fast";
   };
-  yzxtermFastTerminalPackage = yazelixTerminal.packages.${system}.mars-fast;
+  yzxtermFastTerminalPackage = marsTerminal.packages.${system}.mars-fast;
   runtime_yzxterm_fast = runtimePackageWith system pkgs "yzxterm" defaultRuntimePackages {
     name = "yazelix-runtime-yzxterm-fast";
     runtimeIdentity = yzxtermFastRuntimeIdentity;
-    yazelixTerminalPackage = yzxtermFastTerminalPackage;
+    marsTerminalPackage = yzxtermFastTerminalPackage;
   };
   yazelix_default = builtins.getAttr (terminalMetadata.packageOutput defaultRuntimeVariant) terminalPackages;
   yzxterm_fast = mkYazelix system {
@@ -51,7 +51,7 @@ let
     runtimeIdentity = yzxtermFastRuntimeIdentity;
     extraRuntimePackages = defaultRuntimePackages;
     skipStableWrapperRedirect = true;
-    yazelixTerminalPackage = yzxtermFastTerminalPackage;
+    marsTerminalPackage = yzxtermFastTerminalPackage;
   };
   runtime_agent_tools = runtimePackage system pkgs defaultRuntimeVariant defaultRuntimePackages;
   yazelix_agent_tools = yazelixPackage system pkgs defaultRuntimeVariant defaultRuntimePackages;

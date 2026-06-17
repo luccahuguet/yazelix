@@ -62,7 +62,7 @@ let
     ) cfg.agent_usage_programs;
 
   yzxtermPackageArgs = lib.optionalAttrs (cfg.yzxterm_package != null) {
-    yazelixTerminalPackage = cfg.yzxterm_package;
+    marsTerminalPackage = cfg.yzxterm_package;
   };
   packageBuilderArgs =
     {

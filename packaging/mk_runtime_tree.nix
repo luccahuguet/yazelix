@@ -14,14 +14,14 @@
   rioPackage ? pkgs.rio,
   yazelixHelixPackage ? null,
   yazelixCursorsPackage ? null,
-  yazelixTerminalPackage ? null,
+  marsTerminalPackage ? null,
   zellijPluginArtifacts ? { },
   enableZellijKittyPassthrough ? false,
 }:
 
 let
   runtimeToolRegistry = import ./runtime_tool_registry.nix {
-    inherit pkgs nixgl rioPackage runtimeVariant runtimeToolSources yazelixTerminalPackage;
+    inherit pkgs nixgl rioPackage runtimeVariant runtimeToolSources marsTerminalPackage;
   };
   runtimeComponentRegistry = import ./runtime_component_registry.nix {
     lib = pkgs.lib;
@@ -244,8 +244,8 @@ pkgs.runCommand name { } ''
     mkdir -p "$out/runtime_features"
     touch "$out/runtime_features/zellij_kitty_passthrough"
   ''}
-  ${pkgs.lib.optionalString (runtimeVariant == "yzxterm" && yazelixTerminalPackage != null) ''
-    replace_runtime_link "${yazelixTerminalPackage}/share/yazelix-terminal" "share/yazelix-terminal"
+  ${pkgs.lib.optionalString (runtimeVariant == "yzxterm" && marsTerminalPackage != null) ''
+    replace_runtime_link "${marsTerminalPackage}/share/yazelix-terminal" "share/yazelix-terminal"
   ''}
 
   mkdir -p "$out/libexec"

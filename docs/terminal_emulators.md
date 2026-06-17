@@ -7,9 +7,9 @@ fresh validation pass.
 
 Data summarized from:
 
-- https://github.com/luccahuguet/yazelix-terminal
-- https://github.com/luccahuguet/yazelix-terminal/blob/main/docs/yazelix/fork_feature_verification.md
-- https://github.com/luccahuguet/yazelix-terminal/blob/main/docs/yazelix/frontier_kitty_protocols.md
+- https://github.com/luccahuguet/mars
+- https://github.com/luccahuguet/mars/blob/main/docs/yazelix/fork_feature_verification.md
+- https://github.com/luccahuguet/mars/blob/main/docs/yazelix/frontier_kitty_protocols.md
 - https://ghostty.org/docs/config/reference
 - https://github.com/raphamorim/rio
 - https://wezterm.org/features.html

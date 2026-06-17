@@ -14,7 +14,7 @@ home-manager switch --flake .#lucca@loqness
 ```
 
 Use it for final runtime validation and shareable releases. When the
-`yazelixTerminal` input changes, this path consumes the checked
+`marsTerminal` input changes, this path consumes the checked
 `mars` child package. The child package builds Mars with the release Cargo
 profile, including LTO and one codegen unit, then runs the package test phase.
 In the observed June 3, 2026 update, the final release-LTO link and the
@@ -42,15 +42,15 @@ Before a commit is published, or when using unpublished local child-repo
 changes, expect the fast runtime to build locally.
 
 For Home Manager dogfooding, keep the yzxterm runtime settings but override only
-the terminal child package. The example assumes a direct `yazelixTerminal` flake
-input pointing at `github:luccahuguet/yazelix-terminal`:
+the terminal child package. The example assumes a direct `marsTerminal` flake
+input pointing at `github:luccahuguet/mars`:
 
 ```nix
 {
   programs.yazelix = {
     terminal = "yzxterm";
     yzxterm_profile = "shaders";
-    yzxterm_package = inputs.yazelixTerminal.packages.${pkgs.stdenv.hostPlatform.system}.mars-fast;
+    yzxterm_package = inputs.marsTerminal.packages.${pkgs.stdenv.hostPlatform.system}.mars-fast;
   };
 }
 ```

@@ -58,8 +58,8 @@
       url = "github:luccahuguet/yazelix-helix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    yazelixTerminal = {
-      url = "github:luccahuguet/yazelix-terminal";
+    marsTerminal = {
+      url = "github:luccahuguet/mars";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     yazelixZellijPaneOrchestrator = {
@@ -92,7 +92,7 @@
       yazelixYaziAssets,
       yazelixZellij,
       yazelixHelix,
-      yazelixTerminal,
+      marsTerminal,
       yazelixZellijPaneOrchestrator,
       yazelixZellijPopup,
       yazelixZellijConfigPack,
@@ -132,7 +132,7 @@
           yazelix_zellij_config_pack = inputIdentity yazelixZellijConfigPack;
           yazelix_yazi_assets = inputIdentity yazelixYaziAssets;
           yazelix_helix = inputIdentity yazelixHelix;
-          yazelix_terminal = inputIdentity yazelixTerminal;
+          mars_terminal = inputIdentity marsTerminal;
           yazelix_zellij_pane_orchestrator = inputIdentity yazelixZellijPaneOrchestrator;
           yazelix_zellij_popup = inputIdentity yazelixZellijPopup;
         };
@@ -146,8 +146,8 @@
           kgpPackages.helixPackage pkgs.stdenv.hostPlatform.system;
         _module.args.yazelixCursorsPackage =
           yazelixCursors.packages.${pkgs.stdenv.hostPlatform.system}.yazelix_cursors;
-        _module.args.yazelixTerminalPackage =
-          yazelixTerminal.packages.${pkgs.stdenv.hostPlatform.system}.mars;
+        _module.args.marsTerminalPackage =
+          marsTerminal.packages.${pkgs.stdenv.hostPlatform.system}.mars;
         imports = [ ./home_manager/module.nix ];
       };
       agentUsagePackages = system:
@@ -199,7 +199,7 @@
           rioPackage ? rio.packages.${system}.rio,
           yazelixHelixPackage ? kgpPackages.helixPackage system,
           yazelixCursorsPackage ? yazelixCursors.packages.${system}.yazelix_cursors,
-          yazelixTerminalPackage ? yazelixTerminal.packages.${system}.mars,
+          marsTerminalPackage ? marsTerminal.packages.${system}.mars,
           zellijPluginArtifacts ? zellijPluginArtifactsFor system,
           enableZellijKittyPassthrough ? false,
         }:
@@ -210,7 +210,7 @@
           {
             inherit nixgl runtimeVariant runtimeToolSources components yaziAssets zellijPluginArtifacts;
             inherit runtimeIdentity;
-            inherit name rioPackage runtimeName skipStableWrapperRedirect yazelixTerminalPackage;
+            inherit name rioPackage runtimeName skipStableWrapperRedirect marsTerminalPackage;
             inherit yazelixHelixPackage yazelixCursorsPackage;
             pkgs = runtimePkgs;
             enableZellijKittyPassthrough =
@@ -231,10 +231,10 @@
           rioPackage ? rio.packages.${system}.rio,
           yazelixHelixPackage ? kgpPackages.helixPackage system,
           yazelixCursorsPackage ? yazelixCursors.packages.${system}.yazelix_cursors,
-          yazelixTerminalPackage ? yazelixTerminal.packages.${system}.mars,
+          marsTerminalPackage ? marsTerminal.packages.${system}.mars,
         }:
         import ./yazelix_runtime_package.nix {
-          inherit nixgl name rioPackage runtimeIdentity runtimeVariant yazelixHelixPackage yazelixCursorsPackage yazelixTerminalPackage;
+          inherit nixgl name rioPackage runtimeIdentity runtimeVariant yazelixHelixPackage yazelixCursorsPackage marsTerminalPackage;
           pkgs = runtimePkgsFor system pkgs runtimeVariant;
           fenixPkgs = fenix.packages.${system};
           extraRuntimePackages = [
@@ -319,7 +319,7 @@
         import ./packaging/flake_outputs.nix {
           inherit agentUsagePackages beadsRustPackage defaultRuntimeIdentity kgpPackages lib;
           inherit mkYazelix pkgs runtimePackage runtimePackageWith system yazelixPackage;
-          inherit yazelixCursors yazelixScreen yazelixTerminal yazelixYaziAssets;
+          inherit yazelixCursors yazelixScreen marsTerminal yazelixYaziAssets;
           inherit yazelixZellijBar yazelixZellijConfigPack yazelixZellijPaneOrchestrator;
           inherit yazelixZellijPopup;
           terminalMetadata = terminalMetadataFor pkgs;
