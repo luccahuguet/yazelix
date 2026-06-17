@@ -147,6 +147,7 @@ When creating new files or directories, always use underscores to maintain consi
 
 - Use `docs/child_repo_beads_ownership_policy.md` for the Beads ownership split around child source edits, main integration parents, GitHub issue mapping, and release transaction evidence.
 - Treat a main-repo `flake.lock` update that consumes a child-repo change as a coupled release transaction, not as a local-only integration. Trivial child-only docs, tests, CI, or internal package changes can be handled in the child repo by themselves.
+- Child extraction beads must name the main code, contract, or runtime closure they will delete or relinquish. A child stringifier plus a main planner is not an extraction unless that planner is intentionally retained and documented as main-owned.
 - Local `--override-input` validation is only a development smoke test because it can pass against unpublished child commits. Before committing, closing beads, or pushing the main repo for a coupled change, push the child repo first, update the main `flake.lock` to that GitHub revision, and run the main validation without overrides.
 - Close Beads and flush `.beads/issues.jsonl` with the published main change, after manual test approval when the coupled runtime change is non-trivial. If the main lock update or no-overrides validation fails after the child push, leave the child commit published but unused unless the child repo itself needs a fix or revert.
 
@@ -200,6 +201,7 @@ Use this as the default refactor and audit method in Yazelix, especially before 
 Use this for every extraction, cleanup, refactor, validator, generated-fixture, and command-surface bead.
 
 - Main-repo ownership is the score. Moving code to a child repo only counts when the main repo deletes code, stops owning a contract, or shrinks the runtime closure for users who opt out.
+- Before starting child extraction work, record the expected main deletion/relinquishment target in the bead acceptance criteria.
 - Run `shells/posix/yazelix_loc_scorecard.sh <base> HEAD` before closing meaningful refactor/extraction work, and include the result in the bead close reason or notes.
 - A cleanup/refactor/extraction bead should not raise main-repo runtime, maintainer, test, generated, or packaging LOC. If product behavior justifies growth, record the rationale and LOC scorecard in the close reason or notes.
 - If a change adds more than `100` main-repo code LOC outside Beads/docs while claiming to simplify, it must delete at least that much in the same bead or record an explicit rationale and affected owner.

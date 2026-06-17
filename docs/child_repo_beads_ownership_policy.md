@@ -26,6 +26,8 @@ acceptance criteria.
 
 - A repository's Beads database owns work only for behavior, source, packaging,
   or release state owned by that repository
+- Child extraction Beads must name the main code, contract, or runtime closure
+  they will delete or relinquish before implementation starts
 - Main-repo Beads should not become detailed implementation trackers for
   child-local edits
 - Child-repo Beads should not own main-runtime release decisions
