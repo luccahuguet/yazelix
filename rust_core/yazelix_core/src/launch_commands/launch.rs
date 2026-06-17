@@ -22,7 +22,8 @@ use crate::launch_materialization::{
     prepare_launch_materialization,
 };
 use crate::runtime_contract::{
-    LaunchPreflightPayload, StartupLaunchPreflightRequest, evaluate_startup_launch_preflight,
+    LaunchPreflightPayload, StartupLaunchPreflightRequest, TerminalCandidate,
+    evaluate_startup_launch_preflight,
 };
 use crate::runtime_env::compute_runtime_env;
 use crate::runtime_materialization::{
@@ -456,6 +457,40 @@ fn terminal_window_title_prefix(terminal: &str) -> String {
     format!("Yazelix - {} - ", terminal_display_name(terminal))
 }
 
+struct LaunchFlowInput<'a> {
+    requested_path: Option<&'a str>,
+    config_override: Option<&'a str>,
+    home: bool,
+    verbose: bool,
+    desktop_fast_path: bool,
+    env_removals: &'a [&'a str],
+}
+
+struct LaunchExecutionPlan {
+    runtime_dir: PathBuf,
+    state_dir: PathBuf,
+    home_dir: PathBuf,
+    working_dir: PathBuf,
+    active_terminal: String,
+    terminal_candidates: Vec<TerminalCandidate>,
+    materialization: LaunchMaterializationData,
+    runtime_env: serde_json::Map<String, serde_json::Value>,
+    terminal_transparency: String,
+    window_title_session_name: Option<String>,
+    needs_refresh: bool,
+}
+
+type LaunchProbe = fn(
+    &Path,
+    &Path,
+    &[String],
+    &serde_json::Map<String, serde_json::Value>,
+    &Path,
+    bool,
+    &[&str],
+    &[(String, Option<String>)],
+) -> Result<std::process::Output, CoreError>;
+
 pub(super) fn run_launch_flow(
     requested_path: Option<&str>,
     config_override: Option<&str>,
@@ -464,18 +499,36 @@ pub(super) fn run_launch_flow(
     desktop_fast_path: bool,
     env_removals: &[&str],
 ) -> Result<i32, CoreError> {
+    let input = LaunchFlowInput {
+        requested_path,
+        config_override,
+        home,
+        verbose,
+        desktop_fast_path,
+        env_removals,
+    };
+    let plan = build_launch_execution_plan(&input)?;
+    print_launch_materialization_status(&plan, &input);
+    execute_launch_plan(&plan, &input)
+}
+
+fn build_launch_execution_plan(
+    input: &LaunchFlowInput<'_>,
+) -> Result<LaunchExecutionPlan, CoreError> {
     let runtime_dir = runtime_dir_from_env()?;
     let state_dir = state_dir_from_env()?;
-    let config_state =
-        compute_config_state(&config_state_compute_request_from_env(config_override)?)?;
+    let home_dir = home_dir_from_env()?;
+    let config_state = compute_config_state(&config_state_compute_request_from_env(
+        input.config_override,
+    )?)?;
     repair_desktop_runtime_state_if_required(
-        desktop_fast_path,
+        input.desktop_fast_path,
         config_state.needs_refresh,
-        config_override,
+        input.config_override,
     )?;
     let active_terminal = active_terminal_from_runtime_dir(&runtime_dir)?;
 
-    let requested_working_dir = resolve_requested_working_dir(requested_path, home)?;
+    let requested_working_dir = resolve_requested_working_dir(input.requested_path, input.home)?;
     let command_search_paths = std::env::var_os("PATH")
         .map(|raw| std::env::split_paths(&raw).collect::<Vec<_>>())
         .unwrap_or_default();
@@ -491,10 +544,39 @@ pub(super) fn run_launch_flow(
     let working_dir = PathBuf::from(preflight.working_dir);
     let terminal_candidates = preflight.terminal_candidates.unwrap_or_default();
 
-    let req = launch_materialization_request_from_env(desktop_fast_path, config_override)?;
+    let req =
+        launch_materialization_request_from_env(input.desktop_fast_path, input.config_override)?;
     let materialization = prepare_launch_materialization(&req, &config_state.config)?;
-    if !desktop_fast_path && !materialization.generated_terminals.is_empty() {
-        let generated = materialization
+    let runtime_data = compute_runtime_env(&runtime_env_request(
+        runtime_dir.clone(),
+        &config_state.config,
+    )?)?;
+    let terminal_transparency = config_state
+        .config
+        .get("transparency")
+        .and_then(|value| value.as_str())
+        .unwrap_or("none")
+        .to_string();
+
+    Ok(LaunchExecutionPlan {
+        runtime_dir,
+        state_dir,
+        home_dir,
+        working_dir,
+        active_terminal,
+        terminal_candidates,
+        materialization,
+        runtime_env: runtime_data.runtime_env,
+        terminal_transparency,
+        window_title_session_name: window_title_session_name_from_env(input.desktop_fast_path),
+        needs_refresh: config_state.needs_refresh,
+    })
+}
+
+fn print_launch_materialization_status(plan: &LaunchExecutionPlan, input: &LaunchFlowInput<'_>) {
+    if !input.desktop_fast_path && !plan.materialization.generated_terminals.is_empty() {
+        let generated = plan
+            .materialization
             .generated_terminals
             .iter()
             .map(|entry| terminal_display_name(&entry.terminal))
@@ -504,111 +586,58 @@ pub(super) fn run_launch_flow(
         println!("✓ Generated terminal configurations ({generated})");
         println!("📋 Static example configs for other terminals in configs/terminal_emulators/");
     }
-    if materialization.rerolled_ghostty_cursor && verbose {
+    if plan.materialization.rerolled_ghostty_cursor && input.verbose {
         println!("🎲 Rerolling Yazelix random cursor settings for this window...");
         println!("✓ Rerolled Yazelix cursor settings");
     }
+}
 
-    let runtime_data = compute_runtime_env(&runtime_env_request(
-        runtime_dir.clone(),
-        &config_state.config,
-    )?)?;
-    let runtime_env = runtime_data.runtime_env;
-    let terminal_transparency = config_state
-        .config
-        .get("transparency")
-        .and_then(|value| value.as_str())
-        .unwrap_or("none");
-    let window_title_session_name = window_title_session_name_from_env(desktop_fast_path);
-
+fn execute_launch_plan(
+    plan: &LaunchExecutionPlan,
+    input: &LaunchFlowInput<'_>,
+) -> Result<i32, CoreError> {
     let mut failures = Vec::new();
-    for candidate in terminal_candidates {
-        let fallback_config_path = match resolve_terminal_config_path(
-            &home_dir_from_env()?,
-            &state_dir,
-            &materialization.terminal_config_mode,
-            &candidate.terminal,
-        ) {
-            Ok(path) => path,
+    let launch_probe: LaunchProbe = if input.desktop_fast_path {
+        run_desktop_deferred_launch_probe
+    } else {
+        run_detached_launch_probe
+    };
+    for candidate in &plan.terminal_candidates {
+        let config_path = match launch_candidate_config_path(plan, candidate) {
+            Ok(config_path) => config_path,
             Err(reason) => {
                 failures.push((candidate.name.clone(), reason));
                 continue;
             }
         };
-        let config_path =
-            resolve_materialized_terminal_config_path(&materialization, &candidate.terminal)
-                .unwrap_or(fallback_config_path);
 
         let argv = build_launch_command_argv(
-            &runtime_dir,
-            &candidate,
+            &plan.runtime_dir,
+            candidate,
             &config_path,
-            &working_dir,
-            window_title_session_name.as_deref(),
+            &plan.working_dir,
+            plan.window_title_session_name.as_deref(),
         )?;
-        if verbose {
+        if input.verbose {
             println!("Using terminal: {}", candidate.name);
             println!("Running: {}", render_argv_for_display(&argv));
         }
 
-        let mut extra_env = vec![
-            (
-                "YAZELIX_RUNTIME_DIR".to_string(),
-                Some(runtime_dir.to_string_lossy().into_owned()),
-            ),
-            (
-                "YAZELIX_TERMINAL".to_string(),
-                Some(candidate.terminal.clone()),
-            ),
-            (
-                "YAZELIX_TERMINAL_WINDOW_TITLE_PREFIX".to_string(),
-                Some(terminal_window_title_prefix(&candidate.terminal)),
-            ),
-        ];
-        if candidate.terminal == "yzxterm" {
-            extra_env.extend(yzxterm_process_boundary_env(&config_path)?);
-        }
-        if candidate.terminal == "rio" {
-            extra_env.extend(rio_process_boundary_env(
-                &config_path,
-                terminal_transparency,
-            )?);
-        }
-        for key in ["YAZELIX_SWEEP_TEST_ID", "YAZELIX_LAYOUT_OVERRIDE"] {
-            if let Ok(value) = std::env::var(key) {
-                if !value.trim().is_empty() {
-                    extra_env.push((key.to_string(), Some(value)));
-                }
-            }
-        }
-        extra_env.extend(config_override_extra_env(config_override));
+        let extra_env = launch_candidate_extra_env(plan, input, candidate, &config_path)?;
 
-        let output = if desktop_fast_path {
-            run_desktop_deferred_launch_probe(
-                &runtime_dir,
-                &state_dir,
-                &argv,
-                &runtime_env,
-                &working_dir,
-                config_state.needs_refresh,
-                env_removals,
-                &extra_env,
-            )?
-        } else {
-            run_detached_launch_probe(
-                &runtime_dir,
-                &state_dir,
-                &argv,
-                &runtime_env,
-                &working_dir,
-                config_state.needs_refresh,
-                env_removals,
-                &extra_env,
-            )?
-        };
+        let output = launch_probe(
+            &plan.runtime_dir,
+            &plan.state_dir,
+            &argv,
+            &plan.runtime_env,
+            &plan.working_dir,
+            plan.needs_refresh,
+            input.env_removals,
+            &extra_env,
+        )?;
 
         if output.status.success() {
-            if verbose {
+            if input.verbose {
                 println!("✅ Launch request sent to {}", candidate.name);
             }
             return Ok(0);
@@ -623,8 +652,10 @@ pub(super) fn run_launch_flow(
         .map(|(name, reason)| format!("  - {name}: {reason}"))
         .collect::<Vec<_>>()
         .join("\n");
-    let message =
-        format!("Failed to launch Yazelix terminal variant '{active_terminal}'.\n{summary}");
+    let message = format!(
+        "Failed to launch Yazelix terminal variant '{}'.\n{summary}",
+        plan.active_terminal
+    );
     Err(CoreError::classified(
         ErrorClass::Runtime,
         "launch_failed",
@@ -632,6 +663,63 @@ pub(super) fn run_launch_flow(
         "Reinstall Yazelix so the selected terminal variant is packaged correctly, or install a different Yazelix terminal variant.",
         serde_json::json!({}),
     ))
+}
+
+fn launch_candidate_config_path(
+    plan: &LaunchExecutionPlan,
+    candidate: &TerminalCandidate,
+) -> Result<PathBuf, String> {
+    let fallback_config_path = resolve_terminal_config_path(
+        &plan.home_dir,
+        &plan.state_dir,
+        &plan.materialization.terminal_config_mode,
+        &candidate.terminal,
+    )?;
+
+    Ok(
+        resolve_materialized_terminal_config_path(&plan.materialization, &candidate.terminal)
+            .unwrap_or(fallback_config_path),
+    )
+}
+
+fn launch_candidate_extra_env(
+    plan: &LaunchExecutionPlan,
+    input: &LaunchFlowInput<'_>,
+    candidate: &TerminalCandidate,
+    config_path: &Path,
+) -> Result<Vec<(String, Option<String>)>, CoreError> {
+    let mut extra_env = vec![
+        (
+            "YAZELIX_RUNTIME_DIR".to_string(),
+            Some(plan.runtime_dir.to_string_lossy().into_owned()),
+        ),
+        (
+            "YAZELIX_TERMINAL".to_string(),
+            Some(candidate.terminal.clone()),
+        ),
+        (
+            "YAZELIX_TERMINAL_WINDOW_TITLE_PREFIX".to_string(),
+            Some(terminal_window_title_prefix(&candidate.terminal)),
+        ),
+    ];
+    if candidate.terminal == "yzxterm" {
+        extra_env.extend(yzxterm_process_boundary_env(config_path)?);
+    }
+    if candidate.terminal == "rio" {
+        extra_env.extend(rio_process_boundary_env(
+            config_path,
+            &plan.terminal_transparency,
+        )?);
+    }
+    for key in ["YAZELIX_SWEEP_TEST_ID", "YAZELIX_LAYOUT_OVERRIDE"] {
+        if let Ok(value) = std::env::var(key) {
+            if !value.trim().is_empty() {
+                extra_env.push((key.to_string(), Some(value)));
+            }
+        }
+    }
+    extra_env.extend(config_override_extra_env(input.config_override));
+    Ok(extra_env)
 }
 
 fn yzxterm_process_boundary_env(
