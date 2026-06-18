@@ -650,7 +650,8 @@ fn render_tool_tutors_lesson(keymap: &TutorKeymap) -> String {
 2. **Inside Helix:** Leave the tutor with `:q`; use `{reveal}` in managed Helix sessions when you want Yazi to reveal the current file.
 3. **Run in shell or Yazelix:** Use `yzx tutor nu` to launch the Nushell tutor.
 4. **Inside Yazelix:** Press `{editor_sidebar}` to return to the editor/sidebar loop; press `{menu}` when you want command search again.
-5. **Run in shell or Yazelix:** Return to `yzx tutor list` when you want the Yazelix path.
+5. **Run in shell:** Use `yzx env` when you want Yazelix tools without opening the workspace UI. Use `yzx env --no-shell` to keep your current shell.
+6. **Run in shell or Yazelix:** Return to `yzx tutor list` when you want the Yazelix path.
 "#,
         header = render_lesson_intro(TutorLesson::ToolTutors),
         reveal = zellij_key(keymap, "smart_reveal"),
@@ -1004,6 +1005,17 @@ mod tests {
         assert!(output.contains("yzx tutor continue"));
         assert!(output.contains("Alt+Shift+M"));
         assert!(output.contains("Alt+Shift+C"));
+    }
+
+    // Defends: the tutor teaches the non-UI tool environment only after the main workspace path is clear.
+    #[test]
+    fn tutor_tool_tutors_mentions_yzx_env_as_optional_plain_shell_path() {
+        let keymap = TutorKeymap::defaults();
+        let output = render_tutor_lesson(TutorLesson::ToolTutors, &keymap);
+        assert!(output.contains("yzx env"));
+        assert!(output.contains("yzx env --no-shell"));
+        assert!(output.contains("without opening the workspace UI"));
+        assert!(!render_yazelix_tutor_overview(&keymap).contains("yzx env"));
     }
 
     fn key_text(markdown_code: &str) -> &str {
