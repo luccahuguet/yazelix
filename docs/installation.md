@@ -46,7 +46,7 @@ See [Terminal Emulator Comparison](./terminal_emulators.md) for a detailed break
 **Mars Terminal**
 - Experimental Rio-derived Rust first-party terminal path
 - Provided by `#mars` and by `programs.yazelix.terminal = "mars"`
-- Uses the packaged `mars-desktop` wrapper, generated Yazelix config, BELL notifications, protocol coverage, Kitty graphics, Rio trail cursor defaults, opt-in `yazelix-cursors` shader support through `programs.yazelix.mars_profile = "shaders"`, mars emoji fallback selection through `terminal.emoji_style` or `programs.yazelix.mars_emoji_font`, and `terminal.transparency`
+- Uses the packaged `mars-desktop` wrapper, generated Yazelix config, BELL notifications, protocol coverage, Kitty graphics, Rio trail cursor defaults, opt-in `yazelix-cursors` shader support through `programs.yazelix.mars_profile = "shaders"`, mars emoji fallback selection through `terminal.emoji_style` or through `programs.yazelix.mars_emoji_font` when `manage_config = true`, and `terminal.transparency`
 - Reference: https://github.com/luccahuguet/mars
 
 **Rio**

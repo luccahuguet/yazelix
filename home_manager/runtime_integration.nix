@@ -48,14 +48,15 @@ let
   marsProfileExport =
     lib.optionalString marsProfileActive
       "export MARS_PROFILE=${cfg.mars_profile}";
+  marsSemanticEnvActive = marsConfigured && cfg.manage_config;
   marsAppearanceExport =
-    lib.optionalString marsConfigured
+    lib.optionalString marsSemanticEnvActive
       "export MARS_APPEARANCE=${cfg.appearance_mode}";
   marsEmojiFontExport =
-    lib.optionalString marsConfigured
+    lib.optionalString marsSemanticEnvActive
       "export MARS_EMOJI_FONT=${cfg.mars_emoji_font}";
   marsEmojiFontSourceExport =
-    lib.optionalString marsConfigured
+    lib.optionalString marsSemanticEnvActive
       "export MARS_EMOJI_FONT_SOURCE=home-manager";
 
   agentUsageProgramNames = [
@@ -132,9 +133,9 @@ let
       terminalPackage = yazelixPackageForTerminal terminal;
       terminalEnv =
         ''PATH="${terminalPackage}/toolbin:${terminalPackage}/libexec:${terminalPackage}/bin:${runtimeConfigGenerationPath}:$PATH" YAZELIX_RUNTIME_DIR="${terminalPackage}"''
-        + lib.optionalString (marsActiveFor terminal) " MARS_APPEARANCE=${cfg.appearance_mode}"
-        + lib.optionalString (marsActiveFor terminal) " MARS_EMOJI_FONT=${cfg.mars_emoji_font}"
-        + lib.optionalString (marsActiveFor terminal) " MARS_EMOJI_FONT_SOURCE=home-manager"
+        + lib.optionalString (marsActiveFor terminal && cfg.manage_config) " MARS_APPEARANCE=${cfg.appearance_mode}"
+        + lib.optionalString (marsActiveFor terminal && cfg.manage_config) " MARS_EMOJI_FONT=${cfg.mars_emoji_font}"
+        + lib.optionalString (marsActiveFor terminal && cfg.manage_config) " MARS_EMOJI_FONT_SOURCE=home-manager"
         + lib.optionalString (marsProfileActiveFor terminal) " MARS_PROFILE=${cfg.mars_profile}";
     in
     ''
@@ -148,9 +149,9 @@ let
       envVars =
         lib.optional skipStableWrapperRedirect "YAZELIX_SKIP_STABLE_WRAPPER_REDIRECT=1"
         ++ lib.optional (terminal == marsTerminalVariant) "MARS_APP_ID=${startupWmClassFor terminal}"
-        ++ lib.optional (terminal == marsTerminalVariant) "MARS_APPEARANCE=${cfg.appearance_mode}"
-        ++ lib.optional (terminal == marsTerminalVariant) "MARS_EMOJI_FONT=${cfg.mars_emoji_font}"
-        ++ lib.optional (terminal == marsTerminalVariant) "MARS_EMOJI_FONT_SOURCE=home-manager"
+        ++ lib.optional (terminal == marsTerminalVariant && cfg.manage_config) "MARS_APPEARANCE=${cfg.appearance_mode}"
+        ++ lib.optional (terminal == marsTerminalVariant && cfg.manage_config) "MARS_EMOJI_FONT=${cfg.mars_emoji_font}"
+        ++ lib.optional (terminal == marsTerminalVariant && cfg.manage_config) "MARS_EMOJI_FONT_SOURCE=home-manager"
         ++ lib.optional (marsProfileActiveFor terminal) "MARS_PROFILE=${cfg.mars_profile}";
     in
     "${lib.optionalString (envVars != [ ]) "env ${lib.concatStringsSep " " envVars} "}${yzxPath} desktop launch";
@@ -243,7 +244,7 @@ in
   baseConfig = {
     home.packages = [ yazelixPackage ] ++ cursorGeneratorPackage ++ marsDesktopPackages;
     home.sessionVariables = mkMerge [
-      (mkIf marsConfigured {
+      (mkIf marsSemanticEnvActive {
         MARS_APPEARANCE = mkDefault cfg.appearance_mode;
         MARS_EMOJI_FONT = mkDefault cfg.mars_emoji_font;
       })

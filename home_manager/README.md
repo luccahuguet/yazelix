@@ -66,7 +66,6 @@ If you already have your own Home Manager flake, the minimal setup is:
     enable = true;
     terminal = "ghostty"; # Default; use "kitty", "rio", "mars", "wezterm", or Linux-only "foot"/"ratty" for alternate packaged terminal paths
     mars_profile = "full"; # Default; use "baseline" or "shaders" for Mars profile selection
-    mars_emoji_font = "noto"; # Default; use "twitter" or "serenityos" to dogfood alternate mars emoji fallbacks
     # Customize other options as needed - see example.nix
     # Set manage_config = true if you want Home Manager to own settings.jsonc
   };
@@ -81,7 +80,6 @@ To use Mars as the packaged terminal:
     enable = true;
     terminal = "mars";
     mars_profile = "shaders";
-    mars_emoji_font = "twitter";
     extra_terminal_launchers = [ "ghostty" "rio" "wezterm" ];
   };
 }
@@ -89,7 +87,7 @@ To use Mars as the packaged terminal:
 
 `terminal` controls the packaged terminal Yazelix launches. There is no fallback to another packaged terminal when this option is selected; a missing or mispackaged terminal fails clearly. `mars_profile` controls the generated Mars profile for activation, desktop launches, and new shell sessions: `full` keeps Rio trail cursor without custom shaders, `baseline` disables effects, and `shaders` enables the generated Yazelix cursor shader chain
 
-`mars_emoji_font` is the Home Manager declarative value for `terminal.emoji_style`. Home Manager applies it to generated Mars configs during activation and desktop launches with an explicit managed-source marker, and exports `MARS_EMOJI_FONT` for Mars materialization. Mutable Yazelix config edits remain authoritative for ad hoc main-repo materialization unless `manage_config = true` makes Home Manager own `settings.jsonc`. `noto` is the compatible default, `twitter` selects Twitter/Twemoji color emoji, and `serenityos` selects SerenityOS emoji. The setting applies only to mars; other terminal variants keep their own font behavior
+`mars_emoji_font` is the Home Manager declarative value for `terminal.emoji_style` only when `manage_config = true`. With the default `manage_config = false`, `~/.config/yazelix/settings.jsonc` remains the semantic settings owner, and Home Manager does not export `MARS_EMOJI_FONT`, `MARS_APPEARANCE`, or `MARS_EMOJI_FONT_SOURCE` through activation, desktop launchers, or sessions. Set `terminal.emoji_style` in `settings.jsonc` for mutable ratconfig-owned setups. `noto` is the compatible default, `twitter` selects Twitter/Twemoji color emoji, and `serenityos` selects SerenityOS emoji. The setting applies only to mars; other terminal variants keep their own font behavior
 
 `extra_terminal_launchers` installs additional Linux desktop entries such as `New Yazelix - Ghostty`, `New Yazelix - Rio`, and `New Yazelix - WezTerm` without changing the active runtime identity. These entries point directly at their terminal variant packages in the Nix store, so their dependencies stay available without adding duplicate `bin/yzx` commands to the Home Manager profile. `yzx launch --term <terminal>` uses these packaged launchers for non-active terminal variants. Do not include the active `terminal` value in this list; the active terminal already gets the profile-owned launcher
 

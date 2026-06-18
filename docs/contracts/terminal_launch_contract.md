@@ -138,10 +138,12 @@ Out of scope:
   is derived from the packaged
   child profile selected by `MARS_PROFILE` or
   `MARS_EFFECTS` and the child emoji fallback preset selected by
-  `terminal.emoji_style`, with `MARS_EMOJI_FONT` acting as the
-  explicit Home Manager/launcher override only when paired with
-  `MARS_EMOJI_FONT_SOURCE=home-manager`, and the global
-  `appearance.mode`.
+  `terminal.emoji_style`, and the global `appearance.mode`.
+  Home Manager passes `MARS_EMOJI_FONT`, `MARS_APPEARANCE`, and
+  `MARS_EMOJI_FONT_SOURCE=home-manager` only when
+  `programs.yazelix.manage_config = true` makes Home Manager the
+  semantic settings owner. Ratconfig-owned launches read the active
+  settings snapshot instead of semantic launcher env overrides.
   `full` keeps Rio trail cursor and strips packaged `custom-shader` entries,
   `baseline` uses the packaged no-effects profile, and `shaders` uses the
   packaged shader profile while replacing packaged shader references with the

@@ -95,8 +95,12 @@ ${terminalDescriptionBullets}
     type = types.enum marsEmojiFonts;
     default = "noto";
     description = ''
-      Declarative Home Manager value for terminal.emoji_style, used by
-      generated Mars runtime configs and Linux desktop entries.
+      Declarative Home Manager value for terminal.emoji_style when
+      manage_config is true.
+
+      With the default manage_config = false, ~/.config/yazelix/settings.jsonc
+      remains the semantic settings owner and Home Manager does not export this
+      value as a Mars launcher or session override.
 
       - "noto": current Noto Color Emoji fallback
       - "twitter": Twitter/Twemoji color emoji fallback

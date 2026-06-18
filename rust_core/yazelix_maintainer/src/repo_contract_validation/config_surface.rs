@@ -25,12 +25,13 @@ use yazelix_core::{
     ZELLIJ_NATIVE_KEYBINDINGS, runtime_apply_mode_codes,
 };
 
-const MARS_ENV_REQUIREMENTS: [(&str, &str, &str); 3] = [
-    (
-        "MARS_PROFILE=shaders",
-        "the configured mars profile",
-        "mars_profile",
-    ),
+const MARS_PROFILE_ENV_REQUIREMENT: (&str, &str, &str) = (
+    "MARS_PROFILE=shaders",
+    "the configured mars profile",
+    "mars_profile",
+);
+
+const MARS_HOME_MANAGER_SEMANTIC_ENV_REQUIREMENTS: [(&str, &str, &str); 3] = [
     (
         "MARS_APPEARANCE=light",
         "the configured appearance mode",
@@ -40,6 +41,11 @@ const MARS_ENV_REQUIREMENTS: [(&str, &str, &str); 3] = [
         "MARS_EMOJI_FONT=twitter",
         "the configured mars emoji font",
         "mars_emoji_font",
+    ),
+    (
+        "MARS_EMOJI_FONT_SOURCE=home-manager",
+        "the Home Manager semantic source marker",
+        "manage_config",
     ),
 ];
 
@@ -669,6 +675,10 @@ fn format_json_string(value: &str) -> String {
 fn validate_home_manager_desktop_entry_contract(repo_root: &Path) -> Result<Vec<String>, String> {
     let entry = load_home_manager_desktop_entry_contract(repo_root)?;
     let shader_entry = load_home_manager_desktop_entry_contract_with_profile(repo_root, "shaders")?;
+    let managed_shader_entry =
+        load_home_manager_desktop_entry_contract_with_profile_and_config_owner(
+            repo_root, "shaders", true,
+        )?;
     let extra_entry = load_home_manager_extra_terminal_launchers_contract(repo_root)?;
     let is_present = json_map_bool_field(&entry, "present");
     let actual_exec = json_map_str_field(&entry, "exec");
@@ -704,6 +714,11 @@ fn validate_home_manager_desktop_entry_contract(repo_root: &Path) -> Result<Vec<
     let shader_session_profile = json_map_str_field(&shader_entry, "sessionProfile");
     let shader_session_emoji_font = json_map_str_field(&shader_entry, "sessionEmojiFont");
     let shader_session_appearance = json_map_str_field(&shader_entry, "sessionAppearance");
+    let managed_shader_exec = json_map_str_field(&managed_shader_entry, "exec");
+    let managed_shader_session_emoji_font =
+        json_map_str_field(&managed_shader_entry, "sessionEmojiFont");
+    let managed_shader_session_appearance =
+        json_map_str_field(&managed_shader_entry, "sessionAppearance");
     if !json_map_bool_field(&shader_entry, "terminal") {
         errors.push(
             "Home Manager mars desktop entry must set terminal = true so pre-terminal config failures stay visible"
@@ -711,11 +726,19 @@ fn validate_home_manager_desktop_entry_contract(repo_root: &Path) -> Result<Vec<
         );
     }
     if shader_exec
+        != "env MARS_APP_ID=com.yazelix.Yazelix.Mars MARS_PROFILE=shaders /tmp/profile/bin/yzx desktop launch"
+    {
+        errors.push(format!(
+            "Home Manager ratconfig-owned Mars profile desktop entry Exec mismatch: expected app id and shader profile env without semantic settings overrides, got {}",
+            format_json_string(shader_exec)
+        ));
+    }
+    if managed_shader_exec
         != "env MARS_APP_ID=com.yazelix.Yazelix.Mars MARS_APPEARANCE=light MARS_EMOJI_FONT=twitter MARS_EMOJI_FONT_SOURCE=home-manager MARS_PROFILE=shaders /tmp/profile/bin/yzx desktop launch"
     {
         errors.push(format!(
-            "Home Manager shader Mars profile desktop entry Exec mismatch: expected app id, appearance, emoji font, emoji source, and shader profile env, got {}",
-            format_json_string(shader_exec)
+            "Home Manager-owned Mars profile desktop entry Exec mismatch: expected app id, appearance, emoji font, emoji source, and shader profile env, got {}",
+            format_json_string(managed_shader_exec)
         ));
     }
     if shader_name != "New Yazelix - Mars" {
@@ -730,16 +753,28 @@ fn validate_home_manager_desktop_entry_contract(repo_root: &Path) -> Result<Vec<
             format_json_string(shader_session_profile)
         ));
     }
-    if shader_session_emoji_font != "twitter" {
+    if shader_session_emoji_font != "" {
         errors.push(format!(
-            "Home Manager mars emoji font session variable mismatch: expected twitter, got {}",
+            "Home Manager ratconfig-owned mars emoji font session variable must be unset, got {}",
             format_json_string(shader_session_emoji_font)
         ));
     }
-    if shader_session_appearance != "light" {
+    if shader_session_appearance != "" {
         errors.push(format!(
-            "Home Manager mars appearance session variable mismatch: expected light, got {}",
+            "Home Manager ratconfig-owned mars appearance session variable must be unset, got {}",
             format_json_string(shader_session_appearance)
+        ));
+    }
+    if managed_shader_session_emoji_font != "twitter" {
+        errors.push(format!(
+            "Home Manager-owned mars emoji font session variable mismatch: expected twitter, got {}",
+            format_json_string(managed_shader_session_emoji_font)
+        ));
+    }
+    if managed_shader_session_appearance != "light" {
+        errors.push(format!(
+            "Home Manager-owned mars appearance session variable mismatch: expected light, got {}",
+            format_json_string(managed_shader_session_appearance)
         ));
     }
     let package_count = json_map_i64_field(&extra_entry, "packageCount");
@@ -794,10 +829,17 @@ fn validate_home_manager_desktop_entry_contract(repo_root: &Path) -> Result<Vec<
             ));
         }
         if terminal == "mars" {
-            for (needle, desktop_label, _) in MARS_ENV_REQUIREMENTS {
-                if !exec.contains(needle) {
+            let (needle, desktop_label, _) = MARS_PROFILE_ENV_REQUIREMENT;
+            if !exec.contains(needle) {
+                errors.push(format!(
+                    "Home Manager extra mars desktop entry Exec must pass {desktop_label}, got {}",
+                    format_json_string(exec)
+                ));
+            }
+            for (needle, desktop_label, _) in MARS_HOME_MANAGER_SEMANTIC_ENV_REQUIREMENTS {
+                if exec.contains(needle) {
                     errors.push(format!(
-                        "Home Manager extra mars desktop entry Exec must pass {desktop_label}, got {}",
+                        "Home Manager extra mars desktop entry Exec must not pass {desktop_label} when manage_config=false, got {}",
                         format_json_string(exec)
                     ));
                 }
@@ -816,16 +858,32 @@ fn validate_home_manager_desktop_entry_contract(repo_root: &Path) -> Result<Vec<
 }
 
 fn validate_home_manager_activation_contract(repo_root: &Path) -> Result<Vec<String>, String> {
-    let script = load_home_manager_activation_contract(repo_root)?;
+    let script = load_home_manager_activation_contract(repo_root, false)?;
+    let managed_script = load_home_manager_activation_contract(repo_root, true)?;
+    let mut errors = validate_home_manager_activation_script(&script, false);
+    errors.extend(validate_home_manager_activation_script(
+        &managed_script,
+        true,
+    ));
+
+    Ok(errors)
+}
+
+fn validate_home_manager_activation_script(script: &str, manage_config: bool) -> Vec<String> {
     let materialization_lines = script
         .lines()
         .filter(|line| line.contains("terminal-materialization.generate --from-env"))
         .collect::<Vec<_>>();
     let mut errors = Vec::new();
+    let owner_label = if manage_config {
+        "Home Manager-owned"
+    } else {
+        "ratconfig-owned"
+    };
 
     if materialization_lines.len() != 2 {
         errors.push(format!(
-            "Home Manager activation with one extra terminal launcher must generate active and extra terminal configs, got {} materialization command(s)",
+            "{owner_label} Home Manager activation with one extra terminal launcher must generate active and extra terminal configs, got {} materialization command(s)",
             materialization_lines.len()
         ));
     }
@@ -833,14 +891,26 @@ fn validate_home_manager_activation_contract(repo_root: &Path) -> Result<Vec<Str
         .iter()
         .find(|line| line.contains("-yazelix-mars/"));
     if mars_line.is_none() {
-        errors.push(
-            "Home Manager activation must materialize the extra mars launcher runtime".to_string(),
-        );
+        errors.push(format!(
+            "{owner_label} Home Manager activation must materialize the extra mars launcher runtime"
+        ));
     }
-    for (needle, _, option_name) in MARS_ENV_REQUIREMENTS {
-        if !mars_line.map(|line| line.contains(needle)).unwrap_or(false) {
+    let (needle, _, option_name) = MARS_PROFILE_ENV_REQUIREMENT;
+    if !mars_line.map(|line| line.contains(needle)).unwrap_or(false) {
+        errors.push(format!(
+            "{owner_label} Home Manager activation must pass {option_name} to extra mars launcher materialization"
+        ));
+    }
+    for (needle, _, option_name) in MARS_HOME_MANAGER_SEMANTIC_ENV_REQUIREMENTS {
+        let present = mars_line.map(|line| line.contains(needle)).unwrap_or(false);
+        if manage_config && !present {
             errors.push(format!(
-                "Home Manager activation must pass {option_name} to extra mars launcher materialization"
+                "Home Manager-owned activation must pass {option_name} to extra mars launcher materialization"
+            ));
+        }
+        if !manage_config && present {
+            errors.push(format!(
+                "ratconfig-owned Home Manager activation must not pass {option_name} to extra mars launcher materialization"
             ));
         }
     }
@@ -849,23 +919,26 @@ fn validate_home_manager_activation_contract(repo_root: &Path) -> Result<Vec<Str
         .all(|line| line.contains("/libexec/yzx_core"))
     {
         errors.push(
-            "Home Manager activation terminal materialization must run each terminal package's own yzx_core"
+            format!("{owner_label} Home Manager activation terminal materialization must run each terminal package's own yzx_core")
                 .to_string(),
         );
     }
 
-    Ok(errors)
+    errors
 }
 
-fn load_home_manager_activation_contract(repo_root: &Path) -> Result<String, String> {
-    let expr = build_home_manager_activation_expr(repo_root);
+fn load_home_manager_activation_contract(
+    repo_root: &Path,
+    manage_config: bool,
+) -> Result<String, String> {
+    let expr = build_home_manager_activation_expr(repo_root, manage_config);
     let result = run_nix_eval(repo_root, &expr)?;
     result.as_str().map(str::to_string).ok_or_else(|| {
         "Home Manager activation evaluation did not return a JSON string".to_string()
     })
 }
 
-fn build_home_manager_activation_expr(repo_root: &Path) -> String {
+fn build_home_manager_activation_expr(repo_root: &Path, manage_config: bool) -> String {
     let module_path =
         escape_nix_string(&repo_root.join(MODULE_RELATIVE_PATH).display().to_string());
     let mut lines = vec![
@@ -878,6 +951,9 @@ fn build_home_manager_activation_expr(repo_root: &Path) -> String {
         format!("      (builtins.toPath \"{}\")", module_path),
     ];
     lines.extend(standalone_home_manager_eval_fixture_module(true, true));
+    if manage_config {
+        lines.push("      { config.programs.yazelix.manage_config = true; }".to_string());
+    }
     lines.extend([
         "      { config.programs.yazelix.extra_terminal_launchers = [ \"mars\" ]; }".to_string(),
         "      { config.programs.yazelix.mars_profile = \"shaders\"; }".to_string(),
@@ -1108,7 +1184,7 @@ fn standalone_home_manager_eval_fixture_module(
 fn load_home_manager_desktop_entry_contract(
     repo_root: &Path,
 ) -> Result<JsonMap<String, JsonValue>, String> {
-    let expr = build_home_manager_desktop_entry_expr(repo_root, None, &[], None);
+    let expr = build_home_manager_desktop_entry_expr(repo_root, None, false, &[], None);
     let result = run_nix_eval(repo_root, &expr)?;
     result.as_object().cloned().ok_or_else(|| {
         "Home Manager desktop-entry evaluation did not return a JSON object".to_string()
@@ -1119,8 +1195,31 @@ fn load_home_manager_desktop_entry_contract_with_profile(
     repo_root: &Path,
     mars_profile: &str,
 ) -> Result<JsonMap<String, JsonValue>, String> {
-    let expr =
-        build_home_manager_desktop_entry_expr(repo_root, Some(mars_profile), &[], Some("mars"));
+    let expr = build_home_manager_desktop_entry_expr(
+        repo_root,
+        Some(mars_profile),
+        false,
+        &[],
+        Some("mars"),
+    );
+    let result = run_nix_eval(repo_root, &expr)?;
+    result.as_object().cloned().ok_or_else(|| {
+        "Home Manager desktop-entry evaluation did not return a JSON object".to_string()
+    })
+}
+
+fn load_home_manager_desktop_entry_contract_with_profile_and_config_owner(
+    repo_root: &Path,
+    mars_profile: &str,
+    manage_config: bool,
+) -> Result<JsonMap<String, JsonValue>, String> {
+    let expr = build_home_manager_desktop_entry_expr(
+        repo_root,
+        Some(mars_profile),
+        manage_config,
+        &[],
+        Some("mars"),
+    );
     let result = run_nix_eval(repo_root, &expr)?;
     result.as_object().cloned().ok_or_else(|| {
         "Home Manager desktop-entry evaluation did not return a JSON object".to_string()
@@ -1133,6 +1232,7 @@ fn load_home_manager_extra_terminal_launchers_contract(
     let expr = build_home_manager_desktop_entry_expr(
         repo_root,
         Some("shaders"),
+        false,
         &["ghostty", "mars", "foot", "rio", "wezterm"],
         Some("kitty"),
     );
@@ -1145,6 +1245,7 @@ fn load_home_manager_extra_terminal_launchers_contract(
 fn build_home_manager_desktop_entry_expr(
     repo_root: &Path,
     mars_profile: Option<&str>,
+    manage_config: bool,
     extra_launchers: &[&str],
     active_terminal: Option<&str>,
 ) -> String {
@@ -1161,6 +1262,9 @@ fn build_home_manager_desktop_entry_expr(
         format!("      (builtins.toPath \"{}\")", module_path),
     ];
     lines.extend(standalone_home_manager_eval_fixture_module(true, true));
+    if manage_config {
+        lines.push("      { config.programs.yazelix.manage_config = true; }".to_string());
+    }
     if let Some(profile) = mars_profile {
         lines.push(format!(
             "      {{ config.programs.yazelix.mars_profile = \"{}\"; }}",
