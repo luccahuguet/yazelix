@@ -10,9 +10,8 @@ use crate::front_door_render::{
 };
 use crate::require_runtime_component_enabled;
 use crate::session_facts::compute_session_facts_from_env;
-use crate::terminal_control;
+use crate::tutor_document;
 use crate::upgrade_summary::{RuntimeSnapshotContext, show_known_changes_since_installed_runtime};
-use crossterm::style::Color;
 use std::process::Command;
 use std::time::Duration;
 
@@ -57,6 +56,92 @@ const TUTOR_LESSONS: &[TutorLessonSpec] = &[
         summary: "Jump from Yazelix-specific guidance into the upstream editor and shell tutors",
     },
 ];
+
+const TUTOR_OVERVIEW_MARKDOWN: &str = r#"# Yazelix tutor
+
+Yazelix is a managed terminal workspace built around Zellij, Yazi, and Helix.
+
+The important unit is the current tab workspace root: managed actions use that directory unless a tool is doing something more specific.
+
+## Start here
+
+Need a session first? Launch with `yzx launch` or start in the current terminal with `yzx enter`.
+
+1. Start the guided flow with `yzx tutor begin`.
+2. See every short lesson with `yzx tutor list`.
+3. Learn the workspace-critical bindings with `yzx keys`.
+4. Use `yzx menu` for fuzzy command discovery (or `Alt+Shift+M` inside Yazelix) and `yzx doctor` when behavior looks wrong.
+
+## Mental model
+
+**Managed panes:** Yazelix treats the editor/sidebar flow as a coordinated workspace, not just a pile of unrelated panes.
+
+**Directory flow:** The current tab root drives new panes, popup commands, and workspace-aware actions.
+
+**Discoverability:** `yzx help` is the command reference, `yzx keys` is the keybinding surface, and `yzx tutor` is the guided overview.
+
+## Next steps
+
+**Helix tutor:** `yzx tutor hx`
+
+**Nushell tutor:** `yzx tutor nu`
+
+**Command reference:** `yzx help`
+
+**Project overview:** `README.md`
+"#;
+
+const WORKSPACE_LESSON_MARKDOWN: &str = r#"# Yazelix tutor: Workspace roots and managed panes
+
+Practice the current-tab workspace model, Yazi handoff, and fresh project tabs.
+
+## Learn
+
+Start Yazelix from the folder you want to work in. That folder becomes the current tab workspace root for new panes, popup commands, and managed editor/sidebar coordination.
+
+Opening a file from Yazi into the managed editor also moves that tab's workspace root to the file's directory.
+
+## Mini quest
+
+1. If this session is not in the folder you want, leave it and start again from that folder with `yzx enter`, or use `yzx launch --path <dir>`.
+2. Run `yzx keys` and find the workspace actions.
+3. Use the managed Yazi sidebar to open a file in the editor.
+
+Next lesson: `yzx tutor discovery`.
+"#;
+
+const DISCOVERY_LESSON_MARKDOWN: &str = r#"# Yazelix tutor: Command and key discovery
+
+Use the command palette, key tables, and doctor output without memorizing everything.
+
+## Learn
+
+Use command surfaces when you know what you want, and discovery surfaces when you do not.
+
+## Mini quest
+
+1. Run `yzx help` for the command reference.
+2. Run `yzx keys` for keybinding discovery.
+3. Run `yzx menu` for fuzzy command discovery, or press `Alt+Shift+M` inside Yazelix.
+4. Run `yzx doctor` when the current runtime or config feels wrong.
+
+Next lesson: `yzx tutor tool_tutors`.
+"#;
+
+const TOOL_TUTORS_LESSON_MARKDOWN: &str = r#"# Yazelix tutor: Helix and Nushell tutors
+
+Jump from Yazelix-specific guidance into the upstream editor and shell tutors.
+
+## Learn
+
+Yazelix owns the workspace integration. Helix and Nushell still have their own deep learning flows.
+
+## Mini quest
+
+1. Run `yzx tutor hx` to practice Helix inside the editor's own tutor.
+2. Run `yzx tutor nu` to practice Nushell in Nushell's own tutor.
+3. Return to `yzx tutor list` when you want the Yazelix workspace path again.
+"#;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct TutorArgs {
@@ -304,91 +389,12 @@ fn print_whats_new_help() {
     println!("  yzx whats_new");
 }
 
-fn heading(text: &str) -> String {
-    terminal_control::styled_bold(text, Color::Cyan)
-}
-
-fn accent(text: &str) -> String {
-    terminal_control::styled_bold(text, Color::Yellow)
-}
-
 fn command_label(text: &str) -> String {
-    terminal_control::styled(text, Color::White)
+    tutor_document::render_code_label(text)
 }
 
 fn render_yazelix_tutor_overview() -> String {
-    let mut lines = Vec::new();
-    lines.push(heading("Yazelix tutor"));
-    lines.push(String::new());
-    lines.push(
-        "Yazelix is a managed terminal workspace built around Zellij, Yazi, and Helix.".to_string(),
-    );
-    lines.push("The important unit is the current tab workspace root: managed actions use that directory unless a tool is doing something more specific.".to_string());
-    lines.push(String::new());
-    lines.push(heading("Start here"));
-    lines.push(format!(
-        "Need a session first? Launch with {} or start in the current terminal with {}.",
-        command_label("yzx launch"),
-        command_label("yzx enter")
-    ));
-    lines.push(format!(
-        "1. Start the guided flow with {}.",
-        command_label("yzx tutor begin")
-    ));
-    lines.push(format!(
-        "2. See every short lesson with {}.",
-        command_label("yzx tutor list")
-    ));
-    lines.push(format!(
-        "3. Learn the workspace-critical bindings with {}.",
-        command_label("yzx keys")
-    ));
-    lines.push(format!(
-        "4. Use {} for fuzzy command discovery (or {} inside Yazelix) and {} when behavior looks wrong.",
-        command_label("yzx menu"),
-        command_label("Alt+Shift+M"),
-        command_label("yzx doctor")
-    ));
-    lines.push(String::new());
-    lines.push(heading("Mental model"));
-    lines.push(format!(
-        "{} Yazelix treats the editor/sidebar flow as a coordinated workspace, not just a pile of unrelated panes.",
-        accent("Managed panes:")
-    ));
-    lines.push(format!(
-        "{} The current tab root drives new panes, popup commands, and workspace-aware actions.",
-        accent("Directory flow:")
-    ));
-    lines.push(format!(
-        "{} {} is the command reference, {} is the keybinding surface, and {} is the guided overview.",
-        accent("Discoverability:"),
-        command_label("yzx help"),
-        command_label("yzx keys"),
-        command_label("yzx tutor")
-    ));
-    lines.push(String::new());
-    lines.push(heading("Next steps"));
-    lines.push(format!(
-        "{} {}",
-        accent("Helix tutor:"),
-        command_label("yzx tutor hx")
-    ));
-    lines.push(format!(
-        "{} {}",
-        accent("Nushell tutor:"),
-        command_label("yzx tutor nu")
-    ));
-    lines.push(format!(
-        "{} {}",
-        accent("Command reference:"),
-        command_label("yzx help")
-    ));
-    lines.push(format!(
-        "{} {}",
-        accent("Project overview:"),
-        command_label("README.md")
-    ));
-    format!("{}\n", lines.join("\n"))
+    render_tutor_markdown(TUTOR_OVERVIEW_MARKDOWN)
 }
 
 fn tutor_lesson_from_id(id: &str) -> Option<TutorLesson> {
@@ -400,34 +406,19 @@ fn tutor_lesson_from_id(id: &str) -> Option<TutorLesson> {
     }
 }
 
-fn tutor_lesson_spec(lesson: TutorLesson) -> &'static TutorLessonSpec {
-    let id = match lesson {
-        TutorLesson::Workspace => "workspace",
-        TutorLesson::Discovery => "discovery",
-        TutorLesson::ToolTutors => "tool_tutors",
-    };
-    TUTOR_LESSONS
-        .iter()
-        .find(|spec| spec.id == id)
-        .expect("lesson spec exists")
-}
-
 fn render_tutor_list() -> String {
-    let mut lines = Vec::new();
-    lines.push(heading("Yazelix tutor lessons"));
-    lines.push(String::new());
+    let mut markdown = String::from("# Yazelix tutor lessons\n\n");
     for (index, lesson) in TUTOR_LESSONS.iter().enumerate() {
-        lines.push(format!(
-            "{}. {} {}",
+        markdown.push_str(&format!(
+            "{}. `yzx tutor {}` {}  \n",
             index + 1,
-            command_label(&format!("yzx tutor {}", lesson.id)),
+            lesson.id,
             lesson.title
         ));
-        lines.push(format!("   {}", lesson.summary));
+        markdown.push_str(&format!("   {}\n", lesson.summary));
     }
-    lines.push(String::new());
-    lines.push(format!("Start with {}.", command_label("yzx tutor begin")));
-    format!("{}\n", lines.join("\n"))
+    markdown.push_str("\nStart with `yzx tutor begin`.\n");
+    render_tutor_markdown(&markdown)
 }
 
 fn render_tutor_lesson(lesson: TutorLesson) -> String {
@@ -438,94 +429,20 @@ fn render_tutor_lesson(lesson: TutorLesson) -> String {
     }
 }
 
-fn render_lesson_header(lesson: TutorLesson) -> Vec<String> {
-    let spec = tutor_lesson_spec(lesson);
-    vec![
-        heading(&format!("Yazelix tutor: {}", spec.title)),
-        String::new(),
-        spec.summary.to_string(),
-        String::new(),
-    ]
-}
-
 fn render_workspace_lesson() -> String {
-    let mut lines = render_lesson_header(TutorLesson::Workspace);
-    lines.push(heading("Learn"));
-    lines.push("Start Yazelix from the folder you want to work in. That folder becomes the current tab workspace root for new panes, popup commands, and managed editor/sidebar coordination.".to_string());
-    lines.push("Opening a file from Yazi into the managed editor also moves that tab's workspace root to the file's directory.".to_string());
-    lines.push(String::new());
-    lines.push(heading("Mini quest"));
-    lines.push(format!(
-        "1. If this session is not in the folder you want, leave it and start again from that folder with {}, or use {}.",
-        command_label("yzx enter"),
-        command_label("yzx launch --path <dir>")
-    ));
-    lines.push(format!(
-        "2. Run {} and find the workspace actions.",
-        command_label("yzx keys")
-    ));
-    lines.push("3. Use the managed Yazi sidebar to open a file in the editor.".to_string());
-    lines.push(String::new());
-    lines.push(format!(
-        "Next lesson: {}.",
-        command_label("yzx tutor discovery")
-    ));
-    format!("{}\n", lines.join("\n"))
+    render_tutor_markdown(WORKSPACE_LESSON_MARKDOWN)
 }
 
 fn render_discovery_lesson() -> String {
-    let mut lines = render_lesson_header(TutorLesson::Discovery);
-    lines.push(heading("Learn"));
-    lines.push(
-        "Use command surfaces when you know what you want, and discovery surfaces when you do not."
-            .to_string(),
-    );
-    lines.push(String::new());
-    lines.push(heading("Mini quest"));
-    lines.push(format!(
-        "1. Run {} for the command reference.",
-        command_label("yzx help")
-    ));
-    lines.push(format!(
-        "2. Run {} for keybinding discovery.",
-        command_label("yzx keys")
-    ));
-    lines.push(format!(
-        "3. Run {} for fuzzy command discovery, or press {} inside Yazelix.",
-        command_label("yzx menu"),
-        command_label("Alt+Shift+M")
-    ));
-    lines.push(format!(
-        "4. Run {} when the current runtime or config feels wrong.",
-        command_label("yzx doctor")
-    ));
-    lines.push(String::new());
-    lines.push(format!(
-        "Next lesson: {}.",
-        command_label("yzx tutor tool_tutors")
-    ));
-    format!("{}\n", lines.join("\n"))
+    render_tutor_markdown(DISCOVERY_LESSON_MARKDOWN)
 }
 
 fn render_tool_tutors_lesson() -> String {
-    let mut lines = render_lesson_header(TutorLesson::ToolTutors);
-    lines.push(heading("Learn"));
-    lines.push("Yazelix owns the workspace integration. Helix and Nushell still have their own deep learning flows.".to_string());
-    lines.push(String::new());
-    lines.push(heading("Mini quest"));
-    lines.push(format!(
-        "1. Run {} to practice Helix inside the editor's own tutor.",
-        command_label("yzx tutor hx")
-    ));
-    lines.push(format!(
-        "2. Run {} to practice Nushell in Nushell's own tutor.",
-        command_label("yzx tutor nu")
-    ));
-    lines.push(format!(
-        "3. Return to {} when you want the Yazelix workspace path again.",
-        command_label("yzx tutor list")
-    ));
-    format!("{}\n", lines.join("\n"))
+    render_tutor_markdown(TOOL_TUTORS_LESSON_MARKDOWN)
+}
+
+fn render_tutor_markdown(markdown: &str) -> String {
+    tutor_document::render_tutor_markdown(markdown).expect("bundled tutor Markdown is supported")
 }
 
 fn run_external_command(command: &str, args: &[&str], label: &str) -> Result<i32, CoreError> {
@@ -624,6 +541,21 @@ mod tests {
         assert!(lesson.contains("yzx launch --path <dir>"));
         assert!(lesson.contains("yzx keys"));
         assert!(!lesson.contains("yzx cwd"));
+    }
+
+    // Defends: every bundled tutor Markdown document stays inside the supported terminal-renderer subset.
+    #[test]
+    fn bundled_tutor_markdown_documents_render_without_panics() {
+        assert!(render_yazelix_tutor_overview().contains("Yazelix tutor"));
+        assert!(render_tutor_list().contains("yzx tutor tool_tutors"));
+        for lesson in [
+            TutorLesson::Workspace,
+            TutorLesson::Discovery,
+            TutorLesson::ToolTutors,
+        ] {
+            let output = render_tutor_lesson(lesson);
+            assert!(output.contains("Mini quest"));
+        }
     }
 
     // Defends: the Rust-owned `yzx screen` parser keeps the public one-style surface while reserving the welcome-only internal flags for startup callers.

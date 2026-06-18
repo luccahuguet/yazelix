@@ -66,6 +66,7 @@ pub(crate) mod terminal_control;
 pub mod terminal_cursor_materialization;
 pub mod terminal_materialization;
 pub mod terminal_variant;
+pub(crate) mod tutor_document;
 pub mod update_commands;
 pub mod upgrade_summary;
 pub mod user_config_paths;
