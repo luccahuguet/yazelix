@@ -450,11 +450,22 @@ The current tab workspace root matters most. Managed actions use that directory 
 
 ## Start here
 
-1. **Run in shell:** Start a session with `yzx launch` or enter the current terminal with `yzx enter`.
-2. **Run in shell or Yazelix:** Start the guided path with `yzx tutor begin`.
-3. **Run in shell or Yazelix:** Use `yzx tutor continue` when you want the next-step picker.
-4. **Inside Yazelix:** Press `{menu_key}` or run `yzx menu` for the command menu; press `{info_key}` for the information popup.
-5. **Run in shell or Yazelix:** Use `yzx keys` for live bindings and `yzx doctor` when behavior looks wrong.
+### Outside Yazelix
+
+- From a project directory, run `yzx launch`.
+- From the terminal you want to turn into Yazelix, run `yzx enter`.
+- After Yazelix opens, run `yzx tutor begin`.
+
+### Inside Yazelix
+
+- Press `{menu_key}` or run `yzx menu` for the command menu.
+- Press `{info_key}` for the information popup.
+- Run `yzx keys` to see live bindings.
+- Run `yzx doctor` when config, panes, runtime state, or generated files look wrong.
+
+### Coming back later
+
+Run `yzx tutor continue` and pick the first lesson you have not practiced.
 
 ## Key notation
 
@@ -808,12 +819,17 @@ mod tests {
         let keymap = TutorKeymap::defaults();
         let output = render_yazelix_tutor_overview(&keymap);
         assert!(output.contains("Yazelix tutor"));
+        assert!(output.contains("Outside Yazelix"));
+        assert!(output.contains("After Yazelix opens"));
+        assert!(output.contains("Inside Yazelix"));
+        assert!(output.contains("Coming back later"));
         assert!(output.contains("yzx tutor begin"));
         assert!(output.contains("yzx tutor continue"));
         assert!(output.contains("yzx menu"));
         assert!(output.contains("Alt+Shift+M"));
         assert!(output.contains("Alt+Shift+I"));
         assert!(output.contains("Key notation"));
+        assert!(!output.contains("Start a session with"));
     }
 
     // Defends: the guided tutor has indexed lesson entrypoints and structured onboarding metadata instead of only a flat overview.

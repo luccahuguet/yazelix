@@ -156,9 +156,11 @@ Included:
 - `yzx keys nushell`
 - `yzx tutor`
 - `yzx tutor begin`
+- `yzx tutor continue`
 - `yzx tutor list`
 - `yzx tutor workspace`
 - `yzx tutor discovery`
+- `yzx tutor troubleshooting`
 - `yzx tutor tool_tutors`
 - `yzx tutor hx`
 - `yzx tutor helix`
