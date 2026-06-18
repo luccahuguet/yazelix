@@ -609,6 +609,16 @@ fn resolve_custom_popups_config(
     Ok(popups)
 }
 
+pub(crate) fn resolve_custom_popup_keybindings(
+    config: &JsonMap<String, JsonValue>,
+    popup_id: &str,
+) -> Result<Option<Vec<String>>, CoreError> {
+    Ok(resolve_custom_popups_config(config)?
+        .into_iter()
+        .find(|popup| popup.id == popup_id)
+        .map(|popup| popup.keybindings))
+}
+
 pub(crate) fn validate_zellij_custom_popup_config(
     config: &JsonMap<String, JsonValue>,
 ) -> Result<(), CoreError> {
@@ -924,7 +934,7 @@ fn parse_keybinding_keys(
     Ok(keys)
 }
 
-fn resolve_zellij_keybindings(
+pub(crate) fn resolve_zellij_keybindings(
     config: &JsonMap<String, JsonValue>,
 ) -> Result<BTreeMap<String, Vec<String>>, CoreError> {
     let mut resolved = default_zellij_keybindings();
@@ -968,7 +978,7 @@ fn resolve_zellij_keybindings(
     Ok(resolved)
 }
 
-fn resolve_zellij_native_keybindings(
+pub(crate) fn resolve_zellij_native_keybindings(
     config: &JsonMap<String, JsonValue>,
 ) -> Result<BTreeMap<String, Vec<String>>, CoreError> {
     let mut resolved = default_zellij_native_keybindings();

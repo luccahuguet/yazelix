@@ -387,7 +387,7 @@ fn default_yazi_keybindings() -> BTreeMap<String, Vec<String>> {
         .collect()
 }
 
-fn resolve_yazi_keybindings(
+pub(crate) fn resolve_yazi_keybindings(
     config: &JsonMap<String, JsonValue>,
 ) -> Result<BTreeMap<String, Vec<String>>, CoreError> {
     let mut resolved = default_yazi_keybindings();

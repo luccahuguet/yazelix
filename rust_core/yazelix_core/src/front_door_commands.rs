@@ -1,11 +1,12 @@
 //! Rust-owned front-door public commands for `yzx tutor`, `yzx screen`, and `yzx whats_new`.
 
 use crate::action_registry::{
-    DEFAULT_INFORMATION_POPUP_KEYS, display_yazi_keys, display_zellij_keys,
-    yazi_action_by_local_id, zellij_action_by_local_id, zellij_native_keybinding_by_local_id,
+    display_yazi_key, display_zellij_key, yazi_action_by_local_id, zellij_action_by_local_id,
+    zellij_native_keybinding_by_local_id,
 };
 use crate::bridge::{CoreError, ErrorClass};
 use crate::control_plane::{
+    config_dir_from_env, config_override_from_env, load_normalized_config_for_control,
     read_runtime_identity_from_runtime, read_yazelix_version_from_runtime, runtime_dir_from_env,
     state_dir_from_env,
 };
@@ -16,6 +17,12 @@ use crate::require_runtime_component_enabled;
 use crate::session_facts::compute_session_facts_from_env;
 use crate::tutor_document;
 use crate::upgrade_summary::{RuntimeSnapshotContext, show_known_changes_since_installed_runtime};
+use crate::yazi_materialization::resolve_yazi_keybindings;
+use crate::zellij_materialization::{
+    resolve_custom_popup_keybindings, resolve_zellij_keybindings, resolve_zellij_native_keybindings,
+};
+use serde_json::{Map as JsonMap, Value as JsonValue};
+use std::collections::BTreeMap;
 use std::process::Command;
 use std::time::Duration;
 
@@ -23,6 +30,7 @@ use std::time::Duration;
 enum TutorView {
     Overview,
     Begin,
+    Continue,
     List,
     Lesson(TutorLesson),
     Helix,
@@ -33,8 +41,27 @@ enum TutorView {
 enum TutorLesson {
     Workspace,
     Discovery,
+    Troubleshooting,
     ToolTutors,
 }
+
+const INFORMATION_POPUP_ID: &str = "zenith";
+#[cfg(test)]
+const TUTOR_ZELLIJ_ACTION_IDS: &[&str] = &[
+    "toggle_editor_sidebar_focus",
+    "toggle_editor_right_sidebar_focus",
+    "smart_reveal",
+    "menu",
+    "bottom_popup",
+    "top_popup",
+    "config",
+];
+#[cfg(test)]
+const TUTOR_ZELLIJ_NATIVE_ACTION_IDS: &[&str] = &["toggle_focus_fullscreen"];
+#[cfg(test)]
+const TUTOR_YAZI_ACTION_IDS: &[&str] =
+    &["open_zoxide_in_editor", "open_directory_as_workspace_pane"];
+const TUTOR_CUSTOM_POPUP_IDS: &[&str] = &[INFORMATION_POPUP_ID];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct TutorLessonSpec {
@@ -64,6 +91,14 @@ const TUTOR_LESSONS: &[TutorLessonSpec] = &[
         escape_hatch: "Use the same popup key to focus or close a managed popup. Tool-local exits such as `q` or `Esc` stay inside the tool.",
     },
     TutorLessonSpec {
+        id: "troubleshooting",
+        title: "Troubleshooting paths",
+        summary: "Get back to a known pane, inspect config, and refresh stale runtime state",
+        scope: "Current Yazelix window",
+        outcome: "You can recover from lost focus, stuck popups, stale generated state, and unclear config/runtime ownership.",
+        escape_hatch: "If a popup or pane still feels wrong, run `yzx doctor` and then `yzx tutor continue` to return to the guided path.",
+    },
+    TutorLessonSpec {
         id: "tool_tutors",
         title: "Helix and Nushell tutors",
         summary: "Switch from Yazelix guidance into the editor and shell tutors",
@@ -77,6 +112,75 @@ const TUTOR_LESSONS: &[TutorLessonSpec] = &[
 struct TutorArgs {
     view: TutorView,
     help: bool,
+}
+
+#[derive(Debug, Clone)]
+struct TutorKeymap {
+    zellij: BTreeMap<String, Vec<String>>,
+    zellij_native: BTreeMap<String, Vec<String>>,
+    yazi: BTreeMap<String, Vec<String>>,
+    custom_popups: BTreeMap<String, Vec<String>>,
+}
+
+impl TutorKeymap {
+    fn active_from_env() -> Result<Self, CoreError> {
+        let runtime_dir = runtime_dir_from_env()?;
+        let config_dir = config_dir_from_env()?;
+        let config_override = config_override_from_env();
+        let config = load_normalized_config_for_control(
+            &runtime_dir,
+            &config_dir,
+            config_override.as_deref(),
+        )?;
+        Self::from_normalized_config(&config)
+    }
+
+    fn from_normalized_config(config: &JsonMap<String, JsonValue>) -> Result<Self, CoreError> {
+        let mut custom_popups = BTreeMap::new();
+        for popup_id in TUTOR_CUSTOM_POPUP_IDS {
+            let keys = resolve_custom_popup_keybindings(config, popup_id)?.unwrap_or_default();
+            custom_popups.insert((*popup_id).to_string(), keys);
+        }
+        Ok(Self {
+            zellij: resolve_zellij_keybindings(config)?,
+            zellij_native: resolve_zellij_native_keybindings(config)?,
+            yazi: resolve_yazi_keybindings(config)?,
+            custom_popups,
+        })
+    }
+
+    fn zellij_keys(&self, local_id: &str) -> &[String] {
+        zellij_action_by_local_id(local_id)
+            .unwrap_or_else(|| panic!("missing Zellij tutor keybinding action: {local_id}"));
+        self.zellij.get(local_id).map(Vec::as_slice).unwrap_or(&[])
+    }
+
+    fn zellij_native_keys(&self, local_id: &str) -> &[String] {
+        zellij_native_keybinding_by_local_id(local_id)
+            .unwrap_or_else(|| panic!("missing native Zellij tutor keybinding action: {local_id}"));
+        self.zellij_native
+            .get(local_id)
+            .map(Vec::as_slice)
+            .unwrap_or(&[])
+    }
+
+    fn yazi_keys(&self, local_id: &str) -> &[String] {
+        yazi_action_by_local_id(local_id)
+            .unwrap_or_else(|| panic!("missing Yazi tutor keybinding action: {local_id}"));
+        self.yazi.get(local_id).map(Vec::as_slice).unwrap_or(&[])
+    }
+
+    fn custom_popup_keys(&self, popup_id: &str) -> &[String] {
+        self.custom_popups
+            .get(popup_id)
+            .map(Vec::as_slice)
+            .unwrap_or(&[])
+    }
+
+    #[cfg(test)]
+    fn defaults() -> Self {
+        Self::from_normalized_config(&JsonMap::new()).expect("default tutor keymap is valid")
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -100,12 +204,21 @@ pub fn run_yzx_tutor(args: &[String]) -> Result<i32, CoreError> {
     }
 
     match parsed.view {
+        TutorView::Helix => run_external_command("hx", &["--tutor"], "Helix"),
+        TutorView::Nushell => run_external_command("nu", &["-c", "tutor"], "Nushell"),
         TutorView::Overview => {
-            print!("{}", render_yazelix_tutor_overview());
+            let keymap = TutorKeymap::active_from_env()?;
+            print!("{}", render_yazelix_tutor_overview(&keymap));
             Ok(0)
         }
         TutorView::Begin => {
-            print!("{}", render_tutor_lesson(TutorLesson::Workspace));
+            let keymap = TutorKeymap::active_from_env()?;
+            print!("{}", render_tutor_lesson(TutorLesson::Workspace, &keymap));
+            Ok(0)
+        }
+        TutorView::Continue => {
+            let keymap = TutorKeymap::active_from_env()?;
+            print!("{}", render_tutor_continue(&keymap));
             Ok(0)
         }
         TutorView::List => {
@@ -113,11 +226,10 @@ pub fn run_yzx_tutor(args: &[String]) -> Result<i32, CoreError> {
             Ok(0)
         }
         TutorView::Lesson(lesson) => {
-            print!("{}", render_tutor_lesson(lesson));
+            let keymap = TutorKeymap::active_from_env()?;
+            print!("{}", render_tutor_lesson(lesson, &keymap));
             Ok(0)
         }
-        TutorView::Helix => run_external_command("hx", &["--tutor"], "Helix"),
-        TutorView::Nushell => run_external_command("nu", &["-c", "tutor"], "Nushell"),
     }
 }
 
@@ -194,6 +306,7 @@ fn parse_tutor_args(args: &[String]) -> Result<TutorArgs, CoreError> {
     let view = match tokens.as_slice() {
         [] => TutorView::Overview,
         ["begin"] => TutorView::Begin,
+        ["continue"] => TutorView::Continue,
         ["list"] => TutorView::List,
         [lesson] if tutor_lesson_from_id(lesson).is_some() => {
             TutorView::Lesson(tutor_lesson_from_id(lesson).unwrap())
@@ -280,9 +393,11 @@ fn print_tutor_help() {
     println!("Usage:");
     println!("  yzx tutor");
     println!("  yzx tutor begin");
+    println!("  yzx tutor continue");
     println!("  yzx tutor list");
     println!("  yzx tutor workspace");
     println!("  yzx tutor discovery");
+    println!("  yzx tutor troubleshooting");
     println!("  yzx tutor tool_tutors");
     println!("  yzx tutor hx");
     println!("  yzx tutor helix");
@@ -323,9 +438,9 @@ fn command_label(text: &str) -> String {
     tutor_document::render_code_label(text)
 }
 
-fn render_yazelix_tutor_overview() -> String {
-    let menu_key = zellij_key("menu");
-    let info_key = information_popup_key();
+fn render_yazelix_tutor_overview(keymap: &TutorKeymap) -> String {
+    let menu_key = zellij_key(keymap, "menu");
+    let info_key = information_popup_key(keymap);
     let markdown = format!(
         r#"# Yazelix tutor
 
@@ -337,7 +452,7 @@ The current tab workspace root matters most. Managed actions use that directory 
 
 1. **Run in shell:** Start a session with `yzx launch` or enter the current terminal with `yzx enter`.
 2. **Run in shell or Yazelix:** Start the guided path with `yzx tutor begin`.
-3. **Run in shell or Yazelix:** List the lessons with `yzx tutor list`.
+3. **Run in shell or Yazelix:** Use `yzx tutor continue` when you want the next-step picker.
 4. **Inside Yazelix:** Press `{menu_key}` or run `yzx menu` for the command menu; press `{info_key}` for the information popup.
 5. **Run in shell or Yazelix:** Use `yzx keys` for live bindings and `yzx doctor` when behavior looks wrong.
 
@@ -348,8 +463,9 @@ Yazelix writes key chords as `Alt+Shift+M`, `Ctrl+y`, and `Ctrl+Shift+Y`. `yzx k
 ## Lessons
 
 1. `yzx tutor workspace` builds the current-tab workspace model.
-2. `yzx tutor discovery` shows command, popup, and recovery surfaces.
-3. `yzx tutor tool_tutors` sends you to the Helix and Nushell tutors.
+2. `yzx tutor discovery` shows command, popup, and troubleshooting surfaces.
+3. `yzx tutor troubleshooting` covers the fastest ways back to a known state.
+4. `yzx tutor tool_tutors` sends you to the Helix and Nushell tutors.
 
 ## Mental model
 
@@ -367,6 +483,7 @@ fn tutor_lesson_from_id(id: &str) -> Option<TutorLesson> {
     match id {
         "workspace" => Some(TutorLesson::Workspace),
         "discovery" => Some(TutorLesson::Discovery),
+        "troubleshooting" => Some(TutorLesson::Troubleshooting),
         "tool_tutors" => Some(TutorLesson::ToolTutors),
         _ => None,
     }
@@ -376,6 +493,7 @@ fn tutor_lesson_spec(lesson: TutorLesson) -> &'static TutorLessonSpec {
     let id = match lesson {
         TutorLesson::Workspace => "workspace",
         TutorLesson::Discovery => "discovery",
+        TutorLesson::Troubleshooting => "troubleshooting",
         TutorLesson::ToolTutors => "tool_tutors",
     };
     TUTOR_LESSONS
@@ -403,23 +521,42 @@ fn render_tutor_list() -> String {
             lesson.title
         ));
         markdown.push_str(&format!(
-            "   Scope: {}. Outcome: {}\n",
+            "   Scope: {}. Goal: {}\n",
             lesson.scope, lesson.summary
         ));
     }
-    markdown.push_str("\nStart with `yzx tutor begin`.\n");
+    markdown.push_str("\nStart with `yzx tutor begin`; pick back up with `yzx tutor continue`.\n");
     render_tutor_markdown(&markdown)
 }
 
-fn render_tutor_lesson(lesson: TutorLesson) -> String {
+fn render_tutor_continue(keymap: &TutorKeymap) -> String {
+    let menu_key = zellij_key(keymap, "menu");
+    let markdown = format!(
+        r#"# Continue the Yazelix tutor
+
+Yazelix does not store tutor progress. Pick the first lesson below that you have not practiced.
+
+1. `yzx tutor workspace` if opening projects, Yazi handoff, or sidebar focus still feels unclear.
+2. `yzx tutor discovery` if you need command search, key tables, or popup locations.
+3. `yzx tutor troubleshooting` if you are lost, a popup is stuck, config changed, or generated state looks stale.
+4. `yzx tutor tool_tutors` when the Yazelix workspace path is clear and you want Helix or Nushell practice.
+
+Inside Yazelix, press {menu_key} or run `yzx menu` when you would rather search commands directly.
+"#
+    );
+    render_tutor_markdown(&markdown)
+}
+
+fn render_tutor_lesson(lesson: TutorLesson, keymap: &TutorKeymap) -> String {
     match lesson {
-        TutorLesson::Workspace => render_workspace_lesson(),
-        TutorLesson::Discovery => render_discovery_lesson(),
-        TutorLesson::ToolTutors => render_tool_tutors_lesson(),
+        TutorLesson::Workspace => render_workspace_lesson(keymap),
+        TutorLesson::Discovery => render_discovery_lesson(keymap),
+        TutorLesson::Troubleshooting => render_troubleshooting_lesson(keymap),
+        TutorLesson::ToolTutors => render_tool_tutors_lesson(keymap),
     }
 }
 
-fn render_workspace_lesson() -> String {
+fn render_workspace_lesson(keymap: &TutorKeymap) -> String {
     let markdown = format!(
         r#"{header}
 
@@ -434,17 +571,17 @@ fn render_workspace_lesson() -> String {
 Next lesson: `yzx tutor discovery`.
 "#,
         header = render_lesson_intro(TutorLesson::Workspace),
-        left_focus = zellij_key("toggle_editor_sidebar_focus"),
-        right_focus = zellij_key("toggle_editor_right_sidebar_focus"),
-        zoxide = yazi_key("open_zoxide_in_editor"),
-        workspace_pane = yazi_key("open_directory_as_workspace_pane"),
-        reveal = zellij_key("smart_reveal"),
-        fullscreen = zellij_native_key("toggle_focus_fullscreen"),
+        left_focus = zellij_key(keymap, "toggle_editor_sidebar_focus"),
+        right_focus = zellij_key(keymap, "toggle_editor_right_sidebar_focus"),
+        zoxide = yazi_key(keymap, "open_zoxide_in_editor"),
+        workspace_pane = yazi_key(keymap, "open_directory_as_workspace_pane"),
+        reveal = zellij_key(keymap, "smart_reveal"),
+        fullscreen = zellij_native_key(keymap, "toggle_focus_fullscreen"),
     );
     render_tutor_markdown(&markdown)
 }
 
-fn render_discovery_lesson() -> String {
+fn render_discovery_lesson(keymap: &TutorKeymap) -> String {
     let markdown = format!(
         r#"{header}
 
@@ -457,19 +594,42 @@ fn render_discovery_lesson() -> String {
 5. **Inside Yazelix:** Press `{info}` for the keep-alive information popup.
 6. **Run in shell or Yazelix:** Use `yzx doctor` when config, runtime, or generated workspace files look wrong.
 
-Next lesson: `yzx tutor tool_tutors`.
+Next lesson: `yzx tutor troubleshooting`.
 "#,
         header = render_lesson_intro(TutorLesson::Discovery),
-        menu = zellij_key("menu"),
-        bottom_popup = zellij_key("bottom_popup"),
-        top_popup = zellij_key("top_popup"),
-        config = zellij_key("config"),
-        info = information_popup_key(),
+        menu = zellij_key(keymap, "menu"),
+        bottom_popup = zellij_key(keymap, "bottom_popup"),
+        top_popup = zellij_key(keymap, "top_popup"),
+        config = zellij_key(keymap, "config"),
+        info = information_popup_key(keymap),
     );
     render_tutor_markdown(&markdown)
 }
 
-fn render_tool_tutors_lesson() -> String {
+fn render_troubleshooting_lesson(keymap: &TutorKeymap) -> String {
+    let markdown = format!(
+        r#"{header}
+
+## Actions
+
+1. **Inside Yazelix:** Press `{editor_sidebar}` to return to the editor/sidebar loop when focus is lost.
+2. **Inside Yazelix:** Press `{menu}` or run `yzx menu` when you know the action but not the command name.
+3. **Inside Yazelix:** Press `{config}` for the config UI when a setting needs inspection or a keybinding remap.
+4. **Run in shell or Yazelix:** Use `yzx doctor` when config, runtime, generated layouts, or packaged tools look stale.
+5. **Run in shell or Yazelix:** Use `yzx keys` to verify the active keymap before editing bindings.
+6. **Run in shell or Yazelix:** Use `yzx tutor continue` after the check so the guided path is visible again.
+
+Next lesson: `yzx tutor tool_tutors`.
+"#,
+        header = render_lesson_intro(TutorLesson::Troubleshooting),
+        editor_sidebar = zellij_key(keymap, "toggle_editor_sidebar_focus"),
+        menu = zellij_key(keymap, "menu"),
+        config = zellij_key(keymap, "config"),
+    );
+    render_tutor_markdown(&markdown)
+}
+
+fn render_tool_tutors_lesson(keymap: &TutorKeymap) -> String {
     let markdown = format!(
         r#"{header}
 
@@ -482,9 +642,9 @@ fn render_tool_tutors_lesson() -> String {
 5. **Run in shell or Yazelix:** Return to `yzx tutor list` when you want the Yazelix path.
 "#,
         header = render_lesson_intro(TutorLesson::ToolTutors),
-        reveal = zellij_key("smart_reveal"),
-        editor_sidebar = zellij_key("toggle_editor_sidebar_focus"),
-        menu = zellij_key("menu"),
+        reveal = zellij_key(keymap, "smart_reveal"),
+        editor_sidebar = zellij_key(keymap, "toggle_editor_sidebar_focus"),
+        menu = zellij_key(keymap, "menu"),
     );
     render_tutor_markdown(&markdown)
 }
@@ -515,26 +675,47 @@ fn render_lesson_intro(lesson: TutorLesson) -> String {
     )
 }
 
-fn zellij_key(local_id: &str) -> String {
-    let action = zellij_action_by_local_id(local_id)
-        .unwrap_or_else(|| panic!("missing Zellij tutor keybinding action: {local_id}"));
-    format!("`{}`", display_zellij_keys(action.action.default_keys))
+fn zellij_key(keymap: &TutorKeymap, local_id: &str) -> String {
+    format!(
+        "`{}`",
+        display_zellij_key_strings(keymap.zellij_keys(local_id))
+    )
 }
 
-fn zellij_native_key(local_id: &str) -> String {
-    let action = zellij_native_keybinding_by_local_id(local_id)
-        .unwrap_or_else(|| panic!("missing native Zellij tutor keybinding action: {local_id}"));
-    format!("`{}`", display_zellij_keys(action.action.default_keys))
+fn zellij_native_key(keymap: &TutorKeymap, local_id: &str) -> String {
+    format!(
+        "`{}`",
+        display_zellij_key_strings(keymap.zellij_native_keys(local_id))
+    )
 }
 
-fn yazi_key(local_id: &str) -> String {
-    let action = yazi_action_by_local_id(local_id)
-        .unwrap_or_else(|| panic!("missing Yazi tutor keybinding action: {local_id}"));
-    format!("`{}`", display_yazi_keys(action.action.default_keys))
+fn yazi_key(keymap: &TutorKeymap, local_id: &str) -> String {
+    format!("`{}`", display_yazi_key_strings(keymap.yazi_keys(local_id)))
 }
 
-fn information_popup_key() -> String {
-    format!("`{}`", display_zellij_keys(DEFAULT_INFORMATION_POPUP_KEYS))
+fn information_popup_key(keymap: &TutorKeymap) -> String {
+    format!(
+        "`{}`",
+        display_zellij_key_strings(keymap.custom_popup_keys(INFORMATION_POPUP_ID))
+    )
+}
+
+fn display_zellij_key_strings(keys: &[String]) -> String {
+    display_key_strings(keys, display_zellij_key)
+}
+
+fn display_yazi_key_strings(keys: &[String]) -> String {
+    display_key_strings(keys, display_yazi_key)
+}
+
+fn display_key_strings(keys: &[String], display_key: fn(&str) -> String) -> String {
+    if keys.is_empty() {
+        return "unbound".to_string();
+    }
+    keys.iter()
+        .map(|key| display_key(key))
+        .collect::<Vec<_>>()
+        .join(" / ")
 }
 
 fn run_external_command(command: &str, args: &[&str], label: &str) -> Result<i32, CoreError> {
@@ -591,6 +772,13 @@ mod tests {
             }
         );
         assert_eq!(
+            parse_tutor_args(&["continue".into()]).unwrap(),
+            TutorArgs {
+                view: TutorView::Continue,
+                help: false,
+            }
+        );
+        assert_eq!(
             parse_tutor_args(&["list".into()]).unwrap(),
             TutorArgs {
                 view: TutorView::List,
@@ -604,16 +792,24 @@ mod tests {
                 help: false,
             }
         );
+        assert_eq!(
+            parse_tutor_args(&["troubleshooting".into()]).unwrap(),
+            TutorArgs {
+                view: TutorView::Lesson(TutorLesson::Troubleshooting),
+                help: false,
+            }
+        );
         assert!(parse_tutor_args(&["weird".into()]).is_err());
     }
 
     // Defends: the front-door tutor root still prints the managed-workspace guidance instead of drifting through wrapper churn.
     #[test]
     fn tutor_root_output_keeps_guided_overview_copy() {
-        let output = render_yazelix_tutor_overview();
+        let keymap = TutorKeymap::defaults();
+        let output = render_yazelix_tutor_overview(&keymap);
         assert!(output.contains("Yazelix tutor"));
         assert!(output.contains("yzx tutor begin"));
-        assert!(output.contains("yzx tutor list"));
+        assert!(output.contains("yzx tutor continue"));
         assert!(output.contains("yzx menu"));
         assert!(output.contains("Alt+Shift+M"));
         assert!(output.contains("Alt+Shift+I"));
@@ -626,11 +822,14 @@ mod tests {
         let list = render_tutor_list();
         assert!(list.contains("1. `yzx tutor workspace`"));
         assert!(list.contains("2. `yzx tutor discovery`"));
-        assert!(list.contains("3. `yzx tutor tool_tutors`"));
+        assert!(list.contains("3. `yzx tutor troubleshooting`"));
+        assert!(list.contains("4. `yzx tutor tool_tutors`"));
         assert!(list.contains("Scope: Current tab"));
-        assert!(list.contains("Outcome: Open a project"));
+        assert!(list.contains("Goal: Open a project"));
+        assert!(!list.contains("Outcome: Open a project"));
 
-        let lesson = render_tutor_lesson(TutorLesson::Workspace);
+        let keymap = TutorKeymap::defaults();
+        let lesson = render_tutor_lesson(TutorLesson::Workspace, &keymap);
         assert!(lesson.contains("Scope: Current tab"));
         assert!(lesson.contains("Outcome:"));
         assert!(lesson.contains("Escape hatch:"));
@@ -651,20 +850,144 @@ mod tests {
     // Defends: tutor keybinding hints come from the same registry/default constants as `yzx keys`.
     #[test]
     fn tutor_keybinding_hints_use_registry_defaults() {
-        let discovery = render_tutor_lesson(TutorLesson::Discovery);
-        assert!(discovery.contains(key_text(&zellij_key("menu"))));
-        assert!(discovery.contains(key_text(&zellij_key("bottom_popup"))));
-        assert!(discovery.contains(key_text(&zellij_key("top_popup"))));
-        assert!(discovery.contains(key_text(&zellij_key("config"))));
-        assert!(discovery.contains(key_text(&information_popup_key())));
+        let keymap = TutorKeymap::defaults();
+        let discovery = render_tutor_lesson(TutorLesson::Discovery, &keymap);
+        assert!(discovery.contains(key_text(&zellij_key(&keymap, "menu"))));
+        assert!(discovery.contains(key_text(&zellij_key(&keymap, "bottom_popup"))));
+        assert!(discovery.contains(key_text(&zellij_key(&keymap, "top_popup"))));
+        assert!(discovery.contains(key_text(&zellij_key(&keymap, "config"))));
+        assert!(discovery.contains(key_text(&information_popup_key(&keymap))));
 
-        let workspace = render_tutor_lesson(TutorLesson::Workspace);
-        assert!(workspace.contains(key_text(&zellij_key("toggle_editor_sidebar_focus"))));
-        assert!(workspace.contains(key_text(&zellij_key("toggle_editor_right_sidebar_focus"))));
-        assert!(workspace.contains(key_text(&zellij_key("smart_reveal"))));
-        assert!(workspace.contains(key_text(&zellij_native_key("toggle_focus_fullscreen"))));
-        assert!(workspace.contains(key_text(&yazi_key("open_zoxide_in_editor"))));
-        assert!(workspace.contains(key_text(&yazi_key("open_directory_as_workspace_pane"))));
+        let workspace = render_tutor_lesson(TutorLesson::Workspace, &keymap);
+        assert!(workspace.contains(key_text(&zellij_key(
+            &keymap,
+            "toggle_editor_sidebar_focus"
+        ))));
+        assert!(workspace.contains(key_text(&zellij_key(
+            &keymap,
+            "toggle_editor_right_sidebar_focus"
+        ))));
+        assert!(workspace.contains(key_text(&zellij_key(&keymap, "smart_reveal"))));
+        assert!(workspace.contains(key_text(&zellij_native_key(
+            &keymap,
+            "toggle_focus_fullscreen"
+        ))));
+        assert!(workspace.contains(key_text(&yazi_key(&keymap, "open_zoxide_in_editor"))));
+        assert!(workspace.contains(key_text(&yazi_key(
+            &keymap,
+            "open_directory_as_workspace_pane"
+        ))));
+    }
+
+    // Defends: tutor keybinding hints follow active settings remaps instead of always printing defaults.
+    #[test]
+    fn tutor_keybinding_hints_use_active_remaps() {
+        let keymap = remapped_tutor_keymap();
+
+        let discovery = render_tutor_lesson(TutorLesson::Discovery, &keymap);
+        assert!(discovery.contains("Ctrl+Alt+Shift+M"));
+        assert!(discovery.contains("Ctrl+Alt+Shift+J"));
+        assert!(discovery.contains("Ctrl+Alt+Shift+K"));
+        assert!(discovery.contains("Ctrl+Alt+Shift+C"));
+        assert!(discovery.contains("Ctrl+Alt+Shift+I"));
+        assert!(!discovery.contains("`Alt+Shift+M`"));
+        assert!(!discovery.contains("`Alt+Shift+I`"));
+
+        let workspace = render_tutor_lesson(TutorLesson::Workspace, &keymap);
+        assert!(workspace.contains("Ctrl+Alt+Y"));
+        assert!(workspace.contains("Ctrl+Alt+Shift+Y"));
+        assert!(workspace.contains("Ctrl+Alt+R"));
+        assert!(workspace.contains("Ctrl+Alt+F"));
+        assert!(workspace.contains("Alt+x"));
+        assert!(workspace.contains("Alt+o"));
+        assert!(!workspace.contains("`Alt+z`"));
+        assert!(!workspace.contains("`Alt+p`"));
+    }
+
+    fn remapped_tutor_keymap() -> TutorKeymap {
+        let mut config = JsonMap::new();
+        config.insert(
+            "zellij_keybindings".to_string(),
+            serde_json::json!({
+                "menu": ["Ctrl Alt Shift M"],
+                "bottom_popup": ["Ctrl Alt Shift J"],
+                "top_popup": ["Ctrl Alt Shift K"],
+                "config": ["Ctrl Alt Shift C"],
+                "toggle_editor_sidebar_focus": ["Ctrl Alt Y"],
+                "toggle_editor_right_sidebar_focus": ["Ctrl Alt Shift Y"],
+                "smart_reveal": ["Ctrl Alt R"]
+            }),
+        );
+        config.insert(
+            "zellij_native_keybindings".to_string(),
+            serde_json::json!({
+                "toggle_focus_fullscreen": ["Ctrl Alt F"]
+            }),
+        );
+        config.insert(
+            "yazi_keybindings".to_string(),
+            serde_json::json!({
+                "open_zoxide_in_editor": ["<A-x>"],
+                "open_directory_as_workspace_pane": ["<A-o>"]
+            }),
+        );
+        config.insert(
+            "custom_popups".to_string(),
+            serde_json::json!([
+                {
+                    "id": "zenith",
+                    "command": ["zenith"],
+                    "keybindings": ["Ctrl Alt Shift I"],
+                    "keep_alive": true
+                }
+            ]),
+        );
+        TutorKeymap::from_normalized_config(&config).unwrap()
+    }
+
+    // Defends: every action id named by tutor key hints stays present in the owning registry/resolver.
+    #[test]
+    fn tutor_keybinding_coverage_ids_are_supported() {
+        let keymap = TutorKeymap::defaults();
+        for action in TUTOR_ZELLIJ_ACTION_IDS {
+            assert!(zellij_action_by_local_id(action).is_some());
+            assert!(!keymap.zellij_keys(action).is_empty());
+        }
+        for action in TUTOR_ZELLIJ_NATIVE_ACTION_IDS {
+            assert!(zellij_native_keybinding_by_local_id(action).is_some());
+            assert!(!keymap.zellij_native_keys(action).is_empty());
+        }
+        for action in TUTOR_YAZI_ACTION_IDS {
+            assert!(yazi_action_by_local_id(action).is_some());
+            assert!(!keymap.yazi_keys(action).is_empty());
+        }
+        for popup in TUTOR_CUSTOM_POPUP_IDS {
+            assert!(!keymap.custom_popup_keys(popup).is_empty());
+        }
+    }
+
+    // Defends: the stateless continue view points users back into the indexed path without promising stored progress.
+    #[test]
+    fn tutor_continue_is_stateless_next_step_picker() {
+        let keymap = TutorKeymap::defaults();
+        let output = render_tutor_continue(&keymap);
+        assert!(output.contains("does not store tutor progress"));
+        assert!(output.contains("yzx tutor workspace"));
+        assert!(output.contains("yzx tutor troubleshooting"));
+        assert!(output.contains("Alt+Shift+M"));
+    }
+
+    // Defends: the troubleshooting lesson covers lost panes, config/runtime checks, key verification, and returning to the guided path.
+    #[test]
+    fn tutor_troubleshooting_lesson_covers_common_escape_paths() {
+        let keymap = TutorKeymap::defaults();
+        let output = render_tutor_lesson(TutorLesson::Troubleshooting, &keymap);
+        assert!(output.contains("Troubleshooting paths"));
+        assert!(output.contains("yzx doctor"));
+        assert!(output.contains("yzx keys"));
+        assert!(output.contains("yzx tutor continue"));
+        assert!(output.contains("Alt+Shift+M"));
+        assert!(output.contains("Alt+Shift+C"));
     }
 
     fn key_text(markdown_code: &str) -> &str {
@@ -674,14 +997,17 @@ mod tests {
     // Defends: every bundled tutor Markdown document stays inside the supported terminal-renderer subset.
     #[test]
     fn bundled_tutor_markdown_documents_render_without_panics() {
-        assert!(render_yazelix_tutor_overview().contains("Yazelix tutor"));
+        let keymap = TutorKeymap::defaults();
+        assert!(render_yazelix_tutor_overview(&keymap).contains("Yazelix tutor"));
+        assert!(render_tutor_continue(&keymap).contains("yzx tutor troubleshooting"));
         assert!(render_tutor_list().contains("yzx tutor tool_tutors"));
         for lesson in [
             TutorLesson::Workspace,
             TutorLesson::Discovery,
+            TutorLesson::Troubleshooting,
             TutorLesson::ToolTutors,
         ] {
-            let output = render_tutor_lesson(lesson);
+            let output = render_tutor_lesson(lesson, &keymap);
             assert!(output.contains("Outcome:"));
             assert!(output.contains("Escape hatch:"));
         }

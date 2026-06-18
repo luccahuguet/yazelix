@@ -336,6 +336,14 @@ const TUTOR_BEGIN_COMMAND: YzxCommandMetadata = metadata(
     Some(YzxMenuCategory::Help),
     None,
 );
+const TUTOR_CONTINUE_COMMAND: YzxCommandMetadata = metadata(
+    "yzx tutor continue",
+    "Pick up the Yazelix tutor path",
+    YzxCommandCategory::Help,
+    &[],
+    Some(YzxMenuCategory::Help),
+    None,
+);
 const TUTOR_LIST_COMMAND: YzxCommandMetadata = metadata(
     "yzx tutor list",
     "List Yazelix tutor lessons",
@@ -355,6 +363,14 @@ const TUTOR_WORKSPACE_COMMAND: YzxCommandMetadata = metadata(
 const TUTOR_DISCOVERY_COMMAND: YzxCommandMetadata = metadata(
     "yzx tutor discovery",
     "Practice command and key discovery surfaces",
+    YzxCommandCategory::Help,
+    &[],
+    Some(YzxMenuCategory::Help),
+    None,
+);
+const TUTOR_TROUBLESHOOTING_COMMAND: YzxCommandMetadata = metadata(
+    "yzx tutor troubleshooting",
+    "Practice troubleshooting paths for panes, popups, config, and runtime state",
     YzxCommandCategory::Help,
     &[],
     Some(YzxMenuCategory::Help),
@@ -522,9 +538,11 @@ const RUST_CONTROL_FAMILIES: &[YzxRustControlFamily] = &[
         &[
             TUTOR_ROOT_COMMAND,
             TUTOR_BEGIN_COMMAND,
+            TUTOR_CONTINUE_COMMAND,
             TUTOR_LIST_COMMAND,
             TUTOR_WORKSPACE_COMMAND,
             TUTOR_DISCOVERY_COMMAND,
+            TUTOR_TROUBLESHOOTING_COMMAND,
             TUTOR_TOOL_TUTORS_COMMAND,
             TUTOR_HELIX_COMMAND,
             TUTOR_HX_COMMAND,
