@@ -25,20 +25,6 @@ pub(crate) fn styled(text: impl ToString, color: Color) -> String {
     })
 }
 
-pub(crate) fn styled_bold(text: impl ToString, color: Color) -> String {
-    command_string(|output| {
-        queue!(
-            output,
-            SetAttribute(Attribute::Bold),
-            SetForegroundColor(color),
-            Print(text.to_string()),
-            SetAttribute(Attribute::NormalIntensity),
-            SetForegroundColor(Color::Reset)
-        )?;
-        Ok(())
-    })
-}
-
 pub(crate) fn styled_dim(text: impl ToString, color: Color) -> String {
     command_string(|output| {
         queue!(
