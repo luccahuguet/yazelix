@@ -1,6 +1,7 @@
 use crate::action_registry::{
-    PANE_ORCHESTRATOR_PLUGIN_ALIAS, YZPP_PLUGIN_ALIAS, YazelixActionMetadata, ZELLIJ_ACTIONS,
-    ZELLIJ_NATIVE_KEYBINDINGS, zellij_action_by_local_id, zellij_native_keybinding_by_local_id,
+    DEFAULT_INFORMATION_POPUP_KEYS, PANE_ORCHESTRATOR_PLUGIN_ALIAS, YZPP_PLUGIN_ALIAS,
+    YazelixActionMetadata, ZELLIJ_ACTIONS, ZELLIJ_NATIVE_KEYBINDINGS, zellij_action_by_local_id,
+    zellij_native_keybinding_by_local_id,
 };
 use crate::backup_timestamp::epoch_millis_timestamp;
 use crate::bridge::{CoreError, ErrorClass};
@@ -520,7 +521,10 @@ fn default_custom_popups() -> Vec<CustomPopup> {
     vec![CustomPopup {
         id: "zenith".to_string(),
         command: vec!["zenith".into()],
-        keybindings: vec!["Alt Shift I".into()],
+        keybindings: DEFAULT_INFORMATION_POPUP_KEYS
+            .iter()
+            .map(|key| (*key).to_string())
+            .collect(),
         keep_alive: true,
     }]
 }

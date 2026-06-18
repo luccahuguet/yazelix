@@ -2,8 +2,9 @@
 //! `yzx keys*` family implemented in Rust for `yzx_control`.
 
 use crate::action_registry::{
-    YAZI_ACTIONS, YazelixActionMetadata, YazelixActionOwner, YaziActionSpec, ZELLIJ_ACTIONS,
-    ZellijActionSpec, yazi_action_by_local_id, zellij_action_by_local_id,
+    DEFAULT_INFORMATION_POPUP_KEYS, YAZI_ACTIONS, YazelixActionMetadata, YazelixActionOwner,
+    YaziActionSpec, ZELLIJ_ACTIONS, ZellijActionSpec, display_primary_zellij_key,
+    display_yazi_keys, display_zellij_keys, yazi_action_by_local_id, zellij_action_by_local_id,
 };
 use crate::bridge::CoreError;
 use crate::cli_render::{
@@ -224,37 +225,6 @@ fn yazi_action(local_id: &str) -> &'static YaziActionSpec {
         .unwrap_or_else(|| panic!("missing Yazelix action registry entry for {local_id}"))
 }
 
-fn display_zellij_key(key: &str) -> String {
-    key.split_whitespace().collect::<Vec<_>>().join("+")
-}
-
-fn display_yazi_key(key: &str) -> String {
-    key.strip_prefix("<A-")
-        .and_then(|key| key.strip_suffix('>'))
-        .map(|key| format!("Alt+{key}"))
-        .unwrap_or_else(|| key.to_string())
-}
-
-fn display_zellij_keys(keys: &[&str]) -> String {
-    keys.iter()
-        .map(|key| display_zellij_key(key))
-        .collect::<Vec<_>>()
-        .join(" / ")
-}
-
-fn display_yazi_keys(keys: &[&str]) -> String {
-    keys.iter()
-        .map(|key| display_yazi_key(key))
-        .collect::<Vec<_>>()
-        .join(" / ")
-}
-
-fn display_primary_zellij_key(keys: &[&str]) -> String {
-    keys.first()
-        .map(|key| display_zellij_key(key))
-        .unwrap_or_default()
-}
-
 fn zellij_action_row(local_id: &str) -> TableRow {
     let spec = zellij_action(local_id);
     table_row_owned(vec![
@@ -305,7 +275,10 @@ fn root_command_rows() -> Vec<TableRow> {
         zellij_action_row("bottom_popup"),
         zellij_action_row("top_popup"),
         zellij_action_row("menu"),
-        table_row(&["Alt+Shift+I", "Toggle the keep-alive Zenith custom popup"]),
+        table_row_owned(vec![
+            display_zellij_keys(DEFAULT_INFORMATION_POPUP_KEYS),
+            "Toggle the keep-alive Zenith custom popup".to_string(),
+        ]),
         zellij_action_row("config"),
     ]
 }

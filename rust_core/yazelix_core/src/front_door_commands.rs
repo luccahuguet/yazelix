@@ -1,5 +1,9 @@
 //! Rust-owned front-door public commands for `yzx tutor`, `yzx screen`, and `yzx whats_new`.
 
+use crate::action_registry::{
+    DEFAULT_INFORMATION_POPUP_KEYS, display_yazi_keys, display_zellij_keys,
+    yazi_action_by_local_id, zellij_action_by_local_id, zellij_native_keybinding_by_local_id,
+};
 use crate::bridge::{CoreError, ErrorClass};
 use crate::control_plane::{
     read_runtime_identity_from_runtime, read_yazelix_version_from_runtime, runtime_dir_from_env,
@@ -37,111 +41,37 @@ struct TutorLessonSpec {
     id: &'static str,
     title: &'static str,
     summary: &'static str,
+    scope: &'static str,
+    outcome: &'static str,
+    escape_hatch: &'static str,
 }
 
 const TUTOR_LESSONS: &[TutorLessonSpec] = &[
     TutorLessonSpec {
         id: "workspace",
         title: "Workspace roots and managed panes",
-        summary: "Practice the current-tab workspace model, Yazi handoff, and fresh project tabs",
+        summary: "Open a project, move between editor and sidebars, and keep the tab root clear",
+        scope: "Current tab",
+        outcome: "You can start Yazelix in the right directory, open files through Yazi, reveal the editor file, and move between the managed editor and sidebars.",
+        escape_hatch: "Use the editor/sidebar focus keys to get back to a known pane, then rerun `yzx tutor list`.",
     },
     TutorLessonSpec {
         id: "discovery",
         title: "Command and key discovery",
-        summary: "Use the command palette, key tables, and doctor output without memorizing everything",
+        summary: "Find commands, popups, key tables, and runtime checks without memorizing the map",
+        scope: "Current Yazelix window",
+        outcome: "You can open the command menu, inspect useful popups, check the live key table, and run doctor when the runtime feels wrong.",
+        escape_hatch: "Use the same popup key to focus or close a managed popup. Tool-local exits such as `q` or `Esc` stay inside the tool.",
     },
     TutorLessonSpec {
         id: "tool_tutors",
         title: "Helix and Nushell tutors",
-        summary: "Jump from Yazelix-specific guidance into the upstream editor and shell tutors",
+        summary: "Switch from Yazelix guidance into the editor and shell tutors",
+        scope: "Editor or shell pane",
+        outcome: "You can start the Helix and Nushell tutors from Yazelix, then return to the Yazelix lesson list.",
+        escape_hatch: "Quit Helix with `:q`; leave a shell prompt with `Ctrl+d` or `exit`, then run `yzx tutor list`.",
     },
 ];
-
-const TUTOR_OVERVIEW_MARKDOWN: &str = r#"# Yazelix tutor
-
-Yazelix is a managed terminal workspace built around Zellij, Yazi, and Helix.
-
-The important unit is the current tab workspace root: managed actions use that directory unless a tool is doing something more specific.
-
-## Start here
-
-Need a session first? Launch with `yzx launch` or start in the current terminal with `yzx enter`.
-
-1. Start the guided flow with `yzx tutor begin`.
-2. See every short lesson with `yzx tutor list`.
-3. Learn the workspace-critical bindings with `yzx keys`.
-4. Use `yzx menu` for fuzzy command discovery (or `Alt+Shift+M` inside Yazelix) and `yzx doctor` when behavior looks wrong.
-
-## Mental model
-
-**Managed panes:** Yazelix treats the editor/sidebar flow as a coordinated workspace, not just a pile of unrelated panes.
-
-**Directory flow:** The current tab root drives new panes, popup commands, and workspace-aware actions.
-
-**Discoverability:** `yzx help` is the command reference, `yzx keys` is the keybinding surface, and `yzx tutor` is the guided overview.
-
-## Next steps
-
-**Helix tutor:** `yzx tutor hx`
-
-**Nushell tutor:** `yzx tutor nu`
-
-**Command reference:** `yzx help`
-
-**Project overview:** `README.md`
-"#;
-
-const WORKSPACE_LESSON_MARKDOWN: &str = r#"# Yazelix tutor: Workspace roots and managed panes
-
-Practice the current-tab workspace model, Yazi handoff, and fresh project tabs.
-
-## Learn
-
-Start Yazelix from the folder you want to work in. That folder becomes the current tab workspace root for new panes, popup commands, and managed editor/sidebar coordination.
-
-Opening a file from Yazi into the managed editor also moves that tab's workspace root to the file's directory.
-
-## Mini quest
-
-1. If this session is not in the folder you want, leave it and start again from that folder with `yzx enter`, or use `yzx launch --path <dir>`.
-2. Run `yzx keys` and find the workspace actions.
-3. Use the managed Yazi sidebar to open a file in the editor.
-
-Next lesson: `yzx tutor discovery`.
-"#;
-
-const DISCOVERY_LESSON_MARKDOWN: &str = r#"# Yazelix tutor: Command and key discovery
-
-Use the command palette, key tables, and doctor output without memorizing everything.
-
-## Learn
-
-Use command surfaces when you know what you want, and discovery surfaces when you do not.
-
-## Mini quest
-
-1. Run `yzx help` for the command reference.
-2. Run `yzx keys` for keybinding discovery.
-3. Run `yzx menu` for fuzzy command discovery, or press `Alt+Shift+M` inside Yazelix.
-4. Run `yzx doctor` when the current runtime or config feels wrong.
-
-Next lesson: `yzx tutor tool_tutors`.
-"#;
-
-const TOOL_TUTORS_LESSON_MARKDOWN: &str = r#"# Yazelix tutor: Helix and Nushell tutors
-
-Jump from Yazelix-specific guidance into the upstream editor and shell tutors.
-
-## Learn
-
-Yazelix owns the workspace integration. Helix and Nushell still have their own deep learning flows.
-
-## Mini quest
-
-1. Run `yzx tutor hx` to practice Helix inside the editor's own tutor.
-2. Run `yzx tutor nu` to practice Nushell in Nushell's own tutor.
-3. Return to `yzx tutor list` when you want the Yazelix workspace path again.
-"#;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct TutorArgs {
@@ -394,7 +324,43 @@ fn command_label(text: &str) -> String {
 }
 
 fn render_yazelix_tutor_overview() -> String {
-    render_tutor_markdown(TUTOR_OVERVIEW_MARKDOWN)
+    let menu_key = zellij_key("menu");
+    let info_key = information_popup_key();
+    let markdown = format!(
+        r#"# Yazelix tutor
+
+Yazelix is a managed terminal workspace built around Zellij, Yazi, and Helix.
+
+The current tab workspace root matters most. Managed actions use that directory unless a tool chooses a file or directory.
+
+## Start here
+
+1. **Run in shell:** Start a session with `yzx launch` or enter the current terminal with `yzx enter`.
+2. **Run in shell or Yazelix:** Start the guided path with `yzx tutor begin`.
+3. **Run in shell or Yazelix:** List the lessons with `yzx tutor list`.
+4. **Inside Yazelix:** Press `{menu_key}` or run `yzx menu` for the command menu; press `{info_key}` for the information popup.
+5. **Run in shell or Yazelix:** Use `yzx keys` for live bindings and `yzx doctor` when behavior looks wrong.
+
+## Key notation
+
+Yazelix writes key chords as `Alt+Shift+M`, `Ctrl+y`, and `Ctrl+Shift+Y`. `yzx keys` shows the same defaults and any remaps.
+
+## Lessons
+
+1. `yzx tutor workspace` builds the current-tab workspace model.
+2. `yzx tutor discovery` shows command, popup, and recovery surfaces.
+3. `yzx tutor tool_tutors` sends you to the Helix and Nushell tutors.
+
+## Mental model
+
+**Managed panes:** Yazelix keeps editor, sidebars, popups, and agent panes connected.
+
+**Directory flow:** The tab root drives new panes, popup commands, and workspace-aware actions.
+
+**Discovery:** `yzx help` gives command syntax. `yzx keys` gives bindings. `yzx tutor` gives the guided path.
+"#
+    );
+    render_tutor_markdown(&markdown)
 }
 
 fn tutor_lesson_from_id(id: &str) -> Option<TutorLesson> {
@@ -406,6 +372,27 @@ fn tutor_lesson_from_id(id: &str) -> Option<TutorLesson> {
     }
 }
 
+fn tutor_lesson_spec(lesson: TutorLesson) -> &'static TutorLessonSpec {
+    let id = match lesson {
+        TutorLesson::Workspace => "workspace",
+        TutorLesson::Discovery => "discovery",
+        TutorLesson::ToolTutors => "tool_tutors",
+    };
+    TUTOR_LESSONS
+        .iter()
+        .find(|spec| spec.id == id)
+        .expect("lesson spec exists")
+}
+
+fn tutor_lesson_index(lesson: TutorLesson) -> usize {
+    let spec = tutor_lesson_spec(lesson);
+    TUTOR_LESSONS
+        .iter()
+        .position(|candidate| candidate.id == spec.id)
+        .expect("lesson spec is indexed")
+        + 1
+}
+
 fn render_tutor_list() -> String {
     let mut markdown = String::from("# Yazelix tutor lessons\n\n");
     for (index, lesson) in TUTOR_LESSONS.iter().enumerate() {
@@ -415,7 +402,10 @@ fn render_tutor_list() -> String {
             lesson.id,
             lesson.title
         ));
-        markdown.push_str(&format!("   {}\n", lesson.summary));
+        markdown.push_str(&format!(
+            "   Scope: {}. Outcome: {}\n",
+            lesson.scope, lesson.summary
+        ));
     }
     markdown.push_str("\nStart with `yzx tutor begin`.\n");
     render_tutor_markdown(&markdown)
@@ -430,19 +420,121 @@ fn render_tutor_lesson(lesson: TutorLesson) -> String {
 }
 
 fn render_workspace_lesson() -> String {
-    render_tutor_markdown(WORKSPACE_LESSON_MARKDOWN)
+    let markdown = format!(
+        r#"{header}
+
+## Actions
+
+1. **Run in shell:** Start in the project directory with `yzx enter`; use `yzx launch --path <dir>` when you need a separate window.
+2. **Inside Yazelix:** Press `{left_focus}` to switch between the editor and left sidebar; press `{right_focus}` for the right agent sidebar.
+3. **Inside Yazi:** Press `Enter` to open the selected file in the managed editor.
+4. **Inside Yazi:** Press `{zoxide}` to jump with zoxide and open the target in the editor; press `{workspace_pane}` to open the selected directory in a workspace terminal pane.
+5. **Inside the editor:** Press `{reveal}` to reveal the current file in Yazi; press `{fullscreen}` when one pane needs the whole screen.
+
+Next lesson: `yzx tutor discovery`.
+"#,
+        header = render_lesson_intro(TutorLesson::Workspace),
+        left_focus = zellij_key("toggle_editor_sidebar_focus"),
+        right_focus = zellij_key("toggle_editor_right_sidebar_focus"),
+        zoxide = yazi_key("open_zoxide_in_editor"),
+        workspace_pane = yazi_key("open_directory_as_workspace_pane"),
+        reveal = zellij_key("smart_reveal"),
+        fullscreen = zellij_native_key("toggle_focus_fullscreen"),
+    );
+    render_tutor_markdown(&markdown)
 }
 
 fn render_discovery_lesson() -> String {
-    render_tutor_markdown(DISCOVERY_LESSON_MARKDOWN)
+    let markdown = format!(
+        r#"{header}
+
+## Actions
+
+1. **Run in shell or Yazelix:** Use `yzx help` when you know the command name and need syntax.
+2. **Run in shell or Yazelix:** Use `yzx keys` for live Yazelix, Yazi, Helix, and Nushell bindings.
+3. **Inside Yazelix:** Press `{menu}` or run `yzx menu` to open command search.
+4. **Inside Yazelix:** Press `{bottom_popup}` for the bottom popup, `{top_popup}` for the top popup, and `{config}` for the config UI.
+5. **Inside Yazelix:** Press `{info}` for the keep-alive information popup.
+6. **Run in shell or Yazelix:** Use `yzx doctor` when config, runtime, or generated workspace files look wrong.
+
+Next lesson: `yzx tutor tool_tutors`.
+"#,
+        header = render_lesson_intro(TutorLesson::Discovery),
+        menu = zellij_key("menu"),
+        bottom_popup = zellij_key("bottom_popup"),
+        top_popup = zellij_key("top_popup"),
+        config = zellij_key("config"),
+        info = information_popup_key(),
+    );
+    render_tutor_markdown(&markdown)
 }
 
 fn render_tool_tutors_lesson() -> String {
-    render_tutor_markdown(TOOL_TUTORS_LESSON_MARKDOWN)
+    let markdown = format!(
+        r#"{header}
+
+## Actions
+
+1. **Run in shell or Yazelix:** Use `yzx tutor hx` to launch `hx --tutor`.
+2. **Inside Helix:** Leave the tutor with `:q`; use `{reveal}` in managed Helix sessions when you want Yazi to reveal the current file.
+3. **Run in shell or Yazelix:** Use `yzx tutor nu` to launch the Nushell tutor.
+4. **Inside Yazelix:** Press `{editor_sidebar}` to return to the editor/sidebar loop; press `{menu}` when you want command search again.
+5. **Run in shell or Yazelix:** Return to `yzx tutor list` when you want the Yazelix path.
+"#,
+        header = render_lesson_intro(TutorLesson::ToolTutors),
+        reveal = zellij_key("smart_reveal"),
+        editor_sidebar = zellij_key("toggle_editor_sidebar_focus"),
+        menu = zellij_key("menu"),
+    );
+    render_tutor_markdown(&markdown)
 }
 
 fn render_tutor_markdown(markdown: &str) -> String {
     tutor_document::render_tutor_markdown(markdown).expect("bundled tutor Markdown is supported")
+}
+
+fn render_lesson_intro(lesson: TutorLesson) -> String {
+    let spec = tutor_lesson_spec(lesson);
+    format!(
+        r#"# {}. {}
+
+{}
+
+**Scope:** {}
+
+**Outcome:** {}
+
+**Escape hatch:** {}
+"#,
+        tutor_lesson_index(lesson),
+        spec.title,
+        spec.summary,
+        spec.scope,
+        spec.outcome,
+        spec.escape_hatch
+    )
+}
+
+fn zellij_key(local_id: &str) -> String {
+    let action = zellij_action_by_local_id(local_id)
+        .unwrap_or_else(|| panic!("missing Zellij tutor keybinding action: {local_id}"));
+    format!("`{}`", display_zellij_keys(action.action.default_keys))
+}
+
+fn zellij_native_key(local_id: &str) -> String {
+    let action = zellij_native_keybinding_by_local_id(local_id)
+        .unwrap_or_else(|| panic!("missing native Zellij tutor keybinding action: {local_id}"));
+    format!("`{}`", display_zellij_keys(action.action.default_keys))
+}
+
+fn yazi_key(local_id: &str) -> String {
+    let action = yazi_action_by_local_id(local_id)
+        .unwrap_or_else(|| panic!("missing Yazi tutor keybinding action: {local_id}"));
+    format!("`{}`", display_yazi_keys(action.action.default_keys))
+}
+
+fn information_popup_key() -> String {
+    format!("`{}`", display_zellij_keys(DEFAULT_INFORMATION_POPUP_KEYS))
 }
 
 fn run_external_command(command: &str, args: &[&str], label: &str) -> Result<i32, CoreError> {
@@ -524,23 +616,59 @@ mod tests {
         assert!(output.contains("yzx tutor list"));
         assert!(output.contains("yzx menu"));
         assert!(output.contains("Alt+Shift+M"));
-        assert!(output.contains("README.md"));
+        assert!(output.contains("Alt+Shift+I"));
+        assert!(output.contains("Key notation"));
     }
 
-    // Defends: the guided tutor has concrete lesson entrypoints and a workspace mini quest instead of only a flat overview.
+    // Defends: the guided tutor has indexed lesson entrypoints and structured onboarding metadata instead of only a flat overview.
     #[test]
-    fn tutor_lessons_include_list_and_workspace_mini_quest() {
+    fn tutor_lessons_include_indexed_metadata_and_workspace_actions() {
         let list = render_tutor_list();
-        assert!(list.contains("yzx tutor workspace"));
-        assert!(list.contains("yzx tutor discovery"));
-        assert!(list.contains("yzx tutor tool_tutors"));
+        assert!(list.contains("1. `yzx tutor workspace`"));
+        assert!(list.contains("2. `yzx tutor discovery`"));
+        assert!(list.contains("3. `yzx tutor tool_tutors`"));
+        assert!(list.contains("Scope: Current tab"));
+        assert!(list.contains("Outcome: Open a project"));
 
         let lesson = render_tutor_lesson(TutorLesson::Workspace);
-        assert!(lesson.contains("Mini quest"));
+        assert!(lesson.contains("Scope: Current tab"));
+        assert!(lesson.contains("Outcome:"));
+        assert!(lesson.contains("Escape hatch:"));
+        assert!(lesson.contains("Run in shell:"));
+        assert!(lesson.contains("Inside Yazelix:"));
+        assert!(lesson.contains("Inside Yazi:"));
         assert!(lesson.contains("yzx enter"));
         assert!(lesson.contains("yzx launch --path <dir>"));
-        assert!(lesson.contains("yzx keys"));
+        assert!(lesson.contains("Ctrl+y"));
+        assert!(lesson.contains("Ctrl+Shift+Y"));
+        assert!(lesson.contains("Alt+z"));
+        assert!(lesson.contains("Alt+p"));
+        assert!(lesson.contains("Alt+r"));
+        assert!(lesson.contains("Alt+Shift+F"));
         assert!(!lesson.contains("yzx cwd"));
+    }
+
+    // Defends: tutor keybinding hints come from the same registry/default constants as `yzx keys`.
+    #[test]
+    fn tutor_keybinding_hints_use_registry_defaults() {
+        let discovery = render_tutor_lesson(TutorLesson::Discovery);
+        assert!(discovery.contains(key_text(&zellij_key("menu"))));
+        assert!(discovery.contains(key_text(&zellij_key("bottom_popup"))));
+        assert!(discovery.contains(key_text(&zellij_key("top_popup"))));
+        assert!(discovery.contains(key_text(&zellij_key("config"))));
+        assert!(discovery.contains(key_text(&information_popup_key())));
+
+        let workspace = render_tutor_lesson(TutorLesson::Workspace);
+        assert!(workspace.contains(key_text(&zellij_key("toggle_editor_sidebar_focus"))));
+        assert!(workspace.contains(key_text(&zellij_key("toggle_editor_right_sidebar_focus"))));
+        assert!(workspace.contains(key_text(&zellij_key("smart_reveal"))));
+        assert!(workspace.contains(key_text(&zellij_native_key("toggle_focus_fullscreen"))));
+        assert!(workspace.contains(key_text(&yazi_key("open_zoxide_in_editor"))));
+        assert!(workspace.contains(key_text(&yazi_key("open_directory_as_workspace_pane"))));
+    }
+
+    fn key_text(markdown_code: &str) -> &str {
+        markdown_code.trim_matches('`')
     }
 
     // Defends: every bundled tutor Markdown document stays inside the supported terminal-renderer subset.
@@ -554,7 +682,8 @@ mod tests {
             TutorLesson::ToolTutors,
         ] {
             let output = render_tutor_lesson(lesson);
-            assert!(output.contains("Mini quest"));
+            assert!(output.contains("Outcome:"));
+            assert!(output.contains("Escape hatch:"));
         }
     }
 

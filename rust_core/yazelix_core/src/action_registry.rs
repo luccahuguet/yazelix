@@ -1,5 +1,6 @@
 pub const PANE_ORCHESTRATOR_PLUGIN_ALIAS: &str = "yazelix_pane_orchestrator";
 pub const YZPP_PLUGIN_ALIAS: &str = "yzpp";
+pub const DEFAULT_INFORMATION_POPUP_KEYS: &[&str] = &["Alt Shift I"];
 
 pub const ZELLIJ_SEMANTIC_KEYBINDING_DIAGNOSTICS: &[&str] = &[
     "unsupported_zellij_keybinding_action",
@@ -769,4 +770,35 @@ pub fn yazi_action_by_local_id(local_id: &str) -> Option<&'static YaziActionSpec
     YAZI_ACTIONS
         .iter()
         .find(|spec| spec.action.local_id == local_id)
+}
+
+pub fn display_zellij_key(key: &str) -> String {
+    key.split_whitespace().collect::<Vec<_>>().join("+")
+}
+
+pub fn display_yazi_key(key: &str) -> String {
+    key.strip_prefix("<A-")
+        .and_then(|key| key.strip_suffix('>'))
+        .map(|key| format!("Alt+{key}"))
+        .unwrap_or_else(|| key.to_string())
+}
+
+pub fn display_zellij_keys(keys: &[&str]) -> String {
+    keys.iter()
+        .map(|key| display_zellij_key(key))
+        .collect::<Vec<_>>()
+        .join(" / ")
+}
+
+pub fn display_yazi_keys(keys: &[&str]) -> String {
+    keys.iter()
+        .map(|key| display_yazi_key(key))
+        .collect::<Vec<_>>()
+        .join(" / ")
+}
+
+pub fn display_primary_zellij_key(keys: &[&str]) -> String {
+    keys.first()
+        .map(|key| display_zellij_key(key))
+        .unwrap_or_default()
 }
