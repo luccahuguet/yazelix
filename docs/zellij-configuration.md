@@ -179,8 +179,9 @@ When enabled, the pane orchestrator opens `yzx screen` after the configured idle
 copy_on_select false
 copy_clipboard "primary"
 copy_command "wl-copy"
-scroll_buffer_size 50000
+scroll_buffer_size 10000
 ```
+Yazelix adds `scroll_buffer_size 5000` when neither the managed sidecar nor the native read-only fallback sets an active value. Set a larger value only when you intentionally want longer Zellij pane history.
 
 ## Best Practices
 

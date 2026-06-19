@@ -78,6 +78,10 @@ names, or make other terminal variants depend on Mars internals.
 | Foot | writes generated Linux-only `foot.ini` | Foot owns config semantics |
 | mars | reads the selected child-owned Mars profile and emoji-fallback template, copies child-owned dark/light themes into the generated config root, then applies stable Yazelix transparency, appearance selection, cell-opacity policy, cursor color, and generated shader snapshot paths | `mars` owns wrapper behavior, profile templates, emoji fallback presets, dark/light theme palettes, adaptive appearance behavior, shader ABI, shader asset layout, and package metadata |
 
+Generated terminal configs disable terminal-emulator scrollback for Yazelix-owned
+runtime sessions. Zellij owns pane history inside Yazelix so high-output panes
+do not duplicate history in the outer terminal emulator.
+
 ## Verification
 
 - `yzx_repo_validator validate-nix-customization-api`

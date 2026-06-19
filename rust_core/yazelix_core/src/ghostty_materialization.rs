@@ -187,6 +187,9 @@ theme = "{}"
 window-decoration = "none"
 window-padding-y = 10,0
 
+# Scrollback: Zellij owns pane history inside Yazelix
+scrollback-limit = 0
+
 # Transparency (configurable via settings.jsonc)
 {}
 
@@ -225,6 +228,9 @@ x11-instance-name = {}
 theme = "{}"
 window-decoration = "none"
 window-padding-y = 10,0
+
+# Scrollback: Zellij owns pane history inside Yazelix
+scrollback-limit = 0
 
 # Transparency (configurable via settings.jsonc)
 {}
@@ -303,4 +309,39 @@ pub fn generate_ghostty_materialization(
         cursor_state,
         shaders_synced: cursor_data.shaders_synced,
     })
+}
+
+// Test lane: default
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn sample_request(config_dir: PathBuf) -> GhosttyMaterializationRequest {
+        GhosttyMaterializationRequest {
+            runtime_dir: PathBuf::from("/runtime"),
+            config_dir,
+            state_dir: PathBuf::from("/state"),
+            transparency: "none".to_string(),
+            appearance_mode: "dark".to_string(),
+            cursor_config_path: PathBuf::from("/cursor/settings.jsonc"),
+        }
+    }
+
+    // Defends: generated Ghostty config leaves pane history to Zellij instead of keeping a second terminal scrollback buffer.
+    #[test]
+    fn ghostty_configs_disable_emulator_scrollback() {
+        let temp = tempfile::tempdir().unwrap();
+        let request = sample_request(temp.path().to_path_buf());
+
+        let without_cursor = build_ghostty_config_without_cursor(&request).unwrap();
+        assert!(without_cursor.contains("scrollback-limit = 0"));
+
+        let with_cursor = build_ghostty_config(
+            &request,
+            Path::new("/state/configs/terminal_emulators/ghostty"),
+            &disabled_terminal_cursor_state(),
+        )
+        .unwrap();
+        assert!(with_cursor.contains("scrollback-limit = 0"));
+    }
 }

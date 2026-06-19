@@ -40,6 +40,7 @@ const GENERATED_CONFIG_MARKERS: &[&str] = &[
 ];
 const GENERATED_LAYOUT_MARKER: &str = "GENERATED ZELLIJ LAYOUT (YAZELIX)";
 const GENERATED_LAYOUT_FINGERPRINT_PREFIX: &str = "generation_fingerprint:";
+const YAZELIX_DEFAULT_SCROLL_BUFFER_SIZE: usize = 5_000;
 const ZELLIJ_KEYBINDINGS_CONFIG_KEY: &str = "zellij_keybindings";
 const ZELLIJ_NATIVE_KEYBINDINGS_CONFIG_KEY: &str = "zellij_native_keybindings";
 const ZELLIJ_KEYBINDING_PARSE_POLICY: KeybindingParsePolicy = KeybindingParsePolicy {
@@ -222,7 +223,8 @@ pub fn generate_zellij_materialization(
         &request.runtime_dir,
         string_config(&config, "default_shell", "nu"),
     );
-    let base_config_source = resolve_base_config_source()?;
+    let mut base_config_source = resolve_base_config_source()?;
+    apply_yazelix_scroll_buffer_default(&mut base_config_source);
     validate_base_config_keybinding_policy(&base_config_source)?;
     let plugin_artifacts = resolve_plugin_artifacts(&request.runtime_dir, &state_dir)?;
     let [pane_orchestrator_artifact, zjstatus_artifact, yzpp_artifact] = &plugin_artifacts;
@@ -718,6 +720,42 @@ fn normalize_config_strings(
         ));
     }
     Ok(normalized)
+}
+
+fn apply_yazelix_scroll_buffer_default(base_config_source: &mut ZellijBaseConfigSource) {
+    if zellij_config_declares_scroll_buffer_size(&base_config_source.content) {
+        return;
+    }
+
+    let default = format!(
+        "// Yazelix default: keep pane history bounded for agent-heavy sessions.\nscroll_buffer_size {YAZELIX_DEFAULT_SCROLL_BUFFER_SIZE}\n"
+    );
+    if base_config_source.content.trim().is_empty() {
+        base_config_source.content = default;
+    } else {
+        base_config_source.content = format!("{default}\n{}", base_config_source.content);
+    }
+}
+
+fn zellij_config_declares_scroll_buffer_size(config_content: &str) -> bool {
+    config_content.lines().any(|line| {
+        let trimmed = line.trim_start();
+        if trimmed.starts_with("//")
+            || trimmed.starts_with('#')
+            || trimmed.starts_with("/*")
+            || trimmed.is_empty()
+        {
+            return false;
+        }
+        let head = trimmed
+            .split("//")
+            .next()
+            .unwrap_or(trimmed)
+            .split(|ch: char| ch.is_whitespace() || ch == '=')
+            .next()
+            .unwrap_or_default();
+        head == "scroll_buffer_size"
+    })
 }
 
 fn resolve_base_config_source() -> Result<ZellijBaseConfigSource, CoreError> {
@@ -1539,6 +1577,41 @@ ui { pane_frames { hide_session_name true } }
         );
         assert!(extracted.keybinds_block_present);
         assert!(!extracted.keybinds_clear_defaults);
+    }
+
+    // Defends: Yazelix adds a bounded Zellij pane-history default when no active native setting exists.
+    #[test]
+    fn zellij_scroll_buffer_default_is_added_when_absent() {
+        let mut source = ZellijBaseConfigSource {
+            source: "managed".to_string(),
+            path: None,
+            content: "// scroll_buffer_size 10000\ncopy_on_select true\n".to_string(),
+        };
+
+        apply_yazelix_scroll_buffer_default(&mut source);
+
+        assert!(source.content.starts_with(
+            "// Yazelix default: keep pane history bounded for agent-heavy sessions.\nscroll_buffer_size 5000\n"
+        ));
+        assert!(source.content.contains("// scroll_buffer_size 10000"));
+        assert!(source.content.contains("copy_on_select true"));
+    }
+
+    // Defends: explicit managed/native Zellij scrollback preferences stay user-owned.
+    #[test]
+    fn zellij_scroll_buffer_default_preserves_explicit_user_value() {
+        let mut source = ZellijBaseConfigSource {
+            source: "managed".to_string(),
+            path: None,
+            content: "scroll_buffer_size 123\ncopy_on_select true\n".to_string(),
+        };
+
+        apply_yazelix_scroll_buffer_default(&mut source);
+
+        assert_eq!(
+            source.content,
+            "scroll_buffer_size 123\ncopy_on_select true\n"
+        );
     }
 
     // Defends: clear-defaults remains detectable so managed config can reject the strongest keybinding bypass explicitly.

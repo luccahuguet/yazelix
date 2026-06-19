@@ -17,6 +17,7 @@ repair behavior, and live workspace/session behavior.
 | Settings normalization and defaults | Main Yazelix |
 | Runtime identity, package paths, and generated state roots | Main Yazelix |
 | Zellij action registry policy and supported keybinding semantics | Main Yazelix |
+| Yazelix default native settings, including `scroll_buffer_size 5000` when the user has not set an active value | Main Yazelix |
 | Pane-orchestrator, popup, and status-bar package/artifact resolution | Main Yazelix plus existing child repos |
 | Live tab, pane, workspace, status-bus, and session facts | Pane orchestrator plus Main Yazelix adapters |
 | Filesystem writes, repair decisions, doctor checks, and permission seeding | Main Yazelix |

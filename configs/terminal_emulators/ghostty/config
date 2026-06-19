@@ -56,6 +56,9 @@ theme = "Abernathy"
 window-decoration = "none"
 window-padding-y = 10,0
 
+# Scrollback: Zellij owns pane history inside Yazelix
+scrollback-limit = 0
+
 # Transparency (configurable via settings.jsonc)
 background-opacity = 0.85
 background-opacity-cells = true
