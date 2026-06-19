@@ -124,7 +124,35 @@ For noninteractive installs, pass `--accept-flake-config` to the Nix command tha
 nix profile add --accept-flake-config github:luccahuguet/yazelix#yazelix
 ```
 
-For persistent system or Home Manager configuration, add the cache to your Nix settings:
+For persistent Determinate Nix installs, add the cache to the custom Nix config file that the installer leaves for user edits:
+
+`/etc/nix/nix.custom.conf`
+
+Append the Yazelix cache entries:
+
+```bash
+sudo tee -a /etc/nix/nix.custom.conf >/dev/null <<'EOF'
+extra-substituters = https://yazelix.cachix.org
+extra-trusted-public-keys = yazelix.cachix.org-1:ZgxIjQvaP0VTWL8Racx27mpUNzDJ97xC2y7QWYjmGNM=
+EOF
+```
+
+Those entries are equivalent to adding these lines manually:
+
+```conf
+extra-substituters = https://yazelix.cachix.org
+extra-trusted-public-keys = yazelix.cachix.org-1:ZgxIjQvaP0VTWL8Racx27mpUNzDJ97xC2y7QWYjmGNM=
+```
+
+Check that the settings are active:
+
+```bash
+nix config show | grep -E 'https://yazelix\.cachix\.org|yazelix\.cachix\.org-1:ZgxIjQvaP0VTWL8Racx27mpUNzDJ97xC2y7QWYjmGNM='
+```
+
+If the command does not print both the cache URL and key after editing `/etc/nix/nix.custom.conf`, restart the Nix daemon or reboot, then check again.
+
+For NixOS or Home Manager-managed Nix configuration, add the cache to your Nix settings:
 
 ```nix
 {
@@ -142,17 +170,16 @@ For persistent system or Home Manager configuration, add the cache to your Nix s
 
 If another cache is already configured, keep it in the same lists. For example, a Home Manager user can place those `nix.settings` entries in their Home Manager configuration, then run `home-manager switch`. Standalone Home Manager users should also set `nix.package = pkgs.nix` when Home Manager generates `~/.config/nix/nix.conf`.
 
-Check that Nix sees the cache and that representative expensive outputs are present in the public cache:
+Check that representative expensive outputs are present in the public cache:
 
 ```bash
-nix config show | grep -E 'https://yazelix\.cachix\.org|yazelix\.cachix\.org-1:ZgxIjQvaP0VTWL8Racx27mpUNzDJ97xC2y7QWYjmGNM='
 helix_out="$(nix eval --raw github:luccahuguet/yazelix#yazelix_helix.outPath)"
 kgp_zellij_out="$(nix eval --raw github:luccahuguet/yazelix#yazelix_kgp_zellij.outPath)"
 nix path-info --store https://yazelix.cachix.org "$helix_out"
 nix path-info --store https://yazelix.cachix.org "$kgp_zellij_out"
 ```
 
-If the first command does not print both the cache URL and key, reload the Nix configuration that owns your `nix.settings`. If `nix path-info` cannot find the output, the requested Yazelix revision has not been published to the cache yet, and Nix will build it from source.
+If `nix path-info` cannot find the output, the requested Yazelix revision has not been published to the cache yet, and Nix will build it from source.
 
 ### Step 2: Install Yazelix
 
