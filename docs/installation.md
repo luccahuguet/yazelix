@@ -124,51 +124,54 @@ For noninteractive installs, pass `--accept-flake-config` to the Nix command tha
 nix profile add --accept-flake-config github:luccahuguet/yazelix#yazelix
 ```
 
-For persistent Determinate Nix installs, add the cache to the custom Nix config file that the installer leaves for user edits:
+For persistent cache setup on ordinary Nix installs, let the Cachix CLI write the cache configuration:
+
+```bash
+sudo nix run nixpkgs#cachix -- use yazelix --mode root-nixconf
+```
+
+Determinate Nix manages `/etc/nix/nix.conf` and leaves `/etc/nix/nix.custom.conf` for user edits. If you prefer to keep Determinate's generated config untouched, add the cache to that custom file instead:
 
 `/etc/nix/nix.custom.conf`
 
 Append the Yazelix cache entries:
 
 ```bash
-sudo tee -a /etc/nix/nix.custom.conf >/dev/null <<'EOF'
+yazelix_cache_key='yazelix.cachix.org-1:ZgxIjQvaP0VTWL8Racx27mp'
+yazelix_cache_key="${yazelix_cache_key}UNzDJ97xC2y7QWYjmGNM="
+sudo tee -a /etc/nix/nix.custom.conf >/dev/null <<EOF
 extra-substituters = https://yazelix.cachix.org
-extra-trusted-public-keys = yazelix.cachix.org-1:ZgxIjQvaP0VTWL8Racx27mpUNzDJ97xC2y7QWYjmGNM=
+extra-trusted-public-keys = ${yazelix_cache_key}
 EOF
-```
-
-Those entries are equivalent to adding these lines manually:
-
-```conf
-extra-substituters = https://yazelix.cachix.org
-extra-trusted-public-keys = yazelix.cachix.org-1:ZgxIjQvaP0VTWL8Racx27mpUNzDJ97xC2y7QWYjmGNM=
 ```
 
 Check that the settings are active:
 
 ```bash
-nix config show | grep -E 'https://yazelix\.cachix\.org|yazelix\.cachix\.org-1:ZgxIjQvaP0VTWL8Racx27mpUNzDJ97xC2y7QWYjmGNM='
+nix config show | grep -E 'https://yazelix\.cachix\.org|yazelix\.cachix\.org-1:'
 ```
 
-If the command does not print both the cache URL and key after editing `/etc/nix/nix.custom.conf`, restart the Nix daemon or reboot, then check again.
+If the command does not print both the cache URL and a `yazelix.cachix.org-1` key after editing `/etc/nix/nix.custom.conf`, restart the Nix daemon or reboot, then check again.
 
 For NixOS or Home Manager-managed Nix configuration, add the cache to your Nix settings:
 
 ```nix
-{
-  nix.settings.substituters = [
-    "https://cache.nixos.org/"
+let
+  yazelix_cache_key =
+    "yazelix.cachix.org-1:ZgxIjQvaP0VTWL8Racx27mp"
+    + "UNzDJ97xC2y7QWYjmGNM=";
+in {
+  nix.settings.extra-substituters = [
     "https://yazelix.cachix.org"
   ];
 
-  nix.settings.trusted-public-keys = [
-    "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY="
-    "yazelix.cachix.org-1:ZgxIjQvaP0VTWL8Racx27mpUNzDJ97xC2y7QWYjmGNM="
+  nix.settings.extra-trusted-public-keys = [
+    yazelix_cache_key
   ];
 }
 ```
 
-If another cache is already configured, keep it in the same lists. For example, a Home Manager user can place those `nix.settings` entries in their Home Manager configuration, then run `home-manager switch`. Standalone Home Manager users should also set `nix.package = pkgs.nix` when Home Manager generates `~/.config/nix/nix.conf`.
+The `extra-*` settings add Yazelix's cache beside existing caches. For example, a Home Manager user can place those `nix.settings` entries in their Home Manager configuration, then run `home-manager switch`. Standalone Home Manager users should also set `nix.package = pkgs.nix` when Home Manager generates `~/.config/nix/nix.conf`.
 
 Check that representative expensive outputs are present in the public cache:
 
