@@ -380,6 +380,7 @@ Run `yzx help` for the live command list
 - `yzx status [--versions]` - Show current Yazelix status and optional tool versions
 - `yzx cursors` - Inspect Yazelix cursor presets, effects, and resolved colors
 - `yzx dev inspect_session [--json]` - Inspect the current Yazelix/Zellij tab session snapshot for runtime debugging
+- `yzx dev perf [--seconds N]` - Capture a bounded lag snapshot for Zellij/plugin helper churn
 - `yzx dev profile [--cold] [--desktop] [--launch] [--clear-cache]` - Profile startup phases under `~/.local/share/yazelix/profiles/startup/`
 
 📖 **[Complete yzx CLI Documentation →](./docs/yzx_cli.md)** - Full examples, diagnostics, profile tools, and maintainer surfaces

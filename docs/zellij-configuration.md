@@ -88,9 +88,7 @@ simplified_ui true
       "editor",
       "shell",
       "term",
-      "codex_usage",
-      "cpu",
-      "ram"
+      "codex_usage"
     ],
     "tab_label_mode": "full",
     "claude_usage_display": "both",

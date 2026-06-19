@@ -35,6 +35,9 @@ yazelix_screen = { git = "https://github.com/luccahuguet/yazelix-screen", rev = 
 yazelix_yazi_assets = { git = "https://github.com/luccahuguet/yazelix-yazi-assets", rev = "0190035d7203251411917d0e9100a9c54f3dd907" }
 yazelix_zellij_config_pack = { git = "https://github.com/luccahuguet/yazelix-zellij-config-pack", rev = "29fd6520e71d8175cf0b0a00664c1d9c5fb4dc58" }
 
+[target.'cfg(target_os = "linux")'.dependencies]
+procfs = { version = "0.18", default-features = false }
+
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Security", "Win32_Storage_FileSystem", "Win32_System_IO", "Win32_System_Pipes"] }
 

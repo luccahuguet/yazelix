@@ -2,10 +2,13 @@
 
 use crossterm::terminal;
 use serde::Serialize;
+use std::collections::{BTreeMap, BTreeSet};
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::thread;
+use std::time::{Duration, Instant};
 use yazelix_core::StatusReportData;
 use yazelix_core::bridge::{CoreError, ErrorClass};
 use yazelix_core::cli_render::{
@@ -1173,6 +1176,7 @@ fn print_dev_help() {
     println!();
     println!("Commands:");
     println!("  yzx dev inspect_session [--json]");
+    println!("  yzx dev perf [--seconds N]");
     println!("  yzx dev profile [--cold] [--desktop] [--launch] [--clear-cache]");
 }
 
@@ -1557,6 +1561,267 @@ fn run_dev_profile(args: &[String]) -> Result<i32, CoreError> {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct DevPerfArgs {
+    seconds: u64,
+}
+
+fn parse_dev_perf_args(args: &[String]) -> Result<Option<DevPerfArgs>, CoreError> {
+    let mut parsed = DevPerfArgs { seconds: 12 };
+    let mut iter = args.iter();
+    while let Some(arg) = iter.next() {
+        match arg.as_str() {
+            "-h" | "--help" | "help" => return Ok(None),
+            "-s" | "--seconds" => {
+                let Some(value) = iter.next() else {
+                    return Err(CoreError::usage("yzx dev perf --seconds requires a value"));
+                };
+                parsed.seconds = value.parse::<u64>().map_err(|_| {
+                    CoreError::usage(format!("Invalid yzx dev perf seconds value: {value}"))
+                })?;
+            }
+            other => return Err(CoreError::usage(format!("Unknown perf option {other}"))),
+        }
+    }
+    parsed.seconds = parsed.seconds.clamp(1, 60);
+    Ok(Some(parsed))
+}
+
+fn print_dev_perf_help() {
+    println!("Capture a bounded Yazelix lag snapshot");
+    println!();
+    println!("Usage: yzx dev perf [--seconds N]");
+    println!();
+    println!(
+        "Samples known Yazelix/Zellij helper process churn and prints optional pidstat output when available."
+    );
+}
+
+fn command_available(command: &str) -> bool {
+    env::var_os("PATH")
+        .map(|path| env::split_paths(&path).any(|dir| dir.join(command).is_file()))
+        .unwrap_or(false)
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct PerfProcessRecord {
+    pid: String,
+    command_name: String,
+    argv: Vec<String>,
+}
+
+#[cfg(target_os = "linux")]
+fn live_perf_processes() -> Vec<PerfProcessRecord> {
+    let Ok(processes) = procfs::process::all_processes() else {
+        return Vec::new();
+    };
+    processes
+        .filter_map(Result::ok)
+        .map(|process| {
+            let argv = process.cmdline().unwrap_or_default();
+            let command_name = process
+                .stat()
+                .ok()
+                .map(|stat| stat.comm)
+                .unwrap_or_default();
+            PerfProcessRecord {
+                pid: process.pid.to_string(),
+                command_name,
+                argv,
+            }
+        })
+        .collect()
+}
+
+#[cfg(not(target_os = "linux"))]
+fn live_perf_processes() -> Vec<PerfProcessRecord> {
+    Vec::new()
+}
+
+fn argv_basename(arg: &str) -> &str {
+    Path::new(arg)
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or(arg)
+}
+
+fn argv_contains_sequence(argv: &[String], sequence: &[&str]) -> bool {
+    !sequence.is_empty()
+        && argv.windows(sequence.len()).any(|window| {
+            window
+                .iter()
+                .map(String::as_str)
+                .eq(sequence.iter().copied())
+        })
+}
+
+fn process_command_is(process: &PerfProcessRecord, command: &str) -> bool {
+    process.command_name == command
+        || process
+            .argv
+            .first()
+            .is_some_and(|arg| argv_basename(arg) == command)
+}
+
+fn process_has_arg(process: &PerfProcessRecord, arg: &str) -> bool {
+    process.argv.iter().any(|candidate| candidate == arg)
+}
+
+fn is_zellij_server_process(process: &PerfProcessRecord) -> bool {
+    process_command_is(process, "zellij") && process_has_arg(process, "--server")
+}
+
+fn is_bar_widget_process(process: &PerfProcessRecord, widget: &str) -> bool {
+    process_command_is(process, "yazelix_zellij_bar_widget") && process_has_arg(process, widget)
+}
+
+fn is_title_refresh_process(process: &PerfProcessRecord) -> bool {
+    process_command_is(process, "yzx_control")
+        && argv_contains_sequence(
+            &process.argv,
+            &["zellij", "refresh-terminal-title-activity"],
+        )
+}
+
+fn is_title_refresh_pipe_process(process: &PerfProcessRecord) -> bool {
+    process_command_is(process, "zellij")
+        && argv_contains_sequence(&process.argv, &["action", "pipe"])
+        && process_has_arg(process, "reconcile_terminal_title_activity_snapshot")
+}
+
+fn matching_pids(
+    processes: &[PerfProcessRecord],
+    predicate: impl Fn(&PerfProcessRecord) -> bool,
+) -> BTreeSet<String> {
+    processes
+        .iter()
+        .filter(|process| predicate(process))
+        .map(|process| process.pid.clone())
+        .collect()
+}
+
+fn zellij_pids(processes: &[PerfProcessRecord]) -> Vec<String> {
+    matching_pids(processes, is_zellij_server_process)
+        .into_iter()
+        .collect()
+}
+
+fn add_helper_churn_sample(
+    seen: &mut BTreeMap<&'static str, BTreeSet<String>>,
+    processes: &[PerfProcessRecord],
+) {
+    let buckets: [(&str, BTreeSet<String>); 4] = [
+        (
+            "bar_widget_cpu",
+            matching_pids(processes, |process| is_bar_widget_process(process, "cpu")),
+        ),
+        (
+            "bar_widget_ram",
+            matching_pids(processes, |process| is_bar_widget_process(process, "ram")),
+        ),
+        (
+            "title_refresh",
+            matching_pids(processes, is_title_refresh_process),
+        ),
+        (
+            "title_refresh_pipe",
+            matching_pids(processes, is_title_refresh_pipe_process),
+        ),
+    ];
+    for (name, pids) in buckets {
+        if let Some(bucket) = seen.get_mut(name) {
+            bucket.extend(pids);
+        }
+    }
+}
+
+fn sample_helper_churn(seconds: u64) -> BTreeMap<&'static str, BTreeSet<String>> {
+    let mut seen = [
+        "bar_widget_cpu",
+        "bar_widget_ram",
+        "title_refresh",
+        "title_refresh_pipe",
+    ]
+    .into_iter()
+    .map(|name| (name, BTreeSet::new()))
+    .collect::<BTreeMap<_, _>>();
+    let deadline = Instant::now() + Duration::from_secs(seconds);
+    while Instant::now() < deadline {
+        add_helper_churn_sample(&mut seen, &live_perf_processes());
+        thread::sleep(Duration::from_millis(250));
+    }
+    seen
+}
+
+fn run_pidstat_for_zellij(pids: &[String]) {
+    if pids.is_empty() {
+        println!("pidstat: no Zellij PID found");
+        return;
+    }
+    if !command_available("pidstat") {
+        println!("pidstat: missing; install sysstat for thread CPU samples");
+        return;
+    }
+    let pid_arg = pids.join(",");
+    let output = Command::new("pidstat")
+        .args(["-t", "-p", &pid_arg, "1", "3"])
+        .output();
+    match output {
+        Ok(output) if output.status.success() => {
+            println!("{}", String::from_utf8_lossy(&output.stdout).trim());
+        }
+        Ok(output) => {
+            println!(
+                "pidstat failed: {}",
+                String::from_utf8_lossy(&output.stderr).trim()
+            );
+        }
+        Err(error) => println!("pidstat failed to start: {error}"),
+    }
+}
+
+fn run_dev_perf(args: &[String]) -> Result<i32, CoreError> {
+    let Some(parsed) = parse_dev_perf_args(args)? else {
+        print_dev_perf_help();
+        return Ok(0);
+    };
+
+    println!("Yazelix perf snapshot");
+    println!("sample_seconds: {}", parsed.seconds);
+    println!(
+        "in_yazelix_shell: {}",
+        env::var("IN_YAZELIX_SHELL").unwrap_or_else(|_| "false".into())
+    );
+    println!(
+        "zellij_session: {}",
+        env::var("ZELLIJ_SESSION_NAME").unwrap_or_else(|_| "<unset>".into())
+    );
+    println!(
+        "runtime_dir: {}",
+        env::var("YAZELIX_RUNTIME_DIR").unwrap_or_else(|_| "<unset>".into())
+    );
+    println!("current_pid: {}", std::process::id());
+    println!();
+
+    if !cfg!(target_os = "linux") {
+        println!("process_sampling: unsupported on this platform");
+        return Ok(0);
+    }
+
+    let processes = live_perf_processes();
+    let zellij_pids = zellij_pids(&processes);
+    println!("zellij_pids: {}", zellij_pids.join(", "));
+    println!();
+    println!("helper_churn:");
+    for (name, pids) in sample_helper_churn(parsed.seconds) {
+        println!("  {name}: {} unique pid(s)", pids.len());
+    }
+    println!();
+    println!("zellij_thread_cpu:");
+    run_pidstat_for_zellij(&zellij_pids);
+    Ok(0)
+}
+
 fn run_yzx_dev(args: &[String]) -> Result<i32, CoreError> {
     if args.is_empty() || matches!(args[0].as_str(), "-h" | "--help" | "help") {
         print_dev_help();
@@ -1566,6 +1831,7 @@ fn run_yzx_dev(args: &[String]) -> Result<i32, CoreError> {
     let tail = &args[1..];
     match sub {
         "inspect_session" => run_zellij_inspect_session(tail),
+        "perf" => run_dev_perf(tail),
         "profile" => run_dev_profile(tail),
         "bump"
         | "lint_nu"
@@ -1721,6 +1987,107 @@ mod tests {
         assert_eq!(error.class().as_str(), "usage");
         assert!(error.message().contains("repo-only maintainer command"));
         assert!(error.remediation().contains("maintainer shell"));
+    }
+
+    // Defends: `yzx dev perf` stays bounded even when called with an excessive sample window.
+    #[test]
+    fn dev_perf_args_clamp_sample_seconds() {
+        assert_eq!(parse_dev_perf_args(&[]).unwrap().unwrap().seconds, 12);
+        assert_eq!(
+            parse_dev_perf_args(&["--seconds".into(), "999".into()])
+                .unwrap()
+                .unwrap()
+                .seconds,
+            60
+        );
+        assert!(parse_dev_perf_args(&["--seconds".into()]).is_err());
+        assert!(parse_dev_perf_args(&["--help".into()]).unwrap().is_none());
+    }
+
+    fn perf_process(pid: &str, command_name: &str, argv: &[&str]) -> PerfProcessRecord {
+        PerfProcessRecord {
+            pid: pid.to_string(),
+            command_name: command_name.to_string(),
+            argv: argv.iter().map(|arg| (*arg).to_string()).collect(),
+        }
+    }
+
+    // Defends: `yzx dev perf` classifies process records structurally instead of regexing pgrep output.
+    #[test]
+    fn dev_perf_process_classification_uses_argv_structure() {
+        let processes = vec![
+            perf_process(
+                "10",
+                "zellij",
+                &["zellij", "--server", "/run/user/1000/zellij/test"],
+            ),
+            perf_process(
+                "11",
+                "zellij",
+                &["zellij", "--config-dir", "/tmp/zellij", "options"],
+            ),
+            perf_process(
+                "12",
+                "zellij",
+                &[
+                    "zellij",
+                    "action",
+                    "pipe",
+                    "--name",
+                    "reconcile_terminal_title_activity_snapshot",
+                ],
+            ),
+            perf_process(
+                "13",
+                "yazelix_zellij_bar_widget",
+                &["/bin/yazelix_zellij_bar_widget", "cpu"],
+            ),
+            perf_process(
+                "14",
+                "yazelix_zellij_bar_widget",
+                &["/bin/yazelix_zellij_bar_widget", "ram"],
+            ),
+            perf_process(
+                "15",
+                "bash",
+                &["bash", "-lc", "echo yazelix_zellij_bar_widget cpu"],
+            ),
+            perf_process(
+                "16",
+                "yzx_control",
+                &["yzx_control", "zellij", "refresh-terminal-title-activity"],
+            ),
+        ];
+
+        assert_eq!(zellij_pids(&processes), vec!["10"]);
+
+        let mut seen = [
+            "bar_widget_cpu",
+            "bar_widget_ram",
+            "title_refresh",
+            "title_refresh_pipe",
+        ]
+        .into_iter()
+        .map(|name| (name, BTreeSet::new()))
+        .collect::<BTreeMap<_, _>>();
+        add_helper_churn_sample(&mut seen, &processes);
+
+        assert_eq!(
+            seen.get("bar_widget_cpu").cloned().unwrap_or_default(),
+            BTreeSet::from(["13".to_string()])
+        );
+        assert_eq!(
+            seen.get("bar_widget_ram").cloned().unwrap_or_default(),
+            BTreeSet::from(["14".to_string()])
+        );
+        assert_eq!(
+            seen.get("title_refresh").cloned().unwrap_or_default(),
+            BTreeSet::from(["16".to_string()])
+        );
+        assert_eq!(
+            seen.get("title_refresh_pipe").cloned().unwrap_or_default(),
+            BTreeSet::from(["12".to_string()])
+        );
     }
 
     // Defends: yzx_control keeps ordinary public commands on the table-driven handler path after dispatch refactors.

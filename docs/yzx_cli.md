@@ -33,9 +33,17 @@ Generate a focused first-run Yazelix config
 Runtime diagnostics
 - Installed/runtime `yzx dev` intentionally exposes only runtime-safe diagnostic commands
 - `yzx dev inspect_session [--json]`: Inspect the current Yazelix/Zellij tab session snapshot from the pane orchestrator
+- `yzx dev perf [--seconds N]`: Capture a bounded lag snapshot for Zellij/plugin helper churn
 - `yzx dev profile [--cold] [--desktop] [--launch] [--clear-cache]`: Profile startup and launch paths from the active runtime
 - Repo-only commands such as tests, release bumps, issue sync, plugin wasm sync, Nu lint, Rust checks, and repo updates belong to the Yazelix maintainer shell
 - Running a repo-only `yzx dev` command from the installed runtime prints a maintainer-shell remediation instead of trying to execute repository tooling
+
+### `yzx dev perf [--seconds N]`
+Capture a bounded lag snapshot for Zellij/plugin helper churn
+- Default: sample for 12 seconds
+- `--seconds N`: sample for 1 to 60 seconds
+- On Linux, prints the current Yazelix session env, matching Zellij PIDs, unique helper-process counts for known expensive status/title-refresh paths, and `pidstat` thread CPU output when `pidstat` is installed
+- On unsupported platforms or hosts without `pidstat`, prints explicit missing-tool or unsupported-platform lines instead of failing silently
 
 ### `yzx dev profile [--cold] [--desktop] [--launch] [--clear-cache]`
 Profile launch sequence and identify performance bottlenecks
@@ -415,6 +423,7 @@ yzx dev profile --cold        # Profile cold start from a vanilla terminal
 yzx dev profile --cold --clear-cache  # Force a rebuild-heavy cold profile run
 yzx dev profile --desktop     # Profile the desktop-entry launch path
 yzx dev profile --launch       # Profile managed new-window launch through the active runtime terminal
+yzx dev perf --seconds 12      # Sample Zellij/plugin helper churn in the current session
 yzx dev profile compare ~/.local/share/yazelix/profiles/startup/old.jsonl ~/.local/share/yazelix/profiles/startup/new.jsonl
 yzx dev profile save-baseline warm-v16 ~/.local/share/yazelix/profiles/startup/startup_profile_20260428_120000_000.jsonl
 yzx dev profile compare-baseline warm-v16 ~/.local/share/yazelix/profiles/startup/startup_profile_20260428_121500_000.jsonl

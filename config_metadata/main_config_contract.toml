@@ -10,7 +10,7 @@
 
 [contract]
 version = 1
-ratconfig_contract_version = 10
+ratconfig_contract_version = 11
 surface = "main"
 field_count = 51
 artifact_role = "canonical_machine_metadata"
@@ -331,8 +331,6 @@ default = [
   "shell",
   "term",
   "codex_usage",
-  "cpu",
-  "ram",
 ]
 parser_key = "zellij_widget_tray"
 home_manager_option = "zellij_widget_tray"

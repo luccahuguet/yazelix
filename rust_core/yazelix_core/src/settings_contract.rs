@@ -13,7 +13,7 @@ use std::path::Path;
 pub const SETTINGS_CONTRACT_ID: &str = "yazelix.settings";
 pub const SETTINGS_CONTRACT_STATE_PATH: &str = "ratconfig.contract";
 const SETTINGS_CONTRACT_BASELINE_VERSION: u64 = 1;
-pub const SETTINGS_CONTRACT_CURRENT_VERSION: u64 = 10;
+pub const SETTINGS_CONTRACT_CURRENT_VERSION: u64 = 11;
 const OPTIONAL_ADDITIVE_DEFAULT_PATHS: &[&str] = &["zellij.custom_popups"];
 
 const LEGACY_SIDEBAR_SETTING_RENAMES: &[(&str, &str)] = &[
@@ -179,6 +179,15 @@ fn settings_contract_for_defaults(defaults: &JsonValue) -> ConfigContract {
                 vec![MigrationOp::Transform {
                     path: "zellij.widget_tray".to_string(),
                     transform: remove_retired_cursor_widget_tray_value,
+                }],
+            ),
+            ContractChange::automatic(
+                "remove-cpu-ram-from-default-widget-tray",
+                10,
+                11,
+                vec![MigrationOp::Transform {
+                    path: "zellij.widget_tray".to_string(),
+                    transform: remove_cpu_ram_from_default_widget_tray,
                 }],
             ),
         ],
@@ -371,6 +380,20 @@ fn remove_retired_cursor_widget_tray_value(value: &JsonValue) -> Result<Option<J
 
     if changed {
         Ok(Some(JsonValue::Array(next)))
+    } else {
+        Ok(None)
+    }
+}
+
+fn remove_cpu_ram_from_default_widget_tray(value: &JsonValue) -> Result<Option<JsonValue>, String> {
+    let _ = value
+        .as_array()
+        .ok_or_else(|| "expected a widget_tray array".to_string())?;
+    if string_array_equals(
+        Some(value),
+        &["editor", "shell", "term", "codex_usage", "cpu", "ram"],
+    ) {
+        Ok(Some(json!(["editor", "shell", "term", "codex_usage"])))
     } else {
         Ok(None)
     }
@@ -621,6 +644,28 @@ mod tests {
                 .applied_changes
                 .iter()
                 .any(|change| change.id == "remove-retired-cursor-widget-tray-value")
+        );
+    }
+
+    // Regression: only old default-shaped status trays lose CPU/RAM; explicit custom opt-ins are preserved.
+    #[test]
+    fn removes_cpu_ram_only_from_default_widget_tray() {
+        assert_eq!(
+            remove_cpu_ram_from_default_widget_tray(&json!([
+                "editor",
+                "shell",
+                "term",
+                "codex_usage",
+                "cpu",
+                "ram"
+            ]))
+            .unwrap(),
+            Some(json!(["editor", "shell", "term", "codex_usage"]))
+        );
+        assert_eq!(
+            remove_cpu_ram_from_default_widget_tray(&json!(["editor", "workspace", "cpu"]))
+                .unwrap(),
+            None
         );
     }
 

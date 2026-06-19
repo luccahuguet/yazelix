@@ -1,10 +1,10 @@
 [releases.unreleased]
-acknowledged_guarded_changes = ["home_manager/module.nix"]
+acknowledged_guarded_changes = ["home_manager/module.nix", "settings_default.jsonc"]
 date = ""
 headline = "Post-v17.7 work in progress"
 manual_actions = []
 migration_ids = []
-summary = ["Renamed the Rio-derived first-party terminal runtime surface to Mars across package outputs, Home Manager options, runtime metadata, launch environment, desktop entries, and docs.", "Updated the Mars, Yazelix Cursors, and Zellij pane-orchestrator child pins so Mars owns the terminal package identity, standard desktop icon sizes, cursor shader target contract, and compact AI activity tab markers."]
+summary = ["Renamed the Rio-derived first-party terminal runtime surface to Mars across package outputs, Home Manager options, runtime metadata, launch environment, desktop entries, and docs.", "Updated the Mars, Yazelix Cursors, and Zellij pane-orchestrator child pins so Mars owns the terminal package identity, standard desktop icon sizes, cursor shader target contract, and compact AI activity tab markers.", "Removed CPU and RAM widgets from the default Zellij status tray while keeping them available as explicit opt-in widgets backed by a shared sysinfo cache.", "Moved terminal activity tab decoration refresh away from timer-driven shell-outs and added yzx dev perf for bounded Zellij/plugin helper churn snapshots.", "Clarified Home Manager desktop launcher diagnostics for extra terminal entries that point directly at the active runtime package."]
 upgrade_impact = "no_user_action"
 version = "unreleased"
 
