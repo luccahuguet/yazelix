@@ -562,7 +562,7 @@ fn build_status_sections(data: &yazelix_core::StatusReportData) -> Vec<StatusSec
             ],
         },
         StatusSection {
-            title: "Generated State",
+            title: "Generated Runtime State",
             rows: vec![
                 StatusRow {
                     label: "Status",
@@ -877,6 +877,18 @@ fn config_problem_status_report(
         serde_json::json!(reason),
     );
     summary.insert(
+        "generated_state_input_freshness".to_string(),
+        serde_json::json!({
+            "config_changed": false,
+            "runtime_inputs_changed": false,
+            "requires_refresh": true,
+        }),
+    );
+    summary.insert(
+        "generated_state_missing_artifacts".to_string(),
+        serde_json::json!([]),
+    );
+    summary.insert(
         "default_shell".to_string(),
         serde_json::json!(facts.default_shell),
     );
@@ -1095,6 +1107,8 @@ fn run_inspect(args: &[String]) -> Result<i32, CoreError> {
             "repair_needed": status.summary.get("generated_state_repair_needed").cloned().unwrap_or(serde_json::Value::Null),
             "materialization_status": status.summary.get("generated_state_materialization_status").cloned().unwrap_or(serde_json::Value::Null),
             "materialization_reason": status.summary.get("generated_state_materialization_reason").cloned().unwrap_or(serde_json::Value::Null),
+            "input_freshness": status.summary.get("generated_state_input_freshness").cloned().unwrap_or(serde_json::Value::Null),
+            "missing_artifacts": status.summary.get("generated_state_missing_artifacts").cloned().unwrap_or(serde_json::Value::Null),
         },
         "install": install,
         "session": session,

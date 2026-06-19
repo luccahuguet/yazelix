@@ -22,7 +22,8 @@ use crate::native_config_status::{
     status_code_for_entry, xdg_config_home_from_env,
 };
 use crate::runtime_materialization::{
-    RuntimeMaterializationRepairEvaluateRequest, repair_runtime_materialization,
+    RuntimeMaterializationPlanData, RuntimeMaterializationRepairEvaluateRequest,
+    repair_runtime_materialization,
 };
 use crate::settings_surface::render_default_settings_jsonc;
 use crate::terminal_variant::active_terminal_from_runtime_dir;
@@ -406,28 +407,31 @@ fn collect_runtime_doctor_findings(
     let shared_runtime = if normalized_config.is_some() {
         match runtime_materialization_plan_request_from_env(config_override_from_env().as_deref()) {
             Ok(request) => match plan_runtime_materialization(&request) {
-                Ok(plan) => match active_terminal_from_runtime_dir(runtime_dir) {
-                    Ok(active_terminal) => Some(SharedRuntimePreflightInput {
-                        zellij_layout_path: PathBuf::from(plan.zellij_layout_path),
-                        terminals: vec![active_terminal],
-                        launch_script_path: runtime_dir
-                            .join("shells")
-                            .join("posix")
-                            .join("start_yazelix.sh"),
-                        command_search_paths: env::var_os("PATH")
-                            .map(|raw| env::split_paths(&raw).collect())
-                            .unwrap_or_default(),
-                        platform_name: platform_name_for_runtime_doctor(),
-                    }),
-                    Err(error) => {
-                        extra.push(doctor_finding_json(
-                            "error",
-                            "Could not resolve the selected packaged terminal from runtime metadata",
-                            error.message(),
-                        ));
-                        None
+                Ok(plan) => {
+                    extra.push(runtime_materialization_plan_doctor_finding(&plan));
+                    match active_terminal_from_runtime_dir(runtime_dir) {
+                        Ok(active_terminal) => Some(SharedRuntimePreflightInput {
+                            zellij_layout_path: PathBuf::from(plan.zellij_layout_path),
+                            terminals: vec![active_terminal],
+                            launch_script_path: runtime_dir
+                                .join("shells")
+                                .join("posix")
+                                .join("start_yazelix.sh"),
+                            command_search_paths: env::var_os("PATH")
+                                .map(|raw| env::split_paths(&raw).collect())
+                                .unwrap_or_default(),
+                            platform_name: platform_name_for_runtime_doctor(),
+                        }),
+                        Err(error) => {
+                            extra.push(doctor_finding_json(
+                                "error",
+                                "Could not resolve the selected packaged terminal from runtime metadata",
+                                error.message(),
+                            ));
+                            None
+                        }
                     }
-                },
+                }
                 Err(error) => {
                     extra.push(doctor_finding_json(
                         "error",
@@ -463,6 +467,46 @@ fn collect_runtime_doctor_findings(
     results.extend(extra);
     results.extend(expect_serialized_values(&data.shared_runtime_preflight));
     results
+}
+
+fn runtime_materialization_plan_doctor_finding(plan: &RuntimeMaterializationPlanData) -> Value {
+    let missing_artifacts = plan
+        .missing_artifacts
+        .iter()
+        .map(|artifact| artifact.label.as_str())
+        .collect::<Vec<_>>();
+    let input_freshness = json!({
+        "config_changed": plan.config_state.config_changed,
+        "runtime_inputs_changed": plan.config_state.inputs_changed,
+        "requires_refresh": plan.config_state.inputs_require_refresh,
+    });
+
+    if plan.should_regenerate {
+        return json!({
+            "status": "warning",
+            "message": "Generated runtime state needs repair",
+            "details": plan.reason,
+            "fix_available": true,
+            "fix_action": REPAIR_GENERATED_RUNTIME_STATE_FIX_ACTION,
+            "owner_surface": "doctor",
+            "generated_state_check": "runtime_materialization_plan",
+            "materialization_status": plan.status,
+            "missing_artifacts": missing_artifacts,
+            "input_freshness": input_freshness,
+        });
+    }
+
+    json!({
+        "status": "ok",
+        "message": "Generated runtime state is current",
+        "details": plan.reason,
+        "fix_available": false,
+        "owner_surface": "doctor",
+        "generated_state_check": "runtime_materialization_plan",
+        "materialization_status": plan.status,
+        "missing_artifacts": missing_artifacts,
+        "input_freshness": input_freshness,
+    })
 }
 
 fn collect_helix_doctor_findings(
@@ -1193,6 +1237,49 @@ mod tests {
         assert_eq!(summary.ok_count, 1);
         assert_eq!(summary.fixable_count, 1);
         assert!(!summary.healthy);
+    }
+
+    // Regression: doctor reports stale generated-state input/cache freshness, not only generated workspace asset drift.
+    #[test]
+    fn materialization_plan_finding_reports_refresh_required_as_fixable() {
+        let plan = RuntimeMaterializationPlanData {
+            config_state: crate::ConfigStateData {
+                config: serde_json::Map::new(),
+                config_file: "/tmp/settings.jsonc".to_string(),
+                needs_refresh: true,
+                refresh_reason: "runtime inputs changed since last generated-state repair"
+                    .to_string(),
+                config_changed: false,
+                inputs_changed: true,
+                inputs_require_refresh: true,
+                config_hash: "config".to_string(),
+                runtime_hash: "runtime".to_string(),
+                combined_hash: "combined".to_string(),
+            },
+            yazi_config_dir: "/tmp/yazi".to_string(),
+            zellij_config_dir: "/tmp/zellij".to_string(),
+            zellij_layout_path: "/tmp/zellij/layouts/yzx_side.kdl".to_string(),
+            expected_artifacts: vec![],
+            missing_artifacts: vec![],
+            status: "refresh_required".to_string(),
+            reason: "runtime inputs changed since last generated-state repair".to_string(),
+            should_regenerate: true,
+            should_sync_static_assets: true,
+        };
+
+        let finding = runtime_materialization_plan_doctor_finding(&plan);
+
+        assert_eq!(finding["status"], "warning");
+        assert_eq!(finding["message"], "Generated runtime state needs repair");
+        assert_eq!(
+            finding["fix_action"],
+            REPAIR_GENERATED_RUNTIME_STATE_FIX_ACTION
+        );
+        assert_eq!(
+            finding["generated_state_check"],
+            "runtime_materialization_plan"
+        );
+        assert_eq!(finding["input_freshness"]["runtime_inputs_changed"], true);
     }
 
     // Defends: `yzx doctor helix-steel` is a first-class targeted doctor surface, not an unexpected argument.

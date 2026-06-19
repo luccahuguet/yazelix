@@ -83,6 +83,7 @@ Default behavior remains human-rendered.
 - version and description
 - config file and runtime/log paths
 - generated-state repair flag
+- generated-state materialization status, reason, input/cache freshness, and missing-artifact list
 - default shell
 - terminal list
 - optional Helix runtime override
@@ -107,6 +108,15 @@ Default behavior remains human-rendered.
 - `details`
 - `fix_available`
 - any check-specific metadata already attached by the collector
+
+Doctor reports the generated runtime materialization plan as its own
+`generated_state_check = "runtime_materialization_plan"` finding. That finding
+covers stale config/runtime input hashes and missing generated artifacts from the
+shared materialization plan. The generated workspace asset check remains a
+separate finding for concrete Zellij config/layout/plugin file freshness. A
+fresh workspace asset finding does not imply the materialization-plan cache is
+fresh, and a stale materialization-plan finding does not imply generated files
+are byte-stale.
 
 `summary` includes:
 

@@ -32,6 +32,7 @@ This inventory lists the canonical contracts under `docs/contracts/`. It is not 
 | `runtime_distribution_capability_tiers.md` | Runtime distribution capability tiers and update ownership |
 | `runtime_applied_settings.md` | Settings apply-mode vocabulary and runtime refresh boundary |
 | `runtime_root_contract.md` | Runtime root ownership |
+| `runtime_self_description.md` | Runtime manifest family and `yzx inspect --json` self-description surface |
 | `runtime_shell_floor_contract.md` | Surviving runtime-side shell floor |
 | `rust_nextest_harness_boundary.md` | Rust nextest harness boundary |
 | `rust_nushell_bridge_contract.md` | Rust/Nushell bridge behavior |
