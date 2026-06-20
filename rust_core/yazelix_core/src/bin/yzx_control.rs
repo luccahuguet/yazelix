@@ -23,9 +23,10 @@ use yazelix_core::config_normalize::ConfigDiagnosticReport;
 use yazelix_core::control_plane::{
     basename_shell, config_dir_from_env, config_override_from_env, default_shell_from_config,
     load_normalized_config_for_control, parse_env_cli_args, parse_status_cli_args,
-    read_yazelix_version_from_runtime, run_child_in_runtime_env, runtime_dir_from_env,
-    runtime_env_request, runtime_materialization_plan_request_from_env, setpriv_or_sh_exec,
-    shell_command, split_run_argv, state_dir_from_env,
+    read_runtime_identity_from_runtime, read_yazelix_version_from_runtime,
+    run_child_in_runtime_env, runtime_dir_from_env, runtime_env_request,
+    runtime_materialization_plan_request_from_env, setpriv_or_sh_exec, shell_command,
+    split_run_argv, state_dir_from_env,
 };
 use yazelix_core::evaluate_install_ownership_report;
 use yazelix_core::install_ownership_request_from_env_with_runtime_dir;
@@ -79,7 +80,8 @@ use yazelix_core::update_commands::run_yzx_update;
 use yazelix_core::zellij_commands::internal_zellij_control_subcommands_usage;
 use yazelix_core::zellij_commands::probe_active_tab_session_state;
 use yazelix_core::{
-    YzxCommandMetadata, run_yzx_popup, run_yzx_popup_run, run_yzx_sidebar, yzx_command_metadata,
+    RuntimeOwnershipGraphRequest, YzxCommandMetadata, compute_runtime_ownership_graph,
+    run_yzx_popup, run_yzx_popup_run, run_yzx_sidebar, yzx_command_metadata,
 };
 
 fn usage() -> ! {
@@ -257,12 +259,42 @@ fn print_inspect_help() {
     println!("      --json      Emit the full machine-readable runtime truth report");
 }
 
-fn read_runtime_variant_from_runtime(runtime_dir: &Path) -> String {
-    fs::read_to_string(runtime_dir.join("runtime_variant"))
+struct RuntimeVariantLookup {
+    value: String,
+    source: &'static str,
+}
+
+fn read_runtime_variant_from_runtime(
+    runtime_identity: &serde_json::Value,
+    runtime_dir: &Path,
+) -> RuntimeVariantLookup {
+    if let Some(value) = runtime_identity
+        .get("runtime_variant")
+        .and_then(serde_json::Value::as_str)
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+    {
+        return RuntimeVariantLookup {
+            value: value.to_string(),
+            source: "runtime_identity_json",
+        };
+    }
+
+    if let Some(value) = fs::read_to_string(runtime_dir.join("runtime_variant"))
         .ok()
         .map(|value| value.trim().to_string())
         .filter(|value| !value.is_empty())
-        .unwrap_or_else(|| "unknown".to_string())
+    {
+        return RuntimeVariantLookup {
+            value,
+            source: "runtime_variant_file",
+        };
+    }
+
+    RuntimeVariantLookup {
+        value: "unknown".to_string(),
+        source: "unknown",
+    }
 }
 
 fn first_nonempty_line(text: &str) -> Option<String> {
@@ -373,6 +405,51 @@ fn collect_version_info() -> VersionReportData {
         title: "Yazelix Tool Versions".to_string(),
         tools,
     }
+}
+
+fn config_schema_versions(runtime_dir: &Path) -> serde_json::Value {
+    let main_contract_path = runtime_dir
+        .join("config_metadata")
+        .join("main_config_contract.toml");
+    let main_config_contract = match fs::read_to_string(&main_contract_path) {
+        Ok(raw) => match toml::from_str::<toml::Value>(&raw) {
+            Ok(value) => {
+                let contract = value.get("contract").and_then(toml::Value::as_table);
+                serde_json::json!({
+                    "status": "available",
+                    "path": main_contract_path.to_string_lossy(),
+                    "contract_version": contract
+                        .and_then(|table| table.get("version"))
+                        .and_then(toml::Value::as_integer),
+                    "ratconfig_contract_version": contract
+                        .and_then(|table| table.get("ratconfig_contract_version"))
+                        .and_then(toml::Value::as_integer),
+                    "field_count": contract
+                        .and_then(|table| table.get("field_count"))
+                        .and_then(toml::Value::as_integer),
+                })
+            }
+            Err(source) => serde_json::json!({
+                "status": "invalid",
+                "path": main_contract_path.to_string_lossy(),
+                "error": source.to_string(),
+            }),
+        },
+        Err(source) if source.kind() == std::io::ErrorKind::NotFound => serde_json::json!({
+            "status": "missing",
+            "path": main_contract_path.to_string_lossy(),
+            "note": "main_config_contract.toml is available in packaged runtimes",
+        }),
+        Err(source) => serde_json::json!({
+            "status": "unreadable",
+            "path": main_contract_path.to_string_lossy(),
+            "error": source.to_string(),
+        }),
+    };
+
+    serde_json::json!({
+        "main_config_contract": main_config_contract,
+    })
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -1070,7 +1147,12 @@ fn run_inspect(args: &[String]) -> Result<i32, CoreError> {
     let request =
         runtime_materialization_plan_request_from_env(config_override_from_env().as_deref())?;
     let version = read_yazelix_version_from_runtime(&request.runtime_dir)?;
-    let runtime_variant = read_runtime_variant_from_runtime(&request.runtime_dir);
+    let runtime_identity = read_runtime_identity_from_runtime(&request.runtime_dir)?;
+    let runtime_variant =
+        read_runtime_variant_from_runtime(&runtime_identity, &request.runtime_dir);
+    let ownership_graph = compute_runtime_ownership_graph(&RuntimeOwnershipGraphRequest {
+        runtime_dir: request.runtime_dir.clone(),
+    })?;
     let status = compute_status_report_for_control(&request, &version)?;
     let install = evaluate_install_ownership_report(
         &install_ownership_request_from_env_with_runtime_dir(request.runtime_dir.clone())?,
@@ -1091,9 +1173,29 @@ fn run_inspect(args: &[String]) -> Result<i32, CoreError> {
             "dir": request.runtime_dir.to_string_lossy(),
             "exists": request.runtime_dir.exists(),
             "version": version,
-            "variant": runtime_variant,
+            "variant": runtime_variant.value,
+            "variant_source": runtime_variant.source,
+            "identity": runtime_identity,
             "current_exe": current_exe,
             "invoked_yzx_path": invoked_yzx_path,
+        },
+        "self_description": {
+            "query_surface": "yzx inspect --json",
+            "runtime_ownership_graph_schema_version": ownership_graph.schema_version,
+            "stable_sections": [
+                "runtime",
+                "config",
+                "generated_state",
+                "install",
+                "runtime_tools",
+                "runtime_components",
+                "command_metadata",
+                "config_schema_versions"
+            ],
+        },
+        "command_metadata": {
+            "source": "rust_core/yazelix_core/src/public_command_surface.rs",
+            "commands": ownership_graph.command_owners,
         },
         "config": {
             "dir": config_dir_from_env()?.to_string_lossy(),
@@ -1103,6 +1205,7 @@ fn run_inspect(args: &[String]) -> Result<i32, CoreError> {
             "diagnostic_report": status.summary.get("config_diagnostic_report").cloned().unwrap_or(serde_json::Value::Null),
             "session_config_snapshot": status.summary.get("session_config_snapshot").cloned().unwrap_or(serde_json::Value::Null),
         },
+        "config_schema_versions": config_schema_versions(&request.runtime_dir),
         "generated_state": {
             "repair_needed": status.summary.get("generated_state_repair_needed").cloned().unwrap_or(serde_json::Value::Null),
             "materialization_status": status.summary.get("generated_state_materialization_status").cloned().unwrap_or(serde_json::Value::Null),
@@ -1110,6 +1213,8 @@ fn run_inspect(args: &[String]) -> Result<i32, CoreError> {
             "input_freshness": status.summary.get("generated_state_input_freshness").cloned().unwrap_or(serde_json::Value::Null),
             "missing_artifacts": status.summary.get("generated_state_missing_artifacts").cloned().unwrap_or(serde_json::Value::Null),
         },
+        "runtime_tools": ownership_graph.runtime_tools,
+        "runtime_components": ownership_graph.runtime_components,
         "install": install,
         "session": session,
         "tool_versions": versions.tools,

@@ -690,10 +690,37 @@ default_shell = "nu"
     assert_eq!(report["schema_version"], 1);
     assert_eq!(report["title"], "Yazelix inspect");
     assert_eq!(report["runtime"]["version"], "v-test");
+    assert_eq!(report["runtime"]["variant"], "ghostty");
+    assert_eq!(report["runtime"]["variant_source"], "runtime_identity_json");
+    assert_eq!(report["runtime"]["identity"]["runtime_variant"], "ghostty");
     assert_eq!(report["runtime"]["exists"], true);
     assert_eq!(
         report["runtime"]["invoked_yzx_path"],
         "/nix/store/example-yazelix/bin/yzx"
+    );
+    assert_eq!(
+        report["self_description"]["query_surface"],
+        "yzx inspect --json"
+    );
+    assert_eq!(
+        report["config_schema_versions"]["main_config_contract"]["ratconfig_contract_version"],
+        11
+    );
+    assert_eq!(report["runtime_tools"]["status"], "available");
+    assert!(
+        report["runtime_tools"]["entries"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|entry| entry["name"] == "terminal" && entry["source"] == "bundled")
+    );
+    assert_eq!(report["runtime_components"]["status"], "available");
+    assert!(
+        report["command_metadata"]["commands"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|entry| entry["command"] == "yzx inspect")
     );
     assert!(
         report["config"]["file"]

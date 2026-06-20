@@ -11,31 +11,45 @@ active runtime shape.
 ## External Query Surface
 
 `yzx inspect --json` is the supported external query surface for the active
-runtime. It may aggregate installed-runtime facts, config state, generated-state
-freshness, install ownership, session observations, and tool versions.
+runtime. It aggregates installed-runtime facts, config state, generated-state
+freshness, install ownership, session observations, typed runtime manifests,
+public command metadata, config contract versions, and tool versions.
 
 Stable external consumers may rely on:
 
 - `schema_version`
+- `self_description.query_surface`
+- `self_description.runtime_ownership_graph_schema_version`
+- `self_description.stable_sections`
 - `runtime.dir`
 - `runtime.exists`
 - `runtime.version`
 - `runtime.variant`
+- `runtime.variant_source`
+- `runtime.identity`
 - `config.dir`
 - `config.file`
 - `config.status`
+- `config_schema_versions.main_config_contract.status`
+- `config_schema_versions.main_config_contract.contract_version`
+- `config_schema_versions.main_config_contract.ratconfig_contract_version`
 - `generated_state.repair_needed`
 - `generated_state.materialization_status`
 - `generated_state.materialization_reason`
 - `generated_state.input_freshness`
 - `generated_state.missing_artifacts`
+- `runtime_tools.status`
+- `runtime_tools.entries`
+- `runtime_components.status`
+- `runtime_components.entries`
+- `command_metadata.commands`
 - `install.install_owner`
 - `session` presence as an optional live-session observation object
 
 Fields not listed here remain diagnostic detail and may change when their
 owning subsystem changes. A future `yzx runtime describe --json` may narrow this
-surface further, but it must not duplicate manifest readers or require source
-checkout access.
+surface further, but it must consume the same typed readers and must not require
+source checkout access.
 
 ## Packaged Manifests
 
@@ -53,6 +67,21 @@ The runtime-root manifest family is:
 `yzx inspect --json.schema_version` versions the external aggregate query shape.
 Those are separate because `inspect` includes live session and install-owner
 facts that are not packaged manifest data.
+
+`yzx inspect --json.runtime.variant` must prefer
+`runtime_identity.json.runtime_variant`. The legacy `runtime_variant` file is
+only a temporary compatibility fallback for older package shapes.
+
+`yzx inspect --json.runtime_tools` and
+`yzx inspect --json.runtime_components` are the external projections of
+`runtime_tools.json` and `runtime_components.json`. Source checkout runtimes
+that lack those manifests report the section as `status = "missing"` instead of
+asking consumers to scrape Nix files.
+
+`yzx inspect --json.config_schema_versions.main_config_contract` reads the
+packaged `config_metadata/main_config_contract.toml` and exposes its contract
+version, ratconfig contract version, and field count. Consumers must not read
+the source checkout copy for active-runtime decisions.
 
 ## Stable Versus Code-Owned Fields
 
@@ -73,6 +102,7 @@ Code-owned behavior stays in Rust, Nix, or child packages:
 - terminal config semantics
 - doctor repair behavior
 - child package metadata validation beyond the stable fields consumed by main
+- terminal-support metadata policy before it is promoted to a child owner
 
 Manifests may describe capabilities and selected package facts. They must not
 become a generic rule language for launch or materialization behavior.
