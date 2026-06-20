@@ -77,7 +77,7 @@ pub fn compute_config_state(
             json!({}),
         )
     })?);
-    let runtime_hash = sha256_hex(&path_to_string(&request.runtime_dir));
+    let runtime_hash = compute_runtime_refresh_hash(&request.runtime_dir)?;
     let combined_hash = sha256_hex(&format!("{config_hash}:{runtime_hash}"));
     let cached_state = load_recorded_materialized_state(&request.state_path)?;
 
@@ -153,6 +153,71 @@ fn read_toml_table(path: &Path, code: &str) -> Result<toml::Table, CoreError> {
             source,
         )
     })
+}
+
+pub(crate) fn compute_runtime_refresh_hash(runtime_dir: &Path) -> Result<String, CoreError> {
+    let identity_path = runtime_dir.join("runtime_identity.json");
+    if !identity_path.exists() {
+        return Ok(sha256_hex(&format!(
+            "runtime_path:{}",
+            path_to_string(runtime_dir)
+        )));
+    }
+
+    let raw = fs::read_to_string(&identity_path).map_err(|source| {
+        CoreError::io(
+            "runtime_refresh_identity",
+            "Could not read Yazelix runtime identity for generated-state freshness.",
+            "Reinstall Yazelix from a current package so runtime_identity.json is readable.",
+            identity_path.to_string_lossy(),
+            source,
+        )
+    })?;
+    let identity = serde_json::from_str::<JsonValue>(&raw).map_err(|source| {
+        CoreError::classified(
+            ErrorClass::Runtime,
+            "invalid_runtime_refresh_identity",
+            format!(
+                "Yazelix runtime identity is invalid JSON at {}.",
+                identity_path.display()
+            ),
+            "Reinstall Yazelix from a current package so runtime_identity.json is valid.",
+            json!({
+                "path": identity_path.display().to_string(),
+                "error": source.to_string(),
+            }),
+        )
+    })?;
+    let object = identity.as_object().ok_or_else(|| {
+        CoreError::classified(
+            ErrorClass::Runtime,
+            "invalid_runtime_refresh_identity_shape",
+            format!(
+                "Yazelix runtime identity must be a JSON object at {}.",
+                identity_path.display()
+            ),
+            "Reinstall Yazelix from a current package so runtime_identity.json has the supported shape.",
+            json!({ "path": identity_path.display().to_string() }),
+        )
+    })?;
+
+    let refresh_identity = json!({
+        "schema_version": object.get("schema_version").cloned().unwrap_or(JsonValue::Null),
+        "version": object.get("version").cloned().unwrap_or(JsonValue::Null),
+        "source": object.get("source").cloned().unwrap_or(JsonValue::Null),
+        "inputs": object.get("inputs").cloned().unwrap_or(JsonValue::Null),
+    });
+    serde_json::to_string(&refresh_identity)
+        .map(|serialized| sha256_hex(&serialized))
+        .map_err(|source| {
+            CoreError::classified(
+                ErrorClass::Internal,
+                "serialize_runtime_refresh_identity",
+                format!("Could not serialize runtime refresh identity: {source}"),
+                "Report this as a Yazelix internal error.",
+                json!({ "path": identity_path.display().to_string() }),
+            )
+        })
 }
 
 fn load_rebuild_required_paths(contract: &toml::Table) -> Vec<String> {
@@ -449,6 +514,32 @@ mod tests {
         path
     }
 
+    fn write_runtime_identity(runtime_dir: &Path, variant: &str, source_revision: &str) {
+        fs::create_dir_all(runtime_dir).expect("runtime dir");
+        fs::write(
+            runtime_dir.join("runtime_identity.json"),
+            serde_json::to_string(&json!({
+                "schema_version": 1,
+                "version": "v17.7",
+                "runtime_variant": variant,
+                "source": {
+                    "revision": source_revision,
+                    "short_revision": &source_revision[..7.min(source_revision.len())],
+                    "last_modified_date": "20260620000000",
+                },
+                "inputs": {
+                    "nixpkgs": {
+                        "revision": "input-revision",
+                        "short_revision": "input-r",
+                        "last_modified_date": "20260619000000",
+                    }
+                }
+            }))
+            .expect("identity json"),
+        )
+        .expect("write runtime identity");
+    }
+
     // Invariant: config-state hashing stays stable for the default config when no prior state exists.
     #[test]
     fn computes_default_rebuild_hash_without_recorded_state() {
@@ -540,6 +631,38 @@ mod tests {
             rebuild_changed.refresh_reason,
             "config changed since last generated-state repair"
         );
+    }
+
+    // Regression: same-generation terminal package variants share generated state instead of
+    // invalidating each other through absolute Nix store paths.
+    #[test]
+    fn runtime_refresh_hash_uses_generation_identity_not_runtime_variant_path() {
+        let dir = tempdir().expect("tempdir");
+        let ratty_runtime = dir.path().join("store/current-yazelix-ratty");
+        let ghostty_runtime = dir.path().join("store/current-yazelix-ghostty");
+        let old_runtime = dir.path().join("store/old-yazelix-ghostty");
+        write_runtime_identity(
+            &ratty_runtime,
+            "ratty",
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        );
+        write_runtime_identity(
+            &ghostty_runtime,
+            "ghostty",
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        );
+        write_runtime_identity(
+            &old_runtime,
+            "ghostty",
+            "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        );
+
+        let ratty_hash = compute_runtime_refresh_hash(&ratty_runtime).unwrap();
+        let ghostty_hash = compute_runtime_refresh_hash(&ghostty_runtime).unwrap();
+        let old_hash = compute_runtime_refresh_hash(&old_runtime).unwrap();
+
+        assert_eq!(ratty_hash, ghostty_hash);
+        assert_ne!(ratty_hash, old_hash);
     }
 
     // Defends: recording generated-state hashes never takes ownership of unmanaged config surfaces.
