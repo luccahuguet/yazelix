@@ -11,16 +11,36 @@ The repo keeps one maintained static preview
 
 ## Installation
 
+1. Optional: run the preflight check:
+
 ```bash
-nix profile add github:luccahuguet/yazelix#yazelix
+curl -fsSL https://raw.githubusercontent.com/luccahuguet/yazelix/main/shells/posix/install_check.sh | sh
+```
+
+2. Install Yazelix:
+
+```bash
+nix profile add --refresh --accept-flake-config github:luccahuguet/yazelix#yazelix
+```
+
+3. Launch Yazelix:
+
+```bash
 yzx launch
 ```
 
-Yazelix publishes an `x86_64-linux` Cachix binary cache for package installs and Home Manager switches. The flake advertises the cache through `nixConfig`, so Nix can prompt you to accept it during install; see the [installation guide](./docs/installation.md#use-the-yazelix-binary-cache)
+To inspect the preflight check before running it:
+
+```bash
+curl -fsSLO https://raw.githubusercontent.com/luccahuguet/yazelix/main/shells/posix/install_check.sh
+sh install_check.sh
+```
+
+Yazelix publishes a Cachix binary cache for selected package installs and Home Manager switches. The flake advertises the cache through `nixConfig`, so Nix can prompt you to accept it during install; see the [installation guide](./docs/installation.md#use-the-yazelix-binary-cache)
 
 > If you previously evaluated this flake, for example with `nix run` or `nix flake show`, Nix may have cached an older version. Add `--refresh` to force a fresh fetch:
 > ```bash
-> nix profile add --refresh github:luccahuguet/yazelix#yazelix
+> nix profile add --refresh --accept-flake-config github:luccahuguet/yazelix#yazelix
 > ```
 
 One-off use without installing also works:
@@ -49,7 +69,7 @@ nix profile upgrade --refresh <matching-yazelix-profile-entry>
 If the active runtime comes from an unmanaged Nix store path, such as `nix run` or a manually installed desktop entry, first install Yazelix into the default profile:
 
 ```bash
-nix profile add --refresh github:luccahuguet/yazelix#yazelix
+nix profile add --refresh --accept-flake-config github:luccahuguet/yazelix#yazelix
 yzx desktop install
 ```
 

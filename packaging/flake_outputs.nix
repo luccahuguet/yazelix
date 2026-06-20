@@ -66,10 +66,11 @@ let
   yazelix_zellij_popup = yazelixZellijPopup.packages.${system}.yzpp;
   yazelix_yazi_assets = yazelixYaziAssets.packages.${system}.yazelix_yazi_assets;
   beads_rust = beadsRustPackage system pkgs;
+  install_check = import ./install_check.nix { inherit pkgs; };
   packages =
     {
       br = beads_rust;
-      inherit beads_rust runtime_agent_tools runtime_mars_fast mars_fast;
+      inherit beads_rust install_check runtime_agent_tools runtime_mars_fast mars_fast;
       inherit yazelix_agent_tools yazelix_cursors yazelix_helix yazelix_screen;
       inherit yazelix_yazi_assets yazelix_zellij_bar yazelix_zellij_config_pack;
       inherit yazelix_zellij_pane_orchestrator yazelix_zellij_popup;
@@ -106,6 +107,7 @@ in
       yzs = appFor "yazelix_screen" "yzs";
       yazelix_cursors = appFor "yazelix_cursors" "yzc";
       yzc = appFor "yazelix_cursors" "yzc";
+      install_check = appFor "install_check" "install_check";
     }
     // terminalApps;
 }

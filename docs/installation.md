@@ -63,11 +63,37 @@ See [Terminal Emulator Comparison](./terminal_emulators.md) for a detailed break
 
 ## Quickstart
 
-If you already have Nix with flakes enabled, the canonical install flow is:
+1. Optional: run the install check:
 
 ```bash
-nix profile add github:luccahuguet/yazelix#yazelix
+curl -fsSL https://raw.githubusercontent.com/luccahuguet/yazelix/main/shells/posix/install_check.sh | sh
+```
+
+2. Install Yazelix:
+
+```bash
+nix profile add --refresh --accept-flake-config github:luccahuguet/yazelix#yazelix
+```
+
+3. Launch Yazelix:
+
+```bash
 yzx launch
+```
+
+If you prefer to inspect the check before running it:
+
+```bash
+curl -fsSLO https://raw.githubusercontent.com/luccahuguet/yazelix/main/shells/posix/install_check.sh
+sh install_check.sh
+```
+
+The install check is optional. It reports Nix/flakes/platform readiness, explains whether Yazelix's binary cache is trusted, and prints numbered next steps for the current host.
+
+If Nix is already available, the same check is also exposed as a flake app:
+
+```bash
+nix run --accept-flake-config github:luccahuguet/yazelix#install_check
 ```
 
 Use `#mars` instead if you intentionally want the experimental Mars Terminal runtime variant, `#yazelix_rio` for vanilla Rio, `#yazelix_wezterm` for WezTerm, `#yazelix_kitty` for Kitty, `#yazelix_foot` on Linux if you want Foot, or `#yazelix_ratty` on Linux if you want the experimental Ratty runtime variant.
@@ -121,7 +147,7 @@ Yazelix publishes selected `x86_64-linux` and `aarch64-darwin` package builds to
 For noninteractive installs, pass `--accept-flake-config` to the Nix command that evaluates the Yazelix flake:
 
 ```bash
-nix profile add --accept-flake-config github:luccahuguet/yazelix#yazelix
+nix profile add --refresh --accept-flake-config github:luccahuguet/yazelix#yazelix
 ```
 
 For persistent cache setup, use the path that matches your Nix install.
@@ -191,22 +217,22 @@ If `nix path-info` cannot find the output, the requested Yazelix revision has no
 Install the Yazelix package exposed by the top-level flake:
 
 ```bash
-nix profile add github:luccahuguet/yazelix#yazelix
+nix profile add --refresh --accept-flake-config github:luccahuguet/yazelix#yazelix
 ```
 
 The default package is the Ghostty variant. To install the package-provided Mars Terminal, WezTerm, Kitty, Linux Foot, or Linux Ratty variants explicitly:
 
 ```bash
-nix profile add github:luccahuguet/yazelix#mars
-nix profile add github:luccahuguet/yazelix#yazelix_wezterm
-nix profile add github:luccahuguet/yazelix#yazelix_kitty
-nix profile add github:luccahuguet/yazelix#yazelix_foot
-nix profile add github:luccahuguet/yazelix#yazelix_ratty
+nix profile add --refresh --accept-flake-config github:luccahuguet/yazelix#mars
+nix profile add --refresh --accept-flake-config github:luccahuguet/yazelix#yazelix_wezterm
+nix profile add --refresh --accept-flake-config github:luccahuguet/yazelix#yazelix_kitty
+nix profile add --refresh --accept-flake-config github:luccahuguet/yazelix#yazelix_foot
+nix profile add --refresh --accept-flake-config github:luccahuguet/yazelix#yazelix_ratty
 ```
 
 > If you previously evaluated this flake (for example with `nix run` or `nix flake show`), Nix may have cached an older version. Add `--refresh` to force a fresh fetch:
 > ```bash
-> nix profile add --refresh github:luccahuguet/yazelix#yazelix
+> nix profile add --refresh --accept-flake-config github:luccahuguet/yazelix#yazelix
 > ```
 
 After it finishes:

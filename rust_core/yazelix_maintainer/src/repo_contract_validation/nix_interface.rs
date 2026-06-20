@@ -287,6 +287,8 @@ fn build_flake_interface_expr(repo_root: &Path) -> String {
         "  builtins.hasAttr \"default\" flake.packages.${system} &&".to_string(),
         "  builtins.hasAttr \"runtime\" flake.packages.${system} &&".to_string(),
         "  builtins.hasAttr \"yazelix\" flake.packages.${system} &&".to_string(),
+        "  builtins.hasAttr \"install_check\" flake.packages.${system} &&".to_string(),
+        "  (flake.packages.${system}.install_check.meta.mainProgram or \"\") == \"install_check\" &&".to_string(),
         "  !builtins.hasAttr \"install\" flake.packages.${system} &&".to_string(),
         "  (flake.packages.${system}.default.name or \"\") == (flake.packages.${system}.yazelix.name or \"\") &&"
             .to_string(),
@@ -295,6 +297,8 @@ fn build_flake_interface_expr(repo_root: &Path) -> String {
         "  builtins.hasAttr system flake.apps &&".to_string(),
         "  builtins.hasAttr \"default\" flake.apps.${system} &&".to_string(),
         "  builtins.hasAttr \"yazelix\" flake.apps.${system} &&".to_string(),
+        "  builtins.hasAttr \"install_check\" flake.apps.${system} &&".to_string(),
+        "  (flake.apps.${system}.install_check.program or \"\") == \"${flake.packages.${system}.install_check}/bin/install_check\" &&".to_string(),
         "  !builtins.hasAttr \"install\" flake.apps.${system} &&".to_string(),
         "  builtins.hasAttr \"homeManagerModules\" flake &&".to_string(),
         "  builtins.hasAttr \"default\" flake.homeManagerModules &&".to_string(),

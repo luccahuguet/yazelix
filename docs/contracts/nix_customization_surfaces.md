@@ -59,6 +59,21 @@ The default arguments must produce the same behavior as the default `.#yazelix` 
 
 It should expose the default bundled `yazelix` package. Granular customization remains explicit through `lib.${system}.mkYazelix` instead of hidden overlay magic.
 
+### Bootstrap Install Check
+
+`shells/posix/install_check.sh` is the primary pre-install diagnostic surface. It must be usable as a standalone POSIX `sh` script so users can run it before installing Yazelix and before Nix is present on `PATH`.
+
+`apps.${system}.install_check` and `packages.${system}.install_check` expose the same script through Nix for users who already have a working Nix installation.
+
+The install check must remain small and read-only:
+
+- it must not depend on the default Yazelix runtime package, selected terminal package, Helix, Zellij, child plugin artifacts, or generated runtime tree
+- it must not run `sudo`, edit Nix configuration, install packages, or mutate user state
+- it may inspect local Nix commands, platform identity, active Nix configuration, and Yazelix cache trust state
+- it should treat missing Yazelix Cachix trust as a speed warning, not an install blocker
+- it should print numbered next steps with the recommended `nix profile add --refresh --accept-flake-config github:luccahuguet/yazelix#yazelix` command, `yzx launch`, and optional cache setup guidance when Nix is available
+- it should print numbered next steps with a Nix installer command and rerun command when Nix is missing
+
 ## Runtime Tool Source Modes
 
 Runtime tools may support these source modes:
