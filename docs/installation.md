@@ -124,13 +124,15 @@ For noninteractive installs, pass `--accept-flake-config` to the Nix command tha
 nix profile add --accept-flake-config github:luccahuguet/yazelix#yazelix
 ```
 
-For persistent cache setup on ordinary Nix installs, let the Cachix CLI write the cache configuration:
+For persistent cache setup, use the path that matches your Nix install.
+
+For non-Determinate Nix installs where the legacy `nix-env` command is available, the Cachix CLI can write the root daemon configuration:
 
 ```bash
 sudo nix run nixpkgs#cachix -- use yazelix --mode root-nixconf
 ```
 
-Determinate Nix manages `/etc/nix/nix.conf` and leaves `/etc/nix/nix.custom.conf` for user edits. If you prefer to keep Determinate's generated config untouched, add the cache to that custom file instead:
+Determinate Nix installs can omit `nix-env`, so the Cachix helper above may fail before it edits the daemon configuration. Determinate Nix manages `/etc/nix/nix.conf` and leaves `/etc/nix/nix.custom.conf` for user edits. Add the cache to that custom file instead:
 
 `/etc/nix/nix.custom.conf`
 
