@@ -1,0 +1,82 @@
+// Sidebar pane blocks are injected by the Rust Zellij materializer
+// from rust_core/yazelix_zellij_config_pack/layouts/fragments/swap_sidebar_*.kdl.
+//
+// Layout order matters:
+// - no-agent variants come first
+// - agent variants model left sidebar visibility x right agent visibility
+
+swap_tiled_layout name="single_open" {
+    ui min_panes=4 {
+        pane split_direction="vertical" {
+            __YAZELIX_SWAP_SIDEBAR_OPEN__
+            pane stacked=true {
+                children;
+                size "__YAZELIX_OPEN_CONTENT_WIDTH_PERCENT__"
+            }
+        }
+    }
+}
+
+swap_tiled_layout name="single_closed" {
+    ui min_panes=4 {
+        pane split_direction="vertical" {
+            __YAZELIX_SWAP_SIDEBAR_CLOSED__
+            pane stacked=true {
+                children;
+                size "__YAZELIX_CLOSED_CONTENT_WIDTH_PERCENT__"
+            }
+        }
+    }
+}
+
+swap_tiled_layout name="single_open_agent_open" {
+    ui min_panes=5 {
+        pane split_direction="vertical" {
+            __YAZELIX_SWAP_SIDEBAR_OPEN__
+            pane stacked=true {
+                children;
+                size "__YAZELIX_OPEN_AGENT_OPEN_CONTENT_WIDTH_PERCENT__"
+            }
+            __YAZELIX_SWAP_AGENT_OPEN__
+        }
+    }
+}
+
+swap_tiled_layout name="single_open_agent_closed" {
+    ui min_panes=5 {
+        pane split_direction="vertical" {
+            __YAZELIX_SWAP_SIDEBAR_OPEN__
+            pane stacked=true {
+                children;
+                size "__YAZELIX_OPEN_AGENT_CLOSED_CONTENT_WIDTH_PERCENT__"
+            }
+            __YAZELIX_SWAP_AGENT_CLOSED__
+        }
+    }
+}
+
+swap_tiled_layout name="single_closed_agent_open" {
+    ui min_panes=5 {
+        pane split_direction="vertical" {
+            __YAZELIX_SWAP_SIDEBAR_CLOSED__
+            pane stacked=true {
+                children;
+                size "__YAZELIX_CLOSED_AGENT_OPEN_CONTENT_WIDTH_PERCENT__"
+            }
+            __YAZELIX_SWAP_AGENT_OPEN__
+        }
+    }
+}
+
+swap_tiled_layout name="single_closed_agent_closed" {
+    ui min_panes=5 {
+        pane split_direction="vertical" {
+            __YAZELIX_SWAP_SIDEBAR_CLOSED__
+            pane stacked=true {
+                children;
+                size "__YAZELIX_CLOSED_AGENT_CLOSED_CONTENT_WIDTH_PERCENT__"
+            }
+            __YAZELIX_SWAP_AGENT_CLOSED__
+        }
+    }
+}

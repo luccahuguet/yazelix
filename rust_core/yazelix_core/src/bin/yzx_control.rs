@@ -2,6 +2,7 @@
 
 use crossterm::terminal;
 use serde::Serialize;
+use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
 use std::env;
 use std::fs;
@@ -1712,14 +1713,8 @@ fn print_dev_perf_help() {
     println!("Usage: yzx dev perf [--seconds N]");
     println!();
     println!(
-        "Samples known Yazelix/Zellij helper process churn and prints optional pidstat output when available."
+        "Samples Yazelix/Zellij process CPU, Zellij thread groups, and helper churn without spawning external profilers."
     );
-}
-
-fn command_available(command: &str) -> bool {
-    env::var_os("PATH")
-        .map(|path| env::split_paths(&path).any(|dir| dir.join(command).is_file()))
-        .unwrap_or(false)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1790,8 +1785,21 @@ fn is_zellij_server_process(process: &PerfProcessRecord) -> bool {
     process_command_is(process, "zellij") && process_has_arg(process, "--server")
 }
 
+fn is_zellij_client_process(process: &PerfProcessRecord) -> bool {
+    process_command_is(process, "zellij") && !is_zellij_server_process(process)
+}
+
+fn is_mars_terminal_process(process: &PerfProcessRecord) -> bool {
+    process_command_is(process, "rio") && process_has_arg(process, "--yazelix")
+}
+
 fn is_bar_widget_process(process: &PerfProcessRecord, widget: &str) -> bool {
     process_command_is(process, "yazelix_zellij_bar_widget") && process_has_arg(process, widget)
+}
+
+fn is_status_refresh_process(process: &PerfProcessRecord, command: &str) -> bool {
+    process_command_is(process, "yzx_control")
+        && argv_contains_sequence(&process.argv, &["zellij", command])
 }
 
 fn is_title_refresh_process(process: &PerfProcessRecord) -> bool {
@@ -1829,14 +1837,32 @@ fn add_helper_churn_sample(
     seen: &mut BTreeMap<&'static str, BTreeSet<String>>,
     processes: &[PerfProcessRecord],
 ) {
-    let buckets: [(&str, BTreeSet<String>); 4] = [
+    let buckets: [(&str, BTreeSet<String>); 7] = [
         (
-            "bar_widget_cpu",
+            "status_widget_cpu",
             matching_pids(processes, |process| is_bar_widget_process(process, "cpu")),
         ),
         (
-            "bar_widget_ram",
+            "status_widget_ram",
             matching_pids(processes, |process| is_bar_widget_process(process, "ram")),
+        ),
+        (
+            "status_refresh_claude",
+            matching_pids(processes, |process| {
+                is_status_refresh_process(process, "status-cache-refresh-claude-usage")
+            }),
+        ),
+        (
+            "status_refresh_codex",
+            matching_pids(processes, |process| {
+                is_status_refresh_process(process, "status-cache-refresh-codex-usage")
+            }),
+        ),
+        (
+            "status_refresh_opencode_go",
+            matching_pids(processes, |process| {
+                is_status_refresh_process(process, "status-cache-refresh-opencode-go-usage")
+            }),
         ),
         (
             "title_refresh",
@@ -1854,48 +1880,312 @@ fn add_helper_churn_sample(
     }
 }
 
-fn sample_helper_churn(seconds: u64) -> BTreeMap<&'static str, BTreeSet<String>> {
-    let mut seen = [
-        "bar_widget_cpu",
-        "bar_widget_ram",
+fn empty_helper_churn() -> BTreeMap<&'static str, BTreeSet<String>> {
+    [
+        "status_widget_cpu",
+        "status_widget_ram",
+        "status_refresh_claude",
+        "status_refresh_codex",
+        "status_refresh_opencode_go",
         "title_refresh",
         "title_refresh_pipe",
     ]
     .into_iter()
     .map(|name| (name, BTreeSet::new()))
-    .collect::<BTreeMap<_, _>>();
-    let deadline = Instant::now() + Duration::from_secs(seconds);
-    while Instant::now() < deadline {
-        add_helper_churn_sample(&mut seen, &live_perf_processes());
-        thread::sleep(Duration::from_millis(250));
-    }
-    seen
+    .collect()
 }
 
-fn run_pidstat_for_zellij(pids: &[String]) {
-    if pids.is_empty() {
-        println!("pidstat: no Zellij PID found");
-        return;
+#[cfg(target_os = "linux")]
+#[derive(Debug, Clone)]
+struct PerfCpuPoint {
+    category: &'static str,
+    label: String,
+    ticks: u64,
+    rss_bytes: u64,
+}
+
+#[derive(Debug, Clone)]
+struct PerfCpuSummary {
+    category: &'static str,
+    cpu_percent: f64,
+    count: usize,
+    rss_bytes: u64,
+    labels: Vec<String>,
+}
+
+#[cfg(target_os = "linux")]
+#[derive(Debug, Clone)]
+struct PerfThreadCpuPoint {
+    group: &'static str,
+    label: String,
+    ticks: u64,
+}
+
+#[cfg(target_os = "linux")]
+#[derive(Debug, Clone)]
+struct PerfPressureSample {
+    helper_churn: BTreeMap<&'static str, BTreeSet<String>>,
+    process_cpu: Vec<PerfCpuSummary>,
+    zellij_thread_cpu: Vec<PerfCpuSummary>,
+}
+
+fn cpu_percent_from_tick_delta(delta_ticks: u64, ticks_per_second: u64, seconds: u64) -> f64 {
+    if ticks_per_second == 0 || seconds == 0 {
+        return 0.0;
     }
-    if !command_available("pidstat") {
-        println!("pidstat: missing; install sysstat for thread CPU samples");
-        return;
+    (delta_ticks as f64 / ticks_per_second as f64 / seconds as f64) * 100.0
+}
+
+#[cfg(target_os = "linux")]
+fn perf_process_category(process: &PerfProcessRecord) -> Option<&'static str> {
+    if is_mars_terminal_process(process) {
+        Some("mars_terminal")
+    } else if is_zellij_server_process(process) {
+        Some("zellij_server")
+    } else if is_zellij_client_process(process) {
+        Some("zellij_client")
+    } else if process_command_is(process, "codex") {
+        Some("codex")
+    } else if process_command_is(process, "yzx_control") {
+        Some("yzx_control")
+    } else if process_command_is(process, "yazelix_zellij_bar_widget") {
+        Some("bar_widget")
+    } else {
+        None
     }
-    let pid_arg = pids.join(",");
-    let output = Command::new("pidstat")
-        .args(["-t", "-p", &pid_arg, "1", "3"])
-        .output();
-    match output {
-        Ok(output) if output.status.success() => {
-            println!("{}", String::from_utf8_lossy(&output.stdout).trim());
-        }
-        Ok(output) => {
-            println!(
-                "pidstat failed: {}",
-                String::from_utf8_lossy(&output.stderr).trim()
+}
+
+#[cfg(target_os = "linux")]
+fn perf_process_label(process: &PerfProcessRecord) -> String {
+    if is_mars_terminal_process(process) {
+        return "rio/mars".to_string();
+    }
+    if let Some(command) = process
+        .argv
+        .first()
+        .map(|arg| argv_basename(arg).to_string())
+        .filter(|value| !value.is_empty())
+    {
+        return command;
+    }
+    process.command_name.clone()
+}
+
+#[cfg(target_os = "linux")]
+fn process_cpu_points(processes: &[PerfProcessRecord]) -> BTreeMap<String, PerfCpuPoint> {
+    let page_size = procfs::page_size();
+    processes
+        .iter()
+        .filter_map(|process| {
+            let category = perf_process_category(process)?;
+            let pid = process.pid.parse::<i32>().ok()?;
+            let stat = procfs::process::Process::new(pid).ok()?.stat().ok()?;
+            let rss_pages = u64::try_from(stat.rss).unwrap_or_default();
+            Some((
+                process.pid.clone(),
+                PerfCpuPoint {
+                    category,
+                    label: perf_process_label(process),
+                    ticks: stat.utime.saturating_add(stat.stime),
+                    rss_bytes: rss_pages.saturating_mul(page_size),
+                },
+            ))
+        })
+        .collect()
+}
+
+#[cfg(target_os = "linux")]
+fn zellij_thread_group(thread_name: &str) -> &'static str {
+    if thread_name.contains("plugin-exec") {
+        "plugin_exec"
+    } else if thread_name.contains("screen") {
+        "screen"
+    } else if thread_name.contains("pty") {
+        "pty"
+    } else if thread_name.contains("zellij") {
+        "zellij_main"
+    } else {
+        "other"
+    }
+}
+
+#[cfg(target_os = "linux")]
+fn zellij_thread_cpu_points(zellij_pids: &[String]) -> BTreeMap<String, PerfThreadCpuPoint> {
+    let mut points = BTreeMap::new();
+    for pid in zellij_pids {
+        let Ok(pid_i32) = pid.parse::<i32>() else {
+            continue;
+        };
+        let Ok(process) = procfs::process::Process::new(pid_i32) else {
+            continue;
+        };
+        let Ok(tasks) = process.tasks() else {
+            continue;
+        };
+        for task in tasks.flatten() {
+            let Ok(stat) = task.stat() else {
+                continue;
+            };
+            points.insert(
+                format!("{pid}:{}", task.tid),
+                PerfThreadCpuPoint {
+                    group: zellij_thread_group(&stat.comm),
+                    label: stat.comm,
+                    ticks: stat.utime.saturating_add(stat.stime),
+                },
             );
         }
-        Err(error) => println!("pidstat failed to start: {error}"),
+    }
+    points
+}
+
+#[derive(Default)]
+struct PerfCpuAccumulator {
+    cpu_percent: f64,
+    count: usize,
+    rss_bytes: u64,
+    labels: BTreeSet<String>,
+}
+
+#[cfg(target_os = "linux")]
+fn summarize_process_cpu(
+    start: &BTreeMap<String, PerfCpuPoint>,
+    end: &BTreeMap<String, PerfCpuPoint>,
+    ticks_per_second: u64,
+    seconds: u64,
+) -> Vec<PerfCpuSummary> {
+    let mut by_category = BTreeMap::<&'static str, PerfCpuAccumulator>::new();
+    for (pid, start_point) in start {
+        let Some(end_point) = end.get(pid) else {
+            continue;
+        };
+        let delta_ticks = end_point.ticks.saturating_sub(start_point.ticks);
+        let accumulator = by_category.entry(start_point.category).or_default();
+        accumulator.cpu_percent +=
+            cpu_percent_from_tick_delta(delta_ticks, ticks_per_second, seconds);
+        accumulator.count += 1;
+        accumulator.rss_bytes = accumulator.rss_bytes.saturating_add(end_point.rss_bytes);
+        accumulator.labels.insert(start_point.label.clone());
+    }
+    summarize_accumulators(by_category)
+}
+
+#[cfg(target_os = "linux")]
+fn summarize_zellij_thread_cpu(
+    start: &BTreeMap<String, PerfThreadCpuPoint>,
+    end: &BTreeMap<String, PerfThreadCpuPoint>,
+    ticks_per_second: u64,
+    seconds: u64,
+) -> Vec<PerfCpuSummary> {
+    let mut by_group = BTreeMap::<&'static str, PerfCpuAccumulator>::new();
+    for (thread_id, start_point) in start {
+        let Some(end_point) = end.get(thread_id) else {
+            continue;
+        };
+        let delta_ticks = end_point.ticks.saturating_sub(start_point.ticks);
+        let accumulator = by_group.entry(start_point.group).or_default();
+        accumulator.cpu_percent +=
+            cpu_percent_from_tick_delta(delta_ticks, ticks_per_second, seconds);
+        accumulator.count += 1;
+        accumulator.labels.insert(start_point.label.clone());
+    }
+    summarize_accumulators(by_group)
+}
+
+fn summarize_accumulators(
+    by_category: BTreeMap<&'static str, PerfCpuAccumulator>,
+) -> Vec<PerfCpuSummary> {
+    let mut summaries = by_category
+        .into_iter()
+        .map(|(category, accumulator)| PerfCpuSummary {
+            category,
+            cpu_percent: accumulator.cpu_percent,
+            count: accumulator.count,
+            rss_bytes: accumulator.rss_bytes,
+            labels: accumulator.labels.into_iter().take(3).collect(),
+        })
+        .filter(|summary| summary.count > 0)
+        .collect::<Vec<_>>();
+    summaries.sort_by(|left, right| {
+        right
+            .cpu_percent
+            .partial_cmp(&left.cpu_percent)
+            .unwrap_or(Ordering::Equal)
+            .then_with(|| left.category.cmp(right.category))
+    });
+    summaries
+}
+
+#[cfg(target_os = "linux")]
+fn sample_perf_pressure(
+    initial_processes: &[PerfProcessRecord],
+    zellij_pids: &[String],
+    seconds: u64,
+) -> PerfPressureSample {
+    let ticks_per_second = procfs::ticks_per_second();
+    let process_start = process_cpu_points(initial_processes);
+    let thread_start = zellij_thread_cpu_points(zellij_pids);
+    let mut helper_churn = empty_helper_churn();
+    let deadline = Instant::now() + Duration::from_secs(seconds);
+    while Instant::now() < deadline {
+        add_helper_churn_sample(&mut helper_churn, &live_perf_processes());
+        thread::sleep(Duration::from_millis(250));
+    }
+    let final_processes = live_perf_processes();
+    let process_end = process_cpu_points(&final_processes);
+    let thread_end = zellij_thread_cpu_points(zellij_pids);
+
+    PerfPressureSample {
+        helper_churn,
+        process_cpu: summarize_process_cpu(&process_start, &process_end, ticks_per_second, seconds),
+        zellij_thread_cpu: summarize_zellij_thread_cpu(
+            &thread_start,
+            &thread_end,
+            ticks_per_second,
+            seconds,
+        ),
+    }
+}
+
+fn format_pid_list(pids: &[String]) -> String {
+    if pids.is_empty() {
+        "<none>".to_string()
+    } else {
+        pids.join(", ")
+    }
+}
+
+fn format_mib(bytes: u64) -> String {
+    format!("{:.1}", bytes as f64 / 1_048_576.0)
+}
+
+fn print_cpu_summary_section(title: &str, summaries: &[PerfCpuSummary], include_rss: bool) {
+    println!("{title}:");
+    if summaries.is_empty() {
+        println!("  <none>");
+        return;
+    }
+    for summary in summaries {
+        let labels = if summary.labels.is_empty() {
+            "<none>".to_string()
+        } else {
+            summary.labels.join(", ")
+        };
+        if include_rss {
+            println!(
+                "  {:<26} {:>6.1}%  {:>2} proc  rss {:>7} MiB  {}",
+                summary.category,
+                summary.cpu_percent,
+                summary.count,
+                format_mib(summary.rss_bytes),
+                labels
+            );
+        } else {
+            println!(
+                "  {:<26} {:>6.1}%  {:>2} thread(s)  {}",
+                summary.category, summary.cpu_percent, summary.count, labels
+            );
+        }
     }
 }
 
@@ -1929,15 +2219,17 @@ fn run_dev_perf(args: &[String]) -> Result<i32, CoreError> {
 
     let processes = live_perf_processes();
     let zellij_pids = zellij_pids(&processes);
-    println!("zellij_pids: {}", zellij_pids.join(", "));
+    println!("zellij_pids: {}", format_pid_list(&zellij_pids));
+    println!();
+    let sample = sample_perf_pressure(&processes, &zellij_pids, parsed.seconds);
+    print_cpu_summary_section("process_cpu", &sample.process_cpu, true);
+    println!();
+    print_cpu_summary_section("zellij_thread_cpu", &sample.zellij_thread_cpu, false);
     println!();
     println!("helper_churn:");
-    for (name, pids) in sample_helper_churn(parsed.seconds) {
+    for (name, pids) in sample.helper_churn {
         println!("  {name}: {} unique pid(s)", pids.len());
     }
-    println!();
-    println!("zellij_thread_cpu:");
-    run_pidstat_for_zellij(&zellij_pids);
     Ok(0)
 }
 
@@ -2123,6 +2415,14 @@ mod tests {
         assert!(parse_dev_perf_args(&["--help".into()]).unwrap().is_none());
     }
 
+    // Defends: low-noise perf CPU summaries use procfs jiffy deltas instead of external profiler output.
+    #[test]
+    fn dev_perf_cpu_percent_uses_tick_delta_and_sample_window() {
+        assert_eq!(cpu_percent_from_tick_delta(150, 100, 3), 50.0);
+        assert_eq!(cpu_percent_from_tick_delta(150, 0, 3), 0.0);
+        assert_eq!(cpu_percent_from_tick_delta(150, 100, 0), 0.0);
+    }
+
     fn perf_process(pid: &str, command_name: &str, argv: &[&str]) -> PerfProcessRecord {
         PerfProcessRecord {
             pid: pid.to_string(),
@@ -2176,28 +2476,31 @@ mod tests {
                 "yzx_control",
                 &["yzx_control", "zellij", "refresh-terminal-title-activity"],
             ),
+            perf_process(
+                "17",
+                "yzx_control",
+                &["yzx_control", "zellij", "status-cache-refresh-codex-usage"],
+            ),
         ];
 
         assert_eq!(zellij_pids(&processes), vec!["10"]);
 
-        let mut seen = [
-            "bar_widget_cpu",
-            "bar_widget_ram",
-            "title_refresh",
-            "title_refresh_pipe",
-        ]
-        .into_iter()
-        .map(|name| (name, BTreeSet::new()))
-        .collect::<BTreeMap<_, _>>();
+        let mut seen = empty_helper_churn();
         add_helper_churn_sample(&mut seen, &processes);
 
         assert_eq!(
-            seen.get("bar_widget_cpu").cloned().unwrap_or_default(),
+            seen.get("status_widget_cpu").cloned().unwrap_or_default(),
             BTreeSet::from(["13".to_string()])
         );
         assert_eq!(
-            seen.get("bar_widget_ram").cloned().unwrap_or_default(),
+            seen.get("status_widget_ram").cloned().unwrap_or_default(),
             BTreeSet::from(["14".to_string()])
+        );
+        assert_eq!(
+            seen.get("status_refresh_codex")
+                .cloned()
+                .unwrap_or_default(),
+            BTreeSet::from(["17".to_string()])
         );
         assert_eq!(
             seen.get("title_refresh").cloned().unwrap_or_default(),

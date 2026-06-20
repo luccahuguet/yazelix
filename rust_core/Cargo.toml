@@ -1,5 +1,9 @@
 [workspace]
-members = ["yazelix_core", "yazelix_maintainer"]
+members = [
+    "yazelix_core",
+    "yazelix_maintainer",
+    "yazelix_zellij_config_pack",
+]
 resolver = "3"
 
 [workspace.package]

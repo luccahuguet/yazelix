@@ -1,0 +1,5 @@
+pane name="sidebar" {
+    command __YAZELIX_SIDEBAR_COMMAND__
+    __YAZELIX_SIDEBAR_ARGS__
+    size "__YAZELIX_SIDEBAR_WIDTH_PERCENT__"
+}

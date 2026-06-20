@@ -42,8 +42,9 @@ Runtime diagnostics
 Capture a bounded lag snapshot for Zellij/plugin helper churn
 - Default: sample for 12 seconds
 - `--seconds N`: sample for 1 to 60 seconds
-- On Linux, prints the current Yazelix session env, matching Zellij PIDs, unique helper-process counts for known expensive status/title-refresh paths, and `pidstat` thread CPU output when `pidstat` is installed
-- On unsupported platforms or hosts without `pidstat`, prints explicit missing-tool or unsupported-platform lines instead of failing silently
+- On Linux, prints the current Yazelix session env, matching Zellij PIDs, compact process CPU totals for Mars/Zellij/Codex/Yazelix helpers, compact Zellij thread-group CPU totals, and unique helper-process counts for known expensive status/title-refresh paths
+- On unsupported platforms, prints an explicit unsupported-platform line instead of failing silently
+- This is a snapshot diagnostic, not an analytics system: it does not run a daemon, store history, build dashboards, or replace deeper tools such as `perf`, `pidstat`, `bpftrace`, or Mars frame logs
 
 ### `yzx dev profile [--cold] [--desktop] [--launch] [--clear-cache]`
 Profile launch sequence and identify performance bottlenecks

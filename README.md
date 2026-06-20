@@ -439,7 +439,7 @@ The default left sidebar is a Yazi file tree launched by `yzx sidebar yazi`, and
 
 The packaged runtime ships one managed sidebar family. `Alt+[` and `Alt+]` are still bound to previous/next layout-family cycling, but with one family they usually leave the visible layout unchanged. Use `Alt+Shift+H/J/K/L` for everyday surface toggles and `Ctrl+y` / `Ctrl+Shift+Y` for sidebar/editor focus
 
-Built-in layout KDL lives in the `yazelix-zellij-config-pack` child repo; custom sidebar swap families are maintainer-level work because Yazelix family-aware controls only know the built-in sidebar family
+Built-in layout KDL lives in the in-tree `rust_core/yazelix_zellij_config_pack` crate; custom sidebar swap families are maintainer-level work because Yazelix family-aware controls only know the built-in sidebar family
 
 See [Layouts](./docs/layouts.md) for layout files, config keys, and customization boundaries
 

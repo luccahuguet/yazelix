@@ -2,13 +2,13 @@
 
 ## Summary
 
-`yazelix-zellij-config-pack` is the child repository for deterministic Zellij
-config and layout rendering. Main Yazelix consumes the published child crate and
-flake package, then writes the rendered output into the active state directory.
+`yazelix_zellij_config_pack` is the in-tree Rust crate for deterministic Zellij
+config and layout rendering. Main Yazelix consumes the workspace crate and writes
+the rendered output into the active state directory.
 
-The child owns pure rendering. Main Yazelix keeps product policy, runtime
-integration, filesystem materialization, plugin artifact resolution, doctor and
-repair behavior, and live workspace/session behavior.
+The crate owns pure rendering. The `yazelix_core` materializer keeps product
+policy, runtime integration, filesystem materialization, plugin artifact
+resolution, doctor and repair behavior, and live workspace/session behavior.
 
 ## Ownership
 
@@ -21,13 +21,13 @@ repair behavior, and live workspace/session behavior.
 | Pane-orchestrator, popup, and status-bar package/artifact resolution | Main Yazelix plus existing child repos |
 | Live tab, pane, workspace, status-bus, and session facts | Pane orchestrator plus Main Yazelix adapters |
 | Filesystem writes, repair decisions, doctor checks, and permission seeding | Main Yazelix |
-| Layout templates and layout-family metadata that are not product policy | `yazelix-zellij-config-pack` |
-| Deterministic KDL config/layout rendering and merge mechanics | `yazelix-zellij-config-pack` |
-| Config-pack fixture and equivalence tests | `yazelix-zellij-config-pack`, with main keeping integration tests |
+| Layout templates and layout-family metadata that are not product policy | `rust_core/yazelix_zellij_config_pack` |
+| Deterministic KDL config/layout rendering and merge mechanics | `rust_core/yazelix_zellij_config_pack` |
+| Config-pack fixture and equivalence tests | `rust_core/yazelix_zellij_config_pack`, with `yazelix_core` keeping integration tests |
 
 ## Boundary
 
-The child boundary must be a pure function:
+The crate boundary must be a pure function:
 
 ```text
 render_zellij_config_pack(request) -> output
@@ -52,7 +52,7 @@ The output is structured data returned to main. It may include:
 
 ## Forbidden Dependencies
 
-The child renderer must not read or infer:
+The renderer must not read or infer:
 
 - `~/.config/yazelix`
 - `~/.local/share/yazelix`
@@ -68,9 +68,9 @@ request is built or the boundary is not ready for extraction.
 
 ## Consumption Gates
 
-Main may consume a config-pack revision only when all gates pass:
+`yazelix_core` may consume config-pack behavior only when all gates pass:
 
-1. The child renderer accepts explicit structured input and produces
+1. The renderer accepts explicit structured input and produces
    deterministic config/layout output
 2. Generated Zellij output has equivalence tests for representative
    default, custom popup, native merge, status-bar, and layout-fragment cases
@@ -78,43 +78,34 @@ Main may consume a config-pack revision only when all gates pass:
    live Zellij, or adjacent-checkout reads
 4. Status-bar rendering is consumed from `yazelix_zellij_bar`; popup and
    pane-orchestrator artifacts are consumed from their existing child owners
-5. Main keeps only policy, path resolution, artifact resolution, writes,
+5. `yazelix_core` keeps only policy, path resolution, artifact resolution, writes,
    doctor/repair, and integration validation
-6. Main deletes Rust/assets/tests/metadata ownership instead of adding wrappers,
-   mirrors, or fallback copies
-7. Local override validation is treated only as a smoke test; main closes the
-   integration only after consuming a published child revision without overrides
+6. `yazelix_core` does not absorb renderer internals back into
+   `zellij_materialization.rs`
 
 ## Deletion Bar
 
-Consumption must remove real main ownership. A valid child update should keep
-main from owning these groups:
+The crate boundary should keep `zellij_materialization.rs` from owning these
+groups:
 
 - pure KDL rendering and merge mechanics
 - layout template rendering that does not encode main product policy
 - config-pack fixture tests that can run without a Yazelix checkout
 - renderer-owned layout-family metadata
 
-It is not a valid child consumption if main keeps parallel renderer code,
+It is not a valid boundary if `yazelix_core` keeps parallel renderer code,
 fallback config/layout templates, generated mirrors, or validators of similar
-size to the code moved out.
+size inside the materializer.
 
 ## Verification
 
-Main verification:
+Verification:
 
 - `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core zellij_materialization`
-- `cargo test` in `luccahuguet/yazelix-zellij-config-pack`
+- `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_zellij_config_pack`
 - `yzx_repo_validator validate-workspace-session-contract` when workspace
   layouts or plugin placement are touched
 - `shells/posix/yazelix_loc_scorecard.sh <base> HEAD` for deletion evidence
-
-Child release transaction verification:
-
-- child repo checks pass locally and in CI
-- main consumes a published child revision through `flake.lock`
-- main validation passes without local overrides
-- main scorecard records deleted ownership in the release transaction
 
 ## Traceability
 

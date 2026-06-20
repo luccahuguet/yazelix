@@ -85,7 +85,7 @@ Maintained target state:
 | Version bump workflow | `yazelix_maintainer/src/repo_version_bump.rs` | moved to `yazelix_maintainer` | reject external repo | Transactional release policy must stay in the repo that owns tags, changelog, and upgrade notes |
 | Workspace session validator | `yazelix_maintainer/src/workspace_session_contract.rs` | moved to `yazelix_maintainer` | reject external repo | Validator-only owner; it can call runtime-owned workspace asset checks through `yazelix_core` |
 | Workspace asset checks | `workspace_asset_contract.rs` | keep in `yazelix_core` | reject external repo | Used by user-facing `yzx doctor`, so it is product runtime behavior |
-| Zellij config-pack layouts | `yazelix-zellij-config-pack` child repo | child repo | accept external repo | Main consumes the renderer API and generated layout names instead of owning template metadata |
+| Zellij config-pack layouts | `rust_core/yazelix_zellij_config_pack` | in-tree crate | reject external repo | The pure renderer boundary remains useful, but the separate repo added release friction without enough standalone value |
 | Profile commands | `profile_commands.rs` | keep in `yazelix_core` for now | reject external repo | `yzx_control profile` is used by live startup/profile instrumentation, not only repo validation |
 
 ## Implementation Boundary

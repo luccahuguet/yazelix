@@ -16,9 +16,9 @@
   marsTerminal,
   yazelixYaziAssets,
   yazelixZellijBar,
-  yazelixZellijConfigPack,
   yazelixZellijPaneOrchestrator,
   yazelixZellijPopup,
+  fenixPkgs,
 }:
 
 let
@@ -59,8 +59,10 @@ let
   yazelix_screen = yazelixScreen.packages.${system}.yzs;
   yazelix_cursors = yazelixCursors.packages.${system}.yazelix_cursors;
   yazelix_helix = kgpPackages.helixPackage system;
-  yazelix_zellij_config_pack =
-    yazelixZellijConfigPack.packages.${system}.yazelix_zellij_config_pack;
+  yazelix_zellij_config_pack = import ./yazelix_zellij_config_pack.nix {
+    inherit pkgs fenixPkgs;
+    src = ../.;
+  };
   yazelix_zellij_pane_orchestrator =
     yazelixZellijPaneOrchestrator.packages.${system}.yazelix_zellij_pane_orchestrator;
   yazelix_zellij_popup = yazelixZellijPopup.packages.${system}.yzpp;
