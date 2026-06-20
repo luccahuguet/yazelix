@@ -2,13 +2,17 @@
 
 use crossterm::terminal;
 use serde::Serialize;
+#[cfg(target_os = "linux")]
 use std::cmp::Ordering;
+#[cfg(any(target_os = "linux", test))]
 use std::collections::{BTreeMap, BTreeSet};
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+#[cfg(target_os = "linux")]
 use std::thread;
+#[cfg(target_os = "linux")]
 use std::time::{Duration, Instant};
 use yazelix_core::StatusReportData;
 use yazelix_core::bridge::{CoreError, ErrorClass};
@@ -1717,6 +1721,7 @@ fn print_dev_perf_help() {
     );
 }
 
+#[cfg(any(target_os = "linux", test))]
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct PerfProcessRecord {
     pid: String,
@@ -1747,11 +1752,7 @@ fn live_perf_processes() -> Vec<PerfProcessRecord> {
         .collect()
 }
 
-#[cfg(not(target_os = "linux"))]
-fn live_perf_processes() -> Vec<PerfProcessRecord> {
-    Vec::new()
-}
-
+#[cfg(any(target_os = "linux", test))]
 fn argv_basename(arg: &str) -> &str {
     Path::new(arg)
         .file_name()
@@ -1759,6 +1760,7 @@ fn argv_basename(arg: &str) -> &str {
         .unwrap_or(arg)
 }
 
+#[cfg(any(target_os = "linux", test))]
 fn argv_contains_sequence(argv: &[String], sequence: &[&str]) -> bool {
     !sequence.is_empty()
         && argv.windows(sequence.len()).any(|window| {
@@ -1769,6 +1771,7 @@ fn argv_contains_sequence(argv: &[String], sequence: &[&str]) -> bool {
         })
 }
 
+#[cfg(any(target_os = "linux", test))]
 fn process_command_is(process: &PerfProcessRecord, command: &str) -> bool {
     process.command_name == command
         || process
@@ -1777,31 +1780,38 @@ fn process_command_is(process: &PerfProcessRecord, command: &str) -> bool {
             .is_some_and(|arg| argv_basename(arg) == command)
 }
 
+#[cfg(any(target_os = "linux", test))]
 fn process_has_arg(process: &PerfProcessRecord, arg: &str) -> bool {
     process.argv.iter().any(|candidate| candidate == arg)
 }
 
+#[cfg(any(target_os = "linux", test))]
 fn is_zellij_server_process(process: &PerfProcessRecord) -> bool {
     process_command_is(process, "zellij") && process_has_arg(process, "--server")
 }
 
+#[cfg(any(target_os = "linux", test))]
 fn is_zellij_client_process(process: &PerfProcessRecord) -> bool {
     process_command_is(process, "zellij") && !is_zellij_server_process(process)
 }
 
+#[cfg(any(target_os = "linux", test))]
 fn is_mars_terminal_process(process: &PerfProcessRecord) -> bool {
     process_command_is(process, "rio") && process_has_arg(process, "--yazelix")
 }
 
+#[cfg(any(target_os = "linux", test))]
 fn is_bar_widget_process(process: &PerfProcessRecord, widget: &str) -> bool {
     process_command_is(process, "yazelix_zellij_bar_widget") && process_has_arg(process, widget)
 }
 
+#[cfg(any(target_os = "linux", test))]
 fn is_status_refresh_process(process: &PerfProcessRecord, command: &str) -> bool {
     process_command_is(process, "yzx_control")
         && argv_contains_sequence(&process.argv, &["zellij", command])
 }
 
+#[cfg(any(target_os = "linux", test))]
 fn is_title_refresh_process(process: &PerfProcessRecord) -> bool {
     process_command_is(process, "yzx_control")
         && argv_contains_sequence(
@@ -1810,12 +1820,14 @@ fn is_title_refresh_process(process: &PerfProcessRecord) -> bool {
         )
 }
 
+#[cfg(any(target_os = "linux", test))]
 fn is_title_refresh_pipe_process(process: &PerfProcessRecord) -> bool {
     process_command_is(process, "zellij")
         && argv_contains_sequence(&process.argv, &["action", "pipe"])
         && process_has_arg(process, "reconcile_terminal_title_activity_snapshot")
 }
 
+#[cfg(any(target_os = "linux", test))]
 fn matching_pids(
     processes: &[PerfProcessRecord],
     predicate: impl Fn(&PerfProcessRecord) -> bool,
@@ -1827,12 +1839,14 @@ fn matching_pids(
         .collect()
 }
 
+#[cfg(any(target_os = "linux", test))]
 fn zellij_pids(processes: &[PerfProcessRecord]) -> Vec<String> {
     matching_pids(processes, is_zellij_server_process)
         .into_iter()
         .collect()
 }
 
+#[cfg(any(target_os = "linux", test))]
 fn add_helper_churn_sample(
     seen: &mut BTreeMap<&'static str, BTreeSet<String>>,
     processes: &[PerfProcessRecord],
@@ -1880,6 +1894,7 @@ fn add_helper_churn_sample(
     }
 }
 
+#[cfg(any(target_os = "linux", test))]
 fn empty_helper_churn() -> BTreeMap<&'static str, BTreeSet<String>> {
     [
         "status_widget_cpu",
@@ -1904,6 +1919,7 @@ struct PerfCpuPoint {
     rss_bytes: u64,
 }
 
+#[cfg(any(target_os = "linux", test))]
 #[derive(Debug, Clone)]
 struct PerfCpuSummary {
     category: &'static str,
@@ -1929,6 +1945,7 @@ struct PerfPressureSample {
     zellij_thread_cpu: Vec<PerfCpuSummary>,
 }
 
+#[cfg(any(target_os = "linux", test))]
 fn cpu_percent_from_tick_delta(delta_ticks: u64, ticks_per_second: u64, seconds: u64) -> f64 {
     if ticks_per_second == 0 || seconds == 0 {
         return 0.0;
@@ -2039,6 +2056,7 @@ fn zellij_thread_cpu_points(zellij_pids: &[String]) -> BTreeMap<String, PerfThre
     points
 }
 
+#[cfg(target_os = "linux")]
 #[derive(Default)]
 struct PerfCpuAccumulator {
     cpu_percent: f64,
@@ -2092,6 +2110,7 @@ fn summarize_zellij_thread_cpu(
     summarize_accumulators(by_group)
 }
 
+#[cfg(target_os = "linux")]
 fn summarize_accumulators(
     by_category: BTreeMap<&'static str, PerfCpuAccumulator>,
 ) -> Vec<PerfCpuSummary> {
@@ -2147,6 +2166,7 @@ fn sample_perf_pressure(
     }
 }
 
+#[cfg(target_os = "linux")]
 fn format_pid_list(pids: &[String]) -> String {
     if pids.is_empty() {
         "<none>".to_string()
@@ -2155,10 +2175,12 @@ fn format_pid_list(pids: &[String]) -> String {
     }
 }
 
+#[cfg(target_os = "linux")]
 fn format_mib(bytes: u64) -> String {
     format!("{:.1}", bytes as f64 / 1_048_576.0)
 }
 
+#[cfg(target_os = "linux")]
 fn print_cpu_summary_section(title: &str, summaries: &[PerfCpuSummary], include_rss: bool) {
     println!("{title}:");
     if summaries.is_empty() {
@@ -2189,33 +2211,14 @@ fn print_cpu_summary_section(title: &str, summaries: &[PerfCpuSummary], include_
     }
 }
 
+#[cfg(target_os = "linux")]
 fn run_dev_perf(args: &[String]) -> Result<i32, CoreError> {
     let Some(parsed) = parse_dev_perf_args(args)? else {
         print_dev_perf_help();
         return Ok(0);
     };
 
-    println!("Yazelix perf snapshot");
-    println!("sample_seconds: {}", parsed.seconds);
-    println!(
-        "in_yazelix_shell: {}",
-        env::var("IN_YAZELIX_SHELL").unwrap_or_else(|_| "false".into())
-    );
-    println!(
-        "zellij_session: {}",
-        env::var("ZELLIJ_SESSION_NAME").unwrap_or_else(|_| "<unset>".into())
-    );
-    println!(
-        "runtime_dir: {}",
-        env::var("YAZELIX_RUNTIME_DIR").unwrap_or_else(|_| "<unset>".into())
-    );
-    println!("current_pid: {}", std::process::id());
-    println!();
-
-    if !cfg!(target_os = "linux") {
-        println!("process_sampling: unsupported on this platform");
-        return Ok(0);
-    }
+    print_dev_perf_snapshot_header(parsed.seconds);
 
     let processes = live_perf_processes();
     let zellij_pids = zellij_pids(&processes);
@@ -2231,6 +2234,37 @@ fn run_dev_perf(args: &[String]) -> Result<i32, CoreError> {
         println!("  {name}: {} unique pid(s)", pids.len());
     }
     Ok(0)
+}
+
+#[cfg(not(target_os = "linux"))]
+fn run_dev_perf(args: &[String]) -> Result<i32, CoreError> {
+    let Some(parsed) = parse_dev_perf_args(args)? else {
+        print_dev_perf_help();
+        return Ok(0);
+    };
+
+    print_dev_perf_snapshot_header(parsed.seconds);
+    println!("process_sampling: unsupported on this platform");
+    Ok(0)
+}
+
+fn print_dev_perf_snapshot_header(seconds: u64) {
+    println!("Yazelix perf snapshot");
+    println!("sample_seconds: {seconds}");
+    println!(
+        "in_yazelix_shell: {}",
+        env::var("IN_YAZELIX_SHELL").unwrap_or_else(|_| "false".into())
+    );
+    println!(
+        "zellij_session: {}",
+        env::var("ZELLIJ_SESSION_NAME").unwrap_or_else(|_| "<unset>".into())
+    );
+    println!(
+        "runtime_dir: {}",
+        env::var("YAZELIX_RUNTIME_DIR").unwrap_or_else(|_| "<unset>".into())
+    );
+    println!("current_pid: {}", std::process::id());
+    println!();
 }
 
 fn run_yzx_dev(args: &[String]) -> Result<i32, CoreError> {
