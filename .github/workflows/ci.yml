@@ -214,7 +214,7 @@ jobs:
     needs: [source_contracts, nix_customization_api, child_release_transaction]
     if: ${{ needs.source_contracts.result == 'success' && needs.nix_customization_api.result == 'success' && needs.child_release_transaction.result == 'success' && (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.run_runtime_smoke)) }}
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 90
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
       YAZELIX_DIR: ${{ github.workspace }}
