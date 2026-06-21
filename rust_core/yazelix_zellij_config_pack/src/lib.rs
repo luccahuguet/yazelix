@@ -64,6 +64,7 @@ const ZELLIJ_THEMES: &[&str] = &[
     "tokyo-night-light",
 ];
 const WIDGET_TRAY_ALLOWED: &[&str] = &[
+    "session",
     "editor",
     "shell",
     "term",
@@ -250,6 +251,7 @@ fn default_opencode_go_usage_periods() -> Vec<String> {
 
 fn default_widget_tray() -> Vec<String> {
     vec![
+        "session".into(),
         "editor".into(),
         "shell".into(),
         "term".into(),
@@ -2362,6 +2364,16 @@ keybinds {
             compute_zellij_render_plan(&req).unwrap_err().code(),
             "invalid_widget_tray_entry"
         );
+    }
+
+    // Regression: session is a first-class status-bar widget token, not a hardcoded renderer-only segment.
+    #[test]
+    fn accepts_session_tray_widget() {
+        let mut req = sample_plan_request();
+        req.zellij_widget_tray = Some(vec!["session".into(), "editor".into()]);
+        let plan = compute_zellij_render_plan(&req).unwrap();
+
+        assert_eq!(plan.widget_tray, vec!["session", "editor"]);
     }
 
     // Defends: usage widget periods are normalized and deduplicated before the status-bar renderer sees them.
