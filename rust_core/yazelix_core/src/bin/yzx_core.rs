@@ -9,13 +9,14 @@ use yazelix_core::control_plane::{
 use yazelix_core::terminal_materialization::MarsProfile;
 use yazelix_core::terminal_variant::active_terminal_from_runtime_dir;
 use yazelix_core::{
-    CoreError, ErrorClass, HelixMaterializationRequest,
+    CoreError, ErrorClass, HelixMaterializationRequest, RuntimeEnvComputeRequest,
     RuntimeMaterializationRepairEvaluateRequest, RuntimeMaterializationRepairRunData,
-    RuntimeRepairDirective, TerminalMaterializationRequest, error_envelope,
+    RuntimeRepairDirective, TerminalMaterializationRequest, compute_runtime_env, error_envelope,
     generate_helix_materialization, generate_terminal_materialization,
     repair_runtime_materialization, success_envelope,
 };
 
+const RUNTIME_ENV_COMPUTE_COMMAND: &str = "runtime-env.compute";
 const RUNTIME_MATERIALIZATION_REPAIR_COMMAND: &str = "runtime-materialization.repair";
 const HELIX_MATERIALIZATION_GENERATE_COMMAND: &str = "helix-materialization.generate";
 const TERMINAL_MATERIALIZATION_GENERATE_COMMAND: &str = "terminal-materialization.generate";
@@ -104,6 +105,7 @@ fn main() {
 
 enum HelperCommand {
     HelixMaterializationGenerate,
+    RuntimeEnvCompute,
     TerminalMaterializationGenerate,
     RuntimeMaterializationRepair,
     Unsupported(String),
@@ -147,6 +149,7 @@ fn take_helper_command_name(parser: &mut lexopt::Parser) -> Result<String, Box<C
 
 fn classify_helper_command(command_name: String) -> HelperCommand {
     match command_name.as_str() {
+        RUNTIME_ENV_COMPUTE_COMMAND => HelperCommand::RuntimeEnvCompute,
         RUNTIME_MATERIALIZATION_REPAIR_COMMAND => HelperCommand::RuntimeMaterializationRepair,
         HELIX_MATERIALIZATION_GENERATE_COMMAND => HelperCommand::HelixMaterializationGenerate,
         TERMINAL_MATERIALIZATION_GENERATE_COMMAND => HelperCommand::TerminalMaterializationGenerate,
@@ -166,6 +169,8 @@ fn dispatch_helper_command(
                 CommandError::new(TERMINAL_MATERIALIZATION_GENERATE_COMMAND, error)
             })
         }
+        HelperCommand::RuntimeEnvCompute => run_runtime_env_compute(parser)
+            .map_err(|error| CommandError::new(RUNTIME_ENV_COMPUTE_COMMAND, error)),
         HelperCommand::RuntimeMaterializationRepair => run_runtime_materialization_repair(
             parser,
             RUNTIME_MATERIALIZATION_REPAIR_COMMAND.to_string(),
@@ -219,6 +224,28 @@ fn run_terminal_materialization_generate(parser: lexopt::Parser) -> Result<(), C
         terminal_materialization_request_from_args(take_terminal_materialization_args(parser)?)?;
     let data = generate_terminal_materialization(&request)?;
     write_success_envelope(TERMINAL_MATERIALIZATION_GENERATE_COMMAND, data)
+}
+
+fn run_runtime_env_compute(mut parser: lexopt::Parser) -> Result<(), CoreError> {
+    let mut request_json: Option<String> = None;
+
+    while let Some(arg) = parser
+        .next()
+        .map_err(|error| CoreError::usage(error.to_string()))?
+    {
+        match arg {
+            Long("request-json") => request_json = Some(parser_string_value(&mut parser)?),
+            _ => return Err(CoreError::usage(format!("Unexpected argument: {arg:?}"))),
+        }
+    }
+
+    let request = request_json
+        .ok_or_else(|| CoreError::usage("Missing --request-json payload for runtime-env.compute."))
+        .and_then(|raw| {
+            deserialize_json_request::<RuntimeEnvComputeRequest>(&raw, "runtime-env.compute")
+        })?;
+    let data = compute_runtime_env(&request)?;
+    write_success_envelope(RUNTIME_ENV_COMPUTE_COMMAND, data)
 }
 
 fn take_terminal_materialization_args(
@@ -597,6 +624,7 @@ mod tests {
         match command {
             HelperCommand::TerminalMaterializationGenerate => {}
             HelperCommand::HelixMaterializationGenerate
+            | HelperCommand::RuntimeEnvCompute
             | HelperCommand::RuntimeMaterializationRepair
             | HelperCommand::Unsupported(_) => panic!("expected terminal helper command"),
         }
@@ -608,6 +636,7 @@ mod tests {
         match classify_helper_command(RUNTIME_MATERIALIZATION_REPAIR_COMMAND.to_string()) {
             HelperCommand::RuntimeMaterializationRepair => {}
             HelperCommand::HelixMaterializationGenerate
+            | HelperCommand::RuntimeEnvCompute
             | HelperCommand::TerminalMaterializationGenerate
             | HelperCommand::Unsupported(_) => {
                 panic!("expected runtime repair special dispatch")
@@ -631,6 +660,30 @@ mod tests {
         assert_eq!(
             error.error.message(),
             "Unsupported helper command: missing.helper"
+        );
+    }
+
+    // Defends: the maintainer shell's private runtime-env bridge remains a supported JSON helper command.
+    #[test]
+    fn classifies_runtime_env_compute_helper() {
+        match classify_helper_command(RUNTIME_ENV_COMPUTE_COMMAND.to_string()) {
+            HelperCommand::RuntimeEnvCompute => {}
+            HelperCommand::HelixMaterializationGenerate
+            | HelperCommand::RuntimeMaterializationRepair
+            | HelperCommand::TerminalMaterializationGenerate
+            | HelperCommand::Unsupported(_) => panic!("expected runtime-env helper command"),
+        }
+    }
+
+    // Defends: runtime-env.compute fails fast before emitting malformed shellHook data.
+    #[test]
+    fn runtime_env_compute_requires_request_json() {
+        let error = run_runtime_env_compute(lexopt::Parser::from_args(Vec::<&str>::new()))
+            .expect_err("missing request JSON should fail");
+
+        assert_eq!(
+            error.message(),
+            "Missing --request-json payload for runtime-env.compute."
         );
     }
 

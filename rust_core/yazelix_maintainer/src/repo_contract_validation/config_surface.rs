@@ -18,6 +18,7 @@ use yazelix_core::config_state::{
 };
 use yazelix_core::settings_contract::{
     SETTINGS_CONTRACT_APPLIED_CHANGE_IDS, SETTINGS_CONTRACT_CURRENT_VERSION, SETTINGS_CONTRACT_ID,
+    SETTINGS_CONTRACT_STATE_PATH, reconcile_settings_contract_text,
 };
 use yazelix_core::settings_surface::{
     parse_jsonc_value, read_config_table, read_settings_jsonc_value, render_settings_jsonc_value,
@@ -464,10 +465,21 @@ fn settings_contract_applied_change_ids() -> Vec<String> {
 
 fn validate_home_manager_settings_contract_state(repo_root: &Path) -> Result<Vec<String>, String> {
     let raw = load_home_manager_managed_settings_jsonc(repo_root)?;
-    validate_home_manager_settings_contract_state_content(
-        Path::new("home_manager generated settings.jsonc"),
-        &raw,
-    )
+    let label = Path::new("home_manager generated settings.jsonc");
+    let mut errors = validate_home_manager_settings_contract_state_content(label, &raw)?;
+    match reconcile_settings_contract_text(label, &raw, &repo_root.join(MAIN_TEMPLATE_RELATIVE_PATH))
+    {
+        Ok(outcome) if outcome.changed() => errors.push(format!(
+            "Home Manager-generated settings.jsonc must be idempotent under ratconfig contract reconciliation at {SETTINGS_CONTRACT_STATE_PATH}; pending applied changes: [{}]",
+            outcome.applied_change_ids.join(", ")
+        )),
+        Ok(_) => {}
+        Err(error) => errors.push(format!(
+            "Home Manager-generated settings.jsonc must reconcile under the current ratconfig contract: {}",
+            error.message()
+        )),
+    }
+    Ok(errors)
 }
 
 fn validate_home_manager_settings_contract_state_content(

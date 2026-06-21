@@ -5,6 +5,7 @@ use crate::bridge::{CoreError, ErrorClass};
 use crate::settings_surface::read_settings_jsonc_value;
 use ratconfig::contract::{
     ConfigContract, ContractChange, ContractError, join_jsonc_contract_text_from_version,
+    read_jsonc_contract_state_text,
 };
 use ratconfig::migration::{MigrationError, MigrationOp};
 use serde_json::{Value as JsonValue, json};
@@ -73,6 +74,8 @@ pub fn reconcile_settings_contract_text(
 ) -> Result<SettingsContractReconcileOutcome, CoreError> {
     let defaults = read_settings_jsonc_value(default_main_config)?;
     let contract = settings_contract_for_defaults(&defaults);
+    let previous_state = read_jsonc_contract_state_text(raw, SETTINGS_CONTRACT_STATE_PATH)
+        .map_err(|error| contract_error_to_core_error(source_path, error))?;
     let outcome = join_jsonc_contract_text_from_version(
         raw,
         &contract,
@@ -88,7 +91,10 @@ pub fn reconcile_settings_contract_text(
             .iter()
             .map(|change| change.id.clone())
             .collect(),
-        state_changed: outcome.state_mutation != ratconfig::patch::PatchMutation::Unchanged,
+        state_changed: match previous_state {
+            Some(previous) => previous != outcome.state,
+            None => outcome.state_mutation != ratconfig::patch::PatchMutation::Unchanged,
+        },
     })
 }
 
@@ -817,5 +823,27 @@ mod tests {
         .unwrap();
 
         assert_eq!(migrated, None);
+    }
+
+    // Regression: Home Manager-generated compact JSON can already carry the current contract state without needing a write-only formatting repair.
+    #[test]
+    fn current_contract_state_is_idempotent_even_when_compact() {
+        let defaults_path =
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("../../settings_default.jsonc");
+        let applied_change_ids = serde_json::to_string(&SETTINGS_CONTRACT_APPLIED_CHANGE_IDS)
+            .expect("serialize applied change ids");
+        let raw = format!(
+            r#"{{
+  "ratconfig": {{"contract":{{"applied_change_ids":{applied_change_ids},"contract_id":"{SETTINGS_CONTRACT_ID}","schema_version":1,"version":{SETTINGS_CONTRACT_CURRENT_VERSION}}}}}
+}}
+"#
+        );
+
+        let outcome =
+            reconcile_settings_contract_text(Path::new("settings.jsonc"), &raw, &defaults_path)
+                .expect("reconcile settings contract");
+
+        assert!(!outcome.changed());
+        assert!(outcome.applied_change_ids.is_empty());
     }
 }
