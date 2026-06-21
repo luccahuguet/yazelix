@@ -699,7 +699,7 @@ mod tests {
         }
     }
 
-    // Regression: Rio's current emoji fallback can render the welcome status icons as odd text glyphs, so Rio gets plain startup copy.
+    // Regression: vanilla Rio keeps plain startup copy until its emoji fallback renders reliably.
     #[test]
     fn rio_welcome_message_uses_plain_terminal_stable_copy() {
         let runtime_dir = tempfile::tempdir().unwrap();
@@ -714,13 +714,15 @@ mod tests {
         assert!(message.contains("Welcome: Yazelix v-test"));
         assert!(message.contains("Flake: last updated unknown"));
         assert!(message.contains("Terminal: preferred host terminal: rio"));
+        assert!(!message.contains("🎉 Welcome to Yazelix v-test!"));
+        assert!(!message.contains("🖥️  Preferred host terminal: rio"));
     }
 
-    // Defends: capable terminals keep the richer emoji welcome copy instead of inheriting Rio's fallback.
+    // Defends: Mars and capable terminals keep the richer emoji welcome copy instead of inheriting Rio's fallback.
     #[test]
     fn non_rio_welcome_messages_keep_rich_copy() {
         let runtime_dir = tempfile::tempdir().unwrap();
-        for terminal in ["ghostty", "wezterm", "mars"] {
+        for terminal in ["mars", "ghostty", "wezterm"] {
             let message = build_welcome_message(
                 runtime_dir.path(),
                 "v-test",
@@ -730,7 +732,17 @@ mod tests {
 
             assert!(message.contains("🎉 Welcome to Yazelix v-test!"));
             assert!(message.contains("🕒 Flake last updated: unknown"));
+            assert!(
+                message
+                    .contains("✨ Now with Nix auto-setup, lazygit, Starship, and markdown-oxide")
+            );
+            assert!(message.contains("🆕 Creating new Zellij session"));
             assert!(message.contains(&format!("🖥️  Preferred host terminal: {terminal}")));
+            assert!(message.contains("⚠️  First run:"));
+            assert!(message.contains("💡 Quick tips:"));
+            assert!(!message.contains("Welcome: Yazelix v-test"));
+            assert!(!message.contains("Flake: last updated unknown"));
+            assert!(!message.contains("Terminal: preferred host terminal:"));
         }
     }
 
