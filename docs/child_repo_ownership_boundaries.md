@@ -24,7 +24,7 @@ The pane orchestrator is the highest-risk boundary because it owns real workspac
 - `docs/contracts/yazelix_zellij_pane_orchestrator_extraction.md`
 - `docs/contracts/zellij_config_pack_boundary.md`
 - `docs/contracts/yazi_integration_boundary.md`
-- Adjacent checkouts for `yazelix-screen`, `yazelix-cursors`, `mars`, `ratconfig`, `yazelix-zellij-bar`, `yazelix-zellij-pane-orchestrator`, `yazelix-zellij-popup`, and `yazelix-yazi-assets`
+- Adjacent checkouts for `yazelix-screen`, `yazelix-cursors`, `ratconfig`, `yazelix-zellij-bar`, `yazelix-zellij-pane-orchestrator`, `yazelix-zellij-popup`, and `yazelix-yazi-assets`
 
 ## Scoring
 
@@ -43,7 +43,6 @@ Scores use `1..5`, where `5` is the healthier result for a separate child reposi
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
 | `yazelix-screen` | 4 | 5 | 4 | 4 | 3 | 5 | Keep separate |
 | `yazelix-cursors` | 5 | 4 | 4 | 4 | 3 | 5 | Keep separate |
-| `mars` | 4 | 3 | 4 | 4 | 2 | 4 | Keep separate while experimental |
 | `ratconfig` | 4 | 4 | 3 | 5 | 3 | 5 | Keep separate with Yazelix adapter discipline |
 | `yazelix-zellij-bar` | 4 | 3 | 4 | 4 | 3 | 4 | Keep separate with adapter discipline |
 | `yazelix-zellij-pane-orchestrator` | 3 | 2 | 5 | 3 | 2 | 4 | Keep separate, revise boundary discipline |
@@ -67,7 +66,7 @@ Boundary rule: animation engines, automata, generation logic, random animation-f
 
 Recommendation: keep separate.
 
-This is one of the strongest standalone boundaries. It owns a real cursor workflow through `yzc init`, `yzc generate ghostty`, generated shader assets, standalone JSONC settings, and examples. Yazelix consumes the same registry and shader logic for config UI, settings rendering, Ghostty materialization, Mars Terminal shader assets, and `yzx cursors`.
+This is one of the strongest standalone boundaries. It owns a real cursor workflow through `yzc init`, `yzc generate ghostty`, generated shader assets, standalone JSONC settings, and examples. Yazelix consumes the same registry and shader logic for config UI, settings rendering, Ghostty materialization, and `yzx cursors`.
 
 The main risks are dual consumption through flake and Cargo. Those are manageable because the ownership line is clear: cursor schemes, shader generation, standalone cursor config, and `yzc` belong to the child; Yazelix owns per-window randomization, integrated terminal materialization, and config UI composition.
 

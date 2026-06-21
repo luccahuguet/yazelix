@@ -136,8 +136,8 @@ Out of scope:
 - Type: behavior
 - Status: live
 - Owner: Rust startup message construction in `launch_commands/enter.rs`
-- Statement: The startup status copy is terminal-aware: Ghostty, WezTerm, and
-  mars keep rich emoji labels, while Rio uses ASCII labels for the same
+- Statement: The startup status copy is terminal-aware: terminals with reliable
+  emoji fallback keep rich emoji labels, while Rio uses ASCII labels for the same
   facts so the welcome summary does not depend on Rio's current emoji fallback
   quality
 - Verification: automated Rust `launch_commands::enter` tests

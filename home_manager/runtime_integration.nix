@@ -34,13 +34,7 @@ let
   extraTerminalLaunchers = lib.unique cfg.extra_terminal_launchers;
   marsDesktopPackage =
     if cfg.mars_package != null then cfg.mars_package else marsTerminalPackage;
-  marsDesktopEntriesSupported = isLinux && marsDesktopPackage != null;
-  implicitMarsTerminalLauncher =
-    marsDesktopEntriesSupported
-    && cfg.terminal != marsTerminalVariant
-    && !(builtins.elem marsTerminalVariant extraTerminalLaunchers);
-  desktopTerminalLaunchers =
-    extraTerminalLaunchers ++ lib.optional implicitMarsTerminalLauncher marsTerminalVariant;
+  desktopTerminalLaunchers = extraTerminalLaunchers;
   marsConfigured =
     marsActiveFor cfg.terminal || builtins.elem marsTerminalVariant desktopTerminalLaunchers;
   marsProfileActiveFor = terminal: marsActiveFor terminal && cfg.mars_profile != "full";
@@ -175,7 +169,7 @@ let
       value = desktopEntryFor terminal "${yazelixPackageForTerminal terminal}/bin/yzx" true;
     }) desktopTerminalLaunchers
   );
-  marsDesktopPackages = lib.optional marsDesktopEntriesSupported marsDesktopPackage;
+  marsDesktopPackages = [ ];
 
   cursorGeneratorPackage =
     if componentEnabled "cursors" && yazelixCursorsPackage != null then
@@ -229,12 +223,8 @@ let
       message = "programs.yazelix.mars_package cannot be combined with programs.yazelix.package; use the narrow mars_package override or a whole Yazelix package replacement, not both";
     }
     {
-      assertion =
-        cfg.mars_package == null
-        || cfg.terminal == "mars"
-        || builtins.elem "mars" cfg.extra_terminal_launchers
-        || implicitMarsTerminalLauncher;
-      message = "programs.yazelix.mars_package applies only when terminal = \"mars\" or when the Mars desktop launcher is installed";
+      assertion = cfg.mars_package == null;
+      message = "programs.yazelix.mars_package is dormant while Mars is not a shipped Yazelix terminal variant";
     }
   ];
 in

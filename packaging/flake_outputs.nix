@@ -13,7 +13,6 @@
   yazelixCursors,
   yazelixPackage,
   yazelixScreen,
-  marsTerminal,
   yazelixYaziAssets,
   yazelixZellijBar,
   yazelixZellijPaneOrchestrator,
@@ -32,27 +31,7 @@ let
     ];
   terminalPackages = lib.listToAttrs (lib.concatMap terminalPackageEntries terminalMetadata.supported);
   runtime_default = builtins.getAttr (terminalMetadata.runtimeOutput defaultRuntimeVariant) terminalPackages;
-  marsFastRuntimeIdentity = defaultRuntimeIdentity // {
-    package_profile = "mars-fast";
-    mars_terminal_package = "mars-fast";
-  };
-  marsFastTerminalPackage = marsTerminal.packages.${system}.mars-fast;
-  runtime_mars_fast = runtimePackageWith system pkgs "mars" defaultRuntimePackages {
-    name = "yazelix-runtime-mars-fast";
-    runtimeIdentity = marsFastRuntimeIdentity;
-    marsTerminalPackage = marsFastTerminalPackage;
-  };
   yazelix_default = builtins.getAttr (terminalMetadata.packageOutput defaultRuntimeVariant) terminalPackages;
-  mars_fast = mkYazelix system {
-    inherit pkgs;
-    name = "yazelix-mars-fast";
-    runtimeName = "yazelix-runtime-mars-fast";
-    runtimeVariant = "mars";
-    runtimeIdentity = marsFastRuntimeIdentity;
-    extraRuntimePackages = defaultRuntimePackages;
-    skipStableWrapperRedirect = true;
-    marsTerminalPackage = marsFastTerminalPackage;
-  };
   runtime_agent_tools = runtimePackage system pkgs defaultRuntimeVariant defaultRuntimePackages;
   yazelix_agent_tools = yazelixPackage system pkgs defaultRuntimeVariant defaultRuntimePackages;
   yazelix_zellij_bar = yazelixZellijBar.packages.${system}.yazelix_zellij_bar;
@@ -72,7 +51,7 @@ let
   packages =
     {
       br = beads_rust;
-      inherit beads_rust install_check runtime_agent_tools runtime_mars_fast mars_fast;
+      inherit beads_rust install_check runtime_agent_tools;
       inherit yazelix_agent_tools yazelix_cursors yazelix_helix yazelix_screen;
       inherit yazelix_yazi_assets yazelix_zellij_bar yazelix_zellij_config_pack;
       inherit yazelix_zellij_pane_orchestrator yazelix_zellij_popup;
@@ -103,7 +82,6 @@ in
     {
       default = yzxApp "yazelix";
       yazelix = yzxApp "yazelix";
-      mars_fast = yzxApp "mars_fast";
       yazelix_agent_tools = yzxApp "yazelix_agent_tools";
       yazelix_screen = appFor "yazelix_screen" "yzs";
       yzs = appFor "yazelix_screen" "yzs";

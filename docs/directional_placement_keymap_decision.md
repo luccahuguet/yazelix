@@ -167,7 +167,7 @@ semantic config so users with AltGr conflicts can choose local keys.
   compatibility aliases.
 - `yzx keys`, README/docs keybinding surfaces, config UI descriptions, and
   Home Manager defaults should stay aligned with the action registry.
-- Manual terminal testing should still cover Ghostty, mars/Ratty, and WezTerm
+- Manual terminal testing should still cover Ghostty, Ratty, and WezTerm
   with `zellij.support_kitty_keyboard_protocol = true`; test `false` as the
   documented opt-out path.
 - For WezTerm plus kitty-keyboard mode, test with `enable_kitty_keyboard = true`.

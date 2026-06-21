@@ -81,9 +81,10 @@ ${terminalDescriptionBullets}
   mars_profile = mkOption {
     type = types.enum marsProfiles;
     default = "full";
+    visible = false;
     description = ''
-      Mars profile used by generated runtime configs and the Linux desktop
-      entry.
+      Dormant Mars profile setting retained for controlled terminal rebuild
+      work.
 
       - "full": Rio trail cursor defaults without custom shaders
       - "baseline": no cursor effects
@@ -94,13 +95,10 @@ ${terminalDescriptionBullets}
   mars_emoji_font = mkOption {
     type = types.enum marsEmojiFonts;
     default = "noto";
+    visible = false;
     description = ''
-      Declarative Home Manager value for terminal.emoji_style when
-      manage_config is true.
-
-      With the default manage_config = false, ~/.config/yazelix/settings.jsonc
-      remains the semantic settings owner and Home Manager does not export this
-      value as a Mars launcher or session override.
+      Dormant Mars emoji fallback setting retained for controlled terminal
+      rebuild work.
 
       - "noto": current Noto Color Emoji fallback
       - "twitter": Twitter/Twemoji color emoji fallback
@@ -111,14 +109,10 @@ ${terminalDescriptionBullets}
   mars_package = mkOption {
     type = types.nullOr types.package;
     default = null;
+    visible = false;
     description = ''
-      Mars child package override.
-
-      Set this only for mars dogfooding when you want to replace the
-      terminal child package without replacing the whole Yazelix package.
-      The package must expose passthru.marsPackageMetadata. This option
-      applies only when programs.yazelix.terminal is "mars" or
-      extra_terminal_launchers contains "mars".
+      Dormant Mars child package override retained for controlled terminal
+      rebuild work.
     '';
   };
 

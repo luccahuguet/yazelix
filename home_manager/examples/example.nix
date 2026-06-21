@@ -11,7 +11,7 @@
   programs.yazelix = {
     enable = true;
     manage_config = true; # Opt into declarative Home Manager ownership of settings.jsonc for this example
-    terminal = "ghostty"; # Optional: "ghostty", "kitty", "rio", "mars", "wezterm", or Linux-only "foot"/"ratty"
+    terminal = "ghostty"; # Optional: "ghostty", "kitty", "rio", "wezterm", or Linux-only "foot"/"ratty"
     extra_terminal_launchers = [ "wezterm" ]; # Optional: extra Linux desktop entries; do not include the active terminal
 
     # Shell entry
@@ -19,7 +19,6 @@
 
     # Terminal behavior for the selected packaged terminal
     terminal_config_mode = "yazelix"; # Optional: "yazelix" or "user"
-    mars_emoji_font = "noto"; # Optional mars terminal.emoji_style: "noto", "twitter", or "serenityos"
     # Cursor presets and effects live in ~/.config/yazelix_cursors/settings.jsonc
     transparency = "medium"; # Optional: "none".."super_high"
 

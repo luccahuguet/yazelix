@@ -53,10 +53,6 @@
       url = "github:luccahuguet/yazelix-helix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    marsTerminal = {
-      url = "github:luccahuguet/mars";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
     yazelixZellijPaneOrchestrator = {
       url = "github:luccahuguet/yazelix-zellij-pane-orchestrator";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -87,7 +83,6 @@
       yazelixYaziAssets,
       yazelixZellij,
       yazelixHelix,
-      marsTerminal,
       yazelixZellijPaneOrchestrator,
       yazelixZellijPopup,
       zjstatus,
@@ -125,7 +120,6 @@
           yazelix_zellij_bar = inputIdentity yazelixZellijBar;
           yazelix_yazi_assets = inputIdentity yazelixYaziAssets;
           yazelix_helix = inputIdentity yazelixHelix;
-          mars_terminal = inputIdentity marsTerminal;
           yazelix_zellij_pane_orchestrator = inputIdentity yazelixZellijPaneOrchestrator;
           yazelix_zellij_popup = inputIdentity yazelixZellijPopup;
         };
@@ -139,8 +133,7 @@
           kgpPackages.helixPackage pkgs.stdenv.hostPlatform.system;
         _module.args.yazelixCursorsPackage =
           yazelixCursors.packages.${pkgs.stdenv.hostPlatform.system}.yazelix_cursors;
-        _module.args.marsTerminalPackage =
-          marsTerminal.packages.${pkgs.stdenv.hostPlatform.system}.mars;
+        _module.args.marsTerminalPackage = null;
         imports = [ ./home_manager/module.nix ];
       };
       agentUsagePackages = system:
@@ -192,7 +185,7 @@
           rioPackage ? rio.packages.${system}.rio,
           yazelixHelixPackage ? kgpPackages.helixPackage system,
           yazelixCursorsPackage ? yazelixCursors.packages.${system}.yazelix_cursors,
-          marsTerminalPackage ? marsTerminal.packages.${system}.mars,
+          marsTerminalPackage ? null,
           zellijPluginArtifacts ? zellijPluginArtifactsFor system,
           enableZellijKittyPassthrough ? false,
         }:
@@ -224,7 +217,7 @@
           rioPackage ? rio.packages.${system}.rio,
           yazelixHelixPackage ? kgpPackages.helixPackage system,
           yazelixCursorsPackage ? yazelixCursors.packages.${system}.yazelix_cursors,
-          marsTerminalPackage ? marsTerminal.packages.${system}.mars,
+          marsTerminalPackage ? null,
         }:
         import ./yazelix_runtime_package.nix {
           inherit nixgl name rioPackage runtimeIdentity runtimeVariant yazelixHelixPackage yazelixCursorsPackage marsTerminalPackage;
@@ -314,7 +307,7 @@
         import ./packaging/flake_outputs.nix {
           inherit agentUsagePackages beadsRustPackage defaultRuntimeIdentity kgpPackages lib;
           inherit mkYazelix pkgs runtimePackage runtimePackageWith system yazelixPackage;
-          inherit yazelixCursors yazelixScreen marsTerminal yazelixYaziAssets;
+          inherit yazelixCursors yazelixScreen yazelixYaziAssets;
           inherit yazelixZellijBar yazelixZellijPaneOrchestrator;
           inherit yazelixZellijPopup;
           fenixPkgs = fenix.packages.${system};

@@ -5,7 +5,7 @@ Use Yazelix tools (Nushell, zoxide, starship, lazygit, zenith, etc.) directly fr
 - **Optional profile**: add a named Yazelix terminal without replacing your default
 - **Default terminal**: make Yazelix your editor's default integrated terminal
 
-## Quick Method: One-Off Mars Terminal
+## Quick Method: One-Off Yazelix Environment
 
 The simplest approach is the same in every editor:
 
@@ -23,7 +23,7 @@ This is the lowest-friction option and leaves your editor's normal terminal beha
 
 ## VS Code and Cursor
 
-### Optional: Named Mars Terminal Profile
+### Optional: Named Yazelix Terminal Profile
 
 VS Code supports named integrated terminal profiles through `terminal.integrated.profiles.<platform>`. Cursor uses the same `settings.json` model in practice.
 
@@ -123,7 +123,7 @@ Setting `defaultProfile` means every new VS Code or Cursor terminal opens direct
 
 ## Zed
 
-### Optional: Task-Based Mars Terminal
+### Optional: Task-Based Yazelix Terminal
 
 Zed does support terminal shell configuration with:
 

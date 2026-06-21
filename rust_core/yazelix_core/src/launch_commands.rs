@@ -595,55 +595,24 @@ mod tests {
     #[test]
     fn active_terminal_reads_runtime_variant_metadata() {
         let runtime = TempDir::new().unwrap();
-        fs::write(runtime.path().join("runtime_variant"), "mars\n").unwrap();
+        fs::write(runtime.path().join("runtime_variant"), "rio\n").unwrap();
 
         assert_eq!(
             crate::terminal_variant::active_terminal_from_runtime_dir(runtime.path()).unwrap(),
-            "mars"
+            "rio"
         );
     }
 
-    // Defends: Mars Terminal launch is child-wrapper owned, while Yazelix still supplies cwd, title, host mode, and the startup command.
+    // Defends: quarantined Mars runtime metadata is rejected instead of being treated as a shipped packaged terminal.
     #[test]
-    fn mars_launch_command_uses_child_wrapper_without_outer_graphics_wrapper() {
+    fn active_terminal_rejects_quarantined_mars_runtime_variant() {
         let runtime = TempDir::new().unwrap();
-        let startup = runtime
-            .path()
-            .join("shells")
-            .join("posix")
-            .join("start_yazelix.sh");
-        let libexec = runtime.path().join("libexec");
-        fs::create_dir_all(startup.parent().unwrap()).unwrap();
-        fs::create_dir_all(&libexec).unwrap();
-        fs::write(&startup, "#!/bin/sh\n").unwrap();
-        fs::write(libexec.join("nixVulkanMesa"), "#!/bin/sh\n").unwrap();
-        let config_path = runtime.path().join("config.toml");
+        fs::write(runtime.path().join("runtime_variant"), "mars\n").unwrap();
 
-        let argv = build_launch_command_argv(
-            runtime.path(),
-            &crate::runtime_contract::TerminalCandidate {
-                terminal: "mars".to_string(),
-                name: "Mars".to_string(),
-                command: "mars-desktop".to_string(),
-            },
-            &config_path,
-            Path::new("/tmp/project"),
-            Some("session-a"),
-        )
-        .unwrap();
+        let err =
+            crate::terminal_variant::active_terminal_from_runtime_dir(runtime.path()).unwrap_err();
 
-        assert_eq!(argv[0], "mars-desktop");
-        assert_eq!(argv[1], "--title-placeholder");
-        assert_eq!(argv[2], "Yazelix - Mars - session-a");
-        assert!(argv.iter().any(|arg| arg == "--yazelix"));
-        assert_eq!(
-            argv.windows(2)
-                .find(|pair| pair[0] == "--working-dir")
-                .map(|pair| pair[1].as_str()),
-            Some("/tmp/project")
-        );
-        assert_eq!(argv[argv.len() - 2], "-e");
-        assert_eq!(argv[argv.len() - 1], startup.to_string_lossy().as_ref());
+        assert_eq!(err.code(), "unsupported_terminal_variant");
     }
 
     // Defends: desktop launch logs use the terminal executable basename, so mars diagnostics can find them reliably.

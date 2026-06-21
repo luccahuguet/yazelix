@@ -3,9 +3,8 @@
 This page classifies the current Yazelix support surface for terminals,
 editors, shells, platforms, and install owners.
 
-Validated on June 7, 2026 by lucca from the current main-repo contracts,
-package docs, terminal comparison matrix, and the closed Mars Terminal
-release gate `yazelix-5br5o.18`.
+Validated on June 20, 2026 by lucca from the current main-repo contracts,
+package docs, and terminal comparison matrix.
 
 ## Support Levels
 
@@ -22,7 +21,6 @@ release gate `yazelix-5br5o.18`.
 | Terminal | Linux launch | macOS launch | Cursor trails and shaders | Yazi image previews through Zellij | Managed editor behavior | Zellij web sharing | Install-owner behavior |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | Ghostty | `supported`, default packaged runtime | `supported` launch floor through bundled `ghostty-bin`; automatic Ghostty shell integration is not guaranteed | `supported` for Yazelix cursor trails and Ghostty-compatible shaders | `supported` through the Yazelix-pinned Zellij Kitty graphics passthrough fork plus scoped managed-Yazi launch env | `supported`; terminal choice does not weaken managed Helix/Neovim pane routing | `best-effort`; Zellij owns web sharing behavior | `supported` for profile and Home Manager installs |
-| Mars Terminal (`mars`) | `experimental` first-party packaged runtime | `best-effort`; no macOS parity claim beyond package availability | `experimental`; Rio trail cursor defaults, `baseline` profile without effects, and `shaders` profile with generated Yazelix cursor shaders | `experimental`; Kitty graphics and stack fixes exist, but visual/font/renderer polish remains active dogfooding | `supported` at the Yazelix workspace layer; terminal rendering/input gaps remain terminal-owned risks | `best-effort`; Zellij owns web sharing behavior | `supported` for selected package/Home Manager runtime; `mars_package` override is maintainer dogfooding only |
 | Rio | `stable alternate` packaged upstream runtime | `best-effort` packaged alternate | `supported` for Rio native trail cursor in generated config; no Yazelix cursor shader ABI | `best-effort` through the Yazelix Zellij Kitty graphics bridge | `supported` at the Yazelix workspace layer | `best-effort`; Zellij owns web sharing behavior | `supported` for selected package/Home Manager runtime |
 | WezTerm | `stable alternate` packaged runtime | `best-effort` packaged alternate | `unsupported` for Yazelix cursor shaders | `best-effort`; broad terminal image support, but not the default preview target | `supported` at the Yazelix workspace layer | `best-effort`; Zellij owns web sharing behavior | `supported` for selected package/Home Manager runtime |
 | Kitty | `stable alternate` packaged runtime or host `PATH` terminal | `best-effort` packaged or host `PATH` terminal | `partial`; Kitty has cursor effects, but not the Yazelix Ghostty-compatible shader ABI | `best-effort`; Kitty is the protocol reference and Yazelix has generated config support | `supported` at the Yazelix workspace layer | `best-effort`; Zellij owns web sharing behavior | `supported` for selected package/Home Manager runtime; host `PATH` Kitty is user-owned |
@@ -55,7 +53,7 @@ release gate `yazelix-5br5o.18`.
 
 | Platform | Support level | Terminals | Desktop/app launcher notes |
 | --- | --- | --- | --- |
-| Linux | `supported` | Ghostty default; mars, Rio, WezTerm, Kitty, Foot, and Ratty variants | Home Manager Linux desktop entries and `extra_terminal_launchers` are supported |
+| Linux | `supported` | Ghostty default; Rio, WezTerm, Kitty, Foot, and Ratty variants | Home Manager Linux desktop entries and `extra_terminal_launchers` are supported |
 | macOS | `supported floor` for package install, `yzx --version-short`, `yzx doctor`, and Ghostty `yzx launch`; other paths are `best-effort` | Ghostty is the intended first-party terminal; WezTerm and Kitty are best-effort alternates; Foot and Ratty are unsupported | `yzx desktop macos_preview install` is experimental, unsigned, unnotarized, and distinct from a supported Dock/Launchpad app |
 | Windows | `unsupported` | none | WSL/native Windows support is separate future work |
 
@@ -63,7 +61,7 @@ release gate `yazelix-5br5o.18`.
 
 | Owner | Support level | Terminal selection | Update behavior |
 | --- | --- | --- | --- |
-| Nix profile package | `supported` | Choose one flake output such as `#yazelix`, `#yazelix_ghostty`, `#mars`, `#yazelix_rio`, `#yazelix_wezterm`, `#yazelix_kitty`, `#yazelix_foot`, or `#yazelix_ratty` | `yzx update upstream` owns default profile updates |
+| Nix profile package | `supported` | Choose one flake output such as `#yazelix`, `#yazelix_ghostty`, `#yazelix_rio`, `#yazelix_wezterm`, `#yazelix_kitty`, `#yazelix_foot`, or `#yazelix_ratty` | `yzx update upstream` owns default profile updates |
 | Home Manager | `supported` | `programs.yazelix.terminal` selects one active packaged runtime; `extra_terminal_launchers` adds Linux desktop launchers and `yzx launch --term` targets without changing active runtime identity | `yzx update home_manager` prints the Home Manager update path |
 | Manual or host-only launch | `best-effort` | Host `PATH` terminal choices are user-owned unless selected through a package/Home Manager variant | Install into a profile or enable Home Manager before relying on Yazelix update ownership |
 

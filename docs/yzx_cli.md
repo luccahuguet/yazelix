@@ -42,9 +42,9 @@ Runtime diagnostics
 Capture a bounded lag snapshot for Zellij/plugin helper churn
 - Default: sample for 12 seconds
 - `--seconds N`: sample for 1 to 60 seconds
-- On Linux, prints the current Yazelix session env, matching Zellij PIDs, compact process CPU totals for Mars/Zellij/Codex/Yazelix helpers, compact Zellij thread-group CPU totals, and unique helper-process counts for known expensive status/title-refresh paths
+- On Linux, prints the current Yazelix session env, matching Zellij PIDs, compact process CPU totals for terminal/Zellij/Codex/Yazelix helpers, compact Zellij thread-group CPU totals, and unique helper-process counts for known expensive status/title-refresh paths
 - On unsupported platforms, prints an explicit unsupported-platform line instead of failing silently
-- This is a snapshot diagnostic, not an analytics system: it does not run a daemon, store history, build dashboards, or replace deeper tools such as `perf`, `pidstat`, `bpftrace`, or Mars frame logs
+- This is a snapshot diagnostic, not an analytics system: it does not run a daemon, store history, build dashboards, or replace deeper tools such as `perf`, `pidstat`, `bpftrace`, or terminal frame logs
 
 ### `yzx dev profile [--cold] [--desktop] [--launch] [--clear-cache]`
 Profile launch sequence and identify performance bottlenecks
@@ -63,7 +63,7 @@ Profile launch sequence and identify performance bottlenecks
 ### `yzx launch [-t TERMINAL] [--path DIR] [--home] [--config FILE] [--with KEY=VALUE] [--verbose]`
 Launch Yazelix with directory and mode options
 - Default: Launch new terminal in current directory
-- `-t, --term, --terminal TERMINAL`: Launch an installed packaged terminal variant such as `ghostty` or `mars`
+- `-t, --term, --terminal TERMINAL`: Launch an installed packaged terminal variant such as `ghostty` or `wezterm`
 - `--path DIR`: Start in specific directory
 - `--home`: Start in home directory
 - `--config FILE`: Use an alternate complete `settings.jsonc` for this window

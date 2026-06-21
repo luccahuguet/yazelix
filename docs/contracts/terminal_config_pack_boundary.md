@@ -4,7 +4,7 @@
 
 Terminal config rendering is separate from terminal-support metadata. Main
 Yazelix currently owns deterministic terminal config materialization for
-Ghostty, WezTerm, Rio, Foot, Ratty, and Mars. A future child config pack is
+Ghostty, WezTerm, Rio, Foot, and Ratty. A future child config pack is
 allowed only when it makes one of those renderers a pure request/output
 function and deletes the matching main branch.
 
@@ -67,11 +67,11 @@ The renderer must not read:
 
 The first implementation slice should move one terminal family only. It should
 prefer a renderer with small deterministic output, such as WezTerm, Foot, or
-Rio, before moving Mars or Ghostty.
+Rio, before moving Ghostty.
 
-Mars and Ghostty are larger because their current materialization interacts
-with packaged child profiles, cursor shaders, graphics wrappers, and runtime
-paths. Move them only after the request/output shape has already proved itself.
+Ghostty is larger because its current materialization interacts with cursor
+shader paths and runtime paths. Move it only after the request/output shape has
+already proved itself.
 
 ## Deletion Bar
 

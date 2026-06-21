@@ -78,7 +78,7 @@ errors, and the manifest consumed by the packaged runtime.
 Splitting it today would mostly separate dependent halves of the same manifest
 contract:
 
-- terminal package selection feeds the `terminal` tool entry and mars
+- terminal package selection feeds the `terminal` tool entry and terminal
   package identity fields
 - source-mode validation depends on the full tool metadata map
 - bundled package lists, exported commands, and `manifestJson` are projections

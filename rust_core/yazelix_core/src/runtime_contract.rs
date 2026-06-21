@@ -982,7 +982,7 @@ mod tests {
                 .details
                 .as_deref()
                 .unwrap_or_default()
-                .contains("Supported terminals: ghostty, mars, rio, wezterm, ratty, kitty, foot")
+                .contains("Supported terminals: ghostty, rio, wezterm, ratty, kitty, foot")
         );
     }
 
@@ -1072,34 +1072,25 @@ mod tests {
         );
     }
 
-    // Defends: mars is a config id whose executable command is the child-owned Mars desktop wrapper.
+    // Defends: quarantined Mars is not accepted as a public packaged launch terminal.
     #[test]
-    fn launch_preflight_maps_mars_to_child_wrapper_command() {
-        let temp = tempdir().unwrap();
-        let work = temp.path().join("work");
-        fs::create_dir_all(&work).unwrap();
-        let host_bin = temp.path().join("host-bin");
-        fs::create_dir_all(&host_bin).unwrap();
-        write_executable(&host_bin.join("mars-desktop"));
-
-        let data = evaluate_startup_launch_preflight(&StartupLaunchPreflightRequest {
-            startup: None,
-            launch: Some(LaunchPreflightPayload {
-                working_dir: work.clone(),
+    fn launch_preflight_rejects_mars_as_supported_terminal() {
+        let data = evaluate_runtime_contract(&RuntimeContractEvaluateRequest {
+            working_dir: None,
+            runtime_scripts: Vec::new(),
+            generated_layout: None,
+            terminal_support: Some(TerminalSupportCheckRequest {
+                owner_surface: "launch".to_string(),
                 requested_terminal: "mars".to_string(),
                 terminals: vec!["ghostty".to_string()],
-                command_search_paths: vec![host_bin],
+                command_search_paths: Vec::new(),
             }),
+            linux_ghostty_desktop_graphics_support: None,
         })
         .unwrap();
 
-        let candidate = data
-            .terminal_candidates
-            .as_ref()
-            .and_then(|candidates| candidates.first())
-            .unwrap();
-        assert_eq!(candidate.terminal, "mars");
-        assert_eq!(candidate.command, "mars-desktop");
-        assert_eq!(candidate.name, "Mars");
+        let check = data.checks.first().unwrap();
+        assert_eq!(check.status, "error");
+        assert_eq!(check.message, "Unsupported terminal 'mars'");
     }
 }

@@ -12,7 +12,7 @@ Set the global generated appearance in `~/.config/yazelix/settings.jsonc`:
 }
 ```
 
-`dark` is the default. `light` switches generated terminal colors and the default Zellij/Yazi themes to light palettes where that terminal supports them, while preserving explicit `zellij.theme` and `yazi.theme` choices. `auto` uses native automatic system appearance in Ghostty, WezTerm, and mars; mars owns its packaged dark/light themes in the terminal child package, and main Yazelix copies those themes into generated mars config roots.
+`dark` is the default. `light` switches generated terminal colors and the default Zellij/Yazi themes to light palettes where that terminal supports them, while preserving explicit `zellij.theme` and `yazi.theme` choices. `auto` uses native automatic system appearance in Ghostty and WezTerm.
 
 ## Terminal Transparency
 

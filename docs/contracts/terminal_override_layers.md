@@ -6,7 +6,7 @@ Yazelix should keep owning launch and integration-critical terminal behavior whi
 
 ## Why
 
-The real customization need is not full terminal-config ownership. It is a safe way to inject themes, fonts, opacity, padding, cursor style, and similar preferences without making Yazelix startup behavior depend on ambient terminal config files. Mars Terminal, Foot, and Ratty have generated Yazelix configs and native user-mode lookup, but no Yazelix-specific override sidecar until there is a concrete customization contract for each.
+The real customization need is not full terminal-config ownership. It is a safe way to inject themes, fonts, opacity, padding, cursor style, and similar preferences without making Yazelix startup behavior depend on ambient terminal config files. Foot and Ratty have generated Yazelix configs and native user-mode lookup, but no Yazelix-specific override sidecar until there is a concrete customization contract for each.
 
 ## Scope
 
@@ -23,7 +23,6 @@ The real customization need is not full terminal-config ownership. It is a safe 
 - `terminal.config_mode = "yazelix"` keeps using the managed config plus the Yazelix-specific override layer.
 - `terminal.config_mode = "user"` switches to the terminal's real native config path and fails fast if that file does not exist.
 - For Ghostty user mode, Yazelix checks upstream native config candidates in order: `$XDG_CONFIG_HOME/ghostty/config.ghostty`, `$XDG_CONFIG_HOME/ghostty/config`, and on macOS `~/Library/Application Support/com.mitchellh.ghostty/config.ghostty` then `config`.
-- For Mars Terminal user mode, Yazelix checks `$XDG_CONFIG_HOME/mars/config.toml`.
 - Yazelix does not read the terminal's normal default config by default for this override feature.
 - Startup behavior remains Yazelix-owned at the launcher layer, even when the terminal config file itself comes from the user path.
 
