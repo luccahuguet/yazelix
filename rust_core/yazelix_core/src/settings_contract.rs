@@ -14,7 +14,7 @@ use std::path::Path;
 pub const SETTINGS_CONTRACT_ID: &str = "yazelix.settings";
 pub const SETTINGS_CONTRACT_STATE_PATH: &str = "ratconfig.contract";
 const SETTINGS_CONTRACT_BASELINE_VERSION: u64 = 1;
-pub const SETTINGS_CONTRACT_CURRENT_VERSION: u64 = 12;
+pub const SETTINGS_CONTRACT_CURRENT_VERSION: u64 = 13;
 const CHANGE_RENAME_EDITOR_SIDEBAR_TO_WORKSPACE_LEFT_SIDEBAR: &str =
     "rename-editor-sidebar-to-workspace-left-sidebar";
 const CHANGE_REPLACE_NATIVE_MOVEMENT_DEFAULTS: &str = "replace-native-movement-defaults";
@@ -32,6 +32,7 @@ const CHANGE_REMOVE_RETIRED_CURSOR_WIDGET_TRAY_VALUE: &str =
 const CHANGE_REMOVE_CPU_RAM_FROM_DEFAULT_WIDGET_TRAY: &str =
     "remove-cpu-ram-from-default-widget-tray";
 const CHANGE_ADD_SESSION_WIDGET_TRAY_VALUE: &str = "add-session-widget-tray-value";
+const CHANGE_ADD_WIDGET_CHROME_SETTINGS: &str = "add-widget-chrome-settings";
 pub const SETTINGS_CONTRACT_APPLIED_CHANGE_IDS: &[&str] = &[
     CHANGE_RENAME_EDITOR_SIDEBAR_TO_WORKSPACE_LEFT_SIDEBAR,
     CHANGE_REPLACE_NATIVE_MOVEMENT_DEFAULTS,
@@ -44,6 +45,7 @@ pub const SETTINGS_CONTRACT_APPLIED_CHANGE_IDS: &[&str] = &[
     CHANGE_REMOVE_RETIRED_CURSOR_WIDGET_TRAY_VALUE,
     CHANGE_REMOVE_CPU_RAM_FROM_DEFAULT_WIDGET_TRAY,
     CHANGE_ADD_SESSION_WIDGET_TRAY_VALUE,
+    CHANGE_ADD_WIDGET_CHROME_SETTINGS,
 ];
 const OPTIONAL_ADDITIVE_DEFAULT_PATHS: &[&str] = &["zellij.custom_popups"];
 
@@ -234,6 +236,21 @@ fn settings_contract_for_defaults(defaults: &JsonValue) -> ConfigContract {
                     path: "zellij.widget_tray".to_string(),
                     transform: add_session_to_widget_tray,
                 }],
+            ),
+            ContractChange::automatic(
+                CHANGE_ADD_WIDGET_CHROME_SETTINGS,
+                12,
+                13,
+                vec![
+                    MigrationOp::AddDefault {
+                        path: "zellij.widget_frame".to_string(),
+                        value: json!("none"),
+                    },
+                    MigrationOp::AddDefault {
+                        path: "zellij.widget_separator".to_string(),
+                        value: json!("dot"),
+                    },
+                ],
             ),
         ],
     }
@@ -778,6 +795,38 @@ mod tests {
                 .applied_changes
                 .iter()
                 .any(|change| change.id == "add-session-widget-tray-value")
+        );
+    }
+
+    // Regression: joined user settings from the previous contract version receive default status-bar widget chrome settings.
+    #[test]
+    fn migrates_existing_config_to_include_widget_chrome_settings() {
+        let contract = settings_contract_for_defaults(&json!({}));
+        let raw = r#"{
+  "zellij": {
+    "widget_tray": ["session", "editor", "codex_usage"]
+  }
+}
+"#;
+
+        let migrated =
+            join_jsonc_contract_text_from_version(raw, &contract, SETTINGS_CONTRACT_STATE_PATH, 12)
+                .unwrap();
+        let value = parse_jsonc_value(&migrated.text).unwrap();
+
+        assert_eq!(
+            get_json_path(&value, "zellij.widget_frame"),
+            Some(&json!("none"))
+        );
+        assert_eq!(
+            get_json_path(&value, "zellij.widget_separator"),
+            Some(&json!("dot"))
+        );
+        assert!(
+            migrated
+                .applied_changes
+                .iter()
+                .any(|change| change.id == "add-widget-chrome-settings")
         );
     }
 

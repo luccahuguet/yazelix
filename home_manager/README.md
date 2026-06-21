@@ -207,6 +207,8 @@ For a smaller advanced Home Manager install, host-source tools you already manag
       "cpu"
       "ram"
     ];
+    zellij_widget_frame = "none";
+    zellij_widget_separator = "dot";
     agent_usage_programs = [ ];
   };
 }

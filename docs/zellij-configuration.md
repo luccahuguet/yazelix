@@ -91,6 +91,8 @@ simplified_ui true
       "term",
       "codex_usage"
     ],
+    "widget_frame": "none",
+    "widget_separator": "dot",
     "tab_label_mode": "full",
     "claude_usage_display": "both",
     "codex_usage_display": "quota",
@@ -102,6 +104,8 @@ simplified_ui true
 }
 ```
 Comment out any line to hide that widget. Order matters. Restart Yazelix to regenerate layouts.
+
+`widget_frame` controls each widget's enclosing punctuation: `"none"`, `"square"`, or `"round"`. `widget_separator` controls the text between adjacent widgets: `"dot"`, `"pipe"`, `"empty"`, or `"space"`. The default is no frame with dot separators so the bar stays compact.
 
 `tab_label_mode = "full"` keeps the default tab index plus tab name labels. Set it to `"compact"` when a workspace/root widget already shows the project context and tabs should use only index plus fullscreen/sync/floating state indicators.
 

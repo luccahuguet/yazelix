@@ -91,6 +91,20 @@ const SCREEN_SAVER_STYLE_ALLOWED: &[&str] = &[
 const TAB_LABEL_MODE_FULL: &str = "full";
 const TAB_LABEL_MODE_COMPACT: &str = "compact";
 const TAB_LABEL_MODE_ALLOWED: &[&str] = &[TAB_LABEL_MODE_FULL, TAB_LABEL_MODE_COMPACT];
+const WIDGET_FRAME_NONE: &str = "none";
+const WIDGET_FRAME_SQUARE: &str = "square";
+const WIDGET_FRAME_ROUND: &str = "round";
+const WIDGET_FRAME_ALLOWED: &[&str] = &[WIDGET_FRAME_NONE, WIDGET_FRAME_SQUARE, WIDGET_FRAME_ROUND];
+const WIDGET_SEPARATOR_DOT: &str = "dot";
+const WIDGET_SEPARATOR_PIPE: &str = "pipe";
+const WIDGET_SEPARATOR_EMPTY: &str = "empty";
+const WIDGET_SEPARATOR_SPACE: &str = "space";
+const WIDGET_SEPARATOR_ALLOWED: &[&str] = &[
+    WIDGET_SEPARATOR_DOT,
+    WIDGET_SEPARATOR_PIPE,
+    WIDGET_SEPARATOR_EMPTY,
+    WIDGET_SEPARATOR_SPACE,
+];
 const CLAUDE_CODEX_USAGE_PERIODS_ALLOWED: &[&str] = &["5h", "week"];
 const OPENCODE_GO_USAGE_PERIODS_ALLOWED: &[&str] = &["5h", "week", "month"];
 const STATUS_USAGE_PROVIDER_CLAUDE_ENABLED_KEY: &str = "status_usage_provider_claude_enabled";
@@ -225,6 +239,14 @@ fn default_tab_label_mode() -> String {
     TAB_LABEL_MODE_FULL.into()
 }
 
+fn default_widget_frame() -> String {
+    WIDGET_FRAME_NONE.into()
+}
+
+fn default_widget_separator() -> String {
+    WIDGET_SEPARATOR_DOT.into()
+}
+
 fn default_claude_usage_display() -> String {
     "both".into()
 }
@@ -300,6 +322,10 @@ pub struct ZellijRenderPlanRequest {
     pub screen_saver_style: String,
     #[serde(default)]
     pub zellij_widget_tray: Option<Vec<String>>,
+    #[serde(default = "default_widget_frame")]
+    pub zellij_widget_frame: String,
+    #[serde(default = "default_widget_separator")]
+    pub zellij_widget_separator: String,
     #[serde(default)]
     pub zellij_custom_text: Option<String>,
     #[serde(default = "default_zellij_theme")]
@@ -371,6 +397,10 @@ pub struct ZellijRenderPlanData {
     pub right_sidebar_width_percent: i64,
     #[serde(default)]
     pub widget_tray: Vec<String>,
+    #[serde(default = "default_widget_frame")]
+    pub widget_frame: String,
+    #[serde(default = "default_widget_separator")]
+    pub widget_separator: String,
     #[serde(default)]
     pub editor_label: String,
     #[serde(default)]
@@ -653,6 +683,40 @@ fn normalize_tab_label_mode(mode: &str) -> Result<String, ZellijRenderPlanError>
     }
 }
 
+fn normalize_widget_frame(frame: &str) -> Result<String, ZellijRenderPlanError> {
+    let normalized = frame.trim().to_ascii_lowercase();
+    if WIDGET_FRAME_ALLOWED.contains(&normalized.as_str()) {
+        Ok(normalized)
+    } else {
+        Err(ZellijRenderPlanError::new(
+            "invalid_widget_frame",
+            format!(
+                "Invalid zellij.widget_frame `{normalized}`. Expected one of: {}",
+                WIDGET_FRAME_ALLOWED.join(", ")
+            ),
+            "Set zellij.widget_frame to `none`, `square`, or `round`.",
+            json!({ "field": "zellij.widget_frame", "frame": normalized }),
+        ))
+    }
+}
+
+fn normalize_widget_separator(separator: &str) -> Result<String, ZellijRenderPlanError> {
+    let normalized = separator.trim().to_ascii_lowercase();
+    if WIDGET_SEPARATOR_ALLOWED.contains(&normalized.as_str()) {
+        Ok(normalized)
+    } else {
+        Err(ZellijRenderPlanError::new(
+            "invalid_widget_separator",
+            format!(
+                "Invalid zellij.widget_separator `{normalized}`. Expected one of: {}",
+                WIDGET_SEPARATOR_ALLOWED.join(", ")
+            ),
+            "Set zellij.widget_separator to `dot`, `pipe`, `empty`, or `space`.",
+            json!({ "field": "zellij.widget_separator", "separator": normalized }),
+        ))
+    }
+}
+
 fn pick_theme(resolved_theme_config: &str) -> String {
     if resolved_theme_config == "random" {
         let idx = SystemTime::now()
@@ -733,6 +797,8 @@ pub fn compute_zellij_render_plan(
     validate_default_mode(&request.zellij_default_mode)?;
     let screen_saver_style = normalize_screen_saver_style(&request.screen_saver_style)?;
     let tab_label_mode = normalize_tab_label_mode(&request.zellij_tab_label_mode)?;
+    let widget_frame = normalize_widget_frame(&request.zellij_widget_frame)?;
+    let widget_separator = normalize_widget_separator(&request.zellij_widget_separator)?;
     let claude_usage_display = normalize_usage_display(
         "zellij.claude_usage_display",
         &request.zellij_claude_usage_display,
@@ -848,6 +914,8 @@ pub fn compute_zellij_render_plan(
         left_sidebar_width_percent: request.left_sidebar_width_percent,
         right_sidebar_width_percent: request.right_sidebar_width_percent,
         widget_tray,
+        widget_frame,
+        widget_separator,
         editor_label,
         shell_label,
         terminal_label,
@@ -1964,6 +2032,8 @@ mod tests {
                 left_sidebar_width_percent: 20,
                 right_sidebar_width_percent: 40,
                 widget_tray: default_widget_tray(),
+                widget_frame: default_widget_frame(),
+                widget_separator: default_widget_separator(),
                 editor_label: "hx".to_string(),
                 shell_label: "nu".to_string(),
                 terminal_label: "ghostty".to_string(),
@@ -2157,6 +2227,8 @@ mod tests {
             screen_saver_idle_seconds: 300,
             screen_saver_style: "random".into(),
             zellij_widget_tray: None,
+            zellij_widget_frame: default_widget_frame(),
+            zellij_widget_separator: default_widget_separator(),
             zellij_custom_text: None,
             zellij_theme: "default".into(),
             appearance_mode: APPEARANCE_MODE_DARK.into(),
@@ -2374,6 +2446,31 @@ keybinds {
         let plan = compute_zellij_render_plan(&req).unwrap();
 
         assert_eq!(plan.widget_tray, vec!["session", "editor"]);
+    }
+
+    // Defends: status-bar widget chrome is normalized and rejected by the config-pack planner before child KDL rendering.
+    #[test]
+    fn normalizes_widget_chrome() {
+        let mut req = sample_plan_request();
+        req.zellij_widget_frame = " Square ".into();
+        req.zellij_widget_separator = " Pipe ".into();
+        let plan = compute_zellij_render_plan(&req).unwrap();
+
+        assert_eq!(plan.widget_frame, "square");
+        assert_eq!(plan.widget_separator, "pipe");
+
+        req.zellij_widget_frame = "curly".into();
+        assert_eq!(
+            compute_zellij_render_plan(&req).unwrap_err().code(),
+            "invalid_widget_frame"
+        );
+
+        let mut req = sample_plan_request();
+        req.zellij_widget_separator = "comma".into();
+        assert_eq!(
+            compute_zellij_render_plan(&req).unwrap_err().code(),
+            "invalid_widget_separator"
+        );
     }
 
     // Defends: usage widget periods are normalized and deduplicated before the status-bar renderer sees them.

@@ -78,6 +78,8 @@ const ZELLIJ_RENDER_PLAN_CONFIG_KEYS: &[&str] = &[
     "screen_saver_idle_seconds",
     "screen_saver_style",
     "zellij_widget_tray",
+    "zellij_widget_frame",
+    "zellij_widget_separator",
     "zellij_custom_text",
     "zellij_theme",
     "appearance_mode",
@@ -168,6 +170,8 @@ struct KeybindingParsePolicy {
 struct ZellijBarRenderRequest {
     zjstatus_plugin_url: String,
     widget_tray: Vec<String>,
+    widget_frame: String,
+    widget_separator: String,
     editor_label: String,
     shell_label: String,
     terminal_label: String,
@@ -1196,6 +1200,8 @@ fn render_integrated_zjstatus_bar(
     let request = ZellijBarRenderRequest {
         zjstatus_plugin_url: zjstatus_plugin_url.to_string(),
         widget_tray: render_plan.widget_tray.clone(),
+        widget_frame: render_plan.widget_frame.clone(),
+        widget_separator: render_plan.widget_separator.clone(),
         editor_label: render_plan.editor_label.clone(),
         shell_label: render_plan.shell_label.clone(),
         terminal_label: render_plan.terminal_label.clone(),
@@ -1532,6 +1538,8 @@ mod tests {
             screen_saver_idle_seconds: 300,
             screen_saver_style: "random".into(),
             zellij_widget_tray: Some(widget_tray.into_iter().map(str::to_string).collect()),
+            zellij_widget_frame: "none".into(),
+            zellij_widget_separator: "dot".into(),
             zellij_custom_text: None,
             zellij_theme: "default".into(),
             appearance_mode: "dark".into(),
@@ -1721,6 +1729,14 @@ ui { pane_frames { hide_session_name true } }
 case "$3" in
   *'"widget_tray":["editor","workspace","cpu"]'*) ;;
   *) exit 13 ;;
+esac
+case "$3" in
+  *'"widget_frame":"none"'*) ;;
+  *) exit 18 ;;
+esac
+case "$3" in
+  *'"widget_separator":"dot"'*) ;;
+  *) exit 19 ;;
 esac
 case "$3" in
   *'"zjstatus_plugin_url":"file:/tmp/zjstatus.wasm"'*) ;;

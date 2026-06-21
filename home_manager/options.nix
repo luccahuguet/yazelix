@@ -323,6 +323,14 @@ ${terminalDescriptionBullets}
     description = "Zjstatus widget tray order (session/editor/shell/term/workspace/usage/cpu/ram); dynamic entries read from a window-local cache";
   };
 
+  zellij_widget_frame = mkMainContractOption "zellij.widget_frame" {
+    description = "Zjstatus widget frame style: none, square, or round";
+  };
+
+  zellij_widget_separator = mkMainContractOption "zellij.widget_separator" {
+    description = "Zjstatus separator between adjacent widgets: dot, pipe, empty, or space";
+  };
+
   zellij_tab_label_mode = mkMainContractOption "zellij.tab_label_mode" {
     description = ''
       Zjstatus tab-label mode.

@@ -65,6 +65,8 @@
       "term",
       "codex_usage"
     ],
+    "widget_frame": "none",
+    "widget_separator": "dot",
     "tab_label_mode": "full",
     "claude_usage_display": "both",
     "codex_usage_display": "quota",

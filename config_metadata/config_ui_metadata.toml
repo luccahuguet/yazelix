@@ -168,6 +168,14 @@ help = "Choose the Zellij theme used by generated Yazelix sessions"
 tab = "status_bar"
 help = "Choose which widgets appear in the Yazelix status bar"
 
+[fields."zellij.widget_frame"]
+tab = "status_bar"
+help = "Choose whether status bar widgets render without frames, in square brackets, or in round parentheses"
+
+[fields."zellij.widget_separator"]
+tab = "status_bar"
+help = "Choose the separator rendered between adjacent status bar widgets"
+
 [fields."zellij.tab_label_mode"]
 tab = "status_bar"
 help = "Choose how tab labels are rendered in the Yazelix status bar"

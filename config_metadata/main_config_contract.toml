@@ -10,7 +10,7 @@
 
 [contract]
 version = 1
-ratconfig_contract_version = 12
+ratconfig_contract_version = 13
 ratconfig_applied_change_ids = [
   "rename-editor-sidebar-to-workspace-left-sidebar",
   "replace-native-movement-defaults",
@@ -23,9 +23,10 @@ ratconfig_applied_change_ids = [
   "remove-retired-cursor-widget-tray-value",
   "remove-cpu-ram-from-default-widget-tray",
   "add-session-widget-tray-value",
+  "add-widget-chrome-settings",
 ]
 surface = "main"
-field_count = 51
+field_count = 53
 artifact_role = "canonical_machine_metadata"
 default_template = "settings_default.jsonc"
 home_manager_module = "home_manager/module.nix"
@@ -361,6 +362,37 @@ allowed_values = [
   "opencode_go_usage",
   "cpu",
   "ram",
+]
+rebuild_required = false
+apply_mode = "generated_runtime_refresh"
+
+[fields."zellij.widget_frame"]
+kind = "string"
+default = "none"
+parser_key = "zellij_widget_frame"
+home_manager_option = "zellij_widget_frame"
+parser_behavior = "direct"
+validation = "enum"
+allowed_values = [
+  "none",
+  "square",
+  "round",
+]
+rebuild_required = false
+apply_mode = "generated_runtime_refresh"
+
+[fields."zellij.widget_separator"]
+kind = "string"
+default = "dot"
+parser_key = "zellij_widget_separator"
+home_manager_option = "zellij_widget_separator"
+parser_behavior = "direct"
+validation = "enum"
+allowed_values = [
+  "dot",
+  "pipe",
+  "empty",
+  "space",
 ]
 rebuild_required = false
 apply_mode = "generated_runtime_refresh"
