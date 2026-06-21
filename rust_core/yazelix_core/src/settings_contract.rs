@@ -14,7 +14,7 @@ use std::path::Path;
 pub const SETTINGS_CONTRACT_ID: &str = "yazelix.settings";
 pub const SETTINGS_CONTRACT_STATE_PATH: &str = "ratconfig.contract";
 const SETTINGS_CONTRACT_BASELINE_VERSION: u64 = 1;
-pub const SETTINGS_CONTRACT_CURRENT_VERSION: u64 = 11;
+pub const SETTINGS_CONTRACT_CURRENT_VERSION: u64 = 12;
 const CHANGE_RENAME_EDITOR_SIDEBAR_TO_WORKSPACE_LEFT_SIDEBAR: &str =
     "rename-editor-sidebar-to-workspace-left-sidebar";
 const CHANGE_REPLACE_NATIVE_MOVEMENT_DEFAULTS: &str = "replace-native-movement-defaults";
@@ -31,6 +31,7 @@ const CHANGE_REMOVE_RETIRED_CURSOR_WIDGET_TRAY_VALUE: &str =
     "remove-retired-cursor-widget-tray-value";
 const CHANGE_REMOVE_CPU_RAM_FROM_DEFAULT_WIDGET_TRAY: &str =
     "remove-cpu-ram-from-default-widget-tray";
+const CHANGE_ADD_SESSION_WIDGET_TRAY_VALUE: &str = "add-session-widget-tray-value";
 pub const SETTINGS_CONTRACT_APPLIED_CHANGE_IDS: &[&str] = &[
     CHANGE_RENAME_EDITOR_SIDEBAR_TO_WORKSPACE_LEFT_SIDEBAR,
     CHANGE_REPLACE_NATIVE_MOVEMENT_DEFAULTS,
@@ -42,6 +43,7 @@ pub const SETTINGS_CONTRACT_APPLIED_CHANGE_IDS: &[&str] = &[
     CHANGE_ROUTE_DEFAULT_RIGHT_SIDEBAR_THROUGH_YZX_AGENT,
     CHANGE_REMOVE_RETIRED_CURSOR_WIDGET_TRAY_VALUE,
     CHANGE_REMOVE_CPU_RAM_FROM_DEFAULT_WIDGET_TRAY,
+    CHANGE_ADD_SESSION_WIDGET_TRAY_VALUE,
 ];
 const OPTIONAL_ADDITIVE_DEFAULT_PATHS: &[&str] = &["zellij.custom_popups"];
 
@@ -222,6 +224,15 @@ fn settings_contract_for_defaults(defaults: &JsonValue) -> ConfigContract {
                 vec![MigrationOp::Transform {
                     path: "zellij.widget_tray".to_string(),
                     transform: remove_cpu_ram_from_default_widget_tray,
+                }],
+            ),
+            ContractChange::automatic(
+                CHANGE_ADD_SESSION_WIDGET_TRAY_VALUE,
+                11,
+                12,
+                vec![MigrationOp::Transform {
+                    path: "zellij.widget_tray".to_string(),
+                    transform: add_session_to_widget_tray,
                 }],
             ),
         ],
@@ -431,6 +442,20 @@ fn remove_cpu_ram_from_default_widget_tray(value: &JsonValue) -> Result<Option<J
     } else {
         Ok(None)
     }
+}
+
+fn add_session_to_widget_tray(value: &JsonValue) -> Result<Option<JsonValue>, String> {
+    let items = value
+        .as_array()
+        .ok_or_else(|| "expected a widget_tray array".to_string())?;
+    if items.iter().any(|item| item.as_str() == Some("session")) {
+        return Ok(None);
+    }
+
+    let mut next = Vec::with_capacity(items.len() + 1);
+    next.push(json!("session"));
+    next.extend(items.iter().cloned());
+    Ok(Some(JsonValue::Array(next)))
 }
 
 fn string_array_is_empty_or_absent(value: Option<&JsonValue>) -> bool {
@@ -673,7 +698,7 @@ mod tests {
 
         assert_eq!(
             get_json_path(&value, "zellij.widget_tray"),
-            Some(&json!(["editor", "ram"]))
+            Some(&json!(["session", "editor", "ram"]))
         );
         assert_eq!(
             get_json_path(&value, "ratconfig.contract.version"),
@@ -706,6 +731,53 @@ mod tests {
             remove_cpu_ram_from_default_widget_tray(&json!(["editor", "workspace", "cpu"]))
                 .unwrap(),
             None
+        );
+    }
+
+    // Regression: the session name moved from hardcoded bar text into the widget tray, so existing configs must keep showing it after migration.
+    #[test]
+    fn adds_session_to_existing_widget_tray() {
+        assert_eq!(
+            add_session_to_widget_tray(&json!(["editor", "workspace", "cpu"])).unwrap(),
+            Some(json!(["session", "editor", "workspace", "cpu"]))
+        );
+        assert_eq!(
+            add_session_to_widget_tray(&json!(["session", "editor"])).unwrap(),
+            None
+        );
+    }
+
+    // Regression: joined user settings from the previous contract version preserve the old visible session label by adding the new session widget token.
+    #[test]
+    fn migrates_existing_widget_tray_to_include_session_widget() {
+        let contract = settings_contract_for_defaults(&json!({}));
+        let raw = r#"{
+  "zellij": {
+    "widget_tray": ["editor", "shell", "term", "codex_usage"]
+  }
+}
+"#;
+
+        let migrated =
+            join_jsonc_contract_text_from_version(raw, &contract, SETTINGS_CONTRACT_STATE_PATH, 11)
+                .unwrap();
+        let value = parse_jsonc_value(&migrated.text).unwrap();
+
+        assert_eq!(
+            get_json_path(&value, "zellij.widget_tray"),
+            Some(&json!([
+                "session",
+                "editor",
+                "shell",
+                "term",
+                "codex_usage"
+            ]))
+        );
+        assert!(
+            migrated
+                .applied_changes
+                .iter()
+                .any(|change| change.id == "add-session-widget-tray-value")
         );
     }
 

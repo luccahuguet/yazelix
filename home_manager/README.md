@@ -200,6 +200,7 @@ For a smaller advanced Home Manager install, host-source tools you already manag
     screen_saver_enabled = false;
 
     zellij_widget_tray = [
+      "session"
       "editor"
       "shell"
       "term"

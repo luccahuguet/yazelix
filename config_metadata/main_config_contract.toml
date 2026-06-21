@@ -10,7 +10,7 @@
 
 [contract]
 version = 1
-ratconfig_contract_version = 11
+ratconfig_contract_version = 12
 ratconfig_applied_change_ids = [
   "rename-editor-sidebar-to-workspace-left-sidebar",
   "replace-native-movement-defaults",
@@ -22,6 +22,7 @@ ratconfig_applied_change_ids = [
   "route-default-right-sidebar-through-yzx-agent",
   "remove-retired-cursor-widget-tray-value",
   "remove-cpu-ram-from-default-widget-tray",
+  "add-session-widget-tray-value",
 ]
 surface = "main"
 field_count = 51
@@ -339,6 +340,7 @@ apply_mode = "tab_session_restart"
 [fields."zellij.widget_tray"]
 kind = "string_list"
 default = [
+  "session",
   "editor",
   "shell",
   "term",
@@ -349,6 +351,7 @@ home_manager_option = "zellij_widget_tray"
 parser_behavior = "direct"
 validation = "enum_string_list"
 allowed_values = [
+  "session",
   "editor",
   "shell",
   "term",

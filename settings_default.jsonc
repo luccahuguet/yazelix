@@ -59,6 +59,7 @@
     "support_kitty_keyboard_protocol": true,
     "theme": "default",
     "widget_tray": [
+      "session",
       "editor",
       "shell",
       "term",

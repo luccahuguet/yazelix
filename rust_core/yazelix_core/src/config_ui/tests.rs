@@ -192,16 +192,16 @@ fn list_fields_edit_from_full_json_value() {
     let model = fixture.model();
     let field = model_field(&model, "zellij.widget_tray");
 
-    assert_eq!(
-        field.current_value,
-        "[\"editor\",\"shell\",\"term\",\"codex_usage\"]"
-    );
+    assert_eq!(field.current_value, "[5 items]");
     assert_eq!(field.apply_status.summary, "after Yazelix restart");
     let input = edit_input_for_field(field);
-    assert_eq!(input, "[\"editor\",\"shell\",\"term\",\"codex_usage\"]");
+    assert_eq!(
+        input,
+        "[\"session\",\"editor\",\"shell\",\"term\",\"codex_usage\"]"
+    );
     assert_eq!(
         parse_edit_input(field, &input).expect("string list"),
-        json!(["editor", "shell", "term", "codex_usage"])
+        json!(["session", "editor", "shell", "term", "codex_usage"])
     );
 }
 
@@ -692,10 +692,12 @@ fn enum_string_list_picker_toggles_subvalues_with_space() {
     let edit = app.edit.clone().expect("edit");
     assert_eq!(edit.mode, ConfigUiEditMode::MultiChoice);
     let details = field_details(&app, edit.field_index);
-    assert!(details.contains("> [x] editor"));
+    assert!(details.contains("> [x] session"));
+    assert!(details.contains("  [x] editor"));
     assert!(details.contains("  [ ] workspace"));
     assert!(!details.contains("cursor"));
 
+    app.handle_key(KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE));
     app.handle_key(KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE));
     app.handle_key(KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE));
     app.handle_key(KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE));
@@ -705,7 +707,14 @@ fn enum_string_list_picker_toggles_subvalues_with_space() {
     let input = app.edit.as_ref().expect("edit").input.clone();
     assert_eq!(
         parse_string_list_values(&field, &input).expect("values"),
-        vec!["editor", "shell", "term", "workspace", "codex_usage"]
+        vec![
+            "session",
+            "editor",
+            "shell",
+            "term",
+            "workspace",
+            "codex_usage"
+        ]
     );
 
     app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
@@ -715,6 +724,7 @@ fn enum_string_list_picker_toggles_subvalues_with_space() {
     assert_eq!(
         get_json_path(&value, "zellij.widget_tray"),
         Some(&json!([
+            "session",
             "editor",
             "shell",
             "term",
