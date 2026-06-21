@@ -7,6 +7,8 @@ with lib;
 
 let
   mainConfigContract = builtins.fromTOML (builtins.readFile ../config_metadata/main_config_contract.toml);
+  ratconfigContractVersion = mainConfigContract.contract.ratconfig_contract_version;
+  ratconfigAppliedChangeIds = mainConfigContract.contract.ratconfig_applied_change_ids;
   mainContractFields = mainConfigContract.fields;
   defaultCursorConfig = builtins.fromTOML (builtins.readFile ../yazelix_cursors_default.toml);
 
@@ -232,12 +234,8 @@ let
     ratconfig.contract = {
       schema_version = 1;
       contract_id = "yazelix.settings";
-      version = 4;
-      applied_change_ids = [
-        "rename-editor-sidebar-to-workspace-left-sidebar"
-        "replace-native-movement-defaults"
-        "add-current-default-settings"
-      ];
+      version = ratconfigContractVersion;
+      applied_change_ids = ratconfigAppliedChangeIds;
     };
   };
 

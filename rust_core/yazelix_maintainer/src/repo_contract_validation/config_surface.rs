@@ -16,9 +16,11 @@ use yazelix_core::config_state::{
     ComputeConfigStateRequest, ConfigStateData, RecordConfigStateRequest, compute_config_state,
     record_config_state,
 };
-use yazelix_core::settings_contract::SETTINGS_CONTRACT_CURRENT_VERSION;
+use yazelix_core::settings_contract::{
+    SETTINGS_CONTRACT_APPLIED_CHANGE_IDS, SETTINGS_CONTRACT_CURRENT_VERSION, SETTINGS_CONTRACT_ID,
+};
 use yazelix_core::settings_surface::{
-    read_config_table, read_settings_jsonc_value, render_settings_jsonc_value,
+    parse_jsonc_value, read_config_table, read_settings_jsonc_value, render_settings_jsonc_value,
 };
 use yazelix_core::{
     RuntimeApplyMode, YAZI_ACTIONS, YazelixActionMetadata, ZELLIJ_ACTIONS,
@@ -256,6 +258,20 @@ fn validate_ratconfig_contract_guard(repo_root: &Path) -> Result<Vec<String>, St
                 .to_string(),
         ),
     }
+    let expected_change_ids = settings_contract_applied_change_ids();
+    match main_contract_ratconfig_applied_change_ids(&contract) {
+        Some(change_ids) if change_ids == expected_change_ids => {}
+        Some(change_ids) => errors.push(format!(
+            "main_config_contract.toml declares ratconfig_applied_change_ids = [{}], but settings_contract.rs exposes [{}]",
+            change_ids.join(", "),
+            expected_change_ids.join(", ")
+        )),
+        None => errors.push(
+            "main_config_contract.toml [contract] must declare ratconfig_applied_change_ids as a string array"
+                .to_string(),
+        ),
+    }
+    errors.extend(validate_home_manager_settings_contract_state(repo_root)?);
     errors.extend(validate_ratconfig_contract_diff_guard(
         repo_root,
         &contract,
@@ -420,6 +436,134 @@ fn main_contract_ratconfig_version(contract: &TomlTable) -> Option<u64> {
         .and_then(|table| table.get("ratconfig_contract_version"))
         .and_then(TomlValue::as_integer)
         .and_then(|value| u64::try_from(value).ok())
+}
+
+fn main_contract_ratconfig_applied_change_ids(contract: &TomlTable) -> Option<Vec<String>> {
+    contract
+        .get("contract")
+        .and_then(TomlValue::as_table)
+        .and_then(|table| table.get("ratconfig_applied_change_ids"))
+        .and_then(toml_string_array)
+}
+
+fn toml_string_array(value: &TomlValue) -> Option<Vec<String>> {
+    value.as_array().and_then(|items| {
+        items
+            .iter()
+            .map(|item| item.as_str().map(ToOwned::to_owned))
+            .collect()
+    })
+}
+
+fn settings_contract_applied_change_ids() -> Vec<String> {
+    SETTINGS_CONTRACT_APPLIED_CHANGE_IDS
+        .iter()
+        .map(|id| (*id).to_string())
+        .collect()
+}
+
+fn validate_home_manager_settings_contract_state(repo_root: &Path) -> Result<Vec<String>, String> {
+    let raw = load_home_manager_managed_settings_jsonc(repo_root)?;
+    validate_home_manager_settings_contract_state_content(
+        Path::new("home_manager generated settings.jsonc"),
+        &raw,
+    )
+}
+
+fn validate_home_manager_settings_contract_state_content(
+    label: &Path,
+    raw: &str,
+) -> Result<Vec<String>, String> {
+    let value = parse_jsonc_value(label, raw).map_err(|error| error.message().to_string())?;
+    let Some(contract) = value
+        .get("ratconfig")
+        .and_then(JsonValue::as_object)
+        .and_then(|ratconfig| ratconfig.get("contract"))
+        .and_then(JsonValue::as_object)
+    else {
+        return Ok(vec![
+            "Home Manager-generated settings.jsonc must include ratconfig.contract state"
+                .to_string(),
+        ]);
+    };
+
+    let mut errors = Vec::new();
+    if contract.get("schema_version").and_then(JsonValue::as_u64) != Some(1) {
+        errors.push(
+            "Home Manager-generated settings.jsonc ratconfig.contract.schema_version must be 1"
+                .to_string(),
+        );
+    }
+    if contract.get("contract_id").and_then(JsonValue::as_str) != Some(SETTINGS_CONTRACT_ID) {
+        errors.push(format!(
+            "Home Manager-generated settings.jsonc ratconfig.contract.contract_id must be {SETTINGS_CONTRACT_ID}"
+        ));
+    }
+    if contract.get("version").and_then(JsonValue::as_u64)
+        != Some(SETTINGS_CONTRACT_CURRENT_VERSION)
+    {
+        errors.push(format!(
+            "Home Manager-generated settings.jsonc ratconfig.contract.version must be {SETTINGS_CONTRACT_CURRENT_VERSION}"
+        ));
+    }
+
+    let expected_change_ids = settings_contract_applied_change_ids();
+    match contract
+        .get("applied_change_ids")
+        .and_then(json_string_array)
+    {
+        Some(change_ids) if change_ids == expected_change_ids => {}
+        Some(change_ids) => errors.push(format!(
+            "Home Manager-generated settings.jsonc ratconfig.contract.applied_change_ids mismatch: expected [{}], got [{}]",
+            expected_change_ids.join(", "),
+            change_ids.join(", ")
+        )),
+        None => errors.push(
+            "Home Manager-generated settings.jsonc ratconfig.contract.applied_change_ids must be a string array"
+                .to_string(),
+        ),
+    }
+
+    Ok(errors)
+}
+
+fn json_string_array(value: &JsonValue) -> Option<Vec<String>> {
+    value.as_array().and_then(|items| {
+        items
+            .iter()
+            .map(|item| item.as_str().map(ToOwned::to_owned))
+            .collect()
+    })
+}
+
+fn load_home_manager_managed_settings_jsonc(repo_root: &Path) -> Result<String, String> {
+    let expr = build_home_manager_managed_settings_jsonc_expr(repo_root);
+    let result = run_nix_eval(repo_root, &expr)?;
+    result.as_str().map(str::to_string).ok_or_else(|| {
+        "Home Manager managed settings evaluation did not return a JSONC string".to_string()
+    })
+}
+
+fn build_home_manager_managed_settings_jsonc_expr(repo_root: &Path) -> String {
+    let module_path =
+        escape_nix_string(&repo_root.join(MODULE_RELATIVE_PATH).display().to_string());
+    let mut lines = vec![
+        "let".to_string(),
+        "  pkgs = import <nixpkgs> { system = \"x86_64-linux\"; };".to_string(),
+        "  lib = pkgs.lib.extend (_: super: { hm = { dag = { entryAfter = after: data: { inherit after data; }; }; }; });".to_string(),
+        "  eval = lib.evalModules {".to_string(),
+        "    specialArgs = { inherit pkgs; nixgl = null; yazelixCursorsPackage = null; marsTerminalPackage = null; mkYazelixPackage = args: pkgs.runCommand (args.name or \"yazelix\") {} ''mkdir -p $out/bin $out/libexec $out/toolbin; touch $out/bin/yzx $out/libexec/yzx_core $out/libexec/yzx_control''; };".to_string(),
+        "    modules = [".to_string(),
+        format!("      (builtins.toPath \"{}\")", module_path),
+    ];
+    lines.extend(standalone_home_manager_eval_fixture_module(true, true));
+    lines.extend([
+        "      { config.programs.yazelix.manage_config = true; }".to_string(),
+        "    ];".to_string(),
+        "  };".to_string(),
+        "in eval.config.xdg.configFile.\"yazelix/settings.jsonc\".text".to_string(),
+    ]);
+    lines.join("\n")
 }
 
 fn config_surface_diff_base() -> String {
@@ -1344,6 +1488,68 @@ fn prepare_rust_startup() {
         errors.clear();
         validate_main_contract_apply_mode("core.debug_mode", &field, &mut errors);
         assert!(errors.is_empty());
+    }
+
+    // Test lane: maintainer
+    // Regression: Home Manager-generated settings must join the current ratconfig contract instead of forcing runtime repair on a Home Manager-owned symlink.
+    #[test]
+    fn home_manager_settings_contract_state_validator_rejects_stale_contract_state() {
+        let stale = r#"{
+  "ratconfig": {
+    "contract": {
+      "schema_version": 1,
+      "contract_id": "yazelix.settings",
+      "version": 4,
+      "applied_change_ids": [
+        "rename-editor-sidebar-to-workspace-left-sidebar",
+        "replace-native-movement-defaults",
+        "add-current-default-settings"
+      ]
+    }
+  }
+}
+"#;
+
+        let errors = validate_home_manager_settings_contract_state_content(
+            Path::new("settings.jsonc"),
+            stale,
+        )
+        .unwrap();
+
+        assert!(
+            errors
+                .iter()
+                .any(|error| error.contains("ratconfig.contract.version"))
+        );
+        assert!(
+            errors
+                .iter()
+                .any(|error| error.contains("applied_change_ids mismatch"))
+        );
+    }
+
+    // Test lane: maintainer
+    // Defends: main_config_contract.toml exposes the exact ratconfig change list that Home Manager renders.
+    #[test]
+    fn main_contract_ratconfig_applied_change_ids_parser_requires_exact_string_array() {
+        let contract = toml::from_str::<TomlTable>(
+            r#"
+[contract]
+ratconfig_applied_change_ids = [
+  "rename-editor-sidebar-to-workspace-left-sidebar",
+  "replace-native-movement-defaults",
+]
+"#,
+        )
+        .unwrap();
+
+        assert_eq!(
+            main_contract_ratconfig_applied_change_ids(&contract),
+            Some(vec![
+                "rename-editor-sidebar-to-workspace-left-sidebar".to_string(),
+                "replace-native-movement-defaults".to_string(),
+            ])
+        );
     }
 
     // Test lane: maintainer

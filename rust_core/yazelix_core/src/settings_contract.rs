@@ -14,6 +14,34 @@ pub const SETTINGS_CONTRACT_ID: &str = "yazelix.settings";
 pub const SETTINGS_CONTRACT_STATE_PATH: &str = "ratconfig.contract";
 const SETTINGS_CONTRACT_BASELINE_VERSION: u64 = 1;
 pub const SETTINGS_CONTRACT_CURRENT_VERSION: u64 = 11;
+const CHANGE_RENAME_EDITOR_SIDEBAR_TO_WORKSPACE_LEFT_SIDEBAR: &str =
+    "rename-editor-sidebar-to-workspace-left-sidebar";
+const CHANGE_REPLACE_NATIVE_MOVEMENT_DEFAULTS: &str = "replace-native-movement-defaults";
+const CHANGE_ADD_CURRENT_DEFAULT_SETTINGS: &str = "add-current-default-settings";
+const CHANGE_REPAIR_NATIVE_MOVEMENT_KEY_SPELLING: &str = "repair-native-movement-key-spelling";
+const CHANGE_ENABLE_KITTY_KEYBOARD_PROTOCOL_DEFAULT: &str =
+    "enable-kitty-keyboard-protocol-default";
+const CHANGE_REPLACE_DEFAULT_BTM_POPUP_WITH_ZENITH: &str = "replace-default-btm-popup-with-zenith";
+const CHANGE_MOVE_DEFAULT_ZENITH_POPUP_TO_INFORMATION_KEY: &str =
+    "move-default-zenith-popup-to-information-key";
+const CHANGE_ROUTE_DEFAULT_RIGHT_SIDEBAR_THROUGH_YZX_AGENT: &str =
+    "route-default-right-sidebar-through-yzx-agent";
+const CHANGE_REMOVE_RETIRED_CURSOR_WIDGET_TRAY_VALUE: &str =
+    "remove-retired-cursor-widget-tray-value";
+const CHANGE_REMOVE_CPU_RAM_FROM_DEFAULT_WIDGET_TRAY: &str =
+    "remove-cpu-ram-from-default-widget-tray";
+pub const SETTINGS_CONTRACT_APPLIED_CHANGE_IDS: &[&str] = &[
+    CHANGE_RENAME_EDITOR_SIDEBAR_TO_WORKSPACE_LEFT_SIDEBAR,
+    CHANGE_REPLACE_NATIVE_MOVEMENT_DEFAULTS,
+    CHANGE_ADD_CURRENT_DEFAULT_SETTINGS,
+    CHANGE_REPAIR_NATIVE_MOVEMENT_KEY_SPELLING,
+    CHANGE_ENABLE_KITTY_KEYBOARD_PROTOCOL_DEFAULT,
+    CHANGE_REPLACE_DEFAULT_BTM_POPUP_WITH_ZENITH,
+    CHANGE_MOVE_DEFAULT_ZENITH_POPUP_TO_INFORMATION_KEY,
+    CHANGE_ROUTE_DEFAULT_RIGHT_SIDEBAR_THROUGH_YZX_AGENT,
+    CHANGE_REMOVE_RETIRED_CURSOR_WIDGET_TRAY_VALUE,
+    CHANGE_REMOVE_CPU_RAM_FROM_DEFAULT_WIDGET_TRAY,
+];
 const OPTIONAL_ADDITIVE_DEFAULT_PATHS: &[&str] = &["zellij.custom_popups"];
 
 const LEGACY_SIDEBAR_SETTING_RENAMES: &[(&str, &str)] = &[
@@ -74,7 +102,7 @@ fn settings_contract_for_defaults(defaults: &JsonValue) -> ConfigContract {
         current_version: SETTINGS_CONTRACT_CURRENT_VERSION,
         changes: vec![
             ContractChange::automatic(
-                "rename-editor-sidebar-to-workspace-left-sidebar",
+                CHANGE_RENAME_EDITOR_SIDEBAR_TO_WORKSPACE_LEFT_SIDEBAR,
                 1,
                 2,
                 LEGACY_SIDEBAR_SETTING_RENAMES
@@ -86,7 +114,7 @@ fn settings_contract_for_defaults(defaults: &JsonValue) -> ConfigContract {
                     .collect(),
             ),
             ContractChange::automatic(
-                "replace-native-movement-defaults",
+                CHANGE_REPLACE_NATIVE_MOVEMENT_DEFAULTS,
                 2,
                 3,
                 vec![
@@ -108,9 +136,9 @@ fn settings_contract_for_defaults(defaults: &JsonValue) -> ConfigContract {
                     },
                 ],
             ),
-            ContractChange::automatic("add-current-default-settings", 3, 4, add_default_ops),
+            ContractChange::automatic(CHANGE_ADD_CURRENT_DEFAULT_SETTINGS, 3, 4, add_default_ops),
             ContractChange::automatic(
-                "repair-native-movement-key-spelling",
+                CHANGE_REPAIR_NATIVE_MOVEMENT_KEY_SPELLING,
                 4,
                 5,
                 vec![
@@ -137,7 +165,7 @@ fn settings_contract_for_defaults(defaults: &JsonValue) -> ConfigContract {
                 ],
             ),
             ContractChange::automatic(
-                "enable-kitty-keyboard-protocol-default",
+                CHANGE_ENABLE_KITTY_KEYBOARD_PROTOCOL_DEFAULT,
                 5,
                 6,
                 vec![MigrationOp::Transform {
@@ -146,7 +174,7 @@ fn settings_contract_for_defaults(defaults: &JsonValue) -> ConfigContract {
                 }],
             ),
             ContractChange::automatic(
-                "replace-default-btm-popup-with-zenith",
+                CHANGE_REPLACE_DEFAULT_BTM_POPUP_WITH_ZENITH,
                 6,
                 7,
                 vec![MigrationOp::Transform {
@@ -155,7 +183,7 @@ fn settings_contract_for_defaults(defaults: &JsonValue) -> ConfigContract {
                 }],
             ),
             ContractChange::automatic(
-                "move-default-zenith-popup-to-information-key",
+                CHANGE_MOVE_DEFAULT_ZENITH_POPUP_TO_INFORMATION_KEY,
                 7,
                 8,
                 vec![MigrationOp::Transform {
@@ -164,7 +192,7 @@ fn settings_contract_for_defaults(defaults: &JsonValue) -> ConfigContract {
                 }],
             ),
             ContractChange::automatic(
-                "route-default-right-sidebar-through-yzx-agent",
+                CHANGE_ROUTE_DEFAULT_RIGHT_SIDEBAR_THROUGH_YZX_AGENT,
                 8,
                 9,
                 vec![MigrationOp::Transform {
@@ -173,7 +201,7 @@ fn settings_contract_for_defaults(defaults: &JsonValue) -> ConfigContract {
                 }],
             ),
             ContractChange::automatic(
-                "remove-retired-cursor-widget-tray-value",
+                CHANGE_REMOVE_RETIRED_CURSOR_WIDGET_TRAY_VALUE,
                 9,
                 10,
                 vec![MigrationOp::Transform {
@@ -182,7 +210,7 @@ fn settings_contract_for_defaults(defaults: &JsonValue) -> ConfigContract {
                 }],
             ),
             ContractChange::automatic(
-                "remove-cpu-ram-from-default-widget-tray",
+                CHANGE_REMOVE_CPU_RAM_FROM_DEFAULT_WIDGET_TRAY,
                 10,
                 11,
                 vec![MigrationOp::Transform {
@@ -607,6 +635,12 @@ mod tests {
             plan.changes.len() as u64,
             SETTINGS_CONTRACT_CURRENT_VERSION - SETTINGS_CONTRACT_BASELINE_VERSION
         );
+        let change_ids = contract
+            .changes
+            .iter()
+            .map(|change| change.id.as_str())
+            .collect::<Vec<_>>();
+        assert_eq!(change_ids, SETTINGS_CONTRACT_APPLIED_CHANGE_IDS);
         assert!(
             contract
                 .changes

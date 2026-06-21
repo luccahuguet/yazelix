@@ -11,6 +11,18 @@
 [contract]
 version = 1
 ratconfig_contract_version = 11
+ratconfig_applied_change_ids = [
+  "rename-editor-sidebar-to-workspace-left-sidebar",
+  "replace-native-movement-defaults",
+  "add-current-default-settings",
+  "repair-native-movement-key-spelling",
+  "enable-kitty-keyboard-protocol-default",
+  "replace-default-btm-popup-with-zenith",
+  "move-default-zenith-popup-to-information-key",
+  "route-default-right-sidebar-through-yzx-agent",
+  "remove-retired-cursor-widget-tray-value",
+  "remove-cpu-ram-from-default-widget-tray",
+]
 surface = "main"
 field_count = 51
 artifact_role = "canonical_machine_metadata"
