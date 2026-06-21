@@ -482,11 +482,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1781498216,
-        "narHash": "sha256-46vNIjYKL6tByQf1Pcy1ynll/A7AKJ4lrMXn7LM5yqc=",
+        "lastModified": 1782051515,
+        "narHash": "sha256-dkgLD2I+XwIeCJp9CkQmhYqMR3b6DnwpWy7/ZkO+LhA=",
         "owner": "luccahuguet",
         "repo": "yazelix-yazi-assets",
-        "rev": "0190035d7203251411917d0e9100a9c54f3dd907",
+        "rev": "e9a936a2f2de05024a8e9d6d2f95d0a205fb0bf4",
         "type": "github"
       },
       "original": {
@@ -525,11 +525,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1781899143,
-        "narHash": "sha256-3OTtOd4l30b9M3K7Rul2Y076Wv2t3J5/PglIpNmy9ck=",
+        "lastModified": 1782049624,
+        "narHash": "sha256-QT+DAEdR0kqMdN5dlo+1RL6W6o5JUc1UAoXnnLSULU4=",
         "owner": "luccahuguet",
         "repo": "yazelix-zellij-bar",
-        "rev": "e92a2640639ebb21bf873d6050f381dc266f511e",
+        "rev": "ff8b70b04ecb5fcabc061f4a6ba2f03836d7f821",
         "type": "github"
       },
       "original": {
