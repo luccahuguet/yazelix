@@ -4,6 +4,15 @@ Short, upgrade-facing release notes live here. The longer narrative history rema
 
 ## Unreleased
 
+Post-v17.8 work in progress
+
+Upgrade impact: no user action required
+
+Highlights:
+- Reserved for post-release changes after v17.8 lands.
+
+## v17.8 - 2026-06-22
+
 Mars default, status-bar chrome, and startup polish
 
 Upgrade impact: no user action required
@@ -18,6 +27,7 @@ Highlights:
 - Tamed Zellij plugin helper churn by moving terminal activity refresh away from timer-driven shell-outs, consuming cold-stable system usage widgets, adding plugin doctor health reporting, and adding `yzx dev perf` planning for bounded Zellij/plugin snapshots
 - Updated Mars, Yazelix Cursors, pane-orchestrator, Helix grammar, and Zellij bar child pins for terminal package identity, standard desktop icon sizes, cursor shader target contracts, compact AI tab markers, archive-backed grammar fetchers, and compact status-bar rendering
 - Hardened maintainer and CI infrastructure with Darwin wasm smoke coverage, branch-push CI, scheduled runtime-env helper fixes, longer integration smoke timeouts, release child-transaction validation, and clearer cache setup docs
+
 
 ## v17.7 - 2026-06-15
 
