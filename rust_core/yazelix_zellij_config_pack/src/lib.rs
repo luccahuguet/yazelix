@@ -14,6 +14,7 @@ const GENERATED_LAYOUT_FINGERPRINT_PREFIX: &str = "generation_fingerprint:";
 const ZJSTATUS_TAB_TEMPLATE_PLACEHOLDER: &str = "__YAZELIX_ZJSTATUS_TAB_TEMPLATE__";
 const PANE_ORCHESTRATOR_PLUGIN_URL_PLACEHOLDER: &str = "__YAZELIX_PANE_ORCHESTRATOR_PLUGIN_URL__";
 const HOME_DIR_PLACEHOLDER: &str = "__YAZELIX_HOME_DIR__";
+const HOME_TAB_MARKER_PLACEHOLDER: &str = "__YAZELIX_HOME_TAB_MARKER__";
 const RUNTIME_DIR_PLACEHOLDER: &str = "__YAZELIX_RUNTIME_DIR__";
 const PANE_ORCHESTRATOR_PLUGIN_ALIAS: &str = "yazelix_pane_orchestrator";
 const HOME_TAB_MARKER: &str = "\u{f015}";
@@ -121,6 +122,7 @@ const REQUIRED_LAYOUT_PLACEHOLDERS: &[&str] = &[
     ZJSTATUS_TAB_TEMPLATE_PLACEHOLDER,
     PANE_ORCHESTRATOR_PLUGIN_URL_PLACEHOLDER,
     HOME_DIR_PLACEHOLDER,
+    HOME_TAB_MARKER_PLACEHOLDER,
     RUNTIME_DIR_PLACEHOLDER,
     "__YAZELIX_SIDEBAR_COMMAND__",
     "__YAZELIX_SIDEBAR_ARGS__",
@@ -1788,6 +1790,7 @@ fn render_layout_template(
             pane_orchestrator_plugin_url.to_string(),
         ),
         (HOME_DIR_PLACEHOLDER, home_dir.to_string()),
+        (HOME_TAB_MARKER_PLACEHOLDER, json_quote(HOME_TAB_MARKER)),
         (RUNTIME_DIR_PLACEHOLDER, runtime_dir.to_string()),
         (
             "__YAZELIX_SIDEBAR_COMMAND__",
@@ -2146,6 +2149,9 @@ mod tests {
                 .contains(r#"plugin location="file:/tmp/zjstatus.wasm" {"#)
         );
         assert!(side.content.contains(r#"cwd="/home/user""#));
+        assert!(side
+            .content
+            .contains(&format!(r#"tab name="{}""#, HOME_TAB_MARKER)));
         assert!(
             side.content
                 .contains(r#"command "/opt/yazelix/bin/sidebar""#)

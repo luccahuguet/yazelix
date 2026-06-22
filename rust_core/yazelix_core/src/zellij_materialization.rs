@@ -1774,8 +1774,8 @@ printf '%s\n' '{"schema_version":3,"plugin_block":"CHILD_PLUGIN_BLOCK"}'
         assert_eq!(plugin_block, "CHILD_PLUGIN_BLOCK");
     }
 
-    // Regression: startup layouts declare the initial tab explicitly so launch cwd stays owned by
-    // Zellij --default-cwd while new tabs remain home-scoped.
+    // Regression: startup layouts name the initial tab without setting a cwd, so launch cwd stays
+    // owned by Zellij --default-cwd while new tabs remain home-scoped.
     #[test]
     fn startup_layouts_keep_initial_tab_distinct_from_home_scoped_new_tabs() {
         let name = "yzx_side.kdl";
@@ -1800,10 +1800,10 @@ printf '%s\n' '{"schema_version":3,"plugin_block":"CHILD_PLUGIN_BLOCK"}'
                             "{name} declares default_tab_template more than once"
                         );
                     }
-                    "tab" => {
+                    r#"tab name=__YAZELIX_HOME_TAB_MARKER__"# => {
                         assert!(
                             initial_tab_line.replace(line_number).is_none(),
-                            "{name} declares more than one explicit initial tab"
+                            "{name} declares more than one named initial tab"
                         );
                     }
                     r#"new_tab_template cwd="__YAZELIX_HOME_DIR__" {"# => {
@@ -1830,7 +1830,7 @@ printf '%s\n' '{"schema_version":3,"plugin_block":"CHILD_PLUGIN_BLOCK"}'
         let default_template_line =
             default_template_line.unwrap_or_else(|| panic!("{name} missing default_tab_template"));
         let initial_tab_line =
-            initial_tab_line.unwrap_or_else(|| panic!("{name} missing explicit initial tab"));
+            initial_tab_line.unwrap_or_else(|| panic!("{name} missing named initial tab"));
         let new_tab_line =
             new_tab_line.unwrap_or_else(|| panic!("{name} missing home-scoped new_tab_template"));
 
