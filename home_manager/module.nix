@@ -35,11 +35,30 @@ let
     "baseline"
     "shaders"
   ];
-  marsEmojiFonts = [
+  defaultMarsEmojiFonts = [
     "noto"
     "twitter"
     "serenityos"
   ];
+  marsPackageMetadata =
+    if marsTerminalPackage != null && builtins.isAttrs (marsTerminalPackage.passthru.marsPackageMetadata or null) then
+      marsTerminalPackage.passthru.marsPackageMetadata
+    else
+      null;
+  marsEmojiFonts =
+    if marsPackageMetadata != null && builtins.isList (marsPackageMetadata.supported_emoji_fonts or null) then
+      marsPackageMetadata.supported_emoji_fonts
+    else
+      defaultMarsEmojiFonts;
+  marsEmojiFontDescriptions = {
+    noto = "Noto Color Emoji fallback";
+    twitter = "Twitter/Twemoji color emoji fallback";
+    serenityos = "SerenityOS emoji fallback";
+  };
+  marsEmojiFontDescriptionBullets = lib.concatMapStringsSep "\n" (
+    emojiFont:
+    "        - \"${emojiFont}\": ${marsEmojiFontDescriptions.${emojiFont} or "package-advertised emoji fallback"}"
+  ) marsEmojiFonts;
 
   settingsContract = import ./settings_contract.nix { inherit cfg lib; };
   inherit (settingsContract)
@@ -77,6 +96,7 @@ in
       runtimeToolSourceModes
       terminalDescriptionBullets
       terminalVariants
+      marsEmojiFontDescriptionBullets
       marsEmojiFonts
       marsProfiles
       ;

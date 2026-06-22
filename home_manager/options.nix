@@ -6,6 +6,7 @@
   runtimeToolSourceModes,
   terminalDescriptionBullets,
   terminalVariants,
+  marsEmojiFontDescriptionBullets,
   marsEmojiFonts,
   marsProfiles,
 }:
@@ -96,9 +97,7 @@ ${terminalDescriptionBullets}
     description = ''
       Mars terminal emoji fallback font.
 
-      - "noto": current Noto Color Emoji fallback
-      - "twitter": Twitter/Twemoji color emoji fallback
-      - "serenityos": SerenityOS emoji fallback
+${marsEmojiFontDescriptionBullets}
     '';
   };
 

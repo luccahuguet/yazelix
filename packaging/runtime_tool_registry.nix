@@ -49,8 +49,10 @@ let
       throw "Yazelix runtimeVariant mars requires marsPackageMetadata.supported_emoji_fonts to include noto"
     else if !(builtins.elem "twitter" metadata.supported_emoji_fonts) then
       throw "Yazelix runtimeVariant mars requires marsPackageMetadata.supported_emoji_fonts to include twitter"
-    else if !(builtins.elem "serenityos" metadata.supported_emoji_fonts) then
-      throw "Yazelix runtimeVariant mars requires marsPackageMetadata.supported_emoji_fonts to include serenityos"
+    else if !(builtins.isAttrs (metadata.emoji_fonts or null)) then
+      throw "Yazelix runtimeVariant mars requires marsPackageMetadata.emoji_fonts"
+    else if !(lib.all (emojiFont: builtins.hasAttr emojiFont metadata.emoji_fonts) metadata.supported_emoji_fonts) then
+      throw "Yazelix runtimeVariant mars requires marsPackageMetadata.emoji_fonts to declare each supported_emoji_fonts entry"
     else if !(builtins.isList (metadata.supported_appearance_modes or null)) then
       throw "Yazelix runtimeVariant mars requires marsPackageMetadata.supported_appearance_modes"
     else if !(builtins.elem "dark" metadata.supported_appearance_modes) then
@@ -91,6 +93,8 @@ let
         mars_terminal_metadata_schema = marsPackageMetadata.schema_version;
         mars_terminal_supported_appearance_modes =
           marsPackageMetadata.supported_appearance_modes;
+        mars_terminal_supported_emoji_fonts =
+          marsPackageMetadata.supported_emoji_fonts;
         mars_terminal_default_appearance_mode =
           marsPackageMetadata.default_appearance_mode;
       };
