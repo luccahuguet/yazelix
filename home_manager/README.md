@@ -7,7 +7,7 @@ A Home Manager module for [Yazelix](https://github.com/luccahuguet/yazelix) that
 - **Leaves `settings.jsonc` mutable by default** so users can edit it directly
 - **Can generate `settings.jsonc`** from Home Manager options when `manage_config = true`, including the hidden deterministic ratconfig contract state Yazelix requires
 - **Adds `yzx` to the Home Manager profile** through the packaged Yazelix runtime
-- **Selects one packaged terminal** with Ghostty by default, Rio, WezTerm, and Kitty as alternates, and Foot/Ratty as Linux options through `terminal`
+- **Selects one packaged terminal** with Mars by default, Ghostty as a first-class alternate, Rio, WezTerm, and Kitty as alternates, and Foot/Ratty as Linux options through `terminal`
 - **Installs icons and, on Linux, a desktop entry** that target the managed runtime
 - **Keeps the config surface type-safe** with Home Manager validation
 
@@ -64,7 +64,7 @@ If you already have your own Home Manager flake, the minimal setup is:
 {
   programs.yazelix = {
     enable = true;
-    terminal = "ghostty"; # Default; use "kitty", "rio", "wezterm", or Linux-only "foot"/"ratty" for alternate packaged terminal paths
+    terminal = "mars"; # Default; use "ghostty", "kitty", "rio", "wezterm", or Linux-only "foot"/"ratty" for alternate packaged terminal paths
     # Customize other options as needed - see example.nix
     # Set manage_config = true if you want Home Manager to own settings.jsonc
   };
@@ -216,7 +216,7 @@ For a smaller advanced Home Manager install, host-source tools you already manag
 
 This profile keeps the packaged terminal, Nushell, Zellij, Nix, POSIX helpers, and Linux graphics wrappers bundled. It expects host `PATH` to provide every `host` command, and `yzx doctor` reports missing host-sourced commands after `home-manager switch`
 
-Measured on `x86_64-linux` on June 2, 2026, this package-builder shape reduced the default Ghostty package closure from about 3.1 GiB to about 2.2 GiB. It still carries the bundled Linux `nixGLMesa` wrapper closure, so graphics wrapper ownership remains a major remaining Linux storage cost
+Measured on `x86_64-linux` on June 2, 2026, when Ghostty was the default terminal, this package-builder shape reduced the default package closure from about 3.1 GiB to about 2.2 GiB. It still carries the bundled Linux `nixGLMesa` wrapper closure, so graphics wrapper ownership remains a major remaining Linux storage cost
 
 Feature tradeoffs:
 

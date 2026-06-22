@@ -154,5 +154,25 @@ Out of scope:
   `rio_process_boundary_env_keeps_default_backend_without_x11_display`,
   `rio_launch_argv_uses_selected_config_and_working_dir`)
 
+#### TLAUNCH-010
+- Type: behavior
+- Status: live
+- Owner: Rust terminal materialization and Rust launch preflight
+- Statement: Mars is the default packaged terminal variant selected by
+  `terminal = "mars"`, `#yazelix`, or `#yazelix_mars`. It consumes the Mars
+  child package metadata from `passthru.marsPackageMetadata` and
+  `share/mars/package-metadata.json`; missing or malformed metadata is a
+  package error, not a fallback trigger. Generated Mars config is written under
+  the Yazelix state directory, launched through `RIO_CONFIG_HOME`, and scoped to
+  the terminal process boundary so host Rio does not inherit Mars config state.
+  On Linux, packaged Mars can use the runtime-owned Vulkan wrapper because the
+  renderer needs a Vulkan-capable adapter.
+- Verification: automated Rust tests in
+  `rust_core/yazelix_core/src/launch_commands/launch.rs`
+  (`mars_process_boundary_env_clears_host_rio_config_and_sets_app_id`);
+  automated terminal-materialization tests in
+  `rust_core/yazelix_core/src/terminal_materialization.rs`
+  (`mars_serenityos_config_uses_child_emoji_profile_root`)
+
 ## Traceability
 - Defended by: `yzx_repo_validator validate-contracts`

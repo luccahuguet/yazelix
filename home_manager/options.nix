@@ -81,10 +81,8 @@ ${terminalDescriptionBullets}
   mars_profile = mkOption {
     type = types.enum marsProfiles;
     default = "full";
-    visible = false;
     description = ''
-      Dormant Mars profile setting retained for controlled terminal rebuild
-      work.
+      Mars terminal package profile.
 
       - "full": Rio trail cursor defaults without custom shaders
       - "baseline": no cursor effects
@@ -95,10 +93,8 @@ ${terminalDescriptionBullets}
   mars_emoji_font = mkOption {
     type = types.enum marsEmojiFonts;
     default = "noto";
-    visible = false;
     description = ''
-      Dormant Mars emoji fallback setting retained for controlled terminal
-      rebuild work.
+      Mars terminal emoji fallback font.
 
       - "noto": current Noto Color Emoji fallback
       - "twitter": Twitter/Twemoji color emoji fallback
@@ -109,10 +105,11 @@ ${terminalDescriptionBullets}
   mars_package = mkOption {
     type = types.nullOr types.package;
     default = null;
-    visible = false;
     description = ''
-      Dormant Mars child package override retained for controlled terminal
-      rebuild work.
+      Override package for the Mars terminal child runtime.
+
+      Set this only when testing a local Mars build or pinning a custom Mars
+      package. The package must expose passthru.marsPackageMetadata.
     '';
   };
 

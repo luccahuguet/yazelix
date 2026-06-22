@@ -5,26 +5,26 @@ use super::process::command_status_with_overrides;
 use super::resolve_requested_working_dir;
 use super::sidebar_bootstrap_extra_env;
 use crate::bridge::{CoreError, ErrorClass};
-use crate::command_metadata::{YzxExternBridgeSyncRequest, sync_yzx_extern_bridge};
+use crate::command_metadata::{sync_yzx_extern_bridge, YzxExternBridgeSyncRequest};
 use crate::control_plane::{
     config_dir_from_env, config_override_from_env, default_shell_from_config, expand_user_path,
     home_dir_from_env, load_normalized_config_for_control, read_yazelix_version_from_runtime,
     runtime_dir_from_env, runtime_env_request, runtime_materialization_plan_request_from_env,
     state_dir_from_env, zellij_default_shell_from_runtime,
 };
-use crate::front_door_render::{GameOfLifeCellStyle, play_welcome_style_with_appearance};
+use crate::front_door_render::{play_welcome_style_with_appearance, GameOfLifeCellStyle};
 use crate::initializer_commands::generate_shell_initializers_for_env;
 use crate::runtime_contract::evaluate_startup_working_dir_preflight;
 use crate::runtime_env::compute_runtime_env;
-use crate::runtime_materialization::{RuntimeArtifact, materialize_runtime_state};
+use crate::runtime_materialization::{materialize_runtime_state, RuntimeArtifact};
 use crate::session_config_snapshot::{
-    SessionConfigSnapshotCreateRequest, write_session_config_snapshot_for_launch,
+    write_session_config_snapshot_for_launch, SessionConfigSnapshotCreateRequest,
 };
-use crate::startup_facts::{StartupFactsData, compute_startup_facts_from_config};
+use crate::startup_facts::{compute_startup_facts_from_config, StartupFactsData};
 use crate::startup_handoff::{
-    StartupHandoffArtifact, StartupHandoffCaptureRequest, capture_startup_handoff_context,
+    capture_startup_handoff_context, StartupHandoffArtifact, StartupHandoffCaptureRequest,
 };
-use crate::terminal_variant::{SESSION_TERMINAL_ENV, current_session_terminal_label_from_env};
+use crate::terminal_variant::{current_session_terminal_label_from_env, SESSION_TERMINAL_ENV};
 use crate::upgrade_summary::{current_release_headline, maybe_show_first_run_upgrade_summary};
 use crossterm::event::{Event, KeyEventKind};
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
@@ -732,10 +732,8 @@ mod tests {
 
             assert!(message.contains("🎉 Welcome to Yazelix v-test!"));
             assert!(message.contains("🕒 Flake last updated: unknown"));
-            assert!(
-                message
-                    .contains("✨ Now with Nix auto-setup, lazygit, Starship, and markdown-oxide")
-            );
+            assert!(message
+                .contains("✨ Now with Nix auto-setup, lazygit, Starship, and markdown-oxide"));
             assert!(message.contains("🆕 Creating new Zellij session"));
             assert!(message.contains(&format!("🖥️  Preferred host terminal: {terminal}")));
             assert!(message.contains("⚠️  First run:"));

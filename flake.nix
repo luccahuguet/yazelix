@@ -21,6 +21,10 @@
       url = "github:raphamorim/rio/v0.4.7";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    mars = {
+      url = "github:luccahuguet/mars";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     fenix = {
       url = "github:nix-community/fenix";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -76,6 +80,7 @@
       home-manager,
       nixgl,
       rio,
+      mars,
       fenix,
       yazelixScreen,
       yazelixCursors,
@@ -114,6 +119,7 @@
           nixpkgs = inputIdentity nixpkgs;
           home_manager = inputIdentity home-manager;
           rio = inputIdentity rio;
+          mars = inputIdentity mars;
           fenix = inputIdentity fenix;
           yazelix_screen = inputIdentity yazelixScreen;
           yazelix_cursors = inputIdentity yazelixCursors;
@@ -133,7 +139,7 @@
           kgpPackages.helixPackage pkgs.stdenv.hostPlatform.system;
         _module.args.yazelixCursorsPackage =
           yazelixCursors.packages.${pkgs.stdenv.hostPlatform.system}.yazelix_cursors;
-        _module.args.marsTerminalPackage = null;
+        _module.args.marsTerminalPackage = mars.packages.${pkgs.stdenv.hostPlatform.system}.mars;
         imports = [ ./home_manager/module.nix ];
       };
       agentUsagePackages = system:
@@ -173,7 +179,7 @@
           pkgs ? mkPkgs system,
           src ? null,
           rust_core_src ? src,
-          runtimeVariant ? "ghostty",
+          runtimeVariant ? "mars",
           runtimeToolSources ? { },
           runtimeIdentity ? defaultRuntimeIdentity,
           name ? "yazelix",
@@ -185,7 +191,7 @@
           rioPackage ? rio.packages.${system}.rio,
           yazelixHelixPackage ? kgpPackages.helixPackage system,
           yazelixCursorsPackage ? yazelixCursors.packages.${system}.yazelix_cursors,
-          marsTerminalPackage ? null,
+          marsTerminalPackage ? mars.packages.${system}.mars,
           zellijPluginArtifacts ? zellijPluginArtifactsFor system,
           enableZellijKittyPassthrough ? false,
         }:
@@ -217,7 +223,7 @@
           rioPackage ? rio.packages.${system}.rio,
           yazelixHelixPackage ? kgpPackages.helixPackage system,
           yazelixCursorsPackage ? yazelixCursors.packages.${system}.yazelix_cursors,
-          marsTerminalPackage ? null,
+          marsTerminalPackage ? mars.packages.${system}.mars,
         }:
         import ./yazelix_runtime_package.nix {
           inherit nixgl name rioPackage runtimeIdentity runtimeVariant yazelixHelixPackage yazelixCursorsPackage marsTerminalPackage;

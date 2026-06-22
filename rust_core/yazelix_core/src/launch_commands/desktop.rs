@@ -5,7 +5,7 @@ use crate::bridge::{CoreError, ErrorClass};
 use crate::control_plane::{config_override_from_env, home_dir_from_env, runtime_dir_from_env};
 use crate::install_ownership_env::install_ownership_request_from_env_with_runtime_dir;
 use crate::install_ownership_report::{
-    InstallOwnershipEvaluateData, evaluate_install_ownership_report,
+    evaluate_install_ownership_report, InstallOwnershipEvaluateData,
 };
 use crate::terminal_variant::{
     active_terminal_from_runtime_dir, terminal_desktop_entry_file_name,

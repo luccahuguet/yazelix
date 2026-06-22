@@ -4,7 +4,7 @@
 use crate::bridge::{CoreError, ErrorClass};
 use crate::control_plane::{home_dir_from_env, state_dir_from_env};
 use crate::sidebar_bootstrap::{
-    SIDEBAR_BOOTSTRAP_CWD_ENV, is_sidebar_bootstrap_file, sidebar_bootstrap_owner_dir,
+    is_sidebar_bootstrap_file, sidebar_bootstrap_owner_dir, SIDEBAR_BOOTSTRAP_CWD_ENV,
 };
 use crate::terminal_materialization::MARS_EMOJI_ENV_KEYS;
 use std::fs;
@@ -522,11 +522,9 @@ mod tests {
         );
 
         let unknown = parse_session_config_patch("editor.nope=true", &fields).unwrap_err();
-        assert!(
-            unknown
-                .to_string()
-                .contains("Unknown Yazelix config setting")
-        );
+        assert!(unknown
+            .to_string()
+            .contains("Unknown Yazelix config setting"));
         let invalid_bool =
             parse_session_config_patch("core.skip_welcome_screen=maybe", &fields).unwrap_err();
         assert!(invalid_bool.to_string().contains("Invalid boolean value"));
@@ -535,11 +533,9 @@ mod tests {
             &fields,
         )
         .unwrap_err();
-        assert!(
-            invalid_map
-                .to_string()
-                .contains("Invalid string-list-map value")
-        );
+        assert!(invalid_map
+            .to_string()
+            .contains("Invalid string-list-map value"));
     }
 
     // Defends: --with writes an ephemeral settings.jsonc snapshot and validates it through the normal config contract without mutating the user's config.
@@ -603,16 +599,16 @@ mod tests {
         );
     }
 
-    // Defends: quarantined Mars runtime metadata is rejected instead of being treated as a shipped packaged terminal.
+    // Defends: Mars runtime metadata is accepted as a shipped packaged terminal.
     #[test]
-    fn active_terminal_rejects_quarantined_mars_runtime_variant() {
+    fn active_terminal_accepts_mars_runtime_variant() {
         let runtime = TempDir::new().unwrap();
         fs::write(runtime.path().join("runtime_variant"), "mars\n").unwrap();
 
-        let err =
-            crate::terminal_variant::active_terminal_from_runtime_dir(runtime.path()).unwrap_err();
-
-        assert_eq!(err.code(), "unsupported_terminal_variant");
+        assert_eq!(
+            crate::terminal_variant::active_terminal_from_runtime_dir(runtime.path()).unwrap(),
+            "mars"
+        );
     }
 
     // Defends: desktop launch logs use the terminal executable basename, so mars diagnostics can find them reliably.
@@ -625,12 +621,11 @@ mod tests {
                 .unwrap();
 
         assert!(log.starts_with(state.path().join("logs/terminal_launch")));
-        assert!(
-            log.file_name()
-                .and_then(|name| name.to_str())
-                .unwrap_or_default()
-                .starts_with("mars_desktop_")
-        );
+        assert!(log
+            .file_name()
+            .and_then(|name| name.to_str())
+            .unwrap_or_default()
+            .starts_with("mars_desktop_"));
     }
 
     // Defends: Ratty's clap command parser requires -e/--command to be the last option before the startup script.
@@ -755,11 +750,9 @@ mod tests {
 
         let ghostty_index = argv.iter().position(|arg| arg == "ghostty").unwrap_or(0);
         let ghostty_args = &argv[ghostty_index..];
-        assert!(
-            !ghostty_args
-                .iter()
-                .any(|arg| arg == "--title" || arg.starts_with("--title="))
-        );
+        assert!(!ghostty_args
+            .iter()
+            .any(|arg| arg == "--title" || arg.starts_with("--title=")));
         assert_eq!(ghostty_args[ghostty_args.len() - 2], "-e");
         assert_eq!(
             ghostty_args[ghostty_args.len() - 1],

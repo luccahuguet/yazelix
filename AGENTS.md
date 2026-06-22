@@ -122,8 +122,8 @@ When creating new files or directories, always use underscores to maintain consi
   4. Run `nix build .#runtime_ghostty --no-link --no-write-lock-file` once as the final package gate after the smaller checks pass.
 - Avoid launching multiple `nix develop`, `nix eval`, or package-build commands in parallel during validation. They contend on Nix eval caches, store locks, and Cargo/Nix build directories, which makes the session slower and noisier than serialized checks.
 - **Do not run `yzx restart` as an agent.** It kills the user's live Zellij session. If a runtime change needs a fresh Yazelix session, ask the maintainer to launch one or explicitly approve the destructive restart first.
-- Mars is not a shipped Yazelix terminal variant while the fork is rebuilt from a clean Rio base. Do not run mars-related compile-heavy commands (`cargo`, `nix build`, or Home Manager switch) unless the maintainer explicitly asks for a controlled Mars rebuild/test.
-- Do not reintroduce Mars package outputs, cache jobs, Home Manager examples, or docs until the rebuilt terminal passes visual, latency, and CPU dogfooding gates.
+- Mars and Ghostty are the first-class Yazelix terminal variants. Mars is the default because Yazelix controls the Rust fork and can keep the terminal/runtime stack aligned; Ghostty remains the mature supported alternate.
+- Keep Mars-related compile-heavy commands (`cargo`, full `nix build`, or Home Manager switch) intentional. Prefer metadata evals and focused package/runtime checks first, then run the exact Mars gate required by the change.
 
 ## Shell Boundary Rule
 

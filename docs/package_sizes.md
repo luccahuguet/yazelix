@@ -12,7 +12,7 @@ The default runtime includes:
 - host-managed helper integrations: `mise`, `tombi`
 - preview/search helpers: `p7zip`, `jq`, `fd`, `ripgrep`, `poppler`, `resvg`
 - system helpers required by runtime wrappers and validators: `git`, `nix`, `coreutils`, `findutils`, `gnugrep`, `gnused`, `util-linux`
-- one packaged terminal variant: Ghostty in `#yazelix` and `#yazelix_ghostty`, vanilla Rio in `#yazelix_rio`, WezTerm in `#yazelix_wezterm`, Kitty in `#yazelix_kitty`, Linux Foot in `#yazelix_foot`, or experimental Linux Ratty in `#yazelix_ratty`
+- one packaged terminal variant: Mars in `#yazelix` and `#yazelix_mars`, Ghostty in `#yazelix_ghostty`, vanilla Rio in `#yazelix_rio`, WezTerm in `#yazelix_wezterm`, Kitty in `#yazelix_kitty`, Linux Foot in `#yazelix_foot`, or Linux Ratty in `#yazelix_ratty`
 - `tokenusage` for the default Codex and Claude status widgets
 
 It does not ship:
@@ -53,9 +53,9 @@ nix path-info -S .#yazelix_ratty --extra-experimental-features "nix-command flak
 
 ## Current x86_64-linux Findings
 
-Measurements below are local NAR/closure measurements from June 2, 2026. They are not exact Cachix billed bytes because Cachix checks the upstream NixOS cache first and uploads compressed paths.
+Measurements below are local NAR/closure measurements from June 2, 2026, before Mars became the default terminal. They are not exact Cachix billed bytes because Cachix checks the upstream NixOS cache first and uploads compressed paths.
 
-The current `git+file://` default Ghostty package measured:
+The recorded `git+file://` default Ghostty package measured:
 
 | Shape | Build target | Closure size | Paths | Notes |
 | --- | --- | ---: | ---: | --- |

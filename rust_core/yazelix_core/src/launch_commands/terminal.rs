@@ -80,9 +80,10 @@ pub(super) fn user_terminal_config_candidates_for_platform(
             xdg_config_home,
             platform,
         )),
-        "kitty" => Ok(vec![
-            home_dir.join(".config").join("kitty").join("kitty.conf"),
-        ]),
+        "kitty" => Ok(vec![home_dir
+            .join(".config")
+            .join("kitty")
+            .join("kitty.conf")]),
         "wezterm" => Ok(vec![
             home_dir.join(".wezterm.lua"),
             home_dir.join(".config").join("wezterm").join("wezterm.lua"),

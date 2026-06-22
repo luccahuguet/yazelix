@@ -1,13 +1,14 @@
 # Terminal Emulator Comparison
 
 This document compares the terminal emulators Yazelix currently ships or scores:
-Ghostty, Rio, WezTerm, Ratty, and Kitty. Foot is restored as a Linux-only
+Mars, Ghostty, Rio, WezTerm, Ratty, and Kitty. Foot is restored as a Linux-only
 packaged terminal variant, but its detailed feature score needs a fresh
 validation pass.
 
 Data summarized from:
 
 - https://ghostty.org/docs/config/reference
+- https://github.com/luccahuguet/mars
 - https://github.com/raphamorim/rio
 - https://wezterm.org/features.html
 - https://codeberg.org/dnkl/foot
@@ -39,7 +40,8 @@ they are not feature/protocol capabilities by themselves.
 | Terminal | Score | Full | Partial | No | Read |
 | --- | ---: | ---: | ---: | ---: | --- |
 | Kitty | 76 | 18 | 2 | 5 | Strong protocol reference and packaged alternate; no first-party control |
-| Ghostty | 60 | 15 | 0 | 10 | Best mature default today; strongest shader story; fewer Kitty frontier protocols |
+| Ghostty | 60 | 15 | 0 | 10 | Mature first-class alternate; strongest shader story; fewer Kitty frontier protocols |
+| Mars | 56 | 13 | 2 | 10 | Default because Yazelix owns the Rust fork and can optimize stack compatibility and agent-driven workflows |
 | Rio | 48 | 11 | 2 | 12 | Upstream Rio path with modern image/protocol support; less Yazelix soak than Ghostty |
 | WezTerm | 48 | 11 | 2 | 12 | Stable alternate with broad image support; fewer modern Kitty extensions |
 | Ratty | 28 | 6 | 2 | 17 | Experimental but uniquely interesting because of inline 3D graphics |
@@ -76,42 +78,45 @@ they are not feature/protocol capabilities by themselves.
 
 ## Runtime And Integration
 
-| Criterion | Ghostty | Rio | WezTerm | Ratty | Kitty |
-| --- | --- | --- | --- | --- | --- |
-| C1 Packaged Yazelix runtime | Yes | Yes | Yes | Yes | Yes |
-| C2 First-party control path | No | No | No | No | No |
-| C3 Generated config and transparency | Yes | Yes | Yes | Yes | Yes |
-| C4 Runtime launcher integration | Yes | Yes | Yes | Yes | Yes |
-| C5 GPU renderer | Yes | Yes | Yes | Yes | Yes |
-| C6 Production confidence | Yes | Partial | Yes | Partial | Yes |
-| C7 Yazelix stack validation | Yes | Partial | Partial | Partial | Partial |
+| Criterion | Mars | Ghostty | Rio | WezTerm | Ratty | Kitty |
+| --- | --- | --- | --- | --- | --- | --- |
+| C1 Packaged Yazelix runtime | Yes | Yes | Yes | Yes | Yes | Yes |
+| C2 First-party control path | Yes | No | No | No | No | No |
+| C3 Generated config and transparency | Yes | Yes | Yes | Yes | Yes | Yes |
+| C4 Runtime launcher integration | Yes | Yes | Yes | Yes | Yes | Yes |
+| C5 GPU renderer | Yes | Yes | Yes | Yes | Yes | Yes |
+| C6 Production confidence | Partial | Yes | Partial | Yes | Partial | Yes |
+| C7 Yazelix stack validation | Yes | Yes | Partial | Partial | Partial | Partial |
 
 ## Rendering And Images
 
-| Criterion | Ghostty | Rio | WezTerm | Ratty | Kitty |
-| --- | --- | --- | --- | --- | --- |
-| C8 Ghostty-style cursor shaders | Yes | No | No | No | Partial |
-| C9 Kitty graphics | Yes | Yes | Yes | Yes | Yes |
-| C10 Sixel | No | Yes | Yes | No | No |
-| C11 iTerm2 images | No | Yes | Yes | No | No |
-| C25 Inline 3D graphics | No | No | No | Yes | No |
+| Criterion | Mars | Ghostty | Rio | WezTerm | Ratty | Kitty |
+| --- | --- | --- | --- | --- | --- | --- |
+| C8 Ghostty-style cursor shaders | Partial | Yes | No | No | No | Partial |
+| C9 Kitty graphics | Yes | Yes | Yes | Yes | Yes | Yes |
+| C10 Sixel | Yes | No | Yes | Yes | No | No |
+| C11 iTerm2 images | Yes | No | Yes | Yes | No | No |
+| C25 Inline 3D graphics | No | No | No | No | Yes | No |
 
-Kitty receives partial credit for C8 because it has cursor trails, but not the
-Ghostty-compatible shader ABI Yazelix wants. Ratty receives full credit for C25
-because Ratty Graphics Protocol supports inline `.obj` and `.glb` objects.
+Mars receives partial credit for C8 because it supports Yazelix-native split
+cursor rendering and Rio trail cursor behavior, but not the Ghostty-compatible
+shader ABI. Kitty receives partial credit for C8 because it has cursor trails,
+but not the Ghostty-compatible shader ABI Yazelix wants. Ratty receives full
+credit for C25 because Ratty Graphics Protocol supports inline `.obj` and `.glb`
+objects.
 
 ## Core Protocols
 
-| Criterion | Ghostty | Rio | WezTerm | Ratty | Kitty |
-| --- | --- | --- | --- | --- | --- |
-| C12 Kitty keyboard | Yes | Yes | Partial | No | Yes |
-| C13 OSC 8 hyperlinks | Yes | Yes | Yes | No | Yes |
-| C14 OSC 52 clipboard | Yes | Yes | Yes | No | Yes |
-| C15 OSC 133 semantic prompts | Yes | No | Yes | No | No |
-| C16 OSC 21 color control | Yes | No | No | No | Yes |
-| C17 OSC 22 pointer shapes | Yes | Yes | No | No | Yes |
-| C18 OSC 66 text sizing | Yes | No | No | No | Yes |
-| C19 OSC 99 notifications | No | No | No | No | Yes |
+| Criterion | Mars | Ghostty | Rio | WezTerm | Ratty | Kitty |
+| --- | --- | --- | --- | --- | --- | --- |
+| C12 Kitty keyboard | Yes | Yes | Yes | Partial | No | Yes |
+| C13 OSC 8 hyperlinks | Yes | Yes | Yes | Yes | No | Yes |
+| C14 OSC 52 clipboard | Yes | Yes | Yes | Yes | No | Yes |
+| C15 OSC 133 semantic prompts | No | Yes | No | Yes | No | No |
+| C16 OSC 21 color control | No | Yes | No | No | No | Yes |
+| C17 OSC 22 pointer shapes | Yes | Yes | Yes | No | No | Yes |
+| C18 OSC 66 text sizing | No | Yes | No | No | No | Yes |
+| C19 OSC 99 notifications | No | No | No | No | No | Yes |
 
 WezTerm receives partial credit for C12 because Kitty keyboard support exists but
 is opt-in through `enable_kitty_keyboard`. Ghostty supports notification escape
@@ -119,22 +124,30 @@ paths, but not the Kitty OSC 99 protocol surface scored here.
 
 ## Frontier Kitty Protocols
 
-| Criterion | Ghostty | Rio | WezTerm | Ratty | Kitty |
-| --- | --- | --- | --- | --- | --- |
-| C20 Kitty multiple cursors | No | No | No | No | Yes |
-| C21 Kitty file transfer | No | No | No | No | Yes |
-| C22 OSC 5522 text clipboard | No | No | No | No | Yes |
-| C23 Kitty DECCARA | No | No | No | No | Yes |
-| C24 Kitty unscrolling | No | No | No | No | Yes |
+| Criterion | Mars | Ghostty | Rio | WezTerm | Ratty | Kitty |
+| --- | --- | --- | --- | --- | --- | --- |
+| C20 Kitty multiple cursors | No | No | No | No | No | Yes |
+| C21 Kitty file transfer | No | No | No | No | No | Yes |
+| C22 OSC 5522 text clipboard | No | No | No | No | No | Yes |
+| C23 Kitty DECCARA | No | No | No | No | No | Yes |
+| C24 Kitty unscrolling | No | No | No | No | No | Yes |
 
 The current Ghostty source parses OSC 5522, but this comparison treats
 parser-only behavior as no runtime support.
 
 ## Terminal Notes
 
+### Mars
+
+Mars is the default Yazelix terminal because it gives the project a controlled
+Rust terminal path for stack compatibility, generated config, cursor behavior,
+Kitty protocol work, and agent-driven development workflows. Its main tradeoff
+is maturity: Ghostty remains the stronger broad-production and macOS-native
+alternate when users want the most proven terminal path.
+
 ### Ghostty
 
-Ghostty remains the best mature default for Yazelix today. It has excellent
+Ghostty remains the best mature first-class alternate for Yazelix today. It has excellent
 shader support, strong Kitty graphics support, OSC 133 shell integration, Kitty
 keyboard, and a stable daily-driver posture. Its lower score comes from this
 comparison weighting Sixel, iTerm2 images, OSC 99, and newer Kitty frontier
@@ -163,7 +176,7 @@ parity.
 Ratty is not trying to be the safest all-purpose terminal in this comparison.
 Its value is that it proves a different frontier: GPU-rendered terminal UI plus
 inline 3D objects through Ratty Graphics Protocol. Yazelix packages it on Linux
-as an experimental runtime and can use the Yazelix Zellij Kitty graphics
+as a supported runtime and can use the Yazelix Zellij Kitty graphics
 bridge, but Yazelix does not claim RGP passthrough inside Zellij.
 
 ### Kitty

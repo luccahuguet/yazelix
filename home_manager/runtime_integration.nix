@@ -222,10 +222,6 @@ let
       assertion = cfg.mars_package == null || cfg.package == null;
       message = "programs.yazelix.mars_package cannot be combined with programs.yazelix.package; use the narrow mars_package override or a whole Yazelix package replacement, not both";
     }
-    {
-      assertion = cfg.mars_package == null;
-      message = "programs.yazelix.mars_package is dormant while Mars is not a shipped Yazelix terminal variant";
-    }
   ];
 in
 {

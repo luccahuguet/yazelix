@@ -1,6 +1,5 @@
 // Test lane: default
 
-use super::RUNTIME_RELAUNCH_CLEARED_ENV_KEYS;
 use super::config_override::{
     config_override_extra_env, prepare_session_config_override, resolve_cli_config_override,
 };
@@ -10,6 +9,7 @@ use super::process::{
 };
 use super::resolve_requested_working_dir;
 use super::terminal::{build_launch_command_argv, resolve_terminal_config_path};
+use super::RUNTIME_RELAUNCH_CLEARED_ENV_KEYS;
 use crate::bridge::{CoreError, ErrorClass};
 use crate::config_state::compute_config_state;
 use crate::control_plane::{
@@ -19,24 +19,23 @@ use crate::control_plane::{
 };
 use crate::desktop_exec::{parse_env_assignment, split_desktop_exec_tokens};
 use crate::launch_materialization::{
-    LaunchMaterializationData, launch_materialization_request_from_env,
-    prepare_launch_materialization,
+    launch_materialization_request_from_env, prepare_launch_materialization,
+    LaunchMaterializationData,
 };
 use crate::runtime_contract::{
-    LaunchPreflightPayload, StartupLaunchPreflightRequest, TerminalCandidate,
-    evaluate_startup_launch_preflight,
+    evaluate_startup_launch_preflight, LaunchPreflightPayload, StartupLaunchPreflightRequest,
+    TerminalCandidate,
 };
 use crate::runtime_env::compute_runtime_env;
 use crate::runtime_materialization::{
-    RuntimeMaterializationRepairEvaluateRequest, repair_runtime_materialization,
+    repair_runtime_materialization, RuntimeMaterializationRepairEvaluateRequest,
 };
 use crate::terminal_materialization::{
     MARS_EMOJI_ENV_KEYS, MARS_EMOJI_FONT_ENV, MARS_EMOJI_FONT_SOURCE_ENV,
 };
 use crate::terminal_variant::{
-    SESSION_TERMINAL_ENV, SUPPORTED_TERMINALS, active_terminal_from_runtime_dir,
-    normalize_terminal_id, terminal_desktop_entry_file_name, terminal_display_name,
-    terminal_startup_wm_class,
+    active_terminal_from_runtime_dir, normalize_terminal_id, terminal_desktop_entry_file_name,
+    terminal_display_name, terminal_startup_wm_class, SESSION_TERMINAL_ENV, SUPPORTED_TERMINALS,
 };
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -263,13 +262,11 @@ fn resolve_profile_terminal_launcher(
 
 fn profile_terminal_desktop_entry_candidates(home_dir: &Path, terminal: &str) -> Vec<PathBuf> {
     let file_name = terminal_desktop_entry_file_name(terminal);
-    let mut candidates = vec![
-        home_dir
-            .join(".nix-profile")
-            .join("share")
-            .join("applications")
-            .join(&file_name),
-    ];
+    let mut candidates = vec![home_dir
+        .join(".nix-profile")
+        .join("share")
+        .join("applications")
+        .join(&file_name)];
     if let Ok(user) = std::env::var("USER") {
         let trimmed = user.trim();
         if !trimmed.is_empty() {
