@@ -24,11 +24,44 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  # Branch and PR runs supersede older runs for the same review surface. Manual
+  # and scheduled runs include run_id so an intentional smoke run is independent.
+  group: ci-${{ github.workflow }}-${{ github.event_name == 'workflow_dispatch' && github.run_id || github.event_name == 'schedule' && github.run_id || github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'push' || github.event_name == 'pull_request' }}
+
 jobs:
-  source_contracts:
-    # Always-on source-contract lane. Keep this strong enough for branch
-    # protection and routine pushes, while independent Nix-heavy validators run
-    # in parallel jobs below.
+  ci_plan:
+    name: CI changed surfaces
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+    outputs:
+      nix_customization: ${{ steps.surfaces.outputs.nix_customization }}
+      child_release: ${{ steps.surfaces.outputs.child_release }}
+      darwin_wasm: ${{ steps.surfaces.outputs.darwin_wasm }}
+      runtime_smoke: ${{ steps.surfaces.outputs.runtime_smoke }}
+      cold_install: ${{ steps.surfaces.outputs.cold_install }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Classify changed surfaces
+        id: surfaces
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.sha }}
+        run: shells/posix/ci_changed_surfaces.sh --event "$EVENT_NAME" --base "$BASE_SHA" --head "$HEAD_SHA" --output "$GITHUB_OUTPUT"
+
+  validation_helpers:
+    name: Build validation helpers
     runs-on: ubuntu-latest
     timeout-minutes: 12
     env:
@@ -43,65 +76,86 @@ jobs:
         with:
           fetch-depth: 0
 
-      # The always-on lane is source-contract validation, not a package build.
-      # Keep the expensive disk cleanup in Nix-heavy runtime smoke jobs below.
-      - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@v22
+      - name: Setup Nix
+        uses: ./.github/actions/setup_nix_ubuntu
         with:
-          determinate: false
+          free_disk: "false"
+          rust_cache: "true"
 
-      - name: Cache Rust validation build artifacts
-        uses: actions/cache@v5
+      - name: Build Rust validation helpers
+        run: nix develop .#ci -c cargo build --quiet --manifest-path rust_core/Cargo.toml -p yazelix_maintainer --bin yzx_repo_validator -p yazelix_core --bin yzx_core
+
+      - name: Stage validation helpers
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/validation_helpers
+          cp rust_core/target/debug/yzx_repo_validator artifacts/validation_helpers/
+          cp rust_core/target/debug/yzx_core artifacts/validation_helpers/
+
+      - name: Upload validation helpers
+        uses: actions/upload-artifact@v7
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            rust_core/target
-          key: rust-validation-${{ runner.os }}-${{ hashFiles('rust_core/Cargo.lock', 'flake.lock') }}
-          restore-keys: |
-            rust-validation-${{ runner.os }}-
+          name: yazelix-validation-helpers
+          path: artifacts/validation_helpers
+          retention-days: 1
+
+  source_contracts:
+    # Always-on source-contract lane. Keep this strong enough for branch
+    # protection and routine pushes; package/runtime checks are separately owned.
+    needs: validation_helpers
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+      YAZELIX_DIR: ${{ github.workspace }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       # Keep the always-on lane off Magic Nix Cache. Its post-job uploads can
       # outlive the validators and turn green checks into timeout failures.
-      - name: Build Rust validation helpers
-        run: |
-          set -euo pipefail
-          nix develop .#ci -c cargo build --quiet --manifest-path rust_core/Cargo.toml -p yazelix_maintainer --bin yzx_repo_validator -p yazelix_core --bin yzx_core
-          echo "YAZELIX_YZX_CORE_BIN=$GITHUB_WORKSPACE/rust_core/target/debug/yzx_core" >> "$GITHUB_ENV"
+      - name: Setup Nix
+        uses: ./.github/actions/setup_nix_ubuntu
+        with:
+          free_disk: "false"
+
+      - name: Use validation helpers
+        uses: ./.github/actions/use_validation_helpers
 
       - name: Validate Nushell syntax
-        run: nix develop .#ci -c ./rust_core/target/debug/yzx_repo_validator validate-nushell-syntax
+        run: nix develop .#ci -c "$YAZELIX_REPO_VALIDATOR" validate-nushell-syntax
 
       - name: Validate generated README surface
-        shell: bash
-        run: nix develop .#ci -c ./rust_core/target/debug/yzx_repo_validator validate-readme-version
+        run: nix develop .#ci -c "$YAZELIX_REPO_VALIDATOR" validate-readme-version
 
       - name: Validate upgrade contract
-        shell: bash
-        run: nix develop .#ci -c ./rust_core/target/debug/yzx_repo_validator validate-upgrade-contract --ci
+        run: nix develop .#ci -c "$YAZELIX_REPO_VALIDATOR" validate-upgrade-contract --ci
 
       - name: Validate config surface and launch-profile contract
-        shell: bash
-        run: nix develop .#ci -c ./rust_core/target/debug/yzx_repo_validator validate-config-surface-contract
+        run: nix develop .#ci -c "$YAZELIX_REPO_VALIDATOR" validate-config-surface-contract
 
       - name: Validate contracts
-        shell: bash
-        run: nix develop .#ci -c ./rust_core/target/debug/yzx_repo_validator validate-contracts
+        run: nix develop .#ci -c "$YAZELIX_REPO_VALIDATOR" validate-contracts
 
       - name: Validate docs experience
-        shell: bash
-        run: nix develop .#ci -c ./rust_core/target/debug/yzx_repo_validator validate-docs-experience
+        run: nix develop .#ci -c "$YAZELIX_REPO_VALIDATOR" validate-docs-experience
 
       - name: Validate Rust test traceability
-        shell: bash
-        run: nix develop .#ci -c ./rust_core/target/debug/yzx_repo_validator validate-rust-test-traceability
+        run: nix develop .#ci -c "$YAZELIX_REPO_VALIDATOR" validate-rust-test-traceability
 
       - name: Validate top-level flake interface
-        run: nix develop .#ci -c ./rust_core/target/debug/yzx_repo_validator validate-flake-interface
+        run: nix develop .#ci -c "$YAZELIX_REPO_VALIDATOR" validate-flake-interface
 
   nix_customization_api:
-    # Nix-heavy release validator split out of the source-contract lane so
-    # release feedback can arrive in parallel without weakening evidence.
+    # Change-specific Nix API evidence. Package-build evidence for published
+    # refs belongs to the cache-publishing workflow.
+    needs: [ci_plan, validation_helpers]
+    if: ${{ needs.ci_plan.outputs.nix_customization == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 12
     env:
@@ -116,42 +170,19 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Free runner disk space
-        run: |
-          set -euo pipefail
-          sudo rm -rf \
-            /opt/hostedtoolcache \
-            /usr/local/lib/android \
-            /usr/share/dotnet \
-            /opt/ghc \
-            /opt/az
-          docker system prune --all --force --volumes || true
+      - name: Setup Nix
+        uses: ./.github/actions/setup_nix_ubuntu
 
-      - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@v22
-        with:
-          determinate: false
-
-      - name: Cache Rust validation build artifacts
-        uses: actions/cache@v5
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            rust_core/target
-          key: rust-validation-${{ runner.os }}-${{ hashFiles('rust_core/Cargo.lock', 'flake.lock') }}
-          restore-keys: |
-            rust-validation-${{ runner.os }}-
-
-      - name: Build maintainer validator
-        run: nix develop .#ci -c cargo build --quiet --manifest-path rust_core/Cargo.toml -p yazelix_maintainer --bin yzx_repo_validator
+      - name: Use validation helpers
+        uses: ./.github/actions/use_validation_helpers
 
       - name: Validate Nix customization API
-        run: nix develop .#ci -c ./rust_core/target/debug/yzx_repo_validator validate-nix-customization-api
+        run: nix develop .#ci -c "$YAZELIX_REPO_VALIDATOR" validate-nix-customization-api
 
   child_release_transaction:
-    # Child publication/package-boundary validation can run independently from
-    # the source-contract and Nix-customization lanes.
+    # Change-specific child publication/package-boundary validation.
+    needs: [ci_plan, validation_helpers]
+    if: ${{ needs.ci_plan.outputs.child_release == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 12
     env:
@@ -166,44 +197,20 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Free runner disk space
-        run: |
-          set -euo pipefail
-          sudo rm -rf \
-            /opt/hostedtoolcache \
-            /usr/local/lib/android \
-            /usr/share/dotnet \
-            /opt/ghc \
-            /opt/az
-          docker system prune --all --force --volumes || true
+      - name: Setup Nix
+        uses: ./.github/actions/setup_nix_ubuntu
 
-      - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@v22
-        with:
-          determinate: false
-
-      - name: Cache Rust validation build artifacts
-        uses: actions/cache@v5
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            rust_core/target
-          key: rust-validation-${{ runner.os }}-${{ hashFiles('rust_core/Cargo.lock', 'flake.lock') }}
-          restore-keys: |
-            rust-validation-${{ runner.os }}-
-
-      - name: Build maintainer validator
-        run: nix develop .#ci -c cargo build --quiet --manifest-path rust_core/Cargo.toml -p yazelix_maintainer --bin yzx_repo_validator
+      - name: Use validation helpers
+        uses: ./.github/actions/use_validation_helpers
 
       - name: Validate child release transaction and Darwin child package smoke contracts
-        run: nix develop .#ci -c ./rust_core/target/debug/yzx_repo_validator validate-child-release-transaction
+        run: nix develop .#ci -c "$YAZELIX_REPO_VALIDATOR" validate-child-release-transaction
 
   darwin_wasm_package_smoke:
     name: Darwin wasm package smoke
-    # Required Darwin signal for first-party Zellij wasm plugins. Keep this
-    # narrower than the cache-publishing workflow so ordinary PR CI stays
-    # read-only and does not depend on Cachix secrets.
+    # Change-specific Darwin signal for first-party Zellij wasm packages.
+    needs: ci_plan
+    if: ${{ needs.ci_plan.outputs.darwin_wasm == 'true' }}
     runs-on: macos-15
     timeout-minutes: 45
     env:
@@ -230,12 +237,12 @@ jobs:
             .#packages.aarch64-darwin.yazelix_zellij_popup
 
   runtime_smoke:
-    # Fast scheduled/manual runtime lane. It builds the packaged runtime once
-    # and exercises helper-command presence, runtime env setup, generated
+    # Fast runtime behavior lane. It builds the packaged runtime once and
+    # exercises helper-command presence, runtime env setup, generated
     # materialization, and desktop install shape through a package-root profile
-    # shim. The cold_install lane below owns full nix profile install evidence.
-    needs: [source_contracts, nix_customization_api, child_release_transaction]
-    if: ${{ needs.source_contracts.result == 'success' && needs.nix_customization_api.result == 'success' && needs.child_release_transaction.result == 'success' && (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.run_runtime_smoke)) }}
+    # shim. The cold_install lane owns full nix profile install evidence.
+    needs: [ci_plan, validation_helpers, source_contracts]
+    if: ${{ always() && needs.ci_plan.result == 'success' && needs.source_contracts.result == 'success' && (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.run_runtime_smoke) || needs.ci_plan.outputs.runtime_smoke == 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
@@ -250,40 +257,22 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Free runner disk space
-        run: |
-          set -euo pipefail
-          sudo rm -rf \
-            /opt/hostedtoolcache \
-            /usr/local/lib/android \
-            /usr/share/dotnet \
-            /opt/ghc \
-            /opt/az
-          docker system prune --all --force --volumes || true
-
-      - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@v22
+      - name: Setup Nix
+        uses: ./.github/actions/setup_nix_ubuntu
         with:
-          determinate: false
+          magic_nix_cache: "true"
 
-      - name: Enable Nix cache
-        uses: DeterminateSystems/magic-nix-cache-action@main
-        with:
-          use-gha-cache: true
-          use-flakehub: false
-
-      - name: Build maintainer validator
-        run: nix develop -c cargo build --quiet --manifest-path rust_core/Cargo.toml -p yazelix_maintainer --bin yzx_repo_validator
+      - name: Use validation helpers
+        uses: ./.github/actions/use_validation_helpers
 
       - name: Validate runtime package smoke
-        shell: bash
-        run: nix develop -c ./rust_core/target/debug/yzx_repo_validator validate-runtime-package-smoke
+        run: nix develop -c "$YAZELIX_REPO_VALIDATOR" validate-runtime-package-smoke
 
   cold_install:
-    # Explicit heavy lane for full nix profile install/rebuild evidence. It is
-    # manual-only because runtime_smoke owns scheduled runtime behavior checks.
-    needs: [source_contracts, nix_customization_api, child_release_transaction]
-    if: ${{ needs.source_contracts.result == 'success' && needs.nix_customization_api.result == 'success' && needs.child_release_transaction.result == 'success' && github.event_name == 'workflow_dispatch' && inputs.run_cold_install }}
+    # Explicit heavy lane for full nix profile install/rebuild evidence. It
+    # remains manual-only even when the planner flags package/runtime surfaces.
+    needs: [validation_helpers, source_contracts]
+    if: ${{ always() && needs.source_contracts.result == 'success' && github.event_name == 'workflow_dispatch' && inputs.run_cold_install }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
@@ -298,33 +287,16 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Free runner disk space
-        run: |
-          set -euo pipefail
-          sudo rm -rf \
-            /opt/hostedtoolcache \
-            /usr/local/lib/android \
-            /usr/share/dotnet \
-            /opt/ghc \
-            /opt/az
-          docker system prune --all --force --volumes || true
-
-      - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@v22
+      - name: Setup Nix
+        uses: ./.github/actions/setup_nix_ubuntu
         with:
-          determinate: false
+          magic_nix_cache: "true"
 
-      - name: Enable Nix cache
-        uses: DeterminateSystems/magic-nix-cache-action@main
-        with:
-          use-gha-cache: true
-          use-flakehub: false
-
-      - name: Build maintainer validator
-        run: nix develop -c cargo build --quiet --manifest-path rust_core/Cargo.toml -p yazelix_maintainer --bin yzx_repo_validator
+      - name: Use validation helpers
+        uses: ./.github/actions/use_validation_helpers
 
       - name: Run cold profile install build
-        run: nix develop -c ./rust_core/target/debug/yzx_repo_validator validate-flake-profile-install install "${{ runner.temp }}/yazelix_flake_install_smoke"
+        run: nix develop -c "$YAZELIX_REPO_VALIDATOR" validate-flake-profile-install install "${{ runner.temp }}/yazelix_flake_install_smoke"
 
       - name: Verify cold profile-installed runtime
-        run: nix develop -c ./rust_core/target/debug/yzx_repo_validator validate-flake-profile-install verify "${{ runner.temp }}/yazelix_flake_install_smoke"
+        run: nix develop -c "$YAZELIX_REPO_VALIDATOR" validate-flake-profile-install verify "${{ runner.temp }}/yazelix_flake_install_smoke"

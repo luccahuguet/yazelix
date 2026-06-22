@@ -11,8 +11,10 @@ permissions:
   contents: read
 
 concurrency:
-  group: publish-nix-cache-${{ github.sha }}
-  cancel-in-progress: false
+  # Main-branch cache publishing supersedes older cache runs for the same ref.
+  # Manual runs keep their own group so they remain deliberate one-off probes.
+  group: publish-nix-cache-${{ github.event_name == 'workflow_dispatch' && github.run_id || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'push' }}
 
 jobs:
   publish_x86_64_linux:
