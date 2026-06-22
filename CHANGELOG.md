@@ -4,13 +4,20 @@ Short, upgrade-facing release notes live here. The longer narrative history rema
 
 ## Unreleased
 
-Post-v17.7 work in progress
+Mars default, status-bar chrome, and startup polish
 
 Upgrade impact: no user action required
 
 Highlights:
-- Renamed the Rio-derived first-party terminal runtime surface to Mars across package outputs, Home Manager options, runtime metadata, launch environment, desktop entries, and docs
-- Updated the Mars, Yazelix Cursors, and Zellij pane-orchestrator child pins so Mars owns the terminal package identity, standard desktop icon sizes, cursor shader target contract, and compact AI activity tab markers
+- Made Mars the default packaged terminal and finished the Mars rename across package outputs, Home Manager `programs.yazelix.terminal`, runtime metadata, launch environment, desktop entries, window class, icon assets, and docs; Ghostty remains the first-class mature alternate, with Rio, WezTerm, Kitty, Foot, and Ratty still available through explicit runtime variants
+- Integrated the Zellij config-pack renderer into the Rust workspace so generated layouts, keybind rendering, swap fragments, and status-bar plugin wiring share one tested source instead of duplicated main-repo layout ownership
+- Made the session name a normal status-bar widget, added configurable status widget chrome with `none`, `square`, and `round` frames plus `dot`, `pipe`, `empty`, and `space` separators, moved CPU/RAM out of the default tray while keeping them opt-in, and updated the compact Codex usage shape
+- Improved tab creation UX: Zellij tab-mode `n` now opens a home-scoped tab named with the home marker, and the startup home tab uses the same marker instead of the generic `Tab #1`
+- Rendered tutor content from Markdown and enriched onboarding with explicit key hints for `Alt Shift H/J/K/L`, `Ctrl y`, `Ctrl Shift Y`, and `Alt r`, plus clearer `yzx env` tool-path guidance
+- Added runtime/install reliability checks including the cold-install runtime verifier, bootstrap install check, runtime self-description surface, generated-state diagnostics, Home Manager settings-contract state repair, and fresher Home Manager desktop launchers
+- Tamed Zellij plugin helper churn by moving terminal activity refresh away from timer-driven shell-outs, consuming cold-stable system usage widgets, adding plugin doctor health reporting, and adding `yzx dev perf` planning for bounded Zellij/plugin snapshots
+- Updated Mars, Yazelix Cursors, pane-orchestrator, Helix grammar, and Zellij bar child pins for terminal package identity, standard desktop icon sizes, cursor shader target contracts, compact AI tab markers, archive-backed grammar fetchers, and compact status-bar rendering
+- Hardened maintainer and CI infrastructure with Darwin wasm smoke coverage, branch-push CI, scheduled runtime-env helper fixes, longer integration smoke timeouts, release child-transaction validation, and clearer cache setup docs
 
 ## v17.7 - 2026-06-15
 
