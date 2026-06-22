@@ -174,11 +174,11 @@
         "systems": "systems"
       },
       "locked": {
-        "lastModified": 1782145577,
-        "narHash": "sha256-75B2CWhGPgq2SZEUpI8e2/yq/3DVQFGwDw923lX1TU0=",
+        "lastModified": 1782147625,
+        "narHash": "sha256-Tuuk2Ad4WqbAykjnHcLkiyb+PUrSkLSXNnqXPDraLWo=",
         "owner": "luccahuguet",
         "repo": "mars",
-        "rev": "3414aac9cfe02995142e6733c9fc78b8094e791e",
+        "rev": "b29c90d7d0d903fc90c82568eb7274378e48e6b1",
         "type": "github"
       },
       "original": {
