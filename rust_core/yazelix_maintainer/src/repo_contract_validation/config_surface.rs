@@ -819,8 +819,11 @@ fn validate_home_manager_desktop_entry_contract(repo_root: &Path) -> Result<Vec<
     let is_present = json_map_bool_field(&entry, "present");
     let actual_exec = json_map_str_field(&entry, "exec");
     let actual_name = json_map_str_field(&entry, "name");
+    let actual_startup_wm_class = json_map_str_field(&entry, "startupWmClass");
     let expected_name = terminal_desktop_entry_name(HOME_MANAGER_DEFAULT_TERMINAL);
     let expected_exec = expected_home_manager_profile_desktop_exec(HOME_MANAGER_DEFAULT_TERMINAL);
+    let expected_startup_wm_class =
+        expected_home_manager_startup_wm_class(HOME_MANAGER_DEFAULT_TERMINAL);
     let mut errors = Vec::new();
 
     if active_terminal != HOME_MANAGER_DEFAULT_TERMINAL {
@@ -861,6 +864,15 @@ fn validate_home_manager_desktop_entry_contract(repo_root: &Path) -> Result<Vec<
             format_json_string(actual_exec)
         ));
     }
+
+    if actual_startup_wm_class != expected_startup_wm_class {
+        errors.push(format!(
+            "Home Manager desktop entry StartupWMClass mismatch: expected {}, got {}",
+            format_json_string(&expected_startup_wm_class),
+            format_json_string(actual_startup_wm_class)
+        ));
+    }
+
     let package_count = json_map_i64_field(&extra_entry, "packageCount");
     if package_count != 1 {
         errors.push(format!(
@@ -913,6 +925,15 @@ fn validate_home_manager_desktop_entry_contract(repo_root: &Path) -> Result<Vec<
                     format_json_string(exec)
                 ));
             }
+            let startup_wm_class = json_map_str_field(entry, "startupWmClass");
+            let expected_startup_wm_class = expected_home_manager_startup_wm_class(terminal);
+            if startup_wm_class != expected_startup_wm_class {
+                errors.push(format!(
+                    "Home Manager extra {terminal} desktop entry StartupWMClass mismatch: expected {}, got {}",
+                    format_json_string(&expected_startup_wm_class),
+                    format_json_string(startup_wm_class)
+                ));
+            }
             if !json_map_bool_field(entry, "terminal") {
                 errors.push(format!(
                     "Home Manager extra {terminal} desktop entry must set terminal = true so pre-terminal config failures stay visible"
@@ -939,6 +960,13 @@ fn expected_home_manager_profile_desktop_exec(terminal: &str) -> String {
             terminal_desktop_entry_id(terminal)
         ),
         _ => launch_command.to_string(),
+    }
+}
+
+fn expected_home_manager_startup_wm_class(terminal: &str) -> String {
+    match terminal {
+        "mars" => terminal_desktop_entry_id(terminal),
+        _ => "com.yazelix.Yazelix".to_string(),
     }
 }
 
@@ -1328,13 +1356,14 @@ fn build_home_manager_desktop_entry_expr(
         "    let".to_string(),
         "      key = desktopEntryKey terminal;".to_string(),
         "      launcherEntry = if builtins.hasAttr key entries then builtins.getAttr key entries else {};".to_string(),
-        "    in { present = builtins.hasAttr key entries; name = launcherEntry.name or \"\"; exec = launcherEntry.exec or \"\"; terminal = launcherEntry.terminal or false; };".to_string(),
+        "    in { present = builtins.hasAttr key entries; name = launcherEntry.name or \"\"; exec = launcherEntry.exec or \"\"; terminal = launcherEntry.terminal or false; startupWmClass = (launcherEntry.settings or {}).StartupWMClass or \"\"; };".to_string(),
         "in {".to_string(),
         "  inherit activeTerminal;".to_string(),
         "  present = builtins.hasAttr entryKey entries;".to_string(),
         "  name = entry.name or \"\";".to_string(),
         "  exec = entry.exec or \"\";".to_string(),
         "  terminal = entry.terminal or false;".to_string(),
+        "  startupWmClass = (entry.settings or {}).StartupWMClass or \"\";".to_string(),
         "  packageCount = builtins.length eval.config.home.packages;".to_string(),
         "  extra = builtins.listToAttrs (map (terminal: { name = terminal; value = entryFor terminal; }) extraLauncherTerminals);".to_string(),
         "}".to_string(),
