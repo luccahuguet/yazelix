@@ -761,6 +761,131 @@ mod tests {
         );
     }
 
+    // Defends: Linux Ghostty keeps the runtime environment wrapper, graphics wrapper, and Linux-only windowing flags.
+    #[test]
+    fn ghostty_linux_launch_uses_runtime_wrapper_and_linux_flags() {
+        let runtime = TempDir::new().unwrap();
+        let posix = runtime.path().join("shells").join("posix");
+        let libexec = runtime.path().join("libexec");
+        let startup = posix.join("start_yazelix.sh");
+        let ghostty_wrapper = posix.join("yazelix_ghostty.sh");
+        let nixgl = libexec.join("nixGL");
+        fs::create_dir_all(&posix).unwrap();
+        fs::create_dir_all(&libexec).unwrap();
+        fs::write(&startup, "#!/bin/sh\n").unwrap();
+        fs::write(&ghostty_wrapper, "#!/bin/sh\n").unwrap();
+        fs::write(&nixgl, "#!/bin/sh\n").unwrap();
+        let config_path = runtime.path().join("ghostty/config");
+        let working_dir = runtime.path().join("workspace");
+
+        let argv = build_launch_command_argv_for_platform(
+            runtime.path(),
+            &crate::runtime_contract::TerminalCandidate {
+                terminal: "ghostty".to_string(),
+                name: "Ghostty".to_string(),
+                command: "ghostty".to_string(),
+            },
+            &config_path,
+            &working_dir,
+            None,
+            "linux",
+        )
+        .unwrap();
+
+        assert_eq!(argv[0], ghostty_wrapper.to_string_lossy().as_ref());
+        assert_eq!(argv[1], nixgl.to_string_lossy().as_ref());
+        assert_eq!(argv[2], "ghostty");
+        assert!(argv.contains(&"--gtk-single-instance=false".to_string()));
+        assert!(argv.contains(&"--class=com.yazelix.Yazelix".to_string()));
+        assert!(argv.contains(&"--x11-instance-name=yazelix".to_string()));
+        assert_eq!(argv[argv.len() - 2], "-e");
+        assert_eq!(argv[argv.len() - 1], startup.to_string_lossy().as_ref());
+    }
+
+    // Regression: macOS Ghostty 1.3.1 refuses direct packaged CLI GUI launch; Yazelix must hand the generated args to the app bundle.
+    #[test]
+    fn ghostty_macos_launch_uses_app_bundle_open() {
+        let runtime = TempDir::new().unwrap();
+        let startup = runtime
+            .path()
+            .join("shells")
+            .join("posix")
+            .join("start_yazelix.sh");
+        let app_bundle = runtime.path().join("Applications").join("Ghostty.app");
+        fs::create_dir_all(startup.parent().unwrap()).unwrap();
+        fs::create_dir_all(&app_bundle).unwrap();
+        fs::write(&startup, "#!/bin/sh\n").unwrap();
+        let config_path = runtime.path().join("ghostty/config");
+        let working_dir = runtime.path().join("workspace");
+
+        let argv = build_launch_command_argv_for_platform(
+            runtime.path(),
+            &crate::runtime_contract::TerminalCandidate {
+                terminal: "ghostty".to_string(),
+                name: "Ghostty".to_string(),
+                command: "ghostty".to_string(),
+            },
+            &config_path,
+            &working_dir,
+            None,
+            "macos",
+        )
+        .unwrap();
+
+        assert_eq!(
+            argv,
+            vec![
+                "/usr/bin/open".to_string(),
+                "-na".to_string(),
+                app_bundle.to_string_lossy().into_owned(),
+                "--args".to_string(),
+                "--config-default-files=false".to_string(),
+                format!("--config-file={}", config_path.to_string_lossy()),
+                format!("--working-directory={}", working_dir.to_string_lossy()),
+                "-e".to_string(),
+                startup.to_string_lossy().into_owned(),
+            ]
+        );
+        assert!(!argv.iter().any(|arg| arg == "ghostty"));
+        assert!(
+            !argv.iter().any(|arg| arg == "--gtk-single-instance=false"
+                || arg.starts_with("--class=")
+                || arg.starts_with("--x11-instance-name="))
+        );
+    }
+
+    // Defends: macOS Ghostty launch fails clearly if the runtime no longer carries the app bundle required by `open -na`.
+    #[test]
+    fn ghostty_macos_launch_requires_runtime_app_bundle() {
+        let runtime = TempDir::new().unwrap();
+        let startup = runtime
+            .path()
+            .join("shells")
+            .join("posix")
+            .join("start_yazelix.sh");
+        fs::create_dir_all(startup.parent().unwrap()).unwrap();
+        fs::write(&startup, "#!/bin/sh\n").unwrap();
+        let config_path = runtime.path().join("ghostty/config");
+        let working_dir = runtime.path().join("workspace");
+
+        let error = build_launch_command_argv_for_platform(
+            runtime.path(),
+            &crate::runtime_contract::TerminalCandidate {
+                terminal: "ghostty".to_string(),
+                name: "Ghostty".to_string(),
+                command: "ghostty".to_string(),
+            },
+            &config_path,
+            &working_dir,
+            None,
+            "macos",
+        )
+        .unwrap_err();
+
+        assert_eq!(error.code(), "missing_ghostty_macos_app_bundle");
+        assert!(error.message().contains("Applications/Ghostty.app"));
+    }
+
     // Defends: Ghostty user-mode config discovery follows upstream file-name and macOS path candidates instead of hard-coding the old config name.
     #[test]
     fn ghostty_user_config_candidates_follow_upstream_paths() {

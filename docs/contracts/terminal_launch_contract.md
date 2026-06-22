@@ -2,12 +2,11 @@
 
 ## Summary
 
-This contract defines the retained terminal-launch contract and the deletion budget
-for shrinking `nushell/scripts/utils/terminal_launcher.nu`. The goal is not to
-hide launch behavior behind Rust. Terminal launch remains a shell/process
-boundary because Yazelix must invoke host terminal binaries, preserve explicit
-platform flags, route through `nixGL` when needed, detach through a checked-in
-POSIX helper, and surface early terminal death with real stderr.
+This contract defines the retained terminal-launch contract. Terminal launch
+remains a shell/process boundary because Yazelix must invoke host terminal
+binaries, preserve explicit platform flags, route through `nixGL` when needed,
+detach through a checked-in POSIX helper, and surface early terminal death with
+real stderr.
 
 The delete-first target is the stale metadata and duplicate owner logic that
 survived after Rust took over startup-launch preflight and terminal
@@ -15,14 +14,11 @@ materialization.
 
 ## Scope
 
-- `nushell/scripts/utils/terminal_launcher.nu`
-- `nushell/scripts/core/launch_yazelix.nu`
+- `rust_core/yazelix_core/src/launch_commands/terminal.rs`
+- `rust_core/yazelix_core/src/launch_commands/process.rs`
 - `shells/posix/detached_launch_probe.sh`
 - `shells/posix/desktop_deferred_launch_probe.sh`
-- terminal launch and detached-launch tests in
-  `nushell/scripts/dev/test_yzx_generated_configs.nu`,
-  `nushell/scripts/dev/test_yzx_maintainer.nu`, and
-  `nushell/scripts/dev/test_yzx_workspace_commands.nu`
+- terminal launch and detached-launch tests in Rust launch-command modules
 
 Out of scope:
 
@@ -36,34 +32,30 @@ Out of scope:
 #### TLAUNCH-001
 - Type: boundary
 - Status: live
-- Owner: Nushell `terminal_launcher.nu` and POSIX
+- Owner: Rust `launch_commands/terminal.rs`,
+  Rust `launch_commands/process.rs`, and POSIX
   `shells/posix/detached_launch_probe.sh`
 - Statement: Terminal launch is an explicit shell/process boundary. The
   surviving owner may build host-terminal argv strings, choose platform flags,
   apply the runtime `nixGL` prefix, and run the detached-launch probe, but it
   must not duplicate startup-launch preflight or terminal materialization
   ownership
-- Verification: automated
-  `nushell/scripts/dev/test_yzx_generated_configs.nu`
-  (`test_managed_wrapper_launch_command_does_not_forward_config_mode_flag`,
-  `test_ghostty_linux_launch_command_keeps_linux_specific_flags`,
-  `test_ghostty_macos_launch_command_omits_linux_specific_flags`); automated
-  `nushell/scripts/dev/test_yzx_maintainer.nu`
-  (`test_detached_launch_probe_success_path_is_fast`,
-  `test_detached_launch_probe_early_failure_is_visible`); validator
+- Verification: automated Rust tests in
+  `rust_core/yazelix_core/src/launch_commands.rs`; validator
   `yzx_repo_validator validate-contracts`
 
 #### TLAUNCH-002
 - Type: failure_mode
 - Status: live
-- Owner: `terminal_launcher.nu`
+- Owner: Rust `launch_commands/terminal.rs` and native config status
 - Statement: `terminal.config_mode = user` must fail fast when the selected
   terminal has no real user config at its native path, and Yazelix must never
   move, create, or take ownership of that external config implicitly
-- Verification: automated
-  `nushell/scripts/dev/test_yzx_generated_configs.nu`
-  (`test_terminal_config_mode_user_requires_real_user_config`,
-  `test_generate_all_terminal_configs_keeps_terminal_overrides_opt_in`);
+- Verification: automated Rust tests
+  `rust_core/yazelix_core/src/launch_commands.rs`
+  (`ghostty_user_config_selection_accepts_config_ghostty_and_lists_misses`)
+  and `rust_core/yazelix_core/src/native_config_status.rs`
+  (`terminal_user_mode_reports_required_native_config_missing`);
   validator `yzx_repo_validator validate-config-surface-contract`
 - Source: `docs/contracts/terminal_override_layers.md`;
   `docs/contracts/runtime_dependency_preflight_contract.md`
@@ -71,19 +63,21 @@ Out of scope:
 #### TLAUNCH-003
 - Type: behavior
 - Status: live
-- Owner: `terminal_launcher.nu`
-- Statement: Ghostty launch keeps Linux-only GTK/X11 flags on Linux, omits
-  those flags on macOS, and routes Linux Ghostty through the runtime
-  `yazelix_ghostty.sh` environment wrapper. Ghostty launch argv and generated
-  Ghostty config do not set a fixed title, because Ghostty treats configured
-  titles as authoritative and would ignore the Zellij-owned title escape
-  sequence that carries the live session name.
+- Owner: Rust `launch_commands/terminal.rs`
+- Statement: Ghostty launch keeps Linux-only GTK/X11 flags on Linux, routes
+  Linux Ghostty through the runtime `yazelix_ghostty.sh` environment wrapper,
+  and launches macOS Ghostty through `/usr/bin/open -na
+  <runtime>/Applications/Ghostty.app --args` with the generated config,
+  working directory, and startup command preserved. Ghostty launch argv and
+  generated Ghostty config do not set a fixed title, because Ghostty treats
+  configured titles as authoritative and would ignore the Zellij-owned title
+  escape sequence that carries the live session name.
 - Verification: automated
-  `nushell/scripts/dev/test_yzx_generated_configs.nu`
-  (`test_ghostty_linux_launch_command_keeps_linux_specific_flags`,
-  `test_ghostty_macos_launch_command_omits_linux_specific_flags`); automated
   Rust tests in `rust_core/yazelix_core/src/launch_commands.rs`
-  (`ghostty_launch_does_not_force_window_title`) and
+  (`ghostty_launch_does_not_force_window_title`,
+  `ghostty_linux_launch_uses_runtime_wrapper_and_linux_flags`,
+  `ghostty_macos_launch_uses_app_bundle_open`,
+  `ghostty_macos_launch_requires_runtime_app_bundle`) and
   `rust_core/yazelix_core/src/launch_materialization.rs`
   (`full_launch_materialization_uses_active_terminal_from_request`)
 - Source: `docs/contracts/runtime_dependency_preflight_contract.md`
@@ -91,22 +85,22 @@ Out of scope:
 #### TLAUNCH-004
 - Type: failure_mode
 - Status: live
-- Owner: `terminal_launcher.nu` plus
-  `shells/posix/detached_launch_probe.sh`
+- Owner: Rust `launch_commands/process.rs` plus POSIX
+  `shells/posix/detached_launch_probe.sh` and
+  `shells/posix/desktop_deferred_launch_probe.sh`
 - Statement: Detached launch must be measurable, fast on success, and visible
   on early terminal death with captured stderr instead of silently succeeding
-- Verification: automated
-  `nushell/scripts/dev/test_yzx_maintainer.nu`
-  (`test_startup_profile_records_detached_terminal_probe`,
-  `test_detached_launch_probe_success_path_is_fast`,
-  `test_detached_launch_probe_early_failure_is_visible`);
+- Verification: automated Rust tests in
+  `rust_core/yazelix_core/src/launch_commands.rs`
+  (`launch_probe_log_path_uses_command_basename`,
+  `desktop_deferred_launch_helper_records_lifetime_status`);
   validator `cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_maintainer --bin yzx_repo_validator -- validate-installed-runtime-contract`
 - Source: `docs/contracts/startup_profile_scenarios.md`
 
 #### TLAUNCH-005
 - Type: behavior
 - Status: live
-- Owner: `terminal_launcher.nu` and Rust terminal materialization
+- Owner: Rust `launch_commands/terminal.rs` and Rust terminal materialization
 - Statement: Ratty launch uses a generated `ratty.toml` config, passes it with
   `--config-file`, sets the Yazelix window title, and keeps Ratty's `-e`
   command delimiter as the final flag before the startup script. Generated

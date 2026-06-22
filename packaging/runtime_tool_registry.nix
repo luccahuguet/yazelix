@@ -141,6 +141,11 @@ let
       [ (commandBasename marsPackageMetadata.wrapper_commands.desktop) ]
     else
       [ ];
+  terminalAppBundlePath =
+    if runtimeVariant == "ghostty" && pkgs.stdenv.hostPlatform.isDarwin then
+      "${terminalPackage}/Applications/Ghostty.app"
+    else
+      null;
   linuxGraphicsWrappers =
     if pkgs.stdenv.hostPlatform.isLinux && (nixgl != null) then
       import "${nixgl}/default.nix" {
@@ -448,7 +453,7 @@ else if disallowedOffNames != [ ] then
   throw "Yazelix runtimeToolSources off mode is not supported for: ${lib.concatStringsSep ", " disallowedOffNames}"
 else
   {
-    inherit runtimeToolSourceModes tools runtimePackages exportedCommands manifest;
+    inherit runtimeToolSourceModes tools runtimePackages exportedCommands manifest terminalAppBundlePath;
     terminalPackageMetadata = marsPackageMetadata;
     terminalPackageRuntimeIdentity = marsPackageRuntimeIdentity;
     manifestJson = builtins.toJSON manifest;

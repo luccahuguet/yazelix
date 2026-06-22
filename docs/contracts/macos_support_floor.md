@@ -6,7 +6,7 @@ This contract defines the minimum first-party macOS support contract for the top
 
 ## Why
 
-The current tree contained mixed signals about macOS support. The top-level docs say Yazelix works on Linux and macOS, the runtime includes a darwin-specific Ghostty binary, and the terminal launcher has a macOS Ghostty branch. But the old clone-era macOS app-bundle launcher conflicted with the package-first v15 runtime contract. This contract replaces those mixed signals with one honest floor and keeps full launcher integration separate from the experimental package-first preview.
+The current tree contained mixed signals about macOS support. The top-level docs say Yazelix works on Linux and macOS, the runtime includes a darwin-specific Ghostty package, and the terminal launcher has a macOS Ghostty branch. But the old clone-era macOS app-bundle launcher conflicted with the package-first v15 runtime contract. This contract replaces those mixed signals with one honest floor and keeps full Yazelix app integration separate from the experimental package-first preview.
 
 ## Surface Classification
 
@@ -16,8 +16,8 @@ The current tree contained mixed signals about macOS support. The top-level docs
 | `yzx --version-short` | `supported` | Reports the Yazelix version from the installed runtime on macOS |
 | `yzx doctor` | `supported` | Runs diagnostic checks on macOS; Linux-specific checks may report limitations but should not crash |
 | `yzx launch` on Mars | `issue_driven_best_effort` | Mars is the default terminal, but macOS-specific Mars behavior is maintained from user reports because maintainers do not currently own macOS hardware |
-| `yzx launch` on Ghostty | `supported` | The runtime bundles `ghostty-bin` on darwin; the terminal launcher has a macOS-specific Ghostty branch that omits Linux-only GTK/X11 flags |
-| Ghostty shell-integration behavior on macOS | `historical_or_out_of_scope` | Ghostty automatic shell integration on macOS requires either the macOS app bundle or a resource-discovery layout where Ghostty resources are available above the binary. The Yazelix runtime ships Ghostty inside a Nix store path, not as a standalone app bundle, and `yazelix_ghostty.sh` does not provision `GHOSTTY_RESOURCES_DIR`. Without that provisioning, Ghostty shell-integration niceties are not guaranteed on macOS. This may improve if Yazelix provisions the required resource path in a future release, but it is not part of the current floor. |
+| `yzx launch` on Ghostty | `supported` | The runtime bundles `ghostty-bin` on darwin; the terminal launcher hands generated Ghostty args to the runtime-owned `Applications/Ghostty.app` through `/usr/bin/open -na ... --args` and omits Linux-only GTK/X11 flags |
+| Ghostty shell-integration behavior on macOS | `historical_or_out_of_scope` | Yazelix uses the Ghostty app-bundle launch route on macOS, but it does not separately guarantee automatic shell-integration niceties such as command history, cursor positioning, or working-directory tracking. Any remaining shell-integration gaps should be reported and tracked separately. |
 | `yzx launch` on other terminals | `best_effort` | WezTerm and Kitty are supported alternatives, but macOS launch paths for these terminals have less frequent validation than Ghostty |
 | `yzx enter` | `best_effort` | Should work on macOS but has no dedicated macOS-only validation lane |
 | Zellij and Yazi behavior | `best_effort` | Core session and file manager should work, but macOS-specific edge cases are best-effort until reported and fixed |
@@ -31,7 +31,7 @@ Mars is the default Yazelix terminal on macOS and Linux because Yazelix can evol
 
 Ghostty is the mature selectable macOS terminal path. The runtime bundles `pkgs.ghostty-bin` on darwin (a repackaging of the official signed and notarized macOS binary) and `pkgs.ghostty` on Linux in the explicit Ghostty variant.
 
-The supported floor covers opening a Ghostty window on macOS via `yzx launch`. It does not promise automatic Ghostty shell integration on macOS. Ghostty's official docs say automatic shell integration on macOS requires either the macOS app bundle or a layout where Ghostty resources are available above the binary. The Yazelix runtime does not currently provision `GHOSTTY_RESOURCES_DIR` or ship as a macOS app bundle, so shell-integration features that depend on that resource-discovery path are not guaranteed.
+The supported floor covers opening a Ghostty window on macOS via `yzx launch`. The launch command uses `/usr/bin/open -na <runtime>/Applications/Ghostty.app --args` and preserves the generated config path, working directory, and Yazelix startup command. It does not separately promise automatic Ghostty shell integration niceties such as command history, cursor positioning, or working-directory tracking.
 
 Additionally, Ghostty on macOS launches login shells by default. This is a Ghostty platform behavior, not something Yazelix currently overrides or defends in its launch command. If login-shell behavior causes problems for specific Yazelix workflows, that should be reported and tracked separately.
 
@@ -59,7 +59,7 @@ This preview does not include code signing, notarization, a DMG, Dock polish, La
 
 Automated:
 - `yzx_repo_validator validate-flake-interface` — checks that all exported flake systems are available according to `meta.platforms`
-- `nu nushell/scripts/dev/test_yzx_generated_configs.nu` — includes `test_ghostty_macos_launch_command_omits_linux_specific_flags` defending the macOS Ghostty command shape
+- `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core launch_commands::tests::ghostty_macos_launch_uses_app_bundle_open`
 - `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core launch_commands::tests::parse_desktop_args_accepts_macos_preview_action`
 - `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core launch_commands::tests::render_macos_preview_launcher_uses_profile_yzx_and_actionable_failures`
 - `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core launch_commands::tests::render_macos_preview_info_plist_carries_owned_app_metadata`
@@ -86,7 +86,7 @@ Manual smoke gate (maintainer on macOS hardware):
 
 ## Traceability
 - Defended by: `yzx_repo_validator validate-flake-interface`
-- Defended by: `nushell/scripts/dev/test_yzx_generated_configs.nu::test_ghostty_macos_launch_command_omits_linux_specific_flags`
+- Defended by: `rust_core/yazelix_core/src/launch_commands.rs::ghostty_macos_launch_uses_app_bundle_open`
 - Defended by: `rust_core/yazelix_core/src/launch_commands.rs::parse_desktop_args_accepts_macos_preview_action`
 - Defended by: `rust_core/yazelix_core/src/launch_commands.rs::render_macos_preview_launcher_uses_profile_yzx_and_actionable_failures`
 - Defended by: `rust_core/yazelix_core/src/launch_commands.rs::render_macos_preview_info_plist_carries_owned_app_metadata`
