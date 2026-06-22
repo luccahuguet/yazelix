@@ -293,7 +293,6 @@ pub(super) fn build_launch_command_argv(
                 terminal.command.clone(),
                 "--title-placeholder".to_string(),
                 title,
-                "--yazelix".to_string(),
             ];
             mars.extend(working_dir_args);
             mars.push("-e".to_string());

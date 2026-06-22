@@ -1193,6 +1193,49 @@ mod tests {
         );
     }
 
+    // Regression: Mars is Rio-derived, but it does not accept a Yazelix CLI mode flag.
+    #[test]
+    fn mars_launch_argv_uses_supported_rio_compatible_flags() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let runtime_dir = tmp.path().join("runtime");
+        let posix_dir = runtime_dir.join("shells").join("posix");
+        std::fs::create_dir_all(&posix_dir).unwrap();
+        let startup_script = posix_dir.join("start_yazelix.sh");
+        std::fs::write(&startup_script, "#!/bin/sh\n").unwrap();
+        let config_path = tmp
+            .path()
+            .join("state/configs/terminal_emulators/mars/config.toml");
+        let working_dir = tmp.path().join("workspace");
+        std::fs::create_dir_all(config_path.parent().unwrap()).unwrap();
+        std::fs::create_dir_all(&working_dir).unwrap();
+
+        let argv = build_launch_command_argv(
+            &runtime_dir,
+            &crate::runtime_contract::TerminalCandidate {
+                terminal: "mars".to_string(),
+                name: "Mars".to_string(),
+                command: "mars".to_string(),
+            },
+            &config_path,
+            &working_dir,
+            Some("work"),
+        )
+        .unwrap();
+
+        assert_eq!(
+            argv,
+            vec![
+                "mars".to_string(),
+                "--title-placeholder".to_string(),
+                "Yazelix - Mars - work".to_string(),
+                "--working-dir".to_string(),
+                working_dir.to_string_lossy().into_owned(),
+                "-e".to_string(),
+                startup_script.to_string_lossy().into_owned(),
+            ]
+        );
+    }
+
     // Defends: Foot launches through its native CLI flags and the packaged Linux graphics wrapper boundary.
     #[test]
     fn foot_launch_argv_uses_selected_config_and_working_dir() {
