@@ -116,6 +116,17 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Free runner disk space
+        run: |
+          set -euo pipefail
+          sudo rm -rf \
+            /opt/hostedtoolcache \
+            /usr/local/lib/android \
+            /usr/share/dotnet \
+            /opt/ghc \
+            /opt/az
+          docker system prune --all --force --volumes || true
+
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@v22
         with:
