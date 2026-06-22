@@ -1116,6 +1116,7 @@ fn read_yazelix_override_keybinds(
     let request = ZellijKeybindRenderRequest {
         override_template_content: read_text(overrides_path, "read_zellij_overrides")?,
         runtime_dir: runtime_dir.to_string_lossy().into_owned(),
+        home_dir: home_dir_from_env()?.to_string_lossy().into_owned(),
         zellij_keybindings: zellij_keybindings.clone(),
         zellij_native_keybindings: zellij_native_keybindings.clone(),
         custom_popups: child_custom_popups(custom_popups),
@@ -1877,6 +1878,29 @@ keybinds {
         assert!(merged.contains("payload \"config\""));
         assert!(merged.contains("MessagePlugin \"yazelix_pane_orchestrator\""));
         assert!(merged.contains("toggle_editor_sidebar_focus"));
+    }
+
+    // Defends: the main materializer passes the configured home directory into the generated tab-mode new-tab action.
+    #[test]
+    fn semantic_keybinds_name_default_new_tabs_from_home() {
+        let temp = tempfile::tempdir().unwrap();
+        let overrides_path = temp.path().join("yazelix_overrides.kdl");
+        std::fs::write(&overrides_path, "keybinds {}\n").unwrap();
+
+        let override_lines = read_yazelix_override_keybinds(
+            &overrides_path,
+            std::path::Path::new("/opt/yazelix"),
+            &sample_zellij_keybindings(),
+            &sample_zellij_native_keybindings(),
+            &[],
+        )
+        .unwrap();
+        let merged = override_lines.join("\n");
+        let home_dir = home_dir_from_env().unwrap();
+        let quoted_home_dir = serde_json::to_string(home_dir.to_string_lossy().as_ref()).unwrap();
+
+        assert!(merged.contains(&format!("NewTab {{ cwd {quoted_home_dir}; name ")));
+        assert!(merged.contains(r#"; SwitchToMode "Normal"; }"#));
     }
 
     // Defends: semantic remaps replace Yazelix-owned Zellij action keys without copying the full keybind block.

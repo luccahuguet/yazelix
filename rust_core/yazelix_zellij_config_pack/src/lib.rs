@@ -16,6 +16,7 @@ const PANE_ORCHESTRATOR_PLUGIN_URL_PLACEHOLDER: &str = "__YAZELIX_PANE_ORCHESTRA
 const HOME_DIR_PLACEHOLDER: &str = "__YAZELIX_HOME_DIR__";
 const RUNTIME_DIR_PLACEHOLDER: &str = "__YAZELIX_RUNTIME_DIR__";
 const PANE_ORCHESTRATOR_PLUGIN_ALIAS: &str = "yazelix_pane_orchestrator";
+const HOME_TAB_MARKER: &str = "\u{f015}";
 const YZPP_PLUGIN_ALIAS: &str = "yzpp";
 const BOTTOM_POPUP_COMMAND_KEY: &str = "bottom_popup";
 const TOP_POPUP_COMMAND_KEY: &str = "top_popup";
@@ -961,6 +962,7 @@ pub struct CustomPopup {
 pub struct ZellijKeybindRenderRequest {
     pub override_template_content: String,
     pub runtime_dir: String,
+    pub home_dir: String,
     pub zellij_keybindings: BTreeMap<String, Vec<String>>,
     pub zellij_native_keybindings: BTreeMap<String, Vec<String>>,
     pub custom_popups: Vec<CustomPopup>,
@@ -1050,6 +1052,7 @@ pub fn render_zellij_keybinds(request: &ZellijKeybindRenderRequest) -> ZellijKey
             .into_iter()
             .filter(|line| !unbind_line_conflicts_with_generated_key(line, &assigned_keys)),
     );
+    override_keybinds.extend(build_yazelix_default_new_tab_keybind_lines(request));
     override_keybinds.extend(build_zellij_integration_keybind_lines(request));
     ZellijKeybindRenderOutput { override_keybinds }
 }
@@ -1655,6 +1658,20 @@ fn build_native_zellij_keybind_lines(request: &ZellijKeybindRenderRequest) -> Ve
         lines.push("    }".to_string());
     }
     lines
+}
+
+fn build_yazelix_default_new_tab_keybind_lines(
+    request: &ZellijKeybindRenderRequest,
+) -> Vec<String> {
+    vec![
+        "    tab {".to_string(),
+        format!(
+            "        bind \"n\" {{ NewTab {{ cwd {}; name {}; }}; SwitchToMode \"Normal\"; }}",
+            json_quote(&request.home_dir),
+            json_quote(HOME_TAB_MARKER),
+        ),
+        "    }".to_string(),
+    ]
 }
 
 fn push_native_zellij_block_lines<'a>(
@@ -2265,6 +2282,7 @@ keybinds {
 "#
             .to_string(),
             runtime_dir: "/opt/yazelix".to_string(),
+            home_dir: "/home/user".to_string(),
             zellij_keybindings: BTreeMap::from([
                 ("menu".to_string(), vec!["Alt p".to_string()]),
                 (
@@ -2346,6 +2364,21 @@ keybinds {
         assert!(rendered.contains(r#"payload "menu""#));
         assert!(rendered.contains(r#"bind "Ctrl s" { SwitchToMode "Scroll"; }"#));
         assert!(rendered.contains(r#"bind "Ctrl s" { SwitchToMode "Normal"; }"#));
+    }
+
+    // Defends: default tab-mode new tab creation gets the home cwd and compact home marker directly from the generated NewTab action.
+    #[test]
+    fn keybind_renderer_names_default_new_tabs_from_home() {
+        let output = render_zellij_keybinds(&sample_keybind_render_request());
+        let rendered = output.override_keybinds.join("\n");
+        let expected = format!(
+            r#"    tab {{
+        bind "n" {{ NewTab {{ cwd "/home/user"; name "{}"; }}; SwitchToMode "Normal"; }}
+    }}"#,
+            HOME_TAB_MARKER
+        );
+
+        assert!(rendered.contains(&expected));
     }
 
     // Defends: main passes explicit action specs, while the config-pack renderer emits the MessagePlugin KDL.
