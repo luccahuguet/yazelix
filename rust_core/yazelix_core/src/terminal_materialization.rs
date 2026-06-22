@@ -473,7 +473,7 @@ fn generate_rio_config(runtime_dir: &Path, transparency: &str, appearance_mode: 
     format!(
         r##"# Rio configuration for Yazelix
 
-confirm-before-quit = false
+confirm-before-quit = true
 scrollback-history-limit = 0
 
 [effects]
@@ -975,6 +975,10 @@ fn generate_mars_config(
     table.insert(
         "scrollback-history-limit".to_string(),
         toml::Value::Integer(0),
+    );
+    table.insert(
+        "confirm-before-quit".to_string(),
+        toml::Value::Boolean(true),
     );
     let opacity = get_opacity_value(transparency)
         .parse::<f64>()
@@ -1504,6 +1508,36 @@ mod tests {
                 .contains("scrollback-history-limit = 0")
         );
         assert!(generate_kitty_config("none", false, None).contains("scrollback_lines 0"));
+    }
+
+    // Defends: Rio-family terminals prompt before closing a Yazelix window so accidental WM closes do not kill the session without confirmation.
+    #[test]
+    fn generated_rio_family_configs_confirm_before_quit() {
+        let runtime = Path::new("/runtime");
+        assert!(
+            generate_rio_config(runtime, "none", APPEARANCE_MODE_DARK)
+                .contains("confirm-before-quit = true")
+        );
+
+        let temp = tempfile::tempdir().unwrap();
+        let package_root = temp.path().join("runtime/share/mars");
+        let generated_dir = temp.path().join("state/configs/terminal_emulators/mars");
+        write_mars_package_metadata(&package_root);
+        write_mars_profile_config(&package_root.join("config.toml"), "Noto Color Emoji");
+        write_theme_files(&package_root.join("themes"));
+        let rendered = generate_mars_config(
+            &temp.path().join("runtime"),
+            "none",
+            None,
+            &[],
+            MarsProfile::Full,
+            MarsEmojiFont::Noto,
+            APPEARANCE_MODE_DARK,
+            &generated_dir,
+        )
+        .unwrap();
+
+        assert!(rendered.contains("confirm-before-quit = true"));
     }
 
     // Defends: checked-in reference snapshots stay aligned with the generated no-emulator-scrollback policy.
