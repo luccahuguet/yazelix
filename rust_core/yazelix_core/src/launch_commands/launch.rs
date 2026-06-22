@@ -680,8 +680,9 @@ fn mars_process_boundary_env(
 
     let mut env = vec![
         ("RIO_CONFIG_HOME".to_string(), None),
+        ("MARS_CONFIG".to_string(), None),
         (
-            "MARS_CONFIG".to_string(),
+            "MARS_CONFIG_HOME".to_string(),
             Some(config_dir.to_string_lossy().into_owned()),
         ),
         (MARS_CHILD_ENV_SANITIZE.to_string(), Some("1".to_string())),
@@ -1074,8 +1075,9 @@ mod tests {
             env,
             vec![
                 ("RIO_CONFIG_HOME".to_string(), None),
+                ("MARS_CONFIG".to_string(), None),
                 (
-                    "MARS_CONFIG".to_string(),
+                    "MARS_CONFIG_HOME".to_string(),
                     Some("/state/configs/terminal_emulators/mars".to_string())
                 ),
                 (MARS_CHILD_ENV_SANITIZE.to_string(), Some("1".to_string())),

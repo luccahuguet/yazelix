@@ -163,8 +163,9 @@ Out of scope:
   child package metadata from `passthru.marsPackageMetadata` and
   `share/mars/package-metadata.json`; missing or malformed metadata is a
   package error, not a fallback trigger. Generated Mars config is written under
-  the Yazelix state directory, launched through `RIO_CONFIG_HOME`, and scoped to
-  the terminal process boundary so host Rio does not inherit Mars config state.
+  the Yazelix state directory, launched through `MARS_CONFIG_HOME`, and scoped
+  to the terminal process boundary so host Rio does not inherit Mars config
+  state.
   On Linux, packaged Mars can use the runtime-owned Vulkan wrapper because the
   renderer needs a Vulkan-capable adapter.
 - Verification: automated Rust tests in
