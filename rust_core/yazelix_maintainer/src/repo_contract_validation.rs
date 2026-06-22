@@ -27,7 +27,7 @@ pub use installed_runtime::validate_installed_runtime_contract;
 pub use nix_interface::{validate_flake_interface, validate_nix_customization_api};
 pub use nix_package::{
     ColdProfileInstallOptions, validate_flake_profile_install, validate_nixpkgs_package,
-    validate_nixpkgs_submission,
+    validate_nixpkgs_submission, validate_runtime_package_smoke,
 };
 pub use readme_surface::{ReadmeSyncResult, sync_readme_surface, validate_readme_version};
 pub use upgrade_contract::{UpgradeContractOptions, validate_upgrade_contract};

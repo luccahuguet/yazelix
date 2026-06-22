@@ -200,7 +200,7 @@ const STATUS_VERSION_TOOLS: &[(&str, &str)] = &[
     ("wezterm", "wezterm"),
     ("ghostty", "ghostty"),
     ("rio", "rio"),
-    ("mars", "mars-desktop"),
+    ("mars", "mars"),
     ("ratty", "ratty"),
     ("foot", "foot"),
     ("nix", "nix"),

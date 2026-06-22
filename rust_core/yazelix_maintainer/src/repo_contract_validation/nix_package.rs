@@ -6,6 +6,8 @@ use super::{
 use crate::repo_validation::ValidationReport;
 use serde_json::Value as JsonValue;
 use std::fs;
+#[cfg(unix)]
+use std::os::unix::fs as unix_fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 use yazelix_core::terminal_variant::{
@@ -46,6 +48,23 @@ pub fn validate_nixpkgs_submission(repo_root: &Path) -> Result<ValidationReport,
         "building packaging/nixpkgs/default.nix during nixpkgs submission validation",
     )?;
     verify_yazelix_package(&package_root, &mut report.errors)?;
+    Ok(report)
+}
+
+pub fn validate_runtime_package_smoke(repo_root: &Path) -> Result<ValidationReport, String> {
+    let mut report = ValidationReport::default();
+    let package_root = build_flake_output_path(
+        repo_root,
+        "yazelix",
+        "building .#yazelix during runtime package smoke validation",
+    )?;
+    let temp_home = create_unique_temp_dir("yazelix_runtime_package_smoke")?;
+    let validation = (|| -> Result<(), String> {
+        create_profile_yzx_shim(&package_root, &temp_home)?;
+        verify_profile_installed_runtime(repo_root, &temp_home, &mut report.errors)
+    })();
+    let _ = fs::remove_dir_all(&temp_home);
+    validation?;
     Ok(report)
 }
 
@@ -196,6 +215,28 @@ fn require_path_absent_even_if_broken_symlink(path: &Path, label: &str, errors: 
     }
 }
 
+#[cfg(unix)]
+fn create_profile_yzx_shim(package_root: &Path, temp_home: &Path) -> Result<(), String> {
+    let profile_bin = temp_home.join(".nix-profile").join("bin");
+    fs::create_dir_all(&profile_bin)
+        .map_err(|error| format!("Failed to create {}: {}", profile_bin.display(), error))?;
+    let source = package_root.join("bin").join("yzx");
+    let target = profile_bin.join("yzx");
+    unix_fs::symlink(&source, &target).map_err(|error| {
+        format!(
+            "Failed to create runtime package smoke profile shim {} -> {}: {}",
+            target.display(),
+            source.display(),
+            error
+        )
+    })
+}
+
+#[cfg(not(unix))]
+fn create_profile_yzx_shim(_package_root: &Path, _temp_home: &Path) -> Result<(), String> {
+    Err("Runtime package smoke requires Unix-style profile symlinks".to_string())
+}
+
 fn run_profile_install(
     repo_root: &Path,
     temp_home: &Path,
@@ -331,7 +372,7 @@ fn verify_profile_installed_runtime(
         return Ok(());
     }
     let runtime_terminal_command = match runtime_terminal {
-        "mars" => "mars-desktop",
+        "mars" => "mars",
         other => other,
     };
     let runtime_yzx_cli = runtime_root.join("shells").join("posix").join("yzx_cli.sh");

@@ -617,15 +617,15 @@ mod tests {
         let state = TempDir::new().unwrap();
 
         let log =
-            get_launch_probe_log_path(state.path(), "/nix/store/test-yazelix/bin/mars-desktop")
-                .unwrap();
+            get_launch_probe_log_path(state.path(), "/nix/store/test-yazelix/bin/mars").unwrap();
 
         assert!(log.starts_with(state.path().join("logs/terminal_launch")));
-        assert!(log
-            .file_name()
-            .and_then(|name| name.to_str())
-            .unwrap_or_default()
-            .starts_with("mars_desktop_"));
+        assert!(
+            log.file_name()
+                .and_then(|name| name.to_str())
+                .unwrap_or_default()
+                .starts_with("mars_")
+        );
     }
 
     // Defends: Ratty's clap command parser requires -e/--command to be the last option before the startup script.

@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
     inputs:
       run_runtime_smoke:
-        description: "Run installed-runtime contract smoke"
+        description: "Run fast runtime package smoke"
         required: false
         type: boolean
         default: false
@@ -229,14 +229,15 @@ jobs:
             .#packages.aarch64-darwin.yazelix_zellij_pane_orchestrator \
             .#packages.aarch64-darwin.yazelix_zellij_popup
 
-  integration:
-    # Manual maintainer gate for Home Manager/runtime activation behavior.
-    # Routine pushes stay on the faster source-contract lane, while the cache
-    # publisher keeps covering package buildability.
+  runtime_smoke:
+    # Fast scheduled/manual runtime lane. It builds the packaged runtime once
+    # and exercises helper-command presence, runtime env setup, generated
+    # materialization, and desktop install shape through a package-root profile
+    # shim. The cold_install lane below owns full nix profile install evidence.
     needs: [source_contracts, nix_customization_api, child_release_transaction]
     if: ${{ needs.source_contracts.result == 'success' && needs.nix_customization_api.result == 'success' && needs.child_release_transaction.result == 'success' && (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.run_runtime_smoke)) }}
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 30
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
       YAZELIX_DIR: ${{ github.workspace }}
@@ -274,16 +275,15 @@ jobs:
       - name: Build maintainer validator
         run: nix develop -c cargo build --quiet --manifest-path rust_core/Cargo.toml -p yazelix_maintainer --bin yzx_repo_validator
 
-      - name: Validate installed-runtime contract smoke
+      - name: Validate runtime package smoke
         shell: bash
-        run: nix develop -c ./rust_core/target/debug/yzx_repo_validator validate-installed-runtime-contract
+        run: nix develop -c ./rust_core/target/debug/yzx_repo_validator validate-runtime-package-smoke
 
   cold_install:
-    # Full cold profile-install/rebuild smoke. Keep it explicit because the
-    # runtime closure can be substitution-sensitive and much more expensive
-    # than the source-contract lane.
+    # Explicit heavy lane for full nix profile install/rebuild evidence. It is
+    # manual-only because runtime_smoke owns scheduled runtime behavior checks.
     needs: [source_contracts, nix_customization_api, child_release_transaction]
-    if: ${{ needs.source_contracts.result == 'success' && needs.nix_customization_api.result == 'success' && needs.child_release_transaction.result == 'success' && (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.run_cold_install)) }}
+    if: ${{ needs.source_contracts.result == 'success' && needs.nix_customization_api.result == 'success' && needs.child_release_transaction.result == 'success' && github.event_name == 'workflow_dispatch' && inputs.run_cold_install }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:

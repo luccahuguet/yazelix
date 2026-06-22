@@ -120,12 +120,13 @@ of defaulting to every available validator. The canonical fast gates are:
 | Config contract, schema, Home Manager, or generated config metadata | `yzx_repo_validator validate-config-surface-contract` | `yzx dev test` when runtime materialization or config UI behavior changed |
 | Zellij layouts, first-party plugin contracts, or workspace assets | Focused Rust/plugin tests for touched behavior | `yzx_repo_validator validate-workspace-session-contract`; `nix build .#runtime` after first-party plugin package or runtime artifact changes |
 | Docs front door and current prose | Direct review plus relevant docs validator | `yzx_repo_validator validate-docs-experience` for route/stale-doc changes; `yzx_repo_validator validate-readme-version` for release/version surface changes |
-| Nix package, flake API, or child input changes | Cheap `nix eval` or targeted validator for the touched API | `yzx_repo_validator validate-flake-interface`; `yzx_repo_validator validate-nix-customization-api`; `yzx_repo_validator validate-child-release-transaction` for child input changes, first-party child package changes, and Darwin child-package smoke contracts; heavier installed-runtime/profile validators only for release or explicit package changes |
+| Nix package, flake API, or child input changes | Cheap `nix eval` or targeted validator for the touched API | `yzx_repo_validator validate-flake-interface`; `yzx_repo_validator validate-nix-customization-api`; `yzx_repo_validator validate-child-release-transaction` for child input changes, first-party child package changes, and Darwin child-package smoke contracts; `yzx_repo_validator validate-runtime-package-smoke` for packaged runtime helper/env/materialization behavior; heavier installed-runtime/profile validators only for release or explicit cold-install checks |
 
 `yzx dev test` is the canonical default regression gate, not the only inner-loop
-command. Sweep, cold-install, installed-runtime, and nixpkgs submission
-validators are release or change-specific gates, not routine requirements for
-small source or test cleanups.
+command. Runtime package smoke is the scheduled fast runtime gate. Sweep,
+cold-install, installed-runtime, and nixpkgs submission validators are release
+or change-specific gates, not routine requirements for small source or test
+cleanups.
 
 ### Current suite inventory
 

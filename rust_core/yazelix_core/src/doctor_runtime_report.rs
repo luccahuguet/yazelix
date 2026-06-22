@@ -1169,7 +1169,7 @@ mod tests {
         std::fs::create_dir_all(log.parent().unwrap()).unwrap();
         std::fs::write(
             &log,
-            "[2026-06-02T00:00:00-0300] desktop deferred launch\nargv:\n  mars-desktop\n[2026-06-02T00:00:01-0300] spawned terminal_or_wrapper_pid=123\n[2026-06-02T00:00:02-0300] final_exit_status=0\nfinal_exit_kind=exit\nfinal_exit_code=0\n",
+            "[2026-06-02T00:00:00-0300] desktop deferred launch\nargv:\n  mars\n[2026-06-02T00:00:01-0300] spawned terminal_or_wrapper_pid=123\n[2026-06-02T00:00:02-0300] final_exit_status=0\nfinal_exit_kind=exit\nfinal_exit_code=0\n",
         )
         .unwrap();
 
@@ -1207,7 +1207,7 @@ mod tests {
         std::fs::create_dir_all(log.parent().unwrap()).unwrap();
         std::fs::write(
             &log,
-            "[2026-06-02T00:00:00-0300] desktop deferred launch\nargv:\n  mars-desktop\n[2026-06-02T00:00:01-0300] spawned terminal_or_wrapper_pid=123\n[2026-06-02T00:00:02-0300] exit_status=not_observed_after_probe_window\n",
+            "[2026-06-02T00:00:00-0300] desktop deferred launch\nargv:\n  mars\n[2026-06-02T00:00:01-0300] spawned terminal_or_wrapper_pid=123\n[2026-06-02T00:00:02-0300] exit_status=not_observed_after_probe_window\n",
         )
         .unwrap();
 
