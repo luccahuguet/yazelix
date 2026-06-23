@@ -174,11 +174,11 @@
         "systems": "systems"
       },
       "locked": {
-        "lastModified": 1782150998,
-        "narHash": "sha256-gbDQ8wjLVdrxODSNEB3+mObKgMOzFGxQ3hyQ06gIUFk=",
+        "lastModified": 1782176900,
+        "narHash": "sha256-xyDCi4xI7qDs18ZN8OpUX9e3Kb/d50hiDRYr3UJfPfg=",
         "owner": "luccahuguet",
         "repo": "mars",
-        "rev": "69f01d5545acfa7a7fbf42aa38be1bcc89bea5b8",
+        "rev": "03d108562a7619f5248abb3f739cc735e2ce9935",
         "type": "github"
       },
       "original": {
@@ -575,11 +575,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1782051515,
-        "narHash": "sha256-dkgLD2I+XwIeCJp9CkQmhYqMR3b6DnwpWy7/ZkO+LhA=",
+        "lastModified": 1782181917,
+        "narHash": "sha256-TdRmbtfCyPjKd+jYtUqrUIHSb703a2cz3rfa9lqWZZI=",
         "owner": "luccahuguet",
         "repo": "yazelix-yazi-assets",
-        "rev": "e9a936a2f2de05024a8e9d6d2f95d0a205fb0bf4",
+        "rev": "aea0703247479e1fa373be6b305e24e568cb30c7",
         "type": "github"
       },
       "original": {

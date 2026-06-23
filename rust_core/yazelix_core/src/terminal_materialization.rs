@@ -27,9 +27,12 @@ const ABERNATHY_FOREGROUND: &str = "#eeeeec";
 const CATPPUCCIN_LATTE_BACKGROUND: &str = "#eff1f5";
 const CATPPUCCIN_LATTE_FOREGROUND: &str = "#4c4f69";
 const FONT_FIRACODE: &str = "FiraCode Nerd Font";
+const FONT_JETBRAINS_MONO: &str = "JetBrains Mono";
 const FONT_SYMBOLS_NERD_MONO: &str = "Symbols Nerd Font Mono";
 const FONT_SYMBOLS_NERD: &str = "Symbols Nerd Font";
 const FONT_NOTO_COLOR_EMOJI: &str = "Noto Color Emoji";
+const MARS_FONT_SIZE: f64 = 16.0;
+const MARS_LINE_HEIGHT: f64 = 1.12;
 const RIO_FONT_ROOT: &str = "share/yazelix/rio_fonts";
 const RIO_FIRA_CODE_FONT_DIR: &str = "fira_code_nerd";
 const RIO_SYMBOLS_FONT_DIR: &str = "symbols_nerd";
@@ -980,6 +983,22 @@ fn generate_mars_config(
         "confirm-before-quit".to_string(),
         toml::Value::Boolean(true),
     );
+    table.insert(
+        "line-height".to_string(),
+        toml::Value::Float(MARS_LINE_HEIGHT),
+    );
+    let fonts = mars_config_table_mut(
+        &mut table,
+        "fonts",
+        "invalid_mars_fonts_config",
+        &package_config,
+    )?;
+    fonts.insert(
+        "family".to_string(),
+        toml::Value::String(FONT_JETBRAINS_MONO.to_string()),
+    );
+    fonts.insert("size".to_string(), toml::Value::Float(MARS_FONT_SIZE));
+
     let opacity = get_opacity_value(transparency)
         .parse::<f64>()
         .map_err(|source| {
@@ -1510,9 +1529,9 @@ mod tests {
         assert!(generate_kitty_config("none", false, None).contains("scrollback_lines 0"));
     }
 
-    // Defends: Rio-family terminals prompt before closing a Yazelix window so accidental WM closes do not kill the session without confirmation.
+    // Defends: Rio-family terminal config stays aligned with close confirmation and Mars status glyph font defaults.
     #[test]
-    fn generated_rio_family_configs_confirm_before_quit() {
+    fn generated_rio_family_configs_keep_close_and_status_defaults() {
         let runtime = Path::new("/runtime");
         assert!(
             generate_rio_config(runtime, "none", APPEARANCE_MODE_DARK)
@@ -1538,6 +1557,21 @@ mod tests {
         .unwrap();
 
         assert!(rendered.contains("confirm-before-quit = true"));
+        let config = toml::from_str::<toml::Table>(&rendered).unwrap();
+        assert_eq!(
+            config.get("line-height").and_then(toml::Value::as_float),
+            Some(MARS_LINE_HEIGHT)
+        );
+        let fonts = config.get("fonts").and_then(toml::Value::as_table).unwrap();
+        assert_eq!(
+            fonts.get("family").and_then(toml::Value::as_str),
+            Some(FONT_JETBRAINS_MONO)
+        );
+        assert_eq!(
+            fonts.get("size").and_then(toml::Value::as_float),
+            Some(MARS_FONT_SIZE)
+        );
+        assert!(rendered.contains("Noto Color Emoji"));
     }
 
     // Defends: checked-in reference snapshots stay aligned with the generated no-emulator-scrollback policy.
