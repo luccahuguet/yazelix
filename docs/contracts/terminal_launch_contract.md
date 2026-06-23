@@ -2,12 +2,11 @@
 
 ## Summary
 
-This contract defines the retained terminal-launch contract and the deletion budget
-for shrinking `nushell/scripts/utils/terminal_launcher.nu`. The goal is not to
-hide launch behavior behind Rust. Terminal launch remains a shell/process
-boundary because Yazelix must invoke host terminal binaries, preserve explicit
-platform flags, route through `nixGL` when needed, detach through a checked-in
-POSIX helper, and surface early terminal death with real stderr.
+This contract defines the retained terminal-launch contract. Terminal launch
+remains a shell/process boundary because Yazelix must invoke host terminal
+binaries, preserve explicit platform flags, route through `nixGL` when needed,
+detach through a checked-in POSIX helper, and surface early terminal death with
+real stderr.
 
 The delete-first target is the stale metadata and duplicate owner logic that
 survived after Rust took over startup-launch preflight and terminal
@@ -15,14 +14,11 @@ materialization.
 
 ## Scope
 
-- `nushell/scripts/utils/terminal_launcher.nu`
-- `nushell/scripts/core/launch_yazelix.nu`
+- `rust_core/yazelix_core/src/launch_commands/terminal.rs`
+- `rust_core/yazelix_core/src/launch_commands/process.rs`
 - `shells/posix/detached_launch_probe.sh`
 - `shells/posix/desktop_deferred_launch_probe.sh`
-- terminal launch and detached-launch tests in
-  `nushell/scripts/dev/test_yzx_generated_configs.nu`,
-  `nushell/scripts/dev/test_yzx_maintainer.nu`, and
-  `nushell/scripts/dev/test_yzx_workspace_commands.nu`
+- terminal launch and detached-launch tests in Rust launch-command modules
 
 Out of scope:
 
@@ -36,34 +32,30 @@ Out of scope:
 #### TLAUNCH-001
 - Type: boundary
 - Status: live
-- Owner: Nushell `terminal_launcher.nu` and POSIX
+- Owner: Rust `launch_commands/terminal.rs`,
+  Rust `launch_commands/process.rs`, and POSIX
   `shells/posix/detached_launch_probe.sh`
 - Statement: Terminal launch is an explicit shell/process boundary. The
   surviving owner may build host-terminal argv strings, choose platform flags,
   apply the runtime `nixGL` prefix, and run the detached-launch probe, but it
   must not duplicate startup-launch preflight or terminal materialization
   ownership
-- Verification: automated
-  `nushell/scripts/dev/test_yzx_generated_configs.nu`
-  (`test_managed_wrapper_launch_command_does_not_forward_config_mode_flag`,
-  `test_ghostty_linux_launch_command_keeps_linux_specific_flags`,
-  `test_ghostty_macos_launch_command_omits_linux_specific_flags`); automated
-  `nushell/scripts/dev/test_yzx_maintainer.nu`
-  (`test_detached_launch_probe_success_path_is_fast`,
-  `test_detached_launch_probe_early_failure_is_visible`); validator
+- Verification: automated Rust tests in
+  `rust_core/yazelix_core/src/launch_commands.rs`; validator
   `yzx_repo_validator validate-contracts`
 
 #### TLAUNCH-002
 - Type: failure_mode
 - Status: live
-- Owner: `terminal_launcher.nu`
+- Owner: Rust `launch_commands/terminal.rs` and native config status
 - Statement: `terminal.config_mode = user` must fail fast when the selected
   terminal has no real user config at its native path, and Yazelix must never
   move, create, or take ownership of that external config implicitly
-- Verification: automated
-  `nushell/scripts/dev/test_yzx_generated_configs.nu`
-  (`test_terminal_config_mode_user_requires_real_user_config`,
-  `test_generate_all_terminal_configs_keeps_terminal_overrides_opt_in`);
+- Verification: automated Rust tests
+  `rust_core/yazelix_core/src/launch_commands.rs`
+  (`ghostty_user_config_selection_accepts_config_ghostty_and_lists_misses`)
+  and `rust_core/yazelix_core/src/native_config_status.rs`
+  (`terminal_user_mode_reports_required_native_config_missing`);
   validator `yzx_repo_validator validate-config-surface-contract`
 - Source: `docs/contracts/terminal_override_layers.md`;
   `docs/contracts/runtime_dependency_preflight_contract.md`
@@ -71,19 +63,21 @@ Out of scope:
 #### TLAUNCH-003
 - Type: behavior
 - Status: live
-- Owner: `terminal_launcher.nu`
-- Statement: Ghostty launch keeps Linux-only GTK/X11 flags on Linux, omits
-  those flags on macOS, and routes Linux Ghostty through the runtime
-  `yazelix_ghostty.sh` environment wrapper. Ghostty launch argv and generated
-  Ghostty config do not set a fixed title, because Ghostty treats configured
-  titles as authoritative and would ignore the Zellij-owned title escape
-  sequence that carries the live session name.
+- Owner: Rust `launch_commands/terminal.rs`
+- Statement: Ghostty launch keeps Linux-only GTK/X11 flags on Linux, routes
+  Linux Ghostty through the runtime `yazelix_ghostty.sh` environment wrapper,
+  and launches macOS Ghostty through `/usr/bin/open -na
+  <runtime>/Applications/Ghostty.app --args` with the generated config,
+  working directory, and startup command preserved. Ghostty launch argv and
+  generated Ghostty config do not set a fixed title, because Ghostty treats
+  configured titles as authoritative and would ignore the Zellij-owned title
+  escape sequence that carries the live session name.
 - Verification: automated
-  `nushell/scripts/dev/test_yzx_generated_configs.nu`
-  (`test_ghostty_linux_launch_command_keeps_linux_specific_flags`,
-  `test_ghostty_macos_launch_command_omits_linux_specific_flags`); automated
   Rust tests in `rust_core/yazelix_core/src/launch_commands.rs`
-  (`ghostty_launch_does_not_force_window_title`) and
+  (`ghostty_launch_does_not_force_window_title`,
+  `ghostty_linux_launch_uses_runtime_wrapper_and_linux_flags`,
+  `ghostty_macos_launch_uses_app_bundle_open`,
+  `ghostty_macos_launch_requires_runtime_app_bundle`) and
   `rust_core/yazelix_core/src/launch_materialization.rs`
   (`full_launch_materialization_uses_active_terminal_from_request`)
 - Source: `docs/contracts/runtime_dependency_preflight_contract.md`
@@ -91,22 +85,22 @@ Out of scope:
 #### TLAUNCH-004
 - Type: failure_mode
 - Status: live
-- Owner: `terminal_launcher.nu` plus
-  `shells/posix/detached_launch_probe.sh`
+- Owner: Rust `launch_commands/process.rs` plus POSIX
+  `shells/posix/detached_launch_probe.sh` and
+  `shells/posix/desktop_deferred_launch_probe.sh`
 - Statement: Detached launch must be measurable, fast on success, and visible
   on early terminal death with captured stderr instead of silently succeeding
-- Verification: automated
-  `nushell/scripts/dev/test_yzx_maintainer.nu`
-  (`test_startup_profile_records_detached_terminal_probe`,
-  `test_detached_launch_probe_success_path_is_fast`,
-  `test_detached_launch_probe_early_failure_is_visible`);
+- Verification: automated Rust tests in
+  `rust_core/yazelix_core/src/launch_commands.rs`
+  (`launch_probe_log_path_uses_command_basename`,
+  `desktop_deferred_launch_helper_records_lifetime_status`);
   validator `cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_maintainer --bin yzx_repo_validator -- validate-installed-runtime-contract`
 - Source: `docs/contracts/startup_profile_scenarios.md`
 
 #### TLAUNCH-005
 - Type: behavior
 - Status: live
-- Owner: `terminal_launcher.nu` and Rust terminal materialization
+- Owner: Rust `launch_commands/terminal.rs` and Rust terminal materialization
 - Statement: Ratty launch uses a generated `ratty.toml` config, passes it with
   `--config-file`, sets the Yazelix window title, and keeps Ratty's `-e`
   command delimiter as the final flag before the startup script. Generated
@@ -118,96 +112,6 @@ Out of scope:
   (`ratty_launch_command_keeps_command_last`,
   `ratty_launch_command_prefers_runtime_vulkan_wrapper`)
 - Source: `docs/installation.md`; `docs/terminal_emulators.md`
-
-#### TLAUNCH-006
-- Type: behavior
-- Status: live
-- Owner: Rust terminal materialization, Rust launch preflight, the Mars child
-  wrapper, and the Yazelix Zellij fork
-- Statement: Mars Terminal launch uses the config id
-  `mars`, resolves the executable command as the child-owned
-  `mars-desktop` wrapper, passes the generated config directory
-  with `MARS_CONFIG`, clears ambient `RIO_CONFIG_HOME` at that
-  process boundary, marks the child environment for Mars
-  sanitization, passes `MARS_APP_ID` so the terminal window matches
-  the integrated Yazelix desktop entry, passes
-  `MARS_WINDOW_TITLE_PREFIX` so the forked Zellij runtime can emit
-  OS window titles shaped as `Yazelix - Mars - <session>` instead of
-  pane/tab titles, and does not add an outer Yazelix graphics wrapper around
-  the child wrapper. Generated Mars Terminal config
-  is derived from the packaged
-  child profile selected by `MARS_PROFILE` or
-  `MARS_EFFECTS` and the child emoji fallback preset selected by
-  `terminal.emoji_style`, and the global `appearance.mode`.
-  Home Manager passes `MARS_EMOJI_FONT`, `MARS_APPEARANCE`, and
-  `MARS_EMOJI_FONT_SOURCE=home-manager` only when
-  `programs.yazelix.manage_config = true` makes Home Manager the
-  semantic settings owner. Ratconfig-owned launches read the active
-  settings snapshot instead of semantic launcher env overrides.
-  `full` keeps Rio trail cursor and strips packaged `custom-shader` entries,
-  `baseline` uses the packaged no-effects profile, and `shaders` uses the
-  packaged shader profile while replacing packaged shader references with the
-  generated Rio decoration shader for the active cursor settings. `noto` uses
-  the default packaged profile roots, while `twitter` and `serenityos` use
-  matching child-owned profile roots under `share/mars/emoji/`.
-  Shader-profile launches use a launch-scoped generated config and shader
-  directory under `terminal_launches/<launch-id>/`, while full and baseline
-  profiles use the stable generated config root.
-  Launch-scoped shader snapshots are retained as ordinary Yazelix state for the
-  user session and may be pruned by future maintenance; running terminals must
-  not depend on a mutable shared shader directory. The generated config injects
-  the current `terminal.transparency` as `[window].opacity`, copies child-owned
-  dark/light theme files into the generated config root, writes `force-theme`
-  for static dark/light appearance, preserves child adaptive themes for
-  `appearance.mode = "auto"`, and keeps mars cell opacity disabled so
-  foreground and explicit UI-background cells stay crisp while the window
-  background remains transparent. The generated mars config is Yazelix-owned
-  state; it must not become the host Rio config for plain `rio` launches.
-- Verification: automated Rust tests in
-  `rust_core/yazelix_core/src/runtime_contract.rs`
-  (`launch_preflight_maps_mars_to_child_wrapper_command`),
-  `rust_core/yazelix_core/src/launch_commands.rs`
-  (`mars_launch_command_uses_child_wrapper_without_outer_graphics_wrapper`),
-  `rust_core/yazelix_core/src/launch_commands/launch.rs`
-  (`terminal_window_title_prefix_names_selected_terminal`,
-  `mars_process_boundary_env_clears_host_rio_config`),
-  `rust_core/yazelix_core/src/launch_materialization.rs`
-  (`mars_shader_profile_uses_scoped_terminal_state_dir`,
-  `mars_without_shader_profile_uses_stable_terminal_state_dir`)
-- Source: `docs/installation.md`; `docs/terminal_emulators.md`
-
-#### TLAUNCH-007
-- Type: behavior
-- Status: live
-- Owner: Rust desktop launch plus
-  `shells/posix/desktop_deferred_launch_probe.sh`; inner child-process PID
-  evidence beyond the terminal process belongs to the Mars child wrapper
-- Statement: Desktop-deferred Mars Terminal launches write bounded per-launch
-  logs under `YAZELIX_STATE_DIR/logs/terminal_launch`. The log name is based on
-  the executable basename, so mars logs use
-  `yazelix_terminal_desktop_*.log`. Each fresh log records timestamps, argv,
-  config environment, helper PID, terminal-or-wrapper PID, captured
-  stdout/stderr, any early exit status observable by the desktop helper, and
-  terminal lifetime evidence. After the short startup probe, the detached helper
-  records `lifetime_status=watching`, waits for the terminal-or-wrapper PID,
-  and appends `final_exit_status` plus `final_exit_kind=exit`/`final_exit_code`
-  or `final_exit_kind=signal`/`final_signal`. The main runtime records
-  `child_pid=not_observable_by_desktop_probe` when the child-owned wrapper is
-  the only process boundary that can observe the inner Rio child PID. Doctor
-  reports final lifetime evidence, active lifetime watchers, metadata-only
-  logs, stale/missing metadata, or no captured launch evidence for active
-  mars runtimes without warning unrelated terminal variants. A log ending
-  after short-probe metadata such as
-  `exit_status=not_observed_after_probe_window` is not sufficient crash
-  observability.
-- Verification: automated Rust tests in
-  `rust_core/yazelix_core/src/launch_commands.rs`
-  (`desktop_deferred_launch_helper_records_lifetime_status`,
-  `launch_probe_log_path_uses_command_basename`) and
-  `rust_core/yazelix_core/src/doctor_runtime_report.rs`
-  (`mars_launch_log_finding_reports_lifetime_logs`,
-  `mars_launch_log_finding_warns_on_metadata_only_logs`,
-  `mars_launch_log_finding_is_scoped_to_mars_runtime`)
 
 #### TLAUNCH-008
 - Type: behavior
@@ -228,7 +132,7 @@ Out of scope:
 - Owner: Rust terminal materialization and Rust launch preflight
 - Statement: Rio is the upstream packaged terminal variant selected by
   `terminal = "rio"` or `#yazelix_rio`; it must not depend on the
-  `mars` child package or mars metadata. Generated Rio config is
+  private terminal child package or private terminal metadata. Generated Rio config is
   written under the Yazelix state directory and launched through
   `RIO_CONFIG_HOME`, with `terminal.transparency` mapped to Rio window and cell
   opacity. On Linux, when transparency is enabled and an X display exists,
@@ -243,6 +147,27 @@ Out of scope:
   `rio_process_boundary_env_forces_x11_for_transparent_linux_launches`,
   `rio_process_boundary_env_keeps_default_backend_without_x11_display`,
   `rio_launch_argv_uses_selected_config_and_working_dir`)
+
+#### TLAUNCH-010
+- Type: behavior
+- Status: live
+- Owner: Rust terminal materialization and Rust launch preflight
+- Statement: Mars is the default packaged terminal variant selected by
+  `terminal = "mars"`, `#yazelix`, or `#yazelix_mars`. It consumes the Mars
+  child package metadata from `passthru.marsPackageMetadata` and
+  `share/mars/package-metadata.json`; missing or malformed metadata is a
+  package error, not a fallback trigger. Generated Mars config is written under
+  the Yazelix state directory, launched through `MARS_CONFIG_HOME`, and scoped
+  to the terminal process boundary so host Rio does not inherit Mars config
+  state.
+  On Linux, packaged Mars can use the runtime-owned Vulkan wrapper because the
+  renderer needs a Vulkan-capable adapter.
+- Verification: automated Rust tests in
+  `rust_core/yazelix_core/src/launch_commands/launch.rs`
+  (`mars_process_boundary_env_clears_host_rio_config_and_sets_app_id`);
+  automated terminal-materialization tests in
+  `rust_core/yazelix_core/src/terminal_materialization.rs`
+  (`mars_serenityos_config_uses_child_emoji_profile_root`)
 
 ## Traceability
 - Defended by: `yzx_repo_validator validate-contracts`

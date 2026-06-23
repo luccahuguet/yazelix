@@ -76,6 +76,20 @@ pub fn write_runtime_contract_assets(repo: &Path, runtime_dir: &Path) {
         }"#,
     )
     .unwrap();
+    fs::write(
+        runtime_dir.join("runtime_tools.json"),
+        r#"{
+          "terminal": {
+            "source": "bundled",
+            "commands": ["ghostty"],
+            "required_commands": ["ghostty"],
+            "hostable": false,
+            "disableable": false,
+            "notes": []
+          }
+        }"#,
+    )
+    .unwrap();
 }
 
 pub fn write_executable_script(path: &Path, body: &str) {

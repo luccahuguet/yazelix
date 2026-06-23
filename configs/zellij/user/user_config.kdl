@@ -32,8 +32,9 @@
 // Disable mouse support if it interferes with terminal selection
 // mouse_mode false
 
-// Increase scrollback buffer for more history
-// scroll_buffer_size 50000
+// Yazelix defaults to scroll_buffer_size 5000 for agent-heavy sessions.
+// Raise this only if you intentionally want longer Zellij pane history.
+// scroll_buffer_size 10000
 
 // Use simplified UI without arrow fonts for better compatibility
 // simplified_ui true

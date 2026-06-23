@@ -69,7 +69,7 @@ The supported boundary is runnable-standalone-first for every non-workspace widg
 - Status: live
 - Owner: `yazelix-cursors`, terminal materialization, and ratconfig-backed configuration UI
 - Statement: Cursor configuration, effects, and preset inspection are not status-bar widget surfaces. The status bar does not render cursor preset names, swatches, glyphs, or `yzc current` output. `yazelix-cursors` remains the owner of cursor schemes and assets, while terminal materialization applies them and ratconfig exposes inspection/editing.
-- Verification: automated `cargo test` in `luccahuguet/yazelix-zellij-bar` and `luccahuguet/yazelix-zellij-config-pack`
+- Verification: automated `cargo test` in `luccahuguet/yazelix-zellij-bar` and `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_zellij_config_pack`
 
 #### SBO-007
 - Type: boundary
@@ -77,6 +77,20 @@ The supported boundary is runnable-standalone-first for every non-workspace widg
 - Owner: `yazelix_zellij_bar` child repo plus Yazelix core status adapter
 - Statement: Claude, Codex, and OpenCode Go widget implementation belongs to `yazelix_zellij_bar`: display rendering, standalone stdout commands, cache schemas, cache locking, freshness/backoff, provider probing, and explicit cache/database path handling. Yazelix core may choose session-specific paths and widget settings, but must not own the provider widget implementation
 - Verification: automated `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core status_cache`
+
+#### SBO-007A
+- Type: behavior
+- Status: live
+- Owner: Yazelix generated Zellij materialization plus pane orchestrator
+- Statement: Integrated agent-usage provider refreshes are selected by the active
+  `zellij.widget_tray`. A provider that is absent from the rendered tray must
+  not be scheduled by the pane orchestrator, while enabled providers continue to
+  render from child-owned cached facts with freshness and error backoff. CPU/RAM
+  widgets remain cheap cached child commands, and adding new status extras must
+  not turn the status bar into an always-measure-everything sampler
+- Verification: automated
+  `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_zellij_config_pack`; automated
+  `cargo test --manifest-path ../yazelix-zellij-pane-orchestrator/Cargo.toml --lib`
 
 #### SBO-008
 - Type: boundary

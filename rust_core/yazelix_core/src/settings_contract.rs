@@ -5,6 +5,7 @@ use crate::bridge::{CoreError, ErrorClass};
 use crate::settings_surface::read_settings_jsonc_value;
 use ratconfig::contract::{
     ConfigContract, ContractChange, ContractError, join_jsonc_contract_text_from_version,
+    read_jsonc_contract_state_text,
 };
 use ratconfig::migration::{MigrationError, MigrationOp};
 use serde_json::{Value as JsonValue, json};
@@ -13,7 +14,39 @@ use std::path::Path;
 pub const SETTINGS_CONTRACT_ID: &str = "yazelix.settings";
 pub const SETTINGS_CONTRACT_STATE_PATH: &str = "ratconfig.contract";
 const SETTINGS_CONTRACT_BASELINE_VERSION: u64 = 1;
-pub const SETTINGS_CONTRACT_CURRENT_VERSION: u64 = 10;
+pub const SETTINGS_CONTRACT_CURRENT_VERSION: u64 = 13;
+const CHANGE_RENAME_EDITOR_SIDEBAR_TO_WORKSPACE_LEFT_SIDEBAR: &str =
+    "rename-editor-sidebar-to-workspace-left-sidebar";
+const CHANGE_REPLACE_NATIVE_MOVEMENT_DEFAULTS: &str = "replace-native-movement-defaults";
+const CHANGE_ADD_CURRENT_DEFAULT_SETTINGS: &str = "add-current-default-settings";
+const CHANGE_REPAIR_NATIVE_MOVEMENT_KEY_SPELLING: &str = "repair-native-movement-key-spelling";
+const CHANGE_ENABLE_KITTY_KEYBOARD_PROTOCOL_DEFAULT: &str =
+    "enable-kitty-keyboard-protocol-default";
+const CHANGE_REPLACE_DEFAULT_BTM_POPUP_WITH_ZENITH: &str = "replace-default-btm-popup-with-zenith";
+const CHANGE_MOVE_DEFAULT_ZENITH_POPUP_TO_INFORMATION_KEY: &str =
+    "move-default-zenith-popup-to-information-key";
+const CHANGE_ROUTE_DEFAULT_RIGHT_SIDEBAR_THROUGH_YZX_AGENT: &str =
+    "route-default-right-sidebar-through-yzx-agent";
+const CHANGE_REMOVE_RETIRED_CURSOR_WIDGET_TRAY_VALUE: &str =
+    "remove-retired-cursor-widget-tray-value";
+const CHANGE_REMOVE_CPU_RAM_FROM_DEFAULT_WIDGET_TRAY: &str =
+    "remove-cpu-ram-from-default-widget-tray";
+const CHANGE_ADD_SESSION_WIDGET_TRAY_VALUE: &str = "add-session-widget-tray-value";
+const CHANGE_ADD_WIDGET_CHROME_SETTINGS: &str = "add-widget-chrome-settings";
+pub const SETTINGS_CONTRACT_APPLIED_CHANGE_IDS: &[&str] = &[
+    CHANGE_RENAME_EDITOR_SIDEBAR_TO_WORKSPACE_LEFT_SIDEBAR,
+    CHANGE_REPLACE_NATIVE_MOVEMENT_DEFAULTS,
+    CHANGE_ADD_CURRENT_DEFAULT_SETTINGS,
+    CHANGE_REPAIR_NATIVE_MOVEMENT_KEY_SPELLING,
+    CHANGE_ENABLE_KITTY_KEYBOARD_PROTOCOL_DEFAULT,
+    CHANGE_REPLACE_DEFAULT_BTM_POPUP_WITH_ZENITH,
+    CHANGE_MOVE_DEFAULT_ZENITH_POPUP_TO_INFORMATION_KEY,
+    CHANGE_ROUTE_DEFAULT_RIGHT_SIDEBAR_THROUGH_YZX_AGENT,
+    CHANGE_REMOVE_RETIRED_CURSOR_WIDGET_TRAY_VALUE,
+    CHANGE_REMOVE_CPU_RAM_FROM_DEFAULT_WIDGET_TRAY,
+    CHANGE_ADD_SESSION_WIDGET_TRAY_VALUE,
+    CHANGE_ADD_WIDGET_CHROME_SETTINGS,
+];
 const OPTIONAL_ADDITIVE_DEFAULT_PATHS: &[&str] = &["zellij.custom_popups"];
 
 const LEGACY_SIDEBAR_SETTING_RENAMES: &[(&str, &str)] = &[
@@ -45,6 +78,8 @@ pub fn reconcile_settings_contract_text(
 ) -> Result<SettingsContractReconcileOutcome, CoreError> {
     let defaults = read_settings_jsonc_value(default_main_config)?;
     let contract = settings_contract_for_defaults(&defaults);
+    let previous_state = read_jsonc_contract_state_text(raw, SETTINGS_CONTRACT_STATE_PATH)
+        .map_err(|error| contract_error_to_core_error(source_path, error))?;
     let outcome = join_jsonc_contract_text_from_version(
         raw,
         &contract,
@@ -60,7 +95,10 @@ pub fn reconcile_settings_contract_text(
             .iter()
             .map(|change| change.id.clone())
             .collect(),
-        state_changed: outcome.state_mutation != ratconfig::patch::PatchMutation::Unchanged,
+        state_changed: match previous_state {
+            Some(previous) => previous != outcome.state,
+            None => outcome.state_mutation != ratconfig::patch::PatchMutation::Unchanged,
+        },
     })
 }
 
@@ -74,7 +112,7 @@ fn settings_contract_for_defaults(defaults: &JsonValue) -> ConfigContract {
         current_version: SETTINGS_CONTRACT_CURRENT_VERSION,
         changes: vec![
             ContractChange::automatic(
-                "rename-editor-sidebar-to-workspace-left-sidebar",
+                CHANGE_RENAME_EDITOR_SIDEBAR_TO_WORKSPACE_LEFT_SIDEBAR,
                 1,
                 2,
                 LEGACY_SIDEBAR_SETTING_RENAMES
@@ -86,7 +124,7 @@ fn settings_contract_for_defaults(defaults: &JsonValue) -> ConfigContract {
                     .collect(),
             ),
             ContractChange::automatic(
-                "replace-native-movement-defaults",
+                CHANGE_REPLACE_NATIVE_MOVEMENT_DEFAULTS,
                 2,
                 3,
                 vec![
@@ -108,9 +146,9 @@ fn settings_contract_for_defaults(defaults: &JsonValue) -> ConfigContract {
                     },
                 ],
             ),
-            ContractChange::automatic("add-current-default-settings", 3, 4, add_default_ops),
+            ContractChange::automatic(CHANGE_ADD_CURRENT_DEFAULT_SETTINGS, 3, 4, add_default_ops),
             ContractChange::automatic(
-                "repair-native-movement-key-spelling",
+                CHANGE_REPAIR_NATIVE_MOVEMENT_KEY_SPELLING,
                 4,
                 5,
                 vec![
@@ -137,7 +175,7 @@ fn settings_contract_for_defaults(defaults: &JsonValue) -> ConfigContract {
                 ],
             ),
             ContractChange::automatic(
-                "enable-kitty-keyboard-protocol-default",
+                CHANGE_ENABLE_KITTY_KEYBOARD_PROTOCOL_DEFAULT,
                 5,
                 6,
                 vec![MigrationOp::Transform {
@@ -146,7 +184,7 @@ fn settings_contract_for_defaults(defaults: &JsonValue) -> ConfigContract {
                 }],
             ),
             ContractChange::automatic(
-                "replace-default-btm-popup-with-zenith",
+                CHANGE_REPLACE_DEFAULT_BTM_POPUP_WITH_ZENITH,
                 6,
                 7,
                 vec![MigrationOp::Transform {
@@ -155,7 +193,7 @@ fn settings_contract_for_defaults(defaults: &JsonValue) -> ConfigContract {
                 }],
             ),
             ContractChange::automatic(
-                "move-default-zenith-popup-to-information-key",
+                CHANGE_MOVE_DEFAULT_ZENITH_POPUP_TO_INFORMATION_KEY,
                 7,
                 8,
                 vec![MigrationOp::Transform {
@@ -164,7 +202,7 @@ fn settings_contract_for_defaults(defaults: &JsonValue) -> ConfigContract {
                 }],
             ),
             ContractChange::automatic(
-                "route-default-right-sidebar-through-yzx-agent",
+                CHANGE_ROUTE_DEFAULT_RIGHT_SIDEBAR_THROUGH_YZX_AGENT,
                 8,
                 9,
                 vec![MigrationOp::Transform {
@@ -173,13 +211,46 @@ fn settings_contract_for_defaults(defaults: &JsonValue) -> ConfigContract {
                 }],
             ),
             ContractChange::automatic(
-                "remove-retired-cursor-widget-tray-value",
+                CHANGE_REMOVE_RETIRED_CURSOR_WIDGET_TRAY_VALUE,
                 9,
                 10,
                 vec![MigrationOp::Transform {
                     path: "zellij.widget_tray".to_string(),
                     transform: remove_retired_cursor_widget_tray_value,
                 }],
+            ),
+            ContractChange::automatic(
+                CHANGE_REMOVE_CPU_RAM_FROM_DEFAULT_WIDGET_TRAY,
+                10,
+                11,
+                vec![MigrationOp::Transform {
+                    path: "zellij.widget_tray".to_string(),
+                    transform: remove_cpu_ram_from_default_widget_tray,
+                }],
+            ),
+            ContractChange::automatic(
+                CHANGE_ADD_SESSION_WIDGET_TRAY_VALUE,
+                11,
+                12,
+                vec![MigrationOp::Transform {
+                    path: "zellij.widget_tray".to_string(),
+                    transform: add_session_to_widget_tray,
+                }],
+            ),
+            ContractChange::automatic(
+                CHANGE_ADD_WIDGET_CHROME_SETTINGS,
+                12,
+                13,
+                vec![
+                    MigrationOp::AddDefault {
+                        path: "zellij.widget_frame".to_string(),
+                        value: json!("none"),
+                    },
+                    MigrationOp::AddDefault {
+                        path: "zellij.widget_separator".to_string(),
+                        value: json!("dot"),
+                    },
+                ],
             ),
         ],
     }
@@ -374,6 +445,34 @@ fn remove_retired_cursor_widget_tray_value(value: &JsonValue) -> Result<Option<J
     } else {
         Ok(None)
     }
+}
+
+fn remove_cpu_ram_from_default_widget_tray(value: &JsonValue) -> Result<Option<JsonValue>, String> {
+    let _ = value
+        .as_array()
+        .ok_or_else(|| "expected a widget_tray array".to_string())?;
+    if string_array_equals(
+        Some(value),
+        &["editor", "shell", "term", "codex_usage", "cpu", "ram"],
+    ) {
+        Ok(Some(json!(["editor", "shell", "term", "codex_usage"])))
+    } else {
+        Ok(None)
+    }
+}
+
+fn add_session_to_widget_tray(value: &JsonValue) -> Result<Option<JsonValue>, String> {
+    let items = value
+        .as_array()
+        .ok_or_else(|| "expected a widget_tray array".to_string())?;
+    if items.iter().any(|item| item.as_str() == Some("session")) {
+        return Ok(None);
+    }
+
+    let mut next = Vec::with_capacity(items.len() + 1);
+    next.push(json!("session"));
+    next.extend(items.iter().cloned());
+    Ok(Some(JsonValue::Array(next)))
 }
 
 fn string_array_is_empty_or_absent(value: Option<&JsonValue>) -> bool {
@@ -584,6 +683,12 @@ mod tests {
             plan.changes.len() as u64,
             SETTINGS_CONTRACT_CURRENT_VERSION - SETTINGS_CONTRACT_BASELINE_VERSION
         );
+        let change_ids = contract
+            .changes
+            .iter()
+            .map(|change| change.id.as_str())
+            .collect::<Vec<_>>();
+        assert_eq!(change_ids, SETTINGS_CONTRACT_APPLIED_CHANGE_IDS);
         assert!(
             contract
                 .changes
@@ -610,7 +715,7 @@ mod tests {
 
         assert_eq!(
             get_json_path(&value, "zellij.widget_tray"),
-            Some(&json!(["editor", "ram"]))
+            Some(&json!(["session", "editor", "ram"]))
         );
         assert_eq!(
             get_json_path(&value, "ratconfig.contract.version"),
@@ -621,6 +726,107 @@ mod tests {
                 .applied_changes
                 .iter()
                 .any(|change| change.id == "remove-retired-cursor-widget-tray-value")
+        );
+    }
+
+    // Regression: only old default-shaped status trays lose CPU/RAM; explicit custom opt-ins are preserved.
+    #[test]
+    fn removes_cpu_ram_only_from_default_widget_tray() {
+        assert_eq!(
+            remove_cpu_ram_from_default_widget_tray(&json!([
+                "editor",
+                "shell",
+                "term",
+                "codex_usage",
+                "cpu",
+                "ram"
+            ]))
+            .unwrap(),
+            Some(json!(["editor", "shell", "term", "codex_usage"]))
+        );
+        assert_eq!(
+            remove_cpu_ram_from_default_widget_tray(&json!(["editor", "workspace", "cpu"]))
+                .unwrap(),
+            None
+        );
+    }
+
+    // Regression: the session name moved from hardcoded bar text into the widget tray, so existing configs must keep showing it after migration.
+    #[test]
+    fn adds_session_to_existing_widget_tray() {
+        assert_eq!(
+            add_session_to_widget_tray(&json!(["editor", "workspace", "cpu"])).unwrap(),
+            Some(json!(["session", "editor", "workspace", "cpu"]))
+        );
+        assert_eq!(
+            add_session_to_widget_tray(&json!(["session", "editor"])).unwrap(),
+            None
+        );
+    }
+
+    // Regression: joined user settings from the previous contract version preserve the old visible session label by adding the new session widget token.
+    #[test]
+    fn migrates_existing_widget_tray_to_include_session_widget() {
+        let contract = settings_contract_for_defaults(&json!({}));
+        let raw = r#"{
+  "zellij": {
+    "widget_tray": ["editor", "shell", "term", "codex_usage"]
+  }
+}
+"#;
+
+        let migrated =
+            join_jsonc_contract_text_from_version(raw, &contract, SETTINGS_CONTRACT_STATE_PATH, 11)
+                .unwrap();
+        let value = parse_jsonc_value(&migrated.text).unwrap();
+
+        assert_eq!(
+            get_json_path(&value, "zellij.widget_tray"),
+            Some(&json!([
+                "session",
+                "editor",
+                "shell",
+                "term",
+                "codex_usage"
+            ]))
+        );
+        assert!(
+            migrated
+                .applied_changes
+                .iter()
+                .any(|change| change.id == "add-session-widget-tray-value")
+        );
+    }
+
+    // Regression: joined user settings from the previous contract version receive default status-bar widget chrome settings.
+    #[test]
+    fn migrates_existing_config_to_include_widget_chrome_settings() {
+        let contract = settings_contract_for_defaults(&json!({}));
+        let raw = r#"{
+  "zellij": {
+    "widget_tray": ["session", "editor", "codex_usage"]
+  }
+}
+"#;
+
+        let migrated =
+            join_jsonc_contract_text_from_version(raw, &contract, SETTINGS_CONTRACT_STATE_PATH, 12)
+                .unwrap();
+        let value = parse_jsonc_value(&migrated.text).unwrap();
+
+        assert_eq!(
+            get_json_path(&value, "zellij.widget_frame"),
+            Some(&json!("none"))
+        );
+        assert_eq!(
+            get_json_path(&value, "zellij.widget_separator"),
+            Some(&json!("dot"))
+        );
+        assert!(
+            migrated
+                .applied_changes
+                .iter()
+                .any(|change| change.id == "add-widget-chrome-settings")
         );
     }
 
@@ -738,5 +944,27 @@ mod tests {
         .unwrap();
 
         assert_eq!(migrated, None);
+    }
+
+    // Regression: Home Manager-generated compact JSON can already carry the current contract state without needing a write-only formatting repair.
+    #[test]
+    fn current_contract_state_is_idempotent_even_when_compact() {
+        let defaults_path =
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("../../settings_default.jsonc");
+        let applied_change_ids = serde_json::to_string(&SETTINGS_CONTRACT_APPLIED_CHANGE_IDS)
+            .expect("serialize applied change ids");
+        let raw = format!(
+            r#"{{
+  "ratconfig": {{"contract":{{"applied_change_ids":{applied_change_ids},"contract_id":"{SETTINGS_CONTRACT_ID}","schema_version":1,"version":{SETTINGS_CONTRACT_CURRENT_VERSION}}}}}
+}}
+"#
+        );
+
+        let outcome =
+            reconcile_settings_contract_text(Path::new("settings.jsonc"), &raw, &defaults_path)
+                .expect("reconcile settings contract");
+
+        assert!(!outcome.changed());
+        assert!(outcome.applied_change_ids.is_empty());
     }
 }

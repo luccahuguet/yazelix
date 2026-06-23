@@ -20,6 +20,16 @@
           }
         ],
         "matcher": ""
+      },
+      {
+        "hooks": [
+          {
+            "command": "sh -lc 'root=\"$(git rev-parse --show-toplevel)\"; exec rusty-idd next --base \"$root\"'",
+            "statusMessage": "Rusty IDD front door: computing the next step",
+            "timeout": 180,
+            "type": "command"
+          }
+        ]
       }
     ]
   }

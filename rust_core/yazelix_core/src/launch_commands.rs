@@ -4,7 +4,7 @@
 use crate::bridge::{CoreError, ErrorClass};
 use crate::control_plane::{home_dir_from_env, state_dir_from_env};
 use crate::sidebar_bootstrap::{
-    SIDEBAR_BOOTSTRAP_CWD_ENV, is_sidebar_bootstrap_file, sidebar_bootstrap_owner_dir,
+    is_sidebar_bootstrap_file, sidebar_bootstrap_owner_dir, SIDEBAR_BOOTSTRAP_CWD_ENV,
 };
 use crate::terminal_materialization::MARS_EMOJI_ENV_KEYS;
 use std::fs;
@@ -44,6 +44,7 @@ pub(super) const RUNTIME_RELAUNCH_CLEARED_ENV_KEYS: &[&str] = &[
     "MARS",
     "MARS_APP_ID",
     "MARS_CONFIG",
+    "MARS_CONFIG_HOME",
     "MARS_APPEARANCE",
     "MARS_CHILD_ENV_SANITIZE",
     "MARS_EFFECTS",
@@ -522,11 +523,9 @@ mod tests {
         );
 
         let unknown = parse_session_config_patch("editor.nope=true", &fields).unwrap_err();
-        assert!(
-            unknown
-                .to_string()
-                .contains("Unknown Yazelix config setting")
-        );
+        assert!(unknown
+            .to_string()
+            .contains("Unknown Yazelix config setting"));
         let invalid_bool =
             parse_session_config_patch("core.skip_welcome_screen=maybe", &fields).unwrap_err();
         assert!(invalid_bool.to_string().contains("Invalid boolean value"));
@@ -535,11 +534,9 @@ mod tests {
             &fields,
         )
         .unwrap_err();
-        assert!(
-            invalid_map
-                .to_string()
-                .contains("Invalid string-list-map value")
-        );
+        assert!(invalid_map
+            .to_string()
+            .contains("Invalid string-list-map value"));
     }
 
     // Defends: --with writes an ephemeral settings.jsonc snapshot and validates it through the normal config contract without mutating the user's config.
@@ -595,6 +592,18 @@ mod tests {
     #[test]
     fn active_terminal_reads_runtime_variant_metadata() {
         let runtime = TempDir::new().unwrap();
+        fs::write(runtime.path().join("runtime_variant"), "rio\n").unwrap();
+
+        assert_eq!(
+            crate::terminal_variant::active_terminal_from_runtime_dir(runtime.path()).unwrap(),
+            "rio"
+        );
+    }
+
+    // Defends: Mars runtime metadata is accepted as a shipped packaged terminal.
+    #[test]
+    fn active_terminal_accepts_mars_runtime_variant() {
+        let runtime = TempDir::new().unwrap();
         fs::write(runtime.path().join("runtime_variant"), "mars\n").unwrap();
 
         assert_eq!(
@@ -603,64 +612,20 @@ mod tests {
         );
     }
 
-    // Defends: Mars Terminal launch is child-wrapper owned, while Yazelix still supplies cwd, title, host mode, and the startup command.
-    #[test]
-    fn mars_launch_command_uses_child_wrapper_without_outer_graphics_wrapper() {
-        let runtime = TempDir::new().unwrap();
-        let startup = runtime
-            .path()
-            .join("shells")
-            .join("posix")
-            .join("start_yazelix.sh");
-        let libexec = runtime.path().join("libexec");
-        fs::create_dir_all(startup.parent().unwrap()).unwrap();
-        fs::create_dir_all(&libexec).unwrap();
-        fs::write(&startup, "#!/bin/sh\n").unwrap();
-        fs::write(libexec.join("nixVulkanMesa"), "#!/bin/sh\n").unwrap();
-        let config_path = runtime.path().join("config.toml");
-
-        let argv = build_launch_command_argv(
-            runtime.path(),
-            &crate::runtime_contract::TerminalCandidate {
-                terminal: "mars".to_string(),
-                name: "Mars".to_string(),
-                command: "mars-desktop".to_string(),
-            },
-            &config_path,
-            Path::new("/tmp/project"),
-            Some("session-a"),
-        )
-        .unwrap();
-
-        assert_eq!(argv[0], "mars-desktop");
-        assert_eq!(argv[1], "--title-placeholder");
-        assert_eq!(argv[2], "Yazelix - Mars - session-a");
-        assert!(argv.iter().any(|arg| arg == "--yazelix"));
-        assert_eq!(
-            argv.windows(2)
-                .find(|pair| pair[0] == "--working-dir")
-                .map(|pair| pair[1].as_str()),
-            Some("/tmp/project")
-        );
-        assert_eq!(argv[argv.len() - 2], "-e");
-        assert_eq!(argv[argv.len() - 1], startup.to_string_lossy().as_ref());
-    }
-
     // Defends: desktop launch logs use the terminal executable basename, so mars diagnostics can find them reliably.
     #[test]
     fn launch_probe_log_path_uses_command_basename() {
         let state = TempDir::new().unwrap();
 
         let log =
-            get_launch_probe_log_path(state.path(), "/nix/store/test-yazelix/bin/mars-desktop")
-                .unwrap();
+            get_launch_probe_log_path(state.path(), "/nix/store/test-yazelix/bin/mars").unwrap();
 
         assert!(log.starts_with(state.path().join("logs/terminal_launch")));
         assert!(
             log.file_name()
                 .and_then(|name| name.to_str())
                 .unwrap_or_default()
-                .starts_with("mars_desktop_")
+                .starts_with("mars_")
         );
     }
 
@@ -786,16 +751,139 @@ mod tests {
 
         let ghostty_index = argv.iter().position(|arg| arg == "ghostty").unwrap_or(0);
         let ghostty_args = &argv[ghostty_index..];
-        assert!(
-            !ghostty_args
-                .iter()
-                .any(|arg| arg == "--title" || arg.starts_with("--title="))
-        );
+        assert!(!ghostty_args
+            .iter()
+            .any(|arg| arg == "--title" || arg.starts_with("--title=")));
         assert_eq!(ghostty_args[ghostty_args.len() - 2], "-e");
         assert_eq!(
             ghostty_args[ghostty_args.len() - 1],
             startup.to_string_lossy().as_ref()
         );
+    }
+
+    // Defends: Linux Ghostty keeps the runtime environment wrapper, graphics wrapper, and Linux-only windowing flags.
+    #[test]
+    fn ghostty_linux_launch_uses_runtime_wrapper_and_linux_flags() {
+        let runtime = TempDir::new().unwrap();
+        let posix = runtime.path().join("shells").join("posix");
+        let libexec = runtime.path().join("libexec");
+        let startup = posix.join("start_yazelix.sh");
+        let ghostty_wrapper = posix.join("yazelix_ghostty.sh");
+        let nixgl = libexec.join("nixGL");
+        fs::create_dir_all(&posix).unwrap();
+        fs::create_dir_all(&libexec).unwrap();
+        fs::write(&startup, "#!/bin/sh\n").unwrap();
+        fs::write(&ghostty_wrapper, "#!/bin/sh\n").unwrap();
+        fs::write(&nixgl, "#!/bin/sh\n").unwrap();
+        let config_path = runtime.path().join("ghostty/config");
+        let working_dir = runtime.path().join("workspace");
+
+        let argv = build_launch_command_argv_for_platform(
+            runtime.path(),
+            &crate::runtime_contract::TerminalCandidate {
+                terminal: "ghostty".to_string(),
+                name: "Ghostty".to_string(),
+                command: "ghostty".to_string(),
+            },
+            &config_path,
+            &working_dir,
+            None,
+            "linux",
+        )
+        .unwrap();
+
+        assert_eq!(argv[0], ghostty_wrapper.to_string_lossy().as_ref());
+        assert_eq!(argv[1], nixgl.to_string_lossy().as_ref());
+        assert_eq!(argv[2], "ghostty");
+        assert!(argv.contains(&"--gtk-single-instance=false".to_string()));
+        assert!(argv.contains(&"--class=com.yazelix.Yazelix".to_string()));
+        assert!(argv.contains(&"--x11-instance-name=yazelix".to_string()));
+        assert_eq!(argv[argv.len() - 2], "-e");
+        assert_eq!(argv[argv.len() - 1], startup.to_string_lossy().as_ref());
+    }
+
+    // Regression: macOS Ghostty 1.3.1 refuses direct packaged CLI GUI launch; Yazelix must hand the generated args to the app bundle.
+    #[test]
+    fn ghostty_macos_launch_uses_app_bundle_open() {
+        let runtime = TempDir::new().unwrap();
+        let startup = runtime
+            .path()
+            .join("shells")
+            .join("posix")
+            .join("start_yazelix.sh");
+        let app_bundle = runtime.path().join("Applications").join("Ghostty.app");
+        fs::create_dir_all(startup.parent().unwrap()).unwrap();
+        fs::create_dir_all(&app_bundle).unwrap();
+        fs::write(&startup, "#!/bin/sh\n").unwrap();
+        let config_path = runtime.path().join("ghostty/config");
+        let working_dir = runtime.path().join("workspace");
+
+        let argv = build_launch_command_argv_for_platform(
+            runtime.path(),
+            &crate::runtime_contract::TerminalCandidate {
+                terminal: "ghostty".to_string(),
+                name: "Ghostty".to_string(),
+                command: "ghostty".to_string(),
+            },
+            &config_path,
+            &working_dir,
+            None,
+            "macos",
+        )
+        .unwrap();
+
+        assert_eq!(
+            argv,
+            vec![
+                "/usr/bin/open".to_string(),
+                "-na".to_string(),
+                app_bundle.to_string_lossy().into_owned(),
+                "--args".to_string(),
+                "--config-default-files=false".to_string(),
+                format!("--config-file={}", config_path.to_string_lossy()),
+                format!("--working-directory={}", working_dir.to_string_lossy()),
+                "-e".to_string(),
+                startup.to_string_lossy().into_owned(),
+            ]
+        );
+        assert!(!argv.iter().any(|arg| arg == "ghostty"));
+        assert!(
+            !argv.iter().any(|arg| arg == "--gtk-single-instance=false"
+                || arg.starts_with("--class=")
+                || arg.starts_with("--x11-instance-name="))
+        );
+    }
+
+    // Defends: macOS Ghostty launch fails clearly if the runtime no longer carries the app bundle required by `open -na`.
+    #[test]
+    fn ghostty_macos_launch_requires_runtime_app_bundle() {
+        let runtime = TempDir::new().unwrap();
+        let startup = runtime
+            .path()
+            .join("shells")
+            .join("posix")
+            .join("start_yazelix.sh");
+        fs::create_dir_all(startup.parent().unwrap()).unwrap();
+        fs::write(&startup, "#!/bin/sh\n").unwrap();
+        let config_path = runtime.path().join("ghostty/config");
+        let working_dir = runtime.path().join("workspace");
+
+        let error = build_launch_command_argv_for_platform(
+            runtime.path(),
+            &crate::runtime_contract::TerminalCandidate {
+                terminal: "ghostty".to_string(),
+                name: "Ghostty".to_string(),
+                command: "ghostty".to_string(),
+            },
+            &config_path,
+            &working_dir,
+            None,
+            "macos",
+        )
+        .unwrap_err();
+
+        assert_eq!(error.code(), "missing_ghostty_macos_app_bundle");
+        assert!(error.message().contains("Applications/Ghostty.app"));
     }
 
     // Defends: Ghostty user-mode config discovery follows upstream file-name and macOS path candidates instead of hard-coding the old config name.
@@ -873,6 +961,7 @@ mod tests {
             "YAZELIX_STATUS_BAR_CACHE_PATH",
             "MARS_APP_ID",
             "MARS_CONFIG",
+            "MARS_CONFIG_HOME",
             "MARS_APPEARANCE",
             "MARS_CHILD_ENV_SANITIZE",
             "MARS_EFFECTS",

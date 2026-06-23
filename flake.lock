@@ -164,7 +164,7 @@
         "type": "github"
       }
     },
-    "marsTerminal": {
+    "mars": {
       "inputs": {
         "flake-parts": "flake-parts",
         "nixpkgs": [
@@ -174,11 +174,11 @@
         "systems": "systems"
       },
       "locked": {
-        "lastModified": 1781735036,
-        "narHash": "sha256-uLgwr3BMAo5/cTJjtsFjFyLBwu0mdl284eEjbApSJ5Y=",
+        "lastModified": 1782176900,
+        "narHash": "sha256-xyDCi4xI7qDs18ZN8OpUX9e3Kb/d50hiDRYr3UJfPfg=",
         "owner": "luccahuguet",
         "repo": "mars",
-        "rev": "7470f596f7aa62b404464a1c2055e376d102b6d7",
+        "rev": "03d108562a7619f5248abb3f739cc735e2ce9935",
         "type": "github"
       },
       "original": {
@@ -295,7 +295,7 @@
       "inputs": {
         "fenix": "fenix",
         "home-manager": "home-manager",
-        "marsTerminal": "marsTerminal",
+        "mars": "mars",
         "nixgl": "nixgl",
         "nixpkgs": "nixpkgs_2",
         "rio": "rio",
@@ -305,7 +305,6 @@
         "yazelixYaziAssets": "yazelixYaziAssets",
         "yazelixZellij": "yazelixZellij",
         "yazelixZellijBar": "yazelixZellijBar",
-        "yazelixZellijConfigPack": "yazelixZellijConfigPack",
         "yazelixZellijPaneOrchestrator": "yazelixZellijPaneOrchestrator",
         "yazelixZellijPopup": "yazelixZellijPopup",
         "zjstatus": "zjstatus"
@@ -331,16 +330,16 @@
     "rust-overlay": {
       "inputs": {
         "nixpkgs": [
-          "marsTerminal",
+          "mars",
           "nixpkgs"
         ]
       },
       "locked": {
-        "lastModified": 1780110990,
-        "narHash": "sha256-6QBThUi7SuK+dgA+DCaEkQGZN4kYx6DpXmK45+MG9zI=",
+        "lastModified": 1781320681,
+        "narHash": "sha256-mjJ/VxJaIkgcUvKANgKOaaN5M1X1X+6NjCP0C5hw0WI=",
         "owner": "oxalica",
         "repo": "rust-overlay",
-        "rev": "85570ef134d92a8702de6afd1f6f0209c863fa91",
+        "rev": "5b929d8c854149d926d05ea0cd6469bf4e54db27",
         "type": "github"
       },
       "original": {
@@ -533,11 +532,11 @@
         "rust-overlay": "rust-overlay_3"
       },
       "locked": {
-        "lastModified": 1781091164,
-        "narHash": "sha256-XvoPsXxSuh10f+zn6FS3R8GiSYJ+7cps3zeZdOjJSKg=",
+        "lastModified": 1781906528,
+        "narHash": "sha256-8sDX6JmdZfy+S36YjPOMBtLrcrgSt3V0hZHmG4aBXQg=",
         "owner": "luccahuguet",
         "repo": "yazelix-helix",
-        "rev": "5133772674787fbacbf85ec7b232e74aa7e5b621",
+        "rev": "c85dda9badf30c73c564aa4a284511ce33849cbd",
         "type": "github"
       },
       "original": {
@@ -576,11 +575,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1781498216,
-        "narHash": "sha256-46vNIjYKL6tByQf1Pcy1ynll/A7AKJ4lrMXn7LM5yqc=",
+        "lastModified": 1782181917,
+        "narHash": "sha256-TdRmbtfCyPjKd+jYtUqrUIHSb703a2cz3rfa9lqWZZI=",
         "owner": "luccahuguet",
         "repo": "yazelix-yazi-assets",
-        "rev": "0190035d7203251411917d0e9100a9c54f3dd907",
+        "rev": "aea0703247479e1fa373be6b305e24e568cb30c7",
         "type": "github"
       },
       "original": {
@@ -619,39 +618,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1781469530,
-        "narHash": "sha256-HSLqTzA8O7NzNr6blHRE3UVZDgTrTqHEDdvbxntqowU=",
+        "lastModified": 1782142457,
+        "narHash": "sha256-0EiUX3tJKK3Qv8YfvLl8xMMq0/hb6hLe9NGbLNSln/M=",
         "owner": "luccahuguet",
         "repo": "yazelix-zellij-bar",
-        "rev": "abafb713c51f95c1fd7d3d93b2fe341f49f3d6b6",
+        "rev": "14e40168907c2c564b28160606d0b96301505004",
         "type": "github"
       },
       "original": {
         "owner": "luccahuguet",
         "repo": "yazelix-zellij-bar",
-        "type": "github"
-      }
-    },
-    "yazelixZellijConfigPack": {
-      "inputs": {
-        "fenix": [
-          "fenix"
-        ],
-        "nixpkgs": [
-          "nixpkgs"
-        ]
-      },
-      "locked": {
-        "lastModified": 1781666203,
-        "narHash": "sha256-eGG/kBLyz0I6ZuN6RsYVH3WjamtZLyesr1AQve57Uh8=",
-        "owner": "luccahuguet",
-        "repo": "yazelix-zellij-config-pack",
-        "rev": "29fd6520e71d8175cf0b0a00664c1d9c5fb4dc58",
-        "type": "github"
-      },
-      "original": {
-        "owner": "luccahuguet",
-        "repo": "yazelix-zellij-config-pack",
         "type": "github"
       }
     },
@@ -666,11 +642,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1781733252,
-        "narHash": "sha256-yAYyVXb9v/+grEvFNuBzRBBuSRcj4fh6HXQb98l2mAk=",
+        "lastModified": 1781974548,
+        "narHash": "sha256-KTLuZirm/74TtdQEgJcT0M082qZMTR0vz15AkWHGr8Q=",
         "owner": "luccahuguet",
         "repo": "yazelix-zellij-pane-orchestrator",
-        "rev": "76f7ec2e45076b63cde1fdeaf6ec3ae34c5798dd",
+        "rev": "c026a76c2829c984583c9aea64dfa8056ce5d0de",
         "type": "github"
       },
       "original": {

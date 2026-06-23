@@ -1310,6 +1310,29 @@ mod tests {
         assert_eq!(error.code(), "unsupported_config");
     }
 
+    // Defends: status-bar widget chrome flows through the main config contract as bounded enum settings.
+    #[test]
+    fn normalizes_zellij_widget_chrome() {
+        let path =
+            write_user_config("[zellij]\nwidget_frame = \"round\"\nwidget_separator = \"pipe\"\n");
+        let data = normalize_config(&request_for(path)).unwrap();
+
+        assert_eq!(
+            data.normalized_config.get("zellij_widget_frame").unwrap(),
+            "round"
+        );
+        assert_eq!(
+            data.normalized_config
+                .get("zellij_widget_separator")
+                .unwrap(),
+            "pipe"
+        );
+
+        let bad_path = write_user_config("[zellij]\nwidget_separator = \"comma\"\n");
+        let error = normalize_config(&request_for(bad_path)).unwrap_err();
+        assert_eq!(error.code(), "unsupported_config");
+    }
+
     // Defends: semantic Zellij keybinding remaps flow through the main config contract as a typed action map without taking over default merging from Zellij materialization.
     #[test]
     fn normalizes_zellij_keybinding_map() {

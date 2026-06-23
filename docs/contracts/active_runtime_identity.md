@@ -17,7 +17,7 @@ Yazelix status and doctor surfaces must explain which runtime is active, who own
   - `session_terminal_label`: the terminal emulator actually hosting the current Yazelix session when known; `yzx enter` derives this from explicit Yazelix session env, managed-launch hints, and conservative terminal-specific host env before falling back to `unknown`
   - `runtime_features`: marker files under `runtime_features/`, such as `zellij_kitty_passthrough`
   - `generated_state_checks`: derived-state checks for layouts, shell initializers, workspace assets, and launch logs
-- `runtime_variant` and `session_terminal_label` are separate facts. A packaged runtime may be configured as Ratty while `yzx enter` is run inside WezTerm, Ghostty, Kitty, Foot, Mars, Rio, or an unknown host terminal.
+- `runtime_variant` and `session_terminal_label` are separate facts. A packaged runtime may be configured as Ratty while `yzx enter` is run inside WezTerm, Ghostty, Kitty, Foot, Rio, or an unknown host terminal.
 - The integrated status bar terminal widget displays the session terminal label, not the packaged runtime variant, for current-terminal `yzx enter` sessions.
 - Generic terminal identifiers such as `xterm-256color` are not guessed as a specific emulator; unsupported or ambiguous host terminals report `unknown`.
 - Home Manager ownership is detected when either:
@@ -33,9 +33,6 @@ Yazelix status and doctor surfaces must explain which runtime is active, who own
 - Generated shell initializers must not retain deleted transient `result*` runtime paths
 - Home Manager activation regenerates shell initializers from the active Home Manager runtime after linking the generation
 - Doctor reports deleted transient initializer references with a clear regeneration command
-- Mars Terminal desktop launches leave bounded per-launch logs under `~/.local/share/yazelix/logs/terminal_launch`
-- mars launch logs record launch metadata first, then either an active lifetime watcher or final terminal exit/signal evidence
-- Doctor reports recent mars lifetime evidence, active lifetime watchers, metadata-only logs, or explains that no mars launch evidence has been captured
 
 ## Non-Goals
 
@@ -48,9 +45,6 @@ Yazelix status and doctor surfaces must explain which runtime is active, who own
 
 - `yzx dev rust test install_ownership_report::tests::evaluate_install_ownership_detects_home_manager_profile_without_managed_config`
 - `yzx dev rust test doctor_runtime_report::tests::shell_initializer_finding_warns_on_deleted_transient_runtime_path`
-- `yzx dev rust test doctor_runtime_report::tests::mars_launch_log_finding_reports_lifetime_logs`
-- `yzx dev rust test doctor_runtime_report::tests::mars_launch_log_finding_warns_on_metadata_only_logs`
-- `yzx dev rust test doctor_runtime_report::tests::mars_launch_log_finding_is_scoped_to_mars_runtime`
 - `yzx dev rust test launch_commands::tests::desktop_deferred_launch_helper_records_lifetime_status`
 - `yzx dev rust test launch_commands::tests::launch_probe_log_path_uses_command_basename`
 - `yzx dev rust test terminal_variant::tests::detects_session_terminal_from_explicit_and_common_host_env`

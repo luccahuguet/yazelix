@@ -27,9 +27,12 @@ const ABERNATHY_FOREGROUND: &str = "#eeeeec";
 const CATPPUCCIN_LATTE_BACKGROUND: &str = "#eff1f5";
 const CATPPUCCIN_LATTE_FOREGROUND: &str = "#4c4f69";
 const FONT_FIRACODE: &str = "FiraCode Nerd Font";
+const FONT_JETBRAINS_MONO: &str = "JetBrains Mono";
 const FONT_SYMBOLS_NERD_MONO: &str = "Symbols Nerd Font Mono";
 const FONT_SYMBOLS_NERD: &str = "Symbols Nerd Font";
 const FONT_NOTO_COLOR_EMOJI: &str = "Noto Color Emoji";
+const MARS_FONT_SIZE: f64 = 16.0;
+const MARS_LINE_HEIGHT: f64 = 1.12;
 const RIO_FONT_ROOT: &str = "share/yazelix/rio_fonts";
 const RIO_FIRA_CODE_FONT_DIR: &str = "fira_code_nerd";
 const RIO_SYMBOLS_FONT_DIR: &str = "symbols_nerd";
@@ -252,6 +255,9 @@ config.window_padding = {{ left = 0, right = 0, top = 10, bottom = 0 }}
 -- Hide tab bar (Zellij handles tabs)
 config.enable_tab_bar = false
 
+-- Scrollback: Zellij handles pane history inside Yazelix
+config.scrollback_lines = 0
+
 -- Transparency (configurable via settings.jsonc)
 {}
 
@@ -278,7 +284,7 @@ scale_factor = 1.0
 [terminal]
 default_cols = 104
 default_rows = 32
-scrollback = 2000
+scrollback = 0
 
 [env]
 TERM = "xterm-256color"
@@ -366,6 +372,10 @@ initial-color-theme={}
 
 [cursor]
 style=block
+
+[scrollback]
+# Zellij handles pane history inside Yazelix.
+lines=0
 
 [csd]
 # Compositor rules can still force server-side decorations.
@@ -466,7 +476,8 @@ fn generate_rio_config(runtime_dir: &Path, transparency: &str, appearance_mode: 
     format!(
         r##"# Rio configuration for Yazelix
 
-confirm-before-quit = false
+confirm-before-quit = true
+scrollback-history-limit = 0
 
 [effects]
 trail-cursor = true
@@ -964,6 +975,30 @@ fn generate_mars_config(
     })?;
     let cursor_color_hex = cursor_state.and_then(|state| state.selected_color_hex.as_deref());
     copy_mars_themes(&package_config, generated_config_dir, cursor_color_hex)?;
+    table.insert(
+        "scrollback-history-limit".to_string(),
+        toml::Value::Integer(0),
+    );
+    table.insert(
+        "confirm-before-quit".to_string(),
+        toml::Value::Boolean(true),
+    );
+    table.insert(
+        "line-height".to_string(),
+        toml::Value::Float(MARS_LINE_HEIGHT),
+    );
+    let fonts = mars_config_table_mut(
+        &mut table,
+        "fonts",
+        "invalid_mars_fonts_config",
+        &package_config,
+    )?;
+    fonts.insert(
+        "family".to_string(),
+        toml::Value::String(FONT_JETBRAINS_MONO.to_string()),
+    );
+    fonts.insert("size".to_string(), toml::Value::Float(MARS_FONT_SIZE));
+
     let opacity = get_opacity_value(transparency)
         .parse::<f64>()
         .map_err(|source| {
@@ -1110,6 +1145,7 @@ bold_italic_font auto
 repaint_delay 10
 input_delay 3
 sync_to_monitor yes
+scrollback_lines 0
 
 # Cursor trail effect (configurable via settings.jsonc)
 {}
@@ -1465,11 +1501,93 @@ mod tests {
 
         assert!(rendered.contains("SerenityOS Emoji"));
         assert!(!rendered.contains("Noto Color Emoji"));
+        assert!(rendered.contains("scrollback-history-limit = 0"));
         assert!(
             generated_dir
                 .join("themes")
                 .join("yazelix-dark.toml")
                 .is_file()
+        );
+    }
+
+    // Defends: every generated terminal config leaves pane history to Zellij instead of retaining duplicate emulator scrollback.
+    #[test]
+    fn generated_terminal_configs_disable_emulator_scrollback() {
+        let runtime = Path::new("/runtime");
+
+        assert!(
+            generate_wezterm_config("none", APPEARANCE_MODE_DARK)
+                .contains("config.scrollback_lines = 0")
+        );
+        assert!(generate_ratty_config("none").contains("scrollback = 0"));
+        assert!(generate_foot_config("none", APPEARANCE_MODE_DARK).contains("[scrollback]\n"));
+        assert!(generate_foot_config("none", APPEARANCE_MODE_DARK).contains("lines=0"));
+        assert!(
+            generate_rio_config(runtime, "none", APPEARANCE_MODE_DARK)
+                .contains("scrollback-history-limit = 0")
+        );
+        assert!(generate_kitty_config("none", false, None).contains("scrollback_lines 0"));
+    }
+
+    // Defends: Rio-family terminal config stays aligned with close confirmation and Mars status glyph font defaults.
+    #[test]
+    fn generated_rio_family_configs_keep_close_and_status_defaults() {
+        let runtime = Path::new("/runtime");
+        assert!(
+            generate_rio_config(runtime, "none", APPEARANCE_MODE_DARK)
+                .contains("confirm-before-quit = true")
+        );
+
+        let temp = tempfile::tempdir().unwrap();
+        let package_root = temp.path().join("runtime/share/mars");
+        let generated_dir = temp.path().join("state/configs/terminal_emulators/mars");
+        write_mars_package_metadata(&package_root);
+        write_mars_profile_config(&package_root.join("config.toml"), "Noto Color Emoji");
+        write_theme_files(&package_root.join("themes"));
+        let rendered = generate_mars_config(
+            &temp.path().join("runtime"),
+            "none",
+            None,
+            &[],
+            MarsProfile::Full,
+            MarsEmojiFont::Noto,
+            APPEARANCE_MODE_DARK,
+            &generated_dir,
+        )
+        .unwrap();
+
+        assert!(rendered.contains("confirm-before-quit = true"));
+        let config = toml::from_str::<toml::Table>(&rendered).unwrap();
+        assert_eq!(
+            config.get("line-height").and_then(toml::Value::as_float),
+            Some(MARS_LINE_HEIGHT)
+        );
+        let fonts = config.get("fonts").and_then(toml::Value::as_table).unwrap();
+        assert_eq!(
+            fonts.get("family").and_then(toml::Value::as_str),
+            Some(FONT_JETBRAINS_MONO)
+        );
+        assert_eq!(
+            fonts.get("size").and_then(toml::Value::as_float),
+            Some(MARS_FONT_SIZE)
+        );
+        assert!(rendered.contains("Noto Color Emoji"));
+    }
+
+    // Defends: checked-in reference snapshots stay aligned with the generated no-emulator-scrollback policy.
+    #[test]
+    fn reference_terminal_config_snapshots_disable_emulator_scrollback() {
+        assert!(
+            include_str!("../../../configs/terminal_emulators/ghostty/config")
+                .contains("scrollback-limit = 0")
+        );
+        assert!(
+            include_str!("../../../configs/terminal_emulators/kitty/kitty.conf")
+                .contains("scrollback_lines 0")
+        );
+        assert!(
+            include_str!("../../../configs/terminal_emulators/wezterm/.wezterm.lua")
+                .contains("config.scrollback_lines = 0")
         );
     }
 
@@ -1507,6 +1625,7 @@ mod tests {
             format!(
                 r#"
 confirm-before-quit = true
+scrollback-history-limit = 10000
 force-theme = "dark"
 
 [adaptive-theme]

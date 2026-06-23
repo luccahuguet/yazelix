@@ -29,7 +29,7 @@ The merger prefers your **Yazelix-managed Zellij config** when present, then fal
    - `default_layout` set to Yazelix’s layout file (absolute path)
    - `layout_dir` set to Yazelix’s generated layouts directory
 
-Layouts are rendered from the `yazelix-zellij-config-pack` child pack into `~/.local/share/yazelix/configs/zellij/layouts`, and the merged config is written to `~/.local/share/yazelix/configs/zellij/config.kdl` on every launch. Yazelix also passes an absolute `--default-layout` at launch for extra safety.
+Layouts are rendered by the in-tree `yazelix_zellij_config_pack` crate into `~/.local/share/yazelix/configs/zellij/layouts`, and the merged config is written to `~/.local/share/yazelix/configs/zellij/config.kdl` on every launch. Yazelix also passes an absolute `--default-layout` at launch for extra safety.
 
 `~/.config/yazelix/zellij.kdl` must not contain a `keybinds` block. Yazelix rejects managed `keybinds` blocks, including `keybinds clear-defaults=true`, because they create a second keybinding owner and can bypass managed workspace controls. Use `zellij.keybindings` and `zellij.native_keybindings` in `settings.jsonc` for Yazelix sessions. Use plain `zellij` outside Yazelix if you want full native keybinding ownership.
 
@@ -85,13 +85,14 @@ simplified_ui true
 {
   "zellij": {
     "widget_tray": [
+      "session",
       "editor",
       "shell",
       "term",
-      "codex_usage",
-      "cpu",
-      "ram"
+      "codex_usage"
     ],
+    "widget_frame": "none",
+    "widget_separator": "dot",
     "tab_label_mode": "full",
     "claude_usage_display": "both",
     "codex_usage_display": "quota",
@@ -104,9 +105,11 @@ simplified_ui true
 ```
 Comment out any line to hide that widget. Order matters. Restart Yazelix to regenerate layouts.
 
+`widget_frame` controls each widget's enclosing punctuation: `"none"`, `"square"`, or `"round"`. `widget_separator` controls the text between adjacent widgets: `"dot"`, `"pipe"`, `"empty"`, or `"space"`. The default is no frame with dot separators so the bar stays compact.
+
 `tab_label_mode = "full"` keeps the default tab index plus tab name labels. Set it to `"compact"` when a workspace/root widget already shows the project context and tabs should use only index plus fullscreen/sync/floating state indicators.
 
-`editor`, `shell`, and `term` render static labels from the active Yazelix config. `workspace` and usage widgets read window-local cached facts so separate Yazelix windows keep independent status-bar state. Cursor preset inspection and editing live in `yzx config ui` instead of the status bar. CPU and RAM use bundled runtime helper scripts; RAM reads Nushell `sys mem` data instead of scraping the welcome-screen machine summary.
+`session`, `editor`, `shell`, and `term` render labels from the active Zellij session and Yazelix config. `workspace` and usage widgets read window-local cached facts so separate Yazelix windows keep independent status-bar state. Cursor preset inspection and editing live in `yzx config ui` instead of the status bar. CPU and RAM use bundled runtime helper scripts; RAM reads Nushell `sys mem` data instead of scraping the welcome-screen machine summary.
 
 The Codex usage widget includes quota-window position and official quota percentages by default, for example `[codex 2h20m/5h 49% · 4d5h/7d 80%]`; with `codex_usage_display = "both"` it also shows token totals as `[codex 2h20m/5h 138M 49% · 4d5h/7d 1.34B 80%]`. The Claude usage widget combines local token totals with official quota percentages, for example `[claude 5h|15.5M|75% wk|66.6M|65%]`. Configure Codex and Claude windows with `codex_usage_periods` and `claude_usage_periods`; supported values are `5h` and `week`. The OpenCode Go widget reads OpenCode's local SQLite database directly and renders the compact 5h/week/month shape with the `go` label. Claude and Codex widgets use `tu` from tokenusage, which ships with the packaged runtime by default.
 
@@ -181,8 +184,9 @@ When enabled, the pane orchestrator opens `yzx screen` after the configured idle
 copy_on_select false
 copy_clipboard "primary"
 copy_command "wl-copy"
-scroll_buffer_size 50000
+scroll_buffer_size 10000
 ```
+Yazelix adds `scroll_buffer_size 5000` when neither the managed sidecar nor the native read-only fallback sets an active value. Set a larger value only when you intentionally want longer Zellij pane history.
 
 ## Best Practices
 

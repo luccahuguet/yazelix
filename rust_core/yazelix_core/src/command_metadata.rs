@@ -463,6 +463,7 @@ mod tests {
 
         assert!(names.contains(&"yzx dev"));
         assert!(names.contains(&"yzx dev inspect_session"));
+        assert!(names.contains(&"yzx dev perf"));
         assert!(names.contains(&"yzx dev profile"));
 
         for repo_only in [

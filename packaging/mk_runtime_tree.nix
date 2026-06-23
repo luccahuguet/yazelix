@@ -162,6 +162,10 @@ let
       link_runtime_input ${pkgs.lib.escapeShellArg source} ${pkgs.lib.escapeShellArg target}
     '';
   renderedRuntimeInputLinks = pkgs.lib.concatMapStrings renderRuntimeInputLink runtimeInputLinks;
+  renderedTerminalAppBundleLink = pkgs.lib.optionalString (runtimeToolRegistry.terminalAppBundlePath != null) ''
+    test -d ${pkgs.lib.escapeShellArg runtimeToolRegistry.terminalAppBundlePath}
+    link_runtime_input ${pkgs.lib.escapeShellArg runtimeToolRegistry.terminalAppBundlePath} "Applications/Ghostty.app"
+  '';
 in
 pkgs.runCommand name { } ''
   mkdir -p "$out"
@@ -181,6 +185,7 @@ pkgs.runCommand name { } ''
   }
 
   ${renderedRuntimeInputLinks}
+  ${renderedTerminalAppBundleLink}
   mkdir -p "$out/configs"
   for config_entry in ${src}/configs/*; do
     config_name="$(basename "$config_entry")"

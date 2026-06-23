@@ -40,6 +40,7 @@ const GENERATED_CONFIG_MARKERS: &[&str] = &[
 ];
 const GENERATED_LAYOUT_MARKER: &str = "GENERATED ZELLIJ LAYOUT (YAZELIX)";
 const GENERATED_LAYOUT_FINGERPRINT_PREFIX: &str = "generation_fingerprint:";
+const YAZELIX_DEFAULT_SCROLL_BUFFER_SIZE: usize = 5_000;
 const ZELLIJ_KEYBINDINGS_CONFIG_KEY: &str = "zellij_keybindings";
 const ZELLIJ_NATIVE_KEYBINDINGS_CONFIG_KEY: &str = "zellij_native_keybindings";
 const ZELLIJ_KEYBINDING_PARSE_POLICY: KeybindingParsePolicy = KeybindingParsePolicy {
@@ -77,6 +78,8 @@ const ZELLIJ_RENDER_PLAN_CONFIG_KEYS: &[&str] = &[
     "screen_saver_idle_seconds",
     "screen_saver_style",
     "zellij_widget_tray",
+    "zellij_widget_frame",
+    "zellij_widget_separator",
     "zellij_custom_text",
     "zellij_theme",
     "appearance_mode",
@@ -167,6 +170,8 @@ struct KeybindingParsePolicy {
 struct ZellijBarRenderRequest {
     zjstatus_plugin_url: String,
     widget_tray: Vec<String>,
+    widget_frame: String,
+    widget_separator: String,
     editor_label: String,
     shell_label: String,
     terminal_label: String,
@@ -222,7 +227,8 @@ pub fn generate_zellij_materialization(
         &request.runtime_dir,
         string_config(&config, "default_shell", "nu"),
     );
-    let base_config_source = resolve_base_config_source()?;
+    let mut base_config_source = resolve_base_config_source()?;
+    apply_yazelix_scroll_buffer_default(&mut base_config_source);
     validate_base_config_keybinding_policy(&base_config_source)?;
     let plugin_artifacts = resolve_plugin_artifacts(&request.runtime_dir, &state_dir)?;
     let [pane_orchestrator_artifact, zjstatus_artifact, yzpp_artifact] = &plugin_artifacts;
@@ -720,6 +726,42 @@ fn normalize_config_strings(
     Ok(normalized)
 }
 
+fn apply_yazelix_scroll_buffer_default(base_config_source: &mut ZellijBaseConfigSource) {
+    if zellij_config_declares_scroll_buffer_size(&base_config_source.content) {
+        return;
+    }
+
+    let default = format!(
+        "// Yazelix default: keep pane history bounded for agent-heavy sessions.\nscroll_buffer_size {YAZELIX_DEFAULT_SCROLL_BUFFER_SIZE}\n"
+    );
+    if base_config_source.content.trim().is_empty() {
+        base_config_source.content = default;
+    } else {
+        base_config_source.content = format!("{default}\n{}", base_config_source.content);
+    }
+}
+
+fn zellij_config_declares_scroll_buffer_size(config_content: &str) -> bool {
+    config_content.lines().any(|line| {
+        let trimmed = line.trim_start();
+        if trimmed.starts_with("//")
+            || trimmed.starts_with('#')
+            || trimmed.starts_with("/*")
+            || trimmed.is_empty()
+        {
+            return false;
+        }
+        let head = trimmed
+            .split("//")
+            .next()
+            .unwrap_or(trimmed)
+            .split(|ch: char| ch.is_whitespace() || ch == '=')
+            .next()
+            .unwrap_or_default();
+        head == "scroll_buffer_size"
+    })
+}
+
 fn resolve_base_config_source() -> Result<ZellijBaseConfigSource, CoreError> {
     let config_dir = config_dir_from_env()?;
     crate::managed_user_config_stubs::ensure_zellij_surface_stub(&config_dir)?;
@@ -1074,6 +1116,7 @@ fn read_yazelix_override_keybinds(
     let request = ZellijKeybindRenderRequest {
         override_template_content: read_text(overrides_path, "read_zellij_overrides")?,
         runtime_dir: runtime_dir.to_string_lossy().into_owned(),
+        home_dir: home_dir_from_env()?.to_string_lossy().into_owned(),
         zellij_keybindings: zellij_keybindings.clone(),
         zellij_native_keybindings: zellij_native_keybindings.clone(),
         custom_popups: child_custom_popups(custom_popups),
@@ -1158,6 +1201,8 @@ fn render_integrated_zjstatus_bar(
     let request = ZellijBarRenderRequest {
         zjstatus_plugin_url: zjstatus_plugin_url.to_string(),
         widget_tray: render_plan.widget_tray.clone(),
+        widget_frame: render_plan.widget_frame.clone(),
+        widget_separator: render_plan.widget_separator.clone(),
         editor_label: render_plan.editor_label.clone(),
         shell_label: render_plan.shell_label.clone(),
         terminal_label: render_plan.terminal_label.clone(),
@@ -1494,6 +1539,8 @@ mod tests {
             screen_saver_idle_seconds: 300,
             screen_saver_style: "random".into(),
             zellij_widget_tray: Some(widget_tray.into_iter().map(str::to_string).collect()),
+            zellij_widget_frame: "none".into(),
+            zellij_widget_separator: "dot".into(),
             zellij_custom_text: None,
             zellij_theme: "default".into(),
             appearance_mode: "dark".into(),
@@ -1539,6 +1586,41 @@ ui { pane_frames { hide_session_name true } }
         );
         assert!(extracted.keybinds_block_present);
         assert!(!extracted.keybinds_clear_defaults);
+    }
+
+    // Defends: Yazelix adds a bounded Zellij pane-history default when no active native setting exists.
+    #[test]
+    fn zellij_scroll_buffer_default_is_added_when_absent() {
+        let mut source = ZellijBaseConfigSource {
+            source: "managed".to_string(),
+            path: None,
+            content: "// scroll_buffer_size 10000\ncopy_on_select true\n".to_string(),
+        };
+
+        apply_yazelix_scroll_buffer_default(&mut source);
+
+        assert!(source.content.starts_with(
+            "// Yazelix default: keep pane history bounded for agent-heavy sessions.\nscroll_buffer_size 5000\n"
+        ));
+        assert!(source.content.contains("// scroll_buffer_size 10000"));
+        assert!(source.content.contains("copy_on_select true"));
+    }
+
+    // Defends: explicit managed/native Zellij scrollback preferences stay user-owned.
+    #[test]
+    fn zellij_scroll_buffer_default_preserves_explicit_user_value() {
+        let mut source = ZellijBaseConfigSource {
+            source: "managed".to_string(),
+            path: None,
+            content: "scroll_buffer_size 123\ncopy_on_select true\n".to_string(),
+        };
+
+        apply_yazelix_scroll_buffer_default(&mut source);
+
+        assert_eq!(
+            source.content,
+            "scroll_buffer_size 123\ncopy_on_select true\n"
+        );
     }
 
     // Defends: clear-defaults remains detectable so managed config can reject the strongest keybinding bypass explicitly.
@@ -1650,6 +1732,14 @@ case "$3" in
   *) exit 13 ;;
 esac
 case "$3" in
+  *'"widget_frame":"none"'*) ;;
+  *) exit 18 ;;
+esac
+case "$3" in
+  *'"widget_separator":"dot"'*) ;;
+  *) exit 19 ;;
+esac
+case "$3" in
   *'"zjstatus_plugin_url":"file:/tmp/zjstatus.wasm"'*) ;;
   *) exit 14 ;;
 esac
@@ -1684,8 +1774,8 @@ printf '%s\n' '{"schema_version":3,"plugin_block":"CHILD_PLUGIN_BLOCK"}'
         assert_eq!(plugin_block, "CHILD_PLUGIN_BLOCK");
     }
 
-    // Regression: startup layouts declare the initial tab explicitly so launch cwd stays owned by
-    // Zellij --default-cwd while new tabs remain home-scoped.
+    // Regression: startup layouts name the initial tab without setting a cwd, so launch cwd stays
+    // owned by Zellij --default-cwd while new tabs remain home-scoped.
     #[test]
     fn startup_layouts_keep_initial_tab_distinct_from_home_scoped_new_tabs() {
         let name = "yzx_side.kdl";
@@ -1710,10 +1800,10 @@ printf '%s\n' '{"schema_version":3,"plugin_block":"CHILD_PLUGIN_BLOCK"}'
                             "{name} declares default_tab_template more than once"
                         );
                     }
-                    "tab" => {
+                    r#"tab name=__YAZELIX_HOME_TAB_MARKER__"# => {
                         assert!(
                             initial_tab_line.replace(line_number).is_none(),
-                            "{name} declares more than one explicit initial tab"
+                            "{name} declares more than one named initial tab"
                         );
                     }
                     r#"new_tab_template cwd="__YAZELIX_HOME_DIR__" {"# => {
@@ -1740,7 +1830,7 @@ printf '%s\n' '{"schema_version":3,"plugin_block":"CHILD_PLUGIN_BLOCK"}'
         let default_template_line =
             default_template_line.unwrap_or_else(|| panic!("{name} missing default_tab_template"));
         let initial_tab_line =
-            initial_tab_line.unwrap_or_else(|| panic!("{name} missing explicit initial tab"));
+            initial_tab_line.unwrap_or_else(|| panic!("{name} missing named initial tab"));
         let new_tab_line =
             new_tab_line.unwrap_or_else(|| panic!("{name} missing home-scoped new_tab_template"));
 
@@ -1788,6 +1878,29 @@ keybinds {
         assert!(merged.contains("payload \"config\""));
         assert!(merged.contains("MessagePlugin \"yazelix_pane_orchestrator\""));
         assert!(merged.contains("toggle_editor_sidebar_focus"));
+    }
+
+    // Defends: the main materializer passes the configured home directory into the generated tab-mode new-tab action.
+    #[test]
+    fn semantic_keybinds_name_default_new_tabs_from_home() {
+        let temp = tempfile::tempdir().unwrap();
+        let overrides_path = temp.path().join("yazelix_overrides.kdl");
+        std::fs::write(&overrides_path, "keybinds {}\n").unwrap();
+
+        let override_lines = read_yazelix_override_keybinds(
+            &overrides_path,
+            std::path::Path::new("/opt/yazelix"),
+            &sample_zellij_keybindings(),
+            &sample_zellij_native_keybindings(),
+            &[],
+        )
+        .unwrap();
+        let merged = override_lines.join("\n");
+        let home_dir = home_dir_from_env().unwrap();
+        let quoted_home_dir = serde_json::to_string(home_dir.to_string_lossy().as_ref()).unwrap();
+
+        assert!(merged.contains(&format!("NewTab {{ cwd {quoted_home_dir}; name ")));
+        assert!(merged.contains(r#"; SwitchToMode "Normal"; }"#));
     }
 
     // Defends: semantic remaps replace Yazelix-owned Zellij action keys without copying the full keybind block.

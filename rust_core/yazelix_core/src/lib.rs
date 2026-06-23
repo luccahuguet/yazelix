@@ -14,6 +14,7 @@ pub mod config_state;
 pub mod config_ui;
 pub mod control_plane;
 pub mod cursor_commands;
+pub(crate) mod desktop_exec;
 pub mod doctor_commands;
 pub mod doctor_config_report;
 pub mod doctor_helix_report;

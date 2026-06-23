@@ -1,12 +1,17 @@
 { isLinux }:
 
 let
-  order = [ "ghostty" "kitty" "rio" "mars" "wezterm" "foot" "ratty" ];
+  order = [ "mars" "ghostty" "kitty" "rio" "wezterm" "foot" "ratty" ];
   variants = {
+    mars = {
+      desktop_label = "Mars";
+      kitty_passthrough = true;
+      description = "default Rust terminal with Yazelix-owned Mars integration, generated Mars config, cursor trails, and the Yazelix Zellij Kitty graphics bridge";
+    };
     ghostty = {
       desktop_label = "Ghostty";
       kitty_passthrough = true;
-      description = "default packaged terminal with Yazelix cursor trails, Ghostty config effects, and Yazi image previews through Zellij";
+      description = "first-class packaged terminal with Yazelix cursor trails, Ghostty config effects, and Yazi image previews through Zellij";
     };
     kitty = {
       desktop_label = "Kitty";
@@ -17,11 +22,6 @@ let
       desktop_label = "Rio";
       kitty_passthrough = true;
       description = "packaged upstream Rio terminal with generated Rio config, transparency support, and the Yazelix Zellij Kitty graphics bridge";
-    };
-    mars = {
-      desktop_label = "Mars";
-      kitty_passthrough = true;
-      description = "experimental Mars Terminal runtime with Rio trail cursor defaults and opt-in shader support";
     };
     wezterm = {
       desktop_label = "WezTerm";
@@ -36,7 +36,7 @@ let
       desktop_label = "Ratty";
       kitty_passthrough = true;
       linux_only = true;
-      description = "experimental Linux packaged terminal with Ratty and the Yazelix Zellij Kitty graphics bridge";
+      description = "Linux packaged terminal with Ratty and the Yazelix Zellij Kitty graphics bridge";
     };
   };
   supported =
@@ -44,12 +44,12 @@ let
   field = name: terminal: variants.${terminal}.${name};
 in
 {
-  default = "ghostty";
+  default = "mars";
   inherit supported;
   desktopIdSuffix = field "desktop_label";
   desktopLabel = field "desktop_label";
   description = field "description";
   kittyPassthrough = builtins.filter (terminal: variants.${terminal}.kitty_passthrough or false) supported;
-  packageOutput = terminal: if terminal == "mars" then "mars" else "yazelix_${terminal}";
+  packageOutput = terminal: "yazelix_${terminal}";
   runtimeOutput = terminal: "runtime_${terminal}";
 }

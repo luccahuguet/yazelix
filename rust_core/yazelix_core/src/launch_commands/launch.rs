@@ -1,6 +1,5 @@
 // Test lane: default
 
-use super::RUNTIME_RELAUNCH_CLEARED_ENV_KEYS;
 use super::config_override::{
     config_override_extra_env, prepare_session_config_override, resolve_cli_config_override,
 };
@@ -10,6 +9,7 @@ use super::process::{
 };
 use super::resolve_requested_working_dir;
 use super::terminal::{build_launch_command_argv, resolve_terminal_config_path};
+use super::RUNTIME_RELAUNCH_CLEARED_ENV_KEYS;
 use crate::bridge::{CoreError, ErrorClass};
 use crate::config_state::compute_config_state;
 use crate::control_plane::{
@@ -17,25 +17,25 @@ use crate::control_plane::{
     runtime_dir_from_env, runtime_env_request, runtime_materialization_plan_request_from_env,
     state_dir_from_env,
 };
+use crate::desktop_exec::{parse_env_assignment, split_desktop_exec_tokens};
 use crate::launch_materialization::{
-    LaunchMaterializationData, launch_materialization_request_from_env,
-    prepare_launch_materialization,
+    launch_materialization_request_from_env, prepare_launch_materialization,
+    LaunchMaterializationData,
 };
 use crate::runtime_contract::{
-    LaunchPreflightPayload, StartupLaunchPreflightRequest, TerminalCandidate,
-    evaluate_startup_launch_preflight,
+    evaluate_startup_launch_preflight, LaunchPreflightPayload, StartupLaunchPreflightRequest,
+    TerminalCandidate,
 };
 use crate::runtime_env::compute_runtime_env;
 use crate::runtime_materialization::{
-    RuntimeMaterializationRepairEvaluateRequest, repair_runtime_materialization,
+    repair_runtime_materialization, RuntimeMaterializationRepairEvaluateRequest,
 };
 use crate::terminal_materialization::{
     MARS_EMOJI_ENV_KEYS, MARS_EMOJI_FONT_ENV, MARS_EMOJI_FONT_SOURCE_ENV,
 };
 use crate::terminal_variant::{
-    SESSION_TERMINAL_ENV, SUPPORTED_TERMINALS, active_terminal_from_runtime_dir,
-    normalize_terminal_id, terminal_desktop_entry_file_name, terminal_display_name,
-    terminal_startup_wm_class,
+    active_terminal_from_runtime_dir, normalize_terminal_id, terminal_desktop_entry_file_name,
+    terminal_display_name, terminal_startup_wm_class, SESSION_TERMINAL_ENV, SUPPORTED_TERMINALS,
 };
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -262,13 +262,11 @@ fn resolve_profile_terminal_launcher(
 
 fn profile_terminal_desktop_entry_candidates(home_dir: &Path, terminal: &str) -> Vec<PathBuf> {
     let file_name = terminal_desktop_entry_file_name(terminal);
-    let mut candidates = vec![
-        home_dir
-            .join(".nix-profile")
-            .join("share")
-            .join("applications")
-            .join(&file_name),
-    ];
+    let mut candidates = vec![home_dir
+        .join(".nix-profile")
+        .join("share")
+        .join("applications")
+        .join(&file_name)];
     if let Ok(user) = std::env::var("USER") {
         let trimmed = user.trim();
         if !trimmed.is_empty() {
@@ -358,70 +356,6 @@ fn unsupported_desktop_exec(desktop_path: &Path, terminal: &str, exec: &str) -> 
             "exec": exec,
         }),
     )
-}
-
-fn parse_env_assignment(token: &str) -> Option<(&str, &str)> {
-    let (key, value) = token.split_once('=')?;
-    let mut chars = key.chars();
-    let first = chars.next()?;
-    if !(first == '_' || first.is_ascii_alphabetic()) {
-        return None;
-    }
-    if !chars.all(|ch| ch == '_' || ch.is_ascii_alphanumeric()) {
-        return None;
-    }
-    Some((key, value))
-}
-
-fn split_desktop_exec_tokens(exec: &str) -> Result<Vec<String>, CoreError> {
-    let mut tokens = Vec::new();
-    let mut current = String::new();
-    let mut token_started = false;
-    let mut in_quotes = false;
-    let mut chars = exec.chars().peekable();
-
-    while let Some(ch) = chars.next() {
-        if in_quotes {
-            match ch {
-                '"' => in_quotes = false,
-                '\\' => current.push(chars.next().unwrap_or('\\')),
-                other => current.push(other),
-            }
-            token_started = true;
-            continue;
-        }
-
-        match ch {
-            '"' => {
-                in_quotes = true;
-                token_started = true;
-            }
-            '\\' => {
-                current.push(chars.next().unwrap_or('\\'));
-                token_started = true;
-            }
-            other if other.is_whitespace() => {
-                if token_started {
-                    tokens.push(std::mem::take(&mut current));
-                    token_started = false;
-                }
-            }
-            other => {
-                current.push(other);
-                token_started = true;
-            }
-        }
-    }
-
-    if in_quotes {
-        return Err(CoreError::usage(format!(
-            "Unterminated quoted string in desktop Exec= command: {exec}"
-        )));
-    }
-    if token_started {
-        tokens.push(current);
-    }
-    Ok(tokens)
 }
 
 fn repair_desktop_runtime_state_if_required(
@@ -746,8 +680,9 @@ fn mars_process_boundary_env(
 
     let mut env = vec![
         ("RIO_CONFIG_HOME".to_string(), None),
+        ("MARS_CONFIG".to_string(), None),
         (
-            "MARS_CONFIG".to_string(),
+            "MARS_CONFIG_HOME".to_string(),
             Some(config_dir.to_string_lossy().into_owned()),
         ),
         (MARS_CHILD_ENV_SANITIZE.to_string(), Some("1".to_string())),
@@ -1140,8 +1075,9 @@ mod tests {
             env,
             vec![
                 ("RIO_CONFIG_HOME".to_string(), None),
+                ("MARS_CONFIG".to_string(), None),
                 (
-                    "MARS_CONFIG".to_string(),
+                    "MARS_CONFIG_HOME".to_string(),
                     Some("/state/configs/terminal_emulators/mars".to_string())
                 ),
                 (MARS_CHILD_ENV_SANITIZE.to_string(), Some("1".to_string())),
@@ -1251,6 +1187,49 @@ mod tests {
                 "rio".to_string(),
                 "--title-placeholder".to_string(),
                 "Yazelix - Rio - work".to_string(),
+                "--working-dir".to_string(),
+                working_dir.to_string_lossy().into_owned(),
+                "-e".to_string(),
+                startup_script.to_string_lossy().into_owned(),
+            ]
+        );
+    }
+
+    // Regression: Mars is Rio-derived, but it does not accept a Yazelix CLI mode flag.
+    #[test]
+    fn mars_launch_argv_uses_supported_rio_compatible_flags() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let runtime_dir = tmp.path().join("runtime");
+        let posix_dir = runtime_dir.join("shells").join("posix");
+        std::fs::create_dir_all(&posix_dir).unwrap();
+        let startup_script = posix_dir.join("start_yazelix.sh");
+        std::fs::write(&startup_script, "#!/bin/sh\n").unwrap();
+        let config_path = tmp
+            .path()
+            .join("state/configs/terminal_emulators/mars/config.toml");
+        let working_dir = tmp.path().join("workspace");
+        std::fs::create_dir_all(config_path.parent().unwrap()).unwrap();
+        std::fs::create_dir_all(&working_dir).unwrap();
+
+        let argv = build_launch_command_argv(
+            &runtime_dir,
+            &crate::runtime_contract::TerminalCandidate {
+                terminal: "mars".to_string(),
+                name: "Mars".to_string(),
+                command: "mars".to_string(),
+            },
+            &config_path,
+            &working_dir,
+            Some("work"),
+        )
+        .unwrap();
+
+        assert_eq!(
+            argv,
+            vec![
+                "mars".to_string(),
+                "--title-placeholder".to_string(),
+                "Yazelix - Mars - work".to_string(),
                 "--working-dir".to_string(),
                 working_dir.to_string_lossy().into_owned(),
                 "-e".to_string(),

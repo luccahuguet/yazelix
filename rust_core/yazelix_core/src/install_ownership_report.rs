@@ -1,6 +1,8 @@
 //! Install ownership, launcher provenance, and doctor install-artifact classification.
 //! Bead: yazelix-ulb2.4.1
 
+use crate::config_state::compute_runtime_refresh_hash;
+use crate::desktop_exec::{parse_env_assignment, split_desktop_exec_tokens};
 use crate::terminal_variant::{SUPPORTED_TERMINALS, terminal_desktop_entry_file_name};
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
@@ -77,6 +79,16 @@ pub struct StandaloneYazelixProfileEntry {
     pub store_path: Option<String>,
 }
 
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+pub struct HomeManagerDesktopLauncher {
+    pub terminal: String,
+    pub path: String,
+    pub launch_mode: String,
+    pub active_runtime: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub exec: Option<String>,
+}
+
 #[derive(Debug, Serialize)]
 pub struct InstallOwnershipEvaluateData {
     pub install_owner: String,
@@ -88,6 +100,7 @@ pub struct InstallOwnershipEvaluateData {
     pub home_manager_profile_yzx_candidates: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub existing_home_manager_profile_yzx: Option<String>,
+    pub home_manager_desktop_launchers: Vec<HomeManagerDesktopLauncher>,
     pub standalone_profile_yazelix_entries: Vec<StandaloneYazelixProfileEntry>,
     pub prepare_artifacts: Vec<HomeManagerPrepareArtifact>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -109,6 +122,8 @@ pub fn evaluate_install_ownership_report(
     let desktop_launcher = resolve_desktop_launcher_path(&request.runtime_dir, stable.as_deref());
     let desktop_launcher_str = path_to_string(&desktop_launcher);
     let install_owner = detect_install_owner(has_hm, existing_profile.as_ref(), &request.home_dir);
+    let home_manager_desktop_launchers =
+        collect_home_manager_desktop_launchers(request, existing_profile.as_deref());
     let is_manual_runtime_ref = is_manual_runtime_reference_path(
         &request.yazelix_state_dir.join("runtime").join("current"),
     );
@@ -127,6 +142,7 @@ pub fn evaluate_install_ownership_report(
         stable.as_deref(),
         existing_profile.as_ref(),
         &desktop_launcher_str,
+        &home_manager_desktop_launchers,
         is_manual_runtime_ref,
     );
     let desktop_entry_freshness = check_desktop_entry_freshness(
@@ -148,6 +164,7 @@ pub fn evaluate_install_ownership_report(
             .map(path_to_string)
             .collect(),
         existing_home_manager_profile_yzx: existing_profile.map(|p| path_to_string(&p)),
+        home_manager_desktop_launchers,
         standalone_profile_yazelix_entries,
         prepare_artifacts,
         home_manager_profile_collision,
@@ -333,6 +350,90 @@ fn existing_desktop_entry_paths(apps_dir: &Path) -> Vec<PathBuf> {
 
 fn existing_local_desktop_entry_paths(xdg_data_home: &Path) -> Vec<PathBuf> {
     existing_desktop_entry_paths(&xdg_data_home.join("applications"))
+}
+
+fn profile_applications_dir(home_dir: &Path) -> PathBuf {
+    home_dir
+        .join(".nix-profile")
+        .join("share")
+        .join("applications")
+}
+
+fn terminal_for_desktop_entry_path(path: &Path) -> String {
+    let file_name = path
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or_default();
+    for terminal in SUPPORTED_TERMINALS {
+        if file_name == terminal_desktop_entry_file_name(terminal) {
+            return (*terminal).to_string();
+        }
+    }
+    if matches!(file_name, "com.yazelix.Yazelix.desktop" | "yazelix.desktop") {
+        return "default".into();
+    }
+    "unknown".into()
+}
+
+fn exec_references_runtime_dir(exec: &str, runtime_dir: &Path) -> bool {
+    let runtime = path_to_string(runtime_dir);
+    !runtime.is_empty() && exec.contains(&runtime)
+}
+
+fn is_home_manager_direct_terminal_exec_for_runtime(exec: &str, runtime_dir: &Path) -> bool {
+    exec.contains("YAZELIX_SKIP_STABLE_WRAPPER_REDIRECT=1")
+        && exec_references_runtime_dir(exec, runtime_dir)
+        && exec.trim_end().ends_with(" desktop launch")
+}
+
+fn home_manager_desktop_launcher_mode(
+    exec: Option<&str>,
+    profile_yzx: Option<&Path>,
+    runtime_dir: &Path,
+) -> String {
+    let Some(exec) = exec else {
+        return "missing_exec".into();
+    };
+    if is_home_manager_direct_terminal_exec_for_runtime(exec, runtime_dir) {
+        return "extra_terminal_direct_package".into();
+    }
+    if let Some(profile_yzx) = profile_yzx {
+        if exec.contains(&path_to_string(profile_yzx)) {
+            return "primary_profile_wrapper".into();
+        }
+    }
+    if exec.contains("YAZELIX_SKIP_STABLE_WRAPPER_REDIRECT=1") {
+        return "extra_terminal_direct_package".into();
+    }
+    "profile_desktop_entry".into()
+}
+
+fn collect_home_manager_desktop_launchers(
+    request: &InstallOwnershipEvaluateRequest,
+    profile_yzx: Option<&Path>,
+) -> Vec<HomeManagerDesktopLauncher> {
+    let profile_apps = profile_applications_dir(&request.home_dir);
+    let mut launchers = existing_desktop_entry_paths(&profile_apps)
+        .into_iter()
+        .map(|path| {
+            let exec = get_desktop_entry_exec(&path);
+            HomeManagerDesktopLauncher {
+                terminal: terminal_for_desktop_entry_path(&path),
+                launch_mode: home_manager_desktop_launcher_mode(
+                    exec.as_deref(),
+                    profile_yzx,
+                    &request.runtime_dir,
+                ),
+                active_runtime: exec
+                    .as_deref()
+                    .is_some_and(|exec| exec_references_runtime_dir(exec, &request.runtime_dir)),
+                path: path_to_string(&path),
+                exec,
+            }
+        })
+        .collect::<Vec<_>>();
+    launchers.sort_by(|left, right| left.path.cmp(&right.path));
+    launchers
 }
 
 fn is_manual_desktop_entry_path(path: &Path) -> bool {
@@ -608,6 +709,7 @@ fn build_install_owner_diagnostic(
     stable_yzx_wrapper: Option<&Path>,
     existing_profile_yzx: Option<&PathBuf>,
     desktop_launcher: &str,
+    home_manager_desktop_launchers: &[HomeManagerDesktopLauncher],
     is_manual_runtime_reference_path: bool,
 ) -> DoctorInstallResult {
     let mut details = vec![
@@ -622,6 +724,20 @@ fn build_install_owner_diagnostic(
             "Profile yzx candidate: {}",
             path_to_string(profile)
         ));
+    }
+    if !home_manager_desktop_launchers.is_empty() {
+        details.push("Home Manager desktop launchers:".into());
+        for launcher in home_manager_desktop_launchers {
+            let active = if launcher.active_runtime {
+                " active runtime"
+            } else {
+                ""
+            };
+            details.push(format!(
+                "  - {}: {} ({}){}",
+                launcher.terminal, launcher.path, launcher.launch_mode, active
+            ));
+        }
     }
     if is_manual_runtime_reference_path {
         details.push(
@@ -713,12 +829,139 @@ fn expected_desktop_entry_execs(
     out
 }
 
-fn desktop_entry_exec_matches_expected(exec: Option<&str>, expected: &[String]) -> bool {
+fn desktop_entry_exec_matches_expected(
+    exec: Option<&str>,
+    expected: &[String],
+    active_runtime_dir: &Path,
+) -> bool {
     let Some(e) = exec else {
         return false;
     };
     let unprefixed = strip_supported_desktop_exec_env(e);
     expected.iter().any(|x| x == e || x == unprefixed)
+        || is_home_manager_direct_terminal_exec_for_runtime(e, active_runtime_dir)
+}
+
+fn desktop_exec_launcher_path(exec: &str) -> Result<PathBuf, String> {
+    let tokens = split_desktop_exec_tokens(exec).map_err(|err| err.message().to_string())?;
+    let mut index = 0;
+    if tokens.first().map(String::as_str) == Some("env") {
+        index = 1;
+        while let Some(token) = tokens.get(index) {
+            if parse_env_assignment(token).is_none() {
+                break;
+            }
+            index += 1;
+        }
+    }
+    let launcher = tokens
+        .get(index)
+        .ok_or_else(|| "Exec line does not contain a launcher path".to_string())?;
+    let trailing = &tokens[index + 1..];
+    if trailing != ["desktop", "launch"] {
+        return Err("Exec line is not a supported `yzx desktop launch` command".to_string());
+    }
+    let launcher = PathBuf::from(launcher);
+    if !launcher.is_absolute() {
+        return Err("Exec launcher path is not absolute".to_string());
+    }
+    Ok(launcher)
+}
+
+fn runtime_dir_for_yzx_launcher(launcher: &Path) -> Option<PathBuf> {
+    if launcher.file_name().and_then(|name| name.to_str()) != Some("yzx") {
+        return None;
+    }
+    let bin_dir = launcher.parent()?;
+    if bin_dir.file_name().and_then(|name| name.to_str()) != Some("bin") {
+        return None;
+    }
+    bin_dir.parent().map(Path::to_path_buf)
+}
+
+fn validate_home_manager_profile_desktop_entry(
+    exec: Option<&str>,
+    expected: &[String],
+    active_runtime_dir: &Path,
+    active_runtime_hash: &str,
+) -> Result<(), String> {
+    let exec = exec.ok_or_else(|| "desktop entry has no Exec line".to_string())?;
+    if desktop_entry_exec_matches_expected(Some(exec), expected, active_runtime_dir) {
+        return Ok(());
+    }
+
+    let launcher = desktop_exec_launcher_path(exec)?;
+    if fs::symlink_metadata(&launcher).is_err() {
+        return Err(format!(
+            "launcher path does not exist: {}",
+            launcher.display()
+        ));
+    }
+    let launcher_runtime_dir = runtime_dir_for_yzx_launcher(&launcher)
+        .ok_or_else(|| "Exec launcher is not a packaged bin/yzx path".to_string())?;
+    let launcher_runtime_hash = compute_runtime_refresh_hash(&launcher_runtime_dir)
+        .map_err(|err| err.message().to_string())?;
+    if launcher_runtime_hash == active_runtime_hash {
+        return Ok(());
+    }
+
+    Err(format!(
+        "launcher runtime {} does not match the active Home Manager runtime identity",
+        launcher_runtime_dir.display()
+    ))
+}
+
+fn stale_home_manager_profile_desktop_entries(
+    request: &InstallOwnershipEvaluateRequest,
+    install_owner: &str,
+    profile_entries: &[PathBuf],
+    expected: &[String],
+) -> Vec<String> {
+    if install_owner != "home-manager" {
+        return Vec::new();
+    }
+    let active_runtime_hash = match compute_runtime_refresh_hash(&request.runtime_dir) {
+        Ok(hash) => hash,
+        Err(err) => {
+            return vec![format!(
+                "Active runtime {}: {}",
+                request.runtime_dir.display(),
+                err.message()
+            )];
+        }
+    };
+
+    profile_entries
+        .iter()
+        .filter_map(|path| {
+            let exec = get_desktop_entry_exec(path);
+            let mut reasons = Vec::new();
+            if let Err(reason) = validate_home_manager_profile_desktop_entry(
+                exec.as_deref(),
+                expected,
+                &request.runtime_dir,
+                &active_runtime_hash,
+            ) {
+                reasons.push(reason);
+            }
+            if !desktop_entry_terminal_enabled(path) {
+                let terminal = get_desktop_entry_terminal_value(path)
+                    .unwrap_or_else(|| "<missing>".to_string());
+                reasons.push(format!(
+                    "Terminal={terminal} cannot show prelaunch failures"
+                ));
+            }
+            if reasons.is_empty() {
+                return None;
+            }
+            Some(format!(
+                "{}\n  Exec: {}\n  Problem: {}",
+                path_to_string(path),
+                exec.as_deref().unwrap_or("<missing>"),
+                reasons.join("; ")
+            ))
+        })
+        .collect()
 }
 
 fn strip_supported_desktop_exec_env(exec: &str) -> &str {
@@ -737,20 +980,30 @@ fn check_desktop_entry_freshness(
     desktop_launcher: &str,
 ) -> DoctorInstallResult {
     let local_entries = existing_local_desktop_entry_paths(&request.xdg_data_home);
-    let profile_apps = request
-        .home_dir
-        .join(".nix-profile")
-        .join("share")
-        .join("applications");
+    let profile_apps = profile_applications_dir(&request.home_dir);
     let profile_entries = existing_desktop_entry_paths(&profile_apps);
     let expected = expected_desktop_entry_execs(install_owner, profile_paths, desktop_launcher);
     let local_path = local_entries.first().cloned();
     let profile_path = profile_entries
         .iter()
         .find(|path| {
-            desktop_entry_exec_matches_expected(get_desktop_entry_exec(path).as_deref(), &expected)
+            get_desktop_entry_exec(path)
+                .as_deref()
+                .is_some_and(|exec| exec_references_runtime_dir(exec, &request.runtime_dir))
         })
         .cloned()
+        .or_else(|| {
+            profile_entries
+                .iter()
+                .find(|path| {
+                    desktop_entry_exec_matches_expected(
+                        get_desktop_entry_exec(path).as_deref(),
+                        &expected,
+                        &request.runtime_dir,
+                    )
+                })
+                .cloned()
+        })
         .or_else(|| profile_entries.first().cloned());
     let local_exists = local_path.is_some();
     let profile_exists = profile_path.is_some();
@@ -780,8 +1033,16 @@ fn check_desktop_entry_freshness(
     if install_owner == "home-manager"
         && local_exists
         && profile_exists
-        && !desktop_entry_exec_matches_expected(local_exec.as_deref(), &expected)
-        && desktop_entry_exec_matches_expected(profile_exec.as_deref(), &expected)
+        && !desktop_entry_exec_matches_expected(
+            local_exec.as_deref(),
+            &expected,
+            &request.runtime_dir,
+        )
+        && desktop_entry_exec_matches_expected(
+            profile_exec.as_deref(),
+            &expected,
+            &request.runtime_dir,
+        )
     {
         return DoctorInstallResult::new(
             "warning",
@@ -794,6 +1055,23 @@ fn check_desktop_entry_freshness(
                 path_to_string(profile_path.as_ref().expect("profile desktop path")),
                 profile_exec.as_deref().unwrap_or("<missing>"),
             ));
+    }
+
+    let stale_profile_entries = stale_home_manager_profile_desktop_entries(
+        request,
+        install_owner,
+        &profile_entries,
+        &expected,
+    );
+    if !stale_profile_entries.is_empty() {
+        return DoctorInstallResult::new(
+            "warning",
+            "Home Manager Yazelix desktop launcher paths are stale",
+        )
+        .with_details(format!(
+            "{}\nRepair by reapplying your Home Manager configuration.",
+            stale_profile_entries.join("\n")
+        ));
     }
 
     let desktop_exec = if Some(&dp) == local_path.as_ref() {
@@ -815,7 +1093,7 @@ fn check_desktop_entry_freshness(
     }
 
     let de = desktop_exec.as_deref().unwrap();
-    if !desktop_entry_exec_matches_expected(Some(de), &expected) {
+    if !desktop_entry_exec_matches_expected(Some(de), &expected, &request.runtime_dir) {
         return DoctorInstallResult::new(
             "warning",
             "Yazelix desktop entry does not use the expected launcher path",
@@ -951,6 +1229,32 @@ mod tests {
         let manifest_path = home_dir.join(".nix-profile").join("manifest.json");
         std::fs::create_dir_all(manifest_path.parent().unwrap()).unwrap();
         std::fs::write(manifest_path, raw).unwrap();
+    }
+
+    fn write_runtime_identity(runtime_dir: &Path, variant: &str, source_revision: &str) {
+        std::fs::create_dir_all(runtime_dir).unwrap();
+        std::fs::write(
+            runtime_dir.join("runtime_identity.json"),
+            serde_json::to_string(&serde_json::json!({
+                "schema_version": 1,
+                "version": "v17.7",
+                "runtime_variant": variant,
+                "source": {
+                    "revision": source_revision,
+                    "short_revision": &source_revision[..7.min(source_revision.len())],
+                    "last_modified_date": "20260620000000",
+                },
+                "inputs": {
+                    "nixpkgs": {
+                        "revision": "input-revision",
+                        "short_revision": "input-r",
+                        "last_modified_date": "20260619000000",
+                    }
+                }
+            }))
+            .unwrap(),
+        )
+        .unwrap();
     }
 
     fn test_request(
@@ -1259,9 +1563,9 @@ mod tests {
         );
     }
 
-    // Regression: Home Manager may install extra terminal launchers whose desktop ids sort before the active entry; doctor must validate the active launcher instead of warning on a healthy extra entry.
+    // Regression: Home Manager extra terminal launchers must not be ignored when the active profile launcher is healthy.
     #[test]
-    fn desktop_freshness_accepts_multiple_home_manager_terminal_launchers() {
+    fn desktop_freshness_warns_on_stale_extra_home_manager_terminal_launcher() {
         let tmp = TempDir::new().unwrap();
         let home = tmp.path().join("home");
         let xdg_data = home.join(".local/share");
@@ -1298,11 +1602,156 @@ mod tests {
             evaluate_install_ownership_report(&test_request(&tmp, &home, &xdg_data, main_config));
 
         assert_eq!(report.install_owner, "home-manager");
+        assert_eq!(report.desktop_entry_freshness.status, "warning");
+        assert_eq!(
+            report.desktop_entry_freshness.message,
+            "Home Manager Yazelix desktop launcher paths are stale"
+        );
+        let details = report.desktop_entry_freshness.details.as_deref().unwrap();
+        assert!(details.contains(&path_to_string(&extra_desktop)));
+        assert!(details.contains("/nix/store/extra-yazelix-ghostty/bin/yzx"));
+    }
+
+    // Regression: Home Manager may install extra terminal launchers whose desktop ids sort before
+    // the active entry; same-generation direct terminal packages are valid.
+    #[test]
+    fn desktop_freshness_accepts_same_generation_extra_home_manager_terminal_launchers() {
+        let tmp = TempDir::new().unwrap();
+        let home = tmp.path().join("home");
+        let xdg_data = home.join(".local/share");
+        let main_config = home.join(".config/yazelix/settings.jsonc");
+        let profile_yzx = home.join(".nix-profile/bin/yzx");
+        let profile_apps = home.join(".nix-profile/share/applications");
+        let extra_runtime = tmp.path().join("nix-store/current-yazelix-ghostty");
+        let active_runtime = tmp.path().join("nix-store/current-yazelix-ratty");
+        let extra_yzx = extra_runtime.join("bin/yzx");
+        let extra_desktop = profile_apps.join("com.yazelix.Yazelix.Ghostty.desktop");
+        let active_desktop = profile_apps.join("com.yazelix.Yazelix.Ratty.desktop");
+
+        std::fs::create_dir_all(main_config.parent().unwrap()).unwrap();
+        std::fs::create_dir_all(profile_yzx.parent().unwrap()).unwrap();
+        std::fs::create_dir_all(extra_yzx.parent().unwrap()).unwrap();
+        std::fs::create_dir_all(&profile_apps).unwrap();
+        std::fs::write(&main_config, "{}\n").unwrap();
+        std::fs::write(&profile_yzx, "#!/bin/sh\n").unwrap();
+        std::fs::write(&extra_yzx, "#!/bin/sh\n").unwrap();
+        write_runtime_identity(
+            &active_runtime,
+            "ratty",
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        );
+        write_runtime_identity(
+            &extra_runtime,
+            "ghostty",
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        );
+        std::fs::write(
+            &extra_desktop,
+            format!(
+                "[Desktop Entry]\nName=New Yazelix - Ghostty\nTerminal=true\nExec=env YAZELIX_SKIP_STABLE_WRAPPER_REDIRECT=1 {} desktop launch\n",
+                extra_yzx.display()
+            ),
+        )
+        .unwrap();
+        std::fs::write(
+            &active_desktop,
+            format!(
+                "[Desktop Entry]\nName=New Yazelix - Ratty\nTerminal=true\nExec={} desktop launch\n",
+                profile_yzx.display()
+            ),
+        )
+        .unwrap();
+        write_default_profile_manifest(
+            &home,
+            r#"{"elements":{"home-manager-path":{"active":true,"storePaths":["/nix/store/test-home-manager-path"]}},"version":3}"#,
+        );
+
+        let mut request = test_request(&tmp, &home, &xdg_data, main_config);
+        request.runtime_dir = active_runtime;
+        let report = evaluate_install_ownership_report(&request);
+
+        assert_eq!(report.install_owner, "home-manager");
         assert_eq!(report.desktop_entry_freshness.status, "ok");
-        let expected_details = path_to_string(&active_desktop);
         assert_eq!(
             report.desktop_entry_freshness.details.as_deref(),
-            Some(expected_details.as_str())
+            Some(path_to_string(&active_desktop).as_str())
+        );
+    }
+
+    // Regression: a Home Manager extra terminal launcher may point directly at the active runtime package instead of the primary profile wrapper.
+    #[test]
+    fn install_report_names_active_home_manager_extra_terminal_launcher() {
+        let tmp = TempDir::new().unwrap();
+        let home = tmp.path().join("home");
+        let xdg_data = home.join(".local/share");
+        let main_config = home.join(".config/yazelix/settings.jsonc");
+        let profile_yzx = home.join(".nix-profile/bin/yzx");
+        let profile_apps = home.join(".nix-profile/share/applications");
+        let primary_desktop = profile_apps.join("com.yazelix.Yazelix.Ratty.desktop");
+        let mars_runtime = tmp.path().join("nix-store/current-yazelix-mars");
+        let mars_yzx = mars_runtime.join("bin/yzx");
+        let mars_desktop = profile_apps.join("com.yazelix.Yazelix.Mars.desktop");
+
+        std::fs::create_dir_all(main_config.parent().unwrap()).unwrap();
+        std::fs::create_dir_all(profile_yzx.parent().unwrap()).unwrap();
+        std::fs::create_dir_all(mars_yzx.parent().unwrap()).unwrap();
+        std::fs::create_dir_all(&profile_apps).unwrap();
+        std::fs::write(&main_config, "{}\n").unwrap();
+        std::fs::write(&profile_yzx, "#!/bin/sh\n").unwrap();
+        std::fs::write(&mars_yzx, "#!/bin/sh\n").unwrap();
+        std::fs::write(
+            &primary_desktop,
+            format!(
+                "[Desktop Entry]\nName=New Yazelix - Ratty\nTerminal=true\nExec={} desktop launch\n",
+                profile_yzx.display()
+            ),
+        )
+        .unwrap();
+        std::fs::write(
+            &mars_desktop,
+            format!(
+                "[Desktop Entry]\nName=New Yazelix - Mars\nTerminal=true\nExec=env YAZELIX_SKIP_STABLE_WRAPPER_REDIRECT=1 MARS_APP_ID=com.yazelix.Yazelix.Mars MARS_PROFILE=shaders {} desktop launch\n",
+                mars_yzx.display()
+            ),
+        )
+        .unwrap();
+        write_default_profile_manifest(
+            &home,
+            r#"{"elements":{"home-manager-path":{"active":true,"storePaths":["/nix/store/test-home-manager-path"]}},"version":3}"#,
+        );
+
+        let mut request = test_request(&tmp, &home, &xdg_data, main_config);
+        request.runtime_dir = mars_runtime;
+        let report = evaluate_install_ownership_report(&request);
+
+        assert_eq!(report.install_owner, "home-manager");
+        assert_eq!(report.desktop_entry_freshness.status, "ok");
+        assert_eq!(
+            report.desktop_entry_freshness.details.as_deref(),
+            Some(path_to_string(&mars_desktop).as_str())
+        );
+        let active_launcher = report
+            .home_manager_desktop_launchers
+            .iter()
+            .find(|launcher| launcher.active_runtime)
+            .expect("active Mars launcher");
+        assert_eq!(active_launcher.terminal, "mars");
+        assert_eq!(active_launcher.launch_mode, "extra_terminal_direct_package");
+        assert!(
+            report
+                .install_owner_diagnostic
+                .details
+                .as_deref()
+                .unwrap_or_default()
+                .contains("mars:")
+        );
+        assert!(
+            report
+                .install_owner_diagnostic
+                .details
+                .as_deref()
+                .unwrap_or_default()
+                .contains("extra_terminal_direct_package")
         );
     }
 

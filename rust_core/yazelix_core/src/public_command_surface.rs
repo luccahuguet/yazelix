@@ -119,6 +119,7 @@ const RESET_FLAGS: &[YzxCommandParameter] = &[switch("yes", None), switch("no-ba
 const POPUP_ARGS: &[YzxCommandParameter] = &[rest("program")];
 const SCREEN_ARGS: &[YzxCommandParameter] = &[positional("style", "string", true)];
 const DEV_INSPECT_SESSION_FLAGS: &[YzxCommandParameter] = &[switch("json", None)];
+const DEV_PERF_FLAGS: &[YzxCommandParameter] = &[named("seconds", Some("s"), "number", true)];
 const DEV_PROFILE_FLAGS: &[YzxCommandParameter] = &[
     switch("cold", Some("c")),
     switch("desktop", None),
@@ -653,9 +654,20 @@ const DEV_PROFILE_COMMAND: YzxCommandMetadata = metadata(
     None,
     None,
 );
+const DEV_PERF_COMMAND: YzxCommandMetadata = metadata(
+    "yzx dev perf",
+    "Capture a bounded lag snapshot",
+    YzxCommandCategory::Development,
+    DEV_PERF_FLAGS,
+    None,
+    Some(
+        "Samples Zellij/plugin helper churn and optional pidstat output without mutating the session.",
+    ),
+);
 const DEV_RUST_CONTROL_COMMANDS: &[YzxCommandMetadata] = &[
     DEV_ROOT_COMMAND,
     DEV_INSPECT_SESSION_COMMAND,
+    DEV_PERF_COMMAND,
     DEV_PROFILE_COMMAND,
 ];
 

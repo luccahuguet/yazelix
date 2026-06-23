@@ -4,7 +4,7 @@
 
 This is an evaluation record for the current first-party child repositories consumed by Yazelix. It is not a contract and does not implement repository moves.
 
-The current child-repo shape is justified overall. No repository should be merged back into the main repo now. The best next pressure is boundary discipline: keep standalone child surfaces genuinely runnable outside Yazelix, keep Yazelix-only adapters in the main repo, and treat every main-repo lock update that consumes child changes as a release transaction.
+The current child-repo shape is justified overall, with `yazelix-zellij-config-pack` integrated back into main as the intentional exception. The best next pressure is boundary discipline: keep standalone child surfaces genuinely runnable outside Yazelix, keep Yazelix-only adapters in the main repo, and treat every main-repo lock update that consumes remaining child changes as a release transaction.
 
 The pane orchestrator is the highest-risk boundary because it owns real workspace behavior and contains the most Yazelix-specific integration. It should remain separate because the runtime ABI is a Zellij plugin wasm artifact, but it needs the strictest standalone/API discipline.
 
@@ -24,7 +24,7 @@ The pane orchestrator is the highest-risk boundary because it owns real workspac
 - `docs/contracts/yazelix_zellij_pane_orchestrator_extraction.md`
 - `docs/contracts/zellij_config_pack_boundary.md`
 - `docs/contracts/yazi_integration_boundary.md`
-- Adjacent checkouts for `yazelix-screen`, `yazelix-cursors`, `mars`, `ratconfig`, `yazelix-zellij-bar`, `yazelix-zellij-pane-orchestrator`, `yazelix-zellij-popup`, `yazelix-zellij-config-pack`, and `yazelix-yazi-assets`
+- Adjacent checkouts for `yazelix-screen`, `yazelix-cursors`, `ratconfig`, `yazelix-zellij-bar`, `yazelix-zellij-pane-orchestrator`, `yazelix-zellij-popup`, and `yazelix-yazi-assets`
 
 ## Scoring
 
@@ -43,12 +43,11 @@ Scores use `1..5`, where `5` is the healthier result for a separate child reposi
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
 | `yazelix-screen` | 4 | 5 | 4 | 4 | 3 | 5 | Keep separate |
 | `yazelix-cursors` | 5 | 4 | 4 | 4 | 3 | 5 | Keep separate |
-| `mars` | 4 | 3 | 4 | 4 | 2 | 4 | Keep separate while experimental |
 | `ratconfig` | 4 | 4 | 3 | 5 | 3 | 5 | Keep separate with Yazelix adapter discipline |
 | `yazelix-zellij-bar` | 4 | 3 | 4 | 4 | 3 | 4 | Keep separate with adapter discipline |
 | `yazelix-zellij-pane-orchestrator` | 3 | 2 | 5 | 3 | 2 | 4 | Keep separate, revise boundary discipline |
 | `yazelix-zellij-popup` | 5 | 5 | 5 | 5 | 4 | 4 | Keep separate |
-| `yazelix-zellij-config-pack` | 2 | 4 | 4 | 5 | 3 | 5 | Keep separate as a deletion boundary |
+| `yazelix-zellij-config-pack` | 2 | 4 | 4 | 5 | 3 | 5 | Integrated back into main |
 | `yazelix-yazi-assets` | 4 | 5 | 5 | 5 | 4 | 5 | Keep separate |
 
 ## Per-Repo Evaluation
@@ -67,7 +66,7 @@ Boundary rule: animation engines, automata, generation logic, random animation-f
 
 Recommendation: keep separate.
 
-This is one of the strongest standalone boundaries. It owns a real cursor workflow through `yzc init`, `yzc generate ghostty`, generated shader assets, standalone JSONC settings, and examples. Yazelix consumes the same registry and shader logic for config UI, settings rendering, Ghostty materialization, Mars Terminal shader assets, and `yzx cursors`.
+This is one of the strongest standalone boundaries. It owns a real cursor workflow through `yzc init`, `yzc generate ghostty`, generated shader assets, standalone JSONC settings, and examples. Yazelix consumes the same registry and shader logic for config UI, settings rendering, Ghostty materialization, and `yzx cursors`.
 
 The main risks are dual consumption through flake and Cargo. Those are manageable because the ownership line is clear: cursor schemes, shader generation, standalone cursor config, and `yzc` belong to the child; Yazelix owns per-window randomization, integrated terminal materialization, and config UI composition.
 
@@ -115,13 +114,13 @@ Boundary rule: configured popup lifecycle belongs in `yzpp`. Yazelix owns genera
 
 ### `yazelix-zellij-config-pack`
 
-Recommendation: keep separate as a deletion boundary.
+Recommendation: integrated back into main.
 
-The config-pack repo is less standalone than popup or screen, but it has a clear ownership payoff: deterministic Zellij config/layout rendering, bundled layout templates, layout fragments, and renderer fixture tests no longer live in the main repo. Main Yazelix is now a request builder plus filesystem writer around the child renderer.
+The config-pack repo was less standalone than popup or screen, and its source changes commonly traveled with main Yazelix runtime behavior. The pure renderer boundary was useful, but the separate repo added cross-repo release transactions without enough standalone value.
 
-The coupling is acceptable because the child receives explicit structured inputs and does not read Yazelix runtime directories, Home Manager state, live Zellij state, or adjacent source checkouts. Release friction is real because main consumes both the Cargo git crate and flake input; treat every update as a child release transaction.
+The accepted shape keeps the same pure renderer boundary in the in-tree `rust_core/yazelix_zellij_config_pack` crate. `yazelix_core` stays the request builder and filesystem writer, while the config-pack crate owns deterministic Zellij config/layout rendering, bundled layout templates, layout fragments, and renderer fixture tests.
 
-Boundary rule: pure render/merge/template behavior stays in the child. Main owns settings normalization, action/keybinding policy, plugin artifact resolution, status-bar request construction, generated-state writes, doctor repair decisions, and workspace/session behavior.
+Boundary rule: pure render/merge/template behavior stays out of `zellij_materialization.rs` in the dedicated in-tree crate. Main owns settings normalization, action/keybinding policy, plugin artifact resolution, status-bar request construction, generated-state writes, doctor repair decisions, and workspace/session behavior.
 
 ### `yazelix-yazi-assets`
 
@@ -172,9 +171,9 @@ The main repo should not create local mirrors of child behavior to "smooth" rele
 
 ## Final Recommendation
 
-Keep the current child repository set separate.
+Keep the remaining child repository set separate.
 
-Do not merge any current child repo back now.
+`yazelix-zellij-config-pack` is the intentional exception: it is integrated back into main as `rust_core/yazelix_zellij_config_pack` because the pure renderer boundary was useful but the separate repo had weak standalone value and unnecessary release friction.
 
 Do not create a new child repo for Yazi integration, workspace state, or runtime control until the main repo owner has first become a thin adapter with a concrete artifact/API seam. `ratconfig` is the accepted config UI exception because the reusable editor/JSONC owner has moved out and Yazelix now keeps only product-specific adapter behavior.
 
@@ -183,7 +182,7 @@ Use this priority order for future boundary pressure:
 1. Keep `yazelix-zellij-pane-orchestrator` honest about standalone versus Yazelix-only commands.
 2. Keep `ratconfig` as a reusable config editor crate and prevent Yazelix schema/apply policy from leaking into it.
 3. Keep `yazelix-zellij-bar` as a command/artifact boundary and prevent widget implementation from returning to the main repo.
-4. Keep `yazelix-zellij-config-pack` as the Zellij renderer/template owner and prevent fallback copies from returning to main.
+4. Keep `rust_core/yazelix_zellij_config_pack` as the Zellij renderer/template owner and prevent fallback copies from returning to `zellij_materialization.rs`.
 5. Keep Yazi pure config-pack rendering in `yazelix-yazi-assets` and prevent fallback copies from returning to main.
 6. Treat `yazelix-screen`, `yazelix-cursors`, and Rust git child crates as release transactions, not local cleanup.
 7. Keep `yazelix-zellij-popup` narrow and generic; it is the model child boundary.

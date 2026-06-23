@@ -4,7 +4,8 @@ use yazelix_maintainer::repo_contract_validation::{
     ColdProfileInstallOptions, UpgradeContractOptions, validate_config_surface_contract,
     validate_flake_interface, validate_flake_profile_install, validate_installed_runtime_contract,
     validate_nix_customization_api, validate_nixpkgs_package, validate_nixpkgs_submission,
-    validate_nushell_syntax, validate_readme_version, validate_upgrade_contract,
+    validate_nushell_syntax, validate_readme_version, validate_runtime_package_smoke,
+    validate_upgrade_contract,
 };
 use yazelix_maintainer::repo_docs_validation::validate_docs_experience;
 use yazelix_maintainer::repo_rust_budget::validate_rust_ownership_budget;
@@ -14,7 +15,7 @@ use yazelix_maintainer::repo_validation::{
 };
 use yazelix_maintainer::workspace_session_contract::validate_workspace_session_contract;
 
-const USAGE_COMMANDS: &str = "validate-contracts|validate-rust-test-traceability|validate-package-rust-test-purity|validate-workspace-session-contract|validate-config-surface-contract|validate-docs-experience|validate-rust-ownership-budget|validate-child-release-transaction|validate-upgrade-contract|validate-installed-runtime-contract|validate-flake-interface|validate-flake-profile-install|validate-nix-customization-api|validate-nixpkgs-package|validate-nixpkgs-submission|validate-nushell-syntax|validate-readme-version";
+const USAGE_COMMANDS: &str = "validate-contracts|validate-rust-test-traceability|validate-package-rust-test-purity|validate-workspace-session-contract|validate-config-surface-contract|validate-docs-experience|validate-rust-ownership-budget|validate-child-release-transaction|validate-upgrade-contract|validate-installed-runtime-contract|validate-runtime-package-smoke|validate-flake-interface|validate-flake-profile-install|validate-nix-customization-api|validate-nixpkgs-package|validate-nixpkgs-submission|validate-nushell-syntax|validate-readme-version";
 
 fn main() {
     let invocation = parse_invocation(std::env::args().skip(1)).unwrap_or_else(|exit| exit.exit());
@@ -97,6 +98,12 @@ const SIMPLE_VALIDATORS: &[SimpleValidator] = &[
         "Installed-runtime contract validation failed",
         Some("✅ Installed-runtime contract smoke passed"),
         validate_installed_runtime_contract,
+    ),
+    SimpleValidator(
+        "validate-runtime-package-smoke",
+        "Runtime package smoke validation failed",
+        Some("✅ Runtime package smoke passed"),
+        validate_runtime_package_smoke,
     ),
     SimpleValidator(
         "validate-flake-interface",

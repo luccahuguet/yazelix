@@ -6,6 +6,7 @@
   runtimeToolSourceModes,
   terminalDescriptionBullets,
   terminalVariants,
+  marsEmojiFontDescriptionBullets,
   marsEmojiFonts,
   marsProfiles,
 }:
@@ -82,8 +83,7 @@ ${terminalDescriptionBullets}
     type = types.enum marsProfiles;
     default = "full";
     description = ''
-      Mars profile used by generated runtime configs and the Linux desktop
-      entry.
+      Mars terminal package profile.
 
       - "full": Rio trail cursor defaults without custom shaders
       - "baseline": no cursor effects
@@ -95,16 +95,9 @@ ${terminalDescriptionBullets}
     type = types.enum marsEmojiFonts;
     default = "noto";
     description = ''
-      Declarative Home Manager value for terminal.emoji_style when
-      manage_config is true.
+      Mars terminal emoji fallback font.
 
-      With the default manage_config = false, ~/.config/yazelix/settings.jsonc
-      remains the semantic settings owner and Home Manager does not export this
-      value as a Mars launcher or session override.
-
-      - "noto": current Noto Color Emoji fallback
-      - "twitter": Twitter/Twemoji color emoji fallback
-      - "serenityos": SerenityOS emoji fallback
+${marsEmojiFontDescriptionBullets}
     '';
   };
 
@@ -112,13 +105,10 @@ ${terminalDescriptionBullets}
     type = types.nullOr types.package;
     default = null;
     description = ''
-      Mars child package override.
+      Override package for the Mars terminal child runtime.
 
-      Set this only for mars dogfooding when you want to replace the
-      terminal child package without replacing the whole Yazelix package.
-      The package must expose passthru.marsPackageMetadata. This option
-      applies only when programs.yazelix.terminal is "mars" or
-      extra_terminal_launchers contains "mars".
+      Set this only when testing a local Mars build or pinning a custom Mars
+      package. The package must expose passthru.marsPackageMetadata.
     '';
   };
 
@@ -326,7 +316,15 @@ ${terminalDescriptionBullets}
   };
 
   zellij_widget_tray = mkMainContractOption "zellij.widget_tray" {
-    description = "Zjstatus widget tray order (editor/shell/term/workspace/usage/cpu/ram); dynamic entries read from a window-local cache";
+    description = "Zjstatus widget tray order (session/editor/shell/term/workspace/usage/cpu/ram); dynamic entries read from a window-local cache";
+  };
+
+  zellij_widget_frame = mkMainContractOption "zellij.widget_frame" {
+    description = "Zjstatus widget frame style: none, square, or round";
+  };
+
+  zellij_widget_separator = mkMainContractOption "zellij.widget_separator" {
+    description = "Zjstatus separator between adjacent widgets: dot, pipe, empty, or space";
   };
 
   zellij_tab_label_mode = mkMainContractOption "zellij.tab_label_mode" {

@@ -1,0 +1,30 @@
+name: Use Validation Helpers
+description: Download and expose the per-run Yazelix validation helper artifact
+
+inputs:
+  artifact_name:
+    description: Artifact name produced by the validation helper build job
+    required: false
+    default: yazelix-validation-helpers
+  path:
+    description: Relative destination path for helper binaries
+    required: false
+    default: artifacts/validation_helpers
+
+runs:
+  using: composite
+  steps:
+    - name: Download validation helpers
+      uses: actions/download-artifact@v8
+      with:
+        name: ${{ inputs.artifact_name }}
+        path: ${{ inputs.path }}
+
+    - name: Export validation helper paths
+      shell: bash
+      run: |
+        set -euo pipefail
+        helper_dir="$GITHUB_WORKSPACE/${{ inputs.path }}"
+        chmod +x "$helper_dir/yzx_repo_validator" "$helper_dir/yzx_core"
+        echo "YAZELIX_REPO_VALIDATOR=$helper_dir/yzx_repo_validator" >> "$GITHUB_ENV"
+        echo "YAZELIX_YZX_CORE_BIN=$helper_dir/yzx_core" >> "$GITHUB_ENV"

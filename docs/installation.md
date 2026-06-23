@@ -17,11 +17,17 @@ It guarantees that everyone gets the exact same versions of tools (Yazi, Zellij,
 **Important**: You don't need to learn Nix or Nushell to use Yazelix. Nix with flakes is the only real host prerequisite. The normal product surface is the `yazelix` package or the top-level Home Manager module.
 
 ## Supported Terminal Emulators
-Yazelix provides one packaged terminal at a time. The default `#yazelix` package uses Ghostty so Yazelix cursor trails, Ghostty config effects, and Yazi image previews through Zellij are present on first run. Mars Terminal is available through `#mars` or `programs.yazelix.terminal = "mars"` as the experimental Rio-derived path for the future first-party terminal. Vanilla Rio is available through `#yazelix_rio` or `programs.yazelix.terminal = "rio"` for users who prefer upstream Rio terminal behavior. WezTerm remains available through `#yazelix_wezterm` or `programs.yazelix.terminal = "wezterm"` for users who prefer the stable alternate packaged terminal path. Kitty is available through `#yazelix_kitty` or `programs.yazelix.terminal = "kitty"` for users who want the reference Kitty protocol terminal as a packaged runtime. Foot is available on Linux through `#yazelix_foot` or `programs.yazelix.terminal = "foot"` for users who want a lightweight Wayland terminal path. Ratty is available on Linux through `#yazelix_ratty` or `programs.yazelix.terminal = "ratty"` as an experimental packaged terminal path. Yazelix does not fall back to another terminal when a selected variant is missing or mispackaged.
+Yazelix provides one packaged terminal at a time. The default `#yazelix` package uses Mars so Yazelix can keep the Rust terminal fork, generated config, cursor behavior, Zellij/Yazi graphics bridge, and agent-driven development workflow aligned. Ghostty remains a first-class supported terminal through `#yazelix_ghostty` or `programs.yazelix.terminal = "ghostty"` for users who prefer the mature Ghostty path. Vanilla Rio is available through `#yazelix_rio` or `programs.yazelix.terminal = "rio"` for users who prefer upstream Rio terminal behavior. WezTerm remains available through `#yazelix_wezterm` or `programs.yazelix.terminal = "wezterm"` for users who prefer that packaged terminal path. Kitty is available through `#yazelix_kitty` or `programs.yazelix.terminal = "kitty"` for users who want the reference Kitty protocol terminal as a packaged runtime. Foot is available on Linux through `#yazelix_foot` or `programs.yazelix.terminal = "foot"` for users who want a lightweight Wayland terminal path. Ratty is available on Linux through `#yazelix_ratty` or `programs.yazelix.terminal = "ratty"` for users who want the Ratty terminal path. Yazelix does not fall back to another terminal when a selected variant is missing or mispackaged.
 
-The Ghostty image-preview path pins a temporary Yazelix Zellij fork and launches managed upstream Yazi with a scoped Kitty adapter environment. The Zellij fork is expected to be dropped and archived once upstream Zellij supports the required Kitty graphics path directly enough for Yazelix to return to upstream Zellij.
+Mars, Ghostty, Rio, Kitty, and Ratty use the temporary Yazelix Zellij fork for Kitty graphics passthrough where that bridge is selected. The Zellij fork is expected to be dropped and archived once upstream Zellij supports the required Kitty graphics path directly enough for Yazelix to return to upstream Zellij.
 
 See [Terminal Emulator Comparison](./terminal_emulators.md) for a detailed breakdown of strengths, gaps, and platform support.
+
+**Mars**
+- Default Rust terminal fork for Yazelix
+- Provided by the default `yazelix` package runtime and by `yazelix_mars`
+- Uses generated Mars config, native cursor integration, `terminal.transparency`, packaged emoji/font profiles, the Yazelix Zellij Kitty graphics bridge, and an agent-driven development focus
+- Reference: https://github.com/luccahuguet/mars
 
 **WezTerm**
 - Modern, fast, written in Rust
@@ -29,7 +35,7 @@ See [Terminal Emulator Comparison](./terminal_emulators.md) for a detailed break
 - Reference: https://wezfurlong.org/wezterm/installation.html
 
 **Ratty**
-- Experimental GPU-rendered terminal with Kitty graphics support and inline 3D graphics
+- GPU-rendered terminal with Kitty graphics support and inline 3D graphics
 - Provided on Linux by `#yazelix_ratty` or by `programs.yazelix.terminal = "ratty"`
 - Reference: https://github.com/orhun/ratty
 
@@ -40,14 +46,8 @@ See [Terminal Emulator Comparison](./terminal_emulators.md) for a detailed break
 
 **Ghostty**
 - Modern, fast, written in Zig, newer
-- Provided by the default `yazelix` package runtime and by `yazelix_ghostty`
+- Provided by `#yazelix_ghostty` or by `programs.yazelix.terminal = "ghostty"`
 - Download page: https://ghostty.org/download
-
-**Mars Terminal**
-- Experimental Rio-derived Rust first-party terminal path
-- Provided by `#mars` and by `programs.yazelix.terminal = "mars"`
-- Uses the packaged `mars-desktop` wrapper, generated Yazelix config, BELL notifications, protocol coverage, Kitty graphics, Rio trail cursor defaults, opt-in `yazelix-cursors` shader support through `programs.yazelix.mars_profile = "shaders"`, mars emoji fallback selection through `terminal.emoji_style` or through `programs.yazelix.mars_emoji_font` when `manage_config = true`, and `terminal.transparency`
-- Reference: https://github.com/luccahuguet/mars
 
 **Rio**
 - Upstream Rio terminal packaged as a Yazelix runtime
@@ -63,14 +63,40 @@ See [Terminal Emulator Comparison](./terminal_emulators.md) for a detailed break
 
 ## Quickstart
 
-If you already have Nix with flakes enabled, the canonical install flow is:
+1. Optional: run the install check:
 
 ```bash
-nix profile add github:luccahuguet/yazelix#yazelix
+curl -fsSL https://raw.githubusercontent.com/luccahuguet/yazelix/main/shells/posix/install_check.sh | sh
+```
+
+2. Install Yazelix:
+
+```bash
+nix profile add --refresh --accept-flake-config github:luccahuguet/yazelix#yazelix
+```
+
+3. Launch Yazelix:
+
+```bash
 yzx launch
 ```
 
-Use `#mars` instead if you intentionally want the experimental Mars Terminal runtime variant, `#yazelix_rio` for vanilla Rio, `#yazelix_wezterm` for WezTerm, `#yazelix_kitty` for Kitty, `#yazelix_foot` on Linux if you want Foot, or `#yazelix_ratty` on Linux if you want the experimental Ratty runtime variant.
+If you prefer to inspect the check before running it:
+
+```bash
+curl -fsSLO https://raw.githubusercontent.com/luccahuguet/yazelix/main/shells/posix/install_check.sh
+sh install_check.sh
+```
+
+The install check is optional. It reports Nix/flakes/platform readiness, explains whether Yazelix's binary cache is trusted, and prints numbered next steps for the current host.
+
+If Nix is already available, the same check is also exposed as a flake app:
+
+```bash
+nix run --accept-flake-config github:luccahuguet/yazelix#install_check
+```
+
+Use `#yazelix_ghostty` for Ghostty, `#yazelix_rio` for vanilla Rio, `#yazelix_wezterm` for WezTerm, `#yazelix_kitty` for Kitty, `#yazelix_foot` on Linux if you want Foot, or `#yazelix_ratty` on Linux if you want the Ratty runtime variant.
 
 One-off use without installing also works:
 
@@ -121,60 +147,94 @@ Yazelix publishes selected `x86_64-linux` and `aarch64-darwin` package builds to
 For noninteractive installs, pass `--accept-flake-config` to the Nix command that evaluates the Yazelix flake:
 
 ```bash
-nix profile add --accept-flake-config github:luccahuguet/yazelix#yazelix
+nix profile add --refresh --accept-flake-config github:luccahuguet/yazelix#yazelix
 ```
 
-For persistent system or Home Manager configuration, add the cache to your Nix settings:
+For persistent cache setup, use the path that matches your Nix install.
+
+For non-Determinate Nix installs where the legacy `nix-env` command is available, the Cachix CLI can write the root daemon configuration:
+
+```bash
+sudo nix run nixpkgs#cachix -- use yazelix --mode root-nixconf
+```
+
+Determinate Nix installs can omit `nix-env`, so the Cachix helper above may fail before it edits the daemon configuration. Determinate Nix manages `/etc/nix/nix.conf` and leaves `/etc/nix/nix.custom.conf` for user edits. Add the cache to that custom file instead:
+
+`/etc/nix/nix.custom.conf`
+
+Append the Yazelix cache entries:
+
+```bash
+yazelix_cache_key='yazelix.cachix.org-1:ZgxIjQvaP0VTWL8Racx27mp'
+yazelix_cache_key="${yazelix_cache_key}UNzDJ97xC2y7QWYjmGNM="
+sudo tee -a /etc/nix/nix.custom.conf >/dev/null <<EOF
+extra-substituters = https://yazelix.cachix.org
+extra-trusted-public-keys = ${yazelix_cache_key}
+EOF
+```
+
+Check that the settings are active:
+
+```bash
+nix config show | grep -E 'https://yazelix\.cachix\.org|yazelix\.cachix\.org-1:'
+```
+
+If the command does not print both the cache URL and a `yazelix.cachix.org-1` key after editing `/etc/nix/nix.custom.conf`, restart the Nix daemon or reboot, then check again.
+
+For NixOS or Home Manager-managed Nix configuration, add the cache to your Nix settings:
 
 ```nix
-{
-  nix.settings.substituters = [
-    "https://cache.nixos.org/"
+let
+  yazelix_cache_key =
+    "yazelix.cachix.org-1:ZgxIjQvaP0VTWL8Racx27mp"
+    + "UNzDJ97xC2y7QWYjmGNM=";
+in {
+  nix.settings.extra-substituters = [
     "https://yazelix.cachix.org"
   ];
 
-  nix.settings.trusted-public-keys = [
-    "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY="
-    "yazelix.cachix.org-1:ZgxIjQvaP0VTWL8Racx27mpUNzDJ97xC2y7QWYjmGNM="
+  nix.settings.extra-trusted-public-keys = [
+    yazelix_cache_key
   ];
 }
 ```
 
-If another cache is already configured, keep it in the same lists. For example, a Home Manager user can place those `nix.settings` entries in their Home Manager configuration, then run `home-manager switch`. Standalone Home Manager users should also set `nix.package = pkgs.nix` when Home Manager generates `~/.config/nix/nix.conf`.
+The `extra-*` settings add Yazelix's cache beside existing caches. For example, a Home Manager user can place those `nix.settings` entries in their Home Manager configuration, then run `home-manager switch`. Standalone Home Manager users should also set `nix.package = pkgs.nix` when Home Manager generates `~/.config/nix/nix.conf`.
 
-Check that Nix sees the cache and that representative expensive outputs are present in the public cache:
+Check that representative expensive outputs are present in the public cache:
 
 ```bash
-nix config show | grep -E 'https://yazelix\.cachix\.org|yazelix\.cachix\.org-1:ZgxIjQvaP0VTWL8Racx27mpUNzDJ97xC2y7QWYjmGNM='
 helix_out="$(nix eval --raw github:luccahuguet/yazelix#yazelix_helix.outPath)"
 kgp_zellij_out="$(nix eval --raw github:luccahuguet/yazelix#yazelix_kgp_zellij.outPath)"
 nix path-info --store https://yazelix.cachix.org "$helix_out"
 nix path-info --store https://yazelix.cachix.org "$kgp_zellij_out"
 ```
 
-If the first command does not print both the cache URL and key, reload the Nix configuration that owns your `nix.settings`. If `nix path-info` cannot find the output, the requested Yazelix revision has not been published to the cache yet, and Nix will build it from source.
+If `nix path-info` cannot find the output, the requested Yazelix revision has not been published to the cache yet, and Nix will build it from source.
 
 ### Step 2: Install Yazelix
 
 Install the Yazelix package exposed by the top-level flake:
 
 ```bash
-nix profile add github:luccahuguet/yazelix#yazelix
+nix profile add --refresh --accept-flake-config github:luccahuguet/yazelix#yazelix
 ```
 
-The default package is the Ghostty variant. To install the package-provided Mars Terminal, WezTerm, Kitty, Linux Foot, or Linux Ratty variants explicitly:
+The default package is the Mars variant. To install the package-provided Mars, Ghostty, Rio, WezTerm, Kitty, Linux Foot, or Linux Ratty variants explicitly:
 
 ```bash
-nix profile add github:luccahuguet/yazelix#mars
-nix profile add github:luccahuguet/yazelix#yazelix_wezterm
-nix profile add github:luccahuguet/yazelix#yazelix_kitty
-nix profile add github:luccahuguet/yazelix#yazelix_foot
-nix profile add github:luccahuguet/yazelix#yazelix_ratty
+nix profile add --refresh --accept-flake-config github:luccahuguet/yazelix#yazelix_mars
+nix profile add --refresh --accept-flake-config github:luccahuguet/yazelix#yazelix_ghostty
+nix profile add --refresh --accept-flake-config github:luccahuguet/yazelix#yazelix_rio
+nix profile add --refresh --accept-flake-config github:luccahuguet/yazelix#yazelix_wezterm
+nix profile add --refresh --accept-flake-config github:luccahuguet/yazelix#yazelix_kitty
+nix profile add --refresh --accept-flake-config github:luccahuguet/yazelix#yazelix_foot
+nix profile add --refresh --accept-flake-config github:luccahuguet/yazelix#yazelix_ratty
 ```
 
 > If you previously evaluated this flake (for example with `nix run` or `nix flake show`), Nix may have cached an older version. Add `--refresh` to force a fresh fetch:
 > ```bash
-> nix profile add --refresh github:luccahuguet/yazelix#yazelix
+> nix profile add --refresh --accept-flake-config github:luccahuguet/yazelix#yazelix
 > ```
 
 After it finishes:
@@ -194,7 +254,7 @@ Normal usage relies on the package-provided `yzx` entrypoint or the Home Manager
 Host prerequisite contract:
 - **Host prerequisite**: Nix with flakes enabled
 - **Package-provided**: the Yazelix runtime, including runtime-local `nu`, `zellij`, `yazi`, `helix`, shells, a curated interactive tool surface, and the internal helper closure behind the runtime root
-- **Not package-provided**: a separate host Nushell install for your everyday shell outside Yazelix, or PATH-provided alternative terminals outside the selected Ghostty/Mars Terminal/WezTerm/Kitty/Foot/Ratty runtime variant
+- **Not package-provided**: a separate host Nushell install for your everyday shell outside Yazelix, or PATH-provided alternative terminals outside the selected Mars/Ghostty/Rio/WezTerm/Kitty/Foot/Ratty runtime variant
 - **Nushell version ownership**: Yazelix uses the Nushell packaged by the locked `nixpkgs-unstable` input for the runtime and bootstrap path; it does not chase a newer upstream Nushell release until Nixpkgs packages it.
 
 ### Step 3: Configure Your Installation (Optional)
@@ -213,7 +273,7 @@ The packaged runtime ships a fixed toolset instead of configurable dependency gr
 - the default CLI helpers: `fzf`, `zoxide`, `starship`, `lazygit`, `zenith`, `carapace`, `macchina`
 - host-managed helper integrations: `mise` and `tombi`
 - the default Yazi preview helpers: `p7zip`, `jq`, `fd`, `ripgrep`, `poppler`
-- one packaged terminal variant: Ghostty by default with the Yazelix Zellij graphics bridge, experimental Mars Terminal through `#mars`, vanilla Rio through `#yazelix_rio`, WezTerm through `#yazelix_wezterm`, Kitty through `#yazelix_kitty`, Linux Foot through `#yazelix_foot`, or experimental Linux Ratty through `#yazelix_ratty`
+- one packaged terminal variant: Mars by default with the Yazelix Zellij graphics bridge, Ghostty through `#yazelix_ghostty`, vanilla Rio through `#yazelix_rio`, WezTerm through `#yazelix_wezterm`, Kitty through `#yazelix_kitty`, Linux Foot through `#yazelix_foot`, or Linux Ratty through `#yazelix_ratty`
 
 When you enter `yzx env`, Yazelix exports that curated tool surface to your shell. Runtime-private helpers stay under `libexec/` so host apps launched from Yazelix do not inherit shadowing tools like `dirname` ahead of the system PATH.
 
@@ -226,8 +286,8 @@ What it does not ship anymore:
 #### Configuration Options
 - **Custom shells**: Set `default_shell` to your preference (`"nu"`, `"bash"`, `"fish"`, `"zsh"`, `"xonsh"`); xonsh must be installed on the host and available on `PATH`
 - **Host xonsh hooks**: Yazelix generates xonsh initializers, but xonsh remains host-installed and native xonsh startup must source `~/.config/yazelix/shell_xonsh.xsh`
-- **Terminal package**: choose a flake output such as `#yazelix`, `#mars`, `#yazelix_rio`, `#yazelix_wezterm`, `#yazelix_kitty`, `#yazelix_foot`, or set Home Manager `programs.yazelix.terminal`
-- **Terminal launch**: Ghostty is first in the default terminal list for Yazelix cursor trails and Yazi image previews; Mars Terminal, Rio, WezTerm, Kitty, Foot, and Ratty remain available through explicit runtime variants or host `PATH`
+- **Terminal package**: choose a flake output such as `#yazelix`, `#yazelix_mars`, `#yazelix_ghostty`, `#yazelix_rio`, `#yazelix_wezterm`, `#yazelix_kitty`, `#yazelix_foot`, or set Home Manager `programs.yazelix.terminal`
+- **Terminal launch**: Mars is the default terminal for Yazelix-owned Rust stack compatibility and agent-driven workflows; Ghostty is the first-class mature alternate; Rio, WezTerm, Kitty, Foot, and Ratty remain available through explicit runtime variants or host `PATH`
 - **Editor choice**: Configure your editor (see [Editor Configuration](./editor_configuration.md))
 
 ### Step 4: Install Fonts (Required for Kitty)
@@ -248,7 +308,7 @@ home.packages = with pkgs; [
 ];
 ```
 
-**Note**: WezTerm, Ghostty, and Mars Terminal have better font fallback and don't require this step.
+**Note**: WezTerm and Ghostty have better font fallback and don't require this step.
 
 ### Step 5: Launch and Shell Integration
 
@@ -279,7 +339,7 @@ yzx desktop install
 
 After this, you can search for "Yazelix" in your application launcher and launch it directly.
 `yzx desktop install` points the desktop entry at the active Yazelix runtime launcher, and `yzx desktop uninstall` removes that user-local desktop integration again.
-For Home Manager installs on Linux, do not run `yzx desktop install`; the Home Manager module owns the profile desktop entries, including the active Yazelix launcher, `New Yazelix - Mars`, and the vanilla `Mars Terminal` entry. Use `yzx desktop uninstall` only to remove a stale user-local entry that shadows the Home Manager launcher.
+For Home Manager installs on Linux, do not run `yzx desktop install`; the Home Manager module owns the profile desktop entries. Use `yzx desktop uninstall` only to remove a stale user-local entry that shadows the Home Manager launcher.
 
 For better icon quality, see [desktop_icon_setup.md](./desktop_icon_setup.md).
 
@@ -295,7 +355,7 @@ This launches the same command surface used by the generated desktop entry.
 
 ##### macOS (Experimental Launcher Preview)
 
-The supported macOS launch path remains `yzx launch` from a terminal after installing the package via `nix profile add` or Home Manager. The Home Manager module does not emit Linux `xdg.desktopEntries` on macOS.
+The supported macOS package path remains `yzx launch` from a terminal after installing the package via `nix profile add` or Home Manager. Mars is the default terminal and macOS-specific Mars issues are maintained from user reports; select Ghostty when you want the mature macOS terminal path. The Home Manager module does not emit Linux `xdg.desktopEntries` on macOS.
 
 Community testers can opt into an experimental package-first app bundle preview:
 
@@ -488,6 +548,6 @@ For complete customization options, see the [Customization Guide](./customizatio
 
 - The `--impure` flag in `nix develop` allows access to the HOME environment variable, necessary for config paths
 - Tweak configs to make them yours; this is just a starting point!
-- For extra configuration, see: [Mars Terminal](https://github.com/luccahuguet/mars), [WezTerm Docs](https://wezfurlong.org/wezterm/config/files.html), [Foot config](https://man.archlinux.org/man/foot.ini.5.en), and [Ratty config](https://github.com/orhun/ratty/blob/main/config/ratty.toml)
-- Add more swap layouts by changing the `yazelix-zellij-config-pack` child repo
+- For extra configuration, see: [WezTerm Docs](https://wezfurlong.org/wezterm/config/files.html), [Foot config](https://man.archlinux.org/man/foot.ini.5.en), and [Ratty config](https://github.com/orhun/ratty/blob/main/config/ratty.toml)
+- Add more swap layouts by changing `rust_core/yazelix_zellij_config_pack/layouts`
 - Use `lazygit`, it's great

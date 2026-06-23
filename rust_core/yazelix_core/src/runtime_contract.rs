@@ -1,5 +1,5 @@
 use crate::bridge::{CoreError, ErrorClass};
-use crate::terminal_variant::{SUPPORTED_TERMINALS, terminal_command_name, terminal_display_name};
+use crate::terminal_variant::{terminal_command_name, terminal_display_name, SUPPORTED_TERMINALS};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::env;
@@ -948,13 +948,11 @@ mod tests {
             data.checks[1].message,
             "Linux Ghostty desktop-launch graphics support is not runtime-owned"
         );
-        assert!(
-            data.checks[1]
-                .details
-                .as_deref()
-                .unwrap()
-                .contains("Detected host PATH graphics wrapper: nixGLMesa")
-        );
+        assert!(data.checks[1]
+            .details
+            .as_deref()
+            .unwrap()
+            .contains("Detected host PATH graphics wrapper: nixGLMesa"));
     }
 
     // Defends: shared runtime-contract evaluation rejects unsupported requested terminals before launch fallback logic runs.
@@ -977,13 +975,11 @@ mod tests {
         assert_eq!(data.checks.len(), 1);
         assert_eq!(data.checks[0].status, "error");
         assert_eq!(data.checks[0].message, "Unsupported terminal 'warpterm'");
-        assert!(
-            data.checks[0]
-                .details
-                .as_deref()
-                .unwrap_or_default()
-                .contains("Supported terminals: ghostty, mars, rio, wezterm, ratty, kitty, foot")
-        );
+        assert!(data.checks[0]
+            .details
+            .as_deref()
+            .unwrap_or_default()
+            .contains("Supported terminals: mars, ghostty, kitty, rio, wezterm, foot, ratty"));
     }
 
     // Defends: startup-launch preflight bundles startup working-dir and runtime-script checks into one ok envelope.
@@ -1072,34 +1068,38 @@ mod tests {
         );
     }
 
-    // Defends: mars is a config id whose executable command is the child-owned Mars desktop wrapper.
+    // Defends: Mars is accepted as a public packaged launch terminal.
     #[test]
-    fn launch_preflight_maps_mars_to_child_wrapper_command() {
+    fn launch_preflight_accepts_mars_as_supported_terminal() {
         let temp = tempdir().unwrap();
-        let work = temp.path().join("work");
-        fs::create_dir_all(&work).unwrap();
         let host_bin = temp.path().join("host-bin");
         fs::create_dir_all(&host_bin).unwrap();
-        write_executable(&host_bin.join("mars-desktop"));
+        write_executable(&host_bin.join("mars"));
 
-        let data = evaluate_startup_launch_preflight(&StartupLaunchPreflightRequest {
-            startup: None,
-            launch: Some(LaunchPreflightPayload {
-                working_dir: work.clone(),
+        let data = evaluate_runtime_contract(&RuntimeContractEvaluateRequest {
+            working_dir: None,
+            runtime_scripts: Vec::new(),
+            generated_layout: None,
+            terminal_support: Some(TerminalSupportCheckRequest {
+                owner_surface: "launch".to_string(),
                 requested_terminal: "mars".to_string(),
                 terminals: vec!["ghostty".to_string()],
                 command_search_paths: vec![host_bin],
             }),
+            linux_ghostty_desktop_graphics_support: None,
         })
         .unwrap();
 
-        let candidate = data
-            .terminal_candidates
-            .as_ref()
-            .and_then(|candidates| candidates.first())
-            .unwrap();
-        assert_eq!(candidate.terminal, "mars");
-        assert_eq!(candidate.command, "mars-desktop");
-        assert_eq!(candidate.name, "Mars");
+        let check = data.checks.first().unwrap();
+        assert_eq!(check.status, "ok");
+        assert_eq!(
+            check
+                .candidates
+                .as_ref()
+                .unwrap()
+                .first()
+                .map(|c| c.terminal.as_str()),
+            Some("mars")
+        );
     }
 }

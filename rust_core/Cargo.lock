@@ -369,6 +369,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2304e00983f87ffb38b55b444b5e3b60a884b5d30c0fca7d82fe33449bbe55ea"
 
 [[package]]
+name = "hex"
+version = "0.4.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
+
+[[package]]
 name = "id-arena"
 version = "2.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -655,6 +661,27 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8fd00f0bb2e90d81d1044c2b32617f68fcb9fa3bb7640c23e9c748e53fb30934"
 dependencies = [
  "unicode-ident",
+]
+
+[[package]]
+name = "procfs"
+version = "0.18.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "25485360a54d6861439d60facef26de713b1e126bf015ec8f98239467a2b82f7"
+dependencies = [
+ "bitflags",
+ "procfs-core",
+ "rustix",
+]
+
+[[package]]
+name = "procfs-core"
+version = "0.18.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e6401bf7b6af22f78b563665d15a22e9aef27775b79b149a66ca022468a4e405"
+dependencies = [
+ "bitflags",
+ "hex",
 ]
 
 [[package]]
@@ -1475,6 +1502,7 @@ dependencies = [
  "jsonc-parser",
  "lexopt",
  "pretty_assertions",
+ "procfs",
  "pulldown-cmark",
  "ratatui",
  "ratconfig",
@@ -1527,7 +1555,7 @@ dependencies = [
 [[package]]
 name = "yazelix_yazi_assets"
 version = "0.1.0"
-source = "git+https://github.com/luccahuguet/yazelix-yazi-assets?rev=0190035d7203251411917d0e9100a9c54f3dd907#0190035d7203251411917d0e9100a9c54f3dd907"
+source = "git+https://github.com/luccahuguet/yazelix-yazi-assets?rev=e9a936a2f2de05024a8e9d6d2f95d0a205fb0bf4#e9a936a2f2de05024a8e9d6d2f95d0a205fb0bf4"
 dependencies = [
  "serde",
  "toml",
@@ -1536,7 +1564,6 @@ dependencies = [
 [[package]]
 name = "yazelix_zellij_config_pack"
 version = "0.1.0"
-source = "git+https://github.com/luccahuguet/yazelix-zellij-config-pack?rev=29fd6520e71d8175cf0b0a00664c1d9c5fb4dc58#29fd6520e71d8175cf0b0a00664c1d9c5fb4dc58"
 dependencies = [
  "serde",
  "serde_json",

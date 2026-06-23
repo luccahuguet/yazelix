@@ -38,7 +38,7 @@ Yazelix already had a floating command-palette popup, but no coherent popup mode
 - Statement: `zellij.popup_width_percent` and
   `zellij.popup_height_percent` must be integers in the range `1..100`.
   Invalid values fail fast as config errors instead of being coerced silently
-- Verification: automated `cargo test` in `luccahuguet/yazelix-zellij-config-pack`;
+- Verification: automated `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_zellij_config_pack`;
   main materialization tests; validator `yzx_repo_validator validate-contracts`
 
 #### POP-003

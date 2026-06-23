@@ -869,6 +869,7 @@ fn build_host_rio_env_isolation_finding() -> Option<DoctorRuntimeDoctorFinding> 
     build_host_rio_env_isolation_finding_from_values(
         env::var_os("RIO_CONFIG_HOME"),
         env::var_os("MARS_CONFIG"),
+        env::var_os("MARS_CONFIG_HOME"),
         env::var_os("MARS_LD_LIBRARY_PATH_PREFIX"),
         env::var_os("MARS_HOST_LD_LIBRARY_PATH"),
     )
@@ -876,7 +877,8 @@ fn build_host_rio_env_isolation_finding() -> Option<DoctorRuntimeDoctorFinding> 
 
 fn build_host_rio_env_isolation_finding_from_values(
     rio_config_home: Option<OsString>,
-    yazelix_terminal_config: Option<OsString>,
+    legacy_mars_config: Option<OsString>,
+    mars_config_home: Option<OsString>,
     loader_prefix: Option<OsString>,
     host_loader_snapshot: Option<OsString>,
 ) -> Option<DoctorRuntimeDoctorFinding> {
@@ -884,12 +886,18 @@ fn build_host_rio_env_isolation_finding_from_values(
 
     if let Some(value) = rio_config_home {
         let value = value.to_string_lossy();
-        if value.contains("terminal_emulators/mars") || yazelix_terminal_config.is_some() {
+        if value.contains("terminal_emulators/mars")
+            || legacy_mars_config.is_some()
+            || mars_config_home.is_some()
+        {
             details.push(format!("RIO_CONFIG_HOME={value}"));
         }
     }
-    if let Some(value) = yazelix_terminal_config {
+    if let Some(value) = legacy_mars_config {
         details.push(format!("MARS_CONFIG={}", value.to_string_lossy()));
+    }
+    if let Some(value) = mars_config_home {
+        details.push(format!("MARS_CONFIG_HOME={}", value.to_string_lossy()));
     }
     if loader_prefix.is_some() || host_loader_snapshot.is_some() {
         details.push("Mars Terminal package loader environment is present in the shell.".into());
@@ -1169,7 +1177,7 @@ mod tests {
         std::fs::create_dir_all(log.parent().unwrap()).unwrap();
         std::fs::write(
             &log,
-            "[2026-06-02T00:00:00-0300] desktop deferred launch\nargv:\n  mars-desktop\n[2026-06-02T00:00:01-0300] spawned terminal_or_wrapper_pid=123\n[2026-06-02T00:00:02-0300] final_exit_status=0\nfinal_exit_kind=exit\nfinal_exit_code=0\n",
+            "[2026-06-02T00:00:00-0300] desktop deferred launch\nargv:\n  mars\n[2026-06-02T00:00:01-0300] spawned terminal_or_wrapper_pid=123\n[2026-06-02T00:00:02-0300] final_exit_status=0\nfinal_exit_kind=exit\nfinal_exit_code=0\n",
         )
         .unwrap();
 
@@ -1207,7 +1215,7 @@ mod tests {
         std::fs::create_dir_all(log.parent().unwrap()).unwrap();
         std::fs::write(
             &log,
-            "[2026-06-02T00:00:00-0300] desktop deferred launch\nargv:\n  mars-desktop\n[2026-06-02T00:00:01-0300] spawned terminal_or_wrapper_pid=123\n[2026-06-02T00:00:02-0300] exit_status=not_observed_after_probe_window\n",
+            "[2026-06-02T00:00:00-0300] desktop deferred launch\nargv:\n  mars\n[2026-06-02T00:00:01-0300] spawned terminal_or_wrapper_pid=123\n[2026-06-02T00:00:02-0300] exit_status=not_observed_after_probe_window\n",
         )
         .unwrap();
 
@@ -1243,6 +1251,7 @@ mod tests {
     fn host_rio_env_isolation_reports_mars_contamination() {
         let finding = build_host_rio_env_isolation_finding_from_values(
             Some("/home/user/.local/share/yazelix/configs/terminal_emulators/mars".into()),
+            None,
             Some("/home/user/.local/share/yazelix/configs/terminal_emulators/mars".into()),
             None,
             None,

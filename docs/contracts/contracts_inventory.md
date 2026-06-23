@@ -32,6 +32,7 @@ This inventory lists the canonical contracts under `docs/contracts/`. It is not 
 | `runtime_distribution_capability_tiers.md` | Runtime distribution capability tiers and update ownership |
 | `runtime_applied_settings.md` | Settings apply-mode vocabulary and runtime refresh boundary |
 | `runtime_root_contract.md` | Runtime root ownership |
+| `runtime_self_description.md` | Runtime manifest family and `yzx inspect --json` self-description surface |
 | `runtime_shell_floor_contract.md` | Surviving runtime-side shell floor |
 | `rust_nextest_harness_boundary.md` | Rust nextest harness boundary |
 | `rust_nushell_bridge_contract.md` | Rust/Nushell bridge behavior |
@@ -45,8 +46,10 @@ This inventory lists the canonical contracts under `docs/contracts/`. It is not 
 | `status_doctor_machine_readable_reports.md` | Machine-readable status and doctor reports |
 | `supply_chain_hardening.md` | Supply-chain hardening policy |
 | `terminal_control_boundary.md` | Typed terminal control APIs versus raw protocol strings |
+| `terminal_config_pack_boundary.md` | Terminal config renderer extraction boundary |
 | `terminal_launch_contract.md` | Terminal launch/process-boundary behavior |
 | `terminal_override_layers.md` | Terminal override layers |
+| `terminal_support_boundary.md` | Terminal support metadata ownership and promotion gate |
 | `test_suite_governance.md` | Governed test lane, strength, and retention rules |
 | `upgrade_notes_contract.md` | Structured upgrade notes |
 | `v15_trimmed_runtime_contract.md` | Current trimmed runtime branch contract |
@@ -56,7 +59,7 @@ This inventory lists the canonical contracts under `docs/contracts/`. It is not 
 | `yazelix_zellij_pane_orchestrator_extraction.md` | Standalone Zellij plugin extraction boundary for the pane orchestrator |
 | `ratconfig_extraction.md` | Reusable `ratconfig` child-crate boundary for config UI, JSONC patching, and migration primitives |
 | `yazelix_workspace_extraction.md` | Workspace extraction boundary for future `yazelix_workspace` |
-| `zellij_config_pack_boundary.md` | Child-owned Zellij config/layout renderer boundary |
+| `zellij_config_pack_boundary.md` | In-tree Zellij config/layout renderer boundary |
 | `yzx_command_palette_categories.md` | Command-palette grouping and exclusion behavior |
 
 ## Inventory Rules

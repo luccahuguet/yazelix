@@ -6,8 +6,13 @@ use super::{
 use crate::repo_validation::ValidationReport;
 use serde_json::Value as JsonValue;
 use std::fs;
+#[cfg(unix)]
+use std::os::unix::fs as unix_fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
+use yazelix_core::terminal_variant::{
+    terminal_desktop_entry_file_name, terminal_desktop_entry_name,
+};
 
 #[derive(Debug, Clone)]
 pub struct ColdProfileInstallOptions {
@@ -43,6 +48,23 @@ pub fn validate_nixpkgs_submission(repo_root: &Path) -> Result<ValidationReport,
         "building packaging/nixpkgs/default.nix during nixpkgs submission validation",
     )?;
     verify_yazelix_package(&package_root, &mut report.errors)?;
+    Ok(report)
+}
+
+pub fn validate_runtime_package_smoke(repo_root: &Path) -> Result<ValidationReport, String> {
+    let mut report = ValidationReport::default();
+    let package_root = build_flake_output_path(
+        repo_root,
+        "yazelix",
+        "building .#yazelix during runtime package smoke validation",
+    )?;
+    let temp_home = create_unique_temp_dir("yazelix_runtime_package_smoke")?;
+    let validation = (|| -> Result<(), String> {
+        create_profile_yzx_shim(&package_root, &temp_home)?;
+        verify_profile_installed_runtime(repo_root, &temp_home, &mut report.errors)
+    })();
+    let _ = fs::remove_dir_all(&temp_home);
+    validation?;
     Ok(report)
 }
 
@@ -193,6 +215,28 @@ fn require_path_absent_even_if_broken_symlink(path: &Path, label: &str, errors: 
     }
 }
 
+#[cfg(unix)]
+fn create_profile_yzx_shim(package_root: &Path, temp_home: &Path) -> Result<(), String> {
+    let profile_bin = temp_home.join(".nix-profile").join("bin");
+    fs::create_dir_all(&profile_bin)
+        .map_err(|error| format!("Failed to create {}: {}", profile_bin.display(), error))?;
+    let source = package_root.join("bin").join("yzx");
+    let target = profile_bin.join("yzx");
+    unix_fs::symlink(&source, &target).map_err(|error| {
+        format!(
+            "Failed to create runtime package smoke profile shim {} -> {}: {}",
+            target.display(),
+            source.display(),
+            error
+        )
+    })
+}
+
+#[cfg(not(unix))]
+fn create_profile_yzx_shim(_package_root: &Path, _temp_home: &Path) -> Result<(), String> {
+    Err("Runtime package smoke requires Unix-style profile symlinks".to_string())
+}
+
 fn run_profile_install(
     repo_root: &Path,
     temp_home: &Path,
@@ -245,11 +289,8 @@ fn verify_profile_installed_runtime(
         .join("yazelix")
         .join("runtime")
         .join("current");
-    let desktop_entry = temp_home
-        .join(".local")
-        .join("share")
-        .join("applications")
-        .join("com.yazelix.Yazelix.desktop");
+    let applications_dir = temp_home.join(".local").join("share").join("applications");
+    let legacy_desktop_entry = applications_dir.join("com.yazelix.Yazelix.desktop");
     let user_config = temp_home
         .join(".config")
         .join("yazelix")
@@ -268,8 +309,8 @@ fn verify_profile_installed_runtime(
         errors,
     );
     require_path_missing_abs(
-        &desktop_entry,
-        "default user-local desktop entry before explicit desktop install",
+        &legacy_desktop_entry,
+        "legacy generic user-local desktop entry",
         errors,
     );
     require_path_missing_abs(
@@ -321,8 +362,17 @@ fn verify_profile_installed_runtime(
         "mars" => "mars",
         _ => "ghostty",
     };
+    let desktop_entry = applications_dir.join(terminal_desktop_entry_file_name(runtime_terminal));
+    require_path_missing_abs(
+        &desktop_entry,
+        "selected-terminal desktop entry before explicit desktop install",
+        errors,
+    );
+    if !errors.is_empty() {
+        return Ok(());
+    }
     let runtime_terminal_command = match runtime_terminal {
-        "mars" => "mars-desktop",
+        "mars" => "mars",
         other => other,
     };
     let runtime_yzx_cli = runtime_root.join("shells").join("posix").join("yzx_cli.sh");
@@ -617,8 +667,26 @@ fn verify_profile_installed_runtime(
     )?;
     if !materialization_result.status.success() {
         errors.push(format!(
-            "Installed runtime failed to materialize the selected terminal config during cold profile-install validation\n{}",
+            "Installed runtime failed to repair generated runtime state during cold profile-install validation\n{}",
             command_output_summary(&materialization_result)
+        ));
+        return Ok(());
+    }
+
+    let terminal_materialization_result = run_installed_yzx(
+        repo_root,
+        temp_home,
+        &[
+            "run",
+            &yzx_core_arg,
+            "terminal-materialization.generate",
+            "--from-env",
+        ],
+    )?;
+    if !terminal_materialization_result.status.success() {
+        errors.push(format!(
+            "Installed runtime failed to materialize the selected terminal config during cold profile-install validation\n{}",
+            command_output_summary(&terminal_materialization_result)
         ));
         return Ok(());
     }
@@ -673,6 +741,7 @@ fn verify_profile_installed_runtime(
             temp_home,
             &yzx_path,
             &desktop_entry,
+            runtime_terminal,
             errors,
         )?;
     }
@@ -724,6 +793,7 @@ fn verify_profile_desktop_install_path(
     temp_home: &Path,
     yzx_path: &Path,
     desktop_entry: &Path,
+    runtime_terminal: &str,
     errors: &mut Vec<String>,
 ) -> Result<(), String> {
     let desktop_install = run_installed_yzx(repo_root, temp_home, &["desktop", "install"])?;
@@ -737,7 +807,7 @@ fn verify_profile_desktop_install_path(
 
     require_path_exists_abs(desktop_entry, "profile-installed desktop entry", errors);
     if desktop_entry.exists() {
-        validate_profile_desktop_entry_contents(desktop_entry, yzx_path, errors)?;
+        validate_profile_desktop_entry_contents(desktop_entry, yzx_path, runtime_terminal, errors)?;
     }
     Ok(())
 }
@@ -745,6 +815,7 @@ fn verify_profile_desktop_install_path(
 fn validate_profile_desktop_entry_contents(
     desktop_entry: &Path,
     yzx_path: &Path,
+    runtime_terminal: &str,
     errors: &mut Vec<String>,
 ) -> Result<(), String> {
     let raw = fs::read_to_string(desktop_entry).map_err(|error| {
@@ -761,7 +832,12 @@ fn validate_profile_desktop_entry_contents(
         .trim()
         .to_string();
     let expected_exec = format!("Exec=\"{}\" desktop launch", yzx_path.display());
-    for required in ["Name=Yazelix", "Terminal=true", "X-Yazelix-Managed=true"] {
+    let expected_name = format!("Name={}", terminal_desktop_entry_name(runtime_terminal));
+    for required in [
+        expected_name.as_str(),
+        "Terminal=true",
+        "X-Yazelix-Managed=true",
+    ] {
         if !raw.lines().any(|line| line.trim() == required) {
             errors.push(format!(
                 "Profile-installed desktop entry is missing `{required}`: {}",
@@ -938,14 +1014,14 @@ mod tests {
         fs::write(
             &desktop,
             format!(
-                "[Desktop Entry]\nName=Yazelix\nTerminal=true\nX-Yazelix-Managed=true\nExec=\"{}\" desktop launch\n",
+                "[Desktop Entry]\nName=New Yazelix - Ghostty\nTerminal=true\nX-Yazelix-Managed=true\nExec=\"{}\" desktop launch\n",
                 yzx.display()
             ),
         )
         .unwrap();
 
         let mut errors = Vec::new();
-        validate_profile_desktop_entry_contents(&desktop, &yzx, &mut errors).unwrap();
+        validate_profile_desktop_entry_contents(&desktop, &yzx, "ghostty", &mut errors).unwrap();
 
         assert!(errors.is_empty(), "{errors:?}");
     }
@@ -960,12 +1036,12 @@ mod tests {
         fs::write(&yzx, "").unwrap();
         fs::write(
             &desktop,
-            "[Desktop Entry]\nName=Yazelix\nTerminal=true\nX-Yazelix-Managed=true\nExec=\"/old/bin/yzx\" desktop launch\n",
+            "[Desktop Entry]\nName=New Yazelix - Ghostty\nTerminal=true\nX-Yazelix-Managed=true\nExec=\"/old/bin/yzx\" desktop launch\n",
         )
         .unwrap();
 
         let mut errors = Vec::new();
-        validate_profile_desktop_entry_contents(&desktop, &yzx, &mut errors).unwrap();
+        validate_profile_desktop_entry_contents(&desktop, &yzx, "ghostty", &mut errors).unwrap();
 
         assert!(
             errors

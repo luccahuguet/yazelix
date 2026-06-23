@@ -59,6 +59,21 @@ The default arguments must produce the same behavior as the default `.#yazelix` 
 
 It should expose the default bundled `yazelix` package. Granular customization remains explicit through `lib.${system}.mkYazelix` instead of hidden overlay magic.
 
+### Bootstrap Install Check
+
+`shells/posix/install_check.sh` is the primary pre-install diagnostic surface. It must be usable as a standalone POSIX `sh` script so users can run it before installing Yazelix and before Nix is present on `PATH`.
+
+`apps.${system}.install_check` and `packages.${system}.install_check` expose the same script through Nix for users who already have a working Nix installation.
+
+The install check must remain small and read-only:
+
+- it must not depend on the default Yazelix runtime package, selected terminal package, Helix, Zellij, child plugin artifacts, or generated runtime tree
+- it must not run `sudo`, edit Nix configuration, install packages, or mutate user state
+- it may inspect local Nix commands, platform identity, active Nix configuration, and Yazelix cache trust state
+- it should treat missing Yazelix Cachix trust as a speed warning, not an install blocker
+- it should print numbered next steps with the recommended `nix profile add --refresh --accept-flake-config github:luccahuguet/yazelix#yazelix` command, `yzx launch`, and optional cache setup guidance when Nix is available
+- it should print numbered next steps with a Nix installer command and rerun command when Nix is missing
+
 ## Runtime Tool Source Modes
 
 Runtime tools may support these source modes:
@@ -92,11 +107,9 @@ The current evaluated matrix is:
 | `runtime_tool_sources.<tool> = "host"` for leaf tools | bundled | Implemented: omits supported leaf tool packages and exports, then relies on host `PATH` | Runtime manifest records host source and doctor checks required commands | Keep implemented |
 | `runtime_tool_sources.mise` and `runtime_tool_sources.tombi` | host | Implemented default omission: these host/maintainer-adjacent tools are not bundled unless explicitly set to `bundled` | Runtime manifest records host source; generated shell initializers omit `mise` cleanly when absent, and doctor reports missing default optional integrations as informational | Keep implemented |
 | `agent_usage_programs = [ "tokenusage" ]` | on | Implemented opt-out: includes `tokenusage` for the default Codex/Claude status widgets, and omits it only when the list is set to `[]` | Agent usage widgets in the default tray have their helper available; users who remove those widgets can omit the helper explicitly | Keep implemented |
-| `terminal = "ghostty"`, `"kitty"`, `"rio"`, `"mars"`, `"wezterm"`, or Linux-only `"foot"`/`"ratty"` | `ghostty` | Implemented: selects one packaged terminal instead of bundling every terminal or selecting terminals through config | Generated terminal config follows the selected terminal; Mars Terminal additionally reuses the child package profile config, injects `terminal.transparency`, copies child-owned themes, and keeps default Rio trail cursor without packaged `custom-shader` | Keep implemented |
-| `appearance_mode = "dark"`, `"light"`, or `"auto"` | `dark` | Implemented in Home Manager: declarative value for `appearance.mode` when `manage_config = true`; default ratconfig-owned setups keep `settings.jsonc` as the semantic owner and do not receive Mars appearance env overrides | Ghostty and WezTerm use native static/auto theme selection; Rio and Foot use generated static palettes; mars uses child-owned dark/light themes and preserves child adaptive themes for `auto`; Zellij and Yazi change only their implicit default themes | Keep implemented |
+| `terminal = "mars"`, `"ghostty"`, `"kitty"`, `"rio"`, `"wezterm"`, or Linux-only `"foot"`/`"ratty"` | `mars` | Implemented: selects one packaged terminal instead of bundling every terminal or selecting terminals through config | Generated terminal config follows the selected terminal | Keep implemented |
+| `appearance_mode = "dark"`, `"light"`, or `"auto"` | `dark` | Implemented in Home Manager: declarative value for `appearance.mode` when `manage_config = true`; default ratconfig-owned setups keep `settings.jsonc` as the semantic owner | Ghostty and WezTerm use native static/auto theme selection; Rio and Foot use generated static palettes; Zellij and Yazi change only their implicit default themes | Keep implemented |
 | `extra_terminal_launchers = [ "ghostty" "wezterm" ... ]` | `[]` | Implemented in Home Manager: installs additional Linux desktop launchers without changing the active runtime identity | Each extra entry points directly at that terminal variant package in the Nix store, so dependencies remain available without adding duplicate profile `bin/yzx` commands | Keep implemented |
-| `mars_profile = "full"`, `"baseline"`, or `"shaders"` | `full` | Implemented in Home Manager: selects the generated Mars Terminal profile for activation, Linux desktop launches, and new shell sessions | `full` keeps Rio trail cursor without custom shaders, `baseline` disables effects, and `shaders` passes `MARS_PROFILE=shaders` directly into activation, the desktop entry, and the Home Manager session so app-launcher and shell environments do not decide the profile | Keep implemented |
-| `mars_emoji_font = "noto"`, `"twitter"`, or `"serenityos"` | `noto` | Implemented in Home Manager: declarative value for `terminal.emoji_style` only when `manage_config = true`; default ratconfig-owned setups edit `terminal.emoji_style` in `settings.jsonc` instead | Main Yazelix passes `MARS_EMOJI_FONT` with `MARS_EMOJI_FONT_SOURCE=home-manager` only for managed materialization, desktop launch, and session surfaces; ratconfig-owned materialization reads `terminal.emoji_style` from the active settings source; mars owns the bundled font paths, font family names, and Rio font fallback semantics | Keep implemented |
 | `components.cursors` | enabled | Implemented partial package omission: cursor shader assets and `yazelix_cursors_default.toml` are removed from the runtime tree; cursor registry code remains linked into `yazelix_core` until crate-level feature gates exist | Ghostty config generation omits Yazelix cursor shaders, cursor sidecar bootstrap is skipped, config UI hides cursor fields, Home Manager rejects cursor config ownership, and launch facts report `n/a` | Keep implemented |
 | `components.screen` | enabled | Implemented behavior toggle: welcome/screen rendering remains linked into `yazelix_core` until crate-level feature gates exist | Home Manager requires `core.skip_welcome_screen = true` and rejects enabled screen saver settings; Zellij materialization rejects screen saver when disabled; `yzx screen` returns a disabled-component error | Keep implemented |
 | Helix Steel authoring tools | bundled | Implemented `off`: omits `steel`, `steel-language-server`, `forge`, `cargo-steel-lib`, and `repl-connect`; implemented `host`: relies on host `steel` and `steel-language-server` | Managed Helix Steel plugin execution still uses the bundled Helix fork and generated config, so disabling these commands affects authoring/debugging only | Keep implemented |

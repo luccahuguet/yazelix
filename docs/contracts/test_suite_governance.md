@@ -105,7 +105,8 @@ This contract defines:
 | Sweep lane | `yzx dev test --sweep` | Matrix coverage for config and supported shell/terminal combinations without opening windows | Environment-sensitive but still scriptable |
 | Full lane | `yzx dev test --all` | Default automated suite + config/shell sweep | For broader release confidence |
 | Cheap maintainer hook lane | `prek run --all-files` | Fast always-on local hygiene | Should stay cheap enough to run often |
-| CI-only or CI-focused lane | `.github/workflows/ci.yml` | Cheap, reliable branch protection checks plus source-level release checks | Can be narrower than the full local suite when that keeps CI high-signal; child-release validation may use network metadata but must not build runtime packages |
+| CI-only or CI-focused lane | `.github/workflows/ci.yml` | Cheap, reliable branch protection checks plus source-level release checks | Always runs source contracts, builds validation helpers once per run, and path-gates Nix-heavy/package-adjacent lanes by changed surface |
+| Package cache publishing lane | `.github/workflows/publish_nix_cache.yml` | Build and publish main package outputs for published refs | Owns package-build evidence for `main` cache publication; branch CI owns source, API, child-release, and runtime-behavior evidence before merge |
 | Manual / exploratory lane | `nushell/scripts/dev/record_demo_fonts.nu`, benchmark and demo helpers | Human-observed or exploratory checks | Not part of the normal regression contract |
 
 ### Canonical fast gate set
@@ -120,10 +121,14 @@ of defaulting to every available validator. The canonical fast gates are:
 | Config contract, schema, Home Manager, or generated config metadata | `yzx_repo_validator validate-config-surface-contract` | `yzx dev test` when runtime materialization or config UI behavior changed |
 | Zellij layouts, first-party plugin contracts, or workspace assets | Focused Rust/plugin tests for touched behavior | `yzx_repo_validator validate-workspace-session-contract`; `nix build .#runtime` after first-party plugin package or runtime artifact changes |
 | Docs front door and current prose | Direct review plus relevant docs validator | `yzx_repo_validator validate-docs-experience` for route/stale-doc changes; `yzx_repo_validator validate-readme-version` for release/version surface changes |
-| Nix package, flake API, or child input changes | Cheap `nix eval` or targeted validator for the touched API | `yzx_repo_validator validate-flake-interface`; `yzx_repo_validator validate-nix-customization-api`; `yzx_repo_validator validate-child-release-transaction` for child input changes, first-party child package changes, and Darwin child-package smoke contracts; heavier installed-runtime/profile validators only for release or explicit package changes |
+| Nix package, flake API, or child input changes | Cheap `nix eval` or targeted validator for the touched API | `yzx_repo_validator validate-flake-interface`; `yzx_repo_validator validate-nix-customization-api`; `yzx_repo_validator validate-child-release-transaction` for child input changes, first-party child package changes, and Darwin child-package smoke contracts; `yzx_repo_validator validate-runtime-package-smoke` for packaged runtime helper/env/materialization behavior; heavier installed-runtime/profile validators only for release or explicit cold-install checks |
 
 `yzx dev test` is the canonical default regression gate, not the only inner-loop
-command. Sweep, cold-install, installed-runtime, and nixpkgs submission
+command. Runtime package smoke is the scheduled, manual, or changed-surface
+runtime behavior gate for packaged helpers, runtime env setup, and generated
+materialization. Cache publishing owns package buildability for published `main`
+refs, while cold-install remains an explicit manual lane for full profile-install
+evidence. Sweep, cold-install, installed-runtime, and nixpkgs submission
 validators are release or change-specific gates, not routine requirements for
 small source or test cleanups.
 

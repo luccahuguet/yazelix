@@ -3,6 +3,9 @@ use std::fs;
 use std::path::Path;
 
 pub const SUPPORTED_TERMINALS: &[&str] = &[
+    "mars", "ghostty", "kitty", "rio", "wezterm", "foot", "ratty",
+];
+const KNOWN_SESSION_TERMINALS: &[&str] = &[
     "ghostty", "mars", "rio", "wezterm", "ratty", "kitty", "foot",
 ];
 pub const SESSION_TERMINAL_ENV: &str = "YAZELIX_SESSION_TERMINAL";
@@ -16,11 +19,16 @@ pub fn normalize_terminal_id(raw: &str) -> Option<String> {
     Some(trimmed)
 }
 
-pub fn terminal_command_name(terminal: &str) -> &str {
-    match terminal {
-        "mars" => "mars-desktop",
-        other => other,
+fn normalize_session_terminal_id(raw: &str) -> Option<String> {
+    let trimmed = raw.trim().to_ascii_lowercase();
+    if trimmed.is_empty() || !KNOWN_SESSION_TERMINALS.contains(&trimmed.as_str()) {
+        return None;
     }
+    Some(trimmed)
+}
+
+pub fn terminal_command_name(terminal: &str) -> &str {
+    terminal
 }
 
 pub fn terminal_display_name(terminal: &str) -> String {
@@ -133,7 +141,8 @@ where
     F: FnMut(&str) -> Option<String>,
 {
     for key in [SESSION_TERMINAL_ENV, "MARS"] {
-        if let Some(terminal) = get_env(key).and_then(|value| normalize_terminal_id(&value)) {
+        if let Some(terminal) = get_env(key).and_then(|value| normalize_session_terminal_id(&value))
+        {
             return Some(terminal);
         }
     }
@@ -206,10 +215,9 @@ mod tests {
             terminal_window_title("ghostty", Some("work")),
             "Yazelix - Ghostty - work"
         );
-        assert_eq!(terminal_window_title("mars", None), "Yazelix - Mars");
         assert_eq!(
-            terminal_startup_wm_class("mars"),
-            "com.yazelix.Yazelix.Mars"
+            terminal_window_title("rio", Some("work")),
+            "Yazelix - Rio - work"
         );
         assert_eq!(terminal_startup_wm_class("ghostty"), "com.yazelix.Yazelix");
     }
@@ -234,6 +242,10 @@ mod tests {
         assert_eq!(
             detect_session_terminal_from_env(|key| lookup(&[("TERM_PROGRAM", "WezTerm")], key)),
             Some("wezterm".to_string())
+        );
+        assert_eq!(
+            detect_session_terminal_from_env(|key| lookup(&[("TERM_PROGRAM", "mars")], key)),
+            Some("mars".to_string())
         );
         assert_eq!(
             detect_session_terminal_from_env(|key| lookup(

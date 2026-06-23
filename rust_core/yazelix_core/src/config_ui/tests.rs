@@ -185,20 +185,23 @@ fn field_details(app: &YazelixConfigUiApp, field_index: usize) -> String {
     lines_text(&render_details(&app.ui, UiRowRef::Field(field_index)))
 }
 
-// Regression: summarized list displays must not become the edit buffer, because placeholders like `[7 items]` are not JSON.
+// Defends: list fields edit from their full JSON value instead of a lossy display label.
 #[test]
-fn list_fields_edit_from_full_json_not_display_summary() {
+fn list_fields_edit_from_full_json_value() {
     let fixture = Fixture::new();
     let model = fixture.model();
     let field = model_field(&model, "zellij.widget_tray");
 
-    assert_eq!(field.current_value, "[6 items]");
+    assert_eq!(field.current_value, "[5 items]");
     assert_eq!(field.apply_status.summary, "after Yazelix restart");
     let input = edit_input_for_field(field);
-    assert!(input.starts_with("[\"editor\",\"shell\",\"term\""));
+    assert_eq!(
+        input,
+        "[\"session\",\"editor\",\"shell\",\"term\",\"codex_usage\"]"
+    );
     assert_eq!(
         parse_edit_input(field, &input).expect("string list"),
-        json!(["editor", "shell", "term", "codex_usage", "cpu", "ram"])
+        json!(["session", "editor", "shell", "term", "codex_usage"])
     );
 }
 
@@ -689,10 +692,12 @@ fn enum_string_list_picker_toggles_subvalues_with_space() {
     let edit = app.edit.clone().expect("edit");
     assert_eq!(edit.mode, ConfigUiEditMode::MultiChoice);
     let details = field_details(&app, edit.field_index);
-    assert!(details.contains("> [x] editor"));
+    assert!(details.contains("> [x] session"));
+    assert!(details.contains("  [x] editor"));
     assert!(details.contains("  [ ] workspace"));
     assert!(!details.contains("cursor"));
 
+    app.handle_key(KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE));
     app.handle_key(KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE));
     app.handle_key(KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE));
     app.handle_key(KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE));
@@ -703,13 +708,12 @@ fn enum_string_list_picker_toggles_subvalues_with_space() {
     assert_eq!(
         parse_string_list_values(&field, &input).expect("values"),
         vec![
+            "session",
             "editor",
             "shell",
             "term",
             "workspace",
-            "codex_usage",
-            "cpu",
-            "ram"
+            "codex_usage"
         ]
     );
 
@@ -720,13 +724,12 @@ fn enum_string_list_picker_toggles_subvalues_with_space() {
     assert_eq!(
         get_json_path(&value, "zellij.widget_tray"),
         Some(&json!([
+            "session",
             "editor",
             "shell",
             "term",
             "workspace",
-            "codex_usage",
-            "cpu",
-            "ram"
+            "codex_usage"
         ]))
     );
 }

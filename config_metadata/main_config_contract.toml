@@ -10,9 +10,23 @@
 
 [contract]
 version = 1
-ratconfig_contract_version = 10
+ratconfig_contract_version = 13
+ratconfig_applied_change_ids = [
+  "rename-editor-sidebar-to-workspace-left-sidebar",
+  "replace-native-movement-defaults",
+  "add-current-default-settings",
+  "repair-native-movement-key-spelling",
+  "enable-kitty-keyboard-protocol-default",
+  "replace-default-btm-popup-with-zenith",
+  "move-default-zenith-popup-to-information-key",
+  "route-default-right-sidebar-through-yzx-agent",
+  "remove-retired-cursor-widget-tray-value",
+  "remove-cpu-ram-from-default-widget-tray",
+  "add-session-widget-tray-value",
+  "add-widget-chrome-settings",
+]
 surface = "main"
-field_count = 51
+field_count = 53
 artifact_role = "canonical_machine_metadata"
 default_template = "settings_default.jsonc"
 home_manager_module = "home_manager/module.nix"
@@ -327,18 +341,18 @@ apply_mode = "tab_session_restart"
 [fields."zellij.widget_tray"]
 kind = "string_list"
 default = [
+  "session",
   "editor",
   "shell",
   "term",
   "codex_usage",
-  "cpu",
-  "ram",
 ]
 parser_key = "zellij_widget_tray"
 home_manager_option = "zellij_widget_tray"
 parser_behavior = "direct"
 validation = "enum_string_list"
 allowed_values = [
+  "session",
   "editor",
   "shell",
   "term",
@@ -348,6 +362,37 @@ allowed_values = [
   "opencode_go_usage",
   "cpu",
   "ram",
+]
+rebuild_required = false
+apply_mode = "generated_runtime_refresh"
+
+[fields."zellij.widget_frame"]
+kind = "string"
+default = "none"
+parser_key = "zellij_widget_frame"
+home_manager_option = "zellij_widget_frame"
+parser_behavior = "direct"
+validation = "enum"
+allowed_values = [
+  "none",
+  "square",
+  "round",
+]
+rebuild_required = false
+apply_mode = "generated_runtime_refresh"
+
+[fields."zellij.widget_separator"]
+kind = "string"
+default = "dot"
+parser_key = "zellij_widget_separator"
+home_manager_option = "zellij_widget_separator"
+parser_behavior = "direct"
+validation = "enum"
+allowed_values = [
+  "dot",
+  "pipe",
+  "empty",
+  "space",
 ]
 rebuild_required = false
 apply_mode = "generated_runtime_refresh"

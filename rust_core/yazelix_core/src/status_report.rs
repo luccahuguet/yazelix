@@ -133,6 +133,18 @@ pub fn compute_status_report(
         "generated_state_materialization_reason".to_string(),
         json!(plan.reason),
     );
+    summary.insert(
+        "generated_state_input_freshness".to_string(),
+        json!({
+            "config_changed": plan.config_state.config_changed,
+            "runtime_inputs_changed": plan.config_state.inputs_changed,
+            "requires_refresh": plan.config_state.inputs_require_refresh,
+        }),
+    );
+    summary.insert(
+        "generated_state_missing_artifacts".to_string(),
+        json!(plan.missing_artifacts),
+    );
     summary.insert("default_shell".to_string(), default_shell);
     summary.insert("terminal".to_string(), json!(terminal.clone()));
     summary.insert("terminals".to_string(), json!([terminal]));

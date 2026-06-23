@@ -13,6 +13,9 @@ config.color_scheme = 'Abernathy'
 -- Hide tab bar (Zellij handles tabs)
 config.enable_tab_bar = false
 
+-- Scrollback: Zellij handles pane history inside Yazelix
+config.scrollback_lines = 0
+
 -- Transparency (configurable via settings.jsonc)
 config.window_background_opacity = 0.85
 

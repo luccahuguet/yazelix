@@ -23,6 +23,8 @@ const NIX_VULKAN_WRAPPER_CANDIDATES: &[&[&str]] = &[
 ];
 const HOST_NIXGL_COMMANDS: &[&str] = &["nixGL", "nixGLDefault", "nixGLMesa", "nixGLIntel"];
 const HOST_NIX_VULKAN_COMMANDS: &[&str] = &["nixVulkanMesa", "nixVulkanIntel"];
+const MACOS_OPEN_COMMAND: &str = "/usr/bin/open";
+const GHOSTTY_MACOS_APP_RELATIVE_PATH: &[&str] = &["Applications", "Ghostty.app"];
 
 pub(super) fn generated_terminal_config_path(state_dir: &Path, terminal: &str) -> PathBuf {
     let root = state_dir.join("configs").join("terminal_emulators");
@@ -80,9 +82,10 @@ pub(super) fn user_terminal_config_candidates_for_platform(
             xdg_config_home,
             platform,
         )),
-        "kitty" => Ok(vec![
-            home_dir.join(".config").join("kitty").join("kitty.conf"),
-        ]),
+        "kitty" => Ok(vec![home_dir
+            .join(".config")
+            .join("kitty")
+            .join("kitty.conf")]),
         "wezterm" => Ok(vec![
             home_dir.join(".wezterm.lua"),
             home_dir.join(".config").join("wezterm").join("wezterm.lua"),
@@ -195,7 +198,10 @@ fn resolve_nix_vulkan_wrapper(runtime_dir: &Path) -> Option<String> {
     )
 }
 
-fn resolve_graphics_wrapper(runtime_dir: &Path, terminal: &str) -> Option<String> {
+fn resolve_graphics_wrapper(runtime_dir: &Path, terminal: &str, platform: &str) -> Option<String> {
+    if platform != "linux" {
+        return None;
+    }
     if terminal == "ratty" {
         return resolve_nix_vulkan_wrapper(runtime_dir);
     }
@@ -212,12 +218,34 @@ pub(super) fn maybe_prepend(argv: Vec<String>, wrapper: Option<String>) -> Vec<S
     }
 }
 
+fn ghostty_macos_app_path(runtime_dir: &Path) -> PathBuf {
+    runtime_dir.join(GHOSTTY_MACOS_APP_RELATIVE_PATH.iter().collect::<PathBuf>())
+}
+
 pub(super) fn build_launch_command_argv(
     runtime_dir: &Path,
     terminal: &TerminalCandidate,
     config_path: &Path,
     working_dir: &Path,
     session_name: Option<&str>,
+) -> Result<Vec<String>, CoreError> {
+    build_launch_command_argv_for_platform(
+        runtime_dir,
+        terminal,
+        config_path,
+        working_dir,
+        session_name,
+        &current_platform_name(),
+    )
+}
+
+pub(super) fn build_launch_command_argv_for_platform(
+    runtime_dir: &Path,
+    terminal: &TerminalCandidate,
+    config_path: &Path,
+    working_dir: &Path,
+    session_name: Option<&str>,
+    platform: &str,
 ) -> Result<Vec<String>, CoreError> {
     let working_dir_args = get_working_dir_args(&terminal.terminal, working_dir);
     let startup_script = runtime_dir
@@ -239,17 +267,12 @@ pub(super) fn build_launch_command_argv(
 
     let title = terminal_window_title(&terminal.terminal, session_name);
     let config_string = config_path.to_string_lossy().into_owned();
-    let graphics_wrapper = resolve_graphics_wrapper(runtime_dir, &terminal.terminal);
+    let platform = platform.trim().to_ascii_lowercase();
+    let graphics_wrapper = resolve_graphics_wrapper(runtime_dir, &terminal.terminal, &platform);
 
     let argv = match terminal.terminal.as_str() {
         "ghostty" => {
-            let mut ghostty = if current_platform_name() == "macos" {
-                vec![
-                    terminal.command.clone(),
-                    "--config-default-files=false".to_string(),
-                    format!("--config-file={config_string}"),
-                ]
-            } else {
+            let mut ghostty = if platform == "linux" {
                 vec![
                     terminal.command.clone(),
                     "--config-default-files=false".to_string(),
@@ -258,10 +281,41 @@ pub(super) fn build_launch_command_argv(
                     format!("--class={WINDOW_CLASS}"),
                     format!("--x11-instance-name={X11_INSTANCE}"),
                 ]
+            } else {
+                vec![
+                    terminal.command.clone(),
+                    "--config-default-files=false".to_string(),
+                    format!("--config-file={config_string}"),
+                ]
             };
             ghostty.extend(working_dir_args);
             ghostty.push("-e".to_string());
             ghostty.push(startup_script.to_string_lossy().into_owned());
+            if matches!(platform.as_str(), "macos" | "darwin") {
+                let app_path = ghostty_macos_app_path(runtime_dir);
+                if !app_path.is_dir() {
+                    return Err(CoreError::classified(
+                        ErrorClass::Runtime,
+                        "missing_ghostty_macos_app_bundle",
+                        format!(
+                            "Missing packaged Ghostty app bundle at {}.",
+                            app_path.display()
+                        ),
+                        "Reinstall the Yazelix Ghostty runtime package, then retry `yzx launch`.",
+                        serde_json::json!({
+                            "path": app_path.to_string_lossy(),
+                        }),
+                    ));
+                }
+                let mut macos_open = vec![
+                    MACOS_OPEN_COMMAND.to_string(),
+                    "-na".to_string(),
+                    app_path.to_string_lossy().into_owned(),
+                    "--args".to_string(),
+                ];
+                macos_open.extend(ghostty.into_iter().skip(1));
+                return Ok(macos_open);
+            }
             let ghostty = maybe_prepend(ghostty, graphics_wrapper);
             let ghostty_wrapper = runtime_dir
                 .join("shells")
@@ -292,7 +346,6 @@ pub(super) fn build_launch_command_argv(
                 terminal.command.clone(),
                 "--title-placeholder".to_string(),
                 title,
-                "--yazelix".to_string(),
             ];
             mars.extend(working_dir_args);
             mars.push("-e".to_string());

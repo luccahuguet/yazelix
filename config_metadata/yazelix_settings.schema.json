@@ -438,6 +438,8 @@
         "support_kitty_keyboard_protocol",
         "theme",
         "widget_tray",
+        "widget_frame",
+        "widget_separator",
         "tab_label_mode",
         "claude_usage_display",
         "codex_usage_display",
@@ -479,6 +481,7 @@
           "items": {
             "type": "string",
             "enum": [
+              "session",
               "editor",
               "shell",
               "term",
@@ -490,6 +493,23 @@
               "ram"
             ]
           }
+        },
+        "widget_frame": {
+          "type": "string",
+          "enum": [
+            "none",
+            "square",
+            "round"
+          ]
+        },
+        "widget_separator": {
+          "type": "string",
+          "enum": [
+            "dot",
+            "pipe",
+            "empty",
+            "space"
+          ]
         },
         "tab_label_mode": {
           "type": "string",
