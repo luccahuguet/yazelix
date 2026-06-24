@@ -4,6 +4,7 @@ use super::config_override::{
 use super::process::command_status_with_overrides;
 use super::resolve_requested_working_dir;
 use super::sidebar_bootstrap_extra_env;
+use crate::atomic_fs::is_executable_file;
 use crate::bridge::{CoreError, ErrorClass};
 use crate::command_metadata::{YzxExternBridgeSyncRequest, sync_yzx_extern_bridge};
 use crate::control_plane::{
@@ -12,7 +13,6 @@ use crate::control_plane::{
     runtime_dir_from_env, runtime_env_request, runtime_materialization_plan_request_from_env,
     state_dir_from_env, zellij_default_shell_from_runtime,
 };
-use crate::executable_file::is_executable_file;
 use crate::front_door_render::{GameOfLifeCellStyle, play_welcome_style_with_appearance};
 use crate::initializer_commands::generate_shell_initializers_for_env;
 use crate::runtime_contract::evaluate_startup_working_dir_preflight;

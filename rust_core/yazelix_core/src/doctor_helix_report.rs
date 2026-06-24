@@ -1,7 +1,7 @@
 //! Helix-focused doctor findings (runtime conflicts, runtime health, managed integration).
 //! Bead: yazelix-ulb2.4.2
 
-use crate::executable_file::is_executable_file;
+use crate::atomic_fs::is_executable_file;
 use crate::helix_external::HelixExternalPair;
 use crate::helix_materialization::{
     MANAGED_COMMAND_MODE_COMMAND, MANAGED_COMMAND_MODE_KEY, MANAGED_REVEAL_COMMAND, REVEAL_KEY,

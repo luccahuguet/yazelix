@@ -1,5 +1,5 @@
+use crate::atomic_fs::is_executable_file;
 use crate::bridge::{CoreError, ErrorClass};
-use crate::executable_file::is_executable_file;
 use serde_json::json;
 use std::ffi::OsStr;
 use std::io::{self, Write};

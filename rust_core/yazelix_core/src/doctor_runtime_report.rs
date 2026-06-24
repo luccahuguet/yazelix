@@ -1,8 +1,8 @@
 //! Doctor findings for runtime distribution capability and shared runtime preflight.
 //! Bead: yazelix-ulb2.4.3
 
+use crate::atomic_fs::is_executable_file;
 use crate::bridge::CoreError;
-use crate::executable_file::is_executable_file;
 use crate::runtime_components::{
     read_optional_runtime_tool_manifest, read_runtime_component_manifest,
     runtime_tool_is_optional_host_integration, runtime_tool_required_commands,

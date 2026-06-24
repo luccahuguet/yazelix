@@ -192,18 +192,16 @@ fn default_right_sidebar_command() -> String {
     DEFAULT_RIGHT_SIDEBAR_COMMAND.into()
 }
 
+fn string_vec(values: &[&str]) -> Vec<String> {
+    values.iter().map(|value| (*value).to_string()).collect()
+}
+
 fn default_left_sidebar_args() -> Vec<String> {
-    DEFAULT_LEFT_SIDEBAR_YAZI_ARGS
-        .iter()
-        .map(|arg| (*arg).to_string())
-        .collect()
+    string_vec(DEFAULT_LEFT_SIDEBAR_YAZI_ARGS)
 }
 
 fn default_right_sidebar_args() -> Vec<String> {
-    DEFAULT_RIGHT_SIDEBAR_AGENT_ARGS
-        .iter()
-        .map(|arg| (*arg).to_string())
-        .collect()
+    string_vec(DEFAULT_RIGHT_SIDEBAR_AGENT_ARGS)
 }
 
 fn default_popup_percent() -> i64 {
@@ -263,27 +261,27 @@ fn default_opencode_go_usage_display() -> String {
 }
 
 fn default_claude_usage_periods() -> Vec<String> {
-    vec!["5h".into(), "week".into()]
+    string_vec(CLAUDE_CODEX_USAGE_PERIODS_ALLOWED)
 }
 
 fn default_codex_usage_periods() -> Vec<String> {
-    vec!["5h".into(), "week".into()]
+    string_vec(CLAUDE_CODEX_USAGE_PERIODS_ALLOWED)
 }
 
 fn default_opencode_go_usage_periods() -> Vec<String> {
-    vec!["5h".into(), "week".into(), "month".into()]
+    string_vec(OPENCODE_GO_USAGE_PERIODS_ALLOWED)
 }
 
 fn default_widget_tray() -> Vec<String> {
-    vec![
-        "session".into(),
-        "editor".into(),
-        "shell".into(),
-        "term".into(),
-        "codex_usage".into(),
-        "cpu".into(),
-        "ram".into(),
-    ]
+    string_vec(&[
+        "session",
+        "editor",
+        "shell",
+        "term",
+        "codex_usage",
+        "cpu",
+        "ram",
+    ])
 }
 
 fn default_editor_label() -> String {
@@ -669,56 +667,52 @@ fn normalize_usage_periods(
     Ok(periods)
 }
 
-fn normalize_tab_label_mode(mode: &str) -> Result<String, ZellijRenderPlanError> {
-    let normalized = mode.trim().to_ascii_lowercase();
-    if TAB_LABEL_MODE_ALLOWED.contains(&normalized.as_str()) {
-        Ok(normalized)
-    } else {
-        Err(ZellijRenderPlanError::new(
-            "invalid_tab_label_mode",
-            format!(
-                "Invalid zellij.tab_label_mode `{normalized}`. Expected one of: {}",
-                TAB_LABEL_MODE_ALLOWED.join(", ")
-            ),
-            "Set zellij.tab_label_mode to `full` or `compact`.",
-            json!({ "field": "zellij.tab_label_mode", "mode": normalized }),
-        ))
-    }
+macro_rules! allowed_value_normalizer {
+    ($fn_name:ident, $allowed:ident, $code:literal, $field:literal, $detail_key:literal, $remediation:literal) => {
+        fn $fn_name(value: &str) -> Result<String, ZellijRenderPlanError> {
+            let normalized = value.trim().to_ascii_lowercase();
+            if $allowed.contains(&normalized.as_str()) {
+                Ok(normalized)
+            } else {
+                Err(ZellijRenderPlanError::new(
+                    $code,
+                    format!(
+                        "Invalid {} `{normalized}`. Expected one of: {}",
+                        $field,
+                        $allowed.join(", ")
+                    ),
+                    $remediation,
+                    json!({ "field": $field, $detail_key: normalized }),
+                ))
+            }
+        }
+    };
 }
 
-fn normalize_widget_frame(frame: &str) -> Result<String, ZellijRenderPlanError> {
-    let normalized = frame.trim().to_ascii_lowercase();
-    if WIDGET_FRAME_ALLOWED.contains(&normalized.as_str()) {
-        Ok(normalized)
-    } else {
-        Err(ZellijRenderPlanError::new(
-            "invalid_widget_frame",
-            format!(
-                "Invalid zellij.widget_frame `{normalized}`. Expected one of: {}",
-                WIDGET_FRAME_ALLOWED.join(", ")
-            ),
-            "Set zellij.widget_frame to `none`, `square`, or `round`.",
-            json!({ "field": "zellij.widget_frame", "frame": normalized }),
-        ))
-    }
-}
-
-fn normalize_widget_separator(separator: &str) -> Result<String, ZellijRenderPlanError> {
-    let normalized = separator.trim().to_ascii_lowercase();
-    if WIDGET_SEPARATOR_ALLOWED.contains(&normalized.as_str()) {
-        Ok(normalized)
-    } else {
-        Err(ZellijRenderPlanError::new(
-            "invalid_widget_separator",
-            format!(
-                "Invalid zellij.widget_separator `{normalized}`. Expected one of: {}",
-                WIDGET_SEPARATOR_ALLOWED.join(", ")
-            ),
-            "Set zellij.widget_separator to `dot`, `pipe`, `empty`, or `space`.",
-            json!({ "field": "zellij.widget_separator", "separator": normalized }),
-        ))
-    }
-}
+allowed_value_normalizer!(
+    normalize_tab_label_mode,
+    TAB_LABEL_MODE_ALLOWED,
+    "invalid_tab_label_mode",
+    "zellij.tab_label_mode",
+    "mode",
+    "Set zellij.tab_label_mode to `full` or `compact`."
+);
+allowed_value_normalizer!(
+    normalize_widget_frame,
+    WIDGET_FRAME_ALLOWED,
+    "invalid_widget_frame",
+    "zellij.widget_frame",
+    "frame",
+    "Set zellij.widget_frame to `none`, `square`, or `round`."
+);
+allowed_value_normalizer!(
+    normalize_widget_separator,
+    WIDGET_SEPARATOR_ALLOWED,
+    "invalid_widget_separator",
+    "zellij.widget_separator",
+    "separator",
+    "Set zellij.widget_separator to `dot`, `pipe`, `empty`, or `space`."
+);
 
 fn pick_theme(resolved_theme_config: &str) -> String {
     if resolved_theme_config == "random" {
@@ -2149,9 +2143,10 @@ mod tests {
                 .contains(r#"plugin location="file:/tmp/zjstatus.wasm" {"#)
         );
         assert!(side.content.contains(r#"cwd="/home/user""#));
-        assert!(side
-            .content
-            .contains(&format!(r#"tab name="{}""#, HOME_TAB_MARKER)));
+        assert!(
+            side.content
+                .contains(&format!(r#"tab name="{}""#, HOME_TAB_MARKER))
+        );
         assert!(
             side.content
                 .contains(r#"command "/opt/yazelix/bin/sidebar""#)

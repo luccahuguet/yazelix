@@ -2,7 +2,7 @@ use crate::appearance_mode::{
     APPEARANCE_MODE_AUTO, APPEARANCE_MODE_DARK, APPEARANCE_MODE_LIGHT, WEZTERM_THEME_DARK,
     WEZTERM_THEME_LIGHT, appearance_mode_from_config, auto_mode, static_light_mode, wezterm_theme,
 };
-use crate::atomic_fs::write_text_atomic;
+use crate::atomic_fs::{copy_dir_all, write_text_atomic};
 use crate::bridge::CoreError;
 use crate::config_normalize::{NormalizeConfigRequest, normalize_config};
 use crate::control_plane::config_dir_from_env;
@@ -753,22 +753,6 @@ fn mars_config_table_mut<'a>(
                 serde_json::json!({}),
             )
         })
-}
-
-fn copy_dir_all(src: &Path, dst: &Path) -> std::io::Result<()> {
-    fs::create_dir_all(dst)?;
-    for entry in fs::read_dir(src)? {
-        let entry = entry?;
-        let src_path = entry.path();
-        let dst_path = dst.join(entry.file_name());
-        let file_type = entry.file_type()?;
-        if file_type.is_dir() {
-            copy_dir_all(&src_path, &dst_path)?;
-        } else if file_type.is_file() {
-            fs::copy(&src_path, &dst_path)?;
-        }
-    }
-    Ok(())
 }
 
 fn remove_path_if_exists(path: &Path, operation: &'static str) -> Result<(), CoreError> {

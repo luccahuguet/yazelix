@@ -1,5 +1,5 @@
+use crate::atomic_fs::is_executable_file;
 use crate::bridge::{CoreError, ErrorClass};
-use crate::executable_file::is_executable_file;
 use crate::terminal_variant::{SUPPORTED_TERMINALS, terminal_command_name, terminal_display_name};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
