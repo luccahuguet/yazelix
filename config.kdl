@@ -1,6 +1,6 @@
 keybinds {
     shared_except "locked" {
         unbind "Alt n"
-        bind "Alt m" { NewPane; }
+        bind "Alt m" { NewPane "stacked"; }
     }
 }

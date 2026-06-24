@@ -1,7 +1,8 @@
 # Yazelix Next
 
 Small start: a Nix flake that installs `yzn`, which opens Mars with a small
-Yazelix config, reef cursor colors, and the Yazelix Zellij fork.
+Yazelix config, reef cursor colors, a stacked layout, and the Yazelix Zellij
+fork.
 
 ## Run
 
@@ -38,14 +39,14 @@ Counts project files by language with `wc -l`. `flake.lock` is generated and
 kept separate.
 
 ```sh
-wc -l AGENTS.md README.md flake.nix mars.toml config.kdl flake.lock
+wc -l AGENTS.md README.md flake.nix mars.toml config.kdl layout.kdl flake.lock
 ```
 
 | Language | Files | Lines | Kind |
 | --- | --- | ---: | --- |
-| Markdown | `AGENTS.md`, `README.md` | 121 | Handwritten |
-| Nix | `flake.nix` | 120 | Handwritten |
+| Markdown | `AGENTS.md`, `README.md` | 122 | Handwritten |
+| Nix | `flake.nix` | 124 | Handwritten |
 | TOML | `mars.toml` | 74 | Handwritten |
-| KDL | `config.kdl` | 6 | Handwritten |
+| KDL | `config.kdl`, `layout.kdl` | 11 | Handwritten |
 | JSON | `flake.lock` | 138 | Generated |
-| Total | project files | 459 | Mixed |
+| Total | project files | 469 | Mixed |
