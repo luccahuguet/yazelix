@@ -64,12 +64,15 @@
       yznMarsConfig = pkgs.runCommand "yzn-mars-config" {} ''
         install -D -m 644 ${yznMarsToml} "$out/config.toml"
       '';
+      yznZellijConfig = pkgs.runCommand "yzn-zellij-config" {} ''
+        install -D -m 644 ${./config.kdl} "$out/config.kdl"
+      '';
       yazelixZellijPackage = mkYazelixZellij pkgs;
       yznCommand = pkgs.writeShellApplication {
         name = "yzn";
         text = ''
           export MARS_CONFIG_HOME=${yznMarsConfig}
-          exec ${marsPackage}/bin/mars -e ${yazelixZellijPackage}/bin/zellij "$@"
+          exec ${marsPackage}/bin/mars -e ${yazelixZellijPackage}/bin/zellij --config ${yznZellijConfig}/config.kdl "$@"
         '';
       };
       yznDesktop = pkgs.makeDesktopItem {
@@ -88,6 +91,7 @@
         name = "yzn";
         paths = [yznCommand yznDesktop];
         postBuild = ''
+          install -D -m 644 ${yznZellijConfig}/config.kdl "$out/share/yazelix-next/config.kdl"
           for icon in ${marsPackage}/share/icons/hicolor/*/apps/mars.png; do
             size="$(basename "$(dirname "$(dirname "$icon")")")"
             install -d "$out/share/icons/hicolor/$size/apps"

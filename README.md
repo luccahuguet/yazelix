@@ -38,13 +38,14 @@ Counts project files by language with `wc -l`. `flake.lock` is generated and
 kept separate.
 
 ```sh
-wc -l AGENTS.md README.md flake.nix mars.toml flake.lock
+wc -l AGENTS.md README.md flake.nix mars.toml config.kdl flake.lock
 ```
 
 | Language | Files | Lines | Kind |
 | --- | --- | ---: | --- |
-| Markdown | `AGENTS.md`, `README.md` | 120 | Handwritten |
-| Nix | `flake.nix` | 116 | Handwritten |
+| Markdown | `AGENTS.md`, `README.md` | 121 | Handwritten |
+| Nix | `flake.nix` | 120 | Handwritten |
 | TOML | `mars.toml` | 74 | Handwritten |
+| KDL | `config.kdl` | 6 | Handwritten |
 | JSON | `flake.lock` | 138 | Generated |
-| Total | project files | 448 | Mixed |
+| Total | project files | 459 | Mixed |
