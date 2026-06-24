@@ -45,8 +45,8 @@ wc -l AGENTS.md README.md flake.nix mars.toml config.kdl layout.kdl flake.lock
 | Language | Files | Lines | Kind |
 | --- | --- | ---: | --- |
 | Markdown | `AGENTS.md`, `README.md` | 122 | Handwritten |
-| Nix | `flake.nix` | 124 | Handwritten |
+| Nix | `flake.nix` | 128 | Handwritten |
 | TOML | `mars.toml` | 74 | Handwritten |
-| KDL | `config.kdl`, `layout.kdl` | 11 | Handwritten |
+| KDL | `config.kdl`, `layout.kdl` | 13 | Handwritten |
 | JSON | `flake.lock` | 138 | Generated |
-| Total | project files | 469 | Mixed |
+| Total | project files | 475 | Mixed |

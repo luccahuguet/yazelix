@@ -1,3 +1,5 @@
+default_shell "@nushell@"
+
 keybinds {
     shared_except "locked" {
         unbind "Alt n"

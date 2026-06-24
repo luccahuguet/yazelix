@@ -64,8 +64,11 @@
       yznMarsConfig = pkgs.runCommand "yzn-mars-config" {} ''
         install -D -m 644 ${yznMarsToml} "$out/config.toml"
       '';
+      yznConfigKdl = pkgs.replaceVars ./config.kdl {
+        nushell = "${pkgs.nushell}/bin/nu";
+      };
       yznZellijConfig = pkgs.runCommand "yzn-zellij-config" {} ''
-        install -D -m 644 ${./config.kdl} "$out/config.kdl"
+        install -D -m 644 ${yznConfigKdl} "$out/config.kdl"
       '';
       yznZellijLayout = pkgs.runCommand "yzn-zellij-layout" {} ''
         install -D -m 644 ${./layout.kdl} "$out/layout.kdl"
@@ -73,6 +76,7 @@
       yazelixZellijPackage = mkYazelixZellij pkgs;
       yznCommand = pkgs.writeShellApplication {
         name = "yzn";
+        runtimeInputs = [pkgs.nushell];
         text = ''
           export MARS_CONFIG_HOME=${yznMarsConfig}
           exec ${marsPackage}/bin/mars -e ${yazelixZellijPackage}/bin/zellij --config ${yznZellijConfig}/config.kdl --new-session-with-layout ${yznZellijLayout}/layout.kdl "$@"
