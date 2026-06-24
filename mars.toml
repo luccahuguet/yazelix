@@ -1,0 +1,74 @@
+confirm-before-quit = true
+scrollback-history-limit = 0
+force-theme = "dark"
+enable-scroll-bar = false
+line-height = 1.12
+
+[bell]
+audio = true
+visual = true
+
+[effects]
+trail-cursor = true
+
+[yazelix.cursor]
+family = "split"
+divider = "vertical"
+transition = "hard"
+colors = ["#00e6ff", "#00ff66"]
+cursor_color = "#00e6ff"
+
+[window]
+width = 960
+height = 620
+decorations = "Disabled"
+opacity = 0.78
+opacity-cells = false
+
+[panel]
+margin = [0.0]
+padding = [0.0]
+border-width = 0.0
+
+[fonts]
+family = "JetBrains Mono"
+size = 16.0
+additional-dirs = [
+  "@jetbrainsMonoDir@",
+  "@symbolsNerdDir@",
+  "@notoSymbolsDir@",
+  "@notoEmojiDir@",
+]
+symbol-map = [
+  { start = "E000", end = "F900", font-family = "Symbols Nerd Font Mono" },
+  { start = "F0000", end = "F3000", font-family = "Symbols Nerd Font Mono" },
+  { start = "1F5B0", end = "1F5C0", font-family = "Noto Sans Symbols2" },
+  { start = "2600", end = "276F", font-family = "Noto Color Emoji" },
+  { start = "1F000", end = "1F5B0", font-family = "Noto Color Emoji" },
+  { start = "1F5C0", end = "1FB00", font-family = "Noto Color Emoji" },
+]
+
+[colors]
+background = "#111416"
+foreground = "#eeeeec"
+dim-foreground = "#9d9d9c"
+black = "#000000"
+dim-black = "#6f7782"
+red = "#cd0000"
+green = "#00cd00"
+yellow = "#cdcd00"
+blue = "#1093f5"
+magenta = "#cd00cd"
+cyan = "#00cdcd"
+white = "#faebd7"
+light-black = "#8b949e"
+light-red = "#ff0000"
+light-green = "#00ff00"
+light-yellow = "#ffff00"
+light-blue = "#11b5f6"
+light-magenta = "#ff00ff"
+light-cyan = "#00ffff"
+light-white = "#ffffff"
+
+[navigation]
+mode = "Plain"
