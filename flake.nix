@@ -11,6 +11,14 @@
       url = "github:luccahuguet/yazelix-zellij/yazelix_kgp_preview";
       flake = false;
     };
+    autoLayoutYazi = {
+      url = "github:luccahuguet/auto-layout.yazi";
+      flake = false;
+    };
+    starshipYazi = {
+      url = "github:Rolv-Apneseth/starship.yazi";
+      flake = false;
+    };
   };
 
   outputs = {
@@ -18,39 +26,14 @@
     nixpkgs,
     mars,
     yazelixZellij,
+    autoLayoutYazi,
+    starshipYazi,
   }: let
     systems = [
       "x86_64-linux"
       "aarch64-linux"
     ];
     eachSystem = nixpkgs.lib.genAttrs systems;
-    mkYazelixZellij = pkgs: let
-      baseZellij =
-        if pkgs.zellij ? unwrapped
-        then pkgs.zellij.unwrapped
-        else if builtins.hasAttr "zellij-unwrapped" pkgs
-        then pkgs."zellij-unwrapped"
-        else pkgs.zellij;
-    in
-      baseZellij.overrideAttrs (_old: {
-        pname = "zellij";
-        version = "0.44.3";
-        src = yazelixZellij;
-        patches = [];
-        prePatch = "";
-        postPatch = "";
-        installCheckPhase = ''
-          runHook preInstallCheck
-          runHook postInstallCheck
-        '';
-        cargoDeps = pkgs.rustPlatform.fetchCargoVendor {
-          pname = "zellij";
-          version = "0.44.3";
-          src = yazelixZellij;
-          hash = "sha256-966FpfSsF9I10SrYe3+YNsfM2kLLv+gd0/Aw8vLp4Lk=";
-        };
-        doCheck = false;
-      });
   in {
     packages = eachSystem (system: let
       pkgs = import nixpkgs {inherit system;};
@@ -92,13 +75,59 @@
       yznZellijConfig = pkgs.runCommand "yzn-zellij-config" {} ''
         install -D -m 644 ${yznConfigKdl} "$out/config.kdl"
       '';
-      yznZellijLayout = pkgs.runCommand "yzn-zellij-layout" {} ''
-        install -D -m 644 ${./layout.kdl} "$out/layout.kdl"
+      yaziAssetsSelection = pkgs.fetchFromGitHub {
+        owner = "luccahuguet";
+        repo = "yazelix-yazi-assets";
+        rev = "aea0703247479e1fa373be6b305e24e568cb30c7";
+        sparseCheckout = ["plugins/git.yazi" "yazelix_starship.toml"];
+        nonConeMode = true;
+        hash = "sha256-eHt6kRaLcXgjhdnmhI2QY2O1tF9wGFXbIjXc4pObF4U=";
+      };
+      yznYaziConfig = pkgs.runCommand "yzn-yazi-config" {} ''
+        install -D -m 644 ${./yazi/init.lua} "$out/init.lua"
+        install -D -m 644 ${./yazi/yazi.toml} "$out/yazi.toml"
+        install -D -m 644 ${yaziAssetsSelection}/yazelix_starship.toml "$out/yazelix_starship.toml"
+        mkdir -p "$out/plugins"
+        ln -s ${autoLayoutYazi} "$out/plugins/auto-layout.yazi"
+        ln -s ${yaziAssetsSelection}/plugins/git.yazi "$out/plugins/git.yazi"
+        ln -s ${starshipYazi} "$out/plugins/starship.yazi"
       '';
-      yazelixZellijPackage = mkYazelixZellij pkgs;
+      yznYazi = pkgs.writeShellApplication {
+        name = "yzn-yazi";
+        runtimeInputs = [pkgs.git pkgs.starship];
+        text = ''
+          export YAZI_CONFIG_HOME=${yznYaziConfig}
+          export YZN_YAZI_STARSHIP_CONFIG=${yznYaziConfig}/yazelix_starship.toml
+          exec ${pkgs.yazi}/bin/yazi "$@"
+        '';
+      };
+      yznLayoutKdl = pkgs.replaceVars ./layout.kdl {
+        yazi = "${yznYazi}/bin/yzn-yazi";
+      };
+      yznZellijLayout = pkgs.runCommand "yzn-zellij-layout" {} ''
+        install -D -m 644 ${yznLayoutKdl} "$out/layout.kdl"
+      '';
+      yazelixZellijPackage = pkgs."zellij-unwrapped".overrideAttrs (_old: {
+        pname = "zellij";
+        version = "0.44.3";
+        src = yazelixZellij;
+        patches = [];
+        prePatch = "";
+        postPatch = "";
+        installCheckPhase = ''
+          runHook preInstallCheck
+          runHook postInstallCheck
+        '';
+        cargoDeps = pkgs.rustPlatform.fetchCargoVendor {
+          pname = "zellij";
+          version = "0.44.3";
+          src = yazelixZellij;
+          hash = "sha256-966FpfSsF9I10SrYe3+YNsfM2kLLv+gd0/Aw8vLp4Lk=";
+        };
+        doCheck = false;
+      });
       yznCommand = pkgs.writeShellApplication {
         name = "yzn";
-        runtimeInputs = [pkgs.nushell pkgs.starship pkgs.carapace pkgs.zoxide];
         text = ''
           export MARS_CONFIG_HOME=${yznMarsConfig}
           exec ${marsPackage}/bin/mars -e ${yazelixZellijPackage}/bin/zellij --config ${yznZellijConfig}/config.kdl --new-session-with-layout ${yznZellijLayout}/layout.kdl "$@"
@@ -124,8 +153,6 @@
           install -D -m 644 ${yznZellijLayout}/layout.kdl "$out/share/yazelix-next/layout.kdl"
           install -D -m 644 ${yznNuConfig}/config.nu "$out/share/yazelix-next/nu/config.nu"
           install -D -m 644 ${yznNuConfig}/env.nu "$out/share/yazelix-next/nu/env.nu"
-          install -D -m 644 ${yznCarapaceInit} "$out/share/yazelix-next/nu/carapace.nu"
-          install -D -m 644 ${yznZoxideInit} "$out/share/yazelix-next/nu/zoxide.nu"
           for icon in ${marsPackage}/share/icons/hicolor/*/apps/mars.png; do
             size="$(basename "$(dirname "$(dirname "$icon")")")"
             install -d "$out/share/icons/hicolor/$size/apps"

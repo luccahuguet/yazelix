@@ -1,8 +1,7 @@
 # Yazelix Next
 
-Small start: a Nix flake that installs `yzn`, which opens Mars with a small
-Yazelix config, reef cursor colors, a stacked layout, and the Yazelix Zellij
-fork.
+Small start: a Nix flake that installs `yzn`, which opens Mars with a Yazi
+sidebar, reef cursor colors, a stacked main pane, and the Yazelix Zellij fork.
 
 ## Run
 
@@ -51,16 +50,17 @@ Counts project files by language with `wc -l`. `flake.lock` is generated and
 kept separate.
 
 ```sh
-wc -l AGENTS.md README.md flake.nix mars.toml config.kdl layout.kdl nu/config.nu nu/env.nu scripts/yzn-nu.sh flake.lock
+wc -l AGENTS.md README.md flake.nix mars.toml config.kdl layout.kdl nu/config.nu nu/env.nu scripts/yzn-nu.sh yazi/init.lua yazi/yazi.toml flake.lock
 ```
 
 | Language | Files | Lines | Kind |
 | --- | --- | ---: | --- |
 | Markdown | `AGENTS.md`, `README.md` | 136 | Handwritten |
-| Nix | `flake.nix` | 154 | Handwritten |
-| TOML | `mars.toml` | 74 | Handwritten |
-| KDL | `config.kdl`, `layout.kdl` | 21 | Handwritten |
+| Nix | `flake.nix` | 181 | Handwritten |
+| TOML | `mars.toml`, `yazi/yazi.toml` | 83 | Handwritten |
+| KDL | `config.kdl`, `layout.kdl` | 24 | Handwritten |
 | Nu | `nu/config.nu`, `nu/env.nu` | 15 | Handwritten |
 | Shell | `scripts/yzn-nu.sh` | 36 | Handwritten |
-| JSON | `flake.lock` | 138 | Generated |
-| Total | project files | 574 | Mixed |
+| Lua | `yazi/init.lua` | 8 | Handwritten |
+| JSON | `flake.lock` | 172 | Generated |
+| Total | project files | 655 | Mixed |

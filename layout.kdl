@@ -3,8 +3,11 @@ layout {
         plugin location="tab-bar"
     }
 
-    pane stacked=true {
-        pane
+    pane split_direction="vertical" {
+        pane command="@yazi@" size="20%"
+        pane stacked=true {
+            pane
+        }
     }
 
     pane size=1 borderless=true {
