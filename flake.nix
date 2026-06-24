@@ -83,8 +83,8 @@
         name = "yzn-nu";
         runtimeInputs = [pkgs.nushell pkgs.starship pkgs.carapace pkgs.zoxide];
         text = ''
-          exec nu --env-config ${yznNuConfig}/env.nu --config ${yznNuConfig}/config.nu "$@"
-        '';
+          export YZN_PACKAGED_NU=${yznNuConfig}
+        '' + builtins.readFile ./scripts/yzn-nu.sh;
       };
       yznConfigKdl = pkgs.replaceVars ./config.kdl {
         nuShell = "${yznNuShell}/bin/yzn-nu";
