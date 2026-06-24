@@ -64,8 +64,30 @@
       yznMarsConfig = pkgs.runCommand "yzn-mars-config" {} ''
         install -D -m 644 ${yznMarsToml} "$out/config.toml"
       '';
+      yznCarapaceInit = pkgs.runCommand "yzn-carapace-init" {} ''
+        ${pkgs.carapace}/bin/carapace _carapace nushell > "$out"
+      '';
+      yznZoxideInit = pkgs.runCommand "yzn-zoxide-init" {} ''
+        ${pkgs.zoxide}/bin/zoxide init nushell > "$out"
+      '';
+      yznNuConfigNu = pkgs.replaceVars ./nu/config.nu {
+        carapaceInit = "${yznCarapaceInit}";
+        starship = "${pkgs.starship}/bin/starship";
+        zoxideInit = "${yznZoxideInit}";
+      };
+      yznNuConfig = pkgs.runCommand "yzn-nu-config" {} ''
+        install -D -m 644 ${yznNuConfigNu} "$out/config.nu"
+        install -D -m 644 ${./nu/env.nu} "$out/env.nu"
+      '';
+      yznNuShell = pkgs.writeShellApplication {
+        name = "yzn-nu";
+        runtimeInputs = [pkgs.nushell pkgs.starship pkgs.carapace pkgs.zoxide];
+        text = ''
+          exec nu --env-config ${yznNuConfig}/env.nu --config ${yznNuConfig}/config.nu "$@"
+        '';
+      };
       yznConfigKdl = pkgs.replaceVars ./config.kdl {
-        nushell = "${pkgs.nushell}/bin/nu";
+        nuShell = "${yznNuShell}/bin/yzn-nu";
       };
       yznZellijConfig = pkgs.runCommand "yzn-zellij-config" {} ''
         install -D -m 644 ${yznConfigKdl} "$out/config.kdl"
@@ -76,7 +98,7 @@
       yazelixZellijPackage = mkYazelixZellij pkgs;
       yznCommand = pkgs.writeShellApplication {
         name = "yzn";
-        runtimeInputs = [pkgs.nushell];
+        runtimeInputs = [pkgs.nushell pkgs.starship pkgs.carapace pkgs.zoxide];
         text = ''
           export MARS_CONFIG_HOME=${yznMarsConfig}
           exec ${marsPackage}/bin/mars -e ${yazelixZellijPackage}/bin/zellij --config ${yznZellijConfig}/config.kdl --new-session-with-layout ${yznZellijLayout}/layout.kdl "$@"
@@ -100,6 +122,10 @@
         postBuild = ''
           install -D -m 644 ${yznZellijConfig}/config.kdl "$out/share/yazelix-next/config.kdl"
           install -D -m 644 ${yznZellijLayout}/layout.kdl "$out/share/yazelix-next/layout.kdl"
+          install -D -m 644 ${yznNuConfig}/config.nu "$out/share/yazelix-next/nu/config.nu"
+          install -D -m 644 ${yznNuConfig}/env.nu "$out/share/yazelix-next/nu/env.nu"
+          install -D -m 644 ${yznCarapaceInit} "$out/share/yazelix-next/nu/carapace.nu"
+          install -D -m 644 ${yznZoxideInit} "$out/share/yazelix-next/nu/zoxide.nu"
           for icon in ${marsPackage}/share/icons/hicolor/*/apps/mars.png; do
             size="$(basename "$(dirname "$(dirname "$icon")")")"
             install -d "$out/share/icons/hicolor/$size/apps"

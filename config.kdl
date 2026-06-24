@@ -1,4 +1,4 @@
-default_shell "@nushell@"
+default_shell "@nuShell@"
 
 keybinds {
     shared_except "locked" {
