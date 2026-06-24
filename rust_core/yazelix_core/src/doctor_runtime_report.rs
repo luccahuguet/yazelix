@@ -2,6 +2,7 @@
 //! Bead: yazelix-ulb2.4.3
 
 use crate::bridge::CoreError;
+use crate::executable_file::is_executable_file;
 use crate::runtime_components::{
     read_optional_runtime_tool_manifest, read_runtime_component_manifest,
     runtime_tool_is_optional_host_integration, runtime_tool_required_commands,
@@ -190,22 +191,7 @@ fn effective_command_search_paths(configured_paths: &[PathBuf]) -> Vec<PathBuf> 
 fn command_exists_in_paths(command: &str, command_search_paths: &[PathBuf]) -> bool {
     command_search_paths
         .iter()
-        .any(|dir| is_executable_command(&dir.join(command)))
-}
-
-#[cfg(unix)]
-fn is_executable_command(path: &Path) -> bool {
-    use std::os::unix::fs::PermissionsExt;
-
-    let Ok(metadata) = fs::metadata(path) else {
-        return false;
-    };
-    metadata.is_file() && metadata.permissions().mode() & 0o111 != 0
-}
-
-#[cfg(not(unix))]
-fn is_executable_command(path: &Path) -> bool {
-    path.is_file()
+        .any(|dir| is_executable_file(&dir.join(command)))
 }
 
 fn format_path_list(command_search_paths: &[PathBuf]) -> String {

@@ -1,9 +1,9 @@
 use crate::bridge::{CoreError, ErrorClass};
-use crate::terminal_variant::{terminal_command_name, terminal_display_name, SUPPORTED_TERMINALS};
+use crate::executable_file::is_executable_file;
+use crate::terminal_variant::{SUPPORTED_TERMINALS, terminal_command_name, terminal_display_name};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::env;
-use std::fs;
 use std::path::{Path, PathBuf};
 
 const NIXGL_WRAPPER_CANDIDATES: &[(&str, &[&str])] = &[
@@ -731,26 +731,6 @@ fn resolve_command_path(command: &str, command_search_paths: &[PathBuf]) -> Opti
     })
 }
 
-fn is_executable_file(candidate: &Path) -> bool {
-    let Ok(metadata) = fs::metadata(candidate) else {
-        return false;
-    };
-    if !metadata.is_file() {
-        return false;
-    }
-
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        metadata.permissions().mode() & 0o111 != 0
-    }
-
-    #[cfg(not(unix))]
-    {
-        true
-    }
-}
-
 fn runtime_platform_name(explicit: Option<&str>) -> String {
     explicit
         .map(str::to_string)
@@ -836,6 +816,7 @@ fn build_runtime_check(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs;
     use tempfile::tempdir;
 
     fn write_executable(path: &Path) {
@@ -948,11 +929,13 @@ mod tests {
             data.checks[1].message,
             "Linux Ghostty desktop-launch graphics support is not runtime-owned"
         );
-        assert!(data.checks[1]
-            .details
-            .as_deref()
-            .unwrap()
-            .contains("Detected host PATH graphics wrapper: nixGLMesa"));
+        assert!(
+            data.checks[1]
+                .details
+                .as_deref()
+                .unwrap()
+                .contains("Detected host PATH graphics wrapper: nixGLMesa")
+        );
     }
 
     // Defends: shared runtime-contract evaluation rejects unsupported requested terminals before launch fallback logic runs.
@@ -975,11 +958,13 @@ mod tests {
         assert_eq!(data.checks.len(), 1);
         assert_eq!(data.checks[0].status, "error");
         assert_eq!(data.checks[0].message, "Unsupported terminal 'warpterm'");
-        assert!(data.checks[0]
-            .details
-            .as_deref()
-            .unwrap_or_default()
-            .contains("Supported terminals: mars, ghostty, kitty, rio, wezterm, foot, ratty"));
+        assert!(
+            data.checks[0]
+                .details
+                .as_deref()
+                .unwrap_or_default()
+                .contains("Supported terminals: mars, ghostty, kitty, rio, wezterm, foot, ratty")
+        );
     }
 
     // Defends: startup-launch preflight bundles startup working-dir and runtime-script checks into one ok envelope.

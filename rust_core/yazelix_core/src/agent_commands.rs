@@ -1,8 +1,9 @@
 use crate::bridge::{CoreError, ErrorClass};
+use crate::executable_file::is_executable_file;
 use serde_json::json;
 use std::ffi::OsStr;
 use std::io::{self, Write};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process::Command;
 
 const CODEX_AGENT_COMMAND: &str = "codex";
@@ -142,22 +143,6 @@ fn resolve_command_on_path(command: &str, path: &OsStr) -> Option<PathBuf> {
     std::env::split_paths(path)
         .map(|entry| entry.join(command))
         .find(|candidate| is_executable_file(candidate))
-}
-
-#[cfg(unix)]
-fn is_executable_file(path: &Path) -> bool {
-    use std::os::unix::fs::PermissionsExt;
-
-    path.is_file()
-        && path
-            .metadata()
-            .map(|metadata| metadata.permissions().mode() & 0o111 != 0)
-            .unwrap_or(false)
-}
-
-#[cfg(not(unix))]
-fn is_executable_file(path: &Path) -> bool {
-    path.is_file()
 }
 
 // Test lane: default

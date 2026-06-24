@@ -32,6 +32,8 @@ struct ZellijPluginWasmPackageContract {
     wasm_path: &'static str,
 }
 
+type JsonObject = serde_json::Map<String, JsonValue>;
+
 const ZELLIJ_PLUGIN_WASM_PACKAGE_CONTRACTS: &[ZellijPluginWasmPackageContract] = &[
     ZellijPluginWasmPackageContract {
         package_attr: "yazelix_zellij_pane_orchestrator",
@@ -467,66 +469,59 @@ fn validate_cursor_package_contract_with(
     };
 
     let mut errors = Vec::new();
-    for required in CURSOR_PACKAGE_METADATA_FIELDS {
-        if !metadata.contains_key(*required) {
-            errors.push(format!(
-                "`yazelix_cursors` {system} yazelixCursorPackageContract is missing required field `{required}`."
-            ));
-        }
-    }
-    for actual in metadata.keys() {
-        if !CURSOR_PACKAGE_METADATA_FIELDS.contains(&actual.as_str()) {
-            errors.push(format!(
-                "`yazelix_cursors` {system} yazelixCursorPackageContract has unsupported field `{actual}`."
-            ));
-        }
-    }
-    require_cursor_contract_number(&mut errors, system, metadata, "schemaVersion", 1);
-    require_cursor_contract_string(
+    let context = format!("`yazelix_cursors` {system} yazelixCursorPackageContract");
+    require_exact_contract_fields(
         &mut errors,
-        system,
+        &context,
+        metadata,
+        CURSOR_PACKAGE_METADATA_FIELDS,
+    );
+    require_contract_number(&mut errors, &context, metadata, "schemaVersion", 1);
+    require_contract_string(
+        &mut errors,
+        &context,
         metadata,
         "packageName",
         "yazelix-cursors",
     );
-    require_cursor_contract_string(
+    require_contract_string(
         &mut errors,
-        system,
+        &context,
         metadata,
         "shareRoot",
         "share/yazelix/yazelix_cursors",
     );
-    require_cursor_contract_string(
+    require_contract_string(
         &mut errors,
-        system,
+        &context,
         metadata,
         "shaderRoot",
         "share/yazelix/yazelix_cursors/shaders",
     );
-    require_cursor_contract_string(
+    require_contract_string(
         &mut errors,
-        system,
+        &context,
         metadata,
         "generatedEffectRoot",
         "share/yazelix/yazelix_cursors/shaders/generated_effects",
     );
-    require_cursor_contract_string_array(
+    require_contract_string_array(
         &mut errors,
-        system,
+        &context,
         metadata,
         "requiredTargets",
         CURSOR_PACKAGE_REQUIRED_TARGETS,
     );
-    require_cursor_contract_string_array(
+    require_contract_string_array(
         &mut errors,
-        system,
+        &context,
         metadata,
         "requiredShaderFiles",
         CURSOR_PACKAGE_REQUIRED_SHADER_FILES,
     );
-    require_cursor_contract_string_array(
+    require_contract_string_array(
         &mut errors,
-        system,
+        &context,
         metadata,
         "forbiddenShaderFiles",
         &["build_shaders.nu"],
@@ -572,59 +567,6 @@ fn package_passthru_metadata(
         .map_err(|error| format!("Invalid UTF-8 from `nix eval --json {flake_attr}`: {error}"))
 }
 
-fn require_cursor_contract_number(
-    errors: &mut Vec<String>,
-    system: &str,
-    metadata: &serde_json::Map<String, JsonValue>,
-    key: &str,
-    expected: u64,
-) {
-    let actual = metadata.get(key).and_then(JsonValue::as_u64);
-    if actual != Some(expected) {
-        errors.push(format!(
-            "`yazelix_cursors` {system} yazelixCursorPackageContract field `{key}` must be {expected}; found {actual:?}."
-        ));
-    }
-}
-
-fn require_cursor_contract_string(
-    errors: &mut Vec<String>,
-    system: &str,
-    metadata: &serde_json::Map<String, JsonValue>,
-    key: &str,
-    expected: &str,
-) {
-    let actual = metadata.get(key).and_then(JsonValue::as_str);
-    if actual != Some(expected) {
-        errors.push(format!(
-            "`yazelix_cursors` {system} yazelixCursorPackageContract field `{key}` must be `{expected}`; found {actual:?}."
-        ));
-    }
-}
-
-fn require_cursor_contract_string_array(
-    errors: &mut Vec<String>,
-    system: &str,
-    metadata: &serde_json::Map<String, JsonValue>,
-    key: &str,
-    expected: &[&str],
-) {
-    let actual = metadata
-        .get(key)
-        .and_then(JsonValue::as_array)
-        .map(|values| {
-            values
-                .iter()
-                .filter_map(JsonValue::as_str)
-                .collect::<Vec<_>>()
-        });
-    if actual.as_deref() != Some(expected) {
-        errors.push(format!(
-            "`yazelix_cursors` {system} yazelixCursorPackageContract field `{key}` must be {expected:?}; found {actual:?}."
-        ));
-    }
-}
-
 fn validate_zellij_plugin_wasm_package_contract_with(
     contract: &ZellijPluginWasmPackageContract,
     raw_passthru: &str,
@@ -647,32 +589,41 @@ fn validate_zellij_plugin_wasm_package_contract_with(
         return Ok(errors);
     };
 
-    require_exact_zellij_plugin_wasm_metadata_fields(&mut errors, contract, metadata);
-    require_contract_number(&mut errors, contract, metadata, "schemaVersion", 1);
+    let context = format!(
+        "`{}` {} zellijPluginWasmPackageContract",
+        contract.package_attr, contract.system
+    );
+    require_exact_contract_fields(
+        &mut errors,
+        &context,
+        metadata,
+        ZELLIJ_PLUGIN_WASM_METADATA_FIELDS,
+    );
+    require_contract_number(&mut errors, &context, metadata, "schemaVersion", 1);
     require_contract_string(
         &mut errors,
-        contract,
+        &context,
         metadata,
         "pluginName",
         contract.plugin_name,
     );
     require_contract_string(
         &mut errors,
-        contract,
+        &context,
         metadata,
         "packageAttr",
         contract.package_attr,
     );
     require_contract_string(
         &mut errors,
-        contract,
+        &context,
         metadata,
         "wasmPath",
         contract.wasm_path,
     );
     require_contract_string(
         &mut errors,
-        contract,
+        &context,
         metadata,
         "wasmTarget",
         "wasm32-wasip1",
@@ -685,7 +636,7 @@ fn validate_zellij_plugin_wasm_package_contract_with(
         "cargoBuildSerialized",
         "installCheckVerifiesWasm",
     ] {
-        require_contract_bool(&mut errors, contract, metadata, key, true);
+        require_contract_bool(&mut errors, &context, metadata, key, true);
     }
 
     Ok(errors)
@@ -694,7 +645,7 @@ fn validate_zellij_plugin_wasm_package_contract_with(
 fn require_passthru_wasm_path(
     errors: &mut Vec<String>,
     contract: &ZellijPluginWasmPackageContract,
-    passthru: &serde_json::Map<String, JsonValue>,
+    passthru: &JsonObject,
 ) {
     let actual = passthru.get("wasmPath").and_then(JsonValue::as_str);
     if actual != Some(contract.wasm_path) {
@@ -705,73 +656,88 @@ fn require_passthru_wasm_path(
     }
 }
 
-fn require_exact_zellij_plugin_wasm_metadata_fields(
+fn require_exact_contract_fields(
     errors: &mut Vec<String>,
-    contract: &ZellijPluginWasmPackageContract,
-    metadata: &serde_json::Map<String, JsonValue>,
+    context: &str,
+    metadata: &JsonObject,
+    required_fields: &[&str],
 ) {
-    for required in ZELLIJ_PLUGIN_WASM_METADATA_FIELDS {
+    for required in required_fields {
         if !metadata.contains_key(*required) {
-            errors.push(format!(
-                "`{}` {} zellijPluginWasmPackageContract is missing required field `{}`.",
-                contract.package_attr, contract.system, required
-            ));
+            errors.push(format!("{context} is missing required field `{required}`."));
         }
     }
     for actual in metadata.keys() {
-        if !ZELLIJ_PLUGIN_WASM_METADATA_FIELDS.contains(&actual.as_str()) {
-            errors.push(format!(
-                "`{}` {} zellijPluginWasmPackageContract has unsupported field `{}`.",
-                contract.package_attr, contract.system, actual
-            ));
+        if !required_fields.contains(&actual.as_str()) {
+            errors.push(format!("{context} has unsupported field `{actual}`."));
         }
     }
 }
 
 fn require_contract_number(
     errors: &mut Vec<String>,
-    contract: &ZellijPluginWasmPackageContract,
-    metadata: &serde_json::Map<String, JsonValue>,
+    context: &str,
+    metadata: &JsonObject,
     key: &str,
     expected: u64,
 ) {
     let actual = metadata.get(key).and_then(JsonValue::as_u64);
     if actual != Some(expected) {
         errors.push(format!(
-            "`{}` {} zellijPluginWasmPackageContract field `{}` must be {}; found {:?}.",
-            contract.package_attr, contract.system, key, expected, actual
+            "{context} field `{key}` must be {expected}; found {actual:?}."
         ));
     }
 }
 
 fn require_contract_string(
     errors: &mut Vec<String>,
-    contract: &ZellijPluginWasmPackageContract,
-    metadata: &serde_json::Map<String, JsonValue>,
+    context: &str,
+    metadata: &JsonObject,
     key: &str,
     expected: &str,
 ) {
     let actual = metadata.get(key).and_then(JsonValue::as_str);
     if actual != Some(expected) {
         errors.push(format!(
-            "`{}` {} zellijPluginWasmPackageContract field `{}` must be `{}`; found {:?}.",
-            contract.package_attr, contract.system, key, expected, actual
+            "{context} field `{key}` must be `{expected}`; found {actual:?}."
         ));
     }
 }
 
 fn require_contract_bool(
     errors: &mut Vec<String>,
-    contract: &ZellijPluginWasmPackageContract,
-    metadata: &serde_json::Map<String, JsonValue>,
+    context: &str,
+    metadata: &JsonObject,
     key: &str,
     expected: bool,
 ) {
     let actual = metadata.get(key).and_then(JsonValue::as_bool);
     if actual != Some(expected) {
         errors.push(format!(
-            "`{}` {} zellijPluginWasmPackageContract field `{}` must be {}; found {:?}.",
-            contract.package_attr, contract.system, key, expected, actual
+            "{context} field `{key}` must be {expected}; found {actual:?}."
+        ));
+    }
+}
+
+fn require_contract_string_array(
+    errors: &mut Vec<String>,
+    context: &str,
+    metadata: &JsonObject,
+    key: &str,
+    expected: &[&str],
+) {
+    let actual = metadata
+        .get(key)
+        .and_then(JsonValue::as_array)
+        .map(|values| {
+            values
+                .iter()
+                .filter_map(JsonValue::as_str)
+                .collect::<Vec<_>>()
+        });
+    if actual.as_deref() != Some(expected) {
+        errors.push(format!(
+            "{context} field `{key}` must be {expected:?}; found {actual:?}."
         ));
     }
 }

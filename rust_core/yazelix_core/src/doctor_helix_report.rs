@@ -1,6 +1,7 @@
 //! Helix-focused doctor findings (runtime conflicts, runtime health, managed integration).
 //! Bead: yazelix-ulb2.4.2
 
+use crate::executable_file::is_executable_file;
 use crate::helix_external::HelixExternalPair;
 use crate::helix_materialization::{
     MANAGED_COMMAND_MODE_COMMAND, MANAGED_COMMAND_MODE_KEY, MANAGED_REVEAL_COMMAND, REVEAL_KEY,
@@ -11,8 +12,6 @@ use serde_json::Value;
 use std::collections::BTreeMap;
 use std::fs;
 use std::io::{self, Read};
-#[cfg(unix)]
-use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -133,18 +132,6 @@ fn is_helix_editor_command(editor: &str) -> bool {
 
 fn path_to_string(path: &Path) -> String {
     path.to_string_lossy().into_owned()
-}
-
-#[cfg(unix)]
-fn is_executable_file(path: &Path) -> bool {
-    fs::metadata(path)
-        .map(|meta| meta.is_file() && meta.permissions().mode() & 0o111 != 0)
-        .unwrap_or(false)
-}
-
-#[cfg(not(unix))]
-fn is_executable_file(path: &Path) -> bool {
-    path.is_file()
 }
 
 fn helix_health_runtime_directories(request: &HelixDoctorEvaluateRequest) -> Vec<PathBuf> {
