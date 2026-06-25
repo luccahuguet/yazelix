@@ -9,7 +9,7 @@ Post-v17.8 work in progress
 Upgrade impact: no user action required
 
 Highlights:
-- Reserved for post-release changes after v17.8 lands.
+- Moved the Zellij mode and quit layer onto coherent `Ctrl Alt` defaults: `Ctrl Alt p/n/t/g/s/o/q` enter pane, resize, tab, locked, scroll/search, session, and quit paths, while `Ctrl p/n/t/h/q` are unbound by default and pane grouping no longer occupies `Ctrl Alt p`
 
 ## v17.8 - 2026-06-22
 
@@ -78,7 +78,7 @@ Upgrade impact: manual action may be required
 
 Highlights:
 - Made `zellij.custom_popups` fully editable in `yzx config ui`, including popup id, command argv, keybindings, and `keep_alive`, while the default `btm` process viewer keeps its process state and restores the larger popup geometry across focused toggles
-- Repaired native Zellij movement defaults so `Ctrl Alt h` and `Ctrl Alt l` move tabs, `Ctrl Alt j` and `Ctrl Alt k` move panes, `Ctrl h` remains available for Zellij move mode, and `zellij.support_kitty_keyboard_protocol = true` is the default for unambiguous modified-letter input
+- Repaired native Zellij movement defaults so `Ctrl Alt h` and `Ctrl Alt l` move tabs, `Ctrl Alt j` and `Ctrl Alt k` move panes, `Ctrl h` is removed from the default Zellij move-mode entry, and `zellij.support_kitty_keyboard_protocol = true` is the default for unambiguous modified-letter input
 - Added `terminal.emoji_style` and Home Manager `programs.yazelix.mars_emoji_font` for Mars Terminal emoji fallback selection, with `noto`, `twitter`, and `serenityos` values, and refreshed mars runtime pins, desktop identity, polished icons, and fast dogfooding cache guidance
 - Removed the image-backed `magician` welcome, `yzx screen`, standalone `yzs`, runtime asset, Home Manager, and idle screen-saver surfaces so retained screen styles are text/animation-engine owned instead of GIF-backed
 - Moved more shipped artifacts and package contracts to child-owned outputs, including cursor shader generation, Zellij plugin wasm metadata, Steel plugin defaults, and minimal runtime docs, while deleting stale copied wasm, shader trees, media assets, and runtime artifact repair paths from the main repo
@@ -185,7 +185,7 @@ Highlights:
 - Upgraded `yzx config ui` into a structured JSONC settings editor with scalar pickers, keybinding rows, safer parse-error behavior, popup launch through `Alt Shift C`, and generic config UI machinery owned by `ratconfig`
 - Added the directional workspace keymap: `Alt Shift H` toggles the left sidebar, `Alt Shift J` opens the bottom popup, `Alt Shift K` opens the top popup, `Alt Shift L` opens the right Codex agent sidebar, and `Alt Shift M` opens the menu popup
 - Added managed focus/reveal keys: `Ctrl y` switches between editor and left sidebar, `Ctrl Shift Y` switches between editor and right sidebar, and `Alt r` smart-reveals in the editor or falls back to editor/left-sidebar focus
-- Made Yazelix and native Zellij key policies data-driven through `settings.jsonc`, including remappable native defaults such as `Ctrl Alt g/s/o` for locked/scroll/session modes, `Ctrl Shift H/L` for tab movement, `Alt 1..9` for tab jumps, `Ctrl Alt p` for pane groups, and `Alt Shift F` for focus fullscreen
+- Made Yazelix and native Zellij key policies data-driven through `settings.jsonc`, including remappable native defaults such as `Ctrl Alt g/s/o` for locked/scroll/session modes, `Ctrl Shift H/L` for tab movement, `Alt 1..9` for tab jumps, pane-group controls, and `Alt Shift F` for focus fullscreen
 - Converged generated runtime state before launch so stale Zellij layouts, plugin permission caches, terminal configs, copied native config files, and Yazi static assets are repaired or diagnosed deterministically
 - Moved status-bar and widget ownership into `yazelix-zellij-bar`, including Codex, Claude, OpenCode Go, CPU/RAM, cursor, cached facts, throttled refresh, and first-paint hydration
 - Exposed standalone subsystem packages for screen rendering, Ghostty cursors, popup panes, the Zellij bar, and Yazi assets while keeping normal Yazelix installs wired automatically

@@ -592,7 +592,7 @@ pub const ZELLIJ_NATIVE_KEYBINDINGS: &[ZellijNativeKeybindingSpec] = &[
     zellij_native_action(
         "toggle_pane_in_group",
         "Toggle pane grouping",
-        &["Ctrl Alt p"],
+        &[],
         "TogglePaneInGroup",
         &[ZellijNativeKeybindingBlock {
             mode: "shared",
@@ -612,12 +612,108 @@ pub const ZELLIJ_NATIVE_KEYBINDINGS: &[ZellijNativeKeybindingSpec] = &[
     zellij_native_action(
         "move_mode_unbind",
         "Unbind default move-mode key",
-        &[],
+        &["Ctrl h"],
         "unbind Ctrl h",
         &[ZellijNativeKeybindingBlock {
             mode: "shared_except \"move\" \"locked\"",
             action_lines: &[],
         }],
+    ),
+    zellij_native_action(
+        "pane_mode_unbind",
+        "Unbind default pane-mode key",
+        &["Ctrl p"],
+        "unbind Ctrl p",
+        &[
+            ZellijNativeKeybindingBlock {
+                mode: "shared_except \"pane\" \"locked\"",
+                action_lines: &[],
+            },
+            ZellijNativeKeybindingBlock {
+                mode: "pane",
+                action_lines: &[],
+            },
+        ],
+    ),
+    zellij_native_action(
+        "pane_mode",
+        "Toggle pane mode",
+        &["Ctrl Alt p"],
+        "SwitchToMode \"Pane\" / SwitchToMode \"Normal\"",
+        &[
+            ZellijNativeKeybindingBlock {
+                mode: "shared_except \"pane\" \"locked\"",
+                action_lines: &["SwitchToMode \"Pane\""],
+            },
+            ZellijNativeKeybindingBlock {
+                mode: "pane",
+                action_lines: &["SwitchToMode \"Normal\""],
+            },
+        ],
+    ),
+    zellij_native_action(
+        "resize_mode_unbind",
+        "Unbind default resize-mode key",
+        &["Ctrl n"],
+        "unbind Ctrl n",
+        &[
+            ZellijNativeKeybindingBlock {
+                mode: "shared_except \"resize\" \"locked\"",
+                action_lines: &[],
+            },
+            ZellijNativeKeybindingBlock {
+                mode: "resize",
+                action_lines: &[],
+            },
+        ],
+    ),
+    zellij_native_action(
+        "resize_mode",
+        "Toggle resize mode",
+        &["Ctrl Alt n"],
+        "SwitchToMode \"Resize\" / SwitchToMode \"Normal\"",
+        &[
+            ZellijNativeKeybindingBlock {
+                mode: "shared_except \"resize\" \"locked\"",
+                action_lines: &["SwitchToMode \"Resize\""],
+            },
+            ZellijNativeKeybindingBlock {
+                mode: "resize",
+                action_lines: &["SwitchToMode \"Normal\""],
+            },
+        ],
+    ),
+    zellij_native_action(
+        "tab_mode_unbind",
+        "Unbind default tab-mode key",
+        &["Ctrl t"],
+        "unbind Ctrl t",
+        &[
+            ZellijNativeKeybindingBlock {
+                mode: "shared_except \"tab\" \"locked\"",
+                action_lines: &[],
+            },
+            ZellijNativeKeybindingBlock {
+                mode: "tab",
+                action_lines: &[],
+            },
+        ],
+    ),
+    zellij_native_action(
+        "tab_mode",
+        "Toggle tab mode",
+        &["Ctrl Alt t"],
+        "SwitchToMode \"Tab\" / SwitchToMode \"Normal\"",
+        &[
+            ZellijNativeKeybindingBlock {
+                mode: "shared_except \"tab\" \"locked\"",
+                action_lines: &["SwitchToMode \"Tab\""],
+            },
+            ZellijNativeKeybindingBlock {
+                mode: "tab",
+                action_lines: &["SwitchToMode \"Normal\""],
+            },
+        ],
     ),
     zellij_native_action(
         "locked_mode_unbind",
@@ -659,6 +755,10 @@ pub const ZELLIJ_NATIVE_KEYBINDINGS: &[ZellijNativeKeybindingSpec] = &[
                 mode: "scroll",
                 action_lines: &[],
             },
+            ZellijNativeKeybindingBlock {
+                mode: "search",
+                action_lines: &[],
+            },
         ],
     ),
     zellij_native_action(
@@ -673,6 +773,10 @@ pub const ZELLIJ_NATIVE_KEYBINDINGS: &[ZellijNativeKeybindingSpec] = &[
             },
             ZellijNativeKeybindingBlock {
                 mode: "scroll",
+                action_lines: &["SwitchToMode \"Normal\""],
+            },
+            ZellijNativeKeybindingBlock {
+                mode: "search",
                 action_lines: &["SwitchToMode \"Normal\""],
             },
         ],
@@ -708,6 +812,26 @@ pub const ZELLIJ_NATIVE_KEYBINDINGS: &[ZellijNativeKeybindingSpec] = &[
                 action_lines: &["SwitchToMode \"Normal\""],
             },
         ],
+    ),
+    zellij_native_action(
+        "quit_unbind",
+        "Unbind default quit key",
+        &["Ctrl q"],
+        "unbind Ctrl q",
+        &[ZellijNativeKeybindingBlock {
+            mode: "shared_except \"locked\"",
+            action_lines: &[],
+        }],
+    ),
+    zellij_native_action(
+        "quit",
+        "Quit Yazelix",
+        &["Ctrl Alt q"],
+        "Quit",
+        &[ZellijNativeKeybindingBlock {
+            mode: "shared_except \"locked\"",
+            action_lines: &["Quit"],
+        }],
     ),
     zellij_native_action(
         "tmux_mode_unbind",

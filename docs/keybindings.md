@@ -33,11 +33,11 @@ The `Alt+Shift+H/J/K/L` layer follows Vim-style spatial placement: `H` is the le
 | **Alt+Shift+J/K**        | **Bottom/top popup**          | opens, focuses, or closes the configured named popup command |
 | **Alt+Shift+I**          | **Zenith process information**   | opens, focuses, or hides the bundled process information popup |
 | **Ctrl+Alt+g**           | **Locked mode**               | ⚠️ Remapped (was Ctrl+g) |
-| Ctrl+p                   | Pane mode                     | ✅ Original (no conflict) |
-| Ctrl+n                   | Resize mode                   | ✅ Original (no conflict) |
-| Ctrl+t                   | Tab mode                      | ✅ Original (no conflict) |
-| Ctrl+h                   | Move mode                     | ✅ Original (no conflict) |
-| Ctrl+q                   | Quit                          | ✅ Original (no conflict) |
+| **Ctrl+Alt+p**           | **Pane mode**                 | ⚠️ Remapped (was Ctrl+p) |
+| **Ctrl+Alt+n**           | **Resize mode**               | ⚠️ Remapped (was Ctrl+n) |
+| **Ctrl+Alt+t**           | **Tab mode**                  | ⚠️ Remapped (was Ctrl+t) |
+| Ctrl+h                   | Move mode                     | ❌ Removed by default |
+| **Ctrl+Alt+q**           | **Quit**                      | ⚠️ Remapped (was Ctrl+q) |
 | **Ctrl+Alt+s**           | **Scroll mode**               | ⚠️ Remapped (was Ctrl+s) |
 | **Ctrl+Alt+o**           | **Session mode**              | ⚠️ Remapped (was Ctrl+o) |
 

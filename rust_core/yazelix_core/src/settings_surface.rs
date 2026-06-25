@@ -813,7 +813,43 @@ mod tests {
         );
         assert_eq!(
             value["zellij"]["native_keybindings"]["move_mode_unbind"],
+            json!(["Ctrl h"])
+        );
+        assert_eq!(
+            value["zellij"]["native_keybindings"]["toggle_pane_in_group"],
             json!([])
+        );
+        assert_eq!(
+            value["zellij"]["native_keybindings"]["pane_mode_unbind"],
+            json!(["Ctrl p"])
+        );
+        assert_eq!(
+            value["zellij"]["native_keybindings"]["pane_mode"],
+            json!(["Ctrl Alt p"])
+        );
+        assert_eq!(
+            value["zellij"]["native_keybindings"]["resize_mode_unbind"],
+            json!(["Ctrl n"])
+        );
+        assert_eq!(
+            value["zellij"]["native_keybindings"]["resize_mode"],
+            json!(["Ctrl Alt n"])
+        );
+        assert_eq!(
+            value["zellij"]["native_keybindings"]["tab_mode_unbind"],
+            json!(["Ctrl t"])
+        );
+        assert_eq!(
+            value["zellij"]["native_keybindings"]["tab_mode"],
+            json!(["Ctrl Alt t"])
+        );
+        assert_eq!(
+            value["zellij"]["native_keybindings"]["quit_unbind"],
+            json!(["Ctrl q"])
+        );
+        assert_eq!(
+            value["zellij"]["native_keybindings"]["quit"],
+            json!(["Ctrl Alt q"])
         );
     }
 

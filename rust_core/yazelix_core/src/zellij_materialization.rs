@@ -1709,9 +1709,27 @@ ui { pane_frames { hide_session_name true } }
 
         assert!(!rendered.contains(r#"bind "Ctrl n" { SwitchToMode "Resize"; }"#));
         assert!(!rendered.contains(r#"bind "Ctrl n" { SwitchToMode "Normal"; }"#));
+        assert!(!rendered.contains(r#"bind "Ctrl p" { SwitchToMode "Pane"; }"#));
+        assert!(!rendered.contains(r#"bind "Ctrl p" { SwitchToMode "Normal"; }"#));
+        assert!(!rendered.contains(r#"bind "Ctrl t" { SwitchToMode "Tab"; }"#));
+        assert!(!rendered.contains(r#"bind "Ctrl t" { SwitchToMode "Normal"; }"#));
+        assert!(!rendered.contains(r#"bind "Ctrl q" { Quit; }"#));
+        assert!(!rendered.contains("TogglePaneInGroup"));
+        assert!(rendered.contains(r#"bind "Ctrl Alt p" { SwitchToMode "Pane"; }"#));
+        assert!(rendered.contains(r#"bind "Ctrl Alt p" { SwitchToMode "Normal"; }"#));
+        assert!(rendered.contains(r#"bind "Ctrl Alt n" { SwitchToMode "Resize"; }"#));
+        assert!(rendered.contains(r#"bind "Ctrl Alt n" { SwitchToMode "Normal"; }"#));
+        assert!(rendered.contains(r#"bind "Ctrl Alt t" { SwitchToMode "Tab"; }"#));
+        assert!(rendered.contains(r#"bind "Ctrl Alt t" { SwitchToMode "Normal"; }"#));
         assert!(rendered.contains(r#"bind "Ctrl Alt s" { SwitchToMode "Scroll"; }"#));
         assert!(rendered.contains(r#"bind "Ctrl Alt o" { SwitchToMode "Session"; }"#));
         assert!(rendered.contains(r#"bind "Ctrl Alt g" { SwitchToMode "Locked"; }"#));
+        assert!(rendered.contains(r#"bind "Ctrl Alt q" { Quit; }"#));
+        assert!(rendered.contains(r#"unbind "Ctrl h""#));
+        assert!(rendered.contains(r#"unbind "Ctrl p""#));
+        assert!(rendered.contains(r#"unbind "Ctrl n""#));
+        assert!(rendered.contains(r#"unbind "Ctrl t""#));
+        assert!(rendered.contains(r#"unbind "Ctrl q""#));
     }
 
     // Defends: integrated zjstatus layout data comes from the child widget command as an opaque plugin block.

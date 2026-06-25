@@ -192,14 +192,33 @@
       "toggle_pane_in_group_unbind": [
         "Alt p"
       ],
-      "toggle_pane_in_group": [
-        "Ctrl Alt p"
-      ],
+      "toggle_pane_in_group": [],
       "toggle_group_marking": [
         "Ctrl Alt Shift P"
       ],
-      // Optional: set this to ["Ctrl h"] only for terminals that encode Backspace as Ctrl-H.
-      "move_mode_unbind": [],
+      // Keep Backspace/Ctrl-H ambiguity out of Zellij move mode.
+      "move_mode_unbind": [
+        "Ctrl h"
+      ],
+      // Put Zellij mode and quit controls on one coherent Ctrl+Alt layer.
+      "pane_mode_unbind": [
+        "Ctrl p"
+      ],
+      "pane_mode": [
+        "Ctrl Alt p"
+      ],
+      "resize_mode_unbind": [
+        "Ctrl n"
+      ],
+      "resize_mode": [
+        "Ctrl Alt n"
+      ],
+      "tab_mode_unbind": [
+        "Ctrl t"
+      ],
+      "tab_mode": [
+        "Ctrl Alt t"
+      ],
       // Move locked mode away from Ctrl+g in normal/default modes for CLI prompt flows.
       "locked_mode_unbind": [
         "Ctrl g"
@@ -220,6 +239,12 @@
       ],
       "session_mode": [
         "Ctrl Alt o"
+      ],
+      "quit_unbind": [
+        "Ctrl q"
+      ],
+      "quit": [
+        "Ctrl Alt q"
       ],
       // Keep Ctrl+b available to shells/editors instead of Zellij tmux mode.
       "tmux_mode_unbind": [
