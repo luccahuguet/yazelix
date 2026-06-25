@@ -20,6 +20,7 @@ struct Config {
     state_dir: PathBuf,
     session_id: String,
     zellij_session_name: Option<String>,
+    log_level: LogLevel,
 }
 
 #[derive(Debug, Deserialize)]
@@ -58,12 +59,22 @@ struct BridgeResponseError {
     message: String,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+enum LogLevel {
+    Off,
+    Error,
+    Info,
+    Debug,
+}
+
+const LOG_MAX_BYTES: u64 = 64 * 1024;
+
 fn main() -> ExitCode {
     let config = Config::from_env();
     match run(&config, env::args_os().skip(1)) {
         Ok(()) => ExitCode::SUCCESS,
         Err(error) => {
-            log_event(&config, &format!("error: {error:#}"));
+            log_error(&config, &format!("error: {error:#}"));
             eprintln!("yzn-open: {error:#}");
             ExitCode::FAILURE
         }
@@ -78,7 +89,7 @@ fn run(config: &Config, raw_targets: impl IntoIterator<Item = OsString>) -> Resu
     if targets.is_empty() {
         bail!("no target paths passed");
     }
-    log_event(config, &format!("targets={}", json!(targets)));
+    log_debug(config, &format!("targets={}", json!(targets)));
     if try_bridge(config, &targets)? {
         return Ok(());
     }
@@ -100,6 +111,7 @@ impl Config {
             state_dir,
             session_id: bridge_session_id(env::var("YAZELIX_HELIX_BRIDGE_SESSION_ID").ok()),
             zellij_session_name: env::var("ZELLIJ_SESSION_NAME").ok(),
+            log_level: LogLevel::from_env(),
         }
     }
 }
@@ -120,10 +132,18 @@ fn try_bridge(config: &Config, targets: &[PathBuf]) -> Result<bool> {
         }
         let registry = read_registry(&path)?;
         if registry.schema_version != 2 {
+            log_debug(
+                config,
+                &format!(
+                    "bridge skipped registry={} unsupported_schema={}",
+                    path.display(),
+                    registry.schema_version
+                ),
+            );
             continue;
         }
         if !registry.matches_session(config) {
-            log_event(
+            log_debug(
                 config,
                 &format!(
                     "bridge skipped registry={} registry_session={:?} registry_zellij_session={:?} current_session={} current_zellij_session={:?}",
@@ -137,11 +157,15 @@ fn try_bridge(config: &Config, targets: &[PathBuf]) -> Result<bool> {
             continue;
         }
         if !registry.is_live() {
+            log_debug(
+                config,
+                &format!("bridge skipped stale registry={}", path.display()),
+            );
             continue;
         }
 
         if let Some(pane_id) = &registry.zellij_pane_id {
-            log_event(
+            log_debug(
                 config,
                 &format!(
                     "bridge focus probe registry={} pane={pane_id}",
@@ -149,7 +173,7 @@ fn try_bridge(config: &Config, targets: &[PathBuf]) -> Result<bool> {
                 ),
             );
             if let Err(error) = focus_pane(config, pane_id) {
-                log_event(
+                log_info(
                     config,
                     &format!("focus failed pane={pane_id}; treating bridge as stale: {error:#}"),
                 );
@@ -158,7 +182,7 @@ fn try_bridge(config: &Config, targets: &[PathBuf]) -> Result<bool> {
         }
 
         let (action, payload) = bridge_open_request(targets);
-        log_event(
+        log_debug(
             config,
             &format!(
                 "bridge registry={} pane={:?} action={} payload={}",
@@ -171,24 +195,31 @@ fn try_bridge(config: &Config, targets: &[PathBuf]) -> Result<bool> {
 
         match registry.send_request(action, payload) {
             Ok(response) => {
-                log_event(config, &format!("bridge ok response={}", response.trim()));
+                log_info(
+                    config,
+                    &format!(
+                        "bridge reused action={} pane={:?}",
+                        action, registry.zellij_pane_id
+                    ),
+                );
+                log_debug(config, &format!("bridge ok response={}", response.trim()));
                 return Ok(true);
             }
             Err(BridgeSendError::Unavailable) => {
-                log_event(
+                log_info(
                     config,
                     &format!("bridge unavailable registry={}", path.display()),
                 );
                 continue;
             }
             Err(BridgeSendError::Rejected(message)) => {
-                log_event(config, &format!("bridge rejected: {message}"));
+                log_error(config, &format!("bridge rejected: {message}"));
                 bail!(message);
             }
         }
     }
 
-    log_event(config, "no live bridge found; opening a new editor pane");
+    log_info(config, "no live bridge found; opening a new editor pane");
     Ok(false)
 }
 
@@ -309,7 +340,7 @@ fn open_editor_pane(config: &Config, targets: &[PathBuf]) -> Result<()> {
         );
     }
 
-    log_event(
+    log_info(
         config,
         &format!(
             "opening editor pane program={} args={}",
@@ -324,9 +355,28 @@ fn open_editor_pane(config: &Config, targets: &[PathBuf]) -> Result<()> {
         .env("YAZELIX_HELIX_BRIDGE_SESSION_ID", &config.session_id)
         .output()
         .context("could not run zellij")?;
-    log_command_output(config, "open editor pane", &output);
+    let output_log_level = if output.status.success() {
+        LogLevel::Debug
+    } else {
+        LogLevel::Error
+    };
+    let output_status = output
+        .status
+        .code()
+        .map(|code| code.to_string())
+        .unwrap_or_else(|| "signal".into());
+    log_event(
+        config,
+        output_log_level,
+        &format!(
+            "open editor pane status={} stdout={} stderr={}",
+            output_status,
+            json!(String::from_utf8_lossy(&output.stdout).trim()),
+            json!(String::from_utf8_lossy(&output.stderr).trim())
+        ),
+    );
     ensure_success(&output, "zellij failed to open editor pane")?;
-    log_event(config, "editor pane opened");
+    log_info(config, "editor pane opened");
     Ok(())
 }
 
@@ -372,14 +422,6 @@ fn display_args(args: &[OsString]) -> Vec<String> {
         .collect()
 }
 
-fn command_status(output: &Output) -> String {
-    output
-        .status
-        .code()
-        .map(|code| code.to_string())
-        .unwrap_or_else(|| "signal".into())
-}
-
 fn command_error(output: &Output) -> String {
     let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
     if stderr.is_empty() {
@@ -397,16 +439,16 @@ fn ensure_success(output: &Output, context: &str) -> Result<()> {
     }
 }
 
-fn log_command_output(config: &Config, label: &str, output: &Output) {
-    log_event(
-        config,
-        &format!(
-            "{label} status={} stdout={} stderr={}",
-            command_status(output),
-            json!(String::from_utf8_lossy(&output.stdout).trim()),
-            json!(String::from_utf8_lossy(&output.stderr).trim())
-        ),
-    );
+fn log_error(config: &Config, message: &str) {
+    log_event(config, LogLevel::Error, message);
+}
+
+fn log_info(config: &Config, message: &str) {
+    log_event(config, LogLevel::Info, message);
+}
+
+fn log_debug(config: &Config, message: &str) {
+    log_event(config, LogLevel::Debug, message);
 }
 
 fn is_socket(path: &Path) -> bool {
@@ -424,6 +466,25 @@ fn bridge_session_id(raw: Option<String>) -> String {
         .unwrap_or_else(|| format!("yzn-open-{}-{}", unix_millis(), std::process::id()))
 }
 
+impl LogLevel {
+    fn from_env() -> Self {
+        Self::parse(env::var("YZN_OPEN_LOG").ok().as_deref())
+    }
+
+    fn parse(raw: Option<&str>) -> Self {
+        match raw.unwrap_or_default().trim().to_ascii_lowercase().as_str() {
+            "off" | "0" | "false" | "none" => Self::Off,
+            "error" | "errors" => Self::Error,
+            "debug" | "trace" | "verbose" => Self::Debug,
+            _ => Self::Info,
+        }
+    }
+
+    fn allows(self, event: Self) -> bool {
+        event <= self
+    }
+}
+
 fn unix_millis() -> u128 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -431,16 +492,17 @@ fn unix_millis() -> u128 {
         .unwrap_or_default()
 }
 
-fn log_event(config: &Config, message: &str) {
+fn log_event(config: &Config, level: LogLevel, message: &str) {
+    if !config.log_level.allows(level) {
+        return;
+    }
     let log_dir = config.state_dir.join("logs");
     if fs::create_dir_all(&log_dir).is_err() {
         return;
     }
-    let Ok(mut file) = OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(log_dir.join("yzn-open.log"))
-    else {
+    let path = log_dir.join("yzn-open.log");
+    rotate_log(&path);
+    let Ok(mut file) = OpenOptions::new().create(true).append(true).open(path) else {
         return;
     };
     let _ = writeln!(
@@ -449,6 +511,15 @@ fn log_event(config: &Config, message: &str) {
         unix_millis(),
         message.replace('\n', "\n  ")
     );
+}
+
+fn rotate_log(path: &Path) {
+    if !fs::metadata(path).is_ok_and(|metadata| metadata.len() >= LOG_MAX_BYTES) {
+        return;
+    }
+    let rotated = path.with_extension("log.1");
+    let _ = fs::remove_file(&rotated);
+    let _ = fs::rename(path, rotated);
 }
 
 enum BridgeSendError {
@@ -476,15 +547,8 @@ mod tests {
         ))
     }
 
-    fn write_executable(path: &Path, text: String) {
-        fs::write(path, text).unwrap();
-        let mut permissions = fs::metadata(path).unwrap().permissions();
-        permissions.set_mode(0o755);
-        fs::set_permissions(path, permissions).unwrap();
-    }
-
     fn write_zellij_log_script(path: &Path, log: &Path, fail_focus: bool) {
-        write_executable(
+        fs::write(
             path,
             format!(
                 r#"#!/bin/sh
@@ -500,13 +564,61 @@ exit 0
                 log.display(),
                 fail_focus = if fail_focus { "true" } else { "false" },
             ),
-        );
+        )
+        .unwrap();
+        let mut permissions = fs::metadata(path).unwrap().permissions();
+        permissions.set_mode(0o755);
+        fs::set_permissions(path, permissions).unwrap();
+    }
+
+    fn test_config(root: PathBuf, session_id: &str, zellij: impl Into<OsString>) -> Config {
+        Config {
+            editor: "hx".into(),
+            zellij: zellij.into(),
+            state_dir: root,
+            session_id: session_id.into(),
+            zellij_session_name: None,
+            log_level: LogLevel::Debug,
+        }
     }
 
     #[test]
-    fn normalizes_zellij_typed_pane_ids() {
-        assert_eq!(zellij_pane_arg("terminal:7"), "terminal_7");
-        assert_eq!(zellij_pane_arg("7"), "terminal_7");
+    fn logging_can_be_disabled_or_limited_to_errors() {
+        assert_eq!(LogLevel::parse(None), LogLevel::Info);
+        assert_eq!(LogLevel::parse(Some("off")), LogLevel::Off);
+        assert_eq!(LogLevel::parse(Some("0")), LogLevel::Off);
+        assert_eq!(LogLevel::parse(Some("error")), LogLevel::Error);
+        assert_eq!(LogLevel::parse(Some("debug")), LogLevel::Debug);
+        assert_eq!(LogLevel::parse(Some("wat")), LogLevel::Info);
+
+        let root = test_dir("log-levels");
+        let mut config = test_config(root.clone(), "session", "zellij");
+        config.log_level = LogLevel::Off;
+        log_event(&config, LogLevel::Error, "hidden");
+        assert!(!root.join("logs/yzn-open.log").exists());
+
+        config.log_level = LogLevel::Error;
+        log_event(&config, LogLevel::Info, "hidden");
+        log_event(&config, LogLevel::Error, "visible");
+        let log = fs::read_to_string(root.join("logs/yzn-open.log")).unwrap();
+        assert!(log.contains("visible"));
+        assert!(!log.contains("hidden"));
+    }
+
+    #[test]
+    fn logging_rotates_large_log_file() {
+        let root = test_dir("log-rotation");
+        let config = test_config(root.clone(), "session", "zellij");
+        let log_path = root.join("logs/yzn-open.log");
+        fs::create_dir_all(log_path.parent().unwrap()).unwrap();
+        fs::write(&log_path, "x".repeat(LOG_MAX_BYTES as usize)).unwrap();
+
+        log_event(&config, LogLevel::Info, "fresh event");
+
+        let current = fs::read_to_string(&log_path).unwrap();
+        let rotated = fs::read_to_string(root.join("logs/yzn-open.log.1")).unwrap();
+        assert!(current.contains("fresh event"));
+        assert_eq!(rotated.len(), LOG_MAX_BYTES as usize);
     }
 
     #[test]
@@ -519,17 +631,14 @@ exit 0
     }
 
     #[test]
-    fn builds_file_open_payload() {
+    fn builds_file_and_directory_open_payloads() {
         let targets = vec![PathBuf::from("/tmp/project/src/main.rs")];
         let (action, payload) = bridge_open_request(&targets);
         assert_eq!(action, "helix.open_files");
         assert_eq!(payload["working_dir"], "/tmp/project/src");
         assert_eq!(payload["file_paths"], json!(["/tmp/project/src/main.rs"]));
         assert_eq!(payload["focus"], true);
-    }
 
-    #[test]
-    fn directory_selection_uses_directory_open() {
         let root = test_dir("directory-selection");
         let file = root.join("README.md");
         fs::create_dir_all(&root).unwrap();
@@ -582,13 +691,7 @@ exit 0
         });
 
         run(
-            &Config {
-                editor: "unused".into(),
-                zellij: "unused".into(),
-                state_dir: root,
-                session_id: session_id.into(),
-                zellij_session_name: None,
-            },
+            &test_config(root, session_id, "unused"),
             [OsString::from("/tmp/project/src/main.rs")],
         )
         .unwrap();
@@ -624,7 +727,7 @@ exit 0
                 "transport": { "kind": "unix_socket", "path": &socket_path },
                 "auth_token_path": &token_path,
                 "zellij_session_name": "zellij-test",
-                "zellij_pane_id": "1",
+                "zellij_pane_id": "terminal:1",
             })
             .to_string(),
         )
@@ -635,11 +738,8 @@ exit 0
 
         run(
             &Config {
-                editor: "hx".into(),
-                zellij: zellij.into(),
-                state_dir: root.clone(),
-                session_id: session_id.into(),
                 zellij_session_name: Some("zellij-test".into()),
+                ..test_config(root.clone(), session_id, zellij)
             },
             [OsString::from("/tmp/project/src/main.rs")],
         )
@@ -677,11 +777,8 @@ exit 0
 
         run(
             &Config {
-                editor: "hx".into(),
-                zellij: zellij.into(),
-                state_dir: root,
-                session_id: "window-a".into(),
                 zellij_session_name: Some("zellij-a".into()),
+                ..test_config(root, "window-a", zellij)
             },
             [OsString::from("/tmp/project/src/main.rs")],
         )
@@ -722,11 +819,8 @@ exit 0
 
         run(
             &Config {
-                editor: "hx".into(),
-                zellij: zellij.into(),
-                state_dir: root,
-                session_id: session_id.into(),
                 zellij_session_name: Some("zellij-a".into()),
+                ..test_config(root, session_id, zellij)
             },
             [OsString::from("/tmp/project/src/main.rs")],
         )

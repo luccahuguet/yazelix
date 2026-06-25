@@ -36,7 +36,8 @@ and routes file opens through `yzn-open`.
 
 `crates/yzn-open/` is the editor-open owner. It sends file and directory open
 requests to the live Yazelix Helix bridge when available, and otherwise opens a
-managed `yzn-hx` pane through Zellij.
+managed `yzn-hx` pane through Zellij. It also owns bounded diagnostics for
+Yazi-to-Helix open behavior.
 
 `checks/` owns build-time contract guards. `zellij-layout.rs` validates Zellij
 layout swaps, and `yzn-contracts.rs` validates Nushell config layering.
@@ -77,7 +78,7 @@ window.
 | C3 | Zellij layout has the sidebar template required by swaps | `layout.kdl`, `layout.swap.kdl` | `checks/zellij-layout.rs` runs during build | None for the current template/swap contract |
 | C4 | `Alt m` opens a stacked pane and `Alt Shift h` toggles the sidebar swap | `config.kdl` | `nix build .#yzn` packages the config | Key behavior remains manual dogfooding |
 | C5 | Nushell loads packaged config first, then optional user config | `runtime/yzn-nu.rs`, `nu/` | `checks/yzn-contracts.rs` runs in `nix flake check` | None for current layering behavior |
-| C6 | Yazi opens paths through `yzn-open` | `yazi/yazi.toml`, `crates/yzn-open/` | `cargo test` through `yzn-open` package build | Full Yazi UI behavior remains manual dogfooding |
+| C6 | Yazi opens paths through `yzn-open` with bounded diagnostics | `yazi/yazi.toml`, `crates/yzn-open/` | `cargo test` through `yzn-open` package build | Full Yazi UI behavior remains manual dogfooding |
 | C7 | Helix bridge reuse stays inside the current `yzn` window | `crates/yzn-open/`, `flake.nix` | `yzn-open` Rust tests cover session and Zellij-window mismatch | Full multi-window GUI behavior remains manual dogfooding |
 | C8 | Desktop entry starts `yzn` | `flake.nix` | `nix build .#yzn` packages the desktop file | Desktop environment launch remains manual dogfooding |
 

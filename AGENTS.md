@@ -28,6 +28,18 @@ regression fixes. Do not use classic TDD as the default for layout design,
 runtime integration, fork decisions, or dogfooding surfaces; write the contract
 and the focused check first.
 
+## Testing Discipline
+
+Keep tests strong and few. A test should prove a contract, regression, boundary,
+or failure mode that matters to users or future agents.
+
+Do not keep weak tests. If a test only repeats another check, asserts
+implementation trivia, or mostly preserves scaffolding, either merge its useful
+assertion into a stronger test or delete it.
+
+Prefer one contract test with clear setup and meaningful assertions over several
+thin tests that make refactors harder without increasing confidence.
+
 ## Current Runtime
 
 Current chain:
