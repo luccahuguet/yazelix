@@ -71,6 +71,9 @@ than relying on chat history
 
 Update the README LOC scorecard whenever project files change
 
+Update `CHANGELOG.md` when user-visible runtime behavior, commands, keymaps,
+packaged tools, or runtime contracts change
+
 Prefer deleting scope, avoiding abstractions, and reusing existing package
 outputs over adding local wrappers. If LOC grows, the added behavior should be
 visible in the scorecard and justified by the slice

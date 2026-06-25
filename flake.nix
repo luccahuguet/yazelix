@@ -183,7 +183,18 @@
           ${bridgeSessionEnv "yzn"}
           export EDITOR=${yznHelix}/bin/yzn-hx
           export VISUAL=${yznHelix}/bin/yzn-hx
-          export MARS_CONFIG_HOME=${yznMarsConfig}
+          if [ -n "''${YAZELIX_NEXT_CONFIG_HOME:-}" ]; then
+            yzn_config_home="$YAZELIX_NEXT_CONFIG_HOME"
+          elif [ -n "''${XDG_CONFIG_HOME:-}" ]; then
+            yzn_config_home="$XDG_CONFIG_HOME/yazelix-next"
+          else
+            yzn_config_home="''${HOME:?HOME is required}/.config/yazelix-next"
+          fi
+          if [ -f "$yzn_config_home/mars/config.toml" ]; then
+            export MARS_CONFIG_HOME="$yzn_config_home/mars"
+          else
+            export MARS_CONFIG_HOME=${yznMarsConfig}
+          fi
           exec ${marsPackage}/bin/mars -e ${yazelixZellijPackage}/bin/zellij --config ${yznConfigKdl} --new-session-with-layout ${yznZellijLayout}/layout.kdl "$@"
         '';
       };
@@ -204,6 +215,7 @@
         paths = [yznCommand yznDesktop];
         postBuild = ''
           install -D -m 644 ${yznConfigKdl} "$out/share/yazelix-next/config.kdl"
+          install -D -m 644 ${yznMarsConfig}/config.toml "$out/share/yazelix-next/mars/config.toml"
           install -D -m 644 ${yznZellijLayout}/layout.kdl "$out/share/yazelix-next/layout.kdl"
           install -D -m 644 ${yznZellijLayout}/layout.swap.kdl "$out/share/yazelix-next/layout.swap.kdl"
           install -D -m 644 ${yznNuConfig}/config.nu "$out/share/yazelix-next/nu/config.nu"

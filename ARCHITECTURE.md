@@ -17,8 +17,10 @@ compatibility layer.
 builds small local Rust helpers, substitutes local config templates, installs
 the desktop entry, and exposes the `yzn` package/app.
 
-`mars.toml` is the terminal visual config owner. It sets the Mars window, font,
-cursor, bell, quit, and theme behavior used by `yzn`.
+`mars.toml` is the packaged terminal visual config owner. It sets the default
+Mars window, font, cursor, bell, quit, and theme behavior used by `yzn`. A user
+can replace the Mars config with `~/.config/yazelix-next/mars/config.toml`;
+`yzn` still owns the launch command and runtime environment.
 
 `config.kdl`, `layout.kdl`, and `layout.swap.kdl` are the Zellij behavior
 owners. They set the shell, Zellij-native `Ctrl Alt` mode keys, direct
@@ -45,16 +47,20 @@ layout swaps, and `yzn-contracts.rs` validates Nushell config layering.
 
 ## Config Layering
 
-Packaged config comes first. User config is narrow and explicit:
+Packaged config comes first unless a surface explicitly opts into native
+replacement. User config is narrow and explicit:
 
 ```text
+~/.config/yazelix-next/mars/config.toml
 ~/.config/yazelix-next/nu/env.nu
 ~/.config/yazelix-next/nu/config.nu
 ```
 
-`YAZELIX_NEXT_CONFIG_HOME` can point at another config root. Normal Nushell
-config is not loaded by default, which keeps `yzn` reproducible and avoids
-ambient user shell behavior changing the runtime.
+`YAZELIX_NEXT_CONFIG_HOME` can point at another config root. Mars uses full
+native replacement when its user `config.toml` exists. Nushell uses packaged
+config first, then optional user `env.nu` and `config.nu`. Normal Nushell config
+is not loaded by default, which keeps `yzn` reproducible and avoids ambient user
+shell behavior changing the runtime.
 
 ## Session Isolation
 
@@ -75,7 +81,7 @@ window.
 | ID | Contract | Owner | Check | Missing Coverage |
 | --- | --- | --- | --- | --- |
 | C1 | `yzn` launches the pinned Mars/Zellij runtime | `flake.nix` | `nix build .#yzn` | GUI launch remains manual dogfooding |
-| C2 | Mars uses the packaged visual config | `mars.toml` | `nix build .#yzn` materializes `MARS_CONFIG_HOME` | Visual correctness remains manual dogfooding |
+| C2 | Mars uses packaged visual config unless a user native Mars config exists | `mars.toml`, `flake.nix` | `checks/yzn-contracts.rs` validates packaged config and launcher selection | Visual correctness remains manual dogfooding |
 | C3 | Zellij layout has the sidebar template required by swaps | `layout.kdl`, `layout.swap.kdl` | `checks/zellij-layout.rs` runs during build | None for the current template/swap contract |
 | C4 | Zellij-native mode keys use `Ctrl Alt`, move mode is unbound, `Alt m` opens a pane for the swap layout to stack, and `Alt Shift h` toggles the sidebar swap | `config.kdl` | `checks/yzn-contracts.rs` validates the packaged config | Full key behavior remains manual dogfooding |
 | C5 | Nushell loads packaged config first, then optional user config | `runtime/yzn-nu.rs`, `nu/` | `checks/yzn-contracts.rs` runs in `nix flake check` | None for current layering behavior |

@@ -14,6 +14,7 @@ fn main() {
         yzn_nu.display()
     );
     expect_keybinds(&config);
+    expect_mars_config_override(Path::new(yzn));
 
     let temp = TempDir::new();
     let user_nu = temp.path.join("config/nu");
@@ -59,6 +60,30 @@ fn main() {
         &format!("source \"{}\"", user_nu.join("config.nu").display()),
     );
     fs::write(out, "ok\n").unwrap();
+}
+
+fn expect_mars_config_override(yzn: &Path) {
+    let packaged_config = yzn.join("share/yazelix-next/mars/config.toml");
+    assert!(
+        packaged_config.is_file(),
+        "packaged Mars config is not a file: {}",
+        packaged_config.display()
+    );
+
+    let launcher = fs::read_to_string(yzn.join("bin/yzn")).unwrap();
+    for expected in [
+        "YAZELIX_NEXT_CONFIG_HOME",
+        "XDG_CONFIG_HOME",
+        "$yzn_config_home/mars/config.toml",
+        "MARS_CONFIG_HOME=\"$yzn_config_home/mars\"",
+        "MARS_CONFIG_HOME=/nix/store/",
+        "exec /nix/store/",
+    ] {
+        assert!(
+            launcher.contains(expected),
+            "bin/yzn is missing Mars config override fragment: {expected}",
+        );
+    }
 }
 
 fn default_shell(config: &str) -> PathBuf {
