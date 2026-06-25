@@ -4,9 +4,11 @@ use crate::repo_validation::ValidationReport;
 use serde_json::Value as JsonValue;
 use std::collections::HashMap;
 use std::fs;
+use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::thread;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct ChildInputLock {
@@ -235,8 +237,7 @@ fn remote_rev_is_fetchable(input: &ChildInputLock) -> Result<bool, String> {
                 input.rev
             )
         });
-    let cleanup = fs::remove_dir_all(&probe_dir)
-        .map_err(|error| format!("Failed to remove {}: {error}", probe_dir.display()));
+    let cleanup = remove_probe_dir(&probe_dir);
 
     let fetch = fetch?;
     cleanup?;
@@ -253,6 +254,27 @@ fn remote_rev_is_fetchable(input: &ChildInputLock) -> Result<bool, String> {
         "Failed to fetch locked revision {} from {url}\n{}",
         input.rev,
         stderr.trim()
+    ))
+}
+
+fn remove_probe_dir(probe_dir: &Path) -> Result<(), String> {
+    let mut last_error = None;
+    for delay_ms in [0, 50, 100, 250, 500] {
+        if delay_ms > 0 {
+            thread::sleep(Duration::from_millis(delay_ms));
+        }
+
+        match fs::remove_dir_all(probe_dir) {
+            Ok(()) => return Ok(()),
+            Err(error) if error.kind() == ErrorKind::NotFound => return Ok(()),
+            Err(error) => last_error = Some(error.to_string()),
+        }
+    }
+
+    Err(format!(
+        "Failed to remove {}: {}",
+        probe_dir.display(),
+        last_error.unwrap_or_else(|| "unknown cleanup error".to_string())
     ))
 }
 
@@ -834,6 +856,21 @@ mod tests {
         assert!(errors[0].contains("Stale cargoLock.outputHashes entry"));
         assert!(errors[0].contains("expected sha256-new"));
         assert!(errors[0].contains("found sha256-old"));
+    }
+
+    // Regression: successful child-revision fetch probes must not fail release validation because cleanup sees nested or already-removed probe dirs.
+    #[test]
+    fn remove_probe_dir_removes_nested_dirs_and_accepts_missing_paths() {
+        let temp = tempdir().unwrap();
+        let probe_dir = temp.path().join("probe");
+        let nested = probe_dir.join("objects").join("pack");
+        fs::create_dir_all(&nested).unwrap();
+        fs::write(nested.join("pack.keep"), b"temporary git probe").unwrap();
+
+        remove_probe_dir(&probe_dir).unwrap();
+        assert!(!probe_dir.exists());
+
+        remove_probe_dir(&probe_dir).unwrap();
     }
 
     // Regression: unpublished-child detection must treat a missing fetched object as a validation error without conflating transport failures with unpublished commits.
