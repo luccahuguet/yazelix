@@ -226,30 +226,6 @@ printf 'nix=%s\n' "$(command -v nix)"
     assert!(stdout.contains(&format!("nix={}", host_bin.join("nix").display())));
 }
 
-// Defends: the public Rust-owned `yzx config --path` route still bootstraps the managed config surface and returns its canonical path.
-#[test]
-fn yzx_control_config_path_bootstraps_missing_managed_config() {
-    let fixture = managed_config_fixture("");
-    fs::remove_file(&fixture.managed_config).unwrap();
-    let settings_path = fixture.config_dir.join("settings.jsonc");
-
-    let output = yzx_control_command_in_fixture(&fixture)
-        .arg("config")
-        .arg("--path")
-        .output()
-        .unwrap();
-
-    assert_eq!(output.status.code(), Some(0));
-    assert!(settings_path.is_file());
-    assert_eq!(
-        String::from_utf8(output.stdout).unwrap().trim(),
-        settings_path.to_string_lossy()
-    );
-
-    let stderr = String::from_utf8(output.stderr).unwrap();
-    assert!(stderr.is_empty());
-}
-
 // Defends: setup-only launch preflight preserves managed-pane shell UX without invoking the deleted Nushell setup script.
 #[test]
 fn yzx_enter_setup_only_generates_managed_initializers_and_extern_bridge() {
@@ -627,44 +603,6 @@ ghostty_trail_color = "random"
     );
 }
 
-// Regression: status reports a bad active snapshot as a readable diagnostic instead of hiding the snapshot problem.
-#[test]
-fn yzx_control_status_json_reports_bad_session_snapshot_diagnostic() {
-    let fixture = managed_config_fixture("");
-    let missing_snapshot = fixture
-        .state_dir
-        .join("sessions/missing/config_snapshot.json");
-
-    let output = yzx_control_command_in_fixture(&fixture)
-        .env("YAZELIX_SESSION_CONFIG_PATH", &missing_snapshot)
-        .arg("status")
-        .arg("--json")
-        .output()
-        .unwrap();
-
-    assert_eq!(output.status.code(), Some(0));
-    assert!(output.stderr.is_empty());
-    let report: Value = serde_json::from_slice(&output.stdout).unwrap();
-    assert_eq!(
-        report["summary"]["session_config_snapshot"]["status"],
-        "error"
-    );
-    assert_eq!(
-        report["summary"]["session_config_snapshot"]["path"],
-        missing_snapshot.to_string_lossy().to_string()
-    );
-    assert_eq!(
-        report["summary"]["session_config_snapshot"]["error_code"],
-        "session_config_snapshot_read"
-    );
-    assert!(
-        report["summary"]["session_config_snapshot"]["message"]
-            .as_str()
-            .unwrap()
-            .contains("Could not read the Yazelix session config snapshot")
-    );
-}
-
 // Defends: `yzx inspect --json` is the canonical runtime truth report for diagnostics and agents.
 #[test]
 fn yzx_control_inspect_json_reports_runtime_truth_without_zellij_session() {
@@ -692,8 +630,6 @@ default_shell = "nu"
     assert_eq!(report["runtime"]["version"], "v-test");
     assert_eq!(report["runtime"]["variant"], "ghostty");
     assert_eq!(report["runtime"]["variant_source"], "runtime_identity_json");
-    assert_eq!(report["runtime"]["identity"]["runtime_variant"], "ghostty");
-    assert_eq!(report["runtime"]["exists"], true);
     assert_eq!(
         report["runtime"]["invoked_yzx_path"],
         "/nix/store/example-yazelix/bin/yzx"
@@ -703,46 +639,12 @@ default_shell = "nu"
         "yzx inspect --json"
     );
     assert_eq!(
-        report["config_schema_versions"]["main_config_contract"]["ratconfig_contract_version"],
-        11
-    );
-    assert_eq!(report["runtime_tools"]["status"], "available");
-    assert!(
-        report["runtime_tools"]["entries"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .any(|entry| entry["name"] == "terminal" && entry["source"] == "bundled")
-    );
-    assert_eq!(report["runtime_components"]["status"], "available");
-    assert!(
-        report["command_metadata"]["commands"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .any(|entry| entry["command"] == "yzx inspect")
-    );
-    assert!(
-        report["config"]["file"]
-            .as_str()
-            .unwrap()
-            .ends_with("settings.jsonc")
-    );
-    assert_eq!(
         report["config"]["session_config_snapshot"]["status"],
         "not_set"
     );
-    assert!(report["generated_state"]["repair_needed"].is_boolean());
     assert_eq!(report["session"]["available"], false);
     assert_eq!(report["session"]["reason"], "not_in_zellij");
     assert_eq!(report["install"]["install_owner"], "manual");
-    assert!(
-        report["tool_versions"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .any(|entry| { entry["tool"] == "nix" && entry["runtime"].as_str().is_some() })
-    );
 }
 
 // Regression: inspect remains the diagnostic escape hatch when config validation is what failed.

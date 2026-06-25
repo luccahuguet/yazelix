@@ -15,16 +15,6 @@ pub struct ManagedConfigFixture {
 }
 
 impl ManagedConfigFixture {
-    pub fn default_config_path(&self) -> PathBuf {
-        self.runtime_dir.join("settings_default.jsonc")
-    }
-
-    pub fn contract_path(&self) -> PathBuf {
-        self.runtime_dir
-            .join("config_metadata")
-            .join("main_config_contract.toml")
-    }
-
     pub fn xdg_config_home(&self) -> PathBuf {
         self.home_dir.join(".config")
     }
@@ -111,41 +101,6 @@ pub fn prepend_path(dir: &Path) -> String {
     } else {
         format!("{}:{current}", dir.to_string_lossy())
     }
-}
-
-pub fn write_session_facts_cache(
-    fixture: &ManagedConfigFixture,
-    overrides: &[(&str, serde_json::Value)],
-) -> PathBuf {
-    let mut facts = serde_json::Map::from_iter([
-        (
-            "hide_sidebar_on_file_open".to_string(),
-            serde_json::json!(false),
-        ),
-        ("yazi_command".to_string(), serde_json::json!("yazi")),
-        ("ya_command".to_string(), serde_json::json!("ya")),
-        ("popup_width_percent".to_string(), serde_json::json!(90)),
-        ("popup_height_percent".to_string(), serde_json::json!(90)),
-        (
-            "game_of_life_cell_style".to_string(),
-            serde_json::json!("full_block"),
-        ),
-        ("default_shell".to_string(), serde_json::json!("nu")),
-        ("terminals".to_string(), serde_json::json!(["ghostty"])),
-    ]);
-    for (key, value) in overrides {
-        facts.insert((*key).to_string(), value.clone());
-    }
-    let cache = serde_json::json!({
-        "schema_version": 1,
-        "source_config_file": "test-cache",
-        "normalized_config": {},
-        "facts": facts,
-    });
-    let path = fixture.state_dir.join("sessions/test/session_facts.json");
-    fs::create_dir_all(path.parent().unwrap()).unwrap();
-    fs::write(&path, serde_json::to_string_pretty(&cache).unwrap()).unwrap();
-    path
 }
 
 pub fn write_session_config_snapshot(
