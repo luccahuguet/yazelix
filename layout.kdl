@@ -1,4 +1,14 @@
 layout {
+    tab_template name="ui" {
+        pane size=1 borderless=true {
+            plugin location="tab-bar"
+        }
+        children
+        pane size=1 borderless=true {
+            plugin location="status-bar"
+        }
+    }
+
     default_tab_template {
         pane size=1 borderless=true {
             plugin location="tab-bar"
