@@ -1,6 +1,6 @@
-use anyhow::{Context, Result, bail};
+use anyhow::{bail, Context, Result};
 use serde::{Deserialize, Serialize};
-use serde_json::{Value, json};
+use serde_json::{json, Value};
 use std::{
     env,
     ffi::OsString,
@@ -98,8 +98,7 @@ impl Config {
             editor: env::var_os("YZN_EDITOR").unwrap_or_else(|| "yzn-hx".into()),
             zellij: env::var_os("YZN_ZELLIJ").unwrap_or_else(|| "zellij".into()),
             state_dir,
-            session_id: env::var("YAZELIX_HELIX_BRIDGE_SESSION_ID")
-                .unwrap_or_else(|_| "yzn".into()),
+            session_id: bridge_session_id(env::var("YAZELIX_HELIX_BRIDGE_SESSION_ID").ok()),
             zellij_session_name: env::var("ZELLIJ_SESSION_NAME").ok(),
         }
     }
@@ -321,6 +320,8 @@ fn open_editor_pane(config: &Config, targets: &[PathBuf]) -> Result<()> {
 
     let output = Command::new(&config.zellij)
         .args(&args)
+        .env("YAZELIX_STATE_DIR", &config.state_dir)
+        .env("YAZELIX_HELIX_BRIDGE_SESSION_ID", &config.session_id)
         .output()
         .context("could not run zellij")?;
     log_command_output(config, "open editor pane", &output);
@@ -418,6 +419,11 @@ fn request_id() -> String {
     format!("yzn-open-{}-{}", unix_millis(), std::process::id())
 }
 
+fn bridge_session_id(raw: Option<String>) -> String {
+    raw.filter(|id| !id.trim().is_empty())
+        .unwrap_or_else(|| format!("yzn-open-{}-{}", unix_millis(), std::process::id()))
+}
+
 fn unix_millis() -> u128 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -454,7 +460,10 @@ enum BridgeSendError {
 mod tests {
     use super::*;
     use std::sync::atomic::{AtomicUsize, Ordering};
-    use std::{os::unix::net::UnixListener, thread};
+    use std::{
+        os::unix::{fs::PermissionsExt, net::UnixListener},
+        thread,
+    };
 
     static TEST_COUNTER: AtomicUsize = AtomicUsize::new(0);
 
@@ -467,10 +476,46 @@ mod tests {
         ))
     }
 
+    fn write_executable(path: &Path, text: String) {
+        fs::write(path, text).unwrap();
+        let mut permissions = fs::metadata(path).unwrap().permissions();
+        permissions.set_mode(0o755);
+        fs::set_permissions(path, permissions).unwrap();
+    }
+
+    fn write_zellij_log_script(path: &Path, log: &Path, fail_focus: bool) {
+        write_executable(
+            path,
+            format!(
+                r#"#!/bin/sh
+printf 'args=%s\n' "$*" >> '{}'
+printf 'session=%s\n' "${{YAZELIX_HELIX_BRIDGE_SESSION_ID:-}}" >> '{}'
+if [ "$1" = action ] && [ "$2" = focus-pane-id ] && {fail_focus}; then
+  printf '%s\n' 'Pane with id Terminal(1) not found' >&2
+  exit 1
+fi
+exit 0
+"#,
+                log.display(),
+                log.display(),
+                fail_focus = if fail_focus { "true" } else { "false" },
+            ),
+        );
+    }
+
     #[test]
     fn normalizes_zellij_typed_pane_ids() {
         assert_eq!(zellij_pane_arg("terminal:7"), "terminal_7");
         assert_eq!(zellij_pane_arg("7"), "terminal_7");
+    }
+
+    #[test]
+    fn generated_fallback_session_id_does_not_use_shared_yzn() {
+        assert_eq!(bridge_session_id(Some("window-id".into())), "window-id");
+        let fallback = bridge_session_id(None);
+        assert!(fallback.starts_with("yzn-open-"));
+        assert_ne!(fallback, "yzn");
+        assert!(bridge_session_id(Some(" ".into())).starts_with("yzn-open-"));
     }
 
     #[test]
@@ -561,8 +606,6 @@ mod tests {
 
     #[test]
     fn bridge_focus_failure_falls_back_to_new_editor_pane() {
-        use std::os::unix::fs::PermissionsExt;
-
         let root = test_dir("focus-fallback");
         let session_id = "test-session";
         let bridge_dir = root.join("helix_bridge").join(session_id);
@@ -586,24 +629,7 @@ mod tests {
             .to_string(),
         )
         .unwrap();
-        fs::write(
-            &zellij,
-            format!(
-                r#"#!/bin/sh
-printf '%s\n' "$*" >> '{}'
-if [ "$1" = action ] && [ "$2" = focus-pane-id ]; then
-  printf '%s\n' 'Pane with id Terminal(1) not found' >&2
-  exit 1
-fi
-exit 0
-"#,
-                zellij_log.display()
-            ),
-        )
-        .unwrap();
-        let mut permissions = fs::metadata(&zellij).unwrap().permissions();
-        permissions.set_mode(0o755);
-        fs::set_permissions(&zellij, permissions).unwrap();
+        write_zellij_log_script(&zellij, &zellij_log, true);
 
         let _listener = UnixListener::bind(&socket_path).unwrap();
 
@@ -620,7 +646,95 @@ exit 0
         .unwrap();
 
         let log = fs::read_to_string(zellij_log).unwrap();
-        assert!(log.contains("action focus-pane-id terminal_1"));
-        assert!(log.contains("run --name yzn-editor"));
+        assert!(log.contains("args=action focus-pane-id terminal_1"));
+        assert!(log.contains("args=run --name yzn-editor"));
+        assert!(log.contains("session=test-session"));
+    }
+
+    #[test]
+    fn bridge_from_another_yzn_session_is_not_used() {
+        let root = test_dir("session-isolation");
+        let other_bridge_dir = root.join("helix_bridge").join("window-b");
+        fs::create_dir_all(&other_bridge_dir).unwrap();
+        let socket_path = other_bridge_dir.join("inst.sock");
+        let token_path = other_bridge_dir.join("inst.token");
+        let zellij_log = root.join("zellij.log");
+        let zellij = root.join("zellij");
+        fs::write(&token_path, "secret").unwrap();
+        fs::write(
+            other_bridge_dir.join("inst.json"),
+            json!({
+                "schema_version": 2,
+                "session_id": "window-b",
+                "transport": { "kind": "unix_socket", "path": &socket_path },
+                "auth_token_path": &token_path,
+            })
+            .to_string(),
+        )
+        .unwrap();
+        let _listener = UnixListener::bind(&socket_path).unwrap();
+        write_zellij_log_script(&zellij, &zellij_log, false);
+
+        run(
+            &Config {
+                editor: "hx".into(),
+                zellij: zellij.into(),
+                state_dir: root,
+                session_id: "window-a".into(),
+                zellij_session_name: Some("zellij-a".into()),
+            },
+            [OsString::from("/tmp/project/src/main.rs")],
+        )
+        .unwrap();
+
+        let log = fs::read_to_string(zellij_log).unwrap();
+        assert!(log.contains("args=run --name yzn-editor"));
+        assert!(log.contains("session=window-a"));
+        assert!(!log.contains("focus-pane-id"));
+    }
+
+    #[test]
+    fn bridge_from_another_zellij_session_is_not_used() {
+        let root = test_dir("zellij-session-isolation");
+        let session_id = "window-a";
+        let bridge_dir = root.join("helix_bridge").join(session_id);
+        fs::create_dir_all(&bridge_dir).unwrap();
+        let socket_path = bridge_dir.join("inst.sock");
+        let token_path = bridge_dir.join("inst.token");
+        let zellij_log = root.join("zellij.log");
+        let zellij = root.join("zellij");
+        fs::write(&token_path, "secret").unwrap();
+        fs::write(
+            bridge_dir.join("inst.json"),
+            json!({
+                "schema_version": 2,
+                "session_id": session_id,
+                "transport": { "kind": "unix_socket", "path": &socket_path },
+                "auth_token_path": &token_path,
+                "zellij_session_name": "zellij-b",
+                "zellij_pane_id": "1",
+            })
+            .to_string(),
+        )
+        .unwrap();
+        let _listener = UnixListener::bind(&socket_path).unwrap();
+        write_zellij_log_script(&zellij, &zellij_log, false);
+
+        run(
+            &Config {
+                editor: "hx".into(),
+                zellij: zellij.into(),
+                state_dir: root,
+                session_id: session_id.into(),
+                zellij_session_name: Some("zellij-a".into()),
+            },
+            [OsString::from("/tmp/project/src/main.rs")],
+        )
+        .unwrap();
+
+        let log = fs::read_to_string(zellij_log).unwrap();
+        assert!(log.contains("args=run --name yzn-editor"));
+        assert!(log.contains("session=window-a"));
+        assert!(!log.contains("focus-pane-id"));
     }
 }

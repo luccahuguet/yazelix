@@ -57,18 +57,17 @@ nix run --override-input yazelixHelix ../yazelix-helix
 Counts owned project files by language with `wc -l`.
 
 ```sh
-wc -l .gitignore AGENTS.md README.md flake.nix mars.toml config.kdl layout.kdl layout.swap.kdl nu/config.nu nu/env.nu scripts/yzn-nu.sh helix/config.toml yazi/init.lua yazi/plugins/sidebar-status.yazi/main.lua yazi/yazi.toml crates/yzn-open/Cargo.toml crates/yzn-open/src/main.rs checks/zellij-layout.rs
+wc -l .gitignore AGENTS.md README.md ARCHITECTURE.md flake.nix mars.toml config.kdl layout.kdl layout.swap.kdl nu/config.nu nu/env.nu helix/config.toml yazi/init.lua yazi/plugins/sidebar-status.yazi/main.lua yazi/yazi.toml crates/yzn-open/Cargo.toml crates/yzn-open/src/main.rs checks/zellij-layout.rs checks/yzn-contracts.rs runtime/yzn-nu.rs
 ```
 
 | Language | Files | Lines |
 | --- | --- | ---: |
 | Ignore | `.gitignore` | 1 |
-| Markdown | `AGENTS.md`, `README.md` | 144 |
-| Nix | `flake.nix` | 230 |
+| Markdown | `AGENTS.md`, `README.md`, `ARCHITECTURE.md` | 271 |
+| Nix | `flake.nix` | 246 |
 | TOML | `mars.toml`, `helix/config.toml`, `yazi/yazi.toml`, `crates/yzn-open/Cargo.toml` | 106 |
 | KDL | `config.kdl`, `layout.kdl`, `layout.swap.kdl` | 58 |
 | Nu | `nu/config.nu`, `nu/env.nu` | 11 |
-| Shell | `scripts/yzn-nu.sh` | 36 |
 | Lua | `yazi/init.lua`, `yazi/plugins/sidebar-status.yazi/main.lua` | 16 |
-| Rust | `crates/yzn-open/src/main.rs`, `checks/zellij-layout.rs` | 676 |
-| Total | owned project files | 1278 |
+| Rust | `crates/yzn-open/src/main.rs`, `checks/zellij-layout.rs`, `checks/yzn-contracts.rs`, `runtime/yzn-nu.rs` | 1022 |
+| Total | owned project files | 1731 |

@@ -35,9 +35,20 @@
     starshipYazi,
   }: let
     eachSystem = nixpkgs.lib.genAttrs ["x86_64-linux" "aarch64-linux"];
+    rustBinFor = pkgs: name: src: pkgs.runCommand name {nativeBuildInputs = [pkgs.rustc pkgs.stdenv.cc];} ''
+      mkdir -p "$out/bin"
+      rustc --edition=2024 ${src} -o "$out/bin/${name}"
+    '';
+    bridgeSessionEnv = prefix: ''
+      if [ -z "''${YAZELIX_HELIX_BRIDGE_SESSION_ID:-}" ]; then
+        YAZELIX_HELIX_BRIDGE_SESSION_ID="${prefix}-$(date +%s)-$$"
+      fi
+      export YAZELIX_HELIX_BRIDGE_SESSION_ID
+    '';
   in {
     packages = eachSystem (system: let
       pkgs = import nixpkgs {inherit system;};
+      rustBin = rustBinFor pkgs;
       marsPackage = mars.packages.${system}.mars;
       yznMarsToml = pkgs.replaceVars ./mars.toml {
         jetbrainsMonoDir = "${pkgs.jetbrains-mono}/share/fonts/truetype";
@@ -63,13 +74,12 @@
         install -D -m 644 ${yznNuConfigNu} "$out/config.nu"
         install -D -m 644 ${./nu/env.nu} "$out/env.nu"
       '';
-      yznNuShell = pkgs.writeShellApplication {
-        name = "yzn-nu";
-        runtimeInputs = [pkgs.nushell pkgs.starship pkgs.carapace pkgs.zoxide];
-        text = ''
-          export YZN_PACKAGED_NU=${yznNuConfig}
-        '' + builtins.readFile ./scripts/yzn-nu.sh;
+      yznNuRs = pkgs.replaceVars ./runtime/yzn-nu.rs {
+        nu = "${pkgs.nushell}/bin/nu";
+        packagedNu = "${yznNuConfig}";
+        pathPrefix = pkgs.lib.makeBinPath [pkgs.nushell pkgs.starship pkgs.carapace pkgs.zoxide];
       };
+      yznNuShell = rustBin "yzn-nu" yznNuRs;
       yznConfigKdl = pkgs.replaceVars ./config.kdl {
         nuShell = "${yznNuShell}/bin/yzn-nu";
       };
@@ -82,7 +92,7 @@
         runtimeInputs = [pkgs.coreutils];
         text = ''
           export YAZELIX_STATE_DIR="''${YAZELIX_STATE_DIR:-''${XDG_RUNTIME_DIR:-/tmp}/yazelix-next}"
-          export YAZELIX_HELIX_BRIDGE_SESSION_ID="''${YAZELIX_HELIX_BRIDGE_SESSION_ID:-yzn}"
+          ${bridgeSessionEnv "yzn-helper"}
           export YAZELIX_HELIX_BRIDGE=1
           YAZELIX_HELIX_BRIDGE_INSTANCE_ID="hx-$(date +%s)-$$"
           export YAZELIX_HELIX_BRIDGE_INSTANCE_ID
@@ -125,7 +135,7 @@
         runtimeInputs = [pkgs.git pkgs.starship];
         text = ''
           export YAZELIX_STATE_DIR="''${YAZELIX_STATE_DIR:-''${XDG_RUNTIME_DIR:-/tmp}/yazelix-next}"
-          export YAZELIX_HELIX_BRIDGE_SESSION_ID="''${YAZELIX_HELIX_BRIDGE_SESSION_ID:-yzn}"
+          ${bridgeSessionEnv "yzn-helper"}
           export YAZI_CONFIG_HOME=${yznYaziConfig}
           export YZN_YAZI_STARSHIP_CONFIG=${yznYaziConfig}/yazelix_starship.toml
           export EDITOR=${yznHelix}/bin/yzn-hx
@@ -139,11 +149,9 @@
       yznLayoutSwapKdl = pkgs.replaceVars ./layout.swap.kdl {
         yazi = "${yznYazi}/bin/yzn-yazi";
       };
-      yznLayoutCheck = pkgs.runCommand "yzn-layout-check" {nativeBuildInputs = [pkgs.rustc pkgs.stdenv.cc];} ''
-        rustc --edition=2024 ${./checks/zellij-layout.rs} -o "$out"
-      '';
+      yznLayoutCheck = rustBin "yzn-layout-check" ./checks/zellij-layout.rs;
       yznZellijLayout = pkgs.runCommand "yzn-zellij-layout" {} ''
-        ${yznLayoutCheck} ${yznLayoutKdl} ${yznLayoutSwapKdl}
+        ${yznLayoutCheck}/bin/yzn-layout-check ${yznLayoutKdl} ${yznLayoutSwapKdl}
         install -D -m 644 ${yznLayoutKdl} "$out/layout.kdl"
         install -D -m 644 ${yznLayoutSwapKdl} "$out/layout.swap.kdl"
       '';
@@ -172,10 +180,7 @@
         text = ''
           export YAZELIX_STATE_DIR="''${YAZELIX_STATE_DIR:-''${XDG_RUNTIME_DIR:-/tmp}/yazelix-next}"
           mkdir -p "$YAZELIX_STATE_DIR"
-          if [ -z "''${YAZELIX_HELIX_BRIDGE_SESSION_ID:-}" ]; then
-            YAZELIX_HELIX_BRIDGE_SESSION_ID="yzn-$(date +%s)-$$"
-          fi
-          export YAZELIX_HELIX_BRIDGE_SESSION_ID
+          ${bridgeSessionEnv "yzn"}
           export EDITOR=${yznHelix}/bin/yzn-hx
           export VISUAL=${yznHelix}/bin/yzn-hx
           export MARS_CONFIG_HOME=${yznMarsConfig}
@@ -217,6 +222,17 @@
       yazelix_zellij = yazelixZellijPackage;
       inherit yzn;
       default = yzn;
+    });
+
+    checks = eachSystem (system: let
+      pkgs = import nixpkgs {inherit system;};
+      yzn = self.packages.${system}.yzn;
+      yznContractsCheck = rustBinFor pkgs "yzn-contracts-check" ./checks/yzn-contracts.rs;
+    in {
+      inherit yzn;
+      contracts = pkgs.runCommand "yzn-contracts" {} ''
+        ${yznContractsCheck}/bin/yzn-contracts-check ${yzn} "$out"
+      '';
     });
 
     apps = eachSystem (system: rec {
