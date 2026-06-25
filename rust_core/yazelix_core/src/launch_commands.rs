@@ -802,7 +802,7 @@ mod tests {
         assert_eq!(argv[argv.len() - 1], startup.to_string_lossy().as_ref());
     }
 
-    // Regression: macOS Ghostty 1.3.1 refuses direct packaged CLI GUI launch; Yazelix must hand the generated args to the app bundle.
+    // Regression: macOS Ghostty opens duplicate windows when the app-bundle launch receives `-e`; use the first surface's direct initial command instead.
     #[test]
     fn ghostty_macos_launch_uses_app_bundle_open() {
         let runtime = TempDir::new().unwrap();
@@ -842,10 +842,10 @@ mod tests {
                 "--config-default-files=false".to_string(),
                 format!("--config-file={}", config_path.to_string_lossy()),
                 format!("--working-directory={}", working_dir.to_string_lossy()),
-                "-e".to_string(),
-                startup.to_string_lossy().into_owned(),
+                format!("--initial-command=direct:{}", startup.to_string_lossy()),
             ]
         );
+        assert!(!argv.iter().any(|arg| arg == "-e"));
         assert!(!argv.iter().any(|arg| arg == "ghostty"));
         assert!(
             !argv.iter().any(|arg| arg == "--gtk-single-instance=false"

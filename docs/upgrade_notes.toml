@@ -4,7 +4,7 @@ date = ""
 headline = "Post-v17.8 work in progress"
 manual_actions = []
 migration_ids = []
-summary = ["Adopted the grouped Zellij mode layer from Yazelix Next: Ctrl p/t/n/q keep pane, tab, resize, and quit fast, Ctrl Alt g/s/o keep lock, search, and session grouped off plain Ctrl, Ctrl h stays unbound from move mode, and the consumed Zellij fork groups mixed modifier hints cleanly in the bottom bar."]
+summary = ["Adopted the grouped Zellij mode layer from Yazelix Next: Ctrl p/t/n/q keep pane, tab, resize, and quit fast, Ctrl Alt g/s/o keep lock, search, and session grouped off plain Ctrl, Ctrl h stays unbound from move mode, and the consumed Zellij fork groups mixed modifier hints cleanly in the bottom bar.", "Fixed macOS Ghostty app-bundle launches so yzx launch starts Yazelix through Ghostty's direct initial-command path instead of opening an extra default Ghostty window/session, and gave the runtime smoke CI lane enough time for cache-miss builds."]
 upgrade_impact = "no_user_action"
 version = "unreleased"
 

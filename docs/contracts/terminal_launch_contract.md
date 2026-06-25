@@ -68,10 +68,12 @@ Out of scope:
   Linux Ghostty through the runtime `yazelix_ghostty.sh` environment wrapper,
   and launches macOS Ghostty through `/usr/bin/open -na
   <runtime>/Applications/Ghostty.app --args` with the generated config,
-  working directory, and startup command preserved. Ghostty launch argv and
-  generated Ghostty config do not set a fixed title, because Ghostty treats
-  configured titles as authoritative and would ignore the Zellij-owned title
-  escape sequence that carries the live session name.
+  working directory, and startup command preserved through
+  `--initial-command=direct:<runtime>/shells/posix/start_yazelix.sh` instead of
+  Ghostty's `-e` form. Ghostty launch argv and generated Ghostty config do not
+  set a fixed title, because Ghostty treats configured titles as authoritative
+  and would ignore the Zellij-owned title escape sequence that carries the live
+  session name.
 - Verification: automated
   Rust tests in `rust_core/yazelix_core/src/launch_commands.rs`
   (`ghostty_launch_does_not_force_window_title`,

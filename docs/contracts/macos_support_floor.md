@@ -16,7 +16,7 @@ The current tree contained mixed signals about macOS support. The top-level docs
 | `yzx --version-short` | `supported` | Reports the Yazelix version from the installed runtime on macOS |
 | `yzx doctor` | `supported` | Runs diagnostic checks on macOS; Linux-specific checks may report limitations but should not crash |
 | `yzx launch` on Mars | `issue_driven_best_effort` | Mars is the default terminal, but macOS-specific Mars behavior is maintained from user reports because maintainers do not currently own macOS hardware |
-| `yzx launch` on Ghostty | `supported` | The runtime bundles `ghostty-bin` on darwin; the terminal launcher hands generated Ghostty args to the runtime-owned `Applications/Ghostty.app` through `/usr/bin/open -na ... --args` and omits Linux-only GTK/X11 flags |
+| `yzx launch` on Ghostty | `supported` | The runtime bundles `ghostty-bin` on darwin; the terminal launcher hands generated Ghostty args to the runtime-owned `Applications/Ghostty.app` through `/usr/bin/open -na ... --args`, starts Yazelix with `--initial-command=direct:<runtime>/shells/posix/start_yazelix.sh`, and omits Linux-only GTK/X11 flags |
 | Ghostty shell-integration behavior on macOS | `historical_or_out_of_scope` | Yazelix uses the Ghostty app-bundle launch route on macOS, but it does not separately guarantee automatic shell-integration niceties such as command history, cursor positioning, or working-directory tracking. Any remaining shell-integration gaps should be reported and tracked separately. |
 | `yzx launch` on other terminals | `best_effort` | WezTerm and Kitty are supported alternatives, but macOS launch paths for these terminals have less frequent validation than Ghostty |
 | `yzx enter` | `best_effort` | Should work on macOS but has no dedicated macOS-only validation lane |
@@ -31,7 +31,7 @@ Mars is the default Yazelix terminal on macOS and Linux because Yazelix can evol
 
 Ghostty is the mature selectable macOS terminal path. The runtime bundles `pkgs.ghostty-bin` on darwin (a repackaging of the official signed and notarized macOS binary) and `pkgs.ghostty` on Linux in the explicit Ghostty variant.
 
-The supported floor covers opening a Ghostty window on macOS via `yzx launch`. The launch command uses `/usr/bin/open -na <runtime>/Applications/Ghostty.app --args` and preserves the generated config path, working directory, and Yazelix startup command. It does not separately promise automatic Ghostty shell integration niceties such as command history, cursor positioning, or working-directory tracking.
+The supported floor covers opening a Ghostty window on macOS via `yzx launch`. The launch command uses `/usr/bin/open -na <runtime>/Applications/Ghostty.app --args`, preserves the generated config path and working directory, and passes Yazelix startup through Ghostty's `--initial-command=direct:<runtime>/shells/posix/start_yazelix.sh` form so the first Ghostty surface opens the Yazelix workspace directly. It does not separately promise automatic Ghostty shell integration niceties such as command history, cursor positioning, or working-directory tracking.
 
 Additionally, Ghostty on macOS launches login shells by default. This is a Ghostty platform behavior, not something Yazelix currently overrides or defends in its launch command. If login-shell behavior causes problems for specific Yazelix workflows, that should be reported and tracked separately.
 

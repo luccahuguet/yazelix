@@ -244,7 +244,7 @@ jobs:
     needs: [ci_plan, validation_helpers, source_contracts]
     if: ${{ always() && needs.ci_plan.result == 'success' && needs.source_contracts.result == 'success' && (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.run_runtime_smoke) || needs.ci_plan.outputs.runtime_smoke == 'true') }}
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
       YAZELIX_DIR: ${{ github.workspace }}

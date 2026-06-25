@@ -289,8 +289,6 @@ pub(super) fn build_launch_command_argv_for_platform(
                 ]
             };
             ghostty.extend(working_dir_args);
-            ghostty.push("-e".to_string());
-            ghostty.push(startup_script.to_string_lossy().into_owned());
             if matches!(platform.as_str(), "macos" | "darwin") {
                 let app_path = ghostty_macos_app_path(runtime_dir);
                 if !app_path.is_dir() {
@@ -314,8 +312,14 @@ pub(super) fn build_launch_command_argv_for_platform(
                     "--args".to_string(),
                 ];
                 macos_open.extend(ghostty.into_iter().skip(1));
+                macos_open.push(format!(
+                    "--initial-command=direct:{}",
+                    startup_script.to_string_lossy()
+                ));
                 return Ok(macos_open);
             }
+            ghostty.push("-e".to_string());
+            ghostty.push(startup_script.to_string_lossy().into_owned());
             let ghostty = maybe_prepend(ghostty, graphics_wrapper);
             let ghostty_wrapper = runtime_dir
                 .join("shells")
