@@ -77,9 +77,6 @@
       yznConfigKdl = pkgs.replaceVars ./config.kdl {
         nuShell = "${yznNuShell}/bin/yzn-nu";
       };
-      yznZellijConfig = pkgs.runCommand "yzn-zellij-config" {} ''
-        install -D -m 644 ${yznConfigKdl} "$out/config.kdl"
-      '';
       yazelixHelixPackage = yazelixHelix.packages.${system}.yazelix_helix;
       yznHelixConfig = pkgs.runCommand "yzn-helix-config" {} ''
         install -D -m 644 ${./helix/config.toml} "$out/config.toml"
@@ -114,16 +111,8 @@
         src = ./crates/yzn-open;
         cargoLock.lockFile = ./crates/yzn-open/Cargo.lock;
       };
-      yznOpen = pkgs.writeShellApplication {
-        name = "yzn-open";
-        text = ''
-          export YZN_EDITOR=${yznHelix}/bin/yzn-hx
-          export YZN_ZELLIJ=${yazelixZellijPackage}/bin/zellij
-          exec ${yznOpenCore}/bin/yzn-open "$@"
-        '';
-      };
       yznYaziToml = pkgs.replaceVars ./yazi/yazi.toml {
-        opener = "${yznOpen}/bin/yzn-open";
+        opener = "YZN_EDITOR=${yznHelix}/bin/yzn-hx YZN_ZELLIJ=${yazelixZellijPackage}/bin/zellij ${yznOpenCore}/bin/yzn-open";
       };
       yznYaziConfig = pkgs.runCommand "yzn-yazi-config" {} ''
         install -D -m 644 ${./yazi/init.lua} "$out/init.lua"
@@ -190,7 +179,7 @@
           export EDITOR=${yznHelix}/bin/yzn-hx
           export VISUAL=${yznHelix}/bin/yzn-hx
           export MARS_CONFIG_HOME=${yznMarsConfig}
-          exec ${marsPackage}/bin/mars -e ${yazelixZellijPackage}/bin/zellij --config ${yznZellijConfig}/config.kdl --new-session-with-layout ${yznZellijLayout}/layout.kdl "$@"
+          exec ${marsPackage}/bin/mars -e ${yazelixZellijPackage}/bin/zellij --config ${yznConfigKdl} --new-session-with-layout ${yznZellijLayout}/layout.kdl "$@"
         '';
       };
       yznDesktop = pkgs.makeDesktopItem {
@@ -209,7 +198,7 @@
         name = "yzn";
         paths = [yznCommand yznDesktop];
         postBuild = ''
-          install -D -m 644 ${yznZellijConfig}/config.kdl "$out/share/yazelix-next/config.kdl"
+          install -D -m 644 ${yznConfigKdl} "$out/share/yazelix-next/config.kdl"
           install -D -m 644 ${yznZellijLayout}/layout.kdl "$out/share/yazelix-next/layout.kdl"
           install -D -m 644 ${yznZellijLayout}/layout.swap.kdl "$out/share/yazelix-next/layout.swap.kdl"
           install -D -m 644 ${yznNuConfig}/config.nu "$out/share/yazelix-next/nu/config.nu"

@@ -368,9 +368,7 @@ fn zellij_pane_arg(pane_id: &str) -> String {
     if pane_id.chars().all(|ch| ch.is_ascii_digit()) {
         format!("terminal_{pane_id}")
     } else {
-        pane_id
-            .replacen("terminal:", "terminal_", 1)
-            .replacen("plugin:", "plugin_", 1)
+        pane_id.replacen("terminal:", "terminal_", 1)
     }
 }
 
@@ -417,7 +415,6 @@ fn log_command_output(config: &Config, label: &str, output: &Output) {
     );
 }
 
-#[cfg(unix)]
 fn is_socket(path: &Path) -> bool {
     fs::metadata(path)
         .map(|metadata| metadata.file_type().is_socket())
@@ -464,7 +461,6 @@ enum BridgeSendError {
 mod tests {
     use super::*;
     use std::sync::atomic::{AtomicUsize, Ordering};
-    #[cfg(unix)]
     use std::{os::unix::net::UnixListener, thread};
 
     static TEST_COUNTER: AtomicUsize = AtomicUsize::new(0);
@@ -481,7 +477,6 @@ mod tests {
     #[test]
     fn normalizes_zellij_typed_pane_ids() {
         assert_eq!(zellij_pane_arg("terminal:7"), "terminal_7");
-        assert_eq!(zellij_pane_arg("plugin:2"), "plugin_2");
         assert_eq!(zellij_pane_arg("7"), "terminal_7");
     }
 
@@ -524,7 +519,6 @@ mod tests {
         assert!(payload.get("file_paths").is_none());
     }
 
-    #[cfg(unix)]
     #[test]
     fn sends_file_open_to_live_bridge() {
         let root = test_dir("live-bridge");
@@ -586,7 +580,6 @@ mod tests {
         );
     }
 
-    #[cfg(unix)]
     #[test]
     fn bridge_focus_failure_falls_back_to_new_editor_pane() {
         use std::os::unix::fs::PermissionsExt;
