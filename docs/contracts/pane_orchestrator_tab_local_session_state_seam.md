@@ -44,9 +44,9 @@ consumers can stop depending on debug payload shape or ad-hoc re-derivation.
   correctness or test clarity
 - Yazelix control transport/client helpers that should consume the new seam first
 - docs that define the owner boundary and bootstrap policy
-- AI activity extension facts and their tab-name decoration product surface;
-  this contract exposes all-tab activity facts for the bar-owned integrated
-  renderer, while native tab-name decoration remains the fallback bridge
+- AI activity extension facts and their visible marker product surface; this
+  contract exposes all-tab activity facts for the pinned zjstatus `{tabs}`
+  renderer without using native tab-name mutation as a bridge
 
 ## Rust Dependency Gate
 
@@ -154,44 +154,44 @@ On success, the plugin returns JSON with this shape:
   - `activity` remains a schema-v1 compatibility token; consumers should prefer
     the normalized `state`
 
-### Activity Tab Decoration
+### Activity Tab Markers
 
 The pane orchestrator owns the live activity facts and terminal-title activity
-signals that feed visible tab-name decoration.
+signals that feed visible tab markers.
 
 `register_ai_pane_activity` accepts tab-local activity observations. When at
-least one current-tab fact is `stale`, the orchestrator suffixes the Zellij tab
-name with `✓`. Otherwise, when at least one fact is `active` or `thinking`, the
-orchestrator suffixes the tab name with `·`. Stale takes priority over busy, and
-busy takes priority over no marker. When the tab has no stale or busy facts, the
-orchestrator restores the recorded base tab name and clears only the marker it
-added.
+least one current-tab fact is `stale`, the tab activity state is `alert`.
+Otherwise, when at least one fact is `active` or `thinking`, the tab activity
+state is `busy`. Stale takes priority over busy, and busy takes priority over
+idle. The orchestrator publishes that reduced state to the status cache and to
+the active zjstatus plugins through `pipe_tab_activity`; it must not rename
+native Zellij tabs for activity markers.
 
 The orchestrator can also treat a live spinner-prefixed terminal title, such as
 Codex's `⠋ project` title, as a busy signal. The tab still uses the stable
-`·` marker instead of mirroring every spinner frame into the tab name. This lets
-the tab carry the same activity state a pane frame already shows without
-renaming the tab for every animation frame.
+busy marker instead of mirroring every spinner frame into the rendered tab label.
+This lets the tab carry the same activity state a pane frame already shows
+without changing native tab identity.
 
 Terminal-title activity is remembered by producing pane. When a pane was
 observed busy through a spinner-prefixed title and then stops using the activity
-shape while that pane is not focused, the orchestrator records the pane as
-`stale` and the tab renders `✓`. The marker clears only when the producing pane
-is focused again or when that pane disappears. If the activity title clears while
-the producing pane is already focused, the activity is considered acknowledged
-and the orchestrator restores the recorded base tab name.
+shape, the orchestrator removes that terminal-title fact even if the pane is not
+focused. This prevents stale busy dots from surviving until the user happens to
+focus the producing pane. Explicit provider facts may still report `stale` and
+render as alert.
 
-This uses Zellij's native tab name as the bridge into the status bar. The
-`yazelix_zellij_bar` child repo still owns tab label formatting and only renders
-the marker when the selected tab label mode includes `{name}`. Compact tab mode
-intentionally hides tab names, so it also hides this activity marker.
+Zellij's native tab name remains the tab identity source. The `yazelix_zellij_bar`
+child repo owns tab label formatting, the runtime template configures
+`tab_activity_pipe_name`, and the pinned zjstatus tabs widget appends markers to
+the live Zellij `TabInfo.name` only when the selected tab label mode includes
+`{name}`. Compact tab mode intentionally hides tab names, so it also hides this
+activity marker.
 
-The native tab-name bridge is a fallback, not the long-term rendering owner.
 For bar-owned rendering, `get_all_tab_activity_state` returns a separate
 versioned JSON payload. The pane orchestrator writes the same payload into the
-launch-scoped status-bar cache through `yzx_control zellij status-cache-write`,
-so the child-owned renderer and any future event-driven bar bridge can consume
-the same facts as the other Yazelix bar widgets:
+launch-scoped status-bar cache through `yzx_control zellij status-cache-write`
+and pushes it to zjstatus with `pipe_tab_activity`, so renderers consume the same
+facts as the other Yazelix bar widgets:
 
 ```json
 {
@@ -209,7 +209,7 @@ the same facts as the other Yazelix bar widgets:
       "activity": [
         {
           "tab_position": 2,
-          "provider": "terminal-title",
+          "provider": "codex",
           "pane_id": "terminal:12",
           "activity": "stale",
           "state": "stale"
@@ -221,24 +221,24 @@ the same facts as the other Yazelix bar widgets:
 ```
 
 `activity_state` is reduced to `"alert"`, `"busy"`, or `"idle"` with the same
-priority as native tab-name decoration. `base_name` is the clean tab name the
-bar should render; when the fallback bridge has already mutated a native tab
-name, the orchestrator uses its recorded base name instead of exposing the
-decorated display name as source truth. `active`, `is_fullscreen_active`,
+priority as the status-bar marker rules. `base_name` is a clean tab-name field
+for diagnostics and bar-owned renderer probes; the default integrated `{tabs}`
+path must render live Zellij `TabInfo.name` so stale pipe payloads cannot
+overwrite explicit user renames. `active`, `is_fullscreen_active`,
 `is_sync_panes_active`, and `has_floating_panes` carry the built-in tab facts
-needed by a future event-driven tab renderer. The default integrated bar still
-uses the built-in zjstatus `{tabs}` placeholder for live tab identity, focus,
-creation/deletion updates, click handling, and terminal-bell styling.
-The all-tab payload carries facts and state only. Presentation strings such as
-`✓`, `·`, colors, animation frames, and tab-label spacing belong to
-`yazelix_zellij_bar`.
+needed by the status-bar renderer. The default integrated bar still uses the
+built-in zjstatus `{tabs}` placeholder for live tab identity, focus,
+creation/deletion updates, click handling, and terminal-bell styling. The
+all-tab payload carries facts and state only for that path. Presentation strings
+such as `✓`, `·`, colors, animation frames, and tab-label spacing belong to
+`yazelix_zellij_bar` and the pinned zjstatus tab renderer.
 
 The markers are deliberately compact single-glyph suffixes, not bracketed
 status words. Terminal-title activity is an input signal, not tab-label text,
 because high-frequency terminal-title animation must not become high-frequency
-tab renaming. Native tab-name writes are coalesced and rate-limited; internal
-activity state may update frequently, but the Zellij rename side effect must
-only run for reduced visible state changes.
+tab-label churn. Internal activity state may update frequently, but the
+orchestrator publishes reduced snapshot facts instead of issuing Zellij rename
+side effects.
 
 The seam should be assembled from the plugin's existing tab-local state:
 
@@ -354,12 +354,11 @@ contract. This slice is only about the read contract.
    consumers without redoing architecture discovery.
 6. AI pane activity facts remain tab-local and can represent inactive,
    active/thinking, stale, and unknown states.
-7. Active/thinking AI pane activity facts, live spinner-prefixed terminal
-   titles, and completed off-focus terminal-title activity decorate full tab
-   labels through stable tab-name markers without adding a separate bar widget,
-   changing compact tab mode, or renaming the tab for every terminal-title
-   animation frame. Completed terminal-title activity clears only when the
-   producing pane is focused again or disappears.
+7. Active/thinking AI pane activity facts and live spinner-prefixed terminal
+   titles decorate full tab labels through pipe-fed markers without adding a
+   separate bar widget, changing compact tab mode, or renaming native Zellij
+   tabs. Terminal-title activity clears when the spinner title disappears or the
+   producing pane disappears.
 8. The pane orchestrator writes active-tab status facts to a launch-scoped
    status-bar cache, writes all-tab activity facts into the same cache, and
    zjstatus dynamic widgets read only that cache instead of opening
@@ -380,8 +379,8 @@ contract. This slice is only about the read contract.
 12. The integrated bar keeps zjstatus `{tabs}` as the live tab strip. The
     `yazelix_zellij_bar_widget tabs` command is a renderer probe for the
     status-cache activity snapshot, not the default runtime path. The pane
-    orchestrator updates facts only when state changes; it must not rename tabs
-    once per animation frame.
+    orchestrator pushes activity snapshots through `pipe_tab_activity`; it must
+    not rename native Zellij tabs for activity markers.
 
 ## Verification
 

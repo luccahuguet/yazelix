@@ -109,22 +109,21 @@ The supported boundary is runnable-standalone-first for every non-workspace widg
 #### SBO-010
 - Type: boundary
 - Status: live
-- Owner: pane orchestrator plus native Zellij tab names
-- Statement: Native activity tab decoration is the current bridge into the
-  zjstatus `{tabs}` widget. The pane orchestrator owns registered activity facts
-  and recognized spinner-prefixed terminal titles, reduces them to alert, busy,
-  or idle, then mutates the affected Zellij tab name only when that reduced
-  visible state changes.
-  Stale takes priority over busy, and busy takes priority over no marker. The
-  orchestrator remembers spinner-prefixed terminal-title activity by producing
-  pane, promotes completed off-focus activity to `✓`, and clears it only when
-  the producing pane is focused again or disappears. The bar child continues to
-  own tab formats and only displays the marker when the selected tab label mode
-  includes `{name}`. High-frequency terminal-title animation must not be
-  mirrored into high-frequency tab renaming, and native tab-name writes must be
-  coalesced and rate-limited
+- Owner: pane orchestrator plus pinned zjstatus `{tabs}` widget
+- Statement: Activity tab markers are rendered from facts, not native tab-name
+  mutations. The pane orchestrator owns registered activity facts and recognized
+  spinner-prefixed terminal titles, reduces them to alert, busy, or idle, then
+  publishes the versioned all-tab activity snapshot to every known zjstatus
+  plugin instance through `pipe_tab_activity`. Stale takes priority over busy,
+  and busy takes priority over no marker. Spinner-prefixed terminal-title
+  activity is active only while the title still has the spinner prefix; when the
+  title no longer exposes activity, the fact is removed without waiting for pane
+  focus. The pinned zjstatus tabs widget owns marker rendering, appends markers
+  to the live Zellij `TabInfo.name`, and must display the raw native tab name
+  during Zellij tab rename mode
 - Verification: automated
   `cargo test --manifest-path ../yazelix-zellij-pane-orchestrator/Cargo.toml --lib`
+  and `cargo test --target x86_64-unknown-linux-gnu` in the pinned zjstatus fork
 
 #### SBO-011
 - Type: boundary
@@ -138,24 +137,26 @@ The supported boundary is runnable-standalone-first for every non-workspace widg
   status-cache-write` stores that snapshot under `tab_activity` in the same
   launch-scoped `status_bar_cache.json` used by other Yazelix bar widgets,
   while preserving heartbeat facts and the previous tab-activity snapshot when
-  a cache write omits a new tab-activity payload. The integrated child runtime
+  a cache write omits a new tab-activity payload. The pane orchestrator also
+  pushes the same snapshot over `pipe_tab_activity` so the active zjstatus
+  instance does not wait for command-widget polling. The integrated child runtime
   template keeps zjstatus `{tabs}` as the live tab source, because that path is
   driven by Zellij `TabUpdate` events and owns correct focus, creation, deletion,
-  and truncation behavior. The generated `{tabs}` formats also use upstream
-  zjstatus bell fields for style-only terminal-BEL presentation, which is
-  separate from Yazelix AI-activity facts and does not add Yazelix activity
+  click, and truncation behavior. The generated `{tabs}` formats also use
+  upstream zjstatus bell fields for style-only terminal-BEL presentation, which
+  is separate from Yazelix AI-activity facts and does not add Yazelix activity
   marker text.
   `yazelix_zellij_bar_widget tabs` remains a
   child-owned renderer probe for the all-tab activity snapshot contract, but it
-  is not the default integrated tab strip. Upstream zjstatus v0.23.0 still
-  cannot interleave external all-tab state into its built-in `{tabs}` widget, so
-  native tab-name mutation remains the bridge described by SBO-010 until Yazelix
-  owns an event-driven tab renderer or zjstatus consumes the snapshot in its
-  native tab path
+  is not the default integrated tab strip. Yazelix's pinned zjstatus consumes
+  the snapshot activity state by tab id in the native `{tabs}` path through
+  `tab_activity_pipe_name`, while the displayed tab label still comes from live
+  Zellij `TabInfo.name`; the runtime gets activity markers without renaming tabs
 - Verification: automated
   `cargo test` in `luccahuguet/yazelix-zellij-bar` and
   `cargo test --manifest-path ../yazelix-zellij-pane-orchestrator/Cargo.toml --lib`
-  plus `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core status_cache`
+  plus `cargo test --target x86_64-unknown-linux-gnu` in the pinned zjstatus fork
+  and `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core status_cache`
 
 ## Deletion And Extraction Plan
 

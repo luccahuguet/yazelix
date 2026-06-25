@@ -142,16 +142,14 @@ zjstatus layout blocks do not provide a native include or variable layer. The cu
 Raw KDL remains the escape hatch for lower-level zjstatus keys.
 
 The pinned zjstatus tabs widget renders each tab from Zellij `TabInfo`
-placeholders, including native terminal-bell fields. Its pipe and command
-widgets can render external text elsewhere in the bar, but they cannot merge an
-all-tabs activity snapshot into each tab label without a zjstatus code change.
-Both the generic standalone preset and the integrated Yazelix runtime therefore
-keep `{tabs}` for live tab identity, focus, creation/deletion updates, click
-handling, and style-only terminal-bell state. The `yazelix_zellij_bar_widget tabs`
-command is a renderer probe for the all-tab activity snapshot contract, while
-native tab-name decoration remains the default AI-activity bridge until Yazelix
-owns an event-driven tab renderer or zjstatus learns to consume the activity
-snapshot inside its native `{tabs}` path.
+placeholders, including native terminal-bell fields. The integrated Yazelix
+runtime additionally configures `tab_activity_pipe_name` so the pinned tabs
+widget can merge all-tabs activity state into each live `TabInfo.name` label
+without renaming native Zellij tabs. Both the generic standalone preset and the
+integrated Yazelix runtime keep `{tabs}` for live tab identity, focus,
+creation/deletion updates, click handling, and style-only terminal-bell state.
+The `yazelix_zellij_bar_widget tabs` command is a renderer probe for the all-tab
+activity snapshot contract, not the default integrated tab strip.
 
 ## Verification
 
