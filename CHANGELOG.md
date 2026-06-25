@@ -7,6 +7,9 @@ User-visible runtime changes for Yazelix Next live here.
 - `yzn` uses `~/.config/yazelix-next/mars/config.toml` as a full native Mars
   config override when that file exists, while keeping the Mars launch command
   and managed Zellij runtime owned by `yzn`.
+- `yzn` sets `STARSHIP_CONFIG` to `~/.config/yazelix-next/starship.toml` when
+  that file exists, otherwise to an empty config so normal
+  `~/.config/starship.toml` does not affect the managed prompt.
 
 ## 2026-06-25
 

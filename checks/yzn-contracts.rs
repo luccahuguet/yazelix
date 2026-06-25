@@ -17,10 +17,11 @@ fn main() {
     expect_mars_config_override(Path::new(yzn));
 
     let temp = TempDir::new();
-    let user_nu = temp.path.join("config/nu");
+    let user_config = temp.path.join("config");
+    let user_nu = user_config.join("nu");
+    let user_starship = user_config.join("starship.toml");
     let runtime = temp.path.join("run");
     fs::create_dir_all(&user_nu).unwrap();
-    fs::create_dir_all(&runtime).unwrap();
     fs::write(
         user_nu.join("env.nu"),
         "$env.YZN_USER_ENV_TEST = \"env-ok\"\n",
@@ -31,12 +32,51 @@ fn main() {
         "$env.YZN_USER_CONFIG_TEST = \"config-ok\"\n",
     )
     .unwrap();
+    fs::write(&user_starship, "format = \"$character\"\n").unwrap();
 
-    let output = Command::new(&yzn_nu)
+    let stdout = run_nu(
+        &yzn_nu,
+        &user_config,
+        &runtime,
+        "print $env.STARSHIP_SHELL; print $env.STARSHIP_CONFIG; print $env.YZN_USER_ENV_TEST; print $env.YZN_USER_CONFIG_TEST; ^carapace --version | ignore; ^zoxide --version | ignore; print ok",
+    );
+    assert_eq!(
+        stdout,
+        format!("nu\n{}\nenv-ok\nconfig-ok\nok", user_starship.display())
+    );
+    let empty_config = temp.path.join("empty-config");
+    fs::create_dir(&empty_config).unwrap();
+    let fallback_starship = run_nu(
+        &yzn_nu,
+        &empty_config,
+        &temp.path.join("empty-run"),
+        "print $env.STARSHIP_CONFIG",
+    );
+    assert_ne!(fallback_starship, "ambient-starship.toml");
+    assert!(
+        fs::read_to_string(&fallback_starship).unwrap().is_empty(),
+        "fallback Starship config is not empty: {fallback_starship}"
+    );
+
+    expect_line(
+        &runtime.join("yazelix-next/nu/env.nu"),
+        &format!("source-env \"{}\"", user_nu.join("env.nu").display()),
+    );
+    expect_line(
+        &runtime.join("yazelix-next/nu/config.nu"),
+        &format!("source \"{}\"", user_nu.join("config.nu").display()),
+    );
+    fs::write(out, "ok\n").unwrap();
+}
+
+fn run_nu(yzn_nu: &Path, config_home: &Path, runtime: &Path, commands: &str) -> String {
+    fs::create_dir_all(runtime).unwrap();
+    let output = Command::new(yzn_nu)
         .arg("--commands")
-        .arg("print $env.STARSHIP_SHELL; print $env.YZN_USER_ENV_TEST; print $env.YZN_USER_CONFIG_TEST; ^carapace --version | ignore; ^zoxide --version | ignore; print ok")
-        .env("XDG_RUNTIME_DIR", &runtime)
-        .env("YAZELIX_NEXT_CONFIG_HOME", temp.path.join("config"))
+        .arg(commands)
+        .env("XDG_RUNTIME_DIR", runtime)
+        .env("YAZELIX_NEXT_CONFIG_HOME", config_home)
+        .env("STARSHIP_CONFIG", "ambient-starship.toml")
         .output()
         .unwrap();
 
@@ -48,18 +88,9 @@ fn main() {
         String::from_utf8_lossy(&output.stderr)
     );
 
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    assert_eq!(stdout.trim_end_matches('\n'), "nu\nenv-ok\nconfig-ok\nok");
-
-    expect_line(
-        &runtime.join("yazelix-next/nu/env.nu"),
-        &format!("source-env \"{}\"", user_nu.join("env.nu").display()),
-    );
-    expect_line(
-        &runtime.join("yazelix-next/nu/config.nu"),
-        &format!("source \"{}\"", user_nu.join("config.nu").display()),
-    );
-    fs::write(out, "ok\n").unwrap();
+    String::from_utf8_lossy(&output.stdout)
+        .trim_end_matches('\n')
+        .to_owned()
 }
 
 fn expect_mars_config_override(yzn: &Path) {

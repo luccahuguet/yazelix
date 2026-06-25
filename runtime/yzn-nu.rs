@@ -11,6 +11,7 @@ use std::{
 
 const NU: &str = "@nu@";
 const PACKAGED_NU: &str = "@packagedNu@";
+const EMPTY_STARSHIP_CONFIG: &str = "/dev/null";
 const PATH_PREFIX: &str = "@pathPrefix@";
 
 fn main() -> ExitCode {
@@ -24,7 +25,14 @@ fn main() -> ExitCode {
 }
 
 fn run() -> io::Result<()> {
-    let user_nu = config_home()?.join("nu");
+    let config_home = config_home()?;
+    let user_nu = config_home.join("nu");
+    let user_starship = config_home.join("starship.toml");
+    let starship_config = if user_starship.is_file() {
+        user_starship
+    } else {
+        PathBuf::from(EMPTY_STARSHIP_CONFIG)
+    };
     let packaged_nu = PathBuf::from(PACKAGED_NU);
     let runtime_nu = runtime_dir().join("yazelix-next/nu");
     fs::create_dir_all(&runtime_nu)?;
@@ -45,6 +53,7 @@ fn run() -> io::Result<()> {
         .arg(config)
         .args(env::args_os().skip(1))
         .env("PATH", runtime_path())
+        .env("STARSHIP_CONFIG", starship_config)
         .exec();
     Err(error)
 }

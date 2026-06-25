@@ -50,6 +50,18 @@ command and the managed Zellij runtime.
 
 The same `YAZELIX_NEXT_CONFIG_HOME` root applies here.
 
+## Starship Config
+
+`yzn` sets `STARSHIP_CONFIG` to this native Starship config when it exists:
+
+```text
+~/.config/yazelix-next/starship.toml
+```
+
+Otherwise it uses an empty config, so normal `~/.config/starship.toml` does not
+affect managed shells. The file uses Starship TOML; user `nu/config.nu` can
+still override prompt variables for advanced cases.
+
 ## Editor Opens
 
 Yazi opens files through the packaged `yzn-open` Rust helper. If no Helix bridge
@@ -96,11 +108,11 @@ wc -l .gitignore AGENTS.md README.md CHANGELOG.md ARCHITECTURE.md flake.nix mars
 | Language | Files | Lines |
 | --- | --- | ---: |
 | Ignore | `.gitignore` | 1 |
-| Markdown | `AGENTS.md`, `README.md`, `CHANGELOG.md`, `ARCHITECTURE.md` | 355 |
+| Markdown | `AGENTS.md`, `README.md`, `CHANGELOG.md`, `ARCHITECTURE.md` | 375 |
 | Nix | `flake.nix` | 258 |
 | TOML | `mars.toml`, `helix/config.toml`, `yazi/yazi.toml`, `crates/yzn-open/Cargo.toml` | 106 |
 | KDL | `config.kdl`, `layout.kdl`, `layout.swap.kdl` | 119 |
 | Nu | `nu/config.nu`, `nu/env.nu` | 11 |
 | Lua | `yazi/init.lua`, `yazi/plugins/sidebar-status.yazi/main.lua` | 16 |
-| Rust | `crates/yzn-open/src/main.rs`, `checks/zellij-layout.rs`, `checks/yzn-contracts.rs`, `runtime/yzn-nu.rs` | 1283 |
-| Total | owned project files | 2149 |
+| Rust | `crates/yzn-open/src/main.rs`, `checks/zellij-layout.rs`, `checks/yzn-contracts.rs`, `runtime/yzn-nu.rs` | 1323 |
+| Total | owned project files | 2209 |

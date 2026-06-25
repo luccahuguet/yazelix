@@ -32,7 +32,8 @@ starship and disables the normal Nushell banner and prompt indicators.
 
 `runtime/yzn-nu.rs` is the Nushell runtime-config owner. It writes the runtime
 `env.nu` and `config.nu` files, layers optional user config from
-`~/.config/yazelix-next/nu`, and then execs Nushell.
+`~/.config/yazelix-next/nu`, chooses the Starship config path, and then execs
+Nushell.
 
 `yazi/` is the file-manager config owner. It enables the selected Yazi plugins
 and routes file opens through `yzn-open`.
@@ -52,15 +53,18 @@ replacement. User config is narrow and explicit:
 
 ```text
 ~/.config/yazelix-next/mars/config.toml
+~/.config/yazelix-next/starship.toml
 ~/.config/yazelix-next/nu/env.nu
 ~/.config/yazelix-next/nu/config.nu
 ```
 
 `YAZELIX_NEXT_CONFIG_HOME` can point at another config root. Mars uses full
 native replacement when its user `config.toml` exists. Nushell uses packaged
-config first, then optional user `env.nu` and `config.nu`. Normal Nushell config
-is not loaded by default, which keeps `yzn` reproducible and avoids ambient user
-shell behavior changing the runtime.
+config first, then optional user `env.nu` and `config.nu`. Starship uses the
+user `starship.toml` when present, otherwise an empty config that preserves
+Starship defaults. Normal Nushell and Starship config files are not loaded by
+default, which keeps `yzn` reproducible and avoids ambient user shell behavior
+changing the runtime.
 
 ## Session Isolation
 
@@ -84,7 +88,7 @@ window.
 | C2 | Mars uses packaged visual config unless a user native Mars config exists | `mars.toml`, `flake.nix` | `checks/yzn-contracts.rs` validates packaged config and launcher selection | Visual correctness remains manual dogfooding |
 | C3 | Zellij layout has the sidebar template required by swaps | `layout.kdl`, `layout.swap.kdl` | `checks/zellij-layout.rs` runs during build | None for the current template/swap contract |
 | C4 | Zellij-native mode keys use `Ctrl Alt`, move mode is unbound, `Alt m` opens a pane for the swap layout to stack, and `Alt Shift h` toggles the sidebar swap | `config.kdl` | `checks/yzn-contracts.rs` validates the packaged config | Full key behavior remains manual dogfooding |
-| C5 | Nushell loads packaged config first, then optional user config | `runtime/yzn-nu.rs`, `nu/` | `checks/yzn-contracts.rs` runs in `nix flake check` | None for current layering behavior |
+| C5 | Nushell loads packaged config first, optional user config after it, and a controlled Starship config path | `runtime/yzn-nu.rs`, `nu/` | `checks/yzn-contracts.rs` validates Nushell layering and Starship config selection | None for current layering behavior |
 | C6 | Yazi opens paths through `yzn-open` with bounded diagnostics | `yazi/yazi.toml`, `crates/yzn-open/` | `cargo test` through `yzn-open` package build | Full Yazi UI behavior remains manual dogfooding |
 | C7 | Helix bridge reuse stays inside the current `yzn` window | `crates/yzn-open/`, `flake.nix` | `yzn-open` Rust tests cover session and Zellij-window mismatch | Full multi-window GUI behavior remains manual dogfooding |
 | C8 | Desktop entry starts `yzn` | `flake.nix` | `nix build .#yzn` packages the desktop file | Desktop environment launch remains manual dogfooding |
@@ -116,7 +120,8 @@ window.
 - Yazi is powerful but integration-heavy. Sidebar behavior, plugins, previews,
   opener routing, and editor bridge behavior create several contracts that need
   focused checks.
-- User config layering exists for Nushell but not yet for Yazi or Zellij.
+- User config layering exists for Mars, Starship, and Nushell but not yet for
+  Yazi or Zellij.
 
 ## Current Tradeoff
 
