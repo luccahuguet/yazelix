@@ -119,9 +119,10 @@ fn try_bridge(config: &Config, targets: &[PathBuf]) -> Result<bool> {
         if path.extension().and_then(|value| value.to_str()) != Some("json") {
             continue;
         }
-        let Some(registry) = read_registry(&path)? else {
+        let registry = read_registry(&path)?;
+        if registry.schema_version != 2 {
             continue;
-        };
+        }
         if !registry.matches_session(config) {
             log_event(
                 config,
@@ -157,8 +158,7 @@ fn try_bridge(config: &Config, targets: &[PathBuf]) -> Result<bool> {
             }
         }
 
-        let action = bridge_action(targets);
-        let payload = bridge_payload(targets);
+        let (action, payload) = bridge_open_request(targets);
         log_event(
             config,
             &format!(
@@ -193,16 +193,11 @@ fn try_bridge(config: &Config, targets: &[PathBuf]) -> Result<bool> {
     Ok(false)
 }
 
-fn read_registry(path: &Path) -> Result<Option<Registry>> {
+fn read_registry(path: &Path) -> Result<Registry> {
     let raw = fs::read_to_string(path)
         .with_context(|| format!("could not read Helix bridge registry {}", path.display()))?;
-    let registry = serde_json::from_str::<Registry>(&raw)
-        .with_context(|| format!("could not parse Helix bridge registry {}", path.display()))?;
-    if registry.schema_version == 2 {
-        Ok(Some(registry))
-    } else {
-        Ok(None)
-    }
+    serde_json::from_str::<Registry>(&raw)
+        .with_context(|| format!("could not parse Helix bridge registry {}", path.display()))
 }
 
 impl Registry {
@@ -273,27 +268,25 @@ fn send_bridge_request(
     }
 }
 
-fn bridge_action(targets: &[PathBuf]) -> &'static str {
-    if directory_target(targets).is_some() {
-        "helix.open_directory"
-    } else {
-        "helix.open_files"
-    }
-}
-
-fn bridge_payload(targets: &[PathBuf]) -> Value {
+fn bridge_open_request(targets: &[PathBuf]) -> (&'static str, Value) {
     let working_dir = editor_cwd(targets);
     if let Some(target) = directory_target(targets) {
-        json!({
-            "working_dir": working_dir,
-            "picker_dir": target,
-        })
+        (
+            "helix.open_directory",
+            json!({
+                "working_dir": working_dir,
+                "picker_dir": target,
+            }),
+        )
     } else {
-        json!({
-            "working_dir": working_dir,
-            "file_paths": targets,
-            "focus": true,
-        })
+        (
+            "helix.open_files",
+            json!({
+                "working_dir": working_dir,
+                "file_paths": targets,
+                "focus": true,
+            }),
+        )
     }
 }
 
@@ -483,25 +476,11 @@ mod tests {
     #[test]
     fn builds_file_open_payload() {
         let targets = vec![PathBuf::from("/tmp/project/src/main.rs")];
-        let payload = bridge_payload(&targets);
+        let (action, payload) = bridge_open_request(&targets);
+        assert_eq!(action, "helix.open_files");
         assert_eq!(payload["working_dir"], "/tmp/project/src");
         assert_eq!(payload["file_paths"], json!(["/tmp/project/src/main.rs"]));
         assert_eq!(payload["focus"], true);
-    }
-
-    #[test]
-    fn builds_directory_open_payload() {
-        let root = test_dir("directory-payload");
-        fs::create_dir_all(&root).unwrap();
-
-        assert_eq!(
-            bridge_action(std::slice::from_ref(&root)),
-            "helix.open_directory"
-        );
-        let payload = bridge_payload(std::slice::from_ref(&root));
-        assert_eq!(payload["working_dir"], root.to_string_lossy().to_string());
-        assert_eq!(payload["picker_dir"], root.to_string_lossy().to_string());
-        assert!(payload.get("file_paths").is_none());
     }
 
     #[test]
@@ -512,8 +491,8 @@ mod tests {
         fs::write(&file, "").unwrap();
         let targets = vec![file, root.clone()];
 
-        assert_eq!(bridge_action(&targets), "helix.open_directory");
-        let payload = bridge_payload(&targets);
+        let (action, payload) = bridge_open_request(&targets);
+        assert_eq!(action, "helix.open_directory");
         assert_eq!(payload["working_dir"], root.to_string_lossy().to_string());
         assert_eq!(payload["picker_dir"], root.to_string_lossy().to_string());
         assert!(payload.get("file_paths").is_none());

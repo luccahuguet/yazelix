@@ -64,11 +64,11 @@ wc -l .gitignore AGENTS.md README.md flake.nix mars.toml config.kdl layout.kdl l
 | --- | --- | ---: |
 | Ignore | `.gitignore` | 1 |
 | Markdown | `AGENTS.md`, `README.md` | 144 |
-| Nix | `flake.nix` | 232 |
+| Nix | `flake.nix` | 226 |
 | TOML | `mars.toml`, `helix/config.toml`, `yazi/yazi.toml`, `crates/yzn-open/Cargo.toml` | 106 |
-| KDL | `config.kdl`, `layout.kdl`, `layout.swap.kdl` | 48 |
-| Nu | `nu/config.nu`, `nu/env.nu` | 15 |
+| KDL | `config.kdl`, `layout.kdl`, `layout.swap.kdl` | 47 |
+| Nu | `nu/config.nu`, `nu/env.nu` | 11 |
 | Shell | `scripts/yzn-nu.sh` | 36 |
 | Lua | `yazi/init.lua`, `yazi/plugins/sidebar-status.yazi/main.lua` | 16 |
-| Rust | `crates/yzn-open/src/main.rs` | 647 |
-| Total | owned project files | 1245 |
+| Rust | `crates/yzn-open/src/main.rs` | 626 |
+| Total | owned project files | 1213 |

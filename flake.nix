@@ -34,11 +34,7 @@
     autoLayoutYazi,
     starshipYazi,
   }: let
-    systems = [
-      "x86_64-linux"
-      "aarch64-linux"
-    ];
-    eachSystem = nixpkgs.lib.genAttrs systems;
+    eachSystem = nixpkgs.lib.genAttrs ["x86_64-linux" "aarch64-linux"];
   in {
     packages = eachSystem (system: let
       pkgs = import nixpkgs {inherit system;};
@@ -219,13 +215,11 @@
       default = yzn;
     });
 
-    apps = eachSystem (system: let
+    apps = eachSystem (system: rec {
       yzn = {
         type = "app";
         program = "${self.packages.${system}.yzn}/bin/yzn";
       };
-    in {
-      inherit yzn;
       default = yzn;
     });
   };

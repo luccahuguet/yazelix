@@ -4,7 +4,6 @@ swap_tiled_layout name="single_open" {
             pane name="sidebar" command="@yazi@" size="20%"
             pane stacked=true {
                 children;
-                size "80%"
             }
         }
     }
