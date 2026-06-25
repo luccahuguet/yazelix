@@ -139,7 +139,11 @@
       yznLayoutSwapKdl = pkgs.replaceVars ./layout.swap.kdl {
         yazi = "${yznYazi}/bin/yzn-yazi";
       };
+      yznLayoutCheck = pkgs.runCommand "yzn-layout-check" {nativeBuildInputs = [pkgs.rustc pkgs.stdenv.cc];} ''
+        rustc --edition=2024 ${./checks/zellij-layout.rs} -o "$out"
+      '';
       yznZellijLayout = pkgs.runCommand "yzn-zellij-layout" {} ''
+        ${yznLayoutCheck} ${yznLayoutKdl} ${yznLayoutSwapKdl}
         install -D -m 644 ${yznLayoutKdl} "$out/layout.kdl"
         install -D -m 644 ${yznLayoutSwapKdl} "$out/layout.swap.kdl"
       '';
