@@ -821,35 +821,35 @@ mod tests {
         );
         assert_eq!(
             value["zellij"]["native_keybindings"]["pane_mode_unbind"],
-            json!(["Ctrl p"])
+            json!([])
         );
         assert_eq!(
             value["zellij"]["native_keybindings"]["pane_mode"],
-            json!(["Ctrl Alt p"])
+            json!(["Ctrl p"])
         );
         assert_eq!(
             value["zellij"]["native_keybindings"]["resize_mode_unbind"],
-            json!(["Ctrl n"])
+            json!([])
         );
         assert_eq!(
             value["zellij"]["native_keybindings"]["resize_mode"],
-            json!(["Ctrl Alt n"])
+            json!(["Ctrl n"])
         );
         assert_eq!(
             value["zellij"]["native_keybindings"]["tab_mode_unbind"],
-            json!(["Ctrl t"])
+            json!([])
         );
         assert_eq!(
             value["zellij"]["native_keybindings"]["tab_mode"],
-            json!(["Ctrl Alt t"])
+            json!(["Ctrl t"])
         );
         assert_eq!(
             value["zellij"]["native_keybindings"]["quit_unbind"],
-            json!(["Ctrl q"])
+            json!([])
         );
         assert_eq!(
             value["zellij"]["native_keybindings"]["quit"],
-            json!(["Ctrl Alt q"])
+            json!(["Ctrl q"])
         );
     }
 

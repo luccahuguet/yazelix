@@ -622,7 +622,7 @@ pub const ZELLIJ_NATIVE_KEYBINDINGS: &[ZellijNativeKeybindingSpec] = &[
     zellij_native_action(
         "pane_mode_unbind",
         "Unbind default pane-mode key",
-        &["Ctrl p"],
+        &[],
         "unbind Ctrl p",
         &[
             ZellijNativeKeybindingBlock {
@@ -638,7 +638,7 @@ pub const ZELLIJ_NATIVE_KEYBINDINGS: &[ZellijNativeKeybindingSpec] = &[
     zellij_native_action(
         "pane_mode",
         "Toggle pane mode",
-        &["Ctrl Alt p"],
+        &["Ctrl p"],
         "SwitchToMode \"Pane\" / SwitchToMode \"Normal\"",
         &[
             ZellijNativeKeybindingBlock {
@@ -654,7 +654,7 @@ pub const ZELLIJ_NATIVE_KEYBINDINGS: &[ZellijNativeKeybindingSpec] = &[
     zellij_native_action(
         "resize_mode_unbind",
         "Unbind default resize-mode key",
-        &["Ctrl n"],
+        &[],
         "unbind Ctrl n",
         &[
             ZellijNativeKeybindingBlock {
@@ -670,7 +670,7 @@ pub const ZELLIJ_NATIVE_KEYBINDINGS: &[ZellijNativeKeybindingSpec] = &[
     zellij_native_action(
         "resize_mode",
         "Toggle resize mode",
-        &["Ctrl Alt n"],
+        &["Ctrl n"],
         "SwitchToMode \"Resize\" / SwitchToMode \"Normal\"",
         &[
             ZellijNativeKeybindingBlock {
@@ -686,7 +686,7 @@ pub const ZELLIJ_NATIVE_KEYBINDINGS: &[ZellijNativeKeybindingSpec] = &[
     zellij_native_action(
         "tab_mode_unbind",
         "Unbind default tab-mode key",
-        &["Ctrl t"],
+        &[],
         "unbind Ctrl t",
         &[
             ZellijNativeKeybindingBlock {
@@ -702,7 +702,7 @@ pub const ZELLIJ_NATIVE_KEYBINDINGS: &[ZellijNativeKeybindingSpec] = &[
     zellij_native_action(
         "tab_mode",
         "Toggle tab mode",
-        &["Ctrl Alt t"],
+        &["Ctrl t"],
         "SwitchToMode \"Tab\" / SwitchToMode \"Normal\"",
         &[
             ZellijNativeKeybindingBlock {
@@ -816,7 +816,7 @@ pub const ZELLIJ_NATIVE_KEYBINDINGS: &[ZellijNativeKeybindingSpec] = &[
     zellij_native_action(
         "quit_unbind",
         "Unbind default quit key",
-        &["Ctrl q"],
+        &[],
         "unbind Ctrl q",
         &[ZellijNativeKeybindingBlock {
             mode: "shared_except \"locked\"",
@@ -826,7 +826,7 @@ pub const ZELLIJ_NATIVE_KEYBINDINGS: &[ZellijNativeKeybindingSpec] = &[
     zellij_native_action(
         "quit",
         "Quit Yazelix",
-        &["Ctrl Alt q"],
+        &["Ctrl q"],
         "Quit",
         &[ZellijNativeKeybindingBlock {
             mode: "shared_except \"locked\"",

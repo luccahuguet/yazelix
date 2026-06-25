@@ -200,24 +200,18 @@
       "move_mode_unbind": [
         "Ctrl h"
       ],
-      // Put Zellij mode and quit controls on one coherent Ctrl+Alt layer.
-      "pane_mode_unbind": [
+      // Keep high-frequency Zellij controls ergonomic while the status bar groups modifiers clearly.
+      "pane_mode_unbind": [],
+      "pane_mode": [
         "Ctrl p"
       ],
-      "pane_mode": [
-        "Ctrl Alt p"
-      ],
-      "resize_mode_unbind": [
+      "resize_mode_unbind": [],
+      "resize_mode": [
         "Ctrl n"
       ],
-      "resize_mode": [
-        "Ctrl Alt n"
-      ],
-      "tab_mode_unbind": [
-        "Ctrl t"
-      ],
+      "tab_mode_unbind": [],
       "tab_mode": [
-        "Ctrl Alt t"
+        "Ctrl t"
       ],
       // Move locked mode away from Ctrl+g in normal/default modes for CLI prompt flows.
       "locked_mode_unbind": [
@@ -240,11 +234,9 @@
       "session_mode": [
         "Ctrl Alt o"
       ],
-      "quit_unbind": [
-        "Ctrl q"
-      ],
+      "quit_unbind": [],
       "quit": [
-        "Ctrl Alt q"
+        "Ctrl q"
       ],
       // Keep Ctrl+b available to shells/editors instead of Zellij tmux mode.
       "tmux_mode_unbind": [

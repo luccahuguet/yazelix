@@ -10,7 +10,7 @@
 
 [contract]
 version = 1
-ratconfig_contract_version = 14
+ratconfig_contract_version = 15
 ratconfig_applied_change_ids = [
   "rename-editor-sidebar-to-workspace-left-sidebar",
   "replace-native-movement-defaults",
@@ -25,6 +25,7 @@ ratconfig_applied_change_ids = [
   "add-session-widget-tray-value",
   "add-widget-chrome-settings",
   "adopt-ctrl-alt-native-mode-layer",
+  "adopt-mixed-native-mode-layer",
 ]
 surface = "main"
 field_count = 53
@@ -656,20 +657,20 @@ toggle_pane_in_group_unbind = ["Alt p"]
 toggle_pane_in_group = []
 toggle_group_marking = ["Ctrl Alt Shift P"]
 move_mode_unbind = ["Ctrl h"]
-pane_mode_unbind = ["Ctrl p"]
-pane_mode = ["Ctrl Alt p"]
-resize_mode_unbind = ["Ctrl n"]
-resize_mode = ["Ctrl Alt n"]
-tab_mode_unbind = ["Ctrl t"]
-tab_mode = ["Ctrl Alt t"]
+pane_mode_unbind = []
+pane_mode = ["Ctrl p"]
+resize_mode_unbind = []
+resize_mode = ["Ctrl n"]
+tab_mode_unbind = []
+tab_mode = ["Ctrl t"]
 locked_mode_unbind = ["Ctrl g"]
 locked_mode = ["Ctrl Alt g"]
 scroll_mode_unbind = ["Ctrl s"]
 scroll_mode = ["Ctrl Alt s"]
 session_mode_unbind = ["Ctrl o"]
 session_mode = ["Ctrl Alt o"]
-quit_unbind = ["Ctrl q"]
-quit = ["Ctrl Alt q"]
+quit_unbind = []
+quit = ["Ctrl q"]
 tmux_mode_unbind = ["Ctrl b"]
 
 [fields."zellij.keybindings"]

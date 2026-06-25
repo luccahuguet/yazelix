@@ -9,7 +9,7 @@ Post-v17.8 work in progress
 Upgrade impact: no user action required
 
 Highlights:
-- Moved the Zellij mode and quit layer onto coherent `Ctrl Alt` native defaults: `Ctrl Alt p/n/t/g/s/o/q` enter pane, resize, tab, locked, scroll/search, session, and quit paths, while `Ctrl p/n/t/h/q` are unbound by default and pane grouping no longer occupies `Ctrl Alt p`
+- Adopted the grouped Zellij mode layer from Yazelix Next: `Ctrl p/t/n/q` keep pane, tab, resize, and quit fast, `Ctrl Alt g/s/o` keep lock, search, and session grouped off plain Ctrl, `Ctrl h` stays unbound from move mode, and the consumed Zellij fork groups mixed modifier hints cleanly in the bottom bar
 
 ## v17.8 - 2026-06-22
 
