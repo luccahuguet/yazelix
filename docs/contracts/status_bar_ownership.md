@@ -10,7 +10,7 @@ The supported boundary is runnable-standalone-first for every non-workspace widg
 
 | Surface | Owner | Status |
 | --- | --- | --- |
-| zjstatus plugin runtime, layout keys, style tags, command widget intervals, and placeholder expansion | upstream zjstatus plus Yazelix generated KDL | Keep native |
+| zjstatus plugin runtime, layout keys, style tags, command widget intervals, and placeholder expansion | pinned zjstatus plus Yazelix generated KDL | Keep native |
 | generic `mode`, `tabs`, `session`, `datetime`, brand, tab-label, compact/full bar, and command-placeholder rendering | `yazelix_zellij_bar` child package command surface | Keep child |
 | standalone preset/template packaging and package-local `zjstatus.wasm` path substitution | `yazelix_zellij_bar` child repo | Keep child |
 | widget tray token validation and generic dynamic placeholders such as `{pipe_workspace}` and bar-owned command placeholders | `yazelix_zellij_bar` child package command surface | Keep child |
@@ -23,7 +23,7 @@ The supported boundary is runnable-standalone-first for every non-workspace widg
 | live sidebar/editor/workspace facts | pane orchestrator | Keep producer |
 | active-tab workspace pipe message and label content | pane orchestrator | Keep producer |
 | all-tab activity facts | pane orchestrator snapshot written through the window-local status-bar cache; `get_all_tab_activity_state` remains the direct diagnostic/read seam | Keep producer |
-| activity tab-label presentation | native Zellij tab-name mutation as the current bridge; `yazelix_zellij_bar` owns pure label rendering and diagnostic cache rendering | Keep bridge |
+| activity tab-label presentation | pane-orchestrator all-tab activity facts pushed through `pipe_tab_activity`; pinned zjstatus merges activity state into live `{tabs}` labels without native tab-name mutation; `yazelix_zellij_bar` owns marker configuration and diagnostic cache rendering | Keep pipe |
 | terminal-bell tab presentation | upstream zjstatus `{tabs}` with child-owned generated `tab_normal_bell` and `tab_normal_flashing_bell` style-only formats | Keep native |
 | direct `status-bus-workspace` zjstatus command | none | Deleted |
 

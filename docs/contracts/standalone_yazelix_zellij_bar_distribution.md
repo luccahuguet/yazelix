@@ -104,9 +104,9 @@ Standalone users can use the same widget contract without Yazelix by using `yaze
 
 The full Yazelix runtime consumes the `yazelix_zellij_bar` child package command surface for integrated zjstatus plugin-block rendering, simple fact widgets, CPU/RAM, cached provider usage widgets, and tab-label formatting helpers. Integrated layout materialization calls `yazelix_zellij_bar_widget render-yazelix-runtime` with typed runtime bar config; the child renders its runtime KDL template and Yazelix inserts the returned plugin block. The integrated template keeps zjstatus `{tabs}` as the default live tab source because it is event-driven by Zellij `TabUpdate` events and supports upstream terminal-bell styling without a Yazelix command-widget tab strip.
 
-The standalone package installs `zjstatus.wasm` from the child repo's pinned `zjstatus` flake input. The main Yazelix flake makes `yazelixZellijBar.inputs.zjstatus` follow the main repo's `zjstatus` input when forwarding `.#yazelix_zellij_bar`, so the forwarded standalone package uses the same upstream pin as the integrated Yazelix runtime.
+The standalone package installs `zjstatus.wasm` from the child repo's pinned `zjstatus` flake input. The main Yazelix flake makes `yazelixZellijBar.inputs.zjstatus` follow the main repo's `zjstatus` input when forwarding `.#yazelix_zellij_bar`, so the forwarded standalone package uses the same selected pin as the integrated Yazelix runtime.
 
-The main runtime ships `configs/zellij/plugins/zjstatus.wasm` from the locked upstream `zjstatus` package output for integrated Zellij layouts.
+The main runtime ships `configs/zellij/plugins/zjstatus.wasm` from the locked `zjstatus` package output for integrated Zellij layouts.
 
 Yazelix keeps these integration-only responsibilities:
 
