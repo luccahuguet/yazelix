@@ -32,17 +32,24 @@ fn main() {
         "$env.YZN_USER_CONFIG_TEST = \"config-ok\"\n",
     )
     .unwrap();
-    fs::write(&user_starship, "format = \"$character\"\n").unwrap();
+    fs::write(
+        &user_starship,
+        "format = \"$character\"\nright_format = \"::<>\"\n",
+    )
+    .unwrap();
 
     let stdout = run_nu(
         &yzn_nu,
         &user_config,
         &runtime,
-        "print $env.STARSHIP_SHELL; print $env.STARSHIP_CONFIG; print $env.YZN_USER_ENV_TEST; print $env.YZN_USER_CONFIG_TEST; ^carapace --version | ignore; ^zoxide --version | ignore; print ok",
+        "print $env.STARSHIP_SHELL; print $env.STARSHIP_CONFIG; print (do $env.PROMPT_COMMAND_RIGHT); print $env.YZN_USER_ENV_TEST; print $env.YZN_USER_CONFIG_TEST; ^carapace --version | ignore; ^zoxide --version | ignore; print ok",
     );
     assert_eq!(
         stdout,
-        format!("nu\n{}\nenv-ok\nconfig-ok\nok", user_starship.display())
+        format!(
+            "nu\n{}\n::<>\nenv-ok\nconfig-ok\nok",
+            user_starship.display()
+        )
     );
     let empty_config = temp.path.join("empty-config");
     fs::create_dir(&empty_config).unwrap();

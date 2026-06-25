@@ -27,8 +27,9 @@ owners. They set the shell, Zellij-native `Ctrl Alt` mode keys, direct
 `Ctrl Alt h/j/k/l` movement, the `Alt m` pane binding, the `Alt Shift h`
 sidebar toggle, the Yazi sidebar tab, and the open/closed sidebar swap layouts.
 
-`nu/` is the packaged Nushell config owner. It initializes carapace, zoxide, and
-starship and disables the normal Nushell banner and prompt indicators.
+`nu/` is the packaged Nushell config owner. It initializes carapace, zoxide,
+and Starship left and right prompts, and disables the normal Nushell banner and
+prompt indicators.
 
 `runtime/yzn-nu.rs` is the Nushell runtime-config owner. It writes the runtime
 `env.nu` and `config.nu` files, layers optional user config from
@@ -88,7 +89,7 @@ window.
 | C2 | Mars uses packaged visual config unless a user native Mars config exists | `mars.toml`, `flake.nix` | `checks/yzn-contracts.rs` validates packaged config and launcher selection | Visual correctness remains manual dogfooding |
 | C3 | Zellij layout has the sidebar template required by swaps | `layout.kdl`, `layout.swap.kdl` | `checks/zellij-layout.rs` runs during build | None for the current template/swap contract |
 | C4 | Zellij-native mode keys use `Ctrl Alt`, move mode is unbound, `Alt m` opens a pane for the swap layout to stack, and `Alt Shift h` toggles the sidebar swap | `config.kdl` | `checks/yzn-contracts.rs` validates the packaged config | Full key behavior remains manual dogfooding |
-| C5 | Nushell loads packaged config first, optional user config after it, and a controlled Starship config path | `runtime/yzn-nu.rs`, `nu/` | `checks/yzn-contracts.rs` validates Nushell layering and Starship config selection | None for current layering behavior |
+| C5 | Nushell loads packaged config first, optional user config after it, and controlled Starship left/right prompt config | `runtime/yzn-nu.rs`, `nu/` | `checks/yzn-contracts.rs` validates Nushell layering, Starship config selection, and right prompt rendering | None for current layering behavior |
 | C6 | Yazi opens paths through `yzn-open` with bounded diagnostics | `yazi/yazi.toml`, `crates/yzn-open/` | `cargo test` through `yzn-open` package build | Full Yazi UI behavior remains manual dogfooding |
 | C7 | Helix bridge reuse stays inside the current `yzn` window | `crates/yzn-open/`, `flake.nix` | `yzn-open` Rust tests cover session and Zellij-window mismatch | Full multi-window GUI behavior remains manual dogfooding |
 | C8 | Desktop entry starts `yzn` | `flake.nix` | `nix build .#yzn` packages the desktop file | Desktop environment launch remains manual dogfooding |

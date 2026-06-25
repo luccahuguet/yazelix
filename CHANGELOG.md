@@ -10,6 +10,8 @@ User-visible runtime changes for Yazelix Next live here.
 - `yzn` sets `STARSHIP_CONFIG` to `~/.config/yazelix-next/starship.toml` when
   that file exists, otherwise to an empty config so normal
   `~/.config/starship.toml` does not affect the managed prompt.
+- Nushell delegates the right prompt to Starship, so `right_format` in
+  `~/.config/yazelix-next/starship.toml` is honored.
 
 ## 2026-06-25
 
