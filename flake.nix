@@ -68,7 +68,7 @@
       inputs.fenix.follows = "fenix";
     };
     zjstatus = {
-      url = "github:dj95/zjstatus";
+      url = "github:luccahuguet/zjstatus/yazelix-tab-activity-pipe";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
