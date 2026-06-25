@@ -49,6 +49,20 @@ live, `yzn-open` sends the file or directory open request to that editor.
 `yzn-open.log.1` file. Set `YZN_OPEN_LOG` to `off`, `error`, `info`, or
 `debug`; the default is `info`.
 
+## Keybindings
+
+`Ctrl Alt` keys are Zellij-native control. Plain `Ctrl` keys stay available to
+Helix, Nushell, Yazi, and terminal programs.
+
+| Key | Action |
+| --- | --- |
+| `Ctrl Alt g/p/t/n/s/o/q` | lock, pane, tab, resize, search, session, quit |
+| `Ctrl Alt h/j/k/l` | move tab left, move pane down/up, move tab right |
+| `Alt m` | new stacked pane |
+| `Alt Shift h` | show or hide the Yazi sidebar |
+
+Move mode is intentionally unbound.
+
 ## Hack On Mars
 
 ```sh
@@ -68,11 +82,11 @@ wc -l .gitignore AGENTS.md README.md ARCHITECTURE.md flake.nix mars.toml config.
 | Language | Files | Lines |
 | --- | --- | ---: |
 | Ignore | `.gitignore` | 1 |
-| Markdown | `AGENTS.md`, `README.md`, `ARCHITECTURE.md` | 289 |
+| Markdown | `AGENTS.md`, `README.md`, `ARCHITECTURE.md` | 304 |
 | Nix | `flake.nix` | 246 |
 | TOML | `mars.toml`, `helix/config.toml`, `yazi/yazi.toml`, `crates/yzn-open/Cargo.toml` | 106 |
-| KDL | `config.kdl`, `layout.kdl`, `layout.swap.kdl` | 58 |
+| KDL | `config.kdl`, `layout.kdl`, `layout.swap.kdl` | 125 |
 | Nu | `nu/config.nu`, `nu/env.nu` | 11 |
 | Lua | `yazi/init.lua`, `yazi/plugins/sidebar-status.yazi/main.lua` | 16 |
-| Rust | `crates/yzn-open/src/main.rs`, `checks/zellij-layout.rs`, `checks/yzn-contracts.rs`, `runtime/yzn-nu.rs` | 1116 |
-| Total | owned project files | 1843 |
+| Rust | `crates/yzn-open/src/main.rs`, `checks/zellij-layout.rs`, `checks/yzn-contracts.rs`, `runtime/yzn-nu.rs` | 1173 |
+| Total | owned project files | 1982 |

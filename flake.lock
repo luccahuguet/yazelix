@@ -195,11 +195,11 @@
     "yazelixZellij": {
       "flake": false,
       "locked": {
-        "lastModified": 1781717220,
-        "narHash": "sha256-pZVCbfx8kIXAiGw6GgI6Va364apePjtCQ5tYWSniAvM=",
+        "lastModified": 1782364817,
+        "narHash": "sha256-V76dYI+RWxS6aDnl7mSvZF6z/AaxIxLu17LcO55MYm4=",
         "owner": "luccahuguet",
         "repo": "yazelix-zellij",
-        "rev": "78e94206d9a8408d64045fb37ff950f288104974",
+        "rev": "10c79f7e825be85951d1f139a2154a77724cdc84",
         "type": "github"
       },
       "original": {

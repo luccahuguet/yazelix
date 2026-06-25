@@ -1,9 +1,66 @@
 default_shell "@nuShell@"
 
 keybinds {
+    locked {
+        unbind "Ctrl g"
+        bind "Ctrl Alt g" { SwitchToMode "Normal"; }
+    }
+    pane {
+        unbind "Ctrl p"
+        bind "Ctrl Alt p" { SwitchToMode "Normal"; }
+    }
+    resize {
+        unbind "Ctrl n"
+        bind "Ctrl Alt n" { SwitchToMode "Normal"; }
+    }
+    tab {
+        unbind "Ctrl t"
+        bind "Ctrl Alt t" { SwitchToMode "Normal"; }
+    }
+    scroll {
+        unbind "Ctrl s"
+        bind "Ctrl Alt s" { SwitchToMode "Normal"; }
+    }
+    search {
+        unbind "Ctrl s"
+        bind "Ctrl Alt s" { SwitchToMode "Normal"; }
+    }
+    session {
+        unbind "Ctrl o"
+        bind "Ctrl Alt o" { SwitchToMode "Normal"; }
+    }
     shared_except "locked" {
-        unbind "Alt n"
+        unbind "Alt n" "Ctrl g" "Ctrl q"
         bind "Alt m" { NewPane "stacked"; }
         bind "Alt Shift h" { NextSwapLayout; }
+        bind "Ctrl Alt g" { SwitchToMode "Locked"; }
+        bind "Ctrl Alt q" { Quit; }
+        bind "Ctrl Alt h" { MoveTab "Left"; }
+        bind "Ctrl Alt j" { MovePane "Down"; }
+        bind "Ctrl Alt k" { MovePane "Up"; }
+        bind "Ctrl Alt l" { MoveTab "Right"; }
+    }
+    shared_except "pane" "locked" {
+        unbind "Ctrl p"
+        bind "Ctrl Alt p" { SwitchToMode "Pane"; }
+    }
+    shared_except "resize" "locked" {
+        unbind "Ctrl n"
+        bind "Ctrl Alt n" { SwitchToMode "Resize"; }
+    }
+    shared_except "scroll" "locked" {
+        unbind "Ctrl s"
+        bind "Ctrl Alt s" { SwitchToMode "Scroll"; }
+    }
+    shared_except "session" "locked" {
+        unbind "Ctrl o"
+        bind "Ctrl Alt o" { SwitchToMode "Session"; }
+    }
+    shared_except "tab" "locked" {
+        unbind "Ctrl t"
+        bind "Ctrl Alt t" { SwitchToMode "Tab"; }
+    }
+    shared_except "move" "locked" {
+        unbind "Ctrl h"
     }
 }

@@ -6,12 +6,14 @@ fn main() {
         panic!("usage: yzn-contracts-check <yzn-package> <out>");
     };
 
-    let yzn_nu = default_shell(Path::new(yzn));
+    let config = fs::read_to_string(Path::new(yzn).join("share/yazelix-next/config.kdl")).unwrap();
+    let yzn_nu = default_shell(&config);
     assert!(
         yzn_nu.is_file(),
         "default_shell is not a file: {}",
         yzn_nu.display()
     );
+    expect_keybinds(&config);
 
     let temp = TempDir::new();
     let user_nu = temp.path.join("config/nu");
@@ -59,8 +61,7 @@ fn main() {
     fs::write(out, "ok\n").unwrap();
 }
 
-fn default_shell(yzn: &Path) -> PathBuf {
-    let config = fs::read_to_string(yzn.join("share/yazelix-next/config.kdl")).unwrap();
+fn default_shell(config: &str) -> PathBuf {
     config
         .lines()
         .find_map(|line| {
@@ -70,6 +71,31 @@ fn default_shell(yzn: &Path) -> PathBuf {
                 .map(PathBuf::from)
         })
         .expect("missing default_shell")
+}
+
+fn expect_keybinds(config: &str) {
+    for expected in [
+        r#"unbind "Alt n" "Ctrl g" "Ctrl q""#,
+        r#"bind "Alt m" { NewPane "stacked"; }"#,
+        r#"bind "Alt Shift h" { NextSwapLayout; }"#,
+        r#"bind "Ctrl Alt g" { SwitchToMode "Locked"; }"#,
+        r#"bind "Ctrl Alt p" { SwitchToMode "Pane"; }"#,
+        r#"bind "Ctrl Alt t" { SwitchToMode "Tab"; }"#,
+        r#"bind "Ctrl Alt n" { SwitchToMode "Resize"; }"#,
+        r#"bind "Ctrl Alt s" { SwitchToMode "Scroll"; }"#,
+        r#"bind "Ctrl Alt o" { SwitchToMode "Session"; }"#,
+        r#"bind "Ctrl Alt q" { Quit; }"#,
+        r#"unbind "Ctrl h""#,
+    ] {
+        assert!(
+            config.lines().any(|line| line.trim() == expected),
+            "config.kdl is missing {expected}",
+        );
+    }
+    assert!(
+        !config.contains(r#"SwitchToMode "Move""#),
+        "config.kdl must not reintroduce move mode"
+    );
 }
 
 fn expect_line(path: &Path, expected: &str) {

@@ -21,8 +21,9 @@ the desktop entry, and exposes the `yzn` package/app.
 cursor, bell, quit, and theme behavior used by `yzn`.
 
 `config.kdl`, `layout.kdl`, and `layout.swap.kdl` are the Zellij behavior
-owners. They set the shell, the `Alt m` pane binding, the `Alt Shift h` sidebar
-toggle, the Yazi sidebar tab, and the open/closed sidebar swap layouts.
+owners. They set the shell, Zellij-native `Ctrl Alt` mode keys, direct
+`Ctrl Alt h/j/k/l` movement, the `Alt m` pane binding, the `Alt Shift h`
+sidebar toggle, the Yazi sidebar tab, and the open/closed sidebar swap layouts.
 
 `nu/` is the packaged Nushell config owner. It initializes carapace, zoxide, and
 starship and disables the normal Nushell banner and prompt indicators.
@@ -76,7 +77,7 @@ window.
 | C1 | `yzn` launches the pinned Mars/Zellij runtime | `flake.nix` | `nix build .#yzn` | GUI launch remains manual dogfooding |
 | C2 | Mars uses the packaged visual config | `mars.toml` | `nix build .#yzn` materializes `MARS_CONFIG_HOME` | Visual correctness remains manual dogfooding |
 | C3 | Zellij layout has the sidebar template required by swaps | `layout.kdl`, `layout.swap.kdl` | `checks/zellij-layout.rs` runs during build | None for the current template/swap contract |
-| C4 | `Alt m` opens a stacked pane and `Alt Shift h` toggles the sidebar swap | `config.kdl` | `nix build .#yzn` packages the config | Key behavior remains manual dogfooding |
+| C4 | Zellij-native mode keys use `Ctrl Alt`, move mode is unbound, `Alt m` opens a stacked pane, and `Alt Shift h` toggles the sidebar swap | `config.kdl` | `checks/yzn-contracts.rs` validates the packaged config | Full key behavior remains manual dogfooding |
 | C5 | Nushell loads packaged config first, then optional user config | `runtime/yzn-nu.rs`, `nu/` | `checks/yzn-contracts.rs` runs in `nix flake check` | None for current layering behavior |
 | C6 | Yazi opens paths through `yzn-open` with bounded diagnostics | `yazi/yazi.toml`, `crates/yzn-open/` | `cargo test` through `yzn-open` package build | Full Yazi UI behavior remains manual dogfooding |
 | C7 | Helix bridge reuse stays inside the current `yzn` window | `crates/yzn-open/`, `flake.nix` | `yzn-open` Rust tests cover session and Zellij-window mismatch | Full multi-window GUI behavior remains manual dogfooding |

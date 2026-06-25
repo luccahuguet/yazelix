@@ -13,15 +13,25 @@ layout {
         pane size=1 borderless=true {
             plugin location="tab-bar"
         }
-        children
+        pane split_direction="vertical" {
+            pane name="sidebar" command="@yazi@" size="20%"
+        }
         pane size=1 borderless=true {
             plugin location="status-bar"
         }
     }
 
-    tab {
+    new_tab_template {
+        pane size=1 borderless=true {
+            plugin location="tab-bar"
+        }
         pane split_direction="vertical" {
             pane name="sidebar" command="@yazi@" size="20%"
         }
+        pane size=1 borderless=true {
+            plugin location="status-bar"
+        }
     }
+
+    tab
 }
