@@ -13,11 +13,33 @@ fn main() -> ExitCode {
         .filter_map(tab_template)
         .collect::<BTreeSet<_>>();
     let mut ok = true;
-    for template in ["default_tab_template", "new_tab_template"] {
-        if !block_contains(&layout, template, "pane name=\"sidebar\" command=") {
-            eprintln!("{layout_path}: missing Yazi sidebar command in {template}");
+    for (block, needle, message) in [
+        (
+            "tab_template name=\"ui\"",
+            "children",
+            "missing content delimiter in swap UI template",
+        ),
+        (
+            "default_tab_template",
+            "pane name=\"sidebar\" command=",
+            "missing Yazi sidebar command in default tab template",
+        ),
+        (
+            "new_tab_template",
+            "pane name=\"sidebar\" command=",
+            "missing Yazi sidebar command in new tab template",
+        ),
+    ] {
+        if !block_contains(&layout, block, needle) {
+            eprintln!("{layout_path}: {message}");
             ok = false;
         }
+    }
+    if !layout_order_is_valid(&layout) {
+        eprintln!(
+            "{layout_path}: startup tab must follow default_tab_template and precede new_tab_template"
+        );
+        ok = false;
     }
 
     let swap = read(swap_path);
@@ -78,4 +100,27 @@ fn block_contains(text: &str, block_name: &str, needle: &str) -> bool {
     }
 
     false
+}
+
+fn layout_order_is_valid(layout: &str) -> bool {
+    let mut default = None;
+    let mut tab = None;
+    let mut new = None;
+    let mut depth = 0i32;
+
+    for (index, line) in layout.lines().enumerate() {
+        let trimmed = line.trim();
+        if depth == 1 {
+            if trimmed.starts_with("default_tab_template") {
+                default = Some(index);
+            } else if trimmed == "tab" || trimmed.starts_with("tab ") {
+                tab = Some(index);
+            } else if trimmed.starts_with("new_tab_template") {
+                new = Some(index);
+            }
+        }
+        depth += line.matches('{').count() as i32 - line.matches('}').count() as i32;
+    }
+
+    matches!((default, tab, new), (Some(default), Some(tab), Some(new)) if default < tab && tab < new)
 }

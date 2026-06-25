@@ -75,16 +75,16 @@ fn default_shell(config: &str) -> PathBuf {
 
 fn expect_keybinds(config: &str) {
     for expected in [
-        r#"unbind "Alt n" "Ctrl g" "Ctrl q""#,
-        r#"bind "Alt m" { NewPane "stacked"; }"#,
+        r#"unbind "Alt n" "Ctrl g""#,
+        r#"bind "Alt m" { NewPane; }"#,
         r#"bind "Alt Shift h" { NextSwapLayout; }"#,
         r#"bind "Ctrl Alt g" { SwitchToMode "Locked"; }"#,
-        r#"bind "Ctrl Alt p" { SwitchToMode "Pane"; }"#,
-        r#"bind "Ctrl Alt t" { SwitchToMode "Tab"; }"#,
-        r#"bind "Ctrl Alt n" { SwitchToMode "Resize"; }"#,
+        r#"bind "Ctrl p" { SwitchToMode "Pane"; }"#,
+        r#"bind "Ctrl t" { SwitchToMode "Tab"; }"#,
+        r#"bind "Ctrl n" { SwitchToMode "Resize"; }"#,
         r#"bind "Ctrl Alt s" { SwitchToMode "Scroll"; }"#,
         r#"bind "Ctrl Alt o" { SwitchToMode "Session"; }"#,
-        r#"bind "Ctrl Alt q" { Quit; }"#,
+        r#"bind "Ctrl q" { Quit; }"#,
         r#"unbind "Ctrl h""#,
     ] {
         assert!(
@@ -92,10 +92,50 @@ fn expect_keybinds(config: &str) {
             "config.kdl is missing {expected}",
         );
     }
+    expect_no_block_binds_and_unbinds_same_key(config);
     assert!(
         !config.contains(r#"SwitchToMode "Move""#),
         "config.kdl must not reintroduce move mode"
     );
+}
+
+fn expect_no_block_binds_and_unbinds_same_key(config: &str) {
+    let mut blocks = Vec::<KeyBlock>::new();
+    for (line_number, line) in config.lines().map(str::trim).enumerate() {
+        if opens_keybind_block(line) {
+            blocks.push(KeyBlock::default());
+        }
+        if let Some(block) = blocks.last_mut() {
+            if line.starts_with("bind ") {
+                block.binds.extend(quoted_keys(line));
+            } else if line.starts_with("unbind ") {
+                block.unbinds.extend(quoted_keys(line));
+            }
+            for key in block.binds.iter().filter(|key| block.unbinds.contains(key)) {
+                panic!(
+                    "config.kdl binds and unbinds {key} in the same block near line {}",
+                    line_number + 1
+                );
+            }
+        }
+        if line == "}" {
+            blocks.pop();
+        }
+    }
+}
+
+fn opens_keybind_block(line: &str) -> bool {
+    line.ends_with('{') && !line.starts_with("bind ")
+}
+
+fn quoted_keys(line: &str) -> impl Iterator<Item = String> + '_ {
+    line.split('"').skip(1).step_by(2).map(str::to_string)
+}
+
+#[derive(Default)]
+struct KeyBlock {
+    binds: Vec<String>,
+    unbinds: Vec<String>,
 }
 
 fn expect_line(path: &Path, expected: &str) {

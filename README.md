@@ -51,14 +51,16 @@ live, `yzn-open` sends the file or directory open request to that editor.
 
 ## Keybindings
 
-`Ctrl Alt` keys are Zellij-native control. Plain `Ctrl` keys stay available to
+`Ctrl p/t/n/q` are the high-frequency Zellij controls. The rest of the native
+Zellij layer uses `Ctrl Alt`, leaving most plain `Ctrl` keys available to
 Helix, Nushell, Yazi, and terminal programs.
 
 | Key | Action |
 | --- | --- |
-| `Ctrl Alt g/p/t/n/s/o/q` | lock, pane, tab, resize, search, session, quit |
+| `Ctrl Alt g/s/o` | lock, search, session |
+| `Ctrl p/t/n/q` | pane, tab, resize, quit |
 | `Ctrl Alt h/j/k/l` | move tab left, move pane down/up, move tab right |
-| `Alt m` | new stacked pane |
+| `Alt m` | new pane in the stacked layout |
 | `Alt Shift h` | show or hide the Yazi sidebar |
 
 Move mode is intentionally unbound.
@@ -82,11 +84,11 @@ wc -l .gitignore AGENTS.md README.md ARCHITECTURE.md flake.nix mars.toml config.
 | Language | Files | Lines |
 | --- | --- | ---: |
 | Ignore | `.gitignore` | 1 |
-| Markdown | `AGENTS.md`, `README.md`, `ARCHITECTURE.md` | 304 |
+| Markdown | `AGENTS.md`, `README.md`, `ARCHITECTURE.md` | 306 |
 | Nix | `flake.nix` | 246 |
 | TOML | `mars.toml`, `helix/config.toml`, `yazi/yazi.toml`, `crates/yzn-open/Cargo.toml` | 106 |
-| KDL | `config.kdl`, `layout.kdl`, `layout.swap.kdl` | 125 |
+| KDL | `config.kdl`, `layout.kdl`, `layout.swap.kdl` | 119 |
 | Nu | `nu/config.nu`, `nu/env.nu` | 11 |
 | Lua | `yazi/init.lua`, `yazi/plugins/sidebar-status.yazi/main.lua` | 16 |
-| Rust | `crates/yzn-open/src/main.rs`, `checks/zellij-layout.rs`, `checks/yzn-contracts.rs`, `runtime/yzn-nu.rs` | 1173 |
-| Total | owned project files | 1982 |
+| Rust | `crates/yzn-open/src/main.rs`, `checks/zellij-layout.rs`, `checks/yzn-contracts.rs`, `runtime/yzn-nu.rs` | 1258 |
+| Total | owned project files | 2063 |
