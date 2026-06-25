@@ -11,6 +11,10 @@
       url = "github:luccahuguet/yazelix-zellij/yazelix_kgp_preview";
       flake = false;
     };
+    yazelixHelix = {
+      url = "github:luccahuguet/yazelix-helix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     autoLayoutYazi = {
       url = "github:luccahuguet/auto-layout.yazi";
       flake = false;
@@ -26,6 +30,7 @@
     nixpkgs,
     mars,
     yazelixZellij,
+    yazelixHelix,
     autoLayoutYazi,
     starshipYazi,
   }: let
@@ -75,6 +80,26 @@
       yznZellijConfig = pkgs.runCommand "yzn-zellij-config" {} ''
         install -D -m 644 ${yznConfigKdl} "$out/config.kdl"
       '';
+      yazelixHelixPackage = yazelixHelix.packages.${system}.yazelix_helix;
+      yznHelixConfig = pkgs.runCommand "yzn-helix-config" {} ''
+        install -D -m 644 ${./helix/config.toml} "$out/config.toml"
+      '';
+      yznHelix = pkgs.writeShellApplication {
+        name = "yzn-hx";
+        runtimeInputs = [pkgs.coreutils];
+        text = ''
+          export YAZELIX_STATE_DIR="''${YAZELIX_STATE_DIR:-''${XDG_RUNTIME_DIR:-/tmp}/yazelix-next}"
+          export YAZELIX_HELIX_BRIDGE_SESSION_ID="''${YAZELIX_HELIX_BRIDGE_SESSION_ID:-yzn}"
+          export YAZELIX_HELIX_BRIDGE=1
+          YAZELIX_HELIX_BRIDGE_INSTANCE_ID="hx-$(date +%s)-$$"
+          export YAZELIX_HELIX_BRIDGE_INSTANCE_ID
+          YAZELIX_HELIX_BRIDGE_AUTH_TOKEN="$(od -An -N32 -tx1 /dev/urandom | tr -d ' \n')"
+          export YAZELIX_HELIX_BRIDGE_AUTH_TOKEN
+          export YAZELIX_HELIX_MANAGED_CONFIG_PATH=${yznHelixConfig}
+          mkdir -p "$YAZELIX_STATE_DIR"
+          exec ${yazelixHelixPackage}/bin/hx --config-dir ${yznHelixConfig} "$@"
+        '';
+      };
       yaziAssetsSelection = pkgs.fetchFromGitHub {
         owner = "luccahuguet";
         repo = "yazelix-yazi-assets";
@@ -83,11 +108,29 @@
         nonConeMode = true;
         hash = "sha256-eHt6kRaLcXgjhdnmhI2QY2O1tF9wGFXbIjXc4pObF4U=";
       };
+      yznOpenCore = pkgs.rustPlatform.buildRustPackage {
+        pname = "yzn-open";
+        version = "0.1.0";
+        src = ./crates/yzn-open;
+        cargoLock.lockFile = ./crates/yzn-open/Cargo.lock;
+      };
+      yznOpen = pkgs.writeShellApplication {
+        name = "yzn-open";
+        text = ''
+          export YZN_EDITOR=${yznHelix}/bin/yzn-hx
+          export YZN_ZELLIJ=${yazelixZellijPackage}/bin/zellij
+          exec ${yznOpenCore}/bin/yzn-open "$@"
+        '';
+      };
+      yznYaziToml = pkgs.replaceVars ./yazi/yazi.toml {
+        opener = "${yznOpen}/bin/yzn-open";
+      };
       yznYaziConfig = pkgs.runCommand "yzn-yazi-config" {} ''
         install -D -m 644 ${./yazi/init.lua} "$out/init.lua"
-        install -D -m 644 ${./yazi/yazi.toml} "$out/yazi.toml"
+        install -D -m 644 ${yznYaziToml} "$out/yazi.toml"
         install -D -m 644 ${yaziAssetsSelection}/yazelix_starship.toml "$out/yazelix_starship.toml"
         mkdir -p "$out/plugins"
+        install -D -m 644 ${./yazi/plugins/sidebar-status.yazi/main.lua} "$out/plugins/sidebar-status.yazi/main.lua"
         ln -s ${autoLayoutYazi} "$out/plugins/auto-layout.yazi"
         ln -s ${yaziAssetsSelection}/plugins/git.yazi "$out/plugins/git.yazi"
         ln -s ${starshipYazi} "$out/plugins/starship.yazi"
@@ -96,16 +139,24 @@
         name = "yzn-yazi";
         runtimeInputs = [pkgs.git pkgs.starship];
         text = ''
+          export YAZELIX_STATE_DIR="''${YAZELIX_STATE_DIR:-''${XDG_RUNTIME_DIR:-/tmp}/yazelix-next}"
+          export YAZELIX_HELIX_BRIDGE_SESSION_ID="''${YAZELIX_HELIX_BRIDGE_SESSION_ID:-yzn}"
           export YAZI_CONFIG_HOME=${yznYaziConfig}
           export YZN_YAZI_STARSHIP_CONFIG=${yznYaziConfig}/yazelix_starship.toml
+          export EDITOR=${yznHelix}/bin/yzn-hx
+          export VISUAL=${yznHelix}/bin/yzn-hx
           exec ${pkgs.yazi}/bin/yazi "$@"
         '';
       };
       yznLayoutKdl = pkgs.replaceVars ./layout.kdl {
         yazi = "${yznYazi}/bin/yzn-yazi";
       };
+      yznLayoutSwapKdl = pkgs.replaceVars ./layout.swap.kdl {
+        yazi = "${yznYazi}/bin/yzn-yazi";
+      };
       yznZellijLayout = pkgs.runCommand "yzn-zellij-layout" {} ''
         install -D -m 644 ${yznLayoutKdl} "$out/layout.kdl"
+        install -D -m 644 ${yznLayoutSwapKdl} "$out/layout.swap.kdl"
       '';
       yazelixZellijPackage = pkgs."zellij-unwrapped".overrideAttrs (_old: {
         pname = "zellij";
@@ -128,7 +179,16 @@
       });
       yznCommand = pkgs.writeShellApplication {
         name = "yzn";
+        runtimeInputs = [pkgs.coreutils];
         text = ''
+          export YAZELIX_STATE_DIR="''${YAZELIX_STATE_DIR:-''${XDG_RUNTIME_DIR:-/tmp}/yazelix-next}"
+          mkdir -p "$YAZELIX_STATE_DIR"
+          if [ -z "''${YAZELIX_HELIX_BRIDGE_SESSION_ID:-}" ]; then
+            YAZELIX_HELIX_BRIDGE_SESSION_ID="yzn-$(date +%s)-$$"
+          fi
+          export YAZELIX_HELIX_BRIDGE_SESSION_ID
+          export EDITOR=${yznHelix}/bin/yzn-hx
+          export VISUAL=${yznHelix}/bin/yzn-hx
           export MARS_CONFIG_HOME=${yznMarsConfig}
           exec ${marsPackage}/bin/mars -e ${yazelixZellijPackage}/bin/zellij --config ${yznZellijConfig}/config.kdl --new-session-with-layout ${yznZellijLayout}/layout.kdl "$@"
         '';
@@ -151,6 +211,7 @@
         postBuild = ''
           install -D -m 644 ${yznZellijConfig}/config.kdl "$out/share/yazelix-next/config.kdl"
           install -D -m 644 ${yznZellijLayout}/layout.kdl "$out/share/yazelix-next/layout.kdl"
+          install -D -m 644 ${yznZellijLayout}/layout.swap.kdl "$out/share/yazelix-next/layout.swap.kdl"
           install -D -m 644 ${yznNuConfig}/config.nu "$out/share/yazelix-next/nu/config.nu"
           install -D -m 644 ${yznNuConfig}/env.nu "$out/share/yazelix-next/nu/env.nu"
           for icon in ${marsPackage}/share/icons/hicolor/*/apps/mars.png; do
@@ -163,6 +224,7 @@
         '';
       };
     in {
+      yazelix_helix = yazelixHelixPackage;
       yazelix_zellij = yazelixZellijPackage;
       inherit yzn;
       default = yzn;

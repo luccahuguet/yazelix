@@ -1,7 +1,8 @@
 # Yazelix Next
 
-Small start: a Nix flake that installs `yzn`, which opens Mars with a Yazi
-sidebar, reef cursor colors, a stacked main pane, and the Yazelix Zellij fork.
+Small start: a Nix flake that installs `yzn`, which opens Mars with a Yazi-first
+layout that becomes a sidebar plus stacked work panes, a bridge-enabled Yazelix
+Helix editor, reef cursor colors, and the Yazelix Zellij fork.
 
 ## Run
 
@@ -37,30 +38,37 @@ nix profile upgrade --refresh yazelix-next
 
 Set `YAZELIX_NEXT_CONFIG_HOME` to use a different config root.
 
+## Editor Opens
+
+Yazi opens files through the packaged `yzn-open` Rust helper. If no Helix bridge
+is live, `yzn-open` opens `yzn-hx` in a Zellij pane. If the Helix bridge is
+live, `yzn-open` sends the file or directory open request to that editor.
+
 ## Hack On Mars
 
 ```sh
 nix run --override-input mars ../mars
 nix run --override-input yazelixZellij ../yazelix-zellij
+nix run --override-input yazelixHelix ../yazelix-helix
 ```
 
 ## LOC Scorecard
 
-Counts project files by language with `wc -l`. `flake.lock` is generated and
-kept separate.
+Counts owned project files by language with `wc -l`.
 
 ```sh
-wc -l AGENTS.md README.md flake.nix mars.toml config.kdl layout.kdl nu/config.nu nu/env.nu scripts/yzn-nu.sh yazi/init.lua yazi/yazi.toml flake.lock
+wc -l .gitignore AGENTS.md README.md flake.nix mars.toml config.kdl layout.kdl layout.swap.kdl nu/config.nu nu/env.nu scripts/yzn-nu.sh helix/config.toml yazi/init.lua yazi/plugins/sidebar-status.yazi/main.lua yazi/yazi.toml crates/yzn-open/Cargo.toml crates/yzn-open/src/main.rs
 ```
 
-| Language | Files | Lines | Kind |
-| --- | --- | ---: | --- |
-| Markdown | `AGENTS.md`, `README.md` | 136 | Handwritten |
-| Nix | `flake.nix` | 181 | Handwritten |
-| TOML | `mars.toml`, `yazi/yazi.toml` | 83 | Handwritten |
-| KDL | `config.kdl`, `layout.kdl` | 24 | Handwritten |
-| Nu | `nu/config.nu`, `nu/env.nu` | 15 | Handwritten |
-| Shell | `scripts/yzn-nu.sh` | 36 | Handwritten |
-| Lua | `yazi/init.lua` | 8 | Handwritten |
-| JSON | `flake.lock` | 172 | Generated |
-| Total | project files | 655 | Mixed |
+| Language | Files | Lines |
+| --- | --- | ---: |
+| Ignore | `.gitignore` | 1 |
+| Markdown | `AGENTS.md`, `README.md` | 144 |
+| Nix | `flake.nix` | 243 |
+| TOML | `mars.toml`, `helix/config.toml`, `yazi/yazi.toml`, `crates/yzn-open/Cargo.toml` | 106 |
+| KDL | `config.kdl`, `layout.kdl`, `layout.swap.kdl` | 46 |
+| Nu | `nu/config.nu`, `nu/env.nu` | 15 |
+| Shell | `scripts/yzn-nu.sh` | 36 |
+| Lua | `yazi/init.lua`, `yazi/plugins/sidebar-status.yazi/main.lua` | 16 |
+| Rust | `crates/yzn-open/src/main.rs` | 654 |
+| Total | owned project files | 1261 |

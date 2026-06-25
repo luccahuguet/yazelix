@@ -1,0 +1,9 @@
+theme = "ayu_evolve"
+
+[editor]
+bufferline = "always"
+color-modes = true
+cursorline = true
+
+[editor.file-picker]
+hidden = true

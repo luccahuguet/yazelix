@@ -1,4 +1,5 @@
 require("auto-layout"):setup()
+require("sidebar-status"):setup()
 require("git"):setup()
 require("starship"):setup({
 	config_file = os.getenv("YZN_YAZI_STARSHIP_CONFIG"),

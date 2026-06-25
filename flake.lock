@@ -94,6 +94,7 @@
         "mars": "mars",
         "nixpkgs": "nixpkgs",
         "starshipYazi": "starshipYazi",
+        "yazelixHelix": "yazelixHelix",
         "yazelixZellij": "yazelixZellij"
       }
     },
@@ -110,6 +111,27 @@
         "owner": "oxalica",
         "repo": "rust-overlay",
         "rev": "5b929d8c854149d926d05ea0cd6469bf4e54db27",
+        "type": "github"
+      },
+      "original": {
+        "owner": "oxalica",
+        "repo": "rust-overlay",
+        "type": "github"
+      }
+    },
+    "rust-overlay_2": {
+      "inputs": {
+        "nixpkgs": [
+          "yazelixHelix",
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1775358767,
+        "narHash": "sha256-f2eC+WIfhjevCPQILuV08i/kmKZzYZpUvkom/33VxCA=",
+        "owner": "oxalica",
+        "repo": "rust-overlay",
+        "rev": "20fd44bc663daa53a2575e01293e24e681d62244",
         "type": "github"
       },
       "original": {
@@ -146,6 +168,27 @@
       "original": {
         "owner": "nix-systems",
         "repo": "default",
+        "type": "github"
+      }
+    },
+    "yazelixHelix": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ],
+        "rust-overlay": "rust-overlay_2"
+      },
+      "locked": {
+        "lastModified": 1781906528,
+        "narHash": "sha256-8sDX6JmdZfy+S36YjPOMBtLrcrgSt3V0hZHmG4aBXQg=",
+        "owner": "luccahuguet",
+        "repo": "yazelix-helix",
+        "rev": "c85dda9badf30c73c564aa4a284511ce33849cbd",
+        "type": "github"
+      },
+      "original": {
+        "owner": "luccahuguet",
+        "repo": "yazelix-helix",
         "type": "github"
       }
     },
