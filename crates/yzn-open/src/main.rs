@@ -1,6 +1,6 @@
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::{
     env,
     ffi::OsString,
@@ -571,6 +571,32 @@ exit 0
         fs::set_permissions(path, permissions).unwrap();
     }
 
+    fn write_registry(
+        bridge_dir: &Path,
+        session_id: &str,
+        zellij_session_name: Option<&str>,
+        zellij_pane_id: Option<&str>,
+    ) -> PathBuf {
+        fs::create_dir_all(bridge_dir).unwrap();
+        let socket_path = bridge_dir.join("inst.sock");
+        let token_path = bridge_dir.join("inst.token");
+        fs::write(&token_path, "secret").unwrap();
+        fs::write(
+            bridge_dir.join("inst.json"),
+            json!({
+                "schema_version": 2,
+                "session_id": session_id,
+                "transport": { "kind": "unix_socket", "path": &socket_path },
+                "auth_token_path": &token_path,
+                "zellij_session_name": zellij_session_name,
+                "zellij_pane_id": zellij_pane_id,
+            })
+            .to_string(),
+        )
+        .unwrap();
+        socket_path
+    }
+
     fn test_config(root: PathBuf, session_id: &str, zellij: impl Into<OsString>) -> Config {
         Config {
             editor: "hx".into(),
@@ -657,22 +683,8 @@ exit 0
         let root = test_dir("live-bridge");
         let session_id = "test-session";
         let bridge_dir = root.join("helix_bridge").join(session_id);
-        fs::create_dir_all(&bridge_dir).unwrap();
-        let socket_path = bridge_dir.join("inst.sock");
-        let token_path = bridge_dir.join("inst.token");
         let request_path = bridge_dir.join("request.json");
-        fs::write(&token_path, "secret").unwrap();
-        fs::write(
-            bridge_dir.join("inst.json"),
-            json!({
-                "schema_version": 2,
-                "session_id": session_id,
-                "transport": { "kind": "unix_socket", "path": &socket_path },
-                "auth_token_path": &token_path,
-            })
-            .to_string(),
-        )
-        .unwrap();
+        let socket_path = write_registry(&bridge_dir, session_id, None, None);
 
         let listener = UnixListener::bind(&socket_path).unwrap();
         let server = thread::spawn({
@@ -712,26 +724,14 @@ exit 0
         let root = test_dir("focus-fallback");
         let session_id = "test-session";
         let bridge_dir = root.join("helix_bridge").join(session_id);
-        fs::create_dir_all(&bridge_dir).unwrap();
-        let socket_path = bridge_dir.join("inst.sock");
-        let token_path = bridge_dir.join("inst.token");
         let zellij_log = root.join("zellij.log");
         let zellij = root.join("zellij");
-        fs::write(&token_path, "secret").unwrap();
-        fs::write(
-            bridge_dir.join("inst.json"),
-            json!({
-                "schema_version": 2,
-                "session_id": session_id,
-                "instance_id": "inst",
-                "transport": { "kind": "unix_socket", "path": &socket_path },
-                "auth_token_path": &token_path,
-                "zellij_session_name": "zellij-test",
-                "zellij_pane_id": "terminal:1",
-            })
-            .to_string(),
-        )
-        .unwrap();
+        let socket_path = write_registry(
+            &bridge_dir,
+            session_id,
+            Some("zellij-test"),
+            Some("terminal:1"),
+        );
         write_zellij_log_script(&zellij, &zellij_log, true);
 
         let _listener = UnixListener::bind(&socket_path).unwrap();
@@ -755,23 +755,9 @@ exit 0
     fn bridge_from_another_yzn_session_is_not_used() {
         let root = test_dir("session-isolation");
         let other_bridge_dir = root.join("helix_bridge").join("window-b");
-        fs::create_dir_all(&other_bridge_dir).unwrap();
-        let socket_path = other_bridge_dir.join("inst.sock");
-        let token_path = other_bridge_dir.join("inst.token");
         let zellij_log = root.join("zellij.log");
         let zellij = root.join("zellij");
-        fs::write(&token_path, "secret").unwrap();
-        fs::write(
-            other_bridge_dir.join("inst.json"),
-            json!({
-                "schema_version": 2,
-                "session_id": "window-b",
-                "transport": { "kind": "unix_socket", "path": &socket_path },
-                "auth_token_path": &token_path,
-            })
-            .to_string(),
-        )
-        .unwrap();
+        let socket_path = write_registry(&other_bridge_dir, "window-b", None, None);
         let _listener = UnixListener::bind(&socket_path).unwrap();
         write_zellij_log_script(&zellij, &zellij_log, false);
 
@@ -795,25 +781,9 @@ exit 0
         let root = test_dir("zellij-session-isolation");
         let session_id = "window-a";
         let bridge_dir = root.join("helix_bridge").join(session_id);
-        fs::create_dir_all(&bridge_dir).unwrap();
-        let socket_path = bridge_dir.join("inst.sock");
-        let token_path = bridge_dir.join("inst.token");
         let zellij_log = root.join("zellij.log");
         let zellij = root.join("zellij");
-        fs::write(&token_path, "secret").unwrap();
-        fs::write(
-            bridge_dir.join("inst.json"),
-            json!({
-                "schema_version": 2,
-                "session_id": session_id,
-                "transport": { "kind": "unix_socket", "path": &socket_path },
-                "auth_token_path": &token_path,
-                "zellij_session_name": "zellij-b",
-                "zellij_pane_id": "1",
-            })
-            .to_string(),
-        )
-        .unwrap();
+        let socket_path = write_registry(&bridge_dir, session_id, Some("zellij-b"), Some("1"));
         let _listener = UnixListener::bind(&socket_path).unwrap();
         write_zellij_log_script(&zellij, &zellij_log, false);
 

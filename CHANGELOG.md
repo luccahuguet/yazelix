@@ -4,6 +4,12 @@ User-visible runtime changes for Yazelix Next live here.
 
 ## Unreleased
 
+- `yzn help` prints help, `yzn enter` starts the managed Zellij runtime in the
+  current terminal, and `yzn launch` opens Mars first. Bare `yzn` defaults to
+  `yzn launch`.
+- `yzn` appends `~/.config/yazelix-next/zellij/config.kdl` as a native Zellij
+  sidecar for safe preferences, with a small denylist guardrail for obvious
+  ownership lines such as keymaps, shell, layout, plugins, and session startup.
 - `yzn` uses `~/.config/yazelix-next/mars/config.toml` as a full native Mars
   config override when that file exists, while keeping the Mars launch command
   and managed Zellij runtime owned by `yzn`.

@@ -83,6 +83,7 @@
       yznConfigKdl = pkgs.replaceVars ./config.kdl {
         nuShell = "${yznNuShell}/bin/yzn-nu";
       };
+      yznZellijConfig = rustBin "yzn-zellij-config" ./runtime/yzn-zellij-config.rs;
       yazelixHelixPackage = yazelixHelix.packages.${system}.yazelix_helix;
       yznHelixConfig = pkgs.runCommand "yzn-helix-config" {} ''
         install -D -m 644 ${./helix/config.toml} "$out/config.toml"
@@ -174,28 +175,68 @@
         };
         doCheck = false;
       });
+      yznRuntimeEnv = ''
+        export YAZELIX_STATE_DIR="''${YAZELIX_STATE_DIR:-''${XDG_RUNTIME_DIR:-/tmp}/yazelix-next}"
+        mkdir -p "$YAZELIX_STATE_DIR"
+        ${bridgeSessionEnv "yzn"}
+        export EDITOR=${yznHelix}/bin/yzn-hx
+        export VISUAL=${yznHelix}/bin/yzn-hx
+        if [ -n "''${YAZELIX_NEXT_CONFIG_HOME:-}" ]; then
+          yzn_config_home="$YAZELIX_NEXT_CONFIG_HOME"
+        elif [ -n "''${XDG_CONFIG_HOME:-}" ]; then
+          yzn_config_home="$XDG_CONFIG_HOME/yazelix-next"
+        else
+          yzn_config_home="''${HOME:?HOME is required}/.config/yazelix-next"
+        fi
+        if [ -f "$yzn_config_home/mars/config.toml" ]; then
+          export MARS_CONFIG_HOME="$yzn_config_home/mars"
+        else
+          export MARS_CONFIG_HOME=${yznMarsConfig}
+        fi
+        zellij_config="$(${yznZellijConfig}/bin/yzn-zellij-config ${yznConfigKdl} "$yzn_config_home/zellij/config.kdl" "$YAZELIX_STATE_DIR/zellij/config.kdl")"
+      '';
       yznCommand = pkgs.writeShellApplication {
         name = "yzn";
         runtimeInputs = [pkgs.coreutils];
         text = ''
-          export YAZELIX_STATE_DIR="''${YAZELIX_STATE_DIR:-''${XDG_RUNTIME_DIR:-/tmp}/yazelix-next}"
-          mkdir -p "$YAZELIX_STATE_DIR"
-          ${bridgeSessionEnv "yzn"}
-          export EDITOR=${yznHelix}/bin/yzn-hx
-          export VISUAL=${yznHelix}/bin/yzn-hx
-          if [ -n "''${YAZELIX_NEXT_CONFIG_HOME:-}" ]; then
-            yzn_config_home="$YAZELIX_NEXT_CONFIG_HOME"
-          elif [ -n "''${XDG_CONFIG_HOME:-}" ]; then
-            yzn_config_home="$XDG_CONFIG_HOME/yazelix-next"
-          else
-            yzn_config_home="''${HOME:?HOME is required}/.config/yazelix-next"
-          fi
-          if [ -f "$yzn_config_home/mars/config.toml" ]; then
-            export MARS_CONFIG_HOME="$yzn_config_home/mars"
-          else
-            export MARS_CONFIG_HOME=${yznMarsConfig}
-          fi
-          exec ${marsPackage}/bin/mars -e ${yazelixZellijPackage}/bin/zellij --config ${yznConfigKdl} --new-session-with-layout ${yznZellijLayout}/layout.kdl "$@"
+          show_help() {
+            cat <<'EOF'
+Yazelix
+
+Usage:
+  yzn
+  yzn help
+  yzn enter [zellij-args...]
+  yzn launch [zellij-args...]
+
+Commands:
+  enter   Start Yazelix in the current terminal
+  launch  Open Mars and start Yazelix
+  help    Show this help
+EOF
+          }
+
+          [ "$#" -gt 0 ] || set -- launch
+          case "$1" in
+            help|-h|--help)
+              show_help
+              ;;
+            enter)
+              shift
+              ${yznRuntimeEnv}
+              exec ${yazelixZellijPackage}/bin/zellij --config "$zellij_config" --new-session-with-layout ${yznZellijLayout}/layout.kdl "$@"
+              ;;
+            launch)
+              shift
+              ${yznRuntimeEnv}
+              exec ${marsPackage}/bin/mars -e ${yazelixZellijPackage}/bin/zellij --config "$zellij_config" --new-session-with-layout ${yznZellijLayout}/layout.kdl "$@"
+              ;;
+            *)
+              printf 'yzn: unknown command: %s\n\n' "$1" >&2
+              show_help >&2
+              exit 64
+              ;;
+          esac
         '';
       };
       yznDesktop = pkgs.makeDesktopItem {
@@ -214,6 +255,8 @@
         name = "yzn";
         paths = [yznCommand yznDesktop];
         postBuild = ''
+          install -d "$out/libexec/yazelix-next"
+          ln -s ${yznZellijConfig}/bin/yzn-zellij-config "$out/libexec/yazelix-next/yzn-zellij-config"
           install -D -m 644 ${yznConfigKdl} "$out/share/yazelix-next/config.kdl"
           install -D -m 644 ${yznMarsConfig}/config.toml "$out/share/yazelix-next/mars/config.toml"
           install -D -m 644 ${yznZellijLayout}/layout.kdl "$out/share/yazelix-next/layout.kdl"

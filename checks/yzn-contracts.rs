@@ -6,7 +6,8 @@ fn main() {
         panic!("usage: yzn-contracts-check <yzn-package> <out>");
     };
 
-    let config = fs::read_to_string(Path::new(yzn).join("share/yazelix-next/config.kdl")).unwrap();
+    let yzn = Path::new(yzn);
+    let config = fs::read_to_string(yzn.join("share/yazelix-next/config.kdl")).unwrap();
     let yzn_nu = default_shell(&config);
     assert!(
         yzn_nu.is_file(),
@@ -14,7 +15,9 @@ fn main() {
         yzn_nu.display()
     );
     expect_keybinds(&config);
-    expect_mars_config_override(Path::new(yzn));
+    expect_front_door(yzn);
+    expect_mars_config_override(yzn);
+    expect_zellij_config_sidecar(yzn);
 
     let temp = TempDir::new();
     let user_config = temp.path.join("config");
@@ -76,6 +79,45 @@ fn main() {
     fs::write(out, "ok\n").unwrap();
 }
 
+fn expect_front_door(yzn: &Path) {
+    let yzn_bin = yzn.join("bin/yzn");
+    let help = run_help(&yzn_bin, &["help"]);
+    for args in [["help"].as_slice(), &["-h"], &["--help"]] {
+        assert_eq!(run_help(&yzn_bin, args), help);
+    }
+    for expected in [
+        "Usage:",
+        "yzn enter [zellij-args...]",
+        "yzn launch [zellij-args...]",
+    ] {
+        assert!(
+            help.contains(expected),
+            "yzn help is missing {expected:?}\n{help}",
+        );
+    }
+
+    let yzn_launcher = fs::read_to_string(&yzn_bin).unwrap();
+    for expected in ["--new-session-with-layout", "/bin/zellij --config", "/bin/mars -e"] {
+        assert!(
+            yzn_launcher.contains(expected),
+            "bin/yzn does not contain launch fragment {expected}",
+        );
+    }
+}
+
+fn run_help(bin: &Path, args: &[&str]) -> String {
+    let output = Command::new(bin).args(args).output().unwrap();
+    assert!(
+        output.status.success(),
+        "{} {:?} failed with status {}\n{}",
+        bin.display(),
+        args,
+        output.status,
+        String::from_utf8_lossy(&output.stderr)
+    );
+    String::from_utf8_lossy(&output.stdout).to_string()
+}
+
 fn run_nu(yzn_nu: &Path, config_home: &Path, runtime: &Path, commands: &str) -> String {
     fs::create_dir_all(runtime).unwrap();
     let output = Command::new(yzn_nu)
@@ -122,6 +164,71 @@ fn expect_mars_config_override(yzn: &Path) {
             "bin/yzn is missing Mars config override fragment: {expected}",
         );
     }
+}
+
+fn expect_zellij_config_sidecar(yzn: &Path) {
+    let packaged_config = yzn.join("share/yazelix-next/config.kdl");
+    let helper = yzn.join("libexec/yazelix-next/yzn-zellij-config");
+    let temp = TempDir::new();
+    let sidecar = temp.path.join("config.kdl");
+    let generated_path = temp.path.join("generated.kdl");
+
+    let no_sidecar = run_zellij_config(&helper, &packaged_config, &sidecar, &generated_path);
+    assert_eq!(PathBuf::from(no_sidecar), packaged_config);
+
+    fs::write(&sidecar, "scroll_buffer_size 1234\npane_frames false\n").unwrap();
+    let generated = run_zellij_config(&helper, &packaged_config, &sidecar, &generated_path);
+    assert_eq!(PathBuf::from(&generated), generated_path);
+    let generated_config = fs::read_to_string(&generated_path).unwrap();
+    for expected in ["default_shell", "pane_frames false"] {
+        assert!(
+            generated_config.contains(expected),
+            "generated Zellij config is missing {expected}",
+        );
+    }
+
+    fs::write(&sidecar, "keybinds {}\n").unwrap();
+    let output = Command::new(&helper)
+        .arg(&packaged_config)
+        .arg(&sidecar)
+        .arg(&generated_path)
+        .output()
+        .unwrap();
+    assert!(
+        !output.status.success(),
+        "dangerous Zellij sidecar unexpectedly succeeded"
+    );
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("forbidden Zellij sidecar item `keybinds`"),
+        "unexpected Zellij sidecar rejection: {stderr}",
+    );
+}
+
+fn run_zellij_config(
+    helper: &Path,
+    packaged_config: &Path,
+    sidecar: &Path,
+    generated: &Path,
+) -> String {
+    let output = Command::new(helper)
+        .arg(packaged_config)
+        .arg(sidecar)
+        .arg(generated)
+        .output()
+        .unwrap();
+
+    assert!(
+        output.status.success(),
+        "{} failed with status {}\n{}",
+        helper.display(),
+        output.status,
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    String::from_utf8_lossy(&output.stdout)
+        .trim_end_matches('\n')
+        .to_owned()
 }
 
 fn default_shell(config: &str) -> PathBuf {
