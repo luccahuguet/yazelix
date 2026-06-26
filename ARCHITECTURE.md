@@ -33,9 +33,12 @@ top bar, the Yazi sidebar tab, the open/closed sidebar swap layouts, and
 explicit Kitty keyboard protocol support. The standalone `yzpp` plugin owns
 popup lifecycle; Yazelix Next only packages it with one hardcoded LazyGit popup.
 
-`yazelix-zellij-bar` owns the packaged top bar preset and `zjstatus.wasm`.
-Yazelix Next consumes the child artifact in its top layout panes and keeps the
-native bottom Zellij `status-bar` for key hints.
+`yazelix-zellij-bar` owns the rendered top bar KDL, widget command logic, and
+`zjstatus.wasm`. Yazelix Next declares a fixed tray of editor, shell, terminal,
+Codex, CPU, RAM, and version widgets, ships `tu` for Codex usage refreshes,
+exports a yzn-owned status cache path, names the initial and tab-mode-created
+tabs with the Yazelix home marker, and keeps the native bottom Zellij
+`status-bar` for key hints.
 
 `runtime/yzn-zellij-config.rs` is the guarded Zellij sidecar owner. It appends
 `~/.config/yazelix-next/zellij/config.kdl` to the packaged config after a small
@@ -114,7 +117,7 @@ window.
 | C7 | Helix bridge reuse stays inside the current `yzn` window | `crates/yzn-open/`, `flake.nix` | `yzn-open` Rust tests cover session and Zellij-window mismatch | Full multi-window GUI behavior remains manual dogfooding |
 | C8 | Desktop entry starts `yzn` | `flake.nix` | `nix build .#yzn` packages the desktop file | Desktop environment launch remains manual dogfooding |
 | C9 | Kitty keyboard protocol is explicitly enabled and `Alt Shift J` toggles one managed LazyGit popup through `yzpp` | `config.kdl`, `flake.nix` | `checks/yzn-contracts.rs` validates Kitty protocol, the packaged popup plugin, LazyGit command, and key binding | Visual popup behavior remains manual dogfooding |
-| C10 | Top bars use the standalone Yazelix Zellij Bar package while bottom bars keep native Zellij key hints | `layout.kdl`, `flake.nix` | `checks/zellij-layout.rs` validates packaged child bar usage and native bottom status bars | Visual bar behavior remains manual dogfooding |
+| C10 | Top bars use the child-rendered Yazelix Zellij Bar tray, tabs use the home marker, Codex usage has bundled `tu` and a yzn-owned cache path, and bottom bars keep native Zellij key hints | `layout.kdl`, `config.kdl`, `flake.nix`, `packaging/tokenusage.nix` | `checks/zellij-layout.rs` validates packaged child bar usage, no-mode formatting, declared yzn widgets, the startup home tab marker, and native bottom status bars; `checks/yzn-contracts.rs` validates the tab-mode new-tab marker, terminal-label wiring, bundled tokenusage path, and status-cache export | Visual bar behavior remains manual dogfooding |
 
 ## Pros
 

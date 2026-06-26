@@ -97,6 +97,7 @@
         lazygit = "${pkgs.lazygit}/bin/lazygit";
       };
       yazelixZellijBarPackage = yazelixZellijBar.packages.${system}.yazelix_zellij_bar;
+      tokenusage = import ./packaging/tokenusage.nix {inherit pkgs;};
       yznZellijConfig = rustBin "yzn-zellij-config" ./runtime/yzn-zellij-config.rs;
       yazelixHelixPackage = yazelixHelix.packages.${system}.yazelix_helix;
       yznHelixConfig = pkgs.runCommand "yzn-helix-config" {} ''
@@ -158,10 +159,43 @@
           exec ${pkgs.yazi}/bin/yazi "$@"
         '';
       };
+      yznRuntimeIdentityJson = pkgs.writeText "runtime_identity.json" (builtins.toJSON {
+        name = "Yazelix Next";
+        version = "next";
+      });
+      yznRuntimeIdentity = pkgs.runCommand "yzn-runtime-identity" {} ''
+        install -D -m 644 ${yznRuntimeIdentityJson} "$out/runtime_identity.json"
+      '';
+      yznBarRenderRequest = pkgs.writeText "yzn-bar-render-request.json" (builtins.toJSON {
+        zjstatus_plugin_url = "file:${yazelixZellijBarPackage}/${yazelixZellijBarPackage.wasmPath}";
+        widget_tray = ["editor" "shell" "term" "codex_usage" "cpu" "ram"];
+        widget_frame = "none";
+        widget_separator = "dot";
+        editor_label = "hx";
+        shell_label = "nu";
+        terminal_label = "mars";
+        custom_text = "";
+        appearance_mode = "dark";
+        tab_label_mode = "full";
+        nu_bin = "${pkgs.nushell}/bin/nu";
+        yzx_control_bin = "${pkgs.coreutils}/bin/false";
+        yazelix_zellij_bar_widget_bin = "${yazelixZellijBarPackage}/${yazelixZellijBarPackage.widgetPath}";
+        runtime_dir = "${yznRuntimeIdentity}";
+        claude_usage_display = "both";
+        claude_usage_periods = ["5h" "week"];
+        codex_usage_display = "quota";
+        codex_usage_periods = ["5h" "week"];
+        opencode_go_usage_display = "both";
+        opencode_go_usage_periods = ["5h" "week" "month"];
+      });
+      yznBarKdl = pkgs.runCommand "yzn-zellij-bar.kdl" {nativeBuildInputs = [pkgs.jq];} ''
+        ${yazelixZellijBarPackage}/${yazelixZellijBarPackage.widgetPath} render-yazelix-runtime --json "$(<${yznBarRenderRequest})" \
+          | jq -er '.plugin_block' > "$out"
+      '';
       yznLayoutKdl = pkgs.runCommand "layout.kdl" {} ''
         substitute ${./layout.kdl} "$out" \
           --replace-fail '@yazi@' '${yznYazi}/bin/yzn-yazi' \
-          --replace-fail '@bar@' "$(<${yazelixZellijBarPackage}/${yazelixZellijBarPackage.presetPath})"
+          --replace-fail '@bar@' "$(<${yznBarKdl})"
       '';
       yznLayoutSwapKdl = pkgs.replaceVars ./layout.swap.kdl {
         yazi = "${yznYazi}/bin/yzn-yazi";
@@ -210,10 +244,30 @@
           export MARS_CONFIG_HOME=${yznMarsConfig}
         fi
         zellij_config="$(${yznZellijConfig}/bin/yzn-zellij-config ${yznConfigKdl} "$yzn_config_home/zellij/config.kdl" "$YAZELIX_STATE_DIR/zellij/config.kdl")"
+        zellij_status_cache="$YAZELIX_STATE_DIR/zellij/session/status_bar_cache.json"
+        export YAZELIX_STATUS_BAR_CACHE_PATH="$zellij_status_cache"
+        mkdir -p "$(dirname "$zellij_status_cache")"
+        zellij_permissions="$YAZELIX_STATE_DIR/zellij/permissions.kdl"
+        export ZELLIJ_PLUGIN_PERMISSIONS_CACHE="$zellij_permissions"
+        mkdir -p "$(dirname "$zellij_permissions")"
+        touch "$zellij_permissions"
+        seed_permission() {
+          case "$(cat "$zellij_permissions")" in
+            *"\"$1\" {"*) return ;;
+          esac
+          {
+            printf '"%s" {\n' "$1"
+            shift
+            printf '    %s\n' "$@"
+            printf '}\n'
+          } >> "$zellij_permissions"
+        }
+        seed_permission "${yazelixZellijPopupPackage}/${yazelixZellijPopupPackage.wasmPath}" ReadApplicationState ChangeApplicationState OpenTerminalsOrPlugins RunCommands ReadCliPipes
+        seed_permission "${yazelixZellijBarPackage}/share/yazelix_zellij_bar/zjstatus.wasm" ReadApplicationState ChangeApplicationState RunCommands
       '';
       yznCommand = pkgs.writeShellApplication {
         name = "yzn";
-        runtimeInputs = [pkgs.coreutils];
+        runtimeInputs = [pkgs.coreutils tokenusage];
         text = ''
           show_help() {
             cat <<'EOF'
@@ -240,11 +294,13 @@ EOF
             enter)
               shift
               ${yznRuntimeEnv}
+              export YAZELIX_SESSION_TERMINAL="''${YAZELIX_SESSION_TERMINAL:-''${TERM_PROGRAM:-''${TERM:-unknown}}}"
               exec ${yazelixZellijPackage}/bin/zellij --config "$zellij_config" --new-session-with-layout ${yznZellijLayout}/layout.kdl "$@"
               ;;
             launch)
               shift
               ${yznRuntimeEnv}
+              export YAZELIX_SESSION_TERMINAL="''${YAZELIX_SESSION_TERMINAL:-mars}"
               exec ${marsPackage}/bin/mars -e ${yazelixZellijPackage}/bin/zellij --config "$zellij_config" --new-session-with-layout ${yznZellijLayout}/layout.kdl "$@"
               ;;
             *)
@@ -274,6 +330,7 @@ EOF
           install -d "$out/libexec/yazelix-next"
           ln -s ${yznZellijConfig}/bin/yzn-zellij-config "$out/libexec/yazelix-next/yzn-zellij-config"
           install -D -m 644 ${yznConfigKdl} "$out/share/yazelix-next/config.kdl"
+          install -D -m 644 ${yznRuntimeIdentity}/runtime_identity.json "$out/share/yazelix-next/runtime_identity.json"
           install -D -m 644 ${yznMarsConfig}/config.toml "$out/share/yazelix-next/mars/config.toml"
           install -D -m 644 ${yznZellijLayout}/layout.kdl "$out/share/yazelix-next/layout.kdl"
           install -D -m 644 ${yznZellijLayout}/layout.swap.kdl "$out/share/yazelix-next/layout.swap.kdl"

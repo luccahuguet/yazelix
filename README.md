@@ -3,9 +3,10 @@
 Small start: a Nix flake that installs `yzn`, a conflict-free dev command that
 opens Mars with a Yazi-first layout that becomes a sidebar plus stacked work
 panes, a bridge-enabled Yazelix Helix editor, reef cursor colors, and the
-Yazelix Zellij fork. The top bar uses the standalone Yazelix Zellij Bar package,
-and `Alt Shift J` toggles a managed LazyGit popup through the standalone
-Yazelix Zellij Popup plugin.
+Yazelix Zellij fork. The top bar uses a rendered Yazelix Zellij Bar tray with
+editor, shell, terminal, Codex, CPU, RAM, and version widgets, with bundled
+`tu` for the Codex usage widget. `Alt Shift J` toggles a managed LazyGit popup
+through the standalone Yazelix Zellij Popup plugin.
 
 ## Run
 
@@ -133,17 +134,17 @@ nix run --override-input yazelixZellijBar ../yazelix-zellij-bar
 Counts owned project files by language with `wc -l`.
 
 ```sh
-wc -l .gitignore AGENTS.md README.md CHANGELOG.md ARCHITECTURE.md flake.nix mars.toml config.kdl layout.kdl layout.swap.kdl nu/config.nu nu/env.nu helix/config.toml yazi/init.lua yazi/plugins/sidebar-status.yazi/main.lua yazi/yazi.toml crates/yzn-open/Cargo.toml crates/yzn-open/src/main.rs checks/zellij-layout.rs checks/yzn-contracts.rs runtime/yzn-nu.rs runtime/yzn-zellij-config.rs
+wc -l .gitignore AGENTS.md README.md CHANGELOG.md ARCHITECTURE.md flake.nix packaging/tokenusage.nix mars.toml config.kdl layout.kdl layout.swap.kdl nu/config.nu nu/env.nu helix/config.toml yazi/init.lua yazi/plugins/sidebar-status.yazi/main.lua yazi/yazi.toml crates/yzn-open/Cargo.toml crates/yzn-open/src/main.rs checks/zellij-layout.rs checks/yzn-contracts.rs runtime/yzn-nu.rs runtime/yzn-zellij-config.rs
 ```
 
 | Language | Files | Lines |
 | --- | --- | ---: |
 | Ignore | `.gitignore` | 1 |
-| Markdown | `AGENTS.md`, `README.md`, `CHANGELOG.md`, `ARCHITECTURE.md` | 448 |
-| Nix | `flake.nix` | 317 |
+| Markdown | `AGENTS.md`, `README.md`, `CHANGELOG.md`, `ARCHITECTURE.md` | 464 |
+| Nix | `flake.nix`, `packaging/tokenusage.nix` | 408 |
 | TOML | `mars.toml`, `helix/config.toml`, `yazi/yazi.toml`, `crates/yzn-open/Cargo.toml` | 106 |
-| KDL | `config.kdl`, `layout.kdl`, `layout.swap.kdl` | 138 |
+| KDL | `config.kdl`, `layout.kdl`, `layout.swap.kdl` | 139 |
 | Nu | `nu/config.nu`, `nu/env.nu` | 11 |
 | Lua | `yazi/init.lua`, `yazi/plugins/sidebar-status.yazi/main.lua` | 16 |
-| Rust | `crates/yzn-open/src/main.rs`, `checks/zellij-layout.rs`, `checks/yzn-contracts.rs`, `runtime/yzn-nu.rs`, `runtime/yzn-zellij-config.rs` | 1499 |
-| Total | owned project files | 2536 |
+| Rust | `crates/yzn-open/src/main.rs`, `checks/zellij-layout.rs`, `checks/yzn-contracts.rs`, `runtime/yzn-nu.rs`, `runtime/yzn-zellij-config.rs` | 1552 |
+| Total | owned project files | 2697 |

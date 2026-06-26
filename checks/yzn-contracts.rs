@@ -102,12 +102,24 @@ fn expect_front_door(yzn: &Path) {
         "--new-session-with-layout",
         "/bin/zellij --config",
         "/bin/mars -e",
+        "ZELLIJ_PLUGIN_PERMISSIONS_CACHE=\"$zellij_permissions\"",
+        "permissions.kdl",
+        "share/yazelix_zellij_bar/zjstatus.wasm",
+        "OpenTerminalsOrPlugins",
+        "YAZELIX_SESSION_TERMINAL",
+        "YAZELIX_STATUS_BAR_CACHE_PATH",
+        "tokenusage-1.5.2",
     ] {
         assert!(
             yzn_launcher.contains(expected),
             "bin/yzn does not contain launch fragment {expected}",
         );
     }
+    assert!(
+        yzn.join("share/yazelix-next/runtime_identity.json")
+            .is_file(),
+        "yzn package is missing runtime_identity.json"
+    );
 }
 
 fn run_help(bin: &Path, args: &[&str]) -> String {
@@ -251,6 +263,7 @@ fn expect_keybinds(config: &str) {
     for expected in [
         r#"unbind "Alt n" "Ctrl g""#,
         r#"bind "Alt m" { NewPane; }"#,
+        r#"bind "n" { NewTab { name ""; }; SwitchToMode "Normal"; }"#,
         r#"bind "Alt Shift h" { NextSwapLayout; }"#,
         r#"bind "Ctrl Alt g" { SwitchToMode "Locked"; }"#,
         r#"bind "Ctrl p" { SwitchToMode "Pane"; }"#,

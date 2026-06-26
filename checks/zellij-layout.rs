@@ -1,5 +1,7 @@
 use std::{collections::BTreeSet, env, fs, process::ExitCode};
 
+const HOME_TAB_MARKER: &str = "\u{f015}";
+
 fn main() -> ExitCode {
     let args = env::args().collect::<Vec<_>>();
     let [_, layout_path, swap_path] = args.as_slice() else {
@@ -41,9 +43,13 @@ fn main() -> ExitCode {
         );
         ok = false;
     }
+    if !layout_contains_home_tab_marker(&layout) {
+        eprintln!("{layout_path}: startup tab must use the Yazelix home tab marker");
+        ok = false;
+    }
     if !bar_layout_is_valid(&layout) {
         eprintln!(
-            "{layout_path}: top bars must use yazelix-zellij-bar and bottom bars must keep native status-bar"
+            "{layout_path}: top bars must use the rendered yzn Yazelix bar widgets and bottom bars must keep native status-bar"
         );
         ok = false;
     }
@@ -131,10 +137,44 @@ fn layout_order_is_valid(layout: &str) -> bool {
     matches!((default, tab, new), (Some(default), Some(tab), Some(new)) if default < tab && tab < new)
 }
 
+fn layout_contains_home_tab_marker(layout: &str) -> bool {
+    layout
+        .lines()
+        .any(|line| line.trim() == format!(r#"tab name="{HOME_TAB_MARKER}""#))
+}
+
 fn bar_layout_is_valid(layout: &str) -> bool {
     let bars = layout
         .matches("share/yazelix_zellij_bar/zjstatus.wasm")
         .count();
     let native_status_bars = layout.matches(r#"plugin location="status-bar""#).count();
-    bars == 3 && native_status_bars == 3 && !layout.contains(r#"plugin location="tab-bar""#)
+    let tab_only_bars = layout.matches(r#"format_left   "{tabs}""#).count();
+    bars == 3
+        && native_status_bars == 3
+        && tab_only_bars == 3
+        && rendered_bar_widgets_are_valid(layout)
+        && !layout.contains("{mode}")
+        && !layout.contains("mode_normal")
+        && !layout.contains(r#"plugin location="tab-bar""#)
+}
+
+fn rendered_bar_widgets_are_valid(layout: &str) -> bool {
+    [
+        " hx",
+        "❯nu",
+        "{command_term}",
+        "{command_codex_usage}",
+        "{command_cpu}",
+        "{command_ram}",
+        "YZX {command_version}",
+        r#"command_term_command ""#,
+        r#"command_codex_usage_command ""#,
+        r#"command_cpu_command ""#,
+        r#"command_ram_command ""#,
+        r#"command_version_command ""#,
+        "--display quota --periods 5h,week",
+        r#"--runtime-dir /nix/store/"#,
+    ]
+    .into_iter()
+    .all(|needle| layout.contains(needle))
 }

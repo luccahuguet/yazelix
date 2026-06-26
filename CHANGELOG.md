@@ -20,9 +20,21 @@ User-visible runtime changes for Yazelix Next live here.
   `~/.config/yazelix-next/starship.toml` is honored.
 - The top bar uses the standalone Yazelix Zellij Bar package while the bottom
   native Zellij status bar still owns key hints.
+- `yzn` renders the top bar through the Yazelix Zellij Bar widget command with
+  no `NORMAL` mode segment, native tab labels at the left edge, the Yazelix
+  home marker, and editor, shell, terminal, Codex, CPU, RAM, and version
+  widgets.
+- The Codex usage widget shows quota/reset windows without token totals, uses
+  the bundled `tu` helper and a yzn-owned status cache path, and avoids stale
+  generic bar cache state.
+- Tab-mode new tabs use the same Yazelix home marker instead of `Tab #N`
+  labels.
 - The Yazelix Zellij fork focuses plugin permission prompts as they appear,
   uses a full-viewport prompt for tiny layout panes, and drains concurrent
   startup permission prompts one at a time before restoring pane focus.
+- `yzn` uses an isolated Zellij plugin-permission cache and pre-seeds its
+  packaged Yazelix Bar and Popup plugin permissions so desktop launches do not
+  depend on hidden plugin permission prompts.
 - `Alt Shift J` toggles a managed LazyGit popup through the standalone
   Yazelix Zellij Popup plugin, with Kitty keyboard protocol enabled.
 
