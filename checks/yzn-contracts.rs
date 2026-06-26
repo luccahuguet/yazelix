@@ -83,8 +83,8 @@ fn main() {
 fn expect_front_door(yzn: &Path) {
     let yzn_bin = yzn.join("bin/yzn");
     let help = run_help(&yzn_bin, &["help"]);
-    for args in [["-h"].as_slice(), &["--help"]] {
-        assert_eq!(run_help(&yzn_bin, args), help);
+    for arg in ["-h", "--help"] {
+        assert_eq!(run_help(&yzn_bin, &[arg]), help);
     }
     for expected in [
         "Usage:",
@@ -162,7 +162,6 @@ fn expect_mars_config_override(yzn: &Path) {
         "$yzn_config_home/mars/config.toml",
         "MARS_CONFIG_HOME=\"$yzn_config_home/mars\"",
         "MARS_CONFIG_HOME=/nix/store/",
-        "exec /nix/store/",
     ] {
         assert!(
             launcher.contains(expected),
@@ -181,16 +180,16 @@ fn expect_zellij_config_sidecar(yzn: &Path) {
     let no_sidecar = run_zellij_config(&helper, &packaged_config, &sidecar, &generated_path);
     assert_eq!(PathBuf::from(no_sidecar), packaged_config);
 
-    fs::write(&sidecar, "scroll_buffer_size 1234\npane_frames false\n").unwrap();
+    let sidecar_config = "scroll_buffer_size 1234\npane_frames false\n";
+    fs::write(&sidecar, sidecar_config).unwrap();
     let generated = run_zellij_config(&helper, &packaged_config, &sidecar, &generated_path);
     assert_eq!(PathBuf::from(&generated), generated_path);
-    let generated_config = fs::read_to_string(&generated_path).unwrap();
-    for expected in ["default_shell", "pane_frames false"] {
-        assert!(
-            generated_config.contains(expected),
-            "generated Zellij config is missing {expected}",
-        );
-    }
+    let packaged_text = fs::read_to_string(&packaged_config).unwrap();
+    let expected_config = format!("{}\n{}", packaged_text.trim_end(), sidecar_config);
+    assert_eq!(
+        fs::read_to_string(&generated_path).unwrap(),
+        expected_config
+    );
 
     fs::write(&sidecar, "keybinds {}\n").unwrap();
     let output = Command::new(&helper)

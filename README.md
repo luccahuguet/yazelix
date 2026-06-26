@@ -139,11 +139,11 @@ wc -l .gitignore AGENTS.md README.md CHANGELOG.md ARCHITECTURE.md flake.nix mars
 | Language | Files | Lines |
 | --- | --- | ---: |
 | Ignore | `.gitignore` | 1 |
-| Markdown | `AGENTS.md`, `README.md`, `CHANGELOG.md`, `ARCHITECTURE.md` | 445 |
+| Markdown | `AGENTS.md`, `README.md`, `CHANGELOG.md`, `ARCHITECTURE.md` | 448 |
 | Nix | `flake.nix` | 317 |
 | TOML | `mars.toml`, `helix/config.toml`, `yazi/yazi.toml`, `crates/yzn-open/Cargo.toml` | 106 |
 | KDL | `config.kdl`, `layout.kdl`, `layout.swap.kdl` | 138 |
 | Nu | `nu/config.nu`, `nu/env.nu` | 11 |
 | Lua | `yazi/init.lua`, `yazi/plugins/sidebar-status.yazi/main.lua` | 16 |
-| Rust | `crates/yzn-open/src/main.rs`, `checks/zellij-layout.rs`, `checks/yzn-contracts.rs`, `runtime/yzn-nu.rs`, `runtime/yzn-zellij-config.rs` | 1501 |
-| Total | owned project files | 2535 |
+| Rust | `crates/yzn-open/src/main.rs`, `checks/zellij-layout.rs`, `checks/yzn-contracts.rs`, `runtime/yzn-nu.rs`, `runtime/yzn-zellij-config.rs` | 1499 |
+| Total | owned project files | 2536 |

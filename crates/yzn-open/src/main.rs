@@ -639,7 +639,6 @@ exit 0
         assert_eq!(bridge_session_id(Some("window-id".into())), "window-id");
         let fallback = bridge_session_id(None);
         assert!(fallback.starts_with("yzn-open-"));
-        assert_ne!(fallback, "yzn");
         assert!(bridge_session_id(Some(" ".into())).starts_with("yzn-open-"));
     }
 
