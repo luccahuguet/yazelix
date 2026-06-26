@@ -193,7 +193,12 @@ fn try_bridge(config: &Config, targets: &[PathBuf]) -> Result<bool> {
             ),
         );
 
-        match registry.send_request(action, payload) {
+        match send_bridge_request(
+            &registry.transport.path,
+            &registry.auth_token_path,
+            action,
+            payload,
+        ) {
             Ok(response) => {
                 log_info(
                     config,
@@ -242,15 +247,8 @@ impl Registry {
     }
 
     fn is_live(&self) -> bool {
-        is_socket(&self.transport.path) && self.auth_token_path.is_file()
-    }
-
-    fn send_request(
-        &self,
-        action: &'static str,
-        payload: Value,
-    ) -> std::result::Result<String, BridgeSendError> {
-        send_bridge_request(&self.transport.path, &self.auth_token_path, action, payload)
+        fs::metadata(&self.transport.path).is_ok_and(|metadata| metadata.file_type().is_socket())
+            && self.auth_token_path.is_file()
     }
 }
 
@@ -422,21 +420,16 @@ fn display_args(args: &[OsString]) -> Vec<String> {
         .collect()
 }
 
-fn command_error(output: &Output) -> String {
-    let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
-    if stderr.is_empty() {
-        format!("exit code {}", output.status.code().unwrap_or(1))
-    } else {
-        stderr
-    }
-}
-
 fn ensure_success(output: &Output, context: &str) -> Result<()> {
     if output.status.success() {
-        Ok(())
-    } else {
-        bail!("{context}: {}", command_error(output));
+        return Ok(());
     }
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    let stderr = stderr.trim();
+    if stderr.is_empty() {
+        bail!("{context}: exit code {}", output.status.code().unwrap_or(1));
+    }
+    bail!("{context}: {stderr}");
 }
 
 fn log_error(config: &Config, message: &str) {
@@ -449,12 +442,6 @@ fn log_info(config: &Config, message: &str) {
 
 fn log_debug(config: &Config, message: &str) {
     log_event(config, LogLevel::Debug, message);
-}
-
-fn is_socket(path: &Path) -> bool {
-    fs::metadata(path)
-        .map(|metadata| metadata.file_type().is_socket())
-        .unwrap_or(false)
 }
 
 fn request_id() -> String {
@@ -752,53 +739,42 @@ exit 0
     }
 
     #[test]
-    fn bridge_from_another_yzn_session_is_not_used() {
-        let root = test_dir("session-isolation");
-        let other_bridge_dir = root.join("helix_bridge").join("window-b");
-        let zellij_log = root.join("zellij.log");
-        let zellij = root.join("zellij");
-        let socket_path = write_registry(&other_bridge_dir, "window-b", None, None);
-        let _listener = UnixListener::bind(&socket_path).unwrap();
-        write_zellij_log_script(&zellij, &zellij_log, false);
+    fn bridge_from_other_yzn_or_zellij_session_is_not_used() {
+        for (name, registry_session, registry_zellij, registry_pane) in [
+            ("yzn-session-isolation", "window-b", None, None),
+            (
+                "zellij-session-isolation",
+                "window-a",
+                Some("zellij-b"),
+                Some("1"),
+            ),
+        ] {
+            let root = test_dir(name);
+            let bridge_dir = root.join("helix_bridge").join(registry_session);
+            let zellij_log = root.join("zellij.log");
+            let zellij = root.join("zellij");
+            let socket_path = write_registry(
+                &bridge_dir,
+                registry_session,
+                registry_zellij,
+                registry_pane,
+            );
+            let _listener = UnixListener::bind(&socket_path).unwrap();
+            write_zellij_log_script(&zellij, &zellij_log, false);
 
-        run(
-            &Config {
-                zellij_session_name: Some("zellij-a".into()),
-                ..test_config(root, "window-a", zellij)
-            },
-            [OsString::from("/tmp/project/src/main.rs")],
-        )
-        .unwrap();
+            run(
+                &Config {
+                    zellij_session_name: Some("zellij-a".into()),
+                    ..test_config(root, "window-a", zellij)
+                },
+                [OsString::from("/tmp/project/src/main.rs")],
+            )
+            .unwrap();
 
-        let log = fs::read_to_string(zellij_log).unwrap();
-        assert!(log.contains("args=run --name yzn-editor"));
-        assert!(log.contains("session=window-a"));
-        assert!(!log.contains("focus-pane-id"));
-    }
-
-    #[test]
-    fn bridge_from_another_zellij_session_is_not_used() {
-        let root = test_dir("zellij-session-isolation");
-        let session_id = "window-a";
-        let bridge_dir = root.join("helix_bridge").join(session_id);
-        let zellij_log = root.join("zellij.log");
-        let zellij = root.join("zellij");
-        let socket_path = write_registry(&bridge_dir, session_id, Some("zellij-b"), Some("1"));
-        let _listener = UnixListener::bind(&socket_path).unwrap();
-        write_zellij_log_script(&zellij, &zellij_log, false);
-
-        run(
-            &Config {
-                zellij_session_name: Some("zellij-a".into()),
-                ..test_config(root, session_id, zellij)
-            },
-            [OsString::from("/tmp/project/src/main.rs")],
-        )
-        .unwrap();
-
-        let log = fs::read_to_string(zellij_log).unwrap();
-        assert!(log.contains("args=run --name yzn-editor"));
-        assert!(log.contains("session=window-a"));
-        assert!(!log.contains("focus-pane-id"));
+            let log = fs::read_to_string(zellij_log).unwrap();
+            assert!(log.contains("args=run --name yzn-editor"), "{name}:\n{log}");
+            assert!(log.contains("session=window-a"), "{name}:\n{log}");
+            assert!(!log.contains("focus-pane-id"), "{name}:\n{log}");
+        }
     }
 }

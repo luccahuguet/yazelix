@@ -1,4 +1,18 @@
 default_shell "@nuShell@"
+support_kitty_keyboard_protocol true
+
+plugins {
+    yzpp location="@yzpp@" {
+        popup {
+            command "@lazygit@"
+            pane_title "lazygit_popup"
+        }
+    }
+}
+
+load_plugins {
+    yzpp
+}
 
 keybinds {
     locked {
@@ -29,6 +43,11 @@ keybinds {
     shared_except "locked" {
         unbind "Alt n" "Ctrl g"
         bind "Alt m" { NewPane; }
+        bind "Alt Shift J" {
+            MessagePlugin "yzpp" {
+                name "toggle"
+            }
+        }
         bind "Alt Shift h" { NextSwapLayout; }
         bind "Ctrl Alt g" { SwitchToMode "Locked"; }
         bind "Ctrl q" { Quit; }

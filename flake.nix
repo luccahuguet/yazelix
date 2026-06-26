@@ -15,6 +15,10 @@
       url = "github:luccahuguet/yazelix-helix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    yazelixZellijPopup = {
+      url = "github:luccahuguet/yazelix-zellij-popup";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     autoLayoutYazi = {
       url = "github:luccahuguet/auto-layout.yazi";
       flake = false;
@@ -31,6 +35,7 @@
     mars,
     yazelixZellij,
     yazelixHelix,
+    yazelixZellijPopup,
     autoLayoutYazi,
     starshipYazi,
   }: let
@@ -80,8 +85,11 @@
         pathPrefix = pkgs.lib.makeBinPath [pkgs.nushell pkgs.starship pkgs.carapace pkgs.zoxide];
       };
       yznNuShell = rustBin "yzn-nu" yznNuRs;
+      yazelixZellijPopupPackage = yazelixZellijPopup.packages.${system}.yzpp;
       yznConfigKdl = pkgs.replaceVars ./config.kdl {
         nuShell = "${yznNuShell}/bin/yzn-nu";
+        yzpp = "file:${yazelixZellijPopupPackage}/${yazelixZellijPopupPackage.wasmPath}";
+        lazygit = "${pkgs.lazygit}/bin/lazygit";
       };
       yznZellijConfig = rustBin "yzn-zellij-config" ./runtime/yzn-zellij-config.rs;
       yazelixHelixPackage = yazelixHelix.packages.${system}.yazelix_helix;

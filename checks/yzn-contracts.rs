@@ -15,6 +15,7 @@ fn main() {
         yzn_nu.display()
     );
     expect_keybinds(&config);
+    expect_lazygit_popup(&config);
     expect_front_door(yzn);
     expect_mars_config_override(yzn);
     expect_zellij_config_sidecar(yzn);
@@ -82,7 +83,7 @@ fn main() {
 fn expect_front_door(yzn: &Path) {
     let yzn_bin = yzn.join("bin/yzn");
     let help = run_help(&yzn_bin, &["help"]);
-    for args in [["help"].as_slice(), &["-h"], &["--help"]] {
+    for args in [["-h"].as_slice(), &["--help"]] {
         assert_eq!(run_help(&yzn_bin, args), help);
     }
     for expected in [
@@ -267,6 +268,25 @@ fn expect_keybinds(config: &str) {
         !config.contains(r#"SwitchToMode "Move""#),
         "config.kdl must not reintroduce move mode"
     );
+}
+
+fn expect_lazygit_popup(config: &str) {
+    for expected in [
+        "share/yazelix_zellij_popup/yzpp.wasm",
+        "load_plugins",
+        "popup {",
+        "pane_title \"lazygit_popup\"",
+        "support_kitty_keyboard_protocol true",
+        "bind \"Alt Shift J\"",
+        "MessagePlugin \"yzpp\"",
+        "name \"toggle\"",
+        "/bin/lazygit\"",
+    ] {
+        assert!(
+            config.contains(expected),
+            "config.kdl is missing LazyGit popup fragment {expected:?}",
+        );
+    }
 }
 
 fn expect_no_block_binds_and_unbinds_same_key(config: &str) {
