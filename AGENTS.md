@@ -78,6 +78,9 @@ Prefer deleting scope, avoiding abstractions, and reusing existing package
 outputs over adding local wrappers. If LOC grows, the added behavior should be
 visible in the scorecard and justified by the slice
 
+Formatting rules outrank LOC pressure. For Rust, run and keep `rustfmt` output;
+do not manually compress formatted Rust just to lower the scorecard
+
 ## Verification
 
 Run the cheapest exact checks for the changed surface. For runtime flake

@@ -98,7 +98,11 @@ fn expect_front_door(yzn: &Path) {
     }
 
     let yzn_launcher = fs::read_to_string(&yzn_bin).unwrap();
-    for expected in ["--new-session-with-layout", "/bin/zellij --config", "/bin/mars -e"] {
+    for expected in [
+        "--new-session-with-layout",
+        "/bin/zellij --config",
+        "/bin/mars -e",
+    ] {
         assert!(
             yzn_launcher.contains(expected),
             "bin/yzn does not contain launch fragment {expected}",

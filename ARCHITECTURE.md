@@ -28,10 +28,14 @@ can replace the Mars config with `~/.config/yazelix-next/mars/config.toml`;
 `config.kdl`, `layout.kdl`, and `layout.swap.kdl` are the Zellij behavior
 owners. They set the shell, Zellij-native `Ctrl Alt` mode keys, direct
 `Ctrl Alt h/j/k/l` movement, the `Alt m` pane binding, the `Alt Shift h`
-sidebar toggle, the `Alt Shift J` LazyGit popup binding, the Yazi sidebar tab,
-the open/closed sidebar swap layouts, and explicit Kitty keyboard protocol
-support. The standalone `yzpp` plugin owns popup lifecycle; Yazelix Next only
-packages it with one hardcoded LazyGit popup.
+sidebar toggle, the `Alt Shift J` LazyGit popup binding, the Yazelix Zellij Bar
+top bar, the Yazi sidebar tab, the open/closed sidebar swap layouts, and
+explicit Kitty keyboard protocol support. The standalone `yzpp` plugin owns
+popup lifecycle; Yazelix Next only packages it with one hardcoded LazyGit popup.
+
+`yazelix-zellij-bar` owns the packaged top bar preset and `zjstatus.wasm`.
+Yazelix Next consumes the child artifact in its top layout panes and keeps the
+native bottom Zellij `status-bar` for key hints.
 
 `runtime/yzn-zellij-config.rs` is the guarded Zellij sidecar owner. It appends
 `~/.config/yazelix-next/zellij/config.kdl` to the packaged config after a small
@@ -110,13 +114,14 @@ window.
 | C7 | Helix bridge reuse stays inside the current `yzn` window | `crates/yzn-open/`, `flake.nix` | `yzn-open` Rust tests cover session and Zellij-window mismatch | Full multi-window GUI behavior remains manual dogfooding |
 | C8 | Desktop entry starts `yzn` | `flake.nix` | `nix build .#yzn` packages the desktop file | Desktop environment launch remains manual dogfooding |
 | C9 | Kitty keyboard protocol is explicitly enabled and `Alt Shift J` toggles one managed LazyGit popup through `yzpp` | `config.kdl`, `flake.nix` | `checks/yzn-contracts.rs` validates Kitty protocol, the packaged popup plugin, LazyGit command, and key binding | Visual popup behavior remains manual dogfooding |
+| C10 | Top bars use the standalone Yazelix Zellij Bar package while bottom bars keep native Zellij key hints | `layout.kdl`, `flake.nix` | `checks/zellij-layout.rs` validates packaged child bar usage and native bottom status bars | Visual bar behavior remains manual dogfooding |
 
 ## Pros
 
 - The public surface is small: `yzn help`, `yzn enter`, and `yzn launch`.
-- Nix owns dependency composition, so Mars, Zellij, Helix, Yazi, LazyGit,
-  plugins, fonts, desktop entry assets, and helper binaries are versioned
-  together.
+- Nix owns dependency composition, so Mars, Zellij, Helix, Yazi, LazyGit, the
+  Yazelix bar, plugins, fonts, desktop entry assets, and helper binaries are
+  versioned together.
 - Mars is an isolated terminal concern. The rest of the runtime can stay focused
   on Zellij/Yazi/Helix behavior.
 - Rust owns runtime glue where quoting, file writes, sockets, process execution,

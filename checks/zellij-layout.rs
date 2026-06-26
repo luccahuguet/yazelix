@@ -41,6 +41,12 @@ fn main() -> ExitCode {
         );
         ok = false;
     }
+    if !bar_layout_is_valid(&layout) {
+        eprintln!(
+            "{layout_path}: top bars must use yazelix-zellij-bar and bottom bars must keep native status-bar"
+        );
+        ok = false;
+    }
 
     let swap = read(swap_path);
     let mut depth = 0i32;
@@ -123,4 +129,12 @@ fn layout_order_is_valid(layout: &str) -> bool {
     }
 
     matches!((default, tab, new), (Some(default), Some(tab), Some(new)) if default < tab && tab < new)
+}
+
+fn bar_layout_is_valid(layout: &str) -> bool {
+    let bars = layout
+        .matches("share/yazelix_zellij_bar/zjstatus.wasm")
+        .count();
+    let native_status_bars = layout.matches(r#"plugin location="status-bar""#).count();
+    bars == 3 && native_status_bars == 3 && !layout.contains(r#"plugin location="tab-bar""#)
 }

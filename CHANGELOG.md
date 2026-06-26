@@ -18,6 +18,8 @@ User-visible runtime changes for Yazelix Next live here.
   `~/.config/starship.toml` does not affect the managed prompt.
 - Nushell delegates the right prompt to Starship, so `right_format` in
   `~/.config/yazelix-next/starship.toml` is honored.
+- The top bar uses the standalone Yazelix Zellij Bar package while the bottom
+  native Zellij status bar still owns key hints.
 - `Alt Shift J` toggles a managed LazyGit popup through the standalone
   Yazelix Zellij Popup plugin, with Kitty keyboard protocol enabled.
 

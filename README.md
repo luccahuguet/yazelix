@@ -3,8 +3,9 @@
 Small start: a Nix flake that installs `yzn`, a conflict-free dev command that
 opens Mars with a Yazi-first layout that becomes a sidebar plus stacked work
 panes, a bridge-enabled Yazelix Helix editor, reef cursor colors, and the
-Yazelix Zellij fork. `Alt Shift J` toggles a managed LazyGit popup through the
-standalone Yazelix Zellij Popup plugin.
+Yazelix Zellij fork. The top bar uses the standalone Yazelix Zellij Bar package,
+and `Alt Shift J` toggles a managed LazyGit popup through the standalone
+Yazelix Zellij Popup plugin.
 
 ## Run
 
@@ -124,6 +125,7 @@ nix run --override-input mars ../mars
 nix run --override-input yazelixZellij ../yazelix-zellij
 nix run --override-input yazelixHelix ../yazelix-helix
 nix run --override-input yazelixZellijPopup ../yazelix-zellij-popup
+nix run --override-input yazelixZellijBar ../yazelix-zellij-bar
 ```
 
 ## LOC Scorecard
@@ -137,11 +139,11 @@ wc -l .gitignore AGENTS.md README.md CHANGELOG.md ARCHITECTURE.md flake.nix mars
 | Language | Files | Lines |
 | --- | --- | ---: |
 | Ignore | `.gitignore` | 1 |
-| Markdown | `AGENTS.md`, `README.md`, `CHANGELOG.md`, `ARCHITECTURE.md` | 433 |
-| Nix | `flake.nix` | 309 |
+| Markdown | `AGENTS.md`, `README.md`, `CHANGELOG.md`, `ARCHITECTURE.md` | 445 |
+| Nix | `flake.nix` | 317 |
 | TOML | `mars.toml`, `helix/config.toml`, `yazi/yazi.toml`, `crates/yzn-open/Cargo.toml` | 106 |
 | KDL | `config.kdl`, `layout.kdl`, `layout.swap.kdl` | 138 |
 | Nu | `nu/config.nu`, `nu/env.nu` | 11 |
 | Lua | `yazi/init.lua`, `yazi/plugins/sidebar-status.yazi/main.lua` | 16 |
-| Rust | `crates/yzn-open/src/main.rs`, `checks/zellij-layout.rs`, `checks/yzn-contracts.rs`, `runtime/yzn-nu.rs`, `runtime/yzn-zellij-config.rs` | 1483 |
-| Total | owned project files | 2497 |
+| Rust | `crates/yzn-open/src/main.rs`, `checks/zellij-layout.rs`, `checks/yzn-contracts.rs`, `runtime/yzn-nu.rs`, `runtime/yzn-zellij-config.rs` | 1501 |
+| Total | owned project files | 2535 |

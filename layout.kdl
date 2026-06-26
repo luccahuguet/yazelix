@@ -1,7 +1,7 @@
 layout {
     tab_template name="ui" {
         pane size=1 borderless=true {
-            plugin location="tab-bar"
+            @bar@
         }
         children
         pane size=1 borderless=true {
@@ -11,7 +11,7 @@ layout {
 
     default_tab_template {
         pane size=1 borderless=true {
-            plugin location="tab-bar"
+            @bar@
         }
         pane split_direction="vertical" {
             pane name="sidebar" command="@yazi@" size="20%"
@@ -25,7 +25,7 @@ layout {
 
     new_tab_template {
         pane size=1 borderless=true {
-            plugin location="tab-bar"
+            @bar@
         }
         pane split_direction="vertical" {
             pane name="sidebar" command="@yazi@" size="20%"

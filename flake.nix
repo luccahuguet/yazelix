@@ -19,6 +19,10 @@
       url = "github:luccahuguet/yazelix-zellij-popup";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    yazelixZellijBar = {
+      url = "github:luccahuguet/yazelix-zellij-bar";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     autoLayoutYazi = {
       url = "github:luccahuguet/auto-layout.yazi";
       flake = false;
@@ -36,6 +40,7 @@
     yazelixZellij,
     yazelixHelix,
     yazelixZellijPopup,
+    yazelixZellijBar,
     autoLayoutYazi,
     starshipYazi,
   }: let
@@ -91,6 +96,7 @@
         yzpp = "file:${yazelixZellijPopupPackage}/${yazelixZellijPopupPackage.wasmPath}";
         lazygit = "${pkgs.lazygit}/bin/lazygit";
       };
+      yazelixZellijBarPackage = yazelixZellijBar.packages.${system}.yazelix_zellij_bar;
       yznZellijConfig = rustBin "yzn-zellij-config" ./runtime/yzn-zellij-config.rs;
       yazelixHelixPackage = yazelixHelix.packages.${system}.yazelix_helix;
       yznHelixConfig = pkgs.runCommand "yzn-helix-config" {} ''
@@ -152,9 +158,11 @@
           exec ${pkgs.yazi}/bin/yazi "$@"
         '';
       };
-      yznLayoutKdl = pkgs.replaceVars ./layout.kdl {
-        yazi = "${yznYazi}/bin/yzn-yazi";
-      };
+      yznLayoutKdl = pkgs.runCommand "layout.kdl" {} ''
+        substitute ${./layout.kdl} "$out" \
+          --replace-fail '@yazi@' '${yznYazi}/bin/yzn-yazi' \
+          --replace-fail '@bar@' "$(<${yazelixZellijBarPackage}/${yazelixZellijBarPackage.presetPath})"
+      '';
       yznLayoutSwapKdl = pkgs.replaceVars ./layout.swap.kdl {
         yazi = "${yznYazi}/bin/yzn-yazi";
       };
