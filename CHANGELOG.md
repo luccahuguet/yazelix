@@ -20,9 +20,9 @@ User-visible runtime changes for Yazelix Next live here.
   `~/.config/yazelix-next/starship.toml` is honored.
 - The top bar uses the standalone Yazelix Zellij Bar package while the bottom
   native Zellij status bar still owns key hints.
-- The Yazelix Zellij fork shows plugin permission prompts from tiny layout
-  panes as a focused full-viewport prompt, then restores the previous tiled
-  pane focus after the answer.
+- The Yazelix Zellij fork focuses plugin permission prompts as they appear,
+  uses a full-viewport prompt for tiny layout panes, and drains concurrent
+  startup permission prompts one at a time before restoring pane focus.
 - `Alt Shift J` toggles a managed LazyGit popup through the standalone
   Yazelix Zellij Popup plugin, with Kitty keyboard protocol enabled.
 
