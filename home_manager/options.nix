@@ -59,7 +59,7 @@ with lib;
     type = types.enum terminalVariants;
     default = defaultTerminal;
     description = ''
-      Packaged Yazelix terminal variant. Yazelix packages Mars; configure other
+      Packaged Yazelix terminal. Yazelix packages Mars; configure other
       terminal emulators to start Yazelix with `yzx enter`.
 
 ${terminalDescriptionBullets}

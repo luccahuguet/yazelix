@@ -1,9 +1,8 @@
 # Terminal Emulator Comparison
 
 This document compares the terminal emulators Yazelix currently ships or scores:
-Mars, Ghostty, Rio, WezTerm, Ratty, and Kitty. Foot is restored as a Linux-only
-packaged terminal variant, but its detailed feature score needs a fresh
-validation pass.
+Mars, Ghostty, Rio, WezTerm, Ratty, Kitty, and Foot. Mars is the only packaged
+terminal; the other emulators are host-owned `yzx enter` entrypoints.
 
 Data summarized from:
 
@@ -19,9 +18,9 @@ Data summarized from:
 - Local reference clones under `/home/lucca/pjs/open_source/yazelix_related/`
 
 Alacritty is intentionally omitted from the current comparison because it is no
-longer part of the maintained Yazelix terminal set. Foot is restored as a
-Linux-only packaged terminal variant; detailed feature scoring should be
-refreshed after live Yazelix validation.
+longer part of the maintained Yazelix terminal set. Foot is tracked as a
+Linux-only host-owned entrypoint; detailed feature scoring should be refreshed
+after live Yazelix validation.
 
 ## Scoring
 
@@ -50,7 +49,7 @@ they are not feature/protocol capabilities by themselves.
 
 | ID | Criterion | Weight | What Counts |
 | --- | --- | ---: | --- |
-| C1 | Packaged Yazelix runtime | 4 | Available as a first-class Yazelix package/runtime variant |
+| C1 | Packaged Yazelix runtime | 4 | Available as a first-class Yazelix package/runtime path |
 | C2 | First-party control path | 4 | Yazelix owns the fork or can directly evolve the terminal behavior |
 | C3 | Generated config and transparency | 4 | Yazelix can materialize config and map `terminal.transparency` into it |
 | C4 | Runtime launcher integration | 4 | Launch path is modeled by Yazelix rather than only PATH discovery |

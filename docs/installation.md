@@ -265,7 +265,7 @@ The packaged runtime ships a fixed toolset instead of configurable dependency gr
 - the default CLI helpers: `fzf`, `zoxide`, `starship`, `lazygit`, `zenith`, `carapace`, `macchina`
 - host-managed helper integrations: `mise` and `tombi`
 - the default Yazi preview helpers: `p7zip`, `jq`, `fd`, `ripgrep`, `poppler`
-- one packaged terminal variant: Mars by default with the Yazelix Zellij graphics bridge
+- one packaged terminal: Mars by default with the Yazelix Zellij graphics bridge
 
 When you enter `yzx env`, Yazelix exports that curated tool surface to your shell. Runtime-private helpers stay under `libexec/` so host apps launched from Yazelix do not inherit shadowing tools like `dirname` ahead of the system PATH.
 

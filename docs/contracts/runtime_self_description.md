@@ -57,7 +57,7 @@ The runtime-root manifest family is:
 
 | Manifest | Role | Current owner |
 | --- | --- | --- |
-| `runtime_identity.json` | Runtime identity, release version, source revision, selected runtime variant, and pinned input revisions | main Yazelix package assembly |
+| `runtime_identity.json` | Runtime identity, release version, source revision, `runtime_variant` value, and pinned input revisions | main Yazelix package assembly |
 | `runtime_components.json` | Enablement state for disableable bundled components | main Yazelix package assembly |
 | `runtime_tools.json` | Runtime tool source mode, required commands, and optional host-integration metadata | main Yazelix package assembly |
 | `runtime_features/` | Marker files for coarse runtime capabilities such as Zellij Kitty passthrough | main Yazelix package assembly |
@@ -88,7 +88,7 @@ the source checkout copy for active-runtime decisions.
 Stable manifest/query fields are data facts with no hidden behavior:
 
 - release version and source/input revisions
-- selected runtime variant
+- `runtime_variant` value
 - component enablement
 - runtime tool source mode and required commands
 - install owner and update path
@@ -124,7 +124,7 @@ instead of scraping checkout paths.
 ## First Deletion Slice
 
 The first duplicated authority to delete is the standalone `runtime_variant`
-file. The selected terminal variant already exists in
+file. The packaged terminal identity already exists in
 `runtime_identity.json.runtime_variant`, and `yzx inspect --json.runtime.variant`
 is the external aggregate field.
 

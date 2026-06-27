@@ -25,7 +25,7 @@ The current tree contained mixed signals about macOS support. The top-level docs
 
 ## Mars And Host Terminals On macOS
 
-Mars is the default Yazelix terminal on macOS and Linux because Yazelix can evolve the Rust terminal fork, generated config, cursor behavior, and agent-driven development workflow together. macOS-specific Mars support is issue-driven: users should report `yzx doctor --verbose`, terminal variant, macOS version, architecture, launch logs, and whether the same workflow works through a host terminal running `yzx enter`.
+Mars is the default Yazelix terminal on macOS and Linux because Yazelix can evolve the Rust terminal fork, generated config, cursor behavior, and agent-driven development workflow together. macOS-specific Mars support is issue-driven: users should report `yzx doctor --verbose`, terminal label, macOS version, architecture, launch logs, and whether the same workflow works through a host terminal running `yzx enter`.
 
 Host terminals intentionally own their own macOS app behavior. Configure the terminal's startup command to run `yzx enter`; Yazelix does not package a Ghostty app bundle or promise automatic host-terminal shell integration niceties such as command history, cursor positioning, or working-directory tracking.
 

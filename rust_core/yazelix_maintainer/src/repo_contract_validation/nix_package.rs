@@ -617,7 +617,7 @@ fn verify_profile_installed_runtime(
     )?;
     if !terminal_materialization_result.status.success() {
         errors.push(format!(
-            "Installed runtime failed to materialize the selected terminal config during cold profile-install validation\n{}",
+            "Installed runtime failed to materialize the packaged terminal config during cold profile-install validation\n{}",
             command_output_summary(&terminal_materialization_result)
         ));
         return Ok(());
@@ -625,7 +625,7 @@ fn verify_profile_installed_runtime(
 
     require_path_exists_abs(
         &generated_mars_config,
-        "generated Mars Terminal config for selected runtime variant",
+        "generated Mars Terminal config for selected packaged terminal",
         errors,
     );
     if errors.is_empty() {

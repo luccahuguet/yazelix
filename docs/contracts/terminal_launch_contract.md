@@ -32,14 +32,14 @@ Yazelix owns one packaged terminal launch path: Mars. Other terminal emulators a
 - Type: behavior
 - Status: live
 - Owner: Rust terminal materialization and Rust launch preflight
-- Statement: Mars is the packaged terminal variant selected by `terminal = "mars"`, `#yazelix`, or `#yazelix_mars`. It consumes the Mars child package metadata from `passthru.marsPackageMetadata` and `share/mars/package-metadata.json`; missing or malformed metadata is a package error, not a fallback trigger. Generated Mars config is written under the Yazelix state directory and launched through `MARS_CONFIG_HOME`
+- Statement: Mars is the packaged terminal selected by `terminal = "mars"`, `#yazelix`, or `#yazelix_mars`. It consumes the Mars child package metadata from `passthru.marsPackageMetadata` and `share/mars/package-metadata.json`; missing or malformed metadata is a package error, not a fallback trigger. Generated Mars config is written under the Yazelix state directory and launched through `MARS_CONFIG_HOME`
 - Verification: automated Rust tests in `rust_core/yazelix_core/src/launch_commands/launch.rs`; automated terminal-materialization tests in `rust_core/yazelix_core/src/terminal_materialization.rs`
 
 #### TLAUNCH-004
 - Type: boundary
 - Status: live
 - Owner: Rust `launch_commands/launch.rs`, Home Manager module, and flake package surface
-- Statement: Non-Mars terminal emulators are host-owned entrypoints. Yazelix does not package Ghostty, Rio, WezTerm, Kitty, Foot, or Ratty runtime variants, and `yzx launch` does not accept `--term`. Users who prefer another terminal configure that terminal to run `yzx enter`
+- Statement: Non-Mars terminal emulators are host-owned entrypoints. Yazelix does not package Ghostty, Rio, WezTerm, Kitty, Foot, or Ratty runtime packages, and `yzx launch` does not accept `--term`. Users who prefer another terminal configure that terminal to run `yzx enter`
 - Verification: automated Rust launch parsing tests; validator `validate-flake-interface`; validator `validate-nix-customization-api`
 
 #### TLAUNCH-005

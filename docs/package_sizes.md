@@ -12,14 +12,14 @@ The default runtime includes:
 - host-managed helper integrations: `mise`, `tombi`
 - preview/search helpers: `p7zip`, `jq`, `fd`, `ripgrep`, `poppler`, `resvg`
 - system helpers required by runtime wrappers and validators: `git`, `nix`, `coreutils`, `findutils`, `gnugrep`, `gnused`, `util-linux`
-- one packaged terminal variant: Mars in `#yazelix` and `#yazelix_mars`
+- one packaged terminal: Mars in `#yazelix` and `#yazelix_mars`
 - `tokenusage` for the default Codex and Claude status widgets
 
 It does not ship:
 
 - a runtime-local `devenv` binary
 - pack-driven optional dependency groups
-- every terminal variant in one package
+- every host terminal in one package
 - a public flake package for every possible host/off tool combination
 
 ## Runtime Size Reporter
@@ -135,7 +135,7 @@ The publish workflow also builds a selective `aarch64-darwin` lane for macOS use
 - `yazelix_helix`
 - `yazelix`
 
-The Darwin lane intentionally starts with the default supported install path and expensive editor/Zellij package outputs rather than every terminal variant or dev/check output. Expand it only after measuring runner time, disk pressure, and Cachix storage churn.
+The Darwin lane intentionally starts with the default supported install path and expensive editor/Zellij package outputs rather than every host terminal or dev/check output. Expand it only after measuring runner time, disk pressure, and Cachix storage churn.
 
 Cachix-side policy from the current docs:
 

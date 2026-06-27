@@ -562,7 +562,7 @@ fn check_terminal_support(request: &TerminalSupportCheckRequest) -> RuntimeCheck
                 ),
                 None,
                 Some(
-                    "Use a terminal shipped by the active Yazelix runtime, install it on PATH, or choose a different terminal for testing."
+                    "Use the Mars terminal shipped by the active Yazelix runtime, or configure a host terminal to run `yzx enter`."
                         .to_string(),
                 ),
                 Some("host-dependency".to_string()),
@@ -600,11 +600,11 @@ fn check_terminal_support(request: &TerminalSupportCheckRequest) -> RuntimeCheck
             "error",
             &request.owner_surface,
             format!(
-                "Selected Yazelix terminal variant '{terminal}' is not available in the active runtime or PATH."
+                "Selected Yazelix packaged terminal '{terminal}' is not available in the active runtime or PATH."
             ),
             None,
             Some(
-                "Reinstall Yazelix so the selected terminal variant is packaged correctly, or install a different Yazelix terminal variant."
+                "Reinstall Yazelix so the packaged Mars terminal is available, or configure a host terminal to run `yzx enter`."
                     .to_string(),
             ),
             Some("host-dependency".to_string()),

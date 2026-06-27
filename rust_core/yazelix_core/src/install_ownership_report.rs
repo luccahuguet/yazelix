@@ -1114,7 +1114,7 @@ fn check_desktop_entry_freshness(
             "Yazelix desktop entry cannot show prelaunch failures",
         )
         .with_details(format!(
-                "Desktop entry: {}\nTerminal: {}\nTerminal=false can hide config and generated-state errors that happen before the selected terminal is spawned. Yazelix desktop entries should use Terminal=true as a starter window until a dedicated graphical prelaunch surface exists.\n{repair_hint}",
+                "Desktop entry: {}\nTerminal: {}\nTerminal=false can hide config and generated-state errors that happen before the packaged terminal is spawned. Yazelix desktop entries should use Terminal=true as a starter window until a dedicated graphical prelaunch surface exists.\n{repair_hint}",
                 path_to_string(&dp),
                 terminal_value
             ));

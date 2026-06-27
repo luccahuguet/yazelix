@@ -6,12 +6,16 @@ Short, upgrade-facing release notes live here. The longer narrative history rema
 
 Post-v17.8 work in progress
 
-Upgrade impact: no user action required
+Upgrade impact: manual action may be required
 
 Highlights:
 - Adopted the grouped Zellij mode layer from Yazelix Next: `Ctrl p/t/n/q` keep pane, tab, resize, and quit fast, `Ctrl Alt g/s/o` keep lock, search, and session grouped off plain Ctrl, `Ctrl h` stays unbound from move mode, and the consumed Zellij fork groups mixed modifier hints cleanly in the bottom bar
 - Made Mars the only packaged terminal path, removed non-Mars runtime variants and Home Manager extra terminal launchers, and documented Ghostty, Rio, WezTerm, Kitty, Foot, and Ratty as host-owned `yzx enter` entrypoints
 - Gave the runtime smoke CI lane enough time for cache-miss builds
+
+Manual action:
+- Replace non-Mars flake outputs such as `#yazelix_ghostty`, `#yazelix_kitty`, `#runtime_kitty`, `#runtime_wezterm`, `#runtime_rio`, `#runtime_foot`, or `#runtime_ratty` with `#yazelix` or `#yazelix_mars`
+- Remove Home Manager `programs.yazelix.extra_terminal_launchers` or older `programs.yazelix.extra_terminal_variants` settings, and set `programs.yazelix.terminal = "mars"` if the option is present; configure host terminals to start `yzx enter`
 
 ## v17.8 - 2026-06-22
 

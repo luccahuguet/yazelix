@@ -13,12 +13,12 @@ Yazelix status and doctor surfaces must explain which runtime is active, who own
   - `install_owner`: one of `home-manager`, `profile`, or `manual`
   - `stable_yzx_wrapper`: the profile or manual launcher that future desktop/update commands should target, when known
   - `desktop_launcher_path`: the launcher expected in desktop entries
-  - `runtime_variant`: the packaged runtime variant when the runtime exposes `runtime_variant`
+  - `runtime_variant`: the packaged runtime label when the runtime exposes `runtime_variant`; current Yazelix packages expose `mars`
   - `session_terminal_label`: the terminal emulator actually hosting the current Yazelix session when known; `yzx enter` derives this from explicit Yazelix session env, managed-launch hints, and conservative terminal-specific host env before falling back to `unknown`
   - `runtime_features`: marker files under `runtime_features/`, such as `zellij_kitty_passthrough`
   - `generated_state_checks`: derived-state checks for layouts, shell initializers, workspace assets, and launch logs
-- `runtime_variant` and `session_terminal_label` are separate facts. A packaged runtime may be configured as Ratty while `yzx enter` is run inside WezTerm, Ghostty, Kitty, Foot, Rio, or an unknown host terminal.
-- The integrated status bar terminal widget displays the session terminal label, not the packaged runtime variant, for current-terminal `yzx enter` sessions.
+- `runtime_variant` and `session_terminal_label` are separate facts. The packaged runtime label can be `mars` while `yzx enter` runs inside WezTerm, Ghostty, Kitty, Foot, Rio, or an unknown host terminal.
+- The integrated status bar terminal widget displays the session terminal label, not the packaged runtime label, for current-terminal `yzx enter` sessions.
 - Generic terminal identifiers such as `xterm-256color` are not guessed as a specific emulator; unsupported or ambiguous host terminals report `unknown`.
 - Home Manager ownership is detected when either:
   - `settings.jsonc` is a Home Manager-owned profile symlink, or

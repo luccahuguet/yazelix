@@ -124,8 +124,6 @@ let
         StartupWMClass = startupWmClassFor terminal;
       };
     };
-  marsDesktopPackages = [ ];
-
   cursorGeneratorPackage =
     if componentEnabled "cursors" && yazelixCursorsPackage != null then
       [ yazelixCursorsPackage ]
@@ -171,7 +169,7 @@ in
   inherit agentUsageProgramNames;
 
   baseConfig = {
-    home.packages = [ yazelixPackage ] ++ cursorGeneratorPackage ++ marsDesktopPackages;
+    home.packages = [ yazelixPackage ] ++ cursorGeneratorPackage;
     home.sessionVariables = mkMerge [
       (mkIf marsSemanticEnvActive {
         MARS_APPEARANCE = mkDefault cfg.appearance_mode;

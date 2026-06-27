@@ -296,14 +296,14 @@ fn execute_launch_plan(
         .collect::<Vec<_>>()
         .join("\n");
     let message = format!(
-        "Failed to launch Yazelix terminal variant '{}'.\n{summary}",
+        "Failed to launch Yazelix packaged terminal '{}'.\n{summary}",
         plan.active_terminal
     );
     Err(CoreError::classified(
         ErrorClass::Runtime,
         "launch_failed",
         message,
-        "Reinstall Yazelix so the selected terminal variant is packaged correctly, or install a different Yazelix terminal variant.",
+        "Reinstall Yazelix so the packaged Mars terminal is available, or configure a host terminal to run `yzx enter`.",
         serde_json::json!({}),
     ))
 }

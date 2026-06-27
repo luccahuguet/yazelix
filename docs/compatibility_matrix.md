@@ -28,7 +28,7 @@ package docs, and terminal comparison matrix.
 | Kitty | `best-effort` host-owned `yzx enter` entrypoint | `best-effort` host-owned `yzx enter` entrypoint | host-owned | host-owned terminal behavior | `supported` at the Yazelix workspace layer after `yzx enter` | `best-effort`; Zellij owns web sharing behavior | user-owned terminal install; Yazelix package owner remains Mars |
 | Foot | `best-effort` host-owned `yzx enter` entrypoint | `unsupported` | host-owned | host-owned terminal behavior | `supported` at the Yazelix workspace layer after `yzx enter` | `best-effort`; Zellij owns web sharing behavior | user-owned terminal install; Yazelix package owner remains Mars |
 | Ratty | `best-effort` host-owned `yzx enter` entrypoint | `unsupported` | host-owned | host-owned terminal behavior | `supported` at the Yazelix workspace layer after `yzx enter` | `best-effort`; Zellij owns web sharing behavior | user-owned terminal install; Yazelix package owner remains Mars |
-| Alacritty | `unsupported` | `unsupported` | `unsupported` | `unsupported` | `best-effort` only if the user runs Yazelix manually inside an unmanaged Alacritty session | `best-effort`; Zellij owns web sharing behavior | `unsupported` as a packaged or Home Manager terminal variant |
+| Alacritty | `unsupported` | `unsupported` | `unsupported` | `unsupported` | `best-effort` only if the user runs Yazelix manually inside an unmanaged Alacritty session | `best-effort`; Zellij owns web sharing behavior | `unsupported` as a packaged or Home Manager terminal selection |
 
 ## Editor Matrix
 
@@ -76,8 +76,8 @@ package docs, and terminal comparison matrix.
   shell-opened editors remain ordinary panes
 - Zellij web sharing is classified as best-effort here because Yazelix does not
   currently add terminal-specific support guarantees beyond running Zellij
-- Alacritty is intentionally unsupported as a current packaged or Home Manager
-  terminal variant
+- Alacritty is intentionally unsupported as a packaged or Home Manager terminal
+  selection
 
 ## Source Evidence
 

@@ -407,7 +407,7 @@ command = ""
     assert!(!log.contains("/stale/"), "{log}");
 }
 
-// Regression: `yzx enter` uses the actual host terminal for the status bar instead of the configured packaged runtime variant.
+// Regression: `yzx enter` uses the actual host terminal for the status bar instead of the packaged runtime label.
 #[test]
 fn yzx_enter_uses_detected_host_terminal_for_status_bar_label() {
     let fixture = managed_config_fixture("");

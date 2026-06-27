@@ -675,7 +675,7 @@ mod tests {
         }
     }
 
-    // Regression: restart must prefer the current packaged runtime launcher instead of the stable Home Manager wrapper, so secondary terminal variants keep their identity.
+    // Regression: restart must prefer the current packaged runtime launcher instead of the stable Home Manager wrapper.
     #[test]
     fn current_runtime_yzx_launcher_prefers_runtime_bin_yzx() {
         let tmp = TempDir::new().unwrap();

@@ -162,7 +162,7 @@ pub fn validate_nix_customization_api(repo_root: &Path) -> Result<ValidationRepo
     require_json_bool(
         object,
         "home_manager_terminal_option_selects_mars",
-        "Home Manager programs.yazelix.terminal must select the Mars packaged terminal variant",
+        "Home Manager programs.yazelix.terminal must select the Mars packaged terminal",
         &mut report.errors,
     );
     require_json_bool(

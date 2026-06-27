@@ -99,10 +99,10 @@ pub fn active_terminal_from_runtime_dir(runtime_dir: &Path) -> Result<String, Co
         CoreError::io(
             "read_runtime_variant",
             format!(
-                "Could not read Yazelix terminal variant metadata at {}.",
+                "Could not read Yazelix packaged terminal metadata at {}.",
                 runtime_variant_path.display()
             ),
-            "Reinstall Yazelix so the runtime exposes its selected terminal variant.",
+            "Reinstall Yazelix so the runtime exposes its packaged terminal metadata.",
             runtime_variant_path.to_string_lossy(),
             source,
         )
@@ -113,11 +113,11 @@ pub fn active_terminal_from_runtime_dir(runtime_dir: &Path) -> Result<String, Co
             ErrorClass::Runtime,
             "unsupported_terminal_variant",
             format!(
-                "Unsupported Yazelix terminal variant metadata: {}.",
+                "Unsupported Yazelix packaged terminal metadata: {}.",
                 raw.trim()
             ),
             format!(
-                "Reinstall Yazelix with the supported packaged terminal variant: {}.",
+                "Reinstall Yazelix with the supported packaged terminal: {}.",
                 SUPPORTED_TERMINALS.join(", ")
             ),
             serde_json::json!({
@@ -220,7 +220,7 @@ mod tests {
         assert_eq!(terminal_startup_wm_class("ghostty"), "com.yazelix.Yazelix");
     }
 
-    // Defends: managed launches and current-terminal enter sessions report the actual host terminal instead of the configured runtime variant.
+    // Defends: managed launches and current-terminal enter sessions report the actual host terminal instead of the packaged runtime label.
     #[test]
     fn detects_session_terminal_from_explicit_and_common_host_env() {
         let lookup = |pairs: &[(&str, &str)], key: &str| {

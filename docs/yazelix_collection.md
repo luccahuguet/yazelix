@@ -8,7 +8,7 @@ Yazelix is built on a focused terminal-workspace stack. This catalog lists the p
 
 **Managed runtime helper**: Tools shipped in the packaged runtime and exposed through `yzx env`, `yzx run`, generated configs, Yazi previews, status widgets, or shell initializers.
 
-**Supported external surface**: Tools or config surfaces Yazelix supports when the user provides them, but which are not always bundled in the selected runtime variant.
+**Supported external surface**: Tools or config surfaces Yazelix supports when the user provides them, but which are not always bundled in the active runtime package.
 
 **Maintainer tooling**: Repo-local development and release tools used by maintainers, not part of the normal user workflow.
 
@@ -16,8 +16,8 @@ Yazelix is built on a focused terminal-workspace stack. This catalog lists the p
 
 ## Package And Distribution Surfaces
 
-- `#yazelix` — The default flake package and app, backed by the Mars runtime variant
-- `#yazelix_mars` — Explicit Mars runtime package, equivalent to the default packaged terminal variant
+- `#yazelix` — The default flake package and app, backed by the Mars runtime package
+- `#yazelix_mars` — Explicit Mars runtime package, equivalent to the default packaged terminal
 - `#runtime` and `#runtime_mars` — Runtime-only package outputs used by the wrapper package and validation surfaces
 - `#yazelix_kgp_zellij` — KGP-enabled Zellij package output used by the Mars Kitty-passthrough runtime path and cache publication workflow
 - `#yazelix_agent_tools` and `#runtime_agent_tools` — Compatibility package profiles for the default package shape with bundled agent usage helpers

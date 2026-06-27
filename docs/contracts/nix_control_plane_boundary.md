@@ -43,7 +43,7 @@ points are
 
 | Concern | Current owner | Desired boundary |
 | --- | --- | --- |
-| Terminal variant package selection | `flake.nix`, `home_manager/module.nix`, package builder args | One Nix terminal-variant metadata module consumed by flake and Home Manager surfaces |
+| Packaged terminal selection | `flake.nix`, `home_manager/module.nix`, package builder args | One Nix packaged-terminal metadata module consumed by flake and Home Manager surfaces |
 | Terminal runtime identity | package builders plus generated runtime identity | Package builders own package identity; terminal child packages may expose stable metadata consumed by main Yazelix |
 | Home Manager options | `home_manager/options.nix` | Option declarations/defaults stay separate from runtime integration |
 | Home Manager settings rendering | `home_manager/settings_contract.nix` | Remain Nix-owned, backed by config metadata and `validate-config-surface-contract` |
@@ -58,7 +58,7 @@ points are
 ## Accepted Split Order
 
 1. Extract KGP package contract implementation out of `flake.nix`
-2. Centralize terminal variant metadata in a Nix module consumed by package and
+2. Centralize packaged terminal metadata in a Nix module consumed by package and
    Home Manager surfaces
 3. Split `home_manager/module.nix` by owner: options/defaults, package
    selection, settings rendering, desktop entries, activation/runtime
@@ -71,7 +71,7 @@ points are
 ## Runtime Tool Registry Decision
 
 Keep `packaging/runtime_tool_registry.nix` whole for the current architecture.
-It has one coherent owner: converting the selected runtime variant and
+It has one coherent owner: converting the selected packaged terminal and
 `runtimeToolSources` map into runtime packages, exported commands, validation
 errors, and the manifest consumed by the packaged runtime.
 

@@ -6,9 +6,9 @@ Desktop entry launches must use a terminal-backed starter window and invoke `yzx
 
 ## Why
 
-Desktop environments usually run application launch commands without an attached terminal. If Yazelix fails while parsing config, checking generated state, or preparing the selected terminal before the terminal process is spawned, a non-terminal desktop entry can look like a silent no-op.
+Desktop environments usually run application launch commands without an attached terminal. If Yazelix fails while parsing config, checking generated state, or preparing the packaged terminal before the terminal process is spawned, a non-terminal desktop entry can look like a silent no-op.
 
-The supported contract is that Linux desktop entries open a starter terminal window first. `yzx desktop launch` owns runtime resolution, config parsing, generated terminal config repair, Ghostty cursor rerolls, and the deferred handoff to the selected Yazelix terminal. On success, the starter window exits quickly. On failure, the starter window keeps the actionable error visible.
+The supported contract is that Linux desktop entries open a starter terminal window first. `yzx desktop launch` owns runtime resolution, config parsing, generated terminal config repair, Ghostty cursor rerolls, and the deferred handoff to the packaged Yazelix terminal. On success, the starter window exits quickly. On failure, the starter window keeps the actionable error visible.
 
 ## Scope
 
@@ -61,5 +61,5 @@ The supported contract is that Linux desktop entries open a starter terminal win
 
 ## Open Questions
 
-- Should a future release add a purpose-built graphical failure dialog for desktop-launch failures that occur before the selected terminal can be spawned, replacing the starter terminal window?
+- Should a future release add a purpose-built graphical failure dialog for desktop-launch failures that occur before the packaged terminal can be spawned, replacing the starter terminal window?
 - Should doctor eventually validate the exact rendered Home Manager desktop entry from a full Home Manager evaluation rather than only the installed profile entry contract?
