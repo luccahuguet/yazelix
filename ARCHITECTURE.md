@@ -37,10 +37,11 @@ can replace the Mars config with `~/.config/yazelix-next/mars/config.toml`;
 
 `config.kdl`, `layout.kdl`, and `layout.swap.kdl` are the Zellij behavior
 owners. They set the shell, Zellij-native `Ctrl Alt` mode keys, direct
-`Ctrl Alt h/j/k/l` movement, the `Alt m` pane binding, the `Alt Shift h`
-sidebar toggle, the `Alt Shift J` LazyGit popup binding, the `Alt Shift K`
-config popup binding, the Yazelix Zellij Bar top bar, the Yazi sidebar tab, the
-open/closed sidebar swap layouts, and explicit Kitty keyboard protocol support.
+`Ctrl Alt h/j/k/l` movement, the Tab-mode new-tab layout binding, the `Alt m`
+pane binding, the `Alt Shift h` sidebar toggle, the `Alt Shift J` LazyGit popup
+binding, the `Alt Shift K` config popup binding, the Yazelix Zellij Bar top bar,
+the Yazi sidebar tab, the open/closed sidebar swap layouts, and explicit Kitty
+keyboard protocol support.
 The standalone `yzpp` plugin owns popup lifecycle; Yazelix Next only packages it
 with hardcoded config and LazyGit popups.
 
@@ -130,7 +131,7 @@ window.
 | C1 | `yzn` defaults to `yzn launch`, `yzn help` prints help, `yzn config` opens Ratconfig config, `yzn enter` starts managed Zellij in the current terminal, and `yzn launch` starts Mars first | `flake.nix`, `crates/yzn-config/` | `checks/yzn-contracts.rs` validates help and launcher wiring; `nix build .#yzn` packages the runtime | GUI launch remains manual dogfooding |
 | C2 | Mars uses packaged visual config unless a user native Mars config exists | `mars.toml`, `flake.nix` | `checks/yzn-contracts.rs` validates packaged config and launcher selection | Visual correctness remains manual dogfooding |
 | C3 | Zellij layout has the sidebar template required by swaps | `layout.kdl`, `layout.swap.kdl` | `checks/zellij-layout.rs` runs during build | None for the current template/swap contract |
-| C4 | Zellij-native mode keys use `Ctrl Alt`, move mode is unbound, `Alt m` opens a pane for the swap layout to stack, `Alt Shift h` toggles the sidebar swap, and obvious sidecar ownership lines are rejected | `config.kdl`, `runtime/yzn-zellij-config.rs` | `checks/yzn-contracts.rs` validates the packaged config and accepted/rejected sidecars | Full key behavior remains manual dogfooding |
+| C4 | Zellij-native mode keys use `Ctrl Alt`, Tab-mode new tabs use the packaged Yazelix sidebar layout, move mode is unbound, `Alt m` opens a pane for the swap layout to stack, `Alt Shift h` toggles the sidebar swap, and obvious sidecar ownership lines are rejected | `config.kdl`, `runtime/yzn-zellij-config.rs` | `checks/yzn-contracts.rs` validates the packaged config and accepted/rejected sidecars | Full key behavior remains manual dogfooding |
 | C5 | Nushell loads packaged config first, optional user config after it, and controlled Starship left/right prompt config | `runtime/yzn-nu.rs`, `nu/` | `checks/yzn-contracts.rs` validates Nushell layering, Starship config selection, and right prompt rendering | None for current layering behavior |
 | C6 | Yazi opens paths through `yzn-open` with bounded diagnostics, and `Alt z` jumps through zoxide into the managed editor path | `yazi/`, `crates/yzn-open/`, `flake.nix` | `checks/yzn-contracts.rs` validates packaged Yazi keymap/plugin wiring; `cargo test` covers `yzn-open` bridge/fallback behavior | Full Yazi UI behavior remains manual dogfooding |
 | C7 | Helix bridge reuse stays inside the current `yzn` window | `crates/yzn-open/`, `flake.nix` | `yzn-open` Rust tests cover session and Zellij-window mismatch | Full multi-window GUI behavior remains manual dogfooding |

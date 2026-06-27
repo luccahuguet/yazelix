@@ -115,12 +115,6 @@
         cargoLock.lockFile = ./crates/yzn-config/Cargo.lock;
       };
       yazelixZellijPopupPackage = yazelixZellijPopup.packages.${system}.yzpp;
-      yznConfigKdl = pkgs.replaceVars ./config.kdl {
-        nuShell = "${yznNuShell}/bin/yzn-nu";
-        yzpp = "file:${yazelixZellijPopupPackage}/${yazelixZellijPopupPackage.wasmPath}";
-        yznConfig = "${yznConfig}/bin/yzn-config";
-        lazygit = "${pkgs.lazygit}/bin/lazygit";
-      };
       yazelixZellijBarPackage = yazelixZellijBar.packages.${system}.yazelix_zellij_bar;
       tokenusage = import ./packaging/tokenusage.nix {inherit pkgs;};
       yznZellijConfig = rustBin "yzn-zellij-config" ./runtime/yzn-zellij-config.rs;
@@ -238,6 +232,13 @@
         install -D -m 644 ${yznLayoutKdl} "$out/layout.kdl"
         install -D -m 644 ${yznLayoutSwapKdl} "$out/layout.swap.kdl"
       '';
+      yznConfigKdl = pkgs.replaceVars ./config.kdl {
+        nuShell = "${yznNuShell}/bin/yzn-nu";
+        yzpp = "file:${yazelixZellijPopupPackage}/${yazelixZellijPopupPackage.wasmPath}";
+        yznConfig = "${yznConfig}/bin/yzn-config";
+        lazygit = "${pkgs.lazygit}/bin/lazygit";
+        layout = "${yznZellijLayout}/layout.kdl";
+      };
       yazelixZellijPackage = pkgs."zellij-unwrapped".overrideAttrs (_old: {
         pname = "zellij";
         version = "0.44.3";

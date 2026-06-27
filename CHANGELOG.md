@@ -40,8 +40,8 @@ User-visible runtime changes for Yazelix Next live here.
 - The Codex usage widget shows quota/reset windows without token totals, uses
   the bundled `tu` helper and a yzn-owned status cache path, and avoids stale
   generic bar cache state.
-- Tab-mode new tabs use the same Yazelix home marker instead of `Tab #N`
-  labels.
+- Tab-mode new tabs use the packaged Yazelix sidebar layout and the same
+  Yazelix home marker instead of a bare `Tab #N` pane.
 - The Yazelix Zellij fork focuses plugin permission prompts as they appear,
   uses a full-viewport prompt for tiny layout panes, and drains concurrent
   startup permission prompts one at a time before restoring pane focus.

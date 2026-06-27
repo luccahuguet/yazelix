@@ -380,7 +380,6 @@ fn expect_keybinds(config: &str) {
     for expected in [
         r#"unbind "Alt n" "Ctrl g""#,
         r#"bind "Alt m" { NewPane; }"#,
-        r#"bind "n" { NewTab { name ""; }; SwitchToMode "Normal"; }"#,
         r#"bind "Alt Shift h" { NextSwapLayout; }"#,
         r#"bind "Ctrl Alt g" { SwitchToMode "Locked"; }"#,
         r#"bind "Ctrl p" { SwitchToMode "Pane"; }"#,
@@ -396,6 +395,14 @@ fn expect_keybinds(config: &str) {
             "config.kdl is missing {expected}",
         );
     }
+    assert!(
+        config.lines().any(|line| {
+            let line = line.trim();
+            line.starts_with(r#"bind "n" { NewTab { layout "/nix/store/"#)
+                && line.ends_with(r#"/layout.kdl"; }; SwitchToMode "Normal"; }"#)
+        }),
+        "config.kdl must create new tabs from the packaged Yazelix layout",
+    );
     expect_no_block_binds_and_unbinds_same_key(config);
     assert!(
         !config.contains(r#"SwitchToMode "Move""#),

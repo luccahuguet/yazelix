@@ -33,7 +33,7 @@ keybinds {
         bind "Ctrl n" { SwitchToMode "Normal"; }
     }
     tab {
-        bind "n" { NewTab { name ""; }; SwitchToMode "Normal"; }
+        bind "n" { NewTab { layout "@layout@"; }; SwitchToMode "Normal"; }
         bind "Ctrl t" { SwitchToMode "Normal"; }
     }
     scroll {
