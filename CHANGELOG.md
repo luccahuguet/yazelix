@@ -10,6 +10,8 @@ User-visible runtime changes for Yazelix Next live here.
 - `yzn config` opens the Ratconfig UI and creates
   `~/.config/yazelix-next/config.toml` with defaults and joined contract
   state when missing.
+- `yzn config` ignores unsupported modified terminal keys instead of treating
+  them as text.
 - `open.log_level` in `config.toml` controls the managed `YZN_OPEN_LOG`
   level used by Yazi-to-Helix opens.
 - `yzn` appends `~/.config/yazelix-next/zellij/config.kdl` as a native Zellij

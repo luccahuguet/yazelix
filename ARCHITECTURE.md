@@ -57,17 +57,15 @@ keymap, layout, plugin loading, or session startup behavior.
 and Starship left and right prompts, and disables the normal Nushell banner and
 prompt indicators.
 
-`yazi/` is the packaged Yazi config owner. It keeps file opens routed through
-`yzn-open`, binds `Alt z` to a zoxide picker that opens the chosen directory in
-the managed editor path, and avoids broad Yazi config merging.
+`yazi/` is the packaged Yazi config owner. It enables the selected Yazi
+plugins, keeps file opens routed through `yzn-open`, binds `Alt z` to a zoxide
+picker that opens the chosen directory in the managed editor path, and avoids
+broad Yazi config merging.
 
 `runtime/yzn-nu.rs` is the Nushell runtime-config owner. It writes the runtime
 `env.nu` and `config.nu` files, layers optional user config from
 `~/.config/yazelix-next/nu`, chooses the Starship config path, and then execs
 Nushell.
-
-`yazi/` is the file-manager config owner. It enables the selected Yazi plugins
-and routes file opens through `yzn-open`.
 
 `crates/yzn-open/` is the editor-open owner. It sends file and directory open
 requests to the live Yazelix Helix bridge when available, and otherwise opens a
@@ -75,7 +73,7 @@ managed `yzn-hx` pane through Zellij. It also owns bounded diagnostics for
 Yazi-to-Helix open behavior.
 
 `checks/` owns build-time contract guards. `zellij-layout.rs` validates Zellij
-layout swaps, and `yzn-contracts.rs` validates Nushell config layering.
+layout swaps, and `yzn-contracts.rs` validates the packaged runtime contracts.
 
 ## Config Layering
 

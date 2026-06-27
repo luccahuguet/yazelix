@@ -68,33 +68,42 @@ fn run_ui() -> Result<()> {
         let Event::Key(key) = event::read()? else {
             continue;
         };
-        if key.kind == KeyEventKind::Release {
+        let Some(key) = config_key(key) else {
             continue;
-        }
-        match app.handle_key(config_key(key)) {
-            ConfigUiIntent::None => {}
+        };
+        match app.handle_key(key) {
             ConfigUiIntent::Exit => break,
-            ConfigUiIntent::BeginEdit { field_index, .. } => app.begin_edit_field(field_index),
-            ConfigUiIntent::SetField {
-                path: field_path,
-                value,
-                ..
-            } => {
-                write_config_field(&path, &field_path, &value)?;
-                app.model = build_model(&path)?;
-                app.notice_info(format!("Saved {field_path}."));
-                app.finish_successful_write();
-            }
-            ConfigUiIntent::UnsetField {
-                path: field_path, ..
-            } => {
-                restore_config_default(&path, &field_path)?;
-                app.model = build_model(&path)?;
-                app.notice_info(format!("Restored default for {field_path}."));
+            intent => {
+                handle_ui_intent(&mut app, &path, intent)?;
             }
         }
     }
 
+    Ok(())
+}
+
+fn handle_ui_intent(app: &mut ConfigUiApp, path: &Path, intent: ConfigUiIntent) -> Result<()> {
+    match intent {
+        ConfigUiIntent::None | ConfigUiIntent::Exit => {}
+        ConfigUiIntent::BeginEdit { field_index, .. } => app.begin_edit_field(field_index),
+        ConfigUiIntent::SetField {
+            path: field_path,
+            value,
+            ..
+        } => {
+            write_config_field(path, &field_path, &value)?;
+            app.model = build_model(path)?;
+            app.notice_info(format!("Saved {field_path}."));
+            app.finish_successful_write();
+        }
+        ConfigUiIntent::UnsetField {
+            path: field_path, ..
+        } => {
+            restore_config_default(path, &field_path)?;
+            app.model = build_model(path)?;
+            app.notice_info(format!("Restored default for {field_path}."));
+        }
+    }
     Ok(())
 }
 
@@ -115,20 +124,35 @@ impl Drop for TerminalSession {
     }
 }
 
-fn config_key(key: KeyEvent) -> ConfigUiKey {
+fn config_key(key: KeyEvent) -> Option<ConfigUiKey> {
+    if key.kind == KeyEventKind::Release {
+        return None;
+    }
     match key.code {
-        KeyCode::Esc => ConfigUiKey::Esc,
-        KeyCode::Enter => ConfigUiKey::Enter,
-        KeyCode::Backspace => ConfigUiKey::Backspace,
-        KeyCode::Tab => ConfigUiKey::Tab,
-        KeyCode::BackTab => ConfigUiKey::BackTab,
-        KeyCode::Up => ConfigUiKey::Up,
-        KeyCode::Down => ConfigUiKey::Down,
-        KeyCode::Left => ConfigUiKey::Left,
-        KeyCode::Right => ConfigUiKey::Right,
-        KeyCode::Char(ch) if key.modifiers.contains(KeyModifiers::CONTROL) => ConfigUiKey::Ctrl(ch),
-        KeyCode::Char(ch) => ConfigUiKey::Char(ch),
-        _ => ConfigUiKey::Char('\0'),
+        KeyCode::Esc => Some(ConfigUiKey::Esc),
+        KeyCode::Enter => Some(ConfigUiKey::Enter),
+        KeyCode::Backspace => Some(ConfigUiKey::Backspace),
+        KeyCode::Tab => Some(ConfigUiKey::Tab),
+        KeyCode::BackTab => Some(ConfigUiKey::BackTab),
+        KeyCode::Up => Some(ConfigUiKey::Up),
+        KeyCode::Down => Some(ConfigUiKey::Down),
+        KeyCode::Left => Some(ConfigUiKey::Left),
+        KeyCode::Right => Some(ConfigUiKey::Right),
+        KeyCode::Char(ch) => char_key(ch, key.modifiers),
+        _ => None,
+    }
+}
+
+fn char_key(ch: char, modifiers: KeyModifiers) -> Option<ConfigUiKey> {
+    let unsupported =
+        KeyModifiers::ALT | KeyModifiers::SUPER | KeyModifiers::HYPER | KeyModifiers::META;
+    if modifiers.intersects(unsupported) {
+        return None;
+    }
+    if modifiers.contains(KeyModifiers::CONTROL) {
+        Some(ConfigUiKey::Ctrl(ch))
+    } else {
+        Some(ConfigUiKey::Char(ch))
     }
 }
 
@@ -397,5 +421,26 @@ mod tests {
 
         let model = build_model(&path).unwrap();
         assert_eq!(model.fields[0].state, ConfigUiValueState::Invalid);
+    }
+
+    // Regression: unsupported terminal keys must be ignored, not converted to text input.
+    #[test]
+    fn unsupported_terminal_keys_are_ignored() {
+        assert_eq!(
+            config_key(KeyEvent::new_with_kind(
+                KeyCode::Char('q'),
+                KeyModifiers::NONE,
+                KeyEventKind::Release,
+            )),
+            None
+        );
+        assert_eq!(
+            config_key(KeyEvent::new(KeyCode::Char('u'), KeyModifiers::ALT)),
+            None
+        );
+        assert_eq!(
+            config_key(KeyEvent::new(KeyCode::F(1), KeyModifiers::NONE)),
+            None
+        );
     }
 }
