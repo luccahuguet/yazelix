@@ -41,42 +41,53 @@ nix profile upgrade --refresh yazelix-next
 
 ## Config
 
-`yzn config` opens the Ratconfig UI in the current terminal and creates
-this owned semantic config file when it is missing:
+`yzn config` opens the Ratconfig UI in the current terminal and creates the
+owned config sources when they are missing:
 
 ```text
 ~/.config/yazelix-next/config.toml
+~/.config/yazelix-next/mars/config.toml
+~/.config/yazelix-next/zellij/config.kdl
 ```
 
-The first config slice controls `open.log_level`, which sets the managed
+The `config` tab controls `open.log_level`, which sets the managed
 `YZN_OPEN_LOG` level used by Yazi-to-Helix opens. Values are `off`, `error`,
-`info`, and `debug`.
+`info`, and `debug`. The `mars` and `zellij` tabs edit native sidecar files
+owned by Yazelix Next. They are simple render/edit files without Ratconfig
+contracts or migrations, and their values apply to new launches.
 
 ## Mars Config
 
-`yzn` uses the packaged Mars config unless this native Mars config exists:
+`yzn` uses the packaged Mars config unless this managed native Mars config
+exists:
 
 ```text
 ~/.config/yazelix-next/mars/config.toml
 ```
 
-Set `YAZELIX_NEXT_CONFIG_HOME` to use a different Yazelix Next config root.
-The Mars config controls terminal preferences; `yzn` still owns the Mars launch
+`yzn config` creates it from the packaged generated Mars config and exposes
+basic terminal preferences such as window size, opacity, font size, line
+height, scrollbar, bell, and cursor trail. Set `YAZELIX_NEXT_CONFIG_HOME` to
+use a different Yazelix Next config root. `yzn` still owns the Mars launch
 command and the managed Zellij runtime.
 
 ## Zellij Config
 
-`yzn` owns the Zellij shell, keybindings, layout, and plugin/runtime spine. Safe
-native Zellij preferences can be appended with this sidecar:
+`yzn` owns the Zellij shell, keybindings, layout, and plugin/runtime spine.
+Safe native Zellij preferences live in this managed sidecar:
 
 ```text
 ~/.config/yazelix-next/zellij/config.kdl
 ```
 
-The sidecar is a simple guardrail, not a KDL merge engine. It is rejected before
-launch when an uncommented line starts with integration-critical ownership such
-as `keybinds`, `default_shell`, `default_layout`, `layout`, `plugins`,
-`load_plugins`, `session_name`, or `attach_to_session`.
+`yzn config` edits scalar preferences such as pane frames, mouse mode,
+scrollback size, copy behavior, styled underlines, startup tips, and
+`ui.pane_frames.rounded_corners`. The sidecar is a simple guardrail, not a KDL
+merge engine. It is rejected before launch and blocked inside the config UI
+when an uncommented line starts with integration-critical ownership such as
+`keybinds`, `default_shell`, `default_layout`, `layout`, `plugins`,
+`load_plugins`, `support_kitty_keyboard_protocol`, `env`, `session_name`, or
+`attach_to_session`.
 
 The packaged config enables Zellij's Kitty keyboard protocol for modified key
 chords such as `Alt Shift J` and `Alt Shift K`.
@@ -159,11 +170,11 @@ wc -l .gitignore AGENTS.md README.md CHANGELOG.md ARCHITECTURE.md flake.nix pack
 | Language | Files | Lines |
 | --- | --- | ---: |
 | Ignore | `.gitignore` | 1 |
-| Markdown | `AGENTS.md`, `README.md`, `CHANGELOG.md`, `ARCHITECTURE.md` | 511 |
-| Nix | `flake.nix`, `packaging/tokenusage.nix` | 456 |
+| Markdown | `AGENTS.md`, `README.md`, `CHANGELOG.md`, `ARCHITECTURE.md` | 531 |
+| Nix | `flake.nix`, `packaging/tokenusage.nix` | 458 |
 | TOML | `config.toml`, `mars.toml`, `helix/config.toml`, `yazi/yazi.toml`, `yazi/keymap.toml`, `crates/yzn-config/Cargo.toml`, `crates/yzn-open/Cargo.toml` | 127 |
 | KDL | `config.kdl`, `layout.kdl`, `layout.swap.kdl` | 153 |
 | Nu | `nu/config.nu`, `nu/env.nu` | 11 |
 | Lua | `yazi/init.lua`, `yazi/plugins/sidebar-status.yazi/main.lua`, `yazi/plugins/zoxide-editor.yazi/main.lua` | 131 |
-| Rust | `crates/yzn-config/src/main.rs`, `crates/yzn-open/src/main.rs`, `checks/zellij-layout.rs`, `checks/yzn-contracts.rs`, `runtime/yzn-nu.rs`, `runtime/yzn-zellij-config.rs` | 2090 |
-| Total | owned project files | 3480 |
+| Rust | `crates/yzn-config/src/main.rs`, `crates/yzn-open/src/main.rs`, `checks/zellij-layout.rs`, `checks/yzn-contracts.rs`, `runtime/yzn-nu.rs`, `runtime/yzn-zellij-config.rs` | 3019 |
+| Total | owned project files | 4431 |

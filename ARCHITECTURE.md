@@ -21,11 +21,14 @@ compatibility layer.
 builds small local Rust helpers, substitutes local config templates, installs
 the desktop entry, and exposes the `yzn` package/app.
 
-`crates/yzn-config/` is the semantic config owner. It opens the Ratconfig UI,
-creates `~/.config/yazelix-next/config.toml` with defaults and joined
-contract state when missing, patches supported TOML fields, and exposes one
-hidden package-internal read path used by launch wrappers. The first field is
+`crates/yzn-config/` is the config host owner. It opens the Ratconfig UI,
+creates `~/.config/yazelix-next/config.toml` with defaults and joined contract
+state when missing, creates simple managed Mars and Zellij config files when
+missing, routes source-backed edits to the correct file, and exposes one hidden
+package-internal read path used by launch wrappers. The root semantic field is
 `open.log_level`, which controls `YZN_OPEN_LOG` for managed Yazi-to-Helix opens.
+The Mars and Zellij tabs are render/edit surfaces without contracts or
+migrations.
 
 `mars.toml` is the packaged terminal visual config owner. It sets the default
 Mars window, font, cursor, bell, quit, and theme behavior used by `yzn`. A user
@@ -48,10 +51,12 @@ exports a yzn-owned status cache path, names the initial and tab-mode-created
 tabs with the Yazelix home marker, and keeps the native bottom Zellij
 `status-bar` for key hints.
 
-`runtime/yzn-zellij-config.rs` is the guarded Zellij sidecar owner. It appends
-`~/.config/yazelix-next/zellij/config.kdl` to the packaged config after a small
-first-token denylist rejects obvious attempts to take over the managed shell,
-keymap, layout, plugin loading, or session startup behavior.
+`runtime/yzn-zellij-config.rs` is the launch-time guarded Zellij sidecar owner.
+It appends `~/.config/yazelix-next/zellij/config.kdl` to the packaged config
+after a small first-token denylist rejects obvious attempts to take over the
+managed shell, keymap, layout, plugin loading, Kitty keyboard protocol,
+environment, or session startup behavior. `crates/yzn-config/` owns the config
+UI renderer/parser for the small exposed scalar sidecar subset.
 
 `nu/` is the packaged Nushell config owner. It initializes carapace, zoxide,
 and Starship left and right prompts, and disables the normal Nushell banner and
@@ -91,17 +96,18 @@ replacement. User config is narrow and explicit:
 
 `YAZELIX_NEXT_CONFIG_HOME` can point at another config root. `config.toml` is
 the Yazelix-owned semantic config file and is created by `yzn config` or the
-package-internal config read path when missing. Mars uses full native
-replacement when its user `config.toml` exists. Nushell uses packaged config
-first, then optional user `env.nu` and `config.nu`. Starship uses the user
+package-internal config read path when missing. `yzn config` also creates the
+managed Mars and Zellij native files when missing. Mars uses full native
+replacement when its `config.toml` exists. Nushell uses packaged config first,
+then optional user `env.nu` and `config.nu`. Starship uses the user
 `starship.toml` when present, otherwise an empty config that preserves Starship
 defaults. Normal Nushell and Starship config files are not loaded by default,
 which keeps `yzn` reproducible and avoids ambient user shell behavior changing
-the runtime. Zellij uses packaged config first, then an optional guarded sidecar
-for safe native preferences. The sidecar is a guardrail rather than a KDL
-parser: it rejects uncommented lines whose first token is known to own
-integration-critical behavior such as `keybinds`, `default_shell`, layout,
-plugins, or session startup.
+the runtime. Zellij uses packaged config first, then a guarded sidecar for safe
+native preferences. The sidecar is a guardrail rather than a KDL parser: it
+rejects uncommented lines whose first token is known to own integration-critical
+behavior such as `keybinds`, `default_shell`, layout, plugins, Kitty keyboard
+protocol, environment, or session startup.
 
 ## Session Isolation
 
@@ -131,7 +137,7 @@ window.
 | C8 | Desktop entry starts `yzn` | `flake.nix` | `nix build .#yzn` packages the desktop file | Desktop environment launch remains manual dogfooding |
 | C9 | Kitty keyboard protocol is explicitly enabled, `Alt Shift K` toggles the config popup, and `Alt Shift J` toggles the LazyGit popup through `yzpp` | `config.kdl`, `flake.nix` | `checks/yzn-contracts.rs` validates Kitty protocol, the packaged popup plugin, config and LazyGit commands, popup ids, payloads, and key bindings | Visual popup behavior remains manual dogfooding |
 | C10 | Top bars use the child-rendered Yazelix Zellij Bar tray, tabs use the home marker, Codex usage has bundled `tu` and a yzn-owned cache path, and bottom bars keep native Zellij key hints | `layout.kdl`, `config.kdl`, `flake.nix`, `packaging/tokenusage.nix` | `checks/zellij-layout.rs` validates packaged child bar usage, no-mode formatting, declared yzn widgets, the startup home tab marker, and native bottom status bars; `checks/yzn-contracts.rs` validates the tab-mode new-tab marker, terminal-label wiring, bundled tokenusage path, and status-cache export | Visual bar behavior remains manual dogfooding |
-| C11 | `config.toml` is auto-created with defaults and joined Ratconfig contract state, and `open.log_level` controls managed `YZN_OPEN_LOG` | `crates/yzn-config/`, `config.toml`, `flake.nix` | `crates/yzn-config` unit tests cover create/edit validation; `checks/yzn-contracts.rs` validates packaged defaults, helper install, creation, and `--get` | Interactive Ratconfig UI behavior remains manual dogfooding |
+| C11 | `yzn config` auto-creates root, Mars, and Zellij config sources; root `config.toml` has defaults and joined Ratconfig contract state; `open.log_level` controls managed `YZN_OPEN_LOG`; Mars/Zellij tabs route writes to their native files | `crates/yzn-config/`, `config.toml`, `mars.toml`, `flake.nix` | `crates/yzn-config` unit tests cover create/edit validation, source routing, Zellij scalar rendering, and guarded-node diagnostics; `checks/yzn-contracts.rs` validates packaged defaults, helper install, creation, and `--get` | Interactive Ratconfig UI behavior remains manual dogfooding |
 
 ## Pros
 

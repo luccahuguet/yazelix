@@ -101,10 +101,12 @@
         chmod -R u+w "$out"
         ln -s ${ratconfig} "$out/ratconfig"
         cp ${./config.toml} "$out/config.toml"
+        cp ${yznMarsConfig}/config.toml "$out/mars.toml"
         substituteInPlace "$out/Cargo.toml" \
           --replace-fail '../../../ratconfig' './ratconfig'
         substituteInPlace "$out/src/main.rs" \
-          --replace-fail '../../../config.toml' '../config.toml'
+          --replace-fail '../../../config.toml' '../config.toml' \
+          --replace-fail '../../../mars.toml' '../mars.toml'
       '';
       yznConfig = pkgs.rustPlatform.buildRustPackage {
         pname = "yzn-config";

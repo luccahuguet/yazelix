@@ -252,22 +252,32 @@ fn expect_zellij_config_sidecar(yzn: &Path) {
         expected_config
     );
 
-    fs::write(&sidecar, "keybinds {}\n").unwrap();
-    let output = Command::new(&helper)
-        .arg(&packaged_config)
-        .arg(&sidecar)
-        .arg(&generated_path)
-        .output()
-        .unwrap();
-    assert!(
-        !output.status.success(),
-        "dangerous Zellij sidecar unexpectedly succeeded"
-    );
-    let stderr = String::from_utf8_lossy(&output.stderr);
-    assert!(
-        stderr.contains("forbidden Zellij sidecar item `keybinds`"),
-        "unexpected Zellij sidecar rejection: {stderr}",
-    );
+    for forbidden in [
+        ("keybinds", "keybinds {}\n"),
+        (
+            "support_kitty_keyboard_protocol",
+            "support_kitty_keyboard_protocol false\n",
+        ),
+        ("env", "env { YZN_OPEN_LOG \"off\" }\n"),
+    ] {
+        fs::write(&sidecar, forbidden.1).unwrap();
+        let output = Command::new(&helper)
+            .arg(&packaged_config)
+            .arg(&sidecar)
+            .arg(&generated_path)
+            .output()
+            .unwrap();
+        assert!(
+            !output.status.success(),
+            "dangerous Zellij sidecar unexpectedly succeeded for {}",
+            forbidden.0
+        );
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            stderr.contains(&format!("forbidden Zellij sidecar item `{}`", forbidden.0)),
+            "unexpected Zellij sidecar rejection: {stderr}",
+        );
+    }
 }
 
 fn expect_yazi_alt_z(yzn: &Path) {

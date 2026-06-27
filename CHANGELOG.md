@@ -7,9 +7,11 @@ User-visible runtime changes for Yazelix Next live here.
 - `yzn help` prints help, `yzn enter` starts the managed Zellij runtime in the
   current terminal, and `yzn launch` opens Mars first. Bare `yzn` defaults to
   `yzn launch`.
-- `yzn config` opens the Ratconfig UI and creates
-  `~/.config/yazelix-next/config.toml` with defaults and joined contract
-  state when missing.
+- `yzn config` opens the Ratconfig UI and creates source-backed tabs for
+  `config.toml`, `mars/config.toml`, and `zellij/config.kdl` when missing.
+  Root `config.toml` keeps Ratconfig contract state, while the Mars and Zellij
+  tabs are simple managed render/edit files that apply on new launches. The UI
+  refuses to replace a source file whose permissions are read-only.
 - `yzn config` ignores unsupported modified terminal keys instead of treating
   them as text.
 - `yzn config` restores raw terminal mode if alternate-screen setup fails.
@@ -17,7 +19,8 @@ User-visible runtime changes for Yazelix Next live here.
   level used by Yazi-to-Helix opens.
 - `yzn` appends `~/.config/yazelix-next/zellij/config.kdl` as a native Zellij
   sidecar for safe preferences, with a small denylist guardrail for obvious
-  ownership lines such as keymaps, shell, layout, plugins, and session startup.
+  ownership lines such as keymaps, shell, layout, plugins, Kitty keyboard
+  protocol, environment, and session startup.
 - `yzn` uses `~/.config/yazelix-next/mars/config.toml` as a full native Mars
   config override when that file exists, while keeping the Mars launch command
   and managed Zellij runtime owned by `yzn`.
