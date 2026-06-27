@@ -17,7 +17,7 @@ It guarantees that everyone gets the exact same versions of tools (Yazi, Zellij,
 **Important**: You don't need to learn Nix or Nushell to use Yazelix. Nix with flakes is the only real host prerequisite. The normal product surface is the `yazelix` package or the top-level Home Manager module.
 
 ## Supported Terminal Emulators
-Yazelix packages Mars. The default `#yazelix` package uses Mars so Yazelix can keep the Rust terminal fork, generated config, cursor behavior, Zellij/Yazi graphics bridge, and agent-driven development workflow aligned. Ghostty, Rio, WezTerm, Kitty, Foot, Ratty, and other emulators are host-owned entrypoints: configure their startup command to run `yzx enter`.
+Yazelix supports capable terminal emulators through `yzx enter`. The default `#yazelix` package uses Mars so Yazelix can keep the Rust terminal fork, generated config, cursor behavior, Zellij/Yazi graphics bridge, and agent-driven development workflow aligned. Ghostty is the most tested mature host-terminal path and is a strong choice on macOS. Rio, WezTerm, Kitty, Foot, Ratty, Alacritty, and other emulators work as normal host terminal entrypoints.
 
 Mars uses the temporary Yazelix Zellij fork for Kitty graphics passthrough where that bridge is selected. The Zellij fork is expected to be dropped and archived once upstream Zellij supports the required Kitty graphics path directly enough for Yazelix to return to upstream Zellij.
 
@@ -31,32 +31,33 @@ See [Terminal Emulator Comparison](./terminal_emulators.md) for a detailed break
 
 **WezTerm**
 - Modern, fast, written in Rust
-- Host-owned; configure WezTerm to run `yzx enter`
+- Configure WezTerm to run `yzx enter`
 - Reference: https://wezfurlong.org/wezterm/installation.html
 
 **Ratty**
 - GPU-rendered terminal with Kitty graphics support and inline 3D graphics
-- Host-owned; configure Ratty to run `yzx enter`
+- Configure Ratty to run `yzx enter`
 - Reference: https://github.com/orhun/ratty
 
 **Foot**
 - Lightweight Wayland terminal for Linux
-- Host-owned; configure Foot to run `yzx enter`
+- Configure Foot to run `yzx enter`
 - Reference: https://codeberg.org/dnkl/foot
 
 **Ghostty**
-- Modern, fast, written in Zig, newer
-- Host-owned; configure Ghostty to run `yzx enter`
+- Mature, fast terminal with the most tested Yazelix host-terminal path
+- Strong macOS recommendation
+- Configure Ghostty to run `yzx enter`; run `yzx cursors ghostty setup` for Yazelix cursor shaders
 - Download page: https://ghostty.org/download
 
 **Rio**
 - Upstream Rust terminal
-- Host-owned; configure Rio to run `yzx enter`
+- Configure Rio to run `yzx enter`
 - Reference: https://github.com/raphamorim/rio
 
 **Kitty**
 - Fast, feature-rich, GPU-accelerated terminal
-- Host-owned; configure Kitty to run `yzx enter`
+- Configure Kitty to run `yzx enter`
 - Reference: https://sw.kovidgoyal.net/kitty/binary/
 
 ## Quickstart
@@ -94,7 +95,7 @@ If Nix is already available, the same check is also exposed as a flake app:
 nix run --accept-flake-config github:luccahuguet/yazelix#install_check
 ```
 
-Use `#yazelix_mars` only when you want to name the explicit Mars package output. Other terminal emulators should run the installed `yzx enter` command from their own startup configuration.
+Use `#yazelix_mars` only when you want to name the explicit Mars package output. Other terminal emulators are supported by running the installed `yzx enter` command from their own startup configuration.
 
 One-off use without installing also works:
 
@@ -246,7 +247,7 @@ Normal usage relies on the package-provided `yzx` entrypoint or the Home Manager
 Host prerequisite contract:
 - **Host prerequisite**: Nix with flakes enabled
 - **Package-provided**: the Yazelix runtime, including runtime-local `nu`, `zellij`, `yazi`, `helix`, shells, a curated interactive tool surface, and the internal helper closure behind the runtime root
-- **Not package-provided**: a separate host Nushell install for your everyday shell outside Yazelix, or any non-Mars terminal emulator you configure to run `yzx enter`
+- **User-provided when selected**: a separate host Nushell install for your everyday shell outside Yazelix, or any non-Mars terminal emulator you configure to run `yzx enter`
 - **Nushell version ownership**: Yazelix uses the Nushell packaged by the locked `nixpkgs-unstable` input for the runtime and bootstrap path; it does not chase a newer upstream Nushell release until Nixpkgs packages it.
 
 ### Step 3: Configure Your Installation (Optional)
@@ -272,7 +273,7 @@ When you enter `yzx env`, Yazelix exports that curated tool surface to your shel
 What it does not ship anymore:
 - a runtime-local `devenv` binary
 - dynamic packs or `user_packages`
-- non-Mars terminal binaries; configure host terminals to run `yzx enter`
+- non-Mars terminal binaries; those terminals stay user-installed and run Yazelix with `yzx enter`
 - heavyweight media helpers such as `ffmpeg` or ImageMagick
 
 #### Configuration Options
@@ -347,7 +348,7 @@ This launches the same command surface used by the generated desktop entry.
 
 ##### macOS (Experimental Launcher Preview)
 
-The supported macOS package path remains `yzx launch` from a terminal after installing the package via `nix profile add` or Home Manager. Mars is the packaged terminal, while Ghostty, WezTerm, Kitty, and other macOS terminals remain host-owned `yzx enter` entrypoints. The Home Manager module does not emit Linux `xdg.desktopEntries` on macOS.
+The supported macOS package path remains `yzx launch` from a terminal after installing the package via `nix profile add` or Home Manager. Mars is the packaged terminal path, while Ghostty is the strongest mature host-terminal recommendation on macOS. WezTerm, Kitty, and other capable macOS terminals run Yazelix with `yzx enter`. The Home Manager module does not emit Linux `xdg.desktopEntries` on macOS.
 
 Community testers can opt into an experimental package-first app bundle preview:
 
@@ -432,7 +433,7 @@ Yazelix includes optional Home Manager support for declarative configuration man
 
 The default flake packages stay batteries-included. Yazelix does not expose a package matrix for every possible storage-saving combination; use Home Manager or `lib.${system}.mkYazelix` when you want specific tools to come from your host `PATH`.
 
-Users who prefer another terminal emulator should keep that terminal host-owned and configure its startup command to run `yzx enter`.
+Users who prefer another terminal emulator should keep that terminal in its native configuration flow and configure its startup command to run `yzx enter`.
 
 Home Manager is the recommended granular path:
 

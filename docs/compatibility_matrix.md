@@ -10,7 +10,7 @@ package docs, and terminal comparison matrix.
 
 | Level | Meaning |
 | --- | --- |
-| `supported` | First-class documented surface with package or config ownership and current validation evidence |
+| `supported` | Documented current surface with a maintained Yazelix contract and current validation evidence |
 | `stable alternate` | Supported path that is not the default, but is expected to work for normal users |
 | `experimental` | Packaged or documented path that is useful for testing and dogfooding, but not the safest default |
 | `issue-driven best-effort` | Expected to be maintained from user reports because maintainers lack direct hardware or regular validation for that surface |
@@ -22,13 +22,13 @@ package docs, and terminal comparison matrix.
 | Terminal | Linux launch | macOS launch | Cursor trails and shaders | Yazi image previews through Zellij | Managed editor behavior | Zellij web sharing | Install-owner behavior |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | Mars | `supported`, packaged runtime | `issue-driven best-effort` | `supported` for Mars native trail cursor and Yazelix split cursor config; Ghostty-compatible shader profile remains terminal-specific | `supported` through the Yazelix Zellij Kitty graphics bridge | `supported`; terminal choice does not weaken managed Helix/Neovim pane routing | `best-effort`; Zellij owns web sharing behavior | `supported` for profile and Home Manager installs |
-| Ghostty | `best-effort` host-owned `yzx enter` entrypoint | `best-effort` host-owned `yzx enter` entrypoint | host-owned; standalone cursor tooling can still generate Ghostty-compatible shader assets | host-owned terminal behavior | `supported` at the Yazelix workspace layer after `yzx enter` | `best-effort`; Zellij owns web sharing behavior | user-owned terminal install; Yazelix package owner remains Mars |
-| Rio | `best-effort` host-owned `yzx enter` entrypoint | `best-effort` host-owned `yzx enter` entrypoint | host-owned | host-owned terminal behavior | `supported` at the Yazelix workspace layer after `yzx enter` | `best-effort`; Zellij owns web sharing behavior | user-owned terminal install; Yazelix package owner remains Mars |
-| WezTerm | `best-effort` host-owned `yzx enter` entrypoint | `best-effort` host-owned `yzx enter` entrypoint | host-owned | host-owned terminal behavior | `supported` at the Yazelix workspace layer after `yzx enter` | `best-effort`; Zellij owns web sharing behavior | user-owned terminal install; Yazelix package owner remains Mars |
-| Kitty | `best-effort` host-owned `yzx enter` entrypoint | `best-effort` host-owned `yzx enter` entrypoint | host-owned | host-owned terminal behavior | `supported` at the Yazelix workspace layer after `yzx enter` | `best-effort`; Zellij owns web sharing behavior | user-owned terminal install; Yazelix package owner remains Mars |
-| Foot | `best-effort` host-owned `yzx enter` entrypoint | `unsupported` | host-owned | host-owned terminal behavior | `supported` at the Yazelix workspace layer after `yzx enter` | `best-effort`; Zellij owns web sharing behavior | user-owned terminal install; Yazelix package owner remains Mars |
-| Ratty | `best-effort` host-owned `yzx enter` entrypoint | `unsupported` | host-owned | host-owned terminal behavior | `supported` at the Yazelix workspace layer after `yzx enter` | `best-effort`; Zellij owns web sharing behavior | user-owned terminal install; Yazelix package owner remains Mars |
-| Alacritty | `unsupported` | `unsupported` | `unsupported` | `unsupported` | `best-effort` only if the user runs Yazelix manually inside an unmanaged Alacritty session | `best-effort`; Zellij owns web sharing behavior | `unsupported` as a packaged or Home Manager terminal selection |
+| Ghostty | `supported` with `yzx enter`; most tested mature host-terminal path | `supported` with `yzx enter`; strongest mature macOS recommendation | `supported` through `yzx cursors ghostty setup`; Ghostty config remains user-owned | `supported` at the Yazelix workspace layer; terminal rendering follows Ghostty behavior | `supported`; terminal choice does not weaken managed Helix/Neovim pane routing | `best-effort`; Zellij owns web sharing behavior | user-owned terminal install; Yazelix package owner remains Mars |
+| Rio | `supported` with `yzx enter` | `supported` with `yzx enter` when Rio is available | terminal-native cursor behavior | `supported` at the Yazelix workspace layer; terminal rendering follows Rio behavior | `supported`; terminal choice does not weaken managed Helix/Neovim pane routing | `best-effort`; Zellij owns web sharing behavior | user-owned terminal install; Yazelix package owner remains Mars |
+| WezTerm | `supported` with `yzx enter` | `supported` with `yzx enter` | terminal-native cursor behavior | `supported` at the Yazelix workspace layer; terminal rendering follows WezTerm behavior | `supported`; terminal choice does not weaken managed Helix/Neovim pane routing | `best-effort`; Zellij owns web sharing behavior | user-owned terminal install; Yazelix package owner remains Mars |
+| Kitty | `supported` with `yzx enter` | `supported` with `yzx enter` | terminal-native cursor behavior | `supported` at the Yazelix workspace layer; terminal rendering follows Kitty behavior | `supported`; terminal choice does not weaken managed Helix/Neovim pane routing | `best-effort`; Zellij owns web sharing behavior | user-owned terminal install; Yazelix package owner remains Mars |
+| Foot | `supported` with `yzx enter` | not a normal macOS terminal choice | terminal-native cursor behavior | `supported` at the Yazelix workspace layer; terminal rendering follows Foot behavior | `supported`; terminal choice does not weaken managed Helix/Neovim pane routing | `best-effort`; Zellij owns web sharing behavior | user-owned terminal install; Yazelix package owner remains Mars |
+| Ratty | `supported` with `yzx enter` when Ratty is available | not a normal macOS terminal choice | terminal-native cursor behavior | `supported` at the Yazelix workspace layer; terminal rendering follows Ratty behavior | `supported`; terminal choice does not weaken managed Helix/Neovim pane routing | `best-effort`; Zellij owns web sharing behavior | user-owned terminal install; Yazelix package owner remains Mars |
+| Alacritty | `supported` with `yzx enter` for normal workspace use | `supported` with `yzx enter` for normal workspace use | terminal-native cursor behavior; Yazelix cursor shaders are not an Alacritty feature | `supported` at the Yazelix workspace layer; terminal rendering follows Alacritty behavior | `supported`; terminal choice does not weaken managed Helix/Neovim pane routing | `best-effort`; Zellij owns web sharing behavior | user-owned terminal install; not a packaged or Home Manager terminal selection |
 
 ## Editor Matrix
 
@@ -55,8 +55,8 @@ package docs, and terminal comparison matrix.
 
 | Platform | Support level | Terminals | Desktop/app launcher notes |
 | --- | --- | --- | --- |
-| Linux | `supported` | Mars packaged runtime; other terminals are host-owned `yzx enter` entrypoints | Home Manager Linux desktop entry targets the packaged Mars runtime |
-| macOS | `supported floor` for package install, `yzx --version-short`, `yzx doctor`, and host-terminal `yzx enter`; Mars is issue-driven until macOS user reports establish stronger evidence | Mars packaged runtime; other terminals are host-owned `yzx enter` entrypoints | `yzx desktop macos_preview install` is experimental, unsigned, unnotarized, and distinct from a supported Dock/Launchpad app |
+| Linux | `supported` | Mars packaged runtime; other capable terminals run Yazelix with `yzx enter` | Home Manager Linux desktop entry targets the packaged Mars runtime |
+| macOS | `supported floor` for package install, `yzx --version-short`, `yzx doctor`, and terminal `yzx enter`; Mars is issue-driven until macOS user reports establish stronger evidence, while Ghostty is the strongest mature host-terminal recommendation | Mars packaged runtime; other capable terminals run Yazelix with `yzx enter` | `yzx desktop macos_preview install` is experimental, unsigned, unnotarized, and distinct from a supported Dock/Launchpad app |
 | Windows | `unsupported` | none | WSL/native Windows support is separate future work |
 
 ## Install Owner Matrix
@@ -65,19 +65,19 @@ package docs, and terminal comparison matrix.
 | --- | --- | --- | --- |
 | Nix profile package | `supported` | Use `#yazelix` or `#yazelix_mars` for the packaged Mars runtime | `yzx update upstream` owns default profile updates |
 | Home Manager | `supported` | `programs.yazelix.terminal = "mars"` selects the packaged runtime | `yzx update home_manager` prints the Home Manager update path |
-| Manual or host-only launch | `best-effort` | Host terminal choices are user-owned and should run `yzx enter` | Install into a profile or enable Home Manager before relying on Yazelix update ownership |
+| Manual or host-only launch | `supported` for `yzx enter` after installing Yazelix | Host terminal choices are user-owned and should run `yzx enter` | Install into a profile or enable Home Manager before relying on Yazelix update ownership |
 
 ## Current Boundary Notes
 
 - Yazelix packages Mars and does not fall back to another terminal when Mars is missing or mispackaged
-- Non-Mars terminal launchers are host-owned; configure the terminal's startup command to run `yzx enter`
+- Terminals outside packaged Mars are supported at the workspace layer through `yzx enter`; their native terminal config stays user-owned
 - Terminal choice should not change the managed editor contract: Helix and
   Neovim integrations target the Yazelix-managed editor pane, while
   shell-opened editors remain ordinary panes
 - Zellij web sharing is classified as best-effort here because Yazelix does not
   currently add terminal-specific support guarantees beyond running Zellij
-- Alacritty is intentionally unsupported as a packaged or Home Manager terminal
-  selection
+- Alacritty is not a packaged or Home Manager terminal selection, but an
+  Alacritty window can run the normal Yazelix workspace through `yzx enter`
 
 ## Source Evidence
 

@@ -152,7 +152,7 @@ Configuration lives in JSONC at `~/.config/yazelix/settings.jsonc`, with `yzx co
 
 First-party child packages own focused pieces of the stack: Mars Terminal, screen rendering, cursor presets, the Zellij bar, the popup plugin, the pane orchestrator wasm, and Yazi assets. The normal Yazelix package wires them together automatically
 
-Mars is the packaged terminal because Yazelix can evolve the Rust terminal/runtime stack together for Kitty protocol work, stack compatibility, and agent-driven development. Ghostty, Rio, WezTerm, Kitty, Foot, Ratty, and other emulators are host-owned entrypoints: configure them to start `yzx enter`
+Yazelix supports any capable terminal that can start `yzx enter`. Mars is the packaged terminal with the deepest Yazelix integration because the terminal/runtime stack can evolve together for Kitty protocol work, stack compatibility, and agent-driven development. Ghostty is the most tested mature host-terminal path and is a strong choice on macOS; Rio, WezTerm, Kitty, Foot, Ratty, and other emulators work as normal host terminal entrypoints
 
 Get everything running in less than 10 minutes with no extra dependencies beyond Nix
 
@@ -213,7 +213,7 @@ For the longer project story, see [Version History](./docs/history.md)
 For the detailed support table across terminals, editors, shells, platforms, and install owners, see [Compatibility Matrix](./docs/compatibility_matrix.md)
 
 - **Platform**: Linux and macOS — see the [macOS support floor contract](docs/contracts/macos_support_floor.md) for the current guaranteed macOS surfaces
-- **Terminal**: Mars is the packaged terminal; Ghostty, Rio, WezTerm, Kitty, Foot, Ratty, and other emulators are host-owned entrypoints that should run `yzx enter`
+- **Terminal**: Any capable terminal can run Yazelix with `yzx enter`; Mars is the deepest integrated packaged path, and Ghostty is the most tested mature host-terminal path
 - **Editor**: Yazelix Helix and Neovim get first-class support (reveal in the Yazi file tree, open buffer in a running instance, managed editor-pane targeting); other editors get plain pane launches through `editor.command`, and `helix.external` is only for Yazelix-compatible Helix forks
 - **Shell**: Bash, Fish, Zsh, or Nushell - use whichever you prefer
 
@@ -331,8 +331,9 @@ If you followed [step 3 in the installation guide](./docs/installation.md#step-3
 
 **Terminal Emulator Selection:**
 - **Mars**: packaged Rust terminal fork with Yazelix-owned generated config, native cursor integration, the Yazelix Zellij Kitty graphics bridge, and an agent-driven development focus
-- **Host terminals**: Ghostty, Rio, WezTerm, Kitty, Foot, Ratty, and other emulators should run `yzx enter` as their startup command
-- **Terminal package contract**: Yazelix packages Mars only; non-Mars terminal configuration stays owned by the user's terminal setup
+- **Ghostty**: most tested mature host-terminal path, with a strong macOS story and Yazelix cursor setup through `yzx cursors ghostty setup`
+- **Other terminals**: Rio, WezTerm, Kitty, Foot, Ratty, and other capable emulators work by running `yzx enter` as their startup command
+- **Terminal package contract**: Yazelix packages Mars; host terminal configuration stays owned by the user's terminal setup
 
 [See the full Customization Guide here.](./docs/customization.md)
 

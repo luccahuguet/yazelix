@@ -123,7 +123,7 @@ Do not add a toggle whose only effect is hiding Home Manager options or removing
 
 ## Terminal Launcher Decision
 
-The current Home Manager surface uses `programs.yazelix.terminal = "mars"` for the single profile-owned runtime. Additional terminal launchers are not packaged by Yazelix; configure host terminals to run `yzx enter`.
+The current Home Manager surface uses `programs.yazelix.terminal = "mars"` for the single profile-owned runtime. Additional terminal launchers stay in the user's terminal setup; configure those terminals to run `yzx enter`.
 
 ## Component Audit Outcome
 

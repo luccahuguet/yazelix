@@ -84,7 +84,7 @@ The Linux runtime registry imports `nixGL` when the platform is Linux and the fl
 Current launch behavior:
 
 - Mars launch commands may prepend a graphics wrapper
-- host-owned terminals keep their own graphics-wrapper policy and should run `yzx enter`
+- terminals outside packaged Mars keep their own graphics-wrapper policy and run Yazelix with `yzx enter`
 
 The option surface should be explicit instead of hidden behind `runtime_tool_sources`: a future package option should choose a graphics wrapper source such as bundled, host, or none, with launch rendering and doctor diagnostics tested against Mars. Default behavior should not change until desktop launch reliability is preserved.
 

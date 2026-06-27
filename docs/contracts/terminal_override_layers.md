@@ -2,7 +2,7 @@
 
 ## Summary
 
-Yazelix no longer owns per-terminal override files for Ghostty or Kitty. Mars is the packaged terminal and owns generated Mars config. Other terminal emulators are host-owned and should be configured in their native config locations to run `yzx enter`.
+Yazelix owns generated terminal config for the packaged Mars path. Ghostty, Kitty, Rio, WezTerm, Foot, Ratty, Alacritty, and other capable terminals are supported through `yzx enter`; their native terminal config remains user-owned.
 
 ## Current Behavior
 
@@ -10,14 +10,14 @@ Yazelix no longer owns per-terminal override files for Ghostty or Kitty. Mars is
 - `terminal.config_mode = "yazelix"` uses Yazelix-managed Mars config
 - `terminal.config_mode = "user"` loads the host Mars config path and fails fast if it is missing
 - Yazelix does not create `terminal_ghostty.conf` or `terminal_kitty.conf`
-- Host terminal preferences for Ghostty, Kitty, Rio, WezTerm, Foot, Ratty, or another emulator belong in that terminal's own config
+- Host terminal preferences for Ghostty, Kitty, Rio, WezTerm, Foot, Ratty, Alacritty, or another emulator belong in that terminal's own config
 
 ## Non-goals
 
 - Generic terminal-config merging
 - Full ownership handoff of host terminal config files
 - Reintroducing generated non-Mars terminal configs
-- Creating Yazelix-specific terminal override sidecars for host-owned terminals
+- Creating Yazelix-specific terminal override sidecars for user-owned terminal configs
 
 ## Acceptance Cases
 

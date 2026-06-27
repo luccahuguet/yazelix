@@ -10,13 +10,13 @@ Upgrade impact: manual action may be required
 
 Highlights:
 - Adopted the grouped Zellij mode layer from Yazelix Next: `Ctrl p/t/n/q` keep pane, tab, resize, and quit fast, `Ctrl Alt g/s/o` keep lock, search, and session grouped off plain Ctrl, `Ctrl h` stays unbound from move mode, and the consumed Zellij fork groups mixed modifier hints cleanly in the bottom bar
-- Made Mars the only packaged terminal path, removed non-Mars runtime variants and Home Manager extra terminal launchers, and documented Ghostty, Rio, WezTerm, Kitty, Foot, and Ratty as host-owned `yzx enter` entrypoints
+- Kept every capable terminal supported through `yzx enter` while making Mars the deepest integrated packaged path, Ghostty the most tested mature host-terminal path, and non-Mars terminal config native to each terminal
 - Added `yzx cursors ghostty setup` so host Ghostty users can generate the Yazelix cursor include from the normal Yazelix package without installing `#yazelix_cursors` separately
 - Gave the runtime smoke CI lane enough time for cache-miss builds
 
 Manual action:
 - Replace non-Mars flake outputs such as `#yazelix_ghostty`, `#yazelix_kitty`, `#runtime_kitty`, `#runtime_wezterm`, `#runtime_rio`, `#runtime_foot`, or `#runtime_ratty` with `#yazelix` or `#yazelix_mars`
-- Remove Home Manager `programs.yazelix.extra_terminal_launchers` or older `programs.yazelix.extra_terminal_variants` settings, and set `programs.yazelix.terminal = "mars"` if the option is present; configure host terminals to start `yzx enter`
+- Remove Home Manager `programs.yazelix.extra_terminal_launchers` or older `programs.yazelix.extra_terminal_variants` settings, and set `programs.yazelix.terminal = "mars"` if the option is present; terminals other than packaged Mars should start Yazelix with `yzx enter`
 
 ## v17.8 - 2026-06-22
 

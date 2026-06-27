@@ -58,7 +58,7 @@ Maintainer-facing fork status, child-repo ownership tables, README delta rules, 
 ## Terminal Emulators
 
 - [Mars](https://github.com/luccahuguet/mars) — Packaged terminal runtime. Mars is a Rust terminal fork focused on Yazelix stack compatibility, optional Kitty protocol growth, and agent-driven development workflows.
-- [Ghostty](https://ghostty.org/), [Rio](https://github.com/raphamorim/rio), [WezTerm](https://wezfurlong.org/wezterm/), [Foot](https://codeberg.org/dnkl/foot), [Ratty](https://github.com/orhun/ratty), and [Kitty](https://sw.kovidgoyal.net/kitty/) — Host-owned terminal entrypoints; configure them to run `yzx enter`
+- [Ghostty](https://ghostty.org/), [Rio](https://github.com/raphamorim/rio), [WezTerm](https://wezfurlong.org/wezterm/), [Foot](https://codeberg.org/dnkl/foot), [Ratty](https://github.com/orhun/ratty), [Kitty](https://sw.kovidgoyal.net/kitty/), and other capable terminals — Supported host-terminal entrypoints; configure them to run `yzx enter`
 - [ghostty-cursor-shaders](https://github.com/sahaj-b/ghostty-cursor-shaders) — Upstream inspiration for the Yazelix-managed Ghostty-compatible cursor shader system. Yazelix vendors/adapts the shader direction through `settings.jsonc` cursor settings, generated config, and the standalone `#yazelix_cursors` package.
 
 ## Editors And Shells
@@ -112,7 +112,7 @@ Plugin catalog: https://github.com/yazi-rs/plugins
 - [`settings.jsonc`](../config_metadata/yazelix_settings.schema.json) — Canonical semantic settings inventory; main settings live under `~/.config/yazelix/settings.jsonc` and cursor presets live under `~/.config/yazelix_cursors/settings.jsonc`
 - [Yazi configuration](./yazi-configuration.md) — Personal Yazi config overlays under `~/.config/yazelix/yazi/`
 - [Zellij configuration](./zellij-configuration.md) — `settings.jsonc` for Yazelix-owned Zellij behavior plus `~/.config/yazelix/zellij.kdl` for native settings Yazelix does not render
-- [Terminal emulators](./terminal_emulators.md) — Mars as the packaged terminal, with Ghostty, Rio, WezTerm, Kitty, Foot, Ratty, and other emulators treated as host-owned `yzx enter` entrypoints
+- [Terminal emulators](./terminal_emulators.md) — Mars as the deepest integrated packaged terminal, Ghostty as the most tested mature host-terminal path, and Rio, WezTerm, Kitty, Foot, Ratty, Alacritty, and other capable emulators through `yzx enter`
 - [Managed shell hooks](./customization.md) — Yazelix-only shell hook files for Bash, Zsh, Fish, Nushell, and host-owned xonsh initializers, with managed paths listed in [POSIX/XDG Paths](./posix_xdg.md).
 
 ## Runtime Boundary
@@ -125,7 +125,7 @@ That means:
 - there is no public `yzx packs` or `yazelix packs` workflow
 - `user_packages` and runtime-local `devenv` are outside the supported current surface
 - helper tools listed above are part of the shipped runtime or an explicit flake/Home Manager variant
-- non-Mars terminals are supported when the user provides them and configures the terminal to run `yzx enter`
+- non-Mars terminals are supported through `yzx enter` when the user provides the terminal
 
 ## Maintainer Tooling
 

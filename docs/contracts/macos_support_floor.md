@@ -15,9 +15,9 @@ The current tree contained mixed signals about macOS support. The top-level docs
 | First-party flake/package installation on macOS | `supported` | Install via `nix profile add github:luccahuguet/yazelix#yazelix` on the darwin flake systems |
 | `yzx --version-short` | `supported` | Reports the Yazelix version from the installed runtime on macOS |
 | `yzx doctor` | `supported` | Runs diagnostic checks on macOS; Linux-specific checks may report limitations but should not crash |
-| `yzx launch` on Mars | `issue_driven_best_effort` | Mars is the default terminal, but macOS-specific Mars behavior is maintained from user reports because maintainers do not currently own macOS hardware |
-| Host-owned terminals on macOS | `best_effort` | Configure Ghostty, WezTerm, Kitty, or another host terminal to run `yzx enter` |
-| `yzx enter` | `best_effort` | Should work on macOS but has no dedicated macOS-only validation lane |
+| `yzx launch` on Mars | `issue_driven_best_effort` | Mars is the packaged terminal, but macOS-specific Mars behavior is maintained from user reports because maintainers do not currently own macOS hardware |
+| Host terminals on macOS | `supported_floor` | Configure Ghostty, WezTerm, Kitty, or another capable host terminal to run `yzx enter`; Ghostty is the strongest mature recommendation |
+| `yzx enter` | `supported_floor` | The maintained host-terminal entrypoint; macOS-specific edge cases are issue-driven until a dedicated macOS validation lane exists |
 | Zellij and Yazi behavior | `best_effort` | Core session and file manager should work, but macOS-specific edge cases are best-effort until reported and fixed |
 | Package-first macOS launcher preview | `experimental` | `yzx desktop macos_preview install` creates `~/Applications/Yazelix Preview.app` as an opt-in, unsigned, unnotarized, maintainer-unverified preview for community testing. It resolves the default Nix profile or Home Manager profile `yzx` wrapper and does not assume a repo clone. It is explicitly separate from any supported Spotlight/Launchpad/Dock launcher claim. |
 | Supported Spotlight/Launchpad/Dock app-bundle launcher | `historical_or_out_of_scope` | Yazelix does not ship a supported macOS app-bundle launcher today. The old clone-era bundle was removed instead of being kept as a half-supported surface. The preview above may inform a future supported surface, but it is not that supported surface. |
@@ -25,9 +25,9 @@ The current tree contained mixed signals about macOS support. The top-level docs
 
 ## Mars And Host Terminals On macOS
 
-Mars is the default Yazelix terminal on macOS and Linux because Yazelix can evolve the Rust terminal fork, generated config, cursor behavior, and agent-driven development workflow together. macOS-specific Mars support is issue-driven: users should report `yzx doctor --verbose`, terminal label, macOS version, architecture, launch logs, and whether the same workflow works through a host terminal running `yzx enter`.
+Mars is the packaged Yazelix terminal on macOS and Linux because Yazelix can evolve the Rust terminal fork, generated config, cursor behavior, and agent-driven development workflow together. macOS-specific Mars support is issue-driven: users should report `yzx doctor --verbose`, terminal label, macOS version, architecture, launch logs, and whether the same workflow works through a host terminal running `yzx enter`.
 
-Host terminals intentionally own their own macOS app behavior. Configure the terminal's startup command to run `yzx enter`; Yazelix does not package a Ghostty app bundle or promise automatic host-terminal shell integration niceties such as command history, cursor positioning, or working-directory tracking.
+Host terminals intentionally own their own macOS app behavior. Configure the terminal's startup command to run `yzx enter`; Ghostty is the most tested mature host-terminal path and may be the better macOS daily-driver choice while Mars macOS reports accumulate. Yazelix does not package a Ghostty app bundle or promise automatic host-terminal shell integration niceties such as command history, cursor positioning, or working-directory tracking.
 
 ## Package-First Launcher Preview
 
@@ -70,8 +70,8 @@ Manual smoke gate (maintainer on macOS hardware):
 ## Acceptance Cases
 
 1. Yazelix has a live documented first-party macOS support-floor contract for the top-level flake/package surface, separate from Linux parity claims.
-2. The contract classifies at least these surfaces as `supported`, `best_effort`, or `historical_or_out_of_scope`: install, `yzx --version-short`, `yzx doctor`, `yzx launch`, host-terminal entry, and Spotlight/Launchpad/Dock launcher integration.
-3. The contract explicitly states that Mars is the default macOS terminal, Mars macOS behavior is issue-driven, and non-Mars host terminals use `yzx enter`.
+2. The contract classifies at least these surfaces as `supported`, `supported_floor`, `issue_driven_best_effort`, `best_effort`, or `historical_or_out_of_scope`: install, `yzx --version-short`, `yzx doctor`, `yzx launch`, host-terminal entry, and Spotlight/Launchpad/Dock launcher integration.
+3. The contract explicitly states that Mars is the packaged macOS terminal path, Mars macOS behavior is issue-driven, Ghostty is the strongest mature macOS host-terminal recommendation, and other capable host terminals use `yzx enter`.
 4. `README.md` and `docs/installation.md` no longer imply stronger or broader macOS support than the new support floor actually defends, and the stale clone-era app-bundle flow has been removed instead of kept as an implied primary path.
 5. The validation story for the support floor is explicit and honest: automated where credible, otherwise a named manual macOS smoke procedure or maintainer gate on macOS hardware.
 6. The experimental package-first launcher preview remains distinct from a supported Spotlight/Launchpad/Dock launcher and carries visible package-first install, uninstall, failure, and feedback paths.

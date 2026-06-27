@@ -73,7 +73,7 @@ Launch Yazelix with directory and mode options
 Start Yazelix in the current terminal
 - Default: Start in the current terminal and current directory
 - The status-bar terminal widget reports the detected host terminal for this session, not merely the packaged runtime label
-- If the host terminal is ambiguous or unsupported, the session terminal label is `unknown`
+- If the host terminal is ambiguous or unrecognized, the session terminal label is `unknown`
 - `--path DIR`: Start in specific directory
 - `--home`: Start in home directory
 - `--config FILE`: Use an alternate complete `settings.jsonc` for this current-terminal session

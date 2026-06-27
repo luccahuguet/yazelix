@@ -2,7 +2,7 @@
 
 ## Summary
 
-Yazelix owns one packaged terminal launch path: Mars. Other terminal emulators are host-owned entrypoints and should start Yazelix with `yzx enter`.
+Yazelix supports capable terminal emulators through `yzx enter` and owns one packaged terminal launch path: Mars. Mars has the deepest Yazelix integration, while Ghostty is the most tested mature host-terminal path and a strong macOS choice.
 
 ## Scope
 
@@ -39,7 +39,7 @@ Yazelix owns one packaged terminal launch path: Mars. Other terminal emulators a
 - Type: boundary
 - Status: live
 - Owner: Rust `launch_commands/launch.rs`, Home Manager module, and flake package surface
-- Statement: Non-Mars terminal emulators are host-owned entrypoints. Yazelix does not package Ghostty, Rio, WezTerm, Kitty, Foot, or Ratty runtime packages, and `yzx launch` does not accept `--term`. Users who prefer another terminal configure that terminal to run `yzx enter`
+- Statement: Non-Mars terminal emulators are supported through `yzx enter`. Yazelix does not package Ghostty, Rio, WezTerm, Kitty, Foot, or Ratty runtime packages, and `yzx launch` does not accept `--term`. Users who prefer another terminal configure that terminal to run `yzx enter`, with that terminal's native config remaining user-owned
 - Verification: automated Rust launch parsing tests; validator `validate-flake-interface`; validator `validate-nix-customization-api`
 
 #### TLAUNCH-005
