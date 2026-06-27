@@ -211,8 +211,7 @@ pub fn run_yzx_tutor(args: &[String]) -> Result<i32, CoreError> {
         TutorView::Helix => run_external_command("hx", &["--tutor"], "Helix"),
         TutorView::Nushell => run_external_command("nu", &["-c", "tutor"], "Nushell"),
         TutorView::Overview => {
-            let keymap = TutorKeymap::active_from_env()?;
-            print!("{}", render_yazelix_tutor_overview(&keymap));
+            print!("{}", render_yazelix_tutor_overview());
             Ok(0)
         }
         TutorView::Begin => {
@@ -442,55 +441,22 @@ fn command_label(text: &str) -> String {
     tutor_document::render_code_label(text)
 }
 
-fn render_yazelix_tutor_overview(keymap: &TutorKeymap) -> String {
-    let menu_key = zellij_key(keymap, "menu");
-    let info_key = information_popup_key(keymap);
-    let markdown = format!(
-        r#"# Yazelix tutor
+fn render_yazelix_tutor_overview() -> String {
+    let markdown = r#"# Yazelix tutor
 
-Yazelix is a managed terminal workspace built around Zellij, Yazi, and Helix.
+Start with `yzx tutor begin`.
 
-The current tab workspace root matters most. Managed actions use that directory unless a tool chooses a file or directory.
+Use `yzx tutor list` to see every lesson.
 
-## Start here
+Use `yzx tutor continue` when coming back later.
 
-### Outside Yazelix
+Useful companions:
 
-- From a project directory, run `yzx launch`.
-- From the terminal you want to turn into Yazelix, run `yzx enter`.
-- After Yazelix opens, run `yzx tutor begin`.
+- `yzx keys` shows live keybindings and remaps.
+- `yzx help` shows command syntax.
+- `yzx doctor` checks config, panes, runtime state, and generated files.
+"#;
 
-### Inside Yazelix
-
-- Press `{menu_key}` or run `yzx menu` for the command menu.
-- Press `{info_key}` for the information popup.
-- Run `yzx keys` to see live bindings.
-- Run `yzx doctor` when config, panes, runtime state, or generated files look wrong.
-
-### Coming back later
-
-Run `yzx tutor continue` and pick the first lesson you have not practiced.
-
-## Key notation
-
-Yazelix writes key chords as `Alt+Shift+M`, `Ctrl+y`, and `Ctrl+Shift+Y`. `yzx keys` shows the same defaults and any remaps.
-
-## Lessons
-
-1. `yzx tutor workspace` builds the current-tab workspace model.
-2. `yzx tutor discovery` shows command, popup, and troubleshooting surfaces.
-3. `yzx tutor troubleshooting` covers the fastest ways back to a known state.
-4. `yzx tutor tool_tutors` sends you to the Helix and Nushell tutors.
-
-## Mental model
-
-**Managed panes:** Yazelix keeps editor, sidebars, popups, and agent panes connected.
-
-**Directory flow:** The tab root drives new panes, popup commands, and workspace-aware actions.
-
-**Discovery:** `yzx help` gives command syntax. `yzx keys` gives bindings. `yzx tutor` gives the guided path.
-"#
-    );
     render_tutor_markdown(&markdown)
 }
 
@@ -547,6 +513,10 @@ fn render_workspace_lesson(index: usize, spec: &TutorLessonSpec, keymap: &TutorK
 4. **Inside Yazi:** Press `{zoxide}` to jump with zoxide and open the target in the editor; press `{workspace_pane}` to open the selected directory in a workspace terminal pane.
 5. **Inside Yazelix:** Press `{move_tab_left}` or `{move_tab_right}` to move the current tab left or right; press `{move_pane_down}` or `{move_pane_up}` to move the current pane down or up.
 6. **Inside the editor:** Press `{reveal}` to reveal the current file in Yazi; press `{fullscreen}` when one pane needs the whole screen.
+
+## Mental model
+
+The current tab workspace root matters most. Managed actions use that directory unless a tool chooses a file or directory. Yazelix keeps editor, sidebars, popups, and agent panes connected.
 
 Next lesson: `yzx tutor discovery`.
 "#,
@@ -792,23 +762,21 @@ mod tests {
         assert!(parse_tutor_args(&["weird".into()]).is_err());
     }
 
-    // Defends: the front-door tutor root still prints the managed-workspace guidance instead of drifting through wrapper churn.
+    // Defends: the front-door tutor root stays a small entry page instead of overwhelming first-time users.
     #[test]
-    fn tutor_root_output_keeps_guided_overview_copy() {
-        let keymap = TutorKeymap::defaults();
-        let output = render_yazelix_tutor_overview(&keymap);
+    fn tutor_root_output_stays_minimal() {
+        let output = render_yazelix_tutor_overview();
         assert!(output.contains("Yazelix tutor"));
-        assert!(output.contains("Outside Yazelix"));
-        assert!(output.contains("After Yazelix opens"));
-        assert!(output.contains("Inside Yazelix"));
-        assert!(output.contains("Coming back later"));
         assert!(output.contains("yzx tutor begin"));
+        assert!(output.contains("yzx tutor list"));
         assert!(output.contains("yzx tutor continue"));
-        assert!(output.contains("yzx menu"));
-        assert!(output.contains("Alt+Shift+M"));
-        assert!(output.contains("Alt+Shift+I"));
-        assert!(output.contains("Key notation"));
-        assert!(!output.contains("Start a session with"));
+        assert!(output.contains("yzx keys"));
+        assert!(output.contains("yzx help"));
+        assert!(output.contains("yzx doctor"));
+        assert!(!output.contains("Outside Yazelix"));
+        assert!(!output.contains("Key notation"));
+        assert!(!output.contains("Mental model"));
+        assert!(!output.contains("Alt+Shift+M"));
     }
 
     // Defends: the guided tutor has indexed lesson entrypoints and structured onboarding metadata instead of only a flat overview.
@@ -833,6 +801,8 @@ mod tests {
         assert!(lesson.contains("Inside Yazi:"));
         assert!(lesson.contains("yzx enter"));
         assert!(lesson.contains("yzx launch --path <dir>"));
+        assert!(lesson.contains("Mental model"));
+        assert!(lesson.contains("current tab workspace root matters most"));
         assert!(lesson.contains("Ctrl+y"));
         assert!(lesson.contains("Ctrl+Shift+Y"));
         assert!(lesson.contains("Alt+z"));
@@ -999,7 +969,7 @@ mod tests {
         assert!(output.contains("yzx env"));
         assert!(output.contains("yzx env --no-shell"));
         assert!(output.contains("without opening the workspace UI"));
-        assert!(!render_yazelix_tutor_overview(&keymap).contains("yzx env"));
+        assert!(!render_yazelix_tutor_overview().contains("yzx env"));
     }
 
     fn key_text(markdown_code: &str) -> &str {
@@ -1010,7 +980,7 @@ mod tests {
     #[test]
     fn bundled_tutor_markdown_documents_render_without_panics() {
         let keymap = TutorKeymap::defaults();
-        assert!(render_yazelix_tutor_overview(&keymap).contains("Yazelix tutor"));
+        assert!(render_yazelix_tutor_overview().contains("Yazelix tutor"));
         assert!(render_tutor_continue(&keymap).contains("yzx tutor troubleshooting"));
         assert!(render_tutor_list().contains("yzx tutor tool_tutors"));
         for lesson_index in 0..TUTOR_LESSONS.len() {
