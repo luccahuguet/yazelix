@@ -73,37 +73,28 @@ fn run_ui() -> Result<()> {
         };
         match app.handle_key(key) {
             ConfigUiIntent::Exit => break,
-            intent => {
-                handle_ui_intent(&mut app, &path, intent)?;
+            ConfigUiIntent::None => {}
+            ConfigUiIntent::BeginEdit { field_index, .. } => app.begin_edit_field(field_index),
+            ConfigUiIntent::SetField {
+                path: field_path,
+                value,
+                ..
+            } => {
+                write_config_field(&path, &field_path, &value)?;
+                app.model = build_model(&path)?;
+                app.notice_info(format!("Saved {field_path}."));
+                app.finish_successful_write();
+            }
+            ConfigUiIntent::UnsetField {
+                path: field_path, ..
+            } => {
+                restore_config_default(&path, &field_path)?;
+                app.model = build_model(&path)?;
+                app.notice_info(format!("Restored default for {field_path}."));
             }
         }
     }
 
-    Ok(())
-}
-
-fn handle_ui_intent(app: &mut ConfigUiApp, path: &Path, intent: ConfigUiIntent) -> Result<()> {
-    match intent {
-        ConfigUiIntent::None | ConfigUiIntent::Exit => {}
-        ConfigUiIntent::BeginEdit { field_index, .. } => app.begin_edit_field(field_index),
-        ConfigUiIntent::SetField {
-            path: field_path,
-            value,
-            ..
-        } => {
-            write_config_field(path, &field_path, &value)?;
-            app.model = build_model(path)?;
-            app.notice_info(format!("Saved {field_path}."));
-            app.finish_successful_write();
-        }
-        ConfigUiIntent::UnsetField {
-            path: field_path, ..
-        } => {
-            restore_config_default(path, &field_path)?;
-            app.model = build_model(path)?;
-            app.notice_info(format!("Restored default for {field_path}."));
-        }
-    }
     Ok(())
 }
 
@@ -128,6 +119,8 @@ fn config_key(key: KeyEvent) -> Option<ConfigUiKey> {
     if key.kind == KeyEventKind::Release {
         return None;
     }
+    let unsupported =
+        KeyModifiers::ALT | KeyModifiers::SUPER | KeyModifiers::HYPER | KeyModifiers::META;
     match key.code {
         KeyCode::Esc => Some(ConfigUiKey::Esc),
         KeyCode::Enter => Some(ConfigUiKey::Enter),
@@ -138,21 +131,12 @@ fn config_key(key: KeyEvent) -> Option<ConfigUiKey> {
         KeyCode::Down => Some(ConfigUiKey::Down),
         KeyCode::Left => Some(ConfigUiKey::Left),
         KeyCode::Right => Some(ConfigUiKey::Right),
-        KeyCode::Char(ch) => char_key(ch, key.modifiers),
+        KeyCode::Char(_) if key.modifiers.intersects(unsupported) => None,
+        KeyCode::Char(ch) if key.modifiers.contains(KeyModifiers::CONTROL) => {
+            Some(ConfigUiKey::Ctrl(ch))
+        }
+        KeyCode::Char(ch) => Some(ConfigUiKey::Char(ch)),
         _ => None,
-    }
-}
-
-fn char_key(ch: char, modifiers: KeyModifiers) -> Option<ConfigUiKey> {
-    let unsupported =
-        KeyModifiers::ALT | KeyModifiers::SUPER | KeyModifiers::HYPER | KeyModifiers::META;
-    if modifiers.intersects(unsupported) {
-        return None;
-    }
-    if modifiers.contains(KeyModifiers::CONTROL) {
-        Some(ConfigUiKey::Ctrl(ch))
-    } else {
-        Some(ConfigUiKey::Char(ch))
     }
 }
 
