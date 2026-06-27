@@ -1346,7 +1346,7 @@ mod tests {
         let tmp = TempDir::new().unwrap();
         let mut config = serde_json::Map::new();
         config.insert("terminal_config_mode".to_string(), json!("user"));
-        std::fs::write(tmp.path().join("runtime_variant"), "ghostty\n").unwrap();
+        std::fs::write(tmp.path().join("runtime_variant"), "mars\n").unwrap();
 
         let findings = collect_native_config_status_findings(
             tmp.path(),
@@ -1365,7 +1365,7 @@ mod tests {
                 .as_array()
                 .unwrap()
                 .iter()
-                .any(|entry| entry["surface"] == "terminal.ghostty.input"
+                .any(|entry| entry["surface"] == "terminal.mars.input"
                     && entry["status"] == "native_required_missing")
         );
     }

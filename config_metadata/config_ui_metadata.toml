@@ -356,18 +356,6 @@ label = "yazi/package.toml"
 action = "edit_sidecar"
 owner = "user_or_home_manager"
 
-[sidecars."terminal_ghostty.conf"]
-tab = "terminal"
-label = "terminal_ghostty.conf"
-action = "edit_sidecar"
-owner = "user_or_home_manager"
-
-[sidecars."terminal_kitty.conf"]
-tab = "terminal"
-label = "terminal_kitty.conf"
-action = "edit_sidecar"
-owner = "user_or_home_manager"
-
 [sidecars."shell_bash.sh"]
 tab = "shell"
 label = "shell_bash.sh"

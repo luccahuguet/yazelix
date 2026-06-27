@@ -61,7 +61,6 @@ allowed_paths = [
   "rust_core/yazelix_core/src/cursor_commands.rs",
   "rust_core/yazelix_core/src/edit_commands.rs",
   "rust_core/yazelix_core/src/ghostty_cursor_registry.rs",
-  "rust_core/yazelix_core/src/ghostty_materialization.rs",
   "rust_core/yazelix_core/src/helix_external.rs",
   "rust_core/yazelix_core/src/helix_materialization.rs",
   "rust_core/yazelix_core/src/helix_materialization/helix_config.rs",

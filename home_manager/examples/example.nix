@@ -11,13 +11,12 @@
   programs.yazelix = {
     enable = true;
     manage_config = true; # Opt into declarative Home Manager ownership of settings.jsonc for this example
-    terminal = "mars"; # Optional: "ghostty", "kitty", "rio", "wezterm", or Linux-only "foot"/"ratty"
-    extra_terminal_launchers = [ "wezterm" ]; # Optional: extra Linux desktop entries; do not include the active terminal
+    terminal = "mars"; # Mars is the packaged terminal; configure host terminals to run `yzx enter`
 
     # Shell entry
     default_shell = "zsh";
 
-    # Terminal behavior for the selected packaged terminal
+    # Terminal behavior for Mars
     terminal_config_mode = "yazelix"; # Optional: "yazelix" or "user"
     # Cursor presets and effects live in ~/.config/yazelix_cursors/settings.jsonc
     transparency = "medium"; # Optional: "none".."super_high"

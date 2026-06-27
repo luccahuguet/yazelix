@@ -105,13 +105,11 @@ The current evaluated matrix is:
 | Component or surface | Default | Current package impact | Generated-config impact when disabled | Decision |
 | --- | --- | --- | --- | --- |
 | `runtime_tool_sources.<tool> = "host"` for leaf tools | bundled | Implemented: omits supported leaf tool packages and exports, then relies on host `PATH` | Runtime manifest records host source and doctor checks required commands | Keep implemented |
-| `runtime_tool_sources.terminal = "host"` for `terminal = "ghostty"` on macOS | bundled | Implemented: omits the packaged Ghostty terminal and does not link `Applications/Ghostty.app` into the runtime | Runtime manifest records no required terminal command; the host Ghostty config should run `yzx enter` | Keep implemented |
 | `runtime_tool_sources.mise` and `runtime_tool_sources.tombi` | host | Implemented default omission: these host/maintainer-adjacent tools are not bundled unless explicitly set to `bundled` | Runtime manifest records host source; generated shell initializers omit `mise` cleanly when absent, and doctor reports missing default optional integrations as informational | Keep implemented |
 | `agent_usage_programs = [ "tokenusage" ]` | on | Implemented opt-out: includes `tokenusage` for the default Codex/Claude status widgets, and omits it only when the list is set to `[]` | Agent usage widgets in the default tray have their helper available; users who remove those widgets can omit the helper explicitly | Keep implemented |
-| `terminal = "mars"`, `"ghostty"`, `"kitty"`, `"rio"`, `"wezterm"`, or Linux-only `"foot"`/`"ratty"` | `mars` | Implemented: selects one packaged terminal instead of bundling every terminal or selecting terminals through config | Generated terminal config follows the selected terminal | Keep implemented |
-| `appearance_mode = "dark"`, `"light"`, or `"auto"` | `dark` | Implemented in Home Manager: declarative value for `appearance.mode` when `manage_config = true`; default ratconfig-owned setups keep `settings.jsonc` as the semantic owner | Ghostty and WezTerm use native static/auto theme selection; Rio and Foot use generated static palettes; Zellij and Yazi change only their implicit default themes | Keep implemented |
-| `extra_terminal_launchers = [ "ghostty" "wezterm" ... ]` | `[]` | Implemented in Home Manager: installs additional Linux desktop launchers without changing the active runtime identity | Each extra entry points directly at that terminal variant package in the Nix store, so dependencies remain available without adding duplicate profile `bin/yzx` commands | Keep implemented |
-| `components.cursors` | enabled | Implemented partial package omission: cursor shader assets and `yazelix_cursors_default.toml` are removed from the runtime tree; cursor registry code remains linked into `yazelix_core` until crate-level feature gates exist | Ghostty config generation omits Yazelix cursor shaders, cursor sidecar bootstrap is skipped, config UI hides cursor fields, Home Manager rejects cursor config ownership, and launch facts report `n/a` | Keep implemented |
+| `terminal = "mars"` | `mars` | Implemented: selects the only packaged terminal | Generated terminal config follows Mars | Keep implemented |
+| `appearance_mode = "dark"`, `"light"`, or `"auto"` | `dark` | Implemented in Home Manager: declarative value for `appearance.mode` when `manage_config = true`; default ratconfig-owned setups keep `settings.jsonc` as the semantic owner | Mars, Zellij, and Yazi change their implicit default themes where supported | Keep implemented |
+| `components.cursors` | enabled | Implemented partial package omission: cursor shader assets and `yazelix_cursors_default.toml` are removed from the runtime tree; cursor registry code remains linked into `yazelix_core` until crate-level feature gates exist | Mars config generation omits Yazelix cursor shaders, cursor sidecar bootstrap is skipped, config UI hides cursor fields, Home Manager rejects cursor config ownership, and launch facts report `n/a` | Keep implemented |
 | `components.screen` | enabled | Implemented behavior toggle: welcome/screen rendering remains linked into `yazelix_core` until crate-level feature gates exist | Home Manager requires `core.skip_welcome_screen = true` and rejects enabled screen saver settings; Zellij materialization rejects screen saver when disabled; `yzx screen` returns a disabled-component error | Keep implemented |
 | Helix Steel authoring tools | bundled | Implemented `off`: omits `steel`, `steel-language-server`, `forge`, `cargo-steel-lib`, and `repl-connect`; implemented `host`: relies on host `steel` and `steel-language-server` | Managed Helix Steel plugin execution still uses the bundled Helix fork and generated config, so disabling these commands affects authoring/debugging only | Keep implemented |
 | `components.status_bar` / integrated zjstatus | enabled | Not accepted yet: `zjstatus.wasm` is a real runtime asset, but the top/status bar is part of the current Zellij layout contract | Defer until layout ownership and barless/native Zellij layout behavior are designed; hiding widgets through `zellij.widget_tray` is not a package-saving toggle | Defer |
@@ -123,26 +121,9 @@ The current evaluated matrix is:
 
 Do not add a toggle whose only effect is hiding Home Manager options or removing a forwarded flake output. A toggle must change package contents, generated runtime behavior, or validation in a way users can feel.
 
-## Terminal Launcher Naming Decision
+## Terminal Launcher Decision
 
-The current Home Manager surface uses `programs.yazelix.terminal` for the single profile-owned runtime and `programs.yazelix.extra_terminal_launchers` for additional launcher entries. If this surface is reshaped, use this structure:
-
-```nix
-programs.yazelix.terminals = {
-  active_runtime = "ratty";
-  launchers = [ "ghostty" "rio" "foot" "wezterm" ];
-};
-```
-
-`active_runtime` names the one packaged runtime that owns the profile `yzx`, runtime identity, generated runtime state, and primary launcher. `launchers` names additional app-launch surfaces for terminal-specific runtime packages without changing the active runtime identity and without installing duplicate profile `bin/yzx` commands.
-
-Keep the implementation invariant: each launcher points at the selected terminal variant package in the Nix store. The launcher must not call the profile-owned `yzx` unless it intentionally wants the active runtime. The profile `yzx` remains singular.
-
-Avoid replacement names that imply the wrong contract:
-- `alternates`: sounds like fallback behavior
-- `enabled`, `available`, or `installed`: implies every listed terminal is equally available through profile `yzx`
-- `desktop_entries`: names the Linux implementation instead of the cross-platform app-launch concept
-- `desktop_launchers`: clearer than `desktop_entries`, but still too Linux-desktop-specific for future macOS app-bundle or Dock/Launchpad integration
+The current Home Manager surface uses `programs.yazelix.terminal = "mars"` for the single profile-owned runtime. Additional terminal launchers are not packaged by Yazelix; configure host terminals to run `yzx enter`.
 
 ## Component Audit Outcome
 

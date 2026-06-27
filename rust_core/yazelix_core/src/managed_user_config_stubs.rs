@@ -36,10 +36,6 @@ del _yazelix_init
 del _yazelix_os
 "#;
 
-const GHOSTTY_OVERRIDE: &str = r#"# Yazelix-managed Ghostty overrides
-# Add terminal-native Ghostty settings for Yazelix windows here
-"#;
-
 const HELIX_STEEL_PLUGINS_README: &str = r#"# Yazelix-managed Helix Steel plugins
 
 Place custom Steel plugin source files below this directory, then declare them in
@@ -47,10 +43,6 @@ helix.steel_plugins.extra inside ~/.config/yazelix/settings.jsonc.
 
 Bundled Yazelix Steel plugins live in the packaged runtime and are selected with
 helix.steel_plugins.enabled.
-"#;
-
-const KITTY_OVERRIDE: &str = r#"# Yazelix-managed Kitty overrides
-# Add terminal-native Kitty settings for Yazelix windows here
 "#;
 
 pub(crate) fn ensure_zellij_surface_stub(_config_dir: &Path) -> Result<(), CoreError> {
@@ -89,21 +81,6 @@ pub(crate) fn ensure_shell_hook_stubs(
     Ok(())
 }
 
-pub(crate) fn ensure_terminal_override_stubs(
-    config_dir: &Path,
-    terminals: &[String],
-) -> Result<(), CoreError> {
-    for terminal in terminals {
-        match terminal.as_str() {
-            "ghostty" => ensure_terminal_stub_with_legacy(config_dir, terminal, GHOSTTY_OVERRIDE)?,
-            "kitty" => ensure_terminal_stub_with_legacy(config_dir, terminal, KITTY_OVERRIDE)?,
-            _ => {}
-        }
-    }
-
-    Ok(())
-}
-
 fn ensure_stub_with_legacy(config_dir: &Path, shell: &str, content: &str) -> Result<(), CoreError> {
     let current = user_config_paths::shell_hook(config_dir, shell).expect("supported shell");
     let legacy = user_config_paths::legacy_shell_hook(config_dir, shell).expect("supported shell");
@@ -122,23 +99,6 @@ fn ensure_current_shell_stub(
 ) -> Result<(), CoreError> {
     let current = user_config_paths::shell_hook(config_dir, shell).expect("supported shell");
     write_stub_if_missing(&current, content)
-}
-
-fn ensure_terminal_stub_with_legacy(
-    config_dir: &Path,
-    terminal: &str,
-    content: &str,
-) -> Result<(), CoreError> {
-    let current =
-        user_config_paths::terminal_config(config_dir, terminal).expect("supported terminal");
-    let legacy = user_config_paths::legacy_terminal_config(config_dir, terminal)
-        .expect("supported terminal");
-    let path = user_config_paths::resolve_current_config_file(
-        &current,
-        &legacy,
-        &format!("Yazelix {terminal} terminal override"),
-    )?;
-    write_stub_if_missing(&path, content)
 }
 
 fn write_stub_if_missing(path: &Path, content: &str) -> Result<(), CoreError> {
@@ -213,30 +173,5 @@ mod tests {
         );
         assert!(!config.path().join("shell_fish.fish").exists());
         assert!(!config.path().join("shell_zsh.zsh").exists());
-    }
-
-    // Defends: terminal override scaffolding only creates files for terminals with a live managed override contract.
-    #[test]
-    fn terminal_override_stubs_follow_supported_override_surfaces() {
-        let config = tempdir().expect("config");
-
-        ensure_terminal_override_stubs(
-            config.path(),
-            &[
-                "ghostty".to_string(),
-                "kitty".to_string(),
-                "wezterm".to_string(),
-            ],
-        )
-        .unwrap();
-
-        assert!(config.path().join("terminal_ghostty.conf").exists());
-        assert!(config.path().join("terminal_kitty.conf").exists());
-        assert!(!config.path().join("terminal_wezterm.lua").exists());
-        assert!(
-            fs::read_to_string(config.path().join("terminal_ghostty.conf"))
-                .unwrap()
-                .contains("Yazelix-managed Ghostty overrides")
-        );
     }
 }

@@ -22,8 +22,6 @@ pub const YAZI_INIT: &str = "yazi/init.lua";
 pub const YAZI_PACKAGE: &str = "yazi/package.toml";
 pub const YAZI_PLUGINS_DIR: &str = "yazi/plugins";
 pub const YAZI_FLAVORS_DIR: &str = "yazi/flavors";
-pub const TERMINAL_GHOSTTY_CONFIG: &str = "terminal_ghostty.conf";
-pub const TERMINAL_KITTY_CONFIG: &str = "terminal_kitty.conf";
 pub const SHELL_BASH_HOOK: &str = "shell_bash.sh";
 pub const SHELL_ZSH_HOOK: &str = "shell_zsh.zsh";
 pub const SHELL_FISH_HOOK: &str = "shell_fish.fish";
@@ -40,8 +38,6 @@ pub const CURRENT_MANAGED_CONFIG_FILE_NAMES: &[&str] = &[
     YAZI_PACKAGE,
     YAZI_PLUGINS_DIR,
     YAZI_FLAVORS_DIR,
-    TERMINAL_GHOSTTY_CONFIG,
-    TERMINAL_KITTY_CONFIG,
     SHELL_BASH_HOOK,
     SHELL_ZSH_HOOK,
     SHELL_FISH_HOOK,
@@ -202,23 +198,6 @@ pub fn legacy_yazi_init(config_dir: &Path) -> PathBuf {
         .join("user_configs")
         .join("yazi")
         .join("init.lua")
-}
-
-pub fn terminal_config(config_dir: &Path, terminal: &str) -> Option<PathBuf> {
-    match terminal {
-        "ghostty" => Some(config_dir.join(TERMINAL_GHOSTTY_CONFIG)),
-        "kitty" => Some(config_dir.join(TERMINAL_KITTY_CONFIG)),
-        _ => None,
-    }
-}
-
-pub fn legacy_terminal_config(config_dir: &Path, terminal: &str) -> Option<PathBuf> {
-    let root = config_dir.join("user_configs").join("terminal");
-    match terminal {
-        "ghostty" => Some(root.join("ghostty")),
-        "kitty" => Some(root.join("kitty.conf")),
-        _ => None,
-    }
 }
 
 pub fn shell_hook(config_dir: &Path, shell: &str) -> Option<PathBuf> {

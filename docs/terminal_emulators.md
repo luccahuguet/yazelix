@@ -39,7 +39,7 @@ they are not feature/protocol capabilities by themselves.
 
 | Terminal | Score | Full | Partial | No | Read |
 | --- | ---: | ---: | ---: | ---: | --- |
-| Kitty | 76 | 18 | 2 | 5 | Strong protocol reference and packaged alternate; no first-party control |
+| Kitty | 76 | 18 | 2 | 5 | Strong protocol reference and host-owned entrypoint; no first-party control |
 | Ghostty | 60 | 15 | 0 | 10 | Mature first-class alternate; strongest shader story; fewer Kitty frontier protocols |
 | Mars | 56 | 13 | 2 | 10 | Default because Yazelix owns the Rust fork and can optimize stack compatibility and agent-driven workflows |
 | Rio | 48 | 11 | 2 | 12 | Upstream Rio path with modern image/protocol support; less Yazelix soak than Ghostty |
@@ -139,15 +139,15 @@ parser-only behavior as no runtime support.
 
 ### Mars
 
-Mars is the default Yazelix terminal because it gives the project a controlled
+Mars is the packaged Yazelix terminal because it gives the project a controlled
 Rust terminal path for stack compatibility, generated config, cursor behavior,
 Kitty protocol work, and agent-driven development workflows. Its main tradeoff
-is maturity: Ghostty remains the stronger broad-production and macOS-native
-alternate when users want the most proven terminal path.
+is maturity: users who want a more proven terminal path can keep that terminal
+host-owned and launch Yazelix with `yzx enter`.
 
 ### Ghostty
 
-Ghostty remains the best mature first-class alternate for Yazelix today. It has excellent
+Ghostty remains the best mature host-owned alternate for Yazelix today. It has excellent
 shader support, strong Kitty graphics support, OSC 133 shell integration, Kitty
 keyboard, and a stable daily-driver posture. Its lower score comes from this
 comparison weighting Sixel, iTerm2 images, OSC 99, and newer Kitty frontier
@@ -155,17 +155,12 @@ protocols heavily.
 
 ### Rio
 
-Rio is packaged as `#yazelix_rio` for users who want upstream Rio with
-Yazelix-owned generated config, launch integration, and the Zellij Kitty
-graphics bridge. The packaged config enables Rio's native trail cursor, maps
-`terminal.transparency` to Rio's supported window and cell opacity settings, and
-points Rio at packaged Nerd Font and emoji fallback directories. On Linux,
-transparent Rio launches use XWayland when an X display is available because
-upstream Rio currently ignores background opacity on COSMIC/Wayland.
+Rio remains a host-owned option for users who want upstream Rio. Configure Rio
+to run `yzx enter`; Rio's native config remains owned by the user.
 
 ### WezTerm
 
-WezTerm is the conservative stable alternate. It is packaged, cross-platform,
+WezTerm is the conservative stable host-owned alternate. It is cross-platform,
 has strong image support across Kitty graphics, Sixel, and iTerm2 images, and is
 a proven daily terminal. Its weaker score reflects the newer Kitty protocol
 extensions it does not expose today and the lack of Ghostty-style cursor shader
@@ -175,14 +170,12 @@ parity.
 
 Ratty is not trying to be the safest all-purpose terminal in this comparison.
 Its value is that it proves a different frontier: GPU-rendered terminal UI plus
-inline 3D objects through Ratty Graphics Protocol. Yazelix packages it on Linux
-as a supported runtime and can use the Yazelix Zellij Kitty graphics
-bridge, but Yazelix does not claim RGP passthrough inside Zellij.
+inline 3D objects through Ratty Graphics Protocol. Yazelix no longer packages
+Ratty; use it as a host-owned terminal running `yzx enter`.
 
 ### Kitty
 
 Kitty is the protocol reference. It leads on Kitty graphics, keyboard handling,
 desktop notifications, multiple cursors, file transfer, text sizing, pointer
 shape, unscrolling, rich clipboard, and related protocol extensions. Yazelix can
-package Kitty as the `#yazelix_kitty` runtime variant while still supporting
-host PATH-provided Kitty.
+use Kitty as a host-owned terminal running `yzx enter`.

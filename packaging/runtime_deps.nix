@@ -1,15 +1,14 @@
 {
   pkgs,
   nixgl ? null,
-  rioPackage ? pkgs.rio,
-  runtimeVariant ? "ghostty",
+  runtimeVariant ? "mars",
   runtimeToolSources ? { },
   marsTerminalPackage ? null,
 }:
 
 let
   registry = import ./runtime_tool_registry.nix {
-    inherit pkgs nixgl rioPackage runtimeVariant runtimeToolSources marsTerminalPackage;
+    inherit pkgs nixgl runtimeVariant runtimeToolSources marsTerminalPackage;
   };
 in
 registry.runtimePackages

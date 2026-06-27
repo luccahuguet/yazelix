@@ -176,56 +176,6 @@ printf 'YAZI_ZELLIJ_KITTY_PASSTHROUGH=%s\n' "${YAZI_ZELLIJ_KITTY_PASSTHROUGH-uns
     assert!(stdout.contains("YAZI_ZELLIJ_KITTY_PASSTHROUGH=unset"));
 }
 
-// Regression: the Ghostty launch wrapper must not expose runtime-private libexec helpers such as nix ahead of the host Nix.
-#[test]
-fn ghostty_wrapper_keeps_runtime_libexec_private_for_host_nix() {
-    let repo = repo_root();
-    let temp = tempfile::tempdir().unwrap();
-    let runtime_dir = temp.path().join("runtime");
-    let home_dir = temp.path().join("home");
-    let host_bin = home_dir.join("host-bin");
-    let posix_dir = runtime_dir.join("shells").join("posix");
-    let libexec_dir = runtime_dir.join("libexec");
-
-    fs::create_dir_all(&posix_dir).unwrap();
-    fs::create_dir_all(&libexec_dir).unwrap();
-    fs::create_dir_all(runtime_dir.join("toolbin")).unwrap();
-    fs::create_dir_all(runtime_dir.join("bin")).unwrap();
-    fs::create_dir_all(&host_bin).unwrap();
-
-    write_executable_script(
-        &posix_dir.join("yazelix_ghostty.sh"),
-        &fs::read_to_string(repo.join("shells/posix/yazelix_ghostty.sh")).unwrap(),
-    );
-    let runtime_nix = libexec_dir.join("nix");
-    write_executable_script(&runtime_nix, "#!/bin/sh\nprintf 'runtime nix\\n'\n");
-    write_executable_script(&host_bin.join("nix"), "#!/bin/sh\nprintf 'host nix\\n'\n");
-    let capture = temp.path().join("capture_path.sh");
-    write_executable_script(
-        &capture,
-        r#"#!/bin/sh
-set -eu
-printf 'PATH=%s\n' "$PATH"
-printf 'nix=%s\n' "$(command -v nix)"
-"#,
-    );
-
-    let output = Command::new(posix_dir.join("yazelix_ghostty.sh"))
-        .env_clear()
-        .env("PATH", &host_bin)
-        .arg(&capture)
-        .output()
-        .unwrap();
-
-    assert_eq!(output.status.code(), Some(0));
-    let stdout = String::from_utf8(output.stdout).unwrap();
-    assert!(
-        !stdout.contains(&format!("{}", libexec_dir.display())),
-        "runtime libexec leaked into PATH:\n{stdout}"
-    );
-    assert!(stdout.contains(&format!("nix={}", host_bin.join("nix").display())));
-}
-
 // Defends: setup-only launch preflight preserves managed-pane shell UX without invoking the deleted Nushell setup script.
 #[test]
 fn yzx_enter_setup_only_generates_managed_initializers_and_extern_bridge() {
@@ -461,10 +411,10 @@ command = ""
 #[test]
 fn yzx_enter_uses_detected_host_terminal_for_status_bar_label() {
     let fixture = managed_config_fixture("");
-    fs::write(fixture.runtime_dir.join("runtime_variant"), "ratty\n").unwrap();
+    fs::write(fixture.runtime_dir.join("runtime_variant"), "mars\n").unwrap();
     fs::write(
         fixture.runtime_dir.join("runtime_identity.json"),
-        r#"{"schema_version":1,"version":"v-test","runtime_variant":"ratty"}"#,
+        r#"{"schema_version":1,"version":"v-test","runtime_variant":"mars"}"#,
     )
     .unwrap();
     seed_startup_materialization_runtime_assets(&fixture);
@@ -513,7 +463,7 @@ fn yzx_enter_uses_detected_host_terminal_for_status_bar_label() {
     assert!(output.stderr.is_empty());
     let request: Value = serde_json::from_str(&fs::read_to_string(bar_request).unwrap()).unwrap();
     assert_eq!(request["terminal_label"], "wezterm");
-    assert_ne!(request["terminal_label"], "ratty");
+    assert_ne!(request["terminal_label"], "mars");
 
     let log = fs::read_to_string(zellij_log).unwrap();
     assert!(log.contains("YAZELIX_SESSION_TERMINAL=wezterm"), "{log}");
@@ -546,7 +496,7 @@ default_shell = "nu"
             .ends_with("settings.jsonc")
     );
     assert_eq!(summary["default_shell"], "nu");
-    assert_eq!(summary["terminals"], serde_json::json!(["ghostty"]));
+    assert_eq!(summary["terminals"], serde_json::json!(["mars"]));
     assert!(summary["generated_state_repair_needed"].is_boolean());
     assert!(summary["generated_state_materialization_status"].is_string());
     assert_eq!(summary["session_config_snapshot"]["status"], "not_set");
@@ -628,7 +578,7 @@ default_shell = "nu"
     assert_eq!(report["schema_version"], 1);
     assert_eq!(report["title"], "Yazelix inspect");
     assert_eq!(report["runtime"]["version"], "v-test");
-    assert_eq!(report["runtime"]["variant"], "ghostty");
+    assert_eq!(report["runtime"]["variant"], "mars");
     assert_eq!(report["runtime"]["variant_source"], "runtime_identity_json");
     assert_eq!(
         report["runtime"]["invoked_yzx_path"],

@@ -12,7 +12,7 @@ The default runtime includes:
 - host-managed helper integrations: `mise`, `tombi`
 - preview/search helpers: `p7zip`, `jq`, `fd`, `ripgrep`, `poppler`, `resvg`
 - system helpers required by runtime wrappers and validators: `git`, `nix`, `coreutils`, `findutils`, `gnugrep`, `gnused`, `util-linux`
-- one packaged terminal variant: Mars in `#yazelix` and `#yazelix_mars`, Ghostty in `#yazelix_ghostty`, vanilla Rio in `#yazelix_rio`, WezTerm in `#yazelix_wezterm`, Kitty in `#yazelix_kitty`, Linux Foot in `#yazelix_foot`, or Linux Ratty in `#yazelix_ratty`
+- one packaged terminal variant: Mars in `#yazelix` and `#yazelix_mars`
 - `tokenusage` for the default Codex and Claude status widgets
 
 It does not ship:
@@ -35,7 +35,7 @@ Only use `--build` when the command should first realize a flake output:
 
 ```bash
 shells/posix/yazelix_runtime_size_report.sh --build .#yazelix
-shells/posix/yazelix_runtime_size_report.sh --build .#yazelix_wezterm --top 40 --direct-top 60
+shells/posix/yazelix_runtime_size_report.sh --build .#yazelix_mars --top 40 --direct-top 60
 ```
 
 The reporter depends only on normal maintainer/runtime shell tools: `nix`, `nix-store`, `jq`, `awk`, `sort`, `head`, `wc`, `sed`, `tr`, `readlink`, and `mktemp`. It uses `numfmt` when available.
@@ -44,14 +44,10 @@ For a quick total-only check, `nix path-info -S` is still useful:
 
 ```bash
 nix path-info -S .#yazelix --extra-experimental-features "nix-command flakes"
-nix path-info -S .#yazelix_rio --extra-experimental-features "nix-command flakes"
-nix path-info -S .#yazelix_wezterm --extra-experimental-features "nix-command flakes"
-nix path-info -S .#yazelix_kitty --extra-experimental-features "nix-command flakes"
-nix path-info -S .#yazelix_foot --extra-experimental-features "nix-command flakes"
-nix path-info -S .#yazelix_ratty --extra-experimental-features "nix-command flakes"
+nix path-info -S .#yazelix_mars --extra-experimental-features "nix-command flakes"
 ```
 
-## Current x86_64-linux Findings
+## Last Recorded x86_64-linux Findings
 
 Measurements below are local NAR/closure measurements from June 2, 2026, before Mars became the default terminal. They are not exact Cachix billed bytes because Cachix checks the upstream NixOS cache first and uploads compressed paths.
 
@@ -83,14 +79,14 @@ Disabling 32-bit nixGL support removes the large duplicate Mesa/LLVM families fr
 
 ## Linux Graphics Wrappers
 
-The Linux runtime registry currently imports `nixGL` when the platform is Linux and the flake input is present, with `enable32bits = false` and `enableIntelX86Extensions = false`. It adds 64-bit-only `nixgl_mesa` for Linux runtimes and 64-bit-only `nixvulkan_mesa` for Ratty package variants.
+The Linux runtime registry imports `nixGL` when the platform is Linux and the flake input is present, with `enable32bits = false` and `enableIntelX86Extensions = false`. The Mars package path may add a 64-bit-only Vulkan wrapper for the packaged terminal launcher.
 
 Current launch behavior:
 
-- Ghostty, WezTerm, Kitty, and Ratty launch commands may prepend a graphics wrapper
-- Ratty prefers the Vulkan wrapper because its renderer needs a Vulkan-capable adapter
+- Mars launch commands may prepend a graphics wrapper
+- host-owned terminals keep their own graphics-wrapper policy and should run `yzx enter`
 
-The option surface should be explicit instead of hidden behind `runtime_tool_sources`: a future package option should choose a graphics wrapper source such as bundled, host, or none, with launch rendering and doctor diagnostics tested per terminal variant. Default behavior should not change until desktop launch reliability is preserved.
+The option surface should be explicit instead of hidden behind `runtime_tool_sources`: a future package option should choose a graphics wrapper source such as bundled, host, or none, with launch rendering and doctor diagnostics tested against Mars. Default behavior should not change until desktop launch reliability is preserved.
 
 ## Yazi Package Shape
 
@@ -129,9 +125,9 @@ The publish workflow builds selected `x86_64-linux` outputs. Local incremental N
 | `yazelix_kgp_zellij` | 102 MiB | 56 MiB | Keep publishing explicitly for the expensive KGP Zellij output |
 | `yazelix_helix` | 328 MiB | 282 MiB | Keep publishing explicitly for the expensive Helix fork output |
 | `yazelix` | 3.1 GiB | 2.7 GiB | Keep: main supported install path |
-| `yazelix_wezterm` | 2.8 GiB | 232 MiB | Keep: supported alternate runtime with real unique closure |
+| `yazelix_mars` | measure before release | measure before release | Keep: explicit Mars runtime path |
 
-The previous workflow also listed `yazelix_ghostty`, `yazelix_agent_tools`, and `yazelix_screen`; those measured as zero incremental unique NAR in workflow order and are no longer explicit publish targets. Further storage relief should come from shrinking the default runtime closure, especially host-tool-manager references, and from Cachix retention policy.
+The previous workflow also listed non-Mars terminal outputs, `yazelix_agent_tools`, and `yazelix_screen`; those are no longer explicit publish targets. Further storage relief should come from shrinking the default runtime closure, especially host-tool-manager references, and from Cachix retention policy.
 
 The publish workflow also builds a selective `aarch64-darwin` lane for macOS users:
 

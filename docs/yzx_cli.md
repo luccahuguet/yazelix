@@ -60,10 +60,9 @@ Profile launch sequence and identify performance bottlenecks
 - Profiling works from either a repo checkout or the active installed runtime
 - Startup profile comparison is a local evidence tool, not a hosted CI timing gate
 
-### `yzx launch [-t TERMINAL] [--path DIR] [--home] [--config FILE] [--with KEY=VALUE] [--verbose]`
+### `yzx launch [--path DIR] [--home] [--config FILE] [--with KEY=VALUE] [--verbose]`
 Launch Yazelix with directory and mode options
 - Default: Launch new terminal in current directory
-- `-t, --term, --terminal TERMINAL`: Launch an installed packaged terminal variant such as `ghostty` or `wezterm`
 - `--path DIR`: Start in specific directory
 - `--home`: Start in home directory
 - `--config FILE`: Use an alternate complete `settings.jsonc` for this window
@@ -335,7 +334,6 @@ yzx launch                    # New terminal in current directory
 yzx enter                     # Start in current terminal
 yzx launch --home             # New terminal in home directory
 yzx enter --path ~/project    # Current terminal, specific directory
-yzx launch --term ghostty     # Installed packaged Ghostty variant
 yzx launch --verbose          # Detailed launch diagnostics
 yzx launch --config ./minimal.jsonc # Use an alternate complete settings file
 yzx launch --with editor.command=nvim # Override one setting for this window

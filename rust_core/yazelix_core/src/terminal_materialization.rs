@@ -1,106 +1,25 @@
 use crate::appearance_mode::{
-    APPEARANCE_MODE_AUTO, APPEARANCE_MODE_DARK, APPEARANCE_MODE_LIGHT, WEZTERM_THEME_DARK,
-    WEZTERM_THEME_LIGHT, appearance_mode_from_config, auto_mode, static_light_mode, wezterm_theme,
+    APPEARANCE_MODE_AUTO, APPEARANCE_MODE_DARK, APPEARANCE_MODE_LIGHT, appearance_mode_from_config,
 };
 use crate::atomic_fs::{copy_dir_all, write_text_atomic};
 use crate::bridge::CoreError;
 use crate::config_normalize::{NormalizeConfigRequest, normalize_config};
-use crate::control_plane::config_dir_from_env;
-use crate::ghostty_cursor_registry::{CursorRegistry, YazelixCursorRegistryExt};
-use crate::ghostty_materialization::{
-    GhosttyMaterializationData, GhosttyMaterializationRequest, generate_ghostty_materialization,
-};
 use crate::runtime_component_enabled;
 use crate::terminal_cursor_materialization::{
     TerminalCursorMaterializationData, TerminalCursorMaterializationRequest, TerminalCursorState,
-    cursor_shader_paths_for_state, generate_terminal_cursor_materialization,
+    generate_terminal_cursor_materialization,
 };
-use crate::terminal_variant::terminal_window_title;
-use crate::user_config_paths;
 use serde::Serialize;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-const YAZELIX_THEME: &str = "Abernathy";
-const ABERNATHY_BACKGROUND: &str = "#111416";
-const ABERNATHY_FOREGROUND: &str = "#eeeeec";
-const CATPPUCCIN_LATTE_BACKGROUND: &str = "#eff1f5";
-const CATPPUCCIN_LATTE_FOREGROUND: &str = "#4c4f69";
-const FONT_FIRACODE: &str = "FiraCode Nerd Font";
 const FONT_JETBRAINS_MONO: &str = "JetBrains Mono";
-const FONT_SYMBOLS_NERD_MONO: &str = "Symbols Nerd Font Mono";
-const FONT_SYMBOLS_NERD: &str = "Symbols Nerd Font";
-const FONT_NOTO_COLOR_EMOJI: &str = "Noto Color Emoji";
 const MARS_FONT_SIZE: f64 = 16.0;
 const MARS_LINE_HEIGHT: f64 = 1.12;
-const RIO_FONT_ROOT: &str = "share/yazelix/rio_fonts";
-const RIO_FIRA_CODE_FONT_DIR: &str = "fira_code_nerd";
-const RIO_SYMBOLS_FONT_DIR: &str = "symbols_nerd";
-const RIO_EMOJI_FONT_DIR: &str = "noto_color_emoji";
 pub(crate) const MARS_EMOJI_FONT_ENV: &str = "MARS_EMOJI_FONT";
 pub(crate) const MARS_EMOJI_FONT_SOURCE_ENV: &str = "MARS_EMOJI_FONT_SOURCE";
 pub(crate) const MARS_EMOJI_ENV_KEYS: [&str; 2] = [MARS_EMOJI_FONT_ENV, MARS_EMOJI_FONT_SOURCE_ENV];
 const MARS_EMOJI_FONT_SOURCE_HOME_MANAGER: &str = "home-manager";
-const TERMINAL_DARK_COLOR_PALETTE: &[(&str, &str)] = &[
-    ("background", ABERNATHY_BACKGROUND),
-    ("foreground", ABERNATHY_FOREGROUND),
-    ("black", "#000000"),
-    ("red", "#cd0000"),
-    ("green", "#00cd00"),
-    ("yellow", "#cdcd00"),
-    ("blue", "#1093f5"),
-    ("magenta", "#cd00cd"),
-    ("cyan", "#00cdcd"),
-    ("white", "#faebd7"),
-    ("light-black", "#404040"),
-    ("light-red", "#ff0000"),
-    ("light-green", "#00ff00"),
-    ("light-yellow", "#ffff00"),
-    ("light-blue", "#11b5f6"),
-    ("light-magenta", "#ff00ff"),
-    ("light-cyan", "#00ffff"),
-    ("light-white", "#ffffff"),
-];
-const CATPPUCCIN_LATTE_COLOR_PALETTE: &[(&str, &str)] = &[
-    ("background", CATPPUCCIN_LATTE_BACKGROUND),
-    ("foreground", CATPPUCCIN_LATTE_FOREGROUND),
-    ("black", "#5c5f77"),
-    ("red", "#d20f39"),
-    ("green", "#40a02b"),
-    ("yellow", "#df8e1d"),
-    ("blue", "#1e66f5"),
-    ("magenta", "#ea76cb"),
-    ("cyan", "#179299"),
-    ("white", "#acb0be"),
-    ("light-black", "#6c6f85"),
-    ("light-red", "#d20f39"),
-    ("light-green", "#40a02b"),
-    ("light-yellow", "#df8e1d"),
-    ("light-blue", "#1e66f5"),
-    ("light-magenta", "#ea76cb"),
-    ("light-cyan", "#179299"),
-    ("light-white", "#bcc0cc"),
-];
-const FOOT_DARK_COLOR_PALETTE: &[(&str, &str)] = &[
-    ("background", "#1f1f28"),
-    ("foreground", "#dcd7ba"),
-    ("black", "#000000"),
-    ("red", "#cd3131"),
-    ("green", "#0dbc79"),
-    ("yellow", "#e5e510"),
-    ("blue", "#2472c8"),
-    ("magenta", "#bc3fbc"),
-    ("cyan", "#11a8cd"),
-    ("white", "#e5e5e5"),
-    ("light-black", "#666666"),
-    ("light-red", "#f14c4c"),
-    ("light-green", "#23d18b"),
-    ("light-yellow", "#f5f543"),
-    ("light-blue", "#3b8eea"),
-    ("light-magenta", "#d670d6"),
-    ("light-cyan", "#29b8db"),
-    ("light-white", "#ffffff"),
-];
 
 const TRANSPARENCY_VALUES: &[(&str, &str)] = &[
     ("none", "1.0"),
@@ -148,7 +67,6 @@ pub struct TerminalGeneratedConfig {
 #[derive(Debug, Clone, Serialize, PartialEq)]
 pub struct TerminalMaterializationData {
     pub generated: Vec<TerminalGeneratedConfig>,
-    pub ghostty: Option<crate::ghostty_materialization::GhosttyMaterializationData>,
     pub cursor: Option<TerminalCursorMaterializationData>,
 }
 
@@ -158,403 +76,6 @@ fn get_opacity_value(transparency: &str) -> &str {
         .find(|(k, _)| *k == transparency)
         .map(|(_, v)| *v)
         .unwrap_or("1.0")
-}
-
-fn get_terminal_title(terminal: &str) -> String {
-    terminal_window_title(terminal, None)
-}
-
-fn get_terminal_override_path(
-    config_dir: &Path,
-    terminal: &str,
-) -> Result<Option<PathBuf>, CoreError> {
-    let Some(current) = user_config_paths::terminal_config(config_dir, terminal) else {
-        return Ok(None);
-    };
-    let Some(legacy) = user_config_paths::legacy_terminal_config(config_dir, terminal) else {
-        return Ok(None);
-    };
-    let path = user_config_paths::resolve_current_config_file(
-        &current,
-        &legacy,
-        &format!("{terminal} terminal override"),
-    )?;
-    Ok(Some(path))
-}
-
-fn build_transparency(transparency: &str, format: &str, key: &str) -> String {
-    let opacity = get_opacity_value(transparency);
-    if transparency == "none" {
-        match format {
-            "ini" => format!("# {} = 0.9", key),
-            "ini-space" => format!("# {} 0.9", key),
-            "lua" => "-- config.window_background_opacity = 0.9".to_string(),
-            "toml" => "# opacity = 0.9".to_string(),
-            _ => "".to_string(),
-        }
-    } else {
-        match format {
-            "ini" => format!("{} = {}", key, opacity),
-            "ini-space" => format!("{} {}", key, opacity),
-            "lua" => format!("config.window_background_opacity = {}", opacity),
-            "toml" => format!("opacity = {}", opacity),
-            _ => "".to_string(),
-        }
-    }
-}
-
-fn terminal_palette_for_appearance(
-    appearance_mode: &str,
-) -> &'static [(&'static str, &'static str)] {
-    if static_light_mode(appearance_mode) {
-        CATPPUCCIN_LATTE_COLOR_PALETTE
-    } else {
-        TERMINAL_DARK_COLOR_PALETTE
-    }
-}
-
-fn palette_color(palette: &'static [(&'static str, &'static str)], key: &str) -> &'static str {
-    palette
-        .iter()
-        .find(|(candidate, _)| *candidate == key)
-        .map(|(_, value)| *value)
-        .expect("terminal palette must define every generated color key")
-}
-
-fn foot_color(value: &str) -> &str {
-    value.strip_prefix('#').unwrap_or(value)
-}
-
-fn generate_wezterm_color_scheme(appearance_mode: &str) -> String {
-    if auto_mode(appearance_mode) {
-        return format!(
-            r##"local function yazelix_color_scheme_for_appearance(appearance)
-  if appearance:find("Dark") then
-    return '{}'
-  end
-  return '{}'
-end
-config.color_scheme = yazelix_color_scheme_for_appearance(wezterm.gui.get_appearance())"##,
-            WEZTERM_THEME_DARK, WEZTERM_THEME_LIGHT
-        );
-    }
-
-    format!("config.color_scheme = '{}'", wezterm_theme(appearance_mode))
-}
-
-fn generate_wezterm_config(transparency: &str, appearance_mode: &str) -> String {
-    format!(
-        r##"-- WezTerm configuration for Yazelix
-local wezterm = require 'wezterm'
-local config = wezterm.config_builder()
-
-config.window_decorations = "NONE"
-config.window_padding = {{ left = 0, right = 0, top = 10, bottom = 0 }}
-{}
-
--- Hide tab bar (Zellij handles tabs)
-config.enable_tab_bar = false
-
--- Scrollback: Zellij handles pane history inside Yazelix
-config.scrollback_lines = 0
-
--- Transparency (configurable via settings.jsonc)
-{}
-
--- Cursor trails: Not supported in WezTerm
-
-return config"##,
-        generate_wezterm_color_scheme(appearance_mode),
-        build_transparency(transparency, "lua", ""),
-    )
-}
-
-fn generate_ratty_config(transparency: &str) -> String {
-    format!(
-        r##"# Ratty configuration for Yazelix
-
-[window]
-width = 960
-height = 620
-scale_factor = 1.0
-
-# Transparency (configurable via settings.jsonc)
-{}
-
-[terminal]
-default_cols = 104
-default_rows = 32
-scrollback = 0
-
-[env]
-TERM = "xterm-256color"
-
-[font]
-family = "{}"
-style = "Regular"
-size = 18
-
-[cursor.model]
-path = "CairoSpinyMouse.obj"
-scale_factor = 6.0
-brightness = 0.5
-x_offset = 0.5
-plane_offset = 18.0
-visible = true
-
-[cursor.animation]
-spin_speed = 1.4
-bob_speed = 2.2
-bob_amplitude = 0.08
-
-[bindings]
-keys = [
-  {{ key = "C", with = "Control | alt", action = "Copy" }},
-  {{ key = "V", with = "Control | alt", action = "Paste" }},
-  {{ key = "PageUp", with = "alt", action = "ScrollPageUp" }},
-  {{ key = "PageDown", with = "alt", action = "ScrollPageDown" }},
-  {{ key = "Up", with = "alt", action = "ScrollUp" }},
-  {{ key = "Down", with = "alt", action = "ScrollDown" }},
-  {{ key = "Equal", with = "Control", action = "IncreaseFontSize" }},
-  {{ key = "Minus", with = "Control", action = "DecreaseFontSize" }},
-  {{ key = "Digit0", with = "Control | alt", action = "ResetFontSize" }},
-  {{ key = "Enter", with = "Control | alt", action = "Toggle3DMode" }},
-  {{ key = "M", with = "Control | alt", action = "ToggleMobiusMode" }},
-  {{ key = "Up", with = "Control | alt", action = "IncreaseWarp" }},
-  {{ key = "Down", with = "Control | alt", action = "DecreaseWarp" }},
-]
-
-[theme]
-foreground = "#dcd7ba"
-background = "#1f1f28"
-cursor = "#7e9cd8"
-
-[theme.normal]
-black = "#000000"
-red = "#cd3131"
-green = "#0dbc79"
-yellow = "#e5e510"
-blue = "#2472c8"
-magenta = "#bc3fbc"
-cyan = "#11a8cd"
-white = "#e5e5e5"
-
-[theme.bright]
-black = "#666666"
-red = "#f14c4c"
-green = "#23d18b"
-yellow = "#f5f543"
-blue = "#3b8eea"
-magenta = "#d670d6"
-cyan = "#29b8db"
-white = "#ffffff"
-"##,
-        build_transparency(transparency, "toml", ""),
-        FONT_FIRACODE,
-    )
-}
-
-fn generate_foot_config(transparency: &str, appearance_mode: &str) -> String {
-    let alpha = get_opacity_value(transparency);
-    let initial_color_theme = if static_light_mode(appearance_mode) {
-        "light"
-    } else {
-        "dark"
-    };
-    let dark = FOOT_DARK_COLOR_PALETTE;
-    let light = CATPPUCCIN_LATTE_COLOR_PALETTE;
-    format!(
-        r##"# Foot configuration for Yazelix
-
-term=xterm-256color
-font={}:size=14
-initial-color-theme={}
-
-[cursor]
-style=block
-
-[scrollback]
-# Zellij handles pane history inside Yazelix.
-lines=0
-
-[csd]
-# Compositor rules can still force server-side decorations.
-preferred=none
-size=0
-
-[colors-dark]
-background={}
-foreground={}
-alpha={}
-regular0={}
-regular1={}
-regular2={}
-regular3={}
-regular4={}
-regular5={}
-regular6={}
-regular7={}
-bright0={}
-bright1={}
-bright2={}
-bright3={}
-bright4={}
-bright5={}
-bright6={}
-bright7={}
-
-[colors-light]
-background={}
-foreground={}
-alpha={}
-regular0={}
-regular1={}
-regular2={}
-regular3={}
-regular4={}
-regular5={}
-regular6={}
-regular7={}
-bright0={}
-bright1={}
-bright2={}
-bright3={}
-bright4={}
-bright5={}
-bright6={}
-bright7={}
-"##,
-        FONT_FIRACODE,
-        initial_color_theme,
-        foot_color(palette_color(dark, "background")),
-        foot_color(palette_color(dark, "foreground")),
-        alpha,
-        foot_color(palette_color(dark, "black")),
-        foot_color(palette_color(dark, "red")),
-        foot_color(palette_color(dark, "green")),
-        foot_color(palette_color(dark, "yellow")),
-        foot_color(palette_color(dark, "blue")),
-        foot_color(palette_color(dark, "magenta")),
-        foot_color(palette_color(dark, "cyan")),
-        foot_color(palette_color(dark, "white")),
-        foot_color(palette_color(dark, "light-black")),
-        foot_color(palette_color(dark, "light-red")),
-        foot_color(palette_color(dark, "light-green")),
-        foot_color(palette_color(dark, "light-yellow")),
-        foot_color(palette_color(dark, "light-blue")),
-        foot_color(palette_color(dark, "light-magenta")),
-        foot_color(palette_color(dark, "light-cyan")),
-        foot_color(palette_color(dark, "light-white")),
-        foot_color(palette_color(light, "background")),
-        foot_color(palette_color(light, "foreground")),
-        alpha,
-        foot_color(palette_color(light, "black")),
-        foot_color(palette_color(light, "red")),
-        foot_color(palette_color(light, "green")),
-        foot_color(palette_color(light, "yellow")),
-        foot_color(palette_color(light, "blue")),
-        foot_color(palette_color(light, "magenta")),
-        foot_color(palette_color(light, "cyan")),
-        foot_color(palette_color(light, "white")),
-        foot_color(palette_color(light, "light-black")),
-        foot_color(palette_color(light, "light-red")),
-        foot_color(palette_color(light, "light-green")),
-        foot_color(palette_color(light, "light-yellow")),
-        foot_color(palette_color(light, "light-blue")),
-        foot_color(palette_color(light, "light-magenta")),
-        foot_color(palette_color(light, "light-cyan")),
-        foot_color(palette_color(light, "light-white")),
-    )
-}
-
-fn generate_rio_config(runtime_dir: &Path, transparency: &str, appearance_mode: &str) -> String {
-    let opacity = get_opacity_value(transparency);
-    let palette = terminal_palette_for_appearance(appearance_mode);
-    let fira_code_dir = rio_font_dir(runtime_dir, RIO_FIRA_CODE_FONT_DIR);
-    let symbols_dir = rio_font_dir(runtime_dir, RIO_SYMBOLS_FONT_DIR);
-    let emoji_dir = rio_font_dir(runtime_dir, RIO_EMOJI_FONT_DIR);
-    format!(
-        r##"# Rio configuration for Yazelix
-
-confirm-before-quit = true
-scrollback-history-limit = 0
-
-[effects]
-trail-cursor = true
-
-[title]
-placeholder = "{}"
-content = "{{{{ TITLE || RELATIVE_PATH }}}}"
-
-[window]
-width = 960
-height = 620
-decorations = "Disabled"
-opacity = {}
-opacity-cells = true
-
-[fonts]
-family = "{}"
-size = 18.0
-additional-dirs = ["{}", "{}", "{}"]
-extras = [{{ family = "{}" }}, {{ family = "{}" }}]
-emoji = {{ family = "{}" }}
-
-[colors]
-background = "{}"
-foreground = "{}"
-black = "{}"
-red = "{}"
-green = "{}"
-yellow = "{}"
-blue = "{}"
-magenta = "{}"
-cyan = "{}"
-white = "{}"
-light-black = "{}"
-light-red = "{}"
-light-green = "{}"
-light-yellow = "{}"
-light-blue = "{}"
-light-magenta = "{}"
-light-cyan = "{}"
-light-white = "{}"
-
-[navigation]
-mode = "Plain"
-"##,
-        get_terminal_title("rio"),
-        opacity,
-        FONT_FIRACODE,
-        fira_code_dir.to_string_lossy(),
-        symbols_dir.to_string_lossy(),
-        emoji_dir.to_string_lossy(),
-        FONT_SYMBOLS_NERD_MONO,
-        FONT_SYMBOLS_NERD,
-        FONT_NOTO_COLOR_EMOJI,
-        palette_color(palette, "background"),
-        palette_color(palette, "foreground"),
-        palette_color(palette, "black"),
-        palette_color(palette, "red"),
-        palette_color(palette, "green"),
-        palette_color(palette, "yellow"),
-        palette_color(palette, "blue"),
-        palette_color(palette, "magenta"),
-        palette_color(palette, "cyan"),
-        palette_color(palette, "white"),
-        palette_color(palette, "light-black"),
-        palette_color(palette, "light-red"),
-        palette_color(palette, "light-green"),
-        palette_color(palette, "light-yellow"),
-        palette_color(palette, "light-blue"),
-        palette_color(palette, "light-magenta"),
-        palette_color(palette, "light-cyan"),
-        palette_color(palette, "light-white"),
-    )
-}
-
-fn rio_font_dir(runtime_dir: &Path, font_dir: &str) -> PathBuf {
-    runtime_dir.join(RIO_FONT_ROOT).join(font_dir)
 }
 
 pub fn mars_profile_from_env() -> Result<MarsProfile, CoreError> {
@@ -1041,18 +562,6 @@ fn generate_mars_config(
     })
 }
 
-fn ensure_ghostty_materialization<'a>(
-    data: &'a mut Option<GhosttyMaterializationData>,
-    request: &GhosttyMaterializationRequest,
-) -> Result<&'a GhosttyMaterializationData, CoreError> {
-    if data.is_none() {
-        *data = Some(generate_ghostty_materialization(request)?);
-    }
-    Ok(data
-        .as_ref()
-        .expect("ghostty materialization data was just initialized"))
-}
-
 fn ensure_terminal_cursor_materialization<'a>(
     data: &'a mut Option<TerminalCursorMaterializationData>,
     request: &TerminalCursorMaterializationRequest,
@@ -1063,111 +572,6 @@ fn ensure_terminal_cursor_materialization<'a>(
     Ok(data
         .as_ref()
         .expect("terminal cursor materialization data was just initialized"))
-}
-
-fn cursor_data_from_ghostty(
-    state_dir: &Path,
-    data: &GhosttyMaterializationData,
-) -> TerminalCursorMaterializationData {
-    TerminalCursorMaterializationData {
-        cursor_state: data.cursor_state.clone(),
-        shader_paths: cursor_shader_paths_for_state(state_dir, &data.cursor_state)
-            .into_iter()
-            .map(|path| path.to_string_lossy().into_owned())
-            .collect(),
-        shaders_synced: data.shaders_synced,
-    }
-}
-
-fn build_kitty_cursor(kitty_enable_cursor: bool) -> String {
-    if kitty_enable_cursor {
-        "cursor_shape block\ncursor_trail 3\ncursor_trail_decay 0.1 0.4".to_string()
-    } else {
-        "# cursor_trail 0  # disabled in settings.jsonc".to_string()
-    }
-}
-
-fn generate_kitty_config(
-    transparency: &str,
-    kitty_enable_cursor: bool,
-    override_path: Option<&Path>,
-) -> String {
-    let override_section = match override_path {
-        Some(path) if path.exists() => {
-            format!(
-                "# Personal Yazelix Kitty overrides\ninclude {}",
-                path.display()
-            )
-        }
-        Some(path) => {
-            format!(
-                "# Personal Yazelix Kitty overrides (optional, user-owned)\n# Create {} if you want terminal-native Kitty tweaks.",
-                path.display()
-            )
-        }
-        None => "# Personal Yazelix Kitty overrides (optional, user-owned)".to_string(),
-    };
-
-    format!(
-        r##"# Kitty configuration for Yazelix
-
-hide_window_decorations yes
-window_padding_width 2
-include {}.conf
-window_title {}
-
-# Transparency (configurable via settings.jsonc)
-{}
-
-# Font settings
-font_family      {}
-bold_font        auto
-italic_font      auto
-bold_italic_font auto
-
-# Performance
-repaint_delay 10
-input_delay 3
-sync_to_monitor yes
-scrollback_lines 0
-
-# Cursor trail effect (configurable via settings.jsonc)
-{}
-
-# Personal Yazelix Kitty overrides
-{}"##,
-        YAZELIX_THEME,
-        get_terminal_title("kitty"),
-        build_transparency(transparency, "ini-space", "background_opacity"),
-        FONT_FIRACODE,
-        build_kitty_cursor(kitty_enable_cursor),
-        override_section,
-    )
-}
-
-fn write_single_terminal_config(
-    generated_dir: &Path,
-    terminal: &str,
-    display_name: &str,
-    file_name: &str,
-    content: String,
-) -> Result<TerminalGeneratedConfig, CoreError> {
-    let dir = generated_dir.join(terminal);
-    fs::create_dir_all(&dir).map_err(|source| {
-        CoreError::io(
-            format!("create_{terminal}_dir"),
-            format!("Could not create {display_name} output directory"),
-            "Check permissions for the Yazelix state directory.",
-            dir.to_string_lossy(),
-            source,
-        )
-    })?;
-    let path = dir.join(file_name);
-    write_text_atomic(&path, &content)?;
-    Ok(TerminalGeneratedConfig {
-        terminal: terminal.to_string(),
-        path: path.to_string_lossy().into_owned(),
-    })
 }
 
 pub fn generate_terminal_materialization(
@@ -1188,28 +592,8 @@ pub fn generate_terminal_materialization(
     let appearance_mode = appearance_mode_from_config(config);
     let mars_emoji_font = mars_emoji_font_from_config(config, request.mars_emoji_font)?;
 
-    let config_dir = config_dir_from_env()?;
-    crate::managed_user_config_stubs::ensure_terminal_override_stubs(
-        &config_dir,
-        &request.terminals,
-    )?;
     let cursors_enabled = runtime_component_enabled(&request.runtime_dir, "cursors")?;
-    let kitty_enable_cursor = if cursors_enabled {
-        CursorRegistry::load(&request.cursor_config_path)?
-            .settings
-            .kitty_enable_cursor
-    } else {
-        false
-    };
     let generated_dir = request.state_dir.join("configs").join("terminal_emulators");
-    let ghostty_request = GhosttyMaterializationRequest {
-        runtime_dir: request.runtime_dir.clone(),
-        config_dir: config_dir.clone(),
-        state_dir: request.state_dir.clone(),
-        transparency: transparency.to_string(),
-        appearance_mode: appearance_mode.to_string(),
-        cursor_config_path: request.cursor_config_path.clone(),
-    };
     let cursor_request = TerminalCursorMaterializationRequest {
         runtime_dir: request.runtime_dir.clone(),
         state_dir: request.state_dir.clone(),
@@ -1218,58 +602,10 @@ pub fn generate_terminal_materialization(
     };
 
     let mut generated = Vec::new();
-    let mut ghostty_data = None;
     let mut cursor_data = None;
 
     for terminal in &request.terminals {
         match terminal.as_str() {
-            "ghostty" => {
-                let data = ensure_ghostty_materialization(&mut ghostty_data, &ghostty_request)?;
-                if cursor_data.is_none() {
-                    cursor_data = Some(cursor_data_from_ghostty(&request.state_dir, data));
-                }
-                let path = data.generated_path.clone();
-                generated.push(TerminalGeneratedConfig {
-                    terminal: "ghostty".to_string(),
-                    path,
-                });
-            }
-            "wezterm" => {
-                generated.push(write_single_terminal_config(
-                    &generated_dir,
-                    "wezterm",
-                    "WezTerm",
-                    ".wezterm.lua",
-                    generate_wezterm_config(transparency, appearance_mode),
-                )?);
-            }
-            "rio" => {
-                generated.push(write_single_terminal_config(
-                    &generated_dir,
-                    "rio",
-                    "Rio",
-                    "config.toml",
-                    generate_rio_config(&request.runtime_dir, transparency, appearance_mode),
-                )?);
-            }
-            "ratty" => {
-                generated.push(write_single_terminal_config(
-                    &generated_dir,
-                    "ratty",
-                    "Ratty",
-                    "ratty.toml",
-                    generate_ratty_config(transparency),
-                )?);
-            }
-            "foot" => {
-                generated.push(write_single_terminal_config(
-                    &generated_dir,
-                    "foot",
-                    "Foot",
-                    "foot.ini",
-                    generate_foot_config(transparency, appearance_mode),
-                )?);
-            }
             "mars" => {
                 let mars_dir = generated_dir.join("mars");
                 fs::create_dir_all(&mars_dir).map_err(|source| {
@@ -1312,27 +648,16 @@ pub fn generate_terminal_materialization(
                     path: path.to_string_lossy().into_owned(),
                 });
             }
-            "kitty" => {
-                let override_path = get_terminal_override_path(&config_dir, "kitty")?;
-                generated.push(write_single_terminal_config(
-                    &generated_dir,
-                    "kitty",
-                    "Kitty",
-                    "kitty.conf",
-                    generate_kitty_config(
-                        transparency,
-                        kitty_enable_cursor,
-                        override_path.as_deref(),
-                    ),
-                )?);
+            other => {
+                return Err(CoreError::usage(format!(
+                    "Yazelix only materializes the packaged Mars terminal; configure host terminal '{other}' to run `yzx enter`."
+                )));
             }
-            _ => {}
         }
     }
 
     Ok(TerminalMaterializationData {
         generated,
-        ghostty: ghostty_data,
         cursor: cursor_data,
     })
 }
@@ -1494,34 +819,9 @@ mod tests {
         );
     }
 
-    // Defends: every generated terminal config leaves pane history to Zellij instead of retaining duplicate emulator scrollback.
+    // Defends: Mars terminal config stays aligned with close confirmation and status glyph font defaults.
     #[test]
-    fn generated_terminal_configs_disable_emulator_scrollback() {
-        let runtime = Path::new("/runtime");
-
-        assert!(
-            generate_wezterm_config("none", APPEARANCE_MODE_DARK)
-                .contains("config.scrollback_lines = 0")
-        );
-        assert!(generate_ratty_config("none").contains("scrollback = 0"));
-        assert!(generate_foot_config("none", APPEARANCE_MODE_DARK).contains("[scrollback]\n"));
-        assert!(generate_foot_config("none", APPEARANCE_MODE_DARK).contains("lines=0"));
-        assert!(
-            generate_rio_config(runtime, "none", APPEARANCE_MODE_DARK)
-                .contains("scrollback-history-limit = 0")
-        );
-        assert!(generate_kitty_config("none", false, None).contains("scrollback_lines 0"));
-    }
-
-    // Defends: Rio-family terminal config stays aligned with close confirmation and Mars status glyph font defaults.
-    #[test]
-    fn generated_rio_family_configs_keep_close_and_status_defaults() {
-        let runtime = Path::new("/runtime");
-        assert!(
-            generate_rio_config(runtime, "none", APPEARANCE_MODE_DARK)
-                .contains("confirm-before-quit = true")
-        );
-
+    fn generated_mars_config_keeps_close_and_status_defaults() {
         let temp = tempfile::tempdir().unwrap();
         let package_root = temp.path().join("runtime/share/mars");
         let generated_dir = temp.path().join("state/configs/terminal_emulators/mars");
@@ -1556,23 +856,6 @@ mod tests {
             Some(MARS_FONT_SIZE)
         );
         assert!(rendered.contains("Noto Color Emoji"));
-    }
-
-    // Defends: checked-in reference snapshots stay aligned with the generated no-emulator-scrollback policy.
-    #[test]
-    fn reference_terminal_config_snapshots_disable_emulator_scrollback() {
-        assert!(
-            include_str!("../../../configs/terminal_emulators/ghostty/config")
-                .contains("scrollback-limit = 0")
-        );
-        assert!(
-            include_str!("../../../configs/terminal_emulators/kitty/kitty.conf")
-                .contains("scrollback_lines 0")
-        );
-        assert!(
-            include_str!("../../../configs/terminal_emulators/wezterm/.wezterm.lua")
-                .contains("config.scrollback_lines = 0")
-        );
     }
 
     fn write_mars_package_metadata(package_root: &Path) {

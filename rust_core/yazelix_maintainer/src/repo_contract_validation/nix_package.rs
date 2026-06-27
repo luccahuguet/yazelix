@@ -1,7 +1,7 @@
 use super::{
     build_flake_output_path, build_nix_file_output_path, command_output_summary,
-    create_unique_temp_dir, format_json_value, prepare_temp_home, require_non_empty_dir_abs,
-    require_path_exists_abs, require_path_missing_abs,
+    create_unique_temp_dir, format_json_value, prepare_temp_home, require_path_exists_abs,
+    require_path_missing_abs,
 };
 use crate::repo_validation::ValidationReport;
 use serde_json::Value as JsonValue;
@@ -353,15 +353,12 @@ fn verify_profile_installed_runtime(
         .map(|value| value.trim().to_string())
         .filter(|value| !value.is_empty())
         .unwrap_or_else(|| "unknown".to_string());
-    let runtime_terminal = match runtime_variant.as_str() {
-        "foot" => "foot",
-        "kitty" => "kitty",
-        "rio" => "rio",
-        "wezterm" => "wezterm",
-        "ratty" => "ratty",
-        "mars" => "mars",
-        _ => "ghostty",
-    };
+    if runtime_variant != "mars" {
+        errors.push(format!(
+            "Installed Yazelix runtime must package Mars only, got runtime_variant `{runtime_variant}`"
+        ));
+    }
+    let runtime_terminal = "mars";
     let desktop_entry = applications_dir.join(terminal_desktop_entry_file_name(runtime_terminal));
     require_path_missing_abs(
         &desktop_entry,
@@ -371,65 +368,15 @@ fn verify_profile_installed_runtime(
     if !errors.is_empty() {
         return Ok(());
     }
-    let runtime_terminal_command = match runtime_terminal {
-        "mars" => "mars",
-        other => other,
-    };
+    let runtime_terminal_command = "mars";
     let runtime_yzx_cli = runtime_root.join("shells").join("posix").join("yzx_cli.sh");
     let runtime_yzx_core = runtime_libexec.join("yzx_core");
-    let runtime_ghostty_wrapper = runtime_root
-        .join("shells")
-        .join("posix")
-        .join("yazelix_ghostty.sh");
     let runtime_settings_default = runtime_root.join("settings_default.jsonc");
-    let runtime_ghostty_shader_root = runtime_root
+    let runtime_cursor_shader_root = runtime_root
         .join("configs")
         .join("terminal_emulators")
         .join("ghostty")
         .join("shaders");
-    let generated_ghostty_root = temp_home
-        .join(".local")
-        .join("share")
-        .join("yazelix")
-        .join("configs")
-        .join("terminal_emulators")
-        .join("ghostty");
-    let generated_ghostty_config = generated_ghostty_root.join("config");
-    let generated_ghostty_effect_dir = generated_ghostty_root
-        .join("shaders")
-        .join("generated_effects");
-    let generated_wezterm_config = temp_home
-        .join(".local")
-        .join("share")
-        .join("yazelix")
-        .join("configs")
-        .join("terminal_emulators")
-        .join("wezterm")
-        .join(".wezterm.lua");
-    let generated_kitty_config = temp_home
-        .join(".local")
-        .join("share")
-        .join("yazelix")
-        .join("configs")
-        .join("terminal_emulators")
-        .join("kitty")
-        .join("kitty.conf");
-    let generated_foot_config = temp_home
-        .join(".local")
-        .join("share")
-        .join("yazelix")
-        .join("configs")
-        .join("terminal_emulators")
-        .join("foot")
-        .join("foot.ini");
-    let generated_rio_config = temp_home
-        .join(".local")
-        .join("share")
-        .join("yazelix")
-        .join("configs")
-        .join("terminal_emulators")
-        .join("rio")
-        .join("config.toml");
     let generated_mars_config = temp_home
         .join(".local")
         .join("share")
@@ -438,14 +385,6 @@ fn verify_profile_installed_runtime(
         .join("terminal_emulators")
         .join("mars")
         .join("config.toml");
-    let generated_ratty_config = temp_home
-        .join(".local")
-        .join("share")
-        .join("yazelix")
-        .join("configs")
-        .join("terminal_emulators")
-        .join("ratty")
-        .join("ratty.toml");
 
     for (path, label) in [
         (runtime_toolbin.clone(), "runtime toolbin"),
@@ -461,38 +400,32 @@ fn verify_profile_installed_runtime(
         ),
         (runtime_yzx_cli.clone(), "runtime-local POSIX yzx launcher"),
         (
-            runtime_ghostty_wrapper.clone(),
-            "runtime-local Ghostty env wrapper",
-        ),
-        (
             runtime_settings_default.clone(),
             "runtime-local default config",
         ),
         (
-            runtime_ghostty_shader_root.join("cursor_trail_reef.glsl"),
-            "runtime-local Ghostty trail shader variant",
+            runtime_cursor_shader_root.join("cursor_trail_reef.glsl"),
+            "runtime-local cursor trail shader variant",
         ),
         (
-            runtime_ghostty_shader_root
+            runtime_cursor_shader_root
                 .join("upstream_effects")
                 .join("ripple_rectangle_cursor.glsl"),
-            "runtime-local Ghostty cursor effect template",
+            "runtime-local cursor effect template",
         ),
     ] {
         require_path_exists_abs(&path, label, errors);
     }
     require_path_missing_abs(
-        &runtime_ghostty_shader_root.join("build_shaders.nu"),
-        "stale runtime-local Ghostty shader builder",
+        &runtime_cursor_shader_root.join("build_shaders.nu"),
+        "stale runtime-local cursor shader builder",
         errors,
     );
-    if runtime_terminal == "mars" {
-        require_path_exists_abs(
-            &runtime_root.join("share").join("mars").join("config.toml"),
-            "runtime-local Mars packaged config",
-            errors,
-        );
-    }
+    require_path_exists_abs(
+        &runtime_root.join("share").join("mars").join("config.toml"),
+        "runtime-local Mars packaged config",
+        errors,
+    );
 
     for expected_tool in [
         "zellij",
@@ -546,8 +479,7 @@ fn verify_profile_installed_runtime(
             "runtime tool `nixGLMesa`",
             errors,
         );
-        if (runtime_terminal == "ratty" || runtime_terminal == "mars")
-            && !runtime_libexec.join("nixVulkanMesa").exists()
+        if !runtime_libexec.join("nixVulkanMesa").exists()
             && !runtime_libexec.join("nixVulkanIntel").exists()
         {
             errors.push(format!(
@@ -691,50 +623,11 @@ fn verify_profile_installed_runtime(
         return Ok(());
     }
 
-    if runtime_terminal == "ghostty" {
-        require_ghostty_shader_references_exist(&generated_ghostty_config, errors)?;
-        require_non_empty_dir_abs(
-            &generated_ghostty_effect_dir,
-            "generated Ghostty cursor effect shaders directory",
-            errors,
-        )?;
-    } else if runtime_terminal == "kitty" {
-        require_path_exists_abs(
-            &generated_kitty_config,
-            "generated Kitty config for selected runtime variant",
-            errors,
-        );
-    } else if runtime_terminal == "foot" {
-        require_path_exists_abs(
-            &generated_foot_config,
-            "generated Foot config for selected runtime variant",
-            errors,
-        );
-    } else if runtime_terminal == "rio" {
-        require_path_exists_abs(
-            &generated_rio_config,
-            "generated Rio config for selected runtime variant",
-            errors,
-        );
-    } else if runtime_terminal == "wezterm" {
-        require_path_exists_abs(
-            &generated_wezterm_config,
-            "generated WezTerm config for selected runtime variant",
-            errors,
-        );
-    } else if runtime_terminal == "ratty" {
-        require_path_exists_abs(
-            &generated_ratty_config,
-            "generated Ratty config for selected runtime variant",
-            errors,
-        );
-    } else if runtime_terminal == "mars" {
-        require_path_exists_abs(
-            &generated_mars_config,
-            "generated Mars Terminal config for selected runtime variant",
-            errors,
-        );
-    }
+    require_path_exists_abs(
+        &generated_mars_config,
+        "generated Mars Terminal config for selected runtime variant",
+        errors,
+    );
     if errors.is_empty() {
         verify_profile_desktop_install_path(
             repo_root,
@@ -942,61 +835,6 @@ fn validate_runtime_env_probe(
     }
 }
 
-fn resolve_ghostty_shader_reference(ghostty_config_path: &Path, shader_ref: &str) -> PathBuf {
-    let raw_ref = shader_ref.trim().trim_matches('"');
-    let path = Path::new(raw_ref);
-    if path.is_absolute() {
-        return path.to_path_buf();
-    }
-    let relative = raw_ref.strip_prefix("./").unwrap_or(raw_ref);
-    ghostty_config_path
-        .parent()
-        .unwrap_or_else(|| Path::new("."))
-        .join(relative)
-}
-
-fn require_ghostty_shader_references_exist(
-    ghostty_config_path: &Path,
-    errors: &mut Vec<String>,
-) -> Result<(), String> {
-    require_path_exists_abs(ghostty_config_path, "generated Ghostty config", errors);
-    if !ghostty_config_path.exists() {
-        return Ok(());
-    }
-
-    let content = fs::read_to_string(ghostty_config_path).map_err(|error| {
-        format!(
-            "Failed to read generated Ghostty config {}: {}",
-            ghostty_config_path.display(),
-            error
-        )
-    })?;
-    let shader_refs = content
-        .lines()
-        .map(str::trim)
-        .filter_map(|line| {
-            line.strip_prefix("custom-shader = ")
-                .map(str::trim)
-                .map(ToOwned::to_owned)
-        })
-        .collect::<Vec<_>>();
-    if shader_refs.is_empty() {
-        errors.push(format!(
-            "Generated Ghostty config references no shader assets: {}",
-            ghostty_config_path.display()
-        ));
-    }
-    for shader_ref in shader_refs {
-        let shader_path = resolve_ghostty_shader_reference(ghostty_config_path, &shader_ref);
-        require_path_exists_abs(
-            &shader_path,
-            &format!("generated Ghostty shader `{shader_ref}`"),
-            errors,
-        );
-    }
-    Ok(())
-}
-
 // Test lane: maintainer
 #[cfg(test)]
 mod tests {
@@ -1014,14 +852,14 @@ mod tests {
         fs::write(
             &desktop,
             format!(
-                "[Desktop Entry]\nName=New Yazelix - Ghostty\nTerminal=true\nX-Yazelix-Managed=true\nExec=\"{}\" desktop launch\n",
+                "[Desktop Entry]\nName=New Yazelix - Mars\nTerminal=true\nX-Yazelix-Managed=true\nExec=\"{}\" desktop launch\n",
                 yzx.display()
             ),
         )
         .unwrap();
 
         let mut errors = Vec::new();
-        validate_profile_desktop_entry_contents(&desktop, &yzx, "ghostty", &mut errors).unwrap();
+        validate_profile_desktop_entry_contents(&desktop, &yzx, "mars", &mut errors).unwrap();
 
         assert!(errors.is_empty(), "{errors:?}");
     }
@@ -1036,12 +874,12 @@ mod tests {
         fs::write(&yzx, "").unwrap();
         fs::write(
             &desktop,
-            "[Desktop Entry]\nName=New Yazelix - Ghostty\nTerminal=true\nX-Yazelix-Managed=true\nExec=\"/old/bin/yzx\" desktop launch\n",
+            "[Desktop Entry]\nName=New Yazelix - Mars\nTerminal=true\nX-Yazelix-Managed=true\nExec=\"/old/bin/yzx\" desktop launch\n",
         )
         .unwrap();
 
         let mut errors = Vec::new();
-        validate_profile_desktop_entry_contents(&desktop, &yzx, "ghostty", &mut errors).unwrap();
+        validate_profile_desktop_entry_contents(&desktop, &yzx, "mars", &mut errors).unwrap();
 
         assert!(
             errors

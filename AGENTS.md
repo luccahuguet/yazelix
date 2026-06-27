@@ -119,10 +119,10 @@ When creating new files or directories, always use underscores to maintain consi
   1. Run focused Rust checks/tests for touched code, such as `yzx dev rust check core` or `yzx dev rust test <filter>`.
   2. Run eval-fast package contracts such as `nix build .#checks.$(nix eval --raw --impure --expr builtins.currentSystem).kgp_package_contracts --no-link --no-write-lock-file` for KGP override metadata changes.
   3. Build only the touched package output when needed, such as `nix build .#yazelix_kgp_zellij --no-link --no-write-lock-file`.
-  4. Run `nix build .#runtime_ghostty --no-link --no-write-lock-file` once as the final package gate after the smaller checks pass.
+  4. Run `nix build .#runtime_mars --no-link --no-write-lock-file` once as the final package gate after the smaller checks pass.
 - Avoid launching multiple `nix develop`, `nix eval`, or package-build commands in parallel during validation. They contend on Nix eval caches, store locks, and Cargo/Nix build directories, which makes the session slower and noisier than serialized checks.
 - **Do not run `yzx restart` as an agent.** It kills the user's live Zellij session. If a runtime change needs a fresh Yazelix session, ask the maintainer to launch one or explicitly approve the destructive restart first.
-- Mars and Ghostty are the first-class Yazelix terminal variants. Mars is the default because Yazelix controls the Rust fork and can keep the terminal/runtime stack aligned; Ghostty remains the mature supported alternate.
+- Mars is the first-class Yazelix terminal variant because Yazelix controls the Rust fork and can keep the terminal/runtime stack aligned. Other terminal emulators are host-owned entrypoints that should start Yazelix with `yzx enter`.
 - Keep Mars-related compile-heavy commands (`cargo`, full `nix build`, or Home Manager switch) intentional. Prefer metadata evals and focused package/runtime checks first, then run the exact Mars gate required by the change.
 
 ## Shell Boundary Rule

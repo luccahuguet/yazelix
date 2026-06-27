@@ -3,41 +3,12 @@ use crate::runtime_contract::TerminalCandidate;
 use crate::terminal_variant::terminal_window_title;
 use std::path::{Path, PathBuf};
 
-use super::process::find_command;
-
-pub(super) const X11_INSTANCE: &str = "yazelix";
-pub(super) const WINDOW_CLASS: &str = "com.yazelix.Yazelix";
-const NIXGL_WRAPPER_CANDIDATES: &[&[&str]] = &[
-    &["libexec", "nixGL"],
-    &["libexec", "nixGLDefault"],
-    &["libexec", "nixGLMesa"],
-    &["libexec", "nixGLIntel"],
-    &["bin", "nixGLMesa"],
-    &["bin", "nixGLIntel"],
-];
-const NIX_VULKAN_WRAPPER_CANDIDATES: &[&[&str]] = &[
-    &["libexec", "nixVulkanMesa"],
-    &["libexec", "nixVulkanIntel"],
-    &["bin", "nixVulkanMesa"],
-    &["bin", "nixVulkanIntel"],
-];
-const HOST_NIXGL_COMMANDS: &[&str] = &["nixGL", "nixGLDefault", "nixGLMesa", "nixGLIntel"];
-const HOST_NIX_VULKAN_COMMANDS: &[&str] = &["nixVulkanMesa", "nixVulkanIntel"];
-const MACOS_OPEN_COMMAND: &str = "/usr/bin/open";
-const GHOSTTY_MACOS_APP_RELATIVE_PATH: &[&str] = &["Applications", "Ghostty.app"];
-
 pub(super) fn generated_terminal_config_path(state_dir: &Path, terminal: &str) -> PathBuf {
-    let root = state_dir.join("configs").join("terminal_emulators");
-    match terminal {
-        "ghostty" => root.join("ghostty").join("config"),
-        "wezterm" => root.join("wezterm").join(".wezterm.lua"),
-        "mars" => root.join("mars").join("config.toml"),
-        "rio" => root.join("rio").join("config.toml"),
-        "ratty" => root.join("ratty").join("ratty.toml"),
-        "kitty" => root.join("kitty").join("kitty.conf"),
-        "foot" => root.join("foot").join("foot.ini"),
-        other => root.join(other),
-    }
+    state_dir
+        .join("configs")
+        .join("terminal_emulators")
+        .join(terminal)
+        .join("config.toml")
 }
 
 pub(super) fn xdg_config_home_for_user(home_dir: &Path) -> PathBuf {
@@ -45,70 +16,6 @@ pub(super) fn xdg_config_home_for_user(home_dir: &Path) -> PathBuf {
         .map(PathBuf::from)
         .filter(|path| !path.as_os_str().is_empty())
         .unwrap_or_else(|| home_dir.join(".config"))
-}
-
-pub(super) fn ghostty_user_config_candidates(
-    home_dir: &Path,
-    xdg_config_home: &Path,
-    platform: &str,
-) -> Vec<PathBuf> {
-    let xdg_ghostty = xdg_config_home.join("ghostty");
-    let mut candidates = vec![
-        xdg_ghostty.join("config.ghostty"),
-        xdg_ghostty.join("config"),
-    ];
-
-    if matches!(platform, "macos" | "darwin") {
-        let app_support = home_dir
-            .join("Library")
-            .join("Application Support")
-            .join("com.mitchellh.ghostty");
-        candidates.push(app_support.join("config.ghostty"));
-        candidates.push(app_support.join("config"));
-    }
-
-    candidates
-}
-
-pub(super) fn user_terminal_config_candidates_for_platform(
-    home_dir: &Path,
-    terminal: &str,
-    xdg_config_home: &Path,
-    platform: &str,
-) -> Result<Vec<PathBuf>, String> {
-    match terminal {
-        "ghostty" => Ok(ghostty_user_config_candidates(
-            home_dir,
-            xdg_config_home,
-            platform,
-        )),
-        "kitty" => Ok(vec![home_dir
-            .join(".config")
-            .join("kitty")
-            .join("kitty.conf")]),
-        "wezterm" => Ok(vec![
-            home_dir.join(".wezterm.lua"),
-            home_dir.join(".config").join("wezterm").join("wezterm.lua"),
-        ]),
-        "mars" => Ok(vec![xdg_config_home.join("mars").join("config.toml")]),
-        "rio" => Ok(vec![xdg_config_home.join("rio").join("config.toml")]),
-        "ratty" => Ok(vec![xdg_config_home.join("ratty").join("ratty.toml")]),
-        "foot" => Ok(vec![xdg_config_home.join("foot").join("foot.ini")]),
-        other => Err(format!("Unsupported terminal config lookup: {other}")),
-    }
-}
-
-pub(super) fn user_terminal_config_path(
-    home_dir: &Path,
-    terminal: &str,
-) -> Result<PathBuf, String> {
-    let candidates = user_terminal_config_candidates_for_platform(
-        home_dir,
-        terminal,
-        &xdg_config_home_for_user(home_dir),
-        &current_platform_name(),
-    )?;
-    select_existing_user_terminal_config_path(terminal, &candidates)
 }
 
 pub(super) fn select_existing_user_terminal_config_path(
@@ -135,26 +42,23 @@ pub(super) fn resolve_terminal_config_path(
     mode: &str,
     terminal: &str,
 ) -> Result<PathBuf, String> {
+    if terminal != "mars" {
+        return Err(format!(
+            "Yazelix only launches the packaged Mars terminal; configure host terminal '{terminal}' to run `yzx enter`."
+        ));
+    }
+
     match mode {
         "yazelix" => Ok(generated_terminal_config_path(state_dir, terminal)),
-        "user" => user_terminal_config_path(home_dir, terminal),
+        "user" => select_existing_user_terminal_config_path(
+            terminal,
+            &[xdg_config_home_for_user(home_dir)
+                .join("mars")
+                .join("config.toml")],
+        ),
         other => Err(format!(
             "Unsupported terminal.config_mode '{other}'. Expected 'yazelix' or 'user'."
         )),
-    }
-}
-
-pub(super) fn get_working_dir_args(terminal: &str, working_dir: &Path) -> Vec<String> {
-    let wd = working_dir.to_string_lossy().into_owned();
-    match terminal {
-        "ghostty" => vec![format!("--working-directory={wd}")],
-        "wezterm" => vec!["--cwd".to_string(), wd],
-        "mars" => vec!["--working-dir".to_string(), wd],
-        "rio" => vec!["--working-dir".to_string(), wd],
-        "ratty" => vec![],
-        "kitty" => vec![format!("--directory={wd}")],
-        "foot" => vec![format!("--working-directory={wd}")],
-        _ => vec![],
     }
 }
 
@@ -166,88 +70,20 @@ pub(super) fn current_platform_name() -> String {
         .unwrap_or_else(|| std::env::consts::OS.to_string())
 }
 
-fn resolve_runtime_or_host_wrapper(
-    runtime_dir: &Path,
-    runtime_candidates: &[&[&str]],
-    host_commands: &[&str],
-) -> Option<String> {
-    for relative in runtime_candidates {
-        let path = runtime_dir.join(relative.iter().collect::<PathBuf>());
-        if path.is_file() {
-            return Some(path.to_string_lossy().into_owned());
-        }
-    }
-
-    for command in host_commands {
-        if find_command(command).is_some() {
-            return Some((*command).to_string());
-        }
-    }
-    None
-}
-
-pub(super) fn resolve_nixgl_wrapper(runtime_dir: &Path) -> Option<String> {
-    resolve_runtime_or_host_wrapper(runtime_dir, NIXGL_WRAPPER_CANDIDATES, HOST_NIXGL_COMMANDS)
-}
-
-fn resolve_nix_vulkan_wrapper(runtime_dir: &Path) -> Option<String> {
-    resolve_runtime_or_host_wrapper(
-        runtime_dir,
-        NIX_VULKAN_WRAPPER_CANDIDATES,
-        HOST_NIX_VULKAN_COMMANDS,
-    )
-}
-
-fn resolve_graphics_wrapper(runtime_dir: &Path, terminal: &str, platform: &str) -> Option<String> {
-    if platform != "linux" {
-        return None;
-    }
-    if terminal == "ratty" {
-        return resolve_nix_vulkan_wrapper(runtime_dir);
-    }
-    resolve_nixgl_wrapper(runtime_dir)
-}
-
-pub(super) fn maybe_prepend(argv: Vec<String>, wrapper: Option<String>) -> Vec<String> {
-    if let Some(wrapper) = wrapper.filter(|value| !value.trim().is_empty()) {
-        let mut out = vec![wrapper];
-        out.extend(argv);
-        out
-    } else {
-        argv
-    }
-}
-
-fn ghostty_macos_app_path(runtime_dir: &Path) -> PathBuf {
-    runtime_dir.join(GHOSTTY_MACOS_APP_RELATIVE_PATH.iter().collect::<PathBuf>())
-}
-
 pub(super) fn build_launch_command_argv(
     runtime_dir: &Path,
     terminal: &TerminalCandidate,
-    config_path: &Path,
+    _config_path: &Path,
     working_dir: &Path,
     session_name: Option<&str>,
 ) -> Result<Vec<String>, CoreError> {
-    build_launch_command_argv_for_platform(
-        runtime_dir,
-        terminal,
-        config_path,
-        working_dir,
-        session_name,
-        &current_platform_name(),
-    )
-}
+    if terminal.terminal != "mars" {
+        return Err(CoreError::usage(format!(
+            "Yazelix only launches the packaged Mars terminal; configure host terminal '{}' to run `yzx enter`.",
+            terminal.terminal
+        )));
+    }
 
-pub(super) fn build_launch_command_argv_for_platform(
-    runtime_dir: &Path,
-    terminal: &TerminalCandidate,
-    config_path: &Path,
-    working_dir: &Path,
-    session_name: Option<&str>,
-    platform: &str,
-) -> Result<Vec<String>, CoreError> {
-    let working_dir_args = get_working_dir_args(&terminal.terminal, working_dir);
     let startup_script = runtime_dir
         .join("shells")
         .join("posix")
@@ -265,148 +101,13 @@ pub(super) fn build_launch_command_argv_for_platform(
         ));
     }
 
-    let title = terminal_window_title(&terminal.terminal, session_name);
-    let config_string = config_path.to_string_lossy().into_owned();
-    let platform = platform.trim().to_ascii_lowercase();
-    let graphics_wrapper = resolve_graphics_wrapper(runtime_dir, &terminal.terminal, &platform);
-
-    let argv = match terminal.terminal.as_str() {
-        "ghostty" => {
-            let mut ghostty = if platform == "linux" {
-                vec![
-                    terminal.command.clone(),
-                    "--config-default-files=false".to_string(),
-                    format!("--config-file={config_string}"),
-                    "--gtk-single-instance=false".to_string(),
-                    format!("--class={WINDOW_CLASS}"),
-                    format!("--x11-instance-name={X11_INSTANCE}"),
-                ]
-            } else {
-                vec![
-                    terminal.command.clone(),
-                    "--config-default-files=false".to_string(),
-                    format!("--config-file={config_string}"),
-                ]
-            };
-            ghostty.extend(working_dir_args);
-            if matches!(platform.as_str(), "macos" | "darwin") {
-                let app_path = ghostty_macos_app_path(runtime_dir);
-                if !app_path.is_dir() {
-                    return Err(CoreError::classified(
-                        ErrorClass::Runtime,
-                        "missing_ghostty_macos_app_bundle",
-                        format!(
-                            "Missing packaged Ghostty app bundle at {}.",
-                            app_path.display()
-                        ),
-                        "Reinstall the Yazelix Ghostty runtime package, then retry `yzx launch`.",
-                        serde_json::json!({
-                            "path": app_path.to_string_lossy(),
-                        }),
-                    ));
-                }
-                let mut macos_open = vec![
-                    MACOS_OPEN_COMMAND.to_string(),
-                    "-na".to_string(),
-                    app_path.to_string_lossy().into_owned(),
-                    "--args".to_string(),
-                ];
-                macos_open.extend(ghostty.into_iter().skip(1));
-                macos_open.push(format!(
-                    "--initial-command=direct:{}",
-                    startup_script.to_string_lossy()
-                ));
-                return Ok(macos_open);
-            }
-            ghostty.push("-e".to_string());
-            ghostty.push(startup_script.to_string_lossy().into_owned());
-            let ghostty = maybe_prepend(ghostty, graphics_wrapper);
-            let ghostty_wrapper = runtime_dir
-                .join("shells")
-                .join("posix")
-                .join("yazelix_ghostty.sh");
-            maybe_prepend(
-                ghostty,
-                ghostty_wrapper
-                    .is_file()
-                    .then(|| ghostty_wrapper.to_string_lossy().into_owned()),
-            )
-        }
-        "wezterm" => {
-            let mut wezterm = vec![
-                terminal.command.clone(),
-                "--config-file".to_string(),
-                config_string,
-                "start".to_string(),
-                format!("--class={WINDOW_CLASS}"),
-            ];
-            wezterm.extend(working_dir_args);
-            wezterm.push("--".to_string());
-            wezterm.push(startup_script.to_string_lossy().into_owned());
-            maybe_prepend(wezterm, graphics_wrapper)
-        }
-        "mars" => {
-            let mut mars = vec![
-                terminal.command.clone(),
-                "--title-placeholder".to_string(),
-                title,
-            ];
-            mars.extend(working_dir_args);
-            mars.push("-e".to_string());
-            mars.push(startup_script.to_string_lossy().into_owned());
-            mars
-        }
-        "rio" => {
-            let mut rio = vec![
-                terminal.command.clone(),
-                "--title-placeholder".to_string(),
-                title,
-            ];
-            rio.extend(working_dir_args);
-            rio.push("-e".to_string());
-            rio.push(startup_script.to_string_lossy().into_owned());
-            maybe_prepend(rio, graphics_wrapper)
-        }
-        "ratty" => {
-            let mut ratty = vec![
-                terminal.command.clone(),
-                "--config-file".to_string(),
-                config_string,
-                "--title".to_string(),
-                title,
-            ];
-            ratty.extend(working_dir_args);
-            ratty.push("-e".to_string());
-            ratty.push(startup_script.to_string_lossy().into_owned());
-            maybe_prepend(ratty, graphics_wrapper)
-        }
-        "kitty" => {
-            let mut kitty = vec![
-                terminal.command.clone(),
-                format!("--config={config_string}"),
-                format!("--class={WINDOW_CLASS}"),
-                format!("--title={title}"),
-            ];
-            kitty.extend(working_dir_args);
-            kitty.push(startup_script.to_string_lossy().into_owned());
-            maybe_prepend(kitty, graphics_wrapper)
-        }
-        "foot" => {
-            let mut foot = vec![
-                terminal.command.clone(),
-                format!("--config={config_string}"),
-                format!("--app-id={WINDOW_CLASS}"),
-                format!("--title={title}"),
-            ];
-            foot.extend(working_dir_args);
-            foot.push("--".to_string());
-            foot.push(startup_script.to_string_lossy().into_owned());
-            maybe_prepend(foot, graphics_wrapper)
-        }
-        other => {
-            return Err(CoreError::usage(format!("Unknown terminal: {other}")));
-        }
-    };
-
-    Ok(argv)
+    Ok(vec![
+        terminal.command.clone(),
+        "--title-placeholder".to_string(),
+        terminal_window_title(&terminal.terminal, session_name),
+        "--working-dir".to_string(),
+        working_dir.to_string_lossy().into_owned(),
+        "-e".to_string(),
+        startup_script.to_string_lossy().into_owned(),
+    ])
 }

@@ -152,7 +152,7 @@ Configuration lives in JSONC at `~/.config/yazelix/settings.jsonc`, with `yzx co
 
 First-party child packages own focused pieces of the stack: Mars Terminal, screen rendering, cursor presets, the Zellij bar, the popup plugin, the pane orchestrator wasm, and Yazi assets. The normal Yazelix package wires them together automatically
 
-Mars is the default packaged terminal because Yazelix can evolve the Rust terminal/runtime stack together for Kitty protocol work, stack compatibility, and agent-driven development. Ghostty remains a first-class supported terminal with the mature Ghostty cursor and macOS path. Rio, WezTerm, Kitty, Foot, and Ratty remain supported packaged variants with less Yazelix-specific integration and validation depth
+Mars is the packaged terminal because Yazelix can evolve the Rust terminal/runtime stack together for Kitty protocol work, stack compatibility, and agent-driven development. Ghostty, Rio, WezTerm, Kitty, Foot, Ratty, and other emulators are host-owned entrypoints: configure them to start `yzx enter`
 
 Get everything running in less than 10 minutes with no extra dependencies beyond Nix
 
@@ -213,7 +213,7 @@ For the longer project story, see [Version History](./docs/history.md)
 For the detailed support table across terminals, editors, shells, platforms, and install owners, see [Compatibility Matrix](./docs/compatibility_matrix.md)
 
 - **Platform**: Linux and macOS — see the [macOS support floor contract](docs/contracts/macos_support_floor.md) for the current guaranteed macOS surfaces
-- **Terminal**: Mars is the default packaged terminal; Ghostty is the first-class mature alternate; Rio, WezTerm, and Kitty are supported packaged alternates; Foot and Ratty are supported Linux package paths
+- **Terminal**: Mars is the packaged terminal; Ghostty, Rio, WezTerm, Kitty, Foot, Ratty, and other emulators are host-owned entrypoints that should run `yzx enter`
 - **Editor**: Yazelix Helix and Neovim get first-class support (reveal in the Yazi file tree, open buffer in a running instance, managed editor-pane targeting); other editors get plain pane launches through `editor.command`, and `helix.external` is only for Yazelix-compatible Helix forks
 - **Shell**: Bash, Fish, Zsh, or Nushell - use whichever you prefer
 
@@ -330,14 +330,9 @@ See the full catalog of tools and integrations in the Yazelix Collection:
 If you followed [step 3 in the installation guide](./docs/installation.md#step-3-configure-your-installation-optional), you already have your `~/.config/yazelix/settings.jsonc` config file ready, you can modify it anytime and restart Yazelix to apply changes. Main options live in that file; cursor presets live in `~/.config/yazelix_cursors/settings.jsonc`
 
 **Terminal Emulator Selection:**
-- **Mars** (default packaged terminal): Rust terminal fork with Yazelix-owned generated config, native cursor integration, the Yazelix Zellij Kitty graphics bridge, and an agent-driven development focus
-- **Ghostty** (first-class packaged alternate): Modern, fast terminal written in Zig with Yazelix cursor trails and Yazi image previews
-- **Rio** (upstream Rio packaged path): Rust terminal with generated Yazelix config and the Yazelix Zellij Kitty graphics bridge
-- **WezTerm** (explicit packaged alternate path): Rust terminal with strong graphics support and Sixel compatibility
-- **Ratty** (Linux packaged path): GPU-rendered terminal with Kitty graphics support and inline 3D graphics
-- **Foot** (Linux packaged path): lightweight Wayland terminal with generated Yazelix config
-- **Kitty** (explicit packaged alternate path): Fast, feature-rich, GPU-accelerated terminal with generated Kitty config and the Yazelix Zellij Kitty graphics bridge
-- **Terminal package contract**: each package or Home Manager `programs.yazelix.terminal` value selects one terminal; Yazelix does not fall back to another terminal when that variant is missing or mispackaged
+- **Mars**: packaged Rust terminal fork with Yazelix-owned generated config, native cursor integration, the Yazelix Zellij Kitty graphics bridge, and an agent-driven development focus
+- **Host terminals**: Ghostty, Rio, WezTerm, Kitty, Foot, Ratty, and other emulators should run `yzx enter` as their startup command
+- **Terminal package contract**: Yazelix packages Mars only; non-Mars terminal configuration stays owned by the user's terminal setup
 
 [See the full Customization Guide here.](./docs/customization.md)
 
@@ -363,7 +358,6 @@ Run `yzx help` for the live command list
 - `yzx enter` - Start Yazelix in the current terminal
 - `yzx launch --path DIR` - Launch from a specific directory
 - `yzx launch --home` - Launch from the home directory
-- `yzx launch --term ghostty` - Launch an installed packaged terminal variant
 - `yzx launch --config ./minimal.jsonc` - Start one window from an alternate complete settings file
 - `yzx launch --with editor.command=nvim` - Override one settings field for this window only
 - `yzx launch --verbose` - Print detailed launch diagnostics

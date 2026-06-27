@@ -881,16 +881,13 @@ mod tests {
         );
     }
 
-    // Defends: shared runtime-contract evaluation reports both terminal candidates and the Linux Ghostty graphics ownership warning.
+    // Defends: shared runtime-contract evaluation reports the packaged Mars terminal candidate.
     #[test]
-    fn evaluate_reports_terminal_candidates_and_host_path_ghostty_warning() {
+    fn evaluate_reports_mars_terminal_candidate() {
         let temp = tempdir().unwrap();
-        let runtime_dir = temp.path().join("runtime");
         let host_bin = temp.path().join("host-bin");
-        fs::create_dir_all(runtime_dir.join("libexec")).unwrap();
         fs::create_dir_all(&host_bin).unwrap();
-        write_executable(&host_bin.join("ghostty"));
-        write_executable(&host_bin.join("nixGLMesa"));
+        write_executable(&host_bin.join("mars"));
 
         let data = evaluate_runtime_contract(&RuntimeContractEvaluateRequest {
             working_dir: None,
@@ -899,20 +896,14 @@ mod tests {
             terminal_support: Some(TerminalSupportCheckRequest {
                 owner_surface: "launch".to_string(),
                 requested_terminal: String::new(),
-                terminals: vec!["ghostty".to_string()],
+                terminals: vec!["mars".to_string()],
                 command_search_paths: vec![host_bin.clone()],
             }),
-            linux_ghostty_desktop_graphics_support: Some(LinuxGhosttyDesktopGraphicsRequest {
-                owner_surface: "doctor".to_string(),
-                terminals: vec!["ghostty".to_string()],
-                runtime_dir: Some(runtime_dir),
-                command_search_paths: vec![host_bin],
-                platform_name: Some("linux".to_string()),
-            }),
+            linux_ghostty_desktop_graphics_support: None,
         })
         .unwrap();
 
-        assert_eq!(data.checks.len(), 2);
+        assert_eq!(data.checks.len(), 1);
         assert_eq!(
             data.checks[0].message,
             "The selected Yazelix terminal command is available"
@@ -923,18 +914,7 @@ mod tests {
                 .as_ref()
                 .and_then(|candidates| candidates.first())
                 .map(|candidate| candidate.terminal.as_str()),
-            Some("ghostty")
-        );
-        assert_eq!(
-            data.checks[1].message,
-            "Linux Ghostty desktop-launch graphics support is not runtime-owned"
-        );
-        assert!(
-            data.checks[1]
-                .details
-                .as_deref()
-                .unwrap()
-                .contains("Detected host PATH graphics wrapper: nixGLMesa")
+            Some("mars")
         );
     }
 
@@ -948,7 +928,7 @@ mod tests {
             terminal_support: Some(TerminalSupportCheckRequest {
                 owner_surface: "launch".to_string(),
                 requested_terminal: "warpterm".to_string(),
-                terminals: vec!["ghostty".to_string()],
+                terminals: vec!["mars".to_string()],
                 command_search_paths: Vec::new(),
             }),
             linux_ghostty_desktop_graphics_support: None,
@@ -963,7 +943,7 @@ mod tests {
                 .details
                 .as_deref()
                 .unwrap_or_default()
-                .contains("Supported terminals: mars, ghostty, kitty, rio, wezterm, foot, ratty")
+                .contains("Supported terminals: mars")
         );
     }
 
@@ -1030,14 +1010,14 @@ mod tests {
         fs::create_dir_all(&work).unwrap();
         let host_bin = temp.path().join("host-bin");
         fs::create_dir_all(&host_bin).unwrap();
-        write_executable(&host_bin.join("ghostty"));
+        write_executable(&host_bin.join("mars"));
 
         let data = evaluate_startup_launch_preflight(&StartupLaunchPreflightRequest {
             startup: None,
             launch: Some(LaunchPreflightPayload {
                 working_dir: work.clone(),
                 requested_terminal: String::new(),
-                terminals: vec!["ghostty".to_string()],
+                terminals: vec!["mars".to_string()],
                 command_search_paths: vec![host_bin],
             }),
         })
@@ -1049,7 +1029,7 @@ mod tests {
         let candidates = data.terminal_candidates.as_ref().unwrap();
         assert_eq!(
             candidates.first().map(|c| c.terminal.as_str()),
-            Some("ghostty")
+            Some("mars")
         );
     }
 
@@ -1068,7 +1048,7 @@ mod tests {
             terminal_support: Some(TerminalSupportCheckRequest {
                 owner_surface: "launch".to_string(),
                 requested_terminal: "mars".to_string(),
-                terminals: vec!["ghostty".to_string()],
+                terminals: vec!["mars".to_string()],
                 command_search_paths: vec![host_bin],
             }),
             linux_ghostty_desktop_graphics_support: None,

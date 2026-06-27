@@ -633,36 +633,36 @@ mod tests {
         );
     }
 
-    // Regression: same-generation terminal package variants share generated state instead of
-    // invalidating each other through absolute Nix store paths.
+    // Regression: same-generation runtime paths share generated state instead of
+    // invalidating each other through absolute Nix store paths alone.
     #[test]
-    fn runtime_refresh_hash_uses_generation_identity_not_runtime_variant_path() {
+    fn runtime_refresh_hash_uses_generation_identity_not_runtime_store_path() {
         let dir = tempdir().expect("tempdir");
-        let ratty_runtime = dir.path().join("store/current-yazelix-ratty");
-        let ghostty_runtime = dir.path().join("store/current-yazelix-ghostty");
-        let old_runtime = dir.path().join("store/old-yazelix-ghostty");
+        let current_runtime = dir.path().join("store/current-yazelix-mars");
+        let sibling_runtime = dir.path().join("store/current-yazelix-mars-copy");
+        let old_runtime = dir.path().join("store/old-yazelix-mars");
         write_runtime_identity(
-            &ratty_runtime,
-            "ratty",
+            &current_runtime,
+            "mars",
             "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         );
         write_runtime_identity(
-            &ghostty_runtime,
-            "ghostty",
+            &sibling_runtime,
+            "mars",
             "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         );
         write_runtime_identity(
             &old_runtime,
-            "ghostty",
+            "mars",
             "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
         );
 
-        let ratty_hash = compute_runtime_refresh_hash(&ratty_runtime).unwrap();
-        let ghostty_hash = compute_runtime_refresh_hash(&ghostty_runtime).unwrap();
+        let current_hash = compute_runtime_refresh_hash(&current_runtime).unwrap();
+        let sibling_hash = compute_runtime_refresh_hash(&sibling_runtime).unwrap();
         let old_hash = compute_runtime_refresh_hash(&old_runtime).unwrap();
 
-        assert_eq!(ratty_hash, ghostty_hash);
-        assert_ne!(ratty_hash, old_hash);
+        assert_eq!(current_hash, sibling_hash);
+        assert_ne!(current_hash, old_hash);
     }
 
     // Defends: recording generated-state hashes never takes ownership of unmanaged config surfaces.

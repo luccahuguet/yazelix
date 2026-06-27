@@ -37,7 +37,7 @@ fn write_runtime_layout(runtime: &Path) {
         include_str!("../../../settings_default.jsonc"),
     )
     .expect("main defaults");
-    fs::write(runtime.join("runtime_variant"), "ghostty\n").expect("runtime variant");
+    fs::write(runtime.join("runtime_variant"), "mars\n").expect("runtime variant");
     fs::write(
         runtime.join(DEFAULT_CURSOR_CONFIG_FILENAME),
         include_str!("../../../yazelix_cursors_default.toml"),

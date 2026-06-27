@@ -161,32 +161,14 @@ pub fn validate_nix_customization_api(repo_root: &Path) -> Result<ValidationRepo
     );
     require_json_bool(
         object,
-        "home_manager_terminal_option_selects_rio",
-        "Home Manager programs.yazelix.terminal must select the packaged terminal variant",
+        "home_manager_terminal_option_selects_mars",
+        "Home Manager programs.yazelix.terminal must select the Mars packaged terminal variant",
         &mut report.errors,
     );
     require_json_bool(
         object,
         "home_manager_terminal_option_omits_fallback_terminal_packages",
         "Home Manager terminal selection must not install additional terminal fallback packages",
-        &mut report.errors,
-    );
-    require_json_bool(
-        object,
-        "rio_runtime_uses_configured_upstream_package",
-        "Rio runtime must use the configured upstream Rio package",
-        &mut report.errors,
-    );
-    require_json_bool(
-        object,
-        "ghostty_host_terminal_macos_omits_runtime_package_and_app_bundle",
-        "macOS Ghostty host terminal mode must omit the packaged terminal and app bundle",
-        &mut report.errors,
-    );
-    require_json_bool(
-        object,
-        "ghostty_bundled_terminal_macos_keeps_app_bundle",
-        "macOS Ghostty bundled mode must keep the packaged app bundle",
         &mut report.errors,
     );
     require_json_bool(
@@ -335,38 +317,36 @@ fn build_nix_customization_api_expr(repo_root: &Path) -> String {
         "      }".to_string(),
         "    ];".to_string(),
         "  };".to_string(),
-        "  hmRio = flake.inputs.home-manager.lib.homeManagerConfiguration {".to_string(),
-        "    inherit pkgs;".to_string(),
-        "    modules = [".to_string(),
-        "      flake.homeManagerModules.yazelix".to_string(),
-        "      {".to_string(),
-        "        home.username = \"validator\";".to_string(),
-        "        home.homeDirectory = \"/home/validator\";".to_string(),
-        "        home.stateVersion = \"24.11\";".to_string(),
-        "        programs.yazelix.enable = true;".to_string(),
-        "        programs.yazelix.manage_config = true;".to_string(),
-        "        programs.yazelix.terminal = \"rio\";".to_string(),
-        "      }".to_string(),
-        "    ];".to_string(),
-        "  };".to_string(),
-        r#"  fakeRioPackage = pkgs.runCommand "validator-rio-0.4.7" { } ''
-    mkdir -p "$out/bin"
-    touch "$out/bin/rio"
-    chmod +x "$out/bin/rio"
-  '';"#
-            .to_string(),
-        "  darwinPkgs = import flake.inputs.nixpkgs { system = \"aarch64-darwin\"; };".to_string(),
+        "  fakeMarsTerminalPackage = pkgs.runCommand \"validator-mars-terminal\" {".to_string(),
+        "    passthru.marsPackageMetadata = {".to_string(),
+        "      schema_version = 1;".to_string(),
+        "      terminal = \"mars\";".to_string(),
+        "      package_name = \"validator-mars-terminal\";".to_string(),
+        "      package_profile = \"fast\";".to_string(),
+        "      checked_package = false;".to_string(),
+        "      metadata_path = \"share/mars/package-metadata.json\";".to_string(),
+        "      wrapper_commands.desktop = \"mars\";".to_string(),
+        "      config_roots = { default = \"config/mars\"; };".to_string(),
+        "      supported_emoji_fonts = [ \"noto\" \"twitter\" ];".to_string(),
+        "      emoji_fonts = { noto = {}; twitter = {}; };".to_string(),
+        "      supported_appearance_modes = [ \"dark\" \"light\" \"auto\" ];".to_string(),
+        "      default_appearance_mode = \"dark\";".to_string(),
+        "      wrapper_env = { appearance = \"MARS_THEME\"; emoji_font = \"MARS_EMOJI_FONT\"; };".to_string(),
+        "    };".to_string(),
+        "  } \"mkdir -p $out/bin; touch $out/bin/mars\";".to_string(),
         format!(
             "  steelBundledRegistry = import \"{}/packaging/runtime_tool_registry.nix\" {{",
             repo_root_literal
         ),
         "    inherit pkgs;".to_string(),
+        "    marsTerminalPackage = fakeMarsTerminalPackage;".to_string(),
         "  };".to_string(),
         format!(
             "  steelOffRegistry = import \"{}/packaging/runtime_tool_registry.nix\" {{",
             repo_root_literal
         ),
         "    inherit pkgs;".to_string(),
+        "    marsTerminalPackage = fakeMarsTerminalPackage;".to_string(),
         "    runtimeToolSources = { steel = \"off\"; };".to_string(),
         "  };".to_string(),
         format!(
@@ -374,31 +354,9 @@ fn build_nix_customization_api_expr(repo_root: &Path) -> String {
             repo_root_literal
         ),
         "    inherit pkgs;".to_string(),
+        "    marsTerminalPackage = fakeMarsTerminalPackage;".to_string(),
         "    runtimeToolSources = { mise = \"bundled\"; tombi = \"bundled\"; };".to_string(),
         "  };".to_string(),
-        format!(
-            r#"  rioOverrideRegistry = import "{}/packaging/runtime_tool_registry.nix" {{
-    inherit pkgs;
-    runtimeVariant = "rio";
-    rioPackage = fakeRioPackage;
-  }};"#,
-            repo_root_literal
-        ),
-        format!(
-            r#"  darwinGhosttyHostRegistry = import "{}/packaging/runtime_tool_registry.nix" {{
-    pkgs = darwinPkgs;
-    runtimeVariant = "ghostty";
-    runtimeToolSources = {{ terminal = "host"; }};
-  }};"#,
-            repo_root_literal
-        ),
-        format!(
-            r#"  darwinGhosttyBundledRegistry = import "{}/packaging/runtime_tool_registry.nix" {{
-    pkgs = darwinPkgs;
-    runtimeVariant = "ghostty";
-  }};"#,
-            repo_root_literal
-        ),
         "  steelAuthoringCommands = [ \"steel\" \"steel-language-server\" \"forge\" \"cargo-steel-lib\" \"repl-connect\" ];".to_string(),
         "  invalidRuntimeTool = builtins.tryEval ((flake.lib.${system}.mkYazelix { runtimeToolSources = { zellij = \"host\"; }; }).drvPath);".to_string(),
         "  unsupportedComponent = builtins.tryEval ((flake.lib.${system}.mkYazelix { components = { status_bar = false; }; }).drvPath);".to_string(),
@@ -482,12 +440,8 @@ fn build_nix_customization_api_expr(repo_root: &Path) -> String {
         "  host_default_tools_not_exported = !(builtins.elem \"mise\" steelBundledRegistry.exportedCommands) && !(builtins.elem \"tombi\" steelBundledRegistry.exportedCommands);".to_string(),
         "  host_default_tools_can_be_bundled = hostDefaultToolsBundledRegistry.manifest.mise.source == \"bundled\" && hostDefaultToolsBundledRegistry.manifest.tombi.source == \"bundled\" && builtins.elem \"mise\" hostDefaultToolsBundledRegistry.exportedCommands && builtins.elem \"tombi\" hostDefaultToolsBundledRegistry.exportedCommands;".to_string(),
         "  home_manager_has_package = builtins.length hm.config.home.packages > 0;".to_string(),
-        "  home_manager_terminal_option_selects_rio = hmRio.config.programs.yazelix.terminal == \"rio\" && builtins.any (pkg: (pkg.meta.mainProgram or \"\") == \"yzx\") hmRio.config.home.packages;".to_string(),
-        "  home_manager_terminal_option_omits_fallback_terminal_packages = !(builtins.any (pkg: let name = pkg.name or \"\"; in pkgs.lib.hasPrefix \"ghostty-\" name || pkgs.lib.hasPrefix \"foot-\" name || pkgs.lib.hasPrefix \"kitty-\" name || pkgs.lib.hasPrefix \"rio-\" name || pkgs.lib.hasPrefix \"wezterm-\" name || pkgs.lib.hasPrefix \"ratty-\" name) hmRio.config.home.packages);".to_string(),
-        r#"  rio_runtime_uses_configured_upstream_package = rioOverrideRegistry.tools.terminal.package == fakeRioPackage && rioOverrideRegistry.tools.terminal.commands == [ "rio" ] && rioOverrideRegistry.terminalPackageMetadata == null;"#
-            .to_string(),
-        "  ghostty_host_terminal_macos_omits_runtime_package_and_app_bundle = darwinGhosttyHostRegistry.manifest.terminal.source == \"host\" && darwinGhosttyHostRegistry.manifest.terminal.commands == [] && !(builtins.elem darwinGhosttyHostRegistry.tools.terminal.package darwinGhosttyHostRegistry.runtimePackages) && !(builtins.elem \"ghostty\" darwinGhosttyHostRegistry.exportedCommands) && darwinGhosttyHostRegistry.terminalAppBundlePath == null;".to_string(),
-        "  ghostty_bundled_terminal_macos_keeps_app_bundle = darwinGhosttyBundledRegistry.manifest.terminal.source == \"bundled\" && builtins.elem darwinGhosttyBundledRegistry.tools.terminal.package darwinGhosttyBundledRegistry.runtimePackages && builtins.elem \"ghostty\" darwinGhosttyBundledRegistry.exportedCommands && darwinGhosttyBundledRegistry.terminalAppBundlePath != null;".to_string(),
+        "  home_manager_terminal_option_selects_mars = hm.config.programs.yazelix.terminal == \"mars\" && builtins.any (pkg: (pkg.meta.mainProgram or \"\") == \"yzx\") hm.config.home.packages;".to_string(),
+        "  home_manager_terminal_option_omits_fallback_terminal_packages = !(builtins.any (pkg: let name = pkg.name or \"\"; in pkgs.lib.hasPrefix \"ghostty-\" name || pkgs.lib.hasPrefix \"foot-\" name || pkgs.lib.hasPrefix \"kitty-\" name || pkgs.lib.hasPrefix \"rio-\" name || pkgs.lib.hasPrefix \"wezterm-\" name || pkgs.lib.hasPrefix \"ratty-\" name) hm.config.home.packages);".to_string(),
         "  invalid_runtime_tool_rejected = !invalidRuntimeTool.success;".to_string(),
         "  unsupported_component_rejected = !unsupportedComponent.success;".to_string(),
         "  kgp_zellij_owns_cargo_deps = (kgpZellij.version or \"\") == \"0.44.3\" && (kgpZellij.cargoDeps.name or \"\") == \"zellij-0.44.3-vendor\";".to_string(),

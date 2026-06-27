@@ -1,7 +1,6 @@
 //! Shared logic for the `yzx_control` CLI (`yzx env` / `yzx run`).
 
 use crate::active_config_surface::{primary_config_paths, resolve_active_config_paths};
-use crate::appearance_mode::appearance_mode_from_config;
 use crate::bridge::{CoreError, ErrorClass};
 use crate::helix_external::HelixExternalPair;
 use crate::runtime_env::RuntimePathInput;
@@ -9,9 +8,9 @@ use crate::terminal_materialization::{mars_emoji_font_override_from_env, mars_pr
 use crate::terminal_variant::active_terminal_from_runtime_dir;
 use crate::zellij_materialization::zellij_permissions_cache_path;
 use crate::{
-    ComputeConfigStateRequest, GhosttyMaterializationRequest, NormalizeConfigRequest,
-    RecordConfigStateRequest, RuntimeEnvComputeRequest, RuntimeMaterializationPlanRequest,
-    TerminalMaterializationRequest, normalize_config,
+    ComputeConfigStateRequest, NormalizeConfigRequest, RecordConfigStateRequest,
+    RuntimeEnvComputeRequest, RuntimeMaterializationPlanRequest, TerminalMaterializationRequest,
+    normalize_config,
 };
 use serde_json::{Map as JsonMap, Value as JsonValue};
 use std::ffi::OsString;
@@ -383,35 +382,6 @@ pub fn terminal_materialization_request_from_env(
         terminals: vec![terminal],
         mars_emoji_font: mars_emoji_font_override_from_env()?,
         mars_profile: mars_profile_from_env()?,
-    })
-}
-
-pub fn ghostty_materialization_request_from_env(
-    config_override: Option<&str>,
-) -> Result<GhosttyMaterializationRequest, CoreError> {
-    let runtime_dir = runtime_dir_from_env()?;
-    let config_dir = config_dir_from_env()?;
-    let state_dir = state_dir_from_env()?;
-    let paths = resolve_active_config_paths(&runtime_dir, &config_dir, config_override)?;
-    let normalized = normalize_config(&NormalizeConfigRequest {
-        config_path: paths.config_file.clone(),
-        default_config_path: paths.default_config_path.clone(),
-        contract_path: paths.contract_path.clone(),
-        include_missing: true,
-    })?
-    .normalized_config;
-
-    Ok(GhosttyMaterializationRequest {
-        runtime_dir,
-        config_dir,
-        state_dir,
-        transparency: normalized
-            .get("transparency")
-            .and_then(|value| value.as_str())
-            .unwrap_or("none")
-            .to_string(),
-        appearance_mode: appearance_mode_from_config(&normalized).to_string(),
-        cursor_config_path: paths.user_cursor_config,
     })
 }
 

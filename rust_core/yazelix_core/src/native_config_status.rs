@@ -376,7 +376,6 @@ fn helix_statuses(request: &NativeConfigStatusRequest) -> Vec<NativeConfigStatus
 fn terminal_statuses(request: &NativeConfigStatusRequest) -> Vec<NativeConfigStatusEntry> {
     let terminal = request.active_terminal.as_str();
     let mut entries = Vec::new();
-    let managed = user_config_paths::terminal_config(&request.config_dir, terminal);
     let native_candidates = user_terminal_config_candidates(
         &request.home_dir,
         &request.xdg_config_home,
@@ -405,15 +404,6 @@ fn terminal_statuses(request: &NativeConfigStatusRequest) -> Vec<NativeConfigSta
                 NativeConfigStatusCode::NativeRequiredMissing,
             ),
         }
-    } else if managed.as_ref().is_some_and(|path| path_present(path)) {
-        let mut input = entry(
-            format!("terminal.{terminal}.input"),
-            terminal.to_string(),
-            "Optional Yazelix-managed terminal sidecar",
-            NativeConfigStatusCode::ManagedOverride,
-        );
-        input.active_path = managed.as_ref().map(|path| path_string(path));
-        input
     } else {
         entry(
             format!("terminal.{terminal}.input"),
@@ -422,12 +412,10 @@ fn terminal_statuses(request: &NativeConfigStatusRequest) -> Vec<NativeConfigSta
             NativeConfigStatusCode::ManagedDefault,
         )
     };
-    input.managed_path = managed.as_ref().map(|path| path_string(path));
     input.native_paths = path_strings(&native_candidates);
     input.allowed_action = match input.status.as_str() {
         "native_read_only" => "open_read_only".to_string(),
         "native_required_missing" => "create_native_or_use_yazelix_mode".to_string(),
-        "managed_override" => "edit_managed".to_string(),
         _ => "edit_settings".to_string(),
     };
     input.read_only_reason = (input.status == "native_read_only").then(|| {
@@ -550,12 +538,7 @@ fn generated_entry(
 pub fn generated_terminal_config_path(state_dir: &Path, terminal: &str) -> PathBuf {
     let root = state_dir.join("configs").join("terminal_emulators");
     match terminal {
-        "ghostty" => root.join("ghostty").join("config"),
-        "wezterm" => root.join("wezterm").join(".wezterm.lua"),
         "mars" => root.join("mars").join("config.toml"),
-        "ratty" => root.join("ratty").join("ratty.toml"),
-        "kitty" => root.join("kitty").join("kitty.conf"),
-        "foot" => root.join("foot").join("foot.ini"),
         other => root.join(other),
     }
 }
@@ -610,7 +593,7 @@ mod tests {
             state_dir: tmp.path().join("state"),
             platform: "linux".to_string(),
             terminal_config_mode: "yazelix".to_string(),
-            active_terminal: "ghostty".to_string(),
+            active_terminal: "mars".to_string(),
             settings_home_manager_read_only: false,
         }
     }
@@ -645,39 +628,19 @@ mod tests {
         );
     }
 
-    // Regression: terminal.config_mode=user must surface a missing native terminal config as required, not as a harmless absent sidecar.
+    // Regression: terminal.config_mode=user must surface a missing native terminal config as required, not as a harmless generated default.
     #[test]
-    fn terminal_user_mode_reports_required_native_config_missing() {
+    fn mars_user_mode_reports_required_native_config_missing() {
         let tmp = TempDir::new().unwrap();
         let mut req = request(&tmp);
         req.terminal_config_mode = "user".to_string();
-
-        let entries = classify_native_config_statuses(&req);
-        let terminal = find(&entries, "terminal.ghostty.input");
-
-        assert_eq!(terminal.status, "native_required_missing");
-        assert_eq!(terminal.label, "Required native config missing");
-        assert!(terminal.generated_path.is_none());
-        assert!(
-            terminal
-                .native_paths
-                .iter()
-                .any(|path| path.ends_with("config.ghostty"))
-        );
-    }
-
-    // Defends: Mars Terminal's native user-mode lookup points at its child-owned config directory.
-    #[test]
-    fn mars_user_mode_uses_child_native_config_path() {
-        let tmp = TempDir::new().unwrap();
-        let mut req = request(&tmp);
-        req.terminal_config_mode = "user".to_string();
-        req.active_terminal = "mars".to_string();
 
         let entries = classify_native_config_statuses(&req);
         let terminal = find(&entries, "terminal.mars.input");
 
         assert_eq!(terminal.status, "native_required_missing");
+        assert_eq!(terminal.label, "Required native config missing");
+        assert!(terminal.generated_path.is_none());
         assert!(
             terminal
                 .native_paths

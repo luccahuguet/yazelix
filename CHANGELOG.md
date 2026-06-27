@@ -10,7 +10,8 @@ Upgrade impact: no user action required
 
 Highlights:
 - Adopted the grouped Zellij mode layer from Yazelix Next: `Ctrl p/t/n/q` keep pane, tab, resize, and quit fast, `Ctrl Alt g/s/o` keep lock, search, and session grouped off plain Ctrl, `Ctrl h` stays unbound from move mode, and the consumed Zellij fork groups mixed modifier hints cleanly in the bottom bar
-- Fixed macOS Ghostty app-bundle launches so `yzx launch` starts Yazelix through `--initial-command=direct:<runtime>/shells/posix/start_yazelix.sh`, avoiding the extra default Ghostty window/session, and gave the runtime smoke CI lane enough time for cache-miss builds
+- Made Mars the only packaged terminal path, removed non-Mars runtime variants and Home Manager extra terminal launchers, and documented Ghostty, Rio, WezTerm, Kitty, Foot, and Ratty as host-owned `yzx enter` entrypoints
+- Gave the runtime smoke CI lane enough time for cache-miss builds
 
 ## v17.8 - 2026-06-22
 

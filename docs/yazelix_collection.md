@@ -18,20 +18,14 @@ Yazelix is built on a focused terminal-workspace stack. This catalog lists the p
 
 - `#yazelix` — The default flake package and app, backed by the Mars runtime variant
 - `#yazelix_mars` — Explicit Mars runtime package, equivalent to the default packaged terminal variant
-- `#yazelix_ghostty` — Explicit Ghostty runtime package for users who prefer the mature Ghostty terminal path
-- `#yazelix_wezterm` — Explicit WezTerm runtime package for users who prefer WezTerm terminal behavior
-- `#yazelix_kitty` — Explicit Kitty runtime package for users who prefer Kitty terminal behavior
-- `#yazelix_rio` — Explicit vanilla Rio runtime package for users who prefer upstream Rio terminal behavior
-- `#yazelix_foot` — Linux Foot runtime package for users who prefer Foot terminal behavior
-- `#yazelix_ratty` — Linux Ratty runtime package for users who want Ratty terminal behavior
-- `#runtime`, `#runtime_mars`, `#runtime_ghostty`, `#runtime_wezterm`, `#runtime_kitty`, `#runtime_rio`, `#runtime_foot`, `#runtime_ratty` — Runtime-only package outputs used by the wrapper packages and validation surfaces
-- `#yazelix_kgp_zellij` — KGP-enabled Zellij package output used by Kitty-passthrough runtime variants and cache publication workflow
-- `#yazelix_agent_tools` and `#runtime_agent_tools` — Compatibility runtime variants for the default package shape with bundled agent usage helpers
+- `#runtime` and `#runtime_mars` — Runtime-only package outputs used by the wrapper package and validation surfaces
+- `#yazelix_kgp_zellij` — KGP-enabled Zellij package output used by the Mars Kitty-passthrough runtime path and cache publication workflow
+- `#yazelix_agent_tools` and `#runtime_agent_tools` — Compatibility package profiles for the default package shape with bundled agent usage helpers
 - `#yazelix_zellij_bar` — Standalone Zellij/zjstatus bar preset forwarded from `luccahuguet/yazelix-zellij-bar`, including `yazelix_zellij_bar_widget` and package-local `zjstatus.wasm`
 - `#yzs` and `#yazelix_screen` — Standalone terminal animation package forwarded from `luccahuguet/yazelix-screen` for the Yazelix screen engines outside Zellij and outside a full Yazelix session
 - `#yazelix_cursors` — Standalone Yazelix cursor package, with generated GLSL files, example Ghostty config snippets, and the `yzc` CLI
 - `#yzc` — Flake app for the standalone Yazelix cursor CLI
-- `homeManagerModules.yazelix` — The Home Manager module for declarative installs, with `terminal = "mars"` by default, `"ghostty"`, `"rio"`, `"wezterm"`, and `"kitty"` available explicitly, and Linux-only `"foot"` and `"ratty"` available
+- `homeManagerModules.yazelix` — The Home Manager module for declarative installs, with `terminal = "mars"` as the packaged terminal
 
 ## First-Party Child Repositories
 
@@ -48,7 +42,7 @@ Maintainer-facing fork status, child-repo ownership tables, README delta rules, 
 - [ratconfig](https://github.com/luccahuguet/ratconfig) — Reusable Ratatui config editor crate for JSONC-backed settings, consumed by Yazelix config UI while Yazelix keeps settings schema, Home Manager ownership, validation, and runtime apply behavior in this repo.
 - [yazelix-zellij-popup](https://github.com/luccahuguet/yazelix-zellij-popup) — Standalone Zellij popup plugin for plain-Zellij users; its child flake package `#yzpp` installs `share/yazelix_zellij_popup/yzpp.wasm`, this repo forwards it as `#yazelix_zellij_popup`, and regular Yazelix sessions package the same `yzpp.wasm` for popup, menu, and config UI panes.
 - [yazelix-yazi-assets](https://github.com/luccahuguet/yazelix-yazi-assets) — Standalone Yazi flavor and reusable plugin asset pack consumed by Yazelix Yazi runtime generation and exposed from this repo as `#yazelix_yazi_assets`.
-- [yazelix-zellij](https://github.com/luccahuguet/yazelix-zellij) — Temporary product integration fork consumed by Kitty-passthrough runtime variants so upstream Yazi image previews can use Kitty graphics through Zellij; this fork should be dropped and archived once upstream Zellij supports the required Kitty graphics path directly enough for Yazelix to return to upstream Zellij.
+- [yazelix-zellij](https://github.com/luccahuguet/yazelix-zellij) — Temporary product integration fork consumed by the Mars Kitty-passthrough runtime path so upstream Yazi image previews can use Kitty graphics through Zellij; this fork should be dropped and archived once upstream Zellij supports the required Kitty graphics path directly enough for Yazelix to return to upstream Zellij.
 
 ## Core Workspace Stack
 
@@ -63,13 +57,8 @@ Maintainer-facing fork status, child-repo ownership tables, README delta rules, 
 
 ## Terminal Emulators
 
-- [Mars](https://github.com/luccahuguet/mars) — Default packaged terminal runtime. Mars is a Rust terminal fork focused on Yazelix stack compatibility, optional Kitty protocol growth, and agent-driven development workflows.
-- [Ghostty](https://ghostty.org/) — First-class packaged terminal alternate. Yazelix uses Ghostty for the mature cursor trail, mode-change shader experience, macOS path, and Yazi image previews through Zellij.
-- [Rio](https://github.com/raphamorim/rio) — Packaged upstream Rio terminal through `#yazelix_rio` and `terminal = "rio"`, with generated Yazelix config and the Yazelix Zellij Kitty graphics bridge.
-- [WezTerm](https://wezfurlong.org/wezterm/) — Packaged alternate terminal through `#yazelix_wezterm` and `terminal = "wezterm"`, useful for users who prefer WezTerm terminal behavior.
-- [Foot](https://codeberg.org/dnkl/foot) — Linux packaged terminal through `#yazelix_foot` and `terminal = "foot"`, with generated Yazelix config.
-- [Ratty](https://github.com/orhun/ratty) — Linux packaged terminal through `#yazelix_ratty` and `terminal = "ratty"`, with generated Yazelix config and the Yazelix Zellij Kitty graphics bridge. Yazelix does not claim Ratty Graphics Protocol passthrough inside Zellij.
-- [Kitty](https://sw.kovidgoyal.net/kitty/) — Packaged alternate terminal through `#yazelix_kitty` and `terminal = "kitty"`, with generated Yazelix config and the Yazelix Zellij Kitty graphics bridge.
+- [Mars](https://github.com/luccahuguet/mars) — Packaged terminal runtime. Mars is a Rust terminal fork focused on Yazelix stack compatibility, optional Kitty protocol growth, and agent-driven development workflows.
+- [Ghostty](https://ghostty.org/), [Rio](https://github.com/raphamorim/rio), [WezTerm](https://wezfurlong.org/wezterm/), [Foot](https://codeberg.org/dnkl/foot), [Ratty](https://github.com/orhun/ratty), and [Kitty](https://sw.kovidgoyal.net/kitty/) — Host-owned terminal entrypoints; configure them to run `yzx enter`
 - [ghostty-cursor-shaders](https://github.com/sahaj-b/ghostty-cursor-shaders) — Upstream inspiration for the Yazelix-managed Ghostty-compatible cursor shader system. Yazelix vendors/adapts the shader direction through `settings.jsonc` cursor settings, generated config, and the standalone `#yazelix_cursors` package.
 
 ## Editors And Shells
@@ -123,7 +112,7 @@ Plugin catalog: https://github.com/yazi-rs/plugins
 - [`settings.jsonc`](../config_metadata/yazelix_settings.schema.json) — Canonical semantic settings inventory; main settings live under `~/.config/yazelix/settings.jsonc` and cursor presets live under `~/.config/yazelix_cursors/settings.jsonc`
 - [Yazi configuration](./yazi-configuration.md) — Personal Yazi config overlays under `~/.config/yazelix/yazi/`
 - [Zellij configuration](./zellij-configuration.md) — `settings.jsonc` for Yazelix-owned Zellij behavior plus `~/.config/yazelix/zellij.kdl` for native settings Yazelix does not render
-- [Terminal overrides](./terminal_emulators.md) — Terminal-native override files for Ghostty and Kitty, with Mars, Rio, Foot, and Ratty using generated config or native user-mode config
+- [Terminal emulators](./terminal_emulators.md) — Mars as the packaged terminal, with Ghostty, Rio, WezTerm, Kitty, Foot, Ratty, and other emulators treated as host-owned `yzx enter` entrypoints
 - [Managed shell hooks](./customization.md) — Yazelix-only shell hook files for Bash, Zsh, Fish, Nushell, and host-owned xonsh initializers, with managed paths listed in [POSIX/XDG Paths](./posix_xdg.md).
 
 ## Runtime Boundary
@@ -136,7 +125,7 @@ That means:
 - there is no public `yzx packs` or `yazelix packs` workflow
 - `user_packages` and runtime-local `devenv` are outside the supported current surface
 - helper tools listed above are part of the shipped runtime or an explicit flake/Home Manager variant
-- alternative terminals outside Mars/Ghostty/Rio/WezTerm/Kitty/Foot/Ratty are supported when the user provides them on `PATH`
+- non-Mars terminals are supported when the user provides them and configures the terminal to run `yzx enter`
 
 ## Maintainer Tooling
 

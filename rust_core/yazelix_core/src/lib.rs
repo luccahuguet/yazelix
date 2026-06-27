@@ -24,7 +24,6 @@ pub mod edit_commands;
 pub mod front_door_commands;
 pub mod front_door_render;
 pub mod ghostty_cursor_registry;
-pub mod ghostty_materialization;
 pub mod helix_bridge_client;
 pub mod helix_external;
 pub mod helix_materialization;
@@ -118,9 +117,6 @@ pub use front_door_commands::{
 };
 pub use ghostty_cursor_registry::{
     DEFAULT_GHOSTTY_TRAIL_DURATION, GHOSTTY_TRAIL_DURATION_MAX, GHOSTTY_TRAIL_DURATION_MIN,
-};
-pub use ghostty_materialization::{
-    GhosttyMaterializationData, GhosttyMaterializationRequest, generate_ghostty_materialization,
 };
 pub use helix_bridge_client::{
     HelixBridgeActionTarget, internal_helix_control_subcommands_usage, run_yzx_helix,

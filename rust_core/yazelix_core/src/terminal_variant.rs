@@ -2,9 +2,7 @@ use crate::bridge::{CoreError, ErrorClass};
 use std::fs;
 use std::path::Path;
 
-pub const SUPPORTED_TERMINALS: &[&str] = &[
-    "mars", "ghostty", "kitty", "rio", "wezterm", "foot", "ratty",
-];
+pub const SUPPORTED_TERMINALS: &[&str] = &["mars"];
 const KNOWN_SESSION_TERMINALS: &[&str] = &[
     "ghostty", "mars", "rio", "wezterm", "ratty", "kitty", "foot",
 ];
@@ -119,7 +117,7 @@ pub fn active_terminal_from_runtime_dir(runtime_dir: &Path) -> Result<String, Co
                 raw.trim()
             ),
             format!(
-                "Reinstall Yazelix with one supported terminal variant: {}.",
+                "Reinstall Yazelix with the supported packaged terminal variant: {}.",
                 SUPPORTED_TERMINALS.join(", ")
             ),
             serde_json::json!({

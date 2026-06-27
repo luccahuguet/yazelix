@@ -5,7 +5,7 @@
   nixgl ? null,
   metaPlatforms ? null,
   fenixPkgs ? null,
-  runtimeVariant ? "ghostty",
+  runtimeVariant ? "mars",
   runtimeToolSources ? { },
   runtimeIdentity ? { },
   name ? "yazelix",
@@ -14,7 +14,6 @@
   components ? { },
   extraRuntimePackages ? [ ],
   yaziAssets ? null,
-  rioPackage ? pkgs.rio,
   yazelixHelixPackage ? null,
   yazelixCursorsPackage ? null,
   marsTerminalPackage ? null,
@@ -39,7 +38,6 @@ let
       components
       extraRuntimePackages
       yaziAssets
-      rioPackage
       yazelixHelixPackage
       yazelixCursorsPackage
       marsTerminalPackage

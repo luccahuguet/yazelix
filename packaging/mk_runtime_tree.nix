@@ -4,14 +4,13 @@
   nixgl ? null,
   name ? "yazelix-runtime",
   rustCoreHelper ? null,
-  runtimeVariant ? "ghostty",
+  runtimeVariant ? "mars",
   runtimeToolSources ? { },
   runtimeIdentity ? { },
   components ? { },
   extraRuntimePackages ? [ ],
   extraRuntimeCommands ? [ "tu" ],
   yaziAssets ? null,
-  rioPackage ? pkgs.rio,
   yazelixHelixPackage ? null,
   yazelixCursorsPackage ? null,
   marsTerminalPackage ? null,
@@ -21,7 +20,7 @@
 
 let
   runtimeToolRegistry = import ./runtime_tool_registry.nix {
-    inherit pkgs nixgl rioPackage runtimeVariant runtimeToolSources marsTerminalPackage;
+    inherit pkgs nixgl runtimeVariant runtimeToolSources marsTerminalPackage;
   };
   runtimeComponentRegistry = import ./runtime_component_registry.nix {
     lib = pkgs.lib;
@@ -141,31 +140,13 @@ let
     ++ pkgs.lib.optional cursorsEnabled {
       source = "${src}/yazelix_cursors_default.toml";
       target = "yazelix_cursors_default.toml";
-    }
-    ++ pkgs.lib.optionals (runtimeVariant == "rio") [
-      {
-        source = "${pkgs.nerd-fonts.fira-code}/share/fonts/truetype/NerdFonts/FiraCode";
-        target = "share/yazelix/rio_fonts/fira_code_nerd";
-      }
-      {
-        source = "${pkgs.nerd-fonts.symbols-only}/share/fonts/truetype/NerdFonts/Symbols";
-        target = "share/yazelix/rio_fonts/symbols_nerd";
-      }
-      {
-        source = "${pkgs.noto-fonts-color-emoji}/share/fonts/noto";
-        target = "share/yazelix/rio_fonts/noto_color_emoji";
-      }
-    ];
+    };
   renderRuntimeInputLink =
     { source, target }:
     ''
       link_runtime_input ${pkgs.lib.escapeShellArg source} ${pkgs.lib.escapeShellArg target}
     '';
   renderedRuntimeInputLinks = pkgs.lib.concatMapStrings renderRuntimeInputLink runtimeInputLinks;
-  renderedTerminalAppBundleLink = pkgs.lib.optionalString (runtimeToolRegistry.terminalAppBundlePath != null) ''
-    test -d ${pkgs.lib.escapeShellArg runtimeToolRegistry.terminalAppBundlePath}
-    link_runtime_input ${pkgs.lib.escapeShellArg runtimeToolRegistry.terminalAppBundlePath} "Applications/Ghostty.app"
-  '';
 in
 pkgs.runCommand name { } ''
   mkdir -p "$out"
@@ -185,7 +166,6 @@ pkgs.runCommand name { } ''
   }
 
   ${renderedRuntimeInputLinks}
-  ${renderedTerminalAppBundleLink}
   mkdir -p "$out/configs"
   for config_entry in ${src}/configs/*; do
     config_name="$(basename "$config_entry")"
@@ -204,19 +184,12 @@ pkgs.runCommand name { } ''
   done
   link_runtime_input "${helixSteelPluginRoot}" "configs/helix/steel_plugins"
   mkdir -p "$out/configs/terminal_emulators"
-  for terminal_entry in ${src}/configs/terminal_emulators/*; do
-    terminal_name="$(basename "$terminal_entry")"
-    if [ "$terminal_name" = "ghostty" ]; then
-      link_runtime_input "$terminal_entry/config" "configs/terminal_emulators/ghostty/config"
-      ${pkgs.lib.optionalString cursorsEnabled ''
-        ${pkgs.lib.concatMapStringsSep "\n        " (shaderFile: ''test -s "${cursorShaderRoot}/${shaderFile}"'') cursorPackageContract.requiredShaderFiles}
-        test ! -e "${cursorShaderRoot}/build_shaders.nu"
-        link_runtime_input "${cursorShaderRoot}" "configs/terminal_emulators/ghostty/shaders"
-      ''}
-    else
-      link_runtime_input "$terminal_entry" "configs/terminal_emulators/$terminal_name"
-    fi
-  done
+  link_runtime_input "${src}/configs/terminal_emulators/mars" "configs/terminal_emulators/mars"
+  ${pkgs.lib.optionalString cursorsEnabled ''
+    ${pkgs.lib.concatMapStringsSep "\n    " (shaderFile: ''test -s "${cursorShaderRoot}/${shaderFile}"'') cursorPackageContract.requiredShaderFiles}
+    test ! -e "${cursorShaderRoot}/build_shaders.nu"
+    link_runtime_input "${cursorShaderRoot}" "configs/terminal_emulators/ghostty/shaders"
+  ''}
   mkdir -p "$out/configs/zellij/plugins"
   for zellij_entry in ${src}/configs/zellij/*; do
     zellij_name="$(basename "$zellij_entry")"

@@ -1,8 +1,7 @@
 {
   pkgs,
   nixgl ? null,
-  rioPackage ? pkgs.rio,
-  runtimeVariant ? "ghostty",
+  runtimeVariant ? "mars",
   runtimeToolSources ? { },
   marsTerminalPackage ? null,
 }:
@@ -24,14 +23,6 @@ let
     else
       "bundled";
   sourceFor = name: runtimeToolSources.${name} or (defaultSourceFor name);
-  terminalSource = sourceFor "terminal";
-  hostGhosttyTerminalEntrypoint =
-    terminalSource == "host" && runtimeVariant == "ghostty" && pkgs.stdenv.hostPlatform.isDarwin;
-  ghosttyPackage =
-    if pkgs.stdenv.hostPlatform.isDarwin then
-      pkgs."ghostty-bin"
-    else
-      pkgs.ghostty;
   commandBasename = command: lib.last (lib.splitString "/" command);
   requireMarsPackageMetadata =
     package:
@@ -89,7 +80,7 @@ let
       else
         throw "Yazelix runtimeVariant mars requires the Mars terminal child package"
     else
-      null;
+      throw "Unsupported Yazelix runtimeVariant: ${runtimeVariant}. Yazelix only packages Mars; configure host terminals to run `yzx enter`.";
   marsPackageRuntimeIdentity =
     if marsPackageMetadata == null then
       { }
@@ -112,53 +103,8 @@ let
           marsPackageMetadata.default_appearance_mode;
       };
   terminalPackage =
-    if runtimeVariant == "ghostty" then
-      ghosttyPackage
-    else if runtimeVariant == "kitty" then
-      pkgs.kitty
-    else if runtimeVariant == "rio" then
-      rioPackage
-    else if runtimeVariant == "wezterm" then
-      pkgs.wezterm
-    else if runtimeVariant == "ratty" then
-      if pkgs.stdenv.hostPlatform.isLinux then
-        pkgs.ratty
-      else
-        throw "Yazelix runtimeVariant ratty is only supported on Linux"
-    else if runtimeVariant == "foot" then
-      if pkgs.stdenv.hostPlatform.isLinux then
-        pkgs.foot
-      else
-        throw "Yazelix runtimeVariant foot is only supported on Linux"
-    else if runtimeVariant == "mars" then
-      if marsPackageMetadata != null then
-        marsTerminalPackage
-      else
-        throw "Yazelix runtimeVariant mars requires the Mars terminal child package"
-    else
-      throw "Unsupported Yazelix runtimeVariant: ${runtimeVariant}";
-  terminalCommands =
-    if runtimeVariant == "ghostty" then
-      lib.optional (!hostGhosttyTerminalEntrypoint) "ghostty"
-    else if runtimeVariant == "kitty" then
-      [ "kitty" ]
-    else if runtimeVariant == "rio" then
-      [ "rio" ]
-    else if runtimeVariant == "wezterm" then
-      [ "wezterm" ]
-    else if runtimeVariant == "ratty" then
-      [ "ratty" ]
-    else if runtimeVariant == "foot" then
-      [ "foot" ]
-    else if runtimeVariant == "mars" then
-      [ (commandBasename marsPackageMetadata.wrapper_commands.desktop) ]
-    else
-      [ ];
-  terminalAppBundlePath =
-    if terminalSource == "bundled" && runtimeVariant == "ghostty" && pkgs.stdenv.hostPlatform.isDarwin then
-      "${terminalPackage}/Applications/Ghostty.app"
-    else
-      null;
+    marsTerminalPackage;
+  terminalCommands = [ (commandBasename marsPackageMetadata.wrapper_commands.desktop) ];
   linuxGraphicsWrappers =
     if pkgs.stdenv.hostPlatform.isLinux && (nixgl != null) then
       import "${nixgl}/default.nix" {
@@ -174,7 +120,7 @@ let
     else
       null;
   linuxVulkanWrapperPackage =
-    if linuxGraphicsWrappers != null && builtins.elem runtimeVariant [ "ratty" "mars" ] then
+    if linuxGraphicsWrappers != null && runtimeVariant == "mars" then
       linuxGraphicsWrappers.nixVulkanMesa
     else
       null;
@@ -208,7 +154,6 @@ let
       terminal = makeTool {
         package = terminalPackage;
         commands = terminalCommands;
-        hostable = runtimeVariant == "ghostty" && pkgs.stdenv.hostPlatform.isDarwin;
       };
       helix = makeTool {
         package = helix;
@@ -457,7 +402,7 @@ else if disallowedOffNames != [ ] then
   throw "Yazelix runtimeToolSources off mode is not supported for: ${lib.concatStringsSep ", " disallowedOffNames}"
 else
   {
-    inherit runtimeToolSourceModes tools runtimePackages exportedCommands manifest terminalAppBundlePath;
+    inherit runtimeToolSourceModes tools runtimePackages exportedCommands manifest;
     terminalPackageMetadata = marsPackageMetadata;
     terminalPackageRuntimeIdentity = marsPackageRuntimeIdentity;
     manifestJson = builtins.toJSON manifest;
