@@ -70,7 +70,11 @@ Out of scope:
   <runtime>/Applications/Ghostty.app --args` with the generated config,
   working directory, and startup command preserved through
   `--initial-command=direct:<runtime>/shells/posix/start_yazelix.sh` instead of
-  Ghostty's `-e` form. Ghostty launch argv and generated Ghostty config do not
+  Ghostty's `-e` form. When macOS Ghostty is host-sourced through
+  `runtime_tool_sources.terminal = "host"`, Yazelix does not own an app bundle
+  to open; the supported entrypoint is the host Ghostty config running
+  `yzx enter`. Ghostty launch
+  argv and generated Ghostty config do not
   set a fixed title, because Ghostty treats configured titles as authoritative
   and would ignore the Zellij-owned title escape sequence that carries the live
   session name.

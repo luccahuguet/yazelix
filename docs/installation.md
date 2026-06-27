@@ -440,6 +440,8 @@ Yazelix includes optional Home Manager support for declarative configuration man
 
 The default flake packages stay batteries-included. Yazelix does not expose a package matrix for every possible storage-saving combination; use Home Manager or `lib.${system}.mkYazelix` when you want specific tools to come from your host `PATH`.
 
+On macOS, users who already manage Ghostty can also set `terminal = "ghostty"` with `runtime_tool_sources.terminal = "host"`. That profile omits the packaged Ghostty app bundle; configure the host Ghostty app's initial command as `yzx enter`.
+
 Home Manager is the recommended granular path:
 
 ```nix

@@ -14,6 +14,19 @@ let
     "host"
     "off"
   ];
+  defaultSourceFor =
+    name:
+    if builtins.elem name [
+      "mise"
+      "tombi"
+    ] then
+      "host"
+    else
+      "bundled";
+  sourceFor = name: runtimeToolSources.${name} or (defaultSourceFor name);
+  terminalSource = sourceFor "terminal";
+  hostGhosttyTerminalEntrypoint =
+    terminalSource == "host" && runtimeVariant == "ghostty" && pkgs.stdenv.hostPlatform.isDarwin;
   ghosttyPackage =
     if pkgs.stdenv.hostPlatform.isDarwin then
       pkgs."ghostty-bin"
@@ -126,7 +139,7 @@ let
       throw "Unsupported Yazelix runtimeVariant: ${runtimeVariant}";
   terminalCommands =
     if runtimeVariant == "ghostty" then
-      [ "ghostty" ]
+      lib.optional (!hostGhosttyTerminalEntrypoint) "ghostty"
     else if runtimeVariant == "kitty" then
       [ "kitty" ]
     else if runtimeVariant == "rio" then
@@ -142,7 +155,7 @@ let
     else
       [ ];
   terminalAppBundlePath =
-    if runtimeVariant == "ghostty" && pkgs.stdenv.hostPlatform.isDarwin then
+    if terminalSource == "bundled" && runtimeVariant == "ghostty" && pkgs.stdenv.hostPlatform.isDarwin then
       "${terminalPackage}/Applications/Ghostty.app"
     else
       null;
@@ -195,6 +208,7 @@ let
       terminal = makeTool {
         package = terminalPackage;
         commands = terminalCommands;
+        hostable = runtimeVariant == "ghostty" && pkgs.stdenv.hostPlatform.isDarwin;
       };
       helix = makeTool {
         package = helix;
@@ -420,16 +434,6 @@ let
   disallowedOffNames = lib.filter (
     name: runtimeToolSources.${name} == "off" && !(tools.${name}.disableable or false)
   ) runtimeToolNames;
-  defaultSourceFor =
-    name:
-    if builtins.elem name [
-      "mise"
-      "tombi"
-    ] then
-      "host"
-    else
-      "bundled";
-  sourceFor = name: runtimeToolSources.${name} or (defaultSourceFor name);
   bundledToolNames = lib.filter (name: sourceFor name == "bundled") (builtins.attrNames tools);
   bundledTools = map (name: tools.${name}) bundledToolNames;
   runtimePackages = lib.unique (map (tool: tool.package) bundledTools);

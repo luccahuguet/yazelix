@@ -126,8 +126,11 @@ ${marsEmojiFontDescriptionBullets}
 
       Host mode is supported for leaf tools such as lazygit, zenith, helix, steel,
       neovim, yazi, fzf, zoxide, starship, carapace, macchina, mise, tombi, git, jq,
-      fd, and ripgrep. Bootstrap tools such as Nushell, Zellij, the selected
-      terminal, Nix, POSIX utilities, and graphics wrappers remain bundled.
+      fd, and ripgrep. On macOS, host mode is also supported for the Ghostty
+      terminal runtime; in that mode Yazelix does not package or launch Ghostty,
+      and the host Ghostty config should start Yazelix with `yzx enter`.
+      Bootstrap tools such as Nushell, Zellij, Nix, POSIX utilities, and graphics
+      wrappers remain bundled.
 
       Off mode is supported for optional helpers such as steel, macchina, p7zip,
       poppler, and resvg. Disabled helpers are intentionally omitted from the

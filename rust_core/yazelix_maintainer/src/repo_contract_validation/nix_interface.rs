@@ -179,6 +179,18 @@ pub fn validate_nix_customization_api(repo_root: &Path) -> Result<ValidationRepo
     );
     require_json_bool(
         object,
+        "ghostty_host_terminal_macos_omits_runtime_package_and_app_bundle",
+        "macOS Ghostty host terminal mode must omit the packaged terminal and app bundle",
+        &mut report.errors,
+    );
+    require_json_bool(
+        object,
+        "ghostty_bundled_terminal_macos_keeps_app_bundle",
+        "macOS Ghostty bundled mode must keep the packaged app bundle",
+        &mut report.errors,
+    );
+    require_json_bool(
+        object,
         "invalid_runtime_tool_rejected",
         "invalid runtimeToolSources host modes must fail during Nix evaluation",
         &mut report.errors,
@@ -343,6 +355,7 @@ fn build_nix_customization_api_expr(repo_root: &Path) -> String {
     chmod +x "$out/bin/rio"
   '';"#
             .to_string(),
+        "  darwinPkgs = import flake.inputs.nixpkgs { system = \"aarch64-darwin\"; };".to_string(),
         format!(
             "  steelBundledRegistry = import \"{}/packaging/runtime_tool_registry.nix\" {{",
             repo_root_literal
@@ -368,6 +381,21 @@ fn build_nix_customization_api_expr(repo_root: &Path) -> String {
     inherit pkgs;
     runtimeVariant = "rio";
     rioPackage = fakeRioPackage;
+  }};"#,
+            repo_root_literal
+        ),
+        format!(
+            r#"  darwinGhosttyHostRegistry = import "{}/packaging/runtime_tool_registry.nix" {{
+    pkgs = darwinPkgs;
+    runtimeVariant = "ghostty";
+    runtimeToolSources = {{ terminal = "host"; }};
+  }};"#,
+            repo_root_literal
+        ),
+        format!(
+            r#"  darwinGhosttyBundledRegistry = import "{}/packaging/runtime_tool_registry.nix" {{
+    pkgs = darwinPkgs;
+    runtimeVariant = "ghostty";
   }};"#,
             repo_root_literal
         ),
@@ -458,6 +486,8 @@ fn build_nix_customization_api_expr(repo_root: &Path) -> String {
         "  home_manager_terminal_option_omits_fallback_terminal_packages = !(builtins.any (pkg: let name = pkg.name or \"\"; in pkgs.lib.hasPrefix \"ghostty-\" name || pkgs.lib.hasPrefix \"foot-\" name || pkgs.lib.hasPrefix \"kitty-\" name || pkgs.lib.hasPrefix \"rio-\" name || pkgs.lib.hasPrefix \"wezterm-\" name || pkgs.lib.hasPrefix \"ratty-\" name) hmRio.config.home.packages);".to_string(),
         r#"  rio_runtime_uses_configured_upstream_package = rioOverrideRegistry.tools.terminal.package == fakeRioPackage && rioOverrideRegistry.tools.terminal.commands == [ "rio" ] && rioOverrideRegistry.terminalPackageMetadata == null;"#
             .to_string(),
+        "  ghostty_host_terminal_macos_omits_runtime_package_and_app_bundle = darwinGhosttyHostRegistry.manifest.terminal.source == \"host\" && darwinGhosttyHostRegistry.manifest.terminal.commands == [] && !(builtins.elem darwinGhosttyHostRegistry.tools.terminal.package darwinGhosttyHostRegistry.runtimePackages) && !(builtins.elem \"ghostty\" darwinGhosttyHostRegistry.exportedCommands) && darwinGhosttyHostRegistry.terminalAppBundlePath == null;".to_string(),
+        "  ghostty_bundled_terminal_macos_keeps_app_bundle = darwinGhosttyBundledRegistry.manifest.terminal.source == \"bundled\" && builtins.elem darwinGhosttyBundledRegistry.tools.terminal.package darwinGhosttyBundledRegistry.runtimePackages && builtins.elem \"ghostty\" darwinGhosttyBundledRegistry.exportedCommands && darwinGhosttyBundledRegistry.terminalAppBundlePath != null;".to_string(),
         "  invalid_runtime_tool_rejected = !invalidRuntimeTool.success;".to_string(),
         "  unsupported_component_rejected = !unsupportedComponent.success;".to_string(),
         "  kgp_zellij_owns_cargo_deps = (kgpZellij.version or \"\") == \"0.44.3\" && (kgpZellij.cargoDeps.name or \"\") == \"zellij-0.44.3-vendor\";".to_string(),
