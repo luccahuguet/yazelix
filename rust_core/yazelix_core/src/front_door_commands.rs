@@ -30,7 +30,6 @@ use std::time::Duration;
 enum TutorView {
     Overview,
     Begin,
-    Continue,
     List,
     Lesson(usize),
     Helix,
@@ -98,7 +97,7 @@ const TUTOR_LESSONS: &[TutorLessonSpec] = &[
         summary: "Get back to a known pane, inspect config, and refresh stale runtime state",
         scope: "Current Yazelix window",
         outcome: "You can recover from lost focus, stuck popups, stale generated state, and unclear config/runtime ownership.",
-        escape_hatch: "If a popup or pane still feels wrong, run `yzx doctor` and then `yzx tutor continue` to return to the guided path.",
+        escape_hatch: "If a popup or pane still feels wrong, run `yzx doctor` and then `yzx tutor list` to return to the guided path.",
         render: render_troubleshooting_lesson,
     },
     TutorLessonSpec {
@@ -219,11 +218,6 @@ pub fn run_yzx_tutor(args: &[String]) -> Result<i32, CoreError> {
             print!("{}", render_tutor_lesson(0, &keymap));
             Ok(0)
         }
-        TutorView::Continue => {
-            let keymap = TutorKeymap::active_from_env()?;
-            print!("{}", render_tutor_continue(&keymap));
-            Ok(0)
-        }
         TutorView::List => {
             print!("{}", render_tutor_list());
             Ok(0)
@@ -309,7 +303,6 @@ fn parse_tutor_args(args: &[String]) -> Result<TutorArgs, CoreError> {
     let view = match tokens.as_slice() {
         [] => TutorView::Overview,
         ["begin"] => TutorView::Begin,
-        ["continue"] => TutorView::Continue,
         ["list"] => TutorView::List,
         ["hx"] | ["helix"] => TutorView::Helix,
         ["nu"] | ["nushell"] => TutorView::Nushell,
@@ -396,7 +389,6 @@ fn print_tutor_help() {
     println!("Usage:");
     println!("  yzx tutor");
     println!("  yzx tutor begin");
-    println!("  yzx tutor continue");
     println!("  yzx tutor list");
     println!("  yzx tutor workspace");
     println!("  yzx tutor discovery");
@@ -446,9 +438,7 @@ fn render_yazelix_tutor_overview() -> String {
 
 Start with `yzx tutor begin`.
 
-Use `yzx tutor list` to see every lesson.
-
-Use `yzx tutor continue` when coming back later.
+Use `yzx tutor list` to see every lesson or come back later.
 
 Useful companions:
 
@@ -474,25 +464,8 @@ fn render_tutor_list() -> String {
             lesson.scope, lesson.summary
         ));
     }
-    markdown.push_str("\nStart with `yzx tutor begin`; pick back up with `yzx tutor continue`.\n");
-    render_tutor_markdown(&markdown)
-}
-
-fn render_tutor_continue(keymap: &TutorKeymap) -> String {
-    let menu_key = zellij_key(keymap, "menu");
-    let markdown = format!(
-        r#"# Continue the Yazelix tutor
-
-Yazelix does not store tutor progress. Pick the first lesson below that you have not practiced.
-
-1. `yzx tutor workspace` if opening projects, Yazi handoff, or sidebar focus still feels unclear.
-2. `yzx tutor discovery` if you need command search, key tables, or popup locations.
-3. `yzx tutor troubleshooting` if you are lost, a popup is stuck, config changed, or generated state looks stale.
-4. `yzx tutor tool_tutors` when the Yazelix workspace path is clear and you want Helix or Nushell practice.
-
-Inside Yazelix, press {menu_key} or run `yzx menu` when you would rather search commands directly.
-"#
-    );
+    markdown
+        .push_str("\nStart with `yzx tutor begin`; revisit this list when coming back later.\n");
     render_tutor_markdown(&markdown)
 }
 
@@ -575,7 +548,7 @@ fn render_troubleshooting_lesson(
 3. **Inside Yazelix:** Press `{config}` for the config UI when a setting needs inspection or a keybinding remap.
 4. **Run in shell or Yazelix:** Use `yzx doctor` when config, runtime, generated layouts, or packaged tools look stale.
 5. **Run in shell or Yazelix:** Use `yzx keys` to verify the active keymap before editing bindings.
-6. **Run in shell or Yazelix:** Use `yzx tutor continue` after the check so the guided path is visible again.
+6. **Run in shell or Yazelix:** Use `yzx tutor list` after the check so the guided path is visible again.
 
 Next lesson: `yzx tutor tool_tutors`.
 "#,
@@ -732,13 +705,6 @@ mod tests {
             }
         );
         assert_eq!(
-            parse_tutor_args(&["continue".into()]).unwrap(),
-            TutorArgs {
-                view: TutorView::Continue,
-                help: false,
-            }
-        );
-        assert_eq!(
             parse_tutor_args(&["list".into()]).unwrap(),
             TutorArgs {
                 view: TutorView::List,
@@ -760,6 +726,7 @@ mod tests {
             }
         );
         assert!(parse_tutor_args(&["weird".into()]).is_err());
+        assert!(parse_tutor_args(&["continue".into()]).is_err());
     }
 
     // Defends: the front-door tutor root stays a small entry page instead of overwhelming first-time users.
@@ -769,10 +736,10 @@ mod tests {
         assert!(output.contains("Yazelix tutor"));
         assert!(output.contains("yzx tutor begin"));
         assert!(output.contains("yzx tutor list"));
-        assert!(output.contains("yzx tutor continue"));
         assert!(output.contains("yzx keys"));
         assert!(output.contains("yzx help"));
         assert!(output.contains("yzx doctor"));
+        assert!(!output.contains("yzx tutor continue"));
         assert!(!output.contains("Outside Yazelix"));
         assert!(!output.contains("Key notation"));
         assert!(!output.contains("Mental model"));
@@ -937,17 +904,6 @@ mod tests {
         }
     }
 
-    // Defends: the stateless continue view points users back into the indexed path without promising stored progress.
-    #[test]
-    fn tutor_continue_is_stateless_next_step_picker() {
-        let keymap = TutorKeymap::defaults();
-        let output = render_tutor_continue(&keymap);
-        assert!(output.contains("does not store tutor progress"));
-        assert!(output.contains("yzx tutor workspace"));
-        assert!(output.contains("yzx tutor troubleshooting"));
-        assert!(output.contains("Alt+Shift+M"));
-    }
-
     // Defends: the troubleshooting lesson covers lost panes, config/runtime checks, key verification, and returning to the guided path.
     #[test]
     fn tutor_troubleshooting_lesson_covers_common_escape_paths() {
@@ -956,7 +912,8 @@ mod tests {
         assert!(output.contains("Troubleshooting paths"));
         assert!(output.contains("yzx doctor"));
         assert!(output.contains("yzx keys"));
-        assert!(output.contains("yzx tutor continue"));
+        assert!(output.contains("yzx tutor list"));
+        assert!(!output.contains("yzx tutor continue"));
         assert!(output.contains("Alt+Shift+M"));
         assert!(output.contains("Alt+Shift+C"));
     }
@@ -981,7 +938,6 @@ mod tests {
     fn bundled_tutor_markdown_documents_render_without_panics() {
         let keymap = TutorKeymap::defaults();
         assert!(render_yazelix_tutor_overview().contains("Yazelix tutor"));
-        assert!(render_tutor_continue(&keymap).contains("yzx tutor troubleshooting"));
         assert!(render_tutor_list().contains("yzx tutor tool_tutors"));
         for lesson_index in 0..TUTOR_LESSONS.len() {
             let output = render_tutor_lesson(lesson_index, &keymap);

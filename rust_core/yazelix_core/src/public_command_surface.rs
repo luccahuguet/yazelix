@@ -337,14 +337,6 @@ const TUTOR_BEGIN_COMMAND: YzxCommandMetadata = metadata(
     Some(YzxMenuCategory::Help),
     None,
 );
-const TUTOR_CONTINUE_COMMAND: YzxCommandMetadata = metadata(
-    "yzx tutor continue",
-    "Pick up the Yazelix tutor path",
-    YzxCommandCategory::Help,
-    &[],
-    Some(YzxMenuCategory::Help),
-    None,
-);
 const TUTOR_LIST_COMMAND: YzxCommandMetadata = metadata(
     "yzx tutor list",
     "List Yazelix tutor lessons",
@@ -539,7 +531,6 @@ const RUST_CONTROL_FAMILIES: &[YzxRustControlFamily] = &[
         &[
             TUTOR_ROOT_COMMAND,
             TUTOR_BEGIN_COMMAND,
-            TUTOR_CONTINUE_COMMAND,
             TUTOR_LIST_COMMAND,
             TUTOR_WORKSPACE_COMMAND,
             TUTOR_DISCOVERY_COMMAND,

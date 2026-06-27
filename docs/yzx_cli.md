@@ -128,9 +128,8 @@ Show Yazelix-owned keybindings and remaps
 
 ### `yzx tutor`
 Show the guided Yazelix tutor
-- Default: print the Yazelix-specific tutor overview with the workspace model and next-step commands
+- Default: print a small entry page with the first lesson, lesson list, and companion help commands
 - `yzx tutor begin`: start the first Yazelix lesson
-- `yzx tutor continue`: pick the first lesson you have not practiced; progress is not stored
 - `yzx tutor list`: list short Yazelix lessons
 - `yzx tutor workspace`: practice workspace roots, managed panes, and Yazi handoff
 - `yzx tutor discovery`: practice `yzx help`, `yzx keys`, `yzx menu`, and `yzx doctor`
@@ -354,7 +353,6 @@ yzx keys hx                   # How to discover Helix bindings
 yzx keys nu                   # Small curated Nushell keybinding subset
 yzx tutor                     # Guided Yazelix overview
 yzx tutor begin               # Start the first Yazelix lesson
-yzx tutor continue            # Pick up the Yazelix tutor path
 yzx tutor list                # List Yazelix tutor lessons
 yzx tutor troubleshooting     # Practice recovery paths
 yzx tutor hx                  # Launch Helix's built-in tutor
