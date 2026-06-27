@@ -269,6 +269,7 @@ pub(super) fn append_keybinding_surface_action_fields(
             .cloned()
             .unwrap_or_else(|| keybinding_default_value(action));
         fields.push(build_field_row(
+            SETTINGS_SOURCE_ID,
             &path,
             "keybindings",
             "string_list",

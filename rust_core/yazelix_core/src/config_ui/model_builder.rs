@@ -82,6 +82,7 @@ pub fn build_config_ui_model(request: &ConfigUiRequest) -> Result<ConfigUiModel,
             .or_else(|| field.default_value.clone());
         let apply_mode = apply_mode_for_config_owner(config_owner, field)?;
         fields.push(build_field_row(
+            SETTINGS_SOURCE_ID,
             &field.path,
             &metadata.tab,
             &field.kind,
@@ -122,16 +123,25 @@ pub fn build_config_ui_model(request: &ConfigUiRequest) -> Result<ConfigUiModel,
     )?;
 
     if cursor_component_enabled {
-        let cursor_choice_values = cursor_choice_values(&active_value, &default_value);
+        let cursor_definition_names = cursor_definition_names(&active_value, &default_value);
+        let cursor_enabled_names = cursor_enabled_names(&active_value, &default_value)
+            .into_iter()
+            .filter(|name| cursor_definition_names.contains(name))
+            .collect::<Vec<_>>();
         for mut schema_field in collect_cursor_schema_fields(&schema) {
             if fields.iter().any(|field| field.path == schema_field.path) {
                 continue;
             }
-            enrich_cursor_schema_field(&mut schema_field, &cursor_choice_values);
+            enrich_cursor_schema_field(
+                &mut schema_field,
+                &cursor_definition_names,
+                &cursor_enabled_names,
+            );
             let metadata = field_ui_metadata(&ui_metadata, &schema_field.path)?;
             let current = get_json_path(&active_value, &schema_field.path);
             let default = get_json_path(&default_value, &schema_field.path);
             fields.push(build_field_row(
+                CURSORS_SOURCE_ID,
                 &schema_field.path,
                 &metadata.tab,
                 &schema_field.kind,
@@ -183,6 +193,14 @@ pub fn build_config_ui_model(request: &ConfigUiRequest) -> Result<ConfigUiModel,
         active_config_exists,
         config_owner,
         config_read_only: path_is_read_only(&active_config_path),
+        sources: collect_config_sources(
+            &tabs,
+            &active_config_path,
+            active_config_exists,
+            config_owner,
+            &paths.user_cursor_config,
+            cursor_component_enabled,
+        ),
         tabs,
         fields,
         sidecars: collect_sidecars(&request.config_dir),
@@ -535,28 +553,20 @@ fn collect_cursor_schema_fields(schema: &JsonValue) -> Vec<ConfigUiSchemaField> 
     collect_config_ui_schema_fields(cursors, "cursors")
 }
 
-fn enrich_cursor_schema_field(field: &mut ConfigUiSchemaField, values: &CursorChoiceValues) {
+fn enrich_cursor_schema_field(
+    field: &mut ConfigUiSchemaField,
+    definition_names: &[String],
+    enabled_names: &[String],
+) {
     match field.path.as_str() {
         "cursors.enabled_cursors" => {
-            field.allowed_values = values.definition_names.clone();
+            field.allowed_values = definition_names.to_vec();
         }
         "cursors.settings.trail" => {
             field.allowed_values = vec!["none".to_string(), "random".to_string()];
-            field.allowed_values.extend(values.enabled_names.clone());
+            field.allowed_values.extend_from_slice(enabled_names);
         }
         _ => {}
-    }
-}
-
-fn cursor_choice_values(active: &JsonValue, default: &JsonValue) -> CursorChoiceValues {
-    let definition_names = cursor_definition_names(active, default);
-    let enabled_names = cursor_enabled_names(active, default)
-        .into_iter()
-        .filter(|name| definition_names.iter().any(|definition| definition == name))
-        .collect();
-    CursorChoiceValues {
-        definition_names,
-        enabled_names,
     }
 }
 
@@ -599,6 +609,7 @@ fn cursor_enabled_names(active: &JsonValue, default: &JsonValue) -> Vec<String> 
 }
 
 pub(super) fn build_field_row(
+    source_id: &str,
     path: &str,
     tab: &str,
     kind: &str,
@@ -613,6 +624,7 @@ pub(super) fn build_field_row(
     edit_behavior: ConfigUiEditBehavior,
 ) -> ConfigUiField {
     build_config_ui_field(ConfigUiFieldRowSpec {
+        source_id,
         path,
         tab,
         kind,
@@ -669,6 +681,7 @@ fn append_builtin_popup_command_fields(
     for (id, label) in BUILTIN_POPUP_COMMANDS {
         let path = format!("{POPUP_COMMANDS_FIELD_PATH}.{id}");
         fields.push(build_field_row(
+            SETTINGS_SOURCE_ID,
             &path,
             "workspace",
             "string_list",
@@ -768,8 +781,62 @@ fn field_description(field: &ConfigUiContractField, metadata: &ConfigUiFieldMeta
     parts.join("; ")
 }
 
+fn collect_config_sources(
+    tabs: &[String],
+    active_config_path: &Path,
+    active_config_exists: bool,
+    config_owner: ConfigUiPathOwner,
+    cursor_config_path: &Path,
+    cursor_component_enabled: bool,
+) -> Vec<ConfigUiSource> {
+    tabs.iter()
+        .filter(|tab| tab.as_str() != "advanced")
+        .map(|tab| {
+            if tab == "cursors" && cursor_component_enabled {
+                let cursor_present = path_present(cursor_config_path);
+                config_source(
+                    CURSORS_SOURCE_ID,
+                    tab,
+                    "yazelix_cursors/settings.jsonc",
+                    cursor_config_path,
+                    cursor_present,
+                    classify_path_owner(cursor_config_path, cursor_present),
+                )
+            } else {
+                config_source(
+                    SETTINGS_SOURCE_ID,
+                    tab,
+                    "settings.jsonc",
+                    active_config_path,
+                    active_config_exists,
+                    config_owner,
+                )
+            }
+        })
+        .collect()
+}
+
+fn config_source(
+    id: &str,
+    tab: &str,
+    label: &str,
+    path: &Path,
+    exists: bool,
+    owner: ConfigUiPathOwner,
+) -> ConfigUiSource {
+    ConfigUiSource {
+        id: id.to_string(),
+        tab: tab.to_string(),
+        label: label.to_string(),
+        path: path.to_path_buf(),
+        exists,
+        owner,
+        read_only: path_is_read_only(path),
+    }
+}
+
 fn collect_sidecars(config_dir: &Path) -> Vec<ConfigUiSidecar> {
-    let mut sidecars = CURRENT_MANAGED_CONFIG_FILE_NAMES
+    CURRENT_MANAGED_CONFIG_FILE_NAMES
         .iter()
         .filter(|name| **name != SETTINGS_CONFIG)
         .map(|name| {
@@ -783,17 +850,7 @@ fn collect_sidecars(config_dir: &Path) -> Vec<ConfigUiSidecar> {
                 present,
             }
         })
-        .collect::<Vec<_>>();
-    let cursor_path = crate::user_config_paths::shared_cursor_config(config_dir);
-    let cursor_present = fs::symlink_metadata(&cursor_path).is_ok();
-    sidecars.push(ConfigUiSidecar {
-        name: "yazelix_cursors/settings.jsonc".to_string(),
-        owner: classify_path_owner(&cursor_path, cursor_present),
-        read_only: path_is_read_only(&cursor_path),
-        path: cursor_path,
-        present: cursor_present,
-    });
-    sidecars
+        .collect()
 }
 
 pub(super) fn classify_path_owner(path: &Path, present: bool) -> ConfigUiPathOwner {
