@@ -88,7 +88,7 @@ fn run_ui() -> Result<()> {
             ConfigUiIntent::UnsetField {
                 path: field_path, ..
             } => {
-                restore_config_default(&path, &field_path)?;
+                write_config_field(&path, &field_path, &open_log_level_default())?;
                 app.model = build_model(&path)?;
                 app.notice_info(format!("Restored default for {field_path}."));
             }
@@ -103,11 +103,9 @@ struct TerminalSession;
 impl TerminalSession {
     fn enter() -> Result<Self> {
         enable_raw_mode()?;
-        if let Err(error) = execute!(io::stdout(), EnterAlternateScreen, cursor::Hide) {
-            let _ = disable_raw_mode();
-            return Err(Box::new(error));
-        }
-        Ok(Self)
+        let session = Self;
+        execute!(io::stdout(), EnterAlternateScreen, cursor::Hide)?;
+        Ok(session)
     }
 }
 
@@ -280,10 +278,6 @@ fn write_config_field(path: &Path, field_path: &str, value: &JsonValue) -> Resul
         .map_err(|error| boxed_debug("could not update config.toml", error))?
         .text;
     atomic_write(path, &fill_missing_defaults(&reconcile_contract(&text)?)?)
-}
-
-fn restore_config_default(path: &Path, field_path: &str) -> Result<()> {
-    write_config_field(path, field_path, &open_log_level_default())
 }
 
 fn open_log_level_from_json(value: &JsonValue) -> Result<&str> {
