@@ -122,8 +122,8 @@ prompt, and `right_format` controls the right prompt.
 Yazi opens files through the packaged `yzn-open` Rust helper. If no Helix bridge
 is live, `yzn-open` opens `yzn-hx` in a Zellij pane. If the Helix bridge is
 live, `yzn-open` sends the file or directory open request to that editor.
-Inside the packaged Yazi sidebar, `Alt z` opens a zoxide picker and sends the
-selected directory through `yzn-open`.
+Inside the packaged Yazi sidebar, `Alt z` opens a zoxide picker, moves Yazi to
+the selected directory, and sends it through `yzn-open`.
 
 `yzn-open` writes bounded diagnostics to
 `${YAZELIX_STATE_DIR}/logs/yzn-open.log` and keeps one rotated
@@ -170,11 +170,11 @@ wc -l .gitignore AGENTS.md README.md CHANGELOG.md ARCHITECTURE.md flake.nix pack
 | Language | Files | Lines |
 | --- | --- | ---: |
 | Ignore | `.gitignore` | 1 |
-| Markdown | `AGENTS.md`, `README.md`, `CHANGELOG.md`, `ARCHITECTURE.md` | 531 |
+| Markdown | `AGENTS.md`, `README.md`, `CHANGELOG.md`, `ARCHITECTURE.md` | 533 |
 | Nix | `flake.nix`, `packaging/tokenusage.nix` | 458 |
 | TOML | `config.toml`, `mars.toml`, `helix/config.toml`, `yazi/yazi.toml`, `yazi/keymap.toml`, `crates/yzn-config/Cargo.toml`, `crates/yzn-open/Cargo.toml` | 127 |
 | KDL | `config.kdl`, `layout.kdl`, `layout.swap.kdl` | 153 |
 | Nu | `nu/config.nu`, `nu/env.nu` | 11 |
-| Lua | `yazi/init.lua`, `yazi/plugins/sidebar-status.yazi/main.lua`, `yazi/plugins/zoxide-editor.yazi/main.lua` | 131 |
-| Rust | `crates/yzn-config/src/main.rs`, `crates/yzn-open/src/main.rs`, `checks/zellij-layout.rs`, `checks/yzn-contracts.rs`, `runtime/yzn-nu.rs`, `runtime/yzn-zellij-config.rs` | 3019 |
-| Total | owned project files | 4431 |
+| Lua | `yazi/init.lua`, `yazi/plugins/sidebar-status.yazi/main.lua`, `yazi/plugins/zoxide-editor.yazi/main.lua` | 137 |
+| Rust | `crates/yzn-config/src/main.rs`, `crates/yzn-open/src/main.rs`, `checks/zellij-layout.rs`, `checks/yzn-contracts.rs`, `runtime/yzn-nu.rs`, `runtime/yzn-zellij-config.rs` | 3021 |
+| Total | owned project files | 4441 |

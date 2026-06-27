@@ -27,8 +27,14 @@ function M:entry()
 	if not target then
 		ya.notify({ title = "Zoxide", content = tostring(err), timeout = 5, level = "error" })
 	elseif target ~= "" then
+		M.change_dir(target)
 		M.open_in_editor(target)
 	end
+end
+
+function M.change_dir(target_dir)
+	local emit = ya.emit or ya.manager_emit
+	emit("cd", { target_dir, raw = true })
 end
 
 function M.open_in_editor(target_dir)

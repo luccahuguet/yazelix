@@ -299,6 +299,8 @@ fn expect_yazi_alt_z(yzn: &Path) {
     for expected in [
         r#"Command(yzn_open):arg(target_dir)"#,
         r#"Command("zoxide")"#,
+        r#"local emit = ya.emit or ya.manager_emit"#,
+        r#"emit("cd", { target_dir, raw = true })"#,
         r#"query", "-i", "--exclude""#,
         "YZN_OPEN is not set",
     ] {

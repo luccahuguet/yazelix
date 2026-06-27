@@ -64,8 +64,8 @@ prompt indicators.
 
 `yazi/` is the packaged Yazi config owner. It enables the selected Yazi
 plugins, keeps file opens routed through `yzn-open`, binds `Alt z` to a zoxide
-picker that opens the chosen directory in the managed editor path, and avoids
-broad Yazi config merging.
+picker that moves the sidebar and opens the chosen directory in the managed
+editor path, and avoids broad Yazi config merging.
 
 `runtime/yzn-nu.rs` is the Nushell runtime-config owner. It writes the runtime
 `env.nu` and `config.nu` files, layers optional user config from
