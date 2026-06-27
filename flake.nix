@@ -23,6 +23,10 @@
       url = "github:luccahuguet/yazelix-zellij-bar";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    ratconfig = {
+      url = "github:luccahuguet/ratconfig";
+      flake = false;
+    };
     autoLayoutYazi = {
       url = "github:luccahuguet/auto-layout.yazi";
       flake = false;
@@ -41,6 +45,7 @@
     yazelixHelix,
     yazelixZellijPopup,
     yazelixZellijBar,
+    ratconfig,
     autoLayoutYazi,
     starshipYazi,
   }: let
@@ -90,6 +95,23 @@
         pathPrefix = pkgs.lib.makeBinPath [pkgs.nushell pkgs.starship pkgs.carapace pkgs.zoxide];
       };
       yznNuShell = rustBin "yzn-nu" yznNuRs;
+      yznConfigSrc = pkgs.runCommand "yzn-config-src" {} ''
+        mkdir -p "$out"
+        cp -R ${pkgs.lib.cleanSource ./crates/yzn-config}/. "$out/"
+        chmod -R u+w "$out"
+        ln -s ${ratconfig} "$out/ratconfig"
+        cp ${./config.toml} "$out/config.toml"
+        substituteInPlace "$out/Cargo.toml" \
+          --replace-fail '../../../ratconfig' './ratconfig'
+        substituteInPlace "$out/src/main.rs" \
+          --replace-fail '../../../config.toml' '../config.toml'
+      '';
+      yznConfig = pkgs.rustPlatform.buildRustPackage {
+        pname = "yzn-config";
+        version = "0.1.0";
+        src = yznConfigSrc;
+        cargoLock.lockFile = ./crates/yzn-config/Cargo.lock;
+      };
       yazelixZellijPopupPackage = yazelixZellijPopup.packages.${system}.yzpp;
       yznConfigKdl = pkgs.replaceVars ./config.kdl {
         nuShell = "${yznNuShell}/bin/yzn-nu";
@@ -161,6 +183,8 @@
           export EDITOR=${yznHelix}/bin/yzn-hx
           export VISUAL=${yznHelix}/bin/yzn-hx
           export YZN_EDITOR=$EDITOR
+          YZN_OPEN_LOG="$(${yznConfig}/bin/yzn-config --get open.log_level)"
+          export YZN_OPEN_LOG
           exec ${pkgs.yazi}/bin/yazi "$@"
         '';
       };
@@ -243,6 +267,8 @@
         else
           yzn_config_home="''${HOME:?HOME is required}/.config/yazelix-next"
         fi
+        YZN_OPEN_LOG="$(${yznConfig}/bin/yzn-config --get open.log_level)"
+        export YZN_OPEN_LOG
         if [ -f "$yzn_config_home/mars/config.toml" ]; then
           export MARS_CONFIG_HOME="$yzn_config_home/mars"
         else
@@ -281,10 +307,12 @@ Yazelix
 Usage:
   yzn
   yzn help
+  yzn config
   yzn enter [zellij-args...]
   yzn launch [zellij-args...]
 
 Commands:
+  config  Open Yazelix Next config
   enter   Start Yazelix in the current terminal
   launch  Open Mars and start Yazelix
   help    Show this help
@@ -295,6 +323,14 @@ EOF
           case "$1" in
             help|-h|--help)
               show_help
+              ;;
+            config)
+              shift
+              if [ "$#" -ne 0 ]; then
+                printf 'yzn config does not accept arguments yet\n' >&2
+                exit 64
+              fi
+              exec ${yznConfig}/bin/yzn-config
               ;;
             enter)
               shift
@@ -334,9 +370,11 @@ EOF
         postBuild = ''
           install -d "$out/libexec/yazelix-next"
           ln -s ${yznZellijConfig}/bin/yzn-zellij-config "$out/libexec/yazelix-next/yzn-zellij-config"
+          ln -s ${yznConfig}/bin/yzn-config "$out/libexec/yazelix-next/yzn-config"
           install -D -m 644 ${yznConfigKdl} "$out/share/yazelix-next/config.kdl"
           install -D -m 644 ${yznRuntimeIdentity}/runtime_identity.json "$out/share/yazelix-next/runtime_identity.json"
           install -D -m 644 ${yznMarsConfig}/config.toml "$out/share/yazelix-next/mars/config.toml"
+          install -D -m 644 ${./config.toml} "$out/share/yazelix-next/config.toml"
           install -D -m 644 ${yznZellijLayout}/layout.kdl "$out/share/yazelix-next/layout.kdl"
           install -D -m 644 ${yznZellijLayout}/layout.swap.kdl "$out/share/yazelix-next/layout.swap.kdl"
           install -D -m 644 ${yznYaziConfig}/init.lua "$out/share/yazelix-next/yazi/init.lua"

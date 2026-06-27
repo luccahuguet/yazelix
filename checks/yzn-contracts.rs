@@ -17,6 +17,7 @@ fn main() {
     expect_keybinds(&config);
     expect_lazygit_popup(&config);
     expect_front_door(yzn);
+    expect_config_ui(yzn);
     expect_mars_config_override(yzn);
     expect_zellij_config_sidecar(yzn);
     expect_yazi_alt_z(yzn);
@@ -89,6 +90,7 @@ fn expect_front_door(yzn: &Path) {
     }
     for expected in [
         "Usage:",
+        "yzn config",
         "yzn enter [zellij-args...]",
         "yzn launch [zellij-args...]",
     ] {
@@ -109,6 +111,8 @@ fn expect_front_door(yzn: &Path) {
         "OpenTerminalsOrPlugins",
         "YAZELIX_SESSION_TERMINAL",
         "YAZELIX_STATUS_BAR_CACHE_PATH",
+        "yzn-config --get open.log_level",
+        "config)",
         "tokenusage-1.5.2",
     ] {
         assert!(
@@ -121,6 +125,50 @@ fn expect_front_door(yzn: &Path) {
             .is_file(),
         "yzn package is missing runtime_identity.json"
     );
+}
+
+fn expect_config_ui(yzn: &Path) {
+    let packaged_config = yzn.join("share/yazelix-next/config.toml");
+    assert!(
+        packaged_config.is_file(),
+        "yzn package is missing config.toml"
+    );
+    let packaged_config = fs::read_to_string(&packaged_config).unwrap();
+    assert!(
+        packaged_config.contains("log_level = \"info\""),
+        "packaged config.toml is missing open.log_level default"
+    );
+
+    let helper = yzn.join("libexec/yazelix-next/yzn-config");
+    assert!(helper.is_file(), "missing yzn-config helper");
+    let temp = TempDir::new();
+    let output = Command::new(&helper)
+        .arg("--get")
+        .arg("open.log_level")
+        .env("YAZELIX_NEXT_CONFIG_HOME", &temp.path)
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "yzn-config --get failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert_eq!(String::from_utf8_lossy(&output.stdout).trim(), "info");
+
+    let config = temp.path.join("config.toml");
+    let config_text = fs::read_to_string(&config).unwrap();
+    for expected in [
+        "[open]",
+        "log_level = \"info\"",
+        "[ratconfig]",
+        "contract = {",
+        "contract_id = \"yazelix-next.config\"",
+    ] {
+        assert!(
+            config_text.contains(expected),
+            "created config.toml is missing {expected:?}\n{config_text}"
+        );
+    }
 }
 
 fn run_help(bin: &Path, args: &[&str]) -> String {

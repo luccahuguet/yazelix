@@ -196,11 +196,28 @@
         "type": "github"
       }
     },
+    "ratconfig": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1781695083,
+        "narHash": "sha256-7O66izYtyT6FVYs3EY3q3+buUhz90AEPmSKRy8Xb4IQ=",
+        "owner": "luccahuguet",
+        "repo": "ratconfig",
+        "rev": "3a3facf8f52e2ba09a506449202603d56d8d5f6d",
+        "type": "github"
+      },
+      "original": {
+        "owner": "luccahuguet",
+        "repo": "ratconfig",
+        "type": "github"
+      }
+    },
     "root": {
       "inputs": {
         "autoLayoutYazi": "autoLayoutYazi",
         "mars": "mars",
         "nixpkgs": "nixpkgs",
+        "ratconfig": "ratconfig",
         "starshipYazi": "starshipYazi",
         "yazelixHelix": "yazelixHelix",
         "yazelixZellij": "yazelixZellij",

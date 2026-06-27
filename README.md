@@ -14,13 +14,14 @@ through the standalone Yazelix Zellij Popup plugin.
 nix run
 nix run .#yzn
 nix run .#yzn -- help
+nix run .#yzn -- config
 nix run .#yzn -- enter
 nix run .#yzn -- launch
 ```
 
-`yzn help` prints help, `yzn enter` starts the managed Zellij runtime inside the
-current terminal, and `yzn launch` opens Mars first. Bare `yzn` defaults to
-`yzn launch`.
+`yzn help` prints help, `yzn config` opens the Ratconfig UI, `yzn
+enter` starts the managed Zellij runtime inside the current terminal, and `yzn
+launch` opens Mars first. Bare `yzn` defaults to `yzn launch`.
 
 ## Install
 
@@ -36,6 +37,19 @@ Profile installs include `bin/yzn` and a `Yazelix Next` desktop entry.
 ```sh
 nix profile upgrade --refresh yazelix-next
 ```
+
+## Config
+
+`yzn config` opens the Ratconfig UI in the current terminal and creates
+this owned semantic config file when it is missing:
+
+```text
+~/.config/yazelix-next/config.toml
+```
+
+The first config slice controls `open.log_level`, which sets the managed
+`YZN_OPEN_LOG` level used by Yazi-to-Helix opens. Values are `off`, `error`,
+`info`, and `debug`.
 
 ## Mars Config
 
@@ -101,8 +115,8 @@ selected directory through `yzn-open`.
 
 `yzn-open` writes bounded diagnostics to
 `${YAZELIX_STATE_DIR}/logs/yzn-open.log` and keeps one rotated
-`yzn-open.log.1` file. Set `YZN_OPEN_LOG` to `off`, `error`, `info`, or
-`debug`; the default is `info`.
+`yzn-open.log.1` file. Managed `yzn` sessions set `YZN_OPEN_LOG` from
+`open.log_level` in `config.toml`; the default is `info`.
 
 ## Keybindings
 
@@ -137,17 +151,17 @@ nix run --override-input yazelixZellijBar ../yazelix-zellij-bar
 Counts owned project files by language with `wc -l`.
 
 ```sh
-wc -l .gitignore AGENTS.md README.md CHANGELOG.md ARCHITECTURE.md flake.nix packaging/tokenusage.nix mars.toml config.kdl layout.kdl layout.swap.kdl nu/config.nu nu/env.nu helix/config.toml yazi/init.lua yazi/keymap.toml yazi/plugins/sidebar-status.yazi/main.lua yazi/plugins/zoxide-editor.yazi/main.lua yazi/yazi.toml crates/yzn-open/Cargo.toml crates/yzn-open/src/main.rs checks/zellij-layout.rs checks/yzn-contracts.rs runtime/yzn-nu.rs runtime/yzn-zellij-config.rs
+wc -l .gitignore AGENTS.md README.md CHANGELOG.md ARCHITECTURE.md flake.nix packaging/tokenusage.nix config.toml mars.toml config.kdl layout.kdl layout.swap.kdl nu/config.nu nu/env.nu helix/config.toml yazi/init.lua yazi/keymap.toml yazi/plugins/sidebar-status.yazi/main.lua yazi/plugins/zoxide-editor.yazi/main.lua yazi/yazi.toml crates/yzn-config/Cargo.toml crates/yzn-config/src/main.rs crates/yzn-open/Cargo.toml crates/yzn-open/src/main.rs checks/zellij-layout.rs checks/yzn-contracts.rs runtime/yzn-nu.rs runtime/yzn-zellij-config.rs
 ```
 
 | Language | Files | Lines |
 | --- | --- | ---: |
 | Ignore | `.gitignore` | 1 |
-| Markdown | `AGENTS.md`, `README.md`, `CHANGELOG.md`, `ARCHITECTURE.md` | 473 |
-| Nix | `flake.nix`, `packaging/tokenusage.nix` | 417 |
-| TOML | `mars.toml`, `helix/config.toml`, `yazi/yazi.toml`, `yazi/keymap.toml`, `crates/yzn-open/Cargo.toml` | 110 |
+| Markdown | `AGENTS.md`, `README.md`, `CHANGELOG.md`, `ARCHITECTURE.md` | 506 |
+| Nix | `flake.nix`, `packaging/tokenusage.nix` | 455 |
+| TOML | `config.toml`, `mars.toml`, `helix/config.toml`, `yazi/yazi.toml`, `yazi/keymap.toml`, `crates/yzn-config/Cargo.toml`, `crates/yzn-open/Cargo.toml` | 127 |
 | KDL | `config.kdl`, `layout.kdl`, `layout.swap.kdl` | 139 |
 | Nu | `nu/config.nu`, `nu/env.nu` | 11 |
 | Lua | `yazi/init.lua`, `yazi/plugins/sidebar-status.yazi/main.lua`, `yazi/plugins/zoxide-editor.yazi/main.lua` | 131 |
-| Rust | `crates/yzn-open/src/main.rs`, `checks/zellij-layout.rs`, `checks/yzn-contracts.rs`, `runtime/yzn-nu.rs`, `runtime/yzn-zellij-config.rs` | 1609 |
-| Total | owned project files | 2891 |
+| Rust | `crates/yzn-config/src/main.rs`, `crates/yzn-open/src/main.rs`, `checks/zellij-layout.rs`, `checks/yzn-contracts.rs`, `runtime/yzn-nu.rs`, `runtime/yzn-zellij-config.rs` | 2058 |
+| Total | owned project files | 3428 |

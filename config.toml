@@ -1,0 +1,6 @@
+# Yazelix Next semantic config.
+# Native tool configs live beside this file under ~/.config/yazelix-next/.
+
+[open]
+# yzn-open diagnostics: off, error, info, or debug.
+log_level = "info"

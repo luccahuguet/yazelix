@@ -7,6 +7,11 @@ User-visible runtime changes for Yazelix Next live here.
 - `yzn help` prints help, `yzn enter` starts the managed Zellij runtime in the
   current terminal, and `yzn launch` opens Mars first. Bare `yzn` defaults to
   `yzn launch`.
+- `yzn config` opens the Ratconfig UI and creates
+  `~/.config/yazelix-next/config.toml` with defaults and joined contract
+  state when missing.
+- `open.log_level` in `config.toml` controls the managed `YZN_OPEN_LOG`
+  level used by Yazi-to-Helix opens.
 - `yzn` appends `~/.config/yazelix-next/zellij/config.kdl` as a native Zellij
   sidecar for safe preferences, with a small denylist guardrail for obvious
   ownership lines such as keymaps, shell, layout, plugins, and session startup.
