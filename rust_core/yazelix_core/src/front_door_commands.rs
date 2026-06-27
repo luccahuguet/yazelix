@@ -49,7 +49,13 @@ const TUTOR_ZELLIJ_ACTION_IDS: &[&str] = &[
     "config",
 ];
 #[cfg(test)]
-const TUTOR_ZELLIJ_NATIVE_ACTION_IDS: &[&str] = &["toggle_focus_fullscreen"];
+const TUTOR_ZELLIJ_NATIVE_ACTION_IDS: &[&str] = &[
+    "toggle_focus_fullscreen",
+    "move_tab_left",
+    "move_tab_right",
+    "move_pane_down",
+    "move_pane_up",
+];
 #[cfg(test)]
 const TUTOR_YAZI_ACTION_IDS: &[&str] =
     &["open_zoxide_in_editor", "open_directory_as_workspace_pane"];
@@ -71,7 +77,7 @@ const TUTOR_LESSONS: &[TutorLessonSpec] = &[
     TutorLessonSpec {
         id: "workspace",
         title: "Workspace roots and managed panes",
-        summary: "Open a project, move between editor and sidebars, and keep the tab root clear",
+        summary: "Open a project, move between editor and sidebars, and organize tabs and panes",
         scope: "Current tab",
         outcome: "You can start Yazelix in the right directory, open files through Yazi, reveal the editor file, and move between the managed editor and sidebars.",
         escape_hatch: "Use the editor/sidebar focus keys to get back to a known pane, then rerun `yzx tutor list`.",
@@ -539,7 +545,8 @@ fn render_workspace_lesson(index: usize, spec: &TutorLessonSpec, keymap: &TutorK
 2. **Inside Yazelix:** Press `{left_focus}` to switch between the editor and left sidebar; press `{right_focus}` for the right agent sidebar.
 3. **Inside Yazi:** Press `Enter` to open the selected file in the managed editor.
 4. **Inside Yazi:** Press `{zoxide}` to jump with zoxide and open the target in the editor; press `{workspace_pane}` to open the selected directory in a workspace terminal pane.
-5. **Inside the editor:** Press `{reveal}` to reveal the current file in Yazi; press `{fullscreen}` when one pane needs the whole screen.
+5. **Inside Yazelix:** Press `{move_tab_left}` or `{move_tab_right}` to move the current tab left or right; press `{move_pane_down}` or `{move_pane_up}` to move the current pane down or up.
+6. **Inside the editor:** Press `{reveal}` to reveal the current file in Yazi; press `{fullscreen}` when one pane needs the whole screen.
 
 Next lesson: `yzx tutor discovery`.
 "#,
@@ -548,6 +555,10 @@ Next lesson: `yzx tutor discovery`.
         right_focus = zellij_key(keymap, "toggle_editor_right_sidebar_focus"),
         zoxide = yazi_key(keymap, "open_zoxide_in_editor"),
         workspace_pane = yazi_key(keymap, "open_directory_as_workspace_pane"),
+        move_tab_left = zellij_native_key(keymap, "move_tab_left"),
+        move_tab_right = zellij_native_key(keymap, "move_tab_right"),
+        move_pane_down = zellij_native_key(keymap, "move_pane_down"),
+        move_pane_up = zellij_native_key(keymap, "move_pane_up"),
         reveal = zellij_key(keymap, "smart_reveal"),
         fullscreen = zellij_native_key(keymap, "toggle_focus_fullscreen"),
     );
@@ -828,6 +839,8 @@ mod tests {
         assert!(lesson.contains("Alt+p"));
         assert!(lesson.contains("Alt+r"));
         assert!(lesson.contains("Alt+Shift+F"));
+        assert!(lesson.contains("move the current tab"));
+        assert!(lesson.contains("move the current pane"));
         assert!(!lesson.contains("yzx cwd"));
     }
 
@@ -856,6 +869,10 @@ mod tests {
             &keymap,
             "toggle_focus_fullscreen"
         ))));
+        assert!(workspace.contains(key_text(&zellij_native_key(&keymap, "move_tab_left"))));
+        assert!(workspace.contains(key_text(&zellij_native_key(&keymap, "move_tab_right"))));
+        assert!(workspace.contains(key_text(&zellij_native_key(&keymap, "move_pane_down"))));
+        assert!(workspace.contains(key_text(&zellij_native_key(&keymap, "move_pane_up"))));
         assert!(workspace.contains(key_text(&yazi_key(&keymap, "open_zoxide_in_editor"))));
         assert!(workspace.contains(key_text(&yazi_key(
             &keymap,
