@@ -12,6 +12,7 @@ User-visible runtime changes for Yazelix Next live here.
   state when missing.
 - `yzn config` ignores unsupported modified terminal keys instead of treating
   them as text.
+- `yzn config` restores raw terminal mode if alternate-screen setup fails.
 - `open.log_level` in `config.toml` controls the managed `YZN_OPEN_LOG`
   level used by Yazi-to-Helix opens.
 - `yzn` appends `~/.config/yazelix-next/zellij/config.kdl` as a native Zellij

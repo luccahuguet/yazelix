@@ -103,7 +103,10 @@ struct TerminalSession;
 impl TerminalSession {
     fn enter() -> Result<Self> {
         enable_raw_mode()?;
-        execute!(io::stdout(), EnterAlternateScreen, cursor::Hide)?;
+        if let Err(error) = execute!(io::stdout(), EnterAlternateScreen, cursor::Hide) {
+            let _ = disable_raw_mode();
+            return Err(Box::new(error));
+        }
         Ok(Self)
     }
 }
