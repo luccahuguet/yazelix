@@ -47,8 +47,7 @@ jobs:
             .#packages.x86_64-linux.br \
             .#packages.x86_64-linux.yazelix_kgp_zellij \
             .#packages.x86_64-linux.yazelix_helix \
-            .#packages.x86_64-linux.yazelix \
-            .#packages.x86_64-linux.yazelix_wezterm
+            .#packages.x86_64-linux.yazelix
 
   publish_aarch64_darwin:
     if: github.repository == 'luccahuguet/yazelix'
