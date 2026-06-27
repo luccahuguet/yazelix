@@ -49,6 +49,10 @@ keymap, layout, plugin loading, or session startup behavior.
 and Starship left and right prompts, and disables the normal Nushell banner and
 prompt indicators.
 
+`yazi/` is the packaged Yazi config owner. It keeps file opens routed through
+`yzn-open`, binds `Alt z` to a zoxide picker that opens the chosen directory in
+the managed editor path, and avoids broad Yazi config merging.
+
 `runtime/yzn-nu.rs` is the Nushell runtime-config owner. It writes the runtime
 `env.nu` and `config.nu` files, layers optional user config from
 `~/.config/yazelix-next/nu`, chooses the Starship config path, and then execs
@@ -113,7 +117,7 @@ window.
 | C3 | Zellij layout has the sidebar template required by swaps | `layout.kdl`, `layout.swap.kdl` | `checks/zellij-layout.rs` runs during build | None for the current template/swap contract |
 | C4 | Zellij-native mode keys use `Ctrl Alt`, move mode is unbound, `Alt m` opens a pane for the swap layout to stack, `Alt Shift h` toggles the sidebar swap, and obvious sidecar ownership lines are rejected | `config.kdl`, `runtime/yzn-zellij-config.rs` | `checks/yzn-contracts.rs` validates the packaged config and accepted/rejected sidecars | Full key behavior remains manual dogfooding |
 | C5 | Nushell loads packaged config first, optional user config after it, and controlled Starship left/right prompt config | `runtime/yzn-nu.rs`, `nu/` | `checks/yzn-contracts.rs` validates Nushell layering, Starship config selection, and right prompt rendering | None for current layering behavior |
-| C6 | Yazi opens paths through `yzn-open` with bounded diagnostics | `yazi/yazi.toml`, `crates/yzn-open/` | `cargo test` through `yzn-open` package build | Full Yazi UI behavior remains manual dogfooding |
+| C6 | Yazi opens paths through `yzn-open` with bounded diagnostics, and `Alt z` jumps through zoxide into the managed editor path | `yazi/`, `crates/yzn-open/`, `flake.nix` | `checks/yzn-contracts.rs` validates packaged Yazi keymap/plugin wiring; `cargo test` covers `yzn-open` bridge/fallback behavior | Full Yazi UI behavior remains manual dogfooding |
 | C7 | Helix bridge reuse stays inside the current `yzn` window | `crates/yzn-open/`, `flake.nix` | `yzn-open` Rust tests cover session and Zellij-window mismatch | Full multi-window GUI behavior remains manual dogfooding |
 | C8 | Desktop entry starts `yzn` | `flake.nix` | `nix build .#yzn` packages the desktop file | Desktop environment launch remains manual dogfooding |
 | C9 | Kitty keyboard protocol is explicitly enabled and `Alt Shift J` toggles one managed LazyGit popup through `yzpp` | `config.kdl`, `flake.nix` | `checks/yzn-contracts.rs` validates Kitty protocol, the packaged popup plugin, LazyGit command, and key binding | Visual popup behavior remains manual dogfooding |

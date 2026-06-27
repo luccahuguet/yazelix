@@ -19,6 +19,7 @@ fn main() {
     expect_front_door(yzn);
     expect_mars_config_override(yzn);
     expect_zellij_config_sidecar(yzn);
+    expect_yazi_alt_z(yzn);
 
     let temp = TempDir::new();
     let user_config = temp.path.join("config");
@@ -219,6 +220,62 @@ fn expect_zellij_config_sidecar(yzn: &Path) {
         stderr.contains("forbidden Zellij sidecar item `keybinds`"),
         "unexpected Zellij sidecar rejection: {stderr}",
     );
+}
+
+fn expect_yazi_alt_z(yzn: &Path) {
+    let keymap = fs::read_to_string(yzn.join("share/yazelix-next/yazi/keymap.toml")).unwrap();
+    for expected in [
+        r#"on = ["<A-z>"]"#,
+        r#"run = "plugin zoxide-editor""#,
+        r#"desc = "Zoxide jump -> open in editor""#,
+    ] {
+        assert!(
+            keymap.contains(expected),
+            "Yazi keymap is missing Alt-z fragment: {expected}",
+        );
+    }
+
+    let plugin =
+        fs::read_to_string(yzn.join("share/yazelix-next/yazi/plugins/zoxide-editor.yazi/main.lua"))
+            .unwrap();
+    for expected in [
+        r#"Command(yzn_open):arg(target_dir)"#,
+        r#"Command("zoxide")"#,
+        r#"query", "-i", "--exclude""#,
+        "YZN_OPEN is not set",
+    ] {
+        assert!(
+            plugin.contains(expected),
+            "Yazi zoxide editor plugin is missing fragment: {expected}",
+        );
+    }
+
+    let layout = fs::read_to_string(yzn.join("share/yazelix-next/layout.kdl")).unwrap();
+    let yzn_yazi = layout
+        .lines()
+        .find_map(|line| {
+            line.trim()
+                .strip_prefix(r#"pane name="sidebar" command=""#)?
+                .split('"')
+                .next()
+                .filter(|path| !path.is_empty())
+                .map(PathBuf::from)
+        })
+        .expect("layout is missing sidebar yzn-yazi command");
+    let wrapper = fs::read_to_string(&yzn_yazi).unwrap();
+    for expected in [
+        "YZN_OPEN=",
+        "YZN_ZELLIJ=",
+        "YZN_EDITOR=$EDITOR",
+        "zoxide",
+        "fzf",
+    ] {
+        assert!(
+            wrapper.contains(expected),
+            "{} is missing Yazi integration fragment: {expected}",
+            yzn_yazi.display(),
+        );
+    }
 }
 
 fn run_zellij_config(

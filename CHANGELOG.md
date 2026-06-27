@@ -54,5 +54,7 @@ User-visible runtime changes for Yazelix Next live here.
   user files under `~/.config/yazelix-next/nu`.
 - Yazi opens files and directories through `yzn-open`, reusing a live Yazelix
   Helix bridge inside the current `yzn` window when possible.
+- Yazi `Alt z` opens a zoxide picker and sends the selected directory through
+  `yzn-open`.
 - `yzn-open` writes bounded rotated diagnostics and honors `YZN_OPEN_LOG`.
 - Profile installs include a `Yazelix Next` desktop entry.

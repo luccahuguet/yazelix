@@ -138,24 +138,29 @@
       };
       yznYaziConfig = pkgs.runCommand "yzn-yazi-config" {} ''
         install -D -m 644 ${./yazi/init.lua} "$out/init.lua"
+        install -D -m 644 ${./yazi/keymap.toml} "$out/keymap.toml"
         install -D -m 644 ${yznYaziToml} "$out/yazi.toml"
         install -D -m 644 ${yaziAssetsSelection}/yazelix_starship.toml "$out/yazelix_starship.toml"
         mkdir -p "$out/plugins"
         install -D -m 644 ${./yazi/plugins/sidebar-status.yazi/main.lua} "$out/plugins/sidebar-status.yazi/main.lua"
+        install -D -m 644 ${./yazi/plugins/zoxide-editor.yazi/main.lua} "$out/plugins/zoxide-editor.yazi/main.lua"
         ln -s ${autoLayoutYazi} "$out/plugins/auto-layout.yazi"
         ln -s ${yaziAssetsSelection}/plugins/git.yazi "$out/plugins/git.yazi"
         ln -s ${starshipYazi} "$out/plugins/starship.yazi"
       '';
       yznYazi = pkgs.writeShellApplication {
         name = "yzn-yazi";
-        runtimeInputs = [pkgs.git pkgs.starship];
+        runtimeInputs = [pkgs.fzf pkgs.git pkgs.starship pkgs.zoxide];
         text = ''
           export YAZELIX_STATE_DIR="''${YAZELIX_STATE_DIR:-''${XDG_RUNTIME_DIR:-/tmp}/yazelix-next}"
           ${bridgeSessionEnv "yzn-helper"}
           export YAZI_CONFIG_HOME=${yznYaziConfig}
           export YZN_YAZI_STARSHIP_CONFIG=${yznYaziConfig}/yazelix_starship.toml
+          export YZN_OPEN=${yznOpenCore}/bin/yzn-open
+          export YZN_ZELLIJ=${yazelixZellijPackage}/bin/zellij
           export EDITOR=${yznHelix}/bin/yzn-hx
           export VISUAL=${yznHelix}/bin/yzn-hx
+          export YZN_EDITOR=$EDITOR
           exec ${pkgs.yazi}/bin/yazi "$@"
         '';
       };
@@ -334,6 +339,10 @@ EOF
           install -D -m 644 ${yznMarsConfig}/config.toml "$out/share/yazelix-next/mars/config.toml"
           install -D -m 644 ${yznZellijLayout}/layout.kdl "$out/share/yazelix-next/layout.kdl"
           install -D -m 644 ${yznZellijLayout}/layout.swap.kdl "$out/share/yazelix-next/layout.swap.kdl"
+          install -D -m 644 ${yznYaziConfig}/init.lua "$out/share/yazelix-next/yazi/init.lua"
+          install -D -m 644 ${yznYaziConfig}/keymap.toml "$out/share/yazelix-next/yazi/keymap.toml"
+          install -D -m 644 ${yznYaziConfig}/plugins/zoxide-editor.yazi/main.lua "$out/share/yazelix-next/yazi/plugins/zoxide-editor.yazi/main.lua"
+          install -D -m 644 ${yznYaziConfig}/yazi.toml "$out/share/yazelix-next/yazi/yazi.toml"
           install -D -m 644 ${yznNuConfig}/config.nu "$out/share/yazelix-next/nu/config.nu"
           install -D -m 644 ${yznNuConfig}/env.nu "$out/share/yazelix-next/nu/env.nu"
           for icon in ${marsPackage}/share/icons/hicolor/*/apps/mars.png; do

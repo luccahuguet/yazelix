@@ -96,6 +96,8 @@ prompt, and `right_format` controls the right prompt.
 Yazi opens files through the packaged `yzn-open` Rust helper. If no Helix bridge
 is live, `yzn-open` opens `yzn-hx` in a Zellij pane. If the Helix bridge is
 live, `yzn-open` sends the file or directory open request to that editor.
+Inside the packaged Yazi sidebar, `Alt z` opens a zoxide picker and sends the
+selected directory through `yzn-open`.
 
 `yzn-open` writes bounded diagnostics to
 `${YAZELIX_STATE_DIR}/logs/yzn-open.log` and keeps one rotated
@@ -114,6 +116,7 @@ Helix, Nushell, Yazi, and terminal programs.
 | `Ctrl p/t/n/q` | pane, tab, resize, quit |
 | `Ctrl Alt h/j/k/l` | move tab left, move pane down/up, move tab right |
 | `Alt m` | new pane in the stacked layout |
+| `Alt z` | Yazi zoxide jump into the managed editor |
 | `Alt Shift J` | toggle the LazyGit popup |
 | `Alt Shift h` | show or hide the Yazi sidebar |
 
@@ -134,17 +137,17 @@ nix run --override-input yazelixZellijBar ../yazelix-zellij-bar
 Counts owned project files by language with `wc -l`.
 
 ```sh
-wc -l .gitignore AGENTS.md README.md CHANGELOG.md ARCHITECTURE.md flake.nix packaging/tokenusage.nix mars.toml config.kdl layout.kdl layout.swap.kdl nu/config.nu nu/env.nu helix/config.toml yazi/init.lua yazi/plugins/sidebar-status.yazi/main.lua yazi/yazi.toml crates/yzn-open/Cargo.toml crates/yzn-open/src/main.rs checks/zellij-layout.rs checks/yzn-contracts.rs runtime/yzn-nu.rs runtime/yzn-zellij-config.rs
+wc -l .gitignore AGENTS.md README.md CHANGELOG.md ARCHITECTURE.md flake.nix packaging/tokenusage.nix mars.toml config.kdl layout.kdl layout.swap.kdl nu/config.nu nu/env.nu helix/config.toml yazi/init.lua yazi/keymap.toml yazi/plugins/sidebar-status.yazi/main.lua yazi/plugins/zoxide-editor.yazi/main.lua yazi/yazi.toml crates/yzn-open/Cargo.toml crates/yzn-open/src/main.rs checks/zellij-layout.rs checks/yzn-contracts.rs runtime/yzn-nu.rs runtime/yzn-zellij-config.rs
 ```
 
 | Language | Files | Lines |
 | --- | --- | ---: |
 | Ignore | `.gitignore` | 1 |
-| Markdown | `AGENTS.md`, `README.md`, `CHANGELOG.md`, `ARCHITECTURE.md` | 464 |
-| Nix | `flake.nix`, `packaging/tokenusage.nix` | 408 |
-| TOML | `mars.toml`, `helix/config.toml`, `yazi/yazi.toml`, `crates/yzn-open/Cargo.toml` | 106 |
+| Markdown | `AGENTS.md`, `README.md`, `CHANGELOG.md`, `ARCHITECTURE.md` | 473 |
+| Nix | `flake.nix`, `packaging/tokenusage.nix` | 417 |
+| TOML | `mars.toml`, `helix/config.toml`, `yazi/yazi.toml`, `yazi/keymap.toml`, `crates/yzn-open/Cargo.toml` | 110 |
 | KDL | `config.kdl`, `layout.kdl`, `layout.swap.kdl` | 139 |
 | Nu | `nu/config.nu`, `nu/env.nu` | 11 |
-| Lua | `yazi/init.lua`, `yazi/plugins/sidebar-status.yazi/main.lua` | 16 |
-| Rust | `crates/yzn-open/src/main.rs`, `checks/zellij-layout.rs`, `checks/yzn-contracts.rs`, `runtime/yzn-nu.rs`, `runtime/yzn-zellij-config.rs` | 1552 |
-| Total | owned project files | 2697 |
+| Lua | `yazi/init.lua`, `yazi/plugins/sidebar-status.yazi/main.lua`, `yazi/plugins/zoxide-editor.yazi/main.lua` | 131 |
+| Rust | `crates/yzn-open/src/main.rs`, `checks/zellij-layout.rs`, `checks/yzn-contracts.rs`, `runtime/yzn-nu.rs`, `runtime/yzn-zellij-config.rs` | 1609 |
+| Total | owned project files | 2891 |
