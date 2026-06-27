@@ -776,17 +776,6 @@ dependencies = [
 [[package]]
 name = "ratconfig"
 version = "0.1.0"
-source = "git+https://github.com/luccahuguet/ratconfig?rev=3a3facf8f52e2ba09a506449202603d56d8d5f6d#9d8fdc47ee6f0026ae16b331e167307b925277e3"
-dependencies = [
- "jsonc-parser",
- "serde_json",
- "toml",
- "toml_edit",
-]
-
-[[package]]
-name = "ratconfig"
-version = "0.1.0"
 source = "git+https://github.com/luccahuguet/ratconfig?rev=9d8fdc47ee6f0026ae16b331e167307b925277e3#9d8fdc47ee6f0026ae16b331e167307b925277e3"
 dependencies = [
  "jsonc-parser",
@@ -1516,7 +1505,7 @@ dependencies = [
  "procfs",
  "pulldown-cmark",
  "ratatui",
- "ratconfig 0.1.0 (git+https://github.com/luccahuguet/ratconfig?rev=9d8fdc47ee6f0026ae16b331e167307b925277e3)",
+ "ratconfig",
  "serde",
  "serde_json",
  "sha2",
@@ -1534,10 +1523,10 @@ dependencies = [
 [[package]]
 name = "yazelix_cursors"
 version = "0.1.0"
-source = "git+https://github.com/luccahuguet/yazelix-cursors?rev=a1fb61bdbc981c6fb2f455bd6bab4e2244f0eb1d#a1fb61bdbc981c6fb2f455bd6bab4e2244f0eb1d"
+source = "git+https://github.com/luccahuguet/yazelix-cursors?rev=98ddd8b280b8efa67adcb3d14f8de16c13ee18fe#98ddd8b280b8efa67adcb3d14f8de16c13ee18fe"
 dependencies = [
  "jsonc-parser",
- "ratconfig 0.1.0 (git+https://github.com/luccahuguet/ratconfig?rev=3a3facf8f52e2ba09a506449202603d56d8d5f6d)",
+ "ratconfig",
  "serde",
  "serde_json",
  "thiserror 2.0.18",

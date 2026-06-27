@@ -1184,20 +1184,10 @@ fn load_home_manager_desktop_entry_contract(
 fn build_home_manager_desktop_entry_expr(repo_root: &Path) -> String {
     let module_path =
         escape_nix_string(&repo_root.join(MODULE_RELATIVE_PATH).display().to_string());
-    let terminal_metadata_path = escape_nix_string(
-        &repo_root
-            .join("packaging/terminal_variants.nix")
-            .display()
-            .to_string(),
-    );
     let mut lines = vec![
         "let".to_string(),
         "  pkgs = import <nixpkgs> { system = \"x86_64-linux\"; };".to_string(),
         "  lib = pkgs.lib;".to_string(),
-        format!(
-            "  terminalMetadata = import (builtins.toPath \"{terminal_metadata_path}\") {{ isLinux = true; }};"
-        ),
-        "  desktopEntryKey = terminal: \"com.yazelix.Yazelix.${terminalMetadata.desktopIdSuffix terminal}\";".to_string(),
         "  eval = lib.evalModules {".to_string(),
         "    specialArgs = { inherit pkgs; nixgl = null; yazelixCursorsPackage = null; marsTerminalPackage = null; mkYazelixPackage = args: pkgs.runCommand (args.name or \"yazelix\") {} \"mkdir -p $out/bin; touch $out/bin/yzx\"; };".to_string(),
         "    modules = [".to_string(),
@@ -1208,7 +1198,7 @@ fn build_home_manager_desktop_entry_expr(repo_root: &Path) -> String {
         "    ];".to_string(),
         "  };".to_string(),
         "  activeTerminal = eval.config.programs.yazelix.terminal;".to_string(),
-        "  entryKey = desktopEntryKey activeTerminal;".to_string(),
+        "  entryKey = \"com.yazelix.Yazelix.Mars\";".to_string(),
         "  entries = eval.config.xdg.desktopEntries;".to_string(),
         "  entry = if builtins.hasAttr entryKey entries then builtins.getAttr entryKey entries else {};".to_string(),
         "in {".to_string(),

@@ -145,14 +145,7 @@
       kgpPackages = import ./packaging/kgp_packages.nix {
         inherit yazelixZellij yazelixHelix;
       };
-      terminalMetadataFor =
-        pkgs:
-        import ./packaging/terminal_variants.nix {
-          inherit (pkgs.stdenv.hostPlatform) isLinux;
-        };
-      terminalNeedsKittyPassthrough =
-        pkgs: runtimeVariant:
-        builtins.elem runtimeVariant (terminalMetadataFor pkgs).kittyPassthrough;
+      terminalNeedsKittyPassthrough = runtimeVariant: runtimeVariant == "mars";
       zellijPluginArtifactsFor =
         system:
         let
@@ -198,7 +191,7 @@
             inherit yazelixHelixPackage yazelixCursorsPackage;
             pkgs = runtimePkgs;
             enableZellijKittyPassthrough =
-              enableZellijKittyPassthrough || terminalNeedsKittyPassthrough pkgs runtimeVariant;
+              enableZellijKittyPassthrough || terminalNeedsKittyPassthrough runtimeVariant;
             extraRuntimePackages = [
               yazelixZellijBar.packages.${system}.yazelix_zellij_bar
             ] ++ extraRuntimePackages;
@@ -225,7 +218,7 @@
           ] ++ extraRuntimePackages;
           yaziAssets = yazelixYaziAssets.packages.${system}.yazelix_yazi_assets;
           zellijPluginArtifacts = zellijPluginArtifactsFor system;
-          enableZellijKittyPassthrough = terminalNeedsKittyPassthrough pkgs runtimeVariant;
+          enableZellijKittyPassthrough = terminalNeedsKittyPassthrough runtimeVariant;
         };
       runtimePackage = system: pkgs: runtimeVariant: extraRuntimePackages:
         runtimePackageWith system pkgs runtimeVariant extraRuntimePackages { };
@@ -238,7 +231,7 @@
         let
           helixPkgs = kgpPackages.helixPkgs system pkgs;
         in
-        if terminalNeedsKittyPassthrough pkgs runtimeVariant then
+        if terminalNeedsKittyPassthrough runtimeVariant then
           kgpPackages.graphicsPkgs helixPkgs
         else
           helixPkgs;
@@ -302,13 +295,12 @@
           pkgs = mkPkgs system;
         in
         import ./packaging/flake_outputs.nix {
-          inherit agentUsagePackages beadsRustPackage defaultRuntimeIdentity kgpPackages lib;
-          inherit mkYazelix pkgs runtimePackage runtimePackageWith system yazelixPackage;
+          inherit agentUsagePackages beadsRustPackage kgpPackages;
+          inherit pkgs runtimePackage system yazelixPackage;
           inherit yazelixCursors yazelixScreen yazelixYaziAssets;
           inherit yazelixZellijBar yazelixZellijPaneOrchestrator;
           inherit yazelixZellijPopup;
           fenixPkgs = fenix.packages.${system};
-          terminalMetadata = terminalMetadataFor pkgs;
         };
     in
     {

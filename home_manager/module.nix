@@ -16,14 +16,10 @@ with lib;
 
 let
   cfg = config.programs.yazelix;
-  terminalMetadata = import ../packaging/terminal_variants.nix {
-    inherit (pkgs.stdenv.hostPlatform) isLinux;
-  };
-  defaultTerminal = terminalMetadata.default;
-  terminalVariants = terminalMetadata.supported;
-  terminalDescriptionBullets = lib.concatMapStringsSep "\n" (
-    terminal: "        - \"${terminal}\": ${terminalMetadata.description terminal}"
-  ) terminalVariants;
+  defaultTerminal = "mars";
+  terminalVariants = [ "mars" ];
+  terminalDescriptionBullets =
+    "        - \"mars\": default Rust terminal with Yazelix-owned Mars integration, generated Mars config, cursor trails, and the Yazelix Zellij Kitty graphics bridge";
   runtimeToolSourceModes = [
     "bundled"
     "host"
@@ -77,7 +73,6 @@ let
       nixgl
       options
       pkgs
-      terminalMetadata
       yazelixHelixPackage
       yazelixCursorsPackage
       ;
