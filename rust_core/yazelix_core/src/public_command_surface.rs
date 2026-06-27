@@ -281,6 +281,14 @@ const CURSORS_COMMAND: YzxCommandMetadata = metadata(
     Some(YzxMenuCategory::Config),
     Some("Show the active settings.jsonc cursor registry, effects, and resolved preset colors."),
 );
+const CURSORS_GHOSTTY_SETUP_COMMAND: YzxCommandMetadata = metadata(
+    "yzx cursors ghostty setup",
+    "Generate the host Ghostty cursor include",
+    YzxCommandCategory::Config,
+    &[],
+    Some(YzxMenuCategory::Config),
+    Some("Use the bundled cursor helper to write ~/.config/yazelix_cursors/ghostty.conf."),
+);
 const HOME_MANAGER_ROOT_COMMAND: YzxCommandMetadata = metadata(
     "yzx home_manager",
     "Show Yazelix Home Manager takeover helpers",
@@ -488,7 +496,7 @@ const RUST_CONTROL_FAMILIES: &[YzxRustControlFamily] = &[
             CONFIG_UNSET_COMMAND,
         ],
     ),
-    rust_control_family("cursors", &[CURSORS_COMMAND]),
+    rust_control_family("cursors", &[CURSORS_COMMAND, CURSORS_GHOSTTY_SETUP_COMMAND]),
     rust_control_family(
         "desktop",
         &[

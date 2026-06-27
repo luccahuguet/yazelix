@@ -42,6 +42,7 @@ Previous alternatives considered:
 - The package and runtime shader roots must not include `build_shaders.nu`; shader generation is Rust-owned
 - `yzc list-targets` exposes the child-owned target model for Ghostty, Rio, Ratty, and protocol cursor positions
 - Users opt in by running `yzc init`, `yzc generate ghostty`, then adding `config-file = ~/.config/yazelix_cursors/ghostty.conf` to their Ghostty config
+- Full Yazelix users can instead run `yzx cursors ghostty setup`; Yazelix invokes its runtime-private `yzc`, writes the same include, and prints the Ghostty `config-file` line without requiring a separate cursor package install
 - `yzc init` creates `~/.config/yazelix_cursors/settings.jsonc` and does not overwrite an existing config
 - `yzc generate ghostty` copies packaged shaders into `~/.config/yazelix_cursors/shaders/`, regenerates data-driven palette and effect shaders from the standalone settings, and writes `~/.config/yazelix_cursors/ghostty.conf`
 - The package does not edit user Ghostty config files
@@ -113,8 +114,9 @@ Do not add another terminal target to `yazelix_cursors` until all of these are t
 6. `yzc list-targets` reports `ghostty`, `rio`, `ratty`, and `protocol_cursor_positions`.
 7. A package-installed `yzc --config-dir <tmp> init` creates standalone JSONC cursor settings.
 8. A package-installed `yzc --config-dir <tmp> generate ghostty` writes a Ghostty include and generated shader files under `<tmp>`.
-9. The exported shaders come from the extracted `yazelix_cursors` shader generator instead of a parallel hand-maintained package list.
-10. `validate-child-release-transaction` rejects a reintroduced main-repo `configs/terminal_emulators/ghostty/shaders` tree or stale cursor package contract metadata.
+9. Full Yazelix exposes `yzx cursors ghostty setup`, backed by a runtime-private `libexec/yzc`, so users do not need to install `#yazelix_cursors` separately.
+10. The exported shaders come from the extracted `yazelix_cursors` shader generator instead of a parallel hand-maintained package list.
+11. `validate-child-release-transaction` rejects a reintroduced main-repo `configs/terminal_emulators/ghostty/shaders` tree or stale cursor package contract metadata.
 
 ## Verification
 

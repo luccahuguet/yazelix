@@ -11,6 +11,7 @@ Upgrade impact: manual action may be required
 Highlights:
 - Adopted the grouped Zellij mode layer from Yazelix Next: `Ctrl p/t/n/q` keep pane, tab, resize, and quit fast, `Ctrl Alt g/s/o` keep lock, search, and session grouped off plain Ctrl, `Ctrl h` stays unbound from move mode, and the consumed Zellij fork groups mixed modifier hints cleanly in the bottom bar
 - Made Mars the only packaged terminal path, removed non-Mars runtime variants and Home Manager extra terminal launchers, and documented Ghostty, Rio, WezTerm, Kitty, Foot, and Ratty as host-owned `yzx enter` entrypoints
+- Added `yzx cursors ghostty setup` so host Ghostty users can generate the Yazelix cursor include from the normal Yazelix package without installing `#yazelix_cursors` separately
 - Gave the runtime smoke CI lane enough time for cache-miss builds
 
 Manual action:

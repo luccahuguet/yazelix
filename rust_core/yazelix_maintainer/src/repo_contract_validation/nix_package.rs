@@ -398,6 +398,10 @@ fn verify_profile_installed_runtime(
             runtime_libexec.join("yzx_control"),
             "runtime-local yzx_control helper",
         ),
+        (
+            runtime_libexec.join("yzc"),
+            "runtime-private Yazelix cursor helper",
+        ),
         (runtime_yzx_cli.clone(), "runtime-local POSIX yzx launcher"),
         (
             runtime_settings_default.clone(),
@@ -471,6 +475,11 @@ fn verify_profile_installed_runtime(
     require_path_missing_abs(
         &runtime_toolbin.join("dirname"),
         "runtime-private helper leaked into exported toolbin",
+        errors,
+    );
+    require_path_missing_abs(
+        &runtime_toolbin.join("yzc"),
+        "runtime-private cursor helper leaked into exported toolbin",
         errors,
     );
     if cfg!(target_os = "linux") {

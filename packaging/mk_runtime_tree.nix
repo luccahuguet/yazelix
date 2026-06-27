@@ -240,6 +240,9 @@ pkgs.runCommand name { } ''
     replace_runtime_link "${rustCoreHelper}/bin/yzx_core" "libexec/yzx_core"
     replace_runtime_link "${rustCoreHelper}/bin/yzx_control" "libexec/yzx_control"
   ''}
+  ${pkgs.lib.optionalString cursorsEnabled ''
+    replace_runtime_link "${yazelixCursorsPackage}/bin/yzc" "libexec/yzc"
+  ''}
 
   mkdir -p "$out/toolbin"
   for command_name in ${escapedExportedRuntimeCommands}; do

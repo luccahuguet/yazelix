@@ -305,6 +305,12 @@ Inspect Yazelix cursor presets and resolved colors
 - Shows global trail, effect, glow, duration, and Kitty fallback settings
 - Shows resolved colors for enabled presets, including derived mono accents
 
+### `yzx cursors ghostty setup`
+Generate the Ghostty include for Yazelix cursors
+- Uses the cursor helper bundled in the Yazelix runtime
+- Writes `~/.config/yazelix_cursors/ghostty.conf`
+- Prints the `config-file = .../ghostty.conf` line to add to user-owned Ghostty config
+
 ### `yzx edit <target> [--print]`
 Open one of the managed config surfaces through explicit or fuzzy target selection
 - Supported targets include `config`, `cursors`, `helix`, `zellij`, `yazi`, `yazi-keymap`, and `yazi-init`
@@ -368,6 +374,7 @@ yzx config ui                 # Open the ratconfig-backed JSONC settings editor
 yzx config set editor.hide_sidebar_on_file_open true # Set a config value with a JSON literal
 yzx config unset editor.hide_sidebar_on_file_open # Remove an explicit config value
 yzx cursors                   # Inspect Yazelix cursor presets and resolved colors
+yzx cursors ghostty setup     # Generate the host Ghostty cursor include
 yzx edit cursors              # Open the cursor settings file
 yzx import zellij             # Import ~/.config/zellij/config.kdl when it has no keybinds blocks
 yzx import yazi               # Import native Yazi override files and plugins into managed overrides

@@ -469,6 +469,94 @@ fn yzx_enter_uses_detected_host_terminal_for_status_bar_label() {
     assert!(log.contains("YAZELIX_SESSION_TERMINAL=wezterm"), "{log}");
 }
 
+// Defends: host Ghostty users can generate the cursor include from the normal Yazelix package without installing the standalone cursor package.
+#[test]
+fn yzx_cursors_ghostty_setup_uses_runtime_private_yzc() {
+    let fixture = managed_config_fixture("");
+    let shader_root = fixture
+        .runtime_dir
+        .join("configs/terminal_emulators/ghostty/shaders");
+    fs::create_dir_all(&shader_root).unwrap();
+    let yzc_log = fixture.home_dir.join("yzc.log");
+    write_executable_script(
+        &fixture.runtime_dir.join("libexec/yzc"),
+        &format!(
+            r#"#!/bin/sh
+set -eu
+printf '%s\n' "$*" >> "{}"
+config_dir=
+share_dir=
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --config-dir)
+      config_dir="$2"
+      shift 2
+      ;;
+    --share-dir)
+      share_dir="$2"
+      shift 2
+      ;;
+    generate)
+      test "$2" = ghostty
+      test -d "$share_dir/shaders"
+      mkdir -p "$config_dir"
+      printf '# generated ghostty include\n' > "$config_dir/ghostty.conf"
+      exit 0
+      ;;
+    init)
+      mkdir -p "$config_dir"
+      printf '{{}}\n' > "$config_dir/settings.jsonc"
+      exit 0
+      ;;
+    *)
+      echo "unexpected yzc arg: $1" >&2
+      exit 99
+      ;;
+  esac
+done
+exit 99
+"#,
+            yzc_log.display()
+        ),
+    );
+
+    let output = yzx_control_command_in_fixture(&fixture)
+        .args(["cursors", "ghostty", "setup"])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let cursor_dir = fixture.home_dir.join(".config/yazelix_cursors");
+    let include_path = cursor_dir.join("ghostty.conf");
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        stdout.contains("Ghostty cursor include generated:"),
+        "{stdout}"
+    );
+    assert!(
+        stdout.contains(&format!("config-file = {}", include_path.display())),
+        "{stdout}"
+    );
+    assert!(include_path.exists());
+
+    let log = fs::read_to_string(yzc_log).unwrap();
+    assert!(
+        log.contains(&format!(
+            "--config-dir {} --share-dir {} generate ghostty",
+            cursor_dir.display(),
+            fixture
+                .runtime_dir
+                .join("configs/terminal_emulators/ghostty")
+                .display()
+        )),
+        "{log}"
+    );
+}
+
 // Defends: the public Rust-owned `yzx status --json` surface keeps the typed runtime summary instead of a wrapper-shaped blob.
 #[test]
 fn yzx_control_status_json_reports_typed_summary() {
