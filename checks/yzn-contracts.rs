@@ -15,7 +15,7 @@ fn main() {
         yzn_nu.display()
     );
     expect_keybinds(&config);
-    expect_lazygit_popup(&config);
+    expect_first_party_popups(&config);
     expect_front_door(yzn);
     expect_config_ui(yzn);
     expect_mars_config_override(yzn);
@@ -391,21 +391,27 @@ fn expect_keybinds(config: &str) {
     );
 }
 
-fn expect_lazygit_popup(config: &str) {
+fn expect_first_party_popups(config: &str) {
     for expected in [
         "share/yazelix_zellij_popup/yzpp.wasm",
         "load_plugins",
-        "popup {",
+        "popups {",
+        "config {",
+        "pane_title \"config_popup\"",
         "pane_title \"lazygit_popup\"",
         "support_kitty_keyboard_protocol true",
         "bind \"Alt Shift J\"",
+        "payload \"lazygit\"",
+        "bind \"Alt Shift K\"",
+        "payload \"config\"",
         "MessagePlugin \"yzpp\"",
         "name \"toggle\"",
         "/bin/lazygit\"",
+        "/bin/yzn-config\"",
     ] {
         assert!(
             config.contains(expected),
-            "config.kdl is missing LazyGit popup fragment {expected:?}",
+            "config.kdl is missing first-party popup fragment {expected:?}",
         );
     }
 }

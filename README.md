@@ -5,8 +5,9 @@ opens Mars with a Yazi-first layout that becomes a sidebar plus stacked work
 panes, a bridge-enabled Yazelix Helix editor, reef cursor colors, and the
 Yazelix Zellij fork. The top bar uses a rendered Yazelix Zellij Bar tray with
 editor, shell, terminal, Codex, CPU, RAM, and version widgets, with bundled
-`tu` for the Codex usage widget. `Alt Shift J` toggles a managed LazyGit popup
-through the standalone Yazelix Zellij Popup plugin.
+`tu` for the Codex usage widget. `Alt Shift K` toggles the config popup, and
+`Alt Shift J` toggles a managed LazyGit popup through the standalone Yazelix
+Zellij Popup plugin.
 
 ## Run
 
@@ -78,7 +79,7 @@ as `keybinds`, `default_shell`, `default_layout`, `layout`, `plugins`,
 `load_plugins`, `session_name`, or `attach_to_session`.
 
 The packaged config enables Zellij's Kitty keyboard protocol for modified key
-chords such as `Alt Shift J`.
+chords such as `Alt Shift J` and `Alt Shift K`.
 
 ## Nushell Config
 
@@ -132,6 +133,7 @@ Helix, Nushell, Yazi, and terminal programs.
 | `Alt m` | new pane in the stacked layout |
 | `Alt z` | Yazi zoxide jump into the managed editor |
 | `Alt Shift J` | toggle the LazyGit popup |
+| `Alt Shift K` | toggle the config popup |
 | `Alt Shift h` | show or hide the Yazi sidebar |
 
 Move mode is intentionally unbound.
@@ -157,11 +159,11 @@ wc -l .gitignore AGENTS.md README.md CHANGELOG.md ARCHITECTURE.md flake.nix pack
 | Language | Files | Lines |
 | --- | --- | ---: |
 | Ignore | `.gitignore` | 1 |
-| Markdown | `AGENTS.md`, `README.md`, `CHANGELOG.md`, `ARCHITECTURE.md` | 506 |
-| Nix | `flake.nix`, `packaging/tokenusage.nix` | 455 |
+| Markdown | `AGENTS.md`, `README.md`, `CHANGELOG.md`, `ARCHITECTURE.md` | 510 |
+| Nix | `flake.nix`, `packaging/tokenusage.nix` | 456 |
 | TOML | `config.toml`, `mars.toml`, `helix/config.toml`, `yazi/yazi.toml`, `yazi/keymap.toml`, `crates/yzn-config/Cargo.toml`, `crates/yzn-open/Cargo.toml` | 127 |
-| KDL | `config.kdl`, `layout.kdl`, `layout.swap.kdl` | 139 |
+| KDL | `config.kdl`, `layout.kdl`, `layout.swap.kdl` | 153 |
 | Nu | `nu/config.nu`, `nu/env.nu` | 11 |
 | Lua | `yazi/init.lua`, `yazi/plugins/sidebar-status.yazi/main.lua`, `yazi/plugins/zoxide-editor.yazi/main.lua` | 131 |
-| Rust | `crates/yzn-config/src/main.rs`, `crates/yzn-open/src/main.rs`, `checks/zellij-layout.rs`, `checks/yzn-contracts.rs`, `runtime/yzn-nu.rs`, `runtime/yzn-zellij-config.rs` | 2058 |
-| Total | owned project files | 3428 |
+| Rust | `crates/yzn-config/src/main.rs`, `crates/yzn-open/src/main.rs`, `checks/zellij-layout.rs`, `checks/yzn-contracts.rs`, `runtime/yzn-nu.rs`, `runtime/yzn-zellij-config.rs` | 2064 |
+| Total | owned project files | 3453 |

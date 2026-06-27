@@ -3,9 +3,16 @@ support_kitty_keyboard_protocol true
 
 plugins {
     yzpp location="@yzpp@" {
-        popup {
-            command "@lazygit@"
-            pane_title "lazygit_popup"
+        popups {
+            config {
+                command "@yznConfig@"
+                pane_title "config_popup"
+            }
+
+            lazygit {
+                command "@lazygit@"
+                pane_title "lazygit_popup"
+            }
         }
     }
 }
@@ -47,6 +54,13 @@ keybinds {
         bind "Alt Shift J" {
             MessagePlugin "yzpp" {
                 name "toggle"
+                payload "lazygit"
+            }
+        }
+        bind "Alt Shift K" {
+            MessagePlugin "yzpp" {
+                name "toggle"
+                payload "config"
             }
         }
         bind "Alt Shift h" { NextSwapLayout; }

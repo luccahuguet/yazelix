@@ -40,8 +40,9 @@ User-visible runtime changes for Yazelix Next live here.
 - `yzn` uses an isolated Zellij plugin-permission cache and pre-seeds its
   packaged Yazelix Bar and Popup plugin permissions so desktop launches do not
   depend on hidden plugin permission prompts.
-- `Alt Shift J` toggles a managed LazyGit popup through the standalone
-  Yazelix Zellij Popup plugin, with Kitty keyboard protocol enabled.
+- `Alt Shift K` toggles the config popup and `Alt Shift J` toggles a managed
+  LazyGit popup through the standalone Yazelix Zellij Popup plugin, with Kitty
+  keyboard protocol enabled.
 
 ## 2026-06-25
 

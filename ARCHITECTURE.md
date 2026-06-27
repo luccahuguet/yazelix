@@ -35,10 +35,11 @@ can replace the Mars config with `~/.config/yazelix-next/mars/config.toml`;
 `config.kdl`, `layout.kdl`, and `layout.swap.kdl` are the Zellij behavior
 owners. They set the shell, Zellij-native `Ctrl Alt` mode keys, direct
 `Ctrl Alt h/j/k/l` movement, the `Alt m` pane binding, the `Alt Shift h`
-sidebar toggle, the `Alt Shift J` LazyGit popup binding, the Yazelix Zellij Bar
-top bar, the Yazi sidebar tab, the open/closed sidebar swap layouts, and
-explicit Kitty keyboard protocol support. The standalone `yzpp` plugin owns
-popup lifecycle; Yazelix Next only packages it with one hardcoded LazyGit popup.
+sidebar toggle, the `Alt Shift J` LazyGit popup binding, the `Alt Shift K`
+config popup binding, the Yazelix Zellij Bar top bar, the Yazi sidebar tab, the
+open/closed sidebar swap layouts, and explicit Kitty keyboard protocol support.
+The standalone `yzpp` plugin owns popup lifecycle; Yazelix Next only packages it
+with hardcoded config and LazyGit popups.
 
 `yazelix-zellij-bar` owns the rendered top bar KDL, widget command logic, and
 `zjstatus.wasm`. Yazelix Next declares a fixed tray of editor, shell, terminal,
@@ -130,7 +131,7 @@ window.
 | C6 | Yazi opens paths through `yzn-open` with bounded diagnostics, and `Alt z` jumps through zoxide into the managed editor path | `yazi/`, `crates/yzn-open/`, `flake.nix` | `checks/yzn-contracts.rs` validates packaged Yazi keymap/plugin wiring; `cargo test` covers `yzn-open` bridge/fallback behavior | Full Yazi UI behavior remains manual dogfooding |
 | C7 | Helix bridge reuse stays inside the current `yzn` window | `crates/yzn-open/`, `flake.nix` | `yzn-open` Rust tests cover session and Zellij-window mismatch | Full multi-window GUI behavior remains manual dogfooding |
 | C8 | Desktop entry starts `yzn` | `flake.nix` | `nix build .#yzn` packages the desktop file | Desktop environment launch remains manual dogfooding |
-| C9 | Kitty keyboard protocol is explicitly enabled and `Alt Shift J` toggles one managed LazyGit popup through `yzpp` | `config.kdl`, `flake.nix` | `checks/yzn-contracts.rs` validates Kitty protocol, the packaged popup plugin, LazyGit command, and key binding | Visual popup behavior remains manual dogfooding |
+| C9 | Kitty keyboard protocol is explicitly enabled, `Alt Shift K` toggles the config popup, and `Alt Shift J` toggles the LazyGit popup through `yzpp` | `config.kdl`, `flake.nix` | `checks/yzn-contracts.rs` validates Kitty protocol, the packaged popup plugin, config and LazyGit commands, popup ids, payloads, and key bindings | Visual popup behavior remains manual dogfooding |
 | C10 | Top bars use the child-rendered Yazelix Zellij Bar tray, tabs use the home marker, Codex usage has bundled `tu` and a yzn-owned cache path, and bottom bars keep native Zellij key hints | `layout.kdl`, `config.kdl`, `flake.nix`, `packaging/tokenusage.nix` | `checks/zellij-layout.rs` validates packaged child bar usage, no-mode formatting, declared yzn widgets, the startup home tab marker, and native bottom status bars; `checks/yzn-contracts.rs` validates the tab-mode new-tab marker, terminal-label wiring, bundled tokenusage path, and status-cache export | Visual bar behavior remains manual dogfooding |
 | C11 | `config.toml` is auto-created with defaults and joined Ratconfig contract state, and `open.log_level` controls managed `YZN_OPEN_LOG` | `crates/yzn-config/`, `config.toml`, `flake.nix` | `crates/yzn-config` unit tests cover create/edit validation; `checks/yzn-contracts.rs` validates packaged defaults, helper install, creation, and `--get` | Interactive Ratconfig UI behavior remains manual dogfooding |
 

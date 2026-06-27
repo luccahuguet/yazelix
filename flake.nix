@@ -116,6 +116,7 @@
       yznConfigKdl = pkgs.replaceVars ./config.kdl {
         nuShell = "${yznNuShell}/bin/yzn-nu";
         yzpp = "file:${yazelixZellijPopupPackage}/${yazelixZellijPopupPackage.wasmPath}";
+        yznConfig = "${yznConfig}/bin/yzn-config";
         lazygit = "${pkgs.lazygit}/bin/lazygit";
       };
       yazelixZellijBarPackage = yazelixZellijBar.packages.${system}.yazelix_zellij_bar;
