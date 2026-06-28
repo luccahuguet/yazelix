@@ -4,6 +4,15 @@ Short, upgrade-facing release notes live here. The longer narrative history rema
 
 ## Unreleased
 
+Post-v17.9 work in progress
+
+Upgrade impact: no user action required
+
+Highlights:
+- Reserved for post-release changes after v17.9 lands.
+
+## v17.9 - 2026-06-27
+
 Post-v17.8 work in progress
 
 Upgrade impact: manual action may be required
@@ -17,6 +26,7 @@ Highlights:
 Manual action:
 - Replace non-Mars flake outputs such as `#yazelix_ghostty`, `#yazelix_kitty`, `#runtime_kitty`, `#runtime_wezterm`, `#runtime_rio`, `#runtime_foot`, or `#runtime_ratty` with `#yazelix` or `#yazelix_mars`
 - Remove Home Manager `programs.yazelix.extra_terminal_launchers` or older `programs.yazelix.extra_terminal_variants` settings, and set `programs.yazelix.terminal = "mars"` if the option is present; terminals other than packaged Mars should start Yazelix with `yzx enter`
+
 
 ## v17.8 - 2026-06-22
 
