@@ -1,5 +1,5 @@
 [releases.unreleased]
-acknowledged_guarded_changes = ["settings_default.jsonc"]
+acknowledged_guarded_changes = ["settings_default.jsonc", "home_manager/module.nix"]
 date = ""
 headline = "Post-v17.8 work in progress"
 manual_actions = ["Replace non-Mars flake outputs such as #yazelix_ghostty, #yazelix_kitty, #runtime_kitty, #runtime_wezterm, #runtime_rio, #runtime_foot, or #runtime_ratty with #yazelix or #yazelix_mars.", "Remove Home Manager programs.yazelix.extra_terminal_launchers or older programs.yazelix.extra_terminal_variants settings, and set programs.yazelix.terminal = \"mars\" if the option is present; terminals other than packaged Mars should start Yazelix with yzx enter."]
