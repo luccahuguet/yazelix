@@ -51,6 +51,9 @@ User-visible runtime changes for Yazelix Next live here.
 - `Alt Shift K` toggles the config popup and `Alt Shift J` toggles a managed
   LazyGit popup through the standalone Yazelix Zellij Popup plugin, with Kitty
   keyboard protocol enabled.
+- `Alt Shift L` toggles a guarded `codex resume` popup that checks for `codex`
+  on `PATH` before launching it, `Alt Shift M` toggles a menu popup, and
+  `yzn menu` prints the same compact command/key reference.
 
 ## 2026-06-25
 

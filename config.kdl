@@ -9,9 +9,19 @@ plugins {
                 pane_title "config_popup"
             }
 
+            agent {
+                command "@yznAgent@"
+                pane_title "agent_popup"
+            }
+
             lazygit {
                 command "@lazygit@"
                 pane_title "lazygit_popup"
+            }
+
+            menu {
+                command "@yznMenu@"
+                pane_title "menu_popup"
             }
         }
     }
@@ -61,6 +71,18 @@ keybinds {
             MessagePlugin "yzpp" {
                 name "toggle"
                 payload "config"
+            }
+        }
+        bind "Alt Shift L" {
+            MessagePlugin "yzpp" {
+                name "toggle"
+                payload "agent"
+            }
+        }
+        bind "Alt Shift M" {
+            MessagePlugin "yzpp" {
+                name "toggle"
+                payload "menu"
             }
         }
         bind "Alt Shift h" { NextSwapLayout; }

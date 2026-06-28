@@ -93,10 +93,24 @@ fn expect_front_door(yzn: &Path) {
         "yzn config",
         "yzn enter [zellij-args...]",
         "yzn launch [zellij-args...]",
+        "yzn menu",
     ] {
         assert!(
             help.contains(expected),
             "yzn help is missing {expected:?}\n{help}",
+        );
+    }
+    let menu = run_help(&yzn_bin, &["menu"]);
+    for expected in [
+        "Yazelix Next Menu",
+        "yzn config",
+        "Alt Shift L",
+        "Codex resume",
+        "Alt Shift M",
+    ] {
+        assert!(
+            menu.contains(expected),
+            "yzn menu is missing {expected:?}\n{menu}",
         );
     }
 
@@ -113,6 +127,8 @@ fn expect_front_door(yzn: &Path) {
         "YAZELIX_STATUS_BAR_CACHE_PATH",
         "yzn-config --get open.log_level",
         "config)",
+        "menu)",
+        "yzn menu does not accept arguments yet",
         "tokenusage-1.5.2",
     ] {
         assert!(
@@ -416,23 +432,78 @@ fn expect_first_party_popups(config: &str) {
         "load_plugins",
         "popups {",
         "config {",
+        "agent {",
+        "lazygit {",
+        "menu {",
         "pane_title \"config_popup\"",
+        "pane_title \"agent_popup\"",
         "pane_title \"lazygit_popup\"",
+        "pane_title \"menu_popup\"",
         "support_kitty_keyboard_protocol true",
         "bind \"Alt Shift J\"",
         "payload \"lazygit\"",
         "bind \"Alt Shift K\"",
         "payload \"config\"",
+        "bind \"Alt Shift L\"",
+        "payload \"agent\"",
+        "bind \"Alt Shift M\"",
+        "payload \"menu\"",
         "MessagePlugin \"yzpp\"",
         "name \"toggle\"",
         "/bin/lazygit\"",
+        "/bin/yzn-agent\"",
         "/bin/yzn-config\"",
+        "/bin/yzn-menu-popup\"",
     ] {
         assert!(
             config.contains(expected),
             "config.kdl is missing first-party popup fragment {expected:?}",
         );
     }
+
+    let agent = popup_command(config, "/bin/yzn-agent");
+    let agent_script = fs::read_to_string(&agent).unwrap();
+    for expected in [
+        "command -v codex",
+        "codex is not available on PATH",
+        "exec codex resume",
+    ] {
+        assert!(
+            agent_script.contains(expected),
+            "{} is missing guarded Codex fragment: {expected}",
+            agent.display(),
+        );
+    }
+    let output = Command::new(&agent).env("PATH", "").output().unwrap();
+    assert_eq!(
+        output.status.code(),
+        Some(127),
+        "agent popup without codex should exit 127, got {:?}",
+        output.status.code(),
+    );
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("codex is not available on PATH"),
+        "agent popup missing-codex output is unclear: {stderr}",
+    );
+
+    let menu_popup = popup_command(config, "/bin/yzn-menu-popup");
+    let menu_popup_script = fs::read_to_string(&menu_popup).unwrap();
+    assert!(
+        menu_popup_script.contains("/bin/yzn-menu"),
+        "{} does not delegate to yzn-menu",
+        menu_popup.display(),
+    );
+}
+
+fn popup_command(config: &str, suffix: &str) -> PathBuf {
+    config
+        .lines()
+        .find_map(|line| {
+            let command = line.trim().strip_prefix("command \"")?.strip_suffix('"')?;
+            command.ends_with(suffix).then(|| PathBuf::from(command))
+        })
+        .unwrap_or_else(|| panic!("config.kdl is missing popup command ending in {suffix}"))
 }
 
 fn expect_no_block_binds_and_unbinds_same_key(config: &str) {

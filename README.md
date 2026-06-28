@@ -5,9 +5,9 @@ opens Mars with a Yazi-first layout that becomes a sidebar plus stacked work
 panes, a bridge-enabled Yazelix Helix editor, reef cursor colors, and the
 Yazelix Zellij fork. The top bar uses a rendered Yazelix Zellij Bar tray with
 editor, shell, terminal, Codex, CPU, RAM, and version widgets, with bundled
-`tu` for the Codex usage widget. `Alt Shift K` toggles the config popup, and
-`Alt Shift J` toggles a managed LazyGit popup through the standalone Yazelix
-Zellij Popup plugin.
+`tu` for the Codex usage widget. `Alt Shift J/K/L/M` toggle managed LazyGit,
+config, Codex resume, and menu popups through the standalone Yazelix Zellij
+Popup plugin.
 
 ## Run
 
@@ -18,11 +18,13 @@ nix run .#yzn -- help
 nix run .#yzn -- config
 nix run .#yzn -- enter
 nix run .#yzn -- launch
+nix run .#yzn -- menu
 ```
 
 `yzn help` prints help, `yzn config` opens the Ratconfig UI, `yzn
-enter` starts the managed Zellij runtime inside the current terminal, and `yzn
-launch` opens Mars first. Bare `yzn` defaults to `yzn launch`.
+enter` starts the managed Zellij runtime inside the current terminal, `yzn
+launch` opens Mars first, and `yzn menu` prints the compact command/key
+reference. Bare `yzn` defaults to `yzn launch`.
 
 ## Install
 
@@ -90,7 +92,7 @@ when an uncommented line starts with integration-critical ownership such as
 `attach_to_session`.
 
 The packaged config enables Zellij's Kitty keyboard protocol for modified key
-chords such as `Alt Shift J` and `Alt Shift K`.
+chords such as `Alt Shift J/K/L/M`.
 
 ## Nushell Config
 
@@ -145,6 +147,8 @@ Helix, Nushell, Yazi, and terminal programs.
 | `Alt z` | Yazi zoxide jump into the managed editor |
 | `Alt Shift J` | toggle the LazyGit popup |
 | `Alt Shift K` | toggle the config popup |
+| `Alt Shift L` | toggle the Codex resume popup |
+| `Alt Shift M` | toggle the menu popup |
 | `Alt Shift h` | show or hide the Yazi sidebar |
 
 Move mode is intentionally unbound.
@@ -170,11 +174,11 @@ wc -l .gitignore AGENTS.md README.md CHANGELOG.md ARCHITECTURE.md flake.nix pack
 | Language | Files | Lines |
 | --- | --- | ---: |
 | Ignore | `.gitignore` | 1 |
-| Markdown | `AGENTS.md`, `README.md`, `CHANGELOG.md`, `ARCHITECTURE.md` | 534 |
-| Nix | `flake.nix`, `packaging/tokenusage.nix` | 459 |
+| Markdown | `AGENTS.md`, `README.md`, `CHANGELOG.md`, `ARCHITECTURE.md` | 542 |
+| Nix | `flake.nix`, `packaging/tokenusage.nix` | 530 |
 | TOML | `config.toml`, `mars.toml`, `helix/config.toml`, `yazi/yazi.toml`, `yazi/keymap.toml`, `crates/yzn-config/Cargo.toml`, `crates/yzn-open/Cargo.toml` | 127 |
-| KDL | `config.kdl`, `layout.kdl`, `layout.swap.kdl` | 153 |
+| KDL | `config.kdl`, `layout.kdl`, `layout.swap.kdl` | 175 |
 | Nu | `nu/config.nu`, `nu/env.nu` | 11 |
 | Lua | `yazi/init.lua`, `yazi/plugins/sidebar-status.yazi/main.lua`, `yazi/plugins/zoxide-editor.yazi/main.lua` | 137 |
-| Rust | `crates/yzn-config/src/main.rs`, `crates/yzn-open/src/main.rs`, `checks/zellij-layout.rs`, `checks/yzn-contracts.rs`, `runtime/yzn-nu.rs`, `runtime/yzn-zellij-config.rs` | 3028 |
-| Total | owned project files | 4450 |
+| Rust | `crates/yzn-config/src/main.rs`, `crates/yzn-open/src/main.rs`, `checks/zellij-layout.rs`, `checks/yzn-contracts.rs`, `runtime/yzn-nu.rs`, `runtime/yzn-zellij-config.rs` | 3099 |
+| Total | owned project files | 4622 |

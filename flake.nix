@@ -114,6 +114,65 @@
         src = yznConfigSrc;
         cargoLock.lockFile = ./crates/yzn-config/Cargo.lock;
       };
+      yznAgent = pkgs.writeShellApplication {
+        name = "yzn-agent";
+        runtimeInputs = [pkgs.coreutils];
+        text = ''
+          if ! command -v codex >/dev/null 2>&1; then
+            cat >&2 <<'EOF'
+Yazelix Next agent popup
+
+codex is not available on PATH.
+Install Codex or make `codex` executable on PATH before using Alt Shift L.
+EOF
+            if [ -t 0 ]; then
+              printf '\nPress Enter to close this popup...' >&2
+              read -r _ || true
+            fi
+            exit 127
+          fi
+
+          exec codex resume "$@"
+        '';
+      };
+      yznMenu = pkgs.writeShellApplication {
+        name = "yzn-menu";
+        runtimeInputs = [pkgs.coreutils];
+        text = ''
+          cat <<'EOF'
+Yazelix Next Menu
+
+Commands
+  yzn config        Open config UI
+  yzn enter         Start managed runtime in this terminal
+  yzn launch        Open Mars and start Yazelix
+  yzn menu          Show this menu
+
+Popups
+  Alt Shift J       LazyGit
+  Alt Shift K       Config
+  Alt Shift L       Codex resume
+  Alt Shift M       Menu
+
+Workspace
+  Ctrl p/t/n/q      Pane, tab, resize, quit
+  Ctrl Alt h/l      Move tab left/right
+  Ctrl Alt j/k      Move pane down/up
+  Alt Shift h       Toggle Yazi sidebar layout
+  Alt z             Yazi zoxide jump into editor
+EOF
+        '';
+      };
+      yznMenuPopup = pkgs.writeShellApplication {
+        name = "yzn-menu-popup";
+        text = ''
+          ${yznMenu}/bin/yzn-menu
+          if [ -t 0 ]; then
+            printf '\nPress Enter to close this popup...'
+            read -r _ || true
+          fi
+        '';
+      };
       yazelixZellijPopupPackage = yazelixZellijPopup.packages.${system}.yzpp;
       yazelixZellijBarPackage = yazelixZellijBar.packages.${system}.yazelix_zellij_bar;
       tokenusage = import ./packaging/tokenusage.nix {inherit pkgs;};
@@ -235,7 +294,9 @@
       yznConfigKdl = pkgs.replaceVars ./config.kdl {
         nuShell = "${yznNuShell}/bin/yzn-nu";
         yzpp = "file:${yazelixZellijPopupPackage}/${yazelixZellijPopupPackage.wasmPath}";
+        yznAgent = "${yznAgent}/bin/yzn-agent";
         yznConfig = "${yznConfig}/bin/yzn-config";
+        yznMenu = "${yznMenuPopup}/bin/yzn-menu-popup";
         lazygit = "${pkgs.lazygit}/bin/lazygit";
         layout = "${yznZellijLayout}/layout.kdl";
       };
@@ -314,11 +375,13 @@ Usage:
   yzn config
   yzn enter [zellij-args...]
   yzn launch [zellij-args...]
+  yzn menu
 
 Commands:
   config  Open Yazelix Next config
   enter   Start Yazelix in the current terminal
   launch  Open Mars and start Yazelix
+  menu    Show Yazelix Next menu
   help    Show this help
 EOF
           }
@@ -335,6 +398,14 @@ EOF
                 exit 64
               fi
               exec ${yznConfig}/bin/yzn-config
+              ;;
+            menu)
+              shift
+              if [ "$#" -ne 0 ]; then
+                printf 'yzn menu does not accept arguments yet\n' >&2
+                exit 64
+              fi
+              exec ${yznMenu}/bin/yzn-menu
               ;;
             enter)
               shift

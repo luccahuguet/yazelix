@@ -2,9 +2,9 @@
 
 Yazelix Next is a small Nix/Lix flake with one front-door command: `yzn`.
 `yzn help` prints help, `yzn config` opens the Ratconfig UI, `yzn
-enter` starts Yazelix inside the current terminal, and `yzn launch` opens Mars
-first. Bare `yzn` defaults to `yzn launch`. The runtime paths are intentionally
-narrow:
+enter` starts Yazelix inside the current terminal, `yzn launch` opens Mars
+first, and `yzn menu` prints the compact command/key reference. Bare `yzn`
+defaults to `yzn launch`. The runtime paths are intentionally narrow:
 
 ```text
 yzn launch -> Mars -> Yazelix Zellij fork -> Yazi sidebar + stacked work panes
@@ -39,11 +39,12 @@ can replace the Mars config with `~/.config/yazelix-next/mars/config.toml`;
 owners. They set the shell, Zellij-native `Ctrl Alt` mode keys, direct
 `Ctrl Alt h/j/k/l` movement, the Tab-mode new-tab layout binding, the `Alt m`
 pane binding, the `Alt Shift h` sidebar toggle, the `Alt Shift J` LazyGit popup
-binding, the `Alt Shift K` config popup binding, the Yazelix Zellij Bar top bar,
-the Yazi sidebar tab, the open/closed sidebar swap layouts, and explicit Kitty
-keyboard protocol support.
+binding, the `Alt Shift K` config popup binding, the `Alt Shift L` guarded
+Codex resume popup binding, the `Alt Shift M` menu popup binding, the Yazelix
+Zellij Bar top bar, the Yazi sidebar tab, the open/closed sidebar swap layouts,
+and explicit Kitty keyboard protocol support.
 The standalone `yzpp` plugin owns popup lifecycle; Yazelix Next only packages it
-with hardcoded config and LazyGit popups.
+with hardcoded config, LazyGit, agent, and menu popups.
 
 `yazelix-zellij-bar` owns the rendered top bar KDL, widget command logic, and
 `zjstatus.wasm`. Yazelix Next declares a fixed tray of editor, shell, terminal,
@@ -128,7 +129,7 @@ window.
 
 | ID | Contract | Owner | Check | Missing Coverage |
 | --- | --- | --- | --- | --- |
-| C1 | `yzn` defaults to `yzn launch`, `yzn help` prints help, `yzn config` opens Ratconfig config, `yzn enter` starts managed Zellij in the current terminal, and `yzn launch` starts Mars first | `flake.nix`, `crates/yzn-config/` | `checks/yzn-contracts.rs` validates help and launcher wiring; `nix build .#yzn` packages the runtime | GUI launch remains manual dogfooding |
+| C1 | `yzn` defaults to `yzn launch`, `yzn help` prints help, `yzn config` opens Ratconfig config, `yzn menu` prints a compact command/key reference, `yzn enter` starts managed Zellij in the current terminal, and `yzn launch` starts Mars first | `flake.nix`, `crates/yzn-config/` | `checks/yzn-contracts.rs` validates help, menu output, and launcher wiring; `nix build .#yzn` packages the runtime | GUI launch remains manual dogfooding |
 | C2 | Mars uses packaged visual config unless a user native Mars config exists | `mars.toml`, `flake.nix` | `checks/yzn-contracts.rs` validates packaged config and launcher selection | Visual correctness remains manual dogfooding |
 | C3 | Zellij layout has the sidebar template required by swaps | `layout.kdl`, `layout.swap.kdl` | `checks/zellij-layout.rs` runs during build | None for the current template/swap contract |
 | C4 | Zellij-native mode keys use `Ctrl Alt`, Tab-mode new tabs use the packaged Yazelix sidebar layout, move mode is unbound, `Alt m` opens a pane for the swap layout to stack, `Alt Shift h` toggles the sidebar swap, and obvious sidecar ownership lines are rejected | `config.kdl`, `runtime/yzn-zellij-config.rs` | `checks/yzn-contracts.rs` validates the packaged config and accepted/rejected sidecars | Full key behavior remains manual dogfooding |
@@ -136,14 +137,14 @@ window.
 | C6 | Yazi opens paths through `yzn-open` with bounded diagnostics, and `Alt z` jumps through zoxide into the managed editor path | `yazi/`, `crates/yzn-open/`, `flake.nix` | `checks/yzn-contracts.rs` validates packaged Yazi keymap/plugin wiring; `cargo test` covers `yzn-open` bridge/fallback behavior | Full Yazi UI behavior remains manual dogfooding |
 | C7 | Helix bridge reuse stays inside the current `yzn` window | `crates/yzn-open/`, `flake.nix` | `yzn-open` Rust tests cover session and Zellij-window mismatch | Full multi-window GUI behavior remains manual dogfooding |
 | C8 | Desktop entry starts `yzn` | `flake.nix` | `nix build .#yzn` packages the desktop file | Desktop environment launch remains manual dogfooding |
-| C9 | Kitty keyboard protocol is explicitly enabled, `Alt Shift K` toggles the config popup, and `Alt Shift J` toggles the LazyGit popup through `yzpp` | `config.kdl`, `flake.nix` | `checks/yzn-contracts.rs` validates Kitty protocol, the packaged popup plugin, config and LazyGit commands, popup ids, payloads, and key bindings | Visual popup behavior remains manual dogfooding |
+| C9 | Kitty keyboard protocol is explicitly enabled, `Alt Shift J/K/L/M` toggle LazyGit, config, guarded Codex resume, and menu popups through `yzpp` | `config.kdl`, `flake.nix` | `checks/yzn-contracts.rs` validates Kitty protocol, the packaged popup plugin, commands, popup ids, payloads, key bindings, and the missing-Codex guard | Visual popup behavior remains manual dogfooding |
 | C10 | Top bars use the child-rendered Yazelix Zellij Bar tray, tabs use the home marker, Codex usage has bundled `tu` and a yzn-owned cache path, and bottom bars keep native Zellij key hints | `layout.kdl`, `config.kdl`, `flake.nix`, `packaging/tokenusage.nix` | `checks/zellij-layout.rs` validates packaged child bar usage, no-mode formatting, declared yzn widgets, the startup home tab marker, and native bottom status bars; `checks/yzn-contracts.rs` validates the tab-mode new-tab marker, terminal-label wiring, bundled tokenusage path, and status-cache export | Visual bar behavior remains manual dogfooding |
 | C11 | `yzn config` auto-creates root, Mars, and Zellij config sources; root `config.toml` has defaults and joined Ratconfig contract state; `open.log_level` controls managed `YZN_OPEN_LOG`; Mars/Zellij tabs route writes to their native files | `crates/yzn-config/`, `config.toml`, `mars.toml`, `flake.nix` | `crates/yzn-config` unit tests cover create/edit validation, source routing, Zellij scalar rendering, and guarded-node diagnostics; `checks/yzn-contracts.rs` validates packaged defaults, helper install, creation, and `--get` | Interactive Ratconfig UI behavior remains manual dogfooding |
 
 ## Pros
 
-- The public surface is small: `yzn help`, `yzn config`, `yzn enter`, and
-  `yzn launch`.
+- The public surface is small: `yzn help`, `yzn config`, `yzn menu`,
+  `yzn enter`, and `yzn launch`.
 - The semantic config surface starts with one real runtime setting and one
   UI entrypoint instead of a broad command/config system.
 - Nix owns dependency composition, so Mars, Zellij, Helix, Yazi, LazyGit, the
