@@ -431,34 +431,47 @@ fn expect_first_party_popups(config: &str) {
         "share/yazelix_zellij_popup/yzpp.wasm",
         "load_plugins",
         "popups {",
-        "config {",
-        "agent {",
-        "lazygit {",
-        "menu {",
-        "pane_title \"config_popup\"",
-        "pane_title \"agent_popup\"",
-        "pane_title \"lazygit_popup\"",
-        "pane_title \"menu_popup\"",
         "support_kitty_keyboard_protocol true",
-        "bind \"Alt Shift J\"",
-        "payload \"lazygit\"",
-        "bind \"Alt Shift K\"",
-        "payload \"config\"",
-        "bind \"Alt Shift L\"",
-        "payload \"agent\"",
-        "bind \"Alt Shift M\"",
-        "payload \"menu\"",
-        "MessagePlugin \"yzpp\"",
-        "name \"toggle\"",
-        "/bin/lazygit\"",
-        "/bin/yzn-agent\"",
-        "/bin/yzn-config\"",
-        "/bin/yzn-menu-popup\"",
     ] {
         assert!(
             config.contains(expected),
             "config.kdl is missing first-party popup fragment {expected:?}",
         );
+    }
+    for (id, pane_title, command_suffix) in [
+        ("config", "config_popup", "/bin/yzn-config"),
+        ("agent", "agent_popup", "/bin/yzn-agent"),
+        ("lazygit", "lazygit_popup", "/bin/lazygit"),
+        ("menu", "menu_popup", "/bin/yzn-menu-popup"),
+    ] {
+        let block = kdl_block(config, &format!("{id} {{"));
+        for expected in [
+            format!("pane_title \"{pane_title}\""),
+            format!("{command_suffix}\""),
+        ] {
+            assert!(
+                block.contains(&expected),
+                "{id} popup block is missing {expected:?}\n{block}",
+            );
+        }
+    }
+    for (key, payload) in [
+        ("Alt Shift J", "lazygit"),
+        ("Alt Shift K", "config"),
+        ("Alt Shift L", "agent"),
+        ("Alt Shift M", "menu"),
+    ] {
+        let block = kdl_block(config, &format!("bind \"{key}\" {{"));
+        for expected in [
+            r#"MessagePlugin "yzpp""#.to_owned(),
+            r#"name "toggle""#.to_owned(),
+            format!("payload \"{payload}\""),
+        ] {
+            assert!(
+                block.contains(&expected),
+                "{key} popup binding is missing {expected:?}\n{block}",
+            );
+        }
     }
 
     let agent = popup_command(config, "/bin/yzn-agent");
@@ -494,6 +507,26 @@ fn expect_first_party_popups(config: &str) {
         "{} does not delegate to yzn-menu",
         menu_popup.display(),
     );
+}
+
+fn kdl_block(config: &str, opener: &str) -> String {
+    let mut block = String::new();
+    let mut depth = 0_i32;
+    let mut found = false;
+    for line in config.lines().map(str::trim) {
+        if !found && line != opener {
+            continue;
+        }
+        found = true;
+        block.push_str(line);
+        block.push('\n');
+        depth += line.matches('{').count() as i32;
+        depth -= line.matches('}').count() as i32;
+        if depth == 0 {
+            return block;
+        }
+    }
+    panic!("config.kdl is missing block {opener}");
 }
 
 fn popup_command(config: &str, suffix: &str) -> PathBuf {

@@ -149,7 +149,7 @@ Helix, Nushell, Yazi, and terminal programs.
 | `Alt Shift K` | toggle the config popup |
 | `Alt Shift L` | toggle the Codex resume popup |
 | `Alt Shift M` | toggle the menu popup |
-| `Alt Shift h` | show or hide the Yazi sidebar |
+| `Alt Shift h` | toggle the Yazi sidebar layout |
 
 Move mode is intentionally unbound.
 
@@ -180,5 +180,5 @@ wc -l .gitignore AGENTS.md README.md CHANGELOG.md ARCHITECTURE.md flake.nix pack
 | KDL | `config.kdl`, `layout.kdl`, `layout.swap.kdl` | 175 |
 | Nu | `nu/config.nu`, `nu/env.nu` | 11 |
 | Lua | `yazi/init.lua`, `yazi/plugins/sidebar-status.yazi/main.lua`, `yazi/plugins/zoxide-editor.yazi/main.lua` | 137 |
-| Rust | `crates/yzn-config/src/main.rs`, `crates/yzn-open/src/main.rs`, `checks/zellij-layout.rs`, `checks/yzn-contracts.rs`, `runtime/yzn-nu.rs`, `runtime/yzn-zellij-config.rs` | 3099 |
-| Total | owned project files | 4622 |
+| Rust | `crates/yzn-config/src/main.rs`, `crates/yzn-open/src/main.rs`, `checks/zellij-layout.rs`, `checks/yzn-contracts.rs`, `runtime/yzn-nu.rs`, `runtime/yzn-zellij-config.rs` | 3132 |
+| Total | owned project files | 4655 |
