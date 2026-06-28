@@ -95,10 +95,7 @@ fn expect_front_door(yzn: &Path) {
         "yzn launch [zellij-args...]",
         "yzn menu",
     ] {
-        assert!(
-            help.contains(expected),
-            "yzn help is missing {expected:?}\n{help}",
-        );
+        expect_contains(&help, expected, "yzn help");
     }
     let menu = run_help(&yzn_bin, &["menu"]);
     for expected in [
@@ -108,10 +105,7 @@ fn expect_front_door(yzn: &Path) {
         "Codex resume",
         "Alt Shift M",
     ] {
-        assert!(
-            menu.contains(expected),
-            "yzn menu is missing {expected:?}\n{menu}",
-        );
+        expect_contains(&menu, expected, "yzn menu");
     }
 
     let yzn_launcher = fs::read_to_string(&yzn_bin).unwrap();
@@ -131,10 +125,7 @@ fn expect_front_door(yzn: &Path) {
         "yzn menu does not accept arguments yet",
         "tokenusage-1.5.2",
     ] {
-        assert!(
-            yzn_launcher.contains(expected),
-            "bin/yzn does not contain launch fragment {expected}",
-        );
+        expect_contains(&yzn_launcher, expected, "bin/yzn launch fragment");
     }
     assert!(
         yzn.join("share/yazelix-next/runtime_identity.json")
@@ -180,10 +171,7 @@ fn expect_config_ui(yzn: &Path) {
         "contract = {",
         "contract_id = \"yazelix-next.config\"",
     ] {
-        assert!(
-            config_text.contains(expected),
-            "created config.toml is missing {expected:?}\n{config_text}"
-        );
+        expect_contains(&config_text, expected, "created config.toml");
     }
 }
 
@@ -240,10 +228,7 @@ fn expect_mars_config_override(yzn: &Path) {
         "MARS_CONFIG_HOME=\"$yzn_config_home/mars\"",
         "MARS_CONFIG_HOME=/nix/store/",
     ] {
-        assert!(
-            launcher.contains(expected),
-            "bin/yzn is missing Mars config override fragment: {expected}",
-        );
+        expect_contains(&launcher, expected, "bin/yzn Mars config override fragment");
     }
 }
 
@@ -303,10 +288,7 @@ fn expect_yazi_alt_z(yzn: &Path) {
         r#"run = "plugin zoxide-editor""#,
         r#"desc = "Zoxide jump -> open in editor""#,
     ] {
-        assert!(
-            keymap.contains(expected),
-            "Yazi keymap is missing Alt-z fragment: {expected}",
-        );
+        expect_contains(&keymap, expected, "Yazi Alt-z keymap fragment");
     }
 
     let plugin =
@@ -320,10 +302,7 @@ fn expect_yazi_alt_z(yzn: &Path) {
         r#"query", "-i", "--exclude""#,
         "YZN_OPEN is not set",
     ] {
-        assert!(
-            plugin.contains(expected),
-            "Yazi zoxide editor plugin is missing fragment: {expected}",
-        );
+        expect_contains(&plugin, expected, "Yazi zoxide editor plugin fragment");
     }
 
     let layout = fs::read_to_string(yzn.join("share/yazelix-next/layout.kdl")).unwrap();
@@ -346,10 +325,10 @@ fn expect_yazi_alt_z(yzn: &Path) {
         "zoxide",
         "fzf",
     ] {
-        assert!(
-            wrapper.contains(expected),
-            "{} is missing Yazi integration fragment: {expected}",
-            yzn_yazi.display(),
+        expect_contains(
+            &wrapper,
+            expected,
+            &format!("{} Yazi integration fragment", yzn_yazi.display()),
         );
     }
 }
@@ -433,10 +412,7 @@ fn expect_first_party_popups(config: &str) {
         "popups {",
         "support_kitty_keyboard_protocol true",
     ] {
-        assert!(
-            config.contains(expected),
-            "config.kdl is missing first-party popup fragment {expected:?}",
-        );
+        expect_contains(config, expected, "config.kdl first-party popup fragment");
     }
     for (id, pane_title, command_suffix) in [
         ("config", "config_popup", "/bin/yzn-config"),
@@ -476,10 +452,10 @@ fn expect_first_party_popups(config: &str) {
         "codex is not available on PATH",
         "exec codex resume",
     ] {
-        assert!(
-            agent_script.contains(expected),
-            "{} is missing guarded Codex fragment: {expected}",
-            agent.display(),
+        expect_contains(
+            &agent_script,
+            expected,
+            &format!("{} guarded Codex fragment", agent.display()),
         );
     }
     let output = Command::new(&agent).env("PATH", "").output().unwrap();
@@ -545,6 +521,13 @@ fn opens_keybind_block(line: &str) -> bool {
 
 fn quoted_keys(line: &str) -> impl Iterator<Item = String> + '_ {
     line.split('"').skip(1).step_by(2).map(str::to_string)
+}
+
+fn expect_contains(haystack: &str, needle: &str, context: &str) {
+    assert!(
+        haystack.contains(needle),
+        "{context} is missing {needle:?}\n{haystack}"
+    );
 }
 
 #[derive(Default)]

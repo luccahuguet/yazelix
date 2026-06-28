@@ -1,5 +1,3 @@
-// Test lane: default
-
 use std::{
     env, fs, io,
     path::{Path, PathBuf},
@@ -11,17 +9,17 @@ use crossterm::{
     cursor,
     event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers},
     execute,
-    terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
+    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use ratatui::{Terminal, backend::CrosstermBackend};
+use ratatui::{backend::CrosstermBackend, Terminal};
 use ratconfig::toml_adapter::{get_toml_path, parse_toml_value, set_toml_value_text};
 use ratconfig::{
-    ConfigContract, ConfigUiApp, ConfigUiApplyStatus, ConfigUiDiagnostic, ConfigUiEditBehavior,
-    ConfigUiFieldRowSpec, ConfigUiIntent, ConfigUiKey, ConfigUiModel, ConfigUiPathOwner,
-    ConfigUiSource, DEFAULT_CONFIG_SOURCE_ID, build_config_ui_field, draw_config_ui,
-    join_toml_contract_text_from_version, reconcile_joined_toml_contract_text,
+    build_config_ui_field, draw_config_ui, join_toml_contract_text_from_version,
+    reconcile_joined_toml_contract_text, ConfigContract, ConfigUiApp, ConfigUiApplyStatus,
+    ConfigUiDiagnostic, ConfigUiEditBehavior, ConfigUiFieldRowSpec, ConfigUiIntent, ConfigUiKey,
+    ConfigUiModel, ConfigUiPathOwner, ConfigUiSource, DEFAULT_CONFIG_SOURCE_ID,
 };
-use serde_json::{Value as JsonValue, json};
+use serde_json::{json, Value as JsonValue};
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
@@ -307,19 +305,21 @@ fn print_config_field(path: &str) -> Result<()> {
     if path != OPEN_LOG_LEVEL_PATH {
         return Err(error(format!("unknown config path: {path}")));
     }
-    println!("{}", read_open_log_level(&ensure_config_file()?)?);
+    println!(
+        "{}",
+        read_open_log_level(&ensure_config_file_at(config_paths()?.root)?)?
+    );
     Ok(())
-}
-
-fn ensure_config_file() -> Result<PathBuf> {
-    ensure_config_file_at(config_paths()?.root)
 }
 
 fn ensure_config_sources() -> Result<ConfigPaths> {
     let paths = config_paths()?;
     ensure_config_file_at(paths.root.clone())?;
     ensure_plain_config_file_at(&paths.mars, DEFAULT_MARS_CONFIG_TOML)?;
-    ensure_plain_config_file_at(&paths.zellij, &default_zellij_config_kdl())?;
+    ensure_plain_config_file_at(
+        &paths.zellij,
+        &render_zellij_sidecar(&ZellijSidecar::default()),
+    )?;
     Ok(paths)
 }
 
@@ -390,13 +390,9 @@ fn fill_missing_defaults(raw: &str) -> Result<String> {
     if get_toml_path(&value, OPEN_LOG_LEVEL_PATH).is_some() {
         return Ok(raw.to_string());
     }
-    set_toml_value_text(raw, OPEN_LOG_LEVEL_PATH, &open_log_level_default())
+    set_toml_value_text(raw, OPEN_LOG_LEVEL_PATH, &json!(OPEN_LOG_LEVEL_DEFAULT))
         .map(|patch| patch.text)
         .map_err(|error| boxed_debug("could not write missing default", error))
-}
-
-fn read_config_value(path: &Path) -> Result<JsonValue> {
-    read_toml_file_value(path, "config.toml")
 }
 
 fn read_toml_file_value(path: &Path, label: &'static str) -> Result<JsonValue> {
@@ -405,7 +401,7 @@ fn read_toml_file_value(path: &Path, label: &'static str) -> Result<JsonValue> {
 }
 
 fn read_open_log_level(path: &Path) -> Result<String> {
-    let value = read_config_value(path)?;
+    let value = read_toml_file_value(path, "config.toml")?;
     let Some(value) = get_toml_path(&value, OPEN_LOG_LEVEL_PATH) else {
         return Err(error(format!("unknown config path: {OPEN_LOG_LEVEL_PATH}")));
     };
@@ -413,11 +409,11 @@ fn read_open_log_level(path: &Path) -> Result<String> {
 }
 
 fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
-    let config_active = read_config_value(&paths.root)?;
+    let config_active = read_toml_file_value(&paths.root, "config.toml")?;
     let mars_active = read_toml_file_value(&paths.mars, "invalid mars/config.toml")?;
     let mars_default = parse_toml_value(DEFAULT_MARS_CONFIG_TOML)
         .map_err(|error| boxed_debug("invalid default Mars config", error))?;
-    let (zellij_active, diagnostics) = read_zellij_sidecar(&paths.zellij)?;
+    let (zellij_active, diagnostics) = parse_zellij_sidecar(&fs::read_to_string(&paths.zellij)?);
     let zellij_default = ZellijSidecar::default();
     let zellij_blocking = diagnostics.iter().any(|diagnostic| diagnostic.blocking);
 
@@ -494,7 +490,7 @@ fn build_config_source(id: &str, tab: &str, label: &str, path: &Path) -> ConfigU
 }
 
 fn build_open_log_level_field(active: &JsonValue) -> ratconfig::ConfigUiField {
-    let default = open_log_level_default();
+    let default = json!(OPEN_LOG_LEVEL_DEFAULT);
     let current = get_toml_path(active, OPEN_LOG_LEVEL_PATH);
     build_config_ui_field(ConfigUiFieldRowSpec {
         source_id: SOURCE_CONFIG,
@@ -556,10 +552,6 @@ fn next_launch_apply_status(label: &str, detail: &str) -> ConfigUiApplyStatus {
     }
 }
 
-fn open_log_level_default() -> JsonValue {
-    json!(OPEN_LOG_LEVEL_DEFAULT)
-}
-
 fn string_values(values: &[&str]) -> Vec<String> {
     values.iter().map(|value| (*value).to_string()).collect()
 }
@@ -593,7 +585,7 @@ fn write_source_default(paths: &ConfigPaths, source_id: &str, field_path: &str) 
             if field_path != OPEN_LOG_LEVEL_PATH {
                 return Err(error(format!("unknown config path: {field_path}")));
             }
-            open_log_level_default()
+            json!(OPEN_LOG_LEVEL_DEFAULT)
         }
         SOURCE_MARS => {
             let default = parse_toml_value(DEFAULT_MARS_CONFIG_TOML)
@@ -689,11 +681,6 @@ fn open_log_level_from_json(value: &JsonValue) -> Result<&str> {
         )));
     }
     Ok(value)
-}
-
-fn read_zellij_sidecar(path: &Path) -> Result<(ZellijSidecar, Vec<ConfigUiDiagnostic>)> {
-    let raw = fs::read_to_string(path)?;
-    Ok(parse_zellij_sidecar(&raw))
 }
 
 fn write_zellij_config_field(path: &Path, field_path: &str, value: &JsonValue) -> Result<()> {
@@ -1012,12 +999,12 @@ ui {{
     )
 }
 
-fn default_zellij_config_kdl() -> String {
-    render_zellij_sidecar(&ZellijSidecar::default())
-}
-
 fn kdl_bool(value: bool) -> &'static str {
-    if value { "true" } else { "false" }
+    if value {
+        "true"
+    } else {
+        "false"
+    }
 }
 
 fn json_bool(path: &str, value: &JsonValue) -> Result<bool> {
@@ -1124,7 +1111,11 @@ mod tests {
     fn ensure_temp_sources(paths: &ConfigPaths) {
         ensure_config_file_at(paths.root.clone()).unwrap();
         ensure_plain_config_file_at(&paths.mars, DEFAULT_MARS_CONFIG_TOML).unwrap();
-        ensure_plain_config_file_at(&paths.zellij, &default_zellij_config_kdl()).unwrap();
+        ensure_plain_config_file_at(
+            &paths.zellij,
+            &render_zellij_sidecar(&ZellijSidecar::default()),
+        )
+        .unwrap();
     }
 
     fn has_diagnostic(diagnostics: &[ConfigUiDiagnostic], text: &str) -> bool {
@@ -1144,7 +1135,7 @@ mod tests {
     fn ensure_config_creates_defaults_and_contract_state() {
         let temp = TempHome::new();
         let path = ensure_config_file_at(temp.path.join("config.toml")).unwrap();
-        let value = read_config_value(&path).unwrap();
+        let value = read_toml_file_value(&path, "config.toml").unwrap();
 
         assert_eq!(
             get_toml_path(&value, OPEN_LOG_LEVEL_PATH),
@@ -1167,7 +1158,7 @@ mod tests {
         let path = ensure_config_file_at(temp.path.join("config.toml")).unwrap();
 
         write_config_field(&path, OPEN_LOG_LEVEL_PATH, &json!("debug")).unwrap();
-        let value = read_config_value(&path).unwrap();
+        let value = read_toml_file_value(&path, "config.toml").unwrap();
         assert_eq!(
             get_toml_path(&value, OPEN_LOG_LEVEL_PATH),
             Some(&json!("debug"))
@@ -1232,16 +1223,12 @@ mod tests {
         assert!(paths.root.exists());
         assert!(paths.mars.exists());
         assert!(paths.zellij.exists());
-        assert!(
-            !fs::read_to_string(paths.mars)
-                .unwrap()
-                .contains("ratconfig.contract")
-        );
-        assert!(
-            fs::read_to_string(paths.zellij)
-                .unwrap()
-                .contains("rounded_corners false")
-        );
+        assert!(!fs::read_to_string(paths.mars)
+            .unwrap()
+            .contains("ratconfig.contract"));
+        assert!(fs::read_to_string(paths.zellij)
+            .unwrap()
+            .contains("rounded_corners false"));
     }
 
     // Defends: source ids route writes to the selected backing file.
@@ -1286,7 +1273,7 @@ mod tests {
         let path = temp.path.join("zellij/config.kdl");
         atomic_write(&path, "keybinds {}\npane_frames true\n").unwrap();
 
-        let (_config, diagnostics) = read_zellij_sidecar(&path).unwrap();
+        let (_config, diagnostics) = parse_zellij_sidecar(&fs::read_to_string(&path).unwrap());
         assert!(diagnostics.iter().any(|diagnostic| diagnostic.blocking));
 
         let error = write_zellij_config_field(&path, "pane_frames", &json!(false)).unwrap_err();
@@ -1309,7 +1296,7 @@ mod tests {
     fn zellij_sidecar_rejects_non_positive_scrollback_and_unclosed_blocks() {
         let temp = TempHome::new();
         let path = temp.path.join("zellij/config.kdl");
-        atomic_write(&path, &default_zellij_config_kdl()).unwrap();
+        atomic_write(&path, &render_zellij_sidecar(&ZellijSidecar::default())).unwrap();
 
         let error = write_zellij_config_field(&path, "scroll_buffer_size", &json!(-1)).unwrap_err();
         assert!(error.to_string().contains("positive integer"));
