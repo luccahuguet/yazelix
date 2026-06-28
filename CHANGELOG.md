@@ -19,6 +19,9 @@ User-visible runtime changes for Yazelix Next live here.
   sending it through `yzn-open`.
 - `open.log_level` in `config.toml` controls the managed `YZN_OPEN_LOG`
   level used by Yazi-to-Helix opens.
+- `shell.program` in `config.toml` selects the packaged shell for new Zellij
+  panes. The default remains `nu`; `bash`, `zsh`, and `fish` are also packaged
+  choices.
 - `yzn` appends `~/.config/yazelix-next/zellij/config.kdl` as a native Zellij
   sidecar for safe preferences, with a small denylist guardrail for obvious
   ownership lines such as keymaps, shell, layout, plugins, Kitty keyboard
@@ -26,9 +29,9 @@ User-visible runtime changes for Yazelix Next live here.
 - `yzn` uses `~/.config/yazelix-next/mars/config.toml` as a full native Mars
   config override when that file exists, while keeping the Mars launch command
   and managed Zellij runtime owned by `yzn`.
-- `yzn` sets `STARSHIP_CONFIG` to `~/.config/yazelix-next/starship.toml` when
-  that file exists, otherwise to an empty config so normal
-  `~/.config/starship.toml` does not affect the managed prompt.
+- Managed Nu sets `STARSHIP_CONFIG` to `~/.config/yazelix-next/starship.toml`
+  when that file exists, otherwise to an empty config so normal
+  `~/.config/starship.toml` does not affect the managed Nu prompt.
 - Nushell delegates the right prompt to Starship, so `right_format` in
   `~/.config/yazelix-next/starship.toml` is honored.
 - The top bar uses the standalone Yazelix Zellij Bar package while the bottom

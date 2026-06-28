@@ -29,17 +29,44 @@ const CONTRACT_STATE_PATH: &str = "ratconfig.contract";
 const CONTRACT_VERSION: u64 = 1;
 
 const OPEN_LOG_LEVEL_PATH: &str = "open.log_level";
-const OPEN_LOG_LEVEL_DEFAULT: &str = "info";
-const OPEN_LOG_LEVELS: &[&str] = &["off", "error", "info", "debug"];
+const SHELL_PROGRAM_PATH: &str = "shell.program";
 const DEFAULT_MARS_CONFIG_TOML: &str = include_str!("../../../mars.toml");
 
 const SOURCE_CONFIG: &str = DEFAULT_CONFIG_SOURCE_ID;
 const SOURCE_MARS: &str = "mars";
 const SOURCE_ZELLIJ: &str = "zellij";
 const TAB_CONFIG: &str = "config";
+const TAB_SHELL: &str = "shell";
 const TAB_MARS: &str = "mars";
 const TAB_ZELLIJ: &str = "zellij";
 const TAB_ADVANCED: &str = "advanced";
+
+const CONFIG_FIELDS: &[ConfigFieldSpec] = &[
+    ConfigFieldSpec {
+        field: FieldSpec::string_choice(
+            OPEN_LOG_LEVEL_PATH,
+            "Diagnostics written by yzn-open for Yazi-to-Helix open requests.",
+            &["off", "error", "info", "debug"],
+            "off, error, info, or debug",
+        ),
+        default: "info",
+        tab: TAB_CONFIG,
+        apply_summary: "new opens",
+        apply_detail: "Saved values are exported as YZN_OPEN_LOG for managed Yazi opens.",
+    },
+    ConfigFieldSpec {
+        field: FieldSpec::string_choice(
+            SHELL_PROGRAM_PATH,
+            "Packaged shell launched in new Zellij panes.",
+            &["nu", "bash", "zsh", "fish"],
+            "nu, bash, zsh, or fish",
+        ),
+        default: "nu",
+        tab: TAB_SHELL,
+        apply_summary: "new panes",
+        apply_detail: "Saved shell selection applies to newly launched panes and sessions.",
+    },
+];
 
 const MARS_FIELDS: &[FieldSpec] = &[
     FieldSpec::integer("window.width", "Initial Mars window width.", "pixels"),
@@ -100,6 +127,15 @@ struct ConfigPaths {
 }
 
 #[derive(Debug, Clone, Copy)]
+struct ConfigFieldSpec {
+    field: FieldSpec,
+    default: &'static str,
+    tab: &'static str,
+    apply_summary: &'static str,
+    apply_detail: &'static str,
+}
+
+#[derive(Debug, Clone, Copy)]
 struct FieldSpec {
     path: &'static str,
     kind: &'static str,
@@ -152,6 +188,20 @@ impl FieldSpec {
             allowed_values,
             validation,
         }
+    }
+
+    fn json_choice<'a>(&self, value: &'a JsonValue) -> Result<&'a str> {
+        let Some(value) = value.as_str() else {
+            return Err(error(format!("{} must be a string", self.path)));
+        };
+        if !self.allowed_values.is_empty() && !self.allowed_values.contains(&value) {
+            return Err(error(format!(
+                "{} must be one of: {}",
+                self.path,
+                self.allowed_values.join(", ")
+            )));
+        }
+        Ok(value)
     }
 }
 
@@ -302,14 +352,19 @@ fn config_key(key: KeyEvent) -> Option<ConfigUiKey> {
 }
 
 fn print_config_field(path: &str) -> Result<()> {
-    if path != OPEN_LOG_LEVEL_PATH {
-        return Err(error(format!("unknown config path: {path}")));
-    }
+    let spec = config_field(path)?;
     println!(
         "{}",
-        read_open_log_level(&ensure_config_file_at(config_paths()?.root)?)?
+        read_config_field(&ensure_config_file_at(config_paths()?.root)?, spec)?
     );
     Ok(())
+}
+
+fn config_field(path: &str) -> Result<&'static ConfigFieldSpec> {
+    CONFIG_FIELDS
+        .iter()
+        .find(|spec| spec.field.path == path)
+        .ok_or_else(|| error(format!("unknown config path: {path}")))
 }
 
 fn ensure_config_sources() -> Result<ConfigPaths> {
@@ -386,13 +441,16 @@ fn reconcile_contract(raw: &str) -> Result<String> {
 }
 
 fn fill_missing_defaults(raw: &str) -> Result<String> {
-    let value = parse_toml_value(raw).map_err(|error| boxed_debug("invalid TOML", error))?;
-    if get_toml_path(&value, OPEN_LOG_LEVEL_PATH).is_some() {
-        return Ok(raw.to_string());
+    let mut text = raw.to_string();
+    for spec in CONFIG_FIELDS {
+        let value = parse_toml_value(&text).map_err(|error| boxed_debug("invalid TOML", error))?;
+        if get_toml_path(&value, spec.field.path).is_none() {
+            text = set_toml_value_text(&text, spec.field.path, &json!(spec.default))
+                .map_err(|error| boxed_debug("could not write missing default", error))?
+                .text;
+        }
     }
-    set_toml_value_text(raw, OPEN_LOG_LEVEL_PATH, &json!(OPEN_LOG_LEVEL_DEFAULT))
-        .map(|patch| patch.text)
-        .map_err(|error| boxed_debug("could not write missing default", error))
+    Ok(text)
 }
 
 fn read_toml_file_value(path: &Path, label: &'static str) -> Result<JsonValue> {
@@ -400,12 +458,12 @@ fn read_toml_file_value(path: &Path, label: &'static str) -> Result<JsonValue> {
     parse_toml_value(&raw).map_err(|error| boxed_debug(label, error))
 }
 
-fn read_open_log_level(path: &Path) -> Result<String> {
+fn read_config_field(path: &Path, spec: &ConfigFieldSpec) -> Result<String> {
     let value = read_toml_file_value(path, "config.toml")?;
-    let Some(value) = get_toml_path(&value, OPEN_LOG_LEVEL_PATH) else {
-        return Err(error(format!("unknown config path: {OPEN_LOG_LEVEL_PATH}")));
+    let Some(value) = get_toml_path(&value, spec.field.path) else {
+        return Err(error(format!("unknown config path: {}", spec.field.path)));
     };
-    Ok(open_log_level_from_json(value)?.to_string())
+    Ok(spec.field.json_choice(value)?.to_string())
 }
 
 fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
@@ -417,7 +475,10 @@ fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
     let zellij_default = ZellijSidecar::default();
     let zellij_blocking = diagnostics.iter().any(|diagnostic| diagnostic.blocking);
 
-    let mut fields = vec![build_open_log_level_field(&config_active)];
+    let mut fields: Vec<_> = CONFIG_FIELDS
+        .iter()
+        .map(|spec| build_root_config_field(&config_active, spec))
+        .collect();
     for spec in MARS_FIELDS {
         fields.push(build_config_field(
             SOURCE_MARS,
@@ -466,6 +527,7 @@ fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
         ],
         tabs: vec![
             TAB_CONFIG.to_string(),
+            TAB_SHELL.to_string(),
             TAB_MARS.to_string(),
             TAB_ZELLIJ.to_string(),
             TAB_ADVANCED.to_string(),
@@ -489,31 +551,23 @@ fn build_config_source(id: &str, tab: &str, label: &str, path: &Path) -> ConfigU
     }
 }
 
-fn build_open_log_level_field(active: &JsonValue) -> ratconfig::ConfigUiField {
-    let default = json!(OPEN_LOG_LEVEL_DEFAULT);
-    let current = get_toml_path(active, OPEN_LOG_LEVEL_PATH);
-    build_config_ui_field(ConfigUiFieldRowSpec {
-        source_id: SOURCE_CONFIG,
-        path: OPEN_LOG_LEVEL_PATH,
-        display_label: String::new(),
-        tab: TAB_CONFIG,
-        kind: "string",
+fn build_root_config_field(active: &JsonValue, spec: &ConfigFieldSpec) -> ratconfig::ConfigUiField {
+    let default = json!(spec.default);
+    let current = get_toml_path(active, spec.field.path);
+    build_config_field(
+        SOURCE_CONFIG,
+        spec.tab,
+        &spec.field,
         current,
-        default: Some(&default),
-        description: "Diagnostics written by yzn-open for Yazi-to-Helix open requests.".to_string(),
-        allowed_values: string_values(OPEN_LOG_LEVELS),
-        validation: "off, error, info, or debug".to_string(),
-        rebuild_required: false,
-        apply_status: ConfigUiApplyStatus {
-            summary: "new opens".to_string(),
+        Some(&default),
+        ConfigUiApplyStatus {
+            summary: spec.apply_summary.to_string(),
             label: "runtime".to_string(),
-            detail: "Saved values are exported as YZN_OPEN_LOG for managed Yazi opens.".to_string(),
+            detail: spec.apply_detail.to_string(),
             pending: false,
         },
-        has_blocking_diagnostic: current
-            .is_some_and(|value| open_log_level_from_json(value).is_err()),
-        edit_behavior: ConfigUiEditBehavior::Default,
-    })
+        current.is_some_and(|value| spec.field.json_choice(value).is_err()),
+    )
 }
 
 fn build_config_field(
@@ -581,12 +635,7 @@ fn write_source_field(
 
 fn write_source_default(paths: &ConfigPaths, source_id: &str, field_path: &str) -> Result<()> {
     let value = match source_id {
-        SOURCE_CONFIG => {
-            if field_path != OPEN_LOG_LEVEL_PATH {
-                return Err(error(format!("unknown config path: {field_path}")));
-            }
-            json!(OPEN_LOG_LEVEL_DEFAULT)
-        }
+        SOURCE_CONFIG => json!(config_field(field_path)?.default),
         SOURCE_MARS => {
             let default = parse_toml_value(DEFAULT_MARS_CONFIG_TOML)
                 .map_err(|error| boxed_debug("invalid default Mars config", error))?;
@@ -617,10 +666,7 @@ fn path_read_only(path: &Path) -> bool {
 }
 
 fn write_config_field(path: &Path, field_path: &str, value: &JsonValue) -> Result<()> {
-    if field_path != OPEN_LOG_LEVEL_PATH {
-        return Err(error(format!("unknown config path: {field_path}")));
-    }
-    open_log_level_from_json(value)?;
+    config_field(field_path)?.field.json_choice(value)?;
     let raw = fs::read_to_string(path)?;
     let text = set_toml_value_text(&raw, field_path, value)
         .map_err(|error| boxed_debug("could not update config.toml", error))?
@@ -665,22 +711,9 @@ fn validate_mars_field(spec: &FieldSpec, value: &JsonValue) -> Result<()> {
                 _ => Ok(()),
             }
         }
-        "string" => validate_choice(value, spec.path, spec.allowed_values),
+        "string" => spec.json_choice(value).map(|_| ()),
         _ => Err(error(format!("{} must be {}", spec.path, spec.validation))),
     }
-}
-
-fn open_log_level_from_json(value: &JsonValue) -> Result<&str> {
-    let Some(value) = value.as_str() else {
-        return Err(error("open.log_level must be a string"));
-    };
-    if !OPEN_LOG_LEVELS.contains(&value) {
-        return Err(error(format!(
-            "open.log_level must be one of: {}",
-            OPEN_LOG_LEVELS.join(", ")
-        )));
-    }
-    Ok(value)
 }
 
 fn write_zellij_config_field(path: &Path, field_path: &str, value: &JsonValue) -> Result<()> {
@@ -731,7 +764,9 @@ fn parse_zellij_sidecar(raw: &str) -> (ZellijSidecar, Vec<ConfigUiDiagnostic>) {
             continue;
         };
         match stack.as_slice() {
-            [] => parse_zellij_top_level_line(&mut config, &mut diagnostics, line, token, line_number),
+            [] => {
+                parse_zellij_top_level_line(&mut config, &mut diagnostics, line, token, line_number)
+            }
             ["ui"] => {
                 if token == "pane_frames" && line.contains('{') {
                     stack.push("pane_frames");
@@ -761,11 +796,7 @@ fn parse_zellij_sidecar(raw: &str) -> (ZellijSidecar, Vec<ConfigUiDiagnostic>) {
                     ));
                 }
             }
-            _ => diagnostics.push(zellij_diagnostic(
-                line_number,
-                "unsupported nested Zellij block".to_string(),
-                "The managed editor only supports scalar sidecar preferences and ui.pane_frames.rounded_corners.",
-            )),
+            _ => unreachable!("Zellij parser stack only contains ui and pane_frames"),
         }
         if stack.is_empty() && token == "ui" && line.contains('{') {
             stack.push("ui");
@@ -957,8 +988,10 @@ fn set_zellij_field_value(config: &mut ZellijSidecar, path: &str, value: &JsonVa
         "scroll_buffer_size" => config.scroll_buffer_size = json_positive_i64(path, value)?,
         "copy_on_select" => config.copy_on_select = json_bool(path, value)?,
         "copy_clipboard" => {
-            validate_choice(value, path, ZELLIJ_COPY_CLIPBOARD_VALUES)?;
-            config.copy_clipboard = value.as_str().expect("validated string").to_string();
+            config.copy_clipboard = zellij_field(path)
+                .expect("known field")
+                .json_choice(value)?
+                .to_string();
         }
         "styled_underlines" => config.styled_underlines = json_bool(path, value)?,
         "show_startup_tips" => config.show_startup_tips = json_bool(path, value)?,
@@ -1023,19 +1056,6 @@ fn json_positive_i64(path: &str, value: &JsonValue) -> Result<i64> {
         return Err(error(format!("{path} must be a positive integer")));
     }
     Ok(value)
-}
-
-fn validate_choice(value: &JsonValue, path: &str, allowed_values: &[&str]) -> Result<()> {
-    let Some(value) = value.as_str() else {
-        return Err(error(format!("{path} must be a string")));
-    };
-    if !allowed_values.is_empty() && !allowed_values.contains(&value) {
-        return Err(error(format!(
-            "{path} must be one of: {}",
-            allowed_values.join(", ")
-        )));
-    }
-    Ok(())
 }
 
 fn atomic_write(path: &Path, text: &str) -> Result<()> {
@@ -1127,6 +1147,17 @@ mod tests {
         fs::set_permissions(path, permissions).unwrap();
     }
 
+    // Defends: hidden --get paths are validated before config file creation/reconciliation.
+    #[test]
+    fn config_field_rejects_unknown_paths_before_io() {
+        assert_eq!(config_field(OPEN_LOG_LEVEL_PATH).unwrap().default, "info");
+        assert_eq!(config_field(SHELL_PROGRAM_PATH).unwrap().default, "nu");
+        assert!(config_field("shell.typo")
+            .unwrap_err()
+            .to_string()
+            .contains("unknown config path"));
+    }
+
     // Defends: yzn config creates the owned TOML config file with defaults and joined contract state.
     #[test]
     fn ensure_config_creates_defaults_and_contract_state() {
@@ -1137,6 +1168,10 @@ mod tests {
         assert_eq!(
             get_toml_path(&value, OPEN_LOG_LEVEL_PATH),
             Some(&json!("info"))
+        );
+        assert_eq!(
+            get_toml_path(&value, SHELL_PROGRAM_PATH),
+            Some(&json!("nu"))
         );
         assert_eq!(
             get_toml_path(&value, "ratconfig.contract.contract_id"),
@@ -1150,7 +1185,7 @@ mod tests {
 
     // Defends: config edits are validated and persisted through ratconfig's TOML patch path.
     #[test]
-    fn write_config_field_persists_valid_log_level_and_rejects_bad_values() {
+    fn write_config_field_persists_valid_values_and_rejects_bad_values() {
         let temp = TempHome::new();
         let path = ensure_config_file_at(temp.path.join("config.toml")).unwrap();
 
@@ -1163,6 +1198,16 @@ mod tests {
 
         let error = write_config_field(&path, OPEN_LOG_LEVEL_PATH, &json!("loud")).unwrap_err();
         assert!(error.to_string().contains("off, error, info, debug"));
+
+        write_config_field(&path, SHELL_PROGRAM_PATH, &json!("fish")).unwrap();
+        let value = read_toml_file_value(&path, "config.toml").unwrap();
+        assert_eq!(
+            get_toml_path(&value, SHELL_PROGRAM_PATH),
+            Some(&json!("fish"))
+        );
+
+        let error = write_config_field(&path, SHELL_PROGRAM_PATH, &json!("tcsh")).unwrap_err();
+        assert!(error.to_string().contains("nu, bash, zsh, fish"));
     }
 
     // Defends: atomic writes/reconciliation must not replace existing read-only config sources.
@@ -1199,7 +1244,8 @@ mod tests {
         let path = temp.path.join("config.toml");
         fs::write(&path, "[open]\nlog_level = \"loud\"\n").unwrap();
 
-        let error = read_open_log_level(&path).unwrap_err();
+        let error =
+            read_config_field(&path, config_field(OPEN_LOG_LEVEL_PATH).unwrap()).unwrap_err();
         assert!(error.to_string().contains("off, error, info, debug"));
 
         let paths = temp_paths(&temp);

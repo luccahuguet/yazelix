@@ -4,3 +4,7 @@
 [open]
 # yzn-open diagnostics: off, error, info, or debug.
 log_level = "info"
+
+[shell]
+# Packaged shell for new Zellij panes: nu, bash, zsh, or fish.
+program = "nu"

@@ -1,4 +1,4 @@
-default_shell "@nuShell@"
+default_shell "@yznShell@"
 support_kitty_keyboard_protocol true
 
 plugins {

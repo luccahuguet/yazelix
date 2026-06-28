@@ -8,12 +8,13 @@ fn main() {
 
     let yzn = Path::new(yzn);
     let config = fs::read_to_string(yzn.join("share/yazelix-next/config.kdl")).unwrap();
-    let yzn_nu = default_shell(&config);
+    let yzn_shell = default_shell(&config);
     assert!(
-        yzn_nu.is_file(),
+        yzn_shell.is_file(),
         "default_shell is not a file: {}",
-        yzn_nu.display()
+        yzn_shell.display()
     );
+    expect_shell_selection(&yzn_shell);
     expect_keybinds(&config);
     expect_first_party_popups(&config);
     expect_front_door(yzn);
@@ -45,7 +46,7 @@ fn main() {
     .unwrap();
 
     let stdout = run_nu(
-        &yzn_nu,
+        &yzn_shell,
         &user_config,
         &runtime,
         "print $env.STARSHIP_SHELL; print $env.STARSHIP_CONFIG; print (do $env.PROMPT_COMMAND_RIGHT); print $env.YZN_USER_ENV_TEST; print $env.YZN_USER_CONFIG_TEST; ^carapace --version | ignore; ^zoxide --version | ignore; print ok",
@@ -60,7 +61,7 @@ fn main() {
     let empty_config = temp.path.join("empty-config");
     fs::create_dir(&empty_config).unwrap();
     let fallback_starship = run_nu(
-        &yzn_nu,
+        &yzn_shell,
         &empty_config,
         &temp.path.join("empty-run"),
         "print $env.STARSHIP_CONFIG",
@@ -145,28 +146,36 @@ fn expect_config_ui(yzn: &Path) {
         packaged_config.contains("log_level = \"info\""),
         "packaged config.toml is missing open.log_level default"
     );
+    assert!(
+        packaged_config.contains("program = \"nu\""),
+        "packaged config.toml is missing shell.program default"
+    );
 
     let helper = yzn.join("libexec/yazelix-next/yzn-config");
     assert!(helper.is_file(), "missing yzn-config helper");
     let temp = TempDir::new();
-    let output = Command::new(&helper)
-        .arg("--get")
-        .arg("open.log_level")
-        .env("YAZELIX_NEXT_CONFIG_HOME", &temp.path)
-        .output()
-        .unwrap();
-    assert!(
-        output.status.success(),
-        "yzn-config --get failed: {}",
-        String::from_utf8_lossy(&output.stderr)
-    );
-    assert_eq!(String::from_utf8_lossy(&output.stdout).trim(), "info");
+    for (path, expected) in [("open.log_level", "info"), ("shell.program", "nu")] {
+        let output = Command::new(&helper)
+            .arg("--get")
+            .arg(path)
+            .env("YAZELIX_NEXT_CONFIG_HOME", &temp.path)
+            .output()
+            .unwrap();
+        assert!(
+            output.status.success(),
+            "yzn-config --get {path} failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert_eq!(String::from_utf8_lossy(&output.stdout).trim(), expected);
+    }
 
     let config = temp.path.join("config.toml");
     let config_text = fs::read_to_string(&config).unwrap();
     for expected in [
         "[open]",
         "log_level = \"info\"",
+        "[shell]",
+        "program = \"nu\"",
         "[ratconfig]",
         "contract = {",
         "contract_id = \"yazelix-next.config\"",
@@ -210,6 +219,30 @@ fn run_nu(yzn_nu: &Path, config_home: &Path, runtime: &Path, commands: &str) -> 
     String::from_utf8_lossy(&output.stdout)
         .trim_end_matches('\n')
         .to_owned()
+}
+
+fn expect_shell_selection(shell: &Path) {
+    for program in ["bash", "zsh", "fish"] {
+        let temp = TempDir::new();
+        fs::write(
+            temp.path.join("config.toml"),
+            format!("[open]\nlog_level = \"info\"\n\n[shell]\nprogram = \"{program}\"\n"),
+        )
+        .unwrap();
+        let output = Command::new(shell)
+            .arg("-c")
+            .arg("echo shell-ok")
+            .env("YAZELIX_NEXT_CONFIG_HOME", &temp.path)
+            .output()
+            .unwrap();
+        assert!(
+            output.status.success(),
+            "yzn-shell did not dispatch to {program}: {}\n{}",
+            output.status,
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert_eq!(String::from_utf8_lossy(&output.stdout).trim(), "shell-ok");
+    }
 }
 
 fn expect_mars_config_override(yzn: &Path) {

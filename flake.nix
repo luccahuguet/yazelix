@@ -114,6 +114,18 @@
         src = yznConfigSrc;
         cargoLock.lockFile = ./crates/yzn-config/Cargo.lock;
       };
+      yznShell = pkgs.writeShellApplication {
+        name = "yzn-shell";
+        text = ''
+          shell_program="$(${yznConfig}/bin/yzn-config --get shell.program)"
+          case "$shell_program" in
+            nu) exec ${yznNuShell}/bin/yzn-nu "$@" ;;
+            bash) exec ${pkgs.bashInteractive}/bin/bash -i "$@" ;;
+            zsh) exec ${pkgs.zsh}/bin/zsh -i "$@" ;;
+            fish) exec ${pkgs.fish}/bin/fish -i "$@" ;;
+          esac
+        '';
+      };
       yznAgent = pkgs.writeShellApplication {
         name = "yzn-agent";
         text = ''
@@ -246,7 +258,7 @@ Workspace
         widget_frame = "none";
         widget_separator = "dot";
         editor_label = "hx";
-        shell_label = "nu";
+        shell_label = "sh";
         terminal_label = "mars";
         custom_text = "";
         appearance_mode = "dark";
@@ -281,7 +293,7 @@ Workspace
         install -D -m 644 ${yznLayoutSwapKdl} "$out/layout.swap.kdl"
       '';
       yznConfigKdl = pkgs.replaceVars ./config.kdl {
-        nuShell = "${yznNuShell}/bin/yzn-nu";
+        yznShell = "${yznShell}/bin/yzn-shell";
         yzpp = "file:${yazelixZellijPopupPackage}/${yazelixZellijPopupPackage.wasmPath}";
         yznAgent = "${yznAgent}/bin/yzn-agent";
         yznConfig = "${yznConfig}/bin/yzn-config";

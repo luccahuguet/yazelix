@@ -54,9 +54,20 @@ owned config sources when they are missing:
 
 The `config` tab controls `open.log_level`, which sets the managed
 `YZN_OPEN_LOG` level used by Yazi-to-Helix opens. Values are `off`, `error`,
-`info`, and `debug`. The `mars` and `zellij` tabs edit native sidecar files
-owned by Yazelix Next. They are simple render/edit files without Ratconfig
-contracts or migrations, and their values apply to new launches.
+`info`, and `debug`. The `shell` tab controls `shell.program`, which selects
+the packaged shell for new Zellij panes. Values are `nu`, `bash`, `zsh`, and
+`fish`. The `mars` and `zellij` tabs edit native sidecar files owned by Yazelix
+Next. They are simple render/edit files without Ratconfig contracts or
+migrations, and their values apply to new launches.
+
+## Shell Config
+
+`config.toml` defaults to `shell.program = "nu"`. New Zellij panes start a
+packaged shell dispatcher that reads this value and execs the matching packaged
+`nu`, `bash`, `zsh`, or `fish`. The selection applies to new panes and
+sessions. Bash, Zsh, and Fish are packaged binaries with their normal
+interactive startup behavior; Yazelix Next only manages extra shell config for
+Nu.
 
 ## Mars Config
 
@@ -75,8 +86,9 @@ command and the managed Zellij runtime.
 
 ## Zellij Config
 
-`yzn` owns the Zellij shell, keybindings, layout, and plugin/runtime spine.
-Safe native Zellij preferences live in this managed sidecar:
+`yzn` owns Zellij keybindings, layout, plugin/runtime spine, and the managed
+default shell dispatcher. Safe native Zellij preferences live in this managed
+sidecar:
 
 ```text
 ~/.config/yazelix-next/zellij/config.kdl
@@ -96,8 +108,9 @@ chords such as `Alt Shift J/K/L/M`.
 
 ## Nushell Config
 
-`yzn` does not read normal Nushell config. It loads packaged Yazelix Next
-`nu/env.nu` and `nu/config.nu` first, then optional user files:
+When `shell.program` is `nu`, `yzn` does not read normal Nushell config. It
+loads packaged Yazelix Next `nu/env.nu` and `nu/config.nu` first, then optional
+user files:
 
 ```text
 ~/.config/yazelix-next/nu/env.nu
@@ -108,16 +121,17 @@ The same `YAZELIX_NEXT_CONFIG_HOME` root applies here.
 
 ## Starship Config
 
-`yzn` sets `STARSHIP_CONFIG` to this native Starship config when it exists:
+When `shell.program` is `nu`, `yzn-nu` sets `STARSHIP_CONFIG` to this native
+Starship config when it exists:
 
 ```text
 ~/.config/yazelix-next/starship.toml
 ```
 
 Otherwise it uses an empty config, so normal `~/.config/starship.toml` does not
-affect managed shells. The file uses Starship TOML; user `nu/config.nu` can
-still override prompt variables for advanced cases. `format` controls the left
-prompt, and `right_format` controls the right prompt.
+affect the managed Nu prompt. The file uses Starship TOML; user `nu/config.nu`
+can still override prompt variables for advanced cases. `format` controls the
+left prompt, and `right_format` controls the right prompt.
 
 ## Editor Opens
 
@@ -174,11 +188,11 @@ wc -l .gitignore AGENTS.md README.md CHANGELOG.md ARCHITECTURE.md flake.nix pack
 | Language | Files | Lines |
 | --- | --- | ---: |
 | Ignore | `.gitignore` | 1 |
-| Markdown | `AGENTS.md`, `README.md`, `CHANGELOG.md`, `ARCHITECTURE.md` | 542 |
-| Nix | `flake.nix`, `packaging/tokenusage.nix` | 519 |
-| TOML | `config.toml`, `mars.toml`, `helix/config.toml`, `yazi/yazi.toml`, `yazi/keymap.toml`, `crates/yzn-config/Cargo.toml`, `crates/yzn-open/Cargo.toml` | 127 |
+| Markdown | `AGENTS.md`, `README.md`, `CHANGELOG.md`, `ARCHITECTURE.md` | 568 |
+| Nix | `flake.nix`, `packaging/tokenusage.nix` | 531 |
+| TOML | `config.toml`, `mars.toml`, `helix/config.toml`, `yazi/yazi.toml`, `yazi/keymap.toml`, `crates/yzn-config/Cargo.toml`, `crates/yzn-open/Cargo.toml` | 131 |
 | KDL | `config.kdl`, `layout.kdl`, `layout.swap.kdl` | 175 |
 | Nu | `nu/config.nu`, `nu/env.nu` | 11 |
 | Lua | `yazi/init.lua`, `yazi/plugins/sidebar-status.yazi/main.lua`, `yazi/plugins/zoxide-editor.yazi/main.lua` | 137 |
-| Rust | `crates/yzn-config/src/main.rs`, `crates/yzn-open/src/main.rs`, `checks/zellij-layout.rs`, `checks/yzn-contracts.rs`, `runtime/yzn-nu.rs`, `runtime/yzn-zellij-config.rs` | 3064 |
-| Total | owned project files | 4576 |
+| Rust | `crates/yzn-config/src/main.rs`, `crates/yzn-open/src/main.rs`, `checks/zellij-layout.rs`, `checks/yzn-contracts.rs`, `runtime/yzn-nu.rs`, `runtime/yzn-zellij-config.rs` | 3143 |
+| Total | owned project files | 4697 |
