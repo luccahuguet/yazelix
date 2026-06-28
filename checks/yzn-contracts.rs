@@ -444,16 +444,15 @@ fn expect_first_party_popups(config: &str) {
         ("lazygit", "lazygit_popup", "/bin/lazygit"),
         ("menu", "menu_popup", "/bin/yzn-menu-popup"),
     ] {
-        let block = kdl_block(config, &format!("{id} {{"));
-        for expected in [
-            format!("pane_title \"{pane_title}\""),
-            format!("{command_suffix}\""),
-        ] {
-            assert!(
-                block.contains(&expected),
-                "{id} popup block is missing {expected:?}\n{block}",
-            );
-        }
+        let command = popup_command(config, command_suffix);
+        let expected = format!(
+            "{id} {{\n                command \"{}\"\n                pane_title \"{pane_title}\"\n            }}",
+            command.display()
+        );
+        assert!(
+            config.contains(&expected),
+            "config.kdl is missing {id} popup block\n{expected}",
+        );
     }
     for (key, payload) in [
         ("Alt Shift J", "lazygit"),
@@ -461,17 +460,13 @@ fn expect_first_party_popups(config: &str) {
         ("Alt Shift L", "agent"),
         ("Alt Shift M", "menu"),
     ] {
-        let block = kdl_block(config, &format!("bind \"{key}\" {{"));
-        for expected in [
-            r#"MessagePlugin "yzpp""#.to_owned(),
-            r#"name "toggle""#.to_owned(),
-            format!("payload \"{payload}\""),
-        ] {
-            assert!(
-                block.contains(&expected),
-                "{key} popup binding is missing {expected:?}\n{block}",
-            );
-        }
+        let expected = format!(
+            "bind \"{key}\" {{\n            MessagePlugin \"yzpp\" {{\n                name \"toggle\"\n                payload \"{payload}\"\n            }}\n        }}"
+        );
+        assert!(
+            config.contains(&expected),
+            "config.kdl is missing {key} popup binding\n{expected}",
+        );
     }
 
     let agent = popup_command(config, "/bin/yzn-agent");
@@ -507,26 +502,6 @@ fn expect_first_party_popups(config: &str) {
         "{} does not delegate to yzn-menu",
         menu_popup.display(),
     );
-}
-
-fn kdl_block(config: &str, opener: &str) -> String {
-    let mut block = String::new();
-    let mut depth = 0_i32;
-    let mut found = false;
-    for line in config.lines().map(str::trim) {
-        if !found && line != opener {
-            continue;
-        }
-        found = true;
-        block.push_str(line);
-        block.push('\n');
-        depth += line.matches('{').count() as i32;
-        depth -= line.matches('}').count() as i32;
-        if depth == 0 {
-            return block;
-        }
-    }
-    panic!("config.kdl is missing block {opener}");
 }
 
 fn popup_command(config: &str, suffix: &str) -> PathBuf {

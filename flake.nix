@@ -116,15 +116,12 @@
       };
       yznAgent = pkgs.writeShellApplication {
         name = "yzn-agent";
-        runtimeInputs = [pkgs.coreutils];
         text = ''
           if ! command -v codex >/dev/null 2>&1; then
-            cat >&2 <<'EOF'
-Yazelix Next agent popup
+            printf '%s\n' "Yazelix Next agent popup
 
 codex is not available on PATH.
-Install Codex or make `codex` executable on PATH before using Alt Shift L.
-EOF
+Install Codex or make \`codex\` executable on PATH before using Alt Shift L." >&2
             if [ -t 0 ]; then
               printf '\nPress Enter to close this popup...' >&2
               read -r _ || true
@@ -137,10 +134,8 @@ EOF
       };
       yznMenu = pkgs.writeShellApplication {
         name = "yzn-menu";
-        runtimeInputs = [pkgs.coreutils];
         text = ''
-          cat <<'EOF'
-Yazelix Next Menu
+          printf '%s\n' 'Yazelix Next Menu
 
 Commands
   yzn config        Open config UI
@@ -159,8 +154,7 @@ Workspace
   Ctrl Alt h/l      Move tab left/right
   Ctrl Alt j/k      Move pane down/up
   Alt Shift h       Toggle Yazi sidebar layout
-  Alt z             Yazi zoxide jump into editor
-EOF
+  Alt z             Yazi zoxide jump into editor'
         '';
       };
       yznMenuPopup = pkgs.writeShellApplication {
