@@ -25,11 +25,11 @@ the desktop entry, and exposes the `yzn` package/app.
 creates `~/.config/yazelix-next/config.toml` with defaults and joined contract
 state when missing, creates simple managed Mars and Zellij config files when
 missing, routes source-backed edits to the correct file, and exposes one hidden
-package-internal read path used by launch wrappers. The root semantic field is
-`open.log_level`, which controls `YZN_OPEN_LOG` for managed Yazi-to-Helix
-opens, plus `shell.program`, which selects the packaged shell for new Zellij
-panes. The Mars and Zellij tabs are render/edit surfaces without contracts or
-migrations.
+package-internal read path used by launch wrappers. The contracted root config
+fields are `open.log_level`, which controls `YZN_OPEN_LOG` for managed
+Yazi-to-Helix opens, and `shell.program`, which selects the packaged shell for
+new Zellij panes. The Mars and Zellij tabs are render/edit surfaces without
+contracts or migrations.
 
 `mars.toml` is the packaged terminal visual config owner. It sets the default
 Mars window, font, cursor, bell, quit, and theme behavior used by `yzn`. A user
@@ -79,7 +79,9 @@ Nushell.
 The flake owns the `yzn-shell` dispatcher. It reads `shell.program` through
 `yzn-config` and execs packaged `nu`, `bash`, `zsh`, or `fish`. The `nu` path
 delegates to `runtime/yzn-nu.rs`; other shells are intentionally plain packaged
-interactive shells with their normal startup-file behavior.
+interactive shells with their normal startup-file behavior. Unsupported shell
+values fail in `yzn-config` before dispatch, so shell schema policy stays in the
+config owner rather than the shell wrapper.
 
 `crates/yzn-open/` is the editor-open owner. It sends file and directory open
 requests to the live Yazelix Helix bridge when available, and otherwise opens a
@@ -119,6 +121,27 @@ native preferences. The sidecar is a guardrail rather than a KDL parser: it
 rejects uncommented lines whose first token is known to own integration-critical
 behavior such as `keybinds`, `default_shell`, layout, plugins, Kitty keyboard
 protocol, environment, or session startup.
+
+## Runtime Startup Boundary
+
+`yzn enter` and `yzn launch` share one generated setup block in `flake.nix`
+before either command `exec`s Zellij or Mars. That block owns only startup
+wiring:
+
+- establish `YAZELIX_STATE_DIR` and the top-level Helix bridge session id
+- set managed `EDITOR` and `VISUAL`
+- resolve the Yazelix config home from `YAZELIX_NEXT_CONFIG_HOME`,
+  `XDG_CONFIG_HOME`, or `HOME`
+- read `open.log_level` through `yzn-config` and export `YZN_OPEN_LOG`
+- select packaged Mars config or the managed user Mars config
+- run `yzn-zellij-config` to pick or materialize the active Zellij config
+- export the Yazelix Zellij Bar cache path
+- seed Zellij plugin permissions for the popup plugin and top bar
+
+After this boundary, Yazelix gives control to the target process. `yzn enter`
+execs the Yazelix Zellij fork directly. `yzn launch` execs Mars with Zellij as
+the child command. Startup failures before this handoff are Yazelix-owned;
+failures after the handoff belong to Mars, Zellij, or the child tool.
 
 ## Session Isolation
 
