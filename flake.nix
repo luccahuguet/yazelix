@@ -201,6 +201,15 @@ Workspace
           exec ${yazelixHelixPackage}/bin/hx --config-dir ${yznHelixConfig} "$@"
         '';
       };
+      yznConfigUi = pkgs.writeShellApplication {
+        name = "yzn-config-ui";
+        text = ''
+          export YAZELIX_NEXT_EDITOR=${yznHelix}/bin/yzn-hx
+          export EDITOR=$YAZELIX_NEXT_EDITOR
+          export VISUAL=$YAZELIX_NEXT_EDITOR
+          exec ${yznConfig}/bin/yzn-config "$@"
+        '';
+      };
       yaziAssetsSelection = pkgs.fetchFromGitHub {
         owner = "luccahuguet";
         repo = "yazelix-yazi-assets";
@@ -296,7 +305,7 @@ Workspace
         yznShell = "${yznShell}/bin/yzn-shell";
         yzpp = "file:${yazelixZellijPopupPackage}/${yazelixZellijPopupPackage.wasmPath}";
         yznAgent = "${yznAgent}/bin/yzn-agent";
-        yznConfig = "${yznConfig}/bin/yzn-config";
+        yznConfig = "${yznConfigUi}/bin/yzn-config-ui";
         yznMenu = "${yznMenuPopup}/bin/yzn-menu-popup";
         lazygit = "${pkgs.lazygit}/bin/lazygit";
         layout = "${yznZellijLayout}/layout.kdl";
@@ -398,7 +407,7 @@ EOF
                 printf 'yzn config does not accept arguments yet\n' >&2
                 exit 64
               fi
-              exec ${yznConfig}/bin/yzn-config
+              exec ${yznConfigUi}/bin/yzn-config-ui
               ;;
             menu)
               shift

@@ -1,7 +1,7 @@
 use std::{
     env, fs, io,
     path::{Path, PathBuf},
-    process,
+    process::{self, Command},
     time::{SystemTime, UNIX_EPOCH},
 };
 
@@ -9,17 +9,17 @@ use crossterm::{
     cursor,
     event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers},
     execute,
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+    terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
-use ratatui::{backend::CrosstermBackend, Terminal};
+use ratatui::{Terminal, backend::CrosstermBackend};
 use ratconfig::toml_adapter::{get_toml_path, parse_toml_value, set_toml_value_text};
 use ratconfig::{
-    build_config_ui_field, draw_config_ui, join_toml_contract_text_from_version,
-    reconcile_joined_toml_contract_text, ConfigContract, ConfigUiApp, ConfigUiApplyStatus,
-    ConfigUiDiagnostic, ConfigUiEditBehavior, ConfigUiFieldRowSpec, ConfigUiIntent, ConfigUiKey,
-    ConfigUiModel, ConfigUiPathOwner, ConfigUiSource, DEFAULT_CONFIG_SOURCE_ID,
+    ConfigContract, ConfigUiApp, ConfigUiApplyStatus, ConfigUiDiagnostic, ConfigUiEditBehavior,
+    ConfigUiFieldRowSpec, ConfigUiFileAction, ConfigUiIntent, ConfigUiKey, ConfigUiModel,
+    ConfigUiPathOwner, ConfigUiSource, DEFAULT_CONFIG_SOURCE_ID, build_config_ui_field,
+    draw_config_ui, join_toml_contract_text_from_version, reconcile_joined_toml_contract_text,
 };
-use serde_json::{json, Value as JsonValue};
+use serde_json::{Value as JsonValue, json};
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
@@ -35,11 +35,19 @@ const DEFAULT_MARS_CONFIG_TOML: &str = include_str!("../../../mars.toml");
 const SOURCE_CONFIG: &str = DEFAULT_CONFIG_SOURCE_ID;
 const SOURCE_MARS: &str = "mars";
 const SOURCE_ZELLIJ: &str = "zellij";
+const SOURCE_ADVANCED: &str = "advanced";
 const TAB_CONFIG: &str = "config";
 const TAB_SHELL: &str = "shell";
 const TAB_MARS: &str = "mars";
 const TAB_ZELLIJ: &str = "zellij";
 const TAB_ADVANCED: &str = "advanced";
+
+const ACTION_NU_ENV: &str = "nu.env";
+const ACTION_NU_CONFIG: &str = "nu.config";
+const ACTION_STARSHIP: &str = "starship";
+const NU_ENV_STARTER: &str = "# Loaded after Yazelix Next packaged env.nu.\n";
+const NU_CONFIG_STARTER: &str = "# Loaded after Yazelix Next packaged config.nu.\n";
+const STARSHIP_STARTER: &str = "# Used by managed Yazelix Next Nu sessions.\n";
 
 const CONFIG_FIELDS: &[ConfigFieldSpec] = &[
     ConfigFieldSpec {
@@ -124,6 +132,18 @@ struct ConfigPaths {
     root: PathBuf,
     mars: PathBuf,
     zellij: PathBuf,
+    nu_env: PathBuf,
+    nu_config: PathBuf,
+    starship: PathBuf,
+}
+
+#[derive(Debug, Clone)]
+struct FileActionSpec {
+    action_id: &'static str,
+    label: &'static str,
+    description: &'static str,
+    path: PathBuf,
+    starter: &'static str,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -259,7 +279,7 @@ fn run() -> Result<()> {
 fn run_ui() -> Result<()> {
     let paths = ensure_config_sources()?;
     let mut app = ConfigUiApp::new(build_model(&paths)?);
-    let _terminal = TerminalSession::enter()?;
+    let mut session = TerminalSession::enter()?;
     let mut terminal = Terminal::new(CrosstermBackend::new(io::stdout()))?;
 
     loop {
@@ -274,6 +294,22 @@ fn run_ui() -> Result<()> {
             ConfigUiIntent::Exit => break,
             ConfigUiIntent::None => {}
             ConfigUiIntent::BeginEdit { field_index, .. } => app.begin_edit_field(field_index),
+            ConfigUiIntent::OpenFile {
+                source_id,
+                action_id,
+                path,
+                create_if_missing,
+                ..
+            } => {
+                let result = session.suspend(|| {
+                    open_file_action(&paths, &source_id, &action_id, &path, create_if_missing)
+                })?;
+                app.model = build_model(&paths)?;
+                match result {
+                    Ok(()) => app.notice_info(format!("Opened {}.", path.display())),
+                    Err(error) => app.notice_error(error.to_string()),
+                }
+            }
             ConfigUiIntent::SetField {
                 source_id,
                 path: field_path,
@@ -316,6 +352,15 @@ impl TerminalSession {
         let session = Self;
         execute!(io::stdout(), EnterAlternateScreen, cursor::Hide)?;
         Ok(session)
+    }
+
+    fn suspend(&mut self, action: impl FnOnce() -> Result<()>) -> Result<Result<()>> {
+        disable_raw_mode()?;
+        execute!(io::stdout(), cursor::Show, LeaveAlternateScreen)?;
+        let result = action();
+        enable_raw_mode()?;
+        execute!(io::stdout(), EnterAlternateScreen, cursor::Hide)?;
+        Ok(result)
     }
 }
 
@@ -412,6 +457,9 @@ fn config_paths() -> Result<ConfigPaths> {
         root: home.join("config.toml"),
         mars: home.join("mars/config.toml"),
         zellij: home.join("zellij/config.kdl"),
+        nu_env: home.join("nu/env.nu"),
+        nu_config: home.join("nu/config.nu"),
+        starship: home.join("starship.toml"),
     })
 }
 
@@ -533,10 +581,55 @@ fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
             TAB_ADVANCED.to_string(),
         ],
         fields,
+        file_actions: build_file_actions(paths),
         sidecars: Vec::new(),
         native_config_statuses: Vec::new(),
         diagnostics,
     })
+}
+
+fn build_file_actions(paths: &ConfigPaths) -> Vec<ConfigUiFileAction> {
+    file_action_specs(paths)
+        .into_iter()
+        .map(|spec| ConfigUiFileAction {
+            source_id: SOURCE_ADVANCED.to_string(),
+            action_id: spec.action_id.to_string(),
+            tab: TAB_ADVANCED.to_string(),
+            label: spec.label.to_string(),
+            description: spec.description.to_string(),
+            exists: spec.path.exists(),
+            read_only: path_read_only(&spec.path),
+            create_if_missing: true,
+            disabled_reason: None,
+            path: spec.path,
+        })
+        .collect()
+}
+
+fn file_action_specs(paths: &ConfigPaths) -> Vec<FileActionSpec> {
+    vec![
+        FileActionSpec {
+            action_id: ACTION_NU_ENV,
+            label: "nu/env.nu",
+            description: "Open the user Nushell environment file.",
+            path: paths.nu_env.clone(),
+            starter: NU_ENV_STARTER,
+        },
+        FileActionSpec {
+            action_id: ACTION_NU_CONFIG,
+            label: "nu/config.nu",
+            description: "Open the user Nushell config file.",
+            path: paths.nu_config.clone(),
+            starter: NU_CONFIG_STARTER,
+        },
+        FileActionSpec {
+            action_id: ACTION_STARSHIP,
+            label: "starship.toml",
+            description: "Open the user Starship config file.",
+            path: paths.starship.clone(),
+            starter: STARSHIP_STARTER,
+        },
+    ]
 }
 
 fn build_config_source(id: &str, tab: &str, label: &str, path: &Path) -> ConfigUiSource {
@@ -647,6 +740,79 @@ fn write_source_default(paths: &ConfigPaths, source_id: &str, field_path: &str) 
         _ => return Err(error(format!("unknown config source: {source_id}"))),
     };
     write_source_field(paths, source_id, field_path, &value)
+}
+
+fn open_file_action(
+    paths: &ConfigPaths,
+    source_id: &str,
+    action_id: &str,
+    path: &Path,
+    create_if_missing: bool,
+) -> Result<()> {
+    let editor = configured_editor()?;
+    prepare_file_action(paths, source_id, action_id, path, create_if_missing)?;
+    let status = Command::new(&editor).arg(path).status().map_err(|error| {
+        io::Error::other(format!(
+            "failed to launch editor `{}`: {error}",
+            editor.display()
+        ))
+    })?;
+    if !status.success() {
+        return Err(error(format!(
+            "editor `{}` exited with status {status}",
+            editor.display()
+        )));
+    }
+    Ok(())
+}
+
+fn prepare_file_action(
+    paths: &ConfigPaths,
+    source_id: &str,
+    action_id: &str,
+    path: &Path,
+    create_if_missing: bool,
+) -> Result<()> {
+    let spec = file_action_spec(paths, source_id, action_id, path)?;
+    if spec.path.exists() {
+        return Ok(());
+    }
+    if !create_if_missing {
+        return Err(error(format!("config file is missing: {}", path.display())));
+    }
+    atomic_write(&spec.path, spec.starter)
+}
+
+fn file_action_spec(
+    paths: &ConfigPaths,
+    source_id: &str,
+    action_id: &str,
+    path: &Path,
+) -> Result<FileActionSpec> {
+    if source_id != SOURCE_ADVANCED {
+        return Err(error(format!("unknown file action source: {source_id}")));
+    }
+    let Some(spec) = file_action_specs(paths)
+        .into_iter()
+        .find(|spec| spec.action_id == action_id)
+    else {
+        return Err(error(format!("unknown file action: {action_id}")));
+    };
+    if spec.path != path {
+        return Err(error(format!(
+            "file action `{action_id}` does not own {}",
+            path.display()
+        )));
+    }
+    Ok(spec)
+}
+
+fn configured_editor() -> Result<PathBuf> {
+    ["YAZELIX_NEXT_EDITOR", "VISUAL", "EDITOR"]
+        .into_iter()
+        .find_map(|key| env::var_os(key).filter(|value| !value.is_empty()))
+        .map(PathBuf::from)
+        .ok_or_else(|| error("no editor configured; set YAZELIX_NEXT_EDITOR, VISUAL, or EDITOR"))
 }
 
 fn reject_read_only_source(path: &Path, source_id: &str) -> Result<()> {
@@ -1030,11 +1196,7 @@ ui {{
 }
 
 fn kdl_bool(value: bool) -> &'static str {
-    if value {
-        "true"
-    } else {
-        "false"
-    }
+    if value { "true" } else { "false" }
 }
 
 fn json_bool(path: &str, value: &JsonValue) -> Result<bool> {
@@ -1122,6 +1284,9 @@ mod tests {
             root: temp.path.join("config.toml"),
             mars: temp.path.join("mars/config.toml"),
             zellij: temp.path.join("zellij/config.kdl"),
+            nu_env: temp.path.join("nu/env.nu"),
+            nu_config: temp.path.join("nu/config.nu"),
+            starship: temp.path.join("starship.toml"),
         }
     }
 
@@ -1152,10 +1317,12 @@ mod tests {
     fn config_field_rejects_unknown_paths_before_io() {
         assert_eq!(config_field(OPEN_LOG_LEVEL_PATH).unwrap().default, "info");
         assert_eq!(config_field(SHELL_PROGRAM_PATH).unwrap().default, "nu");
-        assert!(config_field("shell.typo")
-            .unwrap_err()
-            .to_string()
-            .contains("unknown config path"));
+        assert!(
+            config_field("shell.typo")
+                .unwrap_err()
+                .to_string()
+                .contains("unknown config path")
+        );
     }
 
     // Defends: yzn config creates the owned TOML config file with defaults and joined contract state.
@@ -1266,12 +1433,121 @@ mod tests {
         assert!(paths.root.exists());
         assert!(paths.mars.exists());
         assert!(paths.zellij.exists());
-        assert!(!fs::read_to_string(paths.mars)
-            .unwrap()
-            .contains("ratconfig.contract"));
-        assert!(fs::read_to_string(paths.zellij)
-            .unwrap()
-            .contains("rounded_corners false"));
+        assert!(
+            !fs::read_to_string(paths.mars)
+                .unwrap()
+                .contains("ratconfig.contract")
+        );
+        assert!(
+            fs::read_to_string(paths.zellij)
+                .unwrap()
+                .contains("rounded_corners false")
+        );
+        assert!(!paths.nu_env.exists());
+        assert!(!paths.nu_config.exists());
+        assert!(!paths.starship.exists());
+    }
+
+    // Defends: the Advanced tab exposes native config files without parsing or eager creation.
+    #[test]
+    fn advanced_tab_lists_host_owned_file_actions() {
+        let temp = TempHome::new();
+        let paths = temp_paths(&temp);
+        ensure_temp_sources(&paths);
+
+        let model = build_model(&paths).unwrap();
+        let rows: Vec<_> = model
+            .file_actions
+            .iter()
+            .map(|action| {
+                (
+                    action.source_id.as_str(),
+                    action.action_id.as_str(),
+                    action.tab.as_str(),
+                    action.label.as_str(),
+                    action.path.clone(),
+                    action.exists,
+                    action.create_if_missing,
+                )
+            })
+            .collect();
+
+        assert_eq!(
+            rows,
+            vec![
+                (
+                    SOURCE_ADVANCED,
+                    ACTION_NU_ENV,
+                    TAB_ADVANCED,
+                    "nu/env.nu",
+                    paths.nu_env.clone(),
+                    false,
+                    true,
+                ),
+                (
+                    SOURCE_ADVANCED,
+                    ACTION_NU_CONFIG,
+                    TAB_ADVANCED,
+                    "nu/config.nu",
+                    paths.nu_config.clone(),
+                    false,
+                    true,
+                ),
+                (
+                    SOURCE_ADVANCED,
+                    ACTION_STARSHIP,
+                    TAB_ADVANCED,
+                    "starship.toml",
+                    paths.starship.clone(),
+                    false,
+                    true,
+                ),
+            ]
+        );
+    }
+
+    // Defends: Advanced file rows create only their owned paths after explicit activation.
+    #[test]
+    fn prepare_file_action_creates_owned_missing_file() {
+        let temp = TempHome::new();
+        let paths = temp_paths(&temp);
+        ensure_temp_sources(&paths);
+
+        prepare_file_action(&paths, SOURCE_ADVANCED, ACTION_NU_ENV, &paths.nu_env, true).unwrap();
+
+        assert_eq!(fs::read_to_string(&paths.nu_env).unwrap(), NU_ENV_STARTER);
+        assert!(!paths.nu_config.exists());
+        assert!(!paths.starship.exists());
+    }
+
+    // Defends: stale or forged file-open intents cannot target arbitrary host paths.
+    #[test]
+    fn prepare_file_action_rejects_unowned_or_missing_paths() {
+        let temp = TempHome::new();
+        let paths = temp_paths(&temp);
+        ensure_temp_sources(&paths);
+
+        let error = prepare_file_action(
+            &paths,
+            SOURCE_ADVANCED,
+            ACTION_NU_ENV,
+            &paths.nu_config,
+            true,
+        )
+        .unwrap_err()
+        .to_string();
+        assert!(error.contains("does not own"));
+
+        let error = prepare_file_action(
+            &paths,
+            SOURCE_ADVANCED,
+            ACTION_STARSHIP,
+            &paths.starship,
+            false,
+        )
+        .unwrap_err()
+        .to_string();
+        assert!(error.contains("config file is missing"));
     }
 
     // Defends: source ids route writes to the selected backing file.

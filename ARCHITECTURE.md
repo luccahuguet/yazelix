@@ -24,12 +24,15 @@ the desktop entry, and exposes the `yzn` package/app.
 `crates/yzn-config/` is the config host owner. It opens the Ratconfig UI,
 creates `~/.config/yazelix-next/config.toml` with defaults and joined contract
 state when missing, creates simple managed Mars and Zellij config files when
-missing, routes source-backed edits to the correct file, and exposes one hidden
-package-internal read path used by launch wrappers. The contracted root config
+missing, routes source-backed edits to the correct file, exposes Advanced rows
+for native Nu and Starship files, and exposes one hidden package-internal read
+path used by launch wrappers. The contracted root config
 fields are `open.log_level`, which controls `YZN_OPEN_LOG` for managed
 Yazi-to-Helix opens, and `shell.program`, which selects the packaged shell for
 new Zellij panes. The Mars and Zellij tabs are render/edit surfaces without
-contracts or migrations.
+contracts or migrations. The Advanced tab is an open-file surface: Ratconfig
+renders rows and emits file-open intents, while Yazelix Next owns path
+selection, missing-file creation, and editor launch.
 
 `mars.toml` is the packaged terminal visual config owner. It sets the default
 Mars window, font, cursor, bell, quit, and theme behavior used by `yzn`. A user
@@ -113,10 +116,12 @@ also creates the managed Mars and Zellij native files when missing. Mars uses
 full native replacement when its `config.toml` exists. Nushell uses packaged
 config first, then optional user `env.nu` and `config.nu`. For managed Nu,
 Starship uses the user `starship.toml` when present, otherwise an empty config
-that preserves Starship defaults. Normal Nushell and Starship config files are
-not loaded by default, which keeps the default `nu` path reproducible and avoids
-ambient user shell behavior changing that runtime. Zellij uses packaged config
-first, then a guarded sidecar for safe
+that preserves Starship defaults. `yzn config` exposes the Nu and Starship
+files through the Advanced tab and creates them only after explicit row
+activation. Normal Nushell and Starship config files are not loaded by default,
+which keeps the default `nu` path reproducible and avoids ambient user shell
+behavior changing that runtime. Zellij uses packaged config first, then a
+guarded sidecar for safe
 native preferences. The sidecar is a guardrail rather than a KDL parser: it
 rejects uncommented lines whose first token is known to own integration-critical
 behavior such as `keybinds`, `default_shell`, layout, plugins, Kitty keyboard
@@ -171,7 +176,7 @@ window.
 | C8 | Desktop entry starts `yzn` | `flake.nix` | `nix build .#yzn` packages the desktop file | Desktop environment launch remains manual dogfooding |
 | C9 | Kitty keyboard protocol is explicitly enabled, `Alt Shift J/K/L/M` toggle LazyGit, config, guarded Codex resume, and menu popups through `yzpp` | `config.kdl`, `flake.nix` | `checks/yzn-contracts.rs` validates Kitty protocol, the packaged popup plugin, commands, popup ids, payloads, key bindings, and the missing-Codex guard | Visual popup behavior remains manual dogfooding |
 | C10 | Top bars use the child-rendered Yazelix Zellij Bar tray, tabs use the home marker, Codex usage has bundled `tu` and a yzn-owned cache path, and bottom bars keep native Zellij key hints | `layout.kdl`, `config.kdl`, `flake.nix`, `packaging/tokenusage.nix` | `checks/zellij-layout.rs` validates packaged child bar usage, no-mode formatting, declared yzn widgets, the startup home tab marker, and native bottom status bars; `checks/yzn-contracts.rs` validates the tab-mode new-tab marker, terminal-label wiring, bundled tokenusage path, and status-cache export | Visual bar behavior remains manual dogfooding |
-| C11 | `yzn config` auto-creates root, Mars, and Zellij config sources; root `config.toml` has defaults and joined Ratconfig contract state; `open.log_level` controls managed `YZN_OPEN_LOG`; `shell.program` controls the packaged default-shell dispatcher; Mars/Zellij tabs route writes to their native files | `crates/yzn-config/`, `config.toml`, `mars.toml`, `flake.nix` | `crates/yzn-config` unit tests cover create/edit validation, source routing, Zellij scalar rendering, and guarded-node diagnostics; `checks/yzn-contracts.rs` validates packaged defaults, helper install, creation, `--get`, and dispatcher wiring | Interactive Ratconfig UI behavior remains manual dogfooding |
+| C11 | `yzn config` auto-creates root, Mars, and Zellij config sources; root `config.toml` has defaults and joined Ratconfig contract state; `open.log_level` controls managed `YZN_OPEN_LOG`; `shell.program` controls the packaged default-shell dispatcher; Mars/Zellij tabs route writes to their native files; Advanced rows open Nu and Starship files through the managed editor and create them only after activation | `crates/yzn-config/`, `config.toml`, `mars.toml`, `flake.nix` | `crates/yzn-config` unit tests cover create/edit validation, source routing, Zellij scalar rendering, guarded-node diagnostics, Advanced file rows, and owned missing-file creation; `checks/yzn-contracts.rs` validates packaged defaults, helper install, creation, `--get`, dispatcher wiring, and the config UI editor wrapper | Interactive Ratconfig UI behavior remains manual dogfooding |
 
 ## Pros
 

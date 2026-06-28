@@ -199,11 +199,11 @@
     "ratconfig": {
       "flake": false,
       "locked": {
-        "lastModified": 1782598718,
-        "narHash": "sha256-HepIXSdSpELO6pczO5tFZs/go5a3uHcnJ2+MZtpX/fU=",
+        "lastModified": 1782649795,
+        "narHash": "sha256-taJIXSm4T6+HJcGynJqIeFmfuJuVtYaNX2/fmIKwhsw=",
         "owner": "luccahuguet",
         "repo": "ratconfig",
-        "rev": "0db4cc1eaa786c14e53015bdc68aa1263c39f558",
+        "rev": "04119b6f5da6f01e12cc5a67cf91f0f6d158ce09",
         "type": "github"
       },
       "original": {

@@ -114,6 +114,7 @@ fn expect_front_door(yzn: &Path) {
         "--new-session-with-layout",
         "/bin/zellij --config",
         "/bin/mars -e",
+        "/bin/yzn-config-ui",
         "ZELLIJ_PLUGIN_PERMISSIONS_CACHE=\"$zellij_permissions\"",
         "permissions.kdl",
         "share/yazelix_zellij_bar/zjstatus.wasm",
@@ -448,7 +449,7 @@ fn expect_first_party_popups(config: &str) {
         expect_contains(config, expected, "config.kdl first-party popup fragment");
     }
     for (id, pane_title, command_suffix) in [
-        ("config", "config_popup", "/bin/yzn-config"),
+        ("config", "config_popup", "/bin/yzn-config-ui"),
         ("agent", "agent_popup", "/bin/yzn-agent"),
         ("lazygit", "lazygit_popup", "/bin/lazygit"),
         ("menu", "menu_popup", "/bin/yzn-menu-popup"),
@@ -503,6 +504,21 @@ fn expect_first_party_popups(config: &str) {
         stderr.contains("codex is not available on PATH"),
         "agent popup missing-codex output is unclear: {stderr}",
     );
+
+    let config_ui = popup_command(config, "/bin/yzn-config-ui");
+    let config_ui_script = fs::read_to_string(&config_ui).unwrap();
+    for expected in [
+        "YAZELIX_NEXT_EDITOR=",
+        "/bin/yzn-hx",
+        "exec ",
+        "/bin/yzn-config",
+    ] {
+        expect_contains(
+            &config_ui_script,
+            expected,
+            &format!("{} managed editor wrapper", config_ui.display()),
+        );
+    }
 
     let menu_popup = popup_command(config, "/bin/yzn-menu-popup");
     let menu_popup_script = fs::read_to_string(&menu_popup).unwrap();

@@ -58,7 +58,10 @@ The `config` tab controls `open.log_level`, which sets the managed
 the packaged shell for new Zellij panes. Values are `nu`, `bash`, `zsh`, and
 `fish`. The `mars` and `zellij` tabs edit native sidecar files owned by Yazelix
 Next. They are simple render/edit files without Ratconfig contracts or
-migrations, and their values apply to new launches.
+migrations, and their values apply to new launches. The `advanced` tab opens
+native `nu/env.nu`, `nu/config.nu`, and `starship.toml` files from the same
+config root in the managed editor, creating a tiny starter file only when a row
+is activated.
 
 ## Shell Config
 
@@ -188,11 +191,11 @@ wc -l .gitignore AGENTS.md README.md CHANGELOG.md ARCHITECTURE.md flake.nix pack
 | Language | Files | Lines |
 | --- | --- | ---: |
 | Ignore | `.gitignore` | 1 |
-| Markdown | `AGENTS.md`, `README.md`, `CHANGELOG.md`, `ARCHITECTURE.md` | 591 |
-| Nix | `flake.nix`, `packaging/tokenusage.nix` | 531 |
+| Markdown | `AGENTS.md`, `README.md`, `CHANGELOG.md`, `ARCHITECTURE.md` | 602 |
+| Nix | `flake.nix`, `packaging/tokenusage.nix` | 540 |
 | TOML | `config.toml`, `mars.toml`, `helix/config.toml`, `yazi/yazi.toml`, `yazi/keymap.toml`, `crates/yzn-config/Cargo.toml`, `crates/yzn-open/Cargo.toml` | 131 |
 | KDL | `config.kdl`, `layout.kdl`, `layout.swap.kdl` | 175 |
 | Nu | `nu/config.nu`, `nu/env.nu` | 11 |
 | Lua | `yazi/init.lua`, `yazi/plugins/sidebar-status.yazi/main.lua`, `yazi/plugins/zoxide-editor.yazi/main.lua` | 137 |
-| Rust | `crates/yzn-config/src/main.rs`, `crates/yzn-open/src/main.rs`, `checks/zellij-layout.rs`, `checks/yzn-contracts.rs`, `runtime/yzn-nu.rs`, `runtime/yzn-zellij-config.rs` | 3143 |
-| Total | owned project files | 4720 |
+| Rust | `crates/yzn-config/src/main.rs`, `crates/yzn-open/src/main.rs`, `checks/zellij-layout.rs`, `checks/yzn-contracts.rs`, `runtime/yzn-nu.rs`, `runtime/yzn-zellij-config.rs` | 3435 |
+| Total | owned project files | 5032 |

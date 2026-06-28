@@ -12,6 +12,9 @@ User-visible runtime changes for Yazelix Next live here.
   Root `config.toml` keeps Ratconfig contract state, while the Mars and Zellij
   tabs are simple managed render/edit files that apply on new launches. The UI
   refuses to replace a source file whose permissions are read-only.
+- The `yzn config` Advanced tab opens managed user `nu/env.nu`,
+  `nu/config.nu`, and `starship.toml` files in `yzn-hx`, creating tiny starter
+  files only after a row is activated.
 - `yzn config` ignores unsupported modified terminal keys instead of treating
   them as text.
 - `yzn config` restores raw terminal mode if alternate-screen setup fails.
