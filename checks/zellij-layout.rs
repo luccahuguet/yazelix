@@ -43,7 +43,10 @@ fn main() -> ExitCode {
         );
         ok = false;
     }
-    if !layout_contains_home_tab_marker(&layout) {
+    if !layout
+        .lines()
+        .any(|line| line.trim() == format!(r#"tab name="{HOME_TAB_MARKER}""#))
+    {
         eprintln!("{layout_path}: startup tab must use the Yazelix home tab marker");
         ok = false;
     }
@@ -135,12 +138,6 @@ fn layout_order_is_valid(layout: &str) -> bool {
     }
 
     matches!((default, tab, new), (Some(default), Some(tab), Some(new)) if default < tab && tab < new)
-}
-
-fn layout_contains_home_tab_marker(layout: &str) -> bool {
-    layout
-        .lines()
-        .any(|line| line.trim() == format!(r#"tab name="{HOME_TAB_MARKER}""#))
 }
 
 fn bar_layout_is_valid(layout: &str) -> bool {

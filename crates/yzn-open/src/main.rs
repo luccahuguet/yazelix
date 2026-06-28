@@ -1,6 +1,6 @@
-use anyhow::{Context, Result, bail};
+use anyhow::{bail, Context, Result};
 use serde::{Deserialize, Serialize};
-use serde_json::{Value, json};
+use serde_json::{json, Value};
 use std::{
     env,
     ffi::OsString,
@@ -262,7 +262,7 @@ fn send_bridge_request(
     let mut stream = UnixStream::connect(socket_path).map_err(|_| BridgeSendError::Unavailable)?;
     let request = BridgeRequest {
         schema_version: 2,
-        request_id: request_id(),
+        request_id: format!("yzn-open-{}-{}", unix_millis(), std::process::id()),
         auth_token: token.trim(),
         action,
         timeout_ms: 5000,
@@ -343,7 +343,10 @@ fn open_editor_pane(config: &Config, targets: &[PathBuf]) -> Result<()> {
         &format!(
             "opening editor pane program={} args={}",
             config.zellij.to_string_lossy(),
-            json!(display_args(&args))
+            json!(args
+                .iter()
+                .map(|arg| arg.to_string_lossy().into_owned())
+                .collect::<Vec<_>>())
         ),
     );
 
@@ -414,12 +417,6 @@ fn zellij_pane_arg(pane_id: &str) -> String {
     }
 }
 
-fn display_args(args: &[OsString]) -> Vec<String> {
-    args.iter()
-        .map(|arg| arg.to_string_lossy().into_owned())
-        .collect()
-}
-
 fn ensure_success(output: &Output, context: &str) -> Result<()> {
     if output.status.success() {
         return Ok(());
@@ -442,10 +439,6 @@ fn log_info(config: &Config, message: &str) {
 
 fn log_debug(config: &Config, message: &str) {
     log_event(config, LogLevel::Debug, message);
-}
-
-fn request_id() -> String {
-    format!("yzn-open-{}-{}", unix_millis(), std::process::id())
 }
 
 fn bridge_session_id(raw: Option<String>) -> String {

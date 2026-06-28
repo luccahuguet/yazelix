@@ -172,9 +172,7 @@ Workspace
       tokenusage = import ./packaging/tokenusage.nix {inherit pkgs;};
       yznZellijConfig = rustBin "yzn-zellij-config" ./runtime/yzn-zellij-config.rs;
       yazelixHelixPackage = yazelixHelix.packages.${system}.yazelix_helix;
-      yznHelixConfig = pkgs.runCommand "yzn-helix-config" {} ''
-        install -D -m 644 ${./helix/config.toml} "$out/config.toml"
-      '';
+      yznHelixConfig = pkgs.writeTextDir "config.toml" (builtins.readFile ./helix/config.toml);
       yznHelix = pkgs.writeShellApplication {
         name = "yzn-hx";
         runtimeInputs = [pkgs.coreutils];
@@ -238,13 +236,10 @@ Workspace
           exec ${pkgs.yazi}/bin/yazi "$@"
         '';
       };
-      yznRuntimeIdentityJson = pkgs.writeText "runtime_identity.json" (builtins.toJSON {
+      yznRuntimeIdentity = pkgs.writeTextDir "runtime_identity.json" (builtins.toJSON {
         name = "Yazelix Next";
         version = "next";
       });
-      yznRuntimeIdentity = pkgs.runCommand "yzn-runtime-identity" {} ''
-        install -D -m 644 ${yznRuntimeIdentityJson} "$out/runtime_identity.json"
-      '';
       yznBarRenderRequest = pkgs.writeText "yzn-bar-render-request.json" (builtins.toJSON {
         zjstatus_plugin_url = "file:${yazelixZellijBarPackage}/${yazelixZellijBarPackage.wasmPath}";
         widget_tray = ["editor" "shell" "term" "codex_usage" "cpu" "ram"];

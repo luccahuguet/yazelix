@@ -706,7 +706,10 @@ fn parse_zellij_sidecar(raw: &str) -> (ZellijSidecar, Vec<ConfigUiDiagnostic>) {
 
     for (index, raw_line) in raw.lines().enumerate() {
         let line_number = index + 1;
-        let mut line = strip_kdl_comment(raw_line).trim();
+        let mut line = raw_line
+            .split_once("//")
+            .map_or(raw_line, |(content, _)| content)
+            .trim();
         while let Some(rest) = line.strip_prefix('}') {
             if stack.pop().is_none() {
                 diagnostics.push(zellij_diagnostic(
@@ -720,7 +723,11 @@ fn parse_zellij_sidecar(raw: &str) -> (ZellijSidecar, Vec<ConfigUiDiagnostic>) {
         if line.is_empty() || line.starts_with('#') {
             continue;
         }
-        let Some(token) = first_kdl_token(line) else {
+        let Some(token) = line
+            .split(|ch: char| ch.is_whitespace() || ch == '{' || ch == ';')
+            .next()
+            .filter(|token| !token.is_empty())
+        else {
             continue;
         };
         match stack.as_slice() {
@@ -913,16 +920,6 @@ fn first_kdl_value<'a>(line: &'a str, token: &str) -> Option<&'a str> {
                 .trim_end_matches('{')
                 .trim_matches('"')
         })
-}
-
-fn first_kdl_token(line: &str) -> Option<&str> {
-    line.split(|ch: char| ch.is_whitespace() || ch == '{' || ch == ';')
-        .next()
-        .filter(|token| !token.is_empty())
-}
-
-fn strip_kdl_comment(line: &str) -> &str {
-    line.split_once("//").map_or(line, |(content, _)| content)
 }
 
 fn zellij_diagnostic(
