@@ -30,22 +30,12 @@ fn main() -> ExitCode {
 fn run() -> io::Result<()> {
     let state_dir = state_dir();
     let yazi_config = match config_home()
-        .map(|path| {
-            (
-                path.join("yazi/init.lua"),
-                path.join("yazi/keymap.toml"),
-                path.join("yazi/plugins"),
-            )
-        })
-        .filter(|(user_init, user_keymap, _)| user_init.exists() || user_keymap.exists())
+        .map(|path| path.join("yazi"))
+        .filter(|path| path.join("init.lua").exists() || path.join("keymap.toml").exists())
     {
-        Some((user_init, user_keymap, user_plugins)) => materialize_user_config(
-            &state_dir,
-            &user_init,
-            &user_keymap,
-            &user_plugins,
-            Path::new(YZN_YAZI_CONFIG),
-        )?,
+        Some(user_yazi) => {
+            materialize_user_config(&state_dir, &user_yazi, Path::new(YZN_YAZI_CONFIG))?
+        }
         None => PathBuf::from(YZN_YAZI_CONFIG),
     };
     let yzn_open_log = yzn_config_value("open.log_level")?;
@@ -79,11 +69,11 @@ fn run() -> io::Result<()> {
 
 fn materialize_user_config(
     state_dir: &Path,
-    user_init: &Path,
-    user_keymap: &Path,
-    user_plugins: &Path,
+    user_yazi: &Path,
     packaged_yazi: &Path,
 ) -> io::Result<PathBuf> {
+    let user_init = user_yazi.join("init.lua");
+    let user_keymap = user_yazi.join("keymap.toml");
     let runtime_yazi = state_dir.join("yazi");
     remove_any(&runtime_yazi)?;
     fs::create_dir_all(&runtime_yazi)?;
@@ -92,13 +82,13 @@ fn materialize_user_config(
     }
     write_layered_config(
         &packaged_yazi.join("init.lua"),
-        user_init,
+        &user_init,
         &runtime_yazi.join("init.lua"),
         "-- Yazelix Next user init.lua",
     )?;
     write_layered_config(
         &packaged_yazi.join("keymap.toml"),
-        user_keymap,
+        &user_keymap,
         &runtime_yazi.join("keymap.toml"),
         "# Yazelix Next user keymap.toml",
     )?;
@@ -109,7 +99,7 @@ fn materialize_user_config(
         symlink(entry.path(), runtime_plugins.join(entry.file_name()))?;
     }
     if user_init.exists() {
-        overlay_user_plugins(user_plugins, &runtime_plugins)?;
+        overlay_user_plugins(&user_yazi.join("plugins"), &runtime_plugins)?;
     }
     Ok(runtime_yazi)
 }
@@ -280,14 +270,7 @@ mod tests {
         fs::write(user_plugins.join("ignored.txt"), "").unwrap();
         fs::write(user_yazi.join("init.lua"), "user init\n").unwrap();
 
-        let runtime = materialize_user_config(
-            &state,
-            &user_yazi.join("init.lua"),
-            &user_yazi.join("keymap.toml"),
-            &user_plugins,
-            &packaged,
-        )
-        .unwrap();
+        let runtime = materialize_user_config(&state, &user_yazi, &packaged).unwrap();
 
         assert_eq!(
             fs::read_to_string(runtime.join("init.lua")).unwrap(),
@@ -306,15 +289,9 @@ mod tests {
         assert!(!runtime.join("plugins/ignored.txt").exists());
 
         fs::create_dir_all(user_plugins.join("git.yazi")).unwrap();
-        let error = materialize_user_config(
-            &state,
-            &user_yazi.join("init.lua"),
-            &user_yazi.join("keymap.toml"),
-            &user_plugins,
-            &packaged,
-        )
-        .unwrap_err()
-        .to_string();
+        let error = materialize_user_config(&state, &user_yazi, &packaged)
+            .unwrap_err()
+            .to_string();
 
         assert!(error.contains("collides with a packaged plugin"));
         let _ = fs::remove_dir_all(&temp);
@@ -331,14 +308,7 @@ mod tests {
         fs::create_dir_all(&user_yazi).unwrap();
         fs::write(user_yazi.join("keymap.toml"), "user keymap\n").unwrap();
 
-        let runtime = materialize_user_config(
-            &state,
-            &user_yazi.join("init.lua"),
-            &user_yazi.join("keymap.toml"),
-            &user_yazi.join("plugins"),
-            &packaged,
-        )
-        .unwrap();
+        let runtime = materialize_user_config(&state, &user_yazi, &packaged).unwrap();
 
         assert_eq!(
             fs::read_to_string(runtime.join("keymap.toml")).unwrap(),
