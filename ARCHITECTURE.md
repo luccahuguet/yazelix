@@ -78,8 +78,11 @@ prompt indicators.
 `yazi/` is the packaged Yazi config owner. It enables the selected Yazi
 plugins, keeps file opens routed through `yzn-open`, binds `Alt z` to a zoxide
 picker that moves the sidebar and opens the chosen directory in the managed
-editor path, launches with scoped Kitty graphics environment for image
-previews, and avoids broad Yazi config merging.
+editor path, and avoids broad Yazi config merging.
+
+`runtime/yzn-yazi.rs` is the managed Yazi launcher owner. It sets scoped image
+preview/session environment, appends optional managed user `yazi/init.lua`, and
+then execs packaged Yazi.
 
 `runtime/yzn-nu.rs` is the Nushell runtime-config owner. It writes the runtime
 `env.nu` and `config.nu` files, layers optional user config from
@@ -194,7 +197,7 @@ window.
 | C3 | Zellij layout has the sidebar template required by swaps | `layout.kdl`, `layout.swap.kdl` | `checks/zellij-layout.rs` runs during build | None for the current template/swap contract |
 | C4 | Zellij-native mode keys use `Ctrl Alt`, Tab-mode new tabs use the packaged Yazelix sidebar layout, move mode is unbound, `Alt m` opens a pane for the swap layout to stack, `Alt Shift h` toggles the sidebar swap, `Alt h/l` walk visible panes through the pane orchestrator, and obvious sidecar ownership lines are rejected | `config.kdl`, `runtime/yzn-zellij-config.rs` | `checks/yzn-contracts.rs` validates the packaged config, pane-orchestrator binding, and accepted/rejected sidecars | Full key behavior remains manual dogfooding |
 | C5 | When `shell.program` is `nu`, Nushell loads packaged config first, optional user config after it, and controlled Starship left/right prompt config | `runtime/yzn-nu.rs`, `nu/` | `checks/yzn-contracts.rs` validates Nushell layering through the managed shell dispatcher, Starship config selection, and right prompt rendering | None for current layering behavior |
-| C6 | Yazi launches with scoped image-preview environment, opens paths through `yzn-open` with bounded diagnostics, and `Alt z` jumps through zoxide into the managed editor path while using the workspace root for editor cwd and tab naming | `yazi/`, `crates/yzn-open/`, `flake.nix` | `checks/yzn-contracts.rs` validates packaged Yazi keymap/plugin wiring and wrapper environment; `cargo test` covers `yzn-open` bridge/fallback and tab rename behavior | Full Yazi UI behavior remains manual dogfooding |
+| C6 | Yazi launches with scoped image-preview environment, optionally appends managed user `yazi/init.lua`, opens paths through `yzn-open` with bounded diagnostics, and `Alt z` jumps through zoxide into the managed editor path while using the workspace root for editor cwd and tab naming | `yazi/`, `runtime/yzn-yazi.rs`, `crates/yzn-open/` | `checks/yzn-contracts.rs` validates packaged Yazi keymap/plugin wiring and launcher environment; `cargo test` covers `yzn-open` bridge/fallback and tab rename behavior | Full Yazi UI behavior remains manual dogfooding |
 | C7 | Helix bridge reuse stays inside the current `yzn` window and current Zellij tab | `crates/yzn-open/`, `flake.nix` | `yzn-open` Rust tests cover session, Zellij-window, and Zellij-tab mismatch | Full multi-window GUI behavior remains manual dogfooding |
 | C8 | Desktop entry starts `yzn` | `flake.nix` | `nix build .#yzn` packages the desktop file | Desktop environment launch remains manual dogfooding |
 | C9 | Kitty keyboard protocol is explicitly enabled, `Alt Shift J/K/M` toggle LazyGit, config, and menu popups through `yzpp`; `Alt Shift L` hides or shows a persistent guarded Codex resume popup; `popup.size` controls generated popup width and height | `config.kdl`, `runtime/yzn.rs`, `flake.nix` | `checks/yzn-contracts.rs` validates Kitty protocol, the packaged popup plugin, commands, popup ids, payloads, key bindings, agent hide behavior, popup geometry, and the missing-Codex guard | Visual popup behavior remains manual dogfooding |

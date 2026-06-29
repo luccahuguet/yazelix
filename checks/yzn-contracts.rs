@@ -720,15 +720,19 @@ fn expect_yazi_alt_z(yzn: &Path) {
                 .map(PathBuf::from)
         })
         .expect("layout is missing sidebar yzn-yazi command");
-    let wrapper = fs::read_to_string(&yzn_yazi).unwrap();
+    let wrapper = binary_text(&yzn_yazi);
     let context = format!("{} Yazi integration fragment", yzn_yazi.display());
     for expected in [
-        "YZN_OPEN=",
-        "YZN_ZELLIJ=",
-        "YZN_EDITOR=$EDITOR",
-        "YAZELIX_ZELLIJ_SESSION_NAME=\"$ZELLIJ_SESSION_NAME\"",
-        "export ZELLIJ_SESSION_NAME=",
-        "export KITTY_WINDOW_ID=1",
+        "YZN_OPEN",
+        "YZN_ZELLIJ",
+        "YZN_EDITOR",
+        "YAZI_CONFIG_HOME",
+        "yazi/init.lua",
+        "yazelix_starship.toml",
+        "-- Yazelix Next user init.lua",
+        "YAZELIX_ZELLIJ_SESSION_NAME",
+        "ZELLIJ_SESSION_NAME",
+        "KITTY_WINDOW_ID",
         "git",
         "zoxide",
         "fzf",

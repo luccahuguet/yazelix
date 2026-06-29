@@ -249,29 +249,16 @@ Workspace
         ln -s ${yaziAssetsSelection}/plugins/git.yazi "$out/plugins/git.yazi"
         ln -s ${starshipYazi} "$out/plugins/starship.yazi"
       '';
-      yznYazi = pkgs.writeShellApplication {
-        name = "yzn-yazi";
-        runtimeInputs = [pkgs.fzf pkgs.git pkgs.starship pkgs.zoxide];
-        text = ''
-          export YAZELIX_STATE_DIR="''${YAZELIX_STATE_DIR:-''${XDG_RUNTIME_DIR:-/tmp}/yazelix-next}"
-          ${helperBridgeSessionEnv}
-          export YAZI_CONFIG_HOME=${yznYaziConfig}
-          export YZN_YAZI_STARSHIP_CONFIG=${yznYaziConfig}/yazelix_starship.toml
-          export YZN_OPEN=${yznOpenCore}/bin/yzn-open
-          export YZN_ZELLIJ=${yazelixZellijPackage}/bin/zellij
-          export EDITOR=${yznHelix}/bin/yzn-hx
-          export VISUAL=${yznHelix}/bin/yzn-hx
-          export YZN_EDITOR=$EDITOR
-          YZN_OPEN_LOG="$(${yznConfig}/bin/yzn-config --get open.log_level)"
-          export YZN_OPEN_LOG
-          if [ -n "''${ZELLIJ_SESSION_NAME:-}" ]; then
-            export YAZELIX_ZELLIJ_SESSION_NAME="$ZELLIJ_SESSION_NAME"
-            export ZELLIJ_SESSION_NAME=
-            export KITTY_WINDOW_ID=1
-          fi
-          exec ${pkgs.yazi}/bin/yazi "$@"
-        '';
+      yznYaziSrc = pkgs.replaceVars ./runtime/yzn-yazi.rs {
+        yazi = "${pkgs.yazi}/bin/yazi";
+        yznYaziConfig = "${yznYaziConfig}";
+        yznOpen = "${yznOpenCore}/bin/yzn-open";
+        zellij = "${yazelixZellijPackage}/bin/zellij";
+        yznHelix = "${yznHelix}/bin/yzn-hx";
+        yznConfig = "${yznConfig}/bin/yzn-config";
+        pathPrefix = pkgs.lib.makeBinPath [pkgs.fzf pkgs.git pkgs.starship pkgs.zoxide];
       };
+      yznYazi = rustBin "yzn-yazi" yznYaziSrc;
       yznRuntimeIdentity = pkgs.writeTextDir "runtime_identity.json" (builtins.toJSON {
         name = "Yazelix Next";
         version = "next";
