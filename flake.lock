@@ -55,8 +55,30 @@
     },
     "fenix_2": {
       "inputs": {
-        "nixpkgs": "nixpkgs_2",
+        "nixpkgs": [
+          "yazelixZellijPaneOrchestrator",
+          "nixpkgs"
+        ],
         "rust-analyzer-src": "rust-analyzer-src_2"
+      },
+      "locked": {
+        "lastModified": 1779270500,
+        "narHash": "sha256-r60KTphdevmdIDz1iJ529HvcpOq082ZZ1OnN3jDnrqk=",
+        "owner": "nix-community",
+        "repo": "fenix",
+        "rev": "848395a91def85c11694587636151d89555f1ddb",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nix-community",
+        "repo": "fenix",
+        "type": "github"
+      }
+    },
+    "fenix_3": {
+      "inputs": {
+        "nixpkgs": "nixpkgs_2",
+        "rust-analyzer-src": "rust-analyzer-src_3"
       },
       "locked": {
         "lastModified": 1777969788,
@@ -111,6 +133,24 @@
     "flake-utils_2": {
       "inputs": {
         "systems": "systems_3"
+      },
+      "locked": {
+        "lastModified": 1731533236,
+        "narHash": "sha256-l0KFg5HjrsfsO/JpG+r7fRrqm12kzFHyUHqHCVpMMbI=",
+        "owner": "numtide",
+        "repo": "flake-utils",
+        "rev": "11707dc2f618dd54ca8739b309ec4fc024de578b",
+        "type": "github"
+      },
+      "original": {
+        "owner": "numtide",
+        "repo": "flake-utils",
+        "type": "github"
+      }
+    },
+    "flake-utils_3": {
+      "inputs": {
+        "systems": "systems_4"
       },
       "locked": {
         "lastModified": 1731533236,
@@ -199,11 +239,11 @@
     "ratconfig": {
       "flake": false,
       "locked": {
-        "lastModified": 1782649795,
-        "narHash": "sha256-taJIXSm4T6+HJcGynJqIeFmfuJuVtYaNX2/fmIKwhsw=",
+        "lastModified": 1782695275,
+        "narHash": "sha256-xJwZmU/FE+q8KGvhWYDtJrAVgiPBiOeIzHvzQN/drgk=",
         "owner": "luccahuguet",
         "repo": "ratconfig",
-        "rev": "04119b6f5da6f01e12cc5a67cf91f0f6d158ce09",
+        "rev": "0db6640d4b7ad153ec3e968b4079e86323b0ca01",
         "type": "github"
       },
       "original": {
@@ -222,6 +262,7 @@
         "yazelixHelix": "yazelixHelix",
         "yazelixZellij": "yazelixZellij",
         "yazelixZellijBar": "yazelixZellijBar",
+        "yazelixZellijPaneOrchestrator": "yazelixZellijPaneOrchestrator",
         "yazelixZellijPopup": "yazelixZellijPopup"
       }
     },
@@ -243,6 +284,23 @@
       }
     },
     "rust-analyzer-src_2": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1779221047,
+        "narHash": "sha256-HkOWI9C4kxA6xkS9GXhe4hAAme7ekOWje3b1U7rLSIo=",
+        "owner": "rust-lang",
+        "repo": "rust-analyzer",
+        "rev": "f4bd646a7867c7814770168e0d4b9bd3418c1066",
+        "type": "github"
+      },
+      "original": {
+        "owner": "rust-lang",
+        "ref": "nightly",
+        "repo": "rust-analyzer",
+        "type": "github"
+      }
+    },
+    "rust-analyzer-src_3": {
       "flake": false,
       "locked": {
         "lastModified": 1777924689,
@@ -384,6 +442,21 @@
         "type": "github"
       }
     },
+    "systems_4": {
+      "locked": {
+        "lastModified": 1681028828,
+        "narHash": "sha256-Vy1rq5AaRuLzOxct8nz4T6wlgyUR7zLU309k9mBC768=",
+        "owner": "nix-systems",
+        "repo": "default",
+        "rev": "da67096a3b9bf56a91d16901293e51ba5b49a27e",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nix-systems",
+        "repo": "default",
+        "type": "github"
+      }
+    },
     "yazelixHelix": {
       "inputs": {
         "nixpkgs": [
@@ -444,10 +517,32 @@
         "type": "github"
       }
     },
-    "yazelixZellijPopup": {
+    "yazelixZellijPaneOrchestrator": {
       "inputs": {
         "fenix": "fenix_2",
         "flake-utils": "flake-utils_2",
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1782357544,
+        "narHash": "sha256-oJm2MtGWPPNl/V9kNIJRVSbK7/JNAKCjGQX12RwaDmg=",
+        "owner": "luccahuguet",
+        "repo": "yazelix-zellij-pane-orchestrator",
+        "rev": "8cea8ec49a6ebda7c73f18d50ea9bd7eb19cfc51",
+        "type": "github"
+      },
+      "original": {
+        "owner": "luccahuguet",
+        "repo": "yazelix-zellij-pane-orchestrator",
+        "type": "github"
+      }
+    },
+    "yazelixZellijPopup": {
+      "inputs": {
+        "fenix": "fenix_3",
+        "flake-utils": "flake-utils_3",
         "nixpkgs": [
           "nixpkgs"
         ]

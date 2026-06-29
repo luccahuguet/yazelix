@@ -1,4 +1,5 @@
 use std::{
+    collections::BTreeMap,
     env, fs, io,
     path::{Path, PathBuf},
     process::{self, Command},
@@ -9,17 +10,19 @@ use crossterm::{
     cursor,
     event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers},
     execute,
-    terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
+    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use ratatui::{Terminal, backend::CrosstermBackend};
+use ratatui::{backend::CrosstermBackend, Terminal};
 use ratconfig::toml_adapter::{get_toml_path, parse_toml_value, set_toml_value_text};
 use ratconfig::{
-    ConfigContract, ConfigUiApp, ConfigUiApplyStatus, ConfigUiDiagnostic, ConfigUiEditBehavior,
-    ConfigUiFieldRowSpec, ConfigUiFileAction, ConfigUiIntent, ConfigUiKey, ConfigUiModel,
-    ConfigUiPathOwner, ConfigUiSource, DEFAULT_CONFIG_SOURCE_ID, build_config_ui_field,
-    draw_config_ui, join_toml_contract_text_from_version, reconcile_joined_toml_contract_text,
+    build_config_ui_field, build_string_list_choice_field, draw_config_ui,
+    join_toml_contract_text_from_version, reconcile_joined_toml_contract_text,
+    string_list_values_from_json, ConfigContract, ConfigUiApp, ConfigUiApplyStatus,
+    ConfigUiDiagnostic, ConfigUiEditBehavior, ConfigUiFieldRowSpec, ConfigUiFileAction,
+    ConfigUiIntent, ConfigUiKey, ConfigUiListColumn, ConfigUiListTable, ConfigUiModel,
+    ConfigUiPathOwner, ConfigUiSource, ConfigUiStringListChoiceSpec, DEFAULT_CONFIG_SOURCE_ID,
 };
-use serde_json::{Value as JsonValue, json};
+use serde_json::{json, Value as JsonValue};
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
@@ -30,16 +33,32 @@ const CONTRACT_VERSION: u64 = 1;
 
 const OPEN_LOG_LEVEL_PATH: &str = "open.log_level";
 const SHELL_PROGRAM_PATH: &str = "shell.program";
+const POPUP_SIZE_PATH: &str = "popup.size";
+const DEFAULT_POPUP_SIZE: i64 = 95;
+const BAR_WIDGETS_PATH: &str = "bar.widgets";
+const DEFAULT_BAR_WIDGETS: &[&str] = &["editor", "shell", "term", "codex_usage", "cpu", "ram"];
+const BAR_WIDGET_VALUES: &[&str] = &[
+    "session",
+    "editor",
+    "shell",
+    "term",
+    "claude_usage",
+    "codex_usage",
+    "opencode_go_usage",
+    "cpu",
+    "ram",
+];
 const DEFAULT_MARS_CONFIG_TOML: &str = include_str!("../../../mars.toml");
 
 const SOURCE_CONFIG: &str = DEFAULT_CONFIG_SOURCE_ID;
 const SOURCE_MARS: &str = "mars";
 const SOURCE_ZELLIJ: &str = "zellij";
+const SOURCE_KEYS: &str = "keys";
 const SOURCE_ADVANCED: &str = "advanced";
 const TAB_CONFIG: &str = "config";
-const TAB_SHELL: &str = "shell";
 const TAB_MARS: &str = "mars";
 const TAB_ZELLIJ: &str = "zellij";
+const TAB_KEYS: &str = "keys";
 const TAB_ADVANCED: &str = "advanced";
 
 const ACTION_NU_ENV: &str = "nu.env";
@@ -47,7 +66,39 @@ const ACTION_NU_CONFIG: &str = "nu.config";
 const ACTION_STARSHIP: &str = "starship";
 const NU_ENV_STARTER: &str = "# Loaded after Yazelix Next packaged env.nu.\n";
 const NU_CONFIG_STARTER: &str = "# Loaded after Yazelix Next packaged config.nu.\n";
-const STARSHIP_STARTER: &str = "# Used by managed Yazelix Next Nu sessions.\n";
+const STARSHIP_STARTER: &str =
+    "format = '$directory$git_branch$git_status$character'\nright_format = ''\n";
+const KEY_READ_ONLY_REASON: &str =
+    "Read-only key binding; yzn config does not rewrite native keymaps.";
+
+macro_rules! key {
+    ($group:literal; $chord:literal; $action:literal; $owner:literal; $source:literal) => {
+        [$group, $chord, $action, $owner, $source]
+    };
+}
+
+const KEY_BINDINGS: &[[&str; 5]] = &[
+    key!("Workspace"; "Ctrl Alt g"; "Toggle locked mode"; "Zellij"; "config.kdl"),
+    key!("Workspace"; "Ctrl Alt o"; "Open session mode"; "Zellij"; "config.kdl"),
+    key!("Workspace"; "Ctrl q"; "Quit Yazelix session"; "Zellij"; "config.kdl"),
+    key!("Panes"; "Ctrl p"; "Toggle pane mode"; "Zellij"; "config.kdl"),
+    key!("Panes"; "Ctrl n"; "Toggle resize mode"; "Zellij"; "config.kdl"),
+    key!("Panes"; "Alt m"; "Open a new pane"; "Zellij"; "config.kdl"),
+    key!("Panes"; "Alt h / Alt Left"; "Move focus left or previous tab"; "Yazelix"; "config.kdl"),
+    key!("Panes"; "Alt l / Alt Right"; "Move focus right or next tab"; "Yazelix"; "config.kdl"),
+    key!("Tabs"; "Ctrl t"; "Toggle tab mode"; "Zellij"; "config.kdl"),
+    key!("Tabs"; "n in tab mode"; "Open a new tab"; "Zellij"; "config.kdl"),
+    key!("Tabs"; "Ctrl Alt h"; "Move tab left"; "Zellij"; "config.kdl"),
+    key!("Tabs"; "Ctrl Alt l"; "Move tab right"; "Zellij"; "config.kdl"),
+    key!("Popups"; "Alt Shift J"; "Toggle LazyGit popup"; "Yazelix"; "config.kdl"),
+    key!("Popups"; "Alt Shift K"; "Toggle config popup"; "Yazelix"; "config.kdl"),
+    key!("Popups"; "Alt Shift L"; "Hide or show agent popup"; "Yazelix"; "config.kdl"),
+    key!("Popups"; "Alt Shift M"; "Toggle menu popup"; "Yazelix"; "config.kdl"),
+    key!("Sidebar"; "Alt Shift h"; "Toggle Yazi sidebar"; "Yazelix"; "config.kdl"),
+    key!("File manager"; "Alt z"; "Zoxide jump into the managed editor"; "Yazi"; "yazi/keymap.toml"),
+];
+
+const KEY_COLUMNS: &[(&str, usize)] = &[("group", 14), ("key", 20), ("action", 40), ("owner", 10)];
 
 const CONFIG_FIELDS: &[ConfigFieldSpec] = &[
     ConfigFieldSpec {
@@ -57,7 +108,7 @@ const CONFIG_FIELDS: &[ConfigFieldSpec] = &[
             &["off", "error", "info", "debug"],
             "off, error, info, or debug",
         ),
-        default: "info",
+        default: ConfigDefault::String("info"),
         tab: TAB_CONFIG,
         apply_summary: "new opens",
         apply_detail: "Saved values are exported as YZN_OPEN_LOG for managed Yazi opens.",
@@ -69,10 +120,21 @@ const CONFIG_FIELDS: &[ConfigFieldSpec] = &[
             &["nu", "bash", "zsh", "fish"],
             "nu, bash, zsh, or fish",
         ),
-        default: "nu",
-        tab: TAB_SHELL,
+        default: ConfigDefault::String("nu"),
+        tab: TAB_CONFIG,
         apply_summary: "new panes",
         apply_detail: "Saved shell selection applies to newly launched panes and sessions.",
+    },
+    ConfigFieldSpec {
+        field: FieldSpec::integer(
+            POPUP_SIZE_PATH,
+            "Width and height percentage for managed popups.",
+            "integer from 1 to 100",
+        ),
+        default: ConfigDefault::Integer(DEFAULT_POPUP_SIZE),
+        tab: TAB_CONFIG,
+        apply_summary: "next launch",
+        apply_detail: "Saved popup size applies to newly launched Yazelix sessions.",
     },
 ];
 
@@ -139,7 +201,9 @@ struct ConfigPaths {
 
 #[derive(Debug, Clone)]
 struct FileActionSpec {
+    source_id: &'static str,
     action_id: &'static str,
+    tab: &'static str,
     label: &'static str,
     description: &'static str,
     path: PathBuf,
@@ -149,10 +213,25 @@ struct FileActionSpec {
 #[derive(Debug, Clone, Copy)]
 struct ConfigFieldSpec {
     field: FieldSpec,
-    default: &'static str,
+    default: ConfigDefault,
     tab: &'static str,
     apply_summary: &'static str,
     apply_detail: &'static str,
+}
+
+#[derive(Debug, Clone, Copy)]
+enum ConfigDefault {
+    String(&'static str),
+    Integer(i64),
+}
+
+impl ConfigDefault {
+    fn json(self) -> JsonValue {
+        match self {
+            Self::String(value) => json!(value),
+            Self::Integer(value) => json!(value),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -397,11 +476,14 @@ fn config_key(key: KeyEvent) -> Option<ConfigUiKey> {
 }
 
 fn print_config_field(path: &str) -> Result<()> {
-    let spec = config_field(path)?;
-    println!(
-        "{}",
-        read_config_field(&ensure_config_file_at(config_paths()?.root)?, spec)?
-    );
+    if path == BAR_WIDGETS_PATH {
+        let config = ensure_config_file_at(config_paths()?.root)?;
+        println!("{}", read_bar_widgets_field(&config)?);
+    } else {
+        let spec = config_field(path)?;
+        let config = ensure_config_file_at(config_paths()?.root)?;
+        println!("{}", read_config_field(&config, spec)?);
+    }
     Ok(())
 }
 
@@ -490,10 +572,14 @@ fn reconcile_contract(raw: &str) -> Result<String> {
 
 fn fill_missing_defaults(raw: &str) -> Result<String> {
     let mut text = raw.to_string();
-    for spec in CONFIG_FIELDS {
+    for (field_path, default) in CONFIG_FIELDS
+        .iter()
+        .map(|spec| (spec.field.path, spec.default.json()))
+        .chain([(BAR_WIDGETS_PATH, json!(DEFAULT_BAR_WIDGETS))])
+    {
         let value = parse_toml_value(&text).map_err(|error| boxed_debug("invalid TOML", error))?;
-        if get_toml_path(&value, spec.field.path).is_none() {
-            text = set_toml_value_text(&text, spec.field.path, &json!(spec.default))
+        if get_toml_path(&value, field_path).is_none() {
+            text = set_toml_value_text(&text, field_path, &default)
                 .map_err(|error| boxed_debug("could not write missing default", error))?
                 .text;
         }
@@ -511,7 +597,28 @@ fn read_config_field(path: &Path, spec: &ConfigFieldSpec) -> Result<String> {
     let Some(value) = get_toml_path(&value, spec.field.path) else {
         return Err(error(format!("unknown config path: {}", spec.field.path)));
     };
-    Ok(spec.field.json_choice(value)?.to_string())
+    validate_config_value(spec.field.path, value)?;
+    match spec.field.kind {
+        "string" => Ok(spec.field.json_choice(value)?.to_string()),
+        "integer" => Ok(json_i64(spec.field.path, value)?.to_string()),
+        _ => Err(error(format!(
+            "{} must be {}",
+            spec.field.path, spec.field.validation
+        ))),
+    }
+}
+
+fn read_bar_widgets_field(path: &Path) -> Result<String> {
+    let value = read_toml_file_value(path, "config.toml")?;
+    let Some(value) = get_toml_path(&value, BAR_WIDGETS_PATH) else {
+        return Err(error(format!("unknown config path: {BAR_WIDGETS_PATH}")));
+    };
+    Ok(serde_json::to_string(&bar_widgets(value)?)?)
+}
+
+fn bar_widgets(value: &JsonValue) -> Result<Vec<String>> {
+    string_list_values_from_json(BAR_WIDGETS_PATH, value, &string_values(BAR_WIDGET_VALUES))
+        .map_err(error)
 }
 
 fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
@@ -527,6 +634,8 @@ fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
         .iter()
         .map(|spec| build_root_config_field(&config_active, spec))
         .collect();
+    fields.push(build_bar_widgets_field(&config_active)?);
+    fields.extend(KEY_BINDINGS.iter().map(build_key_binding_field));
     for spec in MARS_FIELDS {
         fields.push(build_config_field(
             SOURCE_MARS,
@@ -572,14 +681,35 @@ fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
                 "zellij/config.kdl",
                 &paths.zellij,
             ),
+            ConfigUiSource {
+                id: SOURCE_KEYS.to_string(),
+                tab: TAB_KEYS.to_string(),
+                label: "key bindings".to_string(),
+                path: PathBuf::from("packaged-key-bindings"),
+                exists: true,
+                owner: ConfigUiPathOwner::Default,
+                read_only: true,
+            },
         ],
         tabs: vec![
             TAB_CONFIG.to_string(),
-            TAB_SHELL.to_string(),
             TAB_MARS.to_string(),
             TAB_ZELLIJ.to_string(),
+            TAB_KEYS.to_string(),
             TAB_ADVANCED.to_string(),
         ],
+        tab_list_tables: BTreeMap::from([(
+            TAB_KEYS.to_string(),
+            ConfigUiListTable {
+                columns: KEY_COLUMNS
+                    .iter()
+                    .map(|(title, width)| ConfigUiListColumn {
+                        title: (*title).to_string(),
+                        width: *width,
+                    })
+                    .collect(),
+            },
+        )]),
         fields,
         file_actions: build_file_actions(paths),
         sidecars: Vec::new(),
@@ -592,9 +722,9 @@ fn build_file_actions(paths: &ConfigPaths) -> Vec<ConfigUiFileAction> {
     file_action_specs(paths)
         .into_iter()
         .map(|spec| ConfigUiFileAction {
-            source_id: SOURCE_ADVANCED.to_string(),
+            source_id: spec.source_id.to_string(),
             action_id: spec.action_id.to_string(),
-            tab: TAB_ADVANCED.to_string(),
+            tab: spec.tab.to_string(),
             label: spec.label.to_string(),
             description: spec.description.to_string(),
             exists: spec.path.exists(),
@@ -606,24 +736,63 @@ fn build_file_actions(paths: &ConfigPaths) -> Vec<ConfigUiFileAction> {
         .collect()
 }
 
+fn build_key_binding_field(
+    [group, chord, action, owner, source]: &[&str; 5],
+) -> ratconfig::ConfigUiField {
+    ratconfig::ConfigUiField {
+        source_id: SOURCE_KEYS.to_string(),
+        path: chord.to_string(),
+        tab: TAB_KEYS.to_string(),
+        display_label: format!("{group}: {chord} - {action}"),
+        list_cells: [*group, *chord, *action, *owner]
+            .into_iter()
+            .map(str::to_string)
+            .collect(),
+        kind: "string".to_string(),
+        current_value: format!("{owner} / {source}"),
+        edit_value: String::new(),
+        default_value: ratconfig::NO_CONFIG_DEFAULT_VALUE_LABEL.to_string(),
+        state: ratconfig::ConfigUiValueState::Explicit,
+        description: format!("Group: {group}. Owner: {owner}. Source: {source}. Editable: no."),
+        allowed_values: Vec::new(),
+        validation: KEY_READ_ONLY_REASON.to_string(),
+        rebuild_required: false,
+        apply_status: ConfigUiApplyStatus {
+            summary: "read-only".to_string(),
+            label: "read-only".to_string(),
+            detail: KEY_READ_ONLY_REASON.to_string(),
+            pending: false,
+        },
+        edit_behavior: ConfigUiEditBehavior::StructuredOnly {
+            notice: KEY_READ_ONLY_REASON.to_string(),
+        },
+    }
+}
+
 fn file_action_specs(paths: &ConfigPaths) -> Vec<FileActionSpec> {
     vec![
         FileActionSpec {
+            source_id: SOURCE_ADVANCED,
             action_id: ACTION_NU_ENV,
+            tab: TAB_ADVANCED,
             label: "nu/env.nu",
             description: "Open the user Nushell environment file.",
             path: paths.nu_env.clone(),
             starter: NU_ENV_STARTER,
         },
         FileActionSpec {
+            source_id: SOURCE_ADVANCED,
             action_id: ACTION_NU_CONFIG,
+            tab: TAB_ADVANCED,
             label: "nu/config.nu",
             description: "Open the user Nushell config file.",
             path: paths.nu_config.clone(),
             starter: NU_CONFIG_STARTER,
         },
         FileActionSpec {
+            source_id: SOURCE_ADVANCED,
             action_id: ACTION_STARSHIP,
+            tab: TAB_ADVANCED,
             label: "starship.toml",
             description: "Open the user Starship config file.",
             path: paths.starship.clone(),
@@ -645,7 +814,7 @@ fn build_config_source(id: &str, tab: &str, label: &str, path: &Path) -> ConfigU
 }
 
 fn build_root_config_field(active: &JsonValue, spec: &ConfigFieldSpec) -> ratconfig::ConfigUiField {
-    let default = json!(spec.default);
+    let default = spec.default.json();
     let current = get_toml_path(active, spec.field.path);
     build_config_field(
         SOURCE_CONFIG,
@@ -659,7 +828,7 @@ fn build_root_config_field(active: &JsonValue, spec: &ConfigFieldSpec) -> ratcon
             detail: spec.apply_detail.to_string(),
             pending: false,
         },
-        current.is_some_and(|value| spec.field.json_choice(value).is_err()),
+        current.is_some_and(|value| validate_config_value(spec.field.path, value).is_err()),
     )
 }
 
@@ -676,6 +845,7 @@ fn build_config_field(
         source_id,
         path: spec.path,
         display_label: String::new(),
+        list_cells: Vec::new(),
         tab,
         kind: spec.kind,
         current,
@@ -688,6 +858,35 @@ fn build_config_field(
         has_blocking_diagnostic,
         edit_behavior: ConfigUiEditBehavior::Default,
     })
+}
+
+fn build_bar_widgets_field(active: &JsonValue) -> Result<ratconfig::ConfigUiField> {
+    let current = get_toml_path(active, BAR_WIDGETS_PATH)
+        .map(bar_widgets)
+        .transpose();
+    let has_blocking_diagnostic = current.is_err();
+    build_string_list_choice_field(ConfigUiStringListChoiceSpec {
+        source_id: SOURCE_CONFIG.to_string(),
+        path: BAR_WIDGETS_PATH.to_string(),
+        display_label: String::new(),
+        list_cells: Vec::new(),
+        tab: TAB_CONFIG.to_string(),
+        current: current.ok().flatten(),
+        default: Some(string_values(DEFAULT_BAR_WIDGETS)),
+        description: "Top bar widgets, left to right.".to_string(),
+        allowed_values: string_values(BAR_WIDGET_VALUES),
+        validation: "known widget ids".to_string(),
+        rebuild_required: false,
+        apply_status: ConfigUiApplyStatus {
+            summary: "next launch".to_string(),
+            label: "bar".to_string(),
+            detail: "Saved widget order applies to newly launched Yazelix sessions.".to_string(),
+            pending: false,
+        },
+        has_blocking_diagnostic,
+        edit_behavior: ConfigUiEditBehavior::OrderedStringList,
+    })
+    .map_err(error)
 }
 
 fn next_launch_apply_status(label: &str, detail: &str) -> ConfigUiApplyStatus {
@@ -728,7 +927,7 @@ fn write_source_field(
 
 fn write_source_default(paths: &ConfigPaths, source_id: &str, field_path: &str) -> Result<()> {
     let value = match source_id {
-        SOURCE_CONFIG => json!(config_field(field_path)?.default),
+        SOURCE_CONFIG => default_config_value(field_path)?,
         SOURCE_MARS => {
             let default = parse_toml_value(DEFAULT_MARS_CONFIG_TOML)
                 .map_err(|error| boxed_debug("invalid default Mars config", error))?;
@@ -794,7 +993,7 @@ fn file_action_spec(
     }
     let Some(spec) = file_action_specs(paths)
         .into_iter()
-        .find(|spec| spec.action_id == action_id)
+        .find(|spec| spec.source_id == source_id && spec.action_id == action_id)
     else {
         return Err(error(format!("unknown file action: {action_id}")));
     };
@@ -832,12 +1031,39 @@ fn path_read_only(path: &Path) -> bool {
 }
 
 fn write_config_field(path: &Path, field_path: &str, value: &JsonValue) -> Result<()> {
-    config_field(field_path)?.field.json_choice(value)?;
+    validate_config_value(field_path, value)?;
     let raw = fs::read_to_string(path)?;
     let text = set_toml_value_text(&raw, field_path, value)
         .map_err(|error| boxed_debug("could not update config.toml", error))?
         .text;
     atomic_write(path, &fill_missing_defaults(&reconcile_contract(&text)?)?)
+}
+
+fn default_config_value(field_path: &str) -> Result<JsonValue> {
+    if field_path == BAR_WIDGETS_PATH {
+        Ok(json!(DEFAULT_BAR_WIDGETS))
+    } else {
+        Ok(config_field(field_path)?.default.json())
+    }
+}
+
+fn validate_config_value(field_path: &str, value: &JsonValue) -> Result<()> {
+    if field_path == BAR_WIDGETS_PATH {
+        return bar_widgets(value).map(|_| ());
+    }
+
+    let spec = &config_field(field_path)?.field;
+    match spec.kind {
+        "string" => spec.json_choice(value).map(|_| ()),
+        "integer" => {
+            let value = json_i64(field_path, value)?;
+            if field_path == POPUP_SIZE_PATH && !(1..=100).contains(&value) {
+                return Err(error(format!("{field_path} must be between 1 and 100")));
+            }
+            Ok(())
+        }
+        _ => Err(error(format!("{field_path} must be {}", spec.validation))),
+    }
 }
 
 fn write_mars_config_field(path: &Path, field_path: &str, value: &JsonValue) -> Result<()> {
@@ -1018,9 +1244,7 @@ fn parse_zellij_top_level_line(
 }
 
 fn top_level_zellij_field(token: &str) -> Option<&'static FieldSpec> {
-    ZELLIJ_FIELDS
-        .iter()
-        .find(|spec| spec.path == token && !spec.path.contains('.'))
+    zellij_field(token).filter(|spec| !spec.path.contains('.'))
 }
 
 fn zellij_field(path: &str) -> Option<&'static FieldSpec> {
@@ -1196,7 +1420,11 @@ ui {{
 }
 
 fn kdl_bool(value: bool) -> &'static str {
-    if value { "true" } else { "false" }
+    if value {
+        "true"
+    } else {
+        "false"
+    }
 }
 
 fn json_bool(path: &str, value: &JsonValue) -> Result<bool> {
@@ -1312,20 +1540,48 @@ mod tests {
         fs::set_permissions(path, permissions).unwrap();
     }
 
-    // Defends: hidden --get paths are validated before config file creation/reconciliation.
-    #[test]
-    fn config_field_rejects_unknown_paths_before_io() {
-        assert_eq!(config_field(OPEN_LOG_LEVEL_PATH).unwrap().default, "info");
-        assert_eq!(config_field(SHELL_PROGRAM_PATH).unwrap().default, "nu");
-        assert!(
-            config_field("shell.typo")
-                .unwrap_err()
-                .to_string()
-                .contains("unknown config path")
-        );
+    fn write_toml_value(path: &Path, field_path: &str, value: &JsonValue) {
+        let raw = fs::read_to_string(path).unwrap();
+        let updated = set_toml_value_text(&raw, field_path, value).unwrap().text;
+        fs::write(path, updated).unwrap();
     }
 
-    // Defends: yzn config creates the owned TOML config file with defaults and joined contract state.
+    fn model_field<'a>(model: &'a ConfigUiModel, path: &str) -> &'a ratconfig::ConfigUiField {
+        model
+            .fields
+            .iter()
+            .find(|field| field.path == path)
+            .unwrap_or_else(|| panic!("missing config field {path}"))
+    }
+
+    fn key_field<'a>(model: &'a ConfigUiModel, label: &str) -> &'a ratconfig::ConfigUiField {
+        model
+            .fields
+            .iter()
+            .find(|field| field.source_id == SOURCE_KEYS && field.display_label.contains(label))
+            .unwrap_or_else(|| panic!("missing key action {label}"))
+    }
+
+    #[test]
+    fn config_field_rejects_unknown_paths_before_io() {
+        assert_eq!(
+            config_field(OPEN_LOG_LEVEL_PATH).unwrap().default.json(),
+            json!("info")
+        );
+        assert_eq!(
+            config_field(SHELL_PROGRAM_PATH).unwrap().default.json(),
+            json!("nu")
+        );
+        assert_eq!(
+            config_field(POPUP_SIZE_PATH).unwrap().default.json(),
+            json!(DEFAULT_POPUP_SIZE)
+        );
+        assert!(config_field("shell.typo")
+            .unwrap_err()
+            .to_string()
+            .contains("unknown config path"));
+    }
+
     #[test]
     fn ensure_config_creates_defaults_and_contract_state() {
         let temp = TempHome::new();
@@ -1341,6 +1597,14 @@ mod tests {
             Some(&json!("nu"))
         );
         assert_eq!(
+            get_toml_path(&value, POPUP_SIZE_PATH),
+            Some(&json!(DEFAULT_POPUP_SIZE))
+        );
+        assert_eq!(
+            get_toml_path(&value, BAR_WIDGETS_PATH),
+            Some(&json!(DEFAULT_BAR_WIDGETS))
+        );
+        assert_eq!(
             get_toml_path(&value, "ratconfig.contract.contract_id"),
             Some(&json!(CONTRACT_ID))
         );
@@ -1350,7 +1614,6 @@ mod tests {
         );
     }
 
-    // Defends: config edits are validated and persisted through ratconfig's TOML patch path.
     #[test]
     fn write_config_field_persists_valid_values_and_rejects_bad_values() {
         let temp = TempHome::new();
@@ -1375,9 +1638,176 @@ mod tests {
 
         let error = write_config_field(&path, SHELL_PROGRAM_PATH, &json!("tcsh")).unwrap_err();
         assert!(error.to_string().contains("nu, bash, zsh, fish"));
+
+        write_config_field(&path, POPUP_SIZE_PATH, &json!(88)).unwrap();
+        let value = read_toml_file_value(&path, "config.toml").unwrap();
+        assert_eq!(get_toml_path(&value, POPUP_SIZE_PATH), Some(&json!(88)));
+        assert_eq!(
+            read_config_field(&path, config_field(POPUP_SIZE_PATH).unwrap()).unwrap(),
+            "88"
+        );
+
+        let error = write_config_field(&path, POPUP_SIZE_PATH, &json!(101)).unwrap_err();
+        assert!(error.to_string().contains("between 1 and 100"));
+
+        write_config_field(
+            &path,
+            BAR_WIDGETS_PATH,
+            &json!(["editor", "claude_usage", "cpu"]),
+        )
+        .unwrap();
+        let value = read_toml_file_value(&path, "config.toml").unwrap();
+        assert_eq!(
+            get_toml_path(&value, BAR_WIDGETS_PATH),
+            Some(&json!(["editor", "claude_usage", "cpu"]))
+        );
+
+        write_source_default(&temp_paths(&temp), SOURCE_CONFIG, BAR_WIDGETS_PATH).unwrap();
+        let value = read_toml_file_value(&path, "config.toml").unwrap();
+        assert_eq!(
+            get_toml_path(&value, BAR_WIDGETS_PATH),
+            Some(&json!(DEFAULT_BAR_WIDGETS))
+        );
+
+        let error = write_config_field(&path, BAR_WIDGETS_PATH, &json!(["weather"]))
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("bar.widgets must be one of"));
+        assert!(error.contains("claude_usage"));
     }
 
-    // Defends: atomic writes/reconciliation must not replace existing read-only config sources.
+    #[test]
+    fn bar_widgets_are_read_as_json_array_and_validated() {
+        let temp = TempHome::new();
+        let path = ensure_config_file_at(temp.path.join("config.toml")).unwrap();
+
+        assert_eq!(
+            read_bar_widgets_field(&path).unwrap(),
+            r#"["editor","shell","term","codex_usage","cpu","ram"]"#
+        );
+
+        write_toml_value(
+            &path,
+            BAR_WIDGETS_PATH,
+            &json!(["editor", "claude_usage", "cpu"]),
+        );
+        assert_eq!(
+            read_bar_widgets_field(&path).unwrap(),
+            r#"["editor","claude_usage","cpu"]"#
+        );
+
+        write_toml_value(&path, BAR_WIDGETS_PATH, &json!(["editor", "weather"]));
+        let error = read_bar_widgets_field(&path).unwrap_err().to_string();
+        assert!(error.contains("bar.widgets must be one of"));
+        assert!(error.contains("claude_usage"));
+    }
+
+    #[test]
+    fn config_model_exposes_root_config_fields() {
+        let temp = TempHome::new();
+        let paths = temp_paths(&temp);
+        ensure_temp_sources(&paths);
+
+        let model = build_model(&paths).unwrap();
+        assert!(!model.tabs.contains(&"shell".to_string()));
+        assert_eq!(model_field(&model, SHELL_PROGRAM_PATH).tab, TAB_CONFIG);
+
+        let popup = model_field(&model, POPUP_SIZE_PATH);
+        assert_eq!(popup.tab, TAB_CONFIG);
+        assert_eq!(popup.kind, "integer");
+        assert_eq!(popup.current_value, DEFAULT_POPUP_SIZE.to_string());
+        assert_eq!(popup.apply_status.summary, "next launch");
+
+        let field = model_field(&model, BAR_WIDGETS_PATH);
+
+        assert_eq!(field.tab, TAB_CONFIG);
+        assert_eq!(field.kind, "string_list");
+        assert_eq!(field.edit_behavior, ConfigUiEditBehavior::OrderedStringList);
+        assert_eq!(field.allowed_values, string_values(BAR_WIDGET_VALUES));
+        assert_eq!(
+            field.edit_value,
+            r#"["editor","shell","term","codex_usage","cpu","ram"]"#
+        );
+        assert!(field.allowed_values.contains(&"claude_usage".to_string()));
+    }
+
+    #[test]
+    fn config_model_marks_invalid_bar_widgets() {
+        let temp = TempHome::new();
+        let paths = temp_paths(&temp);
+        ensure_temp_sources(&paths);
+        write_toml_value(&paths.root, BAR_WIDGETS_PATH, &json!(["weather"]));
+
+        let model = build_model(&paths).unwrap();
+        assert_eq!(
+            model_field(&model, BAR_WIDGETS_PATH).state,
+            ConfigUiValueState::Invalid
+        );
+    }
+
+    // Defends: the Keys tab is a read-only discovery surface for current packaged bindings.
+    #[test]
+    fn config_model_exposes_read_only_key_bindings() {
+        let temp = TempHome::new();
+        let paths = temp_paths(&temp);
+        ensure_temp_sources(&paths);
+
+        let model = build_model(&paths).unwrap();
+        let rows: Vec<_> = model
+            .fields
+            .iter()
+            .filter(|field| field.tab == TAB_KEYS)
+            .collect();
+
+        assert!(model.tabs.contains(&TAB_KEYS.to_string()));
+        assert!(model
+            .file_actions
+            .iter()
+            .all(|action| action.tab != TAB_KEYS));
+        assert_eq!(
+            model
+                .tab_list_tables
+                .get(TAB_KEYS)
+                .unwrap()
+                .columns
+                .iter()
+                .map(|column| (column.title.as_str(), column.width))
+                .collect::<Vec<_>>(),
+            KEY_COLUMNS
+        );
+        assert_eq!(rows.len(), KEY_BINDINGS.len());
+        assert!(rows.iter().all(|field| {
+            field.apply_status.summary == "read-only"
+                && matches!(
+                    field.edit_behavior,
+                    ConfigUiEditBehavior::StructuredOnly { .. }
+                )
+                && field.list_cells.len() == KEY_COLUMNS.len()
+        }));
+
+        let config_popup = key_field(&model, "Alt Shift K");
+        assert_eq!(
+            config_popup.display_label,
+            "Popups: Alt Shift K - Toggle config popup"
+        );
+        assert_eq!(config_popup.current_value, "Yazelix / config.kdl");
+        assert_eq!(
+            config_popup.list_cells,
+            ["Popups", "Alt Shift K", "Toggle config popup", "Yazelix"].map(str::to_string)
+        );
+        assert!(config_popup.description.contains("Owner: Yazelix"));
+        assert_eq!(config_popup.validation, KEY_READ_ONLY_REASON);
+
+        let pane_mode = key_field(&model, "Ctrl p");
+        assert!(pane_mode.display_label.contains("Ctrl p"));
+        assert!(pane_mode.description.contains("Owner: Zellij"));
+
+        let yazi_zoxide = key_field(&model, "Alt z");
+        assert!(yazi_zoxide.display_label.contains("Alt z"));
+        assert!(yazi_zoxide.description.contains("Owner: Yazi"));
+        assert_eq!(yazi_zoxide.current_value, "Yazi / yazi/keymap.toml");
+    }
+
     #[test]
     fn read_only_existing_sources_are_not_replaced() {
         let temp = TempHome::new();
@@ -1404,7 +1834,6 @@ mod tests {
         assert_eq!(fs::read_to_string(&paths.root).unwrap(), before_root);
     }
 
-    // Defends: hand-edited config is validated before managed runtime exports it.
     #[test]
     fn manual_invalid_log_level_is_rejected_on_read_and_marked_invalid() {
         let temp = TempHome::new();
@@ -1422,7 +1851,6 @@ mod tests {
         assert_eq!(model.fields[0].state, ConfigUiValueState::Invalid);
     }
 
-    // Defends: yzn config creates each owned source file without adding contracts to sidecars.
     #[test]
     fn ensure_config_sources_creates_root_mars_and_zellij_files() {
         let temp = TempHome::new();
@@ -1433,24 +1861,19 @@ mod tests {
         assert!(paths.root.exists());
         assert!(paths.mars.exists());
         assert!(paths.zellij.exists());
-        assert!(
-            !fs::read_to_string(paths.mars)
-                .unwrap()
-                .contains("ratconfig.contract")
-        );
-        assert!(
-            fs::read_to_string(paths.zellij)
-                .unwrap()
-                .contains("rounded_corners false")
-        );
+        assert!(!fs::read_to_string(paths.mars)
+            .unwrap()
+            .contains("ratconfig.contract"));
+        assert!(fs::read_to_string(paths.zellij)
+            .unwrap()
+            .contains("rounded_corners false"));
         assert!(!paths.nu_env.exists());
         assert!(!paths.nu_config.exists());
         assert!(!paths.starship.exists());
     }
 
-    // Defends: the Advanced tab exposes native config files without parsing or eager creation.
     #[test]
-    fn advanced_tab_lists_host_owned_file_actions() {
+    fn native_file_tabs_list_owned_file_actions() {
         let temp = TempHome::new();
         let paths = temp_paths(&temp);
         ensure_temp_sources(&paths);
@@ -1472,6 +1895,7 @@ mod tests {
             })
             .collect();
 
+        assert!(!model.tabs.contains(&"starship".to_string()));
         assert_eq!(
             rows,
             vec![
@@ -1506,7 +1930,6 @@ mod tests {
         );
     }
 
-    // Defends: Advanced file rows create only their owned paths after explicit activation.
     #[test]
     fn prepare_file_action_creates_owned_missing_file() {
         let temp = TempHome::new();
@@ -1520,7 +1943,6 @@ mod tests {
         assert!(!paths.starship.exists());
     }
 
-    // Defends: stale or forged file-open intents cannot target arbitrary host paths.
     #[test]
     fn prepare_file_action_rejects_unowned_or_missing_paths() {
         let temp = TempHome::new();
@@ -1550,7 +1972,6 @@ mod tests {
         assert!(error.contains("config file is missing"));
     }
 
-    // Defends: source ids route writes to the selected backing file.
     #[test]
     fn source_routing_writes_mars_without_touching_config_toml() {
         let temp = TempHome::new();
@@ -1565,7 +1986,6 @@ mod tests {
         assert_eq!(get_toml_path(&mars, "window.width"), Some(&json!(1200)));
     }
 
-    // Defends: the Zellij source writes the nested rounded-corners scalar in managed KDL.
     #[test]
     fn zellij_source_renders_nested_rounded_corners() {
         let temp = TempHome::new();
@@ -1585,7 +2005,6 @@ mod tests {
         assert!(raw.contains("rounded_corners true"));
     }
 
-    // Defends: yzn config refuses to rewrite a sidecar that contains guarded runtime ownership.
     #[test]
     fn zellij_source_blocks_guarded_sidecar_nodes() {
         let temp = TempHome::new();
@@ -1599,7 +2018,6 @@ mod tests {
         assert!(error.to_string().contains("guarded Zellij node"));
     }
 
-    // Defends: the UI-side KDL guard matches launch-time first-token behavior.
     #[test]
     fn zellij_sidecar_skips_hash_comments_and_blocks_compact_guarded_nodes() {
         let (config, diagnostics) = parse_zellij_sidecar("# note\npane_frames false;\n");
@@ -1610,7 +2028,6 @@ mod tests {
         assert!(has_diagnostic(&diagnostics, "guarded Zellij node"));
     }
 
-    // Defends: yzn config does not generate or silently accept invalid Zellij scalars/blocks.
     #[test]
     fn zellij_sidecar_rejects_non_positive_scrollback_and_unclosed_blocks() {
         let temp = TempHome::new();
@@ -1627,7 +2044,6 @@ mod tests {
         assert!(has_diagnostic(&diagnostics, "unterminated"));
     }
 
-    // Regression: unsupported terminal keys must be ignored, not converted to text input.
     #[test]
     fn unsupported_terminal_keys_are_ignored() {
         assert_eq!(

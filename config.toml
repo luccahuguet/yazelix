@@ -8,3 +8,11 @@ log_level = "info"
 [shell]
 # Packaged shell for new Zellij panes: nu, bash, zsh, or fish.
 program = "nu"
+
+[popup]
+# Width and height percentage for managed popups.
+size = 95
+
+[bar]
+# Top bar widgets, left to right.
+widgets = ["editor", "shell", "term", "codex_usage", "cpu", "ram"]
