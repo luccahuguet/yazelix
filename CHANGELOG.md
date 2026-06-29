@@ -15,16 +15,27 @@ User-visible runtime changes for Yazelix Next live here.
 - The `yzn config` Advanced tab opens managed user `nu/env.nu`,
   `nu/config.nu`, and `starship.toml` files in `yzn-hx`, creating tiny starter
   files only after a row is activated.
+- The `yzn config` Keys tab lists current packaged keybindings as a read-only
+  table with group, key, action, and owner columns, with source paths in
+  details.
+- `yzn` uses a Rust front door for startup setup and final process handoff:
+  `enter` starts managed Zellij, `launch` opens Mars first, `status` prints a
+  compact runtime/config summary, `doctor` checks owned setup, and `sponsor`
+  opens or prints the GitHub Sponsors URL. Pre-exec failures print a concise
+  Yazelix diagnostic with the relevant config path when available.
 - `yzn config` ignores unsupported modified terminal keys instead of treating
   them as text.
 - `yzn config` restores raw terminal mode if alternate-screen setup fails.
-- Yazi `Alt z` moves the sidebar to the zoxide-selected directory before
-  sending it through `yzn-open`.
-- `open.log_level` in `config.toml` controls the managed `YZN_OPEN_LOG`
-  level used by Yazi-to-Helix opens.
-- `shell.program` in `config.toml` selects the packaged shell for new Zellij
-  panes. The default remains `nu`; `bash`, `zsh`, and `fish` are also packaged
-  choices.
+- Yazi opens reuse only a Helix bridge pane in the invoking Zellij tab. `Alt z`
+  moves to the zoxide-selected directory, sends it through `yzn-open`, renames
+  the tab to the workspace root, and keeps the selected picker directory in
+  Helix for Git repos.
+- `config.toml` controls `open.log_level`, `shell.program`, `[popup].size`,
+  and `[bar].widgets`; managed popups default to 95% width and height, invalid
+  semantic values fail before launch, and `yzn config` shows these root fields
+  in the main config tab with bar widgets as an ordered Ratconfig string-list
+  picker. Custom bar widget layouts keep the sidebar swap layout paired with the
+  generated layout. The empty workspace widget is not selectable.
 - `yzn` appends `~/.config/yazelix-next/zellij/config.kdl` as a native Zellij
   sidecar for safe preferences, with a small denylist guardrail for obvious
   ownership lines such as keymaps, shell, layout, plugins, Kitty keyboard
@@ -37,29 +48,22 @@ User-visible runtime changes for Yazelix Next live here.
   `~/.config/starship.toml` does not affect the managed Nu prompt.
 - Nushell delegates the right prompt to Starship, so `right_format` in
   `~/.config/yazelix-next/starship.toml` is honored.
-- The top bar uses the standalone Yazelix Zellij Bar package while the bottom
-  native Zellij status bar still owns key hints.
-- `yzn` renders the top bar through the Yazelix Zellij Bar widget command with
-  no `NORMAL` mode segment, native tab labels at the left edge, the Yazelix
-  home marker, and editor, shell, terminal, Codex, CPU, RAM, and version
-  widgets.
-- The Codex usage widget shows quota/reset windows without token totals, uses
-  the bundled `tu` helper and a yzn-owned status cache path, and avoids stale
-  generic bar cache state.
-- Tab-mode new tabs use the packaged Yazelix sidebar layout and the same
-  Yazelix home marker instead of a bare `Tab #N` pane.
+- The top bar uses standalone Yazelix Zellij Bar with no `NORMAL` segment,
+  native tab labels, the Yazelix home marker, selected widgets, a `YZN` runtime
+  marker, bundled `tu` Codex quota/reset data, and a yzn-owned cache path; the
+  bottom native status bar still owns key hints, and Tab-mode new tabs use the
+  packaged sidebar layout/home marker.
 - The Yazelix Zellij fork focuses plugin permission prompts as they appear,
   uses a full-viewport prompt for tiny layout panes, and drains concurrent
   startup permission prompts one at a time before restoring pane focus.
-- `yzn` uses an isolated Zellij plugin-permission cache and pre-seeds its
-  packaged Yazelix Bar and Popup plugin permissions so desktop launches do not
+- `yzn` uses an isolated Zellij plugin-permission cache and pre-seeds packaged
+  Bar, Popup, and pane-orchestrator permissions so desktop launches do not
   depend on hidden plugin permission prompts.
-- `Alt Shift K` toggles the config popup and `Alt Shift J` toggles a managed
-  LazyGit popup through the standalone Yazelix Zellij Popup plugin, with Kitty
-  keyboard protocol enabled.
-- `Alt Shift L` toggles a guarded `codex resume` popup that checks for `codex`
-  on `PATH` before launching it, `Alt Shift M` toggles a menu popup, and
-  `yzn menu` prints the same compact command/key reference.
+- `Alt Shift J/K/L/M` toggle LazyGit, config, persistent guarded
+  `codex resume`, and menu popups through Yazelix Zellij Popup with Kitty
+  keyboard protocol; `yzn menu` prints the same compact command/key reference,
+  and `Alt h/l` route through pane orchestrator to skip collapsed sidebars and
+  fall back to previous/next tab.
 
 ## 2026-06-25
 

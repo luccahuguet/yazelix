@@ -2,6 +2,7 @@ use std::{
     env, fs,
     io::{self, ErrorKind},
     path::{Path, PathBuf},
+    process,
 };
 
 const FORBIDDEN: &[&str] = &[
@@ -17,7 +18,14 @@ const FORBIDDEN: &[&str] = &[
     "attach_to_session",
 ];
 
-fn main() -> io::Result<()> {
+fn main() {
+    if let Err(error) = run() {
+        eprintln!("{error}");
+        process::exit(1);
+    }
+}
+
+fn run() -> io::Result<()> {
     let args = env::args_os().map(PathBuf::from).collect::<Vec<_>>();
     let [_, packaged, sidecar, runtime_config] = args.as_slice() else {
         return Err(invalid_input(

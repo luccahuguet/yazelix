@@ -163,15 +163,15 @@ fn rendered_bar_widgets_are_valid(layout: &str) -> bool {
         "{command_codex_usage}",
         "{command_cpu}",
         "{command_ram}",
-        "YZX {command_version}",
+        r#"YZN " // {datetime}"#,
         r#"command_term_command ""#,
         r#"command_codex_usage_command ""#,
         r#"command_cpu_command ""#,
         r#"command_ram_command ""#,
-        r#"command_version_command ""#,
         "--display quota --periods 5h,week",
         r#"--runtime-dir /nix/store/"#,
     ]
     .into_iter()
     .all(|needle| layout.contains(needle))
+        && !layout.contains("{command_version}")
 }

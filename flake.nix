@@ -23,6 +23,10 @@
       url = "github:luccahuguet/yazelix-zellij-bar";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    yazelixZellijPaneOrchestrator = {
+      url = "github:luccahuguet/yazelix-zellij-pane-orchestrator";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     ratconfig = {
       url = "github:luccahuguet/ratconfig";
       flake = false;
@@ -45,6 +49,7 @@
     yazelixHelix,
     yazelixZellijPopup,
     yazelixZellijBar,
+    yazelixZellijPaneOrchestrator,
     ratconfig,
     autoLayoutYazi,
     starshipYazi,
@@ -54,9 +59,9 @@
       mkdir -p "$out/bin"
       rustc --edition=2024 ${src} -o "$out/bin/${name}"
     '';
-    bridgeSessionEnv = prefix: ''
+    helperBridgeSessionEnv = ''
       if [ -z "''${YAZELIX_HELIX_BRIDGE_SESSION_ID:-}" ]; then
-        YAZELIX_HELIX_BRIDGE_SESSION_ID="${prefix}-$(date +%s)-$$"
+        YAZELIX_HELIX_BRIDGE_SESSION_ID="yzn-helper-$(date +%s)-$$"
       fi
       export YAZELIX_HELIX_BRIDGE_SESSION_ID
     '';
@@ -151,9 +156,12 @@ Install Codex or make \`codex\` executable on PATH before using Alt Shift L." >&
 
 Commands
   yzn config        Open config UI
+  yzn doctor        Check runtime setup
   yzn enter         Start managed runtime in this terminal
   yzn launch        Open Mars and start Yazelix
   yzn menu          Show this menu
+  yzn sponsor       Open sponsor page or print URL
+  yzn status        Show runtime status
 
 Popups
   Alt Shift J       LazyGit
@@ -181,6 +189,8 @@ Workspace
       };
       yazelixZellijPopupPackage = yazelixZellijPopup.packages.${system}.yzpp;
       yazelixZellijBarPackage = yazelixZellijBar.packages.${system}.yazelix_zellij_bar;
+      yazelixZellijPaneOrchestratorPackage =
+        yazelixZellijPaneOrchestrator.packages.${system}.yazelix_zellij_pane_orchestrator;
       tokenusage = import ./packaging/tokenusage.nix {inherit pkgs;};
       yznZellijConfig = rustBin "yzn-zellij-config" ./runtime/yzn-zellij-config.rs;
       yazelixHelixPackage = yazelixHelix.packages.${system}.yazelix_helix;
@@ -190,7 +200,7 @@ Workspace
         runtimeInputs = [pkgs.coreutils];
         text = ''
           export YAZELIX_STATE_DIR="''${YAZELIX_STATE_DIR:-''${XDG_RUNTIME_DIR:-/tmp}/yazelix-next}"
-          ${bridgeSessionEnv "yzn-helper"}
+          ${helperBridgeSessionEnv}
           export YAZELIX_HELIX_BRIDGE=1
           YAZELIX_HELIX_BRIDGE_INSTANCE_ID="hx-$(date +%s)-$$"
           export YAZELIX_HELIX_BRIDGE_INSTANCE_ID
@@ -244,7 +254,7 @@ Workspace
         runtimeInputs = [pkgs.fzf pkgs.git pkgs.starship pkgs.zoxide];
         text = ''
           export YAZELIX_STATE_DIR="''${YAZELIX_STATE_DIR:-''${XDG_RUNTIME_DIR:-/tmp}/yazelix-next}"
-          ${bridgeSessionEnv "yzn-helper"}
+          ${helperBridgeSessionEnv}
           export YAZI_CONFIG_HOME=${yznYaziConfig}
           export YZN_YAZI_STARSHIP_CONFIG=${yznYaziConfig}/yazelix_starship.toml
           export YZN_OPEN=${yznOpenCore}/bin/yzn-open
@@ -254,6 +264,11 @@ Workspace
           export YZN_EDITOR=$EDITOR
           YZN_OPEN_LOG="$(${yznConfig}/bin/yzn-config --get open.log_level)"
           export YZN_OPEN_LOG
+          if [ -n "''${ZELLIJ_SESSION_NAME:-}" ]; then
+            export YAZELIX_ZELLIJ_SESSION_NAME="$ZELLIJ_SESSION_NAME"
+            export ZELLIJ_SESSION_NAME=
+            export KITTY_WINDOW_ID=1
+          fi
           exec ${pkgs.yazi}/bin/yazi "$@"
         '';
       };
@@ -261,9 +276,10 @@ Workspace
         name = "Yazelix Next";
         version = "next";
       });
-      yznBarRenderRequest = pkgs.writeText "yzn-bar-render-request.json" (builtins.toJSON {
+      defaultBarWidgets = ["editor" "shell" "term" "codex_usage" "cpu" "ram"];
+      barRenderRequest = widgetTray: {
         zjstatus_plugin_url = "file:${yazelixZellijBarPackage}/${yazelixZellijBarPackage.wasmPath}";
-        widget_tray = ["editor" "shell" "term" "codex_usage" "cpu" "ram"];
+        widget_tray = widgetTray;
         widget_frame = "none";
         widget_separator = "dot";
         editor_label = "hx";
@@ -282,10 +298,22 @@ Workspace
         codex_usage_periods = ["5h" "week"];
         opencode_go_usage_display = "both";
         opencode_go_usage_periods = ["5h" "week" "month"];
-      });
-      yznBarKdl = pkgs.runCommand "yzn-zellij-bar.kdl" {nativeBuildInputs = [pkgs.jq];} ''
-        ${yazelixZellijBarPackage}/${yazelixZellijBarPackage.widgetPath} render-yazelix-runtime --json "$(<${yznBarRenderRequest})" \
-          | jq -er '.plugin_block' > "$out"
+      };
+      yznBarRenderRequest =
+        pkgs.writeText "yzn-bar-render-request.json" (builtins.toJSON (barRenderRequest defaultBarWidgets));
+      yznBarRenderRequestTemplate =
+        pkgs.writeText "yzn-bar-render-request-template.json" (builtins.toJSON (barRenderRequest "__YZN_BAR_WIDGET_TRAY__"));
+      yznBarRender = pkgs.writeShellApplication {
+        name = "yzn-bar-render";
+        runtimeInputs = [pkgs.jq];
+        text = ''
+          ${yazelixZellijBarPackage}/${yazelixZellijBarPackage.widgetPath} render-yazelix-runtime --json "$1" \
+            | jq -er '.plugin_block' \
+            | ${pkgs.gnused}/bin/sed 's/YZX {command_version}/YZN/g'
+        '';
+      };
+      yznBarKdl = pkgs.runCommand "yzn-zellij-bar.kdl" {} ''
+        ${yznBarRender}/bin/yzn-bar-render "$(<${yznBarRenderRequest})" > "$out"
       '';
       yznLayoutKdl = pkgs.runCommand "layout.kdl" {} ''
         substitute ${./layout.kdl} "$out" \
@@ -304,6 +332,7 @@ Workspace
       yznConfigKdl = pkgs.replaceVars ./config.kdl {
         yznShell = "${yznShell}/bin/yzn-shell";
         yzpp = "file:${yazelixZellijPopupPackage}/${yazelixZellijPopupPackage.wasmPath}";
+        yznPaneOrchestrator = "file:${yazelixZellijPaneOrchestratorPackage}/${yazelixZellijPaneOrchestratorPackage.wasmPath}";
         yznAgent = "${yznAgent}/bin/yzn-agent";
         yznConfig = "${yznConfigUi}/bin/yzn-config-ui";
         yznMenu = "${yznMenuPopup}/bin/yzn-menu-popup";
@@ -329,114 +358,29 @@ Workspace
         };
         doCheck = false;
       });
-      yznRuntimeEnv = ''
-        export YAZELIX_STATE_DIR="''${YAZELIX_STATE_DIR:-''${XDG_RUNTIME_DIR:-/tmp}/yazelix-next}"
-        mkdir -p "$YAZELIX_STATE_DIR"
-        ${bridgeSessionEnv "yzn"}
-        export EDITOR=${yznHelix}/bin/yzn-hx
-        export VISUAL=${yznHelix}/bin/yzn-hx
-        if [ -n "''${YAZELIX_NEXT_CONFIG_HOME:-}" ]; then
-          yzn_config_home="$YAZELIX_NEXT_CONFIG_HOME"
-        elif [ -n "''${XDG_CONFIG_HOME:-}" ]; then
-          yzn_config_home="$XDG_CONFIG_HOME/yazelix-next"
-        else
-          yzn_config_home="''${HOME:?HOME is required}/.config/yazelix-next"
-        fi
-        YZN_OPEN_LOG="$(${yznConfig}/bin/yzn-config --get open.log_level)"
-        export YZN_OPEN_LOG
-        if [ -f "$yzn_config_home/mars/config.toml" ]; then
-          export MARS_CONFIG_HOME="$yzn_config_home/mars"
-        else
-          export MARS_CONFIG_HOME=${yznMarsConfig}
-        fi
-        zellij_config="$(${yznZellijConfig}/bin/yzn-zellij-config ${yznConfigKdl} "$yzn_config_home/zellij/config.kdl" "$YAZELIX_STATE_DIR/zellij/config.kdl")"
-        zellij_status_cache="$YAZELIX_STATE_DIR/zellij/session/status_bar_cache.json"
-        export YAZELIX_STATUS_BAR_CACHE_PATH="$zellij_status_cache"
-        mkdir -p "$(dirname "$zellij_status_cache")"
-        zellij_permissions="$YAZELIX_STATE_DIR/zellij/permissions.kdl"
-        export ZELLIJ_PLUGIN_PERMISSIONS_CACHE="$zellij_permissions"
-        mkdir -p "$(dirname "$zellij_permissions")"
-        touch "$zellij_permissions"
-        seed_permission() {
-          case "$(cat "$zellij_permissions")" in
-            *"\"$1\" {"*) return ;;
-          esac
-          {
-            printf '"%s" {\n' "$1"
-            shift
-            printf '    %s\n' "$@"
-            printf '}\n'
-          } >> "$zellij_permissions"
-        }
-        seed_permission "${yazelixZellijPopupPackage}/${yazelixZellijPopupPackage.wasmPath}" ReadApplicationState ChangeApplicationState OpenTerminalsOrPlugins RunCommands ReadCliPipes
-        seed_permission "${yazelixZellijBarPackage}/share/yazelix_zellij_bar/zjstatus.wasm" ReadApplicationState ChangeApplicationState RunCommands
-      '';
-      yznCommand = pkgs.writeShellApplication {
-        name = "yzn";
-        runtimeInputs = [pkgs.coreutils tokenusage];
-        text = ''
-          show_help() {
-            cat <<'EOF'
-Yazelix
-
-Usage:
-  yzn
-  yzn help
-  yzn config
-  yzn enter [zellij-args...]
-  yzn launch [zellij-args...]
-  yzn menu
-
-Commands:
-  config  Open Yazelix Next config
-  enter   Start Yazelix in the current terminal
-  launch  Open Mars and start Yazelix
-  menu    Show Yazelix Next menu
-  help    Show this help
-EOF
-          }
-
-          [ "$#" -gt 0 ] || set -- launch
-          case "$1" in
-            help|-h|--help)
-              show_help
-              ;;
-            config)
-              shift
-              if [ "$#" -ne 0 ]; then
-                printf 'yzn config does not accept arguments yet\n' >&2
-                exit 64
-              fi
-              exec ${yznConfigUi}/bin/yzn-config-ui
-              ;;
-            menu)
-              shift
-              if [ "$#" -ne 0 ]; then
-                printf 'yzn menu does not accept arguments yet\n' >&2
-                exit 64
-              fi
-              exec ${yznMenu}/bin/yzn-menu
-              ;;
-            enter)
-              shift
-              ${yznRuntimeEnv}
-              export YAZELIX_SESSION_TERMINAL="''${YAZELIX_SESSION_TERMINAL:-''${TERM_PROGRAM:-''${TERM:-unknown}}}"
-              exec ${yazelixZellijPackage}/bin/zellij --config "$zellij_config" --new-session-with-layout ${yznZellijLayout}/layout.kdl "$@"
-              ;;
-            launch)
-              shift
-              ${yznRuntimeEnv}
-              export YAZELIX_SESSION_TERMINAL="''${YAZELIX_SESSION_TERMINAL:-mars}"
-              exec ${marsPackage}/bin/mars -e ${yazelixZellijPackage}/bin/zellij --config "$zellij_config" --new-session-with-layout ${yznZellijLayout}/layout.kdl "$@"
-              ;;
-            *)
-              printf 'yzn: unknown command: %s\n\n' "$1" >&2
-              show_help >&2
-              exit 64
-              ;;
-          esac
-        '';
+      yznCommandSrc = pkgs.replaceVars ./runtime/yzn.rs {
+        yznConfigUi = "${yznConfigUi}/bin/yzn-config-ui";
+        yznMenu = "${yznMenu}/bin/yzn-menu";
+        zellij = "${yazelixZellijPackage}/bin/zellij";
+        mars = "${marsPackage}/bin/mars";
+        layout = "${yznZellijLayout}/layout.kdl";
+        layoutTemplate = "${./layout.kdl}";
+        layoutSwapTemplate = "${./layout.swap.kdl}";
+        yznYazi = "${yznYazi}/bin/yzn-yazi";
+        yznHelix = "${yznHelix}/bin/yzn-hx";
+        yznConfig = "${yznConfig}/bin/yzn-config";
+        yznMarsConfig = "${yznMarsConfig}";
+        yznZellijConfig = "${yznZellijConfig}/bin/yzn-zellij-config";
+        yznConfigKdl = "${yznConfigKdl}";
+        yznBarRenderRequest = "${yznBarRenderRequestTemplate}";
+        yznBarRender = "${yznBarRender}/bin/yzn-bar-render";
+        yazelixZellijPopupWasm = "${yazelixZellijPopupPackage}/${yazelixZellijPopupPackage.wasmPath}";
+        yazelixZellijBarWasm = "${yazelixZellijBarPackage}/share/yazelix_zellij_bar/zjstatus.wasm";
+        yazelixZellijPaneOrchestratorWasm = "${yazelixZellijPaneOrchestratorPackage}/${yazelixZellijPaneOrchestratorPackage.wasmPath}";
+        defaultBarWidgetsJson = builtins.toJSON defaultBarWidgets;
+        pathPrefix = pkgs.lib.makeBinPath [pkgs.coreutils tokenusage];
       };
+      yznCommand = rustBin "yzn" yznCommandSrc;
       yznDesktop = pkgs.makeDesktopItem {
         name = "yzn";
         desktopName = "Yazelix Next";
@@ -453,6 +397,7 @@ EOF
         name = "yzn";
         paths = [yznCommand yznDesktop];
         postBuild = ''
+          ${yazelixZellijPackage}/bin/zellij --config ${yznConfigKdl} setup --check >/dev/null
           install -d "$out/libexec/yazelix-next"
           ln -s ${yznZellijConfig}/bin/yzn-zellij-config "$out/libexec/yazelix-next/yzn-zellij-config"
           ln -s ${yznConfig}/bin/yzn-config "$out/libexec/yazelix-next/yzn-config"
