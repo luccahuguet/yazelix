@@ -276,6 +276,19 @@ fn mars_config_table_mut<'a>(
         })
 }
 
+fn mars_native_trail_cursor_enabled(
+    profile: MarsProfile,
+    cursor_state: Option<&TerminalCursorState>,
+) -> bool {
+    if profile == MarsProfile::Baseline {
+        return false;
+    }
+    cursor_state
+        .and_then(|state| state.selected_color.as_deref())
+        .map(str::trim)
+        .is_some_and(|name| !name.is_empty() && name != "none")
+}
+
 fn remove_path_if_exists(path: &Path, operation: &'static str) -> Result<(), CoreError> {
     let Ok(metadata) = fs::symlink_metadata(path) else {
         return Ok(());
@@ -548,6 +561,17 @@ fn generate_mars_config(
             }
         }
     }
+
+    let effects = mars_config_table_mut(
+        &mut table,
+        "effects",
+        "invalid_mars_effects_config",
+        &package_config,
+    )?;
+    effects.insert(
+        "trail-cursor".to_string(),
+        toml::Value::Boolean(mars_native_trail_cursor_enabled(profile, cursor_state)),
+    );
 
     apply_mars_appearance(&mut table, &package_config, appearance_mode)?;
 
@@ -858,6 +882,104 @@ mod tests {
         assert!(rendered.contains("Noto Color Emoji"));
     }
 
+    // Regression: GitHub #655, `trail = "none"` and disabled cursor components must disable Mars's native trail too.
+    #[test]
+    fn generated_mars_config_disables_native_trail_when_yazelix_cursor_is_disabled() {
+        let temp = tempfile::tempdir().unwrap();
+        let package_root = temp.path().join("runtime/share/mars");
+        let generated_dir = temp.path().join("state/configs/terminal_emulators/mars");
+        write_mars_package_metadata(&package_root);
+        write_mars_profile_config(&package_root.join("config.toml"), "Noto Color Emoji");
+        write_theme_files(&package_root.join("themes"));
+
+        for cursor_state in [Some(cursor_state_with_color("none")), None] {
+            let rendered = generate_mars_config(
+                &temp.path().join("runtime"),
+                "none",
+                cursor_state.as_ref(),
+                &[],
+                MarsProfile::Full,
+                MarsEmojiFont::Noto,
+                APPEARANCE_MODE_DARK,
+                &generated_dir,
+            )
+            .unwrap();
+
+            assert_eq!(mars_trail_cursor_enabled(&rendered), Some(false));
+            assert!(
+                !rendered.contains("custom-shader"),
+                "disabled cursor trail must not leave custom shaders behind"
+            );
+        }
+    }
+
+    // Defends: the full Mars profile keeps native trails for an active cursor, while baseline remains no-effects.
+    #[test]
+    fn generated_mars_config_keeps_native_trail_only_for_active_nonbaseline_cursor() {
+        let temp = tempfile::tempdir().unwrap();
+        let package_root = temp.path().join("runtime/share/mars");
+        let generated_dir = temp.path().join("state/configs/terminal_emulators/mars");
+        let cursor_state = cursor_state_with_color("cosmic");
+        write_mars_package_metadata(&package_root);
+        write_mars_profile_config(&package_root.join("config.toml"), "Noto Color Emoji");
+        write_mars_profile_config(
+            &package_root.join("baseline").join("config.toml"),
+            "Noto Color Emoji",
+        );
+        write_theme_files(&package_root.join("themes"));
+        write_theme_files(&package_root.join("baseline").join("themes"));
+
+        let full = generate_mars_config(
+            &temp.path().join("runtime"),
+            "none",
+            Some(&cursor_state),
+            &[],
+            MarsProfile::Full,
+            MarsEmojiFont::Noto,
+            APPEARANCE_MODE_DARK,
+            &generated_dir,
+        )
+        .unwrap();
+        assert_eq!(mars_trail_cursor_enabled(&full), Some(true));
+
+        let baseline = generate_mars_config(
+            &temp.path().join("runtime"),
+            "none",
+            Some(&cursor_state),
+            &[],
+            MarsProfile::Baseline,
+            MarsEmojiFont::Noto,
+            APPEARANCE_MODE_DARK,
+            &generated_dir,
+        )
+        .unwrap();
+        assert_eq!(mars_trail_cursor_enabled(&baseline), Some(false));
+    }
+
+    fn cursor_state_with_color(name: &str) -> TerminalCursorState {
+        TerminalCursorState {
+            selected_color: Some(name.to_string()),
+            selected_color_hex: Some("#c761f5".to_string()),
+            selected_family: Some("mono".to_string()),
+            selected_divider: None,
+            selected_primary_color_hex: None,
+            selected_secondary_color_hex: None,
+            selected_trail_effect: None,
+            selected_mode_effect: None,
+            trail_duration: 1.0,
+            effect_color_literal: "#c761f5".to_string(),
+        }
+    }
+
+    fn mars_trail_cursor_enabled(rendered: &str) -> Option<bool> {
+        toml::from_str::<toml::Table>(rendered)
+            .unwrap()
+            .get("effects")
+            .and_then(toml::Value::as_table)
+            .and_then(|effects| effects.get("trail-cursor"))
+            .and_then(toml::Value::as_bool)
+    }
+
     fn write_mars_package_metadata(package_root: &Path) {
         fs::create_dir_all(package_root).unwrap();
         fs::write(
@@ -904,6 +1026,9 @@ decorations = "Disabled"
 
 [renderer]
 backend = "Webgpu"
+
+[effects]
+trail-cursor = true
 
 [fonts]
 family = "FiraCode Nerd Font"
