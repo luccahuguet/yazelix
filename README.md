@@ -72,8 +72,8 @@ percentage for managed popups, and `[bar].widgets`, whose default tray is
 tabs edit native sidecars that apply to new launches. The `keys` tab lists
 current packaged bindings in read-only group, key, action, and owner columns,
 with source paths in details. The `advanced` tab opens `nu/env.nu`,
-`nu/config.nu`, and `starship.toml` in the managed editor. Native files are
-created only when their row is activated.
+`nu/config.nu`, `starship.toml`, and `yazi/init.lua` in the managed editor.
+Native files are created only when their row is activated.
 
 ## Shell Config
 
@@ -164,7 +164,8 @@ while editor cwd and tab name use the repo root.
 
 Managed Yazi appends optional user Lua from
 `~/.config/yazelix-next/yazi/init.lua` after the packaged setup. This does not
-merge `yazi.toml`, keymaps, plugins, themes, or normal `~/.config/yazi`.
+merge `yazi.toml`, keymaps, plugins, themes, or normal `~/.config/yazi`. The
+config UI's `advanced` tab can create or open this file.
 
 `yzn-open` writes bounded diagnostics to
 `${YAZELIX_STATE_DIR}/logs/yzn-open.log` and keeps one rotated
@@ -215,11 +216,11 @@ wc -l .gitignore AGENTS.md README.md CHANGELOG.md ARCHITECTURE.md flake.nix pack
 | Language | Files | Lines |
 | --- | --- | ---: |
 | Ignore | `.gitignore` | 4 |
-| Markdown | `AGENTS.md`, `README.md`, `CHANGELOG.md`, `ARCHITECTURE.md` | 753 |
+| Markdown | `AGENTS.md`, `README.md`, `CHANGELOG.md`, `ARCHITECTURE.md` | 755 |
 | Nix | `flake.nix`, `packaging/tokenusage.nix` | 472 |
 | TOML | `config.toml`, `mars.toml`, `helix/config.toml`, `yazi/yazi.toml`, `yazi/keymap.toml`, `crates/yzn-config/Cargo.toml`, `crates/yzn-open/Cargo.toml` | 139 |
 | KDL | `config.kdl`, `layout.kdl`, `layout.swap.kdl` | 189 |
 | Nu | `nu/config.nu`, `nu/env.nu` | 11 |
 | Lua | `yazi/init.lua`, `yazi/plugins/sidebar-status.yazi/main.lua`, `yazi/plugins/zoxide-editor.yazi/main.lua` | 137 |
-| Rust | `crates/yzn-config/src/main.rs`, `crates/yzn-open/src/main.rs`, `checks/zellij-layout.rs`, `checks/yzn-contracts.rs`, `runtime/yzn-nu.rs`, `runtime/yzn-yazi.rs`, `runtime/yzn.rs`, `runtime/yzn-zellij-config.rs` | 5473 |
-| Total | owned project files | 7178 |
+| Rust | `crates/yzn-config/src/main.rs`, `crates/yzn-open/src/main.rs`, `checks/zellij-layout.rs`, `checks/yzn-contracts.rs`, `runtime/yzn-nu.rs`, `runtime/yzn-yazi.rs`, `runtime/yzn.rs`, `runtime/yzn-zellij-config.rs` | 5526 |
+| Total | owned project files | 7233 |

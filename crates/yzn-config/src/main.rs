@@ -10,19 +10,19 @@ use crossterm::{
     cursor,
     event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers},
     execute,
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+    terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
-use ratatui::{backend::CrosstermBackend, Terminal};
+use ratatui::{Terminal, backend::CrosstermBackend};
 use ratconfig::toml_adapter::{get_toml_path, parse_toml_value, set_toml_value_text};
 use ratconfig::{
-    build_config_ui_field, build_string_list_choice_field, draw_config_ui,
-    join_toml_contract_text_from_version, reconcile_joined_toml_contract_text,
-    string_list_values_from_json, ConfigContract, ConfigUiApp, ConfigUiApplyStatus,
-    ConfigUiDiagnostic, ConfigUiEditBehavior, ConfigUiFieldRowSpec, ConfigUiFileAction,
-    ConfigUiIntent, ConfigUiKey, ConfigUiListColumn, ConfigUiListTable, ConfigUiModel,
-    ConfigUiPathOwner, ConfigUiSource, ConfigUiStringListChoiceSpec, DEFAULT_CONFIG_SOURCE_ID,
+    ConfigContract, ConfigUiApp, ConfigUiApplyStatus, ConfigUiDiagnostic, ConfigUiEditBehavior,
+    ConfigUiFieldRowSpec, ConfigUiFileAction, ConfigUiIntent, ConfigUiKey, ConfigUiListColumn,
+    ConfigUiListTable, ConfigUiModel, ConfigUiPathOwner, ConfigUiSource,
+    ConfigUiStringListChoiceSpec, DEFAULT_CONFIG_SOURCE_ID, build_config_ui_field,
+    build_string_list_choice_field, draw_config_ui, join_toml_contract_text_from_version,
+    reconcile_joined_toml_contract_text, string_list_values_from_json,
 };
-use serde_json::{json, Value as JsonValue};
+use serde_json::{Value as JsonValue, json};
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
@@ -64,10 +64,12 @@ const TAB_ADVANCED: &str = "advanced";
 const ACTION_NU_ENV: &str = "nu.env";
 const ACTION_NU_CONFIG: &str = "nu.config";
 const ACTION_STARSHIP: &str = "starship";
+const ACTION_YAZI_INIT: &str = "yazi.init";
 const NU_ENV_STARTER: &str = "# Loaded after Yazelix Next packaged env.nu.\n";
 const NU_CONFIG_STARTER: &str = "# Loaded after Yazelix Next packaged config.nu.\n";
 const STARSHIP_STARTER: &str =
     "format = '$directory$git_branch$git_status$character'\nright_format = ''\n";
+const YAZI_INIT_STARTER: &str = "-- Loaded after Yazelix Next packaged yazi/init.lua.\n";
 const KEY_READ_ONLY_REASON: &str =
     "Read-only key binding; yzn config does not rewrite native keymaps.";
 
@@ -197,6 +199,7 @@ struct ConfigPaths {
     nu_env: PathBuf,
     nu_config: PathBuf,
     starship: PathBuf,
+    yazi_init: PathBuf,
 }
 
 #[derive(Debug, Clone)]
@@ -542,6 +545,7 @@ fn config_paths() -> Result<ConfigPaths> {
         nu_env: home.join("nu/env.nu"),
         nu_config: home.join("nu/config.nu"),
         starship: home.join("starship.toml"),
+        yazi_init: home.join("yazi/init.lua"),
     })
 }
 
@@ -797,6 +801,15 @@ fn file_action_specs(paths: &ConfigPaths) -> Vec<FileActionSpec> {
             description: "Open the user Starship config file.",
             path: paths.starship.clone(),
             starter: STARSHIP_STARTER,
+        },
+        FileActionSpec {
+            source_id: SOURCE_ADVANCED,
+            action_id: ACTION_YAZI_INIT,
+            tab: TAB_ADVANCED,
+            label: "yazi/init.lua",
+            description: "Open the managed Yazi user init.lua file.",
+            path: paths.yazi_init.clone(),
+            starter: YAZI_INIT_STARTER,
         },
     ]
 }
@@ -1420,11 +1433,7 @@ ui {{
 }
 
 fn kdl_bool(value: bool) -> &'static str {
-    if value {
-        "true"
-    } else {
-        "false"
-    }
+    if value { "true" } else { "false" }
 }
 
 fn json_bool(path: &str, value: &JsonValue) -> Result<bool> {
@@ -1515,6 +1524,7 @@ mod tests {
             nu_env: temp.path.join("nu/env.nu"),
             nu_config: temp.path.join("nu/config.nu"),
             starship: temp.path.join("starship.toml"),
+            yazi_init: temp.path.join("yazi/init.lua"),
         }
     }
 
@@ -1576,10 +1586,12 @@ mod tests {
             config_field(POPUP_SIZE_PATH).unwrap().default.json(),
             json!(DEFAULT_POPUP_SIZE)
         );
-        assert!(config_field("shell.typo")
-            .unwrap_err()
-            .to_string()
-            .contains("unknown config path"));
+        assert!(
+            config_field("shell.typo")
+                .unwrap_err()
+                .to_string()
+                .contains("unknown config path")
+        );
     }
 
     #[test]
@@ -1760,10 +1772,12 @@ mod tests {
             .collect();
 
         assert!(model.tabs.contains(&TAB_KEYS.to_string()));
-        assert!(model
-            .file_actions
-            .iter()
-            .all(|action| action.tab != TAB_KEYS));
+        assert!(
+            model
+                .file_actions
+                .iter()
+                .all(|action| action.tab != TAB_KEYS)
+        );
         assert_eq!(
             model
                 .tab_list_tables
@@ -1861,15 +1875,20 @@ mod tests {
         assert!(paths.root.exists());
         assert!(paths.mars.exists());
         assert!(paths.zellij.exists());
-        assert!(!fs::read_to_string(paths.mars)
-            .unwrap()
-            .contains("ratconfig.contract"));
-        assert!(fs::read_to_string(paths.zellij)
-            .unwrap()
-            .contains("rounded_corners false"));
+        assert!(
+            !fs::read_to_string(paths.mars)
+                .unwrap()
+                .contains("ratconfig.contract")
+        );
+        assert!(
+            fs::read_to_string(paths.zellij)
+                .unwrap()
+                .contains("rounded_corners false")
+        );
         assert!(!paths.nu_env.exists());
         assert!(!paths.nu_config.exists());
         assert!(!paths.starship.exists());
+        assert!(!paths.yazi_init.exists());
     }
 
     #[test]
@@ -1926,6 +1945,15 @@ mod tests {
                     false,
                     true,
                 ),
+                (
+                    SOURCE_ADVANCED,
+                    ACTION_YAZI_INIT,
+                    TAB_ADVANCED,
+                    "yazi/init.lua",
+                    paths.yazi_init.clone(),
+                    false,
+                    true,
+                ),
             ]
         );
     }
@@ -1941,6 +1969,31 @@ mod tests {
         assert_eq!(fs::read_to_string(&paths.nu_env).unwrap(), NU_ENV_STARTER);
         assert!(!paths.nu_config.exists());
         assert!(!paths.starship.exists());
+        assert!(!paths.yazi_init.exists());
+    }
+
+    #[test]
+    fn prepare_file_action_creates_managed_yazi_init_only() {
+        let temp = TempHome::new();
+        let paths = temp_paths(&temp);
+        ensure_temp_sources(&paths);
+
+        prepare_file_action(
+            &paths,
+            SOURCE_ADVANCED,
+            ACTION_YAZI_INIT,
+            &paths.yazi_init,
+            true,
+        )
+        .unwrap();
+
+        assert_eq!(
+            fs::read_to_string(&paths.yazi_init).unwrap(),
+            YAZI_INIT_STARTER
+        );
+        assert!(!temp.path.join("yazi/yazi.toml").exists());
+        assert!(!temp.path.join("yazi/keymap.toml").exists());
+        assert!(!temp.path.join("yazi/plugins").exists());
     }
 
     #[test]
