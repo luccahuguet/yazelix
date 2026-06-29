@@ -87,7 +87,6 @@ pub(crate) const CONFIG_FIELDS: &[ConfigFieldSpec] = &[
             "off, error, info, or debug",
         ),
         default: ConfigDefault::String("info"),
-        tab: TAB_CONFIG,
         apply_summary: "new opens",
         apply_detail: "Saved values are exported as YZN_OPEN_LOG for managed Yazi opens.",
     },
@@ -99,7 +98,6 @@ pub(crate) const CONFIG_FIELDS: &[ConfigFieldSpec] = &[
             "nu, bash, zsh, or fish",
         ),
         default: ConfigDefault::String("nu"),
-        tab: TAB_CONFIG,
         apply_summary: "new panes",
         apply_detail: "Saved shell selection applies to newly launched panes and sessions.",
     },
@@ -110,7 +108,6 @@ pub(crate) const CONFIG_FIELDS: &[ConfigFieldSpec] = &[
             "integer from 1 to 100",
         ),
         default: ConfigDefault::Integer(DEFAULT_POPUP_SIZE),
-        tab: TAB_CONFIG,
         apply_summary: "next launch",
         apply_detail: "Saved popup size applies to newly launched Yazelix sessions.",
     },
@@ -171,7 +168,6 @@ pub(crate) const ZELLIJ_FIELDS: &[FieldSpec] = &[
 pub(crate) struct ConfigFieldSpec {
     pub(crate) field: FieldSpec,
     pub(crate) default: ConfigDefault,
-    pub(crate) tab: &'static str,
     pub(crate) apply_summary: &'static str,
     pub(crate) apply_detail: &'static str,
 }

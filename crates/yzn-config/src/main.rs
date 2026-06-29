@@ -30,7 +30,6 @@ use catalog::*;
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
-#[derive(Debug, Clone)]
 struct ConfigPaths {
     root: PathBuf,
     mars: PathBuf,
@@ -41,11 +40,8 @@ struct ConfigPaths {
     yazi_init: PathBuf,
 }
 
-#[derive(Debug, Clone)]
 struct FileActionSpec {
-    source_id: &'static str,
     action_id: &'static str,
-    tab: &'static str,
     label: &'static str,
     description: &'static str,
     path: PathBuf,
@@ -77,7 +73,6 @@ impl FieldSpec {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
 struct ZellijSidecar {
     pane_frames: bool,
     mouse_mode: bool,
@@ -496,9 +491,9 @@ fn build_file_actions(paths: &ConfigPaths) -> Vec<ConfigUiFileAction> {
     file_action_specs(paths)
         .into_iter()
         .map(|spec| ConfigUiFileAction {
-            source_id: spec.source_id.to_string(),
+            source_id: SOURCE_ADVANCED.to_string(),
             action_id: spec.action_id.to_string(),
-            tab: spec.tab.to_string(),
+            tab: TAB_ADVANCED.to_string(),
             label: spec.label.to_string(),
             description: spec.description.to_string(),
             exists: spec.path.exists(),
@@ -543,39 +538,31 @@ fn build_key_binding_field(
     }
 }
 
-fn file_action_specs(paths: &ConfigPaths) -> Vec<FileActionSpec> {
-    vec![
+fn file_action_specs(paths: &ConfigPaths) -> [FileActionSpec; 4] {
+    [
         FileActionSpec {
-            source_id: SOURCE_ADVANCED,
             action_id: ACTION_NU_ENV,
-            tab: TAB_ADVANCED,
             label: "nu/env.nu",
             description: "Open the user Nushell environment file.",
             path: paths.nu_env.clone(),
             starter: NU_ENV_STARTER,
         },
         FileActionSpec {
-            source_id: SOURCE_ADVANCED,
             action_id: ACTION_NU_CONFIG,
-            tab: TAB_ADVANCED,
             label: "nu/config.nu",
             description: "Open the user Nushell config file.",
             path: paths.nu_config.clone(),
             starter: NU_CONFIG_STARTER,
         },
         FileActionSpec {
-            source_id: SOURCE_ADVANCED,
             action_id: ACTION_STARSHIP,
-            tab: TAB_ADVANCED,
             label: "starship.toml",
             description: "Open the user Starship config file.",
             path: paths.starship.clone(),
             starter: STARSHIP_STARTER,
         },
         FileActionSpec {
-            source_id: SOURCE_ADVANCED,
             action_id: ACTION_YAZI_INIT,
-            tab: TAB_ADVANCED,
             label: "yazi/init.lua",
             description: "Open the managed Yazi user init.lua file.",
             path: paths.yazi_init.clone(),
@@ -601,7 +588,7 @@ fn build_root_config_field(active: &JsonValue, spec: &ConfigFieldSpec) -> ratcon
     let current = get_toml_path(active, spec.field.path);
     build_config_field(
         SOURCE_CONFIG,
-        spec.tab,
+        TAB_CONFIG,
         &spec.field,
         current,
         Some(&default),
@@ -776,7 +763,7 @@ fn file_action_spec(
     }
     let Some(spec) = file_action_specs(paths)
         .into_iter()
-        .find(|spec| spec.source_id == source_id && spec.action_id == action_id)
+        .find(|spec| spec.action_id == action_id)
     else {
         return Err(error(format!("unknown file action: {action_id}")));
     };
