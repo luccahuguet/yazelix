@@ -55,7 +55,7 @@ User-visible runtime changes for Yazelix Next live here.
   native tab labels, the Yazelix home marker, selected widgets, a `YZN` runtime
   marker, bundled `tu` Codex quota/reset data, and a yzn-owned cache path; the
   bottom native status bar still owns key hints, and Tab-mode new tabs use the
-  packaged sidebar layout/home marker.
+  packaged sidebar layout/home marker with a home-scoped Yazi cwd.
 - The Yazelix Zellij fork focuses plugin permission prompts as they appear,
   uses a full-viewport prompt for tiny layout panes, and drains concurrent
   startup permission prompts one at a time before restoring pane focus.

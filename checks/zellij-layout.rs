@@ -50,6 +50,13 @@ fn main() -> ExitCode {
         eprintln!("{layout_path}: startup tab must use the Yazelix home tab marker");
         ok = false;
     }
+    if !layout
+        .lines()
+        .any(|line| line.trim() == r#"new_tab_template cwd="$HOME" {"#)
+    {
+        eprintln!("{layout_path}: new tabs must open in home to match the home marker");
+        ok = false;
+    }
     if !bar_layout_is_valid(&layout) {
         eprintln!(
             "{layout_path}: top bars must use the rendered yzn Yazelix bar widgets and bottom bars must keep native status-bar"

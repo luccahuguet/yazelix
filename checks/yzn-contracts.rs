@@ -214,6 +214,11 @@ fn expect_front_door(yzn: &Path) {
     expect_contains(&status, "zellij config: runtime (", "custom bar status");
     expect_contains(&status, "layout: runtime (", "custom bar status");
     let custom_layout = fs::read_to_string(custom_state.join("zellij/layout.kdl")).unwrap();
+    expect_contains(
+        &custom_layout,
+        r#"new_tab_template cwd="$HOME" {"#,
+        "custom bar layout",
+    );
     let format_right = custom_layout
         .lines()
         .find(|line| line.contains("format_right"))
