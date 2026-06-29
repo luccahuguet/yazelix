@@ -220,11 +220,11 @@ wc -l .gitignore AGENTS.md README.md CHANGELOG.md ARCHITECTURE.md flake.nix pack
 | Language | Files | Lines |
 | --- | --- | ---: |
 | Ignore | `.gitignore` | 4 |
-| Markdown | `AGENTS.md`, `README.md`, `CHANGELOG.md`, `ARCHITECTURE.md` | 764 |
+| Markdown | `AGENTS.md`, `README.md`, `CHANGELOG.md`, `ARCHITECTURE.md` | 765 |
 | Nix | `flake.nix`, `packaging/tokenusage.nix`, `packaging/bar-render-request.nix` | 488 |
 | TOML | `config.toml`, `mars.toml`, `helix/config.toml`, `yazi/yazi.toml`, `yazi/keymap.toml`, `crates/yzn-config/Cargo.toml`, `crates/yzn-open/Cargo.toml` | 139 |
 | KDL | `config.kdl`, `layout.kdl`, `layout.swap.kdl` | 189 |
 | Nu | `nu/config.nu`, `nu/env.nu` | 11 |
 | Lua | `yazi/init.lua`, `yazi/plugins/sidebar-status.yazi/main.lua`, `yazi/plugins/zoxide-editor.yazi/main.lua` | 137 |
-| Rust | `crates/yzn-config/src/catalog.rs`, `crates/yzn-config/src/main.rs`, `crates/yzn-open/src/main.rs`, `checks/zellij-layout.rs`, `checks/yzn-contracts.rs`, `runtime/yzn-nu.rs`, `runtime/yzn-yazi.rs`, `runtime/yzn.rs`, `runtime/yzn-zellij-config.rs` | 5715 |
-| Total | owned project files | 7447 |
+| Rust | `crates/yzn-config/src/catalog.rs`, `crates/yzn-config/src/main.rs`, `crates/yzn-open/src/main.rs`, `checks/zellij-layout.rs`, `checks/yzn-contracts.rs`, `runtime/yzn-nu.rs`, `runtime/yzn-yazi.rs`, `runtime/yzn.rs`, `runtime/yzn-zellij-config.rs` | 5751 |
+| Total | owned project files | 7484 |

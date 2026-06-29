@@ -61,10 +61,11 @@ binds `Alt h/l` to the orchestrator's visible-pane walker.
 `[bar].widgets`, uses the packaged pre-rendered layout for the default tray,
 and materializes a runtime layout through the pinned renderer when the user
 chooses a custom tray. The runtime config points managed new tabs at that
-active layout. It ships `tu` for usage widget refreshes, exports a yzn-owned
-status cache path, names the initial and tab-mode-created tabs with the Yazelix
-home marker, home-scopes tab-mode-created tabs, and keeps the native bottom
-Zellij `status-bar` for key hints.
+active layout and the user's home cwd. It ships `tu` for usage widget
+refreshes, exports a yzn-owned status cache path, names the initial and
+tab-mode-created tabs with the Yazelix home marker, home-scopes
+tab-mode-created tabs, and keeps the native bottom Zellij `status-bar` for key
+hints.
 
 `runtime/yzn-zellij-config.rs` is the launch-time guarded Zellij sidecar owner.
 It appends `~/.config/yazelix-next/zellij/config.kdl` to the packaged config
@@ -204,7 +205,7 @@ window.
 | C7 | Helix bridge reuse stays inside the current `yzn` window and current Zellij tab | `crates/yzn-open/`, `flake.nix` | `yzn-open` Rust tests cover session, Zellij-window, and Zellij-tab mismatch | Full multi-window GUI behavior remains manual dogfooding |
 | C8 | Desktop entry starts `yzn` | `flake.nix` | `nix build .#yzn` packages the desktop file | Desktop environment launch remains manual dogfooding |
 | C9 | Kitty keyboard protocol is explicitly enabled, `Alt Shift J/K/M` toggle LazyGit, config, and menu popups through `yzpp`; `Alt Shift L` hides or shows a persistent guarded Codex resume popup; `popup.size` controls generated popup width and height | `config.kdl`, `runtime/yzn.rs`, `flake.nix` | `checks/yzn-contracts.rs` validates Kitty protocol, the packaged popup plugin, commands, popup ids, payloads, key bindings, agent hide behavior, popup geometry, and the missing-Codex guard | Visual popup behavior remains manual dogfooding |
-| C10 | Top bars use the child-rendered Yazelix Zellij Bar tray, tabs use the home marker, tab-mode-created tabs open in home, Codex usage has bundled `tu` and a yzn-owned cache path, and bottom bars keep native Zellij key hints | `layout.kdl`, `config.kdl`, `flake.nix`, `packaging/tokenusage.nix` | `checks/zellij-layout.rs` validates packaged child bar usage, no-mode formatting, declared yzn widgets, the startup home tab marker, the home-scoped new-tab template, and native bottom status bars; `checks/yzn-contracts.rs` validates the tab-mode new-tab marker, terminal-label wiring, bundled tokenusage path, and status-cache export | Visual bar behavior remains manual dogfooding |
+| C10 | Top bars use the child-rendered Yazelix Zellij Bar tray, tabs use the home marker, tab-mode-created tabs open in home, Codex usage has bundled `tu` and a yzn-owned cache path, and bottom bars keep native Zellij key hints | `layout.kdl`, `config.kdl`, `runtime/yzn.rs`, `flake.nix`, `packaging/tokenusage.nix` | `checks/zellij-layout.rs` validates packaged child bar usage, no-mode formatting, declared yzn widgets, the startup home tab marker, the home-scoped new-tab template, and native bottom status bars; `checks/yzn-contracts.rs` validates the tab-mode new-tab marker, runtime home cwd, terminal-label wiring, bundled tokenusage path, and status-cache export | Visual bar behavior remains manual dogfooding |
 | C11 | `yzn config` auto-creates root, Mars, and Zellij config sources; root `config.toml` has defaults and joined Ratconfig contract state; `open.log_level` controls managed `YZN_OPEN_LOG`; `shell.program` controls the packaged default-shell dispatcher; `popup.size` controls managed popup geometry on new launches; `bar.widgets` controls the ordered top-bar widget tray through Ratconfig's string-list picker; Mars/Zellij tabs route writes to their native files; Keys table columns list packaged bindings as read-only group/key/action/owner metadata with source paths in details; Advanced rows open Nu, Starship, and managed Yazi sidecar files through the managed editor and create them only after activation | `crates/yzn-config/`, `config.toml`, `mars.toml`, `flake.nix` | `crates/yzn-config` unit tests cover create/edit validation, source routing, popup size validation, bar widget validation, Zellij scalar rendering, guarded-node diagnostics, Keys read-only table rows, native file action rows, and owned missing-file creation; `checks/yzn-contracts.rs` validates packaged defaults, helper install, creation, `--get`, dispatcher wiring, and the config UI editor wrapper | Interactive Ratconfig UI behavior remains manual dogfooding |
 
 ## Pros

@@ -32,6 +32,7 @@ const DEFAULT_BAR_WIDGETS_JSON: &str = r#"@defaultBarWidgetsJson@"#;
 const DEFAULT_POPUP_SIZE: &str = "95";
 const PATH_PREFIX: &str = "@pathPrefix@";
 const SPONSOR_URL: &str = "https://github.com/sponsors/luccahuguet";
+const ZELLIJ_HOME_PLACEHOLDER: &str = "\"__YZN_HOME__\"";
 const LAYOUT_YAZI_PLACEHOLDER: &str = concat!("@", "yazi", "@");
 const LAYOUT_BAR_PLACEHOLDER: &str = concat!("@", "bar", "@");
 
@@ -150,6 +151,7 @@ impl Runtime {
     fn prepare() -> Result<Self, AppError> {
         let state_dir = state_dir();
         create_dir_all_checked(&state_dir, &state_dir)?;
+        let home_dir = home_dir()?;
         let config_home = config_home()?;
         let config_toml = config_home.join("config.toml");
         let yzn_open_log = config_value(&config_home, &config_toml, "open.log_level")?;
@@ -183,6 +185,7 @@ impl Runtime {
             zellij_config,
             &layout,
             &popup_size,
+            &home_dir,
         )?;
         let zellij_status_cache = state_dir.join("zellij/session/status_bar_cache.json");
         create_dir_all_checked(parent(&zellij_status_cache), &zellij_status_cache)?;
@@ -445,15 +448,21 @@ fn active_zellij_config(
     config: PathBuf,
     layout: &Path,
     popup_size: &str,
+    home_dir: &Path,
 ) -> Result<(&'static str, PathBuf), AppError> {
-    if layout == Path::new(LAYOUT) && popup_size == DEFAULT_POPUP_SIZE {
-        return Ok((source, config));
-    }
-
     let runtime_config = state_dir.join("zellij/config.kdl");
     let text =
         fs::read_to_string(&config).map_err(|error| path_error("read", &config, &config, error))?;
     let mut patched = text;
+    let replaced = patched.replace(ZELLIJ_HOME_PLACEHOLDER, &kdl_string(home_dir.display()));
+    if replaced == patched {
+        return Err(startup(
+            "Zellij config is missing the managed home cwd placeholder",
+            config.display(),
+            1,
+        ));
+    }
+    patched = replaced;
     if layout != Path::new(LAYOUT) {
         let replaced = patched.replace(LAYOUT, &layout.display().to_string());
         if replaced == patched {
@@ -610,6 +619,12 @@ fn config_home() -> Result<PathBuf, AppError> {
         })
 }
 
+fn home_dir() -> Result<PathBuf, AppError> {
+    nonempty_env("HOME")
+        .map(PathBuf::from)
+        .ok_or_else(|| startup("HOME is required to scope home-marker new tabs.", "", 1))
+}
+
 fn state_dir() -> PathBuf {
     nonempty_env("YAZELIX_STATE_DIR")
         .map(PathBuf::from)
@@ -661,6 +676,10 @@ fn parent(path: &Path) -> &Path {
 
 fn trim_output(text: String) -> String {
     text.trim_end_matches(['\n', '\r']).to_owned()
+}
+
+fn kdl_string(value: impl Display) -> String {
+    format!("{:?}", value.to_string())
 }
 
 enum AppError {

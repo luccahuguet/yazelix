@@ -159,6 +159,17 @@ fn expect_front_door(yzn: &Path) {
         expect_contains(&status, &expected, "yzn status");
     }
     let permissions = fs::read_to_string(state_dir.join("zellij/permissions.kdl")).unwrap();
+    let runtime_config = fs::read_to_string(state_dir.join("zellij/config.kdl")).unwrap();
+    let home = format!("{:?}", env::var("HOME").expect("HOME is required by yzn"));
+    expect_contains(
+        &runtime_config,
+        &format!("cwd {home};"),
+        "runtime new-tab config",
+    );
+    assert!(
+        !runtime_config.contains("__YZN_HOME__"),
+        "runtime config kept the unresolved home cwd placeholder"
+    );
     for expected in [
         "yazelix_pane_orchestrator.wasm",
         "MessageAndLaunchOtherPlugins",
@@ -249,6 +260,11 @@ fn expect_front_door(yzn: &Path) {
             r#"layout "{}""#,
             custom_state.join("zellij/layout.kdl").display()
         ),
+        "custom bar new-tab config",
+    );
+    expect_contains(
+        &custom_config,
+        &format!("cwd {home};"),
         "custom bar new-tab config",
     );
 
@@ -794,9 +810,10 @@ fn expect_keybinds(config: &str) {
         config.lines().any(|line| {
             let line = line.trim();
             line.starts_with(r#"bind "n" { NewTab { layout "/nix/store/"#)
-                && line.ends_with(r#"/layout.kdl"; }; SwitchToMode "Normal"; }"#)
+                && line
+                    .ends_with(r#"/layout.kdl"; cwd "__YZN_HOME__"; }; SwitchToMode "Normal"; }"#)
         }),
-        "config.kdl must create new tabs from the packaged Yazelix layout",
+        "config.kdl must create new tabs from the packaged layout with a runtime home cwd",
     );
     expect_no_block_binds_and_unbinds_same_key(config);
     assert!(
