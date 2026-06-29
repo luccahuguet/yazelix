@@ -222,31 +222,6 @@ fn trim_output(bytes: &[u8]) -> String {
 mod tests {
     use super::*;
 
-    struct TempDir {
-        path: PathBuf,
-    }
-
-    impl TempDir {
-        fn new(name: &str) -> Self {
-            let path = env::temp_dir().join(format!(
-                "yzn-yazi-{name}-{}-{}",
-                std::process::id(),
-                SystemTime::now()
-                    .duration_since(UNIX_EPOCH)
-                    .unwrap()
-                    .as_nanos()
-            ));
-            fs::create_dir_all(&path).unwrap();
-            Self { path }
-        }
-    }
-
-    impl Drop for TempDir {
-        fn drop(&mut self) {
-            let _ = fs::remove_dir_all(&self.path);
-        }
-    }
-
     fn packaged_yazi(path: &Path) {
         fs::create_dir_all(path.join("plugins")).unwrap();
         for file in [
@@ -264,10 +239,11 @@ mod tests {
 
     #[test]
     fn materialization_overlays_user_plugins_and_rejects_collisions() {
-        let temp = TempDir::new("overlay");
-        let packaged = temp.path.join("packaged");
-        let state = temp.path.join("state");
-        let user_yazi = temp.path.join("config/yazi");
+        let temp = env::temp_dir().join(format!("yzn-yazi-test-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&temp);
+        let packaged = temp.join("packaged");
+        let state = temp.join("state");
+        let user_yazi = temp.join("config/yazi");
         let user_plugins = user_yazi.join("plugins");
         packaged_yazi(&packaged);
         fs::create_dir_all(user_plugins.join("example.yazi")).unwrap();
@@ -313,5 +289,6 @@ mod tests {
         .to_string();
 
         assert!(error.contains("collides with a packaged plugin"));
+        let _ = fs::remove_dir_all(&temp);
     }
 }

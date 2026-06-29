@@ -420,15 +420,13 @@ Workspace
       pkgs = import nixpkgs {inherit system;};
       yzn = self.packages.${system}.yzn;
       yznContractsCheck = rustBinFor pkgs "yzn-contracts-check" ./checks/yzn-contracts.rs;
-      yznYaziMaterializationCheck =
-        pkgs.runCommand "yzn-yazi-materialization-check" {nativeBuildInputs = [pkgs.rustc pkgs.stdenv.cc];} ''
-          rustc --edition=2024 --test ${./runtime/yzn-yazi.rs} -o yzn-yazi-materialization-check
-          ./yzn-yazi-materialization-check
-          touch "$out"
-        '';
     in {
       inherit yzn;
-      yzn_yazi_materialization = yznYaziMaterializationCheck;
+      yzn_yazi_materialization = pkgs.runCommand "yzn-yazi-materialization-check" {nativeBuildInputs = [pkgs.rustc pkgs.stdenv.cc];} ''
+        rustc --edition=2024 --test ${./runtime/yzn-yazi.rs} -o yzn-yazi-materialization-check
+        ./yzn-yazi-materialization-check
+        touch "$out"
+      '';
       contracts = pkgs.runCommand "yzn-contracts" {} ''
         ${yznContractsCheck}/bin/yzn-contracts-check ${yzn} "$out"
       '';
