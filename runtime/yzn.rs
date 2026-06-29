@@ -258,24 +258,23 @@ impl Runtime {
     }
 
     fn mars_config(&self) -> String {
-        format!(
-            "{} ({})",
+        source_path(
             self.mars_config_source,
-            self.mars_config_home.join("config.toml").display()
+            self.mars_config_home.join("config.toml").display(),
         )
     }
 
     fn zellij_config(&self) -> String {
-        format!(
-            "{} ({})",
-            self.zellij_config_source,
-            self.zellij_config.display()
-        )
+        source_path(self.zellij_config_source, self.zellij_config.display())
     }
 
     fn layout(&self) -> String {
-        format!("{} ({})", self.layout_source, self.layout.display())
+        source_path(self.layout_source, self.layout.display())
     }
+}
+
+fn source_path(source: &str, path: impl Display) -> String {
+    format!("{source} ({path})")
 }
 
 fn print_status() -> Result<(), AppError> {

@@ -346,15 +346,14 @@ fn run_yzn_with_config(
     state_dir: &Path,
     context: &str,
 ) -> String {
-    let output = successful_output(
+    successful_stdout(
         Command::new(yzn_bin)
             .arg(command)
             .env("YAZELIX_NEXT_CONFIG_HOME", config_home)
             .env("YAZELIX_STATE_DIR", state_dir)
             .env_remove("ZELLIJ_SESSION_NAME"),
         context,
-    );
-    String::from_utf8_lossy(&output.stdout).to_string()
+    )
 }
 
 fn write_config_home(config_home: &Path, contents: impl AsRef<[u8]>) -> PathBuf {
@@ -392,14 +391,14 @@ fn expect_config_ui(yzn: &Path) {
             r#"["editor","shell","term","codex_usage","cpu","ram"]"#,
         ),
     ] {
-        let output = successful_output(
+        let output = successful_stdout(
             Command::new(&helper)
                 .arg("--get")
                 .arg(path)
                 .env("YAZELIX_NEXT_CONFIG_HOME", &temp.path),
             &format!("yzn-config --get {path}"),
         );
-        assert_eq!(String::from_utf8_lossy(&output.stdout).trim(), expected);
+        assert_eq!(output.trim(), expected);
     }
 
     let unknown_temp = TempDir::new();
@@ -563,13 +562,12 @@ fn run_startup_failure(
 }
 
 fn run_help(bin: &Path, args: &[&str]) -> String {
-    let output = successful_output(Command::new(bin).args(args), "yzn help");
-    String::from_utf8_lossy(&output.stdout).to_string()
+    successful_stdout(Command::new(bin).args(args), "yzn help")
 }
 
 fn run_nu(yzn_nu: &Path, config_home: &Path, runtime: &Path, commands: &str) -> String {
     fs::create_dir_all(runtime).unwrap();
-    let output = successful_output(
+    successful_stdout_trimmed(
         Command::new(yzn_nu)
             .arg("--commands")
             .arg(commands)
@@ -577,11 +575,7 @@ fn run_nu(yzn_nu: &Path, config_home: &Path, runtime: &Path, commands: &str) -> 
             .env("YAZELIX_NEXT_CONFIG_HOME", config_home)
             .env("STARSHIP_CONFIG", "ambient-starship.toml"),
         &yzn_nu.display().to_string(),
-    );
-
-    String::from_utf8_lossy(&output.stdout)
-        .trim_end_matches('\n')
-        .to_owned()
+    )
 }
 
 fn expect_shell_selection(shell: &Path) {
@@ -747,17 +741,13 @@ fn run_zellij_config(
     sidecar: &Path,
     generated: &Path,
 ) -> String {
-    let output = successful_output(
+    successful_stdout_trimmed(
         Command::new(helper)
             .arg(packaged_config)
             .arg(sidecar)
             .arg(generated),
         &helper.display().to_string(),
-    );
-
-    String::from_utf8_lossy(&output.stdout)
-        .trim_end_matches('\n')
-        .to_owned()
+    )
 }
 
 fn default_shell(config: &str) -> PathBuf {
@@ -949,6 +939,16 @@ fn successful_output(command: &mut Command, context: &str) -> Output {
         String::from_utf8_lossy(&output.stderr)
     );
     output
+}
+
+fn successful_stdout(command: &mut Command, context: &str) -> String {
+    String::from_utf8_lossy(&successful_output(command, context).stdout).into_owned()
+}
+
+fn successful_stdout_trimmed(command: &mut Command, context: &str) -> String {
+    successful_stdout(command, context)
+        .trim_end_matches('\n')
+        .to_owned()
 }
 
 fn expect_contains(haystack: &str, needle: &str, context: &str) {

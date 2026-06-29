@@ -1538,6 +1538,13 @@ mod tests {
         .unwrap();
     }
 
+    fn temp_sources() -> (TempHome, ConfigPaths) {
+        let temp = TempHome::new();
+        let paths = temp_paths(&temp);
+        ensure_temp_sources(&paths);
+        (temp, paths)
+    }
+
     fn has_diagnostic(diagnostics: &[ConfigUiDiagnostic], text: &str) -> bool {
         diagnostics
             .iter()
@@ -1716,9 +1723,7 @@ mod tests {
 
     #[test]
     fn config_model_exposes_root_config_fields() {
-        let temp = TempHome::new();
-        let paths = temp_paths(&temp);
-        ensure_temp_sources(&paths);
+        let (_temp, paths) = temp_sources();
 
         let model = build_model(&paths).unwrap();
         assert!(!model.tabs.contains(&"shell".to_string()));
@@ -1745,9 +1750,7 @@ mod tests {
 
     #[test]
     fn config_model_marks_invalid_bar_widgets() {
-        let temp = TempHome::new();
-        let paths = temp_paths(&temp);
-        ensure_temp_sources(&paths);
+        let (_temp, paths) = temp_sources();
         write_toml_value(&paths.root, BAR_WIDGETS_PATH, &json!(["weather"]));
 
         let model = build_model(&paths).unwrap();
@@ -1760,9 +1763,7 @@ mod tests {
     // Defends: the Keys tab is a read-only discovery surface for current packaged bindings.
     #[test]
     fn config_model_exposes_read_only_key_bindings() {
-        let temp = TempHome::new();
-        let paths = temp_paths(&temp);
-        ensure_temp_sources(&paths);
+        let (_temp, paths) = temp_sources();
 
         let model = build_model(&paths).unwrap();
         let rows: Vec<_> = model
@@ -1824,9 +1825,7 @@ mod tests {
 
     #[test]
     fn read_only_existing_sources_are_not_replaced() {
-        let temp = TempHome::new();
-        let paths = temp_paths(&temp);
-        ensure_temp_sources(&paths);
+        let (_temp, paths) = temp_sources();
 
         let before_mars = fs::read_to_string(&paths.mars).unwrap();
         set_read_only(&paths.mars);
@@ -1867,10 +1866,7 @@ mod tests {
 
     #[test]
     fn ensure_config_sources_creates_root_mars_and_zellij_files() {
-        let temp = TempHome::new();
-        let paths = temp_paths(&temp);
-
-        ensure_temp_sources(&paths);
+        let (_temp, paths) = temp_sources();
 
         assert!(paths.root.exists());
         assert!(paths.mars.exists());
@@ -1893,9 +1889,7 @@ mod tests {
 
     #[test]
     fn native_file_tabs_list_owned_file_actions() {
-        let temp = TempHome::new();
-        let paths = temp_paths(&temp);
-        ensure_temp_sources(&paths);
+        let (_temp, paths) = temp_sources();
 
         let model = build_model(&paths).unwrap();
         let rows: Vec<_> = model
@@ -1960,9 +1954,7 @@ mod tests {
 
     #[test]
     fn prepare_file_action_creates_owned_missing_file() {
-        let temp = TempHome::new();
-        let paths = temp_paths(&temp);
-        ensure_temp_sources(&paths);
+        let (_temp, paths) = temp_sources();
 
         prepare_file_action(&paths, SOURCE_ADVANCED, ACTION_NU_ENV, &paths.nu_env, true).unwrap();
 
@@ -1974,9 +1966,7 @@ mod tests {
 
     #[test]
     fn prepare_file_action_creates_managed_yazi_init_only() {
-        let temp = TempHome::new();
-        let paths = temp_paths(&temp);
-        ensure_temp_sources(&paths);
+        let (temp, paths) = temp_sources();
 
         prepare_file_action(
             &paths,
@@ -1998,9 +1988,7 @@ mod tests {
 
     #[test]
     fn prepare_file_action_rejects_unowned_or_missing_paths() {
-        let temp = TempHome::new();
-        let paths = temp_paths(&temp);
-        ensure_temp_sources(&paths);
+        let (_temp, paths) = temp_sources();
 
         let error = prepare_file_action(
             &paths,
@@ -2027,9 +2015,7 @@ mod tests {
 
     #[test]
     fn source_routing_writes_mars_without_touching_config_toml() {
-        let temp = TempHome::new();
-        let paths = temp_paths(&temp);
-        ensure_temp_sources(&paths);
+        let (_temp, paths) = temp_sources();
         let before_root = fs::read_to_string(&paths.root).unwrap();
 
         write_source_field(&paths, SOURCE_MARS, "window.width", &json!(1200)).unwrap();
@@ -2041,9 +2027,7 @@ mod tests {
 
     #[test]
     fn zellij_source_renders_nested_rounded_corners() {
-        let temp = TempHome::new();
-        let paths = temp_paths(&temp);
-        ensure_temp_sources(&paths);
+        let (_temp, paths) = temp_sources();
 
         write_source_field(
             &paths,
