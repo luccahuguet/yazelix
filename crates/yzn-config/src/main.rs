@@ -18,178 +18,17 @@ use ratconfig::{
     ConfigContract, ConfigUiApp, ConfigUiApplyStatus, ConfigUiDiagnostic, ConfigUiEditBehavior,
     ConfigUiFieldRowSpec, ConfigUiFileAction, ConfigUiIntent, ConfigUiKey, ConfigUiListColumn,
     ConfigUiListTable, ConfigUiModel, ConfigUiPathOwner, ConfigUiSource,
-    ConfigUiStringListChoiceSpec, DEFAULT_CONFIG_SOURCE_ID, build_config_ui_field,
-    build_string_list_choice_field, draw_config_ui, join_toml_contract_text_from_version,
-    reconcile_joined_toml_contract_text, string_list_values_from_json,
+    ConfigUiStringListChoiceSpec, build_config_ui_field, build_string_list_choice_field,
+    draw_config_ui, join_toml_contract_text_from_version, reconcile_joined_toml_contract_text,
+    string_list_values_from_json,
 };
 use serde_json::{Value as JsonValue, json};
 
+mod catalog;
+
+use catalog::*;
+
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
-
-const DEFAULT_CONFIG_TOML: &str = include_str!("../../../config.toml");
-const CONTRACT_ID: &str = "yazelix-next.config";
-const CONTRACT_STATE_PATH: &str = "ratconfig.contract";
-const CONTRACT_VERSION: u64 = 1;
-
-const OPEN_LOG_LEVEL_PATH: &str = "open.log_level";
-const SHELL_PROGRAM_PATH: &str = "shell.program";
-const POPUP_SIZE_PATH: &str = "popup.size";
-const DEFAULT_POPUP_SIZE: i64 = 95;
-const BAR_WIDGETS_PATH: &str = "bar.widgets";
-const DEFAULT_BAR_WIDGETS: &[&str] = &["editor", "shell", "term", "codex_usage", "cpu", "ram"];
-const BAR_WIDGET_VALUES: &[&str] = &[
-    "session",
-    "editor",
-    "shell",
-    "term",
-    "claude_usage",
-    "codex_usage",
-    "opencode_go_usage",
-    "cpu",
-    "ram",
-];
-const DEFAULT_MARS_CONFIG_TOML: &str = include_str!("../../../mars.toml");
-
-const SOURCE_CONFIG: &str = DEFAULT_CONFIG_SOURCE_ID;
-const SOURCE_MARS: &str = "mars";
-const SOURCE_ZELLIJ: &str = "zellij";
-const SOURCE_KEYS: &str = "keys";
-const SOURCE_ADVANCED: &str = "advanced";
-const TAB_CONFIG: &str = "config";
-const TAB_MARS: &str = "mars";
-const TAB_ZELLIJ: &str = "zellij";
-const TAB_KEYS: &str = "keys";
-const TAB_ADVANCED: &str = "advanced";
-
-const ACTION_NU_ENV: &str = "nu.env";
-const ACTION_NU_CONFIG: &str = "nu.config";
-const ACTION_STARSHIP: &str = "starship";
-const ACTION_YAZI_INIT: &str = "yazi.init";
-const NU_ENV_STARTER: &str = "# Loaded after Yazelix Next packaged env.nu.\n";
-const NU_CONFIG_STARTER: &str = "# Loaded after Yazelix Next packaged config.nu.\n";
-const STARSHIP_STARTER: &str =
-    "format = '$directory$git_branch$git_status$character'\nright_format = ''\n";
-const YAZI_INIT_STARTER: &str = "-- Loaded after Yazelix Next packaged yazi/init.lua.\n";
-const KEY_READ_ONLY_REASON: &str =
-    "Read-only key binding; yzn config does not rewrite native keymaps.";
-
-macro_rules! key {
-    ($group:literal; $chord:literal; $action:literal; $owner:literal; $source:literal) => {
-        [$group, $chord, $action, $owner, $source]
-    };
-}
-
-const KEY_BINDINGS: &[[&str; 5]] = &[
-    key!("Workspace"; "Ctrl Alt g"; "Toggle locked mode"; "Zellij"; "config.kdl"),
-    key!("Workspace"; "Ctrl Alt o"; "Open session mode"; "Zellij"; "config.kdl"),
-    key!("Workspace"; "Ctrl q"; "Quit Yazelix session"; "Zellij"; "config.kdl"),
-    key!("Panes"; "Ctrl p"; "Toggle pane mode"; "Zellij"; "config.kdl"),
-    key!("Panes"; "Ctrl n"; "Toggle resize mode"; "Zellij"; "config.kdl"),
-    key!("Panes"; "Alt m"; "Open a new pane"; "Zellij"; "config.kdl"),
-    key!("Panes"; "Alt h / Alt Left"; "Move focus left or previous tab"; "Yazelix"; "config.kdl"),
-    key!("Panes"; "Alt l / Alt Right"; "Move focus right or next tab"; "Yazelix"; "config.kdl"),
-    key!("Tabs"; "Ctrl t"; "Toggle tab mode"; "Zellij"; "config.kdl"),
-    key!("Tabs"; "n in tab mode"; "Open a new tab"; "Zellij"; "config.kdl"),
-    key!("Tabs"; "Ctrl Alt h"; "Move tab left"; "Zellij"; "config.kdl"),
-    key!("Tabs"; "Ctrl Alt l"; "Move tab right"; "Zellij"; "config.kdl"),
-    key!("Popups"; "Alt Shift J"; "Toggle LazyGit popup"; "Yazelix"; "config.kdl"),
-    key!("Popups"; "Alt Shift K"; "Toggle config popup"; "Yazelix"; "config.kdl"),
-    key!("Popups"; "Alt Shift L"; "Hide or show agent popup"; "Yazelix"; "config.kdl"),
-    key!("Popups"; "Alt Shift M"; "Toggle menu popup"; "Yazelix"; "config.kdl"),
-    key!("Sidebar"; "Alt Shift h"; "Toggle Yazi sidebar"; "Yazelix"; "config.kdl"),
-    key!("File manager"; "Alt z"; "Zoxide jump into the managed editor"; "Yazi"; "yazi/keymap.toml"),
-];
-
-const KEY_COLUMNS: &[(&str, usize)] = &[("group", 14), ("key", 20), ("action", 40), ("owner", 10)];
-
-const CONFIG_FIELDS: &[ConfigFieldSpec] = &[
-    ConfigFieldSpec {
-        field: FieldSpec::string_choice(
-            OPEN_LOG_LEVEL_PATH,
-            "Diagnostics written by yzn-open for Yazi-to-Helix open requests.",
-            &["off", "error", "info", "debug"],
-            "off, error, info, or debug",
-        ),
-        default: ConfigDefault::String("info"),
-        tab: TAB_CONFIG,
-        apply_summary: "new opens",
-        apply_detail: "Saved values are exported as YZN_OPEN_LOG for managed Yazi opens.",
-    },
-    ConfigFieldSpec {
-        field: FieldSpec::string_choice(
-            SHELL_PROGRAM_PATH,
-            "Packaged shell launched in new Zellij panes.",
-            &["nu", "bash", "zsh", "fish"],
-            "nu, bash, zsh, or fish",
-        ),
-        default: ConfigDefault::String("nu"),
-        tab: TAB_CONFIG,
-        apply_summary: "new panes",
-        apply_detail: "Saved shell selection applies to newly launched panes and sessions.",
-    },
-    ConfigFieldSpec {
-        field: FieldSpec::integer(
-            POPUP_SIZE_PATH,
-            "Width and height percentage for managed popups.",
-            "integer from 1 to 100",
-        ),
-        default: ConfigDefault::Integer(DEFAULT_POPUP_SIZE),
-        tab: TAB_CONFIG,
-        apply_summary: "next launch",
-        apply_detail: "Saved popup size applies to newly launched Yazelix sessions.",
-    },
-];
-
-const MARS_FIELDS: &[FieldSpec] = &[
-    FieldSpec::integer("window.width", "Initial Mars window width.", "pixels"),
-    FieldSpec::integer("window.height", "Initial Mars window height.", "pixels"),
-    FieldSpec::float("window.opacity", "Mars window opacity.", "0.0 to 1.0"),
-    FieldSpec::float("fonts.size", "Mars font size.", "points"),
-    FieldSpec::float("line-height", "Mars line height multiplier.", "multiplier"),
-    FieldSpec::boolean("enable-scroll-bar", "Show the Mars scrollbar."),
-    FieldSpec::boolean("bell.audio", "Play the Mars terminal bell."),
-    FieldSpec::boolean("bell.visual", "Flash the Mars visual bell."),
-    FieldSpec::boolean("effects.trail-cursor", "Draw the Mars cursor trail."),
-];
-
-const ZELLIJ_COPY_CLIPBOARD_VALUES: &[&str] = &["system", "primary"];
-const ZELLIJ_FORBIDDEN_TOP_LEVEL: &[&str] = &[
-    "keybinds",
-    "plugins",
-    "load_plugins",
-    "default_shell",
-    "default_layout",
-    "layout",
-    "support_kitty_keyboard_protocol",
-    "env",
-    "session_name",
-    "attach_to_session",
-];
-const ZELLIJ_FIELDS: &[FieldSpec] = &[
-    FieldSpec::boolean("pane_frames", "Show Zellij pane frames."),
-    FieldSpec::boolean("mouse_mode", "Enable mouse support in Zellij."),
-    FieldSpec::integer(
-        "scroll_buffer_size",
-        "Lines kept in Zellij scrollback.",
-        "positive integer",
-    ),
-    FieldSpec::boolean("copy_on_select", "Copy selected text automatically."),
-    FieldSpec::string_choice(
-        "copy_clipboard",
-        "Clipboard target for Zellij copy operations.",
-        ZELLIJ_COPY_CLIPBOARD_VALUES,
-        "system or primary",
-    ),
-    FieldSpec::boolean(
-        "styled_underlines",
-        "Render styled underlines in Zellij panes.",
-    ),
-    FieldSpec::boolean("show_startup_tips", "Show Zellij startup tips."),
-    FieldSpec::boolean(
-        "ui.pane_frames.rounded_corners",
-        "Use rounded Zellij pane frame corners.",
-    ),
-];
 
 #[derive(Debug, Clone)]
 struct ConfigPaths {
@@ -213,21 +52,6 @@ struct FileActionSpec {
     starter: &'static str,
 }
 
-#[derive(Debug, Clone, Copy)]
-struct ConfigFieldSpec {
-    field: FieldSpec,
-    default: ConfigDefault,
-    tab: &'static str,
-    apply_summary: &'static str,
-    apply_detail: &'static str,
-}
-
-#[derive(Debug, Clone, Copy)]
-enum ConfigDefault {
-    String(&'static str),
-    Integer(i64),
-}
-
 impl ConfigDefault {
     fn json(self) -> JsonValue {
         match self {
@@ -237,61 +61,7 @@ impl ConfigDefault {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
-struct FieldSpec {
-    path: &'static str,
-    kind: &'static str,
-    description: &'static str,
-    allowed_values: &'static [&'static str],
-    validation: &'static str,
-}
-
 impl FieldSpec {
-    const fn boolean(path: &'static str, description: &'static str) -> Self {
-        Self::new(path, "boolean", description, &[], "true or false")
-    }
-
-    const fn integer(
-        path: &'static str,
-        description: &'static str,
-        validation: &'static str,
-    ) -> Self {
-        Self::new(path, "integer", description, &[], validation)
-    }
-
-    const fn float(
-        path: &'static str,
-        description: &'static str,
-        validation: &'static str,
-    ) -> Self {
-        Self::new(path, "float", description, &[], validation)
-    }
-
-    const fn string_choice(
-        path: &'static str,
-        description: &'static str,
-        allowed_values: &'static [&'static str],
-        validation: &'static str,
-    ) -> Self {
-        Self::new(path, "string", description, allowed_values, validation)
-    }
-
-    const fn new(
-        path: &'static str,
-        kind: &'static str,
-        description: &'static str,
-        allowed_values: &'static [&'static str],
-        validation: &'static str,
-    ) -> Self {
-        Self {
-            path,
-            kind,
-            description,
-            allowed_values,
-            validation,
-        }
-    }
-
     fn json_choice<'a>(&self, value: &'a JsonValue) -> Result<&'a str> {
         let Some(value) = value.as_str() else {
             return Err(error(format!("{} must be a string", self.path)));
