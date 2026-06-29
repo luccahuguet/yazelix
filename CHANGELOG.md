@@ -181,7 +181,7 @@ Highlights:
 - Restored popup editor runtime environment propagation, fixed sidebar runtime helper packaging, reported no-op `yzx update upstream` runs clearly, repaired desktop icon reinstalls over read-only copied icons, and added runtime diagnostics plus maintainer validators for packaged-runtime behavior
 - Rust-owned `yzx menu`, launch setup preflight, canary session validation, and guarded doctor config repair while continuing to shrink shell-owned runtime paths
 - Updated `yzx screen` and welcome visuals after v17, including recursive Mandelbrot work, the magician GIF/Kitty-graphics renderer, a four-second welcome default, boids height fixes, and experimental Ratty runtime/cursor probes
-- Added Yazelix-owned `yazelix-zellij` and `yazelix-yazi` package forks after `v17` specifically to carry the Kitty Graphics Protocol passthrough path that restores Yazi image previews through Zellij; then tightened their KGP package boundaries, Cargo hash validation, typed terminal controls, terminal launch contracts, and follow-up planning for cursor placement
+- Added the Yazelix-owned `yazelix-zellij` package fork and a short-lived `yazelix-yazi` experiment after `v17` to validate the Kitty Graphics Protocol passthrough path that restores Yazi image previews through Zellij; the current runtime keeps the Zellij bridge and uses upstream/nixpkgs Yazi
 - Recorded the Rio-based `mars` direction, including cursor-shader parity as the first gate, protocol parity planning, and Rio/Yazi image-preview risk
 - Verified that stock Helix and the Steel branch still lack a true config-dir override, recorded the scoped-XDG caveat, and planned the bundled Yazelix Helix Steel fork plus external binary/runtime-pair escape hatch
 - Treat `v17.1` as the pre-Steel pin for users who are not ready to move to the future bundled Yazelix Helix Steel editor line
@@ -196,7 +196,7 @@ Upgrade impact: no user action required
 Highlights:
 - Established the first-party child-repo architecture across `yazelix-screen`, `yazelix-ghostty-cursors`, `yazelix-zellij-popup`, `yazelix-zellij-bar`, `yazelix-zellij-pane-orchestrator`, `yazelix-yazi-assets`, and `ratconfig`
 - Replaced copied source, copied wasm, duplicated widget code, and vendored Yazi assets with locked child-owned packages and artifacts consumed by the main runtime
-- Promoted Ghostty back to the default packaged terminal and made restored Yazi image previews through Zellij the default-terminal goal; the temporary first-party `yazelix-zellij` and `yazelix-yazi` Kitty-graphics passthrough forks landed after this tag and are documented in `v17.1`
+- Promoted Ghostty back to the default packaged terminal and made restored Yazi image previews through Zellij the default-terminal goal; the current graphics path uses upstream Yazi, `yazelix-yazi-assets`, and the `yazelix-zellij` Kitty passthrough bridge
 - Switched the package baseline to `nixpkgs-unstable` and pulled in newer Yazi/Chafa behavior that avoids the Chafa terminal-probe ghost-keypress regression
 - Made `settings.jsonc` the canonical user config, backed by `settings_default.jsonc`, JSON schema coverage, strict unknown-field diagnostics, additive repair, and complete Home Manager rendering
 - Upgraded `yzx config ui` into a structured JSONC settings editor with scalar pickers, keybinding rows, safer parse-error behavior, popup launch through `Alt Shift C`, and generic config UI machinery owned by `ratconfig`
