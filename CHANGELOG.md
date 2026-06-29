@@ -13,8 +13,9 @@ User-visible runtime changes for Yazelix Next live here.
   tabs are simple managed render/edit files that apply on new launches. The UI
   refuses to replace a source file whose permissions are read-only.
 - The `yzn config` Advanced tab opens managed user `nu/env.nu`,
-  `nu/config.nu`, and `starship.toml` files in `yzn-hx`, creating tiny starter
-  files only after a row is activated.
+  `nu/config.nu`, `starship.toml`, `yazi/init.lua`, and `yazi/keymap.toml`
+  files in `yzn-hx`, creating tiny starter files only after a row is
+  activated.
 - The `yzn config` Keys tab lists current packaged keybindings as a read-only
   table with group, key, action, and owner columns, with source paths in
   details.
@@ -30,6 +31,8 @@ User-visible runtime changes for Yazelix Next live here.
   moves to the zoxide-selected directory, sends it through `yzn-open`, renames
   the tab to the workspace root, and keeps the selected picker directory in
   Helix for Git repos.
+- Managed Yazi appends optional user `yazi/init.lua` and `yazi/keymap.toml`
+  sidecars after the packaged setup without importing full native Yazi config.
 - `config.toml` controls `open.log_level`, `shell.program`, `[popup].size`,
   and `[bar].widgets`; managed popups default to 95% width and height, invalid
   semantic values fail before launch, and `yzn config` shows these root fields

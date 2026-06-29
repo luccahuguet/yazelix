@@ -72,8 +72,8 @@ percentage for managed popups, and `[bar].widgets`, whose default tray is
 tabs edit native sidecars that apply to new launches. The `keys` tab lists
 current packaged bindings in read-only group, key, action, and owner columns,
 with source paths in details. The `advanced` tab opens `nu/env.nu`,
-`nu/config.nu`, `starship.toml`, and `yazi/init.lua` in the managed editor.
-Native files are created only when their row is activated.
+`nu/config.nu`, `starship.toml`, `yazi/init.lua`, and `yazi/keymap.toml` in
+the managed editor. Native files are created only when their row is activated.
 
 ## Shell Config
 
@@ -163,12 +163,13 @@ workspace root. In Git repositories, Helix keeps the selected picker directory
 while editor cwd and tab name use the repo root.
 
 Managed Yazi appends optional user Lua from
-`~/.config/yazelix-next/yazi/init.lua` after the packaged setup. This does not
-merge `yazi.toml`, keymaps, themes, or normal `~/.config/yazi`. When that file
-exists, managed plugin directories at
+`~/.config/yazelix-next/yazi/init.lua` and optional user keymap TOML from
+`~/.config/yazelix-next/yazi/keymap.toml` after the packaged setup and keymap.
+This does not merge `yazi.toml`, themes, or normal `~/.config/yazi`. When the
+managed init file exists, plugin directories at
 `~/.config/yazelix-next/yazi/plugins/*.yazi` are symlinked into the runtime
 config; packaged plugin names cannot be overridden. The config UI's `advanced`
-tab can create or open the user init file.
+tab can create or open the user init and keymap files.
 
 `yzn-open` writes bounded diagnostics to
 `${YAZELIX_STATE_DIR}/logs/yzn-open.log` and keeps one rotated
@@ -219,11 +220,11 @@ wc -l .gitignore AGENTS.md README.md CHANGELOG.md ARCHITECTURE.md flake.nix pack
 | Language | Files | Lines |
 | --- | --- | ---: |
 | Ignore | `.gitignore` | 4 |
-| Markdown | `AGENTS.md`, `README.md`, `CHANGELOG.md`, `ARCHITECTURE.md` | 759 |
+| Markdown | `AGENTS.md`, `README.md`, `CHANGELOG.md`, `ARCHITECTURE.md` | 763 |
 | Nix | `flake.nix`, `packaging/tokenusage.nix`, `packaging/bar-render-request.nix` | 488 |
 | TOML | `config.toml`, `mars.toml`, `helix/config.toml`, `yazi/yazi.toml`, `yazi/keymap.toml`, `crates/yzn-config/Cargo.toml`, `crates/yzn-open/Cargo.toml` | 139 |
 | KDL | `config.kdl`, `layout.kdl`, `layout.swap.kdl` | 189 |
 | Nu | `nu/config.nu`, `nu/env.nu` | 11 |
 | Lua | `yazi/init.lua`, `yazi/plugins/sidebar-status.yazi/main.lua`, `yazi/plugins/zoxide-editor.yazi/main.lua` | 137 |
-| Rust | `crates/yzn-config/src/catalog.rs`, `crates/yzn-config/src/main.rs`, `crates/yzn-open/src/main.rs`, `checks/zellij-layout.rs`, `checks/yzn-contracts.rs`, `runtime/yzn-nu.rs`, `runtime/yzn-yazi.rs`, `runtime/yzn.rs`, `runtime/yzn-zellij-config.rs` | 5625 |
-| Total | owned project files | 7352 |
+| Rust | `crates/yzn-config/src/catalog.rs`, `crates/yzn-config/src/main.rs`, `crates/yzn-open/src/main.rs`, `checks/zellij-layout.rs`, `checks/yzn-contracts.rs`, `runtime/yzn-nu.rs`, `runtime/yzn-yazi.rs`, `runtime/yzn.rs`, `runtime/yzn-zellij-config.rs` | 5733 |
+| Total | owned project files | 7464 |

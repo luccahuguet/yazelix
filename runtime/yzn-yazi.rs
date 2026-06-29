@@ -30,12 +30,19 @@ fn main() -> ExitCode {
 fn run() -> io::Result<()> {
     let state_dir = state_dir();
     let yazi_config = match config_home()
-        .map(|path| (path.join("yazi/init.lua"), path.join("yazi/plugins")))
-        .filter(|(user_init, _)| user_init.exists())
+        .map(|path| {
+            (
+                path.join("yazi/init.lua"),
+                path.join("yazi/keymap.toml"),
+                path.join("yazi/plugins"),
+            )
+        })
+        .filter(|(user_init, user_keymap, _)| user_init.exists() || user_keymap.exists())
     {
-        Some((user_init, user_plugins)) => materialize_user_config(
+        Some((user_init, user_keymap, user_plugins)) => materialize_user_config(
             &state_dir,
             &user_init,
+            &user_keymap,
             &user_plugins,
             Path::new(YZN_YAZI_CONFIG),
         )?,
@@ -73,37 +80,60 @@ fn run() -> io::Result<()> {
 fn materialize_user_config(
     state_dir: &Path,
     user_init: &Path,
+    user_keymap: &Path,
     user_plugins: &Path,
     packaged_yazi: &Path,
 ) -> io::Result<PathBuf> {
-    if !user_init.is_file() {
-        return Err(io::Error::new(
-            ErrorKind::InvalidInput,
-            format!("cannot read {}", user_init.display()),
-        ));
-    }
-
     let runtime_yazi = state_dir.join("yazi");
     remove_any(&runtime_yazi)?;
     fs::create_dir_all(&runtime_yazi)?;
-    for path in ["keymap.toml", "yazi.toml", "yazelix_starship.toml"] {
+    for path in ["yazi.toml", "yazelix_starship.toml"] {
         symlink(packaged_yazi.join(path), runtime_yazi.join(path))?;
     }
+    write_layered_config(
+        &packaged_yazi.join("init.lua"),
+        user_init,
+        &runtime_yazi.join("init.lua"),
+        "-- Yazelix Next user init.lua",
+    )?;
+    write_layered_config(
+        &packaged_yazi.join("keymap.toml"),
+        user_keymap,
+        &runtime_yazi.join("keymap.toml"),
+        "# Yazelix Next user keymap.toml",
+    )?;
     let runtime_plugins = runtime_yazi.join("plugins");
     fs::create_dir(&runtime_plugins)?;
     for entry in fs::read_dir(packaged_yazi.join("plugins"))? {
         let entry = entry?;
         symlink(entry.path(), runtime_plugins.join(entry.file_name()))?;
     }
-    overlay_user_plugins(user_plugins, &runtime_plugins)?;
-
-    let mut init = fs::read_to_string(packaged_yazi.join("init.lua"))?;
-    init.push_str("\n-- Yazelix Next user init.lua\n");
-    init.push_str(&fs::read_to_string(user_init)?);
-    let tmp = runtime_yazi.join(format!("init.lua.tmp.{}", std::process::id()));
-    fs::write(&tmp, &init)?;
-    fs::rename(tmp, runtime_yazi.join("init.lua"))?;
+    if user_init.exists() {
+        overlay_user_plugins(user_plugins, &runtime_plugins)?;
+    }
     Ok(runtime_yazi)
+}
+
+fn write_layered_config(
+    packaged: &Path,
+    user: &Path,
+    target: &Path,
+    marker: &str,
+) -> io::Result<()> {
+    let mut contents = fs::read_to_string(packaged)?;
+    if user.exists() {
+        if !user.is_file() {
+            return Err(io::Error::new(
+                ErrorKind::InvalidInput,
+                format!("cannot read {}", user.display()),
+            ));
+        }
+        contents.push_str("\n");
+        contents.push_str(marker);
+        contents.push_str("\n");
+        contents.push_str(&fs::read_to_string(user)?);
+    }
+    fs::write(target, contents)
 }
 
 fn overlay_user_plugins(user_plugins: &Path, runtime_plugins: &Path) -> io::Result<()> {
@@ -253,6 +283,7 @@ mod tests {
         let runtime = materialize_user_config(
             &state,
             &user_yazi.join("init.lua"),
+            &user_yazi.join("keymap.toml"),
             &user_plugins,
             &packaged,
         )
@@ -263,25 +294,22 @@ mod tests {
             "packaged init.lua\n\n-- Yazelix Next user init.lua\nuser init\n"
         );
         for plugin in ["git.yazi", "zoxide-editor.yazi"] {
-            assert!(
-                fs::symlink_metadata(runtime.join("plugins").join(plugin))
-                    .unwrap()
-                    .file_type()
-                    .is_symlink()
-            );
-        }
-        assert!(
-            fs::symlink_metadata(runtime.join("plugins/example.yazi"))
+            assert!(fs::symlink_metadata(runtime.join("plugins").join(plugin))
                 .unwrap()
                 .file_type()
-                .is_symlink()
-        );
+                .is_symlink());
+        }
+        assert!(fs::symlink_metadata(runtime.join("plugins/example.yazi"))
+            .unwrap()
+            .file_type()
+            .is_symlink());
         assert!(!runtime.join("plugins/ignored.txt").exists());
 
         fs::create_dir_all(user_plugins.join("git.yazi")).unwrap();
         let error = materialize_user_config(
             &state,
             &user_yazi.join("init.lua"),
+            &user_yazi.join("keymap.toml"),
             &user_plugins,
             &packaged,
         )
@@ -289,6 +317,38 @@ mod tests {
         .to_string();
 
         assert!(error.contains("collides with a packaged plugin"));
+        let _ = fs::remove_dir_all(&temp);
+    }
+
+    #[test]
+    fn materialization_layers_user_keymap_without_user_init() {
+        let temp = env::temp_dir().join(format!("yzn-yazi-keymap-test-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&temp);
+        let packaged = temp.join("packaged");
+        let state = temp.join("state");
+        let user_yazi = temp.join("config/yazi");
+        packaged_yazi(&packaged);
+        fs::create_dir_all(&user_yazi).unwrap();
+        fs::write(user_yazi.join("keymap.toml"), "user keymap\n").unwrap();
+
+        let runtime = materialize_user_config(
+            &state,
+            &user_yazi.join("init.lua"),
+            &user_yazi.join("keymap.toml"),
+            &user_yazi.join("plugins"),
+            &packaged,
+        )
+        .unwrap();
+
+        assert_eq!(
+            fs::read_to_string(runtime.join("keymap.toml")).unwrap(),
+            "packaged keymap.toml\n\n# Yazelix Next user keymap.toml\nuser keymap\n"
+        );
+        assert_eq!(
+            fs::read_to_string(runtime.join("init.lua")).unwrap(),
+            "packaged init.lua\n"
+        );
+        assert!(!runtime.join("plugins/example.yazi").exists());
         let _ = fs::remove_dir_all(&temp);
     }
 }

@@ -38,6 +38,7 @@ struct ConfigPaths {
     nu_config: PathBuf,
     starship: PathBuf,
     yazi_init: PathBuf,
+    yazi_keymap: PathBuf,
 }
 
 struct FileActionSpec {
@@ -311,6 +312,7 @@ fn config_paths() -> Result<ConfigPaths> {
         nu_config: home.join("nu/config.nu"),
         starship: home.join("starship.toml"),
         yazi_init: home.join("yazi/init.lua"),
+        yazi_keymap: home.join("yazi/keymap.toml"),
     })
 }
 
@@ -538,7 +540,7 @@ fn build_key_binding_field(
     }
 }
 
-fn file_action_specs(paths: &ConfigPaths) -> [FileActionSpec; 4] {
+fn file_action_specs(paths: &ConfigPaths) -> [FileActionSpec; 5] {
     [
         FileActionSpec {
             action_id: ACTION_NU_ENV,
@@ -567,6 +569,13 @@ fn file_action_specs(paths: &ConfigPaths) -> [FileActionSpec; 4] {
             description: "Open the managed Yazi user init.lua file.",
             path: paths.yazi_init.clone(),
             starter: YAZI_INIT_STARTER,
+        },
+        FileActionSpec {
+            action_id: ACTION_YAZI_KEYMAP,
+            label: "yazi/keymap.toml",
+            description: "Open the managed Yazi user keymap.toml file.",
+            path: paths.yazi_keymap.clone(),
+            starter: YAZI_KEYMAP_STARTER,
         },
     ]
 }
@@ -1282,6 +1291,7 @@ mod tests {
             nu_config: temp.path.join("nu/config.nu"),
             starship: temp.path.join("starship.toml"),
             yazi_init: temp.path.join("yazi/init.lua"),
+            yazi_keymap: temp.path.join("yazi/keymap.toml"),
         }
     }
 
@@ -1642,6 +1652,7 @@ mod tests {
         assert!(!paths.nu_config.exists());
         assert!(!paths.starship.exists());
         assert!(!paths.yazi_init.exists());
+        assert!(!paths.yazi_keymap.exists());
     }
 
     #[test]
@@ -1705,6 +1716,15 @@ mod tests {
                     false,
                     true,
                 ),
+                (
+                    SOURCE_ADVANCED,
+                    ACTION_YAZI_KEYMAP,
+                    TAB_ADVANCED,
+                    "yazi/keymap.toml",
+                    paths.yazi_keymap.clone(),
+                    false,
+                    true,
+                ),
             ]
         );
     }
@@ -1719,6 +1739,7 @@ mod tests {
         assert!(!paths.nu_config.exists());
         assert!(!paths.starship.exists());
         assert!(!paths.yazi_init.exists());
+        assert!(!paths.yazi_keymap.exists());
     }
 
     #[test]
@@ -1740,6 +1761,28 @@ mod tests {
         );
         assert!(!temp.path.join("yazi/yazi.toml").exists());
         assert!(!temp.path.join("yazi/keymap.toml").exists());
+        assert!(!temp.path.join("yazi/plugins").exists());
+    }
+
+    #[test]
+    fn prepare_file_action_creates_managed_yazi_keymap_only() {
+        let (temp, paths) = temp_sources();
+
+        prepare_file_action(
+            &paths,
+            SOURCE_ADVANCED,
+            ACTION_YAZI_KEYMAP,
+            &paths.yazi_keymap,
+            true,
+        )
+        .unwrap();
+
+        assert_eq!(
+            fs::read_to_string(&paths.yazi_keymap).unwrap(),
+            YAZI_KEYMAP_STARTER
+        );
+        assert!(!temp.path.join("yazi/init.lua").exists());
+        assert!(!temp.path.join("yazi/yazi.toml").exists());
         assert!(!temp.path.join("yazi/plugins").exists());
     }
 
