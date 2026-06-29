@@ -109,7 +109,7 @@
         cp ${yznMarsConfig}/config.toml "$out/mars.toml"
         substituteInPlace "$out/Cargo.toml" \
           --replace-fail '../../../ratconfig' './ratconfig'
-        substituteInPlace "$out/src/main.rs" \
+        substituteInPlace "$out/src/catalog.rs" \
           --replace-fail '../../../config.toml' '../config.toml' \
           --replace-fail '../../../mars.toml' '../mars.toml'
       '';
