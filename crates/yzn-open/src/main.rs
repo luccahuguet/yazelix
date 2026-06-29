@@ -1,6 +1,6 @@
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::{
     env,
     ffi::OsString,
@@ -16,10 +16,12 @@ use std::{os::unix::fs::FileTypeExt, os::unix::net::UnixStream};
 #[derive(Debug)]
 struct Config {
     editor: OsString,
+    git: OsString,
     zellij: OsString,
     state_dir: PathBuf,
     session_id: String,
     zellij_session_name: Option<String>,
+    zellij_pane_id: Option<String>,
     log_level: LogLevel,
 }
 
@@ -36,6 +38,27 @@ struct Registry {
 #[derive(Debug, Deserialize)]
 struct Transport {
     path: PathBuf,
+}
+
+#[derive(Debug, Deserialize)]
+struct PaneListEntry {
+    id: u64,
+    is_plugin: bool,
+    tab_id: u64,
+    #[serde(default)]
+    exited: bool,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct PaneId {
+    id: u64,
+    is_plugin: bool,
+}
+
+#[derive(Debug)]
+struct CurrentTabPanes {
+    caller_tab_id: u64,
+    panes: Vec<PaneListEntry>,
 }
 
 #[derive(Debug, Serialize)]
@@ -68,6 +91,8 @@ enum LogLevel {
 }
 
 const LOG_MAX_BYTES: u64 = 64 * 1024;
+const ZELLIJ_SESSION_NAME_ENV: &str = "ZELLIJ_SESSION_NAME";
+const YAZELIX_ZELLIJ_SESSION_NAME_ENV: &str = "YAZELIX_ZELLIJ_SESSION_NAME";
 
 fn main() -> ExitCode {
     let config = Config::from_env();
@@ -90,10 +115,13 @@ fn run(config: &Config, raw_targets: impl IntoIterator<Item = OsString>) -> Resu
         bail!("no target paths passed");
     }
     log_debug(config, &format!("targets={}", json!(targets)));
-    if try_bridge(config, &targets)? {
+    let cwd = editor_cwd(config, &targets);
+    let opened = try_bridge(config, &targets, &cwd)?;
+    rename_directory_tab(config, &targets, &cwd);
+    if opened {
         return Ok(());
     }
-    open_editor_pane(config, &targets)
+    open_editor_pane(config, &targets, &cwd)
 }
 
 impl Config {
@@ -107,16 +135,18 @@ impl Config {
 
         Self {
             editor: env::var_os("YZN_EDITOR").unwrap_or_else(|| "yzn-hx".into()),
+            git: "git".into(),
             zellij: env::var_os("YZN_ZELLIJ").unwrap_or_else(|| "zellij".into()),
             state_dir,
             session_id: bridge_session_id(env::var("YAZELIX_HELIX_BRIDGE_SESSION_ID").ok()),
-            zellij_session_name: env::var("ZELLIJ_SESSION_NAME").ok(),
+            zellij_session_name: zellij_session_name_from_env(),
+            zellij_pane_id: env::var("ZELLIJ_PANE_ID").ok(),
             log_level: LogLevel::from_env(),
         }
     }
 }
 
-fn try_bridge(config: &Config, targets: &[PathBuf]) -> Result<bool> {
+fn try_bridge(config: &Config, targets: &[PathBuf], cwd: &Path) -> Result<bool> {
     let bridge_dir = config
         .state_dir
         .join("helix_bridge")
@@ -124,6 +154,7 @@ fn try_bridge(config: &Config, targets: &[PathBuf]) -> Result<bool> {
     let Ok(entries) = fs::read_dir(&bridge_dir) else {
         return Ok(false);
     };
+    let current_tab_panes = current_tab_panes(config);
 
     for entry in entries.flatten() {
         let path = entry.path();
@@ -156,6 +187,18 @@ fn try_bridge(config: &Config, targets: &[PathBuf]) -> Result<bool> {
             );
             continue;
         }
+        if !registry.in_current_tab(config, current_tab_panes.as_ref()) {
+            log_debug(
+                config,
+                &format!(
+                    "bridge skipped registry={} pane={:?} current_pane={:?}",
+                    path.display(),
+                    registry.zellij_pane_id,
+                    config.zellij_pane_id,
+                ),
+            );
+            continue;
+        }
         if !registry.is_live() {
             log_debug(
                 config,
@@ -181,7 +224,7 @@ fn try_bridge(config: &Config, targets: &[PathBuf]) -> Result<bool> {
             }
         }
 
-        let (action, payload) = bridge_open_request(targets);
+        let (action, payload) = bridge_open_request(targets, cwd);
         log_debug(
             config,
             &format!(
@@ -242,6 +285,7 @@ impl Registry {
                 (Some(registry_session), Some(current_session)) => {
                     registry_session == current_session
                 }
+                (Some(_), None) => false,
                 _ => true,
             }
     }
@@ -249,6 +293,60 @@ impl Registry {
     fn is_live(&self) -> bool {
         fs::metadata(&self.transport.path).is_ok_and(|metadata| metadata.file_type().is_socket())
             && self.auth_token_path.is_file()
+    }
+
+    fn in_current_tab(&self, config: &Config, current_tab_panes: Option<&CurrentTabPanes>) -> bool {
+        let Some(current_tab_panes) = current_tab_panes else {
+            return false;
+        };
+        let Some(pane_id) = self
+            .zellij_pane_id
+            .as_deref()
+            .and_then(parse_zellij_pane_id)
+        else {
+            log_debug(config, "bridge skipped because registry has no pane id");
+            return false;
+        };
+        current_tab_panes
+            .panes
+            .iter()
+            .any(|pane| pane.matches(pane_id) && pane.tab_id == current_tab_panes.caller_tab_id)
+    }
+}
+
+fn current_tab_panes(config: &Config) -> Option<CurrentTabPanes> {
+    let caller_pane_id = config
+        .zellij_pane_id
+        .as_deref()
+        .and_then(parse_zellij_pane_id)?;
+    let output = zellij_command(config)
+        .args(["action", "list-panes", "--json", "--tab", "--state"])
+        .output()
+        .ok()?;
+    if !output.status.success() {
+        log_info(
+            config,
+            &format!(
+                "bridge reuse skipped; list-panes failed: {}",
+                json!(String::from_utf8_lossy(&output.stderr).trim())
+            ),
+        );
+        return None;
+    }
+    let panes = serde_json::from_slice::<Vec<PaneListEntry>>(&output.stdout).ok()?;
+    let caller_tab_id = panes
+        .iter()
+        .find(|pane| pane.matches(caller_pane_id))
+        .map(|pane| pane.tab_id)?;
+    Some(CurrentTabPanes {
+        caller_tab_id,
+        panes,
+    })
+}
+
+impl PaneListEntry {
+    fn matches(&self, pane_id: PaneId) -> bool {
+        !self.exited && self.id == pane_id.id && self.is_plugin == pane_id.is_plugin
     }
 }
 
@@ -296,8 +394,7 @@ fn send_bridge_request(
     }
 }
 
-fn bridge_open_request(targets: &[PathBuf]) -> (&'static str, Value) {
-    let working_dir = editor_cwd(targets);
+fn bridge_open_request(targets: &[PathBuf], working_dir: &Path) -> (&'static str, Value) {
     if let Some(target) = directory_target(targets) {
         (
             "helix.open_directory",
@@ -318,13 +415,13 @@ fn bridge_open_request(targets: &[PathBuf]) -> (&'static str, Value) {
     }
 }
 
-fn open_editor_pane(config: &Config, targets: &[PathBuf]) -> Result<()> {
+fn open_editor_pane(config: &Config, targets: &[PathBuf], cwd: &Path) -> Result<()> {
     let mut args = vec![
         OsString::from("run"),
         OsString::from("--name"),
         OsString::from("yzn-editor"),
         OsString::from("--cwd"),
-        editor_cwd(targets).into_os_string(),
+        cwd.as_os_str().to_os_string(),
         OsString::from("--"),
         config.editor.clone(),
     ];
@@ -343,14 +440,15 @@ fn open_editor_pane(config: &Config, targets: &[PathBuf]) -> Result<()> {
         &format!(
             "opening editor pane program={} args={}",
             config.zellij.to_string_lossy(),
-            json!(args
-                .iter()
-                .map(|arg| arg.to_string_lossy().into_owned())
-                .collect::<Vec<_>>())
+            json!(
+                args.iter()
+                    .map(|arg| arg.to_string_lossy().into_owned())
+                    .collect::<Vec<_>>()
+            )
         ),
     );
 
-    let output = Command::new(&config.zellij)
+    let output = zellij_command(config)
         .args(&args)
         .env("YAZELIX_STATE_DIR", &config.state_dir)
         .env("YAZELIX_HELIX_BRIDGE_SESSION_ID", &config.session_id)
@@ -382,7 +480,7 @@ fn open_editor_pane(config: &Config, targets: &[PathBuf]) -> Result<()> {
 }
 
 fn focus_pane(config: &Config, pane_id: &str) -> Result<()> {
-    let output = Command::new(&config.zellij)
+    let output = zellij_command(config)
         .args(["action", "focus-pane-id"])
         .arg(zellij_pane_arg(pane_id))
         .output()
@@ -390,15 +488,54 @@ fn focus_pane(config: &Config, pane_id: &str) -> Result<()> {
     ensure_success(&output, "zellij failed to focus editor pane")
 }
 
-fn editor_cwd(targets: &[PathBuf]) -> PathBuf {
-    if let Some(target) = directory_target(targets) {
-        return target.clone();
+fn rename_directory_tab(config: &Config, targets: &[PathBuf], cwd: &Path) {
+    if directory_target(targets).is_some() {
+        let name = project_tab_name(cwd);
+        if let Err(error) = zellij_command(config)
+            .args(["action", "rename-tab"])
+            .arg(&name)
+            .output()
+            .context("could not run zellij rename-tab")
+            .and_then(|output| ensure_success(&output, "zellij failed to rename tab"))
+        {
+            log_info(
+                config,
+                &format!("tab rename skipped name={}: {error:#}", json!(&name)),
+            );
+        }
     }
-    let first = &targets[0];
-    first
-        .parent()
-        .unwrap_or_else(|| Path::new("/"))
-        .to_path_buf()
+}
+
+fn project_tab_name(path: &Path) -> String {
+    path.file_name()
+        .and_then(|name| name.to_str())
+        .filter(|name| !name.trim().is_empty())
+        .map_or_else(|| path.display().to_string(), str::to_owned)
+}
+
+fn editor_cwd(config: &Config, targets: &[PathBuf]) -> PathBuf {
+    let target_dir = directory_target(targets).cloned().unwrap_or_else(|| {
+        targets[0]
+            .parent()
+            .unwrap_or_else(|| Path::new("/"))
+            .to_path_buf()
+    });
+    workspace_root(config, &target_dir)
+}
+
+fn workspace_root(config: &Config, target_dir: &Path) -> PathBuf {
+    Command::new(&config.git)
+        .arg("-C")
+        .arg(target_dir)
+        .args(["rev-parse", "--show-toplevel"])
+        .output()
+        .ok()
+        .filter(|output| output.status.success())
+        .and_then(|output| {
+            let root = String::from_utf8_lossy(&output.stdout).trim().to_string();
+            (!root.is_empty()).then(|| PathBuf::from(root))
+        })
+        .unwrap_or_else(|| target_dir.to_path_buf())
 }
 
 fn directory_target(targets: &[PathBuf]) -> Option<&PathBuf> {
@@ -415,6 +552,24 @@ fn zellij_pane_arg(pane_id: &str) -> String {
     } else {
         pane_id.replacen("terminal:", "terminal_", 1)
     }
+}
+
+fn parse_zellij_pane_id(raw: &str) -> Option<PaneId> {
+    let raw = raw.trim();
+    for (prefix, is_plugin) in [
+        ("terminal:", false),
+        ("terminal_", false),
+        ("plugin:", true),
+        ("plugin_", true),
+    ] {
+        if let Some(id) = raw.strip_prefix(prefix) {
+            return id.parse().ok().map(|id| PaneId { id, is_plugin });
+        }
+    }
+    raw.parse().ok().map(|id| PaneId {
+        id,
+        is_plugin: false,
+    })
 }
 
 fn ensure_success(output: &Output, context: &str) -> Result<()> {
@@ -444,6 +599,30 @@ fn log_debug(config: &Config, message: &str) {
 fn bridge_session_id(raw: Option<String>) -> String {
     raw.filter(|id| !id.trim().is_empty())
         .unwrap_or_else(|| format!("yzn-open-{}-{}", unix_millis(), std::process::id()))
+}
+
+fn zellij_session_name_from_env() -> Option<String> {
+    zellij_session_name_from_values(
+        env::var(ZELLIJ_SESSION_NAME_ENV).ok(),
+        env::var(YAZELIX_ZELLIJ_SESSION_NAME_ENV).ok(),
+    )
+}
+
+fn zellij_session_name_from_values(
+    current: Option<String>,
+    saved: Option<String>,
+) -> Option<String> {
+    current
+        .filter(|session| !session.trim().is_empty())
+        .or_else(|| saved.filter(|session| !session.trim().is_empty()))
+}
+
+fn zellij_command(config: &Config) -> Command {
+    let mut command = Command::new(&config.zellij);
+    if let Some(session_name) = &config.zellij_session_name {
+        command.env(ZELLIJ_SESSION_NAME_ENV, session_name);
+    }
+    command
 }
 
 impl LogLevel {
@@ -527,13 +706,37 @@ mod tests {
         ))
     }
 
-    fn write_zellij_log_script(path: &Path, log: &Path, fail_focus: bool) {
-        fs::write(
+    fn write_executable(path: &Path, contents: String) {
+        fs::write(path, contents).unwrap();
+        let mut permissions = fs::metadata(path).unwrap().permissions();
+        permissions.set_mode(0o755);
+        fs::set_permissions(path, permissions).unwrap();
+    }
+
+    fn write_zellij_log_script(
+        path: &Path,
+        log: &Path,
+        fail_focus: bool,
+        list_panes_json: Option<&str>,
+    ) {
+        let list_panes = list_panes_json.map_or_else(String::new, |panes| {
+            format!(
+                r#"if [ "$1" = action ] && [ "$2" = list-panes ]; then
+  printf '%s\n' '{}'
+  exit 0
+fi
+"#,
+                panes
+            )
+        });
+        write_executable(
             path,
             format!(
                 r#"#!/bin/sh
 printf 'args=%s\n' "$*" >> '{}'
 printf 'session=%s\n' "${{YAZELIX_HELIX_BRIDGE_SESSION_ID:-}}" >> '{}'
+printf 'zellij_session=%s\n' "${{ZELLIJ_SESSION_NAME:-}}" >> '{}'
+{list_panes}
 if [ "$1" = action ] && [ "$2" = focus-pane-id ] && {fail_focus}; then
   printf '%s\n' 'Pane with id Terminal(1) not found' >&2
   exit 1
@@ -542,13 +745,27 @@ exit 0
 "#,
                 log.display(),
                 log.display(),
+                log.display(),
+                list_panes = list_panes,
                 fail_focus = if fail_focus { "true" } else { "false" },
             ),
-        )
-        .unwrap();
-        let mut permissions = fs::metadata(path).unwrap().permissions();
-        permissions.set_mode(0o755);
-        fs::set_permissions(path, permissions).unwrap();
+        );
+    }
+
+    fn write_git_root_script(path: &Path, root: &Path) {
+        write_executable(
+            path,
+            format!(
+                r#"#!/bin/sh
+if [ "$1" = "-C" ] && [ "$3" = "rev-parse" ] && [ "$4" = "--show-toplevel" ]; then
+  printf '%s\n' '{}'
+  exit 0
+fi
+exit 1
+"#,
+                root.display(),
+            ),
+        );
     }
 
     fn write_registry(
@@ -580,10 +797,12 @@ exit 0
     fn test_config(root: PathBuf, session_id: &str, zellij: impl Into<OsString>) -> Config {
         Config {
             editor: "hx".into(),
+            git: "__missing_git__".into(),
             zellij: zellij.into(),
             state_dir: root,
             session_id: session_id.into(),
             zellij_session_name: None,
+            zellij_pane_id: None,
             log_level: LogLevel::Debug,
         }
     }
@@ -636,9 +855,31 @@ exit 0
     }
 
     #[test]
+    fn saved_zellij_session_is_used_when_yazi_hides_current_session() {
+        assert_eq!(
+            zellij_session_name_from_values(Some("live".into()), Some("saved".into())),
+            Some("live".into())
+        );
+        assert_eq!(
+            zellij_session_name_from_values(Some("".into()), Some("saved".into())),
+            Some("saved".into())
+        );
+        assert_eq!(
+            zellij_session_name_from_values(Some(" ".into()), Some("saved".into())),
+            Some("saved".into())
+        );
+        assert_eq!(
+            zellij_session_name_from_values(None, Some("saved".into())),
+            Some("saved".into())
+        );
+    }
+
+    #[test]
     fn builds_file_and_directory_open_payloads() {
+        let config = test_config(test_dir("payloads"), "session", "zellij");
         let targets = vec![PathBuf::from("/tmp/project/src/main.rs")];
-        let (action, payload) = bridge_open_request(&targets);
+        let cwd = editor_cwd(&config, &targets);
+        let (action, payload) = bridge_open_request(&targets, &cwd);
         assert_eq!(action, "helix.open_files");
         assert_eq!(payload["working_dir"], "/tmp/project/src");
         assert_eq!(payload["file_paths"], json!(["/tmp/project/src/main.rs"]));
@@ -650,11 +891,45 @@ exit 0
         fs::write(&file, "").unwrap();
         let targets = vec![file, root.clone()];
 
-        let (action, payload) = bridge_open_request(&targets);
+        let cwd = editor_cwd(&config, &targets);
+        let (action, payload) = bridge_open_request(&targets, &cwd);
         assert_eq!(action, "helix.open_directory");
         assert_eq!(payload["working_dir"], root.to_string_lossy().to_string());
         assert_eq!(payload["picker_dir"], root.to_string_lossy().to_string());
         assert!(payload.get("file_paths").is_none());
+    }
+
+    #[test]
+    fn directory_open_uses_workspace_root_for_tab_and_editor_cwd() {
+        let root = test_dir("workspace-root");
+        let zellij_log = root.join("zellij.log");
+        let zellij = root.join("zellij");
+        let git = root.join("git");
+        let repo = root.join("repo");
+        let target = repo.join("docs/guides");
+        fs::create_dir_all(&target).unwrap();
+        write_zellij_log_script(&zellij, &zellij_log, false, None);
+        write_git_root_script(&git, &repo);
+
+        run(
+            &Config {
+                git: git.into_os_string(),
+                ..test_config(root.clone(), "test-session", zellij)
+            },
+            [target.clone().into_os_string()],
+        )
+        .unwrap();
+
+        let log = fs::read_to_string(zellij_log).unwrap();
+        assert!(log.contains("args=action rename-tab repo"), "{log}");
+        assert!(
+            log.contains(&format!(
+                "args=run --name yzn-editor --cwd {}",
+                repo.display()
+            )),
+            "{log}"
+        );
+        assert!(log.contains(target.to_string_lossy().as_ref()), "{log}");
     }
 
     #[test]
@@ -663,7 +938,15 @@ exit 0
         let session_id = "test-session";
         let bridge_dir = root.join("helix_bridge").join(session_id);
         let request_path = bridge_dir.join("request.json");
-        let socket_path = write_registry(&bridge_dir, session_id, None, None);
+        let socket_path = write_registry(&bridge_dir, session_id, None, Some("terminal:7"));
+        let zellij_log = root.join("zellij.log");
+        let zellij = root.join("zellij");
+        let panes = json!([
+            {"id": 3, "is_plugin": false, "tab_id": 2, "exited": false},
+            {"id": 7, "is_plugin": false, "tab_id": 2, "exited": false},
+        ])
+        .to_string();
+        write_zellij_log_script(&zellij, &zellij_log, false, Some(&panes));
 
         let listener = UnixListener::bind(&socket_path).unwrap();
         let server = thread::spawn({
@@ -682,7 +965,10 @@ exit 0
         });
 
         run(
-            &test_config(root, session_id, "unused"),
+            &Config {
+                zellij_pane_id: Some("terminal:3".into()),
+                ..test_config(root, session_id, zellij)
+            },
             [OsString::from("/tmp/project/src/main.rs")],
         )
         .unwrap();
@@ -711,13 +997,19 @@ exit 0
             Some("zellij-test"),
             Some("terminal:1"),
         );
-        write_zellij_log_script(&zellij, &zellij_log, true);
+        let panes = json!([
+            {"id": 3, "is_plugin": false, "tab_id": 1, "exited": false},
+            {"id": 1, "is_plugin": false, "tab_id": 1, "exited": false},
+        ])
+        .to_string();
+        write_zellij_log_script(&zellij, &zellij_log, true, Some(&panes));
 
         let _listener = UnixListener::bind(&socket_path).unwrap();
 
         run(
             &Config {
                 zellij_session_name: Some("zellij-test".into()),
+                zellij_pane_id: Some("terminal:3".into()),
                 ..test_config(root.clone(), session_id, zellij)
             },
             [OsString::from("/tmp/project/src/main.rs")],
@@ -728,17 +1020,32 @@ exit 0
         assert!(log.contains("args=action focus-pane-id terminal_1"));
         assert!(log.contains("args=run --name yzn-editor"));
         assert!(log.contains("session=test-session"));
+        assert!(log.contains("zellij_session=zellij-test"));
     }
 
     #[test]
-    fn bridge_from_other_yzn_or_zellij_session_is_not_used() {
-        for (name, registry_session, registry_zellij, registry_pane) in [
-            ("yzn-session-isolation", "window-b", None, None),
+    fn bridge_from_other_yzn_zellij_session_or_tab_is_not_used() {
+        for (name, registry_session, registry_zellij, registry_pane, panes) in [
+            ("yzn-session-isolation", "window-b", None, None, None),
             (
                 "zellij-session-isolation",
                 "window-a",
                 Some("zellij-b"),
+                None,
+                None,
+            ),
+            (
+                "zellij-tab-isolation",
+                "window-a",
+                Some("zellij-a"),
                 Some("1"),
+                Some(
+                    json!([
+                        {"id": 3, "is_plugin": false, "tab_id": 1, "exited": false},
+                        {"id": 1, "is_plugin": false, "tab_id": 0, "exited": false},
+                    ])
+                    .to_string(),
+                ),
             ),
         ] {
             let root = test_dir(name);
@@ -752,11 +1059,12 @@ exit 0
                 registry_pane,
             );
             let _listener = UnixListener::bind(&socket_path).unwrap();
-            write_zellij_log_script(&zellij, &zellij_log, false);
+            write_zellij_log_script(&zellij, &zellij_log, false, panes.as_deref());
 
             run(
                 &Config {
                     zellij_session_name: Some("zellij-a".into()),
+                    zellij_pane_id: Some("terminal:3".into()),
                     ..test_config(root, "window-a", zellij)
                 },
                 [OsString::from("/tmp/project/src/main.rs")],
