@@ -164,8 +164,11 @@ while editor cwd and tab name use the repo root.
 
 Managed Yazi appends optional user Lua from
 `~/.config/yazelix-next/yazi/init.lua` after the packaged setup. This does not
-merge `yazi.toml`, keymaps, plugins, themes, or normal `~/.config/yazi`. The
-config UI's `advanced` tab can create or open this file.
+merge `yazi.toml`, keymaps, themes, or normal `~/.config/yazi`. When that file
+exists, managed plugin directories at
+`~/.config/yazelix-next/yazi/plugins/*.yazi` are symlinked into the runtime
+config; packaged plugin names cannot be overridden. The config UI's `advanced`
+tab can create or open the user init file.
 
 `yzn-open` writes bounded diagnostics to
 `${YAZELIX_STATE_DIR}/logs/yzn-open.log` and keeps one rotated
@@ -216,11 +219,11 @@ wc -l .gitignore AGENTS.md README.md CHANGELOG.md ARCHITECTURE.md flake.nix pack
 | Language | Files | Lines |
 | --- | --- | ---: |
 | Ignore | `.gitignore` | 4 |
-| Markdown | `AGENTS.md`, `README.md`, `CHANGELOG.md`, `ARCHITECTURE.md` | 755 |
-| Nix | `flake.nix`, `packaging/tokenusage.nix` | 472 |
+| Markdown | `AGENTS.md`, `README.md`, `CHANGELOG.md`, `ARCHITECTURE.md` | 759 |
+| Nix | `flake.nix`, `packaging/tokenusage.nix` | 479 |
 | TOML | `config.toml`, `mars.toml`, `helix/config.toml`, `yazi/yazi.toml`, `yazi/keymap.toml`, `crates/yzn-config/Cargo.toml`, `crates/yzn-open/Cargo.toml` | 139 |
 | KDL | `config.kdl`, `layout.kdl`, `layout.swap.kdl` | 189 |
 | Nu | `nu/config.nu`, `nu/env.nu` | 11 |
 | Lua | `yazi/init.lua`, `yazi/plugins/sidebar-status.yazi/main.lua`, `yazi/plugins/zoxide-editor.yazi/main.lua` | 137 |
-| Rust | `crates/yzn-config/src/main.rs`, `crates/yzn-open/src/main.rs`, `checks/zellij-layout.rs`, `checks/yzn-contracts.rs`, `runtime/yzn-nu.rs`, `runtime/yzn-yazi.rs`, `runtime/yzn.rs`, `runtime/yzn-zellij-config.rs` | 5526 |
-| Total | owned project files | 7233 |
+| Rust | `crates/yzn-config/src/main.rs`, `crates/yzn-open/src/main.rs`, `checks/zellij-layout.rs`, `checks/yzn-contracts.rs`, `runtime/yzn-nu.rs`, `runtime/yzn-yazi.rs`, `runtime/yzn.rs`, `runtime/yzn-zellij-config.rs` | 5673 |
+| Total | owned project files | 7391 |
