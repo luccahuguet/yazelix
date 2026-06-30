@@ -66,9 +66,10 @@ User-visible runtime changes for Yazelix Next live here.
   depend on hidden plugin permission prompts.
 - `Alt Shift J/K/L/M` toggle LazyGit, config, persistent guarded
   `codex resume`, and menu popups through Yazelix Zellij Popup with Kitty
-  keyboard protocol; `yzn menu` prints the same compact command/key reference,
-  and `Alt h/l` route through pane orchestrator to skip collapsed sidebars and
-  fall back to previous/next tab.
+  keyboard protocol; replacing the agent popup with another managed popup hides
+  it instead of killing the Codex process, `yzn menu` prints the same compact
+  command/key reference, and `Alt h/l` route through pane orchestrator to skip
+  collapsed sidebars and fall back to previous/next tab.
 
 ## 2026-06-25
 
