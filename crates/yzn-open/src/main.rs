@@ -1,6 +1,6 @@
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::{
     env,
     ffi::OsString,
@@ -443,10 +443,11 @@ fn open_editor_pane(config: &Config, targets: &[PathBuf], cwd: &Path) -> Result<
         &format!(
             "opening editor pane program={} args={}",
             config.zellij.to_string_lossy(),
-            json!(args
-                .iter()
-                .map(|arg| arg.to_string_lossy().into_owned())
-                .collect::<Vec<_>>())
+            json!(
+                args.iter()
+                    .map(|arg| arg.to_string_lossy().into_owned())
+                    .collect::<Vec<_>>()
+            )
         ),
     );
 
@@ -763,10 +764,12 @@ exit 0
             path,
             format!(
                 r#"#!/bin/sh
-if [ "$1" = "-C" ] && [ "$3" = "rev-parse" ] && [ "$4" = "--show-toplevel" ]; then
-  printf '%s\n' '{}'
-  exit 0
-fi
+case " $* " in
+  *" rev-parse --show-toplevel "*)
+    printf '%s\n' '{}'
+    exit 0
+    ;;
+esac
 exit 1
 "#,
                 root.display(),

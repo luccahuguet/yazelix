@@ -255,7 +255,7 @@ mod tests {
         ] {
             fs::write(path.join(file), format!("packaged {file}\n")).unwrap();
         }
-        for plugin in ["git.yazi", "zoxide-editor.yazi"] {
+        for plugin in ["git.yazi", "sidebar-state.yazi", "zoxide-editor.yazi"] {
             fs::create_dir(path.join("plugins").join(plugin)).unwrap();
         }
     }
@@ -279,16 +279,20 @@ mod tests {
             fs::read_to_string(runtime.join("init.lua")).unwrap(),
             "packaged init.lua\n\n-- Yazelix Next user init.lua\nuser init\n"
         );
-        for plugin in ["git.yazi", "zoxide-editor.yazi"] {
-            assert!(fs::symlink_metadata(runtime.join("plugins").join(plugin))
+        for plugin in ["git.yazi", "sidebar-state.yazi", "zoxide-editor.yazi"] {
+            assert!(
+                fs::symlink_metadata(runtime.join("plugins").join(plugin))
+                    .unwrap()
+                    .file_type()
+                    .is_symlink()
+            );
+        }
+        assert!(
+            fs::symlink_metadata(runtime.join("plugins/example.yazi"))
                 .unwrap()
                 .file_type()
-                .is_symlink());
-        }
-        assert!(fs::symlink_metadata(runtime.join("plugins/example.yazi"))
-            .unwrap()
-            .file_type()
-            .is_symlink());
+                .is_symlink()
+        );
         assert!(!runtime.join("plugins/ignored.txt").exists());
 
         fs::create_dir_all(user_plugins.join("git.yazi")).unwrap();

@@ -5,5 +5,8 @@ bufferline = "always"
 color-modes = true
 cursorline = true
 
+[keys.normal]
+A-r = ':sh yzn reveal "%{buffer_name}"'
+
 [editor.file-picker]
 hidden = true

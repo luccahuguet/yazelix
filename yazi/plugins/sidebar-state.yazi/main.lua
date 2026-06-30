@@ -1,0 +1,97 @@
+local M = {}
+
+local ORCHESTRATOR = "yazelix_pane_orchestrator"
+local RETRY_DELAYS = { 0, 0.15, 0.35, 0.75, 1.25 }
+local generation = 0
+
+local function json_escape(value)
+	return tostring(value)
+		:gsub("\\", "\\\\")
+		:gsub('"', '\\"')
+		:gsub("\n", "\\n")
+		:gsub("\r", "\\r")
+		:gsub("\t", "\\t")
+end
+
+local function pane_id()
+	local id = os.getenv("ZELLIJ_PANE_ID")
+	if not id or id == "" then
+		return nil
+	end
+	if id:find(":", 1, true) then
+		return id
+	end
+	return "terminal:" .. id
+end
+
+local function cwd()
+	if cx and cx.active and cx.active.current and cx.active.current.cwd then
+		return tostring(cx.active.current.cwd)
+	end
+	return nil
+end
+
+local function pipe_registration(payload)
+	local program = os.getenv("YZN_ZELLIJ")
+	local command = Command(program and program ~= "" and program or "zellij")
+	local session_name = os.getenv("YAZELIX_ZELLIJ_SESSION_NAME")
+	if session_name and session_name ~= "" then
+		command:env("ZELLIJ_SESSION_NAME", session_name)
+	end
+	local output = command
+		:arg({
+			"action",
+			"pipe",
+			"--plugin",
+			ORCHESTRATOR,
+			"--name",
+			"register_sidebar_yazi_state",
+			"--",
+			payload,
+		})
+		:stdin(Command.NULL)
+		:output()
+	return output
+		and output.status
+		and output.status.success
+		and tostring(output.stdout):gsub("^%s+", ""):gsub("%s+$", "") == "ok"
+end
+
+local function publish()
+	local yazi_id = os.getenv("YAZI_ID")
+	local current_pane = pane_id()
+	local current_cwd = cwd()
+	if not yazi_id or yazi_id == "" or not current_pane or not current_cwd then
+		return
+	end
+
+	generation = generation + 1
+	local current_generation = generation
+	local payload = string.format(
+		'{"pane_id":"%s","yazi_id":"%s","cwd":"%s"}',
+		json_escape(current_pane),
+		json_escape(yazi_id),
+		json_escape(current_cwd)
+	)
+	ya.async(function()
+		for _, delay in ipairs(RETRY_DELAYS) do
+			if current_generation ~= generation then
+				return
+			end
+			if delay > 0 then
+				ya.sleep(delay)
+			end
+			if current_generation ~= generation or pipe_registration(payload) then
+				return
+			end
+		end
+	end)
+end
+
+function M.setup()
+	publish()
+	ps.sub("cd", publish)
+	ps.sub("tab", publish)
+end
+
+return M

@@ -1,4 +1,5 @@
 require("auto-layout"):setup()
+require("sidebar-state"):setup()
 require("sidebar-status"):setup()
 require("git"):setup()
 require("starship"):setup({

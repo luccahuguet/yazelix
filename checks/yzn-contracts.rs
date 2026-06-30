@@ -105,6 +105,7 @@ fn expect_front_door(yzn: &Path) {
         "yzn enter [zellij-args...]",
         "yzn launch [zellij-args...]",
         "yzn menu",
+        "yzn reveal <target>",
         "yzn sponsor",
         "yzn status",
     ] {
@@ -116,13 +117,17 @@ fn expect_front_door(yzn: &Path) {
         "yzn doctor",
         "yzn env",
         "yzn status",
+        "yzn reveal",
         "yzn sponsor",
         "Alt Shift L",
+        "Alt r",
         "Alt z",
         "Codex resume",
     ] {
         expect_contains(&menu, expected, "yzn menu");
     }
+    let reveal_help = run_help(&yzn_bin, &["reveal", "--help"]);
+    expect_contains(&reveal_help, "yzn reveal <target>", "yzn reveal help");
 
     let yzn_launcher = binary_text(&yzn_bin);
     for expected in [
@@ -136,8 +141,10 @@ fn expect_front_door(yzn: &Path) {
         "yzn-bar-render",
         "yzn-env-supervisor",
         "yzn-shell",
+        "yzn-reveal",
         "yazelix-helix",
         "yazelix_pane_orchestrator.wasm",
+        "/bin/ya",
         "/bin/zellij",
         "/bin/mars",
         "tokenusage",
@@ -314,6 +321,8 @@ fn expect_front_door(yzn: &Path) {
         r#"ok bar.widgets: ["editor","shell","term","codex_usage","cpu","ram"]"#.to_string(),
         "ok popup.size: 95".to_string(),
         "ok yazi opener: /nix/store/".to_string(),
+        "ok reveal helper: /nix/store/".to_string(),
+        "ok yazi cli: /nix/store/".to_string(),
         "ok pane orchestrator plugin: /nix/store/".to_string(),
         "warn session: not inside zellij".to_string(),
     ] {
@@ -750,6 +759,28 @@ fn expect_yazi_alt_z(yzn: &Path) {
         expect_contains(&keymap, expected, "Yazi Alt-z keymap fragment");
     }
 
+    let init = fs::read_to_string(yzn.join("share/yazelix-next/yazi/init.lua")).unwrap();
+    expect_contains(
+        &init,
+        r#"require("sidebar-state"):setup()"#,
+        "Yazi init sidebar-state fragment",
+    );
+    let sidebar_state =
+        fs::read_to_string(yzn.join("share/yazelix-next/yazi/plugins/sidebar-state.yazi/main.lua"))
+            .unwrap();
+    for expected in [
+        "register_sidebar_yazi_state",
+        "YAZELIX_ZELLIJ_SESSION_NAME",
+        "ZELLIJ_SESSION_NAME",
+        "YZN_ZELLIJ",
+    ] {
+        expect_contains(
+            &sidebar_state,
+            expected,
+            "Yazi sidebar-state plugin fragment",
+        );
+    }
+
     let plugin =
         fs::read_to_string(yzn.join("share/yazelix-next/yazi/plugins/zoxide-editor.yazi/main.lua"))
             .unwrap();
@@ -830,6 +861,7 @@ fn expect_keybinds(config: &str) {
         r#"bind "Alt m" { NewPane; }"#,
         r#"bind "Alt h" "Alt Left" { MessagePlugin "yazelix_pane_orchestrator" { name "move_focus_left_or_tab"; }; }"#,
         r#"bind "Alt l" "Alt Right" { MessagePlugin "yazelix_pane_orchestrator" { name "move_focus_right_or_tab"; }; }"#,
+        r#"bind "Alt r" { MessagePlugin "yazelix_pane_orchestrator" { name "smart_reveal"; }; }"#,
         r#"bind "Alt Shift h" { NextSwapLayout; }"#,
         r#"bind "Ctrl Alt g" { SwitchToMode "Locked"; }"#,
         r#"bind "Ctrl p" { SwitchToMode "Pane"; }"#,
@@ -949,6 +981,14 @@ fn expect_first_party_plugins(config: &str) {
     ] {
         expect_contains(&helix_script, expected, &context);
     }
+    let helix_config =
+        fs::read_to_string(embedded_store_path(&helix_script, "-config.toml").join("config.toml"))
+            .unwrap();
+    expect_contains(
+        &helix_config,
+        r#"A-r = ':sh yzn reveal "%{buffer_name}"'"#,
+        "managed Helix reveal binding",
+    );
 
     let menu_popup = popup_command(config, "/bin/yzn-menu-popup");
     let menu_popup_script = fs::read_to_string(&menu_popup).unwrap();

@@ -25,6 +25,8 @@ const YZN_CONFIG: &str = "@yznConfig@";
 const YZN_MARS_CONFIG: &str = "@yznMarsConfig@";
 const YZN_ZELLIJ_CONFIG: &str = "@yznZellijConfig@";
 const YZN_CONFIG_KDL: &str = "@yznConfigKdl@";
+const YZN_REVEAL: &str = "@yznReveal@";
+const YZN_YA: &str = "@yznYa@";
 const YZN_BAR_RENDER_REQUEST: &str = "@yznBarRenderRequest@";
 const YZN_BAR_RENDER: &str = "@yznBarRender@";
 const YAZELIX_ZELLIJ_POPUP_WASM: &str = "@yazelixZellijPopupWasm@";
@@ -77,6 +79,7 @@ fn run() -> Result<(), AppError> {
             expect_no_args("env", &args)?;
             exec_env()
         }
+        "reveal" => exec_reveal(args),
         "enter" => exec_managed(false, args),
         "launch" => exec_managed(true, args),
         unknown => Err(AppError::Usage(format!(
@@ -107,6 +110,16 @@ fn exec_env() -> Result<(), AppError> {
     command.arg(YZN_SHELL);
     runtime.apply(&mut command);
     exec(command, "yzn env")
+}
+
+fn exec_reveal(args: Vec<OsString>) -> Result<(), AppError> {
+    let mut command = Command::new(YZN_REVEAL);
+    command
+        .args(args)
+        .env("YZN_YA", YZN_YA)
+        .env("YZN_ZELLIJ", ZELLIJ)
+        .env("PATH", runtime_path());
+    exec(command, "yzn reveal")
 }
 
 fn exec_managed(through_mars: bool, zellij_args: Vec<OsString>) -> Result<(), AppError> {
@@ -332,6 +345,8 @@ fn print_doctor() -> Result<(), AppError> {
     doctor_ok("editor", YZN_HELIX);
     doctor_ok("config helper", YZN_CONFIG);
     doctor_ok("zellij helper", YZN_ZELLIJ_CONFIG);
+    doctor_ok("reveal helper", YZN_REVEAL);
+    doctor_ok("yazi cli", YZN_YA);
     doctor_ok("zellij", ZELLIJ);
     doctor_ok("mars", MARS);
     doctor_ok("yazi opener", YZN_YAZI);
@@ -373,6 +388,8 @@ fn check_doctor_inputs() -> Result<(), AppError> {
         ("menu helper", Path::new(YZN_MENU)),
         ("config helper", Path::new(YZN_CONFIG)),
         ("zellij config helper", Path::new(YZN_ZELLIJ_CONFIG)),
+        ("reveal helper", Path::new(YZN_REVEAL)),
+        ("yazi cli", Path::new(YZN_YA)),
         ("packaged Zellij config", Path::new(YZN_CONFIG_KDL)),
         ("Zellij", Path::new(ZELLIJ)),
         ("Mars", Path::new(MARS)),
@@ -761,6 +778,7 @@ Usage:
   yzn enter [zellij-args...]
   yzn launch [zellij-args...]
   yzn menu
+  yzn reveal <target>
   yzn sponsor
   yzn status
 
@@ -771,6 +789,7 @@ Commands:
   enter   Start Yazelix in the current terminal
   launch  Open Mars and start Yazelix
   menu    Show Yazelix Next menu
+  reveal  Reveal a file or directory in the managed Yazi sidebar
   sponsor Open the Yazelix sponsor page or print its URL
   status  Show Yazelix runtime status
   help    Show this help

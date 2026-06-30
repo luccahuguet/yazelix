@@ -144,6 +144,7 @@ Commands
   yzn enter         Start managed runtime in this terminal
   yzn launch        Open Mars and start Yazelix
   yzn menu          Show this menu
+  yzn reveal        Reveal a path in the managed Yazi sidebar
   yzn sponsor       Open sponsor page or print URL
   yzn status        Show runtime status
 
@@ -157,6 +158,7 @@ Workspace
   Ctrl p/t/n/q      Pane, tab, resize, quit
   Ctrl Alt h/l      Move tab left/right
   Ctrl Alt j/k      Move pane down/up
+  Alt r             Reveal editor file in Yazi
   Alt Shift h       Toggle Yazi sidebar layout
   Alt z             Yazi zoxide jump into editor'
         '';
@@ -223,6 +225,7 @@ Workspace
         install -D -m 644 ${yznYaziToml} "$out/yazi.toml"
         install -D -m 644 ${yaziAssetsSelection}/yazelix_starship.toml "$out/yazelix_starship.toml"
         mkdir -p "$out/plugins"
+        install -D -m 644 ${./yazi/plugins/sidebar-state.yazi/main.lua} "$out/plugins/sidebar-state.yazi/main.lua"
         install -D -m 644 ${./yazi/plugins/sidebar-status.yazi/main.lua} "$out/plugins/sidebar-status.yazi/main.lua"
         install -D -m 644 ${./yazi/plugins/zoxide-editor.yazi/main.lua} "$out/plugins/zoxide-editor.yazi/main.lua"
         ln -s ${autoLayoutYazi} "$out/plugins/auto-layout.yazi"
@@ -324,6 +327,8 @@ Workspace
         yznMarsConfig = "${yznMarsConfig}";
         yznZellijConfig = "${yznZellijConfig}/bin/yzn-zellij-config";
         yznConfigKdl = "${yznConfigKdl}";
+        yznReveal = "${yznOpenCore}/bin/yzn-reveal";
+        yznYa = "${pkgs.yazi}/bin/ya";
         yznBarRenderRequest = "${yznBarRenderRequestTemplate}";
         yznBarRender = "${yznBarRender}/bin/yzn-bar-render";
         yazelixZellijPopupWasm = "${yazelixZellijPopupPackage}/${yazelixZellijPopupPackage.wasmPath}";
@@ -368,6 +373,7 @@ Workspace
           install -D -m 644 ${yznZellijLayout}/layout.swap.kdl "$out/share/yazelix-next/layout.swap.kdl"
           install -D -m 644 ${yznYaziConfig}/init.lua "$out/share/yazelix-next/yazi/init.lua"
           install -D -m 644 ${yznYaziConfig}/keymap.toml "$out/share/yazelix-next/yazi/keymap.toml"
+          install -D -m 644 ${yznYaziConfig}/plugins/sidebar-state.yazi/main.lua "$out/share/yazelix-next/yazi/plugins/sidebar-state.yazi/main.lua"
           install -D -m 644 ${yznYaziConfig}/plugins/zoxide-editor.yazi/main.lua "$out/share/yazelix-next/yazi/plugins/zoxide-editor.yazi/main.lua"
           install -D -m 644 ${yznYaziConfig}/yazi.toml "$out/share/yazelix-next/yazi/yazi.toml"
           install -D -m 644 ${yznNuConfig}/config.nu "$out/share/yazelix-next/nu/config.nu"

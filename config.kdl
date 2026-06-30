@@ -99,6 +99,7 @@ keybinds {
         }
         bind "Alt h" "Alt Left" { MessagePlugin "yazelix_pane_orchestrator" { name "move_focus_left_or_tab"; }; }
         bind "Alt l" "Alt Right" { MessagePlugin "yazelix_pane_orchestrator" { name "move_focus_right_or_tab"; }; }
+        bind "Alt r" { MessagePlugin "yazelix_pane_orchestrator" { name "smart_reveal"; }; }
         bind "Alt Shift h" { NextSwapLayout; }
         bind "Ctrl Alt g" { SwitchToMode "Locked"; }
         bind "Ctrl q" { Quit; }

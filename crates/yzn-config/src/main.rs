@@ -1584,6 +1584,13 @@ mod tests {
         assert!(pane_mode.display_label.contains("Ctrl p"));
         assert!(pane_mode.description.contains("Owner: Zellij"));
 
+        let reveal = key_field(&model, "Alt r");
+        assert_eq!(
+            reveal.display_label,
+            "Sidebar: Alt r - Reveal editor file in Yazi"
+        );
+        assert!(reveal.description.contains("Owner: Yazelix"));
+
         let yazi_zoxide = key_field(&model, "Alt z");
         assert!(yazi_zoxide.display_label.contains("Alt z"));
         assert!(yazi_zoxide.description.contains("Owner: Yazi"));

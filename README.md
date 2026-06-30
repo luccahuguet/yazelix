@@ -170,6 +170,9 @@ the selected directory, sends it through `yzn-open`, and renames the tab to the
 workspace root. In Git repositories, Helix keeps the selected picker directory
 while editor cwd and tab name use the repo root.
 
+`Alt r` reveals the current Helix buffer in the managed Yazi sidebar. The same
+path is available as `yzn reveal <target>` inside a managed session.
+
 Managed Yazi appends optional user Lua from
 `~/.config/yazelix-next/yazi/init.lua` and optional user keymap TOML from
 `~/.config/yazelix-next/yazi/keymap.toml` after the packaged setup and keymap.
@@ -197,6 +200,7 @@ Helix, Nushell, Yazi, and terminal programs.
 | `Ctrl Alt h/j/k/l` | move tab left, move pane down/up, move tab right |
 | `Alt h/l` | move focus left/right across visible panes or previous/next tab |
 | `Alt m` | new pane in the stacked layout |
+| `Alt r` | reveal the current editor file in Yazi |
 | `Alt z` | Yazi zoxide jump into the managed editor |
 | `Alt Shift J` | toggle the LazyGit popup |
 | `Alt Shift K` | toggle the config popup |
@@ -222,18 +226,18 @@ nix run --override-input yazelixZellijPaneOrchestrator ../yazelix-zellij-pane-or
 Counts owned project files by language with `wc -l`.
 
 ```sh
-wc -l .gitignore AGENTS.md README.md CHANGELOG.md ARCHITECTURE.md flake.nix packaging/tokenusage.nix packaging/bar-render-request.nix shell/sh/yzn-agent.sh shell/sh/yzn-env-supervisor.sh shell/sh/yzn-helix.sh shell/sh/yzn-shell.sh config.toml mars.toml config.kdl layout.kdl layout.swap.kdl nu/config.nu nu/env.nu helix/config.toml yazi/init.lua yazi/keymap.toml yazi/plugins/sidebar-status.yazi/main.lua yazi/plugins/zoxide-editor.yazi/main.lua yazi/yazi.toml crates/yzn-config/Cargo.toml crates/yzn-config/src/catalog.rs crates/yzn-config/src/main.rs crates/yzn-open/Cargo.toml crates/yzn-open/src/main.rs checks/zellij-layout.rs checks/yzn-contracts.rs runtime/yzn-nu.rs runtime/yzn-yazi.rs runtime/yzn.rs runtime/yzn-zellij-config.rs
+wc -l .gitignore AGENTS.md README.md CHANGELOG.md ARCHITECTURE.md flake.nix packaging/tokenusage.nix packaging/bar-render-request.nix shell/sh/yzn-agent.sh shell/sh/yzn-env-supervisor.sh shell/sh/yzn-helix.sh shell/sh/yzn-shell.sh config.toml mars.toml config.kdl layout.kdl layout.swap.kdl nu/config.nu nu/env.nu helix/config.toml yazi/init.lua yazi/keymap.toml yazi/plugins/sidebar-state.yazi/main.lua yazi/plugins/sidebar-status.yazi/main.lua yazi/plugins/zoxide-editor.yazi/main.lua yazi/yazi.toml crates/yzn-config/Cargo.toml crates/yzn-config/src/catalog.rs crates/yzn-config/src/main.rs crates/yzn-open/Cargo.toml crates/yzn-open/src/bin/yzn-reveal.rs crates/yzn-open/src/main.rs checks/zellij-layout.rs checks/yzn-contracts.rs runtime/yzn-nu.rs runtime/yzn-yazi.rs runtime/yzn.rs runtime/yzn-zellij-config.rs
 ```
 
 | Language | Files | Lines |
 | --- | --- | ---: |
 | Ignore | `.gitignore` | 4 |
-| Markdown | `AGENTS.md`, `README.md`, `CHANGELOG.md`, `ARCHITECTURE.md` | 779 |
-| Nix | `flake.nix`, `packaging/tokenusage.nix`, `packaging/bar-render-request.nix` | 477 |
+| Markdown | `AGENTS.md`, `README.md`, `CHANGELOG.md`, `ARCHITECTURE.md` | 795 |
+| Nix | `flake.nix`, `packaging/tokenusage.nix`, `packaging/bar-render-request.nix` | 483 |
 | Shell | `shell/sh/yzn-agent.sh`, `shell/sh/yzn-env-supervisor.sh`, `shell/sh/yzn-helix.sh`, `shell/sh/yzn-shell.sh` | 64 |
-| TOML | `config.toml`, `mars.toml`, `helix/config.toml`, `yazi/yazi.toml`, `yazi/keymap.toml`, `crates/yzn-config/Cargo.toml`, `crates/yzn-open/Cargo.toml` | 139 |
-| KDL | `config.kdl`, `layout.kdl`, `layout.swap.kdl` | 189 |
+| TOML | `config.toml`, `mars.toml`, `helix/config.toml`, `yazi/yazi.toml`, `yazi/keymap.toml`, `crates/yzn-config/Cargo.toml`, `crates/yzn-open/Cargo.toml` | 142 |
+| KDL | `config.kdl`, `layout.kdl`, `layout.swap.kdl` | 190 |
 | Nu | `nu/config.nu`, `nu/env.nu` | 11 |
-| Lua | `yazi/init.lua`, `yazi/plugins/sidebar-status.yazi/main.lua`, `yazi/plugins/zoxide-editor.yazi/main.lua` | 137 |
-| Rust | `crates/yzn-config/src/catalog.rs`, `crates/yzn-config/src/main.rs`, `crates/yzn-open/src/main.rs`, `checks/zellij-layout.rs`, `checks/yzn-contracts.rs`, `runtime/yzn-nu.rs`, `runtime/yzn-yazi.rs`, `runtime/yzn.rs`, `runtime/yzn-zellij-config.rs` | 5848 |
-| Total | owned project files | 7648 |
+| Lua | `yazi/init.lua`, `yazi/plugins/sidebar-state.yazi/main.lua`, `yazi/plugins/sidebar-status.yazi/main.lua`, `yazi/plugins/zoxide-editor.yazi/main.lua` | 235 |
+| Rust | `crates/yzn-config/src/catalog.rs`, `crates/yzn-config/src/main.rs`, `crates/yzn-open/src/bin/yzn-reveal.rs`, `crates/yzn-open/src/main.rs`, `checks/zellij-layout.rs`, `checks/yzn-contracts.rs`, `runtime/yzn-nu.rs`, `runtime/yzn-yazi.rs`, `runtime/yzn.rs`, `runtime/yzn-zellij-config.rs` | 6193 |
+| Total | owned project files | 8117 |
