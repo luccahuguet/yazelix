@@ -198,6 +198,7 @@ Helix, Nushell, Yazi, and terminal programs.
 | `Ctrl Alt g/s/o` | lock, search, session |
 | `Ctrl p/t/n/q` | pane, tab, resize, quit |
 | `Ctrl Alt h/j/k/l` | move tab left, move pane down/up, move tab right |
+| `Alt 1-9` | go directly to tab 1-9 |
 | `Alt h/l` | move focus left/right across visible panes or previous/next tab |
 | `Alt m` | new pane in the stacked layout |
 | `Alt r` | reveal the current editor file in Yazi |
@@ -232,12 +233,12 @@ wc -l .gitignore AGENTS.md README.md CHANGELOG.md ARCHITECTURE.md flake.nix pack
 | Language | Files | Lines |
 | --- | --- | ---: |
 | Ignore | `.gitignore` | 4 |
-| Markdown | `AGENTS.md`, `README.md`, `CHANGELOG.md`, `ARCHITECTURE.md` | 795 |
-| Nix | `flake.nix`, `packaging/tokenusage.nix`, `packaging/bar-render-request.nix` | 483 |
+| Markdown | `AGENTS.md`, `README.md`, `CHANGELOG.md`, `ARCHITECTURE.md` | 797 |
+| Nix | `flake.nix`, `packaging/tokenusage.nix`, `packaging/bar-render-request.nix` | 484 |
 | Shell | `shell/sh/yzn-agent.sh`, `shell/sh/yzn-env-supervisor.sh`, `shell/sh/yzn-helix.sh`, `shell/sh/yzn-shell.sh` | 64 |
 | TOML | `config.toml`, `mars.toml`, `helix/config.toml`, `yazi/yazi.toml`, `yazi/keymap.toml`, `crates/yzn-config/Cargo.toml`, `crates/yzn-open/Cargo.toml` | 142 |
-| KDL | `config.kdl`, `layout.kdl`, `layout.swap.kdl` | 190 |
+| KDL | `config.kdl`, `layout.kdl`, `layout.swap.kdl` | 199 |
 | Nu | `nu/config.nu`, `nu/env.nu` | 11 |
 | Lua | `yazi/init.lua`, `yazi/plugins/sidebar-state.yazi/main.lua`, `yazi/plugins/sidebar-status.yazi/main.lua`, `yazi/plugins/zoxide-editor.yazi/main.lua` | 235 |
-| Rust | `crates/yzn-config/src/catalog.rs`, `crates/yzn-config/src/main.rs`, `crates/yzn-open/src/bin/yzn-reveal.rs`, `crates/yzn-open/src/main.rs`, `checks/zellij-layout.rs`, `checks/yzn-contracts.rs`, `runtime/yzn-nu.rs`, `runtime/yzn-yazi.rs`, `runtime/yzn.rs`, `runtime/yzn-zellij-config.rs` | 6193 |
-| Total | owned project files | 8117 |
+| Rust | `crates/yzn-config/src/catalog.rs`, `crates/yzn-config/src/main.rs`, `crates/yzn-open/src/bin/yzn-reveal.rs`, `crates/yzn-open/src/main.rs`, `checks/zellij-layout.rs`, `checks/yzn-contracts.rs`, `runtime/yzn-nu.rs`, `runtime/yzn-yazi.rs`, `runtime/yzn.rs`, `runtime/yzn-zellij-config.rs` | 6209 |
+| Total | owned project files | 8145 |

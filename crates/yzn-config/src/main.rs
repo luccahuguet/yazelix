@@ -1584,6 +1584,13 @@ mod tests {
         assert!(pane_mode.display_label.contains("Ctrl p"));
         assert!(pane_mode.description.contains("Owner: Zellij"));
 
+        let tab_jump = key_field(&model, "Alt 1-9");
+        assert_eq!(
+            tab_jump.display_label,
+            "Tabs: Alt 1-9 - Go directly to tab 1-9"
+        );
+        assert!(tab_jump.description.contains("Owner: Zellij"));
+
         let reveal = key_field(&model, "Alt r");
         assert_eq!(
             reveal.display_label,

@@ -32,6 +32,7 @@ User-visible runtime changes for Yazelix Next live here.
   moves to the zoxide-selected directory, sends it through `yzn-open`, renames
   the tab to the workspace root, and keeps the selected picker directory in
   Helix for Git repos.
+- `Alt 1` through `Alt 9` jump directly to tabs 1 through 9.
 - `Alt r` reveals the current Helix buffer in the managed Yazi sidebar, and
   `yzn reveal <target>` exposes the same active-tab reveal path inside a
   managed session.

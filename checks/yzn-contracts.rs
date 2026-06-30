@@ -120,6 +120,7 @@ fn expect_front_door(yzn: &Path) {
         "yzn reveal",
         "yzn sponsor",
         "Alt Shift L",
+        "Alt 1-9",
         "Alt r",
         "Alt z",
         "Codex resume",
@@ -872,6 +873,13 @@ fn expect_keybinds(config: &str) {
         r#"bind "Ctrl q" { Quit; }"#,
         r#"unbind "Ctrl h""#,
     ] {
+        assert!(
+            config.lines().any(|line| line.trim() == expected),
+            "config.kdl is missing {expected}",
+        );
+    }
+    for tab in 1..=9 {
+        let expected = format!(r#"bind "Alt {tab}" {{ GoToTab {tab}; }}"#);
         assert!(
             config.lines().any(|line| line.trim() == expected),
             "config.kdl is missing {expected}",

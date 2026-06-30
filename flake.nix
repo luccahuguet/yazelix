@@ -158,6 +158,7 @@ Workspace
   Ctrl p/t/n/q      Pane, tab, resize, quit
   Ctrl Alt h/l      Move tab left/right
   Ctrl Alt j/k      Move pane down/up
+  Alt 1-9           Go directly to tab 1-9
   Alt r             Reveal editor file in Yazi
   Alt Shift h       Toggle Yazi sidebar layout
   Alt z             Yazi zoxide jump into editor'
