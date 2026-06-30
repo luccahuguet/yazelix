@@ -126,20 +126,20 @@ fn run(config: &Config, raw_targets: impl IntoIterator<Item = OsString>) -> Resu
 
 impl Config {
     fn from_env() -> Self {
-        let state_dir = env::var_os("YAZELIX_STATE_DIR")
+        let state_dir = nonempty_env("YAZELIX_STATE_DIR")
             .map(PathBuf::from)
             .or_else(|| {
-                env::var_os("XDG_DATA_HOME").map(|dir| PathBuf::from(dir).join("yazelix-next"))
+                nonempty_env("XDG_DATA_HOME").map(|dir| PathBuf::from(dir).join("yazelix-next"))
             })
             .or_else(|| {
-                env::var_os("HOME").map(|dir| PathBuf::from(dir).join(".local/share/yazelix-next"))
+                nonempty_env("HOME").map(|dir| PathBuf::from(dir).join(".local/share/yazelix-next"))
             })
             .unwrap_or_else(|| env::temp_dir().join("yazelix-next"));
 
         Self {
-            editor: env::var_os("YZN_EDITOR").unwrap_or_else(|| "yzn-hx".into()),
+            editor: nonempty_env("YZN_EDITOR").unwrap_or_else(|| "yzn-hx".into()),
             git: "git".into(),
-            zellij: env::var_os("YZN_ZELLIJ").unwrap_or_else(|| "zellij".into()),
+            zellij: nonempty_env("YZN_ZELLIJ").unwrap_or_else(|| "zellij".into()),
             state_dir,
             session_id: bridge_session_id(env::var("YAZELIX_HELIX_BRIDGE_SESSION_ID").ok()),
             zellij_session_name: zellij_session_name_from_env(),
@@ -651,6 +651,10 @@ fn unix_millis() -> u128 {
         .duration_since(UNIX_EPOCH)
         .map(|duration| duration.as_millis())
         .unwrap_or_default()
+}
+
+fn nonempty_env(name: &str) -> Option<OsString> {
+    env::var_os(name).filter(|value| !value.is_empty())
 }
 
 fn log_event(config: &Config, level: LogLevel, message: &str) {

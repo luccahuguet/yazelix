@@ -52,7 +52,7 @@ User-visible runtime changes for Yazelix Next live here.
 - Nushell delegates the right prompt to Starship, so `right_format` in
   `~/.config/yazelix-next/starship.toml` is honored.
 - Generated runtime state defaults to `${XDG_DATA_HOME:-$HOME/.local/share}/yazelix-next`,
-  with `YAZELIX_STATE_DIR` still taking precedence.
+  with non-empty `YAZELIX_STATE_DIR` still taking precedence.
 - The top bar uses standalone Yazelix Zellij Bar with no `NORMAL` segment,
   native tab labels, the Yazelix home marker, selected widgets, a `YZN` runtime
   marker, bundled `tu` Codex quota/reset data, and a yzn-owned cache path; the

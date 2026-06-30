@@ -610,7 +610,7 @@ fn run_nu(yzn_nu: &Path, config_home: &Path, runtime: &Path, commands: &str) -> 
             .arg(commands)
             .env("XDG_DATA_HOME", runtime)
             .env("YAZELIX_NEXT_CONFIG_HOME", config_home)
-            .env_remove("YAZELIX_STATE_DIR")
+            .env("YAZELIX_STATE_DIR", "")
             .env("STARSHIP_CONFIG", "ambient-starship.toml"),
         &yzn_nu.display().to_string(),
     )

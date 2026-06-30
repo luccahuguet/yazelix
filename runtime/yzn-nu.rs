@@ -59,25 +59,25 @@ fn run() -> io::Result<()> {
 }
 
 fn config_home() -> io::Result<PathBuf> {
-    env::var_os("YAZELIX_NEXT_CONFIG_HOME")
+    nonempty_env("YAZELIX_NEXT_CONFIG_HOME")
         .map(PathBuf::from)
         .or_else(|| {
-            env::var_os("XDG_CONFIG_HOME").map(|path| PathBuf::from(path).join("yazelix-next"))
+            nonempty_env("XDG_CONFIG_HOME").map(|path| PathBuf::from(path).join("yazelix-next"))
         })
         .or_else(|| {
-            env::var_os("HOME").map(|path| PathBuf::from(path).join(".config/yazelix-next"))
+            nonempty_env("HOME").map(|path| PathBuf::from(path).join(".config/yazelix-next"))
         })
         .ok_or_else(|| io::Error::new(ErrorKind::NotFound, "HOME is required"))
 }
 
 fn state_dir() -> PathBuf {
-    env::var_os("YAZELIX_STATE_DIR")
+    nonempty_env("YAZELIX_STATE_DIR")
         .map(PathBuf::from)
         .or_else(|| {
-            env::var_os("XDG_DATA_HOME").map(|path| PathBuf::from(path).join("yazelix-next"))
+            nonempty_env("XDG_DATA_HOME").map(|path| PathBuf::from(path).join("yazelix-next"))
         })
         .or_else(|| {
-            env::var_os("HOME").map(|path| PathBuf::from(path).join(".local/share/yazelix-next"))
+            nonempty_env("HOME").map(|path| PathBuf::from(path).join(".local/share/yazelix-next"))
         })
         .unwrap_or_else(|| env::temp_dir().join("yazelix-next"))
 }
@@ -122,8 +122,8 @@ fn unix_nanos() -> u128 {
 }
 
 fn runtime_path() -> OsString {
-    match env::var_os("PATH") {
-        Some(path) if !path.is_empty() => {
+    match nonempty_env("PATH") {
+        Some(path) => {
             let mut merged = OsString::from(PATH_PREFIX);
             merged.push(":");
             merged.push(path);
@@ -131,4 +131,8 @@ fn runtime_path() -> OsString {
         }
         _ => PATH_PREFIX.into(),
     }
+}
+
+fn nonempty_env(name: &str) -> Option<OsString> {
+    env::var_os(name).filter(|value| !value.is_empty())
 }

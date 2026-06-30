@@ -75,6 +75,10 @@ with source paths in details. The `advanced` tab opens `nu/env.nu`,
 `nu/config.nu`, `starship.toml`, `yazi/init.lua`, and `yazi/keymap.toml` in
 the managed editor. Native files are created only when their row is activated.
 
+Generated runtime state for Zellij, Yazi, Nu, and the Helix bridge defaults to
+`${XDG_DATA_HOME:-$HOME/.local/share}/yazelix-next`; set `YAZELIX_STATE_DIR`
+to override.
+
 ## Shell Config
 
 `config.toml` defaults to `shell.program = "nu"`. New Zellij panes start a
@@ -133,9 +137,6 @@ user files:
 ```
 
 The same `YAZELIX_NEXT_CONFIG_HOME` root applies here.
-
-Generated runtime state defaults to `${XDG_DATA_HOME:-$HOME/.local/share}/yazelix-next`;
-set `YAZELIX_STATE_DIR` to override.
 
 ## Starship Config
 
@@ -223,11 +224,11 @@ wc -l .gitignore AGENTS.md README.md CHANGELOG.md ARCHITECTURE.md flake.nix pack
 | Language | Files | Lines |
 | --- | --- | ---: |
 | Ignore | `.gitignore` | 4 |
-| Markdown | `AGENTS.md`, `README.md`, `CHANGELOG.md`, `ARCHITECTURE.md` | 770 |
+| Markdown | `AGENTS.md`, `README.md`, `CHANGELOG.md`, `ARCHITECTURE.md` | 771 |
 | Nix | `flake.nix`, `packaging/tokenusage.nix`, `packaging/bar-render-request.nix` | 488 |
 | TOML | `config.toml`, `mars.toml`, `helix/config.toml`, `yazi/yazi.toml`, `yazi/keymap.toml`, `crates/yzn-config/Cargo.toml`, `crates/yzn-open/Cargo.toml` | 139 |
 | KDL | `config.kdl`, `layout.kdl`, `layout.swap.kdl` | 189 |
 | Nu | `nu/config.nu`, `nu/env.nu` | 11 |
 | Lua | `yazi/init.lua`, `yazi/plugins/sidebar-status.yazi/main.lua`, `yazi/plugins/zoxide-editor.yazi/main.lua` | 137 |
-| Rust | `crates/yzn-config/src/catalog.rs`, `crates/yzn-config/src/main.rs`, `crates/yzn-open/src/main.rs`, `checks/zellij-layout.rs`, `checks/yzn-contracts.rs`, `runtime/yzn-nu.rs`, `runtime/yzn-yazi.rs`, `runtime/yzn.rs`, `runtime/yzn-zellij-config.rs` | 5781 |
-| Total | owned project files | 7519 |
+| Rust | `crates/yzn-config/src/catalog.rs`, `crates/yzn-config/src/main.rs`, `crates/yzn-open/src/main.rs`, `checks/zellij-layout.rs`, `checks/yzn-contracts.rs`, `runtime/yzn-nu.rs`, `runtime/yzn-yazi.rs`, `runtime/yzn.rs`, `runtime/yzn-zellij-config.rs` | 5789 |
+| Total | owned project files | 7528 |
