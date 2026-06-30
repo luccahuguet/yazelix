@@ -70,7 +70,8 @@ User-visible runtime changes for Yazelix Next live here.
   keyboard protocol; replacing the agent popup with another managed popup hides
   it instead of killing the Codex process, `yzn menu` prints the same compact
   command/key reference, and `Alt h/l` route through pane orchestrator to skip
-  collapsed sidebars and fall back to previous/next tab.
+  collapsed sidebars and fall back to previous/next tab. When a managed popup is
+  visible, `Alt h/l` switches tabs instead of focusing panes behind the popup.
 
 ## 2026-06-25
 
