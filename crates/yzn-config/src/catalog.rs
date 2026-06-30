@@ -7,6 +7,21 @@ pub(crate) const CONTRACT_VERSION: u64 = 1;
 
 pub(crate) const OPEN_LOG_LEVEL_PATH: &str = "open.log_level";
 pub(crate) const SHELL_PROGRAM_PATH: &str = "shell.program";
+pub(crate) const WELCOME_ENABLED_PATH: &str = "welcome.enabled";
+pub(crate) const WELCOME_STYLE_PATH: &str = "welcome.style";
+pub(crate) const WELCOME_DURATION_SECONDS_PATH: &str = "welcome.duration_seconds";
+pub(crate) const WELCOME_STYLE_VALUES: &[&str] = &[
+    "static",
+    "logo",
+    "boids",
+    "boids_predator",
+    "boids_schools",
+    "mandelbrot",
+    "game_of_life_gliders",
+    "game_of_life_oscillators",
+    "game_of_life_bloom",
+    "random",
+];
 pub(crate) const POPUP_SIZE_PATH: &str = "popup.size";
 pub(crate) const DEFAULT_POPUP_SIZE: i64 = 95;
 pub(crate) const BAR_WIDGETS_PATH: &str = "bar.widgets";
@@ -107,6 +122,36 @@ pub(crate) const CONFIG_FIELDS: &[ConfigFieldSpec] = &[
         apply_detail: "Saved shell selection applies to newly launched panes and sessions.",
     },
     ConfigFieldSpec {
+        field: FieldSpec::boolean(
+            WELCOME_ENABLED_PATH,
+            "Show the startup welcome splash before entering the managed runtime.",
+        ),
+        default: ConfigDefault::Boolean(true),
+        apply_summary: "next launch",
+        apply_detail: "Saved welcome settings apply to newly launched sessions.",
+    },
+    ConfigFieldSpec {
+        field: FieldSpec::string_choice(
+            WELCOME_STYLE_PATH,
+            "Startup welcome style.",
+            WELCOME_STYLE_VALUES,
+            "known welcome style id",
+        ),
+        default: ConfigDefault::String("random"),
+        apply_summary: "next launch",
+        apply_detail: "Saved welcome settings apply to newly launched sessions.",
+    },
+    ConfigFieldSpec {
+        field: FieldSpec::integer(
+            WELCOME_DURATION_SECONDS_PATH,
+            "Startup welcome duration.",
+            "integer from 1 to 60 seconds",
+        ),
+        default: ConfigDefault::Integer(3),
+        apply_summary: "next launch",
+        apply_detail: "Saved welcome settings apply to newly launched sessions.",
+    },
+    ConfigFieldSpec {
         field: FieldSpec::integer(
             POPUP_SIZE_PATH,
             "Width and height percentage for managed popups.",
@@ -180,6 +225,7 @@ pub(crate) struct ConfigFieldSpec {
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum ConfigDefault {
     String(&'static str),
+    Boolean(bool),
     Integer(i64),
 }
 

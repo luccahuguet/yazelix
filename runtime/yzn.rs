@@ -12,6 +12,8 @@ use std::{
 
 const YZN_CONFIG_UI: &str = "@yznConfigUi@";
 const YZN_MENU: &str = "@yznMenu@";
+const YZN_SCREEN: &str = "@yznScreen@";
+const YZN_WELCOME: &str = "@yznWelcome@";
 const YZN_SHELL: &str = "@yznShell@";
 const YZN_ENV_SUPERVISOR: &str = "@yznEnvSupervisor@";
 const ZELLIJ: &str = "@zellij@";
@@ -62,6 +64,7 @@ fn run() -> Result<(), AppError> {
             expect_no_args("menu", &args)?;
             exec_plain(YZN_MENU)
         }
+        "screen" => exec_screen(args),
         "doctor" => {
             expect_no_args("doctor", &args)?;
             print_doctor()
@@ -122,12 +125,23 @@ fn exec_reveal(args: Vec<OsString>) -> Result<(), AppError> {
     exec(command, "yzn reveal")
 }
 
+fn exec_screen(args: Vec<OsString>) -> Result<(), AppError> {
+    let mut command = Command::new(YZN_SCREEN);
+    command
+        .args(args)
+        .env("YAZELIX_SCREEN_COMMAND_NAME", "yzn screen")
+        .env("PATH", runtime_path());
+    exec(command, "yzn screen")
+}
+
 fn exec_managed(through_mars: bool, zellij_args: Vec<OsString>) -> Result<(), AppError> {
     let runtime = Runtime::prepare()?;
-    let program = if through_mars { MARS } else { ZELLIJ };
+    let program = if through_mars { MARS } else { YZN_WELCOME };
     let mut command = Command::new(program);
     if through_mars {
-        command.arg("-e").arg(ZELLIJ);
+        command.arg("-e").arg(YZN_WELCOME).arg(ZELLIJ);
+    } else {
+        command.arg(ZELLIJ);
     }
     command
         .arg("--config")
@@ -161,6 +175,9 @@ struct Runtime {
     bridge_session_id: OsString,
     yzn_open_log: String,
     shell_program: String,
+    welcome_enabled: String,
+    welcome_style: String,
+    welcome_duration_seconds: String,
     mars_config_source: &'static str,
     mars_config_home: PathBuf,
     zellij_sidecar: PathBuf,
@@ -183,6 +200,10 @@ impl Runtime {
         let config_toml = config_home.join("config.toml");
         let yzn_open_log = config_value(&config_home, &config_toml, "open.log_level")?;
         let shell_program = config_value(&config_home, &config_toml, "shell.program")?;
+        let welcome_enabled = config_value(&config_home, &config_toml, "welcome.enabled")?;
+        let welcome_style = config_value(&config_home, &config_toml, "welcome.style")?;
+        let welcome_duration_seconds =
+            config_value(&config_home, &config_toml, "welcome.duration_seconds")?;
         let bar_widgets = trim_output(config_value(&config_home, &config_toml, "bar.widgets")?);
         let popup_size = trim_output(config_value(&config_home, &config_toml, "popup.size")?);
         let (layout_source, layout) = active_layout(&state_dir, &bar_widgets)?;
@@ -260,6 +281,9 @@ impl Runtime {
             bridge_session_id: bridge_session_id(),
             yzn_open_log: trim_output(yzn_open_log),
             shell_program: trim_output(shell_program),
+            welcome_enabled: trim_output(welcome_enabled),
+            welcome_style: trim_output(welcome_style),
+            welcome_duration_seconds: trim_output(welcome_duration_seconds),
             mars_config_source,
             mars_config_home,
             zellij_sidecar,
@@ -276,11 +300,18 @@ impl Runtime {
 
     fn apply(&self, command: &mut Command) {
         command
+            .env("YAZELIX_NEXT_CONFIG_HOME", &self.config_home)
             .env("YAZELIX_STATE_DIR", &self.state_dir)
             .env("YAZELIX_HELIX_BRIDGE_SESSION_ID", &self.bridge_session_id)
             .env("EDITOR", YZN_HELIX)
             .env("VISUAL", YZN_HELIX)
             .env("YZN_OPEN_LOG", &self.yzn_open_log)
+            .env("YZN_WELCOME_ENABLED", &self.welcome_enabled)
+            .env("YZN_WELCOME_STYLE", &self.welcome_style)
+            .env(
+                "YZN_WELCOME_DURATION_SECONDS",
+                &self.welcome_duration_seconds,
+            )
             .env("MARS_CONFIG_HOME", &self.mars_config_home)
             .env("YAZELIX_STATUS_BAR_CACHE_PATH", &self.zellij_status_cache)
             .env("ZELLIJ_PLUGIN_PERMISSIONS_CACHE", &self.zellij_permissions)
@@ -314,6 +345,9 @@ fn print_status() -> Result<(), AppError> {
     println!("state dir: {}", runtime.state_dir.display());
     println!("shell: {}", runtime.shell_program);
     println!("open log: {}", runtime.yzn_open_log);
+    println!("welcome enabled: {}", runtime.welcome_enabled);
+    println!("welcome style: {}", runtime.welcome_style);
+    println!("welcome duration: {}s", runtime.welcome_duration_seconds);
     println!("mars config: {}", runtime.mars_config());
     println!("zellij config: {}", runtime.zellij_config());
     println!("zellij sidecar: {}", runtime.zellij_sidecar.display());
@@ -334,6 +368,12 @@ fn print_doctor() -> Result<(), AppError> {
     doctor_ok("state dir", runtime.state_dir.display());
     doctor_ok("shell.program", &runtime.shell_program);
     doctor_ok("open.log_level", &runtime.yzn_open_log);
+    doctor_ok("welcome.enabled", &runtime.welcome_enabled);
+    doctor_ok("welcome.style", &runtime.welcome_style);
+    doctor_ok(
+        "welcome.duration_seconds",
+        &runtime.welcome_duration_seconds,
+    );
     doctor_ok("mars config", runtime.mars_config());
     doctor_ok("zellij config", runtime.zellij_config());
     doctor_ok("zellij sidecar", runtime.zellij_sidecar.display());
@@ -344,6 +384,8 @@ fn print_doctor() -> Result<(), AppError> {
     doctor_ok("layout", runtime.layout());
     doctor_ok("editor", YZN_HELIX);
     doctor_ok("config helper", YZN_CONFIG);
+    doctor_ok("screen helper", YZN_SCREEN);
+    doctor_ok("welcome helper", YZN_WELCOME);
     doctor_ok("zellij helper", YZN_ZELLIJ_CONFIG);
     doctor_ok("reveal helper", YZN_REVEAL);
     doctor_ok("yazi cli", YZN_YA);
@@ -386,6 +428,8 @@ fn check_doctor_inputs() -> Result<(), AppError> {
         ("front door", current_exe.as_path()),
         ("config UI", Path::new(YZN_CONFIG_UI)),
         ("menu helper", Path::new(YZN_MENU)),
+        ("screen helper", Path::new(YZN_SCREEN)),
+        ("welcome helper", Path::new(YZN_WELCOME)),
         ("config helper", Path::new(YZN_CONFIG)),
         ("zellij config helper", Path::new(YZN_ZELLIJ_CONFIG)),
         ("reveal helper", Path::new(YZN_REVEAL)),
@@ -779,6 +823,7 @@ Usage:
   yzn launch [zellij-args...]
   yzn menu
   yzn reveal <target>
+  yzn screen [style]
   yzn sponsor
   yzn status
 
@@ -790,6 +835,7 @@ Commands:
   launch  Open Mars and start Yazelix
   menu    Show Yazelix Next menu
   reveal  Reveal a file or directory in the managed Yazi sidebar
+  screen  Show a Yazelix terminal screen
   sponsor Open the Yazelix sponsor page or print its URL
   status  Show Yazelix runtime status
   help    Show this help

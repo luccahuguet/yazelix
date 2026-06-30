@@ -53,6 +53,7 @@ impl ConfigDefault {
     fn json(self) -> JsonValue {
         match self {
             Self::String(value) => json!(value),
+            Self::Boolean(value) => json!(value),
             Self::Integer(value) => json!(value),
         }
     }
@@ -371,6 +372,7 @@ fn read_config_field(path: &Path, spec: &ConfigFieldSpec) -> Result<String> {
     validate_config_value(spec.field.path, value)?;
     match spec.field.kind {
         "string" => Ok(spec.field.json_choice(value)?.to_string()),
+        "boolean" => Ok(json_bool(spec.field.path, value)?.to_string()),
         "integer" => Ok(json_i64(spec.field.path, value)?.to_string()),
         _ => Err(error(format!(
             "{} must be {}",
@@ -833,11 +835,15 @@ fn validate_config_value(field_path: &str, value: &JsonValue) -> Result<()> {
 
     let spec = &config_field(field_path)?.field;
     match spec.kind {
+        "boolean" => json_bool(field_path, value).map(|_| ()),
         "string" => spec.json_choice(value).map(|_| ()),
         "integer" => {
             let value = json_i64(field_path, value)?;
             if field_path == POPUP_SIZE_PATH && !(1..=100).contains(&value) {
                 return Err(error(format!("{field_path} must be between 1 and 100")));
+            }
+            if field_path == WELCOME_DURATION_SECONDS_PATH && !(1..=60).contains(&value) {
+                return Err(error(format!("{field_path} must be between 1 and 60")));
             }
             Ok(())
         }

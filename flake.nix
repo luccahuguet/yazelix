@@ -27,6 +27,10 @@
       url = "github:luccahuguet/yazelix-zellij-pane-orchestrator";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    yazelixScreen = {
+      url = "github:luccahuguet/yazelix-screen";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     ratconfig = {
       url = "github:luccahuguet/ratconfig";
       flake = false;
@@ -50,6 +54,7 @@
     yazelixZellijPopup,
     yazelixZellijBar,
     yazelixZellijPaneOrchestrator,
+    yazelixScreen,
     ratconfig,
     autoLayoutYazi,
     starshipYazi,
@@ -145,6 +150,7 @@ Commands
   yzn launch        Open Mars and start Yazelix
   yzn menu          Show this menu
   yzn reveal        Reveal a path in the managed Yazi sidebar
+  yzn screen        Show a Yazelix terminal screen
   yzn sponsor       Open sponsor page or print URL
   yzn status        Show runtime status
 
@@ -179,6 +185,21 @@ Workspace
       yazelixZellijPaneOrchestratorPackage =
         yazelixZellijPaneOrchestrator.packages.${system}.yazelix_zellij_pane_orchestrator;
       tokenusage = import ./packaging/tokenusage.nix {inherit pkgs;};
+      yazelixScreenPackage = yazelixScreen.packages.${system}.yzs;
+      yznWelcome = pkgs.writeShellApplication {
+        name = "yzn-welcome";
+        text = ''
+          if [ "''${YZN_WELCOME_ENABLED:-true}" != false ]; then
+            if ! YAZELIX_SCREEN_COMMAND_NAME='yzn screen' ${yazelixScreenPackage}/bin/yzs "''${YZN_WELCOME_STYLE:-random}" --duration-seconds "''${YZN_WELCOME_DURATION_SECONDS:-3}"; then
+              printf 'yzn welcome: failed to render welcome screen\n' >&2
+            fi
+          fi
+          if [ "$#" -eq 0 ]; then
+            exit 0
+          fi
+          exec "$@"
+        '';
+      };
       yznZellijConfig = rustBin "yzn-zellij-config" ./runtime/yzn-zellij-config.rs;
       yazelixHelixPackage = yazelixHelix.packages.${system}.yazelix_helix;
       yznHelixConfig = pkgs.writeTextDir "config.toml" (builtins.readFile ./helix/config.toml);
@@ -315,6 +336,8 @@ Workspace
       yznCommandSrc = pkgs.replaceVars ./runtime/yzn.rs {
         yznConfigUi = "${yznConfigUi}/bin/yzn-config-ui";
         yznMenu = "${yznMenu}/bin/yzn-menu";
+        yznScreen = "${yazelixScreenPackage}/bin/yzs";
+        yznWelcome = "${yznWelcome}/bin/yzn-welcome";
         yznShell = "${yznShell}/bin/yzn-shell";
         yznEnvSupervisor = "${yznEnvSupervisor}/bin/yzn-env-supervisor";
         zellij = "${yazelixZellijPackage}/bin/zellij";

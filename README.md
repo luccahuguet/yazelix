@@ -6,7 +6,9 @@ panes, a bridge-enabled Yazelix Helix editor, reef cursor colors, and the
 Yazelix Zellij fork. The top bar uses a rendered Yazelix Zellij Bar tray with
 configurable widgets, a `YZN` runtime marker, and bundled `tu` for usage
 widgets. `Alt Shift J/K/M` toggle managed LazyGit, config, and menu popups;
-`Alt Shift L` hides or shows a persistent Codex resume popup.
+`Alt Shift L` hides or shows a persistent Codex resume popup. Launches show a
+brief configurable welcome splash, and `yzn screen` can run the same terminal
+screen styles directly.
 
 ## Run
 
@@ -20,6 +22,8 @@ nix run .#yzn -- env
 nix run .#yzn -- enter
 nix run .#yzn -- launch
 nix run .#yzn -- menu
+nix run .#yzn -- screen
+nix run .#yzn -- screen static
 nix run .#yzn -- status
 nix run .#yzn -- sponsor
 ```
@@ -29,13 +33,17 @@ doctor` checks owned runtime setup without launching Mars or Zellij, `yzn
 env` opens the configured managed shell without launching the UI, `yzn enter`
 starts the managed Zellij runtime inside the current terminal, `yzn launch`
 opens Mars first, and `yzn menu` prints the compact command/key
-reference. `yzn status` prints a compact runtime/config summary, including
-popup size and selected bar widgets, without launching Mars or Zellij. `yzn
-sponsor` opens the GitHub Sponsors page when a host opener is available,
-otherwise it prints the URL. Bare `yzn` defaults to `yzn launch`. If `doctor`,
-`env`, `enter`, `launch`, or `status` fails before handing control to a child,
-`yzn` prints a concise startup diagnostic with the reason and, when applicable,
-the config path to check.
+reference. `yzn screen [style]` shows a Yazelix terminal screen until a key is
+pressed; styles are `static`, `logo`, `boids`, `boids_predator`,
+`boids_schools`, `mandelbrot`, `game_of_life_gliders`,
+`game_of_life_oscillators`, `game_of_life_bloom`, and `random`. `yzn status`
+prints a compact runtime/config summary, including welcome settings, popup
+size, and selected bar widgets, without launching Mars or Zellij. `yzn sponsor`
+opens the GitHub Sponsors page when a host opener is available, otherwise it
+prints the URL. Bare `yzn` defaults to `yzn launch`. If `doctor`, `env`,
+`enter`, `launch`, or `status` fails before handing control to a child, `yzn`
+prints a concise startup diagnostic with the reason and, when applicable, the
+config path to check.
 
 ## Install
 
@@ -67,19 +75,39 @@ The `config` tab controls `open.log_level`, which sets the managed
 `YZN_OPEN_LOG` level used by Yazi-to-Helix opens. Values are `off`, `error`,
 `info`, and `debug`. It also controls `shell.program`, which selects the
 packaged shell for new Zellij panes. Values are `nu`, `bash`, `zsh`, and
-`fish`. The same tab edits `[popup].size`, the shared width and height
-percentage for managed popups, and `[bar].widgets`, whose default tray is
-`editor`, `shell`, `term`, `codex_usage`, `cpu`, and `ram`; allowed opt-ins are
-`session`, `claude_usage`, and `opencode_go_usage`. The `mars` and `zellij`
-tabs edit native sidecars that apply to new launches. The `keys` tab lists
-current packaged bindings in read-only group, key, action, and owner columns,
-with source paths in details. The `advanced` tab opens `nu/env.nu`,
-`nu/config.nu`, `starship.toml`, `yazi/init.lua`, and `yazi/keymap.toml` in
-the managed editor. Native files are created only when their row is activated.
+`fish`. It also controls `[welcome].enabled`, `[welcome].style`, and
+`[welcome].duration_seconds`, which apply to the startup splash before managed
+Zellij starts. Welcome styles are the same fixed `yzn screen` styles; `random`
+chooses from the fixed pool and there is no configurable pool. The same tab
+edits `[popup].size`, the shared width and height percentage for managed
+popups, and `[bar].widgets`, whose default tray is `editor`, `shell`, `term`,
+`codex_usage`, `cpu`, and `ram`; allowed opt-ins are `session`,
+`claude_usage`, and `opencode_go_usage`. The `mars` and `zellij` tabs edit
+native sidecars that apply to new launches. The `keys` tab lists current
+packaged bindings in read-only group, key, action, and owner columns, with
+source paths in details. The `advanced` tab opens `nu/env.nu`, `nu/config.nu`,
+`starship.toml`, `yazi/init.lua`, and `yazi/keymap.toml` in the managed
+editor. Native files are created only when their row is activated.
 
 Generated runtime state for Zellij, Yazi, Nu, and the Helix bridge defaults to
 `${XDG_DATA_HOME:-$HOME/.local/share}/yazelix-next`; set `YAZELIX_STATE_DIR`
 to override.
+
+## Welcome Screen
+
+`yzn enter` and `yzn launch` run a bounded welcome splash before Zellij starts.
+The default is enabled, random, and 3 seconds:
+
+```toml
+[welcome]
+enabled = true
+style = "random"
+duration_seconds = 3
+```
+
+Set `enabled = false` to skip the splash, or set `style` to one fixed screen
+style such as `static`, `logo`, or `mandelbrot`. The static style uses the
+Yazelix welcome card copy from the main runtime without the trailing prompt.
 
 ## Shell Config
 
@@ -233,12 +261,12 @@ wc -l .gitignore AGENTS.md README.md CHANGELOG.md ARCHITECTURE.md flake.nix pack
 | Language | Files | Lines |
 | --- | --- | ---: |
 | Ignore | `.gitignore` | 4 |
-| Markdown | `AGENTS.md`, `README.md`, `CHANGELOG.md`, `ARCHITECTURE.md` | 797 |
-| Nix | `flake.nix`, `packaging/tokenusage.nix`, `packaging/bar-render-request.nix` | 484 |
+| Markdown | `AGENTS.md`, `README.md`, `CHANGELOG.md`, `ARCHITECTURE.md` | 844 |
+| Nix | `flake.nix`, `packaging/tokenusage.nix`, `packaging/bar-render-request.nix` | 507 |
 | Shell | `shell/sh/yzn-agent.sh`, `shell/sh/yzn-env-supervisor.sh`, `shell/sh/yzn-helix.sh`, `shell/sh/yzn-shell.sh` | 64 |
-| TOML | `config.toml`, `mars.toml`, `helix/config.toml`, `yazi/yazi.toml`, `yazi/keymap.toml`, `crates/yzn-config/Cargo.toml`, `crates/yzn-open/Cargo.toml` | 142 |
+| TOML | `config.toml`, `mars.toml`, `helix/config.toml`, `yazi/yazi.toml`, `yazi/keymap.toml`, `crates/yzn-config/Cargo.toml`, `crates/yzn-open/Cargo.toml` | 152 |
 | KDL | `config.kdl`, `layout.kdl`, `layout.swap.kdl` | 199 |
 | Nu | `nu/config.nu`, `nu/env.nu` | 11 |
 | Lua | `yazi/init.lua`, `yazi/plugins/sidebar-state.yazi/main.lua`, `yazi/plugins/sidebar-status.yazi/main.lua`, `yazi/plugins/zoxide-editor.yazi/main.lua` | 235 |
-| Rust | `crates/yzn-config/src/catalog.rs`, `crates/yzn-config/src/main.rs`, `crates/yzn-open/src/bin/yzn-reveal.rs`, `crates/yzn-open/src/main.rs`, `checks/zellij-layout.rs`, `checks/yzn-contracts.rs`, `runtime/yzn-nu.rs`, `runtime/yzn-yazi.rs`, `runtime/yzn.rs`, `runtime/yzn-zellij-config.rs` | 6209 |
-| Total | owned project files | 8145 |
+| Rust | `crates/yzn-config/src/catalog.rs`, `crates/yzn-config/src/main.rs`, `crates/yzn-open/src/bin/yzn-reveal.rs`, `crates/yzn-open/src/main.rs`, `checks/zellij-layout.rs`, `checks/yzn-contracts.rs`, `runtime/yzn-nu.rs`, `runtime/yzn-yazi.rs`, `runtime/yzn.rs`, `runtime/yzn-zellij-config.rs` | 6367 |
+| Total | owned project files | 8383 |

@@ -106,6 +106,7 @@ fn expect_front_door(yzn: &Path) {
         "yzn launch [zellij-args...]",
         "yzn menu",
         "yzn reveal <target>",
+        "yzn screen [style]",
         "yzn sponsor",
         "yzn status",
     ] {
@@ -118,6 +119,7 @@ fn expect_front_door(yzn: &Path) {
         "yzn env",
         "yzn status",
         "yzn reveal",
+        "yzn screen",
         "yzn sponsor",
         "Alt Shift L",
         "Alt 1-9",
@@ -129,6 +131,16 @@ fn expect_front_door(yzn: &Path) {
     }
     let reveal_help = run_help(&yzn_bin, &["reveal", "--help"]);
     expect_contains(&reveal_help, "yzn reveal <target>", "yzn reveal help");
+    let screen_help = run_help(&yzn_bin, &["screen", "--help"]);
+    for expected in [
+        "yzn screen [STYLE]",
+        "static",
+        "logo",
+        "mandelbrot",
+        "random",
+    ] {
+        expect_contains(&screen_help, expected, "yzn screen help");
+    }
 
     let yzn_launcher = binary_text(&yzn_bin);
     for expected in [
@@ -136,13 +148,21 @@ fn expect_front_door(yzn: &Path) {
         "YAZELIX_STATUS_BAR_CACHE_PATH",
         "ZELLIJ_PLUGIN_PERMISSIONS_CACHE",
         "YAZELIX_SESSION_TERMINAL",
+        "YZN_WELCOME_ENABLED",
+        "YZN_WELCOME_STYLE",
+        "YZN_WELCOME_DURATION_SECONDS",
+        "welcome.enabled",
+        "welcome.style",
+        "welcome.duration_seconds",
         "bar.widgets",
         "popup.size",
         "lazygit",
         "yzn-bar-render",
         "yzn-env-supervisor",
+        "yzn-welcome",
         "yzn-shell",
         "yzn-reveal",
+        "/bin/yzs",
         "yazelix-helix",
         "yazelix_pane_orchestrator.wasm",
         "/bin/ya",
@@ -176,6 +196,9 @@ fn expect_front_door(yzn: &Path) {
         format!("state dir: {}", state_dir.display()),
         "shell: nu".to_string(),
         "open log: info".to_string(),
+        "welcome enabled: true".to_string(),
+        "welcome style: random".to_string(),
+        "welcome duration: 3s".to_string(),
         r#"bar widgets: ["editor","shell","term","codex_usage","cpu","ram"]"#.to_string(),
         "popup size: 95".to_string(),
         "layout: packaged (/nix/store/".to_string(),
@@ -319,8 +342,13 @@ fn expect_front_door(yzn: &Path) {
         "Yazelix doctor".to_string(),
         format!("ok config home: {}", doctor_config_home.display()),
         "ok open.log_level: info".to_string(),
+        "ok welcome.enabled: true".to_string(),
+        "ok welcome.style: random".to_string(),
+        "ok welcome.duration_seconds: 3".to_string(),
         r#"ok bar.widgets: ["editor","shell","term","codex_usage","cpu","ram"]"#.to_string(),
         "ok popup.size: 95".to_string(),
+        "ok screen helper: /nix/store/".to_string(),
+        "ok welcome helper: /nix/store/".to_string(),
         "ok yazi opener: /nix/store/".to_string(),
         "ok reveal helper: /nix/store/".to_string(),
         "ok yazi cli: /nix/store/".to_string(),
@@ -442,6 +470,9 @@ fn expect_config_ui(yzn: &Path) {
     for expected in [
         "log_level = \"info\"",
         "program = \"nu\"",
+        "enabled = true",
+        "style = \"random\"",
+        "duration_seconds = 3",
         "size = 95",
         "widgets = [\"editor\", \"shell\", \"term\", \"codex_usage\", \"cpu\", \"ram\"]",
     ] {
@@ -454,6 +485,9 @@ fn expect_config_ui(yzn: &Path) {
     for (path, expected) in [
         ("open.log_level", "info"),
         ("shell.program", "nu"),
+        ("welcome.enabled", "true"),
+        ("welcome.style", "random"),
+        ("welcome.duration_seconds", "3"),
         ("popup.size", "95"),
         (
             "bar.widgets",
@@ -498,6 +532,10 @@ fn expect_config_ui(yzn: &Path) {
         "log_level = \"info\"",
         "[shell]",
         "program = \"nu\"",
+        "[welcome]",
+        "enabled = true",
+        "style = \"random\"",
+        "duration_seconds = 3",
         "[popup]",
         "size = 95",
         "[bar]",
@@ -532,6 +570,16 @@ fn expect_startup_diagnostics(yzn: &Path) {
         &bad_popup_config,
         "[open]\nlog_level = \"info\"\n\n[shell]\nprogram = \"nu\"\n\n[popup]\nsize = 101\n",
     );
+    let bad_welcome_style_config = temp.path.join("bad-welcome-style-config");
+    let bad_welcome_style = write_config_home(
+        &bad_welcome_style_config,
+        "[open]\nlog_level = \"info\"\n\n[shell]\nprogram = \"nu\"\n\n[welcome]\nstyle = \"matrix\"\n",
+    );
+    let bad_welcome_duration_config = temp.path.join("bad-welcome-duration-config");
+    let bad_welcome_duration = write_config_home(
+        &bad_welcome_duration_config,
+        "[open]\nlog_level = \"info\"\n\n[shell]\nprogram = \"nu\"\n\n[welcome]\nduration_seconds = 0\n",
+    );
 
     for (config_home, check, reason, label) in [
         (
@@ -557,6 +605,18 @@ fn expect_startup_diagnostics(yzn: &Path) {
             &bad_popup,
             "popup.size must be between 1 and 100",
             "invalid popup size",
+        ),
+        (
+            &bad_welcome_style_config,
+            &bad_welcome_style,
+            "welcome.style must be one of: static, logo, boids, boids_predator, boids_schools, mandelbrot, game_of_life_gliders, game_of_life_oscillators, game_of_life_bloom, random",
+            "invalid welcome style",
+        ),
+        (
+            &bad_welcome_duration_config,
+            &bad_welcome_duration,
+            "welcome.duration_seconds must be between 1 and 60",
+            "invalid welcome duration",
         ),
     ] {
         for command in ["enter", "status", "doctor"] {

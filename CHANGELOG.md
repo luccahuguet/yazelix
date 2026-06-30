@@ -25,6 +25,11 @@ User-visible runtime changes for Yazelix Next live here.
   compact runtime/config summary, `doctor` checks owned setup, and `sponsor`
   opens or prints the GitHub Sponsors URL. Pre-exec failures print a concise
   Yazelix diagnostic with the relevant config path when available.
+- `yzn screen [style]` shows a Yazelix terminal screen directly. Startup runs a
+  bounded welcome splash before managed Zellij, controlled by
+  `[welcome].enabled`, `[welcome].style`, and `[welcome].duration_seconds`.
+  The fixed style set includes the static Yazelix welcome card, imported screen
+  animations, and `random`; configurable pools are intentionally not exposed.
 - `yzn config` ignores unsupported modified terminal keys instead of treating
   them as text.
 - `yzn config` restores raw terminal mode if alternate-screen setup fails.
