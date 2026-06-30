@@ -1,6 +1,6 @@
-use anyhow::{Context, Result, bail};
+use anyhow::{bail, Context, Result};
 use serde::{Deserialize, Serialize};
-use serde_json::{Value, json};
+use serde_json::{json, Value};
 use std::{
     env,
     ffi::OsString,
@@ -129,7 +129,10 @@ impl Config {
         let state_dir = env::var_os("YAZELIX_STATE_DIR")
             .map(PathBuf::from)
             .or_else(|| {
-                env::var_os("XDG_RUNTIME_DIR").map(|dir| PathBuf::from(dir).join("yazelix-next"))
+                env::var_os("XDG_DATA_HOME").map(|dir| PathBuf::from(dir).join("yazelix-next"))
+            })
+            .or_else(|| {
+                env::var_os("HOME").map(|dir| PathBuf::from(dir).join(".local/share/yazelix-next"))
             })
             .unwrap_or_else(|| env::temp_dir().join("yazelix-next"));
 
@@ -440,11 +443,10 @@ fn open_editor_pane(config: &Config, targets: &[PathBuf], cwd: &Path) -> Result<
         &format!(
             "opening editor pane program={} args={}",
             config.zellij.to_string_lossy(),
-            json!(
-                args.iter()
-                    .map(|arg| arg.to_string_lossy().into_owned())
-                    .collect::<Vec<_>>()
-            )
+            json!(args
+                .iter()
+                .map(|arg| arg.to_string_lossy().into_owned())
+                .collect::<Vec<_>>())
         ),
     );
 

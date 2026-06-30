@@ -149,7 +149,7 @@ protocol, environment, or session startup.
 `runtime/yzn.rs`. Nix substitutes store paths into that binary source, but Rust
 owns the startup wiring and final `exec` handoff:
 
-- establish `YAZELIX_STATE_DIR` and the top-level Helix bridge session id
+- establish XDG-data-backed `YAZELIX_STATE_DIR` and the top-level Helix bridge session id
 - set managed `EDITOR` and `VISUAL`
 - resolve the Yazelix config home from `YAZELIX_NEXT_CONFIG_HOME`,
   `XDG_CONFIG_HOME`, or `HOME`

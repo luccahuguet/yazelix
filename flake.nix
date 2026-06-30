@@ -199,7 +199,7 @@ Workspace
         name = "yzn-hx";
         runtimeInputs = [pkgs.coreutils];
         text = ''
-          export YAZELIX_STATE_DIR="''${YAZELIX_STATE_DIR:-''${XDG_RUNTIME_DIR:-/tmp}/yazelix-next}"
+          export YAZELIX_STATE_DIR="''${YAZELIX_STATE_DIR:-''${XDG_DATA_HOME:-''${HOME:-/tmp}/.local/share}/yazelix-next}"
           ${helperBridgeSessionEnv}
           export YAZELIX_HELIX_BRIDGE=1
           YAZELIX_HELIX_BRIDGE_INSTANCE_ID="hx-$(date +%s)-$$"

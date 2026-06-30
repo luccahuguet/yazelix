@@ -34,7 +34,7 @@ fn run() -> io::Result<()> {
         PathBuf::from(EMPTY_STARSHIP_CONFIG)
     };
     let packaged_nu = PathBuf::from(PACKAGED_NU);
-    let runtime_nu = runtime_dir().join("yazelix-next/nu");
+    let runtime_nu = state_dir().join("nu");
     fs::create_dir_all(&runtime_nu)?;
 
     let env_config = runtime_nu.join("env.nu");
@@ -70,11 +70,16 @@ fn config_home() -> io::Result<PathBuf> {
         .ok_or_else(|| io::Error::new(ErrorKind::NotFound, "HOME is required"))
 }
 
-fn runtime_dir() -> PathBuf {
-    env::var_os("XDG_RUNTIME_DIR")
-        .or_else(|| env::var_os("TMPDIR"))
+fn state_dir() -> PathBuf {
+    env::var_os("YAZELIX_STATE_DIR")
         .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from("/tmp"))
+        .or_else(|| {
+            env::var_os("XDG_DATA_HOME").map(|path| PathBuf::from(path).join("yazelix-next"))
+        })
+        .or_else(|| {
+            env::var_os("HOME").map(|path| PathBuf::from(path).join(".local/share/yazelix-next"))
+        })
+        .unwrap_or_else(|| env::temp_dir().join("yazelix-next"))
 }
 
 fn write_layered_config(

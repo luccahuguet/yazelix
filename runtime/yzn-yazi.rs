@@ -189,7 +189,10 @@ fn state_dir() -> PathBuf {
     nonempty_env("YAZELIX_STATE_DIR")
         .map(PathBuf::from)
         .or_else(|| {
-            nonempty_env("XDG_RUNTIME_DIR").map(|path| PathBuf::from(path).join("yazelix-next"))
+            nonempty_env("XDG_DATA_HOME").map(|path| PathBuf::from(path).join("yazelix-next"))
+        })
+        .or_else(|| {
+            nonempty_env("HOME").map(|path| PathBuf::from(path).join(".local/share/yazelix-next"))
         })
         .unwrap_or_else(|| PathBuf::from("/tmp/yazelix-next"))
 }

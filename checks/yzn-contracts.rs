@@ -149,6 +149,7 @@ fn expect_front_door(yzn: &Path) {
     for expected in [
         "Yazelix status".to_string(),
         format!("config home: {}", config_home.display()),
+        format!("state dir: {}", state_dir.display()),
         "shell: nu".to_string(),
         "open log: info".to_string(),
         r#"bar widgets: ["editor","shell","term","codex_usage","cpu","ram"]"#.to_string(),
@@ -158,6 +159,21 @@ fn expect_front_door(yzn: &Path) {
     ] {
         expect_contains(&status, &expected, "yzn status");
     }
+    let data_home = temp.path.join("data-home");
+    let data_status = successful_stdout(
+        Command::new(&yzn_bin)
+            .arg("status")
+            .env("YAZELIX_NEXT_CONFIG_HOME", &config_home)
+            .env("XDG_DATA_HOME", &data_home)
+            .env_remove("YAZELIX_STATE_DIR"),
+        "yzn status XDG data state",
+    );
+    expect_contains(
+        &data_status,
+        &format!("state dir: {}", data_home.join("yazelix-next").display()),
+        "yzn status XDG data state",
+    );
+
     let permissions = fs::read_to_string(state_dir.join("zellij/permissions.kdl")).unwrap();
     let runtime_config = fs::read_to_string(state_dir.join("zellij/config.kdl")).unwrap();
     let home = format!("{:?}", env::var("HOME").expect("HOME is required by yzn"));
@@ -592,8 +608,9 @@ fn run_nu(yzn_nu: &Path, config_home: &Path, runtime: &Path, commands: &str) -> 
         Command::new(yzn_nu)
             .arg("--commands")
             .arg(commands)
-            .env("XDG_RUNTIME_DIR", runtime)
+            .env("XDG_DATA_HOME", runtime)
             .env("YAZELIX_NEXT_CONFIG_HOME", config_home)
+            .env_remove("YAZELIX_STATE_DIR")
             .env("STARSHIP_CONFIG", "ambient-starship.toml"),
         &yzn_nu.display().to_string(),
     )
