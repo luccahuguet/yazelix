@@ -16,6 +16,7 @@ nix run .#yzn
 nix run .#yzn -- help
 nix run .#yzn -- config
 nix run .#yzn -- doctor
+nix run .#yzn -- env
 nix run .#yzn -- enter
 nix run .#yzn -- launch
 nix run .#yzn -- menu
@@ -25,13 +26,14 @@ nix run .#yzn -- sponsor
 
 `yzn help` prints help, `yzn config` opens the Ratconfig UI, `yzn
 doctor` checks owned runtime setup without launching Mars or Zellij, `yzn
-enter` starts the managed Zellij runtime inside the current terminal, `yzn
-launch` opens Mars first, and `yzn menu` prints the compact command/key
+env` opens the configured managed shell without launching the UI, `yzn enter`
+starts the managed Zellij runtime inside the current terminal, `yzn launch`
+opens Mars first, and `yzn menu` prints the compact command/key
 reference. `yzn status` prints a compact runtime/config summary, including
 popup size and selected bar widgets, without launching Mars or Zellij. `yzn
 sponsor` opens the GitHub Sponsors page when a host opener is available,
 otherwise it prints the URL. Bare `yzn` defaults to `yzn launch`. If `doctor`,
-`enter`, `launch`, or `status` fails before handing control to Zellij or Mars,
+`env`, `enter`, `launch`, or `status` fails before handing control to a child,
 `yzn` prints a concise startup diagnostic with the reason and, when applicable,
 the config path to check.
 
@@ -81,10 +83,12 @@ to override.
 
 ## Shell Config
 
-`config.toml` defaults to `shell.program = "nu"`. New Zellij panes start a
-packaged shell dispatcher that reads this value and execs the matching packaged
-`nu`, `bash`, `zsh`, or `fish`. The selection applies to new panes and
-sessions. Bash, Zsh, and Fish are packaged binaries with their normal
+`config.toml` defaults to `shell.program = "nu"`. New Zellij panes and `yzn
+env` start a packaged shell dispatcher that reads this value and execs the
+matching packaged `nu`, `bash`, `zsh`, or `fish`. The managed shell PATH also
+includes packaged `hx`, `lazygit`, and `git`. The selection applies to new
+panes, sessions, and non-UI shell entry. Bash, Zsh, and Fish are packaged
+binaries with their normal
 interactive startup behavior; Yazelix Next only manages extra shell config for
 Nu.
 
@@ -218,17 +222,18 @@ nix run --override-input yazelixZellijPaneOrchestrator ../yazelix-zellij-pane-or
 Counts owned project files by language with `wc -l`.
 
 ```sh
-wc -l .gitignore AGENTS.md README.md CHANGELOG.md ARCHITECTURE.md flake.nix packaging/tokenusage.nix packaging/bar-render-request.nix config.toml mars.toml config.kdl layout.kdl layout.swap.kdl nu/config.nu nu/env.nu helix/config.toml yazi/init.lua yazi/keymap.toml yazi/plugins/sidebar-status.yazi/main.lua yazi/plugins/zoxide-editor.yazi/main.lua yazi/yazi.toml crates/yzn-config/Cargo.toml crates/yzn-config/src/catalog.rs crates/yzn-config/src/main.rs crates/yzn-open/Cargo.toml crates/yzn-open/src/main.rs checks/zellij-layout.rs checks/yzn-contracts.rs runtime/yzn-nu.rs runtime/yzn-yazi.rs runtime/yzn.rs runtime/yzn-zellij-config.rs
+wc -l .gitignore AGENTS.md README.md CHANGELOG.md ARCHITECTURE.md flake.nix packaging/tokenusage.nix packaging/bar-render-request.nix shell/sh/yzn-agent.sh shell/sh/yzn-env-supervisor.sh shell/sh/yzn-helix.sh shell/sh/yzn-shell.sh config.toml mars.toml config.kdl layout.kdl layout.swap.kdl nu/config.nu nu/env.nu helix/config.toml yazi/init.lua yazi/keymap.toml yazi/plugins/sidebar-status.yazi/main.lua yazi/plugins/zoxide-editor.yazi/main.lua yazi/yazi.toml crates/yzn-config/Cargo.toml crates/yzn-config/src/catalog.rs crates/yzn-config/src/main.rs crates/yzn-open/Cargo.toml crates/yzn-open/src/main.rs checks/zellij-layout.rs checks/yzn-contracts.rs runtime/yzn-nu.rs runtime/yzn-yazi.rs runtime/yzn.rs runtime/yzn-zellij-config.rs
 ```
 
 | Language | Files | Lines |
 | --- | --- | ---: |
 | Ignore | `.gitignore` | 4 |
-| Markdown | `AGENTS.md`, `README.md`, `CHANGELOG.md`, `ARCHITECTURE.md` | 772 |
-| Nix | `flake.nix`, `packaging/tokenusage.nix`, `packaging/bar-render-request.nix` | 488 |
+| Markdown | `AGENTS.md`, `README.md`, `CHANGELOG.md`, `ARCHITECTURE.md` | 778 |
+| Nix | `flake.nix`, `packaging/tokenusage.nix`, `packaging/bar-render-request.nix` | 477 |
+| Shell | `shell/sh/yzn-agent.sh`, `shell/sh/yzn-env-supervisor.sh`, `shell/sh/yzn-helix.sh`, `shell/sh/yzn-shell.sh` | 64 |
 | TOML | `config.toml`, `mars.toml`, `helix/config.toml`, `yazi/yazi.toml`, `yazi/keymap.toml`, `crates/yzn-config/Cargo.toml`, `crates/yzn-open/Cargo.toml` | 139 |
 | KDL | `config.kdl`, `layout.kdl`, `layout.swap.kdl` | 189 |
 | Nu | `nu/config.nu`, `nu/env.nu` | 11 |
 | Lua | `yazi/init.lua`, `yazi/plugins/sidebar-status.yazi/main.lua`, `yazi/plugins/zoxide-editor.yazi/main.lua` | 137 |
-| Rust | `crates/yzn-config/src/catalog.rs`, `crates/yzn-config/src/main.rs`, `crates/yzn-open/src/main.rs`, `checks/zellij-layout.rs`, `checks/yzn-contracts.rs`, `runtime/yzn-nu.rs`, `runtime/yzn-yazi.rs`, `runtime/yzn.rs`, `runtime/yzn-zellij-config.rs` | 5789 |
-| Total | owned project files | 7529 |
+| Rust | `crates/yzn-config/src/catalog.rs`, `crates/yzn-config/src/main.rs`, `crates/yzn-open/src/main.rs`, `checks/zellij-layout.rs`, `checks/yzn-contracts.rs`, `runtime/yzn-nu.rs`, `runtime/yzn-yazi.rs`, `runtime/yzn.rs`, `runtime/yzn-zellij-config.rs` | 5848 |
+| Total | owned project files | 7647 |

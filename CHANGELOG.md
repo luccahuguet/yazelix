@@ -4,9 +4,10 @@ User-visible runtime changes for Yazelix Next live here.
 
 ## Unreleased
 
-- `yzn help` prints help, `yzn enter` starts the managed Zellij runtime in the
-  current terminal, and `yzn launch` opens Mars first. Bare `yzn` defaults to
-  `yzn launch`.
+- `yzn help` prints help, `yzn env` opens the configured managed shell without
+  launching the UI with packaged `hx`, `lazygit`, and `git` on PATH, `yzn enter`
+  starts the managed Zellij runtime in the current terminal, and `yzn launch`
+  opens Mars first. Bare `yzn` defaults to `yzn launch`.
 - `yzn config` opens the Ratconfig UI and creates source-backed tabs for
   `config.toml`, `mars/config.toml`, and `zellij/config.kdl` when missing.
   Root `config.toml` keeps Ratconfig contract state, while the Mars and Zellij

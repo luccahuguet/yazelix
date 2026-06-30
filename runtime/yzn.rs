@@ -12,6 +12,8 @@ use std::{
 
 const YZN_CONFIG_UI: &str = "@yznConfigUi@";
 const YZN_MENU: &str = "@yznMenu@";
+const YZN_SHELL: &str = "@yznShell@";
+const YZN_ENV_SUPERVISOR: &str = "@yznEnvSupervisor@";
 const ZELLIJ: &str = "@zellij@";
 const MARS: &str = "@mars@";
 const LAYOUT: &str = "@layout@";
@@ -71,6 +73,10 @@ fn run() -> Result<(), AppError> {
             open_sponsor();
             Ok(())
         }
+        "env" => {
+            expect_no_args("env", &args)?;
+            exec_env()
+        }
         "enter" => exec_managed(false, args),
         "launch" => exec_managed(true, args),
         unknown => Err(AppError::Usage(format!(
@@ -93,6 +99,14 @@ fn exec_plain(program: &str) -> Result<(), AppError> {
     let mut command = Command::new(program);
     command.env("PATH", runtime_path());
     exec(command, program)
+}
+
+fn exec_env() -> Result<(), AppError> {
+    let runtime = Runtime::prepare()?;
+    let mut command = Command::new(YZN_ENV_SUPERVISOR);
+    command.arg(YZN_SHELL);
+    runtime.apply(&mut command);
+    exec(command, "yzn env")
 }
 
 fn exec_managed(through_mars: bool, zellij_args: Vec<OsString>) -> Result<(), AppError> {
@@ -743,6 +757,7 @@ Usage:
   yzn help
   yzn config
   yzn doctor
+  yzn env
   yzn enter [zellij-args...]
   yzn launch [zellij-args...]
   yzn menu
@@ -752,6 +767,7 @@ Usage:
 Commands:
   config  Open Yazelix Next config
   doctor  Check Yazelix runtime setup
+  env     Open the managed shell without launching the UI
   enter   Start Yazelix in the current terminal
   launch  Open Mars and start Yazelix
   menu    Show Yazelix Next menu

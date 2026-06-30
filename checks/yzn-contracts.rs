@@ -101,6 +101,7 @@ fn expect_front_door(yzn: &Path) {
         "Usage:",
         "yzn config",
         "yzn doctor",
+        "yzn env",
         "yzn enter [zellij-args...]",
         "yzn launch [zellij-args...]",
         "yzn menu",
@@ -113,6 +114,7 @@ fn expect_front_door(yzn: &Path) {
     for expected in [
         "Yazelix Next Menu",
         "yzn doctor",
+        "yzn env",
         "yzn status",
         "yzn sponsor",
         "Alt Shift L",
@@ -130,7 +132,11 @@ fn expect_front_door(yzn: &Path) {
         "YAZELIX_SESSION_TERMINAL",
         "bar.widgets",
         "popup.size",
+        "lazygit",
         "yzn-bar-render",
+        "yzn-env-supervisor",
+        "yzn-shell",
+        "yazelix-helix",
         "yazelix_pane_orchestrator.wasm",
         "/bin/zellij",
         "/bin/mars",
@@ -138,6 +144,16 @@ fn expect_front_door(yzn: &Path) {
         "--new-session-with-layout",
     ] {
         expect_contains(&yzn_launcher, expected, "bin/yzn runtime fragment");
+    }
+    let env_supervisor = embedded_store_path(&yzn_launcher, "/bin/yzn-env-supervisor");
+    let env_supervisor_script = fs::read_to_string(&env_supervisor).unwrap();
+    for expected in [
+        "#!/nix/store/",
+        "trap cleanup HUP INT TERM EXIT",
+        "\"$1\" < /dev/tty &",
+        "wait \"$child\"",
+    ] {
+        expect_contains(&env_supervisor_script, expected, "yzn env supervisor");
     }
 
     let temp = TempDir::new();
@@ -325,6 +341,12 @@ fn expect_front_door(yzn: &Path) {
         "with failing opener",
     );
 
+    expect_command_error(
+        &yzn_bin,
+        &["env", "extra"],
+        "yzn env does not accept arguments yet",
+        "yzn env argument error",
+    );
     expect_command_error(
         &yzn_bin,
         &["doctor", "extra"],
@@ -917,6 +939,16 @@ fn expect_first_party_plugins(config: &str) {
     for expected in ["YAZELIX_NEXT_EDITOR=", "/bin/yzn-hx", "/bin/yzn-config"] {
         expect_contains(&config_ui_script, expected, &context);
     }
+    let helix = embedded_store_path(&config_ui_script, "/bin/yzn-hx");
+    let helix_script = fs::read_to_string(&helix).unwrap();
+    let context = format!("{} managed Helix wrapper", helix.display());
+    for expected in [
+        "YAZELIX_HELIX_BRIDGE=1",
+        "YAZELIX_HELIX_MANAGED_CONFIG_PATH=",
+        "/bin/hx --config-dir",
+    ] {
+        expect_contains(&helix_script, expected, &context);
+    }
 
     let menu_popup = popup_command(config, "/bin/yzn-menu-popup");
     let menu_popup_script = fs::read_to_string(&menu_popup).unwrap();
@@ -1014,6 +1046,17 @@ fn excerpt(text: &str) -> String {
 
 fn binary_text(path: &Path) -> String {
     String::from_utf8_lossy(&fs::read(path).unwrap()).into_owned()
+}
+
+fn embedded_store_path(text: &str, suffix: &str) -> PathBuf {
+    let end = text
+        .find(suffix)
+        .unwrap_or_else(|| panic!("binary text is missing path suffix {suffix}"))
+        + suffix.len();
+    let start = text[..end]
+        .rfind("/nix/store/")
+        .unwrap_or_else(|| panic!("binary text is missing /nix/store path for {suffix}"));
+    PathBuf::from(&text[start..end])
 }
 
 #[derive(Default)]

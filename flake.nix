@@ -59,12 +59,6 @@
       mkdir -p "$out/bin"
       rustc --edition=2024 ${src} -o "$out/bin/${name}"
     '';
-    helperBridgeSessionEnv = ''
-      if [ -z "''${YAZELIX_HELIX_BRIDGE_SESSION_ID:-}" ]; then
-        YAZELIX_HELIX_BRIDGE_SESSION_ID="yzn-helper-$(date +%s)-$$"
-      fi
-      export YAZELIX_HELIX_BRIDGE_SESSION_ID
-    '';
   in {
     packages = eachSystem (system: let
       pkgs = import nixpkgs {inherit system;};
@@ -119,36 +113,25 @@
         src = yznConfigSrc;
         cargoLock.lockFile = ./crates/yzn-config/Cargo.lock;
       };
-      yznShell = pkgs.writeShellApplication {
-        name = "yzn-shell";
-        text = ''
-          shell_program="$(${yznConfig}/bin/yzn-config --get shell.program)"
-          case "$shell_program" in
-            nu) exec ${yznNuShell}/bin/yzn-nu "$@" ;;
-            bash) exec ${pkgs.bashInteractive}/bin/bash -i "$@" ;;
-            zsh) exec ${pkgs.zsh}/bin/zsh -i "$@" ;;
-            fish) exec ${pkgs.fish}/bin/fish -i "$@" ;;
-          esac
-        '';
+      yznShellSrc = pkgs.replaceVars ./shell/sh/yzn-shell.sh {
+        yznConfig = "${yznConfig}/bin/yzn-config";
+        yznNu = "${yznNuShell}/bin/yzn-nu";
+        bash = "${pkgs.bashInteractive}/bin/bash";
+        zsh = "${pkgs.zsh}/bin/zsh";
+        fish = "${pkgs.fish}/bin/fish";
       };
-      yznAgent = pkgs.writeShellApplication {
-        name = "yzn-agent";
-        text = ''
-          if ! command -v codex >/dev/null 2>&1; then
-            printf '%s\n' "Yazelix Next agent popup
-
-codex is not available on PATH.
-Install Codex or make \`codex\` executable on PATH before using Alt Shift L." >&2
-            if [ -t 0 ]; then
-              printf '\nPress Enter to close this popup...' >&2
-              read -r _ || true
-            fi
-            exit 127
-          fi
-
-          exec codex resume "$@"
-        '';
-      };
+      yznShell = pkgs.runCommand "yzn-shell" {} ''
+        install -D -m 755 ${yznShellSrc} "$out/bin/yzn-shell"
+        patchShebangs "$out/bin/yzn-shell"
+      '';
+      yznEnvSupervisor = pkgs.runCommand "yzn-env-supervisor" {} ''
+        install -D -m 755 ${./shell/sh/yzn-env-supervisor.sh} "$out/bin/yzn-env-supervisor"
+        patchShebangs "$out/bin/yzn-env-supervisor"
+      '';
+      yznAgent = pkgs.runCommand "yzn-agent" {} ''
+        install -D -m 755 ${./shell/sh/yzn-agent.sh} "$out/bin/yzn-agent"
+        patchShebangs "$out/bin/yzn-agent"
+      '';
       yznMenu = pkgs.writeShellApplication {
         name = "yzn-menu";
         text = ''
@@ -157,6 +140,7 @@ Install Codex or make \`codex\` executable on PATH before using Alt Shift L." >&
 Commands
   yzn config        Open config UI
   yzn doctor        Check runtime setup
+  yzn env           Open managed shell without UI
   yzn enter         Start managed runtime in this terminal
   yzn launch        Open Mars and start Yazelix
   yzn menu          Show this menu
@@ -195,22 +179,18 @@ Workspace
       yznZellijConfig = rustBin "yzn-zellij-config" ./runtime/yzn-zellij-config.rs;
       yazelixHelixPackage = yazelixHelix.packages.${system}.yazelix_helix;
       yznHelixConfig = pkgs.writeTextDir "config.toml" (builtins.readFile ./helix/config.toml);
-      yznHelix = pkgs.writeShellApplication {
-        name = "yzn-hx";
-        runtimeInputs = [pkgs.coreutils];
-        text = ''
-          export YAZELIX_STATE_DIR="''${YAZELIX_STATE_DIR:-''${XDG_DATA_HOME:-''${HOME:-/tmp}/.local/share}/yazelix-next}"
-          ${helperBridgeSessionEnv}
-          export YAZELIX_HELIX_BRIDGE=1
-          YAZELIX_HELIX_BRIDGE_INSTANCE_ID="hx-$(date +%s)-$$"
-          export YAZELIX_HELIX_BRIDGE_INSTANCE_ID
-          YAZELIX_HELIX_BRIDGE_AUTH_TOKEN="$(od -An -N32 -tx1 /dev/urandom | tr -d ' \n')"
-          export YAZELIX_HELIX_BRIDGE_AUTH_TOKEN
-          export YAZELIX_HELIX_MANAGED_CONFIG_PATH=${yznHelixConfig}
-          mkdir -p "$YAZELIX_STATE_DIR"
-          exec ${yazelixHelixPackage}/bin/hx --config-dir ${yznHelixConfig} "$@"
-        '';
+      yznHelixSrc = pkgs.replaceVars ./shell/sh/yzn-helix.sh {
+        date = "${pkgs.coreutils}/bin/date";
+        hx = "${yazelixHelixPackage}/bin/hx";
+        mkdir = "${pkgs.coreutils}/bin/mkdir";
+        od = "${pkgs.coreutils}/bin/od";
+        tr = "${pkgs.coreutils}/bin/tr";
+        yznHelixConfig = "${yznHelixConfig}";
       };
+      yznHelix = pkgs.runCommand "yzn-hx" {} ''
+        install -D -m 755 ${yznHelixSrc} "$out/bin/yzn-hx"
+        patchShebangs "$out/bin/yzn-hx"
+      '';
       yznConfigUi = pkgs.writeShellApplication {
         name = "yzn-config-ui";
         text = ''
@@ -331,6 +311,8 @@ Workspace
       yznCommandSrc = pkgs.replaceVars ./runtime/yzn.rs {
         yznConfigUi = "${yznConfigUi}/bin/yzn-config-ui";
         yznMenu = "${yznMenu}/bin/yzn-menu";
+        yznShell = "${yznShell}/bin/yzn-shell";
+        yznEnvSupervisor = "${yznEnvSupervisor}/bin/yzn-env-supervisor";
         zellij = "${yazelixZellijPackage}/bin/zellij";
         mars = "${marsPackage}/bin/mars";
         layout = "${yznZellijLayout}/layout.kdl";
@@ -348,7 +330,14 @@ Workspace
         yazelixZellijBarWasm = "${yazelixZellijBarPackage}/share/yazelix_zellij_bar/zjstatus.wasm";
         yazelixZellijPaneOrchestratorWasm = "${yazelixZellijPaneOrchestratorPackage}/${yazelixZellijPaneOrchestratorPackage.wasmPath}";
         defaultBarWidgetsJson = builtins.toJSON defaultBarWidgets;
-        pathPrefix = pkgs.lib.makeBinPath [pkgs.coreutils tokenusage];
+        pathPrefix = pkgs.lib.makeBinPath [
+          pkgs.coreutils
+          pkgs.git
+          pkgs.lazygit
+          tokenusage
+          yazelixHelixPackage
+          yznHelix
+        ];
       };
       yznCommand = rustBin "yzn" yznCommandSrc;
       yznDesktop = pkgs.makeDesktopItem {
