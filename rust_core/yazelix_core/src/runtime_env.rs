@@ -49,12 +49,19 @@ pub fn compute_runtime_env(
     let current_path_entries =
         strip_runtime_owned_path_entries(normalized_path_entries, &request.runtime_dir);
     let runtime_path_entries = existing_runtime_path_entries(&request.runtime_dir);
+    let host_user_path_entries = existing_host_user_path_entries(&request.home_dir);
     let path_entries = if runtime_path_entries.is_empty() {
-        current_path_entries
+        stable_dedupe(
+            host_user_path_entries
+                .into_iter()
+                .chain(current_path_entries)
+                .collect(),
+        )
     } else {
         stable_dedupe(
             runtime_path_entries
                 .into_iter()
+                .chain(host_user_path_entries)
                 .chain(current_path_entries)
                 .collect(),
         )
@@ -194,6 +201,24 @@ fn existing_runtime_path_entries(runtime_dir: &Path) -> Vec<String> {
         .filter(|path| path.exists())
         .map(|path| path_to_string(&path))
         .collect()
+}
+
+fn existing_host_user_path_entries(home_dir: &Path) -> Vec<String> {
+    [
+        home_dir.join(".local").join("bin"),
+        home_dir
+            .join(".local")
+            .join("state")
+            .join("nix")
+            .join("profile")
+            .join("bin"),
+        home_dir.join(".nix-profile").join("bin"),
+        PathBuf::from("/nix/var/nix/profiles/default/bin"),
+    ]
+    .into_iter()
+    .filter(|path| path.exists())
+    .map(|path| path_to_string(&path))
+    .collect()
 }
 
 fn resolve_lazygit_config_file(
@@ -355,4 +380,95 @@ fn validate_helix_editor_runtime_pair(request: &RuntimeEnvComputeRequest) -> Res
         ));
     }
     Ok(())
+}
+
+// Test lane: default
+#[cfg(test)]
+mod tests {
+    use super::{RuntimeEnvComputeRequest, RuntimePathInput, compute_runtime_env};
+    use std::fs;
+
+    fn request_with_path(
+        runtime_dir: std::path::PathBuf,
+        home_dir: std::path::PathBuf,
+        current_path: &str,
+    ) -> RuntimeEnvComputeRequest {
+        RuntimeEnvComputeRequest {
+            runtime_dir,
+            home_dir,
+            xdg_config_home: None,
+            current_path: RuntimePathInput::String(current_path.to_string()),
+            current_lazygit_config_file: None,
+            editor_command: None,
+            helix_external: None,
+        }
+    }
+
+    fn index_of(entries: &[String], suffix: &str) -> usize {
+        entries
+            .iter()
+            .position(|entry| entry.ends_with(suffix))
+            .unwrap_or_else(|| panic!("missing PATH entry ending with {suffix}: {entries:?}"))
+    }
+
+    // Regression: GUI/desktop launchers often start with a sparse PATH, but Yazelix agent panes still need host-installed commands such as ~/.local/bin/codex.
+    #[test]
+    fn desktop_runtime_path_adds_standard_user_bins() {
+        let temp = tempfile::tempdir().unwrap();
+        let runtime_dir = temp.path().join("runtime");
+        let home_dir = temp.path().join("home");
+        for dir in [
+            runtime_dir.join("toolbin"),
+            runtime_dir.join("bin"),
+            home_dir.join(".local").join("bin"),
+            home_dir
+                .join(".local")
+                .join("state")
+                .join("nix")
+                .join("profile")
+                .join("bin"),
+            home_dir.join(".nix-profile").join("bin"),
+        ] {
+            fs::create_dir_all(dir).unwrap();
+        }
+
+        let data = compute_runtime_env(&request_with_path(runtime_dir, home_dir, "/usr/bin:/bin"))
+            .unwrap();
+
+        let runtime_bin = index_of(&data.path_entries, "/runtime/bin");
+        let user_local_bin = index_of(&data.path_entries, "/home/.local/bin");
+        let nix_profile_bin = index_of(&data.path_entries, "/home/.nix-profile/bin");
+        let usr_bin = index_of(&data.path_entries, "/usr/bin");
+
+        assert!(runtime_bin < user_local_bin);
+        assert!(user_local_bin < nix_profile_bin);
+        assert!(nix_profile_bin < usr_bin);
+    }
+
+    // Invariant: adding standard host user bins must not duplicate entries already inherited from the parent shell.
+    #[test]
+    fn standard_user_bins_are_deduped_against_current_path() {
+        let temp = tempfile::tempdir().unwrap();
+        let runtime_dir = temp.path().join("runtime");
+        let home_dir = temp.path().join("home");
+        let user_local_bin = home_dir.join(".local").join("bin");
+        fs::create_dir_all(runtime_dir.join("bin")).unwrap();
+        fs::create_dir_all(&user_local_bin).unwrap();
+
+        let data = compute_runtime_env(&request_with_path(
+            runtime_dir,
+            home_dir,
+            &format!("{}:/usr/bin", user_local_bin.display()),
+        ))
+        .unwrap();
+        let user_local_bin_string = user_local_bin.to_string_lossy().to_string();
+
+        assert_eq!(
+            data.path_entries
+                .iter()
+                .filter(|entry| *entry == &user_local_bin_string)
+                .count(),
+            1
+        );
+    }
 }

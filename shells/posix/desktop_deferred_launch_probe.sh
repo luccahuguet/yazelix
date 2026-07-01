@@ -1,5 +1,8 @@
 #!/bin/sh
 
+PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin${PATH:+:$PATH}"
+export PATH
+
 if [ "${1:-}" != "--detached" ]; then
   if [ "$#" -lt 4 ]; then
     echo "Error: desktop deferred launch probe requires log path, parent pid, '--', and command argv" >&2
@@ -22,19 +25,7 @@ if [ "${1:-}" != "--detached" ]; then
     } >>"$launch_log"
   }
 
-  if command -v systemd-run >/dev/null 2>&1; then
-    write_schedule_header "systemd-run-user-scope"
-    if systemd-run --user --scope --no-block --quiet --same-dir "$0" --detached "$@" >/dev/null 2>&1 < /dev/null; then
-      printf '%s\n' "$launch_log"
-      exit 0
-    fi
-    {
-      printf '[%s] detach_method_failed=systemd-run-user-scope\n' "$(log_timestamp)"
-      printf 'fallback_detach_method=nohup-setsid\n'
-    } >>"$launch_log"
-  else
-    write_schedule_header "nohup-setsid"
-  fi
+  write_schedule_header "nohup-setsid"
 
   if command -v setsid >/dev/null 2>&1; then
     nohup setsid "$0" --detached "$@" >/dev/null 2>&1 < /dev/null &
@@ -42,6 +33,19 @@ if [ "${1:-}" != "--detached" ]; then
     printf 'fallback_detach_method=nohup\n' >>"$launch_log"
     nohup "$0" --detached "$@" >/dev/null 2>&1 < /dev/null &
   fi
+  detached_pid=$!
+
+  i=0
+  while [ "$i" -lt 20 ]; do
+    if grep -q 'desktop deferred launch$' "$launch_log" 2>/dev/null; then
+      break
+    fi
+    if ! kill -0 "$detached_pid" 2>/dev/null; then
+      break
+    fi
+    sleep 0.05
+    i=$((i + 1))
+  done
 
   printf '%s\n' "$launch_log"
   exit 0

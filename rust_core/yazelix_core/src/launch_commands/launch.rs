@@ -639,6 +639,16 @@ mod tests {
         std::fs::create_dir_all(&posix_dir).unwrap();
         let startup_script = posix_dir.join("start_yazelix.sh");
         std::fs::write(&startup_script, "#!/bin/sh\n").unwrap();
+        let mars_bin = runtime_dir.join("toolbin").join("mars");
+        std::fs::create_dir_all(mars_bin.parent().unwrap()).unwrap();
+        std::fs::write(&mars_bin, "#!/bin/sh\n").unwrap();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mut permissions = std::fs::metadata(&mars_bin).unwrap().permissions();
+            permissions.set_mode(0o755);
+            std::fs::set_permissions(&mars_bin, permissions).unwrap();
+        }
         let config_path = tmp
             .path()
             .join("state/configs/terminal_emulators/mars/config.toml");
@@ -662,7 +672,7 @@ mod tests {
         assert_eq!(
             argv,
             vec![
-                "mars".to_string(),
+                mars_bin.to_string_lossy().into_owned(),
                 "--title-placeholder".to_string(),
                 "Yazelix - Mars - work".to_string(),
                 "--working-dir".to_string(),

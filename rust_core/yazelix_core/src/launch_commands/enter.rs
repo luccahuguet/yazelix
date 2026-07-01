@@ -723,7 +723,7 @@ mod tests {
     // Test lane: default
 
     use super::{
-        HELIX_BRIDGE_ROOT_ENV, build_welcome_message, helix_bridge_root_for_launch,
+        HELIX_BRIDGE_ROOT_ENV, bool_env, build_welcome_message, helix_bridge_root_for_launch,
         is_welcome_keypress, wait_for_welcome_keypress_from_events,
     };
     use crate::startup_facts::StartupFactsData;
@@ -914,6 +914,17 @@ mod tests {
         assert!(!is_welcome_keypress(&repeat));
         assert!(!is_welcome_keypress(&Event::Resize(80, 24)));
     }
+
+    // Regression: desktop launch injects numeric one-shot flags, and startup env parsing must honor them.
+    #[test]
+    fn bool_env_accepts_desktop_numeric_true_flag() {
+        let key = "YAZELIX_STARTUP_PROFILE_SKIP_WELCOME";
+
+        with_env_vars(&[(key, Some("1"))], || assert!(bool_env(key)));
+        with_env_vars(&[(key, Some("true"))], || assert!(bool_env(key)));
+        with_env_vars(&[(key, Some("0"))], || assert!(!bool_env(key)));
+        with_env_vars(&[(key, None)], || assert!(!bool_env(key)));
+    }
 }
 
 fn capture_startup_handoff(
@@ -972,9 +983,12 @@ fn zellij_session_name_from_env() -> Option<String> {
 }
 
 fn bool_env(key: &str) -> bool {
-    std::env::var(key)
-        .ok()
-        .is_some_and(|value| value.trim() == "true")
+    std::env::var(key).ok().is_some_and(|value| {
+        matches!(
+            value.trim().to_ascii_lowercase().as_str(),
+            "1" | "true" | "yes" | "on"
+        )
+    })
 }
 
 fn run_runtime_setup(

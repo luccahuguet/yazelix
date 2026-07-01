@@ -1,0 +1,24 @@
+// FlexNetOS local startup layout.
+// This file is source-owned. Do not place custom source layouts under
+// ~/.local/share/yazelix/configs/zellij/layouts; Yazelix regenerates that
+// directory and removes unmanaged files.
+layout {
+    cwd "/home/flexnetos/FlexNetOS"
+
+    tab name="FlexNetOS" focus=true {
+        pane split_direction="vertical" {
+            pane command="/home/flexnetos/.nix-profile/bin/yzx" name="sidebar" size="20%" {
+                args "sidebar" "yazi"
+            }
+            pane command="/home/flexnetos/.nix-profile/bin/yzx" name="workspace" size="20%" {
+                args "env"
+            }
+            pane command="/home/flexnetos/.nix-profile/bin/yzx" name="agent" size="40%" {
+                args "agent"
+            }
+            pane command="/home/flexnetos/.nix-profile/bin/yzx" name="tools" size="20%" {
+                args "env"
+            }
+        }
+    }
+}

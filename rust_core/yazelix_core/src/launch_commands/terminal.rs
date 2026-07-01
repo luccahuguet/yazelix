@@ -1,3 +1,4 @@
+use crate::atomic_fs::is_executable_file;
 use crate::bridge::{CoreError, ErrorClass};
 use crate::runtime_contract::TerminalCandidate;
 use crate::terminal_variant::terminal_window_title;
@@ -100,9 +101,10 @@ pub(super) fn build_launch_command_argv(
             serde_json::json!({}),
         ));
     }
+    let terminal_command = resolve_runtime_terminal_command(runtime_dir, &terminal.command);
 
     Ok(vec![
-        terminal.command.clone(),
+        terminal_command,
         "--title-placeholder".to_string(),
         terminal_window_title(&terminal.terminal, session_name),
         "--working-dir".to_string(),
@@ -110,4 +112,19 @@ pub(super) fn build_launch_command_argv(
         "-e".to_string(),
         startup_script.to_string_lossy().into_owned(),
     ])
+}
+
+fn resolve_runtime_terminal_command(runtime_dir: &Path, command: &str) -> String {
+    if command.contains(std::path::MAIN_SEPARATOR) {
+        return command.to_string();
+    }
+
+    for dir in ["toolbin", "bin"] {
+        let candidate = runtime_dir.join(dir).join(command);
+        if is_executable_file(&candidate) {
+            return candidate.to_string_lossy().into_owned();
+        }
+    }
+
+    command.to_string()
 }

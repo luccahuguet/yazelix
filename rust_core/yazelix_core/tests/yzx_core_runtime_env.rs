@@ -70,15 +70,24 @@ fn runtime_env_compute_returns_filtered_env() {
         .to_string();
 
     assert_eq!(data.editor_kind, "helix");
-    assert_eq!(
-        data.path_entries,
-        vec![
-            runtime_toolbin.to_string_lossy().to_string(),
-            runtime_bin.to_string_lossy().to_string(),
-            "/usr/local/bin".to_string(),
-            "/usr/bin".to_string()
-        ]
+    assert_eq!(data.path_entries[0], runtime_toolbin.to_string_lossy());
+    assert_eq!(data.path_entries[1], runtime_bin.to_string_lossy());
+    assert!(
+        !data
+            .path_entries
+            .contains(&runtime_libexec.to_string_lossy().to_string())
     );
+    let usr_local_bin_index = data
+        .path_entries
+        .iter()
+        .position(|entry| entry == "/usr/local/bin")
+        .unwrap();
+    let usr_bin_index = data
+        .path_entries
+        .iter()
+        .position(|entry| entry == "/usr/bin")
+        .unwrap();
+    assert!(usr_local_bin_index < usr_bin_index);
     assert_eq!(data.runtime_env["PATH"], json!(data.path_entries));
     assert_eq!(data.runtime_env["EDITOR"], expected_wrapper);
     assert_eq!(data.runtime_env["VISUAL"], expected_wrapper);
