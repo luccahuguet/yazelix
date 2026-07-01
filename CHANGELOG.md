@@ -59,6 +59,9 @@ User-visible runtime changes for Yazelix Next live here.
 - Managed Nu sets `STARSHIP_CONFIG` to `~/.config/yazelix-next/starship.toml`
   when that file exists, otherwise to an empty config so normal
   `~/.config/starship.toml` does not affect the managed Nu prompt.
+- Managed Nu inserts host `mise activate nu` output after packaged Nu config
+  and before optional user Nu config when `mise` is available on the inherited
+  `PATH`; missing or failing `mise` is skipped.
 - Nushell delegates the right prompt to Starship, so `right_format` in
   `~/.config/yazelix-next/starship.toml` is honored.
 - Generated runtime state defaults to `${XDG_DATA_HOME:-$HOME/.local/share}/yazelix-next`,

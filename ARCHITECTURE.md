@@ -102,9 +102,9 @@ preview/session environment, appends optional managed user `yazi/init.lua` and
 that init exists, and then execs packaged Yazi.
 
 `runtime/yzn-nu.rs` is the Nushell runtime-config owner. It writes the runtime
-`env.nu` and `config.nu` files, layers optional user config from
-`~/.config/yazelix-next/nu`, chooses the Starship config path, and then execs
-Nushell.
+`env.nu` and `config.nu` files, inserts host `mise activate nu` output when
+`mise` is available, layers optional user config from `~/.config/yazelix-next/nu`,
+chooses the Starship config path, and then execs Nushell.
 
 The flake owns the `yzn-shell` dispatcher. It reads `shell.program` through
 `yzn-config` and execs packaged `nu`, `bash`, `zsh`, or `fish`. The `nu` path
@@ -220,7 +220,7 @@ window.
 | C2 | Mars uses packaged visual config unless a user native Mars config exists | `mars.toml`, `flake.nix` | `checks/yzn-contracts.rs` validates packaged config and launcher selection | Visual correctness remains manual dogfooding |
 | C3 | Zellij layout has the sidebar template required by swaps | `layout.kdl`, `layout.swap.kdl` | `checks/zellij-layout.rs` runs during build | None for the current template/swap contract |
 | C4 | Zellij-native mode keys use `Ctrl Alt`, Tab-mode new tabs use the packaged Yazelix sidebar layout, move mode is unbound, `Alt m` opens a pane for the swap layout to stack, `Alt 1-9` jumps directly to tabs 1-9, `Alt Shift h` toggles the sidebar swap, `Alt h/l` walk visible panes through the pane orchestrator, `Alt r` smart-reveals through the editor or sidebar focus path, and obvious sidecar ownership lines are rejected | `config.kdl`, `runtime/yzn-zellij-config.rs` | `checks/yzn-contracts.rs` validates the packaged config, pane-orchestrator binding, and accepted/rejected sidecars | Full key behavior remains manual dogfooding |
-| C5 | When `shell.program` is `nu`, Nushell loads packaged config first, optional user config after it, and controlled Starship left/right prompt config | `runtime/yzn-nu.rs`, `nu/` | `checks/yzn-contracts.rs` validates Nushell layering through the managed shell dispatcher, Starship config selection, and right prompt rendering | None for current layering behavior |
+| C5 | When `shell.program` is `nu`, Nushell loads packaged config first, optional host `mise activate nu` output when `mise` is available, optional user config after it, and controlled Starship left/right prompt config | `runtime/yzn-nu.rs`, `nu/` | `checks/yzn-contracts.rs` validates Nushell layering through the managed shell dispatcher, host `mise` detection, Starship config selection, and right prompt rendering | None for current layering behavior |
 | C6 | Yazi launches with scoped image-preview environment, optionally appends managed user `yazi/init.lua` and `yazi/keymap.toml`, overlays managed user `plugins/*.yazi` directories when init exists, opens paths through `yzn-open` with bounded diagnostics, registers the tab-local sidebar Yazi id for reveal, and `Alt z` jumps through zoxide into the managed editor path while using the workspace root for editor cwd and tab naming | `yazi/`, `runtime/yzn-yazi.rs`, `crates/yzn-open/` | `checks/yzn-contracts.rs` validates packaged Yazi keymap/plugin wiring, sidebar-state plugin wiring, and launcher environment; `yzn_yazi_materialization` covers init/keymap/plugin materialization; `cargo test` covers `yzn-open` bridge/fallback, reveal routing, and tab rename behavior | Full Yazi UI behavior remains manual dogfooding |
 | C7 | Helix bridge reuse stays inside the current `yzn` window and current Zellij tab | `crates/yzn-open/`, `flake.nix` | `yzn-open` Rust tests cover session, Zellij-window, and Zellij-tab mismatch | Full multi-window GUI behavior remains manual dogfooding |
 | C8 | Desktop entry starts `yzn` | `flake.nix` | `nix build .#yzn` packages the desktop file | Desktop environment launch remains manual dogfooding |

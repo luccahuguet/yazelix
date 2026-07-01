@@ -39,11 +39,18 @@ fn run() -> io::Result<()> {
 
     let env_config = runtime_nu.join("env.nu");
     let config = runtime_nu.join("config.nu");
-    for (path, file, command) in [
-        (&env_config, "env.nu", "source-env"),
-        (&config, "config.nu", "source"),
+    let mise_init = host_mise_init();
+    for (path, file, command, after_packaged) in [
+        (&env_config, "env.nu", "source-env", None),
+        (&config, "config.nu", "source", mise_init.as_deref()),
     ] {
-        write_layered_config(path, command, &packaged_nu.join(file), &user_nu.join(file))?;
+        write_layered_config(
+            path,
+            command,
+            &packaged_nu.join(file),
+            &user_nu.join(file),
+            after_packaged,
+        )?;
     }
 
     let error = Command::new(NU)
@@ -87,12 +94,35 @@ fn write_layered_config(
     command: &str,
     packaged: &Path,
     user: &Path,
+    after_packaged: Option<&str>,
 ) -> io::Result<()> {
     let mut contents = format!("{command} {}\n", nu_quote(packaged));
+    if let Some(snippet) = after_packaged {
+        contents.push_str(snippet);
+        if !snippet.ends_with('\n') {
+            contents.push('\n');
+        }
+    }
     if user.is_file() {
         contents.push_str(&format!("{command} {}\n", nu_quote(user)));
     }
     atomic_write(path, contents)
+}
+
+fn host_mise_init() -> Option<String> {
+    let output = Command::new("mise")
+        .arg("activate")
+        .arg("nu")
+        .env("PATH", runtime_path())
+        .output()
+        .ok()?;
+    if output.status.success() {
+        String::from_utf8(output.stdout)
+            .ok()
+            .filter(|text| !text.is_empty())
+    } else {
+        None
+    }
 }
 
 fn nu_quote(path: &Path) -> String {

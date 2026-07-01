@@ -88,6 +88,40 @@ fn main() {
         &runtime.join("yazelix-next/nu/config.nu"),
         &format!("source \"{}\"", user_nu.join("config.nu").display()),
     );
+    let host_bin = temp.path.join("host-bin");
+    fs::create_dir(&host_bin).unwrap();
+    let fake_mise = host_bin.join("mise");
+    fs::write(
+        &fake_mise,
+        "#!/bin/sh\n[ \"$1\" = activate ] && [ \"$2\" = nu ] || exit 64\nprintf '%s\\n' '$env.YZN_MISE_TEST = \"mise-ok\"'\n",
+    )
+    .unwrap();
+    fs::set_permissions(&fake_mise, fs::Permissions::from_mode(0o755)).unwrap();
+    let mise_runtime = temp.path.join("mise-run");
+    let mise_stdout = run_nu_with_path(
+        &yzn_shell,
+        &user_config,
+        &mise_runtime,
+        "print $env.YZN_MISE_TEST",
+        &host_bin,
+    );
+    assert_eq!(mise_stdout, "mise-ok");
+    expect_line(
+        &mise_runtime.join("yazelix-next/nu/config.nu"),
+        "$env.YZN_MISE_TEST = \"mise-ok\"",
+    );
+    let generated_mise_config =
+        fs::read_to_string(mise_runtime.join("yazelix-next/nu/config.nu")).unwrap();
+    let user_config_source = format!("source \"{}\"", user_nu.join("config.nu").display());
+    expect_order(
+        &generated_mise_config,
+        &[
+            "source \"/nix/store/",
+            "$env.YZN_MISE_TEST = \"mise-ok\"",
+            &user_config_source,
+        ],
+        "managed Nu mise layering",
+    );
     fs::write(out, "ok\n").unwrap();
 }
 
@@ -695,6 +729,16 @@ fn run_help(bin: &Path, args: &[&str]) -> String {
 }
 
 fn run_nu(yzn_nu: &Path, config_home: &Path, runtime: &Path, commands: &str) -> String {
+    run_nu_with_path(yzn_nu, config_home, runtime, commands, Path::new(""))
+}
+
+fn run_nu_with_path(
+    yzn_nu: &Path,
+    config_home: &Path,
+    runtime: &Path,
+    commands: &str,
+    path: &Path,
+) -> String {
     fs::create_dir_all(runtime).unwrap();
     successful_stdout_trimmed(
         Command::new(yzn_nu)
@@ -703,7 +747,8 @@ fn run_nu(yzn_nu: &Path, config_home: &Path, runtime: &Path, commands: &str) -> 
             .env("XDG_DATA_HOME", runtime)
             .env("YAZELIX_NEXT_CONFIG_HOME", config_home)
             .env("YAZELIX_STATE_DIR", "")
-            .env("STARSHIP_CONFIG", "ambient-starship.toml"),
+            .env("STARSHIP_CONFIG", "ambient-starship.toml")
+            .env("PATH", path),
         &yzn_nu.display().to_string(),
     )
 }
@@ -1138,6 +1183,19 @@ fn expect_contains(haystack: &str, needle: &str, context: &str) {
         "{context} is missing {needle:?}\n{}",
         excerpt(haystack)
     );
+}
+
+fn expect_order(haystack: &str, needles: &[&str], context: &str) {
+    let mut offset = 0;
+    for needle in needles {
+        let Some(index) = haystack[offset..].find(needle) else {
+            panic!(
+                "{context} is missing {needle:?} after byte {offset}\n{}",
+                excerpt(haystack)
+            );
+        };
+        offset += index + needle.len();
+    }
 }
 
 fn excerpt(text: &str) -> String {
