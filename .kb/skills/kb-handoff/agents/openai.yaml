@@ -1,0 +1,6 @@
+interface:
+  display_name: "KB Handoff"
+  short_description: "End-of-session handoff with context updates"
+  default_prompt: "Use $kb-handoff to prepare for session end — commit changes, update context, and log progress."
+policy:
+  allow_implicit_invocation: true

@@ -326,11 +326,22 @@
         }
       );
 
-      checks = forAllSystems (system: {
-        kgp_package_contracts = import ./packaging/kgp_package_contracts.nix {
-          inherit nixpkgs system kgpPackages;
-        };
-      });
+      checks = forAllSystems (
+        system:
+        let
+          pkgs = mkPkgs system;
+          outputs = systemOutputs system;
+        in
+        {
+          kgp_package_contracts = import ./packaging/kgp_package_contracts.nix {
+            inherit nixpkgs system kgpPackages;
+          };
+          runtime_release_contracts = import ./packaging/runtime_release_contracts.nix {
+            inherit pkgs;
+            runtime = outputs.packages.runtime_mars;
+          };
+        }
+      );
 
       homeManagerModules.default = homeManagerModule;
       homeManagerModules.yazelix = homeManagerModule;

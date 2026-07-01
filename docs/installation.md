@@ -267,6 +267,7 @@ The packaged runtime ships a fixed toolset instead of configurable dependency gr
 - host-managed helper integrations: `mise` and `tombi`
 - the default Yazi preview helpers: `p7zip`, `jq`, `fd`, `ripgrep`, `poppler`
 - one packaged terminal: Mars by default with the Yazelix Zellij graphics bridge
+- Mars font directories for the default terminal surface: JetBrains Mono, Symbols Nerd Font, and the selected packaged emoji font
 
 When you enter `yzx env`, Yazelix exports that curated tool surface to your shell. Runtime-private helpers stay under `libexec/` so host apps launched from Yazelix do not inherit shadowing tools like `dirname` ahead of the system PATH.
 
@@ -283,9 +284,11 @@ What it does not ship anymore:
 - **Terminal launch**: Mars is the Yazelix-owned terminal for Rust stack compatibility and agent-driven workflows; other terminal emulators should start Yazelix with `yzx enter`
 - **Editor choice**: Configure your editor (see [Editor Configuration](./editor_configuration.md))
 
-### Step 4: Install Fonts (Required for Kitty)
+### Step 4: Install Fonts For Host Terminals
 
-If you're using Kitty, install Nerd Fonts for proper icon display using modern Nix commands:
+The default Mars package carries its required font directories in the release, so a normal `#yazelix` install does not require a separate host font install for Mars.
+
+If you use a host-owned terminal such as Kitty, install Nerd Fonts for proper icon and glyph display using modern Nix commands:
 
 **Option A: Using nix profile (recommended - modern replacement for nix-env):**
 ```bash
@@ -301,7 +304,7 @@ home.packages = with pkgs; [
 ];
 ```
 
-**Note**: WezTerm and Ghostty have better font fallback and don't require this step.
+**Note**: This host font step is for terminals outside the Yazelix-owned Mars package. WezTerm and Ghostty have stronger host font fallback and usually do not require it.
 
 ### Step 5: Launch and Shell Integration
 

@@ -1,6 +1,6 @@
 use std::fs;
 use std::path::{Path, PathBuf};
-use tempfile::TempDir;
+use tempfile::{Builder as TempDirBuilder, TempDir};
 
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
@@ -12,6 +12,12 @@ pub struct ManagedConfigFixture {
     pub config_dir: PathBuf,
     pub state_dir: PathBuf,
     pub managed_config: PathBuf,
+}
+
+#[cfg(unix)]
+pub struct UnixSocketFixture {
+    pub _temp: TempDir,
+    pub path: PathBuf,
 }
 
 impl ManagedConfigFixture {
@@ -101,6 +107,21 @@ pub fn prepend_path(dir: &Path) -> String {
     } else {
         format!("{}:{current}", dir.to_string_lossy())
     }
+}
+
+#[cfg(unix)]
+pub fn short_unix_socket_path(file_name: &str) -> UnixSocketFixture {
+    let temp = TempDirBuilder::new()
+        .prefix("yzx-")
+        .tempdir_in("/tmp")
+        .unwrap();
+    let path = temp.path().join(file_name);
+    assert!(
+        path.to_string_lossy().len() < 100,
+        "mock Unix socket path is too long: {}",
+        path.display()
+    );
+    UnixSocketFixture { _temp: temp, path }
 }
 
 pub fn write_session_config_snapshot(

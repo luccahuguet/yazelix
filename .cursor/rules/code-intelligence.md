@@ -1,0 +1,1 @@
+../../.kb/rules/code-intelligence.md

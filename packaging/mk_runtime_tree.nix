@@ -235,6 +235,19 @@ pkgs.runCommand name { } ''
       done
     fi
   done
+
+  link_runtime_command_alias() {
+    source_name="$1"
+    alias_name="$2"
+    if [ -e "$out/libexec/$source_name" ] && [ ! -e "$out/libexec/$alias_name" ]; then
+      replace_runtime_link "$out/libexec/$source_name" "libexec/$alias_name"
+    fi
+  }
+
+  link_runtime_command_alias hx helix
+  link_runtime_command_alias nvim neovim
+  link_runtime_command_alias lazygit lg
+
   ${pkgs.lib.optionalString (rustCoreHelper != null) ''
     replace_runtime_link "${rustCoreHelper}/bin/yzx" "libexec/yzx"
     replace_runtime_link "${rustCoreHelper}/bin/yzx_core" "libexec/yzx_core"

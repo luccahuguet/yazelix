@@ -1,0 +1,6 @@
+interface:
+  display_name: "KB Status"
+  short_description: "Show workspace status"
+  default_prompt: "Use $kb-status to show workspace status and pending changes."
+policy:
+  allow_implicit_invocation: true

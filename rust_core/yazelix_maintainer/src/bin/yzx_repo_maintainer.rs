@@ -310,6 +310,13 @@ fn parse_canary_session_args(args: Vec<String>) -> CanarySessionOptions {
                 };
                 options.session_name = Some(value);
             }
+            "--package-root" => {
+                let Some(value) = iter.next() else {
+                    eprintln!("Missing value after --package-root");
+                    std::process::exit(2);
+                };
+                options.package_root = Some(value.into());
+            }
             _ => {
                 eprintln!("Unknown canary-session option `{arg}`");
                 std::process::exit(2);

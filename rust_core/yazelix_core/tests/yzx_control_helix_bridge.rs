@@ -12,7 +12,9 @@ mod unix {
     use std::thread;
 
     use super::support::commands::{apply_managed_config_env, yzx_control_command};
-    use super::support::fixtures::{managed_config_fixture, write_session_config_snapshot_with_id};
+    use super::support::fixtures::{
+        managed_config_fixture, short_unix_socket_path, write_session_config_snapshot_with_id,
+    };
 
     fn assert_success(output: &std::process::Output) {
         assert_eq!(output.status.code(), Some(0));
@@ -26,7 +28,23 @@ mod unix {
         socket_path: &Path,
         token_path: &Path,
     ) {
-        let registry_dir = state_dir.join("helix_bridge").join(session_id);
+        write_bridge_registry_at_root(
+            &state_dir.join("helix_bridge"),
+            session_id,
+            instance_id,
+            socket_path,
+            token_path,
+        );
+    }
+
+    fn write_bridge_registry_at_root(
+        bridge_root: &Path,
+        session_id: &str,
+        instance_id: &str,
+        socket_path: &Path,
+        token_path: &Path,
+    ) {
+        let registry_dir = bridge_root.join(session_id);
         fs::create_dir_all(&registry_dir).unwrap();
         fs::write(token_path, "secret").unwrap();
         fs::write(
@@ -87,7 +105,8 @@ mod unix {
         let snapshot = write_session_config_snapshot_with_id(&fixture, session_id, &[]);
         let registry_dir = fixture.state_dir.join("helix_bridge").join(session_id);
         fs::create_dir_all(&registry_dir).unwrap();
-        let socket_path = registry_dir.join("inst-1.sock");
+        let socket = short_unix_socket_path("inst-1.sock");
+        let socket_path = socket.path.clone();
         let token_path = registry_dir.join("inst-1.token");
         let bridge = spawn_mock_bridge(&socket_path);
         write_bridge_registry(
@@ -102,6 +121,52 @@ mod unix {
         apply_managed_config_env(&mut command, &fixture);
         let output = command
             .env("YAZELIX_SESSION_CONFIG_PATH", snapshot)
+            .arg("helix")
+            .arg("action")
+            .arg("helix.get_context")
+            .arg("--zellij-pane-id")
+            .arg("terminal:7")
+            .arg("--json")
+            .output()
+            .unwrap();
+
+        assert_success(&output);
+        bridge.join().unwrap();
+        let response: Value = serde_json::from_slice(&output.stdout).unwrap();
+        assert_eq!(response["status"], "ok");
+        assert_eq!(response["data"]["cwd"], "/tmp/project");
+    }
+
+    // Regression: long XDG state roots cannot safely hold Unix sockets, so the bridge client must honor the short launch-scoped bridge root.
+    #[test]
+    fn yzx_control_helix_action_reads_short_bridge_root_registry() {
+        let fixture = managed_config_fixture("");
+        let bridge_root = tempfile::Builder::new()
+            .prefix("yzx-hx-")
+            .tempdir_in("/tmp")
+            .unwrap();
+        let session_id = "launch-bridge-root-test";
+        let instance_id = "inst-1";
+        let snapshot = write_session_config_snapshot_with_id(&fixture, session_id, &[]);
+        let registry_dir = bridge_root.path().join(session_id);
+        fs::create_dir_all(&registry_dir).unwrap();
+        let socket = short_unix_socket_path("inst-1.sock");
+        let socket_path = socket.path.clone();
+        let token_path = registry_dir.join("inst-1.token");
+        let bridge = spawn_mock_bridge(&socket_path);
+        write_bridge_registry_at_root(
+            bridge_root.path(),
+            session_id,
+            instance_id,
+            &socket_path,
+            &token_path,
+        );
+
+        let mut command = yzx_control_command();
+        apply_managed_config_env(&mut command, &fixture);
+        let output = command
+            .env("YAZELIX_SESSION_CONFIG_PATH", snapshot)
+            .env("YAZELIX_HELIX_BRIDGE_ROOT", bridge_root.path())
             .arg("helix")
             .arg("action")
             .arg("helix.get_context")

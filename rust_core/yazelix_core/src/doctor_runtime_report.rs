@@ -501,7 +501,10 @@ fn runtime_variant_is_mars(runtime_dir: &Path) -> bool {
 fn is_mars_launch_log(path: &Path) -> bool {
     path.file_name()
         .and_then(|name| name.to_str())
-        .is_some_and(|name| name.starts_with("yazelix_terminal_desktop_") && name.ends_with(".log"))
+        .is_some_and(|name| {
+            name.ends_with(".log")
+                && (name.starts_with("mars_") || name.starts_with("yazelix_terminal_desktop_"))
+        })
 }
 
 fn launch_log_modified_seconds(path: &Path) -> u64 {
@@ -1159,7 +1162,7 @@ mod tests {
         let log = state
             .join("logs")
             .join("terminal_launch")
-            .join("yazelix_terminal_desktop_123.log");
+            .join("mars_123.log");
         std::fs::create_dir_all(log.parent().unwrap()).unwrap();
         std::fs::write(
             &log,
@@ -1197,7 +1200,7 @@ mod tests {
         let log = state
             .join("logs")
             .join("terminal_launch")
-            .join("yazelix_terminal_desktop_123.log");
+            .join("mars_123.log");
         std::fs::create_dir_all(log.parent().unwrap()).unwrap();
         std::fs::write(
             &log,

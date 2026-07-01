@@ -1,0 +1,6 @@
+interface:
+  display_name: "KB Close"
+  short_description: "Complete a task with verification"
+  default_prompt: "Use $kb-close to complete a task — verify acceptance criteria, require evidence, and update status."
+policy:
+  allow_implicit_invocation: true

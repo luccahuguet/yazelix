@@ -349,6 +349,12 @@ fn launch_candidate_extra_env(
     if candidate.terminal == "mars" {
         extra_env.extend(mars_process_boundary_env(config_path)?);
     }
+    if input.desktop_fast_path {
+        extra_env.push((
+            "YAZELIX_STARTUP_PROFILE_SKIP_WELCOME".to_string(),
+            Some("1".to_string()),
+        ));
+    }
     for key in ["YAZELIX_SWEEP_TEST_ID", "YAZELIX_LAYOUT_OVERRIDE"] {
         if let Ok(value) = std::env::var(key) {
             if !value.trim().is_empty() {
@@ -578,6 +584,50 @@ mod tests {
                 (MARS_EMOJI_ENV_KEYS[1].to_string(), None),
             ]
         );
+    }
+
+    // Regression: desktop launch must enter Zellij directly instead of stopping at the interactive welcome keypress gate.
+    #[test]
+    fn desktop_launch_sets_one_shot_welcome_skip_for_terminal_child() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let plan = LaunchExecutionPlan {
+            runtime_dir: tmp.path().join("runtime"),
+            state_dir: tmp.path().join("state"),
+            home_dir: tmp.path().join("home"),
+            working_dir: tmp.path().join("work"),
+            active_terminal: "mars".to_string(),
+            terminal_candidates: Vec::new(),
+            materialization: LaunchMaterializationData {
+                terminal_config_mode: "yazelix".to_string(),
+                generated_terminals: Vec::new(),
+                rerolled_ghostty_cursor: false,
+            },
+            runtime_env: serde_json::Map::new(),
+            window_title_session_name: None,
+            needs_refresh: false,
+        };
+        let input = LaunchFlowInput {
+            requested_path: None,
+            config_override: None,
+            home: false,
+            verbose: false,
+            desktop_fast_path: true,
+            env_removals: &[],
+        };
+        let candidate = crate::runtime_contract::TerminalCandidate {
+            terminal: "mars".to_string(),
+            name: "Mars".to_string(),
+            command: "mars".to_string(),
+        };
+        let config_path = tmp
+            .path()
+            .join("state/configs/terminal_emulators/mars/config.toml");
+
+        let env = launch_candidate_extra_env(&plan, &input, &candidate, &config_path).unwrap();
+
+        assert!(env.iter().any(|(key, value)| {
+            key == "YAZELIX_STARTUP_PROFILE_SKIP_WELCOME" && value.as_deref() == Some("1")
+        }));
     }
 
     // Regression: Mars is Rio-derived, but it does not accept a Yazelix CLI mode flag.

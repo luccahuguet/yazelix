@@ -1,0 +1,6 @@
+interface:
+  display_name: "KB Create"
+  short_description: "Create a new KB document"
+  default_prompt: "Use $kb-create to create a new KB document with discovery, context-aware content, and auto-incrementing slug."
+policy:
+  allow_implicit_invocation: true

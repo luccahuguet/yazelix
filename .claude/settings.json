@@ -20,6 +20,15 @@
           }
         ],
         "matcher": ""
+      },
+      {
+        "hooks": [
+          {
+            "command": "git-kb daemon status --quiet >/dev/null 2>&1 || git-kb daemon start --background >/dev/null 2>&1",
+            "timeout": 10,
+            "type": "command"
+          }
+        ]
       }
     ]
   }

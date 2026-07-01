@@ -955,11 +955,11 @@ fn stale_home_manager_profile_desktop_entries(
             ) {
                 reasons.push(reason);
             }
-            if !desktop_entry_terminal_enabled(path) {
+            if desktop_entry_terminal_enabled(path) {
                 let terminal = get_desktop_entry_terminal_value(path)
                     .unwrap_or_else(|| "<missing>".to_string());
                 reasons.push(format!(
-                    "Terminal={terminal} cannot show prelaunch failures"
+                    "Terminal={terminal} routes through host starter terminals that can close before Yazelix completes terminal handoff"
                 ));
             }
             if reasons.is_empty() {
@@ -1106,15 +1106,15 @@ fn check_desktop_entry_freshness(
         ));
     }
 
-    if !desktop_entry_terminal_enabled(&dp) {
+    if desktop_entry_terminal_enabled(&dp) {
         let terminal_value =
             get_desktop_entry_terminal_value(&dp).unwrap_or_else(|| "<missing>".into());
         return DoctorInstallResult::new(
             "warning",
-            "Yazelix desktop entry cannot show prelaunch failures",
+            "Yazelix desktop entry uses unsupported starter-terminal mode",
         )
         .with_details(format!(
-                "Desktop entry: {}\nTerminal: {}\nTerminal=false can hide config and generated-state errors that happen before the packaged terminal is spawned. Yazelix desktop entries should use Terminal=true as a starter window until a dedicated graphical prelaunch surface exists.\n{repair_hint}",
+                "Desktop entry: {}\nTerminal: {}\nTerminal=true routes through host starter terminals such as GNOME xdg-terminal-exec. Those starter terminals can close before Yazelix completes the managed terminal handoff. Yazelix desktop entries should use Terminal=false and rely on desktop launch logs plus yzx doctor for diagnostics.\n{repair_hint}",
                 path_to_string(&dp),
                 terminal_value
             ));
@@ -1391,7 +1391,7 @@ mod tests {
         std::fs::write(
             &profile_desktop,
             format!(
-                "[Desktop Entry]\nName=Yazelix\nTerminal=true\nExec={} desktop launch\n",
+                "[Desktop Entry]\nName=Yazelix\nTerminal=false\nExec={} desktop launch\n",
                 profile_yzx.display()
             ),
         )
@@ -1415,9 +1415,9 @@ mod tests {
         );
     }
 
-    // Regression: pre-terminal config failures are invisible from GUI launchers unless the desktop entry opens a starter terminal window.
+    // Regression: GNOME starter terminals can close before the managed terminal survives, so fresh desktop entries use direct desktop launch.
     #[test]
-    fn desktop_freshness_accepts_terminal_true_and_warns_on_terminal_false() {
+    fn desktop_freshness_accepts_terminal_false_and_warns_on_terminal_true() {
         let tmp = TempDir::new().unwrap();
         let home = tmp.path().join("home");
         let xdg_data = home.join(".local/share");
@@ -1435,7 +1435,7 @@ mod tests {
         let exec = format!("\"{}\" desktop launch", profile_yzx.display());
         std::fs::write(
             &desktop,
-            format!("[Desktop Entry]\nName=Yazelix\nTerminal=true\nExec={exec}\n"),
+            format!("[Desktop Entry]\nName=Yazelix\nTerminal=false\nExec={exec}\n"),
         )
         .unwrap();
 
@@ -1446,7 +1446,7 @@ mod tests {
         std::fs::write(
             &desktop,
             format!(
-                "[Desktop Entry]\nName=Yazelix\nTerminal=true\nExec=env MARS_PROFILE=shaders {exec}\n"
+                "[Desktop Entry]\nName=Yazelix\nTerminal=false\nExec=env MARS_PROFILE=shaders {exec}\n"
             ),
         )
         .unwrap();
@@ -1455,14 +1455,14 @@ mod tests {
 
         std::fs::write(
             &desktop,
-            format!("[Desktop Entry]\nName=Yazelix\nTerminal=false\nExec={exec}\n"),
+            format!("[Desktop Entry]\nName=Yazelix\nTerminal=true\nExec={exec}\n"),
         )
         .unwrap();
         let stale = evaluate_install_ownership_report(&request);
         assert_eq!(stale.desktop_entry_freshness.status, "warning");
         assert_eq!(
             stale.desktop_entry_freshness.message,
-            "Yazelix desktop entry cannot show prelaunch failures"
+            "Yazelix desktop entry uses unsupported starter-terminal mode"
         );
     }
 

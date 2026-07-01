@@ -9,9 +9,37 @@ if [ "${1:-}" != "--detached" ]; then
   launch_log="$1"
   : > "$launch_log"
 
+  log_timestamp() {
+    date '+%Y-%m-%dT%H:%M:%S%z'
+  }
+
+  write_schedule_header() {
+    detach_method="$1"
+    {
+      printf '[%s] desktop deferred launch scheduled\n' "$(log_timestamp)"
+      printf 'scheduler_pid=%s\n' "$$"
+      printf 'detach_method=%s\n' "$detach_method"
+    } >>"$launch_log"
+  }
+
+  if command -v systemd-run >/dev/null 2>&1; then
+    write_schedule_header "systemd-run-user-scope"
+    if systemd-run --user --scope --no-block --quiet --same-dir "$0" --detached "$@" >/dev/null 2>&1 < /dev/null; then
+      printf '%s\n' "$launch_log"
+      exit 0
+    fi
+    {
+      printf '[%s] detach_method_failed=systemd-run-user-scope\n' "$(log_timestamp)"
+      printf 'fallback_detach_method=nohup-setsid\n'
+    } >>"$launch_log"
+  else
+    write_schedule_header "nohup-setsid"
+  fi
+
   if command -v setsid >/dev/null 2>&1; then
     nohup setsid "$0" --detached "$@" >/dev/null 2>&1 < /dev/null &
   else
+    printf 'fallback_detach_method=nohup\n' >>"$launch_log"
     nohup "$0" --detached "$@" >/dev/null 2>&1 < /dev/null &
   fi
 
@@ -91,7 +119,6 @@ write_launch_header() {
   } >>"$launch_log"
 }
 
-: > "$launch_log"
 write_launch_header "$@"
 
 i=0

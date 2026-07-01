@@ -306,7 +306,7 @@ pub(super) fn render_desktop_entry(launcher_path: &Path, active_terminal: &str) 
             "StartupWMClass={}",
             terminal_startup_wm_class(active_terminal)
         ),
-        "Terminal=true".to_string(),
+        "Terminal=false".to_string(),
         "X-Yazelix-Managed=true".to_string(),
         format!(
             "Exec={} desktop launch",

@@ -68,6 +68,7 @@ pub fn run_sweep_tests(repo_root: &Path, verbose: bool) -> Result<(), String> {
     println!();
 
     let combinations = nonvisual_test_combinations();
+    let runtime_root = resolve_runtime_root(repo_root)?;
 
     println!("Running {} sweep test combinations...", combinations.len());
     println!();
@@ -84,7 +85,7 @@ pub fn run_sweep_tests(repo_root: &Path, verbose: bool) -> Result<(), String> {
             println!("  Starting {}/{}: {}", completed + 1, total, combo.shell);
         }
 
-        let result = run_nonvisual_sweep_test(repo_root, &combo, &test_id, verbose);
+        let result = run_nonvisual_sweep_test(repo_root, &runtime_root, &combo, &test_id, verbose);
         let result = match result {
             Ok(result) => result,
             Err(error) => SweepResult {
@@ -230,6 +231,7 @@ fn nonvisual_test_combinations() -> Vec<SweepCombination> {
 
 fn run_nonvisual_sweep_test(
     repo_root: &Path,
+    runtime_root: &Path,
     combo: &SweepCombination,
     test_id: &str,
     verbose: bool,
@@ -240,7 +242,7 @@ fn run_nonvisual_sweep_test(
 
     let config_path = generate_sweep_config(combo.shell, combo.features, test_id)?;
     let result = (|| {
-        let config_result = validate_generated_config(&config_path, combo, repo_root);
+        let config_result = validate_generated_config(&config_path, combo, runtime_root);
         if config_result.status != SweepStatus::Pass {
             return Ok(nonvisual_result(
                 test_id,
@@ -255,7 +257,7 @@ fn run_nonvisual_sweep_test(
             ));
         }
 
-        let env_result = validate_environment(repo_root, &config_path);
+        let env_result = validate_environment(repo_root, runtime_root, &config_path);
 
         let overall = if config_result.status == SweepStatus::Pass
             && matches!(env_result.status, SweepStatus::Pass | SweepStatus::Skip)
@@ -393,9 +395,8 @@ fn sweep_temp_dir() -> Result<PathBuf, String> {
 fn validate_generated_config(
     config_path: &Path,
     combo: &SweepCombination,
-    repo_root: &Path,
+    runtime_root: &Path,
 ) -> StepResult {
-    let runtime_root = runtime_root(repo_root);
     let request = NormalizeConfigRequest {
         config_path: config_path.to_path_buf(),
         default_config_path: runtime_root.join("settings_default.jsonc"),
@@ -438,8 +439,7 @@ fn validate_generated_config(
     }
 }
 
-fn validate_environment(repo_root: &Path, config_path: &Path) -> StepResult {
-    let runtime_root = runtime_root(repo_root);
+fn validate_environment(repo_root: &Path, runtime_root: &Path, config_path: &Path) -> StepResult {
     let yzx_cli = runtime_root.join("shells").join("posix").join("yzx_cli.sh");
     let validation_helper = runtime_root
         .join("shells")
@@ -509,11 +509,71 @@ fn validate_environment(repo_root: &Path, config_path: &Path) -> StepResult {
     )
 }
 
-fn runtime_root(repo_root: &Path) -> PathBuf {
-    std::env::var_os("YAZELIX_RUNTIME_DIR")
+fn resolve_runtime_root(repo_root: &Path) -> Result<PathBuf, String> {
+    let mut candidates = Vec::new();
+    if let Some(path) = std::env::var_os("YAZELIX_RUNTIME_DIR").map(PathBuf::from) {
+        candidates.push(path);
+    }
+    candidates.push(repo_root.to_path_buf());
+
+    for candidate in candidates {
+        if is_packaged_runtime_root(&candidate) {
+            return Ok(candidate);
+        }
+    }
+
+    build_packaged_runtime_root(repo_root)
+}
+
+fn is_packaged_runtime_root(path: &Path) -> bool {
+    path.join("runtime_components.json").is_file()
+        && path.join("settings_default.jsonc").is_file()
+        && path
+            .join("shells")
+            .join("posix")
+            .join("yzx_cli.sh")
+            .is_file()
+}
+
+fn build_packaged_runtime_root(repo_root: &Path) -> Result<PathBuf, String> {
+    let flake_ref = format!("{}#yazelix", repo_root.display());
+    let output = Command::new("nix")
+        .args([
+            "build",
+            "--accept-flake-config",
+            "--no-link",
+            "--print-out-paths",
+        ])
+        .arg(&flake_ref)
+        .current_dir(repo_root)
+        .output()
+        .map_err(|error| format!("Failed to build packaged Yazelix runtime for sweep: {error}"))?;
+
+    if !output.status.success() {
+        return Err(format!(
+            "Failed to build packaged Yazelix runtime for sweep via `nix build {flake_ref}`\n{}",
+            String::from_utf8_lossy(&output.stderr).trim()
+        ));
+    }
+
+    let runtime_root = String::from_utf8_lossy(&output.stdout)
+        .lines()
+        .last()
+        .map(str::trim)
+        .filter(|line| !line.is_empty())
         .map(PathBuf::from)
-        .filter(|path| path.exists())
-        .unwrap_or_else(|| repo_root.to_path_buf())
+        .ok_or_else(|| {
+            format!("`nix build {flake_ref}` did not print a packaged runtime output path")
+        })?;
+
+    if is_packaged_runtime_root(&runtime_root) {
+        Ok(runtime_root)
+    } else {
+        Err(format!(
+            "Built sweep runtime root is missing packaged runtime files: {}",
+            runtime_root.display()
+        ))
+    }
 }
 
 #[cfg(test)]

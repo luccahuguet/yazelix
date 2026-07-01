@@ -430,6 +430,12 @@ fn verify_profile_installed_runtime(
         "runtime-local Mars packaged config",
         errors,
     );
+    validate_declared_bundled_runtime_commands(
+        &runtime_root,
+        &runtime_libexec,
+        &runtime_toolbin,
+        errors,
+    );
 
     for expected_tool in [
         "zellij",
@@ -650,6 +656,74 @@ fn verify_profile_installed_runtime(
     Ok(())
 }
 
+fn validate_declared_bundled_runtime_commands(
+    runtime_root: &Path,
+    runtime_libexec: &Path,
+    runtime_toolbin: &Path,
+    errors: &mut Vec<String>,
+) {
+    let manifest_path = runtime_root.join("runtime_tools.json");
+    let raw = match fs::read_to_string(&manifest_path) {
+        Ok(raw) => raw,
+        Err(error) => {
+            errors.push(format!(
+                "Failed to read runtime tool manifest {}: {}",
+                manifest_path.display(),
+                error
+            ));
+            return;
+        }
+    };
+    let manifest: JsonValue = match serde_json::from_str(&raw) {
+        Ok(manifest) => manifest,
+        Err(error) => {
+            errors.push(format!(
+                "Failed to parse runtime tool manifest {}: {}",
+                manifest_path.display(),
+                error
+            ));
+            return;
+        }
+    };
+    let Some(tools) = manifest.as_object() else {
+        errors.push(format!(
+            "Runtime tool manifest {} must be a JSON object",
+            manifest_path.display()
+        ));
+        return;
+    };
+
+    for (tool_name, spec) in tools {
+        let source = spec
+            .get("source")
+            .and_then(JsonValue::as_str)
+            .unwrap_or_default();
+        if source != "bundled" {
+            continue;
+        }
+        let Some(commands) = spec.get("commands").and_then(JsonValue::as_array) else {
+            errors.push(format!(
+                "Bundled runtime tool `{tool_name}` has no commands array in {}",
+                manifest_path.display()
+            ));
+            continue;
+        };
+        for command in commands.iter().filter_map(JsonValue::as_str) {
+            if command.is_empty() {
+                continue;
+            }
+            if runtime_libexec.join(command).exists() || runtime_toolbin.join(command).exists() {
+                continue;
+            }
+            errors.push(format!(
+                "Bundled runtime tool `{tool_name}` declares command `{command}`, but neither {} nor {} exists",
+                runtime_libexec.join(command).display(),
+                runtime_toolbin.join(command).display()
+            ));
+        }
+    }
+}
+
 const RUNTIME_ENV_PROBE_NU: &str = r#"let runtime_dir = ($env.YAZELIX_RUNTIME_DIR | default ""); let path_entries = ($env.PATH | default []); let runtime_libexec = (if ($runtime_dir | is-empty) { "" } else { $runtime_dir | path join "libexec" }); print ({shell: ($env.IN_YAZELIX_SHELL | default ""), runtime: $runtime_dir, path0: ($path_entries | get -o 0 | default ""), path1: ($path_entries | get -o 1 | default ""), libexec_on_path: (if ($runtime_libexec | is-empty) { false } else { $path_entries | any {|entry| $entry == $runtime_libexec } }), yzx: ((which yzx | get -o 0.path | default ""))} | to json -r)"#;
 const INSTALLED_ENV_PROBE_NU: &str = r#"let runtime_dir = ($env.YAZELIX_RUNTIME_DIR | default ""); let path_entries = ($env.PATH | default []); let runtime_libexec = (if ($runtime_dir | is-empty) { "" } else { $runtime_dir | path join "libexec" }); print ({shell: ($env.IN_YAZELIX_SHELL | default ""), runtime: $runtime_dir, path0: ($path_entries | get -o 0 | default ""), path1: ($path_entries | get -o 1 | default ""), libexec_on_path: (if ($runtime_libexec | is-empty) { false } else { $path_entries | any {|entry| $entry == $runtime_libexec } }), yzx: ((which yzx | get -o 0.path | default "")), editor: ($env.EDITOR | default "")} | to json -r)"#;
 
@@ -737,7 +811,7 @@ fn validate_profile_desktop_entry_contents(
     let expected_name = format!("Name={}", terminal_desktop_entry_name(runtime_terminal));
     for required in [
         expected_name.as_str(),
-        "Terminal=true",
+        "Terminal=false",
         "X-Yazelix-Managed=true",
     ] {
         if !raw.lines().any(|line| line.trim() == required) {
@@ -861,7 +935,7 @@ mod tests {
         fs::write(
             &desktop,
             format!(
-                "[Desktop Entry]\nName=New Yazelix - Mars\nTerminal=true\nX-Yazelix-Managed=true\nExec=\"{}\" desktop launch\n",
+                "[Desktop Entry]\nName=New Yazelix - Mars\nTerminal=false\nX-Yazelix-Managed=true\nExec=\"{}\" desktop launch\n",
                 yzx.display()
             ),
         )
@@ -883,7 +957,7 @@ mod tests {
         fs::write(&yzx, "").unwrap();
         fs::write(
             &desktop,
-            "[Desktop Entry]\nName=New Yazelix - Mars\nTerminal=true\nX-Yazelix-Managed=true\nExec=\"/old/bin/yzx\" desktop launch\n",
+            "[Desktop Entry]\nName=New Yazelix - Mars\nTerminal=false\nX-Yazelix-Managed=true\nExec=\"/old/bin/yzx\" desktop launch\n",
         )
         .unwrap();
 

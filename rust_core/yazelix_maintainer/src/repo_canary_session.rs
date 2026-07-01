@@ -11,6 +11,7 @@ pub struct CanarySessionOptions {
     pub dry_run: bool,
     pub keep_session: bool,
     pub session_name: Option<String>,
+    pub package_root: Option<PathBuf>,
 }
 
 #[derive(Debug, Clone)]
@@ -41,13 +42,14 @@ pub fn run_disposable_canary_session(
                 "temp_home": plan.temp_home,
                 "workspace_dir": plan.workspace_dir,
                 "evidence_dir": plan.evidence_dir,
-                "command": "nix build --no-link --print-out-paths .#yazelix; <out>/bin/yzx enter --path <workspace> --with core.skip_welcome_screen=true --with zellij.screen_saver_enabled=false",
+                "package_root": options.package_root,
+                "command": "nix build --no-link --print-out-paths .#yazelix or --package-root <out>; <out>/bin/yzx enter --path <workspace>",
             })
         );
         return Ok(());
     }
 
-    let package_root = build_packaged_yazelix(repo_root)?;
+    let package_root = resolve_canary_package_root(repo_root, options)?;
     kill_zellij_session(&package_root, &plan.session_name)?;
     prepare_clean_canary_temp_root(&plan)?;
 
@@ -60,15 +62,7 @@ pub fn run_disposable_canary_session(
 
     let workspace_arg = plan.workspace_dir.to_string_lossy().into_owned();
     let launch = match Command::new(package_root.join("bin").join("yzx"))
-        .args([
-            "enter",
-            "--path",
-            workspace_arg.as_str(),
-            "--with",
-            "core.skip_welcome_screen=true",
-            "--with",
-            "zellij.screen_saver_enabled=false",
-        ])
+        .args(["enter", "--path", workspace_arg.as_str()])
         .env("HOME", &plan.temp_home)
         .env("XDG_CONFIG_HOME", plan.temp_home.join(".config"))
         .env("XDG_DATA_HOME", plan.temp_home.join(".local").join("share"))
@@ -199,12 +193,56 @@ fn build_packaged_yazelix(repo_root: &Path) -> Result<PathBuf, String> {
     Ok(package_root)
 }
 
+fn resolve_canary_package_root(
+    repo_root: &Path,
+    options: &CanarySessionOptions,
+) -> Result<PathBuf, String> {
+    if let Some(package_root) = options.package_root.as_ref() {
+        validate_canary_package_root(package_root)?;
+        Ok(package_root.clone())
+    } else {
+        build_packaged_yazelix(repo_root)
+    }
+}
+
+fn validate_canary_package_root(package_root: &Path) -> Result<(), String> {
+    if !package_root.is_dir() {
+        return Err(format!(
+            "Explicit canary package root is not a directory: {}",
+            package_root.display()
+        ));
+    }
+    for (path, label) in [
+        (
+            package_root.join("bin").join("yzx"),
+            "packaged yzx launcher",
+        ),
+        (
+            package_root.join("libexec").join("zellij"),
+            "packaged Zellij binary",
+        ),
+    ] {
+        if !path.is_file() {
+            return Err(format!(
+                "Explicit canary package root is missing {label}: {}",
+                path.display()
+            ));
+        }
+    }
+    Ok(())
+}
+
 fn capture_canary_doctor(package_root: &Path, plan: &CanarySessionPlan) -> Result<(), String> {
-    let output = Command::new(package_root.join("bin").join("yzx"))
+    let mut command = Command::new(package_root.join("bin").join("yzx"));
+    command
         .args(["doctor", "--json"])
         .env("HOME", &plan.temp_home)
         .env("XDG_CONFIG_HOME", plan.temp_home.join(".config"))
-        .env("XDG_DATA_HOME", plan.temp_home.join(".local").join("share"))
+        .env("XDG_DATA_HOME", plan.temp_home.join(".local").join("share"));
+    if let Some(config_override) = latest_canary_session_config_override(plan)? {
+        command.env("YAZELIX_CONFIG_OVERRIDE", config_override);
+    }
+    let output = command
         .output()
         .map_err(|error| format!("Failed to run canary doctor capture: {error}"))?;
     fs::write(plan.evidence_dir.join("doctor.json"), &output.stdout)
@@ -218,6 +256,42 @@ fn capture_canary_doctor(package_root: &Path, plan: &CanarySessionPlan) -> Resul
         ));
     }
     Ok(())
+}
+
+fn latest_canary_session_config_override(
+    plan: &CanarySessionPlan,
+) -> Result<Option<PathBuf>, String> {
+    let override_root = plan
+        .temp_home
+        .join(".local")
+        .join("share")
+        .join("yazelix")
+        .join("config_overrides");
+    let entries = match fs::read_dir(&override_root) {
+        Ok(entries) => entries,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        Err(error) => {
+            return Err(format!(
+                "Failed to inspect canary config override root {}: {error}",
+                override_root.display()
+            ));
+        }
+    };
+    let mut candidates = Vec::new();
+    for entry in entries {
+        let entry = entry.map_err(|error| {
+            format!(
+                "Failed to inspect canary config override entry under {}: {error}",
+                override_root.display()
+            )
+        })?;
+        let settings_path = entry.path().join("settings.jsonc");
+        if settings_path.is_file() {
+            candidates.push(settings_path);
+        }
+    }
+    candidates.sort();
+    Ok(candidates.pop())
 }
 
 fn run_canary_post_session_checks(
@@ -436,6 +510,7 @@ mod tests {
             dry_run: true,
             keep_session: false,
             session_name: Some("yazelix-canary-test".to_string()),
+            package_root: None,
         })
         .unwrap();
 
@@ -454,6 +529,7 @@ mod tests {
             dry_run: true,
             keep_session: false,
             session_name: Some("bad/name".to_string()),
+            package_root: None,
         })
         .unwrap_err();
 
@@ -476,6 +552,50 @@ mod tests {
         assert!(plan.temp_home.is_dir());
         assert!(plan.workspace_dir.is_dir());
         assert!(plan.evidence_dir.is_dir());
+    }
+
+    // Defends: an explicit canary package root must point at the exact package payload the canary will launch.
+    #[test]
+    fn validates_explicit_canary_package_root_payload() {
+        let temp = tempdir().unwrap();
+        let package_root = temp.path().join("pkg");
+        fs::create_dir_all(package_root.join("bin")).unwrap();
+        fs::create_dir_all(package_root.join("libexec")).unwrap();
+        fs::write(package_root.join("bin").join("yzx"), "").unwrap();
+        fs::write(package_root.join("libexec").join("zellij"), "").unwrap();
+
+        validate_canary_package_root(&package_root).unwrap();
+    }
+
+    // Regression: do not let a canary claim it tested a prebuilt package when the launch payload is incomplete.
+    #[test]
+    fn rejects_explicit_canary_package_root_without_launcher() {
+        let temp = tempdir().unwrap();
+        let err = validate_canary_package_root(temp.path()).unwrap_err();
+
+        assert!(err.contains("packaged yzx launcher"));
+    }
+
+    // Regression: post-session doctor evidence must use the same transient session config generated by `yzx enter --with`.
+    #[test]
+    fn finds_latest_canary_session_config_override() {
+        let temp = tempdir().unwrap();
+        let plan = test_canary_plan(temp.path());
+        let older = plan
+            .temp_home
+            .join(".local/share/yazelix/config_overrides/session_1/settings.jsonc");
+        let newer = plan
+            .temp_home
+            .join(".local/share/yazelix/config_overrides/session_2/settings.jsonc");
+        fs::create_dir_all(older.parent().unwrap()).unwrap();
+        fs::create_dir_all(newer.parent().unwrap()).unwrap();
+        fs::write(&older, "{}").unwrap();
+        fs::write(&newer, "{}").unwrap();
+
+        assert_eq!(
+            latest_canary_session_config_override(&plan).unwrap(),
+            Some(newer)
+        );
     }
 
     // Regression: a failed launch must remain the primary error even when later evidence checks also fail.

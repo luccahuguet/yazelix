@@ -1,0 +1,6 @@
+interface:
+  display_name: "KB Review"
+  short_description: "Review a task against its acceptance criteria"
+  default_prompt: "Use $kb-review to assess task completeness against acceptance criteria and code."
+policy:
+  allow_implicit_invocation: true

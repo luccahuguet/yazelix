@@ -108,6 +108,8 @@ The standalone package installs `zjstatus.wasm` from the child repo's pinned `zj
 
 The main runtime ships `configs/zellij/plugins/zjstatus.wasm` from the locked `zjstatus` package output for integrated Zellij layouts.
 
+Yazelix must not use zjstatus's URL-based automated installation for the integrated runtime. The locally cloned upstream wiki at `/home/flexnetos/FlexNetOS/src/upstream/dj95/zjstatus.wiki/1-‐-Installation.md` documents `plugin location="https://github.com/dj95/zjstatus/releases/latest/download/zjstatus.wasm"` as an automated path, but also warns that Zellij can corrupt the download when multiple tabs fetch the plugin concurrently. Yazelix therefore treats `file:` paths to the packaged `zjstatus.wasm` as the release contract.
+
 Yazelix keeps these integration-only responsibilities:
 
 - launch-scoped status-cache paths

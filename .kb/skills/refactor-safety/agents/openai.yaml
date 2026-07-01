@@ -1,0 +1,6 @@
+interface:
+  display_name: "Refactor Safety"
+  short_description: "Check blast radius before changing public APIs or symbols"
+  default_prompt: "Use $refactor-safety to assess the impact of refactoring a symbol — find callers, callees, and transitive dependents."
+policy:
+  allow_implicit_invocation: true

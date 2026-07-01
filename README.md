@@ -51,6 +51,36 @@ nix run github:luccahuguet/yazelix#yazelix -- launch
 
 Prefer declarative installs? Use the top-level Home Manager module in [home_manager/README.md](home_manager/README.md)
 
+## Optional Configuration And Runtime Surface
+
+Yazelix can create the first config for you. If you launch before editing config, it auto-creates `~/.config/yazelix/settings.jsonc` from the shipped defaults. Edit it anytime afterward:
+
+```bash
+hx ~/.config/yazelix/settings.jsonc
+```
+
+The packaged runtime ships a fixed toolset instead of configurable dependency groups:
+
+- **Core stack**: `zellij`, `yazi`, `helix`, `nu`, `bash`, `fish`, `zsh`
+- **Helix Steel helpers**: `steel`, `steel-language-server`, `forge`, `cargo-steel-lib`, `repl-connect`
+- **CLI helpers**: `fzf`, `zoxide`, `starship`, `lazygit`, `zenith`, `carapace`, `macchina`
+- **Host-managed helper integrations**: `mise`, `tombi`
+- **Yazi preview helpers**: `p7zip`, `jq`, `fd`, `ripgrep`, `poppler`
+- **Terminal package**: Mars by default with the Yazelix Zellij graphics bridge
+- **Mars font surface**: packaged JetBrains Mono, Symbols Nerd Font, and emoji font directories for the default terminal launch
+
+When you enter `yzx env`, Yazelix exports the curated tool surface to your shell. Runtime-private helpers stay under `libexec/` so host apps launched from Yazelix do not inherit shadowing tools like `dirname` ahead of the system PATH
+
+Yazelix no longer ships a runtime-local `devenv` binary, dynamic packs, `user_packages`, non-Mars terminal binaries, or heavyweight media helpers such as `ffmpeg` or ImageMagick
+
+Common configuration choices:
+
+- **Custom shells**: set `default_shell` to `"nu"`, `"bash"`, `"fish"`, `"zsh"`, or `"xonsh"`; xonsh must be installed on the host and available on `PATH`
+- **Host xonsh hooks**: Yazelix generates xonsh initializers, but native xonsh startup must source `~/.config/yazelix/shell_xonsh.xsh`
+- **Terminal package**: choose `#yazelix` or `#yazelix_mars`; Home Manager uses `programs.yazelix.terminal = "mars"`
+- **Terminal launch**: Mars is the Yazelix-owned terminal for Rust stack compatibility and agent-driven workflows; other terminal emulators should start Yazelix with `yzx enter`
+- **Editor choice**: configure your editor in `settings.jsonc`; see [Editor Configuration](./docs/editor_configuration.md)
+
 📖 **[Complete Installation Guide →](./docs/installation.md)** - Detailed step-by-step installation instructions
 
 ## Updating

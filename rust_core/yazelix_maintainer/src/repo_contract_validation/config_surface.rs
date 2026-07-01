@@ -832,9 +832,9 @@ fn validate_home_manager_desktop_entry_contract(repo_root: &Path) -> Result<Vec<
         ));
     }
 
-    if !json_map_bool_field(&entry, "terminal") {
+    if json_map_bool_field(&entry, "terminal") {
         errors.push(
-            "Home Manager desktop entry must set terminal = true so pre-terminal config failures stay visible"
+            "Home Manager desktop entry must set terminal = false so host starter terminals cannot kill Yazelix handoff"
                 .to_string(),
         );
     }

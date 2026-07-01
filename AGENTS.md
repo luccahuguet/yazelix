@@ -108,6 +108,8 @@ When creating new files or directories, always use underscores to maintain consi
 
 - Prefer `yzx run ...` for project-scoped tool invocations instead of raw `nix develop -c ...` when running tools provided by the Yazelix environment.
 - Use raw `nix develop -c ...` only when `yzx run ...` is not a clean fit for the task, such as larger multi-command shell scripts or environment debugging.
+- Do not mutate installed surfaces before package proof. `nix profile add`, `nix profile upgrade`, `home-manager switch`, `yzx desktop install`, and desktop entry rewrites are consumer-side actions, not source-build proof. First build and validate the relevant flake outputs with no profile mutation, inspect or run the built `/nix/store/...` output directly when needed, then choose exactly one install owner to consume the proven artifact.
+- Keep install owners singular during diagnosis. Do not mix a default-profile Yazelix, a workspace-local profile Yazelix, a Home Manager profile entry, and user-local desktop entries as if they prove the same runtime. When testing desktop launch behavior, prove that `Exec`, runtime dir, generated configs, and logs all come from the same owner.
 - For Rust inner-loop work, prefer the direct maintainer commands before reaching for Nix:
   - `yzx dev rust fmt --check`
   - `yzx dev rust check`

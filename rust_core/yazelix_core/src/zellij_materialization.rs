@@ -1725,7 +1725,7 @@ ui { pane_frames { hide_session_name true } }
         assert!(!rendered.contains(r#"unbind "Ctrl q""#));
     }
 
-    // Defends: integrated zjstatus layout data comes from the child widget command as an opaque plugin block.
+    // Defends: integrated zjstatus layout data comes from the child widget command with a packaged file-backed wasm URL, not upstream URL auto-download.
     #[test]
     fn renders_zjstatus_plugin_block_with_child_renderer_command() {
         let temp = tempfile::tempdir().unwrap();
@@ -1753,6 +1753,9 @@ esac
 case "$3" in
   *'"zjstatus_plugin_url":"file:/tmp/zjstatus.wasm"'*) ;;
   *) exit 14 ;;
+esac
+case "$3" in
+  *'https://github.com/dj95/zjstatus/releases/latest/download/zjstatus.wasm'*) exit 20 ;;
 esac
 case "$3" in
   *'"codex_usage_periods":["5h","week"]'*) ;;

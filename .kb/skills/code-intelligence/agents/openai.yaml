@@ -1,0 +1,6 @@
+interface:
+  display_name: "Code Intelligence"
+  short_description: "Use GitKB code intelligence tools instead of grep for code relationships"
+  default_prompt: "Use $code-intelligence to find callers, callees, definitions, dead code, entrypoints, flows, code graph queries, and index health diagnostics using GitKB code intelligence tools."
+policy:
+  allow_implicit_invocation: true

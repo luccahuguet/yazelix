@@ -293,7 +293,7 @@ let
         notes = [ "Optional Yazi/archive helper. Off mode intentionally omits archive helper commands from the runtime." ];
       };
       poppler = makeTool {
-        package = poppler;
+        package = pkgs."poppler-utils";
         commands = [
           "pdfinfo"
           "pdftotext"

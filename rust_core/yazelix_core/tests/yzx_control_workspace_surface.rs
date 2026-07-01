@@ -14,8 +14,8 @@ mod support;
 
 use support::commands::yzx_control_command_in_fixture;
 use support::fixtures::{
-    managed_config_fixture, prepend_path, write_executable_script, write_session_config_snapshot,
-    write_session_config_snapshot_with_id,
+    managed_config_fixture, prepend_path, short_unix_socket_path, write_executable_script,
+    write_session_config_snapshot, write_session_config_snapshot_with_id,
 };
 
 fn assert_success(output: &Output) {
@@ -719,7 +719,8 @@ ya_command = "ya"
         &[("editor_command", json!("hx"))],
     );
     let bridge_dir = fixture.state_dir.join("helix_bridge").join(session_id);
-    let socket_path = bridge_dir.join("inst-1.sock");
+    let socket = short_unix_socket_path("inst-1.sock");
+    let socket_path = socket.path.clone();
     let token_path = bridge_dir.join("inst-1.token");
     fs::create_dir_all(&fake_bin).unwrap();
     fs::create_dir_all(&nested_dir).unwrap();
@@ -826,7 +827,8 @@ ya_command = "ya"
         &[("editor_command", json!("hx"))],
     );
     let bridge_dir = fixture.state_dir.join("helix_bridge").join(session_id);
-    let socket_path = bridge_dir.join("inst-1.sock");
+    let socket = short_unix_socket_path("inst-1.sock");
+    let socket_path = socket.path.clone();
     let token_path = bridge_dir.join("inst-1.token");
     fs::create_dir_all(&fake_bin).unwrap();
     fs::create_dir_all(&target_dir).unwrap();
@@ -1079,7 +1081,8 @@ ya_command = "ya"
         &[("editor_command", json!("hx"))],
     );
     let bridge_dir = fixture.state_dir.join("helix_bridge").join(session_id);
-    let socket_path = bridge_dir.join("inst-1.sock");
+    let socket = short_unix_socket_path("inst-1.sock");
+    let socket_path = socket.path.clone();
     let token_path = bridge_dir.join("inst-1.token");
     fs::create_dir_all(&fake_bin).unwrap();
     fs::create_dir_all(&target_dir).unwrap();

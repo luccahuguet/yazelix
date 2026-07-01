@@ -698,13 +698,13 @@ mod tests {
         );
     }
 
-    // Defends: desktop entry rendering keeps a quoted launcher path and terminal-backed starter window so spaces do not corrupt the Exec owner surface and pre-terminal failures stay visible.
+    // Defends: desktop entry rendering keeps a quoted launcher path and launches directly from the desktop shell so host starter terminals cannot kill the Yazelix handoff.
     #[test]
     fn render_desktop_entry_quotes_exec_path() {
         let entry = render_desktop_entry(Path::new("/tmp/with space/yzx"), "mars");
         assert!(entry.contains("Exec=\"/tmp/with space/yzx\" desktop launch"));
         assert!(entry.contains("Name=New Yazelix - Mars"));
-        assert!(entry.contains("Terminal=true"));
+        assert!(entry.contains("Terminal=false"));
     }
 
     // Regression: desktop launch schedules the real terminal only after the desktop-launch parent exits.
@@ -734,6 +734,9 @@ mod tests {
             String::from_utf8_lossy(&output.stdout).trim(),
             launch_log.display().to_string()
         );
+        let scheduled_log = std::fs::read_to_string(&launch_log).unwrap();
+        assert!(scheduled_log.contains("desktop deferred launch scheduled"));
+        assert!(scheduled_log.contains("detach_method="));
 
         let mut launched = false;
         for _ in 0..20 {

@@ -879,6 +879,26 @@ mod tests {
             fonts.get("size").and_then(toml::Value::as_float),
             Some(MARS_FONT_SIZE)
         );
+        let additional_dirs = fonts
+            .get("additional-dirs")
+            .and_then(toml::Value::as_array)
+            .unwrap();
+        assert!(
+            additional_dirs
+                .iter()
+                .any(|entry| entry.as_str() == Some("/fonts/Symbols"))
+        );
+        let symbol_map = fonts
+            .get("symbol-map")
+            .and_then(toml::Value::as_array)
+            .unwrap();
+        assert!(symbol_map.iter().any(|entry| {
+            entry
+                .as_table()
+                .and_then(|table| table.get("font-family"))
+                .and_then(toml::Value::as_str)
+                == Some("Symbols Nerd Font Mono")
+        }));
         assert!(rendered.contains("Noto Color Emoji"));
     }
 
@@ -1032,9 +1052,15 @@ trail-cursor = true
 
 [fonts]
 family = "FiraCode Nerd Font"
-
-[[fonts.additional-dirs]]
-path = "/fonts/{emoji_family}"
+additional-dirs = [
+  "/fonts/JetBrainsMono",
+  "/fonts/Symbols",
+  "/fonts/{emoji_family}",
+]
+symbol-map = [
+  {{ start = "E000", end = "F900", font-family = "Symbols Nerd Font Mono" }},
+  {{ start = "2600", end = "276F", font-family = "{emoji_family}" }},
+]
 "#
             ),
         )
