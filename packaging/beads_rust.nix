@@ -1,10 +1,6 @@
 {
   pkgs,
-  src ? pkgs.fetchCrate {
-    pname = "beads_rust";
-    version = "0.2.16";
-    hash = "sha256-6QM4WLC4hQArtvB2FyAxYDl/HqCEoUO7FRu6rrAFP4c=";
-  },
+  src,
   rustPlatform ? pkgs.rustPlatform,
 }:
 
