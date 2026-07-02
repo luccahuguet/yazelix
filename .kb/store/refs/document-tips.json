@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "entries": [
+    {
+      "document_id": "019f20cb-0458-7720-a283-ee08a19b67be",
+      "slug": "tasks/rtk-tokenkill-yazelix-integration",
+      "tip_commit_id": "019f20db-67f3-7643-bdb8-0068967e13f3"
+    },
+    {
+      "document_id": "019f20d5-6eb1-7c01-a056-d6e47e6eccc6",
+      "slug": "tasks/nu-plugin-codedb-build",
+      "tip_commit_id": "019f20dd-dbb1-7551-ac26-25befc474cf2"
+    },
+    {
+      "document_id": "019f20df-6c56-7090-b91d-922692efdd04",
+      "slug": "tasks/nu-plugin-codedb-core-schemas",
+      "tip_commit_id": "019f20e1-997f-7502-9837-ea9c859c80be"
+    },
+    {
+      "document_id": "019f20e2-8c3e-7dd3-92a3-57c3d322b97d",
+      "slug": "tasks/nu-plugin-codedb-redb-store-init",
+      "tip_commit_id": "019f20e5-e69e-7903-beb5-ef8d81a1f9ff"
+    },
+    {
+      "document_id": "019f20f7-8637-76a2-b3cd-33d52801435e",
+      "slug": "tasks/nu-plugin-codedb-redb-backup-restore",
+      "tip_commit_id": "019f20f8-dfd6-7af2-bacd-1a6f909dd643"
+    }
+  ]
+}

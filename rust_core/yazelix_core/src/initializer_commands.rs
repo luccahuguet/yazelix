@@ -202,6 +202,38 @@ fn normalize_initializer_content(shell_name: &str, content: &str) -> String {
     }
 }
 
+fn rtk_session_policy_initializer(shell_name: &str) -> Option<&'static str> {
+    match shell_name {
+        "nu" => Some(
+            r#"# Yazelix RTK policy: Codex sessions launched inside Yazelix must use RTK TokenKill.
+export def codex [...args: string] {
+    rtk codex ...$args
+}
+"#,
+        ),
+        "bash" | "zsh" => Some(
+            r#"# Yazelix RTK policy: Codex sessions launched inside Yazelix must use RTK TokenKill.
+codex() {
+    command rtk codex "$@"
+}
+"#,
+        ),
+        "fish" => Some(
+            r#"# Yazelix RTK policy: Codex sessions launched inside Yazelix must use RTK TokenKill.
+function codex
+    command rtk codex $argv
+end
+"#,
+        ),
+        "xonsh" => Some(
+            r#"# Yazelix RTK policy: Codex sessions launched inside Yazelix must use RTK TokenKill.
+aliases['codex'] = ['rtk', 'codex']
+"#,
+        ),
+        _ => None,
+    }
+}
+
 fn write_text_atomic(path: &Path, content: &str) -> Result<(), CoreError> {
     let parent = path.parent().ok_or_else(|| {
         CoreError::classified(
@@ -398,6 +430,11 @@ fn generate_initializers(
             aggregate.push_str("$env.PATH = ($current_path | append $initial_path | uniq)\n");
         }
 
+        if let Some(policy) = rtk_session_policy_initializer(shell.name) {
+            aggregate.push('\n');
+            aggregate.push_str(policy);
+        }
+
         aggregate.push('\n');
         write_text_atomic(&aggregate_file, &aggregate)?;
 
@@ -577,5 +614,16 @@ after
                 .map(str::to_string)
                 .collect::<Vec<_>>()
         );
+    }
+
+    // Defends: every generated Yazelix shell session shadows direct Codex launches with RTK TokenKill.
+    #[test]
+    fn rtk_session_policy_wraps_codex_for_supported_shells() {
+        for shell in ["nu", "bash", "fish", "zsh", "xonsh"] {
+            let policy = rtk_session_policy_initializer(shell).expect(shell);
+            assert!(policy.contains("rtk"));
+            assert!(policy.contains("codex"));
+        }
+        assert!(rtk_session_policy_initializer("unknown").is_none());
     }
 }

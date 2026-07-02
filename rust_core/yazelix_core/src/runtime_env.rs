@@ -102,6 +102,14 @@ pub fn compute_runtime_env(
         JsonValue::String("true".to_string()),
     );
     runtime_env.insert(
+        "YAZELIX_RTK_REQUIRED".to_string(),
+        JsonValue::String("true".to_string()),
+    );
+    runtime_env.insert(
+        "YAZELIX_CODEX_COMMAND".to_string(),
+        JsonValue::String("rtk codex".to_string()),
+    );
+    runtime_env.insert(
         "ZELLIJ_DEFAULT_LAYOUT".to_string(),
         JsonValue::String(MANAGED_SIDEBAR_LAYOUT_NAME.to_string()),
     );
@@ -469,6 +477,27 @@ mod tests {
                 .filter(|entry| *entry == &user_local_bin_string)
                 .count(),
             1
+        );
+    }
+
+    // Defends: every Yazelix runtime session advertises the RTK requirement for Codex/agent use.
+    #[test]
+    fn runtime_env_marks_rtk_as_required_for_codex_sessions() {
+        let temp = tempfile::tempdir().unwrap();
+        let runtime_dir = temp.path().join("runtime");
+        let home_dir = temp.path().join("home");
+        fs::create_dir_all(runtime_dir.join("bin")).unwrap();
+
+        let data = compute_runtime_env(&request_with_path(runtime_dir, home_dir, "/usr/bin:/bin"))
+            .unwrap();
+
+        assert_eq!(
+            data.runtime_env["YAZELIX_RTK_REQUIRED"].as_str(),
+            Some("true")
+        );
+        assert_eq!(
+            data.runtime_env["YAZELIX_CODEX_COMMAND"].as_str(),
+            Some("rtk codex")
         );
     }
 }

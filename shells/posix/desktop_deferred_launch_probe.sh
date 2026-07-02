@@ -115,6 +115,8 @@ write_launch_header() {
     printf 'helper_pid=%s\n' "$$"
     printf 'cwd=%s\n' "$(pwd)"
     printf 'MARS_CONFIG=%s\n' "${MARS_CONFIG:-}"
+    printf 'MARS_CONFIG_HOME=%s\n' "${MARS_CONFIG_HOME:-}"
+    printf 'MARS_APP_ID=%s\n' "${MARS_APP_ID:-}"
     printf 'RIO_CONFIG_HOME=%s\n' "${RIO_CONFIG_HOME:-}"
     printf 'argv:\n'
     for arg in "$@"; do

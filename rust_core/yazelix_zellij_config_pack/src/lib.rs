@@ -117,6 +117,8 @@ pub const DEFAULT_LEFT_SIDEBAR_COMMAND: &str = "yzx";
 pub const DEFAULT_LEFT_SIDEBAR_YAZI_ARGS: &[&str] = &["sidebar", "yazi"];
 pub const DEFAULT_RIGHT_SIDEBAR_COMMAND: &str = "yzx";
 pub const DEFAULT_RIGHT_SIDEBAR_AGENT_ARGS: &[&str] = &["agent"];
+const CODEX_AGENT_COMMAND: &str = "codex";
+const RTK_TOKENKILL_COMMAND: &str = "rtk";
 
 const REQUIRED_LAYOUT_PLACEHOLDERS: &[&str] = &[
     ZJSTATUS_TAB_TEMPLATE_PLACEHOLDER,
@@ -530,6 +532,29 @@ pub fn effective_left_sidebar_args(command: &str, args: &[String]) -> Vec<String
     }
 }
 
+fn is_codex_command(command: &str) -> bool {
+    let trimmed = command.trim();
+    if trimmed == CODEX_AGENT_COMMAND {
+        return true;
+    }
+    Path::new(trimmed)
+        .file_name()
+        .and_then(|name| name.to_str())
+        .map(|name| name == CODEX_AGENT_COMMAND)
+        .unwrap_or(false)
+}
+
+fn effective_right_sidebar_launcher(command: &str, args: &[String]) -> (String, Vec<String>) {
+    let trimmed = command.trim();
+    if is_codex_command(trimmed) {
+        let mut wrapped_args = Vec::with_capacity(args.len() + 1);
+        wrapped_args.push(trimmed.to_string());
+        wrapped_args.extend(args.iter().cloned());
+        return (RTK_TOKENKILL_COMMAND.to_string(), wrapped_args);
+    }
+    (trimmed.to_string(), args.to_vec())
+}
+
 fn is_default_left_sidebar_command(command: &str) -> bool {
     let trimmed = command.trim();
     if trimmed == DEFAULT_LEFT_SIDEBAR_COMMAND {
@@ -907,6 +932,11 @@ pub fn compute_zellij_render_plan(
         .map(|setting| setting.name.clone())
         .collect();
 
+    let (right_sidebar_command, right_sidebar_args) = effective_right_sidebar_launcher(
+        &request.right_sidebar_command,
+        &request.right_sidebar_args,
+    );
+
     Ok(ZellijRenderPlanData {
         default_layout_name,
         appearance_mode: request.appearance_mode.trim().to_ascii_lowercase(),
@@ -935,8 +965,8 @@ pub fn compute_zellij_render_plan(
         screen_saver_enabled: request.screen_saver_enabled,
         screen_saver_idle_seconds: request.screen_saver_idle_seconds,
         screen_saver_style,
-        right_sidebar_command: request.right_sidebar_command.trim().to_string(),
-        right_sidebar_args: request.right_sidebar_args.clone(),
+        right_sidebar_command,
+        right_sidebar_args,
         left_sidebar_command: request.left_sidebar_command.trim().to_string(),
         left_sidebar_args: effective_left_sidebar_args(
             &request.left_sidebar_command,
@@ -2230,6 +2260,26 @@ mod tests {
         for placeholder in REQUIRED_LAYOUT_PLACEHOLDERS {
             assert!(!layout.content.contains(placeholder));
         }
+    }
+
+    // Defends: direct Codex right-sidebar sessions rendered by Yazelix still enter through RTK TokenKill.
+    #[test]
+    fn wraps_direct_codex_right_sidebar_with_rtk_tokenkill() {
+        let mut request = sample_plan_request();
+        request.right_sidebar_command = "codex".to_string();
+        request.right_sidebar_args = vec!["--model".to_string(), "gpt-5.5".to_string()];
+
+        let plan = compute_zellij_render_plan(&request).unwrap();
+
+        assert_eq!(plan.right_sidebar_command, "rtk");
+        assert_eq!(
+            plan.right_sidebar_args,
+            vec![
+                "codex".to_string(),
+                "--model".to_string(),
+                "gpt-5.5".to_string()
+            ]
+        );
     }
 
     // Regression: background controllers must be loaded, not only declared as plugin aliases for first-message launch.
