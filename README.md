@@ -54,7 +54,7 @@ yzn
 
 Profile installs include `bin/yzn` and a `Yazelix Next` desktop entry.
 
-Home Manager users can import the narrow install module:
+Home Manager users can import the narrow module:
 
 ```nix
 { inputs, ... }: {
@@ -64,9 +64,30 @@ Home Manager users can import the narrow install module:
 ```
 
 The optional `programs.yazelix.package` setting overrides the installed
-package for local or alternate builds. The module does not write
-`~/.config/yazelix-next` runtime config files; use `yzn config` for managed
-runtime settings.
+package for local or alternate builds. The module writes no runtime config files
+by default.
+
+Home Manager can also own selected Yazelix config files:
+
+```nix
+programs.yazelix.config = {
+  settings = {
+    shell.program = "fish";
+    welcome.enabled = false;
+  };
+
+  starship.text = ''
+    format = "::"
+  '';
+
+  helix.languages.source = ./languages.toml;
+};
+```
+
+`settings` renders `~/.config/yazelix-next/config.toml` with Yazelix defaults
+and Ratconfig contract state. Native config files are simple `text` or `source`
+passthroughs for Mars, Zellij, Starship, Helix, Yazi, and Nu. Store-backed files
+are read-only from `yzn config`; edit them in Home Manager.
 
 ## Update
 
@@ -310,12 +331,12 @@ wc -l .gitignore AGENTS.md README.md CHANGELOG.md ARCHITECTURE.md flake.nix home
 | Language | Files | Lines |
 | --- | --- | ---: |
 | Ignore | `.gitignore` | 4 |
-| Markdown | `AGENTS.md`, `README.md`, `CHANGELOG.md`, `ARCHITECTURE.md` | 935 |
-| Nix | `flake.nix`, `home-manager/module.nix`, `packaging/tokenusage.nix`, `packaging/bar-render-request.nix` | 656 |
+| Markdown | `AGENTS.md`, `README.md`, `CHANGELOG.md`, `ARCHITECTURE.md` | 962 |
+| Nix | `flake.nix`, `home-manager/module.nix`, `packaging/tokenusage.nix`, `packaging/bar-render-request.nix` | 832 |
 | Shell | `shell/sh/yzn-agent.sh`, `shell/sh/yzn-env-supervisor.sh`, `shell/sh/yzn-helix.sh`, `shell/sh/yzn-shell.sh` | 94 |
 | TOML | `config.toml`, `mars.toml`, `helix/config.toml`, `yazi/yazi.toml`, `yazi/keymap.toml`, `crates/yzn-config/Cargo.toml`, `crates/yzn-open/Cargo.toml` | 152 |
 | KDL | `config.kdl`, `layout.kdl`, `layout.swap.kdl` | 199 |
 | Nu | `nu/config.nu`, `nu/env.nu` | 11 |
 | Lua | `yazi/init.lua`, `yazi/plugins/sidebar-state.yazi/main.lua`, `yazi/plugins/sidebar-status.yazi/main.lua`, `yazi/plugins/zoxide-editor.yazi/main.lua` | 235 |
-| Rust | `crates/yzn-config/src/catalog.rs`, `crates/yzn-config/src/main.rs`, `crates/yzn-open/src/bin/yzn-reveal.rs`, `crates/yzn-open/src/main.rs`, `checks/zellij-layout.rs`, `checks/yzn-contracts.rs`, `runtime/yzn-nu.rs`, `runtime/yzn-yazi.rs`, `runtime/yzn.rs`, `runtime/yzn-zellij-config.rs` | 6981 |
-| Total | owned project files | 9267 |
+| Rust | `crates/yzn-config/src/catalog.rs`, `crates/yzn-config/src/main.rs`, `crates/yzn-open/src/bin/yzn-reveal.rs`, `crates/yzn-open/src/main.rs`, `checks/zellij-layout.rs`, `checks/yzn-contracts.rs`, `runtime/yzn-nu.rs`, `runtime/yzn-yazi.rs`, `runtime/yzn.rs`, `runtime/yzn-zellij-config.rs` | 7026 |
+| Total | owned project files | 9515 |

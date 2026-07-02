@@ -337,7 +337,9 @@ Workspace
         name = "Yazelix Next";
         version = "next";
       });
-      defaultBarWidgets = ["editor" "shell" "term" "codex_usage" "cpu" "ram"];
+      defaultConfig = builtins.fromTOML (builtins.readFile ./config.toml);
+      defaultBarWidgets = defaultConfig.bar.widgets;
+      defaultPopupSize = toString defaultConfig.popup.size;
       barRenderRequest = import ./packaging/bar-render-request.nix {
         inherit (pkgs) coreutils nushell;
         runtimeIdentity = yznRuntimeIdentity;
@@ -428,6 +430,7 @@ Workspace
         yazelixZellijBarWasm = "${yazelixZellijBarPackage}/share/yazelix_zellij_bar/zjstatus.wasm";
         yazelixZellijPaneOrchestratorWasm = "${yazelixZellijPaneOrchestratorPackage}/${yazelixZellijPaneOrchestratorPackage.wasmPath}";
         defaultBarWidgetsJson = builtins.toJSON defaultBarWidgets;
+        inherit defaultPopupSize;
         pathPrefix = pkgs.lib.makeBinPath [
           pkgs.coreutils
           pkgs.git
@@ -505,6 +508,10 @@ Workspace
         Exec=yzn
         EOF
       '';
+      fakeHelixLanguages = pkgs.writeText "hm-helix-languages.toml" ''
+        [[language]]
+        name = "nix"
+      '';
       homeManagerConfiguration = module:
         home-manager.lib.homeManagerConfiguration {
           inherit pkgs;
@@ -524,11 +531,33 @@ Workspace
       homeManagerOverride = homeManagerConfiguration {
         programs.yazelix.package = fakeYazelix;
       };
+      homeManagerConfigFiles = homeManagerConfiguration {
+        programs.yazelix.config = {
+          settings = {
+            shell.program = "fish";
+            welcome.enabled = false;
+            bar.widgets = ["editor" "shell"];
+            ratconfig.contract.contract_id = "user-owned";
+          };
+          mars.text = "[window]\nwidth = 1200\n";
+          zellij.text = "pane_frames false\n";
+          starship.text = "format = \"::\"\n";
+          helix.config.text = "[editor]\nline-number = \"relative\"\n";
+          helix.languages.source = fakeHelixLanguages;
+          helix.module.text = "(provide yzn-test)\n";
+          helix.init.text = ";; init\n";
+          yazi.init.text = "-- init\n";
+          yazi.keymap.text = "[manager]\n";
+          nu.env.text = "# env\n";
+          nu.config.text = "# config\n";
+        };
+      };
     in {
       inherit yzn;
       home_manager = pkgs.runCommand "yzn-home-manager-check" {} ''
         default_path="${homeManagerDefault.activationPackage}/home-path"
         override_path="${homeManagerOverride.activationPackage}/home-path"
+        config_files="${homeManagerConfigFiles.activationPackage}/home-files/.config/yazelix-next"
 
         test -x "$default_path/bin/yzn"
         test -f "$default_path/share/applications/yzn.desktop"
@@ -542,6 +571,20 @@ Workspace
           printf '%s\n' 'Home Manager v1 must not generate Yazelix runtime config files' >&2
           exit 1
         fi
+        grep -q 'program = "fish"' "$config_files/config.toml"
+        grep -q 'enabled = false' "$config_files/config.toml"
+        grep -q 'style = "random"' "$config_files/config.toml"
+        grep -q 'contract_id = "yazelix-next.config"' "$config_files/config.toml"
+        ! grep -q 'contract_id = "user-owned"' "$config_files/config.toml"
+        test "$(YAZELIX_NEXT_CONFIG_HOME="$config_files" ${yzn}/libexec/yazelix-next/yzn-config --get shell.program)" = fish
+        grep -q 'width = 1200' "$config_files/mars/config.toml"
+        grep -q 'pane_frames false' "$config_files/zellij/config.kdl"
+        grep -q 'format = "::"' "$config_files/starship.toml"
+        grep -q 'line-number = "relative"' "$config_files/helix/config.toml"
+        grep -q 'name = "nix"' "$config_files/helix/languages.toml"
+        grep -q '(provide yzn-test)' "$config_files/helix/helix.scm"
+        grep -q -- '-- init' "$config_files/yazi/init.lua"
+        grep -q '# config' "$config_files/nu/config.nu"
         touch "$out"
       '';
       yzn_yazi_materialization = pkgs.runCommand "yzn-yazi-materialization-check" {nativeBuildInputs = [pkgs.rustc pkgs.stdenv.cc];} ''

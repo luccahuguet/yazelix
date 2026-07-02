@@ -23,10 +23,7 @@ pub(crate) const WELCOME_STYLE_VALUES: &[&str] = &[
     "random",
 ];
 pub(crate) const POPUP_SIZE_PATH: &str = "popup.size";
-pub(crate) const DEFAULT_POPUP_SIZE: i64 = 95;
 pub(crate) const BAR_WIDGETS_PATH: &str = "bar.widgets";
-pub(crate) const DEFAULT_BAR_WIDGETS: &[&str] =
-    &["editor", "shell", "term", "codex_usage", "cpu", "ram"];
 pub(crate) const BAR_WIDGET_VALUES: &[&str] = &[
     "session",
     "editor",
@@ -120,7 +117,6 @@ pub(crate) const CONFIG_FIELDS: &[ConfigFieldSpec] = &[
             &["off", "error", "info", "debug"],
             "off, error, info, or debug",
         ),
-        default: ConfigDefault::String("info"),
         apply_summary: "new opens",
         apply_detail: "Saved values are exported as YZN_OPEN_LOG for managed Yazi opens.",
     },
@@ -131,7 +127,6 @@ pub(crate) const CONFIG_FIELDS: &[ConfigFieldSpec] = &[
             &["nu", "bash", "zsh", "fish"],
             "nu, bash, zsh, or fish",
         ),
-        default: ConfigDefault::String("nu"),
         apply_summary: "new panes",
         apply_detail: "Saved shell selection applies to newly launched panes and sessions.",
     },
@@ -140,7 +135,6 @@ pub(crate) const CONFIG_FIELDS: &[ConfigFieldSpec] = &[
             WELCOME_ENABLED_PATH,
             "Show the startup welcome splash before entering the managed runtime.",
         ),
-        default: ConfigDefault::Boolean(true),
         apply_summary: "next launch",
         apply_detail: "Saved welcome settings apply to newly launched sessions.",
     },
@@ -151,7 +145,6 @@ pub(crate) const CONFIG_FIELDS: &[ConfigFieldSpec] = &[
             WELCOME_STYLE_VALUES,
             "known welcome style id",
         ),
-        default: ConfigDefault::String("random"),
         apply_summary: "next launch",
         apply_detail: "Saved welcome settings apply to newly launched sessions.",
     },
@@ -161,7 +154,6 @@ pub(crate) const CONFIG_FIELDS: &[ConfigFieldSpec] = &[
             "Startup welcome duration.",
             "integer from 1 to 60 seconds",
         ),
-        default: ConfigDefault::Integer(3),
         apply_summary: "next launch",
         apply_detail: "Saved welcome settings apply to newly launched sessions.",
     },
@@ -171,7 +163,6 @@ pub(crate) const CONFIG_FIELDS: &[ConfigFieldSpec] = &[
             "Width and height percentage for managed popups.",
             "integer from 1 to 100",
         ),
-        default: ConfigDefault::Integer(DEFAULT_POPUP_SIZE),
         apply_summary: "next launch",
         apply_detail: "Saved popup size applies to newly launched Yazelix sessions.",
     },
@@ -247,16 +238,8 @@ pub(crate) const ZELLIJ_FIELDS: &[FieldSpec] = &[
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct ConfigFieldSpec {
     pub(crate) field: FieldSpec,
-    pub(crate) default: ConfigDefault,
     pub(crate) apply_summary: &'static str,
     pub(crate) apply_detail: &'static str,
-}
-
-#[derive(Debug, Clone, Copy)]
-pub(crate) enum ConfigDefault {
-    String(&'static str),
-    Boolean(bool),
-    Integer(i64),
 }
 
 #[derive(Debug, Clone, Copy)]

@@ -56,16 +56,6 @@ struct FileActionSpec {
     starter: &'static str,
 }
 
-impl ConfigDefault {
-    fn json(self) -> JsonValue {
-        match self {
-            Self::String(value) => json!(value),
-            Self::Boolean(value) => json!(value),
-            Self::Integer(value) => json!(value),
-        }
-    }
-}
-
 impl FieldSpec {
     fn json_choice<'a>(&self, value: &'a JsonValue) -> Result<&'a str> {
         let Some(value) = value.as_str() else {
@@ -283,6 +273,13 @@ fn ensure_config_sources() -> Result<ConfigPaths> {
     Ok(paths)
 }
 
+fn root_config_field_paths() -> impl Iterator<Item = &'static str> {
+    CONFIG_FIELDS
+        .iter()
+        .map(|spec| spec.field.path)
+        .chain([BAR_WIDGETS_PATH])
+}
+
 fn ensure_config_file_at(path: PathBuf) -> Result<PathBuf> {
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent)?;
@@ -297,11 +294,21 @@ fn ensure_config_file_at(path: PathBuf) -> Result<PathBuf> {
     let completed = fill_missing_defaults(&reconciled)?;
     if completed != raw || !path.exists() {
         if path.exists() {
+            if path_read_only(&path) && toml_semantically_equal(&raw, &completed)? {
+                return Ok(path);
+            }
             reject_read_only_source(&path, SOURCE_CONFIG)?;
         }
         atomic_write(&path, &completed)?;
     }
     Ok(path)
+}
+
+fn toml_semantically_equal(left: &str, right: &str) -> Result<bool> {
+    Ok(
+        parse_toml_value(left).map_err(|error| boxed_debug("invalid TOML", error))?
+            == parse_toml_value(right).map_err(|error| boxed_debug("invalid TOML", error))?,
+    )
 }
 
 fn ensure_plain_config_file_at(path: &Path, default: &str) -> Result<()> {
@@ -357,11 +364,9 @@ fn reconcile_contract(raw: &str) -> Result<String> {
 
 fn fill_missing_defaults(raw: &str) -> Result<String> {
     let mut text = raw.to_string();
-    for (field_path, default) in CONFIG_FIELDS
-        .iter()
-        .map(|spec| (spec.field.path, spec.default.json()))
-        .chain([(BAR_WIDGETS_PATH, json!(DEFAULT_BAR_WIDGETS))])
-    {
+    let defaults = default_config()?;
+    for field_path in root_config_field_paths() {
+        let default = default_config_path_value(&defaults, field_path)?;
         let value = parse_toml_value(&text).map_err(|error| boxed_debug("invalid TOML", error))?;
         if get_toml_path(&value, field_path).is_none() {
             text = set_toml_value_text(&text, field_path, &default)
@@ -370,6 +375,17 @@ fn fill_missing_defaults(raw: &str) -> Result<String> {
         }
     }
     Ok(text)
+}
+
+fn default_config() -> Result<JsonValue> {
+    parse_toml_value(DEFAULT_CONFIG_TOML)
+        .map_err(|error| boxed_debug("invalid default config.toml", error))
+}
+
+fn default_config_path_value(defaults: &JsonValue, field_path: &str) -> Result<JsonValue> {
+    get_toml_path(defaults, field_path)
+        .cloned()
+        .ok_or_else(|| error(format!("default config.toml is missing {field_path}")))
 }
 
 fn read_toml_file_value(path: &Path, label: &'static str) -> Result<JsonValue> {
@@ -409,6 +425,7 @@ fn bar_widgets(value: &JsonValue) -> Result<Vec<String>> {
 
 fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
     let config_active = read_toml_file_value(&paths.root, "config.toml")?;
+    let config_default = default_config()?;
     let mars_active = read_toml_file_value(&paths.mars, "invalid mars/config.toml")?;
     let mars_default = parse_toml_value(DEFAULT_MARS_CONFIG_TOML)
         .map_err(|error| boxed_debug("invalid default Mars config", error))?;
@@ -421,9 +438,9 @@ fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
 
     let mut fields: Vec<_> = CONFIG_FIELDS
         .iter()
-        .map(|spec| build_root_config_field(&config_active, spec))
-        .collect();
-    fields.push(build_bar_widgets_field(&config_active)?);
+        .map(|spec| build_root_config_field(&config_active, &config_default, spec))
+        .collect::<Result<_>>()?;
+    fields.push(build_bar_widgets_field(&config_active, &config_default)?);
     fields.extend(KEY_BINDINGS.iter().map(build_key_binding_field));
     for spec in MARS_FIELDS {
         fields.push(build_config_field(
@@ -673,10 +690,14 @@ fn build_config_source(id: &str, tab: &str, label: &str, path: &Path) -> ConfigU
     }
 }
 
-fn build_root_config_field(active: &JsonValue, spec: &ConfigFieldSpec) -> ratconfig::ConfigUiField {
-    let default = spec.default.json();
+fn build_root_config_field(
+    active: &JsonValue,
+    defaults: &JsonValue,
+    spec: &ConfigFieldSpec,
+) -> Result<ratconfig::ConfigUiField> {
+    let default = default_config_path_value(defaults, spec.field.path)?;
     let current = get_toml_path(active, spec.field.path);
-    build_config_field(
+    Ok(build_config_field(
         SOURCE_CONFIG,
         TAB_CONFIG,
         &spec.field,
@@ -689,7 +710,7 @@ fn build_root_config_field(active: &JsonValue, spec: &ConfigFieldSpec) -> ratcon
             pending: false,
         },
         current.is_some_and(|value| validate_config_value(spec.field.path, value).is_err()),
-    )
+    ))
 }
 
 fn build_config_field(
@@ -720,11 +741,15 @@ fn build_config_field(
     })
 }
 
-fn build_bar_widgets_field(active: &JsonValue) -> Result<ratconfig::ConfigUiField> {
+fn build_bar_widgets_field(
+    active: &JsonValue,
+    defaults: &JsonValue,
+) -> Result<ratconfig::ConfigUiField> {
     let current = get_toml_path(active, BAR_WIDGETS_PATH)
         .map(bar_widgets)
         .transpose();
     let has_blocking_diagnostic = current.is_err();
+    let default = bar_widgets(&default_config_path_value(defaults, BAR_WIDGETS_PATH)?)?;
     build_string_list_choice_field(ConfigUiStringListChoiceSpec {
         source_id: SOURCE_CONFIG.to_string(),
         path: BAR_WIDGETS_PATH.to_string(),
@@ -732,7 +757,7 @@ fn build_bar_widgets_field(active: &JsonValue) -> Result<ratconfig::ConfigUiFiel
         list_cells: Vec::new(),
         tab: TAB_CONFIG.to_string(),
         current: current.ok().flatten(),
-        default: Some(string_values(DEFAULT_BAR_WIDGETS)),
+        default: Some(default),
         description: "Top bar widgets, left to right.".to_string(),
         allowed_values: string_values(BAR_WIDGET_VALUES),
         validation: "known widget ids".to_string(),
@@ -927,11 +952,10 @@ fn write_config_field(path: &Path, field_path: &str, value: &JsonValue) -> Resul
 }
 
 fn default_config_value(field_path: &str) -> Result<JsonValue> {
-    if field_path == BAR_WIDGETS_PATH {
-        Ok(json!(DEFAULT_BAR_WIDGETS))
-    } else {
-        Ok(config_field(field_path)?.default.json())
+    if field_path != BAR_WIDGETS_PATH {
+        config_field(field_path)?;
     }
+    default_config_path_value(&default_config()?, field_path)
 }
 
 fn validate_config_value(field_path: &str, value: &JsonValue) -> Result<()> {
@@ -1491,18 +1515,6 @@ mod tests {
 
     #[test]
     fn config_field_rejects_unknown_paths_before_io() {
-        assert_eq!(
-            config_field(OPEN_LOG_LEVEL_PATH).unwrap().default.json(),
-            json!("info")
-        );
-        assert_eq!(
-            config_field(SHELL_PROGRAM_PATH).unwrap().default.json(),
-            json!("nu")
-        );
-        assert_eq!(
-            config_field(POPUP_SIZE_PATH).unwrap().default.json(),
-            json!(DEFAULT_POPUP_SIZE)
-        );
         assert!(config_field("shell.typo")
             .unwrap_err()
             .to_string()
@@ -1510,26 +1522,38 @@ mod tests {
     }
 
     #[test]
+    fn root_config_catalog_defaults_come_from_config_toml_and_validate() {
+        let defaults = default_config().unwrap();
+
+        for field_path in root_config_field_paths() {
+            let value = default_config_path_value(&defaults, field_path).unwrap();
+            assert_eq!(default_config_value(field_path).unwrap(), value);
+            validate_config_value(field_path, &value).unwrap();
+        }
+    }
+
+    #[test]
     fn ensure_config_creates_defaults_and_contract_state() {
         let temp = TempHome::new();
         let path = ensure_config_file_at(temp.path.join("config.toml")).unwrap();
         let value = read_toml_file_value(&path, "config.toml").unwrap();
+        let defaults = default_config().unwrap();
 
         assert_eq!(
             get_toml_path(&value, OPEN_LOG_LEVEL_PATH),
-            Some(&json!("info"))
+            get_toml_path(&defaults, OPEN_LOG_LEVEL_PATH)
         );
         assert_eq!(
             get_toml_path(&value, SHELL_PROGRAM_PATH),
-            Some(&json!("nu"))
+            get_toml_path(&defaults, SHELL_PROGRAM_PATH)
         );
         assert_eq!(
             get_toml_path(&value, POPUP_SIZE_PATH),
-            Some(&json!(DEFAULT_POPUP_SIZE))
+            get_toml_path(&defaults, POPUP_SIZE_PATH)
         );
         assert_eq!(
             get_toml_path(&value, BAR_WIDGETS_PATH),
-            Some(&json!(DEFAULT_BAR_WIDGETS))
+            get_toml_path(&defaults, BAR_WIDGETS_PATH)
         );
         assert_eq!(
             get_toml_path(&value, "ratconfig.contract.contract_id"),
@@ -1593,7 +1617,7 @@ mod tests {
         let value = read_toml_file_value(&path, "config.toml").unwrap();
         assert_eq!(
             get_toml_path(&value, BAR_WIDGETS_PATH),
-            Some(&json!(DEFAULT_BAR_WIDGETS))
+            Some(&default_config_value(BAR_WIDGETS_PATH).unwrap())
         );
 
         let error = write_config_field(&path, BAR_WIDGETS_PATH, &json!(["weather"]))
@@ -1640,7 +1664,10 @@ mod tests {
         let popup = model_field(&model, POPUP_SIZE_PATH);
         assert_eq!(popup.tab, TAB_CONFIG);
         assert_eq!(popup.kind, "integer");
-        assert_eq!(popup.current_value, DEFAULT_POPUP_SIZE.to_string());
+        assert_eq!(
+            popup.current_value,
+            default_config_value(POPUP_SIZE_PATH).unwrap().to_string()
+        );
         assert_eq!(popup.apply_status.summary, "next launch");
 
         let field = model_field(&model, BAR_WIDGETS_PATH);
@@ -1796,6 +1823,41 @@ mod tests {
             .to_string();
         assert!(error.contains("read-only"));
         assert_eq!(fs::read_to_string(&paths.root).unwrap(), before_root);
+    }
+
+    #[test]
+    fn read_only_complete_root_config_accepts_format_only_drift() {
+        let (_temp, paths) = temp_sources();
+        let text = r#"
+[bar]
+widgets = ["editor", "shell", "term", "codex_usage", "cpu", "ram"]
+
+[open]
+log_level = "info"
+
+[popup]
+size = 95
+
+[ratconfig.contract]
+applied_change_ids = []
+contract_id = "yazelix-next.config"
+schema_version = 1
+version = 1
+
+[shell]
+program = "fish"
+
+[welcome]
+duration_seconds = 3
+enabled = false
+style = "random"
+"#;
+
+        fs::write(&paths.root, text).unwrap();
+        set_read_only(&paths.root);
+
+        ensure_config_file_at(paths.root.clone()).unwrap();
+        assert_eq!(fs::read_to_string(&paths.root).unwrap(), text);
     }
 
     #[test]
