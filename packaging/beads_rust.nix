@@ -1,5 +1,10 @@
 {
   pkgs,
+  src ? pkgs.fetchCrate {
+    pname = "beads_rust";
+    version = "0.2.16";
+    hash = "sha256-6QM4WLC4hQArtvB2FyAxYDl/HqCEoUO7FRu6rrAFP4c=";
+  },
   rustPlatform ? pkgs.rustPlatform,
 }:
 
@@ -7,10 +12,7 @@ rustPlatform.buildRustPackage rec {
   pname = "beads_rust";
   version = "0.2.16";
 
-  src = pkgs.fetchCrate {
-    inherit pname version;
-    hash = "sha256-6QM4WLC4hQArtvB2FyAxYDl/HqCEoUO7FRu6rrAFP4c=";
-  };
+  inherit src;
 
   cargoHash = "sha256-I8R0UWt+dlG05RGdASDCBo56m2vx4wSTg/pzP9eHYGg=";
 
