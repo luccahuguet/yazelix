@@ -253,10 +253,15 @@
             yazelixZellijPaneOrchestrator.packages.${system}.yazelix_zellij_pane_orchestrator;
           yazelix_zellij_popup = yazelixZellijPopup.packages.${system}.yzpp;
         };
+      beadsSource = builtins.path {
+        path = ../meta/beads_rust;
+        name = "beads_rust_source";
+      };
       beadsRustPackage =
         system: pkgs:
         import ./packaging/beads_rust.nix {
           inherit pkgs;
+          src = beadsSource;
           rustPlatform = pkgs.makeRustPlatform {
             cargo = fenix.packages.${system}.latest.cargo;
             rustc = fenix.packages.${system}.latest.rustc;
