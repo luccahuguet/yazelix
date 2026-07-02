@@ -15,6 +15,17 @@ User-visible runtime changes for Yazelix Next live here.
   apply on new launches, and the Starship tab edits `format`, `right_format`,
   and `add_newline`. The managed Starship left prompt defaults to `::`. The UI
   refuses to replace a source file whose permissions are read-only.
+- The `yzn config` Helix tab opens managed `helix/config.toml`,
+  `helix/languages.toml`, `helix/helix.scm`, and `helix/init.scm` files in
+  `yzn-hx`, creating TOML starter files only after their row is activated and
+  creating the Steel pair when either Steel row is activated. `yzn-hx` uses
+  that managed Helix directory when `config.toml`, `languages.toml`, or the
+  Steel pair exists, with packaged `config.toml` kept as the fallback when only
+  `languages.toml` or the Steel pair exists.
+- Managed Helix loads the packaged `:yzn-new-shell` Steel command by default.
+  It opens a new Yazelix terminal pane at the current Helix file directory or
+  workspace. User-managed Steel files still replace the packaged Steel module
+  when both `helix.scm` and `init.scm` exist.
 - The `yzn config` Advanced tab opens managed user `nu/env.nu`,
   `nu/config.nu`, `yazi/init.lua`, and `yazi/keymap.toml` files in `yzn-hx`,
   creating tiny starter files only after a row is activated.

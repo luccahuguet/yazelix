@@ -34,6 +34,11 @@ struct ConfigPaths {
     root: PathBuf,
     mars: PathBuf,
     zellij: PathBuf,
+    helix_dir: PathBuf,
+    helix_config: PathBuf,
+    helix_languages: PathBuf,
+    helix_module: PathBuf,
+    helix_init: PathBuf,
     nu_env: PathBuf,
     nu_config: PathBuf,
     starship: PathBuf,
@@ -42,7 +47,9 @@ struct ConfigPaths {
 }
 
 struct FileActionSpec {
+    source_id: &'static str,
     action_id: &'static str,
+    tab: &'static str,
     label: &'static str,
     description: &'static str,
     path: PathBuf,
@@ -310,6 +317,11 @@ fn config_paths() -> Result<ConfigPaths> {
         root: home.join("config.toml"),
         mars: home.join("mars/config.toml"),
         zellij: home.join("zellij/config.kdl"),
+        helix_dir: home.join("helix"),
+        helix_config: home.join("helix/config.toml"),
+        helix_languages: home.join("helix/languages.toml"),
+        helix_module: home.join("helix/helix.scm"),
+        helix_init: home.join("helix/init.scm"),
         nu_env: home.join("nu/env.nu"),
         nu_config: home.join("nu/config.nu"),
         starship: home.join("starship.toml"),
@@ -481,6 +493,7 @@ fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
                 "starship.toml",
                 &paths.starship,
             ),
+            build_config_source(SOURCE_HELIX, TAB_HELIX, "helix", &paths.helix_dir),
             ConfigUiSource {
                 id: SOURCE_KEYS.to_string(),
                 tab: TAB_KEYS.to_string(),
@@ -496,6 +509,7 @@ fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
             TAB_MARS.to_string(),
             TAB_ZELLIJ.to_string(),
             TAB_STARSHIP.to_string(),
+            TAB_HELIX.to_string(),
             TAB_KEYS.to_string(),
             TAB_ADVANCED.to_string(),
         ],
@@ -523,9 +537,9 @@ fn build_file_actions(paths: &ConfigPaths) -> Vec<ConfigUiFileAction> {
     file_action_specs(paths)
         .into_iter()
         .map(|spec| ConfigUiFileAction {
-            source_id: SOURCE_ADVANCED.to_string(),
+            source_id: spec.source_id.to_string(),
             action_id: spec.action_id.to_string(),
-            tab: TAB_ADVANCED.to_string(),
+            tab: spec.tab.to_string(),
             label: spec.label.to_string(),
             description: spec.description.to_string(),
             exists: spec.path.exists(),
@@ -570,31 +584,75 @@ fn build_key_binding_field(
     }
 }
 
-fn file_action_specs(paths: &ConfigPaths) -> [FileActionSpec; 4] {
+fn file_action_specs(paths: &ConfigPaths) -> [FileActionSpec; 8] {
     [
         FileActionSpec {
+            source_id: SOURCE_HELIX,
+            action_id: ACTION_HELIX_CONFIG,
+            tab: TAB_HELIX,
+            label: "helix/config.toml",
+            description: "Open the managed Helix TOML config file.",
+            path: paths.helix_config.clone(),
+            starter: HELIX_CONFIG_STARTER,
+        },
+        FileActionSpec {
+            source_id: SOURCE_HELIX,
+            action_id: ACTION_HELIX_LANGUAGES,
+            tab: TAB_HELIX,
+            label: "helix/languages.toml",
+            description: "Open the managed Helix language override file.",
+            path: paths.helix_languages.clone(),
+            starter: HELIX_LANGUAGES_STARTER,
+        },
+        FileActionSpec {
+            source_id: SOURCE_HELIX,
+            action_id: ACTION_HELIX_MODULE,
+            tab: TAB_HELIX,
+            label: "helix/helix.scm",
+            description: "Open the managed Helix Steel module file.",
+            path: paths.helix_module.clone(),
+            starter: HELIX_MODULE_STARTER,
+        },
+        FileActionSpec {
+            source_id: SOURCE_HELIX,
+            action_id: ACTION_HELIX_INIT,
+            tab: TAB_HELIX,
+            label: "helix/init.scm",
+            description: "Open the managed Helix Steel startup file.",
+            path: paths.helix_init.clone(),
+            starter: HELIX_INIT_STARTER,
+        },
+        FileActionSpec {
+            source_id: SOURCE_ADVANCED,
             action_id: ACTION_NU_ENV,
+            tab: TAB_ADVANCED,
             label: "nu/env.nu",
             description: "Open the user Nushell environment file.",
             path: paths.nu_env.clone(),
             starter: NU_ENV_STARTER,
         },
         FileActionSpec {
+            source_id: SOURCE_ADVANCED,
             action_id: ACTION_NU_CONFIG,
+            tab: TAB_ADVANCED,
             label: "nu/config.nu",
             description: "Open the user Nushell config file.",
             path: paths.nu_config.clone(),
             starter: NU_CONFIG_STARTER,
         },
         FileActionSpec {
+            source_id: SOURCE_ADVANCED,
             action_id: ACTION_YAZI_INIT,
+            tab: TAB_ADVANCED,
             label: "yazi/init.lua",
             description: "Open the managed Yazi user init.lua file.",
             path: paths.yazi_init.clone(),
             starter: YAZI_INIT_STARTER,
         },
         FileActionSpec {
+            source_id: SOURCE_ADVANCED,
             action_id: ACTION_YAZI_KEYMAP,
+            tab: TAB_ADVANCED,
             label: "yazi/keymap.toml",
             description: "Open the managed Yazi user keymap.toml file.",
             path: paths.yazi_keymap.clone(),
@@ -786,13 +844,22 @@ fn prepare_file_action(
     create_if_missing: bool,
 ) -> Result<()> {
     let spec = file_action_spec(paths, source_id, action_id, path)?;
+    let is_helix_steel_action = spec.source_id == SOURCE_HELIX
+        && matches!(spec.action_id, ACTION_HELIX_MODULE | ACTION_HELIX_INIT);
     if spec.path.exists() {
+        if is_helix_steel_action {
+            ensure_helix_steel_pair(paths)?;
+        }
         return Ok(());
     }
     if !create_if_missing {
         return Err(error(format!("config file is missing: {}", path.display())));
     }
-    atomic_write(&spec.path, spec.starter)
+    atomic_write(&spec.path, spec.starter)?;
+    if is_helix_steel_action {
+        ensure_helix_steel_pair(paths)?;
+    }
+    Ok(())
 }
 
 fn file_action_spec(
@@ -801,12 +868,9 @@ fn file_action_spec(
     action_id: &str,
     path: &Path,
 ) -> Result<FileActionSpec> {
-    if source_id != SOURCE_ADVANCED {
-        return Err(error(format!("unknown file action source: {source_id}")));
-    }
     let Some(spec) = file_action_specs(paths)
         .into_iter()
-        .find(|spec| spec.action_id == action_id)
+        .find(|spec| spec.source_id == source_id && spec.action_id == action_id)
     else {
         return Err(error(format!("unknown file action: {action_id}")));
     };
@@ -817,6 +881,16 @@ fn file_action_spec(
         )));
     }
     Ok(spec)
+}
+
+fn ensure_helix_steel_pair(paths: &ConfigPaths) -> Result<()> {
+    if !paths.helix_module.exists() {
+        atomic_write(&paths.helix_module, HELIX_MODULE_STARTER)?;
+    }
+    if !paths.helix_init.exists() {
+        atomic_write(&paths.helix_init, HELIX_INIT_STARTER)?;
+    }
+    Ok(())
 }
 
 fn configured_editor() -> Result<PathBuf> {
@@ -1350,6 +1424,11 @@ mod tests {
             root: temp.path.join("config.toml"),
             mars: temp.path.join("mars/config.toml"),
             zellij: temp.path.join("zellij/config.kdl"),
+            helix_dir: temp.path.join("helix"),
+            helix_config: temp.path.join("helix/config.toml"),
+            helix_languages: temp.path.join("helix/languages.toml"),
+            helix_module: temp.path.join("helix/helix.scm"),
+            helix_init: temp.path.join("helix/init.scm"),
             nu_env: temp.path.join("nu/env.nu"),
             nu_config: temp.path.join("nu/config.nu"),
             starship: temp.path.join("starship.toml"),
@@ -1744,6 +1823,10 @@ mod tests {
         assert!(paths.mars.exists());
         assert!(paths.zellij.exists());
         assert!(paths.starship.exists());
+        assert!(!paths.helix_config.exists());
+        assert!(!paths.helix_languages.exists());
+        assert!(!paths.helix_module.exists());
+        assert!(!paths.helix_init.exists());
         assert!(!fs::read_to_string(paths.mars)
             .unwrap()
             .contains("ratconfig.contract"));
@@ -1782,9 +1865,49 @@ mod tests {
             .collect();
 
         assert!(model.tabs.contains(&TAB_STARSHIP.to_string()));
+        assert!(model.tabs.contains(&TAB_HELIX.to_string()));
+        assert!(model.sources.iter().any(|source| {
+            source.id == SOURCE_HELIX && source.tab == TAB_HELIX && source.path == paths.helix_dir
+        }));
         assert_eq!(
             rows,
             vec![
+                (
+                    SOURCE_HELIX,
+                    ACTION_HELIX_CONFIG,
+                    TAB_HELIX,
+                    "helix/config.toml",
+                    paths.helix_config.clone(),
+                    false,
+                    true,
+                ),
+                (
+                    SOURCE_HELIX,
+                    ACTION_HELIX_LANGUAGES,
+                    TAB_HELIX,
+                    "helix/languages.toml",
+                    paths.helix_languages.clone(),
+                    false,
+                    true,
+                ),
+                (
+                    SOURCE_HELIX,
+                    ACTION_HELIX_MODULE,
+                    TAB_HELIX,
+                    "helix/helix.scm",
+                    paths.helix_module.clone(),
+                    false,
+                    true,
+                ),
+                (
+                    SOURCE_HELIX,
+                    ACTION_HELIX_INIT,
+                    TAB_HELIX,
+                    "helix/init.scm",
+                    paths.helix_init.clone(),
+                    false,
+                    true,
+                ),
                 (
                     SOURCE_ADVANCED,
                     ACTION_NU_ENV,
@@ -1834,8 +1957,83 @@ mod tests {
         assert_eq!(fs::read_to_string(&paths.nu_env).unwrap(), NU_ENV_STARTER);
         assert!(!paths.nu_config.exists());
         assert!(paths.starship.exists());
+        assert!(!paths.helix_config.exists());
+        assert!(!paths.helix_languages.exists());
+        assert!(!paths.helix_module.exists());
+        assert!(!paths.helix_init.exists());
         assert!(!paths.yazi_init.exists());
         assert!(!paths.yazi_keymap.exists());
+    }
+
+    #[test]
+    fn prepare_file_action_creates_managed_helix_toml_independently() {
+        let (_temp, paths) = temp_sources();
+
+        prepare_file_action(
+            &paths,
+            SOURCE_HELIX,
+            ACTION_HELIX_CONFIG,
+            &paths.helix_config,
+            true,
+        )
+        .unwrap();
+
+        assert_eq!(
+            fs::read_to_string(&paths.helix_config).unwrap(),
+            HELIX_CONFIG_STARTER
+        );
+        assert!(!paths.helix_languages.exists());
+        assert!(!paths.helix_module.exists());
+        assert!(!paths.helix_init.exists());
+        assert!(!paths.nu_env.exists());
+        assert!(!paths.yazi_init.exists());
+    }
+
+    #[test]
+    fn prepare_file_action_creates_managed_helix_steel_pair() {
+        let (_temp, paths) = temp_sources();
+
+        prepare_file_action(
+            &paths,
+            SOURCE_HELIX,
+            ACTION_HELIX_INIT,
+            &paths.helix_init,
+            true,
+        )
+        .unwrap();
+
+        assert_eq!(
+            fs::read_to_string(&paths.helix_init).unwrap(),
+            HELIX_INIT_STARTER
+        );
+        assert_eq!(
+            fs::read_to_string(&paths.helix_module).unwrap(),
+            HELIX_MODULE_STARTER
+        );
+        assert!(!paths.helix_config.exists());
+        assert!(!paths.helix_languages.exists());
+        assert!(!paths.nu_env.exists());
+        assert!(!paths.yazi_init.exists());
+    }
+
+    #[test]
+    fn prepare_existing_managed_helix_steel_row_creates_missing_pair_file() {
+        let (_temp, paths) = temp_sources();
+        atomic_write(&paths.helix_init, HELIX_INIT_STARTER).unwrap();
+
+        prepare_file_action(
+            &paths,
+            SOURCE_HELIX,
+            ACTION_HELIX_INIT,
+            &paths.helix_init,
+            true,
+        )
+        .unwrap();
+
+        assert_eq!(
+            fs::read_to_string(&paths.helix_module).unwrap(),
+            HELIX_MODULE_STARTER
+        );
     }
 
     #[test]
@@ -1896,6 +2094,17 @@ mod tests {
         .unwrap_err()
         .to_string();
         assert!(error.contains("does not own"));
+
+        let error = prepare_file_action(
+            &paths,
+            SOURCE_ADVANCED,
+            ACTION_HELIX_CONFIG,
+            &paths.helix_config,
+            true,
+        )
+        .unwrap_err()
+        .to_string();
+        assert!(error.contains("unknown file action"));
 
         let error = prepare_file_action(
             &paths,

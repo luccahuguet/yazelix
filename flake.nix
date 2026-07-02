@@ -106,11 +106,14 @@
         ln -s ${ratconfig} "$out/ratconfig"
         cp ${./config.toml} "$out/config.toml"
         cp ${yznMarsConfig}/config.toml "$out/mars.toml"
+        mkdir -p "$out/helix"
+        cp ${./helix/config.toml} "$out/helix/config.toml"
         substituteInPlace "$out/Cargo.toml" \
           --replace-fail '../../../ratconfig' './ratconfig'
         substituteInPlace "$out/src/catalog.rs" \
           --replace-fail '../../../config.toml' '../config.toml' \
-          --replace-fail '../../../mars.toml' '../mars.toml'
+          --replace-fail '../../../mars.toml' '../mars.toml' \
+          --replace-fail '../../../helix/config.toml' '../helix/config.toml'
       '';
       yznConfig = pkgs.rustPlatform.buildRustPackage {
         pname = "yzn-config";
@@ -203,6 +206,61 @@ Workspace
       yznZellijConfig = rustBin "yzn-zellij-config" ./runtime/yzn-zellij-config.rs;
       yazelixHelixPackage = yazelixHelix.packages.${system}.yazelix_helix;
       yznHelixConfig = pkgs.writeTextDir "config.toml" (builtins.readFile ./helix/config.toml);
+      yznOpenTerminal = pkgs.writeShellApplication {
+        name = "yzn-open-terminal";
+        text = ''
+          if [ "$#" -ne 1 ]; then
+            printf '%s\n' 'usage: yzn-open-terminal <path>' >&2
+            exit 64
+          fi
+          target="$1"
+          if [ -d "$target" ]; then
+            cwd="$target"
+          else
+            cwd="$(${pkgs.coreutils}/bin/dirname -- "$target")"
+          fi
+          exec ${yazelixZellijPackage}/bin/zellij action new-pane --cwd "$cwd"
+        '';
+      };
+      yznHelixSteelConfig = pkgs.runCommand "yzn-helix-steel-config" {} ''
+        mkdir -p "$out"
+        cat > "$out/helix.scm" <<'EOF'
+        ;; Yazelix Next packaged Steel module.
+        (provide yzn-new-shell)
+        (require (only-in "helix/static.scm" cx->current-file get-helix-cwd))
+        (require (only-in "helix/commands.scm" run-shell-command))
+        (require (only-in "helix/misc.scm" set-error!))
+
+        (define yazelix-single-quote "'")
+        (define (yazelix-posix-quote value)
+          (string-append
+            yazelix-single-quote
+            (string-replace
+              value
+              yazelix-single-quote
+              (string-append yazelix-single-quote "\\" yazelix-single-quote yazelix-single-quote))
+            yazelix-single-quote))
+
+        (define (yzn-new-shell-command target)
+          (string-append "\"${yznOpenTerminal}/bin/yzn-open-terminal\" " (yazelix-posix-quote target)))
+
+        ;;@doc
+        ;;Open a Yazelix terminal pane at the current Helix file or workspace.
+        (define (yzn-new-shell)
+          (let ([current-file (cx->current-file)]
+                [current-workspace (get-helix-cwd)])
+            (cond
+              [(string? current-file)
+               (run-shell-command (yzn-new-shell-command current-file))]
+              [(string? current-workspace)
+               (run-shell-command (yzn-new-shell-command current-workspace))]
+              [else
+               (set-error! "Yazelix could not resolve a target path for opening a shell")])))
+        EOF
+        cat > "$out/init.scm" <<'EOF'
+        ;; Yazelix Next packaged Steel init.
+        EOF
+      '';
       yznHelixSrc = pkgs.replaceVars ./shell/sh/yzn-helix.sh {
         date = "${pkgs.coreutils}/bin/date";
         hx = "${yazelixHelixPackage}/bin/hx";
@@ -210,6 +268,7 @@ Workspace
         od = "${pkgs.coreutils}/bin/od";
         tr = "${pkgs.coreutils}/bin/tr";
         yznHelixConfig = "${yznHelixConfig}";
+        yznHelixSteelConfig = "${yznHelixSteelConfig}";
       };
       yznHelix = pkgs.runCommand "yzn-hx" {} ''
         install -D -m 755 ${yznHelixSrc} "$out/bin/yzn-hx"

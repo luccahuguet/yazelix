@@ -1,6 +1,32 @@
 #!/bin/sh
 YAZELIX_STATE_DIR="${YAZELIX_STATE_DIR:-${XDG_DATA_HOME:-${HOME:-/tmp}/.local/share}/yazelix-next}"
 export YAZELIX_STATE_DIR
+YAZELIX_NEXT_CONFIG_HOME="${YAZELIX_NEXT_CONFIG_HOME:-${XDG_CONFIG_HOME:-${HOME:-/tmp}/.config}/yazelix-next}"
+user_helix_dir="$YAZELIX_NEXT_CONFIG_HOME/helix"
+packaged_helix_dir="@yznHelixConfig@"
+packaged_helix_config="$packaged_helix_dir/config.toml"
+packaged_steel_dir="@yznHelixSteelConfig@"
+helix_config_dir="$packaged_helix_dir"
+helix_config_file="$packaged_helix_config"
+steel_config_dir="$packaged_steel_dir"
+steel_config_dir_needs_mkdir=false
+
+if [ -f "$user_helix_dir/config.toml" ] ||
+  [ -f "$user_helix_dir/languages.toml" ] ||
+  { [ -f "$user_helix_dir/helix.scm" ] && [ -f "$user_helix_dir/init.scm" ]; }; then
+  helix_config_dir="$user_helix_dir"
+  steel_config_dir="$YAZELIX_STATE_DIR/helix-steel"
+  steel_config_dir_needs_mkdir=true
+  if [ -f "$user_helix_dir/config.toml" ]; then
+    helix_config_file="$user_helix_dir/config.toml"
+  fi
+  if [ -f "$user_helix_dir/helix.scm" ] && [ -f "$user_helix_dir/init.scm" ]; then
+    steel_config_dir="$user_helix_dir"
+    steel_config_dir_needs_mkdir=false
+  fi
+fi
+HELIX_STEEL_CONFIG="$steel_config_dir"
+export HELIX_STEEL_CONFIG
 
 if [ -z "${YAZELIX_HELIX_BRIDGE_SESSION_ID:-}" ]; then
   YAZELIX_HELIX_BRIDGE_SESSION_ID="yzn-helper-$(@date@ +%s)-$$"
@@ -12,7 +38,11 @@ YAZELIX_HELIX_BRIDGE_INSTANCE_ID="hx-$(@date@ +%s)-$$"
 export YAZELIX_HELIX_BRIDGE_INSTANCE_ID
 YAZELIX_HELIX_BRIDGE_AUTH_TOKEN="$(@od@ -An -N32 -tx1 /dev/urandom | @tr@ -d ' \n')"
 export YAZELIX_HELIX_BRIDGE_AUTH_TOKEN
-export YAZELIX_HELIX_MANAGED_CONFIG_PATH="@yznHelixConfig@"
+YAZELIX_HELIX_MANAGED_CONFIG_PATH="$helix_config_file"
+export YAZELIX_HELIX_MANAGED_CONFIG_PATH
 
 @mkdir@ -p "$YAZELIX_STATE_DIR"
-exec @hx@ --config-dir "@yznHelixConfig@" "$@"
+if [ "$steel_config_dir_needs_mkdir" = true ]; then
+  @mkdir@ -p "$steel_config_dir"
+fi
+exec @hx@ --config-dir "$helix_config_dir" -c "$helix_config_file" "$@"

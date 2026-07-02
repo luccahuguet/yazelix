@@ -1087,13 +1087,7 @@ fn expect_first_party_plugins(config: &str) {
     let helix = embedded_store_path(&config_ui_script, "/bin/yzn-hx");
     let helix_script = fs::read_to_string(&helix).unwrap();
     let context = format!("{} managed Helix wrapper", helix.display());
-    for expected in [
-        "YAZELIX_HELIX_BRIDGE=1",
-        "YAZELIX_HELIX_MANAGED_CONFIG_PATH=",
-        "/bin/hx --config-dir",
-    ] {
-        expect_contains(&helix_script, expected, &context);
-    }
+    expect_contains(&helix_script, "YAZELIX_HELIX_BRIDGE=1", &context);
     let helix_config =
         fs::read_to_string(embedded_store_path(&helix_script, "-config.toml").join("config.toml"))
             .unwrap();
@@ -1102,6 +1096,36 @@ fn expect_first_party_plugins(config: &str) {
         r#"A-r = ':sh yzn reveal "%{buffer_name}"'"#,
         "managed Helix reveal binding",
     );
+    let helix_steel = embedded_store_path(&helix_script, "-yzn-helix-steel-config");
+    let helix_module = fs::read_to_string(helix_steel.join("helix.scm")).unwrap();
+    for expected in [
+        "(provide yzn-new-shell)",
+        "(require (only-in \"helix/static.scm\" cx->current-file get-helix-cwd))",
+        "(require (only-in \"helix/commands.scm\" run-shell-command))",
+        "(define (yzn-new-shell-command target)",
+        "/bin/yzn-open-terminal",
+        "(define (yzn-new-shell)",
+    ] {
+        expect_contains(&helix_module, expected, "packaged Helix Steel module");
+    }
+    assert!(
+        !helix_module.contains("recentf"),
+        "packaged Helix Steel module still references recentf\n{}",
+        excerpt(&helix_module)
+    );
+    let open_terminal = embedded_store_path(&helix_module, "/bin/yzn-open-terminal");
+    let open_terminal_script = fs::read_to_string(&open_terminal).unwrap();
+    expect_contains(
+        &open_terminal_script,
+        "zellij action new-pane --cwd",
+        "packaged Helix new-shell helper",
+    );
+    expect_contains(
+        &open_terminal_script,
+        "dirname -- \"$target\"",
+        "packaged Helix new-shell helper",
+    );
+    expect_helix_wrapper_config_selection(&helix_script);
 
     let menu_popup = popup_command(config, "/bin/yzn-menu-popup");
     let menu_popup_script = fs::read_to_string(&menu_popup).unwrap();
@@ -1109,6 +1133,169 @@ fn expect_first_party_plugins(config: &str) {
         menu_popup_script.contains("/bin/yzn-menu"),
         "{} does not delegate to yzn-menu",
         menu_popup.display(),
+    );
+}
+
+fn expect_helix_wrapper_config_selection(helix_script: &str) {
+    const FAKE_HX: &str = "#!/bin/sh\n\
+printf 'HELIX_STEEL_CONFIG=%s\\n' \"${HELIX_STEEL_CONFIG-}\" > \"$YZN_FAKE_HX_OUT\"\n\
+printf 'YAZELIX_HELIX_MANAGED_CONFIG_PATH=%s\\n' \"$YAZELIX_HELIX_MANAGED_CONFIG_PATH\" >> \"$YZN_FAKE_HX_OUT\"\n\
+for arg do printf 'arg=%s\\n' \"$arg\" >> \"$YZN_FAKE_HX_OUT\"; done\n";
+
+    let temp = TempDir::new();
+    let packaged_config = embedded_store_path(helix_script, "-config.toml").join("config.toml");
+    let packaged_steel = embedded_store_path(helix_script, "-yzn-helix-steel-config");
+    let fake_hx = temp.path.join("hx");
+    fs::write(&fake_hx, FAKE_HX).unwrap();
+    fs::set_permissions(&fake_hx, fs::Permissions::from_mode(0o755)).unwrap();
+    let real_hx = embedded_store_path(helix_script, "/bin/hx");
+    let test_wrapper = temp.path.join("yzn-hx");
+    fs::write(
+        &test_wrapper,
+        helix_script.replace(real_hx.to_str().unwrap(), fake_hx.to_str().unwrap()),
+    )
+    .unwrap();
+    fs::set_permissions(&test_wrapper, fs::Permissions::from_mode(0o755)).unwrap();
+
+    for (name, files, uses_user_config_file, uses_user_steel) in [
+        ("packaged", &[] as &[(&str, &str)], false, false),
+        (
+            "languages",
+            &[("languages.toml", "# managed languages\n")] as &[(&str, &str)],
+            false,
+            false,
+        ),
+        (
+            "toml",
+            &[("config.toml", "# managed config\n")] as &[(&str, &str)],
+            true,
+            false,
+        ),
+        (
+            "steel",
+            &[("helix.scm", ";; module\n"), ("init.scm", ";; init\n")] as &[(&str, &str)],
+            false,
+            true,
+        ),
+    ] {
+        expect_helix_wrapper_case(
+            &test_wrapper,
+            &temp.path,
+            &packaged_config,
+            &packaged_steel,
+            name,
+            files,
+            uses_user_config_file,
+            uses_user_steel,
+        );
+    }
+}
+
+fn expect_helix_wrapper_case(
+    wrapper: &Path,
+    root: &Path,
+    packaged_config: &Path,
+    packaged_steel: &Path,
+    name: &str,
+    files: &[(&str, &str)],
+    uses_user_config_file: bool,
+    uses_user_steel: bool,
+) {
+    let home = root.join(format!("{name}-config"));
+    let helix = home.join("helix");
+    if !files.is_empty() {
+        fs::create_dir_all(&helix).unwrap();
+        for (file, contents) in files {
+            fs::write(helix.join(file), contents).unwrap();
+        }
+    }
+    let state = root.join(format!("{name}-state"));
+    let output = run_helix_wrapper(wrapper, &home, &state, &root.join(format!("{name}-output")));
+    let expected_config_dir = if files.is_empty() {
+        packaged_config.parent().unwrap().to_path_buf()
+    } else {
+        helix.clone()
+    };
+    let expected_config_file = if uses_user_config_file {
+        helix.join("config.toml")
+    } else {
+        packaged_config.to_path_buf()
+    };
+    let expected_steel_dir = if files.is_empty() {
+        Some(packaged_steel.to_path_buf())
+    } else if uses_user_steel {
+        Some(helix)
+    } else {
+        Some(state.join("helix-steel"))
+    };
+    expect_helix_wrapper_output(
+        &output,
+        &expected_config_dir,
+        &expected_config_file,
+        expected_steel_dir.as_deref(),
+        &format!("{name} Helix config selection"),
+    );
+    if let Some(steel_dir) = expected_steel_dir.filter(|_| !uses_user_steel) {
+        assert!(
+            steel_dir.is_dir(),
+            "{name} Helix config should create the internal Steel fallback dir"
+        );
+    }
+}
+
+fn run_helix_wrapper(
+    wrapper: &Path,
+    config_home: &Path,
+    state_dir: &Path,
+    output_path: &Path,
+) -> String {
+    let output = Command::new(wrapper)
+        .env("YAZELIX_NEXT_CONFIG_HOME", config_home)
+        .env("YAZELIX_STATE_DIR", state_dir)
+        .env("YZN_FAKE_HX_OUT", output_path)
+        .env_remove("HELIX_STEEL_CONFIG")
+        .env_remove("YAZELIX_HELIX_MANAGED_CONFIG_PATH")
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "Helix wrapper failed: stdout={}\nstderr={}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    fs::read_to_string(output_path).unwrap()
+}
+
+fn expect_helix_wrapper_output(
+    output: &str,
+    config_dir: &Path,
+    config_file: &Path,
+    steel_dir: Option<&Path>,
+    context: &str,
+) {
+    let steel_line = format!(
+        "HELIX_STEEL_CONFIG={}\n",
+        steel_dir
+            .map(|path| path.display().to_string())
+            .unwrap_or_default()
+    );
+    let managed_line = format!(
+        "YAZELIX_HELIX_MANAGED_CONFIG_PATH={}",
+        config_file.display()
+    );
+    let config_dir_arg = format!("arg={}", config_dir.display());
+    let config_file_arg = format!("arg={}", config_file.display());
+    expect_contains(output, &steel_line, context);
+    expect_contains(output, &managed_line, context);
+    expect_order(
+        output,
+        &[
+            "arg=--config-dir",
+            config_dir_arg.as_str(),
+            "arg=-c",
+            config_file_arg.as_str(),
+        ],
+        context,
     );
 }
 
