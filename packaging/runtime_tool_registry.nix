@@ -353,15 +353,18 @@ let
       };
       xclip = makeTool {
         package = xclip;
-        commands = [ ];
+        commands = [ "xclip" ];
       };
       wl_clipboard = makeTool {
         package = wl-clipboard;
-        commands = [ ];
+        commands = [
+          "wl-copy"
+          "wl-paste"
+        ];
       };
       xsel = makeTool {
         package = xsel;
-        commands = [ ];
+        commands = [ "xsel" ];
       };
     };
   runtimeToolNames = builtins.attrNames runtimeToolSources;

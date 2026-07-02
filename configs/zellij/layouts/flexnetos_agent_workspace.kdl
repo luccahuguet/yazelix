@@ -1,25 +1,29 @@
-// FlexNetOS local startup layout.
-// This file is source-owned. Do not place custom source layouts under
-// ~/.local/share/yazelix/configs/zellij/layouts; Yazelix regenerates that
-// directory and removes unmanaged files.
+// FlexNetOS local startup layout template.
+// This file is source-owned and rendered by Yazelix before launch. Do not place
+// custom source layouts under ~/.local/share/yazelix/configs/zellij/layouts;
+// Yazelix regenerates that directory and removes unmanaged files.
 layout {
     cwd "/home/flexnetos/FlexNetOS"
 
     tab name="FlexNetOS" focus=true {
         pane size=1 borderless=true {
-            plugin location="zellij:tab-bar"
+            __YAZELIX_ZJSTATUS_TAB_TEMPLATE__
         }
         pane split_direction="vertical" {
-            pane command="/home/flexnetos/.nix-profile/bin/yzx" name="sidebar" size="20%" {
-                args "sidebar" "yazi"
+            pane name="sidebar" size="20%" {
+                command __YAZELIX_SIDEBAR_COMMAND__
+                __YAZELIX_SIDEBAR_ARGS__
             }
-            pane command="/home/flexnetos/.nix-profile/bin/yzx" name="workspace" size="20%" {
+            pane name="workspace" size="20%" {
+                command "__YAZELIX_RUNTIME_DIR__/libexec/yzx"
                 args "env"
             }
-            pane command="/home/flexnetos/.nix-profile/bin/yzx" name="agent" size="40%" {
-                args "agent"
+            pane name="agent" size="40%" {
+                command __YAZELIX_AGENT_COMMAND__
+                __YAZELIX_AGENT_ARGS__
             }
-            pane command="/home/flexnetos/.nix-profile/bin/yzx" name="tools" size="20%" {
+            pane name="tools" size="20%" {
+                command "__YAZELIX_RUNTIME_DIR__/libexec/yzx"
                 args "env"
             }
         }

@@ -170,7 +170,7 @@ Open the Yazelix GitHub Sponsors page
 ### `yzx update`
 Show available update targets
 - Bare `yzx update` prints the supported update-owner choices
-- It points users at `yzx update upstream` or `yzx update home_manager`
+- It points users at `yzx update upstream`, `yzx update local_source`, or `yzx update home_manager`
 - It warns users not to mix both update paths for the same installed Yazelix runtime
 
 ### `yzx update upstream`
@@ -179,6 +179,15 @@ Upgrade the active Yazelix package in the default Nix profile
 - Runs `nix profile upgrade --refresh <matching-yazelix-profile-entry>`
 - Intended for installs owned by the default Nix profile
 - Fresh launches use the updated installed runtime; already-open windows continue on their current live runtime until relaunch or `yzx restart`
+
+### `yzx update local_source`
+Upgrade active local-checkout Yazelix profile entries and repair generated state
+- Intended for development installs whose default-profile Yazelix entries point at `git+file:`, `file:`, `path:`, or another local checkout URL
+- Supports multiple active profile entries that share the active runtime, such as `yazelix` and `yazelix_mars`
+- Runs `nix profile upgrade --refresh <matching-local-source-profile-entries>`
+- Then runs the upgraded profile `~/.nix-profile/bin/yzx doctor --fix` so stale generated state is refreshed before the next desktop relaunch
+- Refuses Home Manager-owned installs, upstream/non-local profile entries, and unmanaged store paths
+- Does not install or rewrite desktop entries
 
 ### `yzx update home_manager`
 Refresh the current Home Manager flake input, then print the manual switch step
@@ -393,6 +402,7 @@ yzx sponsor                   # Open the Yazelix sponsor page
 # Updates
 yzx update                    # Show the supported update-owner paths
 yzx update upstream           # Print and run nix profile upgrade --refresh <matching-yazelix-profile-entry>
+yzx update local_source       # Upgrade active local-source profile entries, then run generated-state repair
 yzx update home_manager       # Run nix flake update yazelix here, then print home-manager switch
 yzx home_manager prepare      # Preview manual-install takeover blockers before Home Manager switch
 yzx home_manager prepare --apply --yes  # Archive file blockers, remove standalone profile yazelix entries, then hand off to home-manager switch

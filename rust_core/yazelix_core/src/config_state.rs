@@ -9,6 +9,9 @@ use std::path::{Component, Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 use toml::Value as TomlValue;
 
+const MATERIALIZED_STATE_SCHEMA_VERSION: u64 = 2;
+const GENERATED_STATE_MATERIALIZER_SCHEMA_VERSION: u64 = 2;
+
 #[derive(Debug, Clone)]
 pub struct ComputeConfigStateRequest {
     pub config_path: PathBuf,
@@ -23,6 +26,7 @@ pub struct RecordConfigStateRequest {
     pub config_file: String,
     pub managed_config_path: PathBuf,
     pub state_path: PathBuf,
+    pub runtime_dir: Option<PathBuf>,
     pub config_hash: String,
     pub runtime_hash: String,
 }
@@ -52,6 +56,8 @@ enum CachedState {
     Structured {
         config_hash: String,
         runtime_hash: String,
+        runtime_source_last_modified_date: Option<String>,
+        materializer_schema_version: Option<u64>,
     },
 }
 
@@ -86,9 +92,12 @@ pub fn compute_config_state(
         CachedState::Structured {
             config_hash,
             runtime_hash,
+            ..
         } => (config_hash.as_str(), runtime_hash.as_str()),
         CachedState::Missing => ("", ""),
     };
+
+    reject_known_runtime_downgrade(&cached_state, &request.runtime_dir)?;
 
     let config_changed = has_structured_cache && config_hash != cached_config_hash;
     let inputs_changed = has_structured_cache && runtime_hash != cached_runtime_hash;
@@ -126,10 +135,23 @@ pub fn record_config_state(
         return Ok(RecordConfigStateData { recorded: false });
     }
 
-    let state = json!({
+    let runtime_source = request
+        .runtime_dir
+        .as_deref()
+        .map(runtime_source_metadata)
+        .transpose()?
+        .flatten();
+    let mut state = json!({
+        "schema_version": MATERIALIZED_STATE_SCHEMA_VERSION,
+        "materializer_schema_version": GENERATED_STATE_MATERIALIZER_SCHEMA_VERSION,
         "config_hash": request.config_hash,
         "runtime_hash": request.runtime_hash,
     });
+    if let Some(runtime_source) = runtime_source {
+        if let Some(object) = state.as_object_mut() {
+            object.insert("runtime_source".to_string(), runtime_source);
+        }
+    }
     write_json_atomic(&request.state_path, &state)?;
     Ok(RecordConfigStateData { recorded: true })
 }
@@ -202,6 +224,7 @@ pub(crate) fn compute_runtime_refresh_hash(runtime_dir: &Path) -> Result<String,
     })?;
 
     let refresh_identity = json!({
+        "generated_state_materializer_schema_version": GENERATED_STATE_MATERIALIZER_SCHEMA_VERSION,
         "schema_version": object.get("schema_version").cloned().unwrap_or(JsonValue::Null),
         "version": object.get("version").cloned().unwrap_or(JsonValue::Null),
         "source": object.get("source").cloned().unwrap_or(JsonValue::Null),
@@ -218,6 +241,84 @@ pub(crate) fn compute_runtime_refresh_hash(runtime_dir: &Path) -> Result<String,
                 json!({ "path": identity_path.display().to_string() }),
             )
         })
+}
+
+fn runtime_source_metadata(runtime_dir: &Path) -> Result<Option<JsonValue>, CoreError> {
+    let identity_path = runtime_dir.join("runtime_identity.json");
+    if !identity_path.exists() {
+        return Ok(None);
+    }
+    let raw = fs::read_to_string(&identity_path).map_err(|source| {
+        CoreError::io(
+            "read_runtime_source_metadata",
+            "Could not read Yazelix runtime identity for generated-state metadata.",
+            "Reinstall Yazelix from a current package so runtime_identity.json is readable.",
+            identity_path.to_string_lossy(),
+            source,
+        )
+    })?;
+    let identity = serde_json::from_str::<JsonValue>(&raw).map_err(|source| {
+        CoreError::classified(
+            ErrorClass::Runtime,
+            "invalid_runtime_source_metadata",
+            format!(
+                "Yazelix runtime identity is invalid JSON at {}.",
+                identity_path.display()
+            ),
+            "Reinstall Yazelix from a current package so runtime_identity.json is valid.",
+            json!({
+                "path": identity_path.display().to_string(),
+                "error": source.to_string(),
+            }),
+        )
+    })?;
+    Ok(identity
+        .get("source")
+        .and_then(JsonValue::as_object)
+        .map(|source| JsonValue::Object(source.clone())))
+}
+
+fn runtime_source_last_modified_date(runtime_dir: &Path) -> Result<Option<String>, CoreError> {
+    Ok(runtime_source_metadata(runtime_dir)?
+        .and_then(|source| source.get("last_modified_date").cloned())
+        .and_then(|value| value.as_str().map(str::to_string)))
+}
+
+fn reject_known_runtime_downgrade(
+    cached_state: &CachedState,
+    runtime_dir: &Path,
+) -> Result<(), CoreError> {
+    let CachedState::Structured {
+        runtime_source_last_modified_date: Some(cached_date),
+        materializer_schema_version: Some(cached_schema),
+        ..
+    } = cached_state
+    else {
+        return Ok(());
+    };
+    if *cached_schema < GENERATED_STATE_MATERIALIZER_SCHEMA_VERSION {
+        return Ok(());
+    }
+    let Some(current_date) = runtime_source_last_modified_date(runtime_dir)? else {
+        return Ok(());
+    };
+    if current_date < *cached_date {
+        return Err(CoreError::classified(
+            ErrorClass::Runtime,
+            "generated_state_runtime_downgrade",
+            format!(
+                "Refusing to regenerate Yazelix generated state from an older runtime source ({current_date}) than the recorded generated state ({cached_date})."
+            ),
+            "Launch or repair with the newer Yazelix runtime that last generated this state, or deliberately reset generated state before using an older runtime.",
+            json!({
+                "current_runtime_source_last_modified_date": current_date,
+                "recorded_runtime_source_last_modified_date": cached_date,
+                "current_materializer_schema_version": GENERATED_STATE_MATERIALIZER_SCHEMA_VERSION,
+                "recorded_materializer_schema_version": cached_schema,
+            }),
+        ));
+    }
+    Ok(())
 }
 
 fn load_rebuild_required_paths(contract: &toml::Table) -> Vec<String> {
@@ -330,6 +431,15 @@ fn load_recorded_materialized_state(path: &Path) -> Result<CachedState, CoreErro
                 .and_then(JsonValue::as_str)
                 .unwrap_or("")
                 .to_string(),
+            runtime_source_last_modified_date: record
+                .get("runtime_source")
+                .and_then(JsonValue::as_object)
+                .and_then(|source| source.get("last_modified_date"))
+                .and_then(JsonValue::as_str)
+                .map(str::to_string),
+            materializer_schema_version: record
+                .get("materializer_schema_version")
+                .and_then(JsonValue::as_u64),
         }),
         _ => Ok(CachedState::Missing),
     }
@@ -515,6 +625,15 @@ mod tests {
     }
 
     fn write_runtime_identity(runtime_dir: &Path, variant: &str, source_revision: &str) {
+        write_runtime_identity_with_date(runtime_dir, variant, source_revision, "20260620000000");
+    }
+
+    fn write_runtime_identity_with_date(
+        runtime_dir: &Path,
+        variant: &str,
+        source_revision: &str,
+        last_modified_date: &str,
+    ) {
         fs::create_dir_all(runtime_dir).expect("runtime dir");
         fs::write(
             runtime_dir.join("runtime_identity.json"),
@@ -525,7 +644,7 @@ mod tests {
                 "source": {
                     "revision": source_revision,
                     "short_revision": &source_revision[..7.min(source_revision.len())],
-                    "last_modified_date": "20260620000000",
+                    "last_modified_date": last_modified_date,
                 },
                 "inputs": {
                     "nixpkgs": {
@@ -605,6 +724,7 @@ mod tests {
             config_file: config_path.to_string_lossy().to_string(),
             managed_config_path: config_path.clone(),
             state_path: state_path.clone(),
+            runtime_dir: Some(runtime_dir.clone()),
             config_hash: baseline.config_hash.clone(),
             runtime_hash: baseline.runtime_hash.clone(),
         })
@@ -665,6 +785,50 @@ mod tests {
         assert_ne!(current_hash, old_hash);
     }
 
+    // Regression: generated-state repair must be additive; current code refuses a known older runtime source.
+    #[test]
+    fn compute_config_state_rejects_known_runtime_downgrade() {
+        let dir = tempdir().expect("tempdir");
+        let state_path = dir.path().join("state/rebuild_hash");
+        let config_path = repo_root().join("settings_default.jsonc");
+        let newer_runtime = dir.path().join("store/newer-yazelix-mars");
+        let older_runtime = dir.path().join("store/older-yazelix-mars");
+        write_runtime_identity_with_date(
+            &newer_runtime,
+            "mars",
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "20260702000000",
+        );
+        write_runtime_identity_with_date(
+            &older_runtime,
+            "mars",
+            "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "20260701000000",
+        );
+
+        let newer_state = compute_config_state(&request_for(
+            config_path.clone(),
+            newer_runtime.clone(),
+            state_path.clone(),
+        ))
+        .unwrap();
+        record_config_state(&RecordConfigStateRequest {
+            config_file: config_path.to_string_lossy().to_string(),
+            managed_config_path: config_path.clone(),
+            state_path: state_path.clone(),
+            runtime_dir: Some(newer_runtime),
+            config_hash: newer_state.config_hash,
+            runtime_hash: newer_state.runtime_hash,
+        })
+        .unwrap();
+
+        let error =
+            compute_config_state(&request_for(config_path, older_runtime, state_path)).unwrap_err();
+
+        assert_eq!(error.class().as_str(), "runtime");
+        assert_eq!(error.code(), "generated_state_runtime_downgrade");
+    }
+
     // Defends: recording generated-state hashes never takes ownership of unmanaged config surfaces.
     #[test]
     fn records_only_the_managed_main_config_surface() {
@@ -677,6 +841,7 @@ mod tests {
             config_file: unmanaged.to_string_lossy().to_string(),
             managed_config_path: managed.clone(),
             state_path: state_path.clone(),
+            runtime_dir: None,
             config_hash: "cfg".to_string(),
             runtime_hash: "runtime".to_string(),
         })
@@ -688,6 +853,7 @@ mod tests {
             config_file: managed.to_string_lossy().to_string(),
             managed_config_path: managed,
             state_path: state_path.clone(),
+            runtime_dir: None,
             config_hash: "cfg".to_string(),
             runtime_hash: "runtime".to_string(),
         })
@@ -696,7 +862,12 @@ mod tests {
         let stored = fs::read_to_string(state_path).unwrap();
         assert_eq!(
             serde_json::from_str::<JsonValue>(&stored).unwrap(),
-            json!({"config_hash":"cfg","runtime_hash":"runtime"})
+            json!({
+                "schema_version": MATERIALIZED_STATE_SCHEMA_VERSION,
+                "materializer_schema_version": GENERATED_STATE_MATERIALIZER_SCHEMA_VERSION,
+                "config_hash":"cfg",
+                "runtime_hash":"runtime"
+            })
         );
     }
 }

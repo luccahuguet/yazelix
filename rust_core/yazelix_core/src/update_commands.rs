@@ -9,6 +9,13 @@ use std::io::{BufRead, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct ProfileEntryMatch {
+    name: String,
+    url: Option<String>,
+    original_url: Option<String>,
+}
+
 fn normalize_path_for_compare(path: &Path, home: &Path) -> PathBuf {
     let expanded = if path.starts_with("~") {
         expand_user_path(&path.to_string_lossy(), home)
@@ -45,6 +52,7 @@ fn print_update_owner_warning() {
     println!("Choose one update owner for this Yazelix install.");
     println!();
     println!("  Use `yzx update upstream` if this install is owned by a Nix profile package.");
+    println!("  Use `yzx update local_source` if that profile package points at a local checkout.");
     println!("  Use `yzx update home_manager` if Home Manager owns this install.");
     println!();
     println!("Do not use both update paths for the same installed Yazelix runtime.");
@@ -78,22 +86,31 @@ fn print_update_path_confirmation(owner: &str) -> Result<(), CoreError> {
 }
 
 fn fail_if_home_manager_owned_upstream_update() -> Result<(), CoreError> {
+    fail_if_home_manager_owned_update("upstream", "yzx update home_manager")
+}
+
+fn fail_if_home_manager_owned_local_source_update() -> Result<(), CoreError> {
+    fail_if_home_manager_owned_update("local_source", "yzx update home_manager")
+}
+
+fn fail_if_home_manager_owned_update(
+    requested_owner: &str,
+    owner_command: &str,
+) -> Result<(), CoreError> {
     let req = install_ownership_request_from_env()?;
     let report = evaluate_install_ownership_report(&req);
     if report.install_owner != "home-manager" {
         return Ok(());
     }
     println!(
-        "❌ `yzx update upstream` is for default Nix profile installs, but this Yazelix runtime appears to be Home Manager-owned."
+        "❌ `yzx update {requested_owner}` is for default Nix profile installs, but this Yazelix runtime appears to be Home Manager-owned."
     );
-    println!(
-        "   Run `yzx update home_manager` from the Home Manager flake that owns this install."
-    );
+    println!("   Run `{owner_command}` from the Home Manager flake that owns this install.");
     println!("   Then run `home-manager switch` to apply the updated input.");
     println!("   Do not use both update paths for the same installed Yazelix runtime.");
     Err(CoreError::classified(
         ErrorClass::Runtime,
-        "hm_owned_upstream",
+        "hm_owned_profile_update",
         "Home Manager owns this install; use yzx update home_manager.",
         "Run `yzx update home_manager` from the owning flake, then `home-manager switch`.",
         serde_json::json!({}),
@@ -127,6 +144,31 @@ fn load_default_profile_elements_json() -> Result<Value, i32> {
 }
 
 fn resolve_active_yazelix_profile_entry_name(profile_json: &Value) -> Result<String, i32> {
+    let matches = match resolve_active_yazelix_profile_entries(profile_json) {
+        Ok(matches) => matches,
+        Err(code) => return Err(code),
+    };
+
+    if matches.len() == 1 {
+        return Ok(matches[0].name.clone());
+    }
+
+    let names = matches
+        .iter()
+        .map(|entry| entry.name.as_str())
+        .collect::<Vec<_>>()
+        .join(", ");
+    println!("❌ Multiple default-profile Yazelix entries point at the active runtime: {names}");
+    println!("   Keep one clear profile owner, then rerun `yzx update upstream`.");
+    println!(
+        "   For local checkout installs, use `yzx update local_source` to update matching local-source entries together."
+    );
+    Err(1)
+}
+
+fn resolve_active_yazelix_profile_entries(
+    profile_json: &Value,
+) -> Result<Vec<ProfileEntryMatch>, i32> {
     let home = match home_dir_from_env() {
         Ok(h) => h,
         Err(_) => return Err(1),
@@ -142,8 +184,15 @@ fn resolve_active_yazelix_profile_entry_name(profile_json: &Value) -> Result<Str
         .cloned()
         .unwrap_or_default();
 
-    let mut matches: Vec<String> = Vec::new();
+    let mut matches: Vec<ProfileEntryMatch> = Vec::new();
     for (name, entry) in &elements {
+        if entry
+            .get("active")
+            .and_then(Value::as_bool)
+            .is_some_and(|active| !active)
+        {
+            continue;
+        }
         let store_paths = entry
             .get("storePaths")
             .and_then(|v| v.as_array())
@@ -152,23 +201,21 @@ fn resolve_active_yazelix_profile_entry_name(profile_json: &Value) -> Result<Str
         for store_path in store_paths {
             let expanded = normalize_path_for_compare(Path::new(store_path), &home);
             if expanded == runtime_root {
-                matches.push(name.clone());
+                matches.push(ProfileEntryMatch {
+                    name: name.clone(),
+                    url: entry.get("url").and_then(Value::as_str).map(str::to_string),
+                    original_url: entry
+                        .get("originalUrl")
+                        .and_then(Value::as_str)
+                        .map(str::to_string),
+                });
                 break;
             }
         }
     }
 
-    if matches.len() == 1 {
-        return Ok(matches[0].clone());
-    }
-
-    if matches.len() > 1 {
-        let names = matches.join(", ");
-        println!(
-            "❌ Multiple default-profile Yazelix entries point at the active runtime: {names}"
-        );
-        println!("   Keep one clear profile owner, then rerun `yzx update upstream`.");
-        return Err(1);
+    if !matches.is_empty() {
+        return Ok(matches);
     }
 
     println!(
@@ -188,6 +235,74 @@ fn resolve_active_yazelix_profile_entry_name(profile_json: &Value) -> Result<Str
         "   If Home Manager owns this install, enable the module again and use `yzx update home_manager` from the owning flake."
     );
     Err(1)
+}
+
+fn profile_entry_source_url(entry: &ProfileEntryMatch) -> Option<&str> {
+    entry
+        .original_url
+        .as_deref()
+        .or(entry.url.as_deref())
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+}
+
+fn is_local_source_url(url: &str) -> bool {
+    let trimmed = url.trim();
+    trimmed.starts_with("git+file:")
+        || trimmed.starts_with("file:")
+        || trimmed.starts_with("path:")
+        || trimmed.starts_with('/')
+        || trimmed.starts_with("./")
+        || trimmed.starts_with("../")
+}
+
+fn local_source_profile_entry_names(profile_json: &Value) -> Result<Vec<String>, i32> {
+    let matches = resolve_active_yazelix_profile_entries(profile_json)?;
+    match classify_local_source_profile_entries(matches) {
+        Ok(names) => Ok(names),
+        Err(non_local) if non_local.is_empty() => {
+            println!("❌ No active local-source Yazelix profile entries found.");
+            println!(
+                "   Use `nix profile add --refresh --accept-flake-config git+file:///path/to/yazelix#yazelix_mars` first, or use the owner-specific update command."
+            );
+            Err(1)
+        }
+        Err(non_local) => {
+            println!("❌ Active Yazelix profile entries are not all local-source installs.");
+            println!("   Non-local entries: {}", non_local.join(", "));
+            println!("   Use `yzx update upstream` for upstream profile installs.");
+            println!(
+                "   Use `yzx update local_source` only when the active profile entries point at a local checkout."
+            );
+            Err(1)
+        }
+    }
+}
+
+fn classify_local_source_profile_entries(
+    matches: Vec<ProfileEntryMatch>,
+) -> Result<Vec<String>, Vec<String>> {
+    let mut non_local = Vec::new();
+    let mut names = Vec::new();
+    for entry in matches {
+        let Some(url) = profile_entry_source_url(&entry) else {
+            non_local.push(entry.name);
+            continue;
+        };
+        if !is_local_source_url(url) {
+            non_local.push(entry.name);
+            continue;
+        }
+        names.push(entry.name);
+    }
+    if !non_local.is_empty() {
+        return Err(non_local);
+    }
+    if names.is_empty() {
+        return Err(Vec::new());
+    }
+    names.sort();
+    Ok(names)
 }
 
 fn profile_entry_update_fingerprint(
@@ -357,6 +472,7 @@ enum YzxUpdateCommand {
     Help,
     Nix { yes: bool, verbose: bool },
     Upstream,
+    LocalSource,
     HomeManager,
 }
 
@@ -369,6 +485,7 @@ impl YzxUpdateCommand {
             }
             Self::Nix { yes, verbose } => run_nix_update(yes, verbose),
             Self::Upstream => run_upstream_update(),
+            Self::LocalSource => run_local_source_update(),
             Self::HomeManager => run_home_manager_update(),
         }
     }
@@ -386,6 +503,9 @@ fn parse_yzx_update_command(args: &[String]) -> Result<YzxUpdateCommand, CoreErr
             Ok(YzxUpdateCommand::Nix { yes, verbose })
         }
         "upstream" => parse_no_arg_update_command(args, YzxUpdateCommand::Upstream),
+        "local_source" | "local-source" => {
+            parse_no_arg_update_command(args, YzxUpdateCommand::LocalSource)
+        }
         "home_manager" => parse_no_arg_update_command(args, YzxUpdateCommand::HomeManager),
         other => Err(CoreError::usage(format!(
             "Unknown yzx update subcommand: {other}. Try `yzx update` for a list."
@@ -403,6 +523,7 @@ fn parse_no_arg_update_command(
 
     let command_name = match command {
         YzxUpdateCommand::Upstream => "upstream",
+        YzxUpdateCommand::LocalSource => "local_source",
         YzxUpdateCommand::HomeManager => "home_manager",
         YzxUpdateCommand::Help | YzxUpdateCommand::Nix { .. } => unreachable!(),
     };
@@ -422,6 +543,9 @@ fn print_update_help() {
     println!("Available update commands:");
     println!(
         "  yzx update upstream      Upgrade the active Yazelix package in the default Nix profile"
+    );
+    println!(
+        "  yzx update local_source  Upgrade active local-checkout profile entries and repair generated state"
     );
     println!(
         "  yzx update home_manager  Refresh the current Home Manager flake input, then print `home-manager switch`"
@@ -491,7 +615,7 @@ fn run_upstream_update() -> Result<i32, CoreError> {
     }
 
     if let Err(e) = fail_if_home_manager_owned_upstream_update() {
-        if matches!(e.class(), ErrorClass::Runtime) && e.code() == "hm_owned_upstream" {
+        if matches!(e.class(), ErrorClass::Runtime) && e.code() == "hm_owned_profile_update" {
             return Ok(1);
         }
         return Err(e);
@@ -508,6 +632,129 @@ fn run_upstream_update() -> Result<i32, CoreError> {
         Err(code) => return Ok(code),
     };
     run_profile_package_update(profile_name, profile_json)
+}
+
+fn run_local_source_update() -> Result<i32, CoreError> {
+    if !ensure_nix_command_available() {
+        return Ok(1);
+    }
+
+    if let Err(e) = fail_if_home_manager_owned_local_source_update() {
+        if matches!(e.class(), ErrorClass::Runtime) && e.code() == "hm_owned_profile_update" {
+            return Ok(1);
+        }
+        return Err(e);
+    }
+
+    println!("Requested update path: local source checkout in the default Nix profile.");
+    println!();
+    println!("  This updates only active profile entries whose source URL is local.");
+    println!("  It then runs generated-state repair through the upgraded profile `yzx`.");
+    println!("  It does not install or rewrite desktop entries.");
+    println!();
+    let profile_json = match load_default_profile_elements_json() {
+        Ok(v) => v,
+        Err(code) => return Ok(code),
+    };
+    let profile_names = match local_source_profile_entry_names(&profile_json) {
+        Ok(names) => names,
+        Err(code) => return Ok(code),
+    };
+    run_local_source_profile_update(profile_names, profile_json)
+}
+
+fn run_local_source_profile_update(
+    profile_names: Vec<String>,
+    profile_json: Value,
+) -> Result<i32, CoreError> {
+    let before_update = profile_names
+        .iter()
+        .map(|name| {
+            (
+                name.clone(),
+                profile_entry_update_fingerprint(&profile_json, name),
+            )
+        })
+        .collect::<Vec<_>>();
+    let cmd_line = format!("nix profile upgrade --refresh {}", profile_names.join(" "));
+    print_exact_command(&cmd_line);
+
+    let mut command = Command::new("nix");
+    command.args(["profile", "upgrade", "--refresh"]);
+    command.args(profile_names.iter().map(String::as_str));
+    let status = match run_command_with_live_output(&mut command) {
+        Ok(status) => status,
+        Err(_) => {
+            println!("❌ Local-source Yazelix update failed.");
+            return Ok(1);
+        }
+    };
+    if !status.success() {
+        println!("❌ Local-source Yazelix update failed.");
+        return Ok(status.code().unwrap_or(1));
+    }
+
+    print_multi_profile_update_result(&before_update)?;
+    run_generated_state_repair_from_profile()
+}
+
+fn print_multi_profile_update_result(
+    before_update: &[(String, Option<(Option<String>, Vec<String>)>)],
+) -> Result<(), CoreError> {
+    let after_profile_json = match load_default_profile_elements_json() {
+        Ok(value) => value,
+        Err(_) => {
+            println!("✅ Yazelix profile update completed, but profile result inspection failed.");
+            return Ok(());
+        }
+    };
+    let unchanged = before_update.iter().all(|(name, before)| {
+        *before == profile_entry_update_fingerprint(&after_profile_json, name)
+    });
+    if unchanged {
+        println!("✅ Local-source Yazelix profile entries are already up to date.");
+    } else {
+        println!("✅ Local-source Yazelix profile entries updated.");
+    }
+    Ok(())
+}
+
+fn default_profile_yzx_path() -> Result<PathBuf, CoreError> {
+    Ok(home_dir_from_env()?
+        .join(".nix-profile")
+        .join("bin")
+        .join("yzx"))
+}
+
+fn run_generated_state_repair_from_profile() -> Result<i32, CoreError> {
+    let yzx = default_profile_yzx_path()?;
+    if !yzx.is_file() {
+        println!(
+            "❌ Could not find upgraded profile yzx at {}.",
+            yzx.display()
+        );
+        println!("   The profile update completed, but generated-state repair was not run.");
+        println!("   Rerun `yzx doctor --fix` from the upgraded profile before relaunching.");
+        return Ok(1);
+    }
+    let cmd_line = format!("{} doctor --fix", yzx.display());
+    print_exact_command(&cmd_line);
+    let mut command = Command::new(&yzx);
+    command.args(["doctor", "--fix"]);
+    let status = match run_command_with_live_output(&mut command) {
+        Ok(status) => status,
+        Err(_) => {
+            println!("❌ Generated-state repair failed to start.");
+            return Ok(1);
+        }
+    };
+    if !status.success() {
+        println!("❌ Generated-state repair failed.");
+        return Ok(status.code().unwrap_or(1));
+    }
+    println!("✅ Generated Yazelix state repaired with the upgraded profile runtime.");
+    println!("Next: close old Yazelix windows and relaunch from the desktop icon.");
+    Ok(0)
 }
 
 fn ensure_nix_command_available() -> bool {
@@ -630,6 +877,14 @@ mod tests {
         values.iter().map(|value| value.to_string()).collect()
     }
 
+    fn profile_match(name: &str, url: &str) -> ProfileEntryMatch {
+        ProfileEntryMatch {
+            name: name.to_string(),
+            url: Some(url.to_string()),
+            original_url: Some(url.to_string()),
+        }
+    }
+
     // Defends: an empty `yzx update` remains the owner-selection help path.
     #[test]
     fn parses_empty_update_as_help() {
@@ -660,6 +915,71 @@ mod tests {
             error.message(),
             "yzx update upstream does not take additional arguments."
         );
+    }
+
+    // Defends: local-source update is a first-class noninteractive owner path.
+    #[test]
+    fn parses_local_source_update_aliases() {
+        assert_eq!(
+            parse_yzx_update_command(&strings(&["local_source"])).unwrap(),
+            YzxUpdateCommand::LocalSource
+        );
+        assert_eq!(
+            parse_yzx_update_command(&strings(&["local-source"])).unwrap(),
+            YzxUpdateCommand::LocalSource
+        );
+    }
+
+    // Regression: local-source update rejects stray args before touching profile state.
+    #[test]
+    fn rejects_extra_local_source_update_args() {
+        let error = parse_yzx_update_command(&strings(&["local_source", "--yes"])).unwrap_err();
+
+        assert_eq!(
+            error.message(),
+            "yzx update local_source does not take additional arguments."
+        );
+    }
+
+    // Defends: local checkout URLs accepted by Nix profile entries are classified as local source.
+    #[test]
+    fn detects_local_source_urls() {
+        for url in [
+            "git+file:///home/me/yazelix",
+            "file:///home/me/yazelix",
+            "path:/home/me/yazelix",
+            "/home/me/yazelix",
+            "./yazelix",
+            "../yazelix",
+        ] {
+            assert!(is_local_source_url(url), "{url}");
+        }
+        assert!(!is_local_source_url("github:luccahuguet/yazelix"));
+        assert!(!is_local_source_url("https://example.com/source.tar.gz"));
+    }
+
+    // Regression: multiple matching active local-source profile entries are a valid atomic update set.
+    #[test]
+    fn classifies_multiple_local_source_profile_entries() {
+        let names = classify_local_source_profile_entries(vec![
+            profile_match("yazelix_mars", "git+file:///home/me/yazelix"),
+            profile_match("yazelix", "git+file:///home/me/yazelix"),
+        ])
+        .unwrap();
+
+        assert_eq!(names, vec!["yazelix", "yazelix_mars"]);
+    }
+
+    // Defends: mixed local/upstream entries never run through the local-source updater.
+    #[test]
+    fn rejects_mixed_local_and_nonlocal_profile_entries() {
+        let rejected = classify_local_source_profile_entries(vec![
+            profile_match("yazelix", "git+file:///home/me/yazelix"),
+            profile_match("yazelix_mars", "github:luccahuguet/yazelix"),
+        ])
+        .unwrap_err();
+
+        assert_eq!(rejected, vec!["yazelix_mars"]);
     }
 
     // Regression: unknown update subcommands keep the public help hint in the usage error.

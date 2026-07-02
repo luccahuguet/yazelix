@@ -1344,6 +1344,7 @@ fn record_fixture_state(
         config_file: state.config_file.clone(),
         managed_config_path: fixture.managed_config_path.clone(),
         state_path: fixture.state_path.clone(),
+        runtime_dir: Some(fixture.runtime_root.clone()),
         config_hash: state.config_hash.clone(),
         runtime_hash: state.runtime_hash.clone(),
     })

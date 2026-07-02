@@ -126,6 +126,8 @@ const REQUIRED_LAYOUT_PLACEHOLDERS: &[&str] = &[
     RUNTIME_DIR_PLACEHOLDER,
     "__YAZELIX_SIDEBAR_COMMAND__",
     "__YAZELIX_SIDEBAR_ARGS__",
+    "__YAZELIX_AGENT_COMMAND__",
+    "__YAZELIX_AGENT_ARGS__",
 ];
 
 #[derive(Debug, Clone, PartialEq)]
@@ -1798,6 +1800,17 @@ fn render_layout_template(
             render_sidebar_args(&render_plan.left_sidebar_args, runtime_dir),
         ),
         (
+            "__YAZELIX_AGENT_COMMAND__",
+            json_quote(expand_runtime_placeholder(
+                &render_plan.right_sidebar_command,
+                runtime_dir,
+            )),
+        ),
+        (
+            "__YAZELIX_AGENT_ARGS__",
+            render_sidebar_args(&render_plan.right_sidebar_args, runtime_dir),
+        ),
+        (
             "__YAZELIX_SIDEBAR_WIDTH_PERCENT__",
             render_plan
                 .layout_percentages
@@ -2157,6 +2170,65 @@ mod tests {
         );
         for placeholder in REQUIRED_LAYOUT_PLACEHOLDERS {
             assert!(!side.content.contains(placeholder));
+        }
+    }
+
+    // Regression: source-owned custom startup templates are additive; they keep the generated Yazelix top bar and use configured side-surface launchers.
+    #[test]
+    fn renders_custom_layout_template_with_zjstatus_and_agent_placeholders() {
+        let mut request = sample_request();
+        request.layout_templates = Some(vec![ZellijConfigPackLayoutTemplate {
+            relative_path: "flexnetos_agent_workspace.kdl".to_string(),
+            content: r#"layout {
+    tab name="FlexNetOS" {
+        pane size=1 borderless=true {
+            __YAZELIX_ZJSTATUS_TAB_TEMPLATE__
+        }
+        pane split_direction="vertical" {
+            pane name="sidebar" {
+                command __YAZELIX_SIDEBAR_COMMAND__
+                __YAZELIX_SIDEBAR_ARGS__
+            }
+            pane name="agent" {
+                command __YAZELIX_AGENT_COMMAND__
+                __YAZELIX_AGENT_ARGS__
+            }
+        }
+    }
+}"#
+            .to_string(),
+        }]);
+
+        let output = render_zellij_config_pack(&request).unwrap();
+        let layout = output
+            .layout_files
+            .iter()
+            .find(|file| file.relative_path == "flexnetos_agent_workspace.kdl")
+            .unwrap();
+
+        assert!(
+            layout
+                .content
+                .contains(r#"plugin location="file:/tmp/zjstatus.wasm" {"#)
+        );
+        assert!(
+            layout
+                .content
+                .contains(r#"command "/opt/yazelix/bin/sidebar""#)
+        );
+        assert!(
+            layout
+                .content
+                .contains(r#"args "--root" "/opt/yazelix/side""#)
+        );
+        assert!(
+            layout
+                .content
+                .contains(r#"command "/opt/yazelix/bin/agent""#)
+        );
+        assert!(layout.content.contains(r#"args "--right""#));
+        for placeholder in REQUIRED_LAYOUT_PLACEHOLDERS {
+            assert!(!layout.content.contains(placeholder));
         }
     }
 

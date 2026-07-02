@@ -334,6 +334,7 @@ pub fn config_state_record_request_from_env(
         config_file,
         managed_config_path,
         state_path: state_dir.join("state").join("rebuild_hash"),
+        runtime_dir: Some(runtime_dir),
         config_hash,
         runtime_hash,
     })

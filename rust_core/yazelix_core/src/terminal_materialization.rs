@@ -16,6 +16,7 @@ use std::path::{Path, PathBuf};
 const FONT_JETBRAINS_MONO: &str = "JetBrains Mono";
 const MARS_FONT_SIZE: f64 = 16.0;
 const MARS_LINE_HEIGHT: f64 = 1.12;
+const MARS_CLIPBOARD_BINDING_MODIFIERS: &str = "control | shift";
 pub(crate) const MARS_EMOJI_FONT_ENV: &str = "MARS_EMOJI_FONT";
 pub(crate) const MARS_EMOJI_FONT_SOURCE_ENV: &str = "MARS_EMOJI_FONT_SOURCE";
 pub(crate) const MARS_EMOJI_ENV_KEYS: [&str; 2] = [MARS_EMOJI_FONT_ENV, MARS_EMOJI_FONT_SOURCE_ENV];
@@ -289,6 +290,94 @@ fn mars_native_trail_cursor_enabled(
         .is_some_and(|name| !name.is_empty() && name != "none")
 }
 
+fn normalized_mars_modifiers(raw: &str) -> Vec<String> {
+    let mut modifiers = raw
+        .split('|')
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(str::to_ascii_lowercase)
+        .collect::<Vec<_>>();
+    modifiers.sort();
+    modifiers
+}
+
+fn mars_binding_has_trigger(binding: &toml::Value, key: &str, modifiers: &str) -> bool {
+    let Some(table) = binding.as_table() else {
+        return false;
+    };
+    if table.contains_key("mode") {
+        return false;
+    }
+    let Some(binding_key) = table.get("key").and_then(toml::Value::as_str) else {
+        return false;
+    };
+    let Some(binding_modifiers) = table.get("with").and_then(toml::Value::as_str) else {
+        return false;
+    };
+    binding_key.eq_ignore_ascii_case(key)
+        && normalized_mars_modifiers(binding_modifiers) == normalized_mars_modifiers(modifiers)
+}
+
+fn mars_binding_value(key: &str, modifiers: &str, action: &str) -> toml::Value {
+    let mut binding = toml::map::Map::new();
+    binding.insert("key".to_string(), toml::Value::String(key.to_string()));
+    binding.insert(
+        "with".to_string(),
+        toml::Value::String(modifiers.to_string()),
+    );
+    binding.insert(
+        "action".to_string(),
+        toml::Value::String(action.to_string()),
+    );
+    toml::Value::Table(binding)
+}
+
+fn ensure_mars_clipboard_binding(keys: &mut Vec<toml::Value>, key: &str, action: &str) {
+    if keys
+        .iter()
+        .any(|binding| mars_binding_has_trigger(binding, key, MARS_CLIPBOARD_BINDING_MODIFIERS))
+    {
+        return;
+    }
+    keys.push(mars_binding_value(
+        key,
+        MARS_CLIPBOARD_BINDING_MODIFIERS,
+        action,
+    ));
+}
+
+fn apply_mars_clipboard_keybindings(
+    table: &mut toml::Table,
+    package_config: &Path,
+) -> Result<(), CoreError> {
+    let bindings = mars_config_table_mut(
+        table,
+        "bindings",
+        "invalid_mars_bindings_config",
+        package_config,
+    )?;
+    let keys = bindings
+        .entry("keys")
+        .or_insert_with(|| toml::Value::Array(Vec::new()))
+        .as_array_mut()
+        .ok_or_else(|| {
+            CoreError::classified(
+                crate::bridge::ErrorClass::Runtime,
+                "invalid_mars_bindings_keys",
+                format!(
+                    "The packaged Mars config at {} has a non-list [bindings].keys value.",
+                    package_config.display()
+                ),
+                "Reinstall the Yazelix runtime or rebuild it from a valid Mars package.",
+                serde_json::json!({}),
+            )
+        })?;
+
+    ensure_mars_clipboard_binding(keys, "c", "Copy");
+    ensure_mars_clipboard_binding(keys, "v", "Paste");
+    Ok(())
+}
+
 fn remove_path_if_exists(path: &Path, operation: &'static str) -> Result<(), CoreError> {
     let Ok(metadata) = fs::symlink_metadata(path) else {
         return Ok(());
@@ -505,6 +594,7 @@ fn generate_mars_config(
         "line-height".to_string(),
         toml::Value::Float(MARS_LINE_HEIGHT),
     );
+    apply_mars_clipboard_keybindings(&mut table, &package_config)?;
     let fonts = mars_config_table_mut(
         &mut table,
         "fonts",
@@ -902,6 +992,81 @@ mod tests {
         assert!(rendered.contains("Noto Color Emoji"));
     }
 
+    // Regression: terminal copy/paste must be source-owned for Mars/Rio, not left to an ambient user config.
+    #[test]
+    fn generated_mars_config_pins_clipboard_keybindings() {
+        let temp = tempfile::tempdir().unwrap();
+        let package_root = temp.path().join("runtime/share/mars");
+        let generated_dir = temp.path().join("state/configs/terminal_emulators/mars");
+        write_mars_package_metadata(&package_root);
+        write_mars_profile_config(&package_root.join("config.toml"), "Noto Color Emoji");
+        write_theme_files(&package_root.join("themes"));
+
+        let rendered = generate_mars_config(
+            &temp.path().join("runtime"),
+            "none",
+            None,
+            &[],
+            MarsProfile::Full,
+            MarsEmojiFont::Noto,
+            APPEARANCE_MODE_DARK,
+            &generated_dir,
+        )
+        .unwrap();
+
+        assert_eq!(
+            mars_binding_actions(&rendered, "c", MARS_CLIPBOARD_BINDING_MODIFIERS),
+            vec!["Copy"]
+        );
+        assert_eq!(
+            mars_binding_actions(&rendered, "v", MARS_CLIPBOARD_BINDING_MODIFIERS),
+            vec!["Paste"]
+        );
+    }
+
+    // Defends: packaged/user-owned Mars bindings for the same trigger stay authoritative.
+    #[test]
+    fn generated_mars_config_preserves_existing_clipboard_binding_triggers() {
+        let temp = tempfile::tempdir().unwrap();
+        let package_root = temp.path().join("runtime/share/mars");
+        let generated_dir = temp.path().join("state/configs/terminal_emulators/mars");
+        let package_config = package_root.join("config.toml");
+        write_mars_package_metadata(&package_root);
+        write_mars_profile_config(&package_config, "Noto Color Emoji");
+        let mut raw = fs::read_to_string(&package_config).unwrap();
+        raw.push_str(
+            r#"
+[bindings]
+keys = [
+  { key = "c", with = "shift | control", action = "None" },
+]
+"#,
+        );
+        fs::write(&package_config, raw).unwrap();
+        write_theme_files(&package_root.join("themes"));
+
+        let rendered = generate_mars_config(
+            &temp.path().join("runtime"),
+            "none",
+            None,
+            &[],
+            MarsProfile::Full,
+            MarsEmojiFont::Noto,
+            APPEARANCE_MODE_DARK,
+            &generated_dir,
+        )
+        .unwrap();
+
+        assert_eq!(
+            mars_binding_actions(&rendered, "c", MARS_CLIPBOARD_BINDING_MODIFIERS),
+            vec!["None"]
+        );
+        assert_eq!(
+            mars_binding_actions(&rendered, "v", MARS_CLIPBOARD_BINDING_MODIFIERS),
+            vec!["Paste"]
+        );
+    }
+
     // Regression: GitHub #655, `trail = "none"` and disabled cursor components must disable Mars's native trail too.
     #[test]
     fn generated_mars_config_disables_native_trail_when_yazelix_cursor_is_disabled() {
@@ -998,6 +1163,35 @@ mod tests {
             .and_then(toml::Value::as_table)
             .and_then(|effects| effects.get("trail-cursor"))
             .and_then(toml::Value::as_bool)
+    }
+
+    fn mars_binding_actions(rendered: &str, key: &str, modifiers: &str) -> Vec<String> {
+        let expected_modifiers = normalized_mars_modifiers(modifiers);
+        toml::from_str::<toml::Table>(rendered)
+            .unwrap()
+            .get("bindings")
+            .and_then(toml::Value::as_table)
+            .and_then(|bindings| bindings.get("keys"))
+            .and_then(toml::Value::as_array)
+            .unwrap()
+            .iter()
+            .filter_map(toml::Value::as_table)
+            .filter(|binding| {
+                !binding.contains_key("mode")
+                    && binding
+                        .get("key")
+                        .and_then(toml::Value::as_str)
+                        .is_some_and(|binding_key| binding_key.eq_ignore_ascii_case(key))
+                    && binding
+                        .get("with")
+                        .and_then(toml::Value::as_str)
+                        .is_some_and(|binding_modifiers| {
+                            normalized_mars_modifiers(binding_modifiers) == expected_modifiers
+                        })
+            })
+            .filter_map(|binding| binding.get("action").and_then(toml::Value::as_str))
+            .map(ToOwned::to_owned)
+            .collect()
     }
 
     fn write_mars_package_metadata(package_root: &Path) {
