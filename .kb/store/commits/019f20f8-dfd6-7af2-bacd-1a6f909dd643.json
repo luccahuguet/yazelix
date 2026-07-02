@@ -1,0 +1,5 @@
+{
+  "commit": {"author":"drdave-flexnet <flexnetos@de-flex.net>","changes":[{"change_type":"created","content_hash":"b3fe2c559d241c97cc46863e36951171e1ee1dc4af70b3c4454295dd01c8c34d","doc_type":"task","document_id":"019f20f7-8637-76a2-b3cd-33d52801435e","new_version":1,"previous_version":null,"slug":"tasks/nu-plugin-codedb-redb-backup-restore","title":"Implement CodeDB redb backup and restore smoke"}],"created_at":"2026-07-02T03:56:48.972157736Z","id":"019f20f8-dfd6-7af2-bacd-1a6f909dd643","message":"Complete CodeDB redb backup restore task"},
+  "content_hash": "d98066591991e290b8b1ff20df84bb25056e07b319438c87531b42fc5cfa008d",
+  "hash_version": 3
+}
