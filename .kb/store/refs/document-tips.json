@@ -10,6 +10,16 @@
       "document_id": "019f20d5-6eb1-7c01-a056-d6e47e6eccc6",
       "slug": "tasks/nu-plugin-codedb-build",
       "tip_commit_id": "019f20dd-dbb1-7551-ac26-25befc474cf2"
+    },
+    {
+      "document_id": "019f20df-6c56-7090-b91d-922692efdd04",
+      "slug": "tasks/nu-plugin-codedb-core-schemas",
+      "tip_commit_id": "019f20e1-997f-7502-9837-ea9c859c80be"
+    },
+    {
+      "document_id": "019f20e2-8c3e-7dd3-92a3-57c3d322b97d",
+      "slug": "tasks/nu-plugin-codedb-redb-store-init",
+      "tip_commit_id": "019f20e5-e69e-7903-beb5-ef8d81a1f9ff"
     }
   ]
 }
