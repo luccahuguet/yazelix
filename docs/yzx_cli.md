@@ -96,7 +96,8 @@ Run a single command in the Yazelix environment and exit
 ### `yzx agent`
 Open the managed right agent pane
 - Used by the `Alt+Shift+L` right-side agent pane binding
-- Launches host-installed `codex` when it is available on `PATH`
+- Launches host-installed Codex as `rtk codex` when both tools are available on `PATH`
+- Fails fast if Codex is available but RTK TokenKill is missing
 - Opens a normal shell with setup guidance when Codex is missing
 - Does not silently fall back to another agent
 - The right sidebar can be configured to run another agent or any other terminal command

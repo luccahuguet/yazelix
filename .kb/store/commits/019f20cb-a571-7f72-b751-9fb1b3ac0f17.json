@@ -1,0 +1,5 @@
+{
+  "commit": {"author":"drdave-flexnet <flexnetos@de-flex.net>","changes":[{"change_type":"created","content_hash":"ecfe80013fa593ae5d98a137f29f110903047bbbe995ef89ead0dddfc35dade6","doc_type":"task","document_id":"019f20cb-0458-7720-a283-ee08a19b67be","new_version":1,"previous_version":null,"slug":"tasks/rtk-tokenkill-yazelix-integration","title":"Wire RTK TokenKill into Yazelix agent commands"}],"created_at":"2026-07-02T03:07:24.903329312Z","id":"019f20cb-a571-7f72-b751-9fb1b3ac0f17","message":"Add RTK TokenKill Yazelix integration task"},
+  "content_hash": "0897dde0ae15744da50598336b44d6f9850bceb166b6a3cce96d1d8fced40314",
+  "hash_version": 3
+}

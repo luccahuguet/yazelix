@@ -1,0 +1,5 @@
+{
+  "commit": {"author":"drdave-flexnet <flexnetos@de-flex.net>","changes":[{"change_type":"modified","content_hash":"c27410f310eb6baa755345d33f320542aa44633067f5245b11e1a9817a8c2e57","doc_type":"task","document_id":"019f20cb-0458-7720-a283-ee08a19b67be","metadata_changes":[{"field":"status","new_value":"completed","old_value":"active"}],"new_version":7,"previous_commit_id":"019f20db-4c57-7332-b4a5-ce34ddacf364","previous_hash":"832d3e4c671c5ee11e4dce668f5115f45b52c341a1eecd76a1e3b3731c8f662b","previous_version":6,"slug":"tasks/rtk-tokenkill-yazelix-integration","title":"Require RTK TokenKill in Yazelix agent sessions"}],"created_at":"2026-07-02T03:24:37.721736506Z","id":"019f20db-67f3-7643-bdb8-0068967e13f3","message":"Complete session-wide RTK TokenKill enforcement"},
+  "content_hash": "38ed6c361771088155f99e150f8c3fb49b68adc0903addade04bfa847e14d632",
+  "hash_version": 3
+}

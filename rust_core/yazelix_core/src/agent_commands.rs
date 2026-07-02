@@ -7,6 +7,7 @@ use std::path::PathBuf;
 use std::process::Command;
 
 const CODEX_AGENT_COMMAND: &str = "codex";
+const RTK_TOKENKILL_COMMAND: &str = "rtk";
 const PLACEHOLDER_SHELL_CANDIDATES: &[&str] = &["nu", "bash", "sh"];
 const MISSING_CODEX_PLACEHOLDER: &str = "\
 Yazelix right sidebar
@@ -42,17 +43,20 @@ pub fn run_yzx_agent(args: &[String]) -> Result<i32, CoreError> {
     }
 
     let path = std::env::var_os("PATH").unwrap_or_default();
-    if resolve_command_on_path(CODEX_AGENT_COMMAND, &path).is_none() {
+    let Some(agent_command) = resolve_agent_command(&path)? else {
         print_missing_codex_placeholder()?;
         return run_placeholder_shell(&path);
-    }
+    };
 
-    let status = Command::new(CODEX_AGENT_COMMAND).status().map_err(|source| {
+    let status = Command::new(&agent_command)
+        .arg(CODEX_AGENT_COMMAND)
+        .status()
+        .map_err(|source| {
         CoreError::io(
-            "codex_agent",
-            "Failed to launch the Codex agent command.",
-            "Install Codex on the host, make sure `codex` is executable on PATH, then restart Yazelix.",
-            CODEX_AGENT_COMMAND,
+            "rtk_tokenkill_codex_agent",
+            "Failed to launch the Codex agent command through RTK TokenKill.",
+            "Install RTK TokenKill and Codex on the host, make sure `rtk` and `codex` are executable on PATH, then restart Yazelix.",
+            format!("{} {}", agent_command.display(), CODEX_AGENT_COMMAND),
             source,
         )
     })?;
@@ -66,8 +70,32 @@ fn print_agent_help() {
     println!("Usage:");
     println!("  yzx agent");
     println!();
-    println!("When host-installed Codex is available, this command launches `codex`.");
+    println!("When host-installed Codex is available, this command launches `rtk codex`.");
     println!("When Codex is missing, it opens a normal shell with setup guidance.");
+}
+
+fn resolve_agent_command(path: &OsStr) -> Result<Option<PathBuf>, CoreError> {
+    if resolve_command_on_path(CODEX_AGENT_COMMAND, path).is_none() {
+        return Ok(None);
+    }
+
+    resolve_command_on_path(RTK_TOKENKILL_COMMAND, path)
+        .map(Some)
+        .ok_or_else(|| missing_rtk_tokenkill_error(path))
+}
+
+fn missing_rtk_tokenkill_error(path: &OsStr) -> CoreError {
+    CoreError::classified(
+        ErrorClass::Runtime,
+        "missing_rtk_tokenkill",
+        "Codex is available, but Yazelix could not find RTK TokenKill for the managed agent command.",
+        "Install or register FlexNetOS/rtk-tokenkill so `rtk` is executable on PATH before launching `yzx agent`.",
+        json!({
+            "missing_command": RTK_TOKENKILL_COMMAND,
+            "required_for": CODEX_AGENT_COMMAND,
+            "path": path.to_string_lossy(),
+        }),
+    )
 }
 
 fn print_missing_codex_placeholder() -> Result<(), CoreError> {
@@ -148,7 +176,7 @@ fn resolve_command_on_path(command: &str, path: &OsStr) -> Option<PathBuf> {
 // Test lane: default
 #[cfg(test)]
 mod tests {
-    use super::{resolve_command_on_path, resolve_placeholder_shell_for};
+    use super::{resolve_agent_command, resolve_command_on_path, resolve_placeholder_shell_for};
     use std::ffi::OsStr;
     use std::fs;
 
@@ -174,6 +202,61 @@ mod tests {
             Some(codex)
         );
         assert_eq!(resolve_command_on_path("opencode", bin.as_os_str()), None);
+    }
+
+    // Defends: managed Yazelix agent sessions route Codex through RTK TokenKill instead of launching Codex directly.
+    #[test]
+    fn resolves_rtk_tokenkill_for_codex_agent() {
+        let temp = tempfile::tempdir().unwrap();
+        let bin = temp.path().join("bin");
+        fs::create_dir_all(&bin).unwrap();
+        let rtk = bin.join("rtk");
+        let codex = bin.join("codex");
+        fs::write(&rtk, "#!/bin/sh\nexit 0\n").unwrap();
+        fs::write(&codex, "#!/bin/sh\nexit 0\n").unwrap();
+
+        #[cfg(unix)]
+        {
+            fs::set_permissions(&rtk, fs::Permissions::from_mode(0o755)).unwrap();
+            fs::set_permissions(&codex, fs::Permissions::from_mode(0o755)).unwrap();
+        }
+
+        assert_eq!(resolve_agent_command(bin.as_os_str()).unwrap(), Some(rtk));
+    }
+
+    // Defends: missing RTK TokenKill is a visible runtime error when Codex would otherwise launch unmanaged.
+    #[test]
+    fn codex_without_rtk_tokenkill_is_rejected() {
+        let temp = tempfile::tempdir().unwrap();
+        let bin = temp.path().join("bin");
+        fs::create_dir_all(&bin).unwrap();
+        let codex = bin.join("codex");
+        fs::write(&codex, "#!/bin/sh\nexit 0\n").unwrap();
+
+        #[cfg(unix)]
+        {
+            fs::set_permissions(&codex, fs::Permissions::from_mode(0o755)).unwrap();
+        }
+
+        let error = resolve_agent_command(bin.as_os_str()).unwrap_err();
+        assert_eq!(error.code(), "missing_rtk_tokenkill");
+    }
+
+    // Defends: missing Codex still opens the existing guided shell placeholder instead of requiring RTK.
+    #[test]
+    fn missing_codex_keeps_placeholder_path() {
+        let temp = tempfile::tempdir().unwrap();
+        let bin = temp.path().join("bin");
+        fs::create_dir_all(&bin).unwrap();
+        let rtk = bin.join("rtk");
+        fs::write(&rtk, "#!/bin/sh\nexit 0\n").unwrap();
+
+        #[cfg(unix)]
+        {
+            fs::set_permissions(&rtk, fs::Permissions::from_mode(0o755)).unwrap();
+        }
+
+        assert_eq!(resolve_agent_command(bin.as_os_str()).unwrap(), None);
     }
 
     // Defends: the missing-Codex placeholder becomes an interactive pane by selecting an explicit shell.
