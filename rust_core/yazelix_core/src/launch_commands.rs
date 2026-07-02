@@ -760,6 +760,8 @@ mod tests {
             raw_log = std::fs::read_to_string(&launch_log).unwrap();
         }
         assert!(raw_log.contains("desktop deferred launch"));
+        assert!(raw_log.contains("MARS_CONFIG_HOME="));
+        assert!(raw_log.contains("MARS_APP_ID="));
         assert!(raw_log.contains("argv:"));
         assert!(raw_log.contains("terminal_or_wrapper_pid="));
         assert!(raw_log.contains("early_exit_status=0"));

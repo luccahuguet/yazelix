@@ -1,0 +1,5 @@
+{
+  "commit": {"author":"drdave-flexnet <flexnetos@de-flex.net>","changes":[{"change_type":"created","content_hash":"d9137421b718a480ab7bf10d96e65bcf54ef7f17429273d2ba963c8eda9fead0","doc_type":"task","document_id":"019f20d5-6eb1-7c01-a056-d6e47e6eccc6","new_version":1,"previous_version":null,"slug":"tasks/nu-plugin-codedb-build","title":"Import and build Nu plugin codedb execution package"}],"created_at":"2026-07-02T03:20:04.797940913Z","id":"019f20d7-3dde-7e62-b41e-f0f91b39c7f6","message":"Import nu_plugin CodeDB execution package"},
+  "content_hash": "95b757594a405df67fe59f8828470263edb7d052c418ca3ffc0f0c4fee13072d",
+  "hash_version": 3
+}

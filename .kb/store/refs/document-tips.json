@@ -4,7 +4,12 @@
     {
       "document_id": "019f20cb-0458-7720-a283-ee08a19b67be",
       "slug": "tasks/rtk-tokenkill-yazelix-integration",
-      "tip_commit_id": "019f20d0-bc8d-7611-9c5d-ba282bd9c975"
+      "tip_commit_id": "019f20db-67f3-7643-bdb8-0068967e13f3"
+    },
+    {
+      "document_id": "019f20d5-6eb1-7c01-a056-d6e47e6eccc6",
+      "slug": "tasks/nu-plugin-codedb-build",
+      "tip_commit_id": "019f20d7-3dde-7e62-b41e-f0f91b39c7f6"
     }
   ]
 }

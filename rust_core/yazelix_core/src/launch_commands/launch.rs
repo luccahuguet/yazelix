@@ -586,9 +586,9 @@ mod tests {
         );
     }
 
-    // Regression: desktop launch must enter Zellij directly instead of stopping at the interactive welcome keypress gate.
+    // Regression: desktop Mars launch must carry the generated config boundary and enter Zellij directly instead of stopping at the welcome keypress gate.
     #[test]
-    fn desktop_launch_sets_one_shot_welcome_skip_for_terminal_child() {
+    fn desktop_mars_launch_sets_config_home_and_welcome_skip_for_terminal_child() {
         let tmp = tempfile::TempDir::new().unwrap();
         let plan = LaunchExecutionPlan {
             runtime_dir: tmp.path().join("runtime"),
@@ -622,9 +622,21 @@ mod tests {
         let config_path = tmp
             .path()
             .join("state/configs/terminal_emulators/mars/config.toml");
+        let config_home = config_path.parent().unwrap().to_string_lossy().into_owned();
 
         let env = launch_candidate_extra_env(&plan, &input, &candidate, &config_path).unwrap();
 
+        assert!(env.iter().any(|(key, value)| {
+            key == "MARS_CONFIG_HOME" && value.as_deref() == Some(config_home.as_str())
+        }));
+        assert!(
+            env.iter()
+                .any(|(key, value)| key == "MARS_CONFIG" && value.is_none())
+        );
+        assert!(
+            env.iter()
+                .any(|(key, value)| key == "RIO_CONFIG_HOME" && value.is_none())
+        );
         assert!(env.iter().any(|(key, value)| {
             key == "YAZELIX_STARTUP_PROFILE_SKIP_WELCOME" && value.as_deref() == Some("1")
         }));
