@@ -39,27 +39,31 @@ pub(crate) const BAR_WIDGET_VALUES: &[&str] = &[
     "ram",
 ];
 pub(crate) const DEFAULT_MARS_CONFIG_TOML: &str = include_str!("../../../mars.toml");
+pub(crate) const DEFAULT_STARSHIP_CONFIG_TOML: &str = "\
+format = \"::\"
+right_format = \"\"
+add_newline = true
+";
 
 pub(crate) const SOURCE_CONFIG: &str = DEFAULT_CONFIG_SOURCE_ID;
 pub(crate) const SOURCE_MARS: &str = "mars";
 pub(crate) const SOURCE_ZELLIJ: &str = "zellij";
+pub(crate) const SOURCE_STARSHIP: &str = "starship";
 pub(crate) const SOURCE_KEYS: &str = "keys";
 pub(crate) const SOURCE_ADVANCED: &str = "advanced";
 pub(crate) const TAB_CONFIG: &str = "config";
 pub(crate) const TAB_MARS: &str = "mars";
 pub(crate) const TAB_ZELLIJ: &str = "zellij";
+pub(crate) const TAB_STARSHIP: &str = "starship";
 pub(crate) const TAB_KEYS: &str = "keys";
 pub(crate) const TAB_ADVANCED: &str = "advanced";
 
 pub(crate) const ACTION_NU_ENV: &str = "nu.env";
 pub(crate) const ACTION_NU_CONFIG: &str = "nu.config";
-pub(crate) const ACTION_STARSHIP: &str = "starship";
 pub(crate) const ACTION_YAZI_INIT: &str = "yazi.init";
 pub(crate) const ACTION_YAZI_KEYMAP: &str = "yazi.keymap";
 pub(crate) const NU_ENV_STARTER: &str = "# Loaded after Yazelix Next packaged env.nu.\n";
 pub(crate) const NU_CONFIG_STARTER: &str = "# Loaded after Yazelix Next packaged config.nu.\n";
-pub(crate) const STARSHIP_STARTER: &str =
-    "format = '$directory$git_branch$git_status$character'\nright_format = ''\n";
 pub(crate) const YAZI_INIT_STARTER: &str = "-- Loaded after Yazelix Next packaged yazi/init.lua.\n";
 pub(crate) const YAZI_KEYMAP_STARTER: &str =
     "# Loaded after Yazelix Next packaged yazi/keymap.toml.\n";
@@ -173,6 +177,22 @@ pub(crate) const MARS_FIELDS: &[FieldSpec] = &[
     FieldSpec::boolean("bell.audio", "Play the Mars terminal bell."),
     FieldSpec::boolean("bell.visual", "Flash the Mars visual bell."),
     FieldSpec::boolean("effects.trail-cursor", "Draw the Mars cursor trail."),
+];
+
+pub(crate) const STARSHIP_FIELDS: &[FieldSpec] = &[
+    FieldSpec::string_choice(
+        "format",
+        "Left prompt format string.",
+        &[],
+        "Starship format string",
+    ),
+    FieldSpec::string_choice(
+        "right_format",
+        "Right prompt format string.",
+        &[],
+        "Starship format string",
+    ),
+    FieldSpec::boolean("add_newline", "Insert a blank line before the prompt."),
 ];
 
 pub(crate) const ZELLIJ_FORBIDDEN_TOP_LEVEL: &[&str] = &[

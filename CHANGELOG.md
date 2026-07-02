@@ -9,14 +9,15 @@ User-visible runtime changes for Yazelix Next live here.
   starts the managed Zellij runtime in the current terminal, and `yzn launch`
   opens Mars first. Bare `yzn` defaults to `yzn launch`.
 - `yzn config` opens the Ratconfig UI and creates source-backed tabs for
-  `config.toml`, `mars/config.toml`, and `zellij/config.kdl` when missing.
-  Root `config.toml` keeps Ratconfig contract state, while the Mars and Zellij
-  tabs are simple managed render/edit files that apply on new launches. The UI
+  `config.toml`, `mars/config.toml`, `zellij/config.kdl`, and
+  `starship.toml` when missing. Root `config.toml` keeps Ratconfig contract
+  state, the Mars and Zellij tabs are simple managed render/edit files that
+  apply on new launches, and the Starship tab edits `format`, `right_format`,
+  and `add_newline`. The managed Starship left prompt defaults to `::`. The UI
   refuses to replace a source file whose permissions are read-only.
 - The `yzn config` Advanced tab opens managed user `nu/env.nu`,
-  `nu/config.nu`, `starship.toml`, `yazi/init.lua`, and `yazi/keymap.toml`
-  files in `yzn-hx`, creating tiny starter files only after a row is
-  activated.
+  `nu/config.nu`, `yazi/init.lua`, and `yazi/keymap.toml` files in `yzn-hx`,
+  creating tiny starter files only after a row is activated.
 - The `yzn config` Keys tab lists current packaged keybindings as a read-only
   table with group, key, action, and owner columns, with source paths in
   details.

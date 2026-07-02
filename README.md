@@ -69,6 +69,7 @@ owned config sources when they are missing:
 ~/.config/yazelix-next/config.toml
 ~/.config/yazelix-next/mars/config.toml
 ~/.config/yazelix-next/zellij/config.kdl
+~/.config/yazelix-next/starship.toml
 ```
 
 The `config` tab controls `open.log_level`, which sets the managed
@@ -83,11 +84,13 @@ edits `[popup].size`, the shared width and height percentage for managed
 popups, and `[bar].widgets`, whose default tray is `editor`, `shell`, `term`,
 `codex_usage`, `cpu`, and `ram`; allowed opt-ins are `session`,
 `claude_usage`, and `opencode_go_usage`. The `mars` and `zellij` tabs edit
-native sidecars that apply to new launches. The `keys` tab lists current
+native sidecars that apply to new launches. The `starship` tab edits real
+Starship prompt fields in `starship.toml`: `format`, `right_format`, and
+`add_newline`. The default left prompt is `::`. The `keys` tab lists current
 packaged bindings in read-only group, key, action, and owner columns, with
 source paths in details. The `advanced` tab opens `nu/env.nu`, `nu/config.nu`,
-`starship.toml`, `yazi/init.lua`, and `yazi/keymap.toml` in the managed
-editor. Native files are created only when their row is activated.
+`yazi/init.lua`, and `yazi/keymap.toml` in the managed editor. Advanced files
+are created only when their row is activated.
 
 Generated runtime state for Zellij, Yazi, Nu, and the Helix bridge defaults to
 `${XDG_DATA_HOME:-$HOME/.local/share}/yazelix-next`; set `YAZELIX_STATE_DIR`
@@ -185,9 +188,10 @@ Starship config when it exists:
 ```
 
 Otherwise it uses an empty config, so normal `~/.config/starship.toml` does not
-affect the managed Nu prompt. The file uses Starship TOML; user `nu/config.nu`
-can still override prompt variables for advanced cases. `format` controls the
-left prompt, and `right_format` controls the right prompt.
+affect the managed Nu prompt. `yzn config` creates and edits this file through
+the `starship` tab. `format` defaults to `::` and controls the left prompt,
+`right_format` controls the right prompt, and user `nu/config.nu` can still
+override prompt variables for advanced cases.
 
 ## Editor Opens
 
@@ -266,12 +270,12 @@ wc -l .gitignore AGENTS.md README.md CHANGELOG.md ARCHITECTURE.md flake.nix pack
 | Language | Files | Lines |
 | --- | --- | ---: |
 | Ignore | `.gitignore` | 4 |
-| Markdown | `AGENTS.md`, `README.md`, `CHANGELOG.md`, `ARCHITECTURE.md` | 852 |
+| Markdown | `AGENTS.md`, `README.md`, `CHANGELOG.md`, `ARCHITECTURE.md` | 858 |
 | Nix | `flake.nix`, `packaging/tokenusage.nix`, `packaging/bar-render-request.nix` | 507 |
 | Shell | `shell/sh/yzn-agent.sh`, `shell/sh/yzn-env-supervisor.sh`, `shell/sh/yzn-helix.sh`, `shell/sh/yzn-shell.sh` | 64 |
 | TOML | `config.toml`, `mars.toml`, `helix/config.toml`, `yazi/yazi.toml`, `yazi/keymap.toml`, `crates/yzn-config/Cargo.toml`, `crates/yzn-open/Cargo.toml` | 152 |
 | KDL | `config.kdl`, `layout.kdl`, `layout.swap.kdl` | 199 |
 | Nu | `nu/config.nu`, `nu/env.nu` | 11 |
 | Lua | `yazi/init.lua`, `yazi/plugins/sidebar-state.yazi/main.lua`, `yazi/plugins/sidebar-status.yazi/main.lua`, `yazi/plugins/zoxide-editor.yazi/main.lua` | 235 |
-| Rust | `crates/yzn-config/src/catalog.rs`, `crates/yzn-config/src/main.rs`, `crates/yzn-open/src/bin/yzn-reveal.rs`, `crates/yzn-open/src/main.rs`, `checks/zellij-layout.rs`, `checks/yzn-contracts.rs`, `runtime/yzn-nu.rs`, `runtime/yzn-yazi.rs`, `runtime/yzn.rs`, `runtime/yzn-zellij-config.rs` | 6455 |
-| Total | owned project files | 8479 |
+| Rust | `crates/yzn-config/src/catalog.rs`, `crates/yzn-config/src/main.rs`, `crates/yzn-open/src/bin/yzn-reveal.rs`, `crates/yzn-open/src/main.rs`, `checks/zellij-layout.rs`, `checks/yzn-contracts.rs`, `runtime/yzn-nu.rs`, `runtime/yzn-yazi.rs`, `runtime/yzn.rs`, `runtime/yzn-zellij-config.rs` | 6575 |
+| Total | owned project files | 8605 |

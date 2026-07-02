@@ -27,20 +27,22 @@ the desktop entry, and exposes the `yzn` package/app.
 
 `crates/yzn-config/` is the config host owner. It opens the Ratconfig UI,
 creates `~/.config/yazelix-next/config.toml` with defaults and joined contract
-state when missing, creates simple managed Mars and Zellij config files when
-missing, routes source-backed edits to the correct file, exposes Advanced rows
-for native Nu, Starship, and managed Yazi sidecar files, lists read-only packaged
-bindings as a Keys table, and exposes one hidden package-internal read path used
-by launch wrappers.
+state when missing, creates simple managed Mars, Zellij, and Starship config
+files when missing, routes source-backed edits to the correct file, exposes
+Advanced rows for native Nu and managed Yazi sidecar files, lists read-only
+packaged bindings as a Keys table, and exposes one hidden package-internal read
+path used by launch wrappers.
 The contracted root config fields are `open.log_level`, which controls
 `YZN_OPEN_LOG` for managed Yazi-to-Helix opens, `shell.program`, which selects
 the packaged shell for new Zellij panes, `welcome.enabled`, `welcome.style`,
 and `welcome.duration_seconds`, which control the startup splash,
 `popup.size`, which sets generated managed popup width and height, and
-`bar.widgets`, which selects the top-bar tray. The Mars and Zellij tabs are
-render/edit surfaces without contracts or migrations. The Advanced tab is an
-open-file surface: Ratconfig renders rows and emits file-open intents, while
-Yazelix Next owns path selection, missing-file creation, and editor launch.
+`bar.widgets`, which selects the top-bar tray. The Mars, Zellij, and Starship
+tabs are render/edit surfaces without contracts or migrations. The Starship tab
+edits `format`, `right_format`, and `add_newline`, with `format` defaulting to
+`::`. The Advanced tab is an open-file surface: Ratconfig renders rows and
+emits file-open intents, while Yazelix Next owns path selection,
+missing-file creation, and editor launch.
 
 `yazelix-screen` is the terminal screen owner. Its `yzs` package owns screen
 style parsing, the static Yazelix welcome card, timed playback, animation
@@ -144,14 +146,13 @@ the Yazelix-owned semantic config file and is created by `yzn config` or the
 package-internal config read path when missing. It controls bounded runtime
 settings such as open diagnostics, the packaged shell choice, managed popup
 size, startup welcome style/timing, and the ordered bar widget tray. `yzn
-config` also creates the managed Mars and Zellij native files when missing.
+config` also creates the managed Mars, Zellij, and Starship native files when missing.
 Mars uses full native replacement when its `config.toml` exists. Nushell uses
 packaged config first, then optional user `env.nu` and `config.nu`. For managed
 Nu, Starship uses the user `starship.toml` when present, otherwise an empty config
-that preserves Starship defaults. `yzn config` exposes the Nu and Starship
-files through the Advanced tab and creates them only after explicit row
-activation. Normal Nushell and Starship config files are not loaded by default,
-which keeps the default `nu` path reproducible and avoids ambient user shell
+that preserves Starship defaults. `yzn config` exposes Starship as a structured
+tab and exposes the Nu files through the Advanced tab. Normal Nushell and
+Starship config files are not loaded by default, which keeps the default `nu` path reproducible and avoids ambient user shell
 behavior changing that runtime. Zellij uses packaged config first, then a
 guarded sidecar for safe
 native preferences. The sidecar is a guardrail rather than a KDL parser: it
@@ -226,7 +227,7 @@ window.
 | C8 | Desktop entry starts `yzn` | `flake.nix` | `nix build .#yzn` packages the desktop file | Desktop environment launch remains manual dogfooding |
 | C9 | Kitty keyboard protocol is explicitly enabled, `Alt Shift J/K/M` toggle LazyGit, config, and menu popups through `yzpp`; `Alt Shift L` hides or shows a persistent guarded Codex resume popup; `popup.size` controls generated popup width and height | `config.kdl`, `runtime/yzn.rs`, `flake.nix` | `checks/yzn-contracts.rs` validates Kitty protocol, the packaged popup plugin, commands, popup ids, payloads, key bindings, agent hide behavior, popup geometry, and the missing-Codex guard | Visual popup behavior remains manual dogfooding |
 | C10 | Top bars use the child-rendered Yazelix Zellij Bar tray, tabs use the home marker, tab-mode-created tabs open in home, Codex usage has bundled `tu` and a yzn-owned cache path, and bottom bars keep native Zellij key hints | `layout.kdl`, `config.kdl`, `runtime/yzn.rs`, `flake.nix`, `packaging/tokenusage.nix` | `checks/zellij-layout.rs` validates packaged child bar usage, no-mode formatting, declared yzn widgets, the startup home tab marker, the home-scoped new-tab template, and native bottom status bars; `checks/yzn-contracts.rs` validates the tab-mode new-tab marker, runtime home cwd, terminal-label wiring, bundled tokenusage path, and status-cache export | Visual bar behavior remains manual dogfooding |
-| C11 | `yzn config` auto-creates root, Mars, and Zellij config sources; root `config.toml` has defaults and joined Ratconfig contract state; `open.log_level` controls managed `YZN_OPEN_LOG`; `shell.program` controls the packaged default-shell dispatcher; `welcome.enabled`, `welcome.style`, and `welcome.duration_seconds` control the startup welcome on new launches; `popup.size` controls managed popup geometry on new launches; `bar.widgets` controls the ordered top-bar widget tray through Ratconfig's string-list picker; Mars/Zellij tabs route writes to their native files; Keys table columns list packaged bindings as read-only group/key/action/owner metadata with source paths in details; Advanced rows open Nu, Starship, and managed Yazi sidecar files through the managed editor and create them only after activation | `crates/yzn-config/`, `config.toml`, `mars.toml`, `flake.nix` | `crates/yzn-config` unit tests cover create/edit validation, source routing, welcome field validation, popup size validation, bar widget validation, Zellij scalar rendering, guarded-node diagnostics, Keys read-only table rows, native file action rows, and owned missing-file creation; `checks/yzn-contracts.rs` validates packaged defaults, helper install, creation, `--get`, dispatcher wiring, and the config UI editor wrapper | Interactive Ratconfig UI behavior remains manual dogfooding |
+| C11 | `yzn config` auto-creates root, Mars, Zellij, and Starship config sources; root `config.toml` has defaults and joined Ratconfig contract state; `open.log_level` controls managed `YZN_OPEN_LOG`; `shell.program` controls the packaged default-shell dispatcher; `welcome.enabled`, `welcome.style`, and `welcome.duration_seconds` control the startup welcome on new launches; `popup.size` controls managed popup geometry on new launches; `bar.widgets` controls the ordered top-bar widget tray through Ratconfig's string-list picker; Mars/Zellij tabs route writes to their native files; the Starship tab edits `format`, `right_format`, and `add_newline` in `starship.toml` with a `::` default left prompt; Keys table columns list packaged bindings as read-only group/key/action/owner metadata with source paths in details; Advanced rows open Nu and managed Yazi sidecar files through the managed editor and create them only after activation | `crates/yzn-config/`, `config.toml`, `mars.toml`, `flake.nix` | `crates/yzn-config` unit tests cover create/edit validation, source routing, welcome field validation, popup size validation, bar widget validation, Starship field rendering, Zellij scalar rendering, guarded-node diagnostics, Keys read-only table rows, native file action rows, and owned missing-file creation; `checks/yzn-contracts.rs` validates packaged defaults, helper install, creation, `--get`, dispatcher wiring, and the config UI editor wrapper | Interactive Ratconfig UI behavior remains manual dogfooding |
 | C12 | The welcome screen defaults to enabled, random, and 3 seconds; a user can choose a fixed style instead of random, and random chooses only from the fixed static card plus screen-style pool | `yazelix-screen`, `runtime/yzn.rs`, `config.toml` | `yazelix-screen` unit tests validate the fixed pool, argument parsing, timed playback mode, and static-card copy; `checks/yzn-contracts.rs` validates packaged helper wiring and config/status/doctor exposure | Visual animation behavior remains manual dogfooding |
 
 ## Pros

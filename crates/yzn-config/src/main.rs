@@ -10,19 +10,19 @@ use crossterm::{
     cursor,
     event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers},
     execute,
-    terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
+    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use ratatui::{Terminal, backend::CrosstermBackend};
+use ratatui::{backend::CrosstermBackend, Terminal};
 use ratconfig::toml_adapter::{get_toml_path, parse_toml_value, set_toml_value_text};
 use ratconfig::{
-    ConfigContract, ConfigUiApp, ConfigUiApplyStatus, ConfigUiDiagnostic, ConfigUiEditBehavior,
-    ConfigUiFieldRowSpec, ConfigUiFileAction, ConfigUiIntent, ConfigUiKey, ConfigUiListColumn,
-    ConfigUiListTable, ConfigUiModel, ConfigUiPathOwner, ConfigUiSource,
-    ConfigUiStringListChoiceSpec, build_config_ui_field, build_string_list_choice_field,
-    draw_config_ui, join_toml_contract_text_from_version, reconcile_joined_toml_contract_text,
-    string_list_values_from_json,
+    build_config_ui_field, build_string_list_choice_field, draw_config_ui,
+    join_toml_contract_text_from_version, reconcile_joined_toml_contract_text,
+    string_list_values_from_json, ConfigContract, ConfigUiApp, ConfigUiApplyStatus,
+    ConfigUiDiagnostic, ConfigUiEditBehavior, ConfigUiFieldRowSpec, ConfigUiFileAction,
+    ConfigUiIntent, ConfigUiKey, ConfigUiListColumn, ConfigUiListTable, ConfigUiModel,
+    ConfigUiPathOwner, ConfigUiSource, ConfigUiStringListChoiceSpec,
 };
-use serde_json::{Value as JsonValue, json};
+use serde_json::{json, Value as JsonValue};
 
 mod catalog;
 
@@ -272,6 +272,7 @@ fn ensure_config_sources() -> Result<ConfigPaths> {
         &paths.zellij,
         &render_zellij_sidecar(&ZellijSidecar::default()),
     )?;
+    ensure_plain_config_file_at(&paths.starship, DEFAULT_STARSHIP_CONFIG_TOML)?;
     Ok(paths)
 }
 
@@ -399,6 +400,9 @@ fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
     let mars_active = read_toml_file_value(&paths.mars, "invalid mars/config.toml")?;
     let mars_default = parse_toml_value(DEFAULT_MARS_CONFIG_TOML)
         .map_err(|error| boxed_debug("invalid default Mars config", error))?;
+    let starship_active = read_toml_file_value(&paths.starship, "invalid starship.toml")?;
+    let starship_default = parse_toml_value(DEFAULT_STARSHIP_CONFIG_TOML)
+        .map_err(|error| boxed_debug("invalid default Starship config", error))?;
     let (zellij_active, diagnostics) = parse_zellij_sidecar(&fs::read_to_string(&paths.zellij)?);
     let zellij_default = ZellijSidecar::default();
     let zellij_blocking = diagnostics.iter().any(|diagnostic| diagnostic.blocking);
@@ -419,6 +423,23 @@ fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
             next_launch_apply_status("mars", "Saved values apply to newly launched Mars windows."),
             get_toml_path(&mars_active, spec.path)
                 .is_some_and(|value| validate_mars_field(spec, value).is_err()),
+        ));
+    }
+    for spec in STARSHIP_FIELDS {
+        fields.push(build_config_field(
+            SOURCE_STARSHIP,
+            TAB_STARSHIP,
+            spec,
+            get_toml_path(&starship_active, spec.path),
+            get_toml_path(&starship_default, spec.path),
+            ConfigUiApplyStatus {
+                summary: "new prompts".to_string(),
+                label: "starship".to_string(),
+                detail: "Saved values apply to newly rendered managed Nu prompts.".to_string(),
+                pending: false,
+            },
+            get_toml_path(&starship_active, spec.path)
+                .is_some_and(|value| validate_starship_field(spec, value).is_err()),
         ));
     }
     for spec in ZELLIJ_FIELDS {
@@ -454,6 +475,12 @@ fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
                 "zellij/config.kdl",
                 &paths.zellij,
             ),
+            build_config_source(
+                SOURCE_STARSHIP,
+                TAB_STARSHIP,
+                "starship.toml",
+                &paths.starship,
+            ),
             ConfigUiSource {
                 id: SOURCE_KEYS.to_string(),
                 tab: TAB_KEYS.to_string(),
@@ -468,6 +495,7 @@ fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
             TAB_CONFIG.to_string(),
             TAB_MARS.to_string(),
             TAB_ZELLIJ.to_string(),
+            TAB_STARSHIP.to_string(),
             TAB_KEYS.to_string(),
             TAB_ADVANCED.to_string(),
         ],
@@ -542,7 +570,7 @@ fn build_key_binding_field(
     }
 }
 
-fn file_action_specs(paths: &ConfigPaths) -> [FileActionSpec; 5] {
+fn file_action_specs(paths: &ConfigPaths) -> [FileActionSpec; 4] {
     [
         FileActionSpec {
             action_id: ACTION_NU_ENV,
@@ -557,13 +585,6 @@ fn file_action_specs(paths: &ConfigPaths) -> [FileActionSpec; 5] {
             description: "Open the user Nushell config file.",
             path: paths.nu_config.clone(),
             starter: NU_CONFIG_STARTER,
-        },
-        FileActionSpec {
-            action_id: ACTION_STARSHIP,
-            label: "starship.toml",
-            description: "Open the user Starship config file.",
-            path: paths.starship.clone(),
-            starter: STARSHIP_STARTER,
         },
         FileActionSpec {
             action_id: ACTION_YAZI_INIT,
@@ -702,6 +723,10 @@ fn write_source_field(
             reject_read_only_source(&paths.zellij, source_id)?;
             write_zellij_config_field(&paths.zellij, field_path, value)
         }
+        SOURCE_STARSHIP => {
+            reject_read_only_source(&paths.starship, source_id)?;
+            write_starship_config_field(&paths.starship, field_path, value)
+        }
         _ => Err(error(format!("unknown config source: {source_id}"))),
     }
 }
@@ -717,6 +742,13 @@ fn write_source_default(paths: &ConfigPaths, source_id: &str, field_path: &str) 
                 .ok_or_else(|| error(format!("unknown Mars config path: {field_path}")))?
         }
         SOURCE_ZELLIJ => zellij_field_value(&ZellijSidecar::default(), field_path),
+        SOURCE_STARSHIP => {
+            let default = parse_toml_value(DEFAULT_STARSHIP_CONFIG_TOML)
+                .map_err(|error| boxed_debug("invalid default Starship config", error))?;
+            get_toml_path(&default, field_path)
+                .cloned()
+                .ok_or_else(|| error(format!("unknown Starship config path: {field_path}")))?
+        }
         _ => return Err(error(format!("unknown config source: {source_id}"))),
     };
     write_source_field(paths, source_id, field_path, &value)
@@ -888,6 +920,27 @@ fn validate_mars_field(spec: &FieldSpec, value: &JsonValue) -> Result<()> {
                 _ => Ok(()),
             }
         }
+        "string" => spec.json_choice(value).map(|_| ()),
+        _ => Err(error(format!("{} must be {}", spec.path, spec.validation))),
+    }
+}
+
+fn write_starship_config_field(path: &Path, field_path: &str, value: &JsonValue) -> Result<()> {
+    let spec = STARSHIP_FIELDS
+        .iter()
+        .find(|spec| spec.path == field_path)
+        .ok_or_else(|| error(format!("unknown Starship config path: {field_path}")))?;
+    validate_starship_field(spec, value)?;
+    let raw = fs::read_to_string(path)?;
+    let text = set_toml_value_text(&raw, field_path, value)
+        .map_err(|error| boxed_debug("could not update starship.toml", error))?
+        .text;
+    atomic_write(path, &text)
+}
+
+fn validate_starship_field(spec: &FieldSpec, value: &JsonValue) -> Result<()> {
+    match spec.kind {
+        "boolean" => json_bool(spec.path, value).map(|_| ()),
         "string" => spec.json_choice(value).map(|_| ()),
         _ => Err(error(format!("{} must be {}", spec.path, spec.validation))),
     }
@@ -1205,7 +1258,11 @@ ui {{
 }
 
 fn kdl_bool(value: bool) -> &'static str {
-    if value { "true" } else { "false" }
+    if value {
+        "true"
+    } else {
+        "false"
+    }
 }
 
 fn json_bool(path: &str, value: &JsonValue) -> Result<bool> {
@@ -1309,6 +1366,7 @@ mod tests {
             &render_zellij_sidecar(&ZellijSidecar::default()),
         )
         .unwrap();
+        ensure_plain_config_file_at(&paths.starship, DEFAULT_STARSHIP_CONFIG_TOML).unwrap();
     }
 
     fn temp_sources() -> (TempHome, ConfigPaths) {
@@ -1366,12 +1424,10 @@ mod tests {
             config_field(POPUP_SIZE_PATH).unwrap().default.json(),
             json!(DEFAULT_POPUP_SIZE)
         );
-        assert!(
-            config_field("shell.typo")
-                .unwrap_err()
-                .to_string()
-                .contains("unknown config path")
-        );
+        assert!(config_field("shell.typo")
+            .unwrap_err()
+            .to_string()
+            .contains("unknown config path"));
     }
 
     #[test]
@@ -1522,6 +1578,37 @@ mod tests {
     }
 
     #[test]
+    fn config_model_exposes_structured_starship_tab() {
+        let (_temp, paths) = temp_sources();
+
+        let model = build_model(&paths).unwrap();
+        let format = model_field(&model, "format");
+        let right_format = model_field(&model, "right_format");
+
+        assert!(model.tabs.contains(&TAB_STARSHIP.to_string()));
+        assert!(model.sources.iter().any(|source| {
+            source.id == SOURCE_STARSHIP
+                && source.tab == TAB_STARSHIP
+                && source.path == paths.starship
+        }));
+        assert_eq!(format.source_id, SOURCE_STARSHIP);
+        assert_eq!(format.tab, TAB_STARSHIP);
+        assert_eq!(format.kind, "string");
+        assert_eq!(format.current_value, r#""::""#);
+        assert_eq!(format.apply_status.summary, "new prompts");
+        assert_eq!(right_format.current_value, r#""""#);
+        assert_eq!(model_field(&model, "add_newline").current_value, "true");
+        assert_eq!(
+            model
+                .fields
+                .iter()
+                .filter(|field| field.source_id == SOURCE_STARSHIP)
+                .count(),
+            STARSHIP_FIELDS.len()
+        );
+    }
+
+    #[test]
     fn config_model_marks_invalid_bar_widgets() {
         let (_temp, paths) = temp_sources();
         write_toml_value(&paths.root, BAR_WIDGETS_PATH, &json!(["weather"]));
@@ -1546,12 +1633,10 @@ mod tests {
             .collect();
 
         assert!(model.tabs.contains(&TAB_KEYS.to_string()));
-        assert!(
-            model
-                .file_actions
-                .iter()
-                .all(|action| action.tab != TAB_KEYS)
-        );
+        assert!(model
+            .file_actions
+            .iter()
+            .all(|action| action.tab != TAB_KEYS));
         assert_eq!(
             model
                 .tab_list_tables
@@ -1652,25 +1737,25 @@ mod tests {
     }
 
     #[test]
-    fn ensure_config_sources_creates_root_mars_and_zellij_files() {
+    fn ensure_config_sources_creates_source_backed_files() {
         let (_temp, paths) = temp_sources();
 
         assert!(paths.root.exists());
         assert!(paths.mars.exists());
         assert!(paths.zellij.exists());
-        assert!(
-            !fs::read_to_string(paths.mars)
-                .unwrap()
-                .contains("ratconfig.contract")
-        );
-        assert!(
-            fs::read_to_string(paths.zellij)
-                .unwrap()
-                .contains("rounded_corners false")
+        assert!(paths.starship.exists());
+        assert!(!fs::read_to_string(paths.mars)
+            .unwrap()
+            .contains("ratconfig.contract"));
+        assert!(fs::read_to_string(paths.zellij)
+            .unwrap()
+            .contains("rounded_corners false"));
+        assert_eq!(
+            fs::read_to_string(paths.starship).unwrap(),
+            DEFAULT_STARSHIP_CONFIG_TOML
         );
         assert!(!paths.nu_env.exists());
         assert!(!paths.nu_config.exists());
-        assert!(!paths.starship.exists());
         assert!(!paths.yazi_init.exists());
         assert!(!paths.yazi_keymap.exists());
     }
@@ -1696,7 +1781,7 @@ mod tests {
             })
             .collect();
 
-        assert!(!model.tabs.contains(&"starship".to_string()));
+        assert!(model.tabs.contains(&TAB_STARSHIP.to_string()));
         assert_eq!(
             rows,
             vec![
@@ -1715,15 +1800,6 @@ mod tests {
                     TAB_ADVANCED,
                     "nu/config.nu",
                     paths.nu_config.clone(),
-                    false,
-                    true,
-                ),
-                (
-                    SOURCE_ADVANCED,
-                    ACTION_STARSHIP,
-                    TAB_ADVANCED,
-                    "starship.toml",
-                    paths.starship.clone(),
                     false,
                     true,
                 ),
@@ -1757,7 +1833,7 @@ mod tests {
 
         assert_eq!(fs::read_to_string(&paths.nu_env).unwrap(), NU_ENV_STARTER);
         assert!(!paths.nu_config.exists());
-        assert!(!paths.starship.exists());
+        assert!(paths.starship.exists());
         assert!(!paths.yazi_init.exists());
         assert!(!paths.yazi_keymap.exists());
     }
@@ -1824,8 +1900,8 @@ mod tests {
         let error = prepare_file_action(
             &paths,
             SOURCE_ADVANCED,
-            ACTION_STARSHIP,
-            &paths.starship,
+            ACTION_NU_CONFIG,
+            &paths.nu_config,
             false,
         )
         .unwrap_err()
@@ -1843,6 +1919,30 @@ mod tests {
         assert_eq!(fs::read_to_string(&paths.root).unwrap(), before_root);
         let mars = read_toml_file_value(&paths.mars, "mars").unwrap();
         assert_eq!(get_toml_path(&mars, "window.width"), Some(&json!(1200)));
+    }
+
+    #[test]
+    fn source_routing_writes_starship_without_touching_config_toml() {
+        let (_temp, paths) = temp_sources();
+        let before_root = fs::read_to_string(&paths.root).unwrap();
+
+        write_source_field(&paths, SOURCE_STARSHIP, "right_format", &json!("$time")).unwrap();
+        write_source_field(&paths, SOURCE_STARSHIP, "add_newline", &json!(false)).unwrap();
+        write_source_default(&paths, SOURCE_STARSHIP, "format").unwrap();
+
+        assert_eq!(fs::read_to_string(&paths.root).unwrap(), before_root);
+        let starship = read_toml_file_value(&paths.starship, "starship").unwrap();
+        assert_eq!(
+            get_toml_path(&starship, "right_format"),
+            Some(&json!("$time"))
+        );
+        assert_eq!(get_toml_path(&starship, "add_newline"), Some(&json!(false)));
+        assert_eq!(get_toml_path(&starship, "format"), Some(&json!("::")));
+
+        let error = write_source_field(&paths, SOURCE_STARSHIP, "add_newline", &json!("nope"))
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("true or false"));
     }
 
     #[test]
