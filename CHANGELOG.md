@@ -4,6 +4,10 @@ User-visible runtime changes for Yazelix Next live here.
 
 ## Unreleased
 
+- `homeManagerModules.default` exposes a narrow Home Manager install surface:
+  `programs.yazelix.enable = true` installs the selected package and its
+  desktop entry, and `programs.yazelix.package` supports local or alternate
+  package overrides. It does not generate Yazelix runtime config files.
 - `yzn help` prints help, `yzn env` opens the configured managed shell without
   launching the UI with packaged `hx`, `lazygit`, and `git` on PATH, `yzn enter`
   starts the managed Zellij runtime in the current terminal, and `yzn launch`

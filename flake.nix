@@ -3,6 +3,10 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    home-manager = {
+      url = "github:nix-community/home-manager";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     mars = {
       url = "github:luccahuguet/mars";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -48,6 +52,7 @@
   outputs = {
     self,
     nixpkgs,
+    home-manager,
     mars,
     yazelixZellij,
     yazelixHelix,
@@ -60,11 +65,16 @@
     starshipYazi,
   }: let
     eachSystem = nixpkgs.lib.genAttrs ["x86_64-linux" "aarch64-linux"];
+    homeManagerModule = import ./home-manager/module.nix {
+      defaultPackageFor = system: self.packages.${system}.yzn;
+    };
     rustBinFor = pkgs: name: src: pkgs.runCommand name {nativeBuildInputs = [pkgs.rustc pkgs.stdenv.cc];} ''
       mkdir -p "$out/bin"
       rustc --edition=2024 ${src} -o "$out/bin/${name}"
     '';
   in {
+    homeManagerModules.default = homeManagerModule;
+
     packages = eachSystem (system: let
       pkgs = import nixpkgs {inherit system;};
       rustBin = rustBinFor pkgs;
@@ -481,8 +491,59 @@ Workspace
       pkgs = import nixpkgs {inherit system;};
       yzn = self.packages.${system}.yzn;
       yznContractsCheck = rustBinFor pkgs "yzn-contracts-check" ./checks/yzn-contracts.rs;
+      fakeYazelix = pkgs.runCommand "fake-yazelix-hm-package" {} ''
+        mkdir -p "$out/bin" "$out/share/applications"
+        cat > "$out/bin/yzn" <<'EOF'
+        #!${pkgs.runtimeShell}
+        printf '%s\n' fake-yazelix
+        EOF
+        chmod 755 "$out/bin/yzn"
+        cat > "$out/share/applications/yzn.desktop" <<'EOF'
+        [Desktop Entry]
+        Type=Application
+        Name=Fake Yazelix
+        Exec=yzn
+        EOF
+      '';
+      homeManagerConfiguration = module:
+        home-manager.lib.homeManagerConfiguration {
+          inherit pkgs;
+          modules = [
+            self.homeManagerModules.default
+            {
+              home.username = "yzn-test";
+              home.homeDirectory = "/tmp/yzn-test-home";
+              home.stateVersion = "25.05";
+              manual.manpages.enable = false;
+              programs.yazelix.enable = true;
+            }
+            module
+          ];
+        };
+      homeManagerDefault = homeManagerConfiguration {};
+      homeManagerOverride = homeManagerConfiguration {
+        programs.yazelix.package = fakeYazelix;
+      };
     in {
       inherit yzn;
+      home_manager = pkgs.runCommand "yzn-home-manager-check" {} ''
+        default_path="${homeManagerDefault.activationPackage}/home-path"
+        override_path="${homeManagerOverride.activationPackage}/home-path"
+
+        test -x "$default_path/bin/yzn"
+        test -f "$default_path/share/applications/yzn.desktop"
+        grep -q 'Yazelix Next' "$default_path/share/applications/yzn.desktop"
+
+        test -x "$override_path/bin/yzn"
+        test "$("$override_path/bin/yzn")" = fake-yazelix
+        grep -q 'Fake Yazelix' "$override_path/share/applications/yzn.desktop"
+
+        if [ -e "${homeManagerDefault.activationPackage}/home-files/.config/yazelix-next" ]; then
+          printf '%s\n' 'Home Manager v1 must not generate Yazelix runtime config files' >&2
+          exit 1
+        fi
+        touch "$out"
+      '';
       yzn_yazi_materialization = pkgs.runCommand "yzn-yazi-materialization-check" {nativeBuildInputs = [pkgs.rustc pkgs.stdenv.cc];} ''
         rustc --edition=2024 --test ${./runtime/yzn-yazi.rs} -o yzn-yazi-materialization-check
         ./yzn-yazi-materialization-check

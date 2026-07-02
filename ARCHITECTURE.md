@@ -16,14 +16,21 @@ yzn enter -> yzn-welcome -> Yazelix Zellij fork -> Yazi sidebar + stacked work p
 ```
 
 The repo owns the glue that makes those pieces behave like one runtime. It does
-not try to be a general terminal distribution, Home Manager module, or Yazelix
-compatibility layer.
+not try to be a general terminal distribution, broad Home Manager runtime
+config module, or Yazelix compatibility layer.
 
 ## Owners
 
 `flake.nix` is the package graph and composition owner. It pins external inputs,
 builds small local Rust helpers, substitutes local config templates, installs
-the desktop entry, and exposes the `yzn` package/app.
+the desktop entry, exposes the `yzn` package/app, and exports the narrow Home
+Manager module.
+
+`home-manager/module.nix` is the declarative install owner. It exposes
+`programs.yazelix.enable` and `programs.yazelix.package`, installs the selected
+package into `home.packages`, and relies on that package for the desktop entry.
+It does not write Yazelix runtime config files or manage native Mars, Zellij,
+Yazi, Nu, Starship, or Helix configuration.
 
 `crates/yzn-config/` is the config host owner. It opens the Ratconfig UI,
 creates `~/.config/yazelix-next/config.toml` with defaults and joined contract
@@ -243,6 +250,7 @@ window.
 | C10 | Top bars use the child-rendered Yazelix Zellij Bar tray, tabs use the home marker, tab-mode-created tabs open in home, Codex usage has bundled `tu` and a yzn-owned cache path, and bottom bars keep native Zellij key hints | `layout.kdl`, `config.kdl`, `runtime/yzn.rs`, `flake.nix`, `packaging/tokenusage.nix` | `checks/zellij-layout.rs` validates packaged child bar usage, no-mode formatting, declared yzn widgets, the startup home tab marker, the home-scoped new-tab template, and native bottom status bars; `checks/yzn-contracts.rs` validates the tab-mode new-tab marker, runtime home cwd, terminal-label wiring, bundled tokenusage path, and status-cache export | Visual bar behavior remains manual dogfooding |
 | C11 | `yzn config` auto-creates root, Mars, Zellij, and Starship config sources; root `config.toml` has defaults and joined Ratconfig contract state; `open.log_level` controls managed `YZN_OPEN_LOG`; `shell.program` controls the packaged default-shell dispatcher; `welcome.enabled`, `welcome.style`, and `welcome.duration_seconds` control the startup welcome on new launches; `popup.size` controls managed popup geometry on new launches; `bar.widgets` controls the ordered top-bar widget tray through Ratconfig's string-list picker; Mars/Zellij tabs route writes to their native files; the Starship tab edits `format`, `right_format`, and `add_newline` in `starship.toml` with a `::` default left prompt; the Helix tab opens managed `config.toml`, `languages.toml`, `helix.scm`, and `init.scm` files through the managed editor, creates TOML files after activation, and creates the Steel pair when either Steel row is activated; packaged managed Helix exposes `:yzn-new-shell` unless user Steel files override it; Keys table columns list packaged bindings as read-only group/key/action/owner metadata with source paths in details; Advanced rows open Nu and managed Yazi sidecar files through the managed editor and create them only after activation | `crates/yzn-config/`, `config.toml`, `mars.toml`, `helix/config.toml`, `flake.nix` | `crates/yzn-config` unit tests cover create/edit validation, source routing, welcome field validation, popup size validation, bar widget validation, Starship field rendering, Zellij scalar rendering, guarded-node diagnostics, Keys read-only table rows, native file action rows, Helix native file rows, the Steel pair action, and owned missing-file creation; `checks/yzn-contracts.rs` validates packaged defaults, helper install, creation, `--get`, dispatcher wiring, config UI editor wrapper wiring, packaged `:yzn-new-shell` Steel command wiring, and managed Helix runtime selection for packaged, TOML-only, languages-only, and Steel-pair cases | Interactive Ratconfig UI behavior remains manual dogfooding |
 | C12 | The welcome screen defaults to enabled, random, and 3 seconds; a user can choose a fixed style instead of random, and random chooses only from the fixed static card plus screen-style pool | `yazelix-screen`, `runtime/yzn.rs`, `config.toml` | `yazelix-screen` unit tests validate the fixed pool, argument parsing, timed playback mode, and static-card copy; `checks/yzn-contracts.rs` validates packaged helper wiring and config/status/doctor exposure | Visual animation behavior remains manual dogfooding |
+| C13 | `homeManagerModules.default` provides a narrow declarative install surface: `programs.yazelix.enable = true` installs the selected package, package override is supported, the package desktop entry is present, and no Yazelix runtime config files are generated | `home-manager/module.nix`, `flake.nix` | `checks.home_manager` evaluates Home Manager with the default package and an override package, validates `bin/yzn`, validates the desktop entry, and rejects generated `~/.config/yazelix-next` files | Full Home Manager switch behavior remains external to the module evaluation check |
 
 ## Pros
 
