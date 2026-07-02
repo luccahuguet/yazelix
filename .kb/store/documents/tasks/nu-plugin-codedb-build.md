@@ -45,9 +45,10 @@ Before mutating package implementation files:
 
 - [x] KB task exists and references the whole downloaded package
 - [x] All package CDB tasks are represented below from the canonical CSV
-- [ ] `CDB013` workspace skeleton exists under the package allowed paths
-- [ ] `cargo metadata` succeeds for the package workspace
-- [ ] `logs/CDB013-workspace.log` records the build command/evidence
+- [x] `CDB013` workspace skeleton exists under the package allowed paths
+- [x] `cargo metadata` succeeds for the package workspace
+- [x] `logs/CDB013-workspace.log` records the build command/evidence
+- [x] `nu_plugin_codedb` builds and returns a table-shaped transient Nu plugin response
 - [ ] Next implementation task is selected from the CSV after `CDB013` completes
 
 ## CDB Task Graph Projection
@@ -128,4 +129,14 @@ Source: `/home/flexnetos/Downloads/nu_plugin/execution/TASK_GRAPH.csv`
 
 ## Current Execution
 
-`CDB013` is active for this session. The package allows only `Cargo.toml` and `crates/*` for this step, with `cargo metadata` as the validation gate.
+`CDB013` completed in this session. The package allows only `Cargo.toml` and `crates/*` for this step, with `cargo metadata` as the validation gate.
+
+Evidence:
+
+- Added Rust workspace skeleton at `/home/flexnetos/Downloads/nu_plugin/Cargo.toml`
+- Added required architecture crates under `/home/flexnetos/Downloads/nu_plugin/crates/`
+- Built `target/debug/nu_plugin_codedb` and `target/debug/codedb`
+- Preserved raw validation/build log at `/home/flexnetos/Downloads/nu_plugin/logs/CDB013-workspace.log`
+- Smoke-tested transient Nu plugin loading with `nu --plugins /home/flexnetos/Downloads/nu_plugin/target/debug/nu_plugin_codedb -c 'codedb tables | to json'`
+
+Next package task by dependency order: `CDB014` (`Implement codedb-core schemas`).
