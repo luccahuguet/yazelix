@@ -422,7 +422,7 @@ fn open_editor_pane(config: &Config, targets: &[PathBuf], cwd: &Path) -> Result<
     let mut args = vec![
         OsString::from("run"),
         OsString::from("--name"),
-        OsString::from("yzn-editor"),
+        OsString::from("editor"),
         OsString::from("--cwd"),
         cwd.as_os_str().to_os_string(),
         OsString::from("--"),
@@ -764,8 +764,8 @@ exit 0
             path,
             format!(
                 r#"#!/bin/sh
-case " $* " in
-  *" rev-parse --show-toplevel "*)
+case "$*" in
+  *"rev-parse --show-toplevel"*)
     printf '%s\n' '{}'
     exit 0
     ;;
@@ -932,10 +932,7 @@ exit 1
         let log = fs::read_to_string(zellij_log).unwrap();
         assert!(log.contains("args=action rename-tab repo"), "{log}");
         assert!(
-            log.contains(&format!(
-                "args=run --name yzn-editor --cwd {}",
-                repo.display()
-            )),
+            log.contains(&format!("args=run --name editor --cwd {}", repo.display())),
             "{log}"
         );
         assert!(log.contains(target.to_string_lossy().as_ref()), "{log}");
@@ -1027,7 +1024,7 @@ exit 1
 
         let log = fs::read_to_string(zellij_log).unwrap();
         assert!(log.contains("args=action focus-pane-id terminal_1"));
-        assert!(log.contains("args=run --name yzn-editor"));
+        assert!(log.contains("args=run --name editor"));
         assert!(log.contains("session=test-session"));
         assert!(log.contains("zellij_session=zellij-test"));
     }
@@ -1081,7 +1078,7 @@ exit 1
             .unwrap();
 
             let log = fs::read_to_string(zellij_log).unwrap();
-            assert!(log.contains("args=run --name yzn-editor"), "{name}:\n{log}");
+            assert!(log.contains("args=run --name editor"), "{name}:\n{log}");
             assert!(log.contains("session=window-a"), "{name}:\n{log}");
             assert!(!log.contains("focus-pane-id"), "{name}:\n{log}");
         }

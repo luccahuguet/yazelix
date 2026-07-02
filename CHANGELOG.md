@@ -58,9 +58,14 @@ User-visible runtime changes for Yazelix Next live here.
   the tab to the workspace root, and keeps the selected picker directory in
   Helix for Git repos.
 - `Alt 1` through `Alt 9` jump directly to tabs 1 through 9.
+- Plain `Alt i` and `Alt o` no longer inherit Zellij's default tab-move
+  bindings; Yazelix tab movement stays on `Ctrl Alt h/l`.
 - `Alt r` reveals the current Helix buffer in the managed Yazi sidebar, and
   `yzn reveal <target>` exposes the same active-tab reveal path inside a
-  managed session.
+  managed session. New managed editor panes use the pane-orchestrator's
+  canonical `editor` title so smart reveal forwards into Helix before falling
+  back to sidebar focus. The reveal helper treats empty successful focus pipe
+  replies as success.
 - Managed Yazi appends optional user `yazi/init.lua` and `yazi/keymap.toml`
   sidecars after the packaged setup without importing full native Yazi config.
 - `config.toml` controls `open.log_level`, `shell.program`, `[popup].size`,

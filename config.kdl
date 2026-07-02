@@ -71,7 +71,7 @@ keybinds {
         bind "Ctrl Alt o" { SwitchToMode "Normal"; }
     }
     shared_except "locked" {
-        unbind "Alt n" "Ctrl g"
+        unbind "Alt n" "Alt i" "Alt o" "Ctrl g"
         bind "Alt m" { NewPane; }
         bind "Alt Shift J" {
             MessagePlugin "yzpp" {

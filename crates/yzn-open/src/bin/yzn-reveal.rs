@@ -34,7 +34,7 @@ fn run(config: &Config, raw_args: impl IntoIterator<Item = OsString>) -> Result<
     }
 
     let target = existing_absolute_path(&target)?;
-    let session_state = orchestrator_command(config, "get_active_tab_session_state")?;
+    let session_state = orchestrator_query(config, "get_active_tab_session_state")?;
     let yazi_id = sidebar_yazi_id(&session_state)?;
     let output = Command::new(&config.ya)
         .arg("emit-to")
@@ -45,12 +45,15 @@ fn run(config: &Config, raw_args: impl IntoIterator<Item = OsString>) -> Result<
         .context("could not run ya")?;
     ensure_success(&output, "ya reveal failed")?;
 
-    let focus_status = orchestrator_command(config, "focus_sidebar")?;
-    if !matches!(
-        focus_status.trim(),
-        "ok" | "opened" | "focused" | "focused_sidebar" | "opened_sidebar"
-    ) {
-        bail!("managed sidebar focus failed: {}", focus_status.trim());
+    let focus_status = orchestrator_action(config, "focus_sidebar")?;
+    let focus_status = focus_status.trim();
+    if !focus_status.is_empty()
+        && !matches!(
+            focus_status,
+            "ok" | "opened" | "focused" | "focused_sidebar" | "opened_sidebar"
+        )
+    {
+        bail!("managed sidebar focus failed: {focus_status}");
     }
     Ok(())
 }
@@ -100,7 +103,15 @@ fn sidebar_yazi_id(raw: &str) -> Result<String> {
         .context("managed sidebar Yazi is not registered in the active tab")
 }
 
-fn orchestrator_command(config: &Config, name: &str) -> Result<String> {
+fn orchestrator_query(config: &Config, name: &str) -> Result<String> {
+    let response = orchestrator_action(config, name)?;
+    if response.is_empty() {
+        bail!("pane orchestrator returned no response for {name}");
+    }
+    Ok(response)
+}
+
+fn orchestrator_action(config: &Config, name: &str) -> Result<String> {
     let mut command = Command::new(&config.zellij);
     if let Some(session_name) = &config.zellij_session_name {
         command.env(ZELLIJ_SESSION_NAME_ENV, session_name);
@@ -120,9 +131,6 @@ fn orchestrator_command(config: &Config, name: &str) -> Result<String> {
         .with_context(|| format!("could not pipe {name} to pane orchestrator"))?;
     ensure_success(&output, "pane orchestrator command failed")?;
     let response = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    if response.is_empty() {
-        bail!("pane orchestrator returned no response for {name}");
-    }
     Ok(response)
 }
 
@@ -240,6 +248,50 @@ action pipe --plugin yazelix_pane_orchestrator --name focus_sidebar --  session=
         );
     }
 
+    #[test]
+    fn reveal_allows_empty_focus_response_after_successful_command() {
+        let fixture = TestDir::new();
+        let target = fixture.path.join("target.txt");
+        let ya_log = fixture.path.join("ya.log");
+        fs::write(&target, "").unwrap();
+        write_executable(
+            &fixture.path.join("zellij"),
+            r#"#!/bin/sh
+case "$6" in
+  get_active_tab_session_state)
+    printf '%s\n' '{"sidebar_yazi":{"yazi_id":"plugin-yazi-id"}}'
+    exit 0
+    ;;
+  focus_sidebar)
+    exit 0
+    ;;
+esac
+printf 'unexpected zellij args: %s\n' "$*" >&2
+exit 1
+"#,
+        );
+        write_executable(
+            &fixture.path.join("ya"),
+            &format!(
+                "#!/bin/sh\nprintf '%s\\n' \"$*\" > \"{}\"\n",
+                ya_log.display()
+            ),
+        );
+
+        let config = Config {
+            ya: fixture.path.join("ya").into_os_string(),
+            zellij: fixture.path.join("zellij").into_os_string(),
+            zellij_session_name: Some("saved-session".into()),
+        };
+
+        run(&config, [target.clone().into_os_string()]).unwrap();
+
+        assert_eq!(
+            fs::read_to_string(ya_log).unwrap(),
+            format!("emit-to plugin-yazi-id reveal {}\n", target.display())
+        );
+    }
+
     fn write_executable(path: &Path, contents: &str) {
         fs::write(path, contents).unwrap();
         let mut permissions = fs::metadata(path).unwrap().permissions();
@@ -253,13 +305,25 @@ action pipe --plugin yazelix_pane_orchestrator --name focus_sidebar --  session=
 
     impl TestDir {
         fn new() -> Self {
-            let millis = SystemTime::now()
+            let nanos = SystemTime::now()
                 .duration_since(UNIX_EPOCH)
                 .unwrap()
-                .as_millis();
-            let path = env::temp_dir().join(format!("yzn-reveal-{}-{millis}", std::process::id()));
-            fs::create_dir(&path).unwrap();
-            Self { path }
+                .as_nanos();
+            for attempt in 0..100 {
+                let path = env::temp_dir().join(format!(
+                    "yzn-reveal-{}-{nanos}-{attempt}",
+                    std::process::id()
+                ));
+                match fs::create_dir(&path) {
+                    Ok(()) => return Self { path },
+                    Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {}
+                    Err(error) => panic!(
+                        "could not create test directory {}: {error}",
+                        path.display()
+                    ),
+                }
+            }
+            panic!("could not create unique yzn-reveal test directory");
         }
     }
 

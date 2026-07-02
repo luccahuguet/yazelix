@@ -963,7 +963,7 @@ fn default_shell(config: &str) -> PathBuf {
 
 fn expect_keybinds(config: &str) {
     for expected in [
-        r#"unbind "Alt n" "Ctrl g""#,
+        r#"unbind "Alt n" "Alt i" "Alt o" "Ctrl g""#,
         r#"bind "Alt m" { NewPane; }"#,
         r#"bind "Alt h" "Alt Left" { MessagePlugin "yazelix_pane_orchestrator" { name "move_focus_left_or_tab"; }; }"#,
         r#"bind "Alt l" "Alt Right" { MessagePlugin "yazelix_pane_orchestrator" { name "move_focus_right_or_tab"; }; }"#,
