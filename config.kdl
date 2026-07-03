@@ -81,13 +81,13 @@ keybinds {
     shared_except "locked" {
         unbind "Alt n" "Alt i" "Alt o" "Ctrl g"
         bind "Alt m" { NewPane; }
-        bind "Alt Shift J" {
+        bind "@lazygitKey@" {
             MessagePlugin "yzpp" {
                 name "toggle"
                 payload "lazygit"
             }
         }
-        bind "Alt Shift K" {
+        bind "@configKey@" {
             MessagePlugin "yzpp" {
                 name "toggle"
                 payload "config"
@@ -99,7 +99,7 @@ keybinds {
                 payload "agent"
             }
         }
-        bind "Alt Shift M" {
+        bind "@menuKey@" {
             MessagePlugin "yzpp" {
                 name "toggle"
                 payload "menu"

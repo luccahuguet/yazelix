@@ -408,6 +408,7 @@ fn read_toml_file_value(path: &Path, label: &'static str) -> Result<JsonValue> {
 
 fn read_config_field(path: &Path, spec: &ConfigFieldSpec) -> Result<String> {
     let value = read_toml_file_value(path, "config.toml")?;
+    validate_popup_keybindings(&value)?;
     let Some(value) = get_toml_path(&value, spec.field.path) else {
         return Err(error(format!("unknown config path: {}", spec.field.path)));
     };
@@ -722,7 +723,9 @@ fn build_root_config_field(
             detail: spec.apply_detail.to_string(),
             pending: false,
         },
-        current.is_some_and(|value| validate_config_value(spec.field.path, value).is_err()),
+        current.is_some_and(|value| validate_config_value(spec.field.path, value).is_err())
+            || (popup_keybinding_spec(spec.field.path).is_some()
+                && validate_popup_keybindings(active).is_err()),
     ))
 }
 
@@ -1002,7 +1005,11 @@ fn write_config_field(path: &Path, field_path: &str, value: &JsonValue) -> Resul
     let text = set_toml_value_text(&raw, field_path, value)
         .map_err(|error| boxed_debug("could not update config.toml", error))?
         .text;
-    atomic_write(path, &fill_missing_defaults(&reconcile_contract(&text)?)?)
+    let text = fill_missing_defaults(&reconcile_contract(&text)?)?;
+    validate_popup_keybindings(
+        &parse_toml_value(&text).map_err(|error| boxed_debug("invalid config.toml", error))?,
+    )?;
+    atomic_write(path, &text)
 }
 
 fn default_config_value(field_path: &str) -> Result<JsonValue> {
@@ -1024,8 +1031,8 @@ fn validate_config_value(field_path: &str, value: &JsonValue) -> Result<()> {
             let value = spec.json_choice(value)?;
             if field_path == EDITOR_COMMAND_PATH {
                 validate_editor_command(value)?;
-            } else if field_path == KEYBINDINGS_AGENT_PATH {
-                validate_agent_keybinding(value)?;
+            } else if popup_keybinding_spec(field_path).is_some() {
+                validate_popup_keybinding(field_path, value)?;
             }
             Ok(())
         }
@@ -1059,15 +1066,42 @@ fn validate_editor_command(value: &str) -> Result<()> {
     Ok(())
 }
 
-fn validate_agent_keybinding(value: &str) -> Result<()> {
-    validate_key_chord(value)?;
-    let conflicts = value != DEFAULT_AGENT_KEYBINDING
+fn validate_popup_keybindings(value: &JsonValue) -> Result<()> {
+    let mut used = BTreeMap::new();
+    for spec in POPUP_KEYBINDINGS {
+        let Some(value) = get_toml_path(value, spec.path) else {
+            continue;
+        };
+        let chord = config_field(spec.path)?.field.json_choice(value)?;
+        validate_popup_keybinding(spec.path, chord)?;
+        if let Some(existing) = used.insert(chord.to_ascii_lowercase(), spec.path) {
+            return Err(error(format!(
+                "{} conflicts with {existing}: {chord}",
+                spec.path
+            )));
+        }
+    }
+    Ok(())
+}
+
+fn popup_keybinding_spec(field_path: &str) -> Option<&'static PopupKeybindingSpec> {
+    POPUP_KEYBINDINGS
+        .iter()
+        .find(|spec| spec.path == field_path)
+}
+
+fn validate_popup_keybinding(field_path: &str, value: &str) -> Result<()> {
+    let spec = popup_keybinding_spec(field_path).ok_or_else(|| error("unknown keybinding role"))?;
+    validate_key_chord(field_path, value)?;
+    let conflicts = value != spec.default
         && KEY_BINDINGS
             .iter()
-            .any(|[_group, chord, _action, _owner, _source]| packaged_chord_matches(chord, value));
+            .any(|[_group, chord, _action, _owner, _source]| {
+                packaged_chord_matches(chord, value) && !popup_default_chord_matches(value)
+            });
     if conflicts {
         return Err(error(format!(
-            "{KEYBINDINGS_AGENT_PATH} conflicts with packaged key {value}"
+            "{field_path} conflicts with packaged key {value}"
         )));
     }
     Ok(())
@@ -1086,7 +1120,13 @@ fn packaged_chord_matches(pattern: &str, value: &str) -> bool {
     })
 }
 
-fn validate_key_chord(value: &str) -> Result<()> {
+fn popup_default_chord_matches(value: &str) -> bool {
+    POPUP_KEYBINDINGS
+        .iter()
+        .any(|spec| spec.default.eq_ignore_ascii_case(value))
+}
+
+fn validate_key_chord(field_path: &str, value: &str) -> Result<()> {
     value
         .rsplit_once(' ')
         .filter(|(modifiers, key)| {
@@ -1102,7 +1142,7 @@ fn validate_key_chord(value: &str) -> Result<()> {
             ) && valid_key_token(key)
         })
         .map(|_| ())
-        .ok_or_else(keybinding_syntax_error)
+        .ok_or_else(|| keybinding_syntax_error(field_path))
 }
 
 fn valid_key_token(key: &str) -> bool {
@@ -1125,10 +1165,8 @@ fn valid_key_token(key: &str) -> bool {
         )
 }
 
-fn keybinding_syntax_error() -> Box<dyn std::error::Error> {
-    error(format!(
-        "{KEYBINDINGS_AGENT_PATH} must be a key chord like Alt Shift A"
-    ))
+fn keybinding_syntax_error(field_path: &str) -> Box<dyn std::error::Error> {
+    error(format!("{field_path} must be a key chord like Alt Shift A"))
 }
 
 fn write_mars_config_field(path: &Path, field_path: &str, value: &JsonValue) -> Result<()> {
@@ -1717,10 +1755,14 @@ mod tests {
             assert_eq!(default_config_value(field_path).unwrap(), value);
             validate_config_value(field_path, &value).unwrap();
         }
-        assert_eq!(
-            default_config_value(KEYBINDINGS_AGENT_PATH).unwrap(),
-            json!(DEFAULT_AGENT_KEYBINDING)
-        );
+        for spec in POPUP_KEYBINDINGS {
+            assert_eq!(
+                default_config_value(spec.path).unwrap(),
+                json!(spec.default),
+                "{}",
+                spec.path
+            );
+        }
     }
 
     #[test]
@@ -1775,12 +1817,22 @@ mod tests {
         write_config_field(&path, POPUP_VERTICAL_MARGIN_PATH, &json!(1)).unwrap();
         assert_toml_value(&path, POPUP_VERTICAL_MARGIN_PATH, &json!(1));
 
+        for (field_path, value) in [
+            (KEYBINDINGS_CONFIG_PATH, "Alt Shift C"),
+            (KEYBINDINGS_AGENT_PATH, "Alt Shift A"),
+            (KEYBINDINGS_LAZYGIT_PATH, "Alt Shift G"),
+            (KEYBINDINGS_MENU_PATH, "Alt Shift U"),
+        ] {
+            write_config_field(&path, field_path, &json!(value)).unwrap();
+            assert_toml_value(&path, field_path, &json!(value));
+            assert_eq!(
+                read_config_field(&path, config_field(field_path).unwrap()).unwrap(),
+                value
+            );
+        }
+        write_config_field(&path, KEYBINDINGS_AGENT_PATH, &json!("Alt Shift M")).unwrap();
+        assert_toml_value(&path, KEYBINDINGS_AGENT_PATH, &json!("Alt Shift M"));
         write_config_field(&path, KEYBINDINGS_AGENT_PATH, &json!("Alt Shift A")).unwrap();
-        assert_toml_value(&path, KEYBINDINGS_AGENT_PATH, &json!("Alt Shift A"));
-        assert_eq!(
-            read_config_field(&path, config_field(KEYBINDINGS_AGENT_PATH).unwrap()).unwrap(),
-            "Alt Shift A"
-        );
 
         for (field_path, value, expected) in [
             (
@@ -1799,12 +1851,12 @@ mod tests {
             (
                 KEYBINDINGS_AGENT_PATH,
                 json!("Alt+Shift+A"),
-                "must be a key chord",
+                "keybindings.agent must be a key chord",
             ),
         ] {
             assert_write_config_error(&path, field_path, value, expected);
         }
-        for value in ["Alt Shift M", "Alt Shift m", "Alt z"] {
+        for value in ["Alt Shift h", "Alt z"] {
             assert_write_config_error(
                 &path,
                 KEYBINDINGS_AGENT_PATH,
@@ -1812,6 +1864,12 @@ mod tests {
                 &format!("conflicts with packaged key {value}"),
             );
         }
+        assert_write_config_error(
+            &path,
+            KEYBINDINGS_AGENT_PATH,
+            json!("Alt Shift U"),
+            "keybindings.menu conflicts with keybindings.agent: Alt Shift U",
+        );
 
         write_config_field(
             &path,
@@ -1901,16 +1959,16 @@ mod tests {
                 .to_string()
         );
 
-        let agent_key = model_field(&model, KEYBINDINGS_AGENT_PATH);
-        assert_eq!(agent_key.tab, TAB_CONFIG);
-        assert_eq!(agent_key.kind, "string");
-        assert_eq!(
-            agent_key.current_value,
-            default_config_value(KEYBINDINGS_AGENT_PATH)
-                .unwrap()
-                .to_string()
-        );
-        assert_eq!(agent_key.apply_status.summary, "next launch");
+        for spec in POPUP_KEYBINDINGS {
+            let field = model_field(&model, spec.path);
+            assert_eq!(field.tab, TAB_CONFIG);
+            assert_eq!(field.kind, "string");
+            assert_eq!(
+                field.current_value,
+                default_config_value(spec.path).unwrap().to_string()
+            );
+            assert_eq!(field.apply_status.summary, "next launch");
+        }
 
         let field = model_field(&model, BAR_WIDGETS_PATH);
 
@@ -2087,7 +2145,10 @@ side_margin = 1
 vertical_margin = 0
 
 [keybindings]
+config = "Alt Shift K"
 agent = "Alt Shift L"
+lazygit = "Alt Shift J"
+menu = "Alt Shift M"
 
 [ratconfig.contract]
 applied_change_ids = []

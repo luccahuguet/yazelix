@@ -273,7 +273,10 @@ fn expect_front_door(yzn: &Path) {
         "bar.widgets",
         "popup.side_margin",
         "popup.vertical_margin",
+        "keybindings.config",
         "keybindings.agent",
+        "keybindings.lazygit",
+        "keybindings.menu",
         "lazygit",
         "yzn-bar-render",
         "yzn-env-supervisor",
@@ -323,7 +326,10 @@ fn expect_front_door(yzn: &Path) {
         r#"bar widgets: ["editor","shell","term","codex_usage","cpu","ram"]"#.to_string(),
         "popup side margin: 1".to_string(),
         "popup vertical margin: 0".to_string(),
+        "config keybinding: Alt Shift K".to_string(),
         "agent keybinding: Alt Shift L".to_string(),
+        "lazygit keybinding: Alt Shift J".to_string(),
+        "menu keybinding: Alt Shift M".to_string(),
         "layout: packaged (/nix/store/".to_string(),
         "inside zellij: no".to_string(),
     ] {
@@ -392,41 +398,75 @@ fn expect_front_door(yzn: &Path) {
     assert_eq!(custom_popup_config.matches("side_margin 2").count(), 4);
     assert_eq!(custom_popup_config.matches("vertical_margin 1").count(), 4);
 
-    let custom_agent_key_config = temp.path.join("custom-agent-key-config");
-    let custom_agent_key_state = temp.path.join("custom-agent-key-state");
+    let custom_popup_key_config = temp.path.join("custom-popup-key-config");
+    let custom_popup_key_state = temp.path.join("custom-popup-key-state");
     write_config_home(
-        &custom_agent_key_config,
-        "[open]\nlog_level = \"info\"\n\n[shell]\nprogram = \"nu\"\n\n[keybindings]\nagent = \"Alt Shift A\"\n",
+        &custom_popup_key_config,
+        "[open]\nlog_level = \"info\"\n\n[shell]\nprogram = \"nu\"\n\n[keybindings]\nconfig = \"Alt Shift C\"\nagent = \"Alt Shift A\"\nlazygit = \"Alt Shift G\"\nmenu = \"Alt Shift U\"\n",
     );
     let status = run_yzn_with_config(
         &yzn_bin,
         "status",
-        &custom_agent_key_config,
-        &custom_agent_key_state,
-        "custom agent key status",
+        &custom_popup_key_config,
+        &custom_popup_key_state,
+        "custom popup key status",
     );
-    expect_contains(
-        &status,
+    for expected in [
+        "config keybinding: Alt Shift C",
         "agent keybinding: Alt Shift A",
-        "custom agent key status",
-    );
+        "lazygit keybinding: Alt Shift G",
+        "menu keybinding: Alt Shift U",
+    ] {
+        expect_contains(&status, expected, "custom popup key status");
+    }
     expect_contains(
         &status,
         "zellij config: runtime (",
-        "custom agent key status",
+        "custom popup key status",
     );
-    let custom_agent_config =
-        fs::read_to_string(custom_agent_key_state.join("zellij/config.kdl")).unwrap();
-    expect_popup_binding(
-        &custom_agent_config,
-        "Alt Shift A",
-        "agent",
-        "custom agent key config",
+    let custom_key_config =
+        fs::read_to_string(custom_popup_key_state.join("zellij/config.kdl")).unwrap();
+    for (key, payload, default) in [
+        ("Alt Shift C", "config", "Alt Shift K"),
+        ("Alt Shift A", "agent", "Alt Shift L"),
+        ("Alt Shift G", "lazygit", "Alt Shift J"),
+        ("Alt Shift U", "menu", "Alt Shift M"),
+    ] {
+        expect_popup_binding(&custom_key_config, key, payload, "custom popup key config");
+        assert!(
+            !custom_key_config.contains(&format!(r#"bind "{default}" {{"#)),
+            "custom popup key kept the default {payload} binding"
+        );
+    }
+
+    let swapped_popup_key_config = temp.path.join("swapped-popup-key-config");
+    let swapped_popup_key_state = temp.path.join("swapped-popup-key-state");
+    write_config_home(
+        &swapped_popup_key_config,
+        "[open]\nlog_level = \"info\"\n\n[shell]\nprogram = \"nu\"\n\n[keybindings]\nconfig = \"Alt Shift L\"\nagent = \"Alt Shift K\"\nlazygit = \"Alt Shift M\"\nmenu = \"Alt Shift J\"\n",
     );
-    assert!(
-        !custom_agent_config.contains(r#"bind "Alt Shift L" {"#),
-        "custom agent key kept the default agent binding"
+    run_yzn_with_config(
+        &yzn_bin,
+        "status",
+        &swapped_popup_key_config,
+        &swapped_popup_key_state,
+        "swapped popup key status",
     );
+    let swapped_key_config =
+        fs::read_to_string(swapped_popup_key_state.join("zellij/config.kdl")).unwrap();
+    for (key, payload) in [
+        ("Alt Shift L", "config"),
+        ("Alt Shift K", "agent"),
+        ("Alt Shift M", "lazygit"),
+        ("Alt Shift J", "menu"),
+    ] {
+        expect_popup_binding(
+            &swapped_key_config,
+            key,
+            payload,
+            "swapped popup key config",
+        );
+    }
 
     let custom_editor_config = temp.path.join("custom-editor-config");
     let custom_editor_state = temp.path.join("custom-editor-state");
@@ -529,7 +569,10 @@ fn expect_front_door(yzn: &Path) {
         r#"ok bar.widgets: ["editor","shell","term","codex_usage","cpu","ram"]"#.to_string(),
         "ok popup.side_margin: 1".to_string(),
         "ok popup.vertical_margin: 0".to_string(),
+        "ok keybindings.config: Alt Shift K".to_string(),
         "ok keybindings.agent: Alt Shift L".to_string(),
+        "ok keybindings.lazygit: Alt Shift J".to_string(),
+        "ok keybindings.menu: Alt Shift M".to_string(),
         "ok tutor helper: /nix/store/".to_string(),
         "ok screen helper: /nix/store/".to_string(),
         "ok welcome helper: /nix/store/".to_string(),
@@ -704,7 +747,10 @@ fn expect_config_ui(yzn: &Path) {
         "duration_seconds = 3",
         "side_margin = 1",
         "vertical_margin = 0",
+        "config = \"Alt Shift K\"",
         "agent = \"Alt Shift L\"",
+        "lazygit = \"Alt Shift J\"",
+        "menu = \"Alt Shift M\"",
         "widgets = [\"editor\", \"shell\", \"term\", \"codex_usage\", \"cpu\", \"ram\"]",
     ] {
         expect_contains(&packaged_config, expected, "packaged config.toml");
@@ -722,7 +768,10 @@ fn expect_config_ui(yzn: &Path) {
         ("welcome.duration_seconds", "3"),
         ("popup.side_margin", "1"),
         ("popup.vertical_margin", "0"),
+        ("keybindings.config", "Alt Shift K"),
         ("keybindings.agent", "Alt Shift L"),
+        ("keybindings.lazygit", "Alt Shift J"),
+        ("keybindings.menu", "Alt Shift M"),
         (
             "bar.widgets",
             r#"["editor","shell","term","codex_usage","cpu","ram"]"#,
@@ -776,7 +825,10 @@ fn expect_config_ui(yzn: &Path) {
         "side_margin = 1",
         "vertical_margin = 0",
         "[keybindings]",
+        "config = \"Alt Shift K\"",
         "agent = \"Alt Shift L\"",
+        "lazygit = \"Alt Shift J\"",
+        "menu = \"Alt Shift M\"",
         "[bar]",
         "widgets = [\"editor\", \"shell\", \"term\", \"codex_usage\", \"cpu\", \"ram\"]",
         "contract_id = \"yazelix-next.config\"",
@@ -845,9 +897,15 @@ fn expect_startup_diagnostics(yzn: &Path) {
         ),
         (
             "bad-key-conflict-config",
-            "[open]\nlog_level = \"info\"\n\n[shell]\nprogram = \"nu\"\n\n[keybindings]\nagent = \"Alt Shift M\"\n",
-            "keybindings.agent conflicts with packaged key Alt Shift M",
+            "[open]\nlog_level = \"info\"\n\n[shell]\nprogram = \"nu\"\n\n[keybindings]\nagent = \"Alt Shift h\"\n",
+            "keybindings.agent conflicts with packaged key Alt Shift h",
             "conflicting agent key",
+        ),
+        (
+            "bad-key-duplicate-config",
+            "[open]\nlog_level = \"info\"\n\n[shell]\nprogram = \"nu\"\n\n[keybindings]\nconfig = \"Alt Shift A\"\nagent = \"Alt Shift A\"\n",
+            "keybindings.agent conflicts with keybindings.config: Alt Shift A",
+            "duplicate popup key",
         ),
     ] {
         let config_home = temp.path.join(dir);

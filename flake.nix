@@ -369,7 +369,10 @@
         yzpp = "file:${yazelixZellijPopupPackage}/${yazelixZellijPopupPackage.wasmPath}";
         yznPaneOrchestrator = "file:${yazelixZellijPaneOrchestratorPackage}/${yazelixZellijPaneOrchestratorPackage.wasmPath}";
         yznAgent = "${yznAgent}/bin/yzn-agent";
+        configKey = defaultConfig.keybindings.config;
         agentKey = defaultConfig.keybindings.agent;
+        lazygitKey = defaultConfig.keybindings.lazygit;
+        menuKey = defaultConfig.keybindings.menu;
         yznConfig = "${yznConfigUi}/bin/yzn-config-ui";
         yznMenu = "${yznMenu}/bin/yzn-menu";
         lazygit = "${yznLazygit}/bin/yzn-lazygit";
@@ -421,7 +424,10 @@
         yazelixZellijBarWasm = "${yazelixZellijBarPackage}/share/yazelix_zellij_bar/zjstatus.wasm";
         yazelixZellijPaneOrchestratorWasm = "${yazelixZellijPaneOrchestratorPackage}/${yazelixZellijPaneOrchestratorPackage.wasmPath}";
         defaultBarWidgetsJson = builtins.toJSON defaultBarWidgets;
+        defaultConfigKeybinding = defaultConfig.keybindings.config;
         defaultAgentKeybinding = defaultConfig.keybindings.agent;
+        defaultLazygitKeybinding = defaultConfig.keybindings.lazygit;
+        defaultMenuKeybinding = defaultConfig.keybindings.menu;
         inherit defaultPopupSideMargin defaultPopupVerticalMargin;
         pathPrefix = pkgs.lib.makeBinPath [
           pkgs.coreutils
@@ -529,7 +535,10 @@
           settings = {
             shell.program = "fish";
             welcome.enabled = false;
+            keybindings.config = "Alt Shift C";
             keybindings.agent = "Alt Shift A";
+            keybindings.lazygit = "Alt Shift G";
+            keybindings.menu = "Alt Shift U";
             bar.widgets = ["editor" "shell"];
             ratconfig.contract.contract_id = "user-owned";
           };
@@ -569,12 +578,18 @@
         grep -q 'command = "yzn-hx"' "$config_files/config.toml"
         grep -q 'enabled = false' "$config_files/config.toml"
         grep -q 'style = "random"' "$config_files/config.toml"
+        grep -q 'config = "Alt Shift C"' "$config_files/config.toml"
         grep -q 'agent = "Alt Shift A"' "$config_files/config.toml"
+        grep -q 'lazygit = "Alt Shift G"' "$config_files/config.toml"
+        grep -q 'menu = "Alt Shift U"' "$config_files/config.toml"
         grep -q 'contract_id = "yazelix-next.config"' "$config_files/config.toml"
         ! grep -q 'contract_id = "user-owned"' "$config_files/config.toml"
         test "$(YAZELIX_NEXT_CONFIG_HOME="$config_files" ${yzn}/libexec/yazelix-next/yzn-config --get shell.program)" = fish
         test "$(YAZELIX_NEXT_CONFIG_HOME="$config_files" ${yzn}/libexec/yazelix-next/yzn-config --get editor.command)" = yzn-hx
+        test "$(YAZELIX_NEXT_CONFIG_HOME="$config_files" ${yzn}/libexec/yazelix-next/yzn-config --get keybindings.config)" = "Alt Shift C"
         test "$(YAZELIX_NEXT_CONFIG_HOME="$config_files" ${yzn}/libexec/yazelix-next/yzn-config --get keybindings.agent)" = "Alt Shift A"
+        test "$(YAZELIX_NEXT_CONFIG_HOME="$config_files" ${yzn}/libexec/yazelix-next/yzn-config --get keybindings.lazygit)" = "Alt Shift G"
+        test "$(YAZELIX_NEXT_CONFIG_HOME="$config_files" ${yzn}/libexec/yazelix-next/yzn-config --get keybindings.menu)" = "Alt Shift U"
         grep -q 'width = 1200' "$config_files/mars/config.toml"
         grep -q 'pane_frames false' "$config_files/zellij/config.kdl"
         grep -q 'format = "::"' "$config_files/starship.toml"

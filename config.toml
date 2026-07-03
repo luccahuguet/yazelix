@@ -29,8 +29,11 @@ side_margin = 1
 vertical_margin = 0
 
 [keybindings]
-# Key chord that hides or shows the managed agent popup.
+# Key chords for managed popup roles.
+config = "Alt Shift K"
 agent = "Alt Shift L"
+lazygit = "Alt Shift J"
+menu = "Alt Shift M"
 
 [bar]
 # Top bar widgets, left to right.

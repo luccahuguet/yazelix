@@ -36,7 +36,6 @@ const YAZELIX_ZELLIJ_POPUP_WASM: &str = "@yazelixZellijPopupWasm@";
 const YAZELIX_ZELLIJ_BAR_WASM: &str = "@yazelixZellijBarWasm@";
 const YAZELIX_ZELLIJ_PANE_ORCHESTRATOR_WASM: &str = "@yazelixZellijPaneOrchestratorWasm@";
 const DEFAULT_BAR_WIDGETS_JSON: &str = r#"@defaultBarWidgetsJson@"#;
-const DEFAULT_AGENT_KEYBINDING: &str = "@defaultAgentKeybinding@";
 const DEFAULT_POPUP_SIDE_MARGIN: &str = "@defaultPopupSideMargin@";
 const DEFAULT_POPUP_VERTICAL_MARGIN: &str = "@defaultPopupVerticalMargin@";
 const PATH_PREFIX: &str = "@pathPrefix@";
@@ -44,6 +43,16 @@ const SPONSOR_URL: &str = "https://github.com/sponsors/luccahuguet";
 const ZELLIJ_HOME_PLACEHOLDER: &str = "\"__YZN_HOME__\"";
 const LAYOUT_YAZI_PLACEHOLDER: &str = concat!("@", "yazi", "@");
 const LAYOUT_BAR_PLACEHOLDER: &str = concat!("@", "bar", "@");
+const POPUP_KEYBINDING_SPECS: &[(&str, &str, &str)] = &[
+    ("config", "keybindings.config", "@defaultConfigKeybinding@"),
+    ("agent", "keybindings.agent", "@defaultAgentKeybinding@"),
+    (
+        "lazygit",
+        "keybindings.lazygit",
+        "@defaultLazygitKeybinding@",
+    ),
+    ("menu", "keybindings.menu", "@defaultMenuKeybinding@"),
+];
 
 fn main() {
     process::exit(run().map(|()| 0).unwrap_or_else(AppError::report));
@@ -209,9 +218,33 @@ struct Runtime {
     bar_widgets: String,
     popup_side_margin: String,
     popup_vertical_margin: String,
-    agent_keybinding: String,
+    popup_keybindings: Vec<PopupKeybinding>,
     zellij_status_cache: PathBuf,
     zellij_permissions: PathBuf,
+}
+
+struct PopupKeybinding {
+    label: &'static str,
+    path: &'static str,
+    default: &'static str,
+    configured: String,
+}
+
+fn read_popup_keybindings(
+    config_home: &Path,
+    config_toml: &Path,
+) -> Result<Vec<PopupKeybinding>, AppError> {
+    POPUP_KEYBINDING_SPECS
+        .iter()
+        .map(|&(label, path, default)| {
+            Ok(PopupKeybinding {
+                label,
+                path,
+                default,
+                configured: trim_output(config_value(config_home, config_toml, path)?),
+            })
+        })
+        .collect()
 }
 
 impl Runtime {
@@ -241,11 +274,7 @@ impl Runtime {
             &config_toml,
             "popup.vertical_margin",
         )?);
-        let agent_keybinding = trim_output(config_value(
-            &config_home,
-            &config_toml,
-            "keybindings.agent",
-        )?);
+        let popup_keybindings = read_popup_keybindings(&config_home, &config_toml)?;
         let (layout_source, layout) = active_layout(&state_dir, &bar_widgets)?;
         let user_mars_config_home = config_home.join("mars");
         let (mars_config_source, mars_config_home) =
@@ -274,7 +303,7 @@ impl Runtime {
             &layout,
             &popup_side_margin,
             &popup_vertical_margin,
-            &agent_keybinding,
+            &popup_keybindings,
             &home_dir,
         )?;
         let zellij_status_cache = state_dir.join("zellij/session/status_bar_cache.json");
@@ -338,7 +367,7 @@ impl Runtime {
             bar_widgets,
             popup_side_margin,
             popup_vertical_margin,
-            agent_keybinding,
+            popup_keybindings,
             zellij_status_cache,
             zellij_permissions,
         })
@@ -409,7 +438,9 @@ fn print_status() -> Result<(), AppError> {
     println!("bar widgets: {}", runtime.bar_widgets);
     println!("popup side margin: {}", runtime.popup_side_margin);
     println!("popup vertical margin: {}", runtime.popup_vertical_margin);
-    println!("agent keybinding: {}", runtime.agent_keybinding);
+    for binding in &runtime.popup_keybindings {
+        println!("{} keybinding: {}", binding.label, binding.configured);
+    }
     println!("layout: {}", runtime.layout());
     println!("inside zellij: {}", zellij_session_label("yes", "no"));
     Ok(())
@@ -439,7 +470,9 @@ fn print_doctor() -> Result<(), AppError> {
     doctor_ok("bar.widgets", &runtime.bar_widgets);
     doctor_ok("popup.side_margin", &runtime.popup_side_margin);
     doctor_ok("popup.vertical_margin", &runtime.popup_vertical_margin);
-    doctor_ok("keybindings.agent", &runtime.agent_keybinding);
+    for binding in &runtime.popup_keybindings {
+        doctor_ok(binding.path, &binding.configured);
+    }
     doctor_ok("zellij status cache", runtime.zellij_status_cache.display());
     doctor_ok("zellij permissions", runtime.zellij_permissions.display());
     doctor_ok("layout", runtime.layout());
@@ -620,7 +653,7 @@ fn active_zellij_config(
     layout: &Path,
     popup_side_margin: &str,
     popup_vertical_margin: &str,
-    agent_keybinding: &str,
+    popup_keybindings: &[PopupKeybinding],
     home_dir: &Path,
 ) -> Result<(&'static str, PathBuf), AppError> {
     let runtime_config = state_dir.join("zellij/config.kdl");
@@ -667,17 +700,7 @@ fn active_zellij_config(
             );
         patched = replaced;
     }
-    if agent_keybinding != DEFAULT_AGENT_KEYBINDING {
-        let marker = format!("bind {}", kdl_string(DEFAULT_AGENT_KEYBINDING));
-        if !patched.contains(&marker) {
-            return Err(startup(
-                "Zellij config is missing the packaged agent key binding",
-                config.display(),
-                1,
-            ));
-        }
-        patched = patched.replace(&marker, &format!("bind {}", kdl_string(agent_keybinding)));
-    }
+    patched = patch_popup_keybindings(patched, &config, popup_keybindings)?;
     create_dir_all_checked(parent(&runtime_config), &runtime_config)?;
     fs::write(&runtime_config, patched)
         .map_err(|error| path_error("write", &runtime_config, &runtime_config, error))?;
@@ -689,6 +712,41 @@ fn active_zellij_config(
         },
         runtime_config,
     ))
+}
+
+fn patch_popup_keybindings(
+    text: String,
+    config: &Path,
+    popup_keybindings: &[PopupKeybinding],
+) -> Result<String, AppError> {
+    let mut patched = text;
+    for (index, binding) in popup_keybindings.iter().enumerate() {
+        if binding.configured == binding.default {
+            continue;
+        }
+        let marker = format!("bind {}", kdl_string(binding.default));
+        if !patched.contains(&marker) {
+            return Err(startup(
+                format!(
+                    "Zellij config is missing the packaged {} key binding",
+                    binding.label
+                ),
+                config.display(),
+                1,
+            ));
+        }
+        patched = patched.replace(&marker, &format!("bind __YZN_POPUP_KEY_{index}__"));
+    }
+    for (index, binding) in popup_keybindings.iter().enumerate() {
+        if binding.configured == binding.default {
+            continue;
+        }
+        patched = patched.replace(
+            &format!("__YZN_POPUP_KEY_{index}__"),
+            &kdl_string(&binding.configured),
+        );
+    }
+    Ok(patched)
 }
 
 fn render_bar_plugin_block(bar_widgets: &str) -> Result<String, AppError> {

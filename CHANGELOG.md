@@ -85,14 +85,15 @@ User-visible runtime changes for Yazelix Next live here.
 - Managed Yazi appends optional user `yazi/init.lua` and `yazi/keymap.toml`
   sidecars after the packaged setup without importing full native Yazi config.
 - `config.toml` controls `open.log_level`, `shell.program`,
-  `[popup].side_margin`, `[popup].vertical_margin`, `keybindings.agent`, and
-  `[bar].widgets`; managed popups default to one left/right margin cell and
-  zero top/bottom margin cells, the agent popup trigger defaults to
-  `Alt Shift L`, invalid semantic values fail before launch, and `yzn config`
-  shows these root fields in the main config tab with bar widgets as an ordered
-  Ratconfig string-list picker. Custom bar widget layouts keep the sidebar swap
-  layout paired with the generated layout. The empty workspace widget is not
-  selectable.
+  `[popup].side_margin`, `[popup].vertical_margin`,
+  `keybindings.config`/`agent`/`lazygit`/`menu`, and `[bar].widgets`; managed
+  popups default to one left/right margin cell and zero top/bottom margin
+  cells, popup role triggers default to `Alt Shift J/K/L/M`, invalid,
+  duplicate, or conflicting semantic values fail before launch, and
+  `yzn config` shows these root fields in the main config tab with bar widgets
+  as an ordered Ratconfig string-list picker. Custom bar widget layouts keep
+  the sidebar swap layout paired with the generated layout. The empty
+  workspace widget is not selectable.
 - `yzn` appends `~/.config/yazelix-next/zellij/config.kdl` as a native Zellij
   sidecar for safe preferences, with a small denylist guardrail for obvious
   ownership lines such as keymaps, shell, layout, plugins, Kitty keyboard
@@ -121,10 +122,10 @@ User-visible runtime changes for Yazelix Next live here.
 - `yzn` uses an isolated Zellij plugin-permission cache and pre-seeds packaged
   Bar, Popup, and pane-orchestrator permissions so desktop launches do not
   depend on hidden plugin permission prompts.
-- `Alt Shift J/K/M` toggle LazyGit, config, and menu popups through Yazelix
-  Zellij Popup with Kitty keyboard protocol. `keybindings.agent` defaults the
-  persistent guarded agent popup trigger to `Alt Shift L` and can remap that
-  semantic action without exposing raw Zellij keymaps. The
+- `Alt Shift J/K/L/M` toggle LazyGit, config, agent, and menu popups through
+  Yazelix Zellij Popup with Kitty keyboard protocol.
+  `keybindings.config`/`agent`/`lazygit`/`menu` can remap those semantic
+  actions without exposing raw Zellij keymaps. The
   agent popup bootstraps once from `codex resume`, `grok`, `opencode`, `pi`,
   then `claude --resume`, persists the first available provider under
   `YAZELIX_STATE_DIR`, and does not cascade again after a provider is selected.
