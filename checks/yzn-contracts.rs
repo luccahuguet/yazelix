@@ -1,8 +1,9 @@
 use std::{
     env, fs,
+    io::Write,
     os::unix::fs::PermissionsExt,
     path::{Path, PathBuf},
-    process::{Command, Output},
+    process::{Command, Output, Stdio},
 };
 
 const SPONSOR_URL: &str = "https://github.com/sponsors/luccahuguet";
@@ -148,22 +149,32 @@ fn expect_front_door(yzn: &Path) {
         expect_contains(&help, expected, "yzn help");
     }
     let menu = run_help(&yzn_bin, &["menu"]);
-    for expected in [
-        "Yazelix Next Menu",
-        "yzn doctor",
+    expect_contains(&menu, "Yazelix command pane", "yzn menu");
+    let menu_ids = menu
+        .lines()
+        .filter_map(|line| {
+            let (_, command) = line.trim_start().split_once('.')?;
+            command.split_whitespace().next()
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(
+        menu_ids,
+        ["config", "doctor", "status", "screen", "sponsor", "launch", "help", "tutor"],
+        "yzn menu command allowlist changed\n{menu}"
+    );
+    for forbidden in [
         "yzn env",
-        "yzn status",
+        "yzn enter",
         "yzn reveal",
-        "yzn screen",
-        "yzn sponsor",
-        "yzn tutor",
-        "Alt Shift L",
-        "Alt 1-9",
-        "Alt r",
-        "Alt z",
-        "Codex resume",
+        "Alt Shift",
+        "Ctrl Alt",
+        "LazyGit",
+        "Agent popup",
     ] {
-        expect_contains(&menu, expected, "yzn menu");
+        assert!(
+            !menu.contains(forbidden),
+            "yzn menu exposes non-allowlisted reference `{forbidden}`\n{menu}"
+        );
     }
     let reveal_help = run_help(&yzn_bin, &["reveal", "--help"]);
     expect_contains(&reveal_help, "yzn reveal <target>", "yzn reveal help");
@@ -238,6 +249,8 @@ fn expect_front_door(yzn: &Path) {
     }
 
     let yzn_launcher = binary_text(&yzn_bin);
+    let menu_helper = embedded_store_path(&yzn_launcher, "/bin/yzn-menu");
+    expect_menu_dispatch(&menu_helper);
     for expected in [
         "Yazelix could not start.",
         "YAZELIX_STATUS_BAR_CACHE_PATH",
@@ -246,6 +259,7 @@ fn expect_front_door(yzn: &Path) {
         "YZN_WELCOME_ENABLED",
         "YZN_WELCOME_STYLE",
         "YZN_WELCOME_DURATION_SECONDS",
+        "YZN_MENU_YZN",
         "welcome.enabled",
         "welcome.style",
         "welcome.duration_seconds",
@@ -554,6 +568,35 @@ fn expect_front_door(yzn: &Path) {
         yzn.join("libexec/yazelix-next/yzn-tutor").is_file(),
         "yzn package is missing the tutor helper"
     );
+}
+
+fn expect_menu_dispatch(menu: &Path) {
+    let temp = TempDir::new();
+    let fake_yzn = temp.path.join("fake-yzn");
+    let output_file = temp.path.join("selected-command");
+    fs::write(
+        &fake_yzn,
+        "#!/bin/sh\nprintf '%s\\n' \"$*\" >\"$YZN_MENU_TEST_OUT\"\n",
+    )
+    .unwrap();
+    fs::set_permissions(&fake_yzn, fs::Permissions::from_mode(0o755)).unwrap();
+
+    let mut child = Command::new(menu)
+        .env("YZN_MENU_YZN", &fake_yzn)
+        .env("YZN_MENU_TEST_OUT", &output_file)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()
+        .unwrap();
+    child.stdin.as_mut().unwrap().write_all(b"3\n4\n").unwrap();
+    let output = child.wait_with_output().unwrap();
+    assert!(
+        output.status.success(),
+        "menu selection failed\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert_eq!(fs::read_to_string(output_file).unwrap(), "status\n");
 }
 
 fn expect_sponsor_fallback(command: &mut Command, context: &str) {
@@ -1163,7 +1206,7 @@ fn expect_first_party_plugins(config: &str) {
             "\n                toggle_close_behavior \"hide\"",
         ),
         ("lazygit", "lazygit_popup", "/bin/lazygit", ""),
-        ("menu", "menu_popup", "/bin/yzn-menu-popup", ""),
+        ("menu", "menu_popup", "/bin/yzn-menu", ""),
     ] {
         let command = popup_command(config, command_suffix);
         let expected = format!(
@@ -1195,23 +1238,7 @@ fn expect_first_party_plugins(config: &str) {
     }
 
     let agent = popup_command(config, "/bin/yzn-agent");
-    let agent_script = fs::read_to_string(&agent).unwrap();
-    let context = format!("{} guarded Codex fragment", agent.display());
-    expect_contains(&agent_script, "command -v codex", &context);
-    expect_contains(&agent_script, "codex is not available on PATH", &context);
-    expect_contains(&agent_script, "exec codex resume", &context);
-    let output = Command::new(&agent).env("PATH", "").output().unwrap();
-    assert_eq!(
-        output.status.code(),
-        Some(127),
-        "agent popup without codex should exit 127, got {:?}",
-        output.status.code(),
-    );
-    let stderr = String::from_utf8_lossy(&output.stderr);
-    assert!(
-        stderr.contains("codex is not available on PATH"),
-        "agent popup missing-codex output is unclear: {stderr}",
-    );
+    expect_agent_bootstrap(&agent);
 
     let config_ui = popup_command(config, "/bin/yzn-config-ui");
     let config_ui_script = fs::read_to_string(&config_ui).unwrap();
@@ -1262,13 +1289,7 @@ fn expect_first_party_plugins(config: &str) {
     );
     expect_helix_wrapper_config_selection(&helix_script);
 
-    let menu_popup = popup_command(config, "/bin/yzn-menu-popup");
-    let menu_popup_script = fs::read_to_string(&menu_popup).unwrap();
-    assert!(
-        menu_popup_script.contains("/bin/yzn-menu"),
-        "{} does not delegate to yzn-menu",
-        menu_popup.display(),
-    );
+    assert!(popup_command(config, "/bin/yzn-menu").is_file());
 }
 
 fn expect_helix_wrapper_config_selection(helix_script: &str) {
@@ -1475,6 +1496,125 @@ fn opens_keybind_block(line: &str) -> bool {
 
 fn quoted_keys(line: &str) -> impl Iterator<Item = String> + '_ {
     line.split('"').skip(1).step_by(2).map(str::to_string)
+}
+
+fn expect_agent_bootstrap(agent: &Path) {
+    let temp = TempDir::new();
+    let empty_state = temp.path.join("empty-state");
+    let output = Command::new(agent)
+        .env("PATH", "")
+        .env("YAZELIX_STATE_DIR", &empty_state)
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "agent popup without providers should exit cleanly, got {:?}",
+        output.status.code(),
+    );
+    assert!(
+        output.stdout.is_empty() && output.stderr.is_empty(),
+        "agent popup without providers should leave the pane empty\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr),
+    );
+    assert!(
+        !empty_state.join("agent/provider").exists(),
+        "missing-provider bootstrap should not write a provider default"
+    );
+
+    for (name, available, expected_output) in [
+        ("codex-first", &["codex", "opencode"][..], "codex resume\n"),
+        ("grok-fallback", &["grok", "opencode"], "grok\n"),
+        (
+            "opencode-fallback",
+            &["opencode", "pi", "claude"],
+            "opencode\n",
+        ),
+        ("pi-fallback", &["pi", "claude"], "pi\n"),
+        ("claude-fallback", &["claude"], "claude --resume\n"),
+    ] {
+        expect_agent_bootstrap_case(agent, &temp.path, name, available, expected_output);
+    }
+
+    let persisted_state = temp.path.join("persisted-state");
+    let persisted_agent = persisted_state.join("agent");
+    fs::create_dir_all(&persisted_agent).unwrap();
+    fs::write(persisted_agent.join("provider"), "opencode\n").unwrap();
+    let persisted_bin = temp.path.join("persisted-bin");
+    fs::create_dir(&persisted_bin).unwrap();
+    write_fake_agent(&persisted_bin, "codex");
+    write_fake_agent(&persisted_bin, "opencode");
+    let output_file = temp.path.join("persisted-output");
+    successful_output(
+        Command::new(agent)
+            .env("PATH", &persisted_bin)
+            .env("YAZELIX_STATE_DIR", &persisted_state)
+            .env("YAZELIX_AGENT_TEST_OUT", &output_file),
+        "agent popup persisted provider",
+    );
+    assert_eq!(fs::read_to_string(&output_file).unwrap(), "opencode\n");
+
+    let missing_state = temp.path.join("missing-state");
+    let missing_agent = missing_state.join("agent");
+    fs::create_dir_all(&missing_agent).unwrap();
+    fs::write(missing_agent.join("provider"), "opencode\n").unwrap();
+    let output = Command::new(agent)
+        .env("PATH", temp.path.join("missing-bin"))
+        .env("YAZELIX_STATE_DIR", &missing_state)
+        .output()
+        .unwrap();
+    assert_eq!(
+        output.status.code(),
+        Some(127),
+        "agent popup with a configured missing provider should exit 127, got {:?}",
+        output.status.code(),
+    );
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("Configured agent provider `opencode` is not available on PATH"),
+        "agent popup configured-missing output is unclear: {stderr}",
+    );
+}
+
+fn expect_agent_bootstrap_case(
+    agent: &Path,
+    root: &Path,
+    name: &str,
+    available: &[&str],
+    expected_output: &str,
+) {
+    let bin = root.join(format!("{name}-bin"));
+    fs::create_dir(&bin).unwrap();
+    for provider in available {
+        write_fake_agent(&bin, provider);
+    }
+
+    let state = root.join(format!("{name}-state"));
+    let output_file = root.join(format!("{name}-output"));
+    successful_output(
+        Command::new(agent)
+            .env("PATH", &bin)
+            .env("YAZELIX_STATE_DIR", &state)
+            .env("YAZELIX_AGENT_TEST_OUT", &output_file),
+        &format!("agent popup {name} bootstrap"),
+    );
+    assert_eq!(fs::read_to_string(&output_file).unwrap(), expected_output);
+    assert_eq!(
+        fs::read_to_string(state.join("agent/provider")).unwrap(),
+        format!("{}\n", available[0])
+    );
+}
+
+fn write_fake_agent(bin: &Path, name: &str) {
+    let path = bin.join(name);
+    fs::write(
+        &path,
+        format!(
+            "#!/bin/sh\nif [ \"$#\" -eq 0 ]; then\n  printf '%s\\n' \"{name}\" >\"$YAZELIX_AGENT_TEST_OUT\"\nelse\n  printf '%s %s\\n' \"{name}\" \"$*\" >\"$YAZELIX_AGENT_TEST_OUT\"\nfi\n"
+        ),
+    )
+    .unwrap();
+    fs::set_permissions(&path, fs::Permissions::from_mode(0o755)).unwrap();
 }
 
 fn successful_output(command: &mut Command, context: &str) -> Output {

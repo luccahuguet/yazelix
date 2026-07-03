@@ -255,7 +255,7 @@ fn render_discovery_lesson(index: usize, lesson: &TutorLesson) -> String {
 1. **Run in shell or Yazelix:** Use `yzn help` when you know the command name and need syntax.
 2. **Inside Yazelix:** Press `{menu}` or run `yzn menu` for the compact command and key reference.
 3. **Inside Yazelix:** Press `{config}` or run `yzn config` to open Ratconfig; use its `keys` tab when you need the packaged binding table.
-4. **Inside Yazelix:** Press `{lazygit}` for LazyGit and `{agent}` for the persistent Codex resume popup.
+4. **Inside Yazelix:** Press `{lazygit}` for LazyGit and `{agent}` for the persistent agent popup.
 5. **Run in shell or Yazelix:** Use `yzn status` for a compact runtime/config summary.
 6. **Run in shell or Yazelix:** Use `yzn doctor` when config, runtime, generated layouts, or packaged tools look wrong.
 

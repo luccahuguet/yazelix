@@ -146,54 +146,8 @@
         install -D -m 755 ${./shell/sh/yzn-env-supervisor.sh} "$out/bin/yzn-env-supervisor"
         patchShebangs "$out/bin/yzn-env-supervisor"
       '';
-      yznAgent = pkgs.runCommand "yzn-agent" {} ''
-        install -D -m 755 ${./shell/sh/yzn-agent.sh} "$out/bin/yzn-agent"
-        patchShebangs "$out/bin/yzn-agent"
-      '';
-      yznMenu = pkgs.writeShellApplication {
-        name = "yzn-menu";
-        text = ''
-          printf '%s\n' 'Yazelix Next Menu
-
-Commands
-  yzn config        Open config UI
-  yzn doctor        Check runtime setup
-  yzn env           Open managed shell without UI
-  yzn enter         Start managed runtime in this terminal
-  yzn launch        Open Mars and start Yazelix
-  yzn menu          Show this menu
-  yzn tutor         Show guided Yazelix lessons
-  yzn reveal        Reveal a path in the managed Yazi sidebar
-  yzn screen        Show a Yazelix terminal screen
-  yzn sponsor       Open sponsor page or print URL
-  yzn status        Show runtime status
-
-Popups
-  Alt Shift J       LazyGit
-  Alt Shift K       Config
-  Alt Shift L       Codex resume
-  Alt Shift M       Menu
-
-Workspace
-  Ctrl p/t/n/q      Pane, tab, resize, quit
-  Ctrl Alt h/l      Move tab left/right
-  Ctrl Alt j/k      Move pane down/up
-  Alt 1-9           Go directly to tab 1-9
-  Alt r             Reveal editor file in Yazi
-  Alt Shift h       Toggle Yazi sidebar layout
-  Alt z             Yazi zoxide jump into editor'
-        '';
-      };
-      yznMenuPopup = pkgs.writeShellApplication {
-        name = "yzn-menu-popup";
-        text = ''
-          ${yznMenu}/bin/yzn-menu
-          if [ -t 0 ]; then
-            printf '\nPress Enter to close this popup...'
-            read -r _ || true
-          fi
-        '';
-      };
+      yznAgent = rustBin "yzn-agent" ./runtime/yzn-agent.rs;
+      yznMenu = rustBin "yzn-menu" ./runtime/yzn-menu.rs;
       yazelixZellijPopupPackage = yazelixZellijPopup.packages.${system}.yzpp;
       yazelixZellijBarPackage = yazelixZellijBar.packages.${system}.yazelix_zellij_bar;
       yazelixZellijPaneOrchestratorPackage =
@@ -397,7 +351,7 @@ Workspace
         yznPaneOrchestrator = "file:${yazelixZellijPaneOrchestratorPackage}/${yazelixZellijPaneOrchestratorPackage.wasmPath}";
         yznAgent = "${yznAgent}/bin/yzn-agent";
         yznConfig = "${yznConfigUi}/bin/yzn-config-ui";
-        yznMenu = "${yznMenuPopup}/bin/yzn-menu-popup";
+        yznMenu = "${yznMenu}/bin/yzn-menu";
         lazygit = "${pkgs.lazygit}/bin/lazygit";
         layout = "${yznZellijLayout}/layout.kdl";
       };

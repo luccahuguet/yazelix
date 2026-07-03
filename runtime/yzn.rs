@@ -64,7 +64,7 @@ fn run() -> Result<(), AppError> {
         }
         "menu" => {
             expect_no_args("menu", &args)?;
-            exec_plain(YZN_MENU)
+            exec_menu()
         }
         "tutor" => exec_tutor(args),
         "screen" => exec_screen(args),
@@ -108,6 +108,15 @@ fn exec_plain(program: &str) -> Result<(), AppError> {
     let mut command = Command::new(program);
     command.env("PATH", runtime_path());
     exec(command, program)
+}
+
+fn exec_menu() -> Result<(), AppError> {
+    let mut command = Command::new(YZN_MENU);
+    command.env("PATH", runtime_path());
+    if let Ok(current_exe) = env::current_exe() {
+        command.env("YZN_MENU_YZN", current_exe);
+    }
+    exec(command, "yzn menu")
 }
 
 fn exec_tutor(args: Vec<OsString>) -> Result<(), AppError> {
@@ -327,6 +336,7 @@ impl Runtime {
     }
 
     fn apply(&self, command: &mut Command) {
+        let yzn_menu_yzn = env::current_exe().unwrap_or_else(|_| PathBuf::from("yzn"));
         command
             .env("YAZELIX_NEXT_CONFIG_HOME", &self.config_home)
             .env("YAZELIX_STATE_DIR", &self.state_dir)
@@ -345,6 +355,7 @@ impl Runtime {
             .env("MARS_CONFIG_HOME", &self.mars_config_home)
             .env("YAZELIX_STATUS_BAR_CACHE_PATH", &self.zellij_status_cache)
             .env("ZELLIJ_PLUGIN_PERMISSIONS_CACHE", &self.zellij_permissions)
+            .env("YZN_MENU_YZN", yzn_menu_yzn)
             .env("PATH", runtime_path());
     }
 
@@ -911,7 +922,7 @@ Commands:
   env     Open the managed shell without launching the UI
   enter   Start Yazelix in the current terminal
   launch  Open Mars and start Yazelix
-  menu    Show Yazelix Next menu
+  menu    Open the Yazelix command pane
   tutor   Show the guided Yazelix tutor
   reveal  Reveal a file or directory in the managed Yazi sidebar
   screen  Show a Yazelix terminal screen

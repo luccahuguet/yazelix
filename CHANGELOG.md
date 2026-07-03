@@ -115,13 +115,18 @@ User-visible runtime changes for Yazelix Next live here.
 - `yzn` uses an isolated Zellij plugin-permission cache and pre-seeds packaged
   Bar, Popup, and pane-orchestrator permissions so desktop launches do not
   depend on hidden plugin permission prompts.
-- `Alt Shift J/K/L/M` toggle LazyGit, config, persistent guarded
-  `codex resume`, and menu popups through Yazelix Zellij Popup with Kitty
-  keyboard protocol; replacing the agent popup with another managed popup hides
-  it instead of killing the Codex process, `yzn menu` prints the same compact
-  command/key reference, and `Alt h/l` route through pane orchestrator to skip
-  collapsed sidebars and fall back to previous/next tab. When a managed popup is
-  visible, `Alt h/l` switches tabs instead of focusing panes behind the popup.
+- `Alt Shift J/K/L/M` toggle LazyGit, config, persistent guarded agent, and
+  menu popups through Yazelix Zellij Popup with Kitty keyboard protocol. The
+  agent popup bootstraps once from `codex resume`, `grok`, `opencode`, `pi`,
+  then `claude --resume`, persists the first available provider under
+  `YAZELIX_STATE_DIR`, and does not cascade again after a provider is selected.
+  If no provider is available on first run, it leaves the popup pane empty.
+  Replacing the agent popup with another managed popup hides it instead of
+  killing the agent process, `yzn menu` opens a command pane for `config`,
+  `doctor`, `status`, `screen`, `sponsor`, `launch`, `help`, and `tutor`, and
+  `Alt h/l` route through pane orchestrator to skip collapsed sidebars and fall
+  back to previous/next tab. When a managed popup is visible, `Alt h/l`
+  switches tabs instead of focusing panes behind the popup.
 
 ## 2026-06-25
 

@@ -6,7 +6,7 @@ panes, a bridge-enabled Yazelix Helix editor, reef cursor colors, and the
 Yazelix Zellij fork. The top bar uses a rendered Yazelix Zellij Bar tray with
 configurable widgets, a `YZN` runtime marker, and bundled `tu` for usage
 widgets. `Alt Shift J/K/M` toggle managed LazyGit, config, and menu popups;
-`Alt Shift L` hides or shows a persistent Codex resume popup. Launches show a
+`Alt Shift L` hides or shows a persistent agent popup. Launches show a
 brief configurable welcome splash, and `yzn screen` can run the same terminal
 screen styles directly.
 
@@ -33,10 +33,11 @@ nix run .#yzn -- sponsor
 doctor` checks owned runtime setup without launching Mars or Zellij, `yzn
 env` opens the configured managed shell without launching the UI, `yzn enter`
 starts the managed Zellij runtime inside the current terminal, `yzn launch`
-opens Mars first, `yzn menu` prints the compact command/key reference, and
-`yzn tutor` prints guided lessons for the workspace model, discovery, recovery,
-and native tool tutors. `yzn screen [style]` shows a Yazelix terminal screen
-until a key is pressed; styles are `static`, `logo`, `boids`, `boids_predator`,
+opens Mars first, `yzn menu` opens a command pane for `config`, `doctor`,
+`status`, `screen`, `sponsor`, `launch`, `help`, and `tutor`, and `yzn tutor`
+prints guided lessons for the workspace model, discovery, recovery, and native
+tool tutors. `yzn screen [style]` shows a Yazelix terminal screen until a key is
+pressed; styles are `static`, `logo`, `boids`, `boids_predator`,
 `boids_schools`, `mandelbrot`, `game_of_life_gliders`,
 `game_of_life_oscillators`, `game_of_life_bloom`, and `random`. `yzn status`
 prints a compact runtime/config summary, including editor command, welcome
@@ -158,6 +159,12 @@ editor environment and returns the edited text to the row; `Enter` still saves.
 Generated runtime state for Zellij, Yazi, Nu, and the Helix bridge defaults to
 `${XDG_DATA_HOME:-$HOME/.local/share}/yazelix-next`; set `YAZELIX_STATE_DIR`
 to override.
+
+The agent popup bootstraps once. If no provider has been selected yet, it tries
+`codex resume`, `grok`, `opencode`, `pi`, then `claude --resume` from `PATH`,
+stores the first available provider under `YAZELIX_STATE_DIR`, and launches
+that provider on later opens without cascading again. If no provider is
+available on first run, the popup exits without selecting a default.
 
 ## Welcome Screen
 
@@ -329,7 +336,7 @@ Helix, Nushell, Yazi, and terminal programs.
 | `Alt z` | Yazi zoxide jump into the managed editor |
 | `Alt Shift J` | toggle the LazyGit popup |
 | `Alt Shift K` | toggle the config popup |
-| `Alt Shift L` | hide/show the Codex resume popup |
+| `Alt Shift L` | hide/show the agent popup |
 | `Alt Shift M` | toggle the menu popup |
 | `Alt Shift h` | toggle the Yazi sidebar layout |
 
@@ -351,18 +358,18 @@ nix run --override-input yazelixZellijPaneOrchestrator ../yazelix-zellij-pane-or
 Counts owned project files by language with `wc -l`.
 
 ```sh
-wc -l .gitignore AGENTS.md README.md CHANGELOG.md ARCHITECTURE.md flake.nix home-manager/module.nix packaging/tokenusage.nix packaging/bar-render-request.nix shell/sh/yzn-agent.sh shell/sh/yzn-env-supervisor.sh shell/sh/yzn-helix.sh shell/sh/yzn-shell.sh config.toml mars.toml config.kdl layout.kdl layout.swap.kdl nu/config.nu nu/env.nu helix/config.toml yazi/init.lua yazi/keymap.toml yazi/plugins/sidebar-state.yazi/main.lua yazi/plugins/sidebar-status.yazi/main.lua yazi/plugins/zoxide-editor.yazi/main.lua yazi/yazi.toml crates/yzn-config/Cargo.toml crates/yzn-config/src/catalog.rs crates/yzn-config/src/main.rs crates/yzn-open/Cargo.toml crates/yzn-open/src/bin/yzn-reveal.rs crates/yzn-open/src/main.rs crates/yzn-tutor/Cargo.toml crates/yzn-tutor/src/cli_render.rs crates/yzn-tutor/src/main.rs crates/yzn-tutor/src/tutor_document.rs checks/zellij-layout.rs checks/yzn-contracts.rs runtime/yzn-nu.rs runtime/yzn-yazi.rs runtime/yzn.rs runtime/yzn-zellij-config.rs
+wc -l .gitignore AGENTS.md README.md CHANGELOG.md ARCHITECTURE.md flake.nix home-manager/module.nix packaging/tokenusage.nix packaging/bar-render-request.nix shell/sh/yzn-env-supervisor.sh shell/sh/yzn-helix.sh shell/sh/yzn-shell.sh config.toml mars.toml config.kdl layout.kdl layout.swap.kdl nu/config.nu nu/env.nu helix/config.toml yazi/init.lua yazi/keymap.toml yazi/plugins/sidebar-state.yazi/main.lua yazi/plugins/sidebar-status.yazi/main.lua yazi/plugins/zoxide-editor.yazi/main.lua yazi/yazi.toml crates/yzn-config/Cargo.toml crates/yzn-config/src/catalog.rs crates/yzn-config/src/main.rs crates/yzn-open/Cargo.toml crates/yzn-open/src/bin/yzn-reveal.rs crates/yzn-open/src/main.rs crates/yzn-tutor/Cargo.toml crates/yzn-tutor/src/cli_render.rs crates/yzn-tutor/src/main.rs crates/yzn-tutor/src/tutor_document.rs checks/zellij-layout.rs checks/yzn-contracts.rs runtime/yzn-agent.rs runtime/yzn-menu.rs runtime/yzn-nu.rs runtime/yzn-yazi.rs runtime/yzn.rs runtime/yzn-zellij-config.rs
 ```
 
 | Language | Files | Lines |
 | --- | --- | ---: |
 | Ignore | `.gitignore` | 4 |
-| Markdown | `AGENTS.md`, `README.md`, `CHANGELOG.md`, `ARCHITECTURE.md` | 1016 |
-| Nix | `flake.nix`, `home-manager/module.nix`, `packaging/tokenusage.nix`, `packaging/bar-render-request.nix` | 852 |
-| Shell | `shell/sh/yzn-agent.sh`, `shell/sh/yzn-env-supervisor.sh`, `shell/sh/yzn-helix.sh`, `shell/sh/yzn-shell.sh` | 94 |
+| Markdown | `AGENTS.md`, `README.md`, `CHANGELOG.md`, `ARCHITECTURE.md` | 1028 |
+| Nix | `flake.nix`, `home-manager/module.nix`, `packaging/tokenusage.nix`, `packaging/bar-render-request.nix` | 806 |
+| Shell | `shell/sh/yzn-env-supervisor.sh`, `shell/sh/yzn-helix.sh`, `shell/sh/yzn-shell.sh` | 80 |
 | TOML | `config.toml`, `mars.toml`, `helix/config.toml`, `yazi/yazi.toml`, `yazi/keymap.toml`, `crates/yzn-config/Cargo.toml`, `crates/yzn-open/Cargo.toml`, `crates/yzn-tutor/Cargo.toml` | 164 |
 | KDL | `config.kdl`, `layout.kdl`, `layout.swap.kdl` | 207 |
 | Nu | `nu/config.nu`, `nu/env.nu` | 11 |
 | Lua | `yazi/init.lua`, `yazi/plugins/sidebar-state.yazi/main.lua`, `yazi/plugins/sidebar-status.yazi/main.lua`, `yazi/plugins/zoxide-editor.yazi/main.lua` | 235 |
-| Rust | `crates/yzn-config/src/catalog.rs`, `crates/yzn-config/src/main.rs`, `crates/yzn-open/src/bin/yzn-reveal.rs`, `crates/yzn-open/src/main.rs`, `crates/yzn-tutor/src/cli_render.rs`, `crates/yzn-tutor/src/main.rs`, `crates/yzn-tutor/src/tutor_document.rs`, `checks/zellij-layout.rs`, `checks/yzn-contracts.rs`, `runtime/yzn-nu.rs`, `runtime/yzn-yazi.rs`, `runtime/yzn.rs`, `runtime/yzn-zellij-config.rs` | 8576 |
-| Total | owned project files | 11159 |
+| Rust | `crates/yzn-config/src/catalog.rs`, `crates/yzn-config/src/main.rs`, `crates/yzn-open/src/bin/yzn-reveal.rs`, `crates/yzn-open/src/main.rs`, `crates/yzn-tutor/src/cli_render.rs`, `crates/yzn-tutor/src/main.rs`, `crates/yzn-tutor/src/tutor_document.rs`, `checks/zellij-layout.rs`, `checks/yzn-contracts.rs`, `runtime/yzn-agent.rs`, `runtime/yzn-menu.rs`, `runtime/yzn-nu.rs`, `runtime/yzn-yazi.rs`, `runtime/yzn.rs`, `runtime/yzn-zellij-config.rs` | 8959 |
+| Total | owned project files | 11488 |
