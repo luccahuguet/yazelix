@@ -32,7 +32,8 @@ User-visible runtime changes for Yazelix Next live here.
   Managed Yazi opens resolve `yzn-hx` to packaged Yazelix Helix; host commands
   such as `hx` or `nvim` run from `PATH`, bypass the Helix bridge, and stay
   user-owned. `yzn status` and `yzn doctor` report the configured and effective
-  editor, and missing editor commands fail with a direct diagnostic before
+  editor, Ratconfig external text edits and the managed LazyGit popup use the
+  same editor, and missing editor commands fail with a direct diagnostic before
   opening a pane.
 - The `yzn config` Helix tab opens managed `helix/config.toml`,
   `helix/languages.toml`, `helix/helix.scm`, and `helix/init.scm` files in
@@ -50,7 +51,10 @@ User-visible runtime changes for Yazelix Next live here.
   creating tiny starter files only after a row is activated.
 - The `yzn config` Keys tab lists current packaged keybindings as a read-only
   table with group, key, action, and owner columns, with source paths in
-  details.
+  details. The table includes packaged `Ctrl Alt h/j/k/l` movement bindings,
+  and flake checks keep the human-facing key reference backed by `config.kdl`.
+- `yzn menu` opens a packaged `fzf` live-filter command palette and uses the
+  same command descriptions as `yzn help` for its curated command list.
 - `yzn` uses a Rust front door for startup setup and final process handoff:
   `enter` starts managed Zellij, `launch` opens Mars first, `status` prints a
   compact runtime/config summary, `doctor` checks owned setup, and `sponsor`
@@ -81,12 +85,14 @@ User-visible runtime changes for Yazelix Next live here.
 - Managed Yazi appends optional user `yazi/init.lua` and `yazi/keymap.toml`
   sidecars after the packaged setup without importing full native Yazi config.
 - `config.toml` controls `open.log_level`, `shell.program`,
-  `[popup].side_margin`, `[popup].vertical_margin`, and `[bar].widgets`;
-  managed popups default to zero cell margins, invalid semantic values fail
-  before launch, and `yzn config` shows these root fields in the main config tab
-  with bar widgets as an ordered Ratconfig string-list picker. Custom bar widget
-  layouts keep the sidebar swap layout paired with the generated layout. The
-  empty workspace widget is not selectable.
+  `[popup].side_margin`, `[popup].vertical_margin`, `keybindings.agent`, and
+  `[bar].widgets`; managed popups default to one left/right margin cell and
+  zero top/bottom margin cells, the agent popup trigger defaults to
+  `Alt Shift L`, invalid semantic values fail before launch, and `yzn config`
+  shows these root fields in the main config tab with bar widgets as an ordered
+  Ratconfig string-list picker. Custom bar widget layouts keep the sidebar swap
+  layout paired with the generated layout. The empty workspace widget is not
+  selectable.
 - `yzn` appends `~/.config/yazelix-next/zellij/config.kdl` as a native Zellij
   sidecar for safe preferences, with a small denylist guardrail for obvious
   ownership lines such as keymaps, shell, layout, plugins, Kitty keyboard
@@ -115,15 +121,17 @@ User-visible runtime changes for Yazelix Next live here.
 - `yzn` uses an isolated Zellij plugin-permission cache and pre-seeds packaged
   Bar, Popup, and pane-orchestrator permissions so desktop launches do not
   depend on hidden plugin permission prompts.
-- `Alt Shift J/K/L/M` toggle LazyGit, config, persistent guarded agent, and
-  menu popups through Yazelix Zellij Popup with Kitty keyboard protocol. The
+- `Alt Shift J/K/M` toggle LazyGit, config, and menu popups through Yazelix
+  Zellij Popup with Kitty keyboard protocol. `keybindings.agent` defaults the
+  persistent guarded agent popup trigger to `Alt Shift L` and can remap that
+  semantic action without exposing raw Zellij keymaps. The
   agent popup bootstraps once from `codex resume`, `grok`, `opencode`, `pi`,
   then `claude --resume`, persists the first available provider under
   `YAZELIX_STATE_DIR`, and does not cascade again after a provider is selected.
   If no provider is available on first run, it leaves the popup pane empty.
   Replacing the agent popup with another managed popup hides it instead of
-  killing the agent process, `yzn menu` opens a command pane for `config`,
-  `doctor`, `status`, `screen`, `sponsor`, `launch`, `help`, and `tutor`, and
+  killing the agent process, `yzn menu` opens a live-filter command palette for
+  `config`, `doctor`, `status`, `screen`, `sponsor`, `launch`, `help`, and `tutor`, and
   `Alt h/l` route through pane orchestrator to skip collapsed sidebars and fall
   back to previous/next tab. When a managed popup is visible, `Alt h/l`
   switches tabs instead of focusing panes behind the popup.

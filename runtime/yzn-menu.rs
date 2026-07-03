@@ -1,18 +1,24 @@
 use std::{
     env, io,
     io::{IsTerminal, Write},
-    process::{exit, Command},
+    process::{Command, Stdio, exit},
 };
 
-const COMMANDS: &[(&str, &str)] = &[
-    ("config", "Open config UI"),
-    ("doctor", "Check runtime setup"),
-    ("status", "Show runtime status"),
-    ("screen", "Show terminal screen"),
-    ("sponsor", "Open sponsor page"),
-    ("launch", "Open Mars and start Yazelix"),
-    ("help", "Show command help"),
-    ("tutor", "Show guided lessons"),
+const FZF: &str = "@fzf@";
+
+const COMMANDS: &[(&str, &str, &str)] = &[
+    ("config", "config", "Open Yazelix Next config"),
+    ("doctor", "system", "Check Yazelix runtime setup"),
+    ("status", "system", "Show Yazelix runtime status"),
+    ("screen", "help", "Show a Yazelix terminal screen"),
+    (
+        "sponsor",
+        "help",
+        "Open the Yazelix sponsor page or print its URL",
+    ),
+    ("launch", "session", "Open Mars and start Yazelix"),
+    ("help", "help", "Show this help"),
+    ("tutor", "help", "Show the guided Yazelix tutor"),
 ];
 
 fn main() {
@@ -26,11 +32,16 @@ fn run() -> i32 {
     }
 
     let interactive = io::stdin().is_terminal() && io::stdout().is_terminal();
-    print_menu(interactive);
-    let Some(selection) = read_selection(interactive) else {
+    let selection = if interactive {
+        select_with_fzf()
+    } else {
+        print_menu();
+        read_selection()
+    };
+    let Some(selection) = selection else {
         return 0;
     };
-    let Some(id) = selected_command(&selection) else {
+    let Some(id) = selected_command(selection.trim()) else {
         eprintln!("Unknown menu selection: {selection}");
         pause_if_tty(interactive);
         return 64;
@@ -51,22 +62,61 @@ fn run() -> i32 {
     code
 }
 
-fn print_menu(interactive: bool) {
-    println!("Yazelix command pane\n");
-    for (index, (id, label)) in COMMANDS.iter().enumerate() {
-        println!("{:>2}. {:<8} {}", index + 1, id, label);
+fn select_with_fzf() -> Option<String> {
+    let mut child = Command::new(FZF)
+        .args([
+            "--border",
+            "rounded",
+            "--header",
+            "  Yazelix Command Palette",
+            "--prompt",
+            "  yzn> ",
+            "--pointer",
+            ">",
+            "--layout",
+            "reverse",
+            "--cycle",
+            "--color",
+            "border:blue,header:bold:blue,prompt:bold:yellow,pointer:bold:cyan,hl:bold:magenta,hl+:bold:magenta,info:dim",
+        ])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()
+        .unwrap_or_else(|error| {
+            eprintln!("Failed to launch fzf for the Yazelix command palette: {error}");
+            exit(127);
+        });
+
+    let mut stdin = child.stdin.take().expect("missing fzf stdin");
+    for (id, category, label) in COMMANDS {
+        writeln!(stdin, "{id}  [{category}]  - {label}").unwrap_or_else(|error| {
+            eprintln!("Failed to write command palette entries to fzf: {error}");
+            exit(1);
+        });
     }
-    if interactive {
-        print!(
-            "\nSelect command [1-{}], or Enter to close: ",
-            COMMANDS.len()
-        );
-        let _ = io::stdout().flush();
+    drop(stdin);
+
+    let output = child.wait_with_output().unwrap_or_else(|error| {
+        eprintln!("Failed to read fzf command palette selection: {error}");
+        exit(1);
+    });
+
+    output
+        .status
+        .success()
+        .then(|| String::from_utf8_lossy(&output.stdout).trim().to_string())
+        .filter(|selection| !selection.is_empty())
+}
+
+fn print_menu() {
+    println!("Yazelix command palette\n");
+    for (index, (id, _, label)) in COMMANDS.iter().enumerate() {
+        println!("{:>2}. {:<8} {}", index + 1, id, label);
     }
 }
 
-fn read_selection(interactive: bool) -> Option<String> {
-    if !interactive && io::stdin().is_terminal() {
+fn read_selection() -> Option<String> {
+    if io::stdin().is_terminal() {
         return None;
     }
 
@@ -80,11 +130,15 @@ fn selected_command(selection: &str) -> Option<&'static str> {
     if let Ok(index) = selection.parse::<usize>() {
         return index
             .checked_sub(1)
-            .and_then(|index| COMMANDS.get(index).map(|(id, _label)| *id));
+            .and_then(|index| COMMANDS.get(index).map(|(id, _, _)| *id));
     }
-    COMMANDS
-        .iter()
-        .find_map(|(id, _label)| (*id == selection).then_some(*id))
+    COMMANDS.iter().find_map(|(id, _, _)| {
+        (*id == selection
+            || selection
+                .strip_prefix(id)
+                .is_some_and(|rest| rest.starts_with("  ")))
+        .then_some(*id)
+    })
 }
 
 fn pause_if_tty(interactive: bool) {

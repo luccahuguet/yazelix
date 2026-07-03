@@ -147,7 +147,10 @@
         patchShebangs "$out/bin/yzn-env-supervisor"
       '';
       yznAgent = rustBin "yzn-agent" ./runtime/yzn-agent.rs;
-      yznMenu = rustBin "yzn-menu" ./runtime/yzn-menu.rs;
+      yznMenuSrc = pkgs.replaceVars ./runtime/yzn-menu.rs {
+        fzf = "${pkgs.fzf}/bin/fzf";
+      };
+      yznMenu = rustBin "yzn-menu" yznMenuSrc;
       yazelixZellijPopupPackage = yazelixZellijPopup.packages.${system}.yzpp;
       yazelixZellijBarPackage = yazelixZellijBar.packages.${system}.yazelix_zellij_bar;
       yazelixZellijPaneOrchestratorPackage =
@@ -253,12 +256,21 @@
         src = yznTutorSrc;
         cargoLock.lockFile = ./crates/yzn-tutor/Cargo.lock;
       };
+      yznEditorEnv = fallbackOnInvalid: ''
+        YAZELIX_NEXT_EDITOR="$(${yznConfig}/bin/yzn-config --get editor.command${if fallbackOnInvalid then " 2>/dev/null || printf %s yzn-hx" else ""})"
+        if [ "$YAZELIX_NEXT_EDITOR" = yzn-hx ]; then
+          YAZELIX_NEXT_EDITOR=${yznHelix}/bin/yzn-hx
+        fi
+        export YAZELIX_NEXT_EDITOR
+        export EDITOR=$YAZELIX_NEXT_EDITOR
+        export VISUAL=$YAZELIX_NEXT_EDITOR
+        export YZN_EDITOR=$YAZELIX_NEXT_EDITOR
+        export GIT_EDITOR=$YAZELIX_NEXT_EDITOR
+      '';
       yznConfigUi = pkgs.writeShellApplication {
         name = "yzn-config-ui";
         text = ''
-          export YAZELIX_NEXT_EDITOR=${yznHelix}/bin/yzn-hx
-          export EDITOR=$YAZELIX_NEXT_EDITOR
-          export VISUAL=$YAZELIX_NEXT_EDITOR
+          ${yznEditorEnv true}
           exec ${yznConfig}/bin/yzn-config "$@"
         '';
       };
@@ -345,14 +357,22 @@
         install -D -m 644 ${yznLayoutKdl} "$out/layout.kdl"
         install -D -m 644 ${yznLayoutSwapKdl} "$out/layout.swap.kdl"
       '';
+      yznLazygit = pkgs.writeShellApplication {
+        name = "yzn-lazygit";
+        text = ''
+          ${yznEditorEnv false}
+          exec ${pkgs.lazygit}/bin/lazygit "$@"
+        '';
+      };
       yznConfigKdl = pkgs.replaceVars ./config.kdl {
         yznShell = "${yznShell}/bin/yzn-shell";
         yzpp = "file:${yazelixZellijPopupPackage}/${yazelixZellijPopupPackage.wasmPath}";
         yznPaneOrchestrator = "file:${yazelixZellijPaneOrchestratorPackage}/${yazelixZellijPaneOrchestratorPackage.wasmPath}";
         yznAgent = "${yznAgent}/bin/yzn-agent";
+        agentKey = defaultConfig.keybindings.agent;
         yznConfig = "${yznConfigUi}/bin/yzn-config-ui";
         yznMenu = "${yznMenu}/bin/yzn-menu";
-        lazygit = "${pkgs.lazygit}/bin/lazygit";
+        lazygit = "${yznLazygit}/bin/yzn-lazygit";
         layout = "${yznZellijLayout}/layout.kdl";
       };
       yazelixZellijPackage = pkgs."zellij-unwrapped".overrideAttrs (_old: {
@@ -401,6 +421,7 @@
         yazelixZellijBarWasm = "${yazelixZellijBarPackage}/share/yazelix_zellij_bar/zjstatus.wasm";
         yazelixZellijPaneOrchestratorWasm = "${yazelixZellijPaneOrchestratorPackage}/${yazelixZellijPaneOrchestratorPackage.wasmPath}";
         defaultBarWidgetsJson = builtins.toJSON defaultBarWidgets;
+        defaultAgentKeybinding = defaultConfig.keybindings.agent;
         inherit defaultPopupSideMargin defaultPopupVerticalMargin;
         pathPrefix = pkgs.lib.makeBinPath [
           pkgs.coreutils
@@ -508,6 +529,7 @@
           settings = {
             shell.program = "fish";
             welcome.enabled = false;
+            keybindings.agent = "Alt Shift A";
             bar.widgets = ["editor" "shell"];
             ratconfig.contract.contract_id = "user-owned";
           };
@@ -547,10 +569,12 @@
         grep -q 'command = "yzn-hx"' "$config_files/config.toml"
         grep -q 'enabled = false' "$config_files/config.toml"
         grep -q 'style = "random"' "$config_files/config.toml"
+        grep -q 'agent = "Alt Shift A"' "$config_files/config.toml"
         grep -q 'contract_id = "yazelix-next.config"' "$config_files/config.toml"
         ! grep -q 'contract_id = "user-owned"' "$config_files/config.toml"
         test "$(YAZELIX_NEXT_CONFIG_HOME="$config_files" ${yzn}/libexec/yazelix-next/yzn-config --get shell.program)" = fish
         test "$(YAZELIX_NEXT_CONFIG_HOME="$config_files" ${yzn}/libexec/yazelix-next/yzn-config --get editor.command)" = yzn-hx
+        test "$(YAZELIX_NEXT_CONFIG_HOME="$config_files" ${yzn}/libexec/yazelix-next/yzn-config --get keybindings.agent)" = "Alt Shift A"
         grep -q 'width = 1200' "$config_files/mars/config.toml"
         grep -q 'pane_frames false' "$config_files/zellij/config.kdl"
         grep -q 'format = "::"' "$config_files/starship.toml"
@@ -564,6 +588,40 @@
       yzn_yazi_materialization = pkgs.runCommand "yzn-yazi-materialization-check" {nativeBuildInputs = [pkgs.rustc pkgs.stdenv.cc];} ''
         rustc --edition=2024 --test ${./runtime/yzn-yazi.rs} -o yzn-yazi-materialization-check
         ./yzn-yazi-materialization-check
+        touch "$out"
+      '';
+      yzn_launcher_unit = pkgs.runCommand "yzn-launcher-unit-check" {nativeBuildInputs = [pkgs.rustc pkgs.stdenv.cc];} ''
+        rustc --edition=2024 --test ${./runtime/yzn.rs} -o yzn-launcher-unit-check
+        ./yzn-launcher-unit-check
+        touch "$out"
+      '';
+      zellij_sidecar_guard_parity = pkgs.runCommand "zellij-sidecar-guard-parity-check" {} ''
+        extract_array() {
+          file="$1"
+          name="$2"
+          awk -v name="$name" '
+            index($0, name) { in_array = 1; next }
+            in_array && /\];/ { exit }
+            in_array {
+              line = $0
+              if (sub(/^[[:space:]]*"/, "", line)) {
+                sub(/".*$/, "", line)
+                print line
+              }
+            }
+          ' "$file" | sort
+        }
+
+        extract_array ${./runtime/yzn-zellij-config.rs} FORBIDDEN > runtime
+        extract_array ${./crates/yzn-config/src/catalog.rs} ZELLIJ_FORBIDDEN_TOP_LEVEL > config_ui
+        diff -u runtime config_ui
+        grep -qx default_shell runtime
+        grep -qx env runtime
+        touch "$out"
+      '';
+      key_reference_parity = pkgs.runCommand "key-reference-parity-check" {nativeBuildInputs = [pkgs.rustc pkgs.stdenv.cc];} ''
+        rustc --edition=2024 ${./checks/key-reference-parity.rs} -o key-reference-parity-check
+        ./key-reference-parity-check ${./crates/yzn-config/src/catalog.rs} ${yzn}/share/yazelix-next/config.kdl
         touch "$out"
       '';
       contracts = pkgs.runCommand "yzn-contracts" {} ''

@@ -36,6 +36,7 @@ const YAZELIX_ZELLIJ_POPUP_WASM: &str = "@yazelixZellijPopupWasm@";
 const YAZELIX_ZELLIJ_BAR_WASM: &str = "@yazelixZellijBarWasm@";
 const YAZELIX_ZELLIJ_PANE_ORCHESTRATOR_WASM: &str = "@yazelixZellijPaneOrchestratorWasm@";
 const DEFAULT_BAR_WIDGETS_JSON: &str = r#"@defaultBarWidgetsJson@"#;
+const DEFAULT_AGENT_KEYBINDING: &str = "@defaultAgentKeybinding@";
 const DEFAULT_POPUP_SIDE_MARGIN: &str = "@defaultPopupSideMargin@";
 const DEFAULT_POPUP_VERTICAL_MARGIN: &str = "@defaultPopupVerticalMargin@";
 const PATH_PREFIX: &str = "@pathPrefix@";
@@ -190,7 +191,7 @@ fn exec(mut command: Command, check: &str) -> Result<(), AppError> {
 struct Runtime {
     config_home: PathBuf,
     state_dir: PathBuf,
-    bridge_session_id: OsString,
+    bridge_session_id: Option<OsString>,
     yzn_open_log: String,
     shell_program: String,
     editor_command: String,
@@ -208,6 +209,7 @@ struct Runtime {
     bar_widgets: String,
     popup_side_margin: String,
     popup_vertical_margin: String,
+    agent_keybinding: String,
     zellij_status_cache: PathBuf,
     zellij_permissions: PathBuf,
 }
@@ -239,6 +241,11 @@ impl Runtime {
             &config_toml,
             "popup.vertical_margin",
         )?);
+        let agent_keybinding = trim_output(config_value(
+            &config_home,
+            &config_toml,
+            "keybindings.agent",
+        )?);
         let (layout_source, layout) = active_layout(&state_dir, &bar_widgets)?;
         let user_mars_config_home = config_home.join("mars");
         let (mars_config_source, mars_config_home) =
@@ -267,6 +274,7 @@ impl Runtime {
             &layout,
             &popup_side_margin,
             &popup_vertical_margin,
+            &agent_keybinding,
             &home_dir,
         )?;
         let zellij_status_cache = state_dir.join("zellij/session/status_bar_cache.json");
@@ -312,7 +320,7 @@ impl Runtime {
         Ok(Self {
             config_home,
             state_dir,
-            bridge_session_id: bridge_session_id(),
+            bridge_session_id: uses_helix_bridge(&editor).then(bridge_session_id),
             yzn_open_log: trim_output(yzn_open_log),
             shell_program: trim_output(shell_program),
             editor_command,
@@ -330,6 +338,7 @@ impl Runtime {
             bar_widgets,
             popup_side_margin,
             popup_vertical_margin,
+            agent_keybinding,
             zellij_status_cache,
             zellij_permissions,
         })
@@ -340,11 +349,11 @@ impl Runtime {
         command
             .env("YAZELIX_NEXT_CONFIG_HOME", &self.config_home)
             .env("YAZELIX_STATE_DIR", &self.state_dir)
-            .env("YAZELIX_HELIX_BRIDGE_SESSION_ID", &self.bridge_session_id)
             .env("YAZELIX_NEXT_EDITOR", &self.editor)
             .env("EDITOR", &self.editor)
             .env("VISUAL", &self.editor)
             .env("YZN_EDITOR", &self.editor)
+            .env("GIT_EDITOR", &self.editor)
             .env("YZN_OPEN_LOG", &self.yzn_open_log)
             .env("YZN_WELCOME_ENABLED", &self.welcome_enabled)
             .env("YZN_WELCOME_STYLE", &self.welcome_style)
@@ -357,6 +366,9 @@ impl Runtime {
             .env("ZELLIJ_PLUGIN_PERMISSIONS_CACHE", &self.zellij_permissions)
             .env("YZN_MENU_YZN", yzn_menu_yzn)
             .env("PATH", runtime_path());
+        if let Some(bridge_session_id) = &self.bridge_session_id {
+            command.env("YAZELIX_HELIX_BRIDGE_SESSION_ID", bridge_session_id);
+        }
     }
 
     fn mars_config(&self) -> String {
@@ -397,6 +409,7 @@ fn print_status() -> Result<(), AppError> {
     println!("bar widgets: {}", runtime.bar_widgets);
     println!("popup side margin: {}", runtime.popup_side_margin);
     println!("popup vertical margin: {}", runtime.popup_vertical_margin);
+    println!("agent keybinding: {}", runtime.agent_keybinding);
     println!("layout: {}", runtime.layout());
     println!("inside zellij: {}", zellij_session_label("yes", "no"));
     Ok(())
@@ -426,6 +439,7 @@ fn print_doctor() -> Result<(), AppError> {
     doctor_ok("bar.widgets", &runtime.bar_widgets);
     doctor_ok("popup.side_margin", &runtime.popup_side_margin);
     doctor_ok("popup.vertical_margin", &runtime.popup_vertical_margin);
+    doctor_ok("keybindings.agent", &runtime.agent_keybinding);
     doctor_ok("zellij status cache", runtime.zellij_status_cache.display());
     doctor_ok("zellij permissions", runtime.zellij_permissions.display());
     doctor_ok("layout", runtime.layout());
@@ -606,6 +620,7 @@ fn active_zellij_config(
     layout: &Path,
     popup_side_margin: &str,
     popup_vertical_margin: &str,
+    agent_keybinding: &str,
     home_dir: &Path,
 ) -> Result<(&'static str, PathBuf), AppError> {
     let runtime_config = state_dir.join("zellij/config.kdl");
@@ -651,6 +666,17 @@ fn active_zellij_config(
                 &format!("vertical_margin {popup_vertical_margin}"),
             );
         patched = replaced;
+    }
+    if agent_keybinding != DEFAULT_AGENT_KEYBINDING {
+        let marker = format!("bind {}", kdl_string(DEFAULT_AGENT_KEYBINDING));
+        if !patched.contains(&marker) {
+            return Err(startup(
+                "Zellij config is missing the packaged agent key binding",
+                config.display(),
+                1,
+            ));
+        }
+        patched = patched.replace(&marker, &format!("bind {}", kdl_string(agent_keybinding)));
     }
     create_dir_all_checked(parent(&runtime_config), &runtime_config)?;
     fs::write(&runtime_config, patched)
@@ -813,6 +839,10 @@ fn bridge_session_id() -> OsString {
     })
 }
 
+fn uses_helix_bridge(command: &str) -> bool {
+    command == YZN_HELIX || Path::new(command).file_name() == Some(OsStr::new("yzn-hx"))
+}
+
 fn enter_terminal_label() -> OsString {
     nonempty_env("YAZELIX_SESSION_TERMINAL")
         .or_else(|| nonempty_env("TERM_PROGRAM"))
@@ -899,6 +929,20 @@ impl AppError {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn helix_bridge_only_matches_packaged_yzn_hx() {
+        assert!(uses_helix_bridge(YZN_HELIX));
+        assert!(uses_helix_bridge("/nix/store/example/bin/yzn-hx"));
+        assert!(uses_helix_bridge("yzn-hx"));
+        assert!(!uses_helix_bridge("hx"));
+        assert!(!uses_helix_bridge("nvim"));
+    }
+}
+
 const HELP: &str = "Yazelix
 
 Usage:
@@ -922,7 +966,7 @@ Commands:
   env     Open the managed shell without launching the UI
   enter   Start Yazelix in the current terminal
   launch  Open Mars and start Yazelix
-  menu    Open the Yazelix command pane
+  menu    Open the Yazelix command palette
   tutor   Show the guided Yazelix tutor
   reveal  Reveal a file or directory in the managed Yazi sidebar
   screen  Show a Yazelix terminal screen

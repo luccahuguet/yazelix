@@ -179,7 +179,7 @@ Useful companions:
 
 - `yzn help` shows command syntax.
 - `yzn config` opens the Ratconfig UI, including the read-only keys tab.
-- `yzn menu` shows the compact command and key reference.
+- `yzn menu` shows the live-filter command palette.
 - `yzn doctor` checks config, generated files, packaged tools, and runtime state.
 "#,
     )
@@ -253,7 +253,7 @@ fn render_discovery_lesson(index: usize, lesson: &TutorLesson) -> String {
 ## Actions
 
 1. **Run in shell or Yazelix:** Use `yzn help` when you know the command name and need syntax.
-2. **Inside Yazelix:** Press `{menu}` or run `yzn menu` for the compact command and key reference.
+2. **Inside Yazelix:** Press `{menu}` or run `yzn menu` for the live-filter command palette.
 3. **Inside Yazelix:** Press `{config}` or run `yzn config` to open Ratconfig; use its `keys` tab when you need the packaged binding table.
 4. **Inside Yazelix:** Press `{lazygit}` for LazyGit and `{agent}` for the persistent agent popup.
 5. **Run in shell or Yazelix:** Use `yzn status` for a compact runtime/config summary.

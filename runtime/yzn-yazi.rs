@@ -1,6 +1,6 @@
 use std::{
     env,
-    ffi::OsString,
+    ffi::{OsStr, OsString},
     fs,
     io::{self, ErrorKind},
     os::{unix::fs::symlink, unix::process::CommandExt},
@@ -45,7 +45,6 @@ fn run() -> io::Result<()> {
         .args(env::args_os().skip(1))
         .env("PATH", runtime_path())
         .env("YAZELIX_STATE_DIR", &state_dir)
-        .env("YAZELIX_HELIX_BRIDGE_SESSION_ID", bridge_session_id())
         .env("YAZI_CONFIG_HOME", &yazi_config)
         .env(
             "YZN_YAZI_STARSHIP_CONFIG",
@@ -57,7 +56,12 @@ fn run() -> io::Result<()> {
         .env("EDITOR", &editor)
         .env("VISUAL", &editor)
         .env("YZN_EDITOR", &editor)
+        .env("GIT_EDITOR", &editor)
         .env("YZN_OPEN_LOG", yzn_open_log);
+
+    if uses_helix_bridge(&editor) {
+        command.env("YAZELIX_HELIX_BRIDGE_SESSION_ID", bridge_session_id());
+    }
 
     if let Some(session) = nonempty_env("ZELLIJ_SESSION_NAME") {
         command
@@ -220,6 +224,10 @@ fn bridge_session_id() -> OsString {
     })
 }
 
+fn uses_helix_bridge(command: &str) -> bool {
+    command == YZN_HELIX || Path::new(command).file_name() == Some(OsStr::new("yzn-hx"))
+}
+
 fn runtime_path() -> OsString {
     match nonempty_env("PATH") {
         Some(path) => {
@@ -259,6 +267,9 @@ mod tests {
     fn yzn_hx_maps_to_packaged_editor_while_host_commands_pass_through() {
         assert_eq!(effective_editor_command("yzn-hx".to_string()), YZN_HELIX);
         assert_eq!(effective_editor_command("nvim".to_string()), "nvim");
+        assert!(uses_helix_bridge(YZN_HELIX));
+        assert!(uses_helix_bridge("/nix/store/example/bin/yzn-hx"));
+        assert!(!uses_helix_bridge("nvim"));
     }
 
     fn packaged_yazi(path: &Path) {

@@ -9,7 +9,7 @@ plugins {
                 pane_title "config_popup"
                 width_percent 100
                 height_percent 100
-                side_margin 0
+                side_margin 1
                 vertical_margin 0
             }
 
@@ -18,7 +18,7 @@ plugins {
                 pane_title "agent_popup"
                 width_percent 100
                 height_percent 100
-                side_margin 0
+                side_margin 1
                 vertical_margin 0
                 toggle_close_behavior "hide"
             }
@@ -28,7 +28,7 @@ plugins {
                 pane_title "lazygit_popup"
                 width_percent 100
                 height_percent 100
-                side_margin 0
+                side_margin 1
                 vertical_margin 0
             }
 
@@ -37,7 +37,7 @@ plugins {
                 pane_title "menu_popup"
                 width_percent 100
                 height_percent 100
-                side_margin 0
+                side_margin 1
                 vertical_margin 0
             }
         }
@@ -93,7 +93,7 @@ keybinds {
                 payload "config"
             }
         }
-        bind "Alt Shift L" {
+        bind "@agentKey@" {
             MessagePlugin "yzpp" {
                 name "toggle"
                 payload "agent"

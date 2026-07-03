@@ -5,8 +5,8 @@ Yazelix Next is a small Nix/Lix flake with one front-door command: `yzn`.
 summarizes owned runtime/config state, `yzn doctor` checks owned startup setup,
 `yzn sponsor` opens or prints the Sponsors URL, `yzn enter` starts Yazelix
 inside the current terminal, `yzn launch` opens Mars first, and `yzn menu`
-opens the curated command pane. `yzn tutor` prints guided workspace, discovery,
-recovery, and tool-tutor lessons. `yzn screen [style]` shows a
+opens the curated live-filter command palette. `yzn tutor` prints guided
+workspace, discovery, recovery, and tool-tutor lessons. `yzn screen [style]` shows a
 Yazelix terminal screen, and `yzn reveal <target>` reveals a path in the
 managed Yazi sidebar. Bare `yzn` defaults to `yzn launch`.
 The runtime paths are intentionally narrow:
@@ -47,14 +47,18 @@ files when missing, routes source-backed edits to the correct file, exposes
 Helix rows for managed Helix native files, creates the Steel pair together,
 exposes Advanced rows for native Nu and managed Yazi sidecar files, lists
 read-only packaged bindings as a Keys table, and exposes one hidden
-package-internal read path used by launch wrappers.
+package-internal read path used by launch wrappers. Its `KEY_BINDINGS` catalog
+is the human-facing key reference owner for Ratconfig and future discovery
+surfaces; `config.kdl` remains the runtime binding owner, with flake checks
+guarding the catalog-to-runtime link.
 The contracted root config fields are `open.log_level`, which controls
 `YZN_OPEN_LOG` for managed Yazi-to-Helix opens, `shell.program`, which selects
 the packaged shell for new Zellij panes, `welcome.enabled`, `welcome.style`,
 and `welcome.duration_seconds`, which control the startup splash,
 `popup.side_margin` and `popup.vertical_margin`, which set generated managed
-popup left/right and top/bottom cell margins, and `bar.widgets`, which selects
-the top-bar tray. The Mars, Zellij, and Starship tabs are render/edit surfaces
+popup left/right and top/bottom cell margins, `keybindings.agent`, which
+remaps the managed agent popup trigger, and `bar.widgets`, which selects the
+top-bar tray. The Mars, Zellij, and Starship tabs are render/edit surfaces
 without contracts or migrations. The Starship tab
 edits `format`, `right_format`, and `add_newline`, with `format` defaulting to
 `::`. The Helix tab is an open-file surface for `helix/config.toml`,
@@ -80,8 +84,9 @@ owners. They point `default_shell` at the packaged shell dispatcher, set
 Zellij-native `Ctrl Alt` mode keys, direct `Ctrl Alt h/j/k/l` movement, the
 Tab-mode new-tab layout binding, the `Alt m` pane binding, the `Alt Shift h`
 sidebar toggle, the `Alt Shift J` LazyGit popup binding, the `Alt Shift K`
-config popup binding, the persistent `Alt Shift L` agent popup binding, the
-`Alt Shift M` menu popup binding, `Alt h/l` horizontal focus
+config popup binding, the default persistent `Alt Shift L` agent popup binding
+rendered from `keybindings.agent`, the `Alt Shift M` menu popup binding,
+`Alt h/l` horizontal focus
 walking, `Alt 1-9` tab jumps, `Alt r` smart reveal, the Yazelix Zellij Bar top bar, the Yazi
 sidebar tab, the open/closed sidebar swap layouts, and explicit Kitty keyboard
 protocol support.
@@ -167,8 +172,9 @@ replacement. User config is narrow and explicit:
 the Yazelix-owned semantic config file and is created by `yzn config` or the
 package-internal config read path when missing. It controls bounded runtime
 settings such as open diagnostics, the packaged shell choice, managed popup
-size, startup welcome style/timing, and the ordered bar widget tray. `yzn
-config` also creates the managed Mars, Zellij, and Starship native files when missing.
+size, the managed agent popup keybinding, startup welcome style/timing, and the
+ordered bar widget tray. `yzn config` also creates the managed Mars, Zellij,
+and Starship native files when missing.
 Mars uses full native replacement when its `config.toml` exists. Nushell uses
 packaged config first, then optional user `env.nu` and `config.nu`. For managed
 Nu, Starship uses the user `starship.toml` when present, otherwise an empty config
@@ -199,13 +205,17 @@ protocol, environment, or session startup.
 `runtime/yzn.rs`. Nix substitutes store paths into that binary source, but Rust
 owns the startup wiring and final `exec` handoff:
 
-- establish XDG-data-backed `YAZELIX_STATE_DIR` and the top-level Helix bridge session id
-- set managed `EDITOR` and `VISUAL`
+- establish XDG-data-backed `YAZELIX_STATE_DIR` and, for `yzn-hx`, the
+  top-level Helix bridge session id
+- set managed `EDITOR`, `VISUAL`, `YZN_EDITOR`, `YAZELIX_NEXT_EDITOR`, and
+  `GIT_EDITOR` from semantic `editor.command`
 - resolve the Yazelix config home from `YAZELIX_NEXT_CONFIG_HOME`,
   `XDG_CONFIG_HOME`, or `HOME`
 - read `open.log_level` through `yzn-config` and export `YZN_OPEN_LOG`
 - read `welcome.enabled`, `welcome.style`, and `welcome.duration_seconds` and
   export them for the pre-Zellij welcome wrapper
+- read `keybindings.agent` and render it into the managed Zellij config when
+  it differs from the packaged default
 - select packaged Mars config or the managed user Mars config
 - run `yzn-zellij-config` to pick or materialize the active Zellij config
 - export the Yazelix Zellij Bar cache path
@@ -228,12 +238,14 @@ belong to Mars, Zellij, or the child tool.
 
 ## Session Isolation
 
-Each top-level `yzn` launch creates one opaque
-`YAZELIX_HELIX_BRIDGE_SESSION_ID`. Zellij, Yazi, Helix, and `yzn-open` inherit
-that id inside the window, so Yazi opens can only reuse Helix bridge registries
-from the same session. `yzn-open` also compares `ZELLIJ_SESSION_NAME` when a
-registry records it, which prevents two Zellij windows with copied session state
-from sharing an editor pane. Managed Yazi saves that real session in
+Each top-level `yzn` launch with the bridge-enabled `yzn-hx` editor creates one
+opaque `YAZELIX_HELIX_BRIDGE_SESSION_ID`. Zellij, Yazi, Helix, and `yzn-open`
+inherit that id inside the window, so Yazi opens can only reuse Helix bridge
+registries from the same session. Non-Helix configured editors do not receive
+the Helix bridge environment, so `yzn-open` treats them as host-owned editor
+commands. `yzn-open` also compares `ZELLIJ_SESSION_NAME` when a registry records
+it, which prevents two Zellij windows with copied session state from sharing an
+editor pane. Managed Yazi saves that real session in
 `YAZELIX_ZELLIJ_SESSION_NAME` before blanking `ZELLIJ_SESSION_NAME` for image
 previews, and `yzn-open` restores the saved name for Zellij control commands.
 `yzn-reveal` uses the same saved session path for sidebar focus commands. For
@@ -250,7 +262,7 @@ window.
 
 | ID | Contract | Owner | Check | Missing Coverage |
 | --- | --- | --- | --- | --- |
-| C1 | `yzn` defaults to `yzn launch`, `yzn help` prints help, `yzn config` opens Ratconfig config, `yzn menu` opens a curated command pane for `config`, `doctor`, `status`, `screen`, `sponsor`, `launch`, `help`, and `tutor`, `yzn tutor` prints guided Yazelix lessons and packaged native tutor commands, `yzn screen [style]` shows a Yazelix terminal screen, `yzn reveal <target>` reveals a path in the active tab's managed Yazi sidebar, `yzn status` prints a runtime/config summary, `yzn doctor` checks owned startup setup, `yzn sponsor` opens or prints the sponsor URL, `yzn enter` starts managed Zellij in the current terminal, and `yzn launch` starts Mars first; pre-exec setup failures print a readable Yazelix diagnostic | `flake.nix`, `runtime/yzn.rs`, `runtime/yzn-menu.rs`, `crates/yzn-tutor/`, `crates/yzn-config/`, `crates/yzn-open/`, `yazelix-screen` | `checks/yzn-contracts.rs` validates help, menu allowlist, menu dispatch, tutor output, screen help output, front-door wiring, runtime setup wiring, status/doctor/sponsor behavior, reveal helper packaging, and representative startup diagnostics; `crates/yzn-tutor` unit tests cover parsing, Markdown rendering, lesson coverage, and native tutor command printing; `cargo test` covers reveal command routing; `nix build .#yzn` packages the runtime | GUI launch remains manual dogfooding |
+| C1 | `yzn` defaults to `yzn launch`, `yzn help` prints help, `yzn config` opens Ratconfig config, `yzn menu` opens a curated live-filter command palette for `config`, `doctor`, `status`, `screen`, `sponsor`, `launch`, `help`, and `tutor`, `yzn tutor` prints guided Yazelix lessons and packaged native tutor commands, `yzn screen [style]` shows a Yazelix terminal screen, `yzn reveal <target>` reveals a path in the active tab's managed Yazi sidebar, `yzn status` prints a runtime/config summary, `yzn doctor` checks owned startup setup, `yzn sponsor` opens or prints the sponsor URL, `yzn enter` starts managed Zellij in the current terminal, and `yzn launch` starts Mars first; pre-exec setup failures print a readable Yazelix diagnostic | `flake.nix`, `runtime/yzn.rs`, `runtime/yzn-menu.rs`, `crates/yzn-tutor/`, `crates/yzn-config/`, `crates/yzn-open/`, `yazelix-screen` | `checks/yzn-contracts.rs` validates help, menu allowlist, packaged fzf wiring, menu dispatch, tutor output, screen help output, front-door wiring, runtime setup wiring, status/doctor/sponsor behavior, reveal helper packaging, and representative startup diagnostics; `crates/yzn-tutor` unit tests cover parsing, Markdown rendering, lesson coverage, and native tutor command printing; `cargo test` covers reveal command routing; `nix build .#yzn` packages the runtime | GUI launch remains manual dogfooding |
 | C2 | Mars uses packaged visual config unless a user native Mars config exists | `mars.toml`, `flake.nix` | `checks/yzn-contracts.rs` validates packaged config and launcher selection | Visual correctness remains manual dogfooding |
 | C3 | Zellij layout has the sidebar template required by swaps | `layout.kdl`, `layout.swap.kdl` | `checks/zellij-layout.rs` runs during build | None for the current template/swap contract |
 | C4 | Zellij-native mode keys use `Ctrl Alt`, Tab-mode new tabs use the packaged Yazelix sidebar layout, move mode is unbound, `Alt m` opens a pane for the swap layout to stack, `Alt 1-9` jumps directly to tabs 1-9, `Alt Shift h` toggles the sidebar swap, `Alt h/l` walk visible panes through the pane orchestrator, `Alt r` smart-reveals through the editor or sidebar focus path, and obvious sidecar ownership lines are rejected | `config.kdl`, `runtime/yzn-zellij-config.rs` | `checks/yzn-contracts.rs` validates the packaged config, pane-orchestrator binding, and accepted/rejected sidecars | Full key behavior remains manual dogfooding |
@@ -258,9 +270,9 @@ window.
 | C6 | Yazi launches with scoped image-preview environment, optionally appends managed user `yazi/init.lua` and `yazi/keymap.toml`, overlays managed user `plugins/*.yazi` directories when init exists, opens paths through `yzn-open` with bounded diagnostics, resolves `editor.command` for managed opens, registers the tab-local sidebar Yazi id for reveal, and `Alt z` jumps through zoxide into the configured editor command while using the workspace root for editor cwd and tab naming | `yazi/`, `runtime/yzn-yazi.rs`, `crates/yzn-open/` | `checks/yzn-contracts.rs` validates packaged Yazi keymap/plugin wiring, sidebar-state plugin wiring, opener/env ownership, and launcher environment; `yzn_yazi_materialization` covers init/keymap/plugin materialization; `cargo test` covers `yzn-open` bridge/fallback, host-owned bridge bypass, missing editor command diagnostics, reveal routing, and tab rename behavior | Full Yazi UI behavior remains manual dogfooding |
 | C7 | Helix bridge reuse stays inside the current `yzn` window and current Zellij tab | `crates/yzn-open/`, `flake.nix` | `yzn-open` Rust tests cover session, Zellij-window, and Zellij-tab mismatch | Full multi-window GUI behavior remains manual dogfooding |
 | C8 | Desktop entry starts `yzn` | `flake.nix` | `nix build .#yzn` packages the desktop file | Desktop environment launch remains manual dogfooding |
-| C9 | Kitty keyboard protocol is explicitly enabled, `Alt Shift J/K/M` toggle LazyGit, config, and menu popups through `yzpp`; `Alt Shift L` hides or shows a persistent guarded agent popup that bootstraps once from `codex resume`, `grok`, `opencode`, `pi`, then `claude --resume`, leaving the first-run pane empty when no provider is available; popup margins default to zero and control generated popup left/right and top/bottom cell inset | `config.kdl`, `runtime/yzn.rs`, `runtime/yzn-agent.rs`, `flake.nix` | `checks/yzn-contracts.rs` validates Kitty protocol, the packaged popup plugin, commands, popup ids, payloads, key bindings, agent hide behavior, popup geometry, empty no-provider output, provider order, configured-missing diagnostics, and persisted-provider behavior | Visual popup behavior remains manual dogfooding |
+| C9 | Kitty keyboard protocol is explicitly enabled, `Alt Shift J/K/M` toggle LazyGit, config, and menu popups through `yzpp`; LazyGit starts through a managed wrapper that exports the configured Yazelix editor to Git editor environment; `keybindings.agent` defaults to `Alt Shift L` and renders the persistent guarded agent popup trigger without changing the `agent` payload; the agent popup bootstraps once from `codex resume`, `grok`, `opencode`, `pi`, then `claude --resume`, leaving the first-run pane empty when no provider is available; popup margins default to side `1` and vertical `0` and control generated popup left/right and top/bottom cell inset | `config.kdl`, `runtime/yzn.rs`, `runtime/yzn-agent.rs`, `flake.nix` | `checks/yzn-contracts.rs` validates Kitty protocol, the packaged popup plugin, commands, popup ids, payloads, default and overridden agent key bindings, managed LazyGit editor env wiring, agent hide behavior, popup geometry, empty no-provider output, provider order, configured-missing diagnostics, and persisted-provider behavior | Visual popup behavior remains manual dogfooding |
 | C10 | Top bars use the child-rendered Yazelix Zellij Bar tray, tabs use the home marker, tab-mode-created tabs open in home, Codex usage has bundled `tu` and a yzn-owned cache path, and bottom bars keep native Zellij key hints | `layout.kdl`, `config.kdl`, `runtime/yzn.rs`, `flake.nix`, `packaging/tokenusage.nix` | `checks/zellij-layout.rs` validates packaged child bar usage, no-mode formatting, declared yzn widgets, the startup home tab marker, the home-scoped new-tab template, and native bottom status bars; `checks/yzn-contracts.rs` validates the tab-mode new-tab marker, runtime home cwd, terminal-label wiring, bundled tokenusage path, and status-cache export | Visual bar behavior remains manual dogfooding |
-| C11 | `yzn config` auto-creates root, Mars, Zellij, and Starship config sources; root `config.toml` has defaults and joined Ratconfig contract state; `open.log_level` controls managed `YZN_OPEN_LOG`; `shell.program` controls the packaged default-shell dispatcher; `editor.command` controls managed Yazi opens as one executable name or path, with `yzn-hx` resolving to packaged Yazelix Helix and host commands staying host-owned without bridge reuse; `welcome.enabled`, `welcome.style`, and `welcome.duration_seconds` control the startup welcome on new launches; `popup.side_margin` and `popup.vertical_margin` control managed popup margins on new launches; `bar.widgets` controls the ordered top-bar widget tray through Ratconfig's string-list picker; Mars/Zellij tabs route writes to their native files; text edit buffers can round-trip through the config UI's editor environment before save; the Starship tab edits `format`, `right_format`, and `add_newline` in `starship.toml` with a `::` default left prompt; the Helix tab opens managed `config.toml`, `languages.toml`, `helix.scm`, and `init.scm` files through the managed editor, creates TOML files after activation, and creates the Steel pair when either Steel row is activated; packaged managed Helix exposes `:yzn-new-shell` unless user Steel files override it; Keys table columns list packaged bindings as read-only group/key/action/owner metadata with source paths in details; Advanced rows open Nu and managed Yazi sidecar files through the managed editor and create them only after activation | `crates/yzn-config/`, `config.toml`, `mars.toml`, `helix/config.toml`, `flake.nix` | `crates/yzn-config` unit tests cover create/edit validation, source routing, editor command validation, welcome field validation, popup margin validation, bar widget validation, Starship field rendering, Zellij scalar rendering, guarded-node diagnostics, Keys read-only table rows, native file action rows, Helix native file rows, external text editor round-tripping, the Steel pair action, and owned missing-file creation; `checks/yzn-contracts.rs` validates packaged defaults, helper install, creation, `--get`, dispatcher wiring, config UI editor wrapper wiring, packaged `:yzn-new-shell` Steel command wiring, and managed Helix runtime selection for packaged, TOML-only, languages-only, and Steel-pair cases | Interactive Ratconfig UI behavior remains manual dogfooding |
+| C11 | `yzn config` auto-creates root, Mars, Zellij, and Starship config sources; root `config.toml` has defaults and joined Ratconfig contract state; `open.log_level` controls managed `YZN_OPEN_LOG`; `shell.program` controls the packaged default-shell dispatcher; `editor.command` controls managed Yazi opens and Ratconfig text edits as one executable name or path, with `yzn-hx` resolving to packaged Yazelix Helix and host commands staying host-owned without bridge reuse; `welcome.enabled`, `welcome.style`, and `welcome.duration_seconds` control the startup welcome on new launches; `popup.side_margin` and `popup.vertical_margin` control managed popup margins on new launches; `keybindings.agent` controls the semantic agent popup trigger and rejects invalid or conflicting packaged chords; `bar.widgets` controls the ordered top-bar widget tray through Ratconfig's string-list picker; Mars/Zellij tabs route writes to their native files; text edit buffers can round-trip through the config UI's configured editor environment before save; the Starship tab edits `format`, `right_format`, and `add_newline` in `starship.toml` with a `::` default left prompt; the Helix tab opens managed `config.toml`, `languages.toml`, `helix.scm`, and `init.scm` files through the managed editor, creates TOML files after activation, and creates the Steel pair when either Steel row is activated; packaged managed Helix exposes `:yzn-new-shell` unless user Steel files override it; Keys table columns list packaged bindings as read-only group/key/action/owner metadata with source paths in details; Advanced rows open Nu and managed Yazi sidecar files through the managed editor and create them only after activation | `crates/yzn-config/`, `config.toml`, `mars.toml`, `helix/config.toml`, `flake.nix` | `crates/yzn-config` unit tests cover create/edit validation, source routing, editor command validation, welcome field validation, popup margin validation, agent keybinding validation, bar widget validation, Starship field rendering, Zellij scalar rendering, guarded-node diagnostics, Keys read-only table rows, native file action rows, Helix native file rows, external text editor round-tripping, the Steel pair action, and owned missing-file creation; `checks/yzn-contracts.rs` validates packaged defaults, helper install, creation, `--get`, dispatcher wiring, agent key rendering, config UI editor wrapper wiring, packaged `:yzn-new-shell` Steel command wiring, and managed Helix runtime selection for packaged, TOML-only, languages-only, and Steel-pair cases | Interactive Ratconfig UI behavior remains manual dogfooding |
 | C12 | The welcome screen defaults to enabled, random, and 3 seconds; a user can choose a fixed style instead of random, and random chooses only from the animated screen-style pool, excluding the explicit `static` card | `yazelix-screen`, `runtime/yzn.rs`, `config.toml` | `yazelix-screen` unit tests validate the fixed pool, argument parsing, timed playback mode, and static-card copy; `checks/yzn-contracts.rs` validates packaged helper wiring and config/status/doctor exposure | Visual animation behavior remains manual dogfooding |
 | C13 | `homeManagerModules.default` provides a narrow declarative Home Manager surface: `programs.yazelix.enable = true` installs the selected package, package override is supported, the package desktop entry is present, no Yazelix runtime config files are generated by default, optional `config.settings` renders root `config.toml` with defaults and contract state, and optional native Mars, Zellij, Starship, Helix, Yazi, and Nu files are installed from text or source paths | `home-manager/module.nix`, `flake.nix`, `crates/yzn-config/` | `checks.home_manager` evaluates Home Manager with the default package and an override package, validates `bin/yzn`, validates the desktop entry, rejects default generated `~/.config/yazelix-next` files, validates rendered root settings/defaults/contract state through `yzn-config --get`, and validates native text/source files; `crates/yzn-config` unit tests allow read-only complete root TOML with format-only drift and still reject incomplete read-only sources | Full Home Manager switch behavior remains external to the module evaluation check |
 

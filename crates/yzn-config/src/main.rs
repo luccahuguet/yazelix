@@ -1024,6 +1024,8 @@ fn validate_config_value(field_path: &str, value: &JsonValue) -> Result<()> {
             let value = spec.json_choice(value)?;
             if field_path == EDITOR_COMMAND_PATH {
                 validate_editor_command(value)?;
+            } else if field_path == KEYBINDINGS_AGENT_PATH {
+                validate_agent_keybinding(value)?;
             }
             Ok(())
         }
@@ -1055,6 +1057,78 @@ fn validate_editor_command(value: &str) -> Result<()> {
         ));
     }
     Ok(())
+}
+
+fn validate_agent_keybinding(value: &str) -> Result<()> {
+    validate_key_chord(value)?;
+    let conflicts = value != DEFAULT_AGENT_KEYBINDING
+        && KEY_BINDINGS
+            .iter()
+            .any(|[_group, chord, _action, _owner, _source]| packaged_chord_matches(chord, value));
+    if conflicts {
+        return Err(error(format!(
+            "{KEYBINDINGS_AGENT_PATH} conflicts with packaged key {value}"
+        )));
+    }
+    Ok(())
+}
+
+fn packaged_chord_matches(pattern: &str, value: &str) -> bool {
+    pattern.split(" / ").any(|chord| {
+        chord.eq_ignore_ascii_case(value)
+            || matches!(
+                (chord, value.strip_prefix("Alt ")),
+                (
+                    "Alt 1-9",
+                    Some("1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9")
+                )
+            )
+    })
+}
+
+fn validate_key_chord(value: &str) -> Result<()> {
+    value
+        .rsplit_once(' ')
+        .filter(|(modifiers, key)| {
+            matches!(
+                *modifiers,
+                "Ctrl"
+                    | "Alt"
+                    | "Shift"
+                    | "Ctrl Alt"
+                    | "Ctrl Shift"
+                    | "Alt Shift"
+                    | "Ctrl Alt Shift"
+            ) && valid_key_token(key)
+        })
+        .map(|_| ())
+        .ok_or_else(keybinding_syntax_error)
+}
+
+fn valid_key_token(key: &str) -> bool {
+    matches!(key.as_bytes(), [ch] if ch.is_ascii_alphanumeric())
+        || matches!(
+            key,
+            "Left"
+                | "Right"
+                | "Up"
+                | "Down"
+                | "Enter"
+                | "Esc"
+                | "Tab"
+                | "Backspace"
+                | "Space"
+                | "Home"
+                | "End"
+                | "PageUp"
+                | "PageDown"
+        )
+}
+
+fn keybinding_syntax_error() -> Box<dyn std::error::Error> {
+    error(format!(
+        "{KEYBINDINGS_AGENT_PATH} must be a key chord like Alt Shift A"
+    ))
 }
 
 fn write_mars_config_field(path: &Path, field_path: &str, value: &JsonValue) -> Result<()> {
@@ -1578,6 +1652,14 @@ mod tests {
         );
     }
 
+    fn assert_write_config_error(path: &Path, field_path: &str, value: JsonValue, expected: &str) {
+        let error = write_config_field(path, field_path, &value).unwrap_err();
+        assert!(
+            error.to_string().contains(expected),
+            "expected `{expected}` in `{error}`"
+        );
+    }
+
     #[cfg(unix)]
     #[test]
     fn external_text_editor_round_trips_staged_input() {
@@ -1635,6 +1717,10 @@ mod tests {
             assert_eq!(default_config_value(field_path).unwrap(), value);
             validate_config_value(field_path, &value).unwrap();
         }
+        assert_eq!(
+            default_config_value(KEYBINDINGS_AGENT_PATH).unwrap(),
+            json!(DEFAULT_AGENT_KEYBINDING)
+        );
     }
 
     #[test]
@@ -1669,14 +1755,8 @@ mod tests {
         write_config_field(&path, OPEN_LOG_LEVEL_PATH, &json!("debug")).unwrap();
         assert_toml_value(&path, OPEN_LOG_LEVEL_PATH, &json!("debug"));
 
-        let error = write_config_field(&path, OPEN_LOG_LEVEL_PATH, &json!("loud")).unwrap_err();
-        assert!(error.to_string().contains("off, error, info, debug"));
-
         write_config_field(&path, SHELL_PROGRAM_PATH, &json!("fish")).unwrap();
         assert_toml_value(&path, SHELL_PROGRAM_PATH, &json!("fish"));
-
-        let error = write_config_field(&path, SHELL_PROGRAM_PATH, &json!("tcsh")).unwrap_err();
-        assert!(error.to_string().contains("nu, bash, zsh, fish"));
 
         write_config_field(&path, EDITOR_COMMAND_PATH, &json!("nvim")).unwrap();
         assert_toml_value(&path, EDITOR_COMMAND_PATH, &json!("nvim"));
@@ -1684,12 +1764,6 @@ mod tests {
             read_config_field(&path, config_field(EDITOR_COMMAND_PATH).unwrap()).unwrap(),
             "nvim"
         );
-
-        let error = write_config_field(&path, EDITOR_COMMAND_PATH, &json!("")).unwrap_err();
-        assert!(error.to_string().contains("must not be empty"));
-        let error =
-            write_config_field(&path, EDITOR_COMMAND_PATH, &json!("nvim --clean")).unwrap_err();
-        assert!(error.to_string().contains("without arguments"));
 
         write_config_field(&path, POPUP_SIDE_MARGIN_PATH, &json!(2)).unwrap();
         assert_toml_value(&path, POPUP_SIDE_MARGIN_PATH, &json!(2));
@@ -1701,8 +1775,43 @@ mod tests {
         write_config_field(&path, POPUP_VERTICAL_MARGIN_PATH, &json!(1)).unwrap();
         assert_toml_value(&path, POPUP_VERTICAL_MARGIN_PATH, &json!(1));
 
-        let error = write_config_field(&path, POPUP_SIDE_MARGIN_PATH, &json!(-1)).unwrap_err();
-        assert!(error.to_string().contains("zero or greater"));
+        write_config_field(&path, KEYBINDINGS_AGENT_PATH, &json!("Alt Shift A")).unwrap();
+        assert_toml_value(&path, KEYBINDINGS_AGENT_PATH, &json!("Alt Shift A"));
+        assert_eq!(
+            read_config_field(&path, config_field(KEYBINDINGS_AGENT_PATH).unwrap()).unwrap(),
+            "Alt Shift A"
+        );
+
+        for (field_path, value, expected) in [
+            (
+                OPEN_LOG_LEVEL_PATH,
+                json!("loud"),
+                "off, error, info, debug",
+            ),
+            (SHELL_PROGRAM_PATH, json!("tcsh"), "nu, bash, zsh, fish"),
+            (EDITOR_COMMAND_PATH, json!(""), "must not be empty"),
+            (
+                EDITOR_COMMAND_PATH,
+                json!("nvim --clean"),
+                "without arguments",
+            ),
+            (POPUP_SIDE_MARGIN_PATH, json!(-1), "zero or greater"),
+            (
+                KEYBINDINGS_AGENT_PATH,
+                json!("Alt+Shift+A"),
+                "must be a key chord",
+            ),
+        ] {
+            assert_write_config_error(&path, field_path, value, expected);
+        }
+        for value in ["Alt Shift M", "Alt Shift m", "Alt z"] {
+            assert_write_config_error(
+                &path,
+                KEYBINDINGS_AGENT_PATH,
+                json!(value),
+                &format!("conflicts with packaged key {value}"),
+            );
+        }
 
         write_config_field(
             &path,
@@ -1791,6 +1900,17 @@ mod tests {
                 .unwrap()
                 .to_string()
         );
+
+        let agent_key = model_field(&model, KEYBINDINGS_AGENT_PATH);
+        assert_eq!(agent_key.tab, TAB_CONFIG);
+        assert_eq!(agent_key.kind, "string");
+        assert_eq!(
+            agent_key.current_value,
+            default_config_value(KEYBINDINGS_AGENT_PATH)
+                .unwrap()
+                .to_string()
+        );
+        assert_eq!(agent_key.apply_status.summary, "next launch");
 
         let field = model_field(&model, BAR_WIDGETS_PATH);
 
@@ -1963,8 +2083,11 @@ command = "yzn-hx"
 log_level = "info"
 
 [popup]
-side_margin = 0
+side_margin = 1
 vertical_margin = 0
+
+[keybindings]
+agent = "Alt Shift L"
 
 [ratconfig.contract]
 applied_change_ids = []

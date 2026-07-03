@@ -25,8 +25,12 @@ duration_seconds = 3
 
 [popup]
 # Left/right and top/bottom cell margins for managed popups.
-side_margin = 0
+side_margin = 1
 vertical_margin = 0
+
+[keybindings]
+# Key chord that hides or shows the managed agent popup.
+agent = "Alt Shift L"
 
 [bar]
 # Top bar widgets, left to right.

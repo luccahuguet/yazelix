@@ -25,6 +25,8 @@ pub(crate) const WELCOME_STYLE_VALUES: &[&str] = &[
 ];
 pub(crate) const POPUP_SIDE_MARGIN_PATH: &str = "popup.side_margin";
 pub(crate) const POPUP_VERTICAL_MARGIN_PATH: &str = "popup.vertical_margin";
+pub(crate) const KEYBINDINGS_AGENT_PATH: &str = "keybindings.agent";
+pub(crate) const DEFAULT_AGENT_KEYBINDING: &str = "Alt Shift L";
 pub(crate) const BAR_WIDGETS_PATH: &str = "bar.widgets";
 pub(crate) const BAR_WIDGET_VALUES: &[&str] = &[
     "session",
@@ -99,6 +101,8 @@ pub(crate) const KEY_BINDINGS: &[[&str; 5]] = &[
     key!("Tabs"; "Alt 1-9"; "Go directly to tab 1-9"; "Zellij"; "config.kdl"),
     key!("Tabs"; "n in tab mode"; "Open a new tab"; "Zellij"; "config.kdl"),
     key!("Tabs"; "Ctrl Alt h"; "Move tab left"; "Zellij"; "config.kdl"),
+    key!("Panes"; "Ctrl Alt j"; "Move pane down"; "Zellij"; "config.kdl"),
+    key!("Panes"; "Ctrl Alt k"; "Move pane up"; "Zellij"; "config.kdl"),
     key!("Tabs"; "Ctrl Alt l"; "Move tab right"; "Zellij"; "config.kdl"),
     key!("Popups"; "Alt Shift J"; "Toggle LazyGit popup"; "Yazelix"; "config.kdl"),
     key!("Popups"; "Alt Shift K"; "Toggle config popup"; "Yazelix"; "config.kdl"),
@@ -186,6 +190,16 @@ pub(crate) const CONFIG_FIELDS: &[ConfigFieldSpec] = &[
         ),
         apply_summary: "next launch",
         apply_detail: "Saved popup margins apply to newly launched Yazelix sessions.",
+    },
+    ConfigFieldSpec {
+        field: FieldSpec::string_choice(
+            KEYBINDINGS_AGENT_PATH,
+            "Key chord that hides or shows the managed agent popup.",
+            &[],
+            "key chord like Alt Shift A that does not conflict with a packaged binding",
+        ),
+        apply_summary: "next launch",
+        apply_detail: "Saved keybindings apply to newly launched Yazelix sessions.",
     },
 ];
 
