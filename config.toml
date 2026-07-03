@@ -35,6 +35,15 @@ agent = "Alt Shift L"
 lazygit = "Alt Shift J"
 menu = "Alt Shift M"
 
+# Custom popups can be added manually. Commands are argv-based, not shell strings.
+# Titles default to <id>_popup and must be unique.
+# [popups.btm]
+# command = "btm"
+# args = ["--basic"]
+# title = "btm_popup"
+# keybinding = "Alt Shift B"
+# keep_alive = true
+
 [bar]
 # Top bar widgets, left to right.
 widgets = ["editor", "shell", "term", "codex_usage", "cpu", "ram"]

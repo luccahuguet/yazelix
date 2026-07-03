@@ -3,14 +3,17 @@ support_kitty_keyboard_protocol true
 
 plugins {
     yzpp location="@yzpp@" {
+        popup_defaults {
+            side_margin @defaultPopupSideMargin@
+            vertical_margin @defaultPopupVerticalMargin@
+        }
+
         popups {
             config {
                 command "@yznConfig@"
                 pane_title "config_popup"
                 width_percent 100
                 height_percent 100
-                side_margin 1
-                vertical_margin 0
             }
 
             agent {
@@ -18,8 +21,6 @@ plugins {
                 pane_title "agent_popup"
                 width_percent 100
                 height_percent 100
-                side_margin 1
-                vertical_margin 0
                 toggle_close_behavior "hide"
             }
 
@@ -28,8 +29,6 @@ plugins {
                 pane_title "lazygit_popup"
                 width_percent 100
                 height_percent 100
-                side_margin 1
-                vertical_margin 0
             }
 
             menu {
@@ -37,8 +36,6 @@ plugins {
                 pane_title "menu_popup"
                 width_percent 100
                 height_percent 100
-                side_margin 1
-                vertical_margin 0
             }
         }
     }

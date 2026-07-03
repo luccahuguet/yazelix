@@ -373,6 +373,7 @@
         agentKey = defaultConfig.keybindings.agent;
         lazygitKey = defaultConfig.keybindings.lazygit;
         menuKey = defaultConfig.keybindings.menu;
+        inherit defaultPopupSideMargin defaultPopupVerticalMargin;
         yznConfig = "${yznConfigUi}/bin/yzn-config-ui";
         yznMenu = "${yznMenu}/bin/yzn-menu";
         lazygit = "${yznLazygit}/bin/yzn-lazygit";

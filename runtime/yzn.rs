@@ -38,6 +38,8 @@ const YAZELIX_ZELLIJ_PANE_ORCHESTRATOR_WASM: &str = "@yazelixZellijPaneOrchestra
 const DEFAULT_BAR_WIDGETS_JSON: &str = r#"@defaultBarWidgetsJson@"#;
 const DEFAULT_POPUP_SIDE_MARGIN: &str = "@defaultPopupSideMargin@";
 const DEFAULT_POPUP_VERTICAL_MARGIN: &str = "@defaultPopupVerticalMargin@";
+const CUSTOM_POPUPS_KDL_CONFIG_PATH: &str = "popups.kdl";
+const CUSTOM_POPUP_KEYBINDINGS_KDL_CONFIG_PATH: &str = "popups.keybindings.kdl";
 const PATH_PREFIX: &str = "@pathPrefix@";
 const SPONSOR_URL: &str = "https://github.com/sponsors/luccahuguet";
 const ZELLIJ_HOME_PLACEHOLDER: &str = "\"__YZN_HOME__\"";
@@ -276,6 +278,13 @@ impl Runtime {
             "popup.vertical_margin",
         )?);
         let popup_keybindings = read_popup_keybindings(&config_home, &config_toml)?;
+        let custom_popups_kdl =
+            config_value(&config_home, &config_toml, CUSTOM_POPUPS_KDL_CONFIG_PATH)?;
+        let custom_popup_keybindings_kdl = config_value(
+            &config_home,
+            &config_toml,
+            CUSTOM_POPUP_KEYBINDINGS_KDL_CONFIG_PATH,
+        )?;
         let (layout_source, layout) = active_layout(&state_dir, &bar_widgets)?;
         let user_mars_config_home = config_home.join("mars");
         let (mars_config_source, mars_config_home) =
@@ -305,6 +314,8 @@ impl Runtime {
             &popup_side_margin,
             &popup_vertical_margin,
             &popup_keybindings,
+            &custom_popups_kdl,
+            &custom_popup_keybindings_kdl,
             &home_dir,
         )?;
         let zellij_status_cache = state_dir.join("zellij/session/status_bar_cache.json");
@@ -673,6 +684,8 @@ fn active_zellij_config(
     popup_side_margin: &str,
     popup_vertical_margin: &str,
     popup_keybindings: &[PopupKeybinding],
+    custom_popups_kdl: &str,
+    custom_popup_keybindings_kdl: &str,
     home_dir: &Path,
 ) -> Result<(&'static str, PathBuf), AppError> {
     let runtime_config = state_dir.join("zellij/config.kdl");
@@ -699,27 +712,23 @@ fn active_zellij_config(
         }
         patched = replaced;
     }
-    if popup_side_margin != DEFAULT_POPUP_SIDE_MARGIN
-        || popup_vertical_margin != DEFAULT_POPUP_VERTICAL_MARGIN
-    {
-        let side_marker = format!("side_margin {DEFAULT_POPUP_SIDE_MARGIN}");
-        let vertical_marker = format!("vertical_margin {DEFAULT_POPUP_VERTICAL_MARGIN}");
-        if !patched.contains(&side_marker) || !patched.contains(&vertical_marker) {
-            return Err(startup(
-                "Zellij config is missing packaged popup geometry",
-                config.display(),
-                1,
-            ));
-        }
-        let replaced = patched
-            .replace(&side_marker, &format!("side_margin {popup_side_margin}"))
-            .replace(
-                &vertical_marker,
-                &format!("vertical_margin {popup_vertical_margin}"),
-            );
-        patched = replaced;
-    }
+    patched =
+        patch_popup_default_margins(patched, &config, popup_side_margin, popup_vertical_margin)?;
     patched = patch_popup_keybindings(patched, &config, popup_keybindings)?;
+    patched = inject_snippet_before(
+        patched,
+        &config,
+        custom_popups_kdl,
+        "        }\n    }\n\n    yazelix_pane_orchestrator",
+        "Zellij config is missing the packaged popup block",
+    )?;
+    patched = inject_snippet_before(
+        patched,
+        &config,
+        custom_popup_keybindings_kdl,
+        r#"        bind "Alt h" "Alt Left" { MessagePlugin "yazelix_pane_orchestrator" { name "move_focus_left_or_tab"; }; }"#,
+        "Zellij config is missing the packaged shared keybind block",
+    )?;
     create_dir_all_checked(parent(&runtime_config), &runtime_config)?;
     fs::write(&runtime_config, patched)
         .map_err(|error| path_error("write", &runtime_config, &runtime_config, error))?;
@@ -766,6 +775,48 @@ fn patch_popup_keybindings(
         );
     }
     Ok(patched)
+}
+
+fn patch_popup_default_margins(
+    text: String,
+    config: &Path,
+    side_margin: &str,
+    vertical_margin: &str,
+) -> Result<String, AppError> {
+    let marker = format!(
+        "        popup_defaults {{\n            side_margin {DEFAULT_POPUP_SIDE_MARGIN}\n            vertical_margin {DEFAULT_POPUP_VERTICAL_MARGIN}\n        }}"
+    );
+    if !text.contains(&marker) {
+        return Err(startup(
+            "Zellij config is missing packaged popup defaults",
+            config.display(),
+            1,
+        ));
+    }
+    Ok(text.replacen(
+        &marker,
+        &format!(
+            "        popup_defaults {{\n            side_margin {side_margin}\n            vertical_margin {vertical_margin}\n        }}"
+        ),
+        1,
+    ))
+}
+
+fn inject_snippet_before(
+    text: String,
+    config: &Path,
+    snippet: &str,
+    marker: &str,
+    missing_message: &str,
+) -> Result<String, AppError> {
+    let snippet = snippet.trim_end();
+    if snippet.is_empty() {
+        return Ok(text);
+    }
+    if !text.contains(marker) {
+        return Err(startup(missing_message, config.display(), 1));
+    }
+    Ok(text.replacen(marker, &format!("{snippet}\n{marker}"), 1))
 }
 
 fn render_bar_plugin_block(bar_widgets: &str) -> Result<String, AppError> {

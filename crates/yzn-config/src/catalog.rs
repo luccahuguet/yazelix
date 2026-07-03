@@ -25,6 +25,8 @@ pub(crate) const WELCOME_STYLE_VALUES: &[&str] = &[
 ];
 pub(crate) const POPUP_SIDE_MARGIN_PATH: &str = "popup.side_margin";
 pub(crate) const POPUP_VERTICAL_MARGIN_PATH: &str = "popup.vertical_margin";
+pub(crate) const CUSTOM_POPUPS_KDL_PATH: &str = "popups.kdl";
+pub(crate) const CUSTOM_POPUP_KEYBINDINGS_KDL_PATH: &str = "popups.keybindings.kdl";
 pub(crate) const KEYBINDINGS_CONFIG_PATH: &str = "keybindings.config";
 pub(crate) const KEYBINDINGS_AGENT_PATH: &str = "keybindings.agent";
 pub(crate) const KEYBINDINGS_LAZYGIT_PATH: &str = "keybindings.lazygit";

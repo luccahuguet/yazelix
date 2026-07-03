@@ -271,6 +271,8 @@ fn expect_front_door(yzn: &Path) {
         "bar.widgets",
         "popup.side_margin",
         "popup.vertical_margin",
+        "popups.kdl",
+        "popups.keybindings.kdl",
         "keybindings.config",
         "keybindings.agent",
         "keybindings.lazygit",
@@ -391,10 +393,42 @@ fn expect_front_door(yzn: &Path) {
     );
     let custom_popup_config =
         fs::read_to_string(custom_popup_state.join("zellij/config.kdl")).unwrap();
+    expect_popup_defaults(&custom_popup_config, "2", "1", "custom popup status config");
     assert_eq!(custom_popup_config.matches("width_percent 100").count(), 4);
     assert_eq!(custom_popup_config.matches("height_percent 100").count(), 4);
-    assert_eq!(custom_popup_config.matches("side_margin 2").count(), 4);
-    assert_eq!(custom_popup_config.matches("vertical_margin 1").count(), 4);
+    assert_eq!(custom_popup_config.matches("side_margin 2").count(), 1);
+    assert_eq!(custom_popup_config.matches("vertical_margin 1").count(), 1);
+
+    let custom_popup_spec_config = temp.path.join("custom-popup-spec-config");
+    let custom_popup_spec_state = temp.path.join("custom-popup-spec-state");
+    write_config_home(
+        &custom_popup_spec_config,
+        "[open]\nlog_level = \"info\"\n\n[shell]\nprogram = \"nu\"\n\n[popup]\nside_margin = 2\nvertical_margin = 1\n\n[popups.btm]\ncommand = \"btm\"\nargs = [\"--basic\"]\ntitle = \"btm_popup\"\nkeybinding = \"Alt Shift B\"\nkeep_alive = true\n",
+    );
+    run_yzn_with_config(
+        &yzn_bin,
+        "status",
+        &custom_popup_spec_config,
+        &custom_popup_spec_state,
+        "custom popup spec status",
+    );
+    let custom_popup_spec =
+        fs::read_to_string(custom_popup_spec_state.join("zellij/config.kdl")).unwrap();
+    expect_contains(
+        &custom_popup_spec,
+        "btm {\n                command \"btm\"\n                arg_1 \"--basic\"\n                pane_title \"btm_popup\"\n                command_marker \"btm_popup\"\n                width_percent 100\n                height_percent 100\n                toggle_close_behavior \"hide\"\n            }",
+        "custom popup spec config",
+    );
+    expect_popup_binding(
+        &custom_popup_spec,
+        "Alt Shift B",
+        "btm",
+        "custom popup spec config",
+    );
+    assert_eq!(custom_popup_spec.matches("width_percent 100").count(), 5);
+    assert_eq!(custom_popup_spec.matches("height_percent 100").count(), 5);
+    assert_eq!(custom_popup_spec.matches("side_margin 2").count(), 1);
+    assert_eq!(custom_popup_spec.matches("vertical_margin 1").count(), 1);
 
     let custom_popup_key_config = temp.path.join("custom-popup-key-config");
     let custom_popup_key_state = temp.path.join("custom-popup-key-state");
@@ -937,6 +971,18 @@ fn expect_startup_diagnostics(yzn: &Path) {
             "keybindings.agent conflicts with keybindings.config: Alt Shift A",
             "duplicate popup key",
         ),
+        (
+            "bad-custom-popup-command-config",
+            "[open]\nlog_level = \"info\"\n\n[shell]\nprogram = \"nu\"\n\n[popups.btm]\ncommand = \"btm --basic\"\nkeybinding = \"Alt Shift B\"\n",
+            "popups.btm.command must be one executable command without arguments; use args for arguments",
+            "invalid custom popup command",
+        ),
+        (
+            "bad-custom-popup-key-config",
+            "[open]\nlog_level = \"info\"\n\n[shell]\nprogram = \"nu\"\n\n[popups.btm]\ncommand = \"btm\"\nkeybinding = \"Alt r\"\n",
+            "popups.btm.keybinding conflicts with packaged key Alt r",
+            "invalid custom popup key",
+        ),
     ] {
         let config_home = temp.path.join(dir);
         let check = write_config_home(&config_home, config);
@@ -1342,6 +1388,7 @@ fn expect_first_party_plugins(config: &str) {
     ] {
         expect_contains(config, expected, "config.kdl first-party plugin fragment");
     }
+    expect_popup_defaults(config, "1", "0", "packaged popup config");
     for (id, pane_title, command_suffix, extra) in [
         ("config", "config_popup", "/bin/yzn-config-ui", ""),
         (
@@ -1355,7 +1402,7 @@ fn expect_first_party_plugins(config: &str) {
     ] {
         let command = popup_command(config, command_suffix);
         let expected = format!(
-            "{id} {{\n                command \"{}\"\n                pane_title \"{pane_title}\"\n                width_percent 100\n                height_percent 100\n                side_margin 1\n                vertical_margin 0{extra}\n            }}",
+            "{id} {{\n                command \"{}\"\n                pane_title \"{pane_title}\"\n                width_percent 100\n                height_percent 100{extra}\n            }}",
             command.display()
         );
         assert!(
@@ -1365,8 +1412,8 @@ fn expect_first_party_plugins(config: &str) {
     }
     assert_eq!(config.matches("width_percent 100").count(), 4);
     assert_eq!(config.matches("height_percent 100").count(), 4);
-    assert_eq!(config.matches("side_margin 1").count(), 4);
-    assert_eq!(config.matches("vertical_margin 0").count(), 4);
+    assert_eq!(config.matches("side_margin 1").count(), 1);
+    assert_eq!(config.matches("vertical_margin 0").count(), 1);
     for (key, payload) in [
         ("Alt Shift J", "lazygit"),
         ("Alt Shift K", "config"),
@@ -1633,6 +1680,13 @@ fn expect_popup_binding(config: &str, key: &str, payload: &str, context: &str) {
         config.contains(&expected),
         "{context} is missing {key} popup binding\n{expected}",
     );
+}
+
+fn expect_popup_defaults(config: &str, side_margin: &str, vertical_margin: &str, context: &str) {
+    let expected = format!(
+        "popup_defaults {{\n            side_margin {side_margin}\n            vertical_margin {vertical_margin}\n        }}"
+    );
+    expect_contains(config, &expected, context);
 }
 
 fn popup_command(config: &str, suffix: &str) -> PathBuf {

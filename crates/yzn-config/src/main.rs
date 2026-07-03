@@ -98,6 +98,15 @@ impl Default for ZellijSidecar {
     }
 }
 
+struct CustomPopup {
+    id: String,
+    command: String,
+    args: Vec<String>,
+    title: String,
+    keybinding: String,
+    keep_alive: bool,
+}
+
 fn main() {
     if let Err(error) = run() {
         eprintln!("yzn-config: {error}");
@@ -259,6 +268,12 @@ fn print_config_field(path: &str) -> Result<()> {
     if path == BAR_WIDGETS_PATH {
         let config = ensure_config_file_at(config_paths()?.root)?;
         println!("{}", read_bar_widgets_field(&config)?);
+    } else if path == CUSTOM_POPUPS_KDL_PATH {
+        let config = ensure_config_file_at(config_paths()?.root)?;
+        print!("{}", read_custom_popups_kdl(&config)?);
+    } else if path == CUSTOM_POPUP_KEYBINDINGS_KDL_PATH {
+        let config = ensure_config_file_at(config_paths()?.root)?;
+        print!("{}", read_custom_popup_keybindings_kdl(&config)?);
     } else {
         let spec = config_field(path)?;
         let config = ensure_config_file_at(config_paths()?.root)?;
@@ -426,6 +441,7 @@ fn read_config_field(path: &Path, spec: &ConfigFieldSpec) -> Result<String> {
 
 fn read_bar_widgets_field(path: &Path) -> Result<String> {
     let value = read_toml_file_value(path, "config.toml")?;
+    validate_popup_keybindings(&value)?;
     let Some(value) = get_toml_path(&value, BAR_WIDGETS_PATH) else {
         return Err(error(format!("unknown config path: {BAR_WIDGETS_PATH}")));
     };
@@ -435,6 +451,206 @@ fn read_bar_widgets_field(path: &Path) -> Result<String> {
 fn bar_widgets(value: &JsonValue) -> Result<Vec<String>> {
     string_list_values_from_json(BAR_WIDGETS_PATH, value, &string_values(BAR_WIDGET_VALUES))
         .map_err(error)
+}
+
+fn read_custom_popups_kdl(path: &Path) -> Result<String> {
+    let value = read_toml_file_value(path, "config.toml")?;
+    validate_popup_keybindings(&value)?;
+    let mut text = String::new();
+    for popup in custom_popups(&value)? {
+        text.push_str(&format!(
+            "            {} {{\n                command {}\n",
+            popup.id,
+            kdl_string(&popup.command)
+        ));
+        for (index, arg) in popup.args.iter().enumerate() {
+            text.push_str(&format!(
+                "                arg_{} {}\n",
+                index + 1,
+                kdl_string(arg)
+            ));
+        }
+        text.push_str(&format!(
+            "                pane_title {}\n                command_marker {}\n                width_percent 100\n                height_percent 100\n",
+            kdl_string(&popup.title),
+            kdl_string(&popup.title),
+        ));
+        if popup.keep_alive {
+            text.push_str("                toggle_close_behavior \"hide\"\n");
+        }
+        text.push_str("            }\n");
+    }
+    Ok(text)
+}
+
+fn read_custom_popup_keybindings_kdl(path: &Path) -> Result<String> {
+    let value = read_toml_file_value(path, "config.toml")?;
+    validate_popup_keybindings(&value)?;
+    let mut text = String::new();
+    for popup in custom_popups(&value)? {
+        text.push_str(&format!(
+            "        bind {} {{\n            MessagePlugin \"yzpp\" {{\n                name \"toggle\"\n                payload {}\n            }}\n        }}\n",
+            kdl_string(&popup.keybinding),
+            kdl_string(&popup.id),
+        ));
+    }
+    Ok(text)
+}
+
+fn custom_popups(value: &JsonValue) -> Result<Vec<CustomPopup>> {
+    let Some(popups) = get_toml_path(value, "popups") else {
+        return Ok(Vec::new());
+    };
+    let table = popups
+        .as_object()
+        .ok_or_else(|| error("popups must be a table"))?;
+    let mut parsed = table
+        .iter()
+        .map(|(id, value)| custom_popup(id, value))
+        .collect::<Result<Vec<_>>>()?;
+    parsed.sort_by(|left, right| left.id.cmp(&right.id));
+    validate_custom_popup_titles(&parsed)?;
+    Ok(parsed)
+}
+
+fn custom_popup(id: &str, value: &JsonValue) -> Result<CustomPopup> {
+    validate_custom_popup_id(id)?;
+    let path = format!("popups.{id}");
+    let table = value
+        .as_object()
+        .ok_or_else(|| error(format!("{path} must be a table")))?;
+    for field in table.keys() {
+        if !matches!(
+            field.as_str(),
+            "command" | "args" | "title" | "keybinding" | "keep_alive"
+        ) {
+            return Err(error(format!("{path}.{field} is not supported")));
+        }
+    }
+
+    let command_path = format!("{path}.command");
+    let command = required_string(table, "command", &command_path)?.to_string();
+    validate_popup_command(&command_path, &command)?;
+
+    let args = table
+        .get("args")
+        .map(|value| string_array(&format!("{path}.args"), value))
+        .transpose()?
+        .unwrap_or_default();
+
+    let title = table
+        .get("title")
+        .map(|value| nonempty_string(&format!("{path}.title"), value))
+        .transpose()?
+        .map(str::to_string)
+        .unwrap_or_else(|| format!("{id}_popup"));
+
+    let keybinding_path = format!("{path}.keybinding");
+    let keybinding = required_string(table, "keybinding", &keybinding_path)?.to_string();
+    validate_managed_popup_keybinding(&keybinding_path, &keybinding)?;
+
+    let keep_alive = table
+        .get("keep_alive")
+        .map(|value| json_bool(&format!("{path}.keep_alive"), value))
+        .transpose()?
+        .unwrap_or(false);
+
+    Ok(CustomPopup {
+        id: id.to_string(),
+        command,
+        args,
+        title,
+        keybinding,
+        keep_alive,
+    })
+}
+
+fn validate_custom_popup_id(id: &str) -> Result<()> {
+    const BUILTIN_POPUP_IDS: &[&str] = &["config", "agent", "lazygit", "menu"];
+    if BUILTIN_POPUP_IDS.contains(&id) {
+        return Err(error(format!(
+            "popups.{id} conflicts with packaged popup id"
+        )));
+    }
+    let mut chars = id.chars();
+    let valid = chars
+        .next()
+        .is_some_and(|ch| ch.is_ascii_alphabetic() || ch == '_')
+        && chars.all(|ch| ch.is_ascii_alphanumeric() || ch == '_' || ch == '-');
+    if valid {
+        Ok(())
+    } else {
+        Err(error(format!(
+            "popups.{id} id must start with an ASCII letter or _ and contain only ASCII letters, digits, _, or -"
+        )))
+    }
+}
+
+fn validate_custom_popup_titles(popups: &[CustomPopup]) -> Result<()> {
+    const BUILTIN_POPUP_TITLES: &[&str] =
+        &["config_popup", "agent_popup", "lazygit_popup", "menu_popup"];
+    let mut used = BTreeMap::new();
+    for popup in popups {
+        let title = popup.title.trim();
+        let path = format!("popups.{}.title", popup.id);
+        if BUILTIN_POPUP_TITLES.contains(&title) {
+            return Err(error(format!(
+                "{path} conflicts with packaged popup title {title}"
+            )));
+        }
+        if let Some(existing) = used.insert(title.to_string(), popup.id.as_str()) {
+            return Err(error(format!(
+                "{path} conflicts with popups.{existing}.title: {title}"
+            )));
+        }
+    }
+    Ok(())
+}
+
+fn validate_popup_command(path: &str, value: &str) -> Result<()> {
+    if value.trim().is_empty() {
+        return Err(error(format!("{path} must not be empty")));
+    }
+    if value.chars().any(char::is_whitespace) {
+        return Err(error(format!(
+            "{path} must be one executable command without arguments; use args for arguments"
+        )));
+    }
+    Ok(())
+}
+
+fn required_string<'a>(
+    table: &'a serde_json::Map<String, JsonValue>,
+    field: &str,
+    path: &str,
+) -> Result<&'a str> {
+    table
+        .get(field)
+        .ok_or_else(|| error(format!("{path} is required")))
+        .and_then(|value| nonempty_string(path, value))
+}
+
+fn nonempty_string<'a>(path: &str, value: &'a JsonValue) -> Result<&'a str> {
+    let value = value
+        .as_str()
+        .ok_or_else(|| error(format!("{path} must be a string")))?;
+    if value.trim().is_empty() {
+        return Err(error(format!("{path} must not be empty")));
+    }
+    Ok(value)
+}
+
+fn string_array(path: &str, value: &JsonValue) -> Result<Vec<String>> {
+    let values = value
+        .as_array()
+        .ok_or_else(|| error(format!("{path} must be an array of strings")))?;
+    values
+        .iter()
+        .enumerate()
+        .map(|(index, value)| {
+            nonempty_string(&format!("{path}[{index}]"), value).map(str::to_string)
+        })
+        .collect()
 }
 
 fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
@@ -1006,9 +1222,9 @@ fn write_config_field(path: &Path, field_path: &str, value: &JsonValue) -> Resul
         .map_err(|error| boxed_debug("could not update config.toml", error))?
         .text;
     let text = fill_missing_defaults(&reconcile_contract(&text)?)?;
-    validate_popup_keybindings(
-        &parse_toml_value(&text).map_err(|error| boxed_debug("invalid config.toml", error))?,
-    )?;
+    let value =
+        parse_toml_value(&text).map_err(|error| boxed_debug("invalid config.toml", error))?;
+    validate_popup_keybindings(&value)?;
     atomic_write(path, &text)
 }
 
@@ -1032,7 +1248,7 @@ fn validate_config_value(field_path: &str, value: &JsonValue) -> Result<()> {
             if field_path == EDITOR_COMMAND_PATH {
                 validate_editor_command(value)?;
             } else if popup_keybinding_spec(field_path).is_some() {
-                validate_popup_keybinding(field_path, value)?;
+                validate_managed_popup_keybinding(field_path, value)?;
             }
             Ok(())
         }
@@ -1073,11 +1289,20 @@ fn validate_popup_keybindings(value: &JsonValue) -> Result<()> {
             continue;
         };
         let chord = config_field(spec.path)?.field.json_choice(value)?;
-        validate_popup_keybinding(spec.path, chord)?;
-        if let Some(existing) = used.insert(chord.to_ascii_lowercase(), spec.path) {
+        validate_managed_popup_keybinding(spec.path, chord)?;
+        if let Some(existing) = used.insert(chord.to_ascii_lowercase(), spec.path.to_string()) {
             return Err(error(format!(
                 "{} conflicts with {existing}: {chord}",
                 spec.path
+            )));
+        }
+    }
+    for popup in custom_popups(value)? {
+        let path = format!("popups.{}.keybinding", popup.id);
+        if let Some(existing) = used.insert(popup.keybinding.to_ascii_lowercase(), path.clone()) {
+            return Err(error(format!(
+                "{path} conflicts with {existing}: {}",
+                popup.keybinding
             )));
         }
     }
@@ -1090,15 +1315,13 @@ fn popup_keybinding_spec(field_path: &str) -> Option<&'static PopupKeybindingSpe
         .find(|spec| spec.path == field_path)
 }
 
-fn validate_popup_keybinding(field_path: &str, value: &str) -> Result<()> {
-    let spec = popup_keybinding_spec(field_path).ok_or_else(|| error("unknown keybinding role"))?;
+fn validate_managed_popup_keybinding(field_path: &str, value: &str) -> Result<()> {
     validate_key_chord(field_path, value)?;
-    let conflicts = value != spec.default
-        && KEY_BINDINGS
-            .iter()
-            .any(|[_group, chord, _action, _owner, _source]| {
-                packaged_chord_matches(chord, value) && !popup_default_chord_matches(value)
-            });
+    let conflicts = KEY_BINDINGS
+        .iter()
+        .any(|[_group, chord, _action, _owner, _source]| {
+            packaged_chord_matches(chord, value) && !popup_default_chord_matches(value)
+        });
     if conflicts {
         return Err(error(format!(
             "{field_path} conflicts with packaged key {value}"
@@ -1547,6 +1770,10 @@ fn kdl_bool(value: bool) -> &'static str {
     if value { "true" } else { "false" }
 }
 
+fn kdl_string(value: &str) -> String {
+    format!("{value:?}")
+}
+
 fn json_bool(path: &str, value: &JsonValue) -> Result<bool> {
     value
         .as_bool()
@@ -1681,6 +1908,11 @@ mod tests {
         fs::write(path, updated).unwrap();
     }
 
+    fn write_config_text(path: &Path, text: &str) {
+        fs::write(path, text).unwrap();
+        ensure_config_file_at(path.to_path_buf()).unwrap();
+    }
+
     fn assert_toml_value(path: &Path, field_path: &str, expected: &JsonValue) {
         let value = read_toml_file_value(path, "config.toml").unwrap();
         assert_eq!(
@@ -1694,6 +1926,18 @@ mod tests {
         let error = write_config_field(path, field_path, &value).unwrap_err();
         assert!(
             error.to_string().contains(expected),
+            "expected `{expected}` in `{error}`"
+        );
+    }
+
+    fn assert_custom_popup_error(text: &str, expected: &str) {
+        let temp = TempHome::new();
+        let path = temp.path.join("config.toml");
+        write_config_text(&path, text);
+
+        let error = read_custom_popups_kdl(&path).unwrap_err().to_string();
+        assert!(
+            error.contains(expected),
             "expected `{expected}` in `{error}`"
         );
     }
@@ -1921,6 +2165,133 @@ mod tests {
         let error = read_bar_widgets_field(&path).unwrap_err().to_string();
         assert!(error.contains("bar.widgets must be one of"));
         assert!(error.contains("claude_usage"));
+    }
+
+    #[test]
+    fn custom_popups_render_popup_and_keybinding_kdl() {
+        // Defends: Custom popups render only popup-specific KDL and inherit runtime popup defaults.
+        let temp = TempHome::new();
+        let path = temp.path.join("config.toml");
+        write_config_text(
+            &path,
+            r#"[popups.btm]
+command = "btm"
+args = ["--basic", "--battery"]
+title = "btm_popup"
+keybinding = "Alt Shift B"
+keep_alive = true
+"#,
+        );
+
+        assert_eq!(
+            read_custom_popups_kdl(&path).unwrap(),
+            concat!(
+                "            btm {\n",
+                "                command \"btm\"\n",
+                "                arg_1 \"--basic\"\n",
+                "                arg_2 \"--battery\"\n",
+                "                pane_title \"btm_popup\"\n",
+                "                command_marker \"btm_popup\"\n",
+                "                width_percent 100\n",
+                "                height_percent 100\n",
+                "                toggle_close_behavior \"hide\"\n",
+                "            }\n",
+            )
+        );
+        assert_eq!(
+            read_custom_popup_keybindings_kdl(&path).unwrap(),
+            concat!(
+                "        bind \"Alt Shift B\" {\n",
+                "            MessagePlugin \"yzpp\" {\n",
+                "                name \"toggle\"\n",
+                "                payload \"btm\"\n",
+                "            }\n",
+                "        }\n",
+            )
+        );
+    }
+
+    #[test]
+    fn custom_popups_validate_semantic_surface() {
+        // Defends: Custom popup specs stay semantic and cannot shadow packaged popup ownership.
+        for (text, expected) in [
+            (
+                r#"[popups.btm]
+command = "btm --basic"
+keybinding = "Alt Shift B"
+"#,
+                "without arguments",
+            ),
+            (
+                r#"[popups.config]
+command = "btm"
+keybinding = "Alt Shift B"
+"#,
+                "conflicts with packaged popup id",
+            ),
+            (
+                r#"[popups.btm]
+command = "btm"
+"#,
+                "popups.btm.keybinding is required",
+            ),
+            (
+                r#"[popups.btm]
+command = "btm"
+keybinding = "Alt r"
+"#,
+                "conflicts with packaged key Alt r",
+            ),
+            (
+                r#"[popups.btm]
+command = "btm"
+keybinding = "Alt Shift K"
+"#,
+                "popups.btm.keybinding conflicts with keybindings.config: Alt Shift K",
+            ),
+            (
+                r#"[popups.btm]
+command = "btm"
+keybinding = "Alt Shift B"
+
+[popups.htop]
+command = "htop"
+keybinding = "Alt Shift B"
+"#,
+                "popups.htop.keybinding conflicts with popups.btm.keybinding: Alt Shift B",
+            ),
+            (
+                r#"[popups.btm]
+command = "btm"
+title = " "
+keybinding = "Alt Shift B"
+"#,
+                "popups.btm.title must not be empty",
+            ),
+            (
+                r#"[popups.btm]
+command = "btm"
+title = "lazygit_popup"
+keybinding = "Alt Shift B"
+"#,
+                "popups.btm.title conflicts with packaged popup title lazygit_popup",
+            ),
+            (
+                r#"[popups.btm]
+command = "btm"
+title = "shared_popup"
+keybinding = "Alt Shift B"
+
+[popups.htop]
+command = "htop"
+title = "shared_popup"
+keybinding = "Alt Shift U"
+"#,
+                "popups.htop.title conflicts with popups.btm.title: shared_popup",
+            ),
+        ] {
+            assert_custom_popup_error(text, expected);
+        }
     }
 
     #[test]
