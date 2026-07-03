@@ -69,7 +69,7 @@
     "widget_separator": "dot",
     "tab_label_mode": "full",
     "claude_usage_display": "both",
-    "codex_usage_display": "quota",
+    "codex_usage_display": "both",
     "opencode_go_usage_display": "both",
     "codex_usage_periods": [
       "5h",

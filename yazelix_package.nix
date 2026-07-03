@@ -12,6 +12,8 @@
   skipStableWrapperRedirect ? false,
   components ? { },
   extraRuntimePackages ? [ ],
+  extraRuntimeCommands ? [ ],
+  exportedBinCommands ? [ ],
   yaziAssets ? null,
   yazelixHelixPackage ? null,
   yazelixCursorsPackage ? null,
@@ -51,6 +53,8 @@ import ./packaging/mk_yazelix_package.nix {
     skipStableWrapperRedirect
     components
     extraRuntimePackages
+    extraRuntimeCommands
+    exportedBinCommands
     yaziAssets
     yazelixHelixPackage
     yazelixCursorsPackage

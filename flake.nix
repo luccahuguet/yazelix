@@ -63,6 +63,10 @@
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.fenix.follows = "fenix";
     };
+    beads_rust_source = {
+      url = "github:FlexNetOS/beads_rust";
+      flake = false;
+    };
     zjstatus = {
       url = "github:luccahuguet/zjstatus/yazelix-tab-activity-pipe";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -85,6 +89,7 @@
       yazelixHelix,
       yazelixZellijPaneOrchestrator,
       yazelixZellijPopup,
+      beads_rust_source,
       zjstatus,
     }:
     let
@@ -173,6 +178,8 @@
           skipStableWrapperRedirect ? false,
           components ? { },
           extraRuntimePackages ? agentUsagePackages system,
+          extraRuntimeCommands ? [ ],
+          exportedBinCommands ? [ ],
           yaziAssets ? yazelixYaziAssets.packages.${system}.yazelix_yazi_assets,
           yazelixHelixPackage ? kgpPackages.helixPackage system,
           yazelixCursorsPackage ? yazelixCursors.packages.${system}.yazelix_cursors,
@@ -189,6 +196,7 @@
             inherit runtimeIdentity;
             inherit name runtimeName skipStableWrapperRedirect marsTerminalPackage;
             inherit yazelixHelixPackage yazelixCursorsPackage;
+            inherit extraRuntimeCommands exportedBinCommands;
             pkgs = runtimePkgs;
             enableZellijKittyPassthrough =
               enableZellijKittyPassthrough || terminalNeedsKittyPassthrough runtimeVariant;
@@ -253,15 +261,11 @@
             yazelixZellijPaneOrchestrator.packages.${system}.yazelix_zellij_pane_orchestrator;
           yazelix_zellij_popup = yazelixZellijPopup.packages.${system}.yzpp;
         };
-      beadsSource = builtins.path {
-        path = ../meta/beads_rust;
-        name = "beads_rust_source";
-      };
       beadsRustPackage =
         system: pkgs:
         import ./packaging/beads_rust.nix {
           inherit pkgs;
-          src = beadsSource;
+          beadsSource = beads_rust_source;
           rustPlatform = pkgs.makeRustPlatform {
             cargo = fenix.packages.${system}.latest.cargo;
             rustc = fenix.packages.${system}.latest.rustc;
@@ -301,6 +305,7 @@
         in
         import ./packaging/flake_outputs.nix {
           inherit agentUsagePackages beadsRustPackage kgpPackages;
+          mkYazelix = mkYazelix system;
           inherit pkgs runtimePackage system yazelixPackage;
           inherit yazelixCursors yazelixScreen yazelixYaziAssets;
           inherit yazelixZellijBar yazelixZellijPaneOrchestrator;

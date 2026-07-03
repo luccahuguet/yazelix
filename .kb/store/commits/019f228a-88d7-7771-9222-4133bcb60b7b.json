@@ -1,0 +1,5 @@
+{
+  "commit": {"author":"drdave-flexnet <flexnetos@de-flex.net>","changes":[{"change_type":"created","content_hash":"0dd12098e2e0a7f3a84f3feff3fcfa5ddfdc33dd9ddc5dca86849f3c7452b9cf","doc_type":"task","document_id":"019f2289-7aaa-7d61-a7a1-01cb2e7d6598","new_version":1,"previous_version":null,"slug":"tasks/nu-plugin-envctl-exhaustive-file-content-import","title":"Import exhaustive Yazelix file contents into envctl tables through Nu plugin"},{"change_type":"created","content_hash":"88325c9cfb87bb95d43464a453a2e2278a8bb2d9833449601291d36ea15b2df8","doc_type":"task","document_id":"019f2289-7a96-7533-8b4d-830dd7f36ddd","new_version":1,"previous_version":null,"slug":"tasks/yazelix-exhaustive-file-target-inventory","title":"Inventory every Yazelix file target across repo Nix system and .local depths"}],"created_at":"2026-07-02T11:15:32.159538495Z","id":"019f228a-88d7-7771-9222-4133bcb60b7b","message":"Add exhaustive Yazelix file import tasks"},
+  "content_hash": "f7b1e680e16207a22137583a454d4125aa56a1941e75b8f67d14fd89952d265c",
+  "hash_version": 3
+}

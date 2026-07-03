@@ -1,0 +1,5 @@
+{
+  "commit": {"author":"drdave-flexnet <flexnetos@de-flex.net>","changes":[{"change_type":"created","content_hash":"0cfcb15f65a8fa9d84ba21b4f9a86d2934c5d50379410490798d22a8f1294129","doc_type":"task","document_id":"019f21f1-0b77-7c53-b9bd-cf7b0ea70bee","new_version":1,"previous_version":null,"slug":"tasks/nu-plugin-codedb-controlled-task-graph","title":"Verify CodeDB controlled task graph projection"}],"created_at":"2026-07-02T08:28:51.403519663Z","id":"019f21f1-ef54-7343-abc6-236b9b2255ba","message":"Record CDB065 controlled task graph"},
+  "content_hash": "be254f964bec851a90a3ec2daec38239503fd36c85a8a7b547dbe05da5d184f9",
+  "hash_version": 3
+}

@@ -1,0 +1,5 @@
+{
+  "commit": {"author":"drdave-flexnet <flexnetos@de-flex.net>","changes":[{"change_type":"created","content_hash":"97dfb9430f7fcbe3f9b10828b29656068826e2a0f6503c64880dd3f4b2fc88ec","doc_type":"task","document_id":"019f219c-19c1-71c3-8d1c-9260fe440f97","new_version":1,"previous_version":null,"slug":"tasks/nu-plugin-codedb-fixture-matrix","title":"Create CodeDB fixture matrix"}],"created_at":"2026-07-02T06:55:24.854802298Z","id":"019f219c-62bd-7912-b570-09d8465b0670","message":"Add CodeDB fixture matrix task"},
+  "content_hash": "942e6934f3b759110a7e0aa7b988d10c32148dcda39bbbcf5317027b1796067a",
+  "hash_version": 3
+}

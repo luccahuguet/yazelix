@@ -257,7 +257,7 @@ fn default_claude_usage_display() -> String {
 }
 
 fn default_codex_usage_display() -> String {
-    "quota".into()
+    "both".into()
 }
 
 fn default_opencode_go_usage_display() -> String {
@@ -831,7 +831,7 @@ pub fn compute_zellij_render_plan(
     let codex_usage_display = normalize_usage_display(
         "zellij.codex_usage_display",
         &request.zellij_codex_usage_display,
-        "quota",
+        "both",
     )?;
     let opencode_go_usage_display = normalize_usage_display(
         "zellij.opencode_go_usage_display",
@@ -2096,7 +2096,7 @@ mod tests {
                 terminal_label: "ghostty".to_string(),
                 tab_label_mode: "full".to_string(),
                 claude_usage_display: "both".to_string(),
-                codex_usage_display: "quota".to_string(),
+                codex_usage_display: "both".to_string(),
                 opencode_go_usage_display: "both".to_string(),
                 claude_usage_periods: default_claude_usage_periods(),
                 codex_usage_periods: default_codex_usage_periods(),
@@ -2379,7 +2379,7 @@ mod tests {
             zellij_default_mode: "normal".into(),
             zellij_tab_label_mode: "full".into(),
             zellij_claude_usage_display: "both".into(),
-            zellij_codex_usage_display: "quota".into(),
+            zellij_codex_usage_display: "both".into(),
             zellij_opencode_go_usage_display: "both".into(),
             zellij_claude_usage_periods: default_claude_usage_periods(),
             zellij_codex_usage_periods: default_codex_usage_periods(),
@@ -2647,6 +2647,21 @@ keybinds {
             compute_zellij_render_plan(&req).unwrap_err().code(),
             "invalid_zellij_usage_periods"
         );
+    }
+
+    // Regression: Codex status defaults to the rich 5h/week view so upstream 5% warnings can be cross-checked in the bar.
+    #[test]
+    fn codex_usage_defaults_to_both_display() {
+        let json = serde_json::json!({
+            "yazelix_layout_dir": "/tmp/yazelix/layouts",
+            "resolved_default_shell": "/bin/sh",
+        });
+        let req: ZellijRenderPlanRequest = serde_json::from_value(json).unwrap();
+        assert_eq!(req.zellij_codex_usage_display, "both");
+
+        let plan = compute_zellij_render_plan(&req).unwrap();
+        assert_eq!(plan.codex_usage_display, "both");
+        assert_eq!(plan.codex_usage_periods, vec!["5h", "week"]);
     }
 
     // Defends: the config-pack planner keeps explicit screen saver config normalized and bounded before pane-orchestrator KDL.

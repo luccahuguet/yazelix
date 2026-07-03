@@ -13,6 +13,8 @@
   skipStableWrapperRedirect ? false,
   components ? { },
   extraRuntimePackages ? [ ],
+  extraRuntimeCommands ? [ ],
+  exportedBinCommands ? [ ],
   yaziAssets ? null,
   yazelixHelixPackage ? null,
   yazelixCursorsPackage ? null,
@@ -37,6 +39,7 @@ let
       runtimeIdentity
       components
       extraRuntimePackages
+      extraRuntimeCommands
       yaziAssets
       yazelixHelixPackage
       yazelixCursorsPackage
@@ -46,6 +49,7 @@ let
       ;
     name = runtimeName;
   };
+  escapedExportedBinCommands = pkgs.lib.escapeShellArgs exportedBinCommands;
 in
 pkgs.symlinkJoin {
   inherit name;
@@ -66,6 +70,17 @@ pkgs.symlinkJoin {
     rm -f "$out/bin/yzx"
     makeWrapper "$out/shells/posix/yzx_cli.sh" "$out/bin/yzx" \
       --run 'export YAZELIX_INVOKED_YZX_PATH="$0"'${pkgs.lib.optionalString skipStableWrapperRedirect " \\\n      --run 'export YAZELIX_SKIP_STABLE_WRAPPER_REDIRECT=1'"}
+
+    for command_name in ${escapedExportedBinCommands}; do
+      if [ "$command_name" = "yzx" ]; then
+        continue
+      fi
+      if [ -e "$out/toolbin/$command_name" ]; then
+        ln -sfn "$out/toolbin/$command_name" "$out/bin/$command_name"
+      elif [ -e "$out/libexec/$command_name" ]; then
+        ln -sfn "$out/libexec/$command_name" "$out/bin/$command_name"
+      fi
+    done
   '';
 
   meta = {

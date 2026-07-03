@@ -1,0 +1,5 @@
+{
+  "commit": {"author":"drdave-flexnet <flexnetos@de-flex.net>","changes":[{"change_type":"created","content_hash":"9bfb5b504ef202cff19c6180082b1a383642aac1e8cf727e49e24a67ff848e62","doc_type":"task","document_id":"019f21ac-6bf8-7322-b113-f5620e923632","new_version":1,"previous_version":null,"slug":"tasks/nu-plugin-codedb-full-local-validation","title":"Run CodeDB full local validation"}],"created_at":"2026-07-02T07:17:13.923051669Z","id":"019f21b0-5c4e-7793-8ea5-83f99d1868a8","message":"Complete CodeDB full local validation task"},
+  "content_hash": "9147686702ee7776d1e2c2081a8d1e5616b7db9901aaf7f3ead0853b82195769",
+  "hash_version": 3
+}

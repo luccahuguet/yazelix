@@ -10,6 +10,7 @@
   name ? "yazelix-runtime",
   components ? { },
   extraRuntimePackages ? [ ],
+  extraRuntimeCommands ? [ ],
   yaziAssets ? null,
   yazelixHelixPackage ? null,
   yazelixCursorsPackage ? null,
@@ -44,6 +45,7 @@ import ./packaging/mk_runtime_tree.nix {
     runtimeIdentity
     components
     extraRuntimePackages
+    extraRuntimeCommands
     yaziAssets
     yazelixHelixPackage
     yazelixCursorsPackage

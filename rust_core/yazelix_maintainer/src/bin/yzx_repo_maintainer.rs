@@ -13,6 +13,9 @@ use yazelix_maintainer::repo_test_runner::{RepoTestOptions, run_repo_tests};
 use yazelix_maintainer::repo_update_workflow::{RepoUpdateOptions, run_repo_update_workflow};
 use yazelix_maintainer::repo_validation::repo_root;
 use yazelix_maintainer::repo_version_bump::perform_version_bump;
+use yazelix_maintainer::repo_yazelix_file_inventory::{
+    InventoryOptions, default_inventory_options, write_inventory_json,
+};
 
 fn main() {
     let mut args = std::env::args().skip(1);
@@ -142,6 +145,20 @@ fn main() {
             let options = parse_canary_session_args(args.collect());
             run_disposable_canary_session(&resolved_repo_root, &options)
         }
+        "yazelix-file-inventory" => {
+            let (options, out_path) =
+                parse_yazelix_file_inventory_args(&resolved_repo_root, args.collect());
+            write_inventory_json(&options, &out_path).map(|rows| {
+                println!(
+                    "{}",
+                    serde_json::json!({
+                        "out": out_path.display().to_string(),
+                        "rows": rows,
+                        "mutating": false,
+                    })
+                );
+            })
+        }
         _ => {
             eprintln!("Unknown maintainer command `{command}`");
             print_usage_and_exit();
@@ -156,7 +173,7 @@ fn main() {
 
 fn print_usage_and_exit() -> ! {
     eprintln!(
-        "Usage: yzx_repo_maintainer [--repo-root PATH] <sync-readme-surface|run-tests|version-bump|release|sync-issues|validate-issue-bead-contract|dev-update|lint-nu|rust|canary-session> [options]"
+        "Usage: yzx_repo_maintainer [--repo-root PATH] <sync-readme-surface|run-tests|version-bump|release|sync-issues|validate-issue-bead-contract|dev-update|lint-nu|rust|canary-session|yazelix-file-inventory> [options]"
     );
     std::process::exit(2);
 }
@@ -265,6 +282,70 @@ fn parse_dev_update_args(args: Vec<String>) -> RepoUpdateOptions {
         }
     }
     options
+}
+
+fn parse_yazelix_file_inventory_args(
+    repo_root: &std::path::Path,
+    args: Vec<String>,
+) -> (InventoryOptions, PathBuf) {
+    let mut options = default_inventory_options(repo_root);
+    let mut out_path = None;
+    let mut iter = args.into_iter();
+
+    while let Some(arg) = iter.next() {
+        match arg.as_str() {
+            "--out" => {
+                let Some(value) = iter.next() else {
+                    eprintln!("Missing value after --out");
+                    std::process::exit(2);
+                };
+                out_path = Some(PathBuf::from(value));
+            }
+            "--envctl-root" => {
+                let Some(value) = iter.next() else {
+                    eprintln!("Missing value after --envctl-root");
+                    std::process::exit(2);
+                };
+                options.envctl_root = Some(PathBuf::from(value));
+            }
+            "--meta-root" => {
+                let Some(value) = iter.next() else {
+                    eprintln!("Missing value after --meta-root");
+                    std::process::exit(2);
+                };
+                options.meta_root = Some(PathBuf::from(value));
+            }
+            "--real-home" => {
+                let Some(value) = iter.next() else {
+                    eprintln!("Missing value after --real-home");
+                    std::process::exit(2);
+                };
+                options.real_home = Some(PathBuf::from(value));
+            }
+            "--nix-store" => {
+                let Some(value) = iter.next() else {
+                    eprintln!("Missing value after --nix-store");
+                    std::process::exit(2);
+                };
+                options.nix_store = Some(PathBuf::from(value));
+            }
+            "--no-envctl-root" => options.envctl_root = None,
+            "--no-meta-root" => options.meta_root = None,
+            "--no-real-home" => options.real_home = None,
+            "--no-nix-store" => options.nix_store = None,
+            _ => {
+                eprintln!("Unknown yazelix-file-inventory option `{arg}`");
+                std::process::exit(2);
+            }
+        }
+    }
+
+    let out_path = out_path.unwrap_or_else(|| {
+        eprintln!("Missing --out PATH for yazelix-file-inventory");
+        std::process::exit(2);
+    });
+
+    (options, out_path)
 }
 
 fn parse_canary_list(raw: &str) -> Vec<String> {

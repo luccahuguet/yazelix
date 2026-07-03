@@ -3,7 +3,7 @@ id: 019f20d5-6eb1-7c01-a056-d6e47e6eccc6
 slug: tasks/nu-plugin-codedb-build
 title: "Import and build Nu plugin codedb execution package"
 type: task
-status: active
+status: completed
 priority: high
 tags: [nu_plugin, nushell, plugin, codedb, yazelix]
 ---
@@ -20,13 +20,15 @@ Track `/home/flexnetos/Downloads/nu_plugin` in GitKB, preserve its execution pac
 - Canonical PRD: `prd/nu_plugin_codedb_v1_1_full_prd.md`
 - Task source of truth: `execution/TASK_GRAPH.csv`
 - Package validation: `manifests/PACKAGE_VALIDATION.json` reports `passed`
-- Checksum scope: 59 package files, excluding the self-hashing manifest/checksum/validation files
-- Task graph: 69 rows total, 18 complete package/docs rows and 51 planned implementation rows
-- First executable implementation task: `CDB013` (`Create Rust workspace skeleton`)
+- Checksum scope: 206 package files, excluding the self-hashing manifest/checksum/validation files and final validation log
+- Task graph: 69 rows total, all represented in GitKB task documents or this umbrella package task
+- Final package zip: `/home/flexnetos/Downloads/nu_plugin_codedb_current_resealed.zip`
 
 ## Goal
 
-Deliver `nu_plugin_codedb` V1.1: a Rust-native Nushell plugin plus `codedb` CLI/MCP surface that captures the compiler-observable Rust crate envelope into redb-backed tables, blobs, proof rows, validation errors, and capture gaps. Git/source files remain authoritative input; CodeDB is evidence, not source truth.
+Deliver `nu_plugin_codedb` V1.1: a Rust-native Nushell plugin plus `codedb` CLI/MCP surface that captures the compiler-observable Rust crate envelope into redb-backed tables, blobs, proof rows, validation errors, and capture gaps.
+
+The intended ownership boundary is: source files and upstream repository checkouts remain the raw input, CodeDB is the accurate structured fact store over those files, and `envctl` is the environment/export bridge that can consume CodeDB rows and materialize files again when needed. In that split, CodeDB is more precise than `envctl` for code/file semantics because it owns table, blob, crate, proof, validation, and gap rows; `envctl` owns target selection and file export semantics.
 
 ## Readiness Gate
 
@@ -49,7 +51,10 @@ Before mutating package implementation files:
 - [x] `cargo metadata` succeeds for the package workspace
 - [x] `logs/CDB013-workspace.log` records the build command/evidence
 - [x] `nu_plugin_codedb` builds and returns a table-shaped transient Nu plugin response
-- [ ] Next implementation task is selected from the CSV after `CDB013` completes
+- [x] Next implementation task is selected from the CSV after `CDB013` completes
+- [x] All canonical CSV task IDs `CDB000` through `CDB068` are represented in GitKB task documents or this umbrella task
+- [x] Final package manifests, checksums, validation JSON, and resealed zip were regenerated after the CSV source-of-truth repair
+- [x] Full workspace build and test gates pass for the current package
 
 ## CDB Task Graph Projection
 
@@ -127,7 +132,38 @@ Source: `/home/flexnetos/Downloads/nu_plugin/execution/TASK_GRAPH.csv`
 | CDB067 | complete | package | Validate and seal final execution package | CDB066 | PACKAGE_VALIDATION.json status is passed | logs/CDB067-final-validation.log |
 | CDB068 | complete | package-repair | Repair TASK_GRAPH CSV source-of-truth file linkage | CDB067 | TASK_GRAPH parses; all current artifact references are exact package-relative paths; completed task evidence logs exist; dependency graph remains acyclic; checksums resealed | logs/CDB068-csv-source-of-truth-repair.log |
 
-## Current Execution
+## Final Execution Audit
+
+Completed on 2026-07-02 after the package task graph ran through `CDB068`.
+
+Coverage:
+
+- CSV task rows: 69
+- GitKB CDB IDs found: 69
+- Missing CDB IDs: 0
+- GitKB task documents: 58, with `CDB000` through `CDB012` represented in this umbrella task and all implementation/package tasks represented in individual task documents or umbrella references
+
+Boundary decision:
+
+- CodeDB owns structured file/code evidence: datatable rows, source blob metadata, redb persistence, Rust/crate facts, proof rows, validation errors, capture gaps, and bounded CLI/Nu/MCP reads
+- Nushell native file-to-table behavior is leveraged as a user-facing table idiom, while the plugin supplies the CodeDB-specific schema, storage, provenance, safety, and crate semantics
+- `envctl` consumes/export CodeDB table rows for runtime integration and converts rows back to files only at explicit export/materialization boundaries
+- Source package files live outside this Yazelix git worktree at `/home/flexnetos/Downloads/nu_plugin`; the Yazelix PR records the GitKB workflow/evidence projection
+
+Final gates:
+
+- `sha256sum -c manifests/CHECKSUMS.sha256` passed for 206 scoped files
+- `cargo fmt --check` passed
+- `cargo test --workspace` passed
+- Fixture generated-lock guard passed with no `fixtures/**/Cargo.lock` files
+- `PACKAGE_VALIDATION.json` status: `passed`
+- `PACKAGE_VALIDATION.json` rows: 69 task graph rows, 69 task file map rows, 109 checklist items, 0 unmapped checklist items
+- CSV source-of-truth repair status: `passed`
+- Resealed zip: `/home/flexnetos/Downloads/nu_plugin_codedb_current_resealed.zip`
+- Resealed zip SHA-256: `e7eeca0dff54c433dfd3eb81dd02b9b496204a4b737b40b3356ca5c1e63acbd6`
+- `unzip -t /home/flexnetos/Downloads/nu_plugin_codedb_current_resealed.zip` reported no compressed data errors
+
+## Initial Execution
 
 `CDB013` completed in this session. The package allows only `Cargo.toml` and `crates/*` for this step, with `cargo metadata` as the validation gate.
 

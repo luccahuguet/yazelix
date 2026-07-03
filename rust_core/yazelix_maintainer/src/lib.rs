@@ -12,4 +12,5 @@ pub mod repo_test_runner;
 pub mod repo_update_workflow;
 pub mod repo_validation;
 pub mod repo_version_bump;
+pub mod repo_yazelix_file_inventory;
 pub mod workspace_session_contract;

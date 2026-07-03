@@ -14,7 +14,7 @@ use std::path::Path;
 pub const SETTINGS_CONTRACT_ID: &str = "yazelix.settings";
 pub const SETTINGS_CONTRACT_STATE_PATH: &str = "ratconfig.contract";
 const SETTINGS_CONTRACT_BASELINE_VERSION: u64 = 1;
-pub const SETTINGS_CONTRACT_CURRENT_VERSION: u64 = 15;
+pub const SETTINGS_CONTRACT_CURRENT_VERSION: u64 = 16;
 const CHANGE_RENAME_EDITOR_SIDEBAR_TO_WORKSPACE_LEFT_SIDEBAR: &str =
     "rename-editor-sidebar-to-workspace-left-sidebar";
 const CHANGE_REPLACE_NATIVE_MOVEMENT_DEFAULTS: &str = "replace-native-movement-defaults";
@@ -35,6 +35,7 @@ const CHANGE_ADD_SESSION_WIDGET_TRAY_VALUE: &str = "add-session-widget-tray-valu
 const CHANGE_ADD_WIDGET_CHROME_SETTINGS: &str = "add-widget-chrome-settings";
 const CHANGE_ADOPT_CTRL_ALT_NATIVE_MODE_LAYER: &str = "adopt-ctrl-alt-native-mode-layer";
 const CHANGE_ADOPT_MIXED_NATIVE_MODE_LAYER: &str = "adopt-mixed-native-mode-layer";
+const CHANGE_RESTORE_CODEX_USAGE_BOTH_DEFAULT: &str = "restore-codex-usage-both-default";
 pub const SETTINGS_CONTRACT_APPLIED_CHANGE_IDS: &[&str] = &[
     CHANGE_RENAME_EDITOR_SIDEBAR_TO_WORKSPACE_LEFT_SIDEBAR,
     CHANGE_REPLACE_NATIVE_MOVEMENT_DEFAULTS,
@@ -50,6 +51,7 @@ pub const SETTINGS_CONTRACT_APPLIED_CHANGE_IDS: &[&str] = &[
     CHANGE_ADD_WIDGET_CHROME_SETTINGS,
     CHANGE_ADOPT_CTRL_ALT_NATIVE_MODE_LAYER,
     CHANGE_ADOPT_MIXED_NATIVE_MODE_LAYER,
+    CHANGE_RESTORE_CODEX_USAGE_BOTH_DEFAULT,
 ];
 const OPTIONAL_ADDITIVE_DEFAULT_PATHS: &[&str] = &["zellij.custom_popups"];
 
@@ -346,6 +348,15 @@ fn settings_contract_for_defaults(defaults: &JsonValue) -> ConfigContract {
                     },
                 ],
             ),
+            ContractChange::automatic(
+                CHANGE_RESTORE_CODEX_USAGE_BOTH_DEFAULT,
+                15,
+                16,
+                vec![MigrationOp::Transform {
+                    path: "zellij.codex_usage_display".to_string(),
+                    transform: restore_codex_usage_both_default,
+                }],
+            ),
         ],
     }
 }
@@ -445,6 +456,17 @@ fn clear_quit_unbind_default(value: &JsonValue) -> Result<Option<JsonValue>, Str
 
 fn restore_quit_ctrl_default(value: &JsonValue) -> Result<Option<JsonValue>, String> {
     replace_default_keybinding(value, "Ctrl Alt q", "Ctrl q")
+}
+
+fn restore_codex_usage_both_default(value: &JsonValue) -> Result<Option<JsonValue>, String> {
+    let display = value
+        .as_str()
+        .ok_or_else(|| "expected a Codex usage display string".to_string())?;
+    if display == "quota" {
+        Ok(Some(json!("both")))
+    } else {
+        Ok(None)
+    }
 }
 
 fn enable_kitty_keyboard_protocol_default(value: &JsonValue) -> Result<Option<JsonValue>, String> {
@@ -970,6 +992,34 @@ mod tests {
                 .applied_changes
                 .iter()
                 .any(|change| change.id == "add-widget-chrome-settings")
+        );
+    }
+
+    // Regression: configs carrying the downgraded Codex quota-only default are restored to the richer status display.
+    #[test]
+    fn migrates_codex_usage_display_default_back_to_both() {
+        let contract = settings_contract_for_defaults(&json!({}));
+        let raw = r#"{
+  "zellij": {
+    "codex_usage_display": "quota"
+  }
+}
+"#;
+
+        let migrated =
+            join_jsonc_contract_text_from_version(raw, &contract, SETTINGS_CONTRACT_STATE_PATH, 15)
+                .unwrap();
+        let value = parse_jsonc_value(&migrated.text).unwrap();
+
+        assert_eq!(
+            get_json_path(&value, "zellij.codex_usage_display"),
+            Some(&json!("both"))
+        );
+        assert!(
+            migrated
+                .applied_changes
+                .iter()
+                .any(|change| change.id == "restore-codex-usage-both-default")
         );
     }
 

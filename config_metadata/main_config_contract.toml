@@ -10,7 +10,7 @@
 
 [contract]
 version = 1
-ratconfig_contract_version = 15
+ratconfig_contract_version = 16
 ratconfig_applied_change_ids = [
   "rename-editor-sidebar-to-workspace-left-sidebar",
   "replace-native-movement-defaults",
@@ -26,6 +26,7 @@ ratconfig_applied_change_ids = [
   "add-widget-chrome-settings",
   "adopt-ctrl-alt-native-mode-layer",
   "adopt-mixed-native-mode-layer",
+  "restore-codex-usage-both-default",
 ]
 surface = "main"
 field_count = 53
@@ -415,7 +416,7 @@ apply_mode = "generated_runtime_refresh"
 
 [fields."zellij.codex_usage_display"]
 kind = "string"
-default = "quota"
+default = "both"
 parser_key = "zellij_codex_usage_display"
 home_manager_option = "zellij_codex_usage_display"
 parser_behavior = "direct"

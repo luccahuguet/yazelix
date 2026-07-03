@@ -1711,7 +1711,7 @@ mod tests {
             zellij_default_mode: "normal".into(),
             zellij_tab_label_mode: "full".into(),
             zellij_claude_usage_display: "both".into(),
-            zellij_codex_usage_display: "quota".into(),
+            zellij_codex_usage_display: "both".into(),
             zellij_opencode_go_usage_display: "both".into(),
             zellij_claude_usage_periods: vec!["5h".into(), "week".into()],
             zellij_codex_usage_periods: vec!["5h".into(), "week".into()],
@@ -1975,6 +1975,10 @@ esac
 case "$3" in
   *'"codex_usage_periods":["5h","week"]'*) ;;
   *) exit 15 ;;
+esac
+case "$3" in
+  *'"codex_usage_display":"both"'*) ;;
+  *) exit 21 ;;
 esac
 case "$3" in
   *'"appearance_mode":"dark"'*) ;;

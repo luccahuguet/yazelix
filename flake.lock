@@ -1,5 +1,21 @@
 {
   "nodes": {
+    "beads_rust_source": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1782787733,
+        "narHash": "sha256-lIBeHo8wbW8cE5jcSSjnkPEGBYRbf7hlnGp0rzxxD44=",
+        "owner": "FlexNetOS",
+        "repo": "beads_rust",
+        "rev": "2498339168b8e88d641e8ae1664843fc69740012",
+        "type": "github"
+      },
+      "original": {
+        "owner": "FlexNetOS",
+        "repo": "beads_rust",
+        "type": "github"
+      }
+    },
     "crane": {
       "locked": {
         "lastModified": 1776396856,
@@ -236,6 +252,7 @@
     },
     "root": {
       "inputs": {
+        "beads_rust_source": "beads_rust_source",
         "fenix": "fenix",
         "home-manager": "home-manager",
         "mars": "mars",

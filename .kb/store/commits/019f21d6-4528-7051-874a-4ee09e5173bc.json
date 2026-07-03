@@ -1,0 +1,5 @@
+{
+  "commit": {"author":"drdave-flexnet <flexnetos@de-flex.net>","changes":[{"change_type":"created","content_hash":"e84c18074edda720c60f3b44c0c82659c0ab1767ce37e64f867ec018da251657","doc_type":"task","document_id":"019f21d4-b0f0-7ca3-af56-86524430ee79","new_version":1,"previous_version":null,"slug":"tasks/nu-plugin-codedb-nu-syntax-gate","title":"Extend CodeDB Nushell syntax gate"}],"created_at":"2026-07-02T07:58:38.363906867Z","id":"019f21d6-4528-7051-874a-4ee09e5173bc","message":"Complete CodeDB Nu syntax gate task"},
+  "content_hash": "152e9ba321f9158922518f64b90afefce88d9cfe65b2afc65f78a9f84b73327e",
+  "hash_version": 3
+}
