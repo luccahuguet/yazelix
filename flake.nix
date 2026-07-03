@@ -308,7 +308,7 @@ Workspace
         cargoLock.lockFile = ./crates/yzn-open/Cargo.lock;
       };
       yznYaziToml = pkgs.replaceVars ./yazi/yazi.toml {
-        opener = "YZN_EDITOR=${yznHelix}/bin/yzn-hx YZN_ZELLIJ=${yazelixZellijPackage}/bin/zellij ${yznOpenCore}/bin/yzn-open";
+        opener = "YZN_ZELLIJ=${yazelixZellijPackage}/bin/zellij ${yznOpenCore}/bin/yzn-open";
       };
       yznYaziConfig = pkgs.runCommand "yzn-yazi-config" {} ''
         install -D -m 644 ${./yazi/init.lua} "$out/init.lua"
@@ -339,7 +339,8 @@ Workspace
       });
       defaultConfig = builtins.fromTOML (builtins.readFile ./config.toml);
       defaultBarWidgets = defaultConfig.bar.widgets;
-      defaultPopupSize = toString defaultConfig.popup.size;
+      defaultPopupSideMargin = toString defaultConfig.popup.side_margin;
+      defaultPopupVerticalMargin = toString defaultConfig.popup.vertical_margin;
       barRenderRequest = import ./packaging/bar-render-request.nix {
         inherit (pkgs) coreutils nushell;
         runtimeIdentity = yznRuntimeIdentity;
@@ -430,7 +431,7 @@ Workspace
         yazelixZellijBarWasm = "${yazelixZellijBarPackage}/share/yazelix_zellij_bar/zjstatus.wasm";
         yazelixZellijPaneOrchestratorWasm = "${yazelixZellijPaneOrchestratorPackage}/${yazelixZellijPaneOrchestratorPackage.wasmPath}";
         defaultBarWidgetsJson = builtins.toJSON defaultBarWidgets;
-        inherit defaultPopupSize;
+        inherit defaultPopupSideMargin defaultPopupVerticalMargin;
         pathPrefix = pkgs.lib.makeBinPath [
           pkgs.coreutils
           pkgs.git
@@ -572,11 +573,13 @@ Workspace
           exit 1
         fi
         grep -q 'program = "fish"' "$config_files/config.toml"
+        grep -q 'command = "yzn-hx"' "$config_files/config.toml"
         grep -q 'enabled = false' "$config_files/config.toml"
         grep -q 'style = "random"' "$config_files/config.toml"
         grep -q 'contract_id = "yazelix-next.config"' "$config_files/config.toml"
         ! grep -q 'contract_id = "user-owned"' "$config_files/config.toml"
         test "$(YAZELIX_NEXT_CONFIG_HOME="$config_files" ${yzn}/libexec/yazelix-next/yzn-config --get shell.program)" = fish
+        test "$(YAZELIX_NEXT_CONFIG_HOME="$config_files" ${yzn}/libexec/yazelix-next/yzn-config --get editor.command)" = yzn-hx
         grep -q 'width = 1200' "$config_files/mars/config.toml"
         grep -q 'pane_frames false' "$config_files/zellij/config.kdl"
         grep -q 'format = "::"' "$config_files/starship.toml"

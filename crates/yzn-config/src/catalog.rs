@@ -7,6 +7,7 @@ pub(crate) const CONTRACT_VERSION: u64 = 1;
 
 pub(crate) const OPEN_LOG_LEVEL_PATH: &str = "open.log_level";
 pub(crate) const SHELL_PROGRAM_PATH: &str = "shell.program";
+pub(crate) const EDITOR_COMMAND_PATH: &str = "editor.command";
 pub(crate) const WELCOME_ENABLED_PATH: &str = "welcome.enabled";
 pub(crate) const WELCOME_STYLE_PATH: &str = "welcome.style";
 pub(crate) const WELCOME_DURATION_SECONDS_PATH: &str = "welcome.duration_seconds";
@@ -22,7 +23,8 @@ pub(crate) const WELCOME_STYLE_VALUES: &[&str] = &[
     "game_of_life_bloom",
     "random",
 ];
-pub(crate) const POPUP_SIZE_PATH: &str = "popup.size";
+pub(crate) const POPUP_SIDE_MARGIN_PATH: &str = "popup.side_margin";
+pub(crate) const POPUP_VERTICAL_MARGIN_PATH: &str = "popup.vertical_margin";
 pub(crate) const BAR_WIDGETS_PATH: &str = "bar.widgets";
 pub(crate) const BAR_WIDGET_VALUES: &[&str] = &[
     "session",
@@ -113,7 +115,7 @@ pub(crate) const CONFIG_FIELDS: &[ConfigFieldSpec] = &[
     ConfigFieldSpec {
         field: FieldSpec::string_choice(
             OPEN_LOG_LEVEL_PATH,
-            "Diagnostics written by yzn-open for Yazi-to-Helix open requests.",
+            "Diagnostics written by yzn-open for managed Yazi open requests.",
             &["off", "error", "info", "debug"],
             "off, error, info, or debug",
         ),
@@ -129,6 +131,16 @@ pub(crate) const CONFIG_FIELDS: &[ConfigFieldSpec] = &[
         ),
         apply_summary: "new panes",
         apply_detail: "Saved shell selection applies to newly launched panes and sessions.",
+    },
+    ConfigFieldSpec {
+        field: FieldSpec::string_choice(
+            EDITOR_COMMAND_PATH,
+            "Editor command used by managed Yazi opens. Use yzn-hx for packaged Yazelix Helix, or a host executable such as nvim.",
+            &[],
+            "one non-empty executable command without arguments",
+        ),
+        apply_summary: "new opens",
+        apply_detail: "Saved editor command applies to newly launched managed Yazi opens.",
     },
     ConfigFieldSpec {
         field: FieldSpec::boolean(
@@ -159,12 +171,21 @@ pub(crate) const CONFIG_FIELDS: &[ConfigFieldSpec] = &[
     },
     ConfigFieldSpec {
         field: FieldSpec::integer(
-            POPUP_SIZE_PATH,
-            "Width and height percentage for managed popups.",
-            "integer from 1 to 100",
+            POPUP_SIDE_MARGIN_PATH,
+            "Left and right cell margin for managed popups. Set to 1 for a little margin.",
+            "non-negative integer",
         ),
         apply_summary: "next launch",
-        apply_detail: "Saved popup size applies to newly launched Yazelix sessions.",
+        apply_detail: "Saved popup margins apply to newly launched Yazelix sessions.",
+    },
+    ConfigFieldSpec {
+        field: FieldSpec::integer(
+            POPUP_VERTICAL_MARGIN_PATH,
+            "Top and bottom cell margin for managed popups. Set to 1 for a little margin.",
+            "non-negative integer",
+        ),
+        apply_summary: "next launch",
+        apply_detail: "Saved popup margins apply to newly launched Yazelix sessions.",
     },
 ];
 

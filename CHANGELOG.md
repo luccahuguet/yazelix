@@ -22,7 +22,14 @@ User-visible runtime changes for Yazelix Next live here.
   state, the Mars and Zellij tabs are simple managed render/edit files that
   apply on new launches, and the Starship tab edits `format`, `right_format`,
   and `add_newline`. The managed Starship left prompt defaults to `::`. The UI
-  refuses to replace a source file whose permissions are read-only.
+  can open staged text edits in the configured editor before saving and refuses
+  to replace a source file whose permissions are read-only.
+- Root `config.toml` supports `[editor].command`, defaulting to `yzn-hx`.
+  Managed Yazi opens resolve `yzn-hx` to packaged Yazelix Helix; host commands
+  such as `nvim` run from `PATH`, bypass the Helix bridge, and stay
+  user-owned. `yzn status` and `yzn doctor` report the configured and effective
+  editor, and missing editor commands fail with a direct diagnostic before
+  opening a pane.
 - The `yzn config` Helix tab opens managed `helix/config.toml`,
   `helix/languages.toml`, `helix/helix.scm`, and `helix/init.scm` files in
   `yzn-hx`, creating TOML starter files only after their row is activated and
@@ -68,12 +75,13 @@ User-visible runtime changes for Yazelix Next live here.
   replies as success.
 - Managed Yazi appends optional user `yazi/init.lua` and `yazi/keymap.toml`
   sidecars after the packaged setup without importing full native Yazi config.
-- `config.toml` controls `open.log_level`, `shell.program`, `[popup].size`,
-  and `[bar].widgets`; managed popups default to 95% width and height, invalid
-  semantic values fail before launch, and `yzn config` shows these root fields
-  in the main config tab with bar widgets as an ordered Ratconfig string-list
-  picker. Custom bar widget layouts keep the sidebar swap layout paired with the
-  generated layout. The empty workspace widget is not selectable.
+- `config.toml` controls `open.log_level`, `shell.program`,
+  `[popup].side_margin`, `[popup].vertical_margin`, and `[bar].widgets`;
+  managed popups default to zero cell margins, invalid semantic values fail
+  before launch, and `yzn config` shows these root fields in the main config tab
+  with bar widgets as an ordered Ratconfig string-list picker. Custom bar widget
+  layouts keep the sidebar swap layout paired with the generated layout. The
+  empty workspace widget is not selectable.
 - `yzn` appends `~/.config/yazelix-next/zellij/config.kdl` as a native Zellij
   sidecar for safe preferences, with a small denylist guardrail for obvious
   ownership lines such as keymaps, shell, layout, plugins, Kitty keyboard

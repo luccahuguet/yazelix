@@ -1,10 +1,10 @@
 use std::{
     env,
-    ffi::OsString,
+    ffi::{OsStr, OsString},
     fmt::Display,
     fs::{self, OpenOptions},
     io::Write,
-    os::unix::process::CommandExt,
+    os::unix::{ffi::OsStrExt, fs::PermissionsExt, process::CommandExt},
     path::{Path, PathBuf},
     process::{self, Command, Output, Stdio},
     time::{SystemTime, UNIX_EPOCH},
@@ -35,7 +35,8 @@ const YAZELIX_ZELLIJ_POPUP_WASM: &str = "@yazelixZellijPopupWasm@";
 const YAZELIX_ZELLIJ_BAR_WASM: &str = "@yazelixZellijBarWasm@";
 const YAZELIX_ZELLIJ_PANE_ORCHESTRATOR_WASM: &str = "@yazelixZellijPaneOrchestratorWasm@";
 const DEFAULT_BAR_WIDGETS_JSON: &str = r#"@defaultBarWidgetsJson@"#;
-const DEFAULT_POPUP_SIZE: &str = "@defaultPopupSize@";
+const DEFAULT_POPUP_SIDE_MARGIN: &str = "@defaultPopupSideMargin@";
+const DEFAULT_POPUP_VERTICAL_MARGIN: &str = "@defaultPopupVerticalMargin@";
 const PATH_PREFIX: &str = "@pathPrefix@";
 const SPONSOR_URL: &str = "https://github.com/sponsors/luccahuguet";
 const ZELLIJ_HOME_PLACEHOLDER: &str = "\"__YZN_HOME__\"";
@@ -175,6 +176,8 @@ struct Runtime {
     bridge_session_id: OsString,
     yzn_open_log: String,
     shell_program: String,
+    editor_command: String,
+    editor: String,
     welcome_enabled: String,
     welcome_style: String,
     welcome_duration_seconds: String,
@@ -186,7 +189,8 @@ struct Runtime {
     layout: PathBuf,
     layout_source: &'static str,
     bar_widgets: String,
-    popup_size: String,
+    popup_side_margin: String,
+    popup_vertical_margin: String,
     zellij_status_cache: PathBuf,
     zellij_permissions: PathBuf,
 }
@@ -200,12 +204,24 @@ impl Runtime {
         let config_toml = config_home.join("config.toml");
         let yzn_open_log = config_value(&config_home, &config_toml, "open.log_level")?;
         let shell_program = config_value(&config_home, &config_toml, "shell.program")?;
+        let editor_command =
+            trim_output(config_value(&config_home, &config_toml, "editor.command")?);
+        let editor = effective_editor_command(&editor_command);
         let welcome_enabled = config_value(&config_home, &config_toml, "welcome.enabled")?;
         let welcome_style = config_value(&config_home, &config_toml, "welcome.style")?;
         let welcome_duration_seconds =
             config_value(&config_home, &config_toml, "welcome.duration_seconds")?;
         let bar_widgets = trim_output(config_value(&config_home, &config_toml, "bar.widgets")?);
-        let popup_size = trim_output(config_value(&config_home, &config_toml, "popup.size")?);
+        let popup_side_margin = trim_output(config_value(
+            &config_home,
+            &config_toml,
+            "popup.side_margin",
+        )?);
+        let popup_vertical_margin = trim_output(config_value(
+            &config_home,
+            &config_toml,
+            "popup.vertical_margin",
+        )?);
         let (layout_source, layout) = active_layout(&state_dir, &bar_widgets)?;
         let user_mars_config_home = config_home.join("mars");
         let (mars_config_source, mars_config_home) =
@@ -232,7 +248,8 @@ impl Runtime {
             zellij_config_source,
             zellij_config,
             &layout,
-            &popup_size,
+            &popup_side_margin,
+            &popup_vertical_margin,
             &home_dir,
         )?;
         let zellij_status_cache = state_dir.join("zellij/session/status_bar_cache.json");
@@ -281,6 +298,8 @@ impl Runtime {
             bridge_session_id: bridge_session_id(),
             yzn_open_log: trim_output(yzn_open_log),
             shell_program: trim_output(shell_program),
+            editor_command,
+            editor,
             welcome_enabled: trim_output(welcome_enabled),
             welcome_style: trim_output(welcome_style),
             welcome_duration_seconds: trim_output(welcome_duration_seconds),
@@ -292,7 +311,8 @@ impl Runtime {
             layout,
             layout_source,
             bar_widgets,
-            popup_size,
+            popup_side_margin,
+            popup_vertical_margin,
             zellij_status_cache,
             zellij_permissions,
         })
@@ -303,8 +323,10 @@ impl Runtime {
             .env("YAZELIX_NEXT_CONFIG_HOME", &self.config_home)
             .env("YAZELIX_STATE_DIR", &self.state_dir)
             .env("YAZELIX_HELIX_BRIDGE_SESSION_ID", &self.bridge_session_id)
-            .env("EDITOR", YZN_HELIX)
-            .env("VISUAL", YZN_HELIX)
+            .env("YAZELIX_NEXT_EDITOR", &self.editor)
+            .env("EDITOR", &self.editor)
+            .env("VISUAL", &self.editor)
+            .env("YZN_EDITOR", &self.editor)
             .env("YZN_OPEN_LOG", &self.yzn_open_log)
             .env("YZN_WELCOME_ENABLED", &self.welcome_enabled)
             .env("YZN_WELCOME_STYLE", &self.welcome_style)
@@ -344,6 +366,8 @@ fn print_status() -> Result<(), AppError> {
     println!("config home: {}", runtime.config_home.display());
     println!("state dir: {}", runtime.state_dir.display());
     println!("shell: {}", runtime.shell_program);
+    println!("editor command: {}", runtime.editor_command);
+    println!("editor: {}", runtime.editor);
     println!("open log: {}", runtime.yzn_open_log);
     println!("welcome enabled: {}", runtime.welcome_enabled);
     println!("welcome style: {}", runtime.welcome_style);
@@ -352,9 +376,9 @@ fn print_status() -> Result<(), AppError> {
     println!("zellij config: {}", runtime.zellij_config());
     println!("zellij sidecar: {}", runtime.zellij_sidecar.display());
     println!("bar widgets: {}", runtime.bar_widgets);
-    println!("popup size: {}", runtime.popup_size);
+    println!("popup side margin: {}", runtime.popup_side_margin);
+    println!("popup vertical margin: {}", runtime.popup_vertical_margin);
     println!("layout: {}", runtime.layout());
-    println!("editor: {YZN_HELIX}");
     println!("inside zellij: {}", zellij_session_label("yes", "no"));
     Ok(())
 }
@@ -362,11 +386,14 @@ fn print_status() -> Result<(), AppError> {
 fn print_doctor() -> Result<(), AppError> {
     let runtime = Runtime::prepare().map_err(doctor_failure)?;
     check_doctor_inputs().map_err(doctor_failure)?;
+    require_command("editor", &runtime.editor).map_err(doctor_failure)?;
 
     println!("Yazelix doctor");
     doctor_ok("config home", runtime.config_home.display());
     doctor_ok("state dir", runtime.state_dir.display());
     doctor_ok("shell.program", &runtime.shell_program);
+    doctor_ok("editor.command", &runtime.editor_command);
+    doctor_ok("editor", &runtime.editor);
     doctor_ok("open.log_level", &runtime.yzn_open_log);
     doctor_ok("welcome.enabled", &runtime.welcome_enabled);
     doctor_ok("welcome.style", &runtime.welcome_style);
@@ -378,11 +405,11 @@ fn print_doctor() -> Result<(), AppError> {
     doctor_ok("zellij config", runtime.zellij_config());
     doctor_ok("zellij sidecar", runtime.zellij_sidecar.display());
     doctor_ok("bar.widgets", &runtime.bar_widgets);
-    doctor_ok("popup.size", &runtime.popup_size);
+    doctor_ok("popup.side_margin", &runtime.popup_side_margin);
+    doctor_ok("popup.vertical_margin", &runtime.popup_vertical_margin);
     doctor_ok("zellij status cache", runtime.zellij_status_cache.display());
     doctor_ok("zellij permissions", runtime.zellij_permissions.display());
     doctor_ok("layout", runtime.layout());
-    doctor_ok("editor", YZN_HELIX);
     doctor_ok("config helper", YZN_CONFIG);
     doctor_ok("screen helper", YZN_SCREEN);
     doctor_ok("welcome helper", YZN_WELCOME);
@@ -469,6 +496,32 @@ fn require_file(label: &str, path: &Path) -> Result<(), AppError> {
     }
 }
 
+fn require_command(label: &str, command: &str) -> Result<(), AppError> {
+    let path = runtime_path();
+    if command_exists(OsStr::new(command), Some(path.as_os_str())) {
+        return Ok(());
+    }
+    Err(startup(
+        format!("{label} command not found: {command}"),
+        command,
+        1,
+    ))
+}
+
+fn command_exists(command: &OsStr, path: Option<&OsStr>) -> bool {
+    if command.as_bytes().contains(&b'/') {
+        return executable_file(Path::new(command));
+    }
+    path.into_iter()
+        .flat_map(env::split_paths)
+        .any(|dir| executable_file(&dir.join(command)))
+}
+
+fn executable_file(path: &Path) -> bool {
+    fs::metadata(path)
+        .is_ok_and(|metadata| metadata.is_file() && metadata.permissions().mode() & 0o111 != 0)
+}
+
 fn doctor_ok(label: &str, value: impl Display) {
     println!("ok {label}: {value}");
 }
@@ -506,6 +559,14 @@ fn config_value(config_home: &Path, config_toml: &Path, key: &str) -> Result<Str
     )
 }
 
+fn effective_editor_command(command: &str) -> String {
+    if command == "yzn-hx" {
+        YZN_HELIX.to_string()
+    } else {
+        command.to_string()
+    }
+}
+
 fn active_layout(state_dir: &Path, bar_widgets: &str) -> Result<(&'static str, PathBuf), AppError> {
     if bar_widgets == DEFAULT_BAR_WIDGETS_JSON {
         return Ok(("packaged", PathBuf::from(LAYOUT)));
@@ -522,7 +583,8 @@ fn active_zellij_config(
     source: &'static str,
     config: PathBuf,
     layout: &Path,
-    popup_size: &str,
+    popup_side_margin: &str,
+    popup_vertical_margin: &str,
     home_dir: &Path,
 ) -> Result<(&'static str, PathBuf), AppError> {
     let runtime_config = state_dir.join("zellij/config.kdl");
@@ -549,10 +611,12 @@ fn active_zellij_config(
         }
         patched = replaced;
     }
-    if popup_size != DEFAULT_POPUP_SIZE {
-        let width_marker = format!("width_percent {DEFAULT_POPUP_SIZE}");
-        let height_marker = format!("height_percent {DEFAULT_POPUP_SIZE}");
-        if !patched.contains(&width_marker) || !patched.contains(&height_marker) {
+    if popup_side_margin != DEFAULT_POPUP_SIDE_MARGIN
+        || popup_vertical_margin != DEFAULT_POPUP_VERTICAL_MARGIN
+    {
+        let side_marker = format!("side_margin {DEFAULT_POPUP_SIDE_MARGIN}");
+        let vertical_marker = format!("vertical_margin {DEFAULT_POPUP_VERTICAL_MARGIN}");
+        if !patched.contains(&side_marker) || !patched.contains(&vertical_marker) {
             return Err(startup(
                 "Zellij config is missing packaged popup geometry",
                 config.display(),
@@ -560,8 +624,11 @@ fn active_zellij_config(
             ));
         }
         let replaced = patched
-            .replace(&width_marker, &format!("width_percent {popup_size}"))
-            .replace(&height_marker, &format!("height_percent {popup_size}"));
+            .replace(&side_marker, &format!("side_margin {popup_side_margin}"))
+            .replace(
+                &vertical_marker,
+                &format!("vertical_margin {popup_vertical_margin}"),
+            );
         patched = replaced;
     }
     create_dir_all_checked(parent(&runtime_config), &runtime_config)?;

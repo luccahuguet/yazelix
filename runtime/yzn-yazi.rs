@@ -39,6 +39,7 @@ fn run() -> io::Result<()> {
         None => PathBuf::from(YZN_YAZI_CONFIG),
     };
     let yzn_open_log = yzn_config_value("open.log_level")?;
+    let editor = effective_editor_command(yzn_config_value("editor.command")?);
     let mut command = Command::new(YAZI);
     command
         .args(env::args_os().skip(1))
@@ -52,9 +53,10 @@ fn run() -> io::Result<()> {
         )
         .env("YZN_OPEN", YZN_OPEN)
         .env("YZN_ZELLIJ", YZN_ZELLIJ)
-        .env("EDITOR", YZN_HELIX)
-        .env("VISUAL", YZN_HELIX)
-        .env("YZN_EDITOR", YZN_HELIX)
+        .env("YAZELIX_NEXT_EDITOR", &editor)
+        .env("EDITOR", &editor)
+        .env("VISUAL", &editor)
+        .env("YZN_EDITOR", &editor)
         .env("YZN_OPEN_LOG", yzn_open_log);
 
     if let Some(session) = nonempty_env("ZELLIJ_SESSION_NAME") {
@@ -174,6 +176,14 @@ fn yzn_config_value(path: &str) -> io::Result<String> {
     )))
 }
 
+fn effective_editor_command(command: String) -> String {
+    if command == "yzn-hx" {
+        YZN_HELIX.to_string()
+    } else {
+        command
+    }
+}
+
 fn config_home() -> Option<PathBuf> {
     nonempty_env("YAZELIX_NEXT_CONFIG_HOME")
         .map(PathBuf::from)
@@ -244,6 +254,12 @@ fn trim_output(bytes: &[u8]) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn yzn_hx_maps_to_packaged_editor_while_host_commands_pass_through() {
+        assert_eq!(effective_editor_command("yzn-hx".to_string()), YZN_HELIX);
+        assert_eq!(effective_editor_command("nvim".to_string()), "nvim");
+    }
 
     fn packaged_yazi(path: &Path) {
         fs::create_dir_all(path.join("plugins")).unwrap();

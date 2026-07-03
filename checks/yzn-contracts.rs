@@ -188,8 +188,12 @@ fn expect_front_door(yzn: &Path) {
         "welcome.enabled",
         "welcome.style",
         "welcome.duration_seconds",
+        "YAZELIX_NEXT_EDITOR",
+        "YZN_EDITOR",
+        "editor.command",
         "bar.widgets",
-        "popup.size",
+        "popup.side_margin",
+        "popup.vertical_margin",
         "lazygit",
         "yzn-bar-render",
         "yzn-env-supervisor",
@@ -229,12 +233,15 @@ fn expect_front_door(yzn: &Path) {
         format!("config home: {}", config_home.display()),
         format!("state dir: {}", state_dir.display()),
         "shell: nu".to_string(),
+        "editor command: yzn-hx".to_string(),
+        "editor: /nix/store/".to_string(),
         "open log: info".to_string(),
         "welcome enabled: true".to_string(),
         "welcome style: random".to_string(),
         "welcome duration: 3s".to_string(),
         r#"bar widgets: ["editor","shell","term","codex_usage","cpu","ram"]"#.to_string(),
-        "popup size: 95".to_string(),
+        "popup side margin: 0".to_string(),
+        "popup vertical margin: 0".to_string(),
         "layout: packaged (/nix/store/".to_string(),
         "inside zellij: no".to_string(),
     ] {
@@ -279,7 +286,7 @@ fn expect_front_door(yzn: &Path) {
     let custom_popup_state = temp.path.join("custom-popup-state");
     write_config_home(
         &custom_popup_config,
-        "[open]\nlog_level = \"info\"\n\n[shell]\nprogram = \"nu\"\n\n[popup]\nsize = 88\n",
+        "[open]\nlog_level = \"info\"\n\n[shell]\nprogram = \"nu\"\n\n[popup]\nside_margin = 2\nvertical_margin = 1\n",
     );
     let status = run_yzn_with_config(
         &yzn_bin,
@@ -288,7 +295,8 @@ fn expect_front_door(yzn: &Path) {
         &custom_popup_state,
         "custom popup status",
     );
-    expect_contains(&status, "popup size: 88", "custom popup status");
+    expect_contains(&status, "popup side margin: 2", "custom popup status");
+    expect_contains(&status, "popup vertical margin: 1", "custom popup status");
     expect_contains(&status, "zellij config: runtime (", "custom popup status");
     expect_contains(
         &status,
@@ -297,8 +305,26 @@ fn expect_front_door(yzn: &Path) {
     );
     let custom_popup_config =
         fs::read_to_string(custom_popup_state.join("zellij/config.kdl")).unwrap();
-    assert_eq!(custom_popup_config.matches("width_percent 88").count(), 4);
-    assert_eq!(custom_popup_config.matches("height_percent 88").count(), 4);
+    assert_eq!(custom_popup_config.matches("width_percent 100").count(), 4);
+    assert_eq!(custom_popup_config.matches("height_percent 100").count(), 4);
+    assert_eq!(custom_popup_config.matches("side_margin 2").count(), 4);
+    assert_eq!(custom_popup_config.matches("vertical_margin 1").count(), 4);
+
+    let custom_editor_config = temp.path.join("custom-editor-config");
+    let custom_editor_state = temp.path.join("custom-editor-state");
+    write_config_home(
+        &custom_editor_config,
+        "[open]\nlog_level = \"info\"\n\n[shell]\nprogram = \"nu\"\n\n[editor]\ncommand = \"nvim\"\n",
+    );
+    let status = run_yzn_with_config(
+        &yzn_bin,
+        "status",
+        &custom_editor_config,
+        &custom_editor_state,
+        "custom editor status",
+    );
+    expect_contains(&status, "editor command: nvim", "custom editor status");
+    expect_contains(&status, "editor: nvim", "custom editor status");
 
     let custom_config = temp.path.join("custom-bar-config");
     let custom_state = temp.path.join("custom-bar-state");
@@ -318,7 +344,8 @@ fn expect_front_door(yzn: &Path) {
         r#"bar widgets: ["editor","claude_usage","cpu"]"#,
         "custom bar status",
     );
-    expect_contains(&status, "popup size: 95", "custom bar status");
+    expect_contains(&status, "popup side margin: 0", "custom bar status");
+    expect_contains(&status, "popup vertical margin: 0", "custom bar status");
     expect_contains(&status, "zellij config: runtime (", "custom bar status");
     expect_contains(&status, "layout: runtime (", "custom bar status");
     let custom_layout = fs::read_to_string(custom_state.join("zellij/layout.kdl")).unwrap();
@@ -375,12 +402,15 @@ fn expect_front_door(yzn: &Path) {
     for expected in [
         "Yazelix doctor".to_string(),
         format!("ok config home: {}", doctor_config_home.display()),
+        "ok editor.command: yzn-hx".to_string(),
+        "ok editor: /nix/store/".to_string(),
         "ok open.log_level: info".to_string(),
         "ok welcome.enabled: true".to_string(),
         "ok welcome.style: random".to_string(),
         "ok welcome.duration_seconds: 3".to_string(),
         r#"ok bar.widgets: ["editor","shell","term","codex_usage","cpu","ram"]"#.to_string(),
-        "ok popup.size: 95".to_string(),
+        "ok popup.side_margin: 0".to_string(),
+        "ok popup.vertical_margin: 0".to_string(),
         "ok screen helper: /nix/store/".to_string(),
         "ok welcome helper: /nix/store/".to_string(),
         "ok yazi opener: /nix/store/".to_string(),
@@ -504,10 +534,12 @@ fn expect_config_ui(yzn: &Path) {
     for expected in [
         "log_level = \"info\"",
         "program = \"nu\"",
+        "command = \"yzn-hx\"",
         "enabled = true",
         "style = \"random\"",
         "duration_seconds = 3",
-        "size = 95",
+        "side_margin = 0",
+        "vertical_margin = 0",
         "widgets = [\"editor\", \"shell\", \"term\", \"codex_usage\", \"cpu\", \"ram\"]",
     ] {
         expect_contains(&packaged_config, expected, "packaged config.toml");
@@ -519,10 +551,12 @@ fn expect_config_ui(yzn: &Path) {
     for (path, expected) in [
         ("open.log_level", "info"),
         ("shell.program", "nu"),
+        ("editor.command", "yzn-hx"),
         ("welcome.enabled", "true"),
         ("welcome.style", "random"),
         ("welcome.duration_seconds", "3"),
-        ("popup.size", "95"),
+        ("popup.side_margin", "0"),
+        ("popup.vertical_margin", "0"),
         (
             "bar.widgets",
             r#"["editor","shell","term","codex_usage","cpu","ram"]"#,
@@ -566,12 +600,15 @@ fn expect_config_ui(yzn: &Path) {
         "log_level = \"info\"",
         "[shell]",
         "program = \"nu\"",
+        "[editor]",
+        "command = \"yzn-hx\"",
         "[welcome]",
         "enabled = true",
         "style = \"random\"",
         "duration_seconds = 3",
         "[popup]",
-        "size = 95",
+        "side_margin = 0",
+        "vertical_margin = 0",
         "[bar]",
         "widgets = [\"editor\", \"shell\", \"term\", \"codex_usage\", \"cpu\", \"ram\"]",
         "contract_id = \"yazelix-next.config\"",
@@ -599,10 +636,15 @@ fn expect_startup_diagnostics(yzn: &Path) {
         &bad_bar_config,
         "[open]\nlog_level = \"info\"\n\n[shell]\nprogram = \"nu\"\n\n[bar]\nwidgets = [\"weather\"]\n",
     );
+    let bad_editor_config = temp.path.join("bad-editor-config");
+    let bad_editor = write_config_home(
+        &bad_editor_config,
+        "[open]\nlog_level = \"info\"\n\n[shell]\nprogram = \"nu\"\n\n[editor]\ncommand = \"nvim --clean\"\n",
+    );
     let bad_popup_config = temp.path.join("bad-popup-config");
     let bad_popup = write_config_home(
         &bad_popup_config,
-        "[open]\nlog_level = \"info\"\n\n[shell]\nprogram = \"nu\"\n\n[popup]\nsize = 101\n",
+        "[open]\nlog_level = \"info\"\n\n[shell]\nprogram = \"nu\"\n\n[popup]\nside_margin = -1\n",
     );
     let bad_welcome_style_config = temp.path.join("bad-welcome-style-config");
     let bad_welcome_style = write_config_home(
@@ -635,10 +677,16 @@ fn expect_startup_diagnostics(yzn: &Path) {
             "invalid bar widgets",
         ),
         (
+            &bad_editor_config,
+            &bad_editor,
+            "editor.command must be one executable command without arguments",
+            "invalid editor command",
+        ),
+        (
             &bad_popup_config,
             &bad_popup,
-            "popup.size must be between 1 and 100",
-            "invalid popup size",
+            "popup.side_margin must be zero or greater",
+            "invalid popup margin",
         ),
         (
             &bad_welcome_style_config,
@@ -865,6 +913,13 @@ fn expect_yazi_alt_z(yzn: &Path) {
         expect_contains(&keymap, expected, "Yazi Alt-z keymap fragment");
     }
 
+    let yazi_toml = fs::read_to_string(yzn.join("share/yazelix-next/yazi/yazi.toml")).unwrap();
+    expect_contains(&yazi_toml, "YZN_ZELLIJ=", "Yazi opener fragment");
+    assert!(
+        !yazi_toml.contains("YZN_EDITOR="),
+        "packaged Yazi opener should inherit YZN_EDITOR from yzn-yazi"
+    );
+
     let init = fs::read_to_string(yzn.join("share/yazelix-next/yazi/init.lua")).unwrap();
     expect_contains(
         &init,
@@ -917,6 +972,8 @@ fn expect_yazi_alt_z(yzn: &Path) {
         "YZN_OPEN",
         "YZN_ZELLIJ",
         "YZN_EDITOR",
+        "YAZELIX_NEXT_EDITOR",
+        "editor.command",
         "YAZI_CONFIG_HOME",
         "init.lua",
         "keymap.toml",
@@ -1034,7 +1091,7 @@ fn expect_first_party_plugins(config: &str) {
     ] {
         let command = popup_command(config, command_suffix);
         let expected = format!(
-            "{id} {{\n                command \"{}\"\n                pane_title \"{pane_title}\"\n                width_percent 95\n                height_percent 95{extra}\n            }}",
+            "{id} {{\n                command \"{}\"\n                pane_title \"{pane_title}\"\n                width_percent 100\n                height_percent 100\n                side_margin 0\n                vertical_margin 0{extra}\n            }}",
             command.display()
         );
         assert!(
@@ -1042,8 +1099,10 @@ fn expect_first_party_plugins(config: &str) {
             "config.kdl is missing {id} popup block\n{expected}",
         );
     }
-    assert_eq!(config.matches("width_percent 95").count(), 4);
-    assert_eq!(config.matches("height_percent 95").count(), 4);
+    assert_eq!(config.matches("width_percent 100").count(), 4);
+    assert_eq!(config.matches("height_percent 100").count(), 4);
+    assert_eq!(config.matches("side_margin 0").count(), 4);
+    assert_eq!(config.matches("vertical_margin 0").count(), 4);
     for (key, payload) in [
         ("Alt Shift J", "lazygit"),
         ("Alt Shift K", "config"),

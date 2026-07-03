@@ -281,11 +281,11 @@
     "ratconfig": {
       "flake": false,
       "locked": {
-        "lastModified": 1782695275,
-        "narHash": "sha256-xJwZmU/FE+q8KGvhWYDtJrAVgiPBiOeIzHvzQN/drgk=",
+        "lastModified": 1783028111,
+        "narHash": "sha256-ygdqikhS1ef2GYtxAF5GMr54R7VO8R0dJhANk1YsTSo=",
         "owner": "luccahuguet",
         "repo": "ratconfig",
-        "rev": "0db6640d4b7ad153ec3e968b4079e86323b0ca01",
+        "rev": "67c783ed14d6167aec53ec0ada9773c91b171567",
         "type": "github"
       },
       "original": {
@@ -630,11 +630,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1782784021,
-        "narHash": "sha256-X1IVh40+NwXoQeUOwRH+7ha8tYNAtNNIGRzsSNDTfSg=",
+        "lastModified": 1783038100,
+        "narHash": "sha256-LHCn3TK5cCa0gdUqt87gGo7jAQGQP5uWwbkllS2WFVo=",
         "owner": "luccahuguet",
         "repo": "yazelix-zellij-popup",
-        "rev": "e9bd97e33e67e94dbd3396891389f4cfaafcb27f",
+        "rev": "7a2537cf6f081560cbc6e81a8f1345a9d64ccdc9",
         "type": "github"
       },
       "original": {

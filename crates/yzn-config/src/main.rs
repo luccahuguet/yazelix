@@ -10,19 +10,19 @@ use crossterm::{
     cursor,
     event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers},
     execute,
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+    terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
-use ratatui::{backend::CrosstermBackend, Terminal};
+use ratatui::{Terminal, backend::CrosstermBackend};
 use ratconfig::toml_adapter::{get_toml_path, parse_toml_value, set_toml_value_text};
 use ratconfig::{
-    build_config_ui_field, build_string_list_choice_field, draw_config_ui,
-    join_toml_contract_text_from_version, reconcile_joined_toml_contract_text,
-    string_list_values_from_json, ConfigContract, ConfigUiApp, ConfigUiApplyStatus,
-    ConfigUiDiagnostic, ConfigUiEditBehavior, ConfigUiFieldRowSpec, ConfigUiFileAction,
-    ConfigUiIntent, ConfigUiKey, ConfigUiListColumn, ConfigUiListTable, ConfigUiModel,
-    ConfigUiPathOwner, ConfigUiSource, ConfigUiStringListChoiceSpec,
+    ConfigContract, ConfigUiApp, ConfigUiApplyStatus, ConfigUiDiagnostic, ConfigUiEditBehavior,
+    ConfigUiFieldRowSpec, ConfigUiFileAction, ConfigUiIntent, ConfigUiKey, ConfigUiListColumn,
+    ConfigUiListTable, ConfigUiModel, ConfigUiPathOwner, ConfigUiSource,
+    ConfigUiStringListChoiceSpec, build_config_ui_field, build_string_list_choice_field,
+    draw_config_ui, join_toml_contract_text_from_version, reconcile_joined_toml_contract_text,
+    string_list_values_from_json,
 };
-use serde_json::{json, Value as JsonValue};
+use serde_json::{Value as JsonValue, json};
 
 mod catalog;
 
@@ -140,6 +140,19 @@ fn run_ui() -> Result<()> {
             ConfigUiIntent::Exit => break,
             ConfigUiIntent::None => {}
             ConfigUiIntent::BeginEdit { field_index, .. } => app.begin_edit_field(field_index),
+            ConfigUiIntent::EditTextExternally {
+                field_index, input, ..
+            } => {
+                let result = session.suspend(|| edit_text_externally(&input))?;
+                match result {
+                    Ok(edited) => {
+                        if let Err(message) = app.apply_external_text_edit(field_index, edited) {
+                            app.notice_error(message);
+                        }
+                    }
+                    Err(error) => app.notice_error(error.to_string()),
+                }
+            }
             ConfigUiIntent::OpenFile {
                 source_id,
                 action_id,
@@ -200,7 +213,7 @@ impl TerminalSession {
         Ok(session)
     }
 
-    fn suspend(&mut self, action: impl FnOnce() -> Result<()>) -> Result<Result<()>> {
+    fn suspend<T>(&mut self, action: impl FnOnce() -> Result<T>) -> Result<Result<T>> {
         disable_raw_mode()?;
         execute!(io::stdout(), cursor::Show, LeaveAlternateScreen)?;
         let result = action();
@@ -926,6 +939,47 @@ fn configured_editor() -> Result<PathBuf> {
         .ok_or_else(|| error("no editor configured; set YAZELIX_NEXT_EDITOR, VISUAL, or EDITOR"))
 }
 
+fn edit_text_externally(input: &str) -> Result<String> {
+    edit_text_with_editor(input, &configured_editor()?)
+}
+
+fn edit_text_with_editor(input: &str, editor: &Path) -> Result<String> {
+    let path = external_text_edit_path();
+    fs::write(&path, input)?;
+    let status = Command::new(editor).arg(&path).status().map_err(|error| {
+        io::Error::other(format!(
+            "failed to launch editor `{}`: {error}",
+            editor.display()
+        ))
+    })?;
+    if !status.success() {
+        let _ = fs::remove_file(&path);
+        return Err(error(format!(
+            "editor `{}` exited with status {status}",
+            editor.display()
+        )));
+    }
+
+    let read_result = fs::read_to_string(&path);
+    let _ = fs::remove_file(&path);
+    let mut text = read_result?;
+    if text.ends_with('\n') {
+        text.pop();
+        if text.ends_with('\r') {
+            text.pop();
+        }
+    }
+    Ok(text)
+}
+
+fn external_text_edit_path() -> PathBuf {
+    let nonce = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|duration| duration.as_nanos())
+        .unwrap_or(0);
+    env::temp_dir().join(format!("yzn-config-edit-{}-{nonce}.txt", process::id()))
+}
+
 fn reject_read_only_source(path: &Path, source_id: &str) -> Result<()> {
     if path_read_only(path) {
         return Err(error(format!(
@@ -966,11 +1020,21 @@ fn validate_config_value(field_path: &str, value: &JsonValue) -> Result<()> {
     let spec = &config_field(field_path)?.field;
     match spec.kind {
         "boolean" => json_bool(field_path, value).map(|_| ()),
-        "string" => spec.json_choice(value).map(|_| ()),
+        "string" => {
+            let value = spec.json_choice(value)?;
+            if field_path == EDITOR_COMMAND_PATH {
+                validate_editor_command(value)?;
+            }
+            Ok(())
+        }
         "integer" => {
             let value = json_i64(field_path, value)?;
-            if field_path == POPUP_SIZE_PATH && !(1..=100).contains(&value) {
-                return Err(error(format!("{field_path} must be between 1 and 100")));
+            if matches!(
+                field_path,
+                POPUP_SIDE_MARGIN_PATH | POPUP_VERTICAL_MARGIN_PATH
+            ) && value < 0
+            {
+                return Err(error(format!("{field_path} must be zero or greater")));
             }
             if field_path == WELCOME_DURATION_SECONDS_PATH && !(1..=60).contains(&value) {
                 return Err(error(format!("{field_path} must be between 1 and 60")));
@@ -979,6 +1043,18 @@ fn validate_config_value(field_path: &str, value: &JsonValue) -> Result<()> {
         }
         _ => Err(error(format!("{field_path} must be {}", spec.validation))),
     }
+}
+
+fn validate_editor_command(value: &str) -> Result<()> {
+    if value.is_empty() {
+        return Err(error("editor.command must not be empty"));
+    }
+    if value.chars().any(char::is_whitespace) {
+        return Err(error(
+            "editor.command must be one executable command without arguments",
+        ));
+    }
+    Ok(())
 }
 
 fn write_mars_config_field(path: &Path, field_path: &str, value: &JsonValue) -> Result<()> {
@@ -1356,11 +1432,7 @@ ui {{
 }
 
 fn kdl_bool(value: bool) -> &'static str {
-    if value {
-        "true"
-    } else {
-        "false"
-    }
+    if value { "true" } else { "false" }
 }
 
 fn json_bool(path: &str, value: &JsonValue) -> Result<bool> {
@@ -1497,6 +1569,28 @@ mod tests {
         fs::write(path, updated).unwrap();
     }
 
+    #[cfg(unix)]
+    #[test]
+    fn external_text_editor_round_trips_staged_input() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let temp = TempHome::new();
+        let editor = temp.path.join("editor.sh");
+        fs::write(
+            &editor,
+            "#!/bin/sh\ncat > \"$1\" <<'EOF'\nline one\nline two\nEOF\n",
+        )
+        .unwrap();
+        let mut permissions = fs::metadata(&editor).unwrap().permissions();
+        permissions.set_mode(0o755);
+        fs::set_permissions(&editor, permissions).unwrap();
+
+        assert_eq!(
+            edit_text_with_editor("original", &editor).unwrap(),
+            "line one\nline two"
+        );
+    }
+
     fn model_field<'a>(model: &'a ConfigUiModel, path: &str) -> &'a ratconfig::ConfigUiField {
         model
             .fields
@@ -1515,10 +1609,12 @@ mod tests {
 
     #[test]
     fn config_field_rejects_unknown_paths_before_io() {
-        assert!(config_field("shell.typo")
-            .unwrap_err()
-            .to_string()
-            .contains("unknown config path"));
+        assert!(
+            config_field("shell.typo")
+                .unwrap_err()
+                .to_string()
+                .contains("unknown config path")
+        );
     }
 
     #[test]
@@ -1548,8 +1644,16 @@ mod tests {
             get_toml_path(&defaults, SHELL_PROGRAM_PATH)
         );
         assert_eq!(
-            get_toml_path(&value, POPUP_SIZE_PATH),
-            get_toml_path(&defaults, POPUP_SIZE_PATH)
+            get_toml_path(&value, EDITOR_COMMAND_PATH),
+            get_toml_path(&defaults, EDITOR_COMMAND_PATH)
+        );
+        assert_eq!(
+            get_toml_path(&value, POPUP_SIDE_MARGIN_PATH),
+            get_toml_path(&defaults, POPUP_SIDE_MARGIN_PATH)
+        );
+        assert_eq!(
+            get_toml_path(&value, POPUP_VERTICAL_MARGIN_PATH),
+            get_toml_path(&defaults, POPUP_VERTICAL_MARGIN_PATH)
         );
         assert_eq!(
             get_toml_path(&value, BAR_WIDGETS_PATH),
@@ -1590,16 +1694,43 @@ mod tests {
         let error = write_config_field(&path, SHELL_PROGRAM_PATH, &json!("tcsh")).unwrap_err();
         assert!(error.to_string().contains("nu, bash, zsh, fish"));
 
-        write_config_field(&path, POPUP_SIZE_PATH, &json!(88)).unwrap();
+        write_config_field(&path, EDITOR_COMMAND_PATH, &json!("nvim")).unwrap();
         let value = read_toml_file_value(&path, "config.toml").unwrap();
-        assert_eq!(get_toml_path(&value, POPUP_SIZE_PATH), Some(&json!(88)));
         assert_eq!(
-            read_config_field(&path, config_field(POPUP_SIZE_PATH).unwrap()).unwrap(),
-            "88"
+            get_toml_path(&value, EDITOR_COMMAND_PATH),
+            Some(&json!("nvim"))
+        );
+        assert_eq!(
+            read_config_field(&path, config_field(EDITOR_COMMAND_PATH).unwrap()).unwrap(),
+            "nvim"
         );
 
-        let error = write_config_field(&path, POPUP_SIZE_PATH, &json!(101)).unwrap_err();
-        assert!(error.to_string().contains("between 1 and 100"));
+        let error = write_config_field(&path, EDITOR_COMMAND_PATH, &json!("")).unwrap_err();
+        assert!(error.to_string().contains("must not be empty"));
+        let error =
+            write_config_field(&path, EDITOR_COMMAND_PATH, &json!("nvim --clean")).unwrap_err();
+        assert!(error.to_string().contains("without arguments"));
+
+        write_config_field(&path, POPUP_SIDE_MARGIN_PATH, &json!(2)).unwrap();
+        let value = read_toml_file_value(&path, "config.toml").unwrap();
+        assert_eq!(
+            get_toml_path(&value, POPUP_SIDE_MARGIN_PATH),
+            Some(&json!(2))
+        );
+        assert_eq!(
+            read_config_field(&path, config_field(POPUP_SIDE_MARGIN_PATH).unwrap()).unwrap(),
+            "2"
+        );
+
+        write_config_field(&path, POPUP_VERTICAL_MARGIN_PATH, &json!(1)).unwrap();
+        let value = read_toml_file_value(&path, "config.toml").unwrap();
+        assert_eq!(
+            get_toml_path(&value, POPUP_VERTICAL_MARGIN_PATH),
+            Some(&json!(1))
+        );
+
+        let error = write_config_field(&path, POPUP_SIDE_MARGIN_PATH, &json!(-1)).unwrap_err();
+        assert!(error.to_string().contains("zero or greater"));
 
         write_config_field(
             &path,
@@ -1660,15 +1791,34 @@ mod tests {
         let model = build_model(&paths).unwrap();
         assert!(!model.tabs.contains(&"shell".to_string()));
         assert_eq!(model_field(&model, SHELL_PROGRAM_PATH).tab, TAB_CONFIG);
+        let editor = model_field(&model, EDITOR_COMMAND_PATH);
+        assert_eq!(editor.tab, TAB_CONFIG);
+        assert_eq!(editor.kind, "string");
+        assert_eq!(
+            editor.current_value,
+            default_config_value(EDITOR_COMMAND_PATH)
+                .unwrap()
+                .to_string()
+        );
+        assert!(editor.allowed_values.is_empty());
+        assert_eq!(editor.apply_status.summary, "new opens");
 
-        let popup = model_field(&model, POPUP_SIZE_PATH);
+        let popup = model_field(&model, POPUP_SIDE_MARGIN_PATH);
         assert_eq!(popup.tab, TAB_CONFIG);
         assert_eq!(popup.kind, "integer");
         assert_eq!(
             popup.current_value,
-            default_config_value(POPUP_SIZE_PATH).unwrap().to_string()
+            default_config_value(POPUP_SIDE_MARGIN_PATH)
+                .unwrap()
+                .to_string()
         );
         assert_eq!(popup.apply_status.summary, "next launch");
+        assert_eq!(
+            model_field(&model, POPUP_VERTICAL_MARGIN_PATH).current_value,
+            default_config_value(POPUP_VERTICAL_MARGIN_PATH)
+                .unwrap()
+                .to_string()
+        );
 
         let field = model_field(&model, BAR_WIDGETS_PATH);
 
@@ -1739,10 +1889,12 @@ mod tests {
             .collect();
 
         assert!(model.tabs.contains(&TAB_KEYS.to_string()));
-        assert!(model
-            .file_actions
-            .iter()
-            .all(|action| action.tab != TAB_KEYS));
+        assert!(
+            model
+                .file_actions
+                .iter()
+                .all(|action| action.tab != TAB_KEYS)
+        );
         assert_eq!(
             model
                 .tab_list_tables
@@ -1832,11 +1984,15 @@ mod tests {
 [bar]
 widgets = ["editor", "shell", "term", "codex_usage", "cpu", "ram"]
 
+[editor]
+command = "yzn-hx"
+
 [open]
 log_level = "info"
 
 [popup]
-size = 95
+side_margin = 0
+vertical_margin = 0
 
 [ratconfig.contract]
 applied_change_ids = []
@@ -1889,12 +2045,16 @@ style = "random"
         assert!(!paths.helix_languages.exists());
         assert!(!paths.helix_module.exists());
         assert!(!paths.helix_init.exists());
-        assert!(!fs::read_to_string(paths.mars)
-            .unwrap()
-            .contains("ratconfig.contract"));
-        assert!(fs::read_to_string(paths.zellij)
-            .unwrap()
-            .contains("rounded_corners false"));
+        assert!(
+            !fs::read_to_string(paths.mars)
+                .unwrap()
+                .contains("ratconfig.contract")
+        );
+        assert!(
+            fs::read_to_string(paths.zellij)
+                .unwrap()
+                .contains("rounded_corners false")
+        );
         assert_eq!(
             fs::read_to_string(paths.starship).unwrap(),
             DEFAULT_STARSHIP_CONFIG_TOML

@@ -9,6 +9,10 @@ log_level = "info"
 # Packaged shell for new Zellij panes: nu, bash, zsh, or fish.
 program = "nu"
 
+[editor]
+# Editor command for managed opens. yzn-hx uses packaged Yazelix Helix.
+command = "yzn-hx"
+
 [welcome]
 # Show a brief welcome splash before entering the managed runtime.
 enabled = true
@@ -20,8 +24,9 @@ style = "random"
 duration_seconds = 3
 
 [popup]
-# Width and height percentage for managed popups.
-size = 95
+# Left/right and top/bottom cell margins for managed popups.
+side_margin = 0
+vertical_margin = 0
 
 [bar]
 # Top bar widgets, left to right.

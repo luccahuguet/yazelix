@@ -6,12 +6,13 @@ use std::{
     ffi::OsString,
     fs::{self, OpenOptions},
     io::{BufRead, BufReader, Write},
+    os::unix::ffi::OsStrExt,
+    os::unix::fs::{FileTypeExt, PermissionsExt},
+    os::unix::net::UnixStream,
     path::{Path, PathBuf},
     process::{Command, ExitCode, Output},
     time::{SystemTime, UNIX_EPOCH},
 };
-
-use std::{os::unix::fs::FileTypeExt, os::unix::net::UnixStream};
 
 #[derive(Debug)]
 struct Config {
@@ -116,7 +117,18 @@ fn run(config: &Config, raw_targets: impl IntoIterator<Item = OsString>) -> Resu
     }
     log_debug(config, &format!("targets={}", json!(targets)));
     let cwd = editor_cwd(config, &targets);
-    let opened = try_bridge(config, &targets, &cwd)?;
+    let opened = if is_helix_like_editor(&config.editor) {
+        try_bridge(config, &targets, &cwd)?
+    } else {
+        log_info(
+            config,
+            &format!(
+                "bridge skipped for non-Helix editor={}",
+                config.editor.to_string_lossy()
+            ),
+        );
+        false
+    };
     rename_directory_tab(config, &targets, &cwd);
     if opened {
         return Ok(());
@@ -419,6 +431,7 @@ fn bridge_open_request(targets: &[PathBuf], working_dir: &Path) -> (&'static str
 }
 
 fn open_editor_pane(config: &Config, targets: &[PathBuf], cwd: &Path) -> Result<()> {
+    ensure_editor_command(config)?;
     let mut args = vec![
         OsString::from("run"),
         OsString::from("--name"),
@@ -480,6 +493,37 @@ fn open_editor_pane(config: &Config, targets: &[PathBuf], cwd: &Path) -> Result<
     ensure_success(&output, "zellij failed to open editor pane")?;
     log_info(config, "editor pane opened");
     Ok(())
+}
+
+fn ensure_editor_command(config: &Config) -> Result<()> {
+    if command_exists(&config.editor, env::var_os("PATH").as_deref()) {
+        return Ok(());
+    }
+    bail!(
+        "editor command not found: {}. Set editor.command to one executable name or path without arguments.",
+        config.editor.to_string_lossy()
+    )
+}
+
+fn command_exists(command: &std::ffi::OsStr, path: Option<&std::ffi::OsStr>) -> bool {
+    if command.as_bytes().contains(&b'/') {
+        return executable_file(Path::new(command));
+    }
+    path.into_iter()
+        .flat_map(env::split_paths)
+        .any(|dir| executable_file(&dir.join(command)))
+}
+
+fn executable_file(path: &Path) -> bool {
+    fs::metadata(path)
+        .is_ok_and(|metadata| metadata.is_file() && metadata.permissions().mode() & 0o111 != 0)
+}
+
+fn is_helix_like_editor(command: &std::ffi::OsStr) -> bool {
+    Path::new(command)
+        .file_name()
+        .and_then(|name| name.to_str())
+        .is_some_and(|name| matches!(name, "yzn-hx" | "hx" | "helix"))
 }
 
 fn focus_pane(config: &Config, pane_id: &str) -> Result<()> {
@@ -804,8 +848,13 @@ exit 1
     }
 
     fn test_config(root: PathBuf, session_id: &str, zellij: impl Into<OsString>) -> Config {
+        fs::create_dir_all(&root).unwrap();
+        let editor = root.join("yzn-hx");
+        if !editor.exists() {
+            write_executable(&editor, "#!/bin/sh\nexit 0\n".to_string());
+        }
         Config {
-            editor: "hx".into(),
+            editor: editor.into_os_string(),
             git: "__missing_git__".into(),
             zellij: zellij.into(),
             state_dir: root,
@@ -881,6 +930,24 @@ exit 1
             zellij_session_name_from_values(None, Some("saved".into())),
             Some("saved".into())
         );
+    }
+
+    #[test]
+    fn editor_kind_controls_bridge_reuse() {
+        for (command, helix_like) in [
+            ("yzn-hx", true),
+            ("/nix/store/example/bin/yzn-hx", true),
+            ("hx", true),
+            ("helix", true),
+            ("nvim", false),
+            ("/usr/bin/nvim", false),
+        ] {
+            assert_eq!(
+                is_helix_like_editor(std::ffi::OsStr::new(command)),
+                helix_like,
+                "{command}"
+            );
+        }
     }
 
     #[test]
@@ -988,6 +1055,68 @@ exit 1
             request["payload"]["file_paths"],
             json!(["/tmp/project/src/main.rs"])
         );
+    }
+
+    #[test]
+    fn non_helix_editor_bypasses_live_bridge() {
+        let root = test_dir("non-helix-bridge-bypass");
+        let session_id = "test-session";
+        let bridge_dir = root.join("helix_bridge").join(session_id);
+        let request_path = bridge_dir.join("request.json");
+        let socket_path = write_registry(&bridge_dir, session_id, None, Some("terminal:7"));
+        let zellij_log = root.join("zellij.log");
+        let zellij = root.join("zellij");
+        let editor = root.join("nvim");
+        let panes = json!([
+            {"id": 3, "is_plugin": false, "tab_id": 2, "exited": false},
+            {"id": 7, "is_plugin": false, "tab_id": 2, "exited": false},
+        ])
+        .to_string();
+        write_zellij_log_script(&zellij, &zellij_log, false, Some(&panes));
+        write_executable(&editor, "#!/bin/sh\nexit 0\n".to_string());
+        let _listener = UnixListener::bind(&socket_path).unwrap();
+
+        run(
+            &Config {
+                editor: editor.into_os_string(),
+                zellij_pane_id: Some("terminal:3".into()),
+                ..test_config(root.clone(), session_id, zellij)
+            },
+            [OsString::from("/tmp/project/src/main.rs")],
+        )
+        .unwrap();
+
+        let log = fs::read_to_string(zellij_log).unwrap();
+        assert!(log.contains("args=run --name editor"), "{log}");
+        assert!(!log.contains("focus-pane-id"), "{log}");
+        assert!(
+            !request_path.exists(),
+            "non-Helix editor unexpectedly sent a Helix bridge request"
+        );
+    }
+
+    #[test]
+    fn missing_editor_command_errors_before_opening_pane() {
+        let root = test_dir("missing-editor");
+        let zellij_log = root.join("zellij.log");
+        let zellij = root.join("zellij");
+        let editor = root.join("missing-nvim");
+        fs::create_dir_all(&root).unwrap();
+        write_zellij_log_script(&zellij, &zellij_log, false, None);
+
+        let error = run(
+            &Config {
+                editor: editor.into_os_string(),
+                ..test_config(root.clone(), "test-session", zellij)
+            },
+            [OsString::from("/tmp/project/src/main.rs")],
+        )
+        .unwrap_err()
+        .to_string();
+
+        assert!(error.contains("editor command not found"), "{error}");
+        let log = fs::read_to_string(zellij_log).unwrap_or_default();
+        assert!(!log.contains("args=run --name editor"), "{log}");
     }
 
     #[test]
