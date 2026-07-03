@@ -547,11 +547,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1782859311,
-        "narHash": "sha256-k/srHNzPZh2HxW6AjQo7q15iQZHND+67vmaNG+t6xTA=",
+        "lastModified": 1783041008,
+        "narHash": "sha256-DQZ2FMapI1SFveae6N0DCMfWALY/EdUWLQE2wqKlees=",
         "owner": "luccahuguet",
         "repo": "yazelix-screen",
-        "rev": "2cf5bbfaf3526006b151f17a1747492fd021c6fb",
+        "rev": "a7076a0522e8b927b3c3ff6dc785c480ad6e3bc8",
         "type": "github"
       },
       "original": {

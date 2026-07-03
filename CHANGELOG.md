@@ -56,7 +56,8 @@ User-visible runtime changes for Yazelix Next live here.
   bounded welcome splash before managed Zellij, controlled by
   `[welcome].enabled`, `[welcome].style`, and `[welcome].duration_seconds`.
   The fixed style set includes the static Yazelix welcome card, imported screen
-  animations, and `random`; configurable pools are intentionally not exposed.
+  animations, and `random`; `random` skips the static card and configurable
+  pools are intentionally not exposed.
 - `yzn config` ignores unsupported modified terminal keys instead of treating
   them as text.
 - `yzn config` restores raw terminal mode if alternate-screen setup fails.
