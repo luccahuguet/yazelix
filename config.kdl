@@ -117,7 +117,7 @@ keybinds {
         bind "Alt 7" { GoToTab 7; }
         bind "Alt 8" { GoToTab 8; }
         bind "Alt 9" { GoToTab 9; }
-        bind "Alt Shift h" { NextSwapLayout; }
+        bind "Alt Shift h" { MessagePlugin "yazelix_pane_orchestrator" { name "toggle_sidebar"; }; }
         bind "Ctrl Alt g" { SwitchToMode "Locked"; }
         bind "Ctrl q" { Quit; }
         bind "Ctrl Alt h" { MoveTab "Left"; }

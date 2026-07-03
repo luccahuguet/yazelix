@@ -147,7 +147,7 @@ User-visible runtime changes for Yazelix Next live here.
 - Mars uses the packaged Yazelix Next visual config, reef cursor colors,
   JetBrains Mono, and no window bar.
 - Zellij starts with a Yazi sidebar and stacked work panes. `Alt Shift h`
-  toggles the sidebar layout.
+  toggles the managed sidebar.
 - The Zellij status bar groups first-class key hints into `Ctrl`, `Ctrl Alt`,
   and `Alt` clusters.
 - `Ctrl p/t/n/q`, `Ctrl Alt g/s/o`, `Ctrl Alt h/j/k/l`, and `Alt m` define the

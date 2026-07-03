@@ -1289,7 +1289,7 @@ fn expect_keybinds(config: &str) {
         r#"bind "Alt h" "Alt Left" { MessagePlugin "yazelix_pane_orchestrator" { name "move_focus_left_or_tab"; }; }"#,
         r#"bind "Alt l" "Alt Right" { MessagePlugin "yazelix_pane_orchestrator" { name "move_focus_right_or_tab"; }; }"#,
         r#"bind "Alt r" { MessagePlugin "yazelix_pane_orchestrator" { name "smart_reveal"; }; }"#,
-        r#"bind "Alt Shift h" { NextSwapLayout; }"#,
+        r#"bind "Alt Shift h" { MessagePlugin "yazelix_pane_orchestrator" { name "toggle_sidebar"; }; }"#,
         r#"bind "Ctrl Alt g" { SwitchToMode "Locked"; }"#,
         r#"bind "Ctrl p" { SwitchToMode "Pane"; }"#,
         r#"bind "Ctrl t" { SwitchToMode "Tab"; }"#,
