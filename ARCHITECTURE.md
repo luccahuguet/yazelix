@@ -52,6 +52,10 @@ render paths used by the runtime materializer. Its `KEY_BINDINGS` catalog is
 the human-facing key reference owner for Ratconfig and future discovery
 surfaces; `config.kdl` remains the runtime binding owner, with flake checks
 guarding the catalog-to-runtime link and the tutor-to-catalog key hints.
+Inside the crate, `main.rs` owns CLI dispatch and the test harness, while
+focused modules own common helpers, paths, root config, custom popups, native
+Mars/Starship fields, Zellij sidecars, file actions, model construction, and UI
+terminal handling.
 The contracted root config fields are `open.log_level`, which controls
 `YZN_OPEN_LOG` for managed Yazi-to-Helix opens, `shell.program`, which selects
 the packaged shell for new Zellij panes, `welcome.enabled`, `welcome.style`,
