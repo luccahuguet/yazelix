@@ -636,7 +636,7 @@
       '';
       key_reference_parity = pkgs.runCommand "key-reference-parity-check" {nativeBuildInputs = [pkgs.rustc pkgs.stdenv.cc];} ''
         rustc --edition=2024 ${./checks/key-reference-parity.rs} -o key-reference-parity-check
-        ./key-reference-parity-check ${./crates/yzn-config/src/catalog.rs} ${yzn}/share/yazelix-next/config.kdl
+        ./key-reference-parity-check ${./crates/yzn-config/src/catalog.rs} ${yzn}/share/yazelix-next/config.kdl ${./crates/yzn-tutor/src/main.rs}
         touch "$out"
       '';
       contracts = pkgs.runCommand "yzn-contracts" {} ''
