@@ -7,8 +7,9 @@ Yazelix Zellij fork. The top bar uses a rendered Yazelix Zellij Bar tray with
 configurable widgets, a `YZN` runtime marker, and bundled `tu` for usage
 widgets. `Alt Shift J/K/L/M` default to managed LazyGit, config, agent, and
 menu popups and can be remapped with semantic `keybindings.*` role fields.
-Launches show a brief configurable welcome splash, and `yzn screen` can run
-the same terminal screen styles directly.
+Users can add managed custom popups with their own semantic keybinding under
+`[popups.<id>]`. Launches show a brief configurable welcome splash, and
+`yzn screen` can run the same terminal screen styles directly.
 
 ## Run
 
@@ -138,12 +139,22 @@ chooses from that set except `static`, and there is no configurable pool. The
 same tab
 edits `[popup].side_margin` and `[popup].vertical_margin`, the left/right and
 top/bottom cell margins for managed popups. The defaults are side `1` and
-vertical `0`; higher values inset the popup by exact terminal cells.
+vertical `0`; higher values inset the popup by exact terminal cells. The
+runtime writes these once as `yzpp` popup defaults, and packaged and custom
+popup specs inherit them.
 The same tab edits `[keybindings].config`, `[keybindings].agent`,
 `[keybindings].lazygit`, and `[keybindings].menu`, the semantic key chords for
 managed popup roles. They default to `Alt Shift K`, `Alt Shift L`,
 `Alt Shift J`, and `Alt Shift M`, remap only those popup role actions, and
 reject invalid, duplicate, or conflicting packaged chords before launch.
+Custom popups live directly in `config.toml` under `[popups.<id>]`. Each custom
+popup has a required `command` and `keybinding`, optional `args`, optional
+`title`, and optional `keep_alive = true` to hide/show the pane instead of
+closing it. Commands are argv-based; put arguments in `args`, not in `command`.
+Titles default to `<id>_popup`, identify existing popup panes, and must be
+unique without reusing packaged popup titles. Custom popup keybindings use the
+same syntax and collision checks as managed popup role keybindings, and custom
+popups inherit `[popup].side_margin` and `[popup].vertical_margin`.
 The same tab edits `[bar].widgets`, whose default tray is `editor`, `shell`, `term`,
 `codex_usage`, `cpu`, and `ram`; allowed opt-ins are `session`,
 `claude_usage`, and `opencode_go_usage`. The `mars` and `zellij` tabs edit
@@ -349,12 +360,13 @@ source, and flake checks keep the reference backed by packaged bindings.
 | `Alt Shift K` | toggle the config popup |
 | `Alt Shift L` | hide/show the agent popup by default |
 | `Alt Shift M` | toggle the menu popup |
-| `Alt Shift h` | toggle the Yazi sidebar layout |
+| `Alt Shift h` | toggle the managed Yazi sidebar |
 
 Move mode is intentionally unbound. The `keybindings.config`,
 `keybindings.agent`, `keybindings.lazygit`, and `keybindings.menu` fields can
 move managed popup triggers to valid non-conflicting chords; raw Zellij
-`keybinds` remain outside the managed sidecar.
+`keybinds` remain outside the managed sidecar. Custom `[popups.<id>]` entries
+use their own required `keybinding` field and the same collision checks.
 
 ## Hack On Mars
 
@@ -378,12 +390,12 @@ wc -l .gitignore AGENTS.md README.md CHANGELOG.md ARCHITECTURE.md flake.nix home
 | Language | Files | Lines |
 | --- | --- | ---: |
 | Ignore | `.gitignore` | 4 |
-| Markdown | `AGENTS.md`, `README.md`, `CHANGELOG.md`, `ARCHITECTURE.md` | 1068 |
-| Nix | `flake.nix`, `home-manager/module.nix`, `packaging/tokenusage.nix`, `packaging/bar-render-request.nix` | 879 |
+| Markdown | `AGENTS.md`, `README.md`, `CHANGELOG.md`, `ARCHITECTURE.md` | 1121 |
+| Nix | `flake.nix`, `home-manager/module.nix`, `packaging/tokenusage.nix`, `packaging/bar-render-request.nix` | 880 |
 | Shell | `shell/sh/yzn-env-supervisor.sh`, `shell/sh/yzn-helix.sh`, `shell/sh/yzn-shell.sh` | 80 |
-| TOML | `config.toml`, `mars.toml`, `helix/config.toml`, `yazi/yazi.toml`, `yazi/keymap.toml`, `crates/yzn-config/Cargo.toml`, `crates/yzn-open/Cargo.toml`, `crates/yzn-tutor/Cargo.toml` | 175 |
-| KDL | `config.kdl`, `layout.kdl`, `layout.swap.kdl` | 207 |
+| TOML | `config.toml`, `mars.toml`, `helix/config.toml`, `yazi/yazi.toml`, `yazi/keymap.toml`, `crates/yzn-config/Cargo.toml`, `crates/yzn-open/Cargo.toml`, `crates/yzn-tutor/Cargo.toml` | 184 |
+| KDL | `config.kdl`, `layout.kdl`, `layout.swap.kdl` | 204 |
 | Nu | `nu/config.nu`, `nu/env.nu` | 11 |
 | Lua | `yazi/init.lua`, `yazi/plugins/sidebar-state.yazi/main.lua`, `yazi/plugins/sidebar-status.yazi/main.lua`, `yazi/plugins/zoxide-editor.yazi/main.lua` | 235 |
-| Rust | `crates/yzn-config/src/catalog.rs`, `crates/yzn-config/src/main.rs`, `crates/yzn-open/src/bin/yzn-reveal.rs`, `crates/yzn-open/src/main.rs`, `crates/yzn-tutor/src/cli_render.rs`, `crates/yzn-tutor/src/main.rs`, `crates/yzn-tutor/src/tutor_document.rs`, `checks/key-reference-parity.rs`, `checks/zellij-layout.rs`, `checks/yzn-contracts.rs`, `runtime/yzn-agent.rs`, `runtime/yzn-menu.rs`, `runtime/yzn-nu.rs`, `runtime/yzn-yazi.rs`, `runtime/yzn.rs`, `runtime/yzn-zellij-config.rs` | 9651 |
-| Total | owned project files | 12310 |
+| Rust | `crates/yzn-config/src/catalog.rs`, `crates/yzn-config/src/main.rs`, `crates/yzn-open/src/bin/yzn-reveal.rs`, `crates/yzn-open/src/main.rs`, `crates/yzn-tutor/src/cli_render.rs`, `crates/yzn-tutor/src/main.rs`, `crates/yzn-tutor/src/tutor_document.rs`, `checks/key-reference-parity.rs`, `checks/zellij-layout.rs`, `checks/yzn-contracts.rs`, `runtime/yzn-agent.rs`, `runtime/yzn-menu.rs`, `runtime/yzn-nu.rs`, `runtime/yzn-yazi.rs`, `runtime/yzn.rs`, `runtime/yzn-zellij-config.rs` | 10208 |
+| Total | owned project files | 12927 |

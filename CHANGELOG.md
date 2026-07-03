@@ -89,12 +89,18 @@ User-visible runtime changes for Yazelix Next live here.
   sidecars after the packaged setup without importing full native Yazi config.
 - `config.toml` controls `open.log_level`, `shell.program`,
   `[popup].side_margin`, `[popup].vertical_margin`,
-  `keybindings.config`/`agent`/`lazygit`/`menu`, and `[bar].widgets`; managed
+  `keybindings.config`/`agent`/`lazygit`/`menu`, semantic `[popups.<id>]`
+  custom popups, and `[bar].widgets`; managed
   popups default to one left/right margin cell and zero top/bottom margin
   cells, popup role triggers default to `Alt Shift J/K/L/M`, invalid,
-  duplicate, or conflicting semantic values fail before launch, and
-  `yzn config` shows these root fields in the main config tab with bar widgets
-  as an ordered Ratconfig string-list picker. Custom bar widget layouts keep
+  duplicate, or conflicting semantic values fail before launch, custom popups
+  require argv-based `command` plus a managed `keybinding`, accept optional
+  `args`, `title`, and `keep_alive`, reject title collisions with custom or
+  packaged popups, inherit global popup margins through the plugin-level
+  `yzpp` default margin block, render title-backed command markers for stable
+  pane identity, and `yzn config` shows scalar root fields in the main config
+  tab with bar widgets as an ordered Ratconfig string-list picker. Custom bar
+  widget layouts keep
   the sidebar swap layout paired with the generated layout. The empty
   workspace widget is not selectable.
 - `yzn` appends `~/.config/yazelix-next/zellij/config.kdl` as a native Zellij
