@@ -162,6 +162,7 @@ Commands
   yzn enter         Start managed runtime in this terminal
   yzn launch        Open Mars and start Yazelix
   yzn menu          Show this menu
+  yzn tutor         Show guided Yazelix lessons
   yzn reveal        Reveal a path in the managed Yazi sidebar
   yzn screen        Show a Yazelix terminal screen
   yzn sponsor       Open sponsor page or print URL
@@ -284,6 +285,20 @@ Workspace
         install -D -m 755 ${yznHelixSrc} "$out/bin/yzn-hx"
         patchShebangs "$out/bin/yzn-hx"
       '';
+      yznTutorSrc = pkgs.runCommand "yzn-tutor-src" {} ''
+        mkdir -p "$out"
+        cp -R ${pkgs.lib.cleanSource ./crates/yzn-tutor}/. "$out/"
+        chmod -R u+w "$out"
+        substituteInPlace "$out/src/main.rs" \
+          --replace-fail '@yznHelix@' '${yznHelix}/bin/yzn-hx' \
+          --replace-fail '@nu@' '${pkgs.nushell}/bin/nu'
+      '';
+      yznTutor = pkgs.rustPlatform.buildRustPackage {
+        pname = "yzn-tutor";
+        version = "0.1.0";
+        src = yznTutorSrc;
+        cargoLock.lockFile = ./crates/yzn-tutor/Cargo.lock;
+      };
       yznConfigUi = pkgs.writeShellApplication {
         name = "yzn-config-ui";
         text = ''
@@ -408,6 +423,7 @@ Workspace
       yznCommandSrc = pkgs.replaceVars ./runtime/yzn.rs {
         yznConfigUi = "${yznConfigUi}/bin/yzn-config-ui";
         yznMenu = "${yznMenu}/bin/yzn-menu";
+        yznTutor = "${yznTutor}/bin/yzn-tutor";
         yznScreen = "${yazelixScreenPackage}/bin/yzs";
         yznWelcome = "${yznWelcome}/bin/yzn-welcome";
         yznShell = "${yznShell}/bin/yzn-shell";
@@ -462,6 +478,7 @@ Workspace
           install -d "$out/libexec/yazelix-next"
           ln -s ${yznZellijConfig}/bin/yzn-zellij-config "$out/libexec/yazelix-next/yzn-zellij-config"
           ln -s ${yznConfig}/bin/yzn-config "$out/libexec/yazelix-next/yzn-config"
+          ln -s ${yznTutor}/bin/yzn-tutor "$out/libexec/yazelix-next/yzn-tutor"
           install -D -m 644 ${yznConfigKdl} "$out/share/yazelix-next/config.kdl"
           install -D -m 644 ${yznRuntimeIdentity}/runtime_identity.json "$out/share/yazelix-next/runtime_identity.json"
           install -D -m 644 ${yznMarsConfig}/config.toml "$out/share/yazelix-next/mars/config.toml"

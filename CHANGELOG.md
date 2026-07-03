@@ -4,6 +4,10 @@ User-visible runtime changes for Yazelix Next live here.
 
 ## Unreleased
 
+- `yzn tutor` prints guided Yazelix lessons for workspace flow, discovery,
+  troubleshooting, and native tool tutors. `yzn tutor hx`/`helix` and
+  `yzn tutor nu`/`nushell` print the packaged Helix and Nushell tutor commands
+  instead of launching them.
 - `homeManagerModules.default` exposes a narrow Home Manager surface:
   `programs.yazelix.enable = true` installs the selected package and its
   desktop entry, `programs.yazelix.package` supports local or alternate package

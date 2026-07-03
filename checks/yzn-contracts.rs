@@ -139,6 +139,7 @@ fn expect_front_door(yzn: &Path) {
         "yzn enter [zellij-args...]",
         "yzn launch [zellij-args...]",
         "yzn menu",
+        "yzn tutor [lesson]",
         "yzn reveal <target>",
         "yzn screen [style]",
         "yzn sponsor",
@@ -155,6 +156,7 @@ fn expect_front_door(yzn: &Path) {
         "yzn reveal",
         "yzn screen",
         "yzn sponsor",
+        "yzn tutor",
         "Alt Shift L",
         "Alt 1-9",
         "Alt r",
@@ -174,6 +176,65 @@ fn expect_front_door(yzn: &Path) {
         "random",
     ] {
         expect_contains(&screen_help, expected, "yzn screen help");
+    }
+    let tutor_help = run_help(&yzn_bin, &["tutor", "--help"]);
+    for expected in [
+        "yzn tutor",
+        "yzn tutor begin",
+        "yzn tutor list",
+        "yzn tutor workspace",
+        "yzn tutor discovery",
+        "yzn tutor troubleshooting",
+        "yzn tutor tool_tutors",
+        "yzn tutor hx",
+        "yzn tutor helix",
+        "yzn tutor nu",
+        "yzn tutor nushell",
+    ] {
+        expect_contains(&tutor_help, expected, "yzn tutor help");
+    }
+    let tutor_root = run_help(&yzn_bin, &["tutor"]);
+    for expected in ["Yazelix tutor", "yzn tutor begin", "yzn tutor list"] {
+        expect_contains(&tutor_root, expected, "yzn tutor");
+    }
+    assert!(
+        !tutor_root.contains("yzx "),
+        "yzn tutor root leaked old command name\n{}",
+        excerpt(&tutor_root)
+    );
+    let tutor_list = run_help(&yzn_bin, &["tutor", "list"]);
+    for expected in [
+        "yzn tutor workspace",
+        "yzn tutor discovery",
+        "yzn tutor troubleshooting",
+        "yzn tutor tool_tutors",
+    ] {
+        expect_contains(&tutor_list, expected, "yzn tutor list");
+    }
+    for (lesson, expected) in [
+        ("begin", "Workspace roots and managed panes"),
+        ("workspace", "current tab workspace root matters most"),
+        ("discovery", "Alt Shift M"),
+        ("troubleshooting", "yzn doctor"),
+        ("tool_tutors", "print the packaged Helix tutor command"),
+    ] {
+        let output = run_help(&yzn_bin, &["tutor", lesson]);
+        expect_contains(&output, expected, &format!("yzn tutor {lesson}"));
+        assert!(
+            !output.contains("yzx ")
+                && !output.contains("env --no-shell")
+                && !output.contains("launch --path"),
+            "yzn tutor {lesson} leaked stale main Yazelix text\n{}",
+            excerpt(&output)
+        );
+    }
+    let helix_tutor = run_help(&yzn_bin, &["tutor", "hx"]);
+    for expected in ["/bin/yzn-hx --tutor", "yzn-hx --tutor"] {
+        expect_contains(&helix_tutor, expected, "yzn tutor hx");
+    }
+    let nushell_tutor = run_help(&yzn_bin, &["tutor", "nu"]);
+    for expected in ["/bin/nu -c 'tutor begin'", "tutor begin"] {
+        expect_contains(&nushell_tutor, expected, "yzn tutor nu");
     }
 
     let yzn_launcher = binary_text(&yzn_bin);
@@ -197,6 +258,7 @@ fn expect_front_door(yzn: &Path) {
         "lazygit",
         "yzn-bar-render",
         "yzn-env-supervisor",
+        "yzn-tutor",
         "yzn-welcome",
         "yzn-shell",
         "yzn-reveal",
@@ -411,6 +473,7 @@ fn expect_front_door(yzn: &Path) {
         r#"ok bar.widgets: ["editor","shell","term","codex_usage","cpu","ram"]"#.to_string(),
         "ok popup.side_margin: 0".to_string(),
         "ok popup.vertical_margin: 0".to_string(),
+        "ok tutor helper: /nix/store/".to_string(),
         "ok screen helper: /nix/store/".to_string(),
         "ok welcome helper: /nix/store/".to_string(),
         "ok yazi opener: /nix/store/".to_string(),
@@ -465,6 +528,16 @@ fn expect_front_door(yzn: &Path) {
             "yzn menu argument error",
         ),
         (
+            &["tutor", "continue"][..],
+            "Unknown yzn tutor target: continue",
+            "yzn tutor unknown lesson error",
+        ),
+        (
+            &["tutor", "workspace", "extra"][..],
+            "Unexpected arguments for yzn tutor",
+            "yzn tutor extra argument error",
+        ),
+        (
             &["wat"][..],
             "yzn: unknown command: wat",
             "unknown yzn command error",
@@ -476,6 +549,10 @@ fn expect_front_door(yzn: &Path) {
         yzn.join("share/yazelix-next/runtime_identity.json")
             .is_file(),
         "yzn package is missing runtime_identity.json"
+    );
+    assert!(
+        yzn.join("libexec/yazelix-next/yzn-tutor").is_file(),
+        "yzn package is missing the tutor helper"
     );
 }
 

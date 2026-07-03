@@ -12,6 +12,7 @@ use std::{
 
 const YZN_CONFIG_UI: &str = "@yznConfigUi@";
 const YZN_MENU: &str = "@yznMenu@";
+const YZN_TUTOR: &str = "@yznTutor@";
 const YZN_SCREEN: &str = "@yznScreen@";
 const YZN_WELCOME: &str = "@yznWelcome@";
 const YZN_SHELL: &str = "@yznShell@";
@@ -65,6 +66,7 @@ fn run() -> Result<(), AppError> {
             expect_no_args("menu", &args)?;
             exec_plain(YZN_MENU)
         }
+        "tutor" => exec_tutor(args),
         "screen" => exec_screen(args),
         "doctor" => {
             expect_no_args("doctor", &args)?;
@@ -106,6 +108,12 @@ fn exec_plain(program: &str) -> Result<(), AppError> {
     let mut command = Command::new(program);
     command.env("PATH", runtime_path());
     exec(command, program)
+}
+
+fn exec_tutor(args: Vec<OsString>) -> Result<(), AppError> {
+    let mut command = Command::new(YZN_TUTOR);
+    command.args(args).env("PATH", runtime_path());
+    exec(command, "yzn tutor")
 }
 
 fn exec_env() -> Result<(), AppError> {
@@ -411,6 +419,7 @@ fn print_doctor() -> Result<(), AppError> {
     doctor_ok("zellij permissions", runtime.zellij_permissions.display());
     doctor_ok("layout", runtime.layout());
     doctor_ok("config helper", YZN_CONFIG);
+    doctor_ok("tutor helper", YZN_TUTOR);
     doctor_ok("screen helper", YZN_SCREEN);
     doctor_ok("welcome helper", YZN_WELCOME);
     doctor_ok("zellij helper", YZN_ZELLIJ_CONFIG);
@@ -455,6 +464,7 @@ fn check_doctor_inputs() -> Result<(), AppError> {
         ("front door", current_exe.as_path()),
         ("config UI", Path::new(YZN_CONFIG_UI)),
         ("menu helper", Path::new(YZN_MENU)),
+        ("tutor helper", Path::new(YZN_TUTOR)),
         ("screen helper", Path::new(YZN_SCREEN)),
         ("welcome helper", Path::new(YZN_WELCOME)),
         ("config helper", Path::new(YZN_CONFIG)),
@@ -889,6 +899,7 @@ Usage:
   yzn enter [zellij-args...]
   yzn launch [zellij-args...]
   yzn menu
+  yzn tutor [lesson]
   yzn reveal <target>
   yzn screen [style]
   yzn sponsor
@@ -901,6 +912,7 @@ Commands:
   enter   Start Yazelix in the current terminal
   launch  Open Mars and start Yazelix
   menu    Show Yazelix Next menu
+  tutor   Show the guided Yazelix tutor
   reveal  Reveal a file or directory in the managed Yazi sidebar
   screen  Show a Yazelix terminal screen
   sponsor Open the Yazelix sponsor page or print its URL

@@ -5,9 +5,10 @@ Yazelix Next is a small Nix/Lix flake with one front-door command: `yzn`.
 summarizes owned runtime/config state, `yzn doctor` checks owned startup setup,
 `yzn sponsor` opens or prints the Sponsors URL, `yzn enter` starts Yazelix
 inside the current terminal, `yzn launch` opens Mars first, and `yzn menu`
-prints the compact command/key reference. `yzn screen [style]` shows a Yazelix
-terminal screen, and `yzn reveal <target>` reveals a path in the managed Yazi
-sidebar. Bare `yzn` defaults to `yzn launch`.
+prints the compact command/key reference. `yzn tutor` prints guided workspace,
+discovery, recovery, and tool-tutor lessons. `yzn screen [style]` shows a
+Yazelix terminal screen, and `yzn reveal <target>` reveals a path in the
+managed Yazi sidebar. Bare `yzn` defaults to `yzn launch`.
 The runtime paths are intentionally narrow:
 
 ```text
@@ -33,6 +34,11 @@ the desktop entry, can render root Yazelix settings to `config.toml`, and can
 install native Mars, Zellij, Starship, Helix, Yazi, and Nu files from text or
 source paths. It does not generate runtime config files by default or
 semantically model native config formats.
+
+`crates/yzn-tutor/` is the tutor owner. It parses the small `yzn tutor`
+argument surface, renders bundled lessons through a strict terminal Markdown
+subset, and prints the packaged Helix and Nushell tutor commands without
+launching either tool.
 
 `crates/yzn-config/` is the config host owner. It opens the Ratconfig UI,
 creates `~/.config/yazelix-next/config.toml` with defaults and joined contract
@@ -244,7 +250,7 @@ window.
 
 | ID | Contract | Owner | Check | Missing Coverage |
 | --- | --- | --- | --- | --- |
-| C1 | `yzn` defaults to `yzn launch`, `yzn help` prints help, `yzn config` opens Ratconfig config, `yzn menu` prints a compact command/key reference, `yzn screen [style]` shows a Yazelix terminal screen, `yzn reveal <target>` reveals a path in the active tab's managed Yazi sidebar, `yzn status` prints a runtime/config summary, `yzn doctor` checks owned startup setup, `yzn sponsor` opens or prints the sponsor URL, `yzn enter` starts managed Zellij in the current terminal, and `yzn launch` starts Mars first; pre-exec setup failures print a readable Yazelix diagnostic | `flake.nix`, `runtime/yzn.rs`, `crates/yzn-config/`, `crates/yzn-open/`, `yazelix-screen` | `checks/yzn-contracts.rs` validates help, menu output, screen help output, front-door wiring, runtime setup wiring, status/doctor/sponsor behavior, reveal helper packaging, and representative startup diagnostics; `cargo test` covers reveal command routing; `nix build .#yzn` packages the runtime | GUI launch remains manual dogfooding |
+| C1 | `yzn` defaults to `yzn launch`, `yzn help` prints help, `yzn config` opens Ratconfig config, `yzn menu` prints a compact command/key reference, `yzn tutor` prints guided Yazelix lessons and packaged native tutor commands, `yzn screen [style]` shows a Yazelix terminal screen, `yzn reveal <target>` reveals a path in the active tab's managed Yazi sidebar, `yzn status` prints a runtime/config summary, `yzn doctor` checks owned startup setup, `yzn sponsor` opens or prints the sponsor URL, `yzn enter` starts managed Zellij in the current terminal, and `yzn launch` starts Mars first; pre-exec setup failures print a readable Yazelix diagnostic | `flake.nix`, `runtime/yzn.rs`, `crates/yzn-tutor/`, `crates/yzn-config/`, `crates/yzn-open/`, `yazelix-screen` | `checks/yzn-contracts.rs` validates help, menu output, tutor output, screen help output, front-door wiring, runtime setup wiring, status/doctor/sponsor behavior, reveal helper packaging, and representative startup diagnostics; `crates/yzn-tutor` unit tests cover parsing, Markdown rendering, lesson coverage, and native tutor command printing; `cargo test` covers reveal command routing; `nix build .#yzn` packages the runtime | GUI launch remains manual dogfooding |
 | C2 | Mars uses packaged visual config unless a user native Mars config exists | `mars.toml`, `flake.nix` | `checks/yzn-contracts.rs` validates packaged config and launcher selection | Visual correctness remains manual dogfooding |
 | C3 | Zellij layout has the sidebar template required by swaps | `layout.kdl`, `layout.swap.kdl` | `checks/zellij-layout.rs` runs during build | None for the current template/swap contract |
 | C4 | Zellij-native mode keys use `Ctrl Alt`, Tab-mode new tabs use the packaged Yazelix sidebar layout, move mode is unbound, `Alt m` opens a pane for the swap layout to stack, `Alt 1-9` jumps directly to tabs 1-9, `Alt Shift h` toggles the sidebar swap, `Alt h/l` walk visible panes through the pane orchestrator, `Alt r` smart-reveals through the editor or sidebar focus path, and obvious sidecar ownership lines are rejected | `config.kdl`, `runtime/yzn-zellij-config.rs` | `checks/yzn-contracts.rs` validates the packaged config, pane-orchestrator binding, and accepted/rejected sidecars | Full key behavior remains manual dogfooding |
@@ -261,8 +267,8 @@ window.
 ## Pros
 
 - The public surface is small: `yzn help`, `yzn config`, `yzn menu`,
-  `yzn screen`, `yzn reveal`, `yzn status`, `yzn doctor`, `yzn sponsor`,
-  `yzn enter`, and `yzn launch`.
+  `yzn tutor`, `yzn screen`, `yzn reveal`, `yzn status`, `yzn doctor`,
+  `yzn sponsor`, `yzn enter`, and `yzn launch`.
 - The semantic config surface stays small and concrete instead of becoming a
   broad command/config system.
 - Nix owns dependency composition, so Mars, Zellij, Helix, Yazi, LazyGit, the
