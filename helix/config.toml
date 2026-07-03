@@ -7,6 +7,10 @@ cursorline = true
 
 [keys.normal]
 A-r = ':sh yzn reveal "%{buffer_name}"'
+C-r = [
+  ":config-reload",
+  ":reload",
+]
 
 [editor.file-picker]
 hidden = true

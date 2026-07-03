@@ -25,7 +25,8 @@ User-visible runtime changes for Yazelix Next live here.
   `starship.toml` when missing. Root `config.toml` keeps Ratconfig contract
   state, the Mars and Zellij tabs are simple managed render/edit files that
   apply on new launches, and the Starship tab edits `format`, `right_format`,
-  and `add_newline`. The managed Starship left prompt defaults to `::`. The UI
+  and `add_newline`. The managed Starship left prompt defaults to
+  colon-colon-space (`:: `). The UI
   can open staged text edits in the config UI's editor environment before
   saving and refuses to replace a source file whose permissions are read-only.
 - Root `config.toml` supports `[editor].command`, defaulting to `yzn-hx`.
@@ -41,7 +42,9 @@ User-visible runtime changes for Yazelix Next live here.
   creating the Steel pair when either Steel row is activated. `yzn-hx` uses
   that managed Helix directory when `config.toml`, `languages.toml`, or the
   Steel pair exists, with packaged `config.toml` kept as the fallback when only
-  `languages.toml` or the Steel pair exists.
+  `languages.toml` or the Steel pair exists. Packaged Helix binds `Ctrl r` to
+  reload Helix config and the current buffer. `yzn doctor` warns when a managed
+  Helix TOML override exists without the packaged reveal command.
 - Managed Helix loads the packaged `:yzn-new-shell` Steel command by default.
   It opens a new Yazelix terminal pane at the current Helix file directory or
   workspace. User-managed Steel files still replace the packaged Steel module

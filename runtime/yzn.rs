@@ -43,6 +43,7 @@ const SPONSOR_URL: &str = "https://github.com/sponsors/luccahuguet";
 const ZELLIJ_HOME_PLACEHOLDER: &str = "\"__YZN_HOME__\"";
 const LAYOUT_YAZI_PLACEHOLDER: &str = concat!("@", "yazi", "@");
 const LAYOUT_BAR_PLACEHOLDER: &str = concat!("@", "bar", "@");
+const HELIX_REVEAL_COMMAND: &str = r#":sh yzn reveal "%{buffer_name}""#;
 const POPUP_KEYBINDING_SPECS: &[(&str, &str, &str)] = &[
     ("config", "keybindings.config", "@defaultConfigKeybinding@"),
     ("agent", "keybindings.agent", "@defaultAgentKeybinding@"),
@@ -490,6 +491,7 @@ fn print_doctor() -> Result<(), AppError> {
         "pane orchestrator plugin",
         YAZELIX_ZELLIJ_PANE_ORCHESTRATOR_WASM,
     );
+    doctor_helix_config_warning(&runtime.config_home).map_err(doctor_failure)?;
 
     println!(
         "warn session: {}",
@@ -592,6 +594,23 @@ fn executable_file(path: &Path) -> bool {
 
 fn doctor_ok(label: &str, value: impl Display) {
     println!("ok {label}: {value}");
+}
+
+fn doctor_helix_config_warning(config_home: &Path) -> Result<(), AppError> {
+    let config = config_home.join("helix/config.toml");
+    if !config.is_file() {
+        return Ok(());
+    }
+
+    let text =
+        fs::read_to_string(&config).map_err(|error| path_error("read", &config, &config, error))?;
+    if !text.contains(HELIX_REVEAL_COMMAND) {
+        println!(
+            "warn helix config: helix config override exists without the '{HELIX_REVEAL_COMMAND}' configuration ({})",
+            config.display()
+        );
+    }
+    Ok(())
 }
 
 fn zellij_session_label(inside: &'static str, outside: &'static str) -> &'static str {

@@ -47,7 +47,7 @@ pub(crate) const BAR_WIDGET_VALUES: &[&str] = &[
 ];
 pub(crate) const DEFAULT_MARS_CONFIG_TOML: &str = include_str!("../../../mars.toml");
 pub(crate) const DEFAULT_STARSHIP_CONFIG_TOML: &str = "\
-format = \"::\"
+format = \":: \"
 right_format = \"\"
 add_newline = true
 ";

@@ -2000,7 +2000,7 @@ mod tests {
         assert_eq!(format.source_id, SOURCE_STARSHIP);
         assert_eq!(format.tab, TAB_STARSHIP);
         assert_eq!(format.kind, "string");
-        assert_eq!(format.current_value, r#""::""#);
+        assert_eq!(format.current_value, r#"":: ""#);
         assert_eq!(format.apply_status.summary, "new prompts");
         assert_eq!(right_format.current_value, r#""""#);
         assert_eq!(model_field(&model, "add_newline").current_value, "true");
@@ -2524,7 +2524,7 @@ style = "random"
             Some(&json!("$time"))
         );
         assert_eq!(get_toml_path(&starship, "add_newline"), Some(&json!(false)));
-        assert_eq!(get_toml_path(&starship, "format"), Some(&json!("::")));
+        assert_eq!(get_toml_path(&starship, "format"), Some(&json!(":: ")));
 
         let error = write_source_field(&paths, SOURCE_STARSHIP, "add_newline", &json!("nope"))
             .unwrap_err()

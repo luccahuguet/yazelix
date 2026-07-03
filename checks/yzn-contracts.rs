@@ -159,9 +159,7 @@ fn expect_front_door(yzn: &Path) {
         .collect::<Vec<_>>();
     assert_eq!(
         menu_ids,
-        [
-            "config", "doctor", "status", "screen", "sponsor", "launch", "help", "tutor"
-        ],
+        ["config", "doctor", "status", "screen", "sponsor", "launch", "help", "tutor"],
         "yzn menu command allowlist changed\n{menu}"
     );
     expect_menu_descriptions_match_help(&help, &menu);
@@ -584,6 +582,38 @@ fn expect_front_door(yzn: &Path) {
     ] {
         expect_contains(&doctor, &expected, "yzn doctor");
     }
+    assert!(
+        !doctor.contains("warn helix config:"),
+        "default doctor should not warn about packaged Helix config\n{}",
+        excerpt(&doctor)
+    );
+
+    let helix_override_config_home = temp.path.join("helix-override-config");
+    let helix_override_state = temp.path.join("helix-override-state");
+    write_config_home(
+        &helix_override_config_home,
+        "[open]\nlog_level = \"info\"\n\n[shell]\nprogram = \"nu\"\n",
+    );
+    let helix_override_config = helix_override_config_home.join("helix/config.toml");
+    fs::create_dir_all(helix_override_config.parent().unwrap()).unwrap();
+    fs::write(&helix_override_config, "theme = \"ayu_evolve\"\n").unwrap();
+    let doctor = run_yzn_with_config(
+        &yzn_bin,
+        "doctor",
+        &helix_override_config_home,
+        &helix_override_state,
+        "Helix override doctor",
+    );
+    expect_contains(
+        &doctor,
+        r#"warn helix config: helix config override exists without the ':sh yzn reveal "%{buffer_name}"' configuration"#,
+        "Helix override doctor",
+    );
+    expect_contains(
+        &doctor,
+        &helix_override_config.display().to_string(),
+        "Helix override doctor",
+    );
 
     expect_sponsor_fallback(
         Command::new(&yzn_bin).arg("sponsor").env("PATH", ""),
@@ -1392,6 +1422,11 @@ fn expect_first_party_plugins(config: &str) {
         &helix_config,
         r#"A-r = ':sh yzn reveal "%{buffer_name}"'"#,
         "managed Helix reveal binding",
+    );
+    expect_contains(
+        &helix_config,
+        "C-r = [\n  \":config-reload\",\n  \":reload\",\n]",
+        "managed Helix reload binding",
     );
     let helix_steel = embedded_store_path(&helix_script, "-yzn-helix-steel-config");
     let helix_module = fs::read_to_string(helix_steel.join("helix.scm")).unwrap();
