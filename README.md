@@ -114,9 +114,10 @@ The `config` tab controls `open.log_level`, which sets the managed
 packaged shell for new Zellij panes. Values are `nu`, `bash`, `zsh`, and
 `fish`. The `editor.command` setting controls managed Yazi opens and the
 managed session `EDITOR`/`VISUAL`/`YZN_EDITOR` environment. The default
-`yzn-hx` resolves to packaged Yazelix Helix; host executables such as `nvim`
-are run from `PATH` without packaged config, plugins, or reveal parity. The
-value is one executable name or path, not a shell command with arguments. The
+`yzn-hx` uses packaged Yazelix Helix. Host commands such as `hx` or `nvim` run
+from `PATH` without packaged config, plugins, bridge reuse, or reveal parity.
+The value is one executable name or path, not a shell command with arguments.
+The
 same tab controls `[welcome].enabled`, `[welcome].style`, and
 `[welcome].duration_seconds`, which apply to the startup splash before managed
 Zellij starts. Welcome styles are the same fixed `yzn screen` styles; `random`
@@ -138,8 +139,8 @@ packaged bindings in read-only group, key, action, and owner columns, with
 source paths in details. The `advanced` tab opens `nu/env.nu`, `nu/config.nu`,
 `yazi/init.lua`, and `yazi/keymap.toml` in the managed editor. Advanced files
 are created only when their row is activated.
-While editing a text field, `Ctrl+e` opens the staged value in the configured
-editor and returns the edited text to the row; `Enter` still performs the save.
+While editing a text field, `Ctrl+e` opens the staged value in the config UI's
+editor environment and returns the edited text to the row; `Enter` still saves.
 
 Generated runtime state for Zellij, Yazi, Nu, and the Helix bridge defaults to
 `${XDG_DATA_HOME:-$HOME/.local/share}/yazelix-next`; set `YAZELIX_STATE_DIR`
@@ -268,10 +269,10 @@ Steel pair exists, the packaged `config.toml` remains the TOML fallback.
 
 Yazi opens files through the packaged `yzn-open` Rust helper. With the default
 `editor.command = "yzn-hx"`, `yzn-open` reuses a live Helix bridge in the same
-Zellij tab or opens packaged `yzn-hx` in a managed `editor` pane. With a
-non-Helix command such as `nvim`, `yzn-open` skips the Helix bridge and opens
-that host command in the managed `editor` pane. Missing editor commands fail
-before opening a pane with a direct `editor command not found` diagnostic.
+Zellij tab or opens packaged `yzn-hx` in a managed `editor` pane. Host commands
+such as `hx` or `nvim` skip the bridge and open in that pane. Missing editor
+commands fail before opening a pane with a direct `editor command not found`
+diagnostic.
 Managed Yazi uses scoped Kitty graphics environment for image previews while
 preserving the real Zellij session for editor routing.
 
@@ -343,12 +344,12 @@ wc -l .gitignore AGENTS.md README.md CHANGELOG.md ARCHITECTURE.md flake.nix home
 | Language | Files | Lines |
 | --- | --- | ---: |
 | Ignore | `.gitignore` | 4 |
-| Markdown | `AGENTS.md`, `README.md`, `CHANGELOG.md`, `ARCHITECTURE.md` | 991 |
+| Markdown | `AGENTS.md`, `README.md`, `CHANGELOG.md`, `ARCHITECTURE.md` | 992 |
 | Nix | `flake.nix`, `home-manager/module.nix`, `packaging/tokenusage.nix`, `packaging/bar-render-request.nix` | 835 |
 | Shell | `shell/sh/yzn-agent.sh`, `shell/sh/yzn-env-supervisor.sh`, `shell/sh/yzn-helix.sh`, `shell/sh/yzn-shell.sh` | 94 |
 | TOML | `config.toml`, `mars.toml`, `helix/config.toml`, `yazi/yazi.toml`, `yazi/keymap.toml`, `crates/yzn-config/Cargo.toml`, `crates/yzn-open/Cargo.toml` | 157 |
 | KDL | `config.kdl`, `layout.kdl`, `layout.swap.kdl` | 207 |
 | Nu | `nu/config.nu`, `nu/env.nu` | 11 |
 | Lua | `yazi/init.lua`, `yazi/plugins/sidebar-state.yazi/main.lua`, `yazi/plugins/sidebar-status.yazi/main.lua`, `yazi/plugins/zoxide-editor.yazi/main.lua` | 235 |
-| Rust | `crates/yzn-config/src/catalog.rs`, `crates/yzn-config/src/main.rs`, `crates/yzn-open/src/bin/yzn-reveal.rs`, `crates/yzn-open/src/main.rs`, `checks/zellij-layout.rs`, `checks/yzn-contracts.rs`, `runtime/yzn-nu.rs`, `runtime/yzn-yazi.rs`, `runtime/yzn.rs`, `runtime/yzn-zellij-config.rs` | 7539 |
-| Total | owned project files | 10073 |
+| Rust | `crates/yzn-config/src/catalog.rs`, `crates/yzn-config/src/main.rs`, `crates/yzn-open/src/bin/yzn-reveal.rs`, `crates/yzn-open/src/main.rs`, `checks/zellij-layout.rs`, `checks/yzn-contracts.rs`, `runtime/yzn-nu.rs`, `runtime/yzn-yazi.rs`, `runtime/yzn.rs`, `runtime/yzn-zellij-config.rs` | 7501 |
+| Total | owned project files | 10036 |

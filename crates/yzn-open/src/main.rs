@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::{
     env,
-    ffi::OsString,
+    ffi::{OsStr, OsString},
     fs::{self, OpenOptions},
     io::{BufRead, BufReader, Write},
     os::unix::ffi::OsStrExt,
@@ -117,7 +117,7 @@ fn run(config: &Config, raw_targets: impl IntoIterator<Item = OsString>) -> Resu
     }
     log_debug(config, &format!("targets={}", json!(targets)));
     let cwd = editor_cwd(config, &targets);
-    let opened = if is_helix_like_editor(&config.editor) {
+    let opened = if uses_helix_bridge(&config.editor) {
         try_bridge(config, &targets, &cwd)?
     } else {
         log_info(
@@ -505,7 +505,7 @@ fn ensure_editor_command(config: &Config) -> Result<()> {
     )
 }
 
-fn command_exists(command: &std::ffi::OsStr, path: Option<&std::ffi::OsStr>) -> bool {
+fn command_exists(command: &OsStr, path: Option<&OsStr>) -> bool {
     if command.as_bytes().contains(&b'/') {
         return executable_file(Path::new(command));
     }
@@ -519,11 +519,8 @@ fn executable_file(path: &Path) -> bool {
         .is_ok_and(|metadata| metadata.is_file() && metadata.permissions().mode() & 0o111 != 0)
 }
 
-fn is_helix_like_editor(command: &std::ffi::OsStr) -> bool {
-    Path::new(command)
-        .file_name()
-        .and_then(|name| name.to_str())
-        .is_some_and(|name| matches!(name, "yzn-hx" | "hx" | "helix"))
+fn uses_helix_bridge(command: &OsStr) -> bool {
+    Path::new(command).file_name() == Some(OsStr::new("yzn-hx"))
 }
 
 fn focus_pane(config: &Config, pane_id: &str) -> Result<()> {
@@ -933,20 +930,12 @@ exit 1
     }
 
     #[test]
-    fn editor_kind_controls_bridge_reuse() {
-        for (command, helix_like) in [
-            ("yzn-hx", true),
-            ("/nix/store/example/bin/yzn-hx", true),
-            ("hx", true),
-            ("helix", true),
-            ("nvim", false),
-            ("/usr/bin/nvim", false),
-        ] {
-            assert_eq!(
-                is_helix_like_editor(std::ffi::OsStr::new(command)),
-                helix_like,
-                "{command}"
-            );
+    fn only_yzn_hx_uses_the_yazelix_helix_bridge() {
+        for command in ["yzn-hx", "/nix/store/example/bin/yzn-hx"] {
+            assert!(uses_helix_bridge(OsStr::new(command)), "{command}");
+        }
+        for command in ["hx", "helix", "nvim", "/usr/bin/nvim"] {
+            assert!(!uses_helix_bridge(OsStr::new(command)), "{command}");
         }
     }
 
@@ -1058,15 +1047,21 @@ exit 1
     }
 
     #[test]
-    fn non_helix_editor_bypasses_live_bridge() {
-        let root = test_dir("non-helix-bridge-bypass");
+    fn host_owned_editor_bypasses_live_bridge() {
+        for command in ["nvim", "hx"] {
+            assert_host_editor_bypasses_live_bridge(command);
+        }
+    }
+
+    fn assert_host_editor_bypasses_live_bridge(command: &str) {
+        let root = test_dir(&format!("host-editor-bridge-bypass-{command}"));
         let session_id = "test-session";
         let bridge_dir = root.join("helix_bridge").join(session_id);
         let request_path = bridge_dir.join("request.json");
         let socket_path = write_registry(&bridge_dir, session_id, None, Some("terminal:7"));
         let zellij_log = root.join("zellij.log");
         let zellij = root.join("zellij");
-        let editor = root.join("nvim");
+        let editor = root.join(command);
         let panes = json!([
             {"id": 3, "is_plugin": false, "tab_id": 2, "exited": false},
             {"id": 7, "is_plugin": false, "tab_id": 2, "exited": false},
@@ -1091,7 +1086,7 @@ exit 1
         assert!(!log.contains("focus-pane-id"), "{log}");
         assert!(
             !request_path.exists(),
-            "non-Helix editor unexpectedly sent a Helix bridge request"
+            "{command} unexpectedly sent a Helix bridge request"
         );
     }
 

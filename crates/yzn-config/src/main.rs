@@ -1569,6 +1569,15 @@ mod tests {
         fs::write(path, updated).unwrap();
     }
 
+    fn assert_toml_value(path: &Path, field_path: &str, expected: &JsonValue) {
+        let value = read_toml_file_value(path, "config.toml").unwrap();
+        assert_eq!(
+            get_toml_path(&value, field_path),
+            Some(expected),
+            "{field_path}"
+        );
+    }
+
     #[cfg(unix)]
     #[test]
     fn external_text_editor_round_trips_staged_input() {
@@ -1635,30 +1644,13 @@ mod tests {
         let value = read_toml_file_value(&path, "config.toml").unwrap();
         let defaults = default_config().unwrap();
 
-        assert_eq!(
-            get_toml_path(&value, OPEN_LOG_LEVEL_PATH),
-            get_toml_path(&defaults, OPEN_LOG_LEVEL_PATH)
-        );
-        assert_eq!(
-            get_toml_path(&value, SHELL_PROGRAM_PATH),
-            get_toml_path(&defaults, SHELL_PROGRAM_PATH)
-        );
-        assert_eq!(
-            get_toml_path(&value, EDITOR_COMMAND_PATH),
-            get_toml_path(&defaults, EDITOR_COMMAND_PATH)
-        );
-        assert_eq!(
-            get_toml_path(&value, POPUP_SIDE_MARGIN_PATH),
-            get_toml_path(&defaults, POPUP_SIDE_MARGIN_PATH)
-        );
-        assert_eq!(
-            get_toml_path(&value, POPUP_VERTICAL_MARGIN_PATH),
-            get_toml_path(&defaults, POPUP_VERTICAL_MARGIN_PATH)
-        );
-        assert_eq!(
-            get_toml_path(&value, BAR_WIDGETS_PATH),
-            get_toml_path(&defaults, BAR_WIDGETS_PATH)
-        );
+        for field_path in root_config_field_paths() {
+            assert_eq!(
+                get_toml_path(&value, field_path),
+                get_toml_path(&defaults, field_path),
+                "{field_path}"
+            );
+        }
         assert_eq!(
             get_toml_path(&value, "ratconfig.contract.contract_id"),
             Some(&json!(CONTRACT_ID))
@@ -1675,31 +1667,19 @@ mod tests {
         let path = ensure_config_file_at(temp.path.join("config.toml")).unwrap();
 
         write_config_field(&path, OPEN_LOG_LEVEL_PATH, &json!("debug")).unwrap();
-        let value = read_toml_file_value(&path, "config.toml").unwrap();
-        assert_eq!(
-            get_toml_path(&value, OPEN_LOG_LEVEL_PATH),
-            Some(&json!("debug"))
-        );
+        assert_toml_value(&path, OPEN_LOG_LEVEL_PATH, &json!("debug"));
 
         let error = write_config_field(&path, OPEN_LOG_LEVEL_PATH, &json!("loud")).unwrap_err();
         assert!(error.to_string().contains("off, error, info, debug"));
 
         write_config_field(&path, SHELL_PROGRAM_PATH, &json!("fish")).unwrap();
-        let value = read_toml_file_value(&path, "config.toml").unwrap();
-        assert_eq!(
-            get_toml_path(&value, SHELL_PROGRAM_PATH),
-            Some(&json!("fish"))
-        );
+        assert_toml_value(&path, SHELL_PROGRAM_PATH, &json!("fish"));
 
         let error = write_config_field(&path, SHELL_PROGRAM_PATH, &json!("tcsh")).unwrap_err();
         assert!(error.to_string().contains("nu, bash, zsh, fish"));
 
         write_config_field(&path, EDITOR_COMMAND_PATH, &json!("nvim")).unwrap();
-        let value = read_toml_file_value(&path, "config.toml").unwrap();
-        assert_eq!(
-            get_toml_path(&value, EDITOR_COMMAND_PATH),
-            Some(&json!("nvim"))
-        );
+        assert_toml_value(&path, EDITOR_COMMAND_PATH, &json!("nvim"));
         assert_eq!(
             read_config_field(&path, config_field(EDITOR_COMMAND_PATH).unwrap()).unwrap(),
             "nvim"
@@ -1712,22 +1692,14 @@ mod tests {
         assert!(error.to_string().contains("without arguments"));
 
         write_config_field(&path, POPUP_SIDE_MARGIN_PATH, &json!(2)).unwrap();
-        let value = read_toml_file_value(&path, "config.toml").unwrap();
-        assert_eq!(
-            get_toml_path(&value, POPUP_SIDE_MARGIN_PATH),
-            Some(&json!(2))
-        );
+        assert_toml_value(&path, POPUP_SIDE_MARGIN_PATH, &json!(2));
         assert_eq!(
             read_config_field(&path, config_field(POPUP_SIDE_MARGIN_PATH).unwrap()).unwrap(),
             "2"
         );
 
         write_config_field(&path, POPUP_VERTICAL_MARGIN_PATH, &json!(1)).unwrap();
-        let value = read_toml_file_value(&path, "config.toml").unwrap();
-        assert_eq!(
-            get_toml_path(&value, POPUP_VERTICAL_MARGIN_PATH),
-            Some(&json!(1))
-        );
+        assert_toml_value(&path, POPUP_VERTICAL_MARGIN_PATH, &json!(1));
 
         let error = write_config_field(&path, POPUP_SIDE_MARGIN_PATH, &json!(-1)).unwrap_err();
         assert!(error.to_string().contains("zero or greater"));
@@ -1738,17 +1710,17 @@ mod tests {
             &json!(["editor", "claude_usage", "cpu"]),
         )
         .unwrap();
-        let value = read_toml_file_value(&path, "config.toml").unwrap();
-        assert_eq!(
-            get_toml_path(&value, BAR_WIDGETS_PATH),
-            Some(&json!(["editor", "claude_usage", "cpu"]))
+        assert_toml_value(
+            &path,
+            BAR_WIDGETS_PATH,
+            &json!(["editor", "claude_usage", "cpu"]),
         );
 
         write_source_default(&temp_paths(&temp), SOURCE_CONFIG, BAR_WIDGETS_PATH).unwrap();
-        let value = read_toml_file_value(&path, "config.toml").unwrap();
-        assert_eq!(
-            get_toml_path(&value, BAR_WIDGETS_PATH),
-            Some(&default_config_value(BAR_WIDGETS_PATH).unwrap())
+        assert_toml_value(
+            &path,
+            BAR_WIDGETS_PATH,
+            &default_config_value(BAR_WIDGETS_PATH).unwrap(),
         );
 
         let error = write_config_field(&path, BAR_WIDGETS_PATH, &json!(["weather"]))

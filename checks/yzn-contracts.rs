@@ -443,36 +443,35 @@ fn expect_front_door(yzn: &Path) {
         "with failing opener",
     );
 
-    expect_command_error(
-        &yzn_bin,
-        &["env", "extra"],
-        "yzn env does not accept arguments yet",
-        "yzn env argument error",
-    );
-    expect_command_error(
-        &yzn_bin,
-        &["doctor", "extra"],
-        "yzn doctor does not accept arguments yet",
-        "yzn doctor argument error",
-    );
-    expect_command_error(
-        &yzn_bin,
-        &["sponsor", "extra"],
-        "yzn sponsor does not accept arguments yet",
-        "yzn sponsor argument error",
-    );
-    expect_command_error(
-        &yzn_bin,
-        &["menu", "extra"],
-        "yzn menu does not accept arguments yet",
-        "yzn menu argument error",
-    );
-    expect_command_error(
-        &yzn_bin,
-        &["wat"],
-        "yzn: unknown command: wat",
-        "unknown yzn command error",
-    );
+    for (args, expected, context) in [
+        (
+            &["env", "extra"][..],
+            "yzn env does not accept arguments yet",
+            "yzn env argument error",
+        ),
+        (
+            &["doctor", "extra"][..],
+            "yzn doctor does not accept arguments yet",
+            "yzn doctor argument error",
+        ),
+        (
+            &["sponsor", "extra"][..],
+            "yzn sponsor does not accept arguments yet",
+            "yzn sponsor argument error",
+        ),
+        (
+            &["menu", "extra"][..],
+            "yzn menu does not accept arguments yet",
+            "yzn menu argument error",
+        ),
+        (
+            &["wat"][..],
+            "yzn: unknown command: wat",
+            "unknown yzn command error",
+        ),
+    ] {
+        expect_command_error(&yzn_bin, args, expected, context);
+    }
     assert!(
         yzn.join("share/yazelix-next/runtime_identity.json")
             .is_file(),

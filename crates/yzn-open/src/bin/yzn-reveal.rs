@@ -28,7 +28,7 @@ fn main() -> ExitCode {
 
 fn run(config: &Config, raw_args: impl IntoIterator<Item = OsString>) -> Result<()> {
     let target = parse_target(raw_args)?;
-    if target == OsString::from("-h") || target == OsString::from("--help") {
+    if target == "-h" || target == "--help" {
         print_help();
         return Ok(());
     }

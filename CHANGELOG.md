@@ -22,11 +22,11 @@ User-visible runtime changes for Yazelix Next live here.
   state, the Mars and Zellij tabs are simple managed render/edit files that
   apply on new launches, and the Starship tab edits `format`, `right_format`,
   and `add_newline`. The managed Starship left prompt defaults to `::`. The UI
-  can open staged text edits in the configured editor before saving and refuses
-  to replace a source file whose permissions are read-only.
+  can open staged text edits in the config UI's editor environment before
+  saving and refuses to replace a source file whose permissions are read-only.
 - Root `config.toml` supports `[editor].command`, defaulting to `yzn-hx`.
   Managed Yazi opens resolve `yzn-hx` to packaged Yazelix Helix; host commands
-  such as `nvim` run from `PATH`, bypass the Helix bridge, and stay
+  such as `hx` or `nvim` run from `PATH`, bypass the Helix bridge, and stay
   user-owned. `yzn status` and `yzn doctor` report the configured and effective
   editor, and missing editor commands fail with a direct diagnostic before
   opening a pane.

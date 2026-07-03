@@ -296,19 +296,15 @@ mod tests {
             "packaged init.lua\n\n-- Yazelix Next user init.lua\nuser init\n"
         );
         for plugin in ["git.yazi", "sidebar-state.yazi", "zoxide-editor.yazi"] {
-            assert!(
-                fs::symlink_metadata(runtime.join("plugins").join(plugin))
-                    .unwrap()
-                    .file_type()
-                    .is_symlink()
-            );
-        }
-        assert!(
-            fs::symlink_metadata(runtime.join("plugins/example.yazi"))
+            assert!(fs::symlink_metadata(runtime.join("plugins").join(plugin))
                 .unwrap()
                 .file_type()
-                .is_symlink()
-        );
+                .is_symlink());
+        }
+        assert!(fs::symlink_metadata(runtime.join("plugins/example.yazi"))
+            .unwrap()
+            .file_type()
+            .is_symlink());
         assert!(!runtime.join("plugins/ignored.txt").exists());
 
         fs::create_dir_all(user_plugins.join("git.yazi")).unwrap();
