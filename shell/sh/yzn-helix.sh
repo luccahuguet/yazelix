@@ -3,23 +3,22 @@ YAZELIX_STATE_DIR="${YAZELIX_STATE_DIR:-${XDG_DATA_HOME:-${HOME:-/tmp}/.local/sh
 export YAZELIX_STATE_DIR
 YAZELIX_NEXT_CONFIG_HOME="${YAZELIX_NEXT_CONFIG_HOME:-${XDG_CONFIG_HOME:-${HOME:-/tmp}/.config}/yazelix-next}"
 user_helix_dir="$YAZELIX_NEXT_CONFIG_HOME/helix"
+user_helix_config="$user_helix_dir/config.toml"
 packaged_helix_dir="@yznHelixConfig@"
 packaged_helix_config="$packaged_helix_dir/config.toml"
 packaged_steel_dir="@yznHelixSteelConfig@"
+effective_helix_config="$YAZELIX_STATE_DIR/helix/config.toml"
 helix_config_dir="$packaged_helix_dir"
-helix_config_file="$packaged_helix_config"
+helix_config_file="$effective_helix_config"
 steel_config_dir="$packaged_steel_dir"
 steel_config_dir_needs_mkdir=false
 
-if [ -f "$user_helix_dir/config.toml" ] ||
+if [ -f "$user_helix_config" ] ||
   [ -f "$user_helix_dir/languages.toml" ] ||
   { [ -f "$user_helix_dir/helix.scm" ] && [ -f "$user_helix_dir/init.scm" ]; }; then
   helix_config_dir="$user_helix_dir"
   steel_config_dir="$YAZELIX_STATE_DIR/helix-steel"
   steel_config_dir_needs_mkdir=true
-  if [ -f "$user_helix_dir/config.toml" ]; then
-    helix_config_file="$user_helix_dir/config.toml"
-  fi
   if [ -f "$user_helix_dir/helix.scm" ] && [ -f "$user_helix_dir/init.scm" ]; then
     steel_config_dir="$user_helix_dir"
     steel_config_dir_needs_mkdir=false
@@ -42,6 +41,9 @@ YAZELIX_HELIX_MANAGED_CONFIG_PATH="$helix_config_file"
 export YAZELIX_HELIX_MANAGED_CONFIG_PATH
 
 @mkdir@ -p "$YAZELIX_STATE_DIR"
+if ! @yznConfig@ --write-effective-helix-config "$packaged_helix_config" "$user_helix_config" "$helix_config_file"; then
+  exit 1
+fi
 if [ "$steel_config_dir_needs_mkdir" = true ]; then
   @mkdir@ -p "$steel_config_dir"
 fi

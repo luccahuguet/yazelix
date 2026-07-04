@@ -4,6 +4,7 @@ mod catalog;
 mod common;
 mod custom_popups;
 mod file_actions;
+mod helix_config;
 mod model;
 mod native_config;
 mod paths;
@@ -14,6 +15,7 @@ mod zellij_sidecar;
 use catalog::*;
 use common::*;
 use custom_popups::*;
+use helix_config::*;
 use paths::*;
 use root_config::*;
 use ui::*;
@@ -37,6 +39,27 @@ fn run() -> Result<()> {
                 return Err(error("--get accepts exactly one config path"));
             }
             print_config_field(&path)
+        }
+        Some("--write-effective-helix-config") => {
+            let packaged = args
+                .next()
+                .ok_or_else(|| error("--write-effective-helix-config requires a packaged path"))?;
+            let user = args
+                .next()
+                .ok_or_else(|| error("--write-effective-helix-config requires a user path"))?;
+            let output = args
+                .next()
+                .ok_or_else(|| error("--write-effective-helix-config requires an output path"))?;
+            if args.next().is_some() {
+                return Err(error(
+                    "--write-effective-helix-config accepts exactly three paths",
+                ));
+            }
+            write_effective_helix_config(
+                std::path::Path::new(&packaged),
+                std::path::Path::new(&user),
+                std::path::Path::new(&output),
+            )
         }
         Some(arg) => Err(error(format!("unknown argument: {arg}"))),
     }
@@ -949,6 +972,76 @@ mod tests {
             &paths.nu_env,
             &paths.yazi_init,
         ]);
+    }
+
+    #[test]
+    fn effective_helix_config_merges_user_preferences_and_reserves_reveal() {
+        let temp = TempHome::new();
+        let packaged = temp.path.join("packaged.toml");
+        let user = temp.path.join("user/config.toml");
+        let output = temp.path.join("state/helix/config.toml");
+        fs::create_dir_all(user.parent().unwrap()).unwrap();
+        fs::write(
+            &packaged,
+            concat!(
+                "theme = \"ayu_evolve\"\n\n",
+                "[editor]\nbufferline = \"always\"\n\n",
+                "[keys.normal]\n",
+                "A-r = ':sh yzn reveal \"%{buffer_name}\"'\n",
+                "C-r = [\":config-reload\", \":reload\"]\n",
+            ),
+        )
+        .unwrap();
+        fs::write(
+            &user,
+            concat!(
+                "[editor]\n",
+                "bufferline = \"never\"\n",
+                "line-number = \"relative\"\n\n",
+                "[keys.normal]\n",
+                "A-r = \":noop\"\n",
+                "C-r = \":noop\"\n",
+            ),
+        )
+        .unwrap();
+
+        write_effective_helix_config(&packaged, &user, &output).unwrap();
+
+        let value = read_toml_file_value(&output, "effective Helix config").unwrap();
+        assert_eq!(get_toml_path(&value, "theme"), Some(&json!("ayu_evolve")));
+        assert_eq!(
+            get_toml_path(&value, "editor.bufferline"),
+            Some(&json!("never"))
+        );
+        assert_eq!(
+            get_toml_path(&value, "editor.line-number"),
+            Some(&json!("relative"))
+        );
+        assert_eq!(
+            get_toml_path(&value, "keys.normal.A-r"),
+            Some(&json!(r#":sh yzn reveal "%{buffer_name}""#))
+        );
+        assert_eq!(
+            get_toml_path(&value, "keys.normal.C-r"),
+            Some(&json!(":noop"))
+        );
+    }
+
+    #[test]
+    fn effective_helix_config_rejects_non_table_keys_override() {
+        let temp = TempHome::new();
+        let packaged = temp.path.join("packaged.toml");
+        let user = temp.path.join("user.toml");
+        let output = temp.path.join("state/helix/config.toml");
+        fs::write(&packaged, "[keys.normal]\nA-r = \":noop\"\n").unwrap();
+        fs::write(&user, "keys = \"not a table\"\n").unwrap();
+
+        let error = write_effective_helix_config(&packaged, &user, &output)
+            .unwrap_err()
+            .to_string();
+
+        assert!(error.contains("[keys] must be a TOML table"));
+        assert!(!output.exists());
     }
 
     #[test]

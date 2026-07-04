@@ -591,9 +591,16 @@ fn expect_front_door(yzn: &Path) {
     fs::create_dir_all(helix_override_config.parent().unwrap()).unwrap();
     fs::write(&helix_override_config, "theme = \"ayu_evolve\"\n").unwrap();
     let doctor = helix_override.run_yzn(&yzn_bin, "doctor", "Helix override doctor");
+    assert!(
+        !doctor.contains("warn helix config:"),
+        "ordinary Helix preference override should not warn\n{}",
+        excerpt(&doctor)
+    );
+    fs::write(&helix_override_config, "[keys.normal]\nA-r = \":noop\"\n").unwrap();
+    let doctor = helix_override.run_yzn(&yzn_bin, "doctor", "Helix override doctor");
     expect_contains_all! {
         &doctor, "Helix override doctor";
-        r#"warn helix config: helix config override exists without the ':sh yzn reveal "%{buffer_name}"' configuration"#,
+        r#"warn helix config: helix config override sets reserved Alt r; generated config keeps ':sh yzn reveal "%{buffer_name}"'"#,
         helix_override_config.display().to_string(),
     }
 
@@ -1492,6 +1499,11 @@ fn expect_first_party_plugins(config: &str) {
         "C-r = [\n  \":config-reload\",\n  \":reload\",\n]",
         "managed Helix reload binding",
     );
+    expect_order(
+        &helix_config,
+        &["A-ret = [", "ret = [", "C-j = ["],
+        "managed Helix enter movement bindings",
+    );
     let helix_steel = embedded_store_path(&helix_script, "-yzn-helix-steel-config");
     let helix_module = fs::read_to_string(helix_steel.join("helix.scm")).unwrap();
     expect_contains_all! {
@@ -1538,24 +1550,24 @@ for arg do printf 'arg=%s\\n' \"$arg\" >> \"$YZN_FAKE_HX_OUT\"; done\n";
         helix_script.replace(real_hx.to_str().unwrap(), fake_hx.to_str().unwrap()),
     );
 
-    for (name, files, uses_user_config_file, uses_user_steel) in [
-        ("packaged", &[] as &[(&str, &str)], false, false),
+    for (name, files, uses_user_steel) in [
+        ("packaged", &[] as &[(&str, &str)], false),
         (
             "languages",
             &[("languages.toml", "# managed languages\n")] as &[(&str, &str)],
             false,
-            false,
         ),
         (
             "toml",
-            &[("config.toml", "# managed config\n")] as &[(&str, &str)],
-            true,
+            &[(
+                "config.toml",
+                "[editor]\nline-number = \"relative\"\n\n[keys.normal]\nA-r = \":noop\"\nC-r = \":noop\"\n",
+            )] as &[(&str, &str)],
             false,
         ),
         (
             "steel",
             &[("helix.scm", ";; module\n"), ("init.scm", ";; init\n")] as &[(&str, &str)],
-            false,
             true,
         ),
     ] {
@@ -1566,7 +1578,6 @@ for arg do printf 'arg=%s\\n' \"$arg\" >> \"$YZN_FAKE_HX_OUT\"; done\n";
             &packaged_steel,
             name,
             files,
-            uses_user_config_file,
             uses_user_steel,
         );
     }
@@ -1579,7 +1590,6 @@ fn expect_helix_wrapper_case(
     packaged_steel: &Path,
     name: &str,
     files: &[(&str, &str)],
-    uses_user_config_file: bool,
     uses_user_steel: bool,
 ) {
     let home = root.join(format!("{name}-config"));
@@ -1597,11 +1607,7 @@ fn expect_helix_wrapper_case(
     } else {
         helix.clone()
     };
-    let expected_config_file = if uses_user_config_file {
-        helix.join("config.toml")
-    } else {
-        packaged_config.to_path_buf()
-    };
+    let expected_config_file = state.join("helix/config.toml");
     let expected_steel_dir = if files.is_empty() {
         Some(packaged_steel.to_path_buf())
     } else if uses_user_steel {
@@ -1620,6 +1626,25 @@ fn expect_helix_wrapper_case(
         assert!(
             steel_dir.is_dir(),
             "{name} Helix config should create the internal Steel fallback dir"
+        );
+    }
+    let generated_config = fs::read_to_string(&expected_config_file).unwrap();
+    expect_contains_all! {
+        &generated_config, &format!("{name} generated Helix reveal binding");
+        "A-r = ",
+        ":sh yzn reveal",
+        "%{buffer_name}",
+    }
+    if name == "toml" {
+        expect_contains_all! {
+            &generated_config, "user Helix TOML merge";
+            "line-number = \"relative\"",
+            "C-r = \":noop\"",
+        }
+        assert!(
+            !generated_config.contains("A-r = \":noop\""),
+            "generated config kept user Alt r override\n{}",
+            excerpt(&generated_config)
         );
     }
 }

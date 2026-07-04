@@ -49,12 +49,13 @@ User-visible runtime changes for Yazelix Next live here.
 - The `yzn config` Helix tab opens managed `helix/config.toml`,
   `helix/languages.toml`, `helix/helix.scm`, and `helix/init.scm` files in
   `yzn-hx`, creating TOML starter files only after their row is activated and
-  creating the Steel pair when either Steel row is activated. `yzn-hx` uses
-  that managed Helix directory when `config.toml`, `languages.toml`, or the
-  Steel pair exists, with packaged `config.toml` kept as the fallback when only
-  `languages.toml` or the Steel pair exists. Packaged Helix binds `Ctrl r` to
-  reload Helix config and the current buffer. `yzn doctor` warns when a managed
-  Helix TOML override exists without the packaged reveal command.
+  creating the Steel pair when either Steel row is activated. `yzn-hx` writes a
+  generated effective Helix config under `YAZELIX_STATE_DIR` on each launch by
+  merging the packaged default with optional `helix/config.toml`, then restoring
+  reserved `Alt r` to Yazelix reveal. Packaged Helix binds `Ctrl r` to reload
+  Helix config and the current buffer, and that convenience binding remains
+  user-overridable. `yzn doctor` warns when a managed Helix TOML override tries
+  to replace reserved `Alt r`.
 - Managed Helix loads the packaged `:yzn-new-shell` Steel command by default.
   It opens a new Yazelix terminal pane at the current Helix file directory or
   workspace. User-managed Steel files still replace the packaged Steel module

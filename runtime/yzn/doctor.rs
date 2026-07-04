@@ -177,9 +177,9 @@ fn doctor_helix_config_warning(config_home: &Path) -> Result<(), AppError> {
 
     let text =
         fs::read_to_string(&config).map_err(|error| path_error("read", &config, &config, error))?;
-    if !text.contains(HELIX_REVEAL_COMMAND) {
+    if text.contains("A-r") && !text.contains(HELIX_REVEAL_COMMAND) {
         println!(
-            "warn helix config: helix config override exists without the '{HELIX_REVEAL_COMMAND}' configuration ({})",
+            "warn helix config: helix config override sets reserved Alt r; generated config keeps '{HELIX_REVEAL_COMMAND}' ({})",
             config.display()
         );
     }

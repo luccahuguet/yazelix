@@ -324,16 +324,21 @@ controls the left prompt, `right_format` controls the right prompt, and user
 
 ## Helix Config
 
-`yzn-hx` uses the packaged Helix config by default, so normal
+`yzn-hx` builds an effective Helix config on each launch from the packaged
+Yazelix Next default plus the optional managed user override, so normal
 `~/.config/helix` does not affect the managed editor. If `config.toml`,
 `languages.toml`, or the Steel file pair exists under this directory, `yzn-hx`
-uses the directory as the managed Helix config dir:
+uses the directory as the managed Helix config dir for native Helix lookup:
 
 ```text
 ~/.config/yazelix-next/helix/
 ```
 
-`helix/config.toml` overrides the packaged TOML config when present.
+`helix/config.toml` is a user override fragment merged over the packaged TOML
+default when present. The generated effective file is written under
+`YAZELIX_STATE_DIR/helix/config.toml`; users should edit the managed source file
+through the Helix tab instead. `Alt r` is reserved for Yazelix reveal, so a user
+`A-r` override is ignored in the generated config and reported by `yzn doctor`.
 `helix/languages.toml` is loaded by the managed Helix config dir when present.
 `helix/helix.scm` and `helix/init.scm` are Steel files loaded through
 `HELIX_STEEL_CONFIG` from the same managed Helix directory once both files
@@ -342,10 +347,11 @@ Yazelix terminal pane at the current file directory or workspace. When TOML-only
 managed config is active, `yzn-hx` points Steel at an internal state directory
 instead so the fork does not create empty Steel files under user config.
 Activating either Steel row creates the pair. If only `languages.toml` or the
-Steel pair exists, the packaged `config.toml` remains the TOML fallback.
+Steel pair exists, the generated TOML config is still based on the packaged
+default.
 The packaged config binds `Alt r` to reveal the current buffer in Yazi and
-`Ctrl r` to reload Helix config and the current buffer. `yzn doctor` warns when
-a managed Helix TOML override exists without the packaged reveal command.
+`Ctrl r` to reload Helix config and the current buffer. Other packaged Helix
+preferences are normal defaults and can be overridden by the user fragment.
 
 ## Editor Opens
 
@@ -449,12 +455,12 @@ wc -l .gitignore AGENTS.md README.md CHANGELOG.md ARCHITECTURE.md flake.nix home
 | Language | Files | Lines |
 | --- | --- | ---: |
 | Ignore | `.gitignore` | 4 |
-| Markdown | `AGENTS.md`, `README.md`, `CHANGELOG.md`, `ARCHITECTURE.md` | 1227 |
-| Nix | `flake.nix`, `home-manager/module.nix`, `packaging/tokenusage.nix`, `packaging/bar-render-request.nix` | 901 |
-| Shell | `shell/sh/yzn-env-supervisor.sh`, `shell/sh/yzn-helix.sh`, `shell/sh/yzn-shell.sh` | 80 |
-| TOML | `config.toml`, `mars.toml`, `helix/config.toml`, `yazi/yazi.toml`, `yazi/keymap.toml`, `crates/yzn-config/Cargo.toml`, `crates/yzn-open/Cargo.toml`, `crates/yzn-tutor/Cargo.toml` | 164 |
+| Markdown | `AGENTS.md`, `README.md`, `CHANGELOG.md`, `ARCHITECTURE.md` | 1236 |
+| Nix | `flake.nix`, `home-manager/module.nix`, `packaging/tokenusage.nix`, `packaging/bar-render-request.nix` | 902 |
+| Shell | `shell/sh/yzn-env-supervisor.sh`, `shell/sh/yzn-helix.sh`, `shell/sh/yzn-shell.sh` | 82 |
+| TOML | `config.toml`, `mars.toml`, `helix/config.toml`, `yazi/yazi.toml`, `yazi/keymap.toml`, `crates/yzn-config/Cargo.toml`, `crates/yzn-open/Cargo.toml`, `crates/yzn-tutor/Cargo.toml` | 236 |
 | KDL | `config.kdl`, `layout.kdl`, `layout.swap.kdl` | 210 |
 | Nu | `nu/config.nu`, `nu/env.nu` | 11 |
 | Lua | `yazi/init.lua`, `yazi/plugins/sidebar-state.yazi/main.lua`, `yazi/plugins/sidebar-status.yazi/main.lua`, `yazi/plugins/zoxide-editor.yazi/main.lua` | 247 |
-| Rust | `crates/yzn-config/src/*.rs`, `crates/yzn-open/src/bin/yzn-reveal.rs`, `crates/yzn-open/src/bin/yzn-sidebar-refresh.rs`, `crates/yzn-open/src/lib.rs`, `crates/yzn-open/src/main.rs`, `crates/yzn-open/src/sidebar.rs`, `crates/yzn-tutor/src/cli_render.rs`, `crates/yzn-tutor/src/main.rs`, `crates/yzn-tutor/src/tutor_document.rs`, `checks/key-reference-parity.rs`, `checks/zellij-layout.rs`, `checks/yzn-contracts.rs`, `runtime/yzn-agent.rs`, `runtime/yzn-menu.rs`, `runtime/yzn-nu.rs`, `runtime/yzn-yazi.rs`, `runtime/yzn/*.rs`, `runtime/yzn-zellij-config.rs` | 10878 |
-| Total | owned project files | 13722 |
+| Rust | `crates/yzn-config/src/*.rs`, `crates/yzn-open/src/bin/yzn-reveal.rs`, `crates/yzn-open/src/bin/yzn-sidebar-refresh.rs`, `crates/yzn-open/src/lib.rs`, `crates/yzn-open/src/main.rs`, `crates/yzn-open/src/sidebar.rs`, `crates/yzn-tutor/src/cli_render.rs`, `crates/yzn-tutor/src/main.rs`, `crates/yzn-tutor/src/tutor_document.rs`, `checks/key-reference-parity.rs`, `checks/zellij-layout.rs`, `checks/yzn-contracts.rs`, `runtime/yzn-agent.rs`, `runtime/yzn-menu.rs`, `runtime/yzn-nu.rs`, `runtime/yzn-yazi.rs`, `runtime/yzn/*.rs`, `runtime/yzn-zellij-config.rs` | 11071 |
+| Total | owned project files | 13999 |

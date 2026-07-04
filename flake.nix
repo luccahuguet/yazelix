@@ -236,6 +236,7 @@
         mkdir = "${pkgs.coreutils}/bin/mkdir";
         od = "${pkgs.coreutils}/bin/od";
         tr = "${pkgs.coreutils}/bin/tr";
+        yznConfig = "${yznConfig}/bin/yzn-config";
         yznHelixConfig = "${yznHelixConfig}";
         yznHelixSteelConfig = "${yznHelixSteelConfig}";
       };
