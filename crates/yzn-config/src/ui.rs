@@ -78,7 +78,7 @@ pub(crate) fn run_ui() -> Result<()> {
                 }
                 app.model = build_model(&paths)?;
                 app.notice_info(format!("Saved {field_path}."));
-                app.finish_successful_write();
+                app.finish_successful_set_field(&source_id, &field_path, &value);
             }
             ConfigUiIntent::UnsetField {
                 source_id,
@@ -92,6 +92,7 @@ pub(crate) fn run_ui() -> Result<()> {
                 }
                 app.model = build_model(&paths)?;
                 app.notice_info(format!("Restored default for {field_path}."));
+                app.finish_successful_unset_field(&source_id, &field_path);
             }
         }
     }
