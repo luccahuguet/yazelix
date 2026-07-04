@@ -76,7 +76,7 @@ mod tests {
     use crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
     use ratconfig::toml_adapter::{get_toml_path, set_toml_value_text};
     use ratconfig::{ConfigUiDiagnostic, ConfigUiEditBehavior, ConfigUiModel, ConfigUiValueState};
-    use serde_json::{json, Value as JsonValue};
+    use serde_json::{Value as JsonValue, json};
 
     struct TempHome {
         path: PathBuf,
@@ -179,6 +179,22 @@ mod tests {
         );
     }
 
+    fn assert_write_round_trip(
+        path: &Path,
+        field_path: &str,
+        value: JsonValue,
+        read_back: Option<&str>,
+    ) {
+        write_config_field(path, field_path, &value).unwrap();
+        assert_toml_value(path, field_path, &value);
+        if let Some(expected) = read_back {
+            assert_eq!(
+                read_config_field(path, config_field(field_path).unwrap()).unwrap(),
+                expected
+            );
+        }
+    }
+
     fn assert_custom_popup_error(text: &str, expected: &str) {
         let temp = TempHome::new();
         let path = temp.path.join("config.toml");
@@ -229,12 +245,46 @@ mod tests {
             .unwrap_or_else(|| panic!("missing key action {label}"))
     }
 
+    fn assert_missing(paths: &[&Path]) {
+        for path in paths {
+            assert!(!path.exists(), "{} should not exist", path.display());
+        }
+    }
+
+    fn assert_exists(paths: &[&Path]) {
+        for path in paths {
+            assert!(path.exists(), "{} should exist", path.display());
+        }
+    }
+
+    fn assert_file_text(path: &Path, expected: &str) {
+        assert_eq!(
+            fs::read_to_string(path).unwrap(),
+            expected,
+            "{}",
+            path.display()
+        );
+    }
+
+    fn assert_config_field(model: &ConfigUiModel, path: &str, kind: &str, summary: &str) {
+        let field = model_field(model, path);
+        assert_eq!(field.tab, TAB_CONFIG);
+        assert_eq!(field.kind, kind);
+        assert_eq!(
+            field.current_value,
+            default_config_value(path).unwrap().to_string()
+        );
+        assert_eq!(field.apply_status.summary, summary);
+    }
+
     #[test]
     fn config_field_rejects_unknown_paths_before_io() {
-        assert!(config_field("shell.typo")
-            .unwrap_err()
-            .to_string()
-            .contains("unknown config path"));
+        assert!(
+            config_field("shell.typo")
+                .unwrap_err()
+                .to_string()
+                .contains("unknown config path")
+        );
     }
 
     #[test]
@@ -285,28 +335,15 @@ mod tests {
         let temp = TempHome::new();
         let path = ensure_config_file_at(temp.path.join("config.toml")).unwrap();
 
-        write_config_field(&path, OPEN_LOG_LEVEL_PATH, &json!("debug")).unwrap();
-        assert_toml_value(&path, OPEN_LOG_LEVEL_PATH, &json!("debug"));
-
-        write_config_field(&path, SHELL_PROGRAM_PATH, &json!("fish")).unwrap();
-        assert_toml_value(&path, SHELL_PROGRAM_PATH, &json!("fish"));
-
-        write_config_field(&path, EDITOR_COMMAND_PATH, &json!("nvim")).unwrap();
-        assert_toml_value(&path, EDITOR_COMMAND_PATH, &json!("nvim"));
-        assert_eq!(
-            read_config_field(&path, config_field(EDITOR_COMMAND_PATH).unwrap()).unwrap(),
-            "nvim"
-        );
-
-        write_config_field(&path, POPUP_SIDE_MARGIN_PATH, &json!(2)).unwrap();
-        assert_toml_value(&path, POPUP_SIDE_MARGIN_PATH, &json!(2));
-        assert_eq!(
-            read_config_field(&path, config_field(POPUP_SIDE_MARGIN_PATH).unwrap()).unwrap(),
-            "2"
-        );
-
-        write_config_field(&path, POPUP_VERTICAL_MARGIN_PATH, &json!(1)).unwrap();
-        assert_toml_value(&path, POPUP_VERTICAL_MARGIN_PATH, &json!(1));
+        for (field_path, value, read_back) in [
+            (OPEN_LOG_LEVEL_PATH, json!("debug"), None),
+            (SHELL_PROGRAM_PATH, json!("fish"), None),
+            (EDITOR_COMMAND_PATH, json!("nvim"), Some("nvim")),
+            (POPUP_SIDE_MARGIN_PATH, json!(2), Some("2")),
+            (POPUP_VERTICAL_MARGIN_PATH, json!(1), None),
+        ] {
+            assert_write_round_trip(&path, field_path, value, read_back);
+        }
 
         for (field_path, value) in [
             (KEYBINDINGS_CONFIG_PATH, "Alt Shift C"),
@@ -314,12 +351,7 @@ mod tests {
             (KEYBINDINGS_LAZYGIT_PATH, "Alt Shift G"),
             (KEYBINDINGS_MENU_PATH, "Alt Shift U"),
         ] {
-            write_config_field(&path, field_path, &json!(value)).unwrap();
-            assert_toml_value(&path, field_path, &json!(value));
-            assert_eq!(
-                read_config_field(&path, config_field(field_path).unwrap()).unwrap(),
-                value
-            );
+            assert_write_round_trip(&path, field_path, json!(value), Some(value));
         }
         write_config_field(&path, KEYBINDINGS_AGENT_PATH, &json!("Alt Shift M")).unwrap();
         assert_toml_value(&path, KEYBINDINGS_AGENT_PATH, &json!("Alt Shift M"));
@@ -421,13 +453,7 @@ mod tests {
         let path = temp.path.join("config.toml");
         write_config_text(
             &path,
-            r#"[popups.btm]
-command = "btm"
-args = ["--basic", "--battery"]
-title = "btm_popup"
-keybinding = "Alt Shift B"
-keep_alive = true
-"#,
+            "[popups.btm]\ncommand = \"btm\"\nargs = [\"--basic\", \"--battery\"]\ntitle = \"btm_popup\"\nkeybinding = \"Alt Shift B\"\nkeep_alive = true\n",
         );
 
         assert_eq!(
@@ -463,77 +489,39 @@ keep_alive = true
         // Defends: Custom popup specs stay semantic and cannot shadow packaged popup ownership.
         for (text, expected) in [
             (
-                r#"[popups.btm]
-command = "btm --basic"
-keybinding = "Alt Shift B"
-"#,
+                "[popups.btm]\ncommand = \"btm --basic\"\nkeybinding = \"Alt Shift B\"\n",
                 "without arguments",
             ),
             (
-                r#"[popups.config]
-command = "btm"
-keybinding = "Alt Shift B"
-"#,
+                "[popups.config]\ncommand = \"btm\"\nkeybinding = \"Alt Shift B\"\n",
                 "conflicts with packaged popup id",
             ),
             (
-                r#"[popups.btm]
-command = "btm"
-"#,
+                "[popups.btm]\ncommand = \"btm\"\n",
                 "popups.btm.keybinding is required",
             ),
             (
-                r#"[popups.btm]
-command = "btm"
-keybinding = "Alt r"
-"#,
+                "[popups.btm]\ncommand = \"btm\"\nkeybinding = \"Alt r\"\n",
                 "conflicts with packaged key Alt r",
             ),
             (
-                r#"[popups.btm]
-command = "btm"
-keybinding = "Alt Shift K"
-"#,
+                "[popups.btm]\ncommand = \"btm\"\nkeybinding = \"Alt Shift K\"\n",
                 "popups.btm.keybinding conflicts with keybindings.config: Alt Shift K",
             ),
             (
-                r#"[popups.btm]
-command = "btm"
-keybinding = "Alt Shift B"
-
-[popups.htop]
-command = "htop"
-keybinding = "Alt Shift B"
-"#,
+                "[popups.btm]\ncommand = \"btm\"\nkeybinding = \"Alt Shift B\"\n\n[popups.htop]\ncommand = \"htop\"\nkeybinding = \"Alt Shift B\"\n",
                 "popups.htop.keybinding conflicts with popups.btm.keybinding: Alt Shift B",
             ),
             (
-                r#"[popups.btm]
-command = "btm"
-title = " "
-keybinding = "Alt Shift B"
-"#,
+                "[popups.btm]\ncommand = \"btm\"\ntitle = \" \"\nkeybinding = \"Alt Shift B\"\n",
                 "popups.btm.title must not be empty",
             ),
             (
-                r#"[popups.btm]
-command = "btm"
-title = "lazygit_popup"
-keybinding = "Alt Shift B"
-"#,
+                "[popups.btm]\ncommand = \"btm\"\ntitle = \"lazygit_popup\"\nkeybinding = \"Alt Shift B\"\n",
                 "popups.btm.title conflicts with packaged popup title lazygit_popup",
             ),
             (
-                r#"[popups.btm]
-command = "btm"
-title = "shared_popup"
-keybinding = "Alt Shift B"
-
-[popups.htop]
-command = "htop"
-title = "shared_popup"
-keybinding = "Alt Shift U"
-"#,
+                "[popups.btm]\ncommand = \"btm\"\ntitle = \"shared_popup\"\nkeybinding = \"Alt Shift B\"\n\n[popups.htop]\ncommand = \"htop\"\ntitle = \"shared_popup\"\nkeybinding = \"Alt Shift U\"\n",
                 "popups.htop.title conflicts with popups.btm.title: shared_popup",
             ),
         ] {
@@ -547,45 +535,15 @@ keybinding = "Alt Shift U"
 
         let model = build_model(&paths).unwrap();
         assert!(!model.tabs.contains(&"shell".to_string()));
-        assert_eq!(model_field(&model, SHELL_PROGRAM_PATH).tab, TAB_CONFIG);
+        assert_config_field(&model, SHELL_PROGRAM_PATH, "string", "new panes");
         let editor = model_field(&model, EDITOR_COMMAND_PATH);
-        assert_eq!(editor.tab, TAB_CONFIG);
-        assert_eq!(editor.kind, "string");
-        assert_eq!(
-            editor.current_value,
-            default_config_value(EDITOR_COMMAND_PATH)
-                .unwrap()
-                .to_string()
-        );
+        assert_config_field(&model, EDITOR_COMMAND_PATH, "string", "new opens");
         assert!(editor.allowed_values.is_empty());
-        assert_eq!(editor.apply_status.summary, "new opens");
-
-        let popup = model_field(&model, POPUP_SIDE_MARGIN_PATH);
-        assert_eq!(popup.tab, TAB_CONFIG);
-        assert_eq!(popup.kind, "integer");
-        assert_eq!(
-            popup.current_value,
-            default_config_value(POPUP_SIDE_MARGIN_PATH)
-                .unwrap()
-                .to_string()
-        );
-        assert_eq!(popup.apply_status.summary, "next launch");
-        assert_eq!(
-            model_field(&model, POPUP_VERTICAL_MARGIN_PATH).current_value,
-            default_config_value(POPUP_VERTICAL_MARGIN_PATH)
-                .unwrap()
-                .to_string()
-        );
+        assert_config_field(&model, POPUP_SIDE_MARGIN_PATH, "integer", "next launch");
+        assert_config_field(&model, POPUP_VERTICAL_MARGIN_PATH, "integer", "next launch");
 
         for spec in POPUP_KEYBINDINGS {
-            let field = model_field(&model, spec.path);
-            assert_eq!(field.tab, TAB_CONFIG);
-            assert_eq!(field.kind, "string");
-            assert_eq!(
-                field.current_value,
-                default_config_value(spec.path).unwrap().to_string()
-            );
-            assert_eq!(field.apply_status.summary, "next launch");
+            assert_config_field(&model, spec.path, "string", "next launch");
         }
 
         let field = model_field(&model, BAR_WIDGETS_PATH);
@@ -657,10 +615,12 @@ keybinding = "Alt Shift U"
             .collect();
 
         assert!(model.tabs.contains(&TAB_KEYS.to_string()));
-        assert!(model
-            .file_actions
-            .iter()
-            .all(|action| action.tab != TAB_KEYS));
+        assert!(
+            model
+                .file_actions
+                .iter()
+                .all(|action| action.tab != TAB_KEYS)
+        );
         assert_eq!(
             model
                 .tab_list_tables
@@ -746,40 +706,16 @@ keybinding = "Alt Shift U"
     #[test]
     fn read_only_complete_root_config_accepts_format_only_drift() {
         let (_temp, paths) = temp_sources();
-        let text = r#"
-[bar]
-widgets = ["editor", "shell", "term", "codex_usage", "cpu", "ram"]
-
-[editor]
-command = "yzn-hx"
-
-[open]
-log_level = "info"
-
-[popup]
-side_margin = 1
-vertical_margin = 0
-
-[keybindings]
-config = "Alt Shift K"
-agent = "Alt Shift L"
-lazygit = "Alt Shift J"
-menu = "Alt Shift M"
-
-[ratconfig.contract]
-applied_change_ids = []
-contract_id = "yazelix-next.config"
-schema_version = 1
-version = 1
-
-[shell]
-program = "fish"
-
-[welcome]
-duration_seconds = 3
-enabled = false
-style = "random"
-"#;
+        let text = concat!(
+            "\n[bar]\nwidgets = [\"editor\", \"shell\", \"term\", \"codex_usage\", \"cpu\", \"ram\"]\n\n",
+            "[editor]\ncommand = \"yzn-hx\"\n\n",
+            "[open]\nlog_level = \"info\"\n\n",
+            "[popup]\nside_margin = 1\nvertical_margin = 0\n\n",
+            "[keybindings]\nconfig = \"Alt Shift K\"\nagent = \"Alt Shift L\"\nlazygit = \"Alt Shift J\"\nmenu = \"Alt Shift M\"\n\n",
+            "[ratconfig.contract]\napplied_change_ids = []\ncontract_id = \"yazelix-next.config\"\nschema_version = 1\nversion = 1\n\n",
+            "[shell]\nprogram = \"fish\"\n\n",
+            "[welcome]\nduration_seconds = 3\nenabled = false\nstyle = \"random\"\n",
+        );
 
         fs::write(&paths.root, text).unwrap();
         set_read_only(&paths.root);
@@ -809,28 +745,31 @@ style = "random"
     fn ensure_config_sources_creates_source_backed_files() {
         let (_temp, paths) = temp_sources();
 
-        assert!(paths.root.exists());
-        assert!(paths.mars.exists());
-        assert!(paths.zellij.exists());
-        assert!(paths.starship.exists());
-        assert!(!paths.helix_config.exists());
-        assert!(!paths.helix_languages.exists());
-        assert!(!paths.helix_module.exists());
-        assert!(!paths.helix_init.exists());
-        assert!(!fs::read_to_string(paths.mars)
-            .unwrap()
-            .contains("ratconfig.contract"));
-        assert!(fs::read_to_string(paths.zellij)
-            .unwrap()
-            .contains("rounded_corners false"));
+        assert_exists(&[&paths.root, &paths.mars, &paths.zellij, &paths.starship]);
+        assert_missing(&[
+            &paths.helix_config,
+            &paths.helix_languages,
+            &paths.helix_module,
+            &paths.helix_init,
+            &paths.nu_env,
+            &paths.nu_config,
+            &paths.yazi_init,
+            &paths.yazi_keymap,
+        ]);
+        assert!(
+            !fs::read_to_string(paths.mars)
+                .unwrap()
+                .contains("ratconfig.contract")
+        );
+        assert!(
+            fs::read_to_string(paths.zellij)
+                .unwrap()
+                .contains("rounded_corners false")
+        );
         assert_eq!(
             fs::read_to_string(paths.starship).unwrap(),
             DEFAULT_STARSHIP_CONFIG_TOML
         );
-        assert!(!paths.nu_env.exists());
-        assert!(!paths.nu_config.exists());
-        assert!(!paths.yazi_init.exists());
-        assert!(!paths.yazi_keymap.exists());
     }
 
     #[test]
@@ -838,103 +777,88 @@ style = "random"
         let (_temp, paths) = temp_sources();
 
         let model = build_model(&paths).unwrap();
-        let rows: Vec<_> = model
-            .file_actions
-            .iter()
-            .map(|action| {
-                (
-                    action.source_id.as_str(),
-                    action.action_id.as_str(),
-                    action.tab.as_str(),
-                    action.label.as_str(),
-                    action.path.clone(),
-                    action.exists,
-                    action.create_if_missing,
-                )
-            })
-            .collect();
-
         assert!(model.tabs.contains(&TAB_STARSHIP.to_string()));
         assert!(model.tabs.contains(&TAB_HELIX.to_string()));
         assert!(model.sources.iter().any(|source| {
             source.id == SOURCE_HELIX && source.tab == TAB_HELIX && source.path == paths.helix_dir
         }));
+        let summaries: Vec<_> = model
+            .file_actions
+            .iter()
+            .map(|action| {
+                [
+                    action.source_id.as_str(),
+                    action.action_id.as_str(),
+                    action.tab.as_str(),
+                    action.label.as_str(),
+                ]
+            })
+            .collect();
         assert_eq!(
-            rows,
-            vec![
-                (
+            summaries,
+            [
+                [
                     SOURCE_HELIX,
                     ACTION_HELIX_CONFIG,
                     TAB_HELIX,
-                    "helix/config.toml",
-                    paths.helix_config.clone(),
-                    false,
-                    true,
-                ),
-                (
+                    "helix/config.toml"
+                ],
+                [
                     SOURCE_HELIX,
                     ACTION_HELIX_LANGUAGES,
                     TAB_HELIX,
                     "helix/languages.toml",
-                    paths.helix_languages.clone(),
-                    false,
-                    true,
-                ),
-                (
+                ],
+                [
                     SOURCE_HELIX,
                     ACTION_HELIX_MODULE,
                     TAB_HELIX,
-                    "helix/helix.scm",
-                    paths.helix_module.clone(),
-                    false,
-                    true,
-                ),
-                (
-                    SOURCE_HELIX,
-                    ACTION_HELIX_INIT,
-                    TAB_HELIX,
-                    "helix/init.scm",
-                    paths.helix_init.clone(),
-                    false,
-                    true,
-                ),
-                (
-                    SOURCE_ADVANCED,
-                    ACTION_NU_ENV,
-                    TAB_ADVANCED,
-                    "nu/env.nu",
-                    paths.nu_env.clone(),
-                    false,
-                    true,
-                ),
-                (
+                    "helix/helix.scm"
+                ],
+                [SOURCE_HELIX, ACTION_HELIX_INIT, TAB_HELIX, "helix/init.scm"],
+                [SOURCE_ADVANCED, ACTION_NU_ENV, TAB_ADVANCED, "nu/env.nu"],
+                [
                     SOURCE_ADVANCED,
                     ACTION_NU_CONFIG,
                     TAB_ADVANCED,
-                    "nu/config.nu",
-                    paths.nu_config.clone(),
-                    false,
-                    true,
-                ),
-                (
+                    "nu/config.nu"
+                ],
+                [
                     SOURCE_ADVANCED,
                     ACTION_YAZI_INIT,
                     TAB_ADVANCED,
-                    "yazi/init.lua",
-                    paths.yazi_init.clone(),
-                    false,
-                    true,
-                ),
-                (
+                    "yazi/init.lua"
+                ],
+                [
                     SOURCE_ADVANCED,
                     ACTION_YAZI_KEYMAP,
                     TAB_ADVANCED,
                     "yazi/keymap.toml",
-                    paths.yazi_keymap.clone(),
-                    false,
-                    true,
-                ),
+                ],
             ]
+        );
+        assert_eq!(
+            model
+                .file_actions
+                .iter()
+                .map(|action| action.path.as_path())
+                .collect::<Vec<_>>(),
+            [
+                paths.helix_config.as_path(),
+                paths.helix_languages.as_path(),
+                paths.helix_module.as_path(),
+                paths.helix_init.as_path(),
+                paths.nu_env.as_path(),
+                paths.nu_config.as_path(),
+                paths.yazi_init.as_path(),
+                paths.yazi_keymap.as_path(),
+            ]
+        );
+        assert!(
+            model
+                .file_actions
+                .iter()
+                .all(|action| !action.exists && action.create_if_missing)
         );
     }
 
@@ -944,15 +868,17 @@ style = "random"
 
         prepare_file_action(&paths, SOURCE_ADVANCED, ACTION_NU_ENV, &paths.nu_env, true).unwrap();
 
-        assert_eq!(fs::read_to_string(&paths.nu_env).unwrap(), NU_ENV_STARTER);
-        assert!(!paths.nu_config.exists());
+        assert_file_text(&paths.nu_env, NU_ENV_STARTER);
         assert!(paths.starship.exists());
-        assert!(!paths.helix_config.exists());
-        assert!(!paths.helix_languages.exists());
-        assert!(!paths.helix_module.exists());
-        assert!(!paths.helix_init.exists());
-        assert!(!paths.yazi_init.exists());
-        assert!(!paths.yazi_keymap.exists());
+        assert_missing(&[
+            &paths.nu_config,
+            &paths.helix_config,
+            &paths.helix_languages,
+            &paths.helix_module,
+            &paths.helix_init,
+            &paths.yazi_init,
+            &paths.yazi_keymap,
+        ]);
     }
 
     #[test]
@@ -968,15 +894,14 @@ style = "random"
         )
         .unwrap();
 
-        assert_eq!(
-            fs::read_to_string(&paths.helix_config).unwrap(),
-            HELIX_CONFIG_STARTER
-        );
-        assert!(!paths.helix_languages.exists());
-        assert!(!paths.helix_module.exists());
-        assert!(!paths.helix_init.exists());
-        assert!(!paths.nu_env.exists());
-        assert!(!paths.yazi_init.exists());
+        assert_file_text(&paths.helix_config, HELIX_CONFIG_STARTER);
+        assert_missing(&[
+            &paths.helix_languages,
+            &paths.helix_module,
+            &paths.helix_init,
+            &paths.nu_env,
+            &paths.yazi_init,
+        ]);
     }
 
     #[test]
@@ -992,18 +917,14 @@ style = "random"
         )
         .unwrap();
 
-        assert_eq!(
-            fs::read_to_string(&paths.helix_init).unwrap(),
-            HELIX_INIT_STARTER
-        );
-        assert_eq!(
-            fs::read_to_string(&paths.helix_module).unwrap(),
-            HELIX_MODULE_STARTER
-        );
-        assert!(!paths.helix_config.exists());
-        assert!(!paths.helix_languages.exists());
-        assert!(!paths.nu_env.exists());
-        assert!(!paths.yazi_init.exists());
+        assert_file_text(&paths.helix_init, HELIX_INIT_STARTER);
+        assert_file_text(&paths.helix_module, HELIX_MODULE_STARTER);
+        assert_missing(&[
+            &paths.helix_config,
+            &paths.helix_languages,
+            &paths.nu_env,
+            &paths.yazi_init,
+        ]);
     }
 
     #[test]
@@ -1028,7 +949,9 @@ style = "random"
 
     #[test]
     fn prepare_file_action_creates_managed_yazi_init_only() {
-        let (temp, paths) = temp_sources();
+        let (_temp, paths) = temp_sources();
+        let yazi_toml = paths.yazi_init.with_file_name("yazi.toml");
+        let yazi_plugins = paths.yazi_init.with_file_name("plugins");
 
         prepare_file_action(
             &paths,
@@ -1039,18 +962,15 @@ style = "random"
         )
         .unwrap();
 
-        assert_eq!(
-            fs::read_to_string(&paths.yazi_init).unwrap(),
-            YAZI_INIT_STARTER
-        );
-        assert!(!temp.path.join("yazi/yazi.toml").exists());
-        assert!(!temp.path.join("yazi/keymap.toml").exists());
-        assert!(!temp.path.join("yazi/plugins").exists());
+        assert_file_text(&paths.yazi_init, YAZI_INIT_STARTER);
+        assert_missing(&[&yazi_toml, &paths.yazi_keymap, &yazi_plugins]);
     }
 
     #[test]
     fn prepare_file_action_creates_managed_yazi_keymap_only() {
-        let (temp, paths) = temp_sources();
+        let (_temp, paths) = temp_sources();
+        let yazi_toml = paths.yazi_keymap.with_file_name("yazi.toml");
+        let yazi_plugins = paths.yazi_keymap.with_file_name("plugins");
 
         prepare_file_action(
             &paths,
@@ -1061,51 +981,42 @@ style = "random"
         )
         .unwrap();
 
-        assert_eq!(
-            fs::read_to_string(&paths.yazi_keymap).unwrap(),
-            YAZI_KEYMAP_STARTER
-        );
-        assert!(!temp.path.join("yazi/init.lua").exists());
-        assert!(!temp.path.join("yazi/yazi.toml").exists());
-        assert!(!temp.path.join("yazi/plugins").exists());
+        assert_file_text(&paths.yazi_keymap, YAZI_KEYMAP_STARTER);
+        assert_missing(&[&paths.yazi_init, &yazi_toml, &yazi_plugins]);
     }
 
     #[test]
     fn prepare_file_action_rejects_unowned_or_missing_paths() {
         let (_temp, paths) = temp_sources();
 
-        let error = prepare_file_action(
-            &paths,
-            SOURCE_ADVANCED,
-            ACTION_NU_ENV,
-            &paths.nu_config,
-            true,
-        )
-        .unwrap_err()
-        .to_string();
-        assert!(error.contains("does not own"));
-
-        let error = prepare_file_action(
-            &paths,
-            SOURCE_ADVANCED,
-            ACTION_HELIX_CONFIG,
-            &paths.helix_config,
-            true,
-        )
-        .unwrap_err()
-        .to_string();
-        assert!(error.contains("unknown file action"));
-
-        let error = prepare_file_action(
-            &paths,
-            SOURCE_ADVANCED,
-            ACTION_NU_CONFIG,
-            &paths.nu_config,
-            false,
-        )
-        .unwrap_err()
-        .to_string();
-        assert!(error.contains("config file is missing"));
+        for (source_id, action_id, path, create, expected) in [
+            (
+                SOURCE_ADVANCED,
+                ACTION_NU_ENV,
+                &paths.nu_config,
+                true,
+                "does not own",
+            ),
+            (
+                SOURCE_ADVANCED,
+                ACTION_HELIX_CONFIG,
+                &paths.helix_config,
+                true,
+                "unknown file action",
+            ),
+            (
+                SOURCE_ADVANCED,
+                ACTION_NU_CONFIG,
+                &paths.nu_config,
+                false,
+                "config file is missing",
+            ),
+        ] {
+            let error = prepare_file_action(&paths, source_id, action_id, path, create)
+                .unwrap_err()
+                .to_string();
+            assert!(error.contains(expected), "{error}");
+        }
     }
 
     #[test]
@@ -1202,21 +1113,16 @@ style = "random"
 
     #[test]
     fn unsupported_terminal_keys_are_ignored() {
-        assert_eq!(
-            config_key(KeyEvent::new_with_kind(
+        for key in [
+            KeyEvent::new_with_kind(
                 KeyCode::Char('q'),
                 KeyModifiers::NONE,
                 KeyEventKind::Release,
-            )),
-            None
-        );
-        assert_eq!(
-            config_key(KeyEvent::new(KeyCode::Char('u'), KeyModifiers::ALT)),
-            None
-        );
-        assert_eq!(
-            config_key(KeyEvent::new(KeyCode::F(1), KeyModifiers::NONE)),
-            None
-        );
+            ),
+            KeyEvent::new(KeyCode::Char('u'), KeyModifiers::ALT),
+            KeyEvent::new(KeyCode::F(1), KeyModifiers::NONE),
+        ] {
+            assert_eq!(config_key(key), None);
+        }
     }
 }

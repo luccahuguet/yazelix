@@ -6,8 +6,8 @@ use std::{
 
 use ratconfig::toml_adapter::{get_toml_path, parse_toml_value, set_toml_value_text};
 use ratconfig::{
-    join_toml_contract_text_from_version, reconcile_joined_toml_contract_text,
-    string_list_values_from_json, ConfigContract,
+    ConfigContract, join_toml_contract_text_from_version, reconcile_joined_toml_contract_text,
+    string_list_values_from_json,
 };
 use serde_json::Value as JsonValue;
 
