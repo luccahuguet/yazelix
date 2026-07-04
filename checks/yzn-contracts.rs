@@ -500,6 +500,21 @@ fn expect_front_door(yzn: &Path) {
         "#[fg=#2f7d32,bold]",
         "#[bg=#ccd0da,fg=#303446,bold]",
     }
+    let generated_mars = RuntimeCase::new(&temp.path, "generated-mars-light-mode");
+    generated_mars.write_default_config("\n[appearance]\nmode = \"light\"\n");
+    let generated_mars_config = generated_mars.config_home.join("mars/config.toml");
+    fs::create_dir_all(generated_mars_config.parent().unwrap()).unwrap();
+    fs::copy(
+        yzn.join("share/yazelix-next/mars/config.toml"),
+        &generated_mars_config,
+    )
+    .unwrap();
+    let status = generated_mars.run_yzn(&yzn_bin, "status", "generated Mars light mode status");
+    expect_contains_all! {
+        &status, "generated Mars light mode status";
+        "appearance mode: light",
+        "mars config: packaged-light (",
+    }
 
     let custom_bar = RuntimeCase::new(&temp.path, "custom-bar");
     custom_bar.write_default_config("\n[bar]\nwidgets = [\"editor\", \"claude_usage\", \"cpu\"]\n");

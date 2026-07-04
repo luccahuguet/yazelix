@@ -6,7 +6,9 @@ User-visible runtime changes for Yazelix Next live here.
 
 - Root `config.toml` supports `[appearance].mode = "dark" | "light"`.
   `dark` remains the default; `light` selects the packaged light Mars config
-  and renders the managed Zellij top bar with the child light palette.
+  and renders the managed Zellij top bar with the child light palette. An
+  untouched generated `mars/config.toml` scaffold no longer masks the packaged
+  light Mars config; changed native Mars files remain full overrides.
 - Flake package and app outputs are exposed for `x86_64-darwin` and
   `aarch64-darwin` in addition to the Linux systems. The macOS floor is
   package-first: `yzn help`, `status`, `doctor`, and `enter` are the supported

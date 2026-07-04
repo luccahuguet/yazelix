@@ -2,6 +2,7 @@ use std::{
     env,
     ffi::{OsStr, OsString},
     fmt::Display,
+    fs,
     path::{Path, PathBuf},
     process::{self, Command},
     time::{SystemTime, UNIX_EPOCH},
@@ -71,6 +72,31 @@ fn read_popup_keybindings(
         .collect()
 }
 
+fn active_mars_config(config_home: &Path, appearance_mode: &str) -> (&'static str, PathBuf) {
+    let user_home = config_home.join("mars");
+    if is_custom_mars_config(&user_home.join("config.toml")) {
+        return ("user", user_home);
+    }
+    if appearance_mode == "light" {
+        ("packaged-light", PathBuf::from(YZN_MARS_LIGHT_CONFIG))
+    } else {
+        ("packaged", PathBuf::from(YZN_MARS_CONFIG))
+    }
+}
+
+fn is_custom_mars_config(path: &Path) -> bool {
+    if !path.is_file() {
+        return false;
+    }
+    let Ok(user) = fs::read_to_string(path) else {
+        return true;
+    };
+    let Ok(packaged) = fs::read_to_string(Path::new(YZN_MARS_CONFIG).join("config.toml")) else {
+        return true;
+    };
+    user != packaged
+}
+
 impl Runtime {
     pub(crate) fn prepare() -> Result<Self, AppError> {
         let state_dir = state_dir();
@@ -109,15 +135,8 @@ impl Runtime {
             CUSTOM_POPUP_KEYBINDINGS_KDL_CONFIG_PATH,
         )?;
         let (layout_source, layout) = active_layout(&state_dir, &bar_widgets, &appearance_mode)?;
-        let user_mars_config_home = config_home.join("mars");
         let (mars_config_source, mars_config_home) =
-            if user_mars_config_home.join("config.toml").is_file() {
-                ("user", user_mars_config_home)
-            } else if appearance_mode == "light" {
-                ("packaged-light", PathBuf::from(YZN_MARS_LIGHT_CONFIG))
-            } else {
-                ("packaged", PathBuf::from(YZN_MARS_CONFIG))
-            };
+            active_mars_config(&config_home, &appearance_mode);
         let zellij_sidecar = config_home.join("zellij/config.kdl");
         let zellij_plugins_sidecar = config_home.join("zellij/plugins.kdl");
         let zellij_config = PathBuf::from(trim_output(run_checked(

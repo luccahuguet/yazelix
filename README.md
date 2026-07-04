@@ -185,7 +185,7 @@ editor environment and returns the edited text to the row; `Enter` still saves.
 `[appearance].mode` controls Yazelix-owned dark/light surfaces. `dark` is the
 default. `light` selects the packaged light Mars config and renders the Zellij
 top bar with the light palette. User-owned native Mars config overrides remain
-full replacements.
+full replacements once they differ from the packaged default scaffold.
 
 Generated runtime state for Zellij, Yazi, Nu, and the Helix bridge defaults to
 `${XDG_DATA_HOME:-$HOME/.local/share}/yazelix-next`; set `YAZELIX_STATE_DIR`
@@ -238,8 +238,10 @@ basic terminal preferences such as window size, opacity, font size, line
 height, scrollbar, bell, and cursor trail. Set `YAZELIX_NEXT_CONFIG_HOME` to
 use a different Yazelix Next config root. When no native Mars override exists,
 `[appearance].mode = "light"` selects a packaged light Mars config inspired by
-main Yazelix's Mars light theme. `yzn` still owns the Mars launch command and
-the managed Zellij runtime.
+main Yazelix's Mars light theme. An untouched generated `mars/config.toml`
+scaffold does not mask that selection; changed native Mars files are treated as
+full user overrides. `yzn` still owns the Mars launch command and the managed
+Zellij runtime.
 
 ## Zellij Config
 
@@ -445,12 +447,12 @@ wc -l .gitignore AGENTS.md README.md CHANGELOG.md ARCHITECTURE.md flake.nix home
 | Language | Files | Lines |
 | --- | --- | ---: |
 | Ignore | `.gitignore` | 4 |
-| Markdown | `AGENTS.md`, `README.md`, `CHANGELOG.md`, `ARCHITECTURE.md` | 1220 |
+| Markdown | `AGENTS.md`, `README.md`, `CHANGELOG.md`, `ARCHITECTURE.md` | 1225 |
 | Nix | `flake.nix`, `home-manager/module.nix`, `packaging/tokenusage.nix`, `packaging/bar-render-request.nix` | 914 |
 | Shell | `shell/sh/yzn-env-supervisor.sh`, `shell/sh/yzn-helix.sh`, `shell/sh/yzn-shell.sh` | 80 |
 | TOML | `config.toml`, `mars.toml`, `helix/config.toml`, `yazi/yazi.toml`, `yazi/keymap.toml`, `crates/yzn-config/Cargo.toml`, `crates/yzn-open/Cargo.toml`, `crates/yzn-tutor/Cargo.toml` | 188 |
 | KDL | `config.kdl`, `layout.kdl`, `layout.swap.kdl` | 210 |
 | Nu | `nu/config.nu`, `nu/env.nu` | 11 |
 | Lua | `yazi/init.lua`, `yazi/plugins/sidebar-state.yazi/main.lua`, `yazi/plugins/sidebar-status.yazi/main.lua`, `yazi/plugins/zoxide-editor.yazi/main.lua` | 247 |
-| Rust | `crates/yzn-config/src/*.rs`, `crates/yzn-open/src/bin/yzn-reveal.rs`, `crates/yzn-open/src/bin/yzn-sidebar-refresh.rs`, `crates/yzn-open/src/lib.rs`, `crates/yzn-open/src/main.rs`, `crates/yzn-open/src/sidebar.rs`, `crates/yzn-tutor/src/cli_render.rs`, `crates/yzn-tutor/src/main.rs`, `crates/yzn-tutor/src/tutor_document.rs`, `checks/key-reference-parity.rs`, `checks/zellij-layout.rs`, `checks/yzn-contracts.rs`, `runtime/yzn-agent.rs`, `runtime/yzn-menu.rs`, `runtime/yzn-nu.rs`, `runtime/yzn-yazi.rs`, `runtime/yzn/*.rs`, `runtime/yzn-zellij-config.rs` | 10808 |
-| Total | owned project files | 13682 |
+| Rust | `crates/yzn-config/src/*.rs`, `crates/yzn-open/src/bin/yzn-reveal.rs`, `crates/yzn-open/src/bin/yzn-sidebar-refresh.rs`, `crates/yzn-open/src/lib.rs`, `crates/yzn-open/src/main.rs`, `crates/yzn-open/src/sidebar.rs`, `crates/yzn-tutor/src/cli_render.rs`, `crates/yzn-tutor/src/main.rs`, `crates/yzn-tutor/src/tutor_document.rs`, `checks/key-reference-parity.rs`, `checks/zellij-layout.rs`, `checks/yzn-contracts.rs`, `runtime/yzn-agent.rs`, `runtime/yzn-menu.rs`, `runtime/yzn-nu.rs`, `runtime/yzn-yazi.rs`, `runtime/yzn/*.rs`, `runtime/yzn-zellij-config.rs` | 10842 |
+| Total | owned project files | 13721 |
