@@ -7,6 +7,13 @@ use std::{
 };
 
 const SPONSOR_URL: &str = "https://github.com/sponsors/luccahuguet";
+const DEFAULT_CONFIG: &str = "[open]\nlog_level = \"info\"\n\n[shell]\nprogram = \"nu\"\n";
+
+macro_rules! expect_contains_all {
+    ($haystack:expr, $context:expr; $($needle:expr),+ $(,)?) => {
+        $(expect_contains($haystack, &$needle, $context);)+
+    };
+}
 
 fn main() {
     let args = env::args().collect::<Vec<_>>();
@@ -92,12 +99,10 @@ fn main() {
     let host_bin = temp.path.join("host-bin");
     fs::create_dir(&host_bin).unwrap();
     let fake_mise = host_bin.join("mise");
-    fs::write(
+    write_executable(
         &fake_mise,
         "#!/bin/sh\n[ \"$1\" = activate ] && [ \"$2\" = nu ] || exit 64\nprintf '%s\\n' '$env.YZN_MISE_TEST = \"mise-ok\"'\n",
-    )
-    .unwrap();
-    fs::set_permissions(&fake_mise, fs::Permissions::from_mode(0o755)).unwrap();
+    );
     let mise_runtime = temp.path.join("mise-run");
     let mise_stdout = run_nu_with_path(
         &yzn_shell,
@@ -132,7 +137,8 @@ fn expect_front_door(yzn: &Path) {
     for arg in ["-h", "--help"] {
         assert_eq!(run_help(&yzn_bin, &[arg]), help);
     }
-    for expected in [
+    expect_contains_all! {
+        &help, "yzn help";
         "Usage:",
         "yzn config",
         "yzn doctor",
@@ -145,8 +151,6 @@ fn expect_front_door(yzn: &Path) {
         "yzn screen [style]",
         "yzn sponsor",
         "yzn status",
-    ] {
-        expect_contains(&help, expected, "yzn help");
     }
     let menu = run_help(&yzn_bin, &["menu"]);
     expect_contains(&menu, "Yazelix command palette", "yzn menu");
@@ -180,17 +184,17 @@ fn expect_front_door(yzn: &Path) {
     let reveal_help = run_help(&yzn_bin, &["reveal", "--help"]);
     expect_contains(&reveal_help, "yzn reveal <target>", "yzn reveal help");
     let screen_help = run_help(&yzn_bin, &["screen", "--help"]);
-    for expected in [
+    expect_contains_all! {
+        &screen_help, "yzn screen help";
         "yzn screen [STYLE]",
         "static",
         "logo",
         "mandelbrot",
         "random",
-    ] {
-        expect_contains(&screen_help, expected, "yzn screen help");
     }
     let tutor_help = run_help(&yzn_bin, &["tutor", "--help"]);
-    for expected in [
+    expect_contains_all! {
+        &tutor_help, "yzn tutor help";
         "yzn tutor",
         "yzn tutor begin",
         "yzn tutor list",
@@ -202,12 +206,13 @@ fn expect_front_door(yzn: &Path) {
         "yzn tutor helix",
         "yzn tutor nu",
         "yzn tutor nushell",
-    ] {
-        expect_contains(&tutor_help, expected, "yzn tutor help");
     }
     let tutor_root = run_help(&yzn_bin, &["tutor"]);
-    for expected in ["Yazelix tutor", "yzn tutor begin", "yzn tutor list"] {
-        expect_contains(&tutor_root, expected, "yzn tutor");
+    expect_contains_all! {
+        &tutor_root, "yzn tutor";
+        "Yazelix tutor",
+        "yzn tutor begin",
+        "yzn tutor list",
     }
     assert!(
         !tutor_root.contains("yzx "),
@@ -215,13 +220,12 @@ fn expect_front_door(yzn: &Path) {
         excerpt(&tutor_root)
     );
     let tutor_list = run_help(&yzn_bin, &["tutor", "list"]);
-    for expected in [
+    expect_contains_all! {
+        &tutor_list, "yzn tutor list";
         "yzn tutor workspace",
         "yzn tutor discovery",
         "yzn tutor troubleshooting",
         "yzn tutor tool_tutors",
-    ] {
-        expect_contains(&tutor_list, expected, "yzn tutor list");
     }
     for (lesson, expected) in [
         ("begin", "Workspace roots and managed panes"),
@@ -241,18 +245,23 @@ fn expect_front_door(yzn: &Path) {
         );
     }
     let helix_tutor = run_help(&yzn_bin, &["tutor", "hx"]);
-    for expected in ["/bin/yzn-hx --tutor", "yzn-hx --tutor"] {
-        expect_contains(&helix_tutor, expected, "yzn tutor hx");
+    expect_contains_all! {
+        &helix_tutor, "yzn tutor hx";
+        "/bin/yzn-hx --tutor",
+        "yzn-hx --tutor",
     }
     let nushell_tutor = run_help(&yzn_bin, &["tutor", "nu"]);
-    for expected in ["/bin/nu -c 'tutor begin'", "tutor begin"] {
-        expect_contains(&nushell_tutor, expected, "yzn tutor nu");
+    expect_contains_all! {
+        &nushell_tutor, "yzn tutor nu";
+        "/bin/nu -c 'tutor begin'",
+        "tutor begin",
     }
 
     let yzn_launcher = binary_text(&yzn_bin);
     let menu_helper = embedded_store_path(&yzn_launcher, "/bin/yzn-menu");
     expect_menu_dispatch(&menu_helper);
-    for expected in [
+    expect_contains_all! {
+        &yzn_launcher, "bin/yzn runtime fragment";
         "Yazelix could not start.",
         "YAZELIX_STATUS_BAR_CACHE_PATH",
         "ZELLIJ_PLUGIN_PERMISSIONS_CACHE",
@@ -292,54 +301,48 @@ fn expect_front_door(yzn: &Path) {
         "/bin/mars",
         "tokenusage",
         "--new-session-with-layout",
-    ] {
-        expect_contains(&yzn_launcher, expected, "bin/yzn runtime fragment");
     }
     let env_supervisor = embedded_store_path(&yzn_launcher, "/bin/yzn-env-supervisor");
     let env_supervisor_script = fs::read_to_string(&env_supervisor).unwrap();
-    for expected in [
+    expect_contains_all! {
+        &env_supervisor_script, "yzn env supervisor";
         "#!/nix/store/",
         "trap cleanup HUP INT TERM EXIT",
         "\"$1\" < /dev/tty &",
         "wait \"$child\"",
-    ] {
-        expect_contains(&env_supervisor_script, expected, "yzn env supervisor");
     }
 
     let temp = TempDir::new();
-    let config_home = temp.path.join("status-config");
-    let state_dir = temp.path.join("status-state");
-    let doctor_config_home = temp.path.join("doctor-config");
-    let doctor_state_dir = temp.path.join("doctor-state");
-    let status = run_yzn_with_config(&yzn_bin, "status", &config_home, &state_dir, "yzn status");
-    for expected in [
-        "Yazelix status".to_string(),
-        format!("config home: {}", config_home.display()),
-        format!("state dir: {}", state_dir.display()),
-        "shell: nu".to_string(),
-        "editor command: yzn-hx".to_string(),
-        "editor: /nix/store/".to_string(),
-        "open log: info".to_string(),
-        "welcome enabled: true".to_string(),
-        "welcome style: random".to_string(),
-        "welcome duration: 3s".to_string(),
-        r#"bar widgets: ["editor","shell","term","codex_usage","cpu","ram"]"#.to_string(),
-        "popup side margin: 1".to_string(),
-        "popup vertical margin: 0".to_string(),
-        "config keybinding: Alt Shift K".to_string(),
-        "agent keybinding: Alt Shift L".to_string(),
-        "lazygit keybinding: Alt Shift J".to_string(),
-        "menu keybinding: Alt Shift M".to_string(),
-        "layout: packaged (/nix/store/".to_string(),
-        "inside zellij: no".to_string(),
-    ] {
-        expect_contains(&status, &expected, "yzn status");
+    let status_case = RuntimeCase::new(&temp.path, "status");
+    let doctor_case = RuntimeCase::new(&temp.path, "doctor");
+    let status = status_case.run_yzn(&yzn_bin, "status", "yzn status");
+    expect_contains_all! {
+        &status, "yzn status";
+        "Yazelix status",
+        format!("config home: {}", status_case.config_home.display()),
+        format!("state dir: {}", status_case.state_dir.display()),
+        "shell: nu",
+        "editor command: yzn-hx",
+        "editor: /nix/store/",
+        "open log: info",
+        "welcome enabled: true",
+        "welcome style: random",
+        "welcome duration: 3s",
+        r#"bar widgets: ["editor","shell","term","codex_usage","cpu","ram"]"#,
+        "popup side margin: 1",
+        "popup vertical margin: 0",
+        "config keybinding: Alt Shift K",
+        "agent keybinding: Alt Shift L",
+        "lazygit keybinding: Alt Shift J",
+        "menu keybinding: Alt Shift M",
+        "layout: packaged (/nix/store/",
+        "inside zellij: no",
     }
     let data_home = temp.path.join("data-home");
     let data_status = successful_stdout(
         Command::new(&yzn_bin)
             .arg("status")
-            .env("YAZELIX_NEXT_CONFIG_HOME", &config_home)
+            .env("YAZELIX_NEXT_CONFIG_HOME", &status_case.config_home)
             .env("XDG_DATA_HOME", &data_home)
             .env_remove("YAZELIX_STATE_DIR"),
         "yzn status XDG data state",
@@ -350,8 +353,8 @@ fn expect_front_door(yzn: &Path) {
         "yzn status XDG data state",
     );
 
-    let permissions = fs::read_to_string(state_dir.join("zellij/permissions.kdl")).unwrap();
-    let runtime_config = fs::read_to_string(state_dir.join("zellij/config.kdl")).unwrap();
+    let permissions = status_case.zellij_file("permissions.kdl");
+    let runtime_config = status_case.zellij_file("config.kdl");
     let home = format!("{:?}", env::var("HOME").expect("HOME is required by yzn"));
     expect_contains(
         &runtime_config,
@@ -362,58 +365,34 @@ fn expect_front_door(yzn: &Path) {
         !runtime_config.contains("__YZN_HOME__"),
         "runtime config kept the unresolved home cwd placeholder"
     );
-    for expected in [
+    expect_contains_all! {
+        &permissions, "runtime plugin permissions";
         "yazelix_pane_orchestrator.wasm",
         "MessageAndLaunchOtherPlugins",
         "ReadSessionEnvironmentVariables",
-    ] {
-        expect_contains(&permissions, expected, "runtime plugin permissions");
     }
 
-    let custom_popup_config = temp.path.join("custom-popup-config");
-    let custom_popup_state = temp.path.join("custom-popup-state");
-    write_config_home(
-        &custom_popup_config,
-        "[open]\nlog_level = \"info\"\n\n[shell]\nprogram = \"nu\"\n\n[popup]\nside_margin = 2\nvertical_margin = 1\n",
-    );
-    let status = run_yzn_with_config(
-        &yzn_bin,
-        "status",
-        &custom_popup_config,
-        &custom_popup_state,
-        "custom popup status",
-    );
-    expect_contains(&status, "popup side margin: 2", "custom popup status");
-    expect_contains(&status, "popup vertical margin: 1", "custom popup status");
-    expect_contains(&status, "zellij config: runtime (", "custom popup status");
-    expect_contains(
-        &status,
+    let custom_popup = RuntimeCase::new(&temp.path, "custom-popup");
+    custom_popup.write_default_config("\n[popup]\nside_margin = 2\nvertical_margin = 1\n");
+    let status = custom_popup.run_yzn(&yzn_bin, "status", "custom popup status");
+    expect_contains_all! {
+        &status, "custom popup status";
+        "popup side margin: 2",
+        "popup vertical margin: 1",
+        "zellij config: runtime (",
         "layout: packaged (/nix/store/",
-        "custom popup status",
-    );
-    let custom_popup_config =
-        fs::read_to_string(custom_popup_state.join("zellij/config.kdl")).unwrap();
+    }
+    let custom_popup_config = custom_popup.zellij_file("config.kdl");
     expect_popup_defaults(&custom_popup_config, "2", "1", "custom popup status config");
     assert_eq!(custom_popup_config.matches("width_percent 100").count(), 4);
     assert_eq!(custom_popup_config.matches("height_percent 100").count(), 4);
     assert_eq!(custom_popup_config.matches("side_margin 2").count(), 1);
     assert_eq!(custom_popup_config.matches("vertical_margin 1").count(), 1);
 
-    let custom_popup_spec_config = temp.path.join("custom-popup-spec-config");
-    let custom_popup_spec_state = temp.path.join("custom-popup-spec-state");
-    write_config_home(
-        &custom_popup_spec_config,
-        "[open]\nlog_level = \"info\"\n\n[shell]\nprogram = \"nu\"\n\n[popup]\nside_margin = 2\nvertical_margin = 1\n\n[popups.btm]\ncommand = \"btm\"\nargs = [\"--basic\"]\ntitle = \"btm_popup\"\nkeybinding = \"Alt Shift B\"\nkeep_alive = true\n",
-    );
-    run_yzn_with_config(
-        &yzn_bin,
-        "status",
-        &custom_popup_spec_config,
-        &custom_popup_spec_state,
-        "custom popup spec status",
-    );
-    let custom_popup_spec =
-        fs::read_to_string(custom_popup_spec_state.join("zellij/config.kdl")).unwrap();
+    let custom_popup_spec_case = RuntimeCase::new(&temp.path, "custom-popup-spec");
+    custom_popup_spec_case.write_default_config("\n[popup]\nside_margin = 2\nvertical_margin = 1\n\n[popups.btm]\ncommand = \"btm\"\nargs = [\"--basic\"]\ntitle = \"btm_popup\"\nkeybinding = \"Alt Shift B\"\nkeep_alive = true\n");
+    custom_popup_spec_case.run_yzn(&yzn_bin, "status", "custom popup spec status");
+    let custom_popup_spec = custom_popup_spec_case.zellij_file("config.kdl");
     expect_contains(
         &custom_popup_spec,
         "btm {\n                command \"btm\"\n                arg_1 \"--basic\"\n                pane_title \"btm_popup\"\n                command_marker \"btm_popup\"\n                width_percent 100\n                height_percent 100\n                toggle_close_behavior \"hide\"\n            }",
@@ -430,34 +409,18 @@ fn expect_front_door(yzn: &Path) {
     assert_eq!(custom_popup_spec.matches("side_margin 2").count(), 1);
     assert_eq!(custom_popup_spec.matches("vertical_margin 1").count(), 1);
 
-    let custom_popup_key_config = temp.path.join("custom-popup-key-config");
-    let custom_popup_key_state = temp.path.join("custom-popup-key-state");
-    write_config_home(
-        &custom_popup_key_config,
-        "[open]\nlog_level = \"info\"\n\n[shell]\nprogram = \"nu\"\n\n[keybindings]\nconfig = \"Alt Shift C\"\nagent = \"Alt Shift A\"\nlazygit = \"Alt Shift G\"\nmenu = \"Alt Shift U\"\n",
-    );
-    let status = run_yzn_with_config(
-        &yzn_bin,
-        "status",
-        &custom_popup_key_config,
-        &custom_popup_key_state,
-        "custom popup key status",
-    );
-    for expected in [
+    let custom_popup_key = RuntimeCase::new(&temp.path, "custom-popup-key");
+    custom_popup_key.write_default_config("\n[keybindings]\nconfig = \"Alt Shift C\"\nagent = \"Alt Shift A\"\nlazygit = \"Alt Shift G\"\nmenu = \"Alt Shift U\"\n");
+    let status = custom_popup_key.run_yzn(&yzn_bin, "status", "custom popup key status");
+    expect_contains_all! {
+        &status, "custom popup key status";
         "config keybinding: Alt Shift C",
         "agent keybinding: Alt Shift A",
         "lazygit keybinding: Alt Shift G",
         "menu keybinding: Alt Shift U",
-    ] {
-        expect_contains(&status, expected, "custom popup key status");
-    }
-    expect_contains(
-        &status,
         "zellij config: runtime (",
-        "custom popup key status",
-    );
-    let custom_key_config =
-        fs::read_to_string(custom_popup_key_state.join("zellij/config.kdl")).unwrap();
+    }
+    let custom_key_config = custom_popup_key.zellij_file("config.kdl");
     for (key, payload, default) in [
         ("Alt Shift C", "config", "Alt Shift K"),
         ("Alt Shift A", "agent", "Alt Shift L"),
@@ -471,21 +434,10 @@ fn expect_front_door(yzn: &Path) {
         );
     }
 
-    let swapped_popup_key_config = temp.path.join("swapped-popup-key-config");
-    let swapped_popup_key_state = temp.path.join("swapped-popup-key-state");
-    write_config_home(
-        &swapped_popup_key_config,
-        "[open]\nlog_level = \"info\"\n\n[shell]\nprogram = \"nu\"\n\n[keybindings]\nconfig = \"Alt Shift L\"\nagent = \"Alt Shift K\"\nlazygit = \"Alt Shift M\"\nmenu = \"Alt Shift J\"\n",
-    );
-    run_yzn_with_config(
-        &yzn_bin,
-        "status",
-        &swapped_popup_key_config,
-        &swapped_popup_key_state,
-        "swapped popup key status",
-    );
-    let swapped_key_config =
-        fs::read_to_string(swapped_popup_key_state.join("zellij/config.kdl")).unwrap();
+    let swapped_popup_key = RuntimeCase::new(&temp.path, "swapped-popup-key");
+    swapped_popup_key.write_default_config("\n[keybindings]\nconfig = \"Alt Shift L\"\nagent = \"Alt Shift K\"\nlazygit = \"Alt Shift M\"\nmenu = \"Alt Shift J\"\n");
+    swapped_popup_key.run_yzn(&yzn_bin, "status", "swapped popup key status");
+    let swapped_key_config = swapped_popup_key.zellij_file("config.kdl");
     for (key, payload) in [
         ("Alt Shift L", "config"),
         ("Alt Shift K", "agent"),
@@ -500,45 +452,27 @@ fn expect_front_door(yzn: &Path) {
         );
     }
 
-    let custom_editor_config = temp.path.join("custom-editor-config");
-    let custom_editor_state = temp.path.join("custom-editor-state");
-    write_config_home(
-        &custom_editor_config,
-        "[open]\nlog_level = \"info\"\n\n[shell]\nprogram = \"nu\"\n\n[editor]\ncommand = \"nvim\"\n",
-    );
-    let status = run_yzn_with_config(
-        &yzn_bin,
-        "status",
-        &custom_editor_config,
-        &custom_editor_state,
-        "custom editor status",
-    );
-    expect_contains(&status, "editor command: nvim", "custom editor status");
-    expect_contains(&status, "editor: nvim", "custom editor status");
+    let custom_editor = RuntimeCase::new(&temp.path, "custom-editor");
+    custom_editor.write_default_config("\n[editor]\ncommand = \"nvim\"\n");
+    let status = custom_editor.run_yzn(&yzn_bin, "status", "custom editor status");
+    expect_contains_all! {
+        &status, "custom editor status";
+        "editor command: nvim",
+        "editor: nvim",
+    }
 
-    let custom_config = temp.path.join("custom-bar-config");
-    let custom_state = temp.path.join("custom-bar-state");
-    write_config_home(
-        &custom_config,
-        "[open]\nlog_level = \"info\"\n\n[shell]\nprogram = \"nu\"\n\n[bar]\nwidgets = [\"editor\", \"claude_usage\", \"cpu\"]\n",
-    );
-    let status = run_yzn_with_config(
-        &yzn_bin,
-        "status",
-        &custom_config,
-        &custom_state,
-        "custom bar status",
-    );
-    expect_contains(
-        &status,
+    let custom_bar = RuntimeCase::new(&temp.path, "custom-bar");
+    custom_bar.write_default_config("\n[bar]\nwidgets = [\"editor\", \"claude_usage\", \"cpu\"]\n");
+    let status = custom_bar.run_yzn(&yzn_bin, "status", "custom bar status");
+    expect_contains_all! {
+        &status, "custom bar status";
         r#"bar widgets: ["editor","claude_usage","cpu"]"#,
-        "custom bar status",
-    );
-    expect_contains(&status, "popup side margin: 1", "custom bar status");
-    expect_contains(&status, "popup vertical margin: 0", "custom bar status");
-    expect_contains(&status, "zellij config: runtime (", "custom bar status");
-    expect_contains(&status, "layout: runtime (", "custom bar status");
-    let custom_layout = fs::read_to_string(custom_state.join("zellij/layout.kdl")).unwrap();
+        "popup side margin: 1",
+        "popup vertical margin: 0",
+        "zellij config: runtime (",
+        "layout: runtime (",
+    }
+    let custom_layout = custom_bar.zellij_file("layout.kdl");
     expect_contains(
         &custom_layout,
         r#"new_tab_template cwd="$HOME" {"#,
@@ -548,73 +482,60 @@ fn expect_front_door(yzn: &Path) {
         .lines()
         .find(|line| line.contains("format_right"))
         .expect("custom layout is missing format_right");
-    expect_contains(format_right, "{command_claude_usage}", "custom bar layout");
-    expect_contains(format_right, "{command_cpu}", "custom bar layout");
+    expect_contains_all! {
+        format_right, "custom bar layout";
+        "{command_claude_usage}",
+        "{command_cpu}",
+    }
     assert!(
         !format_right.contains("{command_codex_usage}"),
         "custom visible bar kept a Codex widget omitted by bar.widgets"
     );
-    let custom_swap = fs::read_to_string(custom_state.join("zellij/layout.swap.kdl")).unwrap();
-    for expected in [
+    let custom_swap = custom_bar.zellij_file("layout.swap.kdl");
+    expect_contains_all! {
+        &custom_swap, "custom bar swap layout";
         "swap_tiled_layout name=\"single_open\"",
         "swap_tiled_layout name=\"single_closed\"",
         "pane name=\"sidebar\" command=\"/nix/store/",
         "stacked=true",
-    ] {
-        expect_contains(&custom_swap, expected, "custom bar swap layout");
     }
     assert!(
         !custom_swap.contains("@yazi@"),
         "custom bar swap layout kept the unresolved Yazi placeholder"
     );
-    let custom_config = fs::read_to_string(custom_state.join("zellij/config.kdl")).unwrap();
-    expect_contains(
-        &custom_config,
-        &format!(
-            r#"layout "{}""#,
-            custom_state.join("zellij/layout.kdl").display()
-        ),
-        "custom bar new-tab config",
-    );
-    expect_contains(
-        &custom_config,
-        &format!("cwd {home};"),
-        "custom bar new-tab config",
-    );
+    let custom_config = custom_bar.zellij_file("config.kdl");
+    expect_contains_all! {
+        &custom_config, "custom bar new-tab config";
+        format!(r#"layout "{}""#, custom_bar.zellij_path("layout.kdl").display()),
+        format!("cwd {home};"),
+    }
 
-    let doctor = run_yzn_with_config(
-        &yzn_bin,
-        "doctor",
-        &doctor_config_home,
-        &doctor_state_dir,
-        "yzn doctor",
-    );
-    for expected in [
-        "Yazelix doctor".to_string(),
-        format!("ok config home: {}", doctor_config_home.display()),
-        "ok editor.command: yzn-hx".to_string(),
-        "ok editor: /nix/store/".to_string(),
-        "ok open.log_level: info".to_string(),
-        "ok welcome.enabled: true".to_string(),
-        "ok welcome.style: random".to_string(),
-        "ok welcome.duration_seconds: 3".to_string(),
-        r#"ok bar.widgets: ["editor","shell","term","codex_usage","cpu","ram"]"#.to_string(),
-        "ok popup.side_margin: 1".to_string(),
-        "ok popup.vertical_margin: 0".to_string(),
-        "ok keybindings.config: Alt Shift K".to_string(),
-        "ok keybindings.agent: Alt Shift L".to_string(),
-        "ok keybindings.lazygit: Alt Shift J".to_string(),
-        "ok keybindings.menu: Alt Shift M".to_string(),
-        "ok tutor helper: /nix/store/".to_string(),
-        "ok screen helper: /nix/store/".to_string(),
-        "ok welcome helper: /nix/store/".to_string(),
-        "ok yazi opener: /nix/store/".to_string(),
-        "ok reveal helper: /nix/store/".to_string(),
-        "ok yazi cli: /nix/store/".to_string(),
-        "ok pane orchestrator plugin: /nix/store/".to_string(),
-        "warn session: not inside zellij".to_string(),
-    ] {
-        expect_contains(&doctor, &expected, "yzn doctor");
+    let doctor = doctor_case.run_yzn(&yzn_bin, "doctor", "yzn doctor");
+    expect_contains_all! {
+        &doctor, "yzn doctor";
+        "Yazelix doctor",
+        format!("ok config home: {}", doctor_case.config_home.display()),
+        "ok editor.command: yzn-hx",
+        "ok editor: /nix/store/",
+        "ok open.log_level: info",
+        "ok welcome.enabled: true",
+        "ok welcome.style: random",
+        "ok welcome.duration_seconds: 3",
+        r#"ok bar.widgets: ["editor","shell","term","codex_usage","cpu","ram"]"#,
+        "ok popup.side_margin: 1",
+        "ok popup.vertical_margin: 0",
+        "ok keybindings.config: Alt Shift K",
+        "ok keybindings.agent: Alt Shift L",
+        "ok keybindings.lazygit: Alt Shift J",
+        "ok keybindings.menu: Alt Shift M",
+        "ok tutor helper: /nix/store/",
+        "ok screen helper: /nix/store/",
+        "ok welcome helper: /nix/store/",
+        "ok yazi opener: /nix/store/",
+        "ok reveal helper: /nix/store/",
+        "ok yazi cli: /nix/store/",
+        "ok pane orchestrator plugin: /nix/store/",
+        "warn session: not inside zellij",
     }
     assert!(
         !doctor.contains("warn helix config:"),
@@ -622,32 +543,17 @@ fn expect_front_door(yzn: &Path) {
         excerpt(&doctor)
     );
 
-    let helix_override_config_home = temp.path.join("helix-override-config");
-    let helix_override_state = temp.path.join("helix-override-state");
-    write_config_home(
-        &helix_override_config_home,
-        "[open]\nlog_level = \"info\"\n\n[shell]\nprogram = \"nu\"\n",
-    );
-    let helix_override_config = helix_override_config_home.join("helix/config.toml");
+    let helix_override = RuntimeCase::new(&temp.path, "helix-override");
+    helix_override.write_default_config("");
+    let helix_override_config = helix_override.config_home.join("helix/config.toml");
     fs::create_dir_all(helix_override_config.parent().unwrap()).unwrap();
     fs::write(&helix_override_config, "theme = \"ayu_evolve\"\n").unwrap();
-    let doctor = run_yzn_with_config(
-        &yzn_bin,
-        "doctor",
-        &helix_override_config_home,
-        &helix_override_state,
-        "Helix override doctor",
-    );
-    expect_contains(
-        &doctor,
+    let doctor = helix_override.run_yzn(&yzn_bin, "doctor", "Helix override doctor");
+    expect_contains_all! {
+        &doctor, "Helix override doctor";
         r#"warn helix config: helix config override exists without the ':sh yzn reveal "%{buffer_name}"' configuration"#,
-        "Helix override doctor",
-    );
-    expect_contains(
-        &doctor,
-        &helix_override_config.display().to_string(),
-        "Helix override doctor",
-    );
+        helix_override_config.display().to_string(),
+    }
 
     expect_sponsor_fallback(
         Command::new(&yzn_bin).arg("sponsor").env("PATH", ""),
@@ -657,12 +563,10 @@ fn expect_front_door(yzn: &Path) {
     let fake_path = temp.path.join("fake-path");
     fs::create_dir(&fake_path).unwrap();
     let fake_xdg_open = fake_path.join("xdg-open");
-    fs::write(
+    write_executable(
         &fake_xdg_open,
         "#!/bin/sh\necho noisy opener >&2\nexit 42\n",
-    )
-    .unwrap();
-    fs::set_permissions(&fake_xdg_open, fs::Permissions::from_mode(0o755)).unwrap();
+    );
     expect_sponsor_fallback(
         Command::new(&yzn_bin)
             .arg("sponsor")
@@ -726,12 +630,10 @@ fn expect_menu_dispatch(menu: &Path) {
     let temp = TempDir::new();
     let fake_yzn = temp.path.join("fake-yzn");
     let output_file = temp.path.join("selected-command");
-    fs::write(
+    write_executable(
         &fake_yzn,
         "#!/bin/sh\nprintf '%s\\n' \"$*\" >\"$YZN_MENU_TEST_OUT\"\n",
-    )
-    .unwrap();
-    fs::set_permissions(&fake_yzn, fs::Permissions::from_mode(0o755)).unwrap();
+    );
 
     let mut child = Command::new(menu)
         .env("YZN_MENU_YZN", &fake_yzn)
@@ -795,6 +697,55 @@ fn write_config_home(config_home: &Path, contents: impl AsRef<[u8]>) -> PathBuf 
     config
 }
 
+fn write_executable(path: &Path, contents: impl AsRef<[u8]>) {
+    fs::write(path, contents).unwrap();
+    fs::set_permissions(path, fs::Permissions::from_mode(0o755)).unwrap();
+}
+
+struct RuntimeCase {
+    config_home: PathBuf,
+    state_dir: PathBuf,
+}
+
+impl RuntimeCase {
+    fn new(root: &Path, name: &str) -> Self {
+        Self {
+            config_home: root.join(format!("{name}-config")),
+            state_dir: root.join(format!("{name}-state")),
+        }
+    }
+
+    fn write_config(&self, contents: impl AsRef<[u8]>) -> PathBuf {
+        write_config_home(&self.config_home, contents)
+    }
+
+    fn write_default_config(&self, extra: &str) -> PathBuf {
+        self.write_config(default_config(extra))
+    }
+
+    fn run_yzn(&self, yzn_bin: &Path, command: &str, context: &str) -> String {
+        run_yzn_with_config(
+            yzn_bin,
+            command,
+            &self.config_home,
+            &self.state_dir,
+            context,
+        )
+    }
+
+    fn zellij_file(&self, file: &str) -> String {
+        fs::read_to_string(self.state_dir.join("zellij").join(file)).unwrap()
+    }
+
+    fn zellij_path(&self, file: &str) -> PathBuf {
+        self.state_dir.join("zellij").join(file)
+    }
+}
+
+fn default_config(extra: &str) -> String {
+    format!("{DEFAULT_CONFIG}{extra}")
+}
+
 fn expect_config_ui(yzn: &Path) {
     let packaged_config = yzn.join("share/yazelix-next/config.toml");
     assert!(
@@ -802,7 +753,8 @@ fn expect_config_ui(yzn: &Path) {
         "yzn package is missing config.toml"
     );
     let packaged_config = fs::read_to_string(&packaged_config).unwrap();
-    for expected in [
+    expect_contains_all! {
+        &packaged_config, "packaged config.toml";
         "log_level = \"info\"",
         "program = \"nu\"",
         "command = \"yzn-hx\"",
@@ -816,8 +768,6 @@ fn expect_config_ui(yzn: &Path) {
         "lazygit = \"Alt Shift J\"",
         "menu = \"Alt Shift M\"",
         "widgets = [\"editor\", \"shell\", \"term\", \"codex_usage\", \"cpu\", \"ram\"]",
-    ] {
-        expect_contains(&packaged_config, expected, "packaged config.toml");
     }
 
     let helper = yzn.join("libexec/yazelix-next/yzn-config");
@@ -874,7 +824,8 @@ fn expect_config_ui(yzn: &Path) {
 
     let config = temp.path.join("config.toml");
     let config_text = fs::read_to_string(&config).unwrap();
-    for expected in [
+    expect_contains_all! {
+        &config_text, "created config.toml";
         "[open]",
         "log_level = \"info\"",
         "[shell]",
@@ -896,8 +847,6 @@ fn expect_config_ui(yzn: &Path) {
         "[bar]",
         "widgets = [\"editor\", \"shell\", \"term\", \"codex_usage\", \"cpu\", \"ram\"]",
         "contract_id = \"yazelix-next.config\"",
-    ] {
-        expect_contains(&config_text, expected, "created config.toml");
     }
 }
 
@@ -992,45 +941,29 @@ fn expect_startup_diagnostics(yzn: &Path) {
     for (config_home, check, reason, label) in failure_cases {
         for command in ["enter", "status", "doctor"] {
             let runtime = temp.path.join(format!("{label}-{command}-runtime"));
-            let (stdout, stderr) = run_startup_failure(&yzn_bin, command, &config_home, &runtime);
-            for expected in [
-                "Yazelix could not start.",
-                "Reason:",
+            expect_startup_failure(
+                &yzn_bin,
+                command,
+                &config_home,
+                &runtime,
+                &check,
                 reason,
-                "Check:",
-                check.to_str().unwrap(),
-            ] {
-                expect_contains(&stderr, expected, &format!("{label} {command} diagnostic"));
-            }
-            if command == "doctor" {
-                let context = format!("{label} doctor stdout");
-                for expected in ["Yazelix doctor", "fail runtime preflight:"] {
-                    expect_contains(&stdout, expected, &context);
-                }
-            }
+                label,
+            );
         }
     }
 
     let state_file = temp.path.join("state-file");
     fs::write(&state_file, "").unwrap();
-    let (stdout, stderr) = run_startup_failure(
+    expect_startup_failure(
         &yzn_bin,
         "doctor",
         &temp.path.join("state-config"),
         &state_file,
-    );
-    for expected in [
-        "Yazelix could not start.",
-        "Reason:",
+        &state_file,
         "failed to create",
-        "Check:",
-        state_file.to_str().unwrap(),
-    ] {
-        expect_contains(&stderr, expected, "unwritable state doctor diagnostic");
-    }
-    for expected in ["Yazelix doctor", "fail runtime preflight:"] {
-        expect_contains(&stdout, expected, "unwritable state doctor stdout");
-    }
+        "unwritable state",
+    );
 }
 
 fn expect_menu_descriptions_match_help(help: &str, menu: &str) {
@@ -1053,12 +986,15 @@ fn menu_command_line(line: &str) -> Option<(&str, &str)> {
     Some((id, label.trim_start()))
 }
 
-fn run_startup_failure(
+fn expect_startup_failure(
     yzn_bin: &Path,
     command: &str,
     config_home: &Path,
     runtime: &Path,
-) -> (String, String) {
+    check: &Path,
+    reason: &str,
+    label: &str,
+) {
     if !runtime.exists() {
         fs::create_dir_all(runtime).unwrap();
     }
@@ -1075,10 +1011,24 @@ fn run_startup_failure(
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );
-    (
-        String::from_utf8_lossy(&output.stdout).to_string(),
-        String::from_utf8_lossy(&output.stderr).to_string(),
-    )
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    expect_contains_all! {
+        stderr.as_ref(), &format!("{label} {command} diagnostic");
+        "Yazelix could not start.",
+        "Reason:",
+        reason,
+        "Check:",
+        check.to_str().unwrap(),
+    }
+    if command == "doctor" {
+        let context = format!("{label} doctor stdout");
+        expect_contains_all! {
+            stdout.as_ref(), &context;
+            "Yazelix doctor",
+            "fail runtime preflight:",
+        }
+    }
 }
 
 fn run_help(bin: &Path, args: &[&str]) -> String {
@@ -1138,33 +1088,25 @@ fn expect_mars_config_override(yzn: &Path) {
     );
 
     let launcher = binary_text(&yzn_bin);
-    for expected in [
+    expect_contains_all! {
+        &launcher, "runtime Mars config override fragment";
         "YAZELIX_NEXT_CONFIG_HOME",
         "MARS_CONFIG_HOME",
         "yzn-mars-config",
-    ] {
-        expect_contains(&launcher, expected, "runtime Mars config override fragment");
     }
 
     let temp = TempDir::new();
-    let config_home = temp.path.join("config");
-    let mars_config = config_home.join("mars/config.toml");
+    let mars_case = RuntimeCase::new(&temp.path, "mars");
+    let mars_config = mars_case.config_home.join("mars/config.toml");
     fs::create_dir_all(mars_config.parent().unwrap()).unwrap();
     fs::write(&mars_config, "# user Mars config\n").unwrap();
 
-    let status = run_yzn_with_config(
-        &yzn_bin,
-        "status",
-        &config_home,
-        &temp.path.join("state"),
-        "Mars config override status",
-    );
-    expect_contains(&status, "mars config: user", "Mars config override status");
-    expect_contains(
-        &status,
-        &mars_config.display().to_string(),
-        "Mars config override status",
-    );
+    let status = mars_case.run_yzn(&yzn_bin, "status", "Mars config override status");
+    expect_contains_all! {
+        &status, "Mars config override status";
+        "mars config: user",
+        mars_config.display().to_string(),
+    }
 }
 
 fn expect_zellij_config_sidecar(yzn: &Path) {
@@ -1218,8 +1160,10 @@ fn expect_zellij_config_sidecar(yzn: &Path) {
 
 fn expect_yazi_alt_z(yzn: &Path) {
     let keymap = fs::read_to_string(yzn.join("share/yazelix-next/yazi/keymap.toml")).unwrap();
-    for expected in [r#"on = ["<A-z>"]"#, r#"run = "plugin zoxide-editor""#] {
-        expect_contains(&keymap, expected, "Yazi Alt-z keymap fragment");
+    expect_contains_all! {
+        &keymap, "Yazi Alt-z keymap fragment";
+        r#"on = ["<A-z>"]"#,
+        r#"run = "plugin zoxide-editor""#,
     }
 
     let yazi_toml = fs::read_to_string(yzn.join("share/yazelix-next/yazi/yazi.toml")).unwrap();
@@ -1238,29 +1182,23 @@ fn expect_yazi_alt_z(yzn: &Path) {
     let sidebar_state =
         fs::read_to_string(yzn.join("share/yazelix-next/yazi/plugins/sidebar-state.yazi/main.lua"))
             .unwrap();
-    for expected in [
+    expect_contains_all! {
+        &sidebar_state, "Yazi sidebar-state plugin fragment";
         "register_sidebar_yazi_state",
         "YAZELIX_ZELLIJ_SESSION_NAME",
         "ZELLIJ_SESSION_NAME",
         "YZN_ZELLIJ",
-    ] {
-        expect_contains(
-            &sidebar_state,
-            expected,
-            "Yazi sidebar-state plugin fragment",
-        );
     }
 
     let plugin =
         fs::read_to_string(yzn.join("share/yazelix-next/yazi/plugins/zoxide-editor.yazi/main.lua"))
             .unwrap();
-    for expected in [
+    expect_contains_all! {
+        &plugin, "Yazi zoxide editor plugin fragment";
         r#"Command(yzn_open):arg(target_dir)"#,
         r#"Command("zoxide")"#,
         r#"emit("cd", { target_dir, raw = true })"#,
         "YZN_OPEN is not set",
-    ] {
-        expect_contains(&plugin, expected, "Yazi zoxide editor plugin fragment");
     }
 
     let layout = fs::read_to_string(yzn.join("share/yazelix-next/layout.kdl")).unwrap();
@@ -1277,7 +1215,8 @@ fn expect_yazi_alt_z(yzn: &Path) {
         .expect("layout is missing sidebar yzn-yazi command");
     let wrapper = binary_text(&yzn_yazi);
     let context = format!("{} Yazi integration fragment", yzn_yazi.display());
-    for expected in [
+    expect_contains_all! {
+        &wrapper, &context;
         "YZN_OPEN",
         "YZN_ZELLIJ",
         "YZN_EDITOR",
@@ -1296,8 +1235,6 @@ fn expect_yazi_alt_z(yzn: &Path) {
         "git",
         "zoxide",
         "fzf",
-    ] {
-        expect_contains(&wrapper, expected, &context);
     }
 }
 
@@ -1378,15 +1315,14 @@ fn expect_keybinds(config: &str) {
 }
 
 fn expect_first_party_plugins(config: &str) {
-    for expected in [
+    expect_contains_all! {
+        config, "config.kdl first-party plugin fragment";
         "share/yazelix_zellij_popup/yzpp.wasm",
         "share/yazelix_zellij_pane_orchestrator/yazelix_pane_orchestrator.wasm",
         r#"yazelix_pane_orchestrator location="file:/nix/store/"#,
         "load_plugins",
         "support_kitty_keyboard_protocol true",
         "screen_saver_enabled false",
-    ] {
-        expect_contains(config, expected, "config.kdl first-party plugin fragment");
     }
     expect_popup_defaults(config, "1", "0", "packaged popup config");
     for (id, pane_title, command_suffix, extra) in [
@@ -1429,7 +1365,8 @@ fn expect_first_party_plugins(config: &str) {
     let lazygit = popup_command(config, "/bin/yzn-lazygit");
     let lazygit_script = fs::read_to_string(&lazygit).unwrap();
     let context = format!("{} managed LazyGit wrapper", lazygit.display());
-    for expected in [
+    expect_contains_all! {
+        &lazygit_script, &context;
         "editor.command",
         "/bin/yzn-hx",
         "/bin/yzn-config",
@@ -1439,14 +1376,13 @@ fn expect_first_party_plugins(config: &str) {
         "GIT_EDITOR",
         "EDITOR=$YAZELIX_NEXT_EDITOR",
         "VISUAL=$YAZELIX_NEXT_EDITOR",
-    ] {
-        expect_contains(&lazygit_script, expected, &context);
     }
 
     let config_ui = popup_command(config, "/bin/yzn-config-ui");
     let config_ui_script = fs::read_to_string(&config_ui).unwrap();
     let context = format!("{} managed editor wrapper", config_ui.display());
-    for expected in [
+    expect_contains_all! {
+        &config_ui_script, &context;
         "editor.command",
         "YAZELIX_NEXT_EDITOR",
         "/bin/yzn-hx",
@@ -1455,8 +1391,6 @@ fn expect_first_party_plugins(config: &str) {
         "GIT_EDITOR",
         "EDITOR=$YAZELIX_NEXT_EDITOR",
         "VISUAL=$YAZELIX_NEXT_EDITOR",
-    ] {
-        expect_contains(&config_ui_script, expected, &context);
     }
     let helix = embedded_store_path(&config_ui_script, "/bin/yzn-hx");
     let helix_script = fs::read_to_string(&helix).unwrap();
@@ -1477,15 +1411,14 @@ fn expect_first_party_plugins(config: &str) {
     );
     let helix_steel = embedded_store_path(&helix_script, "-yzn-helix-steel-config");
     let helix_module = fs::read_to_string(helix_steel.join("helix.scm")).unwrap();
-    for expected in [
+    expect_contains_all! {
+        &helix_module, "packaged Helix Steel module";
         "(provide yzn-new-shell)",
         "(require (only-in \"helix/static.scm\" cx->current-file get-helix-cwd))",
         "(require (only-in \"helix/commands.scm\" run-shell-command))",
         "(define (yzn-new-shell-command target)",
         "/bin/yzn-open-terminal",
         "(define (yzn-new-shell)",
-    ] {
-        expect_contains(&helix_module, expected, "packaged Helix Steel module");
     }
     assert!(
         !helix_module.contains("recentf"),
@@ -1494,16 +1427,11 @@ fn expect_first_party_plugins(config: &str) {
     );
     let open_terminal = embedded_store_path(&helix_module, "/bin/yzn-open-terminal");
     let open_terminal_script = fs::read_to_string(&open_terminal).unwrap();
-    expect_contains(
-        &open_terminal_script,
+    expect_contains_all! {
+        &open_terminal_script, "packaged Helix new-shell helper";
         "zellij action new-pane --cwd",
-        "packaged Helix new-shell helper",
-    );
-    expect_contains(
-        &open_terminal_script,
         "dirname -- \"$target\"",
-        "packaged Helix new-shell helper",
-    );
+    }
     expect_helix_wrapper_config_selection(&helix_script);
 
     assert!(popup_command(config, "/bin/yzn-menu").is_file());
@@ -1519,16 +1447,13 @@ for arg do printf 'arg=%s\\n' \"$arg\" >> \"$YZN_FAKE_HX_OUT\"; done\n";
     let packaged_config = embedded_store_path(helix_script, "-config.toml").join("config.toml");
     let packaged_steel = embedded_store_path(helix_script, "-yzn-helix-steel-config");
     let fake_hx = temp.path.join("hx");
-    fs::write(&fake_hx, FAKE_HX).unwrap();
-    fs::set_permissions(&fake_hx, fs::Permissions::from_mode(0o755)).unwrap();
+    write_executable(&fake_hx, FAKE_HX);
     let real_hx = embedded_store_path(helix_script, "/bin/hx");
     let test_wrapper = temp.path.join("yzn-hx");
-    fs::write(
+    write_executable(
         &test_wrapper,
         helix_script.replace(real_hx.to_str().unwrap(), fake_hx.to_str().unwrap()),
-    )
-    .unwrap();
-    fs::set_permissions(&test_wrapper, fs::Permissions::from_mode(0o755)).unwrap();
+    );
 
     for (name, files, uses_user_config_file, uses_user_steel) in [
         ("packaged", &[] as &[(&str, &str)], false, false),
@@ -1658,8 +1583,11 @@ fn expect_helix_wrapper_output(
     );
     let config_dir_arg = format!("arg={}", config_dir.display());
     let config_file_arg = format!("arg={}", config_file.display());
-    expect_contains(output, &steel_line, context);
-    expect_contains(output, &managed_line, context);
+    expect_contains_all! {
+        output, context;
+        steel_line,
+        managed_line,
+    }
     expect_order(
         output,
         &[
@@ -1841,14 +1769,12 @@ fn expect_agent_bootstrap_case(
 
 fn write_fake_agent(bin: &Path, name: &str) {
     let path = bin.join(name);
-    fs::write(
+    write_executable(
         &path,
         format!(
             "#!/bin/sh\nif [ \"$#\" -eq 0 ]; then\n  printf '%s\\n' \"{name}\" >\"$YAZELIX_AGENT_TEST_OUT\"\nelse\n  printf '%s %s\\n' \"{name}\" \"$*\" >\"$YAZELIX_AGENT_TEST_OUT\"\nfi\n"
         ),
-    )
-    .unwrap();
-    fs::set_permissions(&path, fs::Permissions::from_mode(0o755)).unwrap();
+    );
 }
 
 fn successful_output(command: &mut Command, context: &str) -> Output {
