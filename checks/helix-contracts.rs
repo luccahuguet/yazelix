@@ -1,14 +1,10 @@
-use std::{
-    env, fs,
-    path::{Path, PathBuf},
-    process::Command,
-};
+use std::{env, fs, path::Path, process::Command};
 
 mod support;
 
 use support::{
-    binary_text, default_config, embedded_store_path, excerpt, expect_contains, expect_order,
-    successful_stdout, write_executable, TempDir,
+    binary_text, embedded_store_path, excerpt, expect_contains, expect_order, write_executable,
+    RuntimeCase, TempDir,
 };
 
 macro_rules! expect_contains_all {
@@ -90,7 +86,7 @@ fn expect_helix_doctor_warnings(yzn: &Path) {
 
     let default = RuntimeCase::new(&temp.path, "default");
     default.write_default_config("");
-    let doctor = default.run_doctor(&yzn_bin, "default Helix doctor");
+    let doctor = default.run_yzn(&yzn_bin, "doctor", "default Helix doctor");
     assert!(
         !doctor.contains("warn helix config:"),
         "default doctor should not warn about packaged Helix config\n{}",
@@ -102,7 +98,7 @@ fn expect_helix_doctor_warnings(yzn: &Path) {
     let helix_override_config = helix_override.config_home.join("helix/config.toml");
     fs::create_dir_all(helix_override_config.parent().unwrap()).unwrap();
     fs::write(&helix_override_config, "theme = \"ayu_evolve\"\n").unwrap();
-    let doctor = helix_override.run_doctor(&yzn_bin, "Helix preference doctor");
+    let doctor = helix_override.run_yzn(&yzn_bin, "doctor", "Helix preference doctor");
     assert!(
         !doctor.contains("warn helix config:"),
         "ordinary Helix preference override should not warn\n{}",
@@ -110,7 +106,7 @@ fn expect_helix_doctor_warnings(yzn: &Path) {
     );
 
     fs::write(&helix_override_config, "[keys.normal]\nA-r = \":noop\"\n").unwrap();
-    let doctor = helix_override.run_doctor(&yzn_bin, "Helix Alt r doctor");
+    let doctor = helix_override.run_yzn(&yzn_bin, "doctor", "Helix Alt r doctor");
     expect_contains_all! {
         &doctor, "Helix Alt r doctor";
         r#"warn helix config: helix config override sets reserved Alt r; generated config keeps ':sh yzn reveal "%{buffer_name}"'"#,
@@ -292,33 +288,4 @@ fn expect_helix_wrapper_output(
         ],
         context,
     );
-}
-
-struct RuntimeCase {
-    config_home: PathBuf,
-    state_dir: PathBuf,
-}
-
-impl RuntimeCase {
-    fn new(root: &Path, name: &str) -> Self {
-        Self {
-            config_home: root.join(format!("{name}-config")),
-            state_dir: root.join(format!("{name}-state")),
-        }
-    }
-
-    fn write_default_config(&self, extra: &str) -> PathBuf {
-        support::write_config_home(&self.config_home, default_config(extra))
-    }
-
-    fn run_doctor(&self, yzn_bin: &Path, context: &str) -> String {
-        successful_stdout(
-            Command::new(yzn_bin)
-                .arg("doctor")
-                .env("YAZELIX_NEXT_CONFIG_HOME", &self.config_home)
-                .env("YAZELIX_STATE_DIR", &self.state_dir)
-                .env_remove("ZELLIJ_SESSION_NAME"),
-            context,
-        )
-    }
 }

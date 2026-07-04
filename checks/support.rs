@@ -7,7 +7,7 @@ use std::{
 
 const DEFAULT_CONFIG: &str = "[open]\nlog_level = \"info\"\n\n[shell]\nprogram = \"nu\"\n";
 
-pub fn default_config(extra: &str) -> String {
+fn default_config(extra: &str) -> String {
     format!("{DEFAULT_CONFIG}{extra}")
 }
 
@@ -85,6 +85,41 @@ pub fn embedded_store_path(text: &str, suffix: &str) -> PathBuf {
         .rfind("/nix/store/")
         .unwrap_or_else(|| panic!("binary text is missing /nix/store path for {suffix}"));
     PathBuf::from(&text[start..end])
+}
+
+pub struct RuntimeCase {
+    pub config_home: PathBuf,
+    pub state_dir: PathBuf,
+}
+
+impl RuntimeCase {
+    pub fn new(root: &Path, name: &str) -> Self {
+        Self {
+            config_home: root.join(format!("{name}-config")),
+            state_dir: root.join(format!("{name}-state")),
+        }
+    }
+
+    pub fn write_config(&self, contents: impl AsRef<[u8]>) -> PathBuf {
+        write_config_home(&self.config_home, contents)
+    }
+
+    pub fn write_default_config(&self, extra: &str) -> PathBuf {
+        self.write_config(default_config(extra))
+    }
+
+    pub fn yzn_command(&self, yzn_bin: &Path, command: &str) -> Command {
+        let mut yzn = Command::new(yzn_bin);
+        yzn.arg(command)
+            .env("YAZELIX_NEXT_CONFIG_HOME", &self.config_home)
+            .env("YAZELIX_STATE_DIR", &self.state_dir)
+            .env_remove("ZELLIJ_SESSION_NAME");
+        yzn
+    }
+
+    pub fn run_yzn(&self, yzn_bin: &Path, command: &str, context: &str) -> String {
+        successful_stdout(&mut self.yzn_command(yzn_bin, command), context)
+    }
 }
 
 pub struct TempDir {

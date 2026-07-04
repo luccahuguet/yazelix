@@ -8,8 +8,8 @@ use std::{
 mod support;
 
 use support::{
-    binary_text, default_config, embedded_store_path, excerpt, expect_contains, expect_order,
-    successful_output, successful_stdout, write_config_home, write_executable, TempDir,
+    binary_text, embedded_store_path, excerpt, expect_contains, expect_order, successful_output,
+    successful_stdout, write_config_home, write_executable, RuntimeCase, TempDir,
 };
 
 const SPONSOR_URL: &str = "https://github.com/sponsors/luccahuguet";
@@ -703,56 +703,9 @@ fn expect_command_error(yzn_bin: &Path, args: &[&str], expected: &str, context: 
     expect_contains(&String::from_utf8_lossy(&output.stderr), expected, context);
 }
 
-fn run_yzn_with_config(
-    yzn_bin: &Path,
-    command: &str,
-    config_home: &Path,
-    state_dir: &Path,
-    context: &str,
-) -> String {
-    successful_stdout(
-        Command::new(yzn_bin)
-            .arg(command)
-            .env("YAZELIX_NEXT_CONFIG_HOME", config_home)
-            .env("YAZELIX_STATE_DIR", state_dir)
-            .env_remove("ZELLIJ_SESSION_NAME"),
-        context,
-    )
-}
-
-struct RuntimeCase {
-    config_home: PathBuf,
-    state_dir: PathBuf,
-}
-
 impl RuntimeCase {
-    fn new(root: &Path, name: &str) -> Self {
-        Self {
-            config_home: root.join(format!("{name}-config")),
-            state_dir: root.join(format!("{name}-state")),
-        }
-    }
-
-    fn write_config(&self, contents: impl AsRef<[u8]>) -> PathBuf {
-        write_config_home(&self.config_home, contents)
-    }
-
-    fn write_default_config(&self, extra: &str) -> PathBuf {
-        self.write_config(default_config(extra))
-    }
-
-    fn run_yzn(&self, yzn_bin: &Path, command: &str, context: &str) -> String {
-        run_yzn_with_config(
-            yzn_bin,
-            command,
-            &self.config_home,
-            &self.state_dir,
-            context,
-        )
-    }
-
     fn zellij_file(&self, file: &str) -> String {
-        fs::read_to_string(self.state_dir.join("zellij").join(file)).unwrap()
+        fs::read_to_string(self.zellij_path(file)).unwrap()
     }
 
     fn zellij_path(&self, file: &str) -> PathBuf {
