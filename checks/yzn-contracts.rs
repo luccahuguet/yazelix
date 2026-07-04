@@ -530,6 +530,28 @@ fn expect_front_door(yzn: &Path) {
         format!("cwd {home};"),
     }
 
+    let custom_shell_bar = RuntimeCase::new(&temp.path, "custom-shell-bar");
+    custom_shell_bar.write_config("[open]\nlog_level = \"info\"\n\n[shell]\nprogram = \"fish\"\n");
+    let status = custom_shell_bar.run_yzn(&yzn_bin, "status", "custom shell bar status");
+    expect_contains_all! {
+        &status, "custom shell bar status";
+        "shell: fish",
+        "layout: runtime (",
+    }
+    let custom_shell_layout = custom_shell_bar.zellij_file("layout.kdl");
+    expect_contains_all! {
+        &custom_shell_layout, "custom shell bar layout";
+        "❯fish",
+    }
+    assert!(
+        !custom_shell_layout.contains("❯nu"),
+        "custom shell bar layout kept the default shell label"
+    );
+    assert!(
+        !custom_shell_layout.contains("❯ fish"),
+        "custom shell bar layout inserted unwanted shell label spacing"
+    );
+
     let doctor = doctor_case.run_yzn(&yzn_bin, "doctor", "yzn doctor");
     expect_contains_all! {
         &doctor, "yzn doctor";

@@ -321,6 +321,7 @@
       });
       defaultConfig = builtins.fromTOML (builtins.readFile ./config.toml);
       defaultBarWidgets = defaultConfig.bar.widgets;
+      defaultShellProgram = defaultConfig.shell.program;
       defaultPopupSideMargin = toString defaultConfig.popup.side_margin;
       defaultPopupVerticalMargin = toString defaultConfig.popup.vertical_margin;
       barRenderRequest = import ./packaging/bar-render-request.nix {
@@ -329,9 +330,15 @@
         zellijBar = yazelixZellijBarPackage;
       };
       yznBarRenderRequest =
-        pkgs.writeText "yzn-bar-render-request.json" (builtins.toJSON (barRenderRequest defaultBarWidgets));
+        pkgs.writeText "yzn-bar-render-request.json" (builtins.toJSON (barRenderRequest {
+          widgetTray = defaultBarWidgets;
+          shellLabel = defaultShellProgram;
+        }));
       yznBarRenderRequestTemplate =
-        pkgs.writeText "yzn-bar-render-request-template.json" (builtins.toJSON (barRenderRequest "__YZN_BAR_WIDGET_TRAY__"));
+        pkgs.writeText "yzn-bar-render-request-template.json" (builtins.toJSON (barRenderRequest {
+          widgetTray = "__YZN_BAR_WIDGET_TRAY__";
+          shellLabel = "__YZN_SHELL_LABEL__";
+        }));
       yznBarRender = pkgs.writeShellApplication {
         name = "yzn-bar-render";
         runtimeInputs = [pkgs.jq];
@@ -428,6 +435,7 @@
         yazelixZellijBarWasm = "${yazelixZellijBarPackage}/share/yazelix_zellij_bar/zjstatus.wasm";
         yazelixZellijPaneOrchestratorWasm = "${yazelixZellijPaneOrchestratorPackage}/${yazelixZellijPaneOrchestratorPackage.wasmPath}";
         defaultBarWidgetsJson = builtins.toJSON defaultBarWidgets;
+        inherit defaultShellProgram;
         defaultConfigKeybinding = defaultConfig.keybindings.config;
         defaultAgentKeybinding = defaultConfig.keybindings.agent;
         defaultGitKeybinding = defaultConfig.keybindings.git;

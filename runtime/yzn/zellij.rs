@@ -10,21 +10,23 @@ use crate::{
     error::{path_error, startup, AppError},
     paths::parent,
     runtime::PopupKeybinding,
-    DEFAULT_BAR_WIDGETS_JSON, DEFAULT_POPUP_SIDE_MARGIN, DEFAULT_POPUP_VERTICAL_MARGIN, LAYOUT,
-    LAYOUT_BAR_PLACEHOLDER, LAYOUT_SWAP_TEMPLATE, LAYOUT_TEMPLATE, LAYOUT_YAZI_PLACEHOLDER,
-    YZN_BAR_RENDER, YZN_BAR_RENDER_REQUEST, YZN_SIDEBAR_REFRESH, YZN_YAZI, ZELLIJ_HOME_PLACEHOLDER,
+    DEFAULT_BAR_WIDGETS_JSON, DEFAULT_POPUP_SIDE_MARGIN, DEFAULT_POPUP_VERTICAL_MARGIN,
+    DEFAULT_SHELL_PROGRAM, LAYOUT, LAYOUT_BAR_PLACEHOLDER, LAYOUT_SWAP_TEMPLATE, LAYOUT_TEMPLATE,
+    LAYOUT_YAZI_PLACEHOLDER, YZN_BAR_RENDER, YZN_BAR_RENDER_REQUEST, YZN_SIDEBAR_REFRESH, YZN_YAZI,
+    ZELLIJ_HOME_PLACEHOLDER,
 };
 
 pub(crate) fn active_layout(
     state_dir: &Path,
     bar_widgets: &str,
+    shell_label: &str,
 ) -> Result<(&'static str, PathBuf), AppError> {
-    if bar_widgets == DEFAULT_BAR_WIDGETS_JSON {
+    if bar_widgets == DEFAULT_BAR_WIDGETS_JSON && shell_label == DEFAULT_SHELL_PROGRAM {
         return Ok(("packaged", PathBuf::from(LAYOUT)));
     }
 
     let layout = state_dir.join("zellij/layout.kdl");
-    let plugin_block = render_bar_plugin_block(bar_widgets)?;
+    let plugin_block = render_bar_plugin_block(bar_widgets, shell_label)?;
     materialize_layout(&layout, &plugin_block)?;
     Ok(("runtime", layout))
 }
@@ -415,11 +417,13 @@ fn inject_snippet_before(
     Ok(text.replacen(marker, &format!("{snippet}\n{marker}"), 1))
 }
 
-fn render_bar_plugin_block(bar_widgets: &str) -> Result<String, AppError> {
+fn render_bar_plugin_block(bar_widgets: &str, shell_label: &str) -> Result<String, AppError> {
     let template_path = Path::new(YZN_BAR_RENDER_REQUEST);
     let template = fs::read_to_string(template_path)
         .map_err(|error| path_error("read", template_path, template_path, error))?;
-    let request = template.replace(r#""__YZN_BAR_WIDGET_TRAY__""#, bar_widgets);
+    let request = template
+        .replace(r#""__YZN_BAR_WIDGET_TRAY__""#, bar_widgets)
+        .replace("__YZN_SHELL_LABEL__", shell_label);
     Ok(trim_output(run_checked(
         Path::new(YZN_BAR_RENDER),
         Command::new(YZN_BAR_RENDER).arg(request),

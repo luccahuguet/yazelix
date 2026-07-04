@@ -165,7 +165,7 @@ fn bar_layout_is_valid(layout: &str) -> bool {
 fn rendered_bar_widgets_are_valid(layout: &str) -> bool {
     [
         " hx",
-        "❯sh",
+        "❯nu",
         "{command_term}",
         "{command_codex_usage}",
         "{command_cpu}",

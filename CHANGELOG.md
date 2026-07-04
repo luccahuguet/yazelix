@@ -119,7 +119,8 @@ User-visible runtime changes for Yazelix Next live here.
   tab with bar widgets as an ordered Ratconfig string-list picker. Custom bar
   widget layouts keep
   the sidebar swap layout paired with the generated layout. The empty
-  workspace widget is not selectable.
+  workspace widget is not selectable. The shell bar widget follows
+  `shell.program` in compact form, such as `❯nu` or `❯fish`.
 - `yzn` appends `~/.config/yazelix-next/zellij/config.kdl` as a native Zellij
   sidecar for safe preferences, with a small denylist guardrail for obvious
   ownership lines such as keymaps, shell, layout, plugins, Kitty keyboard

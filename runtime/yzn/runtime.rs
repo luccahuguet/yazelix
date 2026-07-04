@@ -78,7 +78,7 @@ impl Runtime {
         let config_home = config_home()?;
         let config_toml = config_home.join("config.toml");
         let yzn_open_log = config_value(&config_home, &config_toml, "open.log_level")?;
-        let shell_program = config_value(&config_home, &config_toml, "shell.program")?;
+        let shell_program = trim_output(config_value(&config_home, &config_toml, "shell.program")?);
         let editor_command =
             trim_output(config_value(&config_home, &config_toml, "editor.command")?);
         let editor = effective_editor_command(&editor_command);
@@ -105,7 +105,7 @@ impl Runtime {
             &config_toml,
             CUSTOM_POPUP_KEYBINDINGS_KDL_CONFIG_PATH,
         )?;
-        let (layout_source, layout) = active_layout(&state_dir, &bar_widgets)?;
+        let (layout_source, layout) = active_layout(&state_dir, &bar_widgets, &shell_program)?;
         let user_mars_config_home = config_home.join("mars");
         let (mars_config_source, mars_config_home) =
             if user_mars_config_home.join("config.toml").is_file() {
@@ -185,7 +185,7 @@ impl Runtime {
             state_dir,
             bridge_session_id: uses_helix_bridge(&editor).then(bridge_session_id),
             yzn_open_log: trim_output(yzn_open_log),
-            shell_program: trim_output(shell_program),
+            shell_program,
             editor_command,
             editor,
             welcome_enabled: trim_output(welcome_enabled),

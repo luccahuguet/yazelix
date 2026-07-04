@@ -37,6 +37,7 @@ pub(crate) const YAZELIX_ZELLIJ_BAR_WASM: &str = "@yazelixZellijBarWasm@";
 pub(crate) const YAZELIX_ZELLIJ_PANE_ORCHESTRATOR_WASM: &str =
     "@yazelixZellijPaneOrchestratorWasm@";
 pub(crate) const DEFAULT_BAR_WIDGETS_JSON: &str = r#"@defaultBarWidgetsJson@"#;
+pub(crate) const DEFAULT_SHELL_PROGRAM: &str = "@defaultShellProgram@";
 pub(crate) const DEFAULT_POPUP_SIDE_MARGIN: &str = "@defaultPopupSideMargin@";
 pub(crate) const DEFAULT_POPUP_VERTICAL_MARGIN: &str = "@defaultPopupVerticalMargin@";
 pub(crate) const CUSTOM_POPUPS_KDL_CONFIG_PATH: &str = "popups.kdl";

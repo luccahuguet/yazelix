@@ -3,14 +3,16 @@
   nushell,
   runtimeIdentity,
   zellijBar,
-}:
-widgetTray: {
+}: {
+  widgetTray,
+  shellLabel,
+}: {
   zjstatus_plugin_url = "file:${zellijBar}/${zellijBar.wasmPath}";
   widget_tray = widgetTray;
   widget_frame = "none";
   widget_separator = "dot";
   editor_label = "hx";
-  shell_label = "sh";
+  shell_label = shellLabel;
   terminal_label = "mars";
   custom_text = "";
   appearance_mode = "dark";
