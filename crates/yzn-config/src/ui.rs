@@ -66,10 +66,10 @@ pub(crate) fn run_ui() -> Result<()> {
                 }
             }
             ConfigUiIntent::SetField {
+                field_index,
                 source_id,
                 path: field_path,
                 value,
-                ..
             } => {
                 if let Err(error) = write_source_field(&paths, &source_id, &field_path, &value) {
                     app.notice_error(error.to_string());
@@ -78,12 +78,12 @@ pub(crate) fn run_ui() -> Result<()> {
                 }
                 app.model = build_model(&paths)?;
                 app.notice_info(format!("Saved {field_path}."));
-                app.finish_successful_set_field_by_path(&source_id, &field_path, &value);
+                app.finish_successful_set_field(field_index, &value);
             }
             ConfigUiIntent::UnsetField {
+                field_index,
                 source_id,
                 path: field_path,
-                ..
             } => {
                 if let Err(error) = write_source_default(&paths, &source_id, &field_path) {
                     app.notice_error(error.to_string());
@@ -92,7 +92,7 @@ pub(crate) fn run_ui() -> Result<()> {
                 }
                 app.model = build_model(&paths)?;
                 app.notice_info(format!("Restored default for {field_path}."));
-                app.finish_successful_unset_field_by_path(&source_id, &field_path);
+                app.finish_successful_unset_field(field_index);
             }
         }
     }
