@@ -32,7 +32,7 @@ vertical_margin = 0
 # Key chords for managed popup roles.
 config = "Alt Shift K"
 agent = "Alt Shift L"
-lazygit = "Alt Shift J"
+git = "Alt Shift J"
 menu = "Alt Shift M"
 
 # Custom popups can be added manually. Commands are argv-based, not shell strings.

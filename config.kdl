@@ -6,6 +6,12 @@ plugins {
         popup_defaults {
             side_margin @defaultPopupSideMargin@
             vertical_margin @defaultPopupVerticalMargin@
+            on_close {
+                command "@yznSidebarRefresh@"
+            }
+            on_hide {
+                command "@yznSidebarRefresh@"
+            }
         }
 
         popups {
@@ -24,11 +30,12 @@ plugins {
                 toggle_close_behavior "hide"
             }
 
-            lazygit {
-                command "@lazygit@"
-                pane_title "lazygit_popup"
+            git {
+                command "@git@"
+                pane_title "git_popup"
                 width_percent 100
                 height_percent 100
+                toggle_close_behavior "hide"
             }
 
             menu {
@@ -78,10 +85,10 @@ keybinds {
     shared_except "locked" {
         unbind "Alt n" "Alt i" "Alt o" "Ctrl g"
         bind "Alt m" { NewPane; }
-        bind "@lazygitKey@" {
+        bind "@gitKey@" {
             MessagePlugin "yzpp" {
                 name "toggle"
-                payload "lazygit"
+                payload "git"
             }
         }
         bind "@configKey@" {

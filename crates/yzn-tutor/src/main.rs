@@ -9,7 +9,7 @@ const NUSHELL: &str = "@nu@";
 
 const KEY_CONFIG: &str = "Alt Shift K";
 const KEY_AGENT: &str = "Alt Shift L";
-const KEY_LAZYGIT: &str = "Alt Shift J";
+const KEY_GIT: &str = "Alt Shift J";
 const KEY_MENU: &str = "Alt Shift M";
 const KEY_FOCUS_LEFT: &str = "Alt h";
 const KEY_FOCUS_RIGHT: &str = "Alt l";
@@ -255,7 +255,7 @@ fn render_discovery_lesson(index: usize, lesson: &TutorLesson) -> String {
 1. **Run in shell or Yazelix:** Use `yzn help` when you know the command name and need syntax.
 2. **Inside Yazelix:** Press `{menu}` or run `yzn menu` for the live-filter command palette.
 3. **Inside Yazelix:** Press `{config}` or run `yzn config` to open Ratconfig; use its `keys` tab when you need the packaged binding table.
-4. **Inside Yazelix:** Press `{lazygit}` for LazyGit and `{agent}` for the persistent agent popup.
+4. **Inside Yazelix:** Press `{git}` for the Git popup and `{agent}` for the persistent agent popup.
 5. **Run in shell or Yazelix:** Use `yzn status` for a compact runtime/config summary.
 6. **Run in shell or Yazelix:** Use `yzn doctor` when config, runtime, generated layouts, or packaged tools look wrong.
 
@@ -264,7 +264,7 @@ Next lesson: `yzn tutor troubleshooting`.
         header = lesson_intro(index, lesson),
         menu = key(KEY_MENU),
         config = key(KEY_CONFIG),
-        lazygit = key(KEY_LAZYGIT),
+        git = key(KEY_GIT),
         agent = key(KEY_AGENT),
     ))
 }
@@ -458,7 +458,7 @@ mod tests {
             "keys",
             KEY_MENU,
             KEY_CONFIG,
-            KEY_LAZYGIT,
+            KEY_GIT,
             KEY_AGENT,
             "yzn status",
             "yzn doctor",

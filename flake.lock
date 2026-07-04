@@ -630,11 +630,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1783113129,
-        "narHash": "sha256-l4s7seCKFeMVjfQFnxGlD2CpbaguTfla6H6RR4gLHa4=",
+        "lastModified": 1783131223,
+        "narHash": "sha256-XVylHsiIDoWbQNwQBXfRHxAubD4oHNyiz41qvq6/btY=",
         "owner": "luccahuguet",
         "repo": "yazelix-zellij-popup",
-        "rev": "dfe31eb4430f6de7ceb9e047e04f6df0555387bc",
+        "rev": "22dcf387a42b3e32046c3f1a798dc5784cbce4c7",
         "type": "github"
       },
       "original": {

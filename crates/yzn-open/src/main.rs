@@ -1,6 +1,6 @@
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::{
     env,
     ffi::{OsStr, OsString},
@@ -434,10 +434,11 @@ fn open_editor_pane(config: &Config, targets: &[PathBuf], cwd: &Path) -> Result<
         &format!(
             "opening editor pane program={} args={}",
             config.zellij.to_string_lossy(),
-            json!(args
-                .iter()
-                .map(|arg| arg.to_string_lossy().into_owned())
-                .collect::<Vec<_>>())
+            json!(
+                args.iter()
+                    .map(|arg| arg.to_string_lossy().into_owned())
+                    .collect::<Vec<_>>()
+            )
         ),
     );
 
@@ -827,15 +828,17 @@ fi
     }
 
     fn pane_list(entries: &[(u64, u64)]) -> String {
-        json!(entries
-            .iter()
-            .map(|(id, tab_id)| json!({
-                "id": id,
-                "is_plugin": false,
-                "tab_id": tab_id,
-                "exited": false,
-            }))
-            .collect::<Vec<_>>())
+        json!(
+            entries
+                .iter()
+                .map(|(id, tab_id)| json!({
+                    "id": id,
+                    "is_plugin": false,
+                    "tab_id": tab_id,
+                    "exited": false,
+                }))
+                .collect::<Vec<_>>()
+        )
         .to_string()
     }
 

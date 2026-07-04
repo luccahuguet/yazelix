@@ -5,8 +5,9 @@ opens Mars with a Yazi-first layout that becomes a sidebar plus stacked work
 panes, a bridge-enabled Yazelix Helix editor, reef cursor colors, and the
 Yazelix Zellij fork. The top bar uses a rendered Yazelix Zellij Bar tray with
 configurable widgets, a `YZN` runtime marker, and bundled `tu` for usage
-widgets. `Alt Shift J/K/L/M` default to managed LazyGit, config, agent, and
-menu popups and can be remapped with semantic `keybindings.*` role fields.
+widgets. `Alt Shift J/K/L/M` default to managed Git, config, agent, and menu
+popups and can be remapped with semantic `keybindings.*` role fields. The Git
+popup defaults to LazyGit.
 Users can add managed custom popups with their own semantic keybinding under
 `[popups.<id>]`. Launches show a brief configurable welcome splash, and
 `yzn screen` can run the same terminal screen styles directly.
@@ -127,7 +128,7 @@ The `config` tab controls `open.log_level`, which sets the managed
 `info`, and `debug`. It also controls `shell.program`, which selects the
 packaged shell for new Zellij panes. Values are `nu`, `bash`, `zsh`, and
 `fish`. The `editor.command` setting controls managed Yazi opens, Ratconfig
-external text edits, LazyGit editor flows, and the managed session
+external text edits, Git client editor flows, and the managed session
 `EDITOR`/`VISUAL`/`YZN_EDITOR`/`GIT_EDITOR` environment. The default `yzn-hx`
 uses packaged Yazelix Helix. Host commands such as `hx` or `nvim` run from
 `PATH` without packaged config, plugins, bridge reuse, or reveal parity. The
@@ -143,7 +144,7 @@ vertical `0`; higher values inset the popup by exact terminal cells. The
 runtime writes these once as `yzpp` popup defaults, and packaged and custom
 popup specs inherit them.
 The same tab edits `[keybindings].config`, `[keybindings].agent`,
-`[keybindings].lazygit`, and `[keybindings].menu`, the semantic key chords for
+`[keybindings].git`, and `[keybindings].menu`, the semantic key chords for
 managed popup roles. They default to `Alt Shift K`, `Alt Shift L`,
 `Alt Shift J`, and `Alt Shift M`, remap only those popup role actions, and
 reject invalid, duplicate, or conflicting packaged chords before launch.
@@ -311,8 +312,8 @@ Yazi opens files through the packaged `yzn-open` Rust helper. With the default
 Zellij tab or opens packaged `yzn-hx` in a managed `editor` pane. Host commands
 such as `hx` or `nvim` skip the bridge and open in that pane. Missing editor
 commands fail before opening a pane with a direct `editor command not found`
-diagnostic. The managed LazyGit popup also exports the configured editor to Git
-editor environment variables before launching LazyGit.
+diagnostic. The managed Git popup defaults to LazyGit and exports the configured
+editor to Git editor environment variables before launching the client.
 Managed Yazi uses scoped Kitty graphics environment for image previews while
 preserving the real Zellij session for editor routing.
 
@@ -332,6 +333,8 @@ managed init file exists, plugin directories at
 `~/.config/yazelix-next/yazi/plugins/*.yazi` are symlinked into the runtime
 config; packaged plugin names cannot be overridden. The config UI's `advanced`
 tab can create or open the user init and keymap files.
+Managed Yazi refreshes sidebar git decorations on setup, directory changes, tab
+changes, and managed popup close/hide hooks.
 
 `yzn-open` writes bounded diagnostics to
 `${YAZELIX_STATE_DIR}/logs/yzn-open.log` and keeps one rotated
@@ -356,14 +359,14 @@ source, and flake checks keep the reference backed by packaged bindings.
 | `Alt m` | new pane in the stacked layout |
 | `Alt r` | reveal the current editor file in Yazi |
 | `Alt z` | Yazi zoxide jump into the managed editor |
-| `Alt Shift J` | toggle the LazyGit popup |
+| `Alt Shift J` | toggle the Git popup |
 | `Alt Shift K` | toggle the config popup |
 | `Alt Shift L` | hide/show the agent popup by default |
 | `Alt Shift M` | toggle the menu popup |
 | `Alt Shift h` | toggle the managed Yazi sidebar |
 
 Move mode is intentionally unbound. The `keybindings.config`,
-`keybindings.agent`, `keybindings.lazygit`, and `keybindings.menu` fields can
+`keybindings.agent`, `keybindings.git`, and `keybindings.menu` fields can
 move managed popup triggers to valid non-conflicting chords; raw Zellij
 `keybinds` remain outside the managed sidecar. Custom `[popups.<id>]` entries
 use their own required `keybinding` field and the same collision checks.
@@ -384,18 +387,18 @@ nix run --override-input yazelixZellijPaneOrchestrator ../yazelix-zellij-pane-or
 Counts owned project files by language with `wc -l`.
 
 ```sh
-wc -l .gitignore AGENTS.md README.md CHANGELOG.md ARCHITECTURE.md flake.nix home-manager/module.nix packaging/tokenusage.nix packaging/bar-render-request.nix shell/sh/yzn-env-supervisor.sh shell/sh/yzn-helix.sh shell/sh/yzn-shell.sh config.toml mars.toml config.kdl layout.kdl layout.swap.kdl nu/config.nu nu/env.nu helix/config.toml yazi/init.lua yazi/keymap.toml yazi/plugins/sidebar-state.yazi/main.lua yazi/plugins/sidebar-status.yazi/main.lua yazi/plugins/zoxide-editor.yazi/main.lua yazi/yazi.toml crates/yzn-config/Cargo.toml crates/yzn-config/src/*.rs crates/yzn-open/Cargo.toml crates/yzn-open/src/bin/yzn-reveal.rs crates/yzn-open/src/main.rs crates/yzn-tutor/Cargo.toml crates/yzn-tutor/src/cli_render.rs crates/yzn-tutor/src/main.rs crates/yzn-tutor/src/tutor_document.rs checks/key-reference-parity.rs checks/zellij-layout.rs checks/yzn-contracts.rs runtime/yzn-agent.rs runtime/yzn-menu.rs runtime/yzn-nu.rs runtime/yzn-yazi.rs runtime/yzn/*.rs runtime/yzn-zellij-config.rs
+wc -l .gitignore AGENTS.md README.md CHANGELOG.md ARCHITECTURE.md flake.nix home-manager/module.nix packaging/tokenusage.nix packaging/bar-render-request.nix shell/sh/yzn-env-supervisor.sh shell/sh/yzn-helix.sh shell/sh/yzn-shell.sh config.toml mars.toml config.kdl layout.kdl layout.swap.kdl nu/config.nu nu/env.nu helix/config.toml yazi/init.lua yazi/keymap.toml yazi/plugins/sidebar-state.yazi/main.lua yazi/plugins/sidebar-status.yazi/main.lua yazi/plugins/zoxide-editor.yazi/main.lua yazi/yazi.toml crates/yzn-config/Cargo.toml crates/yzn-config/src/*.rs crates/yzn-open/Cargo.toml crates/yzn-open/src/bin/yzn-reveal.rs crates/yzn-open/src/bin/yzn-sidebar-refresh.rs crates/yzn-open/src/lib.rs crates/yzn-open/src/main.rs crates/yzn-open/src/sidebar.rs crates/yzn-tutor/Cargo.toml crates/yzn-tutor/src/cli_render.rs crates/yzn-tutor/src/main.rs crates/yzn-tutor/src/tutor_document.rs checks/key-reference-parity.rs checks/zellij-layout.rs checks/yzn-contracts.rs runtime/yzn-agent.rs runtime/yzn-menu.rs runtime/yzn-nu.rs runtime/yzn-yazi.rs runtime/yzn/*.rs runtime/yzn-zellij-config.rs
 ```
 
 | Language | Files | Lines |
 | --- | --- | ---: |
 | Ignore | `.gitignore` | 4 |
-| Markdown | `AGENTS.md`, `README.md`, `CHANGELOG.md`, `ARCHITECTURE.md` | 1126 |
-| Nix | `flake.nix`, `home-manager/module.nix`, `packaging/tokenusage.nix`, `packaging/bar-render-request.nix` | 886 |
+| Markdown | `AGENTS.md`, `README.md`, `CHANGELOG.md`, `ARCHITECTURE.md` | 1131 |
+| Nix | `flake.nix`, `home-manager/module.nix`, `packaging/tokenusage.nix`, `packaging/bar-render-request.nix` | 889 |
 | Shell | `shell/sh/yzn-env-supervisor.sh`, `shell/sh/yzn-helix.sh`, `shell/sh/yzn-shell.sh` | 80 |
 | TOML | `config.toml`, `mars.toml`, `helix/config.toml`, `yazi/yazi.toml`, `yazi/keymap.toml`, `crates/yzn-config/Cargo.toml`, `crates/yzn-open/Cargo.toml`, `crates/yzn-tutor/Cargo.toml` | 184 |
-| KDL | `config.kdl`, `layout.kdl`, `layout.swap.kdl` | 204 |
+| KDL | `config.kdl`, `layout.kdl`, `layout.swap.kdl` | 211 |
 | Nu | `nu/config.nu`, `nu/env.nu` | 11 |
-| Lua | `yazi/init.lua`, `yazi/plugins/sidebar-state.yazi/main.lua`, `yazi/plugins/sidebar-status.yazi/main.lua`, `yazi/plugins/zoxide-editor.yazi/main.lua` | 235 |
-| Rust | `crates/yzn-config/src/*.rs`, `crates/yzn-open/src/bin/yzn-reveal.rs`, `crates/yzn-open/src/main.rs`, `crates/yzn-tutor/src/cli_render.rs`, `crates/yzn-tutor/src/main.rs`, `crates/yzn-tutor/src/tutor_document.rs`, `checks/key-reference-parity.rs`, `checks/zellij-layout.rs`, `checks/yzn-contracts.rs`, `runtime/yzn-agent.rs`, `runtime/yzn-menu.rs`, `runtime/yzn-nu.rs`, `runtime/yzn-yazi.rs`, `runtime/yzn/*.rs`, `runtime/yzn-zellij-config.rs` | 10123 |
-| Total | owned project files | 12853 |
+| Lua | `yazi/init.lua`, `yazi/plugins/sidebar-state.yazi/main.lua`, `yazi/plugins/sidebar-status.yazi/main.lua`, `yazi/plugins/zoxide-editor.yazi/main.lua` | 247 |
+| Rust | `crates/yzn-config/src/*.rs`, `crates/yzn-open/src/bin/yzn-reveal.rs`, `crates/yzn-open/src/bin/yzn-sidebar-refresh.rs`, `crates/yzn-open/src/lib.rs`, `crates/yzn-open/src/main.rs`, `crates/yzn-open/src/sidebar.rs`, `crates/yzn-tutor/src/cli_render.rs`, `crates/yzn-tutor/src/main.rs`, `crates/yzn-tutor/src/tutor_document.rs`, `checks/key-reference-parity.rs`, `checks/zellij-layout.rs`, `checks/yzn-contracts.rs`, `runtime/yzn-agent.rs`, `runtime/yzn-menu.rs`, `runtime/yzn-nu.rs`, `runtime/yzn-yazi.rs`, `runtime/yzn/*.rs`, `runtime/yzn-zellij-config.rs` | 10403 |
+| Total | owned project files | 13160 |

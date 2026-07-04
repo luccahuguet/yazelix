@@ -68,7 +68,7 @@ fn config_has_chord(config: &str, chord: &str) -> bool {
         "Alt h / Alt Left" => config.contains(r#"bind "Alt h" "Alt Left""#),
         "Alt l / Alt Right" => config.contains(r#"bind "Alt l" "Alt Right""#),
         "Alt Shift J" => {
-            config.contains(r#"bind "Alt Shift J""#) || config.contains(r#"bind "@lazygitKey@""#)
+            config.contains(r#"bind "Alt Shift J""#) || config.contains(r#"bind "@gitKey@""#)
         }
         "Alt Shift K" => {
             config.contains(r#"bind "Alt Shift K""#) || config.contains(r#"bind "@configKey@""#)

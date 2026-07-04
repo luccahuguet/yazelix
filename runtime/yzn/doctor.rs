@@ -14,8 +14,8 @@ use crate::{
     HELIX_REVEAL_COMMAND, LAYOUT, LAYOUT_SWAP_TEMPLATE, LAYOUT_TEMPLATE, MARS,
     YAZELIX_ZELLIJ_BAR_WASM, YAZELIX_ZELLIJ_PANE_ORCHESTRATOR_WASM, YAZELIX_ZELLIJ_POPUP_WASM,
     YZN_BAR_RENDER, YZN_BAR_RENDER_REQUEST, YZN_CONFIG, YZN_CONFIG_KDL, YZN_CONFIG_UI, YZN_HELIX,
-    YZN_MENU, YZN_REVEAL, YZN_SCREEN, YZN_TUTOR, YZN_WELCOME, YZN_YA, YZN_YAZI, YZN_ZELLIJ_CONFIG,
-    ZELLIJ,
+    YZN_MENU, YZN_REVEAL, YZN_SCREEN, YZN_SIDEBAR_REFRESH, YZN_TUTOR, YZN_WELCOME, YZN_YA,
+    YZN_YAZI, YZN_ZELLIJ_CONFIG, ZELLIJ,
 };
 
 pub(crate) fn print_doctor() -> Result<(), AppError> {
@@ -54,6 +54,7 @@ pub(crate) fn print_doctor() -> Result<(), AppError> {
     doctor_ok("welcome helper", YZN_WELCOME);
     doctor_ok("zellij helper", YZN_ZELLIJ_CONFIG);
     doctor_ok("reveal helper", YZN_REVEAL);
+    doctor_ok("sidebar refresh helper", YZN_SIDEBAR_REFRESH);
     doctor_ok("yazi cli", YZN_YA);
     doctor_ok("zellij", ZELLIJ);
     doctor_ok("mars", MARS);
@@ -101,6 +102,7 @@ fn check_doctor_inputs() -> Result<(), AppError> {
         ("config helper", Path::new(YZN_CONFIG)),
         ("zellij config helper", Path::new(YZN_ZELLIJ_CONFIG)),
         ("reveal helper", Path::new(YZN_REVEAL)),
+        ("sidebar refresh helper", Path::new(YZN_SIDEBAR_REFRESH)),
         ("yazi cli", Path::new(YZN_YA)),
         ("packaged Zellij config", Path::new(YZN_CONFIG_KDL)),
         ("Zellij", Path::new(ZELLIJ)),

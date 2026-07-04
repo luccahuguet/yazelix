@@ -33,9 +33,9 @@ User-visible runtime changes for Yazelix Next live here.
   Managed Yazi opens resolve `yzn-hx` to packaged Yazelix Helix; host commands
   such as `hx` or `nvim` run from `PATH`, bypass the Helix bridge, and stay
   user-owned. `yzn status` and `yzn doctor` report the configured and effective
-  editor, Ratconfig external text edits and the managed LazyGit popup use the
-  same editor, and missing editor commands fail with a direct diagnostic before
-  opening a pane.
+  editor, Ratconfig external text edits and the managed Git popup use the same
+  editor, and missing editor commands fail with a direct diagnostic before
+  opening a pane. The Git popup defaults to LazyGit.
 - The `yzn config` Helix tab opens managed `helix/config.toml`,
   `helix/languages.toml`, `helix/helix.scm`, and `helix/init.scm` files in
   `yzn-hx`, creating TOML starter files only after their row is activated and
@@ -89,16 +89,16 @@ User-visible runtime changes for Yazelix Next live here.
   sidecars after the packaged setup without importing full native Yazi config.
 - `config.toml` controls `open.log_level`, `shell.program`,
   `[popup].side_margin`, `[popup].vertical_margin`,
-  `keybindings.config`/`agent`/`lazygit`/`menu`, semantic `[popups.<id>]`
+  `keybindings.config`/`agent`/`git`/`menu`, semantic `[popups.<id>]`
   custom popups, and `[bar].widgets`; managed
   popups default to one left/right margin cell and zero top/bottom margin
   cells, popup role triggers default to `Alt Shift J/K/L/M`, invalid,
   duplicate, or conflicting semantic values fail before launch, custom popups
   require argv-based `command` plus a managed `keybinding`, accept optional
   `args`, `title`, and `keep_alive`, reject title collisions with custom or
-  packaged popups, inherit global popup margins through the plugin-level
-  `yzpp` default margin block, render title-backed command markers for stable
-  pane identity, and `yzn config` shows scalar root fields in the main config
+  packaged popups, inherit global popup margins and sidebar refresh hooks
+  through the plugin-level `yzpp` default block, render title-backed command
+  markers for stable pane identity, and `yzn config` shows scalar root fields in the main config
   tab with bar widgets as an ordered Ratconfig string-list picker. Custom bar
   widget layouts keep
   the sidebar swap layout paired with the generated layout. The empty
@@ -131,10 +131,12 @@ User-visible runtime changes for Yazelix Next live here.
 - `yzn` uses an isolated Zellij plugin-permission cache and pre-seeds packaged
   Bar, Popup, and pane-orchestrator permissions so desktop launches do not
   depend on hidden plugin permission prompts.
-- `Alt Shift J/K/L/M` toggle LazyGit, config, agent, and menu popups through
+- `Alt Shift J/K/L/M` toggle Git, config, agent, and menu popups through
   Yazelix Zellij Popup with Kitty keyboard protocol.
-  `keybindings.config`/`agent`/`lazygit`/`menu` can remap those semantic
-  actions without exposing raw Zellij keymaps. The
+  `keybindings.config`/`agent`/`git`/`menu` can remap those semantic actions
+  without exposing raw Zellij keymaps. The Git popup hides instead of closing so
+  the default LazyGit client keeps state across toggles, and popup close/hide
+  hooks refresh managed Yazi git decorations. The
   agent popup bootstraps once from `codex resume`, `grok`, `opencode`, `pi`,
   then `claude --resume`, persists the first available provider under
   `YAZELIX_STATE_DIR`, and does not cascade again after a provider is selected.

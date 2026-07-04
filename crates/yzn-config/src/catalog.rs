@@ -29,11 +29,11 @@ pub(crate) const CUSTOM_POPUPS_KDL_PATH: &str = "popups.kdl";
 pub(crate) const CUSTOM_POPUP_KEYBINDINGS_KDL_PATH: &str = "popups.keybindings.kdl";
 pub(crate) const KEYBINDINGS_CONFIG_PATH: &str = "keybindings.config";
 pub(crate) const KEYBINDINGS_AGENT_PATH: &str = "keybindings.agent";
-pub(crate) const KEYBINDINGS_LAZYGIT_PATH: &str = "keybindings.lazygit";
+pub(crate) const KEYBINDINGS_GIT_PATH: &str = "keybindings.git";
 pub(crate) const KEYBINDINGS_MENU_PATH: &str = "keybindings.menu";
 pub(crate) const DEFAULT_CONFIG_KEYBINDING: &str = "Alt Shift K";
 pub(crate) const DEFAULT_AGENT_KEYBINDING: &str = "Alt Shift L";
-pub(crate) const DEFAULT_LAZYGIT_KEYBINDING: &str = "Alt Shift J";
+pub(crate) const DEFAULT_GIT_KEYBINDING: &str = "Alt Shift J";
 pub(crate) const DEFAULT_MENU_KEYBINDING: &str = "Alt Shift M";
 pub(crate) const BAR_WIDGETS_PATH: &str = "bar.widgets";
 pub(crate) const BAR_WIDGET_VALUES: &[&str] = &[
@@ -104,8 +104,8 @@ pub(crate) const POPUP_KEYBINDINGS: &[PopupKeybindingSpec] = &[
         default: DEFAULT_AGENT_KEYBINDING,
     },
     PopupKeybindingSpec {
-        path: KEYBINDINGS_LAZYGIT_PATH,
-        default: DEFAULT_LAZYGIT_KEYBINDING,
+        path: KEYBINDINGS_GIT_PATH,
+        default: DEFAULT_GIT_KEYBINDING,
     },
     PopupKeybindingSpec {
         path: KEYBINDINGS_MENU_PATH,
@@ -136,7 +136,7 @@ pub(crate) const KEY_BINDINGS: &[[&str; 5]] = &[
     key!("Panes"; "Ctrl Alt j"; "Move pane down"; "Zellij"; "config.kdl"),
     key!("Panes"; "Ctrl Alt k"; "Move pane up"; "Zellij"; "config.kdl"),
     key!("Tabs"; "Ctrl Alt l"; "Move tab right"; "Zellij"; "config.kdl"),
-    key!("Popups"; "Alt Shift J"; "Toggle LazyGit popup"; "Yazelix"; "config.kdl"),
+    key!("Popups"; "Alt Shift J"; "Toggle Git popup"; "Yazelix"; "config.kdl"),
     key!("Popups"; "Alt Shift K"; "Toggle config popup"; "Yazelix"; "config.kdl"),
     key!("Popups"; "Alt Shift L"; "Hide or show agent popup"; "Yazelix"; "config.kdl"),
     key!("Popups"; "Alt Shift M"; "Toggle menu popup"; "Yazelix"; "config.kdl"),
@@ -245,8 +245,8 @@ pub(crate) const CONFIG_FIELDS: &[ConfigFieldSpec] = &[
     },
     ConfigFieldSpec {
         field: FieldSpec::string_choice(
-            KEYBINDINGS_LAZYGIT_PATH,
-            "Key chord that toggles the managed LazyGit popup.",
+            KEYBINDINGS_GIT_PATH,
+            "Key chord that toggles the managed Git popup.",
             &[],
             "key chord like Alt Shift A that does not conflict with a packaged binding",
         ),

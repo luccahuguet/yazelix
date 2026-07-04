@@ -12,7 +12,7 @@ use crate::{
     runtime::PopupKeybinding,
     DEFAULT_BAR_WIDGETS_JSON, DEFAULT_POPUP_SIDE_MARGIN, DEFAULT_POPUP_VERTICAL_MARGIN, LAYOUT,
     LAYOUT_BAR_PLACEHOLDER, LAYOUT_SWAP_TEMPLATE, LAYOUT_TEMPLATE, LAYOUT_YAZI_PLACEHOLDER,
-    YZN_BAR_RENDER, YZN_BAR_RENDER_REQUEST, YZN_YAZI, ZELLIJ_HOME_PLACEHOLDER,
+    YZN_BAR_RENDER, YZN_BAR_RENDER_REQUEST, YZN_SIDEBAR_REFRESH, YZN_YAZI, ZELLIJ_HOME_PLACEHOLDER,
 };
 
 pub(crate) fn active_layout(
@@ -137,7 +137,9 @@ fn patch_popup_default_margins(
     vertical_margin: &str,
 ) -> Result<String, AppError> {
     let marker = format!(
-        "        popup_defaults {{\n            side_margin {DEFAULT_POPUP_SIDE_MARGIN}\n            vertical_margin {DEFAULT_POPUP_VERTICAL_MARGIN}\n        }}"
+        "        popup_defaults {{\n            side_margin {DEFAULT_POPUP_SIDE_MARGIN}\n            vertical_margin {DEFAULT_POPUP_VERTICAL_MARGIN}\n            on_close {{\n                command {}\n            }}\n            on_hide {{\n                command {}\n            }}\n        }}",
+        kdl_string(YZN_SIDEBAR_REFRESH),
+        kdl_string(YZN_SIDEBAR_REFRESH),
     );
     if !text.contains(&marker) {
         return Err(startup(
@@ -149,7 +151,9 @@ fn patch_popup_default_margins(
     Ok(text.replacen(
         &marker,
         &format!(
-            "        popup_defaults {{\n            side_margin {side_margin}\n            vertical_margin {vertical_margin}\n        }}"
+            "        popup_defaults {{\n            side_margin {side_margin}\n            vertical_margin {vertical_margin}\n            on_close {{\n                command {}\n            }}\n            on_hide {{\n                command {}\n            }}\n        }}",
+            kdl_string(YZN_SIDEBAR_REFRESH),
+            kdl_string(YZN_SIDEBAR_REFRESH),
         ),
         1,
     ))

@@ -1,20 +1,13 @@
 use anyhow::{Context, Result, bail};
-use serde_json::Value;
 use std::{
     env,
     ffi::OsString,
     path::PathBuf,
-    process::{Command, ExitCode, Output},
+    process::{Command, ExitCode},
 };
-
-const ORCHESTRATOR_PLUGIN: &str = "yazelix_pane_orchestrator";
-const ZELLIJ_SESSION_NAME_ENV: &str = "ZELLIJ_SESSION_NAME";
-
-struct Config {
-    ya: OsString,
-    zellij: OsString,
-    zellij_session_name: Option<OsString>,
-}
+use yzn_open::sidebar::{
+    Config, ensure_success, orchestrator_action, orchestrator_query, sidebar_yazi_id,
+};
 
 fn main() -> ExitCode {
     match run(&Config::from_env(), env::args_os().skip(1)) {
@@ -58,17 +51,6 @@ fn run(config: &Config, raw_args: impl IntoIterator<Item = OsString>) -> Result<
     Ok(())
 }
 
-impl Config {
-    fn from_env() -> Self {
-        Self {
-            ya: nonempty_env("YZN_YA").unwrap_or_else(|| "ya".into()),
-            zellij: nonempty_env("YZN_ZELLIJ").unwrap_or_else(|| "zellij".into()),
-            zellij_session_name: nonempty_env(ZELLIJ_SESSION_NAME_ENV)
-                .or_else(|| nonempty_env("YAZELIX_ZELLIJ_SESSION_NAME")),
-        }
-    }
-}
-
 fn parse_target(raw_args: impl IntoIterator<Item = OsString>) -> Result<OsString> {
     let mut args = raw_args.into_iter();
     let Some(target) = args.next() else {
@@ -90,65 +72,6 @@ fn existing_absolute_path(target: &OsString) -> Result<PathBuf> {
         bail!("target does not exist: {}", path.display());
     }
     Ok(path)
-}
-
-fn sidebar_yazi_id(raw: &str) -> Result<String> {
-    serde_json::from_str::<Value>(raw)
-        .context("pane orchestrator returned invalid session JSON")?
-        .pointer("/sidebar_yazi/yazi_id")
-        .and_then(Value::as_str)
-        .map(str::trim)
-        .filter(|id| !id.is_empty())
-        .map(str::to_string)
-        .context("managed sidebar Yazi is not registered in the active tab")
-}
-
-fn orchestrator_query(config: &Config, name: &str) -> Result<String> {
-    let response = orchestrator_action(config, name)?;
-    if response.is_empty() {
-        bail!("pane orchestrator returned no response for {name}");
-    }
-    Ok(response)
-}
-
-fn orchestrator_action(config: &Config, name: &str) -> Result<String> {
-    let mut command = Command::new(&config.zellij);
-    if let Some(session_name) = &config.zellij_session_name {
-        command.env(ZELLIJ_SESSION_NAME_ENV, session_name);
-    }
-    let output = command
-        .args([
-            "action",
-            "pipe",
-            "--plugin",
-            ORCHESTRATOR_PLUGIN,
-            "--name",
-            name,
-            "--",
-            "",
-        ])
-        .output()
-        .with_context(|| format!("could not pipe {name} to pane orchestrator"))?;
-    ensure_success(&output, "pane orchestrator command failed")?;
-    let response = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    Ok(response)
-}
-
-fn ensure_success(output: &Output, context: &str) -> Result<()> {
-    if output.status.success() {
-        return Ok(());
-    }
-    let stderr = String::from_utf8_lossy(&output.stderr);
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    let message = [stderr.trim(), stdout.trim()]
-        .into_iter()
-        .find(|part| !part.is_empty())
-        .unwrap_or("no output");
-    bail!("{context}: {message}");
-}
-
-fn nonempty_env(name: &str) -> Option<OsString> {
-    env::var_os(name).filter(|value| !value.is_empty())
 }
 
 fn print_help() {

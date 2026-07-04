@@ -348,7 +348,7 @@ mod tests {
         for (field_path, value) in [
             (KEYBINDINGS_CONFIG_PATH, "Alt Shift C"),
             (KEYBINDINGS_AGENT_PATH, "Alt Shift A"),
-            (KEYBINDINGS_LAZYGIT_PATH, "Alt Shift G"),
+            (KEYBINDINGS_GIT_PATH, "Alt Shift G"),
             (KEYBINDINGS_MENU_PATH, "Alt Shift U"),
         ] {
             assert_write_round_trip(&path, field_path, json!(value), Some(value));
@@ -517,8 +517,8 @@ mod tests {
                 "popups.btm.title must not be empty",
             ),
             (
-                "[popups.btm]\ncommand = \"btm\"\ntitle = \"lazygit_popup\"\nkeybinding = \"Alt Shift B\"\n",
-                "popups.btm.title conflicts with packaged popup title lazygit_popup",
+                "[popups.btm]\ncommand = \"btm\"\ntitle = \"git_popup\"\nkeybinding = \"Alt Shift B\"\n",
+                "popups.btm.title conflicts with packaged popup title git_popup",
             ),
             (
                 "[popups.btm]\ncommand = \"btm\"\ntitle = \"shared_popup\"\nkeybinding = \"Alt Shift B\"\n\n[popups.htop]\ncommand = \"htop\"\ntitle = \"shared_popup\"\nkeybinding = \"Alt Shift U\"\n",
@@ -711,7 +711,7 @@ mod tests {
             "[editor]\ncommand = \"yzn-hx\"\n\n",
             "[open]\nlog_level = \"info\"\n\n",
             "[popup]\nside_margin = 1\nvertical_margin = 0\n\n",
-            "[keybindings]\nconfig = \"Alt Shift K\"\nagent = \"Alt Shift L\"\nlazygit = \"Alt Shift J\"\nmenu = \"Alt Shift M\"\n\n",
+            "[keybindings]\nconfig = \"Alt Shift K\"\nagent = \"Alt Shift L\"\ngit = \"Alt Shift J\"\nmenu = \"Alt Shift M\"\n\n",
             "[ratconfig.contract]\napplied_change_ids = []\ncontract_id = \"yazelix-next.config\"\nschema_version = 1\nversion = 1\n\n",
             "[shell]\nprogram = \"fish\"\n\n",
             "[welcome]\nduration_seconds = 3\nenabled = false\nstyle = \"random\"\n",

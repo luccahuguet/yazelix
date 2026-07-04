@@ -173,7 +173,7 @@ fn expect_front_door(yzn: &Path) {
         "yzn reveal",
         "Alt Shift",
         "Ctrl Alt",
-        "LazyGit",
+        "Git popup",
         "Agent popup",
     ] {
         assert!(
@@ -284,7 +284,7 @@ fn expect_front_door(yzn: &Path) {
         "popups.keybindings.kdl",
         "keybindings.config",
         "keybindings.agent",
-        "keybindings.lazygit",
+        "keybindings.git",
         "keybindings.menu",
         "lazygit",
         "yzn-bar-render",
@@ -333,7 +333,7 @@ fn expect_front_door(yzn: &Path) {
         "popup vertical margin: 0",
         "config keybinding: Alt Shift K",
         "agent keybinding: Alt Shift L",
-        "lazygit keybinding: Alt Shift J",
+        "git keybinding: Alt Shift J",
         "menu keybinding: Alt Shift M",
         "layout: packaged (/nix/store/",
         "inside zellij: no",
@@ -410,13 +410,13 @@ fn expect_front_door(yzn: &Path) {
     assert_eq!(custom_popup_spec.matches("vertical_margin 1").count(), 1);
 
     let custom_popup_key = RuntimeCase::new(&temp.path, "custom-popup-key");
-    custom_popup_key.write_default_config("\n[keybindings]\nconfig = \"Alt Shift C\"\nagent = \"Alt Shift A\"\nlazygit = \"Alt Shift G\"\nmenu = \"Alt Shift U\"\n");
+    custom_popup_key.write_default_config("\n[keybindings]\nconfig = \"Alt Shift C\"\nagent = \"Alt Shift A\"\ngit = \"Alt Shift G\"\nmenu = \"Alt Shift U\"\n");
     let status = custom_popup_key.run_yzn(&yzn_bin, "status", "custom popup key status");
     expect_contains_all! {
         &status, "custom popup key status";
         "config keybinding: Alt Shift C",
         "agent keybinding: Alt Shift A",
-        "lazygit keybinding: Alt Shift G",
+        "git keybinding: Alt Shift G",
         "menu keybinding: Alt Shift U",
         "zellij config: runtime (",
     }
@@ -424,7 +424,7 @@ fn expect_front_door(yzn: &Path) {
     for (key, payload, default) in [
         ("Alt Shift C", "config", "Alt Shift K"),
         ("Alt Shift A", "agent", "Alt Shift L"),
-        ("Alt Shift G", "lazygit", "Alt Shift J"),
+        ("Alt Shift G", "git", "Alt Shift J"),
         ("Alt Shift U", "menu", "Alt Shift M"),
     ] {
         expect_popup_binding(&custom_key_config, key, payload, "custom popup key config");
@@ -435,13 +435,13 @@ fn expect_front_door(yzn: &Path) {
     }
 
     let swapped_popup_key = RuntimeCase::new(&temp.path, "swapped-popup-key");
-    swapped_popup_key.write_default_config("\n[keybindings]\nconfig = \"Alt Shift L\"\nagent = \"Alt Shift K\"\nlazygit = \"Alt Shift M\"\nmenu = \"Alt Shift J\"\n");
+    swapped_popup_key.write_default_config("\n[keybindings]\nconfig = \"Alt Shift L\"\nagent = \"Alt Shift K\"\ngit = \"Alt Shift M\"\nmenu = \"Alt Shift J\"\n");
     swapped_popup_key.run_yzn(&yzn_bin, "status", "swapped popup key status");
     let swapped_key_config = swapped_popup_key.zellij_file("config.kdl");
     for (key, payload) in [
         ("Alt Shift L", "config"),
         ("Alt Shift K", "agent"),
-        ("Alt Shift M", "lazygit"),
+        ("Alt Shift M", "git"),
         ("Alt Shift J", "menu"),
     ] {
         expect_popup_binding(
@@ -526,7 +526,7 @@ fn expect_front_door(yzn: &Path) {
         "ok popup.vertical_margin: 0",
         "ok keybindings.config: Alt Shift K",
         "ok keybindings.agent: Alt Shift L",
-        "ok keybindings.lazygit: Alt Shift J",
+        "ok keybindings.git: Alt Shift J",
         "ok keybindings.menu: Alt Shift M",
         "ok tutor helper: /nix/store/",
         "ok screen helper: /nix/store/",
@@ -765,7 +765,7 @@ fn expect_config_ui(yzn: &Path) {
         "vertical_margin = 0",
         "config = \"Alt Shift K\"",
         "agent = \"Alt Shift L\"",
-        "lazygit = \"Alt Shift J\"",
+        "git = \"Alt Shift J\"",
         "menu = \"Alt Shift M\"",
         "widgets = [\"editor\", \"shell\", \"term\", \"codex_usage\", \"cpu\", \"ram\"]",
     }
@@ -784,7 +784,7 @@ fn expect_config_ui(yzn: &Path) {
         ("popup.vertical_margin", "0"),
         ("keybindings.config", "Alt Shift K"),
         ("keybindings.agent", "Alt Shift L"),
-        ("keybindings.lazygit", "Alt Shift J"),
+        ("keybindings.git", "Alt Shift J"),
         ("keybindings.menu", "Alt Shift M"),
         (
             "bar.widgets",
@@ -842,7 +842,7 @@ fn expect_config_ui(yzn: &Path) {
         "[keybindings]",
         "config = \"Alt Shift K\"",
         "agent = \"Alt Shift L\"",
-        "lazygit = \"Alt Shift J\"",
+        "git = \"Alt Shift J\"",
         "menu = \"Alt Shift M\"",
         "[bar]",
         "widgets = [\"editor\", \"shell\", \"term\", \"codex_usage\", \"cpu\", \"ram\"]",
@@ -1167,7 +1167,12 @@ fn expect_yazi_alt_z(yzn: &Path) {
     }
 
     let yazi_toml = fs::read_to_string(yzn.join("share/yazelix-next/yazi/yazi.toml")).unwrap();
-    expect_contains(&yazi_toml, "YZN_ZELLIJ=", "Yazi opener fragment");
+    expect_contains_all! {
+        &yazi_toml, "Yazi config fragment";
+        "YZN_ZELLIJ=",
+        "url = \"*\"\nrun = \"git\"\ngroup = \"git\"",
+        "url = \"*/\"\nrun = \"git\"\ngroup = \"git\"",
+    }
     assert!(
         !yazi_toml.contains("YZN_EDITOR="),
         "packaged Yazi opener should inherit YZN_EDITOR from yzn-yazi"
@@ -1188,7 +1193,13 @@ fn expect_yazi_alt_z(yzn: &Path) {
         "YAZELIX_ZELLIJ_SESSION_NAME",
         "ZELLIJ_SESSION_NAME",
         "YZN_ZELLIJ",
+        "emit(\"plugin\", { \"git\", \"refresh-sidebar\" })",
     }
+    assert!(
+        yzn.join("share/yazelix-next/yazi/plugins/git.yazi")
+            .is_dir(),
+        "packaged Yazi config is missing git.yazi",
+    );
 
     let plugin =
         fs::read_to_string(yzn.join("share/yazelix-next/yazi/plugins/zoxide-editor.yazi/main.lua"))
@@ -1333,7 +1344,12 @@ fn expect_first_party_plugins(config: &str) {
             "/bin/yzn-agent",
             "\n                toggle_close_behavior \"hide\"",
         ),
-        ("lazygit", "lazygit_popup", "/bin/yzn-lazygit", ""),
+        (
+            "git",
+            "git_popup",
+            "/bin/yzn-git",
+            "\n                toggle_close_behavior \"hide\"",
+        ),
         ("menu", "menu_popup", "/bin/yzn-menu", ""),
     ] {
         let command = popup_command(config, command_suffix);
@@ -1351,7 +1367,7 @@ fn expect_first_party_plugins(config: &str) {
     assert_eq!(config.matches("side_margin 1").count(), 1);
     assert_eq!(config.matches("vertical_margin 0").count(), 1);
     for (key, payload) in [
-        ("Alt Shift J", "lazygit"),
+        ("Alt Shift J", "git"),
         ("Alt Shift K", "config"),
         ("Alt Shift L", "agent"),
         ("Alt Shift M", "menu"),
@@ -1362,11 +1378,11 @@ fn expect_first_party_plugins(config: &str) {
     let agent = popup_command(config, "/bin/yzn-agent");
     expect_agent_bootstrap(&agent);
 
-    let lazygit = popup_command(config, "/bin/yzn-lazygit");
-    let lazygit_script = fs::read_to_string(&lazygit).unwrap();
-    let context = format!("{} managed LazyGit wrapper", lazygit.display());
+    let git = popup_command(config, "/bin/yzn-git");
+    let git_script = fs::read_to_string(&git).unwrap();
+    let context = format!("{} managed Git popup wrapper", git.display());
     expect_contains_all! {
-        &lazygit_script, &context;
+        &git_script, &context;
         "editor.command",
         "/bin/yzn-hx",
         "/bin/yzn-config",
@@ -1611,8 +1627,11 @@ fn expect_popup_binding(config: &str, key: &str, payload: &str, context: &str) {
 }
 
 fn expect_popup_defaults(config: &str, side_margin: &str, vertical_margin: &str, context: &str) {
+    let refresh = popup_command(config, "/bin/yzn-sidebar-refresh");
     let expected = format!(
-        "popup_defaults {{\n            side_margin {side_margin}\n            vertical_margin {vertical_margin}\n        }}"
+        "popup_defaults {{\n            side_margin {side_margin}\n            vertical_margin {vertical_margin}\n            on_close {{\n                command \"{}\"\n            }}\n            on_hide {{\n                command \"{}\"\n            }}\n        }}",
+        refresh.display(),
+        refresh.display(),
     );
     expect_contains(config, &expected, context);
 }

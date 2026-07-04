@@ -28,6 +28,7 @@ pub(crate) const YZN_MARS_CONFIG: &str = "@yznMarsConfig@";
 pub(crate) const YZN_ZELLIJ_CONFIG: &str = "@yznZellijConfig@";
 pub(crate) const YZN_CONFIG_KDL: &str = "@yznConfigKdl@";
 pub(crate) const YZN_REVEAL: &str = "@yznReveal@";
+pub(crate) const YZN_SIDEBAR_REFRESH: &str = "@yznSidebarRefresh@";
 pub(crate) const YZN_YA: &str = "@yznYa@";
 pub(crate) const YZN_BAR_RENDER_REQUEST: &str = "@yznBarRenderRequest@";
 pub(crate) const YZN_BAR_RENDER: &str = "@yznBarRender@";
@@ -49,11 +50,7 @@ pub(crate) const HELIX_REVEAL_COMMAND: &str = r#":sh yzn reveal "%{buffer_name}"
 pub(crate) const POPUP_KEYBINDING_SPECS: &[(&str, &str, &str)] = &[
     ("config", "keybindings.config", "@defaultConfigKeybinding@"),
     ("agent", "keybindings.agent", "@defaultAgentKeybinding@"),
-    (
-        "lazygit",
-        "keybindings.lazygit",
-        "@defaultLazygitKeybinding@",
-    ),
+    ("git", "keybindings.git", "@defaultGitKeybinding@"),
     ("menu", "keybindings.menu", "@defaultMenuKeybinding@"),
 ];
 
