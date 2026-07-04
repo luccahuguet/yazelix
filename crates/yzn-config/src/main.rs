@@ -100,7 +100,7 @@ mod tests {
     use ratatui::style::{Color, Style};
     use ratconfig::toml_adapter::{get_toml_path, set_toml_value_text};
     use ratconfig::{
-        ConfigUiDiagnostic, ConfigUiEditBehavior, ConfigUiModel, ConfigUiValueState,
+        ConfigUiDiagnostic, ConfigUiEditBehavior, ConfigUiModel, ConfigUiTheme, ConfigUiValueState,
         file_action_status_label, file_action_status_style,
     };
     use serde_json::{Value as JsonValue, json};
@@ -582,13 +582,24 @@ mod tests {
         assert_config_field(&model, POPUP_SIDE_MARGIN_PATH, "integer", "next launch");
         assert_config_field(&model, POPUP_VERTICAL_MARGIN_PATH, "integer", "next launch");
 
-        let appearance = model_field(&model, "mars.appearance.preset");
+        let appearance = model_field(&model, MARS_APPEARANCE_PRESET_PATH);
         assert_eq!(appearance.source_id, SOURCE_MARS);
         assert_eq!(appearance.tab, TAB_MARS);
         assert_eq!(appearance.kind, "string");
         assert_eq!(appearance.allowed_values, string_values(&["dark", "light"]));
-        assert_eq!(appearance.apply_status.summary, "next launch");
-        assert_eq!(appearance.apply_status.label, "mars");
+        assert_eq!(appearance.apply_status.summary, "live");
+        assert_eq!(appearance.apply_status.label, "mars/ui");
+        let theme_switcher = model.theme_switcher.as_ref().expect("theme switcher");
+        assert_eq!(theme_switcher.source_id, SOURCE_MARS);
+        assert_eq!(theme_switcher.field_path, MARS_APPEARANCE_PRESET_PATH);
+        assert_eq!(
+            theme_switcher.resolve(&model.fields),
+            Some(ConfigUiTheme::Dark)
+        );
+        assert_eq!(
+            theme_switcher.theme_for_value(&JsonValue::String("light".to_string())),
+            Some(ConfigUiTheme::Light)
+        );
 
         for hidden in [
             "force-theme",
@@ -623,6 +634,20 @@ mod tests {
             r#"["editor","shell","term","codex_usage","cpu","ram"]"#
         );
         assert!(field.allowed_values.contains(&"claude_usage".to_string()));
+    }
+
+    #[test]
+    fn config_model_uses_mars_appearance_as_initial_theme_source() {
+        let (_temp, paths) = temp_sources();
+        write_toml_value(&paths.mars, MARS_APPEARANCE_PRESET_PATH, &json!("light"));
+
+        let model = build_model(&paths).unwrap();
+        let theme_switcher = model.theme_switcher.as_ref().expect("theme switcher");
+
+        assert_eq!(
+            theme_switcher.resolve(&model.fields),
+            Some(ConfigUiTheme::Light)
+        );
     }
 
     #[test]

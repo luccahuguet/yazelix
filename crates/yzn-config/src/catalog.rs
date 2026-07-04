@@ -48,6 +48,7 @@ pub(crate) const BAR_WIDGET_VALUES: &[&str] = &[
     "ram",
 ];
 pub(crate) const DEFAULT_MARS_CONFIG_TOML: &str = include_str!("../../../mars.toml");
+pub(crate) const MARS_APPEARANCE_PRESET_PATH: &str = "mars.appearance.preset";
 pub(crate) const DEFAULT_STARSHIP_CONFIG_TOML: &str = "\
 format = \":: \"
 right_format = \"\"
@@ -269,7 +270,7 @@ pub(crate) const CONFIG_FIELDS: &[ConfigFieldSpec] = &[
 
 pub(crate) const MARS_FIELDS: &[FieldSpec] = &[
     FieldSpec::string_choice(
-        "mars.appearance.preset",
+        MARS_APPEARANCE_PRESET_PATH,
         "Mars terminal appearance preset.",
         &["dark", "light"],
         "dark or light",

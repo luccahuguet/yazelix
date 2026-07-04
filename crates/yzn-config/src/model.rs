@@ -8,7 +8,8 @@ use ratconfig::toml_adapter::{get_toml_path, parse_toml_value};
 use ratconfig::{
     ConfigUiApplyStatus, ConfigUiEditBehavior, ConfigUiFieldRowSpec, ConfigUiListColumn,
     ConfigUiListTable, ConfigUiModel, ConfigUiPathOwner, ConfigUiSource,
-    ConfigUiStringListChoiceSpec, build_config_ui_field, build_string_list_choice_field,
+    ConfigUiStringListChoiceSpec, ConfigUiTheme, ConfigUiThemeMapping, ConfigUiThemeSwitcher,
+    build_config_ui_field, build_string_list_choice_field,
 };
 use serde_json::Value as JsonValue;
 
@@ -51,7 +52,7 @@ pub(crate) fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
             spec,
             get_toml_path(&mars_active, spec.path),
             get_toml_path(&mars_default, spec.path),
-            next_launch_apply_status("mars", "Saved values apply to newly launched Mars windows."),
+            mars_apply_status(spec.path),
             get_toml_path(&mars_active, spec.path)
                 .is_some_and(|value| validate_mars_field(spec, value).is_err()),
         ));
@@ -149,6 +150,20 @@ pub(crate) fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
         sidecars: Vec::new(),
         native_config_statuses: Vec::new(),
         diagnostics,
+        theme_switcher: Some(ConfigUiThemeSwitcher {
+            source_id: SOURCE_MARS.to_string(),
+            field_path: MARS_APPEARANCE_PRESET_PATH.to_string(),
+            mappings: vec![
+                ConfigUiThemeMapping {
+                    value: JsonValue::String("dark".to_string()),
+                    theme: ConfigUiTheme::Dark,
+                },
+                ConfigUiThemeMapping {
+                    value: JsonValue::String("light".to_string()),
+                    theme: ConfigUiTheme::Light,
+                },
+            ],
+        }),
     })
 }
 fn build_key_binding_field(
@@ -283,5 +298,19 @@ fn next_launch_apply_status(label: &str, detail: &str) -> ConfigUiApplyStatus {
         label: label.to_string(),
         detail: detail.to_string(),
         pending: false,
+    }
+}
+
+fn mars_apply_status(path: &str) -> ConfigUiApplyStatus {
+    if path == MARS_APPEARANCE_PRESET_PATH {
+        ConfigUiApplyStatus {
+            summary: "live".to_string(),
+            label: "mars/ui".to_string(),
+            detail: "Saved appearance changes apply to Mars and this config UI immediately."
+                .to_string(),
+            pending: false,
+        }
+    } else {
+        next_launch_apply_status("mars", "Saved values apply to newly launched Mars windows.")
     }
 }

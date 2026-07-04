@@ -4,6 +4,10 @@ User-visible runtime changes for Yazelix Next live here.
 
 ## Unreleased
 
+- `yzn config` now declares `mars.appearance.preset` as the Ratconfig UI theme
+  source, so changing the Mars dark/light preset through the config UI switches
+  the config palette in the same session. Direct file edits while the UI is
+  already open are still picked up on the next `yzn config` launch.
 - `yzn config` native file rows now show absent optional files as neutral
   `absent` rows instead of warning-colored `missing` rows.
 - The root `[appearance].mode` setting was removed before release. Mars
