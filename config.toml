@@ -13,6 +13,10 @@ program = "nu"
 # Editor command for managed opens. yzn-hx uses packaged Yazelix Helix.
 command = "yzn-hx"
 
+[appearance]
+# Runtime appearance: dark or light.
+mode = "dark"
+
 [welcome]
 # Show a brief welcome splash before entering the managed runtime.
 enabled = true

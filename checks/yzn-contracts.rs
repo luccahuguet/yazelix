@@ -266,6 +266,7 @@ fn expect_front_door(yzn: &Path) {
         "YAZELIX_STATUS_BAR_CACHE_PATH",
         "ZELLIJ_PLUGIN_PERMISSIONS_CACHE",
         "YAZELIX_SESSION_TERMINAL",
+        "YAZELIX_APPEARANCE_MODE",
         "YZN_WELCOME_ENABLED",
         "YZN_WELCOME_STYLE",
         "YZN_WELCOME_DURATION_SECONDS",
@@ -275,6 +276,7 @@ fn expect_front_door(yzn: &Path) {
         "welcome.enabled",
         "welcome.style",
         "welcome.duration_seconds",
+        "appearance.mode",
         "YAZELIX_NEXT_EDITOR",
         "YZN_EDITOR",
         "GIT_EDITOR",
@@ -326,6 +328,7 @@ fn expect_front_door(yzn: &Path) {
         "shell: nu",
         "editor command: yzn-hx",
         "editor: /nix/store/",
+        "appearance mode: dark",
         "open log: info",
         "welcome enabled: true",
         "welcome style: random",
@@ -481,6 +484,23 @@ fn expect_front_door(yzn: &Path) {
         "editor: nvim",
     }
 
+    let light_mode = RuntimeCase::new(&temp.path, "light-mode");
+    light_mode.write_default_config("\n[appearance]\nmode = \"light\"\n");
+    let status = light_mode.run_yzn(&yzn_bin, "status", "light mode status");
+    expect_contains_all! {
+        &status, "light mode status";
+        "appearance mode: light",
+        "mars config: packaged-light (",
+        "yzn-mars-light-config",
+        "layout: runtime (",
+    }
+    let light_layout = light_mode.zellij_file("layout.kdl");
+    expect_contains_all! {
+        &light_layout, "light mode layout";
+        "#[fg=#2f7d32,bold]",
+        "#[bg=#ccd0da,fg=#303446,bold]",
+    }
+
     let custom_bar = RuntimeCase::new(&temp.path, "custom-bar");
     custom_bar.write_default_config("\n[bar]\nwidgets = [\"editor\", \"claude_usage\", \"cpu\"]\n");
     let status = custom_bar.run_yzn(&yzn_bin, "status", "custom bar status");
@@ -537,6 +557,7 @@ fn expect_front_door(yzn: &Path) {
         format!("ok config home: {}", doctor_case.config_home.display()),
         "ok editor.command: yzn-hx",
         "ok editor: /nix/store/",
+        "ok appearance.mode: dark",
         "ok open.log_level: info",
         "ok welcome.enabled: true",
         "ok welcome.style: random",
@@ -778,6 +799,7 @@ fn expect_config_ui(yzn: &Path) {
         "log_level = \"info\"",
         "program = \"nu\"",
         "command = \"yzn-hx\"",
+        "mode = \"dark\"",
         "enabled = true",
         "style = \"random\"",
         "duration_seconds = 3",
@@ -797,6 +819,7 @@ fn expect_config_ui(yzn: &Path) {
         ("open.log_level", "info"),
         ("shell.program", "nu"),
         ("editor.command", "yzn-hx"),
+        ("appearance.mode", "dark"),
         ("welcome.enabled", "true"),
         ("welcome.style", "random"),
         ("welcome.duration_seconds", "3"),
@@ -852,6 +875,8 @@ fn expect_config_ui(yzn: &Path) {
         "program = \"nu\"",
         "[editor]",
         "command = \"yzn-hx\"",
+        "[appearance]",
+        "mode = \"dark\"",
         "[welcome]",
         "enabled = true",
         "style = \"random\"",
@@ -903,6 +928,12 @@ fn expect_startup_diagnostics(yzn: &Path) {
             "[open]\nlog_level = \"info\"\n\n[shell]\nprogram = \"nu\"\n\n[editor]\ncommand = \"nvim --clean\"\n",
             "editor.command must be one executable command without arguments",
             "invalid editor command",
+        ),
+        (
+            "bad-appearance-config",
+            "[open]\nlog_level = \"info\"\n\n[shell]\nprogram = \"nu\"\n\n[appearance]\nmode = \"auto\"\n",
+            "appearance.mode must be one of: dark, light",
+            "invalid appearance mode",
         ),
         (
             "bad-popup-config",
@@ -1394,12 +1425,7 @@ fn expect_first_party_plugins(config: &str) {
             "/bin/yzn-agent",
             "\n                toggle_close_behavior \"hide\"",
         ),
-        (
-            "git",
-            "git_popup",
-            "/bin/yzn-git",
-            "",
-        ),
+        ("git", "git_popup", "/bin/yzn-git", ""),
         ("menu", "menu_popup", "/bin/yzn-menu", ""),
     ] {
         let command = popup_command(config, command_suffix);

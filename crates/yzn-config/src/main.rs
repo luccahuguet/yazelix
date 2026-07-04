@@ -338,6 +338,7 @@ mod tests {
             (OPEN_LOG_LEVEL_PATH, json!("debug"), None),
             (SHELL_PROGRAM_PATH, json!("fish"), None),
             (EDITOR_COMMAND_PATH, json!("nvim"), Some("nvim")),
+            (APPEARANCE_MODE_PATH, json!("light"), None),
             (POPUP_SIDE_MARGIN_PATH, json!(2), Some("2")),
             (POPUP_VERTICAL_MARGIN_PATH, json!(1), None),
         ] {
@@ -364,6 +365,7 @@ mod tests {
             ),
             (SHELL_PROGRAM_PATH, json!("tcsh"), "nu, bash, zsh, fish"),
             (EDITOR_COMMAND_PATH, json!(""), "must not be empty"),
+            (APPEARANCE_MODE_PATH, json!("auto"), "dark, light"),
             (
                 EDITOR_COMMAND_PATH,
                 json!("nvim --clean"),
@@ -550,6 +552,7 @@ mod tests {
         let editor = model_field(&model, EDITOR_COMMAND_PATH);
         assert_config_field(&model, EDITOR_COMMAND_PATH, "string", "new opens");
         assert!(editor.allowed_values.is_empty());
+        assert_config_field(&model, APPEARANCE_MODE_PATH, "string", "next launch");
         assert_config_field(&model, POPUP_SIDE_MARGIN_PATH, "integer", "next launch");
         assert_config_field(&model, POPUP_VERTICAL_MARGIN_PATH, "integer", "next launch");
 
@@ -717,6 +720,7 @@ mod tests {
         let (_temp, paths) = temp_sources();
         let text = concat!(
             "\n[bar]\nwidgets = [\"editor\", \"shell\", \"term\", \"codex_usage\", \"cpu\", \"ram\"]\n\n",
+            "[appearance]\nmode = \"dark\"\n\n",
             "[editor]\ncommand = \"yzn-hx\"\n\n",
             "[open]\nlog_level = \"info\"\n\n",
             "[popup]\nside_margin = 1\nvertical_margin = 0\n\n",

@@ -8,6 +8,7 @@ pub(crate) const CONTRACT_VERSION: u64 = 1;
 pub(crate) const OPEN_LOG_LEVEL_PATH: &str = "open.log_level";
 pub(crate) const SHELL_PROGRAM_PATH: &str = "shell.program";
 pub(crate) const EDITOR_COMMAND_PATH: &str = "editor.command";
+pub(crate) const APPEARANCE_MODE_PATH: &str = "appearance.mode";
 pub(crate) const WELCOME_ENABLED_PATH: &str = "welcome.enabled";
 pub(crate) const WELCOME_STYLE_PATH: &str = "welcome.style";
 pub(crate) const WELCOME_DURATION_SECONDS_PATH: &str = "welcome.duration_seconds";
@@ -179,6 +180,16 @@ pub(crate) const CONFIG_FIELDS: &[ConfigFieldSpec] = &[
         ),
         apply_summary: "new opens",
         apply_detail: "Saved editor command applies to newly launched managed Yazi opens.",
+    },
+    ConfigFieldSpec {
+        field: FieldSpec::string_choice(
+            APPEARANCE_MODE_PATH,
+            "Runtime appearance mode for managed Mars and Zellij bar surfaces.",
+            &["dark", "light"],
+            "dark or light",
+        ),
+        apply_summary: "next launch",
+        apply_detail: "Saved appearance mode applies to newly launched sessions.",
     },
     ConfigFieldSpec {
         field: FieldSpec::boolean(

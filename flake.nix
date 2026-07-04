@@ -80,15 +80,36 @@
       pkgs = import nixpkgs {inherit system;};
       rustBin = rustBinFor pkgs;
       marsPackage = mars.packages.${system}.mars;
-      yznMarsToml = pkgs.replaceVars ./mars.toml {
-        jetbrainsMonoDir = "${pkgs.jetbrains-mono}/share/fonts/truetype";
-        symbolsNerdDir = "${pkgs.nerd-fonts.symbols-only}/share/fonts/truetype/NerdFonts/Symbols";
-        notoSymbolsDir = "${pkgs.noto-fonts}/share/fonts/noto";
-        notoEmojiDir = "${pkgs.noto-fonts-color-emoji}/share/fonts/noto";
+      mkYznMarsConfig = name: colors: let
+        toml = pkgs.replaceVars ./mars.toml ({
+            jetbrainsMonoDir = "${pkgs.jetbrains-mono}/share/fonts/truetype";
+            symbolsNerdDir = "${pkgs.nerd-fonts.symbols-only}/share/fonts/truetype/NerdFonts/Symbols";
+            notoSymbolsDir = "${pkgs.noto-fonts}/share/fonts/noto";
+            notoEmojiDir = "${pkgs.noto-fonts-color-emoji}/share/fonts/noto";
+          }
+          // colors);
+      in
+        pkgs.runCommand name {} ''
+          install -D -m 644 ${toml} "$out/config.toml"
+        '';
+      yznMarsConfig = mkYznMarsConfig "yzn-mars-config" {
+        appearanceMode = "dark";
+        background = "#111416";
+        foreground = "#eeeeec";
+        dimForeground = "#9d9d9c";
+        cursorPrimary = "#00e6ff";
+        cursorSecondary = "#00ff66";
+        cursorColor = "#00e6ff";
       };
-      yznMarsConfig = pkgs.runCommand "yzn-mars-config" {} ''
-        install -D -m 644 ${yznMarsToml} "$out/config.toml"
-      '';
+      yznMarsLightConfig = mkYznMarsConfig "yzn-mars-light-config" {
+        appearanceMode = "light";
+        background = "#f5f3ef";
+        foreground = "#202124";
+        dimForeground = "#62666d";
+        cursorPrimary = "#0077cc";
+        cursorSecondary = "#3bd17a";
+        cursorColor = "#0077cc";
+      };
       yznCarapaceInit = pkgs.runCommand "yzn-carapace-init" {} ''
         ${pkgs.carapace}/bin/carapace _carapace nushell > "$out"
       '';
@@ -329,9 +350,9 @@
         zellijBar = yazelixZellijBarPackage;
       };
       yznBarRenderRequest =
-        pkgs.writeText "yzn-bar-render-request.json" (builtins.toJSON (barRenderRequest defaultBarWidgets));
+        pkgs.writeText "yzn-bar-render-request.json" (builtins.toJSON (barRenderRequest defaultBarWidgets defaultConfig.appearance.mode));
       yznBarRenderRequestTemplate =
-        pkgs.writeText "yzn-bar-render-request-template.json" (builtins.toJSON (barRenderRequest "__YZN_BAR_WIDGET_TRAY__"));
+        pkgs.writeText "yzn-bar-render-request-template.json" (builtins.toJSON (barRenderRequest "__YZN_BAR_WIDGET_TRAY__" "__YZN_APPEARANCE_MODE__"));
       yznBarRender = pkgs.writeShellApplication {
         name = "yzn-bar-render";
         runtimeInputs = [pkgs.jq];
@@ -417,6 +438,7 @@
         yznHelix = "${yznHelix}/bin/yzn-hx";
         yznConfig = "${yznConfig}/bin/yzn-config";
         yznMarsConfig = "${yznMarsConfig}";
+        yznMarsLightConfig = "${yznMarsLightConfig}";
         yznZellijConfig = "${yznZellijConfig}/bin/yzn-zellij-config";
         yznConfigKdl = "${yznConfigKdl}";
         yznReveal = "${yznOpenCore}/bin/yzn-reveal";
@@ -473,6 +495,7 @@
           install -D -m 644 ${yznConfigKdl} "$out/share/yazelix-next/config.kdl"
           install -D -m 644 ${yznRuntimeIdentity}/runtime_identity.json "$out/share/yazelix-next/runtime_identity.json"
           install -D -m 644 ${yznMarsConfig}/config.toml "$out/share/yazelix-next/mars/config.toml"
+          install -D -m 644 ${yznMarsLightConfig}/config.toml "$out/share/yazelix-next/mars/light-config.toml"
           install -D -m 644 ${./config.toml} "$out/share/yazelix-next/config.toml"
           install -D -m 644 ${yznZellijLayout}/layout.kdl "$out/share/yazelix-next/layout.kdl"
           install -D -m 644 ${yznZellijLayout}/layout.swap.kdl "$out/share/yazelix-next/layout.swap.kdl"

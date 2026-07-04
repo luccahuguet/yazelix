@@ -4,10 +4,10 @@ Small start: a Nix flake that installs `yzn`, a conflict-free dev command that
 opens Mars with a Yazi-first layout that becomes a sidebar plus stacked work
 panes, a bridge-enabled Yazelix Helix editor, reef cursor colors, and the
 Yazelix Zellij fork. The top bar uses a rendered Yazelix Zellij Bar tray with
-configurable widgets, a `YZN` runtime marker, and bundled `tu` for usage
-widgets. `Alt Shift J/K/L/M` default to managed Git, config, agent, and menu
-popups and can be remapped with semantic `keybindings.*` role fields. The Git
-popup defaults to LazyGit.
+configurable widgets, dark/light appearance, a `YZN` runtime marker, and
+bundled `tu` for usage widgets. `Alt Shift J/K/L/M` default to managed Git,
+config, agent, and menu popups and can be remapped with semantic
+`keybindings.*` role fields. The Git popup defaults to LazyGit.
 Users can add managed custom popups with their own semantic keybinding under
 `[popups.<id>]`. Launches show a brief configurable welcome splash, and
 `yzn screen` can run the same terminal screen styles directly.
@@ -42,9 +42,9 @@ tool tutors. `yzn screen [style]` shows a Yazelix terminal screen until a key is
 pressed; styles are `static`, `logo`, `boids`, `boids_predator`,
 `boids_schools`, `mandelbrot`, `game_of_life_gliders`,
 `game_of_life_oscillators`, `game_of_life_bloom`, and `random`. `yzn status`
-prints a compact runtime/config summary, including editor command, welcome
-settings, popup margins, popup keybindings, and selected bar widgets, without
-launching Mars or Zellij. `yzn sponsor` opens the GitHub Sponsors page when a host opener is
+prints a compact runtime/config summary, including editor command, appearance
+mode, welcome settings, popup margins, popup keybindings, and selected bar
+widgets, without launching Mars or Zellij. `yzn sponsor` opens the GitHub Sponsors page when a host opener is
 available, otherwise it prints the URL. Bare `yzn` defaults to `yzn launch`. If
 `doctor`, `env`, `enter`, `launch`, or `status` fails before handing control to
 a child, `yzn` prints a concise startup diagnostic with the reason and, when
@@ -182,6 +182,11 @@ editor. Advanced files are created only when their row is activated.
 While editing a text field, `Ctrl+e` opens the staged value in the config UI's
 editor environment and returns the edited text to the row; `Enter` still saves.
 
+`[appearance].mode` controls Yazelix-owned dark/light surfaces. `dark` is the
+default. `light` selects the packaged light Mars config and renders the Zellij
+top bar with the light palette. User-owned native Mars config overrides remain
+full replacements.
+
 Generated runtime state for Zellij, Yazi, Nu, and the Helix bridge defaults to
 `${XDG_DATA_HOME:-$HOME/.local/share}/yazelix-next`; set `YAZELIX_STATE_DIR`
 to override.
@@ -231,8 +236,10 @@ exists:
 `yzn config` creates it from the packaged generated Mars config and exposes
 basic terminal preferences such as window size, opacity, font size, line
 height, scrollbar, bell, and cursor trail. Set `YAZELIX_NEXT_CONFIG_HOME` to
-use a different Yazelix Next config root. `yzn` still owns the Mars launch
-command and the managed Zellij runtime.
+use a different Yazelix Next config root. When no native Mars override exists,
+`[appearance].mode = "light"` selects a packaged light Mars config inspired by
+main Yazelix's Mars light theme. `yzn` still owns the Mars launch command and
+the managed Zellij runtime.
 
 ## Zellij Config
 
@@ -438,12 +445,12 @@ wc -l .gitignore AGENTS.md README.md CHANGELOG.md ARCHITECTURE.md flake.nix home
 | Language | Files | Lines |
 | --- | --- | ---: |
 | Ignore | `.gitignore` | 4 |
-| Markdown | `AGENTS.md`, `README.md`, `CHANGELOG.md`, `ARCHITECTURE.md` | 1205 |
-| Nix | `flake.nix`, `home-manager/module.nix`, `packaging/tokenusage.nix`, `packaging/bar-render-request.nix` | 891 |
+| Markdown | `AGENTS.md`, `README.md`, `CHANGELOG.md`, `ARCHITECTURE.md` | 1220 |
+| Nix | `flake.nix`, `home-manager/module.nix`, `packaging/tokenusage.nix`, `packaging/bar-render-request.nix` | 914 |
 | Shell | `shell/sh/yzn-env-supervisor.sh`, `shell/sh/yzn-helix.sh`, `shell/sh/yzn-shell.sh` | 80 |
-| TOML | `config.toml`, `mars.toml`, `helix/config.toml`, `yazi/yazi.toml`, `yazi/keymap.toml`, `crates/yzn-config/Cargo.toml`, `crates/yzn-open/Cargo.toml`, `crates/yzn-tutor/Cargo.toml` | 184 |
+| TOML | `config.toml`, `mars.toml`, `helix/config.toml`, `yazi/yazi.toml`, `yazi/keymap.toml`, `crates/yzn-config/Cargo.toml`, `crates/yzn-open/Cargo.toml`, `crates/yzn-tutor/Cargo.toml` | 188 |
 | KDL | `config.kdl`, `layout.kdl`, `layout.swap.kdl` | 210 |
 | Nu | `nu/config.nu`, `nu/env.nu` | 11 |
 | Lua | `yazi/init.lua`, `yazi/plugins/sidebar-state.yazi/main.lua`, `yazi/plugins/sidebar-status.yazi/main.lua`, `yazi/plugins/zoxide-editor.yazi/main.lua` | 247 |
-| Rust | `crates/yzn-config/src/*.rs`, `crates/yzn-open/src/bin/yzn-reveal.rs`, `crates/yzn-open/src/bin/yzn-sidebar-refresh.rs`, `crates/yzn-open/src/lib.rs`, `crates/yzn-open/src/main.rs`, `crates/yzn-open/src/sidebar.rs`, `crates/yzn-tutor/src/cli_render.rs`, `crates/yzn-tutor/src/main.rs`, `crates/yzn-tutor/src/tutor_document.rs`, `checks/key-reference-parity.rs`, `checks/zellij-layout.rs`, `checks/yzn-contracts.rs`, `runtime/yzn-agent.rs`, `runtime/yzn-menu.rs`, `runtime/yzn-nu.rs`, `runtime/yzn-yazi.rs`, `runtime/yzn/*.rs`, `runtime/yzn-zellij-config.rs` | 10751 |
-| Total | owned project files | 13583 |
+| Rust | `crates/yzn-config/src/*.rs`, `crates/yzn-open/src/bin/yzn-reveal.rs`, `crates/yzn-open/src/bin/yzn-sidebar-refresh.rs`, `crates/yzn-open/src/lib.rs`, `crates/yzn-open/src/main.rs`, `crates/yzn-open/src/sidebar.rs`, `crates/yzn-tutor/src/cli_render.rs`, `crates/yzn-tutor/src/main.rs`, `crates/yzn-tutor/src/tutor_document.rs`, `checks/key-reference-parity.rs`, `checks/zellij-layout.rs`, `checks/yzn-contracts.rs`, `runtime/yzn-agent.rs`, `runtime/yzn-menu.rs`, `runtime/yzn-nu.rs`, `runtime/yzn-yazi.rs`, `runtime/yzn/*.rs`, `runtime/yzn-zellij-config.rs` | 10808 |
+| Total | owned project files | 13682 |
