@@ -398,7 +398,7 @@
         };
         doCheck = false;
       });
-      yznCommandSrc = pkgs.replaceVars ./runtime/yzn.rs {
+      yznCommandMain = pkgs.replaceVars ./runtime/yzn/main.rs {
         yznConfigUi = "${yznConfigUi}/bin/yzn-config-ui";
         yznMenu = "${yznMenu}/bin/yzn-menu";
         yznTutor = "${yznTutor}/bin/yzn-tutor";
@@ -439,7 +439,13 @@
           yznHelix
         ];
       };
-      yznCommand = rustBin "yzn" yznCommandSrc;
+      yznCommandSrc = pkgs.runCommand "yzn-command-src" {} ''
+        mkdir -p "$out"
+        cp -R ${pkgs.lib.cleanSource ./runtime/yzn}/. "$out/"
+        chmod -R u+w "$out"
+        cp ${yznCommandMain} "$out/main.rs"
+      '';
+      yznCommand = rustBin "yzn" "${yznCommandSrc}/main.rs";
       yznDesktop = pkgs.makeDesktopItem {
         name = "yzn";
         desktopName = "Yazelix Next";
@@ -607,7 +613,7 @@
         touch "$out"
       '';
       yzn_launcher_unit = pkgs.runCommand "yzn-launcher-unit-check" {nativeBuildInputs = [pkgs.rustc pkgs.stdenv.cc];} ''
-        rustc --edition=2024 --test ${./runtime/yzn.rs} -o yzn-launcher-unit-check
+        rustc --edition=2024 --test ${pkgs.lib.cleanSource ./runtime/yzn}/main.rs -o yzn-launcher-unit-check
         ./yzn-launcher-unit-check
         touch "$out"
       '';
