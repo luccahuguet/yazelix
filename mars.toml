@@ -1,6 +1,6 @@
 confirm-before-quit = true
 scrollback-history-limit = 0
-force-theme = "@appearanceMode@"
+force-theme = "dark"
 enable-scroll-bar = false
 line-height = 1.12
 
@@ -15,8 +15,8 @@ trail-cursor = true
 family = "split"
 divider = "vertical"
 transition = "hard"
-colors = ["@cursorPrimary@", "@cursorSecondary@"]
-cursor_color = "@cursorColor@"
+colors = ["#00e6ff", "#00ff66"]
+cursor_color = "#00e6ff"
 
 [window]
 width = 960
@@ -49,9 +49,9 @@ symbol-map = [
 ]
 
 [colors]
-background = "@background@"
-foreground = "@foreground@"
-dim-foreground = "@dimForeground@"
+background = "#111416"
+foreground = "#eeeeec"
+dim-foreground = "#9d9d9c"
 black = "#000000"
 dim-black = "#6f7782"
 red = "#cd0000"

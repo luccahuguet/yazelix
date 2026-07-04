@@ -4,7 +4,7 @@
   runtimeIdentity,
   zellijBar,
 }:
-widgetTray: appearanceMode: {
+widgetTray: {
   zjstatus_plugin_url = "file:${zellijBar}/${zellijBar.wasmPath}";
   widget_tray = widgetTray;
   widget_frame = "none";
@@ -13,7 +13,7 @@ widgetTray: appearanceMode: {
   shell_label = "sh";
   terminal_label = "mars";
   custom_text = "";
-  appearance_mode = appearanceMode;
+  appearance_mode = "dark";
   tab_label_mode = "full";
   nu_bin = "${nushell}/bin/nu";
   yzx_control_bin = "${coreutils}/bin/false";

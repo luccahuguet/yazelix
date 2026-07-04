@@ -8,7 +8,6 @@ pub(crate) const CONTRACT_VERSION: u64 = 1;
 pub(crate) const OPEN_LOG_LEVEL_PATH: &str = "open.log_level";
 pub(crate) const SHELL_PROGRAM_PATH: &str = "shell.program";
 pub(crate) const EDITOR_COMMAND_PATH: &str = "editor.command";
-pub(crate) const APPEARANCE_MODE_PATH: &str = "appearance.mode";
 pub(crate) const WELCOME_ENABLED_PATH: &str = "welcome.enabled";
 pub(crate) const WELCOME_STYLE_PATH: &str = "welcome.style";
 pub(crate) const WELCOME_DURATION_SECONDS_PATH: &str = "welcome.duration_seconds";
@@ -182,16 +181,6 @@ pub(crate) const CONFIG_FIELDS: &[ConfigFieldSpec] = &[
         apply_detail: "Saved editor command applies to newly launched managed Yazi opens.",
     },
     ConfigFieldSpec {
-        field: FieldSpec::string_choice(
-            APPEARANCE_MODE_PATH,
-            "Runtime appearance mode for managed Mars and Zellij bar surfaces.",
-            &["dark", "light"],
-            "dark or light",
-        ),
-        apply_summary: "next launch",
-        apply_detail: "Saved appearance mode applies to newly launched sessions.",
-    },
-    ConfigFieldSpec {
         field: FieldSpec::boolean(
             WELCOME_ENABLED_PATH,
             "Show the startup welcome splash before entering the managed runtime.",
@@ -279,6 +268,36 @@ pub(crate) const CONFIG_FIELDS: &[ConfigFieldSpec] = &[
 ];
 
 pub(crate) const MARS_FIELDS: &[FieldSpec] = &[
+    FieldSpec::string_choice(
+        "force-theme",
+        "Force the Mars window theme.",
+        &["dark", "light"],
+        "dark or light",
+    ),
+    FieldSpec::string_choice(
+        "colors.background",
+        "Mars terminal background color.",
+        &[],
+        "hex color like #111416",
+    ),
+    FieldSpec::string_choice(
+        "colors.foreground",
+        "Mars terminal foreground color.",
+        &[],
+        "hex color like #eeeeec",
+    ),
+    FieldSpec::string_choice(
+        "colors.dim-foreground",
+        "Mars dim foreground color.",
+        &[],
+        "hex color like #9d9d9c",
+    ),
+    FieldSpec::string_choice(
+        "yazelix.cursor.cursor_color",
+        "Mars Yazelix cursor color.",
+        &[],
+        "hex color like #00e6ff",
+    ),
     FieldSpec::integer("window.width", "Initial Mars window width.", "pixels"),
     FieldSpec::integer("window.height", "Initial Mars window height.", "pixels"),
     FieldSpec::float("window.opacity", "Mars window opacity.", "0.0 to 1.0"),

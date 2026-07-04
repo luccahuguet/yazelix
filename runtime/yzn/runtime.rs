@@ -2,7 +2,6 @@ use std::{
     env,
     ffi::{OsStr, OsString},
     fmt::Display,
-    fs,
     path::{Path, PathBuf},
     process::{self, Command},
     time::{SystemTime, UNIX_EPOCH},
@@ -17,8 +16,8 @@ use crate::{
     zellij::{active_layout, active_zellij_config},
     CUSTOM_POPUPS_KDL_CONFIG_PATH, CUSTOM_POPUP_KEYBINDINGS_KDL_CONFIG_PATH,
     POPUP_KEYBINDING_SPECS, YAZELIX_ZELLIJ_BAR_WASM, YAZELIX_ZELLIJ_PANE_ORCHESTRATOR_WASM,
-    YAZELIX_ZELLIJ_POPUP_WASM, YZN_CONFIG, YZN_CONFIG_KDL, YZN_HELIX, YZN_MARS_CONFIG,
-    YZN_MARS_LIGHT_CONFIG, YZN_YA, YZN_ZELLIJ_CONFIG, ZELLIJ,
+    YAZELIX_ZELLIJ_POPUP_WASM, YZN_CONFIG, YZN_CONFIG_KDL, YZN_HELIX, YZN_MARS_CONFIG, YZN_YA,
+    YZN_ZELLIJ_CONFIG, ZELLIJ,
 };
 
 pub(crate) struct Runtime {
@@ -29,7 +28,6 @@ pub(crate) struct Runtime {
     pub(crate) shell_program: String,
     pub(crate) editor_command: String,
     pub(crate) editor: String,
-    pub(crate) appearance_mode: String,
     pub(crate) welcome_enabled: String,
     pub(crate) welcome_style: String,
     pub(crate) welcome_duration_seconds: String,
@@ -72,31 +70,6 @@ fn read_popup_keybindings(
         .collect()
 }
 
-fn active_mars_config(config_home: &Path, appearance_mode: &str) -> (&'static str, PathBuf) {
-    let user_home = config_home.join("mars");
-    if is_custom_mars_config(&user_home.join("config.toml")) {
-        return ("user", user_home);
-    }
-    if appearance_mode == "light" {
-        ("packaged-light", PathBuf::from(YZN_MARS_LIGHT_CONFIG))
-    } else {
-        ("packaged", PathBuf::from(YZN_MARS_CONFIG))
-    }
-}
-
-fn is_custom_mars_config(path: &Path) -> bool {
-    if !path.is_file() {
-        return false;
-    }
-    let Ok(user) = fs::read_to_string(path) else {
-        return true;
-    };
-    let Ok(packaged) = fs::read_to_string(Path::new(YZN_MARS_CONFIG).join("config.toml")) else {
-        return true;
-    };
-    user != packaged
-}
-
 impl Runtime {
     pub(crate) fn prepare() -> Result<Self, AppError> {
         let state_dir = state_dir();
@@ -109,8 +82,6 @@ impl Runtime {
         let editor_command =
             trim_output(config_value(&config_home, &config_toml, "editor.command")?);
         let editor = effective_editor_command(&editor_command);
-        let appearance_mode =
-            trim_output(config_value(&config_home, &config_toml, "appearance.mode")?);
         let welcome_enabled = config_value(&config_home, &config_toml, "welcome.enabled")?;
         let welcome_style = config_value(&config_home, &config_toml, "welcome.style")?;
         let welcome_duration_seconds =
@@ -134,9 +105,14 @@ impl Runtime {
             &config_toml,
             CUSTOM_POPUP_KEYBINDINGS_KDL_CONFIG_PATH,
         )?;
-        let (layout_source, layout) = active_layout(&state_dir, &bar_widgets, &appearance_mode)?;
+        let (layout_source, layout) = active_layout(&state_dir, &bar_widgets)?;
+        let user_mars_config_home = config_home.join("mars");
         let (mars_config_source, mars_config_home) =
-            active_mars_config(&config_home, &appearance_mode);
+            if user_mars_config_home.join("config.toml").is_file() {
+                ("user", user_mars_config_home)
+            } else {
+                ("packaged", PathBuf::from(YZN_MARS_CONFIG))
+            };
         let zellij_sidecar = config_home.join("zellij/config.kdl");
         let zellij_plugins_sidecar = config_home.join("zellij/plugins.kdl");
         let zellij_config = PathBuf::from(trim_output(run_checked(
@@ -212,7 +188,6 @@ impl Runtime {
             shell_program: trim_output(shell_program),
             editor_command,
             editor,
-            appearance_mode,
             welcome_enabled: trim_output(welcome_enabled),
             welcome_style: trim_output(welcome_style),
             welcome_duration_seconds: trim_output(welcome_duration_seconds),
@@ -242,7 +217,6 @@ impl Runtime {
             .env("VISUAL", &self.editor)
             .env("YZN_EDITOR", &self.editor)
             .env("GIT_EDITOR", &self.editor)
-            .env("YAZELIX_APPEARANCE_MODE", &self.appearance_mode)
             .env("YZN_OPEN_LOG", &self.yzn_open_log)
             .env("YZN_WELCOME_ENABLED", &self.welcome_enabled)
             .env("YZN_WELCOME_STYLE", &self.welcome_style)

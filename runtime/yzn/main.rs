@@ -25,7 +25,6 @@ pub(crate) const YZN_YAZI: &str = "@yznYazi@";
 pub(crate) const YZN_HELIX: &str = "@yznHelix@";
 pub(crate) const YZN_CONFIG: &str = "@yznConfig@";
 pub(crate) const YZN_MARS_CONFIG: &str = "@yznMarsConfig@";
-pub(crate) const YZN_MARS_LIGHT_CONFIG: &str = "@yznMarsLightConfig@";
 pub(crate) const YZN_ZELLIJ_CONFIG: &str = "@yznZellijConfig@";
 pub(crate) const YZN_CONFIG_KDL: &str = "@yznConfigKdl@";
 pub(crate) const YZN_REVEAL: &str = "@yznReveal@";

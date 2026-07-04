@@ -338,7 +338,6 @@ mod tests {
             (OPEN_LOG_LEVEL_PATH, json!("debug"), None),
             (SHELL_PROGRAM_PATH, json!("fish"), None),
             (EDITOR_COMMAND_PATH, json!("nvim"), Some("nvim")),
-            (APPEARANCE_MODE_PATH, json!("light"), None),
             (POPUP_SIDE_MARGIN_PATH, json!(2), Some("2")),
             (POPUP_VERTICAL_MARGIN_PATH, json!(1), None),
         ] {
@@ -365,7 +364,6 @@ mod tests {
             ),
             (SHELL_PROGRAM_PATH, json!("tcsh"), "nu, bash, zsh, fish"),
             (EDITOR_COMMAND_PATH, json!(""), "must not be empty"),
-            (APPEARANCE_MODE_PATH, json!("auto"), "dark, light"),
             (
                 EDITOR_COMMAND_PATH,
                 json!("nvim --clean"),
@@ -552,9 +550,23 @@ mod tests {
         let editor = model_field(&model, EDITOR_COMMAND_PATH);
         assert_config_field(&model, EDITOR_COMMAND_PATH, "string", "new opens");
         assert!(editor.allowed_values.is_empty());
-        assert_config_field(&model, APPEARANCE_MODE_PATH, "string", "next launch");
         assert_config_field(&model, POPUP_SIDE_MARGIN_PATH, "integer", "next launch");
         assert_config_field(&model, POPUP_VERTICAL_MARGIN_PATH, "integer", "next launch");
+
+        for (path, kind) in [
+            ("force-theme", "string"),
+            ("colors.background", "string"),
+            ("colors.foreground", "string"),
+            ("colors.dim-foreground", "string"),
+            ("yazelix.cursor.cursor_color", "string"),
+        ] {
+            let field = model_field(&model, path);
+            assert_eq!(field.source_id, SOURCE_MARS);
+            assert_eq!(field.tab, TAB_MARS);
+            assert_eq!(field.kind, kind);
+            assert_eq!(field.apply_status.summary, "next launch");
+            assert_eq!(field.apply_status.label, "mars");
+        }
 
         for spec in POPUP_KEYBINDINGS {
             assert_config_field(&model, spec.path, "string", "next launch");
@@ -720,7 +732,6 @@ mod tests {
         let (_temp, paths) = temp_sources();
         let text = concat!(
             "\n[bar]\nwidgets = [\"editor\", \"shell\", \"term\", \"codex_usage\", \"cpu\", \"ram\"]\n\n",
-            "[appearance]\nmode = \"dark\"\n\n",
             "[editor]\ncommand = \"yzn-hx\"\n\n",
             "[open]\nlog_level = \"info\"\n\n",
             "[popup]\nside_margin = 1\nvertical_margin = 0\n\n",
@@ -1067,10 +1078,38 @@ mod tests {
         let before_root = fs::read_to_string(&paths.root).unwrap();
 
         write_source_field(&paths, SOURCE_MARS, "window.width", &json!(1200)).unwrap();
+        write_source_field(&paths, SOURCE_MARS, "force-theme", &json!("light")).unwrap();
+        write_source_field(&paths, SOURCE_MARS, "colors.background", &json!("#f5f3ef")).unwrap();
+        write_source_field(
+            &paths,
+            SOURCE_MARS,
+            "yazelix.cursor.cursor_color",
+            &json!("#0077cc"),
+        )
+        .unwrap();
 
         assert_eq!(fs::read_to_string(&paths.root).unwrap(), before_root);
         let mars = read_toml_file_value(&paths.mars, "mars").unwrap();
         assert_eq!(get_toml_path(&mars, "window.width"), Some(&json!(1200)));
+        assert_eq!(get_toml_path(&mars, "force-theme"), Some(&json!("light")));
+        assert_eq!(
+            get_toml_path(&mars, "colors.background"),
+            Some(&json!("#f5f3ef"))
+        );
+        assert_eq!(
+            get_toml_path(&mars, "yazelix.cursor.cursor_color"),
+            Some(&json!("#0077cc"))
+        );
+
+        let error = write_source_field(&paths, SOURCE_MARS, "force-theme", &json!("auto"))
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("dark, light"), "{error}");
+
+        let error = write_source_field(&paths, SOURCE_MARS, "colors.background", &json!("light"))
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("hex color"), "{error}");
     }
 
     #[test]

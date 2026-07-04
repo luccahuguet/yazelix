@@ -29,7 +29,6 @@ pub(crate) fn print_doctor() -> Result<(), AppError> {
     doctor_ok("shell.program", &runtime.shell_program);
     doctor_ok("editor.command", &runtime.editor_command);
     doctor_ok("editor", &runtime.editor);
-    doctor_ok("appearance.mode", &runtime.appearance_mode);
     doctor_ok("open.log_level", &runtime.yzn_open_log);
     doctor_ok("welcome.enabled", &runtime.welcome_enabled);
     doctor_ok("welcome.style", &runtime.welcome_style);
