@@ -64,8 +64,8 @@
     autoLayoutYazi,
     starshipYazi,
   }: let
-    eachSystem =
-      nixpkgs.lib.genAttrs ["x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin"];
+    supportedSystems = ["x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin"];
+    eachSystem = nixpkgs.lib.genAttrs supportedSystems;
     homeManagerModule = import ./home-manager/module.nix {
       defaultPackageFor = system: self.packages.${system}.yzn;
     };
@@ -492,6 +492,7 @@
           install -d "$out/share/pixmaps"
           ln -s ${marsPackage}/share/pixmaps/mars.png "$out/share/pixmaps/yzn.png"
         '';
+        meta.platforms = supportedSystems;
       };
     in {
       yazelix_helix = yazelixHelixPackage;
