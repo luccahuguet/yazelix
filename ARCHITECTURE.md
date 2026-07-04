@@ -20,6 +20,13 @@ The repo owns the glue that makes those pieces behave like one runtime. It does
 not try to be a general terminal distribution, broad Home Manager runtime
 config module, or Yazelix compatibility layer.
 
+The flake exposes package and app outputs for Linux and Darwin on x86_64 and
+aarch64. The macOS contract is package-first: command surfaces such as `help`,
+`status`, `doctor`, and terminal-local `enter` are the supported floor, while
+Mars-backed `launch` is issue-driven best-effort until trusted macOS hardware
+validation proves it. App bundles, Homebrew, Ghostty packaging, and broad
+terminal matrices stay outside this repo.
+
 ## Owners
 
 `flake.nix` is the package graph and composition owner. It pins external inputs,

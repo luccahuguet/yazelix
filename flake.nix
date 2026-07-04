@@ -64,7 +64,8 @@
     autoLayoutYazi,
     starshipYazi,
   }: let
-    eachSystem = nixpkgs.lib.genAttrs ["x86_64-linux" "aarch64-linux"];
+    eachSystem =
+      nixpkgs.lib.genAttrs ["x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin"];
     homeManagerModule = import ./home-manager/module.nix {
       defaultPackageFor = system: self.packages.${system}.yzn;
     };

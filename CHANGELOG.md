@@ -4,6 +4,11 @@ User-visible runtime changes for Yazelix Next live here.
 
 ## Unreleased
 
+- Flake package and app outputs are exposed for `x86_64-darwin` and
+  `aarch64-darwin` in addition to the Linux systems. The macOS floor is
+  package-first: `yzn help`, `status`, `doctor`, and `enter` are the supported
+  floor, while Mars-backed `launch` remains issue-driven best-effort until
+  trusted macOS hardware validation confirms it.
 - `yzn tutor` prints guided Yazelix lessons for workspace flow, discovery,
   troubleshooting, and native tool tutors. `yzn tutor hx`/`helix` and
   `yzn tutor nu`/`nushell` print the packaged Helix and Nushell tutor commands
