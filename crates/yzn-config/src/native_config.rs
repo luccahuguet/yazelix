@@ -46,32 +46,10 @@ pub(crate) fn validate_mars_field(spec: &FieldSpec, value: &JsonValue) -> Result
             }
         }
         "string" => {
-            let value = spec.json_choice(value)?;
-            if mars_color_path(spec.path) {
-                validate_hex_color(spec.path, value)
-            } else {
-                Ok(())
-            }
+            spec.json_choice(value)?;
+            Ok(())
         }
         _ => Err(error(format!("{} must be {}", spec.path, spec.validation))),
-    }
-}
-
-fn mars_color_path(path: &str) -> bool {
-    matches!(
-        path,
-        "colors.background" | "colors.foreground" | "colors.dim-foreground"
-    )
-}
-
-fn validate_hex_color(path: &str, value: &str) -> Result<()> {
-    if value.len() == 7
-        && value.starts_with('#')
-        && value[1..].chars().all(|ch| ch.is_ascii_hexdigit())
-    {
-        Ok(())
-    } else {
-        Err(error(format!("{path} must be a hex color like #111416")))
     }
 }
 

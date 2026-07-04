@@ -269,28 +269,10 @@ pub(crate) const CONFIG_FIELDS: &[ConfigFieldSpec] = &[
 
 pub(crate) const MARS_FIELDS: &[FieldSpec] = &[
     FieldSpec::string_choice(
-        "force-theme",
-        "Force the Mars window theme.",
+        "mars.appearance.preset",
+        "Mars terminal appearance preset.",
         &["dark", "light"],
         "dark or light",
-    ),
-    FieldSpec::string_choice(
-        "colors.background",
-        "Mars terminal background color.",
-        &[],
-        "hex color like #111416",
-    ),
-    FieldSpec::string_choice(
-        "colors.foreground",
-        "Mars terminal foreground color.",
-        &[],
-        "hex color like #eeeeec",
-    ),
-    FieldSpec::string_choice(
-        "colors.dim-foreground",
-        "Mars dim foreground color.",
-        &[],
-        "hex color like #9d9d9c",
     ),
     FieldSpec::integer("window.width", "Initial Mars window width.", "pixels"),
     FieldSpec::integer("window.height", "Initial Mars window height.", "pixels"),

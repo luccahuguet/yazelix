@@ -555,18 +555,24 @@ mod tests {
         assert_config_field(&model, POPUP_SIDE_MARGIN_PATH, "integer", "next launch");
         assert_config_field(&model, POPUP_VERTICAL_MARGIN_PATH, "integer", "next launch");
 
-        for (path, kind) in [
-            ("force-theme", "string"),
-            ("colors.background", "string"),
-            ("colors.foreground", "string"),
-            ("colors.dim-foreground", "string"),
+        let appearance = model_field(&model, "mars.appearance.preset");
+        assert_eq!(appearance.source_id, SOURCE_MARS);
+        assert_eq!(appearance.tab, TAB_MARS);
+        assert_eq!(appearance.kind, "string");
+        assert_eq!(appearance.allowed_values, string_values(&["dark", "light"]));
+        assert_eq!(appearance.apply_status.summary, "next launch");
+        assert_eq!(appearance.apply_status.label, "mars");
+
+        for hidden in [
+            "force-theme",
+            "colors.background",
+            "colors.foreground",
+            "colors.dim-foreground",
         ] {
-            let field = model_field(&model, path);
-            assert_eq!(field.source_id, SOURCE_MARS);
-            assert_eq!(field.tab, TAB_MARS);
-            assert_eq!(field.kind, kind);
-            assert_eq!(field.apply_status.summary, "next launch");
-            assert_eq!(field.apply_status.label, "mars");
+            assert!(
+                model.fields.iter().all(|field| field.path != hidden),
+                "{hidden} should stay native TOML only"
+            );
         }
         assert!(
             model
@@ -1091,18 +1097,42 @@ mod tests {
     fn source_routing_writes_mars_without_touching_config_toml() {
         let (_temp, paths) = temp_sources();
         let before_root = fs::read_to_string(&paths.root).unwrap();
+        let raw_mars = fs::read_to_string(&paths.mars).unwrap();
+        fs::write(
+            &paths.mars,
+            format!(
+                "{raw_mars}\n[colors]\nbackground = \"#010203\"\nforeground = \"#fefefe\"\ndim-foreground = \"#aaaaaa\"\n"
+            ),
+        )
+        .unwrap();
 
         write_source_field(&paths, SOURCE_MARS, "window.width", &json!(1200)).unwrap();
-        write_source_field(&paths, SOURCE_MARS, "force-theme", &json!("light")).unwrap();
-        write_source_field(&paths, SOURCE_MARS, "colors.background", &json!("#f5f3ef")).unwrap();
+        write_source_field(
+            &paths,
+            SOURCE_MARS,
+            "mars.appearance.preset",
+            &json!("light"),
+        )
+        .unwrap();
 
         assert_eq!(fs::read_to_string(&paths.root).unwrap(), before_root);
         let mars = read_toml_file_value(&paths.mars, "mars").unwrap();
         assert_eq!(get_toml_path(&mars, "window.width"), Some(&json!(1200)));
-        assert_eq!(get_toml_path(&mars, "force-theme"), Some(&json!("light")));
+        assert_eq!(
+            get_toml_path(&mars, "mars.appearance.preset"),
+            Some(&json!("light"))
+        );
         assert_eq!(
             get_toml_path(&mars, "colors.background"),
-            Some(&json!("#f5f3ef"))
+            Some(&json!("#010203"))
+        );
+        assert_eq!(
+            get_toml_path(&mars, "colors.foreground"),
+            Some(&json!("#fefefe"))
+        );
+        assert_eq!(
+            get_toml_path(&mars, "colors.dim-foreground"),
+            Some(&json!("#aaaaaa"))
         );
         assert_eq!(
             get_toml_path(&mars, "yazelix.cursor.divider"),
@@ -1117,15 +1147,25 @@ mod tests {
             Some(&json!("#00e6ff"))
         );
 
-        let error = write_source_field(&paths, SOURCE_MARS, "force-theme", &json!("auto"))
-            .unwrap_err()
-            .to_string();
+        let error = write_source_field(
+            &paths,
+            SOURCE_MARS,
+            "mars.appearance.preset",
+            &json!("auto"),
+        )
+        .unwrap_err()
+        .to_string();
         assert!(error.contains("dark, light"), "{error}");
 
-        let error = write_source_field(&paths, SOURCE_MARS, "colors.background", &json!("light"))
+        let error = write_source_field(&paths, SOURCE_MARS, "force-theme", &json!("light"))
             .unwrap_err()
             .to_string();
-        assert!(error.contains("hex color"), "{error}");
+        assert!(error.contains("unknown Mars config path"), "{error}");
+
+        let error = write_source_field(&paths, SOURCE_MARS, "colors.background", &json!("#f5f3ef"))
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("unknown Mars config path"), "{error}");
     }
 
     #[test]
