@@ -146,9 +146,8 @@ same tab controls `[welcome].enabled`, `[welcome].style`, and
 `[welcome].duration_seconds`, which apply to the startup splash before managed
 Zellij starts. Welcome styles are the same fixed `yzn screen` styles; `random`
 chooses from the animated styles, excluding `static` and `logo`, and there is
-no configurable pool. The
-same tab
-edits `[popup].side_margin` and `[popup].vertical_margin`, the left/right and
+no configurable pool. The same tab edits `[popup].side_margin` and
+`[popup].vertical_margin`, the left/right and
 top/bottom cell margins for managed popups. The defaults are side `1` and
 vertical `0`; higher values inset the popup by exact terminal cells. The
 runtime writes these once as `yzpp` popup defaults, and packaged and custom
@@ -169,8 +168,10 @@ popups inherit `[popup].side_margin` and `[popup].vertical_margin`.
 The same tab edits `[bar].widgets`, whose default tray is `editor`, `shell`, `term`,
 `codex_usage`, `cpu`, and `ram`; allowed opt-ins are `session`,
 `claude_usage`, and `opencode_go_usage`. The `mars` tab edits the native Mars
-config for window size, opacity, theme, core colors, split cursor colors and
-divider, font, scrollbar, bell, and cursor trail. The `zellij` tab edits a
+config for window size, opacity, theme, core colors, font, scrollbar, bell, and
+cursor trail. Low-level Mars cursor TOML can still live in `mars/config.toml`,
+but the config popup does not render those manual fields while preset support is
+tracked in Mars. The `zellij` tab edits a
 guarded native sidecar that applies to new launches. The `starship` tab edits
 real Starship prompt fields in
 `starship.toml`: `format`, `right_format`, and `add_newline`. The default left
@@ -234,9 +235,10 @@ exists:
 
 `yzn config` creates it from the packaged generated Mars config and exposes
 native terminal preferences such as `force-theme`, background/foreground
-colors, split cursor colors and divider, cursor color, window size, opacity,
-font size, line height, scrollbar, bell, and cursor trail. Mars appearance
-belongs to this Mars config; root
+colors, window size, opacity, font size, line height, scrollbar, bell, and
+cursor trail. Low-level Mars cursor fields remain possible in this native file,
+but the config popup hides those manual rows until Mars accepts semantic cursor
+presets. Mars appearance belongs to this Mars config; root
 `config.toml` does not provide a global appearance mode. Set
 `YAZELIX_NEXT_CONFIG_HOME` to use a different Yazelix Next config root. `yzn`
 still owns the Mars launch command and the managed Zellij runtime.
@@ -445,12 +447,12 @@ wc -l .gitignore AGENTS.md README.md CHANGELOG.md ARCHITECTURE.md flake.nix home
 | Language | Files | Lines |
 | --- | --- | ---: |
 | Ignore | `.gitignore` | 4 |
-| Markdown | `AGENTS.md`, `README.md`, `CHANGELOG.md`, `ARCHITECTURE.md` | 1218 |
+| Markdown | `AGENTS.md`, `README.md`, `CHANGELOG.md`, `ARCHITECTURE.md` | 1221 |
 | Nix | `flake.nix`, `home-manager/module.nix`, `packaging/tokenusage.nix`, `packaging/bar-render-request.nix` | 891 |
 | Shell | `shell/sh/yzn-env-supervisor.sh`, `shell/sh/yzn-helix.sh`, `shell/sh/yzn-shell.sh` | 80 |
 | TOML | `config.toml`, `mars.toml`, `helix/config.toml`, `yazi/yazi.toml`, `yazi/keymap.toml`, `crates/yzn-config/Cargo.toml`, `crates/yzn-open/Cargo.toml`, `crates/yzn-tutor/Cargo.toml` | 184 |
 | KDL | `config.kdl`, `layout.kdl`, `layout.swap.kdl` | 210 |
 | Nu | `nu/config.nu`, `nu/env.nu` | 11 |
 | Lua | `yazi/init.lua`, `yazi/plugins/sidebar-state.yazi/main.lua`, `yazi/plugins/sidebar-status.yazi/main.lua`, `yazi/plugins/zoxide-editor.yazi/main.lua` | 247 |
-| Rust | `crates/yzn-config/src/*.rs`, `crates/yzn-open/src/bin/yzn-reveal.rs`, `crates/yzn-open/src/bin/yzn-sidebar-refresh.rs`, `crates/yzn-open/src/lib.rs`, `crates/yzn-open/src/main.rs`, `crates/yzn-open/src/sidebar.rs`, `crates/yzn-tutor/src/cli_render.rs`, `crates/yzn-tutor/src/main.rs`, `crates/yzn-tutor/src/tutor_document.rs`, `checks/key-reference-parity.rs`, `checks/zellij-layout.rs`, `checks/yzn-contracts.rs`, `runtime/yzn-agent.rs`, `runtime/yzn-menu.rs`, `runtime/yzn-nu.rs`, `runtime/yzn-yazi.rs`, `runtime/yzn/*.rs`, `runtime/yzn-zellij-config.rs` | 10954 |
-| Total | owned project files | 13799 |
+| Rust | `crates/yzn-config/src/*.rs`, `crates/yzn-open/src/bin/yzn-reveal.rs`, `crates/yzn-open/src/bin/yzn-sidebar-refresh.rs`, `crates/yzn-open/src/lib.rs`, `crates/yzn-open/src/main.rs`, `crates/yzn-open/src/sidebar.rs`, `crates/yzn-tutor/src/cli_render.rs`, `crates/yzn-tutor/src/main.rs`, `crates/yzn-tutor/src/tutor_document.rs`, `checks/key-reference-parity.rs`, `checks/zellij-layout.rs`, `checks/yzn-contracts.rs`, `runtime/yzn-agent.rs`, `runtime/yzn-menu.rs`, `runtime/yzn-nu.rs`, `runtime/yzn-yazi.rs`, `runtime/yzn/*.rs`, `runtime/yzn-zellij-config.rs` | 10851 |
+| Total | owned project files | 13699 |

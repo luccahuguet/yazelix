@@ -560,9 +560,6 @@ mod tests {
             ("colors.background", "string"),
             ("colors.foreground", "string"),
             ("colors.dim-foreground", "string"),
-            ("yazelix.cursor.divider", "string"),
-            ("yazelix.cursor.colors", "string_list"),
-            ("yazelix.cursor.cursor_color", "string"),
         ] {
             let field = model_field(&model, path);
             assert_eq!(field.source_id, SOURCE_MARS);
@@ -571,13 +568,11 @@ mod tests {
             assert_eq!(field.apply_status.summary, "next launch");
             assert_eq!(field.apply_status.label, "mars");
         }
-        assert_eq!(
-            model_field(&model, "yazelix.cursor.divider").allowed_values,
-            string_values(&["vertical", "horizontal"])
-        );
-        assert_eq!(
-            model_field(&model, "yazelix.cursor.colors").edit_value,
-            r##"["#00e6ff","#00ff66"]"##
+        assert!(
+            model
+                .fields
+                .iter()
+                .all(|field| !field.path.starts_with("yazelix.cursor."))
         );
 
         for spec in POPUP_KEYBINDINGS {
@@ -1100,27 +1095,6 @@ mod tests {
         write_source_field(&paths, SOURCE_MARS, "window.width", &json!(1200)).unwrap();
         write_source_field(&paths, SOURCE_MARS, "force-theme", &json!("light")).unwrap();
         write_source_field(&paths, SOURCE_MARS, "colors.background", &json!("#f5f3ef")).unwrap();
-        write_source_field(
-            &paths,
-            SOURCE_MARS,
-            "yazelix.cursor.divider",
-            &json!("horizontal"),
-        )
-        .unwrap();
-        write_source_field(
-            &paths,
-            SOURCE_MARS,
-            "yazelix.cursor.colors",
-            &json!(["#ff1600", "#20242f"]),
-        )
-        .unwrap();
-        write_source_field(
-            &paths,
-            SOURCE_MARS,
-            "yazelix.cursor.cursor_color",
-            &json!("#0077cc"),
-        )
-        .unwrap();
 
         assert_eq!(fs::read_to_string(&paths.root).unwrap(), before_root);
         let mars = read_toml_file_value(&paths.mars, "mars").unwrap();
@@ -1132,15 +1106,15 @@ mod tests {
         );
         assert_eq!(
             get_toml_path(&mars, "yazelix.cursor.divider"),
-            Some(&json!("horizontal"))
+            Some(&json!("vertical"))
         );
         assert_eq!(
             get_toml_path(&mars, "yazelix.cursor.colors"),
-            Some(&json!(["#ff1600", "#20242f"]))
+            Some(&json!(["#00e6ff", "#00ff66"]))
         );
         assert_eq!(
             get_toml_path(&mars, "yazelix.cursor.cursor_color"),
-            Some(&json!("#0077cc"))
+            Some(&json!("#00e6ff"))
         );
 
         let error = write_source_field(&paths, SOURCE_MARS, "force-theme", &json!("auto"))
@@ -1151,36 +1125,6 @@ mod tests {
         let error = write_source_field(&paths, SOURCE_MARS, "colors.background", &json!("light"))
             .unwrap_err()
             .to_string();
-        assert!(error.contains("hex color"), "{error}");
-
-        let error = write_source_field(
-            &paths,
-            SOURCE_MARS,
-            "yazelix.cursor.divider",
-            &json!("diagonal"),
-        )
-        .unwrap_err()
-        .to_string();
-        assert!(error.contains("vertical, horizontal"), "{error}");
-
-        let error = write_source_field(
-            &paths,
-            SOURCE_MARS,
-            "yazelix.cursor.colors",
-            &json!(["#ff1600"]),
-        )
-        .unwrap_err()
-        .to_string();
-        assert!(error.contains("exactly two"), "{error}");
-
-        let error = write_source_field(
-            &paths,
-            SOURCE_MARS,
-            "yazelix.cursor.colors",
-            &json!(["#ff1600", "blue"]),
-        )
-        .unwrap_err()
-        .to_string();
         assert!(error.contains("hex color"), "{error}");
     }
 

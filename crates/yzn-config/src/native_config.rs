@@ -53,7 +53,6 @@ pub(crate) fn validate_mars_field(spec: &FieldSpec, value: &JsonValue) -> Result
                 Ok(())
             }
         }
-        "string_list" if spec.path == "yazelix.cursor.colors" => validate_cursor_colors(value),
         _ => Err(error(format!("{} must be {}", spec.path, spec.validation))),
     }
 }
@@ -61,29 +60,8 @@ pub(crate) fn validate_mars_field(spec: &FieldSpec, value: &JsonValue) -> Result
 fn mars_color_path(path: &str) -> bool {
     matches!(
         path,
-        "colors.background"
-            | "colors.foreground"
-            | "colors.dim-foreground"
-            | "yazelix.cursor.cursor_color"
+        "colors.background" | "colors.foreground" | "colors.dim-foreground"
     )
-}
-
-fn validate_cursor_colors(value: &JsonValue) -> Result<()> {
-    let values = value
-        .as_array()
-        .ok_or_else(|| error("yazelix.cursor.colors must be a string array"))?;
-    if values.len() != 2 {
-        return Err(error(
-            "yazelix.cursor.colors must contain exactly two hex colors",
-        ));
-    }
-    for value in values {
-        let Some(value) = value.as_str() else {
-            return Err(error("yazelix.cursor.colors must contain only strings"));
-        };
-        validate_hex_color("yazelix.cursor.colors", value)?;
-    }
-    Ok(())
 }
 
 fn validate_hex_color(path: &str, value: &str) -> Result<()> {

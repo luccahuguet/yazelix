@@ -6,8 +6,9 @@ User-visible runtime changes for Yazelix Next live here.
 
 - The root `[appearance].mode` setting was removed before release. Mars
   appearance stays Mars-owned: `yzn config` exposes native Mars `force-theme`,
-  core color, split cursor divider/color-array, and cursor color fields in
-  `mars/config.toml`.
+  core color, and other broad terminal preference fields in `mars/config.toml`.
+  Low-level Mars cursor fields remain native TOML only until Mars owns semantic
+  Yazelix cursor presets.
 - Flake package and app outputs are exposed for `x86_64-darwin` and
   `aarch64-darwin` in addition to the Linux systems. The macOS floor is
   package-first: `yzn help`, `status`, `doctor`, and `enter` are the supported
