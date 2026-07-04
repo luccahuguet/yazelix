@@ -1,7 +1,7 @@
 use std::{fs, path::Path};
 
 use ratconfig::ConfigUiDiagnostic;
-use serde_json::{Value as JsonValue, json};
+use serde_json::{json, Value as JsonValue};
 
 use crate::{catalog::*, common::*};
 

@@ -50,8 +50,15 @@ User-visible runtime changes for Yazelix Next live here.
   workspace. User-managed Steel files still replace the packaged Steel module
   when both `helix.scm` and `init.scm` exist.
 - The `yzn config` Advanced tab opens managed user `nu/env.nu`,
-  `nu/config.nu`, `yazi/init.lua`, and `yazi/keymap.toml` files in `yzn-hx`,
-  creating tiny starter files only after a row is activated.
+  `nu/config.nu`, `yazi/init.lua`, `yazi/keymap.toml`, and
+  `zellij/plugins.kdl` files in `yzn-hx`, creating tiny starter files only
+  after a row is activated.
+- Managed sessions export packaged `ya` and Zellij helper paths so popup
+  hide/close hooks can refresh Yazi sidebar git decorations even when those
+  commands are not on the user's shell `PATH`.
+- The `yzn config` tab bar labels include monochrome Nerd Font icons for
+  faster visual scanning in Mars/Ghostty-style terminals, and the root
+  `config.toml` tab is labeled `main`.
 - The `yzn config` Keys tab lists current packaged keybindings as a read-only
   table with group, key, action, and owner columns, with source paths in
   details. The table includes packaged `Ctrl Alt h/j/k/l` movement bindings,
@@ -107,6 +114,10 @@ User-visible runtime changes for Yazelix Next live here.
   sidecar for safe preferences, with a small denylist guardrail for obvious
   ownership lines such as keymaps, shell, layout, plugins, Kitty keyboard
   protocol, environment, and session startup.
+- `yzn` reads `~/.config/yazelix-next/zellij/plugins.kdl` as a plugin-only
+  Zellij sidecar. It accepts only `plugins` and `load_plugins` blocks, injects
+  them into the managed Zellij config, allows comments and quoted string values
+  in plugin bodies, and rejects Yazelix-owned plugin ids.
 - `yzn` uses `~/.config/yazelix-next/mars/config.toml` as a full native Mars
   config override when that file exists, while keeping the Mars launch command
   and managed Zellij runtime owned by `yzn`.
@@ -134,9 +145,9 @@ User-visible runtime changes for Yazelix Next live here.
 - `Alt Shift J/K/L/M` toggle Git, config, agent, and menu popups through
   Yazelix Zellij Popup with Kitty keyboard protocol.
   `keybindings.config`/`agent`/`git`/`menu` can remap those semantic actions
-  without exposing raw Zellij keymaps. The Git popup hides instead of closing so
-  the default LazyGit client keeps state across toggles, and popup close/hide
-  hooks refresh managed Yazi git decorations. The
+  without exposing raw Zellij keymaps. The Git popup closes on toggle so the
+  next LazyGit open follows the current tab cwd after workspace retargeting,
+  and popup close/hide hooks refresh managed Yazi git decorations. The
   agent popup bootstraps once from `codex resume`, `grok`, `opencode`, `pi`,
   then `claude --resume`, persists the first available provider under
   `YAZELIX_STATE_DIR`, and does not cascade again after a provider is selected.

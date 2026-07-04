@@ -7,7 +7,7 @@ use crate::{
     catalog::*,
     common::*,
     root_config::ensure_config_file_at,
-    zellij_sidecar::{ZellijSidecar, render_zellij_sidecar},
+    zellij_sidecar::{render_zellij_sidecar, ZellijSidecar},
 };
 
 pub(crate) struct ConfigPaths {
@@ -24,6 +24,7 @@ pub(crate) struct ConfigPaths {
     pub(crate) starship: PathBuf,
     pub(crate) yazi_init: PathBuf,
     pub(crate) yazi_keymap: PathBuf,
+    pub(crate) zellij_plugins: PathBuf,
 }
 pub(crate) fn ensure_config_sources() -> Result<ConfigPaths> {
     let paths = config_paths()?;
@@ -58,6 +59,7 @@ pub(crate) fn config_paths() -> Result<ConfigPaths> {
         starship: home.join("starship.toml"),
         yazi_init: home.join("yazi/init.lua"),
         yazi_keymap: home.join("yazi/keymap.toml"),
+        zellij_plugins: home.join("zellij/plugins.kdl"),
     })
 }
 pub(crate) fn config_home() -> Result<PathBuf> {

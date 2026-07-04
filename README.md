@@ -168,8 +168,8 @@ are created only when their row is activated, except that either Steel row
 creates the `helix.scm`/`init.scm` pair the fork expects. The `keys` tab lists current
 packaged bindings in read-only group, key, action, and owner columns, with
 source paths in details. The `advanced` tab opens `nu/env.nu`, `nu/config.nu`,
-`yazi/init.lua`, and `yazi/keymap.toml` in the managed editor. Advanced files
-are created only when their row is activated.
+`yazi/init.lua`, `yazi/keymap.toml`, and `zellij/plugins.kdl` in the managed
+editor. Advanced files are created only when their row is activated.
 While editing a text field, `Ctrl+e` opens the staged value in the config UI's
 editor environment and returns the edited text to the row; `Enter` still saves.
 
@@ -247,6 +247,28 @@ when an uncommented line starts with integration-critical ownership such as
 The packaged config enables Zellij's Kitty keyboard protocol for modified key
 chords such as `Alt Shift J/K/L/M`.
 
+Extra Zellij plugins can be declared in a separate managed sidecar:
+
+```text
+~/.config/yazelix-next/zellij/plugins.kdl
+```
+
+It accepts only `plugins` and `load_plugins` blocks:
+
+```kdl
+plugins {
+    my_plugin location="file:/home/me/.config/zellij/plugins/my_plugin.wasm"
+}
+
+load_plugins {
+    my_plugin
+}
+```
+
+Plugin ids owned by Yazelix, such as `yzpp` and
+`yazelix_pane_orchestrator`, cannot be redeclared. Plugin keybindings are not
+managed by this sidecar.
+
 ## Nushell Config
 
 When `shell.program` is `nu`, `yzn` does not read normal Nushell config. It
@@ -313,7 +335,9 @@ Zellij tab or opens packaged `yzn-hx` in a managed `editor` pane. Host commands
 such as `hx` or `nvim` skip the bridge and open in that pane. Missing editor
 commands fail before opening a pane with a direct `editor command not found`
 diagnostic. The managed Git popup defaults to LazyGit and exports the configured
-editor to Git editor environment variables before launching the client.
+editor to Git editor environment variables before launching the client. It
+closes on toggle so the next open follows the current tab cwd after workspace
+retargeting.
 Managed Yazi uses scoped Kitty graphics environment for image previews while
 preserving the real Zellij session for editor routing.
 
@@ -333,6 +357,18 @@ managed init file exists, plugin directories at
 `~/.config/yazelix-next/yazi/plugins/*.yazi` are symlinked into the runtime
 config; packaged plugin names cannot be overridden. The config UI's `advanced`
 tab can create or open the user init and keymap files.
+
+Example managed Yazi plugin layout:
+
+```text
+~/.config/yazelix-next/yazi/plugins/foo.yazi/main.lua
+~/.config/yazelix-next/yazi/init.lua
+```
+
+```lua
+require("foo"):setup()
+```
+
 Managed Yazi refreshes sidebar git decorations on setup, directory changes, tab
 changes, and managed popup close/hide hooks.
 
@@ -393,12 +429,12 @@ wc -l .gitignore AGENTS.md README.md CHANGELOG.md ARCHITECTURE.md flake.nix home
 | Language | Files | Lines |
 | --- | --- | ---: |
 | Ignore | `.gitignore` | 4 |
-| Markdown | `AGENTS.md`, `README.md`, `CHANGELOG.md`, `ARCHITECTURE.md` | 1131 |
+| Markdown | `AGENTS.md`, `README.md`, `CHANGELOG.md`, `ARCHITECTURE.md` | 1184 |
 | Nix | `flake.nix`, `home-manager/module.nix`, `packaging/tokenusage.nix`, `packaging/bar-render-request.nix` | 889 |
 | Shell | `shell/sh/yzn-env-supervisor.sh`, `shell/sh/yzn-helix.sh`, `shell/sh/yzn-shell.sh` | 80 |
 | TOML | `config.toml`, `mars.toml`, `helix/config.toml`, `yazi/yazi.toml`, `yazi/keymap.toml`, `crates/yzn-config/Cargo.toml`, `crates/yzn-open/Cargo.toml`, `crates/yzn-tutor/Cargo.toml` | 184 |
-| KDL | `config.kdl`, `layout.kdl`, `layout.swap.kdl` | 211 |
+| KDL | `config.kdl`, `layout.kdl`, `layout.swap.kdl` | 210 |
 | Nu | `nu/config.nu`, `nu/env.nu` | 11 |
 | Lua | `yazi/init.lua`, `yazi/plugins/sidebar-state.yazi/main.lua`, `yazi/plugins/sidebar-status.yazi/main.lua`, `yazi/plugins/zoxide-editor.yazi/main.lua` | 247 |
-| Rust | `crates/yzn-config/src/*.rs`, `crates/yzn-open/src/bin/yzn-reveal.rs`, `crates/yzn-open/src/bin/yzn-sidebar-refresh.rs`, `crates/yzn-open/src/lib.rs`, `crates/yzn-open/src/main.rs`, `crates/yzn-open/src/sidebar.rs`, `crates/yzn-tutor/src/cli_render.rs`, `crates/yzn-tutor/src/main.rs`, `crates/yzn-tutor/src/tutor_document.rs`, `checks/key-reference-parity.rs`, `checks/zellij-layout.rs`, `checks/yzn-contracts.rs`, `runtime/yzn-agent.rs`, `runtime/yzn-menu.rs`, `runtime/yzn-nu.rs`, `runtime/yzn-yazi.rs`, `runtime/yzn/*.rs`, `runtime/yzn-zellij-config.rs` | 10403 |
-| Total | owned project files | 13160 |
+| Rust | `crates/yzn-config/src/*.rs`, `crates/yzn-open/src/bin/yzn-reveal.rs`, `crates/yzn-open/src/bin/yzn-sidebar-refresh.rs`, `crates/yzn-open/src/lib.rs`, `crates/yzn-open/src/main.rs`, `crates/yzn-open/src/sidebar.rs`, `crates/yzn-tutor/src/cli_render.rs`, `crates/yzn-tutor/src/main.rs`, `crates/yzn-tutor/src/tutor_document.rs`, `checks/key-reference-parity.rs`, `checks/zellij-layout.rs`, `checks/yzn-contracts.rs`, `runtime/yzn-agent.rs`, `runtime/yzn-menu.rs`, `runtime/yzn-nu.rs`, `runtime/yzn-yazi.rs`, `runtime/yzn/*.rs`, `runtime/yzn-zellij-config.rs` | 10751 |
+| Total | owned project files | 13560 |

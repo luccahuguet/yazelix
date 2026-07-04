@@ -76,7 +76,7 @@ mod tests {
     use crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
     use ratconfig::toml_adapter::{get_toml_path, set_toml_value_text};
     use ratconfig::{ConfigUiDiagnostic, ConfigUiEditBehavior, ConfigUiModel, ConfigUiValueState};
-    use serde_json::{Value as JsonValue, json};
+    use serde_json::{json, Value as JsonValue};
 
     struct TempHome {
         path: PathBuf,
@@ -118,6 +118,7 @@ mod tests {
             starship: temp.path.join("starship.toml"),
             yazi_init: temp.path.join("yazi/init.lua"),
             yazi_keymap: temp.path.join("yazi/keymap.toml"),
+            zellij_plugins: temp.path.join("zellij/plugins.kdl"),
         }
     }
 
@@ -279,12 +280,10 @@ mod tests {
 
     #[test]
     fn config_field_rejects_unknown_paths_before_io() {
-        assert!(
-            config_field("shell.typo")
-                .unwrap_err()
-                .to_string()
-                .contains("unknown config path")
-        );
+        assert!(config_field("shell.typo")
+            .unwrap_err()
+            .to_string()
+            .contains("unknown config path"));
     }
 
     #[test]
@@ -534,6 +533,18 @@ mod tests {
         let (_temp, paths) = temp_sources();
 
         let model = build_model(&paths).unwrap();
+        assert_eq!(
+            model.tabs,
+            [
+                " main",
+                " mars",
+                " zellij",
+                " starship",
+                " helix",
+                " keys",
+                " advanced",
+            ]
+        );
         assert!(!model.tabs.contains(&"shell".to_string()));
         assert_config_field(&model, SHELL_PROGRAM_PATH, "string", "new panes");
         let editor = model_field(&model, EDITOR_COMMAND_PATH);
@@ -615,12 +626,10 @@ mod tests {
             .collect();
 
         assert!(model.tabs.contains(&TAB_KEYS.to_string()));
-        assert!(
-            model
-                .file_actions
-                .iter()
-                .all(|action| action.tab != TAB_KEYS)
-        );
+        assert!(model
+            .file_actions
+            .iter()
+            .all(|action| action.tab != TAB_KEYS));
         assert_eq!(
             model
                 .tab_list_tables
@@ -756,16 +765,12 @@ mod tests {
             &paths.yazi_init,
             &paths.yazi_keymap,
         ]);
-        assert!(
-            !fs::read_to_string(paths.mars)
-                .unwrap()
-                .contains("ratconfig.contract")
-        );
-        assert!(
-            fs::read_to_string(paths.zellij)
-                .unwrap()
-                .contains("rounded_corners false")
-        );
+        assert!(!fs::read_to_string(paths.mars)
+            .unwrap()
+            .contains("ratconfig.contract"));
+        assert!(fs::read_to_string(paths.zellij)
+            .unwrap()
+            .contains("rounded_corners false"));
         assert_eq!(
             fs::read_to_string(paths.starship).unwrap(),
             DEFAULT_STARSHIP_CONFIG_TOML
@@ -835,6 +840,12 @@ mod tests {
                     TAB_ADVANCED,
                     "yazi/keymap.toml",
                 ],
+                [
+                    SOURCE_ADVANCED,
+                    ACTION_ZELLIJ_PLUGINS,
+                    TAB_ADVANCED,
+                    "zellij/plugins.kdl",
+                ],
             ]
         );
         assert_eq!(
@@ -852,14 +863,13 @@ mod tests {
                 paths.nu_config.as_path(),
                 paths.yazi_init.as_path(),
                 paths.yazi_keymap.as_path(),
+                paths.zellij_plugins.as_path(),
             ]
         );
-        assert!(
-            model
-                .file_actions
-                .iter()
-                .all(|action| !action.exists && action.create_if_missing)
-        );
+        assert!(model
+            .file_actions
+            .iter()
+            .all(|action| !action.exists && action.create_if_missing));
     }
 
     #[test]
@@ -878,6 +888,7 @@ mod tests {
             &paths.helix_init,
             &paths.yazi_init,
             &paths.yazi_keymap,
+            &paths.zellij_plugins,
         ]);
     }
 
@@ -963,7 +974,12 @@ mod tests {
         .unwrap();
 
         assert_file_text(&paths.yazi_init, YAZI_INIT_STARTER);
-        assert_missing(&[&yazi_toml, &paths.yazi_keymap, &yazi_plugins]);
+        assert_missing(&[
+            &yazi_toml,
+            &paths.yazi_keymap,
+            &yazi_plugins,
+            &paths.zellij_plugins,
+        ]);
     }
 
     #[test]
@@ -982,7 +998,29 @@ mod tests {
         .unwrap();
 
         assert_file_text(&paths.yazi_keymap, YAZI_KEYMAP_STARTER);
-        assert_missing(&[&paths.yazi_init, &yazi_toml, &yazi_plugins]);
+        assert_missing(&[
+            &paths.yazi_init,
+            &yazi_toml,
+            &yazi_plugins,
+            &paths.zellij_plugins,
+        ]);
+    }
+
+    #[test]
+    fn prepare_file_action_creates_zellij_plugins_sidecar_only() {
+        let (_temp, paths) = temp_sources();
+
+        prepare_file_action(
+            &paths,
+            SOURCE_ADVANCED,
+            ACTION_ZELLIJ_PLUGINS,
+            &paths.zellij_plugins,
+            true,
+        )
+        .unwrap();
+
+        assert_file_text(&paths.zellij_plugins, ZELLIJ_PLUGINS_STARTER);
+        assert_missing(&[&paths.yazi_init, &paths.yazi_keymap]);
     }
 
     #[test]

@@ -35,7 +35,6 @@ plugins {
                 pane_title "git_popup"
                 width_percent 100
                 height_percent 100
-                toggle_close_behavior "hide"
             }
 
             menu {

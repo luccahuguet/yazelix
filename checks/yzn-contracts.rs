@@ -270,6 +270,8 @@ fn expect_front_door(yzn: &Path) {
         "YZN_WELCOME_STYLE",
         "YZN_WELCOME_DURATION_SECONDS",
         "YZN_MENU_YZN",
+        "YZN_YA",
+        "YZN_ZELLIJ",
         "welcome.enabled",
         "welcome.style",
         "welcome.duration_seconds",
@@ -408,6 +410,24 @@ fn expect_front_door(yzn: &Path) {
     assert_eq!(custom_popup_spec.matches("height_percent 100").count(), 5);
     assert_eq!(custom_popup_spec.matches("side_margin 2").count(), 1);
     assert_eq!(custom_popup_spec.matches("vertical_margin 1").count(), 1);
+
+    let zellij_plugins = RuntimeCase::new(&temp.path, "zellij-plugins");
+    zellij_plugins.write_default_config("");
+    let zellij_plugins_sidecar = zellij_plugins.config_home.join("zellij/plugins.kdl");
+    fs::create_dir_all(zellij_plugins_sidecar.parent().unwrap()).unwrap();
+    fs::write(
+        &zellij_plugins_sidecar,
+        "plugins {\n    // User plugin comments survive injection.\n    my_plugin location=\"file:/tmp/my_plugin.wasm\" {\n        payload \"{\\\"ok\\\": true}\" // Braces in strings must not change block depth.\n    } // plugin config close\n} // plugins close\n\nload_plugins {\n    my_plugin\n} // load_plugins close\n",
+    )
+    .unwrap();
+    zellij_plugins.run_yzn(&yzn_bin, "status", "Zellij plugin sidecar status");
+    let zellij_plugin_config = zellij_plugins.zellij_file("config.kdl");
+    expect_contains_all! {
+        &zellij_plugin_config, "Zellij plugin sidecar config";
+        "payload \"{\\\"ok\\\": true}\" // Braces in strings must not change block depth.",
+        "    } // plugin config close\n    yazelix_pane_orchestrator location=",
+        "load_plugins {\n    yzpp\n    my_plugin\n    yazelix_pane_orchestrator\n}",
+    }
 
     let custom_popup_key = RuntimeCase::new(&temp.path, "custom-popup-key");
     custom_popup_key.write_default_config("\n[keybindings]\nconfig = \"Alt Shift C\"\nagent = \"Alt Shift A\"\ngit = \"Alt Shift G\"\nmenu = \"Alt Shift U\"\n");
@@ -953,6 +973,36 @@ fn expect_startup_diagnostics(yzn: &Path) {
         }
     }
 
+    for (name, sidecar_text, reason) in [
+        (
+            "bad-zellij-plugin-top-level",
+            "keybinds {\n}\n",
+            "Zellij plugin sidecar supports only top-level `plugins` and `load_plugins`, found `keybinds`",
+        ),
+        (
+            "bad-zellij-plugin-owned-id",
+            "plugins {\n    yzpp location=\"file:/tmp/owned.wasm\"\n}\n",
+            "Zellij plugin sidecar plugins entry `yzpp` is owned by Yazelix",
+        ),
+    ] {
+        let case = RuntimeCase::new(&temp.path, name);
+        case.write_default_config("");
+        let plugins = case.config_home.join("zellij/plugins.kdl");
+        fs::create_dir_all(plugins.parent().unwrap()).unwrap();
+        fs::write(&plugins, sidecar_text).unwrap();
+        for command in ["enter", "status", "doctor"] {
+            expect_startup_failure(
+                &yzn_bin,
+                command,
+                &case.config_home,
+                &case.state_dir,
+                &plugins,
+                reason,
+                name,
+            );
+        }
+    }
+
     let state_file = temp.path.join("state-file");
     fs::write(&state_file, "").unwrap();
     expect_startup_failure(
@@ -1348,7 +1398,7 @@ fn expect_first_party_plugins(config: &str) {
             "git",
             "git_popup",
             "/bin/yzn-git",
-            "\n                toggle_close_behavior \"hide\"",
+            "",
         ),
         ("menu", "menu_popup", "/bin/yzn-menu", ""),
     ] {

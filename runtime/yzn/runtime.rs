@@ -16,8 +16,8 @@ use crate::{
     zellij::{active_layout, active_zellij_config},
     CUSTOM_POPUPS_KDL_CONFIG_PATH, CUSTOM_POPUP_KEYBINDINGS_KDL_CONFIG_PATH,
     POPUP_KEYBINDING_SPECS, YAZELIX_ZELLIJ_BAR_WASM, YAZELIX_ZELLIJ_PANE_ORCHESTRATOR_WASM,
-    YAZELIX_ZELLIJ_POPUP_WASM, YZN_CONFIG, YZN_CONFIG_KDL, YZN_HELIX, YZN_MARS_CONFIG,
-    YZN_ZELLIJ_CONFIG,
+    YAZELIX_ZELLIJ_POPUP_WASM, YZN_CONFIG, YZN_CONFIG_KDL, YZN_HELIX, YZN_MARS_CONFIG, YZN_YA,
+    YZN_ZELLIJ_CONFIG, ZELLIJ,
 };
 
 pub(crate) struct Runtime {
@@ -114,6 +114,7 @@ impl Runtime {
                 ("packaged", PathBuf::from(YZN_MARS_CONFIG))
             };
         let zellij_sidecar = config_home.join("zellij/config.kdl");
+        let zellij_plugins_sidecar = config_home.join("zellij/plugins.kdl");
         let zellij_config = PathBuf::from(trim_output(run_checked(
             &zellij_sidecar,
             Command::new(YZN_ZELLIJ_CONFIG)
@@ -136,6 +137,7 @@ impl Runtime {
             &popup_keybindings,
             &custom_popups_kdl,
             &custom_popup_keybindings_kdl,
+            &zellij_plugins_sidecar,
             &home_dir,
         )?;
         let zellij_status_cache = state_dir.join("zellij/session/status_bar_cache.json");
@@ -226,6 +228,8 @@ impl Runtime {
             .env("YAZELIX_STATUS_BAR_CACHE_PATH", &self.zellij_status_cache)
             .env("ZELLIJ_PLUGIN_PERMISSIONS_CACHE", &self.zellij_permissions)
             .env("YZN_MENU_YZN", yzn_menu_yzn)
+            .env("YZN_YA", YZN_YA)
+            .env("YZN_ZELLIJ", ZELLIJ)
             .env("PATH", runtime_path());
         if let Some(bridge_session_id) = &self.bridge_session_id {
             command.env("YAZELIX_HELIX_BRIDGE_SESSION_ID", bridge_session_id);

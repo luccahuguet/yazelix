@@ -5,8 +5,8 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use ratconfig::ConfigUiFileAction;
 use ratconfig::toml_adapter::{get_toml_path, parse_toml_value};
+use ratconfig::ConfigUiFileAction;
 use serde_json::Value as JsonValue;
 
 use crate::{
@@ -15,7 +15,7 @@ use crate::{
     native_config::{write_mars_config_field, write_starship_config_field},
     paths::ConfigPaths,
     root_config::{default_config_value, write_config_field},
-    zellij_sidecar::{ZellijSidecar, write_zellij_config_field, zellij_field_value},
+    zellij_sidecar::{write_zellij_config_field, zellij_field_value, ZellijSidecar},
 };
 
 pub(crate) struct FileActionSpec {
@@ -44,7 +44,7 @@ pub(crate) fn build_file_actions(paths: &ConfigPaths) -> Vec<ConfigUiFileAction>
         })
         .collect()
 }
-fn file_action_specs(paths: &ConfigPaths) -> [FileActionSpec; 8] {
+fn file_action_specs(paths: &ConfigPaths) -> [FileActionSpec; 9] {
     [
         FileActionSpec {
             source_id: SOURCE_HELIX,
@@ -117,6 +117,15 @@ fn file_action_specs(paths: &ConfigPaths) -> [FileActionSpec; 8] {
             description: "Open the managed Yazi user keymap.toml file.",
             path: paths.yazi_keymap.clone(),
             starter: YAZI_KEYMAP_STARTER,
+        },
+        FileActionSpec {
+            source_id: SOURCE_ADVANCED,
+            action_id: ACTION_ZELLIJ_PLUGINS,
+            tab: TAB_ADVANCED,
+            label: "zellij/plugins.kdl",
+            description: "Open the managed Zellij plugin sidecar file.",
+            path: paths.zellij_plugins.clone(),
+            starter: ZELLIJ_PLUGINS_STARTER,
         },
     ]
 }

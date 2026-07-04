@@ -39,6 +39,7 @@ pub(crate) fn active_zellij_config(
     popup_keybindings: &[PopupKeybinding],
     custom_popups_kdl: &str,
     custom_popup_keybindings_kdl: &str,
+    zellij_plugins_sidecar: &Path,
     home_dir: &Path,
 ) -> Result<(&'static str, PathBuf), AppError> {
     let runtime_config = state_dir.join("zellij/config.kdl");
@@ -75,6 +76,7 @@ pub(crate) fn active_zellij_config(
         "        }\n    }\n\n    yazelix_pane_orchestrator",
         "Zellij config is missing the packaged popup block",
     )?;
+    patched = patch_zellij_plugin_sidecar(patched, &config, zellij_plugins_sidecar)?;
     patched = inject_snippet_before(
         patched,
         &config,
@@ -157,6 +159,243 @@ fn patch_popup_default_margins(
         ),
         1,
     ))
+}
+
+const OWNED_ZELLIJ_PLUGIN_IDS: &[&str] = &["yzpp", "yazelix_pane_orchestrator"];
+
+#[derive(Clone, Copy)]
+enum ZellijPluginBlock {
+    Plugins,
+    LoadPlugins,
+}
+
+#[derive(Default)]
+struct ZellijPluginSidecar {
+    plugins: String,
+    load_plugins: String,
+}
+
+fn patch_zellij_plugin_sidecar(
+    text: String,
+    config: &Path,
+    sidecar: &Path,
+) -> Result<String, AppError> {
+    if !sidecar.is_file() {
+        return Ok(text);
+    }
+
+    let sidecar_text =
+        fs::read_to_string(sidecar).map_err(|error| path_error("read", sidecar, sidecar, error))?;
+    let sidecar_blocks = parse_zellij_plugin_sidecar(sidecar, &sidecar_text)?;
+    let patched = inject_snippet_before(
+        text,
+        config,
+        &sidecar_blocks.plugins,
+        "    yazelix_pane_orchestrator location=",
+        "Zellij config is missing the packaged plugins block",
+    )?;
+    inject_snippet_before(
+        patched,
+        config,
+        &sidecar_blocks.load_plugins,
+        "    yazelix_pane_orchestrator\n}",
+        "Zellij config is missing the packaged load_plugins block",
+    )
+}
+
+fn parse_zellij_plugin_sidecar(path: &Path, text: &str) -> Result<ZellijPluginSidecar, AppError> {
+    let mut blocks = ZellijPluginSidecar::default();
+    let mut current = None;
+    let mut body = String::new();
+    let mut body_start_line = 1usize;
+    let mut depth = 0usize;
+    let mut seen_plugins = false;
+    let mut seen_load_plugins = false;
+
+    for (index, line) in text.lines().enumerate() {
+        if let Some(block) = current {
+            if depth == 1 && zellij_code_before_comment(line).trim() == "}" {
+                let finished_body = body.trim_end().to_string();
+                body.clear();
+                validate_zellij_plugin_block_ids(path, block, body_start_line, &finished_body)?;
+                match block {
+                    ZellijPluginBlock::Plugins => blocks.plugins = finished_body,
+                    ZellijPluginBlock::LoadPlugins => blocks.load_plugins = finished_body,
+                }
+                current = None;
+                depth = 0;
+                continue;
+            }
+            depth = zellij_sidecar_depth(path, index + 1, depth, line)?;
+            body.push_str(line);
+            body.push('\n');
+            continue;
+        }
+
+        let code = zellij_code_before_comment(line);
+        let Some(name) = first_token(code) else {
+            continue;
+        };
+        let block = match name {
+            "plugins" => ZellijPluginBlock::Plugins,
+            "load_plugins" => ZellijPluginBlock::LoadPlugins,
+            _ => {
+                return Err(startup(
+                    format!(
+                        "Zellij plugin sidecar supports only top-level `plugins` and `load_plugins`, found `{name}`"
+                    ),
+                    path.display(),
+                    1,
+                ));
+            }
+        };
+        let rest = code.trim_start()[name.len()..].trim();
+        if rest != "{" {
+            return Err(startup(
+                format!("Zellij plugin sidecar `{name}` block must open with `{name} {{`"),
+                path.display(),
+                1,
+            ));
+        }
+        match block {
+            ZellijPluginBlock::Plugins if seen_plugins => {
+                return Err(startup(
+                    "Zellij plugin sidecar has duplicate `plugins` blocks",
+                    path.display(),
+                    1,
+                ));
+            }
+            ZellijPluginBlock::LoadPlugins if seen_load_plugins => {
+                return Err(startup(
+                    "Zellij plugin sidecar has duplicate `load_plugins` blocks",
+                    path.display(),
+                    1,
+                ));
+            }
+            ZellijPluginBlock::Plugins => seen_plugins = true,
+            ZellijPluginBlock::LoadPlugins => seen_load_plugins = true,
+        }
+        current = Some(block);
+        body_start_line = index + 2;
+        depth = 1;
+    }
+
+    if current.is_some() {
+        return Err(startup(
+            "Zellij plugin sidecar has an unclosed block",
+            path.display(),
+            1,
+        ));
+    }
+    Ok(blocks)
+}
+
+fn validate_zellij_plugin_block_ids(
+    path: &Path,
+    block: ZellijPluginBlock,
+    body_start_line: usize,
+    body: &str,
+) -> Result<(), AppError> {
+    let mut depth = 0usize;
+    for (index, line) in body.lines().enumerate() {
+        if depth == 0 {
+            if let Some(id) = first_token(line) {
+                if OWNED_ZELLIJ_PLUGIN_IDS.contains(&id) {
+                    let block_name = match block {
+                        ZellijPluginBlock::Plugins => "plugins",
+                        ZellijPluginBlock::LoadPlugins => "load_plugins",
+                    };
+                    return Err(startup(
+                        format!(
+                            "Zellij plugin sidecar {block_name} entry `{id}` is owned by Yazelix"
+                        ),
+                        format!("{}:{}", path.display(), body_start_line + index),
+                        1,
+                    ));
+                }
+            }
+        }
+        depth = zellij_sidecar_depth(path, body_start_line + index, depth, line)?;
+    }
+    Ok(())
+}
+
+fn zellij_sidecar_depth(
+    path: &Path,
+    line_number: usize,
+    depth: usize,
+    line: &str,
+) -> Result<usize, AppError> {
+    let next = depth as isize + zellij_brace_delta(line);
+    if next < 0 {
+        return Err(startup(
+            "Zellij plugin sidecar has an unmatched closing brace",
+            format!("{}:{line_number}", path.display()),
+            1,
+        ));
+    }
+    Ok(next as usize)
+}
+
+fn zellij_brace_delta(line: &str) -> isize {
+    zellij_code_before_comment(line)
+        .chars()
+        .fold((0isize, false, false), |(depth, in_string, escaped), ch| {
+            if in_string {
+                return match (escaped, ch) {
+                    (true, _) => (depth, true, false),
+                    (false, '\\') => (depth, true, true),
+                    (false, '"') => (depth, false, false),
+                    (false, _) => (depth, true, false),
+                };
+            }
+            match ch {
+                '"' => (depth, true, false),
+                '{' => (depth + 1, false, false),
+                '}' => (depth - 1, false, false),
+                _ => (depth, false, false),
+            }
+        })
+        .0
+}
+
+fn first_token(line: &str) -> Option<&str> {
+    let line = zellij_code_before_comment(line).trim_start();
+    if line.is_empty() || line.starts_with("//") || line.starts_with('#') {
+        return None;
+    }
+    line.split(|ch: char| ch.is_whitespace() || ch == '{' || ch == ';')
+        .next()
+        .filter(|token| !token.is_empty())
+}
+
+fn zellij_code_before_comment(line: &str) -> &str {
+    if line.trim_start().starts_with('#') {
+        return "";
+    }
+
+    let mut in_string = false;
+    let mut escaped = false;
+    let mut chars = line.char_indices().peekable();
+    while let Some((index, ch)) = chars.next() {
+        if in_string {
+            match (escaped, ch) {
+                (true, _) => escaped = false,
+                (false, '\\') => escaped = true,
+                (false, '"') => in_string = false,
+                (false, _) => {}
+            }
+            continue;
+        }
+        match ch {
+            '"' => in_string = true,
+            '/' if chars.peek().map(|(_, next)| *next == '/').unwrap_or(false) => {
+                return &line[..index];
+            }
+            _ => {}
+        }
+    }
+    line
 }
 
 fn inject_snippet_before(

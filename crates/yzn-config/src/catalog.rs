@@ -61,13 +61,13 @@ pub(crate) const SOURCE_STARSHIP: &str = "starship";
 pub(crate) const SOURCE_HELIX: &str = "helix";
 pub(crate) const SOURCE_KEYS: &str = "keys";
 pub(crate) const SOURCE_ADVANCED: &str = "advanced";
-pub(crate) const TAB_CONFIG: &str = "config";
-pub(crate) const TAB_MARS: &str = "mars";
-pub(crate) const TAB_ZELLIJ: &str = "zellij";
-pub(crate) const TAB_STARSHIP: &str = "starship";
-pub(crate) const TAB_HELIX: &str = "helix";
-pub(crate) const TAB_KEYS: &str = "keys";
-pub(crate) const TAB_ADVANCED: &str = "advanced";
+pub(crate) const TAB_CONFIG: &str = " main";
+pub(crate) const TAB_MARS: &str = " mars";
+pub(crate) const TAB_ZELLIJ: &str = " zellij";
+pub(crate) const TAB_STARSHIP: &str = " starship";
+pub(crate) const TAB_HELIX: &str = " helix";
+pub(crate) const TAB_KEYS: &str = " keys";
+pub(crate) const TAB_ADVANCED: &str = " advanced";
 
 pub(crate) const ACTION_HELIX_CONFIG: &str = "helix.config";
 pub(crate) const ACTION_HELIX_LANGUAGES: &str = "helix.languages";
@@ -77,6 +77,7 @@ pub(crate) const ACTION_NU_ENV: &str = "nu.env";
 pub(crate) const ACTION_NU_CONFIG: &str = "nu.config";
 pub(crate) const ACTION_YAZI_INIT: &str = "yazi.init";
 pub(crate) const ACTION_YAZI_KEYMAP: &str = "yazi.keymap";
+pub(crate) const ACTION_ZELLIJ_PLUGINS: &str = "zellij.plugins";
 pub(crate) const HELIX_CONFIG_STARTER: &str = include_str!("../../../helix/config.toml");
 pub(crate) const HELIX_LANGUAGES_STARTER: &str = "# Managed Helix language overrides.\n";
 pub(crate) const HELIX_MODULE_STARTER: &str = ";; Loaded by managed yzn-hx before init.scm.\n";
@@ -86,6 +87,7 @@ pub(crate) const NU_CONFIG_STARTER: &str = "# Loaded after Yazelix Next packaged
 pub(crate) const YAZI_INIT_STARTER: &str = "-- Loaded after Yazelix Next packaged yazi/init.lua.\n";
 pub(crate) const YAZI_KEYMAP_STARTER: &str =
     "# Loaded after Yazelix Next packaged yazi/keymap.toml.\n";
+pub(crate) const ZELLIJ_PLUGINS_STARTER: &str = "// Extra managed Zellij plugins. Do not declare yzpp or yazelix_pane_orchestrator here.\nplugins {\n}\n\nload_plugins {\n}\n";
 pub(crate) const KEY_READ_ONLY_REASON: &str =
     "Read-only key binding; yzn config does not rewrite native keymaps.";
 
