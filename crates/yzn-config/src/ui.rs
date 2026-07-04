@@ -4,10 +4,10 @@ use crossterm::{
     cursor,
     event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers},
     execute,
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+    terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
-use ratatui::{backend::CrosstermBackend, Terminal};
-use ratconfig::{draw_config_ui, ConfigUiApp, ConfigUiIntent, ConfigUiKey};
+use ratatui::{Terminal, backend::CrosstermBackend};
+use ratconfig::{ConfigUiApp, ConfigUiIntent, ConfigUiKey, draw_config_ui};
 
 use crate::{
     common::*,

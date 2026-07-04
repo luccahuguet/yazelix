@@ -293,6 +293,17 @@ pub(crate) const MARS_FIELDS: &[FieldSpec] = &[
         "hex color like #9d9d9c",
     ),
     FieldSpec::string_choice(
+        "yazelix.cursor.divider",
+        "Mars Yazelix split cursor divider.",
+        &["vertical", "horizontal"],
+        "vertical or horizontal",
+    ),
+    FieldSpec::string_list(
+        "yazelix.cursor.colors",
+        "Mars Yazelix split cursor colors.",
+        "exactly two hex colors like [\"#00e6ff\", \"#00ff66\"]",
+    ),
+    FieldSpec::string_choice(
         "yazelix.cursor.cursor_color",
         "Mars Yazelix cursor color.",
         &[],
@@ -408,6 +419,14 @@ impl FieldSpec {
         validation: &'static str,
     ) -> Self {
         Self::new(path, "string", description, allowed_values, validation)
+    }
+
+    const fn string_list(
+        path: &'static str,
+        description: &'static str,
+        validation: &'static str,
+    ) -> Self {
+        Self::new(path, "string_list", description, &[], validation)
     }
 
     const fn new(

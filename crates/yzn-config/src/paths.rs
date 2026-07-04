@@ -7,7 +7,7 @@ use crate::{
     catalog::*,
     common::*,
     root_config::ensure_config_file_at,
-    zellij_sidecar::{render_zellij_sidecar, ZellijSidecar},
+    zellij_sidecar::{ZellijSidecar, render_zellij_sidecar},
 };
 
 pub(crate) struct ConfigPaths {

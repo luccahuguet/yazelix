@@ -5,8 +5,8 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use ratconfig::toml_adapter::{get_toml_path, parse_toml_value};
 use ratconfig::ConfigUiFileAction;
+use ratconfig::toml_adapter::{get_toml_path, parse_toml_value};
 use serde_json::Value as JsonValue;
 
 use crate::{
@@ -15,7 +15,7 @@ use crate::{
     native_config::{write_mars_config_field, write_starship_config_field},
     paths::ConfigPaths,
     root_config::{default_config_value, write_config_field},
-    zellij_sidecar::{write_zellij_config_field, zellij_field_value, ZellijSidecar},
+    zellij_sidecar::{ZellijSidecar, write_zellij_config_field, zellij_field_value},
 };
 
 pub(crate) struct FileActionSpec {

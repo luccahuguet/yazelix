@@ -6,9 +6,9 @@ use std::{
 
 use ratconfig::toml_adapter::{get_toml_path, parse_toml_value};
 use ratconfig::{
-    build_config_ui_field, build_string_list_choice_field, ConfigUiApplyStatus,
-    ConfigUiEditBehavior, ConfigUiFieldRowSpec, ConfigUiListColumn, ConfigUiListTable,
-    ConfigUiModel, ConfigUiPathOwner, ConfigUiSource, ConfigUiStringListChoiceSpec,
+    ConfigUiApplyStatus, ConfigUiEditBehavior, ConfigUiFieldRowSpec, ConfigUiListColumn,
+    ConfigUiListTable, ConfigUiModel, ConfigUiPathOwner, ConfigUiSource,
+    ConfigUiStringListChoiceSpec, build_config_ui_field, build_string_list_choice_field,
 };
 use serde_json::Value as JsonValue;
 
@@ -22,7 +22,7 @@ use crate::{
         bar_widgets, default_config, default_config_path_value, popup_keybinding_spec,
         read_toml_file_value, validate_config_value, validate_popup_keybindings,
     },
-    zellij_sidecar::{parse_zellij_sidecar, zellij_field_value, ZellijSidecar},
+    zellij_sidecar::{ZellijSidecar, parse_zellij_sidecar, zellij_field_value},
 };
 
 pub(crate) fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {

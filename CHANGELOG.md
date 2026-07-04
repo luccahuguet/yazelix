@@ -6,7 +6,8 @@ User-visible runtime changes for Yazelix Next live here.
 
 - The root `[appearance].mode` setting was removed before release. Mars
   appearance stays Mars-owned: `yzn config` exposes native Mars `force-theme`,
-  core color, and cursor color fields in `mars/config.toml`.
+  core color, split cursor divider/color-array, and cursor color fields in
+  `mars/config.toml`.
 - Flake package and app outputs are exposed for `x86_64-darwin` and
   `aarch64-darwin` in addition to the Linux systems. The macOS floor is
   package-first: `yzn help`, `status`, `doctor`, and `enter` are the supported
@@ -81,9 +82,9 @@ User-visible runtime changes for Yazelix Next live here.
 - `yzn screen [style]` shows a Yazelix terminal screen directly. Startup runs a
   bounded welcome splash before managed Zellij, controlled by
   `[welcome].enabled`, `[welcome].style`, and `[welcome].duration_seconds`.
-  The fixed style set includes the static Yazelix welcome card, imported screen
-  animations, and `random`; `random` skips the static card and configurable
-  pools are intentionally not exposed.
+  The fixed style set includes the card-like `static` and `logo` screens plus
+  imported screen animations and `random`; `random` skips `static` and `logo`,
+  and configurable pools are intentionally not exposed.
 - `yzn config` ignores unsupported modified terminal keys instead of treating
   them as text.
 - `yzn config` restores raw terminal mode if alternate-screen setup fails.

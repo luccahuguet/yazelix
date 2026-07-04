@@ -76,7 +76,7 @@ mod tests {
     use crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
     use ratconfig::toml_adapter::{get_toml_path, set_toml_value_text};
     use ratconfig::{ConfigUiDiagnostic, ConfigUiEditBehavior, ConfigUiModel, ConfigUiValueState};
-    use serde_json::{json, Value as JsonValue};
+    use serde_json::{Value as JsonValue, json};
 
     struct TempHome {
         path: PathBuf,
@@ -280,10 +280,12 @@ mod tests {
 
     #[test]
     fn config_field_rejects_unknown_paths_before_io() {
-        assert!(config_field("shell.typo")
-            .unwrap_err()
-            .to_string()
-            .contains("unknown config path"));
+        assert!(
+            config_field("shell.typo")
+                .unwrap_err()
+                .to_string()
+                .contains("unknown config path")
+        );
     }
 
     #[test]
@@ -558,6 +560,8 @@ mod tests {
             ("colors.background", "string"),
             ("colors.foreground", "string"),
             ("colors.dim-foreground", "string"),
+            ("yazelix.cursor.divider", "string"),
+            ("yazelix.cursor.colors", "string_list"),
             ("yazelix.cursor.cursor_color", "string"),
         ] {
             let field = model_field(&model, path);
@@ -567,6 +571,14 @@ mod tests {
             assert_eq!(field.apply_status.summary, "next launch");
             assert_eq!(field.apply_status.label, "mars");
         }
+        assert_eq!(
+            model_field(&model, "yazelix.cursor.divider").allowed_values,
+            string_values(&["vertical", "horizontal"])
+        );
+        assert_eq!(
+            model_field(&model, "yazelix.cursor.colors").edit_value,
+            r##"["#00e6ff","#00ff66"]"##
+        );
 
         for spec in POPUP_KEYBINDINGS {
             assert_config_field(&model, spec.path, "string", "next launch");
@@ -641,10 +653,12 @@ mod tests {
             .collect();
 
         assert!(model.tabs.contains(&TAB_KEYS.to_string()));
-        assert!(model
-            .file_actions
-            .iter()
-            .all(|action| action.tab != TAB_KEYS));
+        assert!(
+            model
+                .file_actions
+                .iter()
+                .all(|action| action.tab != TAB_KEYS)
+        );
         assert_eq!(
             model
                 .tab_list_tables
@@ -780,12 +794,16 @@ mod tests {
             &paths.yazi_init,
             &paths.yazi_keymap,
         ]);
-        assert!(!fs::read_to_string(paths.mars)
-            .unwrap()
-            .contains("ratconfig.contract"));
-        assert!(fs::read_to_string(paths.zellij)
-            .unwrap()
-            .contains("rounded_corners false"));
+        assert!(
+            !fs::read_to_string(paths.mars)
+                .unwrap()
+                .contains("ratconfig.contract")
+        );
+        assert!(
+            fs::read_to_string(paths.zellij)
+                .unwrap()
+                .contains("rounded_corners false")
+        );
         assert_eq!(
             fs::read_to_string(paths.starship).unwrap(),
             DEFAULT_STARSHIP_CONFIG_TOML
@@ -881,10 +899,12 @@ mod tests {
                 paths.zellij_plugins.as_path(),
             ]
         );
-        assert!(model
-            .file_actions
-            .iter()
-            .all(|action| !action.exists && action.create_if_missing));
+        assert!(
+            model
+                .file_actions
+                .iter()
+                .all(|action| !action.exists && action.create_if_missing)
+        );
     }
 
     #[test]
@@ -1083,6 +1103,20 @@ mod tests {
         write_source_field(
             &paths,
             SOURCE_MARS,
+            "yazelix.cursor.divider",
+            &json!("horizontal"),
+        )
+        .unwrap();
+        write_source_field(
+            &paths,
+            SOURCE_MARS,
+            "yazelix.cursor.colors",
+            &json!(["#ff1600", "#20242f"]),
+        )
+        .unwrap();
+        write_source_field(
+            &paths,
+            SOURCE_MARS,
             "yazelix.cursor.cursor_color",
             &json!("#0077cc"),
         )
@@ -1097,6 +1131,14 @@ mod tests {
             Some(&json!("#f5f3ef"))
         );
         assert_eq!(
+            get_toml_path(&mars, "yazelix.cursor.divider"),
+            Some(&json!("horizontal"))
+        );
+        assert_eq!(
+            get_toml_path(&mars, "yazelix.cursor.colors"),
+            Some(&json!(["#ff1600", "#20242f"]))
+        );
+        assert_eq!(
             get_toml_path(&mars, "yazelix.cursor.cursor_color"),
             Some(&json!("#0077cc"))
         );
@@ -1109,6 +1151,36 @@ mod tests {
         let error = write_source_field(&paths, SOURCE_MARS, "colors.background", &json!("light"))
             .unwrap_err()
             .to_string();
+        assert!(error.contains("hex color"), "{error}");
+
+        let error = write_source_field(
+            &paths,
+            SOURCE_MARS,
+            "yazelix.cursor.divider",
+            &json!("diagonal"),
+        )
+        .unwrap_err()
+        .to_string();
+        assert!(error.contains("vertical, horizontal"), "{error}");
+
+        let error = write_source_field(
+            &paths,
+            SOURCE_MARS,
+            "yazelix.cursor.colors",
+            &json!(["#ff1600"]),
+        )
+        .unwrap_err()
+        .to_string();
+        assert!(error.contains("exactly two"), "{error}");
+
+        let error = write_source_field(
+            &paths,
+            SOURCE_MARS,
+            "yazelix.cursor.colors",
+            &json!(["#ff1600", "blue"]),
+        )
+        .unwrap_err()
+        .to_string();
         assert!(error.contains("hex color"), "{error}");
     }
 

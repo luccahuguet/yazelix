@@ -26,11 +26,7 @@ impl FieldSpec {
     }
 }
 pub(crate) fn kdl_bool(value: bool) -> &'static str {
-    if value {
-        "true"
-    } else {
-        "false"
-    }
+    if value { "true" } else { "false" }
 }
 pub(crate) fn kdl_string(value: &str) -> String {
     format!("{value:?}")
