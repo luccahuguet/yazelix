@@ -97,8 +97,12 @@ mod tests {
     use crate::model::*;
     use crate::zellij_sidecar::*;
     use crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
+    use ratatui::style::{Color, Style};
     use ratconfig::toml_adapter::{get_toml_path, set_toml_value_text};
-    use ratconfig::{ConfigUiDiagnostic, ConfigUiEditBehavior, ConfigUiModel, ConfigUiValueState};
+    use ratconfig::{
+        ConfigUiDiagnostic, ConfigUiEditBehavior, ConfigUiModel, ConfigUiValueState,
+        file_action_status_label, file_action_status_style,
+    };
     use serde_json::{Value as JsonValue, json};
 
     struct TempHome {
@@ -929,6 +933,10 @@ mod tests {
                 .iter()
                 .all(|action| !action.exists && action.create_if_missing)
         );
+        assert!(model.file_actions.iter().all(|action| {
+            file_action_status_label(action) == "absent"
+                && file_action_status_style(action) == Style::default().fg(Color::Gray)
+        }));
     }
 
     #[test]

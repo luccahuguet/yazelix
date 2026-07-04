@@ -4,6 +4,8 @@ User-visible runtime changes for Yazelix Next live here.
 
 ## Unreleased
 
+- `yzn config` native file rows now show absent optional files as neutral
+  `absent` rows instead of warning-colored `missing` rows.
 - The root `[appearance].mode` setting was removed before release. Mars
   appearance stays Mars-owned: `yzn config` exposes the native
   `mars.appearance.preset` dark/light selector in `mars/config.toml`, while
