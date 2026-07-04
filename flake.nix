@@ -513,7 +513,9 @@
     checks = eachSystem (system: let
       pkgs = import nixpkgs {inherit system;};
       yzn = self.packages.${system}.yzn;
-      yznContractsCheck = rustBinFor pkgs "yzn-contracts-check" ./checks/yzn-contracts.rs;
+      checksSrc = pkgs.lib.cleanSource ./checks;
+      yznContractsCheck = rustBinFor pkgs "yzn-contracts-check" "${checksSrc}/yzn-contracts.rs";
+      helixContractsCheck = rustBinFor pkgs "helix-contracts-check" "${checksSrc}/helix-contracts.rs";
       fakeYazelix = pkgs.runCommand "fake-yazelix-hm-package" {} ''
         mkdir -p "$out/bin" "$out/share/applications"
         cat > "$out/bin/yzn" <<'EOF'
@@ -662,6 +664,9 @@
       '';
       contracts = pkgs.runCommand "yzn-contracts" {} ''
         ${yznContractsCheck}/bin/yzn-contracts-check ${yzn} "$out"
+      '';
+      helix_contracts = pkgs.runCommand "yzn-helix-contracts" {} ''
+        ${helixContractsCheck}/bin/helix-contracts-check ${yzn} "$out"
       '';
     });
 

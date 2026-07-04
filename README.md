@@ -449,18 +449,18 @@ nix run --override-input yazelixZellijPaneOrchestrator ../yazelix-zellij-pane-or
 Counts owned project files by language with `wc -l`.
 
 ```sh
-wc -l .gitignore AGENTS.md README.md CHANGELOG.md ARCHITECTURE.md flake.nix home-manager/module.nix packaging/tokenusage.nix packaging/bar-render-request.nix shell/sh/yzn-env-supervisor.sh shell/sh/yzn-helix.sh shell/sh/yzn-shell.sh config.toml mars.toml config.kdl layout.kdl layout.swap.kdl nu/config.nu nu/env.nu helix/config.toml yazi/init.lua yazi/keymap.toml yazi/plugins/sidebar-state.yazi/main.lua yazi/plugins/sidebar-status.yazi/main.lua yazi/plugins/zoxide-editor.yazi/main.lua yazi/yazi.toml crates/yzn-config/Cargo.toml crates/yzn-config/src/*.rs crates/yzn-open/Cargo.toml crates/yzn-open/src/bin/yzn-reveal.rs crates/yzn-open/src/bin/yzn-sidebar-refresh.rs crates/yzn-open/src/lib.rs crates/yzn-open/src/main.rs crates/yzn-open/src/sidebar.rs crates/yzn-tutor/Cargo.toml crates/yzn-tutor/src/cli_render.rs crates/yzn-tutor/src/main.rs crates/yzn-tutor/src/tutor_document.rs checks/key-reference-parity.rs checks/zellij-layout.rs checks/yzn-contracts.rs runtime/yzn-agent.rs runtime/yzn-menu.rs runtime/yzn-nu.rs runtime/yzn-yazi.rs runtime/yzn/*.rs runtime/yzn-zellij-config.rs
+wc -l .gitignore AGENTS.md README.md CHANGELOG.md ARCHITECTURE.md flake.nix home-manager/module.nix packaging/tokenusage.nix packaging/bar-render-request.nix shell/sh/yzn-env-supervisor.sh shell/sh/yzn-helix.sh shell/sh/yzn-shell.sh config.toml mars.toml config.kdl layout.kdl layout.swap.kdl nu/config.nu nu/env.nu helix/config.toml yazi/init.lua yazi/keymap.toml yazi/plugins/sidebar-state.yazi/main.lua yazi/plugins/sidebar-status.yazi/main.lua yazi/plugins/zoxide-editor.yazi/main.lua yazi/yazi.toml crates/yzn-config/Cargo.toml crates/yzn-config/src/*.rs crates/yzn-open/Cargo.toml crates/yzn-open/src/bin/yzn-reveal.rs crates/yzn-open/src/bin/yzn-sidebar-refresh.rs crates/yzn-open/src/lib.rs crates/yzn-open/src/main.rs crates/yzn-open/src/sidebar.rs crates/yzn-tutor/Cargo.toml crates/yzn-tutor/src/cli_render.rs crates/yzn-tutor/src/main.rs crates/yzn-tutor/src/tutor_document.rs checks/*.rs runtime/yzn-agent.rs runtime/yzn-menu.rs runtime/yzn-nu.rs runtime/yzn-yazi.rs runtime/yzn/*.rs runtime/yzn-zellij-config.rs
 ```
 
 | Language | Files | Lines |
 | --- | --- | ---: |
 | Ignore | `.gitignore` | 4 |
-| Markdown | `AGENTS.md`, `README.md`, `CHANGELOG.md`, `ARCHITECTURE.md` | 1236 |
-| Nix | `flake.nix`, `home-manager/module.nix`, `packaging/tokenusage.nix`, `packaging/bar-render-request.nix` | 902 |
+| Markdown | `AGENTS.md`, `README.md`, `CHANGELOG.md`, `ARCHITECTURE.md` | 1238 |
+| Nix | `flake.nix`, `home-manager/module.nix`, `packaging/tokenusage.nix`, `packaging/bar-render-request.nix` | 907 |
 | Shell | `shell/sh/yzn-env-supervisor.sh`, `shell/sh/yzn-helix.sh`, `shell/sh/yzn-shell.sh` | 82 |
 | TOML | `config.toml`, `mars.toml`, `helix/config.toml`, `yazi/yazi.toml`, `yazi/keymap.toml`, `crates/yzn-config/Cargo.toml`, `crates/yzn-open/Cargo.toml`, `crates/yzn-tutor/Cargo.toml` | 236 |
 | KDL | `config.kdl`, `layout.kdl`, `layout.swap.kdl` | 210 |
 | Nu | `nu/config.nu`, `nu/env.nu` | 11 |
 | Lua | `yazi/init.lua`, `yazi/plugins/sidebar-state.yazi/main.lua`, `yazi/plugins/sidebar-status.yazi/main.lua`, `yazi/plugins/zoxide-editor.yazi/main.lua` | 247 |
-| Rust | `crates/yzn-config/src/*.rs`, `crates/yzn-open/src/bin/yzn-reveal.rs`, `crates/yzn-open/src/bin/yzn-sidebar-refresh.rs`, `crates/yzn-open/src/lib.rs`, `crates/yzn-open/src/main.rs`, `crates/yzn-open/src/sidebar.rs`, `crates/yzn-tutor/src/cli_render.rs`, `crates/yzn-tutor/src/main.rs`, `crates/yzn-tutor/src/tutor_document.rs`, `checks/key-reference-parity.rs`, `checks/zellij-layout.rs`, `checks/yzn-contracts.rs`, `runtime/yzn-agent.rs`, `runtime/yzn-menu.rs`, `runtime/yzn-nu.rs`, `runtime/yzn-yazi.rs`, `runtime/yzn/*.rs`, `runtime/yzn-zellij-config.rs` | 11071 |
-| Total | owned project files | 13999 |
+| Rust | `crates/yzn-config/src/*.rs`, `crates/yzn-open/src/bin/yzn-reveal.rs`, `crates/yzn-open/src/bin/yzn-sidebar-refresh.rs`, `crates/yzn-open/src/lib.rs`, `crates/yzn-open/src/main.rs`, `crates/yzn-open/src/sidebar.rs`, `crates/yzn-tutor/src/cli_render.rs`, `crates/yzn-tutor/src/main.rs`, `crates/yzn-tutor/src/tutor_document.rs`, `checks/*.rs`, `runtime/yzn-agent.rs`, `runtime/yzn-menu.rs`, `runtime/yzn-nu.rs`, `runtime/yzn-yazi.rs`, `runtime/yzn/*.rs`, `runtime/yzn-zellij-config.rs` | 11154 |
+| Total | owned project files | 14089 |
