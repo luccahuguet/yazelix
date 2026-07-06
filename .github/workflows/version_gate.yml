@@ -1,0 +1,61 @@
+name: Version Gate
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: version-gate-${{ github.workflow }}-${{ github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  linux-profile-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@v22
+        with:
+          determinate: false
+          extra-conf: |
+            max-jobs = 2
+            cores = 2
+
+      - name: Install yzn into a temp profile
+        run: |
+          profile="$RUNNER_TEMP/yazelix-next-profile"
+          nix profile add --refresh "$GITHUB_WORKSPACE" --profile "$profile"
+
+          test -x "$profile/bin/yzn"
+          test -f "$profile/share/applications/yzn.desktop"
+          grep -F 'Yazelix Next' "$profile/share/applications/yzn.desktop"
+
+      - name: Smoke installed yzn commands
+        run: |
+          profile="$RUNNER_TEMP/yazelix-next-profile"
+          export HOME="$RUNNER_TEMP/yazelix-next-home"
+          export YAZELIX_NEXT_CONFIG_HOME="$RUNNER_TEMP/yazelix-next-config"
+          export YAZELIX_STATE_DIR="$RUNNER_TEMP/yazelix-next-state"
+          export XDG_DATA_HOME="$RUNNER_TEMP/yazelix-next-data"
+          mkdir -p "$HOME" "$YAZELIX_NEXT_CONFIG_HOME" "$YAZELIX_STATE_DIR" "$XDG_DATA_HOME"
+
+          "$profile/bin/yzn" help > "$RUNNER_TEMP/yzn-help.txt"
+          "$profile/bin/yzn" status > "$RUNNER_TEMP/yzn-status.txt"
+          "$profile/bin/yzn" doctor > "$RUNNER_TEMP/yzn-doctor.txt"
+          "$profile/bin/yzn" tutor list > "$RUNNER_TEMP/yzn-tutor-list.txt"
+
+          grep -F 'Yazelix' "$RUNNER_TEMP/yzn-help.txt"
+          grep -F 'Yazelix status' "$RUNNER_TEMP/yzn-status.txt"
+          grep -F "config home: $YAZELIX_NEXT_CONFIG_HOME" "$RUNNER_TEMP/yzn-status.txt"
+          grep -F "state dir: $YAZELIX_STATE_DIR" "$RUNNER_TEMP/yzn-status.txt"
+          grep -F 'Yazelix doctor' "$RUNNER_TEMP/yzn-doctor.txt"
+          grep -F "ok config home: $YAZELIX_NEXT_CONFIG_HOME" "$RUNNER_TEMP/yzn-doctor.txt"
+          grep -F 'Yazelix tutor lessons' "$RUNNER_TEMP/yzn-tutor-list.txt"

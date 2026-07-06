@@ -28,6 +28,9 @@ jobs:
         uses: DeterminateSystems/nix-installer-action@v22
         with:
           determinate: false
+          extra-conf: |
+            max-jobs = 2
+            cores = 2
 
       - name: Show flake outputs
         run: nix flake show --all-systems
