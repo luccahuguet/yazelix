@@ -8,8 +8,8 @@ use std::{
 mod support;
 
 use support::{
-    RuntimeCase, TempDir, binary_text, embedded_store_path, excerpt, expect_contains, expect_order,
-    successful_output, successful_stdout, write_config_home, write_executable,
+    binary_text, embedded_store_path, excerpt, expect_contains, expect_order, successful_output,
+    successful_stdout, write_config_home, write_executable, RuntimeCase, TempDir,
 };
 
 const SPONSOR_URL: &str = "https://github.com/sponsors/luccahuguet";
@@ -169,9 +169,7 @@ fn expect_front_door(yzn: &Path) {
         .collect::<Vec<_>>();
     assert_eq!(
         menu_ids,
-        [
-            "config", "doctor", "status", "screen", "sponsor", "launch", "help", "tutor"
-        ],
+        ["config", "doctor", "status", "screen", "sponsor", "launch", "help", "tutor"],
         "yzn menu command allowlist changed\n{menu}"
     );
     expect_menu_descriptions_match_help(&help, &menu);

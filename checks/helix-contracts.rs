@@ -211,20 +211,30 @@ fn expect_helix_wrapper_case(
         );
     }
     let generated_config = fs::read_to_string(&expected_config_file).unwrap();
-    expect_contains_all! {
-        &generated_config, &format!("{name} generated Helix reveal binding");
-        "A-r = ",
-        ":sh yzn reveal",
-        "%{buffer_name}",
-    }
+    expect_toml_string_value(
+        &generated_config,
+        "keys.normal",
+        "A-r",
+        r#":sh yzn reveal "%{buffer_name}""#,
+        &format!("{name} generated Helix reveal binding"),
+    );
     if name == "toml" {
-        expect_contains_all! {
-            &generated_config, "user Helix TOML merge";
-            "line-number = \"relative\"",
-            "C-r = \":noop\"",
-        }
+        expect_toml_string_value(
+            &generated_config,
+            "editor",
+            "line-number",
+            "relative",
+            "user Helix TOML merge",
+        );
+        expect_toml_string_value(
+            &generated_config,
+            "keys.normal",
+            "C-r",
+            ":noop",
+            "user Helix TOML merge",
+        );
         assert!(
-            !generated_config.contains("A-r = \":noop\""),
+            toml_string_value(&generated_config, "keys.normal", "A-r").as_deref() != Some(":noop"),
             "generated config kept user Alt r override\n{}",
             excerpt(&generated_config)
         );
@@ -288,4 +298,67 @@ fn expect_helix_wrapper_output(
         ],
         context,
     );
+}
+
+fn expect_toml_string_value(text: &str, section: &str, key: &str, expected: &str, context: &str) {
+    let actual = toml_string_value(text, section, key);
+    assert_eq!(
+        actual.as_deref(),
+        Some(expected),
+        "{context} expected [{section}].{key} = {expected:?}\n{}",
+        excerpt(text)
+    );
+}
+
+fn toml_string_value(text: &str, section: &str, key: &str) -> Option<String> {
+    let mut active = false;
+    for line in text.lines().map(str::trim) {
+        if let Some(name) = toml_section_name(line) {
+            active = name == section;
+            continue;
+        }
+        if active {
+            if let Some((candidate, value)) = line.split_once('=') {
+                if candidate.trim() == key {
+                    return unquote_toml_string(value.trim());
+                }
+            }
+        }
+    }
+    None
+}
+
+fn toml_section_name(line: &str) -> Option<&str> {
+    line.strip_prefix('[')?.strip_suffix(']').map(str::trim)
+}
+
+fn unquote_toml_string(value: &str) -> Option<String> {
+    let quote = value.chars().next()?;
+    let body = value.strip_prefix(quote)?.strip_suffix(quote)?;
+    match quote {
+        '\'' => Some(body.to_string()),
+        '"' => Some(unescape_basic_toml_string(body)),
+        _ => None,
+    }
+}
+
+fn unescape_basic_toml_string(value: &str) -> String {
+    let mut output = String::new();
+    let mut chars = value.chars();
+    while let Some(ch) = chars.next() {
+        if ch == '\\' {
+            output.push(match chars.next() {
+                Some('"') => '"',
+                Some('\\') => '\\',
+                Some('n') => '\n',
+                Some('r') => '\r',
+                Some('t') => '\t',
+                Some(other) => other,
+                None => '\\',
+            });
+        } else {
+            output.push(ch);
+        }
+    }
+    output
 }
