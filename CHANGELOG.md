@@ -4,6 +4,9 @@ User-visible runtime changes for Yazelix Next live here.
 
 ## Unreleased
 
+- The default `yzn` package no longer pulls Mars' removed SerenityOS emoji
+  profile into the Nix closure, avoiding the expensive unused
+  `serenityos-emoji-font` / `nanoemoji` build path during declarative installs.
 - `yzn config` now declares `mars.appearance.preset` as the Ratconfig UI theme
   source, so changing the Mars dark/light preset through the config UI switches
   the config palette in the same session. Direct file edits while the UI is
