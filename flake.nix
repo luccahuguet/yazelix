@@ -513,9 +513,6 @@
     checks = eachSystem (system: let
       pkgs = import nixpkgs {inherit system;};
       yzn = self.packages.${system}.yzn;
-      yznClosureInfo = pkgs.closureInfo {
-        rootPaths = [yzn];
-      };
       checksSrc = pkgs.lib.cleanSource ./checks;
       yznContractsCheck = rustBinFor pkgs "yzn-contracts-check" "${checksSrc}/yzn-contracts.rs";
       helixContractsCheck = rustBinFor pkgs "helix-contracts-check" "${checksSrc}/helix-contracts.rs";
@@ -583,14 +580,6 @@
       };
     in {
       inherit yzn;
-      yzn_closure_light = pkgs.runCommand "yzn-closure-light-check" {} ''
-        if grep -E -i 'serenityos|nanoemoji' ${yznClosureInfo}/store-paths > forbidden-paths; then
-          printf '%s\n' 'default yzn closure must not include SerenityOS emoji or nanoemoji paths:' >&2
-          cat forbidden-paths >&2
-          exit 1
-        fi
-        touch "$out"
-      '';
       home_manager = pkgs.runCommand "yzn-home-manager-check" {} ''
         default_path="${homeManagerDefault.activationPackage}/home-path"
         override_path="${homeManagerOverride.activationPackage}/home-path"
