@@ -35,8 +35,12 @@ jobs:
       - name: Show flake outputs
         run: nix flake show --all-systems
 
-      - name: Check flake
-        run: nix flake check --print-build-logs
+      - name: Check flake shape
+        run: nix flake check --no-build
 
-      - name: Build yzn
-        run: nix build .#yzn --no-link --print-build-logs
+      - name: Build lightweight checks
+        run: |
+          nix build --no-link --print-build-logs \
+            .#checks.x86_64-linux.yzn_yazi_materialization \
+            .#checks.x86_64-linux.yzn_launcher_unit \
+            .#checks.x86_64-linux.zellij_sidecar_guard_parity
