@@ -8,8 +8,8 @@ use std::{
 mod support;
 
 use support::{
-    binary_text, embedded_store_path, excerpt, expect_contains, expect_order, successful_output,
-    successful_stdout, write_config_home, write_executable, RuntimeCase, TempDir,
+    RuntimeCase, TempDir, binary_text, embedded_store_path, excerpt, expect_contains, expect_order,
+    successful_output, successful_stdout, write_config_home, write_executable,
 };
 
 const SPONSOR_URL: &str = "https://github.com/sponsors/luccahuguet";
@@ -38,6 +38,7 @@ fn main() {
     expect_keybinds(&config);
     expect_first_party_plugins(&config);
     expect_front_door(yzn);
+    expect_narrow_path_launches(yzn, &yzn_shell);
     expect_config_ui(yzn);
     expect_startup_diagnostics(yzn);
     expect_mars_config_override(yzn);
@@ -168,7 +169,9 @@ fn expect_front_door(yzn: &Path) {
         .collect::<Vec<_>>();
     assert_eq!(
         menu_ids,
-        ["config", "doctor", "status", "screen", "sponsor", "launch", "help", "tutor"],
+        [
+            "config", "doctor", "status", "screen", "sponsor", "launch", "help", "tutor"
+        ],
         "yzn menu command allowlist changed\n{menu}"
     );
     expect_menu_descriptions_match_help(&help, &menu);
@@ -652,6 +655,50 @@ fn expect_front_door(yzn: &Path) {
         yzn.join("libexec/yazelix-next/yzn-tutor").is_file(),
         "yzn package is missing the tutor helper"
     );
+}
+
+fn expect_narrow_path_launches(yzn: &Path, yzn_shell: &Path) {
+    let yzn_bin = yzn.join("bin/yzn");
+    let temp = TempDir::new();
+    for (command, expected) in [
+        ("help", "Usage:"),
+        ("status", "Yazelix status"),
+        ("doctor", "Yazelix doctor"),
+    ] {
+        let case = RuntimeCase::new(&temp.path, &format!("narrow-path-{command}"));
+        let mut yzn = case.yzn_command(&yzn_bin, command);
+        yzn.env("PATH", "/private/tmp");
+        let output = successful_stdout(&mut yzn, &format!("narrow PATH yzn {command}"));
+        expect_contains(&output, expected, &format!("narrow PATH yzn {command}"));
+    }
+
+    for (program, args, context) in [
+        (
+            yzn_shell.to_path_buf(),
+            &["--version"][..],
+            "narrow PATH yzn-shell --version",
+        ),
+        (
+            embedded_store_path(&binary_text(&yzn_bin), "/bin/yzn-hx"),
+            &["--version"][..],
+            "narrow PATH yzn-hx --version",
+        ),
+    ] {
+        let case = RuntimeCase::new(&temp.path, context);
+        let stdout = successful_stdout(
+            Command::new(program)
+                .args(args)
+                .env("PATH", "/private/tmp")
+                .env("YAZELIX_NEXT_CONFIG_HOME", case.config_home)
+                .env("YAZELIX_STATE_DIR", case.state_dir)
+                .env_remove("ZELLIJ_SESSION_NAME"),
+            context,
+        );
+        assert!(
+            !stdout.trim().is_empty(),
+            "{context} succeeded without printing a version"
+        );
+    }
 }
 
 fn expect_menu_dispatch(menu: &Path) {
