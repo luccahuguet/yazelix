@@ -37,6 +37,16 @@ Do not keep weak tests. If a test only repeats another check, asserts
 implementation trivia, or mostly preserves scaffolding, either merge its useful
 assertion into a stronger test or delete it.
 
+Do not add mirror tests for straightforward literals, defaults, or configuration
+values whose only assertion is that the source still equals the same source-level
+value. If the value matters, test the user-visible behavior, boundary, or
+generated artifact that depends on it.
+
+Do not add absence guards merely because code, dependencies, files, packages,
+settings, or features were removed. Negative checks are justified only when the
+absence is a real contract, such as a security, licensing, size, ownership, or
+known high-risk regression boundary.
+
 Prefer one contract test with clear setup and meaningful assertions over several
 thin tests that make refactors harder without increasing confidence.
 
