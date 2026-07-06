@@ -583,6 +583,7 @@
       home_manager = pkgs.runCommand "yzn-home-manager-check" {} ''
         default_path="${homeManagerDefault.activationPackage}/home-path"
         override_path="${homeManagerOverride.activationPackage}/home-path"
+        hm_yzn="${homeManagerConfigFiles.activationPackage}/home-path/bin/yzn"
         config_files="${homeManagerConfigFiles.activationPackage}/home-files/.config/yazelix-next"
 
         test -x "$default_path/bin/yzn"
@@ -621,6 +622,27 @@
         grep -q '(provide yzn-test)' "$config_files/helix/helix.scm"
         grep -q -- '-- init' "$config_files/yazi/init.lua"
         grep -q '# config' "$config_files/nu/config.nu"
+
+        export HOME="$TMPDIR/hm-yzn-home"
+        export YAZELIX_NEXT_CONFIG_HOME="$config_files"
+        export YAZELIX_STATE_DIR="$TMPDIR/hm-yzn-state"
+        export XDG_DATA_HOME="$TMPDIR/hm-yzn-data"
+        mkdir -p "$HOME" "$YAZELIX_STATE_DIR" "$XDG_DATA_HOME"
+
+        "$hm_yzn" help > help
+        "$hm_yzn" status > status
+        "$hm_yzn" doctor > doctor
+        "$hm_yzn" tutor list > tutor-list
+        grep -q 'Usage:' help
+        grep -q 'Yazelix status' status
+        grep -q "config home: $config_files" status
+        grep -q "state dir: $YAZELIX_STATE_DIR" status
+        grep -q 'shell: fish' status
+        grep -q 'welcome enabled: false' status
+        grep -q 'Yazelix doctor' doctor
+        grep -q "ok config home: $config_files" doctor
+        grep -q 'ok shell.program: fish' doctor
+        grep -q 'Yazelix tutor lessons' tutor-list
         touch "$out"
       '';
       yzn_yazi_materialization = pkgs.runCommand "yzn-yazi-materialization-check" {nativeBuildInputs = [pkgs.rustc pkgs.stdenv.cc];} ''
