@@ -1,6 +1,17 @@
 #!/bin/sh
 set -eu
 
+bootstrap_path="/nix/var/nix/profiles/default/bin:/run/current-system/sw/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+if [ -n "${HOME:-}" ]; then
+  bootstrap_path="$HOME/.local/state/nix/profile/bin:$HOME/.nix-profile/bin:$bootstrap_path"
+fi
+if [ -n "${PATH:-}" ]; then
+  PATH="$bootstrap_path:$PATH"
+else
+  PATH="$bootstrap_path"
+fi
+export PATH
+
 script_path="$0"
 if [ -L "$script_path" ]; then
   link_target="$(readlink "$script_path")"

@@ -76,6 +76,187 @@ fn seed_startup_materialization_runtime_assets(fixture: &support::fixtures::Mana
     fs::create_dir_all(fixture.runtime_dir.join("shells").join("posix")).unwrap();
 }
 
+// Regression: detached macOS launchers can inherit a PATH without dirname/readlink, so POSIX
+// bootstrap must seed system tool dirs before runtime_env.sh is sourced.
+#[test]
+fn posix_bootstrap_entrypoints_resolve_runtime_with_narrow_path() {
+    let repo = repo_root();
+    let temp = tempfile::tempdir().unwrap();
+    let runtime_dir = temp.path().join("runtime");
+    let home_dir = temp.path().join("home");
+    let posix_dir = runtime_dir.join("shells").join("posix");
+    let narrow_path = temp.path().join("private_tmp");
+
+    fs::create_dir_all(&posix_dir).unwrap();
+    fs::create_dir_all(&home_dir).unwrap();
+    fs::create_dir_all(&narrow_path).unwrap();
+    fs::create_dir_all(runtime_dir.join("libexec")).unwrap();
+    fs::create_dir_all(runtime_dir.join("toolbin")).unwrap();
+    fs::create_dir_all(runtime_dir.join("nushell/config")).unwrap();
+    write_executable_script(
+        &posix_dir.join("yzx_cli.sh"),
+        &fs::read_to_string(repo.join("shells/posix/yzx_cli.sh")).unwrap(),
+    );
+    write_executable_script(
+        &posix_dir.join("start_yazelix.sh"),
+        &fs::read_to_string(repo.join("shells/posix/start_yazelix.sh")).unwrap(),
+    );
+    write_executable_script(
+        &posix_dir.join("yazelix_nu.sh"),
+        &fs::read_to_string(repo.join("shells/posix/yazelix_nu.sh")).unwrap(),
+    );
+    write_executable_script(
+        &posix_dir.join("yazelix_hx.sh"),
+        &fs::read_to_string(repo.join("shells/posix/yazelix_hx.sh")).unwrap(),
+    );
+    fs::write(
+        posix_dir.join("runtime_env.sh"),
+        fs::read_to_string(repo.join("shells/posix/runtime_env.sh")).unwrap(),
+    )
+    .unwrap();
+    fs::write(runtime_dir.join("nushell/config/config.nu"), "").unwrap();
+    fs::write(runtime_dir.join("nushell/config/stack_prompt_guard.nu"), "").unwrap();
+
+    let yzx_capture = temp.path().join("capture_yzx.sh");
+    write_executable_script(
+        &yzx_capture,
+        r#"#!/bin/sh
+printf 'yzx_argv=%s\n' "${1:-}"
+printf 'YAZELIX_RUNTIME_DIR=%s\n' "$YAZELIX_RUNTIME_DIR"
+"#,
+    );
+    let yzx_output = Command::new(posix_dir.join("yzx_cli.sh"))
+        .env_clear()
+        .env("HOME", &home_dir)
+        .env("USER", "yazelix-test")
+        .env("PATH", &narrow_path)
+        .env("YAZELIX_SKIP_STABLE_WRAPPER_REDIRECT", "1")
+        .env("YAZELIX_YZX_BIN", &yzx_capture)
+        .arg("--version")
+        .output()
+        .unwrap();
+
+    assert_eq!(
+        yzx_output.status.code(),
+        Some(0),
+        "stderr:\n{}",
+        String::from_utf8_lossy(&yzx_output.stderr)
+    );
+    let yzx_stdout = String::from_utf8(yzx_output.stdout).unwrap();
+    assert!(yzx_stdout.contains("yzx_argv=--version"));
+    assert!(yzx_stdout.contains(&format!(
+        "YAZELIX_RUNTIME_DIR={}",
+        runtime_dir.to_string_lossy()
+    )));
+
+    let control_capture = temp.path().join("capture_control.sh");
+    write_executable_script(
+        &control_capture,
+        r#"#!/bin/sh
+printf 'control_argv=%s\n' "${1:-}"
+printf 'YAZELIX_RUNTIME_DIR=%s\n' "$YAZELIX_RUNTIME_DIR"
+"#,
+    );
+    let start_output = Command::new(posix_dir.join("start_yazelix.sh"))
+        .env_clear()
+        .env("HOME", &home_dir)
+        .env("USER", "yazelix-test")
+        .env("PATH", &narrow_path)
+        .env("YAZELIX_YZX_CONTROL_BIN", &control_capture)
+        .output()
+        .unwrap();
+
+    assert_eq!(
+        start_output.status.code(),
+        Some(0),
+        "stderr:\n{}",
+        String::from_utf8_lossy(&start_output.stderr)
+    );
+    let start_stdout = String::from_utf8(start_output.stdout).unwrap();
+    assert!(start_stdout.contains("control_argv=enter"));
+    assert!(start_stdout.contains(&format!(
+        "YAZELIX_RUNTIME_DIR={}",
+        runtime_dir.to_string_lossy()
+    )));
+
+    write_executable_script(
+        &runtime_dir.join("libexec/nu"),
+        r#"#!/bin/sh
+printf 'nu_argv=%s\n' "$*"
+printf 'YAZELIX_RUNTIME_DIR=%s\n' "$YAZELIX_RUNTIME_DIR"
+"#,
+    );
+    let nu_output = Command::new(posix_dir.join("yazelix_nu.sh"))
+        .env_clear()
+        .env("HOME", &home_dir)
+        .env("USER", "yazelix-test")
+        .env("PATH", &narrow_path)
+        .arg("--version")
+        .output()
+        .unwrap();
+
+    assert_eq!(
+        nu_output.status.code(),
+        Some(0),
+        "stderr:\n{}",
+        String::from_utf8_lossy(&nu_output.stderr)
+    );
+    let nu_stdout = String::from_utf8(nu_output.stdout).unwrap();
+    assert!(nu_stdout.contains("nu_argv=--login --env-config /dev/null --config "));
+    assert!(nu_stdout.contains("--version"));
+    assert!(nu_stdout.contains(&format!(
+        "YAZELIX_RUNTIME_DIR={}",
+        runtime_dir.to_string_lossy()
+    )));
+
+    write_executable_script(
+        &runtime_dir.join("libexec/yzx_core"),
+        r#"#!/bin/sh
+printf '%s\n' '{"data":{"import_notice":{"lines":[]},"generated_path":"/tmp/generated-helix.toml","generated_steel_config_dir":"/tmp/generated-steel","managed_helix_config_dir":"/tmp/managed-helix"}}'
+"#,
+    );
+    write_executable_script(
+        &runtime_dir.join("toolbin/jq"),
+        r#"#!/bin/sh
+case "$2" in
+  '.data.import_notice.lines[]?') exit 0 ;;
+  '.data.generated_path // ""') printf '%s\n' '/tmp/generated-helix.toml' ;;
+  '.data.generated_steel_config_dir // ""') printf '%s\n' '/tmp/generated-steel' ;;
+  '.data.managed_helix_config_dir // ""') printf '%s\n' '/tmp/managed-helix' ;;
+  *) printf 'unexpected jq args: %s\n' "$*" >&2; exit 1 ;;
+esac
+"#,
+    );
+    write_executable_script(
+        &runtime_dir.join("libexec/hx"),
+        r#"#!/bin/sh
+printf 'hx_argv=%s\n' "$*"
+"#,
+    );
+    let hx_output = Command::new(posix_dir.join("yazelix_hx.sh"))
+        .env_clear()
+        .env("HOME", &home_dir)
+        .env("USER", "yazelix-test")
+        .env("PATH", &narrow_path)
+        .env(
+            "YAZELIX_MANAGED_HELIX_BINARY",
+            runtime_dir.join("libexec/hx"),
+        )
+        .arg("--version")
+        .output()
+        .unwrap();
+
+    assert_eq!(
+        hx_output.status.code(),
+        Some(0),
+        "stderr:\n{}",
+        String::from_utf8_lossy(&hx_output.stderr)
+    );
+    let hx_stdout = String::from_utf8(hx_output.stdout).unwrap();
+    assert!(hx_stdout.contains("hx_argv=--config-dir /tmp/managed-helix"));
+    assert!(hx_stdout.contains("-c /tmp/generated-helix.toml --version"));
+}
+
 // Regression: workspace startup scrubs inherited GTK/GIO loader variables so host GUI apps do not load incompatible Nix modules.
 #[test]
 fn start_yazelix_scrubs_gui_loader_env_before_control_handoff() {

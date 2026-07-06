@@ -260,18 +260,16 @@ pkgs.runCommand name { } ''
   mkdir -p "$out/bin"
   cat > "$out/bin/yzx" <<EOF
 #!/bin/sh
-PATH="${pkgs.nushell}/bin:\$PATH"
+bootstrap_path="${pkgs.nushell}/bin:/nix/var/nix/profiles/default/bin:/run/current-system/sw/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+if [ -n "\${PATH:-}" ]; then
+  PATH="\$bootstrap_path:\$PATH"
+else
+  PATH="\$bootstrap_path"
+fi
+export PATH
 YAZELIX_INVOKED_YZX_PATH="\$0"
 export YAZELIX_INVOKED_YZX_PATH
-SCRIPT_PATH="\$0"
-if [ -L "\$SCRIPT_PATH" ]; then
-  LINK_TARGET="\$(readlink "\$SCRIPT_PATH")"
-  case "\$LINK_TARGET" in
-    /*) SCRIPT_PATH="\$LINK_TARGET" ;;
-    *) SCRIPT_PATH="\$(dirname "\$SCRIPT_PATH")/\$LINK_TARGET" ;;
-  esac
-fi
-exec "\$(dirname "\$SCRIPT_PATH")/../shells/posix/yzx_cli.sh" "\$@"
+exec "$out/shells/posix/yzx_cli.sh" "\$@"
 EOF
   chmod +x "$out/bin/yzx"
 ''
