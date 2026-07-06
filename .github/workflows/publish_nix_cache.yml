@@ -35,6 +35,17 @@ jobs:
             echo "available=false" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Free runner disk space
+        if: steps.cachix-token.outputs.available == 'true'
+        run: |
+          sudo rm -rf \
+            /opt/hostedtoolcache \
+            /usr/local/lib/android \
+            /usr/share/dotnet \
+            /opt/ghc \
+            /opt/az
+          docker system prune --all --force --volumes || true
+
       - name: Check out repository
         if: steps.cachix-token.outputs.available == 'true'
         uses: actions/checkout@v6
