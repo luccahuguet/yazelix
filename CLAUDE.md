@@ -78,6 +78,12 @@ readlink -f ~/.nix-profile/bin/yzx                              # store hash sho
 
 The host has useful build accelerators and developer tools, but they are not foundation package ownership:
 
+> **Provenance warning (2026-07-07):** `/home/flexnetos/FlexNetOS/usr/bin` is residue of the
+> quarantined `flexnetos_production_execution_pack` era
+> (`FlexNetOS/_quarantine/20260630T234500Z/`), not deliberate architecture. The rows below
+> document interim reality only; each entry is a refactor target into profile/flake
+> ownership (tracked as yazelix-6pnv2). Do not add binaries there or cite it as an ownership root.
+
 | Tool | Path | Notes |
 |---|---|---|
 | `cargo` + `rustc` (fenix rust-mixed 1.96) | `/nix/store/b47aazvj6hmsd1i1a6sy9ch5yx8ylvxg-rust-mixed/bin/{cargo,rustc}` | Newer store hashes may exist; `find /nix/store -maxdepth 5 -name 'cargo' -type f \| xargs -I{} sh -c '{} --version'` to check |
