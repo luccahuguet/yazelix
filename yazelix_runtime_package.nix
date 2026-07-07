@@ -10,7 +10,7 @@
   name ? "yazelix-runtime",
   components ? { },
   extraRuntimePackages ? [ ],
-  extraRuntimeCommands ? [ ],
+  extraRuntimeCommands ? [ "tu" ],
   yaziAssets ? null,
   yazelixHelixPackage ? null,
   yazelixCursorsPackage ? null,

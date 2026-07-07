@@ -278,6 +278,7 @@ pub fn generate_zellij_materialization(
             source,
         )
     })?;
+    set_generated_directory_writable(&request.zellij_config_dir)?;
 
     sync_plugin_artifacts(&plugin_artifacts, request.seed_plugin_permissions)?;
     let pane_orchestrator_runtime_path = pane_orchestrator_artifact.runtime_path.clone();
@@ -1329,6 +1330,18 @@ fn write_zellij_config_pack_output(
     layout_dir: &Path,
     output: &zellij_config_pack::ZellijConfigPackRenderOutput,
 ) -> Result<Vec<PathBuf>, CoreError> {
+    if let Some(parent) = merged_config_path.parent() {
+        fs::create_dir_all(parent).map_err(|source| {
+            CoreError::io(
+                "create_zellij_output_dir",
+                "Could not create the managed Zellij output directory",
+                "Check permissions for the Yazelix state directory and retry.",
+                parent.to_string_lossy(),
+                source,
+            )
+        })?;
+        set_generated_directory_writable(parent)?;
+    }
     write_text_atomic(merged_config_path, &output.merged_config)?;
     fs::create_dir_all(layout_dir).map_err(|source| {
         CoreError::io(
@@ -1339,6 +1352,7 @@ fn write_zellij_config_pack_output(
             source,
         )
     })?;
+    set_generated_directory_writable(layout_dir)?;
     let expected_targets = output
         .layout_files
         .iter()
@@ -1350,6 +1364,47 @@ fn write_zellij_config_pack_output(
     }
 
     Ok(expected_targets)
+}
+
+fn set_generated_directory_writable(path: &Path) -> Result<(), CoreError> {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        fs::set_permissions(path, fs::Permissions::from_mode(0o755)).map_err(|source| {
+            CoreError::io(
+                "set_zellij_generated_dir_permissions",
+                "Could not adjust permissions on a managed Zellij directory",
+                "Check permissions for the Yazelix state directory and retry.",
+                path.to_string_lossy(),
+                source,
+            )
+        })?;
+    }
+    #[cfg(not(unix))]
+    {
+        let mut permissions = fs::metadata(path)
+            .map_err(|source| {
+                CoreError::io(
+                    "read_zellij_generated_dir_permissions",
+                    "Could not inspect permissions on a managed Zellij directory",
+                    "Check permissions for the Yazelix state directory and retry.",
+                    path.to_string_lossy(),
+                    source,
+                )
+            })?
+            .permissions();
+        permissions.set_readonly(false);
+        fs::set_permissions(path, permissions).map_err(|source| {
+            CoreError::io(
+                "set_zellij_generated_dir_permissions",
+                "Could not adjust permissions on a managed Zellij directory",
+                "Check permissions for the Yazelix state directory and retry.",
+                path.to_string_lossy(),
+                source,
+            )
+        })?;
+    }
+    Ok(())
 }
 
 fn render_integrated_zjstatus_bar(
@@ -2034,6 +2089,63 @@ printf '%s\n' '{"schema_version":3,"plugin_block":"CHILD_PLUGIN_BLOCK"}'
             .find(|template| template.relative_path == "flexnetos_agent_workspace.kdl")
             .expect("custom layout template");
         assert!(custom.content.contains("__YAZELIX_ZJSTATUS_TAB_TEMPLATE__"));
+    }
+
+    // Regression: generated Zellij dirs can retain read-only package permissions; the writer must regain access before replacing layouts.
+    #[cfg(unix)]
+    #[test]
+    fn zellij_config_pack_output_repairs_readonly_generated_dirs() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let temp = tempfile::tempdir().unwrap();
+        let zellij_dir = temp.path().join("configs/zellij");
+        let layout_dir = zellij_dir.join("layouts");
+        let merged_config_path = zellij_dir.join("config.kdl");
+        let stale_layout = layout_dir.join("stale.kdl");
+        let target_layout = layout_dir.join("flexnetos_agent_workspace.kdl");
+        std::fs::create_dir_all(&layout_dir).unwrap();
+        std::fs::write(&merged_config_path, "old config\n").unwrap();
+        std::fs::write(&stale_layout, "old stale layout\n").unwrap();
+        std::fs::write(&target_layout, "old target layout\n").unwrap();
+
+        for path in [&merged_config_path, &stale_layout, &target_layout] {
+            std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o444)).unwrap();
+        }
+        for path in [&layout_dir, &zellij_dir] {
+            std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o555)).unwrap();
+        }
+
+        let output = zellij_config_pack::ZellijConfigPackRenderOutput {
+            renderer_schema_version: zellij_config_pack::RENDERER_SCHEMA_VERSION,
+            merged_config: "new config\n".to_string(),
+            layout_files: vec![zellij_config_pack::ZellijConfigPackRenderedFile {
+                relative_path: "flexnetos_agent_workspace.kdl".to_string(),
+                content: "new target layout\n".to_string(),
+            }],
+            generation_fingerprint: "fingerprint".to_string(),
+        };
+
+        let written =
+            write_zellij_config_pack_output(&merged_config_path, &layout_dir, &output).unwrap();
+
+        assert_eq!(written, vec![target_layout.clone()]);
+        assert_eq!(
+            std::fs::read_to_string(&merged_config_path).unwrap(),
+            "new config\n"
+        );
+        assert_eq!(
+            std::fs::read_to_string(&target_layout).unwrap(),
+            "new target layout\n"
+        );
+        assert!(!stale_layout.exists());
+        assert_eq!(
+            std::fs::metadata(&zellij_dir).unwrap().permissions().mode() & 0o777,
+            0o755
+        );
+        assert_eq!(
+            std::fs::metadata(&layout_dir).unwrap().permissions().mode() & 0o777,
+            0o755
+        );
     }
 
     // Regression: startup layouts name the initial tab without setting a cwd, so launch cwd stays

@@ -42,7 +42,7 @@
       inputs.zjstatus.follows = "zjstatus";
     };
     yazelixYaziAssets = {
-      url = "github:luccahuguet/yazelix-yazi-assets";
+      url = "github:FlexNetOS/yazelix-yazi-assets";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     yazelixZellij = {
@@ -65,6 +65,10 @@
     };
     beads_rust_source = {
       url = "github:FlexNetOS/beads_rust";
+      flake = false;
+    };
+    rtk_source = {
+      url = "github:rtk-ai/rtk/v0.43.0";
       flake = false;
     };
     zjstatus = {
@@ -90,6 +94,7 @@
       yazelixZellijPaneOrchestrator,
       yazelixZellijPopup,
       beads_rust_source,
+      rtk_source,
       zjstatus,
     }:
     let
@@ -101,7 +106,17 @@
       ];
       lib = nixpkgs.lib;
       forAllSystems = nixpkgs.lib.genAttrs systems;
-      mkPkgs = system: nixpkgs.legacyPackages.${system};
+      allowedUnfreePackageNames = [
+        "claude-code"
+      ];
+      mkPkgs =
+        system:
+        import nixpkgs {
+          inherit system;
+          # The FlexNetOS foundation runtime intentionally ships Claude Code.
+          config.allowUnfreePredicate =
+            pkg: builtins.elem (lib.getName pkg) allowedUnfreePackageNames;
+        };
       releaseMetadata = builtins.fromTOML (builtins.readFile ./release_metadata.toml);
       inputIdentity = input: {
         revision = input.rev or null;
@@ -178,7 +193,7 @@
           skipStableWrapperRedirect ? false,
           components ? { },
           extraRuntimePackages ? agentUsagePackages system,
-          extraRuntimeCommands ? [ ],
+          extraRuntimeCommands ? [ "tu" ],
           exportedBinCommands ? [ ],
           yaziAssets ? yazelixYaziAssets.packages.${system}.yazelix_yazi_assets,
           yazelixHelixPackage ? kgpPackages.helixPackage system,
@@ -271,6 +286,16 @@
             rustc = fenix.packages.${system}.latest.rustc;
           };
         };
+      rtkPackage =
+        system: pkgs:
+        import ./packaging/rtk_release.nix {
+          inherit pkgs;
+          rtkSource = rtk_source;
+          rustPlatform = pkgs.makeRustPlatform {
+            cargo = fenix.packages.${system}.latest.cargo;
+            rustc = fenix.packages.${system}.latest.rustc;
+          };
+        };
       maintainerShell =
         system: pkgs:
         import ./maintainer_shell.nix {
@@ -304,7 +329,7 @@
           pkgs = mkPkgs system;
         in
         import ./packaging/flake_outputs.nix {
-          inherit agentUsagePackages beadsRustPackage kgpPackages;
+          inherit agentUsagePackages beadsRustPackage kgpPackages rtkPackage;
           mkYazelix = mkYazelix system;
           inherit pkgs runtimePackage system yazelixPackage;
           inherit yazelixCursors yazelixScreen yazelixYaziAssets;
@@ -341,6 +366,10 @@
         let
           pkgs = mkPkgs system;
           outputs = systemOutputs system;
+          lifeosFoundationYzxRuntimeReleaseContracts = import ./packaging/runtime_release_contracts.nix {
+            inherit pkgs;
+            runtime = outputs.packages.lifeos_foundation_yzx;
+          };
         in
         {
           kgp_package_contracts = import ./packaging/kgp_package_contracts.nix {
@@ -350,6 +379,7 @@
             inherit pkgs;
             runtime = outputs.packages.runtime_mars;
           };
+          lifeos_foundation_yzx_runtime_release_contracts = lifeosFoundationYzxRuntimeReleaseContracts;
         }
       );
 

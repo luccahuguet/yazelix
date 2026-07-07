@@ -41,7 +41,7 @@ Maintainer-facing fork status, child-repo ownership tables, README delta rules, 
 - [yazelix-zellij-pane-orchestrator](https://github.com/luccahuguet/yazelix-zellij-pane-orchestrator) — First-party Zellij plugin wasm that owns managed pane identity, editor/sidebar handoff, focus actions, and layout-family commands, exposed from this repo as `#yazelix_zellij_pane_orchestrator`.
 - [ratconfig](https://github.com/luccahuguet/ratconfig) — Reusable Ratatui config editor crate for JSONC-backed settings, consumed by Yazelix config UI while Yazelix keeps settings schema, Home Manager ownership, validation, and runtime apply behavior in this repo.
 - [yazelix-zellij-popup](https://github.com/luccahuguet/yazelix-zellij-popup) — Standalone Zellij popup plugin for plain-Zellij users; its child flake package `#yzpp` installs `share/yazelix_zellij_popup/yzpp.wasm`, this repo forwards it as `#yazelix_zellij_popup`, and regular Yazelix sessions package the same `yzpp.wasm` for popup, menu, and config UI panes.
-- [yazelix-yazi-assets](https://github.com/luccahuguet/yazelix-yazi-assets) — Standalone Yazi flavor and reusable plugin asset pack consumed by Yazelix Yazi runtime generation and exposed from this repo as `#yazelix_yazi_assets`.
+- [yazelix-yazi-assets](https://github.com/FlexNetOS/yazelix-yazi-assets) — Standalone Yazi flavor and reusable plugin asset pack consumed by Yazelix Yazi runtime generation and exposed from this repo as `#yazelix_yazi_assets`.
 - [yazelix-zellij](https://github.com/luccahuguet/yazelix-zellij) — Temporary product integration fork consumed by the Mars Kitty-passthrough runtime path so upstream Yazi image previews can use Kitty graphics through Zellij; this fork should be dropped and archived once upstream Zellij supports the required Kitty graphics path directly enough for Yazelix to return to upstream Zellij.
 
 ## Core Workspace Stack
@@ -98,14 +98,14 @@ Maintainer-facing fork status, child-repo ownership tables, README delta rules, 
 
 Plugin catalog: https://github.com/yazi-rs/plugins
 
-- [auto-layout.yazi](https://github.com/luccahuguet/yazelix-yazi-assets/tree/main/plugins/auto-layout.yazi) — Maintained Yazelix fork of the adaptive Yazi column-layout plugin, core to the sidebar fit.
+- [auto-layout.yazi](https://github.com/FlexNetOS/yazelix-yazi-assets/tree/main/plugins/auto-layout.yazi) — Maintained Yazelix fork of the adaptive Yazi column-layout plugin, core to the sidebar fit.
 - [sidebar-status.yazi](../configs/yazi/plugins/sidebar-status.yazi/main.lua) — Yazelix-only plugin that removes space-hungry status content so Yazi fits cleanly as a sidebar.
 - [sidebar-state.yazi](../configs/yazi/plugins/sidebar-state.yazi/main.lua) — Yazelix-only plugin support for sidebar state and workspace coordination.
 - [zoxide-editor.yazi](../configs/yazi/plugins/zoxide-editor.yazi/main.lua) — Yazelix-only plugin behind `Alt+z`; it reuses Zoxide selection and sends the chosen directory straight to the managed editor/workspace.
-- [git.yazi](https://github.com/luccahuguet/yazelix-yazi-assets/tree/main/plugins/git.yazi) — Vendored upstream plugin with Yazelix patching for git status in the Yazi file tree.
-- [starship.yazi](https://github.com/luccahuguet/yazelix-yazi-assets/tree/main/plugins/starship.yazi) — Vendored upstream plugin that displays Starship context in Yazi.
-- [lazygit.yazi](https://github.com/luccahuguet/yazelix-yazi-assets/tree/main/plugins/lazygit.yazi) — Vendored upstream plugin that launches lazygit from Yazi.
-- [Yazi flavors](https://github.com/luccahuguet/yazelix-yazi-assets/tree/main/flavors) — Bundled Yazi theme/flavor catalog available through the Yazelix-managed Yazi config surface.
+- [git.yazi](https://github.com/FlexNetOS/yazelix-yazi-assets/tree/main/plugins/git.yazi) — Vendored upstream plugin with Yazelix patching for git status in the Yazi file tree.
+- [starship.yazi](https://github.com/FlexNetOS/yazelix-yazi-assets/tree/main/plugins/starship.yazi) — Vendored upstream plugin that displays Starship context in Yazi.
+- [lazygit.yazi](https://github.com/FlexNetOS/yazelix-yazi-assets/tree/main/plugins/lazygit.yazi) — Vendored upstream plugin that launches lazygit from Yazi.
+- [Yazi flavors](https://github.com/FlexNetOS/yazelix-yazi-assets/tree/main/flavors) — Bundled Yazi theme/flavor catalog available through the Yazelix-managed Yazi config surface.
 
 ## User Configuration Surfaces
 

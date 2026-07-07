@@ -5,6 +5,7 @@ use crate::config_state::{
     record_config_state,
 };
 use crate::control_plane::config_dir_from_env;
+use crate::initializer_commands::generate_default_shell_initializers_for_env;
 use crate::yazi_materialization::{
     YaziMaterializationData, YaziMaterializationRequest, generate_yazi_materialization,
     generated_yazi_static_assets_missing,
@@ -284,6 +285,7 @@ fn materialize_runtime_state_from_plan(
         Some(request.runtime_dir.clone()),
         &plan.expected_artifacts,
     )?;
+    generate_default_shell_initializers_for_env(true)?;
 
     Ok(RuntimeMaterializationRunData {
         plan,

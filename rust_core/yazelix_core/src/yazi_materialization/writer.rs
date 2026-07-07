@@ -50,6 +50,7 @@ pub(super) fn write_yazi_config_pack(
             source,
         )
     })?;
+    set_writable(request.output_dir, true)?;
 
     let should_sync_static_assets = request.sync_static_assets
         || bundled_yazi_assets_missing(
@@ -275,6 +276,7 @@ fn sync_named_child_directories(
             source,
         )
     })?;
+    set_writable(target_root, true)?;
 
     for entry in fs::read_dir(source_root).map_err(|source| {
         CoreError::io(

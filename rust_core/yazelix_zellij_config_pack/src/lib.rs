@@ -2262,9 +2262,9 @@ mod tests {
         }
     }
 
-    // Defends: direct Codex right-sidebar sessions rendered by Yazelix still enter through RTK TokenKill.
+    // Defends: direct Codex right-sidebar sessions rendered by Yazelix still enter through RTK.
     #[test]
-    fn wraps_direct_codex_right_sidebar_with_rtk_tokenkill() {
+    fn wraps_direct_codex_right_sidebar_with_rtk() {
         let mut request = sample_plan_request();
         request.right_sidebar_command = "codex".to_string();
         request.right_sidebar_args = vec!["--model".to_string(), "gpt-5.5".to_string()];

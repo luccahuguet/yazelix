@@ -127,11 +127,20 @@ pub(super) fn materialize_session_config_override(
         apply_session_config_patch(&mut root, &patch)?;
     }
 
-    let session_dir = state_dir.join("config_overrides").join(format!(
-        "session_{}_{}",
-        std::process::id(),
-        epoch_millis()
-    ));
+    let overrides_dir = state_dir.join("config_overrides");
+    fs::create_dir_all(&overrides_dir).map_err(|source| {
+        CoreError::io(
+            "session_config_override_root_dir",
+            "Could not create the Yazelix one-shot config override root directory.",
+            "Check permissions for the Yazelix state directory, then retry.",
+            overrides_dir.display().to_string(),
+            source,
+        )
+    })?;
+    set_session_config_override_path_writable(&overrides_dir, true)?;
+
+    let session_dir =
+        overrides_dir.join(format!("session_{}_{}", std::process::id(), epoch_millis()));
     fs::create_dir_all(&session_dir).map_err(|source| {
         CoreError::io(
             "session_config_override_dir",
@@ -141,6 +150,7 @@ pub(super) fn materialize_session_config_override(
             source,
         )
     })?;
+    set_session_config_override_path_writable(&session_dir, true)?;
     let session_config = session_dir.join(crate::user_config_paths::SETTINGS_CONFIG);
     let rendered = render_settings_jsonc_value(&root)?;
     fs::write(&session_config, rendered).map_err(|source| {
@@ -156,6 +166,50 @@ pub(super) fn materialize_session_config_override(
     let session_config_override = session_config.to_string_lossy().to_string();
     load_normalized_config_for_control(runtime_dir, config_dir, Some(&session_config_override))?;
     Ok(session_config_override)
+}
+
+fn set_session_config_override_path_writable(path: &Path, is_dir: bool) -> Result<(), CoreError> {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mode = if is_dir { 0o755 } else { 0o644 };
+        fs::set_permissions(path, fs::Permissions::from_mode(mode)).map_err(|source| {
+            CoreError::io(
+                "set_session_config_override_permissions",
+                "Could not adjust permissions on a managed one-shot config override path.",
+                "Check permissions for the Yazelix state directory and retry.",
+                path.to_string_lossy(),
+                source,
+            )
+        })?;
+    }
+    #[cfg(not(unix))]
+    {
+        let mut permissions = fs::metadata(path)
+            .map_err(|source| {
+                CoreError::io(
+                    "read_session_config_override_permissions",
+                    "Could not inspect permissions on a managed one-shot config override path.",
+                    "Check permissions for the Yazelix state directory and retry.",
+                    path.to_string_lossy(),
+                    source,
+                )
+            })?
+            .permissions();
+        if permissions.readonly() {
+            permissions.set_readonly(false);
+            fs::set_permissions(path, permissions).map_err(|source| {
+                CoreError::io(
+                    "set_session_config_override_permissions",
+                    "Could not adjust permissions on a managed one-shot config override path.",
+                    "Check permissions for the Yazelix state directory and retry.",
+                    path.to_string_lossy(),
+                    source,
+                )
+            })?;
+        }
+    }
+    Ok(())
 }
 
 pub(super) fn epoch_millis() -> u128 {

@@ -190,6 +190,14 @@ const UPDATE_HOME_MANAGER_COMMAND: YzxCommandMetadata = metadata(
     Some(YzxMenuCategory::System),
     Some("Refresh the current Home Manager input and print the switch step."),
 );
+const UPDATE_LOCAL_SOURCE_COMMAND: YzxCommandMetadata = metadata(
+    "yzx update local_source",
+    "Upgrade active local-checkout profile entries and repair generated state",
+    YzxCommandCategory::System,
+    &[],
+    Some(YzxMenuCategory::System),
+    Some("Upgrade local-source profile entries, then run generated-state repair."),
+);
 const UPDATE_NIX_COMMAND: YzxCommandMetadata = metadata(
     "yzx update nix",
     "Upgrade Determinate Nix through determinate-nixd",
@@ -573,6 +581,7 @@ const RUST_CONTROL_FAMILIES: &[YzxRustControlFamily] = &[
         &[
             UPDATE_ROOT_COMMAND,
             UPDATE_HOME_MANAGER_COMMAND,
+            UPDATE_LOCAL_SOURCE_COMMAND,
             UPDATE_NIX_COMMAND,
             UPDATE_UPSTREAM_COMMAND,
         ],

@@ -225,6 +225,7 @@ pub(crate) fn compute_runtime_refresh_hash(runtime_dir: &Path) -> Result<String,
 
     let refresh_identity = json!({
         "generated_state_materializer_schema_version": GENERATED_STATE_MATERIALIZER_SCHEMA_VERSION,
+        "runtime_dir": path_to_string(runtime_dir),
         "schema_version": object.get("schema_version").cloned().unwrap_or(JsonValue::Null),
         "version": object.get("version").cloned().unwrap_or(JsonValue::Null),
         "source": object.get("source").cloned().unwrap_or(JsonValue::Null),
@@ -329,12 +330,15 @@ fn load_rebuild_required_paths(contract: &toml::Table) -> Vec<String> {
             fields
                 .iter()
                 .filter_map(|(path, field)| {
-                    field
-                        .as_table()
-                        .and_then(|table| table.get("rebuild_required"))
+                    let table = field.as_table()?;
+                    let rebuild_required = table
+                        .get("rebuild_required")
                         .and_then(TomlValue::as_bool)
-                        .filter(|required| *required)
-                        .map(|_| path.clone())
+                        .unwrap_or(false);
+                    let generated_runtime_refresh =
+                        table.get("apply_mode").and_then(TomlValue::as_str)
+                            == Some("generated_runtime_refresh");
+                    (rebuild_required || generated_runtime_refresh).then(|| path.clone())
                 })
                 .collect::<Vec<_>>()
         })
@@ -675,7 +679,7 @@ mod tests {
 
         assert_eq!(
             state.config_hash,
-            "6f6a97b55a035c54c9e1b47e7903de90c01890a0a2cf1a3f6d272a1b472b3b62"
+            "61934f8aa1c7259806f02cf5b5ed5355a3db4d5c420d18efcffb6fadf43283ff"
         );
         assert!(state.needs_refresh);
     }
@@ -753,10 +757,54 @@ mod tests {
         );
     }
 
-    // Regression: same-generation runtime paths share generated state instead of
-    // invalidating each other through absolute Nix store paths alone.
+    // Regression: generated-runtime apply fields must be part of the materialized-state hash.
     #[test]
-    fn runtime_refresh_hash_uses_generation_identity_not_runtime_store_path() {
+    fn flags_generated_runtime_refresh_config_changes() {
+        let dir = tempdir().expect("tempdir");
+        let runtime_dir = repo_root();
+        let state_path = dir.path().join("state/rebuild_hash");
+        let mut config = default_settings_jsonc();
+        let config_path = write_settings_config(dir.path(), &config);
+        let baseline = compute_config_state(&request_for(
+            config_path.clone(),
+            runtime_dir.clone(),
+            state_path.clone(),
+        ))
+        .unwrap();
+        record_config_state(&RecordConfigStateRequest {
+            config_file: config_path.to_string_lossy().to_string(),
+            managed_config_path: config_path.clone(),
+            state_path: state_path.clone(),
+            runtime_dir: Some(runtime_dir.clone()),
+            config_hash: baseline.config_hash.clone(),
+            runtime_hash: baseline.runtime_hash.clone(),
+        })
+        .unwrap();
+
+        config["zellij"]["widget_tray"] = json!([
+            "session",
+            "editor",
+            "shell",
+            "term",
+            "workspace",
+            "codex_usage"
+        ]);
+        write_settings_config(dir.path(), &config);
+        let changed = compute_config_state(&request_for(config_path, runtime_dir, state_path))
+            .expect("config state");
+
+        assert_ne!(baseline.config_hash, changed.config_hash);
+        assert!(changed.needs_refresh);
+        assert_eq!(
+            changed.refresh_reason,
+            "config changed since last generated-state repair"
+        );
+    }
+
+    // Regression: generated runtime files embed absolute runtime paths, so an
+    // otherwise identical package at a new store path must refresh generated state.
+    #[test]
+    fn runtime_refresh_hash_includes_runtime_store_path() {
         let dir = tempdir().expect("tempdir");
         let current_runtime = dir.path().join("store/current-yazelix-mars");
         let sibling_runtime = dir.path().join("store/current-yazelix-mars-copy");
@@ -781,7 +829,7 @@ mod tests {
         let sibling_hash = compute_runtime_refresh_hash(&sibling_runtime).unwrap();
         let old_hash = compute_runtime_refresh_hash(&old_runtime).unwrap();
 
-        assert_eq!(current_hash, sibling_hash);
+        assert_ne!(current_hash, sibling_hash);
         assert_ne!(current_hash, old_hash);
     }
 

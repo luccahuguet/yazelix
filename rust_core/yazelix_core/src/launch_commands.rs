@@ -591,6 +591,34 @@ mod tests {
         assert_eq!(normalized.get("zellij_pane_frames").unwrap(), "false");
     }
 
+    // Defends: --with can create one-shot config snapshots after generated runtime permissions are frozen read-only.
+    #[cfg(unix)]
+    #[test]
+    fn session_config_overrides_repair_readonly_override_root() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let runtime = TempDir::new().unwrap();
+        write_runtime_layout(runtime.path());
+        let config = TempDir::new().unwrap();
+        let state = TempDir::new().unwrap();
+        let overrides_root = state.path().join("config_overrides");
+        fs::create_dir_all(&overrides_root).unwrap();
+        fs::set_permissions(&overrides_root, fs::Permissions::from_mode(0o555)).unwrap();
+
+        let session_config = materialize_session_config_override(
+            runtime.path(),
+            config.path(),
+            state.path(),
+            None,
+            &["core.skip_welcome_screen=true".to_string()],
+        )
+        .unwrap();
+
+        assert!(Path::new(&session_config).starts_with(&overrides_root));
+        let mode = fs::metadata(&overrides_root).unwrap().permissions().mode() & 0o777;
+        assert_eq!(mode, 0o755);
+    }
+
     // Defends: Mars runtime metadata is accepted as a shipped packaged terminal.
     #[test]
     fn active_terminal_accepts_mars_runtime_variant() {

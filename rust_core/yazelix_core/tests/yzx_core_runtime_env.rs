@@ -31,11 +31,13 @@ fn runtime_env_compute_returns_filtered_env() {
     fs::create_dir_all(runtime_dir.join("toolbin")).unwrap();
     fs::create_dir_all(runtime_dir.join("bin")).unwrap();
     fs::create_dir_all(runtime_dir.join("libexec")).unwrap();
+    fs::create_dir_all(home_dir.join(".nix-profile").join("bin")).unwrap();
     fs::create_dir_all(&home_dir).unwrap();
 
     let runtime_libexec = runtime_dir.join("libexec");
     let runtime_toolbin = runtime_dir.join("toolbin");
     let runtime_bin = runtime_dir.join("bin");
+    let nix_profile_bin = home_dir.join(".nix-profile").join("bin");
     let request = json!({
         "runtime_dir": runtime_dir,
         "home_dir": home_dir,
@@ -70,8 +72,18 @@ fn runtime_env_compute_returns_filtered_env() {
         .to_string();
 
     assert_eq!(data.editor_kind, "helix");
-    assert_eq!(data.path_entries[0], runtime_toolbin.to_string_lossy());
-    assert_eq!(data.path_entries[1], runtime_bin.to_string_lossy());
+    assert_eq!(data.path_entries[0], nix_profile_bin.to_string_lossy());
+    let runtime_toolbin_index = data
+        .path_entries
+        .iter()
+        .position(|entry| entry == runtime_toolbin.to_string_lossy().as_ref())
+        .unwrap();
+    let runtime_bin_index = data
+        .path_entries
+        .iter()
+        .position(|entry| entry == runtime_bin.to_string_lossy().as_ref())
+        .unwrap();
+    assert!(runtime_toolbin_index < runtime_bin_index);
     assert!(
         !data
             .path_entries

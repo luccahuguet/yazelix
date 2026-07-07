@@ -4,6 +4,7 @@
   kgpPackages,
   mkYazelix,
   pkgs,
+  rtkPackage,
   runtimePackage,
   system,
   yazelixCursors,
@@ -34,23 +35,24 @@ let
   yazelix_yazi_assets = yazelixYaziAssets.packages.${system}.yazelix_yazi_assets;
   beads_rust = beadsRustPackage system pkgs;
   install_check = import ./install_check.nix { inherit pkgs; };
-  flexnetos_foundation_claude = pkgs."claude-code";
+  flexnetos_foundation_claude = import ./claude_code_release.nix {
+    inherit pkgs;
+    version = "2.1.202";
+  };
   flexnetos_foundation_codex = import ./codex_cli_release.nix {
     inherit pkgs system;
     version = "0.143.0-alpha.35";
   };
-  flexnetos_foundation_git_kb = import ./git_kb_local_binary.nix {
+  flexnetos_foundation_git_kb = import ./git_kb_release.nix {
     inherit pkgs;
     version = "0.2.12";
   };
-  flexnetos_foundation_rtk = import ./rtk_local_binary.nix {
-    inherit pkgs;
-  };
-  yazelix_flexnetos_foundation = mkYazelix {
+  flexnetos_foundation_rtk = rtkPackage system pkgs;
+  lifeos_foundation_yzx = mkYazelix {
     inherit pkgs;
     runtimeVariant = "mars";
-    name = "yazelix-flexnetos-foundation";
-    runtimeName = "yazelix-flexnetos-foundation-runtime";
+    name = "lifeos-foundation-yzx";
+    runtimeName = "lifeos-foundation-yzx-runtime";
     extraRuntimePackages = defaultRuntimePackages ++ [
       flexnetos_foundation_claude
       flexnetos_foundation_codex
@@ -58,15 +60,20 @@ let
       flexnetos_foundation_rtk
     ];
     extraRuntimeCommands = [
+      "tu"
       "claude"
       "codex"
+      "codedb"
       "git-kb"
+      "nu_plugin_codedb"
       "rtk"
     ];
     exportedBinCommands = [
       "claude"
       "codex"
+      "codedb"
       "git-kb"
+      "nu_plugin_codedb"
       "rtk"
     ];
   };
@@ -79,7 +86,7 @@ let
       rtk = flexnetos_foundation_rtk;
       inherit beads_rust install_check;
       inherit runtime_mars yazelix_mars;
-      inherit yazelix_flexnetos_foundation;
+      inherit lifeos_foundation_yzx;
       inherit yazelix_cursors yazelix_helix yazelix_screen;
       inherit yazelix_yazi_assets yazelix_zellij_bar yazelix_zellij_config_pack;
       inherit yazelix_zellij_pane_orchestrator yazelix_zellij_popup;
@@ -105,6 +112,7 @@ in
     default = yzxApp "yazelix";
     yazelix = yzxApp "yazelix";
     yazelix_agent_tools = yzxApp "yazelix_agent_tools";
+    lifeos_foundation_yzx = yzxApp "lifeos_foundation_yzx";
     yazelix_mars = yzxApp "yazelix_mars";
     yazelix_screen = appFor "yazelix_screen" "yzs";
     yzs = appFor "yazelix_screen" "yzs";

@@ -847,6 +847,38 @@ fn enum_string_list_picker_toggles_subvalues_with_space() {
     );
 }
 
+// Defends: host-selected status widgets render as checked in the multi-choice picker.
+#[test]
+fn widget_tray_picker_marks_host_selected_status_widgets_checked() {
+    let fixture = Fixture::new();
+    fixture.write_settings(|settings| {
+        settings["zellij"]["widget_tray"] = json!([
+            "session",
+            "editor",
+            "shell",
+            "term",
+            "workspace",
+            "claude_usage",
+            "codex_usage",
+            "cpu",
+            "ram"
+        ]);
+    });
+    let mut app = fixture.app();
+
+    select_field_path(&mut app, "zellij.widget_tray");
+    app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+
+    let edit = app.edit.clone().expect("edit");
+    assert_eq!(edit.mode, ConfigUiEditMode::MultiChoice);
+    let details = field_details(&app, edit.field_index);
+    assert!(details.contains("  [x] workspace"));
+    assert!(details.contains("  [x] claude_usage"));
+    assert!(details.contains("  [x] cpu"));
+    assert!(details.contains("  [x] ram"));
+    assert!(details.contains("  [ ] opencode_go_usage"));
+}
+
 // Defends: enum rows open a single-select picker that can be driven with hjkl and saved through the JSONC patcher.
 #[test]
 fn scalar_enum_enter_opens_single_select_picker() {

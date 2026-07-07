@@ -43,6 +43,21 @@ When creating new files or directories, always use underscores to maintain consi
 
 - Yazelix has packaged runtime surfaces and maintainer development-shell surfaces; keep user runtime behavior distinct from dev tooling
 - The canonical user semantic config is `~/.config/yazelix/settings.jsonc`
+- `~/.config/yazelix` is the user-owned editable input root; `~/.local/share/yazelix` is generated runtime output
+- Do not hand-edit generated runtime files under `~/.local/share/yazelix`; edit the owning inputs and relaunch/rebuild through the install owner
+- The supported installed `yzx` frontdoor resolves through the install owner, typically `~/.nix-profile/bin/yzx`
+- Stale local shadow paths such as `~/.local/bin/yzx` and old user-local desktop entries under `~/.local/share/applications/` should be removed or archived if they shadow the active profile-owned install
+- Codex integration must mirror the Yazelix binary/runtime ownership model with no drift:
+  - `~/.config/yazelix/...` is the main editable input surface, including `settings.jsonc` and managed overrides, per `docs/customization.md:5` and `docs/posix_xdg.md:21`
+  - `~/.local/share/yazelix/...` is generated runtime output; "edit the config inputs, not generated runtime files" per `docs/customization.md:7`, and Yazelix-owned output per `README.md:133`
+  - `~/.nix-profile/bin/yzx` is the active install-owner/profile frontdoor per `home_manager/README.md:306`
+  - `~/.local/bin/yzx` is a stale legacy shadow if present and should be removed or archived when it shadows the profile path, per `home_manager/README.md:310`
+  - old user-local desktop entries under `~/.local/share/applications/` are stale shadows if they shadow the active profile desktop entry, per `home_manager/README.md:309` and `docs/troubleshooting.md:187`
+- Keep these direct proof points visible in future Yazelix/Codex ownership audits:
+  - `README.md:282` says Yazelix keeps user-edited config separate from generated runtime output
+  - `README.md:285` and `docs/posix_xdg.md:31` enumerate generated runtime output under `~/.local/share/yazelix`
+  - `docs/zellij-configuration.md:53` forbids treating generated Zellij runtime files as a manual edit surface
+  - `docs/contracts/runtime_root_contract.md:20` warns against treating generated state as handwritten config
 - Shipped config defaults/templates feed `settings.jsonc` generation through `settings_default.jsonc`, `yazelix_cursors_default.toml`, `config_metadata/yazelix_settings.schema.json`, and `config_metadata/main_config_contract.toml`
 - Old mutable `yazelix.toml` and `cursors.toml` files are unsupported legacy inputs, not runtime config sources or automatic migration inputs
 - All Yazelix-owned user config paths reference `~/.config/yazelix/` as the base directory unless an explicit XDG/config override is in effect

@@ -4,6 +4,7 @@
 use crate::bridge::{CoreError, ErrorClass};
 use serde::Serialize;
 use serde_json::json;
+use std::ffi::OsStr;
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -126,18 +127,47 @@ fn shell_initializer_dirs(home: &Path) -> Vec<ShellConfig> {
     ]
 }
 
-fn find_on_path(command: &str) -> bool {
-    if let Ok(path_var) = std::env::var("PATH") {
-        for entry in std::env::split_paths(&path_var) {
-            if entry.join(command).is_file() {
-                return true;
-            }
+fn runtime_tool_command(runtime_dir: Option<&Path>, command: &str) -> Option<PathBuf> {
+    let runtime_dir = runtime_dir?;
+    for subdir in ["toolbin", "bin"] {
+        let candidate = runtime_dir.join(subdir).join(command);
+        if candidate.is_file() {
+            return Some(candidate);
         }
     }
-    false
+    None
 }
 
-fn run_tool_init(tool: &ToolConfig, shell_name: &str) -> Result<String, String> {
+fn path_tool_command(path_var: Option<&OsStr>, command: &str) -> Option<PathBuf> {
+    let path_var = path_var?;
+    for entry in std::env::split_paths(path_var) {
+        let candidate = entry.join(command);
+        if candidate.is_file() {
+            return Some(candidate);
+        }
+    }
+    None
+}
+
+fn resolve_tool_command_from(
+    runtime_dir: Option<&Path>,
+    path_var: Option<&OsStr>,
+    command: &str,
+) -> Option<PathBuf> {
+    runtime_tool_command(runtime_dir, command).or_else(|| path_tool_command(path_var, command))
+}
+
+fn resolve_tool_command(command: &str) -> Option<PathBuf> {
+    let runtime_dir = crate::control_plane::runtime_dir_from_env().ok();
+    let path_var = std::env::var_os("PATH");
+    resolve_tool_command_from(runtime_dir.as_deref(), path_var.as_deref(), command)
+}
+
+fn run_tool_init(
+    tool: &ToolConfig,
+    shell_name: &str,
+    command_path: &Path,
+) -> Result<String, String> {
     let args: Vec<&str> = tool
         .init_args
         .iter()
@@ -145,7 +175,7 @@ fn run_tool_init(tool: &ToolConfig, shell_name: &str) -> Result<String, String> 
         .chain(std::iter::once(shell_name))
         .collect();
 
-    let output = Command::new(tool.name)
+    let output = Command::new(command_path)
         .args(&args)
         .output()
         .map_err(|e| format!("Failed to run {}: {e}", tool.name))?;
@@ -205,28 +235,28 @@ fn normalize_initializer_content(shell_name: &str, content: &str) -> String {
 fn rtk_session_policy_initializer(shell_name: &str) -> Option<&'static str> {
     match shell_name {
         "nu" => Some(
-            r#"# Yazelix RTK policy: Codex sessions launched inside Yazelix must use RTK TokenKill.
+            r#"# Yazelix RTK policy: Codex sessions launched inside Yazelix must use RTK.
 export def codex [...args: string] {
     rtk codex ...$args
 }
 "#,
         ),
         "bash" | "zsh" => Some(
-            r#"# Yazelix RTK policy: Codex sessions launched inside Yazelix must use RTK TokenKill.
+            r#"# Yazelix RTK policy: Codex sessions launched inside Yazelix must use RTK.
 codex() {
     command rtk codex "$@"
 }
 "#,
         ),
         "fish" => Some(
-            r#"# Yazelix RTK policy: Codex sessions launched inside Yazelix must use RTK TokenKill.
+            r#"# Yazelix RTK policy: Codex sessions launched inside Yazelix must use RTK.
 function codex
     command rtk codex $argv
 end
 "#,
         ),
         "xonsh" => Some(
-            r#"# Yazelix RTK policy: Codex sessions launched inside Yazelix must use RTK TokenKill.
+            r#"# Yazelix RTK policy: Codex sessions launched inside Yazelix must use RTK.
 aliases['codex'] = ['rtk', 'codex']
 "#,
         ),
@@ -253,8 +283,16 @@ fn write_text_atomic(path: &Path, content: &str) -> Result<(), CoreError> {
             e,
         )
     })?;
+    set_initializer_path_writable(parent, true)?;
 
     let tmp = path.with_extension("tmp");
+    if path.exists() {
+        set_initializer_path_writable(path, false)?;
+    }
+    if tmp.exists() {
+        set_initializer_path_writable(&tmp, false)?;
+    }
+
     let mut file = fs::File::create(&tmp).map_err(|e| {
         CoreError::io(
             "atomic_write_create",
@@ -288,8 +326,56 @@ fn write_text_atomic(path: &Path, content: &str) -> Result<(), CoreError> {
     Ok(())
 }
 
+fn set_initializer_path_writable(path: &Path, is_dir: bool) -> Result<(), CoreError> {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mode = if is_dir { 0o755 } else { 0o644 };
+        fs::set_permissions(path, fs::Permissions::from_mode(mode)).map_err(|source| {
+            CoreError::io(
+                "set_initializer_permissions",
+                "Could not adjust permissions on a managed shell initializer path",
+                "Check permissions for the Yazelix state directory and retry.",
+                path.to_string_lossy(),
+                source,
+            )
+        })?;
+    }
+    #[cfg(not(unix))]
+    {
+        let mut permissions = fs::metadata(path)
+            .map_err(|source| {
+                CoreError::io(
+                    "read_initializer_permissions",
+                    "Could not inspect permissions on a managed shell initializer path",
+                    "Check permissions for the Yazelix state directory and retry.",
+                    path.to_string_lossy(),
+                    source,
+                )
+            })?
+            .permissions();
+        if permissions.readonly() {
+            permissions.set_readonly(false);
+            fs::set_permissions(path, permissions).map_err(|source| {
+                CoreError::io(
+                    "set_initializer_permissions",
+                    "Could not adjust permissions on a managed shell initializer path",
+                    "Check permissions for the Yazelix state directory and retry.",
+                    path.to_string_lossy(),
+                    source,
+                )
+            })?;
+        }
+    }
+    Ok(())
+}
+
 fn remove_output_file(path: &Path) {
     if path.exists() {
+        if let Some(parent) = path.parent() {
+            let _ = set_initializer_path_writable(parent, true);
+        }
+        let _ = set_initializer_path_writable(path, false);
         let _ = fs::remove_file(path);
     }
 }
@@ -317,6 +403,7 @@ fn generate_initializers(
                 e,
             )
         })?;
+        set_initializer_path_writable(&shell.dir, true)?;
 
         let mut shell_results = Vec::new();
         let mut successful_files = Vec::new();
@@ -330,7 +417,7 @@ fn generate_initializers(
                 .map(|(_, s)| *s)
                 .unwrap_or(shell.name);
 
-            if !find_on_path(tool.name) {
+            let Some(command_path) = resolve_tool_command(tool.name) else {
                 remove_output_file(&output_file);
                 shell_results.push(InitializerResult {
                     status: tool.status("required-missing", "missing").into(),
@@ -340,9 +427,9 @@ fn generate_initializers(
                     ..Default::default()
                 });
                 continue;
-            }
+            };
 
-            match run_tool_init(tool, effective_shell) {
+            match run_tool_init(tool, effective_shell, &command_path) {
                 Ok(raw) => {
                     let content = normalize_initializer_content(shell.name, &raw);
                     if let Err(e) = write_text_atomic(&output_file, &content) {
@@ -463,6 +550,13 @@ pub(crate) fn generate_shell_initializers_for_env(
     Ok(ShellInitializerRun {
         messages: initializer_messages(&results, quiet),
     })
+}
+
+pub(crate) fn generate_default_shell_initializers_for_env(
+    quiet: bool,
+) -> Result<ShellInitializerRun, CoreError> {
+    let shells_to_configure = default_shells_to_configure();
+    generate_shell_initializers_for_env(&shells_to_configure, quiet)
 }
 
 fn initializer_messages(results: &[InitializerResult], quiet: bool) -> Vec<String> {
@@ -616,7 +710,28 @@ after
         );
     }
 
-    // Defends: every generated Yazelix shell session shadows direct Codex launches with RTK TokenKill.
+    // Defends: regeneration runs tools from the active runtime even when the
+    // inherited shell PATH still points at an older package store path.
+    #[test]
+    fn resolver_prefers_active_runtime_toolbin_before_inherited_path() {
+        let temp = tempfile::tempdir().unwrap();
+        let active_runtime = temp.path().join("active-runtime");
+        let stale_runtime = temp.path().join("stale-runtime");
+        let active_tool = active_runtime.join("toolbin").join("starship");
+        let stale_tool = stale_runtime.join("toolbin").join("starship");
+        fs::create_dir_all(active_tool.parent().unwrap()).unwrap();
+        fs::create_dir_all(stale_tool.parent().unwrap()).unwrap();
+        fs::write(&active_tool, "").unwrap();
+        fs::write(&stale_tool, "").unwrap();
+
+        let path_var = stale_tool.parent().unwrap().as_os_str();
+        let resolved = resolve_tool_command_from(Some(&active_runtime), Some(path_var), "starship")
+            .expect("active runtime starship");
+
+        assert_eq!(resolved, active_tool);
+    }
+
+    // Defends: every generated Yazelix shell session shadows direct Codex launches with RTK.
     #[test]
     fn rtk_session_policy_wraps_codex_for_supported_shells() {
         for shell in ["nu", "bash", "fish", "zsh", "xonsh"] {
@@ -625,5 +740,32 @@ after
             assert!(policy.contains("codex"));
         }
         assert!(rtk_session_policy_initializer("unknown").is_none());
+    }
+
+    // Defends: generated shell initializers can be refreshed after a package materialized them read-only.
+    #[cfg(unix)]
+    #[test]
+    fn write_text_atomic_repairs_readonly_initializer_permissions() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let temp = tempfile::tempdir().unwrap();
+        let dir = temp
+            .path()
+            .join(".local")
+            .join("share")
+            .join("yazelix")
+            .join("initializers")
+            .join("nushell");
+        fs::create_dir_all(&dir).unwrap();
+        let target = dir.join("yazelix_init.nu");
+        fs::write(&target, "old\n").unwrap();
+        fs::set_permissions(&target, fs::Permissions::from_mode(0o444)).unwrap();
+        fs::set_permissions(&dir, fs::Permissions::from_mode(0o555)).unwrap();
+
+        write_text_atomic(&target, "new\n").unwrap();
+
+        assert_eq!(fs::read_to_string(&target).unwrap(), "new\n");
+        let mode = fs::metadata(&dir).unwrap().permissions().mode() & 0o777;
+        assert_eq!(mode, 0o755);
     }
 }
