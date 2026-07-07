@@ -850,6 +850,26 @@ mod tests {
     use super::*;
     use tempfile::tempdir;
 
+    // Regression: Nix indented strings treat `${...}` as interpolation, so shell parameter
+    // expansion inside the generated runtime wrapper must use `''${...}`.
+    #[test]
+    fn runtime_tree_wrapper_escapes_shell_parameter_expansion_for_nix() {
+        let repo_root = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .and_then(Path::parent)
+            .unwrap();
+        let raw = fs::read_to_string(repo_root.join("packaging/mk_runtime_tree.nix")).unwrap();
+
+        assert!(
+            raw.contains(r"\''${PATH:-}"),
+            "runtime wrapper PATH probe must escape literal `${{...}}` for Nix indented strings"
+        );
+        assert!(
+            !raw.contains(r"\${PATH:-}"),
+            "runtime wrapper PATH probe uses shell escaping that Nix can parse as interpolation"
+        );
+    }
+
     // Defends: cold profile-install validation checks the explicit desktop-entry install path shape without relying on a maintainer's real profile.
     #[test]
     fn desktop_entry_validation_accepts_profile_owned_exec() {
