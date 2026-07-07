@@ -76,7 +76,8 @@ readlink -f ~/.nix-profile/bin/yzx                              # store hash sho
 
 ### Local toolchain notes are not package ownership
 
-The host has useful build accelerators and developer tools, but they are not foundation package ownership:
+The host has useful build accelerators and developer tools. Runtime-critical ones now belong in the
+`lifeos_foundation_yzx` package, not in workspace-root shims:
 
 > **Provenance warning (2026-07-07):** `/home/flexnetos/FlexNetOS/usr/bin` is residue of the
 > quarantined `flexnetos_production_execution_pack` era
@@ -86,11 +87,11 @@ The host has useful build accelerators and developer tools, but they are not fou
 
 | Tool | Path | Notes |
 |---|---|---|
-| `cargo` + `rustc` (fenix rust-mixed 1.96) | `/nix/store/b47aazvj6hmsd1i1a6sy9ch5yx8ylvxg-rust-mixed/bin/{cargo,rustc}` | Newer store hashes may exist; `find /nix/store -maxdepth 5 -name 'cargo' -type f \| xargs -I{} sh -c '{} --version'` to check |
-| `cargo` nightly (fenix, if needed) | `/nix/store/l831cb33qjq42psp88zdga9zvgn785ix-auditable-cargo-nightly-latest-2026-05-31/bin/cargo` | Cargo-only bundle, no matching rustc — use the rust-mixed above for a full toolchain |
-| `kache-rustc-wrapper` | `/home/flexnetos/FlexNetOS/usr/bin/kache-rustc-wrapper` | Replaces sccache. Set as `RUSTC_WRAPPER=` for local development builds only. |
-| `wild` linker | `/home/flexnetos/.local/bin/wild` | **CAVEAT**: gcc rejects absolute paths for `-fuse-ld=<path>`. Do NOT set `RUSTFLAGS="-C link-arg=-fuse-ld=/absolute/path/to/wild"` — it errors with `unrecognized command-line option`. Either use `-fuse-ld=wild` (short name, needs `ld.wild` in the gcc search prefix) or drop wild; kache is the primary speed win. |
-| `bun` / `bunx` | `/home/flexnetos/.local/bin/{bun,bunx}` | For node commands invoked during build (e.g. codex tooling). |
+| `cargo` + `rustc` + `rustfmt` + `clippy-driver` | `/home/flexnetos/.nix-profile/bin/{cargo,rustc,rustfmt,clippy-driver}` | Fenix nightly toolchain exported by `lifeos_foundation_yzx`; verify with absolute profile paths, not inherited `PATH`. |
+| `kache` + `kache-rustc-wrapper` | `/home/flexnetos/.nix-profile/bin/{kache,kache-rustc-wrapper}` | Replaces workspace-root kache shims for Yazelix/FlexNetOS Rust builds. Set `RUSTC_WRAPPER=/home/flexnetos/.nix-profile/bin/kache-rustc-wrapper` when proving installed-state builds. |
+| `wild` linker | `/home/flexnetos/.nix-profile/bin/{wild,ld.wild}` | Use the profile-owned linker via `PATH=/home/flexnetos/.nix-profile/bin:$PATH` and `-Clink-arg=--ld-path=wild`. |
+| `bun` / `bunx` / Node tools | `/home/flexnetos/.nix-profile/bin/{bun,bunx,node,npm,corepack,pnpm,yarn}` | Profile-owned JavaScript toolchain for runtime/package workflows. Project-local Vue/Vite dependencies still run through their owning package scripts. |
+| `cargo-tauri` / `wasm-pack` | `/home/flexnetos/.nix-profile/bin/{cargo-tauri,wasm-pack}` | Profile-owned native/web build helpers; do not satisfy them from `/home/flexnetos/FlexNetOS/usr/bin`. |
 
 If a runtime tool starts as a local experiment, publish or vendor it through the owning child repo first, then consume that published input from Yazelix. Do not feed ad-hoc host binaries into `lifeos_foundation_yzx`.
 

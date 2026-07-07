@@ -43,6 +43,41 @@ let
       "${src}/configs/yazi"
     else
       "${yaziAssets}/share/yazelix_yazi_assets";
+  yaziAssetsRuntimeToolManifest =
+    if yaziAssets == null then
+      { }
+    else
+      {
+        ccboard = {
+          source = "bundled";
+          commands = [ "ccboard" ];
+          required_commands = [ "ccboard" ];
+          hostable = false;
+          disableable = false;
+          notes = [
+            "Packaged by the yazi-assets child package under runtime_tools/ccboard."
+            "Mission Control launches this tool through libexec/ccboard."
+          ];
+        };
+        codedb = {
+          source = "bundled";
+          commands = [
+            "codedb"
+            "nu_plugin_codedb"
+          ];
+          required_commands = [
+            "codedb"
+            "nu_plugin_codedb"
+          ];
+          hostable = false;
+          disableable = false;
+          notes = [
+            "Packaged by the yazi-assets child package under runtime_tools/codedb."
+          ];
+        };
+      };
+  runtimeToolManifest = runtimeToolRegistry.manifest // yaziAssetsRuntimeToolManifest;
+  runtimeToolManifestJson = builtins.toJSON runtimeToolManifest;
   requiredSteelPluginIds = [
     "recentf"
     "splash"
@@ -113,10 +148,6 @@ let
         target = "assets/icons";
       }
       {
-        source = "${src}/config_metadata";
-        target = "config_metadata";
-      }
-      {
         source = "${src}/docs/upgrade_notes.toml";
         target = "docs/upgrade_notes.toml";
       }
@@ -166,6 +197,17 @@ pkgs.runCommand name { } ''
   }
 
   ${renderedRuntimeInputLinks}
+  mkdir -p "$out/config_metadata"
+  for metadata_entry in ${src}/config_metadata/*; do
+    metadata_name="$(basename "$metadata_entry")"
+    link_runtime_input "$metadata_entry" "config_metadata/$metadata_name"
+  done
+  if [ -d "${yaziAssetsRoot}/config_metadata" ]; then
+    for metadata_entry in ${yaziAssetsRoot}/config_metadata/*; do
+      metadata_name="$(basename "$metadata_entry")"
+      link_runtime_input "$metadata_entry" "config_metadata/$metadata_name"
+    done
+  fi
   mkdir -p "$out/configs"
   for config_entry in ${src}/configs/*; do
     config_name="$(basename "$config_entry")"
@@ -220,7 +262,7 @@ pkgs.runCommand name { } ''
   printf '%s\n' ${pkgs.lib.escapeShellArg runtimeVariant} > "$out/runtime_variant"
   printf '%s\n' ${pkgs.lib.escapeShellArg runtimeIdentityJson} > "$out/runtime_identity.json"
   printf '%s\n' ${pkgs.lib.escapeShellArg runtimeComponentRegistry.manifestJson} > "$out/runtime_components.json"
-  printf '%s\n' ${pkgs.lib.escapeShellArg runtimeToolRegistry.manifestJson} > "$out/runtime_tools.json"
+  printf '%s\n' ${pkgs.lib.escapeShellArg runtimeToolManifestJson} > "$out/runtime_tools.json"
   ${pkgs.lib.optionalString enableZellijKittyPassthrough ''
     mkdir -p "$out/runtime_features"
     touch "$out/runtime_features/zellij_kitty_passthrough"

@@ -13,6 +13,20 @@ pkgs.runCommand "yazelix-runtime-release-contracts" { } ''
   test -x "$runtime/toolbin/tu"
   test -x "$runtime/toolbin/ccboard"
   test -x "$runtime/runtime_tools/ccboard/bin/ccboard"
+  grep -F '"ccboard":' "$runtime/runtime_tools.json" >/dev/null
+  grep -F '"commands":["ccboard"]' "$runtime/runtime_tools.json" >/dev/null
+  grep -F 'Mission Control launches this tool through libexec/ccboard.' "$runtime/runtime_tools.json" >/dev/null
+  test -s "$runtime/runtime_tools/ccboard/runtime-tool-metadata.json"
+  grep -F '"source_repo":"https://github.com/FlexNetOS/ccboard"' "$runtime/runtime_tools/ccboard/runtime-tool-metadata.json" >/dev/null
+  grep -F '"commands":["ccboard"]' "$runtime/runtime_tools/ccboard/runtime-tool-metadata.json" >/dev/null
+  test -s "$runtime/config_metadata/ccboard_runtime_tool.toml"
+  grep -F 'YAZELIX_CCBOARD_BIN = "runtime_tools/ccboard/bin/ccboard"' "$runtime/config_metadata/ccboard_runtime_tool.toml" >/dev/null
+  grep -F '"codedb":' "$runtime/runtime_tools.json" >/dev/null
+  grep -F '"commands":["codedb","nu_plugin_codedb"]' "$runtime/runtime_tools.json" >/dev/null
+  test -x "$runtime/runtime_tools/codedb/bin/codedb"
+  test -x "$runtime/runtime_tools/codedb/bin/nu_plugin_codedb"
+  test -s "$runtime/runtime_tools/codedb/runtime-tool-metadata.json"
+  test -s "$runtime/config_metadata/codedb_runtime_tool.toml"
   agent_layout="$runtime/configs/zellij/layouts/flexnetos_agent_workspace.kdl"
   test -s "$agent_layout"
   grep -F 'tab name="Mission Control"' "$agent_layout" >/dev/null

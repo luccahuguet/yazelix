@@ -86,6 +86,8 @@ Maintainer-facing fork status, child-repo ownership tables, README delta rules, 
 - [jq](https://github.com/jqlang/jq) — JSON helper used by bundled runtime flows and Yazi plugins.
 - [fd](https://github.com/sharkdp/fd) — Fast file search helper used by Yazi and runtime tooling.
 - [ripgrep](https://github.com/BurntSushi/ripgrep) — Fast text search helper used by Yazi and runtime tooling.
+- [ccboard](https://github.com/FlexNetOS/ccboard) — Mission Control dashboard runtime tool launched from the profile-owned Agent layout; its Brain, MCP, and Plugins tabs read their Claude/Codex-facing state from the user's normal home config and cache surfaces.
+- [codedb](https://github.com/FlexNetOS/nu_plugin) — Runtime code-intelligence database tool and Nushell plugin shipped with the same child-owned runtime-tool artifact set as ccboard.
 - [p7zip](https://github.com/p7zip-project/p7zip) — Archive preview/extract helper for Yazi.
 - [poppler](https://poppler.freedesktop.org/) — PDF preview helper for Yazi.
 - [resvg](https://github.com/linebender/resvg) — SVG rendering helper in the packaged runtime.
