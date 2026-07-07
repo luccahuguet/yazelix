@@ -13,6 +13,11 @@ pkgs.runCommand "yazelix-runtime-release-contracts" { } ''
   test -x "$runtime/toolbin/tu"
   test -x "$runtime/toolbin/ccboard"
   test -x "$runtime/runtime_tools/ccboard/bin/ccboard"
+  agent_layout="$runtime/configs/zellij/layouts/flexnetos_agent_workspace.kdl"
+  test -s "$agent_layout"
+  grep -F 'tab name="Mission Control"' "$agent_layout" >/dev/null
+  grep -F 'pane name="ccboard"' "$agent_layout" >/dev/null
+  grep -F 'command "__YAZELIX_RUNTIME_DIR__/libexec/ccboard"' "$agent_layout" >/dev/null
   test -x "$runtime/libexec/yazelix_zellij_bar_widget"
   resolved_bar_widget="$(readlink -f "$runtime/libexec/yazelix_zellij_bar_widget")"
   test -x "$resolved_bar_widget"
