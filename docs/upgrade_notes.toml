@@ -1,5 +1,5 @@
 [releases.unreleased]
-acknowledged_guarded_changes = []
+acknowledged_guarded_changes = ["settings_default.jsonc"]
 date = ""
 headline = "Post-v17.9 work in progress"
 manual_actions = []
