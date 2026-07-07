@@ -340,7 +340,7 @@ EOF
   cat > "$out/bin/yzx" <<EOF
 #!/bin/sh
 bootstrap_path="${pkgs.nushell}/bin:/nix/var/nix/profiles/default/bin:/run/current-system/sw/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
-if [ -n "\${PATH:-}" ]; then
+if [ -n "\''${PATH:-}" ]; then
   PATH="\$bootstrap_path:\$PATH"
 else
   PATH="\$bootstrap_path"
