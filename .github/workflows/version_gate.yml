@@ -59,3 +59,28 @@ jobs:
           grep -F 'Yazelix doctor' "$RUNNER_TEMP/yzn-doctor.txt"
           grep -F "ok config home: $YAZELIX_NEXT_CONFIG_HOME" "$RUNNER_TEMP/yzn-doctor.txt"
           grep -F 'Yazelix tutor lessons' "$RUNNER_TEMP/yzn-tutor-list.txt"
+
+  macos-package-smoke:
+    runs-on: macos-15
+    timeout-minutes: 90
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@v22
+        with:
+          determinate: false
+          extra-conf: |
+            max-jobs = 1
+            cores = 2
+
+      - name: Build aarch64-darwin yzn package
+        run: |
+          nix build --no-link --no-write-lock-file --print-build-logs \
+            .#packages.aarch64-darwin.yzn
