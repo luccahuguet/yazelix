@@ -11,6 +11,8 @@ pkgs.runCommand "yazelix-runtime-release-contracts" { } ''
   test -s "$runtime/runtime_tools.json"
   test -s "$runtime/runtime_components.json"
   test -x "$runtime/toolbin/tu"
+  test -x "$runtime/toolbin/ccboard"
+  test -x "$runtime/runtime_tools/ccboard/bin/ccboard"
   test -x "$runtime/libexec/yazelix_zellij_bar_widget"
   resolved_bar_widget="$(readlink -f "$runtime/libexec/yazelix_zellij_bar_widget")"
   test -x "$resolved_bar_widget"

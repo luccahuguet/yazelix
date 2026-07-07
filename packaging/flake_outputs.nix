@@ -62,6 +62,7 @@ let
     extraRuntimeCommands = [
       "tu"
       "claude"
+      "ccboard"
       "codex"
       "codedb"
       "git-kb"
@@ -70,6 +71,7 @@ let
     ];
     exportedBinCommands = [
       "claude"
+      "ccboard"
       "codex"
       "codedb"
       "git-kb"

@@ -725,6 +725,8 @@ kind = "string_list"
 default = [
   "git",
   "starship",
+  "lazygit",
+  "smart-tabs",
 ]
 parser_key = "yazi_plugins"
 home_manager_option = "yazi_plugins"

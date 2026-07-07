@@ -67,6 +67,8 @@ fn prepare_runtime_fixture(runtime_dir: &Path) {
         "sidebar-state",
         "git",
         "starship",
+        "lazygit",
+        "smart-tabs",
     ] {
         let plugin_dir = yazi_dir.join("plugins").join(format!("{plugin}.yazi"));
         fs::create_dir_all(&plugin_dir).unwrap();
