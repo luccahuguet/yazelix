@@ -22,7 +22,6 @@ inputs under `~/.config/yazelix` or package inputs under this repository.
 | Stale local wrapper | `~/.local/bin` contains only `archive`; no `~/.local/bin/yzx` shadow. |
 | Menu/status visual capture | PTY `yzx config ui` capture reached the `status_bar` tab and showed `zellij.widget_tray` current `[9 items]` with workspace, Claude, Codex, CPU, and RAM available; generated layout and direct widget probes cover the repaired cells. A live desktop/Zellij visual pass remains the human acceptance check. |
 | Source target | `.#lifeos_foundation_yzx` builds `/nix/store/xxmpnb3w6k12qwsyv7wdc7qmx1g3sb3f-lifeos-foundation-yzx`; `.#yazelix_flexnetos_foundation` is no longer exposed in the current worktree after the profile migration. |
-| Beads tracking | `yazelix-xig9o` tracks the LifeOS foundation `yzx` ownership migration. |
 
 ## Repair Ledger
 
@@ -52,6 +51,17 @@ inputs under `~/.config/yazelix` or package inputs under this repository.
 | tauri | LifeOS project-local CLI | Missing as global command | `src/lifeos/package.json` devDependency `@tauri-apps/cli` | none | missing | `bun run tauri:*` | n/a | Not a global profile export | Keep project-local unless native installer workflow requires a profile-owned host CLI | package.json defines `tauri`, `tauri:dev`, and `tauri:build` scripts |
 | wasmEdge | No active Yazelix/LifeOS foundation owner | Missing | research-only mentions outside active foundation docs | none | missing | `command -v wasmEdge` and `command -v wasmedge` | n/a | Not part of current foundation | Leave out of `yzx` profile until an owning workflow/package requires it | repo search found only current ledger/worklog plus `meta-ruvector` research examples; no active Yazelix/LifeOS consumer |
 | built-in Yazelix tools | Yazelix profile runtime | Profile/runtime closure | `src/yazelix` runtime package list | foundation runtime | mostly not top-level exports | `yzx doctor` | n/a | Healthy | Do not widen profile exports without explicit owner decision | doctor reports runtime healthy; optional `mise` and `tombi` host tools unavailable only |
+
+## Verification
+
+Concrete verification path for this contract:
+
+```text
+nix develop --accept-flake-config .#ci -c cargo build --quiet --manifest-path rust_core/Cargo.toml -p yazelix_maintainer --bin yzx_repo_validator -p yazelix_core --bin yzx_core
+nix develop --accept-flake-config .#ci -c rust_core/target/debug/yzx_repo_validator validate-contracts
+nix develop --accept-flake-config .#ci -c rust_core/target/debug/yzx_repo_validator validate-child-release-transaction
+nix build --accept-flake-config --no-write-lock-file .#checks.x86_64-linux.lifeos_foundation_yzx_runtime_release_contracts --no-link --print-out-paths --log-format raw
+```
 
 ## Validation Already Run
 
