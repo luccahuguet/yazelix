@@ -179,6 +179,8 @@ Upgrade the active Yazelix package in the default Nix profile
 - Prints the exact command it will run
 - Runs `nix profile upgrade --refresh <matching-yazelix-profile-entry>`
 - Intended for installs owned by the default Nix profile
+- For local-source profile entries, fetches and fast-forwards the clean tracked checkout before rebuilding
+- Refuses dirty, detached, ahead-only, or diverged local checkouts so profile updates cannot install stale or local-only code by accident
 - Fresh launches use the updated installed runtime; already-open windows continue on their current live runtime until relaunch or `yzx restart`
 
 ### `yzx update local_source`

@@ -143,14 +143,14 @@ fn load_default_profile_elements_json() -> Result<Value, i32> {
     })
 }
 
-fn resolve_active_yazelix_profile_entry_name(profile_json: &Value) -> Result<String, i32> {
+fn resolve_active_yazelix_profile_entry(profile_json: &Value) -> Result<ProfileEntryMatch, i32> {
     let matches = match resolve_active_yazelix_profile_entries(profile_json) {
         Ok(matches) => matches,
         Err(code) => return Err(code),
     };
 
     if matches.len() == 1 {
-        return Ok(matches[0].name.clone());
+        return Ok(matches[0].clone());
     }
 
     let names = matches
@@ -254,6 +254,246 @@ fn is_local_source_url(url: &str) -> bool {
         || trimmed.starts_with('/')
         || trimmed.starts_with("./")
         || trimmed.starts_with("../")
+}
+
+fn hex_value(byte: u8) -> Option<u8> {
+    match byte {
+        b'0'..=b'9' => Some(byte - b'0'),
+        b'a'..=b'f' => Some(byte - b'a' + 10),
+        b'A'..=b'F' => Some(byte - b'A' + 10),
+        _ => None,
+    }
+}
+
+fn percent_decode_path(value: &str) -> Option<String> {
+    let bytes = value.as_bytes();
+    let mut decoded = Vec::with_capacity(bytes.len());
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] == b'%' {
+            let hi = hex_value(*bytes.get(i + 1)?)?;
+            let lo = hex_value(*bytes.get(i + 2)?)?;
+            decoded.push((hi << 4) | lo);
+            i += 3;
+        } else {
+            decoded.push(bytes[i]);
+            i += 1;
+        }
+    }
+    String::from_utf8(decoded).ok()
+}
+
+fn file_url_path(url: &str) -> Option<String> {
+    let rest = url
+        .strip_prefix("git+file://")
+        .or_else(|| url.strip_prefix("file://"))?;
+    let decoded = percent_decode_path(rest)?;
+    if let Some(path) = decoded.strip_prefix("localhost/") {
+        return Some(format!("/{path}"));
+    }
+    Some(decoded)
+}
+
+fn local_source_url_to_path(url: &str, home: &Path) -> Option<PathBuf> {
+    let trimmed = url.trim();
+    let raw_path = if let Some(path) = trimmed.strip_prefix("path:") {
+        path.to_string()
+    } else if trimmed.starts_with("git+file://") || trimmed.starts_with("file://") {
+        file_url_path(trimmed)?
+    } else if trimmed.starts_with('/')
+        || trimmed.starts_with("./")
+        || trimmed.starts_with("../")
+        || trimmed.starts_with('~')
+    {
+        trimmed.to_string()
+    } else {
+        return None;
+    };
+
+    let path = PathBuf::from(raw_path);
+    let expanded = if path.is_relative() && !path.starts_with("~") {
+        std::env::current_dir().ok()?.join(path)
+    } else {
+        path
+    };
+    Some(normalize_path_for_compare(expanded.as_path(), home))
+}
+
+fn local_source_checkout_path_from_url(url: &str, home: &Path) -> Option<PathBuf> {
+    let path = local_source_url_to_path(url, home)?;
+    local_git_checkout_path(path.as_path())
+}
+
+fn git_output(checkout: &Path, args: &[&str]) -> Result<String, String> {
+    let output = Command::new("git")
+        .arg("-C")
+        .arg(checkout)
+        .args(args)
+        .output()
+        .map_err(|err| format!("failed to start git: {err}"))?;
+    if output.status.success() {
+        return Ok(String::from_utf8_lossy(&output.stdout).trim().to_string());
+    }
+    let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+    if stderr.is_empty() {
+        Err(format!("git exited with {}", output.status))
+    } else {
+        Err(stderr)
+    }
+}
+
+fn run_git_command(checkout: &Path, args: &[&str]) -> Result<(), String> {
+    let status = Command::new("git")
+        .arg("-C")
+        .arg(checkout)
+        .args(args)
+        .stdin(Stdio::inherit())
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
+        .status()
+        .map_err(|err| format!("failed to start git: {err}"))?;
+    if status.success() {
+        Ok(())
+    } else {
+        Err(format!("git exited with {status}"))
+    }
+}
+
+fn print_git_command(checkout: &Path, args: &[&str]) {
+    let args = args.join(" ");
+    println!("Running:");
+    println!("  git -C {} {args}", checkout.display());
+}
+
+fn ensure_local_source_profile_entry_current(entry: &ProfileEntryMatch) -> Result<(), i32> {
+    let Some(url) = profile_entry_source_url(entry) else {
+        return Ok(());
+    };
+    if !is_local_source_url(url) {
+        return Ok(());
+    }
+
+    let home = match home_dir_from_env() {
+        Ok(home) => home,
+        Err(_) => return Err(1),
+    };
+    let Some(checkout) = local_source_checkout_path_from_url(url, &home) else {
+        println!(
+            "❌ Active Yazelix profile entry `{}` uses local source URL `{url}`, but `yzx update upstream` could not resolve it to a git checkout.",
+            entry.name
+        );
+        println!("   Fix the profile source or use the owner-specific update command manually.");
+        return Err(1);
+    };
+
+    fast_forward_local_source_checkout(entry.name.as_str(), checkout.as_path())
+}
+
+fn fast_forward_local_source_checkout(profile_name: &str, checkout: &Path) -> Result<(), i32> {
+    println!(
+        "Active profile entry `{profile_name}` is backed by local checkout: {}",
+        checkout.display()
+    );
+    println!("Ensuring the checkout is fast-forwarded before rebuilding the profile package.");
+
+    let dirty = match git_output(checkout, &["status", "--porcelain"]) {
+        Ok(output) => output,
+        Err(err) => {
+            println!("❌ Failed to inspect local checkout status: {err}");
+            return Err(1);
+        }
+    };
+    if !dirty.is_empty() {
+        println!("❌ Local Yazelix checkout has uncommitted or untracked changes.");
+        println!("   Commit, stash, or archive them before running `yzx update upstream`.");
+        return Err(1);
+    }
+
+    let branch = match git_output(checkout, &["rev-parse", "--abbrev-ref", "HEAD"]) {
+        Ok(branch) => branch,
+        Err(err) => {
+            println!("❌ Failed to inspect local checkout branch: {err}");
+            return Err(1);
+        }
+    };
+    if branch == "HEAD" {
+        println!("❌ Local Yazelix checkout is detached.");
+        println!("   Check out the tracked branch that should feed the profile package.");
+        return Err(1);
+    }
+
+    let upstream = match git_output(
+        checkout,
+        &["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"],
+    ) {
+        Ok(upstream) => upstream,
+        Err(_) => {
+            println!(
+                "❌ Local Yazelix checkout branch `{branch}` has no upstream tracking branch."
+            );
+            println!("   Set its upstream, then rerun `yzx update upstream`.");
+            return Err(1);
+        }
+    };
+
+    print_git_command(checkout, &["fetch", "--prune"]);
+    if let Err(err) = run_git_command(checkout, &["fetch", "--prune"]) {
+        println!("❌ Failed to fetch `{upstream}` before profile rebuild: {err}");
+        return Err(1);
+    }
+
+    let counts = match git_output(
+        checkout,
+        &["rev-list", "--left-right", "--count", "HEAD...@{u}"],
+    ) {
+        Ok(counts) => counts,
+        Err(err) => {
+            println!("❌ Failed to compare local checkout with `{upstream}`: {err}");
+            return Err(1);
+        }
+    };
+    let mut parts = counts.split_whitespace();
+    let ahead = parts
+        .next()
+        .and_then(|value| value.parse::<u64>().ok())
+        .unwrap_or(0);
+    let behind = parts
+        .next()
+        .and_then(|value| value.parse::<u64>().ok())
+        .unwrap_or(0);
+
+    match (ahead, behind) {
+        (0, 0) => {
+            println!("✅ Local Yazelix checkout is current with `{upstream}`.");
+            Ok(())
+        }
+        (0, _) => {
+            println!(
+                "Fast-forwarding local Yazelix checkout `{branch}` by {behind} commit(s) from `{upstream}`."
+            );
+            print_git_command(checkout, &["merge", "--ff-only", "@{u}"]);
+            if let Err(err) = run_git_command(checkout, &["merge", "--ff-only", "@{u}"]) {
+                println!("❌ Failed to fast-forward local Yazelix checkout: {err}");
+                return Err(1);
+            }
+            println!("✅ Local Yazelix checkout fast-forwarded.");
+            Ok(())
+        }
+        (_, 0) => {
+            println!("❌ Local Yazelix checkout is {ahead} commit(s) ahead of `{upstream}`.");
+            println!(
+                "   Refusing to rebuild the profile from local-only commits through `yzx update upstream`."
+            );
+            Err(1)
+        }
+        (_, _) => {
+            println!(
+                "❌ Local Yazelix checkout has diverged from `{upstream}` ({ahead} ahead, {behind} behind)."
+            );
+            println!("   Reconcile the branch manually, then rerun `yzx update upstream`.");
+            Err(1)
+        }
+    }
 }
 
 fn local_source_profile_entry_names(profile_json: &Value) -> Result<Vec<String>, i32> {
@@ -627,11 +867,14 @@ fn run_upstream_update() -> Result<i32, CoreError> {
         Ok(v) => v,
         Err(code) => return Ok(code),
     };
-    let profile_name = match resolve_active_yazelix_profile_entry_name(&profile_json) {
-        Ok(n) => n,
+    let profile_entry = match resolve_active_yazelix_profile_entry(&profile_json) {
+        Ok(entry) => entry,
         Err(code) => return Ok(code),
     };
-    run_profile_package_update(profile_name, profile_json)
+    if let Err(code) = ensure_local_source_profile_entry_current(&profile_entry) {
+        return Ok(code);
+    }
+    run_profile_package_update(profile_entry.name, profile_json)
 }
 
 fn run_local_source_update() -> Result<i32, CoreError> {
@@ -956,6 +1199,30 @@ mod tests {
         }
         assert!(!is_local_source_url("github:luccahuguet/yazelix"));
         assert!(!is_local_source_url("https://example.com/source.tar.gz"));
+    }
+
+    // Defends: path-flake profile entries can be mapped back to the checkout that must
+    // be fast-forwarded before the profile rebuild.
+    #[test]
+    fn resolves_local_source_urls_to_paths() {
+        let home = Path::new("/home/me");
+
+        assert_eq!(
+            local_source_url_to_path("path:/home/me/yazelix", home).unwrap(),
+            PathBuf::from("/home/me/yazelix")
+        );
+        assert_eq!(
+            local_source_url_to_path("file:///home/me/yazelix%20repo", home).unwrap(),
+            PathBuf::from("/home/me/yazelix repo")
+        );
+        assert_eq!(
+            local_source_url_to_path("git+file://localhost/home/me/yazelix", home).unwrap(),
+            PathBuf::from("/home/me/yazelix")
+        );
+        assert_eq!(
+            local_source_url_to_path("~/yazelix", home).unwrap(),
+            PathBuf::from("/home/me/yazelix")
+        );
     }
 
     // Regression: multiple matching active local-source profile entries are a valid atomic update set.

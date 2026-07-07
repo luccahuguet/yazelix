@@ -60,6 +60,8 @@ br close <id>         # Complete work
 /home/flexnetos/.nix-profile/bin/yzx doctor
 ```
 
+Because this profile is backed by a local `path:` flake, `yzx update upstream` must fetch and fast-forward the clean tracked checkout before `nix profile upgrade`. It should fail instead of rebuilding from a dirty, detached, ahead-only, or diverged local checkout.
+
 Do not rebuild this package with host-local `FLEXNETOS_*_PATH` inputs or `packaging/*_local_binary.nix` shims. Runtime tools in the foundation package must come from published flake inputs or source-owned package definitions so the profile can be rebuilt in a clean no-override path.
 
 Do not copy raw `nix profile upgrade` commands with hardcoded store hashes. Those hashes go stale on every profile upgrade and re-introduce the exact "three-profiles-that-should-be-one" drift class this package is meant to prevent.

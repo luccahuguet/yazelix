@@ -96,6 +96,8 @@ Choose one update owner for each Yazelix install, and do not mix both update pat
 nix profile upgrade --refresh <matching-yazelix-profile-entry>
 ```
 
+When the matching profile entry points at a local git checkout through `path:`, `file:`, or `git+file:`, `yzx update upstream` first fetches that checkout and fast-forwards its clean tracked branch before rebuilding. It refuses dirty, detached, ahead-only, or diverged checkouts so a profile update cannot silently install stale or local-only code.
+
 If the active runtime comes from an unmanaged Nix store path, such as `nix run` or a manually installed desktop entry, first install Yazelix into the default profile:
 
 ```bash
