@@ -103,6 +103,10 @@ pub fn compute_runtime_env(
         JsonValue::String("rtk codex".to_string()),
     );
     runtime_env.insert(
+        "YAZELIX_CLAUDE_COMMAND".to_string(),
+        JsonValue::String("rtk claude".to_string()),
+    );
+    runtime_env.insert(
         "ZELLIJ_DEFAULT_LAYOUT".to_string(),
         JsonValue::String(MANAGED_SIDEBAR_LAYOUT_NAME.to_string()),
     );

@@ -80,7 +80,7 @@ pub(crate) struct ShellInitializerRun {
     pub messages: Vec<String>,
 }
 
-fn default_shells_to_configure() -> Vec<String> {
+pub(crate) fn default_shells_to_configure() -> Vec<String> {
     ["nu", "bash", "fish", "zsh", "xonsh"]
         .into_iter()
         .map(str::to_string)
@@ -235,29 +235,39 @@ fn normalize_initializer_content(shell_name: &str, content: &str) -> String {
 fn rtk_session_policy_initializer(shell_name: &str) -> Option<&'static str> {
     match shell_name {
         "nu" => Some(
-            r#"# Yazelix RTK policy: Codex sessions launched inside Yazelix must use RTK.
+            r#"# Yazelix RTK policy: Codex and Claude sessions launched inside Yazelix must use RTK TokenKill.
 export def codex [...args: string] {
     rtk codex ...$args
+}
+export def claude [...args: string] {
+    rtk claude ...$args
 }
 "#,
         ),
         "bash" | "zsh" => Some(
-            r#"# Yazelix RTK policy: Codex sessions launched inside Yazelix must use RTK.
+            r#"# Yazelix RTK policy: Codex and Claude sessions launched inside Yazelix must use RTK TokenKill.
 codex() {
     command rtk codex "$@"
+}
+claude() {
+    command rtk claude "$@"
 }
 "#,
         ),
         "fish" => Some(
-            r#"# Yazelix RTK policy: Codex sessions launched inside Yazelix must use RTK.
+            r#"# Yazelix RTK policy: Codex and Claude sessions launched inside Yazelix must use RTK TokenKill.
 function codex
     command rtk codex $argv
+end
+function claude
+    command rtk claude $argv
 end
 "#,
         ),
         "xonsh" => Some(
-            r#"# Yazelix RTK policy: Codex sessions launched inside Yazelix must use RTK.
+            r#"# Yazelix RTK policy: Codex and Claude sessions launched inside Yazelix must use RTK TokenKill.
 aliases['codex'] = ['rtk', 'codex']
+aliases['claude'] = ['rtk', 'claude']
 "#,
         ),
         _ => None,
