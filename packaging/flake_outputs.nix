@@ -48,6 +48,53 @@ let
     version = "0.2.12";
   };
   flexnetos_foundation_rtk = rtkPackage system pkgs;
+  flexnetos_foundation_kache = import ./kache_release.nix { inherit pkgs; };
+  flexnetos_foundation_kache_wrapped = pkgs.symlinkJoin {
+    name = "kache-with-rustc-wrapper-${flexnetos_foundation_kache.version}";
+    paths = [ flexnetos_foundation_kache ];
+    postBuild = ''
+      mkdir -p "$out/bin" "$out/libexec/kache"
+      cat > "$out/libexec/kache/rustc" <<'EOF'
+      #!${pkgs.runtimeShell}
+      set -eu
+      cargo_auditable="''${FLEXNETOS_KACHE_CARGO_AUDITABLE:-cargo-auditable}"
+      exec "$cargo_auditable" rustc "$@"
+      EOF
+      chmod +x "$out/libexec/kache/rustc"
+
+      cat > "$out/bin/kache-rustc-wrapper" <<EOF
+      #!${pkgs.runtimeShell}
+      set -eu
+      KACHE_BIN="''${KACHE_BIN:-$out/bin/kache}"
+      FLEXNETOS_KACHE_RUSTC_SHIM="''${FLEXNETOS_KACHE_RUSTC_SHIM:-$out/libexec/kache/rustc}"
+      if [ ! -x "\$KACHE_BIN" ]; then
+        printf 'kache-rustc-wrapper: Kache binary is not executable: %s\n' "\$KACHE_BIN" >&2
+        exit 127
+      fi
+      if [ "\$#" -ge 2 ]; then
+        first_name="\$(basename -- "\$1")"
+        second_name="\$(basename -- "\$2")"
+        if [ "\$first_name" = cargo-auditable ] && { [ "\$second_name" = rustc ] || [ "\$second_name" = clippy-driver ] || case "\$second_name" in rustc-*) true ;; *) false ;; esac; }; then
+          if [ ! -x "\$FLEXNETOS_KACHE_RUSTC_SHIM" ]; then
+            printf 'kache-rustc-wrapper: rustc shim is not executable: %s\n' "\$FLEXNETOS_KACHE_RUSTC_SHIM" >&2
+            exit 127
+          fi
+          export FLEXNETOS_KACHE_CARGO_AUDITABLE="\$1"
+          shift 2
+          exec "\$KACHE_BIN" "\$FLEXNETOS_KACHE_RUSTC_SHIM" "\$@"
+        fi
+      fi
+      exec "\$KACHE_BIN" "\$@"
+      EOF
+      chmod +x "$out/bin/kache-rustc-wrapper"
+    '';
+  };
+  flexnetos_foundation_rust_toolchain = fenixPkgs.combine [
+    fenixPkgs.latest.cargo
+    fenixPkgs.latest.rustc
+    fenixPkgs.latest.rustfmt
+    fenixPkgs.latest.clippy
+  ];
   lifeos_foundation_yzx = mkYazelix {
     inherit pkgs;
     runtimeVariant = "mars";
@@ -57,7 +104,16 @@ let
       flexnetos_foundation_claude
       flexnetos_foundation_codex
       flexnetos_foundation_git_kb
+      flexnetos_foundation_kache_wrapped
       flexnetos_foundation_rtk
+      flexnetos_foundation_rust_toolchain
+      pkgs.bun
+      pkgs.cargo-tauri
+      pkgs.clang
+      pkgs.corepack
+      pkgs.nodejs_24
+      pkgs.wasm-pack
+      pkgs.wild
     ];
     extraRuntimeCommands = [
       "tu"
@@ -66,8 +122,28 @@ let
       "codex"
       "codedb"
       "git-kb"
+      "bun"
+      "bunx"
+      "cargo"
+      "cargo-tauri"
+      "clang"
+      "clang++"
+      "clippy-driver"
+      "corepack"
+      "kache"
+      "kache-rustc-wrapper"
+      "ld.wild"
+      "node"
+      "npm"
       "nu_plugin_codedb"
+      "pnpm"
       "rtk"
+      "rustc"
+      "rustdoc"
+      "rustfmt"
+      "wasm-pack"
+      "wild"
+      "yarn"
     ];
     exportedBinCommands = [
       "claude"
@@ -75,8 +151,28 @@ let
       "codex"
       "codedb"
       "git-kb"
+      "bun"
+      "bunx"
+      "cargo"
+      "cargo-tauri"
+      "clang"
+      "clang++"
+      "clippy-driver"
+      "corepack"
+      "kache"
+      "kache-rustc-wrapper"
+      "ld.wild"
+      "node"
+      "npm"
       "nu_plugin_codedb"
+      "pnpm"
       "rtk"
+      "rustc"
+      "rustdoc"
+      "rustfmt"
+      "wasm-pack"
+      "wild"
+      "yarn"
     ];
   };
   packages =
