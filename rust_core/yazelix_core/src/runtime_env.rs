@@ -220,12 +220,16 @@ fn is_stale_yazelix_store_path_entry(entry: &str, runtime_dir: &Path) -> bool {
     else {
         return false;
     };
-    if !store_item.contains("yazelix") {
+    if !is_yazelix_runtime_store_item(store_item) {
         return false;
     }
     path.parent()
         .and_then(|parent| parent.parent())
         .is_some_and(|store_root| store_root == Path::new("/nix/store"))
+}
+
+fn is_yazelix_runtime_store_item(store_item: &str) -> bool {
+    store_item.contains("yazelix") || store_item.contains("lifeos-foundation-yzx")
 }
 
 fn existing_runtime_path_entries(runtime_dir: &Path) -> Vec<String> {
@@ -501,14 +505,14 @@ mod tests {
         let data = compute_runtime_env(&request_with_path(
             runtime_dir,
             home_dir,
-            "/nix/store/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-yazelix-flexnetos-foundation/toolbin:/nix/store/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb-yazelix-flexnetos-foundation/bin:/usr/bin",
+            "/nix/store/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-lifeos-foundation-yzx/toolbin:/nix/store/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb-lifeos-foundation-yzx/bin:/usr/bin",
         ))
         .unwrap();
 
         assert!(
             data.path_entries
                 .iter()
-                .all(|entry| !entry.contains("-yazelix-flexnetos-foundation/"))
+                .all(|entry| !entry.contains("-lifeos-foundation-yzx/"))
         );
         assert_eq!(data.path_entries[0], nix_profile_bin.to_string_lossy());
         assert!(data.path_entries.iter().any(|entry| entry == "/usr/bin"));
