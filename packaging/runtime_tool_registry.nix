@@ -254,6 +254,22 @@ let
         hostable = true;
         notes = [ "optional_host_integration" ];
       };
+      uv = makeTool {
+        package = uv;
+        commands = [
+          "uv"
+          "uvx"
+        ];
+        requiredCommands = [ "uv" ];
+        hostable = true;
+        notes = [ "Python launcher/package manager; profile-owned runtime for plugin tooling such as security-guidance." ];
+      };
+      rust_analyzer = makeTool {
+        package = rust-analyzer;
+        commands = [ "rust-analyzer" ];
+        hostable = true;
+        notes = [ "Rust language server; pairs with the exported fenix toolchain so rust-analyzer-lsp resolves from the profile." ];
+      };
       fish = makeTool {
         package = fish;
         commands = [ "fish" ];
