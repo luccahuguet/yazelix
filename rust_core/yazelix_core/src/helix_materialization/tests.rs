@@ -42,6 +42,9 @@ command_descriptions = { "show-splash" = "Render the optional Yazelix splash ove
 [[plugins]]
 id = "spacemacs_theme"
 source = "cogs/themes/spacemacs.scm"
+internal_commands = ["activate-spacemacs-theme"]
+startup_commands = ["activate-spacemacs-theme"]
+command_descriptions = { "activate-spacemacs-theme" = "Activate the registered Spacemacs Steel theme" }
 
 [[plugins]]
 id = "keymaps"
@@ -93,7 +96,7 @@ fn write_runtime_layout(runtime_dir: &Path) {
         ),
         (
             "configs/helix/steel_plugins/cogs/themes/spacemacs.scm",
-            "(provide built-theme)\n",
+            "(provide built-theme activate-spacemacs-theme)\n",
         ),
     ] {
         fs::write(runtime_dir.join(path), content).unwrap();
@@ -223,7 +226,11 @@ fn helix_materialization_writes_default_steel_entrypoints() {
     assert!(!generated_helix.contains("recentf-snapshot"));
     assert!(generated_helix.contains("(require (only-in \"splash.scm\" show-splash))"));
     assert!(generated_helix.contains("(show-splash)"));
-    assert!(generated_helix.contains("(require \"cogs/themes/spacemacs.scm\")"));
+    assert!(
+        generated_helix
+            .contains("(require (only-in \"cogs/themes/spacemacs.scm\" activate-spacemacs-theme))")
+    );
+    assert!(generated_helix.contains("(activate-spacemacs-theme)"));
     assert_eq!(
         steel_command_names(&data, "public"),
         vec![
@@ -234,7 +241,10 @@ fn helix_materialization_writes_default_steel_entrypoints() {
     );
     assert_eq!(
         steel_command_names(&data, "internal"),
-        vec!["show-splash".to_string()]
+        vec![
+            "show-splash".to_string(),
+            "activate-spacemacs-theme".to_string()
+        ]
     );
 
     let generated_init = fs::read_to_string(state_dir.join("configs/helix/init.scm")).unwrap();
