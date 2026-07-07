@@ -723,13 +723,14 @@ mod tests {
 
     static TEST_COUNTER: AtomicUsize = AtomicUsize::new(0);
 
-    fn test_dir(name: &str) -> PathBuf {
-        env::temp_dir().join(format!(
-            "yzn-open-{name}-{}-{}-{}",
+    fn test_dir(_name: &str) -> PathBuf {
+        let root = env::temp_dir().join(format!(
+            "yo{}-{}",
             std::process::id(),
-            unix_millis(),
             TEST_COUNTER.fetch_add(1, Ordering::SeqCst)
-        ))
+        ));
+        let _ = fs::remove_dir_all(&root);
+        root
     }
 
     fn write_executable(path: &Path, contents: impl AsRef<[u8]>) {
