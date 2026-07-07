@@ -142,8 +142,7 @@ env -i HOME=/home/flexnetos USER=flexnetos LOGNAME=flexnetos SHELL=/bin/sh TERM=
 The clean profile runtime proof resolves `yzx`, `codex`, and `claude` through
 `/home/flexnetos/.nix-profile/bin` before runtime-local tool paths. The
 already-open Codex shell still carries stale
-`fqzbpni171j0q86gbgirgj49npq7fzbq-yazelix-flexnetos-foundation` environment
-entries from its launch-time session; treat those as inherited session state,
+legacy foundation-package environment entries from its launch-time session; treat those as inherited session state,
 not as the active owner for fresh launches.
 
 ```text
