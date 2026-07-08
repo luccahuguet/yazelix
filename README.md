@@ -288,22 +288,23 @@ Detailed launch/config/editor shell notes live in
 
 ## LOC Scorecard
 
-Counts owned project files by language with `wc -l`.
+Counts **tracked** project files. Excludes Beads state (`.beads/`) and lockfiles
+(`*.lock`). New owned sources count automatically once committed.
 
 ```sh
-wc -l .gitignore AGENTS.md README.md CHANGELOG.md ARCHITECTURE.md docs/*.md flake.nix home-manager/module.nix packaging/tokenusage.nix packaging/bar-render-request.nix shell/sh/yzn-env-supervisor.sh shell/sh/yzn-helix.sh shell/sh/yzn-shell.sh .github/workflows/ci.yml .github/workflows/version_gate.yml .github/workflows/publish_nix_cache.yml .github/workflows/darwin_package_smoke.yml config.toml mars.toml config.kdl layout.kdl layout.swap.kdl nu/config.nu nu/env.nu helix/config.toml yazi/init.lua yazi/keymap.toml yazi/plugins/sidebar-state.yazi/main.lua yazi/plugins/sidebar-status.yazi/main.lua yazi/plugins/zoxide-editor.yazi/main.lua yazi/yazi.toml crates/yzn-config/Cargo.toml crates/yzn-config/src/*.rs crates/yzn-open/Cargo.toml crates/yzn-open/src/bin/yzn-reveal.rs crates/yzn-open/src/bin/yzn-sidebar-refresh.rs crates/yzn-open/src/lib.rs crates/yzn-open/src/main.rs crates/yzn-open/src/sidebar.rs crates/yzn-tutor/Cargo.toml crates/yzn-tutor/src/cli_render.rs crates/yzn-tutor/src/main.rs crates/yzn-tutor/src/tutor_document.rs checks/*.rs runtime/yzn-agent.rs runtime/yzn-menu.rs runtime/yzn-nu.rs runtime/yzn-yazi.rs runtime/yzn/*.rs runtime/yzn-zellij-config.rs
+git ls-files | grep -Ev '^\.beads/|\.lock$' | xargs wc -l
 ```
 
-| Language | Files | Lines |
-| --- | --- | ---: |
-| Ignore | `.gitignore` | 4 |
-| Markdown | `AGENTS.md`, `README.md`, `CHANGELOG.md`, `ARCHITECTURE.md`, `docs/*.md` | 1260 |
-| Nix | `flake.nix`, `home-manager/module.nix`, `packaging/tokenusage.nix`, `packaging/bar-render-request.nix` | 929 |
-| Shell | `shell/sh/yzn-env-supervisor.sh`, `shell/sh/yzn-helix.sh`, `shell/sh/yzn-shell.sh` | 82 |
-| YAML | `.github/workflows/ci.yml`, `.github/workflows/version_gate.yml`, `.github/workflows/publish_nix_cache.yml`, `.github/workflows/darwin_package_smoke.yml` | 268 |
-| TOML | `config.toml`, `mars.toml`, `helix/config.toml`, `yazi/yazi.toml`, `yazi/keymap.toml`, `crates/yzn-config/Cargo.toml`, `crates/yzn-open/Cargo.toml`, `crates/yzn-tutor/Cargo.toml` | 236 |
-| KDL | `config.kdl`, `layout.kdl`, `layout.swap.kdl` | 210 |
-| Nu | `nu/config.nu`, `nu/env.nu` | 11 |
-| Lua | `yazi/init.lua`, `yazi/plugins/sidebar-state.yazi/main.lua`, `yazi/plugins/sidebar-status.yazi/main.lua`, `yazi/plugins/zoxide-editor.yazi/main.lua` | 247 |
-| Rust | `crates/yzn-config/src/*.rs`, `crates/yzn-open/src/bin/yzn-reveal.rs`, `crates/yzn-open/src/bin/yzn-sidebar-refresh.rs`, `crates/yzn-open/src/lib.rs`, `crates/yzn-open/src/main.rs`, `crates/yzn-open/src/sidebar.rs`, `crates/yzn-tutor/src/cli_render.rs`, `crates/yzn-tutor/src/main.rs`, `crates/yzn-tutor/src/tutor_document.rs`, `checks/*.rs`, `runtime/yzn-agent.rs`, `runtime/yzn-menu.rs`, `runtime/yzn-nu.rs`, `runtime/yzn-yazi.rs`, `runtime/yzn/*.rs`, `runtime/yzn-zellij-config.rs` | 11219 |
-| Total | owned project files | 14466 |
+| Language | Lines |
+| --- | ---: |
+| Ignore (`.gitignore`) | 4 |
+| Markdown | 1261 |
+| Nix | 929 |
+| Shell | 82 |
+| YAML | 268 |
+| TOML | 236 |
+| KDL | 210 |
+| Nu | 11 |
+| Lua | 247 |
+| Rust | 11219 |
+| Total | 14467 |
