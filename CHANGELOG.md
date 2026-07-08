@@ -4,6 +4,11 @@ User-visible runtime changes for Yazelix Next live here.
 
 ## Unreleased
 
+- Darwin package confidence no longer relies on hosted macOS on every push.
+  `Darwin Package Smoke` builds `.#packages.aarch64-darwin.yzn` weekly when
+  `main` moved in the last 7 days (and always on manual dispatch). Routine CI
+  stays Linux-only; manual Version Gate still includes the macOS package smoke
+  before version bumps or the main Yazelix swap.
 - The default `yzn` package no longer pulls Mars' removed SerenityOS emoji
   profile into the Nix closure, avoiding the expensive unused
   `serenityos-emoji-font` / `nanoemoji` build path during declarative installs.
