@@ -181,6 +181,23 @@
         "type": "github"
       }
     },
+    "grit_source": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1783455175,
+        "narHash": "sha256-Ri9wa5KnMF+twtHM9g/FMx6neAtN3fAFKhKrYsRwFTc=",
+        "owner": "FlexNetOS",
+        "repo": "grit",
+        "rev": "89d8addd170f408d1d82860c39096929375bd2ce",
+        "type": "github"
+      },
+      "original": {
+        "owner": "FlexNetOS",
+        "repo": "grit",
+        "rev": "89d8addd170f408d1d82860c39096929375bd2ce",
+        "type": "github"
+      }
+    },
     "home-manager": {
       "inputs": {
         "nixpkgs": [
@@ -198,6 +215,23 @@
       "original": {
         "owner": "nix-community",
         "repo": "home-manager",
+        "type": "github"
+      }
+    },
+    "icm_source": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1783447800,
+        "narHash": "sha256-BhJ3EFZTJfU1Za8rzgoCahjM3Mi5UH5tfn0iqv0eHag=",
+        "owner": "FlexNetOS",
+        "repo": "icm",
+        "rev": "ae4ed52c6bbf806e45f9c5b425e15b44398de4b7",
+        "type": "github"
+      },
+      "original": {
+        "owner": "FlexNetOS",
+        "repo": "icm",
+        "rev": "ae4ed52c6bbf806e45f9c5b425e15b44398de4b7",
         "type": "github"
       }
     },
@@ -293,7 +327,9 @@
       "inputs": {
         "beads_rust_source": "beads_rust_source",
         "fenix": "fenix",
+        "grit_source": "grit_source",
         "home-manager": "home-manager",
+        "icm_source": "icm_source",
         "mars": "mars",
         "nixgl": "nixgl",
         "nixpkgs": "nixpkgs_2",

@@ -71,6 +71,14 @@
       url = "github:rtk-ai/rtk/v0.43.0";
       flake = false;
     };
+    grit_source = {
+      url = "github:FlexNetOS/grit/89d8addd170f408d1d82860c39096929375bd2ce";
+      flake = false;
+    };
+    icm_source = {
+      url = "github:FlexNetOS/icm/ae4ed52c6bbf806e45f9c5b425e15b44398de4b7";
+      flake = false;
+    };
     zjstatus = {
       url = "github:luccahuguet/zjstatus/yazelix-tab-activity-pipe";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -95,6 +103,8 @@
       yazelixZellijPopup,
       beads_rust_source,
       rtk_source,
+      grit_source,
+      icm_source,
       zjstatus,
     }:
     let
@@ -296,6 +306,23 @@
             rustc = fenix.packages.${system}.latest.rustc;
           };
         };
+      # grit/icm use the stock nixpkgs rustPlatform (NOT the fenix one): the
+      # fenix makeRustPlatform build produced binaries with an EMPTY RUNPATH,
+      # so dynamic deps (libssl, libonnxruntime) failed to resolve at runtime.
+      # The stock platform embeds the correct store RUNPATH (same recipe as
+      # the proven standalone src/grit flake).
+      gritPackage =
+        system: pkgs:
+        import ./packaging/grit_release.nix {
+          inherit pkgs;
+          gritSource = grit_source;
+        };
+      icmPackage =
+        system: pkgs:
+        import ./packaging/icm_release.nix {
+          inherit pkgs;
+          icmSource = icm_source;
+        };
       maintainerShell =
         system: pkgs:
         import ./maintainer_shell.nix {
@@ -330,6 +357,7 @@
         in
         import ./packaging/flake_outputs.nix {
           inherit agentUsagePackages beadsRustPackage kgpPackages rtkPackage;
+          inherit gritPackage icmPackage;
           mkYazelix = mkYazelix system;
           inherit pkgs runtimePackage system yazelixPackage;
           inherit yazelixCursors yazelixScreen yazelixYaziAssets;
