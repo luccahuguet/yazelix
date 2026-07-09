@@ -37,7 +37,7 @@ let
   install_check = import ./install_check.nix { inherit pkgs; };
   flexnetos_foundation_claude = import ./claude_code_release.nix {
     inherit pkgs;
-    version = "2.1.202";
+    version = "2.1.205";
   };
   flexnetos_foundation_codex = import ./codex_cli_release.nix {
     inherit pkgs system;
