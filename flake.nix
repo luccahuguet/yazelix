@@ -135,6 +135,25 @@
         _module.args.marsTerminalPackage = mars.packages.${pkgs.stdenv.hostPlatform.system}.mars;
         imports = [ ./home_manager/module.nix ];
       };
+      homeManagerDefaultActivationPackage =
+        system:
+        let
+          pkgs = mkPkgs system;
+          homeDirectory =
+            if pkgs.stdenv.hostPlatform.isDarwin then "/Users/yazelix-ci" else "/home/yazelix-ci";
+        in
+        (home-manager.lib.homeManagerConfiguration {
+          inherit pkgs;
+          modules = [
+            homeManagerModule
+            {
+              home.username = "yazelix-ci";
+              home.homeDirectory = homeDirectory;
+              home.stateVersion = "24.11";
+              programs.yazelix.enable = true;
+            }
+          ];
+        }).activationPackage;
       agentUsagePackages = system:
         let
           pkgs = mkPkgs system;
@@ -327,6 +346,7 @@
       );
 
       checks = forAllSystems (system: {
+        home_manager_default = homeManagerDefaultActivationPackage system;
         kgp_package_contracts = import ./packaging/kgp_package_contracts.nix {
           inherit nixpkgs system kgpPackages;
         };
