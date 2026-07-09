@@ -86,7 +86,7 @@ pub(crate) fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
             ConfigUiApplyStatus {
                 summary: "session".to_string(),
                 label: "zellij".to_string(),
-                detail: "Inside a managed session, saves update the active Zellij config file. Many scalars apply live; some (for example scroll_buffer_size) need a new session.".to_string(),
+                detail: "Inside a session, saves update the active config; many scalars apply live, some need a new session.".to_string(),
                 pending: false,
             },
             zellij_blocking,

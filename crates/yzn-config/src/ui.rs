@@ -9,17 +9,13 @@ use crossterm::{
 use ratatui::{Terminal, backend::CrosstermBackend};
 use ratconfig::{ConfigUiApp, ConfigUiIntent, ConfigUiKey, draw_config_ui};
 
-use serde_json::Value as JsonValue;
-
 use crate::{
-    catalog::SOURCE_ZELLIJ,
     common::*,
     file_actions::{
         edit_text_externally, open_file_action, write_source_default, write_source_field,
     },
     model::build_model,
     paths::ensure_config_sources,
-    zellij_sidecar::{ZellijSidecar, refresh_active_zellij_runtime_field, zellij_field_value},
 };
 
 pub(crate) fn run_ui() -> Result<()> {
@@ -81,7 +77,7 @@ pub(crate) fn run_ui() -> Result<()> {
                     continue;
                 }
                 app.model = build_model(&paths)?;
-                app.notice_info(zellij_save_notice(&source_id, &field_path, "Saved", &value));
+                app.notice_info(format!("Saved {field_path}."));
                 app.finish_successful_set_field(field_index, &value);
             }
             ConfigUiIntent::UnsetField {
@@ -95,17 +91,7 @@ pub(crate) fn run_ui() -> Result<()> {
                     continue;
                 }
                 app.model = build_model(&paths)?;
-                let value = if source_id == SOURCE_ZELLIJ {
-                    zellij_field_value(&ZellijSidecar::default(), &field_path)
-                } else {
-                    JsonValue::Null
-                };
-                app.notice_info(zellij_save_notice(
-                    &source_id,
-                    &field_path,
-                    "Restored default for",
-                    &value,
-                ));
+                app.notice_info(format!("Restored default for {field_path}."));
                 app.finish_successful_unset_field(field_index);
             }
         }
@@ -114,20 +100,6 @@ pub(crate) fn run_ui() -> Result<()> {
     Ok(())
 }
 
-fn zellij_save_notice(source_id: &str, field_path: &str, verb: &str, value: &JsonValue) -> String {
-    if source_id != SOURCE_ZELLIJ {
-        return format!("{verb} {field_path}.");
-    }
-    match refresh_active_zellij_runtime_field(field_path, value) {
-        Ok(true) => format!(
-            "{verb} {field_path}. Updated active session config (many scalars apply live; some need a new session)."
-        ),
-        Ok(false) => {
-            format!("{verb} {field_path}. Applies to newly launched Zellij sessions.")
-        }
-        Err(error) => format!("{verb} {field_path}. Active session config not updated: {error}"),
-    }
-}
 pub(crate) struct TerminalSession;
 impl TerminalSession {
     fn enter() -> Result<Self> {
