@@ -41,7 +41,7 @@ let
   };
   flexnetos_foundation_codex = import ./codex_cli_release.nix {
     inherit pkgs system;
-    version = "0.143.0-alpha.35";
+    version = "0.144.0";
   };
   flexnetos_foundation_git_kb = import ./git_kb_release.nix {
     inherit pkgs;
