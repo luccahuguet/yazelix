@@ -128,6 +128,7 @@ pub(crate) fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
         ],
         tabs: vec![
             TAB_CONFIG.to_string(),
+            TAB_POPUPS.to_string(),
             TAB_MARS.to_string(),
             TAB_ZELLIJ.to_string(),
             TAB_STARSHIP.to_string(),
@@ -220,7 +221,7 @@ fn build_root_config_field(
     let current = get_toml_path(active, spec.field.path);
     Ok(build_config_field(
         SOURCE_CONFIG,
-        TAB_CONFIG,
+        root_config_tab(spec.field.path),
         &spec.field,
         current,
         Some(&default),
@@ -234,6 +235,21 @@ fn build_root_config_field(
             || (popup_keybinding_spec(spec.field.path).is_some()
                 && validate_popup_keybindings(active).is_err()),
     ))
+}
+fn root_config_tab(path: &str) -> &'static str {
+    if matches!(
+        path,
+        POPUP_SIDE_MARGIN_PATH
+            | POPUP_VERTICAL_MARGIN_PATH
+            | KEYBINDINGS_CONFIG_PATH
+            | KEYBINDINGS_AGENT_PATH
+            | KEYBINDINGS_GIT_PATH
+            | KEYBINDINGS_MENU_PATH
+    ) {
+        TAB_POPUPS
+    } else {
+        TAB_CONFIG
+    }
 }
 fn build_config_field(
     source_id: &'static str,

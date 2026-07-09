@@ -266,7 +266,7 @@ Detail lives in Owners, checks, and the notes below.
 | ID | Contract | Owner | Check | Gap |
 | --- | --- | --- | --- | --- |
 | C9a | Kitty protocol + `yzpp` packaged/loaded | `config.kdl`, flake | `yzn-contracts` | Visual |
-| C9b | Role popups + remaps + margins + refresh hooks | config, runtime, `yzn-config` | contracts + keybinding tests | Visual |
+| C9b | Role popups + popups tab remaps + margins + refresh hooks | config, runtime, `yzn-config` | contracts + keybinding tests | Visual |
 | C9c | Custom `[popups.<id>]` argv + unique titles | `yzn-config`, runtime | custom popup tests + contracts | Visual |
 | C9d | Agent hide keep-alive + provider bootstrap | `yzn-agent`, config | `yzn-contracts` | Provider UX |
 | C9e | Git LazyGit + editor env + close-on-toggle | config, runtime | `yzn-contracts` | Visual |
@@ -276,7 +276,7 @@ Detail lives in Owners, checks, and the notes below.
 | ID | Contract | Owner | Check | Gap |
 | --- | --- | --- | --- | --- |
 | C11a | Root semantic schema + source creation | `yzn-config`, `config.toml` | config tests + contracts | UI |
-| C11b | Mars/Zellij/Starship tabs; session Zellij active-file patch | `yzn-config` | config tests + contracts | Session live scalars |
+| C11b | Popups/Mars/Zellij/Starship tabs; session Zellij active-file patch | `yzn-config` | config tests + contracts | Session live scalars |
 | C11c | Helix tab + `yzn-hx` merge / `Alt r` / Steel | `yzn-config`, helix, `yzn-hx` | `helix-contracts` + config tests | UI |
 | C11d | Keys read-only + Advanced open-file | `yzn-config` | Keys/Advanced tests, key parity | UI |
 

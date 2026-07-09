@@ -4,6 +4,9 @@ User-visible runtime changes for Yazelix Next live here.
 
 ## Unreleased
 
+- `yzn config` has a dedicated `popups` tab for popup margins and managed
+  config/agent/Git/menu popup keybindings. Root `config.toml` remains the source
+  for these fields.
 - `yzn config` Zellij tab saves update the active managed session config when
   opened inside a session (`YAZELIX_STATE_DIR` + session env). Many scalars
   apply live via Zellij's config watcher; some still need a new session (for

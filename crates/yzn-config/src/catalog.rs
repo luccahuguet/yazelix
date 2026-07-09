@@ -63,6 +63,7 @@ pub(crate) const SOURCE_HELIX: &str = "helix";
 pub(crate) const SOURCE_KEYS: &str = "keys";
 pub(crate) const SOURCE_ADVANCED: &str = "advanced";
 pub(crate) const TAB_CONFIG: &str = " main";
+pub(crate) const TAB_POPUPS: &str = " popups";
 pub(crate) const TAB_MARS: &str = " mars";
 pub(crate) const TAB_ZELLIJ: &str = " zellij";
 pub(crate) const TAB_STARSHIP: &str = " starship";

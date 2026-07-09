@@ -294,15 +294,24 @@ mod tests {
         );
     }
 
-    fn assert_config_field(model: &ConfigUiModel, path: &str, kind: &str, summary: &str) {
+    fn assert_config_field_on_tab(
+        model: &ConfigUiModel,
+        path: &str,
+        tab: &str,
+        kind: &str,
+        summary: &str,
+    ) {
         let field = model_field(model, path);
-        assert_eq!(field.tab, TAB_CONFIG);
+        assert_eq!(field.tab, tab);
         assert_eq!(field.kind, kind);
         assert_eq!(
             field.current_value,
             default_config_value(path).unwrap().to_string()
         );
         assert_eq!(field.apply_status.summary, summary);
+    }
+    fn assert_config_field(model: &ConfigUiModel, path: &str, kind: &str, summary: &str) {
+        assert_config_field_on_tab(model, path, TAB_CONFIG, kind, summary);
     }
 
     #[test]
@@ -566,6 +575,7 @@ mod tests {
             model.tabs,
             [
                 " main",
+                " popups",
                 " mars",
                 " zellij",
                 " starship",
@@ -579,8 +589,6 @@ mod tests {
         let editor = model_field(&model, EDITOR_COMMAND_PATH);
         assert_config_field(&model, EDITOR_COMMAND_PATH, "string", "new opens");
         assert!(editor.allowed_values.is_empty());
-        assert_config_field(&model, POPUP_SIDE_MARGIN_PATH, "integer", "next launch");
-        assert_config_field(&model, POPUP_VERTICAL_MARGIN_PATH, "integer", "next launch");
 
         let appearance = model_field(&model, MARS_APPEARANCE_PRESET_PATH);
         assert_eq!(appearance.source_id, SOURCE_MARS);
@@ -620,7 +628,7 @@ mod tests {
         );
 
         for spec in POPUP_KEYBINDINGS {
-            assert_config_field(&model, spec.path, "string", "next launch");
+            assert_config_field_on_tab(&model, spec.path, TAB_POPUPS, "string", "next launch");
         }
 
         let field = model_field(&model, BAR_WIDGETS_PATH);
@@ -634,6 +642,28 @@ mod tests {
             r#"["editor","shell","term","codex_usage","cpu","ram"]"#
         );
         assert!(field.allowed_values.contains(&"claude_usage".to_string()));
+    }
+
+    #[test]
+    fn config_model_exposes_popup_settings_tab() {
+        let (_temp, paths) = temp_sources();
+
+        let model = build_model(&paths).unwrap();
+
+        assert!(model.tabs.contains(&TAB_POPUPS.to_string()));
+        for path in [
+            POPUP_SIDE_MARGIN_PATH,
+            POPUP_VERTICAL_MARGIN_PATH,
+            KEYBINDINGS_CONFIG_PATH,
+            KEYBINDINGS_AGENT_PATH,
+            KEYBINDINGS_GIT_PATH,
+            KEYBINDINGS_MENU_PATH,
+        ] {
+            let field = model_field(&model, path);
+            assert_eq!(field.source_id, SOURCE_CONFIG);
+            assert_eq!(field.tab, TAB_POPUPS);
+            assert_eq!(field.apply_status.summary, "next launch");
+        }
     }
 
     #[test]

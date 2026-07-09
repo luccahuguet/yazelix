@@ -143,17 +143,24 @@ Root config lives at `~/.config/yazelix-next/config.toml`.
 | `welcome.enabled` | `true` | Show the startup welcome splash. |
 | `welcome.style` | `random` | Startup screen style. |
 | `welcome.duration_seconds` | `3` | Startup splash duration, 1 to 60 seconds. |
+| `bar.widgets` | `editor`, `shell`, `term`, `codex_usage`, `cpu`, `ram` | Top bar widgets, left to right. |
+
+`editor.command` accepts one executable name or path, not a shell command with
+arguments. `yzn-hx` uses packaged Yazelix Helix. Host editors such as `hx` or
+`nvim` run from `PATH` and skip the managed Helix bridge.
+
+## Popups
+
+The `popups` tab edits popup geometry and managed popup role keys:
+
+| Field | Default | Meaning |
+| --- | --- | --- |
 | `popup.side_margin` | `1` | Left and right popup margin in terminal cells. |
 | `popup.vertical_margin` | `0` | Top and bottom popup margin in terminal cells. |
 | `keybindings.config` | `Alt Shift K` | Config popup trigger. |
 | `keybindings.agent` | `Alt Shift L` | Agent popup trigger. |
 | `keybindings.git` | `Alt Shift J` | Git popup trigger. |
 | `keybindings.menu` | `Alt Shift M` | Menu popup trigger. |
-| `bar.widgets` | `editor`, `shell`, `term`, `codex_usage`, `cpu`, `ram` | Top bar widgets, left to right. |
-
-`editor.command` accepts one executable name or path, not a shell command with
-arguments. `yzn-hx` uses packaged Yazelix Helix. Host editors such as `hx` or
-`nvim` run from `PATH` and skip the managed Helix bridge.
 
 Custom popups live in root config under `[popups.<id>]`:
 
@@ -300,7 +307,7 @@ git ls-files | grep -Ev '^\.beads/|\.lock$' | xargs wc -l
 | Language | Lines |
 | --- | ---: |
 | Ignore (`.gitignore`) | 4 |
-| Markdown | 1205 |
+| Markdown | 1215 |
 | Nix | 929 |
 | Shell | 82 |
 | YAML | 268 |
@@ -308,5 +315,5 @@ git ls-files | grep -Ev '^\.beads/|\.lock$' | xargs wc -l
 | KDL | 210 |
 | Nu | 11 |
 | Lua | 247 |
-| Rust | 11323 |
-| Total | 14515 |
+| Rust | 11370 |
+| Total | 14572 |
