@@ -4,6 +4,9 @@ User-visible runtime changes for Yazelix Next live here.
 
 ## Unreleased
 
+- The managed agent popup (`Alt Shift L`, hide keep-alive) now restarts when
+  the focused terminal cwd no longer matches the hidden agent pane. Same-cwd
+  toggles still reuse the existing agent process.
 - Darwin package confidence no longer relies on hosted macOS on every push.
   `Darwin Package Smoke` builds `.#packages.aarch64-darwin.yzn` weekly when
   `main` moved in the last 7 days (and always on manual dispatch). Routine CI
