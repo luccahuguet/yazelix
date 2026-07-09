@@ -1,0 +1,6 @@
+interface:
+  display_name: "KB Progress"
+  short_description: "Log progress on a task"
+  default_prompt: "Use $kb-progress to add a datestamped progress note to a task and auto-commit."
+policy:
+  allow_implicit_invocation: false

@@ -2,53 +2,29 @@
 
 ## Summary
 
-Yazelix should keep owning launch and integration-critical terminal behavior while giving users a clean, Yazelix-specific override layer for terminal-local preferences. The supported override files are `terminal_ghostty.conf` and `terminal_kitty.conf`.
+Yazelix owns generated terminal config for the packaged Mars path. Ghostty, Kitty, Rio, WezTerm, Foot, Ratty, Alacritty, and other capable terminals are supported through `yzx enter`; their native terminal config remains user-owned.
 
-## Why
+## Current Behavior
 
-The real customization need is not full terminal-config ownership. It is a safe way to inject themes, fonts, opacity, padding, cursor style, and similar preferences without making Yazelix startup behavior depend on ambient terminal config files. Foot and Ratty have generated Yazelix configs and native user-mode lookup, but no Yazelix-specific override sidecar until there is a concrete customization contract for each.
-
-## Scope
-
-- Ghostty and Kitty terminal override layering
-- Yazelix-managed base terminal configs
-- Yazelix-specific user override files under `~/.config/yazelix/terminal_*`
-- launcher ownership of startup behavior where needed so user override files can stay broad
-
-## Behavior
-
-- Yazelix generates its own managed base config for supported terminals.
-- Yazelix also supports one flat per-terminal user override file under `~/.config/yazelix/terminal_*`.
-- User override files are automatically picked up when Yazelix launches in the managed-config path.
-- `terminal.config_mode = "yazelix"` keeps using the managed config plus the Yazelix-specific override layer.
-- `terminal.config_mode = "user"` switches to the terminal's real native config path and fails fast if that file does not exist.
-- For Ghostty user mode, Yazelix checks upstream native config candidates in order: `$XDG_CONFIG_HOME/ghostty/config.ghostty`, `$XDG_CONFIG_HOME/ghostty/config`, and on macOS `~/Library/Application Support/com.mitchellh.ghostty/config.ghostty` then `config`.
-- Yazelix does not read the terminal's normal default config by default for this override feature.
-- Startup behavior remains Yazelix-owned at the launcher layer, even when the terminal config file itself comes from the user path.
+- Yazelix generates Mars config under the runtime state directory
+- `terminal.config_mode = "yazelix"` uses Yazelix-managed Mars config
+- `terminal.config_mode = "user"` loads the host Mars config path and fails fast if it is missing
+- Yazelix does not create `terminal_ghostty.conf` or `terminal_kitty.conf`
+- Host terminal preferences for Ghostty, Kitty, Rio, WezTerm, Foot, Ratty, Alacritty, or another emulator belong in that terminal's own config
 
 ## Non-goals
 
 - Generic terminal-config merging
-- Full ownership handoff to user configs
-- Using the terminal's normal config location as the default override source
-- Solving WezTerm terminal override layering
+- Full ownership handoff of host terminal config files
+- Reintroducing generated non-Mars terminal configs
+- Creating Yazelix-specific terminal override sidecars for user-owned terminal configs
 
 ## Acceptance Cases
 
-1. When Yazelix generates Ghostty or Kitty configs, it also supports a Yazelix-specific user override file for that terminal.
-2. When a user adds harmless terminal-native settings to the override file, Yazelix picks them up automatically in the managed-config path.
-3. Launch-critical startup behavior for Ghostty and Kitty stays Yazelix-owned instead of being overridden through the terminal override file.
-4. The override-layer implementation is simpler than a full terminal ownership split.
+1. Yazelix materializes only the generated Mars terminal config
+2. Yazelix does not create Ghostty or Kitty override stubs under `~/.config/yazelix`
+3. Host terminal setup documentation points users to `yzx enter` instead of generated non-Mars configs
 
 ## Verification
 
-- unit tests: `nushell/scripts/dev/test_yzx_generated_configs.nu`
-- integration tests: relocated runtime smoke in `nushell/scripts/dev/test_yzx_core_commands.nu`
-- manual verification: edit each override file and confirm the launched terminal reflects the preference change
-
-## Traceability
-- Defended by: `nushell/scripts/dev/test_yzx_generated_configs.nu`
-
-## Open Questions
-
-- Whether Yazelix should warn on obviously dangerous keys inside override files
+- unit tests: `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core terminal_materialization`

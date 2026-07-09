@@ -4,7 +4,7 @@
 use crate::bridge::{CoreError, ErrorClass};
 use crate::control_plane::{home_dir_from_env, state_dir_from_env};
 use crate::sidebar_bootstrap::{
-    is_sidebar_bootstrap_file, sidebar_bootstrap_owner_dir, SIDEBAR_BOOTSTRAP_CWD_ENV,
+    SIDEBAR_BOOTSTRAP_CWD_ENV, is_sidebar_bootstrap_file, sidebar_bootstrap_owner_dir,
 };
 use crate::terminal_materialization::MARS_EMOJI_ENV_KEYS;
 use std::fs;
@@ -272,7 +272,6 @@ mod tests {
     use super::config_override::*;
     use super::process::*;
     use super::restart::*;
-    use super::terminal::*;
     use super::*;
     use crate::control_plane::load_normalized_config_for_control;
     use crate::settings_surface::read_settings_jsonc_value;
@@ -523,9 +522,11 @@ mod tests {
         );
 
         let unknown = parse_session_config_patch("editor.nope=true", &fields).unwrap_err();
-        assert!(unknown
-            .to_string()
-            .contains("Unknown Yazelix config setting"));
+        assert!(
+            unknown
+                .to_string()
+                .contains("Unknown Yazelix config setting")
+        );
         let invalid_bool =
             parse_session_config_patch("core.skip_welcome_screen=maybe", &fields).unwrap_err();
         assert!(invalid_bool.to_string().contains("Invalid boolean value"));
@@ -534,9 +535,11 @@ mod tests {
             &fields,
         )
         .unwrap_err();
-        assert!(invalid_map
-            .to_string()
-            .contains("Invalid string-list-map value"));
+        assert!(
+            invalid_map
+                .to_string()
+                .contains("Invalid string-list-map value")
+        );
     }
 
     // Defends: --with writes an ephemeral settings.jsonc snapshot and validates it through the normal config contract without mutating the user's config.
@@ -588,16 +591,32 @@ mod tests {
         assert_eq!(normalized.get("zellij_pane_frames").unwrap(), "false");
     }
 
-    // Defends: installed package metadata is the launch terminal source of truth.
+    // Defends: --with can create one-shot config snapshots after generated runtime permissions are frozen read-only.
+    #[cfg(unix)]
     #[test]
-    fn active_terminal_reads_runtime_variant_metadata() {
-        let runtime = TempDir::new().unwrap();
-        fs::write(runtime.path().join("runtime_variant"), "rio\n").unwrap();
+    fn session_config_overrides_repair_readonly_override_root() {
+        use std::os::unix::fs::PermissionsExt;
 
-        assert_eq!(
-            crate::terminal_variant::active_terminal_from_runtime_dir(runtime.path()).unwrap(),
-            "rio"
-        );
+        let runtime = TempDir::new().unwrap();
+        write_runtime_layout(runtime.path());
+        let config = TempDir::new().unwrap();
+        let state = TempDir::new().unwrap();
+        let overrides_root = state.path().join("config_overrides");
+        fs::create_dir_all(&overrides_root).unwrap();
+        fs::set_permissions(&overrides_root, fs::Permissions::from_mode(0o555)).unwrap();
+
+        let session_config = materialize_session_config_override(
+            runtime.path(),
+            config.path(),
+            state.path(),
+            None,
+            &["core.skip_welcome_screen=true".to_string()],
+        )
+        .unwrap();
+
+        assert!(Path::new(&session_config).starts_with(&overrides_root));
+        let mode = fs::metadata(&overrides_root).unwrap().permissions().mode() & 0o777;
+        assert_eq!(mode, 0o755);
     }
 
     // Defends: Mars runtime metadata is accepted as a shipped packaged terminal.
@@ -629,88 +648,6 @@ mod tests {
         );
     }
 
-    // Defends: Ratty's clap command parser requires -e/--command to be the last option before the startup script.
-    #[test]
-    fn ratty_launch_command_keeps_command_last() {
-        let runtime = TempDir::new().unwrap();
-        let startup = runtime
-            .path()
-            .join("shells")
-            .join("posix")
-            .join("start_yazelix.sh");
-        fs::create_dir_all(startup.parent().unwrap()).unwrap();
-        fs::write(&startup, "#!/bin/sh\n").unwrap();
-        let config_path = runtime.path().join("ratty.toml");
-        let argv = build_launch_command_argv(
-            runtime.path(),
-            &crate::runtime_contract::TerminalCandidate {
-                terminal: "ratty".to_string(),
-                name: "Ratty".to_string(),
-                command: "ratty".to_string(),
-            },
-            &config_path,
-            Path::new("/tmp"),
-            None,
-        )
-        .unwrap();
-
-        let ratty_index = argv.iter().position(|arg| arg == "ratty").unwrap_or(0);
-        let ratty_args = &argv[ratty_index..];
-        assert_eq!(ratty_args[0], "ratty");
-        assert_eq!(ratty_args[1], "--config-file");
-        assert_eq!(ratty_args[2], config_path.to_string_lossy().as_ref());
-        assert_eq!(ratty_args[3], "--title");
-        assert_eq!(ratty_args[4], "Yazelix - Ratty");
-        assert_eq!(ratty_args[ratty_args.len() - 2], "-e");
-        assert_eq!(
-            ratty_args[ratty_args.len() - 1],
-            startup.to_string_lossy().as_ref()
-        );
-    }
-
-    // Defends: Ratty's Bevy/wgpu renderer gets a Vulkan-capable nixGL wrapper instead of the OpenGL-only wrapper used by Ghostty.
-    #[test]
-    fn ratty_launch_command_prefers_runtime_vulkan_wrapper() {
-        let runtime = TempDir::new().unwrap();
-        let startup = runtime
-            .path()
-            .join("shells")
-            .join("posix")
-            .join("start_yazelix.sh");
-        let libexec = runtime.path().join("libexec");
-        fs::create_dir_all(startup.parent().unwrap()).unwrap();
-        fs::create_dir_all(&libexec).unwrap();
-        fs::write(&startup, "#!/bin/sh\n").unwrap();
-        fs::write(libexec.join("nixGLMesa"), "#!/bin/sh\n").unwrap();
-        fs::write(libexec.join("nixVulkanIntel"), "#!/bin/sh\n").unwrap();
-        let config_path = runtime.path().join("ratty.toml");
-
-        let argv = build_launch_command_argv(
-            runtime.path(),
-            &crate::runtime_contract::TerminalCandidate {
-                terminal: "ratty".to_string(),
-                name: "Ratty".to_string(),
-                command: "ratty".to_string(),
-            },
-            &config_path,
-            Path::new("/tmp"),
-            None,
-        )
-        .unwrap();
-
-        let expected_wrapper = libexec
-            .join("nixVulkanIntel")
-            .to_string_lossy()
-            .into_owned();
-        assert_eq!(
-            argv.first().map(String::as_str),
-            Some(expected_wrapper.as_str())
-        );
-        assert_eq!(argv[1], "ratty");
-        assert_eq!(argv[argv.len() - 2], "-e");
-        assert_eq!(argv[argv.len() - 1], startup.to_string_lossy().as_ref());
-    }
-
     // Defends: unsupported package terminal metadata fails clearly instead of falling back to another terminal.
     #[test]
     fn active_terminal_rejects_unknown_runtime_variant_metadata() {
@@ -721,222 +658,6 @@ mod tests {
             crate::terminal_variant::active_terminal_from_runtime_dir(runtime.path()).unwrap_err();
         assert_eq!(error.code(), "unsupported_terminal_variant");
         assert!(error.message().contains("warpterm"));
-    }
-
-    // Defends: Ghostty must honor the Zellij-owned OSC title instead of pinning the launch-time placeholder title.
-    #[test]
-    fn ghostty_launch_does_not_force_window_title() {
-        let runtime = TempDir::new().unwrap();
-        let startup = runtime
-            .path()
-            .join("shells")
-            .join("posix")
-            .join("start_yazelix.sh");
-        fs::create_dir_all(startup.parent().unwrap()).unwrap();
-        fs::write(&startup, "#!/bin/sh\n").unwrap();
-        let config_path = runtime.path().join("ghostty/config");
-
-        let argv = build_launch_command_argv(
-            runtime.path(),
-            &crate::runtime_contract::TerminalCandidate {
-                terminal: "ghostty".to_string(),
-                name: "Ghostty".to_string(),
-                command: "ghostty".to_string(),
-            },
-            &config_path,
-            Path::new("/tmp"),
-            None,
-        )
-        .unwrap();
-
-        let ghostty_index = argv.iter().position(|arg| arg == "ghostty").unwrap_or(0);
-        let ghostty_args = &argv[ghostty_index..];
-        assert!(!ghostty_args
-            .iter()
-            .any(|arg| arg == "--title" || arg.starts_with("--title=")));
-        assert_eq!(ghostty_args[ghostty_args.len() - 2], "-e");
-        assert_eq!(
-            ghostty_args[ghostty_args.len() - 1],
-            startup.to_string_lossy().as_ref()
-        );
-    }
-
-    // Defends: Linux Ghostty keeps the runtime environment wrapper, graphics wrapper, and Linux-only windowing flags.
-    #[test]
-    fn ghostty_linux_launch_uses_runtime_wrapper_and_linux_flags() {
-        let runtime = TempDir::new().unwrap();
-        let posix = runtime.path().join("shells").join("posix");
-        let libexec = runtime.path().join("libexec");
-        let startup = posix.join("start_yazelix.sh");
-        let ghostty_wrapper = posix.join("yazelix_ghostty.sh");
-        let nixgl = libexec.join("nixGL");
-        fs::create_dir_all(&posix).unwrap();
-        fs::create_dir_all(&libexec).unwrap();
-        fs::write(&startup, "#!/bin/sh\n").unwrap();
-        fs::write(&ghostty_wrapper, "#!/bin/sh\n").unwrap();
-        fs::write(&nixgl, "#!/bin/sh\n").unwrap();
-        let config_path = runtime.path().join("ghostty/config");
-        let working_dir = runtime.path().join("workspace");
-
-        let argv = build_launch_command_argv_for_platform(
-            runtime.path(),
-            &crate::runtime_contract::TerminalCandidate {
-                terminal: "ghostty".to_string(),
-                name: "Ghostty".to_string(),
-                command: "ghostty".to_string(),
-            },
-            &config_path,
-            &working_dir,
-            None,
-            "linux",
-        )
-        .unwrap();
-
-        assert_eq!(argv[0], ghostty_wrapper.to_string_lossy().as_ref());
-        assert_eq!(argv[1], nixgl.to_string_lossy().as_ref());
-        assert_eq!(argv[2], "ghostty");
-        assert!(argv.contains(&"--gtk-single-instance=false".to_string()));
-        assert!(argv.contains(&"--class=com.yazelix.Yazelix".to_string()));
-        assert!(argv.contains(&"--x11-instance-name=yazelix".to_string()));
-        assert_eq!(argv[argv.len() - 2], "-e");
-        assert_eq!(argv[argv.len() - 1], startup.to_string_lossy().as_ref());
-    }
-
-    // Regression: macOS Ghostty 1.3.1 refuses direct packaged CLI GUI launch; Yazelix must hand the generated args to the app bundle.
-    #[test]
-    fn ghostty_macos_launch_uses_app_bundle_open() {
-        let runtime = TempDir::new().unwrap();
-        let startup = runtime
-            .path()
-            .join("shells")
-            .join("posix")
-            .join("start_yazelix.sh");
-        let app_bundle = runtime.path().join("Applications").join("Ghostty.app");
-        fs::create_dir_all(startup.parent().unwrap()).unwrap();
-        fs::create_dir_all(&app_bundle).unwrap();
-        fs::write(&startup, "#!/bin/sh\n").unwrap();
-        let config_path = runtime.path().join("ghostty/config");
-        let working_dir = runtime.path().join("workspace");
-
-        let argv = build_launch_command_argv_for_platform(
-            runtime.path(),
-            &crate::runtime_contract::TerminalCandidate {
-                terminal: "ghostty".to_string(),
-                name: "Ghostty".to_string(),
-                command: "ghostty".to_string(),
-            },
-            &config_path,
-            &working_dir,
-            None,
-            "macos",
-        )
-        .unwrap();
-
-        assert_eq!(
-            argv,
-            vec![
-                "/usr/bin/open".to_string(),
-                "-na".to_string(),
-                app_bundle.to_string_lossy().into_owned(),
-                "--args".to_string(),
-                "--config-default-files=false".to_string(),
-                format!("--config-file={}", config_path.to_string_lossy()),
-                format!("--working-directory={}", working_dir.to_string_lossy()),
-                "-e".to_string(),
-                startup.to_string_lossy().into_owned(),
-            ]
-        );
-        assert!(!argv.iter().any(|arg| arg == "ghostty"));
-        assert!(
-            !argv.iter().any(|arg| arg == "--gtk-single-instance=false"
-                || arg.starts_with("--class=")
-                || arg.starts_with("--x11-instance-name="))
-        );
-    }
-
-    // Defends: macOS Ghostty launch fails clearly if the runtime no longer carries the app bundle required by `open -na`.
-    #[test]
-    fn ghostty_macos_launch_requires_runtime_app_bundle() {
-        let runtime = TempDir::new().unwrap();
-        let startup = runtime
-            .path()
-            .join("shells")
-            .join("posix")
-            .join("start_yazelix.sh");
-        fs::create_dir_all(startup.parent().unwrap()).unwrap();
-        fs::write(&startup, "#!/bin/sh\n").unwrap();
-        let config_path = runtime.path().join("ghostty/config");
-        let working_dir = runtime.path().join("workspace");
-
-        let error = build_launch_command_argv_for_platform(
-            runtime.path(),
-            &crate::runtime_contract::TerminalCandidate {
-                terminal: "ghostty".to_string(),
-                name: "Ghostty".to_string(),
-                command: "ghostty".to_string(),
-            },
-            &config_path,
-            &working_dir,
-            None,
-            "macos",
-        )
-        .unwrap_err();
-
-        assert_eq!(error.code(), "missing_ghostty_macos_app_bundle");
-        assert!(error.message().contains("Applications/Ghostty.app"));
-    }
-
-    // Defends: Ghostty user-mode config discovery follows upstream file-name and macOS path candidates instead of hard-coding the old config name.
-    #[test]
-    fn ghostty_user_config_candidates_follow_upstream_paths() {
-        let home = Path::new("/Users/demo");
-        let xdg = Path::new("/Users/demo/.config");
-
-        assert_eq!(
-            ghostty_user_config_candidates(home, xdg, "linux"),
-            vec![
-                PathBuf::from("/Users/demo/.config/ghostty/config.ghostty"),
-                PathBuf::from("/Users/demo/.config/ghostty/config"),
-            ]
-        );
-        assert_eq!(
-            ghostty_user_config_candidates(home, xdg, "macos"),
-            vec![
-                PathBuf::from("/Users/demo/.config/ghostty/config.ghostty"),
-                PathBuf::from("/Users/demo/.config/ghostty/config"),
-                PathBuf::from(
-                    "/Users/demo/Library/Application Support/com.mitchellh.ghostty/config.ghostty",
-                ),
-                PathBuf::from(
-                    "/Users/demo/Library/Application Support/com.mitchellh.ghostty/config",
-                ),
-            ]
-        );
-    }
-
-    // Regression: terminal.config_mode=user accepts Ghostty's current config.ghostty name and reports every checked candidate when none exists.
-    #[test]
-    fn ghostty_user_config_selection_accepts_config_ghostty_and_lists_misses() {
-        let tmp = TempDir::new().unwrap();
-        let home = tmp.path().join("home");
-        let xdg = home.join(".config");
-        let ghostty_dir = xdg.join("ghostty");
-        fs::create_dir_all(&ghostty_dir).unwrap();
-        let current = ghostty_dir.join("config.ghostty");
-        fs::write(&current, "font-family = PragmataPro Mono Liga\n").unwrap();
-        let candidates =
-            user_terminal_config_candidates_for_platform(&home, "ghostty", &xdg, "macos").unwrap();
-
-        assert_eq!(
-            select_existing_user_terminal_config_path("ghostty", &candidates).unwrap(),
-            current
-        );
-
-        fs::remove_file(&current).unwrap();
-        let missing =
-            select_existing_user_terminal_config_path("ghostty", &candidates).unwrap_err();
-        assert!(missing.contains("config.ghostty"));
-        assert!(missing.contains("Application Support/com.mitchellh.ghostty/config"));
     }
 
     // Invariant: runtime handoffs must not leak old window runtime/session helper env.
@@ -982,7 +703,7 @@ mod tests {
         }
     }
 
-    // Regression: restart must prefer the current packaged runtime launcher instead of the stable Home Manager wrapper, so secondary terminal variants keep their identity.
+    // Regression: restart must prefer the current packaged runtime launcher instead of the stable Home Manager wrapper.
     #[test]
     fn current_runtime_yzx_launcher_prefers_runtime_bin_yzx() {
         let tmp = TempDir::new().unwrap();
@@ -1005,13 +726,13 @@ mod tests {
         );
     }
 
-    // Defends: desktop entry rendering keeps a quoted launcher path and terminal-backed starter window so spaces do not corrupt the Exec owner surface and pre-terminal failures stay visible.
+    // Defends: desktop entry rendering keeps a quoted launcher path and launches directly from the desktop shell so host starter terminals cannot kill the Yazelix handoff.
     #[test]
     fn render_desktop_entry_quotes_exec_path() {
-        let entry = render_desktop_entry(Path::new("/tmp/with space/yzx"), "ghostty");
+        let entry = render_desktop_entry(Path::new("/tmp/with space/yzx"), "mars");
         assert!(entry.contains("Exec=\"/tmp/with space/yzx\" desktop launch"));
-        assert!(entry.contains("Name=New Yazelix - Ghostty"));
-        assert!(entry.contains("Terminal=true"));
+        assert!(entry.contains("Name=New Yazelix - Mars"));
+        assert!(entry.contains("Terminal=false"));
     }
 
     // Regression: desktop launch schedules the real terminal only after the desktop-launch parent exits.
@@ -1041,6 +762,9 @@ mod tests {
             String::from_utf8_lossy(&output.stdout).trim(),
             launch_log.display().to_string()
         );
+        let scheduled_log = std::fs::read_to_string(&launch_log).unwrap();
+        assert!(scheduled_log.contains("desktop deferred launch scheduled"));
+        assert!(scheduled_log.contains("detach_method="));
 
         let mut launched = false;
         for _ in 0..20 {
@@ -1064,6 +788,8 @@ mod tests {
             raw_log = std::fs::read_to_string(&launch_log).unwrap();
         }
         assert!(raw_log.contains("desktop deferred launch"));
+        assert!(raw_log.contains("MARS_CONFIG_HOME="));
+        assert!(raw_log.contains("MARS_APP_ID="));
         assert!(raw_log.contains("argv:"));
         assert!(raw_log.contains("terminal_or_wrapper_pid="));
         assert!(raw_log.contains("early_exit_status=0"));

@@ -1,0 +1,6 @@
+interface:
+  display_name: "GitKB"
+  short_description: "Manage GitKB knowledge base for tasks, context, and documentation"
+  default_prompt: "Use $gitkb to manage the project knowledge base — create tasks, update context, view boards, and track progress."
+policy:
+  allow_implicit_invocation: true

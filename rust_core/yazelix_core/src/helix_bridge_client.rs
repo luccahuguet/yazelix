@@ -8,14 +8,16 @@ use crate::session_config_snapshot::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
+use std::env;
 use std::fs;
 use std::io::{BufRead, BufReader, Read, Write};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 const BRIDGE_SCHEMA_VERSION: u64 = 2;
 const DEFAULT_TIMEOUT_MS: u64 = 1_500;
 const MAX_TIMEOUT_MS: u64 = 10_000;
+const HELIX_BRIDGE_ROOT_ENV: &str = "YAZELIX_HELIX_BRIDGE_ROOT";
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 struct HelixTargetArgs {
@@ -532,8 +534,26 @@ fn resolve_bridge_target(
     state_dir: &Path,
     selector: &BridgeTargetSelector,
 ) -> Result<BridgeTarget, CoreError> {
-    let bridge_dir = state_dir.join("helix_bridge").join(&selector.session_id);
-    let registries = load_bridge_registries(&bridge_dir, &selector.session_id)?;
+    let mut registries = Vec::new();
+    let mut first_registry_dir_error = None;
+    for bridge_root in bridge_root_candidates(state_dir) {
+        let bridge_dir = bridge_root.join(&selector.session_id);
+        match load_bridge_registries(&bridge_dir, &selector.session_id) {
+            Ok(mut loaded) => registries.append(&mut loaded),
+            Err(error) if error.code() == "helix_bridge_registry_dir" => {
+                if first_registry_dir_error.is_none() {
+                    first_registry_dir_error = Some(error);
+                }
+            }
+            Err(error) => return Err(error),
+        }
+    }
+    if registries.is_empty()
+        && let Some(error) = first_registry_dir_error
+    {
+        return Err(error);
+    }
+
     let candidates = registries
         .into_iter()
         .filter(|registry| registry_matches_selector(registry, selector))
@@ -594,6 +614,20 @@ fn resolve_bridge_target(
         registry,
         auth_token,
     })
+}
+
+fn bridge_root_candidates(state_dir: &Path) -> Vec<PathBuf> {
+    let legacy_root = state_dir.join("helix_bridge");
+    let mut roots = Vec::new();
+    if let Ok(root) = env::var(HELIX_BRIDGE_ROOT_ENV)
+        && !root.trim().is_empty()
+    {
+        roots.push(PathBuf::from(root));
+    }
+    if !roots.iter().any(|root| root == &legacy_root) {
+        roots.push(legacy_root);
+    }
+    roots
 }
 
 fn registry_matches_selector(

@@ -1,7 +1,7 @@
 use super::{
     build_flake_output_path, build_nix_file_output_path, command_output_summary,
-    create_unique_temp_dir, format_json_value, prepare_temp_home, require_non_empty_dir_abs,
-    require_path_exists_abs, require_path_missing_abs,
+    create_unique_temp_dir, format_json_value, prepare_temp_home, require_path_exists_abs,
+    require_path_missing_abs,
 };
 use crate::repo_validation::ValidationReport;
 use serde_json::Value as JsonValue;
@@ -353,15 +353,12 @@ fn verify_profile_installed_runtime(
         .map(|value| value.trim().to_string())
         .filter(|value| !value.is_empty())
         .unwrap_or_else(|| "unknown".to_string());
-    let runtime_terminal = match runtime_variant.as_str() {
-        "foot" => "foot",
-        "kitty" => "kitty",
-        "rio" => "rio",
-        "wezterm" => "wezterm",
-        "ratty" => "ratty",
-        "mars" => "mars",
-        _ => "ghostty",
-    };
+    if runtime_variant != "mars" {
+        errors.push(format!(
+            "Installed Yazelix runtime must package Mars only, got runtime_variant `{runtime_variant}`"
+        ));
+    }
+    let runtime_terminal = "mars";
     let desktop_entry = applications_dir.join(terminal_desktop_entry_file_name(runtime_terminal));
     require_path_missing_abs(
         &desktop_entry,
@@ -371,65 +368,15 @@ fn verify_profile_installed_runtime(
     if !errors.is_empty() {
         return Ok(());
     }
-    let runtime_terminal_command = match runtime_terminal {
-        "mars" => "mars",
-        other => other,
-    };
+    let runtime_terminal_command = "mars";
     let runtime_yzx_cli = runtime_root.join("shells").join("posix").join("yzx_cli.sh");
     let runtime_yzx_core = runtime_libexec.join("yzx_core");
-    let runtime_ghostty_wrapper = runtime_root
-        .join("shells")
-        .join("posix")
-        .join("yazelix_ghostty.sh");
     let runtime_settings_default = runtime_root.join("settings_default.jsonc");
-    let runtime_ghostty_shader_root = runtime_root
+    let runtime_cursor_shader_root = runtime_root
         .join("configs")
         .join("terminal_emulators")
         .join("ghostty")
         .join("shaders");
-    let generated_ghostty_root = temp_home
-        .join(".local")
-        .join("share")
-        .join("yazelix")
-        .join("configs")
-        .join("terminal_emulators")
-        .join("ghostty");
-    let generated_ghostty_config = generated_ghostty_root.join("config");
-    let generated_ghostty_effect_dir = generated_ghostty_root
-        .join("shaders")
-        .join("generated_effects");
-    let generated_wezterm_config = temp_home
-        .join(".local")
-        .join("share")
-        .join("yazelix")
-        .join("configs")
-        .join("terminal_emulators")
-        .join("wezterm")
-        .join(".wezterm.lua");
-    let generated_kitty_config = temp_home
-        .join(".local")
-        .join("share")
-        .join("yazelix")
-        .join("configs")
-        .join("terminal_emulators")
-        .join("kitty")
-        .join("kitty.conf");
-    let generated_foot_config = temp_home
-        .join(".local")
-        .join("share")
-        .join("yazelix")
-        .join("configs")
-        .join("terminal_emulators")
-        .join("foot")
-        .join("foot.ini");
-    let generated_rio_config = temp_home
-        .join(".local")
-        .join("share")
-        .join("yazelix")
-        .join("configs")
-        .join("terminal_emulators")
-        .join("rio")
-        .join("config.toml");
     let generated_mars_config = temp_home
         .join(".local")
         .join("share")
@@ -438,14 +385,6 @@ fn verify_profile_installed_runtime(
         .join("terminal_emulators")
         .join("mars")
         .join("config.toml");
-    let generated_ratty_config = temp_home
-        .join(".local")
-        .join("share")
-        .join("yazelix")
-        .join("configs")
-        .join("terminal_emulators")
-        .join("ratty")
-        .join("ratty.toml");
 
     for (path, label) in [
         (runtime_toolbin.clone(), "runtime toolbin"),
@@ -459,40 +398,44 @@ fn verify_profile_installed_runtime(
             runtime_libexec.join("yzx_control"),
             "runtime-local yzx_control helper",
         ),
-        (runtime_yzx_cli.clone(), "runtime-local POSIX yzx launcher"),
         (
-            runtime_ghostty_wrapper.clone(),
-            "runtime-local Ghostty env wrapper",
+            runtime_libexec.join("yzc"),
+            "runtime-private Yazelix cursor helper",
         ),
+        (runtime_yzx_cli.clone(), "runtime-local POSIX yzx launcher"),
         (
             runtime_settings_default.clone(),
             "runtime-local default config",
         ),
         (
-            runtime_ghostty_shader_root.join("cursor_trail_reef.glsl"),
-            "runtime-local Ghostty trail shader variant",
+            runtime_cursor_shader_root.join("cursor_trail_reef.glsl"),
+            "runtime-local cursor trail shader variant",
         ),
         (
-            runtime_ghostty_shader_root
+            runtime_cursor_shader_root
                 .join("upstream_effects")
                 .join("ripple_rectangle_cursor.glsl"),
-            "runtime-local Ghostty cursor effect template",
+            "runtime-local cursor effect template",
         ),
     ] {
         require_path_exists_abs(&path, label, errors);
     }
     require_path_missing_abs(
-        &runtime_ghostty_shader_root.join("build_shaders.nu"),
-        "stale runtime-local Ghostty shader builder",
+        &runtime_cursor_shader_root.join("build_shaders.nu"),
+        "stale runtime-local cursor shader builder",
         errors,
     );
-    if runtime_terminal == "mars" {
-        require_path_exists_abs(
-            &runtime_root.join("share").join("mars").join("config.toml"),
-            "runtime-local Mars packaged config",
-            errors,
-        );
-    }
+    require_path_exists_abs(
+        &runtime_root.join("share").join("mars").join("config.toml"),
+        "runtime-local Mars packaged config",
+        errors,
+    );
+    validate_declared_bundled_runtime_commands(
+        &runtime_root,
+        &runtime_libexec,
+        &runtime_toolbin,
+        errors,
+    );
 
     for expected_tool in [
         "zellij",
@@ -540,14 +483,18 @@ fn verify_profile_installed_runtime(
         "runtime-private helper leaked into exported toolbin",
         errors,
     );
+    require_path_missing_abs(
+        &runtime_toolbin.join("yzc"),
+        "runtime-private cursor helper leaked into exported toolbin",
+        errors,
+    );
     if cfg!(target_os = "linux") {
         require_path_exists_abs(
             &runtime_libexec.join("nixGLMesa"),
             "runtime tool `nixGLMesa`",
             errors,
         );
-        if (runtime_terminal == "ratty" || runtime_terminal == "mars")
-            && !runtime_libexec.join("nixVulkanMesa").exists()
+        if !runtime_libexec.join("nixVulkanMesa").exists()
             && !runtime_libexec.join("nixVulkanIntel").exists()
         {
             errors.push(format!(
@@ -685,56 +632,17 @@ fn verify_profile_installed_runtime(
     )?;
     if !terminal_materialization_result.status.success() {
         errors.push(format!(
-            "Installed runtime failed to materialize the selected terminal config during cold profile-install validation\n{}",
+            "Installed runtime failed to materialize the packaged terminal config during cold profile-install validation\n{}",
             command_output_summary(&terminal_materialization_result)
         ));
         return Ok(());
     }
 
-    if runtime_terminal == "ghostty" {
-        require_ghostty_shader_references_exist(&generated_ghostty_config, errors)?;
-        require_non_empty_dir_abs(
-            &generated_ghostty_effect_dir,
-            "generated Ghostty cursor effect shaders directory",
-            errors,
-        )?;
-    } else if runtime_terminal == "kitty" {
-        require_path_exists_abs(
-            &generated_kitty_config,
-            "generated Kitty config for selected runtime variant",
-            errors,
-        );
-    } else if runtime_terminal == "foot" {
-        require_path_exists_abs(
-            &generated_foot_config,
-            "generated Foot config for selected runtime variant",
-            errors,
-        );
-    } else if runtime_terminal == "rio" {
-        require_path_exists_abs(
-            &generated_rio_config,
-            "generated Rio config for selected runtime variant",
-            errors,
-        );
-    } else if runtime_terminal == "wezterm" {
-        require_path_exists_abs(
-            &generated_wezterm_config,
-            "generated WezTerm config for selected runtime variant",
-            errors,
-        );
-    } else if runtime_terminal == "ratty" {
-        require_path_exists_abs(
-            &generated_ratty_config,
-            "generated Ratty config for selected runtime variant",
-            errors,
-        );
-    } else if runtime_terminal == "mars" {
-        require_path_exists_abs(
-            &generated_mars_config,
-            "generated Mars Terminal config for selected runtime variant",
-            errors,
-        );
-    }
+    require_path_exists_abs(
+        &generated_mars_config,
+        "generated Mars Terminal config for selected packaged terminal",
+        errors,
+    );
     if errors.is_empty() {
         verify_profile_desktop_install_path(
             repo_root,
@@ -746,6 +654,74 @@ fn verify_profile_installed_runtime(
         )?;
     }
     Ok(())
+}
+
+fn validate_declared_bundled_runtime_commands(
+    runtime_root: &Path,
+    runtime_libexec: &Path,
+    runtime_toolbin: &Path,
+    errors: &mut Vec<String>,
+) {
+    let manifest_path = runtime_root.join("runtime_tools.json");
+    let raw = match fs::read_to_string(&manifest_path) {
+        Ok(raw) => raw,
+        Err(error) => {
+            errors.push(format!(
+                "Failed to read runtime tool manifest {}: {}",
+                manifest_path.display(),
+                error
+            ));
+            return;
+        }
+    };
+    let manifest: JsonValue = match serde_json::from_str(&raw) {
+        Ok(manifest) => manifest,
+        Err(error) => {
+            errors.push(format!(
+                "Failed to parse runtime tool manifest {}: {}",
+                manifest_path.display(),
+                error
+            ));
+            return;
+        }
+    };
+    let Some(tools) = manifest.as_object() else {
+        errors.push(format!(
+            "Runtime tool manifest {} must be a JSON object",
+            manifest_path.display()
+        ));
+        return;
+    };
+
+    for (tool_name, spec) in tools {
+        let source = spec
+            .get("source")
+            .and_then(JsonValue::as_str)
+            .unwrap_or_default();
+        if source != "bundled" {
+            continue;
+        }
+        let Some(commands) = spec.get("commands").and_then(JsonValue::as_array) else {
+            errors.push(format!(
+                "Bundled runtime tool `{tool_name}` has no commands array in {}",
+                manifest_path.display()
+            ));
+            continue;
+        };
+        for command in commands.iter().filter_map(JsonValue::as_str) {
+            if command.is_empty() {
+                continue;
+            }
+            if runtime_libexec.join(command).exists() || runtime_toolbin.join(command).exists() {
+                continue;
+            }
+            errors.push(format!(
+                "Bundled runtime tool `{tool_name}` declares command `{command}`, but neither {} nor {} exists",
+                runtime_libexec.join(command).display(),
+                runtime_toolbin.join(command).display()
+            ));
+        }
+    }
 }
 
 const RUNTIME_ENV_PROBE_NU: &str = r#"let runtime_dir = ($env.YAZELIX_RUNTIME_DIR | default ""); let path_entries = ($env.PATH | default []); let runtime_libexec = (if ($runtime_dir | is-empty) { "" } else { $runtime_dir | path join "libexec" }); print ({shell: ($env.IN_YAZELIX_SHELL | default ""), runtime: $runtime_dir, path0: ($path_entries | get -o 0 | default ""), path1: ($path_entries | get -o 1 | default ""), libexec_on_path: (if ($runtime_libexec | is-empty) { false } else { $path_entries | any {|entry| $entry == $runtime_libexec } }), yzx: ((which yzx | get -o 0.path | default ""))} | to json -r)"#;
@@ -835,7 +811,7 @@ fn validate_profile_desktop_entry_contents(
     let expected_name = format!("Name={}", terminal_desktop_entry_name(runtime_terminal));
     for required in [
         expected_name.as_str(),
-        "Terminal=true",
+        "Terminal=false",
         "X-Yazelix-Managed=true",
     ] {
         if !raw.lines().any(|line| line.trim() == required) {
@@ -942,66 +918,31 @@ fn validate_runtime_env_probe(
     }
 }
 
-fn resolve_ghostty_shader_reference(ghostty_config_path: &Path, shader_ref: &str) -> PathBuf {
-    let raw_ref = shader_ref.trim().trim_matches('"');
-    let path = Path::new(raw_ref);
-    if path.is_absolute() {
-        return path.to_path_buf();
-    }
-    let relative = raw_ref.strip_prefix("./").unwrap_or(raw_ref);
-    ghostty_config_path
-        .parent()
-        .unwrap_or_else(|| Path::new("."))
-        .join(relative)
-}
-
-fn require_ghostty_shader_references_exist(
-    ghostty_config_path: &Path,
-    errors: &mut Vec<String>,
-) -> Result<(), String> {
-    require_path_exists_abs(ghostty_config_path, "generated Ghostty config", errors);
-    if !ghostty_config_path.exists() {
-        return Ok(());
-    }
-
-    let content = fs::read_to_string(ghostty_config_path).map_err(|error| {
-        format!(
-            "Failed to read generated Ghostty config {}: {}",
-            ghostty_config_path.display(),
-            error
-        )
-    })?;
-    let shader_refs = content
-        .lines()
-        .map(str::trim)
-        .filter_map(|line| {
-            line.strip_prefix("custom-shader = ")
-                .map(str::trim)
-                .map(ToOwned::to_owned)
-        })
-        .collect::<Vec<_>>();
-    if shader_refs.is_empty() {
-        errors.push(format!(
-            "Generated Ghostty config references no shader assets: {}",
-            ghostty_config_path.display()
-        ));
-    }
-    for shader_ref in shader_refs {
-        let shader_path = resolve_ghostty_shader_reference(ghostty_config_path, &shader_ref);
-        require_path_exists_abs(
-            &shader_path,
-            &format!("generated Ghostty shader `{shader_ref}`"),
-            errors,
-        );
-    }
-    Ok(())
-}
-
 // Test lane: maintainer
 #[cfg(test)]
 mod tests {
     use super::*;
     use tempfile::tempdir;
+
+    // Regression: Nix indented strings treat `${...}` as interpolation, so shell parameter
+    // expansion inside the generated runtime wrapper must use `''${...}`.
+    #[test]
+    fn runtime_tree_wrapper_escapes_shell_parameter_expansion_for_nix() {
+        let repo_root = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .and_then(Path::parent)
+            .unwrap();
+        let raw = fs::read_to_string(repo_root.join("packaging/mk_runtime_tree.nix")).unwrap();
+
+        assert!(
+            raw.contains(r"\''${PATH:-}"),
+            "runtime wrapper PATH probe must escape literal `${{...}}` for Nix indented strings"
+        );
+        assert!(
+            !raw.contains(r"\${PATH:-}"),
+            "runtime wrapper PATH probe uses shell escaping that Nix can parse as interpolation"
+        );
+    }
 
     // Defends: cold profile-install validation checks the explicit desktop-entry install path shape without relying on a maintainer's real profile.
     #[test]
@@ -1014,14 +955,14 @@ mod tests {
         fs::write(
             &desktop,
             format!(
-                "[Desktop Entry]\nName=New Yazelix - Ghostty\nTerminal=true\nX-Yazelix-Managed=true\nExec=\"{}\" desktop launch\n",
+                "[Desktop Entry]\nName=New Yazelix - Mars\nTerminal=false\nX-Yazelix-Managed=true\nExec=\"{}\" desktop launch\n",
                 yzx.display()
             ),
         )
         .unwrap();
 
         let mut errors = Vec::new();
-        validate_profile_desktop_entry_contents(&desktop, &yzx, "ghostty", &mut errors).unwrap();
+        validate_profile_desktop_entry_contents(&desktop, &yzx, "mars", &mut errors).unwrap();
 
         assert!(errors.is_empty(), "{errors:?}");
     }
@@ -1036,12 +977,12 @@ mod tests {
         fs::write(&yzx, "").unwrap();
         fs::write(
             &desktop,
-            "[Desktop Entry]\nName=New Yazelix - Ghostty\nTerminal=true\nX-Yazelix-Managed=true\nExec=\"/old/bin/yzx\" desktop launch\n",
+            "[Desktop Entry]\nName=New Yazelix - Mars\nTerminal=false\nX-Yazelix-Managed=true\nExec=\"/old/bin/yzx\" desktop launch\n",
         )
         .unwrap();
 
         let mut errors = Vec::new();
-        validate_profile_desktop_entry_contents(&desktop, &yzx, "ghostty", &mut errors).unwrap();
+        validate_profile_desktop_entry_contents(&desktop, &yzx, "mars", &mut errors).unwrap();
 
         assert!(
             errors

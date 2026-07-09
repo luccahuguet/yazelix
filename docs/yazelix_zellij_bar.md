@@ -15,7 +15,7 @@ The child package installs:
 - `share/yazelix_zellij_bar/examples/standalone_zellij_layout.kdl`
 - `share/yazelix_zellij_bar/examples/yazelix_runtime_widgets.kdl`
 
-The standalone child repo installs `zjstatus.wasm` from its pinned `zjstatus` flake input. This main repo makes that child input follow Yazelix's own `zjstatus` pin when forwarding `#yazelix_zellij_bar`, and the integrated Yazelix runtime consumes the same pinned upstream package artifact for its managed plugin path.
+The standalone child repo installs `zjstatus.wasm` from its pinned `zjstatus` flake input. This main repo makes that child input follow Yazelix's own `zjstatus` pin when forwarding `#yazelix_zellij_bar`, and the integrated Yazelix runtime consumes the same pinned package artifact for its managed plugin path.
 
 Non-Yazelix users can install the standalone bar directly:
 
@@ -29,7 +29,7 @@ From this repo, the forwarded package remains:
 nix build .#yazelix_zellij_bar
 ```
 
-Use the child README for Zellij layout examples and custom command-widget configuration. KDL is the customization surface for standalone users. Integrated Yazelix calls `yazelix_zellij_bar_widget render-yazelix-runtime --json <config>` to render the child-owned runtime KDL template into a complete zjstatus plugin block for generated layouts. The integrated template keeps zjstatus `{tabs}` for event-driven tab identity, focus updates, creation/deletion updates, click handling, and upstream terminal-bell styling. The child-owned `tabs` command remains a renderer probe for the launch-scoped activity snapshot cache while the default AI-activity bridge stays on native tab-name decoration.
+Use the child README for Zellij layout examples and custom command-widget configuration. KDL is the customization surface for standalone users. Integrated Yazelix calls `yazelix_zellij_bar_widget render-yazelix-runtime --json <config>` to render the child-owned runtime KDL template into a complete zjstatus plugin block for generated layouts. The integrated template keeps zjstatus `{tabs}` for event-driven tab identity, focus updates, creation/deletion updates, click handling, upstream terminal-bell styling, and pipe-fed Yazelix activity markers. The child-owned `tabs` command remains a renderer probe for the launch-scoped activity snapshot cache; the default activity path no longer renames native Zellij tabs.
 
 The standalone non-workspace widget commands are intentionally short:
 

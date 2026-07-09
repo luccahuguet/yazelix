@@ -43,6 +43,21 @@ When creating new files or directories, always use underscores to maintain consi
 
 - Yazelix has packaged runtime surfaces and maintainer development-shell surfaces; keep user runtime behavior distinct from dev tooling
 - The canonical user semantic config is `~/.config/yazelix/settings.jsonc`
+- `~/.config/yazelix` is the user-owned editable input root; `~/.local/share/yazelix` is generated runtime output
+- Do not hand-edit generated runtime files under `~/.local/share/yazelix`; edit the owning inputs and relaunch/rebuild through the install owner
+- The supported installed `yzx` frontdoor resolves through the install owner, typically `~/.nix-profile/bin/yzx`
+- Stale local shadow paths such as `~/.local/bin/yzx` and old user-local desktop entries under `~/.local/share/applications/` should be removed or archived if they shadow the active profile-owned install
+- Codex integration must mirror the Yazelix binary/runtime ownership model with no drift:
+  - `~/.config/yazelix/...` is the main editable input surface, including `settings.jsonc` and managed overrides, per `docs/customization.md:5` and `docs/posix_xdg.md:21`
+  - `~/.local/share/yazelix/...` is generated runtime output; "edit the config inputs, not generated runtime files" per `docs/customization.md:7`, and Yazelix-owned output per `README.md:133`
+  - `~/.nix-profile/bin/yzx` is the active install-owner/profile frontdoor per `home_manager/README.md:306`
+  - `~/.local/bin/yzx` is a stale legacy shadow if present and should be removed or archived when it shadows the profile path, per `home_manager/README.md:310`
+  - old user-local desktop entries under `~/.local/share/applications/` are stale shadows if they shadow the active profile desktop entry, per `home_manager/README.md:309` and `docs/troubleshooting.md:187`
+- Keep these direct proof points visible in future Yazelix/Codex ownership audits:
+  - `README.md:282` says Yazelix keeps user-edited config separate from generated runtime output
+  - `README.md:285` and `docs/posix_xdg.md:31` enumerate generated runtime output under `~/.local/share/yazelix`
+  - `docs/zellij-configuration.md:53` forbids treating generated Zellij runtime files as a manual edit surface
+  - `docs/contracts/runtime_root_contract.md:20` warns against treating generated state as handwritten config
 - Shipped config defaults/templates feed `settings.jsonc` generation through `settings_default.jsonc`, `yazelix_cursors_default.toml`, `config_metadata/yazelix_settings.schema.json`, and `config_metadata/main_config_contract.toml`
 - Old mutable `yazelix.toml` and `cursors.toml` files are unsupported legacy inputs, not runtime config sources or automatic migration inputs
 - All Yazelix-owned user config paths reference `~/.config/yazelix/` as the base directory unless an explicit XDG/config override is in effect
@@ -108,6 +123,8 @@ When creating new files or directories, always use underscores to maintain consi
 
 - Prefer `yzx run ...` for project-scoped tool invocations instead of raw `nix develop -c ...` when running tools provided by the Yazelix environment.
 - Use raw `nix develop -c ...` only when `yzx run ...` is not a clean fit for the task, such as larger multi-command shell scripts or environment debugging.
+- Do not mutate installed surfaces before package proof. `nix profile add`, `nix profile upgrade`, `home-manager switch`, `yzx desktop install`, and desktop entry rewrites are consumer-side actions, not source-build proof. First build and validate the relevant flake outputs with no profile mutation, inspect or run the built `/nix/store/...` output directly when needed, then choose exactly one install owner to consume the proven artifact.
+- Keep install owners singular during diagnosis. Do not mix a default-profile Yazelix, a workspace-local profile Yazelix, a Home Manager profile entry, and user-local desktop entries as if they prove the same runtime. When testing desktop launch behavior, prove that `Exec`, runtime dir, generated configs, and logs all come from the same owner.
 - For Rust inner-loop work, prefer the direct maintainer commands before reaching for Nix:
   - `yzx dev rust fmt --check`
   - `yzx dev rust check`
@@ -119,10 +136,10 @@ When creating new files or directories, always use underscores to maintain consi
   1. Run focused Rust checks/tests for touched code, such as `yzx dev rust check core` or `yzx dev rust test <filter>`.
   2. Run eval-fast package contracts such as `nix build .#checks.$(nix eval --raw --impure --expr builtins.currentSystem).kgp_package_contracts --no-link --no-write-lock-file` for KGP override metadata changes.
   3. Build only the touched package output when needed, such as `nix build .#yazelix_kgp_zellij --no-link --no-write-lock-file`.
-  4. Run `nix build .#runtime_ghostty --no-link --no-write-lock-file` once as the final package gate after the smaller checks pass.
+  4. Run `nix build .#runtime_mars --no-link --no-write-lock-file` once as the final package gate after the smaller checks pass.
 - Avoid launching multiple `nix develop`, `nix eval`, or package-build commands in parallel during validation. They contend on Nix eval caches, store locks, and Cargo/Nix build directories, which makes the session slower and noisier than serialized checks.
 - **Do not run `yzx restart` as an agent.** It kills the user's live Zellij session. If a runtime change needs a fresh Yazelix session, ask the maintainer to launch one or explicitly approve the destructive restart first.
-- Mars and Ghostty are the first-class Yazelix terminal variants. Mars is the default because Yazelix controls the Rust fork and can keep the terminal/runtime stack aligned; Ghostty remains the mature supported alternate.
+- Mars is the first-class Yazelix terminal variant because Yazelix controls the Rust fork and can keep the terminal/runtime stack aligned. Other terminal emulators are host-owned entrypoints that should start Yazelix with `yzx enter`.
 - Keep Mars-related compile-heavy commands (`cargo`, full `nix build`, or Home Manager switch) intentional. Prefer metadata evals and focused package/runtime checks first, then run the exact Mars gate required by the change.
 
 ## Shell Boundary Rule

@@ -18,25 +18,6 @@ pub(super) fn require_path_exists_abs(path: &Path, label: &str, errors: &mut Vec
     }
 }
 
-pub(super) fn require_non_empty_dir_abs(
-    path: &Path,
-    label: &str,
-    errors: &mut Vec<String>,
-) -> Result<(), String> {
-    require_path_exists_abs(path, label, errors);
-    if !path.exists() {
-        return Ok(());
-    }
-    let has_file = fs::read_dir(path)
-        .map_err(|error| format!("Failed to read {}: {}", path.display(), error))?
-        .filter_map(Result::ok)
-        .any(|entry| entry.path().is_file());
-    if !has_file {
-        errors.push(format!("{} is empty: {}", label, path.display()));
-    }
-    Ok(())
-}
-
 pub(super) fn require_list_contains(
     items: &[String],
     expected: &str,

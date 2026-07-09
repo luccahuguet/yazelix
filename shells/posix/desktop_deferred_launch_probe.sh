@@ -1,5 +1,8 @@
 #!/bin/sh
 
+PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin${PATH:+:$PATH}"
+export PATH
+
 if [ "${1:-}" != "--detached" ]; then
   if [ "$#" -lt 4 ]; then
     echo "Error: desktop deferred launch probe requires log path, parent pid, '--', and command argv" >&2
@@ -9,11 +12,40 @@ if [ "${1:-}" != "--detached" ]; then
   launch_log="$1"
   : > "$launch_log"
 
+  log_timestamp() {
+    date '+%Y-%m-%dT%H:%M:%S%z'
+  }
+
+  write_schedule_header() {
+    detach_method="$1"
+    {
+      printf '[%s] desktop deferred launch scheduled\n' "$(log_timestamp)"
+      printf 'scheduler_pid=%s\n' "$$"
+      printf 'detach_method=%s\n' "$detach_method"
+    } >>"$launch_log"
+  }
+
+  write_schedule_header "nohup-setsid"
+
   if command -v setsid >/dev/null 2>&1; then
     nohup setsid "$0" --detached "$@" >/dev/null 2>&1 < /dev/null &
   else
+    printf 'fallback_detach_method=nohup\n' >>"$launch_log"
     nohup "$0" --detached "$@" >/dev/null 2>&1 < /dev/null &
   fi
+  detached_pid=$!
+
+  i=0
+  while [ "$i" -lt 20 ]; do
+    if grep -q 'desktop deferred launch$' "$launch_log" 2>/dev/null; then
+      break
+    fi
+    if ! kill -0 "$detached_pid" 2>/dev/null; then
+      break
+    fi
+    sleep 0.05
+    i=$((i + 1))
+  done
 
   printf '%s\n' "$launch_log"
   exit 0
@@ -83,6 +115,8 @@ write_launch_header() {
     printf 'helper_pid=%s\n' "$$"
     printf 'cwd=%s\n' "$(pwd)"
     printf 'MARS_CONFIG=%s\n' "${MARS_CONFIG:-}"
+    printf 'MARS_CONFIG_HOME=%s\n' "${MARS_CONFIG_HOME:-}"
+    printf 'MARS_APP_ID=%s\n' "${MARS_APP_ID:-}"
     printf 'RIO_CONFIG_HOME=%s\n' "${RIO_CONFIG_HOME:-}"
     printf 'argv:\n'
     for arg in "$@"; do
@@ -91,7 +125,6 @@ write_launch_header() {
   } >>"$launch_log"
 }
 
-: > "$launch_log"
 write_launch_header "$@"
 
 i=0

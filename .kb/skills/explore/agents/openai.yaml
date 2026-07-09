@@ -1,0 +1,6 @@
+interface:
+  display_name: "Explore"
+  short_description: "Semantic exploration across code and documents using GitKB"
+  default_prompt: "Use $explore to find relevant code and documents by concept or keyword."
+policy:
+  allow_implicit_invocation: true

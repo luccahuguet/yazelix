@@ -10,7 +10,7 @@
 
 [contract]
 version = 1
-ratconfig_contract_version = 13
+ratconfig_contract_version = 16
 ratconfig_applied_change_ids = [
   "rename-editor-sidebar-to-workspace-left-sidebar",
   "replace-native-movement-defaults",
@@ -24,6 +24,9 @@ ratconfig_applied_change_ids = [
   "remove-cpu-ram-from-default-widget-tray",
   "add-session-widget-tray-value",
   "add-widget-chrome-settings",
+  "adopt-ctrl-alt-native-mode-layer",
+  "adopt-mixed-native-mode-layer",
+  "restore-codex-usage-both-default",
 ]
 surface = "main"
 field_count = 53
@@ -413,7 +416,7 @@ apply_mode = "generated_runtime_refresh"
 
 [fields."zellij.codex_usage_display"]
 kind = "string"
-default = "quota"
+default = "both"
 parser_key = "zellij_codex_usage_display"
 home_manager_option = "zellij_codex_usage_display"
 parser_behavior = "direct"
@@ -652,15 +655,23 @@ move_pane_down = ["Ctrl Alt j"]
 move_pane_up = ["Ctrl Alt k"]
 selection_cycle_unbind = ["Alt (", "Alt )"]
 toggle_pane_in_group_unbind = ["Alt p"]
-toggle_pane_in_group = ["Ctrl Alt p"]
+toggle_pane_in_group = []
 toggle_group_marking = ["Ctrl Alt Shift P"]
-move_mode_unbind = []
+move_mode_unbind = ["Ctrl h"]
+pane_mode_unbind = []
+pane_mode = ["Ctrl p"]
+resize_mode_unbind = []
+resize_mode = ["Ctrl n"]
+tab_mode_unbind = []
+tab_mode = ["Ctrl t"]
 locked_mode_unbind = ["Ctrl g"]
 locked_mode = ["Ctrl Alt g"]
 scroll_mode_unbind = ["Ctrl s"]
 scroll_mode = ["Ctrl Alt s"]
 session_mode_unbind = ["Ctrl o"]
 session_mode = ["Ctrl Alt o"]
+quit_unbind = []
+quit = ["Ctrl q"]
 tmux_mode_unbind = ["Ctrl b"]
 
 [fields."zellij.keybindings"]
@@ -714,6 +725,8 @@ kind = "string_list"
 default = [
   "git",
   "starship",
+  "lazygit",
+  "smart-tabs",
 ]
 parser_key = "yazi_plugins"
 home_manager_option = "yazi_plugins"

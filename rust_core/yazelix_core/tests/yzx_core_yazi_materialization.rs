@@ -67,6 +67,8 @@ fn prepare_runtime_fixture(runtime_dir: &Path) {
         "sidebar-state",
         "git",
         "starship",
+        "lazygit",
+        "smart-tabs",
     ] {
         let plugin_dir = yazi_dir.join("plugins").join(format!("{plugin}.yazi"));
         fs::create_dir_all(&plugin_dir).unwrap();
@@ -275,6 +277,54 @@ theme = "tokyo-night"
     let repair = fixture.generate(false).unwrap();
     assert!(repair.synced_static_assets);
     assert_eq!(fs::read_to_string(plugin_main).unwrap(), "return 'ok'\n");
+}
+
+// Regression: generated Yazi asset roots can retain read-only package permissions; materialization must regain write access before replacing them.
+#[cfg(unix)]
+#[test]
+fn yazi_materialization_repairs_readonly_generated_asset_roots() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let fixture = YaziMaterializationFixture::new("");
+    fixture.generate(true).unwrap();
+
+    let plugin_main = fixture
+        .output_dir
+        .join("plugins")
+        .join("sidebar-state.yazi")
+        .join("main.lua");
+    fs::write(&plugin_main, "return 'stale readonly plugin'\n").unwrap();
+
+    for path in [
+        fixture.output_dir.join("plugins/sidebar-state.yazi"),
+        fixture.output_dir.join("plugins"),
+        fixture.output_dir.join("flavors/tokyo-night.yazi"),
+        fixture.output_dir.join("flavors"),
+        fixture.output_dir.clone(),
+    ] {
+        fs::set_permissions(path, fs::Permissions::from_mode(0o555)).unwrap();
+    }
+
+    let repair = fixture.generate(true).unwrap();
+
+    assert!(repair.synced_static_assets);
+    assert_eq!(fs::read_to_string(plugin_main).unwrap(), "return 'ok'\n");
+    assert_eq!(
+        fs::metadata(&fixture.output_dir.join("plugins"))
+            .unwrap()
+            .permissions()
+            .mode()
+            & 0o777,
+        0o755
+    );
+    assert_eq!(
+        fs::metadata(&fixture.output_dir)
+            .unwrap()
+            .permissions()
+            .mode()
+            & 0o777,
+        0o755
+    );
 }
 
 // Regression: Nix-packaged bundled plugin directories can be symlinks into the package source, and static sync must copy their real contents.

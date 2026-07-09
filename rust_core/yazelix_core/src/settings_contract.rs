@@ -14,7 +14,7 @@ use std::path::Path;
 pub const SETTINGS_CONTRACT_ID: &str = "yazelix.settings";
 pub const SETTINGS_CONTRACT_STATE_PATH: &str = "ratconfig.contract";
 const SETTINGS_CONTRACT_BASELINE_VERSION: u64 = 1;
-pub const SETTINGS_CONTRACT_CURRENT_VERSION: u64 = 13;
+pub const SETTINGS_CONTRACT_CURRENT_VERSION: u64 = 16;
 const CHANGE_RENAME_EDITOR_SIDEBAR_TO_WORKSPACE_LEFT_SIDEBAR: &str =
     "rename-editor-sidebar-to-workspace-left-sidebar";
 const CHANGE_REPLACE_NATIVE_MOVEMENT_DEFAULTS: &str = "replace-native-movement-defaults";
@@ -33,6 +33,9 @@ const CHANGE_REMOVE_CPU_RAM_FROM_DEFAULT_WIDGET_TRAY: &str =
     "remove-cpu-ram-from-default-widget-tray";
 const CHANGE_ADD_SESSION_WIDGET_TRAY_VALUE: &str = "add-session-widget-tray-value";
 const CHANGE_ADD_WIDGET_CHROME_SETTINGS: &str = "add-widget-chrome-settings";
+const CHANGE_ADOPT_CTRL_ALT_NATIVE_MODE_LAYER: &str = "adopt-ctrl-alt-native-mode-layer";
+const CHANGE_ADOPT_MIXED_NATIVE_MODE_LAYER: &str = "adopt-mixed-native-mode-layer";
+const CHANGE_RESTORE_CODEX_USAGE_BOTH_DEFAULT: &str = "restore-codex-usage-both-default";
 pub const SETTINGS_CONTRACT_APPLIED_CHANGE_IDS: &[&str] = &[
     CHANGE_RENAME_EDITOR_SIDEBAR_TO_WORKSPACE_LEFT_SIDEBAR,
     CHANGE_REPLACE_NATIVE_MOVEMENT_DEFAULTS,
@@ -46,6 +49,9 @@ pub const SETTINGS_CONTRACT_APPLIED_CHANGE_IDS: &[&str] = &[
     CHANGE_REMOVE_CPU_RAM_FROM_DEFAULT_WIDGET_TRAY,
     CHANGE_ADD_SESSION_WIDGET_TRAY_VALUE,
     CHANGE_ADD_WIDGET_CHROME_SETTINGS,
+    CHANGE_ADOPT_CTRL_ALT_NATIVE_MODE_LAYER,
+    CHANGE_ADOPT_MIXED_NATIVE_MODE_LAYER,
+    CHANGE_RESTORE_CODEX_USAGE_BOTH_DEFAULT,
 ];
 const OPTIONAL_ADDITIVE_DEFAULT_PATHS: &[&str] = &["zellij.custom_popups"];
 
@@ -168,10 +174,6 @@ fn settings_contract_for_defaults(defaults: &JsonValue) -> ConfigContract {
                         path: "zellij.native_keybindings.move_pane_up".to_string(),
                         transform: lowercase_move_pane_up_default,
                     },
-                    MigrationOp::Transform {
-                        path: "zellij.native_keybindings.move_mode_unbind".to_string(),
-                        transform: clear_move_mode_unbind_default,
-                    },
                 ],
             ),
             ContractChange::automatic(
@@ -252,6 +254,109 @@ fn settings_contract_for_defaults(defaults: &JsonValue) -> ConfigContract {
                     },
                 ],
             ),
+            ContractChange::automatic(
+                CHANGE_ADOPT_CTRL_ALT_NATIVE_MODE_LAYER,
+                13,
+                14,
+                vec![
+                    MigrationOp::Transform {
+                        path: "zellij.native_keybindings.toggle_pane_in_group".to_string(),
+                        transform: clear_pane_group_toggle_default,
+                    },
+                    MigrationOp::Transform {
+                        path: "zellij.native_keybindings.move_mode_unbind".to_string(),
+                        transform: set_move_mode_unbind_ctrl_h_default,
+                    },
+                    MigrationOp::AddDefault {
+                        path: "zellij.native_keybindings.toggle_pane_in_group".to_string(),
+                        value: json!([]),
+                    },
+                    MigrationOp::AddDefault {
+                        path: "zellij.native_keybindings.move_mode_unbind".to_string(),
+                        value: json!(["Ctrl h"]),
+                    },
+                    MigrationOp::AddDefault {
+                        path: "zellij.native_keybindings.pane_mode_unbind".to_string(),
+                        value: json!(["Ctrl p"]),
+                    },
+                    MigrationOp::AddDefault {
+                        path: "zellij.native_keybindings.pane_mode".to_string(),
+                        value: json!(["Ctrl Alt p"]),
+                    },
+                    MigrationOp::AddDefault {
+                        path: "zellij.native_keybindings.resize_mode_unbind".to_string(),
+                        value: json!(["Ctrl n"]),
+                    },
+                    MigrationOp::AddDefault {
+                        path: "zellij.native_keybindings.resize_mode".to_string(),
+                        value: json!(["Ctrl Alt n"]),
+                    },
+                    MigrationOp::AddDefault {
+                        path: "zellij.native_keybindings.tab_mode_unbind".to_string(),
+                        value: json!(["Ctrl t"]),
+                    },
+                    MigrationOp::AddDefault {
+                        path: "zellij.native_keybindings.tab_mode".to_string(),
+                        value: json!(["Ctrl Alt t"]),
+                    },
+                    MigrationOp::AddDefault {
+                        path: "zellij.native_keybindings.quit_unbind".to_string(),
+                        value: json!(["Ctrl q"]),
+                    },
+                    MigrationOp::AddDefault {
+                        path: "zellij.native_keybindings.quit".to_string(),
+                        value: json!(["Ctrl Alt q"]),
+                    },
+                ],
+            ),
+            ContractChange::automatic(
+                CHANGE_ADOPT_MIXED_NATIVE_MODE_LAYER,
+                14,
+                15,
+                vec![
+                    MigrationOp::Transform {
+                        path: "zellij.native_keybindings.pane_mode_unbind".to_string(),
+                        transform: clear_pane_mode_unbind_default,
+                    },
+                    MigrationOp::Transform {
+                        path: "zellij.native_keybindings.pane_mode".to_string(),
+                        transform: restore_pane_mode_ctrl_default,
+                    },
+                    MigrationOp::Transform {
+                        path: "zellij.native_keybindings.resize_mode_unbind".to_string(),
+                        transform: clear_resize_mode_unbind_default,
+                    },
+                    MigrationOp::Transform {
+                        path: "zellij.native_keybindings.resize_mode".to_string(),
+                        transform: restore_resize_mode_ctrl_default,
+                    },
+                    MigrationOp::Transform {
+                        path: "zellij.native_keybindings.tab_mode_unbind".to_string(),
+                        transform: clear_tab_mode_unbind_default,
+                    },
+                    MigrationOp::Transform {
+                        path: "zellij.native_keybindings.tab_mode".to_string(),
+                        transform: restore_tab_mode_ctrl_default,
+                    },
+                    MigrationOp::Transform {
+                        path: "zellij.native_keybindings.quit_unbind".to_string(),
+                        transform: clear_quit_unbind_default,
+                    },
+                    MigrationOp::Transform {
+                        path: "zellij.native_keybindings.quit".to_string(),
+                        transform: restore_quit_ctrl_default,
+                    },
+                ],
+            ),
+            ContractChange::automatic(
+                CHANGE_RESTORE_CODEX_USAGE_BOTH_DEFAULT,
+                15,
+                16,
+                vec![MigrationOp::Transform {
+                    path: "zellij.codex_usage_display".to_string(),
+                    transform: restore_codex_usage_both_default,
+                }],
+            ),
         ],
     }
 }
@@ -313,8 +418,55 @@ fn lowercase_move_pane_up_default(value: &JsonValue) -> Result<Option<JsonValue>
     replace_default_keybinding(value, "Ctrl Alt K", "Ctrl Alt k")
 }
 
-fn clear_move_mode_unbind_default(value: &JsonValue) -> Result<Option<JsonValue>, String> {
-    replace_default_keybinding_with_value(value, "Ctrl h", json!([]))
+fn clear_pane_group_toggle_default(value: &JsonValue) -> Result<Option<JsonValue>, String> {
+    replace_default_keybinding_with_value(value, "Ctrl Alt p", json!([]))
+}
+
+fn set_move_mode_unbind_ctrl_h_default(value: &JsonValue) -> Result<Option<JsonValue>, String> {
+    replace_default_keybinding_list_with_value(value, &[], json!(["Ctrl h"]))
+}
+
+fn clear_pane_mode_unbind_default(value: &JsonValue) -> Result<Option<JsonValue>, String> {
+    replace_default_keybinding_list_with_value(value, &["Ctrl p"], json!([]))
+}
+
+fn restore_pane_mode_ctrl_default(value: &JsonValue) -> Result<Option<JsonValue>, String> {
+    replace_default_keybinding(value, "Ctrl Alt p", "Ctrl p")
+}
+
+fn clear_resize_mode_unbind_default(value: &JsonValue) -> Result<Option<JsonValue>, String> {
+    replace_default_keybinding_list_with_value(value, &["Ctrl n"], json!([]))
+}
+
+fn restore_resize_mode_ctrl_default(value: &JsonValue) -> Result<Option<JsonValue>, String> {
+    replace_default_keybinding(value, "Ctrl Alt n", "Ctrl n")
+}
+
+fn clear_tab_mode_unbind_default(value: &JsonValue) -> Result<Option<JsonValue>, String> {
+    replace_default_keybinding_list_with_value(value, &["Ctrl t"], json!([]))
+}
+
+fn restore_tab_mode_ctrl_default(value: &JsonValue) -> Result<Option<JsonValue>, String> {
+    replace_default_keybinding(value, "Ctrl Alt t", "Ctrl t")
+}
+
+fn clear_quit_unbind_default(value: &JsonValue) -> Result<Option<JsonValue>, String> {
+    replace_default_keybinding_list_with_value(value, &["Ctrl q"], json!([]))
+}
+
+fn restore_quit_ctrl_default(value: &JsonValue) -> Result<Option<JsonValue>, String> {
+    replace_default_keybinding(value, "Ctrl Alt q", "Ctrl q")
+}
+
+fn restore_codex_usage_both_default(value: &JsonValue) -> Result<Option<JsonValue>, String> {
+    let display = value
+        .as_str()
+        .ok_or_else(|| "expected a Codex usage display string".to_string())?;
+    if display == "quota" {
+        Ok(Some(json!("both")))
+    } else {
+        Ok(None)
+    }
 }
 
 fn enable_kitty_keyboard_protocol_default(value: &JsonValue) -> Result<Option<JsonValue>, String> {
@@ -521,10 +673,23 @@ fn replace_default_keybinding_with_value(
     old_default: &str,
     current_value: JsonValue,
 ) -> Result<Option<JsonValue>, String> {
+    replace_default_keybinding_list_with_value(value, &[old_default], current_value)
+}
+
+fn replace_default_keybinding_list_with_value(
+    value: &JsonValue,
+    old_default: &[&str],
+    current_value: JsonValue,
+) -> Result<Option<JsonValue>, String> {
     let values = value
         .as_array()
         .ok_or_else(|| "expected a keybinding array".to_string())?;
-    if values.len() == 1 && values[0].as_str() == Some(old_default) {
+    if values.len() == old_default.len()
+        && values
+            .iter()
+            .zip(old_default)
+            .all(|(actual, expected)| actual.as_str() == Some(*expected))
+    {
         Ok(Some(current_value))
     } else {
         Ok(None)
@@ -827,6 +992,99 @@ mod tests {
                 .applied_changes
                 .iter()
                 .any(|change| change.id == "add-widget-chrome-settings")
+        );
+    }
+
+    // Regression: configs carrying the downgraded Codex quota-only default are restored to the richer status display.
+    #[test]
+    fn migrates_codex_usage_display_default_back_to_both() {
+        let contract = settings_contract_for_defaults(&json!({}));
+        let raw = r#"{
+  "zellij": {
+    "codex_usage_display": "quota"
+  }
+}
+"#;
+
+        let migrated =
+            join_jsonc_contract_text_from_version(raw, &contract, SETTINGS_CONTRACT_STATE_PATH, 15)
+                .unwrap();
+        let value = parse_jsonc_value(&migrated.text).unwrap();
+
+        assert_eq!(
+            get_json_path(&value, "zellij.codex_usage_display"),
+            Some(&json!("both"))
+        );
+        assert!(
+            migrated
+                .applied_changes
+                .iter()
+                .any(|change| change.id == "restore-codex-usage-both-default")
+        );
+    }
+
+    // Regression: the short-lived all-Ctrl-Alt native mode layer repairs back to the mixed keymap without touching user remaps.
+    #[test]
+    fn restores_mixed_native_mode_layer_from_short_lived_defaults() {
+        let contract = settings_contract_for_defaults(&json!({}));
+        let raw = r#"{
+  "zellij": {
+    "native_keybindings": {
+      "pane_mode_unbind": ["Ctrl p"],
+      "pane_mode": ["Ctrl Alt p"],
+      "resize_mode_unbind": ["Ctrl n"],
+      "resize_mode": ["Alt n"],
+      "tab_mode_unbind": ["Ctrl t"],
+      "tab_mode": ["Ctrl Alt t"],
+      "quit_unbind": ["Ctrl q"],
+      "quit": ["Ctrl Alt q"]
+    }
+  }
+}
+"#;
+
+        let migrated =
+            join_jsonc_contract_text_from_version(raw, &contract, SETTINGS_CONTRACT_STATE_PATH, 14)
+                .unwrap();
+        let value = parse_jsonc_value(&migrated.text).unwrap();
+
+        assert_eq!(
+            get_json_path(&value, "zellij.native_keybindings.pane_mode_unbind"),
+            Some(&json!([]))
+        );
+        assert_eq!(
+            get_json_path(&value, "zellij.native_keybindings.pane_mode"),
+            Some(&json!(["Ctrl p"]))
+        );
+        assert_eq!(
+            get_json_path(&value, "zellij.native_keybindings.resize_mode_unbind"),
+            Some(&json!([]))
+        );
+        assert_eq!(
+            get_json_path(&value, "zellij.native_keybindings.resize_mode"),
+            Some(&json!(["Alt n"]))
+        );
+        assert_eq!(
+            get_json_path(&value, "zellij.native_keybindings.tab_mode_unbind"),
+            Some(&json!([]))
+        );
+        assert_eq!(
+            get_json_path(&value, "zellij.native_keybindings.tab_mode"),
+            Some(&json!(["Ctrl t"]))
+        );
+        assert_eq!(
+            get_json_path(&value, "zellij.native_keybindings.quit_unbind"),
+            Some(&json!([]))
+        );
+        assert_eq!(
+            get_json_path(&value, "zellij.native_keybindings.quit"),
+            Some(&json!(["Ctrl q"]))
+        );
+        assert!(
+            migrated
+                .applied_changes
+                .iter()
+                .any(|change| change.id == "adopt-mixed-native-mode-layer")
         );
     }
 

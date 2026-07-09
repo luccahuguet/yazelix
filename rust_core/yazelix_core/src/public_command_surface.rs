@@ -190,6 +190,14 @@ const UPDATE_HOME_MANAGER_COMMAND: YzxCommandMetadata = metadata(
     Some(YzxMenuCategory::System),
     Some("Refresh the current Home Manager input and print the switch step."),
 );
+const UPDATE_LOCAL_SOURCE_COMMAND: YzxCommandMetadata = metadata(
+    "yzx update local_source",
+    "Upgrade active local-checkout profile entries and repair generated state",
+    YzxCommandCategory::System,
+    &[],
+    Some(YzxMenuCategory::System),
+    Some("Upgrade local-source profile entries, then run generated-state repair."),
+);
 const UPDATE_NIX_COMMAND: YzxCommandMetadata = metadata(
     "yzx update nix",
     "Upgrade Determinate Nix through determinate-nixd",
@@ -281,6 +289,14 @@ const CURSORS_COMMAND: YzxCommandMetadata = metadata(
     Some(YzxMenuCategory::Config),
     Some("Show the active settings.jsonc cursor registry, effects, and resolved preset colors."),
 );
+const CURSORS_GHOSTTY_SETUP_COMMAND: YzxCommandMetadata = metadata(
+    "yzx cursors ghostty setup",
+    "Generate the host Ghostty cursor include",
+    YzxCommandCategory::Config,
+    &[],
+    Some(YzxMenuCategory::Config),
+    Some("Use the bundled cursor helper to write ~/.config/yazelix_cursors/ghostty.conf."),
+);
 const HOME_MANAGER_ROOT_COMMAND: YzxCommandMetadata = metadata(
     "yzx home_manager",
     "Show Yazelix Home Manager takeover helpers",
@@ -332,14 +348,6 @@ const TUTOR_ROOT_COMMAND: YzxCommandMetadata = metadata(
 const TUTOR_BEGIN_COMMAND: YzxCommandMetadata = metadata(
     "yzx tutor begin",
     "Start the first Yazelix tutor lesson",
-    YzxCommandCategory::Help,
-    &[],
-    Some(YzxMenuCategory::Help),
-    None,
-);
-const TUTOR_CONTINUE_COMMAND: YzxCommandMetadata = metadata(
-    "yzx tutor continue",
-    "Pick up the Yazelix tutor path",
     YzxCommandCategory::Help,
     &[],
     Some(YzxMenuCategory::Help),
@@ -496,7 +504,7 @@ const RUST_CONTROL_FAMILIES: &[YzxRustControlFamily] = &[
             CONFIG_UNSET_COMMAND,
         ],
     ),
-    rust_control_family("cursors", &[CURSORS_COMMAND]),
+    rust_control_family("cursors", &[CURSORS_COMMAND, CURSORS_GHOSTTY_SETUP_COMMAND]),
     rust_control_family(
         "desktop",
         &[
@@ -539,7 +547,6 @@ const RUST_CONTROL_FAMILIES: &[YzxRustControlFamily] = &[
         &[
             TUTOR_ROOT_COMMAND,
             TUTOR_BEGIN_COMMAND,
-            TUTOR_CONTINUE_COMMAND,
             TUTOR_LIST_COMMAND,
             TUTOR_WORKSPACE_COMMAND,
             TUTOR_DISCOVERY_COMMAND,
@@ -574,6 +581,7 @@ const RUST_CONTROL_FAMILIES: &[YzxRustControlFamily] = &[
         &[
             UPDATE_ROOT_COMMAND,
             UPDATE_HOME_MANAGER_COMMAND,
+            UPDATE_LOCAL_SOURCE_COMMAND,
             UPDATE_NIX_COMMAND,
             UPDATE_UPSTREAM_COMMAND,
         ],

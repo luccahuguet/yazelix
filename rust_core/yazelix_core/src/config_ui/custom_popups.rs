@@ -35,6 +35,7 @@ pub(super) fn append_custom_popup_fields(
     };
     let apply_mode = apply_mode_for_config_owner(config_owner, parent_field)?;
     fields.push(build_field_row(
+        SETTINGS_SOURCE_ID,
         ADD_CUSTOM_POPUP_FIELD_PATH,
         "workspace",
         "string",
@@ -85,6 +86,7 @@ fn push_custom_popup_rows(
     let current_overview = current.map(custom_popup_value);
     let default_overview = default.map(custom_popup_value);
     fields.push(build_field_row(
+        SETTINGS_SOURCE_ID,
         &overview_path,
         "workspace",
         "custom_popup",
@@ -176,6 +178,7 @@ fn push_custom_popup_field_row(
     edit_behavior: ConfigUiEditBehavior,
 ) {
     fields.push(build_field_row(
+        SETTINGS_SOURCE_ID,
         path,
         "workspace",
         kind,

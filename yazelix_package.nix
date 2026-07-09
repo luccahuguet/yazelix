@@ -4,7 +4,7 @@
   rust_core_src ? ./.,
   nixgl ? null,
   fenixPkgs ? null,
-  runtimeVariant ? "ghostty",
+  runtimeVariant ? "mars",
   runtimeToolSources ? { },
   runtimeIdentity ? { },
   name ? "yazelix",
@@ -12,8 +12,9 @@
   skipStableWrapperRedirect ? false,
   components ? { },
   extraRuntimePackages ? [ ],
+  extraRuntimeCommands ? [ ],
+  exportedBinCommands ? [ ],
   yaziAssets ? null,
-  rioPackage ? pkgs.rio,
   yazelixHelixPackage ? null,
   yazelixCursorsPackage ? null,
   marsTerminalPackage ? null,
@@ -52,8 +53,9 @@ import ./packaging/mk_yazelix_package.nix {
     skipStableWrapperRedirect
     components
     extraRuntimePackages
+    extraRuntimeCommands
+    exportedBinCommands
     yaziAssets
-    rioPackage
     yazelixHelixPackage
     yazelixCursorsPackage
     marsTerminalPackage

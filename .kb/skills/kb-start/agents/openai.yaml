@@ -1,0 +1,6 @@
+interface:
+  display_name: "KB Start"
+  short_description: "Start working on a task"
+  default_prompt: "Use $kb-start to begin a task — load context, checkout, set active, and understand scope."
+policy:
+  allow_implicit_invocation: true

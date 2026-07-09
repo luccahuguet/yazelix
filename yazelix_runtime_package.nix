@@ -4,14 +4,14 @@
   rust_core_src ? ./.,
   nixgl ? null,
   fenixPkgs ? null,
-  runtimeVariant ? "ghostty",
+  runtimeVariant ? "mars",
   runtimeToolSources ? { },
   runtimeIdentity ? { },
   name ? "yazelix-runtime",
   components ? { },
   extraRuntimePackages ? [ ],
+  extraRuntimeCommands ? [ "tu" ],
   yaziAssets ? null,
-  rioPackage ? pkgs.rio,
   yazelixHelixPackage ? null,
   yazelixCursorsPackage ? null,
   marsTerminalPackage ? null,
@@ -45,8 +45,8 @@ import ./packaging/mk_runtime_tree.nix {
     runtimeIdentity
     components
     extraRuntimePackages
+    extraRuntimeCommands
     yaziAssets
-    rioPackage
     yazelixHelixPackage
     yazelixCursorsPackage
     marsTerminalPackage

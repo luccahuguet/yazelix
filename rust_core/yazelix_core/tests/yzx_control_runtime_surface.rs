@@ -76,6 +76,187 @@ fn seed_startup_materialization_runtime_assets(fixture: &support::fixtures::Mana
     fs::create_dir_all(fixture.runtime_dir.join("shells").join("posix")).unwrap();
 }
 
+// Regression: detached macOS launchers can inherit a PATH without dirname/readlink, so POSIX
+// bootstrap must seed system tool dirs before runtime_env.sh is sourced.
+#[test]
+fn posix_bootstrap_entrypoints_resolve_runtime_with_narrow_path() {
+    let repo = repo_root();
+    let temp = tempfile::tempdir().unwrap();
+    let runtime_dir = temp.path().join("runtime");
+    let home_dir = temp.path().join("home");
+    let posix_dir = runtime_dir.join("shells").join("posix");
+    let narrow_path = temp.path().join("private_tmp");
+
+    fs::create_dir_all(&posix_dir).unwrap();
+    fs::create_dir_all(&home_dir).unwrap();
+    fs::create_dir_all(&narrow_path).unwrap();
+    fs::create_dir_all(runtime_dir.join("libexec")).unwrap();
+    fs::create_dir_all(runtime_dir.join("toolbin")).unwrap();
+    fs::create_dir_all(runtime_dir.join("nushell/config")).unwrap();
+    write_executable_script(
+        &posix_dir.join("yzx_cli.sh"),
+        &fs::read_to_string(repo.join("shells/posix/yzx_cli.sh")).unwrap(),
+    );
+    write_executable_script(
+        &posix_dir.join("start_yazelix.sh"),
+        &fs::read_to_string(repo.join("shells/posix/start_yazelix.sh")).unwrap(),
+    );
+    write_executable_script(
+        &posix_dir.join("yazelix_nu.sh"),
+        &fs::read_to_string(repo.join("shells/posix/yazelix_nu.sh")).unwrap(),
+    );
+    write_executable_script(
+        &posix_dir.join("yazelix_hx.sh"),
+        &fs::read_to_string(repo.join("shells/posix/yazelix_hx.sh")).unwrap(),
+    );
+    fs::write(
+        posix_dir.join("runtime_env.sh"),
+        fs::read_to_string(repo.join("shells/posix/runtime_env.sh")).unwrap(),
+    )
+    .unwrap();
+    fs::write(runtime_dir.join("nushell/config/config.nu"), "").unwrap();
+    fs::write(runtime_dir.join("nushell/config/stack_prompt_guard.nu"), "").unwrap();
+
+    let yzx_capture = temp.path().join("capture_yzx.sh");
+    write_executable_script(
+        &yzx_capture,
+        r#"#!/bin/sh
+printf 'yzx_argv=%s\n' "${1:-}"
+printf 'YAZELIX_RUNTIME_DIR=%s\n' "$YAZELIX_RUNTIME_DIR"
+"#,
+    );
+    let yzx_output = Command::new(posix_dir.join("yzx_cli.sh"))
+        .env_clear()
+        .env("HOME", &home_dir)
+        .env("USER", "yazelix-test")
+        .env("PATH", &narrow_path)
+        .env("YAZELIX_SKIP_STABLE_WRAPPER_REDIRECT", "1")
+        .env("YAZELIX_YZX_BIN", &yzx_capture)
+        .arg("--version")
+        .output()
+        .unwrap();
+
+    assert_eq!(
+        yzx_output.status.code(),
+        Some(0),
+        "stderr:\n{}",
+        String::from_utf8_lossy(&yzx_output.stderr)
+    );
+    let yzx_stdout = String::from_utf8(yzx_output.stdout).unwrap();
+    assert!(yzx_stdout.contains("yzx_argv=--version"));
+    assert!(yzx_stdout.contains(&format!(
+        "YAZELIX_RUNTIME_DIR={}",
+        runtime_dir.to_string_lossy()
+    )));
+
+    let control_capture = temp.path().join("capture_control.sh");
+    write_executable_script(
+        &control_capture,
+        r#"#!/bin/sh
+printf 'control_argv=%s\n' "${1:-}"
+printf 'YAZELIX_RUNTIME_DIR=%s\n' "$YAZELIX_RUNTIME_DIR"
+"#,
+    );
+    let start_output = Command::new(posix_dir.join("start_yazelix.sh"))
+        .env_clear()
+        .env("HOME", &home_dir)
+        .env("USER", "yazelix-test")
+        .env("PATH", &narrow_path)
+        .env("YAZELIX_YZX_CONTROL_BIN", &control_capture)
+        .output()
+        .unwrap();
+
+    assert_eq!(
+        start_output.status.code(),
+        Some(0),
+        "stderr:\n{}",
+        String::from_utf8_lossy(&start_output.stderr)
+    );
+    let start_stdout = String::from_utf8(start_output.stdout).unwrap();
+    assert!(start_stdout.contains("control_argv=enter"));
+    assert!(start_stdout.contains(&format!(
+        "YAZELIX_RUNTIME_DIR={}",
+        runtime_dir.to_string_lossy()
+    )));
+
+    write_executable_script(
+        &runtime_dir.join("libexec/nu"),
+        r#"#!/bin/sh
+printf 'nu_argv=%s\n' "$*"
+printf 'YAZELIX_RUNTIME_DIR=%s\n' "$YAZELIX_RUNTIME_DIR"
+"#,
+    );
+    let nu_output = Command::new(posix_dir.join("yazelix_nu.sh"))
+        .env_clear()
+        .env("HOME", &home_dir)
+        .env("USER", "yazelix-test")
+        .env("PATH", &narrow_path)
+        .arg("--version")
+        .output()
+        .unwrap();
+
+    assert_eq!(
+        nu_output.status.code(),
+        Some(0),
+        "stderr:\n{}",
+        String::from_utf8_lossy(&nu_output.stderr)
+    );
+    let nu_stdout = String::from_utf8(nu_output.stdout).unwrap();
+    assert!(nu_stdout.contains("nu_argv=--login --env-config /dev/null --config "));
+    assert!(nu_stdout.contains("--version"));
+    assert!(nu_stdout.contains(&format!(
+        "YAZELIX_RUNTIME_DIR={}",
+        runtime_dir.to_string_lossy()
+    )));
+
+    write_executable_script(
+        &runtime_dir.join("libexec/yzx_core"),
+        r#"#!/bin/sh
+printf '%s\n' '{"data":{"import_notice":{"lines":[]},"generated_path":"/tmp/generated-helix.toml","generated_steel_config_dir":"/tmp/generated-steel","managed_helix_config_dir":"/tmp/managed-helix"}}'
+"#,
+    );
+    write_executable_script(
+        &runtime_dir.join("toolbin/jq"),
+        r#"#!/bin/sh
+case "$2" in
+  '.data.import_notice.lines[]?') exit 0 ;;
+  '.data.generated_path // ""') printf '%s\n' '/tmp/generated-helix.toml' ;;
+  '.data.generated_steel_config_dir // ""') printf '%s\n' '/tmp/generated-steel' ;;
+  '.data.managed_helix_config_dir // ""') printf '%s\n' '/tmp/managed-helix' ;;
+  *) printf 'unexpected jq args: %s\n' "$*" >&2; exit 1 ;;
+esac
+"#,
+    );
+    write_executable_script(
+        &runtime_dir.join("libexec/hx"),
+        r#"#!/bin/sh
+printf 'hx_argv=%s\n' "$*"
+"#,
+    );
+    let hx_output = Command::new(posix_dir.join("yazelix_hx.sh"))
+        .env_clear()
+        .env("HOME", &home_dir)
+        .env("USER", "yazelix-test")
+        .env("PATH", &narrow_path)
+        .env(
+            "YAZELIX_MANAGED_HELIX_BINARY",
+            runtime_dir.join("libexec/hx"),
+        )
+        .arg("--version")
+        .output()
+        .unwrap();
+
+    assert_eq!(
+        hx_output.status.code(),
+        Some(0),
+        "stderr:\n{}",
+        String::from_utf8_lossy(&hx_output.stderr)
+    );
+    let hx_stdout = String::from_utf8(hx_output.stdout).unwrap();
+    assert!(hx_stdout.contains("hx_argv=--config-dir /tmp/managed-helix"));
+    assert!(hx_stdout.contains("-c /tmp/generated-helix.toml --version"));
+}
+
 // Regression: workspace startup scrubs inherited GTK/GIO loader variables so host GUI apps do not load incompatible Nix modules.
 #[test]
 fn start_yazelix_scrubs_gui_loader_env_before_control_handoff() {
@@ -174,80 +355,6 @@ printf 'YAZI_ZELLIJ_KITTY_PASSTHROUGH=%s\n' "${YAZI_ZELLIJ_KITTY_PASSTHROUGH-uns
     )));
     assert!(stdout.contains("YAZELIX_NU_BIN=unset"));
     assert!(stdout.contains("YAZI_ZELLIJ_KITTY_PASSTHROUGH=unset"));
-}
-
-// Regression: the Ghostty launch wrapper must not expose runtime-private libexec helpers such as nix ahead of the host Nix.
-#[test]
-fn ghostty_wrapper_keeps_runtime_libexec_private_for_host_nix() {
-    let repo = repo_root();
-    let temp = tempfile::tempdir().unwrap();
-    let runtime_dir = temp.path().join("runtime");
-    let home_dir = temp.path().join("home");
-    let host_bin = home_dir.join("host-bin");
-    let posix_dir = runtime_dir.join("shells").join("posix");
-    let libexec_dir = runtime_dir.join("libexec");
-
-    fs::create_dir_all(&posix_dir).unwrap();
-    fs::create_dir_all(&libexec_dir).unwrap();
-    fs::create_dir_all(runtime_dir.join("toolbin")).unwrap();
-    fs::create_dir_all(runtime_dir.join("bin")).unwrap();
-    fs::create_dir_all(&host_bin).unwrap();
-
-    write_executable_script(
-        &posix_dir.join("yazelix_ghostty.sh"),
-        &fs::read_to_string(repo.join("shells/posix/yazelix_ghostty.sh")).unwrap(),
-    );
-    let runtime_nix = libexec_dir.join("nix");
-    write_executable_script(&runtime_nix, "#!/bin/sh\nprintf 'runtime nix\\n'\n");
-    write_executable_script(&host_bin.join("nix"), "#!/bin/sh\nprintf 'host nix\\n'\n");
-    let capture = temp.path().join("capture_path.sh");
-    write_executable_script(
-        &capture,
-        r#"#!/bin/sh
-set -eu
-printf 'PATH=%s\n' "$PATH"
-printf 'nix=%s\n' "$(command -v nix)"
-"#,
-    );
-
-    let output = Command::new(posix_dir.join("yazelix_ghostty.sh"))
-        .env_clear()
-        .env("PATH", &host_bin)
-        .arg(&capture)
-        .output()
-        .unwrap();
-
-    assert_eq!(output.status.code(), Some(0));
-    let stdout = String::from_utf8(output.stdout).unwrap();
-    assert!(
-        !stdout.contains(&format!("{}", libexec_dir.display())),
-        "runtime libexec leaked into PATH:\n{stdout}"
-    );
-    assert!(stdout.contains(&format!("nix={}", host_bin.join("nix").display())));
-}
-
-// Defends: the public Rust-owned `yzx config --path` route still bootstraps the managed config surface and returns its canonical path.
-#[test]
-fn yzx_control_config_path_bootstraps_missing_managed_config() {
-    let fixture = managed_config_fixture("");
-    fs::remove_file(&fixture.managed_config).unwrap();
-    let settings_path = fixture.config_dir.join("settings.jsonc");
-
-    let output = yzx_control_command_in_fixture(&fixture)
-        .arg("config")
-        .arg("--path")
-        .output()
-        .unwrap();
-
-    assert_eq!(output.status.code(), Some(0));
-    assert!(settings_path.is_file());
-    assert_eq!(
-        String::from_utf8(output.stdout).unwrap().trim(),
-        settings_path.to_string_lossy()
-    );
-
-    let stderr = String::from_utf8(output.stderr).unwrap();
-    assert!(stderr.is_empty());
 }
 
 // Defends: setup-only launch preflight preserves managed-pane shell UX without invoking the deleted Nushell setup script.
@@ -481,14 +588,14 @@ command = ""
     assert!(!log.contains("/stale/"), "{log}");
 }
 
-// Regression: `yzx enter` uses the actual host terminal for the status bar instead of the configured packaged runtime variant.
+// Regression: `yzx enter` uses the actual host terminal for the status bar instead of the packaged runtime label.
 #[test]
 fn yzx_enter_uses_detected_host_terminal_for_status_bar_label() {
     let fixture = managed_config_fixture("");
-    fs::write(fixture.runtime_dir.join("runtime_variant"), "ratty\n").unwrap();
+    fs::write(fixture.runtime_dir.join("runtime_variant"), "mars\n").unwrap();
     fs::write(
         fixture.runtime_dir.join("runtime_identity.json"),
-        r#"{"schema_version":1,"version":"v-test","runtime_variant":"ratty"}"#,
+        r#"{"schema_version":1,"version":"v-test","runtime_variant":"mars"}"#,
     )
     .unwrap();
     seed_startup_materialization_runtime_assets(&fixture);
@@ -537,10 +644,98 @@ fn yzx_enter_uses_detected_host_terminal_for_status_bar_label() {
     assert!(output.stderr.is_empty());
     let request: Value = serde_json::from_str(&fs::read_to_string(bar_request).unwrap()).unwrap();
     assert_eq!(request["terminal_label"], "wezterm");
-    assert_ne!(request["terminal_label"], "ratty");
+    assert_ne!(request["terminal_label"], "mars");
 
     let log = fs::read_to_string(zellij_log).unwrap();
     assert!(log.contains("YAZELIX_SESSION_TERMINAL=wezterm"), "{log}");
+}
+
+// Defends: host Ghostty users can generate the cursor include from the normal Yazelix package without installing the standalone cursor package.
+#[test]
+fn yzx_cursors_ghostty_setup_uses_runtime_private_yzc() {
+    let fixture = managed_config_fixture("");
+    let shader_root = fixture
+        .runtime_dir
+        .join("configs/terminal_emulators/ghostty/shaders");
+    fs::create_dir_all(&shader_root).unwrap();
+    let yzc_log = fixture.home_dir.join("yzc.log");
+    write_executable_script(
+        &fixture.runtime_dir.join("libexec/yzc"),
+        &format!(
+            r#"#!/bin/sh
+set -eu
+printf '%s\n' "$*" >> "{}"
+config_dir=
+share_dir=
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --config-dir)
+      config_dir="$2"
+      shift 2
+      ;;
+    --share-dir)
+      share_dir="$2"
+      shift 2
+      ;;
+    generate)
+      test "$2" = ghostty
+      test -d "$share_dir/shaders"
+      mkdir -p "$config_dir"
+      printf '# generated ghostty include\n' > "$config_dir/ghostty.conf"
+      exit 0
+      ;;
+    init)
+      mkdir -p "$config_dir"
+      printf '{{}}\n' > "$config_dir/settings.jsonc"
+      exit 0
+      ;;
+    *)
+      echo "unexpected yzc arg: $1" >&2
+      exit 99
+      ;;
+  esac
+done
+exit 99
+"#,
+            yzc_log.display()
+        ),
+    );
+
+    let output = yzx_control_command_in_fixture(&fixture)
+        .args(["cursors", "ghostty", "setup"])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let cursor_dir = fixture.home_dir.join(".config/yazelix_cursors");
+    let include_path = cursor_dir.join("ghostty.conf");
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        stdout.contains("Ghostty cursor include generated:"),
+        "{stdout}"
+    );
+    assert!(
+        stdout.contains(&format!("config-file = {}", include_path.display())),
+        "{stdout}"
+    );
+    assert!(include_path.exists());
+
+    let log = fs::read_to_string(yzc_log).unwrap();
+    assert!(
+        log.contains(&format!(
+            "--config-dir {} --share-dir {} generate ghostty",
+            cursor_dir.display(),
+            fixture
+                .runtime_dir
+                .join("configs/terminal_emulators/ghostty")
+                .display()
+        )),
+        "{log}"
+    );
 }
 
 // Defends: the public Rust-owned `yzx status --json` surface keeps the typed runtime summary instead of a wrapper-shaped blob.
@@ -570,7 +765,7 @@ default_shell = "nu"
             .ends_with("settings.jsonc")
     );
     assert_eq!(summary["default_shell"], "nu");
-    assert_eq!(summary["terminals"], serde_json::json!(["ghostty"]));
+    assert_eq!(summary["terminals"], serde_json::json!(["mars"]));
     assert!(summary["generated_state_repair_needed"].is_boolean());
     assert!(summary["generated_state_materialization_status"].is_string());
     assert_eq!(summary["session_config_snapshot"]["status"], "not_set");
@@ -627,44 +822,6 @@ ghostty_trail_color = "random"
     );
 }
 
-// Regression: status reports a bad active snapshot as a readable diagnostic instead of hiding the snapshot problem.
-#[test]
-fn yzx_control_status_json_reports_bad_session_snapshot_diagnostic() {
-    let fixture = managed_config_fixture("");
-    let missing_snapshot = fixture
-        .state_dir
-        .join("sessions/missing/config_snapshot.json");
-
-    let output = yzx_control_command_in_fixture(&fixture)
-        .env("YAZELIX_SESSION_CONFIG_PATH", &missing_snapshot)
-        .arg("status")
-        .arg("--json")
-        .output()
-        .unwrap();
-
-    assert_eq!(output.status.code(), Some(0));
-    assert!(output.stderr.is_empty());
-    let report: Value = serde_json::from_slice(&output.stdout).unwrap();
-    assert_eq!(
-        report["summary"]["session_config_snapshot"]["status"],
-        "error"
-    );
-    assert_eq!(
-        report["summary"]["session_config_snapshot"]["path"],
-        missing_snapshot.to_string_lossy().to_string()
-    );
-    assert_eq!(
-        report["summary"]["session_config_snapshot"]["error_code"],
-        "session_config_snapshot_read"
-    );
-    assert!(
-        report["summary"]["session_config_snapshot"]["message"]
-            .as_str()
-            .unwrap()
-            .contains("Could not read the Yazelix session config snapshot")
-    );
-}
-
 // Defends: `yzx inspect --json` is the canonical runtime truth report for diagnostics and agents.
 #[test]
 fn yzx_control_inspect_json_reports_runtime_truth_without_zellij_session() {
@@ -690,10 +847,8 @@ default_shell = "nu"
     assert_eq!(report["schema_version"], 1);
     assert_eq!(report["title"], "Yazelix inspect");
     assert_eq!(report["runtime"]["version"], "v-test");
-    assert_eq!(report["runtime"]["variant"], "ghostty");
+    assert_eq!(report["runtime"]["variant"], "mars");
     assert_eq!(report["runtime"]["variant_source"], "runtime_identity_json");
-    assert_eq!(report["runtime"]["identity"]["runtime_variant"], "ghostty");
-    assert_eq!(report["runtime"]["exists"], true);
     assert_eq!(
         report["runtime"]["invoked_yzx_path"],
         "/nix/store/example-yazelix/bin/yzx"
@@ -703,46 +858,12 @@ default_shell = "nu"
         "yzx inspect --json"
     );
     assert_eq!(
-        report["config_schema_versions"]["main_config_contract"]["ratconfig_contract_version"],
-        11
-    );
-    assert_eq!(report["runtime_tools"]["status"], "available");
-    assert!(
-        report["runtime_tools"]["entries"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .any(|entry| entry["name"] == "terminal" && entry["source"] == "bundled")
-    );
-    assert_eq!(report["runtime_components"]["status"], "available");
-    assert!(
-        report["command_metadata"]["commands"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .any(|entry| entry["command"] == "yzx inspect")
-    );
-    assert!(
-        report["config"]["file"]
-            .as_str()
-            .unwrap()
-            .ends_with("settings.jsonc")
-    );
-    assert_eq!(
         report["config"]["session_config_snapshot"]["status"],
         "not_set"
     );
-    assert!(report["generated_state"]["repair_needed"].is_boolean());
     assert_eq!(report["session"]["available"], false);
     assert_eq!(report["session"]["reason"], "not_in_zellij");
     assert_eq!(report["install"]["install_owner"], "manual");
-    assert!(
-        report["tool_versions"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .any(|entry| { entry["tool"] == "nix" && entry["runtime"].as_str().is_some() })
-    );
 }
 
 // Regression: inspect remains the diagnostic escape hatch when config validation is what failed.

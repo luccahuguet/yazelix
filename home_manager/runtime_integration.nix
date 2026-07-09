@@ -8,8 +8,6 @@
   nixgl ? null,
   options,
   pkgs,
-  rioPackage ? pkgs.rio,
-  terminalMetadata,
   yazelixHelixPackage ? null,
   yazelixCursorsPackage ? null,
 }:
@@ -20,25 +18,12 @@ let
   isLinux = pkgs.stdenv.hostPlatform.isLinux;
   componentEnabled = name: cfg.components.${name} or true;
   runtimeToolSource = name: cfg.runtime_tool_sources.${name} or "bundled";
-  terminalDesktopLabel = terminalMetadata.desktopLabel;
-  terminalDesktopIdSuffix = terminalMetadata.desktopIdSuffix;
-  marsTerminalVariant = "mars";
-  desktopEntryKey = terminal: "com.yazelix.Yazelix.${terminalDesktopIdSuffix terminal}";
-  desktopEntryName = terminal: "New Yazelix - ${terminalDesktopLabel terminal}";
-  startupWmClassFor =
-    terminal:
-    if terminal == marsTerminalVariant
-    then desktopEntryKey terminal
-    else "com.yazelix.Yazelix";
-  marsActiveFor = terminal: terminal == marsTerminalVariant;
-  extraTerminalLaunchers = lib.unique cfg.extra_terminal_launchers;
+  desktopEntryKey = "com.yazelix.Yazelix.Mars";
+  desktopEntryName = "New Yazelix - Mars";
   marsDesktopPackage =
     if cfg.mars_package != null then cfg.mars_package else marsTerminalPackage;
-  desktopTerminalLaunchers = extraTerminalLaunchers;
-  marsConfigured =
-    marsActiveFor cfg.terminal || builtins.elem marsTerminalVariant desktopTerminalLaunchers;
-  marsProfileActiveFor = terminal: marsActiveFor terminal && cfg.mars_profile != "full";
-  marsProfileActive = marsProfileActiveFor cfg.terminal;
+  marsConfigured = cfg.terminal == "mars";
+  marsProfileActive = marsConfigured && cfg.mars_profile != "full";
   marsProfileExport =
     lib.optionalString marsProfileActive
       "export MARS_PROFILE=${cfg.mars_profile}";
@@ -78,7 +63,7 @@ let
       runtimeToolSources = cfg.runtime_tool_sources;
       components = cfg.components;
       extraRuntimePackages = selectedAgentUsagePackages;
-      inherit rioPackage yazelixHelixPackage;
+      inherit yazelixHelixPackage;
     }
     // marsPackageArgs;
   yazelixPackage =
@@ -94,83 +79,36 @@ let
         }
       );
 
-  packageArgsForTerminal =
-    terminal:
-    packageBuilderArgs
-    // {
-      runtimeVariant = terminal;
-      name = "yazelix-${terminal}";
-      runtimeName = "yazelix-runtime-${terminal}";
-    };
-  yazelixPackageForTerminal =
-    terminal:
-    if terminal == cfg.terminal then
-      yazelixPackage
-    else if mkYazelixPackage != null then
-      mkYazelixPackage (packageArgsForTerminal terminal)
-    else
-      import ../yazelix_package.nix (
-        packageArgsForTerminal terminal
-        // {
-          inherit fenixPkgs nixgl;
-        }
-      );
-
-  activationTerminalVariants = [ cfg.terminal ] ++ desktopTerminalLaunchers;
   runtimeConfigGenerationPath = lib.makeBinPath [
     pkgs.coreutils
     pkgs.zellij
   ];
-  terminalMaterializationActivation = lib.concatMapStringsSep "\n" (
-    terminal:
-    let
-      terminalPackage = yazelixPackageForTerminal terminal;
-      terminalEnv =
-        ''PATH="${terminalPackage}/toolbin:${terminalPackage}/libexec:${terminalPackage}/bin:${runtimeConfigGenerationPath}:$PATH" YAZELIX_RUNTIME_DIR="${terminalPackage}"''
-        + lib.optionalString (marsActiveFor terminal && cfg.manage_config) " MARS_APPEARANCE=${cfg.appearance_mode}"
-        + lib.optionalString (marsActiveFor terminal && cfg.manage_config) " MARS_EMOJI_FONT=${cfg.mars_emoji_font}"
-        + lib.optionalString (marsActiveFor terminal && cfg.manage_config) " MARS_EMOJI_FONT_SOURCE=home-manager"
-        + lib.optionalString (marsProfileActiveFor terminal) " MARS_PROFILE=${cfg.mars_profile}";
-    in
-    ''
-          $DRY_RUN_CMD env ${terminalEnv} ${terminalPackage}/libexec/yzx_core terminal-materialization.generate --from-env >/dev/null
-    ''
-  ) activationTerminalVariants;
+  terminalMaterializationActivation = ''
+        $DRY_RUN_CMD ${runtimeYzxCore} terminal-materialization.generate --from-env >/dev/null
+  '';
 
-  desktopExecFor =
-    terminal: yzxPath: skipStableWrapperRedirect:
+  desktopExec =
     let
       envVars =
-        lib.optional skipStableWrapperRedirect "YAZELIX_SKIP_STABLE_WRAPPER_REDIRECT=1"
-        ++ lib.optional (terminal == marsTerminalVariant) "MARS_APP_ID=${startupWmClassFor terminal}"
-        ++ lib.optional (terminal == marsTerminalVariant && cfg.manage_config) "MARS_APPEARANCE=${cfg.appearance_mode}"
-        ++ lib.optional (terminal == marsTerminalVariant && cfg.manage_config) "MARS_EMOJI_FONT=${cfg.mars_emoji_font}"
-        ++ lib.optional (terminal == marsTerminalVariant && cfg.manage_config) "MARS_EMOJI_FONT_SOURCE=home-manager"
-        ++ lib.optional (marsProfileActiveFor terminal) "MARS_PROFILE=${cfg.mars_profile}";
+        lib.optional marsConfigured "MARS_APP_ID=${desktopEntryKey}"
+        ++ lib.optional (marsConfigured && cfg.manage_config) "MARS_APPEARANCE=${cfg.appearance_mode}"
+        ++ lib.optional (marsConfigured && cfg.manage_config) "MARS_EMOJI_FONT=${cfg.mars_emoji_font}"
+        ++ lib.optional (marsConfigured && cfg.manage_config) "MARS_EMOJI_FONT_SOURCE=home-manager"
+        ++ lib.optional marsProfileActive "MARS_PROFILE=${cfg.mars_profile}";
     in
-    "${lib.optionalString (envVars != [ ]) "env ${lib.concatStringsSep " " envVars} "}${yzxPath} desktop launch";
-  desktopEntryFor =
-    terminal: yzxPath: skipStableWrapperRedirect:
-    {
-      name = desktopEntryName terminal;
-      comment = "Yazi + Zellij + Helix integrated terminal environment";
-      exec = desktopExecFor terminal yzxPath skipStableWrapperRedirect;
-      icon = "yazelix";
-      categories = [ "Development" ];
-      type = "Application";
-      terminal = true;
-      settings = {
-        StartupWMClass = startupWmClassFor terminal;
-      };
+    "${lib.optionalString (envVars != [ ]) "env ${lib.concatStringsSep " " envVars} "}${config.home.profileDirectory}/bin/yzx desktop launch";
+  desktopEntry = {
+    name = desktopEntryName;
+    comment = "Yazi + Zellij + Helix integrated terminal environment";
+    exec = desktopExec;
+    icon = "yazelix";
+    categories = [ "Development" ];
+    type = "Application";
+    terminal = false;
+    settings = {
+      StartupWMClass = desktopEntryKey;
     };
-  extraDesktopEntries = lib.listToAttrs (
-    map (terminal: {
-      name = desktopEntryKey terminal;
-      value = desktopEntryFor terminal "${yazelixPackageForTerminal terminal}/bin/yzx" true;
-    }) desktopTerminalLaunchers
-  );
-  marsDesktopPackages = [ ];
-
+  };
   cursorGeneratorPackage =
     if componentEnabled "cursors" && yazelixCursorsPackage != null then
       [ yazelixCursorsPackage ]
@@ -207,18 +145,6 @@ let
       message = "programs.yazelix.runtime_tool_sources.macchina = \"off\" requires programs.yazelix.show_macchina_on_welcome = false";
     }
     {
-      assertion = (builtins.length cfg.extra_terminal_launchers) == (builtins.length extraTerminalLaunchers);
-      message = "programs.yazelix.extra_terminal_launchers must not contain duplicate terminal variants";
-    }
-    {
-      assertion = !(builtins.elem cfg.terminal cfg.extra_terminal_launchers);
-      message = "programs.yazelix.extra_terminal_launchers must not include programs.yazelix.terminal; the active terminal already gets a desktop launcher";
-    }
-    {
-      assertion = isLinux || cfg.extra_terminal_launchers == [ ];
-      message = "programs.yazelix.extra_terminal_launchers is only supported on Linux desktop environments";
-    }
-    {
       assertion = cfg.mars_package == null || cfg.package == null;
       message = "programs.yazelix.mars_package cannot be combined with programs.yazelix.package; use the narrow mars_package override or a whole Yazelix package replacement, not both";
     }
@@ -228,7 +154,7 @@ in
   inherit agentUsageProgramNames;
 
   baseConfig = {
-    home.packages = [ yazelixPackage ] ++ cursorGeneratorPackage ++ marsDesktopPackages;
+    home.packages = [ yazelixPackage ] ++ cursorGeneratorPackage;
     home.sessionVariables = mkMerge [
       (mkIf marsSemanticEnvActive {
         MARS_APPEARANCE = mkDefault cfg.appearance_mode;
@@ -271,10 +197,8 @@ ${cursorGeneratorActivation}
     lib.optionalAttrs (lib.hasAttrByPath [ "xdg" "desktopEntries" ] options) {
       xdg.desktopEntries =
         {
-          ${desktopEntryKey cfg.terminal} =
-            desktopEntryFor cfg.terminal "${config.home.profileDirectory}/bin/yzx" false;
-        }
-        // extraDesktopEntries;
+          ${desktopEntryKey} = desktopEntry;
+        };
     }
   );
 }

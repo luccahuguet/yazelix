@@ -9,6 +9,12 @@ shells/zsh/initializers
 .local/
 .config/
 
+# Repo-owned Rust tool config must stay trackable even though generated
+# XDG-style state directories are ignored globally.
+!rust_core/.config/
+rust_core/.config/*
+!rust_core/.config/nextest.toml
+
 # Legacy local environment caches
 .env
 .env.*
@@ -59,3 +65,8 @@ result-*
 .dolt/
 *.db
 .beads-credential-key
+
+# GitKB
+.kb/.cache/
+.kb/workspace/
+.kb/workspaces/

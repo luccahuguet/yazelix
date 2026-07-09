@@ -5,6 +5,7 @@ use crate::config_state::{
     record_config_state,
 };
 use crate::control_plane::config_dir_from_env;
+use crate::initializer_commands::generate_default_shell_initializers_for_env;
 use crate::yazi_materialization::{
     YaziMaterializationData, YaziMaterializationRequest, generate_yazi_materialization,
     generated_yazi_static_assets_missing,
@@ -18,6 +19,9 @@ use serde_json::json;
 use std::fs;
 use std::path::{Path, PathBuf};
 use yazelix_zellij_config_pack::MANAGED_SIDEBAR_LAYOUT_NAME;
+
+const ZJSTATUS_LAYOUT_TEMPLATE_PLACEHOLDER: &str = "__YAZELIX_ZJSTATUS_TAB_TEMPLATE__";
+const ZELLIJ_GENERATION_METADATA_NAME: &str = ".yazelix_generation.json";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -269,6 +273,7 @@ fn materialize_runtime_state_from_plan(
         zellij_config_dir: request.zellij_config_dir.clone(),
         seed_plugin_permissions: true,
         session_terminal_label: request.session_terminal_label.clone(),
+        layout_override: request.layout_override.clone(),
     })?;
 
     let config_dir = config_dir_from_env()?;
@@ -277,8 +282,10 @@ fn materialize_runtime_state_from_plan(
         &plan.config_state,
         managed_config_path,
         request.state_path.clone(),
+        Some(request.runtime_dir.clone()),
         &plan.expected_artifacts,
     )?;
+    generate_default_shell_initializers_for_env(true)?;
 
     Ok(RuntimeMaterializationRunData {
         plan,
@@ -363,6 +370,7 @@ fn apply_runtime_materialization(
     config_state: &ConfigStateData,
     managed_config_path: PathBuf,
     state_path: PathBuf,
+    runtime_dir: Option<PathBuf>,
     expected_artifacts: &[RuntimeArtifact],
 ) -> Result<RuntimeMaterializationApplyData, CoreError> {
     let mut missing_artifacts = Vec::new();
@@ -385,6 +393,7 @@ fn apply_runtime_materialization(
         config_file: config_state.config_file.clone(),
         managed_config_path,
         state_path,
+        runtime_dir,
         config_hash: config_state.config_hash.clone(),
         runtime_hash: config_state.runtime_hash.clone(),
     })?;
@@ -408,15 +417,50 @@ fn resolve_zellij_layout_path(
         MANAGED_SIDEBAR_LAYOUT_NAME.to_string()
     };
 
-    let path = if layout.contains('/') || layout.ends_with(".kdl") {
-        layout
-    } else {
+    let path = if !layout.contains('/') {
+        let name = layout.strip_suffix(".kdl").unwrap_or(&layout);
         zellij_layout_dir
-            .join(format!("{layout}.kdl"))
+            .join(format!("{name}.kdl"))
             .to_string_lossy()
             .to_string()
+    } else if layout_override_is_yazelix_template(&layout)? {
+        let file_name = Path::new(&layout)
+            .file_name()
+            .and_then(|name| name.to_str())
+            .ok_or_else(|| {
+                CoreError::classified(
+                    ErrorClass::Config,
+                    "invalid_zellij_layout_override_template",
+                    format!("Yazelix layout override template path has no file name: {layout}"),
+                    "Use a layout template path ending in a .kdl file name.",
+                    json!({ "path": layout }),
+                )
+            })?;
+        zellij_layout_dir
+            .join(file_name)
+            .to_string_lossy()
+            .to_string()
+    } else {
+        layout
     };
     Ok(path)
+}
+
+fn layout_override_is_yazelix_template(layout: &str) -> Result<bool, CoreError> {
+    let path = Path::new(layout);
+    if !path.is_file() {
+        return Ok(false);
+    }
+    let content = fs::read_to_string(path).map_err(|source| {
+        CoreError::io(
+            "read_zellij_layout_override_template",
+            "Could not read a Yazelix Zellij layout override template",
+            "Check the layout override path or remove YAZELIX_LAYOUT_OVERRIDE.",
+            path.to_string_lossy(),
+            source,
+        )
+    })?;
+    Ok(content.contains(ZJSTATUS_LAYOUT_TEMPLATE_PLACEHOLDER))
 }
 
 fn is_missing_file(path: &Path) -> bool {
@@ -452,7 +496,7 @@ fn normalized_session_terminal_label(raw: &Option<String>) -> Option<String> {
 }
 
 fn zellij_generation_metadata_path(zellij_config_dir: &Path) -> PathBuf {
-    zellij_config_dir.join("generation_metadata.json")
+    zellij_config_dir.join(ZELLIJ_GENERATION_METADATA_NAME)
 }
 
 fn generated_zellij_terminal_label_matches(
@@ -550,6 +594,7 @@ mod tests {
             config_file: config_path.to_string_lossy().to_string(),
             managed_config_path: config_path.clone(),
             state_path: state_path.clone(),
+            runtime_dir: Some(runtime_dir.clone()),
             config_hash: baseline.config_hash,
             runtime_hash: baseline.runtime_hash,
         })
@@ -572,6 +617,45 @@ mod tests {
 
     fn plan_recorded_fixture(fixture: &RecordedPlanFixture) -> RuntimeMaterializationPlanData {
         plan_runtime_materialization(&fixture.request).unwrap()
+    }
+
+    // Regression: a Yazelix template override is rendered into generated state instead of launching as a raw destructive KDL path.
+    #[test]
+    fn template_layout_override_resolves_to_generated_layout_path() {
+        let dir = tempdir().expect("tempdir");
+        let layout_source = dir.path().join("flexnetos_agent_workspace.kdl");
+        fs::write(
+            &layout_source,
+            "layout { pane { __YAZELIX_ZJSTATUS_TAB_TEMPLATE__ } }\n",
+        )
+        .unwrap();
+        let layout_dir = dir.path().join("generated/layouts");
+
+        let resolved =
+            resolve_zellij_layout_path(&layout_dir, Some(&layout_source.to_string_lossy()))
+                .unwrap();
+
+        assert_eq!(
+            resolved,
+            layout_dir
+                .join("flexnetos_agent_workspace.kdl")
+                .to_string_lossy()
+        );
+    }
+
+    // Defends: plain user KDL path overrides remain raw Zellij paths.
+    #[test]
+    fn plain_layout_override_remains_raw_path() {
+        let dir = tempdir().expect("tempdir");
+        let layout_source = dir.path().join("plain.kdl");
+        fs::write(&layout_source, "layout { pane }\n").unwrap();
+        let layout_dir = dir.path().join("generated/layouts");
+
+        let resolved =
+            resolve_zellij_layout_path(&layout_dir, Some(&layout_source.to_string_lossy()))
+                .unwrap();
+
+        assert_eq!(resolved, layout_source.to_string_lossy());
     }
 
     // Defends: runtime materialization stays on the repair-missing-artifacts path when hashes are current but files are absent.
@@ -621,6 +705,7 @@ mod tests {
             &config_state,
             dir.path().join("yazelix.toml"),
             state_path,
+            None,
             &expected_artifacts,
         )
         .unwrap_err();

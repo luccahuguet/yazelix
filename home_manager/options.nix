@@ -59,23 +59,10 @@ with lib;
     type = types.enum terminalVariants;
     default = defaultTerminal;
     description = ''
-      Packaged Yazelix terminal variant.
+      Packaged Yazelix terminal. Yazelix packages Mars; configure other
+      terminal emulators to start Yazelix with `yzx enter`.
 
 ${terminalDescriptionBullets}
-    '';
-  };
-
-  extra_terminal_launchers = mkOption {
-    type = types.listOf (types.enum terminalVariants);
-    default = [ ];
-    description = ''
-      Additional terminal-specific Yazelix desktop launchers to install.
-
-      These launchers do not change the active Yazelix runtime identity and do
-      not install extra `bin/yzx` commands into the Home Manager profile. Each
-      generated desktop entry points directly at the selected terminal
-      variant package in the Nix store, keeping its runtime closure available
-      without conflicting with the profile-owned `yzx` command.
     '';
   };
 
@@ -126,8 +113,8 @@ ${marsEmojiFontDescriptionBullets}
 
       Host mode is supported for leaf tools such as lazygit, zenith, helix, steel,
       neovim, yazi, fzf, zoxide, starship, carapace, macchina, mise, tombi, git, jq,
-      fd, and ripgrep. Bootstrap tools such as Nushell, Zellij, the selected
-      terminal, Nix, POSIX utilities, and graphics wrappers remain bundled.
+      fd, and ripgrep. Bootstrap tools such as the Mars terminal, Nushell, Zellij,
+      Nix, POSIX utilities, and graphics wrappers remain bundled.
 
       Off mode is supported for optional helpers such as steel, macchina, p7zip,
       poppler, and resvg. Disabled helpers are intentionally omitted from the

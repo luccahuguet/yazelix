@@ -17,9 +17,9 @@ It guarantees that everyone gets the exact same versions of tools (Yazi, Zellij,
 **Important**: You don't need to learn Nix or Nushell to use Yazelix. Nix with flakes is the only real host prerequisite. The normal product surface is the `yazelix` package or the top-level Home Manager module.
 
 ## Supported Terminal Emulators
-Yazelix provides one packaged terminal at a time. The default `#yazelix` package uses Mars so Yazelix can keep the Rust terminal fork, generated config, cursor behavior, Zellij/Yazi graphics bridge, and agent-driven development workflow aligned. Ghostty remains a first-class supported terminal through `#yazelix_ghostty` or `programs.yazelix.terminal = "ghostty"` for users who prefer the mature Ghostty path. Vanilla Rio is available through `#yazelix_rio` or `programs.yazelix.terminal = "rio"` for users who prefer upstream Rio terminal behavior. WezTerm remains available through `#yazelix_wezterm` or `programs.yazelix.terminal = "wezterm"` for users who prefer that packaged terminal path. Kitty is available through `#yazelix_kitty` or `programs.yazelix.terminal = "kitty"` for users who want the reference Kitty protocol terminal as a packaged runtime. Foot is available on Linux through `#yazelix_foot` or `programs.yazelix.terminal = "foot"` for users who want a lightweight Wayland terminal path. Ratty is available on Linux through `#yazelix_ratty` or `programs.yazelix.terminal = "ratty"` for users who want the Ratty terminal path. Yazelix does not fall back to another terminal when a selected variant is missing or mispackaged.
+Yazelix supports capable terminal emulators through `yzx enter`. The default `#yazelix` package uses Mars so Yazelix can keep the Rust terminal fork, generated config, cursor behavior, Zellij/Yazi graphics bridge, and agent-driven development workflow aligned. Ghostty is the most tested mature host-terminal path and is a strong choice on macOS. Rio, WezTerm, Kitty, Foot, Ratty, Alacritty, and other emulators work as normal host terminal entrypoints.
 
-Mars, Ghostty, Rio, Kitty, and Ratty use the temporary Yazelix Zellij fork for Kitty graphics passthrough where that bridge is selected. The Zellij fork is expected to be dropped and archived once upstream Zellij supports the required Kitty graphics path directly enough for Yazelix to return to upstream Zellij.
+Mars uses the temporary Yazelix Zellij fork for Kitty graphics passthrough where that bridge is selected. The Zellij fork is expected to be dropped and archived once upstream Zellij supports the required Kitty graphics path directly enough for Yazelix to return to upstream Zellij.
 
 See [Terminal Emulator Comparison](./terminal_emulators.md) for a detailed breakdown of strengths, gaps, and platform support.
 
@@ -31,34 +31,33 @@ See [Terminal Emulator Comparison](./terminal_emulators.md) for a detailed break
 
 **WezTerm**
 - Modern, fast, written in Rust
-- Provided by `#yazelix_wezterm` or by `programs.yazelix.terminal = "wezterm"`
+- Configure WezTerm to run `yzx enter`
 - Reference: https://wezfurlong.org/wezterm/installation.html
 
 **Ratty**
 - GPU-rendered terminal with Kitty graphics support and inline 3D graphics
-- Provided on Linux by `#yazelix_ratty` or by `programs.yazelix.terminal = "ratty"`
+- Configure Ratty to run `yzx enter`
 - Reference: https://github.com/orhun/ratty
 
 **Foot**
 - Lightweight Wayland terminal for Linux
-- Provided on Linux by `#yazelix_foot` or by `programs.yazelix.terminal = "foot"`
+- Configure Foot to run `yzx enter`
 - Reference: https://codeberg.org/dnkl/foot
 
 **Ghostty**
-- Modern, fast, written in Zig, newer
-- Provided by `#yazelix_ghostty` or by `programs.yazelix.terminal = "ghostty"`
+- Mature, fast terminal with the most tested Yazelix host-terminal path
+- Strong macOS recommendation
+- Configure Ghostty to run `yzx enter`; run `yzx cursors ghostty setup` for Yazelix cursor shaders
 - Download page: https://ghostty.org/download
 
 **Rio**
-- Upstream Rio terminal packaged as a Yazelix runtime
-- Provided by `#yazelix_rio` or by `programs.yazelix.terminal = "rio"`
-- Uses generated Rio config, `terminal.transparency`, and the Yazelix Zellij Kitty graphics bridge
-- Transparent Linux launches use XWayland when an X display is available because upstream Rio currently ignores background opacity on COSMIC/Wayland
+- Upstream Rust terminal
+- Configure Rio to run `yzx enter`
 - Reference: https://github.com/raphamorim/rio
 
 **Kitty**
 - Fast, feature-rich, GPU-accelerated terminal
-- Provided by `#yazelix_kitty` or by `programs.yazelix.terminal = "kitty"`
+- Configure Kitty to run `yzx enter`
 - Reference: https://sw.kovidgoyal.net/kitty/binary/
 
 ## Quickstart
@@ -96,7 +95,7 @@ If Nix is already available, the same check is also exposed as a flake app:
 nix run --accept-flake-config github:luccahuguet/yazelix#install_check
 ```
 
-Use `#yazelix_ghostty` for Ghostty, `#yazelix_rio` for vanilla Rio, `#yazelix_wezterm` for WezTerm, `#yazelix_kitty` for Kitty, `#yazelix_foot` on Linux if you want Foot, or `#yazelix_ratty` on Linux if you want the Ratty runtime variant.
+Use `#yazelix_mars` only when you want to name the explicit Mars package output. Other terminal emulators are supported by running the installed `yzx enter` command from their own startup configuration.
 
 One-off use without installing also works:
 
@@ -220,16 +219,10 @@ Install the Yazelix package exposed by the top-level flake:
 nix profile add --refresh --accept-flake-config github:luccahuguet/yazelix#yazelix
 ```
 
-The default package is the Mars variant. To install the package-provided Mars, Ghostty, Rio, WezTerm, Kitty, Linux Foot, or Linux Ratty variants explicitly:
+The default package is the Mars variant. To install the package-provided Mars variant explicitly:
 
 ```bash
 nix profile add --refresh --accept-flake-config github:luccahuguet/yazelix#yazelix_mars
-nix profile add --refresh --accept-flake-config github:luccahuguet/yazelix#yazelix_ghostty
-nix profile add --refresh --accept-flake-config github:luccahuguet/yazelix#yazelix_rio
-nix profile add --refresh --accept-flake-config github:luccahuguet/yazelix#yazelix_wezterm
-nix profile add --refresh --accept-flake-config github:luccahuguet/yazelix#yazelix_kitty
-nix profile add --refresh --accept-flake-config github:luccahuguet/yazelix#yazelix_foot
-nix profile add --refresh --accept-flake-config github:luccahuguet/yazelix#yazelix_ratty
 ```
 
 > If you previously evaluated this flake (for example with `nix run` or `nix flake show`), Nix may have cached an older version. Add `--refresh` to force a fresh fetch:
@@ -254,7 +247,7 @@ Normal usage relies on the package-provided `yzx` entrypoint or the Home Manager
 Host prerequisite contract:
 - **Host prerequisite**: Nix with flakes enabled
 - **Package-provided**: the Yazelix runtime, including runtime-local `nu`, `zellij`, `yazi`, `helix`, shells, a curated interactive tool surface, and the internal helper closure behind the runtime root
-- **Not package-provided**: a separate host Nushell install for your everyday shell outside Yazelix, or PATH-provided alternative terminals outside the selected Mars/Ghostty/Rio/WezTerm/Kitty/Foot/Ratty runtime variant
+- **User-provided when selected**: a separate host Nushell install for your everyday shell outside Yazelix, or any non-Mars terminal emulator you configure to run `yzx enter`
 - **Nushell version ownership**: Yazelix uses the Nushell packaged by the locked `nixpkgs-unstable` input for the runtime and bootstrap path; it does not chase a newer upstream Nushell release until Nixpkgs packages it.
 
 ### Step 3: Configure Your Installation (Optional)
@@ -273,26 +266,29 @@ The packaged runtime ships a fixed toolset instead of configurable dependency gr
 - the default CLI helpers: `fzf`, `zoxide`, `starship`, `lazygit`, `zenith`, `carapace`, `macchina`
 - host-managed helper integrations: `mise` and `tombi`
 - the default Yazi preview helpers: `p7zip`, `jq`, `fd`, `ripgrep`, `poppler`
-- one packaged terminal variant: Mars by default with the Yazelix Zellij graphics bridge, Ghostty through `#yazelix_ghostty`, vanilla Rio through `#yazelix_rio`, WezTerm through `#yazelix_wezterm`, Kitty through `#yazelix_kitty`, Linux Foot through `#yazelix_foot`, or Linux Ratty through `#yazelix_ratty`
+- one packaged terminal: Mars by default with the Yazelix Zellij graphics bridge
+- Mars font directories for the default terminal surface: JetBrains Mono, Symbols Nerd Font, and the selected packaged emoji font
 
 When you enter `yzx env`, Yazelix exports that curated tool surface to your shell. Runtime-private helpers stay under `libexec/` so host apps launched from Yazelix do not inherit shadowing tools like `dirname` ahead of the system PATH.
 
 What it does not ship anymore:
 - a runtime-local `devenv` binary
 - dynamic packs or `user_packages`
-- non-selected terminal binaries; use the matching packaged runtime variant or Home Manager `programs.yazelix.terminal` when you want another terminal
+- non-Mars terminal binaries; those terminals stay user-installed and run Yazelix with `yzx enter`
 - heavyweight media helpers such as `ffmpeg` or ImageMagick
 
 #### Configuration Options
 - **Custom shells**: Set `default_shell` to your preference (`"nu"`, `"bash"`, `"fish"`, `"zsh"`, `"xonsh"`); xonsh must be installed on the host and available on `PATH`
 - **Host xonsh hooks**: Yazelix generates xonsh initializers, but xonsh remains host-installed and native xonsh startup must source `~/.config/yazelix/shell_xonsh.xsh`
-- **Terminal package**: choose a flake output such as `#yazelix`, `#yazelix_mars`, `#yazelix_ghostty`, `#yazelix_rio`, `#yazelix_wezterm`, `#yazelix_kitty`, `#yazelix_foot`, or set Home Manager `programs.yazelix.terminal`
-- **Terminal launch**: Mars is the default terminal for Yazelix-owned Rust stack compatibility and agent-driven workflows; Ghostty is the first-class mature alternate; Rio, WezTerm, Kitty, Foot, and Ratty remain available through explicit runtime variants or host `PATH`
+- **Terminal package**: choose `#yazelix` or `#yazelix_mars`; Home Manager uses `programs.yazelix.terminal = "mars"`
+- **Terminal launch**: Mars is the Yazelix-owned terminal for Rust stack compatibility and agent-driven workflows; other terminal emulators should start Yazelix with `yzx enter`
 - **Editor choice**: Configure your editor (see [Editor Configuration](./editor_configuration.md))
 
-### Step 4: Install Fonts (Required for Kitty)
+### Step 4: Install Fonts For Host Terminals
 
-If you're using Kitty, install Nerd Fonts for proper icon display using modern Nix commands:
+The default Mars package carries its required font directories in the release, so a normal `#yazelix` install does not require a separate host font install for Mars.
+
+If you use a host-owned terminal such as Kitty, install Nerd Fonts for proper icon and glyph display using modern Nix commands:
 
 **Option A: Using nix profile (recommended - modern replacement for nix-env):**
 ```bash
@@ -308,7 +304,7 @@ home.packages = with pkgs; [
 ];
 ```
 
-**Note**: WezTerm and Ghostty have better font fallback and don't require this step.
+**Note**: This host font step is for terminals outside the Yazelix-owned Mars package. WezTerm and Ghostty have stronger host font fallback and usually do not require it.
 
 ### Step 5: Launch and Shell Integration
 
@@ -355,7 +351,7 @@ This launches the same command surface used by the generated desktop entry.
 
 ##### macOS (Experimental Launcher Preview)
 
-The supported macOS package path remains `yzx launch` from a terminal after installing the package via `nix profile add` or Home Manager. Mars is the default terminal and macOS-specific Mars issues are maintained from user reports; select Ghostty when you want the mature macOS terminal path. The Home Manager module does not emit Linux `xdg.desktopEntries` on macOS.
+The supported macOS package path remains `yzx launch` from a terminal after installing the package via `nix profile add` or Home Manager. Mars is the packaged terminal path, while Ghostty is the strongest mature host-terminal recommendation on macOS. WezTerm, Kitty, and other capable macOS terminals run Yazelix with `yzx enter`. The Home Manager module does not emit Linux `xdg.desktopEntries` on macOS.
 
 Community testers can opt into an experimental package-first app bundle preview:
 
@@ -440,6 +436,8 @@ Yazelix includes optional Home Manager support for declarative configuration man
 
 The default flake packages stay batteries-included. Yazelix does not expose a package matrix for every possible storage-saving combination; use Home Manager or `lib.${system}.mkYazelix` when you want specific tools to come from your host `PATH`.
 
+Users who prefer another terminal emulator should keep that terminal in its native configuration flow and configure its startup command to run `yzx enter`.
+
 Home Manager is the recommended granular path:
 
 ```nix
@@ -491,7 +489,7 @@ Package-set users can also use the default overlay:
 
 `off` mode is supported for the first optional helper slice: `steel`, `macchina`, `p7zip`, `poppler`, and `resvg`. Disabled helpers are omitted from the runtime package/export and reported by `yzx doctor` as intentional disablement. If `macchina = "off"`, set `show_macchina_on_welcome = false`.
 
-Home Manager and `mkYazelix` also accept component toggles for `cursors` and `screen`. `components.cursors = false` removes Yazelix cursor shader assets and the default cursor sidecar from the runtime tree; Ghostty config generation skips Yazelix cursor shaders and the config UI hides cursor fields. `components.screen = false` requires `skip_welcome_screen = true` and `screen_saver_enabled = false`; `yzx screen` then fails with a disabled-component error instead of looking for missing screen assets.
+Home Manager and `mkYazelix` also accept component toggles for `cursors` and `screen`. `components.cursors = false` removes Yazelix cursor shader assets and the default cursor sidecar from the runtime tree; Mars config generation skips Yazelix cursor shaders and the config UI hides cursor fields. `components.screen = false` requires `skip_welcome_screen = true` and `screen_saver_enabled = false`; `yzx screen` then fails with a disabled-component error instead of looking for missing screen assets.
 
 ## What Gets Installed
 
@@ -520,7 +518,7 @@ Yazelix configures or uses these integrations when the command is available from
 - `steel`, `steel-language-server`, `forge`, `cargo-steel-lib`, `repl-connect` from the bundled Steel package
 
 ### Yazi Media Helpers
-Yazelix does not ship `ffmpeg` or ImageMagick in the runtime variants. Install them outside Yazelix if you want heavy media previews.
+Yazelix does not ship `ffmpeg` or ImageMagick in the packaged runtime. Install them outside Yazelix if you want heavy media previews.
 
 ### Environment Setup
 - Proper paths, variables, and shell configurations
@@ -548,6 +546,6 @@ For complete customization options, see the [Customization Guide](./customizatio
 
 - The `--impure` flag in `nix develop` allows access to the HOME environment variable, necessary for config paths
 - Tweak configs to make them yours; this is just a starting point!
-- For extra configuration, see: [WezTerm Docs](https://wezfurlong.org/wezterm/config/files.html), [Foot config](https://man.archlinux.org/man/foot.ini.5.en), and [Ratty config](https://github.com/orhun/ratty/blob/main/config/ratty.toml)
+- For host-terminal configuration, see your terminal emulator's startup-command documentation
 - Add more swap layouts by changing `rust_core/yazelix_zellij_config_pack/layouts`
 - Use `lazygit`, it's great

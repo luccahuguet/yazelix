@@ -117,6 +117,8 @@ pub const DEFAULT_LEFT_SIDEBAR_COMMAND: &str = "yzx";
 pub const DEFAULT_LEFT_SIDEBAR_YAZI_ARGS: &[&str] = &["sidebar", "yazi"];
 pub const DEFAULT_RIGHT_SIDEBAR_COMMAND: &str = "yzx";
 pub const DEFAULT_RIGHT_SIDEBAR_AGENT_ARGS: &[&str] = &["agent"];
+const CODEX_AGENT_COMMAND: &str = "codex";
+const RTK_TOKENKILL_COMMAND: &str = "rtk";
 
 const REQUIRED_LAYOUT_PLACEHOLDERS: &[&str] = &[
     ZJSTATUS_TAB_TEMPLATE_PLACEHOLDER,
@@ -126,6 +128,8 @@ const REQUIRED_LAYOUT_PLACEHOLDERS: &[&str] = &[
     RUNTIME_DIR_PLACEHOLDER,
     "__YAZELIX_SIDEBAR_COMMAND__",
     "__YAZELIX_SIDEBAR_ARGS__",
+    "__YAZELIX_AGENT_COMMAND__",
+    "__YAZELIX_AGENT_ARGS__",
 ];
 
 #[derive(Debug, Clone, PartialEq)]
@@ -192,18 +196,16 @@ fn default_right_sidebar_command() -> String {
     DEFAULT_RIGHT_SIDEBAR_COMMAND.into()
 }
 
+fn string_vec(values: &[&str]) -> Vec<String> {
+    values.iter().map(|value| (*value).to_string()).collect()
+}
+
 fn default_left_sidebar_args() -> Vec<String> {
-    DEFAULT_LEFT_SIDEBAR_YAZI_ARGS
-        .iter()
-        .map(|arg| (*arg).to_string())
-        .collect()
+    string_vec(DEFAULT_LEFT_SIDEBAR_YAZI_ARGS)
 }
 
 fn default_right_sidebar_args() -> Vec<String> {
-    DEFAULT_RIGHT_SIDEBAR_AGENT_ARGS
-        .iter()
-        .map(|arg| (*arg).to_string())
-        .collect()
+    string_vec(DEFAULT_RIGHT_SIDEBAR_AGENT_ARGS)
 }
 
 fn default_popup_percent() -> i64 {
@@ -255,7 +257,7 @@ fn default_claude_usage_display() -> String {
 }
 
 fn default_codex_usage_display() -> String {
-    "quota".into()
+    "both".into()
 }
 
 fn default_opencode_go_usage_display() -> String {
@@ -263,27 +265,27 @@ fn default_opencode_go_usage_display() -> String {
 }
 
 fn default_claude_usage_periods() -> Vec<String> {
-    vec!["5h".into(), "week".into()]
+    string_vec(CLAUDE_CODEX_USAGE_PERIODS_ALLOWED)
 }
 
 fn default_codex_usage_periods() -> Vec<String> {
-    vec!["5h".into(), "week".into()]
+    string_vec(CLAUDE_CODEX_USAGE_PERIODS_ALLOWED)
 }
 
 fn default_opencode_go_usage_periods() -> Vec<String> {
-    vec!["5h".into(), "week".into(), "month".into()]
+    string_vec(OPENCODE_GO_USAGE_PERIODS_ALLOWED)
 }
 
 fn default_widget_tray() -> Vec<String> {
-    vec![
-        "session".into(),
-        "editor".into(),
-        "shell".into(),
-        "term".into(),
-        "codex_usage".into(),
-        "cpu".into(),
-        "ram".into(),
-    ]
+    string_vec(&[
+        "session",
+        "editor",
+        "shell",
+        "term",
+        "codex_usage",
+        "cpu",
+        "ram",
+    ])
 }
 
 fn default_editor_label() -> String {
@@ -530,6 +532,29 @@ pub fn effective_left_sidebar_args(command: &str, args: &[String]) -> Vec<String
     }
 }
 
+fn is_codex_command(command: &str) -> bool {
+    let trimmed = command.trim();
+    if trimmed == CODEX_AGENT_COMMAND {
+        return true;
+    }
+    Path::new(trimmed)
+        .file_name()
+        .and_then(|name| name.to_str())
+        .map(|name| name == CODEX_AGENT_COMMAND)
+        .unwrap_or(false)
+}
+
+fn effective_right_sidebar_launcher(command: &str, args: &[String]) -> (String, Vec<String>) {
+    let trimmed = command.trim();
+    if is_codex_command(trimmed) {
+        let mut wrapped_args = Vec::with_capacity(args.len() + 1);
+        wrapped_args.push(trimmed.to_string());
+        wrapped_args.extend(args.iter().cloned());
+        return (RTK_TOKENKILL_COMMAND.to_string(), wrapped_args);
+    }
+    (trimmed.to_string(), args.to_vec())
+}
+
 fn is_default_left_sidebar_command(command: &str) -> bool {
     let trimmed = command.trim();
     if trimmed == DEFAULT_LEFT_SIDEBAR_COMMAND {
@@ -669,56 +694,52 @@ fn normalize_usage_periods(
     Ok(periods)
 }
 
-fn normalize_tab_label_mode(mode: &str) -> Result<String, ZellijRenderPlanError> {
-    let normalized = mode.trim().to_ascii_lowercase();
-    if TAB_LABEL_MODE_ALLOWED.contains(&normalized.as_str()) {
-        Ok(normalized)
-    } else {
-        Err(ZellijRenderPlanError::new(
-            "invalid_tab_label_mode",
-            format!(
-                "Invalid zellij.tab_label_mode `{normalized}`. Expected one of: {}",
-                TAB_LABEL_MODE_ALLOWED.join(", ")
-            ),
-            "Set zellij.tab_label_mode to `full` or `compact`.",
-            json!({ "field": "zellij.tab_label_mode", "mode": normalized }),
-        ))
-    }
+macro_rules! allowed_value_normalizer {
+    ($fn_name:ident, $allowed:ident, $code:literal, $field:literal, $detail_key:literal, $remediation:literal) => {
+        fn $fn_name(value: &str) -> Result<String, ZellijRenderPlanError> {
+            let normalized = value.trim().to_ascii_lowercase();
+            if $allowed.contains(&normalized.as_str()) {
+                Ok(normalized)
+            } else {
+                Err(ZellijRenderPlanError::new(
+                    $code,
+                    format!(
+                        "Invalid {} `{normalized}`. Expected one of: {}",
+                        $field,
+                        $allowed.join(", ")
+                    ),
+                    $remediation,
+                    json!({ "field": $field, $detail_key: normalized }),
+                ))
+            }
+        }
+    };
 }
 
-fn normalize_widget_frame(frame: &str) -> Result<String, ZellijRenderPlanError> {
-    let normalized = frame.trim().to_ascii_lowercase();
-    if WIDGET_FRAME_ALLOWED.contains(&normalized.as_str()) {
-        Ok(normalized)
-    } else {
-        Err(ZellijRenderPlanError::new(
-            "invalid_widget_frame",
-            format!(
-                "Invalid zellij.widget_frame `{normalized}`. Expected one of: {}",
-                WIDGET_FRAME_ALLOWED.join(", ")
-            ),
-            "Set zellij.widget_frame to `none`, `square`, or `round`.",
-            json!({ "field": "zellij.widget_frame", "frame": normalized }),
-        ))
-    }
-}
-
-fn normalize_widget_separator(separator: &str) -> Result<String, ZellijRenderPlanError> {
-    let normalized = separator.trim().to_ascii_lowercase();
-    if WIDGET_SEPARATOR_ALLOWED.contains(&normalized.as_str()) {
-        Ok(normalized)
-    } else {
-        Err(ZellijRenderPlanError::new(
-            "invalid_widget_separator",
-            format!(
-                "Invalid zellij.widget_separator `{normalized}`. Expected one of: {}",
-                WIDGET_SEPARATOR_ALLOWED.join(", ")
-            ),
-            "Set zellij.widget_separator to `dot`, `pipe`, `empty`, or `space`.",
-            json!({ "field": "zellij.widget_separator", "separator": normalized }),
-        ))
-    }
-}
+allowed_value_normalizer!(
+    normalize_tab_label_mode,
+    TAB_LABEL_MODE_ALLOWED,
+    "invalid_tab_label_mode",
+    "zellij.tab_label_mode",
+    "mode",
+    "Set zellij.tab_label_mode to `full` or `compact`."
+);
+allowed_value_normalizer!(
+    normalize_widget_frame,
+    WIDGET_FRAME_ALLOWED,
+    "invalid_widget_frame",
+    "zellij.widget_frame",
+    "frame",
+    "Set zellij.widget_frame to `none`, `square`, or `round`."
+);
+allowed_value_normalizer!(
+    normalize_widget_separator,
+    WIDGET_SEPARATOR_ALLOWED,
+    "invalid_widget_separator",
+    "zellij.widget_separator",
+    "separator",
+    "Set zellij.widget_separator to `dot`, `pipe`, `empty`, or `space`."
+);
 
 fn pick_theme(resolved_theme_config: &str) -> String {
     if resolved_theme_config == "random" {
@@ -810,7 +831,7 @@ pub fn compute_zellij_render_plan(
     let codex_usage_display = normalize_usage_display(
         "zellij.codex_usage_display",
         &request.zellij_codex_usage_display,
-        "quota",
+        "both",
     )?;
     let opencode_go_usage_display = normalize_usage_display(
         "zellij.opencode_go_usage_display",
@@ -911,6 +932,11 @@ pub fn compute_zellij_render_plan(
         .map(|setting| setting.name.clone())
         .collect();
 
+    let (right_sidebar_command, right_sidebar_args) = effective_right_sidebar_launcher(
+        &request.right_sidebar_command,
+        &request.right_sidebar_args,
+    );
+
     Ok(ZellijRenderPlanData {
         default_layout_name,
         appearance_mode: request.appearance_mode.trim().to_ascii_lowercase(),
@@ -939,8 +965,8 @@ pub fn compute_zellij_render_plan(
         screen_saver_enabled: request.screen_saver_enabled,
         screen_saver_idle_seconds: request.screen_saver_idle_seconds,
         screen_saver_style,
-        right_sidebar_command: request.right_sidebar_command.trim().to_string(),
-        right_sidebar_args: request.right_sidebar_args.clone(),
+        right_sidebar_command,
+        right_sidebar_args,
         left_sidebar_command: request.left_sidebar_command.trim().to_string(),
         left_sidebar_args: effective_left_sidebar_args(
             &request.left_sidebar_command,
@@ -1804,6 +1830,17 @@ fn render_layout_template(
             render_sidebar_args(&render_plan.left_sidebar_args, runtime_dir),
         ),
         (
+            "__YAZELIX_AGENT_COMMAND__",
+            json_quote(expand_runtime_placeholder(
+                &render_plan.right_sidebar_command,
+                runtime_dir,
+            )),
+        ),
+        (
+            "__YAZELIX_AGENT_ARGS__",
+            render_sidebar_args(&render_plan.right_sidebar_args, runtime_dir),
+        ),
+        (
             "__YAZELIX_SIDEBAR_WIDTH_PERCENT__",
             render_plan
                 .layout_percentages
@@ -2059,7 +2096,7 @@ mod tests {
                 terminal_label: "ghostty".to_string(),
                 tab_label_mode: "full".to_string(),
                 claude_usage_display: "both".to_string(),
-                codex_usage_display: "quota".to_string(),
+                codex_usage_display: "both".to_string(),
                 opencode_go_usage_display: "both".to_string(),
                 claude_usage_periods: default_claude_usage_periods(),
                 codex_usage_periods: default_codex_usage_periods(),
@@ -2149,9 +2186,10 @@ mod tests {
                 .contains(r#"plugin location="file:/tmp/zjstatus.wasm" {"#)
         );
         assert!(side.content.contains(r#"cwd="/home/user""#));
-        assert!(side
-            .content
-            .contains(&format!(r#"tab name="{}""#, HOME_TAB_MARKER)));
+        assert!(
+            side.content
+                .contains(&format!(r#"tab name="{}""#, HOME_TAB_MARKER))
+        );
         assert!(
             side.content
                 .contains(r#"command "/opt/yazelix/bin/sidebar""#)
@@ -2163,6 +2201,85 @@ mod tests {
         for placeholder in REQUIRED_LAYOUT_PLACEHOLDERS {
             assert!(!side.content.contains(placeholder));
         }
+    }
+
+    // Regression: source-owned custom startup templates are additive; they keep the generated Yazelix top bar and use configured side-surface launchers.
+    #[test]
+    fn renders_custom_layout_template_with_zjstatus_and_agent_placeholders() {
+        let mut request = sample_request();
+        request.layout_templates = Some(vec![ZellijConfigPackLayoutTemplate {
+            relative_path: "flexnetos_agent_workspace.kdl".to_string(),
+            content: r#"layout {
+    tab name="FlexNetOS" {
+        pane size=1 borderless=true {
+            __YAZELIX_ZJSTATUS_TAB_TEMPLATE__
+        }
+        pane split_direction="vertical" {
+            pane name="sidebar" {
+                command __YAZELIX_SIDEBAR_COMMAND__
+                __YAZELIX_SIDEBAR_ARGS__
+            }
+            pane name="agent" {
+                command __YAZELIX_AGENT_COMMAND__
+                __YAZELIX_AGENT_ARGS__
+            }
+        }
+    }
+}"#
+            .to_string(),
+        }]);
+
+        let output = render_zellij_config_pack(&request).unwrap();
+        let layout = output
+            .layout_files
+            .iter()
+            .find(|file| file.relative_path == "flexnetos_agent_workspace.kdl")
+            .unwrap();
+
+        assert!(
+            layout
+                .content
+                .contains(r#"plugin location="file:/tmp/zjstatus.wasm" {"#)
+        );
+        assert!(
+            layout
+                .content
+                .contains(r#"command "/opt/yazelix/bin/sidebar""#)
+        );
+        assert!(
+            layout
+                .content
+                .contains(r#"args "--root" "/opt/yazelix/side""#)
+        );
+        assert!(
+            layout
+                .content
+                .contains(r#"command "/opt/yazelix/bin/agent""#)
+        );
+        assert!(layout.content.contains(r#"args "--right""#));
+        for placeholder in REQUIRED_LAYOUT_PLACEHOLDERS {
+            assert!(!layout.content.contains(placeholder));
+        }
+    }
+
+    // Defends: direct Codex right-sidebar sessions rendered by Yazelix still enter through RTK.
+    #[test]
+    fn wraps_direct_codex_right_sidebar_with_rtk() {
+        let mut request = sample_plan_request();
+        request.right_sidebar_command = "codex".to_string();
+        request.right_sidebar_args = vec!["--model".to_string(), "gpt-5.5".to_string()];
+
+        let plan = compute_zellij_render_plan(&request).unwrap();
+
+        assert_eq!(plan.right_sidebar_command, "rtk");
+        assert_eq!(
+            plan.right_sidebar_args,
+            vec![
+                "codex".to_string(),
+                "--model".to_string(),
+                "gpt-5.5".to_string()
+            ]
+        );
     }
 
     // Regression: background controllers must be loaded, not only declared as plugin aliases for first-message launch.
@@ -2262,7 +2379,7 @@ mod tests {
             zellij_default_mode: "normal".into(),
             zellij_tab_label_mode: "full".into(),
             zellij_claude_usage_display: "both".into(),
-            zellij_codex_usage_display: "quota".into(),
+            zellij_codex_usage_display: "both".into(),
             zellij_opencode_go_usage_display: "both".into(),
             zellij_claude_usage_periods: default_claude_usage_periods(),
             zellij_codex_usage_periods: default_codex_usage_periods(),
@@ -2530,6 +2647,21 @@ keybinds {
             compute_zellij_render_plan(&req).unwrap_err().code(),
             "invalid_zellij_usage_periods"
         );
+    }
+
+    // Regression: Codex status defaults to the rich 5h/week view so upstream 5% warnings can be cross-checked in the bar.
+    #[test]
+    fn codex_usage_defaults_to_both_display() {
+        let json = serde_json::json!({
+            "yazelix_layout_dir": "/tmp/yazelix/layouts",
+            "resolved_default_shell": "/bin/sh",
+        });
+        let req: ZellijRenderPlanRequest = serde_json::from_value(json).unwrap();
+        assert_eq!(req.zellij_codex_usage_display, "both");
+
+        let plan = compute_zellij_render_plan(&req).unwrap();
+        assert_eq!(plan.codex_usage_display, "both");
+        assert_eq!(plan.codex_usage_periods, vec!["5h", "week"]);
     }
 
     // Defends: the config-pack planner keeps explicit screen saver config normalized and bounded before pane-orchestrator KDL.

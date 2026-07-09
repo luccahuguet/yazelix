@@ -69,7 +69,7 @@
     "widget_separator": "dot",
     "tab_label_mode": "full",
     "claude_usage_display": "both",
-    "codex_usage_display": "quota",
+    "codex_usage_display": "both",
     "opencode_go_usage_display": "both",
     "codex_usage_periods": [
       "5h",
@@ -192,14 +192,27 @@
       "toggle_pane_in_group_unbind": [
         "Alt p"
       ],
-      "toggle_pane_in_group": [
-        "Ctrl Alt p"
-      ],
+      "toggle_pane_in_group": [],
       "toggle_group_marking": [
         "Ctrl Alt Shift P"
       ],
-      // Optional: set this to ["Ctrl h"] only for terminals that encode Backspace as Ctrl-H.
-      "move_mode_unbind": [],
+      // Keep Backspace/Ctrl-H ambiguity out of Zellij move mode.
+      "move_mode_unbind": [
+        "Ctrl h"
+      ],
+      // Keep high-frequency Zellij controls ergonomic while the status bar groups modifiers clearly.
+      "pane_mode_unbind": [],
+      "pane_mode": [
+        "Ctrl p"
+      ],
+      "resize_mode_unbind": [],
+      "resize_mode": [
+        "Ctrl n"
+      ],
+      "tab_mode_unbind": [],
+      "tab_mode": [
+        "Ctrl t"
+      ],
       // Move locked mode away from Ctrl+g in normal/default modes for CLI prompt flows.
       "locked_mode_unbind": [
         "Ctrl g"
@@ -220,6 +233,10 @@
       ],
       "session_mode": [
         "Ctrl Alt o"
+      ],
+      "quit_unbind": [],
+      "quit": [
+        "Ctrl q"
       ],
       // Keep Ctrl+b available to shells/editors instead of Zellij tmux mode.
       "tmux_mode_unbind": [
@@ -281,7 +298,9 @@
     "ya_command": "",
     "plugins": [
       "git",
-      "starship"
+      "starship",
+      "lazygit",
+      "smart-tabs"
     ],
     "theme": "default",
     "sort_by": "alphabetical",

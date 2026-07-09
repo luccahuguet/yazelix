@@ -1,3 +1,4 @@
+// Test lane: maintainer
 use crate::bridge::{CoreError, ErrorClass};
 use serde_json::json;
 use sha2::{Digest, Sha256};
@@ -10,6 +11,12 @@ pub(crate) fn write_text_atomic(path: &Path, content: &str) -> Result<(), CoreEr
 }
 
 pub(crate) fn write_bytes_atomic(path: &Path, content: &[u8]) -> Result<(), CoreError> {
+    if let Ok(existing) = fs::read(path) {
+        if existing == content {
+            return Ok(());
+        }
+    }
+
     let parent = path.parent().ok_or_else(|| {
         CoreError::classified(
             ErrorClass::Internal,
@@ -98,4 +105,45 @@ pub(crate) fn hash_text(value: &str) -> String {
 
 fn hash_bytes(value: &[u8]) -> String {
     format!("{:x}", Sha256::digest(value))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::write_bytes_atomic;
+    use std::fs;
+
+    #[cfg(unix)]
+    use std::os::unix::fs::PermissionsExt;
+
+    #[cfg(unix)]
+    // Regression: unchanged generated Zellij layouts do not require write access to their parent directory.
+    #[test]
+    fn skips_matching_content_in_read_only_directory() {
+        let dir = tempfile::tempdir().unwrap();
+        let target = dir.path().join("layout.kdl");
+        fs::write(&target, b"same").unwrap();
+        fs::set_permissions(dir.path(), fs::Permissions::from_mode(0o555)).unwrap();
+
+        let result = write_bytes_atomic(&target, b"same");
+
+        fs::set_permissions(dir.path(), fs::Permissions::from_mode(0o755)).unwrap();
+        assert!(result.is_ok());
+        assert_eq!(fs::read(&target).unwrap(), b"same");
+    }
+
+    #[cfg(unix)]
+    // Regression: changed generated Zellij layouts still fail against read-only runtime output.
+    #[test]
+    fn still_errors_when_read_only_directory_needs_rewrite() {
+        let dir = tempfile::tempdir().unwrap();
+        let target = dir.path().join("layout.kdl");
+        fs::write(&target, b"old").unwrap();
+        fs::set_permissions(dir.path(), fs::Permissions::from_mode(0o555)).unwrap();
+
+        let result = write_bytes_atomic(&target, b"new");
+
+        fs::set_permissions(dir.path(), fs::Permissions::from_mode(0o755)).unwrap();
+        assert!(result.is_err());
+        assert_eq!(fs::read(&target).unwrap(), b"old");
+    }
 }

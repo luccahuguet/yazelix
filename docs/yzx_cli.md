@@ -60,10 +60,9 @@ Profile launch sequence and identify performance bottlenecks
 - Profiling works from either a repo checkout or the active installed runtime
 - Startup profile comparison is a local evidence tool, not a hosted CI timing gate
 
-### `yzx launch [-t TERMINAL] [--path DIR] [--home] [--config FILE] [--with KEY=VALUE] [--verbose]`
+### `yzx launch [--path DIR] [--home] [--config FILE] [--with KEY=VALUE] [--verbose]`
 Launch Yazelix with directory and mode options
 - Default: Launch new terminal in current directory
-- `-t, --term, --terminal TERMINAL`: Launch an installed packaged terminal variant such as `ghostty` or `wezterm`
 - `--path DIR`: Start in specific directory
 - `--home`: Start in home directory
 - `--config FILE`: Use an alternate complete `settings.jsonc` for this window
@@ -73,8 +72,8 @@ Launch Yazelix with directory and mode options
 ### `yzx enter [--path DIR] [--home] [--config FILE] [--with KEY=VALUE] [--verbose]`
 Start Yazelix in the current terminal
 - Default: Start in the current terminal and current directory
-- The status-bar terminal widget reports the detected host terminal for this session, not merely the packaged runtime variant
-- If the host terminal is ambiguous or unsupported, the session terminal label is `unknown`
+- The status-bar terminal widget reports the detected host terminal for this session, not merely the packaged runtime label
+- If the host terminal is ambiguous or unrecognized, the session terminal label is `unknown`
 - `--path DIR`: Start in specific directory
 - `--home`: Start in home directory
 - `--config FILE`: Use an alternate complete `settings.jsonc` for this current-terminal session
@@ -97,7 +96,8 @@ Run a single command in the Yazelix environment and exit
 ### `yzx agent`
 Open the managed right agent pane
 - Used by the `Alt+Shift+L` right-side agent pane binding
-- Launches host-installed `codex` when it is available on `PATH`
+- Launches host-installed Codex as `rtk codex` when both tools are available on `PATH`
+- Fails fast if Codex is available but RTK is missing
 - Opens a normal shell with setup guidance when Codex is missing
 - Does not silently fall back to another agent
 - The right sidebar can be configured to run another agent or any other terminal command
@@ -128,9 +128,8 @@ Show Yazelix-owned keybindings and remaps
 
 ### `yzx tutor`
 Show the guided Yazelix tutor
-- Default: print the Yazelix-specific tutor overview with the workspace model and next-step commands
+- Default: print a small entry page with the first lesson, lesson list, and companion help commands
 - `yzx tutor begin`: start the first Yazelix lesson
-- `yzx tutor continue`: pick the first lesson you have not practiced; progress is not stored
 - `yzx tutor list`: list short Yazelix lessons
 - `yzx tutor workspace`: practice workspace roots, managed panes, and Yazi handoff
 - `yzx tutor discovery`: practice `yzx help`, `yzx keys`, `yzx menu`, and `yzx doctor`
@@ -172,7 +171,7 @@ Open the Yazelix GitHub Sponsors page
 ### `yzx update`
 Show available update targets
 - Bare `yzx update` prints the supported update-owner choices
-- It points users at `yzx update upstream` or `yzx update home_manager`
+- It points users at `yzx update upstream`, `yzx update local_source`, or `yzx update home_manager`
 - It warns users not to mix both update paths for the same installed Yazelix runtime
 
 ### `yzx update upstream`
@@ -180,7 +179,18 @@ Upgrade the active Yazelix package in the default Nix profile
 - Prints the exact command it will run
 - Runs `nix profile upgrade --refresh <matching-yazelix-profile-entry>`
 - Intended for installs owned by the default Nix profile
+- For local-source profile entries, fetches and fast-forwards the clean tracked checkout before rebuilding
+- Refuses dirty, detached, ahead-only, or diverged local checkouts so profile updates cannot install stale or local-only code by accident
 - Fresh launches use the updated installed runtime; already-open windows continue on their current live runtime until relaunch or `yzx restart`
+
+### `yzx update local_source`
+Upgrade active local-checkout Yazelix profile entries and repair generated state
+- Intended for development installs whose default-profile Yazelix entries point at `git+file:`, `file:`, `path:`, or another local checkout URL
+- Supports multiple active profile entries that share the active runtime, such as `yazelix` and `yazelix_mars`
+- Runs `nix profile upgrade --refresh <matching-local-source-profile-entries>`
+- Then runs the upgraded profile `~/.nix-profile/bin/yzx doctor --fix` so stale generated state is refreshed before the next desktop relaunch
+- Refuses Home Manager-owned installs, upstream/non-local profile entries, and unmanaged store paths
+- Does not install or rewrite desktop entries
 
 ### `yzx update home_manager`
 Refresh the current Home Manager flake input, then print the manual switch step
@@ -307,6 +317,12 @@ Inspect Yazelix cursor presets and resolved colors
 - Shows global trail, effect, glow, duration, and Kitty fallback settings
 - Shows resolved colors for enabled presets, including derived mono accents
 
+### `yzx cursors ghostty setup`
+Generate the Ghostty include for Yazelix cursors
+- Uses the cursor helper bundled in the Yazelix runtime
+- Writes `~/.config/yazelix_cursors/ghostty.conf`
+- Prints the `config-file = .../ghostty.conf` line to add to user-owned Ghostty config
+
 ### `yzx edit <target> [--print]`
 Open one of the managed config surfaces through explicit or fuzzy target selection
 - Supported targets include `config`, `cursors`, `helix`, `zellij`, `yazi`, `yazi-keymap`, and `yazi-init`
@@ -336,7 +352,6 @@ yzx launch                    # New terminal in current directory
 yzx enter                     # Start in current terminal
 yzx launch --home             # New terminal in home directory
 yzx enter --path ~/project    # Current terminal, specific directory
-yzx launch --term ghostty     # Installed packaged Ghostty variant
 yzx launch --verbose          # Detailed launch diagnostics
 yzx launch --config ./minimal.jsonc # Use an alternate complete settings file
 yzx launch --with editor.command=nvim # Override one setting for this window
@@ -354,7 +369,6 @@ yzx keys hx                   # How to discover Helix bindings
 yzx keys nu                   # Small curated Nushell keybinding subset
 yzx tutor                     # Guided Yazelix overview
 yzx tutor begin               # Start the first Yazelix lesson
-yzx tutor continue            # Pick up the Yazelix tutor path
 yzx tutor list                # List Yazelix tutor lessons
 yzx tutor troubleshooting     # Practice recovery paths
 yzx tutor hx                  # Launch Helix's built-in tutor
@@ -372,6 +386,7 @@ yzx config ui                 # Open the ratconfig-backed JSONC settings editor
 yzx config set editor.hide_sidebar_on_file_open true # Set a config value with a JSON literal
 yzx config unset editor.hide_sidebar_on_file_open # Remove an explicit config value
 yzx cursors                   # Inspect Yazelix cursor presets and resolved colors
+yzx cursors ghostty setup     # Generate the host Ghostty cursor include
 yzx edit cursors              # Open the cursor settings file
 yzx import zellij             # Import ~/.config/zellij/config.kdl when it has no keybinds blocks
 yzx import yazi               # Import native Yazi override files and plugins into managed overrides
@@ -390,6 +405,7 @@ yzx sponsor                   # Open the Yazelix sponsor page
 # Updates
 yzx update                    # Show the supported update-owner paths
 yzx update upstream           # Print and run nix profile upgrade --refresh <matching-yazelix-profile-entry>
+yzx update local_source       # Upgrade active local-source profile entries, then run generated-state repair
 yzx update home_manager       # Run nix flake update yazelix here, then print home-manager switch
 yzx home_manager prepare      # Preview manual-install takeover blockers before Home Manager switch
 yzx home_manager prepare --apply --yes  # Archive file blockers, remove standalone profile yazelix entries, then hand off to home-manager switch

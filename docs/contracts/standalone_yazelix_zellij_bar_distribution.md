@@ -104,9 +104,11 @@ Standalone users can use the same widget contract without Yazelix by using `yaze
 
 The full Yazelix runtime consumes the `yazelix_zellij_bar` child package command surface for integrated zjstatus plugin-block rendering, simple fact widgets, CPU/RAM, cached provider usage widgets, and tab-label formatting helpers. Integrated layout materialization calls `yazelix_zellij_bar_widget render-yazelix-runtime` with typed runtime bar config; the child renders its runtime KDL template and Yazelix inserts the returned plugin block. The integrated template keeps zjstatus `{tabs}` as the default live tab source because it is event-driven by Zellij `TabUpdate` events and supports upstream terminal-bell styling without a Yazelix command-widget tab strip.
 
-The standalone package installs `zjstatus.wasm` from the child repo's pinned `zjstatus` flake input. The main Yazelix flake makes `yazelixZellijBar.inputs.zjstatus` follow the main repo's `zjstatus` input when forwarding `.#yazelix_zellij_bar`, so the forwarded standalone package uses the same upstream pin as the integrated Yazelix runtime.
+The standalone package installs `zjstatus.wasm` from the child repo's pinned `zjstatus` flake input. The main Yazelix flake makes `yazelixZellijBar.inputs.zjstatus` follow the main repo's `zjstatus` input when forwarding `.#yazelix_zellij_bar`, so the forwarded standalone package uses the same selected pin as the integrated Yazelix runtime.
 
-The main runtime ships `configs/zellij/plugins/zjstatus.wasm` from the locked upstream `zjstatus` package output for integrated Zellij layouts.
+The main runtime ships `configs/zellij/plugins/zjstatus.wasm` from the locked `zjstatus` package output for integrated Zellij layouts.
+
+Yazelix must not use zjstatus's URL-based automated installation for the integrated runtime. The locally cloned upstream wiki at `/home/flexnetos/FlexNetOS/src/upstream/dj95/zjstatus.wiki/1-‐-Installation.md` documents `plugin location="https://github.com/dj95/zjstatus/releases/latest/download/zjstatus.wasm"` as an automated path, but also warns that Zellij can corrupt the download when multiple tabs fetch the plugin concurrently. Yazelix therefore treats `file:` paths to the packaged `zjstatus.wasm` as the release contract.
 
 Yazelix keeps these integration-only responsibilities:
 
@@ -142,16 +144,14 @@ zjstatus layout blocks do not provide a native include or variable layer. The cu
 Raw KDL remains the escape hatch for lower-level zjstatus keys.
 
 The pinned zjstatus tabs widget renders each tab from Zellij `TabInfo`
-placeholders, including native terminal-bell fields. Its pipe and command
-widgets can render external text elsewhere in the bar, but they cannot merge an
-all-tabs activity snapshot into each tab label without a zjstatus code change.
-Both the generic standalone preset and the integrated Yazelix runtime therefore
-keep `{tabs}` for live tab identity, focus, creation/deletion updates, click
-handling, and style-only terminal-bell state. The `yazelix_zellij_bar_widget tabs`
-command is a renderer probe for the all-tab activity snapshot contract, while
-native tab-name decoration remains the default AI-activity bridge until Yazelix
-owns an event-driven tab renderer or zjstatus learns to consume the activity
-snapshot inside its native `{tabs}` path.
+placeholders, including native terminal-bell fields. The integrated Yazelix
+runtime additionally configures `tab_activity_pipe_name` so the pinned tabs
+widget can merge all-tabs activity state into each live `TabInfo.name` label
+without renaming native Zellij tabs. Both the generic standalone preset and the
+integrated Yazelix runtime keep `{tabs}` for live tab identity, focus,
+creation/deletion updates, click handling, and style-only terminal-bell state.
+The `yazelix_zellij_bar_widget tabs` command is a renderer probe for the all-tab
+activity snapshot contract, not the default integrated tab strip.
 
 ## Verification
 

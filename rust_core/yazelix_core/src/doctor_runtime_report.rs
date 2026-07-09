@@ -1,6 +1,7 @@
 //! Doctor findings for runtime distribution capability and shared runtime preflight.
 //! Bead: yazelix-ulb2.4.3
 
+use crate::atomic_fs::is_executable_file;
 use crate::bridge::CoreError;
 use crate::runtime_components::{
     read_optional_runtime_tool_manifest, read_runtime_component_manifest,
@@ -190,22 +191,7 @@ fn effective_command_search_paths(configured_paths: &[PathBuf]) -> Vec<PathBuf> 
 fn command_exists_in_paths(command: &str, command_search_paths: &[PathBuf]) -> bool {
     command_search_paths
         .iter()
-        .any(|dir| is_executable_command(&dir.join(command)))
-}
-
-#[cfg(unix)]
-fn is_executable_command(path: &Path) -> bool {
-    use std::os::unix::fs::PermissionsExt;
-
-    let Ok(metadata) = fs::metadata(path) else {
-        return false;
-    };
-    metadata.is_file() && metadata.permissions().mode() & 0o111 != 0
-}
-
-#[cfg(not(unix))]
-fn is_executable_command(path: &Path) -> bool {
-    path.is_file()
+        .any(|dir| is_executable_file(&dir.join(command)))
 }
 
 fn format_path_list(command_search_paths: &[PathBuf]) -> String {
@@ -515,7 +501,10 @@ fn runtime_variant_is_mars(runtime_dir: &Path) -> bool {
 fn is_mars_launch_log(path: &Path) -> bool {
     path.file_name()
         .and_then(|name| name.to_str())
-        .is_some_and(|name| name.starts_with("yazelix_terminal_desktop_") && name.ends_with(".log"))
+        .is_some_and(|name| {
+            name.ends_with(".log")
+                && (name.starts_with("mars_") || name.starts_with("yazelix_terminal_desktop_"))
+        })
 }
 
 fn launch_log_modified_seconds(path: &Path) -> u64 {
@@ -1173,7 +1162,7 @@ mod tests {
         let log = state
             .join("logs")
             .join("terminal_launch")
-            .join("yazelix_terminal_desktop_123.log");
+            .join("mars_123.log");
         std::fs::create_dir_all(log.parent().unwrap()).unwrap();
         std::fs::write(
             &log,
@@ -1211,7 +1200,7 @@ mod tests {
         let log = state
             .join("logs")
             .join("terminal_launch")
-            .join("yazelix_terminal_desktop_123.log");
+            .join("mars_123.log");
         std::fs::create_dir_all(log.parent().unwrap()).unwrap();
         std::fs::write(
             &log,

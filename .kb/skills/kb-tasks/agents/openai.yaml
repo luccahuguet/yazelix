@@ -1,0 +1,6 @@
+interface:
+  display_name: "KB Tasks"
+  short_description: "List tasks with filtering"
+  default_prompt: "Use $kb-tasks to list and filter tasks with relationships and status details."
+policy:
+  allow_implicit_invocation: true

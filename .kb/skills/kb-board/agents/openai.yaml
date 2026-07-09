@@ -1,0 +1,6 @@
+interface:
+  display_name: "KB Board"
+  short_description: "Show kanban board with task status"
+  default_prompt: "Use $kb-board to display the kanban board with task status columns and analysis."
+policy:
+  allow_implicit_invocation: true

@@ -1,0 +1,6 @@
+interface:
+  display_name: "KB Search"
+  short_description: "Search the knowledge base"
+  default_prompt: "Use $kb-search to search across all documents and present results with context."
+policy:
+  allow_implicit_invocation: true

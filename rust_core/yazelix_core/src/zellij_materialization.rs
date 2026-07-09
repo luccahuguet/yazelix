@@ -41,6 +41,8 @@ const GENERATED_CONFIG_MARKERS: &[&str] = &[
 const GENERATED_LAYOUT_MARKER: &str = "GENERATED ZELLIJ LAYOUT (YAZELIX)";
 const GENERATED_LAYOUT_FINGERPRINT_PREFIX: &str = "generation_fingerprint:";
 const YAZELIX_DEFAULT_SCROLL_BUFFER_SIZE: usize = 5_000;
+const ZELLIJ_COPY_COMMAND_SETTING: &str = "copy_command";
+const ZELLIJ_SCROLL_BUFFER_SETTING: &str = "scroll_buffer_size";
 const ZELLIJ_KEYBINDINGS_CONFIG_KEY: &str = "zellij_keybindings";
 const ZELLIJ_NATIVE_KEYBINDINGS_CONFIG_KEY: &str = "zellij_native_keybindings";
 const ZELLIJ_KEYBINDING_PARSE_POLICY: KeybindingParsePolicy = KeybindingParsePolicy {
@@ -99,6 +101,7 @@ const ZELLIJ_RENDER_PLAN_CONFIG_KEYS: &[&str] = &[
 
 const ZJSTATUS_BAR_RENDER_COMMAND: &str = "render-yazelix-runtime";
 const ZJSTATUS_BAR_RENDER_SCHEMA_VERSION: u64 = 3;
+const ZJSTATUS_LAYOUT_TEMPLATE_PLACEHOLDER: &str = "__YAZELIX_ZJSTATUS_TAB_TEMPLATE__";
 
 #[derive(Debug, Clone)]
 pub struct ZellijMaterializationRequest {
@@ -109,6 +112,7 @@ pub struct ZellijMaterializationRequest {
     pub zellij_config_dir: PathBuf,
     pub seed_plugin_permissions: bool,
     pub session_terminal_label: Option<String>,
+    pub layout_override: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
@@ -229,6 +233,7 @@ pub fn generate_zellij_materialization(
     );
     let mut base_config_source = resolve_base_config_source()?;
     apply_yazelix_scroll_buffer_default(&mut base_config_source);
+    apply_yazelix_linux_clipboard_default(&mut base_config_source, &request.runtime_dir);
     validate_base_config_keybinding_policy(&base_config_source)?;
     let plugin_artifacts = resolve_plugin_artifacts(&request.runtime_dir, &state_dir)?;
     let [pane_orchestrator_artifact, zjstatus_artifact, yzpp_artifact] = &plugin_artifacts;
@@ -273,6 +278,7 @@ pub fn generate_zellij_materialization(
             source,
         )
     })?;
+    set_generated_directory_writable(&request.zellij_config_dir)?;
 
     sync_plugin_artifacts(&plugin_artifacts, request.seed_plugin_permissions)?;
     let pane_orchestrator_runtime_path = pane_orchestrator_artifact.runtime_path.clone();
@@ -293,13 +299,15 @@ pub fn generate_zellij_materialization(
     let zjstatus_plugin_url = format!("file:{}", zjstatus_runtime_path.to_string_lossy());
     let zjstatus_plugin_block =
         render_integrated_zjstatus_bar(&request.runtime_dir, &render_plan, &zjstatus_plugin_url)?;
+    let layout_templates =
+        layout_templates_for_override(&request.runtime_dir, request.layout_override.as_deref())?;
     let config_pack_request = zellij_config_pack::ZellijConfigPackRenderRequest {
         base_config_content: base_config_source.content.clone(),
         override_keybinds,
         render_plan: render_plan.clone(),
         popup_commands,
         custom_popups: child_custom_popups(&custom_popups),
-        layout_templates: None,
+        layout_templates,
         static_fragments: None,
         zjstatus_plugin_block,
         pane_orchestrator_plugin_url: format!(
@@ -351,6 +359,89 @@ pub fn generate_zellij_materialization(
             .map(|path| path.to_string_lossy().to_string())
             .collect(),
     })
+}
+
+fn layout_templates_for_override(
+    runtime_dir: &Path,
+    layout_override: Option<&str>,
+) -> Result<Option<Vec<zellij_config_pack::ZellijConfigPackLayoutTemplate>>, CoreError> {
+    let Some((relative_path, content)) = layout_override_template(runtime_dir, layout_override)?
+    else {
+        return Ok(None);
+    };
+
+    let mut templates = zellij_config_pack::bundled_layout_templates();
+    if let Some(existing) = templates
+        .iter_mut()
+        .find(|template| template.relative_path == relative_path)
+    {
+        existing.content = content;
+    } else {
+        templates.push(zellij_config_pack::ZellijConfigPackLayoutTemplate {
+            relative_path,
+            content,
+        });
+    }
+    Ok(Some(templates))
+}
+
+fn layout_override_template(
+    runtime_dir: &Path,
+    layout_override: Option<&str>,
+) -> Result<Option<(String, String)>, CoreError> {
+    let Some(raw) = layout_override
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+    else {
+        return Ok(None);
+    };
+    let candidate = layout_override_template_candidate(runtime_dir, raw);
+    if !candidate.is_file() {
+        return Ok(None);
+    }
+    let content = fs::read_to_string(&candidate).map_err(|source| {
+        CoreError::io(
+            "read_zellij_layout_override_template",
+            "Could not read a Yazelix Zellij layout override template",
+            "Check the layout override path or remove YAZELIX_LAYOUT_OVERRIDE.",
+            candidate.to_string_lossy(),
+            source,
+        )
+    })?;
+    if !content.contains(ZJSTATUS_LAYOUT_TEMPLATE_PLACEHOLDER) {
+        return Ok(None);
+    }
+    let relative_path = candidate
+        .file_name()
+        .and_then(|name| name.to_str())
+        .filter(|name| !name.trim().is_empty())
+        .ok_or_else(|| {
+            CoreError::classified(
+                ErrorClass::Config,
+                "invalid_zellij_layout_override_template",
+                format!(
+                    "Yazelix layout override template path has no file name: {}",
+                    candidate.display()
+                ),
+                "Use a layout template path ending in a .kdl file name.",
+                json!({ "path": candidate.to_string_lossy() }),
+            )
+        })?
+        .to_string();
+    Ok(Some((relative_path, content)))
+}
+
+fn layout_override_template_candidate(runtime_dir: &Path, raw: &str) -> PathBuf {
+    if raw.contains('/') {
+        PathBuf::from(raw)
+    } else {
+        let name = raw.strip_suffix(".kdl").unwrap_or(raw);
+        runtime_dir
+            .join("configs")
+            .join("zellij")
+            .join("layouts")
+            .join(format!("{name}.kdl"))
+    }
 }
 
 fn build_render_plan_request(
@@ -727,7 +818,10 @@ fn normalize_config_strings(
 }
 
 fn apply_yazelix_scroll_buffer_default(base_config_source: &mut ZellijBaseConfigSource) {
-    if zellij_config_declares_scroll_buffer_size(&base_config_source.content) {
+    if zellij_config_declares_top_level_setting(
+        &base_config_source.content,
+        ZELLIJ_SCROLL_BUFFER_SETTING,
+    ) {
         return;
     }
 
@@ -741,7 +835,74 @@ fn apply_yazelix_scroll_buffer_default(base_config_source: &mut ZellijBaseConfig
     }
 }
 
-fn zellij_config_declares_scroll_buffer_size(config_content: &str) -> bool {
+fn apply_yazelix_linux_clipboard_default(
+    base_config_source: &mut ZellijBaseConfigSource,
+    runtime_dir: &Path,
+) {
+    let copy_command = default_linux_clipboard_copy_command(runtime_dir);
+    apply_yazelix_clipboard_copy_command_default(base_config_source, copy_command.as_deref());
+}
+
+fn apply_yazelix_clipboard_copy_command_default(
+    base_config_source: &mut ZellijBaseConfigSource,
+    copy_command: Option<&str>,
+) {
+    if zellij_config_declares_top_level_setting(
+        &base_config_source.content,
+        ZELLIJ_COPY_COMMAND_SETTING,
+    ) {
+        return;
+    }
+
+    let Some(copy_command) = copy_command else {
+        return;
+    };
+    let default = format!(
+        "// Yazelix default: use packaged clipboard helper for Zellij selection copies.\ncopy_command {}\n",
+        serde_json::to_string(&copy_command).unwrap_or_else(|_| "\"wl-copy\"".to_string())
+    );
+    if base_config_source.content.trim().is_empty() {
+        base_config_source.content = default;
+    } else {
+        base_config_source.content = format!("{default}\n{}", base_config_source.content);
+    }
+}
+
+fn default_linux_clipboard_copy_command(runtime_dir: &Path) -> Option<String> {
+    default_linux_clipboard_copy_command_for_session(
+        runtime_dir,
+        std::env::var_os("WAYLAND_DISPLAY").is_some(),
+        std::env::var_os("DISPLAY").is_some(),
+    )
+}
+
+fn default_linux_clipboard_copy_command_for_session(
+    runtime_dir: &Path,
+    wayland_display_present: bool,
+    x11_display_present: bool,
+) -> Option<String> {
+    if !cfg!(target_os = "linux") {
+        return None;
+    }
+    if wayland_display_present {
+        return Some(
+            runtime_dir
+                .join("toolbin")
+                .join("wl-copy")
+                .to_string_lossy()
+                .to_string(),
+        );
+    }
+    if x11_display_present {
+        return Some(format!(
+            "{} -selection clipboard",
+            runtime_dir.join("toolbin").join("xclip").to_string_lossy()
+        ));
+    }
+    None
+}
+
+fn zellij_config_declares_top_level_setting(config_content: &str, setting_name: &str) -> bool {
     config_content.lines().any(|line| {
         let trimmed = line.trim_start();
         if trimmed.starts_with("//")
@@ -758,7 +919,7 @@ fn zellij_config_declares_scroll_buffer_size(config_content: &str) -> bool {
             .split(|ch: char| ch.is_whitespace() || ch == '=')
             .next()
             .unwrap_or_default();
-        head == "scroll_buffer_size"
+        head == setting_name
     })
 }
 
@@ -1169,6 +1330,18 @@ fn write_zellij_config_pack_output(
     layout_dir: &Path,
     output: &zellij_config_pack::ZellijConfigPackRenderOutput,
 ) -> Result<Vec<PathBuf>, CoreError> {
+    if let Some(parent) = merged_config_path.parent() {
+        fs::create_dir_all(parent).map_err(|source| {
+            CoreError::io(
+                "create_zellij_output_dir",
+                "Could not create the managed Zellij output directory",
+                "Check permissions for the Yazelix state directory and retry.",
+                parent.to_string_lossy(),
+                source,
+            )
+        })?;
+        set_generated_directory_writable(parent)?;
+    }
     write_text_atomic(merged_config_path, &output.merged_config)?;
     fs::create_dir_all(layout_dir).map_err(|source| {
         CoreError::io(
@@ -1179,6 +1352,7 @@ fn write_zellij_config_pack_output(
             source,
         )
     })?;
+    set_generated_directory_writable(layout_dir)?;
     let expected_targets = output
         .layout_files
         .iter()
@@ -1190,6 +1364,47 @@ fn write_zellij_config_pack_output(
     }
 
     Ok(expected_targets)
+}
+
+fn set_generated_directory_writable(path: &Path) -> Result<(), CoreError> {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        fs::set_permissions(path, fs::Permissions::from_mode(0o755)).map_err(|source| {
+            CoreError::io(
+                "set_zellij_generated_dir_permissions",
+                "Could not adjust permissions on a managed Zellij directory",
+                "Check permissions for the Yazelix state directory and retry.",
+                path.to_string_lossy(),
+                source,
+            )
+        })?;
+    }
+    #[cfg(not(unix))]
+    {
+        let mut permissions = fs::metadata(path)
+            .map_err(|source| {
+                CoreError::io(
+                    "read_zellij_generated_dir_permissions",
+                    "Could not inspect permissions on a managed Zellij directory",
+                    "Check permissions for the Yazelix state directory and retry.",
+                    path.to_string_lossy(),
+                    source,
+                )
+            })?
+            .permissions();
+        permissions.set_readonly(false);
+        fs::set_permissions(path, permissions).map_err(|source| {
+            CoreError::io(
+                "set_zellij_generated_dir_permissions",
+                "Could not adjust permissions on a managed Zellij directory",
+                "Check permissions for the Yazelix state directory and retry.",
+                path.to_string_lossy(),
+                source,
+            )
+        })?;
+    }
+    Ok(())
 }
 
 fn render_integrated_zjstatus_bar(
@@ -1551,7 +1766,7 @@ mod tests {
             zellij_default_mode: "normal".into(),
             zellij_tab_label_mode: "full".into(),
             zellij_claude_usage_display: "both".into(),
-            zellij_codex_usage_display: "quota".into(),
+            zellij_codex_usage_display: "both".into(),
             zellij_opencode_go_usage_display: "both".into(),
             zellij_claude_usage_periods: vec!["5h".into(), "week".into()],
             zellij_codex_usage_periods: vec!["5h".into(), "week".into()],
@@ -1620,6 +1835,61 @@ ui { pane_frames { hide_session_name true } }
         assert_eq!(
             source.content,
             "scroll_buffer_size 123\ncopy_on_select true\n"
+        );
+    }
+
+    // Regression: commented Zellij copy_command examples do not stop Yazelix from rendering a working packaged clipboard helper.
+    #[test]
+    fn zellij_clipboard_default_is_added_when_only_examples_are_present() {
+        let mut source = ZellijBaseConfigSource {
+            source: "managed".to_string(),
+            path: None,
+            content: "// copy_command \"wl-copy\"\ncopy_on_select true\n".to_string(),
+        };
+
+        apply_yazelix_clipboard_copy_command_default(&mut source, Some("/runtime/toolbin/wl-copy"));
+
+        assert!(source.content.starts_with(
+            "// Yazelix default: use packaged clipboard helper for Zellij selection copies.\ncopy_command \"/runtime/toolbin/wl-copy\"\n"
+        ));
+        assert!(source.content.contains("// copy_command \"wl-copy\""));
+        assert!(source.content.contains("copy_on_select true"));
+    }
+
+    // Defends: explicit native Zellij clipboard configuration remains user-owned.
+    #[test]
+    fn zellij_clipboard_default_preserves_explicit_user_value() {
+        let mut source = ZellijBaseConfigSource {
+            source: "managed".to_string(),
+            path: None,
+            content: "copy_command \"pbcopy\"\ncopy_on_select true\n".to_string(),
+        };
+
+        apply_yazelix_clipboard_copy_command_default(&mut source, Some("/runtime/toolbin/wl-copy"));
+
+        assert_eq!(
+            source.content,
+            "copy_command \"pbcopy\"\ncopy_on_select true\n"
+        );
+    }
+
+    // Defends: Linux clipboard command selection prefers Wayland and keeps X11 as a fallback.
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn linux_clipboard_default_command_selects_session_helper() {
+        let runtime = Path::new("/runtime");
+
+        assert_eq!(
+            default_linux_clipboard_copy_command_for_session(runtime, true, true).as_deref(),
+            Some("/runtime/toolbin/wl-copy")
+        );
+        assert_eq!(
+            default_linux_clipboard_copy_command_for_session(runtime, false, true).as_deref(),
+            Some("/runtime/toolbin/xclip -selection clipboard")
+        );
+        assert_eq!(
+            default_linux_clipboard_copy_command_for_session(runtime, false, false),
+            None
         );
     }
 
@@ -1707,14 +1977,25 @@ ui { pane_frames { hide_session_name true } }
         .unwrap();
         let rendered = override_keybinds.join("\n");
 
-        assert!(!rendered.contains(r#"bind "Ctrl n" { SwitchToMode "Resize"; }"#));
-        assert!(!rendered.contains(r#"bind "Ctrl n" { SwitchToMode "Normal"; }"#));
+        assert!(!rendered.contains("TogglePaneInGroup"));
+        assert!(rendered.contains(r#"bind "Ctrl p" { SwitchToMode "Pane"; }"#));
+        assert!(rendered.contains(r#"bind "Ctrl p" { SwitchToMode "Normal"; }"#));
+        assert!(rendered.contains(r#"bind "Ctrl n" { SwitchToMode "Resize"; }"#));
+        assert!(rendered.contains(r#"bind "Ctrl n" { SwitchToMode "Normal"; }"#));
+        assert!(rendered.contains(r#"bind "Ctrl t" { SwitchToMode "Tab"; }"#));
+        assert!(rendered.contains(r#"bind "Ctrl t" { SwitchToMode "Normal"; }"#));
         assert!(rendered.contains(r#"bind "Ctrl Alt s" { SwitchToMode "Scroll"; }"#));
         assert!(rendered.contains(r#"bind "Ctrl Alt o" { SwitchToMode "Session"; }"#));
         assert!(rendered.contains(r#"bind "Ctrl Alt g" { SwitchToMode "Locked"; }"#));
+        assert!(rendered.contains(r#"bind "Ctrl q" { Quit; }"#));
+        assert!(rendered.contains(r#"unbind "Ctrl h""#));
+        assert!(!rendered.contains(r#"unbind "Ctrl p""#));
+        assert!(!rendered.contains(r#"unbind "Ctrl n""#));
+        assert!(!rendered.contains(r#"unbind "Ctrl t""#));
+        assert!(!rendered.contains(r#"unbind "Ctrl q""#));
     }
 
-    // Defends: integrated zjstatus layout data comes from the child widget command as an opaque plugin block.
+    // Defends: integrated zjstatus layout data comes from the child widget command with a packaged file-backed wasm URL, not upstream URL auto-download.
     #[test]
     fn renders_zjstatus_plugin_block_with_child_renderer_command() {
         let temp = tempfile::tempdir().unwrap();
@@ -1744,8 +2025,15 @@ case "$3" in
   *) exit 14 ;;
 esac
 case "$3" in
+  *'https://github.com/dj95/zjstatus/releases/latest/download/zjstatus.wasm'*) exit 20 ;;
+esac
+case "$3" in
   *'"codex_usage_periods":["5h","week"]'*) ;;
   *) exit 15 ;;
+esac
+case "$3" in
+  *'"codex_usage_display":"both"'*) ;;
+  *) exit 21 ;;
 esac
 case "$3" in
   *'"appearance_mode":"dark"'*) ;;
@@ -1772,6 +2060,92 @@ printf '%s\n' '{"schema_version":3,"plugin_block":"CHILD_PLUGIN_BLOCK"}'
             render_integrated_zjstatus_bar(runtime_dir, &plan, "file:/tmp/zjstatus.wasm").unwrap();
 
         assert_eq!(plugin_block, "CHILD_PLUGIN_BLOCK");
+    }
+
+    // Regression: Yazelix-owned layout override templates are added to the generated config pack instead of bypassing generated zjstatus layout rendering.
+    #[test]
+    fn layout_override_template_is_added_to_config_pack_templates() {
+        let temp = tempfile::tempdir().unwrap();
+        let layout_dir = temp.path().join("configs/zellij/layouts");
+        std::fs::create_dir_all(&layout_dir).unwrap();
+        std::fs::write(
+            layout_dir.join("flexnetos_agent_workspace.kdl"),
+            "layout { pane { __YAZELIX_ZJSTATUS_TAB_TEMPLATE__ } }\n",
+        )
+        .unwrap();
+
+        let templates =
+            layout_templates_for_override(temp.path(), Some("flexnetos_agent_workspace"))
+                .unwrap()
+                .unwrap();
+
+        assert!(
+            templates
+                .iter()
+                .any(|template| template.relative_path == "yzx_side.kdl")
+        );
+        let custom = templates
+            .iter()
+            .find(|template| template.relative_path == "flexnetos_agent_workspace.kdl")
+            .expect("custom layout template");
+        assert!(custom.content.contains("__YAZELIX_ZJSTATUS_TAB_TEMPLATE__"));
+    }
+
+    // Regression: generated Zellij dirs can retain read-only package permissions; the writer must regain access before replacing layouts.
+    #[cfg(unix)]
+    #[test]
+    fn zellij_config_pack_output_repairs_readonly_generated_dirs() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let temp = tempfile::tempdir().unwrap();
+        let zellij_dir = temp.path().join("configs/zellij");
+        let layout_dir = zellij_dir.join("layouts");
+        let merged_config_path = zellij_dir.join("config.kdl");
+        let stale_layout = layout_dir.join("stale.kdl");
+        let target_layout = layout_dir.join("flexnetos_agent_workspace.kdl");
+        std::fs::create_dir_all(&layout_dir).unwrap();
+        std::fs::write(&merged_config_path, "old config\n").unwrap();
+        std::fs::write(&stale_layout, "old stale layout\n").unwrap();
+        std::fs::write(&target_layout, "old target layout\n").unwrap();
+
+        for path in [&merged_config_path, &stale_layout, &target_layout] {
+            std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o444)).unwrap();
+        }
+        for path in [&layout_dir, &zellij_dir] {
+            std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o555)).unwrap();
+        }
+
+        let output = zellij_config_pack::ZellijConfigPackRenderOutput {
+            renderer_schema_version: zellij_config_pack::RENDERER_SCHEMA_VERSION,
+            merged_config: "new config\n".to_string(),
+            layout_files: vec![zellij_config_pack::ZellijConfigPackRenderedFile {
+                relative_path: "flexnetos_agent_workspace.kdl".to_string(),
+                content: "new target layout\n".to_string(),
+            }],
+            generation_fingerprint: "fingerprint".to_string(),
+        };
+
+        let written =
+            write_zellij_config_pack_output(&merged_config_path, &layout_dir, &output).unwrap();
+
+        assert_eq!(written, vec![target_layout.clone()]);
+        assert_eq!(
+            std::fs::read_to_string(&merged_config_path).unwrap(),
+            "new config\n"
+        );
+        assert_eq!(
+            std::fs::read_to_string(&target_layout).unwrap(),
+            "new target layout\n"
+        );
+        assert!(!stale_layout.exists());
+        assert_eq!(
+            std::fs::metadata(&zellij_dir).unwrap().permissions().mode() & 0o777,
+            0o755
+        );
+        assert_eq!(
+            std::fs::metadata(&layout_dir).unwrap().permissions().mode() & 0o777,
+            0o755
+        );
     }
 
     // Regression: startup layouts name the initial tab without setting a cwd, so launch cwd stays

@@ -352,9 +352,9 @@ fn validate_home_manager_activation_mode(
                 .join("yazelix")
                 .join("configs")
                 .join("terminal_emulators")
-                .join("ghostty")
-                .join("config"),
-            "generated Ghostty terminal config after Home Manager activation",
+                .join("mars")
+                .join("config.toml"),
+            "generated Mars terminal config after Home Manager activation",
             &mut errors,
         );
         Ok(errors)

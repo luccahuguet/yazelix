@@ -450,6 +450,7 @@ mod tests {
         assert!(names.contains(&"yzx env"));
         assert!(names.contains(&"yzx run"));
         assert!(names.contains(&"yzx update"));
+        assert!(names.contains(&"yzx update local_source"));
         assert!(names.contains(&"yzx update nix"));
     }
 

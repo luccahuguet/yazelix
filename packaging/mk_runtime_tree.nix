@@ -4,14 +4,13 @@
   nixgl ? null,
   name ? "yazelix-runtime",
   rustCoreHelper ? null,
-  runtimeVariant ? "ghostty",
+  runtimeVariant ? "mars",
   runtimeToolSources ? { },
   runtimeIdentity ? { },
   components ? { },
   extraRuntimePackages ? [ ],
   extraRuntimeCommands ? [ "tu" ],
   yaziAssets ? null,
-  rioPackage ? pkgs.rio,
   yazelixHelixPackage ? null,
   yazelixCursorsPackage ? null,
   marsTerminalPackage ? null,
@@ -21,7 +20,7 @@
 
 let
   runtimeToolRegistry = import ./runtime_tool_registry.nix {
-    inherit pkgs nixgl rioPackage runtimeVariant runtimeToolSources marsTerminalPackage;
+    inherit pkgs nixgl runtimeVariant runtimeToolSources marsTerminalPackage;
   };
   runtimeComponentRegistry = import ./runtime_component_registry.nix {
     lib = pkgs.lib;
@@ -44,6 +43,41 @@ let
       "${src}/configs/yazi"
     else
       "${yaziAssets}/share/yazelix_yazi_assets";
+  yaziAssetsRuntimeToolManifest =
+    if yaziAssets == null then
+      { }
+    else
+      {
+        ccboard = {
+          source = "bundled";
+          commands = [ "ccboard" ];
+          required_commands = [ "ccboard" ];
+          hostable = false;
+          disableable = false;
+          notes = [
+            "Packaged by the yazi-assets child package under runtime_tools/ccboard."
+            "Mission Control launches this tool through libexec/ccboard."
+          ];
+        };
+        codedb = {
+          source = "bundled";
+          commands = [
+            "codedb"
+            "nu_plugin_codedb"
+          ];
+          required_commands = [
+            "codedb"
+            "nu_plugin_codedb"
+          ];
+          hostable = false;
+          disableable = false;
+          notes = [
+            "Packaged by the yazi-assets child package under runtime_tools/codedb."
+          ];
+        };
+      };
+  runtimeToolManifest = runtimeToolRegistry.manifest // yaziAssetsRuntimeToolManifest;
+  runtimeToolManifestJson = builtins.toJSON runtimeToolManifest;
   requiredSteelPluginIds = [
     "recentf"
     "splash"
@@ -114,10 +148,6 @@ let
         target = "assets/icons";
       }
       {
-        source = "${src}/config_metadata";
-        target = "config_metadata";
-      }
-      {
         source = "${src}/docs/upgrade_notes.toml";
         target = "docs/upgrade_notes.toml";
       }
@@ -141,31 +171,13 @@ let
     ++ pkgs.lib.optional cursorsEnabled {
       source = "${src}/yazelix_cursors_default.toml";
       target = "yazelix_cursors_default.toml";
-    }
-    ++ pkgs.lib.optionals (runtimeVariant == "rio") [
-      {
-        source = "${pkgs.nerd-fonts.fira-code}/share/fonts/truetype/NerdFonts/FiraCode";
-        target = "share/yazelix/rio_fonts/fira_code_nerd";
-      }
-      {
-        source = "${pkgs.nerd-fonts.symbols-only}/share/fonts/truetype/NerdFonts/Symbols";
-        target = "share/yazelix/rio_fonts/symbols_nerd";
-      }
-      {
-        source = "${pkgs.noto-fonts-color-emoji}/share/fonts/noto";
-        target = "share/yazelix/rio_fonts/noto_color_emoji";
-      }
-    ];
+    };
   renderRuntimeInputLink =
     { source, target }:
     ''
       link_runtime_input ${pkgs.lib.escapeShellArg source} ${pkgs.lib.escapeShellArg target}
     '';
   renderedRuntimeInputLinks = pkgs.lib.concatMapStrings renderRuntimeInputLink runtimeInputLinks;
-  renderedTerminalAppBundleLink = pkgs.lib.optionalString (runtimeToolRegistry.terminalAppBundlePath != null) ''
-    test -d ${pkgs.lib.escapeShellArg runtimeToolRegistry.terminalAppBundlePath}
-    link_runtime_input ${pkgs.lib.escapeShellArg runtimeToolRegistry.terminalAppBundlePath} "Applications/Ghostty.app"
-  '';
 in
 pkgs.runCommand name { } ''
   mkdir -p "$out"
@@ -185,7 +197,17 @@ pkgs.runCommand name { } ''
   }
 
   ${renderedRuntimeInputLinks}
-  ${renderedTerminalAppBundleLink}
+  mkdir -p "$out/config_metadata"
+  for metadata_entry in ${src}/config_metadata/*; do
+    metadata_name="$(basename "$metadata_entry")"
+    link_runtime_input "$metadata_entry" "config_metadata/$metadata_name"
+  done
+  if [ -d "${yaziAssetsRoot}/config_metadata" ]; then
+    for metadata_entry in ${yaziAssetsRoot}/config_metadata/*; do
+      metadata_name="$(basename "$metadata_entry")"
+      link_runtime_input "$metadata_entry" "config_metadata/$metadata_name"
+    done
+  fi
   mkdir -p "$out/configs"
   for config_entry in ${src}/configs/*; do
     config_name="$(basename "$config_entry")"
@@ -204,19 +226,12 @@ pkgs.runCommand name { } ''
   done
   link_runtime_input "${helixSteelPluginRoot}" "configs/helix/steel_plugins"
   mkdir -p "$out/configs/terminal_emulators"
-  for terminal_entry in ${src}/configs/terminal_emulators/*; do
-    terminal_name="$(basename "$terminal_entry")"
-    if [ "$terminal_name" = "ghostty" ]; then
-      link_runtime_input "$terminal_entry/config" "configs/terminal_emulators/ghostty/config"
-      ${pkgs.lib.optionalString cursorsEnabled ''
-        ${pkgs.lib.concatMapStringsSep "\n        " (shaderFile: ''test -s "${cursorShaderRoot}/${shaderFile}"'') cursorPackageContract.requiredShaderFiles}
-        test ! -e "${cursorShaderRoot}/build_shaders.nu"
-        link_runtime_input "${cursorShaderRoot}" "configs/terminal_emulators/ghostty/shaders"
-      ''}
-    else
-      link_runtime_input "$terminal_entry" "configs/terminal_emulators/$terminal_name"
-    fi
-  done
+  link_runtime_input "${src}/configs/terminal_emulators/mars" "configs/terminal_emulators/mars"
+  ${pkgs.lib.optionalString cursorsEnabled ''
+    ${pkgs.lib.concatMapStringsSep "\n    " (shaderFile: ''test -s "${cursorShaderRoot}/${shaderFile}"'') cursorPackageContract.requiredShaderFiles}
+    test ! -e "${cursorShaderRoot}/build_shaders.nu"
+    link_runtime_input "${cursorShaderRoot}" "configs/terminal_emulators/ghostty/shaders"
+  ''}
   mkdir -p "$out/configs/zellij/plugins"
   for zellij_entry in ${src}/configs/zellij/*; do
     zellij_name="$(basename "$zellij_entry")"
@@ -238,13 +253,16 @@ pkgs.runCommand name { } ''
   done
   link_runtime_input "${yaziAssetsRoot}/flavors" "configs/yazi/flavors"
   link_runtime_input "${yaziAssetsRoot}/yazelix_starship.toml" "configs/yazi/yazelix_starship.toml"
-  for yazi_plugin in auto-layout.yazi git.yazi lazygit.yazi starship.yazi; do
+  if [ -d "${yaziAssetsRoot}/runtime_tools" ]; then
+    link_runtime_input "${yaziAssetsRoot}/runtime_tools" "runtime_tools"
+  fi
+  for yazi_plugin in auto-layout.yazi git.yazi lazygit.yazi smart-tabs.yazi starship.yazi; do
     link_runtime_input "${yaziAssetsRoot}/plugins/$yazi_plugin" "configs/yazi/plugins/$yazi_plugin"
   done
   printf '%s\n' ${pkgs.lib.escapeShellArg runtimeVariant} > "$out/runtime_variant"
   printf '%s\n' ${pkgs.lib.escapeShellArg runtimeIdentityJson} > "$out/runtime_identity.json"
   printf '%s\n' ${pkgs.lib.escapeShellArg runtimeComponentRegistry.manifestJson} > "$out/runtime_components.json"
-  printf '%s\n' ${pkgs.lib.escapeShellArg runtimeToolRegistry.manifestJson} > "$out/runtime_tools.json"
+  printf '%s\n' ${pkgs.lib.escapeShellArg runtimeToolManifestJson} > "$out/runtime_tools.json"
   ${pkgs.lib.optionalString enableZellijKittyPassthrough ''
     mkdir -p "$out/runtime_features"
     touch "$out/runtime_features/zellij_kitty_passthrough"
@@ -262,10 +280,47 @@ pkgs.runCommand name { } ''
       done
     fi
   done
+  if [ -d "$out/runtime_tools" ]; then
+    for bin_dir in "$out/runtime_tools"/*/bin; do
+      [ -d "$bin_dir" ] || continue
+      for entry in "$bin_dir"/*; do
+        [ -e "$entry" ] || continue
+        replace_runtime_link "$entry" "libexec/$(basename "$entry")"
+      done
+    done
+  fi
+
+  if [ -e "$out/libexec/yazelix_zellij_bar_widget" ]; then
+    yazelix_zellij_bar_widget_target="$(readlink "$out/libexec/yazelix_zellij_bar_widget")"
+    rm -f "$out/libexec/yazelix_zellij_bar_widget"
+    cat > "$out/libexec/yazelix_zellij_bar_widget" <<EOF
+#!/bin/sh
+PATH="$out/toolbin:$out/bin:\$PATH"
+export PATH
+exec "$yazelix_zellij_bar_widget_target" "\$@"
+EOF
+    chmod +x "$out/libexec/yazelix_zellij_bar_widget"
+  fi
+
+  link_runtime_command_alias() {
+    source_name="$1"
+    alias_name="$2"
+    if [ -e "$out/libexec/$source_name" ] && [ ! -e "$out/libexec/$alias_name" ]; then
+      replace_runtime_link "$out/libexec/$source_name" "libexec/$alias_name"
+    fi
+  }
+
+  link_runtime_command_alias hx helix
+  link_runtime_command_alias nvim neovim
+  link_runtime_command_alias lazygit lg
+
   ${pkgs.lib.optionalString (rustCoreHelper != null) ''
     replace_runtime_link "${rustCoreHelper}/bin/yzx" "libexec/yzx"
     replace_runtime_link "${rustCoreHelper}/bin/yzx_core" "libexec/yzx_core"
     replace_runtime_link "${rustCoreHelper}/bin/yzx_control" "libexec/yzx_control"
+  ''}
+  ${pkgs.lib.optionalString cursorsEnabled ''
+    replace_runtime_link "${yazelixCursorsPackage}/bin/yzc" "libexec/yzc"
   ''}
 
   mkdir -p "$out/toolbin"
@@ -284,18 +339,16 @@ pkgs.runCommand name { } ''
   mkdir -p "$out/bin"
   cat > "$out/bin/yzx" <<EOF
 #!/bin/sh
-PATH="${pkgs.nushell}/bin:\$PATH"
+bootstrap_path="${pkgs.nushell}/bin:/nix/var/nix/profiles/default/bin:/run/current-system/sw/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+if [ -n "\''${PATH:-}" ]; then
+  PATH="\$bootstrap_path:\$PATH"
+else
+  PATH="\$bootstrap_path"
+fi
+export PATH
 YAZELIX_INVOKED_YZX_PATH="\$0"
 export YAZELIX_INVOKED_YZX_PATH
-SCRIPT_PATH="\$0"
-if [ -L "\$SCRIPT_PATH" ]; then
-  LINK_TARGET="\$(readlink "\$SCRIPT_PATH")"
-  case "\$LINK_TARGET" in
-    /*) SCRIPT_PATH="\$LINK_TARGET" ;;
-    *) SCRIPT_PATH="\$(dirname "\$SCRIPT_PATH")/\$LINK_TARGET" ;;
-  esac
-fi
-exec "\$(dirname "\$SCRIPT_PATH")/../shells/posix/yzx_cli.sh" "\$@"
+exec "$out/shells/posix/yzx_cli.sh" "\$@"
 EOF
   chmod +x "$out/bin/yzx"
 ''

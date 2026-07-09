@@ -18,7 +18,7 @@ concurrency:
 
 jobs:
   publish_x86_64_linux:
-    if: github.repository == 'luccahuguet/yazelix'
+    if: github.repository == 'luccahuguet/yazelix' || github.repository == 'FlexNetOS/yazelix'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
@@ -48,7 +48,7 @@ jobs:
             .#packages.x86_64-linux.yazelix_kgp_zellij \
             .#packages.x86_64-linux.yazelix_helix \
             .#packages.x86_64-linux.yazelix \
-            .#packages.x86_64-linux.yazelix_wezterm
+            .#packages.x86_64-linux.lifeos_foundation_yzx
 
   publish_aarch64_darwin:
     if: github.repository == 'luccahuguet/yazelix'

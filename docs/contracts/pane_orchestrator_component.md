@@ -125,26 +125,26 @@ The plugin reads these configuration keys from Zellij plugin configuration:
 
 The screen-saver keys are opt-in. When enabled, the plugin watches Zellij-wide input activity and opens a full-tab `yzx screen` command pane after the configured idle threshold. The plugin owns only inactivity/session orchestration; the `yzx screen` process remains the single renderer and animation contract.
 
-### Activity Tab Decoration
+### Activity Tab Markers
 
-The pane orchestrator owns tab-local activity decoration for native Zellij tab
-names. Registered AI facts from `register_ai_pane_activity` reduce to a single
-visible tab state: `stale` facts render the `✓` suffix, active/thinking facts or
-live spinner-prefixed terminal titles render the `·` suffix, and
+The pane orchestrator owns tab-local activity facts, not native Zellij tab-name
+decoration. Registered AI facts from `register_ai_pane_activity` reduce to a
+single visible tab state: `stale` facts render the alert marker, active/thinking
+facts or live spinner-prefixed terminal titles render the busy marker, and
 idle/unknown/no facts render no marker. Stale takes priority over busy, and busy
-takes priority over no marker. The orchestrator must not mirror every spinner
-frame into the tab name, and native tab-name writes are coalesced and
-rate-limited.
-Spinner-prefixed terminal title activity is remembered by producing pane: if
-the title stops indicating activity while that pane is not focused, the pane
-becomes `stale` and the tab renders `✓` until the user focuses that producing
-pane or the pane disappears. When facts become inactive, unknown, or
-acknowledged by producing-pane focus, the plugin restores the recorded base tab
-name.
+takes priority over no marker. The orchestrator publishes a versioned all-tab
+activity snapshot through the status cache and `pipe_tab_activity`; it must not
+rename native Zellij tabs for activity markers.
 
-The status bar child still owns tab label formats. The orchestrator must not
-add a parallel bar widget for this state unless a future contract defines a
-multi-tab status-bus surface.
+Spinner-prefixed terminal title activity is active only while the producing
+pane's title still has the spinner shape. When the title stops indicating
+activity or the pane disappears, the orchestrator removes that terminal-title
+fact without waiting for the producing pane to be focused.
+
+The status bar child owns tab label formats and marker configuration. The pinned
+zjstatus `{tabs}` path merges reduced activity state into live `TabInfo.name`
+labels, preserving Zellij-owned tab identity, focus, click handling, truncation,
+and terminal-bell styling.
 
 ### Runtime And Wrapper Paths
 

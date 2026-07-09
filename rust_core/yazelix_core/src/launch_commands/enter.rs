@@ -4,36 +4,40 @@ use super::config_override::{
 use super::process::command_status_with_overrides;
 use super::resolve_requested_working_dir;
 use super::sidebar_bootstrap_extra_env;
+use crate::atomic_fs::is_executable_file;
 use crate::bridge::{CoreError, ErrorClass};
-use crate::command_metadata::{sync_yzx_extern_bridge, YzxExternBridgeSyncRequest};
+use crate::command_metadata::{YzxExternBridgeSyncRequest, sync_yzx_extern_bridge};
 use crate::control_plane::{
     config_dir_from_env, config_override_from_env, default_shell_from_config, expand_user_path,
     home_dir_from_env, load_normalized_config_for_control, read_yazelix_version_from_runtime,
     runtime_dir_from_env, runtime_env_request, runtime_materialization_plan_request_from_env,
     state_dir_from_env, zellij_default_shell_from_runtime,
 };
-use crate::front_door_render::{play_welcome_style_with_appearance, GameOfLifeCellStyle};
+use crate::front_door_render::{GameOfLifeCellStyle, play_welcome_style_with_appearance};
 use crate::initializer_commands::generate_shell_initializers_for_env;
 use crate::runtime_contract::evaluate_startup_working_dir_preflight;
 use crate::runtime_env::compute_runtime_env;
-use crate::runtime_materialization::{materialize_runtime_state, RuntimeArtifact};
+use crate::runtime_materialization::{RuntimeArtifact, materialize_runtime_state};
 use crate::session_config_snapshot::{
-    write_session_config_snapshot_for_launch, SessionConfigSnapshotCreateRequest,
+    SessionConfigSnapshotCreateRequest, write_session_config_snapshot_for_launch,
 };
-use crate::startup_facts::{compute_startup_facts_from_config, StartupFactsData};
+use crate::startup_facts::{StartupFactsData, compute_startup_facts_from_config};
 use crate::startup_handoff::{
-    capture_startup_handoff_context, StartupHandoffArtifact, StartupHandoffCaptureRequest,
+    StartupHandoffArtifact, StartupHandoffCaptureRequest, capture_startup_handoff_context,
 };
-use crate::terminal_variant::{current_session_terminal_label_from_env, SESSION_TERMINAL_ENV};
+use crate::terminal_variant::{SESSION_TERMINAL_ENV, current_session_terminal_label_from_env};
 use crate::upgrade_summary::{current_release_headline, maybe_show_first_run_upgrade_summary};
 use crossterm::event::{Event, KeyEventKind};
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 use serde_json::{Map as JsonMap, Value as JsonValue};
+use std::env;
 use std::fs;
 use std::io::{self, IsTerminal, Write};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
+
+const HELIX_BRIDGE_ROOT_ENV: &str = "YAZELIX_HELIX_BRIDGE_ROOT";
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 struct EnterArgs {
@@ -540,6 +544,7 @@ fn prepare_rust_startup(
         &runtime_version,
     )?;
     let status_bar_cache_path = status_bar_cache_path_for_snapshot(&snapshot.snapshot_path)?;
+    let helix_bridge_root = helix_bridge_root_for_launch();
 
     let runtime_env = compute_runtime_env(&runtime_env_request(
         runtime_dir.to_path_buf(),
@@ -599,6 +604,7 @@ fn prepare_rust_startup(
                 SESSION_TERMINAL_ENV.to_string(),
                 Some(session_terminal_label.to_string()),
             ),
+            (HELIX_BRIDGE_ROOT_ENV.to_string(), Some(helix_bridge_root)),
         ],
         profile_exit_before_zellij: bool_env("YAZELIX_STARTUP_PROFILE_EXIT_BEFORE_ZELLIJ"),
     })
@@ -637,6 +643,45 @@ fn status_bar_cache_path_for_snapshot(snapshot_path: &str) -> Result<String, Cor
         .join("status_bar_cache.json")
         .to_string_lossy()
         .to_string())
+}
+
+fn helix_bridge_root_for_launch() -> String {
+    if let Ok(root) = env::var(HELIX_BRIDGE_ROOT_ENV)
+        && !root.trim().is_empty()
+    {
+        return root;
+    }
+
+    let base = env::var_os("XDG_RUNTIME_DIR")
+        .filter(|value| !value.is_empty())
+        .map(PathBuf::from)
+        .unwrap_or_else(env::temp_dir);
+    base.join(format!("yx-hx-{}", helix_bridge_owner_component()))
+        .to_string_lossy()
+        .into_owned()
+}
+
+fn helix_bridge_owner_component() -> String {
+    let raw = env::var("UID")
+        .ok()
+        .filter(|value| !value.trim().is_empty())
+        .or_else(|| env::var("USER").ok())
+        .unwrap_or_else(|| "user".to_string());
+    let sanitized = raw
+        .chars()
+        .map(|ch| {
+            if ch.is_ascii_alphanumeric() || matches!(ch, '-' | '_') {
+                ch
+            } else {
+                '_'
+            }
+        })
+        .collect::<String>();
+    if sanitized.is_empty() {
+        "user".to_string()
+    } else {
+        sanitized
+    }
 }
 
 fn require_existing_directory(path: &str, label: &str) -> Result<String, CoreError> {
@@ -678,11 +723,54 @@ mod tests {
     // Test lane: default
 
     use super::{
-        build_welcome_message, is_welcome_keypress, wait_for_welcome_keypress_from_events,
+        HELIX_BRIDGE_ROOT_ENV, bool_env, build_welcome_message, helix_bridge_root_for_launch,
+        is_welcome_keypress, wait_for_welcome_keypress_from_events,
     };
     use crate::startup_facts::StartupFactsData;
     use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind, KeyEventState, KeyModifiers};
-    use std::collections::VecDeque;
+    use std::{
+        collections::VecDeque,
+        env,
+        sync::{Mutex, OnceLock},
+    };
+
+    fn env_lock() -> &'static Mutex<()> {
+        static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+        LOCK.get_or_init(|| Mutex::new(()))
+    }
+
+    fn with_env_vars<F>(vars: &[(&str, Option<&str>)], run: F)
+    where
+        F: FnOnce(),
+    {
+        let _guard = env_lock().lock().expect("env lock should not be poisoned");
+        let previous = vars
+            .iter()
+            .map(|(key, _)| (*key, env::var_os(key)))
+            .collect::<Vec<_>>();
+
+        for (key, value) in vars {
+            // Tests serialize process-env mutation through `env_lock`.
+            unsafe {
+                match value {
+                    Some(value) => env::set_var(key, value),
+                    None => env::remove_var(key),
+                }
+            }
+        }
+
+        run();
+
+        for (key, value) in previous {
+            // Tests serialize process-env mutation through `env_lock`.
+            unsafe {
+                match value {
+                    Some(value) => env::set_var(key, value),
+                    None => env::remove_var(key),
+                }
+            }
+        }
+    }
 
     fn startup_facts_for_terminal(terminal: &str) -> StartupFactsData {
         StartupFactsData {
@@ -732,8 +820,10 @@ mod tests {
 
             assert!(message.contains("🎉 Welcome to Yazelix v-test!"));
             assert!(message.contains("🕒 Flake last updated: unknown"));
-            assert!(message
-                .contains("✨ Now with Nix auto-setup, lazygit, Starship, and markdown-oxide"));
+            assert!(
+                message
+                    .contains("✨ Now with Nix auto-setup, lazygit, Starship, and markdown-oxide")
+            );
             assert!(message.contains("🆕 Creating new Zellij session"));
             assert!(message.contains(&format!("🖥️  Preferred host terminal: {terminal}")));
             assert!(message.contains("⚠️  First run:"));
@@ -742,6 +832,49 @@ mod tests {
             assert!(!message.contains("Flake: last updated unknown"));
             assert!(!message.contains("Terminal: preferred host terminal:"));
         }
+    }
+
+    // Defends: launched Helix bridges use a short runtime root instead of the session state path.
+    #[test]
+    fn helix_bridge_root_uses_short_runtime_root_and_honors_override() {
+        with_env_vars(
+            &[
+                (HELIX_BRIDGE_ROOT_ENV, Some("/custom/hx-bridge")),
+                ("XDG_RUNTIME_DIR", Some("/run/user/1234")),
+                ("UID", Some("1001")),
+                ("USER", Some("ignored")),
+            ],
+            || assert_eq!(helix_bridge_root_for_launch(), "/custom/hx-bridge"),
+        );
+
+        with_env_vars(
+            &[
+                (HELIX_BRIDGE_ROOT_ENV, None),
+                ("XDG_RUNTIME_DIR", Some("/run/user/1234")),
+                ("UID", Some("user:name")),
+                ("USER", Some("ignored")),
+            ],
+            || {
+                assert_eq!(
+                    helix_bridge_root_for_launch(),
+                    "/run/user/1234/yx-hx-user_name"
+                )
+            },
+        );
+
+        with_env_vars(
+            &[
+                (HELIX_BRIDGE_ROOT_ENV, None),
+                ("XDG_RUNTIME_DIR", Some("")),
+                ("UID", None),
+                ("USER", Some("codex user")),
+            ],
+            || {
+                let root = helix_bridge_root_for_launch();
+                assert!(root.ends_with("/yx-hx-codex_user"), "{root}");
+                assert!(!root.contains(".local/share/yazelix"), "{root}");
+            },
+        );
     }
 
     // Defends: the welcome prompt's "any key" contract accepts a non-Enter key without waiting for a newline.
@@ -780,6 +913,17 @@ mod tests {
 
         assert!(!is_welcome_keypress(&repeat));
         assert!(!is_welcome_keypress(&Event::Resize(80, 24)));
+    }
+
+    // Regression: desktop launch injects numeric one-shot flags, and startup env parsing must honor them.
+    #[test]
+    fn bool_env_accepts_desktop_numeric_true_flag() {
+        let key = "YAZELIX_STARTUP_PROFILE_SKIP_WELCOME";
+
+        with_env_vars(&[(key, Some("1"))], || assert!(bool_env(key)));
+        with_env_vars(&[(key, Some("true"))], || assert!(bool_env(key)));
+        with_env_vars(&[(key, Some("0"))], || assert!(!bool_env(key)));
+        with_env_vars(&[(key, None)], || assert!(!bool_env(key)));
     }
 }
 
@@ -839,9 +983,12 @@ fn zellij_session_name_from_env() -> Option<String> {
 }
 
 fn bool_env(key: &str) -> bool {
-    std::env::var(key)
-        .ok()
-        .is_some_and(|value| value.trim() == "true")
+    std::env::var(key).ok().is_some_and(|value| {
+        matches!(
+            value.trim().to_ascii_lowercase().as_str(),
+            "1" | "true" | "yes" | "on"
+        )
+    })
 }
 
 fn run_runtime_setup(
@@ -934,25 +1081,7 @@ fn command_available_on_path(command: &str) -> bool {
     std::env::var_os("PATH")
         .into_iter()
         .flat_map(|path| std::env::split_paths(&path).collect::<Vec<_>>())
-        .any(|dir| is_executable_command(&dir.join(command)))
-}
-
-#[cfg(unix)]
-fn is_executable_command(path: &Path) -> bool {
-    let Ok(metadata) = fs::metadata(path) else {
-        return false;
-    };
-    if !metadata.is_file() {
-        return false;
-    }
-
-    use std::os::unix::fs::PermissionsExt;
-    metadata.permissions().mode() & 0o111 != 0
-}
-
-#[cfg(not(unix))]
-fn is_executable_command(path: &Path) -> bool {
-    path.is_file()
+        .any(|dir| is_executable_file(&dir.join(command)))
 }
 
 fn setup_shells(default_shell: &str) -> Vec<String> {

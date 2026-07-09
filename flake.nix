@@ -17,10 +17,6 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     nixgl.url = "github:guibou/nixGL";
-    rio = {
-      url = "github:raphamorim/rio/v0.4.7";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
     mars = {
       url = "github:luccahuguet/mars";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -46,7 +42,7 @@
       inputs.zjstatus.follows = "zjstatus";
     };
     yazelixYaziAssets = {
-      url = "github:luccahuguet/yazelix-yazi-assets";
+      url = "github:FlexNetOS/yazelix-yazi-assets";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     yazelixZellij = {
@@ -67,8 +63,16 @@
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.fenix.follows = "fenix";
     };
+    beads_rust_source = {
+      url = "github:FlexNetOS/beads_rust";
+      flake = false;
+    };
+    rtk_source = {
+      url = "github:rtk-ai/rtk/v0.43.0";
+      flake = false;
+    };
     zjstatus = {
-      url = "github:dj95/zjstatus";
+      url = "github:luccahuguet/zjstatus/yazelix-tab-activity-pipe";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
@@ -79,7 +83,6 @@
       nixpkgs,
       home-manager,
       nixgl,
-      rio,
       mars,
       fenix,
       yazelixScreen,
@@ -90,6 +93,8 @@
       yazelixHelix,
       yazelixZellijPaneOrchestrator,
       yazelixZellijPopup,
+      beads_rust_source,
+      rtk_source,
       zjstatus,
     }:
     let
@@ -101,7 +106,17 @@
       ];
       lib = nixpkgs.lib;
       forAllSystems = nixpkgs.lib.genAttrs systems;
-      mkPkgs = system: nixpkgs.legacyPackages.${system};
+      allowedUnfreePackageNames = [
+        "claude-code"
+      ];
+      mkPkgs =
+        system:
+        import nixpkgs {
+          inherit system;
+          # The FlexNetOS foundation runtime intentionally ships Claude Code.
+          config.allowUnfreePredicate =
+            pkg: builtins.elem (lib.getName pkg) allowedUnfreePackageNames;
+        };
       releaseMetadata = builtins.fromTOML (builtins.readFile ./release_metadata.toml);
       inputIdentity = input: {
         revision = input.rev or null;
@@ -118,7 +133,6 @@
         inputs = {
           nixpkgs = inputIdentity nixpkgs;
           home_manager = inputIdentity home-manager;
-          rio = inputIdentity rio;
           mars = inputIdentity mars;
           fenix = inputIdentity fenix;
           yazelix_screen = inputIdentity yazelixScreen;
@@ -132,7 +146,6 @@
       };
       homeManagerModule = { pkgs, ... }: {
         _module.args.nixgl = nixgl;
-        _module.args.rioPackage = rio.packages.${pkgs.stdenv.hostPlatform.system}.rio;
         _module.args.fenixPkgs = fenix.packages.${pkgs.stdenv.hostPlatform.system};
         _module.args.mkYazelixPackage = mkYazelix pkgs.stdenv.hostPlatform.system;
         _module.args.yazelixHelixPackage =
@@ -152,14 +165,7 @@
       kgpPackages = import ./packaging/kgp_packages.nix {
         inherit yazelixZellij yazelixHelix;
       };
-      terminalMetadataFor =
-        pkgs:
-        import ./packaging/terminal_variants.nix {
-          inherit (pkgs.stdenv.hostPlatform) isLinux;
-        };
-      terminalNeedsKittyPassthrough =
-        pkgs: runtimeVariant:
-        builtins.elem runtimeVariant (terminalMetadataFor pkgs).kittyPassthrough;
+      terminalNeedsKittyPassthrough = runtimeVariant: runtimeVariant == "mars";
       zellijPluginArtifactsFor =
         system:
         let
@@ -187,8 +193,9 @@
           skipStableWrapperRedirect ? false,
           components ? { },
           extraRuntimePackages ? agentUsagePackages system,
+          extraRuntimeCommands ? [ "tu" ],
+          exportedBinCommands ? [ ],
           yaziAssets ? yazelixYaziAssets.packages.${system}.yazelix_yazi_assets,
-          rioPackage ? rio.packages.${system}.rio,
           yazelixHelixPackage ? kgpPackages.helixPackage system,
           yazelixCursorsPackage ? yazelixCursors.packages.${system}.yazelix_cursors,
           marsTerminalPackage ? mars.packages.${system}.mars,
@@ -202,11 +209,12 @@
           {
             inherit nixgl runtimeVariant runtimeToolSources components yaziAssets zellijPluginArtifacts;
             inherit runtimeIdentity;
-            inherit name rioPackage runtimeName skipStableWrapperRedirect marsTerminalPackage;
+            inherit name runtimeName skipStableWrapperRedirect marsTerminalPackage;
             inherit yazelixHelixPackage yazelixCursorsPackage;
+            inherit extraRuntimeCommands exportedBinCommands;
             pkgs = runtimePkgs;
             enableZellijKittyPassthrough =
-              enableZellijKittyPassthrough || terminalNeedsKittyPassthrough pkgs runtimeVariant;
+              enableZellijKittyPassthrough || terminalNeedsKittyPassthrough runtimeVariant;
             extraRuntimePackages = [
               yazelixZellijBar.packages.${system}.yazelix_zellij_bar
             ] ++ extraRuntimePackages;
@@ -220,13 +228,12 @@
         {
           name ? "yazelix-runtime",
           runtimeIdentity ? defaultRuntimeIdentity,
-          rioPackage ? rio.packages.${system}.rio,
           yazelixHelixPackage ? kgpPackages.helixPackage system,
           yazelixCursorsPackage ? yazelixCursors.packages.${system}.yazelix_cursors,
           marsTerminalPackage ? mars.packages.${system}.mars,
         }:
         import ./yazelix_runtime_package.nix {
-          inherit nixgl name rioPackage runtimeIdentity runtimeVariant yazelixHelixPackage yazelixCursorsPackage marsTerminalPackage;
+          inherit nixgl name runtimeIdentity runtimeVariant yazelixHelixPackage yazelixCursorsPackage marsTerminalPackage;
           pkgs = runtimePkgsFor system pkgs runtimeVariant;
           fenixPkgs = fenix.packages.${system};
           extraRuntimePackages = [
@@ -234,7 +241,7 @@
           ] ++ extraRuntimePackages;
           yaziAssets = yazelixYaziAssets.packages.${system}.yazelix_yazi_assets;
           zellijPluginArtifacts = zellijPluginArtifactsFor system;
-          enableZellijKittyPassthrough = terminalNeedsKittyPassthrough pkgs runtimeVariant;
+          enableZellijKittyPassthrough = terminalNeedsKittyPassthrough runtimeVariant;
         };
       runtimePackage = system: pkgs: runtimeVariant: extraRuntimePackages:
         runtimePackageWith system pkgs runtimeVariant extraRuntimePackages { };
@@ -247,7 +254,7 @@
         let
           helixPkgs = kgpPackages.helixPkgs system pkgs;
         in
-        if terminalNeedsKittyPassthrough pkgs runtimeVariant then
+        if terminalNeedsKittyPassthrough runtimeVariant then
           kgpPackages.graphicsPkgs helixPkgs
         else
           helixPkgs;
@@ -273,6 +280,17 @@
         system: pkgs:
         import ./packaging/beads_rust.nix {
           inherit pkgs;
+          beadsSource = beads_rust_source;
+          rustPlatform = pkgs.makeRustPlatform {
+            cargo = fenix.packages.${system}.latest.cargo;
+            rustc = fenix.packages.${system}.latest.rustc;
+          };
+        };
+      rtkPackage =
+        system: pkgs:
+        import ./packaging/rtk_release.nix {
+          inherit pkgs;
+          rtkSource = rtk_source;
           rustPlatform = pkgs.makeRustPlatform {
             cargo = fenix.packages.${system}.latest.cargo;
             rustc = fenix.packages.${system}.latest.rustc;
@@ -311,13 +329,13 @@
           pkgs = mkPkgs system;
         in
         import ./packaging/flake_outputs.nix {
-          inherit agentUsagePackages beadsRustPackage defaultRuntimeIdentity kgpPackages lib;
-          inherit mkYazelix pkgs runtimePackage runtimePackageWith system yazelixPackage;
+          inherit agentUsagePackages beadsRustPackage kgpPackages rtkPackage;
+          mkYazelix = mkYazelix system;
+          inherit pkgs runtimePackage system yazelixPackage;
           inherit yazelixCursors yazelixScreen yazelixYaziAssets;
           inherit yazelixZellijBar yazelixZellijPaneOrchestrator;
           inherit yazelixZellijPopup;
           fenixPkgs = fenix.packages.${system};
-          terminalMetadata = terminalMetadataFor pkgs;
         };
     in
     {
@@ -343,11 +361,27 @@
         }
       );
 
-      checks = forAllSystems (system: {
-        kgp_package_contracts = import ./packaging/kgp_package_contracts.nix {
-          inherit nixpkgs system kgpPackages;
-        };
-      });
+      checks = forAllSystems (
+        system:
+        let
+          pkgs = mkPkgs system;
+          outputs = systemOutputs system;
+          lifeosFoundationYzxRuntimeReleaseContracts = import ./packaging/runtime_release_contracts.nix {
+            inherit pkgs;
+            runtime = outputs.packages.lifeos_foundation_yzx;
+          };
+        in
+        {
+          kgp_package_contracts = import ./packaging/kgp_package_contracts.nix {
+            inherit nixpkgs system kgpPackages;
+          };
+          runtime_release_contracts = import ./packaging/runtime_release_contracts.nix {
+            inherit pkgs;
+            runtime = outputs.packages.runtime_mars;
+          };
+          lifeos_foundation_yzx_runtime_release_contracts = lifeosFoundationYzxRuntimeReleaseContracts;
+        }
+      );
 
       homeManagerModules.default = homeManagerModule;
       homeManagerModules.yazelix = homeManagerModule;

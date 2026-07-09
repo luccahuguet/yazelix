@@ -132,10 +132,12 @@ launch option and the bridge actions required by the active runtime.
 Transport is native local IPC, never terminal input and never loopback TCP by
 default.
 
-Unix-like systems use Unix stream sockets. Socket files live below:
+Unix-like systems use Unix stream sockets. Socket files live below
+`YAZELIX_HELIX_BRIDGE_ROOT` when the launch environment sets it, otherwise
+below the legacy state-root bridge directory:
 
 ```text
-$YAZELIX_STATE_DIR/helix_bridge/<session_id>/<instance_id>.sock
+<bridge_root>/<session_id>/<instance_id>.sock
 ```
 
 Native Windows uses named pipes:
@@ -152,6 +154,9 @@ Registry records should be owned by the current user and mode `0600`.
 
 The Helix wrapper generates:
 
+- `bridge_root`: a short launch-scoped IPC root, normally under
+  `$XDG_RUNTIME_DIR` or `/tmp`, so Unix socket paths remain below platform path
+  limits even when `$YAZELIX_STATE_DIR` is deep
 - `session_id`: launch-scoped Yazelix session identity derived from the session
   config snapshot or a generated launch id
 - `instance_id`: opaque random id, unique per Helix process
@@ -173,9 +178,9 @@ Every registry record contains:
   "instance_id": "opaque-instance",
   "transport": {
     "kind": "unix_socket",
-    "path": "/home/user/.local/share/yazelix/helix_bridge/opaque-session/opaque-instance.sock"
+    "path": "/run/user/1000/yx-hx-1000/opaque-session/opaque-instance.sock"
   },
-  "auth_token_path": "/home/user/.local/share/yazelix/helix_bridge/opaque-session/opaque-instance.token",
+  "auth_token_path": "/run/user/1000/yx-hx-1000/opaque-session/opaque-instance.token",
   "pid": 12345,
   "zellij_session_name": "optional",
   "zellij_tab_position": "optional",
@@ -359,7 +364,9 @@ Before implementation starts, the planned doctor surface is:
 
 - verify the bundled `hx` advertises the Yazelix bridge feature and schema
   version
-- verify `yazelix_hx.sh` exports the bridge env and uses the Yazelix state root
+- verify `yazelix_hx.sh` exports the bridge env and selects the short bridge
+  root, falling back to the legacy state-root bridge directory only when no
+  short root is available
 - verify bridge directories use owner-only permissions
 - verify the current managed editor pane has exactly one live bridge registry
   entry when Helix is the managed editor

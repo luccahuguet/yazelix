@@ -1,0 +1,5 @@
+{
+  "commit": {"author":"drdave-flexnet <flexnetos@de-flex.net>","changes":[{"change_type":"created","content_hash":"a126c2b8a220afcdf39986441792e02c62ba62a415d69d71a9bf6d2e47fe4e06","doc_type":"task","document_id":"019f2191-63f3-7641-8065-6dcad836f5b6","new_version":1,"previous_version":null,"slug":"tasks/nu-plugin-codedb-yazelix-placement-docs","title":"Implement CodeDB Yazelix placement docs"}],"created_at":"2026-07-02T06:43:45.803300661Z","id":"019f2191-b812-7211-88a2-47c491945de7","message":"Add CodeDB Yazelix placement task"},
+  "content_hash": "82fee43c99c9b19c9376919e27aca13be72c5cfff3963169927eb747feaca378",
+  "hash_version": 3
+}

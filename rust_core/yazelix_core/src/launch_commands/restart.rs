@@ -3,7 +3,7 @@ use super::config_override::{
 };
 use super::create_sidebar_bootstrap_file;
 use super::process::{command_output_with_overrides, print_completed_output};
-use super::{current_runtime_yzx_launcher, RUNTIME_RELAUNCH_CLEARED_ENV_KEYS};
+use super::{RUNTIME_RELAUNCH_CLEARED_ENV_KEYS, current_runtime_yzx_launcher};
 use crate::bridge::CoreError;
 use crate::control_plane::{config_override_from_env, runtime_dir_from_env};
 use crate::sidebar_bootstrap::SIDEBAR_BOOTSTRAP_CWD_ENV;

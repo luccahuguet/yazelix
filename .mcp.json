@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "gitkb": {
+      "command": "/home/flexnetos/FlexNetOS/usr/libexec/gitkb-mcp-yazelix",
+      "args": []
+    }
+  }
+}

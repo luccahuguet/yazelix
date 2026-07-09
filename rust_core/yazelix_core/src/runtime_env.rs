@@ -48,17 +48,17 @@ pub fn compute_runtime_env(
     let normalized_path_entries = normalize_path_entries(&request.current_path);
     let current_path_entries =
         strip_runtime_owned_path_entries(normalized_path_entries, &request.runtime_dir);
+    let profile_path_entries = existing_profile_path_entries(&request.home_dir);
     let runtime_path_entries = existing_runtime_path_entries(&request.runtime_dir);
-    let path_entries = if runtime_path_entries.is_empty() {
-        current_path_entries
-    } else {
-        stable_dedupe(
-            runtime_path_entries
-                .into_iter()
-                .chain(current_path_entries)
-                .collect(),
-        )
-    };
+    let legacy_user_path_entries = existing_legacy_user_path_entries(&request.home_dir);
+    let path_entries = stable_dedupe(
+        profile_path_entries
+            .into_iter()
+            .chain(runtime_path_entries)
+            .chain(legacy_user_path_entries)
+            .chain(current_path_entries)
+            .collect(),
+    );
 
     validate_helix_editor_runtime_pair(request)?;
     let resolved_editor_command = resolve_editor_command(request);
@@ -93,6 +93,18 @@ pub fn compute_runtime_env(
     runtime_env.insert(
         "IN_YAZELIX_SHELL".to_string(),
         JsonValue::String("true".to_string()),
+    );
+    runtime_env.insert(
+        "YAZELIX_RTK_REQUIRED".to_string(),
+        JsonValue::String("true".to_string()),
+    );
+    runtime_env.insert(
+        "YAZELIX_CODEX_COMMAND".to_string(),
+        JsonValue::String("rtk codex".to_string()),
+    );
+    runtime_env.insert(
+        "YAZELIX_CLAUDE_COMMAND".to_string(),
+        JsonValue::String("rtk claude".to_string()),
     );
     runtime_env.insert(
         "ZELLIJ_DEFAULT_LAYOUT".to_string(),
@@ -184,12 +196,69 @@ fn strip_runtime_owned_path_entries(entries: Vec<String>, runtime_dir: &Path) ->
         .collect();
     entries
         .into_iter()
-        .filter(|entry| !runtime_owned.contains(entry))
+        .filter(|entry| {
+            !runtime_owned.contains(entry) && !is_stale_yazelix_store_path_entry(entry, runtime_dir)
+        })
         .collect()
+}
+
+fn is_stale_yazelix_store_path_entry(entry: &str, runtime_dir: &Path) -> bool {
+    let path = Path::new(entry);
+    if path.starts_with(runtime_dir) {
+        return false;
+    }
+    let Some(leaf) = path.file_name().and_then(|leaf| leaf.to_str()) else {
+        return false;
+    };
+    if !matches!(leaf, "toolbin" | "bin" | "libexec") {
+        return false;
+    }
+    let Some(store_item) = path
+        .parent()
+        .and_then(|parent| parent.file_name())
+        .and_then(|store_item| store_item.to_str())
+    else {
+        return false;
+    };
+    if !is_yazelix_runtime_store_item(store_item) {
+        return false;
+    }
+    path.parent()
+        .and_then(|parent| parent.parent())
+        .is_some_and(|store_root| store_root == Path::new("/nix/store"))
+}
+
+fn is_yazelix_runtime_store_item(store_item: &str) -> bool {
+    store_item.contains("yazelix") || store_item.contains("lifeos-foundation-yzx")
 }
 
 fn existing_runtime_path_entries(runtime_dir: &Path) -> Vec<String> {
     [runtime_dir.join("toolbin"), runtime_dir.join("bin")]
+        .into_iter()
+        .filter(|path| path.exists())
+        .map(|path| path_to_string(&path))
+        .collect()
+}
+
+fn existing_profile_path_entries(home_dir: &Path) -> Vec<String> {
+    [
+        home_dir.join(".nix-profile").join("bin"),
+        home_dir
+            .join(".local")
+            .join("state")
+            .join("nix")
+            .join("profile")
+            .join("bin"),
+        PathBuf::from("/nix/var/nix/profiles/default/bin"),
+    ]
+    .into_iter()
+    .filter(|path| path.exists())
+    .map(|path| path_to_string(&path))
+    .collect()
+}
+
+fn existing_legacy_user_path_entries(home_dir: &Path) -> Vec<String> {
+    [home_dir.join(".local").join("bin")]
         .into_iter()
         .filter(|path| path.exists())
         .map(|path| path_to_string(&path))
@@ -355,4 +424,145 @@ fn validate_helix_editor_runtime_pair(request: &RuntimeEnvComputeRequest) -> Res
         ));
     }
     Ok(())
+}
+
+// Test lane: default
+#[cfg(test)]
+mod tests {
+    use super::{RuntimeEnvComputeRequest, RuntimePathInput, compute_runtime_env};
+    use std::fs;
+
+    fn request_with_path(
+        runtime_dir: std::path::PathBuf,
+        home_dir: std::path::PathBuf,
+        current_path: &str,
+    ) -> RuntimeEnvComputeRequest {
+        RuntimeEnvComputeRequest {
+            runtime_dir,
+            home_dir,
+            xdg_config_home: None,
+            current_path: RuntimePathInput::String(current_path.to_string()),
+            current_lazygit_config_file: None,
+            editor_command: None,
+            helix_external: None,
+        }
+    }
+
+    fn index_of(entries: &[String], suffix: &str) -> usize {
+        entries
+            .iter()
+            .position(|entry| entry.ends_with(suffix))
+            .unwrap_or_else(|| panic!("missing PATH entry ending with {suffix}: {entries:?}"))
+    }
+
+    // Regression: GUI/desktop launchers often start with a sparse PATH, but Yazelix agent panes must resolve profile-owned frontdoors before legacy local bins.
+    #[test]
+    fn desktop_runtime_path_adds_standard_user_bins() {
+        let temp = tempfile::tempdir().unwrap();
+        let runtime_dir = temp.path().join("runtime");
+        let home_dir = temp.path().join("home");
+        for dir in [
+            runtime_dir.join("toolbin"),
+            runtime_dir.join("bin"),
+            home_dir.join(".local").join("bin"),
+            home_dir
+                .join(".local")
+                .join("state")
+                .join("nix")
+                .join("profile")
+                .join("bin"),
+            home_dir.join(".nix-profile").join("bin"),
+        ] {
+            fs::create_dir_all(dir).unwrap();
+        }
+
+        let data = compute_runtime_env(&request_with_path(runtime_dir, home_dir, "/usr/bin:/bin"))
+            .unwrap();
+
+        let nix_profile_bin = index_of(&data.path_entries, "/home/.nix-profile/bin");
+        let runtime_toolbin = index_of(&data.path_entries, "/runtime/toolbin");
+        let runtime_bin = index_of(&data.path_entries, "/runtime/bin");
+        let user_local_bin = index_of(&data.path_entries, "/home/.local/bin");
+        let usr_bin = index_of(&data.path_entries, "/usr/bin");
+
+        assert!(nix_profile_bin < runtime_toolbin);
+        assert!(runtime_toolbin < runtime_bin);
+        assert!(runtime_bin < user_local_bin);
+        assert!(user_local_bin < usr_bin);
+    }
+
+    // Regression: already-open shells may inherit an older Yazelix store PATH; new runtime env assembly must not let that stale store shadow the profile frontdoor.
+    #[test]
+    fn inherited_stale_yazelix_store_paths_are_removed() {
+        let temp = tempfile::tempdir().unwrap();
+        let runtime_dir = temp.path().join("runtime");
+        let home_dir = temp.path().join("home");
+        let nix_profile_bin = home_dir.join(".nix-profile").join("bin");
+        fs::create_dir_all(runtime_dir.join("toolbin")).unwrap();
+        fs::create_dir_all(runtime_dir.join("bin")).unwrap();
+        fs::create_dir_all(&nix_profile_bin).unwrap();
+
+        let data = compute_runtime_env(&request_with_path(
+            runtime_dir,
+            home_dir,
+            "/nix/store/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-lifeos-foundation-yzx/toolbin:/nix/store/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb-lifeos-foundation-yzx/bin:/usr/bin",
+        ))
+        .unwrap();
+
+        assert!(
+            data.path_entries
+                .iter()
+                .all(|entry| !entry.contains("-lifeos-foundation-yzx/"))
+        );
+        assert_eq!(data.path_entries[0], nix_profile_bin.to_string_lossy());
+        assert!(data.path_entries.iter().any(|entry| entry == "/usr/bin"));
+    }
+
+    // Invariant: adding standard host user bins must not duplicate entries already inherited from the parent shell.
+    #[test]
+    fn standard_user_bins_are_deduped_against_current_path() {
+        let temp = tempfile::tempdir().unwrap();
+        let runtime_dir = temp.path().join("runtime");
+        let home_dir = temp.path().join("home");
+        let user_local_bin = home_dir.join(".local").join("bin");
+        fs::create_dir_all(runtime_dir.join("bin")).unwrap();
+        fs::create_dir_all(&user_local_bin).unwrap();
+
+        let data = compute_runtime_env(&request_with_path(
+            runtime_dir,
+            home_dir,
+            &format!("{}:/usr/bin", user_local_bin.display()),
+        ))
+        .unwrap();
+        let user_local_bin_string = user_local_bin.to_string_lossy().to_string();
+
+        assert_eq!(
+            data.path_entries
+                .iter()
+                .filter(|entry| *entry == &user_local_bin_string)
+                .count(),
+            1
+        );
+    }
+
+    // Defends: every Yazelix runtime session advertises the RTK requirement for Codex/agent use.
+    #[test]
+    fn runtime_env_marks_rtk_as_required_for_codex_sessions() {
+        let temp = tempfile::tempdir().unwrap();
+        let runtime_dir = temp.path().join("runtime");
+        let home_dir = temp.path().join("home");
+        fs::create_dir_all(runtime_dir.join("bin")).unwrap();
+
+        let data = compute_runtime_env(&request_with_path(runtime_dir, home_dir, "/usr/bin:/bin"))
+            .unwrap();
+
+        assert_eq!(
+            data.runtime_env["YAZELIX_RTK_REQUIRED"].as_str(),
+            Some("true")
+        );
+        assert_eq!(
+            data.runtime_env["YAZELIX_CODEX_COMMAND"].as_str(),
+            Some("rtk codex")
+        );
+    }
 }

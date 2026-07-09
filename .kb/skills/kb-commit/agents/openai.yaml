@@ -1,0 +1,6 @@
+interface:
+  display_name: "KB Commit"
+  short_description: "Validate and commit workspace changes"
+  default_prompt: "Use $kb-commit to review, validate, and commit pending workspace changes."
+policy:
+  allow_implicit_invocation: true

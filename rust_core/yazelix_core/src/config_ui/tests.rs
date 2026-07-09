@@ -31,7 +31,7 @@ fn write_runtime_layout(runtime: &Path) {
         include_str!("../../../../settings_default.jsonc"),
     )
     .expect("main defaults");
-    fs::write(runtime.join("runtime_variant"), "ghostty\n").expect("runtime variant");
+    fs::write(runtime.join("runtime_variant"), "mars\n").expect("runtime variant");
     fs::write(
         runtime.join(DEFAULT_CURSOR_CONFIG_FILENAME),
         include_str!("../../../../yazelix_cursors_default.toml"),
@@ -229,6 +229,90 @@ fn disabled_cursor_component_removes_cursor_editor_fields() {
             .iter()
             .all(|field| !field.path.starts_with("cursors."))
     );
+    assert!(
+        model
+            .sources
+            .iter()
+            .all(|source| source.id != CURSORS_SOURCE_ID)
+    );
+}
+
+// Defends: the config UI model names the owning config source for each editable tab.
+#[test]
+fn model_exposes_source_metadata_and_field_source_ids() {
+    let fixture = Fixture::new();
+    let model = fixture.model();
+
+    let general = model
+        .sources
+        .iter()
+        .find(|source| source.tab == "general")
+        .expect("general source");
+    assert_eq!(general.id, SETTINGS_SOURCE_ID);
+    assert_eq!(general.label, "settings.jsonc");
+    assert_eq!(general.path, fixture.settings_path());
+
+    let cursors = model
+        .sources
+        .iter()
+        .find(|source| source.tab == "cursors")
+        .expect("cursor source");
+    assert_eq!(cursors.id, CURSORS_SOURCE_ID);
+    assert_eq!(cursors.label, "yazelix_cursors/settings.jsonc");
+    assert_eq!(cursors.path, fixture.cursor_path());
+    assert!(!model.sources.iter().any(|source| source.tab == "advanced"));
+    assert!(
+        model
+            .sidecars
+            .iter()
+            .all(|sidecar| sidecar.name != "yazelix_cursors/settings.jsonc")
+    );
+
+    assert_eq!(
+        model_field(&model, "editor.hide_sidebar_on_file_open").source_id,
+        SETTINGS_SOURCE_ID
+    );
+    assert_eq!(
+        model_field(&model, "zellij.keybindings.bottom_popup").source_id,
+        SETTINGS_SOURCE_ID
+    );
+    assert_eq!(
+        model_field(&model, "zellij.custom_popups.zenith.command").source_id,
+        SETTINGS_SOURCE_ID
+    );
+    assert_eq!(
+        model_field(&model, "cursors.enabled_cursors").source_id,
+        CURSORS_SOURCE_ID
+    );
+}
+
+// Defends: source-aware routing rejects mismatched source/path pairs before either backing file is written.
+#[test]
+fn source_routing_rejects_wrong_source_before_write() {
+    let fixture = Fixture::new();
+    let mut app = fixture.app();
+
+    let cursor_as_settings = app
+        .write_source_field_value(
+            SETTINGS_SOURCE_ID,
+            "cursors.enabled_cursors",
+            &json!(["snow"]),
+        )
+        .unwrap_err();
+    assert_eq!(cursor_as_settings.code(), "config_source_mismatch");
+    assert!(!fixture.settings_path().exists());
+    assert!(!fixture.cursor_path().exists());
+
+    let settings_as_cursor = app
+        .write_source_field_value(
+            CURSORS_SOURCE_ID,
+            "editor.hide_sidebar_on_file_open",
+            &json!(true),
+        )
+        .unwrap_err();
+    assert_eq!(settings_as_cursor.code(), "config_source_mismatch");
+    assert!(!fixture.settings_path().exists());
+    assert!(!fixture.cursor_path().exists());
 }
 
 // Defends: the keybinding tab renders Yazelix action registry labels, scoped ids, defaults, remaps, and disabled actions instead of an opaque JSON object.
@@ -315,6 +399,7 @@ fn complex_registry_field_does_not_open_raw_array_editor() {
 #[test]
 fn cursor_enabled_cursors_opens_multi_choice_picker_and_writes_cursor_config() {
     let fixture = Fixture::new();
+    let settings_path = fixture.settings_path();
     let cursor_path = fixture.cursor_path();
     let mut app = fixture.app();
     let field = model_field(&app.model, "cursors.enabled_cursors");
@@ -349,6 +434,7 @@ fn cursor_enabled_cursors_opens_multi_choice_picker_and_writes_cursor_config() {
             .iter()
             .any(|value| value.as_str() == Some("midnight"))
     );
+    assert!(!settings_path.exists());
 }
 
 // Defends: dynamic cursor trail selection is a single-select picker over none, random, and enabled cursor names.
@@ -453,18 +539,24 @@ fn custom_popup_child_rows_write_parent_popup_list() {
     });
     let mut app = fixture.app();
 
-    app.write_field_value(
+    app.write_source_field_value(
+        SETTINGS_SOURCE_ID,
         "zellij.custom_popups.gitui.command",
         &json!(["gitui", "--watch"]),
     )
     .expect("write command");
-    app.write_field_value(
+    app.write_source_field_value(
+        SETTINGS_SOURCE_ID,
         "zellij.custom_popups.gitui.keybindings",
         &json!(["Alt Shift G"]),
     )
     .expect("write keybindings");
-    app.write_field_value("zellij.custom_popups.gitui.keep_alive", &json!(true))
-        .expect("write keep alive");
+    app.write_source_field_value(
+        SETTINGS_SOURCE_ID,
+        "zellij.custom_popups.gitui.keep_alive",
+        &json!(true),
+    )
+    .expect("write keep alive");
 
     let value = read_settings_jsonc_value(&settings_path).expect("settings jsonc");
     assert_eq!(
@@ -493,8 +585,12 @@ fn custom_popup_add_and_remove_rows_patch_parent_popup_list() {
     let settings_path = fixture.settings_path();
     let mut app = fixture.app();
 
-    app.write_field_value("zellij.custom_popups.$add", &json!("gitui"))
-        .expect("add popup");
+    app.write_source_field_value(
+        SETTINGS_SOURCE_ID,
+        "zellij.custom_popups.$add",
+        &json!("gitui"),
+    )
+    .expect("add popup");
     select_field_path(&mut app, "zellij.custom_popups.zenith");
     app.handle_key(KeyEvent::new(KeyCode::Char('u'), KeyModifiers::NONE));
 
@@ -530,7 +626,8 @@ fn custom_popup_duplicate_keybinding_fails_before_write() {
     let mut app = fixture.app();
 
     let error = app
-        .write_field_value(
+        .write_source_field_value(
+            SETTINGS_SOURCE_ID,
             "zellij.custom_popups.zenith.keybindings",
             &json!(["Alt Shift J"]),
         )
@@ -548,17 +645,29 @@ fn custom_popup_invalid_identity_and_command_fail_before_write() {
     let mut app = fixture.app();
 
     let duplicate_id = app
-        .write_field_value("zellij.custom_popups.$add", &json!("zenith"))
+        .write_source_field_value(
+            SETTINGS_SOURCE_ID,
+            "zellij.custom_popups.$add",
+            &json!("zenith"),
+        )
         .unwrap_err();
     assert_eq!(duplicate_id.code(), "duplicate_custom_popup_id");
 
     let reserved_id = app
-        .write_field_value("zellij.custom_popups.$add", &json!("bottom_popup"))
+        .write_source_field_value(
+            SETTINGS_SOURCE_ID,
+            "zellij.custom_popups.$add",
+            &json!("bottom_popup"),
+        )
         .unwrap_err();
     assert_eq!(reserved_id.code(), "reserved_custom_popup_id");
 
     let empty_command = app
-        .write_field_value("zellij.custom_popups.zenith.command", &json!([]))
+        .write_source_field_value(
+            SETTINGS_SOURCE_ID,
+            "zellij.custom_popups.zenith.command",
+            &json!([]),
+        )
         .unwrap_err();
     assert_eq!(empty_command.code(), "empty_config_string_list");
     assert!(!settings_path.exists());
@@ -574,7 +683,11 @@ fn home_manager_owned_custom_popup_rows_are_read_only() {
     let mut app = fixture.app();
 
     let error = app
-        .write_field_value("zellij.custom_popups.$add", &json!("gitui"))
+        .write_source_field_value(
+            SETTINGS_SOURCE_ID,
+            "zellij.custom_popups.$add",
+            &json!("gitui"),
+        )
         .unwrap_err();
 
     assert_eq!(error.code(), "home_manager_owned_config");
@@ -734,6 +847,38 @@ fn enum_string_list_picker_toggles_subvalues_with_space() {
     );
 }
 
+// Defends: host-selected status widgets render as checked in the multi-choice picker.
+#[test]
+fn widget_tray_picker_marks_host_selected_status_widgets_checked() {
+    let fixture = Fixture::new();
+    fixture.write_settings(|settings| {
+        settings["zellij"]["widget_tray"] = json!([
+            "session",
+            "editor",
+            "shell",
+            "term",
+            "workspace",
+            "claude_usage",
+            "codex_usage",
+            "cpu",
+            "ram"
+        ]);
+    });
+    let mut app = fixture.app();
+
+    select_field_path(&mut app, "zellij.widget_tray");
+    app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+
+    let edit = app.edit.clone().expect("edit");
+    assert_eq!(edit.mode, ConfigUiEditMode::MultiChoice);
+    let details = field_details(&app, edit.field_index);
+    assert!(details.contains("  [x] workspace"));
+    assert!(details.contains("  [x] claude_usage"));
+    assert!(details.contains("  [x] cpu"));
+    assert!(details.contains("  [x] ram"));
+    assert!(details.contains("  [ ] opencode_go_usage"));
+}
+
 // Defends: enum rows open a single-select picker that can be driven with hjkl and saved through the JSONC patcher.
 #[test]
 fn scalar_enum_enter_opens_single_select_picker() {
@@ -816,7 +961,11 @@ fn write_field_value_patches_settings_jsonc_and_reloads_model() {
     let mut app = fixture.app();
 
     let outcome = app
-        .write_field_value("editor.hide_sidebar_on_file_open", &json!(true))
+        .write_source_field_value(
+            SETTINGS_SOURCE_ID,
+            "editor.hide_sidebar_on_file_open",
+            &json!(true),
+        )
         .expect("write");
 
     assert_eq!(outcome.mutation, SettingsJsoncPatchMutation::Replaced);
@@ -834,6 +983,7 @@ fn write_field_value_patches_settings_jsonc_and_reloads_model() {
     let field = model_field(&app.model, "editor.hide_sidebar_on_file_open");
     assert_eq!(field.state, ConfigUiValueState::Explicit);
     assert_eq!(field.current_value, "true");
+    assert!(!fixture.cursor_path().exists());
 }
 
 // Regression: a save-time refresh failure remains visible as pending apply work instead of hiding the fact that the setting was already persisted.
@@ -841,8 +991,7 @@ fn write_field_value_patches_settings_jsonc_and_reloads_model() {
 fn write_notice_keeps_saved_setting_visible_when_apply_fails() {
     let outcome = ConfigUiWriteOutcome {
         mutation: SettingsJsoncPatchMutation::Replaced,
-        apply_status: None,
-        apply_error: Some(
+        apply_notice: Some(
             "Apply pending: Saved yazi.theme, but generated config refresh failed.".to_string(),
         ),
     };

@@ -1,0 +1,6 @@
+interface:
+  display_name: "Understand"
+  short_description: "Understand a file or symbol using GitKB code intelligence"
+  default_prompt: "Use $understand to analyze a file or symbol's structure, callers, callees, and related documents."
+policy:
+  allow_implicit_invocation: true

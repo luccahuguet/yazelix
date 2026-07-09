@@ -1,18 +1,16 @@
 {
   pkgs,
+  beadsSource,
   rustPlatform ? pkgs.rustPlatform,
 }:
 
 rustPlatform.buildRustPackage rec {
   pname = "beads_rust";
-  version = "0.2.11";
+  version = "0.2.16";
 
-  src = pkgs.fetchCrate {
-    inherit pname version;
-    hash = "sha256-ItmCjTQjpWujp2uQlWGdQztsTfJ3BZvk1fpGmSNUQTI=";
-  };
+  src = beadsSource;
 
-  cargoHash = "sha256-3u7GMriV2ZG0mjjGYLXGcUDQrs83uRYDMy5NKXTdaTI=";
+  cargoHash = "sha256-I8R0UWt+dlG05RGdASDCBo56m2vx4wSTg/pzP9eHYGg=";
 
   cargoBuildFlags = [
     "--bin"

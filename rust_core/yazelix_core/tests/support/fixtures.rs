@@ -1,6 +1,6 @@
 use std::fs;
 use std::path::{Path, PathBuf};
-use tempfile::TempDir;
+use tempfile::{Builder as TempDirBuilder, TempDir};
 
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
@@ -14,17 +14,13 @@ pub struct ManagedConfigFixture {
     pub managed_config: PathBuf,
 }
 
+#[cfg(unix)]
+pub struct UnixSocketFixture {
+    pub _temp: TempDir,
+    pub path: PathBuf,
+}
+
 impl ManagedConfigFixture {
-    pub fn default_config_path(&self) -> PathBuf {
-        self.runtime_dir.join("settings_default.jsonc")
-    }
-
-    pub fn contract_path(&self) -> PathBuf {
-        self.runtime_dir
-            .join("config_metadata")
-            .join("main_config_contract.toml")
-    }
-
     pub fn xdg_config_home(&self) -> PathBuf {
         self.home_dir.join(".config")
     }
@@ -58,13 +54,13 @@ pub fn write_runtime_contract_assets(repo: &Path, runtime_dir: &Path) {
         runtime_dir.join("config_metadata/main_config_contract.toml"),
     )
     .unwrap();
-    fs::write(runtime_dir.join("runtime_variant"), "ghostty\n").unwrap();
+    fs::write(runtime_dir.join("runtime_variant"), "mars\n").unwrap();
     fs::write(
         runtime_dir.join("runtime_identity.json"),
         r#"{
           "schema_version": 1,
           "version": "v-test",
-          "runtime_variant": "ghostty"
+          "runtime_variant": "mars"
         }"#,
     )
     .unwrap();
@@ -81,8 +77,8 @@ pub fn write_runtime_contract_assets(repo: &Path, runtime_dir: &Path) {
         r#"{
           "terminal": {
             "source": "bundled",
-            "commands": ["ghostty"],
-            "required_commands": ["ghostty"],
+            "commands": ["mars"],
+            "required_commands": ["mars"],
             "hostable": false,
             "disableable": false,
             "notes": []
@@ -113,39 +109,19 @@ pub fn prepend_path(dir: &Path) -> String {
     }
 }
 
-pub fn write_session_facts_cache(
-    fixture: &ManagedConfigFixture,
-    overrides: &[(&str, serde_json::Value)],
-) -> PathBuf {
-    let mut facts = serde_json::Map::from_iter([
-        (
-            "hide_sidebar_on_file_open".to_string(),
-            serde_json::json!(false),
-        ),
-        ("yazi_command".to_string(), serde_json::json!("yazi")),
-        ("ya_command".to_string(), serde_json::json!("ya")),
-        ("popup_width_percent".to_string(), serde_json::json!(90)),
-        ("popup_height_percent".to_string(), serde_json::json!(90)),
-        (
-            "game_of_life_cell_style".to_string(),
-            serde_json::json!("full_block"),
-        ),
-        ("default_shell".to_string(), serde_json::json!("nu")),
-        ("terminals".to_string(), serde_json::json!(["ghostty"])),
-    ]);
-    for (key, value) in overrides {
-        facts.insert((*key).to_string(), value.clone());
-    }
-    let cache = serde_json::json!({
-        "schema_version": 1,
-        "source_config_file": "test-cache",
-        "normalized_config": {},
-        "facts": facts,
-    });
-    let path = fixture.state_dir.join("sessions/test/session_facts.json");
-    fs::create_dir_all(path.parent().unwrap()).unwrap();
-    fs::write(&path, serde_json::to_string_pretty(&cache).unwrap()).unwrap();
-    path
+#[cfg(unix)]
+pub fn short_unix_socket_path(file_name: &str) -> UnixSocketFixture {
+    let temp = TempDirBuilder::new()
+        .prefix("yzx-")
+        .tempdir_in("/tmp")
+        .unwrap();
+    let path = temp.path().join(file_name);
+    assert!(
+        path.to_string_lossy().len() < 100,
+        "mock Unix socket path is too long: {}",
+        path.display()
+    );
+    UnixSocketFixture { _temp: temp, path }
 }
 
 pub fn write_session_config_snapshot(

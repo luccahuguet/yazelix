@@ -1,9 +1,9 @@
+use crate::atomic_fs::is_executable_file;
 use crate::bridge::{CoreError, ErrorClass};
-use crate::terminal_variant::{terminal_command_name, terminal_display_name, SUPPORTED_TERMINALS};
+use crate::terminal_variant::{SUPPORTED_TERMINALS, terminal_command_name, terminal_display_name};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::env;
-use std::fs;
 use std::path::{Path, PathBuf};
 
 const NIXGL_WRAPPER_CANDIDATES: &[(&str, &[&str])] = &[
@@ -562,7 +562,7 @@ fn check_terminal_support(request: &TerminalSupportCheckRequest) -> RuntimeCheck
                 ),
                 None,
                 Some(
-                    "Use a terminal shipped by the active Yazelix runtime, install it on PATH, or choose a different terminal for testing."
+                    "Use the Mars terminal shipped by the active Yazelix runtime, or configure a host terminal to run `yzx enter`."
                         .to_string(),
                 ),
                 Some("host-dependency".to_string()),
@@ -600,11 +600,11 @@ fn check_terminal_support(request: &TerminalSupportCheckRequest) -> RuntimeCheck
             "error",
             &request.owner_surface,
             format!(
-                "Selected Yazelix terminal variant '{terminal}' is not available in the active runtime or PATH."
+                "Selected Yazelix packaged terminal '{terminal}' is not available in the active runtime or PATH."
             ),
             None,
             Some(
-                "Reinstall Yazelix so the selected terminal variant is packaged correctly, or install a different Yazelix terminal variant."
+                "Reinstall Yazelix so the packaged Mars terminal is available, or configure a host terminal to run `yzx enter`."
                     .to_string(),
             ),
             Some("host-dependency".to_string()),
@@ -731,26 +731,6 @@ fn resolve_command_path(command: &str, command_search_paths: &[PathBuf]) -> Opti
     })
 }
 
-fn is_executable_file(candidate: &Path) -> bool {
-    let Ok(metadata) = fs::metadata(candidate) else {
-        return false;
-    };
-    if !metadata.is_file() {
-        return false;
-    }
-
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        metadata.permissions().mode() & 0o111 != 0
-    }
-
-    #[cfg(not(unix))]
-    {
-        true
-    }
-}
-
 fn runtime_platform_name(explicit: Option<&str>) -> String {
     explicit
         .map(str::to_string)
@@ -836,6 +816,7 @@ fn build_runtime_check(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs;
     use tempfile::tempdir;
 
     fn write_executable(path: &Path) {
@@ -900,16 +881,13 @@ mod tests {
         );
     }
 
-    // Defends: shared runtime-contract evaluation reports both terminal candidates and the Linux Ghostty graphics ownership warning.
+    // Defends: shared runtime-contract evaluation reports the packaged Mars terminal candidate.
     #[test]
-    fn evaluate_reports_terminal_candidates_and_host_path_ghostty_warning() {
+    fn evaluate_reports_mars_terminal_candidate() {
         let temp = tempdir().unwrap();
-        let runtime_dir = temp.path().join("runtime");
         let host_bin = temp.path().join("host-bin");
-        fs::create_dir_all(runtime_dir.join("libexec")).unwrap();
         fs::create_dir_all(&host_bin).unwrap();
-        write_executable(&host_bin.join("ghostty"));
-        write_executable(&host_bin.join("nixGLMesa"));
+        write_executable(&host_bin.join("mars"));
 
         let data = evaluate_runtime_contract(&RuntimeContractEvaluateRequest {
             working_dir: None,
@@ -918,20 +896,14 @@ mod tests {
             terminal_support: Some(TerminalSupportCheckRequest {
                 owner_surface: "launch".to_string(),
                 requested_terminal: String::new(),
-                terminals: vec!["ghostty".to_string()],
+                terminals: vec!["mars".to_string()],
                 command_search_paths: vec![host_bin.clone()],
             }),
-            linux_ghostty_desktop_graphics_support: Some(LinuxGhosttyDesktopGraphicsRequest {
-                owner_surface: "doctor".to_string(),
-                terminals: vec!["ghostty".to_string()],
-                runtime_dir: Some(runtime_dir),
-                command_search_paths: vec![host_bin],
-                platform_name: Some("linux".to_string()),
-            }),
+            linux_ghostty_desktop_graphics_support: None,
         })
         .unwrap();
 
-        assert_eq!(data.checks.len(), 2);
+        assert_eq!(data.checks.len(), 1);
         assert_eq!(
             data.checks[0].message,
             "The selected Yazelix terminal command is available"
@@ -942,17 +914,8 @@ mod tests {
                 .as_ref()
                 .and_then(|candidates| candidates.first())
                 .map(|candidate| candidate.terminal.as_str()),
-            Some("ghostty")
+            Some("mars")
         );
-        assert_eq!(
-            data.checks[1].message,
-            "Linux Ghostty desktop-launch graphics support is not runtime-owned"
-        );
-        assert!(data.checks[1]
-            .details
-            .as_deref()
-            .unwrap()
-            .contains("Detected host PATH graphics wrapper: nixGLMesa"));
     }
 
     // Defends: shared runtime-contract evaluation rejects unsupported requested terminals before launch fallback logic runs.
@@ -965,7 +928,7 @@ mod tests {
             terminal_support: Some(TerminalSupportCheckRequest {
                 owner_surface: "launch".to_string(),
                 requested_terminal: "warpterm".to_string(),
-                terminals: vec!["ghostty".to_string()],
+                terminals: vec!["mars".to_string()],
                 command_search_paths: Vec::new(),
             }),
             linux_ghostty_desktop_graphics_support: None,
@@ -975,11 +938,13 @@ mod tests {
         assert_eq!(data.checks.len(), 1);
         assert_eq!(data.checks[0].status, "error");
         assert_eq!(data.checks[0].message, "Unsupported terminal 'warpterm'");
-        assert!(data.checks[0]
-            .details
-            .as_deref()
-            .unwrap_or_default()
-            .contains("Supported terminals: mars, ghostty, kitty, rio, wezterm, foot, ratty"));
+        assert!(
+            data.checks[0]
+                .details
+                .as_deref()
+                .unwrap_or_default()
+                .contains("Supported terminals: mars")
+        );
     }
 
     // Defends: startup-launch preflight bundles startup working-dir and runtime-script checks into one ok envelope.
@@ -1045,14 +1010,14 @@ mod tests {
         fs::create_dir_all(&work).unwrap();
         let host_bin = temp.path().join("host-bin");
         fs::create_dir_all(&host_bin).unwrap();
-        write_executable(&host_bin.join("ghostty"));
+        write_executable(&host_bin.join("mars"));
 
         let data = evaluate_startup_launch_preflight(&StartupLaunchPreflightRequest {
             startup: None,
             launch: Some(LaunchPreflightPayload {
                 working_dir: work.clone(),
                 requested_terminal: String::new(),
-                terminals: vec!["ghostty".to_string()],
+                terminals: vec!["mars".to_string()],
                 command_search_paths: vec![host_bin],
             }),
         })
@@ -1064,7 +1029,7 @@ mod tests {
         let candidates = data.terminal_candidates.as_ref().unwrap();
         assert_eq!(
             candidates.first().map(|c| c.terminal.as_str()),
-            Some("ghostty")
+            Some("mars")
         );
     }
 
@@ -1083,7 +1048,7 @@ mod tests {
             terminal_support: Some(TerminalSupportCheckRequest {
                 owner_surface: "launch".to_string(),
                 requested_terminal: "mars".to_string(),
-                terminals: vec!["ghostty".to_string()],
+                terminals: vec!["mars".to_string()],
                 command_search_paths: vec![host_bin],
             }),
             linux_ghostty_desktop_graphics_support: None,

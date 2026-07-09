@@ -1,6 +1,17 @@
 #!/bin/sh
 set -eu
 
+bootstrap_path="/nix/var/nix/profiles/default/bin:/run/current-system/sw/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+if [ -n "${HOME:-}" ]; then
+  bootstrap_path="$HOME/.local/state/nix/profile/bin:$HOME/.nix-profile/bin:$bootstrap_path"
+fi
+if [ -n "${PATH:-}" ]; then
+  PATH="$bootstrap_path:$PATH"
+else
+  PATH="$bootstrap_path"
+fi
+export PATH
+
 script_path="$0"
 if [ -L "$script_path" ]; then
   link_target="$(readlink "$script_path")"
@@ -169,6 +180,19 @@ if [ -n "${YAZELIX_SESSION_CONFIG_PATH:-}" ]; then
       exit 1
       ;;
   esac
+  if [ -z "${YAZELIX_HELIX_BRIDGE_ROOT:-}" ]; then
+    bridge_base="${XDG_RUNTIME_DIR:-${TMPDIR:-/tmp}}"
+    if [ -z "$bridge_base" ]; then
+      bridge_base="/tmp"
+    fi
+    bridge_owner="${UID:-${USER:-user}}"
+    bridge_owner="$(printf '%s' "$bridge_owner" | tr -c 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-' '_')"
+    if [ -z "$bridge_owner" ]; then
+      bridge_owner="user"
+    fi
+    YAZELIX_HELIX_BRIDGE_ROOT="$bridge_base/yx-hx-$bridge_owner"
+    export YAZELIX_HELIX_BRIDGE_ROOT
+  fi
   YAZELIX_HELIX_BRIDGE=1
   YAZELIX_HELIX_BRIDGE_SESSION_ID="$bridge_session_id"
   YAZELIX_HELIX_BRIDGE_INSTANCE_ID="$bridge_instance_id"

@@ -32,9 +32,6 @@ use yazelix_core::{
 };
 
 const HOME_MANAGER_DEFAULT_TERMINAL: &str = "mars";
-const HOME_MANAGER_EXTRA_ACTIVE_TERMINAL: &str = "kitty";
-const HOME_MANAGER_EXTRA_TERMINAL_LAUNCHERS: &[&str] =
-    &["mars", "ghostty", "foot", "rio", "wezterm", "ratty"];
 
 pub fn validate_config_surface_contract(repo_root: &Path) -> Result<ValidationReport, String> {
     let mut report = ValidationReport::default();
@@ -794,27 +791,12 @@ fn json_map_bool_field(value: &JsonMap<String, JsonValue>, field: &str) -> bool 
         .unwrap_or(false)
 }
 
-fn json_map_i64_field(value: &JsonMap<String, JsonValue>, field: &str) -> i64 {
-    value
-        .get(field)
-        .and_then(JsonValue::as_i64)
-        .unwrap_or_default()
-}
-
-fn json_map_object_field<'a>(
-    value: &'a JsonMap<String, JsonValue>,
-    field: &str,
-) -> Option<&'a JsonMap<String, JsonValue>> {
-    value.get(field).and_then(JsonValue::as_object)
-}
-
 fn format_json_string(value: &str) -> String {
     format_json_value(&JsonValue::String(value.to_string()))
 }
 
 fn validate_home_manager_desktop_entry_contract(repo_root: &Path) -> Result<Vec<String>, String> {
     let entry = load_home_manager_desktop_entry_contract(repo_root)?;
-    let extra_entry = load_home_manager_extra_terminal_launchers_contract(repo_root)?;
     let active_terminal = json_map_str_field(&entry, "activeTerminal");
     let is_present = json_map_bool_field(&entry, "present");
     let actual_exec = json_map_str_field(&entry, "exec");
@@ -850,9 +832,9 @@ fn validate_home_manager_desktop_entry_contract(repo_root: &Path) -> Result<Vec<
         ));
     }
 
-    if !json_map_bool_field(&entry, "terminal") {
+    if json_map_bool_field(&entry, "terminal") {
         errors.push(
-            "Home Manager desktop entry must set terminal = true so pre-terminal config failures stay visible"
+            "Home Manager desktop entry must set terminal = false so host starter terminals cannot kill Yazelix handoff"
                 .to_string(),
         );
     }
@@ -871,80 +853,6 @@ fn validate_home_manager_desktop_entry_contract(repo_root: &Path) -> Result<Vec<
             format_json_string(&expected_startup_wm_class),
             format_json_string(actual_startup_wm_class)
         ));
-    }
-
-    let package_count = json_map_i64_field(&extra_entry, "packageCount");
-    if package_count != 1 {
-        errors.push(format!(
-            "Home Manager extra terminal launchers must only add the active Yazelix package: expected 1 profile package, got {package_count}"
-        ));
-    }
-    if let Some(extra_entries) = json_map_object_field(&extra_entry, "extra") {
-        for terminal in HOME_MANAGER_EXTRA_TERMINAL_LAUNCHERS {
-            let expected_name = terminal_desktop_entry_name(terminal);
-            let Some(entry) = json_map_object_field(extra_entries, terminal) else {
-                errors.push(format!(
-                    "Home Manager extra {terminal} desktop entry must be generated"
-                ));
-                continue;
-            };
-            if !json_map_bool_field(entry, "present") {
-                errors.push(format!(
-                    "Home Manager extra {terminal} desktop entry must be generated"
-                ));
-                continue;
-            }
-            let name = json_map_str_field(entry, "name");
-            if name != expected_name {
-                errors.push(format!(
-                    "Home Manager extra {terminal} desktop entry name mismatch: expected {expected_name}, got {}",
-                    format_json_string(name)
-                ));
-            }
-            let exec = json_map_str_field(entry, "exec");
-            if !exec.ends_with("/bin/yzx desktop launch") || exec.contains("/tmp/profile/bin/yzx") {
-                errors.push(format!(
-                    "Home Manager extra {terminal} desktop entry Exec must point at the terminal package store yzx, got {}",
-                    format_json_string(exec)
-                ));
-            }
-            if !exec.starts_with("env YAZELIX_SKIP_STABLE_WRAPPER_REDIRECT=1 ") {
-                errors.push(format!(
-                    "Home Manager extra {terminal} desktop entry Exec must disable stable-profile redirects for intentional variant package launches, got {}",
-                    format_json_string(exec)
-                ));
-            }
-            if *terminal == "mars"
-                && !exec.contains(&format!(
-                    " MARS_APP_ID={} ",
-                    terminal_desktop_entry_id(terminal)
-                ))
-            {
-                errors.push(format!(
-                    "Home Manager extra mars desktop entry Exec must set the Mars app id, got {}",
-                    format_json_string(exec)
-                ));
-            }
-            let startup_wm_class = json_map_str_field(entry, "startupWmClass");
-            let expected_startup_wm_class = expected_home_manager_startup_wm_class(terminal);
-            if startup_wm_class != expected_startup_wm_class {
-                errors.push(format!(
-                    "Home Manager extra {terminal} desktop entry StartupWMClass mismatch: expected {}, got {}",
-                    format_json_string(&expected_startup_wm_class),
-                    format_json_string(startup_wm_class)
-                ));
-            }
-            if !json_map_bool_field(entry, "terminal") {
-                errors.push(format!(
-                    "Home Manager extra {terminal} desktop entry must set terminal = true so pre-terminal config failures stay visible"
-                ));
-            }
-        }
-    } else {
-        errors.push(
-            "Home Manager extra terminal launcher evaluation must return an `extra` object"
-                .to_string(),
-        );
     }
 
     validate_home_manager_darwin_without_desktop_entry_option(repo_root)?;
@@ -994,18 +902,10 @@ fn validate_home_manager_activation_script(script: &str, manage_config: bool) ->
         "ratconfig-owned"
     };
 
-    if materialization_lines.len() != 2 {
+    if materialization_lines.len() != 1 {
         errors.push(format!(
-            "{owner_label} Home Manager activation with one extra terminal launcher must generate active and extra terminal configs, got {} materialization command(s)",
+            "{owner_label} Home Manager activation must generate the active Mars terminal config once, got {} materialization command(s)",
             materialization_lines.len()
-        ));
-    }
-    let rio_line = materialization_lines
-        .iter()
-        .find(|line| line.contains("-yazelix-rio/"));
-    if rio_line.is_none() {
-        errors.push(format!(
-            "{owner_label} Home Manager activation must materialize the extra rio launcher runtime"
         ));
     }
     if !materialization_lines
@@ -1049,7 +949,6 @@ fn build_home_manager_activation_expr(repo_root: &Path, manage_config: bool) -> 
         lines.push("      { config.programs.yazelix.manage_config = true; }".to_string());
     }
     lines.extend([
-        "      { config.programs.yazelix.extra_terminal_launchers = [ \"rio\" ]; }".to_string(),
         "    ];".to_string(),
         "  };".to_string(),
         "in eval.config.home.activation.yazelixGeneratedRuntimeConfigs.data".to_string(),
@@ -1275,88 +1174,33 @@ fn standalone_home_manager_eval_fixture_module(
 fn load_home_manager_desktop_entry_contract(
     repo_root: &Path,
 ) -> Result<JsonMap<String, JsonValue>, String> {
-    let expr = build_home_manager_desktop_entry_expr(repo_root, &[], None);
+    let expr = build_home_manager_desktop_entry_expr(repo_root);
     let result = run_nix_eval(repo_root, &expr)?;
     result.as_object().cloned().ok_or_else(|| {
         "Home Manager desktop-entry evaluation did not return a JSON object".to_string()
     })
 }
 
-fn load_home_manager_extra_terminal_launchers_contract(
-    repo_root: &Path,
-) -> Result<JsonMap<String, JsonValue>, String> {
-    let expr = build_home_manager_desktop_entry_expr(
-        repo_root,
-        HOME_MANAGER_EXTRA_TERMINAL_LAUNCHERS,
-        Some(HOME_MANAGER_EXTRA_ACTIVE_TERMINAL),
-    );
-    let result = run_nix_eval(repo_root, &expr)?;
-    result.as_object().cloned().ok_or_else(|| {
-        "Home Manager desktop-entry evaluation did not return a JSON object".to_string()
-    })
-}
-
-fn build_home_manager_desktop_entry_expr(
-    repo_root: &Path,
-    extra_launchers: &[&str],
-    active_terminal: Option<&str>,
-) -> String {
+fn build_home_manager_desktop_entry_expr(repo_root: &Path) -> String {
     let module_path =
         escape_nix_string(&repo_root.join(MODULE_RELATIVE_PATH).display().to_string());
-    let terminal_metadata_path = escape_nix_string(
-        &repo_root
-            .join("packaging/terminal_variants.nix")
-            .display()
-            .to_string(),
-    );
-    let extra_launcher_terminals = extra_launchers
-        .iter()
-        .map(|terminal| format!("\"{}\"", escape_nix_string(terminal)))
-        .collect::<Vec<_>>()
-        .join(" ");
     let mut lines = vec![
         "let".to_string(),
         "  pkgs = import <nixpkgs> { system = \"x86_64-linux\"; };".to_string(),
         "  lib = pkgs.lib;".to_string(),
-        format!(
-            "  terminalMetadata = import (builtins.toPath \"{terminal_metadata_path}\") {{ isLinux = true; }};"
-        ),
-        "  desktopEntryKey = terminal: \"com.yazelix.Yazelix.${terminalMetadata.desktopIdSuffix terminal}\";".to_string(),
-        format!("  extraLauncherTerminals = [ {extra_launcher_terminals} ];"),
         "  eval = lib.evalModules {".to_string(),
         "    specialArgs = { inherit pkgs; nixgl = null; yazelixCursorsPackage = null; marsTerminalPackage = null; mkYazelixPackage = args: pkgs.runCommand (args.name or \"yazelix\") {} \"mkdir -p $out/bin; touch $out/bin/yzx\"; };".to_string(),
         "    modules = [".to_string(),
         format!("      (builtins.toPath \"{}\")", module_path),
     ];
     lines.extend(standalone_home_manager_eval_fixture_module(true, true));
-    if let Some(terminal) = active_terminal {
-        lines.push(format!(
-            "      {{ config.programs.yazelix.terminal = \"{}\"; }}",
-            escape_nix_string(terminal)
-        ));
-    }
-    if !extra_launchers.is_empty() {
-        let launchers = extra_launchers
-            .iter()
-            .map(|terminal| format!("\"{}\"", escape_nix_string(terminal)))
-            .collect::<Vec<_>>()
-            .join(" ");
-        lines.push(format!(
-            "      {{ config.programs.yazelix.extra_terminal_launchers = [ {launchers} ]; }}"
-        ));
-    }
     lines.extend([
         "    ];".to_string(),
         "  };".to_string(),
         "  activeTerminal = eval.config.programs.yazelix.terminal;".to_string(),
-        "  entryKey = desktopEntryKey activeTerminal;".to_string(),
+        "  entryKey = \"com.yazelix.Yazelix.Mars\";".to_string(),
         "  entries = eval.config.xdg.desktopEntries;".to_string(),
         "  entry = if builtins.hasAttr entryKey entries then builtins.getAttr entryKey entries else {};".to_string(),
-        "  entryFor = terminal:".to_string(),
-        "    let".to_string(),
-        "      key = desktopEntryKey terminal;".to_string(),
-        "      launcherEntry = if builtins.hasAttr key entries then builtins.getAttr key entries else {};".to_string(),
-        "    in { present = builtins.hasAttr key entries; name = launcherEntry.name or \"\"; exec = launcherEntry.exec or \"\"; terminal = launcherEntry.terminal or false; startupWmClass = (launcherEntry.settings or {}).StartupWMClass or \"\"; };".to_string(),
         "in {".to_string(),
         "  inherit activeTerminal;".to_string(),
         "  present = builtins.hasAttr entryKey entries;".to_string(),
@@ -1364,8 +1208,6 @@ fn build_home_manager_desktop_entry_expr(
         "  exec = entry.exec or \"\";".to_string(),
         "  terminal = entry.terminal or false;".to_string(),
         "  startupWmClass = (entry.settings or {}).StartupWMClass or \"\";".to_string(),
-        "  packageCount = builtins.length eval.config.home.packages;".to_string(),
-        "  extra = builtins.listToAttrs (map (terminal: { name = terminal; value = entryFor terminal; }) extraLauncherTerminals);".to_string(),
         "}".to_string(),
     ]);
     lines.join("\n")
@@ -1502,6 +1344,7 @@ fn record_fixture_state(
         config_file: state.config_file.clone(),
         managed_config_path: fixture.managed_config_path.clone(),
         state_path: fixture.state_path.clone(),
+        runtime_dir: Some(fixture.runtime_root.clone()),
         config_hash: state.config_hash.clone(),
         runtime_hash: state.runtime_hash.clone(),
     })

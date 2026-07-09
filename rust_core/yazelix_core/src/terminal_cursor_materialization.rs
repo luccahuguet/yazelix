@@ -1,3 +1,4 @@
+use crate::atomic_fs::copy_dir_all;
 use crate::bridge::{CoreError, ErrorClass};
 use crate::ghostty_cursor_registry::{
     CursorDefinition, CursorRegistry, DEFAULT_GHOSTTY_TRAIL_DURATION, GHOSTTY_TRAIL_DURATION_MAX,
@@ -239,20 +240,4 @@ fn sync_terminal_cursor_shader_assets(
     )?;
 
     Ok(true)
-}
-
-fn copy_dir_all(src: impl AsRef<Path>, dst: impl AsRef<Path>) -> std::io::Result<()> {
-    fs::create_dir_all(&dst)?;
-    for entry in fs::read_dir(src)? {
-        let entry = entry?;
-        let ty = entry.file_type()?;
-        let src_path = entry.path();
-        let dst_path = dst.as_ref().join(entry.file_name());
-        if ty.is_dir() {
-            copy_dir_all(&src_path, &dst_path)?;
-        } else {
-            fs::copy(&src_path, &dst_path)?;
-        }
-    }
-    Ok(())
 }

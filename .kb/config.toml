@@ -1,0 +1,35 @@
+[identity]
+
+[sync.remotes]
+
+[apps]
+enabled = []
+install_dirs = []
+
+[code]
+index_threads = 0
+default_branch = "main"
+
+[code.repo_default_branch_map]
+
+[embeddings]
+enabled = false
+backend = "candle"
+batch_size = 16
+queue_size = 64
+batch_delay_ms = 0
+
+[embeddings.index]
+path = ".kb/cache/index"
+
+[auth]
+mode = "optional"
+
+[auth.api_keys]
+
+[hooks]
+context_injection = true
+auto_commit_link = true
+auto_worktree_bind = true
+auto_progress = false
+prompt_context = false

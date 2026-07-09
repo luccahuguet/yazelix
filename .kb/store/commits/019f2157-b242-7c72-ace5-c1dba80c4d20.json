@@ -1,0 +1,5 @@
+{
+  "commit": {"author":"drdave-flexnet <flexnetos@de-flex.net>","changes":[{"change_type":"created","content_hash":"d208126d779aa31cf2217f95bcbc28ebdb117971fb197c686e6b825db564ac7f","doc_type":"task","document_id":"019f2155-ec3f-7090-8a42-b1fcdd9313c6","new_version":1,"previous_version":null,"slug":"tasks/nu-plugin-codedb-native-link-static","title":"Implement CodeDB native linker static and gap rows"}],"created_at":"2026-07-02T05:40:23.225548805Z","id":"019f2157-b242-7c72-ace5-c1dba80c4d20","message":"Complete CodeDB native link static task"},
+  "content_hash": "0a8622b4d03528095ce02c3eaa4ca82e21033ec70b82bd819ed83b37eefa1338",
+  "hash_version": 3
+}

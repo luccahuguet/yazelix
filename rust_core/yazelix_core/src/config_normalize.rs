@@ -645,7 +645,7 @@ fn make_schema_diagnostic(finding: SchemaFinding) -> ConfigDiagnostic {
                     finding.message,
                     "Next: Remove terminal.terminals from ~/.config/yazelix/settings.jsonc."
                         .to_string(),
-                    "Next: Choose a Yazelix terminal variant through the package or Home Manager option instead, such as programs.yazelix.terminal = \"ghostty\".".to_string(),
+                    "Next: Yazelix packages Mars; configure other terminal emulators to start Yazelix with `yzx enter`.".to_string(),
                     "Next: Run `yzx doctor --verbose` to review the full config report."
                         .to_string(),
                 ];

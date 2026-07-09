@@ -1,0 +1,5 @@
+{
+  "commit": {"author":"drdave-flexnet <flexnetos@de-flex.net>","changes":[{"change_type":"created","content_hash":"01e604b1fed6df68abc3817cb751c8316f6a4b1c0b1bfd3575300698f468426b","doc_type":"task","document_id":"019f21df-0795-76d2-a1b3-9344b9b30522","new_version":1,"previous_version":null,"slug":"tasks/nu-plugin-codedb-plugin-secret-guard","title":"Add CodeDB plugin secret leak guard"}],"created_at":"2026-07-02T08:10:03.380683468Z","id":"019f21e0-b8ff-7613-8ad4-c5cb028c8c0b","message":"Complete CodeDB plugin secret guard task"},
+  "content_hash": "10d600bc642ab2876f13e027ccad324060024e51e32675a17b0b30d8738e6ddc",
+  "hash_version": 3
+}

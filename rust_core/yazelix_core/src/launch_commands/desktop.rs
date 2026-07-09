@@ -5,7 +5,7 @@ use crate::bridge::{CoreError, ErrorClass};
 use crate::control_plane::{config_override_from_env, home_dir_from_env, runtime_dir_from_env};
 use crate::install_ownership_env::install_ownership_request_from_env_with_runtime_dir;
 use crate::install_ownership_report::{
-    evaluate_install_ownership_report, InstallOwnershipEvaluateData,
+    InstallOwnershipEvaluateData, evaluate_install_ownership_report,
 };
 use crate::terminal_variant::{
     active_terminal_from_runtime_dir, terminal_desktop_entry_file_name,
@@ -306,7 +306,7 @@ pub(super) fn render_desktop_entry(launcher_path: &Path, active_terminal: &str) 
             "StartupWMClass={}",
             terminal_startup_wm_class(active_terminal)
         ),
-        "Terminal=true".to_string(),
+        "Terminal=false".to_string(),
         "X-Yazelix-Managed=true".to_string(),
         format!(
             "Exec={} desktop launch",

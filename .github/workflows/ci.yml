@@ -1,15 +1,15 @@
 name: CI
 
 on:
-  # Release tags point at commits already validated on main; run CI for branch
-  # pushes and PRs, not tag pushes.
+  # PRs own branch validation; push CI runs on main only so the same commit is
+  # not validated twice (push + pull_request). Tag pushes stay excluded.
   push:
-    branches: ["**"]
+    branches: [main]
   pull_request:
   workflow_dispatch:
     inputs:
       run_runtime_smoke:
-        description: "Run fast runtime package smoke"
+        description: "Run manual runtime package smoke"
         required: false
         type: boolean
         default: false
@@ -41,7 +41,6 @@ jobs:
       nix_customization: ${{ steps.surfaces.outputs.nix_customization }}
       child_release: ${{ steps.surfaces.outputs.child_release }}
       darwin_wasm: ${{ steps.surfaces.outputs.darwin_wasm }}
-      runtime_smoke: ${{ steps.surfaces.outputs.runtime_smoke }}
       cold_install: ${{ steps.surfaces.outputs.cold_install }}
     defaults:
       run:
@@ -237,14 +236,16 @@ jobs:
             .#packages.aarch64-darwin.yazelix_zellij_popup
 
   runtime_smoke:
-    # Fast runtime behavior lane. It builds the packaged runtime once and
+    # Manual/scheduled runtime behavior lane. It builds the packaged runtime once and
     # exercises helper-command presence, runtime env setup, generated
     # materialization, and desktop install shape through a package-root profile
-    # shim. The cold_install lane owns full nix profile install evidence.
+    # shim. Normal pushes use Publish Nix Cache as package-build evidence; this
+    # lane stays opt-in because cache-miss hosted builds can exceed an hour.
+    # The cold_install lane owns full nix profile install evidence.
     needs: [ci_plan, validation_helpers, source_contracts]
-    if: ${{ always() && needs.ci_plan.result == 'success' && needs.source_contracts.result == 'success' && (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.run_runtime_smoke) || needs.ci_plan.outputs.runtime_smoke == 'true') }}
+    if: ${{ always() && needs.ci_plan.result == 'success' && needs.source_contracts.result == 'success' && (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.run_runtime_smoke)) }}
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
       YAZELIX_DIR: ${{ github.workspace }}

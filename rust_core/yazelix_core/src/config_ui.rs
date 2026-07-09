@@ -12,7 +12,6 @@ use crate::action_registry::{
 };
 use crate::active_config_surface::{PrimaryConfigPaths, primary_config_paths};
 use crate::bridge::{CoreError, ErrorClass};
-use crate::config_apply::ConfigEditApplyStatus;
 use crate::config_normalize::{ConfigDiagnostic, ConfigDiagnosticReport, NormalizeConfigRequest};
 use crate::control_plane::{home_dir_from_env, state_dir_from_env};
 use crate::native_config_status::{
@@ -32,22 +31,18 @@ use crate::settings_surface::{
     is_settings_config_path, parse_jsonc_value, read_settings_jsonc_value,
 };
 use crate::user_config_paths::{CURRENT_MANAGED_CONFIG_FILE_NAMES, SETTINGS_CONFIG};
-use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
-use crossterm::execute;
-use crossterm::terminal::{
-    EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode,
-};
-use ratatui::Terminal;
-use ratatui::backend::CrosstermBackend;
+#[cfg(test)]
+use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
 use serde_json::{Map as JsonMap, Value as JsonValue, json};
 use std::collections::BTreeSet;
 use std::fs;
 use std::io::{self, IsTerminal};
+#[cfg(test)]
 use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::{SystemTime, UNIX_EPOCH};
 use yazelix_cursors::{CursorRegistry, render_cursor_settings_jsonc};
 
 pub use app::run_config_ui;
@@ -65,11 +60,26 @@ use model_builder::{
     write_settings_edit,
 };
 pub use ratconfig::{
-    ConfigUiApplyStatus, ConfigUiContractField, ConfigUiDiagnostic, ConfigUiField,
-    ConfigUiFieldMetadata, ConfigUiMetadata, ConfigUiModel, ConfigUiNativeStatus,
-    ConfigUiPathOwner, ConfigUiSchemaField, ConfigUiSidecar, ConfigUiValueState,
+    ConfigUiApp, ConfigUiApplyStatus, ConfigUiContractField, ConfigUiDiagnostic,
+    ConfigUiEditBehavior, ConfigUiEditMode, ConfigUiField, ConfigUiFieldMetadata,
+    ConfigUiFieldRowSpec, ConfigUiIntent, ConfigUiMetadata, ConfigUiModel, ConfigUiNativeStatus,
+    ConfigUiPathOwner, ConfigUiSchemaField, ConfigUiSidecar, ConfigUiSource, ConfigUiValueState,
+    DEFAULT_CONFIG_SOURCE_ID, UiRowRef,
 };
-use ratconfig::{draw_config_ui_with_details, *};
+use ratconfig::{
+    CrosstermRunnerError, build_config_ui_field, collect_config_ui_schema_fields,
+    config_contract_fields_from_toml, config_key_style, config_ui_metadata_from_toml,
+    default_field_detail_lines, detail_line, diagnostic_detail_lines, effective_string_config,
+    get_json_path, is_scalar_enum_field, metadata_key_style, multi_choice_detail_lines,
+    native_status_detail_lines, run_config_ui_with_details as run_ratconfig_config_ui_with_details,
+    schema_tabs, sidecar_detail_lines, single_choice_detail_lines,
+    single_choice_field_detail_lines, state_label, tab_index, toml_value_to_json,
+};
+#[cfg(test)]
+use ratconfig::{
+    edit_input_for_field, handle_crossterm_key as handle_ratconfig_crossterm_key, parse_edit_input,
+    parse_string_list_values,
+};
 
 const DEFAULT_TABS: &[&str] = &[
     "general",
@@ -85,6 +95,9 @@ const DEFAULT_TABS: &[&str] = &[
     "advanced",
 ];
 const CONFIG_UI_METADATA_FILENAME: &str = "config_ui_metadata.toml";
+const SETTINGS_SOURCE_ID: &str = DEFAULT_CONFIG_SOURCE_ID;
+const CURSORS_SOURCE_ID: &str = "cursors";
+const CURSORS_FIELD_PREFIX: &str = "cursors.";
 
 #[derive(Debug, Clone)]
 pub struct ConfigUiRequest {
@@ -93,37 +106,31 @@ pub struct ConfigUiRequest {
     pub config_override: Option<String>,
 }
 
-#[derive(Debug, Clone, Default)]
-struct CursorChoiceValues {
-    definition_names: Vec<String>,
-    enabled_names: Vec<String>,
-}
-
+#[cfg(test)]
 pub(crate) struct YazelixConfigUiApp {
     pub(crate) request: ConfigUiRequest,
     pub(crate) ui: ConfigUiApp,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug)]
 struct ConfigUiWriteOutcome {
     mutation: SettingsJsoncPatchMutation,
-    apply_status: Option<ConfigEditApplyStatus>,
-    apply_error: Option<String>,
+    apply_notice: Option<String>,
 }
 
-#[derive(Debug, Clone)]
 struct ConfigUiEditTarget {
     path: PathBuf,
     path_in_file: String,
     kind: ConfigUiEditTargetKind,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 enum ConfigUiEditTargetKind {
     Main,
     Cursors,
 }
 
+#[cfg(test)]
 impl Deref for YazelixConfigUiApp {
     type Target = ConfigUiApp;
 
@@ -132,6 +139,7 @@ impl Deref for YazelixConfigUiApp {
     }
 }
 
+#[cfg(test)]
 impl DerefMut for YazelixConfigUiApp {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.ui

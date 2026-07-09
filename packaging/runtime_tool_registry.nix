@@ -1,8 +1,7 @@
 {
   pkgs,
   nixgl ? null,
-  rioPackage ? pkgs.rio,
-  runtimeVariant ? "ghostty",
+  runtimeVariant ? "mars",
   runtimeToolSources ? { },
   marsTerminalPackage ? null,
 }:
@@ -14,11 +13,16 @@ let
     "host"
     "off"
   ];
-  ghosttyPackage =
-    if pkgs.stdenv.hostPlatform.isDarwin then
-      pkgs."ghostty-bin"
+  defaultSourceFor =
+    name:
+    if builtins.elem name [
+      "mise"
+      "tombi"
+    ] then
+      "host"
     else
-      pkgs.ghostty;
+      "bundled";
+  sourceFor = name: runtimeToolSources.${name} or (defaultSourceFor name);
   commandBasename = command: lib.last (lib.splitString "/" command);
   requireMarsPackageMetadata =
     package:
@@ -76,7 +80,7 @@ let
       else
         throw "Yazelix runtimeVariant mars requires the Mars terminal child package"
     else
-      null;
+      throw "Unsupported Yazelix runtimeVariant: ${runtimeVariant}. Yazelix only packages Mars; configure host terminals to run `yzx enter`.";
   marsPackageRuntimeIdentity =
     if marsPackageMetadata == null then
       { }
@@ -99,53 +103,8 @@ let
           marsPackageMetadata.default_appearance_mode;
       };
   terminalPackage =
-    if runtimeVariant == "ghostty" then
-      ghosttyPackage
-    else if runtimeVariant == "kitty" then
-      pkgs.kitty
-    else if runtimeVariant == "rio" then
-      rioPackage
-    else if runtimeVariant == "wezterm" then
-      pkgs.wezterm
-    else if runtimeVariant == "ratty" then
-      if pkgs.stdenv.hostPlatform.isLinux then
-        pkgs.ratty
-      else
-        throw "Yazelix runtimeVariant ratty is only supported on Linux"
-    else if runtimeVariant == "foot" then
-      if pkgs.stdenv.hostPlatform.isLinux then
-        pkgs.foot
-      else
-        throw "Yazelix runtimeVariant foot is only supported on Linux"
-    else if runtimeVariant == "mars" then
-      if marsPackageMetadata != null then
-        marsTerminalPackage
-      else
-        throw "Yazelix runtimeVariant mars requires the Mars terminal child package"
-    else
-      throw "Unsupported Yazelix runtimeVariant: ${runtimeVariant}";
-  terminalCommands =
-    if runtimeVariant == "ghostty" then
-      [ "ghostty" ]
-    else if runtimeVariant == "kitty" then
-      [ "kitty" ]
-    else if runtimeVariant == "rio" then
-      [ "rio" ]
-    else if runtimeVariant == "wezterm" then
-      [ "wezterm" ]
-    else if runtimeVariant == "ratty" then
-      [ "ratty" ]
-    else if runtimeVariant == "foot" then
-      [ "foot" ]
-    else if runtimeVariant == "mars" then
-      [ (commandBasename marsPackageMetadata.wrapper_commands.desktop) ]
-    else
-      [ ];
-  terminalAppBundlePath =
-    if runtimeVariant == "ghostty" && pkgs.stdenv.hostPlatform.isDarwin then
-      "${terminalPackage}/Applications/Ghostty.app"
-    else
-      null;
+    marsTerminalPackage;
+  terminalCommands = [ (commandBasename marsPackageMetadata.wrapper_commands.desktop) ];
   linuxGraphicsWrappers =
     if pkgs.stdenv.hostPlatform.isLinux && (nixgl != null) then
       import "${nixgl}/default.nix" {
@@ -161,7 +120,7 @@ let
     else
       null;
   linuxVulkanWrapperPackage =
-    if linuxGraphicsWrappers != null && builtins.elem runtimeVariant [ "ratty" "mars" ] then
+    if linuxGraphicsWrappers != null && runtimeVariant == "mars" then
       linuxGraphicsWrappers.nixVulkanMesa
     else
       null;
@@ -295,6 +254,22 @@ let
         hostable = true;
         notes = [ "optional_host_integration" ];
       };
+      uv = makeTool {
+        package = uv;
+        commands = [
+          "uv"
+          "uvx"
+        ];
+        requiredCommands = [ "uv" ];
+        hostable = true;
+        notes = [ "Python launcher/package manager; profile-owned runtime for plugin tooling such as security-guidance." ];
+      };
+      rust_analyzer = makeTool {
+        package = rust-analyzer;
+        commands = [ "rust-analyzer" ];
+        hostable = true;
+        notes = [ "Rust language server; pairs with the exported fenix toolchain so rust-analyzer-lsp resolves from the profile." ];
+      };
       fish = makeTool {
         package = fish;
         commands = [ "fish" ];
@@ -334,7 +309,7 @@ let
         notes = [ "Optional Yazi/archive helper. Off mode intentionally omits archive helper commands from the runtime." ];
       };
       poppler = makeTool {
-        package = poppler;
+        package = pkgs."poppler-utils";
         commands = [
           "pdfinfo"
           "pdftotext"
@@ -394,15 +369,18 @@ let
       };
       xclip = makeTool {
         package = xclip;
-        commands = [ ];
+        commands = [ "xclip" ];
       };
       wl_clipboard = makeTool {
         package = wl-clipboard;
-        commands = [ ];
+        commands = [
+          "wl-copy"
+          "wl-paste"
+        ];
       };
       xsel = makeTool {
         package = xsel;
-        commands = [ ];
+        commands = [ "xsel" ];
       };
     };
   runtimeToolNames = builtins.attrNames runtimeToolSources;
@@ -420,16 +398,6 @@ let
   disallowedOffNames = lib.filter (
     name: runtimeToolSources.${name} == "off" && !(tools.${name}.disableable or false)
   ) runtimeToolNames;
-  defaultSourceFor =
-    name:
-    if builtins.elem name [
-      "mise"
-      "tombi"
-    ] then
-      "host"
-    else
-      "bundled";
-  sourceFor = name: runtimeToolSources.${name} or (defaultSourceFor name);
   bundledToolNames = lib.filter (name: sourceFor name == "bundled") (builtins.attrNames tools);
   bundledTools = map (name: tools.${name}) bundledToolNames;
   runtimePackages = lib.unique (map (tool: tool.package) bundledTools);
@@ -453,7 +421,7 @@ else if disallowedOffNames != [ ] then
   throw "Yazelix runtimeToolSources off mode is not supported for: ${lib.concatStringsSep ", " disallowedOffNames}"
 else
   {
-    inherit runtimeToolSourceModes tools runtimePackages exportedCommands manifest terminalAppBundlePath;
+    inherit runtimeToolSourceModes tools runtimePackages exportedCommands manifest;
     terminalPackageMetadata = marsPackageMetadata;
     terminalPackageRuntimeIdentity = marsPackageRuntimeIdentity;
     manifestJson = builtins.toJSON manifest;

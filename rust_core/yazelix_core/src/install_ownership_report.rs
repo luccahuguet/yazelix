@@ -12,6 +12,8 @@ use std::path::{Path, PathBuf};
 
 const HOME_MANAGER_FILES_MARKER: &str = "-home-manager-files/";
 const MANUAL_DESKTOP_ICON_SIZES: &[&str] = &["48x48", "64x64", "128x128", "256x256"];
+const RETIRED_TERMINAL_DESKTOP_ENTRY_TERMINALS: &[&str] =
+    &["ghostty", "kitty", "rio", "wezterm", "foot", "ratty"];
 pub const HOME_MANAGER_PREPARE_ACTION_ARCHIVE_PATH: &str = "archive_path";
 pub const HOME_MANAGER_PREPARE_ACTION_REMOVE_PROFILE_ENTRY: &str = "remove_profile_entry";
 
@@ -327,6 +329,7 @@ fn desktop_entry_file_names() -> Vec<String> {
     names.extend(
         SUPPORTED_TERMINALS
             .iter()
+            .chain(RETIRED_TERMINAL_DESKTOP_ENTRY_TERMINALS.iter())
             .map(|terminal| terminal_desktop_entry_file_name(terminal)),
     );
     names.sort();
@@ -364,7 +367,10 @@ fn terminal_for_desktop_entry_path(path: &Path) -> String {
         .file_name()
         .and_then(|name| name.to_str())
         .unwrap_or_default();
-    for terminal in SUPPORTED_TERMINALS {
+    for terminal in SUPPORTED_TERMINALS
+        .iter()
+        .chain(RETIRED_TERMINAL_DESKTOP_ENTRY_TERMINALS.iter())
+    {
         if file_name == terminal_desktop_entry_file_name(terminal) {
             return (*terminal).to_string();
         }
@@ -395,7 +401,7 @@ fn home_manager_desktop_launcher_mode(
         return "missing_exec".into();
     };
     if is_home_manager_direct_terminal_exec_for_runtime(exec, runtime_dir) {
-        return "extra_terminal_direct_package".into();
+        return "direct_runtime_package".into();
     }
     if let Some(profile_yzx) = profile_yzx {
         if exec.contains(&path_to_string(profile_yzx)) {
@@ -403,7 +409,7 @@ fn home_manager_desktop_launcher_mode(
         }
     }
     if exec.contains("YAZELIX_SKIP_STABLE_WRAPPER_REDIRECT=1") {
-        return "extra_terminal_direct_package".into();
+        return "direct_runtime_package".into();
     }
     "profile_desktop_entry".into()
 }
@@ -837,8 +843,13 @@ fn desktop_entry_exec_matches_expected(
     let Some(e) = exec else {
         return false;
     };
-    let unprefixed = strip_supported_desktop_exec_env(e);
-    expected.iter().any(|x| x == e || x == unprefixed)
+    expected.iter().any(|x| x == e)
+        || desktop_exec_launcher_path(e).is_ok_and(|launcher| {
+            let path = path_to_string(&launcher);
+            let direct = format!("{path} desktop launch");
+            let quoted = format!("\"{path}\" desktop launch");
+            expected.iter().any(|x| x == &direct || x == &quoted)
+        })
         || is_home_manager_direct_terminal_exec_for_runtime(e, active_runtime_dir)
 }
 
@@ -944,11 +955,11 @@ fn stale_home_manager_profile_desktop_entries(
             ) {
                 reasons.push(reason);
             }
-            if !desktop_entry_terminal_enabled(path) {
+            if desktop_entry_terminal_enabled(path) {
                 let terminal = get_desktop_entry_terminal_value(path)
                     .unwrap_or_else(|| "<missing>".to_string());
                 reasons.push(format!(
-                    "Terminal={terminal} cannot show prelaunch failures"
+                    "Terminal={terminal} routes through host starter terminals that can close before Yazelix completes terminal handoff"
                 ));
             }
             if reasons.is_empty() {
@@ -962,15 +973,6 @@ fn stale_home_manager_profile_desktop_entries(
             ))
         })
         .collect()
-}
-
-fn strip_supported_desktop_exec_env(exec: &str) -> &str {
-    let Some(rest) = exec.strip_prefix("env MARS_PROFILE=") else {
-        return exec;
-    };
-    rest.find(char::is_whitespace)
-        .map(|index| rest[index..].trim_start())
-        .unwrap_or(exec)
 }
 
 fn check_desktop_entry_freshness(
@@ -1104,15 +1106,15 @@ fn check_desktop_entry_freshness(
         ));
     }
 
-    if !desktop_entry_terminal_enabled(&dp) {
+    if desktop_entry_terminal_enabled(&dp) {
         let terminal_value =
             get_desktop_entry_terminal_value(&dp).unwrap_or_else(|| "<missing>".into());
         return DoctorInstallResult::new(
             "warning",
-            "Yazelix desktop entry cannot show prelaunch failures",
+            "Yazelix desktop entry uses unsupported starter-terminal mode",
         )
         .with_details(format!(
-                "Desktop entry: {}\nTerminal: {}\nTerminal=false can hide config and generated-state errors that happen before the selected terminal is spawned. Yazelix desktop entries should use Terminal=true as a starter window until a dedicated graphical prelaunch surface exists.\n{repair_hint}",
+                "Desktop entry: {}\nTerminal: {}\nTerminal=true routes through host starter terminals such as GNOME xdg-terminal-exec. Those starter terminals can close before Yazelix completes the managed terminal handoff. Yazelix desktop entries should use Terminal=false and rely on desktop launch logs plus yzx doctor for diagnostics.\n{repair_hint}",
                 path_to_string(&dp),
                 terminal_value
             ));
@@ -1229,32 +1231,6 @@ mod tests {
         let manifest_path = home_dir.join(".nix-profile").join("manifest.json");
         std::fs::create_dir_all(manifest_path.parent().unwrap()).unwrap();
         std::fs::write(manifest_path, raw).unwrap();
-    }
-
-    fn write_runtime_identity(runtime_dir: &Path, variant: &str, source_revision: &str) {
-        std::fs::create_dir_all(runtime_dir).unwrap();
-        std::fs::write(
-            runtime_dir.join("runtime_identity.json"),
-            serde_json::to_string(&serde_json::json!({
-                "schema_version": 1,
-                "version": "v17.7",
-                "runtime_variant": variant,
-                "source": {
-                    "revision": source_revision,
-                    "short_revision": &source_revision[..7.min(source_revision.len())],
-                    "last_modified_date": "20260620000000",
-                },
-                "inputs": {
-                    "nixpkgs": {
-                        "revision": "input-revision",
-                        "short_revision": "input-r",
-                        "last_modified_date": "20260619000000",
-                    }
-                }
-            }))
-            .unwrap(),
-        )
-        .unwrap();
     }
 
     fn test_request(
@@ -1415,7 +1391,7 @@ mod tests {
         std::fs::write(
             &profile_desktop,
             format!(
-                "[Desktop Entry]\nName=Yazelix\nTerminal=true\nExec={} desktop launch\n",
+                "[Desktop Entry]\nName=Yazelix\nTerminal=false\nExec={} desktop launch\n",
                 profile_yzx.display()
             ),
         )
@@ -1439,9 +1415,9 @@ mod tests {
         );
     }
 
-    // Regression: pre-terminal config failures are invisible from GUI launchers unless the desktop entry opens a starter terminal window.
+    // Regression: GNOME starter terminals can close before the managed terminal survives, so fresh desktop entries use direct desktop launch.
     #[test]
-    fn desktop_freshness_accepts_terminal_true_and_warns_on_terminal_false() {
+    fn desktop_freshness_accepts_terminal_false_and_warns_on_terminal_true() {
         let tmp = TempDir::new().unwrap();
         let home = tmp.path().join("home");
         let xdg_data = home.join(".local/share");
@@ -1459,7 +1435,7 @@ mod tests {
         let exec = format!("\"{}\" desktop launch", profile_yzx.display());
         std::fs::write(
             &desktop,
-            format!("[Desktop Entry]\nName=Yazelix\nTerminal=true\nExec={exec}\n"),
+            format!("[Desktop Entry]\nName=Yazelix\nTerminal=false\nExec={exec}\n"),
         )
         .unwrap();
 
@@ -1470,7 +1446,7 @@ mod tests {
         std::fs::write(
             &desktop,
             format!(
-                "[Desktop Entry]\nName=Yazelix\nTerminal=true\nExec=env MARS_PROFILE=shaders {exec}\n"
+                "[Desktop Entry]\nName=Yazelix\nTerminal=false\nExec=env MARS_PROFILE=shaders {exec}\n"
             ),
         )
         .unwrap();
@@ -1479,14 +1455,14 @@ mod tests {
 
         std::fs::write(
             &desktop,
-            format!("[Desktop Entry]\nName=Yazelix\nTerminal=false\nExec={exec}\n"),
+            format!("[Desktop Entry]\nName=Yazelix\nTerminal=true\nExec={exec}\n"),
         )
         .unwrap();
         let stale = evaluate_install_ownership_report(&request);
         assert_eq!(stale.desktop_entry_freshness.status, "warning");
         assert_eq!(
             stale.desktop_entry_freshness.message,
-            "Yazelix desktop entry cannot show prelaunch failures"
+            "Yazelix desktop entry uses unsupported starter-terminal mode"
         );
     }
 
@@ -1560,198 +1536,6 @@ mod tests {
         assert_eq!(
             r.desktop_entry_freshness.message,
             "A stale user-local Yazelix desktop entry shadows the Home Manager desktop entry"
-        );
-    }
-
-    // Regression: Home Manager extra terminal launchers must not be ignored when the active profile launcher is healthy.
-    #[test]
-    fn desktop_freshness_warns_on_stale_extra_home_manager_terminal_launcher() {
-        let tmp = TempDir::new().unwrap();
-        let home = tmp.path().join("home");
-        let xdg_data = home.join(".local/share");
-        let main_config = home.join(".config/yazelix/settings.jsonc");
-        let profile_yzx = home.join(".nix-profile/bin/yzx");
-        let profile_apps = home.join(".nix-profile/share/applications");
-        let extra_desktop = profile_apps.join("com.yazelix.Yazelix.Ghostty.desktop");
-        let active_desktop = profile_apps.join("com.yazelix.Yazelix.Mars.desktop");
-
-        std::fs::create_dir_all(main_config.parent().unwrap()).unwrap();
-        std::fs::create_dir_all(profile_yzx.parent().unwrap()).unwrap();
-        std::fs::create_dir_all(&profile_apps).unwrap();
-        std::fs::write(&main_config, "{}\n").unwrap();
-        std::fs::write(&profile_yzx, "#!/bin/sh\n").unwrap();
-        std::fs::write(
-            &extra_desktop,
-            "[Desktop Entry]\nName=New Yazelix - Ghostty\nTerminal=true\nExec=/nix/store/extra-yazelix-ghostty/bin/yzx desktop launch\n",
-        )
-        .unwrap();
-        std::fs::write(
-            &active_desktop,
-            format!(
-                "[Desktop Entry]\nName=New Yazelix - Mars\nTerminal=true\nExec=env MARS_PROFILE=shaders {} desktop launch\n",
-                profile_yzx.display()
-            ),
-        )
-        .unwrap();
-        write_default_profile_manifest(
-            &home,
-            r#"{"elements":{"home-manager-path":{"active":true,"storePaths":["/nix/store/test-home-manager-path"]}},"version":3}"#,
-        );
-
-        let report =
-            evaluate_install_ownership_report(&test_request(&tmp, &home, &xdg_data, main_config));
-
-        assert_eq!(report.install_owner, "home-manager");
-        assert_eq!(report.desktop_entry_freshness.status, "warning");
-        assert_eq!(
-            report.desktop_entry_freshness.message,
-            "Home Manager Yazelix desktop launcher paths are stale"
-        );
-        let details = report.desktop_entry_freshness.details.as_deref().unwrap();
-        assert!(details.contains(&path_to_string(&extra_desktop)));
-        assert!(details.contains("/nix/store/extra-yazelix-ghostty/bin/yzx"));
-    }
-
-    // Regression: Home Manager may install extra terminal launchers whose desktop ids sort before
-    // the active entry; same-generation direct terminal packages are valid.
-    #[test]
-    fn desktop_freshness_accepts_same_generation_extra_home_manager_terminal_launchers() {
-        let tmp = TempDir::new().unwrap();
-        let home = tmp.path().join("home");
-        let xdg_data = home.join(".local/share");
-        let main_config = home.join(".config/yazelix/settings.jsonc");
-        let profile_yzx = home.join(".nix-profile/bin/yzx");
-        let profile_apps = home.join(".nix-profile/share/applications");
-        let extra_runtime = tmp.path().join("nix-store/current-yazelix-ghostty");
-        let active_runtime = tmp.path().join("nix-store/current-yazelix-ratty");
-        let extra_yzx = extra_runtime.join("bin/yzx");
-        let extra_desktop = profile_apps.join("com.yazelix.Yazelix.Ghostty.desktop");
-        let active_desktop = profile_apps.join("com.yazelix.Yazelix.Ratty.desktop");
-
-        std::fs::create_dir_all(main_config.parent().unwrap()).unwrap();
-        std::fs::create_dir_all(profile_yzx.parent().unwrap()).unwrap();
-        std::fs::create_dir_all(extra_yzx.parent().unwrap()).unwrap();
-        std::fs::create_dir_all(&profile_apps).unwrap();
-        std::fs::write(&main_config, "{}\n").unwrap();
-        std::fs::write(&profile_yzx, "#!/bin/sh\n").unwrap();
-        std::fs::write(&extra_yzx, "#!/bin/sh\n").unwrap();
-        write_runtime_identity(
-            &active_runtime,
-            "ratty",
-            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        );
-        write_runtime_identity(
-            &extra_runtime,
-            "ghostty",
-            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        );
-        std::fs::write(
-            &extra_desktop,
-            format!(
-                "[Desktop Entry]\nName=New Yazelix - Ghostty\nTerminal=true\nExec=env YAZELIX_SKIP_STABLE_WRAPPER_REDIRECT=1 {} desktop launch\n",
-                extra_yzx.display()
-            ),
-        )
-        .unwrap();
-        std::fs::write(
-            &active_desktop,
-            format!(
-                "[Desktop Entry]\nName=New Yazelix - Ratty\nTerminal=true\nExec={} desktop launch\n",
-                profile_yzx.display()
-            ),
-        )
-        .unwrap();
-        write_default_profile_manifest(
-            &home,
-            r#"{"elements":{"home-manager-path":{"active":true,"storePaths":["/nix/store/test-home-manager-path"]}},"version":3}"#,
-        );
-
-        let mut request = test_request(&tmp, &home, &xdg_data, main_config);
-        request.runtime_dir = active_runtime;
-        let report = evaluate_install_ownership_report(&request);
-
-        assert_eq!(report.install_owner, "home-manager");
-        assert_eq!(report.desktop_entry_freshness.status, "ok");
-        assert_eq!(
-            report.desktop_entry_freshness.details.as_deref(),
-            Some(path_to_string(&active_desktop).as_str())
-        );
-    }
-
-    // Regression: a Home Manager extra terminal launcher may point directly at the active runtime package instead of the primary profile wrapper.
-    #[test]
-    fn install_report_names_active_home_manager_extra_terminal_launcher() {
-        let tmp = TempDir::new().unwrap();
-        let home = tmp.path().join("home");
-        let xdg_data = home.join(".local/share");
-        let main_config = home.join(".config/yazelix/settings.jsonc");
-        let profile_yzx = home.join(".nix-profile/bin/yzx");
-        let profile_apps = home.join(".nix-profile/share/applications");
-        let primary_desktop = profile_apps.join("com.yazelix.Yazelix.Ratty.desktop");
-        let mars_runtime = tmp.path().join("nix-store/current-yazelix-mars");
-        let mars_yzx = mars_runtime.join("bin/yzx");
-        let mars_desktop = profile_apps.join("com.yazelix.Yazelix.Mars.desktop");
-
-        std::fs::create_dir_all(main_config.parent().unwrap()).unwrap();
-        std::fs::create_dir_all(profile_yzx.parent().unwrap()).unwrap();
-        std::fs::create_dir_all(mars_yzx.parent().unwrap()).unwrap();
-        std::fs::create_dir_all(&profile_apps).unwrap();
-        std::fs::write(&main_config, "{}\n").unwrap();
-        std::fs::write(&profile_yzx, "#!/bin/sh\n").unwrap();
-        std::fs::write(&mars_yzx, "#!/bin/sh\n").unwrap();
-        std::fs::write(
-            &primary_desktop,
-            format!(
-                "[Desktop Entry]\nName=New Yazelix - Ratty\nTerminal=true\nExec={} desktop launch\n",
-                profile_yzx.display()
-            ),
-        )
-        .unwrap();
-        std::fs::write(
-            &mars_desktop,
-            format!(
-                "[Desktop Entry]\nName=New Yazelix - Mars\nTerminal=true\nExec=env YAZELIX_SKIP_STABLE_WRAPPER_REDIRECT=1 MARS_APP_ID=com.yazelix.Yazelix.Mars MARS_PROFILE=shaders {} desktop launch\n",
-                mars_yzx.display()
-            ),
-        )
-        .unwrap();
-        write_default_profile_manifest(
-            &home,
-            r#"{"elements":{"home-manager-path":{"active":true,"storePaths":["/nix/store/test-home-manager-path"]}},"version":3}"#,
-        );
-
-        let mut request = test_request(&tmp, &home, &xdg_data, main_config);
-        request.runtime_dir = mars_runtime;
-        let report = evaluate_install_ownership_report(&request);
-
-        assert_eq!(report.install_owner, "home-manager");
-        assert_eq!(report.desktop_entry_freshness.status, "ok");
-        assert_eq!(
-            report.desktop_entry_freshness.details.as_deref(),
-            Some(path_to_string(&mars_desktop).as_str())
-        );
-        let active_launcher = report
-            .home_manager_desktop_launchers
-            .iter()
-            .find(|launcher| launcher.active_runtime)
-            .expect("active Mars launcher");
-        assert_eq!(active_launcher.terminal, "mars");
-        assert_eq!(active_launcher.launch_mode, "extra_terminal_direct_package");
-        assert!(
-            report
-                .install_owner_diagnostic
-                .details
-                .as_deref()
-                .unwrap_or_default()
-                .contains("mars:")
-        );
-        assert!(
-            report
-                .install_owner_diagnostic
-                .details
-                .as_deref()
-                .unwrap_or_default()
-                .contains("extra_terminal_direct_package")
         );
     }
 

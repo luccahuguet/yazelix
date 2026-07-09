@@ -442,6 +442,7 @@ fn widget_tray_question(contract_path: &Path) -> Result<MultiQuestion, CoreError
 fn widget_tray_label(value: &str) -> Result<&'static str, CoreError> {
     match value {
         "editor" => Ok("Editor"),
+        "session" => Ok("Session"),
         "shell" => Ok("Shell"),
         "term" => Ok("Terminal"),
         "workspace" => Ok("Workspace"),

@@ -1,0 +1,5 @@
+{
+  "commit": {"author":"drdave-flexnet <flexnetos@de-flex.net>","changes":[{"change_type":"created","content_hash":"2f0f0d4b7298b4a1e9ef05575f4c8889cf716387feab1d883f25527df57ca9d4","doc_type":"task","document_id":"019f21f2-eca1-79a1-a32e-5e896c8ee31e","new_version":1,"previous_version":null,"slug":"tasks/nu-plugin-codedb-checklist-evidence-map","title":"Verify CodeDB checklist evidence map"}],"created_at":"2026-07-02T08:31:05.932756350Z","id":"019f21f3-fcd5-7d03-bcaf-5f8b0042d62b","message":"Record CDB066 checklist evidence map"},
+  "content_hash": "4a8af7b6edd4e02acb9723b34df4099e744f405dc7ea5d1f09a2ea16df88cdc3",
+  "hash_version": 3
+}

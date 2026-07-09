@@ -1,0 +1,5 @@
+{
+  "commit": {"author":"drdave-flexnet <flexnetos@de-flex.net>","changes":[{"change_type":"created","content_hash":"c536af55e637469a3208acf9dfd8fe4275a16dab5487c6c134c0a91abfe759ba","doc_type":"task","document_id":"019f2177-8327-73c2-9c51-255af800d44c","new_version":1,"previous_version":null,"slug":"tasks/nu-plugin-codedb-build-capture-logs","title":"Implement CodeDB optional build and proc-macro raw log capture"}],"created_at":"2026-07-02T06:15:32.355279094Z","id":"019f2177-e110-77d3-95db-ab27b201f003","message":"Add CodeDB build capture log task"},
+  "content_hash": "15f20ffb416bf4461910af8a3fe50380eca798384e1f204e057aaa31460b4f35",
+  "hash_version": 3
+}

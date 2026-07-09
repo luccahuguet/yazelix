@@ -53,6 +53,7 @@ The package should ship the immutable runtime assets Yazelix executes directly:
   - `settings_default.jsonc`
 - `bin/yzx`
 - runtime-local `libexec/nu`
+- packaged Mars font directories referenced by the shipped Mars configs, including JetBrains Mono, Symbols Nerd Font, and the selected packaged emoji font
 
 Compiled first-party Zellij wasm assets ship through `configs/zellij/plugins/`.
 The package must not ship or link maintainer source trees for first-party wasm
@@ -85,6 +86,7 @@ The nixpkgs package should depend on the tools needed to bootstrap and run Yazel
 Expected package-level runtime dependencies:
 
 - Nushell
+- packaged Mars and its required terminal config/font assets for the default `yzx launch` path
 - other small direct bootstrap/runtime tools that Yazelix invokes outside its own runtime scripts
 
 Non-goal for first submission:
@@ -182,6 +184,7 @@ The package contract should not depend on any separate installer as the update m
 7. The remaining work to upstream the package is mostly translation and review, not product-boundary redesign.
 8. The first-party flake package claims all four exported flake systems in `meta.platforms`, not just Linux.
 9. The nixpkgs submission draft keeps its Linux-only `meta.platforms` scope independently of the first-party flake package.
+10. The default Mars release path does not require a separate host Nerd Font install; packaged Mars configs point at release-owned font directories.
 
 ## Verification
 
@@ -192,6 +195,7 @@ The package contract should not depend on any separate installer as the update m
   - `yzx doctor`
   - `yzx env --no-shell`
 - CI/contract check: `yzx_repo_validator validate-contracts`
+- Flake check: `nix build .#checks.$(nix eval --raw --impure --expr builtins.currentSystem).runtime_release_contracts --no-link --no-write-lock-file`
 
 ## Traceability
 - Defended by: `yzx_repo_validator validate-contracts`

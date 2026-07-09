@@ -75,7 +75,6 @@ fi
 nix_customization=false
 child_release=false
 darwin_wasm=false
-runtime_smoke=false
 cold_install=false
 
 while IFS= read -r file; do
@@ -84,28 +83,23 @@ while IFS= read -r file; do
       nix_customization=true
       child_release=true
       darwin_wasm=true
-      runtime_smoke=true
       ;;
     .github/workflows/publish_nix_cache.yml)
       nix_customization=true
-      runtime_smoke=true
       ;;
     flake.nix | flake.lock | yazelix_runtime_package.nix)
       nix_customization=true
       child_release=true
       darwin_wasm=true
-      runtime_smoke=true
       cold_install=true
       ;;
     home_manager/* | home_manager/**/*)
       nix_customization=true
-      runtime_smoke=true
       ;;
     rust_core/yazelix_maintainer/src/repo_contract_validation.rs | rust_core/yazelix_maintainer/src/repo_contract_validation/nix_interface.rs | rust_core/yazelix_maintainer/src/repo_contract_validation/nix_package.rs)
       nix_customization=true
       ;;
     rust_core/yazelix_maintainer/src/repo_contract_validation/installed_runtime.rs)
-      runtime_smoke=true
       cold_install=true
       ;;
     rust_core/yazelix_maintainer/src/repo_child_release.rs)
@@ -115,16 +109,13 @@ while IFS= read -r file; do
     rust_core/yazelix_maintainer/src/bin/yzx_repo_validator.rs)
       nix_customization=true
       child_release=true
-      runtime_smoke=true
       ;;
     rust_core/yazelix_core/src/runtime_* | rust_core/yazelix_core/src/runtime_*/* | rust_core/yazelix_core/src/zellij_materialization* | rust_core/yazelix_core/src/workspace_asset_contract.rs | rust_core/yazelix_core/src/bin/yzx_core.rs)
-      runtime_smoke=true
       cold_install=true
       ;;
     rust_core/yazelix_zellij_config_pack/* | rust_core/yazelix_zellij_config_pack/**/*)
       child_release=true
       darwin_wasm=true
-      runtime_smoke=true
       ;;
   esac
 done < "$changed_files"
@@ -133,7 +124,6 @@ done < "$changed_files"
   printf 'nix_customization=%s\n' "$nix_customization"
   printf 'child_release=%s\n' "$child_release"
   printf 'darwin_wasm=%s\n' "$darwin_wasm"
-  printf 'runtime_smoke=%s\n' "$runtime_smoke"
   printf 'cold_install=%s\n' "$cold_install"
 } >> "$output_file"
 
@@ -141,5 +131,4 @@ printf 'Changed CI surfaces:\n'
 printf '  nix_customization=%s\n' "$nix_customization"
 printf '  child_release=%s\n' "$child_release"
 printf '  darwin_wasm=%s\n' "$darwin_wasm"
-printf '  runtime_smoke=%s\n' "$runtime_smoke"
 printf '  cold_install=%s\n' "$cold_install"
