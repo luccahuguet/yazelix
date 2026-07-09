@@ -41,17 +41,17 @@
         ]
       },
       "locked": {
-        "lastModified": 1783087936,
-        "narHash": "sha256-qAOON1OAG4Y6GgxXj1DJFceHI2a6BBZCIheG+ZWcUHk=",
+        "lastModified": 1783631618,
+        "narHash": "sha256-1DZ9WyAkSvuMmbPsO55S7qlwZHVuzpVdJ7EGCw1NZtk=",
         "owner": "FlexNetOS",
         "repo": "nu_plugin",
-        "rev": "37e6d2a22994308f440da1ff3cb3fda9901c9e40",
+        "rev": "532a461841316a6623701f9e206b97cafa994d40",
         "type": "github"
       },
       "original": {
         "owner": "FlexNetOS",
         "repo": "nu_plugin",
-        "rev": "37e6d2a22994308f440da1ff3cb3fda9901c9e40",
+        "rev": "532a461841316a6623701f9e206b97cafa994d40",
         "type": "github"
       }
     },
@@ -557,11 +557,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1783424045,
-        "narHash": "sha256-K1K5zOqovWtWFf1sdmTErs1UkhqfNRj8yEAhDRcinp0=",
+        "lastModified": 1783636548,
+        "narHash": "sha256-8mg/037KS3Gcsd7mabNjonr3pO/rxGhFOSLAgOl1epo=",
         "owner": "FlexNetOS",
         "repo": "yazelix-yazi-assets",
-        "rev": "c7a4134137cf25937de14be6ae2adf481922f8e5",
+        "rev": "5f36f39104ec3c947baf41e2fabb1e5a874106d2",
         "type": "github"
       },
       "original": {
