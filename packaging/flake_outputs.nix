@@ -95,6 +95,24 @@ let
     fenixPkgs.latest.rustfmt
     fenixPkgs.latest.clippy
   ];
+  # bun pinned ahead of nixpkgs-unstable (ships 1.3.13; upstream stable is
+  # 1.3.14, https://github.com/oven-sh/bun/releases/tag/bun-v1.3.14).
+  # Same official-binary source the nixpkgs derivation uses. Drop this
+  # override once nixpkgs-unstable ships bun >= 1.3.14.
+  flexnetos_foundation_bun_sources = {
+    x86_64-linux = pkgs.fetchurl {
+      url = "https://github.com/oven-sh/bun/releases/download/bun-v1.3.14/bun-linux-x64.zip";
+      hash = "sha256-lR7iruhV8IWVruxiJSJqKY0/6oOj3NZGXAnLzN9+hI8=";
+    };
+  };
+  flexnetos_foundation_bun =
+    if flexnetos_foundation_bun_sources ? ${system} then
+      pkgs.bun.overrideAttrs (old: {
+        version = "1.3.14";
+        src = flexnetos_foundation_bun_sources.${system};
+      })
+    else
+      pkgs.bun;
   lifeos_foundation_yzx = mkYazelix {
     inherit pkgs;
     runtimeVariant = "mars";
@@ -107,7 +125,7 @@ let
       flexnetos_foundation_kache_wrapped
       flexnetos_foundation_rtk
       flexnetos_foundation_rust_toolchain
-      pkgs.bun
+      flexnetos_foundation_bun
       pkgs.cargo-tauri
       pkgs.clang
       pkgs.corepack
