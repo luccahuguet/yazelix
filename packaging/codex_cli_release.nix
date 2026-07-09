@@ -5,19 +5,19 @@
   releases ? {
     x86_64-linux = {
       systemSuffix = "x86_64-unknown-linux-musl";
-      sha256 = "sha256-YOG+oQa4EHj1qXVMbyHKqIEGMIUyniRhMqGrnqJBpCc=";
+      sha256 = "sha256-awPS2JkQh0+lvie2F2Iddjj5BuiR/Yy0CvPSh2qKNv0=";
     };
     aarch64-linux = {
       systemSuffix = "aarch64-unknown-linux-musl";
-      sha256 = "sha256-tL+C0TpDJCg32lb81JcgD+b3/4ysYGEV5cdwft+9QNQ=";
+      sha256 = "sha256-1YvgTm7oBIM8JbWGhp8fpn8n8L3D85EFoqm6zvFnrkI=";
     };
     x86_64-darwin = {
       systemSuffix = "x86_64-apple-darwin";
-      sha256 = "sha256-gw7M2qUNmPNUJbln/wqOLk59vx2Y/N4ZDmM7ENL8e5A=";
+      sha256 = "sha256-EFbICViGOxPevV2u5et7m9b4YjahFx0hsAni3O6odj4=";
     };
     aarch64-darwin = {
       systemSuffix = "aarch64-apple-darwin";
-      sha256 = "sha256-1Q3UAzo7O7UuUv7MlRYNhSUrAQl/98DAkoDms7tXwhY=";
+      sha256 = "sha256-RYSiQ/+KZxJQvHFvicWlDtWZF6mDkKz9/6Psts/luzQ=";
     };
   },
 }:
