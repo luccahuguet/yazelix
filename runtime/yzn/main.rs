@@ -10,6 +10,7 @@ mod zellij;
 use std::process;
 
 pub(crate) const YZN_CONFIG_UI: &str = "@yznConfigUi@";
+pub(crate) const YZN_AGENT: &str = "@yznAgent@";
 pub(crate) const YZN_MENU: &str = "@yznMenu@";
 pub(crate) const YZN_TUTOR: &str = "@yznTutor@";
 pub(crate) const YZN_SCREEN: &str = "@yznScreen@";
@@ -40,6 +41,8 @@ pub(crate) const DEFAULT_BAR_WIDGETS_JSON: &str = r#"@defaultBarWidgetsJson@"#;
 pub(crate) const DEFAULT_SHELL_PROGRAM: &str = "@defaultShellProgram@";
 pub(crate) const DEFAULT_POPUP_SIDE_MARGIN: &str = "@defaultPopupSideMargin@";
 pub(crate) const DEFAULT_POPUP_VERTICAL_MARGIN: &str = "@defaultPopupVerticalMargin@";
+pub(crate) const AGENT_POPUP_KDL_CONFIG_PATH: &str = "agent.popup.kdl";
+pub(crate) const AGENT_AUTO_COMMAND: &str = "auto";
 pub(crate) const CUSTOM_POPUPS_KDL_CONFIG_PATH: &str = "popups.kdl";
 pub(crate) const CUSTOM_POPUP_KEYBINDINGS_KDL_CONFIG_PATH: &str = "popups.keybindings.kdl";
 pub(crate) const PATH_PREFIX: &str = "@pathPrefix@";

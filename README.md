@@ -151,16 +151,23 @@ arguments. `yzn-hx` uses packaged Yazelix Helix. Host editors such as `hx` or
 
 ## Popups
 
-The `popups` tab edits popup geometry and managed popup role keys:
+The `popups` tab edits popup geometry, the managed agent command, and managed
+popup role keys:
 
 | Field | Default | Meaning |
 | --- | --- | --- |
+| `agent.command` | `auto` | Managed agent popup command. `auto` keeps the built-in provider fallback. |
+| `agent.args` | `[]` | Arguments for a custom `agent.command`. |
 | `popup.side_margin` | `1` | Left and right popup margin in terminal cells. |
 | `popup.vertical_margin` | `0` | Top and bottom popup margin in terminal cells. |
 | `keybindings.config` | `Alt Shift K` | Config popup trigger. |
 | `keybindings.agent` | `Alt Shift L` | Agent popup trigger. |
 | `keybindings.git` | `Alt Shift J` | Git popup trigger. |
 | `keybindings.menu` | `Alt Shift M` | Menu popup trigger. |
+
+`agent.command` accepts one executable name or path, not a shell command with
+arguments. Keep `agent.command = "auto"` to use the built-in `codex resume`,
+`grok`, `opencode`, `pi`, `claude --resume` fallback chain.
 
 Custom popups live in root config under `[popups.<id>]`:
 
@@ -307,13 +314,13 @@ git ls-files | grep -Ev '^\.beads/|\.lock$' | xargs wc -l
 | Language | Lines |
 | --- | ---: |
 | Ignore (`.gitignore`) | 4 |
-| Markdown | 1215 |
-| Nix | 929 |
+| Markdown | 1232 |
+| Nix | 932 |
 | Shell | 82 |
 | YAML | 268 |
-| TOML | 236 |
+| TOML | 242 |
 | KDL | 210 |
 | Nu | 11 |
 | Lua | 247 |
-| Rust | 11370 |
-| Total | 14572 |
+| Rust | 11651 |
+| Total | 14879 |

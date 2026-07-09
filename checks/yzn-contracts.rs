@@ -285,6 +285,9 @@ fn expect_front_door(yzn: &Path) {
         "YZN_EDITOR",
         "GIT_EDITOR",
         "editor.command",
+        "agent.command",
+        "agent.args",
+        "agent.popup.kdl",
         "bar.widgets",
         "popup.side_margin",
         "popup.vertical_margin",
@@ -332,6 +335,8 @@ fn expect_front_door(yzn: &Path) {
         "shell: nu",
         "editor command: yzn-hx",
         "editor: /nix/store/",
+        "agent command: auto",
+        "agent args: []",
         "open log: info",
         "welcome enabled: true",
         "welcome style: random",
@@ -396,6 +401,22 @@ fn expect_front_door(yzn: &Path) {
     assert_eq!(custom_popup_config.matches("height_percent 100").count(), 4);
     assert_eq!(custom_popup_config.matches("side_margin 2").count(), 1);
     assert_eq!(custom_popup_config.matches("vertical_margin 1").count(), 1);
+
+    let custom_agent = RuntimeCase::new(&temp.path, "custom-agent");
+    custom_agent.write_default_config("\n[agent]\ncommand = \"codex\"\nargs = [\"resume\", \"--dangerously-bypass-approvals-and-sandbox\"]\n");
+    let status = custom_agent.run_yzn(&yzn_bin, "status", "custom agent status");
+    expect_contains_all! {
+        &status, "custom agent status";
+        "agent command: codex",
+        r#"agent args: ["resume","--dangerously-bypass-approvals-and-sandbox"]"#,
+        "zellij config: runtime (",
+    }
+    let custom_agent_config = custom_agent.zellij_file("config.kdl");
+    expect_contains(
+        &custom_agent_config,
+        "agent {\n                command \"codex\"\n                arg_1 \"resume\"\n                arg_2 \"--dangerously-bypass-approvals-and-sandbox\"\n                pane_title \"agent_popup\"\n                width_percent 100\n                height_percent 100\n                toggle_close_behavior \"hide\"\n            }",
+        "custom agent config",
+    );
 
     let custom_popup_spec_case = RuntimeCase::new(&temp.path, "custom-popup-spec");
     custom_popup_spec_case.write_default_config("\n[popup]\nside_margin = 2\nvertical_margin = 1\n\n[popups.btm]\ncommand = \"btm\"\nargs = [\"--basic\"]\ntitle = \"btm_popup\"\nkeybinding = \"Alt Shift B\"\nkeep_alive = true\n");
@@ -565,6 +586,8 @@ fn expect_front_door(yzn: &Path) {
         format!("ok config home: {}", doctor_case.config_home.display()),
         "ok editor.command: yzn-hx",
         "ok editor: /nix/store/",
+        "ok agent.command: auto",
+        "ok agent.args: []",
         "ok open.log_level: info",
         "ok welcome.enabled: true",
         "ok welcome.style: random",
@@ -770,6 +793,8 @@ fn expect_config_ui(yzn: &Path) {
         "log_level = \"info\"",
         "program = \"nu\"",
         "command = \"yzn-hx\"",
+        "command = \"auto\"",
+        "args = []",
         "enabled = true",
         "style = \"random\"",
         "duration_seconds = 3",
@@ -789,6 +814,8 @@ fn expect_config_ui(yzn: &Path) {
         ("open.log_level", "info"),
         ("shell.program", "nu"),
         ("editor.command", "yzn-hx"),
+        ("agent.command", "auto"),
+        ("agent.args", "[]"),
         ("welcome.enabled", "true"),
         ("welcome.style", "random"),
         ("welcome.duration_seconds", "3"),
@@ -844,6 +871,9 @@ fn expect_config_ui(yzn: &Path) {
         "program = \"nu\"",
         "[editor]",
         "command = \"yzn-hx\"",
+        "[agent]",
+        "command = \"auto\"",
+        "args = []",
         "[welcome]",
         "enabled = true",
         "style = \"random\"",
@@ -895,6 +925,12 @@ fn expect_startup_diagnostics(yzn: &Path) {
             "[open]\nlog_level = \"info\"\n\n[shell]\nprogram = \"nu\"\n\n[editor]\ncommand = \"nvim --clean\"\n",
             "editor.command must be one executable command without arguments",
             "invalid editor command",
+        ),
+        (
+            "bad-agent-command-config",
+            "[open]\nlog_level = \"info\"\n\n[shell]\nprogram = \"nu\"\n\n[agent]\ncommand = \"codex resume\"\n",
+            "agent.command must be auto or one executable command without arguments",
+            "invalid agent command",
         ),
         (
             "bad-popup-config",

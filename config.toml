@@ -13,6 +13,12 @@ program = "nu"
 # Editor command for managed opens. yzn-hx uses packaged Yazelix Helix.
 command = "yzn-hx"
 
+[agent]
+# "auto" keeps the built-in provider fallback. Any other value is one executable
+# command for the managed agent popup; put arguments in args.
+command = "auto"
+args = []
+
 [welcome]
 # Show a brief welcome splash before entering the managed runtime.
 enabled = true

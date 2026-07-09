@@ -13,7 +13,7 @@ use crate::{
     DEFAULT_BAR_WIDGETS_JSON, DEFAULT_POPUP_SIDE_MARGIN, DEFAULT_POPUP_VERTICAL_MARGIN,
     DEFAULT_SHELL_PROGRAM, LAYOUT, LAYOUT_BAR_PLACEHOLDER, LAYOUT_SWAP_TEMPLATE, LAYOUT_TEMPLATE,
     LAYOUT_YAZI_PLACEHOLDER, YZN_BAR_RENDER, YZN_BAR_RENDER_REQUEST, YZN_SIDEBAR_REFRESH, YZN_YAZI,
-    ZELLIJ_HOME_PLACEHOLDER,
+    YZN_AGENT, ZELLIJ_HOME_PLACEHOLDER,
 };
 
 pub(crate) fn active_layout(
@@ -39,6 +39,7 @@ pub(crate) fn active_zellij_config(
     popup_side_margin: &str,
     popup_vertical_margin: &str,
     popup_keybindings: &[PopupKeybinding],
+    agent_popup_kdl: &str,
     custom_popups_kdl: &str,
     custom_popup_keybindings_kdl: &str,
     zellij_plugins_sidecar: &Path,
@@ -71,6 +72,7 @@ pub(crate) fn active_zellij_config(
     patched =
         patch_popup_default_margins(patched, &config, popup_side_margin, popup_vertical_margin)?;
     patched = patch_popup_keybindings(patched, &config, popup_keybindings)?;
+    patched = patch_agent_popup(patched, &config, agent_popup_kdl)?;
     patched = inject_snippet_before(
         patched,
         &config,
@@ -161,6 +163,29 @@ fn patch_popup_default_margins(
         ),
         1,
     ))
+}
+
+fn patch_agent_popup(
+    text: String,
+    config: &Path,
+    agent_popup_kdl: &str,
+) -> Result<String, AppError> {
+    let replacement = agent_popup_kdl.trim_end();
+    if replacement.is_empty() {
+        return Ok(text);
+    }
+    let marker = format!(
+        "            agent {{\n                command {}\n                pane_title \"agent_popup\"\n                width_percent 100\n                height_percent 100\n                toggle_close_behavior \"hide\"\n            }}",
+        kdl_string(YZN_AGENT),
+    );
+    if !text.contains(&marker) {
+        return Err(startup(
+            "Zellij config is missing the packaged agent popup block",
+            config.display(),
+            1,
+        ));
+    }
+    Ok(text.replacen(&marker, replacement, 1))
 }
 
 const OWNED_ZELLIJ_PLUGIN_IDS: &[&str] = &["yzpp", "yazelix_pane_orchestrator"];

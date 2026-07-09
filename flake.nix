@@ -421,6 +421,7 @@
         layout = "${yznZellijLayout}/layout.kdl";
         layoutTemplate = "${./layout.kdl}";
         layoutSwapTemplate = "${./layout.swap.kdl}";
+        yznAgent = "${yznAgent}/bin/yzn-agent";
         yznYazi = "${yznYazi}/bin/yzn-yazi";
         yznHelix = "${yznHelix}/bin/yzn-hx";
         yznConfig = "${yznConfig}/bin/yzn-config";
@@ -610,6 +611,8 @@
         ! grep -q 'contract_id = "user-owned"' "$config_files/config.toml"
         test "$(YAZELIX_NEXT_CONFIG_HOME="$config_files" ${yzn}/libexec/yazelix-next/yzn-config --get shell.program)" = fish
         test "$(YAZELIX_NEXT_CONFIG_HOME="$config_files" ${yzn}/libexec/yazelix-next/yzn-config --get editor.command)" = yzn-hx
+        test "$(YAZELIX_NEXT_CONFIG_HOME="$config_files" ${yzn}/libexec/yazelix-next/yzn-config --get agent.command)" = auto
+        test "$(YAZELIX_NEXT_CONFIG_HOME="$config_files" ${yzn}/libexec/yazelix-next/yzn-config --get agent.args)" = "[]"
         test "$(YAZELIX_NEXT_CONFIG_HOME="$config_files" ${yzn}/libexec/yazelix-next/yzn-config --get keybindings.config)" = "Alt Shift C"
         test "$(YAZELIX_NEXT_CONFIG_HOME="$config_files" ${yzn}/libexec/yazelix-next/yzn-config --get keybindings.agent)" = "Alt Shift A"
         test "$(YAZELIX_NEXT_CONFIG_HOME="$config_files" ${yzn}/libexec/yazelix-next/yzn-config --get keybindings.git)" = "Alt Shift G"

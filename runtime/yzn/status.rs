@@ -8,6 +8,8 @@ pub(crate) fn print_status() -> Result<(), AppError> {
     println!("shell: {}", runtime.shell_program);
     println!("editor command: {}", runtime.editor_command);
     println!("editor: {}", runtime.editor);
+    println!("agent command: {}", runtime.agent_command);
+    println!("agent args: {}", runtime.agent_args);
     println!("open log: {}", runtime.yzn_open_log);
     println!("welcome enabled: {}", runtime.welcome_enabled);
     println!("welcome style: {}", runtime.welcome_style);

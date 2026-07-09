@@ -14,7 +14,8 @@ use crate::{
     error::AppError,
     paths::{config_home, home_dir, nonempty_env, parent, runtime_path, state_dir},
     zellij::{active_layout, active_zellij_config},
-    CUSTOM_POPUPS_KDL_CONFIG_PATH, CUSTOM_POPUP_KEYBINDINGS_KDL_CONFIG_PATH,
+    AGENT_POPUP_KDL_CONFIG_PATH, CUSTOM_POPUPS_KDL_CONFIG_PATH,
+    CUSTOM_POPUP_KEYBINDINGS_KDL_CONFIG_PATH,
     POPUP_KEYBINDING_SPECS, YAZELIX_ZELLIJ_BAR_WASM, YAZELIX_ZELLIJ_PANE_ORCHESTRATOR_WASM,
     YAZELIX_ZELLIJ_POPUP_WASM, YZN_CONFIG, YZN_CONFIG_KDL, YZN_HELIX, YZN_MARS_CONFIG, YZN_YA,
     YZN_ZELLIJ_CONFIG, ZELLIJ,
@@ -28,6 +29,8 @@ pub(crate) struct Runtime {
     pub(crate) shell_program: String,
     pub(crate) editor_command: String,
     pub(crate) editor: String,
+    pub(crate) agent_command: String,
+    pub(crate) agent_args: String,
     pub(crate) welcome_enabled: String,
     pub(crate) welcome_style: String,
     pub(crate) welcome_duration_seconds: String,
@@ -82,6 +85,8 @@ impl Runtime {
         let editor_command =
             trim_output(config_value(&config_home, &config_toml, "editor.command")?);
         let editor = effective_editor_command(&editor_command);
+        let agent_command = trim_output(config_value(&config_home, &config_toml, "agent.command")?);
+        let agent_args = trim_output(config_value(&config_home, &config_toml, "agent.args")?);
         let welcome_enabled = config_value(&config_home, &config_toml, "welcome.enabled")?;
         let welcome_style = config_value(&config_home, &config_toml, "welcome.style")?;
         let welcome_duration_seconds =
@@ -105,6 +110,8 @@ impl Runtime {
             &config_toml,
             CUSTOM_POPUP_KEYBINDINGS_KDL_CONFIG_PATH,
         )?;
+        let agent_popup_kdl =
+            config_value(&config_home, &config_toml, AGENT_POPUP_KDL_CONFIG_PATH)?;
         let (layout_source, layout) = active_layout(&state_dir, &bar_widgets, &shell_program)?;
         let user_mars_config_home = config_home.join("mars");
         let (mars_config_source, mars_config_home) =
@@ -135,6 +142,7 @@ impl Runtime {
             &popup_side_margin,
             &popup_vertical_margin,
             &popup_keybindings,
+            &agent_popup_kdl,
             &custom_popups_kdl,
             &custom_popup_keybindings_kdl,
             &zellij_plugins_sidecar,
@@ -188,6 +196,8 @@ impl Runtime {
             shell_program,
             editor_command,
             editor,
+            agent_command,
+            agent_args,
             welcome_enabled: trim_output(welcome_enabled),
             welcome_style: trim_output(welcome_style),
             welcome_duration_seconds: trim_output(welcome_duration_seconds),

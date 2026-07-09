@@ -4,6 +4,9 @@ User-visible runtime changes for Yazelix Next live here.
 
 ## Unreleased
 
+- The managed agent popup command is configurable through root config
+  `agent.command` and `agent.args`, exposed in the `yzn config` `popups` tab.
+  The default `agent.command = "auto"` keeps the existing provider fallback.
 - `yzn config` has a dedicated `popups` tab for popup margins and managed
   config/agent/Git/menu popup keybindings. Root `config.toml` remains the source
   for these fields.

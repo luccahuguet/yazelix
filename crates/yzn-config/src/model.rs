@@ -21,7 +21,8 @@ use crate::{
     paths::ConfigPaths,
     root_config::{
         bar_widgets, default_config, default_config_path_value, popup_keybinding_spec,
-        read_toml_file_value, validate_config_value, validate_popup_keybindings,
+        read_toml_file_value, validate_agent_config, validate_config_value,
+        validate_popup_keybindings,
     },
     zellij_sidecar::{ZellijSidecar, parse_zellij_sidecar, zellij_field_value},
 };
@@ -232,6 +233,8 @@ fn build_root_config_field(
             pending: false,
         },
         current.is_some_and(|value| validate_config_value(spec.field.path, value).is_err())
+            || (matches!(spec.field.path, AGENT_COMMAND_PATH | AGENT_ARGS_PATH)
+                && validate_agent_config(active).is_err())
             || (popup_keybinding_spec(spec.field.path).is_some()
                 && validate_popup_keybindings(active).is_err()),
     ))
@@ -239,7 +242,9 @@ fn build_root_config_field(
 fn root_config_tab(path: &str) -> &'static str {
     if matches!(
         path,
-        POPUP_SIDE_MARGIN_PATH
+        AGENT_COMMAND_PATH
+            | AGENT_ARGS_PATH
+            | POPUP_SIDE_MARGIN_PATH
             | POPUP_VERTICAL_MARGIN_PATH
             | KEYBINDINGS_CONFIG_PATH
             | KEYBINDINGS_AGENT_PATH

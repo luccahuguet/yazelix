@@ -75,6 +75,9 @@ fn print_config_field(path: &str) -> Result<()> {
     } else if path == CUSTOM_POPUP_KEYBINDINGS_KDL_PATH {
         let config = ensure_config_file_at(config_paths()?.root)?;
         print!("{}", read_custom_popup_keybindings_kdl(&config)?);
+    } else if path == AGENT_POPUP_KDL_PATH {
+        let config = ensure_config_file_at(config_paths()?.root)?;
+        print!("{}", read_agent_popup_kdl(&config)?);
     } else {
         let spec = config_field(path)?;
         let config = ensure_config_file_at(config_paths()?.root)?;
@@ -235,6 +238,18 @@ mod tests {
         );
     }
 
+    fn assert_agent_popup_error(text: &str, expected: &str) {
+        let temp = TempHome::new();
+        let path = temp.path.join("config.toml");
+        write_config_text(&path, text);
+
+        let error = read_agent_popup_kdl(&path).unwrap_err().to_string();
+        assert!(
+            error.contains(expected),
+            "expected `{expected}` in `{error}`"
+        );
+    }
+
     #[cfg(unix)]
     #[test]
     fn external_text_editor_round_trips_staged_input() {
@@ -376,6 +391,12 @@ mod tests {
             (OPEN_LOG_LEVEL_PATH, json!("debug"), None),
             (SHELL_PROGRAM_PATH, json!("fish"), None),
             (EDITOR_COMMAND_PATH, json!("nvim"), Some("nvim")),
+            (AGENT_COMMAND_PATH, json!("codex"), Some("codex")),
+            (
+                AGENT_ARGS_PATH,
+                json!(["resume", "--dangerously-bypass-approvals-and-sandbox"]),
+                Some(r#"["resume","--dangerously-bypass-approvals-and-sandbox"]"#),
+            ),
             (POPUP_SIDE_MARGIN_PATH, json!(2), Some("2")),
             (POPUP_VERTICAL_MARGIN_PATH, json!(1), None),
         ] {
@@ -407,6 +428,14 @@ mod tests {
                 json!("nvim --clean"),
                 "without arguments",
             ),
+            (AGENT_COMMAND_PATH, json!(""), "must not be empty"),
+            (
+                AGENT_COMMAND_PATH,
+                json!("codex resume"),
+                "without arguments",
+            ),
+            (AGENT_ARGS_PATH, json!("resume"), "JSON string array"),
+            (AGENT_ARGS_PATH, json!([1]), "contain only strings"),
             (POPUP_SIDE_MARGIN_PATH, json!(-1), "zero or greater"),
             (
                 KEYBINDINGS_AGENT_PATH,
@@ -455,6 +484,15 @@ mod tests {
             .to_string();
         assert!(error.contains("bar.widgets must be one of"));
         assert!(error.contains("claude_usage"));
+
+        write_config_field(&path, AGENT_COMMAND_PATH, &json!(AGENT_AUTO_COMMAND)).unwrap();
+        assert_toml_value(&path, AGENT_ARGS_PATH, &json!([]));
+        assert_write_config_error(
+            &path,
+            AGENT_ARGS_PATH,
+            json!(["resume"]),
+            "requires agent.command to be a custom command",
+        );
     }
 
     #[test]
@@ -517,6 +555,40 @@ mod tests {
                 "                payload \"btm\"\n",
                 "            }\n",
                 "        }\n",
+            )
+        );
+    }
+
+    #[test]
+    fn agent_popup_kdl_renders_custom_command_override() {
+        let temp = TempHome::new();
+        let path = ensure_config_file_at(temp.path.join("config.toml")).unwrap();
+
+        assert_agent_popup_error(
+            "[agent]\ncommand = \"auto\"\nargs = [\"resume\"]\n",
+            "requires agent.command to be a custom command",
+        );
+
+        write_config_field(&path, AGENT_COMMAND_PATH, &json!("codex")).unwrap();
+        write_config_field(
+            &path,
+            AGENT_ARGS_PATH,
+            &json!(["resume", "--dangerously-bypass-approvals-and-sandbox"]),
+        )
+        .unwrap();
+
+        assert_eq!(
+            read_agent_popup_kdl(&path).unwrap(),
+            concat!(
+                "            agent {\n",
+                "                command \"codex\"\n",
+                "                arg_1 \"resume\"\n",
+                "                arg_2 \"--dangerously-bypass-approvals-and-sandbox\"\n",
+                "                pane_title \"agent_popup\"\n",
+                "                width_percent 100\n",
+                "                height_percent 100\n",
+                "                toggle_close_behavior \"hide\"\n",
+                "            }",
             )
         );
     }
@@ -652,6 +724,8 @@ mod tests {
 
         assert!(model.tabs.contains(&TAB_POPUPS.to_string()));
         for path in [
+            AGENT_COMMAND_PATH,
+            AGENT_ARGS_PATH,
             POPUP_SIDE_MARGIN_PATH,
             POPUP_VERTICAL_MARGIN_PATH,
             KEYBINDINGS_CONFIG_PATH,
@@ -829,6 +903,7 @@ mod tests {
         let (_temp, paths) = temp_sources();
         let text = concat!(
             "\n[bar]\nwidgets = [\"editor\", \"shell\", \"term\", \"codex_usage\", \"cpu\", \"ram\"]\n\n",
+            "[agent]\nargs = []\ncommand = \"auto\"\n\n",
             "[editor]\ncommand = \"yzn-hx\"\n\n",
             "[open]\nlog_level = \"info\"\n\n",
             "[popup]\nside_margin = 1\nvertical_margin = 0\n\n",

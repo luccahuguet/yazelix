@@ -11,7 +11,7 @@ use crate::{
     error::{path_error, startup, AppError},
     paths::{runtime_path, zellij_session_label},
     runtime::Runtime,
-    HELIX_REVEAL_COMMAND, LAYOUT, LAYOUT_SWAP_TEMPLATE, LAYOUT_TEMPLATE, MARS,
+    AGENT_AUTO_COMMAND, HELIX_REVEAL_COMMAND, LAYOUT, LAYOUT_SWAP_TEMPLATE, LAYOUT_TEMPLATE, MARS,
     YAZELIX_ZELLIJ_BAR_WASM, YAZELIX_ZELLIJ_PANE_ORCHESTRATOR_WASM, YAZELIX_ZELLIJ_POPUP_WASM,
     YZN_BAR_RENDER, YZN_BAR_RENDER_REQUEST, YZN_CONFIG, YZN_CONFIG_KDL, YZN_CONFIG_UI, YZN_HELIX,
     YZN_MENU, YZN_REVEAL, YZN_SCREEN, YZN_SIDEBAR_REFRESH, YZN_TUTOR, YZN_WELCOME, YZN_YA,
@@ -22,6 +22,9 @@ pub(crate) fn print_doctor() -> Result<(), AppError> {
     let runtime = Runtime::prepare().map_err(doctor_failure)?;
     check_doctor_inputs().map_err(doctor_failure)?;
     require_command("editor", &runtime.editor).map_err(doctor_failure)?;
+    if runtime.agent_command != AGENT_AUTO_COMMAND {
+        require_command("agent.command", &runtime.agent_command).map_err(doctor_failure)?;
+    }
 
     println!("Yazelix doctor");
     doctor_ok("config home", runtime.config_home.display());
@@ -29,6 +32,8 @@ pub(crate) fn print_doctor() -> Result<(), AppError> {
     doctor_ok("shell.program", &runtime.shell_program);
     doctor_ok("editor.command", &runtime.editor_command);
     doctor_ok("editor", &runtime.editor);
+    doctor_ok("agent.command", &runtime.agent_command);
+    doctor_ok("agent.args", &runtime.agent_args);
     doctor_ok("open.log_level", &runtime.yzn_open_log);
     doctor_ok("welcome.enabled", &runtime.welcome_enabled);
     doctor_ok("welcome.style", &runtime.welcome_style);

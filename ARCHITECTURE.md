@@ -77,6 +77,8 @@ One owner per concern. Paths are the durable map.
 - Creates root, Mars, Zellij, Starship sources when missing
 - Routes edits to the right file; Helix/Advanced open-file rows; Keys read-only
 - Hidden package-internal reads for launch + custom-popup KDL render
+- `agent.popup.kdl` is an internal render path for custom managed agent command
+  KDL
 - `KEY_BINDINGS` is the human key reference; `config.kdl` is the runtime owner
 
 | Root field | Effect |
@@ -84,6 +86,7 @@ One owner per concern. Paths are the durable map.
 | `open.log_level` | `YZN_OPEN_LOG` for managed opens |
 | `shell.program` | Packaged shell for new panes (`nu`/`bash`/`zsh`/`fish`) |
 | `editor.command` | Yazi opens + config text edits; `yzn-hx` vs host PATH |
+| `agent.command` / `agent.args` | Managed agent popup command; `auto` preserves provider bootstrap |
 | `welcome.*` | Pre-Zellij splash enable/style/duration |
 | `popup.side_margin` / `popup.vertical_margin` | `yzpp` default margins |
 | `keybindings.{config,agent,git,menu}` | Semantic role remaps |
@@ -268,7 +271,7 @@ Detail lives in Owners, checks, and the notes below.
 | C9a | Kitty protocol + `yzpp` packaged/loaded | `config.kdl`, flake | `yzn-contracts` | Visual |
 | C9b | Role popups + popups tab remaps + margins + refresh hooks | config, runtime, `yzn-config` | contracts + keybinding tests | Visual |
 | C9c | Custom `[popups.<id>]` argv + unique titles | `yzn-config`, runtime | custom popup tests + contracts | Visual |
-| C9d | Agent hide keep-alive + provider bootstrap | `yzn-agent`, config | `yzn-contracts` | Provider UX |
+| C9d | Agent hide keep-alive + custom command or provider bootstrap | `yzn-agent`, config | `yzn-contracts` | Provider UX |
 | C9e | Git LazyGit + editor env + close-on-toggle | config, runtime | `yzn-contracts` | Visual |
 
 ### Config UI (`C11*`)

@@ -8,6 +8,10 @@ pub(crate) const CONTRACT_VERSION: u64 = 1;
 pub(crate) const OPEN_LOG_LEVEL_PATH: &str = "open.log_level";
 pub(crate) const SHELL_PROGRAM_PATH: &str = "shell.program";
 pub(crate) const EDITOR_COMMAND_PATH: &str = "editor.command";
+pub(crate) const AGENT_COMMAND_PATH: &str = "agent.command";
+pub(crate) const AGENT_ARGS_PATH: &str = "agent.args";
+pub(crate) const AGENT_POPUP_KDL_PATH: &str = "agent.popup.kdl";
+pub(crate) const AGENT_AUTO_COMMAND: &str = "auto";
 pub(crate) const WELCOME_ENABLED_PATH: &str = "welcome.enabled";
 pub(crate) const WELCOME_STYLE_PATH: &str = "welcome.style";
 pub(crate) const WELCOME_DURATION_SECONDS_PATH: &str = "welcome.duration_seconds";
@@ -181,6 +185,25 @@ pub(crate) const CONFIG_FIELDS: &[ConfigFieldSpec] = &[
         ),
         apply_summary: "new opens",
         apply_detail: "Saved editor command applies to newly launched managed Yazi opens.",
+    },
+    ConfigFieldSpec {
+        field: FieldSpec::string_choice(
+            AGENT_COMMAND_PATH,
+            "Command for the managed agent popup. Use auto for the built-in provider fallback.",
+            &[],
+            "auto or one non-empty executable command without arguments",
+        ),
+        apply_summary: "next launch",
+        apply_detail: "Saved agent command applies to newly launched Yazelix sessions.",
+    },
+    ConfigFieldSpec {
+        field: FieldSpec::string_list(
+            AGENT_ARGS_PATH,
+            "Arguments passed to a custom managed agent popup command.",
+            "JSON string array; requires agent.command to be custom",
+        ),
+        apply_summary: "next launch",
+        apply_detail: "Saved agent arguments apply to newly launched Yazelix sessions.",
     },
     ConfigFieldSpec {
         field: FieldSpec::boolean(
@@ -386,6 +409,14 @@ impl FieldSpec {
         validation: &'static str,
     ) -> Self {
         Self::new(path, "string", description, allowed_values, validation)
+    }
+
+    const fn string_list(
+        path: &'static str,
+        description: &'static str,
+        validation: &'static str,
+    ) -> Self {
+        Self::new(path, "string_list", description, &[], validation)
     }
 
     const fn new(

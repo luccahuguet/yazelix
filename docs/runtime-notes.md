@@ -68,8 +68,9 @@ managed by this sidecar.
 
 ## Agent Popup
 
-The agent popup chooses a provider once per state directory. On first launch it
-checks `PATH` in this order:
+The agent popup uses `[agent].command` from root config. The default `auto`
+chooses a provider once per state directory. On first launch it checks `PATH` in
+this order:
 
 ```text
 codex resume
@@ -88,6 +89,9 @@ ${YAZELIX_STATE_DIR}/agent/provider
 Later launches use that stored provider. If the stored provider is unknown or
 missing from `PATH`, the popup prints a diagnostic and tells the user to remove
 the provider file so Yazelix can choose again.
+
+Any other `agent.command` value replaces the managed agent popup command for new
+sessions. Put argv-style arguments in `agent.args`, not in `agent.command`.
 
 ## Nushell And Starship
 
