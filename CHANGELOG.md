@@ -4,6 +4,10 @@ User-visible runtime changes for Yazelix Next live here.
 
 ## Unreleased
 
+- `yzn config` Zellij tab saves update the active managed session config when
+  opened inside a session (`YAZELIX_STATE_DIR` + session env). Many scalars
+  apply live via Zellij's config watcher; some still need a new session (for
+  example `scroll_buffer_size`). Outside a session, saves remain next-session.
 - The managed agent popup (`Alt Shift L`, hide keep-alive) now restarts when
   the focused terminal cwd no longer matches the hidden agent pane. Same-cwd
   toggles still reuse the existing agent process.

@@ -1336,6 +1336,32 @@ mod tests {
     }
 
     #[test]
+    fn zellij_runtime_field_patch_preserves_surrounding_config() {
+        let runtime = "\
+keybinds {}\n\
+pane_frames true\n\
+mouse_mode true\n\
+plugins {}\n\
+ui {\n\
+    pane_frames {\n\
+        rounded_corners false\n\
+    }\n\
+}\n";
+        let patched = patch_zellij_field_in_text(runtime, "pane_frames", &json!(false)).unwrap();
+        assert!(patched.contains("keybinds {}"));
+        assert!(patched.contains("pane_frames false"));
+        assert!(patched.contains("plugins {}"));
+        assert!(!patched.contains("pane_frames true"));
+
+        let rounded =
+            patch_zellij_field_in_text(runtime, "ui.pane_frames.rounded_corners", &json!(true))
+                .unwrap();
+        assert!(rounded.contains("rounded_corners true"));
+        assert!(!rounded.contains("rounded_corners false"));
+        assert!(rounded.contains("keybinds {}"));
+    }
+
+    #[test]
     fn zellij_source_blocks_guarded_sidecar_nodes() {
         let temp = TempHome::new();
         let path = temp.path.join("zellij/config.kdl");

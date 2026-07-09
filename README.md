@@ -175,7 +175,7 @@ managed popup role keys.
 | File | Owner | Notes |
 | --- | --- | --- |
 | `mars/config.toml` | Mars | Appearance preset, window size, opacity, font, scrollbar, bell, and cursor trail. |
-| `zellij/config.kdl` | Zellij sidecar | Safe scalar preferences for new sessions. Integration-owned nodes are blocked. |
+| `zellij/config.kdl` | Zellij sidecar | Safe scalar preferences. Inside a session, saves also patch the active runtime config (many live; some need a new session). Integration-owned nodes are blocked. |
 | `zellij/plugins.kdl` | Zellij plugin sidecar | Extra plugin declarations only. Packaged plugin ids cannot be redeclared. |
 | `starship.toml` | Starship | Managed Nu prompt config. |
 | `helix/config.toml` | Helix | User TOML merged over packaged Yazelix Helix defaults. |
@@ -193,7 +193,9 @@ through these Yazelix-owned files.
 
 Saving `mars.appearance.preset` through `yzn config` switches Mars and the config
 UI palette in the same session. Other Mars values apply on the next Mars launch.
-Zellij sidecar values apply to new Zellij sessions.
+Zellij sidecar values update the active managed session config when `yzn config`
+runs inside a session; many scalars apply live via Zellij's watcher, and some
+still need a new session.
 
 ## Editor And File Opens
 
@@ -298,7 +300,7 @@ git ls-files | grep -Ev '^\.beads/|\.lock$' | xargs wc -l
 | Language | Lines |
 | --- | ---: |
 | Ignore (`.gitignore`) | 4 |
-| Markdown | 1264 |
+| Markdown | 1277 |
 | Nix | 929 |
 | Shell | 82 |
 | YAML | 268 |
@@ -306,5 +308,5 @@ git ls-files | grep -Ev '^\.beads/|\.lock$' | xargs wc -l
 | KDL | 210 |
 | Nu | 11 |
 | Lua | 247 |
-| Rust | 11219 |
-| Total | 14470 |
+| Rust | 11376 |
+| Total | 14640 |

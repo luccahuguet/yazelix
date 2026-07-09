@@ -27,6 +27,13 @@ editor environment and returns the edited text to the row. `Enter` saves.
 frames, mouse mode, scrollback size, copy behavior, styled underlines, startup
 tips, and `ui.pane_frames.rounded_corners`.
 
+When `yzn config` runs inside a managed session (`ZELLIJ_SESSION_NAME` or
+`YAZELIX_ZELLIJ_SESSION_NAME`, plus `YAZELIX_STATE_DIR`), saving a Zellij tab
+field also patches `$YAZELIX_STATE_DIR/zellij/config.kdl` so the running Zellij
+watcher can pick up scalars without rewriting integration patches. Fields such
+as `pane_frames` typically apply live; `scroll_buffer_size` is session-scoped
+and still needs a new session.
+
 The runtime rejects uncommented top-level ownership nodes in that sidecar:
 
 ```text

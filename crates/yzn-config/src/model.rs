@@ -83,10 +83,12 @@ pub(crate) fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
             spec,
             Some(&current),
             Some(&default),
-            next_launch_apply_status(
-                "zellij",
-                "Saved values apply to newly launched Zellij sessions.",
-            ),
+            ConfigUiApplyStatus {
+                summary: "session".to_string(),
+                label: "zellij".to_string(),
+                detail: "Inside a managed session, saves update the active Zellij config file. Many scalars apply live; some (for example scroll_buffer_size) need a new session.".to_string(),
+                pending: false,
+            },
             zellij_blocking,
         ));
     }

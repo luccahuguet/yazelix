@@ -1,4 +1,7 @@
-use std::{fs, path::Path};
+use std::{
+    env, fs,
+    path::{Path, PathBuf},
+};
 
 use ratconfig::ConfigUiDiagnostic;
 use serde_json::{Value as JsonValue, json};
@@ -47,6 +50,103 @@ pub(crate) fn write_zellij_config_field(
     }
     set_zellij_field_value(&mut config, field_path, value)?;
     atomic_write(path, &render_zellij_sidecar(&config))
+}
+
+/// When `yzn config` runs inside a managed session, also patch the active runtime
+/// Zellij config Zellij is watching. Preserves launch-time integration patches.
+/// Returns `Ok(true)` if the active file was updated, `Ok(false)` if no session runtime.
+pub(crate) fn refresh_active_zellij_runtime_field(
+    field_path: &str,
+    value: &JsonValue,
+) -> Result<bool> {
+    let Some(runtime_config) = active_zellij_runtime_config_path() else {
+        return Ok(false);
+    };
+    let raw = fs::read_to_string(&runtime_config)?;
+    let patched = patch_zellij_field_in_text(&raw, field_path, value)?;
+    atomic_write(&runtime_config, &patched)?;
+    Ok(true)
+}
+
+fn active_zellij_runtime_config_path() -> Option<PathBuf> {
+    let in_session = env::var_os("ZELLIJ_SESSION_NAME")
+        .or_else(|| env::var_os("YAZELIX_ZELLIJ_SESSION_NAME"))
+        .filter(|value| !value.is_empty())
+        .is_some();
+    if !in_session {
+        return None;
+    }
+    let state_dir = env::var_os("YAZELIX_STATE_DIR").filter(|value| !value.is_empty())?;
+    let path = PathBuf::from(state_dir).join("zellij/config.kdl");
+    path.is_file().then_some(path)
+}
+
+pub(crate) fn patch_zellij_field_in_text(
+    text: &str,
+    field_path: &str,
+    value: &JsonValue,
+) -> Result<String> {
+    let token = zellij_field_token(field_path)?;
+    let assignment = render_zellij_field_assignment(field_path, value)?;
+    let mut out = String::with_capacity(text.len() + assignment.len());
+    let mut replaced = false;
+    for line in text.lines() {
+        let trimmed = line.trim_start();
+        let indent_len = line.len() - trimmed.len();
+        let line_token = trimmed
+            .split(|ch: char| ch.is_whitespace() || ch == '{' || ch == ';')
+            .next()
+            .unwrap_or("");
+        let is_block = trimmed.contains('{');
+        if !replaced && line_token == token && !is_block {
+            out.push_str(&line[..indent_len]);
+            out.push_str(&assignment);
+            out.push('\n');
+            replaced = true;
+        } else {
+            out.push_str(line);
+            out.push('\n');
+        }
+    }
+    if !replaced {
+        if !out.ends_with('\n') && !out.is_empty() {
+            out.push('\n');
+        }
+        out.push_str(&assignment);
+        out.push('\n');
+    }
+    Ok(out)
+}
+
+fn zellij_field_token(field_path: &str) -> Result<&'static str> {
+    match field_path {
+        "pane_frames" => Ok("pane_frames"),
+        "mouse_mode" => Ok("mouse_mode"),
+        "scroll_buffer_size" => Ok("scroll_buffer_size"),
+        "copy_on_select" => Ok("copy_on_select"),
+        "copy_clipboard" => Ok("copy_clipboard"),
+        "styled_underlines" => Ok("styled_underlines"),
+        "show_startup_tips" => Ok("show_startup_tips"),
+        "ui.pane_frames.rounded_corners" => Ok("rounded_corners"),
+        _ => Err(error(format!("unknown Zellij config path: {field_path}"))),
+    }
+}
+
+fn render_zellij_field_assignment(field_path: &str, value: &JsonValue) -> Result<String> {
+    let token = zellij_field_token(field_path)?;
+    match field_path {
+        "scroll_buffer_size" => Ok(format!("{token} {}", json_positive_i64(field_path, value)?)),
+        "copy_clipboard" => {
+            let choice = zellij_field(field_path)
+                .expect("known field")
+                .json_choice(value)?;
+            Ok(format!("{token} {}", kdl_string(choice)))
+        }
+        _ => Ok(format!(
+            "{token} {}",
+            kdl_bool(json_bool(field_path, value)?)
+        )),
+    }
 }
 pub(crate) fn parse_zellij_sidecar(raw: &str) -> (ZellijSidecar, Vec<ConfigUiDiagnostic>) {
     let mut config = ZellijSidecar::default();
