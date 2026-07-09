@@ -7,6 +7,7 @@
   rtkPackage,
   gritPackage,
   icmPackage,
+  metaPackage,
   runtimePackage,
   system,
   yazelixCursors,
@@ -52,6 +53,7 @@ let
   flexnetos_foundation_rtk = rtkPackage system pkgs;
   flexnetos_foundation_grit = gritPackage system pkgs;
   flexnetos_foundation_icm = icmPackage system pkgs;
+  flexnetos_foundation_meta = metaPackage system pkgs;
   flexnetos_foundation_kache = import ./kache_release.nix { inherit pkgs; };
   flexnetos_foundation_kache_wrapped = pkgs.symlinkJoin {
     name = "kache-with-rustc-wrapper-${flexnetos_foundation_kache.version}";
@@ -129,6 +131,7 @@ let
       flexnetos_foundation_kache_wrapped
       flexnetos_foundation_grit
       flexnetos_foundation_icm
+      flexnetos_foundation_meta
       flexnetos_foundation_rtk
       flexnetos_foundation_rust_toolchain
       flexnetos_foundation_bun
@@ -148,6 +151,11 @@ let
       "git-kb"
       "grit"
       "icm"
+      "meta"
+      "meta-git"
+      "meta-mcp"
+      "meta-project"
+      "loop"
       "bun"
       "bunx"
       "cargo"
@@ -179,6 +187,11 @@ let
       "git-kb"
       "grit"
       "icm"
+      "meta"
+      "meta-git"
+      "meta-mcp"
+      "meta-project"
+      "loop"
       "bun"
       "bunx"
       "cargo"

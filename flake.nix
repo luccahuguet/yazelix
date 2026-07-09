@@ -323,6 +323,11 @@
           inherit pkgs;
           icmSource = icm_source;
         };
+      metaPackage =
+        system: pkgs:
+        import ./packaging/meta_release.nix {
+          inherit pkgs;
+        };
       maintainerShell =
         system: pkgs:
         import ./maintainer_shell.nix {
@@ -357,7 +362,7 @@
         in
         import ./packaging/flake_outputs.nix {
           inherit agentUsagePackages beadsRustPackage kgpPackages rtkPackage;
-          inherit gritPackage icmPackage;
+          inherit gritPackage icmPackage metaPackage;
           mkYazelix = mkYazelix system;
           inherit pkgs runtimePackage system yazelixPackage;
           inherit yazelixCursors yazelixScreen yazelixYaziAssets;
