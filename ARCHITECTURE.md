@@ -327,7 +327,11 @@ window.
 
 The table is an **index**: one row per contract with behavior, owner, proving
 check, and gap. Implementation detail lives in the owner sections above, the
-checks, and the short notes after the table for the densest rows.
+checks, and short notes after the table where a former mega-row needed a home.
+
+`C9` and `C11` were split so each row has one failure-mode family. Letter
+suffixes keep `C10`/`C12`/`C13` stable. Shared checks may still live in
+`checks/yzn-contracts.rs` until a later check split.
 
 | ID | Contract | Owner | Check | Missing Coverage |
 | --- | --- | --- | --- | --- |
@@ -339,9 +343,16 @@ checks, and the short notes after the table for the densest rows.
 | C6 | Managed Yazi: scoped preview env, optional user init/keymap/plugins, opens via `yzn-open`, sidebar id/reveal, zoxide jump | `yazi/`, `runtime/yzn-yazi.rs`, `crates/yzn-open/` | `checks/yzn-contracts.rs`, `yzn_yazi_materialization`, `yzn-open` tests | Full Yazi UI dogfooding |
 | C7 | Helix bridge reuse stays in the current `yzn` window and Zellij tab | `crates/yzn-open/`, `flake.nix` | `yzn-open` tests | Multi-window GUI dogfooding |
 | C8 | Desktop entry starts `yzn` | `flake.nix` | `nix build .#yzn` packages the desktop file | Desktop launch dogfooding |
-| C9 | Managed popups via `yzpp` (roles, custom specs, agent/Git behavior, margins, sidebar refresh hooks) with Kitty keyboard protocol | `config.kdl`, `runtime/yzn/`, `runtime/yzn-agent.rs`, `crates/yzn-config/`, `flake.nix` | `checks/yzn-contracts.rs` | Visual popup dogfooding |
+| C9a | Kitty keyboard protocol is enabled; managed popup plugin `yzpp` is packaged and loaded | `config.kdl`, `flake.nix` | `checks/yzn-contracts.rs` | Visual dogfooding |
+| C9b | Role popups config/agent/git/menu: default `Alt Shift J/K/L/M`, semantic remaps, shared `yzpp` margins and sidebar refresh hooks | `config.kdl`, `runtime/yzn/`, `crates/yzn-config/`, `flake.nix` | `checks/yzn-contracts.rs`, `yzn-config` keybinding tests | Visual popup dogfooding |
+| C9c | Custom `[popups.<id>]` is argv-based with required keybinding, unique titles, and rendered managed keybinds (no raw Zellij keybinds/plugins ownership) | `crates/yzn-config/`, `runtime/yzn/`, `config.kdl` | `yzn-config` custom popup tests, `checks/yzn-contracts.rs` | Visual popup dogfooding |
+| C9d | Agent popup: hide keep-alive, first-run provider bootstrap, empty pane when none available | `runtime/yzn-agent.rs`, `config.kdl`, `flake.nix` | `checks/yzn-contracts.rs` | Provider UX dogfooding; cwd-mismatch restart is `yzpp` + flake pin |
+| C9e | Git popup: LazyGit default, managed editor env for Git, close-on-toggle so reopen follows tab cwd | `config.kdl`, `runtime/yzn/`, `flake.nix` | `checks/yzn-contracts.rs` | Visual Git popup dogfooding |
 | C10 | Top bar tray from child bar package, home-scoped tabs, usage widget cache, native bottom key hints | `layout.kdl`, `config.kdl`, `runtime/yzn/`, `flake.nix`, `packaging/tokenusage.nix` | `checks/zellij-layout.rs`, `checks/yzn-contracts.rs` | Visual bar dogfooding |
-| C11 | `yzn config` owns semantic root settings, native source files, and session-aware Zellij sidecar apply; Helix effective config and Keys/Advanced surfaces | `crates/yzn-config/`, `config.toml`, `mars.toml`, `helix/config.toml`, `flake.nix` | `yzn-config` tests, `checks/yzn-contracts.rs`, `checks/helix-contracts.rs` | Interactive Ratconfig dogfooding |
+| C11a | Root `config.toml` semantic fields: shell, editor, welcome, open log, popup margins/roles, custom popups data, bar widgets; sources auto-created | `crates/yzn-config/`, `config.toml` | `yzn-config` tests, `checks/yzn-contracts.rs` | Interactive Ratconfig dogfooding |
+| C11b | Native Mars, Zellij, and Starship tabs write their files; Zellij scalars also patch active session runtime config when inside a managed session | `crates/yzn-config/`, `mars.toml`, Zellij/Starship paths | `yzn-config` tests, `checks/yzn-contracts.rs` | Session dogfooding for live Zellij scalars |
+| C11c | Helix tab + `yzn-hx`: managed files, effective TOML merge, reserved `Alt r`, packaged Steel `:yzn-new-shell` unless user Steel overrides | `crates/yzn-config/`, `helix/`, `shell/sh/yzn-helix.sh`, `flake.nix` | `checks/helix-contracts.rs`, `yzn-config` Helix tests | Interactive Helix dogfooding |
+| C11d | Keys table is read-only packaged bindings; Advanced opens Nu, Yazi sidecars, and Zellij plugins file (create on activation) | `crates/yzn-config/`, `config.kdl` catalog | `yzn-config` Keys/Advanced tests, `checks/key-reference-parity.rs` | Interactive dogfooding |
 | C12 | Welcome defaults (enabled, random, 3s); random excludes static/logo card styles | `yazelix-screen`, `runtime/yzn/`, `config.toml` | `yazelix-screen` tests, `checks/yzn-contracts.rs` | Animation dogfooding |
 | C13 | Narrow Home Manager module: install/override package, optional settings and native file passthroughs, no default config generation | `home-manager/module.nix`, `flake.nix`, `crates/yzn-config/` | `checks.home_manager`, `yzn-config` read-only root tests | Full HM switch external |
 
@@ -352,21 +363,19 @@ Bare `yzn` is `launch`. Non-launch commands stay non-GUI where possible
 allowlist. Reveal targets the active tab sidebar. Pre-exec failures print a
 Yazelix diagnostic before Mars/Zellij handoff.
 
-### C9 Popups
+### C9 family (popups)
 
-Role keys default to `Alt Shift J/K/L/M` and remaps stay semantic. Custom
-`[popups.<id>]` is argv-based with unique titles. Agent uses hide keep-alive and
-provider bootstrap; Git closes on toggle and uses the managed editor env.
-Margins come from `yzpp` popup defaults; close/hide hooks refresh sidebar git
-decorations.
+- **C9a** packaging and protocol floor.
+- **C9b** shared role wiring and geometry/hooks.
+- **C9c** user-defined popups only.
+- **C9d** / **C9e** product-specific agent and Git behavior.
 
-### C11 Config UI
+### C11 family (config UI)
 
-Auto-creates root/Mars/Zellij/Starship sources. Root owns shell, editor,
-welcome, popup margins/roles, custom popups, bar widgets, and open log level.
-Mars/Zellij/Starship tabs write native files; Helix and Advanced are open-file
-surfaces. Inside a managed session, Zellij scalar saves also patch the active
-runtime config file. Host editors bypass the Helix bridge; `yzn-hx` does not.
+- **C11a** semantic root schema and creation.
+- **C11b** native Mars/Zellij/Starship edit surfaces and session Zellij apply.
+- **C11c** Helix-managed path and bridge-related editor policy.
+- **C11d** discovery Keys and Advanced open-file rows.
 
 ## Pros
 
