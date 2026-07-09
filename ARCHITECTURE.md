@@ -59,12 +59,14 @@ One owner per concern. Paths are the durable map.
 | --- | --- |
 | `runtime/yzn/` | CLI, startup env, launch/enter handoff |
 | `runtime/yzn-menu.rs` | Menu palette |
-| `runtime/yzn-agent.rs` | Agent provider bootstrap |
-| `runtime/yzn-yazi.rs` | Managed Yazi env, user init/keymap/plugins overlay |
-| `runtime/yzn-nu.rs` | Managed Nu env/config + optional mise |
-| `runtime/yzn-zellij-config.rs` | Packaged + guarded Zellij sidecar merge |
-| `crates/yzn-open/` | Editor open, Helix bridge, reveal |
+| `runtime/yzn-agent.rs` | Agent provider bootstrap (`codex resume` → `grok` → `opencode` → `pi` → `claude --resume`) |
+| `runtime/yzn-yazi.rs` | Managed Yazi: image-preview env, user init/keymap/plugins overlay, editor resolve |
+| `runtime/yzn-nu.rs` | Managed Nu: packaged → optional host `mise activate nu` → user Nu; Starship path |
+| `runtime/yzn-zellij-config.rs` | Packaged + guarded Zellij scalar sidecar merge |
+| `runtime/yzn/zellij.rs` | Plugin sidecar inject; launch materialize/patches |
+| `crates/yzn-open/` | Editor open, Helix bridge, reveal, bounded open diagnostics |
 | `crates/yzn-tutor/` | Tutor CLI and lessons |
+| `shell/sh/yzn-helix.sh` (`yzn-hx`) | Effective Helix config + Steel wiring |
 | `yazelix-screen` (child) | Screen styles; packaged as `yzn screen` |
 | `checks/` | Build-time contract guards |
 
@@ -73,25 +75,31 @@ One owner per concern. Paths are the durable map.
 `crates/yzn-config/` is the Ratconfig host.
 
 - Creates root, Mars, Zellij, Starship sources when missing
-- Routes edits to the right file
-- Helix / Advanced open-file rows; Keys read-only catalog
-- Hidden reads for launch and custom-popup KDL render
+- Routes edits to the right file; Helix/Advanced open-file rows; Keys read-only
+- Hidden package-internal reads for launch + custom-popup KDL render
 - `KEY_BINDINGS` is the human key reference; `config.kdl` is the runtime owner
 
-**Root semantic fields:** `open.log_level`, `shell.program`, `editor.command`,
-`welcome.*`, `popup.*` margins, `keybindings.{config,agent,git,menu}`,
-`[popups.<id>]`, `bar.widgets`.
+| Root field | Effect |
+| --- | --- |
+| `open.log_level` | `YZN_OPEN_LOG` for managed opens |
+| `shell.program` | Packaged shell for new panes (`nu`/`bash`/`zsh`/`fish`) |
+| `editor.command` | Yazi opens + config text edits; `yzn-hx` vs host PATH |
+| `welcome.*` | Pre-Zellij splash enable/style/duration |
+| `popup.side_margin` / `popup.vertical_margin` | `yzpp` default margins |
+| `keybindings.{config,agent,git,menu}` | Semantic role remaps |
+| `[popups.<id>]` | Custom argv popups + required keybinding |
+| `bar.widgets` | Top-bar tray order (shell label follows `shell.program`) |
 
 ### Packaged layout and tools
 
 | Path | Owns |
 | --- | --- |
-| `mars.toml` | Default Mars window/font/appearance |
-| `config.kdl` | Zellij keys, plugins load, popup wiring |
-| `layout.kdl` / `layout.swap.kdl` | Sidebar + stacked panes, swap variants |
-| `nu/` | Packaged Nu: carapace, zoxide, Starship |
-| `yazi/` | Packaged Yazi: open via `yzn-open`, plugins, `Alt z` |
-| `helix/config.toml` | Packaged Helix defaults |
+| `mars.toml` | Default Mars window/font/appearance; `mars.appearance.preset` is also Ratconfig UI theme (live palette) |
+| `config.kdl` | Zellij keys, plugins load, popup wiring, Kitty protocol |
+| `layout.kdl` / `layout.swap.kdl` | Sidebar + stacked panes, open/closed swap |
+| `nu/` | Packaged Nu: carapace, zoxide, Starship (`format` default `:: `) |
+| `yazi/` | Opens via `yzn-open`, plugins, `Alt z` zoxide jump |
+| `helix/config.toml` | Packaged defaults; `Alt r` reveal, `Ctrl r` reload (overridable) |
 
 ### Child packages (not owned here)
 
@@ -120,12 +128,14 @@ This repo packages them and applies product policy only.
 | --- | --- |
 | Local module | Large code, still ships with `yzn`, no independent user |
 | Local crate | Cargo/binary/test isolation, still product glue |
-| Separate repo | Independent users + release + stable artifact + low `yzn` coupling + real owner deletion here |
+| Separate repo | Independent users + release cadence + stable artifact/API + low `yzn` path/config coupling + low duplicate-owner risk |
 
-**Extraction counts only when this repo deletes or relinquishes an owner.**
+**Extraction counts only when this repo deletes or relinquishes a real owner.**
 
-Edge trim is smaller: child already owns a generic concept, and local glue can
-die without a pure adapter layer.
+| Threshold | Needs |
+| --- | --- |
+| Big extraction | Independent users, stable API/artifact, release cadence, real owner deletion here |
+| Edge trim | Child already owns a generic validated concept; deleting local glue must not leave a pure adapter between duplicate owners |
 
 ---
 
@@ -145,17 +155,48 @@ Packaged first, unless a surface opts into native replacement.
   yazi/{init.lua,keymap.toml,plugins/}
 ```
 
-Override root with `YAZELIX_NEXT_CONFIG_HOME`.
+Override root with `YAZELIX_NEXT_CONFIG_HOME`.  
+Runtime state defaults to `$XDG_DATA_HOME/yazelix-next` or `YAZELIX_STATE_DIR`.
 
 | Surface | Layering |
 | --- | --- |
 | Root TOML | Created with defaults + contract state |
-| Mars | User file replaces packaged when present |
-| Nu | Packaged → optional mise → optional user Nu |
-| Starship | User file if present; else empty/defaults for managed Nu |
-| Helix | Packaged merge + optional user dir; `Alt r` reclaimed |
-| Zellij | Packaged → guarded sidecar → runtime materialize; session saves can patch active file |
+| Mars | User file replaces packaged when present; low-level `force-theme` / `[colors]` / cursors stay manual native |
+| Nu | Packaged → optional host `mise activate nu` → optional user Nu |
+| Starship | User `starship.toml` if present; else empty/defaults for managed Nu |
+| Helix | See Helix notes below |
+| Zellij | Packaged → guarded scalar sidecar → runtime materialize under state dir |
 | Host `~/.config/{helix,yazi,starship}` | Not loaded by default |
+
+### Zellij sidecars
+
+`zellij/config.kdl` is a **first-token denylist**, not a full KDL parser. Uncommented
+top-level ownership nodes are rejected, including:
+
+`keybinds`, `default_shell`, `default_layout`, `layout`, `plugins`,
+`load_plugins`, `support_kitty_keyboard_protocol`, `env`, `session_name`,
+`attach_to_session`.
+
+`zellij/plugins.kdl` accepts only `plugins` / `load_plugins` and must not
+redeclare Yazelix-owned plugin ids (`yzpp`, `yazelix_pane_orchestrator`, …).
+
+Inside a managed session, `yzn config` Zellij scalar saves also patch
+`$YAZELIX_STATE_DIR/zellij/config.kdl` (watched active file) without wiping
+launch patches. Many scalars apply live; some (e.g. `scroll_buffer_size`) need
+a new session.
+
+### Helix
+
+- `yzn-hx` writes effective config under `$YAZELIX_STATE_DIR/helix/config.toml`
+  each launch: packaged template deep-merged with optional user
+  `~/.config/yazelix-next/helix/config.toml`, then `keys.normal.A-r` reclaimed
+  for `yzn reveal`.
+- If user Helix dir has `config.toml`, `languages.toml`, and/or Steel pair
+  (`helix.scm` + `init.scm`), that dir is native config; `HELIX_STEEL_CONFIG`
+  points at the Steel pair only when both exist.
+- Without user Steel, packaged Steel exposes `:yzn-new-shell`.
+- Packaged bindings: `Alt r` reveal (reserved), `Ctrl r` reload (user-overridable).
+- Host `editor.command` values skip the Helix bridge.
 
 ---
 
@@ -163,17 +204,18 @@ Override root with `YAZELIX_NEXT_CONFIG_HOME`.
 
 Owned by `runtime/yzn/` (Nix substitutes paths; Rust owns wiring and `exec`).
 
-1. State dir + optional Helix bridge session id  
-2. Editor env from `editor.command`  
-3. Config home resolution  
-4. Read root settings (open log, welcome, keys, custom popups, bar)  
-5. Mars config selection  
-6. Zellij config materialize + bar cache + plugin permissions  
+1. `YAZELIX_STATE_DIR` + optional `YAZELIX_HELIX_BRIDGE_SESSION_ID` (when `yzn-hx`)  
+2. `EDITOR` / `VISUAL` / `YZN_EDITOR` / `YAZELIX_NEXT_EDITOR` / `GIT_EDITOR` from `editor.command`  
+3. Config home: `YAZELIX_NEXT_CONFIG_HOME` → `XDG_CONFIG_HOME/yazelix-next` → `~/.config/yazelix-next`  
+4. Root settings → env (`YZN_OPEN_LOG`, welcome, popup chords/custom KDL, bar tray)  
+5. Mars config home selection  
+6. Zellij materialize (sidecar + patches) + status-bar cache path + plugin permission seeds  
 
 Pre-`exec` failures → Yazelix diagnostics.  
 After `exec` → Mars / Zellij / child tool.
 
-`status` and `doctor` reuse this boundary without launching UI.
+`status` and `doctor` reuse this boundary without launching UI. `doctor` warns
+if managed Helix TOML overrides reserved `Alt r`.
 
 ---
 
@@ -181,12 +223,13 @@ After `exec` → Mars / Zellij / child tool.
 
 | Mechanism | Purpose |
 | --- | --- |
-| `YAZELIX_HELIX_BRIDGE_SESSION_ID` | Per top-level `yzn` launch with `yzn-hx` |
-| `ZELLIJ_SESSION_NAME` / `YAZELIX_ZELLIJ_SESSION_NAME` | Session match; Yazi may blank Zellij name for previews |
-| Pane → tab id checks in `yzn-open` | Same-tab bridge reuse only |
-| Helper-derived ids outside `yzn` | No accidental bridge to a live window |
+| `YAZELIX_HELIX_BRIDGE_SESSION_ID` | Opaque per top-level `yzn` launch with bridge-enabled `yzn-hx` |
+| `ZELLIJ_SESSION_NAME` | Compared when a bridge registry recorded it |
+| `YAZELIX_ZELLIJ_SESSION_NAME` | Yazi saves real session here before blanking `ZELLIJ_SESSION_NAME` for image previews; open/reveal restore it for Zellij control |
+| `ZELLIJ_PANE_ID` → live tab membership | `yzn-open` reuses only a Helix registry whose pane is in the same `tab_id` |
+| Helper-derived ids outside `yzn` | `yzn-hx` / `yzn-yazi` / `yzn-open` standalone must not hit a live window bridge |
 
-Host editors (`hx`, `nvim`, …) skip the Helix bridge.
+Host editors (`hx`, `nvim`, …) skip the Helix bridge entirely.
 
 ---
 
@@ -213,9 +256,9 @@ Detail lives in Owners, checks, and the notes below.
 | C3 | Layout sidebar template for swaps | `layout*.kdl` | `zellij-layout` | — |
 | C4 | Packaged keys + guarded Zellij sidecar | `config.kdl`, `yzn-zellij-config` | `yzn-contracts` | Full keys |
 | C5 | Managed Nu layering | `yzn-nu`, `nu/` | `yzn-contracts` | — |
-| C6 | Managed Yazi + `yzn-open` + zoxide | `yazi/`, `yzn-yazi`, `yzn-open` | contracts + materialization + open tests | Yazi UI |
-| C7 | Helix bridge window/tab isolation | `yzn-open`, flake | `yzn-open` tests | Multi-window |
-| C10 | Top bar tray, home tabs, usage cache | layout, config, runtime, tokenusage | layout + contracts | Visual bar |
+| C6 | Managed Yazi (preview env, open logs, plugins) + `yzn-open` + zoxide | `yazi/`, `yzn-yazi`, `yzn-open` | contracts + materialization + open tests | Yazi UI |
+| C7 | Helix bridge window/tab isolation (`session` + `tab_id`) | `yzn-open`, flake | `yzn-open` tests | Multi-window |
+| C10 | Top bar tray, home-marker tabs, home-scoped new tabs, usage `tu` + cache | layout, config, runtime, tokenusage | layout + contracts | Visual bar |
 | C12 | Welcome defaults and random pool | screen child, runtime, root config | screen tests + contracts | Animation |
 
 ### Popups (`C9*`)
@@ -248,11 +291,15 @@ Detail lives in Owners, checks, and the notes below.
 **C1:** Bare `yzn` → `launch`. Menu is a curated allowlist. Reveal is
 tab-local. Diagnostics stop before Mars/Zellij handoff.
 
-**C9:** Protocol and packaging (a), shared role wiring (b), user custom (c),
-agent (d), Git (e).
+**C2:** Saving `mars.appearance.preset` through `yzn config` switches the
+Ratconfig palette live; other Mars fields apply on next Mars launch.
 
-**C11:** Root schema (a), native tabs + live Zellij patch (b), Helix (c),
-Keys/Advanced (d).
+**C9:** Protocol/packaging (a), shared role wiring (b), user custom (c),
+agent hide + bootstrap (d), Git close-on-toggle + editor env (e). Agent
+cwd-mismatch restart is owned by `yzpp` and consumed via flake pin.
+
+**C11:** Root schema (a), native tabs + session Zellij active-file patch (b),
+Helix merge/Steel/`Alt r` (c), Keys/Advanced (d).
 
 ---
 
