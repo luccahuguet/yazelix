@@ -163,7 +163,7 @@ This risk is highest for `yazelix-zellij-pane-orchestrator` and `yazelix-zellij-
 
 `yazelix-screen` and `yazelix-cursors` are consumed as Rust git dependencies and flake inputs. That means a release can involve Cargo lock updates, Nix output hashes, and flake lock updates. This friction is acceptable because both have real standalone value, but it should stay explicit in review.
 
-For `yazelix-screen`, `validate-child-release-transaction` validates the published lock/Cargo hash boundary. It no longer inspects package-time ImageMagick or expanded magician frame generation because Yazelix does not consume magician assets.
+For `yazelix-screen`, `validate-child-release-transaction` validates that the locked child revision is published. Targeted Nix package builds validate processed Cargo vendor hashes because those hashes describe generated crate directories rather than raw flake source trees. The validator no longer inspects package-time ImageMagick or expanded magician frame generation because Yazelix does not consume magician assets.
 
 ### Boundary Creep Risk
 

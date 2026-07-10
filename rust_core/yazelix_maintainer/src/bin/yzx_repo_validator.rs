@@ -89,7 +89,7 @@ const SIMPLE_VALIDATORS: &[SimpleValidator] = &[
         "validate-child-release-transaction",
         "Child release transaction validation failed",
         Some(
-            "✅ First-party child input revisions are published, Cargo source hashes match, and Darwin child package smoke contracts satisfy the release contract",
+            "✅ First-party child input revisions are published and Darwin child package smoke contracts satisfy the release contract",
         ),
         validate_child_release_transaction,
     ),

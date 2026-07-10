@@ -22,6 +22,7 @@ pub(super) fn render_details(app: &ConfigUiApp, row: UiRowRef) -> Vec<Line<'stat
             }
             field_detail_lines(field)
         }
+        UiRowRef::FileAction(index) => file_action_detail_lines(&app.model.file_actions[index]),
         UiRowRef::Sidecar(index) => sidecar_detail_lines(&app.model.sidecars[index]),
         UiRowRef::Diagnostic(index) => diagnostic_detail_lines(&app.model.diagnostics[index]),
         UiRowRef::NativeStatus(index) => {

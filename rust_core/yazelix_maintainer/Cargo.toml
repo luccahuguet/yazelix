@@ -15,7 +15,7 @@ path = "src/bin/yzx_repo_maintainer.rs"
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-toml = "0.9"
+toml = "1.1"
 yazelix_core = { path = "../yazelix_core" }
 
 [dev-dependencies]

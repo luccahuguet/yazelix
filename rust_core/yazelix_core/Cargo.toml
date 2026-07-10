@@ -28,11 +28,11 @@ serde_json = "1.0"
 sha2 = "0.10"
 time = { version = "0.3", features = ["formatting", "local-offset", "macros"] }
 thiserror = "2.0"
-toml = "0.9"
-yazelix_cursors = { git = "https://github.com/luccahuguet/yazelix-cursors", rev = "98ddd8b280b8efa67adcb3d14f8de16c13ee18fe" }
-ratconfig = { git = "https://github.com/luccahuguet/ratconfig", rev = "9d8fdc47ee6f0026ae16b331e167307b925277e3", features = ["crossterm-runner"] }
+toml = "1.1"
+yazelix_cursors = { git = "https://github.com/luccahuguet/yazelix-cursors", rev = "818cc9b1496ca6964b99139e548170873c0fe99e" }
+ratconfig = { git = "https://github.com/luccahuguet/ratconfig", rev = "110e749a5fb10e146611427564bd6afda0750827", features = ["crossterm-runner"] }
 yazelix_screen = { git = "https://github.com/luccahuguet/yazelix-screen", rev = "9dc52f7112e249e0f51effdb84370d46e143379c" }
-yazelix_yazi_assets = { git = "https://github.com/luccahuguet/yazelix-yazi-assets", rev = "e9a936a2f2de05024a8e9d6d2f95d0a205fb0bf4" }
+yazelix_yazi_assets = { git = "https://github.com/luccahuguet/yazelix-yazi-assets", rev = "9937366a545ae7d56f8042526dafdc79190a4154" }
 yazelix_zellij_config_pack = { path = "../yazelix_zellij_config_pack" }
 
 [target.'cfg(target_os = "linux")'.dependencies]
@@ -45,4 +45,4 @@ windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Securit
 assert_cmd = "2.0"
 pretty_assertions = "1.4"
 tempfile = "3.10"
-toml = "0.9"
+toml = "1.1"

@@ -202,10 +202,13 @@ pub fn build_config_ui_model(request: &ConfigUiRequest) -> Result<ConfigUiModel,
             cursor_component_enabled,
         ),
         tabs,
+        tab_list_tables: BTreeMap::new(),
         fields,
+        file_actions: Vec::new(),
         sidecars: collect_sidecars(&request.config_dir),
         native_config_statuses,
         diagnostics,
+        theme_switcher: None,
     })
 }
 
@@ -237,16 +240,19 @@ fn read_active_config_value(path: &Path) -> Result<JsonValue, CoreError> {
             source,
         )
     })?;
-    let table = ::toml::from_str::<::toml::Table>(&raw).map_err(|source| {
-        CoreError::toml(
+    let table = toml::from_str::<toml::Table>(&raw).map_err(|source| {
+        CoreError::classified(
+            ErrorClass::Config,
             "invalid_toml",
-            "Could not parse the active Yazelix config",
+            format!(
+                "Could not parse the active Yazelix config at {}: {source}.",
+                path.display()
+            ),
             "Fix the TOML syntax in the reported file and retry.",
-            path.display().to_string(),
-            source,
+            json!({ "path": path.display().to_string() }),
         )
     })?;
-    toml_value_to_json(&::toml::Value::Table(table)).map_err(|message| {
+    toml_value_to_json(&toml::Value::Table(table)).map_err(|message| {
         CoreError::classified(
             ErrorClass::Config,
             "invalid_toml_value",
@@ -352,13 +358,16 @@ fn load_contract_fields(path: &Path) -> Result<BTreeMap<String, ConfigUiContract
             source,
         )
     })?;
-    let contract = ::toml::from_str::<::toml::Table>(&raw).map_err(|source| {
-        CoreError::toml(
+    let contract = toml::from_str::<toml::Table>(&raw).map_err(|source| {
+        CoreError::classified(
+            ErrorClass::Config,
             "invalid_config_contract",
-            "Could not parse the Yazelix config contract",
+            format!(
+                "Could not parse the Yazelix config contract at {}: {source}.",
+                path.display()
+            ),
             "Reinstall Yazelix so the runtime includes a valid config contract.",
-            path.display().to_string(),
-            source,
+            json!({ "path": path.display().to_string() }),
         )
     })?;
     config_contract_fields_from_toml(&contract).map_err(|message| {
@@ -417,13 +426,16 @@ fn load_config_ui_metadata(path: &Path) -> Result<ConfigUiMetadata, CoreError> {
             source,
         )
     })?;
-    let metadata = ::toml::from_str::<::toml::Table>(&raw).map_err(|source| {
-        CoreError::toml(
+    let metadata = toml::from_str::<toml::Table>(&raw).map_err(|source| {
+        CoreError::classified(
+            ErrorClass::Config,
             "invalid_config_ui_metadata",
-            "Could not parse the Yazelix config UI metadata",
+            format!(
+                "Could not parse the Yazelix config UI metadata at {}: {source}.",
+                path.display()
+            ),
             "Reinstall Yazelix so the runtime includes a valid config UI metadata file.",
-            path.display().to_string(),
-            source,
+            json!({ "path": path.display().to_string() }),
         )
     })?;
     config_ui_metadata_from_toml(&metadata).map_err(|message| {
@@ -626,6 +638,9 @@ pub(super) fn build_field_row(
     build_config_ui_field(ConfigUiFieldRowSpec {
         source_id,
         path,
+        display_label: String::new(),
+        section_label: String::new(),
+        list_cells: Vec::new(),
         tab,
         kind,
         current,

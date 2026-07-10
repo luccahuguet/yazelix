@@ -35,8 +35,8 @@ impl YazelixConfigUiApp {
         }
     }
 
-    pub(super) fn handle_key(&mut self, key: KeyEvent) {
-        let intent = handle_ratconfig_crossterm_key(&mut self.ui, key);
+    pub(super) fn handle_key(&mut self, key: ConfigUiKey) {
+        let intent = self.ui.handle_key(key);
         let host = YazelixConfigUiHost {
             request: &self.request,
         };
@@ -68,6 +68,15 @@ impl YazelixConfigUiHost<'_> {
                 Ok(_) => ui.begin_edit_field(field_index),
                 Err(error) => ui.notice_error(error.message()),
             },
+            ConfigUiIntent::OpenFile {
+                action_id, path, ..
+            } => ui.notice_error(format!(
+                "The Ratconfig file action {action_id} for {} has no Yazelix host handler.",
+                path.display()
+            )),
+            ConfigUiIntent::EditTextExternally { path, .. } => ui.notice_error(format!(
+                "The Ratconfig external editor action for {path} has no Yazelix host handler."
+            )),
             ConfigUiIntent::SetField {
                 source_id,
                 path,

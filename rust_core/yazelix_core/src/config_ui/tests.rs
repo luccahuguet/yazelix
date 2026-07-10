@@ -370,7 +370,7 @@ fn keybinding_map_parent_does_not_open_raw_object_editor() {
     let mut app = fixture.app();
 
     select_field_path(&mut app, "zellij.keybindings");
-    app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+    app.handle_key(ConfigUiKey::Enter);
 
     assert!(app.edit.is_none());
     assert_eq!(
@@ -386,7 +386,7 @@ fn complex_registry_field_does_not_open_raw_array_editor() {
     let mut app = fixture.app();
 
     select_field_path(&mut app, "cursors.cursor");
-    app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+    app.handle_key(ConfigUiKey::Enter);
 
     assert!(app.edit.is_none());
     assert_eq!(
@@ -411,15 +411,15 @@ fn cursor_enabled_cursors_opens_multi_choice_picker_and_writes_cursor_config() {
     assert!(field.allowed_values.contains(&"midnight".to_string()));
 
     select_field_path(&mut app, "cursors.enabled_cursors");
-    app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+    app.handle_key(ConfigUiKey::Enter);
 
     let edit = app.edit.clone().expect("edit");
     assert_eq!(edit.mode, ConfigUiEditMode::MultiChoice);
     let details = field_details(&app, edit.field_index);
     assert!(details.contains("> [x] blaze"));
 
-    app.handle_key(KeyEvent::new(KeyCode::Char(' '), KeyModifiers::NONE));
-    app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+    app.handle_key(ConfigUiKey::Char(' '));
+    app.handle_key(ConfigUiKey::Enter);
 
     assert!(app.edit.is_none());
     let value = read_settings_jsonc_value(&cursor_path).expect("cursor settings jsonc");
@@ -454,7 +454,7 @@ fn cursor_trail_uses_dynamic_single_choice_picker() {
     assert!(details.contains("  (x) random"));
     assert!(!details.contains("> (x) random"));
 
-    app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+    app.handle_key(ConfigUiKey::Enter);
 
     let edit = app.edit.clone().expect("edit");
     assert_eq!(edit.mode, ConfigUiEditMode::Choice);
@@ -474,13 +474,13 @@ fn keybinding_action_row_writes_single_binding_list() {
     let mut app = fixture.app();
 
     select_field_path(&mut app, "zellij.keybindings.bottom_popup");
-    app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+    app.handle_key(ConfigUiKey::Enter);
 
     let edit = app.edit.as_mut().expect("edit");
     assert_eq!(edit.mode, ConfigUiEditMode::Text);
     assert_eq!(edit.input, "Alt x");
     edit.input = "Alt Shift X".to_string();
-    app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+    app.handle_key(ConfigUiKey::Enter);
 
     assert!(app.edit.is_none());
     let value = read_settings_jsonc_value(&settings_path).expect("settings jsonc");
@@ -592,7 +592,7 @@ fn custom_popup_add_and_remove_rows_patch_parent_popup_list() {
     )
     .expect("add popup");
     select_field_path(&mut app, "zellij.custom_popups.zenith");
-    app.handle_key(KeyEvent::new(KeyCode::Char('u'), KeyModifiers::NONE));
+    app.handle_key(ConfigUiKey::Char('u'));
 
     let value = read_settings_jsonc_value(&settings_path).expect("settings jsonc");
     assert_eq!(
@@ -800,7 +800,7 @@ fn enum_string_list_picker_toggles_subvalues_with_space() {
     let mut app = fixture.app();
 
     select_field_path(&mut app, "zellij.widget_tray");
-    app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+    app.handle_key(ConfigUiKey::Enter);
 
     let edit = app.edit.clone().expect("edit");
     assert_eq!(edit.mode, ConfigUiEditMode::MultiChoice);
@@ -810,11 +810,11 @@ fn enum_string_list_picker_toggles_subvalues_with_space() {
     assert!(details.contains("  [ ] workspace"));
     assert!(!details.contains("cursor"));
 
-    app.handle_key(KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE));
-    app.handle_key(KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE));
-    app.handle_key(KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE));
-    app.handle_key(KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE));
-    app.handle_key(KeyEvent::new(KeyCode::Char(' '), KeyModifiers::NONE));
+    app.handle_key(ConfigUiKey::Char('j'));
+    app.handle_key(ConfigUiKey::Char('j'));
+    app.handle_key(ConfigUiKey::Char('j'));
+    app.handle_key(ConfigUiKey::Char('j'));
+    app.handle_key(ConfigUiKey::Char(' '));
 
     let field = app.model.fields[edit.field_index].clone();
     let input = app.edit.as_ref().expect("edit").input.clone();
@@ -830,7 +830,7 @@ fn enum_string_list_picker_toggles_subvalues_with_space() {
         ]
     );
 
-    app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+    app.handle_key(ConfigUiKey::Enter);
 
     assert!(app.edit.is_none());
     let value = read_settings_jsonc_value(&settings_path).expect("settings jsonc");
@@ -855,7 +855,7 @@ fn scalar_enum_enter_opens_single_select_picker() {
     let mut app = fixture.app();
 
     select_field_path(&mut app, "terminal.config_mode");
-    app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+    app.handle_key(ConfigUiKey::Enter);
 
     let edit = app.edit.clone().expect("edit");
     assert_eq!(edit.mode, ConfigUiEditMode::Choice);
@@ -863,14 +863,14 @@ fn scalar_enum_enter_opens_single_select_picker() {
     assert!(details.contains("> (x) yazelix"));
     assert!(details.contains("  ( ) user"));
 
-    app.handle_key(KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE));
+    app.handle_key(ConfigUiKey::Char('j'));
     let details = field_details(&app, edit.field_index);
     assert!(details.contains("> ( ) user"));
-    app.handle_key(KeyEvent::new(KeyCode::Char(' '), KeyModifiers::NONE));
+    app.handle_key(ConfigUiKey::Char(' '));
     let details = field_details(&app, edit.field_index);
     assert!(details.contains("> (x) user"));
 
-    app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+    app.handle_key(ConfigUiKey::Enter);
 
     assert!(app.edit.is_none());
     let value = read_settings_jsonc_value(&settings_path).expect("settings jsonc");
@@ -888,7 +888,7 @@ fn scalar_enum_space_opens_picker_without_writing() {
     let mut app = fixture.app();
 
     select_field_path(&mut app, "terminal.config_mode");
-    app.handle_key(KeyEvent::new(KeyCode::Char(' '), KeyModifiers::NONE));
+    app.handle_key(ConfigUiKey::Char(' '));
 
     let edit = app.edit.clone().expect("edit");
     assert_eq!(edit.mode, ConfigUiEditMode::Choice);
@@ -897,9 +897,9 @@ fn scalar_enum_space_opens_picker_without_writing() {
     assert!(!settings_path.exists());
 }
 
-// Defends: Enter on bool rows performs the direct control action instead of opening an edit session.
+// Defends: Space stages a bool until Enter saves it, while normal Enter is inert and Escape cancels without touching host-owned config.
 #[test]
-fn enter_directly_applies_bool_field_without_edit_mode() {
+fn bool_field_stages_before_persisting_and_can_cancel() {
     let fixture = Fixture::new();
     let settings_path = fixture.settings_path();
     fixture.write_settings(|settings| {
@@ -908,7 +908,34 @@ fn enter_directly_applies_bool_field_without_edit_mode() {
     let mut app = fixture.app();
 
     select_field_path(&mut app, "editor.hide_sidebar_on_file_open");
-    app.handle_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+    app.handle_key(ConfigUiKey::Enter);
+
+    assert!(app.edit.is_none());
+    let value = read_settings_jsonc_value(&settings_path).expect("settings jsonc");
+    assert_eq!(
+        get_json_path(&value, "editor.hide_sidebar_on_file_open"),
+        Some(&json!(false))
+    );
+
+    app.handle_key(ConfigUiKey::Char(' '));
+
+    assert_eq!(app.edit.as_ref().expect("staged bool").input, "true");
+    let value = read_settings_jsonc_value(&settings_path).expect("settings jsonc");
+    assert_eq!(
+        get_json_path(&value, "editor.hide_sidebar_on_file_open"),
+        Some(&json!(false))
+    );
+
+    app.handle_key(ConfigUiKey::Esc);
+    assert!(app.edit.is_none());
+    let value = read_settings_jsonc_value(&settings_path).expect("settings jsonc");
+    assert_eq!(
+        get_json_path(&value, "editor.hide_sidebar_on_file_open"),
+        Some(&json!(false))
+    );
+
+    app.handle_key(ConfigUiKey::Char(' '));
+    app.handle_key(ConfigUiKey::Enter);
 
     assert!(app.edit.is_none());
     let value = read_settings_jsonc_value(&settings_path).expect("settings jsonc");
