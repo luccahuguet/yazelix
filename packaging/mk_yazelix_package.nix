@@ -1,4 +1,5 @@
 {
+  cargoGitOutputHashes,
   pkgs,
   src ? ../.,
   rust_core_src ? src,
@@ -23,7 +24,7 @@
 
 let
   rustCoreHelper = import ./rust_core_helper.nix {
-    inherit pkgs fenixPkgs;
+    inherit cargoGitOutputHashes pkgs fenixPkgs;
     src = rust_core_src;
   };
   runtime = import ./mk_runtime_tree.nix {

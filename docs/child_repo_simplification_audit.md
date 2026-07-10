@@ -85,13 +85,10 @@ Fresh follow-ups:
 2. `yazelix-audit-deletion-extraction-third-pass-c0gmk.2`: resolved by replacing main-side child buildPhase marker checks with child-declared Zellij wasm package metadata; the Darwin regression guard now validates package passthru contract fields instead of private build recipe strings
 3. `yazelix-audit-deletion-extraction-third-pass-c0gmk.3`: delete unreferenced font-test GIF and old demo tape assets
 
-Child-release validator decision:
+Child-release validation decision:
 
-- Stable main-owned contracts: first-party child lock entries point at published GitHub revisions; local adjacent child checkouts are clean before a coupled release; first-party Cargo git dependencies have matching fixed-output hashes in `packaging/rust_core_helper.nix`; package outputs expose the stable runtime artifact paths Yazelix consumes
-- Transitional implementation-detail checks: `repo_child_release.rs` currently inspects Zellij plugin build phases for `dontCargoBuild`, explicit `CARGO`/`RUSTC`/`PATH`, wasm target preflight, and marker ordering
-- Target seam: implementation-sensitive claims move to child-owned package metadata or child-owned check outputs. Main should validate declared contract data and publication state, not exact child build recipe strings
-- Do not delete the current Darwin wasm checks until the child repos expose the replacement contract surface. The screen/ImageMagick guard retired with the magician style deletion because it no longer protects a live Yazelix contract
-- Follow-up beads now own the remaining cuts: add Zellij plugin child contract metadata and consume that metadata in the main validator
+- Stable main-owned contracts: first-party child lock entries point at published GitHub revisions; local adjacent child checkouts are clean before a coupled release; Cargo git dependencies use the shared fixed-output hashes in `packaging/cargo_git_output_hashes.nix`, where the Yazi revision is bound to its flake input; package outputs expose the stable runtime artifact paths Yazelix consumes
+- Implementation-sensitive Zellij build-recipe checks have been replaced by child-owned package metadata, so main validates declared wasm and cursor contract fields instead of private build phases
 
 Third-pass non-candidates:
 

@@ -1,6 +1,7 @@
 {
   agentUsagePackages,
   beadsRustPackage,
+  cargoGitOutputHashes,
   kgpPackages,
   pkgs,
   runtimePackage,
@@ -24,7 +25,7 @@ let
   yazelix_cursors = yazelixCursors.packages.${system}.yazelix_cursors;
   yazelix_helix = kgpPackages.helixPackage system;
   yazelix_zellij_config_pack = import ./yazelix_zellij_config_pack.nix {
-    inherit pkgs fenixPkgs;
+    inherit cargoGitOutputHashes pkgs fenixPkgs;
     src = ../.;
   };
   yazelix_zellij_pane_orchestrator =

@@ -1,4 +1,5 @@
 {
+  cargoGitOutputHashes,
   pkgs,
   lib,
   fenixPkgs,
@@ -17,7 +18,7 @@ let
     fenixPkgs.targets.wasm32-wasip1.stable.rust-std
   ];
   rustCoreHelper = import ./packaging/rust_core_helper.nix {
-    inherit pkgs fenixPkgs;
+    inherit cargoGitOutputHashes pkgs fenixPkgs;
     src = repoRoot;
   };
   cargoCrap = import ./packaging/cargo_crap.nix { inherit pkgs; };

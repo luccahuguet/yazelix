@@ -1,11 +1,9 @@
 {
   config,
   cfg,
-  fenixPkgs ? null,
   lib,
   marsTerminalPackage ? null,
   mkYazelixPackage ? null,
-  nixgl ? null,
   options,
   pkgs,
   yazelixHelixPackage ? null,
@@ -58,12 +56,7 @@ let
     else if mkYazelixPackage != null then
       mkYazelixPackage packageBuilderArgs
     else
-      import ../yazelix_package.nix (
-        packageBuilderArgs
-        // {
-          inherit fenixPkgs nixgl;
-        }
-      );
+      throw "programs.yazelix requires the Yazelix flake Home Manager module or an explicit programs.yazelix.package";
 
   runtimeConfigGenerationPath = lib.makeBinPath [
     pkgs.coreutils

@@ -178,6 +178,9 @@ jobs:
       - name: Validate Nix customization API
         run: nix develop .#ci -c "$YAZELIX_REPO_VALIDATOR" validate-nix-customization-api
 
+      - name: Validate Cargo git output hash contracts
+        run: nix build .#checks.x86_64-linux.cargo_git_output_hash_contracts --no-link --no-write-lock-file
+
   child_release_transaction:
     # Change-specific child publication/package-boundary validation.
     needs: [ci_plan, validation_helpers]

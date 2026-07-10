@@ -1,8 +1,10 @@
 {
+  cargoGitOutputHashes,
+  mars_terminal,
   pkgs,
   src,
+  yazelix_cursors,
   yazelix_helix,
-  yazelix_screen ? null,
   yazelix_yazi_assets,
   yazelix_zellij_pane_orchestrator,
   yazelix_zellij_popup,
@@ -20,8 +22,10 @@
 # exported flake outputs. Do not widen this without an explicit product decision.
 
 import ../mk_yazelix_package.nix {
-  inherit pkgs src;
+  inherit cargoGitOutputHashes pkgs src;
+  marsTerminalPackage = mars_terminal;
   metaPlatforms = pkgs.lib.platforms.linux;
+  yazelixCursorsPackage = yazelix_cursors;
   yazelixHelixPackage = yazelix_helix;
   yaziAssets = yazelix_yazi_assets;
   zellijPluginArtifacts = {

@@ -97,6 +97,9 @@
       lib = nixpkgs.lib;
       forAllSystems = nixpkgs.lib.genAttrs systems;
       mkPkgs = system: nixpkgs.legacyPackages.${system};
+      cargoGitOutputHashes = import ./packaging/cargo_git_output_hashes.nix {
+        inherit yazelixYaziAssets;
+      };
       releaseMetadata = builtins.fromTOML (builtins.readFile ./release_metadata.toml);
       inputIdentity = input: {
         revision = input.rev or null;
@@ -125,8 +128,6 @@
         };
       };
       homeManagerModule = { pkgs, ... }: {
-        _module.args.nixgl = nixgl;
-        _module.args.fenixPkgs = fenix.packages.${pkgs.stdenv.hostPlatform.system};
         _module.args.mkYazelixPackage = mkYazelix pkgs.stdenv.hostPlatform.system;
         _module.args.yazelixHelixPackage =
           kgpPackages.helixPackage pkgs.stdenv.hostPlatform.system;
@@ -205,7 +206,7 @@
         import ./yazelix_package.nix (
           {
             inherit nixgl runtimeVariant runtimeToolSources components yaziAssets zellijPluginArtifacts;
-            inherit runtimeIdentity;
+            inherit cargoGitOutputHashes runtimeIdentity;
             inherit name runtimeName skipStableWrapperRedirect marsTerminalPackage;
             inherit yazelixHelixPackage yazelixCursorsPackage;
             pkgs = runtimePkgs;
@@ -229,7 +230,7 @@
           marsTerminalPackage ? mars.packages.${system}.mars,
         }:
         import ./yazelix_runtime_package.nix {
-          inherit nixgl name runtimeIdentity runtimeVariant yazelixHelixPackage yazelixCursorsPackage marsTerminalPackage;
+          inherit cargoGitOutputHashes nixgl name runtimeIdentity runtimeVariant yazelixHelixPackage yazelixCursorsPackage marsTerminalPackage;
           pkgs = runtimePkgsFor system pkgs runtimeVariant;
           fenixPkgs = fenix.packages.${system};
           extraRuntimePackages = [
@@ -263,8 +264,9 @@
           yazelix = mkYazelix system { pkgs = final; };
           yazelix_zellij_bar = yazelixZellijBar.packages.${system}.yazelix_zellij_bar;
           yazelix_zellij_config_pack = import ./packaging/yazelix_zellij_config_pack.nix {
-            pkgs = final;
+            inherit cargoGitOutputHashes;
             fenixPkgs = fenix.packages.${system};
+            pkgs = final;
           };
           yazelix_yazi_assets = yazelixYaziAssets.packages.${system}.yazelix_yazi_assets;
           yazelix_helix = kgpPackages.helixPackage system;
@@ -284,7 +286,7 @@
       maintainerShell =
         system: pkgs:
         import ./maintainer_shell.nix {
-          inherit pkgs nixgl;
+          inherit cargoGitOutputHashes pkgs nixgl;
           lib = nixpkgs.lib;
           fenixPkgs = fenix.packages.${system};
           brPackage = beadsRustPackage system pkgs;
@@ -315,7 +317,7 @@
         in
         import ./packaging/flake_outputs.nix {
           inherit agentUsagePackages beadsRustPackage kgpPackages;
-          inherit pkgs runtimePackage system yazelixPackage;
+          inherit cargoGitOutputHashes pkgs runtimePackage system yazelixPackage;
           inherit yazelixCursors yazelixScreen yazelixYaziAssets;
           inherit yazelixZellijBar yazelixZellijPaneOrchestrator;
           inherit yazelixZellijPopup;
@@ -346,6 +348,10 @@
       );
 
       checks = forAllSystems (system: {
+        cargo_git_output_hash_contracts = import ./packaging/cargo_git_output_hash_contracts.nix {
+          inherit yazelixYaziAssets;
+          pkgs = mkPkgs system;
+        };
         home_manager_default = homeManagerDefaultActivationPackage system;
         kgp_package_contracts = import ./packaging/kgp_package_contracts.nix {
           inherit nixpkgs system kgpPackages;

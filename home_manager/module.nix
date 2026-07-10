@@ -2,10 +2,8 @@
   config,
   lib,
   options,
-  fenixPkgs ? null,
   mkYazelixPackage ? null,
   marsTerminalPackage ? null,
-  nixgl ? null,
   pkgs,
   yazelixHelixPackage ? null,
   yazelixCursorsPackage ? null,
@@ -36,11 +34,9 @@ let
     inherit
       cfg
       config
-      fenixPkgs
       lib
       marsTerminalPackage
       mkYazelixPackage
-      nixgl
       options
       pkgs
       yazelixHelixPackage

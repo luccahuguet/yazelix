@@ -1,4 +1,9 @@
-{ pkgs, src ? ../., fenixPkgs ? null }:
+{
+  cargoGitOutputHashes,
+  pkgs,
+  src ? ../.,
+  fenixPkgs ? null,
+}:
 
 let
   lib = pkgs.lib;
@@ -45,12 +50,7 @@ rustPlatform.buildRustPackage {
   cargoRoot = "rust_core";
   cargoLock = {
     lockFile = "${src}/rust_core/Cargo.lock";
-    outputHashes = {
-      "yazelix_cursors-0.1.0" = "sha256-NMHeKzfTzodG+Dfk4F/CLfEa2EiKodslnfaYQDBctxw=";
-      "ratconfig-2.0.0" = "sha256-NXnn7WOBEa7uQl8rs52gpIhpEGTeanRL5+au9ltjQyE=";
-      "yazelix_screen-0.1.0" = "sha256-e8qM6kzHUNMsbBBQ21QJEAgJp5rqytDiXVIJmGaY9SE=";
-      "yazelix_yazi_assets-0.1.0" = "sha256-MhKKkvosmyU1j2eQ6b0igvam9oo3vxl9GqGBga1mWvk=";
-    };
+    outputHashes = cargoGitOutputHashes;
   };
   buildAndTestSubdir = "rust_core";
   cargoBuildFlags = [

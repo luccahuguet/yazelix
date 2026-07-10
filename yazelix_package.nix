@@ -1,4 +1,5 @@
 {
+  cargoGitOutputHashes,
   pkgs,
   src ? null,
   rust_core_src ? ./.,
@@ -39,6 +40,7 @@ let
 in
 import ./packaging/mk_yazelix_package.nix {
   inherit
+    cargoGitOutputHashes
     pkgs
     rust_core_src
     nixgl
