@@ -27,18 +27,20 @@ fi
 HELIX_STEEL_CONFIG="$steel_config_dir"
 export HELIX_STEEL_CONFIG
 
-if [ -z "${YAZELIX_HELIX_BRIDGE_SESSION_ID:-}" ]; then
-  YAZELIX_HELIX_BRIDGE_SESSION_ID="yzn-helper-$(@date@ +%s)-$$"
-fi
-export YAZELIX_HELIX_BRIDGE_SESSION_ID
+if [ "${YAZELIX_HELIX_BRIDGE:-1}" != 0 ]; then
+  if [ -z "${YAZELIX_HELIX_BRIDGE_SESSION_ID:-}" ]; then
+    YAZELIX_HELIX_BRIDGE_SESSION_ID="yzn-helper-$(@date@ +%s)-$$"
+  fi
+  export YAZELIX_HELIX_BRIDGE_SESSION_ID
 
-export YAZELIX_HELIX_BRIDGE=1
-YAZELIX_HELIX_BRIDGE_INSTANCE_ID="hx-$(@date@ +%s)-$$"
-export YAZELIX_HELIX_BRIDGE_INSTANCE_ID
-YAZELIX_HELIX_BRIDGE_AUTH_TOKEN="$(@od@ -An -N32 -tx1 /dev/urandom | @tr@ -d ' \n')"
-export YAZELIX_HELIX_BRIDGE_AUTH_TOKEN
-YAZELIX_HELIX_MANAGED_CONFIG_PATH="$helix_config_file"
-export YAZELIX_HELIX_MANAGED_CONFIG_PATH
+  export YAZELIX_HELIX_BRIDGE=1
+  YAZELIX_HELIX_BRIDGE_INSTANCE_ID="hx-$(@date@ +%s)-$$"
+  export YAZELIX_HELIX_BRIDGE_INSTANCE_ID
+  YAZELIX_HELIX_BRIDGE_AUTH_TOKEN="$(@od@ -An -N32 -tx1 /dev/urandom | @tr@ -d ' \n')"
+  export YAZELIX_HELIX_BRIDGE_AUTH_TOKEN
+  YAZELIX_HELIX_MANAGED_CONFIG_PATH="$helix_config_file"
+  export YAZELIX_HELIX_MANAGED_CONFIG_PATH
+fi
 
 @mkdir@ -p "$YAZELIX_STATE_DIR"
 if ! @yznConfig@ --write-effective-helix-config "$packaged_helix_config" "$user_helix_config" "$helix_config_file"; then

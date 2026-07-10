@@ -258,21 +258,36 @@
         src = yznTutorSrc;
         cargoLock.lockFile = ./crates/yzn-tutor/Cargo.lock;
       };
-      yznEditorEnv = fallbackOnInvalid: ''
-        YAZELIX_NEXT_EDITOR="$(${yznConfig}/bin/yzn-config --get editor.command${if fallbackOnInvalid then " 2>/dev/null || printf %s yzn-hx" else ""})"
-        if [ "$YAZELIX_NEXT_EDITOR" = yzn-hx ]; then
-          YAZELIX_NEXT_EDITOR=${yznHelix}/bin/yzn-hx
-        fi
-        export YAZELIX_NEXT_EDITOR
-        export EDITOR=$YAZELIX_NEXT_EDITOR
-        export VISUAL=$YAZELIX_NEXT_EDITOR
-        export YZN_EDITOR=$YAZELIX_NEXT_EDITOR
-        export GIT_EDITOR=$YAZELIX_NEXT_EDITOR
+      yznEditor = pkgs.writeShellApplication {
+        name = "yzn-editor";
+        text = ''
+          fallback="''${YAZELIX_NEXT_EDITOR:-}"
+          if [ -n "$fallback" ]; then
+            editor="$(${yznConfig}/bin/yzn-config --get editor.command 2>/dev/null || printf %s "$fallback")"
+          else
+            editor="$(${yznConfig}/bin/yzn-config --get editor.command)"
+          fi
+          if [ "$editor" = yzn-hx ]; then
+            editor=${yznHelix}/bin/yzn-hx
+          fi
+          if ! command -v -- "$editor" >/dev/null 2>&1; then
+            printf 'Yazelix editor command not found: %s. Set editor.command to one executable name or path without arguments.\n' "$editor" >&2
+            exit 127
+          fi
+          export YAZELIX_HELIX_BRIDGE=0
+          exec -- "$editor" "$@"
+        '';
+      };
+      yznEditorEnv = ''
+        export EDITOR=${yznEditor}/bin/yzn-editor
+        export VISUAL=${yznEditor}/bin/yzn-editor
+        export GIT_EDITOR=${yznEditor}/bin/yzn-editor
       '';
       yznConfigUi = pkgs.writeShellApplication {
         name = "yzn-config-ui";
         text = ''
-          ${yznEditorEnv true}
+          export YAZELIX_NEXT_EDITOR="''${YAZELIX_NEXT_EDITOR:-${yznHelix}/bin/yzn-hx}"
+          ${yznEditorEnv}
           exec ${yznConfig}/bin/yzn-config "$@"
         '';
       };
@@ -312,6 +327,7 @@
         yznOpen = "${yznOpenCore}/bin/yzn-open";
         zellij = "${yazelixZellijPackage}/bin/zellij";
         yznHelix = "${yznHelix}/bin/yzn-hx";
+        yznEditor = "${yznEditor}/bin/yzn-editor";
         yznConfig = "${yznConfig}/bin/yzn-config";
         pathPrefix = pkgs.lib.makeBinPath [pkgs.fzf pkgs.git pkgs.starship pkgs.zoxide];
       };
@@ -366,10 +382,23 @@
         install -D -m 644 ${yznLayoutKdl} "$out/layout.kdl"
         install -D -m 644 ${yznLayoutSwapKdl} "$out/layout.swap.kdl"
       '';
+      yznLazyGitConfig = pkgs.writeText "yzn-lazygit.yml" ''
+        os:
+          edit: '${yznEditor}/bin/yzn-editor {{filename}}'
+          editAtLine: '${yznEditor}/bin/yzn-editor {{filename}}'
+          editAtLineAndWait: '${yznEditor}/bin/yzn-editor {{filename}}'
+          editInTerminal: true
+          openDirInEditor: '${yznEditor}/bin/yzn-editor {{dir}}'
+      '';
       yznGit = pkgs.writeShellApplication {
         name = "yzn-git";
         text = ''
-          ${yznEditorEnv false}
+          ${yznEditorEnv}
+          if [ -z "''${LG_CONFIG_FILE:-}" ]; then
+            config_file="$(${pkgs.lazygit}/bin/lazygit --print-config-dir)/config.yml"
+            [ ! -f "$config_file" ] || LG_CONFIG_FILE="$config_file"
+          fi
+          export LG_CONFIG_FILE="''${LG_CONFIG_FILE:+$LG_CONFIG_FILE,}${yznLazyGitConfig}"
           exec ${pkgs.lazygit}/bin/lazygit "$@"
         '';
       };
@@ -424,6 +453,7 @@
         yznAgent = "${yznAgent}/bin/yzn-agent";
         yznYazi = "${yznYazi}/bin/yzn-yazi";
         yznHelix = "${yznHelix}/bin/yzn-hx";
+        yznEditor = "${yznEditor}/bin/yzn-editor";
         yznConfig = "${yznConfig}/bin/yzn-config";
         yznMarsConfig = "${yznMarsConfig}";
         yznZellijConfig = "${yznZellijConfig}/bin/yzn-zellij-config";
@@ -688,7 +718,7 @@
         touch "$out"
       '';
       contracts = pkgs.runCommand "yzn-contracts" {} ''
-        ${yznContractsCheck}/bin/yzn-contracts-check ${yzn} "$out"
+        ${yznContractsCheck}/bin/yzn-contracts-check ${yzn} ${pkgs.git}/bin/git "$out"
       '';
       helix_contracts = pkgs.runCommand "yzn-helix-contracts" {} ''
         ${helixContractsCheck}/bin/helix-contracts-check ${yzn} "$out"

@@ -14,6 +14,7 @@ const YZN_YAZI_CONFIG: &str = "@yznYaziConfig@";
 const YZN_OPEN: &str = "@yznOpen@";
 const YZN_ZELLIJ: &str = "@zellij@";
 const YZN_HELIX: &str = "@yznHelix@";
+const YZN_EDITOR_LAUNCHER: &str = "@yznEditor@";
 const YZN_CONFIG: &str = "@yznConfig@";
 const PATH_PREFIX: &str = "@pathPrefix@";
 
@@ -53,10 +54,10 @@ fn run() -> io::Result<()> {
         .env("YZN_OPEN", YZN_OPEN)
         .env("YZN_ZELLIJ", YZN_ZELLIJ)
         .env("YAZELIX_NEXT_EDITOR", &editor)
-        .env("EDITOR", &editor)
-        .env("VISUAL", &editor)
+        .env("EDITOR", YZN_EDITOR_LAUNCHER)
+        .env("VISUAL", YZN_EDITOR_LAUNCHER)
         .env("YZN_EDITOR", &editor)
-        .env("GIT_EDITOR", &editor)
+        .env("GIT_EDITOR", YZN_EDITOR_LAUNCHER)
         .env("YZN_OPEN_LOG", yzn_open_log);
 
     if uses_helix_bridge(&editor) {
@@ -307,15 +308,19 @@ mod tests {
             "packaged init.lua\n\n-- Yazelix Next user init.lua\nuser init\n"
         );
         for plugin in ["git.yazi", "sidebar-state.yazi", "zoxide-editor.yazi"] {
-            assert!(fs::symlink_metadata(runtime.join("plugins").join(plugin))
+            assert!(
+                fs::symlink_metadata(runtime.join("plugins").join(plugin))
+                    .unwrap()
+                    .file_type()
+                    .is_symlink()
+            );
+        }
+        assert!(
+            fs::symlink_metadata(runtime.join("plugins/example.yazi"))
                 .unwrap()
                 .file_type()
-                .is_symlink());
-        }
-        assert!(fs::symlink_metadata(runtime.join("plugins/example.yazi"))
-            .unwrap()
-            .file_type()
-            .is_symlink());
+                .is_symlink()
+        );
         assert!(!runtime.join("plugins/ignored.txt").exists());
 
         fs::create_dir_all(user_plugins.join("git.yazi")).unwrap();

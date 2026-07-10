@@ -4,6 +4,10 @@ User-visible runtime changes for Yazelix Next live here.
 
 ## Unreleased
 
+- Managed LazyGit file edits honor `editor.command` instead of falling back to
+  Vim for unknown presets. Direct `yzn-editor` is also exported through
+  `EDITOR`, `VISUAL`, and `GIT_EDITOR`; it stays in the client lifecycle with
+  the Helix bridge disabled, while user LazyGit configuration remains loaded.
 - The managed agent popup command is configurable through root config
   `agent.command` and `agent.args`, exposed in the `yzn config` `popups` tab.
   The default `agent.command = "auto"` keeps the existing provider fallback.

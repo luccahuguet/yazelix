@@ -8,17 +8,16 @@ use std::{
 };
 
 use crate::{
+    AGENT_POPUP_KDL_CONFIG_PATH, CUSTOM_POPUP_KEYBINDINGS_KDL_CONFIG_PATH,
+    CUSTOM_POPUPS_KDL_CONFIG_PATH, POPUP_KEYBINDING_SPECS, YAZELIX_ZELLIJ_BAR_WASM,
+    YAZELIX_ZELLIJ_PANE_ORCHESTRATOR_WASM, YAZELIX_ZELLIJ_POPUP_WASM, YZN_CONFIG, YZN_CONFIG_KDL,
+    YZN_EDITOR, YZN_HELIX, YZN_MARS_CONFIG, YZN_YA, YZN_ZELLIJ_CONFIG, ZELLIJ,
     command::{
         create_dir_all_checked, run_checked, seed_permission_checked, touch_checked, trim_output,
     },
     error::AppError,
     paths::{config_home, home_dir, nonempty_env, parent, runtime_path, state_dir},
     zellij::{active_layout, active_zellij_config},
-    AGENT_POPUP_KDL_CONFIG_PATH, CUSTOM_POPUPS_KDL_CONFIG_PATH,
-    CUSTOM_POPUP_KEYBINDINGS_KDL_CONFIG_PATH,
-    POPUP_KEYBINDING_SPECS, YAZELIX_ZELLIJ_BAR_WASM, YAZELIX_ZELLIJ_PANE_ORCHESTRATOR_WASM,
-    YAZELIX_ZELLIJ_POPUP_WASM, YZN_CONFIG, YZN_CONFIG_KDL, YZN_HELIX, YZN_MARS_CONFIG, YZN_YA,
-    YZN_ZELLIJ_CONFIG, ZELLIJ,
 };
 
 pub(crate) struct Runtime {
@@ -223,10 +222,10 @@ impl Runtime {
             .env("YAZELIX_NEXT_CONFIG_HOME", &self.config_home)
             .env("YAZELIX_STATE_DIR", &self.state_dir)
             .env("YAZELIX_NEXT_EDITOR", &self.editor)
-            .env("EDITOR", &self.editor)
-            .env("VISUAL", &self.editor)
+            .env("EDITOR", YZN_EDITOR)
+            .env("VISUAL", YZN_EDITOR)
             .env("YZN_EDITOR", &self.editor)
-            .env("GIT_EDITOR", &self.editor)
+            .env("GIT_EDITOR", YZN_EDITOR)
             .env("YZN_OPEN_LOG", &self.yzn_open_log)
             .env("YZN_WELCOME_ENABLED", &self.welcome_enabled)
             .env("YZN_WELCOME_STYLE", &self.welcome_style)

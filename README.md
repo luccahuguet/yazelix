@@ -147,7 +147,8 @@ Root config lives at `~/.config/yazelix-next/config.toml`.
 
 `editor.command` accepts one executable name or path, not a shell command with
 arguments. `yzn-hx` uses packaged Yazelix Helix. Host editors such as `hx` or
-`nvim` run from `PATH` and skip the managed Helix bridge.
+`nvim` run from `PATH` and skip the managed Helix bridge. Terminal Git clients
+receive the same selection through `EDITOR`, `VISUAL`, and `GIT_EDITOR`.
 
 ## Popups
 
@@ -216,6 +217,10 @@ still need a new session.
 Managed Yazi opens files through `yzn-open`. With the default
 `editor.command = "yzn-hx"`, `yzn-open` reuses a live Helix bridge in the same
 Zellij tab or opens packaged Helix in the managed `editor` pane.
+
+Git editing stays in the client terminal. Managed LazyGit overlays only its
+file-edit commands and keeps user configuration; it and other terminal Git
+clients use direct `yzn-editor` through the standard editor variables.
 
 `Alt r` reveals the current Helix buffer in the Yazi sidebar. `yzn reveal
 <target>` exposes the same path inside a managed session.
@@ -314,13 +319,13 @@ git ls-files | grep -Ev '^\.beads/|\.lock$' | xargs wc -l
 | Language | Lines |
 | --- | ---: |
 | Ignore (`.gitignore`) | 4 |
-| Markdown | 1232 |
-| Nix | 932 |
-| Shell | 82 |
+| Markdown | 1250 |
+| Nix | 962 |
+| Shell | 84 |
 | YAML | 268 |
 | TOML | 242 |
 | KDL | 210 |
 | Nu | 11 |
 | Lua | 247 |
-| Rust | 11651 |
-| Total | 14879 |
+| Rust | 11695 |
+| Total | 14973 |

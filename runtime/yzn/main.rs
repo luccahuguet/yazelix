@@ -24,6 +24,7 @@ pub(crate) const LAYOUT_TEMPLATE: &str = "@layoutTemplate@";
 pub(crate) const LAYOUT_SWAP_TEMPLATE: &str = "@layoutSwapTemplate@";
 pub(crate) const YZN_YAZI: &str = "@yznYazi@";
 pub(crate) const YZN_HELIX: &str = "@yznHelix@";
+pub(crate) const YZN_EDITOR: &str = "@yznEditor@";
 pub(crate) const YZN_CONFIG: &str = "@yznConfig@";
 pub(crate) const YZN_MARS_CONFIG: &str = "@yznMarsConfig@";
 pub(crate) const YZN_ZELLIJ_CONFIG: &str = "@yznZellijConfig@";

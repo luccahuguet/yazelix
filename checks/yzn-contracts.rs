@@ -8,8 +8,8 @@ use std::{
 mod support;
 
 use support::{
-    binary_text, embedded_store_path, excerpt, expect_contains, expect_order, successful_output,
-    successful_stdout, write_config_home, write_executable, RuntimeCase, TempDir,
+    RuntimeCase, TempDir, binary_text, embedded_store_path, excerpt, expect_contains, expect_order,
+    successful_output, successful_stdout, write_config_home, write_executable,
 };
 
 const SPONSOR_URL: &str = "https://github.com/sponsors/luccahuguet";
@@ -22,11 +22,12 @@ macro_rules! expect_contains_all {
 
 fn main() {
     let args = env::args().collect::<Vec<_>>();
-    let [_, yzn, out] = args.as_slice() else {
-        panic!("usage: yzn-contracts-check <yzn-package> <out>");
+    let [_, yzn, git, out] = args.as_slice() else {
+        panic!("usage: yzn-contracts-check <yzn-package> <git> <out>");
     };
 
     let yzn = Path::new(yzn);
+    let git = Path::new(git);
     let config = fs::read_to_string(yzn.join("share/yazelix-next/config.kdl")).unwrap();
     let yzn_shell = default_shell(&config);
     assert!(
@@ -36,7 +37,7 @@ fn main() {
     );
     expect_shell_selection(&yzn_shell);
     expect_keybinds(&config);
-    expect_first_party_plugins(&config);
+    expect_first_party_plugins(git, &config);
     expect_front_door(yzn);
     expect_narrow_path_launches(yzn, &yzn_shell);
     expect_config_ui(yzn);
@@ -169,7 +170,9 @@ fn expect_front_door(yzn: &Path) {
         .collect::<Vec<_>>();
     assert_eq!(
         menu_ids,
-        ["config", "doctor", "status", "screen", "sponsor", "launch", "help", "tutor"],
+        [
+            "config", "doctor", "status", "screen", "sponsor", "launch", "help", "tutor"
+        ],
         "yzn menu command allowlist changed\n{menu}"
     );
     expect_menu_descriptions_match_help(&help, &menu);
@@ -1403,7 +1406,7 @@ fn expect_keybinds(config: &str) {
     );
 }
 
-fn expect_first_party_plugins(config: &str) {
+fn expect_first_party_plugins(git_bin: &Path, config: &str) {
     expect_contains_all! {
         config, "config.kdl first-party plugin fragment";
         "share/yazelix_zellij_popup/yzpp.wasm",
@@ -1456,33 +1459,69 @@ fn expect_first_party_plugins(config: &str) {
     let context = format!("{} managed Git popup wrapper", git.display());
     expect_contains_all! {
         &git_script, &context;
-        "editor.command",
-        "/bin/yzn-hx",
-        "/bin/yzn-config",
         "/bin/lazygit",
-        "YAZELIX_NEXT_EDITOR",
-        "YZN_EDITOR",
-        "GIT_EDITOR",
-        "EDITOR=$YAZELIX_NEXT_EDITOR",
-        "VISUAL=$YAZELIX_NEXT_EDITOR",
+        "LG_CONFIG_FILE",
+        "--print-config-dir",
     }
+    let editor = embedded_store_path(&git_script, "/bin/yzn-editor");
+    let lazygit_config = embedded_store_path(&git_script, "-yzn-lazygit.yml");
+    expect_git_editor(&editor, &lazygit_config, git_bin);
 
     let config_ui = popup_command(config, "/bin/yzn-config-ui");
     let config_ui_script = fs::read_to_string(&config_ui).unwrap();
     let context = format!("{} managed editor wrapper", config_ui.display());
     expect_contains_all! {
         &config_ui_script, &context;
-        "editor.command",
-        "YAZELIX_NEXT_EDITOR",
-        "/bin/yzn-hx",
-        "/bin/yzn-config",
-        "YZN_EDITOR",
+        "/bin/yzn-editor",
         "GIT_EDITOR",
-        "EDITOR=$YAZELIX_NEXT_EDITOR",
-        "VISUAL=$YAZELIX_NEXT_EDITOR",
     }
 
     assert!(popup_command(config, "/bin/yzn-menu").is_file());
+}
+
+fn expect_git_editor(editor: &Path, lazygit_config: &Path, git: &Path) {
+    let config = fs::read_to_string(lazygit_config).unwrap();
+    assert_eq!(
+        config.matches("/bin/yzn-editor {{filename}}").count(),
+        3,
+        "LazyGit file edits bypass yzn-editor\n{config}"
+    );
+    expect_contains_all! {
+        &config, "managed LazyGit editor config";
+        "editInTerminal: true",
+        "/bin/yzn-editor {{dir}}",
+    }
+
+    let temp = TempDir::new();
+    let git_editor = temp.path.join("git-editor");
+    write_executable(
+        &git_editor,
+        "#!/bin/sh\n[ \"$YAZELIX_HELIX_BRIDGE\" = 0 ] || exit 64\nprintf '%s\\n' 'configured editor commit' >\"$1\"\n",
+    );
+    let git_config = temp.path.join("git-config");
+    write_config_home(
+        &git_config,
+        format!("[editor]\ncommand = \"{}\"\n", git_editor.display()),
+    );
+    let repo = temp.path.join("repo with spaces");
+    successful_output(Command::new(git).arg("init").arg(&repo), "Git init");
+    successful_output(
+        Command::new(git)
+            .arg("-C")
+            .arg(&repo)
+            .args([
+                "-c",
+                "user.name=Yazelix Test",
+                "-c",
+                "user.email=yazelix@example.invalid",
+                "commit",
+                "--allow-empty",
+            ])
+            .env("GIT_EDITOR", editor)
+            .env("YAZELIX_NEXT_CONFIG_HOME", &git_config)
+            .env_remove("YAZELIX_NEXT_EDITOR"),
+        "Git commit through configured editor",
+    );
 }
 
 fn expect_popup_binding(config: &str, key: &str, payload: &str, context: &str) {

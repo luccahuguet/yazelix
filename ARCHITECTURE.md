@@ -85,7 +85,7 @@ One owner per concern. Paths are the durable map.
 | --- | --- |
 | `open.log_level` | `YZN_OPEN_LOG` for managed opens |
 | `shell.program` | Packaged shell for new panes (`nu`/`bash`/`zsh`/`fish`) |
-| `editor.command` | Yazi opens + config text edits; `yzn-hx` vs host PATH |
+| `editor.command` | Yazi opens + config text edits + Git clients; `yzn-hx` vs host PATH |
 | `agent.command` / `agent.args` | Managed agent popup command; `auto` preserves provider bootstrap |
 | `welcome.*` | Pre-Zellij splash enable/style/duration |
 | `popup.side_margin` / `popup.vertical_margin` | `yzpp` default margins |
@@ -201,6 +201,15 @@ a new session.
 - Packaged bindings: `Alt r` reveal (reserved), `Ctrl r` reload (user-overridable).
 - Host `editor.command` values skip the Helix bridge.
 
+### Git editor boundary
+
+- `yzn-editor` resolves `editor.command`, disables the Helix bridge, and directly
+  replaces itself with the executable; it never calls `yzn-open` or Zellij.
+- Managed sessions export `yzn-editor` through `EDITOR`, `VISUAL`, and
+  `GIT_EDITOR`. `YZN_EDITOR` remains the effective editor for managed Yazi opens.
+- `yzn-git` appends a LazyGit `os.edit*` overlay while retaining global and
+  repository configuration.
+
 ---
 
 ## Startup boundary
@@ -208,7 +217,7 @@ a new session.
 Owned by `runtime/yzn/` (Nix substitutes paths; Rust owns wiring and `exec`).
 
 1. `YAZELIX_STATE_DIR` + optional `YAZELIX_HELIX_BRIDGE_SESSION_ID` (when `yzn-hx`)  
-2. `EDITOR` / `VISUAL` / `YZN_EDITOR` / `YAZELIX_NEXT_EDITOR` / `GIT_EDITOR` from `editor.command`  
+2. Effective `YZN_EDITOR` / `YAZELIX_NEXT_EDITOR`; standard editor variables route through `yzn-editor`
 3. Config home: `YAZELIX_NEXT_CONFIG_HOME` → `XDG_CONFIG_HOME/yazelix-next` → `~/.config/yazelix-next`  
 4. Root settings → env (`YZN_OPEN_LOG`, welcome, popup chords/custom KDL, bar tray)  
 5. Mars config home selection  
