@@ -178,6 +178,7 @@ fn build_key_binding_field(
         path: chord.to_string(),
         tab: TAB_KEYS.to_string(),
         display_label: format!("{group}: {chord} - {action}"),
+        section_label: String::new(),
         list_cells: [*group, *chord, *action, *owner]
             .into_iter()
             .map(str::to_string)
@@ -269,6 +270,7 @@ fn build_config_field(
         source_id,
         path: spec.path,
         display_label: String::new(),
+        section_label: String::new(),
         list_cells: Vec::new(),
         tab,
         kind: spec.kind,
@@ -296,6 +298,7 @@ fn build_bar_widgets_field(
         source_id: SOURCE_CONFIG.to_string(),
         path: BAR_WIDGETS_PATH.to_string(),
         display_label: String::new(),
+        section_label: String::new(),
         list_cells: Vec::new(),
         tab: TAB_CONFIG.to_string(),
         current: current.ok().flatten(),
