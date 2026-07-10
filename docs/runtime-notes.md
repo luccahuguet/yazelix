@@ -138,12 +138,17 @@ opens a new Yazelix terminal pane at the current file directory or workspace.
 
 ## Yazi
 
-Managed Yazi accepts native TOML plus optional Lua and keymap sidecars:
+Managed Yazi accepts native TOML, optional Lua and keymap sidecars, and a
+user-owned asset tree:
 
 ```text
 ~/.config/yazelix-next/yazi/yazi.toml
+~/.config/yazelix-next/yazi/theme.toml
+~/.config/yazelix-next/yazi/package.toml
 ~/.config/yazelix-next/yazi/init.lua
 ~/.config/yazelix-next/yazi/keymap.toml
+~/.config/yazelix-next/yazi/plugins/*.yazi/
+~/.config/yazelix-next/yazi/flavors/*.yazi/
 ```
 
 Native TOML tables merge recursively. User scalars and arrays replace packaged
@@ -152,19 +157,30 @@ which keeps user fetchers while restoring the two sidebar Git fetchers exactly
 once. The managed edit opener is always restored. Invalid TOML fails before
 Yazi launches. Normal `~/.config/yazi` is not read.
 
-When the managed init file exists, plugin directories under
-`~/.config/yazelix-next/yazi/plugins/*.yazi` are linked into the runtime config.
-Packaged plugin names cannot be overridden.
+Plugin and flavor directories activate materialization independently of
+`init.lua` and are linked into the runtime config. Packaged names cannot be
+overridden. `theme.toml` is the native Yazi surface for choosing flavors;
+`package.toml` passes through as opaque `ya pkg` metadata, but Yazelix never
+runs the package manager. Create asset directories in this tree or symlink
+them from another checkout.
 
 Example managed Yazi plugin layout:
 
 ```text
 ~/.config/yazelix-next/yazi/plugins/foo.yazi/main.lua
+~/.config/yazelix-next/yazi/flavors/foo.yazi/flavor.toml
 ~/.config/yazelix-next/yazi/init.lua
+~/.config/yazelix-next/yazi/theme.toml
 ```
 
 ```lua
 require("foo"):setup()
+```
+
+```toml
+[flavor]
+dark = "foo"
+light = "foo"
 ```
 
 Managed Yazi refreshes sidebar git decorations on setup, directory changes, tab

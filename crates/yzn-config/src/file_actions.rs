@@ -44,7 +44,7 @@ pub(crate) fn build_file_actions(paths: &ConfigPaths) -> Vec<ConfigUiFileAction>
         })
         .collect()
 }
-fn file_action_specs(paths: &ConfigPaths) -> [FileActionSpec; 10] {
+fn file_action_specs(paths: &ConfigPaths) -> impl IntoIterator<Item = FileActionSpec> {
     [
         FileActionSpec {
             source_id: SOURCE_HELIX,
@@ -126,6 +126,24 @@ fn file_action_specs(paths: &ConfigPaths) -> [FileActionSpec; 10] {
             description: "Open the managed Yazi user keymap.toml file.",
             path: paths.yazi_keymap.clone(),
             starter: YAZI_KEYMAP_STARTER,
+        },
+        FileActionSpec {
+            source_id: SOURCE_ADVANCED,
+            action_id: ACTION_YAZI_PACKAGE,
+            tab: TAB_ADVANCED,
+            label: "yazi/package.toml",
+            description: "Open the managed Yazi package metadata file.",
+            path: paths.yazi_package.clone(),
+            starter: YAZI_PACKAGE_STARTER,
+        },
+        FileActionSpec {
+            source_id: SOURCE_ADVANCED,
+            action_id: ACTION_YAZI_THEME,
+            tab: TAB_ADVANCED,
+            label: "yazi/theme.toml",
+            description: "Open the managed native Yazi theme config file.",
+            path: paths.yazi_theme.clone(),
+            starter: YAZI_THEME_STARTER,
         },
         FileActionSpec {
             source_id: SOURCE_ADVANCED,

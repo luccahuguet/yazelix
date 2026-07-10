@@ -613,6 +613,8 @@
           yazi.config.text = "[mgr]\nshow_hidden = true\n";
           yazi.init.text = "-- init\n";
           yazi.keymap.text = "[manager]\n";
+          yazi.package.text = "[plugin]\ndeps = []\n";
+          yazi.theme.text = "[flavor]\ndark = \"example\"\n";
           nu.env.text = "# env\n";
           nu.config.text = "# config\n";
         };
@@ -663,6 +665,8 @@
         grep -q '(provide yzn-test)' "$config_files/helix/helix.scm"
         grep -q 'show_hidden = true' "$config_files/yazi/yazi.toml"
         grep -q -- '-- init' "$config_files/yazi/init.lua"
+        grep -q 'deps = \[\]' "$config_files/yazi/package.toml"
+        grep -q 'dark = "example"' "$config_files/yazi/theme.toml"
         grep -q '# config' "$config_files/nu/config.nu"
 
         export HOME="$TMPDIR/hm-yzn-home"

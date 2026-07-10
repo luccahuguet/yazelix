@@ -84,6 +84,8 @@ pub(crate) const ACTION_NU_CONFIG: &str = "nu.config";
 pub(crate) const ACTION_YAZI_CONFIG: &str = "yazi.config";
 pub(crate) const ACTION_YAZI_INIT: &str = "yazi.init";
 pub(crate) const ACTION_YAZI_KEYMAP: &str = "yazi.keymap";
+pub(crate) const ACTION_YAZI_PACKAGE: &str = "yazi.package";
+pub(crate) const ACTION_YAZI_THEME: &str = "yazi.theme";
 pub(crate) const ACTION_ZELLIJ_PLUGINS: &str = "zellij.plugins";
 pub(crate) const HELIX_CONFIG_STARTER: &str = include_str!("../../../helix/config.toml");
 pub(crate) const HELIX_LANGUAGES_STARTER: &str = "# Managed Helix language overrides.\n";
@@ -95,6 +97,9 @@ pub(crate) const YAZI_CONFIG_STARTER: &str = "# Extended over Yazelix Next packa
 pub(crate) const YAZI_INIT_STARTER: &str = "-- Loaded after Yazelix Next packaged yazi/init.lua.\n";
 pub(crate) const YAZI_KEYMAP_STARTER: &str =
     "# Loaded after Yazelix Next packaged yazi/keymap.toml.\n";
+pub(crate) const YAZI_PACKAGE_STARTER: &str = "# Managed Yazi package metadata. Yazelix does not run ya pkg.\n[plugin]\ndeps = []\n\n[flavor]\ndeps = []\n";
+pub(crate) const YAZI_THEME_STARTER: &str =
+    "# Managed native Yazi theme config.\n[flavor]\ndark = \"\"\nlight = \"\"\n";
 pub(crate) const ZELLIJ_PLUGINS_STARTER: &str = "// Extra managed Zellij plugins. Do not declare yzpp or yazelix_pane_orchestrator here.\nplugins {\n}\n\nload_plugins {\n}\n";
 pub(crate) const KEY_READ_ONLY_REASON: &str =
     "Read-only key binding; yzn config does not rewrite native keymaps.";

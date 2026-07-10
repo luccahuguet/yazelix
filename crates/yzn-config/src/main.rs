@@ -149,6 +149,8 @@ mod tests {
             yazi_config: temp.path.join("yazi/yazi.toml"),
             yazi_init: temp.path.join("yazi/init.lua"),
             yazi_keymap: temp.path.join("yazi/keymap.toml"),
+            yazi_package: temp.path.join("yazi/package.toml"),
+            yazi_theme: temp.path.join("yazi/theme.toml"),
             zellij_plugins: temp.path.join("zellij/plugins.kdl"),
         }
     }
@@ -980,91 +982,41 @@ mod tests {
         assert!(model.sources.iter().any(|source| {
             source.id == SOURCE_HELIX && source.tab == TAB_HELIX && source.path == paths.helix_dir
         }));
+        assert!(model.file_actions.iter().all(|action| {
+            let expected = if action.label.starts_with("helix/") {
+                (SOURCE_HELIX, TAB_HELIX)
+            } else {
+                (SOURCE_ADVANCED, TAB_ADVANCED)
+            };
+            (action.source_id.as_str(), action.tab.as_str()) == expected
+        }));
         let summaries: Vec<_> = model
             .file_actions
             .iter()
-            .map(|action| {
-                [
-                    action.source_id.as_str(),
-                    action.action_id.as_str(),
-                    action.tab.as_str(),
-                    action.label.as_str(),
-                ]
-            })
+            .map(|action| (action.action_id.as_str(), action.label.as_str()))
             .collect();
         assert_eq!(
             summaries,
             [
-                [
-                    SOURCE_HELIX,
-                    ACTION_HELIX_CONFIG,
-                    TAB_HELIX,
-                    "helix/config.toml"
-                ],
-                [
-                    SOURCE_HELIX,
-                    ACTION_HELIX_LANGUAGES,
-                    TAB_HELIX,
-                    "helix/languages.toml",
-                ],
-                [
-                    SOURCE_HELIX,
-                    ACTION_HELIX_MODULE,
-                    TAB_HELIX,
-                    "helix/helix.scm"
-                ],
-                [SOURCE_HELIX, ACTION_HELIX_INIT, TAB_HELIX, "helix/init.scm"],
-                [SOURCE_ADVANCED, ACTION_NU_ENV, TAB_ADVANCED, "nu/env.nu"],
-                [
-                    SOURCE_ADVANCED,
-                    ACTION_NU_CONFIG,
-                    TAB_ADVANCED,
-                    "nu/config.nu"
-                ],
-                [
-                    SOURCE_ADVANCED,
-                    ACTION_YAZI_CONFIG,
-                    TAB_ADVANCED,
-                    "yazi/yazi.toml",
-                ],
-                [
-                    SOURCE_ADVANCED,
-                    ACTION_YAZI_INIT,
-                    TAB_ADVANCED,
-                    "yazi/init.lua"
-                ],
-                [
-                    SOURCE_ADVANCED,
-                    ACTION_YAZI_KEYMAP,
-                    TAB_ADVANCED,
-                    "yazi/keymap.toml",
-                ],
-                [
-                    SOURCE_ADVANCED,
-                    ACTION_ZELLIJ_PLUGINS,
-                    TAB_ADVANCED,
-                    "zellij/plugins.kdl",
-                ],
+                (ACTION_HELIX_CONFIG, "helix/config.toml"),
+                (ACTION_HELIX_LANGUAGES, "helix/languages.toml"),
+                (ACTION_HELIX_MODULE, "helix/helix.scm"),
+                (ACTION_HELIX_INIT, "helix/init.scm"),
+                (ACTION_NU_ENV, "nu/env.nu"),
+                (ACTION_NU_CONFIG, "nu/config.nu"),
+                (ACTION_YAZI_CONFIG, "yazi/yazi.toml"),
+                (ACTION_YAZI_INIT, "yazi/init.lua"),
+                (ACTION_YAZI_KEYMAP, "yazi/keymap.toml"),
+                (ACTION_YAZI_PACKAGE, "yazi/package.toml"),
+                (ACTION_YAZI_THEME, "yazi/theme.toml"),
+                (ACTION_ZELLIJ_PLUGINS, "zellij/plugins.kdl"),
             ]
         );
-        assert_eq!(
+        assert!(
             model
                 .file_actions
                 .iter()
-                .map(|action| action.path.as_path())
-                .collect::<Vec<_>>(),
-            [
-                paths.helix_config.as_path(),
-                paths.helix_languages.as_path(),
-                paths.helix_module.as_path(),
-                paths.helix_init.as_path(),
-                paths.nu_env.as_path(),
-                paths.nu_config.as_path(),
-                paths.yazi_config.as_path(),
-                paths.yazi_init.as_path(),
-                paths.yazi_keymap.as_path(),
-                paths.zellij_plugins.as_path(),
-            ]
+                .all(|action| action.path.ends_with(&action.label))
         );
         assert!(
             model
@@ -1095,6 +1047,8 @@ mod tests {
             &paths.yazi_config,
             &paths.yazi_init,
             &paths.yazi_keymap,
+            &paths.yazi_package,
+            &paths.yazi_theme,
             &paths.zellij_plugins,
         ]);
     }
@@ -1238,20 +1192,21 @@ mod tests {
     #[test]
     fn prepare_file_action_creates_managed_yazi_files_independently() {
         let (_temp, paths) = temp_sources();
-        for (action, target, starter) in [
+        let specs = [
             (ACTION_YAZI_CONFIG, &paths.yazi_config, YAZI_CONFIG_STARTER),
             (ACTION_YAZI_INIT, &paths.yazi_init, YAZI_INIT_STARTER),
             (ACTION_YAZI_KEYMAP, &paths.yazi_keymap, YAZI_KEYMAP_STARTER),
-        ] {
+            (
+                ACTION_YAZI_PACKAGE,
+                &paths.yazi_package,
+                YAZI_PACKAGE_STARTER,
+            ),
+            (ACTION_YAZI_THEME, &paths.yazi_theme, YAZI_THEME_STARTER),
+        ];
+        for &(action, target, starter) in &specs {
             prepare_file_action(&paths, SOURCE_ADVANCED, action, target, true).unwrap();
             assert_file_text(target, starter);
-            assert_eq!(
-                [&paths.yazi_config, &paths.yazi_init, &paths.yazi_keymap]
-                    .into_iter()
-                    .filter(|path| path.exists())
-                    .count(),
-                1
-            );
+            assert_eq!(specs.iter().filter(|(_, path, _)| path.exists()).count(), 1);
             fs::remove_file(target).unwrap();
         }
         assert!(!paths.yazi_config.with_file_name("plugins").exists());

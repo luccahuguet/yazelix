@@ -25,6 +25,8 @@ pub(crate) struct ConfigPaths {
     pub(crate) yazi_config: PathBuf,
     pub(crate) yazi_init: PathBuf,
     pub(crate) yazi_keymap: PathBuf,
+    pub(crate) yazi_package: PathBuf,
+    pub(crate) yazi_theme: PathBuf,
     pub(crate) zellij_plugins: PathBuf,
 }
 pub(crate) fn ensure_config_sources() -> Result<ConfigPaths> {
@@ -61,6 +63,8 @@ pub(crate) fn config_paths() -> Result<ConfigPaths> {
         yazi_config: home.join("yazi/yazi.toml"),
         yazi_init: home.join("yazi/init.lua"),
         yazi_keymap: home.join("yazi/keymap.toml"),
+        yazi_package: home.join("yazi/package.toml"),
+        yazi_theme: home.join("yazi/theme.toml"),
         zellij_plugins: home.join("zellij/plugins.kdl"),
     })
 }

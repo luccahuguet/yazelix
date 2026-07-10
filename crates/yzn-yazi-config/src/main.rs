@@ -53,7 +53,15 @@ fn materialize(packaged: &Path, user: &Path, state: &Path) -> io::Result<PathBuf
 }
 
 fn managed_input_exists(user: &Path) -> io::Result<bool> {
-    for name in ["init.lua", "keymap.toml", "yazi.toml"] {
+    for name in [
+        "init.lua",
+        "keymap.toml",
+        "yazi.toml",
+        "package.toml",
+        "theme.toml",
+        "plugins",
+        "flavors",
+    ] {
         if user.join(name).try_exists()? {
             return Ok(true);
         }
@@ -89,15 +97,26 @@ fn write_runtime(packaged: &Path, user: &Path, runtime: &Path) -> io::Result<()>
         &runtime.join("keymap.toml"),
         "# Yazelix Next user keymap.toml",
     )?;
-
-    let runtime_plugins = runtime.join("plugins");
-    fs::create_dir(&runtime_plugins)?;
-    for entry in fs::read_dir(packaged.join("plugins"))? {
-        let entry = entry?;
-        symlink(entry.path(), runtime_plugins.join(entry.file_name()))?;
+    for name in ["package.toml", "theme.toml"] {
+        let source = user.join(name);
+        if !source.exists() {
+            continue;
+        }
+        if !source.is_file() {
+            return Err(io::Error::new(
+                ErrorKind::InvalidInput,
+                format!("cannot read {}", source.display()),
+            ));
+        }
+        symlink(source, runtime.join(name))?;
     }
-    if user_init.exists() {
-        overlay_user_plugins(&user.join("plugins"), &runtime_plugins)?;
+    for (directory, kind) in [("plugins", "plugin"), ("flavors", "flavor")] {
+        overlay_user_assets(
+            &packaged.join(directory),
+            &user.join(directory),
+            &runtime.join(directory),
+            kind,
+        )?;
     }
     Ok(())
 }
@@ -203,17 +222,24 @@ fn write_layered_config(
     fs::write(target, contents)
 }
 
-fn overlay_user_plugins(user_plugins: &Path, runtime_plugins: &Path) -> io::Result<()> {
-    if !user_plugins.exists() {
+fn overlay_user_assets(packaged: &Path, user: &Path, runtime: &Path, kind: &str) -> io::Result<()> {
+    fs::create_dir(runtime)?;
+    if packaged.is_dir() {
+        for entry in fs::read_dir(packaged)? {
+            let entry = entry?;
+            symlink(entry.path(), runtime.join(entry.file_name()))?;
+        }
+    }
+    if !user.exists() {
         return Ok(());
     }
-    if !user_plugins.is_dir() {
+    if !user.is_dir() {
         return Err(io::Error::new(
             ErrorKind::InvalidInput,
-            format!("cannot read plugin directory {}", user_plugins.display()),
+            format!("cannot read {kind} directory {}", user.display()),
         ));
     }
-    for entry in fs::read_dir(user_plugins)? {
+    for entry in fs::read_dir(user)? {
         let entry = entry?;
         let path = entry.path();
         let name = entry.file_name();
@@ -223,15 +249,15 @@ fn overlay_user_plugins(user_plugins: &Path, runtime_plugins: &Path) -> io::Resu
         if !path.is_dir() {
             return Err(io::Error::new(
                 ErrorKind::InvalidInput,
-                format!("user plugin must be a directory: {}", path.display()),
+                format!("user {kind} must be a directory: {}", path.display()),
             ));
         }
-        let target = runtime_plugins.join(&name);
+        let target = runtime.join(&name);
         if target.exists() {
             return Err(io::Error::new(
                 ErrorKind::AlreadyExists,
                 format!(
-                    "user plugin `{}` collides with a packaged plugin",
+                    "user {kind} `{}` collides with a packaged {kind}",
                     name.to_string_lossy()
                 ),
             ));
@@ -308,6 +334,7 @@ edit = [{ run = "managed-open %s", block = false, for = "unix" }]
 
     fn packaged_yazi(path: &Path) {
         fs::create_dir_all(path.join("plugins/git.yazi")).unwrap();
+        fs::create_dir_all(path.join("flavors/packaged.yazi")).unwrap();
         fs::write(path.join("init.lua"), "packaged init\n").unwrap();
         fs::write(path.join("keymap.toml"), "[manager]\nkeymap = []\n").unwrap();
         fs::write(path.join("yazi.toml"), PACKAGED_TOML).unwrap();
@@ -325,8 +352,15 @@ edit = [{ run = "managed-open %s", block = false, for = "unix" }]
         let user = temp.0.join("user");
         packaged_yazi(&packaged);
         fs::create_dir_all(user.join("plugins/example.yazi")).unwrap();
+        fs::create_dir_all(user.join("flavors/example.yazi")).unwrap();
         fs::write(user.join("init.lua"), "user init\n").unwrap();
         fs::write(user.join("keymap.toml"), "prepend_keymap = []\n").unwrap();
+        fs::write(user.join("package.toml"), "[plugin]\ndeps = []\n").unwrap();
+        fs::write(
+            user.join("theme.toml"),
+            "[flavor]\ndark = \"example\"\nlight = \"example\"\n",
+        )
+        .unwrap();
         fs::write(
             user.join("yazi.toml"),
             r#"
@@ -402,6 +436,14 @@ edit = [{ run = "nvim %s" }]
             "[manager]\nkeymap = []\n\n# Yazelix Next user keymap.toml\nprepend_keymap = []\n"
         );
         assert!(runtime.join("plugins/example.yazi").is_dir());
+        assert!(runtime.join("flavors/packaged.yazi").is_dir());
+        assert!(runtime.join("flavors/example.yazi").is_dir());
+        for name in ["package.toml", "theme.toml"] {
+            assert_eq!(
+                fs::read_to_string(runtime.join(name)).unwrap(),
+                fs::read_to_string(user.join(name)).unwrap()
+            );
+        }
         assert!(
             fs::symlink_metadata(runtime.join("yazelix_starship.toml"))
                 .unwrap()
@@ -428,7 +470,6 @@ edit = [{ run = "nvim %s" }]
         assert!(error.contains(&user.join("yazi.toml").display().to_string()));
 
         fs::write(user.join("yazi.toml"), "[mgr]\nshow_hidden = true\n").unwrap();
-        fs::write(user.join("init.lua"), "user init\n").unwrap();
         fs::create_dir_all(user.join("plugins/git.yazi")).unwrap();
         let error = materialize(&packaged, &user, &state)
             .unwrap_err()
@@ -441,15 +482,24 @@ edit = [{ run = "nvim %s" }]
     }
 
     #[test]
-    fn no_managed_input_keeps_the_packaged_fast_path() {
+    fn asset_directories_activate_materialization_and_stale_links_are_removed() {
         let temp = TempDir::new();
         let packaged = temp.0.join("packaged");
+        let user = temp.0.join("user");
         let state = temp.0.join("state");
+        packaged_yazi(&packaged);
 
-        assert_eq!(
-            materialize(&packaged, &temp.0.join("user"), &state).unwrap(),
-            packaged
-        );
+        assert_eq!(materialize(&packaged, &user, &state).unwrap(), packaged);
         assert!(!state.exists());
+
+        fs::create_dir_all(user.join("plugins/example.yazi")).unwrap();
+        let runtime = materialize(&packaged, &user, &state).unwrap();
+        assert!(runtime.join("plugins/example.yazi").is_dir());
+
+        fs::remove_dir_all(user.join("plugins")).unwrap();
+        fs::create_dir_all(user.join("flavors/example.yazi")).unwrap();
+        let runtime = materialize(&packaged, &user, &state).unwrap();
+        assert!(!runtime.join("plugins/example.yazi").exists());
+        assert!(runtime.join("flavors/example.yazi").is_dir());
     }
 }

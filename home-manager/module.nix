@@ -78,6 +78,14 @@
       option = cfg.config.yazi.keymap;
       name = "programs.yazelix.config.yazi.keymap";
     };
+    "yazelix-next/yazi/package.toml" = {
+      option = cfg.config.yazi.package;
+      name = "programs.yazelix.config.yazi.package";
+    };
+    "yazelix-next/yazi/theme.toml" = {
+      option = cfg.config.yazi.theme;
+      name = "programs.yazelix.config.yazi.theme";
+    };
     "yazelix-next/nu/env.nu" = {
       option = cfg.config.nu.env;
       name = "programs.yazelix.config.nu.env";
@@ -134,6 +142,8 @@ in {
         config = nativeFileOption "Managed native Yazi yazi.toml.";
         init = nativeFileOption "Managed Yazi init.lua.";
         keymap = nativeFileOption "Managed Yazi keymap.toml.";
+        package = nativeFileOption "Managed Yazi package.toml metadata.";
+        theme = nativeFileOption "Managed native Yazi theme.toml.";
       };
 
       nu = {

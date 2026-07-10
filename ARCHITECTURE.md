@@ -156,7 +156,7 @@ Packaged first, unless a surface opts into native replacement.
   starship.toml
   nu/{env,config}.nu       # after packaged Nu
   helix/*                  # lazy; created on tab use
-  yazi/{yazi.toml,init.lua,keymap.toml,plugins/}
+  yazi/{yazi.toml,theme.toml,package.toml,init.lua,keymap.toml,plugins/,flavors/}
 ```
 
 Override root with `YAZELIX_NEXT_CONFIG_HOME`.  

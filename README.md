@@ -203,10 +203,17 @@ managed popup role keys.
 | `yazi/yazi.toml` | Yazi | Native tables merge recursively; user scalars and arrays replace packaged values. |
 | `yazi/init.lua` | Yazi | Appended after packaged Yazi init. |
 | `yazi/keymap.toml` | Yazi | Appended after packaged Yazi keymap. |
+| `yazi/theme.toml` | Yazi | Native theme config, including managed flavor selection. |
+| `yazi/package.toml` | Yazi | Opaque package metadata; Yazelix does not run `ya pkg`. |
 
 The managed Yazi merge restores Yazelix's edit opener and its two sidebar Git
 fetchers exactly once. Other user fetchers and previewers remain in the merged
 native config. Invalid TOML stops before Yazi starts.
+
+Managed `plugins/*.yazi` and `flavors/*.yazi` directories are linked into the
+runtime config even without `init.lua`. Packaged names cannot be replaced.
+Create the directories directly under the managed Yazi tree or symlink them
+there.
 
 Normal host config such as `~/.config/helix`, `~/.config/yazi`, and
 `~/.config/starship.toml` does not control the managed runtime unless you route
@@ -325,13 +332,13 @@ git ls-files | grep -Ev '^\.beads/|\.lock$' | xargs wc -l
 | Language | Lines |
 | --- | ---: |
 | Ignore (`.gitignore`) | 4 |
-| Markdown | 1273 |
-| Nix | 976 |
+| Markdown | 1298 |
+| Nix | 990 |
 | Shell | 84 |
 | YAML | 268 |
 | TOML | 249 |
 | KDL | 210 |
 | Nu | 11 |
 | Lua | 247 |
-| Rust | 11964 |
-| Total | 15286 |
+| Rust | 11996 |
+| Total | 15357 |
