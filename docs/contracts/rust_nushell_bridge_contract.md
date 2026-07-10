@@ -145,7 +145,6 @@ Calls should use structured argv execution. They must not assemble inline quoted
 
 - `runtime-materialization.repair`
 - `helix-materialization.generate`
-- `terminal-materialization.generate`
 
 Config normalization, runtime-env derivation, status reporting, command metadata, render plans, ownership reports, and most materializers are Rust library/public-command owners, not helper command contracts. Do not recreate `yzx_core` commands for those slices unless a surviving subprocess boundary needs them.
 
@@ -186,7 +185,7 @@ Failure envelope:
 ```json
 {
   "schema_version": 1,
-  "command": "terminal-materialization.generate",
+  "command": "helix-materialization.generate",
   "status": "error",
   "error": {
     "class": "config",

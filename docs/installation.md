@@ -17,7 +17,7 @@ It guarantees that everyone gets the exact same versions of tools (Yazi, Zellij,
 **Important**: You don't need to learn Nix or Nushell to use Yazelix. Nix with flakes is the only real host prerequisite. The normal product surface is the `yazelix` package or the top-level Home Manager module.
 
 ## Supported Terminal Emulators
-Yazelix supports capable terminal emulators through `yzx enter`. The default `#yazelix` package uses Mars so Yazelix can keep the Rust terminal fork, generated config, cursor behavior, Zellij/Yazi graphics bridge, and agent-driven development workflow aligned. Ghostty is the most tested mature host-terminal path and is a strong choice on macOS. Rio, WezTerm, Kitty, Foot, Ratty, Alacritty, and other emulators work as normal host terminal entrypoints.
+Yazelix supports capable terminal emulators through `yzx enter`. The default `#yazelix` package uses Mars so Yazelix can keep the Rust terminal fork, Zellij/Yazi graphics bridge, and agent-driven development workflow aligned. Ghostty is the most tested mature host-terminal path and is a strong choice on macOS. Rio, WezTerm, Kitty, Foot, Ratty, Alacritty, and other emulators work as normal host terminal entrypoints.
 
 Mars uses the temporary Yazelix Zellij fork for Kitty graphics passthrough where that bridge is selected. The Zellij fork is expected to be dropped and archived once upstream Zellij supports the required Kitty graphics path directly enough for Yazelix to return to upstream Zellij.
 
@@ -26,7 +26,8 @@ See [Terminal Emulator Comparison](./terminal_emulators.md) for a detailed break
 **Mars**
 - Default Rust terminal fork for Yazelix
 - Provided by the default `yazelix` package runtime and by `yazelix_mars`
-- Uses generated Mars config, native cursor integration, `terminal.transparency`, packaged emoji/font profiles, the Yazelix Zellij Kitty graphics bridge, and an agent-driven development focus
+- Uses the complete native `~/.config/yazelix/mars/config.toml` when present, otherwise the packaged complete config
+- Mars owns its appearance, opacity, fonts, effects, and `[yazelix.cursor]` values
 - Reference: https://github.com/luccahuguet/mars
 
 **WezTerm**
@@ -486,7 +487,7 @@ Package-set users can also use the default overlay:
 
 `off` mode is supported for the first optional helper slice: `steel`, `macchina`, `p7zip`, `poppler`, and `resvg`. Disabled helpers are omitted from the runtime package/export and reported by `yzx doctor` as intentional disablement. If `macchina = "off"`, set `show_macchina_on_welcome = false`.
 
-Home Manager and `mkYazelix` also accept component toggles for `cursors` and `screen`. `components.cursors = false` removes Yazelix cursor shader assets and the default cursor sidecar from the runtime tree; Mars config generation skips Yazelix cursor shaders and the config UI hides cursor fields. `components.screen = false` requires `skip_welcome_screen = true` and `screen_saver_enabled = false`; `yzx screen` then fails with a disabled-component error instead of looking for missing screen assets.
+Home Manager and `mkYazelix` also accept component toggles for `cursors` and `screen`. `components.cursors = false` removes Yazelix cursor shader assets and the default cursor sidecar from the runtime tree; the config UI hides standalone cursor fields while Mars keeps its independent native cursor config. `components.screen = false` requires `skip_welcome_screen = true` and `screen_saver_enabled = false`; `yzx screen` then fails with a disabled-component error instead of looking for missing screen assets.
 
 ## What Gets Installed
 

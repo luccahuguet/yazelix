@@ -151,30 +151,27 @@ Rules:
 
 Managed inputs:
 
-- `settings.jsonc` terminal fields
-- optional `~/.config/yazelix/terminal_*.conf|toml|ini` sidecars
+- optional complete `~/.config/yazelix/mars/config.toml`
 
 Native sources:
 
-- terminal-specific native config paths, such as Ghostty, WezTerm, Foot, Ratty, or Kitty config files
+- packaged complete Mars config under the runtime `share/mars/` tree
 
 Generated output:
 
-- `~/.local/share/yazelix/configs/terminal_emulators/`
+- none for Mars
 
 Statuses:
 
-- `managed_default` when `terminal.config_mode = "yazelix"` and no optional terminal sidecar exists
-- `managed_override` when terminal sidecars exist in Yazelix config
-- `native_read_only` when `terminal.config_mode = "user"` and the selected terminal native config exists
-- `native_required_missing` when `terminal.config_mode = "user"` and no supported native config exists
-- `generated_runtime` for generated terminal configs in Yazelix mode
+- `managed_default` when Mars uses the packaged complete config
+- `managed_override` when the canonical complete user config exists
+- `home_manager_read_only` when Home Manager installs the canonical complete config
 
 Rules:
 
-- `terminal.config_mode = "user"` is explicit native reuse, not import
-- missing native terminal config is a launch-blocking error only in `user` mode
-- terminal-native config remains owned by the terminal/user
+- Mars reads exactly one complete config directory selected at launch
+- ambient host Mars config is not imported or inspected
+- non-Mars terminal config remains entirely host-owned
 
 ### Shell Hooks
 
@@ -236,7 +233,7 @@ Doctor should not warn merely because a native config is missing for Helix, Yazi
 - `yzx_repo_validator validate-contracts`
 - future status model tests for per-tool state classification
 - future config UI tests for status labels and read-only actions
-- future doctor tests for missing native terminal config and native-available informational diagnostics
+- doctor tests for packaged, user-owned, and Home Manager-owned Mars config status
 
 ## Traceability
 

@@ -46,9 +46,7 @@ This inventory lists the canonical contracts under `docs/contracts/`. It is not 
 | `status_doctor_machine_readable_reports.md` | Machine-readable status and doctor reports |
 | `supply_chain_hardening.md` | Supply-chain hardening policy |
 | `terminal_control_boundary.md` | Typed terminal control APIs versus raw protocol strings |
-| `terminal_config_pack_boundary.md` | Terminal config renderer extraction boundary |
 | `terminal_launch_contract.md` | Terminal launch/process-boundary behavior |
-| `terminal_override_layers.md` | Terminal override layers |
 | `terminal_support_boundary.md` | Terminal support metadata ownership and promotion gate |
 | `test_suite_governance.md` | Governed test lane, strength, and retention rules |
 | `upgrade_notes_contract.md` | Structured upgrade notes |

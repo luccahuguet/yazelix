@@ -32,6 +32,13 @@ fn write_runtime_layout(runtime: &Path) {
     )
     .expect("main defaults");
     fs::write(runtime.join("runtime_variant"), "mars\n").expect("runtime variant");
+    let mars_config = runtime.join("share/mars/config.toml");
+    fs::create_dir_all(mars_config.parent().unwrap()).expect("mars config dir");
+    fs::write(
+        mars_config,
+        "confirm-before-quit = true\n[mars.appearance]\npreset = \"dark\"\n[window]\nopacity = 0.78\n",
+    )
+    .expect("mars config");
     fs::write(
         runtime.join(DEFAULT_CURSOR_CONFIG_FILENAME),
         include_str!("../../../../yazelix_cursors_default.toml"),
@@ -86,6 +93,10 @@ impl Fixture {
         crate::user_config_paths::shared_cursor_config(self.config.path())
     }
 
+    fn mars_path(&self) -> PathBuf {
+        crate::user_config_paths::mars_config(self.config.path())
+    }
+
     fn write_settings(&self, mutate: impl FnOnce(&mut JsonValue)) -> PathBuf {
         self.write_settings_with_prefix("", mutate)
     }
@@ -135,6 +146,100 @@ fn model_field<'a>(model: &'a ConfigUiModel, path: &str) -> &'a ConfigUiField {
         .iter()
         .find(|field| field.path == path)
         .expect("field")
+}
+
+// Defends: Ratconfig exposes the packaged complete Mars TOML as generic defaulted rows without a main-owned field catalog.
+#[test]
+fn model_exposes_generic_mars_document_and_file_action() {
+    let fixture = Fixture::new();
+    let model = fixture.model();
+    let opacity = model_field(&model, "window.opacity");
+
+    assert_eq!(opacity.source_id, MARS_SOURCE_ID);
+    assert_eq!(opacity.state, ConfigUiValueState::Defaulted);
+    assert_eq!(opacity.current_value, "0.78");
+    assert!(model.tab_list_tables.contains_key(MARS_TAB));
+    assert_eq!(model.file_actions.len(), 1);
+    assert_eq!(model.file_actions[0].path, fixture.mars_path());
+    assert!(!model.file_actions[0].exists);
+}
+
+// Regression: a user Mars file is a full native replacement, so Ratconfig must not present omitted packaged rows as inherited values.
+#[test]
+fn model_does_not_merge_packaged_rows_into_user_mars_config() {
+    let fixture = Fixture::new();
+    fs::create_dir_all(fixture.mars_path().parent().unwrap()).unwrap();
+    fs::write(fixture.mars_path(), "[window]\nopacity = 0.5\n").unwrap();
+
+    let model = fixture.model();
+
+    assert_eq!(
+        model_field(&model, "window.opacity").state,
+        ConfigUiValueState::Explicit
+    );
+    assert!(
+        model
+            .fields
+            .iter()
+            .all(|field| field.source_id != MARS_SOURCE_ID || field.path != "confirm-before-quit")
+    );
+}
+
+// Defends: editing one generic Mars scalar creates the complete packaged config and patches it through Ratconfig TOML primitives.
+#[test]
+fn generic_mars_field_write_creates_complete_native_config() {
+    let fixture = Fixture::new();
+    let mut app = fixture.app();
+
+    app.write_source_field_value(MARS_SOURCE_ID, "window.opacity", &json!(0.5))
+        .unwrap();
+
+    let raw = fs::read_to_string(fixture.mars_path()).unwrap();
+    let value = ratconfig::toml_adapter::parse_toml_value(&raw).unwrap();
+    assert_eq!(
+        ratconfig::toml_adapter::get_toml_path(&value, "window.opacity"),
+        Some(&json!(0.5))
+    );
+    assert!(raw.contains("confirm-before-quit = true"));
+}
+
+// Defends: the Mars file action creates the canonical file as an exact copy of the packaged complete config.
+#[test]
+fn mars_file_action_prepares_complete_packaged_config() {
+    let fixture = Fixture::new();
+    let request = fixture.request();
+
+    prepare_mars_config_file(&request, &fixture.mars_path(), true).unwrap();
+
+    assert_eq!(
+        fs::read_to_string(fixture.mars_path()).unwrap(),
+        fs::read_to_string(user_config_paths::packaged_mars_config(
+            fixture.runtime.path()
+        ))
+        .unwrap()
+    );
+}
+
+// Regression: a dangling Home Manager config symlink is owned state, not a missing file that Ratconfig may replace.
+#[cfg(unix)]
+#[test]
+fn mars_file_action_preserves_dangling_home_manager_symlink() {
+    use std::os::unix::fs::symlink;
+
+    let fixture = Fixture::new();
+    let request = fixture.request();
+    let mars = fixture.mars_path();
+    fs::create_dir_all(mars.parent().unwrap()).unwrap();
+    let target = fixture
+        .config
+        .path()
+        .join("profile-home-manager-files/missing-mars.toml");
+    symlink(&target, &mars).unwrap();
+
+    let error = prepare_mars_config_file(&request, &mars, true).unwrap_err();
+
+    assert_eq!(error.code(), "home_manager_owned_mars_config");
+    assert_eq!(fs::read_link(&mars).unwrap(), target);
 }
 
 fn line_text(line: &Line<'_>) -> String {
@@ -313,6 +418,25 @@ fn source_routing_rejects_wrong_source_before_write() {
     assert_eq!(settings_as_cursor.code(), "config_source_mismatch");
     assert!(!fixture.settings_path().exists());
     assert!(!fixture.cursor_path().exists());
+}
+
+// Regression: arbitrary Mars keys may share a dotted path with main settings and must still route by source id.
+#[test]
+fn source_routing_allows_same_path_in_mars_and_main_documents() {
+    let fixture = Fixture::new();
+    fs::create_dir_all(fixture.mars_path().parent().unwrap()).unwrap();
+    fs::write(fixture.mars_path(), "[zellij]\ntheme = \"native\"\n").unwrap();
+    let mut app = fixture.app();
+
+    app.write_source_field_value(MARS_SOURCE_ID, "zellij.theme", &json!("mars"))
+        .unwrap();
+
+    assert!(
+        fs::read_to_string(fixture.mars_path())
+            .unwrap()
+            .contains("theme = \"mars\"")
+    );
+    assert!(!fixture.settings_path().exists());
 }
 
 // Defends: the keybinding tab renders Yazelix action registry labels, scoped ids, defaults, remaps, and disabled actions instead of an opaque JSON object.
@@ -854,29 +978,29 @@ fn scalar_enum_enter_opens_single_select_picker() {
     let settings_path = fixture.settings_path();
     let mut app = fixture.app();
 
-    select_field_path(&mut app, "terminal.config_mode");
+    select_field_path(&mut app, "appearance.mode");
     app.handle_key(ConfigUiKey::Enter);
 
     let edit = app.edit.clone().expect("edit");
     assert_eq!(edit.mode, ConfigUiEditMode::Choice);
     let details = field_details(&app, edit.field_index);
-    assert!(details.contains("> (x) yazelix"));
-    assert!(details.contains("  ( ) user"));
+    assert!(details.contains("> (x) dark"));
+    assert!(details.contains("  ( ) light"));
 
     app.handle_key(ConfigUiKey::Char('j'));
     let details = field_details(&app, edit.field_index);
-    assert!(details.contains("> ( ) user"));
+    assert!(details.contains("> ( ) light"));
     app.handle_key(ConfigUiKey::Char(' '));
     let details = field_details(&app, edit.field_index);
-    assert!(details.contains("> (x) user"));
+    assert!(details.contains("> (x) light"));
 
     app.handle_key(ConfigUiKey::Enter);
 
     assert!(app.edit.is_none());
     let value = read_settings_jsonc_value(&settings_path).expect("settings jsonc");
     assert_eq!(
-        get_json_path(&value, "terminal.config_mode"),
-        Some(&json!("user"))
+        get_json_path(&value, "appearance.mode"),
+        Some(&json!("light"))
     );
 }
 
@@ -887,13 +1011,13 @@ fn scalar_enum_space_opens_picker_without_writing() {
     let settings_path = fixture.settings_path();
     let mut app = fixture.app();
 
-    select_field_path(&mut app, "terminal.config_mode");
+    select_field_path(&mut app, "appearance.mode");
     app.handle_key(ConfigUiKey::Char(' '));
 
     let edit = app.edit.clone().expect("edit");
     assert_eq!(edit.mode, ConfigUiEditMode::Choice);
     let details = field_details(&app, edit.field_index);
-    assert!(details.contains("> (x) yazelix"));
+    assert!(details.contains("> (x) dark"));
     assert!(!settings_path.exists());
 }
 

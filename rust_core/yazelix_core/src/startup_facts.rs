@@ -12,7 +12,6 @@ use serde::Serialize;
 use serde_json::{Map as JsonMap, Value as JsonValue};
 
 const DEFAULT_SHELL: &str = "nu";
-const DEFAULT_TERMINAL_CONFIG_MODE: &str = "yazelix";
 const DEFAULT_WELCOME_STYLE: &str = "random";
 const DEFAULT_GAME_OF_LIFE_CELL_STYLE: &str = "full_block";
 
@@ -27,7 +26,6 @@ pub struct StartupFactsData {
     pub welcome_duration_seconds: f64,
     pub show_macchina_on_welcome: bool,
     pub terminals: Vec<String>,
-    pub terminal_config_mode: String,
 }
 
 pub fn compute_startup_facts_from_env() -> Result<StartupFactsData, CoreError> {
@@ -58,11 +56,6 @@ pub fn compute_startup_facts_from_config(
         welcome_duration_seconds: float_config(normalized, "welcome_duration_seconds", 4.0),
         show_macchina_on_welcome: bool_config(normalized, "show_macchina_on_welcome", false),
         terminals: vec![active_terminal_from_runtime_dir(runtime_dir)?],
-        terminal_config_mode: string_config(
-            normalized,
-            "terminal_config_mode",
-            DEFAULT_TERMINAL_CONFIG_MODE,
-        ),
     })
 }
 
@@ -119,7 +112,6 @@ mod tests {
         config.insert("appearance_mode".into(), json!("light"));
         config.insert("welcome_duration_seconds".into(), json!("2.5"));
         config.insert("show_macchina_on_welcome".into(), json!("false"));
-        config.insert("terminal_config_mode".into(), json!("user"));
 
         assert_eq!(
             string_config(&config, "default_shell", DEFAULT_SHELL),
@@ -140,14 +132,6 @@ mod tests {
         assert_eq!(
             string_config(&config, "appearance_mode", APPEARANCE_MODE_DARK),
             "light"
-        );
-        assert_eq!(
-            string_config(
-                &config,
-                "terminal_config_mode",
-                DEFAULT_TERMINAL_CONFIG_MODE
-            ),
-            "user"
         );
     }
 }

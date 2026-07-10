@@ -4,13 +4,10 @@ use crate::active_config_surface::{primary_config_paths, resolve_active_config_p
 use crate::bridge::{CoreError, ErrorClass};
 use crate::helix_external::HelixExternalPair;
 use crate::runtime_env::RuntimePathInput;
-use crate::terminal_materialization::{mars_emoji_font_override_from_env, mars_profile_from_env};
-use crate::terminal_variant::active_terminal_from_runtime_dir;
 use crate::zellij_materialization::zellij_permissions_cache_path;
 use crate::{
     ComputeConfigStateRequest, NormalizeConfigRequest, RecordConfigStateRequest,
-    RuntimeEnvComputeRequest, RuntimeMaterializationPlanRequest, TerminalMaterializationRequest,
-    normalize_config,
+    RuntimeEnvComputeRequest, RuntimeMaterializationPlanRequest, normalize_config,
 };
 use serde_json::{Map as JsonMap, Value as JsonValue};
 use std::ffi::OsString;
@@ -361,28 +358,6 @@ pub fn runtime_env_request_from_env(
     };
 
     runtime_env_request(runtime_dir, &normalized)
-}
-
-pub fn terminal_materialization_request_from_env(
-    config_override: Option<&str>,
-) -> Result<TerminalMaterializationRequest, CoreError> {
-    let runtime_dir = runtime_dir_from_env()?;
-    let config_dir = config_dir_from_env()?;
-    let paths = resolve_active_config_paths(&runtime_dir, &config_dir, config_override)?;
-    let state_dir = state_dir_from_env()?;
-    let terminal = active_terminal_from_runtime_dir(&runtime_dir)?;
-
-    Ok(TerminalMaterializationRequest {
-        config_path: paths.config_file,
-        cursor_config_path: paths.user_cursor_config,
-        default_config_path: paths.default_config_path,
-        contract_path: paths.contract_path,
-        runtime_dir,
-        state_dir,
-        terminals: vec![terminal],
-        mars_emoji_font: mars_emoji_font_override_from_env()?,
-        mars_profile: mars_profile_from_env()?,
-    })
 }
 
 #[derive(Debug, Clone, Default)]

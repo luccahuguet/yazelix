@@ -7,7 +7,6 @@ use yazelix_core::config_ui::{
     ConfigUiPathOwner, ConfigUiRequest, ConfigUiValueState, build_config_ui_model,
 };
 use yazelix_core::ghostty_cursor_registry::DEFAULT_CURSOR_CONFIG_FILENAME;
-use yazelix_core::user_config_paths::shared_cursor_config;
 
 fn write_runtime_layout(runtime: &Path) {
     fs::create_dir_all(runtime.join("config_metadata")).expect("metadata dir");
@@ -38,6 +37,13 @@ fn write_runtime_layout(runtime: &Path) {
     )
     .expect("main defaults");
     fs::write(runtime.join("runtime_variant"), "mars\n").expect("runtime variant");
+    let mars_config = runtime.join("share/mars/config.toml");
+    fs::create_dir_all(mars_config.parent().expect("Mars config parent")).expect("Mars config dir");
+    fs::write(
+        mars_config,
+        "[mars.appearance]\npreset = \"dark\"\n[window]\nopacity = 0.78\n",
+    )
+    .expect("Mars config");
     fs::write(
         runtime.join(DEFAULT_CURSOR_CONFIG_FILENAME),
         include_str!("../../../yazelix_cursors_default.toml"),
@@ -59,99 +65,6 @@ fn request(runtime: PathBuf, config: PathBuf) -> ConfigUiRequest {
         config_dir: config,
         config_override: None,
     }
-}
-
-// Defends: the read-only config UI inventory uses the main contract and cursor schema together, with user-intent tabs and explicit/defaulted states.
-#[test]
-fn builds_inventory_tabs_and_value_states() {
-    let runtime = tempdir().expect("runtime");
-    let config = tempdir().expect("config");
-    write_runtime_layout(runtime.path());
-    fs::write(
-        config.path().join("settings.jsonc"),
-        r##"{
-          "core": { "debug_mode": true },
-          "editor": { "hide_sidebar_on_file_open": true }
-        }"##,
-    )
-    .expect("settings");
-    let cursor_path = shared_cursor_config(config.path());
-    fs::create_dir_all(cursor_path.parent().expect("cursor parent")).expect("cursor dir");
-    fs::write(
-        cursor_path,
-        r##"{
-          "schema_version": 1,
-          "enabled_cursors": ["magma"],
-          "settings": {
-            "trail": "magma",
-            "trail_effect": "tail",
-            "mode_effect": "ripple",
-            "glow": "medium",
-            "duration": 1.0,
-            "kitty_enable_cursor": true
-          },
-          "cursor": [
-            { "name": "magma", "family": "mono", "color": "#ff3300" }
-          ]
-        }"##,
-    )
-    .expect("cursor settings");
-
-    let model = build_config_ui_model(&request(
-        runtime.path().to_path_buf(),
-        config.path().to_path_buf(),
-    ))
-    .expect("model");
-
-    assert_eq!(
-        model.tabs,
-        vec![
-            "general",
-            "workspace",
-            "editor",
-            "terminal",
-            "appearance",
-            "cursors",
-            "status_bar",
-            "file_manager",
-            "keybindings",
-            "shell",
-            "advanced"
-        ]
-    );
-    let debug_mode = model
-        .fields
-        .iter()
-        .find(|field| field.path == "core.debug_mode")
-        .expect("debug mode field");
-    assert_eq!(debug_mode.tab, "general");
-    assert_eq!(debug_mode.state, ConfigUiValueState::Explicit);
-    assert_eq!(debug_mode.current_value, "true");
-
-    let zellij_theme = model
-        .fields
-        .iter()
-        .find(|field| field.path == "zellij.theme")
-        .expect("zellij theme field");
-    assert_eq!(zellij_theme.tab, "appearance");
-    assert_eq!(zellij_theme.state, ConfigUiValueState::Defaulted);
-
-    let widget_tray = model
-        .fields
-        .iter()
-        .find(|field| field.path == "zellij.widget_tray")
-        .expect("widget tray field");
-    assert_eq!(widget_tray.tab, "status_bar");
-    assert!(widget_tray.description.contains("status bar"));
-
-    let cursor_trail = model
-        .fields
-        .iter()
-        .find(|field| field.path == "cursors.settings.trail")
-        .expect("cursor trail field");
-    assert_eq!(cursor_trail.tab, "cursors");
-    assert_eq!(cursor_trail.state, ConfigUiValueState::Explicit);
-    assert_eq!(cursor_trail.current_value, "\"magma\"");
 }
 
 // Defends: advanced config UI state exposes sidecar presence and the Home Manager/read-only ownership signal without mutating config files.

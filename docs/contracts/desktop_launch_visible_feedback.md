@@ -8,7 +8,7 @@ Desktop entry launches must use a terminal-backed starter window and invoke `yzx
 
 Desktop environments usually run application launch commands without an attached terminal. If Yazelix fails while parsing config, checking generated state, or preparing the packaged terminal before the terminal process is spawned, a non-terminal desktop entry can look like a silent no-op.
 
-The supported contract is that Linux desktop entries open a starter terminal window first. `yzx desktop launch` owns runtime resolution, config parsing, generated terminal config repair, Ghostty cursor rerolls, and the deferred handoff to the packaged Yazelix terminal. On success, the starter window exits quickly. On failure, the starter window keeps the actionable error visible.
+The supported contract is that Linux desktop entries open a starter terminal window first. `yzx desktop launch` owns runtime resolution, config parsing, complete Mars config selection, and the deferred handoff to the packaged terminal. On success, the starter window exits quickly. On failure, the starter window keeps the actionable error visible.
 
 ## Scope
 
@@ -33,7 +33,7 @@ The supported contract is that Linux desktop entries open a starter terminal win
 - Changing terminal package selection
 - Keeping non-terminal desktop launchers without another visible failure surface
 - Adding a second fallback launch path after the desktop fast path fails
-- Moving desktop-specific UX into config parsing or terminal config generation
+- Moving desktop-specific UX into config parsing or Mars native config handling
 - Solving graphical failure-dialog UX
 
 ## Acceptance Cases

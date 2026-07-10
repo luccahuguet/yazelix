@@ -61,6 +61,49 @@ pub fn build_config_ui_model(request: &ConfigUiRequest) -> Result<ConfigUiModel,
     )?;
     ensure_root_object(&paths.default_config_path, &default_value)?;
 
+    let mars_config_path = user_config_paths::mars_config(&request.config_dir);
+    let packaged_mars_config_path = user_config_paths::packaged_mars_config(&request.runtime_dir);
+    let mars_config_exists = path_present(&mars_config_path);
+    let mars_config_owner = classify_path_owner(&mars_config_path, mars_config_exists);
+    let packaged_mars_config = read_native_config_text(
+        &packaged_mars_config_path,
+        "read_packaged_mars_config",
+        "Could not read the packaged Mars config",
+    )?;
+    let active_mars_config = if mars_config_exists {
+        read_native_config_text(
+            &mars_config_path,
+            "read_mars_config",
+            "Could not read ~/.config/yazelix/mars/config.toml",
+        )?
+    } else {
+        String::new()
+    };
+    let mars_rows = build_toml_document_fields(ConfigUiTomlDocumentSpec {
+        source_id: MARS_SOURCE_ID,
+        tab: MARS_TAB,
+        section_label: "Mars native config",
+        current_toml: &active_mars_config,
+        default_toml: (!mars_config_exists).then_some(packaged_mars_config.as_str()),
+        validation: "valid Mars TOML value",
+        rebuild_required: false,
+        apply_status: ConfigUiApplyStatus {
+            summary: "next Mars window".to_string(),
+            label: "next Mars window".to_string(),
+            detail: "Mars reads this complete native config when a new window opens.".to_string(),
+            pending: true,
+        },
+    })
+    .map_err(|message| {
+        CoreError::classified(
+            ErrorClass::Config,
+            "invalid_mars_config",
+            message,
+            "Fix ~/.config/yazelix/mars/config.toml or remove it to use the packaged complete config.",
+            json!({ "path": mars_config_path.display().to_string() }),
+        )
+    })?;
+
     let contract_fields = load_contract_fields(&paths.contract_path)?;
     let diagnostics = if active_config_exists {
         collect_config_diagnostics(&active_config_path, &paths)?
@@ -121,6 +164,7 @@ pub fn build_config_ui_model(request: &ConfigUiRequest) -> Result<ConfigUiModel,
         &default_value,
         &blocking_paths,
     )?;
+    fields.extend(mars_rows.fields);
 
     if cursor_component_enabled {
         let cursor_definition_names = cursor_definition_names(&active_value, &default_value);
@@ -169,16 +213,9 @@ pub fn build_config_ui_model(request: &ConfigUiRequest) -> Result<ConfigUiModel,
     let native_config_statuses = map_native_statuses(&classify_native_config_statuses(
         &NativeConfigStatusRequest {
             xdg_config_home: xdg_config_home_from_env(&home_dir),
-            home_dir,
             config_dir: request.config_dir.clone(),
+            runtime_dir: request.runtime_dir.clone(),
             state_dir,
-            platform: current_platform_name(),
-            terminal_config_mode: effective_string_config(
-                &active_value,
-                &default_value,
-                "terminal.config_mode",
-                "yazelix",
-            ),
             active_terminal: crate::terminal_variant::active_terminal_from_runtime_dir(
                 &request.runtime_dir,
             )?,
@@ -200,11 +237,24 @@ pub fn build_config_ui_model(request: &ConfigUiRequest) -> Result<ConfigUiModel,
             config_owner,
             &paths.user_cursor_config,
             cursor_component_enabled,
+            &mars_config_path,
         ),
         tabs,
-        tab_list_tables: BTreeMap::new(),
+        tab_list_tables: BTreeMap::from([(MARS_TAB.to_string(), mars_rows.list_table)]),
         fields,
-        file_actions: Vec::new(),
+        file_actions: vec![ConfigUiFileAction {
+            source_id: MARS_SOURCE_ID.to_string(),
+            action_id: MARS_CONFIG_ACTION_ID.to_string(),
+            tab: MARS_TAB.to_string(),
+            label: "mars/config.toml".to_string(),
+            description: "Create or edit the complete native Mars config.".to_string(),
+            path: mars_config_path.clone(),
+            exists: mars_config_exists,
+            read_only: mars_config_owner == ConfigUiPathOwner::HomeManager
+                || path_is_read_only(&mars_config_path),
+            create_if_missing: true,
+            disabled_reason: None,
+        }],
         sidecars: collect_sidecars(&request.config_dir),
         native_config_statuses,
         diagnostics,
@@ -803,11 +853,23 @@ fn collect_config_sources(
     config_owner: ConfigUiPathOwner,
     cursor_config_path: &Path,
     cursor_component_enabled: bool,
+    mars_config_path: &Path,
 ) -> Vec<ConfigUiSource> {
+    let mars_present = path_present(mars_config_path);
+    let mars_owner = classify_path_owner(mars_config_path, mars_present);
     tabs.iter()
         .filter(|tab| tab.as_str() != "advanced")
         .map(|tab| {
-            if tab == "cursors" && cursor_component_enabled {
+            if tab == MARS_TAB {
+                config_source(
+                    MARS_SOURCE_ID,
+                    tab,
+                    "mars/config.toml",
+                    mars_config_path,
+                    mars_present,
+                    mars_owner,
+                )
+            } else if tab == "cursors" && cursor_component_enabled {
                 let cursor_present = path_present(cursor_config_path);
                 config_source(
                     CURSORS_SOURCE_ID,
@@ -853,7 +915,7 @@ fn config_source(
 fn collect_sidecars(config_dir: &Path) -> Vec<ConfigUiSidecar> {
     CURRENT_MANAGED_CONFIG_FILE_NAMES
         .iter()
-        .filter(|name| **name != SETTINGS_CONFIG)
+        .filter(|name| **name != SETTINGS_CONFIG && **name != user_config_paths::MARS_CONFIG)
         .map(|name| {
             let path = config_dir.join(name);
             let present = fs::symlink_metadata(&path).is_ok();
@@ -866,6 +928,22 @@ fn collect_sidecars(config_dir: &Path) -> Vec<ConfigUiSidecar> {
             }
         })
         .collect()
+}
+
+fn read_native_config_text(
+    path: &Path,
+    code: &'static str,
+    message: &'static str,
+) -> Result<String, CoreError> {
+    fs::read_to_string(path).map_err(|source| {
+        CoreError::io(
+            code,
+            message,
+            "Fix the config path or reinstall Yazelix, then retry.",
+            path.display().to_string(),
+            source,
+        )
+    })
 }
 
 pub(super) fn classify_path_owner(path: &Path, present: bool) -> ConfigUiPathOwner {

@@ -16,8 +16,7 @@ use crate::config_normalize::{ConfigDiagnostic, ConfigDiagnosticReport, Normaliz
 use crate::control_plane::{home_dir_from_env, state_dir_from_env};
 use crate::native_config_status::{
     NativeConfigStatusEntry, NativeConfigStatusRequest, classify_native_config_statuses,
-    current_platform_name, path_owned_by_home_manager, status_code_for_entry,
-    xdg_config_home_from_env,
+    path_owned_by_home_manager, status_code_for_entry, xdg_config_home_from_env,
 };
 use crate::runtime_apply_mode::RuntimeApplyMode;
 use crate::runtime_component_enabled;
@@ -30,7 +29,7 @@ use crate::settings_surface::{SETTINGS_SCHEMA_FILENAME, render_default_settings_
 use crate::settings_surface::{
     is_settings_config_path, parse_jsonc_value, read_settings_jsonc_value,
 };
-use crate::user_config_paths::{CURRENT_MANAGED_CONFIG_FILE_NAMES, SETTINGS_CONFIG};
+use crate::user_config_paths::{self, CURRENT_MANAGED_CONFIG_FILE_NAMES, SETTINGS_CONFIG};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
 use serde_json::{Map as JsonMap, Value as JsonValue, json};
@@ -45,7 +44,7 @@ use yazelix_cursors::{CursorRegistry, render_cursor_settings_jsonc};
 
 pub use app::run_config_ui;
 #[cfg(test)]
-use app::write_notice_text;
+use app::{prepare_mars_config_file, write_notice_text};
 use apply_adapter::apply_after_field_write;
 use custom_popups::*;
 use details::render_details;
@@ -60,14 +59,15 @@ use model_builder::{
 pub use ratconfig::{
     ConfigUiApp, ConfigUiApplyStatus, ConfigUiContractField, ConfigUiDiagnostic,
     ConfigUiEditBehavior, ConfigUiEditMode, ConfigUiField, ConfigUiFieldMetadata,
-    ConfigUiFieldRowSpec, ConfigUiIntent, ConfigUiKey, ConfigUiMetadata, ConfigUiModel,
-    ConfigUiNativeStatus, ConfigUiPathOwner, ConfigUiSchemaField, ConfigUiSidecar, ConfigUiSource,
-    ConfigUiValueState, DEFAULT_CONFIG_SOURCE_ID, UiRowRef,
+    ConfigUiFieldRowSpec, ConfigUiFileAction, ConfigUiIntent, ConfigUiKey, ConfigUiMetadata,
+    ConfigUiModel, ConfigUiNativeStatus, ConfigUiPathOwner, ConfigUiSchemaField, ConfigUiSidecar,
+    ConfigUiSource, ConfigUiTomlDocumentSpec, ConfigUiValueState, DEFAULT_CONFIG_SOURCE_ID,
+    UiRowRef,
 };
 use ratconfig::{
-    CrosstermRunnerError, build_config_ui_field, collect_config_ui_schema_fields,
-    config_contract_fields_from_toml, config_key_style, config_ui_metadata_from_toml,
-    default_field_detail_lines, detail_line, diagnostic_detail_lines, effective_string_config,
+    CrosstermRunnerError, build_config_ui_field, build_toml_document_fields,
+    collect_config_ui_schema_fields, config_contract_fields_from_toml, config_key_style,
+    config_ui_metadata_from_toml, default_field_detail_lines, detail_line, diagnostic_detail_lines,
     file_action_detail_lines, get_json_path, is_scalar_enum_field, metadata_key_style,
     multi_choice_detail_lines, native_status_detail_lines,
     run_config_ui_with_details as run_ratconfig_config_ui_with_details, schema_tabs,
@@ -94,6 +94,9 @@ const CONFIG_UI_METADATA_FILENAME: &str = "config_ui_metadata.toml";
 const SETTINGS_SOURCE_ID: &str = DEFAULT_CONFIG_SOURCE_ID;
 const CURSORS_SOURCE_ID: &str = "cursors";
 const CURSORS_FIELD_PREFIX: &str = "cursors.";
+const MARS_SOURCE_ID: &str = "mars";
+const MARS_TAB: &str = "terminal";
+const MARS_CONFIG_ACTION_ID: &str = "mars.config";
 
 #[derive(Debug, Clone)]
 pub struct ConfigUiRequest {
@@ -124,6 +127,7 @@ struct ConfigUiEditTarget {
 enum ConfigUiEditTargetKind {
     Main,
     Cursors,
+    Mars,
 }
 
 #[cfg(test)]

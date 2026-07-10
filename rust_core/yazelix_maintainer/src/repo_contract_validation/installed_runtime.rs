@@ -345,18 +345,6 @@ fn validate_home_manager_activation_mode(
             "generated Yazi config after Home Manager activation",
             &mut errors,
         );
-        require_path_exists_abs(
-            &home_root
-                .join(".local")
-                .join("share")
-                .join("yazelix")
-                .join("configs")
-                .join("terminal_emulators")
-                .join("mars")
-                .join("config.toml"),
-            "generated Mars terminal config after Home Manager activation",
-            &mut errors,
-        );
         Ok(errors)
     })();
     let _ = fs::remove_dir_all(&temp_root);

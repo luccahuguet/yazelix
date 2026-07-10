@@ -6,9 +6,6 @@
   runtimeToolSourceModes,
   terminalDescriptionBullets,
   terminalVariants,
-  marsEmojiFontDescriptionBullets,
-  marsEmojiFonts,
-  marsProfiles,
 }:
 
 with lib;
@@ -66,28 +63,6 @@ ${terminalDescriptionBullets}
     '';
   };
 
-  mars_profile = mkOption {
-    type = types.enum marsProfiles;
-    default = "full";
-    description = ''
-      Mars terminal package profile.
-
-      - "full": Rio trail cursor defaults without custom shaders
-      - "baseline": no cursor effects
-      - "shaders": Rio trail cursor plus generated Yazelix cursor shaders
-    '';
-  };
-
-  mars_emoji_font = mkOption {
-    type = types.enum marsEmojiFonts;
-    default = "noto";
-    description = ''
-      Mars terminal emoji fallback font.
-
-${marsEmojiFontDescriptionBullets}
-    '';
-  };
-
   mars_package = mkOption {
     type = types.nullOr types.package;
     default = null;
@@ -96,6 +71,28 @@ ${marsEmojiFontDescriptionBullets}
 
       Set this only when testing a local Mars build or pinning a custom Mars
       package. The package must expose passthru.marsPackageMetadata.
+    '';
+  };
+
+  config.mars = mkOption {
+    type = types.nullOr (types.submodule {
+      options = {
+        text = mkOption {
+          type = types.nullOr types.lines;
+          default = null;
+          description = "Inline complete Mars config.toml contents.";
+        };
+        source = mkOption {
+          type = types.nullOr types.path;
+          default = null;
+          description = "Complete Mars config.toml file to install.";
+        };
+      };
+    });
+    default = null;
+    description = ''
+      Complete native Mars config at ~/.config/yazelix/mars/config.toml.
+      Set exactly one of text or source.
     '';
   };
 
@@ -161,30 +158,6 @@ ${marsEmojiFontDescriptionBullets}
 
   default_shell = mkMainContractOption "shell.default_shell" {
     description = "Default shell for Zellij sessions";
-  };
-
-  terminal_config_mode = mkMainContractOption "terminal.config_mode" {
-    description = ''
-      How Yazelix selects terminal configs:
-      - "yazelix": use Yazelix-managed configs in ~/.local/share/yazelix (default)
-      - "user": load the terminal's native user config path and fail if it does not exist
-
-      Cursor presets and cursor effects live in ~/.config/yazelix_cursors/settings.jsonc
-    '';
-  };
-
-  transparency = mkMainContractOption "terminal.transparency" {
-    description = ''
-      Terminal transparency level for all terminals.
-
-      - "none": No transparency (opacity = 1.0)
-      - "very_low": Minimal transparency (opacity = 0.95)
-      - "low": Light transparency (opacity = 0.90)
-      - "medium": Medium transparency (opacity = 0.85)
-      - "high": High transparency (opacity = 0.80)
-      - "very_high": Very high transparency (opacity = 0.70)
-      - "super_high": Maximum transparency (opacity = 0.60)
-    '';
   };
 
   appearance_mode = mkMainContractOption "appearance.mode" {

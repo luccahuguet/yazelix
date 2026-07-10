@@ -213,6 +213,34 @@ fn resolve_editor(runtime_dir: &Path) -> Result<(String, Vec<(String, String)>),
     Ok((editor, env_vars))
 }
 
+pub(crate) fn run_editor_child(runtime_dir: &Path, path: &Path) -> Result<(), CoreError> {
+    let (editor, env_vars) = resolve_editor(runtime_dir)?;
+    let status = Command::new(&editor)
+        .arg(path)
+        .envs(env_vars)
+        .status()
+        .map_err(|source| {
+            CoreError::io(
+                "config_ui_editor",
+                format!("Could not run editor {editor} with {}.", path.display()),
+                "Ensure the configured editor is installed and on PATH, then retry.",
+                path.display().to_string(),
+                source,
+            )
+        })?;
+    if status.success() {
+        Ok(())
+    } else {
+        Err(CoreError::classified(
+            ErrorClass::Runtime,
+            "config_ui_editor_failed",
+            format!("Editor {editor} exited with status {status}."),
+            "Fix the editor command or the config file, then retry.",
+            json!({ "path": path.display().to_string() }),
+        ))
+    }
+}
+
 fn resolve_editor_for_target(
     runtime_dir: &Path,
     target: &EditTarget,

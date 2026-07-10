@@ -11,7 +11,6 @@
     "editor",
     "workspace",
     "shell",
-    "terminal",
     "appearance",
     "zellij",
     "yazi"
@@ -363,48 +362,6 @@
       },
       "x-yazelix": {
         "tab": "shell"
-      }
-    },
-    "terminal": {
-      "type": "object",
-      "description": "Active terminal transparency, glyph, and config ownership settings",
-      "required": [
-        "config_mode",
-        "emoji_style",
-        "transparency"
-      ],
-      "additionalProperties": false,
-      "properties": {
-        "config_mode": {
-          "type": "string",
-          "enum": [
-            "yazelix",
-            "user"
-          ]
-        },
-        "emoji_style": {
-          "type": "string",
-          "enum": [
-            "noto",
-            "twitter",
-            "serenityos"
-          ]
-        },
-        "transparency": {
-          "type": "string",
-          "enum": [
-            "none",
-            "very_low",
-            "low",
-            "medium",
-            "high",
-            "very_high",
-            "super_high"
-          ]
-        }
-      },
-      "x-yazelix": {
-        "tab": "terminal"
       }
     },
     "appearance": {

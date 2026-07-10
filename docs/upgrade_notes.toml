@@ -1,11 +1,11 @@
 [releases.unreleased]
 acknowledged_guarded_changes = []
 date = ""
-headline = "Post-v17.9 work in progress"
-manual_actions = []
-migration_ids = []
-summary = ["Reserved for post-release changes after v17.9 lands."]
-upgrade_impact = "no_user_action"
+headline = "Native Mars config ownership"
+manual_actions = ["Replace Home Manager terminal_config_mode, transparency, mars_profile, and mars_emoji_font options with exactly one of programs.yazelix.config.mars.text or programs.yazelix.config.mars.source when declaring Mars config.", "Configure Mars appearance and cursor values in the complete native Mars config; root appearance.mode and the standalone Yazelix cursor registry do not project into Mars.", "Configure custom Mars fonts under [fonts]; the retired terminal.emoji_style value is not migrated."]
+migration_ids = ["move_mars_settings_to_native_config"]
+summary = ["Mars reads the complete ~/.config/yazelix/mars/config.toml when present and otherwise reads its packaged complete config directly, without a generated or merged terminal config.", "Ratconfig exposes generic Mars TOML rows, and Home Manager can install the complete file through text or source.", "Writable released terminal transparency settings migrate to native window.opacity before the retired terminal settings object is removed."]
+upgrade_impact = "migration_available"
 version = "unreleased"
 
 [releases.v12]

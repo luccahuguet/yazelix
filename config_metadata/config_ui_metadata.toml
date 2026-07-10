@@ -30,11 +30,11 @@ help = "Editor command and Helix integration"
 
 [tabs.terminal]
 label = "terminal"
-help = "Terminal emulator selection and generated terminal configs"
+help = "Mars native configuration"
 
 [tabs.appearance]
 label = "appearance"
-help = "Theme, chrome, transparency, and screen saver presentation"
+help = "Theme, chrome, and screen saver presentation"
 
 [tabs.cursors]
 label = "cursors"
@@ -127,18 +127,6 @@ help = "Set the right sidebar pane width as a percentage of the tab"
 [fields."shell.default_shell"]
 tab = "shell"
 help = "Choose the shell used for new Yazelix shell panes; xonsh must be installed on the host"
-
-[fields."terminal.config_mode"]
-tab = "terminal"
-help = "Choose whether Yazelix owns generated terminal config files"
-
-[fields."terminal.emoji_style"]
-tab = "terminal"
-help = "Choose the Mars Terminal emoji glyph style for fresh mars windows"
-
-[fields."terminal.transparency"]
-tab = "appearance"
-help = "Choose the generated terminal background transparency level"
 
 [fields."appearance.mode"]
 tab = "appearance"

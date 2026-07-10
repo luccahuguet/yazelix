@@ -891,10 +891,6 @@ fn validate_home_manager_activation_contract(repo_root: &Path) -> Result<Vec<Str
 }
 
 fn validate_home_manager_activation_script(script: &str, manage_config: bool) -> Vec<String> {
-    let materialization_lines = script
-        .lines()
-        .filter(|line| line.contains("terminal-materialization.generate --from-env"))
-        .collect::<Vec<_>>();
     let mut errors = Vec::new();
     let owner_label = if manage_config {
         "Home Manager-owned"
@@ -902,20 +898,10 @@ fn validate_home_manager_activation_script(script: &str, manage_config: bool) ->
         "ratconfig-owned"
     };
 
-    if materialization_lines.len() != 1 {
+    if script.contains("terminal-materialization.generate") {
         errors.push(format!(
-            "{owner_label} Home Manager activation must generate the active Mars terminal config once, got {} materialization command(s)",
-            materialization_lines.len()
+            "{owner_label} Home Manager activation must not regenerate the complete native Mars config"
         ));
-    }
-    if !materialization_lines
-        .iter()
-        .all(|line| line.contains("/libexec/yzx_core"))
-    {
-        errors.push(
-            format!("{owner_label} Home Manager activation terminal materialization must run each terminal package's own yzx_core")
-                .to_string(),
-        );
     }
 
     errors
@@ -1138,7 +1124,11 @@ fn build_home_manager_option_declarations_expr(repo_root: &Path) -> String {
     lines.extend([
         "    ];".to_string(),
         "  };".to_string(),
-        "in builtins.mapAttrs (_: option: map builtins.toString option.declarations) eval.options.programs.yazelix".to_string(),
+        "  collect = prefix: attrs: builtins.foldl' (result: name:".to_string(),
+        "    let value = attrs.${name}; path = if prefix == \"\" then name else \"${prefix}.${name}\";".to_string(),
+        "    in result // (if value ? declarations then { \"${path}\" = map builtins.toString value.declarations; } else collect path value)".to_string(),
+        "  ) {} (builtins.attrNames attrs);".to_string(),
+        "in collect \"\" eval.options.programs.yazelix".to_string(),
     ]);
     lines.join("\n")
 }

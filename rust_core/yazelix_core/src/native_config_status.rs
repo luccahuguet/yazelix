@@ -82,12 +82,10 @@ pub struct NativeConfigStatusEntry {
 
 #[derive(Debug, Clone)]
 pub struct NativeConfigStatusRequest {
-    pub home_dir: PathBuf,
     pub xdg_config_home: PathBuf,
     pub config_dir: PathBuf,
+    pub runtime_dir: PathBuf,
     pub state_dir: PathBuf,
-    pub platform: String,
-    pub terminal_config_mode: String,
     pub active_terminal: String,
     pub settings_home_manager_read_only: bool,
 }
@@ -97,10 +95,6 @@ pub fn xdg_config_home_from_env(home_dir: &Path) -> PathBuf {
         .map(PathBuf::from)
         .filter(|path| !path.as_os_str().is_empty())
         .unwrap_or_else(|| home_dir.join(".config"))
-}
-
-pub fn current_platform_name() -> String {
-    std::env::consts::OS.to_string()
 }
 
 pub fn path_present(path: &Path) -> bool {
@@ -375,62 +369,40 @@ fn helix_statuses(request: &NativeConfigStatusRequest) -> Vec<NativeConfigStatus
 
 fn terminal_statuses(request: &NativeConfigStatusRequest) -> Vec<NativeConfigStatusEntry> {
     let terminal = request.active_terminal.as_str();
-    let mut entries = Vec::new();
-    let native_candidates = user_terminal_config_candidates(
-        &request.home_dir,
-        &request.xdg_config_home,
-        terminal,
-        &request.platform,
-    )
-    .unwrap_or_default();
-    let native_existing = native_candidates.iter().find(|path| path.exists()).cloned();
-    let generated = generated_terminal_config_path(&request.state_dir, terminal);
-    let mut input = if request.terminal_config_mode == "user" {
-        match native_existing {
-            Some(ref active) => {
-                let mut input = entry(
-                    format!("terminal.{terminal}.input"),
-                    terminal.to_string(),
-                    "Terminal native config explicitly selected by terminal.config_mode",
-                    NativeConfigStatusCode::NativeReadOnly,
-                );
-                input.active_path = Some(path_string(active));
-                input
-            }
-            None => entry(
-                format!("terminal.{terminal}.input"),
-                terminal.to_string(),
-                "Terminal native config explicitly selected by terminal.config_mode",
-                NativeConfigStatusCode::NativeRequiredMissing,
-            ),
-        }
+    let managed = user_config_paths::mars_config(&request.config_dir);
+    let packaged = user_config_paths::packaged_mars_config(&request.runtime_dir);
+    let managed_present = path_present(&managed);
+    let home_manager = managed_present && path_owned_by_home_manager(&managed);
+    let status = if home_manager {
+        NativeConfigStatusCode::HomeManagerReadOnly
+    } else if managed_present {
+        NativeConfigStatusCode::ManagedOverride
     } else {
-        entry(
-            format!("terminal.{terminal}.input"),
-            terminal.to_string(),
-            "Generated terminal config from Yazelix settings",
-            NativeConfigStatusCode::ManagedDefault,
-        )
+        NativeConfigStatusCode::ManagedDefault
     };
-    input.native_paths = path_strings(&native_candidates);
-    input.allowed_action = match input.status.as_str() {
-        "native_read_only" => "open_read_only".to_string(),
-        "native_required_missing" => "create_native_or_use_yazelix_mode".to_string(),
-        _ => "edit_settings".to_string(),
-    };
-    input.read_only_reason = (input.status == "native_read_only").then(|| {
-        "terminal.config_mode = user selects the terminal's native config read-only".to_string()
-    });
-    entries.push(input);
-    if request.terminal_config_mode == "yazelix" {
-        entries.push(generated_entry(
-            format!("terminal.{terminal}.generated"),
-            terminal.to_string(),
-            "Generated terminal runtime config",
-            generated,
-        ));
+    let mut input = entry(
+        format!("terminal.{terminal}.input"),
+        terminal.to_string(),
+        "Complete native Mars config",
+        status,
+    );
+    input.active_path = Some(path_string(if managed_present {
+        &managed
+    } else {
+        &packaged
+    }));
+    input.managed_path = Some(path_string(&managed));
+    input.allowed_action = if home_manager {
+        "edit_home_manager"
+    } else {
+        "edit_managed"
     }
-    entries
+    .to_string();
+    input.read_only_reason = home_manager.then(|| {
+        "The complete Mars config is owned by Home Manager; edit programs.yazelix.config.mars."
+            .to_string()
+    });
+    vec![input]
 }
 
 fn shell_statuses(request: &NativeConfigStatusRequest) -> Vec<NativeConfigStatusEntry> {
@@ -535,49 +507,6 @@ fn generated_entry(
     status
 }
 
-pub fn generated_terminal_config_path(state_dir: &Path, terminal: &str) -> PathBuf {
-    let root = state_dir.join("configs").join("terminal_emulators");
-    match terminal {
-        "mars" => root.join("mars").join("config.toml"),
-        other => root.join(other),
-    }
-}
-
-pub fn user_terminal_config_candidates(
-    home_dir: &Path,
-    xdg_config_home: &Path,
-    terminal: &str,
-    platform: &str,
-) -> Result<Vec<PathBuf>, String> {
-    match terminal {
-        "ghostty" => {
-            let xdg_ghostty = xdg_config_home.join("ghostty");
-            let mut candidates = vec![
-                xdg_ghostty.join("config.ghostty"),
-                xdg_ghostty.join("config"),
-            ];
-            if matches!(platform, "macos" | "darwin") {
-                let app_support = home_dir
-                    .join("Library")
-                    .join("Application Support")
-                    .join("com.mitchellh.ghostty");
-                candidates.push(app_support.join("config.ghostty"));
-                candidates.push(app_support.join("config"));
-            }
-            Ok(candidates)
-        }
-        "kitty" => Ok(vec![xdg_config_home.join("kitty").join("kitty.conf")]),
-        "wezterm" => Ok(vec![
-            home_dir.join(".wezterm.lua"),
-            xdg_config_home.join("wezterm").join("wezterm.lua"),
-        ]),
-        "mars" => Ok(vec![xdg_config_home.join("mars").join("config.toml")]),
-        "ratty" => Ok(vec![xdg_config_home.join("ratty").join("ratty.toml")]),
-        "foot" => Ok(vec![xdg_config_home.join("foot").join("foot.ini")]),
-        other => Err(format!("Unsupported terminal config lookup: {other}")),
-    }
-}
-
 // Test lane: default
 #[cfg(test)]
 mod tests {
@@ -587,12 +516,10 @@ mod tests {
 
     fn request(tmp: &TempDir) -> NativeConfigStatusRequest {
         NativeConfigStatusRequest {
-            home_dir: tmp.path().join("home"),
             xdg_config_home: tmp.path().join("home").join(".config"),
             config_dir: tmp.path().join("config").join("yazelix"),
+            runtime_dir: tmp.path().join("runtime"),
             state_dir: tmp.path().join("state"),
-            platform: "linux".to_string(),
-            terminal_config_mode: "yazelix".to_string(),
             active_terminal: "mars".to_string(),
             settings_home_manager_read_only: false,
         }
@@ -628,25 +555,50 @@ mod tests {
         );
     }
 
-    // Regression: terminal.config_mode=user must surface a missing native terminal config as required, not as a harmless generated default.
+    // Defends: absent user Mars config reports the packaged complete file as the active default.
     #[test]
-    fn mars_user_mode_reports_required_native_config_missing() {
+    fn absent_mars_config_reports_packaged_default() {
         let tmp = TempDir::new().unwrap();
-        let mut req = request(&tmp);
-        req.terminal_config_mode = "user".to_string();
+        let req = request(&tmp);
 
         let entries = classify_native_config_statuses(&req);
         let terminal = find(&entries, "terminal.mars.input");
 
-        assert_eq!(terminal.status, "native_required_missing");
-        assert_eq!(terminal.label, "Required native config missing");
+        assert_eq!(terminal.status, "managed_default");
         assert!(terminal.generated_path.is_none());
         assert!(
             terminal
-                .native_paths
-                .iter()
-                .any(|path| path.ends_with("mars/config.toml"))
+                .active_path
+                .as_deref()
+                .is_some_and(|path| path.ends_with("share/mars/config.toml"))
         );
+    }
+
+    // Defends: a Home Manager-installed complete Mars config is reported as the active read-only owner.
+    #[cfg(unix)]
+    #[test]
+    fn home_manager_mars_config_is_active_and_read_only() {
+        let tmp = TempDir::new().unwrap();
+        let req = request(&tmp);
+        let managed = user_config_paths::mars_config(&req.config_dir);
+        let store = tmp
+            .path()
+            .join("profile-home-manager-files")
+            .join("mars-config.toml");
+        fs::create_dir_all(store.parent().unwrap()).unwrap();
+        fs::create_dir_all(managed.parent().unwrap()).unwrap();
+        fs::write(&store, "[window]\nopacity = 0.5\n").unwrap();
+        std::os::unix::fs::symlink(&store, &managed).unwrap();
+
+        let entries = classify_native_config_statuses(&req);
+        let terminal = find(&entries, "terminal.mars.input");
+
+        assert_eq!(terminal.status, "home_manager_read_only");
+        assert_eq!(
+            terminal.active_path.as_deref(),
+            Some(path_string(&managed).as_str())
+        );
+        assert_eq!(terminal.allowed_action, "edit_home_manager");
     }
 
     // Defends: native Yazi and Helix files are import candidates only; Yazelix does not silently read them as runtime input.

@@ -53,7 +53,7 @@ they are not feature/protocol capabilities by themselves.
 | --- | --- | ---: | --- |
 | C1 | Supported Yazelix entrypoint | 4 | Can run the normal Yazelix workspace through a maintained `yzx enter` path |
 | C2 | First-party control path | 4 | Yazelix owns the fork or can directly evolve the terminal behavior |
-| C3 | Config and transparency path | 4 | The terminal has a usable config/transparency path, either Yazelix-generated for Mars or native/user-owned for host terminals |
+| C3 | Config and transparency path | 4 | The terminal has a usable native config and transparency path |
 | C4 | Startup integration | 4 | The terminal can start Yazelix directly through `yzx enter` or the packaged Mars launch path |
 | C5 | GPU renderer | 4 | Terminal renders through a GPU-accelerated stack |
 | C6 | Production confidence | 4 | Mature enough to recommend broadly as a daily driver |
@@ -141,7 +141,7 @@ parser-only behavior as no runtime support.
 ### Mars
 
 Mars is the packaged Yazelix terminal because it gives the project a controlled
-Rust terminal path for stack compatibility, generated config, cursor behavior,
+Rust terminal path for stack compatibility, native config, cursor behavior,
 Kitty protocol work, and agent-driven development workflows. It has the deepest
 Yazelix integration. Users who prefer a more mature standalone terminal can use
 Ghostty or another host terminal and launch Yazelix with `yzx enter`.

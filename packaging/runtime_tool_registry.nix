@@ -41,36 +41,8 @@ let
       throw "Yazelix runtimeVariant mars requires marsPackageMetadata.package_profile"
     else if !(builtins.isBool (metadata.checked_package or null)) then
       throw "Yazelix runtimeVariant mars requires marsPackageMetadata.checked_package"
-    else if !(builtins.isString (metadata.metadata_path or null)) then
-      throw "Yazelix runtimeVariant mars requires marsPackageMetadata.metadata_path"
     else if !(builtins.isString (metadata.wrapper_commands.desktop or null)) then
       throw "Yazelix runtimeVariant mars requires marsPackageMetadata.wrapper_commands.desktop"
-    else if !(builtins.isAttrs (metadata.config_roots or null)) then
-      throw "Yazelix runtimeVariant mars requires marsPackageMetadata.config_roots"
-    else if !(builtins.isList (metadata.supported_emoji_fonts or null)) then
-      throw "Yazelix runtimeVariant mars requires marsPackageMetadata.supported_emoji_fonts"
-    else if !(builtins.elem "noto" metadata.supported_emoji_fonts) then
-      throw "Yazelix runtimeVariant mars requires marsPackageMetadata.supported_emoji_fonts to include noto"
-    else if !(builtins.elem "twitter" metadata.supported_emoji_fonts) then
-      throw "Yazelix runtimeVariant mars requires marsPackageMetadata.supported_emoji_fonts to include twitter"
-    else if !(builtins.isAttrs (metadata.emoji_fonts or null)) then
-      throw "Yazelix runtimeVariant mars requires marsPackageMetadata.emoji_fonts"
-    else if !(lib.all (emojiFont: builtins.hasAttr emojiFont metadata.emoji_fonts) metadata.supported_emoji_fonts) then
-      throw "Yazelix runtimeVariant mars requires marsPackageMetadata.emoji_fonts to declare each supported_emoji_fonts entry"
-    else if !(builtins.isList (metadata.supported_appearance_modes or null)) then
-      throw "Yazelix runtimeVariant mars requires marsPackageMetadata.supported_appearance_modes"
-    else if !(builtins.elem "dark" metadata.supported_appearance_modes) then
-      throw "Yazelix runtimeVariant mars requires marsPackageMetadata.supported_appearance_modes to include dark"
-    else if !(builtins.elem "light" metadata.supported_appearance_modes) then
-      throw "Yazelix runtimeVariant mars requires marsPackageMetadata.supported_appearance_modes to include light"
-    else if !(builtins.elem "auto" metadata.supported_appearance_modes) then
-      throw "Yazelix runtimeVariant mars requires marsPackageMetadata.supported_appearance_modes to include auto"
-    else if (metadata.default_appearance_mode or null) != "dark" then
-      throw "Yazelix runtimeVariant mars requires marsPackageMetadata.default_appearance_mode = \"dark\""
-    else if !(builtins.isString (metadata.wrapper_env.appearance or null)) then
-      throw "Yazelix runtimeVariant mars requires marsPackageMetadata.wrapper_env.appearance"
-    else if !(builtins.isString (metadata.wrapper_env.emoji_font or null)) then
-      throw "Yazelix runtimeVariant mars requires marsPackageMetadata.wrapper_env.emoji_font"
     else
       metadata;
   marsPackageMetadata =
@@ -81,27 +53,17 @@ let
         throw "Yazelix runtimeVariant mars requires the Mars terminal child package"
     else
       throw "Unsupported Yazelix runtimeVariant: ${runtimeVariant}. Yazelix only packages Mars; configure host terminals to run `yzx enter`.";
-  marsPackageRuntimeIdentity =
-    if marsPackageMetadata == null then
-      { }
-    else
-      {
-        package_profile =
-          if marsPackageMetadata.package_profile == "fast" then
-            "mars-fast"
-          else
-            "mars-${marsPackageMetadata.package_profile}";
-        mars_terminal_package = marsPackageMetadata.package_name;
-        mars_terminal_package_profile = marsPackageMetadata.package_profile;
-        mars_terminal_checked = marsPackageMetadata.checked_package;
-        mars_terminal_metadata_schema = marsPackageMetadata.schema_version;
-        mars_terminal_supported_appearance_modes =
-          marsPackageMetadata.supported_appearance_modes;
-        mars_terminal_supported_emoji_fonts =
-          marsPackageMetadata.supported_emoji_fonts;
-        mars_terminal_default_appearance_mode =
-          marsPackageMetadata.default_appearance_mode;
-      };
+  marsPackageRuntimeIdentity = {
+    package_profile =
+      if marsPackageMetadata.package_profile == "fast" then
+        "mars-fast"
+      else
+        "mars-${marsPackageMetadata.package_profile}";
+    mars_terminal_package = marsPackageMetadata.package_name;
+    mars_terminal_package_profile = marsPackageMetadata.package_profile;
+    mars_terminal_checked = marsPackageMetadata.checked_package;
+    mars_terminal_metadata_schema = marsPackageMetadata.schema_version;
+  };
   terminalPackage =
     marsTerminalPackage;
   terminalCommands = [ (commandBasename marsPackageMetadata.wrapper_commands.desktop) ];
@@ -403,7 +365,6 @@ else if disallowedOffNames != [ ] then
 else
   {
     inherit runtimeToolSourceModes tools runtimePackages exportedCommands manifest;
-    terminalPackageMetadata = marsPackageMetadata;
     terminalPackageRuntimeIdentity = marsPackageRuntimeIdentity;
     manifestJson = builtins.toJSON manifest;
   }

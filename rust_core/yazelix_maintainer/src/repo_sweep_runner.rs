@@ -354,10 +354,6 @@ hide_sidebar_on_file_open = {}\n\
 [shell]\n\
 default_shell = \"{}\"\n\
 \n\
-[terminal]\n\
-config_mode = \"yazelix\"\n\
-transparency = \"none\"\n\
-\n\
 [zellij]\n\
 disable_tips = true\n\
 rounded_corners = true\n\

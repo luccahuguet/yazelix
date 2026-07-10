@@ -23,20 +23,6 @@ let
   marsDesktopPackage =
     if cfg.mars_package != null then cfg.mars_package else marsTerminalPackage;
   marsConfigured = cfg.terminal == "mars";
-  marsProfileActive = marsConfigured && cfg.mars_profile != "full";
-  marsProfileExport =
-    lib.optionalString marsProfileActive
-      "export MARS_PROFILE=${cfg.mars_profile}";
-  marsSemanticEnvActive = marsConfigured && cfg.manage_config;
-  marsAppearanceExport =
-    lib.optionalString marsSemanticEnvActive
-      "export MARS_APPEARANCE=${cfg.appearance_mode}";
-  marsEmojiFontExport =
-    lib.optionalString marsSemanticEnvActive
-      "export MARS_EMOJI_FONT=${cfg.mars_emoji_font}";
-  marsEmojiFontSourceExport =
-    lib.optionalString marsSemanticEnvActive
-      "export MARS_EMOJI_FONT_SOURCE=home-manager";
 
   agentUsageProgramNames = [
     "tokenusage"
@@ -83,18 +69,10 @@ let
     pkgs.coreutils
     pkgs.zellij
   ];
-  terminalMaterializationActivation = ''
-        $DRY_RUN_CMD ${runtimeYzxCore} terminal-materialization.generate --from-env >/dev/null
-  '';
-
   desktopExec =
     let
       envVars =
-        lib.optional marsConfigured "MARS_APP_ID=${desktopEntryKey}"
-        ++ lib.optional (marsConfigured && cfg.manage_config) "MARS_APPEARANCE=${cfg.appearance_mode}"
-        ++ lib.optional (marsConfigured && cfg.manage_config) "MARS_EMOJI_FONT=${cfg.mars_emoji_font}"
-        ++ lib.optional (marsConfigured && cfg.manage_config) "MARS_EMOJI_FONT_SOURCE=home-manager"
-        ++ lib.optional marsProfileActive "MARS_PROFILE=${cfg.mars_profile}";
+        lib.optional marsConfigured "MARS_APP_ID=${desktopEntryKey}";
     in
     "${lib.optionalString (envVars != [ ]) "env ${lib.concatStringsSep " " envVars} "}${config.home.profileDirectory}/bin/yzx desktop launch";
   desktopEntry = {
@@ -155,15 +133,6 @@ in
 
   baseConfig = {
     home.packages = [ yazelixPackage ] ++ cursorGeneratorPackage;
-    home.sessionVariables = mkMerge [
-      (mkIf marsSemanticEnvActive {
-        MARS_APPEARANCE = mkDefault cfg.appearance_mode;
-        MARS_EMOJI_FONT = mkDefault cfg.mars_emoji_font;
-      })
-      (mkIf marsProfileActive {
-        MARS_PROFILE = mkDefault cfg.mars_profile;
-      })
-    ];
     inherit assertions;
 
     xdg.dataFile."icons/hicolor/48x48/apps/yazelix.png".source =
@@ -181,13 +150,7 @@ in
       export YAZELIX_CONFIG_DIR="${managedConfigRoot}"
       export YAZELIX_STATE_DIR="${stateRoot}"
       export YAZELIX_LOGS_DIR="${logsPath}"
-      ${marsAppearanceExport}
-      ${marsEmojiFontExport}
-      ${marsEmojiFontSourceExport}
-      ${marsProfileExport}
-
       $DRY_RUN_CMD ${runtimeYzxCore} runtime-materialization.repair --from-env --force --summary
-${terminalMaterializationActivation}
 ${cursorGeneratorActivation}
       $DRY_RUN_CMD env YAZELIX_QUIET_MODE=true ${runtimeYzxControl} generate_shell_initializers
     '';

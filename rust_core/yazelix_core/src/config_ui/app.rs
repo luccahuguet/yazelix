@@ -1,4 +1,9 @@
 use super::*;
+use crossterm::{
+    cursor, execute,
+    terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
+};
+use ratconfig::toml_adapter::{TomlPatchError, set_toml_value_text, unset_toml_value_text};
 
 pub fn run_config_ui(request: ConfigUiRequest) -> Result<i32, CoreError> {
     if !io::stdin().is_terminal() || !io::stdout().is_terminal() {
@@ -69,11 +74,17 @@ impl YazelixConfigUiHost<'_> {
                 Err(error) => ui.notice_error(error.message()),
             },
             ConfigUiIntent::OpenFile {
-                action_id, path, ..
-            } => ui.notice_error(format!(
-                "The Ratconfig file action {action_id} for {} has no Yazelix host handler.",
-                path.display()
-            )),
+                source_id,
+                action_id,
+                path,
+                create_if_missing,
+                ..
+            } => {
+                match self.open_config_file(ui, &source_id, &action_id, &path, create_if_missing) {
+                    Ok(()) => ui.notice_info(format!("Opened {}.", path.display())),
+                    Err(error) => ui.notice_error(error.message()),
+                }
+            }
             ConfigUiIntent::EditTextExternally { path, .. } => ui.notice_error(format!(
                 "The Ratconfig external editor action for {path} has no Yazelix host handler."
             )),
@@ -129,9 +140,20 @@ impl YazelixConfigUiHost<'_> {
         }
         let target = self.editable_config_target(ui, source_id, setting_path)?;
         let raw = self.read_edit_target_or_default(ui, &target)?;
-        let outcome =
-            set_settings_jsonc_value_text(&target.path, &raw, &target.path_in_file, value)?;
-        self.finish_field_write(ui, setting_path, &target, outcome)
+        let outcome = match target.kind {
+            ConfigUiEditTargetKind::Mars => {
+                let outcome = set_toml_value_text(&raw, &target.path_in_file, value)
+                    .map_err(|error| mars_toml_patch_error(&target.path, error))?;
+                SettingsJsoncPatchOutcome {
+                    text: outcome.text,
+                    mutation: outcome.mutation,
+                }
+            }
+            ConfigUiEditTargetKind::Main | ConfigUiEditTargetKind::Cursors => {
+                set_settings_jsonc_value_text(&target.path, &raw, &target.path_in_file, value)?
+            }
+        };
+        self.finish_field_write(ui, source_id, setting_path, &target, outcome)
     }
 
     fn unset_field_value(
@@ -156,8 +178,16 @@ impl YazelixConfigUiHost<'_> {
             ConfigUiEditTargetKind::Cursors => {
                 unset_settings_jsonc_value_text(&target.path, &raw, &target.path_in_file)?
             }
+            ConfigUiEditTargetKind::Mars => {
+                let outcome = unset_toml_value_text(&raw, &target.path_in_file)
+                    .map_err(|error| mars_toml_patch_error(&target.path, error))?;
+                SettingsJsoncPatchOutcome {
+                    text: outcome.text,
+                    mutation: outcome.mutation,
+                }
+            }
         };
-        self.finish_field_write(ui, setting_path, &target, outcome)
+        self.finish_field_write(ui, source_id, setting_path, &target, outcome)
     }
 
     fn write_custom_popup_list(
@@ -181,12 +211,13 @@ impl YazelixConfigUiHost<'_> {
             CUSTOM_POPUPS_FIELD_PATH,
             &next_value,
         )?;
-        self.finish_field_write(ui, setting_path, &target, outcome)
+        self.finish_field_write(ui, source_id, setting_path, &target, outcome)
     }
 
     fn finish_field_write(
         &self,
         ui: &mut ConfigUiApp,
+        source_id: &str,
         setting_path: &str,
         target: &ConfigUiEditTarget,
         outcome: SettingsJsoncPatchOutcome,
@@ -194,9 +225,15 @@ impl YazelixConfigUiHost<'_> {
         let (text, should_write) = self.reconcile_patched_edit_target(target, &outcome)?;
         if should_write {
             self.validate_patched_edit_target(target, &text)?;
-            write_settings_edit(&target.path, &text)?;
+            if target.kind == ConfigUiEditTargetKind::Mars {
+                crate::atomic_fs::write_text_atomic(&target.path, &text)?;
+            } else {
+                write_settings_edit(&target.path, &text)?;
+            }
         }
-        let apply_notice = if outcome.changed() {
+        let apply_notice = if outcome.changed() && target.kind == ConfigUiEditTargetKind::Mars {
+            Some("Mars reads this native config when the next window opens.".to_string())
+        } else if outcome.changed() {
             match apply_after_field_write(self.request, &ui.model, setting_path) {
                 Ok(status) => apply_status_notice(&status),
                 Err(error) => Some(apply_error_notice(&error)),
@@ -204,7 +241,7 @@ impl YazelixConfigUiHost<'_> {
         } else {
             None
         };
-        self.reload_model_preserving_selection(ui, setting_path)?;
+        self.reload_model_preserving_selection(ui, source_id, setting_path)?;
         Ok(ConfigUiWriteOutcome {
             mutation: outcome.mutation,
             apply_notice,
@@ -231,13 +268,14 @@ impl YazelixConfigUiHost<'_> {
     fn reload_model_preserving_selection(
         &self,
         ui: &mut ConfigUiApp,
+        source_id: &str,
         selected_path: &str,
     ) -> Result<(), CoreError> {
         let selected_tab = ui
             .model
             .fields
             .iter()
-            .find(|field| field.path == selected_path)
+            .find(|field| field.source_id == source_id && field.path == selected_path)
             .map(|field| field.tab.clone());
         ui.model = build_config_ui_model(self.request)?;
         if let Some(tab) = selected_tab
@@ -251,7 +289,9 @@ impl YazelixConfigUiHost<'_> {
             .position(|row| {
                 matches!(
                     row,
-                    UiRowRef::Field(index) if ui.model.fields[*index].path == selected_path
+                    UiRowRef::Field(index)
+                        if ui.model.fields[*index].source_id == source_id
+                            && ui.model.fields[*index].path == selected_path
                 )
             })
             .unwrap_or(0);
@@ -264,23 +304,27 @@ impl YazelixConfigUiHost<'_> {
         source_id: &str,
         setting_path: &str,
     ) -> Result<(), CoreError> {
-        let Some(field) = ui
+        if ui
+            .model
+            .fields
+            .iter()
+            .any(|field| field.source_id == source_id && field.path == setting_path)
+        {
+            return Ok(());
+        }
+        if let Some(field) = ui
             .model
             .fields
             .iter()
             .find(|field| field.path == setting_path)
-        else {
-            return Err(unsupported_config_source(source_id, setting_path));
-        };
-        if field.source_id == source_id {
-            Ok(())
-        } else {
-            Err(config_source_mismatch(
+        {
+            return Err(config_source_mismatch(
                 source_id,
                 setting_path,
                 &field.source_id,
-            ))
+            ));
         }
+        Err(unsupported_config_source(source_id, setting_path))
     }
 
     fn edit_target(
@@ -299,6 +343,11 @@ impl YazelixConfigUiHost<'_> {
                 path: ui.model.cursor_config_path.clone(),
                 path_in_file: cursor_path_in_file(setting_path)?,
                 kind: ConfigUiEditTargetKind::Cursors,
+            }),
+            MARS_SOURCE_ID => Ok(ConfigUiEditTarget {
+                path: user_config_paths::mars_config(&self.request.config_dir),
+                path_in_file: setting_path.to_string(),
+                kind: ConfigUiEditTargetKind::Mars,
             }),
             _ => Err(unsupported_config_source(source_id, setting_path)),
         }
@@ -329,6 +378,7 @@ impl YazelixConfigUiHost<'_> {
                     CursorRegistry::parse_str(&ui.model.default_cursor_config_path, &raw)?;
                 Ok(render_cursor_settings_jsonc(&registry))
             }
+            ConfigUiEditTargetKind::Mars => read_packaged_mars_config(&self.request.runtime_dir),
         }
     }
 
@@ -344,6 +394,17 @@ impl YazelixConfigUiHost<'_> {
                 CursorRegistry::parse_json_value(&target.path, value)?;
                 Ok(())
             }
+            ConfigUiEditTargetKind::Mars => toml::from_str::<toml::Table>(text)
+                .map(|_| ())
+                .map_err(|source| {
+                    CoreError::classified(
+                        ErrorClass::Config,
+                        "invalid_mars_config",
+                        format!("Could not parse {}: {source}.", target.path.display()),
+                        "Fix the TOML syntax in ~/.config/yazelix/mars/config.toml, then retry.",
+                        json!({ "path": target.path.display().to_string() }),
+                    )
+                }),
         }
     }
 
@@ -355,7 +416,7 @@ impl YazelixConfigUiHost<'_> {
     ) -> Result<ConfigUiEditTarget, CoreError> {
         self.ensure_known_field_source(ui, source_id, setting_path)?;
         let target = self.edit_target(ui, source_id, setting_path)?;
-        if !is_settings_config_path(&target.path) {
+        if target.kind != ConfigUiEditTargetKind::Mars && !is_settings_config_path(&target.path) {
             return Err(CoreError::classified(
                 ErrorClass::Config,
                 "unsupported_config_edit_surface",
@@ -391,6 +452,131 @@ impl YazelixConfigUiHost<'_> {
         }
         Ok(target)
     }
+
+    fn open_config_file(
+        &self,
+        ui: &mut ConfigUiApp,
+        source_id: &str,
+        action_id: &str,
+        path: &Path,
+        create_if_missing: bool,
+    ) -> Result<(), CoreError> {
+        let expected = user_config_paths::mars_config(&self.request.config_dir);
+        if source_id != MARS_SOURCE_ID || action_id != MARS_CONFIG_ACTION_ID || path != expected {
+            return Err(CoreError::usage(format!(
+                "Unsupported config file action {source_id}/{action_id} for {}.",
+                path.display()
+            )));
+        }
+        prepare_mars_config_file(self.request, path, create_if_missing)?;
+
+        suspend_config_ui_terminal(|| {
+            crate::edit_commands::run_editor_child(&self.request.runtime_dir, path)
+        })?;
+        let raw = fs::read_to_string(path).map_err(|source| {
+            CoreError::io(
+                "read_edited_mars_config",
+                "Could not read the edited Mars config",
+                "Fix permissions for the file, then retry.",
+                path.display().to_string(),
+                source,
+            )
+        })?;
+        toml::from_str::<toml::Table>(&raw).map_err(|source| {
+            CoreError::classified(
+                ErrorClass::Config,
+                "invalid_mars_config",
+                format!("Could not parse {}: {source}.", path.display()),
+                "Fix the TOML syntax before opening a new Mars window.",
+                json!({ "path": path.display().to_string() }),
+            )
+        })?;
+        ui.model = build_config_ui_model(self.request)?;
+        ui.selected_tab = ui
+            .model
+            .tabs
+            .iter()
+            .position(|tab| tab == MARS_TAB)
+            .unwrap_or(0);
+        ui.selected_row = 0;
+        Ok(())
+    }
+}
+
+pub(super) fn prepare_mars_config_file(
+    request: &ConfigUiRequest,
+    path: &Path,
+    create_if_missing: bool,
+) -> Result<(), CoreError> {
+    if path_present(path) {
+        if path_owned_by_home_manager(path) || path_is_read_only(path) {
+            return Err(CoreError::classified(
+                ErrorClass::Config,
+                "home_manager_owned_mars_config",
+                "The complete Mars config is read-only because Home Manager owns it.",
+                "Edit programs.yazelix.config.mars and run home-manager switch.",
+                json!({ "path": path.display().to_string() }),
+            ));
+        }
+        if !path.is_file() {
+            return Err(CoreError::classified(
+                ErrorClass::Config,
+                "invalid_mars_config_path",
+                format!("The Mars config path is not a file: {}.", path.display()),
+                "Remove the conflicting filesystem entry or replace it with a complete config.toml file.",
+                json!({ "path": path.display().to_string() }),
+            ));
+        }
+        return Ok(());
+    }
+    if !create_if_missing {
+        return Err(CoreError::usage(format!(
+            "Mars config does not exist: {}.",
+            path.display()
+        )));
+    }
+    let raw = read_packaged_mars_config(&request.runtime_dir)?;
+    crate::atomic_fs::write_text_atomic(path, &raw)
+}
+
+fn read_packaged_mars_config(runtime_dir: &Path) -> Result<String, CoreError> {
+    let path = user_config_paths::packaged_mars_config(runtime_dir);
+    fs::read_to_string(&path).map_err(|source| {
+        CoreError::io(
+            "read_packaged_mars_config",
+            "Could not read the packaged complete Mars config",
+            "Reinstall Yazelix, then retry.",
+            path.display().to_string(),
+            source,
+        )
+    })
+}
+
+fn suspend_config_ui_terminal(
+    action: impl FnOnce() -> Result<(), CoreError>,
+) -> Result<(), CoreError> {
+    disable_raw_mode().map_err(terminal_err)?;
+    if let Err(source) = execute!(io::stdout(), cursor::Show, LeaveAlternateScreen) {
+        let _ = enable_raw_mode();
+        return Err(terminal_err(source));
+    }
+    let result = action();
+    let resume =
+        enable_raw_mode().and_then(|_| execute!(io::stdout(), EnterAlternateScreen, cursor::Hide));
+    if let Err(source) = resume {
+        return Err(terminal_err(source));
+    }
+    result
+}
+
+fn mars_toml_patch_error(path: &Path, error: TomlPatchError) -> CoreError {
+    CoreError::classified(
+        ErrorClass::Config,
+        "mars_config_patch_failed",
+        format!("Could not update {}: {error:?}.", path.display()),
+        "Fix the Mars TOML structure or edit the complete file directly.",
+        json!({ "path": path.display().to_string() }),
+    )
 }
 
 pub(super) fn write_notice_text(verb: &str, path: &str, outcome: &ConfigUiWriteOutcome) -> String {

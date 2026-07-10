@@ -6,10 +6,19 @@ Short, upgrade-facing release notes live here. The longer narrative history rema
 
 Post-v17.9 work in progress
 
-Upgrade impact: no user action required
+Upgrade impact: migration available; Home Manager users must update removed terminal options
 
 Highlights:
 - Repaired the published Yazi assets Cargo vendor hash so fresh Nix installs build on Linux and macOS
+- Made `~/.config/yazelix/mars/config.toml` the optional complete native Mars config, with the packaged complete config used directly when the user file is absent
+- Removed generated Mars config, terminal config mode, transparency buckets, emoji/profile projection, cross-tool Mars appearance/cursor projection, random per-window Mars cursors, and tracked Ghostty/Kitty/WezTerm example configs
+- Exposed the complete Mars TOML document through Ratconfig generic rows and added Home Manager `programs.yazelix.config.mars.text` / `source` ownership
+- Migrated writable released `terminal.transparency` values to native `window.opacity` before removing the retired `terminal` settings object
+
+Manual action:
+- Replace Home Manager `terminal_config_mode`, `transparency`, `mars_profile`, and `mars_emoji_font` options with exactly one of `programs.yazelix.config.mars.text` or `programs.yazelix.config.mars.source` when you want a declarative Mars config
+- Configure Mars appearance and cursors in `[mars.appearance]` and `[yazelix.cursor]`; root `appearance.mode` and `~/.config/yazelix_cursors/settings.jsonc` do not control Mars
+- Configure custom Mars fonts under `[fonts]`; the retired `terminal.emoji_style` value is not migrated
 
 ## v17.9 - 2026-06-27
 

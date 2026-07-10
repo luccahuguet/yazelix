@@ -950,17 +950,11 @@ fn range_expectation(field: &ContractField) -> String {
 }
 
 fn invalid_value_error(field_path: &str, actual_value: &str, expectation: &str) -> CoreError {
-    let remediation = if field_path == "terminal.config_mode" {
-        "Use `terminal.config_mode = \"yazelix\"` for the supported managed path, or `\"user\"` only when you want Yazelix to load the terminal's native config file."
-    } else {
-        "Update settings.jsonc with a supported value, or run `yzx reset config` to restore the template."
-    };
-
     CoreError::classified(
         ErrorClass::Config,
         "invalid_config_value",
         format!("Invalid {field_path} value '{actual_value}'. Expected {expectation}."),
-        remediation,
+        "Update settings.jsonc with a supported value, or run `yzx reset config` to restore the template.",
         json!({
             "field": field_path,
             "actual": actual_value,
@@ -1137,7 +1131,6 @@ mod tests {
         assert_eq!(config.get("helix_external").unwrap(), &JsonValue::Null);
         assert_eq!(config.get("zellij_pane_frames").unwrap(), "true");
         assert_eq!(config.get("game_of_life_cell_style").unwrap(), "full_block");
-        assert_eq!(config.get("terminal_emoji_style").unwrap(), "noto");
         assert_eq!(config.get("welcome_duration_seconds").unwrap(), 4.0);
 
         let contract = read_toml_table(
@@ -1148,11 +1141,11 @@ mod tests {
         let fields = load_contract_fields(&contract).unwrap();
         assert_eq!(config.len(), fields.len() + 1);
 
-        let partial_config = write_user_config("[terminal]\ntransparency = \"none\"\n");
+        let partial_config = write_user_config("[appearance]\nmode = \"light\"\n");
         let partial = normalize_config(&request_for(partial_config)).unwrap();
         assert_eq!(
             partial.normalized_config.get("appearance_mode").unwrap(),
-            "dark"
+            "light"
         );
     }
 

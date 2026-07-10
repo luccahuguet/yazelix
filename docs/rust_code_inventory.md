@@ -48,7 +48,6 @@ Detailed budget families:
 | `rust_core/yazelix_maintainer/src/repo_contract_validation/config_surface.rs` | 1,923 | config-surface contract validator | Split only by clear contract families |
 | `rust_core/yazelix_core/src/install_ownership_report.rs` | 1,908 | install ownership diagnostics | Prune only after supported recovery paths are narrower |
 | `rust_core/yazelix_core/src/doctor_runtime_report.rs` | 1,680 | runtime doctor reporting | Collapse duplicate report/fix plumbing before adding more checks |
-| `rust_core/yazelix_core/src/terminal_materialization.rs` | 1,658 | generated terminal config materialization | Keep while terminal capability and user/native config contracts are local |
 | `rust_core/yazelix_core/src/config_normalize.rs` | 1,547 | config behavior normalizer | Split only around durable setting families |
 | `rust_core/yazelix_core/src/doctor_commands.rs` | 1,435 | doctor orchestration | Split report rendering from fix orchestration only after doctor behavior stabilizes |
 | `rust_core/yazelix_core/tests/yzx_control_workspace_surface.rs` | 1,360 | workspace/control-plane integration tests | Broad but behavior-backed; split by workspace/popup/session behaviors |

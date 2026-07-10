@@ -15,7 +15,6 @@ use crate::runtime_contract::{
 use crate::settings_surface::DEFAULT_SETTINGS_CONFIG_FILENAME;
 use serde::{Deserialize, Serialize};
 use std::env;
-use std::ffi::OsString;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::UNIX_EPOCH;
@@ -168,9 +167,6 @@ pub fn evaluate_doctor_runtime_report(
         &request.yazelix_state_dir,
         &request.runtime_dir,
     ));
-    if let Some(finding) = build_host_rio_env_isolation_finding() {
-        shared_runtime_preflight.push(finding);
-    }
 
     DoctorRuntimeEvaluateData {
         distribution,
@@ -851,60 +847,6 @@ fn build_runtime_graphics_findings(
     ]
 }
 
-fn build_host_rio_env_isolation_finding() -> Option<DoctorRuntimeDoctorFinding> {
-    build_host_rio_env_isolation_finding_from_values(
-        env::var_os("RIO_CONFIG_HOME"),
-        env::var_os("MARS_CONFIG"),
-        env::var_os("MARS_CONFIG_HOME"),
-        env::var_os("MARS_LD_LIBRARY_PATH_PREFIX"),
-        env::var_os("MARS_HOST_LD_LIBRARY_PATH"),
-    )
-}
-
-fn build_host_rio_env_isolation_finding_from_values(
-    rio_config_home: Option<OsString>,
-    legacy_mars_config: Option<OsString>,
-    mars_config_home: Option<OsString>,
-    loader_prefix: Option<OsString>,
-    host_loader_snapshot: Option<OsString>,
-) -> Option<DoctorRuntimeDoctorFinding> {
-    let mut details = Vec::new();
-
-    if let Some(value) = rio_config_home {
-        let value = value.to_string_lossy();
-        if value.contains("terminal_emulators/mars")
-            || legacy_mars_config.is_some()
-            || mars_config_home.is_some()
-        {
-            details.push(format!("RIO_CONFIG_HOME={value}"));
-        }
-    }
-    if let Some(value) = legacy_mars_config {
-        details.push(format!("MARS_CONFIG={}", value.to_string_lossy()));
-    }
-    if let Some(value) = mars_config_home {
-        details.push(format!("MARS_CONFIG_HOME={}", value.to_string_lossy()));
-    }
-    if loader_prefix.is_some() || host_loader_snapshot.is_some() {
-        details.push("Mars Terminal package loader environment is present in the shell.".into());
-    }
-
-    if details.is_empty() {
-        return None;
-    }
-
-    Some(
-        DoctorRuntimeDoctorFinding::new(
-            "warning",
-            "Host Rio environment may be contaminated by Mars Terminal launch state",
-        )
-        .with_details(details.join("\n"))
-        .with_capability_mode("host_rio_env_contamination")
-        .with_runtime_contract_check("host_rio_env_isolation")
-        .with_owner_surface("terminal_runtime_env"),
-    )
-}
-
 fn runtime_feature_path(runtime_dir: &Path, feature: &str) -> PathBuf {
     runtime_dir.join("runtime_features").join(feature)
 }
@@ -1230,32 +1172,6 @@ mod tests {
         let findings = build_mars_launch_log_findings(&state, &runtime);
 
         assert!(findings.is_empty());
-    }
-
-    // Defends: doctor reports when a Yazelix shell would make plain host Rio read the generated mars config.
-    #[test]
-    fn host_rio_env_isolation_reports_mars_contamination() {
-        let finding = build_host_rio_env_isolation_finding_from_values(
-            Some("/home/user/.local/share/yazelix/configs/terminal_emulators/mars".into()),
-            None,
-            Some("/home/user/.local/share/yazelix/configs/terminal_emulators/mars".into()),
-            None,
-            None,
-        )
-        .unwrap();
-
-        assert_eq!(finding.status, "warning");
-        assert_eq!(
-            finding.runtime_contract_check.as_deref(),
-            Some("host_rio_env_isolation")
-        );
-        assert!(
-            finding
-                .details
-                .as_deref()
-                .unwrap()
-                .contains("terminal_emulators/mars")
-        );
     }
 
     // Defends: doctor runtime distribution reporting still prefers Home Manager ownership over generic package shape.

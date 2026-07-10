@@ -13,6 +13,7 @@ pub const SHARED_CURSOR_CONFIG_DIR: &str = "yazelix_cursors";
 pub const SHARED_CURSOR_SETTINGS_CONFIG: &str = "settings.jsonc";
 pub const HELIX_CONFIG_DIR: &str = "helix";
 pub const HELIX_CONFIG: &str = "helix/config.toml";
+pub const MARS_CONFIG: &str = "mars/config.toml";
 pub const FLAT_HELIX_CONFIG: &str = "helix.toml";
 pub const ZELLIJ_CONFIG: &str = "zellij.kdl";
 pub const YAZI_CONFIG_DIR: &str = "yazi";
@@ -31,6 +32,7 @@ pub const SHELL_XONSH_HOOK: &str = "shell_xonsh.xsh";
 pub const CURRENT_MANAGED_CONFIG_FILE_NAMES: &[&str] = &[
     SETTINGS_CONFIG,
     HELIX_CONFIG,
+    MARS_CONFIG,
     ZELLIJ_CONFIG,
     YAZI_CONFIG,
     YAZI_KEYMAP,
@@ -107,6 +109,14 @@ pub fn legacy_cursor_config(config_dir: &Path) -> PathBuf {
 
 pub fn helix_config(config_dir: &Path) -> PathBuf {
     config_dir.join(HELIX_CONFIG)
+}
+
+pub fn mars_config(config_dir: &Path) -> PathBuf {
+    config_dir.join(MARS_CONFIG)
+}
+
+pub fn packaged_mars_config(runtime_dir: &Path) -> PathBuf {
+    runtime_dir.join("share").join("mars").join("config.toml")
 }
 
 pub fn helix_config_dir(config_dir: &Path) -> PathBuf {

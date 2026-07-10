@@ -1,14 +1,16 @@
 // Test lane: default
 //! Canonical `settings.jsonc` surface and fail-fast old-format diagnostics.
 
+use crate::atomic_fs::write_text_atomic;
 use crate::bridge::{CoreError, ErrorClass};
-use crate::native_config_status::path_owned_by_home_manager;
+use crate::native_config_status::{path_owned_by_home_manager, path_present};
 use crate::settings_contract::{
     SETTINGS_CONTRACT_STATE_PATH, SettingsContractReconcileOutcome,
     reconcile_settings_contract_text,
 };
-use crate::settings_jsonc_patch::jsonc_parse_options;
+use crate::settings_jsonc_patch::{jsonc_parse_options, unset_settings_jsonc_value_text};
 use crate::user_config_paths;
+use ratconfig::toml_adapter::{get_toml_path, parse_toml_value, set_toml_value_text};
 use serde_json::{Map as JsonMap, Value as JsonValue, json};
 use std::fs;
 use std::io;
@@ -24,7 +26,7 @@ const SETTINGS_TOP_LEVEL_ORDER: &[&str] = &[
     "editor",
     "workspace",
     "shell",
-    "terminal",
+    "appearance",
     "zellij",
     "yazi",
     "ratconfig",
@@ -93,6 +95,7 @@ pub fn ensure_settings_config_with_cursor_component(
     ensure_no_old_main_inputs(&paths)?;
 
     if paths.settings_config.exists() {
+        migrate_released_mars_settings(config_dir, default_main_config, &paths.settings_config)?;
         reconcile_settings_config_contract(&paths.settings_config, default_main_config)?;
         if cursor_component_enabled {
             ensure_no_embedded_cursor_settings(&paths)?;
@@ -152,6 +155,220 @@ pub fn ensure_settings_config_with_cursor_component(
     }
 
     Ok(paths.settings_config)
+}
+
+const LEGACY_TRANSPARENCY_OPACITY: &[(&str, f64)] = &[
+    ("none", 1.0),
+    ("very_low", 0.95),
+    ("low", 0.90),
+    ("medium", 0.85),
+    ("high", 0.80),
+    ("very_high", 0.70),
+    ("super_high", 0.60),
+];
+
+fn migrate_released_mars_settings(
+    config_dir: &Path,
+    default_main_config: &Path,
+    settings_path: &Path,
+) -> Result<(), CoreError> {
+    let raw = fs::read_to_string(settings_path).map_err(|source| {
+        io_err(
+            "read_settings_for_mars_migration",
+            settings_path,
+            "Could not read settings.jsonc for the Mars config migration",
+            source,
+        )
+    })?;
+    let value = parse_jsonc_value(settings_path, &raw)?;
+    let Some(terminal) = value.get("terminal").and_then(JsonValue::as_object) else {
+        return Ok(());
+    };
+    let legacy_present = ["config_mode", "emoji_style", "transparency"]
+        .iter()
+        .any(|key| terminal.contains_key(*key));
+    if !legacy_present {
+        return Ok(());
+    }
+    if path_owned_by_home_manager(settings_path) || settings_path_is_read_only(settings_path) {
+        return Err(CoreError::classified(
+            ErrorClass::Config,
+            "read_only_mars_settings_migration",
+            "The retired terminal settings are in a read-only settings.jsonc.",
+            "Remove terminal.config_mode, terminal.emoji_style, and terminal.transparency from Home Manager; declare the complete file with programs.yazelix.config.mars.text or source; then run home-manager switch.",
+            json!({ "path": settings_path.display().to_string() }),
+        ));
+    }
+
+    let mars_path = user_config_paths::mars_config(config_dir);
+    if let Some(mode) = terminal.get("config_mode") {
+        let mode = mode.as_str().ok_or_else(|| {
+            CoreError::classified(
+                ErrorClass::Config,
+                "invalid_legacy_terminal_config_mode",
+                "Cannot migrate non-string terminal.config_mode.",
+                "Set terminal.config_mode to yazelix or user, then retry.",
+                json!({ "value": mode }),
+            )
+        })?;
+        if !matches!(mode, "yazelix" | "user") {
+            return Err(CoreError::classified(
+                ErrorClass::Config,
+                "invalid_legacy_terminal_config_mode",
+                format!("Cannot migrate terminal.config_mode value `{mode}`."),
+                "Use yazelix or user, then retry.",
+                json!({ "value": mode }),
+            ));
+        }
+        if mode == "user" && !mars_path.is_file() {
+            return Err(CoreError::classified(
+                ErrorClass::Config,
+                "missing_reviewed_mars_config",
+                "terminal.config_mode was user, but ~/.config/yazelix/mars/config.toml does not exist.",
+                "Create and review the complete Yazelix-owned Mars config. Ambient ~/.config/mars/config.toml is intentionally ignored.",
+                json!({ "path": mars_path.display().to_string() }),
+            ));
+        }
+    }
+
+    if let Some(transparency) = terminal.get("transparency") {
+        let transparency = transparency.as_str().ok_or_else(|| {
+            CoreError::classified(
+                ErrorClass::Config,
+                "invalid_legacy_transparency",
+                "Cannot migrate non-string terminal.transparency.",
+                "Use one of none, very_low, low, medium, high, very_high, or super_high.",
+                json!({ "value": transparency }),
+            )
+        })?;
+        let opacity = LEGACY_TRANSPARENCY_OPACITY
+            .iter()
+            .find_map(|(name, opacity)| (*name == transparency).then_some(*opacity))
+            .ok_or_else(|| {
+                CoreError::classified(
+                    ErrorClass::Config,
+                    "invalid_legacy_transparency",
+                    format!("Cannot migrate terminal.transparency value `{transparency}`."),
+                    "Use one of none, very_low, low, medium, high, very_high, or super_high.",
+                    json!({ "value": transparency }),
+                )
+            })?;
+        migrate_mars_opacity(default_main_config, &mars_path, opacity)?;
+    }
+
+    let updated = unset_settings_jsonc_value_text(settings_path, &raw, "terminal")?;
+    if updated.changed() {
+        write_text_atomic(settings_path, &updated.text)?;
+    }
+    Ok(())
+}
+
+fn migrate_mars_opacity(
+    default_main_config: &Path,
+    mars_path: &Path,
+    opacity: f64,
+) -> Result<(), CoreError> {
+    let present = path_present(mars_path);
+    if present && (path_owned_by_home_manager(mars_path) || settings_path_is_read_only(mars_path)) {
+        return Err(CoreError::classified(
+            ErrorClass::Config,
+            "read_only_mars_opacity_migration",
+            "The complete Mars config needs an opacity migration but is read-only.",
+            "Set window.opacity through programs.yazelix.config.mars, then run home-manager switch.",
+            json!({ "path": mars_path.display().to_string() }),
+        ));
+    }
+    if present && !mars_path.is_file() {
+        return Err(CoreError::classified(
+            ErrorClass::Config,
+            "invalid_mars_config_path",
+            format!(
+                "The Mars config path is not a file: {}.",
+                mars_path.display()
+            ),
+            "Remove the conflicting filesystem entry or replace it with a complete config.toml file.",
+            json!({ "path": mars_path.display().to_string() }),
+        ));
+    }
+    let source_path = if present {
+        mars_path.to_path_buf()
+    } else {
+        let runtime_dir = default_main_config.parent().ok_or_else(|| {
+            CoreError::usage("The packaged settings path has no runtime parent directory.")
+        })?;
+        user_config_paths::packaged_mars_config(runtime_dir)
+    };
+    let raw = fs::read_to_string(&source_path).map_err(|source| {
+        io_err(
+            "read_mars_opacity_migration_source",
+            &source_path,
+            "Could not read the complete Mars config for opacity migration",
+            source,
+        )
+    })?;
+    let value = parse_toml_value(&raw).map_err(|error| {
+        CoreError::classified(
+            ErrorClass::Config,
+            "invalid_mars_config",
+            format!("Could not parse {}: {error:?}.", source_path.display()),
+            "Fix the complete Mars TOML config, then retry.",
+            json!({ "path": source_path.display().to_string() }),
+        )
+    })?;
+    let current = get_toml_path(&value, "window.opacity").and_then(JsonValue::as_f64);
+    if present && current.is_some_and(|current| current != opacity) {
+        return Err(CoreError::classified(
+            ErrorClass::Config,
+            "mars_opacity_migration_conflict",
+            format!(
+                "Existing Mars window.opacity {:?} conflicts with migrated opacity {opacity}.",
+                current.unwrap()
+            ),
+            "Choose the intended opacity in ~/.config/yazelix/mars/config.toml, then remove the retired terminal settings from settings.jsonc.",
+            json!({ "path": mars_path.display().to_string() }),
+        ));
+    }
+    if present && current == Some(opacity) {
+        return Ok(());
+    }
+    let patched =
+        set_toml_value_text(&raw, "window.opacity", &json!(opacity)).map_err(|error| {
+            CoreError::classified(
+                ErrorClass::Config,
+                "mars_opacity_patch_failed",
+                format!("Could not patch Mars window.opacity: {error:?}."),
+                "Fix the complete Mars TOML structure, then retry.",
+                json!({ "path": mars_path.display().to_string() }),
+            )
+        })?;
+    write_text_atomic(mars_path, &patched.text)?;
+    let verified = parse_toml_value(&fs::read_to_string(mars_path).map_err(|source| {
+        io_err(
+            "verify_mars_opacity_migration",
+            mars_path,
+            "Could not verify the migrated Mars config",
+            source,
+        )
+    })?)
+    .map_err(|error| {
+        CoreError::classified(
+            ErrorClass::Config,
+            "invalid_migrated_mars_config",
+            format!("Migrated Mars config is invalid: {error:?}."),
+            "Restore the complete Mars config and retry.",
+            json!({ "path": mars_path.display().to_string() }),
+        )
+    })?;
+    if get_toml_path(&verified, "window.opacity").and_then(JsonValue::as_f64) != Some(opacity) {
+        return Err(CoreError::classified(
+            ErrorClass::Internal,
+            "mars_opacity_verification_failed",
+            "The Mars opacity migration did not persist the requested value.",
+            "Report this Yazelix migration failure.",
+            json!({ "path": mars_path.display().to_string() }),
+        ));
+    }
+    Ok(())
 }
 
 fn reconcile_settings_config_contract(
@@ -671,6 +888,17 @@ mod tests {
         (main, cursor)
     }
 
+    fn write_packaged_mars_config(root: &Path) -> PathBuf {
+        let path = user_config_paths::packaged_mars_config(root);
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        fs::write(
+            &path,
+            "# keep this comment\n[window]\nopacity = 0.78\nopacity-cells = false\n",
+        )
+        .unwrap();
+        path
+    }
+
     // Defends: new installs create settings.jsonc instead of keeping the old main/cursor TOML surfaces alive.
     #[test]
     fn creates_settings_jsonc_from_defaults() {
@@ -1054,6 +1282,161 @@ mod tests {
             "read_only_settings_contract_reconciliation_required"
         );
         assert!(!raw.contains("ratconfig"));
+    }
+
+    // Defends: every released transparency bucket becomes native Mars opacity before the retired JSONC owner is removed, and reruns are idempotent.
+    #[test]
+    fn migrates_all_released_transparency_buckets_to_complete_mars_config() {
+        for (name, opacity) in LEGACY_TRANSPARENCY_OPACITY {
+            let runtime = tempdir().unwrap();
+            let config = tempdir().unwrap();
+            let (main, cursor) = write_defaults(runtime.path());
+            write_packaged_mars_config(runtime.path());
+            fs::write(
+                config.path().join("settings.jsonc"),
+                format!(
+                    "{{\n  \"terminal\": {{\n    \"config_mode\": \"yazelix\",\n    \"emoji_style\": \"noto\",\n    \"transparency\": \"{name}\"\n  }}\n}}\n"
+                ),
+            )
+            .unwrap();
+
+            ensure_settings_config_with_cursor_component(config.path(), &main, &cursor, false)
+                .unwrap();
+            let mars = user_config_paths::mars_config(config.path());
+            let first_mars = fs::read_to_string(&mars).unwrap();
+            assert!(first_mars.contains("# keep this comment"));
+            let parsed = parse_toml_value(&first_mars).unwrap();
+            assert_eq!(
+                get_toml_path(&parsed, "window.opacity").and_then(JsonValue::as_f64),
+                Some(*opacity),
+                "{name}"
+            );
+            assert!(
+                read_settings_jsonc_value(&config.path().join("settings.jsonc"))
+                    .unwrap()
+                    .get("terminal")
+                    .is_none()
+            );
+
+            ensure_settings_config_with_cursor_component(config.path(), &main, &cursor, false)
+                .unwrap();
+            assert_eq!(fs::read_to_string(mars).unwrap(), first_mars);
+        }
+    }
+
+    // Regression: a complete user Mars config with a different opacity wins by blocking the migration before either source changes.
+    #[test]
+    fn refuses_mars_opacity_migration_conflict_without_partial_writes() {
+        let runtime = tempdir().unwrap();
+        let config = tempdir().unwrap();
+        let (main, cursor) = write_defaults(runtime.path());
+        write_packaged_mars_config(runtime.path());
+        let settings = config.path().join("settings.jsonc");
+        let mars = user_config_paths::mars_config(config.path());
+        fs::create_dir_all(mars.parent().unwrap()).unwrap();
+        fs::write(
+            &settings,
+            "{\n  \"terminal\": { \"config_mode\": \"yazelix\", \"transparency\": \"medium\" }\n}\n",
+        )
+        .unwrap();
+        fs::write(&mars, "[window]\nopacity = 0.5\n").unwrap();
+        let before_settings = fs::read_to_string(&settings).unwrap();
+        let before_mars = fs::read_to_string(&mars).unwrap();
+
+        let error =
+            ensure_settings_config_with_cursor_component(config.path(), &main, &cursor, false)
+                .unwrap_err();
+
+        assert_eq!(error.code(), "mars_opacity_migration_conflict");
+        assert_eq!(fs::read_to_string(settings).unwrap(), before_settings);
+        assert_eq!(fs::read_to_string(mars).unwrap(), before_mars);
+    }
+
+    // Defends: opacity migration never edits or adopts a complete Mars config owned by Home Manager, even when its value already matches.
+    #[cfg(unix)]
+    #[test]
+    fn refuses_home_manager_owned_mars_opacity_migration() {
+        use std::os::unix::fs::symlink;
+
+        let runtime = tempdir().unwrap();
+        let config = tempdir().unwrap();
+        let (main, cursor) = write_defaults(runtime.path());
+        write_packaged_mars_config(runtime.path());
+        let settings = config.path().join("settings.jsonc");
+        let mars = user_config_paths::mars_config(config.path());
+        let hm_mars = config
+            .path()
+            .join("profile-home-manager-files/mars-config.toml");
+        fs::create_dir_all(hm_mars.parent().unwrap()).unwrap();
+        fs::create_dir_all(mars.parent().unwrap()).unwrap();
+        fs::write(&hm_mars, "[window]\nopacity = 0.85\n").unwrap();
+        symlink(&hm_mars, &mars).unwrap();
+        fs::write(
+            &settings,
+            "{\n  \"terminal\": { \"config_mode\": \"yazelix\", \"transparency\": \"medium\" }\n}\n",
+        )
+        .unwrap();
+        let before_settings = fs::read_to_string(&settings).unwrap();
+
+        let error =
+            ensure_settings_config_with_cursor_component(config.path(), &main, &cursor, false)
+                .unwrap_err();
+
+        assert_eq!(error.code(), "read_only_mars_opacity_migration");
+        assert_eq!(fs::read_to_string(settings).unwrap(), before_settings);
+        assert_eq!(fs::read_link(mars).unwrap(), hm_mars);
+    }
+
+    // Regression: malformed retired terminal values fail instead of being silently deleted by contract reconciliation.
+    #[test]
+    fn rejects_malformed_released_terminal_settings_before_deletion() {
+        for (terminal, code) in [
+            (
+                "{ \"config_mode\": 1, \"transparency\": \"medium\" }",
+                "invalid_legacy_terminal_config_mode",
+            ),
+            (
+                "{ \"config_mode\": \"yazelix\", \"transparency\": 1 }",
+                "invalid_legacy_transparency",
+            ),
+        ] {
+            let runtime = tempdir().unwrap();
+            let config = tempdir().unwrap();
+            let (main, cursor) = write_defaults(runtime.path());
+            write_packaged_mars_config(runtime.path());
+            let settings = config.path().join("settings.jsonc");
+            fs::write(&settings, format!("{{ \"terminal\": {terminal} }}\n")).unwrap();
+            let before = fs::read_to_string(&settings).unwrap();
+
+            let error =
+                ensure_settings_config_with_cursor_component(config.path(), &main, &cursor, false)
+                    .unwrap_err();
+
+            assert_eq!(error.code(), code);
+            assert_eq!(fs::read_to_string(settings).unwrap(), before);
+            assert!(!user_config_paths::mars_config(config.path()).exists());
+        }
+    }
+
+    // Defends: retired user mode never adopts the ambient Mars path or creates an unreviewed canonical config.
+    #[test]
+    fn user_mode_requires_reviewed_canonical_mars_config() {
+        let runtime = tempdir().unwrap();
+        let config = tempdir().unwrap();
+        let (main, cursor) = write_defaults(runtime.path());
+        write_packaged_mars_config(runtime.path());
+        fs::write(
+            config.path().join("settings.jsonc"),
+            "{\n  \"terminal\": { \"config_mode\": \"user\", \"transparency\": \"medium\" }\n}\n",
+        )
+        .unwrap();
+
+        let error =
+            ensure_settings_config_with_cursor_component(config.path(), &main, &cursor, false)
+                .unwrap_err();
+
+        assert_eq!(error.code(), "missing_reviewed_mars_config");
+        assert!(!user_config_paths::mars_config(config.path()).exists());
     }
 
     // Regression: JSONC parse errors should explain that TOML/Nix-style # comments are not valid settings comments.

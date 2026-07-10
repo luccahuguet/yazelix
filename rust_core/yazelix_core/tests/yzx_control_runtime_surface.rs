@@ -775,8 +775,8 @@ default_shell = "nu"
 #[test]
 fn yzx_control_status_json_reports_config_problem_without_aborting() {
     let fixture = managed_config_fixture(
-        r#"[terminal]
-ghostty_trail_color = "random"
+        r#"[editor]
+future_option = true
 "#,
     );
     let snapshot = write_session_config_snapshot(
@@ -870,8 +870,8 @@ default_shell = "nu"
 #[test]
 fn yzx_control_inspect_json_embeds_config_problem_without_aborting() {
     let fixture = managed_config_fixture(
-        r#"[terminal]
-ghostty_trail_color = "random"
+        r#"[editor]
+future_option = true
 "#,
     );
     let snapshot = write_session_config_snapshot(&fixture, &[]);

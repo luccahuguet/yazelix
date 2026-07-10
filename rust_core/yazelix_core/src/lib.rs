@@ -35,7 +35,6 @@ pub mod install_ownership_env;
 pub mod install_ownership_report;
 pub mod keys_commands;
 pub mod launch_commands;
-pub mod launch_materialization;
 pub mod managed_user_config_stubs;
 pub mod menu_commands;
 pub mod native_config_status;
@@ -64,7 +63,6 @@ pub mod status_report;
 pub mod support_commands;
 pub(crate) mod terminal_control;
 pub mod terminal_cursor_materialization;
-pub mod terminal_materialization;
 pub mod terminal_variant;
 pub(crate) mod tutor_document;
 pub mod update_commands;
@@ -139,15 +137,11 @@ pub use install_ownership_report::{
 };
 pub use keys_commands::run_yzx_keys;
 pub use launch_commands::{run_yzx_desktop, run_yzx_enter, run_yzx_launch, run_yzx_restart};
-pub use launch_materialization::{
-    LaunchMaterializationData, LaunchMaterializationRequest,
-    launch_materialization_request_from_env, prepare_launch_materialization,
-};
 pub use menu_commands::run_yzx_menu;
 pub use native_config_status::{
     NativeConfigStatusCode, NativeConfigStatusEntry, NativeConfigStatusRequest,
-    classify_native_config_statuses, current_platform_name, highest_doctor_severity,
-    path_owned_by_home_manager, status_code_for_entry, xdg_config_home_from_env,
+    classify_native_config_statuses, highest_doctor_severity, path_owned_by_home_manager,
+    status_code_for_entry, xdg_config_home_from_env,
 };
 pub use onboard_commands::run_yzx_onboard;
 pub use popup_session_facts::{PopupSessionFactsData, compute_popup_session_facts_from_env};
@@ -205,10 +199,6 @@ pub use support_commands::{run_yzx_sponsor, run_yzx_why};
 pub use terminal_cursor_materialization::{
     TerminalCursorMaterializationData, TerminalCursorMaterializationRequest, TerminalCursorState,
     generate_terminal_cursor_materialization,
-};
-pub use terminal_materialization::{
-    TerminalGeneratedConfig, TerminalMaterializationData, TerminalMaterializationRequest,
-    generate_terminal_materialization,
 };
 pub use upgrade_summary::{
     UpgradeSummaryDisplayResult, UpgradeSummaryReport, build_upgrade_summary_report,

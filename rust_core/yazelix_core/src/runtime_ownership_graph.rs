@@ -167,10 +167,10 @@ fn generated_state_owners() -> Vec<SurfaceOwnerEntry> {
             ],
         },
         SurfaceOwnerEntry {
-            surface: "~/.local/share/yazelix/configs/terminal_emulators".to_string(),
-            owner: "Rust terminal and Ghostty materialization".to_string(),
-            source: "rust_core/yazelix_core/src/terminal_materialization.rs".to_string(),
-            validation: vec!["yzx_repo_validator validate-config-surface-contract".to_string()],
+            surface: "~/.local/share/yazelix/configs/terminal_emulators/ghostty".to_string(),
+            owner: "Standalone Ghostty cursor materialization".to_string(),
+            source: "rust_core/yazelix_core/src/terminal_cursor_materialization.rs".to_string(),
+            validation: vec!["yzx dev test".to_string()],
         },
         SurfaceOwnerEntry {
             surface: "~/.local/share/yazelix/initializers".to_string(),

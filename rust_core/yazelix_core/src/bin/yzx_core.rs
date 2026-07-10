@@ -4,22 +4,17 @@ use std::io::Write;
 use std::path::PathBuf;
 use yazelix_core::control_plane::{
     config_override_from_env, runtime_materialization_plan_request_from_env,
-    terminal_materialization_request_from_env,
 };
-use yazelix_core::terminal_materialization::MarsProfile;
-use yazelix_core::terminal_variant::active_terminal_from_runtime_dir;
 use yazelix_core::{
     CoreError, ErrorClass, HelixMaterializationRequest, RuntimeEnvComputeRequest,
     RuntimeMaterializationRepairEvaluateRequest, RuntimeMaterializationRepairRunData,
-    RuntimeRepairDirective, TerminalMaterializationRequest, compute_runtime_env, error_envelope,
-    generate_helix_materialization, generate_terminal_materialization,
+    RuntimeRepairDirective, compute_runtime_env, error_envelope, generate_helix_materialization,
     repair_runtime_materialization, success_envelope,
 };
 
 const RUNTIME_ENV_COMPUTE_COMMAND: &str = "runtime-env.compute";
 const RUNTIME_MATERIALIZATION_REPAIR_COMMAND: &str = "runtime-materialization.repair";
 const HELIX_MATERIALIZATION_GENERATE_COMMAND: &str = "helix-materialization.generate";
-const TERMINAL_MATERIALIZATION_GENERATE_COMMAND: &str = "terminal-materialization.generate";
 const UNKNOWN_COMMAND: &str = "unknown";
 
 struct RuntimeMaterializationRepairCommand {
@@ -28,26 +23,11 @@ struct RuntimeMaterializationRepairCommand {
 }
 
 #[derive(Default)]
-struct ConfigContractRuntimeArgs {
-    config_path: Option<PathBuf>,
-    default_config_path: Option<PathBuf>,
-    contract_path: Option<PathBuf>,
-    runtime_dir: Option<PathBuf>,
-}
-
-#[derive(Default)]
 struct HelixMaterializationArgs {
     runtime_dir: Option<PathBuf>,
     config_dir: Option<PathBuf>,
     state_dir: Option<PathBuf>,
     show_splash: bool,
-}
-
-#[derive(Default)]
-struct TerminalMaterializationArgs {
-    paths: ConfigContractRuntimeArgs,
-    state_dir: Option<PathBuf>,
-    from_env: bool,
 }
 
 enum ErrorOutputMode {
@@ -106,7 +86,6 @@ fn main() {
 enum HelperCommand {
     HelixMaterializationGenerate,
     RuntimeEnvCompute,
-    TerminalMaterializationGenerate,
     RuntimeMaterializationRepair,
     Unsupported(String),
 }
@@ -152,7 +131,6 @@ fn classify_helper_command(command_name: String) -> HelperCommand {
         RUNTIME_ENV_COMPUTE_COMMAND => HelperCommand::RuntimeEnvCompute,
         RUNTIME_MATERIALIZATION_REPAIR_COMMAND => HelperCommand::RuntimeMaterializationRepair,
         HELIX_MATERIALIZATION_GENERATE_COMMAND => HelperCommand::HelixMaterializationGenerate,
-        TERMINAL_MATERIALIZATION_GENERATE_COMMAND => HelperCommand::TerminalMaterializationGenerate,
         _ => HelperCommand::Unsupported(command_name),
     }
 }
@@ -164,11 +142,6 @@ fn dispatch_helper_command(
     match command {
         HelperCommand::HelixMaterializationGenerate => run_helix_materialization_generate(parser)
             .map_err(|error| CommandError::new(HELIX_MATERIALIZATION_GENERATE_COMMAND, error)),
-        HelperCommand::TerminalMaterializationGenerate => {
-            run_terminal_materialization_generate(parser).map_err(|error| {
-                CommandError::new(TERMINAL_MATERIALIZATION_GENERATE_COMMAND, error)
-            })
-        }
         HelperCommand::RuntimeEnvCompute => run_runtime_env_compute(parser)
             .map_err(|error| CommandError::new(RUNTIME_ENV_COMPUTE_COMMAND, error)),
         HelperCommand::RuntimeMaterializationRepair => run_runtime_materialization_repair(
@@ -219,13 +192,6 @@ fn helix_materialization_request_from_args(
     })
 }
 
-fn run_terminal_materialization_generate(parser: lexopt::Parser) -> Result<(), CoreError> {
-    let request =
-        terminal_materialization_request_from_args(take_terminal_materialization_args(parser)?)?;
-    let data = generate_terminal_materialization(&request)?;
-    write_success_envelope(TERMINAL_MATERIALIZATION_GENERATE_COMMAND, data)
-}
-
 fn run_runtime_env_compute(mut parser: lexopt::Parser) -> Result<(), CoreError> {
     let mut request_json: Option<String> = None;
 
@@ -246,61 +212,6 @@ fn run_runtime_env_compute(mut parser: lexopt::Parser) -> Result<(), CoreError> 
         })?;
     let data = compute_runtime_env(&request)?;
     write_success_envelope(RUNTIME_ENV_COMPUTE_COMMAND, data)
-}
-
-fn take_terminal_materialization_args(
-    mut parser: lexopt::Parser,
-) -> Result<TerminalMaterializationArgs, CoreError> {
-    let mut args = TerminalMaterializationArgs::default();
-    while let Some(arg) = parser
-        .next()
-        .map_err(|error| CoreError::usage(error.to_string()))?
-    {
-        let option = parsed_long_option(arg)?;
-        if parse_config_contract_runtime_option(&option.name, &mut parser, &mut args.paths)? {
-            continue;
-        }
-        match option.name.as_str() {
-            "from-env" => args.from_env = true,
-            "state-dir" => args.state_dir = Some(parser_path_value(&mut parser)?),
-            _ => return Err(option.unexpected_error()),
-        }
-    }
-    Ok(args)
-}
-
-fn terminal_materialization_request_from_args(
-    args: TerminalMaterializationArgs,
-) -> Result<TerminalMaterializationRequest, CoreError> {
-    let explicit_args_present =
-        config_contract_runtime_args_present(&args.paths) || args.state_dir.is_some();
-
-    if args.from_env {
-        if explicit_args_present {
-            return Err(CoreError::usage(
-                "Use either --from-env or explicit terminal-materialization.generate paths, not both.",
-            ));
-        }
-        return terminal_materialization_request_from_env(config_override_from_env().as_deref());
-    }
-
-    let runtime_dir = required_path(args.paths.runtime_dir, "Missing --runtime-dir path")?;
-    let terminal = active_terminal_from_runtime_dir(&runtime_dir)?;
-    let config_path = required_path(args.paths.config_path, "Missing --config path")?;
-    Ok(TerminalMaterializationRequest {
-        cursor_config_path: config_path.clone(),
-        config_path,
-        default_config_path: required_path(
-            args.paths.default_config_path,
-            "Missing --default-config path",
-        )?,
-        contract_path: required_path(args.paths.contract_path, "Missing --contract path")?,
-        runtime_dir,
-        state_dir: required_path(args.state_dir, "Missing --state-dir path")?,
-        terminals: vec![terminal],
-        mars_emoji_font: None,
-        mars_profile: MarsProfile::Full,
-    })
 }
 
 fn run_runtime_materialization_repair(
@@ -409,56 +320,12 @@ fn parser_bool_value(parser: &mut lexopt::Parser) -> Result<bool, CoreError> {
     }
 }
 
-struct ParsedLongOption {
-    name: String,
-    unexpected_message: String,
-}
-
-impl ParsedLongOption {
-    fn unexpected_error(&self) -> CoreError {
-        CoreError::usage(self.unexpected_message.clone())
-    }
-}
-
-fn parsed_long_option(arg: lexopt::Arg<'_>) -> Result<ParsedLongOption, CoreError> {
-    let unexpected_message = format!("Unexpected argument: {arg:?}");
-    match arg {
-        Long(name) => Ok(ParsedLongOption {
-            name: name.to_string(),
-            unexpected_message,
-        }),
-        _ => Err(CoreError::usage(unexpected_message)),
-    }
-}
-
 fn unexpected_argument(arg: lexopt::Arg) -> CoreError {
     CoreError::usage(format!("Unexpected argument: {arg:?}"))
 }
 
 fn required_path(value: Option<PathBuf>, message: &'static str) -> Result<PathBuf, CoreError> {
     value.ok_or_else(|| CoreError::usage(message))
-}
-
-fn parse_config_contract_runtime_option(
-    option: &str,
-    parser: &mut lexopt::Parser,
-    paths: &mut ConfigContractRuntimeArgs,
-) -> Result<bool, CoreError> {
-    match option {
-        "config" => paths.config_path = Some(parser_path_value(parser)?),
-        "default-config" => paths.default_config_path = Some(parser_path_value(parser)?),
-        "contract" => paths.contract_path = Some(parser_path_value(parser)?),
-        "runtime-dir" => paths.runtime_dir = Some(parser_path_value(parser)?),
-        _ => return Ok(false),
-    }
-    Ok(true)
-}
-
-fn config_contract_runtime_args_present(paths: &ConfigContractRuntimeArgs) -> bool {
-    paths.config_path.is_some()
-        || paths.default_config_path.is_some()
-        || paths.contract_path.is_some()
-        || paths.runtime_dir.is_some()
 }
 
 fn write_success_envelope<T: serde::Serialize>(command: &str, data: T) -> Result<(), CoreError> {
@@ -615,18 +482,17 @@ mod tests {
     // Defends: private bridge command parsing maps a live helper name to its typed dispatcher path.
     #[test]
     fn parses_live_helper_command() {
-        let mut parser = lexopt::Parser::from_args([TERMINAL_MATERIALIZATION_GENERATE_COMMAND]);
+        let mut parser = lexopt::Parser::from_args([HELIX_MATERIALIZATION_GENERATE_COMMAND]);
         let command = match parse_helper_command(&mut parser) {
             Ok(command) => command,
             Err(error) => panic!("unexpected parse error: {}", error.error.message()),
         };
 
         match command {
-            HelperCommand::TerminalMaterializationGenerate => {}
-            HelperCommand::HelixMaterializationGenerate
-            | HelperCommand::RuntimeEnvCompute
+            HelperCommand::HelixMaterializationGenerate => {}
+            HelperCommand::RuntimeEnvCompute
             | HelperCommand::RuntimeMaterializationRepair
-            | HelperCommand::Unsupported(_) => panic!("expected terminal helper command"),
+            | HelperCommand::Unsupported(_) => panic!("expected Helix helper command"),
         }
     }
 
@@ -637,7 +503,6 @@ mod tests {
             HelperCommand::RuntimeMaterializationRepair => {}
             HelperCommand::HelixMaterializationGenerate
             | HelperCommand::RuntimeEnvCompute
-            | HelperCommand::TerminalMaterializationGenerate
             | HelperCommand::Unsupported(_) => {
                 panic!("expected runtime repair special dispatch")
             }
@@ -670,7 +535,6 @@ mod tests {
             HelperCommand::RuntimeEnvCompute => {}
             HelperCommand::HelixMaterializationGenerate
             | HelperCommand::RuntimeMaterializationRepair
-            | HelperCommand::TerminalMaterializationGenerate
             | HelperCommand::Unsupported(_) => panic!("expected runtime-env helper command"),
         }
     }
@@ -684,25 +548,6 @@ mod tests {
         assert_eq!(
             error.message(),
             "Missing --request-json payload for runtime-env.compute."
-        );
-    }
-
-    // Defends: terminal-materialization.generate still rejects mixed from-env and explicit path modes.
-    #[test]
-    fn terminal_materialization_rejects_from_env_with_explicit_paths() {
-        let error = terminal_materialization_request_from_args(TerminalMaterializationArgs {
-            paths: ConfigContractRuntimeArgs {
-                runtime_dir: Some(PathBuf::from("/tmp/runtime")),
-                ..Default::default()
-            },
-            from_env: true,
-            ..Default::default()
-        })
-        .expect_err("from-env with explicit path should fail");
-
-        assert_eq!(
-            error.message(),
-            "Use either --from-env or explicit terminal-materialization.generate paths, not both."
         );
     }
 }

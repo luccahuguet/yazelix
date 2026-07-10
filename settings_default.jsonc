@@ -44,11 +44,6 @@
   "shell": {
     "default_shell": "nu"
   },
-  "terminal": {
-    "config_mode": "yazelix",
-    "emoji_style": "noto",
-    "transparency": "medium"
-  },
   "appearance": {
     "mode": "dark"
   },

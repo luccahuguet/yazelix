@@ -14,7 +14,7 @@ use std::path::Path;
 pub const SETTINGS_CONTRACT_ID: &str = "yazelix.settings";
 pub const SETTINGS_CONTRACT_STATE_PATH: &str = "ratconfig.contract";
 const SETTINGS_CONTRACT_BASELINE_VERSION: u64 = 1;
-pub const SETTINGS_CONTRACT_CURRENT_VERSION: u64 = 15;
+pub const SETTINGS_CONTRACT_CURRENT_VERSION: u64 = 16;
 const CHANGE_RENAME_EDITOR_SIDEBAR_TO_WORKSPACE_LEFT_SIDEBAR: &str =
     "rename-editor-sidebar-to-workspace-left-sidebar";
 const CHANGE_REPLACE_NATIVE_MOVEMENT_DEFAULTS: &str = "replace-native-movement-defaults";
@@ -35,6 +35,7 @@ const CHANGE_ADD_SESSION_WIDGET_TRAY_VALUE: &str = "add-session-widget-tray-valu
 const CHANGE_ADD_WIDGET_CHROME_SETTINGS: &str = "add-widget-chrome-settings";
 const CHANGE_ADOPT_CTRL_ALT_NATIVE_MODE_LAYER: &str = "adopt-ctrl-alt-native-mode-layer";
 const CHANGE_ADOPT_MIXED_NATIVE_MODE_LAYER: &str = "adopt-mixed-native-mode-layer";
+const CHANGE_MOVE_MARS_SETTINGS_TO_NATIVE_CONFIG: &str = "move-mars-settings-to-native-config";
 pub const SETTINGS_CONTRACT_APPLIED_CHANGE_IDS: &[&str] = &[
     CHANGE_RENAME_EDITOR_SIDEBAR_TO_WORKSPACE_LEFT_SIDEBAR,
     CHANGE_REPLACE_NATIVE_MOVEMENT_DEFAULTS,
@@ -50,6 +51,7 @@ pub const SETTINGS_CONTRACT_APPLIED_CHANGE_IDS: &[&str] = &[
     CHANGE_ADD_WIDGET_CHROME_SETTINGS,
     CHANGE_ADOPT_CTRL_ALT_NATIVE_MODE_LAYER,
     CHANGE_ADOPT_MIXED_NATIVE_MODE_LAYER,
+    CHANGE_MOVE_MARS_SETTINGS_TO_NATIVE_CONFIG,
 ];
 const OPTIONAL_ADDITIVE_DEFAULT_PATHS: &[&str] = &["zellij.custom_popups"];
 
@@ -345,6 +347,14 @@ fn settings_contract_for_defaults(defaults: &JsonValue) -> ConfigContract {
                         transform: restore_quit_ctrl_default,
                     },
                 ],
+            ),
+            ContractChange::automatic(
+                CHANGE_MOVE_MARS_SETTINGS_TO_NATIVE_CONFIG,
+                15,
+                16,
+                vec![MigrationOp::Delete {
+                    path: "terminal".to_string(),
+                }],
             ),
         ],
     }

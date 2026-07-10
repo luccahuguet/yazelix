@@ -1446,7 +1446,7 @@ mod tests {
         std::fs::write(
             &desktop,
             format!(
-                "[Desktop Entry]\nName=Yazelix\nTerminal=true\nExec=env MARS_PROFILE=shaders {exec}\n"
+                "[Desktop Entry]\nName=Yazelix\nTerminal=true\nExec=env SAMPLE_FLAG=1 {exec}\n"
             ),
         )
         .unwrap();

@@ -16,10 +16,11 @@
     # Shell entry
     default_shell = "zsh";
 
-    # Terminal behavior for Mars
-    terminal_config_mode = "yazelix"; # Optional: "yazelix" or "user"
-    # Cursor presets and effects live in ~/.config/yazelix_cursors/settings.jsonc
-    transparency = "medium"; # Optional: "none".."super_high"
+    # Complete native Mars config
+    config.mars.text = ''
+      [mars.appearance]
+      preset = "dark"
+    '';
 
     # Editor configuration
     # editor_command = null;       # Optional: Use Yazelix's Helix (recommended)

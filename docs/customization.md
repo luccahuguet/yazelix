@@ -2,7 +2,8 @@
 
 Start with this model:
 
-- `~/.config/yazelix/settings.jsonc` is the main workspace settings file for shell, editor, terminal, Zellij, Yazi, popup, status, and layout behavior
+- `~/.config/yazelix/settings.jsonc` is the main workspace settings file for shell, editor, Zellij, Yazi, popup, status, and layout behavior
+- `~/.config/yazelix/mars/config.toml` is the optional complete native Mars config
 - `~/.config/yazelix_cursors/settings.jsonc` owns Yazelix cursor presets and shader settings
 - Generated runtime state lives under `~/.local/share/yazelix`; edit the config inputs, not generated runtime files
 - Home Manager installs can own the settings files declaratively; the config UI and status surfaces show read-only ownership when that applies
@@ -10,23 +11,21 @@ Start with this model:
 The sections below cover the override surfaces that sit around that main model.
 
 - **Configuration File**: On first launch, Yazelix creates the main settings and cursor settings from shipped defaults. Old mutable `yazelix.toml`, old `cursors.toml`, old `user_configs/` paths, and older embedded cursor settings blocks raise a clear error instead of being rewritten automatically.
-  - Run `yzx config ui`, Yazelix's ratconfig-backed JSONC settings editor, to browse and edit settings, defaults, stale-field diagnostics, Home Manager/read-only ownership, and managed sidecar status
+  - Run `yzx config ui` to edit JSONC settings and browse or patch the native Mars TOML document through Ratconfig
   - Use `yzx config set PATH JSON` and `yzx config unset PATH` for safe comment-preserving edits to supported settings and cursor fields
   - Yazelix snapshots the main config for each new window. Live popup, menu, sidebar, reveal, and editor-launch commands keep using that window snapshot, so config edits apply to the next Yazelix window or after `yzx restart`
   - For temporary changes, use repeatable `--with KEY=VALUE` on `yzx launch`, `yzx enter`, or `yzx restart`; Yazelix writes an ephemeral settings snapshot and does not mutate your config file
   - `yzx status --json` and `yzx inspect --json` include `session_config_snapshot` with the active snapshot path, source config, and readable snapshot errors
 - **Terminal Configurations**:
-  - **Mars**: The default `#yazelix` package, `#yazelix_mars`, and `programs.yazelix.terminal = "mars"` path write a generated Mars config under `~/.local/share/yazelix/configs/terminal_emulators/mars/config.toml`. Mars is the Yazelix-owned Rust terminal path for stack compatibility, native cursor behavior, Kitty protocol work, and agent-driven development workflows.
+  - **Mars**: The default `#yazelix` package, `#yazelix_mars`, and `programs.yazelix.terminal = "mars"` launch Mars with `~/.config/yazelix/mars/config.toml` when that complete file exists, otherwise with the packaged complete config. There is no generated or merged Mars config.
   - **Ghostty**: The most tested mature host-terminal path, with a strong macOS story. Configure Ghostty to start `yzx enter`; run `yzx cursors ghostty setup` when you want Yazelix cursor shaders in a user-owned Ghostty config.
   - **Other terminals**: Rio, WezTerm, Kitty, Foot, Ratty, Alacritty, and other capable emulators work by starting Yazelix with `yzx enter`; their native terminal config stays host-owned
     - **Yazelix cursor shaders**: Edit `~/.config/yazelix_cursors/settings.jsonc` to choose the cursor trail, enabled cursor list, global effects, duration, glow, and Kitty fallback toggle. `yzx cursors` shows the active settings path and resolved preset colors. `settings.trail = "random"` picks from `enabled_cursors`, `settings.trail = "none"` disables the Ghostty-compatible palette shader, and `settings.kitty_enable_cursor = false` disables Kitty's simple fallback trail. Cursor definitions use `family = "mono"` for one base color with a derived accent or `family = "split"` for two colors split by `divider = "vertical" | "horizontal"` with `transition = "soft" | "hard"`.
-    - **Scrollback ownership**: Mars disables terminal-emulator scrollback. Zellij owns pane history inside Yazelix and defaults to `scroll_buffer_size 5000` unless your managed/native Zellij config sets another active value.
-    - **Appearance mode**: Set `appearance.mode = "dark"`, `"light"`, or `"auto"` in `settings.jsonc`. Dark is the default. Light switches Yazelix-owned generated terminal, Zellij, and Yazi defaults to light palettes while preserving explicit `zellij.theme` and `yazi.theme` choices.
-    - **Transparency**: Configure `transparency = "none"`, `"low"`, `"medium"`, or `"high"`; Yazelix maps that setting into the generated Mars config
-    - **Config ownership switch**: `terminal.config_mode = "yazelix"` keeps using Yazelix-managed Mars config; `"user"` loads the host Mars config file instead and fails if it is missing
-    - **No manual copying required** - generated automatically when launching Yazelix
-  - **Reference configs** (generated snapshot): `configs/terminal_emulators/`
-    - Snapshots match the generated configs under `~/.local/share/yazelix/configs/terminal_emulators/`
+    - **Scrollback ownership**: Configure Mars scrollback natively in `mars/config.toml`; Zellij separately owns pane history inside Yazelix
+    - **Appearance mode**: `appearance.mode` controls remaining Yazelix-owned generated themes. Mars appearance belongs to `[mars.appearance]` in the native Mars config
+    - **Transparency**: Set `window.opacity` and `window.opacity-cells` directly in `mars/config.toml`
+    - **Cursor**: Configure Mars `[yazelix.cursor]` directly. The separate `~/.config/yazelix_cursors/settings.jsonc` registry continues to own standalone Ghostty cursor generation
+    - **Home Manager**: Set exactly one of `programs.yazelix.config.mars.text` or `programs.yazelix.config.mars.source` to install the complete file declaratively
 - **Visible managed stubs**: Yazelix creates lightweight README or hook stubs under `~/.config/yazelix/` when a managed surface becomes relevant. It does not create behavior-owning Zellij or Helix config files automatically, so native fallback and `yzx import` discovery keep working until you choose those managed surfaces.
 - **Native config status**: Yazelix treats native tool configs as user-owned unless you explicitly import them or select a supported native read-only mode. The shared status words are `managed_default`, `managed_override`, `imported_override`, `native_read_only`, `native_available`, `native_required_missing`, `home_manager_read_only`, and `generated_runtime`.
 - **Zellij Configuration**: `settings.jsonc` for Yazelix-owned behavior plus generated runtime overlays and an advanced native sidecar:

@@ -183,9 +183,8 @@ pkgs.runCommand name { } ''
     link_runtime_input "$helix_entry" "configs/helix/$helix_name"
   done
   link_runtime_input "${helixSteelPluginRoot}" "configs/helix/steel_plugins"
-  mkdir -p "$out/configs/terminal_emulators"
-  link_runtime_input "${src}/configs/terminal_emulators/mars" "configs/terminal_emulators/mars"
   ${pkgs.lib.optionalString cursorsEnabled ''
+    mkdir -p "$out/configs/terminal_emulators"
     ${pkgs.lib.concatMapStringsSep "\n    " (shaderFile: ''test -s "${cursorShaderRoot}/${shaderFile}"'') cursorPackageContract.requiredShaderFiles}
     test ! -e "${cursorShaderRoot}/build_shaders.nu"
     link_runtime_input "${cursorShaderRoot}" "configs/terminal_emulators/ghostty/shaders"

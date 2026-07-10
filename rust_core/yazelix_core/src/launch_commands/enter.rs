@@ -696,7 +696,6 @@ mod tests {
             welcome_duration_seconds: 0.0,
             show_macchina_on_welcome: false,
             terminals: vec![terminal.to_string()],
-            terminal_config_mode: "yazelix".to_string(),
         }
     }
 

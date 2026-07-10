@@ -18,8 +18,8 @@ use crate::helix_external::HelixExternalPair;
 use crate::install_ownership_env::install_ownership_request_from_env_with_runtime_dir;
 use crate::native_config_status::{
     NativeConfigStatusEntry, NativeConfigStatusRequest, classify_native_config_statuses,
-    current_platform_name, highest_doctor_severity, path_owned_by_home_manager,
-    status_code_for_entry, xdg_config_home_from_env,
+    highest_doctor_severity, path_owned_by_home_manager, status_code_for_entry,
+    xdg_config_home_from_env,
 };
 use crate::runtime_materialization::{
     RuntimeMaterializationPlanData, RuntimeMaterializationRepairEvaluateRequest,
@@ -327,13 +327,8 @@ fn compute_doctor_report_from_env() -> Result<DoctorReportData, CoreError> {
         normalized_config.as_ref(),
     );
     let config_findings = collect_config_doctor_findings(&runtime_dir, &config_dir);
-    let native_config_findings = collect_native_config_status_findings(
-        &runtime_dir,
-        &home_dir,
-        &config_dir,
-        &state_dir,
-        normalized_config.as_ref(),
-    )?;
+    let native_config_findings =
+        collect_native_config_status_findings(&runtime_dir, &home_dir, &config_dir, &state_dir)?;
     let workspace_asset_findings =
         collect_workspace_asset_doctor_findings(&runtime_dir, &state_dir);
     let zellij_findings = collect_zellij_plugin_health_findings(normalized_config.as_ref())?;
@@ -576,37 +571,17 @@ fn collect_native_config_status_findings(
     home_dir: &Path,
     config_dir: &Path,
     state_dir: &Path,
-    normalized_config: Option<&serde_json::Map<String, Value>>,
 ) -> Result<Vec<Value>, CoreError> {
     let settings_path = user_config_paths::main_config(config_dir);
     let entries = classify_native_config_statuses(&NativeConfigStatusRequest {
-        home_dir: home_dir.to_path_buf(),
         xdg_config_home: xdg_config_home_from_env(home_dir),
         config_dir: config_dir.to_path_buf(),
+        runtime_dir: runtime_dir.to_path_buf(),
         state_dir: state_dir.to_path_buf(),
-        platform: current_platform_name(),
-        terminal_config_mode: normalized_string_config(
-            normalized_config,
-            "terminal_config_mode",
-            "yazelix",
-        ),
         active_terminal: active_terminal_from_runtime_dir(runtime_dir)?,
         settings_home_manager_read_only: path_owned_by_home_manager(&settings_path),
     });
     Ok(vec![native_config_status_finding(entries)])
-}
-
-fn normalized_string_config(
-    config: Option<&serde_json::Map<String, Value>>,
-    key: &str,
-    fallback: &str,
-) -> String {
-    config
-        .and_then(|config| config.get(key))
-        .and_then(Value::as_str)
-        .filter(|value| !value.trim().is_empty())
-        .unwrap_or(fallback)
-        .to_string()
 }
 
 fn native_config_status_finding(entries: Vec<NativeConfigStatusEntry>) -> Value {
@@ -1340,12 +1315,10 @@ mod tests {
         assert_eq!(error.code(), "doctor_json_fix_unsupported");
     }
 
-    // Defends: doctor consumes the shared native-config classifier and elevates required native terminal config misses to an error.
+    // Defends: doctor reports the packaged complete Mars config as the default when no user file exists.
     #[test]
-    fn native_config_status_finding_reports_terminal_user_mode_error() {
+    fn native_config_status_finding_reports_packaged_mars_default() {
         let tmp = TempDir::new().unwrap();
-        let mut config = serde_json::Map::new();
-        config.insert("terminal_config_mode".to_string(), json!("user"));
         std::fs::write(tmp.path().join("runtime_variant"), "mars\n").unwrap();
 
         let findings = collect_native_config_status_findings(
@@ -1353,12 +1326,11 @@ mod tests {
             &tmp.path().join("home"),
             &tmp.path().join("config"),
             &tmp.path().join("state"),
-            Some(&config),
         )
         .unwrap();
 
         assert_eq!(findings.len(), 1);
-        assert_eq!(findings[0]["status"], "error");
+        assert_eq!(findings[0]["status"], "info");
         assert_eq!(findings[0]["message"], "Native config integration status");
         assert!(
             findings[0]["native_config_statuses"]
@@ -1366,7 +1338,7 @@ mod tests {
                 .unwrap()
                 .iter()
                 .any(|entry| entry["surface"] == "terminal.mars.input"
-                    && entry["status"] == "native_required_missing")
+                    && entry["status"] == "managed_default")
         );
     }
 

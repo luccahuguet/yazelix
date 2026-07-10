@@ -7,17 +7,13 @@ use super::process::{
     render_launch_failure, run_desktop_deferred_launch_probe, run_detached_launch_probe,
 };
 use super::resolve_requested_working_dir;
-use super::terminal::{build_launch_command_argv, resolve_terminal_config_path};
+use super::terminal::{build_launch_command_argv, resolve_mars_config_path};
 use crate::bridge::{CoreError, ErrorClass};
 use crate::config_state::compute_config_state;
 use crate::control_plane::{
-    config_override_from_env, config_state_compute_request_from_env, home_dir_from_env,
+    config_dir_from_env, config_override_from_env, config_state_compute_request_from_env,
     runtime_dir_from_env, runtime_env_request, runtime_materialization_plan_request_from_env,
     state_dir_from_env,
-};
-use crate::launch_materialization::{
-    LaunchMaterializationData, launch_materialization_request_from_env,
-    prepare_launch_materialization,
 };
 use crate::runtime_contract::{
     LaunchPreflightPayload, StartupLaunchPreflightRequest, TerminalCandidate,
@@ -27,14 +23,11 @@ use crate::runtime_env::compute_runtime_env;
 use crate::runtime_materialization::{
     RuntimeMaterializationRepairEvaluateRequest, repair_runtime_materialization,
 };
-use crate::terminal_materialization::MARS_EMOJI_ENV_KEYS;
 use crate::terminal_variant::{
     SESSION_TERMINAL_ENV, active_terminal_from_runtime_dir, terminal_display_name,
     terminal_startup_wm_class,
 };
 use std::path::{Path, PathBuf};
-
-const MARS_CHILD_ENV_SANITIZE: &str = "MARS_CHILD_ENV_SANITIZE";
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 struct LaunchArgs {
@@ -121,11 +114,10 @@ struct LaunchFlowInput<'a> {
 struct LaunchExecutionPlan {
     runtime_dir: PathBuf,
     state_dir: PathBuf,
-    home_dir: PathBuf,
     working_dir: PathBuf,
     active_terminal: String,
     terminal_candidates: Vec<TerminalCandidate>,
-    materialization: LaunchMaterializationData,
+    mars_config_path: PathBuf,
     runtime_env: serde_json::Map<String, serde_json::Value>,
     window_title_session_name: Option<String>,
     needs_refresh: bool,
@@ -159,7 +151,6 @@ pub(super) fn run_launch_flow(
         env_removals,
     };
     let plan = build_launch_execution_plan(&input)?;
-    print_launch_materialization_status(&plan, &input);
     execute_launch_plan(&plan, &input)
 }
 
@@ -168,7 +159,7 @@ fn build_launch_execution_plan(
 ) -> Result<LaunchExecutionPlan, CoreError> {
     let runtime_dir = runtime_dir_from_env()?;
     let state_dir = state_dir_from_env()?;
-    let home_dir = home_dir_from_env()?;
+    let config_dir = config_dir_from_env()?;
     let config_state = compute_config_state(&config_state_compute_request_from_env(
         input.config_override,
     )?)?;
@@ -195,9 +186,8 @@ fn build_launch_execution_plan(
     let working_dir = PathBuf::from(preflight.working_dir);
     let terminal_candidates = preflight.terminal_candidates.unwrap_or_default();
 
-    let req =
-        launch_materialization_request_from_env(input.desktop_fast_path, input.config_override)?;
-    let materialization = prepare_launch_materialization(&req, &config_state.config)?;
+    let mars_config_path =
+        resolve_mars_config_path(&config_dir, &runtime_dir).map_err(CoreError::usage)?;
     let runtime_data = compute_runtime_env(&runtime_env_request(
         runtime_dir.clone(),
         &config_state.config,
@@ -205,34 +195,14 @@ fn build_launch_execution_plan(
     Ok(LaunchExecutionPlan {
         runtime_dir,
         state_dir,
-        home_dir,
         working_dir,
         active_terminal,
         terminal_candidates,
-        materialization,
+        mars_config_path,
         runtime_env: runtime_data.runtime_env,
         window_title_session_name: window_title_session_name_from_env(input.desktop_fast_path),
         needs_refresh: config_state.needs_refresh,
     })
-}
-
-fn print_launch_materialization_status(plan: &LaunchExecutionPlan, input: &LaunchFlowInput<'_>) {
-    if !input.desktop_fast_path && !plan.materialization.generated_terminals.is_empty() {
-        let generated = plan
-            .materialization
-            .generated_terminals
-            .iter()
-            .map(|entry| terminal_display_name(&entry.terminal))
-            .collect::<Vec<_>>()
-            .join(", ");
-        println!("Generating bundled terminal configurations...");
-        println!("✓ Generated terminal configurations ({generated})");
-        println!("📋 Static example configs for other terminals in configs/terminal_emulators/");
-    }
-    if plan.materialization.rerolled_ghostty_cursor && input.verbose {
-        println!("🎲 Rerolling Yazelix random cursor settings for this window...");
-        println!("✓ Rerolled Yazelix cursor settings");
-    }
 }
 
 fn execute_launch_plan(
@@ -246,18 +216,9 @@ fn execute_launch_plan(
         run_detached_launch_probe
     };
     for candidate in &plan.terminal_candidates {
-        let config_path = match launch_candidate_config_path(plan, candidate) {
-            Ok(config_path) => config_path,
-            Err(reason) => {
-                failures.push((candidate.name.clone(), reason));
-                continue;
-            }
-        };
-
         let argv = build_launch_command_argv(
             &plan.runtime_dir,
             candidate,
-            &config_path,
             &plan.working_dir,
             plan.window_title_session_name.as_deref(),
         )?;
@@ -266,7 +227,7 @@ fn execute_launch_plan(
             println!("Running: {}", render_argv_for_display(&argv));
         }
 
-        let extra_env = launch_candidate_extra_env(plan, input, candidate, &config_path)?;
+        let extra_env = launch_candidate_extra_env(plan, input, candidate, &plan.mars_config_path)?;
 
         let output = launch_probe(
             &plan.runtime_dir,
@@ -308,23 +269,6 @@ fn execute_launch_plan(
     ))
 }
 
-fn launch_candidate_config_path(
-    plan: &LaunchExecutionPlan,
-    candidate: &TerminalCandidate,
-) -> Result<PathBuf, String> {
-    let fallback_config_path = resolve_terminal_config_path(
-        &plan.home_dir,
-        &plan.state_dir,
-        &plan.materialization.terminal_config_mode,
-        &candidate.terminal,
-    )?;
-
-    Ok(
-        resolve_materialized_terminal_config_path(&plan.materialization, &candidate.terminal)
-            .unwrap_or(fallback_config_path),
-    )
-}
-
 fn launch_candidate_extra_env(
     plan: &LaunchExecutionPlan,
     input: &LaunchFlowInput<'_>,
@@ -346,9 +290,7 @@ fn launch_candidate_extra_env(
             Some(terminal_window_title_prefix(&candidate.terminal)),
         ),
     ];
-    if candidate.terminal == "mars" {
-        extra_env.extend(mars_process_boundary_env(config_path)?);
-    }
+    extra_env.extend(mars_process_boundary_env(config_path)?);
     for key in ["YAZELIX_SWEEP_TEST_ID", "YAZELIX_LAYOUT_OVERRIDE"] {
         if let Ok(value) = std::env::var(key) {
             if !value.trim().is_empty() {
@@ -368,48 +310,25 @@ fn mars_process_boundary_env(
             ErrorClass::Runtime,
             "invalid_mars_config_path",
             format!(
-                "Generated Mars Terminal config path has no parent directory: {}.",
+                "Mars config path has no parent directory: {}.",
                 config_path.display()
             ),
-            "Run `yzx doctor --fix` to repair generated runtime state, then retry the launch.",
+            "Restore the packaged config or fix ~/.config/yazelix/mars/config.toml, then retry.",
             serde_json::json!({}),
         )
     })?;
 
-    let mut env = vec![
-        ("RIO_CONFIG_HOME".to_string(), None),
-        ("MARS_CONFIG".to_string(), None),
+    Ok(vec![
         (
             "MARS_CONFIG_HOME".to_string(),
             Some(config_dir.to_string_lossy().into_owned()),
         ),
-        (MARS_CHILD_ENV_SANITIZE.to_string(), Some("1".to_string())),
         (
             "MARS_APP_ID".to_string(),
             Some(terminal_startup_wm_class("mars")),
         ),
-    ];
-    env.extend(
-        MARS_EMOJI_ENV_KEYS
-            .iter()
-            .map(|key| ((*key).to_string(), None)),
-    );
-    Ok(env)
-}
-
-fn resolve_materialized_terminal_config_path(
-    materialization: &LaunchMaterializationData,
-    terminal: &str,
-) -> Option<PathBuf> {
-    if materialization.terminal_config_mode != "yazelix" {
-        return None;
-    }
-
-    materialization
-        .generated_terminals
-        .iter()
-        .find(|entry| entry.terminal == terminal)
-        .map(|entry| PathBuf::from(&entry.path))
+        ("MARS_APPEARANCE".to_string(), None),
+    ])
 }
 
 fn parse_launch_args(args: &[String]) -> Result<LaunchArgs, CoreError> {
@@ -552,30 +471,25 @@ mod tests {
         assert_eq!(terminal_window_title_prefix("mars"), "Yazelix - Mars - ");
     }
 
-    // Defends: mars gets Yazelix config only at the terminal process boundary, while ambient host Rio config is cleared.
+    // Defends: Mars receives only its native config root and desktop identity at the terminal process boundary.
     #[test]
-    fn mars_process_boundary_env_clears_host_rio_config_and_sets_app_id() {
-        let env = mars_process_boundary_env(Path::new(
-            "/state/configs/terminal_emulators/mars/config.toml",
-        ))
-        .unwrap();
+    fn mars_process_boundary_env_selects_native_config_and_sets_app_id() {
+        let env =
+            mars_process_boundary_env(Path::new("/home/user/.config/yazelix/mars/config.toml"))
+                .unwrap();
 
         assert_eq!(
             env,
             vec![
-                ("RIO_CONFIG_HOME".to_string(), None),
-                ("MARS_CONFIG".to_string(), None),
                 (
                     "MARS_CONFIG_HOME".to_string(),
-                    Some("/state/configs/terminal_emulators/mars".to_string())
+                    Some("/home/user/.config/yazelix/mars".to_string())
                 ),
-                (MARS_CHILD_ENV_SANITIZE.to_string(), Some("1".to_string())),
                 (
                     "MARS_APP_ID".to_string(),
                     Some("com.yazelix.Yazelix.Mars".to_string())
                 ),
-                (MARS_EMOJI_ENV_KEYS[0].to_string(), None),
-                (MARS_EMOJI_ENV_KEYS[1].to_string(), None),
+                ("MARS_APPEARANCE".to_string(), None),
             ]
         );
     }
@@ -589,11 +503,7 @@ mod tests {
         std::fs::create_dir_all(&posix_dir).unwrap();
         let startup_script = posix_dir.join("start_yazelix.sh");
         std::fs::write(&startup_script, "#!/bin/sh\n").unwrap();
-        let config_path = tmp
-            .path()
-            .join("state/configs/terminal_emulators/mars/config.toml");
         let working_dir = tmp.path().join("workspace");
-        std::fs::create_dir_all(config_path.parent().unwrap()).unwrap();
         std::fs::create_dir_all(&working_dir).unwrap();
 
         let argv = build_launch_command_argv(
@@ -603,7 +513,6 @@ mod tests {
                 name: "Mars".to_string(),
                 command: "mars".to_string(),
             },
-            &config_path,
             &working_dir,
             Some("work"),
         )
@@ -620,31 +529,6 @@ mod tests {
                 "-e".to_string(),
                 startup_script.to_string_lossy().into_owned(),
             ]
-        );
-    }
-
-    // Regression: launch must pass a launch-scoped materialized config path when random cursor materialization produced one, otherwise it falls back to the shared generated path and leaks cursor preset changes across windows.
-    #[test]
-    fn materialized_yazelix_config_path_wins_for_launch() {
-        let materialization = LaunchMaterializationData {
-            terminal_config_mode: "yazelix".to_string(),
-            generated_terminals: vec![crate::terminal_materialization::TerminalGeneratedConfig {
-                terminal: "mars".to_string(),
-                path: "/state/terminal_launches/123/configs/terminal_emulators/mars/config.toml"
-                    .to_string(),
-            }],
-            rerolled_ghostty_cursor: false,
-        };
-
-        assert_eq!(
-            resolve_materialized_terminal_config_path(&materialization, "mars"),
-            Some(PathBuf::from(
-                "/state/terminal_launches/123/configs/terminal_emulators/mars/config.toml"
-            ))
-        );
-        assert_eq!(
-            resolve_materialized_terminal_config_path(&materialization, "ghostty"),
-            None
         );
     }
 }

@@ -6,7 +6,6 @@ use crate::control_plane::{home_dir_from_env, state_dir_from_env};
 use crate::sidebar_bootstrap::{
     SIDEBAR_BOOTSTRAP_CWD_ENV, is_sidebar_bootstrap_file, sidebar_bootstrap_owner_dir,
 };
-use crate::terminal_materialization::MARS_EMOJI_ENV_KEYS;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -43,17 +42,9 @@ pub(super) const RUNTIME_RELAUNCH_CLEARED_ENV_KEYS: &[&str] = &[
     "YAZELIX_STATUS_BAR_CACHE_PATH",
     "MARS",
     "MARS_APP_ID",
-    "MARS_CONFIG",
     "MARS_CONFIG_HOME",
     "MARS_APPEARANCE",
-    "MARS_CHILD_ENV_SANITIZE",
-    "MARS_EFFECTS",
-    "MARS_EMOJI_FONT",
     "MARS_GRAPHICS_WRAPPER",
-    "MARS_PROFILE",
-    "MARS_RENDER_STRATEGY",
-    MARS_EMOJI_ENV_KEYS[0],
-    MARS_EMOJI_ENV_KEYS[1],
     "YAZELIX_YZX_BIN",
     "YAZELIX_YZX_CONTROL_BIN",
     "YAZELIX_YZX_CORE_BIN",
@@ -559,7 +550,6 @@ mod tests {
                 "editor.command=nvim".to_string(),
                 "core.welcome_style=static".to_string(),
                 "zellij.pane_frames=false".to_string(),
-                "terminal.transparency=high".to_string(),
             ],
         )
         .unwrap();
@@ -575,7 +565,6 @@ mod tests {
         assert_eq!(session_value["editor"]["command"], "nvim");
         assert_eq!(session_value["core"]["welcome_style"], "static");
         assert_eq!(session_value["zellij"]["pane_frames"], false);
-        assert_eq!(session_value["terminal"]["transparency"], "high");
 
         let user_value = read_settings_jsonc_value(&config.path().join("settings.jsonc")).unwrap();
         assert_ne!(user_value["editor"]["command"], "nvim");
@@ -653,17 +642,9 @@ mod tests {
             "YAZELIX_STARTUP_PROFILE_SKIP_WELCOME",
             "YAZELIX_STATUS_BAR_CACHE_PATH",
             "MARS_APP_ID",
-            "MARS_CONFIG",
             "MARS_CONFIG_HOME",
             "MARS_APPEARANCE",
-            "MARS_CHILD_ENV_SANITIZE",
-            "MARS_EFFECTS",
-            "MARS_EMOJI_FONT",
             "MARS_GRAPHICS_WRAPPER",
-            "MARS_PROFILE",
-            "MARS_RENDER_STRATEGY",
-            MARS_EMOJI_ENV_KEYS[0],
-            MARS_EMOJI_ENV_KEYS[1],
             "YAZELIX_YZX_BIN",
             "YAZELIX_YZX_CONTROL_BIN",
             "YAZELIX_YZX_CORE_BIN",

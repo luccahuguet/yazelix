@@ -32,7 +32,7 @@ Yazelix does not use `$XDG_STATE_HOME` for the main generated state root. The st
   - `configs/yazi/` - generated Yazi config used through `YAZI_CONFIG_HOME`
   - `configs/zellij/` - generated Zellij config, layouts, and plugin artifacts
   - `configs/helix/` - generated managed Helix config
-  - `configs/terminal_emulators/` - generated terminal config files
+  - `configs/terminal_emulators/ghostty/` - standalone Ghostty cursor shader state when enabled
   - `initializers/` - generated shell, starship, zoxide, optional host `atuin`/`mise`, and carapace init scripts
   - `logs/` - runtime setup, launch, and welcome output
   - `profiles/startup/` - startup profiler reports and saved baselines

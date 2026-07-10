@@ -3,12 +3,12 @@
 ## Summary
 
 `yazelix-terminal-support` may become the child owner for static terminal
-support metadata. It must not own launch behavior, generated config rendering,
+support metadata. It must not own launch behavior, native config ownership,
 Home Manager option semantics, or child-terminal internals.
 
 The child is useful only if it removes a second hand-maintained authority in
 main Yazelix. It is not useful as a mirror of `packaging/runtime_tool_registry.nix`
-or `terminal_materialization.rs`.
+or the Mars complete-config boundary.
 
 ## Ownership
 
@@ -23,7 +23,7 @@ or `terminal_materialization.rs`.
 | Home Manager option semantics and defaults | Main Yazelix Home Manager module |
 | `runtime_tools.json` projection and runtime source-mode validation | Main Yazelix package assembly until a real deletion slice proves otherwise |
 | Terminal launch argv, detach behavior, and platform launch flags | Main Yazelix launch boundary |
-| Generated terminal config materialization | Main Yazelix until a separate terminal config-pack boundary deletes it |
+| Complete Mars config semantics | Mars; main only selects the canonical user file or packaged file |
 | Doctor diagnostics and repair behavior | Main Yazelix doctor aggregation |
 | yzxterm wrapper/package internals | `yazelix-terminal` |
 | Cursor shader and preset artifacts | `yazelix-cursors` |
@@ -62,8 +62,7 @@ pass:
 5. Unsupported terminal ids still fail fast with clear main-owned user errors
 6. yzxterm-specific package/profile/shader semantics remain in
    `yazelix-terminal` or `yazelix-cursors`
-7. Terminal config rendering remains outside terminal-support unless a separate
-   config-pack extraction proves output equivalence and deletes main code
+7. Terminal support metadata does not grow into native config rendering or merging
 
 ## Verification
 

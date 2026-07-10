@@ -377,14 +377,7 @@ fn verify_profile_installed_runtime(
         .join("terminal_emulators")
         .join("ghostty")
         .join("shaders");
-    let generated_mars_config = temp_home
-        .join(".local")
-        .join("share")
-        .join("yazelix")
-        .join("configs")
-        .join("terminal_emulators")
-        .join("mars")
-        .join("config.toml");
+    let packaged_mars_config = runtime_root.join("share").join("mars").join("config.toml");
 
     for (path, label) in [
         (runtime_toolbin.clone(), "runtime toolbin"),
@@ -614,27 +607,9 @@ fn verify_profile_installed_runtime(
         return Ok(());
     }
 
-    let terminal_materialization_result = run_installed_yzx(
-        repo_root,
-        temp_home,
-        &[
-            "run",
-            &yzx_core_arg,
-            "terminal-materialization.generate",
-            "--from-env",
-        ],
-    )?;
-    if !terminal_materialization_result.status.success() {
-        errors.push(format!(
-            "Installed runtime failed to materialize the packaged terminal config during cold profile-install validation\n{}",
-            command_output_summary(&terminal_materialization_result)
-        ));
-        return Ok(());
-    }
-
     require_path_exists_abs(
-        &generated_mars_config,
-        "generated Mars Terminal config for selected packaged terminal",
+        &packaged_mars_config,
+        "complete packaged Mars config for selected terminal",
         errors,
     );
     if errors.is_empty() {

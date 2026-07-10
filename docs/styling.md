@@ -12,16 +12,19 @@ Set the global generated appearance in `~/.config/yazelix/settings.jsonc`:
 }
 ```
 
-`dark` is the default. `light` switches generated terminal colors and the default Zellij/Yazi themes to light palettes where that terminal supports them, while preserving explicit `zellij.theme` and `yazi.theme` choices. `auto` uses native automatic system appearance in Ghostty and WezTerm.
+`dark` is the default. `light` switches the remaining Yazelix-owned generated themes while preserving explicit `zellij.theme` and `yazi.theme` choices. Mars appearance is independent and belongs under `[mars.appearance]` in its native config.
 
-## Terminal Transparency
+## Mars Transparency
 
-WezTerm includes transparency by default:
-```lua
-config.window_background_opacity = 0.9
+Set Mars opacity in `~/.config/yazelix/mars/config.toml`:
+
+```toml
+[window]
+opacity = 0.9
+opacity-cells = false
 ```
 
-Edit `~/.wezterm.lua` to customize (1.0 = opaque, 0.5 = very transparent, etc).
+Other terminal emulators keep their own native transparency and color settings
 
 ## Helix Themes
 
@@ -37,16 +40,6 @@ Popular non-transparent themes: `ao`, `dark_plus`, `onedark`, `gruvbox`, `catppu
 
 Custom theme TOML files for Yazelix-managed Helix sessions live under `~/.config/yazelix/helix/themes/`, and the selected theme name belongs in `~/.config/yazelix/helix/config.toml`. Native `~/.config/helix/themes/` belongs to plain Helix outside Yazelix, and the old `~/.config/yazelix/user_conf/helix/themes/` path is unsupported legacy state.
 
-## WezTerm Color Schemes
-
-Default: `Abernathy`
-
-Change in `~/.wezterm.lua`:
-```lua
--- example:
-config.color_scheme = 'Tokyo Night'  -- or Nord, Dracula, etc.
-```
-
 ## Tips
 
-- Disable transparency if performance issues arise: `window_background_opacity = 1.0`
+- Disable Mars transparency with `window.opacity = 1.0`; use the equivalent native option for host terminals

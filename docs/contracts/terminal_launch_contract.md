@@ -2,52 +2,44 @@
 
 ## Summary
 
-Yazelix supports capable terminal emulators through `yzx enter` and owns one packaged terminal launch path: Mars. Mars has the deepest Yazelix integration, while Ghostty is the most tested mature host-terminal path and a strong macOS choice.
-
-## Scope
-
-- `rust_core/yazelix_core/src/launch_commands/terminal.rs`
-- `rust_core/yazelix_core/src/launch_commands/process.rs`
-- `shells/posix/detached_launch_probe.sh`
-- `shells/posix/desktop_deferred_launch_probe.sh`
-- terminal launch and detached-launch tests in Rust launch-command modules
+Yazelix packages and launches Mars. Other capable terminal emulators remain host-owned entrypoints that start the workspace with `yzx enter`.
 
 ## Contract Items
 
 #### TLAUNCH-001
 - Type: boundary
 - Status: live
-- Owner: Rust `launch_commands/terminal.rs`, Rust `launch_commands/process.rs`, and POSIX `shells/posix/detached_launch_probe.sh`
-- Statement: `yzx launch` builds the packaged Mars argv, applies the runtime graphics wrapper when required, and runs the detached-launch probe. It must not duplicate startup-launch preflight or terminal materialization ownership
-- Verification: automated Rust tests in `rust_core/yazelix_core/src/launch_commands.rs`; validator `yzx_repo_validator validate-contracts`
+- Owner: Rust `launch_commands/terminal.rs`, Rust `launch_commands/process.rs`, and the detached launch helpers
+- Statement: `yzx launch` builds the packaged Mars argv and runs the detached launch probe without generating terminal config
+- Verification: focused Rust launch-command tests and `validate-installed-runtime-contract`
 
 #### TLAUNCH-002
-- Type: failure_mode
+- Type: source_of_truth
 - Status: live
-- Owner: Rust `launch_commands/terminal.rs` and native config status
-- Statement: `terminal.config_mode = "user"` must fail fast when Mars has no real user config at its native path, and Yazelix must never move, create, or take ownership of external terminal config implicitly
-- Verification: automated Rust tests in `rust_core/yazelix_core/src/native_config_status.rs`; validator `yzx_repo_validator validate-config-surface-contract`
+- Owner: Mars and Rust `launch_commands/terminal.rs`
+- Statement: `~/.config/yazelix/mars/config.toml` is the optional complete user-owned Mars config. When it exists, `MARS_CONFIG_HOME` points to its directory. When it is absent, `MARS_CONFIG_HOME` points to the packaged complete config under `share/mars`. Yazelix does not merge the files or inspect ambient `~/.config/mars/config.toml`
+- Verification: focused Rust `launch_commands::terminal` tests and config UI tests
 
 #### TLAUNCH-003
-- Type: behavior
+- Type: boundary
 - Status: live
-- Owner: Rust terminal materialization and Rust launch preflight
-- Statement: Mars is the packaged terminal selected by `terminal = "mars"`, `#yazelix`, or `#yazelix_mars`. It consumes the Mars child package metadata from `passthru.marsPackageMetadata` and `share/mars/package-metadata.json`; missing or malformed metadata is a package error, not a fallback trigger. Generated Mars config is written under the Yazelix state directory and launched through `MARS_CONFIG_HOME`
-- Verification: automated Rust tests in `rust_core/yazelix_core/src/launch_commands/launch.rs`; automated terminal-materialization tests in `rust_core/yazelix_core/src/terminal_materialization.rs`
+- Owner: Mars, Ratconfig, and the Yazelix config UI host
+- Statement: Mars owns its opacity, appearance, fonts, effects, and `[yazelix.cursor]`. Ratconfig exposes the complete TOML document generically. Root Yazelix appearance and cursor settings do not project into Mars
+- Verification: config UI tests, Mars package validation, and manual fresh-window testing
 
 #### TLAUNCH-004
 - Type: boundary
 - Status: live
-- Owner: Rust `launch_commands/launch.rs`, Home Manager module, and flake package surface
-- Statement: Non-Mars terminal emulators are supported through `yzx enter`. Yazelix does not package Ghostty, Rio, WezTerm, Kitty, Foot, or Ratty runtime packages, and `yzx launch` does not accept `--term`. Users who prefer another terminal configure that terminal to run `yzx enter`, with that terminal's native config remaining user-owned
-- Verification: automated Rust launch parsing tests; validator `validate-flake-interface`; validator `validate-nix-customization-api`
+- Owner: Rust launch commands and Home Manager
+- Statement: Non-Mars terminals are not packaged or configured by Yazelix. Their native config stays host-owned and they enter Yazelix through `yzx enter`
+- Verification: launch parsing tests plus flake and Home Manager validators
 
 #### TLAUNCH-005
 - Type: failure_mode
 - Status: live
-- Owner: Rust `launch_commands/process.rs` plus POSIX `shells/posix/detached_launch_probe.sh` and `shells/posix/desktop_deferred_launch_probe.sh`
-- Statement: Detached launch must be measurable, fast on success, and visible on early terminal death with captured stderr instead of silently succeeding
-- Verification: automated Rust tests in `rust_core/yazelix_core/src/launch_commands.rs`; validator `validate-installed-runtime-contract`
+- Owner: Rust `launch_commands/process.rs` and the detached launch helpers
+- Statement: Detached launch failures remain visible with captured stderr instead of silently succeeding
+- Verification: Rust launch tests and `validate-installed-runtime-contract`
 
 ## Traceability
 
