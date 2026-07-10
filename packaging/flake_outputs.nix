@@ -104,6 +104,11 @@ let
     fenixPkgs.latest.rustc
     fenixPkgs.latest.rustfmt
     fenixPkgs.latest.clippy
+    # musl static lane (envctl blueprint R9/TASK-0093): rust-std for the
+    # x86_64-unknown-linux-musl target so `cargo build --target
+    # x86_64-unknown-linux-musl` links fully-static binaries. std only —
+    # the host cargo/rustc above stay the single compiler.
+    fenixPkgs.targets.x86_64-unknown-linux-musl.latest.rust-std
   ];
   # bun pinned ahead of nixpkgs-unstable (ships 1.3.13; upstream stable is
   # 1.3.14, https://github.com/oven-sh/bun/releases/tag/bun-v1.3.14).
