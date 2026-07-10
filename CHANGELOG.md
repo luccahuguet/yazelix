@@ -10,6 +10,7 @@ Upgrade impact: manual action required for Home Manager users; writable released
 
 Highlights:
 - Repaired the published Yazi assets Cargo vendor hash so fresh Nix installs build on Linux and macOS
+- Made Linux desktop entries launch Yazelix directly instead of using a temporary host terminal that can kill the Mars handoff on COSMIC
 - Made `~/.config/yazelix/mars/config.toml` the optional complete native Mars config, with the packaged complete config used directly when the user file is absent
 - Removed generated Mars config, terminal config mode, transparency buckets, emoji/profile projection, cross-tool Mars appearance/cursor projection, random per-window Mars cursors, and tracked Ghostty/Kitty/WezTerm example configs
 - Exposed the complete Mars TOML document through Ratconfig generic rows and added Home Manager `programs.yazelix.config.mars.text` / `source` ownership

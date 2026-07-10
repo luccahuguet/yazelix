@@ -12,7 +12,7 @@ use crate::terminal_variant::{
     terminal_desktop_entry_name, terminal_startup_wm_class,
 };
 use std::fs;
-use std::io::{self, Write};
+use std::io;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -248,20 +248,14 @@ pub(super) fn run_desktop_launch() -> Result<i32, CoreError> {
     print_desktop_progress("Preparing session...");
     let home_dir = home_dir_from_env()?;
     let home_dir_string = home_dir.to_string_lossy().to_string();
-    match run_launch_flow(
+    run_launch_flow(
         Some(&home_dir_string),
         config_override_from_env().as_deref(),
         false,
         false,
         true,
         DESKTOP_LAUNCH_CLEARED_ENV_KEYS,
-    ) {
-        Ok(code) => Ok(code),
-        Err(err) => {
-            acknowledge_desktop_failure(&err.message());
-            Err(err)
-        }
-    }
+    )
 }
 
 fn xdg_data_home(home_dir: &Path) -> PathBuf {
@@ -306,7 +300,7 @@ pub(super) fn render_desktop_entry(launcher_path: &Path, active_terminal: &str) 
             "StartupWMClass={}",
             terminal_startup_wm_class(active_terminal)
         ),
-        "Terminal=true".to_string(),
+        "Terminal=false".to_string(),
         "X-Yazelix-Managed=true".to_string(),
         format!(
             "Exec={} desktop launch",
@@ -705,18 +699,6 @@ fn maybe_refresh_icon_cache(icons_root: &Path) {
 
 fn print_desktop_progress(message: &str) {
     println!("Yazelix: {message}");
-}
-
-fn acknowledge_desktop_failure(error_text: &str) {
-    println!();
-    println!("Yazelix: Launch failed.");
-    println!();
-    println!("{error_text}");
-    println!();
-    print!("Press Enter to close this window.");
-    let _ = io::stdout().flush();
-    let mut line = String::new();
-    let _ = io::stdin().read_line(&mut line);
 }
 
 #[cfg(test)]

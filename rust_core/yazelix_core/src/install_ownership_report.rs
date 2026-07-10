@@ -808,9 +808,9 @@ fn get_desktop_entry_terminal_value(desktop_path: &Path) -> Option<String> {
         })
 }
 
-fn desktop_entry_terminal_enabled(desktop_path: &Path) -> bool {
+fn desktop_entry_launches_directly(desktop_path: &Path) -> bool {
     get_desktop_entry_terminal_value(desktop_path)
-        .map(|v| v.to_lowercase() == "true")
+        .map(|v| v.to_lowercase() == "false")
         .unwrap_or(false)
 }
 
@@ -955,11 +955,11 @@ fn stale_home_manager_profile_desktop_entries(
             ) {
                 reasons.push(reason);
             }
-            if !desktop_entry_terminal_enabled(path) {
+            if !desktop_entry_launches_directly(path) {
                 let terminal = get_desktop_entry_terminal_value(path)
                     .unwrap_or_else(|| "<missing>".to_string());
                 reasons.push(format!(
-                    "Terminal={terminal} cannot show prelaunch failures"
+                    "Terminal={terminal} can let the starter terminal kill the Mars handoff"
                 ));
             }
             if reasons.is_empty() {
@@ -1106,15 +1106,15 @@ fn check_desktop_entry_freshness(
         ));
     }
 
-    if !desktop_entry_terminal_enabled(&dp) {
+    if !desktop_entry_launches_directly(&dp) {
         let terminal_value =
             get_desktop_entry_terminal_value(&dp).unwrap_or_else(|| "<missing>".into());
         return DoctorInstallResult::new(
             "warning",
-            "Yazelix desktop entry cannot show prelaunch failures",
+            "Yazelix desktop entry uses a terminal-backed launcher",
         )
         .with_details(format!(
-                "Desktop entry: {}\nTerminal: {}\nTerminal=false can hide config and generated-state errors that happen before the packaged terminal is spawned. Yazelix desktop entries should use Terminal=true as a starter window until a dedicated graphical prelaunch surface exists.\n{repair_hint}",
+                "Desktop entry: {}\nTerminal: {}\nTerminal=true runs `yzx desktop launch` inside a temporary host terminal. Some desktop environments kill the detached Mars handoff when that starter closes. Yazelix desktop entries must use Terminal=false and let yzx launch Mars directly. Diagnose prelaunch failures with `yzx doctor --verbose` or by running `yzx desktop launch` from a shell; failures after the handoff begins are also recorded in terminal-launch logs.\n{repair_hint}",
                 path_to_string(&dp),
                 terminal_value
             ));
@@ -1391,7 +1391,7 @@ mod tests {
         std::fs::write(
             &profile_desktop,
             format!(
-                "[Desktop Entry]\nName=Yazelix\nTerminal=true\nExec={} desktop launch\n",
+                "[Desktop Entry]\nName=Yazelix\nTerminal=false\nExec={} desktop launch\n",
                 profile_yzx.display()
             ),
         )
@@ -1415,9 +1415,9 @@ mod tests {
         );
     }
 
-    // Regression: pre-terminal config failures are invisible from GUI launchers unless the desktop entry opens a starter terminal window.
+    // Regression: terminal-backed desktop entries can kill the deferred Mars handoff when the starter terminal closes.
     #[test]
-    fn desktop_freshness_accepts_terminal_true_and_warns_on_terminal_false() {
+    fn desktop_freshness_accepts_terminal_false_and_warns_on_terminal_true() {
         let tmp = TempDir::new().unwrap();
         let home = tmp.path().join("home");
         let xdg_data = home.join(".local/share");
@@ -1435,7 +1435,7 @@ mod tests {
         let exec = format!("\"{}\" desktop launch", profile_yzx.display());
         std::fs::write(
             &desktop,
-            format!("[Desktop Entry]\nName=Yazelix\nTerminal=true\nExec={exec}\n"),
+            format!("[Desktop Entry]\nName=Yazelix\nTerminal=false\nExec={exec}\n"),
         )
         .unwrap();
 
@@ -1446,7 +1446,7 @@ mod tests {
         std::fs::write(
             &desktop,
             format!(
-                "[Desktop Entry]\nName=Yazelix\nTerminal=true\nExec=env SAMPLE_FLAG=1 {exec}\n"
+                "[Desktop Entry]\nName=Yazelix\nTerminal=false\nExec=env SAMPLE_FLAG=1 {exec}\n"
             ),
         )
         .unwrap();
@@ -1455,14 +1455,14 @@ mod tests {
 
         std::fs::write(
             &desktop,
-            format!("[Desktop Entry]\nName=Yazelix\nTerminal=false\nExec={exec}\n"),
+            format!("[Desktop Entry]\nName=Yazelix\nTerminal=true\nExec={exec}\n"),
         )
         .unwrap();
         let stale = evaluate_install_ownership_report(&request);
         assert_eq!(stale.desktop_entry_freshness.status, "warning");
         assert_eq!(
             stale.desktop_entry_freshness.message,
-            "Yazelix desktop entry cannot show prelaunch failures"
+            "Yazelix desktop entry uses a terminal-backed launcher"
         );
     }
 

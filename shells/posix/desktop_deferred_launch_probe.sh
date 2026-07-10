@@ -101,9 +101,8 @@ while [ "$i" -lt 100 ]; do
   i=$((i + 1))
 done
 
-# Give the terminal emulator a brief moment to destroy the starter window
-# after the launcher process exits, before asking the real Yazelix window
-# to appear.
+# Give the desktop launcher process a brief moment to exit before asking the
+# real Yazelix window to appear.
 sleep 0.15
 
 unset ZELLIJ ZELLIJ_SESSION_NAME ZELLIJ_PANE_ID ZELLIJ_TAB_NAME ZELLIJ_TAB_POSITION

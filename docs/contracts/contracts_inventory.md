@@ -14,7 +14,7 @@ This inventory lists the canonical contracts under `docs/contracts/`. It is not 
 | `config_runtime_control_plane_contract.md` | Config/runtime/control-plane ownership and bridge boundaries |
 | `contracts_inventory.md` | Canonical contract list and inventory hygiene |
 | `cross_language_runtime_ownership.md` | Current language/runtime owner map |
-| `desktop_launch_visible_feedback.md` | Desktop launch visible-feedback behavior |
+| `desktop_launch_direct_handoff.md` | Direct desktop launch and deferred Mars handoff behavior |
 | `first_run_upgrade_summary.md` | First-run and `yzx whats_new` summary behavior |
 | `floating_tui_panes.md` | Popup, menu, and transient floating-pane behavior |
 | `fork_child_repo_maintenance.md` | First-party fork and child-repo inventory, README delta protocol, and review evidence |

@@ -832,9 +832,9 @@ fn validate_home_manager_desktop_entry_contract(repo_root: &Path) -> Result<Vec<
         ));
     }
 
-    if !json_map_bool_field(&entry, "terminal") {
+    if entry.get("terminal").and_then(JsonValue::as_bool) != Some(false) {
         errors.push(
-            "Home Manager desktop entry must set terminal = true so pre-terminal config failures stay visible"
+            "Home Manager desktop entry must set terminal = false so the host desktop launches yzx directly"
                 .to_string(),
         );
     }

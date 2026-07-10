@@ -712,7 +712,7 @@ fn validate_profile_desktop_entry_contents(
     let expected_name = format!("Name={}", terminal_desktop_entry_name(runtime_terminal));
     for required in [
         expected_name.as_str(),
-        "Terminal=true",
+        "Terminal=false",
         "X-Yazelix-Managed=true",
     ] {
         if !raw.lines().any(|line| line.trim() == required) {
@@ -856,7 +856,7 @@ mod tests {
         fs::write(
             &desktop,
             format!(
-                "[Desktop Entry]\nName=New Yazelix - Mars\nTerminal=true\nX-Yazelix-Managed=true\nExec=\"{}\" desktop launch\n",
+                "[Desktop Entry]\nName=New Yazelix - Mars\nTerminal=false\nX-Yazelix-Managed=true\nExec=\"{}\" desktop launch\n",
                 yzx.display()
             ),
         )
@@ -878,7 +878,7 @@ mod tests {
         fs::write(&yzx, "").unwrap();
         fs::write(
             &desktop,
-            "[Desktop Entry]\nName=New Yazelix - Mars\nTerminal=true\nX-Yazelix-Managed=true\nExec=\"/old/bin/yzx\" desktop launch\n",
+            "[Desktop Entry]\nName=New Yazelix - Mars\nTerminal=false\nX-Yazelix-Managed=true\nExec=\"/old/bin/yzx\" desktop launch\n",
         )
         .unwrap();
 
