@@ -28,6 +28,21 @@ if [ -z "$runtime_dir" ]; then
   exit 1
 fi
 
+runtime_env_script="$runtime_dir/shells/posix/runtime_env.sh"
+if [ ! -f "$runtime_env_script" ]; then
+  printf '%s\n' "Error: missing Yazelix runtime env helper: $runtime_env_script" >&2
+  exit 1
+fi
+
+inherited_managed_helix_binary="${YAZELIX_MANAGED_HELIX_BINARY:-}"
+export YAZELIX_BOOTSTRAP_RUNTIME_DIR="$runtime_dir"
+. "$runtime_env_script"
+unset YAZELIX_BOOTSTRAP_RUNTIME_DIR
+if [ -n "$inherited_managed_helix_binary" ]; then
+  YAZELIX_MANAGED_HELIX_BINARY="$inherited_managed_helix_binary"
+  export YAZELIX_MANAGED_HELIX_BINARY
+fi
+
 helix_binary="${YAZELIX_MANAGED_HELIX_BINARY:-}"
 if [ -z "$helix_binary" ]; then
   printf '%s\n' "Error: missing managed Helix binary path" >&2
@@ -60,10 +75,8 @@ if [ ! -x "$jq_bin" ]; then
   fi
 fi
 
-config_home="${XDG_CONFIG_HOME:-${HOME:-}/.config}"
-config_dir="${YAZELIX_CONFIG_DIR:-$config_home/yazelix}"
-data_home="${XDG_DATA_HOME:-${HOME:-}/.local/share}"
-state_dir="${YAZELIX_STATE_DIR:-$data_home/yazelix}"
+config_dir="$YAZELIX_CONFIG_DIR"
+state_dir="$YAZELIX_STATE_DIR"
 
 show_splash=false
 if [ "$#" -eq 0 ]; then

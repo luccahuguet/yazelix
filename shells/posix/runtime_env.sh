@@ -29,6 +29,7 @@ scrub_yazelix_workspace_child_gui_env() {
 
 strip_runtime_path_entries() {
   current_path="${1:-}"
+  host_path_prefix="${2:-}"
   cleaned_path=""
   remaining_path="$current_path"
 
@@ -47,13 +48,14 @@ strip_runtime_path_entries() {
     esac
 
     case "$entry" in
-      ""|"${runtime_dir}/libexec"|"${runtime_dir}/toolbin"|"${runtime_dir}/bin")
-        ;;
+      ""|"${runtime_dir}/libexec"|"${runtime_dir}/toolbin"|"${runtime_dir}/bin") ;;
       *)
-        if [ -z "$cleaned_path" ]; then
-          cleaned_path="$entry"
-        else
-          cleaned_path="${cleaned_path}:$entry"
+        if [ -z "$host_path_prefix" ] || [ "$entry" != "$host_path_prefix" ]; then
+          if [ -z "$cleaned_path" ]; then
+            cleaned_path="$entry"
+          else
+            cleaned_path="${cleaned_path}:$entry"
+          fi
         fi
         ;;
     esac
@@ -85,12 +87,22 @@ prepend_existing_path_dir() {
 # Export only the curated interactive tool surface. The full libexec helper
 # closure stays runtime-private so host apps do not inherit shadowing helpers
 # like coreutils ahead of the system PATH.
-cleaned_path="$(strip_runtime_path_entries "${PATH:-}")"
+if [ -d /run/wrappers/bin ]; then
+  YAZELIX_HOST_PATH_PREFIX=/run/wrappers/bin
+  export YAZELIX_HOST_PATH_PREFIX
+else
+  unset YAZELIX_HOST_PATH_PREFIX
+fi
+
+cleaned_path="$(strip_runtime_path_entries "${PATH:-}" "${YAZELIX_HOST_PATH_PREFIX:-}")"
 if [ -n "${YAZELIX_TEST_PATH_PREPEND:-}" ] && [ -d "$YAZELIX_TEST_PATH_PREPEND" ]; then
   cleaned_path="$(prepend_existing_path_dir "$YAZELIX_TEST_PATH_PREPEND" "$cleaned_path")"
 fi
 cleaned_path="$(prepend_existing_path_dir "$runtime_dir/bin" "$cleaned_path")"
 cleaned_path="$(prepend_existing_path_dir "$runtime_dir/toolbin" "$cleaned_path")"
+if [ -n "${YAZELIX_HOST_PATH_PREFIX:-}" ]; then
+  cleaned_path="$(prepend_existing_path_dir "$YAZELIX_HOST_PATH_PREFIX" "$cleaned_path")"
+fi
 export PATH="$cleaned_path"
 
 # Nu is optional for bootstrap. Only the dedicated Nushell wrapper requires it;

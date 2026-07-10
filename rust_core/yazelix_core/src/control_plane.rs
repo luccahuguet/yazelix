@@ -514,6 +514,7 @@ pub fn runtime_env_request(
         runtime_dir,
         home_dir,
         xdg_config_home: std::env::var_os("XDG_CONFIG_HOME").map(PathBuf::from),
+        host_path_prefix: std::env::var_os("YAZELIX_HOST_PATH_PREFIX").map(PathBuf::from),
         current_path: RuntimePathInput::String(current_path),
         current_lazygit_config_file: std::env::var("LG_CONFIG_FILE").ok(),
         editor_command,

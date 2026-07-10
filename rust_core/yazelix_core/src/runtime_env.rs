@@ -13,6 +13,8 @@ pub struct RuntimeEnvComputeRequest {
     #[serde(default)]
     pub xdg_config_home: Option<PathBuf>,
     #[serde(default)]
+    pub host_path_prefix: Option<PathBuf>,
+    #[serde(default)]
     pub current_path: RuntimePathInput,
     #[serde(default)]
     pub current_lazygit_config_file: Option<String>,
@@ -49,12 +51,18 @@ pub fn compute_runtime_env(
     let current_path_entries =
         strip_runtime_owned_path_entries(normalized_path_entries, &request.runtime_dir);
     let runtime_path_entries = existing_runtime_path_entries(&request.runtime_dir);
-    let path_entries = if runtime_path_entries.is_empty() {
+    let host_path_prefix = request
+        .host_path_prefix
+        .as_ref()
+        .filter(|path| path.is_dir())
+        .map(|path| path_to_string(path));
+    let path_entries = if host_path_prefix.is_none() && runtime_path_entries.is_empty() {
         current_path_entries
     } else {
         stable_dedupe(
-            runtime_path_entries
+            host_path_prefix
                 .into_iter()
+                .chain(runtime_path_entries)
                 .chain(current_path_entries)
                 .collect(),
         )

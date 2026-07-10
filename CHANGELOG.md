@@ -15,6 +15,7 @@ Highlights:
 - Removed generated Mars config, terminal config mode, transparency buckets, emoji/profile projection, cross-tool Mars appearance/cursor projection, random per-window Mars cursors, and tracked Ghostty/Kitty/WezTerm example configs
 - Exposed inherited packaged Mars fields through Ratconfig generic rows while writing only explicit overrides, and added sparse Home Manager `programs.yazelix.config.mars.text` / `source` ownership
 - Migrated writable released `terminal.transparency` values to native `window.opacity` before removing the retired `terminal` settings object
+- Preserved NixOS security-wrapper precedence across Yazelix entrypoints and managed Helix launches so `sudo` and other privileged commands resolve through `/run/wrappers/bin`
 
 Manual action:
 - Replace Home Manager `terminal_config_mode`, `transparency`, `mars_profile`, and `mars_emoji_font` options with exactly one of `programs.yazelix.config.mars.text` or `programs.yazelix.config.mars.source` when you want a declarative sparse Mars override

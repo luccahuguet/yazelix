@@ -93,6 +93,20 @@ This contract keeps those boundaries explicit.
   `nushell/scripts/dev/test_helix_managed_config_contracts.nu`; automated
   `nushell/scripts/dev/test_yzx_workspace_commands.nu`
 
+#### ROOT-006
+- Type: boundary
+- Status: live
+- Owner: POSIX runtime environment finalization and Rust child-environment assembly
+- Statement: An existing host security-wrapper directory remains a single
+  priority `PATH` prefix across Yazelix entrypoints and managed Helix launches.
+  On NixOS, `/run/wrappers/bin` must stay ahead of the curated runtime and
+  `/run/current-system/sw/bin`; bootstrap search paths are transient discovery
+  inputs rather than final child-process ordering
+- Verification: automated
+  `rust_core/yazelix_core/tests/yzx_control_runtime_surface.rs`; automated
+  `rust_core/yazelix_core/tests/yzx_core_runtime_env.rs`; validator
+  `yzx_repo_validator validate-installed-runtime-contract`
+
 ## Behavior
 
 - The config root is the user-owned configuration surface.

@@ -34,6 +34,29 @@ fn copy_dir_recursive(source: &Path, target: &Path) {
     }
 }
 
+fn assert_security_wrapper_path(stdout: &str, wrapper_dir: &Path) {
+    let wrapper_dir = wrapper_dir.to_string_lossy();
+    let resolved_sudo = stdout
+        .lines()
+        .find_map(|line| line.strip_prefix("sudo="))
+        .expect("capture should include resolved sudo");
+    assert_eq!(resolved_sudo, format!("{wrapper_dir}/sudo"));
+
+    let path = stdout
+        .lines()
+        .find_map(|line| line.strip_prefix("PATH="))
+        .expect("capture should include PATH");
+    let entries = path.split(':').collect::<Vec<_>>();
+    assert_eq!(entries.first().copied(), Some(wrapper_dir.as_ref()));
+    assert_eq!(
+        entries
+            .iter()
+            .filter(|entry| **entry == wrapper_dir.as_ref())
+            .count(),
+        1
+    );
+}
+
 fn seed_startup_materialization_runtime_assets(fixture: &support::fixtures::ManagedConfigFixture) {
     let repo = repo_root();
     copy_dir_recursive(
@@ -78,40 +101,59 @@ fn seed_startup_materialization_runtime_assets(fixture: &support::fixtures::Mana
 
 // Regression: detached macOS launchers can inherit a PATH without dirname/readlink, so POSIX
 // bootstrap must seed system tool dirs before runtime_env.sh is sourced.
+// Regression: NixOS security wrappers must remain ahead of the raw current-system programs after
+// every POSIX entrypoint finishes bootstrap.
 #[test]
-fn posix_bootstrap_entrypoints_resolve_runtime_with_narrow_path() {
+fn posix_bootstrap_entrypoints_resolve_runtime_and_preserve_security_wrappers() {
     let repo = repo_root();
     let temp = tempfile::tempdir().unwrap();
     let runtime_dir = temp.path().join("runtime");
     let home_dir = temp.path().join("home");
     let posix_dir = runtime_dir.join("shells").join("posix");
     let narrow_path = temp.path().join("private_tmp");
+    let raw_system_bin = temp.path().join("run/current-system/sw/bin");
+    let wrapper_dir = temp.path().join("run/wrappers/bin");
 
     fs::create_dir_all(&posix_dir).unwrap();
     fs::create_dir_all(&home_dir).unwrap();
     fs::create_dir_all(&narrow_path).unwrap();
+    fs::create_dir_all(&raw_system_bin).unwrap();
+    fs::create_dir_all(&wrapper_dir).unwrap();
     fs::create_dir_all(runtime_dir.join("libexec")).unwrap();
     fs::create_dir_all(runtime_dir.join("toolbin")).unwrap();
     fs::create_dir_all(runtime_dir.join("nushell/config")).unwrap();
+    write_executable_script(&raw_system_bin.join("sudo"), "#!/bin/sh\nexit 99\n");
+    write_executable_script(&wrapper_dir.join("sudo"), "#!/bin/sh\nexit 0\n");
+
+    let entrypoint_source = |name: &str| {
+        fs::read_to_string(repo.join("shells/posix").join(name))
+            .unwrap()
+            .replace(
+                "/run/current-system/sw/bin",
+                &raw_system_bin.to_string_lossy(),
+            )
+    };
     write_executable_script(
         &posix_dir.join("yzx_cli.sh"),
-        &fs::read_to_string(repo.join("shells/posix/yzx_cli.sh")).unwrap(),
+        &entrypoint_source("yzx_cli.sh"),
     );
     write_executable_script(
         &posix_dir.join("start_yazelix.sh"),
-        &fs::read_to_string(repo.join("shells/posix/start_yazelix.sh")).unwrap(),
+        &entrypoint_source("start_yazelix.sh"),
     );
     write_executable_script(
         &posix_dir.join("yazelix_nu.sh"),
-        &fs::read_to_string(repo.join("shells/posix/yazelix_nu.sh")).unwrap(),
+        &entrypoint_source("yazelix_nu.sh"),
     );
     write_executable_script(
         &posix_dir.join("yazelix_hx.sh"),
-        &fs::read_to_string(repo.join("shells/posix/yazelix_hx.sh")).unwrap(),
+        &entrypoint_source("yazelix_hx.sh"),
     );
     fs::write(
         posix_dir.join("runtime_env.sh"),
-        fs::read_to_string(repo.join("shells/posix/runtime_env.sh")).unwrap(),
+        fs::read_to_string(repo.join("shells/posix/runtime_env.sh"))
+            .unwrap()
+            .replace("/run/wrappers/bin", &wrapper_dir.to_string_lossy()),
     )
     .unwrap();
     fs::write(runtime_dir.join("nushell/config/config.nu"), "").unwrap();
@@ -123,6 +165,8 @@ fn posix_bootstrap_entrypoints_resolve_runtime_with_narrow_path() {
         r#"#!/bin/sh
 printf 'yzx_argv=%s\n' "${1:-}"
 printf 'YAZELIX_RUNTIME_DIR=%s\n' "$YAZELIX_RUNTIME_DIR"
+printf 'sudo=%s\n' "$(command -v sudo)"
+printf 'PATH=%s\n' "$PATH"
 "#,
     );
     let yzx_output = Command::new(posix_dir.join("yzx_cli.sh"))
@@ -148,6 +192,7 @@ printf 'YAZELIX_RUNTIME_DIR=%s\n' "$YAZELIX_RUNTIME_DIR"
         "YAZELIX_RUNTIME_DIR={}",
         runtime_dir.to_string_lossy()
     )));
+    assert_security_wrapper_path(&yzx_stdout, &wrapper_dir);
 
     let control_capture = temp.path().join("capture_control.sh");
     write_executable_script(
@@ -155,6 +200,8 @@ printf 'YAZELIX_RUNTIME_DIR=%s\n' "$YAZELIX_RUNTIME_DIR"
         r#"#!/bin/sh
 printf 'control_argv=%s\n' "${1:-}"
 printf 'YAZELIX_RUNTIME_DIR=%s\n' "$YAZELIX_RUNTIME_DIR"
+printf 'sudo=%s\n' "$(command -v sudo)"
+printf 'PATH=%s\n' "$PATH"
 "#,
     );
     let start_output = Command::new(posix_dir.join("start_yazelix.sh"))
@@ -178,12 +225,15 @@ printf 'YAZELIX_RUNTIME_DIR=%s\n' "$YAZELIX_RUNTIME_DIR"
         "YAZELIX_RUNTIME_DIR={}",
         runtime_dir.to_string_lossy()
     )));
+    assert_security_wrapper_path(&start_stdout, &wrapper_dir);
 
     write_executable_script(
         &runtime_dir.join("libexec/nu"),
         r#"#!/bin/sh
 printf 'nu_argv=%s\n' "$*"
 printf 'YAZELIX_RUNTIME_DIR=%s\n' "$YAZELIX_RUNTIME_DIR"
+printf 'sudo=%s\n' "$(command -v sudo)"
+printf 'PATH=%s\n' "$PATH"
 "#,
     );
     let nu_output = Command::new(posix_dir.join("yazelix_nu.sh"))
@@ -208,6 +258,7 @@ printf 'YAZELIX_RUNTIME_DIR=%s\n' "$YAZELIX_RUNTIME_DIR"
         "YAZELIX_RUNTIME_DIR={}",
         runtime_dir.to_string_lossy()
     )));
+    assert_security_wrapper_path(&nu_stdout, &wrapper_dir);
 
     write_executable_script(
         &runtime_dir.join("libexec/yzx_core"),
@@ -231,6 +282,8 @@ esac
         &runtime_dir.join("libexec/hx"),
         r#"#!/bin/sh
 printf 'hx_argv=%s\n' "$*"
+printf 'sudo=%s\n' "$(command -v sudo)"
+printf 'PATH=%s\n' "$PATH"
 "#,
     );
     let hx_output = Command::new(posix_dir.join("yazelix_hx.sh"))
@@ -255,6 +308,7 @@ printf 'hx_argv=%s\n' "$*"
     let hx_stdout = String::from_utf8(hx_output.stdout).unwrap();
     assert!(hx_stdout.contains("hx_argv=--config-dir /tmp/managed-helix"));
     assert!(hx_stdout.contains("-c /tmp/generated-helix.toml --version"));
+    assert_security_wrapper_path(&hx_stdout, &wrapper_dir);
 }
 
 // Regression: workspace startup scrubs inherited GTK/GIO loader variables so host GUI apps do not load incompatible Nix modules.

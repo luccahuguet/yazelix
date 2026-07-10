@@ -91,6 +91,66 @@ fn runtime_env_compute_returns_filtered_env() {
     assert_eq!(data.runtime_env["ZELLIJ_DEFAULT_LAYOUT"], "yzx_side");
 }
 
+// Regression: host security-wrapper prefixes must survive Rust runtime PATH assembly ahead of the
+// curated runtime and raw host program directories without duplication.
+#[test]
+fn runtime_env_compute_preserves_host_security_prefix() {
+    let tmp = tempdir().unwrap();
+    let runtime_dir = tmp.path().join("runtime");
+    let home_dir = tmp.path().join("home");
+    let wrapper_dir = tmp.path().join("run/wrappers/bin");
+
+    fs::create_dir_all(runtime_dir.join("toolbin")).unwrap();
+    fs::create_dir_all(runtime_dir.join("bin")).unwrap();
+    fs::create_dir_all(&home_dir).unwrap();
+    fs::create_dir_all(&wrapper_dir).unwrap();
+
+    let data = runtime_env_data(json!({
+        "runtime_dir": runtime_dir,
+        "home_dir": home_dir,
+        "host_path_prefix": wrapper_dir,
+        "current_path": format!(
+            "/run/current-system/sw/bin:{}:/usr/bin:{}",
+            wrapper_dir.to_string_lossy(),
+            wrapper_dir.to_string_lossy(),
+        )
+    }));
+
+    assert_eq!(
+        data.path_entries,
+        vec![
+            wrapper_dir.to_string_lossy().to_string(),
+            runtime_dir.join("toolbin").to_string_lossy().to_string(),
+            runtime_dir.join("bin").to_string_lossy().to_string(),
+            "/run/current-system/sw/bin".to_string(),
+            "/usr/bin".to_string(),
+        ]
+    );
+}
+
+// Invariant: hosts without a security prefix or packaged runtime bin directories retain their
+// inherited PATH entries exactly, including duplicates.
+#[test]
+fn runtime_env_compute_preserves_unmanaged_host_path() {
+    let tmp = tempdir().unwrap();
+    let runtime_dir = tmp.path().join("runtime");
+
+    let data = runtime_env_data(json!({
+        "runtime_dir": runtime_dir,
+        "home_dir": tmp.path().join("home"),
+        "current_path": "/usr/local/bin:/usr/bin:/usr/local/bin"
+    }));
+
+    assert_eq!(
+        data.path_entries,
+        vec![
+            "/usr/local/bin".to_string(),
+            "/usr/bin".to_string(),
+            "/usr/local/bin".to_string(),
+        ]
+    );
+}
+
 // Defends: custom Helix binaries cannot bypass the required binary/runtime pair contract at runtime-env assembly.
 // Contract: CRCP-002
 #[test]
@@ -315,12 +375,7 @@ fn managed_helix_wrapper_passes_generated_config_dir() {
         .parent()
         .and_then(std::path::Path::parent)
         .expect("repo root");
-    fs::copy(
-        repo_root.join("shells/posix/yazelix_hx.sh"),
-        runtime_dir.join("shells/posix/yazelix_hx.sh"),
-    )
-    .unwrap();
-    make_executable(&runtime_dir.join("shells/posix/yazelix_hx.sh"));
+    install_managed_helix_wrapper_fixture(repo_root, &runtime_dir);
 
     fs::write(
         runtime_dir.join("libexec/yzx_core"),
@@ -491,12 +546,7 @@ fn managed_helix_wrapper_rejects_external_binary_without_yazelix_config_dir_supp
         .parent()
         .and_then(std::path::Path::parent)
         .expect("repo root");
-    fs::copy(
-        repo_root.join("shells/posix/yazelix_hx.sh"),
-        runtime_dir.join("shells/posix/yazelix_hx.sh"),
-    )
-    .unwrap();
-    make_executable(&runtime_dir.join("shells/posix/yazelix_hx.sh"));
+    install_managed_helix_wrapper_fixture(repo_root, &runtime_dir);
 
     fs::write(
         runtime_dir.join("libexec/yzx_core"),
@@ -547,6 +597,25 @@ fn managed_helix_wrapper_rejects_external_binary_without_yazelix_config_dir_supp
         stderr.contains("Vanilla/upstream Helix does not support Yazelix's --config-dir option"),
         "{stderr}"
     );
+}
+
+#[cfg(unix)]
+fn install_managed_helix_wrapper_fixture(
+    repo_root: &std::path::Path,
+    runtime_dir: &std::path::Path,
+) {
+    let posix_dir = runtime_dir.join("shells/posix");
+    fs::copy(
+        repo_root.join("shells/posix/yazelix_hx.sh"),
+        posix_dir.join("yazelix_hx.sh"),
+    )
+    .unwrap();
+    fs::copy(
+        repo_root.join("shells/posix/runtime_env.sh"),
+        posix_dir.join("runtime_env.sh"),
+    )
+    .unwrap();
+    make_executable(&posix_dir.join("yazelix_hx.sh"));
 }
 
 #[cfg(unix)]
