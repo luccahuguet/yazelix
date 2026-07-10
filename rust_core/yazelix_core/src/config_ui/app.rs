@@ -77,14 +77,11 @@ impl YazelixConfigUiHost<'_> {
                 source_id,
                 action_id,
                 path,
-                create_if_missing,
                 ..
-            } => {
-                match self.open_config_file(ui, &source_id, &action_id, &path, create_if_missing) {
-                    Ok(()) => ui.notice_info(format!("Opened {}.", path.display())),
-                    Err(error) => ui.notice_error(error.message()),
-                }
-            }
+            } => match self.open_config_file(ui, &source_id, &action_id, &path) {
+                Ok(()) => ui.notice_info(format!("Opened {}.", path.display())),
+                Err(error) => ui.notice_error(error.message()),
+            },
             ConfigUiIntent::EditTextExternally { path, .. } => ui.notice_error(format!(
                 "The Ratconfig external editor action for {path} has no Yazelix host handler."
             )),
@@ -459,7 +456,6 @@ impl YazelixConfigUiHost<'_> {
         source_id: &str,
         action_id: &str,
         path: &Path,
-        create_if_missing: bool,
     ) -> Result<(), CoreError> {
         let expected = user_config_paths::mars_config(&self.request.config_dir);
         if source_id != MARS_SOURCE_ID || action_id != MARS_CONFIG_ACTION_ID || path != expected {
@@ -468,7 +464,7 @@ impl YazelixConfigUiHost<'_> {
                 path.display()
             )));
         }
-        prepare_mars_config_file(self.request, path, create_if_missing)?;
+        prepare_mars_config_file(self.request)?;
 
         suspend_config_ui_terminal(|| {
             crate::edit_commands::run_editor_child(&self.request.runtime_dir, path)
@@ -503,18 +499,15 @@ impl YazelixConfigUiHost<'_> {
     }
 }
 
-pub(super) fn prepare_mars_config_file(
-    request: &ConfigUiRequest,
-    path: &Path,
-    create_if_missing: bool,
-) -> Result<(), CoreError> {
-    if path_present(path) {
-        if path_owned_by_home_manager(path) || path_is_read_only(path) {
+pub(super) fn prepare_mars_config_file(request: &ConfigUiRequest) -> Result<(), CoreError> {
+    let path = user_config_paths::mars_config(&request.config_dir);
+    if path_present(&path) {
+        if path_owned_by_home_manager(&path) || path_is_read_only(&path) {
             return Err(CoreError::classified(
                 ErrorClass::Config,
-                "home_manager_owned_mars_config",
-                "The complete Mars config is read-only because Home Manager owns it.",
-                "Edit programs.yazelix.config.mars and run home-manager switch.",
+                "read_only_mars_config",
+                "The complete Mars config is read-only.",
+                "Edit its owning configuration source or fix its permissions before retrying.",
                 json!({ "path": path.display().to_string() }),
             ));
         }
@@ -529,14 +522,8 @@ pub(super) fn prepare_mars_config_file(
         }
         return Ok(());
     }
-    if !create_if_missing {
-        return Err(CoreError::usage(format!(
-            "Mars config does not exist: {}.",
-            path.display()
-        )));
-    }
     let raw = read_packaged_mars_config(&request.runtime_dir)?;
-    crate::atomic_fs::write_text_atomic(path, &raw)
+    crate::atomic_fs::write_text_atomic(&path, &raw)
 }
 
 fn read_packaged_mars_config(runtime_dir: &Path) -> Result<String, CoreError> {

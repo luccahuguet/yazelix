@@ -209,7 +209,7 @@ fn mars_file_action_prepares_complete_packaged_config() {
     let fixture = Fixture::new();
     let request = fixture.request();
 
-    prepare_mars_config_file(&request, &fixture.mars_path(), true).unwrap();
+    prepare_mars_config_file(&request).unwrap();
 
     assert_eq!(
         fs::read_to_string(fixture.mars_path()).unwrap(),
@@ -236,9 +236,9 @@ fn mars_file_action_preserves_dangling_home_manager_symlink() {
         .join("profile-home-manager-files/missing-mars.toml");
     symlink(&target, &mars).unwrap();
 
-    let error = prepare_mars_config_file(&request, &mars, true).unwrap_err();
+    let error = prepare_mars_config_file(&request).unwrap_err();
 
-    assert_eq!(error.code(), "home_manager_owned_mars_config");
+    assert_eq!(error.code(), "read_only_mars_config");
     assert_eq!(fs::read_link(&mars).unwrap(), target);
 }
 

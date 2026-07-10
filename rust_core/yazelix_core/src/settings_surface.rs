@@ -181,9 +181,18 @@ fn migrate_released_mars_settings(
         )
     })?;
     let value = parse_jsonc_value(settings_path, &raw)?;
-    let Some(terminal) = value.get("terminal").and_then(JsonValue::as_object) else {
+    let Some(terminal) = value.get("terminal") else {
         return Ok(());
     };
+    let terminal = terminal.as_object().ok_or_else(|| {
+        CoreError::classified(
+            ErrorClass::Config,
+            "invalid_legacy_terminal_settings",
+            "Cannot migrate a non-object terminal setting.",
+            "Remove the invalid terminal value or replace it with the released terminal settings object, then retry.",
+            json!({ "value": terminal }),
+        )
+    })?;
     let legacy_present = ["config_mode", "emoji_style", "transparency"]
         .iter()
         .any(|key| terminal.contains_key(*key));
@@ -315,21 +324,20 @@ fn migrate_mars_opacity(
             json!({ "path": source_path.display().to_string() }),
         )
     })?;
-    let current = get_toml_path(&value, "window.opacity").and_then(JsonValue::as_f64);
-    if present && current.is_some_and(|current| current != opacity) {
+    let current = get_toml_path(&value, "window.opacity");
+    if present && let Some(current) = current {
+        if current.as_f64() == Some(opacity) {
+            return Ok(());
+        }
         return Err(CoreError::classified(
             ErrorClass::Config,
             "mars_opacity_migration_conflict",
             format!(
-                "Existing Mars window.opacity {:?} conflicts with migrated opacity {opacity}.",
-                current.unwrap()
+                "Existing Mars window.opacity {current:?} conflicts with migrated opacity {opacity}."
             ),
             "Choose the intended opacity in ~/.config/yazelix/mars/config.toml, then remove the retired terminal settings from settings.jsonc.",
             json!({ "path": mars_path.display().to_string() }),
         ));
-    }
-    if present && current == Some(opacity) {
-        return Ok(());
     }
     let patched =
         set_toml_value_text(&raw, "window.opacity", &json!(opacity)).map_err(|error| {
@@ -1339,7 +1347,7 @@ mod tests {
             "{\n  \"terminal\": { \"config_mode\": \"yazelix\", \"transparency\": \"medium\" }\n}\n",
         )
         .unwrap();
-        fs::write(&mars, "[window]\nopacity = 0.5\n").unwrap();
+        fs::write(&mars, "[window]\nopacity = \"medium\"\n").unwrap();
         let before_settings = fs::read_to_string(&settings).unwrap();
         let before_mars = fs::read_to_string(&mars).unwrap();
 
@@ -1391,6 +1399,7 @@ mod tests {
     #[test]
     fn rejects_malformed_released_terminal_settings_before_deletion() {
         for (terminal, code) in [
+            ("1", "invalid_legacy_terminal_settings"),
             (
                 "{ \"config_mode\": 1, \"transparency\": \"medium\" }",
                 "invalid_legacy_terminal_config_mode",
