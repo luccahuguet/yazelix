@@ -11,14 +11,14 @@ Yazelix packages and launches Mars. Other capable terminal emulators remain host
 - Status: live
 - Owner: Rust `launch_commands/terminal.rs`, Rust `launch_commands/process.rs`, and the detached launch helpers
 - Statement: `yzx launch` builds the packaged Mars argv and runs the detached launch probe without generating terminal config
-- Verification: focused Rust launch-command tests and `validate-installed-runtime-contract`
+- Verification: automated focused Rust launch-command tests and validator `validate-installed-runtime-contract`
 
 #### TLAUNCH-002
-- Type: source_of_truth
+- Type: ownership
 - Status: live
 - Owner: Mars and Rust `launch_commands/terminal.rs`
 - Statement: `~/.config/yazelix/mars/config.toml` is the optional complete user-owned Mars config. When it exists, `MARS_CONFIG_HOME` points to its directory. When it is absent, `MARS_CONFIG_HOME` points to the packaged complete config under `share/mars`. Yazelix does not merge the files or inspect ambient `~/.config/mars/config.toml`
-- Verification: focused Rust `launch_commands::terminal` tests and config UI tests
+- Verification: automated focused Rust `launch_commands::terminal` tests and config UI tests
 
 #### TLAUNCH-003
 - Type: boundary
@@ -39,7 +39,7 @@ Yazelix packages and launches Mars. Other capable terminal emulators remain host
 - Status: live
 - Owner: Rust `launch_commands/process.rs` and the detached launch helpers
 - Statement: Detached launch failures remain visible with captured stderr instead of silently succeeding
-- Verification: Rust launch tests and `validate-installed-runtime-contract`
+- Verification: automated Rust launch tests and validator `validate-installed-runtime-contract`
 
 ## Traceability
 
