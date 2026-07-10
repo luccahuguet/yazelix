@@ -371,7 +371,7 @@ fn mars_process_boundary_env(
                 "Generated Mars Terminal config path has no parent directory: {}.",
                 config_path.display()
             ),
-            "Regenerate Yazelix runtime state with `yzx refresh`, then retry.",
+            "Run `yzx doctor --fix` to repair generated runtime state, then retry the launch.",
             serde_json::json!({}),
         )
     })?;

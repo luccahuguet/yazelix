@@ -299,7 +299,7 @@ fn remove_path_if_exists(path: &Path, operation: &'static str) -> Result<(), Cor
             CoreError::io(
                 operation,
                 "Could not remove the stale generated Mars themes directory",
-                "Remove the stale generated Mars themes directory, then rerun `yzx refresh`.",
+                "Remove the stale generated Mars themes directory, then retry the command.",
                 path.to_string_lossy(),
                 source,
             )
@@ -309,7 +309,7 @@ fn remove_path_if_exists(path: &Path, operation: &'static str) -> Result<(), Cor
             CoreError::io(
                 operation,
                 "Could not remove the stale generated Mars themes path",
-                "Remove the stale generated Mars themes path, then rerun `yzx refresh`.",
+                "Remove the stale generated Mars themes path, then retry the command.",
                 path.to_string_lossy(),
                 source,
             )
@@ -407,7 +407,7 @@ fn copy_mars_themes(
         CoreError::io(
             "copy_mars_themes",
             "Could not copy packaged Mars themes into the generated config root",
-            "Check permissions for the generated Yazelix state directory, then rerun `yzx refresh`.",
+            "Fix permissions for the generated Yazelix state directory, then retry the command.",
             destination.to_string_lossy(),
             source_error,
         )

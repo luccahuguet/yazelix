@@ -2,11 +2,11 @@
 
 ## Summary
 
-This contract started as the v15 trim contract and remains the current branch-level runtime contract for the v16 line.
+Maintainers wrote this contract for the v15 trim and keep it as the runtime boundary for the supported Yazelix line.
 
-v16 keeps the v15 slimmed-down reboot product boundary, but the branch is now Rust-forward in its control plane. The Rust pane orchestrator still owns live workspace and session state, Rust owns most deterministic control-plane and integration logic, and the remaining Nushell surface is the shell/UI core that still benefits from Nushell.
+Yazelix keeps the v15 slimmed-down reboot product boundary. Rust owns the control plane and integration logic, the Rust pane orchestrator owns live workspace and session state, and the repository keeps the remaining Nushell code in shipped shell configuration.
 
-The product surface is now centered on:
+The product surface centers on:
 
 - a fixed packaged runtime
 - explicit install/update owners
@@ -15,7 +15,7 @@ The product surface is now centered on:
 - configured fast popup/menu/config UI panes through `yzpp`
 - generated-state repair instead of backend/profile orchestration
 
-It is no longer centered on:
+The trimmed runtime excludes:
 
 - `yazelix_packs.toml`
 - dynamic pack graphs
@@ -97,7 +97,7 @@ This file exists so current docs and current contracts can point at one authorit
 2. Current docs explain generated-state repair through startup and `yzx doctor` rather than through a public refresh command.
 3. Current docs explain update ownership through explicit owner commands rather than a generic runtime updater.
 4. Current docs distinguish the normal packaged runtime from maintainer-only `nix develop` workflows.
-5. Current roadmap docs describe v15.0 as the trimmed reboot that set the narrower boundary, and describe v16 as the Rust-forward release that carries that trimmed contract forward.
+5. Maintainers describe v15.0 as the trimmed reboot that set the narrower boundary and v16 as the first Rust-forward line that carried the contract forward in release history.
 
 ## Verification
 
