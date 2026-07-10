@@ -10,6 +10,8 @@ User-visible runtime changes for Yazelix Next live here.
   starts. Managed plugins and flavors activate independently of `init.lua`,
   with opaque `theme.toml` and `package.toml` passthrough. Ratconfig and Home
   Manager expose the managed native files.
+- `yzn config` boolean rows use `Space` to stage, `Enter` to save, and `Esc`
+  to cancel; normal-mode `Enter` leaves the value unchanged
 - Managed LazyGit file edits honor `editor.command` instead of falling back to
   Vim for unknown presets. Direct `yzn-editor` is also exported through
   `EDITOR`, `VISUAL`, and `GIT_EDITOR`; it stays in the client lifecycle with
