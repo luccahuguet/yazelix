@@ -4,9 +4,9 @@ Short, upgrade-facing release notes live here. The longer narrative history rema
 
 ## Unreleased
 
-Post-v17.9 work in progress
+Native Mars config ownership
 
-Upgrade impact: migration available; Home Manager users must update removed terminal options
+Upgrade impact: manual action required for Home Manager users; writable released terminal transparency settings migrate automatically
 
 Highlights:
 - Repaired the published Yazi assets Cargo vendor hash so fresh Nix installs build on Linux and macOS
