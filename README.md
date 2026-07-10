@@ -215,6 +215,19 @@ runtime config even without `init.lua`. Packaged names cannot be replaced.
 Create the directories directly under the managed Yazi tree or symlink them
 there.
 
+For Smart Enter, link `smart-enter.yazi` under `yazi/plugins/`, add
+`require("smart-enter"):setup { open_multi = false }` to `yazi/init.lua`, and
+bind it in `yazi/keymap.toml`:
+
+```toml
+[[mgr.prepend_keymap]]
+on = "l"
+run = "plugin smart-enter"
+```
+
+`l` then enters directories or opens the hovered file through the managed
+opener.
+
 Normal host config such as `~/.config/helix`, `~/.config/yazi`, and
 `~/.config/starship.toml` does not control the managed runtime unless you route
 through these Yazelix-owned files.
@@ -309,6 +322,7 @@ Useful local checks:
 nix flake check
 nix flake show --all-systems
 nix build .#yzn --no-link --print-build-logs
+nix build .#checks.x86_64-linux.yzn_yazi_materialization --no-link
 ```
 
 Runtime package changes should also pass a temporary profile install:
@@ -332,8 +346,8 @@ git ls-files | grep -Ev '^\.beads/|\.lock$' | xargs wc -l
 | Language | Lines |
 | --- | ---: |
 | Ignore (`.gitignore`) | 4 |
-| Markdown | 1300 |
-| Nix | 990 |
+| Markdown | 1314 |
+| Nix | 1010 |
 | Shell | 84 |
 | YAML | 268 |
 | TOML | 249 |
@@ -341,4 +355,4 @@ git ls-files | grep -Ev '^\.beads/|\.lock$' | xargs wc -l
 | Nu | 11 |
 | Lua | 247 |
 | Rust | 11996 |
-| Total | 15359 |
+| Total | 15393 |

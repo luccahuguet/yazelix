@@ -551,6 +551,12 @@
     checks = eachSystem (system: let
       pkgs = import nixpkgs {inherit system;};
       yzn = self.packages.${system}.yzn;
+      yznYaziMaterializer = pkgs.rustPlatform.buildRustPackage {
+        pname = "yzn-yazi-config";
+        version = "0.1.0";
+        src = ./crates/yzn-yazi-config;
+        cargoLock.lockFile = ./crates/yzn-yazi-config/Cargo.lock;
+      };
       checksSrc = pkgs.lib.cleanSource ./checks;
       yznContractsCheck = rustBinFor pkgs "yzn-contracts-check" "${checksSrc}/yzn-contracts.rs";
       helixContractsCheck = rustBinFor pkgs "helix-contracts-check" "${checksSrc}/helix-contracts.rs";
@@ -694,6 +700,20 @@
       yzn_yazi_materialization = pkgs.runCommand "yzn-yazi-materialization-check" {nativeBuildInputs = [pkgs.rustc pkgs.stdenv.cc];} ''
         rustc --edition=2024 --test ${./runtime/yzn-yazi.rs} -o yzn-yazi-materialization-check
         ./yzn-yazi-materialization-check
+
+        user="$TMPDIR/yazi-user"
+        state="$TMPDIR/yazi-state"
+        mkdir -p "$user/plugins"
+        ln -s ${pkgs.yaziPlugins.smart-enter} "$user/plugins/smart-enter.yazi"
+        printf '%s\n' 'require("smart-enter"):setup { open_multi = false }' > "$user/init.lua"
+        printf '%s\n' '[[mgr.prepend_keymap]]' 'on = "l"' 'run = "plugin smart-enter"' > "$user/keymap.toml"
+
+        runtime="$(${yznYaziMaterializer}/bin/yzn-yazi-config ${yzn}/share/yazelix-next/yazi "$user" "$state")"
+        YAZI_CONFIG_HOME="$runtime" ${pkgs.yazi}/bin/yazi --debug > yazi-debug
+        test -f "$runtime/plugins/smart-enter.yazi/main.lua"
+        grep -q 'require("smart-enter")' "$runtime/init.lua"
+        grep -q 'plugin smart-enter' "$runtime/keymap.toml"
+        grep -q 'yzn-open' yazi-debug
         touch "$out"
       '';
       yzn_launcher_unit = pkgs.runCommand "yzn-launcher-unit-check" {nativeBuildInputs = [pkgs.rustc pkgs.stdenv.cc];} ''
