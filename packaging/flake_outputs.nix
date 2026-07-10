@@ -55,6 +55,10 @@ let
   flexnetos_foundation_icm = icmPackage system pkgs;
   flexnetos_foundation_meta = metaPackage system pkgs;
   flexnetos_foundation_kache = import ./kache_release.nix { inherit pkgs; };
+  flexnetos_foundation_notebooklm = import ./notebooklm_release.nix {
+    inherit pkgs;
+    version = "0.8.0a3";
+  };
   flexnetos_foundation_kache_wrapped = pkgs.symlinkJoin {
     name = "kache-with-rustc-wrapper-${flexnetos_foundation_kache.version}";
     paths = [ flexnetos_foundation_kache ];
@@ -132,6 +136,7 @@ let
       flexnetos_foundation_grit
       flexnetos_foundation_icm
       flexnetos_foundation_meta
+      flexnetos_foundation_notebooklm
       flexnetos_foundation_rtk
       flexnetos_foundation_rust_toolchain
       flexnetos_foundation_bun
@@ -168,6 +173,7 @@ let
       "kache-rustc-wrapper"
       "ld.wild"
       "node"
+      "notebooklm"
       "npm"
       "nu_plugin_codedb"
       "pnpm"
@@ -204,6 +210,7 @@ let
       "kache-rustc-wrapper"
       "ld.wild"
       "node"
+      "notebooklm"
       "npm"
       "nu_plugin_codedb"
       "pnpm"
