@@ -319,7 +319,7 @@ git ls-files | grep -Ev '^\.beads/|\.lock$' | xargs wc -l
 | Language | Lines |
 | --- | ---: |
 | Ignore (`.gitignore`) | 4 |
-| Markdown | 1250 |
+| Markdown | 1255 |
 | Nix | 962 |
 | Shell | 84 |
 | YAML | 268 |
@@ -328,4 +328,4 @@ git ls-files | grep -Ev '^\.beads/|\.lock$' | xargs wc -l
 | Nu | 11 |
 | Lua | 247 |
 | Rust | 11695 |
-| Total | 14973 |
+| Total | 14978 |

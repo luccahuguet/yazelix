@@ -8,6 +8,11 @@ fewest practical lines of code and the simplest ownership model
 The user decides scope. Do not create a feature, compatibility surface, module,
 or planning bead until the user has chosen that direction
 
+## Git Workflow
+
+Work directly on `main` by default. Do not create a separate branch unless the
+user explicitly requests one or another repository instruction requires it.
+
 ## Method
 
 Use contract-driven, check-backed development, not mechanical porting from main
