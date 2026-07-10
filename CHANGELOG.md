@@ -9,7 +9,7 @@ Post-v17.9 work in progress
 Upgrade impact: no user action required
 
 Highlights:
-- Reserved for post-release changes after v17.9 lands.
+- Repaired the published Yazi assets Cargo vendor hash so fresh Nix installs build on Linux and macOS
 
 ## v17.9 - 2026-06-27
 
