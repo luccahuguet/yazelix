@@ -290,7 +290,7 @@ fn launch_candidate_extra_env(
             Some(terminal_window_title_prefix(&candidate.terminal)),
         ),
     ];
-    extra_env.extend(mars_process_boundary_env(config_path)?);
+    extra_env.extend(mars_process_boundary_env(config_path, &plan.runtime_dir)?);
     for key in ["YAZELIX_SWEEP_TEST_ID", "YAZELIX_LAYOUT_OVERRIDE"] {
         if let Ok(value) = std::env::var(key) {
             if !value.trim().is_empty() {
@@ -304,6 +304,7 @@ fn launch_candidate_extra_env(
 
 fn mars_process_boundary_env(
     config_path: &Path,
+    runtime_dir: &Path,
 ) -> Result<Vec<(String, Option<String>)>, CoreError> {
     let config_dir = config_path.parent().ok_or_else(|| {
         CoreError::classified(
@@ -318,10 +319,16 @@ fn mars_process_boundary_env(
         )
     })?;
 
+    let base_config_dir = runtime_dir.join("share").join("mars");
+
     Ok(vec![
         (
             "MARS_CONFIG_HOME".to_string(),
             Some(config_dir.to_string_lossy().into_owned()),
+        ),
+        (
+            "MARS_BASE_CONFIG_HOME".to_string(),
+            Some(base_config_dir.to_string_lossy().into_owned()),
         ),
         (
             "MARS_APP_ID".to_string(),
@@ -471,12 +478,14 @@ mod tests {
         assert_eq!(terminal_window_title_prefix("mars"), "Yazelix - Mars - ");
     }
 
-    // Defends: Mars receives only its native config root and desktop identity at the terminal process boundary.
+    // Defends: Mars receives separate sparse-user and immutable-base config roots plus desktop identity.
     #[test]
     fn mars_process_boundary_env_selects_native_config_and_sets_app_id() {
-        let env =
-            mars_process_boundary_env(Path::new("/home/user/.config/yazelix/mars/config.toml"))
-                .unwrap();
+        let env = mars_process_boundary_env(
+            Path::new("/home/user/.config/yazelix/mars/config.toml"),
+            Path::new("/nix/store/runtime"),
+        )
+        .unwrap();
 
         assert_eq!(
             env,
@@ -484,6 +493,10 @@ mod tests {
                 (
                     "MARS_CONFIG_HOME".to_string(),
                     Some("/home/user/.config/yazelix/mars".to_string())
+                ),
+                (
+                    "MARS_BASE_CONFIG_HOME".to_string(),
+                    Some("/nix/store/runtime/share/mars".to_string())
                 ),
                 (
                     "MARS_APP_ID".to_string(),

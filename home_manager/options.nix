@@ -80,18 +80,18 @@ ${terminalDescriptionBullets}
         text = mkOption {
           type = types.nullOr types.lines;
           default = null;
-          description = "Inline complete Mars config.toml contents.";
+          description = "Inline sparse Mars config.toml override contents.";
         };
         source = mkOption {
           type = types.nullOr types.path;
           default = null;
-          description = "Complete Mars config.toml file to install.";
+          description = "Sparse Mars config.toml override file to install.";
         };
       };
     });
     default = null;
     description = ''
-      Complete native Mars config at ~/.config/yazelix/mars/config.toml.
+      Sparse native Mars override at ~/.config/yazelix/mars/config.toml.
       Set exactly one of text or source.
     '';
   };

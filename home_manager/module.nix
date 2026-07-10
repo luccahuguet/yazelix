@@ -17,7 +17,7 @@ let
   defaultTerminal = "mars";
   terminalVariants = [ "mars" ];
   terminalDescriptionBullets =
-    "        - \"mars\": packaged Rust terminal using either the complete native programs.yazelix.config.mars file or its packaged config";
+    "        - \"mars\": packaged Rust terminal merging its package base with the optional programs.yazelix.config.mars override";
   runtimeToolSourceModes = [
     "bundled"
     "host"

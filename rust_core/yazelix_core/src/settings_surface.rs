@@ -95,7 +95,7 @@ pub fn ensure_settings_config_with_cursor_component(
     ensure_no_old_main_inputs(&paths)?;
 
     if paths.settings_config.exists() {
-        migrate_released_mars_settings(config_dir, default_main_config, &paths.settings_config)?;
+        migrate_released_mars_settings(config_dir, &paths.settings_config)?;
         reconcile_settings_config_contract(&paths.settings_config, default_main_config)?;
         if cursor_component_enabled {
             ensure_no_embedded_cursor_settings(&paths)?;
@@ -169,7 +169,6 @@ const LEGACY_TRANSPARENCY_OPACITY: &[(&str, f64)] = &[
 
 fn migrate_released_mars_settings(
     config_dir: &Path,
-    default_main_config: &Path,
     settings_path: &Path,
 ) -> Result<(), CoreError> {
     let raw = fs::read_to_string(settings_path).map_err(|source| {
@@ -234,7 +233,7 @@ fn migrate_released_mars_settings(
                 ErrorClass::Config,
                 "missing_reviewed_mars_config",
                 "terminal.config_mode was user, but ~/.config/yazelix/mars/config.toml does not exist.",
-                "Create and review the complete Yazelix-owned Mars config. Ambient ~/.config/mars/config.toml is intentionally ignored.",
+                "Create and review the Yazelix-owned Mars override. Ambient ~/.config/mars/config.toml is intentionally ignored.",
                 json!({ "path": mars_path.display().to_string() }),
             ));
         }
@@ -262,7 +261,7 @@ fn migrate_released_mars_settings(
                     json!({ "value": transparency }),
                 )
             })?;
-        migrate_mars_opacity(default_main_config, &mars_path, opacity)?;
+        migrate_mars_opacity(&mars_path, opacity)?;
     }
 
     let updated = unset_settings_jsonc_value_text(settings_path, &raw, "terminal")?;
@@ -272,17 +271,13 @@ fn migrate_released_mars_settings(
     Ok(())
 }
 
-fn migrate_mars_opacity(
-    default_main_config: &Path,
-    mars_path: &Path,
-    opacity: f64,
-) -> Result<(), CoreError> {
+fn migrate_mars_opacity(mars_path: &Path, opacity: f64) -> Result<(), CoreError> {
     let present = path_present(mars_path);
     if present && (path_owned_by_home_manager(mars_path) || settings_path_is_read_only(mars_path)) {
         return Err(CoreError::classified(
             ErrorClass::Config,
             "read_only_mars_opacity_migration",
-            "The complete Mars config needs an opacity migration but is read-only.",
+            "The Mars override needs an opacity migration but is read-only.",
             "Set window.opacity through programs.yazelix.config.mars, then run home-manager switch.",
             json!({ "path": mars_path.display().to_string() }),
         ));
@@ -295,33 +290,29 @@ fn migrate_mars_opacity(
                 "The Mars config path is not a file: {}.",
                 mars_path.display()
             ),
-            "Remove the conflicting filesystem entry or replace it with a complete config.toml file.",
+            "Remove the conflicting filesystem entry or replace it with a config.toml file.",
             json!({ "path": mars_path.display().to_string() }),
         ));
     }
-    let source_path = if present {
-        mars_path.to_path_buf()
+    let raw = if present {
+        fs::read_to_string(mars_path).map_err(|source| {
+            io_err(
+                "read_mars_opacity_migration_source",
+                mars_path,
+                "Could not read the Mars override for opacity migration",
+                source,
+            )
+        })?
     } else {
-        let runtime_dir = default_main_config.parent().ok_or_else(|| {
-            CoreError::usage("The packaged settings path has no runtime parent directory.")
-        })?;
-        user_config_paths::packaged_mars_config(runtime_dir)
+        String::new()
     };
-    let raw = fs::read_to_string(&source_path).map_err(|source| {
-        io_err(
-            "read_mars_opacity_migration_source",
-            &source_path,
-            "Could not read the complete Mars config for opacity migration",
-            source,
-        )
-    })?;
     let value = parse_toml_value(&raw).map_err(|error| {
         CoreError::classified(
             ErrorClass::Config,
             "invalid_mars_config",
-            format!("Could not parse {}: {error:?}.", source_path.display()),
-            "Fix the complete Mars TOML config, then retry.",
-            json!({ "path": source_path.display().to_string() }),
+            format!("Could not parse {}: {error:?}.", mars_path.display()),
+            "Fix the Mars TOML override, then retry.",
+            json!({ "path": mars_path.display().to_string() }),
         )
     })?;
     let current = get_toml_path(&value, "window.opacity");
@@ -345,7 +336,7 @@ fn migrate_mars_opacity(
                 ErrorClass::Config,
                 "mars_opacity_patch_failed",
                 format!("Could not patch Mars window.opacity: {error:?}."),
-                "Fix the complete Mars TOML structure, then retry.",
+                "Fix the Mars TOML override structure, then retry.",
                 json!({ "path": mars_path.display().to_string() }),
             )
         })?;
@@ -363,7 +354,7 @@ fn migrate_mars_opacity(
             ErrorClass::Config,
             "invalid_migrated_mars_config",
             format!("Migrated Mars config is invalid: {error:?}."),
-            "Restore the complete Mars config and retry.",
+            "Restore the Mars override and retry.",
             json!({ "path": mars_path.display().to_string() }),
         )
     })?;
@@ -896,17 +887,6 @@ mod tests {
         (main, cursor)
     }
 
-    fn write_packaged_mars_config(root: &Path) -> PathBuf {
-        let path = user_config_paths::packaged_mars_config(root);
-        fs::create_dir_all(path.parent().unwrap()).unwrap();
-        fs::write(
-            &path,
-            "# keep this comment\n[window]\nopacity = 0.78\nopacity-cells = false\n",
-        )
-        .unwrap();
-        path
-    }
-
     // Defends: new installs create settings.jsonc instead of keeping the old main/cursor TOML surfaces alive.
     #[test]
     fn creates_settings_jsonc_from_defaults() {
@@ -1292,14 +1272,13 @@ mod tests {
         assert!(!raw.contains("ratconfig"));
     }
 
-    // Defends: every released transparency bucket becomes native Mars opacity before the retired JSONC owner is removed, and reruns are idempotent.
+    // Defends: every released transparency bucket becomes one sparse native Mars override before the retired JSONC owner is removed, and reruns are idempotent.
     #[test]
-    fn migrates_all_released_transparency_buckets_to_complete_mars_config() {
+    fn migrates_all_released_transparency_buckets_to_sparse_mars_override() {
         for (name, opacity) in LEGACY_TRANSPARENCY_OPACITY {
             let runtime = tempdir().unwrap();
             let config = tempdir().unwrap();
             let (main, cursor) = write_defaults(runtime.path());
-            write_packaged_mars_config(runtime.path());
             fs::write(
                 config.path().join("settings.jsonc"),
                 format!(
@@ -1312,12 +1291,23 @@ mod tests {
                 .unwrap();
             let mars = user_config_paths::mars_config(config.path());
             let first_mars = fs::read_to_string(&mars).unwrap();
-            assert!(first_mars.contains("# keep this comment"));
             let parsed = parse_toml_value(&first_mars).unwrap();
             assert_eq!(
                 get_toml_path(&parsed, "window.opacity").and_then(JsonValue::as_f64),
                 Some(*opacity),
                 "{name}"
+            );
+            assert_eq!(
+                parsed.as_object().unwrap().keys().collect::<Vec<_>>(),
+                vec!["window"]
+            );
+            assert_eq!(
+                parsed["window"]
+                    .as_object()
+                    .unwrap()
+                    .keys()
+                    .collect::<Vec<_>>(),
+                vec!["opacity"]
             );
             assert!(
                 read_settings_jsonc_value(&config.path().join("settings.jsonc"))
@@ -1332,13 +1322,12 @@ mod tests {
         }
     }
 
-    // Regression: a complete user Mars config with a different opacity wins by blocking the migration before either source changes.
+    // Regression: a user Mars override with a different opacity wins by blocking the migration before either source changes.
     #[test]
     fn refuses_mars_opacity_migration_conflict_without_partial_writes() {
         let runtime = tempdir().unwrap();
         let config = tempdir().unwrap();
         let (main, cursor) = write_defaults(runtime.path());
-        write_packaged_mars_config(runtime.path());
         let settings = config.path().join("settings.jsonc");
         let mars = user_config_paths::mars_config(config.path());
         fs::create_dir_all(mars.parent().unwrap()).unwrap();
@@ -1360,7 +1349,7 @@ mod tests {
         assert_eq!(fs::read_to_string(mars).unwrap(), before_mars);
     }
 
-    // Defends: opacity migration never edits or adopts a complete Mars config owned by Home Manager, even when its value already matches.
+    // Defends: opacity migration never edits or adopts a Mars override owned by Home Manager, even when its value already matches.
     #[cfg(unix)]
     #[test]
     fn refuses_home_manager_owned_mars_opacity_migration() {
@@ -1369,7 +1358,6 @@ mod tests {
         let runtime = tempdir().unwrap();
         let config = tempdir().unwrap();
         let (main, cursor) = write_defaults(runtime.path());
-        write_packaged_mars_config(runtime.path());
         let settings = config.path().join("settings.jsonc");
         let mars = user_config_paths::mars_config(config.path());
         let hm_mars = config
@@ -1412,7 +1400,6 @@ mod tests {
             let runtime = tempdir().unwrap();
             let config = tempdir().unwrap();
             let (main, cursor) = write_defaults(runtime.path());
-            write_packaged_mars_config(runtime.path());
             let settings = config.path().join("settings.jsonc");
             fs::write(&settings, format!("{{ \"terminal\": {terminal} }}\n")).unwrap();
             let before = fs::read_to_string(&settings).unwrap();
@@ -1433,7 +1420,6 @@ mod tests {
         let runtime = tempdir().unwrap();
         let config = tempdir().unwrap();
         let (main, cursor) = write_defaults(runtime.path());
-        write_packaged_mars_config(runtime.path());
         fs::write(
             config.path().join("settings.jsonc"),
             "{\n  \"terminal\": { \"config_mode\": \"user\", \"transparency\": \"medium\" }\n}\n",

@@ -900,7 +900,7 @@ fn validate_home_manager_activation_script(script: &str, manage_config: bool) ->
 
     if script.contains("terminal-materialization.generate") {
         errors.push(format!(
-            "{owner_label} Home Manager activation must not regenerate the complete native Mars config"
+            "{owner_label} Home Manager activation must not regenerate the native Mars override"
         ));
     }
 

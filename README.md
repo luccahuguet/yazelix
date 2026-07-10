@@ -99,7 +99,7 @@ The supported product in this branch is the v17 Yazelix line
 After installation, keep this model in mind:
 
 - Edit `~/.config/yazelix/settings.jsonc` for the main workspace settings
-- Edit `~/.config/yazelix/mars/config.toml` for the complete native Mars config
+- Edit only the Mars values you want to override in `~/.config/yazelix/mars/config.toml`
 - Use `Alt+Shift+<key>` as the workspace toggle layer for sidebars and popups, including quick access to tools like LazyGit, the process viewer, the command menu, and the config UI on `Alt+Shift+C`
 - Treat generated runtime state under `~/.local/share/yazelix` as Yazelix-owned output
 - Relaunch the window, or run `yzx restart`, after changing settings that affect live panes
@@ -149,7 +149,7 @@ Yazelix is a reproducible terminal IDE built around Zellij, Yazi, and your confi
 
 The workspace is managed by pane identity instead of pane-scanning guesses. Opening from Yazi targets the managed editor, `yzx reveal` jumps the current file back into the file tree, and the `Alt+Shift+H/J/K/L` layer maps naturally to left sidebar, bottom popup, top popup, and right sidebar
 
-Workspace configuration lives in JSONC at `~/.config/yazelix/settings.jsonc`. Mars uses the complete native TOML file at `~/.config/yazelix/mars/config.toml` when present, otherwise its packaged complete config. `yzx config ui` exposes both through Ratconfig
+Workspace configuration lives in JSONC at `~/.config/yazelix/settings.jsonc`. Mars keeps its packaged config and theme assets as the live base, then recursively overlays the sparse native TOML file at `~/.config/yazelix/mars/config.toml`. `yzx config ui` exposes package defaults and user overrides through Ratconfig
 
 First-party child packages own focused pieces of the stack: Mars Terminal, screen rendering, cursor presets, the Zellij bar, the popup plugin, the pane orchestrator wasm, and Yazi assets. The normal Yazelix package wires them together automatically
 
@@ -252,7 +252,7 @@ yzx status --versions
 
 Yazelix keeps user-edited config separate from generated runtime output:
 
-- User config lives under `$XDG_CONFIG_HOME/yazelix`, usually `~/.config/yazelix`, with `settings.jsonc` as the canonical main config and `mars/config.toml` as the optional complete Mars config
+- User config lives under `$XDG_CONFIG_HOME/yazelix`, usually `~/.config/yazelix`, with `settings.jsonc` as the canonical main config and `mars/config.toml` as the optional sparse Mars override
 - Generated runtime output lives under `$XDG_DATA_HOME/yazelix`, usually `~/.local/share/yazelix`, including generated Yazi, Zellij, and Helix config, standalone Ghostty cursor state, logs, profiles, sessions, and freshness records
 - Launchers may set `YAZELIX_CONFIG_DIR` and `YAZELIX_STATE_DIR` explicitly; Home Manager uses those owner-provided paths when it manages Yazelix
 
@@ -267,7 +267,7 @@ Yazelix shines over SSH: the TUI stack (Zellij, Yazi, Helix) runs cleanly withou
 Yazelix uses a **layered configuration system** that safely merges your personal settings with Yazelix defaults:
 
 - **Core settings**: Edit `~/.config/yazelix/settings.jsonc` for shell, editor, Zellij, and Yazi settings, edit `~/.config/yazelix_cursors/settings.jsonc` for standalone cursor settings, and run `yzx config ui` to inspect the main settings plus the native Mars TOML document
-- **Mars customization**: Put the complete native config in `~/.config/yazelix/mars/config.toml`; Mars owns its appearance, opacity, fonts, effects, and `[yazelix.cursor]` values
+- **Mars customization**: Put only the values you want to change in `~/.config/yazelix/mars/config.toml`; Mars owns its appearance, opacity, fonts, effects, and `[yazelix.cursor]` values while unspecified package defaults keep following upgrades
 - **Yazi customization**: Use the built-in `yazi` settings in `settings.jsonc` for things like plugins, theme, sorting, and binary overrides, and use the managed Yazi home at `~/.config/yazelix/yazi/` for `yazi.toml`, `keymap.toml`, `init.lua`, packages, plugins, and flavors (see [Yazi Configuration](./docs/yazi-configuration.md))
 - **Zellij customization**: Use the built-in `zellij` settings in `settings.jsonc` for Yazelix-owned Zellij knobs, keybindings, theme, and rounded corners, and use `~/.config/yazelix/zellij.kdl` for deeper native Zellij settings that Yazelix does not render (see [Zellij Configuration](./docs/zellij-configuration.md))
 - **Status bar widgets**: Configure `[zellij].widget_tray` to order or hide `session`, `editor`, `shell`, `term`, `workspace`, usage, `cpu`, and `ram` widgets, and use `[zellij].widget_frame` plus `[zellij].widget_separator` for compact bar punctuation; cursor preset inspection and editing live in `yzx config ui` instead of the status bar
@@ -332,7 +332,7 @@ See the full catalog of tools and integrations in the Yazelix Collection:
 If you followed [step 3 in the installation guide](./docs/installation.md#step-3-configure-your-installation-optional), you already have your `~/.config/yazelix/settings.jsonc` config file ready, you can modify it anytime and restart Yazelix to apply changes. Mars customization lives in `~/.config/yazelix/mars/config.toml`; standalone cursor presets live in `~/.config/yazelix_cursors/settings.jsonc`
 
 **Terminal Emulator Selection:**
-- **Mars**: packaged Rust terminal fork with a complete native config, the Yazelix Zellij Kitty graphics bridge, and an agent-driven development focus
+- **Mars**: packaged Rust terminal fork with a package-owned native base plus sparse user overrides, the Yazelix Zellij Kitty graphics bridge, and an agent-driven development focus
 - **Ghostty**: most tested mature host-terminal path, with a strong macOS story and Yazelix cursor setup through `yzx cursors ghostty setup`
 - **Other terminals**: Rio, WezTerm, Kitty, Foot, Ratty, and other capable emulators work by running `yzx enter` as their startup command
 - **Terminal package contract**: Yazelix packages Mars; host terminal configuration stays owned by the user's terminal setup

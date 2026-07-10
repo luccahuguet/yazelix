@@ -8,7 +8,7 @@ Desktop entries invoke `yzx desktop launch` directly without asking the host des
 
 `Terminal=true` asks the host desktop to run Yazelix inside another terminal emulator. On desktop environments such as COSMIC, that starter terminal and its descendants share an application scope. When `yzx desktop launch` exits, the desktop can tear down the scope before the detached helper spawns Mars, leaving a zero-byte launch log and no window.
 
-The supported contract is that Linux desktop entries set `Terminal=false`. `yzx desktop launch` still owns runtime resolution, config parsing, complete Mars config selection, environment cleanup, launch logging, and the deferred handoff to Mars. Prelaunch failures are inspected with `yzx doctor --verbose` or by running `yzx desktop launch` from a shell; failures after the handoff begins are also recorded in terminal-launch logs. Yazelix does not retain a second terminal window or platform-specific service escape solely to display them.
+The supported contract is that Linux desktop entries set `Terminal=false`. `yzx desktop launch` still owns runtime resolution, config parsing, Mars base/override path selection, environment cleanup, launch logging, and the deferred handoff to Mars. Prelaunch failures are inspected with `yzx doctor --verbose` or by running `yzx desktop launch` from a shell; failures after the handoff begins are also recorded in terminal-launch logs. Yazelix does not retain a second terminal window or platform-specific service escape solely to display them.
 
 ## Scope
 

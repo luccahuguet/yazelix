@@ -11,13 +11,13 @@ Upgrade impact: manual action required for Home Manager users; writable released
 Highlights:
 - Repaired the published Yazi assets Cargo vendor hash so fresh Nix installs build on Linux and macOS
 - Made Linux desktop entries launch Yazelix directly instead of using a temporary host terminal that can kill the Mars handoff on COSMIC
-- Made `~/.config/yazelix/mars/config.toml` the optional complete native Mars config, with the packaged complete config used directly when the user file is absent
+- Made `~/.config/yazelix/mars/config.toml` a sparse native Mars override recursively merged over the immutable packaged config, so unedited defaults and package assets keep following upgrades
 - Removed generated Mars config, terminal config mode, transparency buckets, emoji/profile projection, cross-tool Mars appearance/cursor projection, random per-window Mars cursors, and tracked Ghostty/Kitty/WezTerm example configs
-- Exposed the complete Mars TOML document through Ratconfig generic rows and added Home Manager `programs.yazelix.config.mars.text` / `source` ownership
+- Exposed inherited packaged Mars fields through Ratconfig generic rows while writing only explicit overrides, and added sparse Home Manager `programs.yazelix.config.mars.text` / `source` ownership
 - Migrated writable released `terminal.transparency` values to native `window.opacity` before removing the retired `terminal` settings object
 
 Manual action:
-- Replace Home Manager `terminal_config_mode`, `transparency`, `mars_profile`, and `mars_emoji_font` options with exactly one of `programs.yazelix.config.mars.text` or `programs.yazelix.config.mars.source` when you want a declarative Mars config
+- Replace Home Manager `terminal_config_mode`, `transparency`, `mars_profile`, and `mars_emoji_font` options with exactly one of `programs.yazelix.config.mars.text` or `programs.yazelix.config.mars.source` when you want a declarative sparse Mars override
 - Configure Mars appearance and cursors in `[mars.appearance]` and `[yazelix.cursor]`; root `appearance.mode` and `~/.config/yazelix_cursors/settings.jsonc` do not control Mars
 - Configure custom Mars fonts under `[fonts]`; the retired `terminal.emoji_style` value is not migrated
 

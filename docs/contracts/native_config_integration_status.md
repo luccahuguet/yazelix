@@ -151,11 +151,11 @@ Rules:
 
 Managed inputs:
 
-- optional complete `~/.config/yazelix/mars/config.toml`
+- optional sparse `~/.config/yazelix/mars/config.toml` override
 
 Native sources:
 
-- packaged complete Mars config under the runtime `share/mars/` tree
+- packaged Mars base config and themes under the runtime `share/mars/` tree
 
 Generated output:
 
@@ -163,13 +163,14 @@ Generated output:
 
 Statuses:
 
-- `managed_default` when Mars uses the packaged complete config
-- `managed_override` when the canonical complete user config exists
-- `home_manager_read_only` when Home Manager installs the canonical complete config
+- `managed_default` when Mars uses only the packaged base
+- `managed_override` when the canonical sparse user override exists
+- `home_manager_read_only` when Home Manager installs the canonical sparse override
 
 Rules:
 
-- Mars reads exactly one complete config directory selected at launch
+- Mars merges its package base with the optional canonical user override; explicit user values win recursively
+- Mars resolves themes from the user override directory before the package base theme directory
 - ambient host Mars config is not imported or inspected
 - non-Mars terminal config remains entirely host-owned
 

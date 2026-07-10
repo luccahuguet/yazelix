@@ -383,7 +383,7 @@ fn terminal_statuses(request: &NativeConfigStatusRequest) -> Vec<NativeConfigSta
     let mut input = entry(
         format!("terminal.{terminal}.input"),
         terminal.to_string(),
-        "Complete native Mars config",
+        "Native Mars override",
         status,
     );
     input.active_path = Some(path_string(if managed_present {
@@ -399,8 +399,7 @@ fn terminal_statuses(request: &NativeConfigStatusRequest) -> Vec<NativeConfigSta
     }
     .to_string();
     input.read_only_reason = home_manager.then(|| {
-        "The complete Mars config is owned by Home Manager; edit programs.yazelix.config.mars."
-            .to_string()
+        "The Mars override is owned by Home Manager; edit programs.yazelix.config.mars.".to_string()
     });
     vec![input]
 }
@@ -555,7 +554,7 @@ mod tests {
         );
     }
 
-    // Defends: absent user Mars config reports the packaged complete file as the active default.
+    // Defends: absent user Mars override reports the packaged base as the active default.
     #[test]
     fn absent_mars_config_reports_packaged_default() {
         let tmp = TempDir::new().unwrap();
@@ -574,7 +573,7 @@ mod tests {
         );
     }
 
-    // Defends: a Home Manager-installed complete Mars config is reported as the active read-only owner.
+    // Defends: a Home Manager-installed Mars override is reported as the active read-only owner.
     #[cfg(unix)]
     #[test]
     fn home_manager_mars_config_is_active_and_read_only() {

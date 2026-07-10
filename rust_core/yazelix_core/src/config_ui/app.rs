@@ -375,7 +375,7 @@ impl YazelixConfigUiHost<'_> {
                     CursorRegistry::parse_str(&ui.model.default_cursor_config_path, &raw)?;
                 Ok(render_cursor_settings_jsonc(&registry))
             }
-            ConfigUiEditTargetKind::Mars => read_packaged_mars_config(&self.request.runtime_dir),
+            ConfigUiEditTargetKind::Mars => Ok(String::new()),
         }
     }
 
@@ -506,7 +506,7 @@ pub(super) fn prepare_mars_config_file(request: &ConfigUiRequest) -> Result<(), 
             return Err(CoreError::classified(
                 ErrorClass::Config,
                 "read_only_mars_config",
-                "The complete Mars config is read-only.",
+                "The Mars override is read-only.",
                 "Edit its owning configuration source or fix its permissions before retrying.",
                 json!({ "path": path.display().to_string() }),
             ));
@@ -516,27 +516,13 @@ pub(super) fn prepare_mars_config_file(request: &ConfigUiRequest) -> Result<(), 
                 ErrorClass::Config,
                 "invalid_mars_config_path",
                 format!("The Mars config path is not a file: {}.", path.display()),
-                "Remove the conflicting filesystem entry or replace it with a complete config.toml file.",
+                "Remove the conflicting filesystem entry or replace it with a config.toml file.",
                 json!({ "path": path.display().to_string() }),
             ));
         }
         return Ok(());
     }
-    let raw = read_packaged_mars_config(&request.runtime_dir)?;
-    crate::atomic_fs::write_text_atomic(&path, &raw)
-}
-
-fn read_packaged_mars_config(runtime_dir: &Path) -> Result<String, CoreError> {
-    let path = user_config_paths::packaged_mars_config(runtime_dir);
-    fs::read_to_string(&path).map_err(|source| {
-        CoreError::io(
-            "read_packaged_mars_config",
-            "Could not read the packaged complete Mars config",
-            "Reinstall Yazelix, then retry.",
-            path.display().to_string(),
-            source,
-        )
-    })
+    crate::atomic_fs::write_text_atomic(&path, "")
 }
 
 fn suspend_config_ui_terminal(
@@ -561,7 +547,7 @@ fn mars_toml_patch_error(path: &Path, error: TomlPatchError) -> CoreError {
         ErrorClass::Config,
         "mars_config_patch_failed",
         format!("Could not update {}: {error:?}.", path.display()),
-        "Fix the Mars TOML structure or edit the complete file directly.",
+        "Fix the Mars TOML structure or edit the override file directly.",
         json!({ "path": path.display().to_string() }),
     )
 }

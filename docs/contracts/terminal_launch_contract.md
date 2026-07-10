@@ -17,14 +17,14 @@ Yazelix packages and launches Mars. Other capable terminal emulators remain host
 - Type: ownership
 - Status: live
 - Owner: Mars and Rust `launch_commands/terminal.rs`
-- Statement: `~/.config/yazelix/mars/config.toml` is the optional complete user-owned Mars config. When it exists, `MARS_CONFIG_HOME` points to its directory. When it is absent, `MARS_CONFIG_HOME` points to the packaged complete config under `share/mars`. Yazelix does not merge the files or inspect ambient `~/.config/mars/config.toml`
+- Statement: Mars reads the immutable packaged config under `share/mars` as its base and recursively overlays the optional user-owned `~/.config/yazelix/mars/config.toml`. `MARS_BASE_CONFIG_HOME` identifies the base and `MARS_CONFIG_HOME` identifies the sparse override directory. User values win, arrays replace arrays, tables merge recursively, and theme lookup is user-first then package-base. Yazelix does not perform the merge or inspect ambient `~/.config/mars/config.toml`
 - Verification: automated focused Rust `launch_commands::terminal` tests and config UI tests
 
 #### TLAUNCH-003
 - Type: boundary
 - Status: live
 - Owner: Mars, Ratconfig, and the Yazelix config UI host
-- Statement: Mars owns its opacity, appearance, fonts, effects, and `[yazelix.cursor]`. Ratconfig exposes the complete TOML document generically. Root Yazelix appearance and cursor settings do not project into Mars
+- Statement: Mars owns its opacity, appearance, fonts, effects, and `[yazelix.cursor]`. Ratconfig exposes package defaults and sparse user overrides generically without a main-owned Mars field catalog. First edit writes only the changed user field. Root Yazelix appearance and cursor settings do not project into Mars
 - Verification: config UI tests, Mars package validation, and manual fresh-window testing
 
 #### TLAUNCH-004

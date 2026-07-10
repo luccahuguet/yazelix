@@ -26,7 +26,7 @@ See [Terminal Emulator Comparison](./terminal_emulators.md) for a detailed break
 **Mars**
 - Default Rust terminal fork for Yazelix
 - Provided by the default `yazelix` package runtime and by `yazelix_mars`
-- Uses the complete native `~/.config/yazelix/mars/config.toml` when present, otherwise the packaged complete config
+- Uses its packaged Mars config and themes as the live base, with optional sparse overrides from `~/.config/yazelix/mars/config.toml`
 - Mars owns its appearance, opacity, fonts, effects, and `[yazelix.cursor]` values
 - Reference: https://github.com/luccahuguet/mars
 

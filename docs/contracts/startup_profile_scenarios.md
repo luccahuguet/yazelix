@@ -8,7 +8,7 @@ The report format stays one JSONL stream with one run header and step records. S
 
 ## Why
 
-Desktop entry launch and managed new-window launch contain real user-waited work before the interactive Yazelix session appears: wrapper dispatch, runtime resolution, config-state computation, complete Mars config selection, detached terminal spawn/probe, Rust setup preflight, generated workspace materialization, and the final Zellij handoff boundary.
+Desktop entry launch and managed new-window launch contain real user-waited work before the interactive Yazelix session appears: wrapper dispatch, runtime resolution, config-state computation, Mars base/override selection, detached terminal spawn/probe, Rust setup preflight, generated workspace materialization, and the final Zellij handoff boundary.
 
 The Rust rewrite needs this baseline to preserve or improve startup behavior instead of making launch performance opaque.
 

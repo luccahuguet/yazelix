@@ -1315,7 +1315,7 @@ mod tests {
         assert_eq!(error.code(), "doctor_json_fix_unsupported");
     }
 
-    // Defends: doctor reports the packaged complete Mars config as the default when no user file exists.
+    // Defends: doctor reports the packaged Mars base as the default when no user override exists.
     #[test]
     fn native_config_status_finding_reports_packaged_mars_default() {
         let tmp = TempDir::new().unwrap();

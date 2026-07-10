@@ -148,7 +148,7 @@ fn model_field<'a>(model: &'a ConfigUiModel, path: &str) -> &'a ConfigUiField {
         .expect("field")
 }
 
-// Defends: Ratconfig exposes the packaged complete Mars TOML as generic defaulted rows without a main-owned field catalog.
+// Defends: Ratconfig exposes package-owned Mars defaults as generic rows without a main-owned field catalog.
 #[test]
 fn model_exposes_generic_mars_document_and_file_action() {
     let fixture = Fixture::new();
@@ -164,9 +164,9 @@ fn model_exposes_generic_mars_document_and_file_action() {
     assert!(!model.file_actions[0].exists);
 }
 
-// Regression: a user Mars file is a full native replacement, so Ratconfig must not present omitted packaged rows as inherited values.
+// Defends: a sparse user Mars file keeps omitted packaged rows visible as inherited defaults.
 #[test]
-fn model_does_not_merge_packaged_rows_into_user_mars_config() {
+fn model_presents_packaged_rows_behind_sparse_user_override() {
     let fixture = Fixture::new();
     fs::create_dir_all(fixture.mars_path().parent().unwrap()).unwrap();
     fs::write(fixture.mars_path(), "[window]\nopacity = 0.5\n").unwrap();
@@ -177,17 +177,15 @@ fn model_does_not_merge_packaged_rows_into_user_mars_config() {
         model_field(&model, "window.opacity").state,
         ConfigUiValueState::Explicit
     );
-    assert!(
-        model
-            .fields
-            .iter()
-            .all(|field| field.source_id != MARS_SOURCE_ID || field.path != "confirm-before-quit")
+    assert_eq!(
+        model_field(&model, "confirm-before-quit").state,
+        ConfigUiValueState::Defaulted
     );
 }
 
-// Defends: editing one generic Mars scalar creates the complete packaged config and patches it through Ratconfig TOML primitives.
+// Defends: editing one generic Mars scalar creates only that sparse override through Ratconfig TOML primitives.
 #[test]
-fn generic_mars_field_write_creates_complete_native_config() {
+fn generic_mars_field_write_creates_sparse_native_override() {
     let fixture = Fixture::new();
     let mut app = fixture.app();
 
@@ -200,24 +198,22 @@ fn generic_mars_field_write_creates_complete_native_config() {
         ratconfig::toml_adapter::get_toml_path(&value, "window.opacity"),
         Some(&json!(0.5))
     );
-    assert!(raw.contains("confirm-before-quit = true"));
+    assert!(!raw.contains("confirm-before-quit"));
+    assert_eq!(
+        value.as_object().unwrap().keys().collect::<Vec<_>>(),
+        vec!["window"]
+    );
 }
 
-// Defends: the Mars file action creates the canonical file as an exact copy of the packaged complete config.
+// Defends: the Mars file action creates an empty override instead of freezing packaged defaults.
 #[test]
-fn mars_file_action_prepares_complete_packaged_config() {
+fn mars_file_action_prepares_empty_override() {
     let fixture = Fixture::new();
     let request = fixture.request();
 
     prepare_mars_config_file(&request).unwrap();
 
-    assert_eq!(
-        fs::read_to_string(fixture.mars_path()).unwrap(),
-        fs::read_to_string(user_config_paths::packaged_mars_config(
-            fixture.runtime.path()
-        ))
-        .unwrap()
-    );
+    assert_eq!(fs::read_to_string(fixture.mars_path()).unwrap(), "");
 }
 
 // Regression: a dangling Home Manager config symlink is owned state, not a missing file that Ratconfig may replace.

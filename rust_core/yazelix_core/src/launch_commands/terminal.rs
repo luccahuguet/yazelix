@@ -10,6 +10,16 @@ pub(super) fn resolve_mars_config_path(
     config_dir: &Path,
     runtime_dir: &Path,
 ) -> Result<PathBuf, String> {
+    let packaged = user_config_paths::packaged_mars_config(runtime_dir);
+    if packaged.is_file() {
+        validate_mars_config(packaged)?;
+    } else {
+        return Err(format!(
+            "Packaged Mars config is missing: {}",
+            packaged.display()
+        ));
+    }
+
     let user = user_config_paths::mars_config(config_dir);
     match fs::symlink_metadata(&user) {
         Ok(_) if user.is_file() => return validate_mars_config(user),
@@ -19,23 +29,13 @@ pub(super) fn resolve_mars_config_path(
                 user.display()
             ));
         }
-        Err(error) if error.kind() == ErrorKind::NotFound => {}
+        Err(error) if error.kind() == ErrorKind::NotFound => return Ok(user),
         Err(error) => {
             return Err(format!(
                 "Could not inspect Yazelix Mars config {}: {error}",
                 user.display()
             ));
         }
-    }
-
-    let packaged = user_config_paths::packaged_mars_config(runtime_dir);
-    if packaged.is_file() {
-        validate_mars_config(packaged)
-    } else {
-        Err(format!(
-            "Packaged Mars config is missing: {}",
-            packaged.display()
-        ))
     }
 }
 
@@ -96,7 +96,7 @@ mod tests {
     use super::*;
     use tempfile::tempdir;
 
-    // Defends: a canonical complete Mars config wins over the packaged complete config without merging either file.
+    // Defends: an explicit Mars override remains the selected mutable path after the packaged base validates.
     #[test]
     fn canonical_mars_config_wins_without_materialization() {
         let temp = tempdir().unwrap();
@@ -115,9 +115,9 @@ mod tests {
         );
     }
 
-    // Defends: absence of a user file selects the packaged complete Mars config directly.
+    // Defends: absence of a user override still selects its canonical path so Mars can overlay future edits on the packaged base.
     #[test]
-    fn packaged_mars_config_is_the_absent_user_default() {
+    fn absent_mars_override_keeps_canonical_user_path() {
         let temp = tempdir().unwrap();
         let config_dir = temp.path().join("config/yazelix");
         let runtime_dir = temp.path().join("runtime");
@@ -127,23 +127,41 @@ mod tests {
 
         assert_eq!(
             resolve_mars_config_path(&config_dir, &runtime_dir).unwrap(),
-            packaged
+            user_config_paths::mars_config(&config_dir)
         );
     }
 
-    // Regression: invalid complete config fails before Mars can replace it with internal defaults.
+    // Regression: an invalid user override fails before Mars can discard the intended package-base merge.
     #[test]
     fn invalid_user_mars_config_fails_fast() {
         let temp = tempdir().unwrap();
         let config_dir = temp.path().join("config/yazelix");
         let runtime_dir = temp.path().join("runtime");
         let user = user_config_paths::mars_config(&config_dir);
+        let packaged = user_config_paths::packaged_mars_config(&runtime_dir);
         fs::create_dir_all(user.parent().unwrap()).unwrap();
+        fs::create_dir_all(packaged.parent().unwrap()).unwrap();
         fs::write(&user, "[window\n").unwrap();
+        fs::write(packaged, "[window]\nopacity = 1.0\n").unwrap();
 
         let error = resolve_mars_config_path(&config_dir, &runtime_dir).unwrap_err();
 
         assert!(error.contains("invalid TOML"));
         assert!(error.contains("config/yazelix/mars/config.toml"));
+    }
+
+    // Regression: sparse user overrides never hide a missing immutable package base.
+    #[test]
+    fn user_mars_override_requires_packaged_base() {
+        let temp = tempdir().unwrap();
+        let config_dir = temp.path().join("config/yazelix");
+        let runtime_dir = temp.path().join("runtime");
+        let user = user_config_paths::mars_config(&config_dir);
+        fs::create_dir_all(user.parent().unwrap()).unwrap();
+        fs::write(&user, "[window]\nopacity = 0.5\n").unwrap();
+
+        let error = resolve_mars_config_path(&config_dir, &runtime_dir).unwrap_err();
+
+        assert!(error.contains("Packaged Mars config is missing"));
     }
 }
