@@ -4,6 +4,10 @@ User-visible runtime changes for Yazelix Next live here.
 
 ## Unreleased
 
+- Optional managed `yazi/yazi.toml` now layers native Yazi tables over the
+  packaged config while replacing user scalars and arrays. Yazelix retains its
+  edit opener and required sidebar Git fetchers; invalid TOML fails before Yazi
+  starts. Ratconfig and Home Manager expose the same native file.
 - Managed LazyGit file edits honor `editor.command` instead of falling back to
   Vim for unknown presets. Direct `yzn-editor` is also exported through
   `EDITOR`, `VISUAL`, and `GIT_EDITOR`; it stays in the client lifecycle with

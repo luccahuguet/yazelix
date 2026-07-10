@@ -321,9 +321,16 @@
         ln -s ${yaziAssetsSelection}/plugins/git.yazi "$out/plugins/git.yazi"
         ln -s ${starshipYazi} "$out/plugins/starship.yazi"
       '';
+      yznYaziMaterializer = pkgs.rustPlatform.buildRustPackage {
+        pname = "yzn-yazi-config";
+        version = "0.1.0";
+        src = ./crates/yzn-yazi-config;
+        cargoLock.lockFile = ./crates/yzn-yazi-config/Cargo.lock;
+      };
       yznYaziSrc = pkgs.replaceVars ./runtime/yzn-yazi.rs {
         yazi = "${pkgs.yazi}/bin/yazi";
         yznYaziConfig = "${yznYaziConfig}";
+        yznYaziMaterializer = "${yznYaziMaterializer}/bin/yzn-yazi-config";
         yznOpen = "${yznOpenCore}/bin/yzn-open";
         zellij = "${yazelixZellijPackage}/bin/zellij";
         yznHelix = "${yznHelix}/bin/yzn-hx";
@@ -603,6 +610,7 @@
           helix.languages.source = fakeHelixLanguages;
           helix.module.text = "(provide yzn-test)\n";
           helix.init.text = ";; init\n";
+          yazi.config.text = "[mgr]\nshow_hidden = true\n";
           yazi.init.text = "-- init\n";
           yazi.keymap.text = "[manager]\n";
           nu.env.text = "# env\n";
@@ -653,6 +661,7 @@
         grep -q 'line-number = "relative"' "$config_files/helix/config.toml"
         grep -q 'name = "nix"' "$config_files/helix/languages.toml"
         grep -q '(provide yzn-test)' "$config_files/helix/helix.scm"
+        grep -q 'show_hidden = true' "$config_files/yazi/yazi.toml"
         grep -q -- '-- init' "$config_files/yazi/init.lua"
         grep -q '# config' "$config_files/nu/config.nu"
 

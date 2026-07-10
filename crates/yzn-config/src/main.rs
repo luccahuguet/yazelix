@@ -146,6 +146,7 @@ mod tests {
             nu_env: temp.path.join("nu/env.nu"),
             nu_config: temp.path.join("nu/config.nu"),
             starship: temp.path.join("starship.toml"),
+            yazi_config: temp.path.join("yazi/yazi.toml"),
             yazi_init: temp.path.join("yazi/init.lua"),
             yazi_keymap: temp.path.join("yazi/keymap.toml"),
             zellij_plugins: temp.path.join("zellij/plugins.kdl"),
@@ -949,6 +950,7 @@ mod tests {
             &paths.helix_init,
             &paths.nu_env,
             &paths.nu_config,
+            &paths.yazi_config,
             &paths.yazi_init,
             &paths.yazi_keymap,
         ]);
@@ -1021,6 +1023,12 @@ mod tests {
                 ],
                 [
                     SOURCE_ADVANCED,
+                    ACTION_YAZI_CONFIG,
+                    TAB_ADVANCED,
+                    "yazi/yazi.toml",
+                ],
+                [
+                    SOURCE_ADVANCED,
                     ACTION_YAZI_INIT,
                     TAB_ADVANCED,
                     "yazi/init.lua"
@@ -1052,6 +1060,7 @@ mod tests {
                 paths.helix_init.as_path(),
                 paths.nu_env.as_path(),
                 paths.nu_config.as_path(),
+                paths.yazi_config.as_path(),
                 paths.yazi_init.as_path(),
                 paths.yazi_keymap.as_path(),
                 paths.zellij_plugins.as_path(),
@@ -1083,6 +1092,7 @@ mod tests {
             &paths.helix_languages,
             &paths.helix_module,
             &paths.helix_init,
+            &paths.yazi_config,
             &paths.yazi_init,
             &paths.yazi_keymap,
             &paths.zellij_plugins,
@@ -1226,51 +1236,25 @@ mod tests {
     }
 
     #[test]
-    fn prepare_file_action_creates_managed_yazi_init_only() {
+    fn prepare_file_action_creates_managed_yazi_files_independently() {
         let (_temp, paths) = temp_sources();
-        let yazi_toml = paths.yazi_init.with_file_name("yazi.toml");
-        let yazi_plugins = paths.yazi_init.with_file_name("plugins");
-
-        prepare_file_action(
-            &paths,
-            SOURCE_ADVANCED,
-            ACTION_YAZI_INIT,
-            &paths.yazi_init,
-            true,
-        )
-        .unwrap();
-
-        assert_file_text(&paths.yazi_init, YAZI_INIT_STARTER);
-        assert_missing(&[
-            &yazi_toml,
-            &paths.yazi_keymap,
-            &yazi_plugins,
-            &paths.zellij_plugins,
-        ]);
-    }
-
-    #[test]
-    fn prepare_file_action_creates_managed_yazi_keymap_only() {
-        let (_temp, paths) = temp_sources();
-        let yazi_toml = paths.yazi_keymap.with_file_name("yazi.toml");
-        let yazi_plugins = paths.yazi_keymap.with_file_name("plugins");
-
-        prepare_file_action(
-            &paths,
-            SOURCE_ADVANCED,
-            ACTION_YAZI_KEYMAP,
-            &paths.yazi_keymap,
-            true,
-        )
-        .unwrap();
-
-        assert_file_text(&paths.yazi_keymap, YAZI_KEYMAP_STARTER);
-        assert_missing(&[
-            &paths.yazi_init,
-            &yazi_toml,
-            &yazi_plugins,
-            &paths.zellij_plugins,
-        ]);
+        for (action, target, starter) in [
+            (ACTION_YAZI_CONFIG, &paths.yazi_config, YAZI_CONFIG_STARTER),
+            (ACTION_YAZI_INIT, &paths.yazi_init, YAZI_INIT_STARTER),
+            (ACTION_YAZI_KEYMAP, &paths.yazi_keymap, YAZI_KEYMAP_STARTER),
+        ] {
+            prepare_file_action(&paths, SOURCE_ADVANCED, action, target, true).unwrap();
+            assert_file_text(target, starter);
+            assert_eq!(
+                [&paths.yazi_config, &paths.yazi_init, &paths.yazi_keymap]
+                    .into_iter()
+                    .filter(|path| path.exists())
+                    .count(),
+                1
+            );
+            fs::remove_file(target).unwrap();
+        }
+        assert!(!paths.yazi_config.with_file_name("plugins").exists());
     }
 
     #[test]

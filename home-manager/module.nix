@@ -70,6 +70,10 @@
       option = cfg.config.yazi.init;
       name = "programs.yazelix.config.yazi.init";
     };
+    "yazelix-next/yazi/yazi.toml" = {
+      option = cfg.config.yazi.config;
+      name = "programs.yazelix.config.yazi.config";
+    };
     "yazelix-next/yazi/keymap.toml" = {
       option = cfg.config.yazi.keymap;
       name = "programs.yazelix.config.yazi.keymap";
@@ -127,6 +131,7 @@ in {
       };
 
       yazi = {
+        config = nativeFileOption "Managed native Yazi yazi.toml.";
         init = nativeFileOption "Managed Yazi init.lua.";
         keymap = nativeFileOption "Managed Yazi keymap.toml.";
       };

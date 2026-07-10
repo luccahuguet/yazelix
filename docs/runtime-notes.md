@@ -138,15 +138,21 @@ opens a new Yazelix terminal pane at the current file directory or workspace.
 
 ## Yazi
 
-Managed Yazi appends optional user Lua and keymap TOML after the packaged setup:
+Managed Yazi accepts native TOML plus optional Lua and keymap sidecars:
 
 ```text
+~/.config/yazelix-next/yazi/yazi.toml
 ~/.config/yazelix-next/yazi/init.lua
 ~/.config/yazelix-next/yazi/keymap.toml
 ```
 
-This path does not merge `yazi.toml`, themes, or normal `~/.config/yazi`. When
-the managed init file exists, plugin directories under
+Native TOML tables merge recursively. User scalars and arrays replace packaged
+values; only `plugin.prepend_fetchers` uses replace-plus-managed-Git semantics,
+which keeps user fetchers while restoring the two sidebar Git fetchers exactly
+once. The managed edit opener is always restored. Invalid TOML fails before
+Yazi launches. Normal `~/.config/yazi` is not read.
+
+When the managed init file exists, plugin directories under
 `~/.config/yazelix-next/yazi/plugins/*.yazi` are linked into the runtime config.
 Packaged plugin names cannot be overridden.
 

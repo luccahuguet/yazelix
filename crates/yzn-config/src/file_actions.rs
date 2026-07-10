@@ -44,7 +44,7 @@ pub(crate) fn build_file_actions(paths: &ConfigPaths) -> Vec<ConfigUiFileAction>
         })
         .collect()
 }
-fn file_action_specs(paths: &ConfigPaths) -> [FileActionSpec; 9] {
+fn file_action_specs(paths: &ConfigPaths) -> [FileActionSpec; 10] {
     [
         FileActionSpec {
             source_id: SOURCE_HELIX,
@@ -99,6 +99,15 @@ fn file_action_specs(paths: &ConfigPaths) -> [FileActionSpec; 9] {
             description: "Open the user Nushell config file.",
             path: paths.nu_config.clone(),
             starter: NU_CONFIG_STARTER,
+        },
+        FileActionSpec {
+            source_id: SOURCE_ADVANCED,
+            action_id: ACTION_YAZI_CONFIG,
+            tab: TAB_ADVANCED,
+            label: "yazi/yazi.toml",
+            description: "Open the managed native Yazi config file.",
+            path: paths.yazi_config.clone(),
+            starter: YAZI_CONFIG_STARTER,
         },
         FileActionSpec {
             source_id: SOURCE_ADVANCED,

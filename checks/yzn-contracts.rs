@@ -1306,6 +1306,8 @@ fn expect_yazi_alt_z(yzn: &Path) {
         })
         .expect("layout is missing sidebar yzn-yazi command");
     let wrapper = binary_text(&yzn_yazi);
+    let materializer = embedded_store_path(&wrapper, "/bin/yzn-yazi-config");
+    assert!(materializer.is_file());
     let context = format!("{} Yazi integration fragment", yzn_yazi.display());
     expect_contains_all! {
         &wrapper, &context;
@@ -1316,11 +1318,8 @@ fn expect_yazi_alt_z(yzn: &Path) {
         "GIT_EDITOR",
         "editor.command",
         "YAZI_CONFIG_HOME",
-        "init.lua",
-        "keymap.toml",
+        "/bin/yzn-yazi-config",
         "yazelix_starship.toml",
-        "-- Yazelix Next user init.lua",
-        "# Yazelix Next user keymap.toml",
         "YAZELIX_ZELLIJ_SESSION_NAME",
         "ZELLIJ_SESSION_NAME",
         "KITTY_WINDOW_ID",

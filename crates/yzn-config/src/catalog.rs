@@ -81,6 +81,7 @@ pub(crate) const ACTION_HELIX_MODULE: &str = "helix.module";
 pub(crate) const ACTION_HELIX_INIT: &str = "helix.init";
 pub(crate) const ACTION_NU_ENV: &str = "nu.env";
 pub(crate) const ACTION_NU_CONFIG: &str = "nu.config";
+pub(crate) const ACTION_YAZI_CONFIG: &str = "yazi.config";
 pub(crate) const ACTION_YAZI_INIT: &str = "yazi.init";
 pub(crate) const ACTION_YAZI_KEYMAP: &str = "yazi.keymap";
 pub(crate) const ACTION_ZELLIJ_PLUGINS: &str = "zellij.plugins";
@@ -90,6 +91,7 @@ pub(crate) const HELIX_MODULE_STARTER: &str = ";; Loaded by managed yzn-hx befor
 pub(crate) const HELIX_INIT_STARTER: &str = ";; Loaded by managed yzn-hx at startup.\n";
 pub(crate) const NU_ENV_STARTER: &str = "# Loaded after Yazelix Next packaged env.nu.\n";
 pub(crate) const NU_CONFIG_STARTER: &str = "# Loaded after Yazelix Next packaged config.nu.\n";
+pub(crate) const YAZI_CONFIG_STARTER: &str = "# Extended over Yazelix Next packaged yazi.toml.\n";
 pub(crate) const YAZI_INIT_STARTER: &str = "-- Loaded after Yazelix Next packaged yazi/init.lua.\n";
 pub(crate) const YAZI_KEYMAP_STARTER: &str =
     "# Loaded after Yazelix Next packaged yazi/keymap.toml.\n";

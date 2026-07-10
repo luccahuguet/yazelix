@@ -107,6 +107,7 @@ programs.yazelix.config = {
   '';
 
   helix.languages.source = ./languages.toml;
+  yazi.config.source = ./yazi.toml;
 };
 ```
 
@@ -199,8 +200,13 @@ managed popup role keys.
 | `helix/init.scm` | Helix Steel | Loaded with `helix/helix.scm` when the pair exists. |
 | `nu/env.nu` | Nushell | Loaded after packaged Yazelix env. |
 | `nu/config.nu` | Nushell | Loaded after packaged Yazelix config. |
+| `yazi/yazi.toml` | Yazi | Native tables merge recursively; user scalars and arrays replace packaged values. |
 | `yazi/init.lua` | Yazi | Appended after packaged Yazi init. |
 | `yazi/keymap.toml` | Yazi | Appended after packaged Yazi keymap. |
+
+The managed Yazi merge restores Yazelix's edit opener and its two sidebar Git
+fetchers exactly once. Other user fetchers and previewers remain in the merged
+native config. Invalid TOML stops before Yazi starts.
 
 Normal host config such as `~/.config/helix`, `~/.config/yazi`, and
 `~/.config/starship.toml` does not control the managed runtime unless you route
@@ -319,13 +325,13 @@ git ls-files | grep -Ev '^\.beads/|\.lock$' | xargs wc -l
 | Language | Lines |
 | --- | ---: |
 | Ignore (`.gitignore`) | 4 |
-| Markdown | 1255 |
-| Nix | 962 |
+| Markdown | 1273 |
+| Nix | 976 |
 | Shell | 84 |
 | YAML | 268 |
-| TOML | 242 |
+| TOML | 249 |
 | KDL | 210 |
 | Nu | 11 |
 | Lua | 247 |
-| Rust | 11698 |
-| Total | 14981 |
+| Rust | 11964 |
+| Total | 15286 |

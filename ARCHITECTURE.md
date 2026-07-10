@@ -60,11 +60,12 @@ One owner per concern. Paths are the durable map.
 | `runtime/yzn/` | CLI, startup env, launch/enter handoff |
 | `runtime/yzn-menu.rs` | Menu palette |
 | `runtime/yzn-agent.rs` | Agent provider bootstrap (`codex resume` → `grok` → `opencode` → `pi` → `claude --resume`) |
-| `runtime/yzn-yazi.rs` | Managed Yazi: image-preview env, user init/keymap/plugins overlay, editor resolve |
+| `runtime/yzn-yazi.rs` | Managed Yazi process/env launch, editor resolve |
 | `runtime/yzn-nu.rs` | Managed Nu: packaged → optional host `mise activate nu` → user Nu; Starship path |
 | `runtime/yzn-zellij-config.rs` | Packaged + guarded Zellij scalar sidecar merge |
 | `runtime/yzn/zellij.rs` | Plugin sidecar inject; launch materialize/patches |
 | `crates/yzn-open/` | Editor open, Helix bridge, reveal, bounded open diagnostics |
+| `crates/yzn-yazi-config/` | Managed Yazi config-home materialization and native TOML layering |
 | `crates/yzn-tutor/` | Tutor CLI and lessons |
 | `shell/sh/yzn-helix.sh` (`yzn-hx`) | Effective Helix config + Steel wiring |
 | `yazelix-screen` (child) | Screen styles; packaged as `yzn screen` |
@@ -155,7 +156,7 @@ Packaged first, unless a surface opts into native replacement.
   starship.toml
   nu/{env,config}.nu       # after packaged Nu
   helix/*                  # lazy; created on tab use
-  yazi/{init.lua,keymap.toml,plugins/}
+  yazi/{yazi.toml,init.lua,keymap.toml,plugins/}
 ```
 
 Override root with `YAZELIX_NEXT_CONFIG_HOME`.  
@@ -168,6 +169,7 @@ Runtime state defaults to `$XDG_DATA_HOME/yazelix-next` or `YAZELIX_STATE_DIR`.
 | Nu | Packaged → optional host `mise activate nu` → optional user Nu |
 | Starship | User `starship.toml` if present; else empty/defaults for managed Nu |
 | Helix | See Helix notes below |
+| Yazi | Packaged TOML → recursive user tables + replacing scalars/arrays → managed opener/Git fetchers |
 | Zellij | Packaged → guarded scalar sidecar → runtime materialize under state dir |
 | Host `~/.config/{helix,yazi,starship}` | Not loaded by default |
 
