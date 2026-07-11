@@ -4,7 +4,7 @@
       {
         "hooks": [
           {
-            "command": "br ready --limit 10",
+            "command": "sh -lc 'command -v br >/dev/null 2>&1 || exit 0; exec br ready --limit 10'",
             "type": "command"
           }
         ],
@@ -15,7 +15,7 @@
       {
         "hooks": [
           {
-            "command": "br ready --limit 10",
+            "command": "sh -lc 'command -v br >/dev/null 2>&1 || exit 0; exec br ready --limit 10'",
             "type": "command"
           }
         ],
@@ -33,7 +33,7 @@
       {
         "hooks": [
           {
-            "command": "sh -lc 'root=\"$(git rev-parse --show-toplevel)\"; exec rusty-idd next --base \"$root\"'",
+            "command": "sh -lc 'command -v rusty-idd >/dev/null 2>&1 || exit 0; root=\"$(git rev-parse --show-toplevel)\"; exec rusty-idd next --base \"$root\"'",
             "statusMessage": "Rusty IDD front door: computing the next step",
             "timeout": 180,
             "type": "command"
