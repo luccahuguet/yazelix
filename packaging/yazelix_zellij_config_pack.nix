@@ -43,7 +43,7 @@ rustPlatform.buildRustPackage {
       "yazelix_cursors-0.1.0" = "sha256-lgs+e/rm/WTXHM2veZFiswKxO8H6zCrdiv0uYhGdZeQ=";
       "ratconfig-0.1.0" = "sha256-gibgrdrrTe9Zsu17k5xNevPIFChqFCQ9WEavPsISId8=";
       "yazelix_screen-0.1.0" = "sha256-e8qM6kzHUNMsbBBQ21QJEAgJp5rqytDiXVIJmGaY9SE=";
-      "yazelix_yazi_assets-0.1.0" = "sha256-IzQndUzR4BgqXQHDQDgtszKYoF0AUby/FvzXBg25Zys=";
+      "yazelix_yazi_assets-0.1.0" = "sha256-dXYwpt5HRdT7L2F5UTznpLs8WjH94idvsGJDHvmYOOo=";
     };
   };
   buildAndTestSubdir = "rust_core";
