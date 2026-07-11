@@ -258,23 +258,6 @@
         "type": "github"
       }
     },
-    "meta_source": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1783424763,
-        "narHash": "sha256-0KTKZSBT+Oni6JJ392vLX1tOCfkMeIk63flpVTpBUFc=",
-        "owner": "FlexNetOS",
-        "repo": "meta",
-        "rev": "faf66a15736e7082c1d37f89a9353cafc876f8d7",
-        "type": "github"
-      },
-      "original": {
-        "owner": "FlexNetOS",
-        "repo": "meta",
-        "rev": "faf66a15736e7082c1d37f89a9353cafc876f8d7",
-        "type": "github"
-      }
-    },
     "nixgl": {
       "inputs": {
         "flake-utils": "flake-utils",
@@ -348,7 +331,6 @@
         "home-manager": "home-manager",
         "icm_source": "icm_source",
         "mars": "mars",
-        "meta_source": "meta_source",
         "nixgl": "nixgl",
         "nixpkgs": "nixpkgs_2",
         "rtk_source": "rtk_source",
