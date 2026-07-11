@@ -285,11 +285,11 @@ Remove an explicit config value so Yazelix uses the default
 
 ### `yzx import zellij|yazi|helix [--force]`
 Import native Zellij, Yazi, or Helix config into Yazelix-managed overrides
-- `yzx import zellij`: copies `~/.config/zellij/config.kdl` into `zellij.kdl` only when the source has no `keybinds` blocks
+- `yzx import zellij`: validates and splits `~/.config/zellij/config.kdl` into `zellij/config.kdl` and `zellij/plugins.kdl`
 - `yzx import yazi`: imports `yazi.toml`, `keymap.toml`, `init.lua`, `package.toml`, `plugins/`, and `flavors/` from `~/.config/yazi/` into `~/.config/yazelix/yazi/`
 - `yzx import helix`: copies `~/.config/helix/config.toml` into `helix/config.toml`
 - Fails clearly when no native source files are available for the selected target
-- Fails clearly for `yzx import zellij` when the native file contains `keybinds` blocks; Yazelix-session keybindings belong in `settings.jsonc`
+- Fails clearly for `yzx import zellij` when the native file contains runtime-owned nodes such as `keybinds`
 - Refuses to overwrite existing managed destination files by default
 - `--force`: writes `*.backup-<timestamp>` backups before replacing managed destination files
 
@@ -313,7 +313,7 @@ Generate the Ghostty include for Yazelix cursors
 
 ### `yzx edit <target> [--print]`
 Open one of the managed config surfaces through explicit or fuzzy target selection
-- Supported targets include `config`, `cursors`, `helix`, `zellij`, `yazi`, `yazi-keymap`, and `yazi-init`
+- Supported targets include `config`, `cursors`, `helix`, `zellij`, `zellij-plugins`, `yazi`, `yazi-keymap`, and `yazi-init`
 - `cursors` opens `~/.config/yazelix_cursors/settings.jsonc` for full cursor registry edits
 - Yazi targets stay inside `~/.config/yazelix/yazi/` and do not expose host-owned `~/.config/yazi/` files
 - `--print`: print the resolved managed path without opening
@@ -325,7 +325,7 @@ Replace `settings.jsonc` with a fresh copy of the shipped settings template
 - `--no-backup`: discard the previous config file instead of renaming it to a backup first
 - Use this as a blunt recovery path when `yzx doctor` reports stale config fields
 - Only replaces `~/.config/yazelix/settings.jsonc`
-- Preserves managed override sidecars such as `helix/`, `zellij.kdl`, `yazi/`, `terminal_*.conf|toml|ini`, and `shell_*.sh|zsh|fish|nu|xsh`
+- Preserves managed override sidecars such as `helix/`, `zellij/`, `yazi/`, `terminal_*.conf|toml|ini`, and `shell_*.sh|zsh|fish|nu|xsh`
 - Preserves unknown adjacent files under `~/.config/yazelix/` and prints a warning instead of deleting or adopting them
 - Cursor presets live in `~/.config/yazelix_cursors/settings.jsonc`; `reset config` only resets the main Yazelix settings file
 
@@ -376,11 +376,12 @@ yzx config unset editor.hide_sidebar_on_file_open # Remove an explicit config va
 yzx cursors                   # Inspect Yazelix cursor presets and resolved colors
 yzx cursors ghostty setup     # Generate the host Ghostty cursor include
 yzx edit cursors              # Open the cursor settings file
-yzx import zellij             # Import ~/.config/zellij/config.kdl when it has no keybinds blocks
+yzx import zellij             # Split a safe native Zellij config into the managed nested sidecars
 yzx import yazi               # Import native Yazi override files and plugins into managed overrides
 yzx import helix              # Import ~/.config/helix/config.toml into helix/config.toml
-yzx import zellij --force     # Backup and replace zellij.kdl when the source has no keybinds blocks
+yzx import zellij --force     # Backup and replace both managed Zellij sidecars
 yzx edit config               # Open the main managed config
+yzx edit zellij-plugins       # Open managed third-party Zellij plugins
 yzx edit keymap               # Open managed Yazi keymap.toml
 yzx edit init                 # Open managed Yazi init.lua
 yzx reset config              # Replace the managed config with a fresh template after confirmation

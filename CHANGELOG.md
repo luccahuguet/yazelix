@@ -16,11 +16,13 @@ Highlights:
 - Exposed inherited packaged Mars fields through Ratconfig generic rows while writing only explicit overrides, and added sparse Home Manager `programs.yazelix.config.mars.text` / `source` ownership
 - Migrated writable released `terminal.transparency` values to native `window.opacity` before removing the retired `terminal` settings object
 - Preserved NixOS security-wrapper precedence across Yazelix entrypoints and managed Helix launches so `sudo` and other privileged commands resolve through `/run/wrappers/bin`
+- Replaced the flat managed Zellij sidecar and ambient native fallback with the Yazelix Next-shaped `zellij/config.kdl` and `zellij/plugins.kdl` boundary; writable flat files migrate backup-first, while `yzx import zellij` is the only path from plain Zellij config
 
 Manual action:
 - Replace Home Manager `terminal_config_mode`, `transparency`, `mars_profile`, and `mars_emoji_font` options with exactly one of `programs.yazelix.config.mars.text` or `programs.yazelix.config.mars.source` when you want a declarative sparse Mars override
 - Configure Mars appearance and cursors in `[mars.appearance]` and `[yazelix.cursor]`; root `appearance.mode` and `~/.config/yazelix_cursors/settings.jsonc` do not control Mars
 - Configure custom Mars fonts under `[fonts]`; the retired `terminal.emoji_style` value is not migrated
+- If Home Manager owns `~/.config/yazelix/zellij.kdl`, split it declaratively into `programs.yazelix.config.zellij.text` or `source` plus a user-owned `zellij/plugins.kdl`, then remove the flat file declaration
 
 ## v17.9 - 2026-06-27
 

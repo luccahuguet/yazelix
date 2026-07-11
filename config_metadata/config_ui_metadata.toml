@@ -314,9 +314,15 @@ label = "helix/config.toml"
 action = "edit_sidecar"
 owner = "user_or_home_manager"
 
-[sidecars."zellij.kdl"]
+[sidecars."zellij/config.kdl"]
 tab = "workspace"
-label = "zellij.kdl"
+label = "zellij/config.kdl"
+action = "edit_sidecar"
+owner = "user_or_home_manager"
+
+[sidecars."zellij/plugins.kdl"]
+tab = "workspace"
+label = "zellij/plugins.kdl"
 action = "edit_sidecar"
 owner = "user_or_home_manager"
 

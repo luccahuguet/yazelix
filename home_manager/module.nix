@@ -29,6 +29,19 @@ let
     mkMainContractOption
     settingsJsonc
     ;
+  nativeConfig =
+    name: path: value:
+    mkIf (value != null) {
+      assertions = [
+        {
+          assertion = (value.text != null) != (value.source != null);
+          message = "programs.yazelix.config.${name} requires exactly one of text or source";
+        }
+      ];
+      xdg.configFile.${path} =
+        (lib.optionalAttrs (value.text != null) { inherit (value) text; })
+        // (lib.optionalAttrs (value.source != null) { inherit (value) source; });
+    };
 
   runtimeIntegration = import ./runtime_integration.nix {
     inherit
@@ -68,16 +81,7 @@ in
     (mkIf cfg.manage_cursor_config {
       xdg.configFile."yazelix_cursors/settings.jsonc".text = cursorSettingsJsonc;
     })
-    (mkIf (cfg.config.mars != null) {
-      assertions = [
-        {
-          assertion = (cfg.config.mars.text != null) != (cfg.config.mars.source != null);
-          message = "programs.yazelix.config.mars requires exactly one of text or source";
-        }
-      ];
-      xdg.configFile."yazelix/mars/config.toml" =
-        (lib.optionalAttrs (cfg.config.mars.text != null) { inherit (cfg.config.mars) text; })
-        // (lib.optionalAttrs (cfg.config.mars.source != null) { inherit (cfg.config.mars) source; });
-    })
+    (nativeConfig "mars" "yazelix/mars/config.toml" cfg.config.mars)
+    (nativeConfig "zellij" "yazelix/zellij/config.kdl" cfg.config.zellij)
   ]);
 }

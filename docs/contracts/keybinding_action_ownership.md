@@ -52,8 +52,8 @@ Rules:
 - an empty list disables that Yazelix-owned action binding
 - duplicate keys across the semantic map are rejected before launch
 - generated binds are emitted without matching `unbind` lines for the same key
-- managed `~/.config/yazelix/zellij.kdl` must not contain `keybinds` blocks
-- read-only fallback from `~/.config/zellij/config.kdl` does not imply full Yazelix keybinding ownership, even if that native file uses `clear-defaults=true`
+- managed `~/.config/yazelix/zellij/config.kdl` must not contain `keybinds` blocks
+- plain `~/.config/zellij/config.kdl` is never loaded implicitly and can only be an explicit import source
 
 `zellij.native_keybindings` is stable for Yazelix's curated native Zellij policy:
 
@@ -145,11 +145,11 @@ A profile should expand into ordinary owner-scoped action maps. Explicit action 
 
 Yazelix owns semantic Zellij bindings only for Yazelix actions such as popup/menu/sidebar/workspace helpers and layout-family switching.
 
-Yazelix does not own arbitrary Zellij native mode bindings. Managed `~/.config/yazelix/zellij.kdl` is a native settings sidecar, not a keymap sidecar, and any `keybinds` block there is a config error. Users who want full native Zellij keymap ownership should run plain `zellij` outside Yazelix.
+Yazelix does not own arbitrary Zellij native mode bindings. Managed `~/.config/yazelix/zellij/config.kdl` is a native settings sidecar, not a keymap sidecar, and any `keybinds` block there is a config error. Users who want full native Zellij keymap ownership should run plain `zellij` outside Yazelix.
 
 The `Ctrl-g`, `Ctrl-s`, `Ctrl-o`, Helix `Alt` conflict, tab jump, and pane-grouping defaults are handled as curated native Zellij policy in `zellij.native_keybindings`, not as semantic Yazelix actions. Native keybinding behavior outside that curated policy is not a managed Yazelix session surface.
 
-Yazelix does not manage arbitrary Zellij keymaps, full Zellij mode binding ownership, or generated runtime config edits. `~/.config/zellij/config.kdl` belongs to plain Zellij and is only a read-only fallback or explicit import source for Yazelix.
+Yazelix does not manage arbitrary Zellij keymaps, full Zellij mode binding ownership, or generated runtime config edits. `~/.config/zellij/config.kdl` belongs to plain Zellij and is only an explicit import source for Yazelix.
 
 ## Yazi Boundary
 
@@ -183,7 +183,7 @@ Yazelix should diagnose only conflicts it can prove:
 - unsupported semantic action ids
 - malformed key strings
 - disabled required actions, when an action is required for a managed workflow
-- managed `~/.config/yazelix/zellij.kdl` files that contain `keybinds` blocks
+- managed `~/.config/yazelix/zellij/config.kdl` files that contain `keybinds` blocks
 - known backend precondition violations, such as managed Helix command-mode entry
 
 Yazelix should not claim to fully diagnose conflicts inside arbitrary native tool config.

@@ -1,21 +1,14 @@
-# Yazelix: Zellij Configuration
+# Yazelix Zellij Configuration
 
-Yazelix uses `settings.jsonc` for managed workspace behavior and managed Zellij appearance such as theme and rounded corners. Use `~/.config/yazelix/zellij.kdl` only for advanced native Zellij settings that Yazelix does not render.
+Yazelix keeps semantic workspace behavior in `settings.jsonc` and native Zellij input in two guarded files:
 
-## Quick Start
-
-```bash
-# Edit advanced native Zellij settings that Yazelix does not render
-~/.config/yazelix/zellij.kdl
+```text
+~/.config/yazelix/zellij/config.kdl
+~/.config/yazelix/zellij/plugins.kdl
 ```
 
-## Documentation
+`config.kdl` accepts native preferences that Yazelix does not own. `plugins.kdl` accepts only additive `plugins` and `load_plugins` blocks. Runtime-owned nodes, keybindings, and first-party plugin ids fail before materialization.
 
-For complete configuration guide, see: [Zellij Configuration Documentation](../../docs/zellij-configuration.md)
+Plain `~/.config/zellij/config.kdl` is never loaded implicitly. Use `yzx import zellij` to split a compatible native file into the managed pair.
 
-## Current Defaults
-
-- Layered merging: native Zellij settings + Yazelix generated keybindings, plugins, dynamic settings, and enforced settings
-- Default layout optimized for the managed sidebar family
-- Managed theme, pane frame, and rounded-corner settings
-- Session persistence and Helix-friendly keybindings
+See [Zellij Configuration](../../docs/zellij-configuration.md) for the full boundary.

@@ -5,7 +5,6 @@ use crate::backup_timestamp::compact_utc_backup_timestamp;
 use crate::bridge::{CoreError, ErrorClass};
 use crate::control_plane::{config_dir_from_env, home_dir_from_env, state_dir_from_env};
 use crate::user_config_paths;
-use crate::zellij_materialization::zellij_config_contains_keybinds_block;
 use serde_json::json;
 use std::fs;
 use std::io;
@@ -29,6 +28,8 @@ struct ImportEntry {
 enum ImportEntryKind {
     File,
     Directory,
+    ZellijConfig,
+    ZellijPlugins,
 }
 
 fn get_xdg_config_home(home: &Path) -> PathBuf {
@@ -69,12 +70,23 @@ fn get_import_entries(
     config_dir: &Path,
 ) -> Result<Vec<ImportEntry>, CoreError> {
     match target {
-        "zellij" => Ok(vec![ImportEntry {
-            name: "config.kdl",
-            source: get_native_zellij_config_path(home),
-            destination: get_managed_zellij_config_path(config_dir),
-            kind: ImportEntryKind::File,
-        }]),
+        "zellij" => {
+            let source = get_native_zellij_config_path(home);
+            Ok(vec![
+                ImportEntry {
+                    name: "config.kdl",
+                    source: source.clone(),
+                    destination: get_managed_zellij_config_path(config_dir),
+                    kind: ImportEntryKind::ZellijConfig,
+                },
+                ImportEntry {
+                    name: "plugins.kdl",
+                    source,
+                    destination: user_config_paths::zellij_plugins(config_dir),
+                    kind: ImportEntryKind::ZellijPlugins,
+                },
+            ])
+        }
         "yazi" => {
             let source_dir = get_native_yazi_config_dir(home);
             let dest_dir = get_managed_yazi_config_dir(config_dir);
@@ -142,7 +154,9 @@ fn io_err(path: &Path, source: io::Error, code: &str) -> CoreError {
 fn source_matches_kind(entry: &ImportEntry) -> Result<bool, CoreError> {
     match fs::metadata(&entry.source) {
         Ok(metadata) => Ok(match entry.kind {
-            ImportEntryKind::File => metadata.is_file(),
+            ImportEntryKind::File
+            | ImportEntryKind::ZellijConfig
+            | ImportEntryKind::ZellijPlugins => metadata.is_file(),
             ImportEntryKind::Directory => metadata.is_dir(),
         }),
         Err(source) if source.kind() == io::ErrorKind::NotFound => Ok(false),
@@ -167,6 +181,18 @@ fn copy_import_entry(entry: &ImportEntry) -> Result<(), CoreError> {
                 )
             })?;
         }
+        ImportEntryKind::ZellijConfig | ImportEntryKind::ZellijPlugins => {
+            let raw = fs::read_to_string(&entry.source)
+                .map_err(|source| io_err(&entry.source, source, "import_read_zellij_source"))?;
+            let split = yazelix_zellij_config_pack::split_zellij_sidecars(&raw)
+                .map_err(|error| import_zellij_sidecar_error(&entry.source, error))?;
+            let content = match entry.kind {
+                ImportEntryKind::ZellijConfig => split.config,
+                ImportEntryKind::ZellijPlugins => split.plugins,
+                _ => unreachable!(),
+            };
+            crate::atomic_fs::write_text_atomic(&entry.destination, &content)?;
+        }
         ImportEntryKind::Directory => {
             copy_directory_recursive(&entry.source, &entry.destination)?;
         }
@@ -189,20 +215,36 @@ fn validate_import_entry_source(target: &str, entry: &ImportEntry) -> Result<(),
         )
     })?;
 
-    if zellij_config_contains_keybinds_block(&content) {
-        return Err(CoreError::classified(
-            ErrorClass::Usage,
-            "import_zellij_keybinds_unsupported",
-            format!(
-                "Cannot import native Zellij keybinds into Yazelix-managed config: {}",
-                entry.source.display()
-            ),
-            "Remove the keybinds block before importing, or keep full native Zellij keybinding ownership in plain zellij. Use zellij.keybindings and zellij.native_keybindings in settings.jsonc for Yazelix sessions.",
-            json!({ "source": entry.source.to_string_lossy() }),
-        ));
-    }
-
+    yazelix_zellij_config_pack::split_zellij_sidecars(&content)
+        .map_err(|error| import_zellij_sidecar_error(&entry.source, error))?;
     Ok(())
+}
+
+fn import_zellij_sidecar_error(
+    source: &Path,
+    error: yazelix_zellij_config_pack::ZellijSidecarError,
+) -> CoreError {
+    let code = if error.node == "keybinds" {
+        "import_zellij_keybinds_unsupported"
+    } else {
+        "import_zellij_sidecar_invalid"
+    };
+    CoreError::classified(
+        ErrorClass::Usage,
+        code,
+        format!(
+            "Cannot import {}: {} at line {}.",
+            source.display(),
+            error.message(),
+            error.line
+        ),
+        "Remove Yazelix-owned nodes from the native config and retry; keep full native ownership in plain Zellij.",
+        json!({
+            "source": source.display().to_string(),
+            "line": error.line,
+            "node": error.node,
+        }),
+    )
 }
 
 fn copy_directory_recursive(source: &Path, destination: &Path) -> Result<(), CoreError> {
@@ -505,12 +547,20 @@ mod tests {
         let config = Path::new("/home/test/.config/yazelix");
 
         let zellij = get_import_entries("zellij", home, config).unwrap();
-        assert_eq!(zellij.len(), 1);
+        assert_eq!(zellij.len(), 2);
         assert!(
             zellij[0]
                 .source
                 .to_string_lossy()
                 .contains("zellij/config.kdl")
+        );
+        assert_eq!(
+            zellij[0].destination,
+            Path::new("/home/test/.config/yazelix/zellij/config.kdl")
+        );
+        assert_eq!(
+            zellij[1].destination,
+            Path::new("/home/test/.config/yazelix/zellij/plugins.kdl")
         );
 
         let yazi = get_import_entries("yazi", home, config).unwrap();
@@ -550,7 +600,7 @@ mod tests {
         assert!(get_import_entries("unknown", home, config).is_err());
     }
 
-    // Defends: import cannot create a managed zellij.kdl that later bypasses generated Yazelix keybindings.
+    // Defends: import cannot create managed Zellij sidecars that later bypass generated Yazelix keybindings.
     #[test]
     fn rejects_importing_zellij_keybind_blocks() {
         let tmp = tempfile::tempdir().unwrap();
@@ -563,8 +613,8 @@ mod tests {
         let entry = ImportEntry {
             name: "config.kdl",
             source,
-            destination: tmp.path().join("zellij.kdl"),
-            kind: ImportEntryKind::File,
+            destination: tmp.path().join("zellij/config.kdl"),
+            kind: ImportEntryKind::ZellijConfig,
         };
 
         let err = validate_import_entry_source("zellij", &entry).unwrap_err();
@@ -574,7 +624,7 @@ mod tests {
                 code, remediation, ..
             } => {
                 assert_eq!(code, "import_zellij_keybinds_unsupported");
-                assert!(remediation.contains("settings.jsonc"));
+                assert!(remediation.contains("plain Zellij"));
             }
             other => panic!("unexpected error: {other:?}"),
         }

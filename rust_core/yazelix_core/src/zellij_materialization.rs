@@ -28,7 +28,8 @@ use std::process::Command;
 use yazelix_zellij_config_pack::{
     self as zellij_config_pack, ZellijKeybindActionSpec, ZellijKeybindRenderRequest,
     ZellijNativeKeybindBlockSpec, ZellijNativeKeybindSpec, ZellijRenderPlanData,
-    ZellijRenderPlanError, ZellijRenderPlanRequest, compute_zellij_render_plan,
+    ZellijRenderPlanError, ZellijRenderPlanRequest, ZellijSidecarError, combine_zellij_sidecars,
+    compute_zellij_render_plan, validate_zellij_config_sidecar, validate_zellij_plugins_sidecar,
 };
 
 const GENERATION_METADATA_NAME: &str = ".yazelix_generation.json";
@@ -40,7 +41,6 @@ const GENERATED_CONFIG_MARKERS: &[&str] = &[
 ];
 const GENERATED_LAYOUT_MARKER: &str = "GENERATED ZELLIJ LAYOUT (YAZELIX)";
 const GENERATED_LAYOUT_FINGERPRINT_PREFIX: &str = "generation_fingerprint:";
-const YAZELIX_DEFAULT_SCROLL_BUFFER_SIZE: usize = 5_000;
 const ZELLIJ_KEYBINDINGS_CONFIG_KEY: &str = "zellij_keybindings";
 const ZELLIJ_NATIVE_KEYBINDINGS_CONFIG_KEY: &str = "zellij_native_keybindings";
 const ZELLIJ_KEYBINDING_PARSE_POLICY: KeybindingParsePolicy = KeybindingParsePolicy {
@@ -132,12 +132,6 @@ struct ZellijBaseConfigSource {
     content: String,
 }
 
-#[derive(Debug, Clone)]
-struct ExtractedSemanticBlocks {
-    keybinds_block_present: bool,
-    keybinds_clear_defaults: bool,
-}
-
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 struct CustomPopup {
     id: String,
@@ -227,9 +221,7 @@ pub fn generate_zellij_materialization(
         &request.runtime_dir,
         string_config(&config, "default_shell", "nu"),
     );
-    let mut base_config_source = resolve_base_config_source()?;
-    apply_yazelix_scroll_buffer_default(&mut base_config_source);
-    validate_base_config_keybinding_policy(&base_config_source)?;
+    let base_config_source = resolve_base_config_source()?;
     let plugin_artifacts = resolve_plugin_artifacts(&request.runtime_dir, &state_dir)?;
     let [pane_orchestrator_artifact, zjstatus_artifact, yzpp_artifact] = &plugin_artifacts;
     let zellij_keybindings = resolve_zellij_keybindings(&config)?;
@@ -726,184 +718,38 @@ fn normalize_config_strings(
     Ok(normalized)
 }
 
-fn apply_yazelix_scroll_buffer_default(base_config_source: &mut ZellijBaseConfigSource) {
-    if zellij_config_declares_scroll_buffer_size(&base_config_source.content) {
-        return;
-    }
-
-    let default = format!(
-        "// Yazelix default: keep pane history bounded for agent-heavy sessions.\nscroll_buffer_size {YAZELIX_DEFAULT_SCROLL_BUFFER_SIZE}\n"
-    );
-    if base_config_source.content.trim().is_empty() {
-        base_config_source.content = default;
-    } else {
-        base_config_source.content = format!("{default}\n{}", base_config_source.content);
-    }
-}
-
-fn zellij_config_declares_scroll_buffer_size(config_content: &str) -> bool {
-    config_content.lines().any(|line| {
-        let trimmed = line.trim_start();
-        if trimmed.starts_with("//")
-            || trimmed.starts_with('#')
-            || trimmed.starts_with("/*")
-            || trimmed.is_empty()
-        {
-            return false;
-        }
-        let head = trimmed
-            .split("//")
-            .next()
-            .unwrap_or(trimmed)
-            .split(|ch: char| ch.is_whitespace() || ch == '=')
-            .next()
-            .unwrap_or_default();
-        head == "scroll_buffer_size"
-    })
-}
-
 fn resolve_base_config_source() -> Result<ZellijBaseConfigSource, CoreError> {
     let config_dir = config_dir_from_env()?;
-    crate::managed_user_config_stubs::ensure_zellij_surface_stub(&config_dir)?;
-    let managed_path = user_config_paths::resolve_current_config_file(
-        &user_config_paths::zellij_config(&config_dir),
-        &user_config_paths::legacy_zellij_config(&config_dir),
-        "Zellij override",
-    )?;
-    if managed_path.exists() {
-        return Ok(ZellijBaseConfigSource {
-            source: "managed".to_string(),
-            path: Some(managed_path.clone()),
-            content: read_text(&managed_path, "read_managed_zellij_config")?,
-        });
-    }
-
-    let native_path = home_dir_from_env()?
-        .join(".config")
-        .join("zellij")
-        .join("config.kdl");
-    if native_path.exists() {
-        return Ok(ZellijBaseConfigSource {
-            source: "native".to_string(),
-            path: Some(native_path.clone()),
-            content: read_text(&native_path, "read_native_zellij_config")?,
-        });
-    }
-
-    let output = Command::new("zellij")
-        .arg("setup")
-        .arg("--dump-config")
-        .output()
-        .map_err(|source| {
-            CoreError::io(
-                "dump_zellij_defaults",
-                "Cannot fetch Zellij defaults",
-                "Run Yazelix inside its Nix environment so zellij is available in PATH.",
-                "zellij",
-                source,
-            )
-        })?;
-    if !output.status.success() {
-        return Err(CoreError::classified(
-            ErrorClass::Runtime,
-            "dump_zellij_defaults_failed",
-            format!(
-                "Cannot fetch Zellij defaults: {}",
-                String::from_utf8_lossy(&output.stderr).trim()
-            ),
-            "Run Yazelix inside its Nix environment so zellij is available in PATH.",
-            json!({}),
-        ));
-    }
+    let config_path = user_config_paths::zellij_config(&config_dir);
+    let plugins_path = user_config_paths::zellij_plugins(&config_dir);
+    let config = read_text(&config_path, "read_managed_zellij_config")?;
+    let plugins = read_text(&plugins_path, "read_managed_zellij_plugins")?;
+    validate_zellij_config_sidecar(&config)
+        .map_err(|error| zellij_sidecar_error(&config_path, error))?;
+    validate_zellij_plugins_sidecar(&plugins)
+        .map_err(|error| zellij_sidecar_error(&plugins_path, error))?;
+    let content = combine_zellij_sidecars(&config, &plugins)
+        .expect("individually validated Zellij sidecars combine");
 
     Ok(ZellijBaseConfigSource {
-        source: "defaults".to_string(),
-        path: None,
-        content: String::from_utf8_lossy(&output.stdout).to_string(),
+        source: "managed".to_string(),
+        path: Some(config_path),
+        content,
     })
 }
 
-fn extract_semantic_config_blocks(config_content: &str) -> ExtractedSemanticBlocks {
-    let mut keybinds_block_present = false;
-    let mut keybinds_clear_defaults = false;
-    let mut active_block = String::new();
-    let mut brace_depth: i64 = 0;
-
-    for line in config_content.lines() {
-        let trimmed = line.trim();
-        let open_braces = line.chars().filter(|c| *c == '{').count() as i64;
-        let close_braces = line.chars().filter(|c| *c == '}').count() as i64;
-
-        if active_block.is_empty() {
-            let matched_block = trimmed.starts_with("keybinds").then_some("keybinds");
-            if let Some(block) = matched_block {
-                keybinds_block_present = true;
-                if keybinds_declares_clear_defaults(trimmed) {
-                    keybinds_clear_defaults = true;
-                }
-                active_block = block.to_string();
-                brace_depth = open_braces - close_braces;
-                if brace_depth <= 0 {
-                    active_block.clear();
-                    brace_depth = 0;
-                }
-            }
-        } else {
-            brace_depth += open_braces - close_braces;
-            if brace_depth <= 0 {
-                active_block.clear();
-            }
-        }
-    }
-
-    ExtractedSemanticBlocks {
-        keybinds_block_present,
-        keybinds_clear_defaults,
-    }
-}
-
-pub(crate) fn zellij_config_contains_keybinds_block(config_content: &str) -> bool {
-    extract_semantic_config_blocks(config_content).keybinds_block_present
-}
-
-fn validate_base_config_keybinding_policy(
-    base_config_source: &ZellijBaseConfigSource,
-) -> Result<(), CoreError> {
-    if base_config_source.source != "managed" {
-        return Ok(());
-    }
-
-    let extracted = extract_semantic_config_blocks(&base_config_source.content);
-    if !extracted.keybinds_block_present {
-        return Ok(());
-    }
-
-    let block = if extracted.keybinds_clear_defaults {
-        "keybinds clear-defaults=true"
-    } else {
-        "keybinds"
-    };
-    let path = base_config_source
-        .path
-        .as_ref()
-        .map(|path| path.to_string_lossy().to_string())
-        .unwrap_or_else(|| "~/.config/yazelix/zellij.kdl".to_string());
-
-    Err(CoreError::classified(
+fn zellij_sidecar_error(path: &Path, error: ZellijSidecarError) -> CoreError {
+    CoreError::classified(
         ErrorClass::Config,
-        "managed_zellij_keybinds_unsupported",
-        format!("Managed Zellij config cannot contain a `{block}` block: {path}"),
-        "Remove that keybinds block from ~/.config/yazelix/zellij.kdl. Use zellij.keybindings and zellij.native_keybindings in settings.jsonc for Yazelix key remaps; use plain zellij outside Yazelix for full native keybinding ownership.",
+        error.code,
+        format!("{}: {}:{}", error.message(), path.display(), error.line),
+        error.remediation(),
         json!({
-            "path": path,
-            "block": block,
+            "path": path.display().to_string(),
+            "line": error.line,
+            "node": error.node,
         }),
-    ))
-}
-
-fn keybinds_declares_clear_defaults(line: &str) -> bool {
-    let header = line.split('{').next().unwrap_or(line);
-    header.contains("clear-defaults=true") || header.contains("clear-defaults = true")
+    )
 }
 
 fn default_zellij_keybindings() -> BTreeMap<String, Vec<String>> {
@@ -1573,121 +1419,9 @@ mod tests {
         default_zellij_native_keybindings()
     }
 
-    // Defends: managed override parsing keeps keybind block facts while ignoring child-owned semantic blocks.
+    // Defends: generated native mode leaders remain owned by the semantic keybinding contract.
     #[test]
-    fn extracts_semantic_blocks() {
-        let extracted = extract_semantic_config_blocks(
-            r#"scroll_buffer_size 123
-keybinds {
-    normal { bind "Ctrl y" { SwitchToMode "Normal"; } }
-}
-ui { pane_frames { hide_session_name true } }
-"#,
-        );
-        assert!(extracted.keybinds_block_present);
-        assert!(!extracted.keybinds_clear_defaults);
-    }
-
-    // Defends: Yazelix adds a bounded Zellij pane-history default when no active native setting exists.
-    #[test]
-    fn zellij_scroll_buffer_default_is_added_when_absent() {
-        let mut source = ZellijBaseConfigSource {
-            source: "managed".to_string(),
-            path: None,
-            content: "// scroll_buffer_size 10000\ncopy_on_select true\n".to_string(),
-        };
-
-        apply_yazelix_scroll_buffer_default(&mut source);
-
-        assert!(source.content.starts_with(
-            "// Yazelix default: keep pane history bounded for agent-heavy sessions.\nscroll_buffer_size 5000\n"
-        ));
-        assert!(source.content.contains("// scroll_buffer_size 10000"));
-        assert!(source.content.contains("copy_on_select true"));
-    }
-
-    // Defends: explicit managed/native Zellij scrollback preferences stay user-owned.
-    #[test]
-    fn zellij_scroll_buffer_default_preserves_explicit_user_value() {
-        let mut source = ZellijBaseConfigSource {
-            source: "managed".to_string(),
-            path: None,
-            content: "scroll_buffer_size 123\ncopy_on_select true\n".to_string(),
-        };
-
-        apply_yazelix_scroll_buffer_default(&mut source);
-
-        assert_eq!(
-            source.content,
-            "scroll_buffer_size 123\ncopy_on_select true\n"
-        );
-    }
-
-    // Defends: clear-defaults remains detectable so managed config can reject the strongest keybinding bypass explicitly.
-    #[test]
-    fn extracts_keybinds_clear_defaults_ownership() {
-        let extracted = extract_semantic_config_blocks(
-            r#"keybinds clear-defaults=true {
-    locked { bind "Ctrl `" { SwitchToMode "Normal"; } }
-}
-"#,
-        );
-
-        assert!(extracted.keybinds_clear_defaults);
-        assert!(extracted.keybinds_block_present);
-    }
-
-    // Defends: managed zellij.kdl remains a native settings sidecar, not a second keybinding owner.
-    #[test]
-    fn managed_zellij_keybind_blocks_are_rejected() {
-        let cases: &[(&str, &str, &[&str])] = &[
-            (
-                r#"keybinds clear-defaults=true {
-    locked { bind "Ctrl `" { SwitchToMode "Normal"; } }
-}
-"#,
-                "keybinds clear-defaults=true",
-                &["zellij.keybindings", "settings.jsonc"],
-            ),
-            (
-                r#"keybinds {
-    normal { bind "Alt t" { ToggleFloatingPanes; } }
-}
-"#,
-                "`keybinds` block",
-                &[],
-            ),
-        ];
-
-        for &(content, message_fragment, remediation_fragments) in cases {
-            let err = validate_base_config_keybinding_policy(&ZellijBaseConfigSource {
-                source: "managed".to_string(),
-                path: Some(PathBuf::from("/home/user/.config/yazelix/zellij.kdl")),
-                content: content.to_string(),
-            })
-            .unwrap_err();
-
-            match err {
-                CoreError::Classified {
-                    code,
-                    message,
-                    remediation,
-                    ..
-                } => {
-                    assert_eq!(code, "managed_zellij_keybinds_unsupported");
-                    assert!(message.contains(message_fragment));
-                    for expected in remediation_fragments {
-                        assert!(remediation.contains(expected));
-                    }
-                }
-                other => panic!("unexpected error: {other:?}"),
-            }
-        }
-    }
-
-    // Regression: native Zellij mode leaders remain user/Zellij-owned instead of being reasserted by Yazelix overrides after a native fallback remap.
-    #[test]
-    fn native_fallback_zellij_remap_can_remove_ctrl_n_resize_leader() {
+    fn semantic_native_mode_leaders_render_from_the_contract() {
         let temp = tempfile::tempdir().unwrap();
         let runtime_dir = temp.path();
         let overrides_dir = runtime_dir.join("configs").join("zellij");

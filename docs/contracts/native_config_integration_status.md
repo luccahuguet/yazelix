@@ -55,9 +55,10 @@ Rules:
 
 ### Zellij
 
-Managed input:
+Managed inputs:
 
-- `~/.config/yazelix/zellij.kdl`
+- `~/.config/yazelix/zellij/config.kdl`
+- `~/.config/yazelix/zellij/plugins.kdl`
 
 Native source:
 
@@ -69,18 +70,16 @@ Generated output:
 
 Statuses:
 
-- `managed_override` when the managed `zellij.kdl` exists
-- `imported_override` only immediately after `yzx import zellij` or when future import provenance proves it
-- `native_read_only` when managed `zellij.kdl` is absent and native `config.kdl` exists
-- `managed_default` when neither managed nor native config exists and Yazelix uses Zellij defaults plus Yazelix overlays
+- `managed_override` when a managed nested sidecar exists
+- `managed_default` before a nested sidecar is created from its shipped starter
 - `generated_runtime` for the merged output file
 
 Rules:
 
-- native read-only fallback does not mean full keybinding ownership
-- managed `~/.config/yazelix/zellij.kdl` rejects `keybinds` blocks, including `keybinds clear-defaults=true`
-- `clear-defaults=true` in read-only native fallback does not disable Yazelix semantic keybind generation
-- `yzx import zellij` is the explicit adoption path
+- plain native config is an explicit import source and is never active Yazelix input
+- managed `zellij/config.kdl` rejects runtime-owned nodes, including every `keybinds` form
+- managed `zellij/plugins.kdl` accepts only plugin blocks and rejects runtime-owned plugin ids
+- `yzx import zellij` validates and splits the plain native source into the managed pair
 
 ### Yazi
 

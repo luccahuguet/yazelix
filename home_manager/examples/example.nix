@@ -22,6 +22,12 @@
       preset = "dark"
     '';
 
+    # Guarded native Zellij preferences
+    config.zellij.text = ''
+      scroll_buffer_size 5000
+      mouse_mode true
+    '';
+
     # Editor configuration
     # editor_command = null;       # Optional: Use Yazelix's Helix (recommended)
     editor_command = "hx"; # Optional: Use the packaged Helix command from the Yazelix runtime

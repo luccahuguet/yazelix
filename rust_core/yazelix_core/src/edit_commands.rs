@@ -40,6 +40,7 @@ struct EditConfigArgs {
 fn get_edit_targets(config_dir: &Path) -> Vec<EditTarget> {
     let helix_path = user_config_paths::helix_config(config_dir);
     let zellij_path = user_config_paths::zellij_config(config_dir);
+    let zellij_plugins_path = user_config_paths::zellij_plugins(config_dir);
     let yazi_toml_path = user_config_paths::yazi_config(config_dir);
     let yazi_keymap_path = user_config_paths::yazi_keymap(config_dir);
     let yazi_init_path = user_config_paths::yazi_init(config_dir);
@@ -95,6 +96,16 @@ fn get_edit_targets(config_dir: &Path) -> Vec<EditTarget> {
             path: zellij_path,
             aliases: &["zellij", "terminal", "config.kdl"],
             search: "zellij terminal config.kdl multiplexer",
+        },
+        EditTarget {
+            id: "zellij-plugins",
+            label: format!(
+                "zellij-plugins  - managed third-party plugins → {}",
+                zellij_plugins_path.display()
+            ),
+            path: zellij_plugins_path,
+            aliases: &["zellij-plugins", "plugins.kdl"],
+            search: "zellij plugins plugins.kdl multiplexer",
         },
         EditTarget {
             id: "yazi",

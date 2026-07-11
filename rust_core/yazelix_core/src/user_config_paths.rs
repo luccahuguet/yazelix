@@ -15,7 +15,9 @@ pub const HELIX_CONFIG_DIR: &str = "helix";
 pub const HELIX_CONFIG: &str = "helix/config.toml";
 pub const MARS_CONFIG: &str = "mars/config.toml";
 pub const FLAT_HELIX_CONFIG: &str = "helix.toml";
-pub const ZELLIJ_CONFIG: &str = "zellij.kdl";
+pub const ZELLIJ_CONFIG: &str = "zellij/config.kdl";
+pub const ZELLIJ_PLUGINS: &str = "zellij/plugins.kdl";
+pub const FLAT_ZELLIJ_CONFIG: &str = "zellij.kdl";
 pub const YAZI_CONFIG_DIR: &str = "yazi";
 pub const YAZI_CONFIG: &str = "yazi/yazi.toml";
 pub const YAZI_KEYMAP: &str = "yazi/keymap.toml";
@@ -34,6 +36,7 @@ pub const CURRENT_MANAGED_CONFIG_FILE_NAMES: &[&str] = &[
     HELIX_CONFIG,
     MARS_CONFIG,
     ZELLIJ_CONFIG,
+    ZELLIJ_PLUGINS,
     YAZI_CONFIG,
     YAZI_KEYMAP,
     YAZI_INIT,
@@ -51,6 +54,7 @@ pub const LEGACY_CONFIG_ENTRY_NAMES: &[&str] = &[
     OLD_MAIN_CONFIG,
     CURSOR_CONFIG,
     FLAT_HELIX_CONFIG,
+    FLAT_ZELLIJ_CONFIG,
     "terminal_alacritty.toml",
     "terminal_foot.ini",
     "user_configs",
@@ -138,11 +142,12 @@ pub fn zellij_config(config_dir: &Path) -> PathBuf {
     config_dir.join(ZELLIJ_CONFIG)
 }
 
-pub fn legacy_zellij_config(config_dir: &Path) -> PathBuf {
-    config_dir
-        .join("user_configs")
-        .join("zellij")
-        .join("config.kdl")
+pub fn zellij_plugins(config_dir: &Path) -> PathBuf {
+    config_dir.join(ZELLIJ_PLUGINS)
+}
+
+pub fn flat_zellij_config(config_dir: &Path) -> PathBuf {
+    config_dir.join(FLAT_ZELLIJ_CONFIG)
 }
 
 pub fn yazi_config_dir(config_dir: &Path) -> PathBuf {

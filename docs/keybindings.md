@@ -85,7 +85,7 @@ Use semantic remaps for Yazelix-owned actions and native sidecars for the owning
 
 - Yazelix-owned Zellij actions: `settings.jsonc` under `zellij.keybindings`
 - Yazelix curated native Zellij policy: `settings.jsonc` under `zellij.native_keybindings`
-- Advanced native Zellij settings without keybinds: `~/.config/yazelix/zellij.kdl`
+- Advanced native Zellij settings without keybinds: `~/.config/yazelix/zellij/config.kdl`
 - Full native Zellij keymap ownership: plain `zellij` outside Yazelix
 - Yazelix-owned Yazi integration actions: `settings.jsonc` under `yazi.keybindings`
 - Yazi-native bindings: `~/.config/yazelix/yazi/keymap.toml`
@@ -96,7 +96,7 @@ Use semantic remaps for Yazelix-owned actions and native sidecars for the owning
 
 `zellij.popup_commands` sets the command argv for built-in popup surfaces. Defaults are `bottom_popup = ["lazygit"]`, `top_popup = ["yzx", "config", "ui"]` for Yazelix's ratconfig-backed settings editor, and `menu = ["yzx", "menu"]`. `zellij.custom_popups` adds user-defined popup surfaces; the default entry is keep-alive `zenith` with `command = ["zenith"]` and `keybindings = ["Alt Shift I"]`.
 
-`zellij.native_keybindings` accepts curated native policy ids such as `scroll_mode`, `scroll_mode_unbind`, `move_tab_left`, `move_pane_down`, and `move_tab_left_unbind`. These are Yazelix's shipped conflict-remap and validation defaults for native Zellij commands. Omitted entries keep defaults, and `[]` disables one native policy entry. Managed `~/.config/yazelix/zellij.kdl` rejects `keybinds` blocks so it cannot bypass generated workspace controls.
+`zellij.native_keybindings` accepts curated native policy ids such as `scroll_mode`, `scroll_mode_unbind`, `move_tab_left`, `move_pane_down`, and `move_tab_left_unbind`. These are Yazelix's shipped conflict-remap and validation defaults for native Zellij commands. Omitted entries keep defaults, and `[]` disables one native policy entry. Managed `~/.config/yazelix/zellij/config.kdl` rejects `keybinds` blocks so it cannot bypass generated workspace controls.
 
 Yazelix does not manage arbitrary Zellij keymaps, full Zellij mode binding ownership, or generated runtime config edits. Use plain `zellij` and `~/.config/zellij/config.kdl` for that level of native keymap control.
 

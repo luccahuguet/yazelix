@@ -26,13 +26,13 @@ The sections below cover the override surfaces that sit around that main model.
     - **Transparency**: Set `window.opacity` and `window.opacity-cells` directly in `mars/config.toml`
     - **Cursor**: Configure Mars `[yazelix.cursor]` directly. The separate `~/.config/yazelix_cursors/settings.jsonc` registry continues to own standalone Ghostty cursor generation
     - **Home Manager**: Set exactly one of `programs.yazelix.config.mars.text` or `programs.yazelix.config.mars.source` to install the sparse override declaratively
-- **Visible managed stubs**: Yazelix creates lightweight README or hook stubs under `~/.config/yazelix/` when a managed surface becomes relevant. It does not create behavior-owning Zellij or Helix config files automatically, so native fallback and `yzx import` discovery keep working until you choose those managed surfaces.
+- **Visible managed stubs**: Yazelix creates lightweight README or hook stubs under `~/.config/yazelix/` when a managed surface becomes relevant. It creates the canonical nested Zellij sidecars from small defaults and does not create a behavior-owning Helix config automatically.
 - **Native config status**: Yazelix treats native tool configs as user-owned unless you explicitly import them or select a supported native read-only mode. The shared status words are `managed_default`, `managed_override`, `imported_override`, `native_read_only`, `native_available`, `native_required_missing`, `home_manager_read_only`, and `generated_runtime`.
-- **Zellij Configuration**: `settings.jsonc` for Yazelix-owned behavior plus generated runtime overlays and an advanced native sidecar:
+- **Zellij Configuration**: `settings.jsonc` for Yazelix-owned behavior plus two guarded native sidecars:
   - **Quick start**: edit `settings.jsonc` for keybindings, popup commands, widgets, and layout settings
-  - **Advanced native settings**: edit `~/.config/yazelix/zellij.kdl` for Zellij settings Yazelix does not render
+  - **Advanced native settings**: edit `~/.config/yazelix/zellij/config.kdl` for safe native preferences and `~/.config/yazelix/zellij/plugins.kdl` for third-party plugins
   - **Full guide**: [Zellij Configuration Documentation](./zellij-configuration.md)
-  - **Managed input boundary**: Yazelix rejects `keybinds` blocks in managed `zellij.kdl` and regenerates the merged runtime config on startup
+  - **Managed input boundary**: Yazelix rejects runtime-owned nodes in `zellij/config.kdl`, accepts only plugin blocks in `zellij/plugins.kdl`, and never loads plain `~/.config/zellij/config.kdl` implicitly
 - **Yazi Configuration**: Git-conflict-free two-layer configuration system:
   - **Quick start**: create only the Yazi override files you need under `~/.config/yazelix/yazi/`
     - `yazi.toml`

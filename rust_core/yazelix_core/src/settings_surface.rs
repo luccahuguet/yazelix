@@ -2,6 +2,7 @@
 //! Canonical `settings.jsonc` surface and fail-fast old-format diagnostics.
 
 use crate::atomic_fs::write_text_atomic;
+use crate::backup_timestamp::compact_utc_backup_timestamp;
 use crate::bridge::{CoreError, ErrorClass};
 use crate::native_config_status::{path_owned_by_home_manager, path_present};
 use crate::settings_contract::{
@@ -17,6 +18,10 @@ use std::io;
 use std::path::{Path, PathBuf};
 use toml::Value as TomlValue;
 use yazelix_cursors::{CursorRegistry, render_cursor_settings_jsonc};
+use yazelix_zellij_config_pack::{
+    DEFAULT_ZELLIJ_CONFIG_SIDECAR, DEFAULT_ZELLIJ_PLUGINS_SIDECAR, split_zellij_sidecars,
+    validate_zellij_config_sidecar, validate_zellij_plugins_sidecar,
+};
 
 pub const SETTINGS_SCHEMA_FILENAME: &str = "yazelix_settings.schema.json";
 pub const DEFAULT_SETTINGS_CONFIG_FILENAME: &str = "settings_default.jsonc";
@@ -95,6 +100,7 @@ pub fn ensure_settings_config_with_cursor_component(
     ensure_no_old_main_inputs(&paths)?;
 
     if paths.settings_config.exists() {
+        ensure_zellij_sidecars(config_dir)?;
         migrate_released_mars_settings(config_dir, &paths.settings_config)?;
         reconcile_settings_config_contract(&paths.settings_config, default_main_config)?;
         if cursor_component_enabled {
@@ -143,6 +149,7 @@ pub fn ensure_settings_config_with_cursor_component(
             source,
         )
     })?;
+    ensure_zellij_sidecars(config_dir)?;
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
@@ -155,6 +162,141 @@ pub fn ensure_settings_config_with_cursor_component(
     }
 
     Ok(paths.settings_config)
+}
+
+fn ensure_zellij_sidecars(config_dir: &Path) -> Result<(), CoreError> {
+    let flat = user_config_paths::flat_zellij_config(config_dir);
+    let config = user_config_paths::zellij_config(config_dir);
+    let plugins = user_config_paths::zellij_plugins(config_dir);
+    let flat_present = path_present(&flat);
+    if flat_present && (path_present(&config) || path_present(&plugins)) {
+        return Err(zellij_migration_failure(
+            "zellij_sidecar_migration_conflict",
+            "Both the retired flat Zellij sidecar and a nested Zellij sidecar exist.",
+            "Keep the intended content in zellij/config.kdl and zellij/plugins.kdl, then move zellij.kdl aside.",
+            &flat,
+        ));
+    }
+    if !flat_present {
+        ensure_zellij_sidecar(
+            &config,
+            DEFAULT_ZELLIJ_CONFIG_SIDECAR,
+            validate_zellij_config_sidecar,
+        )?;
+        return ensure_zellij_sidecar(
+            &plugins,
+            DEFAULT_ZELLIJ_PLUGINS_SIDECAR,
+            validate_zellij_plugins_sidecar,
+        );
+    }
+    if flat_present && (path_owned_by_home_manager(&flat) || settings_path_is_read_only(&flat)) {
+        return Err(zellij_migration_failure(
+            "read_only_flat_zellij_migration",
+            "The retired flat Zellij sidecar is read-only.",
+            "Split it declaratively into programs.yazelix.config.zellij and zellij/plugins.kdl, then move zellij.kdl aside.",
+            &flat,
+        ));
+    }
+    let flat_text = fs::read_to_string(&flat).map_err(|source| {
+        io_err(
+            "read_flat_zellij_migration_source",
+            &flat,
+            "Could not read the retired flat Zellij sidecar",
+            source,
+        )
+    })?;
+    let split =
+        split_zellij_sidecars(&flat_text).map_err(|error| zellij_migration_error(&flat, error))?;
+    let timestamp = compact_utc_backup_timestamp();
+    backup_zellij_migration_source(&flat, &timestamp)?;
+    write_text_atomic(&config, &split.config)?;
+    if let Err(error) = write_text_atomic(&plugins, &split.plugins) {
+        let _ = fs::remove_file(&config);
+        return Err(error);
+    }
+    if let Err(source) = fs::remove_file(&flat) {
+        let _ = fs::remove_file(&config);
+        let _ = fs::remove_file(&plugins);
+        return Err(io_err(
+            "retire_flat_zellij_config",
+            &flat,
+            "Could not retire the flat Zellij sidecar after migration",
+            source,
+        ));
+    }
+    Ok(())
+}
+
+fn ensure_zellij_sidecar(
+    path: &Path,
+    default: &str,
+    validate: fn(&str) -> Result<(), yazelix_zellij_config_pack::ZellijSidecarError>,
+) -> Result<(), CoreError> {
+    if !path_present(path) {
+        return write_text_atomic(path, default);
+    }
+    let raw = fs::read_to_string(path).map_err(|source| {
+        io_err(
+            "read_zellij_sidecar",
+            path,
+            "Could not read a managed Zellij sidecar",
+            source,
+        )
+    })?;
+    validate(&raw).map_err(|error| zellij_migration_error(path, error))
+}
+
+fn migration_backup_path(path: &Path, timestamp: &str) -> PathBuf {
+    let name = path
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or("config");
+    path.with_file_name(format!("{name}.backup-{timestamp}"))
+}
+
+fn backup_zellij_migration_source(path: &Path, timestamp: &str) -> Result<(), CoreError> {
+    fs::copy(path, migration_backup_path(path, timestamp))
+        .map(|_| ())
+        .map_err(|error| {
+            io_err(
+                "backup_zellij_migration_source",
+                path,
+                "Could not back up a Zellij migration source",
+                error,
+            )
+        })
+}
+
+fn zellij_migration_error(
+    path: &Path,
+    error: yazelix_zellij_config_pack::ZellijSidecarError,
+) -> CoreError {
+    CoreError::classified(
+        ErrorClass::Config,
+        error.code,
+        format!("{}: {}:{}", error.message(), path.display(), error.line),
+        error.remediation(),
+        json!({
+            "path": path.display().to_string(),
+            "line": error.line,
+            "node": error.node,
+        }),
+    )
+}
+
+fn zellij_migration_failure(
+    code: &'static str,
+    message: impl Into<String>,
+    remediation: &'static str,
+    path: &Path,
+) -> CoreError {
+    CoreError::classified(
+        ErrorClass::Config,
+        code,
+        message,
+        remediation,
+        json!({ "path": path.display().to_string() }),
+    )
 }
 
 const LEGACY_TRANSPARENCY_OPACITY: &[(&str, f64)] = &[
@@ -917,6 +1059,82 @@ mod tests {
         assert_eq!(cursor_value["settings"]["trail"].as_str(), Some("snow"));
         assert!(!config.path().join("yazelix.toml").exists());
         assert!(!config.path().join("cursors.toml").exists());
+        assert!(config.path().join("zellij/config.kdl").exists());
+        assert!(config.path().join("zellij/plugins.kdl").exists());
+    }
+
+    // Regression: the released flat sidecar splits once without mutating settings or losing third-party plugin content.
+    #[test]
+    fn migrates_flat_zellij_sidecar() {
+        let config = tempdir().unwrap();
+        let settings = config.path().join("settings.jsonc");
+        fs::write(
+            &settings,
+            r#"{
+  "zellij": {
+    "disable_tips": false,
+    "pane_frames": false,
+    "rounded_corners": false,
+    "default_mode": "locked",
+    "theme": "default"
+  }
+}
+"#,
+        )
+        .unwrap();
+        fs::write(
+            config.path().join("zellij.kdl"),
+            "copy_on_select false\nplugins {\n    // keep me\n    third location=\"file:/tmp/third.wasm\"\n}\nload_plugins {\n    third\n}\n",
+        )
+        .unwrap();
+
+        let before = fs::read_to_string(&settings).unwrap();
+        ensure_zellij_sidecars(config.path()).unwrap();
+        ensure_zellij_sidecars(config.path()).unwrap();
+
+        assert!(!config.path().join("zellij.kdl").exists());
+        let migrated = fs::read_to_string(config.path().join("zellij/config.kdl")).unwrap();
+        assert!(migrated.contains("copy_on_select false"));
+        let plugins = fs::read_to_string(config.path().join("zellij/plugins.kdl")).unwrap();
+        assert!(plugins.contains("// keep me"));
+        assert!(plugins.contains("third location=\"file:/tmp/third.wasm\""));
+        assert_eq!(fs::read_to_string(&settings).unwrap(), before);
+        let backups = fs::read_dir(config.path())
+            .unwrap()
+            .filter_map(Result::ok)
+            .map(|entry| entry.file_name().to_string_lossy().into_owned())
+            .collect::<Vec<_>>();
+        assert!(
+            backups
+                .iter()
+                .any(|name| name.starts_with("zellij.kdl.backup-"))
+        );
+    }
+
+    // Defends: coexistence is a hard conflict and migration performs no writes or precedence selection.
+    #[test]
+    fn zellij_sidecar_migration_conflict_writes_nothing() {
+        let config = tempdir().unwrap();
+        let settings = config.path().join("settings.jsonc");
+        fs::write(&settings, "{\n  \"zellij\": { \"pane_frames\": true }\n}\n").unwrap();
+        fs::write(config.path().join("zellij.kdl"), "copy_on_select false\n").unwrap();
+        fs::create_dir_all(config.path().join("zellij")).unwrap();
+        fs::write(
+            config.path().join("zellij/config.kdl"),
+            "mouse_mode false\n",
+        )
+        .unwrap();
+        let before = fs::read_to_string(&settings).unwrap();
+
+        let error = ensure_zellij_sidecars(config.path()).unwrap_err();
+
+        assert_eq!(error.code(), "zellij_sidecar_migration_conflict");
+        assert_eq!(fs::read_to_string(&settings).unwrap(), before);
+        assert_eq!(
+            fs::read_to_string(config.path().join("zellij/config.kdl")).unwrap(),
+            "mouse_mode false\n"
+        );
+        assert!(!config.path().join("zellij/plugins.kdl").exists());
     }
 
     // Regression: existing writable settings.jsonc receives newly shipped additive defaults without overwriting user values.

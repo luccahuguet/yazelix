@@ -8,6 +8,16 @@ use serde_json::json;
 
 pub const RENDERER_SCHEMA_VERSION: u64 = 2;
 pub const MANAGED_SIDEBAR_LAYOUT_NAME: &str = "yzx_side";
+pub const DEFAULT_ZELLIJ_CONFIG_SIDECAR: &str = r#"// Native Zellij preferences used by Yazelix
+scroll_buffer_size 5000
+"#;
+pub const DEFAULT_ZELLIJ_PLUGINS_SIDECAR: &str = r#"// Extra third-party Zellij plugins
+plugins {
+}
+
+load_plugins {
+}
+"#;
 
 const GENERATED_LAYOUT_MARKER: &str = "GENERATED ZELLIJ LAYOUT (YAZELIX)";
 const GENERATED_LAYOUT_FINGERPRINT_PREFIX: &str = "generation_fingerprint:";
@@ -19,6 +29,29 @@ const RUNTIME_DIR_PLACEHOLDER: &str = "__YAZELIX_RUNTIME_DIR__";
 const PANE_ORCHESTRATOR_PLUGIN_ALIAS: &str = "yazelix_pane_orchestrator";
 const HOME_TAB_MARKER: &str = "\u{f015}";
 const YZPP_PLUGIN_ALIAS: &str = "yzpp";
+const CONFIG_SIDECAR_FORBIDDEN_TOP_LEVEL: &[&str] = &[
+    "keybinds",
+    "show_startup_tips",
+    "pane_frames",
+    "default_mode",
+    "ui",
+    "default_shell",
+    "default_layout",
+    "layout",
+    "plugins",
+    "load_plugins",
+    "support_kitty_keyboard_protocol",
+    "env",
+    "session_name",
+    "attach_to_session",
+    "theme",
+    "layout_dir",
+    "show_release_notes",
+    "on_force_close",
+    "session_serialization",
+    "serialize_pane_viewport",
+];
+const OWNED_PLUGIN_IDS: &[&str] = &[PANE_ORCHESTRATOR_PLUGIN_ALIAS, YZPP_PLUGIN_ALIAS];
 const BOTTOM_POPUP_COMMAND_KEY: &str = "bottom_popup";
 const TOP_POPUP_COMMAND_KEY: &str = "top_popup";
 const MENU_POPUP_COMMAND_KEY: &str = "menu";
@@ -444,6 +477,133 @@ pub struct ZellijRenderPlanData {
 pub struct TopLevelSetting {
     pub name: String,
     pub value: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ZellijSidecarError {
+    pub code: &'static str,
+    pub line: usize,
+    pub node: String,
+}
+
+impl ZellijSidecarError {
+    pub fn message(&self) -> String {
+        match self.code {
+            "guarded_zellij_config_node" => {
+                format!("Zellij node `{}` is owned by Yazelix", self.node)
+            }
+            "unsupported_zellij_plugins_node" => format!(
+                "Zellij plugin sidecar supports only `plugins` and `load_plugins`, found `{}`",
+                self.node
+            ),
+            "duplicate_zellij_plugins_block" => {
+                format!("Zellij plugin sidecar has duplicate `{}` blocks", self.node)
+            }
+            "reserved_zellij_plugin_id" => {
+                format!("Zellij plugin id `{}` is owned by Yazelix", self.node)
+            }
+            "unmatched_zellij_sidecar_close" => {
+                "Zellij sidecar has an unmatched closing brace".to_string()
+            }
+            "unclosed_zellij_sidecar_block" => "Zellij sidecar has an unclosed block".to_string(),
+            _ => "Invalid Zellij sidecar".to_string(),
+        }
+    }
+
+    pub fn remediation(&self) -> &'static str {
+        match self.code {
+            "unsupported_zellij_plugins_node" => {
+                "Keep scalar preferences in zellij/config.kdl and only plugin declarations in zellij/plugins.kdl."
+            }
+            "duplicate_zellij_plugins_block" => {
+                "Merge each plugin block family into one top-level block."
+            }
+            "reserved_zellij_plugin_id" => {
+                "Remove the reserved plugin entry; Yazelix supplies its first-party plugins."
+            }
+            "unmatched_zellij_sidecar_close" | "unclosed_zellij_sidecar_block" => {
+                "Balance the sidecar braces and retry."
+            }
+            _ => {
+                "Remove the guarded node from zellij/config.kdl and configure it through the owning Yazelix surface."
+            }
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ZellijSidecarSplit {
+    pub config: String,
+    pub plugins: String,
+}
+
+pub fn validate_zellij_config_sidecar(text: &str) -> Result<(), ZellijSidecarError> {
+    for node in top_level_nodes(text)? {
+        if CONFIG_SIDECAR_FORBIDDEN_TOP_LEVEL.contains(&node.name.as_str()) {
+            return Err(sidecar_error("guarded_zellij_config_node", &node));
+        }
+    }
+    Ok(())
+}
+
+pub fn validate_zellij_plugins_sidecar(text: &str) -> Result<(), ZellijSidecarError> {
+    let nodes = top_level_nodes(text)?;
+    let mut seen = BTreeSet::new();
+    for node in &nodes {
+        if !matches!(node.name.as_str(), "plugins" | "load_plugins") {
+            return Err(sidecar_error("unsupported_zellij_plugins_node", node));
+        }
+        if !seen.insert(node.name.clone()) {
+            return Err(sidecar_error("duplicate_zellij_plugins_block", node));
+        }
+    }
+
+    let extracted = extract_semantic_config_blocks(text);
+    for body in [extracted.plugin_lines, extracted.load_plugin_lines] {
+        for mut node in top_level_nodes(&body.join("\n"))? {
+            if OWNED_PLUGIN_IDS.contains(&node.name.as_str()) {
+                node.line = zellij_token_line(text, &node.name).unwrap_or(node.line);
+                return Err(sidecar_error("reserved_zellij_plugin_id", &node));
+            }
+        }
+    }
+    Ok(())
+}
+
+pub fn split_zellij_sidecars(text: &str) -> Result<ZellijSidecarSplit, ZellijSidecarError> {
+    for node in top_level_nodes(text)? {
+        if CONFIG_SIDECAR_FORBIDDEN_TOP_LEVEL.contains(&node.name.as_str())
+            && !matches!(node.name.as_str(), "plugins" | "load_plugins")
+        {
+            return Err(sidecar_error("guarded_zellij_config_node", &node));
+        }
+    }
+    let extracted = extract_semantic_config_blocks(text);
+    let config = normalized_sidecar_text(
+        &[
+            extracted.config_without_semantic_blocks,
+            (!extracted.ui_lines.is_empty())
+                .then(|| block_with_lines("ui", &extracted.ui_lines))
+                .unwrap_or_default(),
+        ]
+        .join("\n"),
+    );
+    let plugins = normalized_sidecar_text(
+        &[
+            block_with_lines("plugins", &extracted.plugin_lines),
+            block_with_lines("load_plugins", &extracted.load_plugin_lines),
+        ]
+        .join("\n\n"),
+    );
+    validate_zellij_config_sidecar(&config)?;
+    validate_zellij_plugins_sidecar(&plugins)?;
+    Ok(ZellijSidecarSplit { config, plugins })
+}
+
+pub fn combine_zellij_sidecars(config: &str, plugins: &str) -> Result<String, ZellijSidecarError> {
+    validate_zellij_config_sidecar(config)?;
+    validate_zellij_plugins_sidecar(plugins)?;
+    Ok(normalized_sidecar_text(&format!("{config}\n{plugins}")))
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -1160,9 +1320,8 @@ fn render_merged_config(request: &ZellijConfigPackRenderRequest) -> String {
         "// GENERATED ZELLIJ CONFIG (YAZELIX)".to_string(),
         "// ========================================".to_string(),
         "// Source preference:".to_string(),
-        "//   1) ~/.config/yazelix/zellij.kdl (Yazelix-managed override)".to_string(),
-        "//   2) ~/.config/zellij/config.kdl (native fallback, read-only)".to_string(),
-        "//   3) zellij setup --dump-config (defaults)".to_string(),
+        "//   1) ~/.config/yazelix/zellij/config.kdl (guarded native preferences)".to_string(),
+        "//   2) ~/.config/yazelix/zellij/plugins.kdl (third-party plugins)".to_string(),
         "//".to_string(),
         "// Generated: 1970-01-01 00:00:00".to_string(),
         "// ========================================".to_string(),
@@ -1921,6 +2080,128 @@ fn expand_runtime_placeholder(value: &str, runtime_dir: &str) -> String {
     value.replace(RUNTIME_DIR_PLACEHOLDER, runtime_dir)
 }
 
+#[derive(Debug)]
+struct TopLevelNode {
+    name: String,
+    line: usize,
+}
+
+fn sidecar_error(code: &'static str, node: &TopLevelNode) -> ZellijSidecarError {
+    ZellijSidecarError {
+        code,
+        line: node.line,
+        node: node.name.clone(),
+    }
+}
+
+fn top_level_nodes(text: &str) -> Result<Vec<TopLevelNode>, ZellijSidecarError> {
+    let mut nodes = Vec::new();
+    let mut depth = 0isize;
+    for (index, raw_line) in text.lines().enumerate() {
+        let line = zellij_code_before_comment(raw_line);
+        if depth == 0
+            && let Some(name) = first_zellij_token(line)
+        {
+            nodes.push(TopLevelNode {
+                name: name.to_string(),
+                line: index + 1,
+            });
+        }
+        depth += zellij_brace_delta(line);
+        if depth < 0 {
+            return Err(ZellijSidecarError {
+                code: "unmatched_zellij_sidecar_close",
+                line: index + 1,
+                node: "}".to_string(),
+            });
+        }
+    }
+    if depth != 0 {
+        return Err(ZellijSidecarError {
+            code: "unclosed_zellij_sidecar_block",
+            line: text.lines().count().max(1),
+            node: "{".to_string(),
+        });
+    }
+    Ok(nodes)
+}
+
+fn zellij_token_line(text: &str, token: &str) -> Option<usize> {
+    text.lines().enumerate().find_map(|(index, line)| {
+        zellij_code_before_comment(line)
+            .split(|character: char| {
+                character.is_whitespace() || matches!(character, '{' | '}' | ';')
+            })
+            .any(|candidate| candidate == token)
+            .then_some(index + 1)
+    })
+}
+
+fn first_zellij_token(line: &str) -> Option<&str> {
+    line.trim_start()
+        .split(|character: char| character.is_whitespace() || matches!(character, '{' | '}' | ';'))
+        .next()
+        .filter(|token| !token.is_empty())
+}
+
+fn zellij_code_before_comment(line: &str) -> &str {
+    let bytes = line.as_bytes();
+    let mut in_string = false;
+    let mut escaped = false;
+    let mut index = 0;
+    while index < bytes.len() {
+        let byte = bytes[index];
+        if in_string {
+            match (escaped, byte) {
+                (true, _) => escaped = false,
+                (false, b'\\') => escaped = true,
+                (false, b'"') => in_string = false,
+                _ => {}
+            }
+        } else if byte == b'"' {
+            in_string = true;
+        } else if byte == b'/' && bytes.get(index + 1) == Some(&b'/') {
+            return &line[..index];
+        }
+        index += 1;
+    }
+    line
+}
+
+fn zellij_brace_delta(line: &str) -> isize {
+    zellij_code_before_comment(line)
+        .chars()
+        .fold(
+            (0isize, false, false),
+            |(depth, in_string, escaped), character| {
+                if in_string {
+                    return match (escaped, character) {
+                        (true, _) => (depth, true, false),
+                        (false, '\\') => (depth, true, true),
+                        (false, '"') => (depth, false, false),
+                        (false, _) => (depth, true, false),
+                    };
+                }
+                match character {
+                    '"' => (depth, true, false),
+                    '{' => (depth + 1, false, false),
+                    '}' => (depth - 1, false, false),
+                    _ => (depth, false, false),
+                }
+            },
+        )
+        .0
+}
+
+fn normalized_sidecar_text(text: &str) -> String {
+    let trimmed = text.trim();
+    if trimmed.is_empty() {
+        String::new()
+    } else {
+        format!("{trimmed}\n")
+    }
+}
+
 #[derive(Debug, Default)]
 struct ExtractedSemanticBlocks {
     config_without_semantic_blocks: String,
@@ -1940,9 +2221,8 @@ fn extract_semantic_config_blocks(config_content: &str) -> ExtractedSemanticBloc
     let mut brace_depth: i64 = 0;
 
     for line in config_content.lines() {
-        let trimmed = line.trim();
-        let open_braces = line.chars().filter(|ch| *ch == '{').count() as i64;
-        let close_braces = line.chars().filter(|ch| *ch == '}').count() as i64;
+        let trimmed = zellij_code_before_comment(line).trim();
+        let brace_delta = zellij_brace_delta(line) as i64;
 
         if active_block.is_empty() {
             let matched_block = ["load_plugins", "plugins", "keybinds", "ui"]
@@ -1950,7 +2230,7 @@ fn extract_semantic_config_blocks(config_content: &str) -> ExtractedSemanticBloc
                 .find(|block| trimmed.starts_with(block));
             if let Some(block) = matched_block {
                 active_block = block.to_string();
-                brace_depth = open_braces - close_braces;
+                brace_depth = brace_delta;
                 if brace_depth <= 0 {
                     let inline_body = trimmed
                         .trim_start_matches(block)
@@ -1975,7 +2255,7 @@ fn extract_semantic_config_blocks(config_content: &str) -> ExtractedSemanticBloc
                 stripped_lines.push(line.to_string());
             }
         } else {
-            brace_depth += open_braces - close_braces;
+            brace_depth += brace_delta;
             if brace_depth > 0 {
                 push_semantic_line(
                     &active_block,
@@ -2033,6 +2313,57 @@ fn json_quote(value: impl AsRef<str>) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // Defends: the scalar sidecar cannot take ownership of generated runtime nodes.
+    #[test]
+    fn guarded_config_sidecar_rejects_runtime_owned_nodes() {
+        let error =
+            validate_zellij_config_sidecar("scroll_buffer_size 5000\nkeybinds {}\n").unwrap_err();
+        assert_eq!(error.code, "guarded_zellij_config_node");
+        assert_eq!(error.node, "keybinds");
+        assert_eq!(error.line, 2);
+    }
+
+    // Defends: plugin customization cannot redeclare first-party runtime aliases.
+    #[test]
+    fn plugin_sidecar_rejects_runtime_owned_plugin_ids() {
+        let error = validate_zellij_plugins_sidecar(
+            "plugins {\n    yzpp location=\"file:/tmp/other.wasm\"\n}\n",
+        )
+        .unwrap_err();
+        assert_eq!(error.code, "reserved_zellij_plugin_id");
+        assert_eq!(error.node, "yzpp");
+        assert_eq!(error.line, 2);
+
+        let inline =
+            validate_zellij_plugins_sidecar("plugins { yzpp location=\"file:/tmp/other.wasm\" }\n")
+                .unwrap_err();
+        assert_eq!(inline.node, "yzpp");
+        assert_eq!(inline.line, 1);
+    }
+
+    // Regression: the flat migration preserves third-party plugin bodies and comments while separating scalar preferences.
+    #[test]
+    fn splits_flat_zellij_config_without_losing_plugin_content() {
+        let split = split_zellij_sidecars(
+            "scroll_buffer_size 7000\nplugins {\n    // retained\n    third location=\"file:/tmp/third.wasm\" {\n        option \"value\"\n    }\n}\nload_plugins {\n    third\n}\n",
+        )
+        .unwrap();
+        assert_eq!(split.config, "scroll_buffer_size 7000\n");
+        assert!(split.plugins.contains("// retained"));
+        assert!(
+            split
+                .plugins
+                .contains("third location=\"file:/tmp/third.wasm\"")
+        );
+        assert!(split.plugins.contains("load_plugins {\n    third\n}"));
+    }
+
+    // Defends: braces and comment markers inside quoted KDL values do not corrupt ownership validation.
+    #[test]
+    fn sidecar_validation_ignores_syntax_markers_inside_strings() {
+        validate_zellij_config_sidecar("copy_command \"tool // {literal}\"\n").unwrap();
+    }
 
     fn sample_request() -> ZellijConfigPackRenderRequest {
         ZellijConfigPackRenderRequest {

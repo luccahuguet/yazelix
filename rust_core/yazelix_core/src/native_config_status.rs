@@ -231,6 +231,7 @@ fn settings_status(request: &NativeConfigStatusRequest) -> NativeConfigStatusEnt
 
 fn zellij_statuses(request: &NativeConfigStatusRequest) -> Vec<NativeConfigStatusEntry> {
     let managed = user_config_paths::zellij_config(&request.config_dir);
+    let plugins = user_config_paths::zellij_plugins(&request.config_dir);
     let native = request.xdg_config_home.join("zellij").join("config.kdl");
     let generated = request
         .state_dir
@@ -241,45 +242,43 @@ fn zellij_statuses(request: &NativeConfigStatusRequest) -> Vec<NativeConfigStatu
         entry(
             "zellij.input",
             "zellij",
-            "Zellij input config used before Yazelix overlays",
+            "Guarded Zellij preferences used before Yazelix overlays",
             NativeConfigStatusCode::ManagedOverride,
-        )
-    } else if native.exists() {
-        entry(
-            "zellij.input",
-            "zellij",
-            "Zellij native fallback read without ownership",
-            NativeConfigStatusCode::NativeReadOnly,
         )
     } else {
         entry(
             "zellij.input",
             "zellij",
-            "Packaged Zellij defaults plus Yazelix overlays",
+            "Zellij defaults plus Yazelix overlays",
             NativeConfigStatusCode::ManagedDefault,
         )
     };
-    input.active_path = if path_present(&managed) {
-        Some(path_string(&managed))
-    } else if native.exists() {
-        Some(path_string(&native))
-    } else {
-        None
-    };
+    input.active_path = path_present(&managed).then(|| path_string(&managed));
     input.managed_path = Some(path_string(&managed));
     input.native_paths = vec![path_string(&native)];
-    input.allowed_action = match input.status.as_str() {
-        "managed_override" => "edit_managed".to_string(),
-        "native_read_only" => "open_read_only_or_import".to_string(),
-        _ => "import_native".to_string(),
+    input.allowed_action = if path_present(&managed) {
+        "edit_managed".to_string()
+    } else {
+        "create_or_import_native".to_string()
     };
-    if input.status == "native_read_only" {
-        input.read_only_reason =
-            Some("Yazelix reads the native Zellij config without taking ownership".to_string());
-    }
+
+    let mut plugin_input = entry(
+        "zellij.plugins",
+        "zellij",
+        "Additive third-party Zellij plugins",
+        if path_present(&plugins) {
+            NativeConfigStatusCode::ManagedOverride
+        } else {
+            NativeConfigStatusCode::ManagedDefault
+        },
+    );
+    plugin_input.active_path = path_present(&plugins).then(|| path_string(&plugins));
+    plugin_input.managed_path = Some(path_string(&plugins));
+    plugin_input.allowed_action = "edit_managed".to_string();
 
     vec![
         input,
+        plugin_input,
         generated_entry(
             "zellij.generated",
             "zellij",
@@ -534,9 +533,9 @@ mod tests {
             .unwrap_or_else(|| panic!("missing status surface {surface}"))
     }
 
-    // Defends: Zellij's native fallback is classified as read-only instead of being treated as an adopted managed override.
+    // Defends: plain Zellij config remains an explicit import source and is never selected implicitly.
     #[test]
-    fn zellij_native_config_is_read_only_fallback() {
+    fn zellij_native_config_is_not_an_active_fallback() {
         let tmp = TempDir::new().unwrap();
         let req = request(&tmp);
         let native = req.xdg_config_home.join("zellij").join("config.kdl");
@@ -546,12 +545,10 @@ mod tests {
         let entries = classify_native_config_statuses(&req);
         let zellij = find(&entries, "zellij.input");
 
-        assert_eq!(zellij.status, "native_read_only");
-        assert_eq!(zellij.label, "Native read-only source");
-        assert_eq!(
-            zellij.active_path.as_deref(),
-            Some(path_string(&native).as_str())
-        );
+        assert_eq!(zellij.status, "managed_default");
+        assert_eq!(zellij.active_path, None);
+        assert_eq!(zellij.native_paths, vec![path_string(&native)]);
+        assert_eq!(zellij.allowed_action, "create_or_import_native");
     }
 
     // Defends: absent user Mars override reports the packaged base as the active default.

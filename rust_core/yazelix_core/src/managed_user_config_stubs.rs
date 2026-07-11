@@ -45,10 +45,6 @@ Bundled Yazelix Steel plugins live in the packaged runtime and are selected with
 helix.steel_plugins.enabled.
 "#;
 
-pub(crate) fn ensure_zellij_surface_stub(_config_dir: &Path) -> Result<(), CoreError> {
-    Ok(())
-}
-
 pub(crate) fn ensure_helix_surface_stub(config_dir: &Path) -> Result<(), CoreError> {
     write_stub_if_missing(
         &config_dir
@@ -140,10 +136,8 @@ mod tests {
     fn readme_stubs_preserve_behavior_owned_files_absent() {
         let config = tempdir().expect("config");
 
-        ensure_zellij_surface_stub(config.path()).unwrap();
         ensure_helix_surface_stub(config.path()).unwrap();
 
-        assert!(!config.path().join("zellij.kdl").exists());
         assert!(!config.path().join("helix.toml").exists());
         assert!(!config.path().join("helix/config.toml").exists());
         assert!(

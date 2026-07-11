@@ -96,6 +96,29 @@ ${terminalDescriptionBullets}
     '';
   };
 
+  config.zellij = mkOption {
+    type = types.nullOr (types.submodule {
+      options = {
+        text = mkOption {
+          type = types.nullOr types.lines;
+          default = null;
+          description = "Inline zellij/config.kdl contents.";
+        };
+        source = mkOption {
+          type = types.nullOr types.path;
+          default = null;
+          description = "zellij/config.kdl file to install.";
+        };
+      };
+    });
+    default = null;
+    description = ''
+      Guarded native Zellij preferences at ~/.config/yazelix/zellij/config.kdl.
+      Set exactly one of text or source. Plugin declarations remain a normal
+      user-owned zellij/plugins.kdl file.
+    '';
+  };
+
   runtime_tool_sources = mkOption {
     type = types.attrsOf (types.enum runtimeToolSourceModes);
     default = { };

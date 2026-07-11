@@ -67,7 +67,7 @@ fn request(runtime: PathBuf, config: PathBuf) -> ConfigUiRequest {
     }
 }
 
-// Defends: advanced config UI state exposes sidecar presence and the Home Manager/read-only ownership signal without mutating config files.
+// Defends: advanced config UI state exposes nested sidecar presence and the Home Manager/read-only ownership signal without mutating config files.
 #[cfg(unix)]
 #[test]
 fn reports_sidecars_and_home_manager_read_only_state() {
@@ -84,7 +84,12 @@ fn reports_sidecars_and_home_manager_read_only_state() {
     permissions.set_readonly(true);
     fs::set_permissions(&hm_settings, permissions).expect("readonly");
     symlink(&hm_settings, config.path().join("settings.jsonc")).expect("settings symlink");
-    fs::write(config.path().join("zellij.kdl"), "layout {}\n").expect("zellij sidecar");
+    fs::create_dir_all(config.path().join("zellij")).expect("zellij dir");
+    fs::write(
+        config.path().join("zellij/config.kdl"),
+        "mouse_mode false\n",
+    )
+    .expect("zellij sidecar");
 
     let model = build_config_ui_model(&request(
         runtime.path().to_path_buf(),
@@ -97,10 +102,16 @@ fn reports_sidecars_and_home_manager_read_only_state() {
     let zellij = model
         .sidecars
         .iter()
-        .find(|sidecar| sidecar.name == "zellij.kdl")
+        .find(|sidecar| sidecar.name == "zellij/config.kdl")
         .expect("zellij sidecar");
     assert!(zellij.present);
     assert_eq!(zellij.owner, ConfigUiPathOwner::User);
+    assert!(
+        model
+            .sidecars
+            .iter()
+            .any(|sidecar| sidecar.name == "zellij/plugins.kdl")
+    );
     let yazi_keymap = model
         .sidecars
         .iter()
