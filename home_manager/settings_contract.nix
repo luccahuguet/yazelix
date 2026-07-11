@@ -7,8 +7,6 @@ with lib;
 
 let
   mainConfigContract = builtins.fromTOML (builtins.readFile ../config_metadata/main_config_contract.toml);
-  ratconfigContractVersion = mainConfigContract.contract.ratconfig_contract_version;
-  ratconfigAppliedChangeIds = mainConfigContract.contract.ratconfig_applied_change_ids;
   mainContractFields = mainConfigContract.fields;
   defaultCursorConfig = builtins.fromTOML (builtins.readFile ../yazelix_cursors_default.toml);
 
@@ -17,16 +15,6 @@ let
     if builtins.hasAttr name attrs then builtins.getAttr name attrs else fallback;
 
   getMainField = fieldPath: builtins.getAttr fieldPath mainContractFields;
-
-  mainFieldAllowsNull =
-    field:
-    (attrOr field "nullable" false)
-    || (attrOr field "home_manager_default_is_null" false)
-    || (attrOr field "home_manager_can_omit" false);
-
-  mainFieldDefault =
-    field:
-    if attrOr field "home_manager_default_is_null" false then null else field.default;
 
   mainFieldType =
     field:
@@ -154,7 +142,7 @@ let
         else
           throw "Unsupported main config contract kind for Home Manager: ${field.kind}";
     in
-    if mainFieldAllowsNull field then types.nullOr baseType else baseType;
+    types.nullOr baseType;
 
   mkMainContractOption =
     fieldPath: extra:
@@ -164,7 +152,7 @@ let
     mkOption (
       {
         type = mainFieldType field;
-        default = mainFieldDefault field;
+        default = null;
       }
       // extra
     );
@@ -185,14 +173,7 @@ let
       value = configValueForField fieldPath;
     in
     if value == null then
-      if attrOr field "home_manager_can_omit" false then
-        null
-      else if field.kind == "helix_external" then
-        null
-      else if (attrOr field "parser_behavior" "") == "empty_string_to_null" then
-        ""
-      else
-        throw "Null Home Manager value is not renderable for ${fieldPath}"
+      null
     else if field.kind == "custom_popup_list" then
       map (popup: lib.filterAttrs (_name: popupValue: popupValue != null) popup) value
     else
@@ -211,14 +192,7 @@ let
       )
     ) { } mainConfigSettingsFieldPaths;
 
-  configTomlValue = lib.recursiveUpdate mainConfigSettingsValue {
-    ratconfig.contract = {
-      schema_version = 1;
-      contract_id = "yazelix.config";
-      version = ratconfigContractVersion;
-      applied_change_ids = ratconfigAppliedChangeIds;
-    };
-  };
+  configTomlValue = mainConfigSettingsValue;
 in
 {
   inherit configTomlValue mkMainContractOption;

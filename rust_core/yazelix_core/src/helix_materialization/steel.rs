@@ -117,16 +117,10 @@ pub(super) fn load_steel_plugin_selection(
     config_dir: &Path,
 ) -> Result<SteelPluginConfig, CoreError> {
     let paths = primary_config_paths(runtime_dir, config_dir);
-    let config_path = if paths.user_config.exists() {
-        paths.user_config
-    } else {
-        paths.default_config_path.clone()
-    };
     let normalized = normalize_config(&NormalizeConfigRequest {
-        config_path,
+        config_path: paths.user_config,
         default_config_path: paths.default_config_path,
         contract_path: paths.contract_path,
-        include_missing: false,
     })?
     .normalized_config;
 

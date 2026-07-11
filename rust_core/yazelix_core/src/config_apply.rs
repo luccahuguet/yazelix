@@ -316,7 +316,6 @@ pub fn build_pane_orchestrator_runtime_reload_payload(
         config_path: request.config_path.clone(),
         default_config_path: request.default_config_path.clone(),
         contract_path: request.contract_path.clone(),
-        include_missing: true,
     })?;
     let generation = read_zellij_generation_fingerprint(&request.zellij_config_dir)?;
     Ok(PaneOrchestratorRuntimeReloadPayload {

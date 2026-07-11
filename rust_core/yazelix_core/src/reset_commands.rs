@@ -3,9 +3,9 @@
 
 use crate::active_config_surface::primary_config_paths;
 use crate::backup_timestamp::compact_utc_backup_timestamp;
-use crate::bridge::CoreError;
+use crate::bridge::{CoreError, ErrorClass};
 use crate::control_plane::{config_dir_from_env, runtime_dir_from_env};
-use crate::settings_surface::render_default_config;
+use crate::native_config_status::{path_owned_by_home_manager, path_present};
 use crate::user_config_paths::{
     CURRENT_MANAGED_CONFIG_FILE_NAMES, LEGACY_CONFIG_ENTRY_NAMES, SETTINGS_CONFIG,
 };
@@ -50,8 +50,7 @@ fn run_reset_config(args: &[String]) -> Result<i32, CoreError> {
     let config_dir = config_dir_from_env()?;
     let paths = primary_config_paths(&runtime_dir, &config_dir);
     let adjacency_report = reset_config_adjacency_report(&config_dir)?;
-    let content = render_default_config(&paths.default_config_path)?;
-    reset_config_with_content(args, paths.user_config, content, adjacency_report)
+    reset_config(args, paths.user_config, adjacency_report)
 }
 
 fn parse_reset_args(args: &[String], command: &str) -> Result<ResetArgs, CoreError> {
@@ -80,27 +79,26 @@ fn print_reset_help() {
     println!("  yzx reset config [--yes] [--no-backup]");
     println!();
     println!("Targets:");
-    println!("  config  Replace ~/.config/yazelix/config.toml with fresh shipped settings");
+    println!("  config  Remove explicit config.toml overrides and inherit packaged defaults");
     println!();
     println!("Note:");
     println!("  reset config preserves managed override sidecars and unknown adjacent files");
 }
 
 fn print_reset_config_help() {
-    println!("Replace the {RESET_CONFIG_DISPLAY_NAME} with a fresh shipped template");
+    println!("Reset the {RESET_CONFIG_DISPLAY_NAME} to inherited packaged defaults");
     println!();
     println!("Usage:");
     println!("  {RESET_CONFIG_COMMAND} [--yes] [--no-backup]");
     println!();
     println!("Flags:");
     println!("      --yes        Skip confirmation prompt");
-    println!("      --no-backup  Replace the file without writing a timestamped backup first");
+    println!("      --no-backup  Remove the file without writing a timestamped backup first");
 }
 
-fn reset_config_with_content(
+fn reset_config(
     args: &[String],
     target_path: PathBuf,
-    content: String,
     adjacency_report: ResetConfigAdjacencyReport,
 ) -> Result<i32, CoreError> {
     let parsed = parse_reset_args(args, RESET_CONFIG_COMMAND)?;
@@ -109,14 +107,32 @@ fn reset_config_with_content(
         return Ok(0);
     }
 
-    let target_exists = target_path.exists();
+    if path_owned_by_home_manager(&target_path) {
+        return Err(CoreError::classified(
+            ErrorClass::Config,
+            "home_manager_owned_config",
+            "The main Yazelix config is owned by Home Manager.",
+            "Remove the declared semantic values from programs.yazelix, then run home-manager switch.",
+            serde_json::json!({ "path": target_path.display().to_string() }),
+        ));
+    }
+
+    let target_exists = path_present(&target_path);
     let removed_without_backup = parsed.no_backup && target_exists;
 
     print_reset_config_adjacency_warnings(&adjacency_report);
 
+    if !target_exists {
+        println!(
+            "{} already inherits all packaged defaults.",
+            RESET_CONFIG_FILE_NAME
+        );
+        return Ok(0);
+    }
+
     if !parsed.yes {
         println!(
-            "⚠️  This replaces {} with a fresh shipped template.",
+            "⚠️  This removes all explicit overrides from {}.",
             RESET_CONFIG_FILE_NAME
         );
         if target_exists && !parsed.no_backup {
@@ -180,13 +196,11 @@ fn reset_config_with_content(
         None
     };
 
-    write_reset_surface(&target_path, &content)?;
-
     if let Some(path) = backup_path {
         println!("✅ Backed up previous file to: {}", path.display());
     }
     println!(
-        "✅ Replaced {} with a fresh template: {}",
+        "✅ Reset {} to inherited packaged defaults: {}",
         RESET_CONFIG_FILE_NAME,
         target_path.display()
     );
@@ -245,7 +259,7 @@ fn reset_config_adjacency_report(
 fn print_reset_config_adjacency_warnings(report: &ResetConfigAdjacencyReport) {
     if !report.managed_overrides.is_empty() {
         println!(
-            "Warning: {} only replaces {}. Managed override files were left untouched: {}.",
+            "Warning: {} only resets {}. Managed override files were left untouched: {}.",
             RESET_CONFIG_COMMAND,
             RESET_CONFIG_FILE_NAME,
             report.managed_overrides.join(", ")
@@ -279,31 +293,6 @@ fn read_confirmation() -> String {
     line.trim().to_lowercase()
 }
 
-fn write_reset_surface(target_path: &Path, content: &str) -> Result<(), CoreError> {
-    if let Some(parent) = target_path.parent() {
-        fs::create_dir_all(parent).map_err(|source| io_err(parent, source))?;
-    }
-    fs::write(target_path, content).map_err(|source| {
-        CoreError::io(
-            "reset_write_default",
-            format!(
-                "Could not write the default Yazelix template to {}.",
-                target_path.display()
-            ),
-            "Fix permissions or restore the missing runtime template, then retry.",
-            target_path.display().to_string(),
-            source,
-        )
-    })?;
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        let mode = fs::Permissions::from_mode(0o644);
-        let _ = fs::set_permissions(target_path, mode);
-    }
-    Ok(())
-}
-
 fn io_err(path: &Path, source: io::Error) -> CoreError {
     CoreError::io(
         "reset_io",
@@ -331,6 +320,7 @@ fn backup_path(target_path: &Path, fallback_name: &str) -> PathBuf {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tempfile::tempdir;
 
     // Defends: `yzx reset config` keeps the real reset flags while rejecting stale force-style reset shapes.
     #[test]
@@ -349,5 +339,50 @@ mod tests {
                 .help
         );
         assert!(parse_reset_args(&["--force".into()], "yzx reset config").is_err());
+    }
+
+    // Regression: explicit reset removes a dangling canonical owner instead of claiming defaults are inherited.
+    #[cfg(unix)]
+    #[test]
+    fn reset_removes_dangling_config_symlink() {
+        use std::os::unix::fs::symlink;
+
+        let dir = tempdir().unwrap();
+        let config = dir.path().join("config.toml");
+        symlink(dir.path().join("missing.toml"), &config).unwrap();
+
+        reset_config(
+            &["--yes".into(), "--no-backup".into()],
+            config.clone(),
+            ResetConfigAdjacencyReport::default(),
+        )
+        .unwrap();
+
+        assert!(fs::symlink_metadata(config).is_err());
+    }
+
+    // Defends: reset never mutates a declarative config owner that Home Manager will recreate.
+    #[cfg(unix)]
+    #[test]
+    fn reset_refuses_home_manager_owned_config() {
+        use std::os::unix::fs::symlink;
+
+        let dir = tempdir().unwrap();
+        let owner_dir = dir.path().join("profile-home-manager-files");
+        fs::create_dir_all(&owner_dir).unwrap();
+        let owner = owner_dir.join("config.toml");
+        let config = dir.path().join("config.toml");
+        fs::write(&owner, "[core]\ndebug_mode = true\n").unwrap();
+        symlink(&owner, &config).unwrap();
+
+        let error = reset_config(
+            &["--yes".into()],
+            config.clone(),
+            ResetConfigAdjacencyReport::default(),
+        )
+        .unwrap_err();
+
+        assert_eq!(error.code(), "home_manager_owned_config");
+        assert_eq!(fs::read_link(config).unwrap(), owner);
     }
 }

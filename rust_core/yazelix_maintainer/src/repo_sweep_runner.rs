@@ -398,7 +398,6 @@ fn validate_generated_config(
         contract_path: runtime_root
             .join("config_metadata")
             .join("main_config_contract.toml"),
-        include_missing: true,
     };
 
     match normalize_config(&request) {

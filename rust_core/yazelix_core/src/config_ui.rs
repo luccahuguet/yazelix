@@ -25,7 +25,10 @@ use crate::settings_jsonc_patch::{
     unset_settings_jsonc_value_text,
 };
 use crate::settings_surface::{SETTINGS_SCHEMA_FILENAME, render_default_config};
-use crate::settings_surface::{is_settings_config_path, parse_config_value, read_config_value};
+use crate::settings_surface::{
+    is_settings_config_path, parse_config_value, read_config_value,
+    sparse_config_is_semantically_empty,
+};
 use crate::user_config_paths::{self, CURRENT_MANAGED_CONFIG_FILE_NAMES, SETTINGS_CONFIG};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
@@ -49,9 +52,8 @@ use keybindings::*;
 pub use model_builder::build_config_ui_model;
 use model_builder::{
     apply_contract_path_for_setting_path, apply_mode_for_config_owner, build_field_row,
-    classify_path_owner, default_main_setting_value_for_ui, default_main_settings_text_for_ui,
-    path_is_read_only, path_present, read_settings_for_edit, validate_patched_settings_for_ui,
-    write_settings_edit,
+    classify_path_owner, default_main_setting_value_for_ui, path_is_read_only, path_present,
+    read_settings_for_edit, validate_patched_settings_for_ui, write_settings_edit,
 };
 pub use ratconfig::{
     ConfigUiApp, ConfigUiApplyStatus, ConfigUiContractField, ConfigUiDiagnostic,

@@ -65,7 +65,7 @@ Launch Yazelix with directory and mode options
 - Default: Launch new terminal in current directory
 - `--path DIR`: Start in specific directory
 - `--home`: Start in home directory
-- `--config FILE`: Use an alternate complete `config.toml` for this window
+- `--config FILE`: Use an alternate sparse `config.toml` for this window
 - `--with KEY=VALUE`: Apply a repeatable session-only settings override, such as `--with editor.command=nvim`
 - `--verbose`: Print detailed launch diagnostics
 
@@ -76,7 +76,7 @@ Start Yazelix in the current terminal
 - If the host terminal is ambiguous or unrecognized, the session terminal label is `unknown`
 - `--path DIR`: Start in specific directory
 - `--home`: Start in home directory
-- `--config FILE`: Use an alternate complete `config.toml` for this current-terminal session
+- `--config FILE`: Use an alternate sparse `config.toml` for this current-terminal session
 - `--with KEY=VALUE`: Apply a repeatable session-only settings override, such as `--with core.welcome_style=static`
 - `--verbose`: Print detailed startup diagnostics
 
@@ -146,7 +146,7 @@ Restart the current Yazelix window
 - Profile installs relaunch through the default-profile `yzx`; Home Manager installs relaunch through the Home Manager-owned `yzx`
 - Already-open Yazelix windows keep running their current live runtime until they are explicitly relaunched or restarted
 - `--skip, -s`: skip the welcome screen for the restarted window only
-- `--config FILE`: Use an alternate complete `config.toml` for the restarted window
+- `--config FILE`: Use an alternate sparse `config.toml` for the restarted window
 - `--with KEY=VALUE`: Apply a repeatable session-only settings override for the restarted window
 
 ### `yzx status [--versions]`
@@ -256,8 +256,8 @@ Open a transient floating-pane command inside Zellij
 - Popup panes are named `yzx_popup`, `yzx_bottom_popup`, `yzx_top_popup`, `yzx_menu`, and `yzx_<custom id>`
 
 ### `yzx config [--path]`
-Show the active Yazelix configuration through the Rust-owned control path
-- Default: print the active config
+Show the sparse explicit Yazelix overrides through the Rust-owned control path
+- Default: print only explicit values; output is empty when every field is inherited
 - `--path`: print the resolved config path
 
 ### `yzx config ui`
@@ -281,7 +281,7 @@ Remove an explicit config value so Yazelix uses the default
 - Preserves unrelated comments and formatting
 - Writes normal settings to `~/.config/yazelix/config.toml` and `cursors.*` paths to `~/.config/yazelix_cursors/settings.jsonc`
 - Validates the patched config or cursor registry before writing
-- Leaves the file unchanged when the value is already absent
+- Leaves other explicit values unchanged when the value is already absent; removes a semantically empty root file
 
 ### `yzx import zellij|yazi|helix [--force]`
 Import native Zellij, Yazi, or Helix config into Yazelix-managed overrides
@@ -319,15 +319,16 @@ Open one of the managed config surfaces through explicit or fuzzy target selecti
 - `--print`: print the resolved managed path without opening
 
 ### `yzx reset config [--yes] [--no-backup]`
-Replace `config.toml` with a fresh copy of the shipped settings template
+Remove `config.toml` so every root semantic setting inherits the packaged default
 - Backs up the current config file to `*.backup-<timestamp>` first when it exists
 - `--yes`: skip the confirmation prompt
 - `--no-backup`: discard the previous config file instead of renaming it to a backup first
 - Use this as a blunt recovery path when `yzx doctor` reports stale config fields
-- Only replaces `~/.config/yazelix/config.toml`
+- Refuses a Home Manager-owned `config.toml`; remove the declared semantic values and run `home-manager switch` instead
+- Only resets `~/.config/yazelix/config.toml`
 - Preserves managed override sidecars such as `helix/`, `zellij/`, `yazi/`, `terminal_*.conf|toml|ini`, and `shell_*.sh|zsh|fish|nu|xsh`
 - Preserves unknown adjacent files under `~/.config/yazelix/` and prints a warning instead of deleting or adopting them
-- Cursor presets live in `~/.config/yazelix_cursors/settings.jsonc`; `reset config` only resets the main Yazelix settings file
+- Cursor presets live in `~/.config/yazelix_cursors/settings.jsonc`; `reset config` only removes the main Yazelix override file
 
 ### `yzx help`
 Show command reference
@@ -368,7 +369,7 @@ yzx restart --with core.welcome_style=static # Reopen with a one-shot config ove
 
 # Diagnostics and info
 yzx doctor --fix              # Health check with auto-fix
-yzx config                    # Show active config
+yzx config                    # Show explicit config overrides
 yzx config --path             # Print the active config path
 yzx config ui                 # Open the Ratconfig-backed settings editor
 yzx config set editor.hide_sidebar_on_file_open true # Set a config value with a JSON literal
@@ -384,9 +385,9 @@ yzx edit config               # Open the main managed config
 yzx edit zellij-plugins       # Open managed third-party Zellij plugins
 yzx edit keymap               # Open managed Yazi keymap.toml
 yzx edit init                 # Open managed Yazi init.lua
-yzx reset config              # Replace the managed config with a fresh template after confirmation
-yzx reset config --yes        # Replace the managed config with a fresh template and keep backups
-yzx reset config --yes --no-backup  # Replace the managed config without writing backups
+yzx reset config              # Back up and remove explicit overrides after confirmation
+yzx reset config --yes        # Back up and remove explicit overrides without prompting
+yzx reset config --yes --no-backup  # Remove explicit overrides without a backup
 yzx status                    # System information
 yzx status --versions         # Show all tool versions
 yzx sponsor                   # Open the Yazelix sponsor page

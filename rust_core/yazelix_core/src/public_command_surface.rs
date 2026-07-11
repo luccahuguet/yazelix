@@ -227,11 +227,11 @@ const DOCTOR_COMMAND: YzxCommandMetadata = metadata(
 );
 const CONFIG_ROOT_COMMAND: YzxCommandMetadata = metadata(
     "yzx config",
-    "Show the active Yazelix configuration",
+    "Show explicit Yazelix configuration overrides",
     YzxCommandCategory::Config,
     CONFIG_FLAGS,
     Some(YzxMenuCategory::Config),
-    Some("Print the active settings surface or its resolved path."),
+    Some("Print the sparse explicit settings document or its resolved path."),
 );
 const CONFIG_UI_COMMAND: YzxCommandMetadata = metadata(
     "yzx config ui",
@@ -267,11 +267,11 @@ const RESET_ROOT_COMMAND: YzxCommandMetadata = metadata(
 );
 const RESET_CONFIG_COMMAND: YzxCommandMetadata = metadata(
     "yzx reset config",
-    "Replace the main Yazelix config with a fresh shipped template",
+    "Remove explicit main-config overrides",
     YzxCommandCategory::Config,
     RESET_FLAGS,
     Some(YzxMenuCategory::Config),
-    Some("Reset config.toml back to the shipped default."),
+    Some("Remove config.toml so Yazelix inherits the packaged defaults."),
 );
 const CURSORS_COMMAND: YzxCommandMetadata = metadata(
     "yzx cursors",

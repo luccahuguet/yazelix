@@ -14,8 +14,9 @@ Highlights:
 - Classified every pre-Nova release, including v17.10 and earlier, as Yazelix Classic without changing historical tags
 - Reserved Yazelix Nova v1 for the implementation replacement and its new public version line
 - Made `~/.config/yazelix/config.toml` the canonical semantic config and kept `settings.jsonc` only as a backup-first, one-time Classic migration input
+- Made root `config.toml` a sparse explicit-value file: absent fields inherit current packaged defaults, unset/reset remove overrides, and fresh installs no longer freeze a full default snapshot
 - Moved native Zellij startup tips, pane frames, rounded corners, and default mode into `~/.config/yazelix/zellij/config.kdl`
-- Switched Home Manager's managed root config rendering to TOML
+- Switched Home Manager's managed root config rendering to sparse TOML containing only declared values
 
 Manual action:
 - If Home Manager owns `~/.config/yazelix/settings.jsonc`, update the module and run `home-manager switch`; move retired native Zellij choices into `programs.yazelix.config.zellij.text` or `source`

@@ -8,7 +8,6 @@ use crate::native_config_status::{path_owned_by_home_manager, path_present};
 use crate::settings_contract::reconcile_settings_contract_text;
 use crate::settings_jsonc_patch::jsonc_parse_options;
 use crate::user_config_paths;
-use ratconfig::toml_adapter::{get_toml_path, parse_toml_value, set_toml_value_text};
 use serde_json::{Map as JsonMap, Value as JsonValue, json};
 use std::fs;
 use std::io;
@@ -102,7 +101,7 @@ pub fn ensure_settings_config_with_cursor_component(
     }
 
     if path_present(&paths.settings_config) {
-        complete_main_config_defaults(&paths.settings_config, default_main_config)?;
+        read_config_table(&paths.settings_config, "invalid_main_config_toml")?;
         ensure_zellij_sidecars(config_dir, DEFAULT_ZELLIJ_CONFIG_SIDECAR)?;
         if cursor_component_enabled {
             ensure_no_embedded_cursor_settings(&paths)?;
@@ -135,135 +134,14 @@ pub fn ensure_settings_config_with_cursor_component(
         ensure_default_cursor_config_exists(default_cursor_config)?;
     }
 
-    let rendered = fs::read_to_string(default_main_config).map_err(|source| {
-        io_err(
-            "read_default_main_config",
-            default_main_config,
-            "Could not read the default Yazelix config",
-            source,
-        )
-    })?;
-    toml::from_str::<toml::Table>(&rendered).map_err(|source| {
-        CoreError::toml(
-            "invalid_default_main_config",
-            "Could not parse the packaged Yazelix config default",
-            "Reinstall Yazelix so the runtime includes a valid config_default.toml.",
-            default_main_config.to_string_lossy(),
-            source,
-        )
-    })?;
-
-    write_text_atomic(&paths.settings_config, &rendered)?;
+    render_default_config(default_main_config)?;
     ensure_zellij_sidecars(config_dir, DEFAULT_ZELLIJ_CONFIG_SIDECAR)?;
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        let mode = fs::Permissions::from_mode(0o644);
-        let _ = fs::set_permissions(&paths.settings_config, mode);
-    }
 
     if cursor_component_enabled {
         ensure_shared_cursor_settings_config(&paths, default_cursor_config)?;
     }
 
     Ok(paths.settings_config)
-}
-
-fn complete_main_config_defaults(path: &Path, default_main_config: &Path) -> Result<(), CoreError> {
-    let raw = fs::read_to_string(path).map_err(|source| {
-        io_err(
-            "read_main_config_for_completion",
-            path,
-            "Could not read config.toml for default completion",
-            source,
-        )
-    })?;
-    let default_raw = fs::read_to_string(default_main_config).map_err(|source| {
-        io_err(
-            "read_main_config_defaults_for_completion",
-            default_main_config,
-            "Could not read the packaged config defaults",
-            source,
-        )
-    })?;
-    let defaults = parse_toml_value(&default_raw).map_err(|error| {
-        CoreError::classified(
-            ErrorClass::Internal,
-            "invalid_packaged_config_defaults",
-            format!("Could not parse packaged config defaults: {error:?}"),
-            "Reinstall Yazelix so config_default.toml is valid.",
-            json!({ "path": default_main_config.display().to_string() }),
-        )
-    })?;
-    let mut active = parse_toml_value(&raw).map_err(|error| {
-        CoreError::classified(
-            ErrorClass::Config,
-            "invalid_main_config_toml",
-            format!("Could not parse {}: {error:?}", path.display()),
-            "Fix the TOML syntax in config.toml, then retry.",
-            json!({ "path": path.display().to_string() }),
-        )
-    })?;
-    let mut leaves = Vec::new();
-    collect_toml_default_leaves(&defaults, "", &mut leaves);
-    let mut completed = raw.clone();
-    for (field_path, default) in leaves {
-        if get_toml_path(&active, &field_path).is_some() {
-            continue;
-        }
-        completed = set_toml_value_text(&completed, &field_path, &default)
-            .map_err(|error| {
-                CoreError::classified(
-                    ErrorClass::Config,
-                    "complete_main_config_default",
-                    format!("Could not add missing {field_path} to config.toml: {error:?}"),
-                    "Fix the TOML structure in config.toml, then retry.",
-                    json!({ "path": path.display().to_string(), "field": field_path }),
-                )
-            })?
-            .text;
-        active = parse_toml_value(&completed).map_err(|error| {
-            CoreError::classified(
-                ErrorClass::Internal,
-                "verify_completed_main_config",
-                format!("Could not verify completed config.toml: {error:?}"),
-                "Report this as a Yazelix internal error.",
-                json!({ "path": path.display().to_string() }),
-            )
-        })?;
-    }
-    if completed == raw {
-        return Ok(());
-    }
-    if path_owned_by_home_manager(path) || settings_path_is_read_only(path) {
-        return Err(CoreError::classified(
-            ErrorClass::Config,
-            "read_only_config_completion_required",
-            "The declarative config.toml is missing current Yazelix defaults.",
-            "Update the Home Manager module and run home-manager switch so it renders the current config.toml contract.",
-            json!({ "path": path.display().to_string() }),
-        ));
-    }
-    write_text_atomic(path, &completed)
-}
-
-fn collect_toml_default_leaves(
-    value: &JsonValue,
-    prefix: &str,
-    leaves: &mut Vec<(String, JsonValue)>,
-) {
-    if let Some(object) = value.as_object() {
-        for (key, value) in object {
-            let path = if prefix.is_empty() {
-                key.clone()
-            } else {
-                format!("{prefix}.{key}")
-            };
-            collect_toml_default_leaves(value, &path, leaves);
-        }
-    } else if !prefix.is_empty() {
-        leaves.push((prefix.to_string(), value.clone()));
-    }
 }
 
 fn ensure_zellij_sidecars(config_dir: &Path, config_default: &str) -> Result<(), CoreError> {
@@ -478,8 +356,7 @@ fn migrate_legacy_settings_config(
         ));
     }
 
-    let mut config = json_value_to_toml_table(&value, legacy)?;
-    insert_config_contract(&mut config);
+    let config = json_value_to_toml_table(&value, legacy)?;
     let rendered = toml::to_string_pretty(&config).map_err(|source| {
         CoreError::classified(
             ErrorClass::Internal,
@@ -550,11 +427,6 @@ fn migrate_legacy_settings_config(
         restore_zellij_after_failed_root_migration(&zellij_path, zellij_existed, &original_zellij);
         return Err(error);
     }
-    if let Err(error) = complete_main_config_defaults(&paths.settings_config, default_main_config) {
-        let _ = fs::remove_file(&paths.settings_config);
-        restore_zellij_after_failed_root_migration(&zellij_path, zellij_existed, &original_zellij);
-        return Err(error);
-    }
     if let Err(source) = fs::remove_file(legacy) {
         let _ = fs::remove_file(&paths.settings_config);
         restore_zellij_after_failed_root_migration(&zellij_path, zellij_existed, &original_zellij);
@@ -610,20 +482,6 @@ fn take_legacy_string(
     }
 }
 
-fn insert_config_contract(config: &mut toml::Table) {
-    let mut contract = toml::Table::new();
-    contract.insert("schema_version".into(), TomlValue::Integer(1));
-    contract.insert(
-        "contract_id".into(),
-        TomlValue::String("yazelix.config".into()),
-    );
-    contract.insert("version".into(), TomlValue::Integer(1));
-    contract.insert("applied_change_ids".into(), TomlValue::Array(Vec::new()));
-    let mut ratconfig = toml::Table::new();
-    ratconfig.insert("contract".into(), TomlValue::Table(contract));
-    config.insert("ratconfig".into(), TomlValue::Table(ratconfig));
-}
-
 fn restore_zellij_after_failed_root_migration(path: &Path, existed: bool, original: &str) {
     if existed {
         let _ = write_text_atomic(path, original);
@@ -670,6 +528,47 @@ pub fn read_config_table(path: &Path, code: &'static str) -> Result<toml::Table,
         json_value_to_toml_table(&value, path)
     } else {
         read_toml_table(path, code, "Could not parse Yazelix TOML input")
+    }
+}
+
+pub fn read_sparse_config_table(path: &Path, code: &'static str) -> Result<toml::Table, CoreError> {
+    match fs::read_to_string(path) {
+        Ok(raw) => toml::from_str::<toml::Table>(&raw).map_err(|source| {
+            CoreError::toml(
+                "invalid_toml",
+                "Could not parse Yazelix TOML input",
+                "Fix the TOML syntax in the reported file and retry.",
+                path.to_string_lossy(),
+                source,
+            )
+        }),
+        Err(source) if source.kind() == io::ErrorKind::NotFound => Ok(toml::Table::new()),
+        Err(source) => Err(io_err(
+            code,
+            path,
+            "Could not read Yazelix config input",
+            source,
+        )),
+    }
+}
+
+pub fn sparse_config_is_semantically_empty(path: &Path, raw: &str) -> Result<bool, CoreError> {
+    let table = toml::from_str::<toml::Table>(raw).map_err(|source| {
+        CoreError::toml(
+            "invalid_toml",
+            "Could not parse Yazelix TOML input",
+            "Fix the TOML syntax in the reported file and retry.",
+            path.to_string_lossy(),
+            source,
+        )
+    })?;
+    Ok(!table.values().any(toml_value_has_semantic_value))
+}
+
+fn toml_value_has_semantic_value(value: &TomlValue) -> bool {
+    match value {
+        TomlValue::Table(table) => table.values().any(toml_value_has_semantic_value),
+        _ => true,
     }
 }
 
@@ -1032,9 +931,9 @@ mod tests {
         .unwrap();
     }
 
-    // Defends: fresh runtimes create one TOML root and native Zellij defaults.
+    // Defends: fresh runtimes inherit semantic defaults without creating config.toml.
     #[test]
-    fn creates_config_toml_from_defaults() {
+    fn leaves_fresh_config_toml_absent() {
         let runtime = tempdir().unwrap();
         let config = tempdir().unwrap();
         let cursor = write_cursor_default(runtime.path());
@@ -1042,11 +941,7 @@ mod tests {
         let path = ensure_settings_config(config.path(), &default_main_config(), &cursor).unwrap();
 
         assert_eq!(path, config.path().join("config.toml"));
-        let value = read_config_table(&path, "test").unwrap();
-        assert_eq!(
-            value["ratconfig"]["contract"]["contract_id"].as_str(),
-            Some("yazelix.config")
-        );
+        assert!(!path.exists());
         let zellij = fs::read_to_string(config.path().join("zellij/config.kdl")).unwrap();
         assert!(zellij.contains("show_startup_tips false"));
         assert!(zellij.contains("rounded_corners true"));
@@ -1163,7 +1058,7 @@ mod tests {
         let error = ensure_settings_config(config.path(), &default_main_config(), &cursor)
             .expect_err("dangling config owner");
 
-        assert_eq!(error.code(), "read_main_config_for_completion");
+        assert_eq!(error.code(), "invalid_main_config_toml");
         assert!(fs::symlink_metadata(path).unwrap().file_type().is_symlink());
     }
 }

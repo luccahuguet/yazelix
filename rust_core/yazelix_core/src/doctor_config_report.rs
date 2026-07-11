@@ -6,6 +6,7 @@ use crate::bridge::{CoreError, ErrorClass};
 use crate::config_normalize::{
     ConfigDiagnostic, ConfigDiagnosticReport, NormalizeConfigRequest, normalize_config,
 };
+use crate::native_config_status::path_present;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::path::{Path, PathBuf};
@@ -47,12 +48,6 @@ impl DoctorConfigFinding {
         self
     }
 
-    fn with_fix_action(mut self, action: impl Into<String>) -> Self {
-        self.fix_available = true;
-        self.fix_action = Some(action.into());
-        self
-    }
-
     fn with_diagnostic_report(mut self, report: ConfigDiagnosticReport) -> Self {
         self.config_diagnostic_report = Some(report);
         self
@@ -79,7 +74,7 @@ pub fn evaluate_doctor_config_report(
         };
     }
 
-    if paths.user_config.exists() {
+    if path_present(&paths.user_config) {
         let mut findings = vec![
             DoctorConfigFinding::new("ok", "Using custom config.toml configuration")
                 .with_details(path_to_string(&paths.user_config)),
@@ -89,7 +84,6 @@ pub fn evaluate_doctor_config_report(
             config_path: paths.user_config.clone(),
             default_config_path: paths.default_config_path.clone(),
             contract_path: paths.contract_path.clone(),
-            include_missing: true,
         };
 
         match collect_doctor_diagnostic_report(&diagnostic_request) {
@@ -131,24 +125,30 @@ pub fn evaluate_doctor_config_report(
         };
     }
 
-    if paths.default_config_path.exists() {
-        return DoctorConfigEvaluateData {
+    let inherited = NormalizeConfigRequest {
+        config_path: paths.user_config,
+        default_config_path: paths.default_config_path,
+        contract_path: paths.contract_path,
+    };
+    match normalize_config(&inherited) {
+        Ok(_) => DoctorConfigEvaluateData {
             findings: vec![
                 DoctorConfigFinding::new(
                     "info",
                     "Using default configuration (config_default.toml)",
                 )
-                .with_details("Yazelix can create config.toml from the shipped defaults")
-                .with_fix_action("create_default_settings_config"),
+                .with_details("No explicit config.toml overrides are present"),
             ],
-        };
-    }
-
-    DoctorConfigEvaluateData {
-        findings: vec![
-            DoctorConfigFinding::new("error", "No configuration file found")
-                .with_details("Neither config.toml nor config_default.toml exists"),
-        ],
+        },
+        Err(error) => DoctorConfigEvaluateData {
+            findings: vec![
+                DoctorConfigFinding::new(
+                    "error",
+                    "Could not validate the inherited Yazelix configuration",
+                )
+                .with_details(format_validation_error(&error)),
+            ],
+        },
     }
 }
 
@@ -289,7 +289,8 @@ fn format_surface_reconcile_error(error: &CoreError) -> String {
 fn format_validation_error(error: &CoreError) -> String {
     let failure_class = match error.class() {
         ErrorClass::Config => "config",
-        _ => "host-dependency",
+        ErrorClass::Runtime | ErrorClass::Internal => "runtime",
+        ErrorClass::Usage | ErrorClass::Io => "host-dependency",
     };
 
     [
@@ -304,6 +305,7 @@ fn format_failure_classification(failure_class: &str, recovery_hint: &str) -> St
     let label = match failure_class.trim().to_lowercase().as_str() {
         "config" => "config problem",
         "generated-state" => "generated-state problem",
+        "runtime" => "runtime problem",
         "host-dependency" => "host-dependency problem",
         _ => "problem",
     };
@@ -320,16 +322,84 @@ mod tests {
     use super::*;
     use tempfile::TempDir;
 
-    // Defends: missing user settings advertise an explicit fix action instead of relying on prose matching.
+    fn write_runtime_config_contract(runtime_dir: &Path) {
+        std::fs::create_dir_all(runtime_dir.join("config_metadata")).unwrap();
+        std::fs::write(
+            runtime_dir.join("config_default.toml"),
+            include_str!("../../../config_default.toml"),
+        )
+        .unwrap();
+        std::fs::write(
+            runtime_dir.join("config_metadata/main_config_contract.toml"),
+            include_str!("../../../config_metadata/main_config_contract.toml"),
+        )
+        .unwrap();
+    }
+
+    // Defends: an absent user config is healthy inherited state, not a repair finding.
     #[test]
-    fn missing_user_settings_report_explicit_create_fix_action() {
+    fn missing_user_settings_report_packaged_inheritance() {
+        let tmp = TempDir::new().unwrap();
+        let runtime_dir = tmp.path().join("runtime");
+        let config_dir = tmp.path().join("config");
+        write_runtime_config_contract(&runtime_dir);
+
+        let report = evaluate_doctor_config_report(&DoctorConfigEvaluateRequest {
+            config_dir,
+            runtime_dir,
+        });
+
+        assert_eq!(report.findings.len(), 1);
+        assert_eq!(report.findings[0].status, "info");
+        assert!(!report.findings[0].fix_available);
+        assert!(report.findings[0].fix_action.is_none());
+    }
+
+    // Regression: doctor validates inherited packaged values instead of treating file presence as health.
+    #[test]
+    fn damaged_packaged_defaults_are_reported() {
+        let tmp = TempDir::new().unwrap();
+        let runtime_dir = tmp.path().join("runtime");
+        let config_dir = tmp.path().join("config");
+        write_runtime_config_contract(&runtime_dir);
+        let damaged = std::fs::read_to_string(runtime_dir.join("config_default.toml"))
+            .unwrap()
+            .replacen("mode = \"dark\"\n", "", 1);
+        std::fs::write(runtime_dir.join("config_default.toml"), damaged).unwrap();
+
+        let report = evaluate_doctor_config_report(&DoctorConfigEvaluateRequest {
+            config_dir,
+            runtime_dir,
+        });
+
+        assert_eq!(report.findings.len(), 1);
+        assert_eq!(report.findings[0].status, "error");
+        assert!(
+            report.findings[0]
+                .details
+                .as_deref()
+                .is_some_and(|details| {
+                    details.contains("missing the required default")
+                        && details.contains("Failure class: runtime problem")
+                })
+        );
+    }
+
+    // Regression: a dangling canonical owner is a visible config error, not inherited state.
+    #[cfg(unix)]
+    #[test]
+    fn dangling_user_settings_owner_is_not_reported_as_inherited() {
+        use std::os::unix::fs::symlink;
+
         let tmp = TempDir::new().unwrap();
         let runtime_dir = tmp.path().join("runtime");
         let config_dir = tmp.path().join("config");
         std::fs::create_dir_all(&runtime_dir).unwrap();
-        std::fs::write(
-            runtime_dir.join("config_default.toml"),
-            "{ \"core\": {} }\n",
+        std::fs::create_dir_all(&config_dir).unwrap();
+        std::fs::write(runtime_dir.join("config_default.toml"), "[core]\n").unwrap();
+        symlink(
+            config_dir.join("missing.toml"),
+            config_dir.join("config.toml"),
         )
         .unwrap();
 
@@ -338,11 +408,12 @@ mod tests {
             runtime_dir,
         });
 
-        assert_eq!(report.findings.len(), 1);
-        assert_eq!(report.findings[0].fix_available, true);
-        assert_eq!(
-            report.findings[0].fix_action.as_deref(),
-            Some("create_default_settings_config")
+        assert_eq!(report.findings.len(), 2);
+        assert_eq!(report.findings[1].status, "error");
+        assert!(
+            report.findings[1]
+                .message
+                .contains("Could not validate config.toml")
         );
     }
 }

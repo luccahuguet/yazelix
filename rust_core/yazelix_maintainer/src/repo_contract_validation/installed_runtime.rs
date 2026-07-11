@@ -293,22 +293,22 @@ fn validate_home_manager_activation_mode(
             )]);
         }
 
-        require_path_exists_abs(
-            &home_root
-                .join(".config")
-                .join("yazelix")
-                .join("config.toml"),
-            if manage_config {
-                "Home Manager managed config.toml surface after activation"
-            } else {
-                "Yazelix bootstrapped mutable config.toml surface after Home Manager activation"
-            },
-            &mut errors,
-        );
         let main_config_path = home_root
             .join(".config")
             .join("yazelix")
             .join("config.toml");
+        if manage_config {
+            require_path_exists_abs(
+                &main_config_path,
+                "Home Manager managed sparse config.toml surface after activation",
+                &mut errors,
+            );
+        } else if fs::symlink_metadata(&main_config_path).is_ok() {
+            errors.push(format!(
+                "Home Manager manage_config=false must leave sparse config.toml absent until the user writes an override: {}",
+                main_config_path.display()
+            ));
+        }
         if let Ok(metadata) = fs::symlink_metadata(&main_config_path) {
             if manage_config && !metadata.file_type().is_symlink() {
                 errors.push(format!(

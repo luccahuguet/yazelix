@@ -5,7 +5,10 @@ use crate::active_config_surface::{
 };
 use crate::bridge::{CoreError, ErrorClass};
 use crate::control_plane::{config_dir_from_env, runtime_dir_from_env};
-use crate::settings_surface::{parse_config_value, render_config_value, render_default_config};
+use crate::native_config_status::{path_owned_by_home_manager, path_present};
+#[cfg(test)]
+use crate::settings_surface::parse_config_value;
+use crate::settings_surface::render_config_value;
 use crossterm::cursor::MoveTo;
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind, read};
 use crossterm::execute;
@@ -163,7 +166,7 @@ pub fn run_yzx_onboard(args: &[String]) -> Result<i32, CoreError> {
     let config_dir = config_dir_from_env()?;
     let paths = primary_config_paths(&runtime_dir, &config_dir);
     let answers = run_interactive_onboarding(&paths.contract_path)?;
-    let generated = build_onboard_config(&answers, &paths.default_config_path)?;
+    let generated = build_onboard_config(&answers)?;
     if parsed.dry_run {
         print!("{generated}");
         return Ok(0);
@@ -554,7 +557,17 @@ fn write_onboard_config(
 ) -> Result<(), CoreError> {
     validate_primary_config_surface(paths)?;
 
-    if paths.user_config.exists() && !force {
+    if path_owned_by_home_manager(&paths.user_config) {
+        return Err(CoreError::classified(
+            ErrorClass::Config,
+            "home_manager_owned_config",
+            "The main Yazelix config is owned by Home Manager.",
+            "Declare the onboarding choices in programs.yazelix, then run home-manager switch.",
+            json!({ "path": paths.user_config.display().to_string() }),
+        ));
+    }
+
+    if path_present(&paths.user_config) && !force {
         return Err(CoreError::classified(
             ErrorClass::Config,
             "onboard_config_exists",
@@ -588,12 +601,8 @@ fn write_onboard_config(
     Ok(())
 }
 
-fn build_onboard_config(
-    answers: &OnboardAnswers,
-    default_main_config: &Path,
-) -> Result<String, CoreError> {
-    let default_toml = render_default_config(default_main_config)?;
-    let mut settings = parse_config_value(Path::new("config.toml"), &default_toml)?;
+fn build_onboard_config(answers: &OnboardAnswers) -> Result<String, CoreError> {
+    let mut settings = JsonValue::Object(JsonMap::new());
 
     set_settings_field(
         &mut settings,
@@ -767,15 +776,12 @@ mod tests {
             include_str!("../../../config_default.toml"),
         )
         .unwrap();
-        let config = build_onboard_config(
-            &OnboardAnswers {
-                shell: "bash".into(),
-                editor_command: "nvim".into(),
-                hide_sidebar_on_file_open: true,
-                widget_tray: vec!["editor".into(), "cpu".into()],
-            },
-            &paths.default_config_path,
-        )
+        let config = build_onboard_config(&OnboardAnswers {
+            shell: "bash".into(),
+            editor_command: "nvim".into(),
+            hide_sidebar_on_file_open: true,
+            widget_tray: vec!["editor".into(), "cpu".into()],
+        })
         .unwrap();
         let parsed = parse_config_value(Path::new("config.toml"), &config).unwrap();
 
@@ -784,24 +790,7 @@ mod tests {
             parsed["editor"]["hide_sidebar_on_file_open"].as_bool(),
             Some(true)
         );
-        assert_eq!(
-            parsed["workspace"]["left_sidebar"]["command"].as_str(),
-            Some("yzx")
-        );
-        assert_eq!(
-            parsed["workspace"]["left_sidebar"]["args"]
-                .as_array()
-                .unwrap()[0]
-                .as_str(),
-            Some("sidebar")
-        );
-        assert_eq!(
-            parsed["workspace"]["left_sidebar"]["args"]
-                .as_array()
-                .unwrap()[1]
-                .as_str(),
-            Some("yazi")
-        );
+        assert!(parsed.get("workspace").is_none());
         assert_eq!(parsed["shell"]["default_shell"].as_str(), Some("bash"));
         assert!(parsed["terminal"].get("terminals").is_none());
         assert!(parsed.get("cursors").is_none());
@@ -817,15 +806,12 @@ mod tests {
             include_str!("../../../config_default.toml"),
         )
         .unwrap();
-        let config = build_onboard_config(
-            &OnboardAnswers {
-                shell: "nu".into(),
-                editor_command: String::new(),
-                hide_sidebar_on_file_open: false,
-                widget_tray: vec!["editor".into(), "shell".into()],
-            },
-            &paths.default_config_path,
-        )
+        let config = build_onboard_config(&OnboardAnswers {
+            shell: "nu".into(),
+            editor_command: String::new(),
+            hide_sidebar_on_file_open: false,
+            widget_tray: vec!["editor".into(), "shell".into()],
+        })
         .unwrap();
 
         write_onboard_config(&paths, &config, false).unwrap();
@@ -833,5 +819,27 @@ mod tests {
         assert!(!paths.user_config_dir.join("yazelix_packs.toml").exists());
         assert!(write_onboard_config(&paths, &config, false).is_err());
         write_onboard_config(&paths, &config, true).unwrap();
+    }
+
+    // Defends: onboarding force never replaces a declarative Home Manager config owner.
+    #[cfg(unix)]
+    #[test]
+    fn write_onboard_config_refuses_home_manager_owner() {
+        use std::os::unix::fs::symlink;
+
+        let tmp = tempdir().unwrap();
+        let paths = test_paths(tmp.path());
+        let owner_dir = tmp.path().join("profile-home-manager-files");
+        fs::create_dir_all(&owner_dir).unwrap();
+        let owner = owner_dir.join("config.toml");
+        fs::write(&owner, "[core]\ndebug_mode = true\n").unwrap();
+        fs::create_dir_all(&paths.user_config_dir).unwrap();
+        symlink(&owner, &paths.user_config).unwrap();
+
+        let error =
+            write_onboard_config(&paths, "[shell]\ndefault_shell = \"nu\"\n", true).unwrap_err();
+
+        assert_eq!(error.code(), "home_manager_owned_config");
+        assert_eq!(fs::read_link(&paths.user_config).unwrap(), owner);
     }
 }

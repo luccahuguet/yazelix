@@ -1086,14 +1086,60 @@ fn write_field_value_patches_config_toml_and_reloads_model() {
         get_json_path(&value, "editor.hide_sidebar_on_file_open"),
         Some(&json!(true))
     );
-    assert_eq!(
-        get_json_path(&value, "ratconfig.contract.contract_id"),
-        Some(&json!("yazelix.config"))
-    );
     let field = model_field(&app.model, "editor.hide_sidebar_on_file_open");
     assert_eq!(field.state, ConfigUiValueState::Explicit);
     assert_eq!(field.current_value, "true");
     assert!(!fixture.cursor_path().exists());
+}
+
+// Defends: Ratconfig reads inherited root defaults without creating a file, writes one explicit key, and removes the file when that key is reset.
+#[test]
+fn root_config_ui_preserves_sparse_explicit_intent() {
+    let fixture = Fixture::new();
+    let settings_path = fixture.settings_path();
+    let mut app = fixture.app();
+    let field = model_field(&app.model, "editor.hide_sidebar_on_file_open");
+
+    assert_eq!(field.state, ConfigUiValueState::Defaulted);
+    assert_eq!(field.current_value, "false");
+    assert!(!settings_path.exists());
+
+    app.write_source_field_value(
+        SETTINGS_SOURCE_ID,
+        "editor.hide_sidebar_on_file_open",
+        &json!(false),
+    )
+    .expect("explicit value");
+    let raw = fs::read_to_string(&settings_path).expect("sparse settings");
+    assert_eq!(raw, "[editor]\nhide_sidebar_on_file_open = false\n");
+    assert_eq!(
+        model_field(&app.model, "editor.hide_sidebar_on_file_open").state,
+        ConfigUiValueState::Explicit
+    );
+
+    app.unset_source_field_value(SETTINGS_SOURCE_ID, "editor.hide_sidebar_on_file_open")
+        .expect("unset");
+    assert!(!settings_path.exists());
+    assert_eq!(
+        model_field(&app.model, "editor.hide_sidebar_on_file_open").state,
+        ConfigUiValueState::Defaulted
+    );
+}
+
+// Regression: UI reset cleans up a preexisting semantically empty root even when the field was absent.
+#[test]
+fn root_config_ui_removes_preexisting_empty_root() {
+    let fixture = Fixture::new();
+    let settings_path = fixture.settings_path();
+    fs::write(&settings_path, "[editor]\n").unwrap();
+    let mut app = fixture.app();
+
+    let outcome = app
+        .unset_source_field_value(SETTINGS_SOURCE_ID, "editor.hide_sidebar_on_file_open")
+        .expect("unset inherited value");
+
+    assert_eq!(outcome.mutation, SettingsJsoncPatchMutation::Unchanged);
+    assert!(!settings_path.exists());
 }
 
 // Regression: a save-time refresh failure remains visible as pending apply work instead of hiding the fact that the setting was already persisted.

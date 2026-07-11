@@ -59,6 +59,17 @@ impl YazelixConfigUiApp {
         };
         host.write_source_field_value(&mut self.ui, source_id, setting_path, value)
     }
+
+    pub(super) fn unset_source_field_value(
+        &mut self,
+        source_id: &str,
+        setting_path: &str,
+    ) -> Result<ConfigUiWriteOutcome, CoreError> {
+        let host = YazelixConfigUiHost {
+            request: &self.request,
+        };
+        host.unset_field_value(&mut self.ui, source_id, setting_path)
+    }
 }
 
 impl YazelixConfigUiHost<'_> {
@@ -168,9 +179,8 @@ impl YazelixConfigUiHost<'_> {
         let target = self.editable_config_target(ui, source_id, setting_path)?;
         let raw = self.read_edit_target_or_default(ui, &target)?;
         let outcome = match target.kind {
-            ConfigUiEditTargetKind::Main => {
-                let value = default_main_setting_value_for_ui(self.request, &target.path_in_file)?;
-                let outcome = set_toml_value_text(&raw, &target.path_in_file, &value)
+            ConfigUiEditTargetKind::Main | ConfigUiEditTargetKind::Mars => {
+                let outcome = unset_toml_value_text(&raw, &target.path_in_file)
                     .map_err(|error| config_toml_patch_error(&target.path, error))?;
                 SettingsJsoncPatchOutcome {
                     text: outcome.text,
@@ -179,14 +189,6 @@ impl YazelixConfigUiHost<'_> {
             }
             ConfigUiEditTargetKind::Cursors => {
                 unset_settings_jsonc_value_text(&target.path, &raw, &target.path_in_file)?
-            }
-            ConfigUiEditTargetKind::Mars => {
-                let outcome = unset_toml_value_text(&raw, &target.path_in_file)
-                    .map_err(|error| config_toml_patch_error(&target.path, error))?;
-                SettingsJsoncPatchOutcome {
-                    text: outcome.text,
-                    mutation: outcome.mutation,
-                }
             }
         };
         self.finish_field_write(ui, source_id, setting_path, &target, outcome)
@@ -224,8 +226,26 @@ impl YazelixConfigUiHost<'_> {
         target: &ConfigUiEditTarget,
         outcome: SettingsJsoncPatchOutcome,
     ) -> Result<ConfigUiWriteOutcome, CoreError> {
-        let (text, should_write) = self.reconcile_patched_edit_target(target, &outcome)?;
-        if should_write {
+        let should_write = outcome.changed();
+        let mutation = outcome.mutation;
+        let text = outcome.text;
+        let remove_empty_main = target.kind == ConfigUiEditTargetKind::Main
+            && sparse_config_is_semantically_empty(&target.path, &text)?;
+        if remove_empty_main {
+            match fs::remove_file(&target.path) {
+                Ok(()) => {}
+                Err(source) if source.kind() == io::ErrorKind::NotFound => {}
+                Err(source) => {
+                    return Err(CoreError::io(
+                        "remove_empty_settings_config",
+                        "Could not remove the empty Yazelix config",
+                        "Fix permissions for config.toml, then retry.",
+                        target.path.display().to_string(),
+                        source,
+                    ));
+                }
+            }
+        } else if should_write {
             self.validate_patched_edit_target(target, &text)?;
             if matches!(
                 target.kind,
@@ -236,9 +256,9 @@ impl YazelixConfigUiHost<'_> {
                 write_settings_edit(&target.path, &text)?;
             }
         }
-        let apply_notice = if outcome.changed() && target.kind == ConfigUiEditTargetKind::Mars {
+        let apply_notice = if should_write && target.kind == ConfigUiEditTargetKind::Mars {
             Some("Mars reads this native config when the next window opens.".to_string())
-        } else if outcome.changed() {
+        } else if should_write {
             match apply_after_field_write(self.request, &ui.model, setting_path) {
                 Ok(status) => apply_status_notice(&status),
                 Err(error) => Some(apply_error_notice(&error)),
@@ -248,17 +268,9 @@ impl YazelixConfigUiHost<'_> {
         };
         self.reload_model_preserving_selection(ui, source_id, setting_path)?;
         Ok(ConfigUiWriteOutcome {
-            mutation: outcome.mutation,
+            mutation,
             apply_notice,
         })
-    }
-
-    fn reconcile_patched_edit_target(
-        &self,
-        _target: &ConfigUiEditTarget,
-        outcome: &SettingsJsoncPatchOutcome,
-    ) -> Result<(String, bool), CoreError> {
-        Ok((outcome.text.clone(), outcome.changed()))
     }
 
     fn reload_model_preserving_selection(
@@ -358,7 +370,7 @@ impl YazelixConfigUiHost<'_> {
             return read_settings_for_edit(&target.path);
         }
         match target.kind {
-            ConfigUiEditTargetKind::Main => default_main_settings_text_for_ui(self.request),
+            ConfigUiEditTargetKind::Main => Ok(String::new()),
             ConfigUiEditTargetKind::Cursors => {
                 let raw =
                     fs::read_to_string(&ui.model.default_cursor_config_path).map_err(|source| {

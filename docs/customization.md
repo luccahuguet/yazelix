@@ -2,7 +2,7 @@
 
 Start with this model:
 
-- `~/.config/yazelix/config.toml` is the main workspace settings file for shell, editor, Zellij, Yazi, popup, status, and layout behavior
+- `~/.config/yazelix/config.toml` is the optional sparse override for shell, editor, Zellij, Yazi, popup, status, and layout behavior; omitted fields inherit packaged defaults
 - `~/.config/yazelix/mars/config.toml` is the optional sparse native Mars override
 - `~/.config/yazelix_cursors/settings.jsonc` owns Yazelix cursor presets and shader settings
 - Generated runtime state lives under `~/.local/share/yazelix`; edit the config inputs, not generated runtime files

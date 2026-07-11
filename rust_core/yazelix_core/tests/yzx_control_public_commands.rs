@@ -36,9 +36,8 @@ fn yzx_control_reset_config_warns_about_preserved_adjacent_files() {
         .arg("--yes")
         .arg("--no-backup");
     let stdout = stdout_text(command.output().unwrap());
-    let reset = fs::read_to_string(&settings_path).unwrap();
 
-    assert!(stdout.contains("only replaces config.toml"));
+    assert!(stdout.contains("only resets config.toml"));
     assert!(stdout.contains("Managed override files were left untouched: helix"));
     assert!(
         stdout
@@ -50,8 +49,7 @@ fn yzx_control_reset_config_warns_about_preserved_adjacent_files() {
         )
     );
     assert!(!stdout.contains("settings.jsonc.backup-20260505_000000"));
-    assert!(reset.contains("[editor]"));
-    assert!(!reset.contains("[cursors]"));
+    assert!(!settings_path.exists());
     assert!(helix_override_path.exists());
     assert!(legacy_cursor_path.exists());
     assert!(notes_path.exists());

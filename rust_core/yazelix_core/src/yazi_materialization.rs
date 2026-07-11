@@ -54,7 +54,6 @@ pub fn generate_yazi_materialization(
         config_path: request.config_path.clone(),
         default_config_path: request.default_config_path.clone(),
         contract_path: request.contract_path.clone(),
-        include_missing: true,
     })?;
     let render_plan = compute_yazi_render_plan(&build_yazi_render_plan_request(
         &normalized.normalized_config,

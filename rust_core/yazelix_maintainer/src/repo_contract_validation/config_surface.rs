@@ -1,8 +1,8 @@
 use super::{
     HOME_MANAGER_MODULE_DECLARATION_PATH, MAIN_CONTRACT_RELATIVE_PATH, MAIN_TEMPLATE_RELATIVE_PATH,
     MODULE_RELATIVE_PATH, create_unique_temp_dir, escape_nix_string, format_json_value,
-    format_toml_value, get_nested_toml_value, json_values_equal, read_toml_file, run_nix_eval,
-    set_nested_toml_value, sorted_keys, split_field_path, toml_to_json, toml_values_equal,
+    format_toml_value, get_nested_toml_value, read_toml_file, run_nix_eval, set_nested_toml_value,
+    sorted_keys, split_field_path, toml_to_json, toml_values_equal,
 };
 use crate::repo_validation::ValidationReport;
 use serde_json::{Map as JsonMap, Value as JsonValue};
@@ -127,29 +127,15 @@ fn validate_main_contract_parity(repo_root: &Path) -> Result<Vec<String>, String
             continue;
         }
 
-        let expected_hm_default = if field
-            .get("home_manager_default_is_null")
-            .and_then(TomlValue::as_bool)
-            .unwrap_or(false)
-        {
-            JsonValue::Null
-        } else {
-            toml_to_json(
-                field
-                    .get("default")
-                    .unwrap_or(&TomlValue::String(String::new())),
-            )
-        };
         let actual_hm_default = hm_defaults
             .get(hm_option)
             .cloned()
             .unwrap_or(JsonValue::Null);
-        if !json_values_equal(&actual_hm_default, &expected_hm_default) {
+        if actual_hm_default != JsonValue::Null {
             errors.push(format!(
-                "Home Manager default mismatch for `{}` via `{}`: expected {}, got {}",
-                field_path,
+                "Home Manager option `{}` for `{}` must default to null so omission inherits the packaged value, got {}",
                 hm_option,
-                format_json_value(&expected_hm_default),
+                field_path,
                 format_json_value(&actual_hm_default)
             ));
         }
@@ -280,7 +266,7 @@ fn validate_ratconfig_contract_guard(repo_root: &Path) -> Result<Vec<String>, St
                 .to_string(),
         ),
     }
-    errors.extend(validate_home_manager_settings_contract_state(repo_root)?);
+    errors.extend(validate_home_manager_sparse_config(repo_root)?);
     errors.extend(validate_ratconfig_contract_diff_guard(
         repo_root,
         &contract,
@@ -478,83 +464,66 @@ fn toml_string_array(value: &TomlValue) -> Option<Vec<String>> {
     })
 }
 
-fn validate_home_manager_settings_contract_state(repo_root: &Path) -> Result<Vec<String>, String> {
-    let raw = load_home_manager_managed_config_toml(repo_root)?;
-    validate_home_manager_settings_contract_state_content(Path::new("config.toml"), &raw)
+fn validate_home_manager_sparse_config(repo_root: &Path) -> Result<Vec<String>, String> {
+    let mut errors = validate_home_manager_sparse_config_content(
+        Path::new("config.toml"),
+        &load_home_manager_managed_config_toml(repo_root, None)?,
+    )?;
+    errors.extend(validate_home_manager_explicit_config_content(
+        Path::new("config.toml"),
+        &load_home_manager_managed_config_toml(repo_root, Some("appearance_mode = \"light\";"))?,
+    )?);
+    Ok(errors)
 }
 
-fn validate_home_manager_settings_contract_state_content(
+fn validate_home_manager_sparse_config_content(
     label: &Path,
     raw: &str,
 ) -> Result<Vec<String>, String> {
     let value = parse_config_value(label, raw).map_err(|error| error.message().to_string())?;
-    let Some(contract) = value
-        .get("ratconfig")
-        .and_then(JsonValue::as_object)
-        .and_then(|ratconfig| ratconfig.get("contract"))
-        .and_then(JsonValue::as_object)
-    else {
-        return Ok(vec![
-            "Home Manager-generated config.toml must include ratconfig.contract state".to_string(),
-        ]);
-    };
-
-    let mut errors = Vec::new();
-    if contract.get("schema_version").and_then(JsonValue::as_u64) != Some(1) {
-        errors.push(
-            "Home Manager-generated config.toml ratconfig.contract.schema_version must be 1"
-                .to_string(),
-        );
+    match value.as_object() {
+        Some(root) if root.is_empty() => Ok(Vec::new()),
+        Some(root) => Ok(vec![format!(
+            "Home Manager manage_config=true with no declared semantic options must render an empty sparse config.toml, found top-level keys: {}",
+            root.keys().cloned().collect::<Vec<_>>().join(", ")
+        )]),
+        None => Ok(vec![
+            "Home Manager-generated config.toml must be a TOML table".to_string(),
+        ]),
     }
-    if contract.get("contract_id").and_then(JsonValue::as_str) != Some(MAIN_CONFIG_CONTRACT_ID) {
-        errors.push(format!(
-            "Home Manager-generated config.toml ratconfig.contract.contract_id must be {MAIN_CONFIG_CONTRACT_ID}"
-        ));
-    }
-    if contract.get("version").and_then(JsonValue::as_u64) != Some(MAIN_CONFIG_CONTRACT_VERSION) {
-        errors.push(format!(
-            "Home Manager-generated config.toml ratconfig.contract.version must be {MAIN_CONFIG_CONTRACT_VERSION}"
-        ));
-    }
-
-    let expected_change_ids: Vec<String> = Vec::new();
-    match contract
-        .get("applied_change_ids")
-        .and_then(json_string_array)
-    {
-        Some(change_ids) if change_ids == expected_change_ids => {}
-        Some(change_ids) => errors.push(format!(
-            "Home Manager-generated config.toml ratconfig.contract.applied_change_ids mismatch: expected [{}], got [{}]",
-            expected_change_ids.join(", "),
-            change_ids.join(", ")
-        )),
-        None => errors.push(
-            "Home Manager-generated config.toml ratconfig.contract.applied_change_ids must be a string array"
-                .to_string(),
-        ),
-    }
-
-    Ok(errors)
 }
 
-fn json_string_array(value: &JsonValue) -> Option<Vec<String>> {
-    value.as_array().and_then(|items| {
-        items
-            .iter()
-            .map(|item| item.as_str().map(ToOwned::to_owned))
-            .collect()
-    })
+fn validate_home_manager_explicit_config_content(
+    label: &Path,
+    raw: &str,
+) -> Result<Vec<String>, String> {
+    let actual = parse_config_value(label, raw).map_err(|error| error.message().to_string())?;
+    let expected = serde_json::json!({ "appearance": { "mode": "light" } });
+    if actual == expected {
+        Ok(Vec::new())
+    } else {
+        Ok(vec![format!(
+            "Home Manager with only appearance_mode declared must render only that explicit value, got {}",
+            format_json_value(&actual)
+        )])
+    }
 }
 
-fn load_home_manager_managed_config_toml(repo_root: &Path) -> Result<String, String> {
-    let expr = build_home_manager_managed_config_toml_expr(repo_root);
+fn load_home_manager_managed_config_toml(
+    repo_root: &Path,
+    semantic_assignment: Option<&str>,
+) -> Result<String, String> {
+    let expr = build_home_manager_managed_config_toml_expr(repo_root, semantic_assignment);
     let result = run_nix_eval(repo_root, &expr)?;
     result.as_str().map(str::to_string).ok_or_else(|| {
         "Home Manager managed settings evaluation did not return a TOML string".to_string()
     })
 }
 
-fn build_home_manager_managed_config_toml_expr(repo_root: &Path) -> String {
+fn build_home_manager_managed_config_toml_expr(
+    repo_root: &Path,
+    semantic_assignment: Option<&str>,
+) -> String {
     let module_path =
         escape_nix_string(&repo_root.join(MODULE_RELATIVE_PATH).display().to_string());
     let mut lines = vec![
@@ -568,7 +537,10 @@ fn build_home_manager_managed_config_toml_expr(repo_root: &Path) -> String {
     ];
     lines.extend(standalone_home_manager_eval_fixture_module(true, true));
     lines.extend([
-        "      { config.programs.yazelix.manage_config = true; }".to_string(),
+        format!(
+            "      {{ config.programs.yazelix = {{ manage_config = true; {} }}; }}",
+            semantic_assignment.unwrap_or("")
+        ),
         "    ];".to_string(),
         "  };".to_string(),
         "in builtins.readFile eval.config.xdg.configFile.\"yazelix/config.toml\".source"
@@ -1413,30 +1385,22 @@ fn prepare_rust_startup() {
     }
 
     // Test lane: maintainer
-    // Regression: Home Manager-generated settings must join the current ratconfig contract instead of forcing runtime repair on a Home Manager-owned symlink.
+    // Regression: Home Manager must not freeze packaged defaults when no semantic options are declared.
     #[test]
-    fn home_manager_settings_contract_state_validator_rejects_stale_contract_state() {
-        let stale = r#"[ratconfig.contract]
-schema_version = 1
-contract_id = "yazelix.settings"
-version = 4
-applied_change_ids = ["rename-editor-sidebar-to-workspace-left-sidebar"]
-"#;
-
-        let errors =
-            validate_home_manager_settings_contract_state_content(Path::new("config.toml"), stale)
-                .unwrap();
-
+    fn home_manager_sparse_config_validator_rejects_materialized_defaults() {
         assert!(
-            errors
-                .iter()
-                .any(|error| error.contains("ratconfig.contract.version"))
+            validate_home_manager_sparse_config_content(Path::new("config.toml"), "")
+                .unwrap()
+                .is_empty()
         );
-        assert!(
-            errors
-                .iter()
-                .any(|error| error.contains("applied_change_ids mismatch"))
-        );
+        let errors = validate_home_manager_sparse_config_content(
+            Path::new("config.toml"),
+            "[core]\ndebug_mode = false\n",
+        )
+        .unwrap();
+
+        assert_eq!(errors.len(), 1);
+        assert!(errors[0].contains("empty sparse config.toml"));
     }
 
     // Test lane: maintainer

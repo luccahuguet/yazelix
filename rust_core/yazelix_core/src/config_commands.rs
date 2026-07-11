@@ -15,12 +15,15 @@ use crate::control_plane::{
     config_dir_from_env, config_override_from_env, runtime_dir_from_env,
     runtime_materialization_plan_request_from_env, state_dir_from_env,
 };
+use crate::native_config_status::path_owned_by_home_manager;
 use crate::settings_jsonc_patch::{
     SettingsJsoncPatchMutation, set_settings_jsonc_value_text, unset_settings_jsonc_value_text,
 };
-use crate::settings_surface::{is_settings_config_path, parse_config_value, read_config_value};
+use crate::settings_surface::{
+    is_settings_config_path, parse_config_value, sparse_config_is_semantically_empty,
+};
 use crate::user_config_paths::SETTINGS_CONFIG;
-use ratconfig::toml_adapter::{TomlPatchError, set_toml_value_text};
+use ratconfig::toml_adapter::{TomlPatchError, set_toml_value_text, unset_toml_value_text};
 use serde_json::{Value as JsonValue, json};
 use std::fs;
 use std::io;
@@ -28,19 +31,11 @@ use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 use yazelix_cursors::{CursorRegistry, render_cursor_settings_jsonc};
 
-const HOME_MANAGER_FILES_MARKER: &str = "-home-manager-files/";
-
 #[derive(Debug, Clone)]
 struct ConfigEditTarget {
     path: PathBuf,
     path_in_file: String,
     kind: ConfigEditTargetKind,
-}
-
-#[derive(Debug, Clone)]
-struct PreparedConfigEdit {
-    text: String,
-    should_write: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -141,7 +136,7 @@ fn parse_config_args(args: &[String]) -> Result<ConfigArgs, CoreError> {
 }
 
 fn print_config_help() {
-    println!("Show the active Yazelix configuration");
+    println!("Show the explicit Yazelix configuration overrides");
     println!();
     println!("Usage:");
     println!("  yzx config [--path]");
@@ -172,7 +167,11 @@ fn io_err(path: &Path, source: io::Error) -> CoreError {
 }
 
 fn render_config_text(path: &Path) -> Result<String, CoreError> {
-    let raw = fs::read_to_string(path).map_err(|source| io_err(path, source))?;
+    let raw = match fs::read_to_string(path) {
+        Ok(raw) => raw,
+        Err(source) if source.kind() == io::ErrorKind::NotFound => String::new(),
+        Err(source) => return Err(io_err(path, source)),
+    };
     if is_settings_config_path(path) {
         parse_config_value(path, &raw)?;
         return Ok(raw);
@@ -185,7 +184,7 @@ fn render_config_text(path: &Path) -> Result<String, CoreError> {
                 "Could not parse the active Yazelix config at {}.",
                 path.display()
             ),
-            "Fix the config syntax or run `yzx reset config` to restore the managed template.",
+            "Fix the config syntax or run `yzx reset config` to remove the explicit overrides.",
             path.display().to_string(),
             source,
         )
@@ -195,7 +194,7 @@ fn render_config_text(path: &Path) -> Result<String, CoreError> {
 
 fn print_text_with_trailing_newline(text: &str) {
     print!("{text}");
-    if !text.ends_with('\n') {
+    if !text.is_empty() && !text.ends_with('\n') {
         println!();
     }
 }
@@ -255,12 +254,7 @@ fn run_config_set(setting_path: &str, raw_value: &str) -> Result<i32, CoreError>
             set_settings_jsonc_value_text(&target.path, &raw, &target.path_in_file, &value)?
         }
     };
-    let prepared = prepare_config_edit_text(&paths, &target, &outcome)?;
-    write_config_edit(&target.path, &prepared.text, prepared.should_write)?;
-    let apply_status =
-        apply_after_config_edit(setting_path, outcome.mutation, &paths.contract_path)?;
-    print_edit_outcome(setting_path, outcome.mutation, apply_status.as_ref());
-    Ok(0)
+    finish_config_edit(&paths, &target, setting_path, &outcome)
 }
 
 fn run_config_unset(setting_path: &str) -> Result<i32, CoreError> {
@@ -270,8 +264,7 @@ fn run_config_unset(setting_path: &str) -> Result<i32, CoreError> {
     let raw = read_config_for_edit_or_default(&paths, &target)?;
     let outcome = match target.kind {
         ConfigEditTargetKind::Main => {
-            let value = default_main_setting_value(&paths, &target)?;
-            let outcome = set_toml_value_text(&raw, &target.path_in_file, &value)
+            let outcome = unset_toml_value_text(&raw, &target.path_in_file)
                 .map_err(|error| main_toml_patch_error(&target.path, error))?;
             crate::settings_jsonc_patch::SettingsJsoncPatchOutcome {
                 text: outcome.text,
@@ -282,12 +275,7 @@ fn run_config_unset(setting_path: &str) -> Result<i32, CoreError> {
             unset_settings_jsonc_value_text(&target.path, &raw, &target.path_in_file)?
         }
     };
-    let prepared = prepare_config_edit_text(&paths, &target, &outcome)?;
-    write_config_edit(&target.path, &prepared.text, prepared.should_write)?;
-    let apply_status =
-        apply_after_config_edit(setting_path, outcome.mutation, &paths.contract_path)?;
-    print_edit_outcome(setting_path, outcome.mutation, apply_status.as_ref());
-    Ok(0)
+    finish_config_edit(&paths, &target, setting_path, &outcome)
 }
 
 fn resolve_editable_settings_path() -> Result<ActiveConfigPaths, CoreError> {
@@ -326,35 +314,6 @@ fn edit_target(paths: &ActiveConfigPaths, setting_path: &str) -> ConfigEditTarge
     }
 }
 
-fn default_main_setting_value(
-    paths: &ActiveConfigPaths,
-    target: &ConfigEditTarget,
-) -> Result<JsonValue, CoreError> {
-    let defaults = read_config_value(&paths.default_config_path)?;
-    get_json_path(&defaults, &target.path_in_file)
-        .cloned()
-        .ok_or_else(|| {
-            CoreError::classified(
-                ErrorClass::Usage,
-                "unsupported_settings_path",
-                format!(
-                    "Cannot reset {} because it is not part of the canonical main settings defaults.",
-                    target.path_in_file
-                ),
-                "Use a supported config.toml path from the Yazelix config contract.",
-                json!({ "path": target.path_in_file }),
-            )
-        })
-}
-
-fn get_json_path<'a>(root: &'a JsonValue, path: &str) -> Option<&'a JsonValue> {
-    let mut cursor = root;
-    for part in path.split('.') {
-        cursor = cursor.as_object()?.get(part)?;
-    }
-    Some(cursor)
-}
-
 fn ensure_edit_target_writable(target: &ConfigEditTarget) -> Result<(), CoreError> {
     if target.kind == ConfigEditTargetKind::Main && !is_settings_config_path(&target.path) {
         return Err(CoreError::classified(
@@ -368,7 +327,7 @@ fn ensure_edit_target_writable(target: &ConfigEditTarget) -> Result<(), CoreErro
             json!({ "path": target.path.display().to_string() }),
         ));
     }
-    if is_home_manager_owned_path(&target.path) {
+    if path_owned_by_home_manager(&target.path) {
         return Err(CoreError::classified(
             ErrorClass::Config,
             "home_manager_owned_config",
@@ -412,7 +371,7 @@ fn read_config_for_edit_or_default(
         return read_config_for_edit(&target.path);
     }
     match target.kind {
-        ConfigEditTargetKind::Main => read_config_for_edit(&target.path),
+        ConfigEditTargetKind::Main => Ok(String::new()),
         ConfigEditTargetKind::Cursors => {
             let raw = fs::read_to_string(&paths.default_cursor_config_path).map_err(|source| {
                 CoreError::io(
@@ -444,17 +403,21 @@ fn validate_patched_edit_target(
     }
 }
 
-fn prepare_config_edit_text(
+fn finish_config_edit(
     paths: &ActiveConfigPaths,
     target: &ConfigEditTarget,
+    setting_path: &str,
     outcome: &crate::settings_jsonc_patch::SettingsJsoncPatchOutcome,
-) -> Result<PreparedConfigEdit, CoreError> {
-    let text = outcome.text.clone();
+) -> Result<i32, CoreError> {
     let should_write = outcome.changed();
     if should_write {
-        validate_patched_edit_target(paths, target, &text)?;
+        validate_patched_edit_target(paths, target, &outcome.text)?;
     }
-    Ok(PreparedConfigEdit { text, should_write })
+    write_config_edit(&target.path, &outcome.text, should_write)?;
+    let apply_status =
+        apply_after_config_edit(setting_path, outcome.mutation, &paths.contract_path)?;
+    print_edit_outcome(setting_path, outcome.mutation, apply_status.as_ref());
+    Ok(0)
 }
 
 fn validate_patched_settings(paths: &ActiveConfigPaths, raw: &str) -> Result<(), CoreError> {
@@ -487,7 +450,6 @@ fn validate_patched_settings(paths: &ActiveConfigPaths, raw: &str) -> Result<(),
             config_path: temp_config,
             default_config_path: paths.default_config_path.clone(),
             contract_path: paths.contract_path.clone(),
-            include_missing: true,
         })?;
         Ok(())
     })();
@@ -503,6 +465,13 @@ fn monotonic_suffix() -> u128 {
 }
 
 fn write_config_edit(path: &Path, raw: &str, should_write: bool) -> Result<(), CoreError> {
+    if is_settings_config_path(path) && sparse_config_is_semantically_empty(path, raw)? {
+        return match fs::remove_file(path) {
+            Ok(()) => Ok(()),
+            Err(source) if source.kind() == io::ErrorKind::NotFound => Ok(()),
+            Err(source) => Err(io_err(path, source)),
+        };
+    }
     if !should_write {
         return Ok(());
     }
@@ -589,13 +558,6 @@ fn print_edit_outcome(
             println!("{}", refresh.remediation);
         }
     }
-}
-
-fn is_home_manager_owned_path(path: &Path) -> bool {
-    fs::read_link(path)
-        .ok()
-        .map(|target| target.to_string_lossy().contains(HOME_MANAGER_FILES_MARKER))
-        .unwrap_or(false)
 }
 
 fn config_path_is_read_only(path: &Path) -> bool {

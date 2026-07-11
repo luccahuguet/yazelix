@@ -1,11 +1,11 @@
 # Yazelix Home Manager Module
 
-A Home Manager module for [Yazelix](https://github.com/luccahuguet/yazelix) that manages the package-ready runtime surface while leaving `config.toml` mutable by default
+A Home Manager module for [Yazelix](https://github.com/luccahuguet/yazelix) that manages the package-ready runtime surface while leaving sparse `config.toml` overrides user-owned by default
 
 ## What This Module Does
 
-- **Leaves `config.toml` mutable by default** so users can edit it directly
-- **Can generate `config.toml`** from Home Manager options when `manage_config = true`, including the hidden deterministic ratconfig contract state Yazelix requires
+- **Leaves sparse `config.toml` overrides user-owned by default** so omitted settings keep following packaged defaults
+- **Can generate sparse `config.toml`** from explicitly declared Home Manager options when `manage_config = true`
 - **Adds `yzx` to the Home Manager profile** through the packaged Yazelix runtime
 - **Selects the packaged Mars terminal** and leaves other terminal emulators host-owned through `yzx enter`
 - **Installs icons and, on Linux, a desktop entry** that target the managed runtime
@@ -259,7 +259,7 @@ home-manager switch
 
 This creates:
 - the `yzx` command in your Home Manager profile, typically `~/.nix-profile/bin/yzx`
-- `~/.config/yazelix/config.toml`, bootstrapped as a mutable file by default or Home Manager-generated when `manage_config = true`
+- `~/.config/yazelix/config.toml` only when you add explicit user overrides or set `manage_config = true`; fresh installs inherit packaged defaults without creating it
 - on Linux, a Home Manager profile desktop entry such as `~/.nix-profile/share/applications/com.yazelix.Yazelix.Mars.desktop`
 
 Then open a fresh shell and run:
@@ -301,8 +301,8 @@ For maintainer workflows, a cloned repo is still useful. Normal Home Manager usa
 
 Manual validation on April 8, 2026 covered both a lived-in account and a throwaway clean-room Home Manager activation.
 
-- By default, Home Manager owns the package/runtime integration while Yazelix bootstraps the main `config.toml` as a mutable file
-- Set `programs.yazelix.manage_config = true` only if you want Home Manager to own generated Yazelix settings through a symlink into the Home Manager profile
+- By default, Home Manager owns the package/runtime integration while an absent main `config.toml` inherits all packaged defaults
+- Set `programs.yazelix.manage_config = true` only if you want Home Manager to own sparse declared settings through a symlink into the Home Manager profile
 - The managed `yzx` command resolves through the Home Manager profile, typically `~/.nix-profile/bin/yzx`, rather than through a legacy user-local wrapper path.
 - The active runtime root resolves directly from the packaged Yazelix runtime in the Home Manager profile/store path, not through a manual-install runtime symlink.
 - On Linux, the Home Manager desktop entries come from the Home Manager profile, including the active Yazelix entry
@@ -378,7 +378,7 @@ If Home Manager still reports an unexpected unmanaged-file collision outside tho
    home-manager switch
    ```
 
-3. **Restore manual config:** recreate `~/.config/yazelix/config.toml` from your backup or by running `yzx reset config` in the Yazelix package/repo you install manually.
+3. **Restore manual config:** restore only the explicit values you still want from your backup, or leave `~/.config/yazelix/config.toml` absent to inherit packaged defaults
 
 ## Safety Features
 
@@ -390,8 +390,8 @@ If Home Manager still reports an unexpected unmanaged-file collision outside tho
 ## Troubleshooting
 
 ### Configuration not applied
-- Check that `~/.config/yazelix/config.toml` was created
-- By default, that file should be a normal writable file, not a Home Manager store symlink
+- If you set explicit values, check `~/.config/yazelix/config.toml`; an absent file is valid when every setting is inherited
+- By default, an existing file should be a normal writable file, not a Home Manager store symlink
 - Check that `~/.nix-profile/bin/yzx` exists and that your Home Manager profile bin dir is on your `PATH`
 - On Linux, check that `~/.nix-profile/share/applications/com.yazelix.Yazelix.Mars.desktop` exists if you expect Mars desktop-launcher integration through Home Manager
 - Verify Home Manager configuration syntax

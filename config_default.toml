@@ -134,9 +134,3 @@ sort_by = "alphabetical"
 [yazi.keybindings]
 open_directory_as_workspace_pane = ["<A-p>"]
 open_zoxide_in_editor = ["<A-z>"]
-
-[ratconfig.contract]
-schema_version = 1
-contract_id = "yazelix.config"
-version = 1
-applied_change_ids = []

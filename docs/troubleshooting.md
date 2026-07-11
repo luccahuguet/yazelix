@@ -80,11 +80,11 @@ If you have an older Yazelix setup:
 - Configuration is now in `~/.config/yazelix/config.toml` (not `yazelix.nix`)
 - The normal runtime entry path is the packaged `yazelix` flake output
 - The top-level flake now exposes the package-first product surface: `nix run github:luccahuguet/yazelix#yazelix -- launch`
-- The shipped defaults are rendered into `config.toml`, including the cursor registry
+- `config.toml` stores only explicit semantic overrides; omitted fields inherit the current packaged defaults
 
 **Migration steps:**
 1. It's recommended that you go through the [Installation Guide](installation.md) and install the packaged `yazelix` runtime cleanly
-2. `config.toml` will be auto-created from the shipped defaults on Yazelix startup if not found
+2. Leave `config.toml` absent to inherit all packaged defaults, or create it with only the values you want to override
 3. Move any old mutable `yazelix.toml`, `cursors.toml`, or `user_configs/` files aside; Yazelix no longer rewrites legacy config surfaces automatically
 4. Copy any custom settings from your old `yazelix.nix` to the new `config.toml` format
 
@@ -151,7 +151,7 @@ exit         # Exit current session
 yzx launch   # Start fresh in new window
 ```
 
-`yzx reset config` replaces only `~/.config/yazelix/config.toml`. Managed override files such as `helix/`, `zellij/`, the `yazi/` managed home, terminal snippets, shell hooks, legacy inputs, and unknown adjacent files are preserved and reported so you can move them aside manually when you want a completely clean configuration.
+`yzx reset config` backs up and removes only a user-owned `~/.config/yazelix/config.toml`, returning every root semantic setting to the packaged defaults. If Home Manager owns the file, remove the declared semantic values and run `home-manager switch` instead. Managed override files such as `helix/`, `zellij/`, the `yazi/` managed home, terminal snippets, shell hooks, legacy inputs, and unknown adjacent files are preserved and reported so you can move them aside manually when you want a completely clean configuration.
 
 ### Restart Fresh
 ```bash

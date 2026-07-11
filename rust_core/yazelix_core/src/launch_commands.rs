@@ -567,8 +567,7 @@ mod tests {
         assert_eq!(session_value["core"]["welcome_style"], "static");
         assert_eq!(session_value["appearance"]["mode"], "light");
 
-        let user_value = read_config_value(&config.path().join("config.toml")).unwrap();
-        assert_ne!(user_value["editor"]["command"], "nvim");
+        assert!(!config.path().join("config.toml").exists());
 
         let normalized = load_normalized_config_for_control(
             runtime.path(),

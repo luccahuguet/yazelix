@@ -546,7 +546,6 @@ fn collect_config_diagnostics(
         config_path: config_path.to_path_buf(),
         default_config_path: paths.default_config_path.clone(),
         contract_path: paths.contract_path.clone(),
-        include_missing: true,
     };
 
     match crate::config_normalize::normalize_config(&request) {
@@ -979,13 +978,6 @@ pub(super) fn read_settings_for_edit(path: &Path) -> Result<String, CoreError> {
     })
 }
 
-pub(super) fn default_main_settings_text_for_ui(
-    request: &ConfigUiRequest,
-) -> Result<String, CoreError> {
-    let paths = primary_config_paths(&request.runtime_dir, &request.config_dir);
-    render_default_config(&paths.default_config_path)
-}
-
 pub(super) fn default_main_setting_value_for_ui(
     request: &ConfigUiRequest,
     path: &str,
@@ -1060,7 +1052,6 @@ pub(super) fn validate_patched_settings_for_ui(
             config_path: temp_config,
             default_config_path: paths.default_config_path.clone(),
             contract_path: paths.contract_path.clone(),
-            include_missing: true,
         })?;
         crate::zellij_materialization::validate_zellij_custom_popup_config(
             &normalized.normalized_config,

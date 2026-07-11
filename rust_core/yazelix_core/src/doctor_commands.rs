@@ -1,6 +1,6 @@
 //! Public `yzx doctor` owner for report collection, JSON output, and human rendering.
 
-use crate::active_config_surface::{primary_config_paths, resolve_active_config_paths};
+use crate::active_config_surface::resolve_active_config_paths;
 use crate::bridge::{CoreError, ErrorClass};
 use crate::control_plane::{
     config_dir_from_env, config_override_from_env, home_dir_from_env, runtime_dir_from_env,
@@ -25,7 +25,6 @@ use crate::runtime_materialization::{
     RuntimeMaterializationPlanData, RuntimeMaterializationRepairEvaluateRequest,
     repair_runtime_materialization,
 };
-use crate::settings_surface::render_default_config;
 use crate::terminal_variant::active_terminal_from_runtime_dir;
 use crate::user_config_paths;
 use crate::workspace_asset_contract::{
@@ -39,7 +38,6 @@ use serde::Serialize;
 use serde_json::{Value, json};
 use std::env;
 use std::fs;
-use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -158,7 +156,6 @@ struct RecoveryPlanReport {
     actions: Vec<RecoveryPlanAction>,
 }
 
-const CREATE_DEFAULT_SETTINGS_CONFIG_FIX_ACTION: &str = "create_default_settings_config";
 const HELIX_RUNTIME_CONFLICT_REPAIR_ACTION: &str = "backup_helix_runtime_conflicts";
 const REPAIR_GENERATED_RUNTIME_STATE_FIX_ACTION: &str = "repair_generated_runtime_state";
 
@@ -386,7 +383,6 @@ fn load_optional_doctor_normalized_config(
         config_path: paths.config_file,
         default_config_path: paths.default_config_path,
         contract_path: paths.contract_path,
-        include_missing: true,
     })
     .ok()?;
     Some(data.normalized_config)
@@ -704,9 +700,6 @@ fn doctor_repair_action_ids(results: &[Value]) -> Vec<&'static str> {
     if needs_helix_runtime_conflict_backup(results) {
         actions.push(HELIX_RUNTIME_CONFLICT_REPAIR_ACTION);
     }
-    if has_fix_action(results, CREATE_DEFAULT_SETTINGS_CONFIG_FIX_ACTION) {
-        actions.push(CREATE_DEFAULT_SETTINGS_CONFIG_FIX_ACTION);
-    }
     if has_fix_action(results, REPAIR_GENERATED_RUNTIME_STATE_FIX_ACTION) {
         actions.push(REPAIR_GENERATED_RUNTIME_STATE_FIX_ACTION);
     }
@@ -714,65 +707,6 @@ fn doctor_repair_action_ids(results: &[Value]) -> Vec<&'static str> {
         actions.push(SEED_ZELLIJ_PLUGIN_PERMISSIONS_FIX_ACTION);
     }
     actions
-}
-
-fn create_default_settings_config_from_template(
-    runtime_dir: &Path,
-    config_dir: &Path,
-) -> Result<bool, CoreError> {
-    let paths = primary_config_paths(runtime_dir, config_dir);
-    if paths.user_config.exists() {
-        return Ok(false);
-    }
-
-    if let Some(parent) = paths.user_config.parent() {
-        fs::create_dir_all(parent).map_err(|source| {
-            CoreError::io(
-                "doctor_create_config_parent",
-                "Could not create config.toml parent directory.",
-                "Fix permissions for the Yazelix config directory, then rerun `yzx doctor --fix`.",
-                parent.to_string_lossy().into_owned(),
-                source,
-            )
-        })?;
-    }
-
-    let rendered = render_default_config(&paths.default_config_path)?;
-    let mut file = match fs::OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .open(&paths.user_config)
-    {
-        Ok(file) => file,
-        Err(source) if source.kind() == io::ErrorKind::AlreadyExists => return Ok(false),
-        Err(source) => {
-            return Err(CoreError::io(
-                "doctor_create_settings_jsonc",
-                "Could not create config.toml from shipped defaults.",
-                "Fix permissions for the Yazelix config directory, then rerun `yzx doctor --fix`.",
-                paths.user_config.to_string_lossy().into_owned(),
-                source,
-            ));
-        }
-    };
-
-    file.write_all(rendered.as_bytes()).map_err(|source| {
-        CoreError::io(
-            "doctor_write_settings_jsonc",
-            "Could not write config.toml from shipped defaults.",
-            "Fix permissions for the Yazelix config directory, then rerun `yzx doctor --fix`.",
-            paths.user_config.to_string_lossy().into_owned(),
-            source,
-        )
-    })?;
-
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        let _ = fs::set_permissions(&paths.user_config, fs::Permissions::from_mode(0o644));
-    }
-
-    Ok(true)
 }
 
 fn build_recovery_plan(report: &DoctorReportData) -> RecoveryPlanReport {
@@ -1071,7 +1005,6 @@ fn run_doctor_repair_action(
 ) -> Result<bool, CoreError> {
     match action_id {
         HELIX_RUNTIME_CONFLICT_REPAIR_ACTION => repair_helix_runtime_conflicts(results),
-        CREATE_DEFAULT_SETTINGS_CONFIG_FIX_ACTION => create_missing_default_settings_config(),
         REPAIR_GENERATED_RUNTIME_STATE_FIX_ACTION => repair_generated_runtime_state(verbose),
         SEED_ZELLIJ_PLUGIN_PERMISSIONS_FIX_ACTION => seed_zellij_plugin_permissions(),
         _ => Err(CoreError::classified(
@@ -1111,26 +1044,6 @@ fn repair_helix_runtime_conflicts(results: &[Value]) -> Result<bool, CoreError> 
         }
     }
     Ok(any_failed)
-}
-
-fn create_missing_default_settings_config() -> Result<bool, CoreError> {
-    let runtime_dir = runtime_dir_from_env()?;
-    let config_dir = config_dir_from_env()?;
-    match create_default_settings_config_from_template(&runtime_dir, &config_dir) {
-        Ok(true) => println!("✅ Created config.toml from shipped defaults"),
-        Ok(false) => {
-            let paths = primary_config_paths(&runtime_dir, &config_dir);
-            println!(
-                "⚠️  Skipped config.toml creation because {} already exists",
-                paths.user_config.display()
-            );
-        }
-        Err(err) => {
-            println!("❌ Failed to create config.toml: {}", err.message());
-            return Ok(true);
-        }
-    }
-    Ok(false)
 }
 
 fn repair_generated_runtime_state(verbose: bool) -> Result<bool, CoreError> {
@@ -1192,11 +1105,6 @@ fn collect_zellij_plugin_health_findings(
 mod tests {
     use super::*;
     use tempfile::TempDir;
-
-    fn write_runtime_default_settings(runtime_dir: &Path, body: &str) {
-        fs::create_dir_all(runtime_dir).unwrap();
-        fs::write(runtime_dir.join("config_default.toml"), body).unwrap();
-    }
 
     // Defends: the Rust doctor summary keeps warnings and fixable findings from being treated as healthy.
     #[test]
@@ -1264,44 +1172,6 @@ mod tests {
 
         assert_eq!(parsed.target, DoctorTarget::HelixSteel);
         assert!(parsed.json);
-    }
-
-    // Defends: stale or repeated doctor findings cannot overwrite an existing managed config.toml.
-    #[test]
-    fn default_settings_config_creation_does_not_overwrite_existing_file() {
-        let tmp = TempDir::new().unwrap();
-        let runtime_dir = tmp.path().join("runtime");
-        let config_dir = tmp.path().join("config");
-        write_runtime_default_settings(&runtime_dir, "[core]\nwelcome_style = \"logo\"\n");
-        fs::create_dir_all(&config_dir).unwrap();
-        let user_config = config_dir.join("config.toml");
-        let original = "[core]\nwelcome_style = \"mandelbrot\"\n";
-        fs::write(&user_config, original).unwrap();
-
-        let created = create_default_settings_config_from_template(&runtime_dir, &config_dir)
-            .expect("stale create finding should be harmless");
-
-        assert!(!created);
-        assert_eq!(fs::read_to_string(user_config).unwrap(), original);
-    }
-
-    // Defends: the explicit config-creation fix action still bootstraps first-run config.toml.
-    #[test]
-    fn default_settings_config_creation_writes_missing_file() {
-        let tmp = TempDir::new().unwrap();
-        let runtime_dir = tmp.path().join("runtime");
-        let config_dir = tmp.path().join("config");
-        let default_settings = "[core]\nwelcome_style = \"logo\"\n";
-        write_runtime_default_settings(&runtime_dir, default_settings);
-
-        let created = create_default_settings_config_from_template(&runtime_dir, &config_dir)
-            .expect("missing settings should be created");
-
-        assert!(created);
-        assert_eq!(
-            fs::read_to_string(config_dir.join("config.toml")).unwrap(),
-            default_settings
-        );
     }
 
     // Defends: doctor keeps the unsupported JSON mutation path closed.

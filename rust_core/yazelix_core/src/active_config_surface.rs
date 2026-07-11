@@ -106,18 +106,34 @@ pub fn resolve_active_config_paths(
     )?;
 
     let config_file = match config_override {
-        Some(raw) if !raw.trim().is_empty() => PathBuf::from(raw.trim()),
-        _ if paths.user_config.exists() => paths.user_config.clone(),
-        _ => {
-            return Err(CoreError::classified(
-                ErrorClass::Config,
-                "missing_default_config",
-                "No Yazelix settings file found.",
-                "Restore config.toml with `yzx reset config`, or reinstall Yazelix if the shipped defaults are missing from the runtime.",
-                json!({}),
-            ));
+        Some(raw) if !raw.trim().is_empty() => {
+            let override_path = PathBuf::from(raw.trim());
+            if !override_path.is_file() {
+                return Err(CoreError::classified(
+                    ErrorClass::Config,
+                    "missing_config_override",
+                    format!(
+                        "The requested Yazelix config override is not a readable file: {}.",
+                        override_path.display()
+                    ),
+                    "Fix or clear YAZELIX_CONFIG_OVERRIDE, then retry.",
+                    json!({ "path": override_path.display().to_string() }),
+                ));
+            }
+            override_path
         }
+        _ => paths.user_config.clone(),
     };
+
+    if !paths.default_config_path.is_file() {
+        return Err(CoreError::classified(
+            ErrorClass::Config,
+            "missing_default_config",
+            "The Yazelix runtime is missing config_default.toml.",
+            "Reinstall Yazelix so packaged semantic defaults are available.",
+            json!({ "path": paths.default_config_path.display().to_string() }),
+        ));
+    }
 
     if !paths.contract_path.exists() {
         return Err(CoreError::classified(
@@ -184,9 +200,9 @@ mod tests {
         .expect("write runtime component manifest");
     }
 
-    // Defends: Rust active-config-surface resolution bootstraps config.toml when the canonical surface is missing.
+    // Defends: Rust active-config resolution keeps an absent user file as inherited state.
     #[test]
-    fn bootstraps_missing_managed_config() {
+    fn resolves_missing_managed_config_without_creating_it() {
         let runtime = tempdir().expect("runtime dir");
         let config = tempdir().expect("config dir");
         write_runtime_layout(runtime.path());
@@ -195,9 +211,7 @@ mod tests {
 
         assert_eq!(resolved.user_config, config.path().join("config.toml"));
         assert_eq!(resolved.config_file, resolved.user_config);
-        let rendered = fs::read_to_string(&resolved.config_file).unwrap();
-        assert!(rendered.contains("[core]"));
-        assert!(!rendered.contains("[cursors]"));
+        assert!(!resolved.config_file.exists());
         assert!(resolved.user_cursor_config.exists());
         assert_eq!(
             resolved.user_cursor_config,
@@ -205,7 +219,7 @@ mod tests {
         );
     }
 
-    // Defends: disabling the cursor component does not require or generate the shared cursor sidecar during config bootstrap.
+    // Defends: disabling the cursor component leaves both optional user config files absent.
     #[test]
     fn disabled_cursor_component_bootstraps_without_cursor_sidecar() {
         let runtime = tempdir().expect("runtime dir");
@@ -235,7 +249,7 @@ mod tests {
 
         let resolved = resolve_active_config_paths(runtime.path(), config.path(), None).unwrap();
 
-        assert!(resolved.user_config.exists());
+        assert!(!resolved.user_config.exists());
         assert!(!resolved.user_cursor_config.exists());
     }
 

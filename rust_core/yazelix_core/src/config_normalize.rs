@@ -3,7 +3,7 @@ use crate::helix_external::{
     HelixExternalPair, is_custom_helix_binary_command, is_helix_command, non_empty_string,
 };
 use crate::helix_steel_plugins::parse_steel_plugin_config;
-use crate::settings_surface::read_config_table;
+use crate::settings_surface::{read_config_table, read_sparse_config_table};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map as JsonMap, Number as JsonNumber, Value as JsonValue, json};
 use std::collections::BTreeMap;
@@ -25,8 +25,6 @@ const REMOVED_TERMINAL_SELECTION_FIELDS: &[&str] = &["terminal.terminals"];
 const REMOVED_POPUP_PROGRAM_FIELDS: &[&str] = &["zellij.popup_program"];
 const MOVED_CUSTOM_POPUP_FIELDS: &[&str] = &["zellij.popup_commands.btm", "zellij.keybindings.btm"];
 const REMOVED_GENERIC_POPUP_ACTION_FIELDS: &[&str] = &["zellij.keybindings.popup"];
-const OPTIONAL_MISSING_CONFIG_PATH_PREFIXES: &[&str] =
-    &["appearance", "helix.external", "zellij.custom_popups"];
 const REPLACED_HELIX_RUNTIME_FIELDS: &[&str] = &["helix.runtime_path"];
 
 #[derive(Debug, Clone)]
@@ -34,7 +32,6 @@ pub struct NormalizeConfigRequest {
     pub config_path: PathBuf,
     pub default_config_path: PathBuf,
     pub contract_path: PathBuf,
-    pub include_missing: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -79,7 +76,6 @@ struct SchemaFinding {
 struct ContractField {
     path: String,
     parser_key: String,
-    default: Option<TomlValue>,
     parser_behavior: String,
     validation: String,
     allowed_values: Vec<String>,
@@ -91,19 +87,14 @@ struct ContractField {
 pub fn normalize_config(
     request: &NormalizeConfigRequest,
 ) -> Result<NormalizeConfigData, CoreError> {
-    let config = read_config_table(&request.config_path, "read_config")?;
+    let config = read_sparse_config_table(&request.config_path, "read_config")?;
     let default_config = read_config_table(&request.default_config_path, "read_default_config")?;
     let contract = read_toml_table(&request.contract_path, "read_config_contract")?;
     let fields = load_contract_fields(&contract)?;
     let config_file = request.config_path.to_string_lossy().to_string();
 
-    let diagnostic_report = build_diagnostic_report(
-        &config,
-        &default_config,
-        &fields,
-        &request.config_path,
-        request.include_missing,
-    )?;
+    let diagnostic_report =
+        build_diagnostic_report(&config, &default_config, &fields, &request.config_path)?;
     if diagnostic_report.has_blocking {
         return Err(CoreError::classified(
             ErrorClass::Config,
@@ -119,7 +110,7 @@ pub fn normalize_config(
 
     let mut normalized_config = JsonMap::new();
     for field in fields.values() {
-        let normalized = normalize_field(field, &config)?;
+        let normalized = normalize_field(field, &config, &default_config)?;
         normalized_config.insert(field.parser_key.clone(), normalized);
     }
     normalized_config.insert(
@@ -208,7 +199,6 @@ fn load_contract_fields(
             ContractField {
                 path: path.clone(),
                 parser_key,
-                default: field_table.get("default").cloned(),
                 parser_behavior,
                 validation,
                 allowed_values,
@@ -246,30 +236,14 @@ fn build_diagnostic_report(
     default_config: &toml::Table,
     fields: &BTreeMap<String, ContractField>,
     config_path: &Path,
-    include_missing: bool,
 ) -> Result<ConfigDiagnosticReport, CoreError> {
-    let mut reference = TomlValue::Table(default_config.clone());
-    for field in fields.values() {
-        if let Some(default_value) = &field.default {
-            set_nested_value(
-                &mut reference,
-                &field.path.split('.').collect::<Vec<_>>(),
-                default_value.clone(),
-            );
-        }
-    }
-
     let findings = {
         let mut findings = compare_configs(
-            &reference,
+            &TomlValue::Table(default_config.clone()),
             &TomlValue::Table(user_config.clone()),
             &[],
             fields,
         );
-        if !include_missing {
-            findings.retain(|finding| finding.kind != "missing_field");
-        }
-        findings.retain(|finding| !is_optional_missing_config_finding(finding));
         findings.extend(validate_enum_values(user_config, fields));
         findings.extend(validate_helix_external_pair(user_config));
         findings.extend(validate_helix_steel_plugins(user_config));
@@ -339,7 +313,7 @@ fn compare_configs(
 
         let mut findings = Vec::new();
         for key in user_table.keys() {
-            if path.is_empty() && (key == "cursors" || key == "ratconfig") {
+            if path.is_empty() && key == "cursors" {
                 continue;
             }
             if !default_table.contains_key(key) {
@@ -353,19 +327,6 @@ fn compare_configs(
                     kind: "unknown_field",
                     path: formatted.clone(),
                     message: format!("Unknown config field: {formatted}"),
-                });
-            }
-        }
-
-        for key in default_table.keys() {
-            if !user_table.contains_key(key) {
-                let mut finding_path = path.to_vec();
-                finding_path.push(key);
-                let formatted = format_config_path(&finding_path);
-                findings.push(SchemaFinding {
-                    kind: "missing_field",
-                    path: formatted.clone(),
-                    message: format!("Missing config field: {formatted}"),
                 });
             }
         }
@@ -409,13 +370,6 @@ fn contract_allows_config_path(path: &str, fields: &BTreeMap<String, ContractFie
         .any(|field_path| field_path == path || field_path.starts_with(&format!("{path}.")))
 }
 
-fn is_optional_missing_config_finding(finding: &SchemaFinding) -> bool {
-    finding.kind == "missing_field"
-        && OPTIONAL_MISSING_CONFIG_PATH_PREFIXES.iter().any(|prefix| {
-            finding.path == *prefix || finding.path.starts_with(&format!("{prefix}."))
-        })
-}
-
 fn validate_enum_values(
     user_config: &toml::Table,
     fields: &BTreeMap<String, ContractField>,
@@ -426,13 +380,12 @@ fn validate_enum_values(
             continue;
         }
         let path = field.path.split('.').collect::<Vec<_>>();
-        let user_root = TomlValue::Table(user_config.clone());
-        let Some(value) = get_nested_value(&user_root, &path).cloned() else {
+        let Some(value) = get_nested_table_value(user_config, &path) else {
             continue;
         };
 
         if field.validation == "enum_string_list" {
-            if let TomlValue::Array(values) = &value {
+            if let TomlValue::Array(values) = value {
                 for value in values {
                     let rendered = toml_value_to_lossy_string(value);
                     if !field.allowed_values.contains(&rendered) {
@@ -444,7 +397,7 @@ fn validate_enum_values(
                     }
                 }
             } else {
-                let rendered = toml_value_to_lossy_string(&value);
+                let rendered = toml_value_to_lossy_string(value);
                 if !field.allowed_values.contains(&rendered) {
                     findings.push(invalid_enum_finding(
                         &field.path,
@@ -454,7 +407,7 @@ fn validate_enum_values(
                 }
             }
         } else {
-            let rendered = toml_value_to_lossy_string(&value);
+            let rendered = toml_value_to_lossy_string(value);
             if !field.allowed_values.contains(&rendered) {
                 findings.push(invalid_enum_finding(
                     &field.path,
@@ -469,11 +422,10 @@ fn validate_enum_values(
 
 fn validate_helix_external_pair(user_config: &toml::Table) -> Vec<SchemaFinding> {
     let mut findings = Vec::new();
-    let root = TomlValue::Table(user_config.clone());
-    let editor_command = get_nested_value(&root, &["editor", "command"])
+    let editor_command = get_nested_table_value(user_config, &["editor", "command"])
         .and_then(TomlValue::as_str)
         .and_then(non_empty_string);
-    let external = get_nested_value(&root, &["helix", "external"]);
+    let external = get_nested_table_value(user_config, &["helix", "external"]);
 
     if let Some(external) = external {
         let Some(table) = external.as_table() else {
@@ -554,8 +506,7 @@ fn helix_external_pair_finding(path: &str, message: &str) -> SchemaFinding {
 }
 
 fn validate_helix_steel_plugins(user_config: &toml::Table) -> Vec<SchemaFinding> {
-    let root = TomlValue::Table(user_config.clone());
-    let Some(value) = get_nested_value(&root, &["helix", "steel_plugins"]) else {
+    let Some(value) = get_nested_table_value(user_config, &["helix", "steel_plugins"]) else {
         return Vec::new();
     };
     match parse_steel_plugin_config(Some(&toml_to_json(value))) {
@@ -581,7 +532,7 @@ fn invalid_enum_finding(path: &str, allowed_values: &[String], value: &str) -> S
 
 fn make_schema_diagnostic(finding: SchemaFinding) -> ConfigDiagnostic {
     let blocking = true;
-    let fix_available = finding.kind == "missing_field";
+    let fix_available = false;
     let mut diagnostic = ConfigDiagnostic {
         category: "schema".to_string(),
         path: finding.path.clone(),
@@ -702,13 +653,6 @@ fn make_schema_diagnostic(finding: SchemaFinding) -> ConfigDiagnostic {
                 "Next: Use `yzx reset config` only as a blunt fallback.".to_string(),
             ];
         }
-        "missing_field" => {
-            diagnostic.headline = format!("Missing config field at {}", finding.path);
-            diagnostic.detail_lines = vec![
-                finding.message,
-                "Next: Add the field from the current template, or let Yazelix repair a writable managed config.toml from the shipped defaults.".to_string(),
-            ];
-        }
         "invalid_helix_external_pair" => {
             diagnostic.headline = format!("Invalid Helix external pair at {}", finding.path);
             diagnostic.detail_lines = vec![
@@ -739,23 +683,21 @@ fn make_schema_diagnostic(finding: SchemaFinding) -> ConfigDiagnostic {
 fn normalize_field(
     field: &ContractField,
     raw_config: &toml::Table,
+    default_config: &toml::Table,
 ) -> Result<JsonValue, CoreError> {
     if field.parser_behavior == "helix_external_pair" {
-        return normalize_helix_external_field(field, raw_config);
+        return normalize_helix_external_field(field, raw_config, default_config);
     }
 
-    let value = get_nested_value(
-        &TomlValue::Table(raw_config.clone()),
-        &field.path.split('.').collect::<Vec<_>>(),
-    )
-    .cloned()
-    .or_else(|| field.default.clone())
-    .unwrap_or_else(|| TomlValue::String(String::new()));
+    let path = field.path.split('.').collect::<Vec<_>>();
+    let value = get_nested_table_value(raw_config, &path)
+        .or_else(|| get_nested_table_value(default_config, &path))
+        .ok_or_else(|| missing_packaged_default_error(&field.path))?;
 
     match field.parser_behavior.as_str() {
-        "compact_badge_text" => Ok(JsonValue::String(compact_badge_text(&value))),
+        "compact_badge_text" => Ok(JsonValue::String(compact_badge_text(value))),
         "empty_string_to_null" => {
-            let value = toml_value_to_lossy_string(&value);
+            let value = toml_value_to_lossy_string(value);
             if value.is_empty() {
                 Ok(JsonValue::Null)
             } else {
@@ -764,26 +706,24 @@ fn normalize_field(
         }
         "bool_to_string" => {
             let value = value.as_bool().ok_or_else(|| {
-                invalid_value_error(
-                    &field.path,
-                    &toml_value_to_lossy_string(&value),
-                    "a boolean",
-                )
+                invalid_value_error(&field.path, &toml_value_to_lossy_string(value), "a boolean")
             })?;
             Ok(JsonValue::String(
                 if value { "true" } else { "false" }.to_string(),
             ))
         }
-        _ => normalize_direct_field(field, &value),
+        _ => normalize_direct_field(field, value),
     }
 }
 
 fn normalize_helix_external_field(
     field: &ContractField,
     raw_config: &toml::Table,
+    default_config: &toml::Table,
 ) -> Result<JsonValue, CoreError> {
-    let root = TomlValue::Table(raw_config.clone());
-    let value = get_nested_value(&root, &field.path.split('.').collect::<Vec<_>>());
+    let path = field.path.split('.').collect::<Vec<_>>();
+    let value = get_nested_table_value(raw_config, &path)
+        .or_else(|| get_nested_table_value(default_config, &path));
     let Some(value) = value else {
         return Ok(JsonValue::Null);
     };
@@ -812,6 +752,16 @@ fn normalize_helix_external_field(
         )
     })?;
     Ok(pair.as_json())
+}
+
+fn missing_packaged_default_error(path: &str) -> CoreError {
+    CoreError::classified(
+        ErrorClass::Runtime,
+        "missing_packaged_config_default",
+        format!("The packaged Yazelix config is missing the required default for {path}."),
+        "Reinstall Yazelix so config_default.toml matches the current config contract.",
+        json!({ "path": path }),
+    )
 }
 
 fn normalize_direct_field(
@@ -946,7 +896,7 @@ fn invalid_value_error(field_path: &str, actual_value: &str, expectation: &str) 
         ErrorClass::Config,
         "invalid_config_value",
         format!("Invalid {field_path} value '{actual_value}'. Expected {expectation}."),
-        "Update config.toml with a supported value, or run `yzx reset config` to restore the template.",
+        "Update config.toml with a supported value, or run `yzx reset config` to remove the explicit overrides.",
         json!({
             "field": field_path,
             "actual": actual_value,
@@ -966,30 +916,13 @@ fn compact_badge_text(value: &TomlValue) -> String {
     compact.chars().take(8).collect()
 }
 
-fn get_nested_value<'a>(value: &'a TomlValue, path: &[&str]) -> Option<&'a TomlValue> {
-    let mut current = value;
-    for segment in path {
+fn get_nested_table_value<'a>(table: &'a toml::Table, path: &[&str]) -> Option<&'a TomlValue> {
+    let (first, rest) = path.split_first()?;
+    let mut current = table.get(*first)?;
+    for segment in rest {
         current = current.as_table()?.get(*segment)?;
     }
     Some(current)
-}
-
-fn set_nested_value(value: &mut TomlValue, path: &[&str], new_value: TomlValue) {
-    if path.is_empty() {
-        *value = new_value;
-        return;
-    }
-    let Some(table) = value.as_table_mut() else {
-        return;
-    };
-    if path.len() == 1 {
-        table.insert(path[0].to_string(), new_value);
-        return;
-    }
-    let entry = table
-        .entry(path[0].to_string())
-        .or_insert_with(|| TomlValue::Table(toml::Table::new()));
-    set_nested_value(entry, &path[1..], new_value);
 }
 
 fn format_config_path(path: &[&str]) -> String {
@@ -1063,7 +996,6 @@ mod tests {
             config_path,
             default_config_path: repo.join("config_default.toml"),
             contract_path: repo.join("config_metadata/main_config_contract.toml"),
-            include_missing: false,
         }
     }
 
@@ -1088,12 +1020,6 @@ mod tests {
         )
         .expect("write settings");
         path
-    }
-
-    fn strict_request_for(config_path: PathBuf) -> NormalizeConfigRequest {
-        let mut request = request_for(config_path);
-        request.include_missing = true;
-        request
     }
 
     fn blocking_diagnostic_for<'a>(
@@ -1138,6 +1064,71 @@ mod tests {
         );
     }
 
+    // Defends: an absent user config inherits every packaged semantic default without creating a file.
+    #[test]
+    fn absent_config_normalizes_to_packaged_defaults_without_writing() {
+        let dir = tempdir().expect("tempdir");
+        let path = dir.path().join("config.toml");
+
+        let inherited = normalize_config(&request_for(path.clone())).unwrap();
+        let packaged =
+            normalize_config(&request_for(repo_root().join("config_default.toml"))).unwrap();
+        let mut inherited_values = inherited.normalized_config;
+        let mut packaged_values = packaged.normalized_config;
+        inherited_values.remove("config_file");
+        packaged_values.remove("config_file");
+
+        assert_eq!(inherited_values, packaged_values);
+        assert_eq!(inherited.diagnostic_report.issue_count, 0);
+        assert!(!path.exists());
+    }
+
+    // Defends: packaged defaults, rather than duplicated contract metadata, own inherited values.
+    #[test]
+    fn absent_field_tracks_the_packaged_default_value() {
+        let dir = tempdir().expect("tempdir");
+        let config_path = dir.path().join("config.toml");
+        let default_config_path = dir.path().join("config_default.toml");
+        let default_config = fs::read_to_string(repo_root().join("config_default.toml"))
+            .expect("read packaged defaults")
+            .replacen("mode = \"dark\"", "mode = \"light\"", 1);
+        fs::write(&default_config_path, default_config).expect("write changed packaged defaults");
+
+        let data = normalize_config(&NormalizeConfigRequest {
+            config_path: config_path.clone(),
+            default_config_path,
+            contract_path: repo_root().join("config_metadata/main_config_contract.toml"),
+        })
+        .unwrap();
+
+        assert_eq!(
+            data.normalized_config.get("appearance_mode").unwrap(),
+            "light"
+        );
+        assert!(!config_path.exists());
+    }
+
+    // Regression: a damaged packaged default must fail instead of inventing an empty value.
+    #[test]
+    fn missing_required_packaged_default_fails_fast() {
+        let dir = tempdir().expect("tempdir");
+        let default_config_path = dir.path().join("config_default.toml");
+        let default_config = fs::read_to_string(repo_root().join("config_default.toml"))
+            .expect("read packaged defaults")
+            .replacen("mode = \"dark\"\n", "", 1);
+        fs::write(&default_config_path, default_config).expect("write damaged packaged defaults");
+
+        let error = normalize_config(&NormalizeConfigRequest {
+            config_path: dir.path().join("config.toml"),
+            default_config_path,
+            contract_path: repo_root().join("config_metadata/main_config_contract.toml"),
+        })
+        .unwrap_err();
+
+        assert_eq!(error.code(), "missing_packaged_config_default");
+        assert_eq!(error.details()["path"], "appearance.mode");
+    }
+
     // Defends: host-owned xonsh is a valid default-shell enum without being bundled by Yazelix.
     #[test]
     fn accepts_xonsh_as_default_shell_enum_value() {
@@ -1150,29 +1141,11 @@ mod tests {
         );
     }
 
-    // Defends: the hidden ratconfig contract state is accepted as metadata but never reaches runtime config.
-    #[test]
-    fn ignores_hidden_ratconfig_contract_state_during_normalization() {
-        let mut settings = default_main_config();
-        settings["ratconfig"] = json!({
-            "contract": {
-                "schema_version": 1,
-                "contract_id": "yazelix.settings",
-                "version": 4,
-                "applied_change_ids": ["add-current-default-settings"]
-            }
-        });
-        let data = normalize_config(&strict_request_for(write_main_config(&settings))).unwrap();
-
-        assert!(!data.normalized_config.contains_key("ratconfig"));
-        assert!(data.diagnostic_report.blocking_diagnostics.is_empty());
-    }
-
     // Defends: the shipped main settings template is a complete strict config.toml surface.
     #[test]
     fn strict_default_config_toml_has_no_diagnostics() {
         let repo = repo_root();
-        let data = normalize_config(&strict_request_for(repo.join("config_default.toml"))).unwrap();
+        let data = normalize_config(&request_for(repo.join("config_default.toml"))).unwrap();
 
         assert_eq!(data.diagnostic_report.issue_count, 0);
         assert_eq!(data.diagnostic_report.blocking_count, 0);
@@ -1464,44 +1437,12 @@ open_directory_as_workspace_pane = []
         );
     }
 
-    // Regression: startup-style strict normalization rejects missing mandatory fields with a fixable diagnostic.
-    #[test]
-    fn rejects_missing_fields_when_requested() {
-        let path = write_user_config("[shell]\ndefault_shell = \"nu\"\n");
-        let request = strict_request_for(path);
-
-        let error = normalize_config(&request).unwrap_err();
-        assert_eq!(error.code(), "unsupported_config");
-        let details = error.details();
-        let diagnostic = blocking_diagnostic_for(&details, "core");
-
-        assert_eq!(diagnostic["status"], "missing_field");
-        assert_eq!(diagnostic["blocking"], json!(true));
-        assert_eq!(diagnostic["fix_available"], json!(true));
-    }
-
-    // Regression: missing bool fields in config.toml fail clearly instead of being silently defaulted by normalization.
-    #[test]
-    fn rejects_missing_settings_bool_field() {
-        let mut value = default_main_config();
-        value["core"].as_object_mut().unwrap().remove("debug_mode");
-        let request = strict_request_for(write_main_config(&value));
-
-        let error = normalize_config(&request).unwrap_err();
-        assert_eq!(error.code(), "unsupported_config");
-        let details = error.details();
-        let diagnostic = blocking_diagnostic_for(&details, "core.debug_mode");
-
-        assert_eq!(diagnostic["status"], "missing_field");
-        assert_eq!(diagnostic["fix_available"], json!(true));
-    }
-
     // Regression: wrong bool types in config.toml are blocking user errors, not implicit coercions.
     #[test]
     fn rejects_wrong_settings_bool_type() {
         let mut value = default_main_config();
         value["core"]["debug_mode"] = json!("false");
-        let request = strict_request_for(write_main_config(&value));
+        let request = request_for(write_main_config(&value));
 
         let error = normalize_config(&request).unwrap_err();
         assert_eq!(error.code(), "unsupported_config");

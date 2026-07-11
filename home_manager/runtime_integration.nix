@@ -104,15 +104,15 @@ let
       message = "programs.yazelix.manage_cursor_config requires programs.yazelix.components.cursors to remain enabled";
     }
     {
-      assertion = (componentEnabled "screen") || cfg.skip_welcome_screen;
+      assertion = (componentEnabled "screen") || cfg.skip_welcome_screen == true;
       message = "programs.yazelix.components.screen = false requires programs.yazelix.skip_welcome_screen = true";
     }
     {
-      assertion = (componentEnabled "screen") || !cfg.screen_saver_enabled;
+      assertion = (componentEnabled "screen") || cfg.screen_saver_enabled == false;
       message = "programs.yazelix.components.screen = false requires programs.yazelix.screen_saver_enabled = false";
     }
     {
-      assertion = (runtimeToolSource "macchina") != "off" || !cfg.show_macchina_on_welcome;
+      assertion = (runtimeToolSource "macchina") != "off" || cfg.show_macchina_on_welcome == false;
       message = "programs.yazelix.runtime_tool_sources.macchina = \"off\" requires programs.yazelix.show_macchina_on_welcome = false";
     }
     {

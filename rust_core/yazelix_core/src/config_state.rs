@@ -1,6 +1,6 @@
 use crate::bridge::{CoreError, ErrorClass};
 use crate::config_normalize::{NormalizeConfigRequest, normalize_config};
-use crate::settings_surface::read_config_table;
+use crate::settings_surface::read_sparse_config_table;
 use serde::Serialize;
 use serde_json::{Map as JsonMap, Value as JsonValue, json};
 use sha2::{Digest, Sha256};
@@ -62,9 +62,8 @@ pub fn compute_config_state(
         config_path: request.config_path.clone(),
         default_config_path: request.default_config_path.clone(),
         contract_path: request.contract_path.clone(),
-        include_missing: true,
     })?;
-    let raw_config = read_config_table(&request.config_path, "read_config")?;
+    let raw_config = read_sparse_config_table(&request.config_path, "read_config")?;
     let contract = read_toml_table(&request.contract_path, "read_config_contract")?;
     let rebuild_paths = load_rebuild_required_paths(&contract);
     let rebuild_config = extract_rebuild_config(&raw_config, &rebuild_paths);
@@ -535,24 +534,23 @@ mod tests {
         .expect("write runtime identity");
     }
 
-    // Invariant: config-state hashing stays stable for the default config when no prior state exists.
+    // Invariant: inherited rebuild settings keep an absent user config out of the explicit-value hash.
     #[test]
-    fn computes_default_rebuild_hash_without_recorded_state() {
+    fn computes_inherited_rebuild_hash_without_creating_config() {
         let dir = tempdir().expect("tempdir");
         let runtime_dir = repo_root();
         let state_path = dir.path().join("state/rebuild_hash");
-        let config_path = repo_root().join("config_default.toml");
+        let config_path = dir.path().join("config.toml");
         let state = compute_config_state(&request_for(
-            config_path,
+            config_path.clone(),
             runtime_dir.clone(),
             state_path.clone(),
         ))
         .unwrap();
 
-        assert_eq!(
-            state.config_hash,
-            "6f6a97b55a035c54c9e1b47e7903de90c01890a0a2cf1a3f6d272a1b472b3b62"
-        );
+        assert_eq!(state.config_hash, sha256_hex(""));
+        assert_eq!(state.config.get("default_shell").unwrap(), "nu");
+        assert!(!config_path.exists());
         assert!(state.needs_refresh);
     }
 

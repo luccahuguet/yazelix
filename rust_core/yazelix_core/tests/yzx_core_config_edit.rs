@@ -45,10 +45,7 @@ fn config_set_and_unset_edit_config_toml() {
     let settings_path = config.join("config.toml");
     let value = read_config_value(&settings_path).expect("settings after set");
     assert_eq!(value["editor"]["hide_sidebar_on_file_open"], json!(true));
-    assert_eq!(
-        value["ratconfig"]["contract"]["contract_id"],
-        json!("yazelix.config")
-    );
+    assert_eq!(value.as_object().unwrap().len(), 1);
 
     let mut set_cursor = yzx_control_command();
     with_config_env(&mut set_cursor, &home, &runtime, &config);
@@ -67,8 +64,48 @@ fn config_set_and_unset_edit_config_toml() {
     unset.args(["config", "unset", "editor.hide_sidebar_on_file_open"]);
     unset.assert().success();
 
-    let value = read_config_value(&settings_path).expect("settings after unset");
-    assert_eq!(value["editor"]["hide_sidebar_on_file_open"], json!(false));
+    assert!(!settings_path.exists());
+}
+
+// Defends: an inherited root has no explicit document content to print and remains absent.
+#[test]
+fn config_show_is_empty_when_every_value_is_inherited() {
+    let repo = repo_root();
+    let temp = tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let runtime = temp.path().join("runtime");
+    let config = temp.path().join("config");
+    write_runtime_contract_assets(&repo, &runtime);
+
+    let mut show = yzx_control_command();
+    with_config_env(&mut show, &home, &runtime, &config);
+    let output = show.args(["config"]).output().unwrap();
+
+    assert!(output.status.success());
+    assert!(output.stdout.is_empty());
+    assert!(!config.join("config.toml").exists());
+}
+
+// Regression: unset removes a semantically empty root even when the selected key was already absent.
+#[test]
+fn config_unset_removes_preexisting_empty_root() {
+    let repo = repo_root();
+    let temp = tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let runtime = temp.path().join("runtime");
+    let config = temp.path().join("config");
+    write_runtime_contract_assets(&repo, &runtime);
+    fs::create_dir_all(&config).unwrap();
+    fs::write(config.join("config.toml"), "[editor]\n").unwrap();
+
+    let mut unset = yzx_control_command();
+    with_config_env(&mut unset, &home, &runtime, &config);
+    unset
+        .args(["config", "unset", "editor.hide_sidebar_on_file_open"])
+        .assert()
+        .success();
+
+    assert!(!config.join("config.toml").exists());
 }
 
 // Regression: live-with-pane-refresh config saves emit a versioned pane-orchestrator reload payload instead of leaving the saved value silently inactive.
@@ -115,7 +152,7 @@ fn config_set_live_zellij_screen_saver_field_reloads_pane_orchestrator_runtime_c
         String::from_utf8_lossy(&output.stderr)
     );
     let stdout = String::from_utf8_lossy(&output.stdout);
-    assert!(stdout.contains("Updated zellij.screen_saver_idle_seconds."));
+    assert!(stdout.contains("Inserted zellij.screen_saver_idle_seconds."));
     assert!(stdout.contains("Refreshed pane-orchestrator runtime config."));
     let payload: serde_json::Value =
         serde_json::from_str(&fs::read_to_string(payload_log).unwrap()).unwrap();

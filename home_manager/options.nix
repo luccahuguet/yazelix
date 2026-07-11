@@ -434,7 +434,7 @@ ${terminalDescriptionBullets}
     description = ''
       Welcome animation duration in seconds for animated styles.
       The logo style keeps its fixed timing and ignores this value.
-      Default: 2.0.
+      Packaged default: 4.0.
       Valid range: 0.2 to 8.0.
     '';
   };

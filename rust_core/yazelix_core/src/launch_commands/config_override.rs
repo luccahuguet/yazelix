@@ -121,7 +121,11 @@ pub(super) fn materialize_session_config_override(
         base_config_override,
     )?;
     let contract_fields = load_session_config_override_fields(&active_paths.contract_path)?;
-    let mut root = read_config_value(&active_paths.config_file)?;
+    let mut root = if active_paths.config_file.is_file() {
+        read_config_value(&active_paths.config_file)?
+    } else {
+        JsonValue::Object(JsonMap::new())
+    };
     for raw in with_overrides {
         let patch = parse_session_config_patch(raw, &contract_fields)?;
         apply_session_config_patch(&mut root, &patch)?;

@@ -149,7 +149,7 @@ Yazelix is a reproducible terminal IDE built around Zellij, Yazi, and your confi
 
 The workspace is managed by pane identity instead of pane-scanning guesses. Opening from Yazi targets the managed editor, `yzx reveal` jumps the current file back into the file tree, and the `Alt+Shift+H/J/K/L` layer maps naturally to left sidebar, bottom popup, top popup, and right sidebar
 
-Workspace configuration lives in TOML at `~/.config/yazelix/config.toml`. Mars keeps its packaged config and theme assets as the live base, then recursively overlays the sparse native TOML file at `~/.config/yazelix/mars/config.toml`. `yzx config ui` exposes package defaults and user overrides through Ratconfig
+Workspace configuration uses sparse TOML overrides at `~/.config/yazelix/config.toml`; omitted fields inherit the current packaged defaults, and a fresh install does not need the file. Mars follows the same model with its native override at `~/.config/yazelix/mars/config.toml`. `yzx config ui` exposes inherited defaults and explicit user values through Ratconfig
 
 First-party child packages own focused pieces of the stack: Mars Terminal, screen rendering, cursor presets, the Zellij bar, the popup plugin, the pane orchestrator wasm, and Yazi assets. The normal Yazelix package wires them together automatically
 
@@ -329,7 +329,7 @@ See the full catalog of tools and integrations in the Yazelix Collection:
 - **Environment setup**: Proper paths, variables, and shell configurations
 
 **Customize Your Installation:**
-If you followed [step 3 in the installation guide](./docs/installation.md#step-3-configure-your-installation-optional), you already have your `~/.config/yazelix/config.toml` config file ready, you can modify it anytime and restart Yazelix to apply changes. Mars customization lives in `~/.config/yazelix/mars/config.toml`; standalone cursor presets live in `~/.config/yazelix_cursors/settings.jsonc`
+If you followed [step 3 in the installation guide](./docs/installation.md#step-3-configure-your-installation-optional), add only the values you want to keep explicit in `~/.config/yazelix/config.toml`, then open a new window or restart Yazelix to apply them. Leave the file absent to inherit every packaged default. Mars customization lives in `~/.config/yazelix/mars/config.toml`; standalone cursor presets live in `~/.config/yazelix_cursors/settings.jsonc`
 
 **Terminal Emulator Selection:**
 - **Mars**: packaged Rust terminal fork with a package-owned native base plus sparse user overrides, the Yazelix Zellij Kitty graphics bridge, and an agent-driven development focus
@@ -380,7 +380,7 @@ Run `yzx help` for the live command list
 
 ### Config and Recovery
 
-- `yzx config [--path]` - Show the active config or print its resolved path
+- `yzx config [--path]` - Show explicit config overrides or print the resolved path
 - `yzx config set PATH JSON` - Set a supported config value while preserving comments
 - `yzx config unset PATH` - Remove an explicit config value so defaults apply
 - `yzx edit config` - Open the main managed Yazelix config file in your editor
