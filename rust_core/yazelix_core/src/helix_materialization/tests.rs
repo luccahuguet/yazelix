@@ -6,6 +6,9 @@ use std::path::Path;
 use tempfile::TempDir;
 use toml::Value as TomlValue;
 
+#[cfg(unix)]
+use std::os::unix::fs::PermissionsExt;
+
 fn normal_binding(config: &TomlValue, key: &str) -> Option<String> {
     config
         .get("keys")?
@@ -251,6 +254,78 @@ fn helix_materialization_writes_default_steel_entrypoints() {
     assert!(!generated_init.contains("prefix-in"));
     assert!(!generated_init.contains("yazelix."));
     assert!(!generated_init.contains("show-splash"));
+}
+
+#[cfg(unix)]
+// Regression: matching generated Helix cogs files are owner-level no-ops and do not require a writable destination directory.
+#[test]
+fn helix_materialization_skips_matching_cogs_theme_in_read_only_directory() {
+    let tmp = TempDir::new().unwrap();
+    let runtime_dir = tmp.path().join("runtime");
+    let config_dir = tmp.path().join("config");
+    let state_dir = tmp.path().join("state");
+    write_runtime_layout(&runtime_dir);
+    fs::create_dir_all(&config_dir).unwrap();
+
+    let request = HelixMaterializationRequest {
+        runtime_dir: runtime_dir.clone(),
+        config_dir: config_dir.clone(),
+        state_dir: state_dir.clone(),
+        show_splash: true,
+    };
+    generate_helix_materialization(&request).unwrap();
+
+    let source = runtime_dir.join("configs/helix/steel_plugins/cogs/themes/spacemacs.scm");
+    let target = state_dir.join("configs/helix/cogs/themes/spacemacs.scm");
+    let target_parent = target.parent().unwrap();
+    assert_eq!(fs::read(&source).unwrap(), fs::read(&target).unwrap());
+    fs::set_permissions(target_parent, fs::Permissions::from_mode(0o555)).unwrap();
+
+    let result = generate_helix_materialization(&request);
+
+    fs::set_permissions(target_parent, fs::Permissions::from_mode(0o755)).unwrap();
+    assert!(result.is_ok());
+    assert_eq!(fs::read(&source).unwrap(), fs::read(&target).unwrap());
+    assert_eq!(
+        fs::read_dir(target_parent)
+            .unwrap()
+            .map(|entry| entry.unwrap().file_name())
+            .collect::<Vec<_>>(),
+        vec!["spacemacs.scm"]
+    );
+}
+
+#[cfg(unix)]
+// Regression: differing generated Helix cogs files retain the atomic-write failure instead of hiding read-only runtime drift.
+#[test]
+fn helix_materialization_rejects_changed_cogs_theme_in_read_only_directory() {
+    let tmp = TempDir::new().unwrap();
+    let runtime_dir = tmp.path().join("runtime");
+    let config_dir = tmp.path().join("config");
+    let state_dir = tmp.path().join("state");
+    write_runtime_layout(&runtime_dir);
+    fs::create_dir_all(&config_dir).unwrap();
+
+    let request = HelixMaterializationRequest {
+        runtime_dir: runtime_dir.clone(),
+        config_dir,
+        state_dir: state_dir.clone(),
+        show_splash: true,
+    };
+    generate_helix_materialization(&request).unwrap();
+
+    let source = runtime_dir.join("configs/helix/steel_plugins/cogs/themes/spacemacs.scm");
+    let target = state_dir.join("configs/helix/cogs/themes/spacemacs.scm");
+    let target_parent = target.parent().unwrap();
+    let previous_target = fs::read(&target).unwrap();
+    fs::write(&source, b"(provide changed-theme)\n").unwrap();
+    fs::set_permissions(target_parent, fs::Permissions::from_mode(0o555)).unwrap();
+
+    let error = generate_helix_materialization(&request).unwrap_err();
+
+    fs::set_permissions(target_parent, fs::Permissions::from_mode(0o755)).unwrap();
+    assert_eq!(error.code(), "atomic_write_create");
+    assert_eq!(fs::read(&target).unwrap(), previous_target);
 }
 
 // Defends: the borrowed splash plugin only renders when the wrapper classifies the launch as splash-eligible.
