@@ -1555,7 +1555,7 @@ dependencies = [
 [[package]]
 name = "yazelix_yazi_assets"
 version = "0.1.0"
-source = "git+https://github.com/FlexNetOS/yazelix-yazi-assets?rev=471073d54d4a6c9fa9e87f26134d6db3f387977e#471073d54d4a6c9fa9e87f26134d6db3f387977e"
+source = "git+https://github.com/FlexNetOS/yazelix-yazi-assets?rev=bd53b59159125f9c186e3766ff5c2a07005c26be#bd53b59159125f9c186e3766ff5c2a07005c26be"
 dependencies = [
  "serde",
  "toml",
