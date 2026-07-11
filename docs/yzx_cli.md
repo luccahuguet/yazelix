@@ -102,6 +102,15 @@ Open the managed right agent pane
 - Does not silently fall back to another agent
 - The right sidebar can be configured to run another agent or any other terminal command
 
+### `yzx agent init [--apply] [--meta-root <path>] [--repo <path>]`
+One-shot agent harness setup for the current repo (preview by default)
+- Wires the agent substrate in a bounded, fail-closed pass: Meta GitKB (`git-kb verify --full` / `git-kb init` plus the Codex scaffold), Grit (`grit -r <repo> init`), ICM (`icm init --mode cli --force`), Meta fleet dispatch validation (`meta --dry-run exec -- git status --short --branch`), and RTK setup (`rtk init --global --codex`)
+- Preview is the default; mutation requires `--apply`
+- Requires `git-kb`, `grit`, `icm`, `meta`, `rtk`, and `git` on `PATH`; fails closed before running any step when one is missing
+- A failing step aborts the remaining steps
+- `--repo` defaults to the enclosing git toplevel; `--meta-root` defaults to `$META_ROOT` when set
+- Never enables Codex hooks or plugins, installs user-local shims, or rewrites Git commands
+
 ### `yzx reveal PATH`
 Reveal a file or directory in the managed Yazi file-tree sidebar
 - Targets the managed sidebar in the current Zellij tab
