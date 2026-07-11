@@ -9,6 +9,7 @@ use crate::runtime_component_enabled;
 use crate::terminal_materialization::{
     MarsEmojiFont, MarsProfile, TerminalGeneratedConfig, TerminalMaterializationRequest,
     generate_terminal_materialization, mars_emoji_font_override_from_env, mars_profile_from_env,
+    terminal_has_generated_config,
 };
 use crate::terminal_variant::active_terminal_from_runtime_dir;
 use serde::Serialize;
@@ -85,8 +86,11 @@ pub fn prepare_launch_materialization(
         "terminal_config_mode",
         DEFAULT_TERMINAL_CONFIG_MODE,
     );
-    let generate_terminal_configs =
-        should_generate_terminal_configs(&terminal_config_mode, request.desktop_fast_path);
+    let generate_terminal_configs = should_materialize_terminal_config(
+        &terminal_config_mode,
+        request.desktop_fast_path,
+        &request.active_terminal,
+    );
 
     let mut generated_terminals = Vec::new();
     if generate_terminal_configs {
@@ -178,6 +182,15 @@ fn should_generate_terminal_configs(terminal_config_mode: &str, desktop_fast_pat
     !desktop_fast_path || terminal_config_mode == "yazelix"
 }
 
+fn should_materialize_terminal_config(
+    terminal_config_mode: &str,
+    desktop_fast_path: bool,
+    terminal: &str,
+) -> bool {
+    should_generate_terminal_configs(terminal_config_mode, desktop_fast_path)
+        && terminal_has_generated_config(terminal)
+}
+
 fn string_config(config: &JsonMap<String, JsonValue>, key: &str, default: &str) -> String {
     config
         .get(key)
@@ -211,6 +224,21 @@ mod tests {
         );
 
         assert!(should_generate_terminal_configs(&mode, true));
+    }
+
+    // Regression: the packaged Kitty default must not enter the retained
+    // Mars-only terminal materializer before spawning the Kitty process.
+    #[test]
+    fn kitty_desktop_launch_skips_mars_only_terminal_materialization() {
+        let config = config_with_mode("yazelix");
+        let mode = string_config(
+            &config,
+            "terminal_config_mode",
+            DEFAULT_TERMINAL_CONFIG_MODE,
+        );
+
+        assert!(!should_materialize_terminal_config(&mode, true, "kitty"));
+        assert!(should_materialize_terminal_config(&mode, true, "mars"));
     }
 
     // Defends: non-desktop launch materialization regenerates only the caller-provided active terminal.

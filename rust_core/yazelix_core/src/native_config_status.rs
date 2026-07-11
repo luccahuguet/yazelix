@@ -1,3 +1,4 @@
+use crate::terminal_materialization::terminal_has_generated_config;
 use crate::user_config_paths;
 use serde::Serialize;
 use std::path::{Path, PathBuf};
@@ -376,6 +377,7 @@ fn helix_statuses(request: &NativeConfigStatusRequest) -> Vec<NativeConfigStatus
 fn terminal_statuses(request: &NativeConfigStatusRequest) -> Vec<NativeConfigStatusEntry> {
     let terminal = request.active_terminal.as_str();
     let mut entries = Vec::new();
+    let has_generated_config = terminal_has_generated_config(terminal);
     let native_candidates = user_terminal_config_candidates(
         &request.home_dir,
         &request.xdg_config_home,
@@ -384,8 +386,26 @@ fn terminal_statuses(request: &NativeConfigStatusRequest) -> Vec<NativeConfigSta
     )
     .unwrap_or_default();
     let native_existing = native_candidates.iter().find(|path| path.exists()).cloned();
-    let generated = generated_terminal_config_path(&request.state_dir, terminal);
-    let mut input = if request.terminal_config_mode == "user" {
+    let mut input = if !has_generated_config {
+        match native_existing {
+            Some(ref active) => {
+                let mut input = entry(
+                    format!("terminal.{terminal}.input"),
+                    terminal.to_string(),
+                    "Terminal native config remains user-owned and is loaded by the terminal",
+                    NativeConfigStatusCode::NativeUserOwned,
+                );
+                input.active_path = Some(path_string(active));
+                input
+            }
+            None => entry(
+                format!("terminal.{terminal}.input"),
+                terminal.to_string(),
+                "No native terminal config found; the terminal uses its built-in defaults",
+                NativeConfigStatusCode::NativeMissing,
+            ),
+        }
+    } else if request.terminal_config_mode == "user" {
         match native_existing {
             Some(ref active) => {
                 let mut input = entry(
@@ -416,18 +436,20 @@ fn terminal_statuses(request: &NativeConfigStatusRequest) -> Vec<NativeConfigSta
     input.allowed_action = match input.status.as_str() {
         "native_read_only" => "open_read_only".to_string(),
         "native_required_missing" => "create_native_or_use_yazelix_mode".to_string(),
+        "native_user_owned" => "edit_native".to_string(),
+        "native_missing" => "create_native".to_string(),
         _ => "edit_settings".to_string(),
     };
     input.read_only_reason = (input.status == "native_read_only").then(|| {
         "terminal.config_mode = user selects the terminal's native config read-only".to_string()
     });
     entries.push(input);
-    if request.terminal_config_mode == "yazelix" {
+    if has_generated_config && request.terminal_config_mode == "yazelix" {
         entries.push(generated_entry(
             format!("terminal.{terminal}.generated"),
             terminal.to_string(),
             "Generated terminal runtime config",
-            generated,
+            generated_terminal_config_path(&request.state_dir, terminal),
         ));
     }
     entries
@@ -646,6 +668,48 @@ mod tests {
                 .native_paths
                 .iter()
                 .any(|path| path.ends_with("mars/config.toml"))
+        );
+    }
+
+    // Regression: packaged Kitty uses its own defaults or user-owned native
+    // config and must not advertise a generated path that Yazelix never writes.
+    #[test]
+    fn kitty_yazelix_mode_does_not_report_generated_terminal_config() {
+        let tmp = TempDir::new().unwrap();
+        let mut req = request(&tmp);
+        req.active_terminal = "kitty".to_string();
+
+        let entries = classify_native_config_statuses(&req);
+        let terminal = find(&entries, "terminal.kitty.input");
+
+        assert_eq!(terminal.status, "native_missing");
+        assert_eq!(terminal.allowed_action, "create_native");
+        assert!(
+            entries
+                .iter()
+                .all(|entry| entry.surface != "terminal.kitty.generated")
+        );
+    }
+
+    // Defends: a real Kitty config remains a user-owned native surface rather
+    // than being mislabeled as Yazelix-generated state.
+    #[test]
+    fn kitty_native_config_is_reported_as_user_owned() {
+        let tmp = TempDir::new().unwrap();
+        let mut req = request(&tmp);
+        req.active_terminal = "kitty".to_string();
+        let native = req.xdg_config_home.join("kitty").join("kitty.conf");
+        fs::create_dir_all(native.parent().unwrap()).unwrap();
+        fs::write(&native, "shell_integration no-cursor\n").unwrap();
+
+        let entries = classify_native_config_statuses(&req);
+        let terminal = find(&entries, "terminal.kitty.input");
+
+        assert_eq!(terminal.status, "native_user_owned");
+        assert_eq!(terminal.allowed_action, "edit_native");
+        assert_eq!(
+            terminal.active_path.as_deref(),
+            Some(path_string(&native).as_str())
         );
     }
 

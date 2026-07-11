@@ -688,6 +688,15 @@ fn ensure_terminal_cursor_materialization<'a>(
         .expect("terminal cursor materialization data was just initialized"))
 }
 
+/// Returns whether Yazelix owns a generated terminal config for this terminal.
+///
+/// Kitty and Ghostty keep their native config user-owned. The retained Mars
+/// renderer remains available for legacy/package-specific tooling, but Mars is
+/// no longer part of the supported launch chain.
+pub fn terminal_has_generated_config(terminal: &str) -> bool {
+    terminal == "mars"
+}
+
 pub fn generate_terminal_materialization(
     request: &TerminalMaterializationRequest,
 ) -> Result<TerminalMaterializationData, CoreError> {

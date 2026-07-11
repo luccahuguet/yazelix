@@ -711,15 +711,23 @@ mod tests {
         );
     }
 
-    // Defends: kitty and ghostty launch argv use each terminal's own CLI flags, not the Rio-derived Mars flags.
+    // Defends: Kitty launch uses the runtime-owned Linux graphics wrapper with
+    // structured argv, while Kitty and Ghostty retain their native CLI flags.
+    #[cfg(unix)]
     #[test]
     fn kitty_and_ghostty_launch_argv_use_native_flags() {
+        use std::os::unix::fs::PermissionsExt;
+
         let tmp = tempfile::TempDir::new().unwrap();
         let runtime_dir = tmp.path().join("runtime");
         let posix_dir = runtime_dir.join("shells").join("posix");
         std::fs::create_dir_all(&posix_dir).unwrap();
         let startup_script = posix_dir.join("start_yazelix.sh");
         std::fs::write(&startup_script, "#!/bin/sh\n").unwrap();
+        let wrapper = runtime_dir.join("libexec").join("nixGLMesa");
+        std::fs::create_dir_all(wrapper.parent().unwrap()).unwrap();
+        std::fs::write(&wrapper, "#!/bin/sh\nexec \"$@\"\n").unwrap();
+        std::fs::set_permissions(&wrapper, std::fs::Permissions::from_mode(0o755)).unwrap();
         let config_path = tmp.path().join("unused-config");
         let working_dir = tmp.path().join("workspace");
         std::fs::create_dir_all(&working_dir).unwrap();
@@ -738,17 +746,18 @@ mod tests {
             Some("work"),
         )
         .unwrap();
-        assert_eq!(
-            kitty_argv,
-            vec![
-                "kitty".to_string(),
-                "--title".to_string(),
-                "Yazelix - Kitty - work".to_string(),
-                "--directory".to_string(),
-                working_dir.to_string_lossy().into_owned(),
-                startup_script.to_string_lossy().into_owned(),
-            ]
-        );
+        let mut expected_kitty_argv = vec![
+            "kitty".to_string(),
+            "--title".to_string(),
+            "Yazelix - Kitty - work".to_string(),
+            "--directory".to_string(),
+            working_dir.to_string_lossy().into_owned(),
+            startup_script.to_string_lossy().into_owned(),
+        ];
+        if super::super::terminal::current_platform_name() == "linux" {
+            expected_kitty_argv.insert(0, wrapper.to_string_lossy().into_owned());
+        }
+        assert_eq!(kitty_argv, expected_kitty_argv);
 
         let ghostty_argv = build_launch_command_argv(
             &runtime_dir,
@@ -777,6 +786,33 @@ mod tests {
             None,
         );
         assert!(unsupported.is_err());
+    }
+
+    // Regression: a Linux package runtime without its private graphics helper
+    // must fail loudly instead of launching Kitty directly into an EGL crash.
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn linux_kitty_launch_requires_runtime_graphics_wrapper() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let runtime_dir = tmp.path().join("runtime");
+        let posix_dir = runtime_dir.join("shells").join("posix");
+        std::fs::create_dir_all(&posix_dir).unwrap();
+        std::fs::write(posix_dir.join("start_yazelix.sh"), "#!/bin/sh\n").unwrap();
+
+        let error = build_launch_command_argv(
+            &runtime_dir,
+            &crate::runtime_contract::TerminalCandidate {
+                terminal: "kitty".to_string(),
+                name: "Kitty".to_string(),
+                command: "kitty".to_string(),
+            },
+            &tmp.path().join("unused-config"),
+            tmp.path(),
+            None,
+        )
+        .unwrap_err();
+
+        assert_eq!(error.code(), "missing_runtime_graphics_wrapper");
     }
 
     // Regression: launch must pass a launch-scoped materialized config path when random cursor materialization produced one, otherwise it falls back to the shared generated path and leaks cursor preset changes across windows.

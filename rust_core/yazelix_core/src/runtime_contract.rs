@@ -740,6 +740,19 @@ fn runtime_platform_name(explicit: Option<&str>) -> String {
         .to_lowercase()
 }
 
+pub(crate) fn resolve_runtime_nixgl_wrapper(runtime_dir: &Path) -> Option<PathBuf> {
+    NIXGL_WRAPPER_CANDIDATES
+        .iter()
+        .map(|(_, segments)| {
+            segments
+                .iter()
+                .fold(runtime_dir.to_path_buf(), |path, segment| {
+                    path.join(segment)
+                })
+        })
+        .find(|candidate| is_executable_file(candidate))
+}
+
 struct NixglLaunchContext {
     source: &'static str,
     command: Option<String>,
@@ -750,18 +763,13 @@ fn resolve_nixgl_launch_context(
     command_search_paths: &[PathBuf],
 ) -> NixglLaunchContext {
     if let Some(runtime_dir) = runtime_dir {
-        for (command, segments) in NIXGL_WRAPPER_CANDIDATES {
-            let candidate = segments
-                .iter()
-                .fold(runtime_dir.to_path_buf(), |path, segment| {
-                    path.join(segment)
-                });
-            if is_executable_file(&candidate) {
-                return NixglLaunchContext {
-                    source: "runtime",
-                    command: Some((*command).to_string()),
-                };
-            }
+        if let Some(candidate) = resolve_runtime_nixgl_wrapper(runtime_dir) {
+            return NixglLaunchContext {
+                source: "runtime",
+                command: candidate
+                    .file_name()
+                    .map(|name| name.to_string_lossy().into_owned()),
+            };
         }
     }
 

@@ -361,6 +361,10 @@ let
       nixgl_mesa = makeTool {
         package = linuxGlWrapperPackage;
         commands = [ ];
+        requiredCommands = [ "nixGLMesa" ];
+        notes = [
+          "Private runtime-owned Linux graphics wrapper used by packaged Kitty launch."
+        ];
       };
     }
     // lib.optionalAttrs (linuxVulkanWrapperPackage != null) {

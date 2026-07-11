@@ -660,6 +660,27 @@ mod tests {
         );
     }
 
+    // Defends: prepending a private NixGL helper does not rename Kitty launch
+    // evidence to nixglmesa and hide terminal-specific failures from doctor.
+    #[test]
+    fn wrapped_launch_probe_log_path_uses_terminal_basename() {
+        let state = TempDir::new().unwrap();
+        let argv = vec![
+            "/runtime/libexec/nixGLMesa".to_string(),
+            "/runtime/toolbin/kitty".to_string(),
+        ];
+
+        let log =
+            get_launch_probe_log_path(state.path(), launch_probe_terminal_name(&argv)).unwrap();
+
+        assert!(
+            log.file_name()
+                .and_then(|name| name.to_str())
+                .unwrap_or_default()
+                .starts_with("kitty_")
+        );
+    }
+
     // Defends: unsupported package terminal metadata fails clearly instead of falling back to another terminal.
     #[test]
     fn active_terminal_rejects_unknown_runtime_variant_metadata() {
