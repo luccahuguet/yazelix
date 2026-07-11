@@ -79,6 +79,10 @@
       url = "github:FlexNetOS/icm/ae4ed52c6bbf806e45f9c5b425e15b44398de4b7";
       flake = false;
     };
+    weave_source = {
+      url = "github:FlexNetOS/weave/29b2f913177fceba1bb7059db8023a33cd5aedd6";
+      flake = false;
+    };
     zjstatus = {
       url = "github:luccahuguet/zjstatus/yazelix-tab-activity-pipe";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -105,6 +109,7 @@
       rtk_source,
       grit_source,
       icm_source,
+      weave_source,
       zjstatus,
     }:
     let
@@ -324,6 +329,12 @@
           inherit pkgs;
           icmSource = icm_source;
         };
+      weavePackage =
+        system: pkgs:
+        import ./packaging/weave_release.nix {
+          inherit pkgs;
+          weaveSource = weave_source;
+        };
       metaPackage =
         system: pkgs:
         import ./packaging/meta_release.nix {
@@ -363,7 +374,7 @@
         in
         import ./packaging/flake_outputs.nix {
           inherit agentUsagePackages beadsRustPackage kgpPackages rtkPackage;
-          inherit gritPackage icmPackage metaPackage;
+          inherit gritPackage icmPackage metaPackage weavePackage;
           mkYazelix = mkYazelix system;
           inherit pkgs runtimePackage system yazelixPackage;
           inherit yazelixCursors yazelixScreen yazelixYaziAssets;

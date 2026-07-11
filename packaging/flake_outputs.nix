@@ -7,6 +7,7 @@
   rtkPackage,
   gritPackage,
   icmPackage,
+  weavePackage,
   metaPackage,
   runtimePackage,
   system,
@@ -54,6 +55,7 @@ let
   flexnetos_foundation_rtk = rtkPackage system pkgs;
   flexnetos_foundation_grit = gritPackage system pkgs;
   flexnetos_foundation_icm = icmPackage system pkgs;
+  flexnetos_foundation_weave = weavePackage system pkgs;
   flexnetos_foundation_meta = metaPackage system pkgs;
   flexnetos_foundation_kache = import ./kache_release.nix { inherit pkgs; };
   flexnetos_foundation_notebooklm = import ./notebooklm_release.nix {
@@ -143,6 +145,7 @@ let
       flexnetos_foundation_kache_wrapped
       flexnetos_foundation_grit
       flexnetos_foundation_icm
+      flexnetos_foundation_weave
       flexnetos_foundation_meta
       flexnetos_foundation_notebooklm
       flexnetos_foundation_rtk
@@ -178,6 +181,8 @@ let
       "clang"
       "clang++"
       "clippy-driver"
+      "cargo-fmt"
+      "cargo-clippy"
       "corepack"
       "kache"
       "kache-rustc-wrapper"
@@ -188,6 +193,7 @@ let
       "nu_plugin_codedb"
       "pnpm"
       "rtk"
+      "weave"
       "rustc"
       "rustdoc"
       "rustfmt"
@@ -215,6 +221,8 @@ let
       "clang"
       "clang++"
       "clippy-driver"
+      "cargo-fmt"
+      "cargo-clippy"
       "corepack"
       "kache"
       "kache-rustc-wrapper"
@@ -225,6 +233,7 @@ let
       "nu_plugin_codedb"
       "pnpm"
       "rtk"
+      "weave"
       "rust-analyzer"
       "rustc"
       "rustdoc"
@@ -243,6 +252,7 @@ let
       codex = flexnetos_foundation_codex;
       git_kb = flexnetos_foundation_git_kb;
       rtk = flexnetos_foundation_rtk;
+      weave = flexnetos_foundation_weave;
       inherit beads_rust install_check;
       inherit runtime_kitty yazelix_kitty;
       inherit lifeos_foundation_yzx;

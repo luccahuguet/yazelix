@@ -334,6 +334,7 @@
         "nixgl": "nixgl",
         "nixpkgs": "nixpkgs_2",
         "rtk_source": "rtk_source",
+        "weave_source": "weave_source",
         "yazelixCursors": "yazelixCursors",
         "yazelixHelix": "yazelixHelix",
         "yazelixScreen": "yazelixScreen",
@@ -514,6 +515,23 @@
       "original": {
         "owner": "nix-systems",
         "repo": "default",
+        "type": "github"
+      }
+    },
+    "weave_source": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1783445088,
+        "narHash": "sha256-/dw0afbLXcTK0y9u0Td5QDNNbucxqD9S0MBDCnNOuXc=",
+        "owner": "FlexNetOS",
+        "repo": "weave",
+        "rev": "29b2f913177fceba1bb7059db8023a33cd5aedd6",
+        "type": "github"
+      },
+      "original": {
+        "owner": "FlexNetOS",
+        "repo": "weave",
+        "rev": "29b2f913177fceba1bb7059db8023a33cd5aedd6",
         "type": "github"
       }
     },
