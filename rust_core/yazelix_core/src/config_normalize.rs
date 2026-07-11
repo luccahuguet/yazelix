@@ -4,6 +4,7 @@ use crate::helix_external::{
 };
 use crate::helix_steel_plugins::parse_steel_plugin_config;
 use crate::settings_surface::{is_jsonc_config_path, read_config_table};
+use crate::terminal_variant::{default_terminal, terminal_display_name};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map as JsonMap, Number as JsonNumber, Value as JsonValue, json};
 use std::collections::BTreeMap;
@@ -645,7 +646,10 @@ fn make_schema_diagnostic(finding: SchemaFinding) -> ConfigDiagnostic {
                     finding.message,
                     "Next: Remove terminal.terminals from ~/.config/yazelix/settings.jsonc."
                         .to_string(),
-                    "Next: Yazelix packages Mars; configure other terminal emulators to start Yazelix with `yzx enter`.".to_string(),
+                    format!(
+                        "Next: Yazelix packages {}; configure other terminal emulators to start Yazelix with `yzx enter`.",
+                        terminal_display_name(default_terminal())
+                    ),
                     "Next: Run `yzx doctor --verbose` to review the full config report."
                         .to_string(),
                 ];

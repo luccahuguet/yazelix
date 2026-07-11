@@ -2,23 +2,25 @@
 
 ## Summary
 
-`yazelix-terminal-support` may become the child owner for static terminal
-support metadata. It must not own launch behavior, generated config rendering,
-Home Manager option semantics, or child-terminal internals.
+`yazelix-terminal-support` is the live child owner for static terminal
+support metadata. Extraction is complete and wired: `flake.nix` carries the
+`yazelixTerminalSupport` input, and `home_manager/module.nix` documents it as
+the single source of truth. It does not own launch behavior, generated config
+rendering, Home Manager option semantics, or child-terminal internals.
 
-The child is useful only if it removes a second hand-maintained authority in
-main Yazelix. It is not useful as a mirror of `packaging/runtime_tool_registry.nix`
+The child is useful because it removes a second hand-maintained authority in
+main Yazelix. It is not a mirror of `packaging/runtime_tool_registry.nix`
 or `terminal_materialization.rs`.
 
 ## Ownership
 
 | Fact or behavior | Owner |
 | --- | --- |
-| Terminal ids and labels | `yazelix-terminal-support` after extraction |
-| Supported command names and package output names | `yazelix-terminal-support` after extraction |
-| Static platform gates and unsupported-platform reason strings | `yazelix-terminal-support` after extraction |
-| Support/capability hints such as graphics-wrapper needs or known protocol support | `yazelix-terminal-support` after extraction |
-| Validation metadata for terminal metadata parity | `yazelix-terminal-support` after extraction |
+| Terminal ids and labels | `yazelix-terminal-support` |
+| Supported command names and package output names | `yazelix-terminal-support` |
+| Static platform gates and unsupported-platform reason strings | `yazelix-terminal-support` |
+| Support/capability hints such as graphics-wrapper needs or known protocol support | `yazelix-terminal-support` |
+| Validation metadata for terminal metadata parity | `yazelix-terminal-support` |
 | Runtime variant selection and package composition | Main Yazelix Nix package builders |
 | Home Manager option semantics and defaults | Main Yazelix Home Manager module |
 | `runtime_tools.json` projection and runtime source-mode validation | Main Yazelix package assembly until a real deletion slice proves otherwise |
@@ -47,16 +49,16 @@ The child must not expose a rule language that decides how to launch a
 terminal, compose a Home Manager package, generate terminal config text, or
 repair a user runtime.
 
-## Promotion Gate
+## Maintenance Gate
 
-Main may promote terminal-support metadata into a child only when all gates
-pass:
+Main keeps consuming terminal-support metadata from the child only while all
+gates continue to hold:
 
 1. The child schema is pure data with a documented version
 2. Main consumes the data through typed Rust or Nix readers, not ad hoc string
    scraping
-3. The same change deletes or relinquishes a real main-owned metadata table,
-   validator, fixture, or duplicated test
+3. Extraction deleted or relinquished the corresponding main-owned metadata
+   table, validator, fixture, or duplicated test
 4. Generated `runtime_tools.json` and `yzx inspect --json` continue to expose
    the active runtime facts that external consumers need
 5. Unsupported terminal ids still fail fast with clear main-owned user errors

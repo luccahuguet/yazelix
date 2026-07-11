@@ -14,7 +14,7 @@ use std::path::Path;
 pub const SETTINGS_CONTRACT_ID: &str = "yazelix.settings";
 pub const SETTINGS_CONTRACT_STATE_PATH: &str = "ratconfig.contract";
 const SETTINGS_CONTRACT_BASELINE_VERSION: u64 = 1;
-pub const SETTINGS_CONTRACT_CURRENT_VERSION: u64 = 16;
+pub const SETTINGS_CONTRACT_CURRENT_VERSION: u64 = 17;
 const CHANGE_RENAME_EDITOR_SIDEBAR_TO_WORKSPACE_LEFT_SIDEBAR: &str =
     "rename-editor-sidebar-to-workspace-left-sidebar";
 const CHANGE_REPLACE_NATIVE_MOVEMENT_DEFAULTS: &str = "replace-native-movement-defaults";
@@ -36,6 +36,7 @@ const CHANGE_ADD_WIDGET_CHROME_SETTINGS: &str = "add-widget-chrome-settings";
 const CHANGE_ADOPT_CTRL_ALT_NATIVE_MODE_LAYER: &str = "adopt-ctrl-alt-native-mode-layer";
 const CHANGE_ADOPT_MIXED_NATIVE_MODE_LAYER: &str = "adopt-mixed-native-mode-layer";
 const CHANGE_RESTORE_CODEX_USAGE_BOTH_DEFAULT: &str = "restore-codex-usage-both-default";
+const CHANGE_ENABLE_MAX_FEATURE_DEFAULTS: &str = "enable-max-feature-defaults";
 pub const SETTINGS_CONTRACT_APPLIED_CHANGE_IDS: &[&str] = &[
     CHANGE_RENAME_EDITOR_SIDEBAR_TO_WORKSPACE_LEFT_SIDEBAR,
     CHANGE_REPLACE_NATIVE_MOVEMENT_DEFAULTS,
@@ -52,6 +53,7 @@ pub const SETTINGS_CONTRACT_APPLIED_CHANGE_IDS: &[&str] = &[
     CHANGE_ADOPT_CTRL_ALT_NATIVE_MODE_LAYER,
     CHANGE_ADOPT_MIXED_NATIVE_MODE_LAYER,
     CHANGE_RESTORE_CODEX_USAGE_BOTH_DEFAULT,
+    CHANGE_ENABLE_MAX_FEATURE_DEFAULTS,
 ];
 const OPTIONAL_ADDITIVE_DEFAULT_PATHS: &[&str] = &["zellij.custom_popups"];
 
@@ -357,6 +359,21 @@ fn settings_contract_for_defaults(defaults: &JsonValue) -> ConfigContract {
                     transform: restore_codex_usage_both_default,
                 }],
             ),
+            ContractChange::automatic(
+                CHANGE_ENABLE_MAX_FEATURE_DEFAULTS,
+                16,
+                17,
+                vec![
+                    MigrationOp::Transform {
+                        path: "zellij.widget_tray".to_string(),
+                        transform: enable_max_default_widget_tray,
+                    },
+                    MigrationOp::Transform {
+                        path: "helix.steel_plugins".to_string(),
+                        transform: enable_max_default_helix_steel_plugins,
+                    },
+                ],
+            ),
         ],
     }
 }
@@ -625,6 +642,52 @@ fn add_session_to_widget_tray(value: &JsonValue) -> Result<Option<JsonValue>, St
     next.push(json!("session"));
     next.extend(items.iter().cloned());
     Ok(Some(JsonValue::Array(next)))
+}
+
+// Max-feature default: upgrade a tray that still matches the prior conservative
+// default to the full allowed widget set. Custom trays are left untouched.
+fn enable_max_default_widget_tray(value: &JsonValue) -> Result<Option<JsonValue>, String> {
+    let _ = value
+        .as_array()
+        .ok_or_else(|| "expected a widget_tray array".to_string())?;
+    if string_array_equals(
+        Some(value),
+        &["session", "editor", "shell", "term", "codex_usage"],
+    ) {
+        Ok(Some(json!([
+            "session",
+            "editor",
+            "shell",
+            "term",
+            "workspace",
+            "claude_usage",
+            "codex_usage",
+            "opencode_go_usage",
+            "cpu",
+            "ram"
+        ])))
+    } else {
+        Ok(None)
+    }
+}
+
+// Max-feature default: enable the two additional bundled Helix Steel plugins for
+// configs that still carry the prior default enabled list. Custom lists (and the
+// user's `extra` manifests) are preserved.
+fn enable_max_default_helix_steel_plugins(value: &JsonValue) -> Result<Option<JsonValue>, String> {
+    let object = value
+        .as_object()
+        .ok_or_else(|| "expected a helix.steel_plugins object".to_string())?;
+    if string_array_equals(object.get("enabled"), &["splash", "spacemacs_theme"]) {
+        let mut next = object.clone();
+        next.insert(
+            "enabled".to_string(),
+            json!(["splash", "spacemacs_theme", "recentf", "labelled_buffers"]),
+        );
+        Ok(Some(JsonValue::Object(next)))
+    } else {
+        Ok(None)
+    }
 }
 
 fn string_array_is_empty_or_absent(value: Option<&JsonValue>) -> bool {
@@ -952,7 +1015,12 @@ mod tests {
                 "editor",
                 "shell",
                 "term",
-                "codex_usage"
+                "workspace",
+                "claude_usage",
+                "codex_usage",
+                "opencode_go_usage",
+                "cpu",
+                "ram"
             ]))
         );
         assert!(
@@ -960,6 +1028,12 @@ mod tests {
                 .applied_changes
                 .iter()
                 .any(|change| change.id == "add-session-widget-tray-value")
+        );
+        assert!(
+            migrated
+                .applied_changes
+                .iter()
+                .any(|change| change.id == "enable-max-feature-defaults")
         );
     }
 

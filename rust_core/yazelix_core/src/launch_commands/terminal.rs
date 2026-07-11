@@ -54,7 +54,7 @@ pub(super) fn resolve_terminal_config_path(
     mode: &str,
     terminal: &str,
 ) -> Result<PathBuf, String> {
-    if !crate::terminal_variant::SUPPORTED_TERMINALS.contains(&terminal) {
+    if !crate::terminal_variant::is_supported(terminal) {
         return Err(format!(
             "Yazelix does not launch terminal '{terminal}'; configure it as a host terminal to run `yzx enter`."
         ));

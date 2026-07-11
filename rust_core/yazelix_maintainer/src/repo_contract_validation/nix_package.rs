@@ -11,7 +11,7 @@ use std::os::unix::fs as unix_fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 use yazelix_core::terminal_variant::{
-    terminal_desktop_entry_file_name, terminal_desktop_entry_name,
+    default_terminal, terminal_desktop_entry_file_name, terminal_desktop_entry_name,
 };
 
 #[derive(Debug, Clone)]
@@ -353,12 +353,14 @@ fn verify_profile_installed_runtime(
         .map(|value| value.trim().to_string())
         .filter(|value| !value.is_empty())
         .unwrap_or_else(|| "unknown".to_string());
-    if runtime_variant != "kitty" {
+    // Single source of truth: the packaged default terminal comes from the
+    // yazelix_terminal_support authority, not a hardcoded literal.
+    let runtime_terminal = default_terminal();
+    if runtime_variant != runtime_terminal {
         errors.push(format!(
-            "Installed Yazelix runtime must package Kitty as the default terminal, got runtime_variant `{runtime_variant}`"
+            "Installed Yazelix runtime must package {runtime_terminal} as the default terminal, got runtime_variant `{runtime_variant}`"
         ));
     }
-    let runtime_terminal = "kitty";
     let desktop_entry = applications_dir.join(terminal_desktop_entry_file_name(runtime_terminal));
     require_path_missing_abs(
         &desktop_entry,
@@ -368,7 +370,7 @@ fn verify_profile_installed_runtime(
     if !errors.is_empty() {
         return Ok(());
     }
-    let runtime_terminal_command = "kitty";
+    let runtime_terminal_command = runtime_terminal;
     let runtime_yzx_cli = runtime_root.join("shells").join("posix").join("yzx_cli.sh");
     let runtime_yzx_core = runtime_libexec.join("yzx_core");
     let runtime_settings_default = runtime_root.join("settings_default.jsonc");

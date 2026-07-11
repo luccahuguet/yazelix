@@ -33,6 +33,7 @@ yazelix_cursors = { git = "https://github.com/luccahuguet/yazelix-cursors", rev 
 ratconfig = { git = "https://github.com/luccahuguet/ratconfig", rev = "9d8fdc47ee6f0026ae16b331e167307b925277e3", features = ["crossterm-runner"] }
 yazelix_screen = { git = "https://github.com/luccahuguet/yazelix-screen", rev = "9dc52f7112e249e0f51effdb84370d46e143379c" }
 yazelix_yazi_assets = { git = "https://github.com/FlexNetOS/yazelix-yazi-assets", rev = "bd53b59159125f9c186e3766ff5c2a07005c26be" }
+yazelix_terminal_support = { git = "https://github.com/FlexNetOS/yazelix-terminal-support", rev = "6ab751a75d60482584d1fa898f72500fbdb8356c" }
 yazelix_zellij_config_pack = { path = "../yazelix_zellij_config_pack" }
 
 [target.'cfg(target_os = "linux")'.dependencies]

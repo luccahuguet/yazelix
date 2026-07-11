@@ -53,7 +53,7 @@ The package should ship the immutable runtime assets Yazelix executes directly:
   - `settings_default.jsonc`
 - `bin/yzx`
 - runtime-local `libexec/nu`
-- packaged Mars font directories referenced by the shipped Mars configs, including JetBrains Mono, Symbols Nerd Font, and the selected packaged emoji font
+- Kitty ships from nixpkgs with no Yazelix-generated config or bundled font metadata contract, so the default package path does not bundle Yazelix-specific font directories for the packaged terminal; the retained, dormant Mars materializer is the only path that still references packaged JetBrains Mono, Symbols Nerd Font, and emoji font directories
 
 Compiled first-party Zellij wasm assets ship through `configs/zellij/plugins/`.
 The package must not ship or link maintainer source trees for first-party wasm
@@ -86,7 +86,7 @@ The nixpkgs package should depend on the tools needed to bootstrap and run Yazel
 Expected package-level runtime dependencies:
 
 - Nushell
-- packaged Mars and its required terminal config/font assets for the default `yzx launch` path
+- packaged Kitty for the default `yzx launch` path; Kitty's native config is user-owned, so Yazelix does not bundle Kitty-specific config/font assets for that path
 - other small direct bootstrap/runtime tools that Yazelix invokes outside its own runtime scripts
 
 Non-goal for first submission:
@@ -184,7 +184,7 @@ The package contract should not depend on any separate installer as the update m
 7. The remaining work to upstream the package is mostly translation and review, not product-boundary redesign.
 8. The first-party flake package claims all four exported flake systems in `meta.platforms`, not just Linux.
 9. The nixpkgs submission draft keeps its Linux-only `meta.platforms` scope independently of the first-party flake package.
-10. The default Mars release path does not require a separate host Nerd Font install; packaged Mars configs point at release-owned font directories.
+10. The default Kitty release path relies on Kitty's user-owned native config; Yazelix does not bundle Kitty-specific font directories, so a Nerd Font install for Kitty is the user's own responsibility.
 
 ## Verification
 

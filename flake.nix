@@ -45,6 +45,12 @@
       url = "github:FlexNetOS/yazelix-yazi-assets";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    # Source-only: the Nix layer reads terminal_support.toml via builtins.fromTOML.
+    # The Rust reader crate is consumed separately as a Cargo git dependency.
+    yazelixTerminalSupport = {
+      url = "github:FlexNetOS/yazelix-terminal-support";
+      flake = false;
+    };
     yazelixZellij = {
       url = "github:luccahuguet/yazelix-zellij/yazelix_kgp_preview";
       flake = false;
@@ -101,6 +107,7 @@
       yazelixCursors,
       yazelixZellijBar,
       yazelixYaziAssets,
+      yazelixTerminalSupport,
       yazelixZellij,
       yazelixHelix,
       yazelixZellijPaneOrchestrator,
@@ -159,7 +166,11 @@
           yazelix_zellij_popup = inputIdentity yazelixZellijPopup;
         };
       };
+      terminalSupport = builtins.fromTOML (
+        builtins.readFile "${yazelixTerminalSupport}/config_metadata/terminal_support.toml"
+      );
       homeManagerModule = { pkgs, ... }: {
+        _module.args.terminalSupport = terminalSupport;
         _module.args.nixgl = nixgl;
         _module.args.fenixPkgs = fenix.packages.${pkgs.stdenv.hostPlatform.system};
         _module.args.mkYazelixPackage = mkYazelix pkgs.stdenv.hostPlatform.system;

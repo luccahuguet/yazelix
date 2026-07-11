@@ -692,9 +692,10 @@ fn ensure_terminal_cursor_materialization<'a>(
 ///
 /// Kitty and Ghostty keep their native config user-owned. The retained Mars
 /// renderer remains available for legacy/package-specific tooling, but Mars is
-/// no longer part of the supported launch chain.
+/// no longer part of the supported launch chain. Sourced from the
+/// `yazelix_terminal_support` child (single source of truth).
 pub fn terminal_has_generated_config(terminal: &str) -> bool {
-    terminal == "mars"
+    yazelix_terminal_support::terminal_support().has_generated_config(terminal)
 }
 
 pub fn generate_terminal_materialization(

@@ -37,7 +37,8 @@ fi
 alias yazelix="sh $YAZELIX_RUNTIME_DIR/shells/posix/yzx_cli.sh launch"
 alias lg='lazygit'
 
-# Note: yzx command is defined in ~/.zshrc (via v3 hooks) and is always available
+# Note: yzx is a plain executable resolved from ~/.nix-profile/bin on PATH (the
+# old v3 shell-hook that injected a yzx function into dotfiles was removed).
 
 # Helix function (ensure runtime is set correctly)
 hx() {

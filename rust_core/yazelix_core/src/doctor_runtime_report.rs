@@ -493,8 +493,10 @@ fn runtime_variant_path(runtime_dir: &Path) -> PathBuf {
 }
 
 fn runtime_variant_is_mars(runtime_dir: &Path) -> bool {
+    // Mars is the only terminal with a Yazelix-generated config; derive the
+    // check from the terminal-support authority instead of a hardcoded id.
     fs::read_to_string(runtime_variant_path(runtime_dir))
-        .map(|raw| raw.trim() == "mars")
+        .map(|raw| yazelix_terminal_support::terminal_support().has_generated_config(raw.trim()))
         .unwrap_or(false)
 }
 

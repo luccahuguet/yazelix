@@ -12,7 +12,7 @@ use serde::Serialize;
 use serde_json::{Map as JsonMap, Value as JsonValue};
 
 const DEFAULT_SHELL: &str = "nu";
-const DEFAULT_TERMINAL_CONFIG_MODE: &str = "yazelix";
+pub(crate) const DEFAULT_TERMINAL_CONFIG_MODE: &str = "yazelix";
 const DEFAULT_WELCOME_STYLE: &str = "random";
 const DEFAULT_GAME_OF_LIFE_CELL_STYLE: &str = "full_block";
 

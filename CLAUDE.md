@@ -111,7 +111,7 @@ The FlexNetOS agent workspace has three artifacts that must reference the same r
 
 1. **Custom layout** — `configs/zellij/layouts/flexnetos_agent_workspace.kdl` (a template consumed by `runtime_materialization::resolve_zellij_layout_path`; the runtime detects `__YAZELIX_ZJSTATUS_TAB_TEMPLATE__` and renders it into `~/.local/share/yazelix/configs/zellij/layouts/`). Also shipped into the nix-store profile at `~/.nix-profile/configs/zellij/layouts/flexnetos_agent_workspace.kdl` — identical sha256.
 2. **Launch app** — `~/.local/share/applications/com.flexnetos.Yazelix.Agent.desktop` (hand-installed, NOT home-manager managed, safe to edit directly; ownership marker `X-FlexNetOS-Managed=true` keeps `install_ownership_report.rs` from repairing it).
-3. **Runtime binary/profile** — `~/.nix-profile/bin/yzx` → `/nix/store/…-lifeos-foundation-yzx` (variant `mars`, profile `mars-full`).
+3. **Runtime binary/profile** — `~/.nix-profile/bin/yzx` → `/nix/store/…-lifeos-foundation-yzx` (variant `kitty` — Kitty is the packaged default terminal; Mars was removed from the launch chain by operator directive 2026-07-11. Confirm with `cat ~/.nix-profile/runtime_variant`).
 
 ## Conventions & Patterns
 
@@ -119,7 +119,7 @@ The FlexNetOS agent workspace has three artifacts that must reference the same r
 
 Never point `YAZELIX_LAYOUT_OVERRIDE` (or any other launcher-embedded path) at an absolute path under `/home/flexnetos/FlexNetOS/src/`. Use `~/.nix-profile/configs/zellij/layouts/flexnetos_agent_workspace.kdl` (or another `$HOME/.nix-profile/...` path) instead. The stable-profile symlink follows `nix profile upgrade` automatically; a source-tree absolute path becomes wrong the moment the repo moves or the layout template regenerates.
 
-### The `com.yazelix.Yazelix.Mars.desktop` entry is runtime-owned
+### The `com.yazelix.Yazelix.Kitty.desktop` entry is runtime-owned
 
 It has `NoDisplay=true` and `X-Yazelix-Managed=true`, and `rust_core/yazelix_core/src/install_ownership_report.rs` will repair it if drifted. Do not delete it or edit its `Exec` line — install a sibling FlexNetOS-specific entry (like `com.flexnetos.Yazelix.Agent.desktop`) with `X-FlexNetOS-Managed=true` instead.
 
@@ -128,7 +128,7 @@ It has `NoDisplay=true` and `X-Yazelix-Managed=true`, and `rust_core/yazelix_cor
 When a shell is spawned by the Yazelix desktop entry, its PATH and several env vars (`EDITOR`, `VISUAL`, `SHELL`, `LG_CONFIG_FILE`, …) are baked with the store hash that was current at launch time. After `nix profile upgrade` swaps the profile to a new store hash MID-SESSION, `yzx doctor` in that same session reports:
 
 - "A stale host-shell yzx function or alias is shadowing the current profile command" — because the old `/nix/store/<old-hash>/bin` still precedes `~/.nix-profile/bin` in that session's PATH. `yzx doctor` sees `type -a yzx` return the old hash first and interprets it as a startup-file shadow.
-- "Host <terminal> environment may be contaminated by Mars Terminal launch state" — because `MARS_CONFIG_HOME` (or similar) is a per-launch temp dir path baked into env.
+- "Host <terminal> environment may be contaminated by … launch state" — a per-launch temp dir path (e.g. a `*_CONFIG_HOME` var) baked into env. (This warning class dates to the Mars-packaged era via `MARS_CONFIG_HOME`; Mars was removed from the launch chain 2026-07-11, so the Mars-specific variant no longer fires for the Kitty default, but the same session-carryover pattern can recur for any per-launch env var.)
 
 Neither is a startup-file edit. Fix by re-launching the Yazelix desktop entry after a rebuild; the new launch inherits the current profile symlink. To confirm before relaunching, run `type yzx` in a fresh `env -i HOME="$HOME" PATH="$PATH" bash -lc` — it should resolve to `~/.nix-profile/bin/yzx`.
 
@@ -145,14 +145,9 @@ Runtime configuration required to rebuild is owned by the profile package, not h
 
 Avoid `~/.local/bin/yzx` and user-local stale launchers as parallel ownership paths.
 
-### `~/.config/yazelix/zellij.kdl` sidecar — merge trigger caveat
+### `~/.config/yazelix/zellij.kdl` sidecar — merged into generated config.kdl
 
-The sidecar is merged into `~/.local/share/yazelix/configs/zellij/config.kdl` at materialization time, but yazelix's freshness hash does NOT include the sidecar file. Editing the sidecar alone will not cause `yzx doctor` to detect drift or re-materialize. To pick up sidecar changes without waiting for the next desktop launch:
-
-```bash
-rm -f ~/.local/share/yazelix/state/rebuild_hash
-yzx doctor --fix   # detects "needs repair", regenerates config.kdl
-```
+The sidecar is merged into `~/.local/share/yazelix/configs/zellij/config.kdl` at materialization time, and its content **is** folded into the config freshness hash (`config_override_sidecar_fingerprint` in `rust_core/yazelix_core/src/config_state.rs`). Editing the sidecar alone now causes `yzx doctor` to detect drift and re-materialize on the next run — no manual `rebuild_hash` deletion required. (Historically the freshness hash ignored the sidecar; if you are on an older runtime that predates this fix, force a refresh with `rm -f ~/.local/share/yazelix/state/rebuild_hash && yzx doctor --fix`.)
 
 The sidecar is intended for native zellij keys that yazelix does NOT already render (from `settings.jsonc`) or enforce (from `enforced_top_level_settings` in `rust_core/yazelix_zellij_config_pack/src/lib.rs`). For example: `scrollback_lines_to_serialize` is a good sidecar key; `session_serialization` and `serialize_pane_viewport` are already enforced and don't need duplication.
 

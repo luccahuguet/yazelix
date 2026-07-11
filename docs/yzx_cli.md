@@ -195,7 +195,7 @@ Upgrade the active Yazelix package in the default Nix profile
 ### `yzx update local_source`
 Upgrade active local-checkout Yazelix profile entries and repair generated state
 - Intended for development installs whose default-profile Yazelix entries point at `git+file:`, `file:`, `path:`, or another local checkout URL
-- Supports multiple active profile entries that share the active runtime, such as `yazelix` and `yazelix_mars`
+- Supports multiple active profile entries that share the active runtime, such as `yazelix` and `yazelix_kitty`
 - Runs `nix profile upgrade --refresh <matching-local-source-profile-entries>`
 - Then runs the upgraded profile `~/.nix-profile/bin/yzx doctor --fix` so stale generated state is refreshed before the next desktop relaunch
 - Refuses Home Manager-owned installs, upstream/non-local profile entries, and unmanaged store paths

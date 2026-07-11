@@ -338,6 +338,7 @@
         "yazelixCursors": "yazelixCursors",
         "yazelixHelix": "yazelixHelix",
         "yazelixScreen": "yazelixScreen",
+        "yazelixTerminalSupport": "yazelixTerminalSupport",
         "yazelixYaziAssets": "yazelixYaziAssets",
         "yazelixZellij": "yazelixZellij",
         "yazelixZellijBar": "yazelixZellijBar",
@@ -599,6 +600,22 @@
       "original": {
         "owner": "luccahuguet",
         "repo": "yazelix-screen",
+        "type": "github"
+      }
+    },
+    "yazelixTerminalSupport": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1783774751,
+        "narHash": "sha256-TY5UjFZUgK6zvnXLP4GKjQh8t40SRfPratcXIzOfrzk=",
+        "owner": "FlexNetOS",
+        "repo": "yazelix-terminal-support",
+        "rev": "6ab751a75d60482584d1fa898f72500fbdb8356c",
+        "type": "github"
+      },
+      "original": {
+        "owner": "FlexNetOS",
+        "repo": "yazelix-terminal-support",
         "type": "github"
       }
     },

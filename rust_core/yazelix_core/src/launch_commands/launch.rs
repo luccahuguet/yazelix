@@ -29,7 +29,7 @@ use crate::runtime_materialization::{
 };
 use crate::terminal_materialization::MARS_EMOJI_ENV_KEYS;
 use crate::terminal_variant::{
-    SESSION_TERMINAL_ENV, SUPPORTED_TERMINALS, active_terminal_from_runtime_dir,
+    SESSION_TERMINAL_ENV, active_terminal_from_runtime_dir, supported_terminals,
     terminal_display_name, terminal_startup_wm_class,
 };
 use std::path::{Path, PathBuf};
@@ -189,10 +189,7 @@ fn build_launch_execution_plan(
     command_search_paths.push(runtime_dir.join("bin"));
     // Preference order: every supported terminal, best first; the packaged
     // runtime variant stays in the chain as the last resort.
-    let mut launch_preference: Vec<String> = SUPPORTED_TERMINALS
-        .iter()
-        .map(|terminal| (*terminal).to_string())
-        .collect();
+    let mut launch_preference: Vec<String> = supported_terminals().to_vec();
     if !launch_preference.contains(&active_terminal) {
         launch_preference.push(active_terminal.clone());
     }
@@ -310,7 +307,7 @@ fn execute_launch_plan(
         .join("\n");
     let message = format!(
         "Failed to launch a Yazelix terminal (tried: {}).\n{summary}",
-        SUPPORTED_TERMINALS.join(", ")
+        supported_terminals().join(", ")
     );
     Err(CoreError::classified(
         ErrorClass::Runtime,
@@ -319,7 +316,7 @@ fn execute_launch_plan(
         "Install kitty or ghostty on the host, reinstall Yazelix so the packaged terminal is available, or configure a host terminal to run `yzx enter`.",
         serde_json::json!({
             "packaged_terminal": plan.active_terminal,
-            "supported_terminals": SUPPORTED_TERMINALS,
+            "supported_terminals": supported_terminals(),
         }),
     ))
 }

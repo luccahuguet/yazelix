@@ -6,6 +6,7 @@ use crate::bridge::CoreError;
 use crate::control_plane::{config_dir_from_env, runtime_dir_from_env, state_dir_from_env};
 use crate::ghostty_cursor_registry::{CursorRegistry, YazelixCursorRegistryExt};
 use crate::runtime_component_enabled;
+use crate::startup_facts::DEFAULT_TERMINAL_CONFIG_MODE;
 use crate::terminal_materialization::{
     MarsEmojiFont, MarsProfile, TerminalGeneratedConfig, TerminalMaterializationRequest,
     generate_terminal_materialization, mars_emoji_font_override_from_env, mars_profile_from_env,
@@ -18,7 +19,6 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-const DEFAULT_TERMINAL_CONFIG_MODE: &str = "yazelix";
 static LAUNCH_SCOPED_TERMINAL_STATE_COUNTER: AtomicU64 = AtomicU64::new(0);
 
 #[derive(Debug, Clone)]
@@ -133,7 +133,7 @@ fn uses_yazelix_ghostty_cursor(terminal_config_mode: &str, terminal: &str) -> bo
 }
 
 fn terminal_uses_yazelix_cursor(terminal: &str) -> bool {
-    matches!(terminal, "ghostty" | "mars")
+    yazelix_terminal_support::terminal_support().uses_yazelix_cursor(terminal)
 }
 
 fn launch_rerolled_yazelix_cursor(

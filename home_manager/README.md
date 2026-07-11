@@ -7,12 +7,12 @@ A Home Manager module for [Yazelix](https://github.com/luccahuguet/yazelix) that
 - **Leaves `settings.jsonc` mutable by default** so users can edit it directly
 - **Can generate `settings.jsonc`** from Home Manager options when `manage_config = true`, including the hidden deterministic ratconfig contract state Yazelix requires
 - **Adds `yzx` to the Home Manager profile** through the packaged Yazelix runtime
-- **Selects the packaged Mars terminal** and leaves other terminal emulators host-owned through `yzx enter`
+- **Selects the packaged Kitty terminal** and leaves other terminal emulators (including the host-installed Ghostty backup) host-owned through `yzx enter`
 - **Installs icons and, on Linux, a desktop entry** that target the managed runtime
 - **Keeps the config surface type-safe** with Home Manager validation
 
 Config ownership is configurable: set `programs.yazelix.manage_config = true` only if you want Home Manager to generate and own `~/.config/yazelix/settings.jsonc`
-Terminal selection is not stored in `settings.jsonc`; Yazelix packages Mars, while host terminals should start Yazelix with `yzx enter`
+Terminal selection is not stored in `settings.jsonc`; Yazelix packages Kitty as the default terminal (Ghostty is the host-installed backup), while other host terminals should start Yazelix with `yzx enter`
 
 ## What This Module Does NOT Do
 
@@ -64,14 +64,14 @@ If you already have your own Home Manager flake, the minimal setup is:
 {
   programs.yazelix = {
     enable = true;
-    terminal = "mars"; # Default and only packaged terminal
+    terminal = "kitty"; # Default packaged terminal (Ghostty is the host-installed backup)
     # Customize other options as needed - see example.nix
     # Set manage_config = true if you want Home Manager to own settings.jsonc
   };
 }
 ```
 
-`terminal` controls the packaged terminal Yazelix launches. Mars is the only packaged terminal; configure Ghostty, Kitty, Rio, WezTerm, Foot, Ratty, or another host terminal to run `yzx enter`
+`terminal` controls the packaged terminal Yazelix launches. Kitty is the packaged default, and Ghostty is the host-installed backup terminal in the launch order; configure Rio, WezTerm, Foot, Ratty, or another host terminal to run `yzx enter`
 
 When `manage_config = true`, Home Manager can also own user-defined popup surfaces. The default `zenith` popup is expressed through `custom_popups`, so users can edit it or set the list to `[]` to remove it:
 
@@ -119,7 +119,7 @@ To save space by using tools you already manage on your host, set runtime tool s
 }
 ```
 
-Omitted tools stay `bundled`, except `mise` and `tombi`, which default to `host`. Host mode is for leaf tools such as `lazygit`, `zenith`, `helix`, `steel`, `neovim`, `yazi`, `fzf`, `zoxide`, `starship`, `carapace`, `macchina`, `mise`, `tombi`, `git`, `jq`, `fd`, and `ripgrep`. The terminal tool remains bundled because Mars is Yazelix-owned; use your host terminal's startup command if you prefer another emulator. Bootstrap tools such as Nushell, Zellij, Nix, POSIX utilities, and graphics wrappers remain bundled
+Omitted tools stay `bundled`, except `mise` and `tombi`, which default to `host`. Host mode is for leaf tools such as `lazygit`, `zenith`, `helix`, `steel`, `neovim`, `yazi`, `fzf`, `zoxide`, `starship`, `carapace`, `macchina`, `mise`, `tombi`, `git`, `jq`, `fd`, and `ripgrep`. The terminal tool remains bundled because Kitty is the packaged default (with Ghostty as the host-installed backup in the launch order); use your host terminal's startup command if you prefer another emulator. Bootstrap tools such as Nushell, Zellij, Nix, POSIX utilities, and graphics wrappers remain bundled
 
 Run `yzx doctor` after switching. Doctor reads the runtime manifest and warns when a required host-sourced command is missing from `PATH`; default optional integrations such as `mise` and `tombi` are informational when absent
 
@@ -260,7 +260,7 @@ home-manager switch
 This creates:
 - the `yzx` command in your Home Manager profile, typically `~/.nix-profile/bin/yzx`
 - `~/.config/yazelix/settings.jsonc`, bootstrapped as a mutable file by default or Home Manager-generated when `manage_config = true`
-- on Linux, a Home Manager profile desktop entry such as `~/.nix-profile/share/applications/com.yazelix.Yazelix.Mars.desktop`
+- on Linux, a Home Manager profile desktop entry such as `~/.nix-profile/share/applications/com.yazelix.Yazelix.Kitty.desktop`
 
 Then open a fresh shell and run:
 
@@ -306,7 +306,7 @@ Manual validation on April 8, 2026 covered both a lived-in account and a throwaw
 - The managed `yzx` command resolves through the Home Manager profile, typically `~/.nix-profile/bin/yzx`, rather than through a legacy user-local wrapper path.
 - The active runtime root resolves directly from the packaged Yazelix runtime in the Home Manager profile/store path, not through a manual-install runtime symlink.
 - On Linux, the Home Manager desktop entries come from the Home Manager profile, including the active Yazelix entry
-- Retired non-Mars desktop entries may still exist after migration; remove stale profile generations or user-local desktop files if they shadow the active Mars entry
+- Retired non-Kitty desktop entries may still exist after migration; remove stale profile generations or user-local desktop files if they shadow the active Kitty entry
 - A stale legacy `~/.local/bin/yzx` wrapper can still shadow the profile-owned command on `PATH` after migration; archive it with `yzx home_manager prepare --apply` or remove it manually so `yzx` resolves to the Home Manager profile path.
 - Old manual desktop-entry files under `~/.local/share/applications/` can linger after migration; they are not Home Manager-owned and will shadow the Home Manager profile entry until you remove them.
 - Host shell hooks are optional for the Home Manager path. Launch through `yzx` or, on Linux, the Home Manager desktop entry; do not expect `home-manager switch` to rewrite `.bashrc` or `~/.config/nushell/config.nu`.
@@ -357,7 +357,7 @@ If Home Manager still reports an unexpected unmanaged-file collision outside tho
 5. **Verify the Home Manager-owned surfaces:**
    ```bash
    readlink -f ~/.nix-profile/bin/yzx
-   ls ~/.nix-profile/share/applications/com.yazelix.Yazelix.Mars.desktop
+   ls ~/.nix-profile/share/applications/com.yazelix.Yazelix.Kitty.desktop
    yzx --version-short
    ```
 
@@ -393,7 +393,7 @@ If Home Manager still reports an unexpected unmanaged-file collision outside tho
 - Check that `~/.config/yazelix/settings.jsonc` was created
 - By default, that file should be a normal writable file, not a Home Manager store symlink
 - Check that `~/.nix-profile/bin/yzx` exists and that your Home Manager profile bin dir is on your `PATH`
-- On Linux, check that `~/.nix-profile/share/applications/com.yazelix.Yazelix.Mars.desktop` exists if you expect Mars desktop-launcher integration through Home Manager
+- On Linux, check that `~/.nix-profile/share/applications/com.yazelix.Yazelix.Kitty.desktop` exists if you expect Kitty desktop-launcher integration through Home Manager
 - Verify Home Manager configuration syntax
 - Run `home-manager switch` to apply changes
 
