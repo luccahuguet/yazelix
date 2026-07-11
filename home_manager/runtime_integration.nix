@@ -18,8 +18,15 @@ let
   isLinux = pkgs.stdenv.hostPlatform.isLinux;
   componentEnabled = name: cfg.components.${name} or true;
   runtimeToolSource = name: cfg.runtime_tool_sources.${name} or "bundled";
-  desktopEntryKey = "com.yazelix.Yazelix.Mars";
-  desktopEntryName = "New Yazelix - Mars";
+  terminalDesktopSuffix =
+    {
+      kitty = "Kitty";
+      ghostty = "Ghostty";
+      mars = "Mars";
+    }.${cfg.terminal} or cfg.terminal;
+  desktopEntryId = "com.yazelix.Yazelix.${terminalDesktopSuffix}";
+  desktopEntryName = "New Yazelix - ${terminalDesktopSuffix}";
+  desktopStartupWmClass = if cfg.terminal == "mars" then desktopEntryId else "com.yazelix.Yazelix";
   marsDesktopPackage =
     if cfg.mars_package != null then cfg.mars_package else marsTerminalPackage;
   marsConfigured = cfg.terminal == "mars";
@@ -90,7 +97,7 @@ let
   desktopExec =
     let
       envVars =
-        lib.optional marsConfigured "MARS_APP_ID=${desktopEntryKey}"
+        lib.optional marsConfigured "MARS_APP_ID=${desktopEntryId}"
         ++ lib.optional (marsConfigured && cfg.manage_config) "MARS_APPEARANCE=${cfg.appearance_mode}"
         ++ lib.optional (marsConfigured && cfg.manage_config) "MARS_EMOJI_FONT=${cfg.mars_emoji_font}"
         ++ lib.optional (marsConfigured && cfg.manage_config) "MARS_EMOJI_FONT_SOURCE=home-manager"
@@ -106,7 +113,7 @@ let
     type = "Application";
     terminal = false;
     settings = {
-      StartupWMClass = desktopEntryKey;
+      StartupWMClass = desktopStartupWmClass;
     };
   };
   cursorGeneratorPackage =
@@ -197,7 +204,7 @@ ${cursorGeneratorActivation}
     lib.optionalAttrs (lib.hasAttrByPath [ "xdg" "desktopEntries" ] options) {
       xdg.desktopEntries =
         {
-          ${desktopEntryKey} = desktopEntry;
+          ${desktopEntryId} = desktopEntry;
         };
     }
   );

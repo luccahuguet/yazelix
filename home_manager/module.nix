@@ -16,10 +16,13 @@ with lib;
 
 let
   cfg = config.programs.yazelix;
-  defaultTerminal = "mars";
-  terminalVariants = [ "mars" ];
+  defaultTerminal = "kitty";
+  terminalVariants = [
+    "kitty"
+    "ghostty"
+  ];
   terminalDescriptionBullets =
-    "        - \"mars\": default Rust terminal with Yazelix-owned Mars integration, generated Mars config, cursor trails, and the Yazelix Zellij Kitty graphics bridge";
+    "        - \"kitty\": packaged default terminal; Yazelix launches Kitty and keeps its native config user-owned\n        - \"ghostty\": host-installed backup terminal; start Yazelix with `yzx enter`";
   runtimeToolSourceModes = [
     "bundled"
     "host"

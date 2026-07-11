@@ -1,7 +1,7 @@
 use super::{
     build_flake_output_path, command_output_summary, create_unique_temp_dir, escape_nix_string,
-    require_list_contains, require_list_not_contains, require_path_exists_abs, run_nix_eval,
-    run_repo_command,
+    require_list_contains, require_list_not_contains, require_path_exists_abs,
+    require_path_missing_abs, run_nix_eval, run_repo_command,
 };
 use crate::repo_validation::ValidationReport;
 use serde_json::Value as JsonValue;
@@ -345,16 +345,20 @@ fn validate_home_manager_activation_mode(
             "generated Yazi config after Home Manager activation",
             &mut errors,
         );
-        require_path_exists_abs(
-            &home_root
-                .join(".local")
-                .join("share")
-                .join("yazelix")
-                .join("configs")
-                .join("terminal_emulators")
-                .join("mars")
-                .join("config.toml"),
-            "generated Mars terminal config after Home Manager activation",
+        let generated_terminal_root = home_root
+            .join(".local")
+            .join("share")
+            .join("yazelix")
+            .join("configs")
+            .join("terminal_emulators");
+        require_path_missing_abs(
+            &generated_terminal_root.join("kitty").join("config.toml"),
+            "generated Kitty terminal config after Home Manager activation",
+            &mut errors,
+        );
+        require_path_missing_abs(
+            &generated_terminal_root.join("mars").join("config.toml"),
+            "stale generated Mars terminal config after Kitty Home Manager activation",
             &mut errors,
         );
         Ok(errors)

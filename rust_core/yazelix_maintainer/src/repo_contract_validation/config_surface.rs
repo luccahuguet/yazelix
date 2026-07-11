@@ -31,7 +31,7 @@ use yazelix_core::{
     ZELLIJ_NATIVE_KEYBINDINGS, runtime_apply_mode_codes,
 };
 
-const HOME_MANAGER_DEFAULT_TERMINAL: &str = "mars";
+const HOME_MANAGER_DEFAULT_TERMINAL: &str = "kitty";
 
 pub fn validate_config_surface_contract(repo_root: &Path) -> Result<ValidationReport, String> {
     let mut report = ValidationReport::default();
@@ -1198,7 +1198,10 @@ fn build_home_manager_desktop_entry_expr(repo_root: &Path) -> String {
         "    ];".to_string(),
         "  };".to_string(),
         "  activeTerminal = eval.config.programs.yazelix.terminal;".to_string(),
-        "  entryKey = \"com.yazelix.Yazelix.Mars\";".to_string(),
+        format!(
+            "  entryKey = \"{}\";",
+            escape_nix_string(&terminal_desktop_entry_id(HOME_MANAGER_DEFAULT_TERMINAL))
+        ),
         "  entries = eval.config.xdg.desktopEntries;".to_string(),
         "  entry = if builtins.hasAttr entryKey entries then builtins.getAttr entryKey entries else {};".to_string(),
         "in {".to_string(),

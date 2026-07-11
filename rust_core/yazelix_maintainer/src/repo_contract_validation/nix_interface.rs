@@ -167,8 +167,8 @@ pub fn validate_nix_customization_api(repo_root: &Path) -> Result<ValidationRepo
     );
     require_json_bool(
         object,
-        "home_manager_terminal_option_selects_mars",
-        "Home Manager programs.yazelix.terminal must select the Mars packaged terminal",
+        "home_manager_terminal_option_selects_kitty",
+        "Home Manager programs.yazelix.terminal must select the Kitty packaged terminal",
         &mut report.errors,
     );
     require_json_bool(
@@ -448,7 +448,7 @@ fn build_nix_customization_api_expr(repo_root: &Path) -> String {
         "  host_default_tools_can_be_bundled = hostDefaultToolsBundledRegistry.manifest.mise.source == \"bundled\" && hostDefaultToolsBundledRegistry.manifest.tombi.source == \"bundled\" && builtins.elem \"mise\" hostDefaultToolsBundledRegistry.exportedCommands && builtins.elem \"tombi\" hostDefaultToolsBundledRegistry.exportedCommands;".to_string(),
         "  linux_clipboard_helpers_exported = if pkgs.stdenv.hostPlatform.isLinux then builtins.all (command: builtins.elem command steelBundledRegistry.exportedCommands) linuxClipboardCommands else true;".to_string(),
         "  home_manager_has_package = builtins.length hm.config.home.packages > 0;".to_string(),
-        "  home_manager_terminal_option_selects_mars = hm.config.programs.yazelix.terminal == \"mars\" && builtins.any (pkg: (pkg.meta.mainProgram or \"\") == \"yzx\") hm.config.home.packages;".to_string(),
+        "  home_manager_terminal_option_selects_kitty = hm.config.programs.yazelix.terminal == \"kitty\" && builtins.any (pkg: (pkg.meta.mainProgram or \"\") == \"yzx\") hm.config.home.packages;".to_string(),
         "  home_manager_terminal_option_omits_fallback_terminal_packages = !(builtins.any (pkg: let name = pkg.name or \"\"; in pkgs.lib.hasPrefix \"ghostty-\" name || pkgs.lib.hasPrefix \"foot-\" name || pkgs.lib.hasPrefix \"kitty-\" name || pkgs.lib.hasPrefix \"rio-\" name || pkgs.lib.hasPrefix \"wezterm-\" name || pkgs.lib.hasPrefix \"ratty-\" name) hm.config.home.packages);".to_string(),
         "  invalid_runtime_tool_rejected = !invalidRuntimeTool.success;".to_string(),
         "  unsupported_component_rejected = !unsupportedComponent.success;".to_string(),

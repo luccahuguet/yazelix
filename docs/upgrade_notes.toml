@@ -1,10 +1,10 @@
 [releases.unreleased]
-acknowledged_guarded_changes = ["settings_default.jsonc"]
+acknowledged_guarded_changes = ["settings_default.jsonc", "home_manager/module.nix"]
 date = ""
-headline = "Post-v17.9 work in progress"
+headline = "Kitty packaged default and runtime contract alignment"
 manual_actions = []
 migration_ids = []
-summary = ["Reserved for post-release changes after v17.9 lands."]
+summary = ["Made Kitty the default packaged and Home Manager terminal while keeping Ghostty as the alternate supported terminal.", "Aligned terminal materialization, desktop metadata, and runtime validators with Kitty-owned configuration and removed stale Mars assumptions."]
 upgrade_impact = "no_user_action"
 version = "unreleased"
 

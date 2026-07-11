@@ -353,12 +353,12 @@ fn verify_profile_installed_runtime(
         .map(|value| value.trim().to_string())
         .filter(|value| !value.is_empty())
         .unwrap_or_else(|| "unknown".to_string());
-    if runtime_variant != "mars" {
+    if runtime_variant != "kitty" {
         errors.push(format!(
-            "Installed Yazelix runtime must package Mars only, got runtime_variant `{runtime_variant}`"
+            "Installed Yazelix runtime must package Kitty as the default terminal, got runtime_variant `{runtime_variant}`"
         ));
     }
-    let runtime_terminal = "mars";
+    let runtime_terminal = "kitty";
     let desktop_entry = applications_dir.join(terminal_desktop_entry_file_name(runtime_terminal));
     require_path_missing_abs(
         &desktop_entry,
@@ -368,7 +368,7 @@ fn verify_profile_installed_runtime(
     if !errors.is_empty() {
         return Ok(());
     }
-    let runtime_terminal_command = "mars";
+    let runtime_terminal_command = "kitty";
     let runtime_yzx_cli = runtime_root.join("shells").join("posix").join("yzx_cli.sh");
     let runtime_yzx_core = runtime_libexec.join("yzx_core");
     let runtime_settings_default = runtime_root.join("settings_default.jsonc");
@@ -425,11 +425,13 @@ fn verify_profile_installed_runtime(
         "stale runtime-local cursor shader builder",
         errors,
     );
-    require_path_exists_abs(
-        &runtime_root.join("share").join("mars").join("config.toml"),
-        "runtime-local Mars packaged config",
-        errors,
-    );
+    if runtime_terminal == "mars" {
+        require_path_exists_abs(
+            &runtime_root.join("share").join("mars").join("config.toml"),
+            "runtime-local Mars packaged config",
+            errors,
+        );
+    }
     validate_declared_bundled_runtime_commands(
         &runtime_root,
         &runtime_libexec,
@@ -638,11 +640,13 @@ fn verify_profile_installed_runtime(
         return Ok(());
     }
 
-    require_path_exists_abs(
-        &generated_mars_config,
-        "generated Mars Terminal config for selected packaged terminal",
-        errors,
-    );
+    if runtime_terminal == "mars" {
+        require_path_exists_abs(
+            &generated_mars_config,
+            "generated Mars Terminal config for selected packaged terminal",
+            errors,
+        );
+    }
     if errors.is_empty() {
         verify_profile_desktop_install_path(
             repo_root,
