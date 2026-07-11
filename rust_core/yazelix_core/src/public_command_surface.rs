@@ -141,12 +141,12 @@ const ROOT_COMMAND: YzxCommandMetadata = metadata(
 
 const AGENT_COMMAND: YzxCommandMetadata = metadata(
     "yzx agent",
-    "Open the managed right agent pane",
+    "Open the managed right agent pane or preview agent-harness initialization",
     YzxCommandCategory::Workspace,
     &[],
     Some(YzxMenuCategory::Workspace),
     Some(
-        "Launch host-installed Codex when available, otherwise show an actionable right-sidebar shell placeholder.",
+        "Launch host-installed Codex when available, show an actionable right-sidebar shell placeholder, or run the explicit read-only `yzx agent init` preview.",
     ),
 );
 
