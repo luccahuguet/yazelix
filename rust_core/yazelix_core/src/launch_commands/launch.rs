@@ -29,8 +29,8 @@ use crate::runtime_materialization::{
 };
 use crate::terminal_materialization::MARS_EMOJI_ENV_KEYS;
 use crate::terminal_variant::{
-    SESSION_TERMINAL_ENV, active_terminal_from_runtime_dir, terminal_display_name,
-    terminal_startup_wm_class,
+    SESSION_TERMINAL_ENV, SUPPORTED_TERMINALS, active_terminal_from_runtime_dir,
+    terminal_display_name, terminal_startup_wm_class,
 };
 use std::path::{Path, PathBuf};
 
@@ -180,15 +180,28 @@ fn build_launch_execution_plan(
     let active_terminal = active_terminal_from_runtime_dir(&runtime_dir)?;
 
     let requested_working_dir = resolve_requested_working_dir(input.requested_path, input.home)?;
-    let command_search_paths = std::env::var_os("PATH")
+    // Desktop-entry launches can inherit a narrow GUI PATH; runtime-shipped
+    // terminals must stay eligible, so the runtime bin dirs join the search set.
+    let mut command_search_paths = std::env::var_os("PATH")
         .map(|raw| std::env::split_paths(&raw).collect::<Vec<_>>())
         .unwrap_or_default();
+    command_search_paths.push(runtime_dir.join("toolbin"));
+    command_search_paths.push(runtime_dir.join("bin"));
+    // Preference order: every supported terminal, best first; the packaged
+    // runtime variant stays in the chain as the last resort.
+    let mut launch_preference: Vec<String> = SUPPORTED_TERMINALS
+        .iter()
+        .map(|terminal| (*terminal).to_string())
+        .collect();
+    if !launch_preference.contains(&active_terminal) {
+        launch_preference.push(active_terminal.clone());
+    }
     let preflight = evaluate_startup_launch_preflight(&StartupLaunchPreflightRequest {
         startup: None,
         launch: Some(LaunchPreflightPayload {
             working_dir: requested_working_dir,
             requested_terminal: String::new(),
-            terminals: vec![active_terminal.clone()],
+            terminals: launch_preference,
             command_search_paths,
         }),
     })?;
@@ -296,15 +309,18 @@ fn execute_launch_plan(
         .collect::<Vec<_>>()
         .join("\n");
     let message = format!(
-        "Failed to launch Yazelix packaged terminal '{}'.\n{summary}",
-        plan.active_terminal
+        "Failed to launch a Yazelix terminal (tried: {}).\n{summary}",
+        SUPPORTED_TERMINALS.join(", ")
     );
     Err(CoreError::classified(
         ErrorClass::Runtime,
         "launch_failed",
         message,
-        "Reinstall Yazelix so the packaged Mars terminal is available, or configure a host terminal to run `yzx enter`.",
-        serde_json::json!({}),
+        "Install kitty or ghostty on the host, reinstall Yazelix so the packaged terminal is available, or configure a host terminal to run `yzx enter`.",
+        serde_json::json!({
+            "packaged_terminal": plan.active_terminal,
+            "supported_terminals": SUPPORTED_TERMINALS,
+        }),
     ))
 }
 
@@ -693,6 +709,74 @@ mod tests {
                 startup_script.to_string_lossy().into_owned(),
             ]
         );
+    }
+
+    // Defends: kitty and ghostty launch argv use each terminal's own CLI flags, not the Rio-derived Mars flags.
+    #[test]
+    fn kitty_and_ghostty_launch_argv_use_native_flags() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let runtime_dir = tmp.path().join("runtime");
+        let posix_dir = runtime_dir.join("shells").join("posix");
+        std::fs::create_dir_all(&posix_dir).unwrap();
+        let startup_script = posix_dir.join("start_yazelix.sh");
+        std::fs::write(&startup_script, "#!/bin/sh\n").unwrap();
+        let config_path = tmp.path().join("unused-config");
+        let working_dir = tmp.path().join("workspace");
+        std::fs::create_dir_all(&working_dir).unwrap();
+
+        let candidate = |terminal: &str, name: &str| crate::runtime_contract::TerminalCandidate {
+            terminal: terminal.to_string(),
+            name: name.to_string(),
+            command: terminal.to_string(),
+        };
+
+        let kitty_argv = build_launch_command_argv(
+            &runtime_dir,
+            &candidate("kitty", "Kitty"),
+            &config_path,
+            &working_dir,
+            Some("work"),
+        )
+        .unwrap();
+        assert_eq!(
+            kitty_argv,
+            vec![
+                "kitty".to_string(),
+                "--title".to_string(),
+                "Yazelix - Kitty - work".to_string(),
+                "--directory".to_string(),
+                working_dir.to_string_lossy().into_owned(),
+                startup_script.to_string_lossy().into_owned(),
+            ]
+        );
+
+        let ghostty_argv = build_launch_command_argv(
+            &runtime_dir,
+            &candidate("ghostty", "Ghostty"),
+            &config_path,
+            &working_dir,
+            None,
+        )
+        .unwrap();
+        assert_eq!(
+            ghostty_argv,
+            vec![
+                "ghostty".to_string(),
+                "--title=Yazelix - Ghostty".to_string(),
+                format!("--working-directory={}", working_dir.to_string_lossy()),
+                "-e".to_string(),
+                startup_script.to_string_lossy().into_owned(),
+            ]
+        );
+
+        let unsupported = build_launch_command_argv(
+            &runtime_dir,
+            &candidate("warpterm", "WarpTerm"),
+            &config_path,
+            &working_dir,
+            None,
+        );
+        assert!(unsupported.is_err());
     }
 
     // Regression: launch must pass a launch-scoped materialized config path when random cursor materialization produced one, otherwise it falls back to the shared generated path and leaks cursor preset changes across windows.

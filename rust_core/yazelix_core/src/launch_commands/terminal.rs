@@ -37,26 +37,46 @@ pub(super) fn select_existing_user_terminal_config_path(
     ))
 }
 
+/// User config file candidates per terminal, used by `terminal.config_mode = user`.
+fn user_terminal_config_candidates(home_dir: &Path, terminal: &str) -> Vec<PathBuf> {
+    let config_home = xdg_config_home_for_user(home_dir);
+    match terminal {
+        "mars" => vec![config_home.join("mars").join("config.toml")],
+        "kitty" => vec![config_home.join("kitty").join("kitty.conf")],
+        "ghostty" => vec![config_home.join("ghostty").join("config")],
+        _ => Vec::new(),
+    }
+}
+
 pub(super) fn resolve_terminal_config_path(
     home_dir: &Path,
     state_dir: &Path,
     mode: &str,
     terminal: &str,
 ) -> Result<PathBuf, String> {
-    if terminal != "mars" {
+    if !crate::terminal_variant::SUPPORTED_TERMINALS.contains(&terminal) {
         return Err(format!(
-            "Yazelix only launches the packaged Mars terminal; configure host terminal '{terminal}' to run `yzx enter`."
+            "Yazelix does not launch terminal '{terminal}'; configure it as a host terminal to run `yzx enter`."
         ));
     }
 
     match mode {
+        // kitty and ghostty have no Yazelix-generated config yet; they launch with
+        // their own defaults (or the user's config, picked up by the terminal
+        // itself), so the generated path is advisory for them.
         "yazelix" => Ok(generated_terminal_config_path(state_dir, terminal)),
-        "user" => select_existing_user_terminal_config_path(
-            terminal,
-            &[xdg_config_home_for_user(home_dir)
-                .join("mars")
-                .join("config.toml")],
-        ),
+        "user" => {
+            let candidates = user_terminal_config_candidates(home_dir, terminal);
+            match select_existing_user_terminal_config_path(terminal, &candidates) {
+                Ok(path) => Ok(path),
+                // Only mars hard-requires a config file to launch correctly;
+                // kitty/ghostty fall back to their built-in defaults.
+                Err(_) if terminal != "mars" => {
+                    Ok(generated_terminal_config_path(state_dir, terminal))
+                }
+                Err(err) => Err(err),
+            }
+        }
         other => Err(format!(
             "Unsupported terminal.config_mode '{other}'. Expected 'yazelix' or 'user'."
         )),
@@ -78,13 +98,6 @@ pub(super) fn build_launch_command_argv(
     working_dir: &Path,
     session_name: Option<&str>,
 ) -> Result<Vec<String>, CoreError> {
-    if terminal.terminal != "mars" {
-        return Err(CoreError::usage(format!(
-            "Yazelix only launches the packaged Mars terminal; configure host terminal '{}' to run `yzx enter`.",
-            terminal.terminal
-        )));
-    }
-
     let startup_script = runtime_dir
         .join("shells")
         .join("posix")
@@ -102,16 +115,39 @@ pub(super) fn build_launch_command_argv(
         ));
     }
     let terminal_command = resolve_runtime_terminal_command(runtime_dir, &terminal.command);
+    let title = terminal_window_title(&terminal.terminal, session_name);
+    let working_dir = working_dir.to_string_lossy().into_owned();
+    let startup_script = startup_script.to_string_lossy().into_owned();
 
-    Ok(vec![
-        terminal_command,
-        "--title-placeholder".to_string(),
-        terminal_window_title(&terminal.terminal, session_name),
-        "--working-dir".to_string(),
-        working_dir.to_string_lossy().into_owned(),
-        "-e".to_string(),
-        startup_script.to_string_lossy().into_owned(),
-    ])
+    match terminal.terminal.as_str() {
+        "mars" => Ok(vec![
+            terminal_command,
+            "--title-placeholder".to_string(),
+            title,
+            "--working-dir".to_string(),
+            working_dir,
+            "-e".to_string(),
+            startup_script,
+        ]),
+        "kitty" => Ok(vec![
+            terminal_command,
+            "--title".to_string(),
+            title,
+            "--directory".to_string(),
+            working_dir,
+            startup_script,
+        ]),
+        "ghostty" => Ok(vec![
+            terminal_command,
+            format!("--title={title}"),
+            format!("--working-directory={working_dir}"),
+            "-e".to_string(),
+            startup_script,
+        ]),
+        other => Err(CoreError::usage(format!(
+            "Yazelix does not launch terminal '{other}'; configure it as a host terminal to run `yzx enter`."
+        ))),
+    }
 }
 
 fn resolve_runtime_terminal_command(runtime_dir: &Path, command: &str) -> String {

@@ -619,16 +619,28 @@ mod tests {
         assert_eq!(mode, 0o755);
     }
 
-    // Defends: Mars runtime metadata is accepted as a shipped packaged terminal.
+    // Defends: Kitty runtime metadata is accepted as a shipped packaged terminal.
     #[test]
-    fn active_terminal_accepts_mars_runtime_variant() {
+    fn active_terminal_accepts_kitty_runtime_variant() {
         let runtime = TempDir::new().unwrap();
-        fs::write(runtime.path().join("runtime_variant"), "mars\n").unwrap();
+        fs::write(runtime.path().join("runtime_variant"), "kitty\n").unwrap();
 
         assert_eq!(
             crate::terminal_variant::active_terminal_from_runtime_dir(runtime.path()).unwrap(),
-            "mars"
+            "kitty"
         );
+    }
+
+    // Defends: mars is no longer a launchable packaged terminal (removed 2026-07-11);
+    // stale mars runtime metadata must fail clearly instead of launching.
+    #[test]
+    fn active_terminal_rejects_mars_runtime_variant() {
+        let runtime = TempDir::new().unwrap();
+        fs::write(runtime.path().join("runtime_variant"), "mars\n").unwrap();
+
+        let error =
+            crate::terminal_variant::active_terminal_from_runtime_dir(runtime.path()).unwrap_err();
+        assert_eq!(error.code(), "unsupported_terminal_variant");
     }
 
     // Defends: desktop launch logs use the terminal executable basename, so mars diagnostics can find them reliably.

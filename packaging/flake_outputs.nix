@@ -22,8 +22,9 @@
 
 let
   defaultRuntimePackages = agentUsagePackages system;
-  runtime_mars = runtimePackage system pkgs "mars" defaultRuntimePackages;
-  yazelix_mars = yazelixPackage system pkgs "mars" defaultRuntimePackages;
+  # Kitty is the packaged terminal; mars was removed (operator directive 2026-07-11).
+  runtime_kitty = runtimePackage system pkgs "kitty" defaultRuntimePackages;
+  yazelix_kitty = yazelixPackage system pkgs "kitty" defaultRuntimePackages;
   yazelix_zellij_bar = yazelixZellijBar.packages.${system}.yazelix_zellij_bar;
   yazelix_screen = yazelixScreen.packages.${system}.yzs;
   yazelix_cursors = yazelixCursors.packages.${system}.yazelix_cursors;
@@ -130,7 +131,9 @@ let
       pkgs.bun;
   lifeos_foundation_yzx = mkYazelix {
     inherit pkgs;
-    runtimeVariant = "mars";
+    # Kitty is the packaged default terminal; ghostty (host-installed) is the
+    # backup. Mars was removed from the foundation (operator directive 2026-07-11).
+    runtimeVariant = "kitty";
     name = "lifeos-foundation-yzx";
     runtimeName = "lifeos-foundation-yzx-runtime";
     extraRuntimePackages = defaultRuntimePackages ++ [
@@ -148,6 +151,7 @@ let
       pkgs.cargo-tauri
       pkgs.clang
       pkgs.corepack
+      pkgs.kitty
       pkgs.nodejs_24
       pkgs.wasm-pack
       pkgs.wild
@@ -155,6 +159,7 @@ let
     extraRuntimeCommands = [
       "tu"
       "claude"
+      "kitty"
       "ccboard"
       "codex"
       "codedb"
@@ -239,16 +244,16 @@ let
       git_kb = flexnetos_foundation_git_kb;
       rtk = flexnetos_foundation_rtk;
       inherit beads_rust install_check;
-      inherit runtime_mars yazelix_mars;
+      inherit runtime_kitty yazelix_kitty;
       inherit lifeos_foundation_yzx;
       inherit yazelix_cursors yazelix_helix yazelix_screen;
       inherit yazelix_yazi_assets yazelix_zellij_bar yazelix_zellij_config_pack;
       inherit yazelix_zellij_pane_orchestrator yazelix_zellij_popup;
-      default = yazelix_mars;
-      runtime = runtime_mars;
-      runtime_agent_tools = runtime_mars;
-      yazelix = yazelix_mars;
-      yazelix_agent_tools = yazelix_mars;
+      default = yazelix_kitty;
+      runtime = runtime_kitty;
+      runtime_agent_tools = runtime_kitty;
+      yazelix = yazelix_kitty;
+      yazelix_agent_tools = yazelix_kitty;
       yazelix_kgp_zellij = (kgpPackages.graphicsPkgs pkgs).zellij;
       yzs = yazelix_screen;
     };
@@ -267,7 +272,7 @@ in
     yazelix = yzxApp "yazelix";
     yazelix_agent_tools = yzxApp "yazelix_agent_tools";
     lifeos_foundation_yzx = yzxApp "lifeos_foundation_yzx";
-    yazelix_mars = yzxApp "yazelix_mars";
+    yazelix_kitty = yzxApp "yazelix_kitty";
     yazelix_screen = appFor "yazelix_screen" "yzs";
     yzs = appFor "yazelix_screen" "yzs";
     yazelix_cursors = appFor "yazelix_cursors" "yzc";

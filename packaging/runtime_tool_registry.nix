@@ -79,8 +79,11 @@ let
         requireMarsPackageMetadata marsTerminalPackage
       else
         throw "Yazelix runtimeVariant mars requires the Mars terminal child package"
+    else if runtimeVariant == "kitty" then
+      # Kitty ships from nixpkgs with no child-package metadata contract.
+      null
     else
-      throw "Unsupported Yazelix runtimeVariant: ${runtimeVariant}. Yazelix only packages Mars; configure host terminals to run `yzx enter`.";
+      throw "Unsupported Yazelix runtimeVariant: ${runtimeVariant}. Yazelix packages Mars or Kitty; configure host terminals to run `yzx enter`.";
   marsPackageRuntimeIdentity =
     if marsPackageMetadata == null then
       { }
@@ -103,8 +106,12 @@ let
           marsPackageMetadata.default_appearance_mode;
       };
   terminalPackage =
-    marsTerminalPackage;
-  terminalCommands = [ (commandBasename marsPackageMetadata.wrapper_commands.desktop) ];
+    if runtimeVariant == "kitty" then pkgs.kitty else marsTerminalPackage;
+  terminalCommands =
+    if runtimeVariant == "kitty" then
+      [ "kitty" ]
+    else
+      [ (commandBasename marsPackageMetadata.wrapper_commands.desktop) ];
   linuxGraphicsWrappers =
     if pkgs.stdenv.hostPlatform.isLinux && (nixgl != null) then
       import "${nixgl}/default.nix" {

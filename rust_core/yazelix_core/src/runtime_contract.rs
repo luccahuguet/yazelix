@@ -881,13 +881,13 @@ mod tests {
         );
     }
 
-    // Defends: shared runtime-contract evaluation reports the packaged Mars terminal candidate.
+    // Defends: shared runtime-contract evaluation reports the packaged Kitty terminal candidate.
     #[test]
-    fn evaluate_reports_mars_terminal_candidate() {
+    fn evaluate_reports_kitty_terminal_candidate() {
         let temp = tempdir().unwrap();
         let host_bin = temp.path().join("host-bin");
         fs::create_dir_all(&host_bin).unwrap();
-        write_executable(&host_bin.join("mars"));
+        write_executable(&host_bin.join("kitty"));
 
         let data = evaluate_runtime_contract(&RuntimeContractEvaluateRequest {
             working_dir: None,
@@ -896,7 +896,7 @@ mod tests {
             terminal_support: Some(TerminalSupportCheckRequest {
                 owner_surface: "launch".to_string(),
                 requested_terminal: String::new(),
-                terminals: vec!["mars".to_string()],
+                terminals: vec!["kitty".to_string()],
                 command_search_paths: vec![host_bin.clone()],
             }),
             linux_ghostty_desktop_graphics_support: None,
@@ -914,7 +914,7 @@ mod tests {
                 .as_ref()
                 .and_then(|candidates| candidates.first())
                 .map(|candidate| candidate.terminal.as_str()),
-            Some("mars")
+            Some("kitty")
         );
     }
 
@@ -928,7 +928,7 @@ mod tests {
             terminal_support: Some(TerminalSupportCheckRequest {
                 owner_surface: "launch".to_string(),
                 requested_terminal: "warpterm".to_string(),
-                terminals: vec!["mars".to_string()],
+                terminals: vec!["kitty".to_string()],
                 command_search_paths: Vec::new(),
             }),
             linux_ghostty_desktop_graphics_support: None,
@@ -943,7 +943,10 @@ mod tests {
                 .details
                 .as_deref()
                 .unwrap_or_default()
-                .contains("Supported terminals: mars")
+                .contains(&format!(
+                    "Supported terminals: {}",
+                    SUPPORTED_TERMINALS.join(", ")
+                ))
         );
     }
 
@@ -1010,14 +1013,14 @@ mod tests {
         fs::create_dir_all(&work).unwrap();
         let host_bin = temp.path().join("host-bin");
         fs::create_dir_all(&host_bin).unwrap();
-        write_executable(&host_bin.join("mars"));
+        write_executable(&host_bin.join("kitty"));
 
         let data = evaluate_startup_launch_preflight(&StartupLaunchPreflightRequest {
             startup: None,
             launch: Some(LaunchPreflightPayload {
                 working_dir: work.clone(),
                 requested_terminal: String::new(),
-                terminals: vec!["mars".to_string()],
+                terminals: vec!["kitty".to_string()],
                 command_search_paths: vec![host_bin],
             }),
         })
@@ -1029,17 +1032,17 @@ mod tests {
         let candidates = data.terminal_candidates.as_ref().unwrap();
         assert_eq!(
             candidates.first().map(|c| c.terminal.as_str()),
-            Some("mars")
+            Some("kitty")
         );
     }
 
-    // Defends: Mars is accepted as a public packaged launch terminal.
+    // Defends: Kitty is accepted as a public packaged launch terminal.
     #[test]
-    fn launch_preflight_accepts_mars_as_supported_terminal() {
+    fn launch_preflight_accepts_kitty_as_supported_terminal() {
         let temp = tempdir().unwrap();
         let host_bin = temp.path().join("host-bin");
         fs::create_dir_all(&host_bin).unwrap();
-        write_executable(&host_bin.join("mars"));
+        write_executable(&host_bin.join("kitty"));
 
         let data = evaluate_runtime_contract(&RuntimeContractEvaluateRequest {
             working_dir: None,
@@ -1047,8 +1050,8 @@ mod tests {
             generated_layout: None,
             terminal_support: Some(TerminalSupportCheckRequest {
                 owner_surface: "launch".to_string(),
-                requested_terminal: "mars".to_string(),
-                terminals: vec!["mars".to_string()],
+                requested_terminal: "kitty".to_string(),
+                terminals: vec!["kitty".to_string()],
                 command_search_paths: vec![host_bin],
             }),
             linux_ghostty_desktop_graphics_support: None,
@@ -1064,7 +1067,7 @@ mod tests {
                 .unwrap()
                 .first()
                 .map(|c| c.terminal.as_str()),
-            Some("mars")
+            Some("kitty")
         );
     }
 }

@@ -175,7 +175,8 @@
       kgpPackages = import ./packaging/kgp_packages.nix {
         inherit yazelixZellij yazelixHelix;
       };
-      terminalNeedsKittyPassthrough = runtimeVariant: runtimeVariant == "mars";
+      terminalNeedsKittyPassthrough =
+        runtimeVariant: runtimeVariant == "mars" || runtimeVariant == "kitty";
       zellijPluginArtifactsFor =
         system:
         let
@@ -410,7 +411,7 @@
           };
           runtime_release_contracts = import ./packaging/runtime_release_contracts.nix {
             inherit pkgs;
-            runtime = outputs.packages.runtime_mars;
+            runtime = outputs.packages.runtime_kitty;
           };
           lifeos_foundation_yzx_runtime_release_contracts = lifeosFoundationYzxRuntimeReleaseContracts;
         }
