@@ -246,7 +246,8 @@ Zellij tab or opens packaged Helix in the managed `editor` pane.
 
 Git editing stays in the client terminal. Managed LazyGit overlays only its
 file-edit commands and keeps user configuration; it and other terminal Git
-clients use direct `yzn-editor` through the standard editor variables.
+clients use `yzn-editor` through the standard editor variables. On return, the
+bridge restores the client's transparent Zellij background.
 
 `Alt r` reveals the current Helix buffer in the Yazi sidebar. `yzn reveal
 <target>` exposes the same path inside a managed session.
@@ -346,13 +347,13 @@ git ls-files | grep -Ev '^\.beads/|\.lock$' | xargs wc -l
 | Language | Lines |
 | --- | ---: |
 | Ignore (`.gitignore`) | 4 |
-| Markdown | 1314 |
-| Nix | 1010 |
+| Markdown | 1319 |
+| Nix | 1011 |
 | Shell | 84 |
 | YAML | 268 |
 | TOML | 249 |
 | KDL | 210 |
 | Nu | 11 |
 | Lua | 247 |
-| Rust | 11996 |
-| Total | 15393 |
+| Rust | 12010 |
+| Total | 15413 |

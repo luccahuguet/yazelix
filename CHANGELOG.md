@@ -4,6 +4,8 @@ User-visible runtime changes for Yazelix Next live here.
 
 ## Unreleased
 
+- `yzn config` fully redraws after returning from an external editor instead of
+  leaving the editor background until another UI action.
 - Optional managed `yazi/yazi.toml` now layers native Yazi tables over the
   packaged config while replacing user scalars and arrays. Yazelix retains its
   edit opener and required sidebar Git fetchers; invalid TOML fails before Yazi
@@ -15,7 +17,8 @@ User-visible runtime changes for Yazelix Next live here.
 - Managed LazyGit file edits honor `editor.command` instead of falling back to
   Vim for unknown presets. Direct `yzn-editor` is also exported through
   `EDITOR`, `VISUAL`, and `GIT_EDITOR`; it stays in the client lifecycle with
-  the Helix bridge disabled, while user LazyGit configuration remains loaded.
+  the Helix bridge disabled, restores the transparent Zellij background after
+  editing, and keeps user LazyGit configuration loaded.
 - The managed agent popup command is configurable through root config
   `agent.command` and `agent.args`, exposed in the `yzn config` `popups` tab.
   The default `agent.command = "auto"` keeps the existing provider fallback.

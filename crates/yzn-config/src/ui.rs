@@ -4,6 +4,7 @@ use crossterm::{
     cursor,
     event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers},
     execute,
+    style::Print,
     terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
 use ratatui::{Terminal, backend::CrosstermBackend};
@@ -17,6 +18,8 @@ use crate::{
     model::build_model,
     paths::ensure_config_sources,
 };
+
+const RESET_TERMINAL_BACKGROUND: &str = "\x1b]111\x07";
 
 pub(crate) fn run_ui() -> Result<()> {
     let paths = ensure_config_sources()?;
@@ -40,6 +43,7 @@ pub(crate) fn run_ui() -> Result<()> {
                 field_index, input, ..
             } => {
                 let result = session.suspend(|| edit_text_externally(&input))?;
+                terminal.clear()?;
                 match result {
                     Ok(edited) => {
                         if let Err(message) = app.apply_external_text_edit(field_index, edited) {
@@ -59,6 +63,7 @@ pub(crate) fn run_ui() -> Result<()> {
                 let result = session.suspend(|| {
                     open_file_action(&paths, &source_id, &action_id, &path, create_if_missing)
                 })?;
+                terminal.clear()?;
                 app.model = build_model(&paths)?;
                 match result {
                     Ok(()) => app.notice_info(format!("Opened {}.", path.display())),
@@ -114,6 +119,7 @@ impl TerminalSession {
         execute!(io::stdout(), cursor::Show, LeaveAlternateScreen)?;
         let result = action();
         enable_raw_mode()?;
+        execute!(io::stdout(), Print(RESET_TERMINAL_BACKGROUND))?;
         execute!(io::stdout(), EnterAlternateScreen, cursor::Hide)?;
         Ok(result)
     }

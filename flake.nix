@@ -275,7 +275,8 @@
             exit 127
           fi
           export YAZELIX_HELIX_BRIDGE=0
-          exec -- "$editor" "$@"
+          trap '[ -z "''${ZELLIJ:-}" ] || printf "\033]111\a"' EXIT
+          command -- "$editor" "$@"
         '';
       };
       yznEditorEnv = ''

@@ -205,8 +205,9 @@ a new session.
 
 ### Git editor boundary
 
-- `yzn-editor` resolves `editor.command`, disables the Helix bridge, and directly
-  replaces itself with the executable; it never calls `yzn-open` or Zellij.
+- `yzn-editor` resolves `editor.command`, disables the Helix bridge, waits for
+  the executable, and restores Zellij's default background when it exits. It
+  never calls `yzn-open` or a Zellij pane action.
 - Managed sessions export `yzn-editor` through `EDITOR`, `VISUAL`, and
   `GIT_EDITOR`. `YZN_EDITOR` remains the effective editor for managed Yazi opens.
 - `yzn-git` appends a LazyGit `os.edit*` overlay while retaining global and

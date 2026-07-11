@@ -1504,7 +1504,7 @@ fn expect_git_editor(editor: &Path, lazygit_config: &Path, git: &Path) {
     );
     let repo = temp.path.join("repo with spaces");
     successful_output(Command::new(git).arg("init").arg(&repo), "Git init");
-    successful_output(
+    let output = successful_output(
         Command::new(git)
             .arg("-C")
             .arg(&repo)
@@ -1517,9 +1517,17 @@ fn expect_git_editor(editor: &Path, lazygit_config: &Path, git: &Path) {
                 "--allow-empty",
             ])
             .env("GIT_EDITOR", editor)
+            .env("ZELLIJ", "test-session")
             .env("YAZELIX_NEXT_CONFIG_HOME", &git_config)
             .env_remove("YAZELIX_NEXT_EDITOR"),
         "Git commit through configured editor",
+    );
+    assert!(
+        output
+            .stdout
+            .windows(b"\x1b]111\x07".len())
+            .any(|window| window == b"\x1b]111\x07"),
+        "yzn-editor did not restore Zellij's default background",
     );
 }
 
