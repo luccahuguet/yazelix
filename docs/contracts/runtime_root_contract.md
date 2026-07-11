@@ -113,7 +113,7 @@ This contract keeps those boundaries explicit.
   - Default location: `~/.config/yazelix`
   - Canonical environment variable: `YAZELIX_CONFIG_DIR`
   - Contents include:
-    - `settings.jsonc`
+    - `config.toml`
     - user-managed overrides such as `zellij/`, `helix/`, the `yazi/` managed home, `terminal_*`, and `shell_*`
   - The current trimmed line does not treat `yazelix_packs.toml` as part of the current config contract.
 - The runtime root is the shipped Yazelix asset tree used at runtime.

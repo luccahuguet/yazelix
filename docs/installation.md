@@ -253,10 +253,10 @@ Host prerequisite contract:
 
 ### Step 3: Configure Your Installation (Optional)
 
-If you launch before editing config, Yazelix will auto-create `settings.jsonc` from the shipped defaults. You can edit it anytime afterward:
+If you launch before editing config, Yazelix will auto-create `config.toml` from the shipped defaults. You can edit it anytime afterward:
 
 ```bash
-hx ~/.config/yazelix/settings.jsonc
+hx ~/.config/yazelix/config.toml
 ```
 
 #### Runtime Surface
@@ -530,7 +530,7 @@ Check installed tool versions: `yzx status --versions`
 Run diagnostics: `yzx doctor` - Automated health checks and fixes
 
 ### Customization
-If you followed step 5, you already have your `~/.config/yazelix/settings.jsonc` config file ready. You can modify it anytime and restart Yazelix to apply changes. Main options live in that file; cursor presets live in `~/.config/yazelix_cursors/settings.jsonc`.
+If you followed step 5, you already have your `~/.config/yazelix/config.toml` config file ready. You can modify it anytime and restart Yazelix to apply changes. Main options live in that file; cursor presets live in `~/.config/yazelix_cursors/settings.jsonc`.
 
 For complete customization options, see the [Customization Guide](./customization.md).
 

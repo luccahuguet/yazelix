@@ -2,7 +2,7 @@
 
 Start with this model:
 
-- `~/.config/yazelix/settings.jsonc` is the main workspace settings file for shell, editor, Zellij, Yazi, popup, status, and layout behavior
+- `~/.config/yazelix/config.toml` is the main workspace settings file for shell, editor, Zellij, Yazi, popup, status, and layout behavior
 - `~/.config/yazelix/mars/config.toml` is the optional sparse native Mars override
 - `~/.config/yazelix_cursors/settings.jsonc` owns Yazelix cursor presets and shader settings
 - Generated runtime state lives under `~/.local/share/yazelix`; edit the config inputs, not generated runtime files
@@ -11,7 +11,7 @@ Start with this model:
 The sections below cover the override surfaces that sit around that main model.
 
 - **Configuration File**: On first launch, Yazelix creates the main settings and cursor settings from shipped defaults. Old mutable `yazelix.toml`, old `cursors.toml`, old `user_configs/` paths, and older embedded cursor settings blocks raise a clear error instead of being rewritten automatically.
-  - Run `yzx config ui` to edit JSONC settings and browse or patch the native Mars TOML document through Ratconfig
+  - Run `yzx config ui` to edit TOML settings and browse or patch the native Mars TOML document through Ratconfig
   - Use `yzx config set PATH JSON` and `yzx config unset PATH` for safe comment-preserving edits to supported settings and cursor fields
   - Yazelix snapshots the main config for each new window. Live popup, menu, sidebar, reveal, and editor-launch commands keep using that window snapshot, so config edits apply to the next Yazelix window or after `yzx restart`
   - For temporary changes, use repeatable `--with KEY=VALUE` on `yzx launch`, `yzx enter`, or `yzx restart`; Yazelix writes an ephemeral settings snapshot and does not mutate your config file
@@ -28,8 +28,8 @@ The sections below cover the override surfaces that sit around that main model.
     - **Home Manager**: Set exactly one of `programs.yazelix.config.mars.text` or `programs.yazelix.config.mars.source` to install the sparse override declaratively
 - **Visible managed stubs**: Yazelix creates lightweight README or hook stubs under `~/.config/yazelix/` when a managed surface becomes relevant. It creates the canonical nested Zellij sidecars from small defaults and does not create a behavior-owning Helix config automatically.
 - **Native config status**: Yazelix treats native tool configs as user-owned unless you explicitly import them or select a supported native read-only mode. The shared status words are `managed_default`, `managed_override`, `imported_override`, `native_read_only`, `native_available`, `native_required_missing`, `home_manager_read_only`, and `generated_runtime`.
-- **Zellij Configuration**: `settings.jsonc` for Yazelix-owned behavior plus two guarded native sidecars:
-  - **Quick start**: edit `settings.jsonc` for keybindings, popup commands, widgets, and layout settings
+- **Zellij Configuration**: `config.toml` for Yazelix-owned behavior plus two guarded native sidecars:
+  - **Quick start**: edit `config.toml` for keybindings, popup commands, widgets, and layout settings
   - **Advanced native settings**: edit `~/.config/yazelix/zellij/config.kdl` for safe native preferences and `~/.config/yazelix/zellij/plugins.kdl` for third-party plugins
   - **Full guide**: [Zellij Configuration Documentation](./zellij-configuration.md)
   - **Managed input boundary**: Yazelix rejects runtime-owned nodes in `zellij/config.kdl`, accepts only plugin blocks in `zellij/plugins.kdl`, and never loads plain `~/.config/zellij/config.kdl` implicitly

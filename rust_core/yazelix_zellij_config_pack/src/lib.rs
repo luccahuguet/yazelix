@@ -9,6 +9,16 @@ use serde_json::json;
 pub const RENDERER_SCHEMA_VERSION: u64 = 2;
 pub const MANAGED_SIDEBAR_LAYOUT_NAME: &str = "yzx_side";
 pub const DEFAULT_ZELLIJ_CONFIG_SIDECAR: &str = r#"// Native Zellij preferences used by Yazelix
+show_startup_tips false
+pane_frames true
+default_mode "normal"
+
+ui {
+    pane_frames {
+        rounded_corners true
+    }
+}
+
 scroll_buffer_size 5000
 "#;
 pub const DEFAULT_ZELLIJ_PLUGINS_SIDECAR: &str = r#"// Extra third-party Zellij plugins
@@ -31,10 +41,6 @@ const HOME_TAB_MARKER: &str = "\u{f015}";
 const YZPP_PLUGIN_ALIAS: &str = "yzpp";
 const CONFIG_SIDECAR_FORBIDDEN_TOP_LEVEL: &[&str] = &[
     "keybinds",
-    "show_startup_tips",
-    "pane_frames",
-    "default_mode",
-    "ui",
     "default_shell",
     "default_layout",
     "layout",
@@ -257,16 +263,8 @@ fn default_appearance_mode() -> String {
     APPEARANCE_MODE_DARK.into()
 }
 
-fn default_string_true() -> String {
-    "true".into()
-}
-
 fn default_support_kitty_keyboard_protocol() -> String {
     "true".into()
-}
-
-fn default_zellij_default_mode() -> String {
-    "normal".into()
 }
 
 fn default_tab_label_mode() -> String {
@@ -366,16 +364,8 @@ pub struct ZellijRenderPlanRequest {
     pub zellij_theme: String,
     #[serde(default = "default_appearance_mode")]
     pub appearance_mode: String,
-    #[serde(default = "default_string_true")]
-    pub zellij_pane_frames: String,
-    #[serde(default = "default_string_true")]
-    pub zellij_rounded_corners: String,
-    #[serde(default = "default_string_true")]
-    pub disable_zellij_tips: String,
     #[serde(default = "default_support_kitty_keyboard_protocol")]
     pub support_kitty_keyboard_protocol: String,
-    #[serde(default = "default_zellij_default_mode")]
-    pub zellij_default_mode: String,
     #[serde(default = "default_tab_label_mode")]
     pub zellij_tab_label_mode: String,
     #[serde(default = "default_claude_usage_display")]
@@ -460,7 +450,6 @@ pub struct ZellijRenderPlanData {
     pub owned_top_level_setting_names: Vec<String>,
     pub dynamic_top_level_settings: Vec<TopLevelSetting>,
     pub enforced_top_level_settings: Vec<TopLevelSetting>,
-    pub rounded_value: String,
     pub popup_width_percent: i64,
     pub popup_height_percent: i64,
     pub screen_saver_enabled: bool,
@@ -544,6 +533,26 @@ pub fn validate_zellij_config_sidecar(text: &str) -> Result<(), ZellijSidecarErr
         }
     }
     Ok(())
+}
+
+pub fn add_zellij_native_preferences(
+    text: &str,
+    disable_tips: bool,
+    pane_frames: bool,
+    rounded_corners: bool,
+    default_mode: &str,
+) -> Result<String, ZellijSidecarError> {
+    validate_zellij_config_sidecar(text)?;
+    let migrated_nodes = ["show_startup_tips", "pane_frames", "default_mode", "ui"];
+    for node in top_level_nodes(text)? {
+        if migrated_nodes.contains(&node.name.as_str()) {
+            return Err(sidecar_error("zellij_native_preference_conflict", &node));
+        }
+    }
+    Ok(normalized_sidecar_text(&format!(
+        "{text}\nshow_startup_tips {}\npane_frames {pane_frames}\ndefault_mode {default_mode:?}\n\nui {{\n    pane_frames {{\n        rounded_corners {rounded_corners}\n    }}\n}}",
+        !disable_tips,
+    )))
 }
 
 pub fn validate_zellij_plugins_sidecar(text: &str) -> Result<(), ZellijSidecarError> {
@@ -758,19 +767,6 @@ fn validate_widget_tray(entries: &[String]) -> Result<(), ZellijRenderPlanError>
     Ok(())
 }
 
-fn validate_default_mode(mode: &str) -> Result<(), ZellijRenderPlanError> {
-    if mode == "normal" || mode == "locked" {
-        Ok(())
-    } else {
-        Err(ZellijRenderPlanError::new(
-            "invalid_zellij_default_mode",
-            format!("zellij_default_mode must be \"normal\" or \"locked\" (got {mode:?})"),
-            "Set zellij.default_mode to a supported value.",
-            json!({ "field": "zellij.default_mode" }),
-        ))
-    }
-}
-
 fn normalize_usage_display(
     field: &str,
     raw: &str,
@@ -951,7 +947,6 @@ pub fn compute_zellij_render_plan(
     validate_popup_percent("zellij.popup_width_percent", request.popup_width_percent)?;
     validate_popup_percent("zellij.popup_height_percent", request.popup_height_percent)?;
     validate_screen_saver_idle_seconds(request.screen_saver_idle_seconds)?;
-    validate_default_mode(&request.zellij_default_mode)?;
     let screen_saver_style = normalize_screen_saver_style(&request.screen_saver_style)?;
     let tab_label_mode = normalize_tab_label_mode(&request.zellij_tab_label_mode)?;
     let widget_frame = normalize_widget_frame(&request.zellij_widget_frame)?;
@@ -1013,21 +1008,6 @@ pub fn compute_zellij_render_plan(
         &request.appearance_mode,
     );
     let theme = pick_theme(&theme_config);
-    let pane_frames_value = if bool_setting_from_string(&request.zellij_pane_frames) {
-        "true"
-    } else {
-        "false"
-    };
-    let rounded_value = if bool_setting_from_string(&request.zellij_rounded_corners) {
-        "true"
-    } else {
-        "false"
-    };
-    let show_tips_value = if bool_setting_from_string(&request.disable_zellij_tips) {
-        "false"
-    } else {
-        "true"
-    };
     let kitty_protocol_value = if bool_setting_from_string(&request.support_kitty_keyboard_protocol)
     {
         "true"
@@ -1039,19 +1019,13 @@ pub fn compute_zellij_render_plan(
     let default_layout_path = layout_dir_path.join(format!("{default_layout_name}.kdl"));
     let dynamic_top_level_settings = vec![
         make_setting("theme", kdl_quoted_path(Path::new(&theme))),
-        make_setting("show_startup_tips", show_tips_value),
         make_setting("show_release_notes", "false"),
         make_setting("on_force_close", kdl_quoted_path(Path::new("quit"))),
-        make_setting("pane_frames", pane_frames_value),
     ];
     let enforced_top_level_settings = vec![
         make_setting("session_serialization", "true"),
         make_setting("serialize_pane_viewport", "true"),
         make_setting("support_kitty_keyboard_protocol", kitty_protocol_value),
-        make_setting(
-            "default_mode",
-            kdl_quoted_path(Path::new(&request.zellij_default_mode)),
-        ),
         make_setting(
             "default_shell",
             kdl_quoted_path(Path::new(&request.resolved_default_shell)),
@@ -1087,7 +1061,6 @@ pub fn compute_zellij_render_plan(
         owned_top_level_setting_names,
         dynamic_top_level_settings,
         enforced_top_level_settings,
-        rounded_value: rounded_value.to_string(),
         popup_width_percent: request.popup_width_percent,
         popup_height_percent: request.popup_height_percent,
         screen_saver_enabled: request.screen_saver_enabled,
@@ -1300,10 +1273,7 @@ fn render_merged_config(request: &ZellijConfigPackRenderRequest) -> String {
     );
     let merged_keybinds =
         build_merged_keybinds_block(&extracted_blocks.keybind_lines, &request.override_keybinds);
-    let merged_ui = build_yazelix_ui_block(
-        &extracted_blocks.ui_lines,
-        &request.render_plan.rounded_value,
-    );
+    let merged_ui = block_with_lines("ui", &extracted_blocks.ui_lines);
     let plugins_block = build_yazelix_plugins_block(
         &extracted_blocks.plugin_lines,
         request,
@@ -1335,7 +1305,7 @@ fn render_merged_config(request: &ZellijConfigPackRenderRequest) -> String {
         merged_ui,
         String::new(),
         render_top_level_settings_block(
-            "// === YAZELIX DYNAMIC SETTINGS (from settings.jsonc) ===",
+            "// === YAZELIX DYNAMIC SETTINGS (from config.toml) ===",
             &request.render_plan.dynamic_top_level_settings,
         ),
         String::new(),
@@ -1884,21 +1854,6 @@ fn push_zellij_message_bind(
     lines.push("        }".to_string());
 }
 
-fn build_yazelix_ui_block(existing_ui_lines: &[String], rounded_value: &str) -> String {
-    let existing_ui_text = existing_ui_lines.join("\n");
-    let hide_session_name = existing_ui_text.contains("hide_session_name true");
-    let mut lines = vec![
-        "ui {".to_string(),
-        "    pane_frames {".to_string(),
-        format!("        rounded_corners {rounded_value}"),
-    ];
-    if hide_session_name {
-        lines.push("        hide_session_name true".to_string());
-    }
-    lines.extend(["    }".to_string(), "}".to_string()]);
-    lines.join("\n")
-}
-
 fn render_top_level_settings_block(header: &str, settings: &[TopLevelSetting]) -> String {
     std::iter::once(header.to_string())
         .chain(
@@ -2324,6 +2279,28 @@ mod tests {
         assert_eq!(error.line, 2);
     }
 
+    // Regression: Classic root migration moves native preferences into the guarded sidecar without creating a second owner.
+    #[test]
+    fn native_preferences_join_zellij_sidecar_once() {
+        let migrated = add_zellij_native_preferences(
+            "scroll_buffer_size 5000\n",
+            false,
+            false,
+            false,
+            "locked",
+        )
+        .unwrap();
+        validate_zellij_config_sidecar(&migrated).unwrap();
+        assert!(migrated.contains("show_startup_tips true"));
+        assert!(migrated.contains("pane_frames false"));
+        assert!(migrated.contains("default_mode \"locked\""));
+        assert!(migrated.contains("rounded_corners false"));
+
+        let error =
+            add_zellij_native_preferences(&migrated, false, false, false, "locked").unwrap_err();
+        assert_eq!(error.code, "zellij_native_preference_conflict");
+    }
+
     // Defends: plugin customization cannot redeclare first-party runtime aliases.
     #[test]
     fn plugin_sidecar_rejects_runtime_owned_plugin_ids() {
@@ -2399,7 +2376,6 @@ mod tests {
                     name: "default_layout".to_string(),
                     value: "\"/tmp/yazelix/layouts/yzx_side.kdl\"".to_string(),
                 }],
-                rounded_value: "true".to_string(),
                 popup_width_percent: 90,
                 popup_height_percent: 80,
                 screen_saver_enabled: false,
@@ -2581,11 +2557,7 @@ mod tests {
             zellij_custom_text: None,
             zellij_theme: "default".into(),
             appearance_mode: APPEARANCE_MODE_DARK.into(),
-            zellij_pane_frames: "true".into(),
-            zellij_rounded_corners: "true".into(),
-            disable_zellij_tips: "true".into(),
             support_kitty_keyboard_protocol: "false".into(),
-            zellij_default_mode: "normal".into(),
             zellij_tab_label_mode: "full".into(),
             zellij_claude_usage_display: "both".into(),
             zellij_codex_usage_display: "quota".into(),

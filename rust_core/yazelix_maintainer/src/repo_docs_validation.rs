@@ -6,7 +6,7 @@ use serde_json::Value as JsonValue;
 use std::collections::BTreeSet;
 use std::fs;
 use std::path::{Path, PathBuf};
-use yazelix_core::settings_surface::{parse_jsonc_value, read_settings_jsonc_value};
+use yazelix_core::settings_surface::{parse_config_value, read_config_value};
 
 const DOCS_INDEX: &str = "docs/README.md";
 const ROOT_README: &str = "README.md";
@@ -102,7 +102,7 @@ pub fn validate_docs_experience(repo_root: &Path) -> Result<ValidationReport, St
     }
     validate_internal_markdown_links(repo_root, &mut report.errors)?;
     validate_source_backed_keybinding_docs(repo_root, &mut report.errors)?;
-    validate_source_backed_jsonc_examples(repo_root, &mut report.errors)?;
+    validate_source_backed_toml_examples(repo_root, &mut report.errors)?;
 
     Ok(report)
 }
@@ -236,14 +236,14 @@ fn validate_source_backed_keybinding_docs(
     repo_root: &Path,
     errors: &mut Vec<String>,
 ) -> Result<(), String> {
-    let defaults = read_settings_jsonc_value(&repo_root.join("settings_default.jsonc"))
+    let defaults = read_config_value(&repo_root.join("config_default.toml"))
         .map_err(|error| error.message())?;
     let docs = read_repo_text(repo_root, "docs/keybindings.md")?;
     let expected = defaults
         .pointer("/zellij/keybindings/toggle_editor_right_sidebar_focus/0")
         .and_then(JsonValue::as_str)
         .ok_or_else(|| {
-            "settings_default.jsonc is missing zellij.keybindings.toggle_editor_right_sidebar_focus[0]"
+            "config_default.toml is missing zellij.keybindings.toggle_editor_right_sidebar_focus[0]"
                 .to_string()
         })?;
     let documented = markdown_table_key_for_action(&docs, "toggle_editor_right_sidebar_focus");
@@ -273,7 +273,7 @@ fn markdown_table_key_for_action(raw: &str, action: &str) -> Option<String> {
     })
 }
 
-fn validate_source_backed_jsonc_examples(
+fn validate_source_backed_toml_examples(
     repo_root: &Path,
     errors: &mut Vec<String>,
 ) -> Result<(), String> {
@@ -283,19 +283,16 @@ fn validate_source_backed_jsonc_examples(
         .map_err(|error| format!("Failed to read {}: {error}", docs_path.display()))?;
     let mut checked_count = 0usize;
     let mut saw_usage_periods_example = false;
-    for snippet in fenced_code_blocks(&raw, &["json", "jsonc"]) {
-        if !snippet.trim_start().starts_with('{') {
-            continue;
-        }
+    for snippet in fenced_code_blocks(&raw, &["toml"]) {
         checked_count += 1;
         if snippet.contains("codex_usage_periods") {
             saw_usage_periods_example = true;
         }
-        let parsed = match parse_jsonc_value(&docs_path, &snippet) {
+        let parsed = match parse_config_value(Path::new("config.toml"), &snippet) {
             Ok(parsed) => parsed,
             Err(error) => {
                 errors.push(format!(
-                    "docs/zellij-configuration.md has an invalid JSONC settings example: {}",
+                    "docs/zellij-configuration.md has an invalid TOML settings example: {}",
                     error.message()
                 ));
                 continue;
@@ -311,13 +308,13 @@ fn validate_source_backed_jsonc_examples(
     }
     if checked_count == 0 {
         errors.push(
-            "docs/zellij-configuration.md must contain at least one JSONC settings example"
+            "docs/zellij-configuration.md must contain at least one TOML settings example"
                 .to_string(),
         );
     }
     if !saw_usage_periods_example {
         errors.push(
-            "docs/zellij-configuration.md must keep a source-backed codex_usage_periods JSONC example"
+            "docs/zellij-configuration.md must keep a source-backed codex_usage_periods TOML example"
                 .to_string(),
         );
     }
@@ -435,14 +432,9 @@ mod tests {
         );
         write(
             &repo,
-            "settings_default.jsonc",
-            r#"{
-  "zellij": {
-    "keybindings": {
-      "toggle_editor_right_sidebar_focus": ["Ctrl Shift Y"]
-    }
-  }
-}
+            "config_default.toml",
+            r#"[zellij.keybindings]
+toggle_editor_right_sidebar_focus = ["Ctrl Shift Y"]
 "#,
         );
         write(
@@ -455,15 +447,12 @@ mod tests {
             "docs/zellij-configuration.md",
             r#"# Zellij
 
-```jsonc
-{
-  "zellij": {
-    "codex_usage_periods": ["5h", "week"],
-    "keybindings": {
-      "toggle_editor_right_sidebar_focus": ["Ctrl Shift Y"]
-    }
-  }
-}
+```toml
+[zellij]
+codex_usage_periods = ["5h", "week"]
+
+[zellij.keybindings]
+toggle_editor_right_sidebar_focus = ["Ctrl Shift Y"]
 ```
 "#,
         );
@@ -532,7 +521,7 @@ mod tests {
         );
     }
 
-    // Regression: source-backed keybinding rows must track settings_default.jsonc instead of drifting silently.
+    // Regression: source-backed keybinding rows must track config_default.toml instead of drifting silently.
     #[test]
     fn docs_experience_validator_rejects_stale_keybinding_row() {
         let (_temp, repo) = write_minimal_docs_fixture();
@@ -552,20 +541,17 @@ mod tests {
         );
     }
 
-    // Defends: JSONC settings examples in current docs must parse and stay on supported config keys.
+    // Defends: TOML settings examples in current docs must parse and stay on supported config keys.
     #[test]
-    fn docs_experience_validator_rejects_unsupported_jsonc_example_key() {
+    fn docs_experience_validator_rejects_unsupported_toml_example_key() {
         let (_temp, repo) = write_minimal_docs_fixture();
         write(
             &repo,
             "docs/zellij-configuration.md",
-            r#"```jsonc
-{
-  "zellij": {
-    "codex_usage_periods": ["5h", "week"],
-    "unknown_setting": true
-  }
-}
+            r#"```toml
+[zellij]
+codex_usage_periods = ["5h", "week"]
+unknown_setting = true
 ```
 "#,
         );

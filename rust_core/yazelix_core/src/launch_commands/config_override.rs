@@ -3,7 +3,7 @@ use crate::control_plane::{
     config_dir_from_env, home_dir_from_env, load_normalized_config_for_control,
     runtime_dir_from_env, state_dir_from_env,
 };
-use crate::settings_surface::{read_settings_jsonc_value, render_settings_jsonc_value};
+use crate::settings_surface::{read_config_value, render_config_value};
 use serde_json::{Map as JsonMap, Value as JsonValue};
 use std::collections::HashMap;
 use std::fs;
@@ -121,7 +121,7 @@ pub(super) fn materialize_session_config_override(
         base_config_override,
     )?;
     let contract_fields = load_session_config_override_fields(&active_paths.contract_path)?;
-    let mut root = read_settings_jsonc_value(&active_paths.config_file)?;
+    let mut root = read_config_value(&active_paths.config_file)?;
     for raw in with_overrides {
         let patch = parse_session_config_patch(raw, &contract_fields)?;
         apply_session_config_patch(&mut root, &patch)?;
@@ -142,7 +142,7 @@ pub(super) fn materialize_session_config_override(
         )
     })?;
     let session_config = session_dir.join(crate::user_config_paths::SETTINGS_CONFIG);
-    let rendered = render_settings_jsonc_value(&root)?;
+    let rendered = render_config_value(&root)?;
     fs::write(&session_config, rendered).map_err(|source| {
         CoreError::io(
             "session_config_override_write",
@@ -254,7 +254,7 @@ pub(super) fn parse_session_config_patch(
             ErrorClass::Config,
             "unknown_session_config_override",
             format!("Unknown Yazelix config setting for --with: {path}."),
-            "Use a supported settings.jsonc path from the Yazelix config contract.",
+            "Use a supported config.toml path from the Yazelix config contract.",
             serde_json::json!({ "path": path }),
         )
     })?;
@@ -408,7 +408,7 @@ pub(super) fn apply_session_config_patch(
             ErrorClass::Config,
             "session_config_override_root_not_object",
             "Yazelix can only apply --with patches to a settings JSON object.",
-            "Use a complete settings.jsonc object, then retry.",
+            "Use a complete config.toml object, then retry.",
             serde_json::json!({}),
         )
     })?;
@@ -424,7 +424,7 @@ pub(super) fn apply_session_config_patch(
                     "Cannot apply --with {} because {segment} is not an object.",
                     patch.path
                 ),
-                "Fix the settings.jsonc structure or choose a supported config path.",
+                "Fix the config.toml structure or choose a supported config path.",
                 serde_json::json!({ "path": patch.path, "segment": segment }),
             )
         })?;

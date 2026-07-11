@@ -1,19 +1,16 @@
 # Yazi Configuration
 
-Yazelix provides a layered Yazi configuration system built from Yazelix defaults, dynamic settings from `settings.jsonc`, and optional managed Yazi-home overrides under `~/.config/yazelix/yazi/`.
+Yazelix provides a layered Yazi configuration system built from Yazelix defaults, dynamic settings from `config.toml`, and optional managed Yazi-home overrides under `~/.config/yazelix/yazi/`.
 
 ## Quick Start
 
-Edit `settings.jsonc` to customize the built-in Yazi knobs:
+Edit `config.toml` to customize the built-in Yazi knobs:
 
-```jsonc
-{
-  "yazi": {
-    "plugins": ["git"],
-    "theme": "dracula",
-    "sort_by": "modified"
-  }
-}
+```toml
+[yazi]
+plugins = ["git"]
+theme = "dracula"
+sort_by = "modified"
 ```
 
 Restart yazelix and your changes take effect.
@@ -22,37 +19,30 @@ Restart yazelix and your changes take effect.
 
 Yazi has two customization layers:
 
-1. Built-in Yazelix-facing Yazi settings in `settings.jsonc`
+1. Built-in Yazelix-facing Yazi settings in `config.toml`
 2. Optional managed Yazi override files and packages in `~/.config/yazelix/yazi/`
 
-The `settings.jsonc` layer controls the common knobs Yazelix understands directly.
+The `config.toml` layer controls the common knobs Yazelix understands directly.
 
 ### Binary Overrides
 
-```jsonc
-{
-  "yazi": {
-    "command": "/path/to/custom/yazi",
-    "ya_command": "/path/to/custom/ya"
-  }
-}
+```toml
+[yazi]
+command = "/path/to/custom/yazi"
+ya_command = "/path/to/custom/ya"
 ```
 
 Leave both empty to use `yazi` and `ya` from `PATH`.
 
 Use this only when Yazelix-managed Yazi launches and file-tree sidebar actions need a specific binary. Custom plugin initialization should still go in `~/.config/yazelix/yazi/init.lua`.
 
-The Zellij left-sidebar launcher itself is controlled by `workspace.left_sidebar.command` and `workspace.left_sidebar.args` in `settings.jsonc`. Leave those at their defaults unless you intentionally want the managed left sidebar slot to run something other than Yazelix's Yazi file-tree adapter.
+The Zellij left-sidebar launcher itself is controlled by `workspace.left_sidebar.command` and `workspace.left_sidebar.args` in `config.toml`. Leave those at their defaults unless you intentionally want the managed left sidebar slot to run something other than Yazelix's Yazi file-tree adapter.
 
 ### Plugins
 
-```jsonc
-{
-  "yazi": {
-    // Core plugins (sidebar-status, auto-layout, sidebar-state) are always loaded before this list
-    "plugins": ["git"]
-  }
-}
+```toml
+[yazi]
+plugins = ["git"]
 ```
 
 **Bundled plugins and helpers:**
@@ -69,26 +59,20 @@ ya pkg add XYenon/clipboard.yazi
 yzx import yazi
 ```
 
-Then add the plugin name to `settings.jsonc`:
+Then add the plugin name to `config.toml`:
 
-```jsonc
-{
-  "yazi": {
-    "plugins": ["git", "clipboard"]
-  }
-}
+```toml
+[yazi]
+plugins = ["git", "clipboard"]
 ```
 
 **Note:** Plugins in this list get auto-generated `require("plugin"):setup()` calls. If you need custom configuration options, don't add the plugin here; configure them manually in `~/.config/yazelix/yazi/init.lua` instead.
 
 ### Theme
 
-```jsonc
-{
-  "yazi": {
-    "theme": "dracula"
-  }
-}
+```toml
+[yazi]
+theme = "dracula"
 ```
 
 Yazelix's bundled flavor catalog and generated Yazi config-pack renderer are packaged by `yazelix-yazi-assets`; the upstream Yazi flavor docs are at https://yazi-rs.github.io/docs/flavors/overview
@@ -99,12 +83,9 @@ Leave the field unset, or set `theme = "default"`, to keep Yazi's upstream built
 
 ### Sorting
 
-```jsonc
-{
-  "yazi": {
-    "sort_by": "alphabetical"
-  }
-}
+```toml
+[yazi]
+sort_by = "alphabetical"
 ```
 
 **Sort options:**
@@ -118,7 +99,7 @@ Leave the field unset, or set `theme = "default"`, to keep Yazi's upstream built
 
 When yazelix starts:
 
-1. Reads the built-in `yazi` settings from `settings.jsonc`
+1. Reads the built-in `yazi` settings from `config.toml`
 2. Generates the managed base `yazi.toml` from Yazelix defaults plus those settings
 3. Merges your optional `~/.config/yazelix/yazi/yazi.toml` overrides when that file exists, while preserving Yazelix-owned `[opener].edit`
 4. Generates `init.lua` with the built-in plugin list, then appends your optional `~/.config/yazelix/yazi/init.lua`
@@ -141,13 +122,13 @@ When an override repeats a native Yazi array setting such as `[mgr].ratio`, the 
 - **Git integration**: Shows git status in listings (via git plugin)
 - **Editor integration**: Opens files with yazelix's configured editor
 - **Direct zoxide jump**: `Alt+z` opens a Zoxide picker and retargets the managed editor/workspace directly to the selected directory
-- **Semantic integration remaps**: `yazi.keybindings` in `settings.jsonc` remaps Yazelix-owned Yazi integration actions such as `open_zoxide_in_editor` and `open_directory_as_workspace_pane`
+- **Semantic integration remaps**: `yazi.keybindings` in `config.toml` remaps Yazelix-owned Yazi integration actions such as `open_zoxide_in_editor` and `open_directory_as_workspace_pane`
 - **Auto layout**: Adjusts pane layout based on terminal width
 - **Custom status bar**: Enhanced readability for sidebar mode
 
 ## Advanced Customization
 
-For deeper customization beyond the built-in `settings.jsonc` options, use the managed Yazi home under `~/.config/yazelix/yazi/`.
+For deeper customization beyond the built-in `config.toml` options, use the managed Yazi home under `~/.config/yazelix/yazi/`.
 
 ### Custom init.lua Code
 
@@ -200,7 +181,7 @@ Yazelix intentionally keeps Yazi's upstream open flow intact:
 - `Z`: keeps Yazi's native Zoxide jump behavior inside Yazi
 - `Alt+z`: runs the bundled `zoxide-editor` plugin so the selected directory becomes the managed editor/workspace target immediately
 
-To change the file-open key itself, remap Yazi's native `open` command in `yazi/keymap.toml`; do not add an `open_selected_in_editor` entry to `settings.jsonc`
+To change the file-open key itself, remap Yazi's native `open` command in `yazi/keymap.toml`; do not add an `open_selected_in_editor` entry to `config.toml`
 
 ```toml
 [[mgr.prepend_keymap]]
@@ -209,17 +190,14 @@ run = "open"
 desc = "Open selected files"
 ```
 
-Use `settings.jsonc` for the Yazelix-owned generated integration bindings:
+Use `config.toml` for the Yazelix-owned generated integration bindings:
 
-```jsonc
-{
-  "yazi": {
-    "keybindings": {
-      "open_zoxide_in_editor": ["<A-x>"],
-      "open_directory_as_workspace_pane": []
-    }
-  }
-}
+```toml
+[yazi]
+
+[yazi.keybindings]
+open_zoxide_in_editor = ["<A-x>"]
+open_directory_as_workspace_pane = []
 ```
 
 Omitted actions keep Yazelix defaults. Empty lists disable that generated integration binding. Multiple entries generate multiple alternate bindings for the same Yazelix-owned action. Arbitrary native Yazi actions and multi-key sequences still belong in `~/.config/yazelix/yazi/keymap.toml`.
@@ -252,14 +230,11 @@ Plugin catalog: https://github.com/yazi-rs/plugins
 
 For plugin management commands, see: https://yazi-rs.github.io/docs/cli
 
-After installing plugins via `ya pkg`, add them to `settings.jsonc`:
+After installing plugins via `ya pkg`, add them to `config.toml`:
 
-```jsonc
-{
-  "yazi": {
-    "plugins": ["git", "your-new-plugin"]
-  }
-}
+```toml
+[yazi]
+plugins = ["git", "your-new-plugin"]
 ```
 
 If the plugin was installed into native Yazi config with `ya pkg`, run `yzx import yazi` before restarting Yazelix so the managed runtime can see the plugin files.
@@ -275,7 +250,7 @@ yzx restart
 - If the managed Yazi files still look stale, run `yzx doctor --fix` and restart Yazelix once more
 
 **Plugin not loading?**
-- Check plugin name in `settings.jsonc` matches installed plugin (without `.yazi` extension)
+- Check plugin name in `config.toml` matches installed plugin (without `.yazi` extension)
 - If installed with `ya pkg`, run `yzx import yazi` and restart Yazelix
 - Advanced check: verify the plugin exists in the generated runtime plugin directory under `~/.local/share/yazelix/configs/yazi/plugins/`
 - Check for warnings during yazelix startup
@@ -293,4 +268,4 @@ yzx reset config --yes
 
 Full yazi configuration docs: https://yazi-rs.github.io/docs/configuration/yazi
 
-Yazelix exposes the most commonly changed settings via `settings.jsonc`. For advanced configuration, edit the managed Yazi files in `~/.config/yazelix/yazi/`.
+Yazelix exposes the most commonly changed settings via `config.toml`. For advanced configuration, edit the managed Yazi files in `~/.config/yazelix/yazi/`.

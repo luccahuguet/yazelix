@@ -5,7 +5,7 @@ use crate::active_config_surface::primary_config_paths;
 use crate::backup_timestamp::compact_utc_backup_timestamp;
 use crate::bridge::CoreError;
 use crate::control_plane::{config_dir_from_env, runtime_dir_from_env};
-use crate::settings_surface::render_default_settings_jsonc;
+use crate::settings_surface::render_default_config;
 use crate::user_config_paths::{
     CURRENT_MANAGED_CONFIG_FILE_NAMES, LEGACY_CONFIG_ENTRY_NAMES, SETTINGS_CONFIG,
 };
@@ -16,7 +16,7 @@ use std::path::{Path, PathBuf};
 
 const RESET_CONFIG_COMMAND: &str = "yzx reset config";
 const RESET_CONFIG_DISPLAY_NAME: &str = "main Yazelix config";
-const RESET_CONFIG_FILE_NAME: &str = "settings.jsonc";
+const RESET_CONFIG_FILE_NAME: &str = SETTINGS_CONFIG;
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 struct ResetArgs {
@@ -50,7 +50,7 @@ fn run_reset_config(args: &[String]) -> Result<i32, CoreError> {
     let config_dir = config_dir_from_env()?;
     let paths = primary_config_paths(&runtime_dir, &config_dir);
     let adjacency_report = reset_config_adjacency_report(&config_dir)?;
-    let content = render_default_settings_jsonc(&paths.default_config_path)?;
+    let content = render_default_config(&paths.default_config_path)?;
     reset_config_with_content(args, paths.user_config, content, adjacency_report)
 }
 
@@ -80,7 +80,7 @@ fn print_reset_help() {
     println!("  yzx reset config [--yes] [--no-backup]");
     println!();
     println!("Targets:");
-    println!("  config  Replace ~/.config/yazelix/settings.jsonc with fresh shipped settings");
+    println!("  config  Replace ~/.config/yazelix/config.toml with fresh shipped settings");
     println!();
     println!("Note:");
     println!("  reset config preserves managed override sidecars and unknown adjacent files");
@@ -221,7 +221,10 @@ fn reset_config_adjacency_report(
     for entry in entries {
         let entry = entry.map_err(|source| io_err(config_dir, source))?;
         let name = entry.file_name().to_string_lossy().to_string();
-        if name == SETTINGS_CONFIG || name.starts_with("settings.jsonc.backup-") {
+        if name == SETTINGS_CONFIG
+            || name.starts_with("config.toml.backup-")
+            || name.starts_with("settings.jsonc.backup-")
+        {
             continue;
         }
         if current_managed.contains(&name) {

@@ -214,7 +214,7 @@ fn helix_steel_plugin_manifest_error(error: SteelPluginManifestError) -> CoreErr
             "Invalid Helix Steel plugin manifest at {}: {}",
             error.path, error.message
         ),
-        "Fix helix.steel_plugins in ~/.config/yazelix/settings.jsonc and retry.",
+        "Fix helix.steel_plugins in ~/.config/yazelix/config.toml and retry.",
         serde_json::json!({
             "path": error.path,
             "message": error.message,
@@ -467,7 +467,7 @@ fn render_steel_helix_module(active_plugins: &[ActiveSteelPlugin], show_splash: 
 
     let mut lines = vec![
         ";; Yazelix-managed Helix Steel command module.".to_string(),
-        ";; Generated at launch from settings.jsonc.".to_string(),
+        ";; Generated at launch from config.toml.".to_string(),
         "".to_string(),
         ";; Public commands:".to_string(),
     ];
@@ -543,6 +543,6 @@ fn render_steel_plugin_module_lines(spec: &SteelPluginManifest, show_splash: boo
 }
 
 fn render_steel_init_module() -> String {
-    ";; Yazelix-managed Helix Steel init file.\n;; Generated at launch from settings.jsonc.\n\n"
+    ";; Yazelix-managed Helix Steel init file.\n;; Generated at launch from config.toml.\n\n"
         .to_string()
 }

@@ -76,11 +76,11 @@ Boundary rule: do not broaden this repo into generic terminal config. Keep it cu
 
 Recommendation: keep separate with Yazelix adapter discipline.
 
-This repo owns the reusable Ratatui config editor core: project-agnostic model types, navigation/edit state, generic rendering, comment-preserving JSONC patching, and deterministic migration primitives. That gives other projects a useful crate without installing Yazelix, and it deletes the old duplicate reusable implementation from the main repo.
+This repo owns the reusable Ratatui config editor core: project-agnostic model types, navigation/edit state, generic rendering, comment-preserving TOML and JSONC patching, and deterministic migration primitives. That gives other projects a useful crate without installing Yazelix, and it deletes the old duplicate reusable implementation from the main repo.
 
 The coupling score is not perfect because Yazelix still has a rich adapter: settings schema metadata, Home Manager read-only state, native config status, keybinding registry details, validation, file writes, and runtime apply modes all remain product-specific. That is the right split. Moving those into the child would turn a reusable editor crate into a hidden Yazelix runtime dependency.
 
-Boundary rule: generic config UI mechanics and JSONC/migration primitives stay in the child. Yazelix settings schema, Home Manager/native status, keybinding action metadata, generated runtime refresh, and post-save apply behavior stay in the main repo.
+Boundary rule: generic config UI mechanics and TOML/JSONC migration primitives stay in the child. Yazelix settings schema, Home Manager/native status, keybinding action metadata, generated runtime refresh, and post-save apply behavior stay in the main repo.
 
 ### `yazelix-zellij-bar`
 
@@ -175,7 +175,7 @@ Keep the remaining child repository set separate.
 
 `yazelix-zellij-config-pack` is the intentional exception: it is integrated back into main as `rust_core/yazelix_zellij_config_pack` because the pure renderer boundary was useful but the separate repo had weak standalone value and unnecessary release friction.
 
-Do not create a new child repo for Yazi integration, workspace state, or runtime control until the main repo owner has first become a thin adapter with a concrete artifact/API seam. `ratconfig` is the accepted config UI exception because the reusable editor/JSONC owner has moved out and Yazelix now keeps only product-specific adapter behavior.
+Do not create a new child repo for Yazi integration, workspace state, or runtime control until the main repo owner has first become a thin adapter with a concrete artifact/API seam. `ratconfig` is the accepted config UI exception because the reusable editor and text-adapter owner has moved out and Yazelix keeps only product-specific adapter behavior.
 
 Use this priority order for future boundary pressure:
 

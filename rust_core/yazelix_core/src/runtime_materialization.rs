@@ -509,7 +509,7 @@ mod tests {
         let repo = repo_root();
         RuntimeMaterializationPlanRequest {
             config_path,
-            default_config_path: repo.join("settings_default.jsonc"),
+            default_config_path: repo.join("config_default.toml"),
             contract_path: repo.join("config_metadata/main_config_contract.toml"),
             runtime_dir,
             state_path: state_path.clone(),
@@ -531,7 +531,7 @@ mod tests {
 
     fn recorded_plan_fixture(root: &Path) -> RecordedPlanFixture {
         let runtime_dir = repo_root();
-        let config_path = runtime_dir.join("settings_default.jsonc");
+        let config_path = runtime_dir.join("config_default.toml");
         let state_path = root.join("state/rebuild_hash");
         let yazi_dir = root.join("configs/yazi");
         let zellij_dir = root.join("configs/zellij");
@@ -540,7 +540,7 @@ mod tests {
         fs::create_dir_all(&zellij_layout_dir).unwrap();
         let baseline = compute_config_state(&ComputeConfigStateRequest {
             config_path: config_path.clone(),
-            default_config_path: runtime_dir.join("settings_default.jsonc"),
+            default_config_path: runtime_dir.join("config_default.toml"),
             contract_path: runtime_dir.join("config_metadata/main_config_contract.toml"),
             runtime_dir: runtime_dir.clone(),
             state_path: state_path.clone(),
@@ -792,7 +792,7 @@ mod tests {
         assert_eq!(plan.missing_artifacts[0].label, "generated Zellij config");
     }
 
-    // Regression: current-terminal enter can change the status-bar terminal label without changing settings.jsonc or the runtime path.
+    // Regression: current-terminal enter can change the status-bar terminal label without changing config.toml or the runtime path.
     #[test]
     fn plan_marks_stale_zellij_terminal_label_for_repair_without_forcing_refresh() {
         let dir = tempdir().expect("tempdir");

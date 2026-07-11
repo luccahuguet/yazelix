@@ -3,6 +3,7 @@
 
 use crate::active_config_surface::ActiveConfigPaths;
 use crate::active_config_surface::resolve_active_config_paths;
+use crate::atomic_fs::write_text_atomic;
 use crate::bridge::{CoreError, ErrorClass};
 use crate::config_apply::{
     ConfigEditApplyRequest, ConfigEditApplyStatus, PaneOrchestratorRuntimeRefreshRequest,
@@ -14,13 +15,12 @@ use crate::control_plane::{
     config_dir_from_env, config_override_from_env, runtime_dir_from_env,
     runtime_materialization_plan_request_from_env, state_dir_from_env,
 };
-use crate::settings_contract::reconcile_settings_contract_text;
 use crate::settings_jsonc_patch::{
     SettingsJsoncPatchMutation, set_settings_jsonc_value_text, unset_settings_jsonc_value_text,
 };
-use crate::settings_surface::{
-    is_settings_config_path, parse_jsonc_value, read_settings_jsonc_value,
-};
+use crate::settings_surface::{is_settings_config_path, parse_config_value, read_config_value};
+use crate::user_config_paths::SETTINGS_CONFIG;
+use ratconfig::toml_adapter::{TomlPatchError, set_toml_value_text};
 use serde_json::{Value as JsonValue, json};
 use std::fs;
 use std::io;
@@ -174,7 +174,7 @@ fn io_err(path: &Path, source: io::Error) -> CoreError {
 fn render_config_text(path: &Path) -> Result<String, CoreError> {
     let raw = fs::read_to_string(path).map_err(|source| io_err(path, source))?;
     if is_settings_config_path(path) {
-        parse_jsonc_value(path, &raw)?;
+        parse_config_value(path, &raw)?;
         return Ok(raw);
     }
 
@@ -242,7 +242,19 @@ fn run_config_set(setting_path: &str, raw_value: &str) -> Result<i32, CoreError>
     let target = edit_target(&paths, setting_path);
     ensure_edit_target_writable(&target)?;
     let raw = read_config_for_edit_or_default(&paths, &target)?;
-    let outcome = set_settings_jsonc_value_text(&target.path, &raw, &target.path_in_file, &value)?;
+    let outcome = match target.kind {
+        ConfigEditTargetKind::Main => {
+            let outcome = set_toml_value_text(&raw, &target.path_in_file, &value)
+                .map_err(|error| main_toml_patch_error(&target.path, error))?;
+            crate::settings_jsonc_patch::SettingsJsoncPatchOutcome {
+                text: outcome.text,
+                mutation: outcome.mutation,
+            }
+        }
+        ConfigEditTargetKind::Cursors => {
+            set_settings_jsonc_value_text(&target.path, &raw, &target.path_in_file, &value)?
+        }
+    };
     let prepared = prepare_config_edit_text(&paths, &target, &outcome)?;
     write_config_edit(&target.path, &prepared.text, prepared.should_write)?;
     let apply_status =
@@ -259,7 +271,12 @@ fn run_config_unset(setting_path: &str) -> Result<i32, CoreError> {
     let outcome = match target.kind {
         ConfigEditTargetKind::Main => {
             let value = default_main_setting_value(&paths, &target)?;
-            set_settings_jsonc_value_text(&target.path, &raw, &target.path_in_file, &value)?
+            let outcome = set_toml_value_text(&raw, &target.path_in_file, &value)
+                .map_err(|error| main_toml_patch_error(&target.path, error))?;
+            crate::settings_jsonc_patch::SettingsJsoncPatchOutcome {
+                text: outcome.text,
+                mutation: outcome.mutation,
+            }
         }
         ConfigEditTargetKind::Cursors => {
             unset_settings_jsonc_value_text(&target.path, &raw, &target.path_in_file)?
@@ -283,10 +300,10 @@ fn resolve_editable_settings_path() -> Result<ActiveConfigPaths, CoreError> {
             ErrorClass::Config,
             "unsupported_config_edit_surface",
             format!(
-                "Yazelix can only edit settings.jsonc, but the active config is {}.",
+                "Yazelix can only edit config.toml, but the active config is {}.",
                 paths.config_file.display()
             ),
-            "Move this setting to the canonical settings.jsonc surface, or clear YAZELIX_CONFIG_OVERRIDE.",
+            "Move this setting to the canonical config.toml surface, or clear YAZELIX_CONFIG_OVERRIDE.",
             json!({ "path": paths.config_file.display().to_string() }),
         ));
     }
@@ -313,7 +330,7 @@ fn default_main_setting_value(
     paths: &ActiveConfigPaths,
     target: &ConfigEditTarget,
 ) -> Result<JsonValue, CoreError> {
-    let defaults = read_settings_jsonc_value(&paths.default_config_path)?;
+    let defaults = read_config_value(&paths.default_config_path)?;
     get_json_path(&defaults, &target.path_in_file)
         .cloned()
         .ok_or_else(|| {
@@ -324,7 +341,7 @@ fn default_main_setting_value(
                     "Cannot reset {} because it is not part of the canonical main settings defaults.",
                     target.path_in_file
                 ),
-                "Use a supported settings.jsonc path from the Yazelix config contract.",
+                "Use a supported config.toml path from the Yazelix config contract.",
                 json!({ "path": target.path_in_file }),
             )
         })
@@ -339,15 +356,15 @@ fn get_json_path<'a>(root: &'a JsonValue, path: &str) -> Option<&'a JsonValue> {
 }
 
 fn ensure_edit_target_writable(target: &ConfigEditTarget) -> Result<(), CoreError> {
-    if !is_settings_config_path(&target.path) {
+    if target.kind == ConfigEditTargetKind::Main && !is_settings_config_path(&target.path) {
         return Err(CoreError::classified(
             ErrorClass::Config,
             "unsupported_config_edit_surface",
             format!(
-                "Yazelix can only edit settings.jsonc, but the active config is {}.",
+                "Yazelix can only edit config.toml, but the active config is {}.",
                 target.path.display()
             ),
-            "Move this setting to the canonical settings.jsonc surface, or clear YAZELIX_CONFIG_OVERRIDE.",
+            "Move this setting to the canonical config.toml surface, or clear YAZELIX_CONFIG_OVERRIDE.",
             json!({ "path": target.path.display().to_string() }),
         ));
     }
@@ -379,8 +396,8 @@ fn read_config_for_edit(path: &Path) -> Result<String, CoreError> {
     fs::read_to_string(path).map_err(|source| {
         CoreError::io(
             "read_settings_jsonc_for_edit",
-            "Could not read Yazelix settings.jsonc for editing",
-            "Fix permissions or restore the settings file, then retry.",
+            "Could not read Yazelix config for editing",
+            "Fix permissions or restore the config file, then retry.",
             path.display().to_string(),
             source,
         )
@@ -420,7 +437,7 @@ fn validate_patched_edit_target(
     match target.kind {
         ConfigEditTargetKind::Main => validate_patched_settings(paths, raw),
         ConfigEditTargetKind::Cursors => {
-            let value = parse_jsonc_value(&target.path, raw)?;
+            let value = parse_config_value(&target.path, raw)?;
             CursorRegistry::parse_json_value(&target.path, value)?;
             Ok(())
         }
@@ -432,14 +449,8 @@ fn prepare_config_edit_text(
     target: &ConfigEditTarget,
     outcome: &crate::settings_jsonc_patch::SettingsJsoncPatchOutcome,
 ) -> Result<PreparedConfigEdit, CoreError> {
-    let mut text = outcome.text.clone();
-    let mut should_write = outcome.changed();
-    if target.kind == ConfigEditTargetKind::Main {
-        let reconciled =
-            reconcile_settings_contract_text(&target.path, &text, &paths.default_config_path)?;
-        should_write = should_write || reconciled.changed();
-        text = reconciled.text;
-    }
+    let text = outcome.text.clone();
+    let should_write = outcome.changed();
     if should_write {
         validate_patched_edit_target(paths, target, &text)?;
     }
@@ -455,18 +466,18 @@ fn validate_patched_settings(paths: &ActiveConfigPaths, raw: &str) -> Result<(),
     fs::create_dir_all(&temp_dir).map_err(|source| {
         CoreError::io(
             "create_settings_validation_temp_dir",
-            "Could not create a temporary directory to validate settings.jsonc",
+            "Could not create a temporary directory to validate config.toml",
             "Check the system temporary directory permissions, then retry.",
             temp_dir.display().to_string(),
             source,
         )
     })?;
-    let temp_config = temp_dir.join("settings.jsonc");
+    let temp_config = temp_dir.join(SETTINGS_CONFIG);
     let result = (|| {
         fs::write(&temp_config, raw).map_err(|source| {
             CoreError::io(
                 "write_settings_validation_temp_config",
-                "Could not write a temporary settings.jsonc validation file",
+                "Could not write a temporary config.toml validation file",
                 "Check the system temporary directory permissions, then retry.",
                 temp_config.display().to_string(),
                 source,
@@ -495,26 +506,17 @@ fn write_config_edit(path: &Path, raw: &str, should_write: bool) -> Result<(), C
     if !should_write {
         return Ok(());
     }
-    if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent).map_err(|source| {
-            CoreError::io(
-                "create_settings_jsonc_parent",
-                "Could not create the Yazelix config directory",
-                "Fix permissions for the config directory, then retry.",
-                parent.display().to_string(),
-                source,
-            )
-        })?;
-    }
-    fs::write(path, raw).map_err(|source| {
-        CoreError::io(
-            "write_settings_jsonc_edit",
-            "Could not write Yazelix settings.jsonc",
-            "Fix permissions for the settings file, then retry.",
-            path.display().to_string(),
-            source,
-        )
-    })
+    write_text_atomic(path, raw)
+}
+
+fn main_toml_patch_error(path: &Path, error: TomlPatchError) -> CoreError {
+    CoreError::classified(
+        ErrorClass::Config,
+        "config_toml_patch_failed",
+        format!("Could not update {}: {error:?}", path.display()),
+        "Fix the TOML syntax in config.toml, then retry.",
+        json!({ "path": path.display().to_string() }),
+    )
 }
 
 fn apply_after_config_edit(

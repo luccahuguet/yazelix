@@ -4,7 +4,7 @@
 
 Yazelix keybinding configuration is owner-scoped. Yazelix exposes semantic remaps only for actions whose behavior Yazelix owns; broader application keymaps stay in the owning tool's native config surface.
 
-The current implemented semantic surfaces are `zellij.keybindings` and `yazi.keybindings` in `settings.jsonc`. They cover Yazelix-owned integration actions that route to the pane orchestrator, generated Yazi keymap commands, or Yazelix control-plane helpers.
+The current implemented semantic surfaces are `zellij.keybindings` and `yazi.keybindings` in `config.toml`. They cover Yazelix-owned integration actions that route to the pane orchestrator, generated Yazi keymap commands, or Yazelix control-plane helpers.
 
 `zellij.native_keybindings` is a separate curated native-policy surface. It is not a generic Zellij keymap DSL; it only exposes Yazelix's shipped native Zellij conflict-remap defaults and convenience policy.
 
@@ -31,19 +31,16 @@ Yazelix should not provide a semantic remap when another tool owns the behavior.
 
 `zellij.keybindings` owns fixed Yazelix semantic actions:
 
-```jsonc
-{
-  "zellij": {
-    "keybindings": {
-      "bottom_popup": ["Alt Shift J"],
-      "top_popup": ["Alt Shift K"],
-      "menu": ["Alt Shift M"],
-      "toggle_editor_right_sidebar_focus": ["Ctrl Shift Y"],
-      "toggle_left_sidebar": ["Alt Shift H"],
-      "open_codex_agent_right": ["Alt Shift L"]
-    }
-  }
-}
+```toml
+[zellij]
+
+[zellij.keybindings]
+bottom_popup = ["Alt Shift J"]
+top_popup = ["Alt Shift K"]
+menu = ["Alt Shift M"]
+toggle_editor_right_sidebar_focus = ["Ctrl Shift Y"]
+toggle_left_sidebar = ["Alt Shift H"]
+open_codex_agent_right = ["Alt Shift L"]
 ```
 
 Rules:
@@ -57,17 +54,14 @@ Rules:
 
 `zellij.native_keybindings` is stable for Yazelix's curated native Zellij policy:
 
-```jsonc
-{
-  "zellij": {
-    "native_keybindings": {
-      "scroll_mode_unbind": ["Ctrl s"],
-      "scroll_mode": ["Ctrl Alt s"],
-      "session_mode_unbind": ["Ctrl o"],
-      "session_mode": ["Ctrl Alt o"]
-    }
-  }
-}
+```toml
+[zellij]
+
+[zellij.native_keybindings]
+scroll_mode_unbind = ["Ctrl s"]
+scroll_mode = ["Ctrl Alt s"]
+session_mode_unbind = ["Ctrl o"]
+session_mode = ["Ctrl Alt o"]
 ```
 
 Rules:
@@ -79,15 +73,12 @@ Rules:
 
 `yazi.keybindings` covers only generated Yazelix-owned Yazi integration actions that are not native Yazi defaults:
 
-```jsonc
-{
-  "yazi": {
-    "keybindings": {
-      "open_zoxide_in_editor": ["<A-z>"],
-      "open_directory_as_workspace_pane": ["<A-p>"]
-    }
-  }
-}
+```toml
+[yazi]
+
+[yazi.keybindings]
+open_zoxide_in_editor = ["<A-z>"]
+open_directory_as_workspace_pane = ["<A-p>"]
 ```
 
 Rules:

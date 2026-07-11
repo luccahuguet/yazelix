@@ -67,8 +67,8 @@ fn write_runtime_layout(runtime_dir: &Path) {
             include_str!("../../../../configs/helix/yazelix_config.toml"),
         ),
         (
-            "settings_default.jsonc",
-            include_str!("../../../../settings_default.jsonc"),
+            "config_default.toml",
+            include_str!("../../../../config_default.toml"),
         ),
         (
             "config_metadata/main_config_contract.toml",
@@ -264,16 +264,8 @@ fn helix_materialization_loads_opt_in_splash_only_when_requested() {
     write_runtime_layout(&runtime_dir);
     fs::create_dir_all(&config_dir).unwrap();
     fs::write(
-        config_dir.join("settings.jsonc"),
-        r#"{
-  "helix": {
-    "steel_plugins": {
-      "enabled": ["splash"],
-      "extra": []
-    }
-  }
-}
-"#,
+        config_dir.join("config.toml"),
+        "[helix.steel_plugins]\nenabled = [\"splash\"]\nextra = []\n",
     )
     .unwrap();
 
@@ -331,16 +323,8 @@ fn helix_materialization_loads_enabled_bundled_plugin_support_files() {
     write_runtime_layout(&runtime_dir);
     fs::create_dir_all(&config_dir).unwrap();
     fs::write(
-        config_dir.join("settings.jsonc"),
-        r#"{
-  "helix": {
-    "steel_plugins": {
-      "enabled": ["labelled_buffers"],
-      "extra": []
-    }
-  }
-}
-"#,
+        config_dir.join("config.toml"),
+        "[helix.steel_plugins]\nenabled = [\"labelled_buffers\"]\nextra = []\n",
     )
     .unwrap();
 
@@ -379,27 +363,10 @@ fn helix_materialization_loads_custom_steel_plugin_manifest() {
     write_runtime_layout(&runtime_dir);
     fs::create_dir_all(config_dir.join("helix/steel_plugins/custom")).unwrap();
     fs::write(
-        config_dir.join("settings.jsonc"),
-        r#"{
-  "helix": {
-    "steel_plugins": {
-      "enabled": [],
-      "extra": [
-      {
-        "id": "custom_picker",
-        "source": "custom/picker.scm",
-        "public_commands": ["custom-open"],
-        "internal_commands": ["custom-refresh"],
-        "startup_commands": ["custom-refresh"],
-        "command_descriptions": {
-          "custom-open": "Open the custom picker",
-          "custom-refresh": "Refresh custom picker state"
-        }
-      }
-    ]
-    }
-  }
-}
+        config_dir.join("config.toml"),
+        r#"[helix.steel_plugins]
+enabled = []
+extra = [{ id = "custom_picker", source = "custom/picker.scm", public_commands = ["custom-open"], internal_commands = ["custom-refresh"], startup_commands = ["custom-refresh"], command_descriptions = { custom-open = "Open the custom picker", custom-refresh = "Refresh custom picker state" } }]
 "#,
     )
     .unwrap();
@@ -462,22 +429,8 @@ fn helix_materialization_rejects_duplicate_custom_steel_command() {
     write_runtime_layout(&runtime_dir);
     fs::create_dir_all(&config_dir).unwrap();
     fs::write(
-        config_dir.join("settings.jsonc"),
-        r#"{
-  "helix": {
-    "steel_plugins": {
-      "enabled": [],
-      "extra": [
-      {
-        "id": "bad_commands",
-        "source": "bad_commands.scm",
-        "public_commands": ["evalp"]
-      }
-    ]
-    }
-  }
-}
-"#,
+        config_dir.join("config.toml"),
+        "[helix.steel_plugins]\nenabled = []\nextra = [{ id = \"bad_commands\", source = \"bad_commands.scm\", public_commands = [\"evalp\"] }]\n",
     )
     .unwrap();
 
@@ -502,16 +455,8 @@ fn helix_materialization_rejects_unknown_bundled_steel_plugin_id() {
     write_runtime_layout(&runtime_dir);
     fs::create_dir_all(&config_dir).unwrap();
     fs::write(
-        config_dir.join("settings.jsonc"),
-        r#"{
-  "helix": {
-    "steel_plugins": {
-      "enabled": ["not_in_manifest"],
-      "extra": []
-    }
-  }
-}
-"#,
+        config_dir.join("config.toml"),
+        "[helix.steel_plugins]\nenabled = [\"not_in_manifest\"]\nextra = []\n",
     )
     .unwrap();
 
@@ -536,22 +481,8 @@ fn helix_materialization_rejects_missing_custom_steel_plugin_source() {
     write_runtime_layout(&runtime_dir);
     fs::create_dir_all(&config_dir).unwrap();
     fs::write(
-        config_dir.join("settings.jsonc"),
-        r#"{
-  "helix": {
-    "steel_plugins": {
-      "enabled": [],
-      "extra": [
-      {
-        "id": "missing_file",
-        "source": "missing_file.scm",
-        "public_commands": ["missing-open"]
-      }
-    ]
-    }
-  }
-}
-"#,
+        config_dir.join("config.toml"),
+        "[helix.steel_plugins]\nenabled = []\nextra = [{ id = \"missing_file\", source = \"missing_file.scm\", public_commands = [\"missing-open\"] }]\n",
     )
     .unwrap();
 

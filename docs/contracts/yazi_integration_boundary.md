@@ -48,7 +48,7 @@ a path that no longer works.
 
 Generated runtime files are not source templates. Documentation should not tell
 users to edit `~/.config/yazelix/configs/yazi/yazelix_*.toml`; supported
-customization lives in `settings.jsonc` plus the managed Yazi home under
+customization lives in `config.toml` plus the managed Yazi home under
 `~/.config/yazelix/yazi/`.
 
 Do not delete the legacy error path in `yazi_materialization.rs` yet. It is the

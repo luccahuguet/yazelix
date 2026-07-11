@@ -1,20 +1,12 @@
 // Test lane: default
 
 use serde_json::json;
-use std::fs;
 use std::path::Path;
-use tempfile::tempdir;
-use yazelix_core::config_normalize::{NormalizeConfigRequest, normalize_config};
 use yazelix_core::settings_jsonc_patch::{
     SettingsJsoncPatchError, SettingsJsoncPatchMutation, set_jsonc_value_text,
     set_settings_jsonc_value_text, unset_settings_jsonc_value_text,
 };
-use yazelix_core::settings_surface::{parse_jsonc_value, render_default_settings_jsonc};
-
-mod support;
-
-use support::fixtures::{repo_root, write_runtime_contract_assets};
-
+use yazelix_core::settings_surface::parse_config_value;
 fn settings_path() -> &'static Path {
     Path::new("settings.jsonc")
 }
@@ -46,7 +38,7 @@ fn replaces_scalar_without_dropping_comments() {
             .contains("// Keep this comment attached to the setting")
     );
     assert!(outcome.text.contains(r#""debug_mode": true"#));
-    let parsed = parse_jsonc_value(settings_path(), &outcome.text).expect("parse");
+    let parsed = parse_config_value(settings_path(), &outcome.text).expect("parse");
     assert_eq!(parsed["core"]["debug_mode"], json!(true));
 }
 
@@ -76,7 +68,7 @@ fn inserts_absent_field_in_existing_section() {
             .text
             .contains(r#""hide_sidebar_on_file_open": true"#)
     );
-    let parsed = parse_jsonc_value(settings_path(), &outcome.text).expect("parse");
+    let parsed = parse_config_value(settings_path(), &outcome.text).expect("parse");
     assert_eq!(parsed["editor"]["hide_sidebar_on_file_open"], json!(true));
 }
 
@@ -97,7 +89,7 @@ fn unsets_existing_field_without_rewriting_document() {
     assert_eq!(outcome.mutation, SettingsJsoncPatchMutation::Removed);
     assert!(!outcome.text.contains("debug_mode"));
     assert!(outcome.text.contains("skip_welcome_screen"));
-    let parsed = parse_jsonc_value(settings_path(), &outcome.text).expect("parse");
+    let parsed = parse_config_value(settings_path(), &outcome.text).expect("parse");
     assert!(parsed["core"].get("debug_mode").is_none());
 }
 
@@ -145,7 +137,7 @@ fn inserts_structured_values_without_rewriting_document() {
 
     assert_eq!(outcome.mutation, SettingsJsoncPatchMutation::Inserted);
     assert!(outcome.text.contains("// keep root comment"));
-    let parsed = parse_jsonc_value(settings_path(), &outcome.text).expect("parse");
+    let parsed = parse_config_value(settings_path(), &outcome.text).expect("parse");
     assert_eq!(
         parsed["zellij"]["custom_popups"][0]["command"],
         json!(["zenith"])
@@ -163,39 +155,4 @@ fn generic_patch_uses_project_agnostic_error_type() {
             path: "editor[0]".to_string()
         }
     );
-}
-
-// Defends: patched settings JSONC remains compatible with the existing normalized config contract.
-#[test]
-fn patched_text_round_trips_through_config_normalization() {
-    let repo = repo_root();
-    let temp = tempdir().expect("tempdir");
-    let runtime = temp.path().join("runtime");
-    let config = temp.path().join("config");
-    write_runtime_contract_assets(&repo, &runtime);
-    fs::create_dir_all(&config).expect("config dir");
-
-    let raw = render_default_settings_jsonc(&runtime.join("settings_default.jsonc"))
-        .expect("default settings");
-    let patched = set_settings_jsonc_value_text(
-        &config.join("settings.jsonc"),
-        &raw,
-        "appearance.mode",
-        &json!("light"),
-    )
-    .expect("patch");
-    let config_path = config.join("settings.jsonc");
-    fs::write(&config_path, patched.text).expect("write settings");
-
-    let data = normalize_config(&NormalizeConfigRequest {
-        config_path,
-        default_config_path: runtime.join("settings_default.jsonc"),
-        contract_path: runtime
-            .join("config_metadata")
-            .join("main_config_contract.toml"),
-        include_missing: true,
-    })
-    .expect("normalize");
-
-    assert_eq!(data.normalized_config["appearance_mode"], json!("light"));
 }

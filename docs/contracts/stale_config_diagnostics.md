@@ -2,7 +2,7 @@
 
 ## Summary
 
-Yazelix should surface stale or unsupported `settings.jsonc` problems through one shared diagnostic contract so startup and `yzx doctor` both explain the same issue in the same terms and point to the same safest next action.
+Yazelix should surface stale or unsupported `config.toml` problems through one shared diagnostic contract so startup and `yzx doctor` both explain the same issue in the same terms and point to the same safest next action.
 
 ## Why
 
@@ -15,16 +15,16 @@ This contract covers:
 - startup-blocking config diagnostics
 - `yzx doctor` reporting for unsupported config issues
 - explicit manual recovery guidance for removed or stale config fields
-- deterministic joined ratconfig rewrites for writable user-owned `settings.jsonc`
+- deterministic missing-default completion for writable user-owned `config.toml`
 - message consistency between startup and doctor
 
 ## Behavior
 
-When Yazelix reads `settings.jsonc`, it should first reconcile the file with the joined `yazelix.settings` ratconfig contract when the file is writable and user-owned. The hidden state lives at `ratconfig.contract`; it is not an editable config UI field and must not appear in normalized runtime config.
+When Yazelix reads `config.toml`, it completes missing packaged defaults through Ratconfig's TOML adapter when the file is writable and user-owned. The hidden `yazelix.config` state lives at `ratconfig.contract`; it is not an editable config UI field and must not appear in normalized runtime config.
 
 Ratconfig-owned automatic rewrites are allowed only for deterministic contract changes such as add-default, rename, delete, and narrow value transforms. Rename operations must refuse destination collisions or overlapping paths instead of guessing user intent. Home Manager-owned or read-only settings must not be mutated; they should report the required contract reconciliation and point to the owning source.
 
-After reconciliation, Yazelix should build a shared config-diagnostic report before continuing. Startup should block only on genuinely unsupported config problems such as malformed JSONC, unknown fields, type mismatches, unsupported enum values, removed fields, ambiguous stale fields, or stale old TOML inputs next to the canonical file. It should not block on merely omitted fields that Yazelix can still default safely.
+After completion, Yazelix should build a shared config-diagnostic report before continuing. Startup should block on malformed TOML, unknown fields, type mismatches, unsupported enum values, removed fields, ambiguous stale fields, or unsupported old TOML inputs next to the canonical file. It should not block on omitted fields that Yazelix can add safely.
 
 For unsupported config, Yazelix should fail clearly without pretending an unsafe migration exists. Messages should identify the exact field or stale input and next step, usually manual cleanup followed by a retry. `yzx reset config` is a blunt fallback, not a silent rewrite path.
 
@@ -32,13 +32,13 @@ For unsupported config, Yazelix should fail clearly without pretending an unsafe
 
 ## Non-goals
 
-- silent startup rewrites
+- silent ambiguous startup rewrites
 - mutating Home Manager-owned or read-only settings
 - hiding unknown config problems behind generic launch or refresh wrappers
 - treating missing fields as startup blockers when Yazelix can still supply safe defaults
 - inventing migration guidance for unsupported config
 - restoring broad historical config-migration registries or old-TOML-to-JSONC auto-rewrites
-- adding a TOML main settings surface; `settings.jsonc` remains canonical
+- restoring retired `settings.jsonc` as a second live owner
 
 ## Acceptance Cases
 

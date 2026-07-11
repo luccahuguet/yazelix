@@ -371,7 +371,7 @@ fn verify_profile_installed_runtime(
     let runtime_terminal_command = "mars";
     let runtime_yzx_cli = runtime_root.join("shells").join("posix").join("yzx_cli.sh");
     let runtime_yzx_core = runtime_libexec.join("yzx_core");
-    let runtime_settings_default = runtime_root.join("settings_default.jsonc");
+    let runtime_settings_default = runtime_root.join("config_default.toml");
     let runtime_cursor_shader_root = runtime_root
         .join("configs")
         .join("terminal_emulators")

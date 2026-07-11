@@ -83,11 +83,7 @@ const ZELLIJ_RENDER_PLAN_CONFIG_KEYS: &[&str] = &[
     "zellij_custom_text",
     "zellij_theme",
     "appearance_mode",
-    "zellij_pane_frames",
-    "zellij_rounded_corners",
-    "disable_zellij_tips",
     "support_kitty_keyboard_protocol",
-    "zellij_default_mode",
     "zellij_tab_label_mode",
     "zellij_claude_usage_display",
     "zellij_codex_usage_display",
@@ -381,7 +377,7 @@ fn build_render_plan_request(
             ErrorClass::Config,
             "invalid_zellij_render_plan_request",
             format!("Could not build Zellij render plan from normalized config: {source}"),
-            "Check settings.jsonc values under workspace, editor, and zellij.",
+            "Check config.toml values under workspace, editor, and zellij.",
             json!({}),
         )
     })
@@ -1390,11 +1386,7 @@ mod tests {
             zellij_custom_text: None,
             zellij_theme: "default".into(),
             appearance_mode: "dark".into(),
-            zellij_pane_frames: "true".into(),
-            zellij_rounded_corners: "true".into(),
-            disable_zellij_tips: "true".into(),
             support_kitty_keyboard_protocol: "false".into(),
-            zellij_default_mode: "normal".into(),
             zellij_tab_label_mode: "full".into(),
             zellij_claude_usage_display: "both".into(),
             zellij_codex_usage_display: "quota".into(),
@@ -1698,7 +1690,7 @@ keybinds {
         assert_eq!(error.class().as_str(), "config");
     }
 
-    // Defends: partial settings.jsonc remaps inherit defaults for omitted Yazelix-owned Zellij actions.
+    // Defends: partial config.toml remaps inherit defaults for omitted Yazelix-owned Zellij actions.
     #[test]
     fn partial_zellij_keybinding_config_inherits_omitted_defaults() {
         let mut config = JsonMap::new();

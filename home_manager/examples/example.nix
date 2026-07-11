@@ -3,14 +3,14 @@
 #
 # For complete option reference, see:
 #   - home_manager/module.nix (complete option definitions)
-#   - settings.jsonc (generated canonical settings file)
+#   - config.toml (generated canonical settings file)
 
 { config, pkgs, ... }:
 
 {
   programs.yazelix = {
     enable = true;
-    manage_config = true; # Opt into declarative Home Manager ownership of settings.jsonc for this example
+    manage_config = true; # Opt into declarative Home Manager ownership of config.toml for this example
     terminal = "mars"; # Mars is the packaged terminal; configure host terminals to run `yzx enter`
 
     # Shell entry
@@ -62,8 +62,6 @@
 
     # Zellij customization
     hide_sidebar_on_file_open = false;
-    disable_zellij_tips = true;
-    zellij_rounded_corners = true;
     zellij_theme = "default"; # Optional: any built-in theme name
     custom_popups = [
       {

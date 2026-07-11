@@ -132,18 +132,6 @@ help = "Choose the shell used for new Yazelix shell panes; xonsh must be install
 tab = "appearance"
 help = "Choose dark mode, light mode, or terminal-supported automatic system appearance"
 
-[fields."zellij.disable_tips"]
-tab = "appearance"
-help = "Hide Zellij tip text in generated Yazelix layouts"
-
-[fields."zellij.pane_frames"]
-tab = "appearance"
-help = "Show or hide Zellij pane frames in generated layouts"
-
-[fields."zellij.rounded_corners"]
-tab = "appearance"
-help = "Use rounded borders in generated Zellij pane frames"
-
 [fields."zellij.support_kitty_keyboard_protocol"]
 tab = "appearance"
 help = "Enable Zellij Kitty keyboard protocol support for unambiguous modified-key handling"

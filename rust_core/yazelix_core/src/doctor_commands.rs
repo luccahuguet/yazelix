@@ -25,7 +25,7 @@ use crate::runtime_materialization::{
     RuntimeMaterializationPlanData, RuntimeMaterializationRepairEvaluateRequest,
     repair_runtime_materialization,
 };
-use crate::settings_surface::render_default_settings_jsonc;
+use crate::settings_surface::render_default_config;
 use crate::terminal_variant::active_terminal_from_runtime_dir;
 use crate::user_config_paths;
 use crate::workspace_asset_contract::{
@@ -729,7 +729,7 @@ fn create_default_settings_config_from_template(
         fs::create_dir_all(parent).map_err(|source| {
             CoreError::io(
                 "doctor_create_config_parent",
-                "Could not create settings.jsonc parent directory.",
+                "Could not create config.toml parent directory.",
                 "Fix permissions for the Yazelix config directory, then rerun `yzx doctor --fix`.",
                 parent.to_string_lossy().into_owned(),
                 source,
@@ -737,7 +737,7 @@ fn create_default_settings_config_from_template(
         })?;
     }
 
-    let rendered = render_default_settings_jsonc(&paths.default_config_path)?;
+    let rendered = render_default_config(&paths.default_config_path)?;
     let mut file = match fs::OpenOptions::new()
         .write(true)
         .create_new(true)
@@ -748,7 +748,7 @@ fn create_default_settings_config_from_template(
         Err(source) => {
             return Err(CoreError::io(
                 "doctor_create_settings_jsonc",
-                "Could not create settings.jsonc from shipped defaults.",
+                "Could not create config.toml from shipped defaults.",
                 "Fix permissions for the Yazelix config directory, then rerun `yzx doctor --fix`.",
                 paths.user_config.to_string_lossy().into_owned(),
                 source,
@@ -759,7 +759,7 @@ fn create_default_settings_config_from_template(
     file.write_all(rendered.as_bytes()).map_err(|source| {
         CoreError::io(
             "doctor_write_settings_jsonc",
-            "Could not write settings.jsonc from shipped defaults.",
+            "Could not write config.toml from shipped defaults.",
             "Fix permissions for the Yazelix config directory, then rerun `yzx doctor --fix`.",
             paths.user_config.to_string_lossy().into_owned(),
             source,
@@ -1117,16 +1117,16 @@ fn create_missing_default_settings_config() -> Result<bool, CoreError> {
     let runtime_dir = runtime_dir_from_env()?;
     let config_dir = config_dir_from_env()?;
     match create_default_settings_config_from_template(&runtime_dir, &config_dir) {
-        Ok(true) => println!("✅ Created settings.jsonc from shipped defaults"),
+        Ok(true) => println!("✅ Created config.toml from shipped defaults"),
         Ok(false) => {
             let paths = primary_config_paths(&runtime_dir, &config_dir);
             println!(
-                "⚠️  Skipped settings.jsonc creation because {} already exists",
+                "⚠️  Skipped config.toml creation because {} already exists",
                 paths.user_config.display()
             );
         }
         Err(err) => {
-            println!("❌ Failed to create settings.jsonc: {}", err.message());
+            println!("❌ Failed to create config.toml: {}", err.message());
             return Ok(true);
         }
     }
@@ -1195,7 +1195,7 @@ mod tests {
 
     fn write_runtime_default_settings(runtime_dir: &Path, body: &str) {
         fs::create_dir_all(runtime_dir).unwrap();
-        fs::write(runtime_dir.join("settings_default.jsonc"), body).unwrap();
+        fs::write(runtime_dir.join("config_default.toml"), body).unwrap();
     }
 
     // Defends: the Rust doctor summary keeps warnings and fixable findings from being treated as healthy.
@@ -1220,7 +1220,7 @@ mod tests {
         let plan = RuntimeMaterializationPlanData {
             config_state: crate::ConfigStateData {
                 config: serde_json::Map::new(),
-                config_file: "/tmp/settings.jsonc".to_string(),
+                config_file: "/tmp/config.toml".to_string(),
                 needs_refresh: true,
                 refresh_reason: "runtime inputs changed since last generated-state repair"
                     .to_string(),
@@ -1266,19 +1266,16 @@ mod tests {
         assert!(parsed.json);
     }
 
-    // Defends: stale or repeated doctor findings cannot overwrite an existing managed settings.jsonc.
+    // Defends: stale or repeated doctor findings cannot overwrite an existing managed config.toml.
     #[test]
     fn default_settings_config_creation_does_not_overwrite_existing_file() {
         let tmp = TempDir::new().unwrap();
         let runtime_dir = tmp.path().join("runtime");
         let config_dir = tmp.path().join("config");
-        write_runtime_default_settings(
-            &runtime_dir,
-            "{ \"core\": { \"welcome_style\": \"logo\" } }\n",
-        );
+        write_runtime_default_settings(&runtime_dir, "[core]\nwelcome_style = \"logo\"\n");
         fs::create_dir_all(&config_dir).unwrap();
-        let user_config = config_dir.join("settings.jsonc");
-        let original = "{ \"core\": { \"welcome_style\": \"mandelbrot\" } }\n";
+        let user_config = config_dir.join("config.toml");
+        let original = "[core]\nwelcome_style = \"mandelbrot\"\n";
         fs::write(&user_config, original).unwrap();
 
         let created = create_default_settings_config_from_template(&runtime_dir, &config_dir)
@@ -1288,13 +1285,13 @@ mod tests {
         assert_eq!(fs::read_to_string(user_config).unwrap(), original);
     }
 
-    // Defends: the explicit config-creation fix action still bootstraps first-run settings.jsonc.
+    // Defends: the explicit config-creation fix action still bootstraps first-run config.toml.
     #[test]
     fn default_settings_config_creation_writes_missing_file() {
         let tmp = TempDir::new().unwrap();
         let runtime_dir = tmp.path().join("runtime");
         let config_dir = tmp.path().join("config");
-        let default_settings = "{ \"core\": { \"welcome_style\": \"logo\" } }\n";
+        let default_settings = "[core]\nwelcome_style = \"logo\"\n";
         write_runtime_default_settings(&runtime_dir, default_settings);
 
         let created = create_default_settings_config_from_template(&runtime_dir, &config_dir)
@@ -1302,7 +1299,7 @@ mod tests {
 
         assert!(created);
         assert_eq!(
-            fs::read_to_string(config_dir.join("settings.jsonc")).unwrap(),
+            fs::read_to_string(config_dir.join("config.toml")).unwrap(),
             default_settings
         );
     }

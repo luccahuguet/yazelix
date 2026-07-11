@@ -10,7 +10,7 @@ Health checks and diagnostics
 - `--fix`: Auto-fix safe issues
 - `--fix-plan`: Print exact recovery commands without mutating anything
 - `--fix-plan --json`: Emit a machine-readable recovery plan for docs, support, and agents
-- Warns when `settings.jsonc` has stale, removed, or invalid fields relative to the current settings contract
+- Warns when `config.toml` has stale, removed, or invalid fields relative to the current settings contract
 - Reports the active runtime/distribution tier before deeper checks
 - Detects missing or stale workspace assets such as generated Zellij config, layouts, and plugin wasm artifacts
 - Runs installer-owned runtime-link and stable-launcher diagnostics only when the current mode actually owns those surfaces
@@ -25,7 +25,7 @@ Inspect active Yazelix runtime truth
 Generate a focused first-run Yazelix config
 - Arrow keys move through single-choice prompts and `Enter` confirms
 - `Space` toggles status-bar widget choices in the multi-select prompt
-- `--force`: Overwrite the managed user `settings.jsonc` when it already exists
+- `--force`: Overwrite the managed user `config.toml` when it already exists
 - `--dry-run`: Print the generated config instead of writing it
 - Generates only the current supported main config surface; it does not recreate removed pack sidecars
 
@@ -65,7 +65,7 @@ Launch Yazelix with directory and mode options
 - Default: Launch new terminal in current directory
 - `--path DIR`: Start in specific directory
 - `--home`: Start in home directory
-- `--config FILE`: Use an alternate complete `settings.jsonc` for this window
+- `--config FILE`: Use an alternate complete `config.toml` for this window
 - `--with KEY=VALUE`: Apply a repeatable session-only settings override, such as `--with editor.command=nvim`
 - `--verbose`: Print detailed launch diagnostics
 
@@ -76,7 +76,7 @@ Start Yazelix in the current terminal
 - If the host terminal is ambiguous or unrecognized, the session terminal label is `unknown`
 - `--path DIR`: Start in specific directory
 - `--home`: Start in home directory
-- `--config FILE`: Use an alternate complete `settings.jsonc` for this current-terminal session
+- `--config FILE`: Use an alternate complete `config.toml` for this current-terminal session
 - `--with KEY=VALUE`: Apply a repeatable session-only settings override, such as `--with core.welcome_style=static`
 - `--verbose`: Print detailed startup diagnostics
 
@@ -146,7 +146,7 @@ Restart the current Yazelix window
 - Profile installs relaunch through the default-profile `yzx`; Home Manager installs relaunch through the Home Manager-owned `yzx`
 - Already-open Yazelix windows keep running their current live runtime until they are explicitly relaunched or restarted
 - `--skip, -s`: skip the welcome screen for the restarted window only
-- `--config FILE`: Use an alternate complete `settings.jsonc` for the restarted window
+- `--config FILE`: Use an alternate complete `config.toml` for the restarted window
 - `--with KEY=VALUE`: Apply a repeatable session-only settings override for the restarted window
 
 ### `yzx status [--versions]`
@@ -261,7 +261,7 @@ Show the active Yazelix configuration through the Rust-owned control path
 - `--path`: print the resolved config path
 
 ### `yzx config ui`
-Open Yazelix's ratconfig-backed JSONC settings browser and editor
+Open Yazelix's Ratconfig-backed settings browser and editor
 - Lists schema-known settings by user-intent tab
 - Shows explicit, defaulted, unset, and invalid values
 - Shows stale-field diagnostics and managed sidecar status under the Advanced tab
@@ -272,14 +272,14 @@ Open Yazelix's ratconfig-backed JSONC settings browser and editor
 Set a supported config value without rewriting the whole file
 - Preserves unrelated comments and formatting
 - Accepts JSON literals such as `true`, `20`, `"bash"`, or `["ghostty"]`
-- Writes normal settings to `~/.config/yazelix/settings.jsonc` and `cursors.*` paths to `~/.config/yazelix_cursors/settings.jsonc`
+- Writes normal settings to `~/.config/yazelix/config.toml` and `cursors.*` paths to `~/.config/yazelix_cursors/settings.jsonc`
 - Validates the patched config or cursor registry before writing
-- Refuses Home Manager-owned, read-only, non-`settings.jsonc`, or unsafe object/array edits
+- Refuses Home Manager-owned, read-only, non-`config.toml`, or unsafe object/array edits
 
 ### `yzx config unset <settings.path>`
 Remove an explicit config value so Yazelix uses the default
 - Preserves unrelated comments and formatting
-- Writes normal settings to `~/.config/yazelix/settings.jsonc` and `cursors.*` paths to `~/.config/yazelix_cursors/settings.jsonc`
+- Writes normal settings to `~/.config/yazelix/config.toml` and `cursors.*` paths to `~/.config/yazelix_cursors/settings.jsonc`
 - Validates the patched config or cursor registry before writing
 - Leaves the file unchanged when the value is already absent
 
@@ -295,13 +295,13 @@ Import native Zellij, Yazi, or Helix config into Yazelix-managed overrides
 
 ### `yzx edit config [--print]`
 Open the main Yazelix config file in your editor
-- Uses `$EDITOR` (set by Yazelix from `editor.command` in `settings.jsonc`)
-- Targets `settings.jsonc`
+- Uses `$EDITOR` (set by Yazelix from `editor.command` in `config.toml`)
+- Targets `config.toml`
 - `--print`: print the resolved config path without opening
 
 ### `yzx cursors`
 Inspect Yazelix cursor presets and resolved colors
-- Shows the active cursor `settings.jsonc` path
+- Shows the active cursor `config.toml` path
 - Shows global trail, effect, glow, duration, and Kitty fallback settings
 - Shows resolved colors for enabled presets, including derived mono accents
 
@@ -319,12 +319,12 @@ Open one of the managed config surfaces through explicit or fuzzy target selecti
 - `--print`: print the resolved managed path without opening
 
 ### `yzx reset config [--yes] [--no-backup]`
-Replace `settings.jsonc` with a fresh copy of the shipped settings template
+Replace `config.toml` with a fresh copy of the shipped settings template
 - Backs up the current config file to `*.backup-<timestamp>` first when it exists
 - `--yes`: skip the confirmation prompt
 - `--no-backup`: discard the previous config file instead of renaming it to a backup first
 - Use this as a blunt recovery path when `yzx doctor` reports stale config fields
-- Only replaces `~/.config/yazelix/settings.jsonc`
+- Only replaces `~/.config/yazelix/config.toml`
 - Preserves managed override sidecars such as `helix/`, `zellij/`, `yazi/`, `terminal_*.conf|toml|ini`, and `shell_*.sh|zsh|fish|nu|xsh`
 - Preserves unknown adjacent files under `~/.config/yazelix/` and prints a warning instead of deleting or adopting them
 - Cursor presets live in `~/.config/yazelix_cursors/settings.jsonc`; `reset config` only resets the main Yazelix settings file
@@ -341,7 +341,7 @@ yzx enter                     # Start in current terminal
 yzx launch --home             # New terminal in home directory
 yzx enter --path ~/project    # Current terminal, specific directory
 yzx launch --verbose          # Detailed launch diagnostics
-yzx launch --config ./minimal.jsonc # Use an alternate complete settings file
+yzx launch --config ./minimal.toml # Use an alternate complete settings file
 yzx launch --with editor.command=nvim # Override one setting for this window
 
 # Environment-only mode (no UI)
@@ -363,14 +363,14 @@ yzx tutor hx                  # Launch Helix's built-in tutor
 yzx tutor nu                  # Launch Nushell's built-in tutor
 yzx restart                   # Reopen Yazelix in a fresh window
 yzx restart -s                # Reopen Yazelix and skip the welcome screen once
-yzx restart --config ./minimal.jsonc # Reopen with an alternate complete settings file
+yzx restart --config ./minimal.toml # Reopen with an alternate complete settings file
 yzx restart --with core.welcome_style=static # Reopen with a one-shot config override
 
 # Diagnostics and info
 yzx doctor --fix              # Health check with auto-fix
 yzx config                    # Show active config
 yzx config --path             # Print the active config path
-yzx config ui                 # Open the ratconfig-backed JSONC settings editor
+yzx config ui                 # Open the Ratconfig-backed settings editor
 yzx config set editor.hide_sidebar_on_file_open true # Set a config value with a JSON literal
 yzx config unset editor.hide_sidebar_on_file_open # Remove an explicit config value
 yzx cursors                   # Inspect Yazelix cursor presets and resolved colors

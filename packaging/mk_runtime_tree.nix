@@ -133,8 +133,8 @@ let
         target = "CHANGELOG.md";
       }
       {
-        source = "${src}/settings_default.jsonc";
-        target = "settings_default.jsonc";
+        source = "${src}/config_default.toml";
+        target = "config_default.toml";
       }
     ]
     ++ pkgs.lib.optional cursorsEnabled {

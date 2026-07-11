@@ -1,6 +1,6 @@
 # Yazelix Zellij Configuration
 
-Yazelix keeps semantic workspace behavior in `settings.jsonc` and native Zellij input in two guarded files:
+Yazelix keeps semantic workspace behavior in `config.toml` and native Zellij input in two guarded files:
 
 ```text
 ~/.config/yazelix/zellij/config.kdl

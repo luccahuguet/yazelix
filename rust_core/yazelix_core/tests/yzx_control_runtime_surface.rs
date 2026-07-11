@@ -816,7 +816,7 @@ default_shell = "nu"
         summary["config_file"]
             .as_str()
             .unwrap()
-            .ends_with("settings.jsonc")
+            .ends_with("config.toml")
     );
     assert_eq!(summary["default_shell"], "nu");
     assert_eq!(summary["terminals"], serde_json::json!(["mars"]));
@@ -966,16 +966,11 @@ fn yzx_control_update_upstream_rejects_home_manager_owned_install() {
         .home_dir
         .join("hm-store")
         .join("abc-home-manager-files")
-        .join("settings.jsonc");
+        .join("config.toml");
     fs::create_dir_all(hm_store_config.parent().unwrap()).unwrap();
-    fs::write(
-        &hm_store_config,
-        "{\"core\":{\"welcome_style\":\"random\"}}\n",
-    )
-    .unwrap();
+    fs::write(&hm_store_config, "[core]\nwelcome_style = \"random\"\n").unwrap();
     fs::remove_file(&fixture.managed_config).unwrap();
-    std::os::unix::fs::symlink(&hm_store_config, fixture.config_dir.join("settings.jsonc"))
-        .unwrap();
+    std::os::unix::fs::symlink(&hm_store_config, fixture.config_dir.join("config.toml")).unwrap();
 
     let output = yzx_control_command_in_fixture(&fixture)
         .env("PATH", prepend_path(&fake_bin))
@@ -1178,7 +1173,7 @@ exit 99
     assert!(
         archived_paths
             .iter()
-            .any(|name| { name.starts_with("settings.jsonc.home-manager-prepare-backup-") })
+            .any(|name| { name.starts_with("config.toml.home-manager-prepare-backup-") })
     );
 }
 

@@ -11,7 +11,7 @@ Yazelix already had a floating command-palette popup, but no coherent popup mode
 ## Scope
 
 - Add `yzx popup <command ...>`
-- Add `zellij.popup_commands` and `zellij.custom_popups` to `settings.jsonc` / Home Manager
+- Add `zellij.popup_commands` and `zellij.custom_popups` to `config.toml` / Home Manager
 - Bind built-in popup commands to semantic bottom, top, and menu defaults
 - Ship `zenith` as the default `zellij.custom_popups` process information monitor on `Alt+Shift+I`
 - Keep the command-palette popup as a separate flow
@@ -115,7 +115,7 @@ Yazelix already had a floating command-palette popup, but no coherent popup mode
 - Popup geometry is user-configurable through `zellij.popup_width_percent` and `zellij.popup_height_percent`.
 - Popup width and height percentages must be integers in the range `1..100`.
 - The default popup width and height are both `90`.
-- `yzx popup <command ...>` opens a transient popup without changing `settings.jsonc`.
+- `yzx popup <command ...>` opens a transient popup without changing `config.toml`.
 - The generated Yazelix `yzpp` specs own the stable pane identity, argv, cwd,
   runtime command path, geometry, and close hook for popup/menu/config panes.
 - Yazelix generates `bottom_popup`, `top_popup`, `menu`, `config`, and every
@@ -126,7 +126,7 @@ Yazelix already had a floating command-palette popup, but no coherent popup mode
   `yzpp` `toggle` or `close` messages, not by child process exit.
 - `Alt+Shift+J` opens one managed bottom popup pane when it is missing, focuses it when it exists but is unfocused, and closes it when it is focused.
 - `Alt+Shift+K` does the same for the semantic top popup slot, which defaults
-  to `yzx config ui`, Yazelix's ratconfig-backed JSONC settings editor.
+  to `yzx config ui`, Yazelix's Ratconfig-backed settings editor.
 - `Alt+Shift+I` toggles the semantic Zenith popup slot. It defaults to the bundled
   Zenith process viewer through `zellij.custom_popups` and suppresses that pane
   instead of closing it on focused toggle so process graphs can keep their

@@ -6,13 +6,19 @@ Yazelix Classic covers every release through the final pre-Nova tag. The replace
 
 ## Unreleased
 
-Classic line naming and Nova v1 cutover planning
+TOML root config and Nova v1 cutover planning
 
-Upgrade impact: no user action required
+Upgrade impact: automatic migration for writable user config; manual Home Manager action required
 
 Highlights:
 - Classified every pre-Nova release, including v17.10 and earlier, as Yazelix Classic without changing historical tags
 - Reserved Yazelix Nova v1 for the implementation replacement and its new public version line
+- Made `~/.config/yazelix/config.toml` the canonical semantic config and kept `settings.jsonc` only as a backup-first, one-time Classic migration input
+- Moved native Zellij startup tips, pane frames, rounded corners, and default mode into `~/.config/yazelix/zellij/config.kdl`
+- Switched Home Manager's managed root config rendering to TOML
+
+Manual action:
+- If Home Manager owns `~/.config/yazelix/settings.jsonc`, update the module and run `home-manager switch`; move retired native Zellij choices into `programs.yazelix.config.zellij.text` or `source`
 
 ## v17.10 - 2026-07-11
 

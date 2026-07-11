@@ -138,15 +138,15 @@ impl YazelixConfigUiHost<'_> {
         let target = self.editable_config_target(ui, source_id, setting_path)?;
         let raw = self.read_edit_target_or_default(ui, &target)?;
         let outcome = match target.kind {
-            ConfigUiEditTargetKind::Mars => {
+            ConfigUiEditTargetKind::Main | ConfigUiEditTargetKind::Mars => {
                 let outcome = set_toml_value_text(&raw, &target.path_in_file, value)
-                    .map_err(|error| mars_toml_patch_error(&target.path, error))?;
+                    .map_err(|error| config_toml_patch_error(&target.path, error))?;
                 SettingsJsoncPatchOutcome {
                     text: outcome.text,
                     mutation: outcome.mutation,
                 }
             }
-            ConfigUiEditTargetKind::Main | ConfigUiEditTargetKind::Cursors => {
+            ConfigUiEditTargetKind::Cursors => {
                 set_settings_jsonc_value_text(&target.path, &raw, &target.path_in_file, value)?
             }
         };
@@ -170,14 +170,19 @@ impl YazelixConfigUiHost<'_> {
         let outcome = match target.kind {
             ConfigUiEditTargetKind::Main => {
                 let value = default_main_setting_value_for_ui(self.request, &target.path_in_file)?;
-                set_settings_jsonc_value_text(&target.path, &raw, &target.path_in_file, &value)?
+                let outcome = set_toml_value_text(&raw, &target.path_in_file, &value)
+                    .map_err(|error| config_toml_patch_error(&target.path, error))?;
+                SettingsJsoncPatchOutcome {
+                    text: outcome.text,
+                    mutation: outcome.mutation,
+                }
             }
             ConfigUiEditTargetKind::Cursors => {
                 unset_settings_jsonc_value_text(&target.path, &raw, &target.path_in_file)?
             }
             ConfigUiEditTargetKind::Mars => {
                 let outcome = unset_toml_value_text(&raw, &target.path_in_file)
-                    .map_err(|error| mars_toml_patch_error(&target.path, error))?;
+                    .map_err(|error| config_toml_patch_error(&target.path, error))?;
                 SettingsJsoncPatchOutcome {
                     text: outcome.text,
                     mutation: outcome.mutation,
@@ -196,18 +201,18 @@ impl YazelixConfigUiHost<'_> {
     ) -> Result<ConfigUiWriteOutcome, CoreError> {
         let target = self.editable_config_target(ui, source_id, CUSTOM_POPUPS_FIELD_PATH)?;
         let raw = self.read_edit_target_or_default(ui, &target)?;
-        let root = parse_jsonc_value(&target.path, &raw)?;
+        let root = parse_config_value(&target.path, &raw)?;
         let default_value =
             default_main_setting_value_for_ui(self.request, CUSTOM_POPUPS_FIELD_PATH)?;
         let Some(next_value) = next_list(&root, &default_value)? else {
             return Err(unsupported_custom_popup_edit_path(setting_path));
         };
-        let outcome = set_settings_jsonc_value_text(
-            &target.path,
-            &raw,
-            CUSTOM_POPUPS_FIELD_PATH,
-            &next_value,
-        )?;
+        let outcome = set_toml_value_text(&raw, CUSTOM_POPUPS_FIELD_PATH, &next_value)
+            .map_err(|error| config_toml_patch_error(&target.path, error))?;
+        let outcome = SettingsJsoncPatchOutcome {
+            text: outcome.text,
+            mutation: outcome.mutation,
+        };
         self.finish_field_write(ui, source_id, setting_path, &target, outcome)
     }
 
@@ -222,7 +227,10 @@ impl YazelixConfigUiHost<'_> {
         let (text, should_write) = self.reconcile_patched_edit_target(target, &outcome)?;
         if should_write {
             self.validate_patched_edit_target(target, &text)?;
-            if target.kind == ConfigUiEditTargetKind::Mars {
+            if matches!(
+                target.kind,
+                ConfigUiEditTargetKind::Main | ConfigUiEditTargetKind::Mars
+            ) {
                 crate::atomic_fs::write_text_atomic(&target.path, &text)?;
             } else {
                 write_settings_edit(&target.path, &text)?;
@@ -247,19 +255,10 @@ impl YazelixConfigUiHost<'_> {
 
     fn reconcile_patched_edit_target(
         &self,
-        target: &ConfigUiEditTarget,
+        _target: &ConfigUiEditTarget,
         outcome: &SettingsJsoncPatchOutcome,
     ) -> Result<(String, bool), CoreError> {
-        let mut text = outcome.text.clone();
-        let mut should_write = outcome.changed();
-        if target.kind == ConfigUiEditTargetKind::Main {
-            let paths = primary_config_paths(&self.request.runtime_dir, &self.request.config_dir);
-            let reconciled =
-                reconcile_settings_contract_text(&target.path, &text, &paths.default_config_path)?;
-            should_write = should_write || reconciled.changed();
-            text = reconciled.text;
-        }
-        Ok((text, should_write))
+        Ok((outcome.text.clone(), outcome.changed()))
     }
 
     fn reload_model_preserving_selection(
@@ -387,7 +386,7 @@ impl YazelixConfigUiHost<'_> {
         match target.kind {
             ConfigUiEditTargetKind::Main => validate_patched_settings_for_ui(self.request, text),
             ConfigUiEditTargetKind::Cursors => {
-                let value = parse_jsonc_value(&target.path, text)?;
+                let value = parse_config_value(&target.path, text)?;
                 CursorRegistry::parse_json_value(&target.path, value)?;
                 Ok(())
             }
@@ -413,15 +412,15 @@ impl YazelixConfigUiHost<'_> {
     ) -> Result<ConfigUiEditTarget, CoreError> {
         self.ensure_known_field_source(ui, source_id, setting_path)?;
         let target = self.edit_target(ui, source_id, setting_path)?;
-        if target.kind != ConfigUiEditTargetKind::Mars && !is_settings_config_path(&target.path) {
+        if target.kind == ConfigUiEditTargetKind::Main && !is_settings_config_path(&target.path) {
             return Err(CoreError::classified(
                 ErrorClass::Config,
                 "unsupported_config_edit_surface",
                 format!(
-                    "The config UI can only edit settings.jsonc, but the active config is {}.",
+                    "The config UI can only edit config.toml, but the active config is {}.",
                     target.path.display()
                 ),
-                "Move this setting to settings.jsonc, or clear YAZELIX_CONFIG_OVERRIDE.",
+                "Move this setting to config.toml, or clear YAZELIX_CONFIG_OVERRIDE.",
                 json!({ "path": target.path.display().to_string() }),
             ));
         }
@@ -542,12 +541,12 @@ fn suspend_config_ui_terminal(
     result
 }
 
-fn mars_toml_patch_error(path: &Path, error: TomlPatchError) -> CoreError {
+fn config_toml_patch_error(path: &Path, error: TomlPatchError) -> CoreError {
     CoreError::classified(
         ErrorClass::Config,
-        "mars_config_patch_failed",
+        "config_toml_patch_failed",
         format!("Could not update {}: {error:?}.", path.display()),
-        "Fix the Mars TOML structure or edit the override file directly.",
+        "Fix the TOML structure in the reported config file, then retry.",
         json!({ "path": path.display().to_string() }),
     )
 }

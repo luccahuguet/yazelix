@@ -71,7 +71,7 @@ Yazelix keeps install-artifact diagnostics only where they defend a current inst
 
 | Artifact or branch | Status | Owner |
 | --- | --- | --- |
-| Home Manager-owned `settings.jsonc` symlink marker | live support | Install ownership report |
+| Home Manager-owned `config.toml` symlink marker | live support | Install ownership report |
 | Home Manager profile `yzx` wrapper and profile desktop entries | live support | Install ownership report |
 | Standalone default-profile Yazelix package entries during Home Manager takeover | live support | `yzx home_manager prepare` |
 | User-local desktop entries and copied desktop icons that shadow profile/Home Manager entries | live cleanup support | `yzx home_manager prepare` and desktop doctor diagnostics |

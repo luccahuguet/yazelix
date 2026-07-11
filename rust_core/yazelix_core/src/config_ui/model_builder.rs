@@ -49,8 +49,8 @@ pub fn build_config_ui_model(request: &ConfigUiRequest) -> Result<ConfigUiModel,
         },
     )?;
 
-    let default_raw = render_default_settings_jsonc(&paths.default_config_path)?;
-    let default_main_value = parse_jsonc_value(&paths.default_config_path, &default_raw)?;
+    let default_raw = render_default_config(&paths.default_config_path)?;
+    let default_main_value = parse_config_value(&paths.default_config_path, &default_raw)?;
     let default_value = compose_config_ui_value(
         default_main_value,
         if cursor_component_enabled {
@@ -279,7 +279,7 @@ fn active_config_path(paths: &PrimaryConfigPaths, config_override: Option<&str>)
 
 fn read_active_config_value(path: &Path) -> Result<JsonValue, CoreError> {
     if is_settings_config_path(path) {
-        return read_settings_jsonc_value(path);
+        return read_config_value(path);
     }
 
     let raw = fs::read_to_string(path).map_err(|source| {
@@ -344,7 +344,7 @@ fn read_cursor_config_value(path: &Path) -> Result<JsonValue, CoreError> {
             source,
         )
     })?;
-    parse_jsonc_value(path, &raw)
+    parse_config_value(path, &raw)
 }
 
 fn read_default_cursor_config_value(path: &Path) -> Result<JsonValue, CoreError> {
@@ -359,7 +359,7 @@ fn read_default_cursor_config_value(path: &Path) -> Result<JsonValue, CoreError>
     })?;
     let registry = CursorRegistry::parse_str(path, &raw)?;
     let rendered = render_cursor_settings_jsonc(&registry);
-    parse_jsonc_value(path, &rendered)
+    parse_config_value(path, &rendered)
 }
 
 fn ensure_root_object(path: &Path, value: &JsonValue) -> Result<(), CoreError> {
@@ -884,7 +884,7 @@ fn collect_config_sources(
                 config_source(
                     SETTINGS_SOURCE_ID,
                     tab,
-                    "settings.jsonc",
+                    "config.toml",
                     active_config_path,
                     active_config_exists,
                     config_owner,
@@ -971,7 +971,7 @@ pub(super) fn read_settings_for_edit(path: &Path) -> Result<String, CoreError> {
     fs::read_to_string(path).map_err(|source| {
         CoreError::io(
             "read_settings_jsonc_for_edit",
-            "Could not read Yazelix settings.jsonc for editing",
+            "Could not read Yazelix config.toml for editing",
             "Fix permissions or restore the settings file, then retry.",
             path.display().to_string(),
             source,
@@ -983,7 +983,7 @@ pub(super) fn default_main_settings_text_for_ui(
     request: &ConfigUiRequest,
 ) -> Result<String, CoreError> {
     let paths = primary_config_paths(&request.runtime_dir, &request.config_dir);
-    render_default_settings_jsonc(&paths.default_config_path)
+    render_default_config(&paths.default_config_path)
 }
 
 pub(super) fn default_main_setting_value_for_ui(
@@ -991,13 +991,13 @@ pub(super) fn default_main_setting_value_for_ui(
     path: &str,
 ) -> Result<JsonValue, CoreError> {
     let paths = primary_config_paths(&request.runtime_dir, &request.config_dir);
-    let defaults = read_settings_jsonc_value(&paths.default_config_path)?;
+    let defaults = read_config_value(&paths.default_config_path)?;
     get_json_path(&defaults, path).cloned().ok_or_else(|| {
         CoreError::classified(
             ErrorClass::Usage,
             "unsupported_settings_path",
             format!("Cannot reset {path} because it is not part of the canonical main settings defaults."),
-            "Use a supported settings.jsonc path from the Yazelix config contract.",
+            "Use a supported config.toml path from the Yazelix config contract.",
             json!({ "path": path }),
         )
     })
@@ -1018,7 +1018,7 @@ pub(super) fn write_settings_edit(path: &Path, raw: &str) -> Result<(), CoreErro
     fs::write(path, raw).map_err(|source| {
         CoreError::io(
             "write_settings_jsonc_edit",
-            "Could not write Yazelix settings.jsonc",
+            "Could not write Yazelix config.toml",
             "Fix permissions for the settings file, then retry.",
             path.display().to_string(),
             source,
@@ -1039,7 +1039,7 @@ pub(super) fn validate_patched_settings_for_ui(
     fs::create_dir_all(&temp_dir).map_err(|source| {
         CoreError::io(
             "create_settings_validation_temp_dir",
-            "Could not create a temporary directory to validate settings.jsonc",
+            "Could not create a temporary directory to validate config.toml",
             "Check the system temporary directory permissions, then retry.",
             temp_dir.display().to_string(),
             source,
@@ -1050,7 +1050,7 @@ pub(super) fn validate_patched_settings_for_ui(
         fs::write(&temp_config, raw).map_err(|source| {
             CoreError::io(
                 "write_settings_validation_temp_config",
-                "Could not write a temporary settings.jsonc validation file",
+                "Could not write a temporary config.toml validation file",
                 "Check the system temporary directory permissions, then retry.",
                 temp_config.display().to_string(),
                 source,

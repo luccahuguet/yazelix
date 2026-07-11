@@ -39,7 +39,7 @@ Maintainer-facing fork status, child-repo ownership tables, README delta rules, 
 - [yazelix-helix](https://github.com/luccahuguet/yazelix-helix) — Currently thin but standalone-usable Steel-enabled Helix fork with `--config-dir`, Yazelix bridge hooks behind explicit runtime flags, and packaged reusable Steel plugin defaults consumed by Yazelix managed Helix sessions; exposed from this repo as `#yazelix_helix`.
 - [yazelix-zellij-bar](https://github.com/luccahuguet/yazelix-zellij-bar) — Standalone Zellij/zjstatus bar preset consumed by Yazelix tab/status rendering and exposed from this repo as `#yazelix_zellij_bar`.
 - [yazelix-zellij-pane-orchestrator](https://github.com/luccahuguet/yazelix-zellij-pane-orchestrator) — First-party Zellij plugin wasm that owns managed pane identity, editor/sidebar handoff, focus actions, and layout-family commands, exposed from this repo as `#yazelix_zellij_pane_orchestrator`.
-- [ratconfig](https://github.com/luccahuguet/ratconfig) — Reusable Ratatui config editor crate for JSONC-backed settings, consumed by Yazelix config UI while Yazelix keeps settings schema, Home Manager ownership, validation, and runtime apply behavior in this repo.
+- [ratconfig](https://github.com/luccahuguet/ratconfig) — Reusable Ratatui config editor crate with TOML and JSONC adapters, consumed by Yazelix config UI while Yazelix keeps settings schema, Home Manager ownership, validation, and runtime apply behavior in this repo.
 - [yazelix-zellij-popup](https://github.com/luccahuguet/yazelix-zellij-popup) — Standalone Zellij popup plugin for plain-Zellij users; its child flake package `#yzpp` installs `share/yazelix_zellij_popup/yzpp.wasm`, this repo forwards it as `#yazelix_zellij_popup`, and regular Yazelix sessions package the same `yzpp.wasm` for popup, menu, and config UI panes.
 - [yazelix-yazi-assets](https://github.com/luccahuguet/yazelix-yazi-assets) — Standalone Yazi flavor and reusable plugin asset pack consumed by Yazelix Yazi runtime generation and exposed from this repo as `#yazelix_yazi_assets`.
 - [yazelix-zellij](https://github.com/luccahuguet/yazelix-zellij) — Temporary product integration fork consumed by the Mars Kitty-passthrough runtime path so upstream Yazi image previews can use Kitty graphics through Zellij; this fork should be dropped and archived once upstream Zellij supports the required Kitty graphics path directly enough for Yazelix to return to upstream Zellij.
@@ -59,7 +59,7 @@ Maintainer-facing fork status, child-repo ownership tables, README delta rules, 
 
 - [Mars](https://github.com/luccahuguet/mars) — Packaged terminal runtime. Mars is a Rust terminal fork focused on Yazelix stack compatibility, optional Kitty protocol growth, and agent-driven development workflows.
 - [Ghostty](https://ghostty.org/), [Rio](https://github.com/raphamorim/rio), [WezTerm](https://wezfurlong.org/wezterm/), [Foot](https://codeberg.org/dnkl/foot), [Ratty](https://github.com/orhun/ratty), [Kitty](https://sw.kovidgoyal.net/kitty/), and other capable terminals — Supported host-terminal entrypoints; configure them to run `yzx enter`
-- [ghostty-cursor-shaders](https://github.com/sahaj-b/ghostty-cursor-shaders) — Upstream inspiration for the Yazelix-managed Ghostty-compatible cursor shader system. Yazelix vendors/adapts the shader direction through `settings.jsonc` cursor settings, generated config, and the standalone `#yazelix_cursors` package.
+- [ghostty-cursor-shaders](https://github.com/sahaj-b/ghostty-cursor-shaders) — Upstream inspiration for the Yazelix-managed Ghostty-compatible cursor shader system. Yazelix vendors/adapts the shader direction through `config.toml` cursor settings, generated config, and the standalone `#yazelix_cursors` package.
 
 ## Editors And Shells
 
@@ -109,9 +109,9 @@ Plugin catalog: https://github.com/yazi-rs/plugins
 
 ## User Configuration Surfaces
 
-- [`settings.jsonc`](../config_metadata/yazelix_settings.schema.json) — Canonical semantic settings inventory; main settings live under `~/.config/yazelix/settings.jsonc` and cursor presets live under `~/.config/yazelix_cursors/settings.jsonc`
+- [`config.toml`](../config_metadata/yazelix_settings.schema.json) — Canonical semantic settings inventory; main settings live under `~/.config/yazelix/config.toml` and cursor presets live under `~/.config/yazelix_cursors/settings.jsonc`
 - [Yazi configuration](./yazi-configuration.md) — Personal Yazi config overlays under `~/.config/yazelix/yazi/`
-- [Zellij configuration](./zellij-configuration.md) — `settings.jsonc` for Yazelix-owned behavior plus nested native preference and plugin sidecars
+- [Zellij configuration](./zellij-configuration.md) — `config.toml` for Yazelix-owned behavior plus nested native preference and plugin sidecars
 - [Terminal emulators](./terminal_emulators.md) — Mars as the deepest integrated packaged terminal, Ghostty as the most tested mature host-terminal path, and Rio, WezTerm, Kitty, Foot, Ratty, Alacritty, and other capable emulators through `yzx enter`
 - [Managed shell hooks](./customization.md) — Yazelix-only shell hook files for Bash, Zsh, Fish, Nushell, and host-owned xonsh initializers, with managed paths listed in [POSIX/XDG Paths](./posix_xdg.md).
 

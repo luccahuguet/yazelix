@@ -10,7 +10,6 @@ pub use yazelix_cursors::{
 use yazelix_cursors::{load_cursor_settings_jsonc, persist_migrated_cursor_settings_jsonc};
 
 use crate::bridge::{CoreError, ErrorClass};
-use crate::settings_surface::{is_settings_config_path, read_settings_jsonc_value};
 use crate::user_config_paths;
 use serde_json::json;
 use std::fs;
@@ -19,7 +18,6 @@ use std::path::{Path, PathBuf};
 pub trait YazelixCursorRegistryExt: Sized {
     fn load(path: &Path) -> Result<Self, CoreError>;
     fn load_from_cursor_settings_jsonc(path: &Path) -> Result<Self, CoreError>;
-    fn load_from_settings_jsonc(path: &Path) -> Result<Self, CoreError>;
     fn user_config_path(config_dir: &Path) -> PathBuf;
     fn default_config_path(runtime_dir: &Path) -> PathBuf;
 }
@@ -29,15 +27,11 @@ impl YazelixCursorRegistryExt for CursorRegistry {
         if user_config_paths::is_shared_cursor_config_path(path) {
             return CursorRegistry::load_from_cursor_settings_jsonc(path);
         }
-        if is_settings_config_path(path) {
-            return CursorRegistry::load_from_settings_jsonc(path);
-        }
-
         let raw = fs::read_to_string(path).map_err(|source| {
             CoreError::io(
                 "read_cursor_config",
                 "Could not read Yazelix cursor config",
-                "Restore settings.jsonc with `yzx reset config --yes`, then retry.",
+                "Restore the cursor settings file with `yzc init`, then retry.",
                 path.to_string_lossy(),
                 source,
             )
@@ -50,38 +44,6 @@ impl YazelixCursorRegistryExt for CursorRegistry {
             .map_err(|error| cursor_settings_jsonc_error(path, error))?;
         persist_migrated_cursor_settings_jsonc(path, &migration).map_err(CoreError::from)?;
         Ok(registry)
-    }
-
-    fn load_from_settings_jsonc(path: &Path) -> Result<Self, CoreError> {
-        let value = read_settings_jsonc_value(path)?;
-        let Some(cursors) = value.get("cursors").cloned() else {
-            return Err(CoreError::classified(
-                ErrorClass::Config,
-                "missing_cursor_settings",
-                "Yazelix settings.jsonc is missing its cursors section.",
-                "Restore settings.jsonc with `yzx reset config --yes`, then retry.",
-                json!({ "path": path.display().to_string() }),
-            ));
-        };
-        CursorRegistry::parse_json_value(path, cursors).map_err(|error| {
-            if error.code() == "invalid_cursor_registry_json" {
-                CoreError::classified(
-                    ErrorClass::Config,
-                    "invalid_cursor_settings_jsonc",
-                    format!(
-                        "Could not parse Yazelix cursor settings in {}.",
-                        path.display()
-                    ),
-                    "Fix the embedded cursors object in settings.jsonc or move it to ~/.config/yazelix_cursors/settings.jsonc.",
-                    json!({
-                        "path": path.display().to_string(),
-                        "error": format!("{error:?}"),
-                    }),
-                )
-            } else {
-                CoreError::from(error)
-            }
-        })
     }
 
     fn user_config_path(config_dir: &Path) -> PathBuf {

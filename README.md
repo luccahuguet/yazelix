@@ -98,7 +98,7 @@ The supported product in this branch is the v17 Yazelix line
 
 After installation, keep this model in mind:
 
-- Edit `~/.config/yazelix/settings.jsonc` for the main workspace settings
+- Edit `~/.config/yazelix/config.toml` for the main workspace settings
 - Edit only the Mars values you want to override in `~/.config/yazelix/mars/config.toml`
 - Use `Alt+Shift+<key>` as the workspace toggle layer for sidebars and popups, including quick access to tools like LazyGit, the process viewer, the command menu, and the config UI on `Alt+Shift+C`
 - Treat generated runtime state under `~/.local/share/yazelix` as Yazelix-owned output
@@ -118,8 +118,8 @@ Yazelix runs the workspace as a directional Zellij layout: the editor stays cent
 - **Layout cycling:** `Alt+[` and `Alt+]` are reserved for previous/next layout-family cycling, but the packaged runtime ships one managed sidebar family, so those bindings usually keep the visible layout unchanged; see [Layouts](./docs/layouts.md)
 - **Editor targeting:** Opening from the default Yazi file-tree sidebar with Helix or Neovim targets the managed `editor` pane through the pane orchestrator instead of relying on pane scanning heuristics; it reuses that pane when present and creates one titled `editor` when needed
 - **Reveal flow:** `yzx reveal` is the stable editor-integration surface for jumping the current file back into the managed Yazi file tree
-- **Popup commands:** Built-in popup commands live in `zellij.popup_commands`: bottom defaults to [lazygit](https://github.com/jesseduffield/lazygit), top defaults to `yzx config ui` for Yazelix's ratconfig-backed JSONC settings editor, and menu defaults to `yzx menu`; user-defined popups live in `zellij.custom_popups`, with keep-alive [Zenith](https://github.com/bvaisvil/zenith) shipped as the default process information monitor on `Alt+Shift+I`. [bottom](https://github.com/ClementTsang/bottom) and [SysWatch](https://github.com/matthart1983/syswatch) are good alternatives for custom popups
-- **Editor command:** Configure the managed editor with `editor.command` in `settings.jsonc`
+- **Popup commands:** Built-in popup commands live in `zellij.popup_commands`: bottom defaults to [lazygit](https://github.com/jesseduffield/lazygit), top defaults to `yzx config ui` for Yazelix's Ratconfig-backed settings editor, and menu defaults to `yzx menu`; user-defined popups live in `zellij.custom_popups`, with keep-alive [Zenith](https://github.com/bvaisvil/zenith) shipped as the default process information monitor on `Alt+Shift+I`. [bottom](https://github.com/ClementTsang/bottom) and [SysWatch](https://github.com/matthart1983/syswatch) are good alternatives for custom popups
+- **Editor command:** Configure the managed editor with `editor.command` in `config.toml`
 
 ## Advanced: First-Party Child Repositories
 
@@ -138,7 +138,7 @@ Reusable child repos:
 - [yazelix-zellij-pane-orchestrator](https://github.com/luccahuguet/yazelix-zellij-pane-orchestrator) — First-party Zellij plugin wasm that owns managed pane identity, editor/sidebar handoff, focus actions, and layout-family commands, exposed here as `#yazelix_zellij_pane_orchestrator`
 - [yazelix-zellij-popup](https://github.com/luccahuguet/yazelix-zellij-popup) — Standalone Zellij popup plugin for plain-Zellij floating TUI panes, exposed here as `#yazelix_zellij_popup`; its plugin alias and wasm artifact are `yzpp`, and regular Yazelix sessions use it for the popup, command palette, and config UI panes
 - [yazelix-yazi-assets](https://github.com/luccahuguet/yazelix-yazi-assets) — Standalone Yazi flavor and reusable plugin asset pack, exposed here as `#yazelix_yazi_assets` and integrated into the normal Yazelix Yazi runtime
-- [ratconfig](https://github.com/luccahuguet/ratconfig) — Reusable Ratatui JSONC config editor crate consumed by `yzx config ui`; Yazelix keeps settings schema, Home Manager ownership, validation, and runtime apply behavior in this repo
+- [ratconfig](https://github.com/luccahuguet/ratconfig) — Reusable Ratatui config editor crate consumed by `yzx config ui`; Yazelix keeps settings schema, Home Manager ownership, validation, and runtime apply behavior in this repo
 
 Temporary integration forks:
 
@@ -149,7 +149,7 @@ Yazelix is a reproducible terminal IDE built around Zellij, Yazi, and your confi
 
 The workspace is managed by pane identity instead of pane-scanning guesses. Opening from Yazi targets the managed editor, `yzx reveal` jumps the current file back into the file tree, and the `Alt+Shift+H/J/K/L` layer maps naturally to left sidebar, bottom popup, top popup, and right sidebar
 
-Workspace configuration lives in JSONC at `~/.config/yazelix/settings.jsonc`. Mars keeps its packaged config and theme assets as the live base, then recursively overlays the sparse native TOML file at `~/.config/yazelix/mars/config.toml`. `yzx config ui` exposes package defaults and user overrides through Ratconfig
+Workspace configuration lives in TOML at `~/.config/yazelix/config.toml`. Mars keeps its packaged config and theme assets as the live base, then recursively overlays the sparse native TOML file at `~/.config/yazelix/mars/config.toml`. `yzx config ui` exposes package defaults and user overrides through Ratconfig
 
 First-party child packages own focused pieces of the stack: Mars Terminal, screen rendering, cursor presets, the Zellij bar, the popup plugin, the pane orchestrator wasm, and Yazi assets. The normal Yazelix package wires them together automatically
 
@@ -252,7 +252,7 @@ yzx status --versions
 
 Yazelix keeps user-edited config separate from generated runtime output:
 
-- User config lives under `$XDG_CONFIG_HOME/yazelix`, usually `~/.config/yazelix`, with `settings.jsonc` as the canonical main config and `mars/config.toml` as the optional sparse Mars override
+- User config lives under `$XDG_CONFIG_HOME/yazelix`, usually `~/.config/yazelix`, with `config.toml` as the canonical main config and `mars/config.toml` as the optional sparse Mars override
 - Generated runtime output lives under `$XDG_DATA_HOME/yazelix`, usually `~/.local/share/yazelix`, including generated Yazi, Zellij, and Helix config, standalone Ghostty cursor state, logs, profiles, sessions, and freshness records
 - Launchers may set `YAZELIX_CONFIG_DIR` and `YAZELIX_STATE_DIR` explicitly; Home Manager uses those owner-provided paths when it manages Yazelix
 
@@ -266,14 +266,14 @@ Yazelix shines over SSH: the TUI stack (Zellij, Yazi, Helix) runs cleanly withou
 
 Yazelix uses a **layered configuration system** that safely merges your personal settings with Yazelix defaults:
 
-- **Core settings**: Edit `~/.config/yazelix/settings.jsonc` for shell, editor, Zellij, and Yazi settings, edit `~/.config/yazelix_cursors/settings.jsonc` for standalone cursor settings, and run `yzx config ui` to inspect the main settings plus the native Mars TOML document
+- **Core settings**: Edit `~/.config/yazelix/config.toml` for shell, editor, Zellij, and Yazi settings, edit `~/.config/yazelix_cursors/settings.jsonc` for standalone cursor settings, and run `yzx config ui` to inspect the main settings plus the native Mars TOML document
 - **Mars customization**: Put only the values you want to change in `~/.config/yazelix/mars/config.toml`; Mars owns its appearance, opacity, fonts, effects, and `[yazelix.cursor]` values while unspecified package defaults keep following upgrades
-- **Yazi customization**: Use the built-in `yazi` settings in `settings.jsonc` for things like plugins, theme, sorting, and binary overrides, and use the managed Yazi home at `~/.config/yazelix/yazi/` for `yazi.toml`, `keymap.toml`, `init.lua`, packages, plugins, and flavors (see [Yazi Configuration](./docs/yazi-configuration.md))
-- **Zellij customization**: Use the built-in `zellij` settings in `settings.jsonc` for Yazelix-owned behavior, `~/.config/yazelix/zellij/config.kdl` for guarded native preferences, and `~/.config/yazelix/zellij/plugins.kdl` for additive third-party plugins (see [Zellij Configuration](./docs/zellij-configuration.md))
+- **Yazi customization**: Use the built-in `yazi` settings in `config.toml` for things like plugins, theme, sorting, and binary overrides, and use the managed Yazi home at `~/.config/yazelix/yazi/` for `yazi.toml`, `keymap.toml`, `init.lua`, packages, plugins, and flavors (see [Yazi Configuration](./docs/yazi-configuration.md))
+- **Zellij customization**: Use the built-in `zellij` settings in `config.toml` for Yazelix-owned behavior, `~/.config/yazelix/zellij/config.kdl` for guarded native preferences, and `~/.config/yazelix/zellij/plugins.kdl` for additive third-party plugins (see [Zellij Configuration](./docs/zellij-configuration.md))
 - **Status bar widgets**: Configure `[zellij].widget_tray` to order or hide `session`, `editor`, `shell`, `term`, `workspace`, usage, `cpu`, and `ram` widgets, and use `[zellij].widget_frame` plus `[zellij].widget_separator` for compact bar punctuation; cursor preset inspection and editing live in `yzx config ui` instead of the status bar
 - **Your configs persist** across Yazelix updates without git conflicts
 - **Intelligent merging**: Generated Yazi and Zellij runtime configs are rebuilt from Yazelix defaults plus your managed overrides instead of forcing you to edit tracked runtime files
-- **Launch-time config snapshots**: each Yazelix window keeps the `settings.jsonc` snapshot it launched with; edit config whenever you want, then open a new Yazelix window or run `yzx restart` to apply it to live panes. Use repeatable `--with KEY=VALUE` on `yzx launch`, `yzx enter`, or `yzx restart` for session-only settings overrides
+- **Launch-time config snapshots**: each Yazelix window keeps the `config.toml` snapshot it launched with; edit config whenever you want, then open a new Yazelix window or run `yzx restart` to apply it to live panes. Use repeatable `--with KEY=VALUE` on `yzx launch`, `yzx enter`, or `yzx restart` for session-only settings overrides
 
 📖 **[Complete Customization Guide →](./docs/customization.md)** - Detailed instructions for customizing every tool
 
@@ -308,7 +308,7 @@ To use Yazelix tools without starting the full interface (no sidebar, no Zellij)
 ```bash
 yzx env
 ```
-This loads the curated Yazelix tool surface into your current shell, with Yazelix env vars set and clean messaging, and automatically launches the shell configured in your `settings.jsonc`; if you prefer the legacy behavior, run `yzx env --no-shell` to stay in your current shell
+This loads the curated Yazelix tool surface into your current shell, with Yazelix env vars set and clean messaging, and automatically launches the shell configured in your `config.toml`; if you prefer the legacy behavior, run `yzx env --no-shell` to stay in your current shell
 
 Internal runtime helpers stay private under `libexec/` instead of leaking into your interactive PATH, so host-distributed apps launched from that shell do not accidentally inherit Yazelix-owned core userland tools ahead of the system PATH
 
@@ -329,7 +329,7 @@ See the full catalog of tools and integrations in the Yazelix Collection:
 - **Environment setup**: Proper paths, variables, and shell configurations
 
 **Customize Your Installation:**
-If you followed [step 3 in the installation guide](./docs/installation.md#step-3-configure-your-installation-optional), you already have your `~/.config/yazelix/settings.jsonc` config file ready, you can modify it anytime and restart Yazelix to apply changes. Mars customization lives in `~/.config/yazelix/mars/config.toml`; standalone cursor presets live in `~/.config/yazelix_cursors/settings.jsonc`
+If you followed [step 3 in the installation guide](./docs/installation.md#step-3-configure-your-installation-optional), you already have your `~/.config/yazelix/config.toml` config file ready, you can modify it anytime and restart Yazelix to apply changes. Mars customization lives in `~/.config/yazelix/mars/config.toml`; standalone cursor presets live in `~/.config/yazelix_cursors/settings.jsonc`
 
 **Terminal Emulator Selection:**
 - **Mars**: packaged Rust terminal fork with a package-owned native base plus sparse user overrides, the Yazelix Zellij Kitty graphics bridge, and an agent-driven development focus
@@ -361,7 +361,7 @@ Run `yzx help` for the live command list
 - `yzx enter` - Start Yazelix in the current terminal
 - `yzx launch --path DIR` - Launch from a specific directory
 - `yzx launch --home` - Launch from the home directory
-- `yzx launch --config ./minimal.jsonc` - Start one window from an alternate complete settings file
+- `yzx launch --config ./minimal.toml` - Start one window from an alternate complete settings file
 - `yzx launch --with editor.command=nvim` - Override one settings field for this window only
 - `yzx launch --verbose` - Print detailed launch diagnostics
 
@@ -374,7 +374,7 @@ Run `yzx help` for the live command list
 
 - `yzx popup <program> [args...]` - Open a one-off command in a transient popup pane
 - `yzx menu --popup` - Open the popup command palette, usually through `Alt+Shift+M`
-- `yzx config ui` - Open Yazelix's ratconfig-backed JSONC settings editor, usually through `Alt+Shift+C`
+- `yzx config ui` - Open Yazelix's Ratconfig-backed settings editor, usually through `Alt+Shift+C`
 - `Alt+Shift+I` - Open the bundled Zenith process information popup
 - `yzx sidebar refresh` - Refresh the managed Yazi sidebar file tree and status widgets
 
@@ -465,7 +465,7 @@ Yazelix uses Zellij as the workspace layer, so the most important bindings are g
 | `Ctrl+Alt+J` / `Ctrl+Alt+K` | Move the current pane down or up |
 | `Alt+Shift+F` | Toggle pane fullscreen |
 
-Yazi still has its own keymap too: press `~` inside Yazi for its built-in help, remap Yazelix-owned Yazi integration keys with `yazi.keybindings` in `settings.jsonc`, and use the most useful file-tree sidebar flows such as `Enter` to open through the managed editor integration, `Alt+z` to pick a directory with zoxide and retarget the workspace, and `Alt+p` to open the selected directory in a new pane as the current tab workspace root
+Yazi still has its own keymap too: press `~` inside Yazi for its built-in help, remap Yazelix-owned Yazi integration keys with `yazi.keybindings` in `config.toml`, and use the most useful file-tree sidebar flows such as `Enter` to open through the managed editor integration, `Alt+z` to pick a directory with zoxide and retarget the workspace, and `Alt+p` to open the selected directory in a new pane as the current tab workspace root
 
 Helix and Neovim integration is intentionally small: use `Ctrl+y`, `Ctrl+Shift+Y`, and `Alt+Shift+H` for workspace navigation, use `Alt+r` / `yzx reveal` when you want the editor to reveal the current file in the managed Yazi file tree, and see [docs/helix_keybindings.md](./docs/helix_keybindings.md) and [docs/neovim_keybindings.md](./docs/neovim_keybindings.md) for editor-local setup details
 

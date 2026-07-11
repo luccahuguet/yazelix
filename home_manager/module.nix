@@ -14,6 +14,7 @@ with lib;
 
 let
   cfg = config.programs.yazelix;
+  tomlFormat = pkgs.formats.toml { };
   defaultTerminal = "mars";
   terminalVariants = [ "mars" ];
   terminalDescriptionBullets =
@@ -25,9 +26,9 @@ let
   ];
   settingsContract = import ./settings_contract.nix { inherit cfg lib; };
   inherit (settingsContract)
+    configTomlValue
     cursorSettingsJsonc
     mkMainContractOption
-    settingsJsonc
     ;
   nativeConfig =
     name: path: value:
@@ -76,7 +77,8 @@ in
     runtimeIntegration.baseConfig
     runtimeIntegration.desktopConfig
     (mkIf cfg.manage_config {
-      xdg.configFile."yazelix/settings.jsonc".text = settingsJsonc;
+      xdg.configFile."yazelix/config.toml".source =
+        tomlFormat.generate "yazelix-config.toml" configTomlValue;
     })
     (mkIf cfg.manage_cursor_config {
       xdg.configFile."yazelix_cursors/settings.jsonc".text = cursorSettingsJsonc;

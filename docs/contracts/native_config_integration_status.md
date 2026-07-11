@@ -4,7 +4,7 @@
 
 Yazelix reports native-config integration with explicit status labels instead of silently adopting user-managed files.
 
-`settings.jsonc` remains the canonical semantic settings source. Tool-native files can be imported, used read-only where a tool-specific contract allows it, or left as user-owned native config. Import and export are explicit user actions.
+`config.toml` remains the canonical semantic settings source. Tool-native files can be imported, used read-only where a tool-specific contract allows it, or left as user-owned native config. Import and export are explicit user actions.
 
 ## Status Vocabulary
 
@@ -12,7 +12,7 @@ The config UI and doctor should use the same status vocabulary.
 
 | Status | User label | Meaning |
 | --- | --- | --- |
-| `canonical_settings` | Canonical Yazelix settings | `settings.jsonc` is the semantic source for Yazelix behavior |
+| `canonical_settings` | Canonical Yazelix settings | `config.toml` is the semantic source for Yazelix behavior |
 | `managed_default` | Yazelix default | No managed sidecar exists; Yazelix generates behavior from packaged defaults and semantic settings |
 | `managed_override` | Yazelix-managed override | A sidecar under `~/.config/yazelix/` customizes the generated runtime config |
 | `imported_override` | Imported into Yazelix | A native file was copied through an explicit Yazelix import action and is now a managed override |
@@ -41,7 +41,7 @@ The config UI and doctor should use the same status vocabulary.
 
 Surface:
 
-- `~/.config/yazelix/settings.jsonc`
+- `~/.config/yazelix/config.toml`
 
 Status:
 

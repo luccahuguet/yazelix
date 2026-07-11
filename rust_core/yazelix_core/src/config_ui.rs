@@ -20,15 +20,12 @@ use crate::native_config_status::{
 };
 use crate::runtime_apply_mode::RuntimeApplyMode;
 use crate::runtime_component_enabled;
-use crate::settings_contract::reconcile_settings_contract_text;
 use crate::settings_jsonc_patch::{
     SettingsJsoncPatchMutation, SettingsJsoncPatchOutcome, set_settings_jsonc_value_text,
     unset_settings_jsonc_value_text,
 };
-use crate::settings_surface::{SETTINGS_SCHEMA_FILENAME, render_default_settings_jsonc};
-use crate::settings_surface::{
-    is_settings_config_path, parse_jsonc_value, read_settings_jsonc_value,
-};
+use crate::settings_surface::{SETTINGS_SCHEMA_FILENAME, render_default_config};
+use crate::settings_surface::{is_settings_config_path, parse_config_value, read_config_value};
 use crate::user_config_paths::{self, CURRENT_MANAGED_CONFIG_FILE_NAMES, SETTINGS_CONFIG};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};

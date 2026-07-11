@@ -22,7 +22,7 @@ let
     "docs"
     "docs/upgrade_notes.toml"
     "yazelix_cursors_default.toml"
-    "settings_default.jsonc"
+    "config_default.toml"
   ];
   cursorRuntimePaths = [
     "yazelix_cursors_default.toml"

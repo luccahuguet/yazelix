@@ -32,8 +32,8 @@ fn write_runtime_layout(runtime: &Path) {
     )
     .expect("config ui metadata");
     fs::write(
-        runtime.join("settings_default.jsonc"),
-        include_str!("../../../settings_default.jsonc"),
+        runtime.join("config_default.toml"),
+        include_str!("../../../config_default.toml"),
     )
     .expect("main defaults");
     fs::write(runtime.join("runtime_variant"), "mars\n").expect("runtime variant");
@@ -78,12 +78,12 @@ fn reports_sidecars_and_home_manager_read_only_state() {
     write_runtime_layout(runtime.path());
     let hm_dir = config.path().join("profile-home-manager-files");
     fs::create_dir_all(&hm_dir).expect("hm dir");
-    let hm_settings = hm_dir.join("settings.jsonc");
-    fs::write(&hm_settings, "{}").expect("hm settings");
+    let hm_settings = hm_dir.join("config.toml");
+    fs::write(&hm_settings, "[core]\ndebug_mode = false\n").expect("hm settings");
     let mut permissions = fs::metadata(&hm_settings).expect("metadata").permissions();
     permissions.set_readonly(true);
     fs::set_permissions(&hm_settings, permissions).expect("readonly");
-    symlink(&hm_settings, config.path().join("settings.jsonc")).expect("settings symlink");
+    symlink(&hm_settings, config.path().join("config.toml")).expect("settings symlink");
     fs::create_dir_all(config.path().join("zellij")).expect("zellij dir");
     fs::write(
         config.path().join("zellij/config.kdl"),
@@ -120,21 +120,25 @@ fn reports_sidecars_and_home_manager_read_only_state() {
     assert!(!yazi_keymap.present);
 }
 
-// Defends: malformed settings.jsonc stops the config UI before rendering stale or misleading values.
+// Defends: malformed config.toml stops the config UI before rendering stale or misleading values.
 #[test]
-fn rejects_invalid_settings_jsonc() {
+fn rejects_invalid_config_toml() {
     let runtime = tempdir().expect("runtime");
     let config = tempdir().expect("config");
     write_runtime_layout(runtime.path());
-    fs::write(config.path().join("settings.jsonc"), r#"{ "core": "#).expect("settings");
+    fs::write(
+        config.path().join("config.toml"),
+        "[core\ndebug_mode = false\n",
+    )
+    .expect("settings");
 
     let error = build_config_ui_model(&request(
         runtime.path().to_path_buf(),
         config.path().to_path_buf(),
     ))
-    .expect_err("invalid jsonc");
+    .expect_err("invalid toml");
 
-    assert_eq!(error.code(), "invalid_settings_jsonc");
+    assert_eq!(error.code(), "invalid_main_config_toml");
 }
 
 // Defends: blocking config diagnostics are visible in the config UI model instead of making the read-only browser unusable for stale configs.
@@ -144,8 +148,8 @@ fn marks_blocking_diagnostics_without_aborting_model_build() {
     let config = tempdir().expect("config");
     write_runtime_layout(runtime.path());
     fs::write(
-        config.path().join("settings.jsonc"),
-        r#"{ "core": { "debug_mode": "yes" } }"#,
+        config.path().join("config.toml"),
+        "[core]\ndebug_mode = \"yes\"\n",
     )
     .expect("settings");
 

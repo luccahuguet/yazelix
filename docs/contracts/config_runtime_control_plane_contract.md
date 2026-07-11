@@ -29,7 +29,7 @@ of the protocol pressure points at once:
 - the explicit runtime-env derivation boundary
 - `yzx_core` helper resolution and transport failure behavior for the
   remaining helper-only slices
-- config-surface parity between `settings_default.jsonc` and
+- config-surface parity between `config_default.toml` and
   `home_manager/module.nix`
 - pilot findings about weak traceability and duplicate-owner debt
 - no product behavior changes
@@ -91,7 +91,7 @@ of the protocol pressure points at once:
 - Status: live
 - Owner: `config_metadata/main_config_contract.toml` plus the config-surface
   validators
-- Statement: The shipped `settings_default.jsonc` template and
+- Statement: The shipped `config_default.toml` template and
   `home_manager/module.nix` default-option contract must stay synchronized
   through maintained config metadata and validation, not through ad hoc
   fallbacks or divergent duplicate defaults.

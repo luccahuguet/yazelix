@@ -3,12 +3,12 @@
 Yazelix has one semantic owner and two native Zellij inputs:
 
 ```text
-~/.config/yazelix/settings.jsonc
+~/.config/yazelix/config.toml
 ~/.config/yazelix/zellij/config.kdl
 ~/.config/yazelix/zellij/plugins.kdl
 ```
 
-`settings.jsonc` owns Yazelix workspace behavior. `zellij/config.kdl` owns safe native preferences. `zellij/plugins.kdl` owns additive third-party plugins. Generated runtime files under `~/.local/share/yazelix/configs/zellij/` are derived state and must not be edited.
+`config.toml` owns Yazelix workspace behavior. `zellij/config.kdl` owns safe native preferences. `zellij/plugins.kdl` owns additive third-party plugins. Generated runtime files under `~/.local/share/yazelix/configs/zellij/` are derived state and must not be edited.
 
 ## Native preferences
 
@@ -33,7 +33,7 @@ The sidecar uses a first-token ownership guard. It rejects nodes owned by runtim
 - `env`, `session_name`, and `attach_to_session`
 - theme, release-note, force-close, and session-serialization policy
 
-While `settings.jsonc` still owns `zellij.disable_tips`, `zellij.pane_frames`, `zellij.rounded_corners`, and `zellij.default_mode`, the native sidecar also rejects `show_startup_tips`, `pane_frames`, `default_mode`, and `ui`. The root TOML migration will move those values and remove the temporary denials in one transaction.
+The native sidecar owns `show_startup_tips`, `pane_frames`, `default_mode`, and `ui`. A one-time root-config migration carries the retired semantic values into this file before removing them from `config.toml`.
 
 ## Third-party plugins
 
@@ -53,30 +53,25 @@ Only `plugins` and `load_plugins` are accepted at the top level. The runtime-own
 
 ## Yazelix-owned behavior
 
-Keep these surfaces in `settings.jsonc`:
+Keep these surfaces in `config.toml`:
 
 - semantic workspace bindings in `zellij.keybindings`
 - curated native conflict policy in `zellij.native_keybindings`
 - built-in and custom popup commands
 - sidebars, widgets, status-bar labels, and screen saver behavior
-- theme, pane frames, rounded corners, startup tips, and default mode during the current JSONC phase
+- Yazelix-generated theme selection
 - Kitty keyboard protocol selection
 
 For example:
 
-```jsonc
-{
-  "zellij": {
-    "theme": "dracula",
-    "pane_frames": true,
-    "rounded_corners": true,
-    "codex_usage_periods": ["5h", "week"],
-    "keybindings": {
-      "bottom_popup": ["Alt Shift J"],
-      "toggle_left_sidebar": ["Alt Shift H"]
-    }
-  }
-}
+```toml
+[zellij]
+theme = "dracula"
+codex_usage_periods = ["5h", "week"]
+
+[zellij.keybindings]
+bottom_popup = ["Alt Shift J"]
+toggle_left_sidebar = ["Alt Shift H"]
 ```
 
 Yazelix owns its generated layout, shell selection, session policy, keybinding integration, status bar, popup plugin, and pane orchestrator. Use plain `zellij` outside Yazelix for full native keymap or layout ownership.

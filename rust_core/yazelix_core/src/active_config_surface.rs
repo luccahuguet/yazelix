@@ -4,7 +4,7 @@ use crate::bridge::{CoreError, ErrorClass};
 use crate::ghostty_cursor_registry::DEFAULT_CURSOR_CONFIG_FILENAME;
 use crate::runtime_component_enabled;
 use crate::settings_surface::{
-    DEFAULT_SETTINGS_CONFIG_FILENAME, ensure_settings_config_with_cursor_component,
+    DEFAULT_MAIN_CONFIG_FILENAME, ensure_settings_config_with_cursor_component,
     settings_schema_path, settings_surface_paths,
 };
 use serde::Serialize;
@@ -45,7 +45,7 @@ pub fn primary_config_paths(runtime_dir: &Path, config_dir: &Path) -> PrimaryCon
     let user_cursor_config = settings_paths.shared_cursor_config;
     let old_flat_user_config = settings_paths.old_main_config;
     let legacy_user_config = settings_paths.old_nested_main_config;
-    let default_config_path = runtime_dir.join(DEFAULT_SETTINGS_CONFIG_FILENAME);
+    let default_config_path = runtime_dir.join(DEFAULT_MAIN_CONFIG_FILENAME);
     let default_cursor_config_path = runtime_dir.join(DEFAULT_CURSOR_CONFIG_FILENAME);
     let contract_path = runtime_dir
         .join("config_metadata")
@@ -73,7 +73,7 @@ pub fn validate_primary_config_surface(paths: &PrimaryConfigPaths) -> Result<(),
             ErrorClass::Config,
             "stale_old_settings_input",
             "Yazelix found old settings input next to the canonical config surface.",
-            "Move the old TOML config aside and keep settings.jsonc as the only Yazelix settings source.",
+            "Move the old TOML config aside and keep config.toml as the only Yazelix settings source.",
             json!({
                 "user_config": paths.user_config.display().to_string(),
                 "old_flat_user_config": paths.old_flat_user_config.display().to_string(),
@@ -113,7 +113,7 @@ pub fn resolve_active_config_paths(
                 ErrorClass::Config,
                 "missing_default_config",
                 "No Yazelix settings file found.",
-                "Restore settings.jsonc with `yzx reset config`, or reinstall Yazelix if the shipped defaults are missing from the runtime.",
+                "Restore config.toml with `yzx reset config`, or reinstall Yazelix if the shipped defaults are missing from the runtime.",
                 json!({}),
             ));
         }
@@ -153,16 +153,11 @@ mod tests {
     use std::fs;
     use tempfile::tempdir;
 
-    const DEFAULT_SETTINGS_FIXTURE: &str = r#"{
-  "core": {
-    "welcome_style": "minimal"
-  }
-}
-"#;
+    const DEFAULT_SETTINGS_FIXTURE: &str = "[core]\nwelcome_style = \"minimal\"\n";
 
     fn write_runtime_layout(runtime_dir: &Path) {
         fs::write(
-            runtime_dir.join("settings_default.jsonc"),
+            runtime_dir.join("config_default.toml"),
             DEFAULT_SETTINGS_FIXTURE,
         )
         .expect("write default config");
@@ -189,7 +184,7 @@ mod tests {
         .expect("write runtime component manifest");
     }
 
-    // Defends: Rust active-config-surface resolution bootstraps settings.jsonc when the canonical surface is missing.
+    // Defends: Rust active-config-surface resolution bootstraps config.toml when the canonical surface is missing.
     #[test]
     fn bootstraps_missing_managed_config() {
         let runtime = tempdir().expect("runtime dir");
@@ -198,11 +193,11 @@ mod tests {
 
         let resolved = resolve_active_config_paths(runtime.path(), config.path(), None).unwrap();
 
-        assert_eq!(resolved.user_config, config.path().join("settings.jsonc"));
+        assert_eq!(resolved.user_config, config.path().join("config.toml"));
         assert_eq!(resolved.config_file, resolved.user_config);
         let rendered = fs::read_to_string(&resolved.config_file).unwrap();
-        assert!(rendered.contains("\"core\""));
-        assert!(!rendered.contains("\"cursors\""));
+        assert!(rendered.contains("[core]"));
+        assert!(!rendered.contains("[cursors]"));
         assert!(resolved.user_cursor_config.exists());
         assert_eq!(
             resolved.user_cursor_config,
@@ -216,7 +211,7 @@ mod tests {
         let runtime = tempdir().expect("runtime dir");
         let config = tempdir().expect("config dir");
         fs::write(
-            runtime.path().join("settings_default.jsonc"),
+            runtime.path().join("config_default.toml"),
             DEFAULT_SETTINGS_FIXTURE,
         )
         .expect("write default config");
@@ -244,14 +239,14 @@ mod tests {
         assert!(!resolved.user_cursor_config.exists());
     }
 
-    // Defends: Rust active-config-surface resolution rejects stale old-format inputs when settings.jsonc already exists.
+    // Defends: Rust active-config-surface resolution rejects stale old-format inputs when config.toml already exists.
     #[test]
     fn rejects_settings_jsonc_with_old_inputs() {
         let runtime = tempdir().expect("runtime dir");
         let config = tempdir().expect("config dir");
         write_runtime_layout(runtime.path());
 
-        fs::write(config.path().join("settings.jsonc"), "{}").expect("write settings config");
+        fs::write(config.path().join("config.toml"), "{}").expect("write settings config");
         fs::write(config.path().join("yazelix.toml"), "[core]\n").expect("write old config");
 
         let error = resolve_active_config_paths(runtime.path(), config.path(), None).unwrap_err();
@@ -273,7 +268,7 @@ mod tests {
 
         let error = resolve_active_config_paths(runtime.path(), config.path(), None).unwrap_err();
         assert_eq!(error.code(), "stale_old_settings_input");
-        assert!(!config.path().join("settings.jsonc").exists());
+        assert!(!config.path().join("config.toml").exists());
         assert!(legacy_config.exists());
     }
 

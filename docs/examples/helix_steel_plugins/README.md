@@ -21,24 +21,12 @@ Minimal command plugin:
 
 Config entry:
 
-```jsonc
-{
-  "helix": {
-    "steel_plugins": {
-      "enabled": ["splash", "spacemacs_theme"],
-      "extra": [
-        {
-          "id": "hello_yazelix",
-          "source": "hello_yazelix.scm",
-          "public_commands": ["hello-yazelix"],
-          "command_descriptions": {
-            "hello-yazelix": "Show a message from a custom Steel plugin"
-          }
-        }
-      ]
-    }
-  }
-}
+```toml
+[helix]
+
+[helix.steel_plugins]
+enabled = ["splash", "spacemacs_theme"]
+extra = [{ id = "hello_yazelix", source = "hello_yazelix.scm", public_commands = ["hello-yazelix"], command_descriptions = { hello-yazelix = "Show a message from a custom Steel plugin" } }]
 ```
 
 After regeneration, run `:hello-yazelix` in Helix

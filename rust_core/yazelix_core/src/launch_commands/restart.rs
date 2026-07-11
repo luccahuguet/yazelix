@@ -160,7 +160,7 @@ fn print_restart_help() {
     println!();
     println!("Options:");
     println!("  -s, --skip    Skip the welcome screen for the restarted window");
-    println!("  --config      Use an alternate complete settings.jsonc for the restarted window");
+    println!("  --config      Use an alternate complete config.toml for the restarted window");
     println!("  --with        Apply one session-only settings override, repeatable");
 }
 

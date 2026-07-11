@@ -12,7 +12,7 @@ The changelog and structured upgrade notes are passive surfaces. Users also need
 
 This contract covers:
 
-- persisted last-seen version state outside `settings.jsonc`
+- persisted last-seen version state outside `config.toml`
 - current-version note selection from `docs/upgrade_notes.toml`
 - first-run suppression on repeated launches
 - manual reopen and installed-runtime comparison via `yzx whats_new`
@@ -38,7 +38,7 @@ If the current version has no release-note entry, startup should stay quiet inst
 
 - showing upgrade notes on every launch
 - scraping `CHANGELOG.md` directly at runtime
-- mutating `settings.jsonc` automatically from the summary path
+- mutating `config.toml` automatically from the summary path
 - showing the full historical changelog during startup
 - contacting the network to discover newer release notes
 - restoring migration-registry probing to the v15 upgrade-summary path

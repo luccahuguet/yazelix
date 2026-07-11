@@ -19,7 +19,7 @@ The screen renderer is a reusable terminal animation crate. Keeping it in an ext
 ## Behavior
 
 - The `yzs` binary runs outside Zellij and outside a Yazelix session.
-- The binary does not read `settings.jsonc` or session config snapshots.
+- The binary does not read `config.toml` or session config snapshots.
 - The binary owns a small explicit CLI: optional style plus optional Game of Life cell style.
 - The binary enters alternate-screen/raw mode, renders frames, responds to terminal resize, exits on keypress, and restores terminal state on normal exit.
 - The binary supports the non-image animation-engine styles available in the screen crate: `boids`, `boids_predator`, `boids_schools`, `mandelbrot`, `game_of_life_gliders`, `game_of_life_oscillators`, `game_of_life_bloom`, and `random`.

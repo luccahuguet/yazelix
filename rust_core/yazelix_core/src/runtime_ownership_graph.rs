@@ -126,7 +126,7 @@ fn command_owners() -> Vec<CommandOwnerEntry> {
 fn config_owners() -> Vec<SurfaceOwnerEntry> {
     vec![
         SurfaceOwnerEntry {
-            surface: "~/.config/yazelix/settings.jsonc".to_string(),
+            surface: "~/.config/yazelix/config.toml".to_string(),
             owner: "Rust yazelix_core config normalization and settings surface".to_string(),
             source: "config_metadata/main_config_contract.toml".to_string(),
             validation: vec!["yzx_repo_validator validate-config-surface-contract".to_string()],

@@ -506,7 +506,7 @@ fn invalid_normalized_runtime_field(setting_path: &str, expected: &str) -> CoreE
         ErrorClass::Config,
         "invalid_pane_orchestrator_runtime_config_field",
         format!("Normalized config field {setting_path} is not a {expected}."),
-        "Fix settings.jsonc, then retry.",
+        "Fix config.toml, then retry.",
         json!({ "field": setting_path, "expected": expected }),
     )
 }
@@ -626,7 +626,7 @@ apply_mode = "generated_runtime_refresh"
             setting_path: "yazi.theme".to_string(),
             contract_path: contract,
             runtime_materialization: Some(RuntimeMaterializationPlanRequest {
-                config_path: missing.join("settings.jsonc"),
+                config_path: missing.join("config.toml"),
                 default_config_path: missing.join("default.toml"),
                 contract_path: missing.join("contract.toml"),
                 runtime_dir: missing.join("runtime"),
@@ -659,25 +659,25 @@ apply_mode = "generated_runtime_refresh"
     fn builds_pane_orchestrator_runtime_reload_payload_from_saved_config() {
         let repo = repo_root();
         let temp = tempdir().expect("tempdir");
-        let config_path = temp.path().join("settings.jsonc");
-        let default_config_path = temp.path().join("settings_default.jsonc");
+        let config_path = temp.path().join("config.toml");
+        let default_config_path = temp.path().join("config_default.toml");
         let contract_path = temp.path().join("main_config_contract.toml");
         let zellij_config_dir = temp.path().join("configs/zellij");
         std::fs::create_dir_all(&zellij_config_dir).unwrap();
-        std::fs::copy(repo.join("settings_default.jsonc"), &default_config_path).unwrap();
+        std::fs::copy(repo.join("config_default.toml"), &default_config_path).unwrap();
         std::fs::copy(
             repo.join("config_metadata/main_config_contract.toml"),
             &contract_path,
         )
         .unwrap();
         let mut settings =
-            crate::settings_surface::read_settings_jsonc_value(&default_config_path).unwrap();
+            crate::settings_surface::read_config_value(&default_config_path).unwrap();
         settings["zellij"]["screen_saver_enabled"] = json!(true);
         settings["zellij"]["screen_saver_idle_seconds"] = json!(120);
         settings["zellij"]["screen_saver_style"] = json!("mandelbrot");
         std::fs::write(
             &config_path,
-            format!("{}\n", serde_json::to_string_pretty(&settings).unwrap()),
+            crate::settings_surface::render_config_value(&settings).unwrap(),
         )
         .unwrap();
         std::fs::write(

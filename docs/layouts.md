@@ -5,26 +5,23 @@ Yazelix ships one managed sidebar family from the in-tree `rust_core/yazelix_zel
 - `yzx_side.kdl` for sidebar mode
 - `yzx_side.swap.kdl` for sidebar swap layouts
 
-Set the file-open behavior in `settings.jsonc`:
+Set the file-open behavior in `config.toml`:
 
-```jsonc
-{
-  "editor": {
-    "hide_sidebar_on_file_open": false
-  },
-  "workspace": {
-    "left_sidebar": {
-      "command": "yzx",
-      "args": ["sidebar", "yazi"],
-      "width_percent": 20
-    },
-    "right_sidebar": {
-      "command": "yzx",
-      "args": ["agent"],
-      "width_percent": 40
-    }
-  }
-}
+```toml
+[editor]
+hide_sidebar_on_file_open = false
+
+[workspace]
+
+[workspace.left_sidebar]
+command = "yzx"
+args = ["sidebar", "yazi"]
+width_percent = 20
+
+[workspace.right_sidebar]
+command = "yzx"
+args = ["agent"]
+width_percent = 40
 ```
 
 `editor.hide_sidebar_on_file_open = true` hides the managed sidebar after opening a file from Yazi while keeping new tabs on the normal managed-sidebar startup layout. `Alt+Shift+H`, `Ctrl+y`, `Ctrl+Shift+Y`, and `yzx reveal` remain available because the managed side panes still exist.

@@ -1,6 +1,7 @@
 // Test lane: default
 use super::*;
 use crate::ghostty_cursor_registry::DEFAULT_CURSOR_CONFIG_FILENAME;
+use crate::settings_surface::render_config_value;
 use tempfile::{TempDir, tempdir};
 
 fn write_runtime_layout(runtime: &Path) {
@@ -27,8 +28,8 @@ fn write_runtime_layout(runtime: &Path) {
     )
     .expect("config ui metadata");
     fs::write(
-        runtime.join("settings_default.jsonc"),
-        include_str!("../../../../settings_default.jsonc"),
+        runtime.join("config_default.toml"),
+        include_str!("../../../../config_default.toml"),
     )
     .expect("main defaults");
     fs::write(runtime.join("runtime_variant"), "mars\n").expect("runtime variant");
@@ -86,7 +87,7 @@ impl Fixture {
     }
 
     fn settings_path(&self) -> PathBuf {
-        self.config.path().join("settings.jsonc")
+        self.config.path().join("config.toml")
     }
 
     fn cursor_path(&self) -> PathBuf {
@@ -106,19 +107,14 @@ impl Fixture {
         prefix: &str,
         mutate: impl FnOnce(&mut JsonValue),
     ) -> PathBuf {
-        let mut value =
-            read_settings_jsonc_value(&self.runtime.path().join("settings_default.jsonc"))
-                .expect("default settings");
+        let mut value = read_config_value(&self.runtime.path().join("config_default.toml"))
+            .expect("default settings");
         mutate(&mut value);
         let path = self.settings_path();
         fs::create_dir_all(self.config.path()).expect("config dir");
         fs::write(
             &path,
-            format!(
-                "{}{}\n",
-                prefix,
-                serde_json::to_string_pretty(&value).expect("settings json")
-            ),
+            format!("{prefix}{}", render_config_value(&value).unwrap()),
         )
         .expect("settings");
         path
@@ -128,11 +124,10 @@ impl Fixture {
     fn write_home_manager_settings(&self) -> PathBuf {
         let hm_dir = self.config.path().join("profile-home-manager-files");
         fs::create_dir_all(&hm_dir).expect("home manager dir");
-        let hm_settings = hm_dir.join("settings.jsonc");
+        let hm_settings = hm_dir.join("config.toml");
         fs::write(
             &hm_settings,
-            render_default_settings_jsonc(&self.runtime.path().join("settings_default.jsonc"))
-                .unwrap(),
+            render_default_config(&self.runtime.path().join("config_default.toml")).unwrap(),
         )
         .expect("home manager settings");
         std::os::unix::fs::symlink(&hm_settings, self.settings_path()).expect("settings symlink");
@@ -350,7 +345,7 @@ fn model_exposes_source_metadata_and_field_source_ids() {
         .find(|source| source.tab == "general")
         .expect("general source");
     assert_eq!(general.id, SETTINGS_SOURCE_ID);
-    assert_eq!(general.label, "settings.jsonc");
+    assert_eq!(general.label, "config.toml");
     assert_eq!(general.path, fixture.settings_path());
 
     let cursors = model
@@ -542,7 +537,7 @@ fn cursor_enabled_cursors_opens_multi_choice_picker_and_writes_cursor_config() {
     app.handle_key(ConfigUiKey::Enter);
 
     assert!(app.edit.is_none());
-    let value = read_settings_jsonc_value(&cursor_path).expect("cursor settings jsonc");
+    let value = read_config_value(&cursor_path).expect("cursor settings jsonc");
     let enabled = get_json_path(&value, "enabled_cursors")
         .and_then(JsonValue::as_array)
         .expect("enabled cursors");
@@ -603,7 +598,7 @@ fn keybinding_action_row_writes_single_binding_list() {
     app.handle_key(ConfigUiKey::Enter);
 
     assert!(app.edit.is_none());
-    let value = read_settings_jsonc_value(&settings_path).expect("settings jsonc");
+    let value = read_config_value(&settings_path).expect("settings jsonc");
     assert_eq!(
         get_json_path(&value, "zellij.keybindings.bottom_popup"),
         Some(&json!(["Alt Shift X"]))
@@ -678,7 +673,7 @@ fn custom_popup_child_rows_write_parent_popup_list() {
     )
     .expect("write keep alive");
 
-    let value = read_settings_jsonc_value(&settings_path).expect("settings jsonc");
+    let value = read_config_value(&settings_path).expect("settings jsonc");
     assert_eq!(
         get_json_path(&value, "zellij.custom_popups"),
         Some(&json!([
@@ -698,7 +693,7 @@ fn custom_popup_child_rows_write_parent_popup_list() {
     );
 }
 
-// Regression: adding or removing custom popups must use the parent list patch, not synthetic JSON paths that do not exist in settings.jsonc.
+// Regression: adding or removing custom popups must use the parent list patch, not synthetic JSON paths that do not exist in config.toml.
 #[test]
 fn custom_popup_add_and_remove_rows_patch_parent_popup_list() {
     let fixture = Fixture::new();
@@ -714,7 +709,7 @@ fn custom_popup_add_and_remove_rows_patch_parent_popup_list() {
     select_field_path(&mut app, "zellij.custom_popups.zenith");
     app.handle_key(ConfigUiKey::Char('u'));
 
-    let value = read_settings_jsonc_value(&settings_path).expect("settings jsonc");
+    let value = read_config_value(&settings_path).expect("settings jsonc");
     assert_eq!(
         get_json_path(&value, "zellij.custom_popups"),
         Some(&json!([
@@ -738,7 +733,7 @@ fn custom_popup_add_and_remove_rows_patch_parent_popup_list() {
     );
 }
 
-// Regression: the config UI must reject custom popup keybinding conflicts through the same materialization rule before it writes settings.jsonc.
+// Regression: the config UI must reject custom popup keybinding conflicts through the same materialization rule before it writes config.toml.
 #[test]
 fn custom_popup_duplicate_keybinding_fails_before_write() {
     let fixture = Fixture::new();
@@ -953,7 +948,7 @@ fn enum_string_list_picker_toggles_subvalues_with_space() {
     app.handle_key(ConfigUiKey::Enter);
 
     assert!(app.edit.is_none());
-    let value = read_settings_jsonc_value(&settings_path).expect("settings jsonc");
+    let value = read_config_value(&settings_path).expect("settings jsonc");
     assert_eq!(
         get_json_path(&value, "zellij.widget_tray"),
         Some(&json!([
@@ -967,7 +962,7 @@ fn enum_string_list_picker_toggles_subvalues_with_space() {
     );
 }
 
-// Defends: enum rows open a single-select picker that can be driven with hjkl and saved through the JSONC patcher.
+// Defends: enum rows open a single-select picker that can be driven with hjkl and saved through the Ratconfig TOML adapter.
 #[test]
 fn scalar_enum_enter_opens_single_select_picker() {
     let fixture = Fixture::new();
@@ -993,7 +988,7 @@ fn scalar_enum_enter_opens_single_select_picker() {
     app.handle_key(ConfigUiKey::Enter);
 
     assert!(app.edit.is_none());
-    let value = read_settings_jsonc_value(&settings_path).expect("settings jsonc");
+    let value = read_config_value(&settings_path).expect("settings jsonc");
     assert_eq!(
         get_json_path(&value, "appearance.mode"),
         Some(&json!("light"))
@@ -1031,7 +1026,7 @@ fn bool_field_stages_before_persisting_and_can_cancel() {
     app.handle_key(ConfigUiKey::Enter);
 
     assert!(app.edit.is_none());
-    let value = read_settings_jsonc_value(&settings_path).expect("settings jsonc");
+    let value = read_config_value(&settings_path).expect("settings jsonc");
     assert_eq!(
         get_json_path(&value, "editor.hide_sidebar_on_file_open"),
         Some(&json!(false))
@@ -1040,7 +1035,7 @@ fn bool_field_stages_before_persisting_and_can_cancel() {
     app.handle_key(ConfigUiKey::Char(' '));
 
     assert_eq!(app.edit.as_ref().expect("staged bool").input, "true");
-    let value = read_settings_jsonc_value(&settings_path).expect("settings jsonc");
+    let value = read_config_value(&settings_path).expect("settings jsonc");
     assert_eq!(
         get_json_path(&value, "editor.hide_sidebar_on_file_open"),
         Some(&json!(false))
@@ -1048,7 +1043,7 @@ fn bool_field_stages_before_persisting_and_can_cancel() {
 
     app.handle_key(ConfigUiKey::Esc);
     assert!(app.edit.is_none());
-    let value = read_settings_jsonc_value(&settings_path).expect("settings jsonc");
+    let value = read_config_value(&settings_path).expect("settings jsonc");
     assert_eq!(
         get_json_path(&value, "editor.hide_sidebar_on_file_open"),
         Some(&json!(false))
@@ -1058,19 +1053,19 @@ fn bool_field_stages_before_persisting_and_can_cancel() {
     app.handle_key(ConfigUiKey::Enter);
 
     assert!(app.edit.is_none());
-    let value = read_settings_jsonc_value(&settings_path).expect("settings jsonc");
+    let value = read_config_value(&settings_path).expect("settings jsonc");
     assert_eq!(
         get_json_path(&value, "editor.hide_sidebar_on_file_open"),
         Some(&json!(true))
     );
 }
 
-// Defends: UI edits use the same comment-preserving settings.jsonc patcher and validation path as `yzx config set`.
+// Defends: UI edits use the same comment-preserving TOML adapter and validation path as `yzx config set`.
 #[test]
-fn write_field_value_patches_settings_jsonc_and_reloads_model() {
+fn write_field_value_patches_config_toml_and_reloads_model() {
     let fixture = Fixture::new();
     let settings_path = fixture.settings_path();
-    fixture.write_settings_with_prefix("// keep this comment\n", |settings| {
+    fixture.write_settings_with_prefix("# keep this comment\n", |settings| {
         settings["editor"]["hide_sidebar_on_file_open"] = json!(false);
     });
     let mut app = fixture.app();
@@ -1085,15 +1080,15 @@ fn write_field_value_patches_settings_jsonc_and_reloads_model() {
 
     assert_eq!(outcome.mutation, SettingsJsoncPatchMutation::Replaced);
     let raw = fs::read_to_string(&settings_path).expect("settings raw");
-    assert!(raw.contains("// keep this comment"));
-    let value = read_settings_jsonc_value(&settings_path).expect("settings jsonc");
+    assert!(raw.contains("# keep this comment"));
+    let value = read_config_value(&settings_path).expect("settings jsonc");
     assert_eq!(
         get_json_path(&value, "editor.hide_sidebar_on_file_open"),
         Some(&json!(true))
     );
     assert_eq!(
         get_json_path(&value, "ratconfig.contract.contract_id"),
-        Some(&json!("yazelix.settings"))
+        Some(&json!("yazelix.config"))
     );
     let field = model_field(&app.model, "editor.hide_sidebar_on_file_open");
     assert_eq!(field.state, ConfigUiValueState::Explicit);

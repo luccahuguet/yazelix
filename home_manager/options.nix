@@ -28,14 +28,14 @@ with lib;
     type = types.bool;
     default = false;
     description = ''
-      Whether Home Manager generates ~/.config/yazelix/settings.jsonc.
+      Whether Home Manager generates ~/.config/yazelix/config.toml.
 
       The default keeps Home Manager responsible for the Yazelix
-      package/runtime/desktop integration while leaving settings.jsonc as a
+      package/runtime/desktop integration while leaving config.toml as a
       normal mutable user file managed through `yzx edit` or your editor.
 
       Set this to true only when you want Home Manager to generate and own
-      settings.jsonc declaratively from programs.yazelix options.
+      config.toml declaratively from programs.yazelix options.
     '';
   };
 
@@ -267,18 +267,6 @@ ${terminalDescriptionBullets}
     description = "Width of the open right sidebar as a percentage of the tab.";
   };
 
-  disable_zellij_tips = mkMainContractOption "zellij.disable_tips" {
-    description = "Disable Zellij tips popup on startup for cleaner launches";
-  };
-
-  zellij_pane_frames = mkMainContractOption "zellij.pane_frames" {
-    description = "Show Zellij pane frames";
-  };
-
-  zellij_rounded_corners = mkMainContractOption "zellij.rounded_corners" {
-    description = "Enable rounded corners for Zellij pane frames";
-  };
-
   support_kitty_keyboard_protocol = mkMainContractOption "zellij.support_kitty_keyboard_protocol" {
     description = "Enable Kitty keyboard protocol in Zellij (disable if dead keys stop working)";
   };
@@ -461,14 +449,6 @@ ${terminalDescriptionBullets}
 
   show_macchina_on_welcome = mkMainContractOption "core.show_macchina_on_welcome" {
     description = "Show macchina system info on welcome screen";
-  };
-
-  zellij_default_mode = mkMainContractOption "zellij.default_mode" {
-    description = ''
-      Startup mode for new Zellij sessions.
-      - "normal": Yazelix default, starts unlocked
-      - "locked": start in Zellij locked mode for compatibility with other TUIs
-    '';
   };
 
   zellij_keybindings = mkMainContractOption "zellij.keybindings" {

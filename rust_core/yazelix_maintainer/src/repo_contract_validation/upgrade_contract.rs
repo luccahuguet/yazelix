@@ -9,13 +9,14 @@ use yazelix_core::control_plane::read_release_metadata_version;
 
 const GUARDED_FILES: &[&str] = &[
     "release_metadata.toml",
-    "settings_default.jsonc",
+    "config_default.toml",
     "home_manager/module.nix",
     "docs/upgrade_notes.toml",
     "CHANGELOG.md",
 ];
-const ACK_REQUIRED_FILES: &[&str] = &["settings_default.jsonc", "home_manager/module.nix"];
+const ACK_REQUIRED_FILES: &[&str] = &["config_default.toml", "home_manager/module.nix"];
 const HISTORICAL_ACKNOWLEDGEMENT_FILES: &[&str] = &[
+    "settings_default.jsonc",
     "yazelix_default.toml",
     "yazelix_packs_default.toml",
     "nushell/scripts/utils/constants.nu",

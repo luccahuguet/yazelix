@@ -12,7 +12,7 @@ use yazelix_core::settings_surface::read_config_table;
 
 const DEFAULT_HOME_MANAGER_DIR: &str = "~/.config/home-manager";
 const DEFAULT_HOME_MANAGER_INPUT: &str = "yazelix-hm";
-const DEFAULT_MAIN_CONFIG_RELATIVE_PATH: &str = "settings_default.jsonc";
+const DEFAULT_MAIN_CONFIG_RELATIVE_PATH: &str = "config_default.toml";
 const UPDATE_CANARY_BASE_RELATIVE_PATH: &str = ".local/share/yazelix/update_canaries";
 
 #[derive(Debug, Clone)]

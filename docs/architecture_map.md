@@ -22,7 +22,7 @@ history, and Beads-owned planning state.
 | Runtime control plane and command surface | Config parsing, runtime/bootstrap behavior, generated-state repair, and the `yzx` command surface | `rust_core/yazelix_core/src` | Runtime/config/state contracts plus the Rust-owned `yzx` command semantics |
 | Workspace session orchestration | Live Zellij/Yazi/editor session behavior: panes, tabs, sidebar identity, reveal/open flows, popup flows, and layout-family transitions | `rust_core/yazelix_core/src/workspace_commands.rs`, `rust_core/yazelix_core/src/zellij_commands.rs`, `rust_core/yazelix_core/src/zellij_materialization.rs`, `rust_core/yazelix_core/src/action_registry.rs`, `yazelix-zellij-pane-orchestrator` | Live Zellij session truth, pane-orchestrator contracts, and workspace/session contracts |
 | Distribution and host integration | How Yazelix is packaged, launched, and adapted into external owners such as Home Manager, shells, terminals, desktop integration, and profile-owned installs | `home_manager`, `packaging`, `shells`, `flake.nix`, `yazelix_package.nix`, `yazelix_runtime_package.nix` | The packaged runtime shape and explicit integration contracts |
-| Shipped runtime data and assets | The tracked data and package artifacts the runtime consumes directly: layouts, themes, plugin artifacts, templates, release metadata, cursor presets, and visual assets | `configs`, `config_metadata`, `assets`, `nushell/config`, `settings_default.jsonc`, `yazelix_cursors_default.toml`, `docs/upgrade_notes.toml`, first-party child package outputs | Version-controlled shipped files and locked package artifacts |
+| Shipped runtime data and assets | The tracked data and package artifacts the runtime consumes directly: layouts, themes, plugin artifacts, templates, release metadata, cursor presets, and visual assets | `configs`, `config_metadata`, `assets`, `nushell/config`, `config_default.toml`, `yazelix_cursors_default.toml`, `docs/upgrade_notes.toml`, first-party child package outputs | Version-controlled shipped files and locked package artifacts |
 | Maintainer workflow and validation | The non-user-facing machinery that keeps the other four coherent: tests, validators, release/update workflow, CI, and maintainer tooling | `rust_core/yazelix_maintainer/src`, `nushell/scripts/maintainer/test_suite_inventory.toml`, `.github`, `maintainer_shell.nix`, `.nu-lint.toml` | Beads, contracts, CI policy, and maintainer command surfaces |
 
 ## Validation Map
@@ -53,7 +53,7 @@ That means Yazelix is not best described as just "workspace plus runtime." The c
 
 This subsystem answers questions like:
 
-- How does `settings.jsonc` become actual runtime behavior?
+- How does `config.toml` become actual runtime behavior?
 - Where do generated configs live?
 - What does `yzx launch`, `yzx env`, `yzx doctor`, or `yzx update` mean now?
 - Which paths are config-owned, runtime-owned, or generated-state-owned?

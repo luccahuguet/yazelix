@@ -3,7 +3,7 @@
 use serde_json::json;
 use std::fs;
 use tempfile::tempdir;
-use yazelix_core::settings_surface::read_settings_jsonc_value;
+use yazelix_core::settings_surface::read_config_value;
 use yazelix_core::user_config_paths::shared_cursor_config;
 
 mod support;
@@ -27,9 +27,9 @@ fn with_config_env(
         .env("YAZELIX_CONFIG_DIR", config);
 }
 
-// Defends: the public config edit command uses the lossless settings.jsonc patcher and validates the result before writing.
+// Defends: the public config edit command uses the lossless TOML adapter and validates the result before writing.
 #[test]
-fn config_set_and_unset_edit_settings_jsonc() {
+fn config_set_and_unset_edit_config_toml() {
     let repo = repo_root();
     let temp = tempdir().expect("tempdir");
     let home = temp.path().join("home");
@@ -42,12 +42,12 @@ fn config_set_and_unset_edit_settings_jsonc() {
     set.args(["config", "set", "editor.hide_sidebar_on_file_open", "true"]);
     set.assert().success();
 
-    let settings_path = config.join("settings.jsonc");
-    let value = read_settings_jsonc_value(&settings_path).expect("settings after set");
+    let settings_path = config.join("config.toml");
+    let value = read_config_value(&settings_path).expect("settings after set");
     assert_eq!(value["editor"]["hide_sidebar_on_file_open"], json!(true));
     assert_eq!(
         value["ratconfig"]["contract"]["contract_id"],
-        json!("yazelix.settings")
+        json!("yazelix.config")
     );
 
     let mut set_cursor = yzx_control_command();
@@ -57,9 +57,9 @@ fn config_set_and_unset_edit_settings_jsonc() {
 
     let cursor_settings_path = shared_cursor_config(&config);
     let cursor_value =
-        read_settings_jsonc_value(&cursor_settings_path).expect("cursor settings after cursor set");
+        read_config_value(&cursor_settings_path).expect("cursor settings after cursor set");
     assert_eq!(cursor_value["settings"]["trail"], json!("magma"));
-    let value = read_settings_jsonc_value(&settings_path).expect("settings after cursor set");
+    let value = read_config_value(&settings_path).expect("settings after cursor set");
     assert!(value.get("cursors").is_none());
 
     let mut unset = yzx_control_command();
@@ -67,7 +67,7 @@ fn config_set_and_unset_edit_settings_jsonc() {
     unset.args(["config", "unset", "editor.hide_sidebar_on_file_open"]);
     unset.assert().success();
 
-    let value = read_settings_jsonc_value(&settings_path).expect("settings after unset");
+    let value = read_config_value(&settings_path).expect("settings after unset");
     assert_eq!(value["editor"]["hide_sidebar_on_file_open"], json!(false));
 }
 

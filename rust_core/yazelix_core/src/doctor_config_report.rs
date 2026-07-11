@@ -81,7 +81,7 @@ pub fn evaluate_doctor_config_report(
 
     if paths.user_config.exists() {
         let mut findings = vec![
-            DoctorConfigFinding::new("ok", "Using custom settings.jsonc configuration")
+            DoctorConfigFinding::new("ok", "Using custom config.toml configuration")
                 .with_details(path_to_string(&paths.user_config)),
         ];
 
@@ -99,7 +99,7 @@ pub fn evaluate_doctor_config_report(
                     DoctorConfigFinding::new(
                         "warning",
                         format!(
-                            "Stale or unsupported settings.jsonc entries detected ({} issues)",
+                            "Stale or unsupported config.toml entries detected ({} issues)",
                             report.issue_count
                         ),
                     )
@@ -112,7 +112,7 @@ pub fn evaluate_doctor_config_report(
                 findings.push(
                     DoctorConfigFinding::new(
                         "error",
-                        "Could not validate settings.jsonc against the current schema",
+                        "Could not validate config.toml against the current schema",
                     )
                     .with_details(format_validation_error(&error)),
                 );
@@ -136,9 +136,9 @@ pub fn evaluate_doctor_config_report(
             findings: vec![
                 DoctorConfigFinding::new(
                     "info",
-                    "Using default configuration (settings_default.jsonc)",
+                    "Using default configuration (config_default.toml)",
                 )
-                .with_details("Yazelix can create settings.jsonc from the shipped defaults")
+                .with_details("Yazelix can create config.toml from the shipped defaults")
                 .with_fix_action("create_default_settings_config"),
             ],
         };
@@ -147,7 +147,7 @@ pub fn evaluate_doctor_config_report(
     DoctorConfigEvaluateData {
         findings: vec![
             DoctorConfigFinding::new("error", "No configuration file found")
-                .with_details("Neither settings.jsonc nor settings_default.jsonc exists"),
+                .with_details("Neither config.toml nor config_default.toml exists"),
         ],
     }
 }
@@ -164,7 +164,7 @@ fn collect_doctor_diagnostic_report(
 
             if matches!(
                 error.code(),
-                "invalid_toml" | "invalid_settings_jsonc" | "settings_jsonc_not_object"
+                "invalid_toml" | "invalid_main_config_toml" | "settings_jsonc_not_object"
             ) {
                 return Err(error);
             }
@@ -328,7 +328,7 @@ mod tests {
         let config_dir = tmp.path().join("config");
         std::fs::create_dir_all(&runtime_dir).unwrap();
         std::fs::write(
-            runtime_dir.join("settings_default.jsonc"),
+            runtime_dir.join("config_default.toml"),
             "{ \"core\": {} }\n",
         )
         .unwrap();

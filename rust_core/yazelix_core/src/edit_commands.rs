@@ -57,8 +57,8 @@ fn get_edit_targets(config_dir: &Path) -> Vec<EditTarget> {
             id: "config",
             label: format!("config  - main Yazelix config → {}", user_config.display()),
             path: user_config,
-            aliases: &["config", "main", "settings", "settings.jsonc"],
-            search: "config main yazelix settings settings.jsonc",
+            aliases: &["config", "main", "settings", "config.toml"],
+            search: "config main yazelix settings config.toml",
         },
         EditTarget {
             id: "cursors",
@@ -75,7 +75,7 @@ fn get_edit_targets(config_dir: &Path) -> Vec<EditTarget> {
                 "cursor settings",
                 "yazelix_cursors",
             ],
-            search: "cursors cursor yazelix cursor settings yazelix_cursors settings.jsonc",
+            search: "cursors cursor yazelix cursor settings yazelix_cursors config.toml",
         },
         EditTarget {
             id: "helix",
@@ -194,8 +194,8 @@ fn resolve_editor(runtime_dir: &Path) -> Result<(String, Vec<(String, String)>),
         return Err(CoreError::classified(
             ErrorClass::Runtime,
             "missing_editor",
-            "EDITOR is not set. Set it in settings.jsonc under editor.command, or export EDITOR in your shell.",
-            "Update settings.jsonc or your shell environment, then retry.",
+            "EDITOR is not set. Set it in config.toml under editor.command, or export EDITOR in your shell.",
+            "Update config.toml or your shell environment, then retry.",
             json!({}),
         ));
     }
@@ -638,7 +638,7 @@ mod tests {
         assert_eq!(cursors.len(), 1);
         assert_eq!(cursors[0].id, "cursors");
 
-        let settings = filter_edit_targets(&targets, "settings.jsonc");
+        let settings = filter_edit_targets(&targets, "config.toml");
         assert_eq!(settings.len(), 1);
         assert_eq!(settings[0].id, "config");
 

@@ -266,7 +266,7 @@ mod tests {
     use super::restart::*;
     use super::*;
     use crate::control_plane::load_normalized_config_for_control;
-    use crate::settings_surface::read_settings_jsonc_value;
+    use crate::settings_surface::read_config_value;
     use std::collections::HashMap;
     use std::fs;
     use std::path::Path;
@@ -285,8 +285,8 @@ mod tests {
         )
         .expect("main config contract");
         fs::write(
-            runtime.join("settings_default.jsonc"),
-            include_str!("../../../settings_default.jsonc"),
+            runtime.join("config_default.toml"),
+            include_str!("../../../config_default.toml"),
         )
         .expect("main defaults");
         fs::write(
@@ -311,12 +311,12 @@ mod tests {
         let home = Path::new("/home/demo");
 
         assert_eq!(
-            resolve_config_override_path("alt/settings.jsonc", cwd, home).unwrap(),
-            "/tmp/project/alt/settings.jsonc"
+            resolve_config_override_path("alt/config.toml", cwd, home).unwrap(),
+            "/tmp/project/alt/config.toml"
         );
         assert_eq!(
-            resolve_config_override_path("~/settings.jsonc", cwd, home).unwrap(),
-            "/home/demo/settings.jsonc"
+            resolve_config_override_path("~/config.toml", cwd, home).unwrap(),
+            "/home/demo/config.toml"
         );
         assert_eq!(
             config_override_extra_env(Some("/tmp/custom.jsonc")),
@@ -408,7 +408,7 @@ mod tests {
         assert!(help.help);
     }
 
-    // Defends: restart can replace the inherited config override for one relaunched window without mutating settings.jsonc.
+    // Defends: restart can replace the inherited config override for one relaunched window without mutating config.toml.
     #[test]
     fn parse_restart_args_accepts_config_override() {
         let expected_config = resolve_config_override_path(
@@ -424,7 +424,7 @@ mod tests {
             "--with".into(),
             "core.welcome_style=static".into(),
             "--with".into(),
-            "zellij.pane_frames=false".into(),
+            "appearance.mode=light".into(),
         ])
         .unwrap();
 
@@ -432,7 +432,7 @@ mod tests {
         assert_eq!(parsed.config.as_deref(), Some(expected_config.as_str()));
         assert_eq!(
             parsed.with_overrides,
-            vec!["core.welcome_style=static", "zellij.pane_frames=false"]
+            vec!["core.welcome_style=static", "appearance.mode=light"]
         );
     }
 
@@ -534,7 +534,7 @@ mod tests {
         );
     }
 
-    // Defends: --with writes an ephemeral settings.jsonc snapshot and validates it through the normal config contract without mutating the user's config.
+    // Defends: --with writes an ephemeral config.toml snapshot and validates it through the normal config contract without mutating the user's config.
     #[test]
     fn session_config_overrides_materialize_valid_ephemeral_settings() {
         let runtime = TempDir::new().unwrap();
@@ -550,7 +550,7 @@ mod tests {
             &[
                 "editor.command=nvim".to_string(),
                 "core.welcome_style=static".to_string(),
-                "zellij.pane_frames=false".to_string(),
+                "appearance.mode=light".to_string(),
             ],
         )
         .unwrap();
@@ -562,12 +562,12 @@ mod tests {
         );
         assert!(session_path.starts_with(state.path()));
 
-        let session_value = read_settings_jsonc_value(session_path).unwrap();
+        let session_value = read_config_value(session_path).unwrap();
         assert_eq!(session_value["editor"]["command"], "nvim");
         assert_eq!(session_value["core"]["welcome_style"], "static");
-        assert_eq!(session_value["zellij"]["pane_frames"], false);
+        assert_eq!(session_value["appearance"]["mode"], "light");
 
-        let user_value = read_settings_jsonc_value(&config.path().join("settings.jsonc")).unwrap();
+        let user_value = read_config_value(&config.path().join("config.toml")).unwrap();
         assert_ne!(user_value["editor"]["command"], "nvim");
 
         let normalized = load_normalized_config_for_control(
@@ -578,7 +578,7 @@ mod tests {
         .unwrap();
         assert_eq!(normalized.get("editor_command").unwrap(), "nvim");
         assert_eq!(normalized.get("welcome_style").unwrap(), "static");
-        assert_eq!(normalized.get("zellij_pane_frames").unwrap(), "false");
+        assert_eq!(normalized.get("appearance_mode").unwrap(), "light");
     }
 
     // Defends: Mars runtime metadata is accepted as a shipped packaged terminal.

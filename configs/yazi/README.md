@@ -1,6 +1,6 @@
 # Yazelix Yazi Configuration
 
-Yazelix provides a managed Yazi configuration built from `settings.jsonc`, managed sidecar overrides under `~/.config/yazelix/yazi/`, Yazelix-owned sidebar/editor plugins, and the packaged `yazelix-yazi-assets` config-pack/flavor/plugin pack
+Yazelix provides a managed Yazi configuration built from `config.toml`, managed sidecar overrides under `~/.config/yazelix/yazi/`, Yazelix-owned sidebar/editor plugins, and the packaged `yazelix-yazi-assets` config-pack/flavor/plugin pack
 
 ## Quick Start
 

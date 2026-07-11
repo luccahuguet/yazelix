@@ -34,8 +34,8 @@ pub fn repo_root() -> PathBuf {
 pub fn write_runtime_contract_assets(repo: &Path, runtime_dir: &Path) {
     fs::create_dir_all(runtime_dir.join("config_metadata")).unwrap();
     fs::copy(
-        repo.join("settings_default.jsonc"),
-        runtime_dir.join("settings_default.jsonc"),
+        repo.join("config_default.toml"),
+        runtime_dir.join("config_default.toml"),
     )
     .unwrap();
     fs::copy(
@@ -189,13 +189,21 @@ pub fn managed_config_fixture(raw_config: &str) -> ManagedConfigFixture {
     let runtime_dir = temp.path().join("runtime");
     let config_dir = home_dir.join(".config").join("yazelix");
     let state_dir = home_dir.join(".local").join("share").join("yazelix");
-    let managed_config = config_dir.join("settings.jsonc");
+    let managed_config = config_dir.join("config.toml");
 
     fs::create_dir_all(managed_config.parent().unwrap()).unwrap();
     fs::create_dir_all(&state_dir).unwrap();
     fs::create_dir_all(&home_dir).unwrap();
     write_runtime_contract_assets(&repo, &runtime_dir);
-    fs::write(&managed_config, settings_jsonc_fixture(raw_config)).unwrap();
+    fs::write(
+        &managed_config,
+        if raw_config.trim().is_empty() {
+            "\n"
+        } else {
+            raw_config
+        },
+    )
+    .unwrap();
 
     ManagedConfigFixture {
         _temp: temp,
@@ -205,13 +213,4 @@ pub fn managed_config_fixture(raw_config: &str) -> ManagedConfigFixture {
         state_dir,
         managed_config,
     }
-}
-
-fn settings_jsonc_fixture(raw_toml: &str) -> String {
-    if raw_toml.trim().is_empty() {
-        return "{}\n".to_string();
-    }
-    let value = toml::from_str::<toml::Value>(raw_toml).unwrap();
-    let json = serde_json::to_value(value).unwrap();
-    format!("{}\n", serde_json::to_string_pretty(&json).unwrap())
 }

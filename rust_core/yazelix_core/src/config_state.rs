@@ -487,28 +487,23 @@ mod tests {
         let repo = repo_root();
         ComputeConfigStateRequest {
             config_path,
-            default_config_path: repo.join("settings_default.jsonc"),
+            default_config_path: repo.join("config_default.toml"),
             contract_path: repo.join("config_metadata/main_config_contract.toml"),
             runtime_dir,
             state_path,
         }
     }
 
-    fn default_settings_jsonc() -> JsonValue {
-        crate::settings_surface::read_settings_jsonc_value(
-            &repo_root().join("settings_default.jsonc"),
-        )
-        .expect("default settings")
+    fn default_main_config() -> JsonValue {
+        crate::settings_surface::read_config_value(&repo_root().join("config_default.toml"))
+            .expect("default settings")
     }
 
-    fn write_settings_config(dir: &Path, value: &JsonValue) -> PathBuf {
-        let path = dir.join("settings.jsonc");
+    fn write_main_config(dir: &Path, value: &JsonValue) -> PathBuf {
+        let path = dir.join("config.toml");
         fs::write(
             &path,
-            format!(
-                "{}\n",
-                serde_json::to_string_pretty(value).expect("settings json")
-            ),
+            crate::settings_surface::render_config_value(value).expect("settings TOML"),
         )
         .expect("write config");
         path
@@ -546,7 +541,7 @@ mod tests {
         let dir = tempdir().expect("tempdir");
         let runtime_dir = repo_root();
         let state_path = dir.path().join("state/rebuild_hash");
-        let config_path = repo_root().join("settings_default.jsonc");
+        let config_path = repo_root().join("config_default.toml");
         let state = compute_config_state(&request_for(
             config_path,
             runtime_dir.clone(),
@@ -572,7 +567,7 @@ mod tests {
         fs::write(&state_path, "legacy-raw-hash-or-garbage").unwrap();
 
         let state = compute_config_state(&request_for(
-            repo_root().join("settings_default.jsonc"),
+            repo_root().join("config_default.toml"),
             runtime_dir,
             state_path,
         ))
@@ -591,10 +586,10 @@ mod tests {
         let dir = tempdir().expect("tempdir");
         let runtime_dir = repo_root();
         let state_path = dir.path().join("state/rebuild_hash");
-        let mut config = default_settings_jsonc();
+        let mut config = default_main_config();
         config["core"]["skip_welcome_screen"] = json!(false);
         config["editor"]["command"] = json!("hx");
-        let config_path = write_settings_config(dir.path(), &config);
+        let config_path = write_main_config(dir.path(), &config);
         let baseline = compute_config_state(&request_for(
             config_path.clone(),
             runtime_dir.clone(),
@@ -611,7 +606,7 @@ mod tests {
         .unwrap();
 
         config["core"]["skip_welcome_screen"] = json!(true);
-        write_settings_config(dir.path(), &config);
+        write_main_config(dir.path(), &config);
         let runtime_only = compute_config_state(&request_for(
             config_path.clone(),
             runtime_dir.clone(),
@@ -622,7 +617,7 @@ mod tests {
         assert!(!runtime_only.needs_refresh);
 
         config["editor"]["command"] = json!("nvim");
-        write_settings_config(dir.path(), &config);
+        write_main_config(dir.path(), &config);
         let rebuild_changed =
             compute_config_state(&request_for(config_path, runtime_dir, state_path)).unwrap();
         assert_ne!(runtime_only.config_hash, rebuild_changed.config_hash);

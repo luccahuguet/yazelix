@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://yazelix.com/schemas/yazelix_settings.schema.json",
   "title": "Yazelix Settings",
-  "description": "Canonical Yazelix config UI settings inventory. Main runtime settings use ~/.config/yazelix/settings.jsonc and config_metadata/main_config_contract.toml; cursor settings use ~/.config/yazelix_cursors/settings.jsonc and are composed into the config UI under cursors.",
+  "description": "Canonical Yazelix config UI inventory. Main runtime semantics use ~/.config/yazelix/config.toml and config_metadata/main_config_contract.toml; cursor settings use ~/.config/yazelix_cursors/settings.jsonc and are composed into the config UI under cursors.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -16,7 +16,7 @@
     "yazi"
   ],
   "x-yazelix": {
-    "canonical_file": "settings.jsonc",
+    "canonical_file": "config.toml",
     "cursor_file": "~/.config/yazelix_cursors/settings.jsonc",
     "main_contract": "config_metadata/main_config_contract.toml",
     "config_ui_metadata": "config_metadata/config_ui_metadata.toml",
@@ -94,33 +94,25 @@
       "type": "object",
       "description": "Helix-specific runtime integration settings",
       "required": [
-        "external",
         "steel_plugins"
       ],
       "additionalProperties": false,
       "properties": {
         "external": {
-          "anyOf": [
-            {
-              "type": "null"
+          "type": "object",
+          "required": [
+            "binary",
+            "runtime_path"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "binary": {
+              "type": "string"
             },
-            {
-              "type": "object",
-              "required": [
-                "binary",
-                "runtime_path"
-              ],
-              "additionalProperties": false,
-              "properties": {
-                "binary": {
-                  "type": "string"
-                },
-                "runtime_path": {
-                  "type": "string"
-                }
-              }
+            "runtime_path": {
+              "type": "string"
             }
-          ]
+          }
         },
         "steel_plugins": {
           "type": "object",
@@ -389,9 +381,6 @@
       "type": "object",
       "description": "Zellij chrome, widgets, popup, and screen-saver settings",
       "required": [
-        "disable_tips",
-        "pane_frames",
-        "rounded_corners",
         "support_kitty_keyboard_protocol",
         "theme",
         "widget_tray",
@@ -412,21 +401,11 @@
         "screen_saver_enabled",
         "screen_saver_idle_seconds",
         "screen_saver_style",
-        "default_mode",
         "native_keybindings",
         "keybindings"
       ],
       "additionalProperties": false,
       "properties": {
-        "disable_tips": {
-          "type": "boolean"
-        },
-        "pane_frames": {
-          "type": "boolean"
-        },
-        "rounded_corners": {
-          "type": "boolean"
-        },
         "support_kitty_keyboard_protocol": {
           "type": "boolean"
         },
@@ -632,13 +611,6 @@
             "game_of_life_oscillators",
             "game_of_life_bloom",
             "random"
-          ]
-        },
-        "default_mode": {
-          "type": "string",
-          "enum": [
-            "normal",
-            "locked"
           ]
         },
         "keybindings": {

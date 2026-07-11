@@ -271,7 +271,7 @@ const RESET_CONFIG_COMMAND: YzxCommandMetadata = metadata(
     YzxCommandCategory::Config,
     RESET_FLAGS,
     Some(YzxMenuCategory::Config),
-    Some("Reset settings.jsonc back to the shipped default."),
+    Some("Reset config.toml back to the shipped default."),
 );
 const CURSORS_COMMAND: YzxCommandMetadata = metadata(
     "yzx cursors",
@@ -279,7 +279,7 @@ const CURSORS_COMMAND: YzxCommandMetadata = metadata(
     YzxCommandCategory::Config,
     &[],
     Some(YzxMenuCategory::Config),
-    Some("Show the active settings.jsonc cursor registry, effects, and resolved preset colors."),
+    Some("Show the active config.toml cursor registry, effects, and resolved preset colors."),
 );
 const CURSORS_GHOSTTY_SETUP_COMMAND: YzxCommandMetadata = metadata(
     "yzx cursors ghostty setup",

@@ -29,7 +29,7 @@ The retained public shape is:
 
 ## Scope
 
-- `settings_default.jsonc`
+- `config_default.toml`
 - `config_metadata/main_config_contract.toml`
 - `home_manager/module.nix`
 - `docs/yzx_cli.md`

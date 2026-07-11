@@ -188,7 +188,7 @@ fn resolve_popup_runtime_argv(
                     ErrorClass::Config,
                     "popup_editor_unresolved",
                     "The configured Yazelix editor could not be resolved for `yzx popup editor`.",
-                    "Set editor.command in settings.jsonc or set EDITOR inside the Yazelix runtime.",
+                    "Set editor.command in config.toml or set EDITOR inside the Yazelix runtime.",
                     json!({}),
                 )
             })?

@@ -120,7 +120,7 @@ repo must not keep a mirrored copy of those reusable plugin files.
 
 The main repo remains the owner for Yazelix-specific policy:
 
-- the child-packaged plugin pack is selected by `settings.jsonc` through `helix.steel_plugins.enabled`
+- the child-packaged plugin pack is selected by `config.toml` through `helix.steel_plugins.enabled`
 - custom user plugin manifests live beside the same surface in `helix.steel_plugins.extra`
 - Yazelix owns command visibility, startup conditions, generated `helix.scm`, generated `init.scm`, and copied plugin placement under generated state
 

@@ -6,7 +6,8 @@ use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 
-pub const SETTINGS_CONFIG: &str = "settings.jsonc";
+pub const SETTINGS_CONFIG: &str = "config.toml";
+pub const LEGACY_SETTINGS_CONFIG: &str = "settings.jsonc";
 pub const OLD_MAIN_CONFIG: &str = "yazelix.toml";
 pub const CURSOR_CONFIG: &str = "cursors.toml";
 pub const SHARED_CURSOR_CONFIG_DIR: &str = "yazelix_cursors";
@@ -62,6 +63,10 @@ pub const LEGACY_CONFIG_ENTRY_NAMES: &[&str] = &[
 
 pub fn main_config(config_dir: &Path) -> PathBuf {
     config_dir.join(SETTINGS_CONFIG)
+}
+
+pub fn legacy_settings_config(config_dir: &Path) -> PathBuf {
+    config_dir.join(LEGACY_SETTINGS_CONFIG)
 }
 
 pub fn old_main_config(config_dir: &Path) -> PathBuf {

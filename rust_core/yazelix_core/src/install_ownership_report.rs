@@ -621,7 +621,7 @@ fn collect_home_manager_prepare_artifacts(
         artifacts.push(HomeManagerPrepareArtifact {
             id: "main_config".into(),
             class: "blocker".into(),
-            label: "managed settings.jsonc surface".into(),
+            label: "managed config.toml surface".into(),
             path: path_to_string(main),
             action: Some(HOME_MANAGER_PREPARE_ACTION_ARCHIVE_PATH.into()),
             remove_target: None,
@@ -1371,13 +1371,13 @@ mod tests {
         );
     }
 
-    // Regression: Home Manager owns the Yazelix runtime even when manage_config=false leaves settings.jsonc mutable.
+    // Regression: Home Manager owns the Yazelix runtime even when manage_config=false leaves config.toml mutable.
     #[test]
     fn evaluate_install_ownership_detects_home_manager_profile_without_managed_config() {
         let tmp = TempDir::new().unwrap();
         let home = tmp.path().join("home");
         let xdg_data = home.join(".local/share");
-        let main_config = home.join(".config/yazelix/settings.jsonc");
+        let main_config = home.join(".config/yazelix/config.toml");
         let profile_yzx = home.join(".nix-profile/bin/yzx");
         let profile_desktop = home
             .join(".nix-profile/share/applications")
@@ -1405,7 +1405,7 @@ mod tests {
             evaluate_install_ownership_report(&test_request(&tmp, &home, &xdg_data, main_config));
 
         assert!(!has_home_manager_managed_install(
-            &home.join(".config/yazelix/settings.jsonc")
+            &home.join(".config/yazelix/config.toml")
         ));
         assert!(report.has_home_manager_managed_install);
         assert_eq!(report.install_owner, "home-manager");
@@ -1623,7 +1623,7 @@ mod tests {
         let home = tmp.path().join("home");
         let xdg_data = home.join(".local/share");
         let config_dir = home.join(".config/yazelix");
-        let main_config = config_dir.join("settings.jsonc");
+        let main_config = config_dir.join("config.toml");
         std::fs::create_dir_all(&config_dir).unwrap();
         std::fs::write(&main_config, "{}\n").unwrap();
         std::fs::write(config_dir.join("yazelix.toml"), "[core]\n").unwrap();

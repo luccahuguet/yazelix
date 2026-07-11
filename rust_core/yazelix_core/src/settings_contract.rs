@@ -1,8 +1,8 @@
 // Test lane: default
-//! Yazelix adapter for ratconfig deterministic `settings.jsonc` contracts.
+//! Retired `settings.jsonc` contract chain used only by the one-time TOML migration.
 
 use crate::bridge::{CoreError, ErrorClass};
-use crate::settings_surface::read_settings_jsonc_value;
+use crate::settings_surface::read_config_table;
 use ratconfig::contract::{
     ConfigContract, ContractChange, ContractError, join_jsonc_contract_text_from_version,
     read_jsonc_contract_state_text,
@@ -82,7 +82,19 @@ pub fn reconcile_settings_contract_text(
     raw: &str,
     default_main_config: &Path,
 ) -> Result<SettingsContractReconcileOutcome, CoreError> {
-    let defaults = read_settings_jsonc_value(default_main_config)?;
+    let defaults = serde_json::to_value(toml::Value::Table(read_config_table(
+        default_main_config,
+        "read_legacy_settings_migration_defaults",
+    )?))
+    .map_err(|source| {
+        CoreError::classified(
+            ErrorClass::Internal,
+            "serialize_legacy_settings_migration_defaults",
+            format!("Could not prepare legacy settings migration defaults: {source}"),
+            "Report this as a Yazelix internal error.",
+            json!({ "path": default_main_config.display().to_string() }),
+        )
+    })?;
     let contract = settings_contract_for_defaults(&defaults);
     let previous_state = read_jsonc_contract_state_text(raw, SETTINGS_CONTRACT_STATE_PATH)
         .map_err(|error| contract_error_to_core_error(source_path, error))?;
@@ -819,15 +831,15 @@ fn migration_error_detail(error: &MigrationError) -> JsonValue {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::settings_surface::read_config_value;
     use ratconfig::contract::plan_contract_migration;
     use ratconfig::jsonc::{get_json_path, parse_jsonc_value};
 
     // Defends: every ratconfig version bump has a real linear migration or manual blocker.
     #[test]
     fn settings_contract_versions_are_linear_and_nonempty() {
-        let defaults_path =
-            Path::new(env!("CARGO_MANIFEST_DIR")).join("../../settings_default.jsonc");
-        let defaults = read_settings_jsonc_value(&defaults_path).unwrap();
+        let defaults_path = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../config_default.toml");
+        let defaults = read_config_value(&defaults_path).unwrap();
         let contract = settings_contract_for_defaults(&defaults);
         let plan = plan_contract_migration(&contract, SETTINGS_CONTRACT_BASELINE_VERSION).unwrap();
 
@@ -1167,8 +1179,7 @@ mod tests {
     // Regression: Home Manager-generated compact JSON can already carry the current contract state without needing a write-only formatting repair.
     #[test]
     fn current_contract_state_is_idempotent_even_when_compact() {
-        let defaults_path =
-            Path::new(env!("CARGO_MANIFEST_DIR")).join("../../settings_default.jsonc");
+        let defaults_path = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../config_default.toml");
         let applied_change_ids = serde_json::to_string(&SETTINGS_CONTRACT_APPLIED_CHANGE_IDS)
             .expect("serialize applied change ids");
         let raw = format!(

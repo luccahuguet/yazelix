@@ -12,7 +12,7 @@ use support::fixtures::managed_config_fixture;
 #[test]
 fn yzx_control_reset_config_warns_about_preserved_adjacent_files() {
     let fixture = managed_config_fixture("");
-    let settings_path = fixture.config_dir.join("settings.jsonc");
+    let settings_path = fixture.config_dir.join("config.toml");
     let legacy_cursor_path = fixture.config_dir.join("cursors.toml");
     let helix_override_path = fixture.config_dir.join("helix/config.toml");
     let legacy_helix_path = fixture.config_dir.join("helix.toml");
@@ -21,7 +21,7 @@ fn yzx_control_reset_config_warns_about_preserved_adjacent_files() {
         .config_dir
         .join("settings.jsonc.backup-20260505_000000");
 
-    fs::write(&settings_path, "{\"editor\": {\"command\": \"nvim\"}}\n").unwrap();
+    fs::write(&settings_path, "[editor]\ncommand = \"nvim\"\n").unwrap();
     fs::write(&legacy_cursor_path, "legacy cursor data").unwrap();
     fs::create_dir_all(helix_override_path.parent().unwrap()).unwrap();
     fs::write(&helix_override_path, "rainbow-brackets = true\n").unwrap();
@@ -38,7 +38,7 @@ fn yzx_control_reset_config_warns_about_preserved_adjacent_files() {
     let stdout = stdout_text(command.output().unwrap());
     let reset = fs::read_to_string(&settings_path).unwrap();
 
-    assert!(stdout.contains("only replaces settings.jsonc"));
+    assert!(stdout.contains("only replaces config.toml"));
     assert!(stdout.contains("Managed override files were left untouched: helix"));
     assert!(
         stdout
@@ -50,8 +50,8 @@ fn yzx_control_reset_config_warns_about_preserved_adjacent_files() {
         )
     );
     assert!(!stdout.contains("settings.jsonc.backup-20260505_000000"));
-    assert!(reset.contains("\"editor\""));
-    assert!(!reset.contains("\"cursors\""));
+    assert!(reset.contains("[editor]"));
+    assert!(!reset.contains("[cursors]"));
     assert!(helix_override_path.exists());
     assert!(legacy_cursor_path.exists());
     assert!(notes_path.exists());

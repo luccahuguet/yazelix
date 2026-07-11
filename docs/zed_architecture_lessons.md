@@ -12,11 +12,11 @@ Use Zed as product and architecture inspiration, not as code to vendor. The Zed 
 
 | Zed surface | Repo references | Useful Yazelix lesson |
 | --- | --- | --- |
-| Typed settings inventory | `crates/settings_content/src/settings_content.rs`, `crates/settings/src/settings_store.rs` | Treat settings as typed product state, not loose file text. Yazelix should keep `settings.jsonc` plus schema metadata as the semantic inventory, then derive UI, validation, docs, and defaults from that inventory |
+| Typed settings inventory | `crates/settings_content/src/settings_content.rs`, `crates/settings/src/settings_store.rs` | Treat settings as typed product state, not loose file text. Yazelix should keep `config.toml` plus schema metadata as the semantic inventory, then derive UI, validation, docs, and defaults from that inventory |
 | Curated settings UI pages | `crates/settings_ui/src/page_data.rs`, `crates/settings_ui/src/settings_ui.rs` | Do not render the raw schema tree directly. Build user-intent tabs with titles, descriptions, field pick/write functions, and explicit per-file support |
 | Default versus user state | `SettingsStore::raw_default_settings`, `get_value_from_file`, `get_value_up_to_file`; `settings_ui.rs` reset and "Modified in" rendering | The Yazelix config UI should show whether a value is explicit, defaulted/unset, overridden by another owner, or read-only, and should offer reset only when the current owner can safely change it |
-| Settings search | `settings_ui.rs` search-index construction around page, section, title, description, and JSON path | The first read-only UI should include search from day one. Search candidates should include tab, section, label, help text, and `settings.jsonc` path |
-| Comment-preserving writes | `crates/settings_json/src/settings_json.rs` | Zed updates JSON text by path while preserving unrelated comments and formatting. This validates `yazelix-ryx4.2`: Yazelix should not parse-and-pretty-print user `settings.jsonc` as the default save path |
+| Settings search | `settings_ui.rs` search-index construction around page, section, title, description, and field path | The first read-only UI should include search from day one. Search candidates should include tab, section, label, help text, and `config.toml` path |
+| Comment-preserving writes | `crates/settings_json/src/settings_json.rs` | Zed updates config text by path while preserving unrelated comments and formatting. Yazelix follows the same principle through Ratconfig's TOML text adapter instead of parse-and-pretty-print saves |
 | Action registry | `crates/gpui/src/action.rs`, `crates/zed_actions/src/lib.rs`, `script/generate-action-metadata` | Actions deserve names, namespaces, docs, optional argument schemas, deprecation metadata, and generated docs. Yazelix should define its own small action registry before offering friendly remaps |
 | Command palette | `crates/command_palette/src/command_palette.rs`, `crates/command_palette/src/persistence.rs`, `docs/src/command-palette.md` | A palette should be action-backed, searchable by human names and action names, show active keybindings, remember recent queries, and allow aliases. This is a better model than a hand-maintained menu list |
 | Keymap model and diagnostics | `crates/gpui/src/keymap.rs`, `crates/gpui/src/keymap/context.rs`, `crates/keymap_editor/src/keymap_editor.rs`, `crates/language_tools/src/key_context_view.rs`, `docs/src/key-bindings.md` | Keybindings need context, precedence, unbind/no-action semantics, conflict diagnostics, and a "what context am I in?" debugging view. Yazelix should not stop at generating KDL/TOML snippets |
@@ -28,13 +28,13 @@ Use Zed as product and architecture inspiration, not as code to vendor. The Zed 
 
 The Zed settings UI confirms the existing Yazelix direction:
 
-- `settings.jsonc` remains the durable file surface
+- `config.toml` is the durable file surface
 - schema and contract metadata should describe all semantic settings, including values absent from the user's sparse file
 - the UI should be curated by user intent, not raw storage sections
 - each field needs label, help text, JSON path, default source, owner, editor kind, restart/apply requirement, and write support metadata
 - Home Manager-owned settings should render read-only with the declarative owner path
 - Advanced should show sidecar status and open/import/validate actions, not pretend to round-trip arbitrary KDL, Lua, shell, or terminal-native grammars
-- writes should wait for a comment-preserving JSONC patcher; unsafe edits should require preview-confirmed rewrite
+- writes use Ratconfig's comment-preserving TOML adapter; unsafe edits fail instead of rewriting the whole document
 
 This maps directly to `yazelix-ryx4.1`, `yazelix-ryx4.2`, and `yazelix-ryx4.3`.
 

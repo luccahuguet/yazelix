@@ -1316,16 +1316,10 @@ hide_sidebar_on_file_open = true
 fn yzx_control_doctor_json_reports_structured_findings() {
     let fixture = managed_config_fixture("");
     fs::remove_file(&fixture.managed_config).unwrap();
-    let settings_path = fixture.config_dir.join("settings.jsonc");
+    let settings_path = fixture.config_dir.join("config.toml");
     fs::write(
         &settings_path,
-        r#"{
-  "core": {
-    "stale_field": true,
-    "welcome_style": "random"
-  }
-}
-"#,
+        "[core]\nstale_field = true\nwelcome_style = \"random\"\n",
     )
     .unwrap();
 
@@ -1345,7 +1339,7 @@ fn yzx_control_doctor_json_reports_structured_findings() {
             result["message"]
                 .as_str()
                 .unwrap_or("")
-                .contains("Stale or unsupported settings.jsonc entries detected")
+                .contains("Stale or unsupported config.toml entries detected")
         })
         .expect("stale config result");
 

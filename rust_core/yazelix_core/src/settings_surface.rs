@@ -1,15 +1,12 @@
 // Test lane: default
-//! Canonical `settings.jsonc` surface and fail-fast old-format diagnostics.
+//! Canonical `config.toml` surface and one-time Classic JSONC migration.
 
 use crate::atomic_fs::write_text_atomic;
 use crate::backup_timestamp::compact_utc_backup_timestamp;
 use crate::bridge::{CoreError, ErrorClass};
 use crate::native_config_status::{path_owned_by_home_manager, path_present};
-use crate::settings_contract::{
-    SETTINGS_CONTRACT_STATE_PATH, SettingsContractReconcileOutcome,
-    reconcile_settings_contract_text,
-};
-use crate::settings_jsonc_patch::{jsonc_parse_options, unset_settings_jsonc_value_text};
+use crate::settings_contract::reconcile_settings_contract_text;
+use crate::settings_jsonc_patch::jsonc_parse_options;
 use crate::user_config_paths;
 use ratconfig::toml_adapter::{get_toml_path, parse_toml_value, set_toml_value_text};
 use serde_json::{Map as JsonMap, Value as JsonValue, json};
@@ -19,27 +16,18 @@ use std::path::{Path, PathBuf};
 use toml::Value as TomlValue;
 use yazelix_cursors::{CursorRegistry, render_cursor_settings_jsonc};
 use yazelix_zellij_config_pack::{
-    DEFAULT_ZELLIJ_CONFIG_SIDECAR, DEFAULT_ZELLIJ_PLUGINS_SIDECAR, split_zellij_sidecars,
-    validate_zellij_config_sidecar, validate_zellij_plugins_sidecar,
+    DEFAULT_ZELLIJ_CONFIG_SIDECAR, DEFAULT_ZELLIJ_PLUGINS_SIDECAR, add_zellij_native_preferences,
+    split_zellij_sidecars, validate_zellij_config_sidecar, validate_zellij_plugins_sidecar,
 };
 
 pub const SETTINGS_SCHEMA_FILENAME: &str = "yazelix_settings.schema.json";
-pub const DEFAULT_SETTINGS_CONFIG_FILENAME: &str = "settings_default.jsonc";
-const SETTINGS_TOP_LEVEL_ORDER: &[&str] = &[
-    "core",
-    "helix",
-    "editor",
-    "workspace",
-    "shell",
-    "appearance",
-    "zellij",
-    "yazi",
-    "ratconfig",
-];
-
+pub const DEFAULT_MAIN_CONFIG_FILENAME: &str = "config_default.toml";
+const LEGACY_ZELLIJ_CONFIG_SIDECAR: &str =
+    "// Native Zellij preferences used by Yazelix\nscroll_buffer_size 5000\n";
 #[derive(Debug, Clone)]
 pub struct SettingsSurfacePaths {
     pub settings_config: PathBuf,
+    pub legacy_settings_config: PathBuf,
     pub shared_cursor_config: PathBuf,
     pub old_main_config: PathBuf,
     pub old_nested_main_config: PathBuf,
@@ -50,6 +38,7 @@ pub struct SettingsSurfacePaths {
 pub fn settings_surface_paths(config_dir: &Path) -> SettingsSurfacePaths {
     SettingsSurfacePaths {
         settings_config: user_config_paths::main_config(config_dir),
+        legacy_settings_config: user_config_paths::legacy_settings_config(config_dir),
         shared_cursor_config: user_config_paths::shared_cursor_config(config_dir),
         old_main_config: user_config_paths::old_main_config(config_dir),
         old_nested_main_config: user_config_paths::legacy_main_config(config_dir),
@@ -99,12 +88,32 @@ pub fn ensure_settings_config_with_cursor_component(
     let paths = settings_surface_paths(config_dir);
     ensure_no_old_main_inputs(&paths)?;
 
-    if paths.settings_config.exists() {
-        ensure_zellij_sidecars(config_dir)?;
-        migrate_released_mars_settings(config_dir, &paths.settings_config)?;
-        reconcile_settings_config_contract(&paths.settings_config, default_main_config)?;
+    if path_present(&paths.settings_config) && path_present(&paths.legacy_settings_config) {
+        return Err(CoreError::classified(
+            ErrorClass::Config,
+            "root_config_migration_conflict",
+            "Both ~/.config/yazelix/config.toml and the retired settings.jsonc exist.",
+            "Keep the intended values in config.toml, then move settings.jsonc aside and retry.",
+            json!({
+                "config": paths.settings_config.display().to_string(),
+                "legacy": paths.legacy_settings_config.display().to_string(),
+            }),
+        ));
+    }
+
+    if path_present(&paths.settings_config) {
+        complete_main_config_defaults(&paths.settings_config, default_main_config)?;
+        ensure_zellij_sidecars(config_dir, DEFAULT_ZELLIJ_CONFIG_SIDECAR)?;
         if cursor_component_enabled {
             ensure_no_embedded_cursor_settings(&paths)?;
+            ensure_shared_cursor_settings_config(&paths, default_cursor_config)?;
+        }
+        return Ok(paths.settings_config);
+    }
+
+    if path_present(&paths.legacy_settings_config) {
+        migrate_legacy_settings_config(config_dir, &paths, default_main_config)?;
+        if cursor_component_enabled {
             ensure_shared_cursor_settings_config(&paths, default_cursor_config)?;
         }
         return Ok(paths.settings_config);
@@ -118,7 +127,7 @@ pub fn ensure_settings_config_with_cursor_component(
                 "Yazelix runtime is missing the default main config at {}.",
                 default_main_config.display()
             ),
-            "Reinstall Yazelix so the runtime includes settings_default.jsonc.",
+            "Reinstall Yazelix so the runtime includes config_default.toml.",
             json!({ "path": default_main_config.display().to_string() }),
         ));
     }
@@ -126,30 +135,26 @@ pub fn ensure_settings_config_with_cursor_component(
         ensure_default_cursor_config_exists(default_cursor_config)?;
     }
 
-    let rendered = render_default_settings_jsonc(default_main_config)?;
-    let rendered =
-        reconcile_settings_contract_text(&paths.settings_config, &rendered, default_main_config)?
-            .text;
-
-    if let Some(parent) = paths.settings_config.parent() {
-        fs::create_dir_all(parent).map_err(|source| {
-            io_err(
-                "create_settings_config_parent",
-                parent,
-                "Could not create the Yazelix settings directory",
-                source,
-            )
-        })?;
-    }
-    fs::write(&paths.settings_config, rendered).map_err(|source| {
+    let rendered = fs::read_to_string(default_main_config).map_err(|source| {
         io_err(
-            "write_settings_config",
-            &paths.settings_config,
-            "Could not write ~/.config/yazelix/settings.jsonc",
+            "read_default_main_config",
+            default_main_config,
+            "Could not read the default Yazelix config",
             source,
         )
     })?;
-    ensure_zellij_sidecars(config_dir)?;
+    toml::from_str::<toml::Table>(&rendered).map_err(|source| {
+        CoreError::toml(
+            "invalid_default_main_config",
+            "Could not parse the packaged Yazelix config default",
+            "Reinstall Yazelix so the runtime includes a valid config_default.toml.",
+            default_main_config.to_string_lossy(),
+            source,
+        )
+    })?;
+
+    write_text_atomic(&paths.settings_config, &rendered)?;
+    ensure_zellij_sidecars(config_dir, DEFAULT_ZELLIJ_CONFIG_SIDECAR)?;
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
@@ -164,7 +169,104 @@ pub fn ensure_settings_config_with_cursor_component(
     Ok(paths.settings_config)
 }
 
-fn ensure_zellij_sidecars(config_dir: &Path) -> Result<(), CoreError> {
+fn complete_main_config_defaults(path: &Path, default_main_config: &Path) -> Result<(), CoreError> {
+    let raw = fs::read_to_string(path).map_err(|source| {
+        io_err(
+            "read_main_config_for_completion",
+            path,
+            "Could not read config.toml for default completion",
+            source,
+        )
+    })?;
+    let default_raw = fs::read_to_string(default_main_config).map_err(|source| {
+        io_err(
+            "read_main_config_defaults_for_completion",
+            default_main_config,
+            "Could not read the packaged config defaults",
+            source,
+        )
+    })?;
+    let defaults = parse_toml_value(&default_raw).map_err(|error| {
+        CoreError::classified(
+            ErrorClass::Internal,
+            "invalid_packaged_config_defaults",
+            format!("Could not parse packaged config defaults: {error:?}"),
+            "Reinstall Yazelix so config_default.toml is valid.",
+            json!({ "path": default_main_config.display().to_string() }),
+        )
+    })?;
+    let mut active = parse_toml_value(&raw).map_err(|error| {
+        CoreError::classified(
+            ErrorClass::Config,
+            "invalid_main_config_toml",
+            format!("Could not parse {}: {error:?}", path.display()),
+            "Fix the TOML syntax in config.toml, then retry.",
+            json!({ "path": path.display().to_string() }),
+        )
+    })?;
+    let mut leaves = Vec::new();
+    collect_toml_default_leaves(&defaults, "", &mut leaves);
+    let mut completed = raw.clone();
+    for (field_path, default) in leaves {
+        if get_toml_path(&active, &field_path).is_some() {
+            continue;
+        }
+        completed = set_toml_value_text(&completed, &field_path, &default)
+            .map_err(|error| {
+                CoreError::classified(
+                    ErrorClass::Config,
+                    "complete_main_config_default",
+                    format!("Could not add missing {field_path} to config.toml: {error:?}"),
+                    "Fix the TOML structure in config.toml, then retry.",
+                    json!({ "path": path.display().to_string(), "field": field_path }),
+                )
+            })?
+            .text;
+        active = parse_toml_value(&completed).map_err(|error| {
+            CoreError::classified(
+                ErrorClass::Internal,
+                "verify_completed_main_config",
+                format!("Could not verify completed config.toml: {error:?}"),
+                "Report this as a Yazelix internal error.",
+                json!({ "path": path.display().to_string() }),
+            )
+        })?;
+    }
+    if completed == raw {
+        return Ok(());
+    }
+    if path_owned_by_home_manager(path) || settings_path_is_read_only(path) {
+        return Err(CoreError::classified(
+            ErrorClass::Config,
+            "read_only_config_completion_required",
+            "The declarative config.toml is missing current Yazelix defaults.",
+            "Update the Home Manager module and run home-manager switch so it renders the current config.toml contract.",
+            json!({ "path": path.display().to_string() }),
+        ));
+    }
+    write_text_atomic(path, &completed)
+}
+
+fn collect_toml_default_leaves(
+    value: &JsonValue,
+    prefix: &str,
+    leaves: &mut Vec<(String, JsonValue)>,
+) {
+    if let Some(object) = value.as_object() {
+        for (key, value) in object {
+            let path = if prefix.is_empty() {
+                key.clone()
+            } else {
+                format!("{prefix}.{key}")
+            };
+            collect_toml_default_leaves(value, &path, leaves);
+        }
+    } else if !prefix.is_empty() {
+        leaves.push((prefix.to_string(), value.clone()));
+    }
+}
+
+fn ensure_zellij_sidecars(config_dir: &Path, config_default: &str) -> Result<(), CoreError> {
     let flat = user_config_paths::flat_zellij_config(config_dir);
     let config = user_config_paths::zellij_config(config_dir);
     let plugins = user_config_paths::zellij_plugins(config_dir);
@@ -178,11 +280,7 @@ fn ensure_zellij_sidecars(config_dir: &Path) -> Result<(), CoreError> {
         ));
     }
     if !flat_present {
-        ensure_zellij_sidecar(
-            &config,
-            DEFAULT_ZELLIJ_CONFIG_SIDECAR,
-            validate_zellij_config_sidecar,
-        )?;
+        ensure_zellij_sidecar(&config, config_default, validate_zellij_config_sidecar)?;
         return ensure_zellij_sidecar(
             &plugins,
             DEFAULT_ZELLIJ_PLUGINS_SIDECAR,
@@ -299,282 +397,239 @@ fn zellij_migration_failure(
     )
 }
 
-const LEGACY_TRANSPARENCY_OPACITY: &[(&str, f64)] = &[
-    ("none", 1.0),
-    ("very_low", 0.95),
-    ("low", 0.90),
-    ("medium", 0.85),
-    ("high", 0.80),
-    ("very_high", 0.70),
-    ("super_high", 0.60),
-];
-
-fn migrate_released_mars_settings(
+fn migrate_legacy_settings_config(
     config_dir: &Path,
-    settings_path: &Path,
+    paths: &SettingsSurfacePaths,
+    default_main_config: &Path,
 ) -> Result<(), CoreError> {
-    let raw = fs::read_to_string(settings_path).map_err(|source| {
+    let legacy = &paths.legacy_settings_config;
+    if path_owned_by_home_manager(legacy) || settings_path_is_read_only(legacy) {
+        return Err(CoreError::classified(
+            ErrorClass::Config,
+            "read_only_root_config_migration",
+            "The retired settings.jsonc is read-only and cannot be migrated safely.",
+            "Update Home Manager to generate programs.yazelix config.toml, remove its settings.jsonc owner, then run home-manager switch.",
+            json!({ "path": legacy.display().to_string() }),
+        ));
+    }
+    let flat_zellij = user_config_paths::flat_zellij_config(config_dir);
+    if path_present(&flat_zellij) {
+        return Err(zellij_migration_failure(
+            "root_config_requires_nested_zellij_sidecar",
+            "The retired flat zellij.kdl sidecar still exists.",
+            "Start the current Classic runtime once to migrate it to zellij/config.kdl and zellij/plugins.kdl, then retry the root config migration.",
+            &flat_zellij,
+        ));
+    }
+
+    let raw = fs::read_to_string(legacy).map_err(|source| {
         io_err(
-            "read_settings_for_mars_migration",
-            settings_path,
-            "Could not read settings.jsonc for the Mars config migration",
+            "read_legacy_settings_migration_source",
+            legacy,
+            "Could not read the retired settings.jsonc",
             source,
         )
     })?;
-    let value = parse_jsonc_value(settings_path, &raw)?;
-    let Some(terminal) = value.get("terminal") else {
-        return Ok(());
-    };
-    let terminal = terminal.as_object().ok_or_else(|| {
+    let reconciled = reconcile_settings_contract_text(legacy, &raw, default_main_config)?;
+    let mut value = parse_config_value(legacy, &reconciled.text)?;
+    let root = value.as_object_mut().ok_or_else(|| {
         CoreError::classified(
             ErrorClass::Config,
-            "invalid_legacy_terminal_settings",
-            "Cannot migrate a non-object terminal setting.",
-            "Remove the invalid terminal value or replace it with the released terminal settings object, then retry.",
-            json!({ "value": terminal }),
+            "legacy_settings_not_object",
+            "The retired settings.jsonc does not contain a JSON object.",
+            "Replace it with a valid Yazelix settings object or restore a working backup, then retry.",
+            json!({ "path": legacy.display().to_string() }),
         )
     })?;
-    let legacy_present = ["config_mode", "emoji_style", "transparency"]
-        .iter()
-        .any(|key| terminal.contains_key(*key));
-    if !legacy_present {
-        return Ok(());
-    }
-    if path_owned_by_home_manager(settings_path) || settings_path_is_read_only(settings_path) {
+    if root.contains_key("cursors") {
         return Err(CoreError::classified(
             ErrorClass::Config,
-            "read_only_mars_settings_migration",
-            "The retired terminal settings are in a read-only settings.jsonc.",
-            "Remove terminal.config_mode, terminal.emoji_style, and terminal.transparency from Home Manager; declare the complete file with programs.yazelix.config.mars.text or source; then run home-manager switch.",
-            json!({ "path": settings_path.display().to_string() }),
+            "embedded_cursor_settings_unsupported",
+            "Yazelix found cursor settings embedded in the retired settings.jsonc.",
+            "Move cursor settings to ~/.config/yazelix_cursors/settings.jsonc, then retry.",
+            json!({ "path": legacy.display().to_string() }),
         ));
     }
+    root.remove("ratconfig");
 
-    let mars_path = user_config_paths::mars_config(config_dir);
-    if let Some(mode) = terminal.get("config_mode") {
-        let mode = mode.as_str().ok_or_else(|| {
+    let zellij = root
+        .get_mut("zellij")
+        .and_then(JsonValue::as_object_mut)
+        .ok_or_else(|| {
             CoreError::classified(
                 ErrorClass::Config,
-                "invalid_legacy_terminal_config_mode",
-                "Cannot migrate non-string terminal.config_mode.",
-                "Set terminal.config_mode to yazelix or user, then retry.",
-                json!({ "value": mode }),
+                "missing_legacy_zellij_settings",
+                "The retired settings.jsonc is missing its zellij object.",
+                "Restore a valid Classic settings backup, then retry.",
+                json!({ "path": legacy.display().to_string() }),
             )
         })?;
-        if !matches!(mode, "yazelix" | "user") {
-            return Err(CoreError::classified(
-                ErrorClass::Config,
-                "invalid_legacy_terminal_config_mode",
-                format!("Cannot migrate terminal.config_mode value `{mode}`."),
-                "Use yazelix or user, then retry.",
-                json!({ "value": mode }),
-            ));
-        }
-        if mode == "user" && !mars_path.is_file() {
-            return Err(CoreError::classified(
-                ErrorClass::Config,
-                "missing_reviewed_mars_config",
-                "terminal.config_mode was user, but ~/.config/yazelix/mars/config.toml does not exist.",
-                "Create and review the Yazelix-owned Mars override. Ambient ~/.config/mars/config.toml is intentionally ignored.",
-                json!({ "path": mars_path.display().to_string() }),
-            ));
-        }
-    }
-
-    if let Some(transparency) = terminal.get("transparency") {
-        let transparency = transparency.as_str().ok_or_else(|| {
-            CoreError::classified(
-                ErrorClass::Config,
-                "invalid_legacy_transparency",
-                "Cannot migrate non-string terminal.transparency.",
-                "Use one of none, very_low, low, medium, high, very_high, or super_high.",
-                json!({ "value": transparency }),
-            )
-        })?;
-        let opacity = LEGACY_TRANSPARENCY_OPACITY
-            .iter()
-            .find_map(|(name, opacity)| (*name == transparency).then_some(*opacity))
-            .ok_or_else(|| {
-                CoreError::classified(
-                    ErrorClass::Config,
-                    "invalid_legacy_transparency",
-                    format!("Cannot migrate terminal.transparency value `{transparency}`."),
-                    "Use one of none, very_low, low, medium, high, very_high, or super_high.",
-                    json!({ "value": transparency }),
-                )
-            })?;
-        migrate_mars_opacity(&mars_path, opacity)?;
-    }
-
-    let updated = unset_settings_jsonc_value_text(settings_path, &raw, "terminal")?;
-    if updated.changed() {
-        write_text_atomic(settings_path, &updated.text)?;
-    }
-    Ok(())
-}
-
-fn migrate_mars_opacity(mars_path: &Path, opacity: f64) -> Result<(), CoreError> {
-    let present = path_present(mars_path);
-    if present && (path_owned_by_home_manager(mars_path) || settings_path_is_read_only(mars_path)) {
+    let disable_tips = take_legacy_bool(zellij, "disable_tips", true, legacy)?;
+    let pane_frames = take_legacy_bool(zellij, "pane_frames", true, legacy)?;
+    let rounded_corners = take_legacy_bool(zellij, "rounded_corners", true, legacy)?;
+    let default_mode = take_legacy_string(zellij, "default_mode", "normal", legacy)?;
+    if !matches!(default_mode.as_str(), "normal" | "locked") {
         return Err(CoreError::classified(
             ErrorClass::Config,
-            "read_only_mars_opacity_migration",
-            "The Mars override needs an opacity migration but is read-only.",
-            "Set window.opacity through programs.yazelix.config.mars, then run home-manager switch.",
-            json!({ "path": mars_path.display().to_string() }),
+            "invalid_legacy_zellij_default_mode",
+            format!("Cannot migrate zellij.default_mode value {default_mode:?}."),
+            "Use normal or locked, then retry.",
+            json!({ "path": legacy.display().to_string() }),
         ));
     }
-    if present && !mars_path.is_file() {
-        return Err(CoreError::classified(
-            ErrorClass::Config,
-            "invalid_mars_config_path",
-            format!(
-                "The Mars config path is not a file: {}.",
-                mars_path.display()
-            ),
-            "Remove the conflicting filesystem entry or replace it with a config.toml file.",
-            json!({ "path": mars_path.display().to_string() }),
+
+    let mut config = json_value_to_toml_table(&value, legacy)?;
+    insert_config_contract(&mut config);
+    let rendered = toml::to_string_pretty(&config).map_err(|source| {
+        CoreError::classified(
+            ErrorClass::Internal,
+            "render_migrated_config_toml",
+            format!("Could not render migrated config.toml: {source}"),
+            "Report this as a Yazelix migration error.",
+            json!({ "path": legacy.display().to_string() }),
+        )
+    })?;
+    toml::from_str::<toml::Table>(&rendered).map_err(|source| {
+        CoreError::toml(
+            "verify_migrated_config_toml",
+            "Could not verify the migrated Yazelix config",
+            "Restore the settings.jsonc backup and report this migration error.",
+            paths.settings_config.to_string_lossy(),
+            source,
+        )
+    })?;
+
+    let zellij_path = user_config_paths::zellij_config(config_dir);
+    let zellij_existed = path_present(&zellij_path);
+    if zellij_existed
+        && (path_owned_by_home_manager(&zellij_path) || settings_path_is_read_only(&zellij_path))
+    {
+        return Err(zellij_migration_failure(
+            "read_only_zellij_native_preference_migration",
+            "The Zellij config sidecar is read-only and cannot receive migrated native preferences.",
+            "Declare show_startup_tips, pane_frames, default_mode, and ui.pane_frames.rounded_corners in programs.yazelix.config.zellij, then run home-manager switch.",
+            &zellij_path,
         ));
     }
-    let raw = if present {
-        fs::read_to_string(mars_path).map_err(|source| {
+    let original_zellij = if zellij_existed {
+        fs::read_to_string(&zellij_path).map_err(|source| {
             io_err(
-                "read_mars_opacity_migration_source",
-                mars_path,
-                "Could not read the Mars override for opacity migration",
+                "read_zellij_native_preference_migration_target",
+                &zellij_path,
+                "Could not read the Zellij config sidecar",
                 source,
             )
         })?
     } else {
-        String::new()
+        LEGACY_ZELLIJ_CONFIG_SIDECAR.to_string()
     };
-    let value = parse_toml_value(&raw).map_err(|error| {
-        CoreError::classified(
-            ErrorClass::Config,
-            "invalid_mars_config",
-            format!("Could not parse {}: {error:?}.", mars_path.display()),
-            "Fix the Mars TOML override, then retry.",
-            json!({ "path": mars_path.display().to_string() }),
-        )
-    })?;
-    let current = get_toml_path(&value, "window.opacity");
-    if present && let Some(current) = current {
-        if current.as_f64() == Some(opacity) {
-            return Ok(());
-        }
-        return Err(CoreError::classified(
-            ErrorClass::Config,
-            "mars_opacity_migration_conflict",
-            format!(
-                "Existing Mars window.opacity {current:?} conflicts with migrated opacity {opacity}."
-            ),
-            "Choose the intended opacity in ~/.config/yazelix/mars/config.toml, then remove the retired terminal settings from settings.jsonc.",
-            json!({ "path": mars_path.display().to_string() }),
-        ));
-    }
-    let patched =
-        set_toml_value_text(&raw, "window.opacity", &json!(opacity)).map_err(|error| {
-            CoreError::classified(
-                ErrorClass::Config,
-                "mars_opacity_patch_failed",
-                format!("Could not patch Mars window.opacity: {error:?}."),
-                "Fix the Mars TOML override structure, then retry.",
-                json!({ "path": mars_path.display().to_string() }),
-            )
-        })?;
-    write_text_atomic(mars_path, &patched.text)?;
-    let verified = parse_toml_value(&fs::read_to_string(mars_path).map_err(|source| {
+    let migrated_zellij = add_zellij_native_preferences(
+        &original_zellij,
+        disable_tips,
+        pane_frames,
+        rounded_corners,
+        &default_mode,
+    )
+    .map_err(|error| zellij_migration_error(&zellij_path, error))?;
+
+    let timestamp = compact_utc_backup_timestamp();
+    fs::copy(legacy, migration_backup_path(legacy, &timestamp)).map_err(|source| {
         io_err(
-            "verify_mars_opacity_migration",
-            mars_path,
-            "Could not verify the migrated Mars config",
+            "backup_legacy_settings_config",
+            legacy,
+            "Could not back up settings.jsonc before migration",
             source,
         )
-    })?)
-    .map_err(|error| {
-        CoreError::classified(
-            ErrorClass::Config,
-            "invalid_migrated_mars_config",
-            format!("Migrated Mars config is invalid: {error:?}."),
-            "Restore the Mars override and retry.",
-            json!({ "path": mars_path.display().to_string() }),
-        )
     })?;
-    if get_toml_path(&verified, "window.opacity").and_then(JsonValue::as_f64) != Some(opacity) {
-        return Err(CoreError::classified(
-            ErrorClass::Internal,
-            "mars_opacity_verification_failed",
-            "The Mars opacity migration did not persist the requested value.",
-            "Report this Yazelix migration failure.",
-            json!({ "path": mars_path.display().to_string() }),
+    if zellij_existed {
+        backup_zellij_migration_source(&zellij_path, &timestamp)?;
+    }
+
+    write_text_atomic(&zellij_path, &migrated_zellij)?;
+    if let Err(error) = write_text_atomic(&paths.settings_config, &rendered) {
+        restore_zellij_after_failed_root_migration(&zellij_path, zellij_existed, &original_zellij);
+        return Err(error);
+    }
+    if let Err(error) = complete_main_config_defaults(&paths.settings_config, default_main_config) {
+        let _ = fs::remove_file(&paths.settings_config);
+        restore_zellij_after_failed_root_migration(&zellij_path, zellij_existed, &original_zellij);
+        return Err(error);
+    }
+    if let Err(source) = fs::remove_file(legacy) {
+        let _ = fs::remove_file(&paths.settings_config);
+        restore_zellij_after_failed_root_migration(&zellij_path, zellij_existed, &original_zellij);
+        return Err(io_err(
+            "retire_legacy_settings_config",
+            legacy,
+            "Could not retire settings.jsonc after writing config.toml",
+            source,
         ));
     }
-    Ok(())
+    ensure_zellij_sidecar(
+        &user_config_paths::zellij_plugins(config_dir),
+        DEFAULT_ZELLIJ_PLUGINS_SIDECAR,
+        validate_zellij_plugins_sidecar,
+    )
 }
 
-fn reconcile_settings_config_contract(
-    settings_config: &Path,
-    default_main_config: &Path,
-) -> Result<(), CoreError> {
-    let raw = fs::read_to_string(settings_config).map_err(|source| {
-        io_err(
-            "read_settings_config_for_contract_reconciliation",
-            settings_config,
-            "Could not read ~/.config/yazelix/settings.jsonc for contract reconciliation",
-            source,
-        )
-    })?;
-    let outcome = reconcile_settings_contract_text(settings_config, &raw, default_main_config)?;
-
-    if !outcome.changed() {
-        return Ok(());
-    }
-
-    if path_owned_by_home_manager(settings_config) {
-        return Err(CoreError::classified(
+fn take_legacy_bool(
+    zellij: &mut JsonMap<String, JsonValue>,
+    key: &str,
+    default: bool,
+    path: &Path,
+) -> Result<bool, CoreError> {
+    match zellij.remove(key) {
+        None => Ok(default),
+        Some(JsonValue::Bool(value)) => Ok(value),
+        Some(value) => Err(CoreError::classified(
             ErrorClass::Config,
-            "home_manager_owned_settings_contract_reconciliation_required",
-            "The active Yazelix settings file needs deterministic contract reconciliation and is owned by Home Manager.",
-            "Update your Home Manager module/options and run home-manager switch so the generated settings.jsonc joins the current Yazelix settings contract.",
-            json!({
-                "path": settings_config.display().to_string(),
-                "state_path": SETTINGS_CONTRACT_STATE_PATH,
-                "applied_changes": outcome.applied_change_ids,
-            }),
-        ));
+            "invalid_legacy_zellij_boolean",
+            format!("Cannot migrate zellij.{key}; expected a boolean."),
+            "Fix the value in settings.jsonc, then retry.",
+            json!({ "path": path.display().to_string(), "value": value }),
+        )),
     }
-    if settings_path_is_read_only(settings_config) {
-        return Err(CoreError::classified(
-            ErrorClass::Config,
-            "read_only_settings_contract_reconciliation_required",
-            format!(
-                "The active Yazelix settings file needs deterministic contract reconciliation and is read-only: {}.",
-                settings_config.display()
-            ),
-            "Fix file permissions or edit the owning configuration source so settings.jsonc joins the current Yazelix settings contract.",
-            json!({
-                "path": settings_config.display().to_string(),
-                "state_path": SETTINGS_CONTRACT_STATE_PATH,
-                "applied_changes": outcome.applied_change_ids,
-            }),
-        ));
-    }
-
-    write_reconciled_settings_contract(settings_config, &outcome)
 }
 
-fn write_reconciled_settings_contract(
-    settings_config: &Path,
-    outcome: &SettingsContractReconcileOutcome,
-) -> Result<(), CoreError> {
-    fs::write(settings_config, &outcome.text).map_err(|source| {
-        io_err(
-            "write_settings_config_contract_reconciliation",
-            settings_config,
-            "Could not write reconciled settings.jsonc contract state",
-            source,
-        )
-    })
+fn take_legacy_string(
+    zellij: &mut JsonMap<String, JsonValue>,
+    key: &str,
+    default: &str,
+    path: &Path,
+) -> Result<String, CoreError> {
+    match zellij.remove(key) {
+        None => Ok(default.to_string()),
+        Some(JsonValue::String(value)) => Ok(value),
+        Some(value) => Err(CoreError::classified(
+            ErrorClass::Config,
+            "invalid_legacy_zellij_string",
+            format!("Cannot migrate zellij.{key}; expected a string."),
+            "Fix the value in settings.jsonc, then retry.",
+            json!({ "path": path.display().to_string(), "value": value }),
+        )),
+    }
+}
+
+fn insert_config_contract(config: &mut toml::Table) {
+    let mut contract = toml::Table::new();
+    contract.insert("schema_version".into(), TomlValue::Integer(1));
+    contract.insert(
+        "contract_id".into(),
+        TomlValue::String("yazelix.config".into()),
+    );
+    contract.insert("version".into(), TomlValue::Integer(1));
+    contract.insert("applied_change_ids".into(), TomlValue::Array(Vec::new()));
+    let mut ratconfig = toml::Table::new();
+    ratconfig.insert("contract".into(), TomlValue::Table(contract));
+    config.insert("ratconfig".into(), TomlValue::Table(ratconfig));
+}
+
+fn restore_zellij_after_failed_root_migration(path: &Path, existed: bool, original: &str) {
+    if existed {
+        let _ = write_text_atomic(path, original);
+    } else {
+        let _ = fs::remove_file(path);
+    }
 }
 
 fn settings_path_is_read_only(path: &Path) -> bool {
@@ -583,30 +638,25 @@ fn settings_path_is_read_only(path: &Path) -> bool {
         .unwrap_or(false)
 }
 
-pub fn render_default_settings_jsonc(default_main_config: &Path) -> Result<String, CoreError> {
+pub fn render_default_config(default_main_config: &Path) -> Result<String, CoreError> {
     let raw = fs::read_to_string(default_main_config).map_err(|source| {
         io_err(
             "read_default_main_config",
             default_main_config,
-            "Could not read the default Yazelix settings JSONC",
+            "Could not read the default Yazelix config",
             source,
         )
     })?;
-    let value = parse_jsonc_value(default_main_config, &raw)?;
-    let Some(object) = value.as_object() else {
-        return Err(CoreError::classified(
-            ErrorClass::Config,
-            "default_settings_jsonc_not_object",
-            "Yazelix default settings JSONC must contain a JSON object.",
-            "Reinstall Yazelix so the runtime includes a valid settings_default.jsonc.",
-            json!({ "path": default_main_config.display().to_string() }),
-        ));
-    };
-    if object.contains_key("cursors") {
+    let value = read_toml_table(
+        default_main_config,
+        "invalid_default_main_config",
+        "Could not parse the default Yazelix config",
+    )?;
+    if value.contains_key("cursors") {
         return Err(CoreError::classified(
             ErrorClass::Config,
             "embedded_default_cursor_settings_unsupported",
-            "Yazelix default main settings JSONC must not contain cursor settings.",
+            "Yazelix default main config must not contain cursor settings.",
             "Keep cursor defaults in the shared cursor registry default instead.",
             json!({ "path": default_main_config.display().to_string() }),
         ));
@@ -616,26 +666,56 @@ pub fn render_default_settings_jsonc(default_main_config: &Path) -> Result<Strin
 
 pub fn read_config_table(path: &Path, code: &'static str) -> Result<toml::Table, CoreError> {
     if is_jsonc_config_path(path) {
-        let value = read_settings_jsonc_value(path)?;
+        let value = read_config_value(path)?;
         json_value_to_toml_table(&value, path)
     } else {
         read_toml_table(path, code, "Could not parse Yazelix TOML input")
     }
 }
 
-pub fn read_settings_jsonc_value(path: &Path) -> Result<JsonValue, CoreError> {
+pub fn read_config_value(path: &Path) -> Result<JsonValue, CoreError> {
     let raw = fs::read_to_string(path).map_err(|source| {
         io_err(
             "read_settings_jsonc",
             path,
-            "Could not read Yazelix settings JSONC",
+            "Could not read Yazelix config",
             source,
         )
     })?;
-    parse_jsonc_value(path, &raw)
+    parse_config_value(path, &raw)
 }
 
-pub fn parse_jsonc_value(path: &Path, raw: &str) -> Result<JsonValue, CoreError> {
+pub fn parse_config_value(path: &Path, raw: &str) -> Result<JsonValue, CoreError> {
+    let is_main_toml = path
+        .file_name()
+        .and_then(|name| name.to_str())
+        .is_some_and(|name| matches!(name, "config.toml" | "config_default.toml"));
+    if is_main_toml {
+        let value = toml::from_str::<toml::Table>(raw).map_err(|source| {
+            CoreError::classified(
+                ErrorClass::Config,
+                "invalid_main_config_toml",
+                format!(
+                    "Could not parse Yazelix TOML at {}: {source}.",
+                    path.display()
+                ),
+                "Fix the TOML syntax in the reported config file and retry.",
+                json!({ "path": path.display().to_string(), "error": source.to_string() }),
+            )
+        })?;
+        return serde_json::to_value(TomlValue::Table(value)).map_err(|source| {
+            CoreError::classified(
+                ErrorClass::Internal,
+                "convert_main_config_toml",
+                format!(
+                    "Could not convert Yazelix TOML at {}: {source}.",
+                    path.display()
+                ),
+                "Report this as a Yazelix internal error.",
+                json!({ "path": path.display().to_string(), "error": source.to_string() }),
+            )
+        });
+    }
     jsonc_parser::parse_to_serde_value::<JsonValue>(raw, &jsonc_parse_options()).map_err(|source| {
         CoreError::classified(
             ErrorClass::Config,
@@ -676,7 +756,7 @@ fn ensure_no_old_main_inputs(paths: &SettingsSurfacePaths) -> Result<(), CoreErr
             &paths.settings_config,
             "stale_old_settings_input",
             "old settings input",
-            "Move the old TOML file aside and keep settings.jsonc as the only Yazelix settings source.",
+            "Move the old yazelix.toml file aside and keep config.toml as the only Yazelix settings source.",
         )?;
     }
     Ok(())
@@ -720,15 +800,15 @@ fn ensure_no_old_cursor_inputs(paths: &SettingsSurfacePaths) -> Result<(), CoreE
 }
 
 fn ensure_no_embedded_cursor_settings(paths: &SettingsSurfacePaths) -> Result<(), CoreError> {
-    let value = read_settings_jsonc_value(&paths.settings_config)?;
+    let value = read_config_value(&paths.settings_config)?;
     if value.get("cursors").is_none() {
         return Ok(());
     }
     Err(CoreError::classified(
         ErrorClass::Config,
         "embedded_cursor_settings_unsupported",
-        "Yazelix found cursor settings embedded in settings.jsonc.",
-        "Move cursor settings to ~/.config/yazelix_cursors/settings.jsonc or reset cursor config with `yzc init`; Yazelix no longer rewrites embedded cursor settings automatically.",
+        "Yazelix found cursor settings embedded in config.toml.",
+        "Move cursor settings to ~/.config/yazelix_cursors/settings.jsonc or reset cursor config with `yzc init`; config.toml does not own cursor settings.",
         json!({
             "settings_config": paths.settings_config.display().to_string(),
             "shared_cursor_config": paths.shared_cursor_config.display().to_string(),
@@ -824,14 +904,17 @@ fn read_toml_table(
     })
 }
 
-pub fn render_settings_jsonc_value(value: &JsonValue) -> Result<String, CoreError> {
-    let body = match value.as_object() {
-        Some(object) => render_ordered_settings_root(object)?,
-        None => serialize_settings_jsonc_fragment(value)?,
-    };
-    Ok(format!(
-        "// Yazelix settings. Edit with `yzx config`/your editor; schema metadata powers future UI discovery.\n{body}\n"
-    ))
+pub fn render_config_value(value: &JsonValue) -> Result<String, CoreError> {
+    let table = json_value_to_toml_table(value, Path::new("config.toml"))?;
+    toml::to_string_pretty(&table).map_err(|source| {
+        CoreError::classified(
+            ErrorClass::Internal,
+            "serialize_main_config_toml",
+            format!("Could not serialize config.toml: {source}"),
+            "Report this as a Yazelix internal error.",
+            json!({}),
+        )
+    })
 }
 
 fn ensure_trailing_newline(mut raw: String) -> String {
@@ -841,79 +924,18 @@ fn ensure_trailing_newline(mut raw: String) -> String {
     raw
 }
 
-fn serialize_settings_jsonc_fragment(value: &JsonValue) -> Result<String, CoreError> {
-    serde_json::to_string_pretty(value).map_err(|source| {
-        CoreError::classified(
-            ErrorClass::Internal,
-            "serialize_settings_jsonc",
-            format!("Could not serialize settings.jsonc: {source}"),
-            "Report this as a Yazelix internal error.",
-            json!({}),
-        )
-    })
-}
-
-fn render_ordered_settings_root(object: &JsonMap<String, JsonValue>) -> Result<String, CoreError> {
-    let mut ordered_keys = Vec::new();
-    for key in SETTINGS_TOP_LEVEL_ORDER {
-        if object.contains_key(*key) {
-            ordered_keys.push((*key).to_string());
-        }
-    }
-    for key in object.keys() {
-        if key != "cursors" && !SETTINGS_TOP_LEVEL_ORDER.contains(&key.as_str()) {
-            ordered_keys.push(key.clone());
-        }
-    }
-    if object.contains_key("cursors") {
-        ordered_keys.push("cursors".to_string());
-    }
-
-    let mut entries = Vec::with_capacity(ordered_keys.len());
-    for key in ordered_keys {
-        let rendered_key = serde_json::to_string(&key).map_err(|source| {
-            CoreError::classified(
-                ErrorClass::Internal,
-                "serialize_settings_jsonc",
-                format!("Could not serialize settings.jsonc key: {source}"),
-                "Report this as a Yazelix internal error.",
-                json!({ "key": key }),
-            )
-        })?;
-        let rendered_value = serialize_settings_jsonc_fragment(&object[&key])?;
-        let indented_value = rendered_value
-            .lines()
-            .enumerate()
-            .map(|(index, line)| {
-                if index == 0 {
-                    line.to_string()
-                } else {
-                    format!("  {line}")
-                }
-            })
-            .collect::<Vec<_>>()
-            .join("\n");
-        entries.push(format!("  {rendered_key}: {indented_value}"));
-    }
-
-    Ok(format!("{{\n{}\n}}", entries.join(",\n")))
-}
-
 fn json_value_to_toml_table(value: &JsonValue, path: &Path) -> Result<toml::Table, CoreError> {
     let JsonValue::Object(object) = value else {
         return Err(CoreError::classified(
             ErrorClass::Config,
-            "settings_jsonc_not_object",
-            "Yazelix settings.jsonc must contain a JSON object.",
-            "Replace settings.jsonc with a valid object, then retry.",
+            "config_not_object",
+            "Yazelix config must contain an object/table.",
+            "Replace the config with a valid root object/table, then retry.",
             json!({ "path": path.display().to_string() }),
         ));
     };
     let mut table = toml::Table::new();
     for (key, value) in object {
-        if key == "ratconfig" {
-            continue;
-        }
         if value.is_null() {
             continue;
         }
@@ -927,7 +949,7 @@ fn json_value_to_toml(value: &JsonValue, path: &Path) -> Result<TomlValue, CoreE
         JsonValue::Null => Err(CoreError::classified(
             ErrorClass::Config,
             "unsupported_nested_settings_null",
-            "Yazelix settings.jsonc contains null where a concrete value is required.",
+            "The retired settings.jsonc contains null where TOML requires a concrete value.",
             "Remove the field to use the default, or replace null with a supported value.",
             json!({ "path": path.display().to_string() }),
         )),
@@ -942,7 +964,7 @@ fn json_value_to_toml(value: &JsonValue, path: &Path) -> Result<TomlValue, CoreE
                 Err(CoreError::classified(
                     ErrorClass::Config,
                     "unsupported_settings_number",
-                    "Yazelix settings.jsonc contains a number that cannot be represented.",
+                    "The retired settings.jsonc contains a number that cannot be represented in TOML.",
                     "Use an integer or finite float value.",
                     json!({ "path": path.display().to_string(), "value": value.to_string() }),
                 ))
@@ -979,712 +1001,169 @@ fn io_err(code: &'static str, path: &Path, message: &str, source: io::Error) -> 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ghostty_cursor_registry::DEFAULT_CURSOR_CONFIG_FILENAME;
-    use std::fs;
     use tempfile::tempdir;
 
     #[cfg(unix)]
     use std::os::unix::fs::PermissionsExt;
 
-    fn write_defaults(root: &Path) -> (PathBuf, PathBuf) {
-        let main = root.join("settings_default.jsonc");
-        let cursor = root.join(DEFAULT_CURSOR_CONFIG_FILENAME);
-        fs::write(
-            &main,
-            r#"{
-  "editor": {
-    "command": "hx",
-    "hide_sidebar_on_file_open": true
-  },
-  "workspace": {
-    "left_sidebar": {
-      "command": "yzx",
-      "args": ["sidebar", "yazi"],
-      "width_percent": 20
-    },
-    "right_sidebar": {
-      "command": "yzx",
-      "args": ["agent"],
-      "width_percent": 40
+    fn default_main_config() -> PathBuf {
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../config_default.toml")
     }
-  },
-  "zellij": {
-    "support_kitty_keyboard_protocol": true,
-    "native_keybindings": {
-      "move_tab_left": ["Ctrl Alt h"],
-      "move_tab_right": ["Ctrl Alt l"],
-      "move_pane_down": ["Ctrl Alt j"],
-      "move_pane_up": ["Ctrl Alt k"]
-    }
-  }
-}
-"#,
-        )
-        .unwrap();
+
+    fn write_cursor_default(root: &Path) -> PathBuf {
+        let path = root.join("yazelix_cursors_default.toml");
         fs::write(
-            &cursor,
+            &path,
             "schema_version = 1\nenabled_cursors = [\"snow\"]\n[settings]\ntrail = \"snow\"\ntrail_effect = \"tail\"\nmode_effect = \"ripple\"\nglow = \"medium\"\nduration = 1.0\nkitty_enable_cursor = true\n[[cursor]]\nname = \"snow\"\nfamily = \"mono\"\ncolor = \"#ffffff\"\n",
         )
         .unwrap();
-        (main, cursor)
+        path
     }
 
-    // Defends: new installs create settings.jsonc instead of keeping the old main/cursor TOML surfaces alive.
+    fn write_current_legacy_settings(path: &Path, zellij: &str) {
+        fs::write(
+            path,
+            format!(
+                "{{\n  \"editor\": {{ \"command\": \"nvim\" }},\n  \"zellij\": {{ {zellij} }},\n  \"ratconfig\": {{ \"contract\": {{ \"schema_version\": 1, \"contract_id\": \"yazelix.settings\", \"version\": 16, \"applied_change_ids\": {} }} }}\n}}\n",
+                serde_json::to_string(&crate::settings_contract::SETTINGS_CONTRACT_APPLIED_CHANGE_IDS)
+                    .unwrap()
+            ),
+        )
+        .unwrap();
+    }
+
+    // Defends: fresh runtimes create one TOML root and native Zellij defaults.
     #[test]
-    fn creates_settings_jsonc_from_defaults() {
+    fn creates_config_toml_from_defaults() {
         let runtime = tempdir().unwrap();
         let config = tempdir().unwrap();
-        let (main, cursor) = write_defaults(runtime.path());
+        let cursor = write_cursor_default(runtime.path());
 
-        let path = ensure_settings_config(config.path(), &main, &cursor).unwrap();
-        assert_eq!(path, config.path().join("settings.jsonc"));
+        let path = ensure_settings_config(config.path(), &default_main_config(), &cursor).unwrap();
 
-        let value = read_settings_jsonc_value(&path).unwrap();
-        assert_eq!(
-            value["editor"]["hide_sidebar_on_file_open"].as_bool(),
-            Some(true)
-        );
+        assert_eq!(path, config.path().join("config.toml"));
+        let value = read_config_table(&path, "test").unwrap();
         assert_eq!(
             value["ratconfig"]["contract"]["contract_id"].as_str(),
-            Some("yazelix.settings")
+            Some("yazelix.config")
         );
-        assert!(value.get("cursors").is_none());
-        assert_eq!(
-            value["zellij"]["support_kitty_keyboard_protocol"].as_bool(),
-            Some(true)
-        );
-        let cursor_value =
-            read_settings_jsonc_value(&config.path().join("yazelix_cursors/settings.jsonc"))
-                .unwrap();
-        assert_eq!(cursor_value["settings"]["trail"].as_str(), Some("snow"));
-        assert!(!config.path().join("yazelix.toml").exists());
-        assert!(!config.path().join("cursors.toml").exists());
-        assert!(config.path().join("zellij/config.kdl").exists());
-        assert!(config.path().join("zellij/plugins.kdl").exists());
+        let zellij = fs::read_to_string(config.path().join("zellij/config.kdl")).unwrap();
+        assert!(zellij.contains("show_startup_tips false"));
+        assert!(zellij.contains("rounded_corners true"));
+        assert!(!config.path().join("settings.jsonc").exists());
     }
 
-    // Regression: the released flat sidecar splits once without mutating settings or losing third-party plugin content.
+    // Regression: the one-time transaction backs up JSONC, preserves Yazelix values, and moves native Zellij values exactly once.
     #[test]
-    fn migrates_flat_zellij_sidecar() {
+    fn migrates_legacy_jsonc_to_toml_and_zellij_sidecar() {
+        let runtime = tempdir().unwrap();
         let config = tempdir().unwrap();
-        let settings = config.path().join("settings.jsonc");
-        fs::write(
-            &settings,
-            r#"{
-  "zellij": {
-    "disable_tips": false,
-    "pane_frames": false,
-    "rounded_corners": false,
-    "default_mode": "locked",
-    "theme": "default"
-  }
-}
-"#,
-        )
-        .unwrap();
-        fs::write(
-            config.path().join("zellij.kdl"),
-            "copy_on_select false\nplugins {\n    // keep me\n    third location=\"file:/tmp/third.wasm\"\n}\nload_plugins {\n    third\n}\n",
-        )
-        .unwrap();
-
-        let before = fs::read_to_string(&settings).unwrap();
-        ensure_zellij_sidecars(config.path()).unwrap();
-        ensure_zellij_sidecars(config.path()).unwrap();
-
-        assert!(!config.path().join("zellij.kdl").exists());
-        let migrated = fs::read_to_string(config.path().join("zellij/config.kdl")).unwrap();
-        assert!(migrated.contains("copy_on_select false"));
-        let plugins = fs::read_to_string(config.path().join("zellij/plugins.kdl")).unwrap();
-        assert!(plugins.contains("// keep me"));
-        assert!(plugins.contains("third location=\"file:/tmp/third.wasm\""));
-        assert_eq!(fs::read_to_string(&settings).unwrap(), before);
-        let backups = fs::read_dir(config.path())
-            .unwrap()
-            .filter_map(Result::ok)
-            .map(|entry| entry.file_name().to_string_lossy().into_owned())
-            .collect::<Vec<_>>();
-        assert!(
-            backups
-                .iter()
-                .any(|name| name.starts_with("zellij.kdl.backup-"))
+        let cursor = write_cursor_default(runtime.path());
+        let legacy = config.path().join("settings.jsonc");
+        write_current_legacy_settings(
+            &legacy,
+            "\"disable_tips\": false, \"pane_frames\": false, \"rounded_corners\": false, \"default_mode\": \"locked\", \"support_kitty_keyboard_protocol\": true",
         );
-    }
-
-    // Defends: coexistence is a hard conflict and migration performs no writes or precedence selection.
-    #[test]
-    fn zellij_sidecar_migration_conflict_writes_nothing() {
-        let config = tempdir().unwrap();
-        let settings = config.path().join("settings.jsonc");
-        fs::write(&settings, "{\n  \"zellij\": { \"pane_frames\": true }\n}\n").unwrap();
-        fs::write(config.path().join("zellij.kdl"), "copy_on_select false\n").unwrap();
         fs::create_dir_all(config.path().join("zellij")).unwrap();
         fs::write(
             config.path().join("zellij/config.kdl"),
-            "mouse_mode false\n",
-        )
-        .unwrap();
-        let before = fs::read_to_string(&settings).unwrap();
-
-        let error = ensure_zellij_sidecars(config.path()).unwrap_err();
-
-        assert_eq!(error.code(), "zellij_sidecar_migration_conflict");
-        assert_eq!(fs::read_to_string(&settings).unwrap(), before);
-        assert_eq!(
-            fs::read_to_string(config.path().join("zellij/config.kdl")).unwrap(),
-            "mouse_mode false\n"
-        );
-        assert!(!config.path().join("zellij/plugins.kdl").exists());
-    }
-
-    // Regression: existing writable settings.jsonc receives newly shipped additive defaults without overwriting user values.
-    #[test]
-    fn repairs_missing_defaults_in_existing_settings_jsonc() {
-        let runtime = tempdir().unwrap();
-        let config = tempdir().unwrap();
-        let (main, cursor) = write_defaults(runtime.path());
-        fs::write(
-            config.path().join("settings.jsonc"),
-            r#"{
-  "editor": {
-    "command": "nvim"
-  }
-}
-"#,
+            LEGACY_ZELLIJ_CONFIG_SIDECAR,
         )
         .unwrap();
 
-        let path = ensure_settings_config(config.path(), &main, &cursor).unwrap();
-        let value = read_settings_jsonc_value(&path).unwrap();
-
+        let path = ensure_settings_config(config.path(), &default_main_config(), &cursor).unwrap();
+        let value = read_config_table(&path, "test").unwrap();
         assert_eq!(value["editor"]["command"].as_str(), Some("nvim"));
-        assert_eq!(
-            value["editor"]["hide_sidebar_on_file_open"].as_bool(),
-            Some(true)
-        );
-        assert_eq!(
-            value["ratconfig"]["contract"]["contract_id"].as_str(),
-            Some("yazelix.settings")
-        );
-        assert!(value.get("cursors").is_none());
-    }
-
-    // Regression: Ctrl-Alt native movement defaults require unambiguous modified-key encoding, so old false defaults migrate on writable configs.
-    #[test]
-    fn repairs_kitty_keyboard_protocol_default_in_existing_settings_jsonc() {
-        let runtime = tempdir().unwrap();
-        let config = tempdir().unwrap();
-        let (main, cursor) = write_defaults(runtime.path());
-        fs::write(
-            config.path().join("settings.jsonc"),
-            r#"{
-  "zellij": {
-    "support_kitty_keyboard_protocol": false
-  }
-}
-"#,
-        )
-        .unwrap();
-
-        let path = ensure_settings_config(config.path(), &main, &cursor).unwrap();
-        let value = read_settings_jsonc_value(&path).unwrap();
-        let applied_changes = value["ratconfig"]["contract"]["applied_change_ids"]
-            .as_array()
-            .unwrap();
-
-        assert_eq!(
-            value["zellij"]["support_kitty_keyboard_protocol"].as_bool(),
-            Some(true)
-        );
-        assert!(
-            applied_changes
-                .iter()
-                .any(|change| change.as_str() == Some("enable-kitty-keyboard-protocol-default"))
-        );
-    }
-
-    // Regression: writable settings generated before the Ctrl+Alt movement policy receive the new non-Ghostty-conflicting defaults without overwriting user remaps.
-    #[test]
-    fn repairs_replaced_native_movement_defaults_in_existing_settings_jsonc() {
-        let runtime = tempdir().unwrap();
-        let config = tempdir().unwrap();
-        let (main, cursor) = write_defaults(runtime.path());
-        fs::write(
-            config.path().join("settings.jsonc"),
-            r#"{
-  "zellij": {
-    "native_keybindings": {
-      "move_tab_left": ["Ctrl Shift H"],
-      "move_tab_right": ["Alt l"],
-      "move_pane_down": ["Alt j"],
-      "move_pane_up": ["Ctrl Shift K"],
-      "move_mode_unbind": ["Ctrl h"]
-    }
-  }
-}
-"#,
-        )
-        .unwrap();
-
-        let path = ensure_settings_config(config.path(), &main, &cursor).unwrap();
-        let value = read_settings_jsonc_value(&path).unwrap();
-
-        assert_eq!(
-            value["zellij"]["native_keybindings"]["move_tab_left"],
-            json!(["Ctrl Alt h"])
-        );
-        assert_eq!(
-            value["zellij"]["native_keybindings"]["move_tab_right"],
-            json!(["Alt l"])
-        );
-        assert_eq!(
-            value["zellij"]["native_keybindings"]["move_pane_down"],
-            json!(["Alt j"])
-        );
-        assert_eq!(
-            value["zellij"]["native_keybindings"]["move_pane_up"],
-            json!(["Ctrl Alt k"])
-        );
-        assert_eq!(
-            value["zellij"]["native_keybindings"]["move_mode_unbind"],
-            json!(["Ctrl h"])
-        );
-        assert_eq!(
-            value["zellij"]["native_keybindings"]["toggle_pane_in_group"],
-            json!([])
-        );
-        assert_eq!(
-            value["zellij"]["native_keybindings"]["pane_mode_unbind"],
-            json!([])
-        );
-        assert_eq!(
-            value["zellij"]["native_keybindings"]["pane_mode"],
-            json!(["Ctrl p"])
-        );
-        assert_eq!(
-            value["zellij"]["native_keybindings"]["resize_mode_unbind"],
-            json!([])
-        );
-        assert_eq!(
-            value["zellij"]["native_keybindings"]["resize_mode"],
-            json!(["Ctrl n"])
-        );
-        assert_eq!(
-            value["zellij"]["native_keybindings"]["tab_mode_unbind"],
-            json!([])
-        );
-        assert_eq!(
-            value["zellij"]["native_keybindings"]["tab_mode"],
-            json!(["Ctrl t"])
-        );
-        assert_eq!(
-            value["zellij"]["native_keybindings"]["quit_unbind"],
-            json!([])
-        );
-        assert_eq!(
-            value["zellij"]["native_keybindings"]["quit"],
-            json!(["Ctrl q"])
-        );
-    }
-
-    // Regression: Zellij treats uppercase letter key names as shifted keys, so old current defaults must be lowercased.
-    #[test]
-    fn repairs_uppercase_native_movement_defaults_in_existing_settings_jsonc() {
-        let runtime = tempdir().unwrap();
-        let config = tempdir().unwrap();
-        let (main, cursor) = write_defaults(runtime.path());
-        fs::write(
-            config.path().join("settings.jsonc"),
-            r#"{
-  "zellij": {
-    "native_keybindings": {
-      "move_tab_left": ["Ctrl Alt H"],
-      "move_tab_right": ["Ctrl Alt L"],
-      "move_pane_down": ["Ctrl Alt J"],
-      "move_pane_up": ["Ctrl Alt K"]
-    }
-  }
-}
-"#,
-        )
-        .unwrap();
-
-        let path = ensure_settings_config(config.path(), &main, &cursor).unwrap();
-        let value = read_settings_jsonc_value(&path).unwrap();
-
-        assert_eq!(
-            value["zellij"]["native_keybindings"]["move_tab_left"],
-            json!(["Ctrl Alt h"])
-        );
-        assert_eq!(
-            value["zellij"]["native_keybindings"]["move_tab_right"],
-            json!(["Ctrl Alt l"])
-        );
-        assert_eq!(
-            value["zellij"]["native_keybindings"]["move_pane_down"],
-            json!(["Ctrl Alt j"])
-        );
-        assert_eq!(
-            value["zellij"]["native_keybindings"]["move_pane_up"],
-            json!(["Ctrl Alt k"])
-        );
-    }
-
-    // Regression: the v16.5 sidebar rename is lossless, so writable user configs should repair before strict unknown-field validation.
-    #[test]
-    fn migrates_legacy_sidebar_fields_to_workspace_left_sidebar() {
-        let runtime = tempdir().unwrap();
-        let config = tempdir().unwrap();
-        let (main, cursor) = write_defaults(runtime.path());
-        fs::write(
-            config.path().join("settings.jsonc"),
-            r#"{
-  "editor": {
-    "command": "hx",
-    "sidebar_command": "lazygit",
-    "sidebar_args": ["status"],
-    "sidebar_width_percent": 30
-  }
-}
-"#,
-        )
-        .unwrap();
-
-        let path = ensure_settings_config(config.path(), &main, &cursor).unwrap();
-        let raw = fs::read_to_string(&path).unwrap();
-        let value = read_settings_jsonc_value(&path).unwrap();
-
-        assert!(!raw.contains("sidebar_command"));
-        assert!(!raw.contains("sidebar_args"));
-        assert!(!raw.contains("sidebar_width_percent"));
-        assert_eq!(
-            value["workspace"]["left_sidebar"]["command"].as_str(),
-            Some("lazygit")
-        );
-        assert_eq!(
-            value["workspace"]["left_sidebar"]["args"]
-                .as_array()
-                .unwrap()[0]
-                .as_str(),
-            Some("status")
-        );
-        assert_eq!(
-            value["workspace"]["left_sidebar"]["width_percent"].as_i64(),
-            Some(30)
-        );
-        assert_eq!(
-            value["workspace"]["right_sidebar"]["command"].as_str(),
-            Some("yzx")
-        );
-        assert_eq!(
-            value["workspace"]["right_sidebar"]["args"][0].as_str(),
-            Some("agent")
-        );
-        assert_eq!(
-            value["ratconfig"]["contract"]["applied_change_ids"][0].as_str(),
-            Some("rename-editor-sidebar-to-workspace-left-sidebar")
-        );
-    }
-
-    // Defends: ratconfig-owned renames fail clearly when the destination already exists instead of guessing which value to keep.
-    #[test]
-    fn rejects_legacy_sidebar_rename_when_destination_exists() {
-        let runtime = tempdir().unwrap();
-        let config = tempdir().unwrap();
-        let (main, cursor) = write_defaults(runtime.path());
-        fs::write(
-            config.path().join("settings.jsonc"),
-            r#"{
-  "editor": {
-    "command": "hx",
-    "sidebar_width_percent": 28
-  },
-  "workspace": {
-    "left_sidebar": {
-      "command": "yzx",
-      "args": ["sidebar", "yazi"],
-      "width_percent": 20
-    }
-  }
-}
-"#,
-        )
-        .unwrap();
-
-        let err = ensure_settings_config(config.path(), &main, &cursor).unwrap_err();
-
-        assert_eq!(err.code(), "settings_contract_destination_exists");
-        assert!(err.remediation().contains("yzx reset config"));
-    }
-
-    // Defends: automatic repair does not guess when old and new sidebar fields both carry values.
-    #[test]
-    fn rejects_legacy_sidebar_conflict_with_custom_workspace_destination() {
-        let runtime = tempdir().unwrap();
-        let config = tempdir().unwrap();
-        let (main, cursor) = write_defaults(runtime.path());
-        fs::write(
-            config.path().join("settings.jsonc"),
-            r#"{
-  "editor": {
-    "sidebar_width_percent": 28
-  },
-  "workspace": {
-    "left_sidebar": {
-      "width_percent": 30
-    }
-  }
-}
-"#,
-        )
-        .unwrap();
-
-        let err = ensure_settings_config(config.path(), &main, &cursor).unwrap_err();
-
-        assert_eq!(err.code(), "settings_contract_destination_exists");
-        assert!(err.remediation().contains("yzx reset config"));
-    }
-
-    // Defends: Home Manager-owned settings report deterministic reconciliation work without mutating the generated file.
-    #[cfg(unix)]
-    #[test]
-    fn home_manager_owned_settings_contract_reconciliation_reports_without_writing() {
-        let runtime = tempdir().unwrap();
-        let config = tempdir().unwrap();
-        let (main, cursor) = write_defaults(runtime.path());
-        let hm_dir = config.path().join("profile-home-manager-files");
-        fs::create_dir_all(&hm_dir).unwrap();
-        let hm_settings = hm_dir.join("settings.jsonc");
-        fs::write(&hm_settings, r#"{ "editor": { "command": "hx" } }"#).unwrap();
-        std::os::unix::fs::symlink(&hm_settings, config.path().join("settings.jsonc")).unwrap();
-
-        let err = ensure_settings_config(config.path(), &main, &cursor).unwrap_err();
-        let raw = fs::read_to_string(&hm_settings).unwrap();
-
-        assert_eq!(
-            err.code(),
-            "home_manager_owned_settings_contract_reconciliation_required"
-        );
-        assert!(!raw.contains("ratconfig"));
-    }
-
-    // Defends: read-only user settings report deterministic reconciliation work without attempting a write.
-    #[cfg(unix)]
-    #[test]
-    fn read_only_settings_contract_reconciliation_reports_without_writing() {
-        let runtime = tempdir().unwrap();
-        let config = tempdir().unwrap();
-        let (main, cursor) = write_defaults(runtime.path());
-        let settings = config.path().join("settings.jsonc");
-        fs::write(&settings, r#"{ "editor": { "command": "hx" } }"#).unwrap();
-        fs::set_permissions(&settings, fs::Permissions::from_mode(0o444)).unwrap();
-
-        let err = ensure_settings_config(config.path(), &main, &cursor).unwrap_err();
-        let raw = fs::read_to_string(&settings).unwrap();
-        fs::set_permissions(&settings, fs::Permissions::from_mode(0o644)).unwrap();
-
-        assert_eq!(
-            err.code(),
-            "read_only_settings_contract_reconciliation_required"
-        );
-        assert!(!raw.contains("ratconfig"));
-    }
-
-    // Defends: every released transparency bucket becomes one sparse native Mars override before the retired JSONC owner is removed, and reruns are idempotent.
-    #[test]
-    fn migrates_all_released_transparency_buckets_to_sparse_mars_override() {
-        for (name, opacity) in LEGACY_TRANSPARENCY_OPACITY {
-            let runtime = tempdir().unwrap();
-            let config = tempdir().unwrap();
-            let (main, cursor) = write_defaults(runtime.path());
-            fs::write(
-                config.path().join("settings.jsonc"),
-                format!(
-                    "{{\n  \"terminal\": {{\n    \"config_mode\": \"yazelix\",\n    \"emoji_style\": \"noto\",\n    \"transparency\": \"{name}\"\n  }}\n}}\n"
-                ),
-            )
-            .unwrap();
-
-            ensure_settings_config_with_cursor_component(config.path(), &main, &cursor, false)
-                .unwrap();
-            let mars = user_config_paths::mars_config(config.path());
-            let first_mars = fs::read_to_string(&mars).unwrap();
-            let parsed = parse_toml_value(&first_mars).unwrap();
-            assert_eq!(
-                get_toml_path(&parsed, "window.opacity").and_then(JsonValue::as_f64),
-                Some(*opacity),
-                "{name}"
-            );
-            assert_eq!(
-                parsed.as_object().unwrap().keys().collect::<Vec<_>>(),
-                vec!["window"]
-            );
-            assert_eq!(
-                parsed["window"]
-                    .as_object()
-                    .unwrap()
-                    .keys()
-                    .collect::<Vec<_>>(),
-                vec!["opacity"]
-            );
-            assert!(
-                read_settings_jsonc_value(&config.path().join("settings.jsonc"))
-                    .unwrap()
-                    .get("terminal")
-                    .is_none()
-            );
-
-            ensure_settings_config_with_cursor_component(config.path(), &main, &cursor, false)
-                .unwrap();
-            assert_eq!(fs::read_to_string(mars).unwrap(), first_mars);
+        let zellij = value["zellij"].as_table().unwrap();
+        for removed in [
+            "disable_tips",
+            "pane_frames",
+            "rounded_corners",
+            "default_mode",
+        ] {
+            assert!(!zellij.contains_key(removed));
         }
+        let sidecar = fs::read_to_string(config.path().join("zellij/config.kdl")).unwrap();
+        assert!(sidecar.contains("show_startup_tips true"));
+        assert!(sidecar.contains("pane_frames false"));
+        assert!(sidecar.contains("default_mode \"locked\""));
+        assert!(sidecar.contains("rounded_corners false"));
+        assert!(!legacy.exists());
+        assert!(
+            fs::read_dir(config.path())
+                .unwrap()
+                .filter_map(Result::ok)
+                .any(|entry| {
+                    entry
+                        .file_name()
+                        .to_string_lossy()
+                        .starts_with("settings.jsonc.backup-")
+                })
+        );
+
+        let before = fs::read_to_string(&path).unwrap();
+        ensure_settings_config(config.path(), &default_main_config(), &cursor).unwrap();
+        assert_eq!(fs::read_to_string(path).unwrap(), before);
     }
 
-    // Regression: a user Mars override with a different opacity wins by blocking the migration before either source changes.
+    // Defends: two root owners never trigger precedence selection or mutation.
     #[test]
-    fn refuses_mars_opacity_migration_conflict_without_partial_writes() {
+    fn rejects_root_config_migration_conflict() {
         let runtime = tempdir().unwrap();
         let config = tempdir().unwrap();
-        let (main, cursor) = write_defaults(runtime.path());
-        let settings = config.path().join("settings.jsonc");
-        let mars = user_config_paths::mars_config(config.path());
-        fs::create_dir_all(mars.parent().unwrap()).unwrap();
+        let cursor = write_cursor_default(runtime.path());
         fs::write(
-            &settings,
-            "{\n  \"terminal\": { \"config_mode\": \"yazelix\", \"transparency\": \"medium\" }\n}\n",
+            config.path().join("config.toml"),
+            "[core]\ndebug_mode = false\n",
         )
         .unwrap();
-        fs::write(&mars, "[window]\nopacity = \"medium\"\n").unwrap();
-        let before_settings = fs::read_to_string(&settings).unwrap();
-        let before_mars = fs::read_to_string(&mars).unwrap();
+        fs::write(config.path().join("settings.jsonc"), "{}\n").unwrap();
 
         let error =
-            ensure_settings_config_with_cursor_component(config.path(), &main, &cursor, false)
-                .unwrap_err();
+            ensure_settings_config(config.path(), &default_main_config(), &cursor).unwrap_err();
 
-        assert_eq!(error.code(), "mars_opacity_migration_conflict");
-        assert_eq!(fs::read_to_string(settings).unwrap(), before_settings);
-        assert_eq!(fs::read_to_string(mars).unwrap(), before_mars);
+        assert_eq!(error.code(), "root_config_migration_conflict");
+        assert_eq!(
+            fs::read_to_string(config.path().join("settings.jsonc")).unwrap(),
+            "{}\n"
+        );
     }
 
-    // Defends: opacity migration never edits or adopts a Mars override owned by Home Manager, even when its value already matches.
+    // Defends: declarative/read-only ownership is reported instead of bypassed.
     #[cfg(unix)]
     #[test]
-    fn refuses_home_manager_owned_mars_opacity_migration() {
+    fn rejects_read_only_legacy_settings() {
+        let runtime = tempdir().unwrap();
+        let config = tempdir().unwrap();
+        let cursor = write_cursor_default(runtime.path());
+        let legacy = config.path().join("settings.jsonc");
+        fs::write(&legacy, "{}\n").unwrap();
+        fs::set_permissions(&legacy, fs::Permissions::from_mode(0o444)).unwrap();
+
+        let error =
+            ensure_settings_config(config.path(), &default_main_config(), &cursor).unwrap_err();
+        fs::set_permissions(&legacy, fs::Permissions::from_mode(0o644)).unwrap();
+
+        assert_eq!(error.code(), "read_only_root_config_migration");
+        assert!(!config.path().join("config.toml").exists());
+    }
+
+    // Regression: a dangling declarative owner must fail instead of being replaced by bootstrap.
+    #[cfg(unix)]
+    #[test]
+    fn rejects_dangling_canonical_config_symlink() {
         use std::os::unix::fs::symlink;
 
         let runtime = tempdir().unwrap();
         let config = tempdir().unwrap();
-        let (main, cursor) = write_defaults(runtime.path());
-        let settings = config.path().join("settings.jsonc");
-        let mars = user_config_paths::mars_config(config.path());
-        let hm_mars = config
-            .path()
-            .join("profile-home-manager-files/mars-config.toml");
-        fs::create_dir_all(hm_mars.parent().unwrap()).unwrap();
-        fs::create_dir_all(mars.parent().unwrap()).unwrap();
-        fs::write(&hm_mars, "[window]\nopacity = 0.85\n").unwrap();
-        symlink(&hm_mars, &mars).unwrap();
-        fs::write(
-            &settings,
-            "{\n  \"terminal\": { \"config_mode\": \"yazelix\", \"transparency\": \"medium\" }\n}\n",
-        )
-        .unwrap();
-        let before_settings = fs::read_to_string(&settings).unwrap();
+        let cursor = write_cursor_default(runtime.path());
+        let path = config.path().join("config.toml");
+        symlink(config.path().join("missing-home-manager-config"), &path).unwrap();
 
-        let error =
-            ensure_settings_config_with_cursor_component(config.path(), &main, &cursor, false)
-                .unwrap_err();
+        let error = ensure_settings_config(config.path(), &default_main_config(), &cursor)
+            .expect_err("dangling config owner");
 
-        assert_eq!(error.code(), "read_only_mars_opacity_migration");
-        assert_eq!(fs::read_to_string(settings).unwrap(), before_settings);
-        assert_eq!(fs::read_link(mars).unwrap(), hm_mars);
-    }
-
-    // Regression: malformed retired terminal values fail instead of being silently deleted by contract reconciliation.
-    #[test]
-    fn rejects_malformed_released_terminal_settings_before_deletion() {
-        for (terminal, code) in [
-            ("1", "invalid_legacy_terminal_settings"),
-            (
-                "{ \"config_mode\": 1, \"transparency\": \"medium\" }",
-                "invalid_legacy_terminal_config_mode",
-            ),
-            (
-                "{ \"config_mode\": \"yazelix\", \"transparency\": 1 }",
-                "invalid_legacy_transparency",
-            ),
-        ] {
-            let runtime = tempdir().unwrap();
-            let config = tempdir().unwrap();
-            let (main, cursor) = write_defaults(runtime.path());
-            let settings = config.path().join("settings.jsonc");
-            fs::write(&settings, format!("{{ \"terminal\": {terminal} }}\n")).unwrap();
-            let before = fs::read_to_string(&settings).unwrap();
-
-            let error =
-                ensure_settings_config_with_cursor_component(config.path(), &main, &cursor, false)
-                    .unwrap_err();
-
-            assert_eq!(error.code(), code);
-            assert_eq!(fs::read_to_string(settings).unwrap(), before);
-            assert!(!user_config_paths::mars_config(config.path()).exists());
-        }
-    }
-
-    // Defends: retired user mode never adopts the ambient Mars path or creates an unreviewed canonical config.
-    #[test]
-    fn user_mode_requires_reviewed_canonical_mars_config() {
-        let runtime = tempdir().unwrap();
-        let config = tempdir().unwrap();
-        let (main, cursor) = write_defaults(runtime.path());
-        fs::write(
-            config.path().join("settings.jsonc"),
-            "{\n  \"terminal\": { \"config_mode\": \"user\", \"transparency\": \"medium\" }\n}\n",
-        )
-        .unwrap();
-
-        let error =
-            ensure_settings_config_with_cursor_component(config.path(), &main, &cursor, false)
-                .unwrap_err();
-
-        assert_eq!(error.code(), "missing_reviewed_mars_config");
-        assert!(!user_config_paths::mars_config(config.path()).exists());
-    }
-
-    // Regression: JSONC parse errors should explain that TOML/Nix-style # comments are not valid settings comments.
-    #[test]
-    fn invalid_jsonc_error_mentions_supported_comment_syntax() {
-        let err = parse_jsonc_value(Path::new("settings.jsonc"), "{\n  # comment\n}\n")
-            .expect_err("invalid jsonc");
-
-        assert_eq!(err.code(), "invalid_settings_jsonc");
-        assert!(err.remediation().contains("not `#`"));
-    }
-
-    // Defends: generated settings.jsonc stays focused on main settings while cursors use their shared sidecar.
-    #[test]
-    fn renders_default_settings_without_embedded_cursors() {
-        let repo = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("../..")
-            .canonicalize()
-            .unwrap();
-        let rendered = render_default_settings_jsonc(&repo.join("settings_default.jsonc")).unwrap();
-
-        assert!(rendered.contains("\"yazi\""));
-        assert!(!rendered.contains("\"cursors\""));
-    }
-
-    // Defends: settings.jsonc plus stale old-format inputs fails fast instead of mixing config owners.
-    #[test]
-    fn hard_errors_when_settings_and_old_input_coexist() {
-        let runtime = tempdir().unwrap();
-        let config = tempdir().unwrap();
-        let (main, cursor) = write_defaults(runtime.path());
-        ensure_settings_config(config.path(), &main, &cursor).unwrap();
-        fs::write(config.path().join("yazelix.toml"), "[core]\n").unwrap();
-
-        let err = ensure_settings_config(config.path(), &main, &cursor).unwrap_err();
-        assert_eq!(err.code(), "stale_old_settings_input");
+        assert_eq!(error.code(), "read_main_config_for_completion");
+        assert!(fs::symlink_metadata(path).unwrap().file_type().is_symlink());
     }
 }

@@ -52,7 +52,7 @@ Previous alternatives considered:
 ## Release Policy
 
 - `yazelix_cursors` versions independently through the `luccahuguet/yazelix-cursors` repository
-- Cursor schema changes must remain valid for the main `settings.jsonc` cursor object
+- Cursor schema changes must remain valid for the standalone `~/.config/yazelix_cursors/settings.jsonc` contract
 - Preset removals need a normal Yazelix upgrade note because users may have copied shader paths or config examples
 - Yazelix must pin an explicit flake input and Cargo revision when consuming `yazelix_cursors`
 
@@ -60,7 +60,7 @@ Previous alternatives considered:
 
 Yazelix continues to own:
 
-- main `~/.config/yazelix/settings.jsonc` runtime schema and config UI metadata
+- main `~/.config/yazelix/config.toml` runtime schema and the config UI integration row that opens the standalone cursor document
 - generated Ghostty config materialization
 - invoking runtime random cursor selection
 - terminal package selection

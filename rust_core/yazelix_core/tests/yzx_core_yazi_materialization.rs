@@ -5,7 +5,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, OnceLock};
 use tempfile::{TempDir, tempdir};
-use yazelix_core::settings_surface::read_settings_jsonc_value;
+use yazelix_core::settings_surface::read_config_value;
 use yazelix_core::{
     CoreError, YaziMaterializationData, YaziMaterializationRequest, generate_yazi_materialization,
 };
@@ -18,9 +18,9 @@ fn repo_root() -> PathBuf {
 }
 
 fn prepare_managed_config(config_root: &Path, repo: &Path, body: &str) -> PathBuf {
-    let config_path = config_root.join("settings.jsonc");
+    let config_path = config_root.join("config.toml");
     fs::create_dir_all(config_path.parent().unwrap()).unwrap();
-    let mut settings = read_settings_jsonc_value(&repo.join("settings_default.jsonc")).unwrap();
+    let mut settings = read_config_value(&repo.join("config_default.toml")).unwrap();
     if !body.is_empty() {
         let overrides = toml::from_str::<toml::Value>(body).unwrap();
         merge_json(
@@ -30,10 +30,7 @@ fn prepare_managed_config(config_root: &Path, repo: &Path, body: &str) -> PathBu
     }
     fs::write(
         &config_path,
-        format!(
-            "{}\n",
-            serde_json::to_string_pretty(&settings).expect("settings json")
-        ),
+        yazelix_core::settings_surface::render_config_value(&settings).expect("settings TOML"),
     )
     .unwrap();
     config_path
@@ -102,7 +99,7 @@ fn run_yazi_materialization_generate(
 
     let result = generate_yazi_materialization(&YaziMaterializationRequest {
         config_path: config_path.to_path_buf(),
-        default_config_path: repo.join("settings_default.jsonc"),
+        default_config_path: repo.join("config_default.toml"),
         contract_path: repo.join("config_metadata/main_config_contract.toml"),
         runtime_dir: runtime_dir.to_path_buf(),
         yazi_config_dir: output_dir.to_path_buf(),

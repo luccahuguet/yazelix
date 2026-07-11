@@ -50,7 +50,7 @@ The package should ship the immutable runtime assets Yazelix executes directly:
 - `nushell/`
 - `shells/`
 - shipped templates such as:
-  - `settings_default.jsonc`
+  - `config_default.toml`
 - `bin/yzx`
 - runtime-local `libexec/nu`
 

@@ -431,7 +431,7 @@ mod tests {
     #[test]
     fn parse_launch_args_accepts_supported_flags() {
         let expected_config = resolve_config_override_path(
-            "settings.jsonc",
+            "config.toml",
             &std::env::current_dir().unwrap(),
             &crate::control_plane::home_dir_from_env().unwrap(),
         )
@@ -440,7 +440,7 @@ mod tests {
             "-p".into(),
             "/tmp/demo".into(),
             "--config".into(),
-            "settings.jsonc".into(),
+            "config.toml".into(),
             "--with".into(),
             "editor.command=nvim".into(),
             "--verbose".into(),

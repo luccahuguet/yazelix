@@ -3,7 +3,7 @@ use crate::helix_external::{
     HelixExternalPair, is_custom_helix_binary_command, is_helix_command, non_empty_string,
 };
 use crate::helix_steel_plugins::parse_steel_plugin_config;
-use crate::settings_surface::{is_jsonc_config_path, read_config_table};
+use crate::settings_surface::read_config_table;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map as JsonMap, Number as JsonNumber, Value as JsonValue, json};
 use std::collections::BTreeMap;
@@ -259,13 +259,7 @@ fn build_diagnostic_report(
         }
     }
 
-    let should_validate_like_startup = config_path
-        .file_name()
-        .and_then(|name| name.to_str())
-        .map(|name| name == "yazelix.toml" || is_jsonc_config_path(config_path))
-        .unwrap_or(false);
-
-    let findings = if should_validate_like_startup {
+    let findings = {
         let mut findings = compare_configs(
             &reference,
             &TomlValue::Table(user_config.clone()),
@@ -280,8 +274,6 @@ fn build_diagnostic_report(
         findings.extend(validate_helix_external_pair(user_config));
         findings.extend(validate_helix_steel_plugins(user_config));
         findings
-    } else {
-        Vec::new()
     };
 
     let schema_diagnostics = findings
@@ -606,9 +598,9 @@ fn make_schema_diagnostic(finding: SchemaFinding) -> ConfigDiagnostic {
                 diagnostic.headline = format!("Moved cursor config field at {}", finding.path);
                 diagnostic.detail_lines = vec![
                     finding.message,
-                    "Next: Move this cursor setting into ~/.config/yazelix_cursors/settings.jsonc."
+                    "Move this cursor setting into ~/.config/yazelix_cursors/settings.jsonc."
                         .to_string(),
-                    "Next: Remove the old terminal.ghostty_* field from ~/.config/yazelix/settings.jsonc."
+                    "Next: Remove the old terminal.ghostty_* field from ~/.config/yazelix/config.toml."
                         .to_string(),
                     "Next: Run `yzx doctor --verbose` to review the full config report."
                         .to_string(),
@@ -631,7 +623,7 @@ fn make_schema_diagnostic(finding: SchemaFinding) -> ConfigDiagnostic {
                 );
                 diagnostic.detail_lines = vec![
                     finding.message,
-                    "Next: Remove zellij.persistent_sessions and zellij.session_name from ~/.config/yazelix/settings.jsonc.".to_string(),
+                    "Next: Remove zellij.persistent_sessions and zellij.session_name from ~/.config/yazelix/config.toml.".to_string(),
                     "Next: Yazelix now starts independent windows; use raw Zellij session management outside Yazelix if you need it.".to_string(),
                     "Next: Run `yzx doctor --verbose` to review the full config report."
                         .to_string(),
@@ -643,7 +635,7 @@ fn make_schema_diagnostic(finding: SchemaFinding) -> ConfigDiagnostic {
                 );
                 diagnostic.detail_lines = vec![
                     finding.message,
-                    "Next: Remove terminal.terminals from ~/.config/yazelix/settings.jsonc."
+                    "Next: Remove terminal.terminals from ~/.config/yazelix/config.toml."
                         .to_string(),
                     "Next: Yazelix packages Mars; configure other terminal emulators to start Yazelix with `yzx enter`.".to_string(),
                     "Next: Run `yzx doctor --verbose` to review the full config report."
@@ -654,7 +646,7 @@ fn make_schema_diagnostic(finding: SchemaFinding) -> ConfigDiagnostic {
                     format!("Removed popup program config field at {}", finding.path);
                 diagnostic.detail_lines = vec![
                     finding.message,
-                    "Next: Remove zellij.popup_program from ~/.config/yazelix/settings.jsonc."
+                    "Next: Remove zellij.popup_program from ~/.config/yazelix/config.toml."
                         .to_string(),
                     "Next: Add persistent popup commands through zellij.custom_popups instead."
                         .to_string(),
@@ -676,7 +668,7 @@ fn make_schema_diagnostic(finding: SchemaFinding) -> ConfigDiagnostic {
                     format!("Removed generic popup keybinding at {}", finding.path);
                 diagnostic.detail_lines = vec![
                     finding.message,
-                    "Next: Remove zellij.keybindings.popup from ~/.config/yazelix/settings.jsonc."
+                    "Next: Remove zellij.keybindings.popup from ~/.config/yazelix/config.toml."
                         .to_string(),
                     "Next: Add a named persistent popup through zellij.custom_popups, or run `yzx popup <program> [args...]` for one-off popups.".to_string(),
                     "Next: Run `yzx doctor --verbose` to review the full config report."
@@ -714,7 +706,7 @@ fn make_schema_diagnostic(finding: SchemaFinding) -> ConfigDiagnostic {
             diagnostic.headline = format!("Missing config field at {}", finding.path);
             diagnostic.detail_lines = vec![
                 finding.message,
-                "Next: Add the field from the current template, or let Yazelix repair a writable managed settings.jsonc from the shipped defaults.".to_string(),
+                "Next: Add the field from the current template, or let Yazelix repair a writable managed config.toml from the shipped defaults.".to_string(),
             ];
         }
         "invalid_helix_external_pair" => {
@@ -954,7 +946,7 @@ fn invalid_value_error(field_path: &str, actual_value: &str, expectation: &str) 
         ErrorClass::Config,
         "invalid_config_value",
         format!("Invalid {field_path} value '{actual_value}'. Expected {expectation}."),
-        "Update settings.jsonc with a supported value, or run `yzx reset config` to restore the template.",
+        "Update config.toml with a supported value, or run `yzx reset config` to restore the template.",
         json!({
             "field": field_path,
             "actual": actual_value,
@@ -1069,7 +1061,7 @@ mod tests {
         let repo = repo_root();
         NormalizeConfigRequest {
             config_path,
-            default_config_path: repo.join("settings_default.jsonc"),
+            default_config_path: repo.join("config_default.toml"),
             contract_path: repo.join("config_metadata/main_config_contract.toml"),
             include_missing: false,
         }
@@ -1082,19 +1074,17 @@ mod tests {
         path
     }
 
-    fn default_settings_jsonc() -> JsonValue {
-        crate::settings_surface::read_settings_jsonc_value(
-            &repo_root().join("settings_default.jsonc"),
-        )
-        .expect("default settings")
+    fn default_main_config() -> JsonValue {
+        crate::settings_surface::read_config_value(&repo_root().join("config_default.toml"))
+            .expect("default settings")
     }
 
-    fn write_settings_config(value: &JsonValue) -> PathBuf {
+    fn write_main_config(value: &JsonValue) -> PathBuf {
         let dir = tempdir().expect("tempdir").keep();
-        let path = dir.join("settings.jsonc");
+        let path = dir.join("config.toml");
         fs::write(
             &path,
-            serde_json::to_string_pretty(value).expect("settings json"),
+            crate::settings_surface::render_config_value(value).expect("settings TOML"),
         )
         .expect("write settings");
         path
@@ -1123,13 +1113,12 @@ mod tests {
     #[test]
     fn normalizes_default_config_with_parser_keys_and_transforms() {
         let repo = repo_root();
-        let data = normalize_config(&request_for(repo.join("settings_default.jsonc"))).unwrap();
+        let data = normalize_config(&request_for(repo.join("config_default.toml"))).unwrap();
         let config = data.normalized_config;
 
         assert_eq!(config.get("default_shell").unwrap(), "nu");
         assert_eq!(config.get("appearance_mode").unwrap(), "dark");
         assert_eq!(config.get("helix_external").unwrap(), &JsonValue::Null);
-        assert_eq!(config.get("zellij_pane_frames").unwrap(), "true");
         assert_eq!(config.get("game_of_life_cell_style").unwrap(), "full_block");
         assert_eq!(config.get("welcome_duration_seconds").unwrap(), 4.0);
 
@@ -1164,7 +1153,7 @@ mod tests {
     // Defends: the hidden ratconfig contract state is accepted as metadata but never reaches runtime config.
     #[test]
     fn ignores_hidden_ratconfig_contract_state_during_normalization() {
-        let mut settings = default_settings_jsonc();
+        let mut settings = default_main_config();
         settings["ratconfig"] = json!({
             "contract": {
                 "schema_version": 1,
@@ -1173,18 +1162,17 @@ mod tests {
                 "applied_change_ids": ["add-current-default-settings"]
             }
         });
-        let data = normalize_config(&strict_request_for(write_settings_config(&settings))).unwrap();
+        let data = normalize_config(&strict_request_for(write_main_config(&settings))).unwrap();
 
         assert!(!data.normalized_config.contains_key("ratconfig"));
         assert!(data.diagnostic_report.blocking_diagnostics.is_empty());
     }
 
-    // Defends: the shipped main settings template is a complete strict settings.jsonc surface.
+    // Defends: the shipped main settings template is a complete strict config.toml surface.
     #[test]
-    fn strict_default_settings_jsonc_has_no_diagnostics() {
+    fn strict_default_config_toml_has_no_diagnostics() {
         let repo = repo_root();
-        let data =
-            normalize_config(&strict_request_for(repo.join("settings_default.jsonc"))).unwrap();
+        let data = normalize_config(&strict_request_for(repo.join("config_default.toml"))).unwrap();
 
         assert_eq!(data.diagnostic_report.issue_count, 0);
         assert_eq!(data.diagnostic_report.blocking_count, 0);
@@ -1197,19 +1185,22 @@ mod tests {
     // Defends: custom Helix forks must be configured as one binary/runtime pair, not as a bare runtime path or bare editor binary.
     #[test]
     fn rejects_incomplete_helix_external_pair_and_old_runtime_field() {
-        let mut binary_only_config = default_settings_jsonc();
+        let mut binary_only_config = default_main_config();
         binary_only_config["helix"]["external"] = json!({ "binary": "/tmp/hx" });
-        let binary_only = write_settings_config(&binary_only_config);
+        let binary_only = write_main_config(&binary_only_config);
         let error = normalize_config(&request_for(binary_only)).unwrap_err();
         assert_eq!(error.code(), "unsupported_config");
         let details = error.details();
         let diagnostic = blocking_diagnostic_for(&details, "helix.external.runtime_path");
         assert_eq!(diagnostic["status"], "invalid_helix_external_pair");
 
-        let mut old_runtime_config = default_settings_jsonc();
-        old_runtime_config["helix"]["external"] = JsonValue::Null;
+        let mut old_runtime_config = default_main_config();
+        old_runtime_config["helix"]
+            .as_object_mut()
+            .unwrap()
+            .remove("external");
         old_runtime_config["helix"]["runtime_path"] = json!("/tmp/runtime");
-        let old_runtime = write_settings_config(&old_runtime_config);
+        let old_runtime = write_main_config(&old_runtime_config);
         let error = normalize_config(&request_for(old_runtime)).unwrap_err();
         assert_eq!(error.code(), "unsupported_config");
         let details = error.details();
@@ -1222,13 +1213,13 @@ mod tests {
                 .any(|line| line.as_str().unwrap().contains("helix.external = { binary"))
         );
 
-        let mut conflicting_editor_config = default_settings_jsonc();
+        let mut conflicting_editor_config = default_main_config();
         conflicting_editor_config["editor"]["command"] = json!("nvim");
         conflicting_editor_config["helix"]["external"] = json!({
             "binary": "/tmp/hx",
             "runtime_path": "/tmp/runtime"
         });
-        let conflicting_editor = write_settings_config(&conflicting_editor_config);
+        let conflicting_editor = write_main_config(&conflicting_editor_config);
         let error = normalize_config(&request_for(conflicting_editor)).unwrap_err();
         assert_eq!(error.code(), "unsupported_config");
         let details = error.details();
@@ -1239,12 +1230,12 @@ mod tests {
     // Defends: a complete external Helix pair normalizes as one object for runtime env consumers.
     #[test]
     fn normalizes_helix_external_pair() {
-        let mut config = default_settings_jsonc();
+        let mut config = default_main_config();
         config["helix"]["external"] = json!({
             "binary": "/tmp/hx",
             "runtime_path": "/tmp/runtime"
         });
-        let path = write_settings_config(&config);
+        let path = write_main_config(&config);
         let data = normalize_config(&request_for(path)).unwrap();
         assert_eq!(
             data.normalized_config.get("helix_external").unwrap(),
@@ -1258,7 +1249,7 @@ mod tests {
     // Defends: custom Helix Steel plugin manifests reject unsafe source paths before materialization.
     #[test]
     fn rejects_invalid_helix_steel_plugin_manifest_shape() {
-        let mut config = default_settings_jsonc();
+        let mut config = default_main_config();
         config["helix"]["steel_plugins"] = json!({
             "enabled": ["recentf"],
             "extra": [{
@@ -1267,7 +1258,7 @@ mod tests {
                 "public_commands": ["bad-open"]
             }]
         });
-        let path = write_settings_config(&config);
+        let path = write_main_config(&config);
         let error = normalize_config(&request_for(path)).unwrap_err();
         assert_eq!(error.code(), "unsupported_config");
         let details = error.details();
@@ -1489,12 +1480,12 @@ open_directory_as_workspace_pane = []
         assert_eq!(diagnostic["fix_available"], json!(true));
     }
 
-    // Regression: missing bool fields in settings.jsonc fail clearly instead of being silently defaulted by normalization.
+    // Regression: missing bool fields in config.toml fail clearly instead of being silently defaulted by normalization.
     #[test]
     fn rejects_missing_settings_bool_field() {
-        let mut value = default_settings_jsonc();
+        let mut value = default_main_config();
         value["core"].as_object_mut().unwrap().remove("debug_mode");
-        let request = strict_request_for(write_settings_config(&value));
+        let request = strict_request_for(write_main_config(&value));
 
         let error = normalize_config(&request).unwrap_err();
         assert_eq!(error.code(), "unsupported_config");
@@ -1505,28 +1496,12 @@ open_directory_as_workspace_pane = []
         assert_eq!(diagnostic["fix_available"], json!(true));
     }
 
-    // Regression: null bool values in settings.jsonc do not masquerade as valid defaults.
-    #[test]
-    fn rejects_null_settings_bool_field() {
-        let mut value = default_settings_jsonc();
-        value["core"]["debug_mode"] = JsonValue::Null;
-        let request = strict_request_for(write_settings_config(&value));
-
-        let error = normalize_config(&request).unwrap_err();
-        assert_eq!(error.code(), "unsupported_config");
-        let details = error.details();
-        let diagnostic = blocking_diagnostic_for(&details, "core.debug_mode");
-
-        assert_eq!(diagnostic["status"], "missing_field");
-        assert_eq!(diagnostic["fix_available"], json!(true));
-    }
-
-    // Regression: wrong bool types in settings.jsonc are blocking user errors, not implicit coercions.
+    // Regression: wrong bool types in config.toml are blocking user errors, not implicit coercions.
     #[test]
     fn rejects_wrong_settings_bool_type() {
-        let mut value = default_settings_jsonc();
+        let mut value = default_main_config();
         value["core"]["debug_mode"] = json!("false");
-        let request = strict_request_for(write_settings_config(&value));
+        let request = strict_request_for(write_main_config(&value));
 
         let error = normalize_config(&request).unwrap_err();
         assert_eq!(error.code(), "unsupported_config");

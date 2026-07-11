@@ -6,15 +6,15 @@
 
 The child repo owns the project-agnostic config UI core: model, navigation, edit state, rendering, JSONC patch primitives, TOML text adapters, and deterministic contract/migration primitives. Yazelix remains the first consumer and keeps only the adapter code that knows about Yazelix settings, Home Manager ownership, runtime refreshes, and generated config behavior.
 
-JSONC is Yazelix's only main-settings persistence format because `settings.jsonc` is the canonical user config. Ratconfig TOML support is a reusable child-crate capability for other hosts and future sidecars; it is not a Yazelix `settings.toml` surface.
+TOML is Yazelix's main-settings persistence format through `config.toml`. Ratconfig's JSONC primitives remain available for the standalone cursor document and the bounded Classic migration from retired `settings.jsonc`.
 
 ## Extraction State
 
-The extraction state is `complete_jsonc_first`.
+The extraction state is `complete_multi_format`.
 
 The separate `ratconfig` repository owns the reusable code and tests. Yazelix consumes the published child crate through Cargo/Nix dependency metadata, and the old in-repo reusable `rust_core/yazelix_core/src/ratconfig/` implementation has been deleted instead of kept as a duplicate copy.
 
-The TOML adapter decision is `accepted_child_generic`. `ratconfig` may support TOML text adapters, TOML contract-state reconciliation, TOML examples, and TOML tests when those APIs stay project-agnostic. Main Yazelix must not add a `settings.toml` input, TOML migration path, or TOML Home Manager/runtime semantics unless a separate Yazelix product contract explicitly changes the main config surface.
+The TOML adapter decision is `accepted_child_generic`. `ratconfig` owns generic TOML text adapters, contract-state reconciliation, examples, and tests. Main Yazelix owns only the `config.toml` product schema, migration policy, Home Manager rendering, and runtime semantics.
 
 Future work should treat the child crate as the reusable owner and the main repo as a Yazelix adapter. If the boundary is painful, improve the child API or revise the contract; do not recreate a local mirror in the main repo.
 
@@ -34,7 +34,7 @@ The child repo owns reusable behavior that another project can use without impor
 
 The child repo must not own:
 
-- Yazelix `settings.jsonc` schema or `main_config_contract.toml`
+- Yazelix `config.toml` schema or `main_config_contract.toml`
 - Home Manager ownership rules
 - generated runtime materialization
 - native Helix, Yazi, Zellij, or Ghostty integration policy
@@ -47,7 +47,7 @@ Yazelix remains responsible for translating product state into the reusable ratc
 
 The main repo owns:
 
-- locating `~/.config/yazelix/settings.jsonc` and related runtime metadata
+- locating `~/.config/yazelix/config.toml` and related runtime metadata
 - loading defaults, schema metadata, and `main_config_contract.toml`
 - composing Yazelix-specific cursor settings into the visible model
 - marking Home Manager-owned settings as read-only
@@ -100,8 +100,7 @@ TOML support belongs in `ratconfig` when it stays generic:
 - The child crate may use `toml` and `toml_edit` so TOML parsing and comment-preserving text edits are not recreated by hand.
 - TOML and JSONC must share the same contract semantics for rename, delete, add-default, transform, joined-state reads/writes, manual blockers, and contract-id checks.
 - TOML-specific limits are adapter errors, not alternate migration behavior. Examples include rejecting JSON `null` because TOML has no null value and refusing to patch through a parent path that is not a TOML table.
-- The main Yazelix repo consumes the child API for `settings.jsonc` only. It does not offer or document a main `settings.toml` config file.
-- A future Yazelix-specific TOML sidecar would need its own contract, owner, validation path, and user migration story. The reusable child adapter alone does not authorize that product surface.
+- The main Yazelix repo consumes the child TOML API for `config.toml` and keeps JSONC only where a live cursor or bounded migration consumer requires it.
 
 ## Migration Contract
 

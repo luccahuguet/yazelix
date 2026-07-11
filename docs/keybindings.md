@@ -83,11 +83,11 @@ You can also print these Yazelix-owned bindings and the scoped semantic action i
 
 Use semantic remaps for Yazelix-owned actions and native sidecars for the owning tool's broader keymap.
 
-- Yazelix-owned Zellij actions: `settings.jsonc` under `zellij.keybindings`
-- Yazelix curated native Zellij policy: `settings.jsonc` under `zellij.native_keybindings`
+- Yazelix-owned Zellij actions: `config.toml` under `zellij.keybindings`
+- Yazelix curated native Zellij policy: `config.toml` under `zellij.native_keybindings`
 - Advanced native Zellij settings without keybinds: `~/.config/yazelix/zellij/config.kdl`
 - Full native Zellij keymap ownership: plain `zellij` outside Yazelix
-- Yazelix-owned Yazi integration actions: `settings.jsonc` under `yazi.keybindings`
+- Yazelix-owned Yazi integration actions: `config.toml` under `yazi.keybindings`
 - Yazi-native bindings: `~/.config/yazelix/yazi/keymap.toml`
 - Helix-local bindings for managed Helix sessions: `~/.config/yazelix/helix/config.toml`
 - Terminal-emulator shortcuts: the terminal emulator config

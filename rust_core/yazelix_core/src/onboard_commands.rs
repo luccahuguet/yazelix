@@ -5,9 +5,7 @@ use crate::active_config_surface::{
 };
 use crate::bridge::{CoreError, ErrorClass};
 use crate::control_plane::{config_dir_from_env, runtime_dir_from_env};
-use crate::settings_surface::{
-    parse_jsonc_value, render_default_settings_jsonc, render_settings_jsonc_value,
-};
+use crate::settings_surface::{parse_config_value, render_config_value, render_default_config};
 use crossterm::cursor::MoveTo;
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind, read};
 use crossterm::execute;
@@ -140,7 +138,7 @@ impl RawModeGuard {
                 ErrorClass::Runtime,
                 "onboard_raw_mode_failed",
                 format!("Could not enter terminal raw mode for onboarding: {error}"),
-                "Run `yzx onboard` from an interactive terminal, or edit settings.jsonc manually.",
+                "Run `yzx onboard` from an interactive terminal, or edit config.toml manually.",
                 json!({}),
             )
         })?;
@@ -209,7 +207,7 @@ fn print_onboard_help() {
     println!("  yzx onboard [--force] [--dry-run]");
     println!();
     println!("Flags:");
-    println!("      --force    Overwrite the managed user settings.jsonc if it already exists");
+    println!("      --force    Overwrite the managed user config.toml if it already exists");
     println!("      --dry-run  Print the generated config instead of writing it");
 }
 
@@ -275,7 +273,7 @@ fn read_prompt_event() -> Result<PromptEvent, CoreError> {
                 ErrorClass::Runtime,
                 "onboard_key_read_failed",
                 format!("Could not read onboarding key input: {error}"),
-                "Run `yzx onboard` from an interactive terminal, or edit settings.jsonc manually.",
+                "Run `yzx onboard` from an interactive terminal, or edit config.toml manually.",
                 json!({}),
             )
         })? {
@@ -360,7 +358,7 @@ fn onboard_aborted_error() -> CoreError {
         ErrorClass::Runtime,
         "onboard_aborted",
         "Yazelix onboarding was aborted.",
-        "Run `yzx onboard` again when you are ready, or edit settings.jsonc manually.",
+        "Run `yzx onboard` again when you are ready, or edit config.toml manually.",
         json!({}),
     )
 }
@@ -564,7 +562,7 @@ fn write_onboard_config(
                 "Yazelix config already exists at {}.",
                 paths.user_config.display()
             ),
-            "Run `yzx onboard --force` to overwrite it, or edit the existing settings.jsonc manually.",
+            "Run `yzx onboard --force` to overwrite it, or edit the existing config.toml manually.",
             json!({ "path": paths.user_config.display().to_string() }),
         ));
     }
@@ -594,8 +592,8 @@ fn build_onboard_config(
     answers: &OnboardAnswers,
     default_main_config: &Path,
 ) -> Result<String, CoreError> {
-    let default_jsonc = render_default_settings_jsonc(default_main_config)?;
-    let mut settings = parse_jsonc_value(Path::new("settings.jsonc"), &default_jsonc)?;
+    let default_toml = render_default_config(default_main_config)?;
+    let mut settings = parse_config_value(Path::new("config.toml"), &default_toml)?;
 
     set_settings_field(
         &mut settings,
@@ -629,7 +627,7 @@ fn build_onboard_config(
         ),
     )?;
 
-    render_settings_jsonc_value(&settings)
+    render_config_value(&settings)
 }
 
 fn set_settings_field(
@@ -670,7 +668,7 @@ mod tests {
         let runtime = root.join("runtime");
         let config = root.join("config");
         fs::create_dir_all(runtime.join("config_metadata")).unwrap();
-        fs::write(runtime.join("settings_default.jsonc"), "").unwrap();
+        fs::write(runtime.join("config_default.toml"), "").unwrap();
         fs::write(
             runtime.join("config_metadata/main_config_contract.toml"),
             "",
@@ -759,14 +757,14 @@ mod tests {
         assert!(!values.contains(&"cursor".to_string()));
     }
 
-    // Defends: onboarding emits valid settings.jsonc with current supported main config fields.
+    // Defends: onboarding emits valid config.toml with current supported main config fields.
     #[test]
     fn onboard_config_is_valid_current_main_config() {
         let tmp = tempdir().unwrap();
         let paths = test_paths(tmp.path());
         fs::write(
             &paths.default_config_path,
-            include_str!("../../../settings_default.jsonc"),
+            include_str!("../../../config_default.toml"),
         )
         .unwrap();
         let config = build_onboard_config(
@@ -779,7 +777,7 @@ mod tests {
             &paths.default_config_path,
         )
         .unwrap();
-        let parsed = parse_jsonc_value(Path::new("settings.jsonc"), &config).unwrap();
+        let parsed = parse_config_value(Path::new("config.toml"), &config).unwrap();
 
         assert_eq!(parsed["editor"]["command"].as_str(), Some("nvim"));
         assert_eq!(
@@ -816,7 +814,7 @@ mod tests {
         let paths = test_paths(tmp.path());
         fs::write(
             &paths.default_config_path,
-            include_str!("../../../settings_default.jsonc"),
+            include_str!("../../../config_default.toml"),
         )
         .unwrap();
         let config = build_onboard_config(

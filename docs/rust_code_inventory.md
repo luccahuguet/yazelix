@@ -75,7 +75,7 @@ Detailed budget families:
 
 `launch_commands.rs` keeps public command dispatch, desktop dispatch parsing, and the shared cwd resolver. Terminal selection, temporary config overrides, process/probe execution, desktop/macOS, launch fallback, enter, and restart live in private modules.
 
-`config_ui.rs` is the small Yazelix config UI adapter shell. `config_ui/*` keeps Yazelix settings schema, Home Manager/read-only ownership, native config status, cursor config composition, action-registry detail text, validation, file writes, and runtime apply policy. Reusable model/editor/render helpers, row filtering/search, generic row/detail rendering, JSONC patch primitives, and migration primitives live in `ratconfig`.
+`config_ui.rs` is the small Yazelix config UI adapter shell. `config_ui/*` keeps Yazelix settings schema, Home Manager/read-only ownership, native config status, cursor config composition, action-registry detail text, validation, file writes, and runtime apply policy. Reusable model/editor/render helpers, row filtering/search, generic row/detail rendering, TOML/JSONC patch primitives, and migration primitives live in `ratconfig`.
 
 `zellij_materialization.rs` owns generated Zellij config policy, layout fragments, keybinding rendering, plugin block wiring, and runtime helper path resolution. It should remain local until layout and keybinding ownership are thinner.
 
@@ -91,7 +91,7 @@ The main repo intentionally consumes these child projects instead of owning thei
 | --- | --- |
 | `yazelix-screen` | terminal animation package consumed by welcome/screen surfaces |
 | `yazelix-cursors` | reusable cursor registry, `yzc`, Ghostty-compatible shader generation, and packaged shader assets |
-| `ratconfig` | reusable Ratatui config editor model/editor/render, JSONC patching, and migration primitives consumed by the Yazelix config UI adapter |
+| `ratconfig` | reusable Ratatui config editor model/editor/render, TOML/JSONC patching, and migration primitives consumed by the Yazelix config UI adapter |
 | `yazelix-zellij-bar` | reusable Zellij bar renderers, non-workspace widget commands, provider probing/cache behavior, CPU/RAM, and packaged standalone bar |
 | `yazelix-zellij-popup` | `yzpp` popup plugin wasm and plain-Zellij popup behavior |
 | `yazelix-zellij-pane-orchestrator` | pane orchestration plugin source; main repo consumes the synced runtime artifact and integration contracts |
@@ -115,7 +115,7 @@ Current evidence to keep fresh during focused audits:
 1. Keep this inventory and the no-growth budget current; every accepted Rust growth slice should record whether it is deletion debt or a justified new owner
 2. Continue thinning Zellij command/status adapters before extracting workspace ownership
 3. Continue thinning workspace adapters while keeping zoxide/path resolution, config facts, runtime wrapper paths, and current-tab retargeting local
-4. Keep the config UI adapter thin against `ratconfig`; do not reintroduce generic UI, JSONC patching, or migration behavior into the main repo
+4. Keep the config UI adapter thin against `ratconfig`; do not reintroduce generic UI, text patching, or migration behavior into the main repo
 5. Keep `zellij_materialization.rs` local until keybinding ownership, layout-profile decisions, and plugin path policy are stable
 6. Keep the Yazi writer boundary private until Yazelix paths, action ids, opener preservation, and override errors are thin enough to leave behind cleanly
 7. Keep maintainer validators in repo, but keep splitting large validator files by current contract domain

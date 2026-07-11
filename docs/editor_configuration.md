@@ -5,12 +5,9 @@ Yazelix provides smart editor configuration to avoid conflicts with existing ins
 ## Quick Start
 
 **Most users should use the default:**
-```jsonc
-{
-  "editor": {
-    "command": ""
-  }
-}
+```toml
+[editor]
+command = ""
 ```
 
 **If you have specific needs:**
@@ -30,15 +27,11 @@ Yazelix sets your configured editor as the `EDITOR` environment variable through
 
 ### Default (Recommended): Yazelix's Helix
 
-```jsonc
-{
-  "editor": {
-    "command": ""
-  },
-  "helix": {
-    "external": null
-  }
-}
+```toml
+[editor]
+command = ""
+
+[helix]
 ```
 
 **Benefits:**
@@ -58,15 +51,12 @@ Yazelix sets your configured editor as the `EDITOR` environment variable through
 
 ### Using A Custom Helix Fork
 
-```jsonc
-{
-  "helix": {
-    "external": {
-      "binary": "/home/user/helix/target/release/hx",
-      "runtime_path": "/home/user/helix/runtime"
-    }
-  }
-}
+```toml
+[helix]
+
+[helix.external]
+binary = "/home/user/helix/target/release/hx"
+runtime_path = "/home/user/helix/runtime"
 ```
 
 **Benefits:**
@@ -74,7 +64,7 @@ Yazelix sets your configured editor as the `EDITOR` environment variable through
 - ✅ **Use your custom build** - Great for Yazelix Helix fork development
 
 **Notes:**
-- Leave `helix.external` as `null` to use Yazelix's bundled Helix
+- Omit `helix.external` to use Yazelix's bundled Helix
 - Set `helix.external` only when you need a user-owned fork based on `luccahuguet/yazelix-helix`
 - Both `binary` and `runtime_path` are required together
 - Vanilla/upstream Helix is not a supported `helix.external` target
@@ -95,12 +85,9 @@ mkdir -p /tmp/yazelix-helix-probe
 
 ### Using Neovim
 
-```jsonc
-{
-  "editor": {
-    "command": "nvim"
-  }
-}
+```toml
+[editor]
+command = "nvim"
 ```
 
 **Benefits:**
@@ -118,12 +105,9 @@ mkdir -p /tmp/yazelix-helix-probe
 
 ### Using Other Editors
 
-```jsonc
-{
-  "editor": {
-    "command": "vim"
-  }
-}
+```toml
+[editor]
+command = "vim"
 ```
 
 **Benefits:**
@@ -166,27 +150,12 @@ mkdir -p /tmp/yazelix-helix-probe
 - `startup_commands` run when the generated Yazelix Steel module loads
 - Minimal example: [hello_yazelix.scm](./examples/helix_steel_plugins/hello_yazelix.scm)
 
-```jsonc
-{
-  "helix": {
-    "steel_plugins": {
-      "enabled": ["splash", "spacemacs_theme"],
-      "extra": [
-        {
-          "id": "my_picker",
-          "source": "my_picker.scm",
-          "public_commands": ["my-picker-open"],
-          "internal_commands": ["my-picker-refresh"],
-          "startup_commands": ["my-picker-refresh"],
-          "command_descriptions": {
-            "my-picker-open": "Open my custom picker",
-            "my-picker-refresh": "Refresh my custom picker state"
-          }
-        }
-      ]
-    }
-  }
-}
+```toml
+[helix]
+
+[helix.steel_plugins]
+enabled = ["splash", "spacemacs_theme"]
+extra = [{ id = "my_picker", source = "my_picker.scm", public_commands = ["my-picker-open"], internal_commands = ["my-picker-refresh"], startup_commands = ["my-picker-refresh"], command_descriptions = { my-picker-open = "Open my custom picker", my-picker-refresh = "Refresh my custom picker state" } }]
 ```
 
 For a complete teaching example with the matching manifest entry, see
@@ -254,42 +223,33 @@ These are desired managed-Helix improvements, not current Yazelix support guaran
 
 If you have multiple Helix installations:
 
-```jsonc
-{
-  "helix": {
-    "external": {
-      "binary": "/opt/helix-custom/bin/hx",
-      "runtime_path": "/opt/helix-custom/share/helix/runtime"
-    }
-  }
-}
+```toml
+[helix]
+
+[helix.external]
+binary = "/opt/helix-custom/bin/hx"
+runtime_path = "/opt/helix-custom/share/helix/runtime"
 ```
 
 ### Development Setup
 
 For Helix development:
 
-```jsonc
-{
-  "helix": {
-    "external": {
-      "binary": "/home/user/helix/target/release/hx",
-      "runtime_path": "/home/user/helix/runtime"
-    }
-  }
-}
+```toml
+[helix]
+
+[helix.external]
+binary = "/home/user/helix/target/release/hx"
+runtime_path = "/home/user/helix/runtime"
 ```
 
 ### Bundled Helix Configuration
 
 For maximum reliability, keep the default managed Helix path:
 
-```jsonc
-{
-  "editor": {
-    "command": ""
-  }
-}
+```toml
+[editor]
+command = ""
 ```
 
 ## Home Manager Integration
@@ -321,66 +281,50 @@ See `home_manager/examples/example.nix` for complete configuration examples.
 ## Common Configuration Examples
 
 ### Most Users (Recommended)
-```jsonc
-{
-  "editor": {
-    "command": ""
-  },
-  "helix": {
-    "external": null
-  }
-}
+```toml
+[editor]
+command = ""
+
+[helix]
 ```
 
 ### Helix Developer
-```jsonc
-{
-  "helix": {
-    "external": {
-      "binary": "/home/user/helix/target/release/hx",
-      "runtime_path": "/home/user/helix/runtime"
-    }
-  }
-}
+```toml
+[helix]
+
+[helix.external]
+binary = "/home/user/helix/target/release/hx"
+runtime_path = "/home/user/helix/runtime"
 ```
 
 ### Neovim User
-```jsonc
-{
-  "editor": {
-    "command": "nvim"
-  }
-}
+```toml
+[editor]
+command = "nvim"
 ```
 
 **Remember:** Add a custom reveal binding to your Neovim config - see [Neovim Keybindings](./neovim_keybindings.md)
 
 ### Vim/Other Editor User
-```jsonc
-{
-  "editor": {
-    "command": "vim"
-  }
-}
+```toml
+[editor]
+command = "vim"
 ```
 
 ### Custom Helix User (Advanced)
-```jsonc
-{
-  "helix": {
-    "external": {
-      "binary": "/usr/bin/hx",
-      "runtime_path": "/usr/share/helix/runtime"
-    }
-  }
-}
+```toml
+[helix]
+
+[helix.external]
+binary = "/usr/bin/hx"
+runtime_path = "/usr/share/helix/runtime"
 ```
 
 ## Integration Feature Matrix
 
 | Editor Type | File Opening | Reveal in Sidebar | Same Instance | File Picker | Tab Naming |
 |-------------|--------------|-------------------|---------------|-------------|------------|
-| Yazelix Helix (null) | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Yazelix Helix (`helix.external` omitted) | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Bundled Helix ("hx") | ✅ | ✅ | ✅ | ✅ | ✅ |
 | External Helix pair | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Neovim ("nvim") | ✅ | ✅ (with setup) | ✅ | ✅ (Telescope) | ✅ |

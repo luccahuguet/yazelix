@@ -21,9 +21,9 @@ Yazelix status and doctor surfaces must explain which runtime is active, who own
 - The integrated status bar terminal widget displays the session terminal label, not the packaged runtime label, for current-terminal `yzx enter` sessions.
 - Generic terminal identifiers such as `xterm-256color` are not guessed as a specific emulator; unsupported or ambiguous host terminals report `unknown`.
 - Home Manager ownership is detected when either:
-  - `settings.jsonc` is a Home Manager-owned profile symlink, or
+  - `config.toml` is a Home Manager-owned profile symlink, or
   - the default profile contains a Home Manager path, `~/.nix-profile/bin/yzx`, and the Home Manager profile desktop entry
-- `manage_config = false` keeps `settings.jsonc` mutable without changing the install owner away from Home Manager
+- `manage_config = false` keeps `config.toml` mutable without changing the install owner away from Home Manager
 - Profile ownership means the default Nix profile directly owns a Yazelix package entry
 - Manual ownership means no supported profile or Home Manager owner was found
 - Owner update commands:
@@ -39,7 +39,7 @@ Yazelix status and doctor surfaces must explain which runtime is active, who own
 - making status or doctor infer release notes without a known runtime identity
 - treating a live shell `PATH` entry as install ownership by itself
 - silently moving user config files between native app config roots and Yazelix-managed roots
-- making Home Manager own `settings.jsonc` when `manage_config = false`
+- making Home Manager own `config.toml` when `manage_config = false`
 
 ## Verification
 
