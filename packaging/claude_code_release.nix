@@ -1,12 +1,20 @@
 {
   pkgs,
-  version ? "2.1.205",
+  version ? "2.1.207",
 }:
 
 let
   stdenv = pkgs.stdenvNoCC;
   platformKey = "${stdenv.hostPlatform.node.platform}-${stdenv.hostPlatform.node.arch}";
   checksums = {
+    "2.1.207" = {
+      "darwin-arm64" = "1397a062c6889675055e3314dd956376ac51262a7734ad9e819c26975d71547a";
+      "darwin-x64" = "8a4355d251a60c90d8cf08f32fdb22a8157dd3d085542f95d0da0475f9a2c57c";
+      "linux-arm64" = "8bc14a284065383460f37981d724b8f7aa7ca93c9849d2fe367e08f03383f454";
+      "linux-x64" = "85e7e988a392d859f90802ca21fb26e89d3c9ab527f5ed0b08df3955e34d5c83";
+      "linux-arm64-musl" = "ec3b657344dcf6693f434fe11ffe4592381d31d4e6a7976649c1a610770dcc74";
+      "linux-x64-musl" = "09a43ff41e33cbb0c4903a4939353933ee8f0d1964abab4b837004a951edb9ee";
+    };
     "2.1.205" = {
       "darwin-arm64" = "33e28624c5ae84f2bd7d2d8761e5d2e77997ba965cb11b6448de6b6e2c566f9c";
       "darwin-x64" = "4299a3f48551ef365f2d056f24d87e84b822c4c10b6acc46979446b7b5c60ceb";
