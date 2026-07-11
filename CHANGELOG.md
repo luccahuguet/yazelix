@@ -2,18 +2,21 @@
 
 Short, upgrade-facing release notes live here. The longer narrative history remains in [docs/history.md](./docs/history.md).
 
+Yazelix Classic covers every release through the final pre-Nova tag. The replacement release starts Yazelix Nova at v1. Existing Classic tags keep their version numbers.
+
 ## Unreleased
 
-Post-v17.10 work in progress
+Classic line naming and Nova v1 cutover planning
 
 Upgrade impact: no user action required
 
 Highlights:
-- Reserved for post-release changes after v17.10 lands.
+- Classified every pre-Nova release, including v17.10 and earlier, as Yazelix Classic without changing historical tags
+- Reserved Yazelix Nova v1 for the implementation replacement and its new public version line
 
 ## v17.10 - 2026-07-11
 
-Native Mars config, Next-shaped Zellij sidecars, and runtime reliability
+Native Mars config, nested Zellij sidecars, and runtime reliability
 
 Upgrade impact: manual action required for retired Home Manager options and users who relied on plain Zellij config as an ambient Yazelix fallback
 
@@ -22,13 +25,13 @@ Highlights:
 - Removed generated Mars config, terminal config mode, transparency buckets, emoji/profile projection, cross-tool Mars appearance/cursor projection, random per-window Mars cursors, and tracked Ghostty/Kitty/WezTerm example configs
 - Upgraded to Ratconfig 2.0 and TOML 1.1, exposed inherited packaged Mars fields as generic rows, wrote only explicit native overrides, and added Home Manager `programs.yazelix.config.mars.text` / `source` ownership
 - Migrated writable released `terminal.transparency` values to native `window.opacity` before removing the retired `terminal` settings object
-- Replaced flat managed `zellij.kdl` and the ambient plain-Zellij fallback with the Yazelix Next-shaped `zellij/config.kdl` and `zellij/plugins.kdl` boundary; writable flat files migrate backup-first and `yzx import zellij` explicitly splits safe native config
+- Replaced flat managed `zellij.kdl` and the ambient plain-Zellij fallback with the nested `zellij/config.kdl` and `zellij/plugins.kdl` boundary; writable flat files migrate backup-first and `yzx import zellij` explicitly splits safe native config
 - Made Linux desktop entries launch Yazelix directly instead of using a temporary host terminal that could kill the Mars handoff on COSMIC
 - Preserved NixOS security-wrapper precedence across Yazelix entrypoints and managed Helix launches so `sudo` and other privileged commands resolve through `/run/wrappers/bin`
 - Repaired the published Yazi assets Cargo vendor hash, centralized Cargo git output hashes, derived the Yazi assets hash from the locked flake input, and added revision/hash contract checks for fresh Linux and macOS builds
 - Updated Mars, Yazelix Cursors, and Yazelix Helix child pins for cursor-trail disabling, current shared cursor behavior, and the Spacemacs Steel activation fix
 - Hardened bootstrap/runtime handoff with correct POSIX PATH seeding, Nix-safe wrapper escaping, clearer stale-runtime recovery, and cached Home Manager activation closures
-- Recorded the Yazelix Next cutover boundary so the future replacement keeps native sidecar paths stable and deletes transitional main-repo ownership instead of adding compatibility layers
+- Prepared stable native sidecar paths for Yazelix Nova v1 so the replacement can delete Classic ownership instead of adding compatibility layers
 
 Manual action:
 - Replace Home Manager `terminal_config_mode`, `transparency`, `mars_profile`, and `mars_emoji_font` options with exactly one of `programs.yazelix.config.mars.text` or `programs.yazelix.config.mars.source` when you want a declarative sparse Mars override
@@ -45,7 +48,7 @@ Post-v17.8 work in progress
 Upgrade impact: manual action may be required
 
 Highlights:
-- Adopted the grouped Zellij mode layer from Yazelix Next: `Ctrl p/t/n/q` keep pane, tab, resize, and quit fast, `Ctrl Alt g/s/o` keep lock, search, and session grouped off plain Ctrl, `Ctrl h` stays unbound from move mode, and the consumed Zellij fork groups mixed modifier hints cleanly in the bottom bar
+- Adopted the grouped Zellij mode layer: `Ctrl p/t/n/q` keep pane, tab, resize, and quit fast, `Ctrl Alt g/s/o` keep lock, search, and session grouped off plain Ctrl, `Ctrl h` stays unbound from move mode, and the consumed Zellij fork groups mixed modifier hints cleanly in the bottom bar
 - Kept every capable terminal supported through `yzx enter` while making Mars the deepest integrated packaged path, Ghostty the most tested mature host-terminal path, and non-Mars terminal config native to each terminal
 - Added `yzx cursors ghostty setup` so host Ghostty users can generate the Yazelix cursor include from the normal Yazelix package without installing `#yazelix_cursors` separately
 - Gave the runtime smoke CI lane enough time for cache-miss builds
@@ -395,8 +398,8 @@ v15 trims Yazelix down to the fast workspace core
 Upgrade impact: manual action required
 
 Highlights:
-- v15 is the only supported Yazelix line now, and v14 is the final historical Classic snapshot rather than a maintained fallback.
-- Dropped the out-of-scope Classic runtime-manager surface: no runtime-local `devenv`, no `yazelix_packs.toml`, no `yazelix packs` or `yzx packs`, no automatic config migrations, and no `yzx refresh`.
+- At release time, v15 became the supported Classic line, while v14 remained the final snapshot of the broad `devenv`-era Classic shape.
+- Dropped the out-of-scope v14 runtime-manager surface: no runtime-local `devenv`, no `yazelix_packs.toml`, no `yazelix packs` or `yzx packs`, no automatic config migrations, and no `yzx refresh`.
 - Ghostty is now the first-party bundled terminal on Linux and macOS, while WezTerm, Kitty, Alacritty, and Foot remain supported when you provide them on the host `PATH`.
 - Split current-terminal startup into `yzx enter`, kept `yzx launch` as the managed external-terminal entrypoint, and kept `yzx env` as the non-UI tool-environment surface.
 - `yzx popup` and `yzx menu --popup` now share the fast floating-pane path with explicit pane identity, shared toggle semantics, and no helper-pane detour.
@@ -412,7 +415,7 @@ Command surface:
 
 Migration notes:
 - Compare your current config with `yazelix_default.toml` or run `yzx reset config` to start fresh; v15 does not ship automatic config migrations.
-- If you relied on Classic-only surfaces such as `yazelix packs`, `yzx packs`, or `yzx refresh`, stay on the historical `v14` tag or adapt to the trimmed v15 command surface.
+- If you relied on v14 runtime-manager surfaces such as `yazelix packs`, `yzx packs`, or `yzx refresh`, stay on the historical `v14` tag or adapt to the trimmed v15 command surface.
 
 
 ## v14 - 2026-04-10
@@ -437,13 +440,13 @@ Migration notes:
 - Replace `yzx update runtime` with `yzx update upstream` for upstream/manual installs.
 - Replace `yzx update all` with exactly one owner path: `yzx update upstream` for upstream/manual installs or `yzx update home_manager` for Home Manager installs.
 
-Yazelix Classic, v15, and the `yzx` surface:
+Yazelix Classic eras, v15, and the `yzx` surface:
 
-v14 is the last feature release of what I now think of as Yazelix Classic.
+v14 is the final feature release of the broad `devenv`-era Classic architecture.
 
-Yazelix Classic is the broad, heavily integrated, `devenv`-era shape of the project: `yazelix packs`, dynamic runtime management, rich shell and terminal integration, multiple ownership paths, a large `yzx` surface that includes commands like `yzx packs`, and the unusually wide power-user workflow that made Yazelix one of a kind.
+That broad Classic era combined `yazelix packs`, dynamic runtime management, rich shell and terminal integration, multiple ownership paths, and a large `yzx` surface that included commands such as `yzx packs`.
 
-The `v14` tag remains available only as the final historical Classic snapshot for users who specifically need that broader product shape. It is no longer a supported line.
+The `v14` tag remains available as the final broad `devenv`-era Classic snapshot. It is no longer a supported line.
 
 The active branch direction is now v15 rather than two maintained products in parallel.
 
@@ -457,15 +460,15 @@ The other product was the narrower workspace tool that had been trying to emerge
 
 v14 is the release where that split became impossible to ignore. The v15 branch now resolves it by trimming first instead of trying to preserve both product shapes.
 
-A lot of the current `yzx` surface belongs to Yazelix Classic. That includes the parts of `yzx` that are tightly tied to the older `devenv` hot-path and cold-path model: explicit refresh semantics, dynamic runtime entry behavior, launch-profile reuse, first-class `yazelix packs` / `yzx packs` package selection and inspection, broad pack and package-graph ownership, wider shell and terminal policy, and the idea that Yazelix should also act as a fairly general environment-management layer.
+Much of the v14 `yzx` surface belongs to the broad `devenv`-era Classic architecture. It includes explicit refresh semantics, dynamic runtime entry, launch-profile reuse, first-class `yazelix packs` / `yzx packs` package selection, broad package-graph ownership, and wider shell and terminal policy.
 
 In that sense, commands like `yzx refresh` and much of the older meaning carried by `yzx run` belong much more to the v14 Classic world than to the slimmer v15 direction.
 
 The v15 branch keeps the core `yzx` product surface and trims away the parts that mainly existed to support the older `devenv` machinery. The backbone is `yzx launch`, `yzx env`, `yzx update`, and `yzx desktop`. Beyond that backbone, workspace-facing commands such as `yzx cwd`, `yzx reveal`, `yzx popup`, `yzx menu`, `yzx keys`, `yzx tutor`, `yzx whats_new`, and `yzx doctor` fit the actual product much better than the older backend-management surface does.
 
-Commands and semantics that mainly existed because Yazelix was also trying to manage a large dynamic `devenv` lifecycle are now historical Classic surfaces. That is why v15 drops or heavily narrows `yzx refresh`, `yzx run`, launch-profile reuse semantics, explicit backend/materialization entry logic on the hot path, the broader `yazelix packs` / `yzx packs` package-graph ownership model, and automatic config migrations.
+Commands and semantics tied to the large dynamic `devenv` lifecycle are v14-era Classic surfaces. That is why v15 drops or narrows `yzx refresh`, `yzx run`, launch-profile reuse semantics, explicit backend/materialization entry logic on the hot path, the broader `yazelix packs` / `yzx packs` package-graph ownership model, and automatic config migrations.
 
-There is still a chance that a broader runtime or terminal-environment project could be forked from Yazelix Classic later. That would let the broader environment-management direction evolve on its own terms instead of staying entangled with the slimmer v15 product.
+A broader runtime or terminal-environment project could still fork from the v14 Classic architecture. That would let the environment-management direction evolve outside the slimmer workspace product.
 
 If that separate project proves valuable, it should only be reintegrated with much cleaner boundaries: separate codebases, clear separation of concerns, and an explicit integration seam between the two products.
 

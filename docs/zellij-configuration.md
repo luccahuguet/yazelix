@@ -24,7 +24,7 @@ scroll_buffer_size 10000
 
 Yazelix creates this file with `scroll_buffer_size 5000` when it is absent. Changes apply to a fresh Yazelix session.
 
-The sidecar uses the same first-token ownership guard as Yazelix Next. It rejects nodes owned by runtime materialization, including:
+The sidecar uses a first-token ownership guard. It rejects nodes owned by runtime materialization, including:
 
 - `keybinds`
 - `default_shell`, `default_layout`, `layout`, and `layout_dir`
