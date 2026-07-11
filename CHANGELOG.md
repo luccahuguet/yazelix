@@ -4,6 +4,15 @@ Short, upgrade-facing release notes live here. The longer narrative history rema
 
 ## Unreleased
 
+Post-v17.10 work in progress
+
+Upgrade impact: no user action required
+
+Highlights:
+- Reserved for post-release changes after v17.10 lands.
+
+## v17.10 - 2026-07-11
+
 Native Mars config, Next-shaped Zellij sidecars, and runtime reliability
 
 Upgrade impact: manual action required for retired Home Manager options and users who relied on plain Zellij config as an ambient Yazelix fallback
@@ -27,6 +36,7 @@ Manual action:
 - Configure custom Mars fonts under `[fonts]`; the retired `terminal.emoji_style` value is not migrated
 - If Home Manager owns `~/.config/yazelix/zellij.kdl`, split it declaratively into `programs.yazelix.config.zellij.text` or `source` plus a user-owned `zellij/plugins.kdl`, then remove the flat file declaration
 - If you relied on `~/.config/zellij/config.kdl` as an automatic Yazelix fallback, run `yzx import zellij`; plain Zellij config is no longer read implicitly
+
 
 ## v17.9 - 2026-06-27
 
