@@ -4,25 +4,29 @@ Short, upgrade-facing release notes live here. The longer narrative history rema
 
 ## Unreleased
 
-Native Mars config ownership
+Native Mars config, Next-shaped Zellij sidecars, and runtime reliability
 
-Upgrade impact: manual action required for Home Manager users; writable released terminal transparency settings migrate automatically
+Upgrade impact: manual action required for retired Home Manager options and users who relied on plain Zellij config as an ambient Yazelix fallback
 
 Highlights:
-- Repaired the published Yazi assets Cargo vendor hash so fresh Nix installs build on Linux and macOS
-- Made Linux desktop entries launch Yazelix directly instead of using a temporary host terminal that can kill the Mars handoff on COSMIC
-- Made `~/.config/yazelix/mars/config.toml` a sparse native Mars override recursively merged over the immutable packaged config, so unedited defaults and package assets keep following upgrades
+- Made `~/.config/yazelix/mars/config.toml` a sparse native Mars override recursively merged over the immutable packaged config, so unedited defaults, package assets, and font paths keep following upgrades
 - Removed generated Mars config, terminal config mode, transparency buckets, emoji/profile projection, cross-tool Mars appearance/cursor projection, random per-window Mars cursors, and tracked Ghostty/Kitty/WezTerm example configs
-- Exposed inherited packaged Mars fields through Ratconfig generic rows while writing only explicit overrides, and added sparse Home Manager `programs.yazelix.config.mars.text` / `source` ownership
+- Upgraded to Ratconfig 2.0 and TOML 1.1, exposed inherited packaged Mars fields as generic rows, wrote only explicit native overrides, and added Home Manager `programs.yazelix.config.mars.text` / `source` ownership
 - Migrated writable released `terminal.transparency` values to native `window.opacity` before removing the retired `terminal` settings object
+- Replaced flat managed `zellij.kdl` and the ambient plain-Zellij fallback with the Yazelix Next-shaped `zellij/config.kdl` and `zellij/plugins.kdl` boundary; writable flat files migrate backup-first and `yzx import zellij` explicitly splits safe native config
+- Made Linux desktop entries launch Yazelix directly instead of using a temporary host terminal that could kill the Mars handoff on COSMIC
 - Preserved NixOS security-wrapper precedence across Yazelix entrypoints and managed Helix launches so `sudo` and other privileged commands resolve through `/run/wrappers/bin`
-- Replaced the flat managed Zellij sidecar and ambient native fallback with the Yazelix Next-shaped `zellij/config.kdl` and `zellij/plugins.kdl` boundary; writable flat files migrate backup-first, while `yzx import zellij` is the only path from plain Zellij config
+- Repaired the published Yazi assets Cargo vendor hash, centralized Cargo git output hashes, derived the Yazi assets hash from the locked flake input, and added revision/hash contract checks for fresh Linux and macOS builds
+- Updated Mars, Yazelix Cursors, and Yazelix Helix child pins for cursor-trail disabling, current shared cursor behavior, and the Spacemacs Steel activation fix
+- Hardened bootstrap/runtime handoff with correct POSIX PATH seeding, Nix-safe wrapper escaping, clearer stale-runtime recovery, and cached Home Manager activation closures
+- Recorded the Yazelix Next cutover boundary so the future replacement keeps native sidecar paths stable and deletes transitional main-repo ownership instead of adding compatibility layers
 
 Manual action:
 - Replace Home Manager `terminal_config_mode`, `transparency`, `mars_profile`, and `mars_emoji_font` options with exactly one of `programs.yazelix.config.mars.text` or `programs.yazelix.config.mars.source` when you want a declarative sparse Mars override
 - Configure Mars appearance and cursors in `[mars.appearance]` and `[yazelix.cursor]`; root `appearance.mode` and `~/.config/yazelix_cursors/settings.jsonc` do not control Mars
 - Configure custom Mars fonts under `[fonts]`; the retired `terminal.emoji_style` value is not migrated
 - If Home Manager owns `~/.config/yazelix/zellij.kdl`, split it declaratively into `programs.yazelix.config.zellij.text` or `source` plus a user-owned `zellij/plugins.kdl`, then remove the flat file declaration
+- If you relied on `~/.config/zellij/config.kdl` as an automatic Yazelix fallback, run `yzx import zellij`; plain Zellij config is no longer read implicitly
 
 ## v17.9 - 2026-06-27
 
