@@ -42,6 +42,7 @@ When creating new files or directories, always use underscores to maintain consi
 ## Project Structure Notes
 
 - Yazelix has packaged runtime surfaces and maintainer development-shell surfaces; keep user runtime behavior distinct from dev tooling
+- Yazelix Next is the intended replacement architecture for main Yazelix. Main-repo simplification should converge paths, config contracts, ownership boundaries, and dependency seams toward Yazelix Next so the eventual code swap deletes main-specific code instead of requiring another migration. Prefer a proven Next-owned shape over preserving a cheaper main-only shape when both satisfy the current product contract; record intentional divergences and their removal conditions in Beads.
 - The canonical user semantic config is `~/.config/yazelix/settings.jsonc`
 - Shipped config defaults/templates feed `settings.jsonc` generation through `settings_default.jsonc`, `yazelix_cursors_default.toml`, `config_metadata/yazelix_settings.schema.json`, and `config_metadata/main_config_contract.toml`
 - Old mutable `yazelix.toml` and `cursors.toml` files are unsupported legacy inputs, not runtime config sources or automatic migration inputs
