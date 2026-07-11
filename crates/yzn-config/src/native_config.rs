@@ -1,7 +1,8 @@
 use std::{fs, path::Path};
 
-use ratconfig::toml_adapter::set_toml_value_text;
+use ratconfig::toml_adapter::{set_toml_value_text, unset_toml_value_text};
 use serde_json::Value as JsonValue;
+use toml::Value as TomlValue;
 
 use crate::{catalog::*, common::*};
 
@@ -63,11 +64,45 @@ pub(crate) fn write_starship_config_field(
         .find(|spec| spec.path == field_path)
         .ok_or_else(|| error(format!("unknown Starship config path: {field_path}")))?;
     validate_starship_field(spec, value)?;
-    let raw = fs::read_to_string(path)?;
+    let raw = if path.is_file() {
+        fs::read_to_string(path)?
+    } else {
+        String::new()
+    };
     let text = set_toml_value_text(&raw, field_path, value)
         .map_err(|error| boxed_debug("could not update starship.toml", error))?
         .text;
     atomic_write(path, &text)
+}
+pub(crate) fn unset_starship_config_field(path: &Path, field_path: &str) -> Result<()> {
+    if !STARSHIP_FIELDS.iter().any(|spec| spec.path == field_path) {
+        return Err(error(format!("unknown Starship config path: {field_path}")));
+    }
+    if !path.is_file() {
+        return Ok(());
+    }
+    let raw = fs::read_to_string(path)?;
+    let text = unset_toml_value_text(&raw, field_path)
+        .map_err(|error| boxed_debug("could not update starship.toml", error))?
+        .text;
+    if text.trim().is_empty() {
+        fs::remove_file(path)?;
+        Ok(())
+    } else {
+        atomic_write(path, &text)
+    }
+}
+pub(crate) fn write_effective_starship_config(user: &Path, output: &Path) -> Result<()> {
+    let mut config: TomlValue = toml::from_str(DEFAULT_STARSHIP_CONFIG_TOML)
+        .map_err(|error| boxed_debug("invalid default Starship config", error))?;
+    if user.is_file() {
+        let overrides = toml::from_str(&fs::read_to_string(user)?)
+            .map_err(|error| boxed_debug("invalid user Starship config", error))?;
+        deep_merge_toml(&mut config, &overrides);
+    }
+    let text = toml::to_string_pretty(&config)
+        .map_err(|error| boxed_debug("could not serialize effective Starship config", error))?;
+    atomic_write(output, &text)
 }
 pub(crate) fn validate_starship_field(spec: &FieldSpec, value: &JsonValue) -> Result<()> {
     match spec.kind {

@@ -16,6 +16,7 @@ use catalog::*;
 use common::*;
 use custom_popups::*;
 use helix_config::*;
+use native_config::write_effective_starship_config;
 use paths::*;
 use root_config::*;
 use ui::*;
@@ -57,6 +58,23 @@ fn run() -> Result<()> {
             }
             write_effective_helix_config(
                 std::path::Path::new(&packaged),
+                std::path::Path::new(&user),
+                std::path::Path::new(&output),
+            )
+        }
+        Some("--write-effective-starship-config") => {
+            let user = args
+                .next()
+                .ok_or_else(|| error("--write-effective-starship-config requires a user path"))?;
+            let output = args.next().ok_or_else(|| {
+                error("--write-effective-starship-config requires an output path")
+            })?;
+            if args.next().is_some() {
+                return Err(error(
+                    "--write-effective-starship-config accepts exactly two paths",
+                ));
+            }
+            write_effective_starship_config(
                 std::path::Path::new(&user),
                 std::path::Path::new(&output),
             )
@@ -155,21 +173,9 @@ mod tests {
         }
     }
 
-    fn ensure_temp_sources(paths: &ConfigPaths) {
-        ensure_config_file_at(paths.root.clone()).unwrap();
-        ensure_plain_config_file_at(&paths.mars, DEFAULT_MARS_CONFIG_TOML).unwrap();
-        ensure_plain_config_file_at(
-            &paths.zellij,
-            &render_zellij_sidecar(&ZellijSidecar::default()),
-        )
-        .unwrap();
-        ensure_plain_config_file_at(&paths.starship, DEFAULT_STARSHIP_CONFIG_TOML).unwrap();
-    }
-
     fn temp_sources() -> (TempHome, ConfigPaths) {
         let temp = TempHome::new();
-        let paths = temp_paths(&temp);
-        ensure_temp_sources(&paths);
+        let paths = ensure_config_sources_at(temp_paths(&temp)).unwrap();
         (temp, paths)
     }
 
@@ -775,6 +781,7 @@ mod tests {
         assert_eq!(format.tab, TAB_STARSHIP);
         assert_eq!(format.kind, "string");
         assert_eq!(format.current_value, r#"":: ""#);
+        assert_eq!(format.state, ConfigUiValueState::Defaulted);
         assert_eq!(format.apply_status.summary, "new prompts");
         assert_eq!(right_format.current_value, r#""""#);
         assert_eq!(model_field(&model, "add_newline").current_value, "true");
@@ -934,7 +941,7 @@ mod tests {
         assert!(error.to_string().contains("off, error, info, debug"));
 
         let paths = temp_paths(&temp);
-        ensure_temp_sources(&paths);
+        let paths = ensure_config_sources_at(paths).unwrap();
 
         let model = build_model(&paths).unwrap();
         assert_eq!(model.fields[0].state, ConfigUiValueState::Invalid);
@@ -944,8 +951,9 @@ mod tests {
     fn ensure_config_sources_creates_source_backed_files() {
         let (_temp, paths) = temp_sources();
 
-        assert_exists(&[&paths.root, &paths.mars, &paths.zellij, &paths.starship]);
+        assert_exists(&[&paths.root, &paths.mars, &paths.zellij]);
         assert_missing(&[
+            &paths.starship,
             &paths.helix_config,
             &paths.helix_languages,
             &paths.helix_module,
@@ -965,10 +973,6 @@ mod tests {
             fs::read_to_string(paths.zellij)
                 .unwrap()
                 .contains("rounded_corners false")
-        );
-        assert_eq!(
-            fs::read_to_string(paths.starship).unwrap(),
-            DEFAULT_STARSHIP_CONFIG_TOML
         );
     }
 
@@ -1037,7 +1041,6 @@ mod tests {
         prepare_file_action(&paths, SOURCE_ADVANCED, ACTION_NU_ENV, &paths.nu_env, true).unwrap();
 
         assert_file_text(&paths.nu_env, NU_ENV_STARTER);
-        assert!(paths.starship.exists());
         assert_missing(&[
             &paths.nu_config,
             &paths.helix_config,
@@ -1345,7 +1348,6 @@ mod tests {
 
         write_source_field(&paths, SOURCE_STARSHIP, "right_format", &json!("$time")).unwrap();
         write_source_field(&paths, SOURCE_STARSHIP, "add_newline", &json!(false)).unwrap();
-        write_source_default(&paths, SOURCE_STARSHIP, "format").unwrap();
 
         assert_eq!(fs::read_to_string(&paths.root).unwrap(), before_root);
         let starship = read_toml_file_value(&paths.starship, "starship").unwrap();
@@ -1354,12 +1356,43 @@ mod tests {
             Some(&json!("$time"))
         );
         assert_eq!(get_toml_path(&starship, "add_newline"), Some(&json!(false)));
-        assert_eq!(get_toml_path(&starship, "format"), Some(&json!(":: ")));
+        assert_eq!(get_toml_path(&starship, "format"), None);
+
+        write_source_field(&paths, SOURCE_STARSHIP, "format", &json!(":: ")).unwrap();
+        assert_eq!(
+            model_field(&build_model(&paths).unwrap(), "format").state,
+            ConfigUiValueState::Explicit
+        );
+        write_source_default(&paths, SOURCE_STARSHIP, "format").unwrap();
+        write_source_default(&paths, SOURCE_STARSHIP, "right_format").unwrap();
+        write_source_default(&paths, SOURCE_STARSHIP, "add_newline").unwrap();
+        assert!(!paths.starship.exists());
 
         let error = write_source_field(&paths, SOURCE_STARSHIP, "add_newline", &json!("nope"))
             .unwrap_err()
             .to_string();
         assert!(error.contains("true or false"));
+    }
+
+    #[test]
+    fn effective_starship_config_layers_sparse_user_values_over_defaults() {
+        let temp = TempHome::new();
+        let user = temp.path.join("config/starship.toml");
+        let output = temp.path.join("state/starship.toml");
+        fs::create_dir_all(user.parent().unwrap()).unwrap();
+        fs::write(
+            &user,
+            "right_format = \"$time\"\n\n[time]\ndisabled = false\n",
+        )
+        .unwrap();
+
+        write_effective_starship_config(&user, &output).unwrap();
+
+        let value = read_toml_file_value(&output, "effective Starship config").unwrap();
+        assert_eq!(get_toml_path(&value, "format"), Some(&json!(":: ")));
+        assert_eq!(get_toml_path(&value, "right_format"), Some(&json!("$time")));
+        assert_eq!(get_toml_path(&value, "add_newline"), Some(&json!(true)));
+        assert_eq!(get_toml_path(&value, "time.disabled"), Some(&json!(false)));
     }
 
     #[test]

@@ -108,6 +108,7 @@
         nu = "${pkgs.nushell}/bin/nu";
         packagedNu = "${yznNuConfig}";
         pathPrefix = pkgs.lib.makeBinPath [pkgs.nushell pkgs.starship pkgs.carapace pkgs.zoxide];
+        yznConfig = "${yznConfig}/bin/yzn-config";
       };
       yznNuShell = rustBin "yzn-nu" yznNuRs;
       yznConfigSrc = pkgs.runCommand "yzn-config-src" {} ''

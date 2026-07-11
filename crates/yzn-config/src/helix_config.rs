@@ -30,21 +30,6 @@ fn read_toml_config(path: &Path, label: &str) -> Result<TomlValue> {
         .map_err(|err| error(format!("could not parse {label} {}: {err}", path.display())))
 }
 
-fn deep_merge_toml(base: &mut TomlValue, user: &TomlValue) {
-    match (base, user) {
-        (TomlValue::Table(base_map), TomlValue::Table(user_map)) => {
-            for (key, user_value) in user_map {
-                if let Some(base_value) = base_map.get_mut(key) {
-                    deep_merge_toml(base_value, user_value);
-                } else {
-                    base_map.insert(key.clone(), user_value.clone());
-                }
-            }
-        }
-        (base_value, user_value) => *base_value = user_value.clone(),
-    }
-}
-
 fn enforce_reveal_binding(config: &mut TomlValue) -> Result<()> {
     let root = config
         .as_table_mut()

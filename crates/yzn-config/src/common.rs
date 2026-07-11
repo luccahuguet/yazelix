@@ -6,6 +6,7 @@ use std::{
 };
 
 use serde_json::Value as JsonValue;
+use toml::Value as TomlValue;
 
 use crate::catalog::FieldSpec;
 
@@ -68,6 +69,21 @@ pub(crate) fn atomic_write(path: &Path, text: &str) -> Result<()> {
     fs::write(&tmp, text)?;
     fs::rename(&tmp, path)?;
     Ok(())
+}
+pub(crate) fn deep_merge_toml(base: &mut TomlValue, overrides: &TomlValue) {
+    match (base, overrides) {
+        (TomlValue::Table(base), TomlValue::Table(overrides)) => {
+            for (key, value) in overrides {
+                match base.get_mut(key) {
+                    Some(base) => deep_merge_toml(base, value),
+                    None => {
+                        base.insert(key.clone(), value.clone());
+                    }
+                }
+            }
+        }
+        (base, overrides) => *base = overrides.clone(),
+    }
 }
 pub(crate) fn error(message: impl Into<String>) -> Box<dyn std::error::Error> {
     Box::new(io::Error::other(message.into()))

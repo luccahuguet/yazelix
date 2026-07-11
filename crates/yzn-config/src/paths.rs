@@ -30,14 +30,15 @@ pub(crate) struct ConfigPaths {
     pub(crate) zellij_plugins: PathBuf,
 }
 pub(crate) fn ensure_config_sources() -> Result<ConfigPaths> {
-    let paths = config_paths()?;
+    ensure_config_sources_at(config_paths()?)
+}
+pub(crate) fn ensure_config_sources_at(paths: ConfigPaths) -> Result<ConfigPaths> {
     ensure_config_file_at(paths.root.clone())?;
     ensure_plain_config_file_at(&paths.mars, DEFAULT_MARS_CONFIG_TOML)?;
     ensure_plain_config_file_at(
         &paths.zellij,
         &render_zellij_sidecar(&ZellijSidecar::default()),
     )?;
-    ensure_plain_config_file_at(&paths.starship, DEFAULT_STARSHIP_CONFIG_TOML)?;
     Ok(paths)
 }
 pub(crate) fn ensure_plain_config_file_at(path: &Path, default: &str) -> Result<()> {

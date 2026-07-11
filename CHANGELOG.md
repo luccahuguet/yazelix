@@ -4,6 +4,12 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## Unreleased
 
+- Opening `yzn config` no longer creates `starship.toml` or changes the managed
+  prompt. The Starship tab shows Nova defaults without persisting them, saves
+  only explicit overrides, and removes an override when reset. Managed Nu
+  merges the sparse user file over Nova defaults into runtime state, so
+  untouched prompt defaults follow upgrades and ambient
+  `~/.config/starship.toml` remains ignored.
 - User-visible product surfaces identify the development runtime as Yazelix
   Nova. The command remains `yzn` until the canonical repository swap.
 - `yzn config` fully redraws after returning from an external editor instead of
@@ -74,13 +80,11 @@ User-visible runtime changes for Yazelix Nova live here.
   launching the UI with packaged `hx`, `lazygit`, and `git` on PATH, `yzn enter`
   starts the managed Zellij runtime in the current terminal, and `yzn launch`
   opens Mars first. Bare `yzn` defaults to `yzn launch`.
-- `yzn config` opens the Ratconfig UI and creates source-backed tabs for
-  `config.toml`, `mars/config.toml`, `zellij/config.kdl`, and
-  `starship.toml` when missing. Root `config.toml` keeps Ratconfig contract
-  state, the Mars and Zellij tabs are simple managed render/edit files that
-  apply on new launches, and the Starship tab edits `format`, `right_format`,
-  and `add_newline`. The managed Starship left prompt defaults to
-  colon-colon-space (`:: `). The UI
+- `yzn config` opens source-backed Ratconfig tabs for root, Mars, Zellij, and
+  Starship configuration. Root `config.toml` keeps Ratconfig contract state;
+  Mars and Zellij are managed native files; and the Starship tab edits
+  `format`, `right_format`, and `add_newline` as sparse overrides. The managed
+  Starship left prompt defaults to colon-colon-space (`:: `). The UI
   can open staged text edits in the config UI's editor environment before
   saving and refuses to replace a source file whose permissions are read-only.
 - Root `config.toml` supports `[editor].command`, defaulting to `yzn-hx`.
@@ -177,9 +181,6 @@ User-visible runtime changes for Yazelix Nova live here.
 - `yzn` uses `~/.config/yazelix-next/mars/config.toml` as a full native Mars
   config override when that file exists, while keeping the Mars launch command
   and managed Zellij runtime owned by `yzn`.
-- Managed Nu sets `STARSHIP_CONFIG` to `~/.config/yazelix-next/starship.toml`
-  when that file exists, otherwise to an empty config so normal
-  `~/.config/starship.toml` does not affect the managed Nu prompt.
 - Managed Nu inserts host `mise activate nu` output after packaged Nu config
   and before optional user Nu config when `mise` is available on the inherited
   `PATH`; missing or failing `mise` is skipped.

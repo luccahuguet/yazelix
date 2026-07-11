@@ -63,7 +63,7 @@ One owner per concern. Paths are the durable map.
 | `runtime/yzn-menu.rs` | Menu palette |
 | `runtime/yzn-agent.rs` | Agent provider bootstrap (`codex resume` → `grok` → `opencode` → `pi` → `claude --resume`) |
 | `runtime/yzn-yazi.rs` | Managed Yazi process/env launch, editor resolve |
-| `runtime/yzn-nu.rs` | Managed Nu: packaged → optional host `mise activate nu` → user Nu; Starship path |
+| `runtime/yzn-nu.rs` | Managed Nu layering; runtime-effective Starship config request |
 | `runtime/yzn-zellij-config.rs` | Packaged + guarded Zellij scalar sidecar merge |
 | `runtime/yzn/zellij.rs` | Plugin sidecar inject; launch materialize/patches |
 | `crates/yzn-open/` | Editor open, Helix bridge, reveal, bounded open diagnostics |
@@ -77,7 +77,7 @@ One owner per concern. Paths are the durable map.
 
 `crates/yzn-config/` is the Ratconfig host.
 
-- Creates root, Mars, Zellij, Starship sources when missing
+- Creates root, Mars, and Zellij sources when missing; Starship stays sparse
 - Routes edits to the right file; Helix/Advanced open-file rows; Keys read-only
 - Hidden package-internal reads for launch + custom-popup KDL render
 - `agent.popup.kdl` is an internal render path for custom managed agent command
@@ -155,7 +155,7 @@ Packaged first, unless a surface opts into native replacement.
   mars/config.toml         # full Mars native replace when present
   zellij/config.kdl        # guarded scalar sidecar
   zellij/plugins.kdl       # extra plugins only
-  starship.toml
+  starship.toml            # optional sparse prompt overrides
   nu/{env,config}.nu       # after packaged Nu
   helix/*                  # lazy; created on tab use
   yazi/{yazi.toml,theme.toml,package.toml,init.lua,keymap.toml,plugins/,flavors/}
@@ -169,7 +169,7 @@ Runtime state defaults to `$XDG_DATA_HOME/yazelix-next` or `YAZELIX_STATE_DIR`.
 | Root TOML | Created with defaults + contract state |
 | Mars | User file replaces packaged when present; low-level `force-theme` / `[colors]` / cursors stay manual native |
 | Nu | Packaged → optional host `mise activate nu` → optional user Nu |
-| Starship | User `starship.toml` if present; else empty/defaults for managed Nu |
+| Starship | Nova defaults → sparse user overrides → runtime-effective TOML |
 | Helix | See Helix notes below |
 | Yazi | Packaged TOML → recursive user tables + replacing scalars/arrays → managed opener/Git fetchers |
 | Zellij | Packaged → guarded scalar sidecar → runtime materialize under state dir |

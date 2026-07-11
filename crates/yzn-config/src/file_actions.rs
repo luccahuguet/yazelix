@@ -12,7 +12,9 @@ use serde_json::Value as JsonValue;
 use crate::{
     catalog::*,
     common::*,
-    native_config::{write_mars_config_field, write_starship_config_field},
+    native_config::{
+        unset_starship_config_field, write_mars_config_field, write_starship_config_field,
+    },
     paths::ConfigPaths,
     root_config::{default_config_value, write_config_field},
     zellij_sidecar::{ZellijSidecar, write_zellij_config_field, zellij_field_value},
@@ -187,6 +189,10 @@ pub(crate) fn write_source_default(
     source_id: &str,
     field_path: &str,
 ) -> Result<()> {
+    if source_id == SOURCE_STARSHIP {
+        reject_read_only_source(&paths.starship, source_id)?;
+        return unset_starship_config_field(&paths.starship, field_path);
+    }
     let value = match source_id {
         SOURCE_CONFIG => default_config_value(field_path)?,
         SOURCE_MARS => {
@@ -197,13 +203,6 @@ pub(crate) fn write_source_default(
                 .ok_or_else(|| error(format!("unknown Mars config path: {field_path}")))?
         }
         SOURCE_ZELLIJ => zellij_field_value(&ZellijSidecar::default(), field_path),
-        SOURCE_STARSHIP => {
-            let default = parse_toml_value(DEFAULT_STARSHIP_CONFIG_TOML)
-                .map_err(|error| boxed_debug("invalid default Starship config", error))?;
-            get_toml_path(&default, field_path)
-                .cloned()
-                .ok_or_else(|| error(format!("unknown Starship config path: {field_path}")))?
-        }
         _ => return Err(error(format!("unknown config source: {source_id}"))),
     };
     write_source_field(paths, source_id, field_path, &value)

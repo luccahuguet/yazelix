@@ -129,7 +129,7 @@ in {
 
       mars = nativeFileOption "Managed Mars config.toml.";
       zellij = nativeFileOption "Managed Zellij config.kdl sidecar.";
-      starship = nativeFileOption "Managed Starship starship.toml.";
+      starship = nativeFileOption "Managed sparse Starship overrides.";
 
       helix = {
         config = nativeFileOption "Managed Helix config.toml.";

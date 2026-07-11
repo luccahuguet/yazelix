@@ -33,7 +33,11 @@ pub(crate) fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
     let mars_active = read_toml_file_value(&paths.mars, "invalid mars/config.toml")?;
     let mars_default = parse_toml_value(DEFAULT_MARS_CONFIG_TOML)
         .map_err(|error| boxed_debug("invalid default Mars config", error))?;
-    let starship_active = read_toml_file_value(&paths.starship, "invalid starship.toml")?;
+    let starship_active = if paths.starship.is_file() {
+        read_toml_file_value(&paths.starship, "invalid starship.toml")?
+    } else {
+        JsonValue::Object(Default::default())
+    };
     let starship_default = parse_toml_value(DEFAULT_STARSHIP_CONFIG_TOML)
         .map_err(|error| boxed_debug("invalid default Starship config", error))?;
     let (zellij_active, diagnostics) = parse_zellij_sidecar(&fs::read_to_string(&paths.zellij)?);

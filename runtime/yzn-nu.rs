@@ -11,8 +11,8 @@ use std::{
 
 const NU: &str = "@nu@";
 const PACKAGED_NU: &str = "@packagedNu@";
-const EMPTY_STARSHIP_CONFIG: &str = "/dev/null";
 const PATH_PREFIX: &str = "@pathPrefix@";
+const YZN_CONFIG: &str = "@yznConfig@";
 
 fn main() -> ExitCode {
     match run() {
@@ -28,14 +28,21 @@ fn run() -> io::Result<()> {
     let config_home = config_home()?;
     let user_nu = config_home.join("nu");
     let user_starship = config_home.join("starship.toml");
-    let starship_config = if user_starship.is_file() {
-        user_starship
-    } else {
-        PathBuf::from(EMPTY_STARSHIP_CONFIG)
-    };
     let packaged_nu = PathBuf::from(PACKAGED_NU);
-    let runtime_nu = state_dir().join("nu");
+    let runtime = state_dir();
+    let runtime_nu = runtime.join("nu");
     fs::create_dir_all(&runtime_nu)?;
+    let starship_config = runtime.join("starship.toml");
+    let status = Command::new(YZN_CONFIG)
+        .arg("--write-effective-starship-config")
+        .arg(&user_starship)
+        .arg(&starship_config)
+        .status()?;
+    if !status.success() {
+        return Err(io::Error::other(format!(
+            "Starship config materializer exited with {status}"
+        )));
+    }
 
     let env_config = runtime_nu.join("env.nu");
     let config = runtime_nu.join("config.nu");

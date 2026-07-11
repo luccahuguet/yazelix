@@ -78,9 +78,17 @@ fn main() {
         stdout,
         format!(
             "nu\n{}\n::<>\nenv-ok\nconfig-ok\nok",
-            user_starship.display()
+            runtime.join("yazelix-next/starship.toml").display()
         )
     );
+    let effective_starship =
+        fs::read_to_string(runtime.join("yazelix-next/starship.toml")).unwrap();
+    expect_contains_all! {
+        &effective_starship, "effective user Starship config";
+        "format = \"$character\"",
+        "right_format = \"::<>\"",
+        "add_newline = true",
+    }
     let empty_config = temp.path.join("empty-config");
     fs::create_dir(&empty_config).unwrap();
     let fallback_starship = run_nu(
@@ -90,10 +98,13 @@ fn main() {
         "print $env.STARSHIP_CONFIG",
     );
     assert_ne!(fallback_starship, "ambient-starship.toml");
-    assert!(
-        fs::read_to_string(&fallback_starship).unwrap().is_empty(),
-        "fallback Starship config is not empty: {fallback_starship}"
-    );
+    let fallback_starship = fs::read_to_string(&fallback_starship).unwrap();
+    expect_contains_all! {
+        &fallback_starship, "effective default Starship config";
+        "format = \":: \"",
+        "right_format = \"\"",
+        "add_newline = true",
+    }
 
     expect_line(
         &runtime.join("yazelix-next/nu/env.nu"),
