@@ -1,4 +1,4 @@
-# Yazelix Next managed Helix default.
+# Yazelix Nova managed Helix default.
 # User preferences can live in ~/.config/yazelix-next/helix/config.toml.
 # yzn-hx merges that file with this template and always restores Alt r reveal.
 

@@ -146,6 +146,7 @@ fn expect_front_door(yzn: &Path) {
     }
     expect_contains_all! {
         &help, "yzn help";
+        "Yazelix Nova",
         "Usage:",
         "yzn config",
         "yzn doctor",
@@ -160,7 +161,7 @@ fn expect_front_door(yzn: &Path) {
         "yzn status",
     }
     let menu = run_help(&yzn_bin, &["menu"]);
-    expect_contains(&menu, "Yazelix command palette", "yzn menu");
+    expect_contains(&menu, "Yazelix Nova command palette", "yzn menu");
     let menu_ids = menu
         .lines()
         .filter_map(|line| {
@@ -219,7 +220,7 @@ fn expect_front_door(yzn: &Path) {
     let tutor_root = run_help(&yzn_bin, &["tutor"]);
     expect_contains_all! {
         &tutor_root, "yzn tutor";
-        "Yazelix tutor",
+        "Yazelix Nova tutor",
         "yzn tutor begin",
         "yzn tutor list",
     }
@@ -271,7 +272,7 @@ fn expect_front_door(yzn: &Path) {
     expect_menu_dispatch(&menu_helper);
     expect_contains_all! {
         &yzn_launcher, "bin/yzn runtime fragment";
-        "Yazelix could not start.",
+        "Yazelix Nova could not start.",
         "YAZELIX_STATUS_BAR_CACHE_PATH",
         "ZELLIJ_PLUGIN_PERMISSIONS_CACHE",
         "YAZELIX_SESSION_TERMINAL",
@@ -332,7 +333,7 @@ fn expect_front_door(yzn: &Path) {
     let status = status_case.run_yzn(&yzn_bin, "status", "yzn status");
     expect_contains_all! {
         &status, "yzn status";
-        "Yazelix status",
+        "Yazelix Nova status",
         format!("config home: {}", status_case.config_home.display()),
         format!("state dir: {}", status_case.state_dir.display()),
         "shell: nu",
@@ -585,7 +586,7 @@ fn expect_front_door(yzn: &Path) {
     let doctor = doctor_case.run_yzn(&yzn_bin, "doctor", "yzn doctor");
     expect_contains_all! {
         &doctor, "yzn doctor";
-        "Yazelix doctor",
+        "Yazelix Nova doctor",
         format!("ok config home: {}", doctor_case.config_home.display()),
         "ok editor.command: yzn-hx",
         "ok editor: /nix/store/",
@@ -670,11 +671,13 @@ fn expect_front_door(yzn: &Path) {
     ] {
         expect_command_error(&yzn_bin, args, expected, context);
     }
-    assert!(
-        yzn.join("share/yazelix-next/runtime_identity.json")
-            .is_file(),
-        "yzn package is missing runtime_identity.json"
-    );
+    let identity = fs::read_to_string(yzn.join("share/yazelix-next/runtime_identity.json"))
+        .expect("yzn package is missing runtime_identity.json");
+    expect_contains_all! {
+        &identity, "yzn runtime identity";
+        r#""name":"Yazelix Nova""#,
+        r#""version":"dev""#,
+    }
     assert!(
         yzn.join("libexec/yazelix-next/yzn-tutor").is_file(),
         "yzn package is missing the tutor helper"
@@ -686,8 +689,8 @@ fn expect_narrow_path_launches(yzn: &Path, yzn_shell: &Path) {
     let temp = TempDir::new();
     for (command, expected) in [
         ("help", "Usage:"),
-        ("status", "Yazelix status"),
-        ("doctor", "Yazelix doctor"),
+        ("status", "Yazelix Nova status"),
+        ("doctor", "Yazelix Nova doctor"),
     ] {
         let case = RuntimeCase::new(&temp.path, &format!("narrow-path-{command}"));
         let mut yzn = case.yzn_command(&yzn_bin, command);
@@ -1096,7 +1099,7 @@ fn expect_startup_failure(
     let stderr = String::from_utf8_lossy(&output.stderr);
     expect_contains_all! {
         stderr.as_ref(), &format!("{label} {command} diagnostic");
-        "Yazelix could not start.",
+        "Yazelix Nova could not start.",
         "Reason:",
         reason,
         "Check:",
@@ -1106,7 +1109,7 @@ fn expect_startup_failure(
         let context = format!("{label} doctor stdout");
         expect_contains_all! {
             stdout.as_ref(), &context;
-            "Yazelix doctor",
+            "Yazelix Nova doctor",
             "fail runtime preflight:",
         }
     }

@@ -7,7 +7,7 @@ use std::{
 const FZF: &str = "@fzf@";
 
 const COMMANDS: &[(&str, &str, &str)] = &[
-    ("config", "config", "Open Yazelix Next config"),
+    ("config", "config", "Open Yazelix Nova config"),
     ("doctor", "system", "Check Yazelix runtime setup"),
     ("status", "system", "Show Yazelix runtime status"),
     ("screen", "help", "Show a Yazelix terminal screen"),
@@ -18,7 +18,7 @@ const COMMANDS: &[(&str, &str, &str)] = &[
     ),
     ("launch", "session", "Open Mars and start Yazelix"),
     ("help", "help", "Show this help"),
-    ("tutor", "help", "Show the guided Yazelix tutor"),
+    ("tutor", "help", "Show the guided Yazelix Nova tutor"),
 ];
 
 fn main() {
@@ -68,7 +68,7 @@ fn select_with_fzf() -> Option<String> {
             "--border",
             "rounded",
             "--header",
-            "  Yazelix Command Palette",
+            "  Yazelix Nova Command Palette",
             "--prompt",
             "  yzn> ",
             "--pointer",
@@ -83,7 +83,7 @@ fn select_with_fzf() -> Option<String> {
         .stdout(Stdio::piped())
         .spawn()
         .unwrap_or_else(|error| {
-            eprintln!("Failed to launch fzf for the Yazelix command palette: {error}");
+            eprintln!("Failed to launch fzf for the Yazelix Nova command palette: {error}");
             exit(127);
         });
 
@@ -109,7 +109,7 @@ fn select_with_fzf() -> Option<String> {
 }
 
 fn print_menu() {
-    println!("Yazelix command palette\n");
+    println!("Yazelix Nova command palette\n");
     for (index, (id, _, label)) in COMMANDS.iter().enumerate() {
         println!("{:>2}. {:<8} {}", index + 1, id, label);
     }

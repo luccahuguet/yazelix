@@ -36,7 +36,7 @@ jobs:
 
           test -x "$profile/bin/yzn"
           test -f "$profile/share/applications/yzn.desktop"
-          grep -F 'Yazelix Next' "$profile/share/applications/yzn.desktop"
+          grep -F 'Yazelix Nova' "$profile/share/applications/yzn.desktop"
 
       - name: Smoke installed yzn commands
         run: |
@@ -52,13 +52,13 @@ jobs:
           "$profile/bin/yzn" doctor > "$RUNNER_TEMP/yzn-doctor.txt"
           "$profile/bin/yzn" tutor list > "$RUNNER_TEMP/yzn-tutor-list.txt"
 
-          grep -F 'Yazelix' "$RUNNER_TEMP/yzn-help.txt"
-          grep -F 'Yazelix status' "$RUNNER_TEMP/yzn-status.txt"
+          grep -F 'Yazelix Nova' "$RUNNER_TEMP/yzn-help.txt"
+          grep -F 'Yazelix Nova status' "$RUNNER_TEMP/yzn-status.txt"
           grep -F "config home: $YAZELIX_NEXT_CONFIG_HOME" "$RUNNER_TEMP/yzn-status.txt"
           grep -F "state dir: $YAZELIX_STATE_DIR" "$RUNNER_TEMP/yzn-status.txt"
-          grep -F 'Yazelix doctor' "$RUNNER_TEMP/yzn-doctor.txt"
+          grep -F 'Yazelix Nova doctor' "$RUNNER_TEMP/yzn-doctor.txt"
           grep -F "ok config home: $YAZELIX_NEXT_CONFIG_HOME" "$RUNNER_TEMP/yzn-doctor.txt"
-          grep -F 'Yazelix tutor lessons' "$RUNNER_TEMP/yzn-tutor-list.txt"
+          grep -F 'Yazelix Nova tutor lessons' "$RUNNER_TEMP/yzn-tutor-list.txt"
 
   macos-package-smoke:
     runs-on: macos-15

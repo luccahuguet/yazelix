@@ -91,12 +91,12 @@ pub(crate) const HELIX_CONFIG_STARTER: &str = include_str!("../../../helix/confi
 pub(crate) const HELIX_LANGUAGES_STARTER: &str = "# Managed Helix language overrides.\n";
 pub(crate) const HELIX_MODULE_STARTER: &str = ";; Loaded by managed yzn-hx before init.scm.\n";
 pub(crate) const HELIX_INIT_STARTER: &str = ";; Loaded by managed yzn-hx at startup.\n";
-pub(crate) const NU_ENV_STARTER: &str = "# Loaded after Yazelix Next packaged env.nu.\n";
-pub(crate) const NU_CONFIG_STARTER: &str = "# Loaded after Yazelix Next packaged config.nu.\n";
-pub(crate) const YAZI_CONFIG_STARTER: &str = "# Extended over Yazelix Next packaged yazi.toml.\n";
-pub(crate) const YAZI_INIT_STARTER: &str = "-- Loaded after Yazelix Next packaged yazi/init.lua.\n";
+pub(crate) const NU_ENV_STARTER: &str = "# Loaded after Yazelix Nova packaged env.nu.\n";
+pub(crate) const NU_CONFIG_STARTER: &str = "# Loaded after Yazelix Nova packaged config.nu.\n";
+pub(crate) const YAZI_CONFIG_STARTER: &str = "# Extended over Yazelix Nova packaged yazi.toml.\n";
+pub(crate) const YAZI_INIT_STARTER: &str = "-- Loaded after Yazelix Nova packaged yazi/init.lua.\n";
 pub(crate) const YAZI_KEYMAP_STARTER: &str =
-    "# Loaded after Yazelix Next packaged yazi/keymap.toml.\n";
+    "# Loaded after Yazelix Nova packaged yazi/keymap.toml.\n";
 pub(crate) const YAZI_PACKAGE_STARTER: &str = "# Managed Yazi package metadata. Yazelix does not run ya pkg.\n[plugin]\ndeps = []\n\n[flavor]\ndeps = []\n";
 pub(crate) const YAZI_THEME_STARTER: &str =
     "# Managed native Yazi theme config.\n[flavor]\ndark = \"\"\nlight = \"\"\n";

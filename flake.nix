@@ -1,5 +1,5 @@
 {
-  description = "Yazelix Next";
+  description = "Yazelix Nova";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -194,7 +194,7 @@
       yznHelixSteelConfig = pkgs.runCommand "yzn-helix-steel-config" {} ''
         mkdir -p "$out"
         cat > "$out/helix.scm" <<'EOF'
-        ;; Yazelix Next packaged Steel module.
+        ;; Yazelix Nova packaged Steel module.
         (provide yzn-new-shell)
         (require (only-in "helix/static.scm" cx->current-file get-helix-cwd))
         (require (only-in "helix/commands.scm" run-shell-command))
@@ -227,7 +227,7 @@
                (set-error! "Yazelix could not resolve a target path for opening a shell")])))
         EOF
         cat > "$out/init.scm" <<'EOF'
-        ;; Yazelix Next packaged Steel init.
+        ;; Yazelix Nova packaged Steel init.
         EOF
       '';
       yznHelixSrc = pkgs.replaceVars ./shell/sh/yzn-helix.sh {
@@ -341,8 +341,8 @@
       };
       yznYazi = rustBin "yzn-yazi" yznYaziSrc;
       yznRuntimeIdentity = pkgs.writeTextDir "runtime_identity.json" (builtins.toJSON {
-        name = "Yazelix Next";
-        version = "next";
+        name = "Yazelix Nova";
+        version = "dev";
       });
       defaultConfig = builtins.fromTOML (builtins.readFile ./config.toml);
       defaultBarWidgets = defaultConfig.bar.widgets;
@@ -499,9 +499,9 @@
       yznCommand = rustBin "yzn" "${yznCommandSrc}/main.rs";
       yznDesktop = pkgs.makeDesktopItem {
         name = "yzn";
-        desktopName = "Yazelix Next";
+        desktopName = "Yazelix Nova";
         genericName = "Terminal Emulator";
-        comment = "Open Yazelix Next";
+        comment = "Open Yazelix Nova";
         exec = "${yznCommand}/bin/yzn";
         icon = "yzn";
         terminal = false;
@@ -636,7 +636,7 @@
 
         test -x "$default_path/bin/yzn"
         test -f "$default_path/share/applications/yzn.desktop"
-        grep -q 'Yazelix Next' "$default_path/share/applications/yzn.desktop"
+        grep -q 'Yazelix Nova' "$default_path/share/applications/yzn.desktop"
 
         test -x "$override_path/bin/yzn"
         test "$("$override_path/bin/yzn")" = fake-yazelix
@@ -687,15 +687,15 @@
         "$hm_yzn" doctor > doctor
         "$hm_yzn" tutor list > tutor-list
         grep -q 'Usage:' help
-        grep -q 'Yazelix status' status
+        grep -q 'Yazelix Nova status' status
         grep -q "config home: $config_files" status
         grep -q "state dir: $YAZELIX_STATE_DIR" status
         grep -q 'shell: fish' status
         grep -q 'welcome enabled: false' status
-        grep -q 'Yazelix doctor' doctor
+        grep -q 'Yazelix Nova doctor' doctor
         grep -q "ok config home: $config_files" doctor
         grep -q 'ok shell.program: fish' doctor
-        grep -q 'Yazelix tutor lessons' tutor-list
+        grep -q 'Yazelix Nova tutor lessons' tutor-list
         touch "$out"
       '';
       yzn_yazi_materialization = pkgs.runCommand "yzn-yazi-materialization-check" {nativeBuildInputs = [pkgs.rustc pkgs.stdenv.cc];} ''

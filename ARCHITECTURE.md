@@ -1,6 +1,8 @@
 # Architecture
 
-Yazelix Next is a small Nix/Lix flake with one front door: **`yzn`**.
+Yazelix Nova is a small Nix/Lix flake with one development front door:
+**`yzn`**. The temporary command and `yazelix-next` paths let it coexist with
+public Yazelix v17 until the canonical swap.
 
 This repo owns the glue that makes Mars, the Yazelix Zellij fork, Yazi, and
 Helix feel like one runtime. It is not a general terminal distro, a broad Home

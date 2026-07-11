@@ -2,7 +2,7 @@ use crate::{error::AppError, paths::zellij_session_label, runtime::Runtime};
 
 pub(crate) fn print_status() -> Result<(), AppError> {
     let runtime = Runtime::prepare()?;
-    println!("Yazelix status");
+    println!("Yazelix Nova status");
     println!("config home: {}", runtime.config_home.display());
     println!("state dir: {}", runtime.state_dir.display());
     println!("shell: {}", runtime.shell_program);

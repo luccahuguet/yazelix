@@ -1,9 +1,11 @@
 # Changelog
 
-User-visible runtime changes for Yazelix Next live here.
+User-visible runtime changes for Yazelix Nova live here.
 
 ## Unreleased
 
+- User-visible product surfaces identify the development runtime as Yazelix
+  Nova. The command remains `yzn` until the canonical repository swap.
 - `yzn config` fully redraws after returning from an external editor instead of
   leaving the editor background until another UI action.
 - Optional managed `yazi/yazi.toml` now layers native Yazi tables over the

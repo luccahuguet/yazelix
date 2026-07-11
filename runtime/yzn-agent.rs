@@ -45,7 +45,7 @@ fn launch_configured(id: &str, provider_file: &Path, args: &[OsString]) -> i32 {
         .find(|(provider, _)| *provider == id)
     else {
         eprintln!(
-            "Yazelix Next agent popup\n\nConfigured agent provider `{id}` is unknown.\nRemove {} to let Yazelix choose again.",
+            "Yazelix Nova agent popup\n\nConfigured agent provider `{id}` is unknown.\nRemove {} to let Yazelix choose again.",
             provider_file.display()
         );
         pause_if_tty();
@@ -54,7 +54,7 @@ fn launch_configured(id: &str, provider_file: &Path, args: &[OsString]) -> i32 {
 
     if !command_available(provider) {
         eprintln!(
-            "Yazelix Next agent popup\n\nConfigured agent provider `{id}` is not available on PATH.\nInstall it or remove {} to let Yazelix choose again.",
+            "Yazelix Nova agent popup\n\nConfigured agent provider `{id}` is not available on PATH.\nInstall it or remove {} to let Yazelix choose again.",
             provider_file.display()
         );
         pause_if_tty();
@@ -70,7 +70,7 @@ fn exec_provider(provider: &str, provider_args: &[&str], user_args: &[OsString])
         .args(user_args)
         .exec();
     eprintln!(
-        "Yazelix Next agent popup\n\nFailed to launch `{}`: {error}",
+        "Yazelix Nova agent popup\n\nFailed to launch `{}`: {error}",
         provider
     );
     pause_if_tty();

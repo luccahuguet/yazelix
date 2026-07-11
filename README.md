@@ -1,7 +1,8 @@
-# Yazelix Next
+# Yazelix Nova — Beta
 
-Yazelix Next packages a small Yazelix runtime as a Nix flake. The installed
-command is `yzn`.
+Yazelix Nova packages a small Yazelix runtime as a Nix flake. During
+pre-swap development, the installed command is `yzn` so it can coexist with
+public Yazelix v17.
 
 `yzn` opens Mars, starts the Yazelix Zellij fork, and gives you a Yazi-first
 workspace with a managed Helix editor bridge, popups for Git/config/agents/menu,
@@ -347,7 +348,7 @@ git ls-files | grep -Ev '^\.beads/|\.lock$' | xargs wc -l
 | Language | Lines |
 | --- | ---: |
 | Ignore (`.gitignore`) | 4 |
-| Markdown | 1319 |
+| Markdown | 1324 |
 | Nix | 1011 |
 | Shell | 84 |
 | YAML | 268 |
@@ -355,5 +356,5 @@ git ls-files | grep -Ev '^\.beads/|\.lock$' | xargs wc -l
 | KDL | 210 |
 | Nu | 11 |
 | Lua | 247 |
-| Rust | 12010 |
-| Total | 15413 |
+| Rust | 12013 |
+| Total | 15421 |

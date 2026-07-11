@@ -169,7 +169,7 @@ Usage:\n\
 
 fn render_overview() -> String {
     markdown(
-        r#"# Yazelix tutor
+        r#"# Yazelix Nova tutor
 
 Start with `yzn tutor begin`.
 
@@ -186,7 +186,7 @@ Useful companions:
 }
 
 fn render_lesson_list() -> String {
-    let mut source = String::from("# Yazelix tutor lessons\n\n");
+    let mut source = String::from("# Yazelix Nova tutor lessons\n\n");
     for (index, lesson) in TUTOR_LESSONS.iter().enumerate() {
         source.push_str(&format!(
             "{}. `yzn tutor {}` {}  \n",
@@ -407,7 +407,7 @@ mod tests {
     #[test]
     fn tutor_root_output_stays_minimal() {
         let output = render_overview();
-        assert!(output.contains("Yazelix tutor"));
+        assert!(output.contains("Yazelix Nova tutor"));
         assert!(output.contains("yzn tutor begin"));
         assert!(output.contains("yzn tutor list"));
         assert!(output.contains("yzn help"));
@@ -493,7 +493,7 @@ mod tests {
 
     #[test]
     fn bundled_tutor_markdown_documents_render() {
-        assert!(render_overview().contains("Yazelix tutor"));
+        assert!(render_overview().contains("Yazelix Nova tutor"));
         assert!(render_lesson_list().contains("yzn tutor tool_tutors"));
         assert!(render_helix_tutor_command().contains("--tutor"));
         assert!(render_nushell_tutor_command().contains("tutor begin"));

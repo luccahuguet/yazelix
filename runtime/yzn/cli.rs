@@ -161,7 +161,7 @@ fn open_sponsor() {
     println!("{SPONSOR_URL}");
 }
 
-const HELP: &str = "Yazelix
+const HELP: &str = "Yazelix Nova
 
 Usage:
   yzn
@@ -179,13 +179,13 @@ Usage:
   yzn status
 
 Commands:
-  config  Open Yazelix Next config
+  config  Open Yazelix Nova config
   doctor  Check Yazelix runtime setup
   env     Open the managed shell without launching the UI
   enter   Start Yazelix in the current terminal
   launch  Open Mars and start Yazelix
-  menu    Open the Yazelix command palette
-  tutor   Show the guided Yazelix tutor
+  menu    Open the Yazelix Nova command palette
+  tutor   Show the guided Yazelix Nova tutor
   reveal  Reveal a file or directory in the managed Yazi sidebar
   screen  Show a Yazelix terminal screen
   sponsor Open the Yazelix sponsor page or print its URL

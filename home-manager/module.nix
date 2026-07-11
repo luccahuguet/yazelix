@@ -105,7 +105,7 @@
     (lib.filterAttrs (_: spec: spec.option != null) nativeFiles);
 in {
   options.programs.yazelix = {
-    enable = lib.mkEnableOption "Yazelix Next";
+    enable = lib.mkEnableOption "Yazelix Nova";
 
     package = lib.mkOption {
       type = lib.types.package;

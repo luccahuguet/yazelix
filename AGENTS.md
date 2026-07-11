@@ -1,7 +1,7 @@
 # Agent Guidelines
 
-Yazelix Next is a clean architecture track for a Yazelix-like runtime with the
-fewest practical lines of code and the simplest ownership model
+Yazelix Nova is a clean architecture track for a Yazelix-like runtime with
+the fewest practical lines of code and the simplest ownership model
 
 ## Core Rule
 

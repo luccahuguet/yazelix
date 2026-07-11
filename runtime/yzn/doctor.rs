@@ -26,7 +26,7 @@ pub(crate) fn print_doctor() -> Result<(), AppError> {
         require_command("agent.command", &runtime.agent_command).map_err(doctor_failure)?;
     }
 
-    println!("Yazelix doctor");
+    println!("Yazelix Nova doctor");
     doctor_ok("config home", runtime.config_home.display());
     doctor_ok("state dir", runtime.state_dir.display());
     doctor_ok("shell.program", &runtime.shell_program);
@@ -78,7 +78,7 @@ pub(crate) fn print_doctor() -> Result<(), AppError> {
 }
 
 fn doctor_failure(error: AppError) -> AppError {
-    println!("Yazelix doctor");
+    println!("Yazelix Nova doctor");
     if let AppError::Startup { reason, check, .. } = &error {
         let reason = reason.lines().next().unwrap_or("startup check failed");
         println!("fail runtime preflight: {reason}");

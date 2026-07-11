@@ -89,13 +89,13 @@ fn write_runtime(packaged: &Path, user: &Path, runtime: &Path) -> io::Result<()>
         &packaged.join("init.lua"),
         &user_init,
         &runtime.join("init.lua"),
-        "-- Yazelix Next user init.lua",
+        "-- Yazelix Nova user init.lua",
     )?;
     write_layered_config(
         &packaged.join("keymap.toml"),
         &user.join("keymap.toml"),
         &runtime.join("keymap.toml"),
-        "# Yazelix Next user keymap.toml",
+        "# Yazelix Nova user keymap.toml",
     )?;
     for name in ["package.toml", "theme.toml"] {
         let source = user.join(name);
@@ -429,11 +429,11 @@ edit = [{ run = "nvim %s" }]
         );
         assert_eq!(
             fs::read_to_string(runtime.join("init.lua")).unwrap(),
-            "packaged init\n\n-- Yazelix Next user init.lua\nuser init\n"
+            "packaged init\n\n-- Yazelix Nova user init.lua\nuser init\n"
         );
         assert_eq!(
             fs::read_to_string(runtime.join("keymap.toml")).unwrap(),
-            "[manager]\nkeymap = []\n\n# Yazelix Next user keymap.toml\nprepend_keymap = []\n"
+            "[manager]\nkeymap = []\n\n# Yazelix Nova user keymap.toml\nprepend_keymap = []\n"
         );
         assert!(runtime.join("plugins/example.yazi").is_dir());
         assert!(runtime.join("flavors/packaged.yazi").is_dir());

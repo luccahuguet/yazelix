@@ -38,7 +38,7 @@ impl AppError {
                 status,
             } => {
                 eprintln!(
-                    "Yazelix could not start.
+                    "Yazelix Nova could not start.
 "
                 );
                 eprintln!("Reason:");
