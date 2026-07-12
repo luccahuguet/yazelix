@@ -77,7 +77,7 @@ Start Yazelix in the current terminal
 - `--path DIR`: Start in specific directory
 - `--home`: Start in home directory
 - `--config FILE`: Use an alternate sparse `config.toml` for this current-terminal session
-- `--with KEY=VALUE`: Apply a repeatable session-only settings override, such as `--with core.welcome_style=static`
+- `--with KEY=VALUE`: Apply a repeatable session-only settings override, such as `--with welcome.style=static`
 - `--verbose`: Print detailed startup diagnostics
 
 ### `yzx env [--no-shell]`
@@ -228,7 +228,7 @@ Maintainer shell commands:
 ### `yzx menu [--popup]`
 Interactive command palette (fuzzy search)
 - Default: inline mode in current terminal
-- `--popup`: toggle the `zellij.popup_commands.menu` `yzpp` floating pane (errors if not in Zellij)
+- `--popup`: toggle the managed `yzpp` menu pane (errors if not in Zellij)
 - `--pane`: run the popup-pane menu UI in the current pane
 - Lists most `yzx` commands while hiding maintenance-heavy or low-signal entries (`yzx dev*`, `yzx env`, `yzx run`)
 - Cancel with `Esc` before running a command
@@ -250,8 +250,8 @@ Open a transient floating-pane command inside Zellij
 - `COMMAND ...`: command argv for this one-off popup invocation
 - Uses the current tab workspace root as cwd when available; otherwise uses the current shell cwd
 - Errors if not in Zellij
-- Built-in generated popup specs use `zellij.popup_commands`: `bottom_popup` defaults to `["lazygit"]`, `top_popup` defaults to `["yzx", "config", "ui"]`, and `menu` defaults to `["yzx", "menu"]`
-- User-defined generated popup specs use `zellij.custom_popups`; the default entry is `zenith` with `command = ["zenith"]`, `keybindings = ["Alt Shift I"]`, and `keep_alive = true`
+- Built-in Classic popup commands are fixed to LazyGit, `yzx config ui`, and `yzx menu`; their root chords are `keybindings.git`, `keybindings.config`, and `keybindings.menu`
+- User-defined popup specs use `popups.<id>` with `command`, optional `args` and `title`, one `keybinding`, and optional `keep_alive`
 - Default surface keys: `Alt Shift J` for `bottom_popup`, `Alt Shift K` for `top_popup`, and `Alt Shift I` for `zenith`
 - Popup panes are named `yzx_popup`, `yzx_bottom_popup`, `yzx_top_popup`, `yzx_menu`, and `yzx_<custom id>`
 
@@ -301,7 +301,7 @@ Open the main Yazelix config file in your editor
 
 ### `yzx cursors`
 Inspect Yazelix cursor presets and resolved colors
-- Shows the active cursor `config.toml` path
+- Shows the active `cursors.toml` path
 - Shows global trail, effect, glow, duration, and Kitty fallback settings
 - Shows resolved colors for enabled presets, including derived mono accents
 
@@ -365,15 +365,15 @@ yzx tutor nu                  # Launch Nushell's built-in tutor
 yzx restart                   # Reopen Yazelix in a fresh window
 yzx restart -s                # Reopen Yazelix and skip the welcome screen once
 yzx restart --config ./minimal.toml # Reopen with an alternate complete settings file
-yzx restart --with core.welcome_style=static # Reopen with a one-shot config override
+yzx restart --with welcome.style=static # Reopen with a one-shot config override
 
 # Diagnostics and info
 yzx doctor --fix              # Health check with auto-fix
 yzx config                    # Show explicit config overrides
 yzx config --path             # Print the active config path
 yzx config ui                 # Open the Ratconfig-backed settings editor
-yzx config set editor.hide_sidebar_on_file_open true # Set a config value with a JSON literal
-yzx config unset editor.hide_sidebar_on_file_open # Remove an explicit config value
+yzx config set welcome.enabled false # Set a config value with a JSON literal
+yzx config unset welcome.enabled # Remove an explicit config value
 yzx cursors                   # Inspect Yazelix cursor presets and resolved colors
 yzx cursors ghostty setup     # Generate the host Ghostty cursor include
 yzx edit cursors              # Open the cursor settings file

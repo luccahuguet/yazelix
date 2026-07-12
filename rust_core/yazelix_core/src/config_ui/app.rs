@@ -121,12 +121,6 @@ impl YazelixConfigUiHost<'_> {
         setting_path: &str,
         value: &JsonValue,
     ) -> Result<ConfigUiWriteOutcome, CoreError> {
-        if custom_popup_path(setting_path).is_some() {
-            self.ensure_known_field_source(ui, source_id, setting_path)?;
-            return self.write_custom_popup_list(ui, source_id, setting_path, |root, default| {
-                custom_popup_list_value_after_write(root, default, setting_path, value)
-            });
-        }
         let target = self.editable_config_target(ui, source_id, setting_path)?;
         let raw = self.read_edit_target_or_default(&target)?;
         let outcome = set_toml_value_text(&raw, &target.path_in_file, value)
@@ -140,35 +134,9 @@ impl YazelixConfigUiHost<'_> {
         source_id: &str,
         setting_path: &str,
     ) -> Result<ConfigUiWriteOutcome, CoreError> {
-        if custom_popup_path(setting_path).is_some() {
-            self.ensure_known_field_source(ui, source_id, setting_path)?;
-            return self.write_custom_popup_list(ui, source_id, setting_path, |root, default| {
-                custom_popup_list_value_after_unset(root, default, setting_path)
-            });
-        }
         let target = self.editable_config_target(ui, source_id, setting_path)?;
         let raw = self.read_edit_target_or_default(&target)?;
         let outcome = unset_toml_value_text(&raw, &target.path_in_file)
-            .map_err(|error| config_toml_patch_error(&target.path, error))?;
-        self.finish_field_write(ui, source_id, setting_path, &target, outcome)
-    }
-
-    fn write_custom_popup_list(
-        &self,
-        ui: &mut ConfigUiApp,
-        source_id: &str,
-        setting_path: &str,
-        next_list: impl FnOnce(&JsonValue, &JsonValue) -> Result<Option<JsonValue>, CoreError>,
-    ) -> Result<ConfigUiWriteOutcome, CoreError> {
-        let target = self.editable_config_target(ui, source_id, CUSTOM_POPUPS_FIELD_PATH)?;
-        let raw = self.read_edit_target_or_default(&target)?;
-        let root = parse_config_value(&target.path, &raw)?;
-        let default_value =
-            default_main_setting_value_for_ui(self.request, CUSTOM_POPUPS_FIELD_PATH)?;
-        let Some(next_value) = next_list(&root, &default_value)? else {
-            return Err(unsupported_custom_popup_edit_path(setting_path));
-        };
-        let outcome = set_toml_value_text(&raw, CUSTOM_POPUPS_FIELD_PATH, &next_value)
             .map_err(|error| config_toml_patch_error(&target.path, error))?;
         self.finish_field_write(ui, source_id, setting_path, &target, outcome)
     }
@@ -546,16 +514,7 @@ pub(super) fn write_notice_text(verb: &str, path: &str, outcome: &ConfigUiWriteO
 }
 
 fn apply_status_notice(status: &crate::config_apply::ConfigEditApplyStatus) -> Option<String> {
-    let mut parts = Vec::new();
-    if let Some(refresh) = &status.generated_refresh {
-        parts.push(refresh.message.as_str());
-        parts.push(refresh.remediation.as_str());
-    }
-    if let Some(refresh) = &status.pane_orchestrator_refresh {
-        parts.push(refresh.message.as_str());
-        parts.push(refresh.remediation.as_str());
-    }
-    (!parts.is_empty()).then(|| parts.join(" "))
+    Some(format!("Apply: {}.", status.apply_mode.label()))
 }
 
 fn apply_error_notice(error: &CoreError) -> String {
@@ -565,16 +524,6 @@ fn apply_error_notice(error: &CoreError) -> String {
     } else {
         format!("Apply pending: {} {}", error.message(), remediation)
     }
-}
-
-fn unsupported_custom_popup_edit_path(setting_path: &str) -> CoreError {
-    CoreError::classified(
-        ErrorClass::Usage,
-        "unsupported_custom_popup_edit_path",
-        format!("{setting_path} is not a supported custom popup editor row."),
-        "Select a custom popup add row, overview row, or child field row.",
-        json!({ "path": setting_path }),
-    )
 }
 
 fn unsupported_config_source(source_id: &str, setting_path: &str) -> CoreError {

@@ -48,14 +48,13 @@ fn config_set_and_unset_edit_config_toml() {
     let mut set_cursor = yzx_control_command();
     with_config_env(&mut set_cursor, &home, &runtime, &config);
     set_cursor.args(["config", "set", "cursors.settings.trail", "\"magma\""]);
-    set_cursor.assert().success();
+    let expected = "Updated cursors.settings.trail.\nApply: New shell or terminal.\n";
+    set_cursor.assert().success().stdout(expected);
 
-    let cursor_settings_path = cursor_config(&config);
-    let cursor_value =
-        read_config_value(&cursor_settings_path).expect("cursor settings after cursor set");
-    assert_eq!(cursor_value["settings"]["trail"], json!("magma"));
-    let value = read_config_value(&settings_path).expect("settings after cursor set");
-    assert!(value.get("cursors").is_none());
+    let cursors = read_config_value(&cursor_config(&config)).unwrap();
+    assert_eq!(cursors["settings"]["trail"], json!("magma"));
+    let settings = read_config_value(&settings_path).unwrap();
+    assert!(settings.get("cursors").is_none());
 
     let mut unset = yzx_control_command();
     with_config_env(&mut unset, &home, &runtime, &config);

@@ -81,39 +81,34 @@ You can also print these Yazelix-owned bindings and the scoped semantic action i
 
 ### Ownership Layers
 
-Use semantic remaps for Yazelix-owned actions and native sidecars for the owning tool's broader keymap.
+The sparse root exposes only the four chords that cross directly into Nova:
 
-- Yazelix-owned Zellij actions: `config.toml` under `zellij.keybindings`
-- Yazelix curated native Zellij policy: `config.toml` under `zellij.native_keybindings`
-- Advanced native Zellij settings without keybinds: `~/.config/yazelix/zellij/config.kdl`
+```toml
+[keybindings]
+config = "Alt Shift K"
+agent = "Alt Shift L"
+git = "Alt Shift J"
+menu = "Alt Shift M"
+```
+
+Custom popup commands live under `popups.<id>` with their own `keybinding`. Fixed Classic workspace actions such as `Ctrl y`, `Ctrl Shift Y`, `Alt Shift H`, `Alt r`, and `Alt m` are runtime policy rather than semantic root fields. `Ctrl Shift Y` remains available in the final Classic bridge but retires when the right agent sidebar becomes Nova's agent popup
+
+- Native Zellij preferences: `~/.config/yazelix/zellij/config.kdl`
 - Full native Zellij keymap ownership: plain `zellij` outside Yazelix
-- Yazelix-owned Yazi integration actions: `config.toml` under `yazi.keybindings`
 - Yazi-native bindings: `~/.config/yazelix/yazi/keymap.toml`
-- Helix-local bindings for managed Helix sessions: `~/.config/yazelix/helix/config.toml`
+- Helix-local bindings: `~/.config/yazelix/helix/config.toml`
 - Terminal-emulator shortcuts: the terminal emulator config
 
-`zellij.keybindings` accepts owner-local action ids such as `bottom_popup`, `top_popup`, `menu`, `toggle_left_sidebar`, `toggle_editor_right_sidebar_focus`, and `open_workspace_terminal`. Shared diagnostics and docs use scoped ids such as `zellij.bottom_popup`. Omitted actions keep defaults, and `[]` disables a Yazelix-owned binding. Yazelix rejects duplicate semantic Zellij keys before launch.
+Managed `zellij/config.kdl` rejects `keybinds` blocks so it cannot bypass generated workspace controls. Use plain Zellij and `~/.config/zellij/config.kdl` when full native keymap ownership matters
 
-`zellij.popup_commands` sets the command argv for built-in popup surfaces. Defaults are `bottom_popup = ["lazygit"]`, `top_popup = ["yzx", "config", "ui"]` for Yazelix's ratconfig-backed settings editor, and `menu = ["yzx", "menu"]`. `zellij.custom_popups` adds user-defined popup surfaces; the default entry is keep-alive `zenith` with `command = ["zenith"]` and `keybindings = ["Alt Shift I"]`.
+### Fixed Classic Workspace Bindings
 
-`zellij.native_keybindings` accepts curated native policy ids such as `scroll_mode`, `scroll_mode_unbind`, `move_tab_left`, `move_pane_down`, and `move_tab_left_unbind`. These are Yazelix's shipped conflict-remap and validation defaults for native Zellij commands. Omitted entries keep defaults, and `[]` disables one native policy entry. Managed `~/.config/yazelix/zellij/config.kdl` rejects `keybinds` blocks so it cannot bypass generated workspace controls.
-
-Yazelix does not manage arbitrary Zellij keymaps, full Zellij mode binding ownership, or generated runtime config edits. Use plain `zellij` and `~/.config/zellij/config.kdl` for that level of native keymap control.
-
-`yazi.keybindings` accepts owner-local action ids such as `open_directory_as_workspace_pane` and `open_zoxide_in_editor`. Values are alternate generated Yazi bindings such as `<A-p>` and `<A-z>`. Omitted actions keep defaults, and `[]` disables that generated Yazelix-owned Yazi integration binding. Native open-selected keys such as `<Enter>` and `o` remain in `~/.config/yazelix/yazi/keymap.toml`; arbitrary Yazi actions and native multi-key sequences also belong there.
-
-### Sidebar Commands vs Keybindings
-
-The stable sidebar action surface is the semantic keybinding map, not the default keys:
-
-| Action id | Default key | Meaning |
-|---------|-------------|---------|
-| `toggle_editor_sidebar_focus` | `Ctrl y` | Move focus between the managed editor and managed left sidebar |
-| `toggle_editor_right_sidebar_focus` | `Ctrl Shift Y` | Move focus between the managed editor and managed right agent sidebar |
-| `toggle_left_sidebar` | `Alt Shift H` | Show or hide the managed left sidebar layout slot |
-| `focus_sidebar` | none | Focus the managed sidebar from commands such as `yzx reveal` |
-
-Prefer `zellij.keybindings` for remaps. Native Zellij KDL remains the escape hatch for full keymap ownership.
+| Binding | Meaning |
+|---------|---------|
+| `Ctrl y` | Move focus between the managed editor and managed left sidebar |
+| `Ctrl Shift Y` | Move focus between the editor and Classic right agent sidebar |
+| `Alt Shift H` | Show or hide the managed left sidebar layout slot |
+| `Alt r` | Reveal the editor path or return focus to the editor/sidebar pair |
 
 ## Keybinding Tips
 - **Zellij**: `Alt+number` for tab, `Alt+w/q` for tab walk, `Ctrl+Alt+H/L` for tab move, `Ctrl+Alt+J/K` for pane move, `Alt+Shift+H/J/K/L` for directional Yazelix surfaces

@@ -8,26 +8,23 @@ use crate::classic_nova_root_migration::{
     ClassicNovaMigrationRequest, migrate_classic_root_to_nova,
 };
 use crate::native_config_status::{path_owned_by_home_manager, path_present};
-use crate::settings_contract::reconcile_settings_contract_text;
 use crate::user_config_paths;
 use ratconfig::jsonc::jsonc_parse_options;
-use serde_json::{Map as JsonMap, Value as JsonValue, json};
+use serde_json::{Value as JsonValue, json};
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 use toml::Value as TomlValue;
 use yazelix_cursors::{import_cursor_settings_jsonc, initialize_cursor_config, load_cursor_config};
 use yazelix_zellij_config_pack::{
-    DEFAULT_ZELLIJ_CONFIG_SIDECAR, DEFAULT_ZELLIJ_PLUGINS_SIDECAR, add_zellij_native_preferences,
-    split_zellij_sidecars, validate_zellij_config_sidecar, validate_zellij_plugins_sidecar,
+    DEFAULT_ZELLIJ_CONFIG_SIDECAR, DEFAULT_ZELLIJ_PLUGINS_SIDECAR, split_zellij_sidecars,
+    validate_zellij_config_sidecar, validate_zellij_plugins_sidecar,
 };
 
 pub const SETTINGS_SCHEMA_FILENAME: &str = "yazelix_settings.schema.json";
 pub const DEFAULT_MAIN_CONFIG_FILENAME: &str = "config_default.toml";
 pub const CLASSIC_MAIN_CONFIG_FILENAME: &str = "classic_config_default.toml";
 pub const CLASSIC_MAIN_CONTRACT_FILENAME: &str = "classic_main_config_contract.toml";
-const LEGACY_ZELLIJ_CONFIG_SIDECAR: &str =
-    "// Native Zellij preferences used by Yazelix\nscroll_buffer_size 5000\n";
 #[derive(Debug, Clone)]
 pub struct SettingsSurfacePaths {
     pub settings_config: PathBuf,
@@ -111,32 +108,11 @@ pub fn ensure_settings_config_with_cursor_component(
             .join(CLASSIC_MAIN_CONTRACT_FILENAME),
     })?;
 
-    if path_present(&paths.settings_config) && path_present(&paths.legacy_settings_config) {
-        return Err(CoreError::classified(
-            ErrorClass::Config,
-            "root_config_migration_conflict",
-            "Both ~/.config/yazelix/config.toml and the retired settings.jsonc exist.",
-            "Keep the intended values in config.toml, then move settings.jsonc aside and retry.",
-            json!({
-                "config": paths.settings_config.display().to_string(),
-                "legacy": paths.legacy_settings_config.display().to_string(),
-            }),
-        ));
-    }
-
     if path_present(&paths.settings_config) {
         read_config_table(&paths.settings_config, "invalid_main_config_toml")?;
         ensure_zellij_sidecars(config_dir, DEFAULT_ZELLIJ_CONFIG_SIDECAR)?;
         if cursor_component_enabled {
             ensure_no_embedded_cursor_settings(&paths)?;
-            ensure_cursor_config(&paths, default_cursor_config)?;
-        }
-        return Ok(paths.settings_config);
-    }
-
-    if path_present(&paths.legacy_settings_config) {
-        migrate_legacy_settings_config(config_dir, &paths, default_main_config)?;
-        if cursor_component_enabled {
             ensure_cursor_config(&paths, default_cursor_config)?;
         }
         return Ok(paths.settings_config);
@@ -297,221 +273,6 @@ fn zellij_migration_failure(
         remediation,
         json!({ "path": path.display().to_string() }),
     )
-}
-
-fn migrate_legacy_settings_config(
-    config_dir: &Path,
-    paths: &SettingsSurfacePaths,
-    default_main_config: &Path,
-) -> Result<(), CoreError> {
-    let legacy = &paths.legacy_settings_config;
-    if path_owned_by_home_manager(legacy) || settings_path_is_read_only(legacy) {
-        return Err(CoreError::classified(
-            ErrorClass::Config,
-            "read_only_root_config_migration",
-            "The retired settings.jsonc is read-only and cannot be migrated safely.",
-            "Update Home Manager to generate programs.yazelix config.toml, remove its settings.jsonc owner, then run home-manager switch.",
-            json!({ "path": legacy.display().to_string() }),
-        ));
-    }
-    let flat_zellij = user_config_paths::flat_zellij_config(config_dir);
-    if path_present(&flat_zellij) {
-        return Err(zellij_migration_failure(
-            "root_config_requires_nested_zellij_sidecar",
-            "The retired flat zellij.kdl sidecar still exists.",
-            "Start the current Classic runtime once to migrate it to zellij/config.kdl and zellij/plugins.kdl, then retry the root config migration.",
-            &flat_zellij,
-        ));
-    }
-
-    let raw = fs::read_to_string(legacy).map_err(|source| {
-        io_err(
-            "read_legacy_settings_migration_source",
-            legacy,
-            "Could not read the retired settings.jsonc",
-            source,
-        )
-    })?;
-    let reconciled = reconcile_settings_contract_text(legacy, &raw, default_main_config)?;
-    let mut value = parse_config_value(legacy, &reconciled.text)?;
-    let root = value.as_object_mut().ok_or_else(|| {
-        CoreError::classified(
-            ErrorClass::Config,
-            "legacy_settings_not_object",
-            "The retired settings.jsonc does not contain a JSON object.",
-            "Replace it with a valid Yazelix settings object or restore a working backup, then retry.",
-            json!({ "path": legacy.display().to_string() }),
-        )
-    })?;
-    if root.contains_key("cursors") {
-        return Err(CoreError::classified(
-            ErrorClass::Config,
-            "embedded_cursor_settings_unsupported",
-            "Yazelix found cursor settings embedded in the retired settings.jsonc.",
-            "Move cursor settings to ~/.config/yazelix/cursors.toml, then retry.",
-            json!({ "path": legacy.display().to_string() }),
-        ));
-    }
-    root.remove("ratconfig");
-
-    let zellij = root
-        .get_mut("zellij")
-        .and_then(JsonValue::as_object_mut)
-        .ok_or_else(|| {
-            CoreError::classified(
-                ErrorClass::Config,
-                "missing_legacy_zellij_settings",
-                "The retired settings.jsonc is missing its zellij object.",
-                "Restore a valid Classic settings backup, then retry.",
-                json!({ "path": legacy.display().to_string() }),
-            )
-        })?;
-    let disable_tips = take_legacy_bool(zellij, "disable_tips", true, legacy)?;
-    let pane_frames = take_legacy_bool(zellij, "pane_frames", true, legacy)?;
-    let rounded_corners = take_legacy_bool(zellij, "rounded_corners", true, legacy)?;
-    let default_mode = take_legacy_string(zellij, "default_mode", "normal", legacy)?;
-    if !matches!(default_mode.as_str(), "normal" | "locked") {
-        return Err(CoreError::classified(
-            ErrorClass::Config,
-            "invalid_legacy_zellij_default_mode",
-            format!("Cannot migrate zellij.default_mode value {default_mode:?}."),
-            "Use normal or locked, then retry.",
-            json!({ "path": legacy.display().to_string() }),
-        ));
-    }
-
-    let config = json_value_to_toml_table(&value, legacy)?;
-    let rendered = toml::to_string_pretty(&config).map_err(|source| {
-        CoreError::classified(
-            ErrorClass::Internal,
-            "render_migrated_config_toml",
-            format!("Could not render migrated config.toml: {source}"),
-            "Report this as a Yazelix migration error.",
-            json!({ "path": legacy.display().to_string() }),
-        )
-    })?;
-    toml::from_str::<toml::Table>(&rendered).map_err(|source| {
-        CoreError::toml(
-            "verify_migrated_config_toml",
-            "Could not verify the migrated Yazelix config",
-            "Restore the settings.jsonc backup and report this migration error.",
-            paths.settings_config.to_string_lossy(),
-            source,
-        )
-    })?;
-
-    let zellij_path = user_config_paths::zellij_config(config_dir);
-    let zellij_existed = path_present(&zellij_path);
-    if zellij_existed
-        && (path_owned_by_home_manager(&zellij_path) || settings_path_is_read_only(&zellij_path))
-    {
-        return Err(zellij_migration_failure(
-            "read_only_zellij_native_preference_migration",
-            "The Zellij config sidecar is read-only and cannot receive migrated native preferences.",
-            "Declare show_startup_tips, pane_frames, default_mode, and ui.pane_frames.rounded_corners in programs.yazelix.config.zellij, then run home-manager switch.",
-            &zellij_path,
-        ));
-    }
-    let original_zellij = if zellij_existed {
-        fs::read_to_string(&zellij_path).map_err(|source| {
-            io_err(
-                "read_zellij_native_preference_migration_target",
-                &zellij_path,
-                "Could not read the Zellij config sidecar",
-                source,
-            )
-        })?
-    } else {
-        LEGACY_ZELLIJ_CONFIG_SIDECAR.to_string()
-    };
-    let migrated_zellij = add_zellij_native_preferences(
-        &original_zellij,
-        disable_tips,
-        pane_frames,
-        rounded_corners,
-        &default_mode,
-    )
-    .map_err(|error| zellij_migration_error(&zellij_path, error))?;
-
-    let timestamp = compact_utc_backup_timestamp();
-    fs::copy(legacy, migration_backup_path(legacy, &timestamp)).map_err(|source| {
-        io_err(
-            "backup_legacy_settings_config",
-            legacy,
-            "Could not back up settings.jsonc before migration",
-            source,
-        )
-    })?;
-    if zellij_existed {
-        backup_zellij_migration_source(&zellij_path, &timestamp)?;
-    }
-
-    write_text_atomic(&zellij_path, &migrated_zellij)?;
-    if let Err(error) = write_text_atomic(&paths.settings_config, &rendered) {
-        restore_zellij_after_failed_root_migration(&zellij_path, zellij_existed, &original_zellij);
-        return Err(error);
-    }
-    if let Err(source) = fs::remove_file(legacy) {
-        let _ = fs::remove_file(&paths.settings_config);
-        restore_zellij_after_failed_root_migration(&zellij_path, zellij_existed, &original_zellij);
-        return Err(io_err(
-            "retire_legacy_settings_config",
-            legacy,
-            "Could not retire settings.jsonc after writing config.toml",
-            source,
-        ));
-    }
-    ensure_zellij_sidecar(
-        &user_config_paths::zellij_plugins(config_dir),
-        DEFAULT_ZELLIJ_PLUGINS_SIDECAR,
-        validate_zellij_plugins_sidecar,
-    )
-}
-
-fn take_legacy_bool(
-    zellij: &mut JsonMap<String, JsonValue>,
-    key: &str,
-    default: bool,
-    path: &Path,
-) -> Result<bool, CoreError> {
-    match zellij.remove(key) {
-        None => Ok(default),
-        Some(JsonValue::Bool(value)) => Ok(value),
-        Some(value) => Err(CoreError::classified(
-            ErrorClass::Config,
-            "invalid_legacy_zellij_boolean",
-            format!("Cannot migrate zellij.{key}; expected a boolean."),
-            "Fix the value in settings.jsonc, then retry.",
-            json!({ "path": path.display().to_string(), "value": value }),
-        )),
-    }
-}
-
-fn take_legacy_string(
-    zellij: &mut JsonMap<String, JsonValue>,
-    key: &str,
-    default: &str,
-    path: &Path,
-) -> Result<String, CoreError> {
-    match zellij.remove(key) {
-        None => Ok(default.to_string()),
-        Some(JsonValue::String(value)) => Ok(value),
-        Some(value) => Err(CoreError::classified(
-            ErrorClass::Config,
-            "invalid_legacy_zellij_string",
-            format!("Cannot migrate zellij.{key}; expected a string."),
-            "Fix the value in settings.jsonc, then retry.",
-            json!({ "path": path.display().to_string(), "value": value }),
-        )),
-    }
-}
-
-fn restore_zellij_after_failed_root_migration(path: &Path, existed: bool, original: &str) {
-    if existed {
-        let _ = write_text_atomic(path, original);
-    } else {
-        let _ = fs::remove_file(path);
-    }
 }
 
 fn settings_path_is_read_only(path: &Path) -> bool {

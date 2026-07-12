@@ -21,7 +21,7 @@ The trimmed runtime excludes:
 - dynamic pack graphs
 - the old runtime-local `devenv` layer
 - cached launch-profile reuse
-- a broad config schema migration engine
+- a broad or permanent config schema migration engine beyond the bounded final-Classic migration
 - a generic Yazelix-owned runtime updater
 
 ## Why
@@ -54,11 +54,13 @@ This file exists so current docs and current contracts can point at one authorit
 ### Config Surface
 
 - The canonical user config surface is `~/.config/yazelix/`.
-- The main semantic settings file is `settings.jsonc`.
+- The canonical semantic settings file is sparse `config.toml`; absent fields inherit the packaged `config_default.toml` values.
+- The canonical cursor registry is `cursors.toml`, owned separately from the semantic root.
 - Managed override directories such as Zellij, Yazi, Helix, and shell user hooks remain part of that user-owned config surface.
 - The current trimmed branch does not have a `yazelix_packs.toml` sidecar and does not expose a first-class pack graph.
 - Legacy or removed config fields fail fast instead of degrading silently.
-- Old mutable `yazelix.toml`, `cursors.toml`, `user_configs/` sidecars, and embedded cursor settings are unsupported legacy inputs; they hard-error with actionable diagnostics instead of being rewritten automatically. Removed terminal sidecars are ignored by the current runtime and reported as legacy adjacency when reset/config-maintenance commands inspect the config root.
+- Writable released `settings.jsonc` roots migrate once, backup-first, to the Nova-shaped `config.toml` contract during the final Classic observation release. Coexistence, read-only ownership, collisions, and unsupported values fail before Yazelix chooses or rewrites an owner.
+- Old mutable `yazelix.toml`, `user_configs/` sidecars, and embedded cursor settings are unsupported legacy inputs; they hard-error with actionable diagnostics instead of being rewritten automatically. Removed terminal sidecars are ignored by the current runtime and reported as legacy adjacency when reset/config-maintenance commands inspect the config root.
 
 ### Generated State
 
@@ -93,7 +95,7 @@ This file exists so current docs and current contracts can point at one authorit
 
 ## Acceptance Cases
 
-1. A current user can understand the product without learning about `yazelix_packs.toml`, launch-profile reuse, runtime-local `devenv`, or a broad config schema migration engine.
+1. A current user can understand the product without learning about `yazelix_packs.toml`, launch-profile reuse, runtime-local `devenv`, or a permanent config schema migration engine.
 2. Current docs explain generated-state repair through startup and `yzx doctor` rather than through a public refresh command.
 3. Current docs explain update ownership through explicit owner commands rather than a generic runtime updater.
 4. Current docs distinguish the normal packaged runtime from maintainer-only `nix develop` workflows.
@@ -103,14 +105,15 @@ This file exists so current docs and current contracts can point at one authorit
 
 - `cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_maintainer --bin yzx_repo_validator -- validate-installed-runtime-contract`
 - `cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_maintainer --bin yzx_repo_validator -- validate-flake-profile-install all`
-- `nu nushell/scripts/dev/test_yzx_workspace_commands.nu`
-- `nu nushell/scripts/dev/test_yzx_generated_configs.nu`
-- `nu nushell/scripts/dev/test_yzx_maintainer.nu`
-- `nu nushell/scripts/dev/test_stale_config_diagnostics_e2e.nu`
+- `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core --test yzx_control_workspace_surface`
+- `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core runtime_materialization`
+- `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core --test yzx_core_classic_nova_root_translation`
+- `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_maintainer`
 
 ## Traceability
 - Defended by: `cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_maintainer --bin yzx_repo_validator -- validate-installed-runtime-contract`
 - Defended by: `cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_maintainer --bin yzx_repo_validator -- validate-flake-profile-install all`
-- Defended by: `nu nushell/scripts/dev/test_yzx_workspace_commands.nu`
-- Defended by: `nu nushell/scripts/dev/test_yzx_generated_configs.nu`
-- Defended by: `nu nushell/scripts/dev/test_yzx_maintainer.nu`
+- Defended by: `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core --test yzx_control_workspace_surface`
+- Defended by: `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core runtime_materialization`
+- Defended by: `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core --test yzx_core_classic_nova_root_translation`
+- Defended by: `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_maintainer`

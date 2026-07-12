@@ -27,7 +27,7 @@ The current layout ownership decision is intentionally narrow:
 
 - Yazelix core owns built-in layout family metadata, generated layout assets, runtime placeholder substitution, and startup/swap layout file selection
 - The pane orchestrator owns live tab-local layout state, sidebar collapsed/open state, and managed pane identity after Zellij starts
-- Users may customize top-level KDL layout files and sidebar launch commands, but brand-new sidebar families are not first-class until the pane orchestrator and layout metadata learn them explicitly
+- Users may customize top-level KDL layout files and the managed agent command, but brand-new sidebar families are not first-class until the pane orchestrator and layout metadata learn them explicitly
 - Home Manager renders the same Yazelix-owned settings surface; it does not own a second layout profile language
 - Public `yazelix_workspace` extraction remains blocked until workspace/editor/session command ownership shrinks inside the main repo. Zellij materialization has shed stale no-op layout fragments, but it still owns generated config, plugin permission seeding, built-in layout rendering, and current status-bar integration.
 
@@ -35,7 +35,7 @@ Rejected or deferred layout branches:
 
 - Override-layout resurrection through owned explicit-run pane creation is rejected for this pass. It would require Yazelix to replace too many native Zellij pane-creation surfaces just to make live layout transitions preserve anonymous panes
 - The bottom-bar/zen-mode POC based on override-layout is deferred. Existing Zellij fullscreen behavior remains the supported focused-work fallback, and any future barless component toggle should start from the status/layout ownership model instead of this POC
-- User-declared declarative Zellij layout profiles are deferred. The supported customization boundary remains explicit KDL files plus the `workspace.left_sidebar.*` and `workspace.right_sidebar.*` settings
+- User-declared declarative Zellij layout profiles are deferred. The supported customization boundary remains explicit KDL files plus `agent.command` and `agent.args`; sidebar geometry is fixed in the Classic bridge
 
 This gate unblocks deletion-first Zellij cleanup. `zellij_materialization.rs`, `zellij_commands.rs`, and Zellij validators should consolidate around the built-in family metadata plus copied top-level custom KDL files instead of preserving duplicate render paths for override-layout or declarative profiles that are not accepted product surfaces.
 
@@ -210,9 +210,9 @@ The migration should delete duplicated heuristics and broad-module ownership bef
 Use the existing Yazelix suite as the first proof:
 
 - pane-orchestrator unit tests for workspace state, sidebar identity retention, focus policy, and editor command sequences
-- `nu nushell/scripts/dev/test_yzx_workspace_commands.nu`
-- `nu nushell/scripts/dev/test_yzx_yazi_commands.nu`
-- `nu nushell/scripts/dev/test_zellij_plugin_contracts.nu`
+- `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core --test yzx_control_workspace_surface`
+- `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core yazi_materialization`
+- `yzx_repo_validator validate-workspace-session-contract`
 - `yzx_repo_validator validate-workspace-session-contract`
 - `nix build .#runtime` after first-party plugin package changes
 - `yzx_repo_validator validate-contracts`
@@ -235,8 +235,8 @@ No-go if the candidate API still requires full Yazelix generated config, Home Ma
 
 ## Verification
 
-- `nu nushell/scripts/dev/test_yzx_workspace_commands.nu`
-- `nu nushell/scripts/dev/test_yzx_yazi_commands.nu`
+- `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core --test yzx_control_workspace_surface`
+- `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core yazi_materialization`
 - `cargo test --manifest-path ../yazelix-zellij-pane-orchestrator/Cargo.toml --lib`
 - `yzx_repo_validator validate-workspace-session-contract`
 - `yzx_repo_validator validate-contracts`

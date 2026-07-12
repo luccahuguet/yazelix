@@ -721,8 +721,8 @@ default_shell = "nu"
     );
     assert_eq!(summary["default_shell"], "nu");
     assert_eq!(summary["terminals"], serde_json::json!(["mars"]));
+    assert!(summary.get("helix_external").is_none());
     assert!(summary["generated_state_repair_needed"].is_boolean());
-    assert!(summary["generated_state_materialization_status"].is_string());
     assert_eq!(summary["session_config_snapshot"]["status"], "not_set");
 }
 

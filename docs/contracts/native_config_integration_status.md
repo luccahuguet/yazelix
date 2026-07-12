@@ -198,7 +198,6 @@ Rules:
 - Yazelix does not source native shell rc files implicitly
 - Yazelix does not import native shell rc files
 - Bash, Zsh, Fish, and Nushell hooks are opt-in managed sidecars scoped to Yazelix shells
-- Xonsh is host-owned; `shell.default_shell = "xonsh"` requires host `xonsh` on `PATH`, and native xonsh startup must source `shell_xonsh.xsh`
 
 ## Config UI Display Rules
 

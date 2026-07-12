@@ -4,7 +4,7 @@
 
 `ratconfig` is a first-party Rust child repository for reusable Ratatui config editing.
 
-The child repo owns the project-agnostic config UI core: model, navigation, edit state, rendering, JSONC patch primitives, TOML text adapters, and deterministic contract/migration primitives. Yazelix remains the first consumer and keeps only the adapter code that knows about Yazelix settings, Home Manager ownership, runtime refreshes, and generated config behavior.
+The child repo owns the project-agnostic config UI core: model, navigation, edit state, rendering, JSONC patch primitives, TOML text adapters, and deterministic contract/migration primitives. Yazelix remains the first consumer and keeps only the adapter code that knows about Yazelix settings, native-file ownership, Home Manager ownership, validation, and activation timing.
 
 TOML is Yazelix's persistence format for `config.toml` and the separate `cursors.toml` registry. Ratconfig's JSONC primitives remain available only for bounded Classic migration from retired `settings.jsonc` inputs.
 
@@ -51,12 +51,10 @@ The main repo owns:
 - loading defaults, schema metadata, and `main_config_contract.toml`
 - composing Yazelix-specific cursor settings into the visible model
 - marking Home Manager-owned settings as read-only
-- expanding Yazelix keybinding action registries into structured field/detail data
 - classifying native, managed, imported, generated, and read-only config status
 - mapping generic ratconfig errors into `CoreError`
 - validating patched settings against Yazelix normalization
-- running generated runtime refreshes and pane-owner refreshes after saves
-- deciding which saved settings require pane reopen, Yazelix restart, or Home Manager switch
+- reporting whether a saved setting needs a fresh Yazelix window, a fresh shell or terminal process, or a Home Manager switch
 
 The reusable child repo receives these facts as data. It does not rediscover Yazelix paths or infer Yazelix runtime policy.
 
@@ -74,7 +72,7 @@ Current modules:
 - `contract`: joined deterministic config contracts
 - `migration`: deterministic config migration operations
 
-The application adapter owns file IO, validation, atomic writes, model reload, and post-save apply behavior.
+The application adapter owns file IO, validation, atomic writes, model reload, and activation-timing copy. Saving the Nova-shaped root does not regenerate runtime state or send pane-owner refresh messages.
 
 Project-specific rich detail sections are supplied as data. The renderer may display them, but it must not know about Yazelix keybindings, Zellij, Yazi, Home Manager, or generated config ownership.
 

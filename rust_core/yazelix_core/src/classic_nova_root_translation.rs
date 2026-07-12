@@ -269,13 +269,12 @@ fn translate_editor(classic: &Table, translation: &mut ClassicNovaRootTranslatio
             &[],
             "omitted so Nova inherits its packaged editor",
         )),
-        Some(command) if is_classic_managed_editor(command) => preserve(
-            translation,
+        Some(command) if is_classic_managed_editor(command) => translation.report.push(report(
             "editor.command",
-            "editor.command",
-            Value::String("hx".to_string()),
-            &format!("mapped Classic managed {command} to Nova managed hx"),
-        ),
+            ClassicNovaDisposition::Preserved,
+            &[],
+            &format!("omitted Classic managed {command} so Nova inherits packaged hx"),
+        )),
         Some(command) if executable(command) => preserve(
             translation,
             "editor.command",

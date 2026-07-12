@@ -1,343 +1,80 @@
 # Editor Configuration
 
-Yazelix provides smart editor configuration to avoid conflicts with existing installations while maintaining full integration features.
-
-## Quick Start
-
-**Most users should use the default:**
-```toml
-[editor]
-command = ""
-```
-
-**If you have specific needs:**
-- Yazelix-compatible Helix fork → [Using A Custom Helix Fork](#using-a-custom-helix-fork)
-- Prefer other editors → [Using Other Editors](#using-other-editors)  
-- Runtime conflicts → See [Troubleshooting](#troubleshooting)
-
-## How It Works
-
-Yazelix sets your configured editor as the `EDITOR` environment variable throughout the system. The editor choice affects:
-- **File opening behavior** from the Yazi file tree
-- **Integration features** (reveal in the Yazi file tree, open in same instance, etc.)
-- **Zellij pane management** and tab naming
-- **Shell commands** that respect `$EDITOR`
-
-## Configuration Options
-
-### Default (Recommended): Yazelix's Helix
+Yazelix uses one semantic editor setting:
 
 ```toml
 [editor]
-command = ""
-
-[helix]
+command = "hx"
 ```
 
-**Benefits:**
-- ✅ **No conflicts** with existing Helix installations
-- ✅ **Always works** - binary and runtime are perfectly matched
-- ✅ **Full integration** - All yazelix features work (reveal in the Yazi file tree, open in same instance, etc.)
-- ✅ **Zero configuration** - Works out of the box
+Omit `editor.command` to inherit the packaged default. The default `hx` and the
+alias `helix` select Yazelix's bundled Helix binary and matching runtime.
 
-**How it works:**
-- Yazelix uses its own Nix-provided Helix binary (`/nix/store/.../bin/hx`)
-- Runtime is automatically set to the matching version (`/nix/store/.../share/helix/runtime`)
-- The bundled editor is the `luccahuguet/yazelix-helix` Steel fork
-- That fork is currently thin but usable without Yazelix, tracks Helix Steel, carries the `--config-dir` override Yazelix needs for managed sessions, and packages reusable Steel plugin defaults
-- Managed Helix source files live under `~/.config/yazelix/helix/`, including `config.toml`, `languages.toml`, `themes/`, and custom Steel plugin files
-- Custom Yazelix-managed themes belong in `~/.config/yazelix/helix/themes/`; native `~/.config/helix/themes/` remains outside Yazelix, and `~/.config/yazelix/user_conf/helix/themes/` is unsupported legacy state
-- No interference with your system's Helix installation
+## Supported Editors
 
-### Using A Custom Helix Fork
+### Yazelix Helix
 
-```toml
-[helix]
+The bundled `luccahuguet/yazelix-helix` fork is the first-class editor path. It
+ships the matching runtime, managed config loading, Steel support, and the
+editor bridge used by existing-pane Yazi opens.
 
-[helix.external]
-binary = "/home/user/helix/target/release/hx"
-runtime_path = "/home/user/helix/runtime"
-```
+Managed source files live under `~/.config/yazelix/helix/`, including
+`config.toml`, `languages.toml`, `themes/`, and Steel plugin files. Native
+`~/.config/helix/` remains user-owned. Run `yzx import helix` when you explicitly
+want to adopt an existing native config.
 
-**Benefits:**
-- ✅ **Full integration** - All yazelix features work if the binary and runtime match
-- ✅ **Use your custom build** - Great for Yazelix Helix fork development
+The semantic root does not support an external Helix binary/runtime pair. Use
+the bundled `hx` or `helix` command so the binary, runtime, and Yazelix bridge
+stay aligned.
 
-**Notes:**
-- Omit `helix.external` to use Yazelix's bundled Helix
-- Set `helix.external` only when you need a user-owned fork based on `luccahuguet/yazelix-helix`
-- Both `binary` and `runtime_path` are required together
-- Vanilla/upstream Helix is not a supported `helix.external` target
-- Yazelix managed Helix requires the fork-only `--config-dir` option, managed config loading, and bridge IPC used by existing-pane Yazi opens
-- `yzx doctor` reports both paths and warns that binary/runtime revision mismatches are user-owned risk
-- ⚠️ **Requires matching runtime** - Version mismatch causes startup errors
-- ⚠️ **Manual configuration** - You must specify the correct binary and runtime path
-
-**Finding your runtime path:**
-```bash
-# For Yazelix Helix fork builds:
-ls ~/helix/runtime  # Should contain themes/, grammars/, queries/ directories
-
-# Verify the binary supports Yazelix managed config mode:
-mkdir -p /tmp/yazelix-helix-probe
-/home/user/helix/target/release/hx --config-dir /tmp/yazelix-helix-probe --version
-```
-
-### Using Neovim
+### Neovim
 
 ```toml
 [editor]
 command = "nvim"
 ```
 
-**Benefits:**
-- ✅ **Full integration** - All yazelix features work (reveal in the Yazi file tree, open in same instance, etc.)
-- ✅ **Smart instance management** - Files open in existing Neovim instance when possible
-- ✅ **Managed pane targeting** - Yazelix finds and reuses your managed Neovim pane deterministically
+Yazelix reuses the managed Neovim pane when possible. Add an editor-local
+binding for `yzx reveal` if you want to reveal the current file in Yazi; see
+[Neovim keybindings](./neovim_keybindings.md).
 
-**Setup Required:**
-- ⚠️ **Add keybinding** - See [Neovim Keybindings](./neovim_keybindings.md) for a recommended reveal binding
-
-**Popular Neovim commands:**
-- `"nvim"` - Neovim from PATH
-- `"/usr/bin/nvim"` - System Neovim with full path
-- `"/nix/store/.../bin/nvim"` - Nix-provided Neovim
-
-### Using Other Editors
+### Other Terminal Editors
 
 ```toml
 [editor]
 command = "vim"
 ```
 
-**Benefits:**
-- ✅ **Works reliably** - Basic Zellij integration (new panes, tab naming)
-- ✅ **Use any editor** - Full flexibility
+Other executable tokens receive basic pane launch, cwd, and tab behavior. They
+do not receive Helix- or Neovim-specific same-instance and reveal integration.
 
-**Limitations:**
-- ❌ **Limited features** - No advanced integration (reveal in the Yazi file tree, same-instance opening)
-- ❌ **No editor-specific shortcuts** - reveal in Yazi won't work without custom integration
+## Managed Editor Behavior
 
-**Popular editor commands:**
-- `"vim"` - Vi/Vim
-- `"nano"` - GNU Nano
-- `"emacs"` - GNU Emacs
-- `"kak"` - Kakoune
-- `"/path/to/custom/editor"` - Custom editor with full path
+- Yazi file opens target the managed `editor` pane
+- Helix and Neovim reuse the existing managed instance when supported
+- Editors launched manually from a shell pane remain ordinary panes
+- `EDITOR` uses the configured command inside the Yazelix environment
+- The managed Helix reveal binding is `Alt+r`
 
-## Integration Features
-
-### Helix-Specific Features (when using Helix)
-
-**Reveal in Yazi (managed binding):**
-- Jump from Helix buffer to the same file in the Yazi file tree
-- Works against the managed sidebar in the current Yazelix tab
-- Default binding: `Alt+r`
-- Managed through Yazelix's Helix config surface instead of `~/.config/helix/config.toml`
-- If you want to adopt an existing personal Helix config, run `yzx import helix`
-- Details: [Helix Keybindings](./helix_keybindings.md)
-
-**File Picker:**
-- Native Helix file picker integration
-- Choose a Helix-local binding that does not conflict with your Yazelix workspace shortcuts
-
-**Steel plugins:**
-- Place custom Steel files below `~/.config/yazelix/helix/steel_plugins`
-- Select child-packaged bundled plugins with `helix.steel_plugins.enabled`
-- Declare custom plugins in `helix.steel_plugins.extra`
-- Only `public_commands` appear in Helix command completion
-- `internal_commands` can be imported for plugin use without leaking into completion
-- `startup_commands` run when the generated Yazelix Steel module loads
-- Minimal example: [hello_yazelix.scm](./examples/helix_steel_plugins/hello_yazelix.scm)
-
-```toml
-[helix]
-
-[helix.steel_plugins]
-enabled = ["splash", "spacemacs_theme"]
-extra = [{ id = "my_picker", source = "my_picker.scm", public_commands = ["my-picker-open"], internal_commands = ["my-picker-refresh"], startup_commands = ["my-picker-refresh"], command_descriptions = { my-picker-open = "Open my custom picker", my-picker-refresh = "Refresh my custom picker state" } }]
-```
-
-For a complete teaching example with the matching manifest entry, see
-[docs/examples/helix_steel_plugins](./examples/helix_steel_plugins/README.md).
-
-**Smart Instance Management:**
-- Opening files from Yazi reuses existing Helix instance when possible
-- New panes created intelligently based on layout
-
-**Buffer Navigation:**
-- Yazelix tracks Helix buffers for navigation features
-
-### Helix Wishlist
-
-These are desired managed-Helix improvements, not current Yazelix support guarantees:
-
-- **Code folding**: a real fold/unfold UI for syntax and LSP folding ranges, with clear indicators and keybindings that fit Helix's modal model
-- **Sticky headers**: pinned context lines for the current function, type, module, or section while scrolling through larger files
-- **Copilot**: a first-class AI completion path that works inside managed Helix without requiring users to assemble their own plugin/runtime setup
-- **Inline git blame**: commit and author context rendered inline in the editor, beyond the default `A-g.b` shell shortcut
-
-### Neovim-Specific Features (when using Neovim)
-
-**Reveal in Yazi (custom binding):**
-- Jump from Neovim buffer to the same file in the Yazi file tree
-- Works against the managed sidebar in the current Yazelix tab
-- Recommended binding: `Alt+r`
-- Recommended command: `yzx reveal`
-- Setup: [Neovim Keybindings](./neovim_keybindings.md)
-
-**Smart Instance Management:**
-- Opening files from Yazi reuses the managed Neovim pane when possible
-- New panes created intelligently based on layout
-
-**Managed Pane Targeting:**
-- Yazelix targets the managed `editor` pane through the pane orchestrator plugin
-- New editor panes are titled `editor` so later opens can reuse them deterministically
-- Editors started manually from an ordinary shell pane are not automatically adopted as the managed `editor` pane
-
-**Command Integration:**
-- Files opened via `:edit` command in existing instances
-- Working directory changed via `:cd` command automatically
-
-### Generic Editor Features (all editors)
-
-**Basic File Opening:**
-- Files open in new Zellij panes
-- Tab naming based on file directory
-- Working directory set correctly
-
-**Zellij Integration:**
-- Proper pane management and focus
-- Terminal multiplexer benefits
-- Generic editors opened manually from shell panes remain ordinary panes; Yazelix-managed routing only applies to the managed `editor` pane
-
-## Troubleshooting
-
-**📋 [Complete Troubleshooting Guide →](./troubleshooting.md)** - Quick fixes for common issues
-
-**Quick reset:** Run `yzx reset config --yes`, then restart Yazelix.
-
-## Advanced Scenarios
-
-### Multiple Helix Versions
-
-If you have multiple Helix installations:
-
-```toml
-[helix]
-
-[helix.external]
-binary = "/opt/helix-custom/bin/hx"
-runtime_path = "/opt/helix-custom/share/helix/runtime"
-```
-
-### Development Setup
-
-For Helix development:
-
-```toml
-[helix]
-
-[helix.external]
-binary = "/home/user/helix/target/release/hx"
-runtime_path = "/home/user/helix/runtime"
-```
-
-### Bundled Helix Configuration
-
-For maximum reliability, keep the default managed Helix path:
-
-```toml
-[editor]
-command = ""
-```
-
-## Home Manager Integration
-
-When using Home Manager, the same options apply:
+## Home Manager
 
 ```nix
 programs.yazelix = {
   enable = true;
-  
-  # Editor configuration
-  editor_command = null;        # Default: yazelix's Helix
-  helix_external = null;        # Default: bundled matching binary/runtime
-  helix_steel_plugins = {
-    enabled = [ "splash" "spacemacs_theme" ];
-    extra = [ ];
-  };
-  
-  # Or custom:
-  # helix_external = {
-  #   binary = "/home/user/helix/target/release/hx";
-  #   runtime_path = "/home/user/helix/runtime";
-  # };
+  editor_command = "nvim";
 };
 ```
 
-See `home_manager/examples/example.nix` for complete configuration examples.
+Leave `editor_command` unset to inherit bundled Helix. Home Manager owns the
+generated `config.toml` when `manage_config = true`, so change the declarative
+option and run `home-manager switch` instead of editing the generated file.
 
-## Common Configuration Examples
+## Troubleshooting
 
-### Most Users (Recommended)
-```toml
-[editor]
-command = ""
+- Run `yzx doctor` for editor and managed-runtime diagnostics
+- Use `yzx reset config --yes` only when you intentionally want to discard the
+  semantic override and return to packaged defaults
+- A custom path ending in `/hx` or `/helix` is rejected because Yazelix cannot
+  prove that its runtime and bridge match that binary
 
-[helix]
-```
-
-### Helix Developer
-```toml
-[helix]
-
-[helix.external]
-binary = "/home/user/helix/target/release/hx"
-runtime_path = "/home/user/helix/runtime"
-```
-
-### Neovim User
-```toml
-[editor]
-command = "nvim"
-```
-
-**Remember:** Add a custom reveal binding to your Neovim config - see [Neovim Keybindings](./neovim_keybindings.md)
-
-### Vim/Other Editor User
-```toml
-[editor]
-command = "vim"
-```
-
-### Custom Helix User (Advanced)
-```toml
-[helix]
-
-[helix.external]
-binary = "/usr/bin/hx"
-runtime_path = "/usr/share/helix/runtime"
-```
-
-## Integration Feature Matrix
-
-| Editor Type | File Opening | Reveal in Sidebar | Same Instance | File Picker | Tab Naming |
-|-------------|--------------|-------------------|---------------|-------------|------------|
-| Yazelix Helix (`helix.external` omitted) | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Bundled Helix ("hx") | ✅ | ✅ | ✅ | ✅ | ✅ |
-| External Helix pair | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Neovim ("nvim") | ✅ | ✅ (with setup) | ✅ | ✅ (Telescope) | ✅ |
-| Vim | ✅ | ❌ | ❌ | ❌ | ✅ |
-| Other Editors | ✅ | ❌ | ❌ | ❌ | ✅ |
-
-**Legend:**
-- **File Opening**: Click files in Yazi to open in editor
-- **Reveal in Sidebar**: your editor-local reveal binding jumps to the file in Yazi
-- **Same Instance**: Files open in existing editor instance when possible
-- **File Picker**: Native file picking integration (Helix: custom binding, Neovim: Telescope/fzf-lua)
-- **Tab Naming**: Zellij tabs named after project/directory
-
-**Notes:**
-- Neovim requires [keybinding setup](./neovim_keybindings.md) for reveal in the Yazi file tree
-- File picker in Neovim works with your existing plugins (Telescope, fzf-lua, etc.)
+See the [troubleshooting guide](./troubleshooting.md) for runtime recovery.

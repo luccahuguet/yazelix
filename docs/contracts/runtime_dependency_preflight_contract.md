@@ -38,8 +38,8 @@ Without a written contract:
   selected entrypoint. It must not silently expand into full doctor or
   install-smoke behavior
 - Verification: automated
-  `nushell/scripts/dev/test_yzx_workspace_commands.nu`; automated
-  `nushell/scripts/dev/test_yzx_doctor_commands.nu`
+  `rust_core/yazelix_core/tests/yzx_control_workspace_surface.rs`; automated
+  `rust_core/yazelix_core/tests/yzx_control_runtime_surface.rs`
 
 #### PRE-002
 - Type: failure_mode
@@ -49,8 +49,8 @@ Without a written contract:
   scripts, and an unavailable selected packaged terminal for new-window launch are
   immediate preflight blockers with direct recovery guidance
 - Verification: automated
-  `nushell/scripts/dev/test_yzx_workspace_commands.nu`; automated
-  `nushell/scripts/dev/test_yzx_generated_configs.nu`
+  `rust_core/yazelix_core/tests/yzx_control_workspace_surface.rs`; automated
+  `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core runtime_materialization`
 
 #### PRE-003
 - Type: behavior
@@ -60,7 +60,7 @@ Without a written contract:
   materializes the missing managed layout before handoff. Unresolved custom
   layout overrides still fail clearly instead of being silently replaced
 - Verification: automated
-  `nushell/scripts/dev/test_yzx_workspace_commands.nu`
+  `rust_core/yazelix_core/tests/yzx_control_workspace_surface.rs`
 
 #### PRE-004
 - Type: ownership
@@ -81,8 +81,8 @@ Without a written contract:
   paths that launch a new terminal window. Current-terminal entrypoints do not
   inherit detached-terminal requirements they do not use
 - Verification: automated
-  `nushell/scripts/dev/test_yzx_workspace_commands.nu`; automated
-  `nushell/scripts/dev/test_yzx_generated_configs.nu`
+  `rust_core/yazelix_core/tests/yzx_control_workspace_surface.rs`; automated
+  `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core runtime_materialization`
 
 ## Behavior
 
@@ -221,9 +221,9 @@ This matrix is intentionally concrete. It exists to stop runtime checks from dri
   - `yzx_repo_validator validate-installed-runtime-contract`
   - `yzx_repo_validator validate-flake-profile-install`
 - integration tests:
-  - `nu nushell/scripts/dev/test_yzx_workspace_commands.nu`
-  - `nu nushell/scripts/dev/test_yzx_doctor_commands.nu`
-  - `nu nushell/scripts/dev/test_yzx_core_commands.nu`
+  - `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core --test yzx_control_workspace_surface`
+  - `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core --test yzx_control_runtime_surface`
+  - `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core runtime_contract`
 - helper tests:
   - `cargo test --manifest-path rust_core/Cargo.toml`
 - CI/contract check: `yzx_repo_validator validate-contracts`

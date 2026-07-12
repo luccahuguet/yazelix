@@ -2,51 +2,31 @@ use std::fmt;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum RuntimeApplyMode {
-    Live,
-    LiveWithPaneRefresh,
-    GeneratedRuntimeRefresh,
     TabSessionRestart,
     ShellTerminalRestart,
     PackageHomeManagerActivation,
-    NeverLive,
 }
 
 impl RuntimeApplyMode {
     pub const ALL: &'static [RuntimeApplyMode] = &[
-        RuntimeApplyMode::Live,
-        RuntimeApplyMode::LiveWithPaneRefresh,
-        RuntimeApplyMode::GeneratedRuntimeRefresh,
         RuntimeApplyMode::TabSessionRestart,
         RuntimeApplyMode::ShellTerminalRestart,
         RuntimeApplyMode::PackageHomeManagerActivation,
-        RuntimeApplyMode::NeverLive,
     ];
 
     pub fn code(self) -> &'static str {
         match self {
-            RuntimeApplyMode::Live => "live",
-            RuntimeApplyMode::LiveWithPaneRefresh => "live_with_pane_refresh",
-            RuntimeApplyMode::GeneratedRuntimeRefresh => "generated_runtime_refresh",
             RuntimeApplyMode::TabSessionRestart => "tab_session_restart",
             RuntimeApplyMode::ShellTerminalRestart => "shell_terminal_restart",
             RuntimeApplyMode::PackageHomeManagerActivation => "package_home_manager_activation",
-            RuntimeApplyMode::NeverLive => "never_live",
         }
     }
 
     pub fn label(self) -> &'static str {
         match self {
-            RuntimeApplyMode::Live => "Takes effect now",
-            RuntimeApplyMode::LiveWithPaneRefresh => "Takes effect now",
-            RuntimeApplyMode::GeneratedRuntimeRefresh => {
-                "Takes effect after generated config refresh"
-            }
-            RuntimeApplyMode::TabSessionRestart => "Takes effect after Yazelix restart",
-            RuntimeApplyMode::ShellTerminalRestart => "Takes effect after Yazelix restart",
-            RuntimeApplyMode::PackageHomeManagerActivation => {
-                "Takes effect after Home Manager switch"
-            }
-            RuntimeApplyMode::NeverLive => "Not applicable",
+            RuntimeApplyMode::TabSessionRestart => "Fresh Yazelix window",
+            RuntimeApplyMode::ShellTerminalRestart => "New shell or terminal",
+            RuntimeApplyMode::PackageHomeManagerActivation => "After Home Manager switch",
         }
     }
 }
@@ -62,13 +42,9 @@ impl std::str::FromStr for RuntimeApplyMode {
 
     fn from_str(raw: &str) -> Result<Self, Self::Err> {
         match raw {
-            "live" => Ok(RuntimeApplyMode::Live),
-            "live_with_pane_refresh" => Ok(RuntimeApplyMode::LiveWithPaneRefresh),
-            "generated_runtime_refresh" => Ok(RuntimeApplyMode::GeneratedRuntimeRefresh),
             "tab_session_restart" => Ok(RuntimeApplyMode::TabSessionRestart),
             "shell_terminal_restart" => Ok(RuntimeApplyMode::ShellTerminalRestart),
             "package_home_manager_activation" => Ok(RuntimeApplyMode::PackageHomeManagerActivation),
-            "never_live" => Ok(RuntimeApplyMode::NeverLive),
             other => Err(format!("unsupported runtime apply mode `{other}`")),
         }
     }

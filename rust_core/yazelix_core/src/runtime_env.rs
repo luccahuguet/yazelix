@@ -344,8 +344,8 @@ fn validate_helix_editor_runtime_pair(request: &RuntimeEnvComputeRequest) -> Res
         return Err(CoreError::classified(
             ErrorClass::Config,
             "helix_external_conflicts_with_editor",
-            "helix.external is set while editor.command points at a non-Helix editor.",
-            "Remove helix.external for non-Helix editors, or leave editor.command empty to use the external Helix pair.",
+            "A retained Classic Helix binary/runtime pair conflicts with editor.command.",
+            "Use the bundled editor.command = \"hx\", or select a non-Helix editor command.",
             serde_json::json!({
                 "editor_command": editor_command,
             }),
@@ -355,8 +355,8 @@ fn validate_helix_editor_runtime_pair(request: &RuntimeEnvComputeRequest) -> Res
         return Err(CoreError::classified(
             ErrorClass::Config,
             "helix_external_required",
-            "A custom Helix binary must be configured as a binary/runtime pair.",
-            "Set helix.external = { binary = \"/path/to/hx\", runtime_path = \"/path/to/helix/runtime\" } instead of setting only editor.command.",
+            "A custom Helix binary cannot use Yazelix's packaged Helix runtime safely.",
+            "Use editor.command = \"hx\" or \"helix\" for the bundled managed editor, or select a non-Helix editor.",
             serde_json::json!({
                 "editor_command": editor_command,
             }),

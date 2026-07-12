@@ -6,7 +6,6 @@ use serde_json::Value as JsonValue;
 use std::collections::BTreeSet;
 use std::fs;
 use std::path::{Path, PathBuf};
-use yazelix_core::ZELLIJ_ACTIONS;
 use yazelix_core::settings_surface::parse_config_value;
 
 const DOCS_INDEX: &str = "docs/README.md";
@@ -102,7 +101,6 @@ pub fn validate_docs_experience(repo_root: &Path) -> Result<ValidationReport, St
         }
     }
     validate_internal_markdown_links(repo_root, &mut report.errors)?;
-    validate_source_backed_keybinding_docs(repo_root, &mut report.errors)?;
     validate_source_backed_toml_examples(repo_root, &mut report.errors)?;
 
     Ok(report)
@@ -233,46 +231,6 @@ fn relative_path(repo_root: &Path, path: &Path) -> String {
         .into_owned()
 }
 
-fn validate_source_backed_keybinding_docs(
-    repo_root: &Path,
-    errors: &mut Vec<String>,
-) -> Result<(), String> {
-    let docs = read_repo_text(repo_root, "docs/keybindings.md")?;
-    let expected = ZELLIJ_ACTIONS
-        .iter()
-        .find(|spec| spec.action.local_id == "toggle_editor_right_sidebar_focus")
-        .and_then(|spec| spec.action.default_keys.first().copied())
-        .ok_or_else(|| {
-            "Classic action registry is missing a default for toggle_editor_right_sidebar_focus"
-                .to_string()
-        })?;
-    let documented = markdown_table_key_for_action(&docs, "toggle_editor_right_sidebar_focus");
-    if documented.as_deref() != Some(expected) {
-        errors.push(format!(
-            "docs/keybindings.md must document toggle_editor_right_sidebar_focus default key `{expected}`, got `{}`",
-            documented.unwrap_or_else(|| "<missing>".to_string())
-        ));
-    }
-    Ok(())
-}
-
-fn markdown_table_key_for_action(raw: &str, action: &str) -> Option<String> {
-    raw.lines().find_map(|line| {
-        if !line.contains(&format!("`{action}`")) {
-            return None;
-        }
-        let cells = line
-            .split('|')
-            .map(str::trim)
-            .filter(|cell| !cell.is_empty())
-            .collect::<Vec<_>>();
-        if cells.len() < 2 {
-            return None;
-        }
-        Some(cells[1].trim_matches('`').to_string())
-    })
-}
-
 fn validate_source_backed_toml_examples(
     repo_root: &Path,
     errors: &mut Vec<String>,
@@ -282,12 +240,8 @@ fn validate_source_backed_toml_examples(
     let raw = fs::read_to_string(&docs_path)
         .map_err(|error| format!("Failed to read {}: {error}", docs_path.display()))?;
     let mut checked_count = 0usize;
-    let mut saw_usage_periods_example = false;
     for snippet in fenced_code_blocks(&raw, &["toml"]) {
         checked_count += 1;
-        if snippet.contains("codex_usage_periods") {
-            saw_usage_periods_example = true;
-        }
         let parsed = match parse_config_value(Path::new("config.toml"), &snippet) {
             Ok(parsed) => parsed,
             Err(error) => {
@@ -309,12 +263,6 @@ fn validate_source_backed_toml_examples(
     if checked_count == 0 {
         errors.push(
             "docs/zellij-configuration.md must contain at least one TOML settings example"
-                .to_string(),
-        );
-    }
-    if !saw_usage_periods_example {
-        errors.push(
-            "docs/zellij-configuration.md must keep a source-backed codex_usage_periods TOML example"
                 .to_string(),
         );
     }
@@ -382,9 +330,10 @@ fn collect_json_leaf_paths_inner(value: &JsonValue, prefix: &str, out: &mut Vec<
 }
 
 fn config_leaf_is_supported(leaf: &str, supported_fields: &BTreeSet<String>) -> bool {
-    supported_fields
-        .iter()
-        .any(|field| leaf == field || leaf.starts_with(&format!("{field}.")))
+    leaf.starts_with("popups.")
+        || supported_fields
+            .iter()
+            .any(|field| leaf == field || leaf.starts_with(&format!("{field}.")))
 }
 
 #[cfg(test)]
@@ -426,35 +375,15 @@ mod tests {
             &repo,
             MAIN_CONFIG_CONTRACT,
             r#"[fields]
-"zellij.codex_usage_periods" = { kind = "list" }
-"zellij.keybindings" = { kind = "table" }
+"keybindings.agent" = { kind = "string" }
+"bar.widgets" = { kind = "list" }
 "#,
         );
-        write(
-            &repo,
-            "config_default.toml",
-            r#"[zellij.keybindings]
-toggle_editor_right_sidebar_focus = ["Ctrl Shift Y"]
-"#,
-        );
-        write(
-            &repo,
-            "docs/keybindings.md",
-            "| Action id | Default key |\n| --- | --- |\n| `toggle_editor_right_sidebar_focus` | `Ctrl Shift Y` |\n",
-        );
+        write(&repo, "docs/keybindings.md", "# Keybindings\n");
         write(
             &repo,
             "docs/zellij-configuration.md",
-            r#"# Zellij
-
-```toml
-[zellij]
-codex_usage_periods = ["5h", "week"]
-
-[zellij.keybindings]
-toggle_editor_right_sidebar_focus = ["Ctrl Shift Y"]
-```
-"#,
+            "# Zellij\n\n```toml\n[keybindings]\nagent = \"Alt Shift L\"\n```\n",
         );
         (temp, repo)
     }
@@ -518,26 +447,6 @@ toggle_editor_right_sidebar_focus = ["Ctrl Shift Y"]
                 .errors
                 .iter()
                 .any(|error| error.contains("does-not-exist.md"))
-        );
-    }
-
-    // Regression: source-backed keybinding rows must track config_default.toml instead of drifting silently.
-    #[test]
-    fn docs_experience_validator_rejects_stale_keybinding_row() {
-        let (_temp, repo) = write_minimal_docs_fixture();
-        write(
-            &repo,
-            "docs/keybindings.md",
-            "| Action id | Default key |\n| --- | --- |\n| `toggle_editor_right_sidebar_focus` | `Ctrl y` |\n",
-        );
-
-        let report = validate_docs_experience(&repo).unwrap();
-
-        assert!(
-            report
-                .errors
-                .iter()
-                .any(|error| error.contains("Ctrl Shift Y"))
         );
     }
 

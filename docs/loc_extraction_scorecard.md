@@ -120,7 +120,7 @@ For each accepted tradeoff, record:
 - the user-visible status text, apply mode, or doctor/config UI wording that tells the truth
 - the condition that would justify reopening the tradeoff later
 
-The popup extraction is the reference example. `zellij.popup_width_percent` and `zellij.popup_height_percent` are generated `yzpp` plugin config, so they use `generated_runtime_refresh` rather than `live_with_pane_refresh`. That is an accepted modularity cost because popup lifecycle, KDL spec parsing, duplicate prevention, and close hooks live in `yazelix-zellij-popup`, while the main repo deletes the old transient-pane adapter and keeps only a thin generated-spec integration.
+The final Classic root cutover is the reference example. Retired `zellij.popup_width_percent`, `zellij.popup_height_percent`, and live-refresh apply modes were deleted instead of preserved through adapters. The surviving `popup.side_margin`, `popup.vertical_margin`, and `popups.<id>` meanings use the launch snapshot and report `tab_session_restart`. Classic keeps only the fixed runtime projection needed for the observation release, and the Nova source swap deletes that projection rather than porting it.
 
 ## Report Template
 

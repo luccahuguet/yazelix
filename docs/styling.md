@@ -1,15 +1,8 @@
 # Styling and Themes
 
-## Yazelix Appearance Mode
+## Native Appearance Ownership
 
-Set the global generated appearance in `~/.config/yazelix/config.toml`:
-
-```toml
-[appearance]
-mode = "dark"
-```
-
-`dark` is the default. `light` switches the remaining Yazelix-owned generated themes while preserving explicit `zellij.theme` and `yazi.theme` choices. Mars appearance is independent and belongs under `[mars.appearance]` in its native config.
+The semantic root does not synchronize appearance across tools. Mars, Zellij, Yazi, and Helix each own their native appearance settings under `~/.config/yazelix/`.
 
 ## Mars Transparency
 

@@ -1,12 +1,9 @@
-# Config Runtime Control-Plane Contract Item Pilot
+# Config Runtime Control-Plane Contract
 
 ## Summary
 
-This pilot applies the canonical contract-item schema to one representative
-mixed-ownership subsystem: config normalization, runtime-env derivation, helper
-transport, and config-surface parity. The pilot is planning-only. It does not
-change product behavior, but it does make the surviving owners, bridge debt,
-verification paths, and deletion implications explicit.
+This contract defines the current owners for config normalization, runtime-env
+derivation, private helper transport, and config-surface parity.
 
 ## Why
 
@@ -31,7 +28,6 @@ of the protocol pressure points at once:
   remaining helper-only slices
 - config-surface parity between `config_default.toml` and
   `home_manager/module.nix`
-- pilot findings about weak traceability and duplicate-owner debt
 - no product behavior changes
 
 ## Contract Items
@@ -73,12 +69,12 @@ of the protocol pressure points at once:
 #### CRCP-003
 - Type: failure_mode
 - Status: live
-- Owner: Nushell and POSIX helper-resolution bridge
+- Owner: POSIX managed-tool helper resolution
 - Statement: Packaged runtimes must prefer
   `$YAZELIX_RUNTIME_DIR/libexec/yzx_core` for the remaining helper-only
   runtime glue. Source checkouts may use `YAZELIX_YZX_CORE_BIN` or the freshest
   local helper build, but missing or broken helpers must fail loudly and must
-  not silently revive deleted Nushell parser logic.
+  not silently revive deleted shell parser logic.
 - Verification: automated
   `cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_maintainer --bin yzx_repo_validator -- validate-installed-runtime-contract`
 - Source: `docs/contracts/rust_nushell_bridge_contract.md`;
@@ -116,48 +112,27 @@ of the protocol pressure points at once:
 - Deletion note: do not recreate a Nushell helper bridge as a compatibility
   fallback
 
-## Pilot Findings
+## Traceability Outcome
 
-### Duplicate-owner and deletion findings
-
-- `yzx_core_bridge.nu` is deleted. Helper discovery, JSON-envelope parsing, and
-  startup failure rendering no longer have a Nushell owner
-
-### Weak traceability finding
-
-- `nushell/scripts/dev/test_yzx_generated_configs.nu`,
-  `nushell/scripts/dev/test_yzx_core_commands.nu`, and
-  `nushell/scripts/dev/test_yzx_workspace_commands.nu` still open with the broad
-  header `# Defends: docs/contracts/test_suite_governance.md`
-- For this pilot, the helper-resolution and config-normalize cases in
-  `test_yzx_generated_configs.nu` already map naturally to `CRCP-001` and
-  `CRCP-003`. That means the validator ratchet should require contract IDs for
-  touched default-lane tests before it tries to backfill the untouched backlog
-
-### Schema outcome
-
-- the schema works as-is for a mixed subsystem
-- `quarantine` status is sufficient to describe temporary bridge ownership
-  without pretending the bridge is canonical product behavior
-- no schema edits are required before broad validator rollout
+- The broad governed Nu suites were deleted after their durable behavior moved
+  to `rust_core/yazelix_core/tests/yzx_control_runtime_surface.rs`,
+  `rust_core/yazelix_core/tests/yzx_control_workspace_surface.rs`, and focused
+  Rust module tests
+- Contract validation remains the current traceability owner; deleted Nu files
+  are not retained as verification references
 
 ## Non-goals
 
-- reviving the deleted bridge during the pilot
+- reviving the deleted bridge
 - backfilling every historical contract with IDs
 - remapping every governed test in one pass
-- choosing the final bridge-collapse implementation strategy
 
 ## Acceptance Cases
 
-1. One mixed subsystem has a small set of indexed items with owner, status,
-   verification, and deletion implications
-2. At least one temporary bridge owner is marked as quarantine instead of being
-   left implicit
-3. At least one existing weak traceability pattern is named concretely without
-   deleting the test yet
-4. The pilot can feed public protocol docs, validators, and later audits
-   without first rewriting the whole repo
+1. Rust is the single config-normalization and runtime-env policy owner
+2. POSIX launchers resolve the matching private helper explicitly and fail visibly
+3. Home Manager and the sparse semantic root derive their mapping from maintained contract metadata
+4. Deleted Nushell bridges are not restored as compatibility fallbacks
 
 ## Verification
 

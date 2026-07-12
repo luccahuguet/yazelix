@@ -1,8 +1,5 @@
 //! Zellij integration commands for `yzx_control`.
 
-use crate::bridge::CoreError;
-use crate::pane_orchestrator_client::run_pane_orchestrator_command;
-
 mod pipe;
 mod status;
 mod workspace;
@@ -34,12 +31,6 @@ pub const INTERNAL_ZELLIJ_CONTROL_SUBCOMMANDS: &[&str] = &[
     "open-editor-cwd",
     "open-terminal",
 ];
-
-pub(crate) fn run_pane_orchestrator_runtime_config_reload(
-    payload: &str,
-) -> Result<String, CoreError> {
-    run_pane_orchestrator_command("reload_runtime_config", payload)
-}
 
 pub fn internal_zellij_control_subcommands_usage() -> String {
     INTERNAL_ZELLIJ_CONTROL_SUBCOMMANDS.join("|")

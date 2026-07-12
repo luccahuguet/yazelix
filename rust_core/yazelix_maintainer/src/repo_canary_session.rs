@@ -41,7 +41,7 @@ pub fn run_disposable_canary_session(
                 "temp_home": plan.temp_home,
                 "workspace_dir": plan.workspace_dir,
                 "evidence_dir": plan.evidence_dir,
-                "command": "nix build --no-link --print-out-paths .#yazelix; <out>/bin/yzx enter --path <workspace> --with core.skip_welcome_screen=true --with zellij.screen_saver_enabled=false",
+                "command": "nix build --no-link --print-out-paths .#yazelix; <out>/bin/yzx enter --path <workspace> --with welcome.enabled=false",
             })
         );
         return Ok(());
@@ -65,9 +65,7 @@ pub fn run_disposable_canary_session(
             "--path",
             workspace_arg.as_str(),
             "--with",
-            "core.skip_welcome_screen=true",
-            "--with",
-            "zellij.screen_saver_enabled=false",
+            "welcome.enabled=false",
         ])
         .env("HOME", &plan.temp_home)
         .env("XDG_CONFIG_HOME", plan.temp_home.join(".config"))

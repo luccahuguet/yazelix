@@ -73,27 +73,25 @@ If you already have your own Home Manager flake, the minimal setup is:
 
 `terminal` controls the packaged terminal Yazelix launches. Mars is the only packaged terminal; configure Ghostty, Kitty, Rio, WezTerm, Foot, Ratty, or another host terminal to run `yzx enter`
 
-When `manage_config = true`, Home Manager can also own user-defined popup surfaces. The default `zenith` popup is expressed through `custom_popups`, so users can edit it or set the list to `[]` to remove it:
+When `manage_config = true`, Home Manager can also own user-defined popup surfaces through the Nova-shaped `popups` attribute set:
 
 ```nix
 {
   programs.yazelix = {
     enable = true;
     manage_config = true;
-    custom_popups = [
-      {
-        id = "zenith";
-        command = [ "zenith" ];
-        keybindings = [ "Alt Shift I" ];
+    popups = {
+      zenith = {
+        command = "zenith";
+        keybinding = "Alt Shift I";
         keep_alive = true;
-      }
-      {
-        id = "btop";
-        command = [ "btop" ];
-        keybindings = [ "Alt Shift Y" ];
+      };
+      btop = {
+        command = "btop";
+        keybinding = "Alt Shift Y";
         keep_alive = true;
-      }
-    ];
+      };
+    };
   };
 }
 ```
@@ -136,12 +134,13 @@ Optional helper tools can also be turned off when you want a smaller runtime and
       poppler = "off";
       resvg = "off";
     };
-    show_macchina_on_welcome = false;
+    manage_config = true;
+    welcome_enabled = false;
   };
 }
 ```
 
-Coarser Yazelix subsystems use `components`. Disabling `screen` requires skipping the welcome animation and screen saver; disabling `cursors` removes Yazelix cursor shader assets and cursor config ownership from the runtime
+Coarser Yazelix subsystems use `components`. Disabling `screen` requires Home Manager ownership of `config.toml` with the welcome disabled; disabling `cursors` removes Yazelix cursor shader assets and cursor config ownership from the runtime
 
 ```nix
 {
@@ -151,8 +150,8 @@ Coarser Yazelix subsystems use `components`. Disabling `screen` requires skippin
       cursors = false;
       screen = false;
     };
-    skip_welcome_screen = true;
-    screen_saver_enabled = false;
+    manage_config = true;
+    welcome_enabled = false;
   };
 }
 ```
@@ -193,11 +192,9 @@ For a smaller advanced Home Manager install, host-source tools you already manag
       screen = false;
     };
 
-    show_macchina_on_welcome = false;
-    skip_welcome_screen = true;
-    screen_saver_enabled = false;
+    welcome_enabled = false;
 
-    zellij_widget_tray = [
+    bar_widgets = [
       "session"
       "editor"
       "shell"
@@ -205,8 +202,6 @@ For a smaller advanced Home Manager install, host-source tools you already manag
       "cpu"
       "ram"
     ];
-    zellij_widget_frame = "none";
-    zellij_widget_separator = "dot";
     agent_usage_programs = [ ];
   };
 }
@@ -222,9 +217,9 @@ Feature tradeoffs:
 - Host Helix may not match the Yazelix Steel fork behavior
 - `steel = "off"` removes Steel authoring commands
 - `p7zip`, `poppler`, and `resvg` disable archive, PDF, and SVG preview helpers
-- `components.screen = false` removes `yzx screen` and requires welcome and screen-saver behavior to stay disabled
+- `components.screen = false` removes `yzx screen` and requires `manage_config = true` with `welcome_enabled = false`
 - `components.cursors = false` removes Yazelix cursor shader assets and hides cursor fields from the config UI
-- `agent_usage_programs = [ ]` is correct only when `claude_usage` and `codex_usage` are removed from `zellij_widget_tray` or intentionally host-provided
+- `agent_usage_programs = [ ]` is correct only when `claude_usage` and `codex_usage` are removed from `bar_widgets` or intentionally host-provided
 
 See [Package sizes](../docs/package_sizes.md) for the reporter command and current closure measurements
 

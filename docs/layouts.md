@@ -5,34 +5,19 @@ Yazelix ships one managed sidebar family from the in-tree `rust_core/yazelix_zel
 - `yzx_side.kdl` for sidebar mode
 - `yzx_side.swap.kdl` for sidebar swap layouts
 
-Set the file-open behavior in `config.toml`:
+Configure the managed agent command in `config.toml`:
 
 ```toml
-[editor]
-hide_sidebar_on_file_open = false
-
-[workspace]
-
-[workspace.left_sidebar]
-command = "yzx"
-args = ["sidebar", "yazi"]
-width_percent = 20
-
-[workspace.right_sidebar]
-command = "yzx"
-args = ["agent"]
-width_percent = 40
+[agent]
+command = "auto"
+args = []
 ```
 
-`editor.hide_sidebar_on_file_open = true` hides the managed sidebar after opening a file from Yazi while keeping new tabs on the normal managed-sidebar startup layout. `Alt+Shift+H`, `Ctrl+y`, `Ctrl+Shift+Y`, and `yzx reveal` remain available because the managed side panes still exist.
+The Classic bridge keeps the packaged left Yazi sidebar and current right agent pane fixed. `agent.command = "auto"` uses provider discovery; set one executable and its argument list to use a different agent command. Sidebar command, width, and file-open hiding fields are retired rather than carried into the Nova root
 
 The directional surface layer follows HJKL placement: `Alt+Shift+H` toggles the left sidebar, `Alt+Shift+J` toggles the bottom popup, `Alt+Shift+K` toggles the top popup, and `Alt+Shift+L` toggles the right agent sidebar.
 
-`workspace.left_sidebar.width_percent` controls the open left sidebar width as a percentage of the tab. With the default launcher, that sidebar is the Yazi file tree. Valid range: `1` to `48`.
-
-`workspace.right_sidebar.width_percent` controls the open right sidebar width as a percentage of the tab. The default right sidebar launches `yzx agent`, which starts host-installed `codex` when it is on `PATH` and otherwise opens a normal shell with setup guidance. Valid range: `1` to `48`.
-
-`workspace.left_sidebar.command` / `args` and `workspace.right_sidebar.command` / `args` control the terminal side surfaces launched in the managed sidebar slots. Set `args` explicitly for tools that need them, such as `["status"]` for `lazygit status`. The right sidebar can run another agent or any non-agent terminal command. Custom launchers still run inside managed panes named `sidebar` and `agent`; the pane orchestrator keeps owning sidebar identity, focus, and layout state.
+The final Classic runtime still implements `Alt+Shift+L` through its existing right agent pane. The source swap changes that surface to Nova's managed agent popup. `Ctrl+Shift+Y` is therefore a Classic-only focus shortcut and is not part of the Nova root contract
 
 ## Layout Ownership
 
@@ -53,9 +38,9 @@ After changing built-in layouts, run `cargo test --manifest-path rust_core/Cargo
 
 The supported customization paths are:
 
-- Use `workspace.left_sidebar.*` and `workspace.right_sidebar.*` for custom side-surface launchers
-- Edit `rust_core/yazelix_zellij_config_pack/layouts/yzx_side.kdl` to change startup panes
-- Edit `rust_core/yazelix_zellij_config_pack/layouts/yzx_side.swap.kdl` to tweak built-in swap layouts
+- Use `agent.command` and `agent.args` for the managed agent command
+- Use native `~/.config/yazelix/zellij/config.kdl` for supported Zellij preferences
+- Edit the in-tree config-pack layouts only when maintaining the packaged Classic layout
 
 Yazelix does not currently expose a second declarative layout-profile language. Keep complex custom layout work in KDL so the generated runtime, Zellij, and the workspace contract share the same source files.
 

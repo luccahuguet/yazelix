@@ -2,14 +2,9 @@
 
 mod app;
 mod apply_adapter;
-mod custom_popups;
 mod details;
-mod keybindings;
 mod model_builder;
 
-use crate::action_registry::{
-    YAZI_ACTIONS, YazelixActionMetadata, ZELLIJ_ACTIONS, ZELLIJ_NATIVE_KEYBINDINGS,
-};
 use crate::active_config_surface::{PrimaryConfigPaths, primary_config_paths};
 use crate::bridge::{CoreError, ErrorClass};
 use crate::config_normalize::{ConfigDiagnostic, ConfigDiagnosticReport, NormalizeConfigRequest};
@@ -26,8 +21,7 @@ use crate::settings_surface::{
     sparse_config_is_semantically_empty,
 };
 use crate::user_config_paths::{self, CURRENT_MANAGED_CONFIG_FILE_NAMES, SETTINGS_CONFIG};
-use ratatui::style::{Color, Modifier, Style};
-use ratatui::text::{Line, Span};
+use ratatui::text::Line;
 use serde_json::{Map as JsonMap, Value as JsonValue, json};
 use std::collections::BTreeSet;
 use std::fs;
@@ -40,14 +34,11 @@ use yazelix_cursors::CursorRegistry;
 
 pub use app::run_config_ui;
 use apply_adapter::apply_after_field_write;
-use custom_popups::*;
 use details::render_details;
-use keybindings::*;
 pub use model_builder::build_config_ui_model;
 use model_builder::{
-    apply_contract_path_for_setting_path, apply_mode_for_config_owner, build_field_row,
-    classify_path_owner, default_main_setting_value_for_ui, path_is_read_only, path_present,
-    read_settings_for_edit, validate_patched_settings_for_ui, write_settings_edit,
+    classify_path_owner, path_is_read_only, path_present, read_settings_for_edit,
+    validate_patched_settings_for_ui, write_settings_edit,
 };
 use ratconfig::patch::{PatchMutation, PatchOutcome};
 pub use ratconfig::{
@@ -60,12 +51,12 @@ pub use ratconfig::{
 };
 use ratconfig::{
     CrosstermRunnerError, build_toml_document_fields, collect_config_ui_schema_fields,
-    config_contract_fields_from_toml, config_key_style, config_ui_metadata_from_toml,
-    default_field_detail_lines, detail_line, diagnostic_detail_lines, file_action_detail_lines,
-    get_json_path, is_scalar_enum_field, metadata_key_style, multi_choice_detail_lines,
-    native_status_detail_lines, run_config_ui_with_details as run_ratconfig_config_ui_with_details,
-    schema_tabs, sidecar_detail_lines, single_choice_detail_lines,
-    single_choice_field_detail_lines, state_label, tab_index, toml_value_to_json,
+    config_contract_fields_from_toml, config_ui_metadata_from_toml, default_field_detail_lines,
+    diagnostic_detail_lines, file_action_detail_lines, get_json_path, is_scalar_enum_field,
+    multi_choice_detail_lines, native_status_detail_lines,
+    run_config_ui_with_details as run_ratconfig_config_ui_with_details, schema_tabs,
+    sidecar_detail_lines, single_choice_detail_lines, single_choice_field_detail_lines, tab_index,
+    toml_value_to_json,
 };
 const DEFAULT_TABS: &[&str] = &[
     "general",

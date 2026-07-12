@@ -35,7 +35,6 @@ package docs, and terminal comparison matrix.
 | Editor choice | Support level | Managed editor pane | Yazi open/reveal integration | Notes |
 | --- | --- | --- | --- | --- |
 | Bundled Yazelix Helix | `supported`, default | `supported` | `supported`; `Alt+r` reveal is managed through Yazelix Helix config | Uses the `luccahuguet/yazelix-helix` fork with the `--config-dir` support Yazelix needs |
-| Yazelix-compatible external Helix fork | `supported` for fork development | `supported` when `helix.external` points to matching binary and runtime | `supported` when the fork keeps Yazelix-compatible config/runtime behavior | Vanilla/upstream Helix is not a supported `helix.external` target |
 | Neovim | `supported` | `supported` | `supported` with a user/editor-local reveal binding such as `yzx reveal` | Yazelix targets the managed Neovim pane deterministically |
 | Vim, Kakoune, Nano, Emacs, and other terminal editors | `best-effort` | Basic pane launch only | Limited; no first-party same-instance or reveal contract | Configure with `editor.command`; Emacs has a separate low-priority future compatibility bead |
 | Editors started manually from a shell pane | ordinary pane, not managed | `unsupported` as managed editor panes | `unsupported` for managed Yazi routing | Yazelix does not auto-adopt shell-opened editors as the managed `editor` pane |
@@ -44,12 +43,11 @@ package docs, and terminal comparison matrix.
 
 | Shell | Support level | Config value | Notes |
 | --- | --- | --- | --- |
-| Nushell | `supported`, default | `shell.default_shell = "nu"` | Default session shell; Yazelix owns a small runtime Nushell UX surface |
-| Bash | `supported` | `shell.default_shell = "bash"` | Supported generated initializer path |
-| Fish | `supported` | `shell.default_shell = "fish"` | Supported generated initializer path |
-| Zsh | `supported` | `shell.default_shell = "zsh"` | Supported generated initializer path |
-| Xonsh | `supported`, host-owned | `shell.default_shell = "xonsh"` | Yazelix generates `xonsh/yazelix_init.xsh` and `shell_xonsh.xsh`; the host must provide `xonsh` on `PATH` and source the hook from xonsh rc for native startup integration |
-| Other shells | `unsupported` as `default_shell` enum values | not accepted | Use one of the supported enum values, or launch another shell manually inside a pane |
+| Nushell | `supported`, default | `shell.program = "nu"` | Default session shell; Yazelix owns a small runtime Nushell UX surface |
+| Bash | `supported` | `shell.program = "bash"` | Supported generated initializer path |
+| Fish | `supported` | `shell.program = "fish"` | Supported generated initializer path |
+| Zsh | `supported` | `shell.program = "zsh"` | Supported generated initializer path |
+| Other shells | `unsupported` as `shell.program` enum values | not accepted | Use one of the supported enum values, or launch another shell manually inside a pane |
 
 ## Platform Matrix
 

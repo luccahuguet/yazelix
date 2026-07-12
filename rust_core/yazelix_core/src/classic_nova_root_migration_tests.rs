@@ -103,14 +103,7 @@ keep_alive = true
 // Regression: minimal Classic-only editor semantics are not mistaken for Nova configuration.
 #[test]
 fn migrates_classic_only_editor_tokens() {
-    for (index, (command, expected)) in [
-        ("hx", "[editor]\ncommand = \"hx\"\n"),
-        ("helix", "[editor]\ncommand = \"hx\"\n"),
-        ("", ""),
-    ]
-    .into_iter()
-    .enumerate()
-    {
+    for (index, command) in ["hx", "helix", ""].into_iter().enumerate() {
         let config_dir = tempdir().unwrap();
         let config = config_dir.path().join("config.toml");
         let raw = format!("[editor]\ncommand = {command:?}\n");
@@ -124,7 +117,15 @@ fn migrates_classic_only_editor_tokens() {
         .unwrap();
 
         assert_eq!(result.status, ClassicNovaMigrationStatus::Migrated);
-        assert_eq!(fs::read_to_string(&config).unwrap(), expected);
+        assert_eq!(fs::read_to_string(&config).unwrap(), "");
+
+        let second = migrate_with(
+            &request(config_dir.path()),
+            "20260712_010204",
+            &RealTransactionIo,
+        )
+        .unwrap();
+        assert_eq!(second.status, ClassicNovaMigrationStatus::NovaUnchanged);
         assert_eq!(
             fs::read_to_string(result.backup_path.unwrap()).unwrap(),
             raw

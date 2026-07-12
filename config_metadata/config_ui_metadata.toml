@@ -34,7 +34,7 @@ help = "Mars native configuration"
 
 [tabs.appearance]
 label = "appearance"
-help = "Theme, chrome, and screen saver presentation"
+help = "Terminal-owned appearance; edit Mars values from the terminal tab"
 
 [tabs.cursors]
 label = "cursors"
@@ -50,7 +50,7 @@ help = "Yazi command, plugins, theme, and sorting behavior"
 
 [tabs.keybindings]
 label = "keybindings"
-help = "Future action and keybinding ownership controls"
+help = "Managed surface chords and native keymap ownership"
 
 [tabs.shell]
 label = "shell"
@@ -58,7 +58,7 @@ help = "Default shell and generated shell hook surfaces"
 
 [tabs.advanced]
 label = "advanced"
-help = "Low-level runtime paths and settings most users should not need"
+help = "Diagnostics and low-level settings most users should not need"
 
 [fields."open.log_level"]
 tab = "advanced"
@@ -106,7 +106,7 @@ help = "Set the chord that toggles the managed config popup"
 
 [fields."keybindings.agent"]
 tab = "keybindings"
-help = "Set the chord that hides or shows the managed agent popup"
+help = "Set the chord that opens the managed agent surface"
 
 [fields."keybindings.git"]
 tab = "keybindings"

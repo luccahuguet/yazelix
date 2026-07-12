@@ -109,7 +109,7 @@ keep_alive = true
     );
     assert_eq!(
         value_at(&translation.root, "editor.command").and_then(Value::as_str),
-        Some("hx")
+        None
     );
     assert_eq!(
         value_at(&translation.root, "shell.program").and_then(Value::as_str),

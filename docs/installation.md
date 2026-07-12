@@ -485,9 +485,9 @@ Package-set users can also use the default overlay:
 
 `host` mode removes that tool from the Yazelix runtime export and lets the inherited `PATH` provide the required command. Run `yzx doctor` after switching; it reports missing host-sourced commands from the runtime manifest, warning for required commands and treating default optional integrations such as `mise` and `tombi` as informational when absent.
 
-`off` mode is supported for the first optional helper slice: `steel`, `macchina`, `p7zip`, `poppler`, and `resvg`. Disabled helpers are omitted from the runtime package/export and reported by `yzx doctor` as intentional disablement. If `macchina = "off"`, set `show_macchina_on_welcome = false`.
+`off` mode is supported for the first optional helper slice: `steel`, `macchina`, `p7zip`, `poppler`, and `resvg`. Disabled helpers are omitted from the runtime package/export and reported by `yzx doctor` as intentional disablement. If `macchina = "off"`, enable Home Manager config ownership and set `welcome_enabled = false`.
 
-Home Manager and `mkYazelix` also accept component toggles for `cursors` and `screen`. `components.cursors = false` removes Yazelix cursor shader assets and the default cursor sidecar from the runtime tree; the config UI hides standalone cursor fields while Mars keeps its independent native cursor config. `components.screen = false` requires `skip_welcome_screen = true` and `screen_saver_enabled = false`; `yzx screen` then fails with a disabled-component error instead of looking for missing screen assets.
+Home Manager and `mkYazelix` also accept component toggles for `cursors` and `screen`. `components.cursors = false` removes Yazelix cursor shader assets and the default cursor sidecar from the runtime tree; the config UI hides standalone cursor fields while Mars keeps its independent native cursor config. `components.screen = false` requires `manage_config = true` and `welcome_enabled = false`; `yzx screen` then fails with a disabled-component error instead of looking for missing screen assets.
 
 ## What Gets Installed
 

@@ -32,7 +32,7 @@ The Rust rewrite needs this baseline to preserve or improve startup behavior ins
 - Statement: All supported startup scenarios write the same JSONL report schema
   with one run header plus step records. Scenario support must not fork into a
   second profiler or schema
-- Verification: automated `nu nushell/scripts/dev/test_yzx_maintainer.nu`
+- Verification: automated `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_maintainer startup_profile`
 
 #### PROF-002
 - Type: ownership
@@ -41,7 +41,7 @@ The Rust rewrite needs this baseline to preserve or improve startup behavior ins
 - Statement: Desktop profiling invokes the real `yzx desktop launch` leaf
   command, and managed-launch profiling invokes the real `yzx launch` leaf
   command instead of a parallel profiling-only launcher
-- Verification: automated `nu nushell/scripts/dev/test_yzx_maintainer.nu`
+- Verification: automated `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_maintainer startup_profile`
 
 #### PROF-003
 - Type: invariant
@@ -50,7 +50,7 @@ The Rust rewrite needs this baseline to preserve or improve startup behavior ins
 - Statement: Desktop and managed-launch profiling wait for
   `inner.zellij_handoff_ready` before summarizing so detached startup work is
   not reported early
-- Verification: automated `nu nushell/scripts/dev/test_yzx_maintainer.nu`
+- Verification: automated `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_maintainer startup_profile`
 
 #### PROF-004
 - Type: invariant
@@ -58,7 +58,7 @@ The Rust rewrite needs this baseline to preserve or improve startup behavior ins
 - Owner: detached-launch profiler instrumentation
 - Statement: Detached terminal spawn/probe timing appears as the first-class
   step `terminal_launcher.detached_launch_probe`
-- Verification: automated `nu nushell/scripts/dev/test_yzx_maintainer.nu`
+- Verification: automated `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_maintainer startup_profile`
 
 #### PROF-005
 - Type: behavior
@@ -106,18 +106,14 @@ The Rust rewrite needs this baseline to preserve or improve startup behavior ins
 
 ## Verification
 
-- `nu -c 'source nushell/scripts/dev/test_yzx_maintainer.nu; test_dev_profile_desktop_invokes_leaf_command_and_waits_for_handoff'`
-- `nu -c 'source nushell/scripts/dev/test_yzx_maintainer.nu; test_dev_profile_launch_invokes_leaf_command_with_flags'`
-- `nu -c 'source nushell/scripts/dev/test_yzx_maintainer.nu; test_startup_profile_records_detached_terminal_probe'`
-- `nu -c 'source nushell/scripts/dev/test_yzx_maintainer.nu; test_startup_profile_harness_records_real_startup_boundaries'`
+- `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_maintainer startup_profile`
+- `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core profile_commands`
 - `yzx dev rust test core compare_profile_summaries_reports_total_and_step_deltas`
 - `yzx_repo_validator validate-contracts`
 
 ## Traceability
-- Defended by: `nushell/scripts/dev/test_yzx_maintainer.nu::test_dev_profile_desktop_invokes_leaf_command_and_waits_for_handoff`
-- Defended by: `nushell/scripts/dev/test_yzx_maintainer.nu::test_dev_profile_launch_invokes_leaf_command_with_flags`
-- Defended by: `nushell/scripts/dev/test_yzx_maintainer.nu::test_startup_profile_records_detached_terminal_probe`
-- Defended by: `nushell/scripts/dev/test_yzx_maintainer.nu::test_startup_profile_harness_records_real_startup_boundaries`
+- Defended by: `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_maintainer startup_profile`
+- Defended by: `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core profile_commands`
 - Defended by: `rust_core/yazelix_core/src/profile_commands.rs::compare_profile_summaries_reports_total_and_step_deltas`
 - Defended by: `yzx_repo_validator validate-contracts`
 

@@ -78,9 +78,9 @@ Recommendation: keep separate with Yazelix adapter discipline.
 
 This repo owns the reusable Ratatui config editor core: project-agnostic model types, navigation/edit state, generic rendering, comment-preserving TOML and JSONC patching, and deterministic migration primitives. That gives other projects a useful crate without installing Yazelix, and it deletes the old duplicate reusable implementation from the main repo.
 
-The coupling score is not perfect because Yazelix still has a rich adapter: settings schema metadata, Home Manager read-only state, native config status, keybinding registry details, validation, file writes, and runtime apply modes all remain product-specific. That is the right split. Moving those into the child would turn a reusable editor crate into a hidden Yazelix runtime dependency.
+The coupling score is not perfect because Yazelix still has a product adapter: settings schema metadata, Home Manager read-only state, native config status, validation, file writes, and activation timing remain product-specific. That is the right split. Moving those into the child would turn a reusable editor crate into a hidden Yazelix runtime dependency.
 
-Boundary rule: generic config UI mechanics and TOML/JSONC migration primitives stay in the child. Yazelix settings schema, Home Manager/native status, keybinding action metadata, generated runtime refresh, and post-save apply behavior stay in the main repo.
+Boundary rule: generic config UI mechanics and TOML/JSONC migration primitives stay in the child. Yazelix settings schema, Home Manager/native status, validation, file ownership, and activation timing stay in the main repo.
 
 ### `yazelix-zellij-bar`
 

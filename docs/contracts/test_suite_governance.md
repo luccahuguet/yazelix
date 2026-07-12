@@ -107,7 +107,6 @@ This contract defines:
 | Cheap maintainer hook lane | `prek run --all-files` | Fast always-on local hygiene | Should stay cheap enough to run often |
 | CI-only or CI-focused lane | `.github/workflows/ci.yml` | Cheap, reliable branch protection checks plus source-level release checks | Always runs source contracts, builds validation helpers once per run, path-gates Nix-heavy child/customization/Darwin lanes by changed surface, and keeps runtime package smoke schedule/manual-only |
 | Package cache publishing lane | `.github/workflows/publish_nix_cache.yml` | Build and publish main package outputs for published refs | Owns package-build evidence for `main` cache publication; branch CI owns source, API, child-release, and runtime-behavior evidence before merge |
-| Manual / exploratory lane | `nushell/scripts/dev/record_demo_fonts.nu`, benchmark and demo helpers | Human-observed or exploratory checks | Not part of the normal regression contract |
 
 ### Canonical fast gate set
 
@@ -150,14 +149,8 @@ The current repo surface should be understood roughly as:
   - `rust_core/Cargo.toml` `nextest` suite `yazelix_core`
   - `../yazelix-zellij-pane-orchestrator/Cargo.toml` `nextest` suite `zellij_pane_orchestrator`
 - Optional sweep coverage:
-  - `config_sweep_runner.nu`
   - `shells/posix/sweep_verify.sh`
-  - helper files under `nushell/scripts/dev/sweep/`
-- Shell-heavy non-governed runners:
-  - only `config_sweep_runner.nu` remains as a tracked shell-heavy runner
-- Manual / exploratory scripts:
-  - `record_demo_fonts.nu`
-  - benchmark and demo helpers
+  - `shells/posix/sweep_validate_runtime_tools.sh`
 
 This inventory is intentionally at the suite or file-bucket level. It is enough to decide lane ownership without pretending every test needs its own long policy entry.
 

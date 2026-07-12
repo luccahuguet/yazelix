@@ -2,9 +2,9 @@
 
 ## Summary
 
-`yzx status` and `yzx doctor` should build structured reports first and keep human rendering as a separate Nushell layer.
+`yzx status` and `yzx doctor` build structured Rust reports first and keep human rendering as a separate presentation layer.
 
-This gives Yazelix one machine-readable inspection/report seam for the mixed `status` and `doctor` family without pretending the whole command family is ready to move into Rust yet.
+This gives Yazelix one machine-readable inspection/report seam while preserving friendly default terminal output.
 
 ## Why
 
@@ -44,7 +44,7 @@ That shape made future deletion harder because the data and the prose were bundl
   typed `summary`, and the default human doctor output renders from that report
   instead of recomputing result groups separately
 - Verification: automated
-  `nushell/scripts/dev/test_yzx_doctor_commands.nu`
+  `rust_core/yazelix_core/tests/yzx_control_runtime_surface.rs`
 
 #### SDR-003
 - Type: failure_mode
@@ -53,18 +53,18 @@ That shape made future deletion harder because the data and the prose were bundl
 - Statement: `yzx doctor --json` is read-only. `yzx doctor --json --fix` is
   rejected clearly instead of mixing machine-readable reporting with repairs
 - Verification: automated
-  `nushell/scripts/dev/test_yzx_doctor_commands.nu`
+  `rust_core/yazelix_core/tests/yzx_control_runtime_surface.rs`
 
 #### SDR-004
 - Type: boundary
 - Status: live
 - Owner: status/doctor default command surfaces
 - Statement: Default `yzx status` and `yzx doctor` behavior remains
-  human-oriented. The JSON surface narrows report ownership without pretending
-  that the whole family is already pure Rust or pure machine mode
+  human-oriented even though collection and rendering are Rust-owned. Machine
+  mode remains an explicit opt-in
 - Verification: automated
-  `nushell/scripts/dev/test_yzx_core_commands.nu`; automated
-  `nushell/scripts/dev/test_yzx_doctor_commands.nu`
+  `rust_core/yazelix_core/tests/yzx_control_runtime_surface.rs`; automated
+  `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core doctor_commands`
 
 ## Behavior
 
@@ -86,7 +86,6 @@ Default behavior remains human-rendered.
 - generated-state materialization status, reason, input/cache freshness, and missing-artifact list
 - default shell
 - terminal list
-- optional Helix runtime override
 - active session config snapshot status, path, source config, and readable snapshot error details when present
 
 The human table is rendered from that report rather than being the primary source of truth.
@@ -139,7 +138,6 @@ The default human doctor output renders from that report instead of recomputing 
 
 ## Non-goals
 
-- moving the whole `status` / `doctor` family into Rust now
 - changing the existing human doctor prose by default
 - making `yzx doctor --json` perform repairs
 - treating the JSON surface as a promise that every result field is frozen forever
@@ -150,14 +148,14 @@ The default human doctor output renders from that report instead of recomputing 
 2. `yzx doctor --json` exposes collected findings and summary counts without depending on the human renderer
 3. Default `yzx status` and `yzx doctor` behavior remains human-oriented
 4. `yzx doctor --json --fix` fails clearly instead of mixing read-only reporting with repairs
-5. Future Rust CLI planning can point at this report seam instead of treating `status` and `doctor` as prose-only commands
+5. Human and JSON output consume the same Rust-owned report instead of maintaining parallel truth
 
 ## Verification
 
-- `nu -c 'source nushell/scripts/dev/test_yzx_core_commands.nu; let results = [(test_yzx_status_reports_basic_runtime_summary) (test_yzx_status_json_reports_typed_summary)]; if ($results | all {|result| $result}) { print "ok" } else { error make {msg: "status command tests failed"} }'`
-- `nu -c 'source nushell/scripts/dev/test_yzx_doctor_commands.nu; if ((run_doctor_canonical_tests) | all {|result| $result}) { print "ok" } else { error make {msg: "doctor canonical tests failed"} }'`
+- `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core --test yzx_control_runtime_surface status`
+- `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core doctor_commands`
 - `yzx_repo_validator validate-contracts`
 
 ## Traceability
-- Defended by: `nu -c 'source nushell/scripts/dev/test_yzx_core_commands.nu; let results = [(test_yzx_status_reports_basic_runtime_summary) (test_yzx_status_json_reports_typed_summary)]; if ($results | all {|result| $result}) { print "ok" } else { error make {msg: "status command tests failed"} }'`
-- Defended by: `nu -c 'source nushell/scripts/dev/test_yzx_doctor_commands.nu; if ((run_doctor_canonical_tests) | all {|result| $result}) { print "ok" } else { error make {msg: "doctor canonical tests failed"} }'`
+- Defended by: `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core --test yzx_control_runtime_surface status`
+- Defended by: `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core doctor_commands`

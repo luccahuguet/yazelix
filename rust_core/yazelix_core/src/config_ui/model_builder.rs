@@ -1,13 +1,7 @@
 use super::*;
 use std::collections::BTreeMap;
 
-const POPUP_COMMANDS_FIELD_PATH: &str = "zellij.popup_commands";
 const YAZELIX_SCHEMA_EXTENSION_KEY: &str = "x-yazelix";
-const BUILTIN_POPUP_COMMANDS: &[(&str, &str)] = &[
-    ("bottom_popup", "Bottom popup command"),
-    ("top_popup", "Top popup command"),
-    ("menu", "Menu popup command"),
-];
 
 pub fn build_config_ui_model(request: &ConfigUiRequest) -> Result<ConfigUiModel, CoreError> {
     crate::active_config_surface::resolve_active_config_paths(
@@ -146,30 +140,6 @@ pub fn build_config_ui_model(request: &ConfigUiRequest) -> Result<ConfigUiModel,
             edit_behavior_for_field_path(&field.path),
         ));
     }
-    append_keybinding_action_fields(
-        &mut fields,
-        &contract_fields,
-        config_owner,
-        &active_value,
-        &default_value,
-        &blocking_paths,
-    )?;
-    append_builtin_popup_command_fields(
-        &mut fields,
-        &contract_fields,
-        config_owner,
-        &active_value,
-        &default_value,
-        &blocking_paths,
-    )?;
-    append_custom_popup_fields(
-        &mut fields,
-        &contract_fields,
-        config_owner,
-        &active_value,
-        &default_value,
-        &blocking_paths,
-    )?;
     fields.extend(mars_rows.fields);
 
     if cursor_component_enabled {
@@ -278,13 +248,6 @@ pub fn build_config_ui_model(request: &ConfigUiRequest) -> Result<ConfigUiModel,
         diagnostics,
         theme_switcher: None,
     })
-}
-
-pub(super) fn apply_contract_path_for_setting_path(setting_path: &str) -> &str {
-    keybinding_parent_path_for_field_path(setting_path)
-        .or_else(|| popup_commands_parent_path_for_field_path(setting_path))
-        .or_else(|| custom_popups_parent_path_for_field_path(setting_path))
-        .unwrap_or(setting_path)
 }
 
 pub(super) fn active_config_path(
@@ -715,23 +678,13 @@ pub(super) fn build_field_row(
             description,
             allowed_values,
             validation,
-            apply_status_for_setting(path, apply_mode),
+            apply_status_for_setting(apply_mode),
         )
     }
     .build(kind, current, default)
 }
 
 fn edit_behavior_for_field_path(path: &str) -> ConfigUiEditBehavior {
-    if path == POPUP_COMMANDS_FIELD_PATH {
-        return ConfigUiEditBehavior::StructuredOnly {
-            notice: "Select a built-in popup row below to edit one command argv list.".to_string(),
-        };
-    }
-    if is_keybinding_map_field_path(path) {
-        return ConfigUiEditBehavior::StructuredOnly {
-            notice: "Select an action row below to edit one binding list.".to_string(),
-        };
-    }
     if path == "cursors.cursor" {
         return ConfigUiEditBehavior::StructuredOnly {
             notice:
@@ -739,87 +692,24 @@ fn edit_behavior_for_field_path(path: &str) -> ConfigUiEditBehavior {
                     .to_string(),
         };
     }
-    if path == CUSTOM_POPUPS_FIELD_PATH {
-        return ConfigUiEditBehavior::StructuredOnly {
-            notice: "Select a custom popup row below to edit one popup definition.".to_string(),
-        };
-    }
     ConfigUiEditBehavior::Default
 }
 
-fn append_builtin_popup_command_fields(
-    fields: &mut Vec<ConfigUiField>,
-    contract_fields: &BTreeMap<String, ConfigUiContractField>,
-    config_owner: ConfigUiPathOwner,
-    active_value: &JsonValue,
-    default_value: &JsonValue,
-    blocking_paths: &BTreeSet<String>,
-) -> Result<(), CoreError> {
-    let Some(parent_field) = contract_fields.get(POPUP_COMMANDS_FIELD_PATH) else {
-        return Ok(());
-    };
-    let apply_mode = apply_mode_for_config_owner(config_owner, parent_field)?;
-    for (id, label) in BUILTIN_POPUP_COMMANDS {
-        let path = format!("{POPUP_COMMANDS_FIELD_PATH}.{id}");
-        fields.push(build_field_row(
-            SETTINGS_SOURCE_ID,
-            &path,
-            "workspace",
-            "string_list",
-            get_json_path(active_value, &path),
-            get_json_path(default_value, &path),
-            (*label).to_string(),
-            Vec::new(),
-            parent_field.validation.clone(),
-            parent_field.rebuild_required,
-            apply_mode,
-            blocking_paths.contains(&path) || blocking_paths.contains(POPUP_COMMANDS_FIELD_PATH),
-            ConfigUiEditBehavior::FriendlyStringList,
-        ));
-    }
-    Ok(())
-}
-
-fn popup_commands_parent_path_for_field_path(path: &str) -> Option<&'static str> {
-    let id = path
-        .strip_prefix(POPUP_COMMANDS_FIELD_PATH)
-        .and_then(|rest| rest.strip_prefix('.'))?;
-    BUILTIN_POPUP_COMMANDS
-        .iter()
-        .any(|(known, _)| *known == id)
-        .then_some(POPUP_COMMANDS_FIELD_PATH)
-}
-
-pub(super) fn apply_status_for_setting(
-    path: &str,
-    apply_mode: RuntimeApplyMode,
-) -> ConfigUiApplyStatus {
+pub(super) fn apply_status_for_setting(apply_mode: RuntimeApplyMode) -> ConfigUiApplyStatus {
     let (summary, detail, pending) = match apply_mode {
-        RuntimeApplyMode::Live => ("now", "Saved changes are active immediately.", false),
-        RuntimeApplyMode::LiveWithPaneRefresh => (
-            "now",
-            "Yazelix reloads this in the active pane owner when you save.",
-            false,
-        ),
-        RuntimeApplyMode::GeneratedRuntimeRefresh => generated_runtime_effect_status(path),
         RuntimeApplyMode::TabSessionRestart => (
-            "after Yazelix restart",
-            "Saved changes are read from the launch snapshot when Yazelix starts.",
+            "in a fresh Yazelix window",
+            "A fresh Yazelix window reads the saved value into its launch snapshot.",
             true,
         ),
         RuntimeApplyMode::ShellTerminalRestart => (
-            "after Yazelix restart",
-            "Saved changes affect the shell or terminal environment that Yazelix starts with.",
+            "in a new shell or terminal",
+            "New shells and terminal processes use the saved value.",
             true,
         ),
         RuntimeApplyMode::PackageHomeManagerActivation => (
             "after Home Manager switch",
             "Edit the Home Manager source and run home-manager switch before Yazelix can use this value.",
-            true,
-        ),
-        RuntimeApplyMode::NeverLive => (
-            "not applicable",
-            "This setting is an ownership boundary and is not live-applicable.",
             true,
         ),
     };
@@ -828,22 +718,6 @@ pub(super) fn apply_status_for_setting(
         label: summary.to_string(),
         detail: detail.to_string(),
         pending,
-    }
-}
-
-fn generated_runtime_effect_status(path: &str) -> (&'static str, &'static str, bool) {
-    if path.starts_with("yazi.") || path.starts_with("helix.") {
-        (
-            "after pane reopen",
-            "Yazelix regenerates managed config; reopen the affected pane to use it.",
-            true,
-        )
-    } else {
-        (
-            "after Yazelix restart",
-            "Yazelix regenerates managed config; restart Yazelix to use it.",
-            true,
-        )
     }
 }
 
@@ -994,23 +868,6 @@ pub(super) fn read_settings_for_edit(path: &Path) -> Result<String, CoreError> {
             "Fix permissions or restore the settings file, then retry.",
             path.display().to_string(),
             source,
-        )
-    })
-}
-
-pub(super) fn default_main_setting_value_for_ui(
-    request: &ConfigUiRequest,
-    path: &str,
-) -> Result<JsonValue, CoreError> {
-    let paths = primary_config_paths(&request.runtime_dir, &request.config_dir);
-    let defaults = read_config_value(&paths.default_config_path)?;
-    get_json_path(&defaults, path).cloned().ok_or_else(|| {
-        CoreError::classified(
-            ErrorClass::Usage,
-            "unsupported_settings_path",
-            format!("Cannot reset {path} because it is not part of the canonical main settings defaults."),
-            "Use a supported config.toml path from the Yazelix config contract.",
-            json!({ "path": path }),
         )
     })
 }

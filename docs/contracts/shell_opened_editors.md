@@ -41,7 +41,7 @@ This contract covers:
   managed editor pane. A generic shell pane running an editor process is not
   the managed editor by default
 - Verification: automated
-  `nu nushell/scripts/dev/test_yzx_yazi_commands.nu`; automated
+  `rust_core/yazelix_core/tests/yzx_control_workspace_surface.rs`; automated
   `cargo test --manifest-path ../yazelix-zellij-pane-orchestrator/Cargo.toml --lib`
 
 #### SOE-002
@@ -51,7 +51,7 @@ This contract covers:
 - Statement: Shell-opened editors are ordinary panes. Yazelix does not
   automatically adopt, retitle, or reinterpret them as the managed editor pane
 - Verification: automated
-  `nu nushell/scripts/dev/test_yzx_yazi_commands.nu`; validator
+  `rust_core/yazelix_core/tests/yzx_control_workspace_surface.rs`; validator
   `yzx_repo_validator validate-contracts`
 
 #### SOE-003
@@ -62,7 +62,7 @@ This contract covers:
   and otherwise create a new managed editor pane through the normal Yazelix
   flow. Yazelix does not guess that a shell-opened editor pane should be reused
 - Verification: automated
-  `nu nushell/scripts/dev/test_yzx_yazi_commands.nu`; automated
+  `rust_core/yazelix_core/tests/yzx_control_workspace_surface.rs`; automated
   `cargo test --manifest-path ../yazelix-zellij-pane-orchestrator/Cargo.toml --lib`
 
 #### SOE-004
@@ -74,8 +74,8 @@ This contract covers:
   language and helper facts must distinguish "managed editor pane" from
   "editor process exists somewhere"
 - Verification: automated
-  `nu nushell/scripts/dev/test_yzx_yazi_commands.nu`; automated
-  `nu nushell/scripts/dev/test_yzx_workspace_commands.nu`; automated
+  `rust_core/yazelix_core/tests/yzx_control_workspace_surface.rs`; automated
+  `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core yazi_materialization`; automated
   `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core --test yzx_control_workspace_surface`
 
 ## Behavior
@@ -147,8 +147,8 @@ Those may be explored later, but they are outside this contract.
 
 ## Traceability
 - Defended by: `cargo test --manifest-path ../yazelix-zellij-pane-orchestrator/Cargo.toml --lib`
-- Defended by: `nu nushell/scripts/dev/test_yzx_doctor_commands.nu`
-- Defended by: `nu nushell/scripts/dev/test_yzx_yazi_commands.nu`
+- Defended by: `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core doctor_commands`
+- Defended by: `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core --test yzx_control_workspace_surface yazi`
 
 ## Open Questions
 

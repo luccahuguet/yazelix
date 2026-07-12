@@ -55,10 +55,7 @@ If the current version has no release-note entry, startup should stay quiet inst
 
 ## Verification
 
-- unit tests: state persistence, suppression logic, and historical config-shape summary rendering in `nushell/scripts/dev/test_yzx_core_commands.nu`
-- e2e scripts: `nu nushell/scripts/dev/test_upgrade_summary_e2e.nu`
-- integration checks: `nu nushell/scripts/dev/test_yzx_commands.nu`
+- unit tests: state persistence, suppression logic, and historical config-shape rendering in `rust_core/yazelix_core/src/upgrade_summary.rs`
 
 ## Traceability
-- Defended by: `nu nushell/scripts/dev/test_yzx_commands.nu`
-- Defended by: `nu nushell/scripts/dev/test_upgrade_summary_e2e.nu`
+- Defended by: `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core upgrade_summary`

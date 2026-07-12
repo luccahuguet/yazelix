@@ -161,7 +161,7 @@ Suggested Markdown shape:
 - Status: live
 - Owner: Rust `config_normalize`
 - Statement: The managed main Yazelix config surface is `config.toml`
-- Verification: automated `nushell/scripts/dev/test_yzx_core_commands.nu`; validator `yzx_repo_validator validate-contracts`
+- Verification: automated `rust_core/yazelix_core/tests/yzx_control_runtime_surface.rs`; validator `yzx_repo_validator validate-contracts`
 - Notes: Home Manager must render the same option/default contract
 ```
 

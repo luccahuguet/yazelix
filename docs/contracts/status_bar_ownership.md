@@ -83,7 +83,7 @@ The supported boundary is runnable-standalone-first for every non-workspace widg
 - Status: live
 - Owner: Yazelix generated Zellij materialization plus pane orchestrator
 - Statement: Integrated agent-usage provider refreshes are selected by the active
-  `zellij.widget_tray`. A provider that is absent from the rendered tray must
+  `bar.widgets`. A provider that is absent from the rendered tray must
   not be scheduled by the pane orchestrator, while enabled providers continue to
   render from child-owned cached facts with freshness and error backoff. CPU/RAM
   widgets remain cheap cached child commands, and adding new status extras must

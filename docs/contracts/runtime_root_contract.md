@@ -44,7 +44,7 @@ This contract keeps those boundaries explicit.
   `YAZELIX_CONFIG_DIR`, with managed Yazelix config living directly under
   that root rather than under the runtime tree
 - Verification: automated
-  `nushell/scripts/dev/test_yzx_generated_configs.nu`; validator
+  `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core runtime_materialization`; validator
   `yzx_repo_validator validate-contracts`
 
 #### ROOT-002
@@ -67,8 +67,8 @@ This contract keeps those boundaries explicit.
   `YAZELIX_STATE_DIR`. Generated configs, logs, rebuild hashes, and repair
   artifacts remain derived state and must not be treated as user-owned config
 - Verification: automated
-  `nushell/scripts/dev/test_yzx_generated_configs.nu`; automated
-  `nushell/scripts/dev/test_yzx_core_commands.nu`
+  `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core runtime_materialization`; automated
+  `rust_core/yazelix_core/tests/yzx_control_runtime_surface.rs`
 
 #### ROOT-004
 - Type: boundary
@@ -79,8 +79,8 @@ This contract keeps those boundaries explicit.
   persisted runtime root and not a substitute for the explicit runtime/config
   roots
 - Verification: automated
-  `nushell/scripts/dev/test_yzx_workspace_commands.nu`; automated
-  `nushell/scripts/dev/test_yzx_maintainer.nu`
+  `rust_core/yazelix_core/tests/yzx_control_workspace_surface.rs`; automated
+  `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_maintainer`
 
 #### ROOT-005
 - Type: ownership
@@ -90,8 +90,8 @@ This contract keeps those boundaries explicit.
   prefer explicit runtime/config roots, and entrypoints should clear or ignore
   inherited `YAZELIX_DIR` instead of trusting it as canonical runtime identity
 - Verification: automated
-  `nushell/scripts/dev/test_helix_managed_config_contracts.nu`; automated
-  `nushell/scripts/dev/test_yzx_workspace_commands.nu`
+  `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core helix_materialization`; automated
+  `rust_core/yazelix_core/tests/yzx_control_workspace_surface.rs`
 
 #### ROOT-006
 - Type: boundary
@@ -168,14 +168,14 @@ This contract keeps those boundaries explicit.
 - config/runtime path checks in `rust_core/yazelix_core/tests/yzx_control_runtime_surface.rs`
   and `rust_core/yazelix_core/tests/yzx_core_runtime_env.rs`
 - workspace/runtime launch checks in `rust_core/yazelix_core/tests/yzx_control_workspace_surface.rs`
-- maintainer-shell runtime-boundary checks in `nushell/scripts/dev/test_yzx_maintainer.nu`
+- maintainer Rust tests and `yzx_repo_validator` runtime-boundary checks
 - installed-runtime validation through `yzx_repo_validator validate-installed-runtime-contract`
 
 ## Traceability
 - Defended by: `cargo nextest run --manifest-path rust_core/Cargo.toml -p yazelix_core --test yzx_control_runtime_surface`
 - Defended by: `cargo nextest run --manifest-path rust_core/Cargo.toml -p yazelix_core --test yzx_core_runtime_env`
 - Defended by: `cargo nextest run --manifest-path rust_core/Cargo.toml -p yazelix_core --test yzx_control_workspace_surface`
-- Defended by: `nu nushell/scripts/dev/test_yzx_maintainer.nu`
+- Defended by: `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_maintainer`
 - Defended by: `cargo run --quiet --manifest-path rust_core/Cargo.toml -p yazelix_maintainer --bin yzx_repo_validator -- validate-installed-runtime-contract`
 
 ## Open Questions

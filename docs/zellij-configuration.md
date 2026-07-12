@@ -53,28 +53,29 @@ Only `plugins` and `load_plugins` are accepted at the top level. The runtime-own
 
 ## Yazelix-owned behavior
 
-Keep these surfaces in `config.toml`:
-
-- semantic workspace bindings in `zellij.keybindings`
-- curated native conflict policy in `zellij.native_keybindings`
-- built-in and custom popup commands
-- sidebars, widgets, status-bar labels, and screen saver behavior
-- Yazelix-generated theme selection
-- Kitty keyboard protocol selection
-
-For example:
+The semantic root keeps only popup margins, four managed surface chords, custom popup specs, and the top-bar widget order:
 
 ```toml
-[zellij]
-theme = "dracula"
-codex_usage_periods = ["5h", "week"]
+[popup]
+side_margin = 1
+vertical_margin = 0
 
-[zellij.keybindings]
-bottom_popup = ["Alt Shift J"]
-toggle_left_sidebar = ["Alt Shift H"]
+[keybindings]
+config = "Alt Shift K"
+agent = "Alt Shift L"
+git = "Alt Shift J"
+menu = "Alt Shift M"
+
+[bar]
+widgets = ["editor", "shell", "term", "codex_usage", "cpu", "ram"]
+
+[popups.zenith]
+command = "zenith"
+keybinding = "Alt Shift I"
+keep_alive = true
 ```
 
-Yazelix owns its generated layout, shell selection, session policy, keybinding integration, status bar, popup plugin, and pane orchestrator. Use plain `zellij` outside Yazelix for full native keymap or layout ownership.
+Yazelix owns its generated Classic layout, session policy, fixed integration bindings, status bar, popup plugin, and pane orchestrator. Native startup tips, pane frames, default mode, rounded corners, scrollback, mouse behavior, and other allowed Zellij preferences belong in `zellij/config.kdl`. Use plain `zellij` outside Yazelix for full native keymap or layout ownership
 
 ## Importing an existing config
 

@@ -1,8 +1,8 @@
 use super::{
     HOME_MANAGER_MODULE_DECLARATION_PATH, MAIN_CONTRACT_RELATIVE_PATH, MAIN_TEMPLATE_RELATIVE_PATH,
-    MODULE_RELATIVE_PATH, create_unique_temp_dir, escape_nix_string, format_json_value,
-    format_toml_value, get_nested_toml_value, read_toml_file, run_nix_eval, set_nested_toml_value,
-    sorted_keys, split_field_path, toml_to_json, toml_values_equal,
+    MODULE_RELATIVE_PATH, SETTINGS_SCHEMA_RELATIVE_PATH, create_unique_temp_dir, escape_nix_string,
+    format_json_value, format_toml_value, get_nested_toml_value, read_toml_file, run_nix_eval,
+    set_nested_toml_value, sorted_keys, split_field_path, toml_to_json, toml_values_equal,
 };
 use crate::repo_validation::ValidationReport;
 use serde_json::{Map as JsonMap, Value as JsonValue};
@@ -32,6 +32,7 @@ const MAIN_CONFIG_CONTRACT_CHANGE_IDS: &[&str] = &["classic-root-to-nova-v1"];
 pub fn validate_config_surface_contract(repo_root: &Path) -> Result<ValidationReport, String> {
     let mut report = ValidationReport::default();
     for errors in [
+        validate_main_template_schema_structure(repo_root)?,
         validate_main_contract_parity(repo_root)?,
         validate_ratconfig_contract_guard(repo_root)?,
         validate_nova_keybinding_registry_defaults(repo_root)?,
@@ -44,6 +45,85 @@ pub fn validate_config_surface_contract(repo_root: &Path) -> Result<ValidationRe
         report.errors.extend(errors);
     }
     Ok(report)
+}
+
+fn validate_main_template_schema_structure(repo_root: &Path) -> Result<Vec<String>, String> {
+    let template = read_config_value(&repo_root.join(MAIN_TEMPLATE_RELATIVE_PATH))
+        .map_err(|error| error.message())?;
+    let schema_path = repo_root.join(SETTINGS_SCHEMA_RELATIVE_PATH);
+    let raw = fs::read_to_string(&schema_path)
+        .map_err(|error| format!("Failed to read {}: {error}", schema_path.display()))?;
+    let schema = serde_json::from_str::<JsonValue>(&raw)
+        .map_err(|error| format!("Failed to parse {}: {error}", schema_path.display()))?;
+    let mut errors = Vec::new();
+    validate_schema_structure(&schema, Some(&template), "$", &mut errors);
+    Ok(errors)
+}
+
+fn validate_schema_structure(
+    schema: &JsonValue,
+    value: Option<&JsonValue>,
+    path: &str,
+    errors: &mut Vec<String>,
+) {
+    if schema.get("type").and_then(JsonValue::as_str) == Some("object") {
+        let properties = schema.get("properties").and_then(JsonValue::as_object);
+        for field in schema
+            .get("required")
+            .and_then(JsonValue::as_array)
+            .into_iter()
+            .flatten()
+            .filter_map(JsonValue::as_str)
+        {
+            if properties.is_none_or(|properties| !properties.contains_key(field)) {
+                errors.push(format!(
+                    "Settings schema object `{path}` requires `{field}` outside that object's properties"
+                ));
+            }
+        }
+        let additional = schema.get("additionalProperties");
+        if !matches!(
+            additional,
+            Some(JsonValue::Bool(false) | JsonValue::Object(_))
+        ) {
+            errors.push(format!(
+                "Settings schema object `{path}` must close or type additionalProperties"
+            ));
+        }
+        for (name, child) in properties.into_iter().flatten() {
+            validate_schema_structure(
+                child,
+                value
+                    .and_then(JsonValue::as_object)
+                    .and_then(|value| value.get(name)),
+                &format!("{path}.{name}"),
+                errors,
+            );
+        }
+        for (name, child) in value
+            .and_then(JsonValue::as_object)
+            .into_iter()
+            .flatten()
+            .filter(|(name, _)| properties.is_none_or(|fields| !fields.contains_key(*name)))
+        {
+            match additional.filter(|schema| schema.is_object()) {
+                Some(schema) => validate_schema_structure(
+                    schema,
+                    Some(child),
+                    &format!("{path}.{name}"),
+                    errors,
+                ),
+                None => errors.push(format!(
+                    "`{path}.{name}` violates the settings schema additionalProperties contract"
+                )),
+            }
+        }
+    }
+    if let Some(items) = schema.get("items") {
+        for item in value.and_then(JsonValue::as_array).into_iter().flatten() {
+            validate_schema_structure(items, Some(item), &format!("{path}[]"), errors)
+        }
+    }
 }
 
 pub fn validate_home_manager_option_declaration_contract(
@@ -1249,6 +1329,40 @@ mod tests {
     use super::*;
 
     // Test lane: maintainer
+    // Regression: a required field declared under the wrong object used to pass the config-surface validator.
+    #[test]
+    fn template_schema_structure_rejects_wrong_required_locality_and_unknown_defaults() {
+        let schema = serde_json::json!({
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "core": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["zellij_proxy"],
+                    "properties": { "debug": { "type": "boolean" } }
+                },
+                "popups": { "type": "object" }
+            }
+        });
+        let template =
+            serde_json::json!({ "core": { "debug": false, "unknown": true }, "popups": {} });
+        let mut errors = Vec::new();
+
+        validate_schema_structure(&schema, Some(&template), "$", &mut errors);
+
+        assert!(errors.iter().any(|error| {
+            error.contains("`$.core` requires `zellij_proxy` outside that object's properties")
+        }));
+        assert!(errors.iter().any(|error| {
+            error.contains("$.core.unknown") && error.contains("additionalProperties")
+        }));
+        assert!(errors.iter().any(|error| {
+            error.contains("`$.popups`") && error.contains("additionalProperties")
+        }));
+    }
+
+    // Test lane: maintainer
     // Regression: startup lost `YAZELIX_SESSION_CONFIG_PATH` and `YAZELIX_STATUS_BAR_CACHE_PATH` before the Zellij handoff.
     #[test]
     fn startup_snapshot_env_contract_requires_rust_handoff_tokens() {
@@ -1322,30 +1436,6 @@ fn prepare_rust_startup() {
 
         assert_eq!(errors.len(), 1);
         assert!(errors[0].contains("empty sparse config.toml"));
-    }
-
-    // Test lane: maintainer
-    // Defends: main_config_contract.toml exposes the exact ratconfig change list that Home Manager renders.
-    #[test]
-    fn main_contract_ratconfig_applied_change_ids_parser_requires_exact_string_array() {
-        let contract = toml::from_str::<TomlTable>(
-            r#"
-[contract]
-ratconfig_applied_change_ids = [
-  "rename-editor-sidebar-to-workspace-left-sidebar",
-  "replace-native-movement-defaults",
-]
-"#,
-        )
-        .unwrap();
-
-        assert_eq!(
-            main_contract_ratconfig_applied_change_ids(&contract),
-            Some(vec![
-                "rename-editor-sidebar-to-workspace-left-sidebar".to_string(),
-                "replace-native-movement-defaults".to_string(),
-            ])
-        );
     }
 
     // Test lane: maintainer

@@ -100,8 +100,8 @@ Those still depend on backend activation, rebuild, or runtime/distribution owner
 ## Verification
 
 - integration tests:
-  - `nu -c 'source nushell/scripts/dev/test_yzx_workspace_commands.nu; run_workspace_canonical_tests'`
-  - `nu -c 'source nushell/scripts/dev/test_yzx_popup_commands.nu; run_popup_canonical_tests'`
+  - `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core --test yzx_control_workspace_surface`
+  - `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core workspace_commands`
 - manual review against:
   - [workspace_session_contract.md](./workspace_session_contract.md)
   - [cross_language_runtime_ownership.md](./cross_language_runtime_ownership.md)
@@ -109,5 +109,5 @@ Those still depend on backend activation, rebuild, or runtime/distribution owner
 
 ## Traceability
 - Defended by:
-  - `nu -c 'source nushell/scripts/dev/test_yzx_workspace_commands.nu; run_workspace_canonical_tests'`
-  - `nu -c 'source nushell/scripts/dev/test_yzx_popup_commands.nu; run_popup_canonical_tests'`
+  - `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core --test yzx_control_workspace_surface`
+  - `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core workspace_commands`

@@ -333,7 +333,7 @@ fn evaluate_external_pair(request: &HelixDoctorEvaluateRequest) -> Option<HelixD
         return Some(
             HelixDoctorFinding::new("error", "External Helix binary/runtime pair is invalid")
                 .with_details(format!(
-                "Binary: {}\nRuntime: {}\nProblems:\n- {}\nNext: set helix.external to a matching Helix binary and runtime_path, or null to use the bundled Yazelix Helix.",
+                "Binary: {}\nRuntime: {}\nProblems:\n- {}\nNext: use the bundled editor.command = \"hx\" so Yazelix owns the matching binary and runtime.",
                 binary.display(),
                 runtime.display(),
                 problems.join("\n- ")

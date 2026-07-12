@@ -4,11 +4,11 @@ This inventory records the current Rust ownership shape in the main Yazelix repo
 
 ## Current Baseline
 
-Measured on 2026-06-24:
+Measured on 2026-07-12:
 
-- `tokei rust_core rust_plugins --exclude target` reports `76,261` Rust code LOC across `156` Rust files
-- `find rust_core rust_plugins -path '*/target' -prune -o -name '*.rs' -type f -print0 | xargs -0 wc -l` reports `83,525` raw Rust file lines
-- `config_metadata/rust_ownership_budget.toml` tracks `83,525` raw Rust file lines across `156` Rust files
+- `tokei rust_core rust_plugins --exclude target` reports `71,697` Rust code LOC across `153` Rust files
+- `find rust_core rust_plugins -path '*/target' -prune -o -name '*.rs' -type f -print0 | xargs -0 wc -l` reports `78,519` raw Rust file lines
+- `config_metadata/rust_ownership_budget.toml` tracks `78,519` raw Rust file lines across `153` Rust files
 - the small difference between `tokei` language lines and the budget total is measurement-method noise from embedded markdown/parser classification and line-count method differences, not a separate ownership surface
 - `yzx_repo_validator validate-rust-ownership-budget` passes the ownership budget and warns while the tracked raw Rust surface remains above the long-term `60,000` LOC hard target
 - the current budget excludes extracted child crates and tracked build output
@@ -20,52 +20,38 @@ The canonical family ownership, no-growth ceilings, and long-term warning target
 
 | Family | Files | Raw lines | Status | Extraction pressure |
 | --- | ---: | ---: | --- | --- |
-| Product runtime source | 117 | 64,214 | canonical runtime and integration adapters | High: contains the largest user-facing seams |
-| Product integration tests | 13 | 4,660 | canonical behavior tests | Medium: split by behavior family, do not delete broadly |
-| Maintainer tooling and tests | 26 | 14,651 | canonical maintainer tooling | Medium: keep in repo, but keep splitting large validator files |
+| Product runtime source | 114 | 59,844 | canonical runtime and integration adapters | High: contains the largest user-facing seams |
+| Product integration tests | 13 | 4,841 | canonical behavior tests | Medium: split by behavior family, do not delete broadly |
+| Maintainer tooling and tests | 26 | 13,836 | canonical maintainer tooling | Medium: keep in repo, but keep splitting large validator files |
 | Pane orchestrator plugin | 0 | 0 | extracted child source | Keep source in `yazelix-zellij-pane-orchestrator` |
-| Total | 156 | 83,525 | current budget ceiling | Reduce or extract before raising ceilings |
+| Total | 153 | 78,519 | current budget ceiling | Reduce or extract before raising ceilings |
 
 Detailed budget families:
 
 | Family | Files | Raw lines | Budget target | Notes |
 | --- | ---: | ---: | ---: | --- |
-| `core_cli_and_public_surface` | 14 | 9,740 | 7,000 | Public command dispatch, command metadata, tutor/front-door rendering, agent command surface, and support/onboarding commands |
-| `core_config_ui_and_materialization` | 56 | 26,560 | 14,000 | Largest product family; Yazelix config UI adapter, apply modes, runtime component manifest, materializers, settings surfaces |
-| `core_diagnostics_and_recovery` | 9 | 8,665 | 4,500 | Doctor, Zellij plugin health, install ownership, profile/status reporting |
-| `core_workspace_and_pane_integration` | 38 | 19,249 | 11,000 | Action registry, launch private adapters, desktop Exec parsing, Zellij/session/workspace command surface, in-tree Zellij config-pack renderer, pane-orchestrator client, status cache IO, and workspace widgets |
-| `core_integration_tests` | 13 | 4,660 | 4,500 | High-value tests, but several files are broad family buckets |
-| `maintainer_tooling_and_validators` | 25 | 14,412 | 9,000 | In-repo validators, Beads/GitHub sync, release/update workflow, sweep/test runners, and repo maintenance commands |
-| `maintainer_tests` | 1 | 239 | 239 | Small release/upgrade contract test surface |
+| `core_cli_and_public_surface` | 14 | 9,485 | 7,000 | Public command dispatch, command metadata, tutor/front-door rendering, agent command surface, and support/onboarding commands |
+| `core_config_ui_and_materialization` | 53 | 24,078 | 14,000 | Largest product family; Yazelix config UI adapter, activation modes, runtime component manifest, materializers, settings surfaces |
+| `core_diagnostics_and_recovery` | 9 | 8,242 | 4,500 | Doctor, Zellij plugin health, install ownership, profile/status reporting |
+| `core_workspace_and_pane_integration` | 38 | 18,037 | 11,000 | Action registry, launch private adapters, desktop Exec parsing, Zellij/session/workspace command surface, in-tree Zellij config-pack renderer, pane-orchestrator client, status cache IO, and workspace widgets |
+| `core_integration_tests` | 13 | 4,841 | 4,500 | High-value tests, but several files are broad family buckets |
+| `maintainer_tooling_and_validators` | 25 | 13,598 | 9,000 | In-repo validators, Beads/GitHub sync, release/update workflow, sweep/test runners, and repo maintenance commands |
+| `maintainer_tests` | 1 | 238 | 238 | Small release/upgrade contract test surface |
 
 ## Largest Files
 
 | File | Raw lines | Current owner | Disposition |
 | --- | ---: | --- | --- |
-| `rust_core/yazelix_zellij_config_pack/src/lib.rs` | 2,634 | in-tree Zellij config/layout renderer | Keep in-tree; it replaced a separate repo and should stay tracked in the workspace family |
-| `rust_core/yazelix_core/src/bin/yzx_control.rs` | 2,590 | public control-plane command implementation | Split only if routing remains obvious |
-| `rust_core/yazelix_core/src/zellij_materialization.rs` | 2,059 | generated Zellij config materialization adapter | Keep until keybinding ownership and layout-generation contracts settle |
-| `rust_core/yazelix_maintainer/src/repo_contract_validation/config_surface.rs` | 1,923 | config-surface contract validator | Split only by clear contract families |
-| `rust_core/yazelix_core/src/install_ownership_report.rs` | 1,908 | install ownership diagnostics | Prune only after supported recovery paths are narrower |
-| `rust_core/yazelix_core/src/doctor_runtime_report.rs` | 1,680 | runtime doctor reporting | Collapse duplicate report/fix plumbing before adding more checks |
-| `rust_core/yazelix_core/src/config_normalize.rs` | 1,547 | config behavior normalizer | Split only around durable setting families |
-| `rust_core/yazelix_core/src/doctor_commands.rs` | 1,435 | doctor orchestration | Split report rendering from fix orchestration only after doctor behavior stabilizes |
-| `rust_core/yazelix_core/tests/yzx_control_workspace_surface.rs` | 1,360 | workspace/control-plane integration tests | Broad but behavior-backed; split by workspace/popup/session behaviors |
+| `rust_core/yazelix_zellij_config_pack/src/lib.rs` | 2,932 | in-tree Zellij config/layout renderer | Keep in-tree until the source swap replaces Classic layout generation |
+| `rust_core/yazelix_core/src/bin/yzx_control.rs` | 2,622 | public control-plane command implementation | Split only if routing remains obvious |
+| `rust_core/yazelix_core/src/zellij_materialization.rs` | 1,795 | generated Zellij config materialization adapter | Delete with Classic at the source swap |
+| `rust_core/yazelix_core/src/install_ownership_report.rs` | 1,692 | install ownership diagnostics | Prune only after supported recovery paths are narrower |
+| `rust_core/yazelix_maintainer/src/repo_contract_validation/config_surface.rs` | 1,639 | config-surface contract validator | Split only by clear contract families |
+| `rust_core/yazelix_core/src/doctor_runtime_report.rs` | 1,582 | runtime doctor reporting | Collapse duplicate report/fix plumbing before adding more checks |
 | `rust_core/yazelix_core/src/helix_bridge_client.rs` | 1,348 | Helix action bridge client | Keep local while editor/workspace bridge ownership is Yazelix-specific |
-| `rust_core/yazelix_core/src/launch_commands/launch.rs` | 1,313 | launch planning and execution details | Keep private launch policy close to terminal/runtime selection |
-| `rust_core/yazelix_core/src/front_door_render.rs` | 1,300 | public help/menu rendering | Keep readable; avoid new command-surface trivia tests |
-| `rust_core/yazelix_core/src/doctor_helix_report.rs` | 1,298 | Helix doctor reporting | Collapse with doctor report plumbing where contracts overlap |
-| `rust_core/yazelix_core/src/profile_commands.rs` | 1,256 | startup profiling | Keep while startup profiling remains an active debugging surface |
-| `rust_core/yazelix_core/src/launch_commands.rs` | 1,170 | launch command dispatch shell | Keep public routing thin while private launch modules own details |
-| `rust_core/yazelix_core/src/runtime_contract.rs` | 1,105 | runtime manifest and optional component ownership | Keep until component opt-out behavior stabilizes |
-| `rust_core/yazelix_maintainer/src/repo_child_release.rs` | 1,091 | child release validation | Keep in repo until child-declared release contracts shrink it |
-| `rust_core/yazelix_core/tests/yzx_control_runtime_surface.rs` | 1,090 | runtime/control-plane integration tests | Split by runtime ownership only when coverage stays behavior-backed |
-| `rust_core/yazelix_core/src/front_door_commands.rs` | 1,073 | front-door and tutor command behavior | Keep until tutor/front-door flow is stable |
-| `rust_core/yazelix_core/src/settings_surface.rs` | 1,058 | settings defaults/schema rendering | Keep close to config metadata contract |
-| `rust_core/yazelix_maintainer/src/repo_contract_validation/nix_package.rs` | 1,052 | Nix package validator | Split by package contract family when it grows again |
-| `rust_core/yazelix_core/src/public_command_surface.rs` | 1,050 | public command registry | Keep central registry; future action registry may absorb part of this |
-| `rust_core/yazelix_maintainer/src/repo_validation.rs` | 1,047 | validator shell and repo policy checks | Keep lean; avoid rebuilding deleted trivia parsers |
-| `rust_core/yazelix_core/src/zellij_commands/workspace.rs` | 1,009 | workspace command adapter | Keep thinning config/runtime path policy before any workspace extraction |
+| `rust_core/yazelix_core/tests/yzx_control_workspace_surface.rs` | 1,342 | workspace/control-plane integration tests | Broad but behavior-backed; split only when coverage remains strong |
+| `rust_core/yazelix_core/src/front_door_render.rs` | 1,300 | public help/menu rendering | Keep readable; avoid command-surface trivia tests |
+| `rust_core/yazelix_core/src/doctor_helix_report.rs` | 1,285 | Helix doctor reporting | Collapse with doctor report plumbing where contracts overlap |
 
 ## Current Boundaries
 
@@ -75,7 +61,7 @@ Detailed budget families:
 
 `launch_commands.rs` keeps public command dispatch, desktop dispatch parsing, and the shared cwd resolver. Terminal selection, temporary config overrides, process/probe execution, desktop/macOS, launch fallback, enter, and restart live in private modules.
 
-`config_ui.rs` is the small Yazelix config UI adapter shell. `config_ui/*` keeps Yazelix settings schema, Home Manager/read-only ownership, native config status, cursor config composition, action-registry detail text, validation, file writes, and runtime apply policy. Reusable model/editor/render helpers, row filtering/search, generic row/detail rendering, TOML/JSONC patch primitives, and migration primitives live in `ratconfig`.
+`config_ui.rs` is the small Yazelix config UI adapter shell. `config_ui/*` keeps Yazelix settings schema, Home Manager/read-only ownership, native config status, cursor config composition, validation, file writes, and activation-timing copy. Reusable model/editor/render helpers, row filtering/search, generic row/detail rendering, TOML/JSONC patch primitives, and migration primitives live in `ratconfig`.
 
 `zellij_materialization.rs` owns generated Zellij config policy, layout fragments, keybinding rendering, plugin block wiring, and runtime helper path resolution. It should remain local until layout and keybinding ownership are thinner.
 

@@ -77,7 +77,7 @@ Yazelix keeps install-artifact diagnostics only where they defend a current inst
 | User-local desktop entries and copied desktop icons that shadow profile/Home Manager entries | live cleanup support | `yzx home_manager prepare` and desktop doctor diagnostics |
 | Legacy `~/.local/bin/yzx` wrapper and stale host-shell redirects | live cleanup diagnostics | Install ownership report and `yzx home_manager prepare` for the wrapper file only |
 | Old desktop ids such as `yazelix.desktop` or the pre-variant `com.yazelix.Yazelix.desktop` | live cleanup support | Desktop freshness and Home Manager prepare |
-| Old mutable `yazelix.toml`, `cursors.toml`, and `user_configs/` inputs | unsupported config state | Stale config diagnostics, manual cleanup, or `yzx reset config` |
+| Old mutable `yazelix.toml` and `user_configs/` inputs | unsupported config state | Stale config diagnostics, manual cleanup, or `yzx reset config` |
 
 `yzx home_manager prepare` must not archive unsupported legacy config inputs. Those files are not install-owner artifacts after the trimmed runtime contract; they are config-surface errors handled by the stale-config diagnostic contract.
 
@@ -98,13 +98,13 @@ Yazelix keeps install-artifact diagnostics only where they defend a current inst
 ## Verification
 
 - integration tests:
-  - `nu -c 'source nushell/scripts/dev/test_yzx_core_commands.nu; run_core_canonical_tests'`
-  - `nu -c 'source nushell/scripts/dev/test_yzx_doctor_commands.nu; run_doctor_canonical_tests'`
+  - `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core --test yzx_control_runtime_surface`
+  - `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core doctor_commands`
 - manual review against:
   - [runtime_root_contract.md](./runtime_root_contract.md)
   - [v15_trimmed_runtime_contract.md](./v15_trimmed_runtime_contract.md)
 
 ## Traceability
 - Defended by:
-  - `nu -c 'source nushell/scripts/dev/test_yzx_core_commands.nu; run_core_canonical_tests'`
-  - `nu -c 'source nushell/scripts/dev/test_yzx_doctor_commands.nu; run_doctor_canonical_tests'`
+  - `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core --test yzx_control_runtime_surface`
+  - `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core doctor_commands`

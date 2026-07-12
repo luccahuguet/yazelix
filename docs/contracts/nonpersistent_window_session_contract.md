@@ -34,7 +34,7 @@ Without a written contract, future fixes will keep rediscovering the same questi
   for generated session names; Yazelix passes terminal title prefix metadata so
   Zellij can expose the final OS window title without pane-title pollution
 - Verification: automated
-  `nu nushell/scripts/dev/test_yzx_workspace_commands.nu`
+  `rust_core/yazelix_core/tests/yzx_control_workspace_surface.rs`
 
 #### NWS-002
 - Type: boundary
@@ -44,7 +44,7 @@ Without a written contract, future fixes will keep rediscovering the same questi
   runtime, and generated artifacts, but they do not share one live session and
   must not be silently hot-swapped in place by repair or runtime replacement
 - Verification: automated
-  `nu nushell/scripts/dev/test_yzx_workspace_commands.nu`; validator
+  `rust_core/yazelix_core/tests/yzx_control_workspace_surface.rs`; validator
   `yzx_repo_validator validate-contracts`
 
 #### NWS-003
@@ -55,7 +55,7 @@ Without a written contract, future fixes will keep rediscovering the same questi
   non-persistent window. Restarting one window does not implicitly transition
   other already-open non-persistent windows
 - Verification: automated
-  `nu nushell/scripts/dev/test_yzx_workspace_commands.nu`
+  `rust_core/yazelix_core/tests/yzx_control_workspace_surface.rs`
 
 #### NWS-004
 - Type: failure_mode
@@ -65,7 +65,7 @@ Without a written contract, future fixes will keep rediscovering the same questi
   last client closes in default non-persistent mode is a bug, not an intentional
   persistence feature
 - Verification: manual non-persistent lifecycle review; automated
-  `nu nushell/scripts/dev/test_yzx_workspace_commands.nu`
+  `rust_core/yazelix_core/tests/yzx_control_workspace_surface.rs`
 
 ## Behavior
 
@@ -120,7 +120,7 @@ Without a written contract, future fixes will keep rediscovering the same questi
 
 ## Verification
 
-- integration tests: `nu nushell/scripts/dev/test_yzx_workspace_commands.nu`
+- integration tests: `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core --test yzx_control_workspace_surface`
 - CI checks: `yzx_repo_validator validate-contracts`
 - manual verification:
   - open two non-persistent Yazelix windows, confirm they do not reattach to one shared session
@@ -128,7 +128,7 @@ Without a written contract, future fixes will keep rediscovering the same questi
   - close the last client for a non-persistent session and confirm no detached zero-client server remains
 
 ## Traceability
-- Defended by: `nu nushell/scripts/dev/test_yzx_workspace_commands.nu`
+- Defended by: `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core --test yzx_control_workspace_surface`
 - Defended by: `yzx_repo_validator validate-contracts`
 
 ## Open Questions

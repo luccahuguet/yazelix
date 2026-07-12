@@ -54,25 +54,25 @@ and stay limited to four categories:
 Everything else should stay local to the specific Rust test file unless it is
 reused by at least two strong migration lanes.
 
-## Nu Helper Classification
+## Retired Nu Helpers
 
-| Nu helper | Current role | Decision | Why |
+| Retired Nu helper | Former role | Result | Why |
 | --- | --- | --- | --- |
-| `nushell/scripts/dev/yzx_test_helpers.nu` | repo-root lookup, temp HOME/config fixtures, helper-bin resolution, ad hoc logging/profile formatting | `split_port_and_delete` | fixture setup and command resolution should move to Rust support; log formatting and broad convenience helpers should not survive by default |
-| `nushell/scripts/dev/config_normalize_test_helpers.nu` | active-config and normalize helper wrapper | `delete_after_port` | strong replacements should call `yzx_core` directly through typed Rust wrappers instead of preserving a second helper layer |
-| `nushell/scripts/dev/materialization_dev_helpers.nu` | yazi/zellij/runtime materialization wrapper calls | `delete_after_port` | the Rust migration lanes should call the helper binaries directly and keep file-local fixture shaping where needed |
-| deleted `contract_traceability_helpers.nu` surface | contract and item parsing for validators | `ported_to_rust_validator` | deterministic source parsing now belongs to the Rust validator lane, not the shared test harness |
+| `nushell/scripts/dev/yzx_test_helpers.nu` | repo-root lookup, temp HOME/config fixtures, helper-bin resolution, and ad hoc output helpers | deleted after the strong fixture and command support moved to Rust | broad convenience and output-formatting helpers were not preserved |
+| `nushell/scripts/dev/config_normalize_test_helpers.nu` | active-config and normalize helper wrapper | deleted after direct Rust coverage landed | normalization tests call their Rust owners without a second shell layer |
+| `nushell/scripts/dev/materialization_dev_helpers.nu` | Yazi, Zellij, and runtime materialization wrapper calls | deleted after direct Rust coverage landed | materialization fixtures stay local to their behavior tests |
+| `contract_traceability_helpers.nu` | contract and item parsing for validators | replaced by the Rust validator | deterministic source parsing belongs to the validator lane |
 
-## Concrete Rust Support Targets
+## Current Rust Support
 
-The first implementation slice should create these concrete support files:
+The shared support is intentionally limited to:
 
 - `rust_core/yazelix_core/tests/support/mod.rs`
 - `rust_core/yazelix_core/tests/support/fixtures.rs`
 - `rust_core/yazelix_core/tests/support/commands.rs`
 - `rust_core/yazelix_core/tests/support/envelopes.rs`
 
-The first intended consumers are:
+Current consumers include:
 
 - `yzx_control_runtime_surface.rs`
 - `yzx_control_public_commands.rs`
@@ -89,7 +89,7 @@ the migration wave:
 - typed `yzx_control` command launching
 - small executable-fixture helpers for PATH and fake tool injection
 
-That support now backs the Rust-owned replacements added in:
+That support backs the Rust-owned replacements in:
 
 - `yzx_control_runtime_surface.rs`
 - `yzx_control_workspace_surface.rs`
@@ -105,8 +105,9 @@ The harness must remain nextest-friendly by construction:
 - no wrapper that shells out through `nu -c` just to preserve an old Nu test
   shape
 
-`cargo test` remains reserved only for doctests and explicit nextest-unsupported
-exceptions.
+Focused maintainer work may use `yzx dev rust test <filter>` or the equivalent
+direct Cargo test. The repository suite chooses its runner centrally rather than
+making individual tests depend on a shell-owned harness.
 
 ## Dependency Decision
 
@@ -139,8 +140,7 @@ This harness lane does not add new crates.
 ## Verification
 
 - `yzx_repo_validator validate-contracts`
-- later implementation lanes:
-  - `nix develop -c cargo nextest run --profile ci --manifest-path rust_core/Cargo.toml -p yazelix_core`
+- `yzx dev test`
 
 ## Traceability
 - Defended by: `yzx_repo_validator validate-contracts`

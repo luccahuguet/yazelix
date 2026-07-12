@@ -56,16 +56,15 @@ The retired `settings.jsonc` contract chain may still use Ratconfig contract sta
 ## Verification
 
 - unit tests: sparse normalization, packaged-default inheritance, explicit-equals-default persistence, unset/reset removal, startup-blocking classification, doctor rendering, owner/read-only no-write behavior, removed-field rejection, and legacy migration
-- integration tests: `nu nushell/scripts/dev/test_yzx_core_commands.nu`, `nu nushell/scripts/dev/test_yzx_generated_configs.nu`, and `nu nushell/scripts/dev/test_yzx_doctor_commands.nu`
-- e2e scripts: `nu nushell/scripts/dev/test_stale_config_diagnostics_e2e.nu`
+- integration tests: `rust_core/yazelix_core/tests/yzx_control_runtime_surface.rs` plus the `config_normalize`, `doctor_config_report`, and materialization Rust tests
 - CI checks: `yzx_repo_validator validate-contracts`
 - manual verification: run startup, doctor, and doctor-fix flows against temp homes with known stale configs
 
 ## Traceability
-- Defended by: `nu nushell/scripts/dev/test_yzx_core_commands.nu`
-- Defended by: `nu nushell/scripts/dev/test_yzx_generated_configs.nu`
-- Defended by: `nu nushell/scripts/dev/test_yzx_doctor_commands.nu`
-- Defended by: `nu nushell/scripts/dev/test_stale_config_diagnostics_e2e.nu`
+- Defended by: `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core config_normalize`
+- Defended by: `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core doctor_config_report`
+- Defended by: `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core --test yzx_control_runtime_surface`
+- Defended by: `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core --test yzx_core_classic_nova_root_translation`
 
 ## Open Questions
 

@@ -222,7 +222,7 @@ ${terminalDescriptionBullets}
   };
 
   keybinding_agent = mkMainContractOption "keybindings.agent" {
-    description = "Key chord for the managed agent popup";
+    description = "Key chord for the managed agent surface";
   };
 
   keybinding_git = mkMainContractOption "keybindings.git" {
