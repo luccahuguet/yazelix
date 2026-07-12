@@ -107,6 +107,11 @@ fn migrates_classic_toml_backup_first_with_persistent_report() {
     let config = config_dir.path().join("config.toml");
     let original = "# Classic root\n[workspace.right_sidebar]\ncommand = \"codex\"\nargs = [\"resume\"]\nwidth_percent = 37\n\n[core]\nskip_welcome_screen = true\n";
     fs::write(&config, original).unwrap();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        fs::set_permissions(&config, fs::Permissions::from_mode(0o600)).unwrap();
+    }
 
     let result = migrate_with(
         &request(config_dir.path()),
@@ -117,7 +122,19 @@ fn migrates_classic_toml_backup_first_with_persistent_report() {
 
     assert_eq!(result.status, ClassicNovaMigrationStatus::Migrated);
     let backup = result.backup_path.unwrap();
-    assert_eq!(fs::read_to_string(backup).unwrap(), original);
+    assert_eq!(fs::read_to_string(&backup).unwrap(), original);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        assert_eq!(
+            fs::metadata(&backup).unwrap().permissions().mode() & 0o777,
+            0o600
+        );
+        assert_eq!(
+            fs::metadata(&config).unwrap().permissions().mode() & 0o777,
+            0o600
+        );
+    }
     let migrated: Table = toml::from_str(&fs::read_to_string(&config).unwrap()).unwrap();
     assert_eq!(
         value_at(&migrated, "agent.command").and_then(Value::as_str),
@@ -364,8 +381,13 @@ impl TransactionIo for FailRemoval {
         fs::copy(source, target).map(|_| ())
     }
 
-    fn write_atomic(&self, path: &Path, contents: &str) -> Result<(), CoreError> {
-        write_text_atomic(path, contents)
+    fn write_atomic(
+        &self,
+        path: &Path,
+        contents: &str,
+        permissions: Option<&fs::Permissions>,
+    ) -> Result<(), CoreError> {
+        test_write_atomic(path, contents, permissions)
     }
 
     fn remove(&self, path: &Path) -> io::Result<()> {
@@ -381,7 +403,12 @@ impl TransactionIo for FailTargetWrite {
         fs::copy(source, target).map(|_| ())
     }
 
-    fn write_atomic(&self, path: &Path, contents: &str) -> Result<(), CoreError> {
+    fn write_atomic(
+        &self,
+        path: &Path,
+        contents: &str,
+        permissions: Option<&fs::Permissions>,
+    ) -> Result<(), CoreError> {
         if path == self.target {
             return Err(CoreError::io(
                 "injected_target_write_failure",
@@ -391,11 +418,22 @@ impl TransactionIo for FailTargetWrite {
                 io::Error::other("injected"),
             ));
         }
-        write_text_atomic(path, contents)
+        test_write_atomic(path, contents, permissions)
     }
 
     fn remove(&self, path: &Path) -> io::Result<()> {
         fs::remove_file(path)
+    }
+}
+
+fn test_write_atomic(
+    path: &Path,
+    contents: &str,
+    permissions: Option<&fs::Permissions>,
+) -> Result<(), CoreError> {
+    match permissions {
+        Some(permissions) => write_text_atomic_with_permissions(path, contents, permissions),
+        None => write_text_atomic(path, contents),
     }
 }
 

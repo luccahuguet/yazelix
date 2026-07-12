@@ -8,6 +8,14 @@ pub(crate) fn write_text_atomic(path: &Path, content: &str) -> Result<(), CoreEr
     write_bytes_atomic(path, content.as_bytes())
 }
 
+pub(crate) fn write_text_atomic_with_permissions(
+    path: &Path,
+    content: &str,
+    permissions: &fs::Permissions,
+) -> Result<(), CoreError> {
+    write_bytes_atomic_with_permissions(path, content.as_bytes(), Some(permissions))
+}
+
 pub(crate) fn copy_dir_all(src: &Path, dst: &Path) -> std::io::Result<()> {
     fs::create_dir_all(dst)?;
     for entry in fs::read_dir(src)? {
@@ -45,6 +53,14 @@ pub(crate) fn is_executable_file(path: &Path) -> bool {
 }
 
 pub(crate) fn write_bytes_atomic(path: &Path, content: &[u8]) -> Result<(), CoreError> {
+    write_bytes_atomic_with_permissions(path, content, None)
+}
+
+fn write_bytes_atomic_with_permissions(
+    path: &Path,
+    content: &[u8],
+    permissions: Option<&fs::Permissions>,
+) -> Result<(), CoreError> {
     let parent = path.parent().ok_or_else(|| {
         CoreError::classified(
             ErrorClass::Runtime,
@@ -85,8 +101,11 @@ pub(crate) fn write_bytes_atomic(path: &Path, content: &[u8]) -> Result<(), Core
         }
     };
 
-    let write_result = temp_file
-        .write_all(content)
+    let write_result = permissions
+        .map_or(Ok(()), |permissions| {
+            temp_file.set_permissions(permissions.clone())
+        })
+        .and_then(|()| temp_file.write_all(content))
         .and_then(|()| temp_file.sync_all());
     drop(temp_file);
     if let Err(source) = write_result {

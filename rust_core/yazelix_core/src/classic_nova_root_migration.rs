@@ -1,6 +1,6 @@
 //! Temporary, Classic-owned transaction that leaves the canonical root Nova-native.
 
-use crate::atomic_fs::write_text_atomic;
+use crate::atomic_fs::{write_text_atomic, write_text_atomic_with_permissions};
 use crate::backup_timestamp::compact_utc_backup_timestamp;
 use crate::bridge::{CoreError, ErrorClass};
 use crate::classic_nova_root_translation::{
@@ -168,7 +168,12 @@ pub fn migrate_classic_root_to_nova(
 
 trait TransactionIo {
     fn copy(&self, source: &Path, target: &Path) -> io::Result<()>;
-    fn write_atomic(&self, path: &Path, contents: &str) -> Result<(), CoreError>;
+    fn write_atomic(
+        &self,
+        path: &Path,
+        contents: &str,
+        permissions: Option<&fs::Permissions>,
+    ) -> Result<(), CoreError>;
     fn remove(&self, path: &Path) -> io::Result<()>;
 }
 
@@ -179,8 +184,16 @@ impl TransactionIo for RealTransactionIo {
         fs::copy(source, target).map(|_| ())
     }
 
-    fn write_atomic(&self, path: &Path, contents: &str) -> Result<(), CoreError> {
-        write_text_atomic(path, contents)
+    fn write_atomic(
+        &self,
+        path: &Path,
+        contents: &str,
+        permissions: Option<&fs::Permissions>,
+    ) -> Result<(), CoreError> {
+        match permissions {
+            Some(permissions) => write_text_atomic_with_permissions(path, contents, permissions),
+            None => write_text_atomic(path, contents),
+        }
     }
 
     fn remove(&self, path: &Path) -> io::Result<()> {
@@ -312,7 +325,7 @@ fn migrate_with(
         )
     };
 
-    ensure_mutable_regular_source(&source)?;
+    let source_permissions = ensure_mutable_regular_source(&source)?;
     let translation = translate_classic_root(&classic);
     if let Some(entry) = translation.report.iter().find(|entry| {
         entry.disposition == ClassicNovaDisposition::Rejected
@@ -385,8 +398,8 @@ fn migrate_with(
             error,
         )
     })?;
-    transaction_io.write_atomic(&report_path, &report_text)?;
-    transaction_io.write_atomic(&config, &rendered)?;
+    transaction_io.write_atomic(&report_path, &report_text, None)?;
+    transaction_io.write_atomic(&config, &rendered, Some(&source_permissions))?;
     if source_kind == ClassicNovaMigrationSource::SettingsJsonc {
         if let Err(error) = transaction_io.remove(&source) {
             if let Err(rollback_error) = transaction_io.remove(&config) {
@@ -700,7 +713,7 @@ fn read_source(path: &Path) -> Result<String, CoreError> {
     })
 }
 
-fn ensure_mutable_regular_source(path: &Path) -> Result<(), CoreError> {
+fn ensure_mutable_regular_source(path: &Path) -> Result<fs::Permissions, CoreError> {
     if path_owned_by_home_manager(path) {
         return Err(migration_error(
             "home_manager_owned_root_migration",
@@ -733,7 +746,7 @@ fn ensure_mutable_regular_source(path: &Path) -> Result<(), CoreError> {
             json!({ "path": path }),
         ));
     }
-    Ok(())
+    Ok(metadata.permissions())
 }
 
 fn backup_path(source: &Path, timestamp: &str) -> PathBuf {
