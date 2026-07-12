@@ -9,15 +9,6 @@
 }: let
   cfg = config.programs.yazelix;
   tomlFormat = pkgs.formats.toml {};
-  defaultSettings = builtins.fromTOML (builtins.readFile ../config.toml);
-  contractSettings = {
-    ratconfig.contract = {
-      applied_change_ids = [];
-      contract_id = "yazelix-next.config";
-      schema_version = 1;
-      version = 1;
-    };
-  };
   nativeFileOption = description:
     lib.mkOption {
       type = lib.types.nullOr (lib.types.submodule {
@@ -167,10 +158,7 @@ in {
     xdg.configFile =
       lib.optionalAttrs (cfg.config.settings != null) {
         "yazelix-next/config.toml".source =
-          tomlFormat.generate "yazelix-next-config.toml" (
-            (lib.recursiveUpdate defaultSettings cfg.config.settings)
-            // contractSettings
-          );
+          tomlFormat.generate "yazelix-next-config.toml" cfg.config.settings;
       }
       // nativeConfigFiles;
   };

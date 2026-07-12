@@ -16,7 +16,7 @@ use crate::{
         write_starship_config_field,
     },
     paths::ConfigPaths,
-    root_config::{default_config_value, write_config_field},
+    root_config::{unset_config_field, write_config_field},
     zellij_sidecar::{ZellijSidecar, write_zellij_config_field, zellij_field_value},
 };
 
@@ -190,6 +190,10 @@ pub(crate) fn write_source_default(
     field_path: &str,
 ) -> Result<()> {
     match source_id {
+        SOURCE_CONFIG => {
+            reject_read_only_source(&paths.root, source_id)?;
+            return unset_config_field(&paths.root, field_path);
+        }
         SOURCE_MARS => {
             reject_read_only_source(&paths.mars, source_id)?;
             return unset_mars_config_field(&paths.mars, field_path);
@@ -201,7 +205,6 @@ pub(crate) fn write_source_default(
         _ => {}
     }
     let value = match source_id {
-        SOURCE_CONFIG => default_config_value(field_path)?,
         SOURCE_ZELLIJ => zellij_field_value(&ZellijSidecar::default(), field_path),
         _ => return Err(error(format!("unknown config source: {source_id}"))),
     };

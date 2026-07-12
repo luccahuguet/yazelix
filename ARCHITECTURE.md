@@ -77,24 +77,51 @@ One owner per concern. Paths are the durable map.
 
 `crates/yzn-config/` is the Ratconfig host.
 
-- Creates root and Zellij sources when missing; Mars and Starship stay sparse
+- Creates the Zellij sidecar when missing; root, Mars, and Starship stay sparse
 - Routes edits to the right file; Helix/Advanced open-file rows; Keys read-only
 - Hidden package-internal reads for launch + custom-popup KDL render
 - `agent.popup.kdl` is an internal render path for custom managed agent command
   KDL
 - `KEY_BINDINGS` is the human key reference; `config.kdl` is the runtime owner
 
-| Root field | Effect |
-| --- | --- |
-| `open.log_level` | `YZN_OPEN_LOG` for managed opens |
-| `shell.program` | Packaged shell for new panes (`nu`/`bash`/`zsh`/`fish`) |
-| `editor.command` | Yazi opens + config text edits + Git clients; `yzn-hx` vs host PATH |
-| `agent.command` / `agent.args` | Managed agent popup command; `auto` preserves provider bootstrap |
-| `welcome.*` | Pre-Zellij splash enable/style/duration |
-| `popup.side_margin` / `popup.vertical_margin` | `yzpp` default margins |
-| `keybindings.{config,agent,git,menu}` | Semantic role remaps |
-| `[popups.<id>]` | Custom argv popups + required keybinding |
-| `bar.widgets` | Top-bar tray order (shell label follows `shell.program`) |
+#### Nova root schema inventory
+
+Packaged `config.toml` owns every default below. The optional user file stores
+only explicit overrides; `CONFIG_FIELDS` and `root_config.rs` own the bounded
+catalog, validation, and sparse persistence unless another owner is named.
+
+| Root path | Type | Default | Effect | Applies |
+| --- | --- | --- | --- | --- |
+| `open.log_level` | string enum | `info` | `YZN_OPEN_LOG` diagnostics for managed opens | new opens |
+| `shell.program` | string enum | `nu` | Packaged shell for new panes | new panes |
+| `editor.command` | executable string | `yzn-hx` | Yazi opens, config text edits, and Git clients | new opens |
+| `agent.command` | executable string or `auto` | `auto` | Managed agent popup command | next launch |
+| `agent.args` | string array | `[]` | Arguments for a custom agent command | next launch |
+| `welcome.enabled` | boolean | `true` | Enables the pre-Zellij splash | next launch |
+| `welcome.style` | string enum | `random` | Selects the packaged splash style | next launch |
+| `welcome.duration_seconds` | integer, 1–60 | `3` | Sets splash duration | next launch |
+| `popup.side_margin` | non-negative integer | `1` | Left/right managed popup margin in cells | next launch |
+| `popup.vertical_margin` | non-negative integer | `0` | Top/bottom managed popup margin in cells | next launch |
+| `keybindings.config` | key chord | `Alt Shift K` | Config popup trigger | next launch |
+| `keybindings.agent` | key chord | `Alt Shift L` | Agent popup trigger | next launch |
+| `keybindings.git` | key chord | `Alt Shift J` | Git popup trigger | next launch |
+| `keybindings.menu` | key chord | `Alt Shift M` | Menu popup trigger | next launch |
+| `bar.widgets` | ordered string array | `editor`, `shell`, `term`, `codex_usage`, `cpu`, `ram` | Top-bar tray order; `BAR_WIDGET_VALUES` and `bar_widgets` own validation | next launch |
+
+`custom_popups.rs` owns the dynamic `[popups.<id>]` namespace. An id starts
+with an ASCII letter or `_`, then uses ASCII letters, digits, `_`, or `-`; the
+packaged ids `config`, `agent`, `git`, and `menu` are reserved.
+
+| Dynamic path | Type | Required/default | Meaning |
+| --- | --- | --- | --- |
+| `popups.<id>.command` | non-empty executable string without whitespace | required | Popup executable; arguments stay separate |
+| `popups.<id>.args` | non-empty string array | `[]` | Structured argv |
+| `popups.<id>.title` | non-empty string | `<id>_popup` | Unique pane title; packaged popup titles are reserved |
+| `popups.<id>.keybinding` | key chord | required | Unique trigger that cannot collide with packaged bindings |
+| `popups.<id>.keep_alive` | boolean | `false` | Hides rather than closes the popup when toggled |
+
+Custom popups apply on the next launch. No other fields are accepted inside a
+custom popup entry.
 
 ### Packaged layout and tools
 
@@ -151,7 +178,7 @@ Packaged first, unless a surface opts into native replacement.
 
 ```text
 ~/.config/yazelix-next/
-  config.toml              # semantic root (Yazelix-owned)
+  config.toml              # optional sparse semantic overrides
   mars/config.toml         # optional sparse Mars overrides
   zellij/config.kdl        # guarded scalar sidecar
   zellij/plugins.kdl       # extra plugins only
@@ -166,7 +193,7 @@ Runtime state defaults to `$XDG_DATA_HOME/yazelix-next` or `YAZELIX_STATE_DIR`.
 
 | Surface | Layering |
 | --- | --- |
-| Root TOML | Created with defaults + contract state |
+| Root TOML | Packaged semantic defaults → sparse explicit user overrides |
 | Mars | Packaged base → recursive sparse user override; low-level `force-theme` / `[colors]` / cursors stay manual native |
 | Nu | Packaged → optional host `mise activate nu` → optional user Nu |
 | Starship | Nova defaults → sparse user overrides → runtime-effective TOML |
@@ -292,7 +319,7 @@ Detail lives in Owners, checks, and the notes below.
 
 | ID | Contract | Owner | Check | Gap |
 | --- | --- | --- | --- | --- |
-| C11a | Root semantic schema + source creation | `yzn-config`, `config.toml` | config tests + contracts | UI |
+| C11a | Root semantic schema + sparse persistence | `yzn-config`, `config.toml` | config tests + contracts | UI |
 | C11b | Popups/Mars/Zellij/Starship tabs; session Zellij active-file patch | `yzn-config` | config tests + contracts | Session live scalars |
 | C11c | Helix tab + `yzn-hx` merge / `Alt r` / Steel | `yzn-config`, helix, `yzn-hx` | `helix-contracts` + config tests | UI |
 | C11d | Keys read-only + Advanced open-file | `yzn-config` | Keys/Advanced tests, key parity | UI |

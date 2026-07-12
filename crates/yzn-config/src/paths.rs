@@ -5,7 +5,7 @@ use std::{
 
 use crate::{
     common::*,
-    root_config::ensure_config_file_at,
+    root_config::validate_config_file_at,
     zellij_sidecar::{ZellijSidecar, render_zellij_sidecar},
 };
 
@@ -32,7 +32,7 @@ pub(crate) fn ensure_config_sources() -> Result<ConfigPaths> {
     ensure_config_sources_at(config_paths()?)
 }
 pub(crate) fn ensure_config_sources_at(paths: ConfigPaths) -> Result<ConfigPaths> {
-    ensure_config_file_at(paths.root.clone())?;
+    validate_config_file_at(paths.root.clone())?;
     ensure_plain_config_file_at(
         &paths.zellij,
         &render_zellij_sidecar(&ZellijSidecar::default()),

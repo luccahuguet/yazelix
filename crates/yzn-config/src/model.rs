@@ -21,14 +21,14 @@ use crate::{
     paths::ConfigPaths,
     root_config::{
         bar_widgets, default_config, default_config_path_value, popup_keybinding_spec,
-        read_toml_file_value, validate_agent_config, validate_config_value,
+        read_optional_toml_file_value, validate_agent_config, validate_config_value,
         validate_popup_keybindings,
     },
     zellij_sidecar::{ZellijSidecar, parse_zellij_sidecar, zellij_field_value},
 };
 
 pub(crate) fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
-    let config_active = read_toml_file_value(&paths.root, "config.toml")?;
+    let config_active = read_optional_toml_file_value(&paths.root, "config.toml")?;
     let config_default = default_config()?;
     let mars_active = read_optional_toml_file_value(&paths.mars, "invalid mars/config.toml")?;
     let mars_default = parse_toml_value(DEFAULT_MARS_CONFIG_TOML)
@@ -169,13 +169,6 @@ pub(crate) fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
             ],
         }),
     })
-}
-fn read_optional_toml_file_value(path: &Path, context: &'static str) -> Result<JsonValue> {
-    if path.exists() {
-        read_toml_file_value(path, context)
-    } else {
-        Ok(JsonValue::Object(Default::default()))
-    }
 }
 fn build_key_binding_field(
     [group, chord, action, owner, source]: &[&str; 5],

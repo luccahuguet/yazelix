@@ -609,7 +609,6 @@
             keybindings.git = "Alt Shift G";
             keybindings.menu = "Alt Shift U";
             bar.widgets = ["editor" "shell"];
-            ratconfig.contract.contract_id = "user-owned";
           };
           mars.text = "[window]\nwidth = 1200\n";
           zellij.text = "pane_frames false\n";
@@ -648,15 +647,14 @@
           exit 1
         fi
         grep -q 'program = "fish"' "$config_files/config.toml"
-        grep -q 'command = "yzn-hx"' "$config_files/config.toml"
+        ! grep -q 'command = "yzn-hx"' "$config_files/config.toml"
         grep -q 'enabled = false' "$config_files/config.toml"
-        grep -q 'style = "random"' "$config_files/config.toml"
+        ! grep -q 'style = "random"' "$config_files/config.toml"
         grep -q 'config = "Alt Shift C"' "$config_files/config.toml"
         grep -q 'agent = "Alt Shift A"' "$config_files/config.toml"
         grep -q 'git = "Alt Shift G"' "$config_files/config.toml"
         grep -q 'menu = "Alt Shift U"' "$config_files/config.toml"
-        grep -q 'contract_id = "yazelix-next.config"' "$config_files/config.toml"
-        ! grep -q 'contract_id = "user-owned"' "$config_files/config.toml"
+        ! grep -q 'ratconfig' "$config_files/config.toml"
         test "$(YAZELIX_NEXT_CONFIG_HOME="$config_files" ${yzn}/libexec/yazelix-next/yzn-config --get shell.program)" = fish
         test "$(YAZELIX_NEXT_CONFIG_HOME="$config_files" ${yzn}/libexec/yazelix-next/yzn-config --get editor.command)" = yzn-hx
         test "$(YAZELIX_NEXT_CONFIG_HOME="$config_files" ${yzn}/libexec/yazelix-next/yzn-config --get agent.command)" = auto

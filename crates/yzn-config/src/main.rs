@@ -85,20 +85,20 @@ fn run() -> Result<()> {
 
 fn print_config_field(path: &str) -> Result<()> {
     if path == BAR_WIDGETS_PATH {
-        let config = ensure_config_file_at(config_paths()?.root)?;
+        let config = validate_config_file_at(config_paths()?.root)?;
         println!("{}", read_bar_widgets_field(&config)?);
     } else if path == CUSTOM_POPUPS_KDL_PATH {
-        let config = ensure_config_file_at(config_paths()?.root)?;
+        let config = validate_config_file_at(config_paths()?.root)?;
         print!("{}", read_custom_popups_kdl(&config)?);
     } else if path == CUSTOM_POPUP_KEYBINDINGS_KDL_PATH {
-        let config = ensure_config_file_at(config_paths()?.root)?;
+        let config = validate_config_file_at(config_paths()?.root)?;
         print!("{}", read_custom_popup_keybindings_kdl(&config)?);
     } else if path == AGENT_POPUP_KDL_PATH {
-        let config = ensure_config_file_at(config_paths()?.root)?;
+        let config = validate_config_file_at(config_paths()?.root)?;
         print!("{}", read_agent_popup_kdl(&config)?);
     } else {
         let spec = config_field(path)?;
-        let config = ensure_config_file_at(config_paths()?.root)?;
+        let config = validate_config_file_at(config_paths()?.root)?;
         println!("{}", read_config_field(&config, spec)?);
     }
     Ok(())
@@ -119,7 +119,7 @@ mod tests {
     use crate::zellij_sidecar::*;
     use crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
     use ratatui::style::{Color, Style};
-    use ratconfig::toml_adapter::{get_toml_path, set_toml_value_text};
+    use ratconfig::toml_adapter::{get_toml_path, parse_toml_value, set_toml_value_text};
     use ratconfig::{
         ConfigUiDiagnostic, ConfigUiEditBehavior, ConfigUiModel, ConfigUiTheme, ConfigUiValueState,
         file_action_status_label, file_action_status_style,
@@ -203,7 +203,6 @@ mod tests {
 
     fn write_config_text(path: &Path, text: &str) {
         fs::write(path, text).unwrap();
-        ensure_config_file_at(path.to_path_buf()).unwrap();
     }
 
     fn assert_toml_value(path: &Path, field_path: &str, expected: &JsonValue) {
@@ -356,7 +355,11 @@ mod tests {
     fn root_config_catalog_defaults_come_from_config_toml_and_validate() {
         let defaults = default_config().unwrap();
 
-        for field_path in root_config_field_paths() {
+        for field_path in CONFIG_FIELDS
+            .iter()
+            .map(|spec| spec.field.path)
+            .chain([BAR_WIDGETS_PATH])
+        {
             let value = default_config_path_value(&defaults, field_path).unwrap();
             assert_eq!(default_config_value(field_path).unwrap(), value);
             validate_config_value(field_path, &value).unwrap();
@@ -372,33 +375,66 @@ mod tests {
     }
 
     #[test]
-    fn ensure_config_creates_defaults_and_contract_state() {
+    fn root_config_stays_sparse_and_inherits_packaged_defaults() {
         let temp = TempHome::new();
-        let path = ensure_config_file_at(temp.path.join("config.toml")).unwrap();
-        let value = read_toml_file_value(&path, "config.toml").unwrap();
-        let defaults = default_config().unwrap();
-
-        for field_path in root_config_field_paths() {
-            assert_eq!(
-                get_toml_path(&value, field_path),
-                get_toml_path(&defaults, field_path),
-                "{field_path}"
-            );
-        }
+        let path = validate_config_file_at(temp.path.join("config.toml")).unwrap();
+        assert!(!path.exists());
         assert_eq!(
-            get_toml_path(&value, "ratconfig.contract.contract_id"),
-            Some(&json!(CONTRACT_ID))
+            read_config_field(&path, config_field(OPEN_LOG_LEVEL_PATH).unwrap()).unwrap(),
+            "info"
+        );
+        assert!(!path.exists());
+
+        write_config_field(&path, OPEN_LOG_LEVEL_PATH, &json!("info")).unwrap();
+        let value = read_toml_file_value(&path, "config.toml").unwrap();
+        assert_eq!(
+            get_toml_path(&value, OPEN_LOG_LEVEL_PATH),
+            Some(&json!("info"))
+        );
+        assert_eq!(get_toml_path(&value, SHELL_PROGRAM_PATH), None);
+        let paths = ensure_config_sources_at(temp_paths(&temp)).unwrap();
+        assert_eq!(
+            model_field(&build_model(&paths).unwrap(), OPEN_LOG_LEVEL_PATH).state,
+            ConfigUiValueState::Explicit
+        );
+
+        unset_config_field(&path, OPEN_LOG_LEVEL_PATH).unwrap();
+        assert!(!path.exists());
+        assert_eq!(
+            read_config_field(&path, config_field(OPEN_LOG_LEVEL_PATH).unwrap()).unwrap(),
+            "info"
+        );
+
+        let changed_defaults = parse_toml_value("[open]\nlog_level = \"debug\"\n").unwrap();
+        let inherited = JsonValue::Object(Default::default());
+        assert_eq!(
+            config_path_value(&inherited, &changed_defaults, OPEN_LOG_LEVEL_PATH).unwrap(),
+            json!("debug")
         );
         assert_eq!(
-            get_toml_path(&value, "ratconfig.contract.version"),
-            Some(&json!(CONTRACT_VERSION))
+            config_path_value(
+                &parse_toml_value("[open]\nlog_level = \"info\"\n").unwrap(),
+                &changed_defaults,
+                OPEN_LOG_LEVEL_PATH,
+            )
+            .unwrap(),
+            json!("info")
+        );
+
+        std::os::unix::fs::symlink(temp.path.join("missing"), &path).unwrap();
+        assert!(write_config_field(&path, OPEN_LOG_LEVEL_PATH, &json!("debug")).is_err());
+        assert!(
+            fs::symlink_metadata(&path)
+                .unwrap()
+                .file_type()
+                .is_symlink()
         );
     }
 
     #[test]
     fn write_config_field_persists_valid_values_and_rejects_bad_values() {
         let temp = TempHome::new();
-        let path = ensure_config_file_at(temp.path.join("config.toml")).unwrap();
+        let path = validate_config_file_at(temp.path.join("config.toml")).unwrap();
 
         for (field_path, value, read_back) in [
             (OPEN_LOG_LEVEL_PATH, json!("debug"), None),
@@ -486,11 +522,8 @@ mod tests {
         );
 
         write_source_default(&temp_paths(&temp), SOURCE_CONFIG, BAR_WIDGETS_PATH).unwrap();
-        assert_toml_value(
-            &path,
-            BAR_WIDGETS_PATH,
-            &default_config_value(BAR_WIDGETS_PATH).unwrap(),
-        );
+        let value = read_toml_file_value(&path, "config.toml").unwrap();
+        assert_eq!(get_toml_path(&value, BAR_WIDGETS_PATH), None);
 
         let error = write_config_field(&path, BAR_WIDGETS_PATH, &json!(["weather"]))
             .unwrap_err()
@@ -499,7 +532,8 @@ mod tests {
         assert!(error.contains("claude_usage"));
 
         write_config_field(&path, AGENT_COMMAND_PATH, &json!(AGENT_AUTO_COMMAND)).unwrap();
-        assert_toml_value(&path, AGENT_ARGS_PATH, &json!([]));
+        let value = read_toml_file_value(&path, "config.toml").unwrap();
+        assert_eq!(get_toml_path(&value, AGENT_ARGS_PATH), None);
         assert_write_config_error(
             &path,
             AGENT_ARGS_PATH,
@@ -511,7 +545,7 @@ mod tests {
     #[test]
     fn bar_widgets_are_read_as_json_array_and_validated() {
         let temp = TempHome::new();
-        let path = ensure_config_file_at(temp.path.join("config.toml")).unwrap();
+        let path = validate_config_file_at(temp.path.join("config.toml")).unwrap();
 
         assert_eq!(
             read_bar_widgets_field(&path).unwrap(),
@@ -575,7 +609,7 @@ mod tests {
     #[test]
     fn agent_popup_kdl_renders_custom_command_override() {
         let temp = TempHome::new();
-        let path = ensure_config_file_at(temp.path.join("config.toml")).unwrap();
+        let path = validate_config_file_at(temp.path.join("config.toml")).unwrap();
 
         assert_agent_popup_error(
             "[agent]\ncommand = \"auto\"\nargs = [\"resume\"]\n",
@@ -906,33 +940,11 @@ mod tests {
         let before_root = fs::read_to_string(&paths.root).unwrap();
         set_read_only(&paths.root);
 
-        let error = ensure_config_file_at(paths.root.clone())
+        let error = write_source_field(&paths, SOURCE_CONFIG, OPEN_LOG_LEVEL_PATH, &json!("debug"))
             .unwrap_err()
             .to_string();
         assert!(error.contains("read-only"));
         assert_eq!(fs::read_to_string(&paths.root).unwrap(), before_root);
-    }
-
-    #[test]
-    fn read_only_complete_root_config_accepts_format_only_drift() {
-        let (_temp, paths) = temp_sources();
-        let text = concat!(
-            "\n[bar]\nwidgets = [\"editor\", \"shell\", \"term\", \"codex_usage\", \"cpu\", \"ram\"]\n\n",
-            "[agent]\nargs = []\ncommand = \"auto\"\n\n",
-            "[editor]\ncommand = \"yzn-hx\"\n\n",
-            "[open]\nlog_level = \"info\"\n\n",
-            "[popup]\nside_margin = 1\nvertical_margin = 0\n\n",
-            "[keybindings]\nconfig = \"Alt Shift K\"\nagent = \"Alt Shift L\"\ngit = \"Alt Shift J\"\nmenu = \"Alt Shift M\"\n\n",
-            "[ratconfig.contract]\napplied_change_ids = []\ncontract_id = \"yazelix-next.config\"\nschema_version = 1\nversion = 1\n\n",
-            "[shell]\nprogram = \"fish\"\n\n",
-            "[welcome]\nduration_seconds = 3\nenabled = false\nstyle = \"random\"\n",
-        );
-
-        fs::write(&paths.root, text).unwrap();
-        set_read_only(&paths.root);
-
-        ensure_config_file_at(paths.root.clone()).unwrap();
-        assert_eq!(fs::read_to_string(&paths.root).unwrap(), text);
     }
 
     #[test]
@@ -956,8 +968,9 @@ mod tests {
     fn ensure_config_sources_creates_source_backed_files() {
         let (_temp, paths) = temp_sources();
 
-        assert_exists(&[&paths.root, &paths.zellij]);
+        assert_exists(&[&paths.zellij]);
         assert_missing(&[
+            &paths.root,
             &paths.mars,
             &paths.starship,
             &paths.helix_config,
@@ -1270,7 +1283,6 @@ mod tests {
     #[test]
     fn mars_source_stays_sparse_and_inherits_packaged_defaults() {
         let (_temp, paths) = temp_sources();
-        let before_root = fs::read_to_string(&paths.root).unwrap();
         let model = build_model(&paths).unwrap();
         let mars_fields: Vec<_> = model
             .fields
@@ -1286,7 +1298,7 @@ mod tests {
 
         write_source_field(&paths, SOURCE_MARS, "window.opacity", &json!(0.5)).unwrap();
 
-        assert_eq!(fs::read_to_string(&paths.root).unwrap(), before_root);
+        assert!(!paths.root.exists());
         let raw = fs::read_to_string(&paths.mars).unwrap();
         assert!(raw.contains("opacity = 0.5"));
         assert!(!raw.contains("width ="));
@@ -1357,12 +1369,11 @@ mod tests {
     #[test]
     fn source_routing_writes_starship_without_touching_config_toml() {
         let (_temp, paths) = temp_sources();
-        let before_root = fs::read_to_string(&paths.root).unwrap();
 
         write_source_field(&paths, SOURCE_STARSHIP, "right_format", &json!("$time")).unwrap();
         write_source_field(&paths, SOURCE_STARSHIP, "add_newline", &json!(false)).unwrap();
 
-        assert_eq!(fs::read_to_string(&paths.root).unwrap(), before_root);
+        assert!(!paths.root.exists());
         let starship = read_toml_file_value(&paths.starship, "starship").unwrap();
         assert_eq!(
             get_toml_path(&starship, "right_format"),

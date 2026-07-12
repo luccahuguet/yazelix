@@ -878,35 +878,10 @@ fn expect_config_ui(yzn: &Path) {
         "unknown yzn-config --get path created config.toml"
     );
 
-    let config = temp.path.join("config.toml");
-    let config_text = fs::read_to_string(&config).unwrap();
-    expect_contains_all! {
-        &config_text, "created config.toml";
-        "[open]",
-        "log_level = \"info\"",
-        "[shell]",
-        "program = \"nu\"",
-        "[editor]",
-        "command = \"yzn-hx\"",
-        "[agent]",
-        "command = \"auto\"",
-        "args = []",
-        "[welcome]",
-        "enabled = true",
-        "style = \"random\"",
-        "duration_seconds = 3",
-        "[popup]",
-        "side_margin = 1",
-        "vertical_margin = 0",
-        "[keybindings]",
-        "config = \"Alt Shift K\"",
-        "agent = \"Alt Shift L\"",
-        "git = \"Alt Shift J\"",
-        "menu = \"Alt Shift M\"",
-        "[bar]",
-        "widgets = [\"editor\", \"shell\", \"term\", \"codex_usage\", \"cpu\", \"ram\"]",
-        "contract_id = \"yazelix-next.config\"",
-    }
+    assert!(
+        !temp.path.join("config.toml").exists(),
+        "default config reads created config.toml"
+    );
 }
 
 fn expect_startup_diagnostics(yzn: &Path) {

@@ -4,10 +4,9 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use ratconfig::toml_adapter::{get_toml_path, parse_toml_value, set_toml_value_text};
-use ratconfig::{
-    ConfigContract, join_toml_contract_text_from_version, reconcile_joined_toml_contract_text,
-    string_list_values_from_json,
+use ratconfig::string_list_values_from_json;
+use ratconfig::toml_adapter::{
+    get_toml_path, parse_toml_value, set_toml_value_text, unset_toml_value_text,
 };
 use serde_json::Value as JsonValue;
 
@@ -19,67 +18,10 @@ pub(crate) fn config_field(path: &str) -> Result<&'static ConfigFieldSpec> {
         .find(|spec| spec.field.path == path)
         .ok_or_else(|| error(format!("unknown config path: {path}")))
 }
-pub(crate) fn root_config_field_paths() -> impl Iterator<Item = &'static str> {
-    CONFIG_FIELDS
-        .iter()
-        .map(|spec| spec.field.path)
-        .chain([BAR_WIDGETS_PATH])
-}
-pub(crate) fn ensure_config_file_at(path: PathBuf) -> Result<PathBuf> {
-    if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent)?;
-    }
-
-    let raw = if path.exists() {
-        fs::read_to_string(&path)?
-    } else {
-        DEFAULT_CONFIG_TOML.to_string()
-    };
-    let reconciled = reconcile_contract(&raw)?;
-    let completed = fill_missing_defaults(&reconciled)?;
-    if completed != raw || !path.exists() {
-        if path.exists() {
-            if path_read_only(&path) && toml_semantically_equal(&raw, &completed)? {
-                return Ok(path);
-            }
-            reject_read_only_source(&path, SOURCE_CONFIG)?;
-        }
-        atomic_write(&path, &completed)?;
-    }
+pub(crate) fn validate_config_file_at(path: PathBuf) -> Result<PathBuf> {
+    let value = read_optional_toml_file_value(&path, "invalid config.toml")?;
+    validate_root_config(&value)?;
     Ok(path)
-}
-fn toml_semantically_equal(left: &str, right: &str) -> Result<bool> {
-    Ok(
-        parse_toml_value(left).map_err(|error| boxed_debug("invalid TOML", error))?
-            == parse_toml_value(right).map_err(|error| boxed_debug("invalid TOML", error))?,
-    )
-}
-fn reconcile_contract(raw: &str) -> Result<String> {
-    let contract = ConfigContract {
-        id: CONTRACT_ID.to_string(),
-        baseline_version: CONTRACT_VERSION,
-        current_version: CONTRACT_VERSION,
-        changes: Vec::new(),
-    };
-    let joined =
-        join_toml_contract_text_from_version(raw, &contract, CONTRACT_STATE_PATH, CONTRACT_VERSION)
-            .or_else(|_| reconcile_joined_toml_contract_text(raw, &contract, CONTRACT_STATE_PATH))
-            .map_err(|error| boxed_debug("could not reconcile config contract", error))?;
-    Ok(joined.text)
-}
-fn fill_missing_defaults(raw: &str) -> Result<String> {
-    let mut text = raw.to_string();
-    let defaults = default_config()?;
-    for field_path in root_config_field_paths() {
-        let default = default_config_path_value(&defaults, field_path)?;
-        let value = parse_toml_value(&text).map_err(|error| boxed_debug("invalid TOML", error))?;
-        if get_toml_path(&value, field_path).is_none() {
-            text = set_toml_value_text(&text, field_path, &default)
-                .map_err(|error| boxed_debug("could not write missing default", error))?
-                .text;
-        }
-    }
-    Ok(text)
 }
 pub(crate) fn default_config() -> Result<JsonValue> {
     parse_toml_value(DEFAULT_CONFIG_TOML)
@@ -97,21 +39,45 @@ pub(crate) fn read_toml_file_value(path: &Path, label: &'static str) -> Result<J
     let raw = fs::read_to_string(path)?;
     parse_toml_value(&raw).map_err(|error| boxed_debug(label, error))
 }
+pub(crate) fn read_optional_toml_file_value(path: &Path, label: &'static str) -> Result<JsonValue> {
+    if path_entry_exists(path)? {
+        read_toml_file_value(path, label)
+    } else {
+        Ok(JsonValue::Object(Default::default()))
+    }
+}
+fn path_entry_exists(path: &Path) -> Result<bool> {
+    match fs::symlink_metadata(path) {
+        Ok(_) => Ok(true),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(false),
+        Err(error) => Err(error.into()),
+    }
+}
+fn effective_config_path_value(value: &JsonValue, field_path: &str) -> Result<JsonValue> {
+    config_path_value(value, &default_config()?, field_path)
+}
+pub(crate) fn config_path_value(
+    value: &JsonValue,
+    defaults: &JsonValue,
+    field_path: &str,
+) -> Result<JsonValue> {
+    get_toml_path(value, field_path)
+        .cloned()
+        .map_or_else(|| default_config_path_value(defaults, field_path), Ok)
+}
 pub(crate) fn read_config_field(path: &Path, spec: &ConfigFieldSpec) -> Result<String> {
-    let value = read_toml_file_value(path, "config.toml")?;
+    let value = read_optional_toml_file_value(path, "config.toml")?;
     validate_root_config(&value)?;
-    let Some(value) = get_toml_path(&value, spec.field.path) else {
-        return Err(error(format!("unknown config path: {}", spec.field.path)));
-    };
-    validate_config_value(spec.field.path, value)?;
+    let value = effective_config_path_value(&value, spec.field.path)?;
+    validate_config_value(spec.field.path, &value)?;
     match spec.field.kind {
-        "string" => Ok(spec.field.json_choice(value)?.to_string()),
+        "string" => Ok(spec.field.json_choice(&value)?.to_string()),
         "string_list" => Ok(serde_json::to_string(&json_string_list(
             spec.field.path,
-            value,
+            &value,
         )?)?),
-        "boolean" => Ok(json_bool(spec.field.path, value)?.to_string()),
-        "integer" => Ok(json_i64(spec.field.path, value)?.to_string()),
+        "boolean" => Ok(json_bool(spec.field.path, &value)?.to_string()),
+        "integer" => Ok(json_i64(spec.field.path, &value)?.to_string()),
         _ => Err(error(format!(
             "{} must be {}",
             spec.field.path, spec.field.validation
@@ -119,15 +85,14 @@ pub(crate) fn read_config_field(path: &Path, spec: &ConfigFieldSpec) -> Result<S
     }
 }
 pub(crate) fn read_bar_widgets_field(path: &Path) -> Result<String> {
-    let value = read_toml_file_value(path, "config.toml")?;
+    let value = read_optional_toml_file_value(path, "config.toml")?;
     validate_root_config(&value)?;
-    let Some(value) = get_toml_path(&value, BAR_WIDGETS_PATH) else {
-        return Err(error(format!("unknown config path: {BAR_WIDGETS_PATH}")));
-    };
-    Ok(serde_json::to_string(&bar_widgets(value)?)?)
+    Ok(serde_json::to_string(&bar_widgets(
+        &effective_config_path_value(&value, BAR_WIDGETS_PATH)?,
+    )?)?)
 }
 pub(crate) fn read_agent_popup_kdl(path: &Path) -> Result<String> {
-    let value = read_toml_file_value(path, "config.toml")?;
+    let value = read_optional_toml_file_value(path, "config.toml")?;
     validate_root_config(&value)?;
     let command = agent_command(&value)?;
     if command == AGENT_AUTO_COMMAND {
@@ -140,38 +105,65 @@ pub(crate) fn bar_widgets(value: &JsonValue) -> Result<Vec<String>> {
         .map_err(error)
 }
 pub(crate) fn agent_command(value: &JsonValue) -> Result<String> {
-    let Some(value) = get_toml_path(value, AGENT_COMMAND_PATH) else {
-        return Err(error(format!("unknown config path: {AGENT_COMMAND_PATH}")));
-    };
-    let command = config_field(AGENT_COMMAND_PATH)?.field.json_choice(value)?;
+    let value = effective_config_path_value(value, AGENT_COMMAND_PATH)?;
+    let command = config_field(AGENT_COMMAND_PATH)?
+        .field
+        .json_choice(&value)?;
     validate_agent_command(command)?;
     Ok(command.to_string())
 }
 pub(crate) fn agent_args(value: &JsonValue) -> Result<Vec<String>> {
-    let Some(value) = get_toml_path(value, AGENT_ARGS_PATH) else {
-        return Err(error(format!("unknown config path: {AGENT_ARGS_PATH}")));
-    };
-    json_string_list(AGENT_ARGS_PATH, value)
+    json_string_list(
+        AGENT_ARGS_PATH,
+        &effective_config_path_value(value, AGENT_ARGS_PATH)?,
+    )
 }
 fn json_string_list(path: &str, value: &JsonValue) -> Result<Vec<String>> {
     string_list_values_from_json(path, value, &[]).map_err(error)
 }
 pub(crate) fn write_config_field(path: &Path, field_path: &str, value: &JsonValue) -> Result<()> {
     validate_config_value(field_path, value)?;
-    let raw = fs::read_to_string(path)?;
+    let raw = if path_entry_exists(path)? {
+        fs::read_to_string(path)?
+    } else {
+        String::new()
+    };
     let mut text = set_toml_value_text(&raw, field_path, value)
         .map_err(|error| boxed_debug("could not update config.toml", error))?
         .text;
     if field_path == AGENT_COMMAND_PATH && value.as_str() == Some(AGENT_AUTO_COMMAND) {
-        text = set_toml_value_text(&text, AGENT_ARGS_PATH, &JsonValue::Array(Vec::new()))
+        text = unset_toml_value_text(&text, AGENT_ARGS_PATH)
             .map_err(|error| boxed_debug("could not clear agent.args", error))?
             .text;
     }
-    let text = fill_missing_defaults(&reconcile_contract(&text)?)?;
     let value =
         parse_toml_value(&text).map_err(|error| boxed_debug("invalid config.toml", error))?;
     validate_root_config(&value)?;
     atomic_write(path, &text)
+}
+pub(crate) fn unset_config_field(path: &Path, field_path: &str) -> Result<()> {
+    default_config_value(field_path)?;
+    if !path_entry_exists(path)? {
+        return Ok(());
+    }
+    let raw = fs::read_to_string(path)?;
+    let text = unset_toml_value_text(&raw, field_path)
+        .map_err(|error| boxed_debug("could not update config.toml", error))?
+        .text;
+    let value =
+        parse_toml_value(&text).map_err(|error| boxed_debug("invalid config.toml", error))?;
+    validate_root_config(&value)?;
+    if config_is_empty(&value) {
+        fs::remove_file(path)?;
+        Ok(())
+    } else {
+        atomic_write(path, &text)
+    }
+}
+fn config_is_empty(value: &JsonValue) -> bool {
+    value
+        .as_object()
+        .is_some_and(|table| table.values().all(config_is_empty))
 }
 pub(crate) fn default_config_value(field_path: &str) -> Result<JsonValue> {
     if field_path != BAR_WIDGETS_PATH {
@@ -221,17 +213,12 @@ pub(crate) fn validate_root_config(value: &JsonValue) -> Result<()> {
     validate_agent_config(value)
 }
 pub(crate) fn validate_agent_config(value: &JsonValue) -> Result<()> {
-    let Some(command_value) = get_toml_path(value, AGENT_COMMAND_PATH) else {
-        return Ok(());
-    };
+    let command_value = effective_config_path_value(value, AGENT_COMMAND_PATH)?;
     let command = config_field(AGENT_COMMAND_PATH)?
         .field
-        .json_choice(command_value)?;
+        .json_choice(&command_value)?;
     validate_agent_command(command)?;
-    let args = get_toml_path(value, AGENT_ARGS_PATH)
-        .map(|value| json_string_list(AGENT_ARGS_PATH, value))
-        .transpose()?
-        .unwrap_or_default();
+    let args = agent_args(value)?;
     if command == AGENT_AUTO_COMMAND && !args.is_empty() {
         return Err(error(
             "agent.args requires agent.command to be a custom command",
@@ -281,10 +268,8 @@ fn render_agent_popup_kdl(command: &str, args: &[String]) -> String {
 pub(crate) fn validate_popup_keybindings(value: &JsonValue) -> Result<()> {
     let mut used = BTreeMap::new();
     for spec in POPUP_KEYBINDINGS {
-        let Some(value) = get_toml_path(value, spec.path) else {
-            continue;
-        };
-        let chord = config_field(spec.path)?.field.json_choice(value)?;
+        let value = effective_config_path_value(value, spec.path)?;
+        let chord = config_field(spec.path)?.field.json_choice(&value)?;
         validate_managed_popup_keybinding(spec.path, chord)?;
         if let Some(existing) = used.insert(chord.to_ascii_lowercase(), spec.path.to_string()) {
             return Err(error(format!(

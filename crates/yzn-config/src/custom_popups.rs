@@ -6,7 +6,8 @@ use serde_json::Value as JsonValue;
 use crate::{
     common::*,
     root_config::{
-        read_toml_file_value, validate_managed_popup_keybinding, validate_popup_keybindings,
+        read_optional_toml_file_value, validate_managed_popup_keybinding,
+        validate_popup_keybindings,
     },
 };
 
@@ -19,7 +20,7 @@ pub(crate) struct CustomPopup {
     keep_alive: bool,
 }
 pub(crate) fn read_custom_popups_kdl(path: &Path) -> Result<String> {
-    let value = read_toml_file_value(path, "config.toml")?;
+    let value = read_optional_toml_file_value(path, "config.toml")?;
     validate_popup_keybindings(&value)?;
     let mut text = String::new();
     for popup in custom_popups(&value)? {
@@ -48,7 +49,7 @@ pub(crate) fn read_custom_popups_kdl(path: &Path) -> Result<String> {
     Ok(text)
 }
 pub(crate) fn read_custom_popup_keybindings_kdl(path: &Path) -> Result<String> {
-    let value = read_toml_file_value(path, "config.toml")?;
+    let value = read_optional_toml_file_value(path, "config.toml")?;
     validate_popup_keybindings(&value)?;
     let mut text = String::new();
     for popup in custom_popups(&value)? {

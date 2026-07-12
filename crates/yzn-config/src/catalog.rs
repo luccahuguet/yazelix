@@ -1,9 +1,6 @@
 use ratconfig::DEFAULT_CONFIG_SOURCE_ID;
 
 pub(crate) const DEFAULT_CONFIG_TOML: &str = include_str!("../../../config.toml");
-pub(crate) const CONTRACT_ID: &str = "yazelix-next.config";
-pub(crate) const CONTRACT_STATE_PATH: &str = "ratconfig.contract";
-pub(crate) const CONTRACT_VERSION: u64 = 1;
 
 pub(crate) const OPEN_LOG_LEVEL_PATH: &str = "open.log_level";
 pub(crate) const SHELL_PROGRAM_PATH: &str = "shell.program";

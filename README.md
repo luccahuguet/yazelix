@@ -112,13 +112,14 @@ programs.yazelix.config = {
 };
 ```
 
-`settings` renders `~/.config/yazelix-next/config.toml` with Yazelix defaults
-and Ratconfig contract state. Native files are `text` or `source` passthroughs.
-Store-backed files show as read-only in `yzn config`; edit them in Home Manager.
+`settings` renders only the declared values to
+`~/.config/yazelix-next/config.toml`; undeclared values inherit packaged Nova
+defaults. Native files are `text` or `source` passthroughs. Store-backed files
+show as read-only in `yzn config`; edit them in Home Manager.
 
 ## Config Root
 
-`yzn config` creates managed config files under:
+`yzn config` uses the managed config tree under:
 
 ```text
 ~/.config/yazelix-next/
@@ -135,7 +136,9 @@ Set `YAZELIX_STATE_DIR` to use another state directory.
 
 ## Main Settings
 
-Root config lives at `~/.config/yazelix-next/config.toml`.
+The optional root config lives at `~/.config/yazelix-next/config.toml`. Opening
+`yzn config` or starting Nova does not create it. The UI shows packaged defaults
+for absent keys, saves only explicit overrides, and removes a key when reset.
 
 | Field | Default | Meaning |
 | --- | --- | --- |
@@ -354,13 +357,13 @@ git ls-files | grep -Ev '^\.beads/|\.lock$' | xargs wc -l
 | Language | Lines |
 | --- | ---: |
 | Ignore (`.gitignore`) | 4 |
-| Markdown | 1333 |
-| Nix | 1012 |
+| Markdown | 1367 |
+| Nix | 998 |
 | Shell | 84 |
 | YAML | 268 |
 | TOML | 249 |
 | KDL | 210 |
 | Nu | 11 |
 | Lua | 247 |
-| Rust | 12147 |
-| Total | 15565 |
+| Rust | 12112 |
+| Total | 15550 |
