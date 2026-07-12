@@ -199,6 +199,38 @@ fn path_strings(paths: &[PathBuf]) -> Vec<String> {
     paths.iter().map(|path| path_string(path)).collect()
 }
 
+fn home_manager_read_only_reason(option: Option<&str>) -> String {
+    option.map_or_else(
+        || {
+            "Home Manager owns this file. Edit the declaration that owns it, then run home-manager switch."
+                .to_string()
+        },
+        |option| {
+            format!(
+                "Home Manager owns this file. Edit programs.yazelix.config.{option}, then run home-manager switch."
+            )
+        },
+    )
+}
+
+fn apply_home_manager_ownership(
+    status: &mut NativeConfigStatusEntry,
+    path: &Path,
+    option: Option<&str>,
+) {
+    if !path_owned_by_home_manager(path) {
+        return;
+    }
+    status.status = NativeConfigStatusCode::HomeManagerReadOnly
+        .as_str()
+        .to_string();
+    status.label = NativeConfigStatusCode::HomeManagerReadOnly
+        .label()
+        .to_string();
+    status.allowed_action = "edit_home_manager".to_string();
+    status.read_only_reason = Some(home_manager_read_only_reason(option));
+}
+
 fn settings_status(request: &NativeConfigStatusRequest) -> NativeConfigStatusEntry {
     let settings_path = user_config_paths::main_config(&request.config_dir);
     let mut status = if request.settings_home_manager_read_only {
@@ -225,7 +257,7 @@ fn settings_status(request: &NativeConfigStatusRequest) -> NativeConfigStatusEnt
     };
     status.read_only_reason = request
         .settings_home_manager_read_only
-        .then(|| "Home Manager owns the active settings file".to_string());
+        .then(|| home_manager_read_only_reason(Some("settings")));
     status
 }
 
@@ -261,6 +293,7 @@ fn zellij_statuses(request: &NativeConfigStatusRequest) -> Vec<NativeConfigStatu
     } else {
         "create_or_import_native".to_string()
     };
+    apply_home_manager_ownership(&mut input, &managed, Some("zellij"));
 
     let mut plugin_input = entry(
         "zellij.plugins",
@@ -275,6 +308,7 @@ fn zellij_statuses(request: &NativeConfigStatusRequest) -> Vec<NativeConfigStatu
     plugin_input.active_path = path_present(&plugins).then(|| path_string(&plugins));
     plugin_input.managed_path = Some(path_string(&plugins));
     plugin_input.allowed_action = "edit_managed".to_string();
+    apply_home_manager_ownership(&mut plugin_input, &plugins, None);
 
     vec![
         input,
@@ -295,43 +329,58 @@ fn yazi_statuses(request: &NativeConfigStatusRequest) -> Vec<NativeConfigStatusE
             "Yazi main override",
             user_config_paths::yazi_config(&request.config_dir),
             request.xdg_config_home.join("yazi").join("yazi.toml"),
+            Some("yazi.config"),
         ),
         (
             "yazi.keymap",
             "Yazi keymap override",
             user_config_paths::yazi_keymap(&request.config_dir),
             request.xdg_config_home.join("yazi").join("keymap.toml"),
+            Some("yazi.keymap"),
         ),
         (
             "yazi.init",
             "Yazi init.lua override",
             user_config_paths::yazi_init(&request.config_dir),
             request.xdg_config_home.join("yazi").join("init.lua"),
+            Some("yazi.init"),
         ),
         (
             "yazi.package",
             "Preserved Yazi package manifest; dormant in Classic",
             user_config_paths::yazi_package(&request.config_dir),
             request.xdg_config_home.join("yazi").join("package.toml"),
+            Some("yazi.package"),
         ),
         (
             "yazi.plugins",
             "Yazi plugin directory",
             user_config_paths::yazi_plugins_dir(&request.config_dir),
             request.xdg_config_home.join("yazi").join("plugins"),
+            None,
         ),
         (
             "yazi.flavors",
             "Yazi flavor directory",
             user_config_paths::yazi_flavors_dir(&request.config_dir),
             request.xdg_config_home.join("yazi").join("flavors"),
+            None,
         ),
     ];
     let mut entries = files
         .into_iter()
-        .map(|(surface, description, managed, native)| {
-            optional_managed_import_status("yazi", surface, description, managed, vec![native])
-        })
+        .map(
+            |(surface, description, managed, native, home_manager_option)| {
+                optional_managed_import_status(
+                    "yazi",
+                    surface,
+                    description,
+                    managed,
+                    vec![native],
+                    home_manager_option,
+                )
+            },
+        )
         .collect::<Vec<_>>();
     entries.push(generated_entry(
         "yazi.generated",
@@ -352,6 +401,7 @@ fn helix_statuses(request: &NativeConfigStatusRequest) -> Vec<NativeConfigStatus
             "Managed Helix override",
             managed,
             vec![native],
+            Some("helix.config"),
         ),
         generated_entry(
             "helix.generated",
@@ -397,9 +447,7 @@ fn terminal_statuses(request: &NativeConfigStatusRequest) -> Vec<NativeConfigSta
         "edit_managed"
     }
     .to_string();
-    input.read_only_reason = home_manager.then(|| {
-        "The Mars override is owned by Home Manager; edit programs.yazelix.config.mars.".to_string()
-    });
+    input.read_only_reason = home_manager.then(|| home_manager_read_only_reason(Some("mars")));
     vec![input]
 }
 
@@ -451,6 +499,7 @@ fn optional_managed_import_status(
     description: &str,
     managed: PathBuf,
     native_paths: Vec<PathBuf>,
+    home_manager_option: Option<&str>,
 ) -> NativeConfigStatusEntry {
     let native_existing = native_paths.iter().find(|path| path.exists()).cloned();
     let mut status = if path_present(&managed) {
@@ -483,6 +532,7 @@ fn optional_managed_import_status(
         "native_available" => "import_native".to_string(),
         _ => "edit_managed".to_string(),
     };
+    apply_home_manager_ownership(&mut status, &managed, home_manager_option);
     status
 }
 
@@ -595,6 +645,61 @@ mod tests {
             Some(path_string(&managed).as_str())
         );
         assert_eq!(terminal.allowed_action, "edit_home_manager");
+        assert_eq!(
+            terminal.read_only_reason.as_deref(),
+            Some(
+                "Home Manager owns this file. Edit programs.yazelix.config.mars, then run home-manager switch."
+            )
+        );
+    }
+
+    // Regression: declarative Zellij, Helix, and Yazi sidecars were reported as mutable managed overrides.
+    #[cfg(unix)]
+    #[test]
+    fn home_manager_native_sidecars_report_exact_declarative_owners() {
+        use std::os::unix::fs::symlink;
+
+        let tmp = TempDir::new().unwrap();
+        let req = request(&tmp);
+        let owner_dir = tmp.path().join("profile-home-manager-files");
+        fs::create_dir_all(&owner_dir).unwrap();
+
+        let sidecars = [
+            (
+                user_config_paths::zellij_config(&req.config_dir),
+                "zellij.kdl",
+                "zellij.input",
+                "programs.yazelix.config.zellij",
+            ),
+            (
+                user_config_paths::helix_config(&req.config_dir),
+                "helix.toml",
+                "helix.input",
+                "programs.yazelix.config.helix.config",
+            ),
+            (
+                user_config_paths::yazi_keymap(&req.config_dir),
+                "yazi-keymap.toml",
+                "yazi.keymap",
+                "programs.yazelix.config.yazi.keymap",
+            ),
+        ];
+        for (managed, owner_name, _, _) in &sidecars {
+            fs::create_dir_all(managed.parent().unwrap()).unwrap();
+            let owner = owner_dir.join(owner_name);
+            fs::write(&owner, "").unwrap();
+            symlink(owner, managed).unwrap();
+        }
+
+        let entries = classify_native_config_statuses(&req);
+        for (_, _, surface, option) in sidecars {
+            let status = find(&entries, surface);
+            assert_eq!(status.status, "home_manager_read_only");
+            assert_eq!(status.allowed_action, "edit_home_manager");
+            let reason = status.read_only_reason.as_deref().unwrap();
+            assert!(reason.contains(option), "{reason}");
+            assert!(reason.contains("home-manager switch"), "{reason}");
+        }
     }
 
     // Defends: native Yazi and Helix files are import candidates only; Yazelix does not silently read them as runtime input.
@@ -655,7 +760,9 @@ mod tests {
         assert_eq!(settings.label, "Home Manager-managed");
         assert_eq!(
             settings.read_only_reason.as_deref(),
-            Some("Home Manager owns the active settings file")
+            Some(
+                "Home Manager owns this file. Edit programs.yazelix.config.settings, then run home-manager switch."
+            )
         );
     }
 }
