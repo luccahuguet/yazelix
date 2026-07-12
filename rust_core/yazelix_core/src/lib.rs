@@ -5,6 +5,7 @@ pub mod appearance_mode;
 pub(crate) mod atomic_fs;
 pub(crate) mod backup_timestamp;
 pub mod bridge;
+pub mod classic_nova_root_migration;
 pub mod classic_nova_root_translation;
 pub mod cli_render;
 pub mod command_metadata;
@@ -86,6 +87,10 @@ pub use action_registry::{
 };
 pub use agent_commands::run_yzx_agent;
 pub use bridge::{CoreError, ErrorClass, error_envelope, success_envelope};
+pub use classic_nova_root_migration::{
+    ClassicNovaMigrationOutcome, ClassicNovaMigrationReport, ClassicNovaMigrationRequest,
+    ClassicNovaMigrationSource, ClassicNovaMigrationStatus, migrate_classic_root_to_nova,
+};
 pub use classic_nova_root_translation::{
     ClassicNovaDisposition, ClassicNovaReportEntry, ClassicNovaRootTranslation,
     translate_classic_root,

@@ -88,25 +88,13 @@ pub fn normalize_config(
     request: &NormalizeConfigRequest,
 ) -> Result<NormalizeConfigData, CoreError> {
     let config = read_sparse_config_table(&request.config_path, "read_config")?;
-    let default_config = read_config_table(&request.default_config_path, "read_default_config")?;
-    let contract = read_toml_table(&request.contract_path, "read_config_contract")?;
-    let fields = load_contract_fields(&contract)?;
+    let (default_config, fields, diagnostic_report) = prepare_classic_config_table(
+        &config,
+        &request.default_config_path,
+        &request.contract_path,
+        &request.config_path,
+    )?;
     let config_file = request.config_path.to_string_lossy().to_string();
-
-    let diagnostic_report =
-        build_diagnostic_report(&config, &default_config, &fields, &request.config_path)?;
-    if diagnostic_report.has_blocking {
-        return Err(CoreError::classified(
-            ErrorClass::Config,
-            "unsupported_config",
-            format!(
-                "Yazelix found stale or unsupported config entries in {}.",
-                diagnostic_report.config_path
-            ),
-            "Update the reported config fields manually, then retry. Use `yzx reset config` only as a blunt fallback.",
-            serde_json::to_value(&diagnostic_report).unwrap_or_else(|_| json!({})),
-        ));
-    }
 
     let mut normalized_config = JsonMap::new();
     for field in fields.values() {
@@ -123,6 +111,52 @@ pub fn normalize_config(
         config_file,
         diagnostic_report,
     })
+}
+
+fn prepare_classic_config_table(
+    config: &toml::Table,
+    default_config_path: &Path,
+    contract_path: &Path,
+    config_path: &Path,
+) -> Result<
+    (
+        toml::Table,
+        BTreeMap<String, ContractField>,
+        ConfigDiagnosticReport,
+    ),
+    CoreError,
+> {
+    let default_config = read_config_table(default_config_path, "read_default_config")?;
+    let contract = read_toml_table(contract_path, "read_config_contract")?;
+    let fields = load_contract_fields(&contract)?;
+    let diagnostic_report = build_diagnostic_report(config, &default_config, &fields, config_path)?;
+    if diagnostic_report.has_blocking {
+        return Err(CoreError::classified(
+            ErrorClass::Config,
+            "unsupported_config",
+            format!(
+                "Yazelix found stale or unsupported config entries in {}.",
+                diagnostic_report.config_path
+            ),
+            "Update the reported config fields manually, then retry. Use `yzx reset config` only as a blunt fallback.",
+            serde_json::to_value(&diagnostic_report).unwrap_or_else(|_| json!({})),
+        ));
+    }
+    Ok((default_config, fields, diagnostic_report))
+}
+
+pub(crate) fn validate_classic_config_table(
+    config: &toml::Table,
+    default_config_path: &Path,
+    contract_path: &Path,
+    config_path: &Path,
+) -> Result<(), CoreError> {
+    let (defaults, fields, _) =
+        prepare_classic_config_table(config, default_config_path, contract_path, config_path)?;
+    for field in fields.values() {
+        normalize_field(field, config, &defaults)?;
+    }
+    Ok(())
 }
 
 fn read_toml_table(path: &Path, code: &str) -> Result<toml::Table, CoreError> {

@@ -80,13 +80,13 @@ const SHARED_BAR_WIDGETS: &[&str] = &[
     "cpu",
     "ram",
 ];
-const POPUP_ROLE_MAPPINGS: &[(&str, &str, &str)] = &[
+pub(crate) const POPUP_ROLE_MAPPINGS: &[(&str, &str, &str)] = &[
     ("bottom_popup", "git", "Alt Shift J"),
     ("top_popup", "config", "Alt Shift K"),
     ("menu", "menu", "Alt Shift M"),
     ("open_codex_agent_right", "agent", "Alt Shift L"),
 ];
-const PACKAGED_NON_POPUP_CHORDS: &[&str] = &[
+pub(crate) const PACKAGED_NON_POPUP_CHORDS: &[&str] = &[
     "Ctrl Alt g",
     "Ctrl Alt o",
     "Ctrl q",
@@ -878,11 +878,11 @@ fn single_chord(value: &Value) -> Option<String> {
     (values.len() == 1).then(|| values[0].trim().to_string())
 }
 
-fn executable(value: &str) -> bool {
+pub(crate) fn executable(value: &str) -> bool {
     !value.is_empty() && !value.chars().any(char::is_whitespace)
 }
 
-fn valid_popup_id(id: &str) -> bool {
+pub(crate) fn valid_popup_id(id: &str) -> bool {
     let mut chars = id.chars();
     chars
         .next()
@@ -890,7 +890,7 @@ fn valid_popup_id(id: &str) -> bool {
         && chars.all(|ch| ch.is_ascii_alphanumeric() || matches!(ch, '_' | '-'))
 }
 
-fn valid_chord(value: &str) -> bool {
+pub(crate) fn valid_chord(value: &str) -> bool {
     value.rsplit_once(' ').is_some_and(|(modifiers, key)| {
         matches!(
             modifiers,
@@ -915,7 +915,7 @@ fn valid_chord(value: &str) -> bool {
     })
 }
 
-fn chord_matches(pattern: &str, chord: &str) -> bool {
+pub(crate) fn chord_matches(pattern: &str, chord: &str) -> bool {
     pattern.eq_ignore_ascii_case(chord)
         || matches!(
             (pattern, chord.strip_prefix("Alt ")),

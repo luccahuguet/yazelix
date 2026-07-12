@@ -802,7 +802,10 @@ fn ensure_trailing_newline(mut raw: String) -> String {
     raw
 }
 
-fn json_value_to_toml_table(value: &JsonValue, path: &Path) -> Result<toml::Table, CoreError> {
+pub(crate) fn json_value_to_toml_table(
+    value: &JsonValue,
+    path: &Path,
+) -> Result<toml::Table, CoreError> {
     let JsonValue::Object(object) = value else {
         return Err(CoreError::classified(
             ErrorClass::Config,
