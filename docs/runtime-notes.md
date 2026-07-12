@@ -5,7 +5,11 @@ matter when changing launch, config, editor, shell, or popup behavior.
 
 ## Config UI
 
-`yzn config` creates the core config sources when they are missing:
+`yzn config` validates the optional root config and seeds `cursors.toml` from
+the child-owned template when that file is missing. Runtime preparation uses
+the same one-time cursor seed.
+
+The UI leaves these sparse sources absent until you save a field:
 
 ```text
 ~/.config/yazelix-next/config.toml
@@ -14,8 +18,8 @@ matter when changing launch, config, editor, shell, or popup behavior.
 ~/.config/yazelix-next/starship.toml
 ```
 
-The Helix and advanced native files are lazy. The config UI creates them only
-when a row opens the file. Activating either Steel row creates both
+The Helix and advanced native files stay lazy. Opening a file-action row creates
+its starter file. Activating either Steel row creates both
 `helix/helix.scm` and `helix/init.scm`.
 
 While editing a text field, `Ctrl+e` opens the staged value in the configured
