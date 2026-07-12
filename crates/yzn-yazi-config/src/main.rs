@@ -285,12 +285,12 @@ fn invalid_data(message: impl Into<String>) -> io::Error {
 
 static NONCE: AtomicU64 = AtomicU64::new(0);
 
-fn nonce() -> u128 {
-    SystemTime::now()
+fn nonce() -> String {
+    let timestamp = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map(|duration| duration.as_nanos())
-        .unwrap_or_default()
-        + u128::from(NONCE.fetch_add(1, Ordering::Relaxed))
+        .unwrap_or_default();
+    format!("{timestamp}-{}", NONCE.fetch_add(1, Ordering::Relaxed))
 }
 
 #[cfg(test)]
