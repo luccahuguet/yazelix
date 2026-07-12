@@ -31,6 +31,7 @@ else
   {
     "yazelix_cursors-0.1.0" = cursorInputNarHash;
     "ratconfig-2.0.0" = "sha256-NXnn7WOBEa7uQl8rs52gpIhpEGTeanRL5+au9ltjQyE=";
+    "ratconfig-3.0.0" = "sha256-G47dgqPWzpN0bNkEU9nkqbTnqS+3aAOdCNYugamP0Pg=";
     "yazelix_screen-0.1.0" = "sha256-e8qM6kzHUNMsbBBQ21QJEAgJp5rqytDiXVIJmGaY9SE=";
     "yazelix_yazi_assets-0.1.0" = yaziInputNarHash;
   }

@@ -1,4 +1,5 @@
-use super::{ConfigUiModel, ConfigUiRequest, apply_contract_path_for_setting_path};
+use super::model_builder::active_config_path;
+use super::{ConfigUiRequest, apply_contract_path_for_setting_path};
 use crate::active_config_surface::primary_config_paths;
 use crate::bridge::CoreError;
 use crate::config_apply::{
@@ -10,7 +11,6 @@ use crate::runtime_apply_mode::RuntimeApplyMode;
 
 pub(super) fn apply_after_field_write(
     request: &ConfigUiRequest,
-    model: &ConfigUiModel,
     setting_path: &str,
 ) -> Result<ConfigEditApplyStatus, CoreError> {
     let paths = primary_config_paths(&request.runtime_dir, &request.config_dir);
@@ -30,7 +30,7 @@ pub(super) fn apply_after_field_write(
     let pane_orchestrator_refresh = if apply_mode == Some(RuntimeApplyMode::LiveWithPaneRefresh) {
         let state_dir = state_dir_from_env()?;
         Some(PaneOrchestratorRuntimeRefreshRequest {
-            config_path: model.active_config_path.clone(),
+            config_path: active_config_path(&paths, request.config_override.as_deref()),
             default_config_path: paths.default_config_path.clone(),
             contract_path: paths.contract_path.clone(),
             zellij_config_dir: state_dir.join("configs").join("zellij"),

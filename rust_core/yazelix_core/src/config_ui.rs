@@ -51,25 +51,23 @@ use model_builder::{
     classify_path_owner, default_main_setting_value_for_ui, path_is_read_only, path_present,
     read_settings_for_edit, validate_patched_settings_for_ui, write_settings_edit,
 };
-use ratconfig::patch::PatchMutation;
-use ratconfig::toml_adapter::TomlPatchOutcome;
+use ratconfig::patch::{PatchMutation, PatchOutcome};
 pub use ratconfig::{
     ConfigUiApp, ConfigUiApplyStatus, ConfigUiContractField, ConfigUiDiagnostic,
     ConfigUiEditBehavior, ConfigUiEditMode, ConfigUiField, ConfigUiFieldMetadata,
-    ConfigUiFieldRowSpec, ConfigUiFileAction, ConfigUiIntent, ConfigUiKey, ConfigUiMetadata,
+    ConfigUiFieldSpec, ConfigUiFileAction, ConfigUiIntent, ConfigUiKey, ConfigUiMetadata,
     ConfigUiModel, ConfigUiNativeStatus, ConfigUiPathOwner, ConfigUiSchemaField, ConfigUiSidecar,
     ConfigUiSource, ConfigUiTomlDocumentSpec, ConfigUiValueState, DEFAULT_CONFIG_SOURCE_ID,
     UiRowRef,
 };
 use ratconfig::{
-    CrosstermRunnerError, build_config_ui_field, build_toml_document_fields,
-    collect_config_ui_schema_fields, config_contract_fields_from_toml, config_key_style,
-    config_ui_metadata_from_toml, default_field_detail_lines, detail_line, diagnostic_detail_lines,
-    file_action_detail_lines, get_json_path, is_scalar_enum_field, metadata_key_style,
-    multi_choice_detail_lines, native_status_detail_lines,
-    run_config_ui_with_details as run_ratconfig_config_ui_with_details, schema_tabs,
-    sidecar_detail_lines, single_choice_detail_lines, single_choice_field_detail_lines,
-    state_label, tab_index, toml_value_to_json,
+    CrosstermRunnerError, build_toml_document_fields, collect_config_ui_schema_fields,
+    config_contract_fields_from_toml, config_key_style, config_ui_metadata_from_toml,
+    default_field_detail_lines, detail_line, diagnostic_detail_lines, file_action_detail_lines,
+    get_json_path, is_scalar_enum_field, metadata_key_style, multi_choice_detail_lines,
+    native_status_detail_lines, run_config_ui_with_details as run_ratconfig_config_ui_with_details,
+    schema_tabs, sidecar_detail_lines, single_choice_detail_lines,
+    single_choice_field_detail_lines, state_label, tab_index, toml_value_to_json,
 };
 #[cfg(test)]
 use ratconfig::{edit_input_for_field, parse_edit_input, parse_string_list_values};

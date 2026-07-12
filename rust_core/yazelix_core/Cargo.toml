@@ -30,7 +30,7 @@ time = { version = "0.3", features = ["formatting", "local-offset", "macros"] }
 thiserror = "2.0"
 toml = "1.1"
 yazelix_cursors = { git = "https://github.com/luccahuguet/yazelix-cursors", rev = "0b832de2f8d954164e18a03ea0be0a84c3a5ebdc" }
-ratconfig = { git = "https://github.com/luccahuguet/ratconfig", rev = "110e749a5fb10e146611427564bd6afda0750827", features = ["crossterm-runner"] }
+ratconfig = { git = "https://github.com/luccahuguet/ratconfig", rev = "80c9329b41d8e4c3791bb99662134e964ec7f413", features = ["crossterm-runner"] }
 yazelix_screen = { git = "https://github.com/luccahuguet/yazelix-screen", rev = "9dc52f7112e249e0f51effdb84370d46e143379c" }
 yazelix_yazi_assets = { git = "https://github.com/luccahuguet/yazelix-yazi-assets", rev = "9937366a545ae7d56f8042526dafdc79190a4154" }
 yazelix_zellij_config_pack = { path = "../yazelix_zellij_config_pack" }

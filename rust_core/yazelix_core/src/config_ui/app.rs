@@ -147,7 +147,7 @@ impl YazelixConfigUiHost<'_> {
             });
         }
         let target = self.editable_config_target(ui, source_id, setting_path)?;
-        let raw = self.read_edit_target_or_default(ui, &target)?;
+        let raw = self.read_edit_target_or_default(&target)?;
         let outcome = set_toml_value_text(&raw, &target.path_in_file, value)
             .map_err(|error| config_toml_patch_error(&target.path, error))?;
         self.finish_field_write(ui, source_id, setting_path, &target, outcome)
@@ -166,7 +166,7 @@ impl YazelixConfigUiHost<'_> {
             });
         }
         let target = self.editable_config_target(ui, source_id, setting_path)?;
-        let raw = self.read_edit_target_or_default(ui, &target)?;
+        let raw = self.read_edit_target_or_default(&target)?;
         let outcome = unset_toml_value_text(&raw, &target.path_in_file)
             .map_err(|error| config_toml_patch_error(&target.path, error))?;
         self.finish_field_write(ui, source_id, setting_path, &target, outcome)
@@ -180,7 +180,7 @@ impl YazelixConfigUiHost<'_> {
         next_list: impl FnOnce(&JsonValue, &JsonValue) -> Result<Option<JsonValue>, CoreError>,
     ) -> Result<ConfigUiWriteOutcome, CoreError> {
         let target = self.editable_config_target(ui, source_id, CUSTOM_POPUPS_FIELD_PATH)?;
-        let raw = self.read_edit_target_or_default(ui, &target)?;
+        let raw = self.read_edit_target_or_default(&target)?;
         let root = parse_config_value(&target.path, &raw)?;
         let default_value =
             default_main_setting_value_for_ui(self.request, CUSTOM_POPUPS_FIELD_PATH)?;
@@ -198,7 +198,7 @@ impl YazelixConfigUiHost<'_> {
         source_id: &str,
         setting_path: &str,
         target: &ConfigUiEditTarget,
-        outcome: TomlPatchOutcome,
+        outcome: PatchOutcome,
     ) -> Result<ConfigUiWriteOutcome, CoreError> {
         let should_write = outcome.changed();
         let mutation = outcome.mutation;
@@ -233,7 +233,7 @@ impl YazelixConfigUiHost<'_> {
         let apply_notice = if should_write && target.kind == ConfigUiEditTargetKind::Mars {
             Some("Mars reads this native config when the next window opens.".to_string())
         } else if should_write {
-            match apply_after_field_write(self.request, &ui.model, setting_path) {
+            match apply_after_field_write(self.request, setting_path) {
                 Ok(status) => apply_status_notice(&status),
                 Err(error) => Some(apply_error_notice(&error)),
             }
@@ -315,29 +315,31 @@ impl YazelixConfigUiHost<'_> {
         source_id: &str,
         setting_path: &str,
     ) -> Result<ConfigUiEditTarget, CoreError> {
-        match source_id {
-            SETTINGS_SOURCE_ID => Ok(ConfigUiEditTarget {
-                path: ui.model.active_config_path.clone(),
-                path_in_file: setting_path.to_string(),
-                kind: ConfigUiEditTargetKind::Main,
-            }),
-            CURSORS_SOURCE_ID => Ok(ConfigUiEditTarget {
-                path: ui.model.cursor_config_path.clone(),
-                path_in_file: cursor_path_in_file(setting_path)?,
-                kind: ConfigUiEditTargetKind::Cursors,
-            }),
-            MARS_SOURCE_ID => Ok(ConfigUiEditTarget {
-                path: user_config_paths::mars_config(&self.request.config_dir),
-                path_in_file: setting_path.to_string(),
-                kind: ConfigUiEditTargetKind::Mars,
-            }),
-            _ => Err(unsupported_config_source(source_id, setting_path)),
-        }
+        let path = ui
+            .model
+            .sources
+            .iter()
+            .find(|source| source.id == source_id)
+            .map(|source| source.path.clone())
+            .ok_or_else(|| unsupported_config_source(source_id, setting_path))?;
+        let (path_in_file, kind) = match source_id {
+            SETTINGS_SOURCE_ID => (setting_path.to_string(), ConfigUiEditTargetKind::Main),
+            CURSORS_SOURCE_ID => (
+                cursor_path_in_file(setting_path)?,
+                ConfigUiEditTargetKind::Cursors,
+            ),
+            MARS_SOURCE_ID => (setting_path.to_string(), ConfigUiEditTargetKind::Mars),
+            _ => return Err(unsupported_config_source(source_id, setting_path)),
+        };
+        Ok(ConfigUiEditTarget {
+            path,
+            path_in_file,
+            kind,
+        })
     }
 
     fn read_edit_target_or_default(
         &self,
-        ui: &ConfigUiApp,
         target: &ConfigUiEditTarget,
     ) -> Result<String, CoreError> {
         if target.path.exists() {
@@ -346,17 +348,19 @@ impl YazelixConfigUiHost<'_> {
         match target.kind {
             ConfigUiEditTargetKind::Main => Ok(String::new()),
             ConfigUiEditTargetKind::Cursors => {
-                let raw =
-                    fs::read_to_string(&ui.model.default_cursor_config_path).map_err(|source| {
-                        CoreError::io(
-                            "read_default_cursor_config_for_ui_edit",
-                            "Could not read the default Yazelix cursor settings",
-                            "Reinstall Yazelix so the runtime includes yazelix_cursors_default.toml.",
-                            ui.model.default_cursor_config_path.display().to_string(),
-                            source,
-                        )
-                    })?;
-                CursorRegistry::parse_str(&ui.model.default_cursor_config_path, &raw)?;
+                let default_cursor_config_path =
+                    primary_config_paths(&self.request.runtime_dir, &self.request.config_dir)
+                        .default_cursor_config_path;
+                let raw = fs::read_to_string(&default_cursor_config_path).map_err(|source| {
+                    CoreError::io(
+                        "read_default_cursor_config_for_ui_edit",
+                        "Could not read the default Yazelix cursor settings",
+                        "Reinstall Yazelix so the runtime includes yazelix_cursors_default.toml.",
+                        default_cursor_config_path.display().to_string(),
+                        source,
+                    )
+                })?;
+                CursorRegistry::parse_str(&default_cursor_config_path, &raw)?;
                 Ok(raw)
             }
             ConfigUiEditTargetKind::Mars => Ok(String::new()),

@@ -880,8 +880,14 @@ fn home_manager_owned_settings_use_activation_apply_mode() {
 
     let model = fixture.model();
     let popup_width = model_field(&model, "zellij.popup_width_percent");
+    let settings_source = model
+        .sources
+        .iter()
+        .find(|source| source.id == SETTINGS_SOURCE_ID)
+        .expect("settings source");
 
-    assert_eq!(model.config_owner, ConfigUiPathOwner::HomeManager);
+    assert_eq!(settings_source.owner, ConfigUiPathOwner::HomeManager);
+    assert!(settings_source.read_only);
     assert_eq!(
         popup_width.apply_status.summary,
         "after Home Manager switch"

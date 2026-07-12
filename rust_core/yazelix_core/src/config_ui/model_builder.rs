@@ -255,12 +255,6 @@ pub fn build_config_ui_model(request: &ConfigUiRequest) -> Result<ConfigUiModel,
     });
 
     Ok(ConfigUiModel {
-        active_config_path: active_config_path.clone(),
-        cursor_config_path: paths.user_cursor_config.clone(),
-        default_cursor_config_path: paths.default_cursor_config_path.clone(),
-        active_config_exists,
-        config_owner,
-        config_read_only: path_is_read_only(&active_config_path),
         sources: collect_config_sources(
             &tabs,
             &active_config_path,
@@ -288,7 +282,10 @@ pub(super) fn apply_contract_path_for_setting_path(setting_path: &str) -> &str {
         .unwrap_or(setting_path)
 }
 
-fn active_config_path(paths: &PrimaryConfigPaths, config_override: Option<&str>) -> PathBuf {
+pub(super) fn active_config_path(
+    paths: &PrimaryConfigPaths,
+    config_override: Option<&str>,
+) -> PathBuf {
     match config_override.map(str::trim).filter(|raw| !raw.is_empty()) {
         Some(raw) => PathBuf::from(raw),
         None => paths.user_config.clone(),
@@ -702,24 +699,21 @@ pub(super) fn build_field_row(
     has_blocking_diagnostic: bool,
     edit_behavior: ConfigUiEditBehavior,
 ) -> ConfigUiField {
-    build_config_ui_field(ConfigUiFieldRowSpec {
-        source_id,
-        path,
-        display_label: String::new(),
-        section_label: String::new(),
-        list_cells: Vec::new(),
-        tab,
-        kind,
-        current,
-        default,
-        description,
-        allowed_values,
-        validation,
+    ConfigUiFieldSpec {
         rebuild_required,
-        apply_status: apply_status_for_setting(path, apply_mode),
         has_blocking_diagnostic,
         edit_behavior,
-    })
+        ..ConfigUiFieldSpec::new(
+            source_id,
+            path,
+            tab,
+            description,
+            allowed_values,
+            validation,
+            apply_status_for_setting(path, apply_mode),
+        )
+    }
+    .build(kind, current, default)
 }
 
 fn edit_behavior_for_field_path(path: &str) -> ConfigUiEditBehavior {
@@ -925,7 +919,7 @@ fn config_source(
         path: path.to_path_buf(),
         exists,
         owner,
-        read_only: path_is_read_only(path),
+        read_only: owner == ConfigUiPathOwner::HomeManager || path_is_read_only(path),
     }
 }
 

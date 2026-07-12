@@ -4,7 +4,8 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use tempfile::tempdir;
 use yazelix_core::config_ui::{
-    ConfigUiPathOwner, ConfigUiRequest, ConfigUiValueState, build_config_ui_model,
+    ConfigUiPathOwner, ConfigUiRequest, ConfigUiValueState, DEFAULT_CONFIG_SOURCE_ID,
+    build_config_ui_model,
 };
 use yazelix_core::ghostty_cursor_registry::DEFAULT_CURSOR_CONFIG_FILENAME;
 
@@ -97,8 +98,13 @@ fn reports_sidecars_and_home_manager_read_only_state() {
     ))
     .expect("model");
 
-    assert_eq!(model.config_owner, ConfigUiPathOwner::HomeManager);
-    assert!(model.config_read_only);
+    let settings_source = model
+        .sources
+        .iter()
+        .find(|source| source.id == DEFAULT_CONFIG_SOURCE_ID)
+        .expect("settings source");
+    assert_eq!(settings_source.owner, ConfigUiPathOwner::HomeManager);
+    assert!(settings_source.read_only);
     let zellij = model
         .sidecars
         .iter()

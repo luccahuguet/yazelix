@@ -20,10 +20,8 @@ use crate::settings_surface::{
     is_settings_config_path, parse_config_value, sparse_config_is_semantically_empty,
 };
 use crate::user_config_paths::SETTINGS_CONFIG;
-use ratconfig::patch::PatchMutation;
-use ratconfig::toml_adapter::{
-    TomlPatchError, TomlPatchOutcome, set_toml_value_text, unset_toml_value_text,
-};
+use ratconfig::patch::{PatchMutation, PatchOutcome};
+use ratconfig::toml_adapter::{TomlPatchError, set_toml_value_text, unset_toml_value_text};
 use serde_json::{Value as JsonValue, json};
 use std::fs;
 use std::io;
@@ -384,7 +382,7 @@ fn finish_config_edit(
     paths: &ActiveConfigPaths,
     target: &ConfigEditTarget,
     setting_path: &str,
-    outcome: &TomlPatchOutcome,
+    outcome: &PatchOutcome,
 ) -> Result<i32, CoreError> {
     let should_write = outcome.changed();
     if should_write {
