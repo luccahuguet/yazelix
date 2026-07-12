@@ -5,7 +5,8 @@ use crate::atomic_fs::write_text_atomic_create_new;
 use crate::backup_timestamp::compact_utc_backup_timestamp;
 use crate::bridge::{CoreError, ErrorClass};
 use crate::classic_nova_root_migration::{
-    ClassicNovaMigrationRequest, migrate_classic_root_to_nova, remove_file_if_unchanged,
+    ClassicNovaMigrationRequest, create_new_target_was_published, migrate_classic_root_to_nova,
+    remove_file_if_unchanged,
 };
 use crate::native_config_status::{path_owned_by_home_manager, path_present};
 use crate::user_config_paths;
@@ -186,13 +187,13 @@ fn ensure_zellij_sidecars(config_dir: &Path) -> Result<(), CoreError> {
     let split =
         split_zellij_sidecars(&flat_text).map_err(|error| zellij_migration_error(&flat, error))?;
     let timestamp = compact_utc_backup_timestamp();
-    backup_zellij_migration_source(&flat, &flat_text, &timestamp)?;
+    backup_zellij_source(&flat, &flat_text, &timestamp)?;
     let config_written = !split.config.is_empty() && !is_generated_zellij_sidecar(&split.config);
     if config_written {
-        write_text_atomic_create_new(&config, &split.config)?;
+        write_zellij_migration_output(&config, &split.config)?;
     }
     let plugins_written = !split.plugins.is_empty() && !is_generated_zellij_sidecar(&split.plugins);
-    if plugins_written && let Err(error) = write_text_atomic_create_new(&plugins, &split.plugins) {
+    if plugins_written && let Err(error) = write_zellij_migration_output(&plugins, &split.plugins) {
         if config_written {
             let _ = remove_file_if_unchanged(&config, &split.config);
         }
@@ -213,6 +214,14 @@ fn ensure_zellij_sidecars(config_dir: &Path) -> Result<(), CoreError> {
         ));
     }
     Ok(())
+}
+
+fn write_zellij_migration_output(path: &Path, raw: &str) -> Result<(), CoreError> {
+    write_text_atomic_create_new(path, raw).inspect_err(|error| {
+        if create_new_target_was_published(error) {
+            let _ = remove_file_if_unchanged(path, raw);
+        }
+    })
 }
 
 fn cleanup_or_validate_zellij_sidecar(
@@ -237,7 +246,7 @@ fn cleanup_or_validate_zellij_sidecar(
     if !is_generated_zellij_sidecar(&raw) || !removable || path_owned_by_home_manager(path) {
         return Ok(());
     }
-    backup_zellij_migration_source(path, &raw, timestamp)?;
+    backup_zellij_source(path, &raw, timestamp)?;
     remove_file_if_unchanged(path, &raw).map_err(|source| {
         io_err(
             "retire_generated_zellij_sidecar",
@@ -249,28 +258,17 @@ fn cleanup_or_validate_zellij_sidecar(
 }
 
 fn is_generated_zellij_sidecar(raw: &str) -> bool {
-    [
-        FIRST_NESTED_ZELLIJ_CONFIG_SIDECAR,
-        DEFAULT_ZELLIJ_CONFIG_SIDECAR,
-        DEFAULT_ZELLIJ_PLUGINS_SIDECAR,
-        FLAT_SPLIT_EMPTY_ZELLIJ_PLUGINS_SIDECAR,
-    ]
-    .contains(&raw)
+    raw == FIRST_NESTED_ZELLIJ_CONFIG_SIDECAR
+        || raw == DEFAULT_ZELLIJ_CONFIG_SIDECAR
+        || raw == DEFAULT_ZELLIJ_PLUGINS_SIDECAR
+        || raw == FLAT_SPLIT_EMPTY_ZELLIJ_PLUGINS_SIDECAR
 }
 
 fn migration_backup_path(path: &Path, timestamp: &str) -> PathBuf {
-    let name = path
-        .file_name()
-        .and_then(|name| name.to_str())
-        .unwrap_or("config");
-    path.with_file_name(format!("{name}.backup-{timestamp}"))
+    path.with_extension(format!("kdl.backup-{timestamp}"))
 }
 
-fn backup_zellij_migration_source(
-    path: &Path,
-    raw: &str,
-    timestamp: &str,
-) -> Result<(), CoreError> {
+fn backup_zellij_source(path: &Path, raw: &str, timestamp: &str) -> Result<(), CoreError> {
     write_text_atomic_create_new(&migration_backup_path(path, timestamp), raw)
 }
 

@@ -493,7 +493,7 @@ fn migrate_with(
     ))
 }
 
-fn create_new_target_was_published(error: &CoreError) -> bool {
+pub(crate) fn create_new_target_was_published(error: &CoreError) -> bool {
     matches!(
         error.code(),
         "atomic_write_parent_sync" | "atomic_write_temp_cleanup"
