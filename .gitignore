@@ -70,3 +70,5 @@ result-*
 .kb/.cache/
 .kb/workspace/
 .kb/workspaces/
+# br doctor per-run artifacts
+.doctor/

@@ -45,3 +45,4 @@ embeddeddolt/
 interactions.jsonl
 push-state.json
 .local_version
+.write.lock
