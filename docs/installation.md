@@ -280,7 +280,7 @@ What it does not ship anymore:
 #### Configuration Options
 - **Custom shells**: Set `default_shell` to your preference (`"nu"`, `"bash"`, `"fish"`, `"zsh"`, `"xonsh"`); xonsh must be installed on the host and available on `PATH`
 - **Host xonsh hooks**: Yazelix generates xonsh initializers, but xonsh remains host-installed and native xonsh startup must source `~/.config/yazelix/shell_xonsh.xsh`
-- **Terminal package**: choose `#yazelix` or `#yazelix_mars`; Home Manager uses `programs.yazelix.terminal = "mars"`
+- **Terminal package**: choose `#yazelix` or `#yazelix_mars`; Home Manager installs the complete `#yazelix` package by default
 - **Terminal launch**: Mars is the Yazelix-owned terminal for Rust stack compatibility and agent-driven workflows; other terminal emulators should start Yazelix with `yzx enter`
 - **Editor choice**: Configure your editor (see [Editor Configuration](./editor_configuration.md))
 
@@ -430,33 +430,24 @@ yzx env --no-shell
 ### Home Manager Integration
 Yazelix includes optional Home Manager support for declarative configuration management through the top-level flake's `homeManagerModules.default` output. See [home_manager/README.md](../home_manager/README.md) for setup instructions.
 
-### Granular Nix Customization
+### Nix package customization
 
-The default flake packages stay batteries-included. Yazelix does not expose a package matrix for every possible storage-saving combination; use Home Manager or `lib.${system}.mkYazelix` when you want specific tools to come from your host `PATH`.
+The default flake packages stay batteries-included. Home Manager installs one complete package and does not expose package-shaping options.
 
 Users who prefer another terminal emulator should keep that terminal in its native configuration flow and configure its startup command to run `yzx enter`.
 
-Home Manager is the recommended granular path:
+Use `programs.yazelix.package` when Home Manager should install a different complete package:
 
 ```nix
 {
   programs.yazelix = {
     enable = true;
-    runtime_tool_sources = {
-      lazygit = "host";
-      zenith = "host";
-      helix = "host";
-      yazi = "host";
-      ripgrep = "host";
-      fd = "host";
-    };
+    package = inputs.yazelix.packages.${pkgs.stdenv.hostPlatform.system}.yazelix;
   };
 }
 ```
 
-For a validated advanced storage-saving profile, see the [Home Manager lean runtime profile](../home_manager/README.md#lean-runtime-profile). It keeps the packaged terminal and bootstrap runtime bundled while host-sourcing large leaf tools and disabling optional preview/helper components.
-
-Advanced flake users can build the same shape directly:
+The Classic `lib.${system}.mkYazelix` builder remains a separate advanced package-construction surface while it exists:
 
 ```nix
 let
@@ -483,11 +474,7 @@ Package-set users can also use the default overlay:
 }
 ```
 
-`host` mode removes that tool from the Yazelix runtime export and lets the inherited `PATH` provide the required command. Run `yzx doctor` after switching; it reports missing host-sourced commands from the runtime manifest, warning for required commands and treating default optional integrations such as `mise` and `tombi` as informational when absent.
-
-`off` mode is supported for the first optional helper slice: `steel`, `macchina`, `p7zip`, `poppler`, and `resvg`. Disabled helpers are omitted from the runtime package/export and reported by `yzx doctor` as intentional disablement. If `macchina = "off"`, enable Home Manager config ownership and set `welcome_enabled = false`.
-
-Home Manager and `mkYazelix` also accept component toggles for `cursors` and `screen`. `components.cursors = false` removes Yazelix cursor shader assets and the default cursor sidecar from the runtime tree; the config UI hides standalone cursor fields while Mars keeps its independent native cursor config. `components.screen = false` requires `manage_config = true` and `welcome_enabled = false`; `yzx screen` then fails with a disabled-component error instead of looking for missing screen assets.
+Pass the resulting complete package through `programs.yazelix.package` if Home Manager should install it. See the [Home Manager module guide](../home_manager/README.md) for sparse semantic and native-file ownership.
 
 ## What Gets Installed
 

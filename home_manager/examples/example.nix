@@ -1,54 +1,29 @@
-# Yazelix Home Manager Configuration Example
-# Shows all available options with sensible defaults
-#
-# For complete option reference, see:
-#   - home_manager/module.nix (complete option definitions)
-#   - config.toml (generated canonical settings file)
-
-{ config, pkgs, ... }:
+# Yazelix Home Manager package-plus-sidecars example
+{ inputs, pkgs, ... }:
 
 {
   programs.yazelix = {
     enable = true;
-    manage_config = true; # Opt into declarative Home Manager ownership of config.toml for this example
-    terminal = "mars"; # Mars is the packaged terminal; configure host terminals to run `yzx enter`
+    package = inputs.yazelix.packages.${pkgs.stdenv.hostPlatform.system}.yazelix;
 
-    # Semantic config.toml overrides
-    shell_program = "zsh";
-    editor_command = "hx";
-    agent_command = "auto";
-    welcome_enabled = true;
-    welcome_style = "static";
-    bar_widgets = [
-      "editor"
-      "shell"
-      "term"
-      "codex_usage"
-      "cpu"
-      "ram"
-    ];
-    popups.zenith = {
-      command = "zenith";
-      keybinding = "Alt Shift I";
-      keep_alive = true;
+    config.settings = {
+      editor.command = "hx";
+      welcome.enabled = false;
+      popups.zenith = {
+        command = "zenith";
+        keybinding = "Alt Shift I";
+        keep_alive = true;
+      };
     };
 
-    # Complete native Mars config
+    config.cursors.source = ./cursors.toml;
     config.mars.text = ''
-      [mars.appearance]
-      preset = "dark"
+      [window]
+      opacity = 0.9
     '';
-
-    # Guarded native Zellij preferences
     config.zellij.text = ''
       scroll_buffer_size 5000
       mouse_mode true
     '';
-
   };
-
-  # Optional: install Nushell as your normal interactive shell outside Yazelix.
-  # home.packages = with pkgs; [
-  #   nushell
-  # ];
 }

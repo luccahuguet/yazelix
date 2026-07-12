@@ -23,7 +23,7 @@ Yazelix status and doctor surfaces must explain which runtime is active, who own
 - Home Manager ownership is detected when either:
   - `config.toml` is a Home Manager-owned profile symlink, or
   - the default profile contains a Home Manager path, `~/.nix-profile/bin/yzx`, and the Home Manager profile desktop entry
-- `manage_config = false` keeps sparse `config.toml` overrides user-owned and permits the file to remain absent without changing the install owner away from Home Manager
+- `config.settings = null` keeps sparse `config.toml` overrides user-owned and permits the file to remain absent without changing the install owner away from Home Manager
 - Profile ownership means the default Nix profile directly owns a Yazelix package entry
 - Manual ownership means no supported profile or Home Manager owner was found
 - Owner update commands:
@@ -39,7 +39,7 @@ Yazelix status and doctor surfaces must explain which runtime is active, who own
 - making status or doctor infer release notes without a known runtime identity
 - treating a live shell `PATH` entry as install ownership by itself
 - silently moving user config files between native app config roots and Yazelix-managed roots
-- making Home Manager own `config.toml` when `manage_config = false`
+- making Home Manager own `config.toml` when `config.settings = null`
 
 ## Verification
 

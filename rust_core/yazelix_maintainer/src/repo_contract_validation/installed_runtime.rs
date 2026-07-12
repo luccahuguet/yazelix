@@ -191,7 +191,7 @@ fn validate_home_manager_activation_contract(repo_root: &Path) -> Result<Vec<Str
 
 fn validate_home_manager_activation_mode(
     repo_root: &Path,
-    manage_config: bool,
+    settings_owned: bool,
 ) -> Result<Vec<String>, String> {
     let temp_root = create_unique_temp_dir("yazelix_home_manager_activation")?;
     let cleanup_result = (|| {
@@ -213,7 +213,7 @@ fn validate_home_manager_activation_mode(
                 repo_root,
                 &home_root,
                 &system,
-                manage_config,
+                settings_owned,
             ),
         )
         .map_err(|error| {
@@ -297,7 +297,7 @@ fn validate_home_manager_activation_mode(
             .join(".config")
             .join("yazelix")
             .join("config.toml");
-        if manage_config {
+        if settings_owned {
             require_path_exists_abs(
                 &main_config_path,
                 "Home Manager managed sparse config.toml surface after activation",
@@ -305,20 +305,20 @@ fn validate_home_manager_activation_mode(
             );
         } else if fs::symlink_metadata(&main_config_path).is_ok() {
             errors.push(format!(
-                "Home Manager manage_config=false must leave sparse config.toml absent until the user writes an override: {}",
+                "Home Manager config.settings=null must leave sparse config.toml absent until the user writes an override: {}",
                 main_config_path.display()
             ));
         }
         if let Ok(metadata) = fs::symlink_metadata(&main_config_path) {
-            if manage_config && !metadata.file_type().is_symlink() {
+            if settings_owned && !metadata.file_type().is_symlink() {
                 errors.push(format!(
                     "Home Manager managed config.toml should be a profile symlink: {}",
                     main_config_path.display()
                 ));
             }
-            if !manage_config && metadata.file_type().is_symlink() {
+            if !settings_owned && metadata.file_type().is_symlink() {
                 errors.push(format!(
-                    "Home Manager manage_config=false should leave config.toml mutable, got symlink: {}",
+                    "Home Manager config.settings=null should leave config.toml mutable, got symlink: {}",
                     main_config_path.display()
                 ));
             }
@@ -383,7 +383,7 @@ fn build_home_manager_activation_validation_flake(
     repo_root: &Path,
     home_root: &Path,
     system: &str,
-    manage_config: bool,
+    settings_owned: bool,
 ) -> String {
     let repo_root_literal = escape_nix_string(&repo_root.display().to_string());
     let home_root_literal = escape_nix_string(&home_root.display().to_string());
@@ -393,7 +393,7 @@ fn build_home_manager_activation_validation_flake(
         "  description = \"Yazelix Home Manager activation validation\";".to_string(),
         String::new(),
         "  inputs = {".to_string(),
-        format!("    yazelix.url = \"path:{}\";", repo_root_literal),
+        format!("    yazelix.url = \"git+file://{}\";", repo_root_literal),
         "    nixpkgs.follows = \"yazelix/nixpkgs\";".to_string(),
         "    home-manager.follows = \"yazelix/home-manager\";".to_string(),
         "  };".to_string(),
@@ -417,10 +417,11 @@ fn build_home_manager_activation_validation_flake(
         "            home.stateVersion = \"24.11\";".to_string(),
         "            programs.home-manager.enable = true;".to_string(),
         "            programs.yazelix.enable = true;".to_string(),
-        if manage_config {
-            "            programs.yazelix.manage_config = true;".to_string()
+        if settings_owned {
+            "            programs.yazelix.config.settings = {};".to_string()
         } else {
-            "            # manage_config=false default is intentionally exercised here.".to_string()
+            "            # config.settings=null default is intentionally exercised here."
+                .to_string()
         },
         "          })".to_string(),
         "        ];".to_string(),

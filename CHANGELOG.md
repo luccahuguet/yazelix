@@ -21,10 +21,13 @@ Highlights:
 - Made `~/.config/yazelix/cursors.toml` the only live cursor registry, with backup-first migration from the released `~/.config/yazelix_cursors/settings.jsonc`
 - Routed Ratconfig, `yzx cursors`, Ghostty generation, Mars launch, and Home Manager through the child-owned cursor TOML contract
 - Deleted Classic's cursor JSONC writer, patch adapter, copied default registry, and dual-format loader
+- Replaced the broad Home Manager option language with `enable`, one complete `package`, nullable sparse `config.settings`, and approved native `text`/`source` sidecars
+- Kept Linux desktop integration platform-gated and allowed Nova-native Nu, Starship, Helix Steel, and Yazi files to be staged without claiming that Classic consumes them
 
 Manual action:
 - If Home Manager owns `~/.config/yazelix/settings.jsonc`, update the module and run `home-manager switch`; move retired native Zellij choices into `programs.yazelix.config.zellij.text` or `source`
 - If Home Manager owns `~/.config/yazelix_cursors/settings.jsonc`, update the module and run `home-manager switch` so it owns `~/.config/yazelix/cursors.toml`
+- Rewrite Home Manager semantic options under `programs.yazelix.config.settings`; remove `manage_config`, `manage_cursor_config`, `terminal`, `mars_package`, `runtime_tool_sources`, `components`, and `agent_usage_programs`; use `programs.yazelix.package` only for a complete package override
 - Review preserved `zellij/config.kdl` and `zellij/plugins.kdl` assignments before Nova; remove only values you want to inherit from Nova defaults
 
 ## v17.10 - 2026-07-11

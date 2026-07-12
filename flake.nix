@@ -127,14 +127,8 @@
           yazelix_zellij_popup = inputIdentity yazelixZellijPopup;
         };
       };
-      homeManagerModule = { pkgs, ... }: {
-        _module.args.mkYazelixPackage = mkYazelix pkgs.stdenv.hostPlatform.system;
-        _module.args.yazelixHelixPackage =
-          kgpPackages.helixPackage pkgs.stdenv.hostPlatform.system;
-        _module.args.yazelixCursorsPackage =
-          yazelixCursors.packages.${pkgs.stdenv.hostPlatform.system}.yazelix_cursors;
-        _module.args.marsTerminalPackage = mars.packages.${pkgs.stdenv.hostPlatform.system}.mars;
-        imports = [ ./home_manager/module.nix ];
+      homeManagerModule = import ./home_manager/module.nix {
+        defaultPackageFor = system: mkYazelix system { };
       };
       homeManagerDefaultActivationPackage =
         system:
@@ -152,7 +146,6 @@
               home.homeDirectory = homeDirectory;
               home.stateVersion = "24.11";
               programs.yazelix.enable = true;
-              programs.yazelix.manage_cursor_config = true;
             }
           ];
         }).activationPackage;

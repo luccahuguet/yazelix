@@ -62,7 +62,7 @@ package docs, and terminal comparison matrix.
 | Owner | Support level | Terminal selection | Update behavior |
 | --- | --- | --- | --- |
 | Nix profile package | `supported` | Use `#yazelix` or `#yazelix_mars` for the packaged Mars runtime | `yzx update upstream` owns default profile updates |
-| Home Manager | `supported` | `programs.yazelix.terminal = "mars"` selects the packaged runtime | `yzx update home_manager` prints the Home Manager update path |
+| Home Manager | `supported` | The default complete package contains Mars; `programs.yazelix.package` can replace the complete package | `yzx update home_manager` prints the Home Manager update path |
 | Manual or host-only launch | `supported` for `yzx enter` after installing Yazelix | Host terminal choices are user-owned and should run `yzx enter` | Install into a profile or enable Home Manager before relying on Yazelix update ownership |
 
 ## Current Boundary Notes

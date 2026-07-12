@@ -1371,7 +1371,7 @@ mod tests {
         );
     }
 
-    // Regression: Home Manager owns the Yazelix runtime even when manage_config=false leaves config.toml mutable.
+    // Regression: Home Manager owns the Yazelix runtime even when config.settings=null leaves config.toml mutable.
     #[test]
     fn evaluate_install_ownership_detects_home_manager_profile_without_managed_config() {
         let tmp = TempDir::new().unwrap();

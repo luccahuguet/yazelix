@@ -186,7 +186,9 @@ pub fn require_runtime_component_enabled(
         ErrorClass::Runtime,
         "disabled_runtime_component",
         format!("{label} is disabled in this Yazelix runtime."),
-        format!("Enable programs.yazelix.components.{component}, or stop using {label}."),
+        format!(
+            "Install a Yazelix package with the `{component}` component enabled, or stop using {label}."
+        ),
         json!({
             "component": component,
             "label": label,

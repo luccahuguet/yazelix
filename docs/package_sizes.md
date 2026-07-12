@@ -86,7 +86,7 @@ Current launch behavior:
 - Mars launch commands may prepend a graphics wrapper
 - terminals outside packaged Mars keep their own graphics-wrapper policy and run Yazelix with `yzx enter`
 
-The option surface should be explicit instead of hidden behind `runtime_tool_sources`: a future package option should choose a graphics wrapper source such as bundled, host, or none, with launch rendering and doctor diagnostics tested against Mars. Default behavior should not change until desktop launch reliability is preserved.
+Graphics-wrapper selection remains package-owned. Home Manager accepts only a complete package override and does not expose a second wrapper-selection language.
 
 ## Yazi Package Shape
 
@@ -99,22 +99,11 @@ Observed current shape:
 - the wrapper references the unwrapped binary plus preview helpers such as `ffmpeg-headless`, `file`, `chafa`, `jq`, `poppler-utils`, `imagemagick`, and `fd`
 - a base nixpkgs Yazi package from the same flake input also has wrapper plus unwrapped paths
 
-There is no obvious safe deletion in the wrapper/unwrapped pair while preserving upstream Yazi image-preview behavior. Users who prefer storage savings over runtime-packaged Yazi can set `runtime_tool_sources.yazi = "host"` and then rely on host Yazi support.
+There is no obvious safe deletion in the wrapper/unwrapped pair while preserving upstream Yazi image-preview behavior. Home Manager installs the complete package rather than replacing its Yazi dependency independently.
 
-## Lean Home Manager Profile
+## Home Manager package ownership
 
-Home Manager is the recommended storage-saving surface. See [home_manager/README.md](../home_manager/README.md#lean-runtime-profile) for the exact profile.
-
-The measured lean profile host-sources large leaf tools, disables optional helpers, removes cursor/screen components, and omits `tokenusage` after removing Codex/Claude widgets from the status tray. Feature losses are explicit:
-
-- host-sourced commands must exist on the inherited `PATH`
-- host Yazi may lose Yazelix's bundled KGP preview behavior
-- host Helix may not match the Yazelix Steel fork behavior
-- disabled `steel` removes Steel authoring commands
-- disabled `p7zip`, `poppler`, and `resvg` reduce archive/PDF/SVG preview helpers
-- disabled `screen` removes `yzx screen` and requires skipping welcome/screen-saver behavior
-- disabled `cursors` removes Yazelix cursor shader assets and hides cursor fields from the config UI
-- `agent_usage_programs = []` is only correct when Codex and Claude usage widgets are removed or intentionally host-provided
+Home Manager installs one complete package. Closure-size tradeoffs belong to the selected package, not to Home Manager per-tool or component options.
 
 ## Cachix Publish Size
 

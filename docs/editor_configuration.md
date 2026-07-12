@@ -61,13 +61,13 @@ do not receive Helix- or Neovim-specific same-instance and reveal integration.
 ```nix
 programs.yazelix = {
   enable = true;
-  editor_command = "nvim";
+  config.settings.editor.command = "nvim";
 };
 ```
 
-Leave `editor_command` unset to inherit bundled Helix. Home Manager owns the
-generated `config.toml` when `manage_config = true`, so change the declarative
-option and run `home-manager switch` instead of editing the generated file.
+Leave `config.settings.editor.command` unset to inherit bundled Helix. Declaring
+`config.settings` makes Home Manager own `config.toml`, so change the
+declaration and run `home-manager switch` instead of editing the generated file.
 
 ## Troubleshooting
 

@@ -1,161 +1,101 @@
-# Nix Customization Surfaces
+# Nix customization surfaces
 
 ## Summary
 
-Yazelix ships a batteries-included default runtime and exposes granular Nix customization through explicit APIs instead of a large matrix of public flake packages.
+Yazelix exposes a complete default package, a narrow Home Manager module, and an advanced Classic package builder
 
-The default flake packages stay curated and reproducible. Users who want storage savings or host-managed tools use Home Manager or the advanced Nix builder.
+Home Manager installs one complete package and may own sparse files under the canonical Yazelix config root
 
-## Supported Surfaces
+## Default package
 
-### Default Flake Packages
+`packages.${system}.yazelix` is the curated complete package and the default Home Manager package
 
-The default flake package surface is for users who want Yazelix to work with minimal decisions.
+The package owns the Yazelix runtime dependency graph, including Mars, bootstrap tools, generated runtime assets, and tool-source decisions
 
-Default flake packages:
+Host terminal emulators remain outside the package and start Yazelix with `yzx enter`
 
-- keep bundled runtime tools by default
-- expose a small number of curated variants only when they are broadly useful
-- do not expose every granular runtime-tool or component combination as a named package
+## Home Manager API
 
-### Home Manager Module
+The supported module surface is exactly
 
-Home Manager is the friendly granular configuration surface.
+- `programs.yazelix.enable`
+- `programs.yazelix.package`
+- `programs.yazelix.config.settings`
+- approved native files under `programs.yazelix.config`
 
-It may expose typed options such as:
+`package` accepts one complete package and installs it unchanged
 
-```nix
-programs.yazelix.runtime_tool_sources.lazygit = "host";
-programs.yazelix.runtime_tool_sources.zenith = "host";
-```
+The module does not expose terminal selection, package component toggles, runtime tool sources, agent helper packages, or per-field semantic options
 
-Home Manager options should translate into the same package-builder arguments used by non-Home-Manager users.
+### Sparse semantic ownership
 
-### `lib.${system}.mkYazelix`
+`config.settings` is nullable TOML data
 
-`lib.${system}.mkYazelix` is the advanced granular package-builder API for flake users who do not use Home Manager.
+- `null` creates no `yazelix/config.toml`
+- `{}` creates an explicitly owned empty file
+- a nonempty value renders exactly the declared TOML tree
+- omitted fields inherit `config_default.toml`
+- removing a declared field returns it to package inheritance on the next switch
 
-It may accept arguments such as:
+Home Manager must not merge, copy, or freeze packaged defaults into the user file
 
-```nix
-inputs.yazelix.lib.${system}.mkYazelix {
-  inherit pkgs;
-  runtimeToolSources = {
-    lazygit = "host";
-    zenith = "host";
-  };
-  components = {
-    screen = true;
-    cursors = true;
-  };
-}
-```
+### Native file ownership
 
-The default arguments must produce the same behavior as the default `.#yazelix` package.
+Each approved native file accepts exactly one of `text` or `source`
 
-### Overlay
+Classic consumes
 
-`overlays.default` is a package-set integration surface.
+- `yazelix/cursors.toml`
+- `yazelix/mars/config.toml`
+- `yazelix/zellij/config.kdl`
+- `yazelix/helix/config.toml`
+- `yazelix/helix/languages.toml`
+- `yazelix/yazi/yazi.toml`
+- `yazelix/yazi/init.lua`
+- compatible `yazelix/yazi/keymap.toml`
 
-It should expose the default bundled `yazelix` package. Granular customization remains explicit through `lib.${system}.mkYazelix` instead of hidden overlay magic.
+The final Classic bridge also permits these Nova v1 files to be staged without claiming that Classic consumes them
 
-### Bootstrap Install Check
+- `yazelix/nu/env.nu`
+- `yazelix/nu/config.nu`
+- `yazelix/starship.toml`
+- `yazelix/helix/helix.scm`
+- `yazelix/helix/init.scm`
+- `yazelix/yazi/package.toml`
+- `yazelix/yazi/theme.toml`
 
-`shells/posix/install_check.sh` is the primary pre-install diagnostic surface. It must be usable as a standalone POSIX `sh` script so users can run it before installing Yazelix and before Nix is present on `PATH`.
+The module never owns `zellij/plugins.kdl`, plugin or flavor directories, ambient application config, or generated runtime state
 
-`apps.${system}.install_check` and `packages.${system}.install_check` expose the same script through Nix for users who already have a working Nix installation.
+Store-backed files are read-only and all remediation must direct users to their Home Manager declaration
 
-The install check must remain small and read-only:
+## Platform behavior
 
-- it must not depend on the default Yazelix runtime package, selected terminal package, Helix, Zellij, child plugin artifacts, or generated runtime tree
-- it must not run `sudo`, edit Nix configuration, install packages, or mutate user state
-- it may inspect local Nix commands, platform identity, active Nix configuration, and Yazelix cache trust state
-- it should treat missing Yazelix Cachix trust as a speed warning, not an install blocker
-- it should print numbered next steps with the recommended `nix profile add --refresh --accept-flake-config github:luccahuguet/yazelix#yazelix` command, `yzx launch`, and optional cache setup guidance when Nix is available
-- it should print numbered next steps with a Nix installer command and rerun command when Nix is missing
+Linux installations receive the Yazelix icons and Mars desktop entry
 
-## Runtime Tool Source Modes
+Darwin installations receive the package and declared config files without evaluating Linux desktop-entry options
 
-Runtime tools may support these source modes:
+Linux-only package behavior must remain platform-gated rather than failing during shared module evaluation
 
-- `bundled`: Yazelix includes the tool package and exports its commands in the runtime
-- `host`: Yazelix omits the package/export and lets the inherited host `PATH` provide the commands
-- `off`: Yazelix omits the package/export and treats dependent features as unavailable or warning-worthy
+## Advanced Classic builder
 
-Only tools marked hostable may use `host`. Only tools marked disableable may use `off`. `mise` and `tombi` default to `host`; other omitted tools default to `bundled`.
+`lib.${system}.mkYazelix` remains a separate Classic package-construction surface while it exists
 
-Bootstrap-critical tools such as Nushell, Zellij, the selected terminal package, Nix, graphics wrappers, and core POSIX utilities remain bundled until a separate contract says otherwise.
+Its arguments are not Home Manager options and the module must not translate declarations into builder arguments
 
-## Component Toggle Policy
+Users may construct or obtain any complete compatible package and pass it through `programs.yazelix.package`
 
-Component toggles are coarser than runtime tool source modes. They control Yazelix-owned subsystems, generated config, and child-repo-backed integrations. The default state must remain the complete integrated Yazelix experience.
+## Ownership and collisions
 
-Home Manager is the user-facing component-toggle surface. `lib.${system}.mkYazelix` receives the same `components` values for advanced package users. Default flake packages do not grow a named package for every component combination.
+Omitted files remain user-owned
 
-Disabling a component is supported only when all of these are true:
+Declared files are Home Manager-owned profile links and normal Home Manager collision checks apply
 
-- the package can actually omit a dependency, asset set, generated config path, or runtime behavior
-- generated configs no longer reference disabled assets or commands
-- defaults still work when the component remains enabled
-- disabled runtime behavior fails fast with a clear error instead of silently degrading
-- the setting saves storage, closure size, startup work, or meaningful generated clutter
-
-The current evaluated matrix is:
-
-| Component or surface | Default | Current package impact | Generated-config impact when disabled | Decision |
-| --- | --- | --- | --- | --- |
-| `runtime_tool_sources.<tool> = "host"` for leaf tools | bundled | Implemented: omits supported leaf tool packages and exports, then relies on host `PATH` | Runtime manifest records host source and doctor checks required commands | Keep implemented |
-| `runtime_tool_sources.mise` and `runtime_tool_sources.tombi` | host | Implemented default omission: these host/maintainer-adjacent tools are not bundled unless explicitly set to `bundled` | Runtime manifest records host source; generated shell initializers omit `mise` cleanly when absent, and doctor reports missing default optional integrations as informational | Keep implemented |
-| `agent_usage_programs = [ "tokenusage" ]` | on | Implemented opt-out: includes `tokenusage` for the default Codex/Claude status widgets, and omits it only when the list is set to `[]` | Agent usage widgets in the default tray have their helper available; users who remove those widgets can omit the helper explicitly | Keep implemented |
-| `terminal = "mars"` | `mars` | Implemented: selects the only packaged terminal | Mars merges its immutable packaged base with the optional sparse user override | Keep implemented |
-| `components.cursors` | enabled | Implemented partial package omission: the child-owned cursor default and shader assets are removed from the runtime tree; cursor registry code remains linked into `yazelix_core` until crate-level feature gates exist | Cursor bootstrap and UI fields are skipped; Mars receives no Yazelix cursor registry path | Keep implemented |
-| `components.screen` | enabled | Implemented behavior toggle: welcome/screen rendering remains linked into `yazelix_core` until crate-level feature gates exist | Home Manager requires `welcome.enabled = false`; `yzx screen` returns a disabled-component error | Keep implemented |
-| Helix Steel authoring tools | bundled | Implemented `off`: omits `steel`, `steel-language-server`, `forge`, `cargo-steel-lib`, and `repl-connect`; implemented `host`: relies on host `steel` and `steel-language-server` | Managed Helix Steel plugin execution still uses the bundled Helix fork and generated config, so disabling these commands affects authoring/debugging only | Keep implemented |
-| `components.status_bar` / integrated zjstatus | enabled | Not accepted yet: `zjstatus.wasm` is a real runtime asset, but the top/status bar is part of the current Zellij layout contract | Defer until layout ownership and barless/native Zellij layout behavior are designed; changing `bar.widgets` is not a package-saving toggle | Defer |
-| `yazelix_zellij_bar` standalone package forwarding | available on demand | No Home Manager toggle needed: forwarded flake output is not installed unless the user asks for it | Integrated Yazelix consumes only the crate/API it needs for generated layouts | Reject toggle |
-| `yazelix-zellij-popup` / `yzpp` | enabled | Rejected for now: Yazelix packages `yzpp.wasm` because popup, menu, and config UI panes all use the integrated popup path | A disabled mode would split one coherent popup surface across command failure, fallback behavior, default keybindings, generated Zellij plugin aliases, and doctor diagnostics; that extra component boundary is not worth the complexity | Reject for simplicity |
-| `components.yazi_assets` / `yazelix-yazi-assets` | enabled | Rejected for now: reusable flavors, reusable plugins, and the bundled Starship Yazi config stay integrated through the child asset pack | A disabled mode would require a second first-party-only Yazi profile that removes child-provided flavors, `auto-layout.yazi`, `git.yazi`, `lazygit.yazi`, `starship.yazi`, and `yazelix_starship.toml`; the modest package/clutter savings do not justify that extra profile surface | Reject for simplicity |
-| Yazi preview/helper tools such as `p7zip`, `poppler`, and `resvg` | bundled | Implemented `off`: omits helper packages and exports; generated Yazelix config does not directly call these helpers | Doctor reports intentional disabled helper state instead of missing-host warnings | Keep implemented |
-| `macchina` welcome summary helper | bundled unless host-sourced | Implemented `off`: omits `macchina` from runtime packages and exports | Home Manager requires `welcome.enabled = false`; doctor reports intentional disabled helper state | Keep implemented |
-
-Do not add a toggle whose only effect is hiding Home Manager options or removing a forwarded flake output. A toggle must change package contents, generated runtime behavior, or validation in a way users can feel.
-
-## Terminal Launcher Decision
-
-The current Home Manager surface uses `programs.yazelix.terminal = "mars"` for the single profile-owned runtime. Additional terminal launchers stay in the user's terminal setup; configure those terminals to run `yzx enter`.
-
-## Component Audit Outcome
-
-The 2026-05-08 optional child-component audit keeps the current defaults fully integrated and does not add a hot-path toggle immediately.
-
-The `yazelix-yazi-assets` asset pack remains integrated. It is a real child repository with package contents that could be omitted, but the gain is modest and the cost is a second Yazi profile surface. The current default Yazi runtime links child flavors, `auto-layout.yazi`, `git.yazi`, `lazygit.yazi`, `starship.yazi`, and `yazelix_starship.toml`; generated keymaps and sidebar behavior can still call those plugins. Keeping one coherent integrated profile is simpler than maintaining a reduced first-party-only mode.
-
-The integrated status bar remains deferred behind layout ownership and barless/native Zellij behavior. A widget-tray setting is not a storage-saving component toggle.
-
-`yzpp` remains integrated. Popup, command-menu, and config-UI panes share the same plugin path, so an optional component would either leave broken commands behind or require a parallel fallback surface. Keeping one popup contract is simpler than supporting a disableable `yzpp` mode.
-
-## Doctor Behavior
-
-When a runtime tool is configured as `host`, `yzx doctor` must check the active `PATH` for the required commands and report actionable findings if they are missing.
-
-Default bundled installs must not gain new warnings from runtime-tool source diagnostics.
-
-When a component is disabled, doctor reports the disabled state as intentional and should report only invalid references to disabled commands, assets, widgets, or config ownership surfaces.
-
-## Public Flake Presets
-
-Curated granular flake presets are optional and demand-driven.
-
-Before adding a named preset, the project must decide:
-
-- the exact tool/component modes it represents
-- why Home Manager and `lib.${system}.mkYazelix` are not enough
-- how many named presets remain supportable
+The module must never move, merge, delete, or silently adopt an existing mutable file
 
 ## Verification
 
-- `nix flake show`
-- `nix build .#yazelix`
-- Nix eval/build checks for `lib.${system}.mkYazelix`
-- Home Manager module checks for granular options
-- `yzx doctor` checks for host-sourced tool diagnostics
+- `yzx_repo_validator validate-config-surface-contract`
+- `yzx_repo_validator validate-nix-customization-api`
+- Linux Home Manager activation with absent and explicit `config.settings`
+- Darwin module evaluation without desktop-entry options
+- representative Home Manager activation package build

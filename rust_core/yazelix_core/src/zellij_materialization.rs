@@ -205,7 +205,7 @@ pub fn generate_zellij_materialization(
             ErrorClass::Config,
             "disabled_screen_component_screen_saver",
             "zellij.screen_saver_enabled cannot be true when the Yazelix screen component is disabled.",
-            "Enable programs.yazelix.components.screen or set zellij.screen_saver_enabled to false.",
+            "Install a Yazelix package with the screen component enabled or set zellij.screen_saver_enabled to false.",
             json!({ "field": "zellij.screen_saver_enabled" }),
         ));
     }

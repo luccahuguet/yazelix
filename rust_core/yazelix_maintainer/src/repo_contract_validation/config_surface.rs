@@ -37,6 +37,7 @@ pub fn validate_config_surface_contract(repo_root: &Path) -> Result<ValidationRe
         validate_ratconfig_contract_guard(repo_root)?,
         validate_nova_keybinding_registry_defaults(repo_root)?,
         validate_home_manager_option_declaration_contract(repo_root)?,
+        validate_home_manager_native_file_contract(repo_root)?,
         validate_home_manager_desktop_entry_contract(repo_root)?,
         validate_home_manager_activation_contract(repo_root)?,
         validate_generated_state_contract(repo_root)?,
@@ -131,6 +132,37 @@ pub fn validate_home_manager_option_declaration_contract(
 ) -> Result<Vec<String>, String> {
     let declarations = load_home_manager_option_declarations(repo_root)?;
     let mut errors = Vec::new();
+    let actual = declarations.keys().cloned().collect::<BTreeSet<_>>();
+    let expected = [
+        "config.cursors",
+        "config.helix.config",
+        "config.helix.init",
+        "config.helix.languages",
+        "config.helix.module",
+        "config.mars",
+        "config.nu.config",
+        "config.nu.env",
+        "config.settings",
+        "config.starship",
+        "config.yazi.config",
+        "config.yazi.init",
+        "config.yazi.keymap",
+        "config.yazi.package",
+        "config.yazi.theme",
+        "config.zellij",
+        "enable",
+        "package",
+    ]
+    .into_iter()
+    .map(str::to_string)
+    .collect::<BTreeSet<_>>();
+    if actual != expected {
+        let missing = expected.difference(&actual).cloned().collect::<Vec<_>>();
+        let extra = actual.difference(&expected).cloned().collect::<Vec<_>>();
+        errors.push(format!(
+            "Home Manager must expose only the Nova package-plus-sidecars API; missing={missing:?}, extra={extra:?}"
+        ));
+    }
     for (option_name, option_declarations) in declarations {
         for declaration in option_declarations {
             if declaration != HOME_MANAGER_MODULE_DECLARATION_PATH {
@@ -158,18 +190,6 @@ fn validate_main_contract_parity(repo_root: &Path) -> Result<Vec<String>, String
         .and_then(TomlValue::as_table)
         .ok_or_else(|| "main_config_contract.toml is missing its [fields] table".to_string())?;
     let declared_fields = sorted_keys(fields);
-    let hm_option_names = declared_fields
-        .iter()
-        .filter_map(|field_path| {
-            fields
-                .get(field_path)
-                .and_then(TomlValue::as_table)
-                .and_then(|field| field.get("home_manager_option"))
-                .and_then(TomlValue::as_str)
-                .map(ToOwned::to_owned)
-        })
-        .collect::<Vec<_>>();
-    let hm_defaults = load_home_manager_defaults(repo_root, &hm_option_names)?;
     let mut errors = Vec::new();
 
     let declared_field_count = contract
@@ -191,31 +211,6 @@ fn validate_main_contract_parity(repo_root: &Path) -> Result<Vec<String>, String
             continue;
         };
         validate_main_contract_apply_mode(&field_path, field, &mut errors);
-        let hm_option = field
-            .get("home_manager_option")
-            .and_then(TomlValue::as_str)
-            .unwrap_or_default();
-        if !hm_defaults.contains_key(hm_option) {
-            errors.push(format!(
-                "Home Manager option `{}` is missing for main-contract field `{}`",
-                hm_option, field_path
-            ));
-            continue;
-        }
-
-        let actual_hm_default = hm_defaults
-            .get(hm_option)
-            .cloned()
-            .unwrap_or(JsonValue::Null);
-        if actual_hm_default != JsonValue::Null {
-            errors.push(format!(
-                "Home Manager option `{}` for `{}` must default to null so omission inherits the packaged value, got {}",
-                hm_option,
-                field_path,
-                format_json_value(&actual_hm_default)
-            ));
-        }
-
         let emit_in_template = field
             .get("emit_in_default_template")
             .and_then(TomlValue::as_bool)
@@ -544,16 +539,29 @@ fn toml_string_array(value: &TomlValue) -> Option<Vec<String>> {
 }
 
 fn validate_home_manager_sparse_config(repo_root: &Path) -> Result<Vec<String>, String> {
-    let mut errors = validate_home_manager_sparse_config_content(
+    let mut errors = Vec::new();
+    if load_home_manager_managed_config_toml(repo_root, None)?.is_some() {
+        errors.push(
+            "Home Manager config.settings = null must leave yazelix/config.toml absent".to_string(),
+        );
+    }
+    let empty = load_home_manager_managed_config_toml(repo_root, Some("{}"))?.ok_or_else(|| {
+        "Home Manager explicit empty config.settings did not create config.toml".to_string()
+    })?;
+    errors.extend(validate_home_manager_sparse_config_content(
         Path::new("config.toml"),
-        &load_home_manager_managed_config_toml(repo_root, None)?,
-    )?;
+        &empty,
+    )?);
+    let explicit = load_home_manager_managed_config_toml(
+        repo_root,
+        Some("{ popups.btm = { command = \"btm\"; keybinding = \"Alt Shift B\"; }; }"),
+    )?
+    .ok_or_else(|| {
+        "Home Manager explicit config.settings did not create config.toml".to_string()
+    })?;
     errors.extend(validate_home_manager_explicit_config_content(
         Path::new("config.toml"),
-        &load_home_manager_managed_config_toml(
-            repo_root,
-            Some("popups.btm = { command = \"btm\"; keybinding = \"Alt Shift B\"; };"),
-        )?,
+        &explicit,
     )?);
     Ok(errors)
 }
@@ -566,7 +574,7 @@ fn validate_home_manager_sparse_config_content(
     match value.as_object() {
         Some(root) if root.is_empty() => Ok(Vec::new()),
         Some(root) => Ok(vec![format!(
-            "Home Manager manage_config=true with no declared semantic options must render an empty sparse config.toml, found top-level keys: {}",
+            "Home Manager config.settings = {{}} must render an empty sparse config.toml, found top-level keys: {}",
             root.keys().cloned().collect::<Vec<_>>().join(", ")
         )]),
         None => Ok(vec![
@@ -593,20 +601,127 @@ fn validate_home_manager_explicit_config_content(
     }
 }
 
+fn validate_home_manager_native_file_contract(repo_root: &Path) -> Result<Vec<String>, String> {
+    let result = run_nix_eval(
+        repo_root,
+        &build_home_manager_native_file_contract_expr(repo_root),
+    )?;
+    let object = result.as_object().ok_or_else(|| {
+        "Home Manager native-file validation did not return a JSON object".to_string()
+    })?;
+    let actual_paths = object
+        .get("paths")
+        .and_then(JsonValue::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(JsonValue::as_str)
+        .map(str::to_string)
+        .collect::<BTreeSet<_>>();
+    let expected_paths = [
+        "yazelix/cursors.toml",
+        "yazelix/helix/config.toml",
+        "yazelix/helix/helix.scm",
+        "yazelix/helix/init.scm",
+        "yazelix/helix/languages.toml",
+        "yazelix/mars/config.toml",
+        "yazelix/nu/config.nu",
+        "yazelix/nu/env.nu",
+        "yazelix/starship.toml",
+        "yazelix/yazi/init.lua",
+        "yazelix/yazi/keymap.toml",
+        "yazelix/yazi/package.toml",
+        "yazelix/yazi/theme.toml",
+        "yazelix/yazi/yazi.toml",
+        "yazelix/zellij/config.kdl",
+    ]
+    .into_iter()
+    .map(str::to_string)
+    .collect::<BTreeSet<_>>();
+    let mut errors = Vec::new();
+    if actual_paths != expected_paths {
+        errors.push(format!(
+            "Home Manager native files must use the canonical Yazelix paths; expected={expected_paths:?}, actual={actual_paths:?}"
+        ));
+    }
+    for (field, message) in [
+        (
+            "valid",
+            "Home Manager must accept exactly one of native-file text or source",
+        ),
+        (
+            "rejectsZero",
+            "Home Manager must reject a declared native file with neither text nor source",
+        ),
+        (
+            "rejectsTwo",
+            "Home Manager must reject a declared native file with both text and source",
+        ),
+    ] {
+        if object.get(field).and_then(JsonValue::as_bool) != Some(true) {
+            errors.push(message.to_string());
+        }
+    }
+    Ok(errors)
+}
+
+fn build_home_manager_native_file_contract_expr(repo_root: &Path) -> String {
+    let module_path =
+        escape_nix_string(&repo_root.join(MODULE_RELATIVE_PATH).display().to_string());
+    let mut lines = vec![
+        "let".to_string(),
+        "  pkgs = import <nixpkgs> { system = \"x86_64-linux\"; };".to_string(),
+        "  lib = pkgs.lib.extend (_: super: { hm = { dag = { entryAfter = after: data: { inherit after data; }; }; }; });".to_string(),
+        "  fakePackage = pkgs.runCommand \"yazelix\" {} ''mkdir -p $out/bin $out/libexec $out/toolbin; touch $out/bin/yzx $out/libexec/yzx_core $out/libexec/yzx_control'';".to_string(),
+        "  nativeSource = builtins.toFile \"native-config\" \"source\";".to_string(),
+        format!(
+            "  yazelixModule = import (builtins.toPath \"{}\") {{ defaultPackageFor = _system: fakePackage; }};",
+            module_path
+        ),
+        "  baseModules = [ yazelixModule".to_string(),
+    ];
+    lines.extend(standalone_home_manager_eval_fixture_module(true, false));
+    lines.extend([
+        "  ];".to_string(),
+        "  evaluate = extra: lib.evalModules { specialArgs = { inherit pkgs; }; modules = baseModules ++ [ extra ]; };".to_string(),
+        "  validEval = evaluate { config.programs.yazelix = { enable = true; config = {".to_string(),
+        "    cursors.source = nativeSource;".to_string(),
+        "    mars.text = \"\"; zellij.text = \"\"; starship.text = \"\";".to_string(),
+        "    helix = { config.text = \"\"; languages.text = \"\"; module.text = \"\"; init.text = \"\"; };".to_string(),
+        "    yazi = { config.text = \"\"; init.text = \"\"; keymap.text = \"\"; package.text = \"\"; theme.text = \"\"; };".to_string(),
+        "    nu = { env.text = \"\"; config.text = \"\"; };".to_string(),
+        "  }; }; };".to_string(),
+        "  zeroEval = evaluate { config.programs.yazelix = { enable = true; config.mars = {}; }; };".to_string(),
+        "  twoEval = evaluate { config.programs.yazelix = { enable = true; config.mars = { text = \"\"; source = nativeSource; }; }; };".to_string(),
+        "  assertionsHold = evaluation: builtins.all (item: item.assertion) evaluation.config.assertions;".to_string(),
+        "in {".to_string(),
+        "  paths = builtins.attrNames validEval.config.xdg.configFile;".to_string(),
+        "  valid = assertionsHold validEval;".to_string(),
+        "  rejectsZero = !(assertionsHold zeroEval);".to_string(),
+        "  rejectsTwo = !(assertionsHold twoEval);".to_string(),
+        "}".to_string(),
+    ]);
+    lines.join("\n")
+}
+
 fn load_home_manager_managed_config_toml(
     repo_root: &Path,
-    semantic_assignment: Option<&str>,
-) -> Result<String, String> {
-    let expr = build_home_manager_managed_config_toml_expr(repo_root, semantic_assignment);
+    settings_value: Option<&str>,
+) -> Result<Option<String>, String> {
+    let expr = build_home_manager_managed_config_toml_expr(repo_root, settings_value);
     let result = run_nix_eval(repo_root, &expr)?;
-    result.as_str().map(str::to_string).ok_or_else(|| {
-        "Home Manager managed settings evaluation did not return a TOML string".to_string()
-    })
+    match result {
+        JsonValue::Null => Ok(None),
+        JsonValue::String(raw) => Ok(Some(raw)),
+        _ => Err(
+            "Home Manager managed settings evaluation did not return null or a TOML string"
+                .to_string(),
+        ),
+    }
 }
 
 fn build_home_manager_managed_config_toml_expr(
     repo_root: &Path,
-    semantic_assignment: Option<&str>,
+    settings_value: Option<&str>,
 ) -> String {
     let module_path =
         escape_nix_string(&repo_root.join(MODULE_RELATIVE_PATH).display().to_string());
@@ -614,21 +729,27 @@ fn build_home_manager_managed_config_toml_expr(
         "let".to_string(),
         "  pkgs = import <nixpkgs> { system = \"x86_64-linux\"; };".to_string(),
         "  lib = pkgs.lib.extend (_: super: { hm = { dag = { entryAfter = after: data: { inherit after data; }; }; }; });".to_string(),
+        "  fakePackage = pkgs.runCommand \"yazelix\" {} ''mkdir -p $out/bin $out/libexec $out/toolbin; touch $out/bin/yzx $out/libexec/yzx_core $out/libexec/yzx_control'';".to_string(),
+        format!(
+            "  yazelixModule = import (builtins.toPath \"{}\") {{ defaultPackageFor = _system: fakePackage; }};",
+            module_path
+        ),
         "  eval = lib.evalModules {".to_string(),
-        "    specialArgs = { inherit pkgs; nixgl = null; yazelixCursorsPackage = null; marsTerminalPackage = null; mkYazelixPackage = args: pkgs.runCommand (args.name or \"yazelix\") {} ''mkdir -p $out/bin $out/libexec $out/toolbin; touch $out/bin/yzx $out/libexec/yzx_core $out/libexec/yzx_control''; };".to_string(),
+        "    specialArgs = { inherit pkgs; };".to_string(),
         "    modules = [".to_string(),
-        format!("      (builtins.toPath \"{}\")", module_path),
+        "      yazelixModule".to_string(),
     ];
     lines.extend(standalone_home_manager_eval_fixture_module(true, true));
+    if let Some(value) = settings_value {
+        lines.push(format!(
+            "      {{ config.programs.yazelix.config.settings = {value}; }}"
+        ));
+    }
     lines.extend([
-        format!(
-            "      {{ config.programs.yazelix = {{ manage_config = true; {} }}; }}",
-            semantic_assignment.unwrap_or("")
-        ),
         "    ];".to_string(),
         "  };".to_string(),
-        "in builtins.readFile eval.config.xdg.configFile.\"yazelix/config.toml\".source"
-            .to_string(),
+        "  files = eval.config.xdg.configFile;".to_string(),
+        "in if builtins.hasAttr \"yazelix/config.toml\" files then builtins.readFile files.\"yazelix/config.toml\".source else null".to_string(),
     ]);
     lines.join("\n")
 }
@@ -764,7 +885,6 @@ fn format_json_string(value: &str) -> String {
 
 fn validate_home_manager_desktop_entry_contract(repo_root: &Path) -> Result<Vec<String>, String> {
     let entry = load_home_manager_desktop_entry_contract(repo_root)?;
-    let active_terminal = json_map_str_field(&entry, "activeTerminal");
     let is_present = json_map_bool_field(&entry, "present");
     let actual_exec = json_map_str_field(&entry, "exec");
     let actual_name = json_map_str_field(&entry, "name");
@@ -774,14 +894,6 @@ fn validate_home_manager_desktop_entry_contract(repo_root: &Path) -> Result<Vec<
     let expected_startup_wm_class =
         expected_home_manager_startup_wm_class(HOME_MANAGER_DEFAULT_TERMINAL);
     let mut errors = Vec::new();
-
-    if active_terminal != HOME_MANAGER_DEFAULT_TERMINAL {
-        errors.push(format!(
-            "Home Manager default terminal mismatch: expected {}, got {}",
-            format_json_string(HOME_MANAGER_DEFAULT_TERMINAL),
-            format_json_string(active_terminal)
-        ));
-    }
 
     if !is_present {
         errors.push(format!(
@@ -857,9 +969,9 @@ fn validate_home_manager_activation_contract(repo_root: &Path) -> Result<Vec<Str
     Ok(errors)
 }
 
-fn validate_home_manager_activation_script(script: &str, manage_config: bool) -> Vec<String> {
+fn validate_home_manager_activation_script(script: &str, settings_owned: bool) -> Vec<String> {
     let mut errors = Vec::new();
-    let owner_label = if manage_config {
+    let owner_label = if settings_owned {
         "Home Manager-owned"
     } else {
         "ratconfig-owned"
@@ -876,30 +988,35 @@ fn validate_home_manager_activation_script(script: &str, manage_config: bool) ->
 
 fn load_home_manager_activation_contract(
     repo_root: &Path,
-    manage_config: bool,
+    settings_owned: bool,
 ) -> Result<String, String> {
-    let expr = build_home_manager_activation_expr(repo_root, manage_config);
+    let expr = build_home_manager_activation_expr(repo_root, settings_owned);
     let result = run_nix_eval(repo_root, &expr)?;
     result.as_str().map(str::to_string).ok_or_else(|| {
         "Home Manager activation evaluation did not return a JSON string".to_string()
     })
 }
 
-fn build_home_manager_activation_expr(repo_root: &Path, manage_config: bool) -> String {
+fn build_home_manager_activation_expr(repo_root: &Path, settings_owned: bool) -> String {
     let module_path =
         escape_nix_string(&repo_root.join(MODULE_RELATIVE_PATH).display().to_string());
     let mut lines = vec![
         "let".to_string(),
         "  pkgs = import <nixpkgs> { system = \"x86_64-linux\"; };".to_string(),
         "  lib = pkgs.lib.extend (_: super: { hm = { dag = { entryAfter = after: data: { inherit after data; }; }; }; });".to_string(),
+        "  fakePackage = pkgs.runCommand \"yazelix\" {} ''mkdir -p $out/bin $out/libexec $out/toolbin; touch $out/bin/yzx $out/libexec/yzx_core $out/libexec/yzx_control'';".to_string(),
+        format!(
+            "  yazelixModule = import (builtins.toPath \"{}\") {{ defaultPackageFor = _system: fakePackage; }};",
+            module_path
+        ),
         "  eval = lib.evalModules {".to_string(),
-        "    specialArgs = { inherit pkgs; nixgl = null; yazelixCursorsPackage = null; marsTerminalPackage = null; mkYazelixPackage = args: pkgs.runCommand (args.name or \"yazelix\") {} ''mkdir -p $out/bin $out/libexec $out/toolbin; touch $out/bin/yzx $out/libexec/yzx_core $out/libexec/yzx_control''; };".to_string(),
+        "    specialArgs = { inherit pkgs; };".to_string(),
         "    modules = [".to_string(),
-        format!("      (builtins.toPath \"{}\")", module_path),
+        "      yazelixModule".to_string(),
     ];
     lines.extend(standalone_home_manager_eval_fixture_module(true, true));
-    if manage_config {
-        lines.push("      { config.programs.yazelix.manage_config = true; }".to_string());
+    if settings_owned {
+        lines.push("      { config.programs.yazelix.config.settings = {}; }".to_string());
     }
     lines.extend([
         "    ];".to_string(),
@@ -1021,50 +1138,6 @@ fn validate_startup_snapshot_env_contract_content(label: &str, content: &str) ->
     errors
 }
 
-fn load_home_manager_defaults(
-    repo_root: &Path,
-    option_names: &[String],
-) -> Result<JsonMap<String, JsonValue>, String> {
-    let expr = build_home_manager_defaults_expr(repo_root, option_names);
-    let result = run_nix_eval(repo_root, &expr)?;
-    result
-        .as_object()
-        .cloned()
-        .ok_or_else(|| "Home Manager defaults evaluation did not return a JSON object".to_string())
-}
-
-fn build_home_manager_defaults_expr(repo_root: &Path, option_names: &[String]) -> String {
-    let module_path =
-        escape_nix_string(&repo_root.join(MODULE_RELATIVE_PATH).display().to_string());
-    let mut names = option_names.to_vec();
-    names.sort();
-    names.dedup();
-    let bindings = names
-        .into_iter()
-        .map(|name| {
-            format!(
-                "  {} = module.options.programs.yazelix.{}.default;",
-                name, name
-            )
-        })
-        .collect::<Vec<_>>()
-        .join("\n");
-
-    [
-        "let".to_string(),
-        "  pkgs = import <nixpkgs> {};".to_string(),
-        "  lib = pkgs.lib;".to_string(),
-        format!(
-            "  module = import (builtins.toPath \"{}\") {{ inherit lib pkgs; options = {{}}; config = {{ programs.yazelix = {{}}; xdg.configHome = \"/tmp\"; }}; }};",
-            module_path
-        ),
-        "in {".to_string(),
-        bindings,
-        "}".to_string(),
-    ]
-    .join("\n")
-}
-
 fn load_home_manager_option_declarations(
     repo_root: &Path,
 ) -> Result<HashMap<String, Vec<String>>, String> {
@@ -1082,10 +1155,15 @@ fn build_home_manager_option_declarations_expr(repo_root: &Path) -> String {
         "let".to_string(),
         "  pkgs = import <nixpkgs> {};".to_string(),
         "  lib = pkgs.lib;".to_string(),
+        "  fakePackage = pkgs.runCommand \"yazelix\" {} ''mkdir -p $out/bin $out/libexec $out/toolbin; touch $out/bin/yzx $out/libexec/yzx_core $out/libexec/yzx_control'';".to_string(),
+        format!(
+            "  yazelixModule = import (builtins.toPath \"{}\") {{ defaultPackageFor = _system: fakePackage; }};",
+            module_path
+        ),
         "  eval = lib.evalModules {".to_string(),
-        "    specialArgs = { inherit pkgs; nixgl = null; };".to_string(),
+        "    specialArgs = { inherit pkgs; };".to_string(),
         "    modules = [".to_string(),
-        format!("      (builtins.toPath \"{}\")", module_path),
+        "      yazelixModule".to_string(),
     ];
     lines.extend(standalone_home_manager_eval_fixture_module(true, false));
     lines.extend([
@@ -1145,21 +1223,24 @@ fn build_home_manager_desktop_entry_expr(repo_root: &Path) -> String {
         "let".to_string(),
         "  pkgs = import <nixpkgs> { system = \"x86_64-linux\"; };".to_string(),
         "  lib = pkgs.lib;".to_string(),
+        "  fakePackage = pkgs.runCommand \"yazelix\" {} ''mkdir -p $out/bin $out/libexec $out/toolbin; touch $out/bin/yzx $out/libexec/yzx_core $out/libexec/yzx_control'';".to_string(),
+        format!(
+            "  yazelixModule = import (builtins.toPath \"{}\") {{ defaultPackageFor = _system: fakePackage; }};",
+            module_path
+        ),
         "  eval = lib.evalModules {".to_string(),
-        "    specialArgs = { inherit pkgs; nixgl = null; yazelixCursorsPackage = null; marsTerminalPackage = null; mkYazelixPackage = args: pkgs.runCommand (args.name or \"yazelix\") {} \"mkdir -p $out/bin; touch $out/bin/yzx\"; };".to_string(),
+        "    specialArgs = { inherit pkgs; };".to_string(),
         "    modules = [".to_string(),
-        format!("      (builtins.toPath \"{}\")", module_path),
+        "      yazelixModule".to_string(),
     ];
     lines.extend(standalone_home_manager_eval_fixture_module(true, true));
     lines.extend([
         "    ];".to_string(),
         "  };".to_string(),
-        "  activeTerminal = eval.config.programs.yazelix.terminal;".to_string(),
         "  entryKey = \"com.yazelix.Yazelix.Mars\";".to_string(),
         "  entries = eval.config.xdg.desktopEntries;".to_string(),
         "  entry = if builtins.hasAttr entryKey entries then builtins.getAttr entryKey entries else {};".to_string(),
         "in {".to_string(),
-        "  inherit activeTerminal;".to_string(),
         "  present = builtins.hasAttr entryKey entries;".to_string(),
         "  name = entry.name or \"\";".to_string(),
         "  exec = entry.exec or \"\";".to_string(),
@@ -1185,10 +1266,15 @@ fn build_home_manager_darwin_without_desktop_entry_option_expr(repo_root: &Path)
         "let".to_string(),
         "  pkgs = import <nixpkgs> { system = \"aarch64-darwin\"; };".to_string(),
         "  lib = pkgs.lib;".to_string(),
+        "  fakePackage = pkgs.runCommand \"yazelix\" {} ''mkdir -p $out/bin $out/libexec $out/toolbin; touch $out/bin/yzx $out/libexec/yzx_core $out/libexec/yzx_control'';".to_string(),
+        format!(
+            "  yazelixModule = import (builtins.toPath \"{}\") {{ defaultPackageFor = _system: fakePackage; }};",
+            module_path
+        ),
         "  eval = lib.evalModules {".to_string(),
-        "    specialArgs = { inherit pkgs; nixgl = null; };".to_string(),
+        "    specialArgs = { inherit pkgs; };".to_string(),
         "    modules = [".to_string(),
-        format!("      (builtins.toPath \"{}\")", module_path),
+        "      yazelixModule".to_string(),
     ];
     lines.extend(standalone_home_manager_eval_fixture_module(false, true));
     lines.extend([

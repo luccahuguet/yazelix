@@ -103,20 +103,6 @@ pub fn validate_nix_customization_api(repo_root: &Path) -> Result<ValidationRepo
         "lib.<system>.mkYazelix default package must not prefer local builds over published substitutes",
         &mut report.errors,
     );
-    require_json_string(
-        object,
-        "home_manager_runtime_tool_source",
-        "host",
-        "Home Manager runtime_tool_sources must pass typed host values through evaluation",
-        &mut report.errors,
-    );
-    require_json_string(
-        object,
-        "home_manager_steel_tool_source",
-        "off",
-        "Home Manager runtime_tool_sources must pass typed Steel off values through evaluation",
-        &mut report.errors,
-    );
     require_json_bool(
         object,
         "steel_bundled_exports_authoring_commands",
@@ -161,14 +147,8 @@ pub fn validate_nix_customization_api(repo_root: &Path) -> Result<ValidationRepo
     );
     require_json_bool(
         object,
-        "home_manager_terminal_option_selects_mars",
-        "Home Manager programs.yazelix.terminal must select the Mars packaged terminal",
-        &mut report.errors,
-    );
-    require_json_bool(
-        object,
-        "home_manager_terminal_option_omits_fallback_terminal_packages",
-        "Home Manager terminal selection must not install additional terminal fallback packages",
+        "home_manager_package_override",
+        "Home Manager programs.yazelix.package must install the selected complete package",
         &mut report.errors,
     );
     require_json_bool(
@@ -303,6 +283,7 @@ fn build_nix_customization_api_expr(repo_root: &Path) -> String {
         "  defaultPackage = flake.packages.${system}.yazelix;".to_string(),
         "  mkDefaultPackage = flake.lib.${system}.mkYazelix {};".to_string(),
         "  overlayPkgs = import flake.inputs.nixpkgs { inherit system; overlays = [ flake.overlays.default ]; };".to_string(),
+        "  customPackage = pkgs.runCommand \"custom-yazelix\" { meta.mainProgram = \"yzx\"; } \"mkdir -p $out/bin; touch $out/bin/yzx\";".to_string(),
         "  hm = flake.inputs.home-manager.lib.homeManagerConfiguration {".to_string(),
         "    inherit pkgs;".to_string(),
         "    modules = [".to_string(),
@@ -312,8 +293,7 @@ fn build_nix_customization_api_expr(repo_root: &Path) -> String {
         "        home.homeDirectory = \"/home/validator\";".to_string(),
         "        home.stateVersion = \"24.11\";".to_string(),
         "        programs.yazelix.enable = true;".to_string(),
-        "        programs.yazelix.runtime_tool_sources.helix = \"host\";".to_string(),
-        "        programs.yazelix.runtime_tool_sources.steel = \"off\";".to_string(),
+        "        programs.yazelix.package = customPackage;".to_string(),
         "      }".to_string(),
         "    ];".to_string(),
         "  };".to_string(),
@@ -424,8 +404,6 @@ fn build_nix_customization_api_expr(repo_root: &Path) -> String {
         "  default_package_does_not_prefer_local_build = (defaultPackage.preferLocalBuild or false) == false;".to_string(),
         "  mk_default_package_allows_substitutes = (mkDefaultPackage.allowSubstitutes or true) == true;".to_string(),
         "  mk_default_package_does_not_prefer_local_build = (mkDefaultPackage.preferLocalBuild or false) == false;".to_string(),
-        "  home_manager_runtime_tool_source = hm.config.programs.yazelix.runtime_tool_sources.helix or \"\";".to_string(),
-        "  home_manager_steel_tool_source = hm.config.programs.yazelix.runtime_tool_sources.steel or \"\";".to_string(),
         "  steel_bundled_exports_authoring_commands = builtins.all (command: builtins.elem command steelBundledRegistry.exportedCommands) steelAuthoringCommands;".to_string(),
         "  steel_off_omits_authoring_commands = steelOffRegistry.manifest.steel.source == \"off\" && builtins.all (command: !(builtins.elem command steelOffRegistry.exportedCommands)) steelAuthoringCommands;".to_string(),
         "  mise_defaults_to_host = steelBundledRegistry.manifest.mise.source == \"host\";".to_string(),
@@ -433,8 +411,7 @@ fn build_nix_customization_api_expr(repo_root: &Path) -> String {
         "  host_default_tools_not_exported = !(builtins.elem \"mise\" steelBundledRegistry.exportedCommands) && !(builtins.elem \"tombi\" steelBundledRegistry.exportedCommands);".to_string(),
         "  host_default_tools_can_be_bundled = hostDefaultToolsBundledRegistry.manifest.mise.source == \"bundled\" && hostDefaultToolsBundledRegistry.manifest.tombi.source == \"bundled\" && builtins.elem \"mise\" hostDefaultToolsBundledRegistry.exportedCommands && builtins.elem \"tombi\" hostDefaultToolsBundledRegistry.exportedCommands;".to_string(),
         "  home_manager_has_package = builtins.length hm.config.home.packages > 0;".to_string(),
-        "  home_manager_terminal_option_selects_mars = hm.config.programs.yazelix.terminal == \"mars\" && builtins.any (pkg: (pkg.meta.mainProgram or \"\") == \"yzx\") hm.config.home.packages;".to_string(),
-        "  home_manager_terminal_option_omits_fallback_terminal_packages = !(builtins.any (pkg: let name = pkg.name or \"\"; in pkgs.lib.hasPrefix \"ghostty-\" name || pkgs.lib.hasPrefix \"foot-\" name || pkgs.lib.hasPrefix \"kitty-\" name || pkgs.lib.hasPrefix \"rio-\" name || pkgs.lib.hasPrefix \"wezterm-\" name || pkgs.lib.hasPrefix \"ratty-\" name) hm.config.home.packages);".to_string(),
+        "  home_manager_package_override = builtins.elem customPackage hm.config.home.packages;".to_string(),
         "  invalid_runtime_tool_rejected = !invalidRuntimeTool.success;".to_string(),
         "  unsupported_component_rejected = !unsupportedComponent.success;".to_string(),
         "  kgp_zellij_owns_cargo_deps = (kgpZellij.version or \"\") == \"0.44.3\" && (kgpZellij.cargoDeps.name or \"\") == \"zellij-0.44.3-vendor\";".to_string(),

@@ -106,7 +106,7 @@ Without a written contract:
   - a valid working directory when the entrypoint accepts one
 - Package-conditioned requirements:
   - the selected packaged terminal must be available for `yzx launch` when launching a new terminal window
-  - terminal availability follows the selected package or Home Manager `programs.yazelix.terminal` value, with no fallback to another terminal
+  - terminal availability follows the selected complete package, including a Home Manager `programs.yazelix.package` override, with no fallback to another terminal
   - entrypoints that stay in the current terminal, such as `yzx enter`, do not require a detached terminal candidate
 - Runtime-owned assets versus host tools:
   - runtime-owned scripts, generated layouts, and shipped assets should be treated as runtime contract dependencies

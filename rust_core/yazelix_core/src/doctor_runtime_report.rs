@@ -217,7 +217,7 @@ fn build_host_runtime_tool_findings(
                 )
                 .with_details(error.message())
                 .with_runtime_contract_check("runtime_tool_manifest")
-                .with_owner_surface("runtime_tool_sources"),
+                .with_owner_surface("selected_package"),
             ];
         }
     };
@@ -243,7 +243,7 @@ fn build_host_runtime_tool_findings(
                         required_commands.join(", ")
                     ))
                 .with_runtime_contract_check(format!("host_runtime_tool:{name}"))
-                .with_owner_surface("runtime_tool_sources")
+                .with_owner_surface("selected_package")
             } else if runtime_tool_is_optional_host_integration(&tool) {
                 DoctorRuntimeDoctorFinding::new(
                     "info",
@@ -256,7 +256,7 @@ fn build_host_runtime_tool_findings(
                     ))
                 .with_capability_mode("optional_host_runtime_tool_missing")
                 .with_runtime_contract_check(format!("host_runtime_tool:{name}"))
-                .with_owner_surface("runtime_tool_sources")
+                .with_owner_surface("selected_package")
             } else {
                 DoctorRuntimeDoctorFinding::new(
                     "warning",
@@ -268,7 +268,7 @@ fn build_host_runtime_tool_findings(
                         format_path_list(command_search_paths)
                     ))
                 .with_runtime_contract_check(format!("host_runtime_tool:{name}"))
-                .with_owner_surface("runtime_tool_sources")
+                .with_owner_surface("selected_package")
             }
         })
         .collect()
@@ -301,7 +301,7 @@ fn build_disabled_runtime_tool_findings(runtime_dir: &Path) -> Vec<DoctorRuntime
                 ))
                 .with_capability_mode("off")
                 .with_runtime_contract_check(format!("disabled_runtime_tool:{name}"))
-                .with_owner_surface("runtime_tool_sources")
+                .with_owner_surface("selected_package")
         })
         .collect()
 }
@@ -1347,7 +1347,7 @@ mod tests {
         assert!(findings.is_empty());
     }
 
-    // Defends: runtime_tool_sources off mode is reported as intentional disablement instead of a missing host dependency.
+    // Defends: package-owned runtime tool off mode is reported as intentional disablement instead of a missing host dependency.
     #[test]
     fn disabled_runtime_tool_reports_info_finding() {
         let tmp = TempDir::new().unwrap();
