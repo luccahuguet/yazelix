@@ -16,6 +16,7 @@ Highlights:
 - Made `~/.config/yazelix/config.toml` the canonical semantic config and kept `settings.jsonc` only as a backup-first, one-time Classic migration input
 - Made root `config.toml` a sparse explicit-value file: absent fields inherit current packaged defaults, unset/reset remove overrides, and fresh installs no longer freeze a full default snapshot
 - Moved native Zellij startup tips, pane frames, rounded corners, and default mode into `~/.config/yazelix/zellij/config.kdl`
+- Stopped creating absent Zellij sidecars; byte-identical generated Classic artifacts are backed up and removed, while every customized or declarative file remains untouched and explicit for Nova
 - Switched Home Manager's managed root config rendering to sparse TOML containing only declared values
 - Made `~/.config/yazelix/cursors.toml` the only live cursor registry, with backup-first migration from the released `~/.config/yazelix_cursors/settings.jsonc`
 - Routed Ratconfig, `yzx cursors`, Ghostty generation, Mars launch, and Home Manager through the child-owned cursor TOML contract
@@ -24,6 +25,7 @@ Highlights:
 Manual action:
 - If Home Manager owns `~/.config/yazelix/settings.jsonc`, update the module and run `home-manager switch`; move retired native Zellij choices into `programs.yazelix.config.zellij.text` or `source`
 - If Home Manager owns `~/.config/yazelix_cursors/settings.jsonc`, update the module and run `home-manager switch` so it owns `~/.config/yazelix/cursors.toml`
+- Review preserved `zellij/config.kdl` and `zellij/plugins.kdl` assignments before Nova; remove only values you want to inherit from Nova defaults
 
 ## v17.10 - 2026-07-11
 
@@ -51,7 +53,6 @@ Manual action:
 - If Home Manager owns `~/.config/yazelix/zellij.kdl`, split it declaratively into `programs.yazelix.config.zellij.text` or `source` plus a user-owned `zellij/plugins.kdl`, then remove the flat file declaration
 - If you relied on `~/.config/zellij/config.kdl` as an automatic Yazelix fallback, run `yzx import zellij`; plain Zellij config is no longer read implicitly
 
-
 ## v17.9 - 2026-06-27
 
 Post-v17.8 work in progress
@@ -67,7 +68,6 @@ Highlights:
 Manual action:
 - Replace non-Mars flake outputs such as `#yazelix_ghostty`, `#yazelix_kitty`, `#runtime_kitty`, `#runtime_wezterm`, `#runtime_rio`, `#runtime_foot`, or `#runtime_ratty` with `#yazelix` or `#yazelix_mars`
 - Remove Home Manager `programs.yazelix.extra_terminal_launchers` or older `programs.yazelix.extra_terminal_variants` settings, and set `programs.yazelix.terminal = "mars"` if the option is present; terminals other than packaged Mars should start Yazelix with `yzx enter`
-
 
 ## v17.8 - 2026-06-22
 

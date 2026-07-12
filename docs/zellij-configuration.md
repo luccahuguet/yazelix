@@ -22,7 +22,9 @@ copy_command "wl-copy"
 scroll_buffer_size 10000
 ```
 
-Yazelix creates this file with `scroll_buffer_size 5000` when it is absent. Changes apply to a fresh Yazelix session.
+Missing sidecars inherit packaged Zellij behavior. Create only the assignments you want to keep explicit. Changes apply to a fresh Yazelix session.
+
+The final Classic bridge recognizes only the exact generated sidecar bytes shipped by the nested-sidecar releases. A writable regular match is backed up with a timestamp and removed so Nova can inherit its packaged defaults. Any byte difference, comment, custom assignment, plugin declaration, symlink, read-only file, or Home Manager-owned file is preserved whole. `yzx status` and `yzx doctor` report present sidecars as explicit Nova input; remove only the rows you want Nova to inherit.
 
 The sidecar uses a first-token ownership guard. It rejects nodes owned by runtime materialization, including:
 
@@ -87,7 +89,7 @@ yzx import zellij
 
 The command validates the source once, rejects guarded nodes such as `keybinds`, and splits safe content into `zellij/config.kdl` and `zellij/plugins.kdl`. Existing destinations are not overwritten unless `--force` is used, in which case timestamped backups are written first.
 
-The retired flat `~/.config/yazelix/zellij.kdl` is accepted only by the startup migration. Migration requires both nested destinations to be absent, writes a timestamped backup, splits the content, and removes the flat input. Coexistence or unsafe content fails before destination writes.
+The retired flat `~/.config/yazelix/zellij.kdl` is accepted only by the startup migration. Migration requires both nested destinations to be absent, writes a timestamped backup, splits the content, omits empty generated-only outputs, and removes the flat input. Coexistence or unsafe content fails before destination writes.
 
 ## Home Manager
 

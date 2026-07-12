@@ -214,7 +214,7 @@ impl TransactionIo for RealTransactionIo {
     }
 }
 
-fn remove_file_if_unchanged(path: &Path, expected: &str) -> io::Result<()> {
+pub(crate) fn remove_file_if_unchanged(path: &Path, expected: &str) -> io::Result<()> {
     let metadata = fs::symlink_metadata(path)?;
     if metadata.file_type().is_symlink() || !metadata.is_file() {
         return Err(io::Error::other(format!(

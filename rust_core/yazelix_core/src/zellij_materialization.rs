@@ -717,8 +717,8 @@ fn resolve_base_config_source() -> Result<ZellijBaseConfigSource, CoreError> {
     let config_dir = config_dir_from_env()?;
     let config_path = user_config_paths::zellij_config(&config_dir);
     let plugins_path = user_config_paths::zellij_plugins(&config_dir);
-    let config = read_text(&config_path, "read_managed_zellij_config")?;
-    let plugins = read_text(&plugins_path, "read_managed_zellij_plugins")?;
+    let config = read_text_if_exists(&config_path)?;
+    let plugins = read_text_if_exists(&plugins_path)?;
     validate_zellij_config_sidecar(&config)
         .map_err(|error| zellij_sidecar_error(&config_path, error))?;
     validate_zellij_plugins_sidecar(&plugins)

@@ -242,7 +242,7 @@ fn zellij_statuses(request: &NativeConfigStatusRequest) -> Vec<NativeConfigStatu
         entry(
             "zellij.input",
             "zellij",
-            "Guarded Zellij preferences used before Yazelix overlays",
+            "Guarded Zellij preferences; present rows stay explicit in Nova unless removed",
             NativeConfigStatusCode::ManagedOverride,
         )
     } else {
@@ -265,7 +265,7 @@ fn zellij_statuses(request: &NativeConfigStatusRequest) -> Vec<NativeConfigStatu
     let mut plugin_input = entry(
         "zellij.plugins",
         "zellij",
-        "Additive third-party Zellij plugins",
+        "Third-party Zellij plugins; a present file stays explicit in Nova",
         if path_present(&plugins) {
             NativeConfigStatusCode::ManagedOverride
         } else {

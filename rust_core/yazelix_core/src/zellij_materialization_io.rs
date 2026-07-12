@@ -72,7 +72,7 @@ pub(crate) fn read_text(path: &Path, code: &str) -> Result<String, CoreError> {
 }
 
 pub(crate) fn read_text_if_exists(path: &Path) -> Result<String, CoreError> {
-    if path.exists() {
+    if fs::symlink_metadata(path).is_ok() {
         read_text(path, "read_zellij_optional_input")
     } else {
         Ok(String::new())

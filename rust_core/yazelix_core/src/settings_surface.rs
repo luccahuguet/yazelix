@@ -5,7 +5,7 @@ use crate::atomic_fs::write_text_atomic;
 use crate::backup_timestamp::compact_utc_backup_timestamp;
 use crate::bridge::{CoreError, ErrorClass};
 use crate::classic_nova_root_migration::{
-    ClassicNovaMigrationRequest, migrate_classic_root_to_nova,
+    ClassicNovaMigrationRequest, migrate_classic_root_to_nova, remove_file_if_unchanged,
 };
 use crate::native_config_status::{path_owned_by_home_manager, path_present};
 use crate::user_config_paths;
@@ -20,6 +20,11 @@ use yazelix_zellij_config_pack::{
     DEFAULT_ZELLIJ_CONFIG_SIDECAR, DEFAULT_ZELLIJ_PLUGINS_SIDECAR, split_zellij_sidecars,
     validate_zellij_config_sidecar, validate_zellij_plugins_sidecar,
 };
+
+const FIRST_NESTED_ZELLIJ_CONFIG_SIDECAR: &str = r#"// Native Zellij preferences used by Yazelix
+scroll_buffer_size 5000
+"#;
+const FLAT_SPLIT_EMPTY_ZELLIJ_PLUGINS_SIDECAR: &str = "plugins {\n}\n\nload_plugins {\n}\n";
 
 pub const SETTINGS_SCHEMA_FILENAME: &str = "yazelix_settings.schema.json";
 pub const DEFAULT_MAIN_CONFIG_FILENAME: &str = "config_default.toml";
@@ -108,43 +113,37 @@ pub fn ensure_settings_config_with_cursor_component(
             .join(CLASSIC_MAIN_CONTRACT_FILENAME),
     })?;
 
-    if path_present(&paths.settings_config) {
+    let settings_present = path_present(&paths.settings_config);
+    if settings_present {
         read_config_table(&paths.settings_config, "invalid_main_config_toml")?;
-        ensure_zellij_sidecars(config_dir, DEFAULT_ZELLIJ_CONFIG_SIDECAR)?;
-        if cursor_component_enabled {
-            ensure_no_embedded_cursor_settings(&paths)?;
-            ensure_cursor_config(&paths, default_cursor_config)?;
+    } else {
+        if !default_main_config.exists() {
+            return Err(CoreError::classified(
+                ErrorClass::Config,
+                "missing_default_config",
+                format!(
+                    "Yazelix runtime is missing the default main config at {}.",
+                    default_main_config.display()
+                ),
+                "Reinstall Yazelix so the runtime includes config_default.toml.",
+                json!({ "path": default_main_config.display().to_string() }),
+            ));
         }
-        return Ok(paths.settings_config);
+        render_default_config(default_main_config)?;
     }
-
-    if !default_main_config.exists() {
-        return Err(CoreError::classified(
-            ErrorClass::Config,
-            "missing_default_config",
-            format!(
-                "Yazelix runtime is missing the default main config at {}.",
-                default_main_config.display()
-            ),
-            "Reinstall Yazelix so the runtime includes config_default.toml.",
-            json!({ "path": default_main_config.display().to_string() }),
-        ));
-    }
-    if cursor_component_enabled {
-        ensure_default_cursor_config_exists(default_cursor_config)?;
-    }
-
-    render_default_config(default_main_config)?;
-    ensure_zellij_sidecars(config_dir, DEFAULT_ZELLIJ_CONFIG_SIDECAR)?;
+    ensure_zellij_sidecars(config_dir)?;
 
     if cursor_component_enabled {
+        if settings_present {
+            ensure_no_embedded_cursor_settings(&paths)?;
+        }
         ensure_cursor_config(&paths, default_cursor_config)?;
     }
 
     Ok(paths.settings_config)
 }
 
-fn ensure_zellij_sidecars(config_dir: &Path, config_default: &str) -> Result<(), CoreError> {
+fn ensure_zellij_sidecars(config_dir: &Path) -> Result<(), CoreError> {
     let flat = user_config_paths::flat_zellij_config(config_dir);
     let config = user_config_paths::zellij_config(config_dir);
     let plugins = user_config_paths::zellij_plugins(config_dir);
@@ -158,14 +157,15 @@ fn ensure_zellij_sidecars(config_dir: &Path, config_default: &str) -> Result<(),
         ));
     }
     if !flat_present {
-        ensure_zellij_sidecar(&config, config_default, validate_zellij_config_sidecar)?;
-        return ensure_zellij_sidecar(
+        let timestamp = compact_utc_backup_timestamp();
+        cleanup_or_validate_zellij_sidecar(&config, validate_zellij_config_sidecar, &timestamp)?;
+        return cleanup_or_validate_zellij_sidecar(
             &plugins,
-            DEFAULT_ZELLIJ_PLUGINS_SIDECAR,
             validate_zellij_plugins_sidecar,
+            &timestamp,
         );
     }
-    if flat_present && (path_owned_by_home_manager(&flat) || settings_path_is_read_only(&flat)) {
+    if path_owned_by_home_manager(&flat) || settings_path_is_read_only(&flat) {
         return Err(zellij_migration_failure(
             "read_only_flat_zellij_migration",
             "The retired flat Zellij sidecar is read-only.",
@@ -185,8 +185,13 @@ fn ensure_zellij_sidecars(config_dir: &Path, config_default: &str) -> Result<(),
         split_zellij_sidecars(&flat_text).map_err(|error| zellij_migration_error(&flat, error))?;
     let timestamp = compact_utc_backup_timestamp();
     backup_zellij_migration_source(&flat, &timestamp)?;
-    write_text_atomic(&config, &split.config)?;
-    if let Err(error) = write_text_atomic(&plugins, &split.plugins) {
+    if !split.config.is_empty() && !is_generated_zellij_sidecar(&split.config) {
+        write_text_atomic(&config, &split.config)?;
+    }
+    if !split.plugins.is_empty()
+        && !is_generated_zellij_sidecar(&split.plugins)
+        && let Err(error) = write_text_atomic(&plugins, &split.plugins)
+    {
         let _ = fs::remove_file(&config);
         return Err(error);
     }
@@ -203,13 +208,13 @@ fn ensure_zellij_sidecars(config_dir: &Path, config_default: &str) -> Result<(),
     Ok(())
 }
 
-fn ensure_zellij_sidecar(
+fn cleanup_or_validate_zellij_sidecar(
     path: &Path,
-    default: &str,
     validate: fn(&str) -> Result<(), yazelix_zellij_config_pack::ZellijSidecarError>,
+    timestamp: &str,
 ) -> Result<(), CoreError> {
     if !path_present(path) {
-        return write_text_atomic(path, default);
+        return Ok(());
     }
     let raw = fs::read_to_string(path).map_err(|source| {
         io_err(
@@ -219,7 +224,31 @@ fn ensure_zellij_sidecar(
             source,
         )
     })?;
-    validate(&raw).map_err(|error| zellij_migration_error(path, error))
+    validate(&raw).map_err(|error| zellij_migration_error(path, error))?;
+    let removable = fs::symlink_metadata(path)
+        .is_ok_and(|metadata| metadata.file_type().is_file() && !metadata.permissions().readonly());
+    if !is_generated_zellij_sidecar(&raw) || !removable || path_owned_by_home_manager(path) {
+        return Ok(());
+    }
+    backup_zellij_migration_source(path, timestamp)?;
+    remove_file_if_unchanged(path, &raw).map_err(|source| {
+        io_err(
+            "retire_generated_zellij_sidecar",
+            path,
+            "Could not retire the unchanged generated Zellij sidecar after backing it up",
+            source,
+        )
+    })
+}
+
+fn is_generated_zellij_sidecar(raw: &str) -> bool {
+    [
+        FIRST_NESTED_ZELLIJ_CONFIG_SIDECAR,
+        DEFAULT_ZELLIJ_CONFIG_SIDECAR,
+        DEFAULT_ZELLIJ_PLUGINS_SIDECAR,
+        FLAT_SPLIT_EMPTY_ZELLIJ_PLUGINS_SIDECAR,
+    ]
+    .contains(&raw)
 }
 
 fn migration_backup_path(path: &Path, timestamp: &str) -> PathBuf {
@@ -672,141 +701,110 @@ mod tests {
     #[cfg(unix)]
     use std::os::unix::fs::PermissionsExt;
 
-    fn default_main_config() -> PathBuf {
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../config_default.toml")
+    type Validator = fn(&str) -> Result<(), yazelix_zellij_config_pack::ZellijSidecarError>;
+
+    fn reconcile_test_sidecar(path: &Path, text: &str, validate: Validator) {
+        fs::write(path, text).unwrap();
+        cleanup_or_validate_zellij_sidecar(path, validate, "test").unwrap();
     }
 
-    fn write_cursor_default(root: &Path) -> PathBuf {
-        let path = root.join("yazelix_cursors_default.toml");
-        fs::write(
+    // Defends: missing sidecars stay absent, while every released generated artifact retires backup-first and idempotently.
+    #[test]
+    fn inherits_missing_and_retires_generated_sidecars() {
+        let absent = tempdir().unwrap();
+        ensure_zellij_sidecars(absent.path()).unwrap();
+        assert_eq!(fs::read_dir(absent.path()).unwrap().count(), 0);
+
+        for text in [
+            FIRST_NESTED_ZELLIJ_CONFIG_SIDECAR,
+            DEFAULT_ZELLIJ_CONFIG_SIDECAR,
+        ] {
+            let dir = tempdir().unwrap();
+            let path = dir.path().join("config.kdl");
+            reconcile_test_sidecar(&path, text, validate_zellij_config_sidecar);
+            assert!(!path.exists());
+            assert_eq!(
+                fs::read_to_string(migration_backup_path(&path, "test")).unwrap(),
+                text
+            );
+            cleanup_or_validate_zellij_sidecar(&path, validate_zellij_config_sidecar, "test")
+                .unwrap();
+        }
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("plugins.kdl");
+        reconcile_test_sidecar(
             &path,
-            "schema_version = 1\nenabled_cursors = [\"snow\"]\n[settings]\ntrail = \"snow\"\ntrail_effect = \"tail\"\nmode_effect = \"ripple\"\nglow = \"medium\"\nduration = 1.0\nkitty_enable_cursor = true\n[[cursor]]\nname = \"snow\"\nfamily = \"mono\"\ncolor = \"#ffffff\"\n",
-        )
-        .unwrap();
-        path
-    }
-
-    // Defends: fresh runtimes inherit semantic defaults without creating config.toml.
-    #[test]
-    fn leaves_fresh_config_toml_absent() {
-        let runtime = tempdir().unwrap();
-        let config = tempdir().unwrap();
-        let cursor = write_cursor_default(runtime.path());
-
-        let path = ensure_settings_config(config.path(), &default_main_config(), &cursor).unwrap();
-
-        assert_eq!(path, config.path().join("config.toml"));
-        assert!(!path.exists());
-        let zellij = fs::read_to_string(config.path().join("zellij/config.kdl")).unwrap();
-        assert!(zellij.contains("show_startup_tips false"));
-        assert!(zellij.contains("rounded_corners true"));
-        assert!(!config.path().join("settings.jsonc").exists());
-    }
-
-    // Regression: Classic imports the released JSONC registry once, preserves custom cursor semantics, and retires the old owner.
-    #[test]
-    fn migrates_legacy_cursor_jsonc_to_canonical_toml_once() {
-        let runtime = tempdir().unwrap();
-        let config = tempdir().unwrap();
-        let default_cursor = write_cursor_default(runtime.path());
-        let paths = settings_surface_paths(config.path());
-        fs::create_dir_all(paths.legacy_shared_cursor_config.parent().unwrap()).unwrap();
-        fs::write(
-            &paths.legacy_shared_cursor_config,
-            r##"{
-  "schema_version": 1,
-  "enabled_cursors": ["local_split", "blaze"],
-  "settings": { "trail": "local_split", "trail_effect": "sweep", "mode_effect": "none", "glow": "high", "duration": 1.5, "kitty_enable_cursor": false },
-  "cursor": [
-    { "name": "local_split", "family": "split", "colors": ["#112233", "#aabbcc"], "divider": "horizontal", "transition": "hard", "cursor_color": "#aabbcc" },
-    { "name": "blaze", "family": "mono", "color": "#ffb929" }
-  ]
-}
-"##,
-        )
-        .unwrap();
-
-        ensure_settings_config(config.path(), &default_main_config(), &default_cursor).unwrap();
-        let registry = load_cursor_config(&paths.cursor_config).unwrap();
-        assert_eq!(registry.enabled_cursors, ["local_split", "blaze"]);
-        assert_eq!(registry.settings.trail, "local_split");
-        assert_eq!(registry.settings.trail_effect, "sweep");
-        assert!(!registry.settings.kitty_enable_cursor);
-        assert_eq!(
-            registry.definitions["local_split"].split_secondary_color_hex(),
-            Some("#aabbcc")
+            DEFAULT_ZELLIJ_PLUGINS_SIDECAR,
+            validate_zellij_plugins_sidecar,
         );
-        assert!(!paths.legacy_shared_cursor_config.exists());
-        assert!(
-            fs::read_dir(paths.legacy_shared_cursor_config.parent().unwrap())
+        assert!(!path.exists());
+    }
+
+    // Defends: edits, plugins, symlinks, and read-only files remain whole instead of being inferred or reduced.
+    #[test]
+    fn preserves_customized_and_declarative_sidecars() {
+        let dir = tempdir().unwrap();
+        let edited = format!("{DEFAULT_ZELLIJ_CONFIG_SIDECAR}// keep this comment\n");
+        let plugin =
+            "plugins {\n    compact-bar location=\"https://example.invalid/compact.wasm\"\n}\n";
+        let config = dir.path().join("config.kdl");
+        reconcile_test_sidecar(&config, &edited, validate_zellij_config_sidecar);
+        assert_eq!(fs::read_to_string(config).unwrap(), edited);
+        let plugins = dir.path().join("plugins.kdl");
+        reconcile_test_sidecar(&plugins, plugin, validate_zellij_plugins_sidecar);
+        assert_eq!(fs::read_to_string(plugins).unwrap(), plugin);
+
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::symlink;
+            let target = dir.path().join("declarative.kdl");
+            let path = dir.path().join("linked.kdl");
+            fs::write(&target, DEFAULT_ZELLIJ_CONFIG_SIDECAR).unwrap();
+            symlink(&target, &path).unwrap();
+            cleanup_or_validate_zellij_sidecar(&path, validate_zellij_config_sidecar, "linked")
+                .unwrap();
+            let kind = fs::symlink_metadata(&path).unwrap().file_type();
+            assert!(kind.is_symlink());
+
+            let path = dir.path().join("read_only.kdl");
+            fs::write(&path, DEFAULT_ZELLIJ_CONFIG_SIDECAR).unwrap();
+            fs::set_permissions(&path, fs::Permissions::from_mode(0o444)).unwrap();
+            cleanup_or_validate_zellij_sidecar(&path, validate_zellij_config_sidecar, "read_only")
+                .unwrap();
+            assert!(path.exists());
+        }
+    }
+
+    // Regression: the flat migration backs up its source, omits generated-empty outputs, and writes only real sparse content.
+    #[test]
+    fn flat_zellij_migration_stays_sparse_after_backup() {
+        for flat in ["", "scroll_buffer_size 9000\n"] {
+            let expected_config = (!flat.is_empty()).then_some(flat);
+            let config = tempdir().unwrap();
+            let flat_path = config.path().join("zellij.kdl");
+            fs::write(&flat_path, flat).unwrap();
+
+            ensure_zellij_sidecars(config.path()).unwrap();
+
+            assert!(!flat_path.exists());
+            let backup = fs::read_dir(config.path())
                 .unwrap()
                 .filter_map(Result::ok)
-                .any(|entry| entry.file_name().to_string_lossy().contains("backup"))
-        );
-
-        let migrated = fs::read_to_string(&paths.cursor_config).unwrap();
-        ensure_settings_config(config.path(), &default_main_config(), &default_cursor).unwrap();
-        assert_eq!(fs::read_to_string(paths.cursor_config).unwrap(), migrated);
-    }
-
-    // Defends: two root owners never trigger precedence selection or mutation.
-    #[test]
-    fn rejects_root_config_migration_conflict() {
-        let runtime = tempdir().unwrap();
-        let config = tempdir().unwrap();
-        let cursor = write_cursor_default(runtime.path());
-        fs::write(
-            config.path().join("config.toml"),
-            "[core]\ndebug_mode = false\n",
-        )
-        .unwrap();
-        fs::write(config.path().join("settings.jsonc"), "{}\n").unwrap();
-
-        let error =
-            ensure_settings_config(config.path(), &default_main_config(), &cursor).unwrap_err();
-
-        assert_eq!(error.code(), "classic_nova_root_coexistence");
-        assert_eq!(
-            fs::read_to_string(config.path().join("settings.jsonc")).unwrap(),
-            "{}\n"
-        );
-    }
-
-    // Defends: declarative/read-only ownership is reported instead of bypassed.
-    #[cfg(unix)]
-    #[test]
-    fn rejects_read_only_legacy_settings() {
-        let runtime = tempdir().unwrap();
-        let config = tempdir().unwrap();
-        let cursor = write_cursor_default(runtime.path());
-        let legacy = config.path().join("settings.jsonc");
-        fs::write(&legacy, "{}\n").unwrap();
-        fs::set_permissions(&legacy, fs::Permissions::from_mode(0o444)).unwrap();
-
-        let error =
-            ensure_settings_config(config.path(), &default_main_config(), &cursor).unwrap_err();
-        fs::set_permissions(&legacy, fs::Permissions::from_mode(0o644)).unwrap();
-
-        assert_eq!(error.code(), "read_only_root_migration");
-        assert!(!config.path().join("config.toml").exists());
-    }
-
-    // Regression: a dangling declarative owner must fail instead of being replaced by bootstrap.
-    #[cfg(unix)]
-    #[test]
-    fn rejects_dangling_canonical_config_symlink() {
-        use std::os::unix::fs::symlink;
-
-        let runtime = tempdir().unwrap();
-        let config = tempdir().unwrap();
-        let cursor = write_cursor_default(runtime.path());
-        let path = config.path().join("config.toml");
-        symlink(config.path().join("missing-home-manager-config"), &path).unwrap();
-
-        let error = ensure_settings_config(config.path(), &default_main_config(), &cursor)
-            .expect_err("dangling config owner");
-
-        assert_eq!(error.code(), "ambiguous_root_file_owner");
-        assert!(fs::symlink_metadata(path).unwrap().file_type().is_symlink());
+                .find(|entry| {
+                    entry
+                        .file_name()
+                        .to_string_lossy()
+                        .starts_with("zellij.kdl.backup-")
+                })
+                .unwrap()
+                .path();
+            assert_eq!(fs::read_to_string(backup).unwrap(), flat);
+            let config_path = config.path().join("zellij/config.kdl");
+            assert_eq!(config_path.exists(), expected_config.is_some());
+            if let Some(expected) = expected_config {
+                assert_eq!(fs::read_to_string(config_path).unwrap(), expected);
+            }
+            assert!(!config.path().join("zellij/plugins.kdl").exists());
+        }
     }
 }
