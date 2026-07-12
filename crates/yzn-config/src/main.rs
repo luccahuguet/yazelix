@@ -376,6 +376,7 @@ mod tests {
     #[test]
     fn root_config_catalog_defaults_come_from_config_toml_and_validate() {
         let defaults = default_config().unwrap();
+        validate_root_config(&defaults).unwrap();
 
         for field_path in CONFIG_FIELDS
             .iter()
@@ -393,6 +394,49 @@ mod tests {
                 "{}",
                 spec.path
             );
+        }
+    }
+
+    #[test]
+    fn root_schema_rejects_unknown_paths_and_accepts_sparse_dynamic_popups() {
+        for (raw, expected) in [
+            (
+                "mystery = true\n",
+                "mystery is not supported; use a documented Nova config path",
+            ),
+            (
+                "[welcome]\nextra = true\n",
+                "welcome.extra is not supported; use a documented Nova config path",
+            ),
+            (
+                "[welcome]\nenabld = true\n",
+                "welcome.enabld is not supported; use a documented Nova config path",
+            ),
+            (
+                "\"welcome.enabled\" = true\n",
+                "welcome.enabled must use nested TOML tables, not a quoted dotted key",
+            ),
+            ("welcome = 1\n", "welcome must be a table"),
+            (
+                "[welcome]\nenabled = \"yes\"\n",
+                "welcome.enabled must be true or false",
+            ),
+            (
+                "[popups.build]\ncommand = \"btm\"\nkeybinding = \"Alt B\"\ncolor = \"blue\"\n",
+                "popups.build.color is not supported; use command, args, title, keybinding, or keep_alive",
+            ),
+        ] {
+            let value = parse_toml_value(raw).unwrap();
+            let error = validate_root_config(&value).unwrap_err().to_string();
+            assert_eq!(error, expected);
+        }
+
+        for raw in [
+            "",
+            "[welcome]\nenabled = false\n",
+            "[popups.build]\ncommand = \"btm\"\nkeybinding = \"Alt B\"\n\n[popups.logs]\ncommand = \"lnav\"\nargs = [\"app.log\"]\nkeybinding = \"Alt Shift P\"\nkeep_alive = true\n",
+        ] {
+            validate_root_config(&parse_toml_value(raw).unwrap()).unwrap();
         }
     }
 
@@ -913,18 +957,6 @@ color = "#123456"
         );
     }
 
-    #[test]
-    fn config_model_marks_invalid_bar_widgets() {
-        let (_temp, paths) = temp_sources();
-        write_toml_value(&paths.root, BAR_WIDGETS_PATH, &json!(["weather"]));
-
-        let model = build_model(&paths).unwrap();
-        assert_eq!(
-            model_field(&model, BAR_WIDGETS_PATH).state,
-            ConfigUiValueState::Invalid
-        );
-    }
-
     // Defends: the Keys tab is a read-only discovery surface for current packaged bindings.
     #[test]
     fn config_model_exposes_read_only_key_bindings() {
@@ -1089,20 +1121,23 @@ color = "#123456"
     }
 
     #[test]
-    fn manual_invalid_log_level_is_rejected_on_read_and_marked_invalid() {
+    fn runtime_and_ratconfig_reject_the_same_invalid_root_value() {
         let temp = TempHome::new();
         let path = temp.path.join("config.toml");
         fs::write(&path, "[open]\nlog_level = \"loud\"\n").unwrap();
 
-        let error =
+        let runtime_error =
             read_config_field(&path, config_field(OPEN_LOG_LEVEL_PATH).unwrap()).unwrap_err();
-        assert!(error.to_string().contains("off, error, info, debug"));
-
         let paths = temp_paths(&temp);
-        let paths = ensure_config_sources_at(paths).unwrap();
-
-        let model = build_model(&paths).unwrap();
-        assert_eq!(model.fields[0].state, ConfigUiValueState::Invalid);
+        let model_error = build_model(&paths).err().unwrap();
+        let ratconfig_error = ensure_config_sources_at(paths).err().unwrap();
+        assert_eq!(runtime_error.to_string(), model_error.to_string());
+        assert_eq!(runtime_error.to_string(), ratconfig_error.to_string());
+        assert!(
+            runtime_error
+                .to_string()
+                .contains("off, error, info, debug")
+        );
     }
 
     #[test]

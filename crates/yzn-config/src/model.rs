@@ -22,15 +22,15 @@ use crate::{
     native_config::{cursor_defaults, validate_mars_field, validate_starship_field},
     paths::ConfigPaths,
     root_config::{
-        bar_widgets, default_config, default_config_path_value, popup_keybinding_spec,
-        read_optional_toml_file_value, validate_agent_config, validate_config_value,
-        validate_popup_keybindings,
+        bar_widgets, default_config, default_config_path_value, read_optional_toml_file_value,
+        validate_root_config,
     },
     zellij_sidecar::{ZellijSidecar, parse_zellij_sidecar, zellij_field_value},
 };
 
 pub(crate) fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
     let config_active = read_optional_toml_file_value(&paths.root, "config.toml")?;
+    validate_root_config(&config_active)?;
     let config_default = default_config()?;
     let mars_active = read_optional_toml_file_value(&paths.mars, "invalid mars/config.toml")?;
     let mars_default = parse_toml_value(DEFAULT_MARS_CONFIG_TOML)
@@ -247,11 +247,7 @@ fn build_root_config_field(
             detail: spec.apply_detail.to_string(),
             pending: false,
         },
-        current.is_some_and(|value| validate_config_value(spec.field.path, value).is_err())
-            || (matches!(spec.field.path, AGENT_COMMAND_PATH | AGENT_ARGS_PATH)
-                && validate_agent_config(active).is_err())
-            || (popup_keybinding_spec(spec.field.path).is_some()
-                && validate_popup_keybindings(active).is_err()),
+        false,
     ))
 }
 fn root_config_tab(path: &str) -> &'static str {
@@ -387,11 +383,9 @@ fn build_bar_widgets_field(
 ) -> Result<ratconfig::ConfigUiField> {
     let current = get_toml_path(active, BAR_WIDGETS_PATH)
         .map(bar_widgets)
-        .transpose();
-    let has_blocking_diagnostic = current.is_err();
+        .transpose()?;
     let default = bar_widgets(&default_config_path_value(defaults, BAR_WIDGETS_PATH)?)?;
     ConfigUiFieldSpec {
-        has_blocking_diagnostic,
         edit_behavior: ConfigUiEditBehavior::OrderedStringList,
         ..ConfigUiFieldSpec::new(
             SOURCE_CONFIG,
@@ -409,7 +403,7 @@ fn build_bar_widgets_field(
             },
         )
     }
-    .build_string_list(current.ok().flatten(), Some(default))
+    .build_string_list(current, Some(default))
     .map_err(error)
 }
 fn next_launch_apply_status(label: &str, detail: &str) -> ConfigUiApplyStatus {

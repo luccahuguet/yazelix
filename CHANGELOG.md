@@ -4,6 +4,9 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## Unreleased
 
+- Nova rejects unsupported, misspelled, wrongly shaped, or wrongly typed root
+  `config.toml` values before runtime or Ratconfig use while preserving sparse
+  inheritance and the documented dynamic `popups.<id>` namespace.
 - Ratconfig identifies store-backed Home Manager config as declarative rather
   than merely read-only. Structured saves, resets, and native file actions stop
   before mutation and name the exact `programs.yazelix.config.*` option to edit;

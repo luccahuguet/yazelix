@@ -96,6 +96,9 @@ One owner per concern. Paths are the durable map.
 Packaged `config.toml` owns every default below. The optional user file stores
 only explicit overrides; `CONFIG_FIELDS` and `root_config.rs` own the bounded
 catalog, validation, and sparse persistence unless another owner is named.
+The root validator derives fixed leaves from that catalog, rejects unknown paths
+before runtime or Ratconfig use, and delegates only `popups.<id>` to its dynamic
+field validator.
 
 | Root path | Type | Default | Effect | Applies |
 | --- | --- | --- | --- | --- |

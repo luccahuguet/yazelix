@@ -202,8 +202,52 @@ pub(crate) fn validate_config_value(field_path: &str, value: &JsonValue) -> Resu
     }
 }
 pub(crate) fn validate_root_config(value: &JsonValue) -> Result<()> {
+    let table = value
+        .as_object()
+        .ok_or_else(|| error("config.toml root must be a table"))?;
+    validate_config_table(table, "")?;
     validate_popup_keybindings(value)?;
     validate_agent_config(value)
+}
+fn validate_config_table(table: &serde_json::Map<String, JsonValue>, parent: &str) -> Result<()> {
+    for (key, value) in table {
+        let path = if parent.is_empty() {
+            key.clone()
+        } else {
+            format!("{parent}.{key}")
+        };
+        if key.contains('.') {
+            return Err(error(format!(
+                "{path} must use nested TOML tables, not a quoted dotted key"
+            )));
+        }
+        if path == "popups" {
+            continue;
+        }
+        if root_config_paths().any(|candidate| candidate == path) {
+            validate_config_value(&path, value)?;
+        } else if root_config_paths().any(|candidate| {
+            candidate
+                .strip_prefix(&path)
+                .is_some_and(|suffix| suffix.starts_with('.'))
+        }) {
+            let child = value
+                .as_object()
+                .ok_or_else(|| error(format!("{path} must be a table")))?;
+            validate_config_table(child, &path)?;
+        } else {
+            return Err(error(format!(
+                "{path} is not supported; use a documented Nova config path"
+            )));
+        }
+    }
+    Ok(())
+}
+fn root_config_paths() -> impl Iterator<Item = &'static str> {
+    CONFIG_FIELDS
+        .iter()
+        .map(|spec| spec.field.path)
+        .chain([BAR_WIDGETS_PATH])
 }
 pub(crate) fn validate_agent_config(value: &JsonValue) -> Result<()> {
     let command_value = effective_config_path_value(value, AGENT_COMMAND_PATH)?;

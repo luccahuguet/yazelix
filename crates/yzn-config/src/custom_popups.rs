@@ -87,7 +87,9 @@ fn custom_popup(id: &str, value: &JsonValue) -> Result<CustomPopup> {
             field.as_str(),
             "command" | "args" | "title" | "keybinding" | "keep_alive"
         ) {
-            return Err(error(format!("{path}.{field} is not supported")));
+            return Err(error(format!(
+                "{path}.{field} is not supported; use command, args, title, keybinding, or keep_alive"
+            )));
         }
     }
 

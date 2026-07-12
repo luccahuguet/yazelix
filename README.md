@@ -152,6 +152,8 @@ Set `YAZELIX_STATE_DIR` to use another state directory.
 The optional root config lives at `~/.config/yazelix-next/config.toml`. Opening
 `yzn config` or starting Nova does not create it. The UI shows packaged defaults
 for absent keys, saves only explicit overrides, and removes a key when reset.
+Nova rejects unsupported or misspelled paths instead of silently ignoring them;
+custom popup ids remain dynamic within the documented `popups.<id>` fields.
 
 | Field | Default | Meaning |
 | --- | --- | --- |
@@ -380,7 +382,7 @@ git ls-files | grep -Ev '^\.beads/|\.lock$' | xargs wc -l
 | Language | Lines |
 | --- | ---: |
 | Ignore (`.gitignore`) | 4 |
-| Markdown | 1422 |
+| Markdown | 1430 |
 | Nix | 1026 |
 | Shell | 84 |
 | YAML | 268 |
@@ -388,5 +390,5 @@ git ls-files | grep -Ev '^\.beads/|\.lock$' | xargs wc -l
 | KDL | 212 |
 | Nu | 11 |
 | Lua | 247 |
-| Rust | 12710 |
-| Total | 16230 |
+| Rust | 12785 |
+| Total | 16313 |
