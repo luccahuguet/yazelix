@@ -359,6 +359,7 @@ fn expect_front_door(yzn: &Path, jq: &Path) {
     expect_contains_all! {
         &status, "yzn status";
         "Yazelix Nova status",
+        "package: full",
         format!("config home: {}", status_case.config_home.display()),
         format!("state dir: {}", status_case.state_dir.display()),
         "shell: nu",
@@ -404,7 +405,7 @@ fn expect_front_door(yzn: &Path, jq: &Path) {
     );
     assert_eq!(
         jq_output(jq, "keys | sort | join(\",\")", &json),
-        "agent_command,config_home,editor,editor_command,inside_zellij,name,schema_version,shell,state_dir,version"
+        "agent_command,config_home,editor,editor_command,inside_zellij,name,package,schema_version,shell,state_dir,version"
     );
 
     let run_child = temp.path.join("run-child");

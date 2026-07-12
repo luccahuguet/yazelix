@@ -62,7 +62,14 @@ pub(crate) fn print_doctor() -> Result<(), AppError> {
     doctor_ok("sidebar refresh helper", YZN_SIDEBAR_REFRESH);
     doctor_ok("yazi cli", YZN_YA);
     doctor_ok("zellij", ZELLIJ);
-    doctor_ok("mars", MARS);
+    doctor_ok(
+        "mars",
+        if MARS.is_empty() {
+            "not included"
+        } else {
+            MARS
+        },
+    );
     doctor_ok("yazi opener", YZN_YAZI);
     doctor_ok(
         "pane orchestrator plugin",
@@ -111,7 +118,6 @@ fn check_doctor_inputs() -> Result<(), AppError> {
         ("yazi cli", Path::new(YZN_YA)),
         ("packaged Zellij config", Path::new(YZN_CONFIG_KDL)),
         ("Zellij", Path::new(ZELLIJ)),
-        ("Mars", Path::new(MARS)),
         ("layout", Path::new(LAYOUT)),
         ("layout template", Path::new(LAYOUT_TEMPLATE)),
         ("layout swap template", Path::new(LAYOUT_SWAP_TEMPLATE)),
@@ -127,6 +133,9 @@ fn check_doctor_inputs() -> Result<(), AppError> {
         ),
     ] {
         require_file(label, path)?;
+    }
+    if !MARS.is_empty() {
+        require_file("Mars", Path::new(MARS))?;
     }
 
     Ok(())

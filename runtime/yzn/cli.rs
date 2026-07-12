@@ -136,8 +136,8 @@ fn exec_screen(args: Vec<OsString>) -> Result<(), AppError> {
 }
 
 fn exec_managed(through_mars: bool, zellij_args: Vec<OsString>) -> Result<(), AppError> {
+    let program = managed_program(through_mars, MARS)?;
     let runtime = Runtime::prepare()?;
-    let program = managed_program(through_mars);
     let mut command = Command::new(program);
     if through_mars {
         command.arg("-e").arg(YZN_WELCOME).arg(ZELLIJ);
@@ -167,8 +167,14 @@ fn exec_managed(through_mars: bool, zellij_args: Vec<OsString>) -> Result<(), Ap
     exec(command, program)
 }
 
-fn managed_program(through_mars: bool) -> &'static str {
-    if through_mars { MARS } else { YZN_WELCOME }
+fn managed_program(through_mars: bool, mars: &'static str) -> Result<&'static str, AppError> {
+    match (through_mars, mars) {
+        (true, "") => Err(AppError::Usage(
+            "yzn launch is unavailable in the Mars-free runtime package; use yzn enter or install the complete Yazelix Nova package\n".to_string(),
+        )),
+        (true, mars) => Ok(mars),
+        (false, _) => Ok(YZN_WELCOME),
+    }
 }
 
 fn apply_mars_cursor_config(command: &mut Command, through_mars: bool, path: &Path) {
@@ -182,9 +188,10 @@ mod tests {
     use super::*;
 
     #[test]
-    fn enter_bypasses_mars_and_its_cursor_env() {
-        assert_eq!(managed_program(false), YZN_WELCOME);
-        assert_eq!(managed_program(true), MARS);
+    fn managed_entry_respects_the_fixed_package_variant() {
+        assert_eq!(managed_program(false, "").ok(), Some(YZN_WELCOME));
+        assert!(matches!(managed_program(true, ""), Err(AppError::Usage(_))));
+        assert_eq!(managed_program(true, MARS).ok(), Some(MARS));
         let path = Path::new("/tmp/cursors.toml");
         let mut launch = Command::new(MARS);
         apply_mars_cursor_config(&mut launch, true, path);

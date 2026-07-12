@@ -29,6 +29,10 @@
       inherit description;
     };
   nativeFiles = {
+    "yazelix-next/cursors.toml" = {
+      option = cfg.config.cursors;
+      name = "programs.yazelix.config.cursors";
+    };
     "yazelix-next/mars/config.toml" = {
       option = cfg.config.mars;
       name = "programs.yazelix.config.mars";
@@ -103,8 +107,8 @@ in {
       default = defaultPackageFor pkgs.stdenv.hostPlatform.system;
       defaultText = lib.literalExpression "inputs.yazelix-next.packages.\${pkgs.stdenv.hostPlatform.system}.yzn";
       description = ''
-        Yazelix package to install. The package owns the command and desktop
-        entry.
+        Yazelix package to install. The package owns the command and any desktop
+        entry it provides.
       '';
     };
 
@@ -118,6 +122,7 @@ in {
         '';
       };
 
+      cursors = nativeFileOption "Managed Yazelix cursor configuration.";
       mars = nativeFileOption "Managed sparse Mars overrides.";
       zellij = nativeFileOption "Managed Zellij config.kdl sidecar.";
       starship = nativeFileOption "Managed sparse Starship overrides.";

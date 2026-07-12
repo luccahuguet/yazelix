@@ -19,6 +19,7 @@ From a checkout:
 
 ```sh
 nix run
+nix run .#runtime -- enter
 nix run .#yzn -- help
 nix run .#yzn -- config
 nix run .#yzn -- doctor
@@ -47,7 +48,7 @@ always explicit.
 | `yzn reveal <target>` | Reveal a file or directory in the managed Yazi sidebar. |
 
 Status JSON contains numeric `schema_version = 1`, plus `name`, `version`,
-`config_home`, `state_dir`, `shell`, `editor_command`, `editor`,
+`package`, `config_home`, `state_dir`, `shell`, `editor_command`, `editor`,
 `agent_command`, and `inside_zellij`. The sponsor URL remains in `yzn help`
 without a public `sponsor` command.
 
@@ -74,7 +75,7 @@ Local checkout:
 
 ```sh
 nix profile add --refresh /absolute/path/to/yazelix-next
-yzn
+yzn launch
 ```
 
 Update a profile install:
@@ -83,13 +84,21 @@ Update a profile install:
 nix profile upgrade --refresh yazelix-next
 ```
 
-The package exposes `bin/yzn` and a Linux desktop entry. Package and app outputs
-exist for `x86_64-linux`, `aarch64-linux`, `x86_64-darwin`, and
-`aarch64-darwin`.
+The default `yzn` package includes Mars and a Linux desktop entry. The fixed
+`runtime` package provides the same `bin/yzn`, workspace, and config without
+Mars, Rio, or desktop assets. Its `launch` command explains that Mars is absent;
+use `enter` for the managed workspace. Both package and app outputs exist for
+`x86_64-linux`, `aarch64-linux`, `x86_64-darwin`, and `aarch64-darwin`.
+
+Install the Mars-free variant with:
+
+```sh
+nix profile add --refresh github:luccahuguet/yazelix-next#runtime
+```
 
 On macOS, `help`, `status`, `doctor`, and `enter` are the supported floor after
-install. `launch` uses Mars and depends on macOS hardware validation for the full
-GUI path.
+install. In the complete package, `launch` uses Mars and depends on macOS
+hardware validation for the GUI path.
 
 ## Host Terminals and SSH
 
@@ -104,9 +113,12 @@ does not provide SSH connectivity or remote file synchronization.
 ## Installed Size
 
 The complete Nova package occupies a **2.28 GiB Nix store closure** across 619
-store paths on `x86_64-linux`. This is the realized, unpacked size of every path
-needed by `yzn`, measured against the repository's locked inputs on 2026-07-12.
-It is not the compressed download size, and an existing Nix store may already
+store paths on `x86_64-linux`. The Mars-free runtime occupies **1.37 GiB** across
+591 paths, saving **927 MiB**. Its evaluated source-build graph contains 5,664
+derivations instead of 8,071, avoiding 2,407 derivations when nothing is cached.
+These are locked-input measurements from 2026-07-12; derivation counts indicate
+potential work, not guaranteed compilations. Closure size is realized and
+unpacked, not compressed download size, and an existing Nix store may already
 contain shared paths.
 
 The module figures below are complete closures for the package roots Nova uses.
@@ -116,6 +128,7 @@ Nova total.
 | Runtime scope | Closure size | What the measurement includes |
 | --- | ---: | --- |
 | **Nova (`yzn`)** | **2.28 GiB** | Entire launcher, terminal, workspace, editor, file manager, shell, Git tools, plugins, fonts, and configuration assets. |
+| **Nova runtime** | **1.37 GiB** | Same command, workspace, tools, config, and cursor schema without Mars, Rio, desktop entry, or Mars-only assets. |
 | Mars | 1.13 GiB | Mars, Rio, graphics libraries, Python runtime, and packaged fonts/emoji. |
 | Yazi + preview tools | 503.2 MiB | Yazi plus Chafa, FFmpeg, ImageMagick, Poppler, resvg, 7-Zip, `fd`, `rg`, `jq`, `fzf`, and `zoxide`. |
 | Git | 373.8 MiB | Packaged Git CLI and its runtime dependencies. |
@@ -142,9 +155,10 @@ plugin inputs are each 17 KiB or less, and the installed cursor template is
 Reproduce the total for the current system and lock file with:
 
 ```sh
-package=$(nix build .#yzn --no-link --print-out-paths)
-nix path-info -Sh "$package"
-nix path-info --json --json-format 1 -S "$package"
+full=$(nix build .#yzn --no-link --print-out-paths)
+runtime=$(nix build .#runtime --no-link --print-out-paths)
+nix path-info -Sh "$full" "$runtime"
+nix path-info --json --json-format 1 -S "$full" "$runtime"
 ```
 
 ## Home Manager
@@ -158,6 +172,12 @@ nix path-info --json --json-format 1 -S "$package"
 
 The optional `programs.yazelix.package` setting overrides the installed package.
 The module writes no runtime config files unless you configure them.
+
+Select the Mars-free package without another module option:
+
+```nix
+programs.yazelix.package = inputs.yazelix-next.packages.${pkgs.system}.runtime;
+```
 
 Example:
 
@@ -390,12 +410,14 @@ Move mode is unbound. Managed popup triggers can be remapped through
 ## CI
 
 Normal CI runs Linux checks on push, pull request, and manual dispatch.
-`Publish Nix Cache` publishes the Linux package cache from `main` and manual
-dispatch. `Version Gate` is manual and includes the Linux profile smoke plus the
-macOS package smoke. `Darwin Package Smoke` builds
-`.#packages.aarch64-darwin.yzn` weekly on Monday when `main` has commits in the
-last 7 days, and on manual dispatch always; idle weeks skip the macOS build.
-Use Version Gate before version bumps or the main Yazelix swap.
+`Publish Nix Cache` publishes both Linux variants and representative Home
+Manager closures from `main` and manual dispatch. `Version Gate` is manual and
+includes both Linux profile shapes plus both macOS packages. `Darwin Package
+Smoke` builds the full and runtime `aarch64-darwin` packages weekly on Monday
+when `main` has commits in the last 7 days, and on manual dispatch always; idle
+weeks skip the macOS build. The flake advertises the optional Yazelix Cachix
+cache; source builds remain valid without it. Use Version Gate before version
+bumps or the main Yazelix swap.
 
 ## Development
 
@@ -416,6 +438,7 @@ Useful local checks:
 nix flake check
 nix flake show --all-systems
 nix build .#yzn --no-link --print-build-logs
+nix build .#runtime --no-link --print-build-logs
 nix build .#checks.x86_64-linux.yzn_yazi_materialization --no-link
 ```
 
@@ -440,13 +463,13 @@ git ls-files | grep -Ev '^\.beads/|\.lock$' | xargs wc -l
 | Language | Lines |
 | --- | ---: |
 | Ignore (`.gitignore`) | 4 |
-| Markdown | 1533 |
-| Nix | 1023 |
+| Markdown | 1567 |
+| Nix | 1109 |
 | Shell | 84 |
-| YAML | 268 |
+| YAML | 277 |
 | TOML | 246 |
 | KDL | 212 |
 | Nu | 11 |
 | Lua | 247 |
-| Rust | 12862 |
-| Total | 16490 |
+| Rust | 12890 |
+| Total | 16647 |

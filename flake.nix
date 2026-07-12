@@ -1,6 +1,13 @@
 {
   description = "Yazelix Nova";
 
+  nixConfig = {
+    extra-substituters = ["https://yazelix.cachix.org"];
+    extra-trusted-public-keys = [
+      "yazelix.cachix.org-1:ZgxIjQvaP0VTWL8Racx27mpUNzDJ97xC2y7QWYjmGNM="
+    ];
+  };
+
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     home-manager = {
@@ -138,7 +145,7 @@
         ln -s ${ratconfig} "$out/ratconfig"
         ln -s ${yazelixCursors} "$out/yazelix-cursors"
         cp ${./config.toml} "$out/config.toml"
-        cp ${yznMarsConfig}/config.toml "$out/mars.toml"
+        cp ${./mars.toml} "$out/mars.toml"
         substituteInPlace "$out/Cargo.toml" \
           --replace-fail '../../../ratconfig' './ratconfig' \
           --replace-fail '../../../yazelix-cursors' './yazelix-cursors'
@@ -467,114 +474,136 @@
         };
         doCheck = false;
       });
-      yznCommandMain = pkgs.replaceVars ./runtime/yzn/main.rs {
-        yznConfigUi = "${yznConfigUi}/bin/yzn-config-ui";
-        yznMenu = "${yznMenu}/bin/yzn-menu";
-        yznTutor = "${yznTutor}/bin/yzn-tutor";
-        yznScreen = "${yazelixScreenPackage}/bin/yzs";
-        yznWelcome = "${yznWelcome}/bin/yzn-welcome";
-        yznShell = "${yznShell}/bin/yzn-shell";
-        yznEnvSupervisor = "${yznEnvSupervisor}/bin/yzn-env-supervisor";
-        zellij = "${yazelixZellijPackage}/bin/zellij";
-        mars = "${marsPackage}/bin/mars";
-        layout = "${yznZellijLayout}/layout.kdl";
-        layoutTemplate = "${./layout.kdl}";
-        layoutSwapTemplate = "${./layout.swap.kdl}";
-        yznAgent = "${yznAgent}/bin/yzn-agent";
-        yznYazi = "${yznYazi}/bin/yzn-yazi";
-        yznHelix = "${yznHelix}/bin/yzn-hx";
-        yznEditor = "${yznEditor}/bin/yzn-editor";
-        yznConfig = "${yznConfig}/bin/yzn-config";
-        yznMarsConfig = "${yznMarsConfig}";
-        yznZellijConfig = "${yznZellijConfig}/bin/yzn-zellij-config";
-        yznConfigKdl = "${yznConfigKdl}";
-        yznReveal = "${yznOpenCore}/bin/yzn-reveal";
-        yznSidebarRefresh = "${yznOpenCore}/bin/yzn-sidebar-refresh";
-        yznYa = "${pkgs.yazi}/bin/ya";
-        yznBarRenderRequest = "${yznBarRenderRequestTemplate}";
-        yznBarRender = "${yznBarRender}/bin/yzn-bar-render";
-        yazelixZellijPopupWasm = "${yazelixZellijPopupPackage}/${yazelixZellijPopupPackage.wasmPath}";
-        yazelixZellijBarWasm = "${yazelixZellijBarPackage}/share/yazelix_zellij_bar/zjstatus.wasm";
-        yazelixZellijPaneOrchestratorWasm = "${yazelixZellijPaneOrchestratorPackage}/${yazelixZellijPaneOrchestratorPackage.wasmPath}";
-        defaultBarWidgetsJson = builtins.toJSON defaultBarWidgets;
-        inherit defaultShellProgram;
-        defaultConfigKeybinding = defaultConfig.keybindings.config;
-        defaultAgentKeybinding = defaultConfig.keybindings.agent;
-        defaultGitKeybinding = defaultConfig.keybindings.git;
-        defaultMenuKeybinding = defaultConfig.keybindings.menu;
-        inherit defaultPopupSideMargin defaultPopupVerticalMargin;
-        version = novaVersion;
-        pathPrefix = pkgs.lib.makeBinPath [
-          pkgs.coreutils
-          pkgs.git
-          pkgs.lazygit
-          tokenusage
-          yznHelix
-        ];
-      };
-      yznCommandSrc = pkgs.runCommand "yzn-command-src" {} ''
-        mkdir -p "$out"
-        cp -R ${pkgs.lib.cleanSource ./runtime/yzn}/. "$out/"
-        chmod -R u+w "$out"
-        cp ${yznCommandMain} "$out/main.rs"
-      '';
-      yznCommand = rustBin "yzn" "${yznCommandSrc}/main.rs";
-      yznDesktop = pkgs.makeDesktopItem {
-        name = "yzn";
-        desktopName = "Yazelix Nova";
-        genericName = "Terminal Emulator";
-        comment = "Open Yazelix Nova";
-        exec = "${yznCommand}/bin/yzn launch";
-        icon = "yzn";
-        terminal = false;
-        categories = ["System" "TerminalEmulator"];
-        startupNotify = true;
-        startupWMClass = "mars";
-      };
-      yzn = pkgs.symlinkJoin {
-        name = "yzn";
-        paths = [yznCommand yznDesktop];
-        postBuild = ''
-          ${yazelixZellijPackage}/bin/zellij --config ${yznConfigKdl} setup --check >/dev/null
-          install -d "$out/libexec/yazelix-next"
-          ln -s ${yznZellijConfig}/bin/yzn-zellij-config "$out/libexec/yazelix-next/yzn-zellij-config"
-          ln -s ${yznConfig}/bin/yzn-config "$out/libexec/yazelix-next/yzn-config"
-          ln -s ${yznTutor}/bin/yzn-tutor "$out/libexec/yazelix-next/yzn-tutor"
-          install -D -m 644 ${yznConfigKdl} "$out/share/yazelix-next/config.kdl"
-          install -D -m 644 ${yznRuntimeIdentity}/runtime_identity.json "$out/share/yazelix-next/runtime_identity.json"
-          install -D -m 644 ${yznMarsConfig}/config.toml "$out/share/yazelix-next/mars/config.toml"
-          install -D -m 644 ${yazelixCursors}/yazelix_cursors_default.toml "$out/share/yazelix-next/cursors.toml"
-          install -D -m 644 ${./config.toml} "$out/share/yazelix-next/config.toml"
-          install -D -m 644 ${yznZellijLayout}/layout.kdl "$out/share/yazelix-next/layout.kdl"
-          install -D -m 644 ${yznZellijLayout}/layout.swap.kdl "$out/share/yazelix-next/layout.swap.kdl"
-          install -D -m 644 ${yznYaziConfig}/init.lua "$out/share/yazelix-next/yazi/init.lua"
-          install -D -m 644 ${yznYaziConfig}/keymap.toml "$out/share/yazelix-next/yazi/keymap.toml"
-          install -D -m 644 ${yznYaziConfig}/plugins/sidebar-state.yazi/main.lua "$out/share/yazelix-next/yazi/plugins/sidebar-state.yazi/main.lua"
-          install -D -m 644 ${yznYaziConfig}/plugins/zoxide-editor.yazi/main.lua "$out/share/yazelix-next/yazi/plugins/zoxide-editor.yazi/main.lua"
-          ln -s ${yznYaziConfig}/plugins/git.yazi "$out/share/yazelix-next/yazi/plugins/git.yazi"
-          install -D -m 644 ${yznYaziConfig}/yazi.toml "$out/share/yazelix-next/yazi/yazi.toml"
-          install -D -m 644 ${yznNuConfig}/config.nu "$out/share/yazelix-next/nu/config.nu"
-          install -D -m 644 ${yznNuConfig}/env.nu "$out/share/yazelix-next/nu/env.nu"
-          for icon in ${marsPackage}/share/icons/hicolor/*/apps/mars.png; do
-            size="$(basename "$(dirname "$(dirname "$icon")")")"
-            install -d "$out/share/icons/hicolor/$size/apps"
-            ln -s "$icon" "$out/share/icons/hicolor/$size/apps/yzn.png"
-          done
-          install -d "$out/share/pixmaps"
-          ln -s ${marsPackage}/share/pixmaps/mars.png "$out/share/pixmaps/yzn.png"
+      mkYznCommand = withMars: let
+        packageVariant = if withMars then "full" else "runtime";
+        marsPath = if withMars then "${marsPackage}/bin/mars" else "";
+        main = pkgs.replaceVars ./runtime/yzn/main.rs {
+          yznConfigUi = "${yznConfigUi}/bin/yzn-config-ui";
+          yznMenu = "${yznMenu}/bin/yzn-menu";
+          yznTutor = "${yznTutor}/bin/yzn-tutor";
+          yznScreen = "${yazelixScreenPackage}/bin/yzs";
+          yznWelcome = "${yznWelcome}/bin/yzn-welcome";
+          yznShell = "${yznShell}/bin/yzn-shell";
+          yznEnvSupervisor = "${yznEnvSupervisor}/bin/yzn-env-supervisor";
+          zellij = "${yazelixZellijPackage}/bin/zellij";
+          mars = marsPath;
+          layout = "${yznZellijLayout}/layout.kdl";
+          layoutTemplate = "${./layout.kdl}";
+          layoutSwapTemplate = "${./layout.swap.kdl}";
+          yznAgent = "${yznAgent}/bin/yzn-agent";
+          yznYazi = "${yznYazi}/bin/yzn-yazi";
+          yznHelix = "${yznHelix}/bin/yzn-hx";
+          yznEditor = "${yznEditor}/bin/yzn-editor";
+          yznConfig = "${yznConfig}/bin/yzn-config";
+          yznMarsConfig = if withMars then "${yznMarsConfig}" else "";
+          yznZellijConfig = "${yznZellijConfig}/bin/yzn-zellij-config";
+          yznConfigKdl = "${yznConfigKdl}";
+          yznReveal = "${yznOpenCore}/bin/yzn-reveal";
+          yznSidebarRefresh = "${yznOpenCore}/bin/yzn-sidebar-refresh";
+          yznYa = "${pkgs.yazi}/bin/ya";
+          yznBarRenderRequest = "${yznBarRenderRequestTemplate}";
+          yznBarRender = "${yznBarRender}/bin/yzn-bar-render";
+          yazelixZellijPopupWasm = "${yazelixZellijPopupPackage}/${yazelixZellijPopupPackage.wasmPath}";
+          yazelixZellijBarWasm = "${yazelixZellijBarPackage}/share/yazelix_zellij_bar/zjstatus.wasm";
+          yazelixZellijPaneOrchestratorWasm = "${yazelixZellijPaneOrchestratorPackage}/${yazelixZellijPaneOrchestratorPackage.wasmPath}";
+          defaultBarWidgetsJson = builtins.toJSON defaultBarWidgets;
+          inherit defaultShellProgram;
+          defaultConfigKeybinding = defaultConfig.keybindings.config;
+          defaultAgentKeybinding = defaultConfig.keybindings.agent;
+          defaultGitKeybinding = defaultConfig.keybindings.git;
+          defaultMenuKeybinding = defaultConfig.keybindings.menu;
+          inherit defaultPopupSideMargin defaultPopupVerticalMargin;
+          version = novaVersion;
+          pathPrefix = pkgs.lib.makeBinPath [
+            pkgs.coreutils
+            pkgs.git
+            pkgs.lazygit
+            tokenusage
+            yznHelix
+          ];
+        };
+        src = pkgs.runCommand "yzn-command-${packageVariant}-src" {} ''
+          mkdir -p "$out"
+          cp -R ${pkgs.lib.cleanSource ./runtime/yzn}/. "$out/"
+          chmod -R u+w "$out"
+          cp ${main} "$out/main.rs"
         '';
-        meta.platforms = supportedSystems;
+      in
+        rustBin "yzn" "${src}/main.rs";
+      mkYzn = {
+        name,
+        withMars ? false,
+      }: let
+        command = mkYznCommand withMars;
+        desktop = pkgs.makeDesktopItem {
+          name = "yzn";
+          desktopName = "Yazelix Nova";
+          genericName = "Terminal Emulator";
+          comment = "Open Yazelix Nova";
+          exec = "${command}/bin/yzn launch";
+          icon = "yzn";
+          terminal = false;
+          categories = ["System" "TerminalEmulator"];
+          startupNotify = true;
+          startupWMClass = "mars";
+        };
+      in
+        pkgs.symlinkJoin {
+          inherit name;
+          paths = [command] ++ pkgs.lib.optional withMars desktop;
+          postBuild =
+            ''
+              ${yazelixZellijPackage}/bin/zellij --config ${yznConfigKdl} setup --check >/dev/null
+              install -d "$out/libexec/yazelix-next"
+              ln -s ${yznZellijConfig}/bin/yzn-zellij-config "$out/libexec/yazelix-next/yzn-zellij-config"
+              ln -s ${yznConfig}/bin/yzn-config "$out/libexec/yazelix-next/yzn-config"
+              ln -s ${yznTutor}/bin/yzn-tutor "$out/libexec/yazelix-next/yzn-tutor"
+              install -D -m 644 ${yznConfigKdl} "$out/share/yazelix-next/config.kdl"
+              install -D -m 644 ${yznRuntimeIdentity}/runtime_identity.json "$out/share/yazelix-next/runtime_identity.json"
+              install -D -m 644 ${yazelixCursors}/yazelix_cursors_default.toml "$out/share/yazelix-next/cursors.toml"
+              install -D -m 644 ${./config.toml} "$out/share/yazelix-next/config.toml"
+              install -D -m 644 ${yznZellijLayout}/layout.kdl "$out/share/yazelix-next/layout.kdl"
+              install -D -m 644 ${yznZellijLayout}/layout.swap.kdl "$out/share/yazelix-next/layout.swap.kdl"
+              install -D -m 644 ${yznYaziConfig}/init.lua "$out/share/yazelix-next/yazi/init.lua"
+              install -D -m 644 ${yznYaziConfig}/keymap.toml "$out/share/yazelix-next/yazi/keymap.toml"
+              install -D -m 644 ${yznYaziConfig}/plugins/sidebar-state.yazi/main.lua "$out/share/yazelix-next/yazi/plugins/sidebar-state.yazi/main.lua"
+              install -D -m 644 ${yznYaziConfig}/plugins/zoxide-editor.yazi/main.lua "$out/share/yazelix-next/yazi/plugins/zoxide-editor.yazi/main.lua"
+              ln -s ${yznYaziConfig}/plugins/git.yazi "$out/share/yazelix-next/yazi/plugins/git.yazi"
+              install -D -m 644 ${yznYaziConfig}/yazi.toml "$out/share/yazelix-next/yazi/yazi.toml"
+              install -D -m 644 ${yznNuConfig}/config.nu "$out/share/yazelix-next/nu/config.nu"
+              install -D -m 644 ${yznNuConfig}/env.nu "$out/share/yazelix-next/nu/env.nu"
+            ''
+            + pkgs.lib.optionalString withMars ''
+              install -D -m 644 ${yznMarsConfig}/config.toml "$out/share/yazelix-next/mars/config.toml"
+              for icon in ${marsPackage}/share/icons/hicolor/*/apps/mars.png; do
+                size="$(basename "$(dirname "$(dirname "$icon")")")"
+                install -d "$out/share/icons/hicolor/$size/apps"
+                ln -s "$icon" "$out/share/icons/hicolor/$size/apps/yzn.png"
+              done
+              install -d "$out/share/pixmaps"
+              ln -s ${marsPackage}/share/pixmaps/mars.png "$out/share/pixmaps/yzn.png"
+            '';
+          meta.platforms = supportedSystems;
+        };
+      yzn = mkYzn {
+        name = "yzn";
+        withMars = true;
       };
+      yznRuntime = mkYzn {name = "yzn-runtime";};
     in {
       yazelix_helix = yazelixHelixPackage;
       yazelix_zellij = yazelixZellijPackage;
       inherit yzn;
+      runtime = yznRuntime;
       default = yzn;
     });
 
     checks = eachSystem (system: let
       pkgs = import nixpkgs {inherit system;};
       yzn = self.packages.${system}.yzn;
+      yznRuntime = self.packages.${system}.runtime;
+      marsPackage = mars.packages.${system}.mars;
+      runtimeClosure = pkgs.closureInfo {rootPaths = [yznRuntime];};
       yznYaziMaterializer = pkgs.rustPlatform.buildRustPackage {
         pname = "yzn-yazi-config";
         version = "0.1.0";
@@ -602,6 +631,11 @@
         [[language]]
         name = "nix"
       '';
+      fakeCursors = pkgs.writeText "hm-cursors.toml" ''
+        enabled_cursors = ["reef"]
+        [settings]
+        trail = "reef"
+      '';
       homeManagerConfiguration = module:
         home-manager.lib.homeManagerConfiguration {
           inherit pkgs;
@@ -621,6 +655,9 @@
       homeManagerOverride = homeManagerConfiguration {
         programs.yazelix.package = fakeYazelix;
       };
+      homeManagerRuntime = homeManagerConfiguration {
+        programs.yazelix.package = yznRuntime;
+      };
       homeManagerConfigFiles = homeManagerConfiguration {
         programs.yazelix.config = {
           settings = {
@@ -632,6 +669,7 @@
             keybindings.menu = "Alt Shift U";
             bar.widgets = ["editor" "shell"];
           };
+          cursors.source = fakeCursors;
           mars.text = "[window]\nwidth = 1200\n";
           zellij.text = "pane_frames false\n";
           starship.text = "format = \"::\"\n";
@@ -653,6 +691,7 @@
       home_manager = pkgs.runCommand "yzn-home-manager-check" {} ''
         default_path="${homeManagerDefault.activationPackage}/home-path"
         override_path="${homeManagerOverride.activationPackage}/home-path"
+        runtime_path="${homeManagerRuntime.activationPackage}/home-path"
         hm_yzn="${homeManagerConfigFiles.activationPackage}/home-path/bin/yzn"
         config_files="${homeManagerConfigFiles.activationPackage}/home-files/.config/yazelix-next"
 
@@ -663,6 +702,9 @@
         test -x "$override_path/bin/yzn"
         test "$("$override_path/bin/yzn")" = fake-yazelix
         grep -q 'Fake Yazelix' "$override_path/share/applications/yzn.desktop"
+
+        test -x "$runtime_path/bin/yzn"
+        test ! -e "$runtime_path/share/applications/yzn.desktop"
 
         if [ -e "${homeManagerDefault.activationPackage}/home-files/.config/yazelix-next" ]; then
           printf '%s\n' 'Home Manager v1 must not generate Yazelix runtime config files' >&2
@@ -677,6 +719,12 @@
         grep -q 'git = "Alt Shift G"' "$config_files/config.toml"
         grep -q 'menu = "Alt Shift U"' "$config_files/config.toml"
         ! grep -q 'ratconfig' "$config_files/config.toml"
+        grep -q 'trail = "reef"' "$config_files/cursors.toml"
+        test -L "$config_files/cursors.toml"
+        case "$(readlink "$config_files/cursors.toml")" in
+          /nix/store/*) ;;
+          *) printf '%s\n' 'Home Manager cursor source is not store-backed' >&2; exit 1 ;;
+        esac
         test "$(YAZELIX_NEXT_CONFIG_HOME="$config_files" ${yzn}/libexec/yazelix-next/yzn-config --get shell.program)" = fish
         test "$(YAZELIX_NEXT_CONFIG_HOME="$config_files" ${yzn}/libexec/yazelix-next/yzn-config --get editor.command)" = yzn-hx
         test "$(YAZELIX_NEXT_CONFIG_HOME="$config_files" ${yzn}/libexec/yazelix-next/yzn-config --get agent.command)" = auto
@@ -778,6 +826,35 @@
       contracts = pkgs.runCommand "yzn-contracts" {} ''
         ${yznContractsCheck}/bin/yzn-contracts-check ${yzn} ${pkgs.git}/bin/git ${pkgs.jq}/bin/jq "$out"
       '';
+      runtime_contracts = pkgs.runCommand "yzn-runtime-contracts" {} ''
+        test -x ${yznRuntime}/bin/yzn
+        test ! -e ${yznRuntime}/share/applications/yzn.desktop
+        ! grep -Fx ${marsPackage} ${runtimeClosure}/store-paths
+        ! grep -E '/[^/]*-rio-[^/]*$' ${runtimeClosure}/store-paths
+
+        export HOME="$TMPDIR/home"
+        export YAZELIX_NEXT_CONFIG_HOME="$TMPDIR/config"
+        export YAZELIX_STATE_DIR="$TMPDIR/state"
+        export XDG_DATA_HOME="$TMPDIR/data"
+        mkdir -p "$HOME" "$YAZELIX_NEXT_CONFIG_HOME" "$YAZELIX_STATE_DIR" "$XDG_DATA_HOME"
+        printf '%s\n' '[welcome]' 'enabled = false' > "$YAZELIX_NEXT_CONFIG_HOME/config.toml"
+
+        ${yznRuntime}/bin/yzn status --json > status.json
+        test "$(${pkgs.jq}/bin/jq -r .package status.json)" = runtime
+        ${yznRuntime}/bin/yzn status > status
+        grep -q '^package: runtime$' status
+        grep -q '^mars config: not included$' status
+        ${yznRuntime}/bin/yzn doctor > doctor
+        grep -q '^ok mars: not included$' doctor
+        if ${yznRuntime}/bin/yzn launch 2> launch-error; then
+          printf '%s\n' 'Mars-free runtime launch unexpectedly succeeded' >&2
+          exit 1
+        fi
+        grep -q 'launch is unavailable in the Mars-free runtime package' launch-error
+        ${yznRuntime}/bin/yzn enter --version > enter-version
+        grep -q '^zellij ' enter-version
+        touch "$out"
+      '';
       helix_contracts = pkgs.runCommand "yzn-helix-contracts" {} ''
         ${helixContractsCheck}/bin/helix-contracts-check ${yzn} "$out"
       '';
@@ -787,6 +864,10 @@
       yzn = {
         type = "app";
         program = "${self.packages.${system}.yzn}/bin/yzn";
+      };
+      runtime = {
+        type = "app";
+        program = "${self.packages.${system}.runtime}/bin/yzn";
       };
       default = yzn;
     });

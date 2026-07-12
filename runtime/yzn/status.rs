@@ -1,8 +1,11 @@
-use crate::{VERSION, error::AppError, paths::zellij_session_label, runtime::Runtime};
+use crate::{
+    PACKAGE_VARIANT, VERSION, error::AppError, paths::zellij_session_label, runtime::Runtime,
+};
 
 pub(crate) fn print_status() -> Result<(), AppError> {
     let runtime = Runtime::prepare()?;
     println!("Yazelix Nova status");
+    println!("package: {PACKAGE_VARIANT}");
     println!("config home: {}", runtime.config_home.display());
     println!("state dir: {}", runtime.state_dir.display());
     println!("shell: {}", runtime.shell_program);
@@ -41,6 +44,7 @@ fn status_json(runtime: &Runtime) -> String {
     for (key, value) in [
         ("name", "Yazelix Nova"),
         ("version", VERSION),
+        ("package", PACKAGE_VARIANT),
         ("config_home", config_home.as_ref()),
         ("state_dir", state_dir.as_ref()),
         ("shell", runtime.shell_program.as_str()),

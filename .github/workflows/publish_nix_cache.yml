@@ -68,8 +68,10 @@ jobs:
           name: yazelix
           authToken: "${{ secrets.CACHIX_AUTH_TOKEN }}"
 
-      - name: Build and publish yzn
+      - name: Build and publish full, runtime, and Home Manager closures
         if: steps.cachix-token.outputs.available == 'true'
         run: |
           nix build --no-link --print-out-paths \
-            .#packages.x86_64-linux.yzn
+            .#packages.x86_64-linux.yzn \
+            .#packages.x86_64-linux.runtime \
+            .#checks.x86_64-linux.home_manager

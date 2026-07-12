@@ -32,11 +32,15 @@ jobs:
       - name: Install yzn into a temp profile
         run: |
           profile="$RUNNER_TEMP/yazelix-next-profile"
+          runtime_profile="$RUNNER_TEMP/yazelix-next-runtime-profile"
           nix profile add --refresh "$GITHUB_WORKSPACE" --profile "$profile"
+          nix profile add --refresh "$GITHUB_WORKSPACE#runtime" --profile "$runtime_profile"
 
           test -x "$profile/bin/yzn"
           test -f "$profile/share/applications/yzn.desktop"
           grep -F 'Yazelix Nova' "$profile/share/applications/yzn.desktop"
+          test -x "$runtime_profile/bin/yzn"
+          test ! -e "$runtime_profile/share/applications/yzn.desktop"
 
       - name: Smoke installed yzn commands
         run: |
@@ -80,7 +84,8 @@ jobs:
             max-jobs = 1
             cores = 2
 
-      - name: Build aarch64-darwin yzn package
+      - name: Build aarch64-darwin packages
         run: |
           nix build --no-link --no-write-lock-file --print-build-logs \
-            .#packages.aarch64-darwin.yzn
+            .#packages.aarch64-darwin.yzn \
+            .#packages.aarch64-darwin.runtime

@@ -9,7 +9,7 @@ use std::{
 
 use crate::{
     AGENT_POPUP_KDL_CONFIG_PATH, CUSTOM_POPUP_KEYBINDINGS_KDL_CONFIG_PATH,
-    CUSTOM_POPUPS_KDL_CONFIG_PATH, POPUP_KEYBINDING_SPECS, YAZELIX_ZELLIJ_BAR_WASM,
+    CUSTOM_POPUPS_KDL_CONFIG_PATH, MARS, POPUP_KEYBINDING_SPECS, YAZELIX_ZELLIJ_BAR_WASM,
     YAZELIX_ZELLIJ_PANE_ORCHESTRATOR_WASM, YAZELIX_ZELLIJ_POPUP_WASM, YZN_CONFIG, YZN_CONFIG_KDL,
     YZN_EDITOR, YZN_HELIX, YZN_MARS_CONFIG, YZN_YA, YZN_ZELLIJ_CONFIG, ZELLIJ,
     command::{
@@ -236,20 +236,26 @@ impl Runtime {
                 "YZN_WELCOME_DURATION_SECONDS",
                 &self.welcome_duration_seconds,
             )
-            .env("MARS_CONFIG_HOME", self.config_home.join("mars"))
-            .env("MARS_BASE_CONFIG_HOME", YZN_MARS_CONFIG)
             .env("YAZELIX_STATUS_BAR_CACHE_PATH", &self.zellij_status_cache)
             .env("ZELLIJ_PLUGIN_PERMISSIONS_CACHE", &self.zellij_permissions)
             .env("YZN_MENU_YZN", yzn_menu_yzn)
             .env("YZN_YA", YZN_YA)
             .env("YZN_ZELLIJ", ZELLIJ)
             .env("PATH", runtime_path());
+        if !MARS.is_empty() {
+            command
+                .env("MARS_CONFIG_HOME", self.config_home.join("mars"))
+                .env("MARS_BASE_CONFIG_HOME", YZN_MARS_CONFIG);
+        }
         if let Some(bridge_session_id) = &self.bridge_session_id {
             command.env("YAZELIX_HELIX_BRIDGE_SESSION_ID", bridge_session_id);
         }
     }
 
     pub(crate) fn mars_config(&self) -> String {
+        if MARS.is_empty() && self.mars_config_source == "packaged" {
+            return "not included".to_string();
+        }
         let path = if self.mars_config_source == "user" {
             self.config_home.join("mars/config.toml")
         } else {

@@ -18,16 +18,17 @@ yzn run     →  prepared Yazelix environment  →  exact child argv/status
 
 Bare `yzn` prints help. `launch` is the only Mars route.
 `enter` is the headless/SSH route and requires an interactive host terminal, not
-a display server.
+a display server. The fixed `runtime` package compiles the Mars route out while
+retaining the same command, config schema, and managed workspace.
 
 ## Platforms
 
 | Surface | Support |
 | --- | --- |
-| Package / app outputs | `x86_64` / `aarch64` × Linux / Darwin |
+| Full/runtime package and app outputs | `x86_64` / `aarch64` × Linux / Darwin |
 | Headless / SSH floor | `enter` in a capable interactive host terminal; managed TUI only |
 | macOS floor | `help`, `status`, `doctor`, `enter` |
-| macOS `launch` | Mars path; issue-driven until hardware validation |
+| macOS full-package `launch` | Mars path; issue-driven until hardware validation |
 | Out of repo | App bundles, Homebrew, Ghostty packaging, broad terminal matrices |
 
 ## Commands
@@ -36,7 +37,7 @@ a display server.
 | --- | --- |
 | `yzn` / `help` | Concise help; no implicit launch |
 | `--version` | Package-owned exact Nova version |
-| `launch` | Mars then managed session |
+| `launch` | Mars then managed session; unavailable in the runtime package |
 | `enter` | Managed session in current terminal |
 | `run` | Structured command in the prepared runtime environment |
 | `config` | Ratconfig UI |
@@ -59,7 +60,7 @@ One owner per concern. Paths are the durable map.
 
 | Path | Owns |
 | --- | --- |
-| `flake.nix` | Inputs, package graph, helpers, desktop entry, HM export |
+| `flake.nix` | Fixed full/runtime composition, inputs, helpers, desktop entry, HM export |
 | `home-manager/module.nix` | `programs.yazelix.enable` / package; optional config files; no default generation |
 
 ### Front door and helpers
@@ -165,7 +166,9 @@ This repo packages them and applies product policy only.
 ### Installed closure topology
 
 `flake.nix` owns the package graph. On `x86_64-linux`, the 2026-07-12 locked
-graph realizes to **2.28 GiB across 619 store paths**. Nova's top-level output
+graph realizes to **2.28 GiB across 619 store paths**. The fixed Mars-free
+variant is **1.37 GiB across 591 paths**, a measured 927 MiB reduction; its
+source-build graph contains 2,407 fewer derivations. Nova's top-level full output
 contains only 46.1 KiB of NAR data; it is a thin command, desktop-entry, and
 asset join whose references pull in the runtime.
 
@@ -378,7 +381,7 @@ Detail lives in Owners, checks, and the notes below.
 
 | ID | Contract | Owner | Check | Gap |
 | --- | --- | --- | --- | --- |
-| C13 | Narrow Home Manager enable/package/optional files | `home-manager/`, flake, `yzn-config` | `checks.home_manager` | Full HM switch |
+| C13 | Fixed full/runtime packages + narrow Home Manager enable/package/optional files | `home-manager/`, flake, `yzn-config` | runtime contracts + `checks.home_manager` | Full HM switch |
 
 ### Notes
 

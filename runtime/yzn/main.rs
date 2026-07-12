@@ -19,6 +19,7 @@ pub(crate) const YZN_SHELL: &str = "@yznShell@";
 pub(crate) const YZN_ENV_SUPERVISOR: &str = "@yznEnvSupervisor@";
 pub(crate) const ZELLIJ: &str = "@zellij@";
 pub(crate) const MARS: &str = "@mars@";
+pub(crate) const PACKAGE_VARIANT: &str = if MARS.is_empty() { "runtime" } else { "full" };
 pub(crate) const LAYOUT: &str = "@layout@";
 pub(crate) const LAYOUT_TEMPLATE: &str = "@layoutTemplate@";
 pub(crate) const LAYOUT_SWAP_TEMPLATE: &str = "@layoutSwapTemplate@";
