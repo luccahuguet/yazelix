@@ -296,7 +296,7 @@ fn migrate_with(
                 json!({ "path": legacy }),
             ));
         }
-        let extras = remove_legacy_native_zellij_fields(object);
+        let extras = remove_legacy_native_zellij_fields(object, &legacy)?;
         let root = json_value_to_toml_table(&value, &legacy)?;
         validate_classic_config_table(
             &root,
@@ -389,7 +389,20 @@ fn migrate_with(
     transaction_io.write_atomic(&config, &rendered)?;
     if source_kind == ClassicNovaMigrationSource::SettingsJsonc {
         if let Err(error) = transaction_io.remove(&source) {
-            let _ = fs::remove_file(&config);
+            if let Err(rollback_error) = transaction_io.remove(&config) {
+                return Err(CoreError::classified(
+                    ErrorClass::Io,
+                    "rollback_classic_nova_target",
+                    "Could not retire settings.jsonc or roll back the new config.toml.",
+                    "Preserve both files and the timestamped backup, then resolve the filesystem error manually before retrying.",
+                    json!({
+                        "source": source,
+                        "target": config,
+                        "retire_error": error.to_string(),
+                        "rollback_error": rollback_error.to_string(),
+                    }),
+                ));
+            }
             return Err(io_error(
                 "retire_classic_settings_jsonc",
                 &source,
@@ -409,11 +422,31 @@ fn migrate_with(
 
 fn remove_legacy_native_zellij_fields(
     root: &mut serde_json::Map<String, JsonValue>,
-) -> Vec<ClassicNovaReportEntry> {
+    source: &Path,
+) -> Result<Vec<ClassicNovaReportEntry>, CoreError> {
     let Some(zellij) = root.get_mut("zellij").and_then(JsonValue::as_object_mut) else {
-        return Vec::new();
+        return Ok(Vec::new());
     };
-    LEGACY_NATIVE_ZELLIJ_FIELDS
+    for field in LEGACY_NATIVE_ZELLIJ_FIELDS {
+        let Some(value) = zellij.get(*field) else {
+            continue;
+        };
+        let valid = match *field {
+            "default_mode" => matches!(value.as_str(), Some("normal" | "locked")),
+            _ => value.is_boolean(),
+        };
+        if !valid {
+            return Err(migration_error(
+                "invalid_legacy_native_zellij_value",
+                format!(
+                    "Cannot migrate zellij.{field}; its legacy value has an invalid type or value."
+                ),
+                "Use a boolean for disable_tips, pane_frames, and rounded_corners, and use normal or locked for default_mode.",
+                json!({ "path": source, "field": format!("zellij.{field}"), "value": value }),
+            ));
+        }
+    }
+    Ok(LEGACY_NATIVE_ZELLIJ_FIELDS
         .iter()
         .filter_map(|field| {
             zellij.remove(*field).map(|_| ClassicNovaReportEntry {
@@ -423,7 +456,7 @@ fn remove_legacy_native_zellij_fields(
                 detail: "verify this retired native preference in zellij/config.kdl; the root migration never mutates sidecars".to_string(),
             })
         })
-        .collect()
+        .collect())
 }
 
 fn validate_nova_root(root: &Table) -> Result<(), String> {

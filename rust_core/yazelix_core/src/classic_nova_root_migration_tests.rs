@@ -248,6 +248,47 @@ fn rejects_malformed_or_colliding_transaction_inputs() {
     assert_eq!(fs::read_to_string(backup).unwrap(), "existing backup\n");
 }
 
+// Regression: malformed legacy-native JSONC values, unknown schema roots, and embedded cursors fail without migration artifacts.
+#[test]
+fn rejects_malformed_jsonc_and_ambiguous_root_ownership() {
+    let config_dir = tempdir().unwrap();
+    let legacy = config_dir.path().join("settings.jsonc");
+    let malformed = current_legacy_jsonc(
+        "  \"zellij\": { \"pane_frames\": \"sometimes\", \"support_kitty_keyboard_protocol\": true }",
+    );
+    fs::write(&legacy, &malformed).unwrap();
+    let error = migrate_with(
+        &request(config_dir.path()),
+        "20260712_000000",
+        &RealTransactionIo,
+    )
+    .unwrap_err();
+    assert_eq!(error.code(), "invalid_legacy_native_zellij_value");
+    assert_eq!(fs::read_to_string(&legacy).unwrap(), malformed);
+    assert_eq!(fs::read_dir(config_dir.path()).unwrap().count(), 1);
+
+    fs::remove_file(&legacy).unwrap();
+    let config = config_dir.path().join("config.toml");
+    fs::write(&config, "[mystery]\nenabled = true\n").unwrap();
+    let error = migrate_with(
+        &request(config_dir.path()),
+        "20260712_000000",
+        &RealTransactionIo,
+    )
+    .unwrap_err();
+    assert_eq!(error.code(), "ambiguous_root_schema");
+
+    fs::write(&config, "[cursors]\nenabled_cursors = [\"reef\"]\n").unwrap();
+    let error = migrate_with(
+        &request(config_dir.path()),
+        "20260712_000000",
+        &RealTransactionIo,
+    )
+    .unwrap_err();
+    assert_eq!(error.code(), "embedded_cursor_settings_unsupported");
+    assert_eq!(fs::read_dir(config_dir.path()).unwrap().count(), 1);
+}
+
 // Defends: mapping collisions are not silently converted into lossy reports.
 #[test]
 fn rejects_mapping_collisions_before_backup() {
@@ -313,6 +354,28 @@ struct FailTargetWrite {
     target: PathBuf,
 }
 
+struct FailRemoval {
+    source: PathBuf,
+    target: Option<PathBuf>,
+}
+
+impl TransactionIo for FailRemoval {
+    fn copy(&self, source: &Path, target: &Path) -> io::Result<()> {
+        fs::copy(source, target).map(|_| ())
+    }
+
+    fn write_atomic(&self, path: &Path, contents: &str) -> Result<(), CoreError> {
+        write_text_atomic(path, contents)
+    }
+
+    fn remove(&self, path: &Path) -> io::Result<()> {
+        if path == self.source || self.target.as_deref() == Some(path) {
+            return Err(io::Error::other("injected removal failure"));
+        }
+        fs::remove_file(path)
+    }
+}
+
 impl TransactionIo for FailTargetWrite {
     fn copy(&self, source: &Path, target: &Path) -> io::Result<()> {
         fs::copy(source, target).map(|_| ())
@@ -367,6 +430,47 @@ fn target_write_failure_preserves_original_after_backup() {
         )
         .exists()
     );
+}
+
+// Regression: failed JSONC retirement rolls back the complete target, and a failed rollback is surfaced with both files preserved.
+#[test]
+fn jsonc_retirement_failure_rolls_back_or_reports_both_failures() {
+    for fail_rollback in [false, true] {
+        let config_dir = tempdir().unwrap();
+        let source = config_dir.path().join("settings.jsonc");
+        let target = config_dir.path().join("config.toml");
+        let original = current_legacy_jsonc("  \"editor\": { \"command\": \"nvim\" }");
+        fs::write(&source, &original).unwrap();
+
+        let error = migrate_with(
+            &request(config_dir.path()),
+            if fail_rollback {
+                "20260712_070809"
+            } else {
+                "20260712_060708"
+            },
+            &FailRemoval {
+                source: source.clone(),
+                target: fail_rollback.then(|| target.clone()),
+            },
+        )
+        .unwrap_err();
+
+        assert_eq!(fs::read_to_string(&source).unwrap(), original);
+        if fail_rollback {
+            assert_eq!(error.code(), "rollback_classic_nova_target");
+            assert!(target.exists());
+            assert!(
+                error.details()["rollback_error"]
+                    .as_str()
+                    .unwrap()
+                    .contains("injected removal failure")
+            );
+        } else {
+            assert_eq!(error.code(), "retire_classic_settings_jsonc");
+            assert!(!target.exists());
+        }
+    }
 }
 
 // Defends: a completed transaction is idempotent and never creates a second backup/report pair.
