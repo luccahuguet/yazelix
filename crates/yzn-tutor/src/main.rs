@@ -13,6 +13,8 @@ const KEY_GIT: &str = "Alt Shift J";
 const KEY_MENU: &str = "Alt Shift M";
 const KEY_FOCUS_LEFT: &str = "Alt h";
 const KEY_FOCUS_RIGHT: &str = "Alt l";
+const KEY_FULLSCREEN: &str = "Alt Shift F";
+const KEY_EDITOR_SIDEBAR_FOCUS: &str = "Ctrl y";
 const KEY_REVEAL: &str = "Alt r";
 const KEY_SIDEBAR_SWAP: &str = "Alt Shift h";
 const KEY_NEW_PANE: &str = "Alt m";
@@ -215,10 +217,10 @@ fn render_workspace_lesson(index: usize, lesson: &TutorLesson) -> String {
 ## Actions
 
 1. **Run in shell:** Start in the project directory with `yzn enter`; use `cd <dir> && yzn launch` when you need a separate Mars window for another directory.
-2. **Inside Yazelix:** Press `{focus_left}` or `{focus_right}` to walk visible panes; press `{sidebar_swap}` when you need the Yazi sidebar layout.
+2. **Inside Yazelix:** Press `{focus_left}` or `{focus_right}` to walk visible panes; press `{sidebar_focus}` to move directly between the editor and Yazi sidebar, and `{sidebar_swap}` to toggle the sidebar.
 3. **Inside Yazi:** Press `Enter` to open the selected file in the managed editor.
 4. **Inside Yazi:** Press `{yazi_zoxide}` to jump with zoxide and open the target in the editor.
-5. **Inside Yazelix:** Press `{new_pane}` for a new stacked pane, `{pane_mode}` for pane mode, `{tab_mode}` for tab mode, `{resize_mode}` for resize mode, and `{quit}` for quit mode.
+5. **Inside Yazelix:** Press `{new_pane}` for a new stacked pane, `{fullscreen}` to fullscreen the focused pane, `{pane_mode}` for pane mode, `{tab_mode}` for tab mode, `{resize_mode}` for resize mode, and `{quit}` for quit mode.
 6. **Inside Yazelix:** Press `{tab_left}` or `{tab_right}` to move the current tab; press `{pane_down}` or `{pane_up}` to move the current pane.
 7. **Inside the editor:** Press `{reveal}` to reveal the current file in Yazi.
 
@@ -231,6 +233,8 @@ Next lesson: `yzn tutor discovery`.
         header = lesson_intro(index, lesson),
         focus_left = key(KEY_FOCUS_LEFT),
         focus_right = key(KEY_FOCUS_RIGHT),
+        fullscreen = key(KEY_FULLSCREEN),
+        sidebar_focus = key(KEY_EDITOR_SIDEBAR_FOCUS),
         sidebar_swap = key(KEY_SIDEBAR_SWAP),
         yazi_zoxide = key(KEY_YAZI_ZOXIDE),
         new_pane = key(KEY_NEW_PANE),
@@ -440,6 +444,8 @@ mod tests {
             "cd <dir> && yzn launch",
             KEY_FOCUS_LEFT,
             KEY_FOCUS_RIGHT,
+            KEY_FULLSCREEN,
+            KEY_EDITOR_SIDEBAR_FOCUS,
             KEY_SIDEBAR_SWAP,
             KEY_YAZI_ZOXIDE,
             KEY_NEW_PANE,

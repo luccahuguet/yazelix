@@ -4,6 +4,8 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## Unreleased
 
+- `Alt Shift F` toggles focused-pane fullscreen, and `Ctrl y` moves directly
+  between the managed editor and Yazi sidebar, reopening the sidebar as needed.
 - The top-right Zellij corner derives a compact Nova release label from the
   package version: `NOVA DEV`, `NOVA 1β`, or stable major/minor form such as
   `NOVA 1.0`. Exact SemVer remains in `yzn --version` and runtime identity.

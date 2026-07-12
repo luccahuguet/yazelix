@@ -298,6 +298,8 @@ runtime source.
 | `Alt m` | Open a new pane. |
 | `Alt h` / `Alt Left` | Move focus left or previous tab. |
 | `Alt l` / `Alt Right` | Move focus right or next tab. |
+| `Alt Shift F` | Toggle the focused pane fullscreen. |
+| `Ctrl y` | Toggle focus between the editor and Yazi sidebar. |
 | `Alt 1-9` | Go directly to tab 1-9. |
 | `Ctrl Alt h` | Move tab left. |
 | `Ctrl Alt j` | Move pane down. |
@@ -368,13 +370,13 @@ git ls-files | grep -Ev '^\.beads/|\.lock$' | xargs wc -l
 | Language | Lines |
 | --- | ---: |
 | Ignore (`.gitignore`) | 4 |
-| Markdown | 1391 |
+| Markdown | 1395 |
 | Nix | 1014 |
 | Shell | 84 |
 | YAML | 268 |
 | TOML | 249 |
-| KDL | 210 |
+| KDL | 212 |
 | Nu | 11 |
 | Lua | 247 |
-| Rust | 12234 |
-| Total | 15712 |
+| Rust | 12247 |
+| Total | 15731 |

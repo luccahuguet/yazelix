@@ -1417,7 +1417,9 @@ fn expect_keybinds(config: &str) {
         r#"bind "Alt h" "Alt Left" { MessagePlugin "yazelix_pane_orchestrator" { name "move_focus_left_or_tab"; }; }"#,
         r#"bind "Alt l" "Alt Right" { MessagePlugin "yazelix_pane_orchestrator" { name "move_focus_right_or_tab"; }; }"#,
         r#"bind "Alt r" { MessagePlugin "yazelix_pane_orchestrator" { name "smart_reveal"; }; }"#,
+        r#"bind "Alt Shift F" { ToggleFocusFullscreen; }"#,
         r#"bind "Alt Shift h" { MessagePlugin "yazelix_pane_orchestrator" { name "toggle_sidebar"; }; }"#,
+        r#"bind "Ctrl y" { MessagePlugin "yazelix_pane_orchestrator" { name "toggle_editor_sidebar_focus"; }; }"#,
         r#"bind "Ctrl Alt g" { SwitchToMode "Locked"; }"#,
         r#"bind "Ctrl p" { SwitchToMode "Pane"; }"#,
         r#"bind "Ctrl t" { SwitchToMode "Tab"; }"#,
@@ -1431,6 +1433,9 @@ fn expect_keybinds(config: &str) {
             config.lines().any(|line| line.trim() == expected),
             "config.kdl is missing {expected}",
         );
+    }
+    for expected in ["ToggleFocusFullscreen", "toggle_editor_sidebar_focus"] {
+        assert_eq!(config.matches(expected).count(), 1, "duplicate {expected}");
     }
     for tab in 1..=9 {
         let expected = format!(r#"bind "Alt {tab}" {{ GoToTab {tab}; }}"#);
