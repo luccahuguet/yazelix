@@ -72,10 +72,10 @@ pub(crate) fn read_text(path: &Path, code: &str) -> Result<String, CoreError> {
 }
 
 pub(crate) fn read_text_if_exists(path: &Path) -> Result<String, CoreError> {
-    if fs::symlink_metadata(path).is_ok() {
-        read_text(path, "read_zellij_optional_input")
-    } else {
-        Ok(String::new())
+    match fs::symlink_metadata(path) {
+        Ok(_) => read_text(path, "read_zellij_optional_input"),
+        Err(source) if source.kind() == std::io::ErrorKind::NotFound => Ok(String::new()),
+        Err(_) => read_text(path, "read_zellij_optional_input"),
     }
 }
 

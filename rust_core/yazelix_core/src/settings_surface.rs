@@ -1,7 +1,7 @@
 // Test lane: default
 //! Canonical `config.toml` surface and one-time Classic JSONC migration.
 
-use crate::atomic_fs::write_text_atomic;
+use crate::atomic_fs::write_text_atomic_create_new;
 use crate::backup_timestamp::compact_utc_backup_timestamp;
 use crate::bridge::{CoreError, ErrorClass};
 use crate::classic_nova_root_migration::{
@@ -165,10 +165,12 @@ fn ensure_zellij_sidecars(config_dir: &Path) -> Result<(), CoreError> {
             &timestamp,
         );
     }
-    if path_owned_by_home_manager(&flat) || settings_path_is_read_only(&flat) {
+    let removable = fs::symlink_metadata(&flat)
+        .is_ok_and(|metadata| metadata.file_type().is_file() && !metadata.permissions().readonly());
+    if path_owned_by_home_manager(&flat) || !removable {
         return Err(zellij_migration_failure(
-            "read_only_flat_zellij_migration",
-            "The retired flat Zellij sidecar is read-only.",
+            "unsupported_flat_zellij_migration_source",
+            "The retired flat Zellij sidecar is declarative, read-only, symlinked, or not a regular file.",
             "Split it declaratively into programs.yazelix.config.zellij and zellij/plugins.kdl, then move zellij.kdl aside.",
             &flat,
         ));
@@ -184,20 +186,25 @@ fn ensure_zellij_sidecars(config_dir: &Path) -> Result<(), CoreError> {
     let split =
         split_zellij_sidecars(&flat_text).map_err(|error| zellij_migration_error(&flat, error))?;
     let timestamp = compact_utc_backup_timestamp();
-    backup_zellij_migration_source(&flat, &timestamp)?;
-    if !split.config.is_empty() && !is_generated_zellij_sidecar(&split.config) {
-        write_text_atomic(&config, &split.config)?;
+    backup_zellij_migration_source(&flat, &flat_text, &timestamp)?;
+    let config_written = !split.config.is_empty() && !is_generated_zellij_sidecar(&split.config);
+    if config_written {
+        write_text_atomic_create_new(&config, &split.config)?;
     }
-    if !split.plugins.is_empty()
-        && !is_generated_zellij_sidecar(&split.plugins)
-        && let Err(error) = write_text_atomic(&plugins, &split.plugins)
-    {
-        let _ = fs::remove_file(&config);
+    let plugins_written = !split.plugins.is_empty() && !is_generated_zellij_sidecar(&split.plugins);
+    if plugins_written && let Err(error) = write_text_atomic_create_new(&plugins, &split.plugins) {
+        if config_written {
+            let _ = remove_file_if_unchanged(&config, &split.config);
+        }
         return Err(error);
     }
-    if let Err(source) = fs::remove_file(&flat) {
-        let _ = fs::remove_file(&config);
-        let _ = fs::remove_file(&plugins);
+    if let Err(source) = remove_file_if_unchanged(&flat, &flat_text) {
+        if config_written {
+            let _ = remove_file_if_unchanged(&config, &split.config);
+        }
+        if plugins_written {
+            let _ = remove_file_if_unchanged(&plugins, &split.plugins);
+        }
         return Err(io_err(
             "retire_flat_zellij_config",
             &flat,
@@ -230,7 +237,7 @@ fn cleanup_or_validate_zellij_sidecar(
     if !is_generated_zellij_sidecar(&raw) || !removable || path_owned_by_home_manager(path) {
         return Ok(());
     }
-    backup_zellij_migration_source(path, timestamp)?;
+    backup_zellij_migration_source(path, &raw, timestamp)?;
     remove_file_if_unchanged(path, &raw).map_err(|source| {
         io_err(
             "retire_generated_zellij_sidecar",
@@ -259,17 +266,12 @@ fn migration_backup_path(path: &Path, timestamp: &str) -> PathBuf {
     path.with_file_name(format!("{name}.backup-{timestamp}"))
 }
 
-fn backup_zellij_migration_source(path: &Path, timestamp: &str) -> Result<(), CoreError> {
-    fs::copy(path, migration_backup_path(path, timestamp))
-        .map(|_| ())
-        .map_err(|error| {
-            io_err(
-                "backup_zellij_migration_source",
-                path,
-                "Could not back up a Zellij migration source",
-                error,
-            )
-        })
+fn backup_zellij_migration_source(
+    path: &Path,
+    raw: &str,
+    timestamp: &str,
+) -> Result<(), CoreError> {
+    write_text_atomic_create_new(&migration_backup_path(path, timestamp), raw)
 }
 
 fn zellij_migration_error(
@@ -302,12 +304,6 @@ fn zellij_migration_failure(
         remediation,
         json!({ "path": path.display().to_string() }),
     )
-}
-
-fn settings_path_is_read_only(path: &Path) -> bool {
-    fs::metadata(path)
-        .map(|metadata| metadata.permissions().readonly())
-        .unwrap_or(false)
 }
 
 pub fn render_default_config(default_main_config: &Path) -> Result<String, CoreError> {
