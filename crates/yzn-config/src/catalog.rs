@@ -89,7 +89,8 @@ pub(crate) const ACTION_YAZI_KEYMAP: &str = "yazi.keymap";
 pub(crate) const ACTION_YAZI_PACKAGE: &str = "yazi.package";
 pub(crate) const ACTION_YAZI_THEME: &str = "yazi.theme";
 pub(crate) const ACTION_ZELLIJ_PLUGINS: &str = "zellij.plugins";
-pub(crate) const HELIX_CONFIG_STARTER: &str = include_str!("../../../helix/config.toml");
+pub(crate) const HELIX_CONFIG_STARTER: &str =
+    "# User overrides layered over Yazelix Nova packaged Helix config.\n";
 pub(crate) const HELIX_LANGUAGES_STARTER: &str = "# Managed Helix language overrides.\n";
 pub(crate) const HELIX_MODULE_STARTER: &str = ";; Loaded by managed yzn-hx before init.scm.\n";
 pub(crate) const HELIX_INIT_STARTER: &str = ";; Loaded by managed yzn-hx at startup.\n";

@@ -139,15 +139,12 @@
         ln -s ${yazelixCursors} "$out/yazelix-cursors"
         cp ${./config.toml} "$out/config.toml"
         cp ${yznMarsConfig}/config.toml "$out/mars.toml"
-        mkdir -p "$out/helix"
-        cp ${./helix/config.toml} "$out/helix/config.toml"
         substituteInPlace "$out/Cargo.toml" \
           --replace-fail '../../../ratconfig' './ratconfig' \
           --replace-fail '../../../yazelix-cursors' './yazelix-cursors'
         substituteInPlace "$out/src/catalog.rs" \
           --replace-fail '../../../config.toml' '../config.toml' \
-          --replace-fail '../../../mars.toml' '../mars.toml' \
-          --replace-fail '../../../helix/config.toml' '../helix/config.toml'
+          --replace-fail '../../../mars.toml' '../mars.toml'
       '';
       yznConfig = pkgs.rustPlatform.buildRustPackage {
         pname = "yzn-config";

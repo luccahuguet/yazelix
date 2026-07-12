@@ -214,7 +214,7 @@ managed popup role keys.
 | `zellij/config.kdl` | Zellij sidecar | Sparse safe scalar overrides; absent assignments inherit packaged defaults. Inside a session, saves and resets also patch the active runtime config (many live; some need a new session). Integration-owned nodes are blocked. |
 | `zellij/plugins.kdl` | Zellij plugin sidecar | Extra plugin declarations only. Packaged plugin ids cannot be redeclared. |
 | `starship.toml` | Starship | Sparse managed Nu prompt overrides; absent values inherit Nova defaults. |
-| `helix/config.toml` | Helix | User TOML merged over packaged Yazelix Helix defaults. |
+| `helix/config.toml` | Helix | Sparse user TOML merged over packaged Yazelix Helix defaults; explicit creation starts with only an ownership comment. |
 | `helix/languages.toml` | Helix | Managed Helix language config. |
 | `helix/helix.scm` | Helix Steel | Loaded with `helix/init.scm` when the pair exists. |
 | `helix/init.scm` | Helix Steel | Loaded with `helix/helix.scm` when the pair exists. |
@@ -383,13 +383,13 @@ git ls-files | grep -Ev '^\.beads/|\.lock$' | xargs wc -l
 | Language | Lines |
 | --- | ---: |
 | Ignore (`.gitignore`) | 4 |
-| Markdown | 1440 |
-| Nix | 1026 |
+| Markdown | 1438 |
+| Nix | 1023 |
 | Shell | 84 |
 | YAML | 268 |
 | TOML | 246 |
 | KDL | 212 |
 | Nu | 11 |
 | Lua | 247 |
-| Rust | 12828 |
-| Total | 16366 |
+| Rust | 12815 |
+| Total | 16348 |

@@ -1240,9 +1240,10 @@ color = "#123456"
     }
 
     #[test]
-    fn prepare_file_action_creates_managed_helix_toml_independently() {
-        let (_temp, paths) = temp_sources();
-
+    fn helix_override_stays_sparse_and_merges_over_packaged_config() {
+        let (temp, paths) = temp_sources();
+        let packaged = temp.path.join("packaged.toml");
+        let output = temp.path.join("state/helix/config.toml");
         prepare_file_action(
             &paths,
             SOURCE_HELIX,
@@ -1251,24 +1252,9 @@ color = "#123456"
             true,
         )
         .unwrap();
+        let starter = read_toml_file_value(&paths.helix_config, "Helix starter").unwrap();
+        assert_eq!(starter, json!({}));
 
-        assert_file_text(&paths.helix_config, HELIX_CONFIG_STARTER);
-        assert_missing(&[
-            &paths.helix_languages,
-            &paths.helix_module,
-            &paths.helix_init,
-            &paths.nu_env,
-            &paths.yazi_init,
-        ]);
-    }
-
-    #[test]
-    fn effective_helix_config_merges_user_preferences_and_reserves_reveal() {
-        let temp = TempHome::new();
-        let packaged = temp.path.join("packaged.toml");
-        let user = temp.path.join("user/config.toml");
-        let output = temp.path.join("state/helix/config.toml");
-        fs::create_dir_all(user.parent().unwrap()).unwrap();
         fs::write(
             &packaged,
             concat!(
@@ -1281,7 +1267,7 @@ color = "#123456"
         )
         .unwrap();
         fs::write(
-            &user,
+            &paths.helix_config,
             concat!(
                 "[editor]\n",
                 "bufferline = \"never\"\n",
@@ -1293,7 +1279,7 @@ color = "#123456"
         )
         .unwrap();
 
-        write_effective_helix_config(&packaged, &user, &output).unwrap();
+        write_effective_helix_config(&packaged, &paths.helix_config, &output).unwrap();
 
         let value = read_toml_file_value(&output, "effective Helix config").unwrap();
         assert_eq!(get_toml_path(&value, "theme"), Some(&json!("ayu_evolve")));

@@ -240,7 +240,7 @@ a new session.
 ### Helix
 
 - `yzn-hx` writes effective config under `$YAZELIX_STATE_DIR/helix/config.toml`
-  each launch: packaged template deep-merged with optional user
+  each launch: packaged template deep-merged with optional sparse overrides from
   `~/.config/yazelix-next/helix/config.toml`, then `keys.normal.A-r` reclaimed
   for `yzn reveal`.
 - If user Helix dir has `config.toml`, `languages.toml`, and/or Steel pair
