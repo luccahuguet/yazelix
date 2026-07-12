@@ -13,7 +13,8 @@ use crate::config_ui::{ConfigUiRequest, run_config_ui};
 use crate::control_plane::{config_dir_from_env, config_override_from_env, runtime_dir_from_env};
 use crate::native_config_status::path_owned_by_home_manager;
 use crate::settings_surface::{
-    is_settings_config_path, parse_config_value, sparse_config_is_semantically_empty,
+    HOME_MANAGER_CURSORS_REMEDIATION, HOME_MANAGER_SETTINGS_REMEDIATION, is_settings_config_path,
+    parse_config_value, sparse_config_is_semantically_empty,
 };
 use crate::user_config_paths::SETTINGS_CONFIG;
 use ratconfig::patch::{PatchMutation, PatchOutcome};
@@ -300,11 +301,15 @@ fn ensure_edit_target_writable(target: &ConfigEditTarget) -> Result<(), CoreErro
         ));
     }
     if path_owned_by_home_manager(&target.path) {
+        let remediation = match target.kind {
+            ConfigEditTargetKind::Main => HOME_MANAGER_SETTINGS_REMEDIATION,
+            ConfigEditTargetKind::Cursors => HOME_MANAGER_CURSORS_REMEDIATION,
+        };
         return Err(CoreError::classified(
             ErrorClass::Config,
             "home_manager_owned_config",
             "The active Yazelix settings file is owned by Home Manager.",
-            "Edit your Home Manager module options instead, then run home-manager switch.",
+            remediation,
             json!({ "path": target.path.display().to_string() }),
         ));
     }

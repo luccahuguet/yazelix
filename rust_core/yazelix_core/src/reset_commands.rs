@@ -6,8 +6,10 @@ use crate::backup_timestamp::compact_utc_backup_timestamp;
 use crate::bridge::{CoreError, ErrorClass};
 use crate::control_plane::{config_dir_from_env, runtime_dir_from_env};
 use crate::native_config_status::{path_owned_by_home_manager, path_present};
+use crate::settings_surface::HOME_MANAGER_SETTINGS_REMEDIATION;
 use crate::user_config_paths::{
-    CURRENT_MANAGED_CONFIG_FILE_NAMES, LEGACY_CONFIG_ENTRY_NAMES, SETTINGS_CONFIG,
+    CURRENT_MANAGED_CONFIG_FILE_NAMES, LEGACY_CONFIG_ENTRY_NAMES, NOVA_STAGING_CONFIG_FILE_NAMES,
+    SETTINGS_CONFIG,
 };
 use std::collections::BTreeSet;
 use std::fs;
@@ -112,7 +114,7 @@ fn reset_config(
             ErrorClass::Config,
             "home_manager_owned_config",
             "The main Yazelix config is owned by Home Manager.",
-            "Remove the declared semantic values from programs.yazelix, then run home-manager switch.",
+            HOME_MANAGER_SETTINGS_REMEDIATION,
             serde_json::json!({ "path": target_path.display().to_string() }),
         ));
     }
@@ -216,6 +218,7 @@ fn reset_config_adjacency_report(
 ) -> Result<ResetConfigAdjacencyReport, CoreError> {
     let current_managed: BTreeSet<String> = CURRENT_MANAGED_CONFIG_FILE_NAMES
         .iter()
+        .chain(NOVA_STAGING_CONFIG_FILE_NAMES)
         .filter_map(|entry| {
             Path::new(entry)
                 .components()
@@ -341,6 +344,20 @@ mod tests {
         assert!(parse_reset_args(&["--force".into()], "yzx reset config").is_err());
     }
 
+    // Regression: Nova-staged Nu and Starship declarations are approved bridge files, not unknown adjacent state.
+    #[test]
+    fn reset_recognizes_nova_staging_roots() {
+        let dir = tempdir().unwrap();
+        fs::create_dir_all(dir.path().join("nu")).unwrap();
+        fs::write(dir.path().join("nu/env.nu"), "# staged\n").unwrap();
+        fs::write(dir.path().join("starship.toml"), "").unwrap();
+
+        let report = reset_config_adjacency_report(dir.path()).unwrap();
+
+        assert_eq!(report.managed_overrides, ["nu", "starship.toml"]);
+        assert!(report.unknown_entries.is_empty());
+    }
+
     // Regression: explicit reset removes a dangling canonical owner instead of claiming defaults are inherited.
     #[cfg(unix)]
     #[test]
@@ -383,6 +400,7 @@ mod tests {
         .unwrap_err();
 
         assert_eq!(error.code(), "home_manager_owned_config");
+        assert_eq!(error.remediation(), HOME_MANAGER_SETTINGS_REMEDIATION);
         assert_eq!(fs::read_link(config).unwrap(), owner);
     }
 }

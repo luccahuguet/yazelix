@@ -8,7 +8,7 @@ use crate::control_plane::{config_dir_from_env, runtime_dir_from_env};
 use crate::native_config_status::{path_owned_by_home_manager, path_present};
 #[cfg(test)]
 use crate::settings_surface::parse_config_value;
-use crate::settings_surface::render_config_value;
+use crate::settings_surface::{HOME_MANAGER_SETTINGS_REMEDIATION, render_config_value};
 use crossterm::cursor::MoveTo;
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind, read};
 use crossterm::execute;
@@ -551,7 +551,7 @@ fn write_onboard_config(
             ErrorClass::Config,
             "home_manager_owned_config",
             "The main Yazelix config is owned by Home Manager.",
-            "Declare the onboarding choices in programs.yazelix, then run home-manager switch.",
+            HOME_MANAGER_SETTINGS_REMEDIATION,
             json!({ "path": paths.user_config.display().to_string() }),
         ));
     }

@@ -63,7 +63,6 @@ pub fn build_config_ui_model(request: &ConfigUiRequest) -> Result<ConfigUiModel,
     let mars_config_path = user_config_paths::mars_config(&request.config_dir);
     let packaged_mars_config_path = user_config_paths::packaged_mars_config(&request.runtime_dir);
     let mars_config_exists = path_present(&mars_config_path);
-    let mars_config_owner = classify_path_owner(&mars_config_path, mars_config_exists);
     let packaged_mars_config = read_native_config_text(
         &packaged_mars_config_path,
         "read_packaged_mars_config",
@@ -201,6 +200,10 @@ pub fn build_config_ui_model(request: &ConfigUiRequest) -> Result<ConfigUiModel,
 
     let mut file_actions = Vec::with_capacity(2);
     if cursor_component_enabled {
+        let cursor_disabled_reason = native_file_action_disabled_reason(
+            &paths.user_cursor_config,
+            HOME_MANAGER_CURSORS_REMEDIATION,
+        );
         file_actions.push(ConfigUiFileAction {
             source_id: CURSORS_SOURCE_ID.to_string(),
             action_id: CURSORS_CONFIG_ACTION_ID.to_string(),
@@ -209,12 +212,13 @@ pub fn build_config_ui_model(request: &ConfigUiRequest) -> Result<ConfigUiModel,
             description: "Edit the complete Yazelix cursor registry.".to_string(),
             path: paths.user_cursor_config.clone(),
             exists: path_present(&paths.user_cursor_config),
-            read_only: path_owned_by_home_manager(&paths.user_cursor_config)
-                || path_is_read_only(&paths.user_cursor_config),
+            read_only: cursor_disabled_reason.is_some(),
             create_if_missing: true,
-            disabled_reason: None,
+            disabled_reason: cursor_disabled_reason,
         });
     }
+    let mars_disabled_reason =
+        native_file_action_disabled_reason(&mars_config_path, HOME_MANAGER_MARS_REMEDIATION);
     file_actions.push(ConfigUiFileAction {
         source_id: MARS_SOURCE_ID.to_string(),
         action_id: MARS_CONFIG_ACTION_ID.to_string(),
@@ -223,10 +227,9 @@ pub fn build_config_ui_model(request: &ConfigUiRequest) -> Result<ConfigUiModel,
         description: "Create or edit the sparse native Mars override.".to_string(),
         path: mars_config_path.clone(),
         exists: mars_config_exists,
-        read_only: mars_config_owner == ConfigUiPathOwner::HomeManager
-            || path_is_read_only(&mars_config_path),
+        read_only: mars_disabled_reason.is_some(),
         create_if_missing: true,
-        disabled_reason: None,
+        disabled_reason: mars_disabled_reason,
     });
 
     Ok(ConfigUiModel {
@@ -800,6 +803,23 @@ fn config_source(
         owner,
         read_only: owner == ConfigUiPathOwner::HomeManager || path_is_read_only(path),
     }
+}
+
+fn native_file_action_disabled_reason(
+    path: &Path,
+    home_manager_remediation: &str,
+) -> Option<String> {
+    if path_owned_by_home_manager(path) {
+        return Some(format!(
+            "Home Manager owns this file. {home_manager_remediation}"
+        ));
+    }
+    path_is_read_only(path).then(|| {
+        format!(
+            "This file is read-only: {}. Fix its permissions before editing it.",
+            path.display()
+        )
+    })
 }
 
 fn collect_sidecars(config_dir: &Path) -> Vec<ConfigUiSidecar> {

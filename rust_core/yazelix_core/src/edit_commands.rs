@@ -8,6 +8,7 @@ use crate::control_plane::{
     config_dir_from_env, config_override_from_env, load_normalized_config_for_control,
     runtime_dir_from_env, runtime_env_request,
 };
+use crate::native_config_status::path_owned_by_home_manager;
 use crate::user_config_paths;
 use serde_json::json;
 use std::fs;
@@ -20,6 +21,7 @@ struct EditTarget {
     id: &'static str,
     label: String,
     path: PathBuf,
+    home_manager_option: Option<&'static str>,
     aliases: &'static [&'static str],
     search: &'static str,
 }
@@ -57,6 +59,7 @@ fn get_edit_targets(config_dir: &Path) -> Vec<EditTarget> {
             id: "config",
             label: format!("config  - main Yazelix config → {}", user_config.display()),
             path: user_config,
+            home_manager_option: Some("programs.yazelix.config.settings"),
             aliases: &["config", "main", "settings", "config.toml"],
             search: "config main yazelix settings config.toml",
         },
@@ -67,6 +70,7 @@ fn get_edit_targets(config_dir: &Path) -> Vec<EditTarget> {
                 cursor_path.display()
             ),
             path: cursor_path,
+            home_manager_option: Some("programs.yazelix.config.cursors"),
             aliases: &[
                 "cursors",
                 "cursor",
@@ -84,6 +88,7 @@ fn get_edit_targets(config_dir: &Path) -> Vec<EditTarget> {
                 helix_path.display()
             ),
             path: helix_path,
+            home_manager_option: Some("programs.yazelix.config.helix.config"),
             aliases: &["helix", "hx", "editor"],
             search: "helix hx editor config config.toml",
         },
@@ -94,6 +99,7 @@ fn get_edit_targets(config_dir: &Path) -> Vec<EditTarget> {
                 zellij_path.display()
             ),
             path: zellij_path,
+            home_manager_option: Some("programs.yazelix.config.zellij"),
             aliases: &["zellij", "terminal", "config.kdl"],
             search: "zellij terminal config.kdl multiplexer",
         },
@@ -104,6 +110,7 @@ fn get_edit_targets(config_dir: &Path) -> Vec<EditTarget> {
                 zellij_plugins_path.display()
             ),
             path: zellij_plugins_path,
+            home_manager_option: None,
             aliases: &["zellij-plugins", "plugins.kdl"],
             search: "zellij plugins plugins.kdl multiplexer",
         },
@@ -114,6 +121,7 @@ fn get_edit_targets(config_dir: &Path) -> Vec<EditTarget> {
                 yazi_toml_path.display()
             ),
             path: yazi_toml_path,
+            home_manager_option: Some("programs.yazelix.config.yazi.config"),
             aliases: &["yazi", "yazi.toml", "file-manager"],
             search: "yazi yazi.toml file-manager file manager",
         },
@@ -124,6 +132,7 @@ fn get_edit_targets(config_dir: &Path) -> Vec<EditTarget> {
                 yazi_keymap_path.display()
             ),
             path: yazi_keymap_path,
+            home_manager_option: Some("programs.yazelix.config.yazi.keymap"),
             aliases: &["yazi-keymap", "keymap", "keymap.toml", "yazi keymap"],
             search: "yazi keymap keymap.toml file-manager bindings",
         },
@@ -134,6 +143,7 @@ fn get_edit_targets(config_dir: &Path) -> Vec<EditTarget> {
                 yazi_init_path.display()
             ),
             path: yazi_init_path,
+            home_manager_option: Some("programs.yazelix.config.yazi.init"),
             aliases: &["yazi-init", "init", "init.lua", "yazi init", "lua"],
             search: "yazi init init.lua lua file-manager plugins",
         },
@@ -267,6 +277,30 @@ fn resolve_editor_for_target(
         }
         Err(error) => Err(error),
     }
+}
+
+fn edit_target(runtime_dir: &Path, target: &EditTarget) -> Result<i32, CoreError> {
+    if path_owned_by_home_manager(&target.path) {
+        let remediation = target.home_manager_option.map_or_else(
+            || {
+                "Edit the Home Manager declaration that owns this file, then run home-manager switch; the Yazelix module does not own this sidecar."
+                    .to_string()
+            },
+            |option| format!("Edit {option}, then run home-manager switch."),
+        );
+        return Err(CoreError::classified(
+            ErrorClass::Config,
+            "home_manager_owned_config",
+            format!(
+                "This config file is owned by Home Manager: {}.",
+                target.path.display()
+            ),
+            remediation,
+            json!({ "path": target.path.display().to_string() }),
+        ));
+    }
+    let (editor, env_vars) = resolve_editor_for_target(runtime_dir, target)?;
+    exec_editor(&editor, &target.path, &env_vars)
 }
 
 fn config_edit_recovery_should_use_host_editor(error: &CoreError) -> bool {
@@ -509,8 +543,7 @@ pub fn run_yzx_edit(args: &[String]) -> Result<i32, CoreError> {
         };
 
         let runtime_dir = runtime_dir_from_env()?;
-        let (editor, env_vars) = resolve_editor_for_target(&runtime_dir, target)?;
-        return exec_editor(&editor, &target.path, &env_vars);
+        return edit_target(&runtime_dir, target);
     }
 
     let matches = filter_edit_targets(&targets, &query);
@@ -529,8 +562,7 @@ pub fn run_yzx_edit(args: &[String]) -> Result<i32, CoreError> {
             return Ok(0);
         }
         let runtime_dir = runtime_dir_from_env()?;
-        let (editor, env_vars) = resolve_editor_for_target(&runtime_dir, target)?;
-        return exec_editor(&editor, &target.path, &env_vars);
+        return edit_target(&runtime_dir, target);
     }
 
     if parsed.print {
@@ -546,8 +578,7 @@ pub fn run_yzx_edit(args: &[String]) -> Result<i32, CoreError> {
     };
 
     let runtime_dir = runtime_dir_from_env()?;
-    let (editor, env_vars) = resolve_editor_for_target(&runtime_dir, target)?;
-    exec_editor(&editor, &target.path, &env_vars)
+    edit_target(&runtime_dir, target)
 }
 
 pub fn run_yzx_edit_config(args: &[String]) -> Result<i32, CoreError> {
@@ -570,8 +601,7 @@ pub fn run_yzx_edit_config(args: &[String]) -> Result<i32, CoreError> {
     }
 
     let runtime_dir = runtime_dir_from_env()?;
-    let (editor, env_vars) = resolve_editor_for_target(&runtime_dir, target)?;
-    exec_editor(&editor, &target.path, &env_vars)
+    edit_target(&runtime_dir, target)
 }
 
 fn format_target_list(targets: &[EditTarget]) -> String {
@@ -619,6 +649,7 @@ fn print_edit_config_help() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tempfile::tempdir;
 
     // Defends: edit target filtering keeps exact id match, alias match, and token search.
     #[test]
@@ -691,6 +722,34 @@ mod tests {
             json!({}),
         );
         assert!(!config_edit_recovery_should_use_host_editor(&runtime_error));
+    }
+
+    // Regression: yzx edit opened Home Manager-owned sidecars in an editor that could not save them.
+    #[cfg(unix)]
+    #[test]
+    fn edit_refuses_home_manager_owned_sidecar_with_exact_option() {
+        use std::os::unix::fs::symlink;
+
+        let dir = tempdir().unwrap();
+        let owner_dir = dir.path().join("profile-home-manager-files");
+        fs::create_dir_all(&owner_dir).unwrap();
+        let owner = owner_dir.join("cursors.toml");
+        fs::write(&owner, "schema_version = 1\n").unwrap();
+        let target_path = dir.path().join("cursors.toml");
+        symlink(&owner, &target_path).unwrap();
+
+        let targets = get_edit_targets(dir.path());
+        let target = targets
+            .iter()
+            .find(|target| target.id == "cursors")
+            .unwrap();
+        let error = edit_target(Path::new("/tmp/runtime"), target).unwrap_err();
+
+        assert_eq!(error.code(), "home_manager_owned_config");
+        assert_eq!(
+            error.remediation(),
+            "Edit programs.yazelix.config.cursors, then run home-manager switch."
+        );
     }
 
     // Defends: editor normalization resolves yazelix_hx.sh relative to runtime_dir.

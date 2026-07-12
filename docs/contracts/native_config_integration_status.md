@@ -116,7 +116,8 @@ Rules:
 
 - Yazelix does not use native Yazi config read-only at launch
 - native Yazi import is explicit through `yzx import yazi`
-- native Yazi package, plugin, and flavor state is only copied by explicit import, then materialized from the Yazelix-managed Yazi home
+- native Yazi plugin and flavor state is copied only by explicit import, then materialized from the Yazelix-managed Yazi home
+- `yazi/package.toml` is copied only for preservation and remains dormant in Classic; `yazi/theme.toml` is Nova staging and Classic continues generating its runtime theme
 - the Yazelix-managed opener remains owned by Yazelix even when user sidecars exist
 
 ### Helix

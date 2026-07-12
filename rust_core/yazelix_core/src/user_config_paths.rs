@@ -14,6 +14,9 @@ pub const LEGACY_CURSOR_CONFIG_DIR: &str = "yazelix_cursors";
 pub const LEGACY_CURSOR_SETTINGS_CONFIG: &str = "settings.jsonc";
 pub const HELIX_CONFIG_DIR: &str = "helix";
 pub const HELIX_CONFIG: &str = "helix/config.toml";
+pub const HELIX_LANGUAGES: &str = "helix/languages.toml";
+pub const HELIX_MODULE: &str = "helix/helix.scm";
+pub const HELIX_INIT: &str = "helix/init.scm";
 pub const MARS_CONFIG: &str = "mars/config.toml";
 pub const FLAT_HELIX_CONFIG: &str = "helix.toml";
 pub const ZELLIJ_CONFIG: &str = "zellij/config.kdl";
@@ -24,6 +27,7 @@ pub const YAZI_CONFIG: &str = "yazi/yazi.toml";
 pub const YAZI_KEYMAP: &str = "yazi/keymap.toml";
 pub const YAZI_INIT: &str = "yazi/init.lua";
 pub const YAZI_PACKAGE: &str = "yazi/package.toml";
+pub const YAZI_THEME: &str = "yazi/theme.toml";
 pub const YAZI_PLUGINS_DIR: &str = "yazi/plugins";
 pub const YAZI_FLAVORS_DIR: &str = "yazi/flavors";
 pub const SHELL_BASH_HOOK: &str = "shell_bash.sh";
@@ -31,18 +35,21 @@ pub const SHELL_ZSH_HOOK: &str = "shell_zsh.zsh";
 pub const SHELL_FISH_HOOK: &str = "shell_fish.fish";
 pub const SHELL_NU_HOOK: &str = "shell_nu.nu";
 pub const SHELL_XONSH_HOOK: &str = "shell_xonsh.xsh";
+pub const NU_ENV: &str = "nu/env.nu";
+pub const NU_CONFIG: &str = "nu/config.nu";
+pub const STARSHIP_CONFIG: &str = "starship.toml";
 
 pub const CURRENT_MANAGED_CONFIG_FILE_NAMES: &[&str] = &[
     SETTINGS_CONFIG,
     CURSOR_CONFIG,
     HELIX_CONFIG,
+    HELIX_LANGUAGES,
     MARS_CONFIG,
     ZELLIJ_CONFIG,
     ZELLIJ_PLUGINS,
     YAZI_CONFIG,
     YAZI_KEYMAP,
     YAZI_INIT,
-    YAZI_PACKAGE,
     YAZI_PLUGINS_DIR,
     YAZI_FLAVORS_DIR,
     SHELL_BASH_HOOK,
@@ -50,6 +57,16 @@ pub const CURRENT_MANAGED_CONFIG_FILE_NAMES: &[&str] = &[
     SHELL_FISH_HOOK,
     SHELL_NU_HOOK,
     SHELL_XONSH_HOOK,
+];
+
+pub const NOVA_STAGING_CONFIG_FILE_NAMES: &[&str] = &[
+    HELIX_MODULE,
+    HELIX_INIT,
+    YAZI_PACKAGE,
+    YAZI_THEME,
+    NU_ENV,
+    NU_CONFIG,
+    STARSHIP_CONFIG,
 ];
 
 pub const LEGACY_CONFIG_ENTRY_NAMES: &[&str] = &[

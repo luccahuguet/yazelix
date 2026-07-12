@@ -310,7 +310,7 @@ fn yazi_statuses(request: &NativeConfigStatusRequest) -> Vec<NativeConfigStatusE
         ),
         (
             "yazi.package",
-            "Yazi package manifest",
+            "Preserved Yazi package manifest; dormant in Classic",
             user_config_paths::yazi_package(&request.config_dir),
             request.xdg_config_home.join("yazi").join("package.toml"),
         ),

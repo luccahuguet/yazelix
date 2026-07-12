@@ -27,8 +27,33 @@ Highlights:
 Manual action:
 - If Home Manager owns `~/.config/yazelix/settings.jsonc`, update the module and run `home-manager switch`; move retired native Zellij choices into `programs.yazelix.config.zellij.text` or `source`
 - If Home Manager owns `~/.config/yazelix_cursors/settings.jsonc`, update the module and run `home-manager switch` so it owns `~/.config/yazelix/cursors.toml`
-- Rewrite Home Manager semantic options under `programs.yazelix.config.settings`; remove `manage_config`, `manage_cursor_config`, `terminal`, `mars_package`, `runtime_tool_sources`, `components`, and `agent_usage_programs`; use `programs.yazelix.package` only for a complete package override
+- Rewrite Home Manager semantic options under `programs.yazelix.config.settings`; remove `manage_config`, `manage_cursor_config`, `terminal`, `mars_package`, `runtime_tool_sources`, `components`, and `agent_usage_programs`; remove an explicit `package = null`, and use `programs.yazelix.package` only for a complete package override
 - Review preserved `zellij/config.kdl` and `zellij/plugins.kdl` assignments before Nova; remove only values you want to inherit from Nova defaults
+
+Home Manager declarations move from broad options:
+
+```nix
+programs.yazelix = {
+  enable = true;
+  manage_config = true;
+  editor_command = "hx";
+  welcome_enabled = false;
+};
+```
+
+to the package-plus-sidecars shape:
+
+```nix
+programs.yazelix = {
+  enable = true;
+  config.settings = {
+    editor.command = "hx";
+    welcome.enabled = false;
+  };
+};
+```
+
+The [Home Manager migration mapping](./home_manager/README.md#migrating-an-older-declaration) lists every removed semantic option and its exact sparse TOML path
 
 ## v17.10 - 2026-07-11
 

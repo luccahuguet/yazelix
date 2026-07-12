@@ -15,6 +15,10 @@ use crate::native_config_status::{
 };
 use crate::runtime_apply_mode::RuntimeApplyMode;
 use crate::runtime_component_enabled;
+use crate::settings_surface::{
+    HOME_MANAGER_CURSORS_REMEDIATION, HOME_MANAGER_MARS_REMEDIATION,
+    HOME_MANAGER_SETTINGS_REMEDIATION,
+};
 use crate::settings_surface::{SETTINGS_SCHEMA_FILENAME, render_default_config};
 use crate::settings_surface::{
     is_settings_config_path, parse_config_value, read_config_value,

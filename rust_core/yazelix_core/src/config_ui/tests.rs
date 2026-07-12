@@ -254,3 +254,60 @@ fn home_manager_nova_root_is_read_only() {
         "[welcome]\nenabled = false\n"
     );
 }
+
+// Regression: read-only labels alone did not stop Ratconfig from opening Home Manager-owned native files in an editor.
+#[cfg(unix)]
+#[test]
+fn home_manager_native_file_actions_are_disabled_with_exact_remediation() {
+    use std::os::unix::fs::symlink;
+
+    let fixture = Fixture::new();
+    let hm_dir = fixture.config.path().join("profile-home-manager-files");
+    fs::create_dir_all(&hm_dir).unwrap();
+
+    let cursor_target = hm_dir.join("cursors.toml");
+    fs::write(
+        &cursor_target,
+        yazelix_cursors::DEFAULT_CURSOR_CONFIG_TEMPLATE,
+    )
+    .unwrap();
+    symlink(
+        &cursor_target,
+        user_config_paths::cursor_config(fixture.config.path()),
+    )
+    .unwrap();
+
+    let mars_target = hm_dir.join("mars.toml");
+    fs::write(&mars_target, "[window]\nopacity = 0.9\n").unwrap();
+    let mars_path = user_config_paths::mars_config(fixture.config.path());
+    fs::create_dir_all(mars_path.parent().unwrap()).unwrap();
+    symlink(&mars_target, &mars_path).unwrap();
+
+    let model = fixture.model();
+    for (action_id, option) in [
+        (CURSORS_CONFIG_ACTION_ID, "programs.yazelix.config.cursors"),
+        (MARS_CONFIG_ACTION_ID, "programs.yazelix.config.mars"),
+    ] {
+        let action = model
+            .file_actions
+            .iter()
+            .find(|action| action.action_id == action_id)
+            .unwrap();
+        assert!(action.read_only);
+        assert!(
+            action
+                .disabled_reason
+                .as_deref()
+                .is_some_and(|reason| reason.contains(option))
+        );
+    }
+
+    let mut app = fixture.app();
+    let error = app
+        .write_source_field_value(CURSORS_SOURCE_ID, "cursors.settings.trail", &json!("reef"))
+        .unwrap_err();
+    assert_eq!(
+        error.remediation(),
+        "Edit programs.yazelix.config.cursors, then run home-manager switch."
+    );
+}

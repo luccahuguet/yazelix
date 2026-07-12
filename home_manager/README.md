@@ -148,8 +148,25 @@ Migration mapping
 | --- | --- |
 | `manage_config` | Declare `config.settings` when Home Manager should own `config.toml`, otherwise omit it |
 | `manage_cursor_config` | Declare `config.cursors.text` or `config.cursors.source` |
-| `terminal` and `mars_package` | Use the complete `package` option, or configure a host terminal to run `yzx enter` |
-| Per-setting semantic options | Move values under `config.settings` using their `config.toml` paths |
+| Explicit `package = null` | Remove the assignment to use the default complete package |
+| `terminal = "mars"` | Remove the assignment because the default complete package owns Mars |
+| `mars_package` | Build a complete compatible Yazelix package and pass it through `package` |
+| `open_log_level` | `config.settings.open.log_level` |
+| `shell_program` | `config.settings.shell.program` |
+| `editor_command` | `config.settings.editor.command` |
+| `agent_command` | `config.settings.agent.command` |
+| `agent_args` | `config.settings.agent.args` |
+| `welcome_enabled` | `config.settings.welcome.enabled` |
+| `welcome_style` | `config.settings.welcome.style` |
+| `welcome_duration_seconds` | `config.settings.welcome.duration_seconds` |
+| `popup_side_margin` | `config.settings.popup.side_margin` |
+| `popup_vertical_margin` | `config.settings.popup.vertical_margin` |
+| `keybinding_config` | `config.settings.keybindings.config` |
+| `keybinding_agent` | `config.settings.keybindings.agent` |
+| `keybinding_git` | `config.settings.keybindings.git` |
+| `keybinding_menu` | `config.settings.keybindings.menu` |
+| `bar_widgets` | `config.settings.bar.widgets` |
+| `popups` | `config.settings.popups` |
 | `runtime_tool_sources` | No Home Manager replacement |
 | `components` | No Home Manager replacement |
 | `agent_usage_programs` | No Home Manager replacement |

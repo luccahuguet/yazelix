@@ -31,6 +31,12 @@ pub const SETTINGS_SCHEMA_FILENAME: &str = "yazelix_settings.schema.json";
 pub const DEFAULT_MAIN_CONFIG_FILENAME: &str = "config_default.toml";
 pub const CLASSIC_MAIN_CONFIG_FILENAME: &str = "classic_config_default.toml";
 pub const CLASSIC_MAIN_CONTRACT_FILENAME: &str = "classic_main_config_contract.toml";
+pub const HOME_MANAGER_SETTINGS_REMEDIATION: &str =
+    "Edit programs.yazelix.config.settings, then run home-manager switch.";
+pub const HOME_MANAGER_CURSORS_REMEDIATION: &str =
+    "Edit programs.yazelix.config.cursors, then run home-manager switch.";
+pub const HOME_MANAGER_MARS_REMEDIATION: &str =
+    "Edit programs.yazelix.config.mars, then run home-manager switch.";
 #[derive(Debug, Clone)]
 pub struct SettingsSurfacePaths {
     pub settings_config: PathBuf,

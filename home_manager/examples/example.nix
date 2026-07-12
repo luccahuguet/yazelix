@@ -1,10 +1,9 @@
-# Yazelix Home Manager package-plus-sidecars example
-{ inputs, pkgs, ... }:
+# Yazelix Home Manager sparse config and sidecars example
+{ ... }:
 
 {
   programs.yazelix = {
     enable = true;
-    package = inputs.yazelix.packages.${pkgs.stdenv.hostPlatform.system}.yazelix;
 
     config.settings = {
       editor.command = "hx";
@@ -16,7 +15,6 @@
       };
     };
 
-    config.cursors.source = ./cursors.toml;
     config.mars.text = ''
       [window]
       opacity = 0.9

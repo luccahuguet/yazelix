@@ -138,9 +138,9 @@ fn config_owners() -> Vec<SurfaceOwnerEntry> {
             validation: vec!["yzx_repo_validator validate-config-surface-contract".to_string()],
         },
         SurfaceOwnerEntry {
-            surface: "programs.yazelix Home Manager options".to_string(),
+            surface: "programs.yazelix package-plus-sidecars Home Manager API".to_string(),
             owner: "home_manager/module.nix".to_string(),
-            source: "config_metadata/main_config_contract.toml".to_string(),
+            source: "docs/contracts/nix_customization_surfaces.md".to_string(),
             validation: vec![
                 "yzx_repo_validator validate-config-surface-contract".to_string(),
                 "yzx_repo_validator validate-nix-customization-api".to_string(),

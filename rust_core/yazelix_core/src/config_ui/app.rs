@@ -363,11 +363,16 @@ impl YazelixConfigUiHost<'_> {
         }
         let target_exists = path_present(&target.path);
         if classify_path_owner(&target.path, target_exists) == ConfigUiPathOwner::HomeManager {
+            let remediation = match target.kind {
+                ConfigUiEditTargetKind::Main => HOME_MANAGER_SETTINGS_REMEDIATION,
+                ConfigUiEditTargetKind::Cursors => HOME_MANAGER_CURSORS_REMEDIATION,
+                ConfigUiEditTargetKind::Mars => HOME_MANAGER_MARS_REMEDIATION,
+            };
             return Err(CoreError::classified(
                 ErrorClass::Config,
                 "home_manager_owned_config",
-                "This settings file is owned by Home Manager.",
-                "Edit your Home Manager module options instead, then run home-manager switch.",
+                "This config file is owned by Home Manager.",
+                remediation,
                 json!({ "path": target.path.display().to_string() }),
             ));
         }
@@ -405,6 +410,20 @@ impl YazelixConfigUiHost<'_> {
             && action_id == CURSORS_CONFIG_ACTION_ID
             && path == cursor_path
         {
+            let home_manager_owned = path_owned_by_home_manager(path);
+            if home_manager_owned || path_is_read_only(path) {
+                return Err(CoreError::classified(
+                    ErrorClass::Config,
+                    "read_only_cursor_config",
+                    "The cursor registry is read-only.",
+                    if home_manager_owned {
+                        HOME_MANAGER_CURSORS_REMEDIATION
+                    } else {
+                        "Fix the file permissions before retrying."
+                    },
+                    json!({ "path": path.display().to_string() }),
+                ));
+            }
             yazelix_cursors::initialize_cursor_config(path)?;
             "cursors"
         } else {
@@ -459,7 +478,11 @@ pub(super) fn prepare_mars_config_file(request: &ConfigUiRequest) -> Result<(), 
                 ErrorClass::Config,
                 "read_only_mars_config",
                 "The Mars override is read-only.",
-                "Edit its owning configuration source or fix its permissions before retrying.",
+                if path_owned_by_home_manager(&path) {
+                    HOME_MANAGER_MARS_REMEDIATION
+                } else {
+                    "Fix the file permissions before retrying."
+                },
                 json!({ "path": path.display().to_string() }),
             ));
         }
