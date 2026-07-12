@@ -8,7 +8,8 @@ use crate::backup_timestamp::compact_utc_backup_timestamp;
 use crate::bridge::{CoreError, ErrorClass};
 use crate::classic_nova_root_translation::{
     ClassicNovaDisposition, ClassicNovaReportEntry, PACKAGED_NON_POPUP_CHORDS, POPUP_ROLE_MAPPINGS,
-    chord_matches, executable, translate_classic_root, valid_chord, valid_popup_id,
+    chord_matches, executable, is_classic_managed_editor, translate_classic_root, valid_chord,
+    valid_popup_id,
 };
 use crate::config_normalize::validate_classic_config_table;
 use crate::native_config_status::{path_owned_by_home_manager, path_present};
@@ -262,7 +263,10 @@ fn migrate_with(
         let raw = read_source(&config)?;
         let root = parse_toml_root(&config, &raw)?;
         reject_embedded_cursor_settings(&root, &config)?;
-        if has_classic_evidence(&root) && has_nova_evidence(&root) {
+        let nova_evidence = has_nova_evidence(&root);
+        let classic_evidence = has_classic_evidence(&root)
+            || (!nova_evidence && has_classic_only_editor_evidence(&root));
+        if classic_evidence && nova_evidence {
             return Err(migration_error(
                 "mixed_classic_nova_root",
                 "config.toml mixes Classic-only and Nova-only settings.",
@@ -271,7 +275,7 @@ fn migrate_with(
             ));
         }
         let nova_validation = validate_nova_root(&root);
-        if nova_validation.is_ok() {
+        if nova_validation.is_ok() && !classic_evidence {
             return Ok(outcome(
                 ClassicNovaMigrationStatus::NovaUnchanged,
                 config,
@@ -279,7 +283,7 @@ fn migrate_with(
                 None,
             ));
         }
-        if has_nova_evidence(&root) {
+        if nova_evidence {
             return Err(migration_error(
                 "invalid_nova_root",
                 format!(
@@ -297,7 +301,7 @@ fn migrate_with(
             &config,
         ) {
             Ok(_) => {}
-            Err(classic_error) if !has_classic_evidence(&root) => {
+            Err(classic_error) if !classic_evidence => {
                 return Err(migration_error(
                     "ambiguous_root_schema",
                     "config.toml is neither a valid Nova root nor an identifiable Classic root.",
@@ -559,7 +563,7 @@ fn remove_legacy_native_zellij_fields(
         .collect())
 }
 
-fn validate_nova_root(root: &Table) -> Result<(), String> {
+pub(crate) fn validate_nova_root(root: &Table) -> Result<(), String> {
     let nova = Value::Table(root.clone())
         .try_into::<NovaRoot>()
         .map_err(|error| error.to_string())?;
@@ -748,6 +752,12 @@ fn has_classic_evidence(root: &Table) -> bool {
         .any(|key| root.contains_key(*key))
         || value_at(root, "shell.default_shell").is_some()
         || value_at(root, "editor.hide_sidebar_on_file_open").is_some()
+}
+
+fn has_classic_only_editor_evidence(root: &Table) -> bool {
+    value_at(root, "editor.command")
+        .and_then(Value::as_str)
+        .is_some_and(|command| command.is_empty() || is_classic_managed_editor(command))
 }
 
 fn has_nova_evidence(root: &Table) -> bool {

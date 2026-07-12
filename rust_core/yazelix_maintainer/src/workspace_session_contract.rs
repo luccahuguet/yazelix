@@ -40,7 +40,7 @@ pub fn validate_workspace_session_contract(repo_root: &Path) -> Result<Vec<Strin
     let mut errors = Vec::new();
     errors.extend(validate_workspace_assets_for_repo(repo_root)?);
     errors.extend(validate_internal_zellij_control_surface(repo_root)?);
-    errors.extend(validate_pane_orchestrator_pipe_surface(repo_root)?);
+    errors.extend(validate_pane_orchestrator_pipe_surface());
     errors.extend(validate_yazi_workspace_entrypoints(repo_root)?);
     Ok(errors)
 }
@@ -61,7 +61,7 @@ fn validate_internal_zellij_control_surface(repo_root: &Path) -> Result<Vec<Stri
     Ok(errors)
 }
 
-fn validate_pane_orchestrator_pipe_surface(repo_root: &Path) -> Result<Vec<String>, String> {
+fn validate_pane_orchestrator_pipe_surface() -> Vec<String> {
     let mut errors = Vec::new();
     for command in SEMANTIC_KEYBINDING_BOUND_PIPE_COMMANDS {
         if !ZELLIJ_ACTIONS
@@ -73,15 +73,17 @@ fn validate_pane_orchestrator_pipe_surface(repo_root: &Path) -> Result<Vec<Strin
             ));
         }
     }
-    let default_config = read_repo_file(repo_root, &["config_default.toml"])?;
     for action in REQUIRED_ZELLIJ_SEMANTIC_ACTION_IDS {
-        if !default_config.contains(&format!("\"{action}\": [")) {
+        if !ZELLIJ_ACTIONS
+            .iter()
+            .any(|spec| spec.action.local_id == *action)
+        {
             errors.push(format!(
-                "Default config no longer declares semantic Zellij keybinding action `{action}`"
+                "Classic action registry no longer declares required workspace action `{action}`"
             ));
         }
     }
-    Ok(errors)
+    errors
 }
 
 fn validate_yazi_workspace_entrypoints(repo_root: &Path) -> Result<Vec<String>, String> {

@@ -300,6 +300,43 @@ pub fn runtime_materialization_plan_request_from_env(
     })
 }
 
+pub fn runtime_materialization_diagnostic_request_from_env(
+    config_override: Option<&str>,
+) -> Result<(RuntimeMaterializationPlanRequest, Option<CoreError>), CoreError> {
+    match runtime_materialization_plan_request_from_env(config_override) {
+        Ok(request) => Ok((request, None)),
+        Err(error) if matches!(error.class(), ErrorClass::Config) => {
+            let runtime_dir = runtime_dir_from_env()?;
+            let config_dir = config_dir_from_env()?;
+            let paths = primary_config_paths(&runtime_dir, &config_dir);
+            let state_dir = state_dir_from_env()?;
+            let zellij_config_dir = state_dir.join("configs").join("zellij");
+            let config_path = config_override
+                .map(str::trim)
+                .filter(|value| !value.is_empty())
+                .map(PathBuf::from)
+                .unwrap_or(paths.user_config);
+            Ok((
+                RuntimeMaterializationPlanRequest {
+                    config_path,
+                    default_config_path: paths.default_config_path,
+                    contract_path: paths.contract_path,
+                    runtime_dir,
+                    state_path: state_dir.join("state").join("rebuild_hash"),
+                    yazi_config_dir: state_dir.join("configs").join("yazi"),
+                    zellij_layout_dir: zellij_config_dir.join("layouts"),
+                    zellij_config_dir,
+                    zellij_permissions_cache_path: Some(zellij_permissions_cache_path()?),
+                    layout_override: runtime_materialization_layout_override_from_env(),
+                    session_terminal_label: None,
+                },
+                Some(error),
+            ))
+        }
+        Err(error) => Err(error),
+    }
+}
+
 pub fn config_state_compute_request_from_env(
     config_override: Option<&str>,
 ) -> Result<ComputeConfigStateRequest, CoreError> {
@@ -570,6 +607,7 @@ pub fn run_child_in_runtime_env(
     for (k, v) in std::env::vars_os() {
         c.env(k, v);
     }
+    clear_unowned_editor_env(&mut c, runtime_env);
     for (k, v) in json_map_to_child_env(runtime_env) {
         c.env(k, v);
     }
@@ -612,6 +650,7 @@ pub fn setpriv_or_sh_exec(
     for (k, v) in std::env::vars_os() {
         cmd.env(k, v);
     }
+    clear_unowned_editor_env(&mut cmd, runtime_env);
     for (k, v) in json_map_to_child_env(runtime_env) {
         cmd.env(k, v);
     }
@@ -628,6 +667,17 @@ pub fn setpriv_or_sh_exec(
             source,
         )
     })
+}
+
+pub(crate) fn clear_unowned_editor_env(
+    command: &mut Command,
+    runtime_env: &JsonMap<String, JsonValue>,
+) {
+    for key in ["YAZELIX_MANAGED_HELIX_BINARY", "HELIX_RUNTIME"] {
+        if !runtime_env.contains_key(key) {
+            command.env_remove(key);
+        }
+    }
 }
 
 #[cfg(test)]

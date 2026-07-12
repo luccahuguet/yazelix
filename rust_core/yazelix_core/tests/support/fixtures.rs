@@ -48,6 +48,16 @@ pub fn write_runtime_contract_assets(repo: &Path, runtime_dir: &Path) {
         runtime_dir.join("config_metadata/main_config_contract.toml"),
     )
     .unwrap();
+    fs::copy(
+        repo.join("config_metadata/classic_main_config_contract.toml"),
+        runtime_dir.join("config_metadata/classic_main_config_contract.toml"),
+    )
+    .unwrap();
+    fs::copy(
+        repo.join("config_metadata/classic_config_default.toml"),
+        runtime_dir.join("config_metadata/classic_config_default.toml"),
+    )
+    .unwrap();
     fs::write(runtime_dir.join("runtime_variant"), "mars\n").unwrap();
     fs::write(
         runtime_dir.join("runtime_identity.json"),

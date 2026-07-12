@@ -2,19 +2,9 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://yazelix.com/schemas/yazelix_settings.schema.json",
   "title": "Yazelix Settings",
-  "description": "Canonical Yazelix config UI inventory. Main runtime semantics use ~/.config/yazelix/config.toml and config_metadata/main_config_contract.toml; cursor settings use ~/.config/yazelix/cursors.toml and are composed into the config UI under cursors.",
+  "description": "Canonical sparse Yazelix Nova root inventory. Native tool configs and cursor settings remain separate sidecars under ~/.config/yazelix/.",
   "type": "object",
   "additionalProperties": false,
-  "required": [
-    "core",
-    "helix",
-    "editor",
-    "workspace",
-    "shell",
-    "appearance",
-    "zellij",
-    "yazi"
-  ],
   "x-yazelix": {
     "canonical_file": "config.toml",
     "cursor_file": "~/.config/yazelix/cursors.toml",
@@ -36,29 +26,77 @@
     ]
   },
   "properties": {
-    "core": {
+    "open": {
       "type": "object",
-      "description": "General Yazelix runtime behavior and welcome screen settings",
-      "required": [
-        "debug_mode",
-        "skip_welcome_screen",
-        "show_macchina_on_welcome",
-        "welcome_style",
-        "game_of_life_cell_style",
-        "welcome_duration_seconds"
-      ],
+      "description": "Managed open diagnostics",
       "additionalProperties": false,
       "properties": {
-        "debug_mode": {
+        "log_level": {
+          "type": "string",
+          "enum": [
+            "off",
+            "error",
+            "info",
+            "debug"
+          ]
+        }
+      }
+    },
+    "shell": {
+      "type": "object",
+      "description": "Packaged shell selection",
+      "additionalProperties": false,
+      "properties": {
+        "program": {
+          "type": "string",
+          "enum": [
+            "nu",
+            "bash",
+            "zsh",
+            "fish"
+          ]
+        }
+      }
+    },
+    "editor": {
+      "type": "object",
+      "description": "Managed editor selection",
+      "additionalProperties": false,
+      "properties": {
+        "command": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^\\S+$"
+        }
+      }
+    },
+    "agent": {
+      "type": "object",
+      "description": "Managed agent command",
+      "additionalProperties": false,
+      "properties": {
+        "command": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^\\S+$"
+        },
+        "args": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "welcome": {
+      "type": "object",
+      "description": "Startup welcome behavior",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
           "type": "boolean"
         },
-        "skip_welcome_screen": {
-          "type": "boolean"
-        },
-        "show_macchina_on_welcome": {
-          "type": "boolean"
-        },
-        "welcome_style": {
+        "style": {
           "type": "string",
           "enum": [
             "static",
@@ -73,346 +111,57 @@
             "random"
           ]
         },
-        "game_of_life_cell_style": {
+        "duration_seconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 60
+        }
+      }
+    },
+    "popup": {
+      "type": "object",
+      "description": "Managed popup margins",
+      "additionalProperties": false,
+      "properties": {
+        "side_margin": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "vertical_margin": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "keybindings": {
+      "type": "object",
+      "description": "Managed popup key chords",
+      "additionalProperties": false,
+      "properties": {
+        "config": {
           "type": "string",
-          "enum": [
-            "full_block",
-            "dotted"
-          ]
+          "minLength": 1
         },
-        "welcome_duration_seconds": {
-          "type": "number",
-          "minimum": 0.2,
-          "maximum": 8.0
-        }
-      },
-      "x-yazelix": {
-        "tab": "general"
-      }
-    },
-    "helix": {
-      "type": "object",
-      "description": "Helix-specific runtime integration settings",
-      "required": [
-        "steel_plugins"
-      ],
-      "additionalProperties": false,
-      "properties": {
-        "external": {
-          "type": "object",
-          "required": [
-            "binary",
-            "runtime_path"
-          ],
-          "additionalProperties": false,
-          "properties": {
-            "binary": {
-              "type": "string"
-            },
-            "runtime_path": {
-              "type": "string"
-            }
-          }
-        },
-        "steel_plugins": {
-          "type": "object",
-          "description": "Child-packaged bundled Helix Steel plugin ids plus user-owned plugin manifests copied from ~/.config/yazelix/helix/steel_plugins",
-          "required": [
-            "enabled",
-            "extra"
-          ],
-          "additionalProperties": false,
-          "properties": {
-            "enabled": {
-              "type": "array",
-              "items": {
-                "type": "string",
-                "minLength": 1,
-                "pattern": "^[A-Za-z0-9_.-]+$"
-              },
-              "uniqueItems": true
-            },
-            "extra": {
-              "type": "array",
-              "items": {
-                "type": "object",
-                "required": [
-                  "id",
-                  "source"
-                ],
-                "additionalProperties": false,
-                "properties": {
-                  "id": {
-                    "type": "string",
-                    "minLength": 1,
-                    "pattern": "^[A-Za-z0-9_.-]+$"
-                  },
-                  "source": {
-                    "type": "string",
-                    "minLength": 1,
-                    "pattern": "^[A-Za-z0-9_./-]+\\.scm$",
-                    "not": {
-                      "anyOf": [
-                        {
-                          "pattern": "^/"
-                        },
-                        {
-                          "pattern": "\\\\"
-                        },
-                        {
-                          "pattern": "(^|/)\\.\\.?(/|$)"
-                        },
-                        {
-                          "pattern": "//"
-                        }
-                      ]
-                    }
-                  },
-                  "support_files": {
-                    "type": "array",
-                    "items": {
-                      "type": "string",
-                      "minLength": 1,
-                      "pattern": "^[A-Za-z0-9_./-]+\\.scm$",
-                      "not": {
-                        "anyOf": [
-                          {
-                            "pattern": "^/"
-                          },
-                          {
-                            "pattern": "\\\\"
-                          },
-                          {
-                            "pattern": "(^|/)\\.\\.?(/|$)"
-                          },
-                          {
-                            "pattern": "//"
-                          }
-                        ]
-                      }
-                    },
-                    "uniqueItems": true
-                  },
-                  "public_commands": {
-                    "type": "array",
-                    "items": {
-                      "type": "string",
-                      "minLength": 1,
-                      "pattern": "^[A-Za-z0-9_.!?+*/<=>-]+$"
-                    }
-                  },
-                  "internal_commands": {
-                    "type": "array",
-                    "items": {
-                      "type": "string",
-                      "minLength": 1,
-                      "pattern": "^[A-Za-z0-9_.!?+*/<=>-]+$"
-                    }
-                  },
-                  "startup_commands": {
-                    "type": "array",
-                    "items": {
-                      "type": "string",
-                      "minLength": 1,
-                      "pattern": "^[A-Za-z0-9_.!?+*/<=>-]+$"
-                    }
-                  },
-                  "command_descriptions": {
-                    "type": "object",
-                    "propertyNames": {
-                      "pattern": "^[A-Za-z0-9_.!?+*/<=>-]+$"
-                    },
-                    "additionalProperties": {
-                      "type": "string"
-                    }
-                  },
-                  "startup_condition": {
-                    "anyOf": [
-                      {
-                        "type": "null"
-                      },
-                      {
-                        "type": "string",
-                        "enum": [
-                          "show_splash"
-                        ]
-                      }
-                    ]
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-      "x-yazelix": {
-        "tab": "editor"
-      }
-    },
-    "editor": {
-      "type": "object",
-      "description": "Editor command and editor integration settings",
-      "required": [
-        "command",
-        "hide_sidebar_on_file_open"
-      ],
-      "additionalProperties": false,
-      "properties": {
-        "command": {
-          "type": "string"
-        },
-        "hide_sidebar_on_file_open": {
-          "type": "boolean"
-        }
-      },
-      "x-yazelix": {
-        "tab": "editor"
-      }
-    },
-    "workspace": {
-      "type": "object",
-      "description": "Workspace sidebars and pane placement settings",
-      "required": [
-        "left_sidebar",
-        "right_sidebar"
-      ],
-      "additionalProperties": false,
-      "properties": {
-        "left_sidebar": {
-          "type": "object",
-          "required": [
-            "command",
-            "args",
-            "width_percent"
-          ],
-          "additionalProperties": false,
-          "properties": {
-            "command": {
-              "type": "string"
-            },
-            "args": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            },
-            "width_percent": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 48
-            }
-          }
-        },
-        "right_sidebar": {
-          "type": "object",
-          "required": [
-            "command",
-            "args",
-            "width_percent"
-          ],
-          "additionalProperties": false,
-          "properties": {
-            "command": {
-              "type": "string"
-            },
-            "args": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            },
-            "width_percent": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 48
-            }
-          }
-        }
-      },
-      "x-yazelix": {
-        "tab": "workspace"
-      }
-    },
-    "shell": {
-      "type": "object",
-      "description": "Default shell settings for Yazelix panes",
-      "required": [
-        "default_shell"
-      ],
-      "additionalProperties": false,
-      "properties": {
-        "default_shell": {
+        "agent": {
           "type": "string",
-          "enum": [
-            "nu",
-            "bash",
-            "fish",
-            "xonsh",
-            "zsh"
-          ]
-        }
-      },
-      "x-yazelix": {
-        "tab": "shell"
-      }
-    },
-    "appearance": {
-      "type": "object",
-      "description": "Global Yazelix appearance mode used by generated themes",
-      "required": [
-        "mode"
-      ],
-      "additionalProperties": false,
-      "properties": {
-        "mode": {
+          "minLength": 1
+        },
+        "git": {
           "type": "string",
-          "enum": [
-            "dark",
-            "light",
-            "auto"
-          ]
+          "minLength": 1
+        },
+        "menu": {
+          "type": "string",
+          "minLength": 1
         }
-      },
-      "x-yazelix": {
-        "tab": "appearance"
       }
     },
-    "zellij": {
+    "bar": {
       "type": "object",
-      "description": "Zellij chrome, widgets, popup, and screen-saver settings",
-      "required": [
-        "support_kitty_keyboard_protocol",
-        "theme",
-        "widget_tray",
-        "widget_frame",
-        "widget_separator",
-        "tab_label_mode",
-        "claude_usage_display",
-        "codex_usage_display",
-        "opencode_go_usage_display",
-        "codex_usage_periods",
-        "opencode_go_usage_periods",
-        "claude_usage_periods",
-        "custom_text",
-        "popup_commands",
-        "custom_popups",
-        "popup_width_percent",
-        "popup_height_percent",
-        "screen_saver_enabled",
-        "screen_saver_idle_seconds",
-        "screen_saver_style",
-        "native_keybindings",
-        "keybindings"
-      ],
+      "description": "Top-bar widget order",
       "additionalProperties": false,
       "properties": {
-        "support_kitty_keyboard_protocol": {
-          "type": "boolean"
-        },
-        "theme": {
-          "type": "string"
-        },
-        "widget_tray": {
+        "widgets": {
           "type": "array",
           "items": {
             "type": "string",
@@ -421,7 +170,6 @@
               "editor",
               "shell",
               "term",
-              "workspace",
               "claude_usage",
               "codex_usage",
               "opencode_go_usage",
@@ -429,266 +177,49 @@
               "ram"
             ]
           }
-        },
-        "widget_frame": {
-          "type": "string",
-          "enum": [
-            "none",
-            "square",
-            "round"
-          ]
-        },
-        "widget_separator": {
-          "type": "string",
-          "enum": [
-            "dot",
-            "pipe",
-            "empty",
-            "space"
-          ]
-        },
-        "tab_label_mode": {
-          "type": "string",
-          "enum": [
-            "full",
-            "compact"
-          ]
-        },
-        "claude_usage_display": {
-          "type": "string",
-          "enum": [
-            "token",
-            "quota",
-            "both"
-          ]
-        },
-        "codex_usage_display": {
-          "type": "string",
-          "enum": [
-            "token",
-            "quota",
-            "both"
-          ]
-        },
-        "codex_usage_periods": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "enum": [
-              "5h",
-              "week"
-            ]
-          }
-        },
-        "opencode_go_usage_display": {
-          "type": "string",
-          "enum": [
-            "token",
-            "quota",
-            "both"
-          ]
-        },
-        "opencode_go_usage_periods": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "enum": [
-              "5h",
-              "week",
-              "month"
-            ]
-          }
-        },
-        "claude_usage_periods": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "enum": [
-              "5h",
-              "week"
-            ]
-          }
-        },
-        "custom_text": {
-          "type": "string"
-        },
-        "popup_commands": {
-          "type": "object",
-          "description": "Commands for built-in Yazelix popup surfaces",
-          "required": [
-            "bottom_popup",
-            "top_popup",
-            "menu"
-          ],
-          "additionalProperties": false,
-          "properties": {
-            "bottom_popup": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            },
-            "top_popup": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            },
-            "menu": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            }
-          }
-        },
-        "custom_popups": {
-          "type": "array",
-          "description": "User-defined Yazelix popup surfaces",
-          "items": {
-            "type": "object",
-            "required": [
-              "id",
-              "command",
-              "keybindings"
-            ],
-            "additionalProperties": false,
-            "properties": {
-              "id": {
-                "type": "string",
-                "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
-              },
-              "command": {
-                "type": "array",
-                "items": {
-                  "type": "string"
-                },
-                "minItems": 1
-              },
-              "keybindings": {
-                "type": "array",
-                "items": {
-                  "type": "string"
-                }
-              },
-              "keep_alive": {
-                "type": [
-                  "boolean",
-                  "null"
-                ],
-                "description": "Hide the focused popup on toggle instead of closing its process"
-              }
-            }
-          }
-        },
-        "popup_width_percent": {
-          "type": "integer",
-          "minimum": 1,
-          "maximum": 100
-        },
-        "popup_height_percent": {
-          "type": "integer",
-          "minimum": 1,
-          "maximum": 100
-        },
-        "screen_saver_enabled": {
-          "type": "boolean"
-        },
-        "screen_saver_idle_seconds": {
-          "type": "integer",
-          "minimum": 10,
-          "maximum": 86400
-        },
-        "screen_saver_style": {
-          "type": "string",
-          "enum": [
-            "logo",
-            "boids",
-            "boids_predator",
-            "boids_schools",
-            "mandelbrot",
-            "game_of_life_gliders",
-            "game_of_life_oscillators",
-            "game_of_life_bloom",
-            "random"
-          ]
-        },
-        "keybindings": {
-          "type": "object",
-          "description": "Semantic remaps for Yazelix-owned Zellij actions",
-          "additionalProperties": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          }
-        },
-        "native_keybindings": {
-          "type": "object",
-          "description": "Curated native Zellij key policy remaps and unbinds managed by Yazelix",
-          "additionalProperties": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          }
         }
-      },
-      "x-yazelix": {
-        "tab": "workspace"
       }
     },
-    "yazi": {
+    "popups": {
       "type": "object",
-      "description": "Yazi theme, plugin, sorting, and command settings",
-      "required": [
-        "command",
-        "ya_command",
-        "plugins",
-        "theme",
-        "sort_by",
-        "keybindings"
-      ],
-      "additionalProperties": false,
-      "properties": {
-        "command": {
-          "type": "string"
-        },
-        "ya_command": {
-          "type": "string"
-        },
-        "plugins": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "theme": {
-          "type": "string"
-        },
-        "sort_by": {
-          "type": "string",
-          "enum": [
-            "alphabetical",
-            "natural",
-            "modified",
-            "created",
-            "size"
-          ]
-        },
-        "keybindings": {
-          "type": "object",
-          "description": "Semantic remaps for Yazelix-owned Yazi integration actions",
-          "additionalProperties": {
+      "description": "Custom managed popup definitions keyed by stable id",
+      "propertyNames": {
+        "pattern": "^[A-Za-z_][A-Za-z0-9_-]*$"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "description": "Custom managed popup",
+        "required": [
+          "command",
+          "keybinding"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "command": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^\\S+$"
+          },
+          "args": {
             "type": "array",
             "items": {
-              "type": "string"
+              "type": "string",
+              "pattern": ".*\\S.*"
             }
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": ".*\\S.*"
+          },
+          "keybinding": {
+            "type": "string",
+            "minLength": 1
+          },
+          "keep_alive": {
+            "type": "boolean"
           }
         }
-      },
-      "x-yazelix": {
-        "tab": "file_manager"
       }
     },
     "cursors": {
@@ -755,7 +286,7 @@
             "duration": {
               "type": "number",
               "minimum": 0.25,
-              "maximum": 4.0
+              "maximum": 4
             },
             "kitty_enable_cursor": {
               "type": "boolean"

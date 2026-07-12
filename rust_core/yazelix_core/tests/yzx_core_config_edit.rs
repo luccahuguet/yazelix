@@ -9,9 +9,7 @@ use yazelix_core::user_config_paths::cursor_config;
 mod support;
 
 use support::commands::yzx_control_command;
-use support::fixtures::{
-    prepend_path, repo_root, write_executable_script, write_runtime_contract_assets,
-};
+use support::fixtures::{repo_root, write_runtime_contract_assets};
 
 fn with_config_env(
     command: &mut assert_cmd::Command,
@@ -39,12 +37,12 @@ fn config_set_and_unset_edit_config_toml() {
 
     let mut set = yzx_control_command();
     with_config_env(&mut set, &home, &runtime, &config);
-    set.args(["config", "set", "editor.hide_sidebar_on_file_open", "true"]);
+    set.args(["config", "set", "welcome.enabled", "true"]);
     set.assert().success();
 
     let settings_path = config.join("config.toml");
     let value = read_config_value(&settings_path).expect("settings after set");
-    assert_eq!(value["editor"]["hide_sidebar_on_file_open"], json!(true));
+    assert_eq!(value["welcome"]["enabled"], json!(true));
     assert_eq!(value.as_object().unwrap().len(), 1);
 
     let mut set_cursor = yzx_control_command();
@@ -61,7 +59,7 @@ fn config_set_and_unset_edit_config_toml() {
 
     let mut unset = yzx_control_command();
     with_config_env(&mut unset, &home, &runtime, &config);
-    unset.args(["config", "unset", "editor.hide_sidebar_on_file_open"]);
+    unset.args(["config", "unset", "welcome.enabled"]);
     unset.assert().success();
 
     assert!(!settings_path.exists());
@@ -96,78 +94,14 @@ fn config_unset_removes_preexisting_empty_root() {
     let config = temp.path().join("config");
     write_runtime_contract_assets(&repo, &runtime);
     fs::create_dir_all(&config).unwrap();
-    fs::write(config.join("config.toml"), "[editor]\n").unwrap();
+    fs::write(config.join("config.toml"), "[welcome]\n").unwrap();
 
     let mut unset = yzx_control_command();
     with_config_env(&mut unset, &home, &runtime, &config);
     unset
-        .args(["config", "unset", "editor.hide_sidebar_on_file_open"])
+        .args(["config", "unset", "welcome.enabled"])
         .assert()
         .success();
 
     assert!(!config.join("config.toml").exists());
-}
-
-// Regression: live-with-pane-refresh config saves emit a versioned pane-orchestrator reload payload instead of leaving the saved value silently inactive.
-#[test]
-fn config_set_live_zellij_screen_saver_field_reloads_pane_orchestrator_runtime_config() {
-    let repo = repo_root();
-    let temp = tempdir().expect("tempdir");
-    let home = temp.path().join("home");
-    let runtime = temp.path().join("runtime");
-    let config = temp.path().join("config");
-    let state = temp.path().join("state");
-    let fake_bin = temp.path().join("fake-bin");
-    let payload_log = temp.path().join("reload-payload.json");
-    write_runtime_contract_assets(&repo, &runtime);
-    fs::create_dir_all(state.join("configs/zellij")).unwrap();
-    fs::write(
-        state.join("configs/zellij/.yazelix_generation.json"),
-        r#"{"fingerprint":"gen-a"}"#,
-    )
-    .unwrap();
-    write_executable_script(
-        &fake_bin.join("zellij"),
-        &format!(
-            "#!/bin/sh\nif [ \"$1\" = \"action\" ] && [ \"$2\" = \"pipe\" ] && [ \"$6\" = \"reload_runtime_config\" ]; then\n  printf '%s' \"$8\" > \"{}\"\n  printf '%s\\n' 'ok'\n  exit 0\nfi\nprintf 'unexpected zellij args: %s\\n' \"$*\" >&2\nexit 1\n",
-            payload_log.display()
-        ),
-    );
-
-    let output = yzx_control_command()
-        .env_clear()
-        .env("HOME", &home)
-        .env("PATH", prepend_path(&fake_bin))
-        .env("YAZELIX_RUNTIME_DIR", &runtime)
-        .env("YAZELIX_CONFIG_DIR", &config)
-        .env("YAZELIX_STATE_DIR", &state)
-        .args(["config", "set", "zellij.screen_saver_idle_seconds", "120"])
-        .output()
-        .unwrap();
-
-    assert_eq!(
-        output.status.code(),
-        Some(0),
-        "{}",
-        String::from_utf8_lossy(&output.stderr)
-    );
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    assert!(stdout.contains("Inserted zellij.screen_saver_idle_seconds."));
-    assert!(stdout.contains("Refreshed pane-orchestrator runtime config."));
-    let payload: serde_json::Value =
-        serde_json::from_str(&fs::read_to_string(payload_log).unwrap()).unwrap();
-    assert_eq!(payload["schema_version"], json!(1));
-    assert_eq!(payload["generation"], json!("gen-a"));
-    assert_eq!(
-        payload["runtime_config"]["screen_saver_idle_seconds"],
-        json!(120)
-    );
-    assert_eq!(
-        payload["runtime_config"]["screen_saver_enabled"],
-        json!(false)
-    );
-    assert_eq!(
-        payload["runtime_config"]["screen_saver_style"],
-        json!("random")
-    );
 }

@@ -43,7 +43,7 @@ pub fn run_yzx_popup(args: &[String]) -> Result<i32, CoreError> {
 
     if parsed.program.is_empty() {
         return Err(CoreError::usage(
-            "yzx popup expects an explicit program. Use `yzx popup <program> [args...]`, or configure a persistent popup through zellij.custom_popups.",
+            "yzx popup expects an explicit program. Use `yzx popup <program> [args...]`, or configure a persistent popup under popups.<id>.",
         ));
     }
 
@@ -160,7 +160,7 @@ fn resolve_popup_runtime_argv(
             ErrorClass::Config,
             "popup_command_missing",
             "No popup command was provided.",
-            "Pass an explicit command to `yzx popup`, or configure a persistent popup through zellij.custom_popups.",
+            "Pass an explicit command to `yzx popup`, or configure a persistent popup under popups.<id>.",
             json!({}),
         ));
     }
@@ -172,7 +172,7 @@ fn resolve_popup_runtime_argv(
             ErrorClass::Config,
             "popup_command_empty",
             "Popup program command cannot be empty.",
-            "Pass a real executable to `yzx popup`, or configure a persistent popup through zellij.custom_popups.",
+            "Pass a real executable to `yzx popup`, or configure a persistent popup under popups.<id>.",
             json!({}),
         ));
     }

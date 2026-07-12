@@ -187,9 +187,23 @@ mod tests {
             runtime_dir
                 .join("config_metadata")
                 .join("main_config_contract.toml"),
-            "[fields]\n",
+            include_str!("../../../config_metadata/main_config_contract.toml"),
         )
         .expect("write contract");
+        fs::write(
+            runtime_dir
+                .join("config_metadata")
+                .join("classic_main_config_contract.toml"),
+            include_str!("../../../config_metadata/classic_main_config_contract.toml"),
+        )
+        .expect("write Classic contract");
+        fs::write(
+            runtime_dir
+                .join("config_metadata")
+                .join("classic_config_default.toml"),
+            include_str!("../../../config_metadata/classic_config_default.toml"),
+        )
+        .expect("write Classic defaults");
         fs::write(
             runtime_dir.join("runtime_components.json"),
             r#"{
@@ -284,6 +298,26 @@ mod tests {
         assert_eq!(error.code(), "stale_old_settings_input");
         assert!(!config.path().join("config.toml").exists());
         assert!(legacy_config.exists());
+    }
+
+    // Regression: every managed semantic read activates the Classic-to-Nova transaction first.
+    #[test]
+    fn migrates_classic_root_before_returning_active_paths() {
+        let runtime = tempdir().expect("runtime dir");
+        let config = tempdir().expect("config dir");
+        write_runtime_layout(runtime.path());
+        fs::write(
+            config.path().join("config.toml"),
+            "[core]\nskip_welcome_screen = true\n",
+        )
+        .unwrap();
+
+        let paths = resolve_active_config_paths(runtime.path(), config.path(), None).unwrap();
+        let migrated = fs::read_to_string(paths.config_file).unwrap();
+
+        assert!(migrated.contains("[welcome]"));
+        assert!(migrated.contains("enabled = false"));
+        assert!(!migrated.contains("[core]"));
     }
 
     // Regression: dangling old nested symlinks still block startup instead of being ignored as missing paths.

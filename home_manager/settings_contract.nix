@@ -191,7 +191,11 @@ let
       )
     ) { } mainConfigSettingsFieldPaths;
 
-  configTomlValue = mainConfigSettingsValue;
+  configTomlValue =
+    mainConfigSettingsValue
+    // lib.optionalAttrs (cfg.popups != null) {
+      popups = lib.mapAttrs (_id: popup: lib.filterAttrs (_name: value: value != null) popup) cfg.popups;
+    };
 in
 {
   inherit configTomlValue mkMainContractOption;

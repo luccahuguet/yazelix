@@ -40,14 +40,6 @@ impl YazelixConfigUiApp {
         }
     }
 
-    pub(super) fn handle_key(&mut self, key: ConfigUiKey) {
-        let intent = self.ui.handle_key(key);
-        let host = YazelixConfigUiHost {
-            request: &self.request,
-        };
-        host.handle_ratconfig_intent(&mut self.ui, intent);
-    }
-
     pub(super) fn write_source_field_value(
         &mut self,
         source_id: &str,
@@ -58,17 +50,6 @@ impl YazelixConfigUiApp {
             request: &self.request,
         };
         host.write_source_field_value(&mut self.ui, source_id, setting_path, value)
-    }
-
-    pub(super) fn unset_source_field_value(
-        &mut self,
-        source_id: &str,
-        setting_path: &str,
-    ) -> Result<ConfigUiWriteOutcome, CoreError> {
-        let host = YazelixConfigUiHost {
-            request: &self.request,
-        };
-        host.unset_field_value(&mut self.ui, source_id, setting_path)
     }
 }
 

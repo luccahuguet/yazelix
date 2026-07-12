@@ -109,6 +109,11 @@ pub(crate) const PACKAGED_NON_POPUP_CHORDS: &[&str] = &[
     "Alt 1-9",
     "Alt z",
 ];
+
+pub(crate) fn is_classic_managed_editor(command: &str) -> bool {
+    matches!(command, "hx" | "helix")
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ClassicNovaDisposition {
@@ -264,6 +269,13 @@ fn translate_editor(classic: &Table, translation: &mut ClassicNovaRootTranslatio
             &[],
             "omitted so Nova inherits its packaged editor",
         )),
+        Some(command) if is_classic_managed_editor(command) => preserve(
+            translation,
+            "editor.command",
+            "editor.command",
+            Value::String("hx".to_string()),
+            &format!("mapped Classic managed {command} to Nova managed hx"),
+        ),
         Some(command) if executable(command) => preserve(
             translation,
             "editor.command",

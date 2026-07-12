@@ -423,9 +423,9 @@ mod tests {
             "--config".into(),
             "minimal.jsonc".into(),
             "--with".into(),
-            "core.welcome_style=static".into(),
+            "welcome.style=static".into(),
             "--with".into(),
-            "appearance.mode=light".into(),
+            "shell.program=fish".into(),
         ])
         .unwrap();
 
@@ -433,7 +433,7 @@ mod tests {
         assert_eq!(parsed.config.as_deref(), Some(expected_config.as_str()));
         assert_eq!(
             parsed.with_overrides,
-            vec!["core.welcome_style=static", "appearance.mode=light"]
+            vec!["welcome.style=static", "shell.program=fish"]
         );
     }
 
@@ -448,70 +448,46 @@ mod tests {
                 },
             ),
             (
-                "core.skip_welcome_screen".to_string(),
+                "welcome.enabled".to_string(),
                 SessionConfigOverrideField {
                     kind: SessionConfigOverrideKind::Bool,
                 },
             ),
             (
-                "core.welcome_duration_seconds".to_string(),
-                SessionConfigOverrideField {
-                    kind: SessionConfigOverrideKind::Float,
-                },
-            ),
-            (
-                "workspace.left_sidebar.width_percent".to_string(),
+                "welcome.duration_seconds".to_string(),
                 SessionConfigOverrideField {
                     kind: SessionConfigOverrideKind::Int,
                 },
             ),
             (
-                "zellij.widget_tray".to_string(),
+                "bar.widgets".to_string(),
                 SessionConfigOverrideField {
                     kind: SessionConfigOverrideKind::StringList,
                 },
             ),
-            (
-                "zellij.keybindings".to_string(),
-                SessionConfigOverrideField {
-                    kind: SessionConfigOverrideKind::StringListMap,
-                },
-            ),
         ]);
         let mut root = serde_json::json!({
-            "core": { "skip_welcome_screen": false },
+            "welcome": { "enabled": true },
             "editor": {},
-            "workspace": { "left_sidebar": {} },
-            "terminal": {},
-            "zellij": { "keybindings": { "bottom_popup": ["Alt p"] } }
+            "bar": {}
         });
 
         for raw in [
             "editor.command=nvim",
-            "core.skip_welcome_screen=true",
-            "core.welcome_duration_seconds=3.5",
-            "workspace.left_sidebar.width_percent=24",
-            "zellij.widget_tray=[\"editor\", \"term\"]",
-            "zellij.keybindings={\"bottom_popup\":[\"Alt Shift J\"],\"config\":[]}",
+            "welcome.enabled=false",
+            "welcome.duration_seconds=3",
+            "bar.widgets=[\"editor\", \"term\"]",
         ] {
             let patch = parse_session_config_patch(raw, &fields).unwrap();
             apply_session_config_patch(&mut root, &patch).unwrap();
         }
 
         assert_eq!(root["editor"]["command"], "nvim");
-        assert_eq!(root["core"]["skip_welcome_screen"], true);
-        assert_eq!(root["core"]["welcome_duration_seconds"], 3.5);
-        assert_eq!(root["workspace"]["left_sidebar"]["width_percent"], 24);
+        assert_eq!(root["welcome"]["enabled"], false);
+        assert_eq!(root["welcome"]["duration_seconds"], 3);
         assert_eq!(
-            root["zellij"]["widget_tray"],
+            root["bar"]["widgets"],
             serde_json::json!(["editor", "term"])
-        );
-        assert_eq!(
-            root["zellij"]["keybindings"],
-            serde_json::json!({
-                "bottom_popup": ["Alt Shift J"],
-                "config": [],
-            })
         );
 
         let unknown = parse_session_config_patch("editor.nope=true", &fields).unwrap_err();
@@ -521,18 +497,8 @@ mod tests {
                 .contains("Unknown Yazelix config setting")
         );
         let invalid_bool =
-            parse_session_config_patch("core.skip_welcome_screen=maybe", &fields).unwrap_err();
+            parse_session_config_patch("welcome.enabled=maybe", &fields).unwrap_err();
         assert!(invalid_bool.to_string().contains("Invalid boolean value"));
-        let invalid_map = parse_session_config_patch(
-            "zellij.keybindings={\"bottom_popup\":\"Alt Shift J\"}",
-            &fields,
-        )
-        .unwrap_err();
-        assert!(
-            invalid_map
-                .to_string()
-                .contains("Invalid string-list-map value")
-        );
     }
 
     // Defends: --with writes an ephemeral config.toml snapshot and validates it through the normal config contract without mutating the user's config.
@@ -550,8 +516,8 @@ mod tests {
             None,
             &[
                 "editor.command=nvim".to_string(),
-                "core.welcome_style=static".to_string(),
-                "appearance.mode=light".to_string(),
+                "welcome.style=static".to_string(),
+                "shell.program=fish".to_string(),
             ],
         )
         .unwrap();
@@ -565,8 +531,8 @@ mod tests {
 
         let session_value = read_config_value(session_path).unwrap();
         assert_eq!(session_value["editor"]["command"], "nvim");
-        assert_eq!(session_value["core"]["welcome_style"], "static");
-        assert_eq!(session_value["appearance"]["mode"], "light");
+        assert_eq!(session_value["welcome"]["style"], "static");
+        assert_eq!(session_value["shell"]["program"], "fish");
 
         assert!(!config.path().join("config.toml").exists());
 
@@ -578,7 +544,7 @@ mod tests {
         .unwrap();
         assert_eq!(normalized.get("editor_command").unwrap(), "nvim");
         assert_eq!(normalized.get("welcome_style").unwrap(), "static");
-        assert_eq!(normalized.get("appearance_mode").unwrap(), "light");
+        assert_eq!(normalized.get("default_shell").unwrap(), "fish");
     }
 
     // Defends: Mars runtime metadata is accepted as a shipped packaged terminal.

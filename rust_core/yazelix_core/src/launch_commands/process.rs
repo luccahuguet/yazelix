@@ -1,4 +1,5 @@
 use crate::bridge::{CoreError, ErrorClass};
+use crate::control_plane::clear_unowned_editor_env;
 use serde_json::{Map as JsonMap, Value as JsonValue};
 use std::collections::HashSet;
 use std::ffi::OsString;
@@ -271,6 +272,7 @@ fn configure_command_env(
         cmd.env(&key, &value);
     }
     if let Some(runtime_env) = runtime_env {
+        clear_unowned_editor_env(cmd, runtime_env);
         for (key, value) in runtime_env {
             if let Some(text) = runtime_env_value(value) {
                 cmd.env(key, text);

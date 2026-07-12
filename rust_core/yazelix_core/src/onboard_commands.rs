@@ -51,7 +51,6 @@ struct MultiQuestion {
 struct OnboardAnswers {
     shell: String,
     editor_command: String,
-    hide_sidebar_on_file_open: bool,
     widget_tray: Vec<String>,
 }
 
@@ -223,13 +222,11 @@ fn run_interactive_onboarding(contract_path: &Path) -> Result<OnboardAnswers, Co
     let _raw = RawModeGuard::enable()?;
     let shell = ask_single(shell_question())?;
     let editor_command = ask_single(editor_question())?;
-    let hide_sidebar_on_file_open = ask_single(sidebar_file_open_question())? == "true";
     let widget_tray = ask_multi(widget_tray_question(contract_path)?)?;
 
     Ok(OnboardAnswers {
         shell,
         editor_command,
-        hide_sidebar_on_file_open,
         widget_tray,
     })
 }
@@ -402,18 +399,10 @@ fn editor_question() -> SingleQuestion {
         "Editor command",
         0,
         &[
-            ("Yazelix Helix (recommended)", ""),
+            ("Yazelix Helix (recommended)", "hx"),
             ("Neovim", "nvim"),
             ("Vim", "vim"),
         ],
-    )
-}
-
-fn sidebar_file_open_question() -> SingleQuestion {
-    single_question(
-        "Yazi sidebar after opening a file",
-        0,
-        &[("Keep visible", "false"), ("Hide after file open", "true")],
     )
 }
 
@@ -456,7 +445,7 @@ fn widget_tray_label(value: &str) -> Result<&'static str, CoreError> {
             ErrorClass::Internal,
             "missing_onboard_widget_label",
             format!("Status-bar widget {other} has no onboarding label."),
-            "Add an onboarding label for every zellij.widget_tray allowed value.",
+            "Add an onboarding label for every bar.widgets allowed value.",
             json!({ "widget": other }),
         )),
     }
@@ -486,13 +475,13 @@ fn widget_tray_contract_values(
     let field = contract
         .get("fields")
         .and_then(::toml::Value::as_table)
-        .and_then(|fields| fields.get("zellij.widget_tray"))
+        .and_then(|fields| fields.get("bar.widgets"))
         .and_then(::toml::Value::as_table)
         .ok_or_else(|| {
             CoreError::classified(
                 ErrorClass::Runtime,
                 "missing_onboard_widget_contract_field",
-                "The Yazelix config contract is missing zellij.widget_tray.",
+                "The Yazelix config contract is missing bar.widgets.",
                 "Reinstall Yazelix so config_metadata/main_config_contract.toml is current.",
                 json!({ "path": contract_path.display().to_string() }),
             )
@@ -504,7 +493,7 @@ fn widget_tray_contract_values(
             return Err(CoreError::classified(
                 ErrorClass::Runtime,
                 "invalid_onboard_widget_contract_default",
-                format!("zellij.widget_tray default contains unsupported value: {value}."),
+                format!("bar.widgets default contains unsupported value: {value}."),
                 "Fix config_metadata/main_config_contract.toml, then retry.",
                 json!({ "path": contract_path.display().to_string(), "widget": value }),
             ));
@@ -526,7 +515,7 @@ fn widget_tray_contract_string_array(
             CoreError::classified(
                 ErrorClass::Runtime,
                 "invalid_onboard_widget_contract_field",
-                format!("zellij.widget_tray is missing a {key} array."),
+                format!("bar.widgets is missing a {key} array."),
                 "Fix config_metadata/main_config_contract.toml, then retry.",
                 json!({ "path": contract_path.display().to_string(), "key": key }),
             )
@@ -537,7 +526,7 @@ fn widget_tray_contract_string_array(
                 CoreError::classified(
                     ErrorClass::Runtime,
                     "invalid_onboard_widget_contract_value",
-                    format!("zellij.widget_tray {key} contains a non-string value."),
+                    format!("bar.widgets {key} contains a non-string value."),
                     "Fix config_metadata/main_config_contract.toml, then retry.",
                     json!({
                         "path": contract_path.display().to_string(),
@@ -612,20 +601,14 @@ fn build_onboard_config(answers: &OnboardAnswers) -> Result<String, CoreError> {
     )?;
     set_settings_field(
         &mut settings,
-        "editor",
-        "hide_sidebar_on_file_open",
-        JsonValue::Bool(answers.hide_sidebar_on_file_open),
-    )?;
-    set_settings_field(
-        &mut settings,
         "shell",
-        "default_shell",
+        "program",
         JsonValue::String(answers.shell.clone()),
     )?;
     set_settings_field(
         &mut settings,
-        "zellij",
-        "widget_tray",
+        "bar",
+        "widgets",
         JsonValue::Array(
             answers
                 .widget_tray
@@ -729,7 +712,7 @@ mod tests {
         assert_eq!(state.apply(PromptEvent::Abort), PromptOutcome::Aborted);
     }
 
-    // Defends: onboarding keeps Helix selection simple; custom forks use helix.external instead of a duplicate editor choice.
+    // Defends: onboarding keeps the Nova editor choice to one executable token.
     #[test]
     fn editor_question_does_not_offer_system_helix_mode() {
         let question = editor_question();
@@ -740,6 +723,7 @@ mod tests {
             .collect::<Vec<_>>();
 
         assert_eq!(labels, vec!["Yazelix Helix (recommended)", "Neovim", "Vim"]);
+        assert_eq!(question.choices[0].value, "hx");
     }
 
     // Regression: first-run onboarding derives the status-widget choices from the config contract and cannot retain retired values.
@@ -779,20 +763,15 @@ mod tests {
         let config = build_onboard_config(&OnboardAnswers {
             shell: "bash".into(),
             editor_command: "nvim".into(),
-            hide_sidebar_on_file_open: true,
             widget_tray: vec!["editor".into(), "cpu".into()],
         })
         .unwrap();
         let parsed = parse_config_value(Path::new("config.toml"), &config).unwrap();
 
         assert_eq!(parsed["editor"]["command"].as_str(), Some("nvim"));
-        assert_eq!(
-            parsed["editor"]["hide_sidebar_on_file_open"].as_bool(),
-            Some(true)
-        );
         assert!(parsed.get("workspace").is_none());
-        assert_eq!(parsed["shell"]["default_shell"].as_str(), Some("bash"));
-        assert!(parsed["terminal"].get("terminals").is_none());
+        assert_eq!(parsed["shell"]["program"].as_str(), Some("bash"));
+        assert_eq!(parsed["bar"]["widgets"], json!(["editor", "cpu"]));
         assert!(parsed.get("cursors").is_none());
     }
 
@@ -808,8 +787,7 @@ mod tests {
         .unwrap();
         let config = build_onboard_config(&OnboardAnswers {
             shell: "nu".into(),
-            editor_command: String::new(),
-            hide_sidebar_on_file_open: false,
+            editor_command: "hx".into(),
             widget_tray: vec!["editor".into(), "shell".into()],
         })
         .unwrap();
@@ -832,12 +810,11 @@ mod tests {
         let owner_dir = tmp.path().join("profile-home-manager-files");
         fs::create_dir_all(&owner_dir).unwrap();
         let owner = owner_dir.join("config.toml");
-        fs::write(&owner, "[core]\ndebug_mode = true\n").unwrap();
+        fs::write(&owner, "[welcome]\nenabled = true\n").unwrap();
         fs::create_dir_all(&paths.user_config_dir).unwrap();
         symlink(&owner, &paths.user_config).unwrap();
 
-        let error =
-            write_onboard_config(&paths, "[shell]\ndefault_shell = \"nu\"\n", true).unwrap_err();
+        let error = write_onboard_config(&paths, "[shell]\nprogram = \"nu\"\n", true).unwrap_err();
 
         assert_eq!(error.code(), "home_manager_owned_config");
         assert_eq!(fs::read_link(&paths.user_config).unwrap(), owner);

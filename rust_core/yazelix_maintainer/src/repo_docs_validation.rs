@@ -6,7 +6,8 @@ use serde_json::Value as JsonValue;
 use std::collections::BTreeSet;
 use std::fs;
 use std::path::{Path, PathBuf};
-use yazelix_core::settings_surface::{parse_config_value, read_config_value};
+use yazelix_core::ZELLIJ_ACTIONS;
+use yazelix_core::settings_surface::parse_config_value;
 
 const DOCS_INDEX: &str = "docs/README.md";
 const ROOT_README: &str = "README.md";
@@ -236,14 +237,13 @@ fn validate_source_backed_keybinding_docs(
     repo_root: &Path,
     errors: &mut Vec<String>,
 ) -> Result<(), String> {
-    let defaults = read_config_value(&repo_root.join("config_default.toml"))
-        .map_err(|error| error.message())?;
     let docs = read_repo_text(repo_root, "docs/keybindings.md")?;
-    let expected = defaults
-        .pointer("/zellij/keybindings/toggle_editor_right_sidebar_focus/0")
-        .and_then(JsonValue::as_str)
+    let expected = ZELLIJ_ACTIONS
+        .iter()
+        .find(|spec| spec.action.local_id == "toggle_editor_right_sidebar_focus")
+        .and_then(|spec| spec.action.default_keys.first().copied())
         .ok_or_else(|| {
-            "config_default.toml is missing zellij.keybindings.toggle_editor_right_sidebar_focus[0]"
+            "Classic action registry is missing a default for toggle_editor_right_sidebar_focus"
                 .to_string()
         })?;
     let documented = markdown_table_key_for_action(&docs, "toggle_editor_right_sidebar_focus");

@@ -13,8 +13,8 @@ fn repo_path(relative: &str) -> PathBuf {
 fn request(config_dir: &Path) -> ClassicNovaMigrationRequest {
     ClassicNovaMigrationRequest {
         config_dir: config_dir.to_path_buf(),
-        classic_default_config: repo_path("config_default.toml"),
-        classic_contract: repo_path("config_metadata/main_config_contract.toml"),
+        classic_default_config: repo_path("config_metadata/classic_config_default.toml"),
+        classic_contract: repo_path("config_metadata/classic_main_config_contract.toml"),
     }
 }
 
@@ -38,7 +38,7 @@ fn current_legacy_jsonc(body: &str) -> String {
     )
 }
 
-// Defends: absent and already-Nova roots are no-write states, including the only shared semantic field.
+// Defends: absent and already-Nova roots are no-write states, including a shared field with unchanged semantics.
 #[test]
 fn leaves_absent_nova_and_shared_only_roots_unchanged() {
     let config_dir = tempdir().unwrap();
@@ -51,7 +51,7 @@ fn leaves_absent_nova_and_shared_only_roots_unchanged() {
     assert_eq!(absent.status, ClassicNovaMigrationStatus::Absent);
 
     for raw in [
-        "# sparse Nova\n[welcome]\nenabled = false\n",
+        "# sparse Nova\n[welcome]\nenabled = false\n[editor]\ncommand = \"hx\"\n",
         "# shared path\n[editor]\ncommand = \"nvim\"\n",
         "# intentionally empty sparse root\n",
         r#"[open]
@@ -77,10 +77,10 @@ git = "Alt Shift J"
 menu = "Alt Shift M"
 [bar]
 widgets = ["session", "editor", "shell", "term", "codex_usage", "cpu", "ram"]
-[popups.btm]
+[popups.btm-extra]
 command = "btm"
 args = ["--basic"]
-title = "btm_popup"
+title = "btm_extra_popup"
 keybinding = "Alt Shift B"
 keep_alive = true
 "#,
@@ -98,6 +98,38 @@ keep_alive = true
         fs::remove_file(config).unwrap();
     }
     assert_eq!(fs::read_dir(config_dir.path()).unwrap().count(), 0);
+}
+
+// Regression: minimal Classic-only editor semantics are not mistaken for Nova configuration.
+#[test]
+fn migrates_classic_only_editor_tokens() {
+    for (index, (command, expected)) in [
+        ("hx", "[editor]\ncommand = \"hx\"\n"),
+        ("helix", "[editor]\ncommand = \"hx\"\n"),
+        ("", ""),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let config_dir = tempdir().unwrap();
+        let config = config_dir.path().join("config.toml");
+        let raw = format!("[editor]\ncommand = {command:?}\n");
+        fs::write(&config, &raw).unwrap();
+
+        let result = migrate_with(
+            &request(config_dir.path()),
+            &format!("20260712_00000{index}"),
+            &RealTransactionIo,
+        )
+        .unwrap();
+
+        assert_eq!(result.status, ClassicNovaMigrationStatus::Migrated);
+        assert_eq!(fs::read_to_string(&config).unwrap(), expected);
+        assert_eq!(
+            fs::read_to_string(result.backup_path.unwrap()).unwrap(),
+            raw
+        );
+    }
 }
 
 // Regression: right-agent semantics migrate only through the translator, while source bytes and width loss evidence survive beside the backup.

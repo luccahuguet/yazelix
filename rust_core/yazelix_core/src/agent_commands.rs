@@ -15,11 +15,11 @@ Codex is not installed or is not on PATH.
 This pane is a normal shell; run any command here, or configure the managed right sidebar.
 
 Agent examples:
-  yzx config set workspace.right_sidebar.command opencode
-  yzx config set workspace.right_sidebar.command claude
+  yzx config set agent.command opencode
+  yzx config set agent.command claude
 
 The right sidebar command does not have to be an AI agent:
-  yzx config set workspace.right_sidebar.command nu
+  yzx config set agent.command nu
   yzx config ui
 
 Starting a shell...
@@ -96,7 +96,7 @@ fn run_placeholder_shell(path: &OsStr) -> Result<i32, CoreError> {
         CoreError::io(
             "agent_placeholder_shell",
             "Failed to launch the right sidebar placeholder shell.",
-            "Install Codex, configure workspace.right_sidebar.command to another command, or make a shell available on PATH.",
+            "Install Codex, configure agent.command to another executable, or make a shell available on PATH.",
             shell.display().to_string(),
             source,
         )
@@ -109,7 +109,7 @@ fn missing_placeholder_shell_error(path: &OsStr) -> CoreError {
         ErrorClass::Runtime,
         "missing_agent_placeholder_shell",
         "Codex is not on PATH, and Yazelix could not find a shell for the right sidebar placeholder.",
-        "Install Codex, configure workspace.right_sidebar.command to another command, or make `nu`, `bash`, or `sh` available on PATH.",
+        "Install Codex, configure agent.command to another executable, or make `nu`, `bash`, or `sh` available on PATH.",
         json!({
             "missing_command": CODEX_AGENT_COMMAND,
             "path": path.to_string_lossy(),

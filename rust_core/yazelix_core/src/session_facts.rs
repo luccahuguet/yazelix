@@ -210,49 +210,14 @@ impl SessionFactsData {
             return;
         };
 
-        if let Some(core) = toml_section(config, "core") {
-            if let Some(value) = toml_string(core.get("game_of_life_cell_style")) {
-                self.game_of_life_cell_style = value;
-            }
-        }
-
         if let Some(shell) = toml_section(config, "shell") {
-            if let Some(value) = toml_string(shell.get("default")) {
+            if let Some(value) = toml_string(shell.get("program")) {
                 self.default_shell = value;
             }
         }
 
-        if let Some(helix) = toml_section(config, "helix") {
-            self.helix_external = toml_helix_external_pair(helix.get("external"));
-        }
-
         if let Some(editor) = toml_section(config, "editor") {
             self.editor_command = toml_optional_string(editor.get("command"));
-            if let Some(value) = toml_bool(editor.get("hide_sidebar_on_file_open")) {
-                self.hide_sidebar_on_file_open = value;
-            }
-        }
-
-        if let Some(terminal) = toml_section(config, "terminal") {
-            if let Some(values) = toml_string_list(terminal.get("terminals")) {
-                self.terminals = values;
-            }
-        }
-
-        if let Some(zellij) = toml_section(config, "zellij") {
-            if let Some(value) = toml_percent(zellij.get("popup_width_percent")) {
-                self.popup_width_percent = value;
-            }
-            if let Some(value) = toml_percent(zellij.get("popup_height_percent")) {
-                self.popup_height_percent = value;
-            }
-        }
-
-        if let Some(yazi) = toml_section(config, "yazi") {
-            self.yazi_command = toml_optional_string(yazi.get("command"))
-                .unwrap_or_else(|| self.yazi_command.clone());
-            self.ya_command = toml_optional_string(yazi.get("ya_command"))
-                .unwrap_or_else(|| self.ya_command.clone());
         }
     }
 }
@@ -268,14 +233,6 @@ fn normalized_helix_external(config: &JsonMap<String, JsonValue>) -> Option<Heli
     config
         .get("helix_external")
         .and_then(HelixExternalPair::from_json)
-}
-
-fn toml_helix_external_pair(value: Option<&TomlValue>) -> Option<HelixExternalPair> {
-    let table = value?.as_table()?;
-    HelixExternalPair::normalized(
-        table.get("binary")?.as_str()?,
-        table.get("runtime_path")?.as_str()?,
-    )
 }
 
 fn normalized_string_list(config: &JsonMap<String, JsonValue>, key: &str) -> Option<Vec<String>> {
@@ -312,31 +269,6 @@ fn toml_string(value: Option<&TomlValue>) -> Option<String> {
 
 fn toml_optional_string(value: Option<&TomlValue>) -> Option<String> {
     value.and_then(TomlValue::as_str).and_then(non_empty_string)
-}
-
-fn toml_bool(value: Option<&TomlValue>) -> Option<bool> {
-    value.and_then(TomlValue::as_bool)
-}
-
-fn toml_string_list(value: Option<&TomlValue>) -> Option<Vec<String>> {
-    value.and_then(TomlValue::as_array).map(|items| {
-        non_empty_strings(
-            items
-                .iter()
-                .filter_map(TomlValue::as_str)
-                .map(ToOwned::to_owned)
-                .collect(),
-        )
-    })
-}
-
-fn toml_percent(value: Option<&TomlValue>) -> Option<i64> {
-    let parsed = match value? {
-        TomlValue::Integer(number) => Some(*number),
-        TomlValue::String(raw) => raw.trim().parse::<i64>().ok(),
-        _ => None,
-    }?;
-    (1..=100).contains(&parsed).then_some(parsed)
 }
 
 fn non_empty_string(value: &str) -> Option<String> {

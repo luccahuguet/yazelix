@@ -46,7 +46,7 @@ fn approved_ledger_contains_46_unique_fields_exactly_once() {
     assert_eq!(listed.len(), 46);
 
     let contract: Table = toml::from_str(include_str!(
-        "../../../config_metadata/main_config_contract.toml"
+        "../../../config_metadata/classic_main_config_contract.toml"
     ))
     .unwrap();
     let canonical = contract["fields"]
@@ -69,7 +69,7 @@ welcome_style = "boids"
 welcome_duration_seconds = 4.0
 
 [editor]
-command = "nvim"
+command = "hx"
 
 [shell]
 default_shell = "zsh"
@@ -109,7 +109,7 @@ keep_alive = true
     );
     assert_eq!(
         value_at(&translation.root, "editor.command").and_then(Value::as_str),
-        Some("nvim")
+        Some("hx")
     );
     assert_eq!(
         value_at(&translation.root, "shell.program").and_then(Value::as_str),
@@ -351,7 +351,9 @@ top_popup = ["Alt Shift J"]
 // Invariant: every approved native/manual and removed family produces its exact default-value disposition.
 #[test]
 fn reports_all_native_transition_and_removed_field_families() {
-    let mut classic = parse(include_str!("../../../config_default.toml"));
+    let mut classic = parse(include_str!(
+        "../../../config_metadata/classic_config_default.toml"
+    ));
     classic.insert(
         "helix".into(),
         Value::Table(parse(

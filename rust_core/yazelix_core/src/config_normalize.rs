@@ -1,4 +1,5 @@
 use crate::bridge::{CoreError, ErrorClass};
+use crate::classic_nova_root_migration::validate_nova_root;
 use crate::helix_external::{
     HelixExternalPair, is_custom_helix_binary_command, is_helix_command, non_empty_string,
 };
@@ -101,6 +102,7 @@ pub fn normalize_config(
         let normalized = normalize_field(field, &config, &default_config)?;
         normalized_config.insert(field.parser_key.clone(), normalized);
     }
+    project_nova_root_into_classic_runtime(&config, &mut normalized_config)?;
     normalized_config.insert(
         "config_file".to_string(),
         JsonValue::String(config_file.clone()),
@@ -271,6 +273,18 @@ fn build_diagnostic_report(
     fields: &BTreeMap<String, ContractField>,
     config_path: &Path,
 ) -> Result<ConfigDiagnosticReport, CoreError> {
+    let nova_contract = fields.contains_key("welcome.enabled");
+    if nova_contract {
+        validate_nova_root(user_config).map_err(|message| {
+            CoreError::classified(
+                ErrorClass::Config,
+                "invalid_nova_root",
+                format!("The Yazelix config does not satisfy the Nova root contract: {message}."),
+                "Fix the reported config.toml field, then retry.",
+                json!({ "path": config_path, "error": message }),
+            )
+        })?;
+    }
     let findings = {
         let mut findings = compare_configs(
             &TomlValue::Table(default_config.clone()),
@@ -279,8 +293,10 @@ fn build_diagnostic_report(
             fields,
         );
         findings.extend(validate_enum_values(user_config, fields));
-        findings.extend(validate_helix_external_pair(user_config));
-        findings.extend(validate_helix_steel_plugins(user_config));
+        if !nova_contract {
+            findings.extend(validate_helix_external_pair(user_config));
+            findings.extend(validate_helix_steel_plugins(user_config));
+        }
         findings
     };
 
@@ -399,9 +415,133 @@ fn compare_configs(
 }
 
 fn contract_allows_config_path(path: &str, fields: &BTreeMap<String, ContractField>) -> bool {
+    if fields.contains_key("welcome.enabled") && (path == "popups" || path.starts_with("popups.")) {
+        return true;
+    }
     fields
         .keys()
         .any(|field_path| field_path == path || field_path.starts_with(&format!("{path}.")))
+}
+
+fn project_nova_root_into_classic_runtime(
+    config: &toml::Table,
+    normalized: &mut JsonMap<String, JsonValue>,
+) -> Result<(), CoreError> {
+    if !normalized.contains_key("welcome_enabled") {
+        return Ok(());
+    }
+
+    let welcome_enabled = normalized
+        .get("welcome_enabled")
+        .and_then(JsonValue::as_bool)
+        .unwrap_or(true);
+    normalized.insert(
+        "skip_welcome_screen".to_string(),
+        JsonValue::Bool(!welcome_enabled),
+    );
+    let agent_command = normalized
+        .get("agent_command")
+        .and_then(JsonValue::as_str)
+        .unwrap_or("auto");
+    let agent_args = normalized
+        .get("agent_args")
+        .and_then(JsonValue::as_array)
+        .cloned()
+        .unwrap_or_default();
+    if agent_command == "auto" {
+        normalized.insert(
+            "right_sidebar_command".to_string(),
+            JsonValue::String("yzx".to_string()),
+        );
+        normalized.insert(
+            "right_sidebar_args".to_string(),
+            JsonValue::Array(vec![JsonValue::String("agent".to_string())]),
+        );
+    } else {
+        normalized.insert(
+            "right_sidebar_command".to_string(),
+            JsonValue::String(agent_command.to_string()),
+        );
+        normalized.insert(
+            "right_sidebar_args".to_string(),
+            JsonValue::Array(agent_args),
+        );
+    }
+
+    let keybindings = [
+        ("keybinding_config", "top_popup"),
+        ("keybinding_agent", "open_codex_agent_right"),
+        ("keybinding_git", "bottom_popup"),
+        ("keybinding_menu", "menu"),
+    ]
+    .into_iter()
+    .filter_map(|(source, target)| {
+        normalized
+            .get(source)
+            .and_then(JsonValue::as_str)
+            .map(|chord| (target.to_string(), json!([chord])))
+    })
+    .collect::<JsonMap<_, _>>();
+    normalized.insert(
+        "zellij_keybindings".to_string(),
+        JsonValue::Object(keybindings),
+    );
+    normalized.insert("appearance_mode".to_string(), json!("dark"));
+    normalized.insert("debug_mode".to_string(), json!(false));
+    normalized.insert("game_of_life_cell_style".to_string(), json!("full_block"));
+    normalized.insert("show_macchina_on_welcome".to_string(), json!(true));
+    normalized.insert("hide_sidebar_on_file_open".to_string(), json!(false));
+    normalized.insert("helix_external".to_string(), JsonValue::Null);
+    normalized.insert(
+        "helix_steel_plugins".to_string(),
+        json!({ "enabled": ["splash", "spacemacs_theme"], "extra": [] }),
+    );
+    normalized.insert("yazi_command".to_string(), JsonValue::Null);
+    normalized.insert("yazi_ya_command".to_string(), JsonValue::Null);
+    normalized.insert("yazi_plugins".to_string(), json!(["git", "starship"]));
+    normalized.insert("yazi_theme".to_string(), json!("default"));
+    normalized.insert("yazi_sort_by".to_string(), json!("alphabetical"));
+
+    if let Some(popups) = config.get("popups").and_then(TomlValue::as_table) {
+        let mut classic_popups = Vec::with_capacity(popups.len());
+        for (id, value) in popups {
+            let popup = value.as_table().ok_or_else(|| {
+                invalid_value_error(&format!("popups.{id}"), &value.to_string(), "a popup table")
+            })?;
+            let command = popup
+                .get("command")
+                .and_then(TomlValue::as_str)
+                .expect("Nova validation requires a popup command");
+            let mut argv = vec![JsonValue::String(command.to_string())];
+            argv.extend(
+                popup
+                    .get("args")
+                    .and_then(TomlValue::as_array)
+                    .into_iter()
+                    .flatten()
+                    .filter_map(TomlValue::as_str)
+                    .map(|arg| JsonValue::String(arg.to_string())),
+            );
+            classic_popups.push(json!({
+                "id": id,
+                "command": argv,
+                "keybindings": [popup
+                    .get("keybinding")
+                    .and_then(TomlValue::as_str)
+                    .expect("Nova validation requires a popup keybinding")],
+                "keep_alive": popup
+                    .get("keep_alive")
+                    .and_then(TomlValue::as_bool)
+                    .unwrap_or(false),
+            }));
+        }
+        normalized.insert(
+            "custom_popups".to_string(),
+            JsonValue::Array(classic_popups),
+        );
+    }
+
+    Ok(())
 }
 
 fn validate_enum_values(
@@ -633,8 +773,7 @@ fn make_schema_diagnostic(finding: SchemaFinding) -> ConfigDiagnostic {
                     finding.message,
                     "Next: Remove zellij.popup_program from ~/.config/yazelix/config.toml."
                         .to_string(),
-                    "Next: Add persistent popup commands through zellij.custom_popups instead."
-                        .to_string(),
+                    "After migration: add persistent popup commands under popups.<id>.".to_string(),
                     "Next: Use `yzx popup <program> [args...]` for one-off transient popups."
                         .to_string(),
                 ];
@@ -643,7 +782,7 @@ fn make_schema_diagnostic(finding: SchemaFinding) -> ConfigDiagnostic {
                     format!("Moved custom popup config field at {}", finding.path);
                 diagnostic.detail_lines = vec![
                     finding.message,
-                    "Next: Move the Zenith popup to zellij.custom_popups with { \"id\": \"zenith\", \"command\": [\"zenith\"], \"keybindings\": [\"Alt Shift I\"], \"keep_alive\": true }.".to_string(),
+                    "After migration: define [popups.zenith] with command = \"zenith\", keybinding = \"Alt Shift I\", and keep_alive = true.".to_string(),
                     "Next: Keep zellij.popup_commands limited to bottom_popup, top_popup, and menu.".to_string(),
                     "Next: Run `yzx doctor --verbose` to review the full config report."
                         .to_string(),
@@ -655,7 +794,7 @@ fn make_schema_diagnostic(finding: SchemaFinding) -> ConfigDiagnostic {
                     finding.message,
                     "Next: Remove zellij.keybindings.popup from ~/.config/yazelix/config.toml."
                         .to_string(),
-                    "Next: Add a named persistent popup through zellij.custom_popups, or run `yzx popup <program> [args...]` for one-off popups.".to_string(),
+                    "After migration: add a named persistent popup under popups.<id>, or run `yzx popup <program> [args...]` for a one-off popup.".to_string(),
                     "Next: Run `yzx doctor --verbose` to review the full config report."
                         .to_string(),
                 ];
@@ -1033,458 +1172,111 @@ mod tests {
         }
     }
 
-    fn write_user_config(contents: &str) -> PathBuf {
-        let dir = tempdir().expect("tempdir").keep();
-        let path = dir.join("yazelix.toml");
-        fs::write(&path, contents).expect("write config");
-        path
-    }
-
-    fn default_main_config() -> JsonValue {
-        crate::settings_surface::read_config_value(&repo_root().join("config_default.toml"))
-            .expect("default settings")
-    }
-
-    fn write_main_config(value: &JsonValue) -> PathBuf {
-        let dir = tempdir().expect("tempdir").keep();
-        let path = dir.join("config.toml");
+    // Defends: sparse Nova values drive the retained Classic runtime seam without reviving Classic config paths.
+    #[test]
+    fn normalizes_nova_root_into_fixed_classic_runtime_projection() {
+        let root = tempdir().unwrap();
+        let config = root.path().join("config.toml");
         fs::write(
-            &path,
-            crate::settings_surface::render_config_value(value).expect("settings TOML"),
-        )
-        .expect("write settings");
-        path
-    }
-
-    fn blocking_diagnostic_for<'a>(
-        details: &'a JsonValue,
-        path: &str,
-    ) -> &'a serde_json::Map<String, JsonValue> {
-        details["blocking_diagnostics"]
-            .as_array()
-            .expect("blocking diagnostics")
-            .iter()
-            .find(|diagnostic| diagnostic["path"] == path)
-            .and_then(JsonValue::as_object)
-            .expect("diagnostic for path")
-    }
-
-    // Defends: config normalization keeps parser-owned defaults and value transforms stable.
-    #[test]
-    fn normalizes_default_config_with_parser_keys_and_transforms() {
-        let repo = repo_root();
-        let data = normalize_config(&request_for(repo.join("config_default.toml"))).unwrap();
-        let config = data.normalized_config;
-
-        assert_eq!(config.get("default_shell").unwrap(), "nu");
-        assert_eq!(config.get("appearance_mode").unwrap(), "dark");
-        assert_eq!(config.get("helix_external").unwrap(), &JsonValue::Null);
-        assert_eq!(config.get("game_of_life_cell_style").unwrap(), "full_block");
-        assert_eq!(config.get("welcome_duration_seconds").unwrap(), 4.0);
-
-        let contract = read_toml_table(
-            &repo.join("config_metadata/main_config_contract.toml"),
-            "test",
+            &config,
+            r#"[shell]
+program = "fish"
+[agent]
+command = "codex"
+args = ["resume"]
+[welcome]
+enabled = false
+[keybindings]
+config = "Alt Shift A"
+[bar]
+widgets = ["editor", "cpu"]
+[popups.btm]
+command = "btm"
+args = ["--basic"]
+keybinding = "Alt Shift B"
+"#,
         )
         .unwrap();
-        let fields = load_contract_fields(&contract).unwrap();
-        assert_eq!(config.len(), fields.len() + 1);
 
-        let partial_config = write_user_config("[appearance]\nmode = \"light\"\n");
-        let partial = normalize_config(&request_for(partial_config)).unwrap();
-        assert_eq!(
-            partial.normalized_config.get("appearance_mode").unwrap(),
-            "light"
-        );
-    }
-
-    // Defends: an absent user config inherits every packaged semantic default without creating a file.
-    #[test]
-    fn absent_config_normalizes_to_packaged_defaults_without_writing() {
-        let dir = tempdir().expect("tempdir");
-        let path = dir.path().join("config.toml");
-
-        let inherited = normalize_config(&request_for(path.clone())).unwrap();
-        let packaged =
-            normalize_config(&request_for(repo_root().join("config_default.toml"))).unwrap();
-        let mut inherited_values = inherited.normalized_config;
-        let mut packaged_values = packaged.normalized_config;
-        inherited_values.remove("config_file");
-        packaged_values.remove("config_file");
-
-        assert_eq!(inherited_values, packaged_values);
-        assert_eq!(inherited.diagnostic_report.issue_count, 0);
-        assert!(!path.exists());
-    }
-
-    // Defends: packaged defaults, rather than duplicated contract metadata, own inherited values.
-    #[test]
-    fn absent_field_tracks_the_packaged_default_value() {
-        let dir = tempdir().expect("tempdir");
-        let config_path = dir.path().join("config.toml");
-        let default_config_path = dir.path().join("config_default.toml");
-        let default_config = fs::read_to_string(repo_root().join("config_default.toml"))
-            .expect("read packaged defaults")
-            .replacen("mode = \"dark\"", "mode = \"light\"", 1);
-        fs::write(&default_config_path, default_config).expect("write changed packaged defaults");
-
-        let data = normalize_config(&NormalizeConfigRequest {
-            config_path: config_path.clone(),
-            default_config_path,
-            contract_path: repo_root().join("config_metadata/main_config_contract.toml"),
-        })
-        .unwrap();
-
-        assert_eq!(
-            data.normalized_config.get("appearance_mode").unwrap(),
-            "light"
-        );
-        assert!(!config_path.exists());
-    }
-
-    // Regression: a damaged packaged default must fail instead of inventing an empty value.
-    #[test]
-    fn missing_required_packaged_default_fails_fast() {
-        let dir = tempdir().expect("tempdir");
-        let default_config_path = dir.path().join("config_default.toml");
-        let default_config = fs::read_to_string(repo_root().join("config_default.toml"))
-            .expect("read packaged defaults")
-            .replacen("mode = \"dark\"\n", "", 1);
-        fs::write(&default_config_path, default_config).expect("write damaged packaged defaults");
-
-        let error = normalize_config(&NormalizeConfigRequest {
-            config_path: dir.path().join("config.toml"),
-            default_config_path,
-            contract_path: repo_root().join("config_metadata/main_config_contract.toml"),
-        })
-        .unwrap_err();
-
-        assert_eq!(error.code(), "missing_packaged_config_default");
-        assert_eq!(error.details()["path"], "appearance.mode");
-    }
-
-    // Defends: host-owned xonsh is a valid default-shell enum without being bundled by Yazelix.
-    #[test]
-    fn accepts_xonsh_as_default_shell_enum_value() {
-        let path = write_user_config("[shell]\ndefault_shell = \"xonsh\"\n");
-        let data = normalize_config(&request_for(path)).unwrap();
-
-        assert_eq!(
-            data.normalized_config.get("default_shell").unwrap(),
-            "xonsh"
-        );
-    }
-
-    // Defends: the shipped main settings template is a complete strict config.toml surface.
-    #[test]
-    fn strict_default_config_toml_has_no_diagnostics() {
-        let repo = repo_root();
-        let data = normalize_config(&request_for(repo.join("config_default.toml"))).unwrap();
-
-        assert_eq!(data.diagnostic_report.issue_count, 0);
-        assert_eq!(data.diagnostic_report.blocking_count, 0);
-        assert_eq!(
-            data.normalized_config.get("helix_external").unwrap(),
-            &JsonValue::Null
-        );
-    }
-
-    // Defends: custom Helix forks must be configured as one binary/runtime pair, not as a bare runtime path or bare editor binary.
-    #[test]
-    fn rejects_incomplete_helix_external_pair_and_old_runtime_field() {
-        let mut binary_only_config = default_main_config();
-        binary_only_config["helix"]["external"] = json!({ "binary": "/tmp/hx" });
-        let binary_only = write_main_config(&binary_only_config);
-        let error = normalize_config(&request_for(binary_only)).unwrap_err();
-        assert_eq!(error.code(), "unsupported_config");
-        let details = error.details();
-        let diagnostic = blocking_diagnostic_for(&details, "helix.external.runtime_path");
-        assert_eq!(diagnostic["status"], "invalid_helix_external_pair");
-
-        let mut old_runtime_config = default_main_config();
-        old_runtime_config["helix"]
-            .as_object_mut()
+        let normalized = normalize_config(&request_for(config))
             .unwrap()
-            .remove("external");
-        old_runtime_config["helix"]["runtime_path"] = json!("/tmp/runtime");
-        let old_runtime = write_main_config(&old_runtime_config);
-        let error = normalize_config(&request_for(old_runtime)).unwrap_err();
-        assert_eq!(error.code(), "unsupported_config");
-        let details = error.details();
-        let diagnostic = blocking_diagnostic_for(&details, "helix.runtime_path");
-        assert!(
-            diagnostic["detail_lines"]
-                .as_array()
-                .unwrap()
-                .iter()
-                .any(|line| line.as_str().unwrap().contains("helix.external = { binary"))
-        );
+            .normalized_config;
 
-        let mut conflicting_editor_config = default_main_config();
-        conflicting_editor_config["editor"]["command"] = json!("nvim");
-        conflicting_editor_config["helix"]["external"] = json!({
-            "binary": "/tmp/hx",
-            "runtime_path": "/tmp/runtime"
-        });
-        let conflicting_editor = write_main_config(&conflicting_editor_config);
-        let error = normalize_config(&request_for(conflicting_editor)).unwrap_err();
-        assert_eq!(error.code(), "unsupported_config");
-        let details = error.details();
-        let diagnostic = blocking_diagnostic_for(&details, "editor.command");
-        assert_eq!(diagnostic["status"], "invalid_helix_external_pair");
-    }
-
-    // Defends: a complete external Helix pair normalizes as one object for runtime env consumers.
-    #[test]
-    fn normalizes_helix_external_pair() {
-        let mut config = default_main_config();
-        config["helix"]["external"] = json!({
-            "binary": "/tmp/hx",
-            "runtime_path": "/tmp/runtime"
-        });
-        let path = write_main_config(&config);
-        let data = normalize_config(&request_for(path)).unwrap();
+        assert_eq!(normalized["default_shell"], json!("fish"));
+        assert_eq!(normalized["right_sidebar_command"], json!("codex"));
+        assert_eq!(normalized["right_sidebar_args"], json!(["resume"]));
+        assert_eq!(normalized["skip_welcome_screen"], json!(true));
+        assert_eq!(normalized["zellij_widget_tray"], json!(["editor", "cpu"]));
         assert_eq!(
-            data.normalized_config.get("helix_external").unwrap(),
-            &json!({
-                "binary": "/tmp/hx",
-                "runtime_path": "/tmp/runtime",
+            normalized["zellij_keybindings"]["top_popup"],
+            json!(["Alt Shift A"])
+        );
+        assert_eq!(
+            normalized["custom_popups"][0],
+            json!({
+                "id": "btm",
+                "command": ["btm", "--basic"],
+                "keybindings": ["Alt Shift B"],
+                "keep_alive": false,
             })
         );
-    }
-
-    // Defends: custom Helix Steel plugin manifests reject unsafe source paths before materialization.
-    #[test]
-    fn rejects_invalid_helix_steel_plugin_manifest_shape() {
-        let mut config = default_main_config();
-        config["helix"]["steel_plugins"] = json!({
-            "enabled": ["recentf"],
-            "extra": [{
-                "id": "bad_plugin",
-                "source": "../bad.scm",
-                "public_commands": ["bad-open"]
-            }]
-        });
-        let path = write_main_config(&config);
-        let error = normalize_config(&request_for(path)).unwrap_err();
-        assert_eq!(error.code(), "unsupported_config");
-        let details = error.details();
-        let diagnostic = blocking_diagnostic_for(&details, "helix.steel_plugins.extra[0].source");
-        assert_eq!(diagnostic["status"], "invalid_helix_steel_plugins");
-    }
-
-    // Defends: compact badge text normalization trims and truncates user input consistently.
-    #[test]
-    fn applies_compact_badge_text_behavior() {
-        let path = write_user_config("[zellij]\ncustom_text = \"  [hello]  world demo  \"\n");
-        let data = normalize_config(&request_for(path)).unwrap();
-
+        assert_eq!(normalized["appearance_mode"], json!("dark"));
         assert_eq!(
-            data.normalized_config.get("zellij_custom_text").unwrap(),
-            "hello wo"
+            normalized["helix_steel_plugins"],
+            json!({ "enabled": ["splash", "spacemacs_theme"], "extra": [] })
         );
     }
 
-    // Defends: compact tab-label mode flows through the main config contract as a typed Zellij setting.
+    // Defends: an absent sparse root inherits packaged Nova-shaped defaults without creating a user file.
     #[test]
-    fn normalizes_zellij_tab_label_mode() {
-        let path = write_user_config("[zellij]\ntab_label_mode = \"compact\"\n");
-        let data = normalize_config(&request_for(path)).unwrap();
+    fn absent_config_inherits_nova_defaults() {
+        let root = tempdir().unwrap();
+        let config = root.path().join("config.toml");
 
+        let normalized = normalize_config(&request_for(config.clone()))
+            .unwrap()
+            .normalized_config;
+
+        assert!(!config.exists());
+        assert_eq!(normalized["default_shell"], json!("nu"));
+        assert_eq!(normalized["editor_command"], json!("hx"));
+        assert_eq!(normalized["right_sidebar_command"], json!("yzx"));
+        assert_eq!(normalized["right_sidebar_args"], json!(["agent"]));
+        assert_eq!(normalized["skip_welcome_screen"], json!(false));
+    }
+
+    // Regression: retired Classic paths cannot become a second live schema after migration activation.
+    #[test]
+    fn rejects_retired_classic_root_paths() {
+        let root = tempdir().unwrap();
+        let config = root.path().join("config.toml");
+        fs::write(&config, "[workspace.right_sidebar]\ncommand = \"codex\"\n").unwrap();
+
+        let error = normalize_config(&request_for(config)).unwrap_err();
+
+        assert_eq!(error.code(), "invalid_nova_root");
+        assert!(error.message().contains("workspace"));
+    }
+
+    // Defends: explicit values equal to packaged defaults remain valid Nova intent.
+    #[test]
+    fn accepts_explicit_values_equal_to_defaults() {
+        let root = tempdir().unwrap();
+        let config = root.path().join("config.toml");
+        fs::write(
+            &config,
+            "[welcome]\nenabled = true\n[bar]\nwidgets = [\"editor\", \"shell\", \"term\", \"codex_usage\", \"cpu\", \"ram\"]\n",
+        )
+        .unwrap();
+
+        let normalized = normalize_config(&request_for(config))
+            .unwrap()
+            .normalized_config;
+
+        assert_eq!(normalized["welcome_enabled"], json!(true));
         assert_eq!(
-            data.normalized_config.get("zellij_tab_label_mode").unwrap(),
-            "compact"
+            normalized["zellij_widget_tray"],
+            json!(["editor", "shell", "term", "codex_usage", "cpu", "ram"])
         );
-
-        let bad_path = write_user_config("[zellij]\ntab_label_mode = \"tiny\"\n");
-        let error = normalize_config(&request_for(bad_path)).unwrap_err();
-        assert_eq!(error.code(), "unsupported_config");
-    }
-
-    // Defends: status-bar widget chrome flows through the main config contract as bounded enum settings.
-    #[test]
-    fn normalizes_zellij_widget_chrome() {
-        let path =
-            write_user_config("[zellij]\nwidget_frame = \"round\"\nwidget_separator = \"pipe\"\n");
-        let data = normalize_config(&request_for(path)).unwrap();
-
-        assert_eq!(
-            data.normalized_config.get("zellij_widget_frame").unwrap(),
-            "round"
-        );
-        assert_eq!(
-            data.normalized_config
-                .get("zellij_widget_separator")
-                .unwrap(),
-            "pipe"
-        );
-
-        let bad_path = write_user_config("[zellij]\nwidget_separator = \"comma\"\n");
-        let error = normalize_config(&request_for(bad_path)).unwrap_err();
-        assert_eq!(error.code(), "unsupported_config");
-    }
-
-    // Defends: semantic Zellij keybinding remaps flow through the main config contract as a typed action map without taking over default merging from Zellij materialization.
-    #[test]
-    fn normalizes_zellij_keybinding_map() {
-        let path = write_user_config(
-            r#"
-[zellij.keybindings]
-menu = ["Alt Space"]
-toggle_left_sidebar = []
-"#,
-        );
-        let data = normalize_config(&request_for(path)).unwrap();
-        let keybindings = data
-            .normalized_config
-            .get("zellij_keybindings")
-            .and_then(JsonValue::as_object)
-            .expect("zellij keybindings");
-
-        assert_eq!(keybindings["menu"], json!(["Alt Space"]));
-        assert_eq!(keybindings["toggle_left_sidebar"], json!([]));
-        assert!(!keybindings.contains_key("toggle_editor_right_sidebar_focus"));
-    }
-
-    // Defends: curated native Zellij key policy remaps flow through the main config contract as a typed action map.
-    #[test]
-    fn normalizes_zellij_native_keybinding_map() {
-        let path = write_user_config(
-            r#"
-[zellij.native_keybindings]
-scroll_mode = ["Ctrl Alt x"]
-scroll_mode_unbind = []
-"#,
-        );
-        let data = normalize_config(&request_for(path)).unwrap();
-        let keybindings = data
-            .normalized_config
-            .get("zellij_native_keybindings")
-            .and_then(JsonValue::as_object)
-            .expect("zellij native keybindings");
-
-        assert_eq!(keybindings["scroll_mode"], json!(["Ctrl Alt x"]));
-        assert_eq!(keybindings["scroll_mode_unbind"], json!([]));
-    }
-
-    // Defends: semantic Yazi integration keybinding remaps flow through the main config contract as a typed action map.
-    #[test]
-    fn normalizes_yazi_keybinding_map() {
-        let path = write_user_config(
-            r#"
-[yazi.keybindings]
-open_zoxide_in_editor = ["<A-x>"]
-open_directory_as_workspace_pane = []
-"#,
-        );
-        let data = normalize_config(&request_for(path)).unwrap();
-        let keybindings = data
-            .normalized_config
-            .get("yazi_keybindings")
-            .and_then(JsonValue::as_object)
-            .expect("yazi keybindings");
-
-        assert_eq!(keybindings["open_zoxide_in_editor"], json!(["<A-x>"]));
-        assert_eq!(keybindings["open_directory_as_workspace_pane"], json!([]));
-    }
-
-    // Defends: removed config surfaces fail as unsupported config instead of being silently accepted.
-    #[test]
-    fn rejects_removed_unknown_config_surfaces_without_migration() {
-        for (raw_config, expected_headline) in [
-            (
-                "[ascii]\nmode = \"animated\"\n",
-                "Unknown config field at ascii",
-            ),
-            (
-                "[shell]\nenable_atuin = true\n",
-                "Unknown config field at shell.enable_atuin",
-            ),
-            (
-                "[packs]\nenabled = [\"git\"]\nuser_packages = [\"docker\"]\n\n[packs.declarations]\ngit = [\"gh\", \"prek\"]\n",
-                "Unknown config field at packs",
-            ),
-            (
-                "[zellij]\npersistent_sessions = true\n",
-                "Removed persistent-session config field at zellij.persistent_sessions",
-            ),
-            (
-                "[zellij]\nsession_name = \"demo\"\n",
-                "Removed persistent-session config field at zellij.session_name",
-            ),
-            (
-                "[editor]\ninitial_sidebar_state = \"closed\"\n",
-                "Unknown config field at editor.initial_sidebar_state",
-            ),
-            (
-                "[editor]\nenable_sidebar = false\n",
-                "Unknown config field at editor.enable_sidebar",
-            ),
-        ] {
-            let path = write_user_config(raw_config);
-            let error = normalize_config(&request_for(path)).unwrap_err();
-
-            assert_eq!(error.class().as_str(), "config");
-            assert_eq!(error.code(), "unsupported_config");
-            let details = error.details();
-            assert_eq!(
-                details["blocking_diagnostics"][0]["headline"],
-                expected_headline
-            );
-        }
-    }
-
-    // Defends: invalid enum values produce structured diagnostics instead of generic parse failures.
-    #[test]
-    fn rejects_invalid_enum_values_with_structured_diagnostics() {
-        let path = write_user_config("[shell]\ndefault_shell = \"powershell\"\n");
-        let error = normalize_config(&request_for(path)).unwrap_err();
-
-        assert_eq!(error.class().as_str(), "config");
-        let details = error.details();
-        assert_eq!(
-            details["blocking_diagnostics"][0]["headline"],
-            "Unsupported config value at shell.default_shell"
-        );
-    }
-
-    // Regression: dynamic status widgets normalize, while the retired cursor widget is rejected before Zellij layout generation.
-    #[test]
-    fn normalizes_dynamic_widget_tray_and_rejects_retired_cursor_value() {
-        let valid_path =
-            write_user_config("[zellij]\nwidget_tray = [\"editor\", \"workspace\", \"cpu\"]\n");
-        let data = normalize_config(&request_for(valid_path)).unwrap();
-        assert_eq!(
-            data.normalized_config.get("zellij_widget_tray").unwrap(),
-            &json!(["editor", "workspace", "cpu"])
-        );
-
-        let path = write_user_config("[zellij]\nwidget_tray = [\"editor\", \"cursor\"]\n");
-        let error = normalize_config(&request_for(path)).unwrap_err();
-
-        assert_eq!(error.class().as_str(), "config");
-        assert_eq!(error.code(), "unsupported_config");
-        let details = error.details();
-        assert_eq!(
-            details["blocking_diagnostics"][0]["headline"],
-            "Unsupported config value at zellij.widget_tray"
-        );
-    }
-
-    // Regression: wrong bool types in config.toml are blocking user errors, not implicit coercions.
-    #[test]
-    fn rejects_wrong_settings_bool_type() {
-        let mut value = default_main_config();
-        value["core"]["debug_mode"] = json!("false");
-        let request = request_for(write_main_config(&value));
-
-        let error = normalize_config(&request).unwrap_err();
-        assert_eq!(error.code(), "unsupported_config");
-        let details = error.details();
-        let diagnostic = blocking_diagnostic_for(&details, "core.debug_mode");
-
-        assert_eq!(diagnostic["status"], "type_mismatch");
-        assert_eq!(diagnostic["blocking"], json!(true));
-        assert_eq!(diagnostic["fix_available"], json!(false));
     }
 }

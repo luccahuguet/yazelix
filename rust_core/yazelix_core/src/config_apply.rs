@@ -562,12 +562,12 @@ mod tests {
         let contract = repo_root().join("config_metadata/main_config_contract.toml");
 
         assert_eq!(
-            apply_mode_for_setting(&contract, "yazi.theme").unwrap(),
-            Some(RuntimeApplyMode::GeneratedRuntimeRefresh)
+            apply_mode_for_setting(&contract, "bar.widgets").unwrap(),
+            Some(RuntimeApplyMode::TabSessionRestart)
         );
         assert_eq!(
-            apply_mode_for_setting(&contract, "zellij.widget_tray").unwrap(),
-            Some(RuntimeApplyMode::GeneratedRuntimeRefresh)
+            apply_mode_for_setting(&contract, "welcome.enabled").unwrap(),
+            Some(RuntimeApplyMode::TabSessionRestart)
         );
         assert_eq!(
             apply_mode_for_setting(&contract, "editor.command").unwrap(),
@@ -650,60 +650,6 @@ apply_mode = "generated_runtime_refresh"
             error.details()["source_code"]
                 .as_str()
                 .is_some_and(|code| !code.is_empty())
-        );
-    }
-
-    // Defends: live pane-refresh settings serialize one bounded versioned reload payload from normalized settings and generated Zellij metadata.
-    #[test]
-    fn builds_pane_orchestrator_runtime_reload_payload_from_saved_config() {
-        let repo = repo_root();
-        let temp = tempdir().expect("tempdir");
-        let config_path = temp.path().join("config.toml");
-        let default_config_path = temp.path().join("config_default.toml");
-        let contract_path = temp.path().join("main_config_contract.toml");
-        let zellij_config_dir = temp.path().join("configs/zellij");
-        std::fs::create_dir_all(&zellij_config_dir).unwrap();
-        std::fs::copy(repo.join("config_default.toml"), &default_config_path).unwrap();
-        std::fs::copy(
-            repo.join("config_metadata/main_config_contract.toml"),
-            &contract_path,
-        )
-        .unwrap();
-        let mut settings =
-            crate::settings_surface::read_config_value(&default_config_path).unwrap();
-        settings["zellij"]["screen_saver_enabled"] = json!(true);
-        settings["zellij"]["screen_saver_idle_seconds"] = json!(120);
-        settings["zellij"]["screen_saver_style"] = json!("mandelbrot");
-        std::fs::write(
-            &config_path,
-            crate::settings_surface::render_config_value(&settings).unwrap(),
-        )
-        .unwrap();
-        std::fs::write(
-            zellij_config_dir.join(".yazelix_generation.json"),
-            r#"{"fingerprint":"gen-a"}"#,
-        )
-        .unwrap();
-
-        let payload = build_pane_orchestrator_runtime_reload_payload(
-            &PaneOrchestratorRuntimeRefreshRequest {
-                config_path,
-                default_config_path,
-                contract_path,
-                zellij_config_dir,
-            },
-        )
-        .unwrap();
-
-        assert_eq!(payload.schema_version, 1);
-        assert_eq!(payload.generation, "gen-a");
-        assert_eq!(
-            payload.runtime_config,
-            PaneOrchestratorRuntimeConfig {
-                screen_saver_enabled: true,
-                screen_saver_idle_seconds: 120,
-                screen_saver_style: "mandelbrot".to_string()
-            }
         );
     }
 

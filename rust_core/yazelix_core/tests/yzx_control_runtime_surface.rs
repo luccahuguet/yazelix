@@ -468,80 +468,12 @@ default_shell = "fish"
     assert!(fixture.state_dir.join("logs").is_dir());
 }
 
-// Defends: host-owned xonsh default shell fails before launch when the host does not provide xonsh.
-#[test]
-fn yzx_enter_setup_only_reports_missing_host_xonsh_default_shell() {
-    let fixture = managed_config_fixture(
-        r#"[shell]
-default_shell = "xonsh"
-"#,
-    );
-    let empty_path = fixture.home_dir.join("empty-path");
-    fs::create_dir_all(&empty_path).unwrap();
-
-    let output = yzx_control_command_in_fixture(&fixture)
-        .env("PATH", &empty_path)
-        .arg("enter")
-        .arg("--setup-only")
-        .output()
-        .unwrap();
-
-    assert!(!output.status.success());
-    let stderr = String::from_utf8(output.stderr).unwrap();
-    assert!(stderr.contains("Configured shell.default_shell is xonsh"));
-    assert!(stderr.contains("Install xonsh on the host"));
-    assert!(!fixture.config_dir.join("shell_xonsh.xsh").exists());
-}
-
-// Defends: selecting host-owned xonsh as the default shell still generates the xonsh hook surfaces.
-#[test]
-fn yzx_enter_setup_only_accepts_host_xonsh_default_shell() {
-    let fixture = managed_config_fixture(
-        r#"[shell]
-default_shell = "xonsh"
-"#,
-    );
-    let plugin_path = fixture
-        .runtime_dir
-        .join("configs/zellij/plugins/zjstatus.wasm");
-    fs::create_dir_all(plugin_path.parent().unwrap()).unwrap();
-    fs::write(&plugin_path, "").unwrap();
-
-    let fake_bin = fixture.home_dir.join("fake-bin");
-    write_executable_script(&fake_bin.join("xonsh"), "#!/bin/sh\nexit 0\n");
-
-    let output = yzx_control_command_in_fixture(&fixture)
-        .env("PATH", &fake_bin)
-        .arg("enter")
-        .arg("--setup-only")
-        .output()
-        .unwrap();
-
-    assert_eq!(
-        output.status.code(),
-        Some(0),
-        "stderr:\n{}",
-        String::from_utf8_lossy(&output.stderr)
-    );
-    assert!(output.stderr.is_empty());
-
-    let stdout = String::from_utf8(output.stdout).unwrap();
-    assert!(stdout.contains("Generated 0 shell initializers"));
-    assert!(fixture.config_dir.join("shell_xonsh.xsh").exists());
-
-    let generated = fixture.home_dir.join(".local/share/yazelix/initializers");
-    assert!(generated.join("xonsh/yazelix_init.xsh").exists());
-}
-
-// Regression: Rust startup handoff creates the launch snapshot and recomputes runtime env from helix.external without invoking the deleted Nu bridge.
+// Regression: Rust startup handoff creates a Nova-root launch snapshot and scrubs stale editor ownership.
 #[test]
 fn yzx_enter_uses_rust_startup_snapshot_env_without_nu_bridge() {
     let fixture = managed_config_fixture(
-        r#"[helix]
-external = { binary = "/custom/helix/bin/hx", runtime_path = "/custom/helix/runtime" }
-
-[editor]
-command = ""
+        r#"[editor]
+command = "nvim"
 "#,
     );
     seed_startup_materialization_runtime_assets(&fixture);
@@ -571,7 +503,7 @@ command = ""
         .env("YAZELIX_STARTUP_PROFILE_SKIP_WELCOME", "true")
         .arg("enter")
         .arg("--with")
-        .arg("core.welcome_duration_seconds=0.25")
+        .arg("welcome.duration_seconds=1")
         .arg("--path")
         .arg(&workspace)
         .output()
@@ -584,23 +516,6 @@ command = ""
         String::from_utf8_lossy(&output.stderr)
     );
     assert!(output.stderr.is_empty());
-    let stdout = String::from_utf8(output.stdout).unwrap();
-    assert!(stdout.contains("Welcome screen skipped"), "{stdout}");
-    let welcome_logs = fs::read_dir(fixture.state_dir.join("logs"))
-        .unwrap()
-        .map(|entry| entry.unwrap().path())
-        .filter(|path| {
-            path.file_name()
-                .and_then(|name| name.to_str())
-                .is_some_and(|name| name.starts_with("welcome_"))
-        })
-        .collect::<Vec<_>>();
-    assert_eq!(welcome_logs.len(), 1, "{welcome_logs:?}");
-    assert!(
-        fs::read_to_string(&welcome_logs[0])
-            .unwrap()
-            .contains("Welcome to Yazelix v-test")
-    );
 
     let log = fs::read_to_string(zellij_log).unwrap();
     let snapshot_path = log
@@ -611,33 +526,19 @@ command = ""
         &fs::read_to_string(snapshot_path).expect("startup snapshot should be readable"),
     )
     .unwrap();
-    assert_eq!(
-        snapshot["normalized_config"]["helix_external"]["binary"],
-        "/custom/helix/bin/hx"
-    );
+    assert_eq!(snapshot["normalized_config"]["helix_external"], Value::Null);
     assert_eq!(
         snapshot["normalized_config"]["welcome_duration_seconds"],
-        serde_json::json!(0.25)
+        serde_json::json!(1)
     );
-    let expected_editor = fixture
-        .runtime_dir
-        .join("shells/posix/yazelix_hx.sh")
-        .to_string_lossy()
-        .to_string();
+    assert_eq!(snapshot["normalized_config"]["editor_command"], "nvim");
     assert!(log.contains("argv=--config-dir "), "{log}");
     assert!(log.contains(" options --default-cwd "), "{log}");
-    assert!(
-        log.contains(&workspace.to_string_lossy().to_string()),
-        "{log}"
-    );
     assert!(log.contains("snapshot_exists=1"), "{log}");
-    assert!(
-        log.contains("YAZELIX_MANAGED_HELIX_BINARY=/custom/helix/bin/hx"),
-        "{log}"
-    );
-    assert!(log.contains("HELIX_RUNTIME=/custom/helix/runtime"), "{log}");
-    assert!(log.contains(&format!("EDITOR={expected_editor}")), "{log}");
-    assert!(log.contains(&format!("VISUAL={expected_editor}")), "{log}");
+    assert!(log.contains("YAZELIX_MANAGED_HELIX_BINARY="), "{log}");
+    assert!(log.contains("HELIX_RUNTIME="), "{log}");
+    assert!(log.contains("EDITOR=nvim"), "{log}");
+    assert!(log.contains("VISUAL=nvim"), "{log}");
     assert!(!log.contains("nushell/scripts"), "{log}");
     assert!(!log.contains("/stale/"), "{log}");
 }
@@ -857,6 +758,10 @@ future_option = true
         "config_problem"
     );
     assert_eq!(report["summary"]["default_shell"], "bash");
+    assert_eq!(
+        report["summary"]["logs_dir"],
+        fixture.state_dir.join("logs").to_string_lossy().to_string()
+    );
     assert_eq!(
         report["summary"]["terminals"],
         serde_json::json!(["cached-term"])

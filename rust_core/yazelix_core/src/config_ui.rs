@@ -39,8 +39,6 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use yazelix_cursors::CursorRegistry;
 
 pub use app::run_config_ui;
-#[cfg(test)]
-use app::{prepare_mars_config_file, write_notice_text};
 use apply_adapter::apply_after_field_write;
 use custom_popups::*;
 use details::render_details;
@@ -69,9 +67,6 @@ use ratconfig::{
     schema_tabs, sidecar_detail_lines, single_choice_detail_lines,
     single_choice_field_detail_lines, state_label, tab_index, toml_value_to_json,
 };
-#[cfg(test)]
-use ratconfig::{edit_input_for_field, parse_edit_input, parse_string_list_values};
-
 const DEFAULT_TABS: &[&str] = &[
     "general",
     "workspace",

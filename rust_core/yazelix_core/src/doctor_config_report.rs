@@ -364,7 +364,7 @@ mod tests {
         write_runtime_config_contract(&runtime_dir);
         let damaged = std::fs::read_to_string(runtime_dir.join("config_default.toml"))
             .unwrap()
-            .replacen("mode = \"dark\"\n", "", 1);
+            .replacen("program = \"nu\"\n", "", 1);
         std::fs::write(runtime_dir.join("config_default.toml"), damaged).unwrap();
 
         let report = evaluate_doctor_config_report(&DoctorConfigEvaluateRequest {

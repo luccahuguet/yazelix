@@ -1,11 +1,9 @@
 // Test lane: maintainer
 
-use serde_json::Value;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, OnceLock};
 use tempfile::{TempDir, tempdir};
-use yazelix_core::settings_surface::read_config_value;
 use yazelix_core::{
     CoreError, YaziMaterializationData, YaziMaterializationRequest, generate_yazi_materialization,
 };
@@ -17,34 +15,11 @@ fn repo_root() -> PathBuf {
         .expect("repo root")
 }
 
-fn prepare_managed_config(config_root: &Path, repo: &Path, body: &str) -> PathBuf {
+fn prepare_managed_config(config_root: &Path, repo: &Path) -> PathBuf {
     let config_path = config_root.join("config.toml");
     fs::create_dir_all(config_path.parent().unwrap()).unwrap();
-    let mut settings = read_config_value(&repo.join("config_default.toml")).unwrap();
-    if !body.is_empty() {
-        let overrides = toml::from_str::<toml::Value>(body).unwrap();
-        merge_json(
-            &mut settings,
-            serde_json::to_value(overrides).expect("toml overrides json"),
-        );
-    }
-    fs::write(
-        &config_path,
-        yazelix_core::settings_surface::render_config_value(&settings).expect("settings TOML"),
-    )
-    .unwrap();
+    fs::copy(repo.join("config_default.toml"), &config_path).unwrap();
     config_path
-}
-
-fn merge_json(target: &mut Value, source: Value) {
-    match (target, source) {
-        (Value::Object(target), Value::Object(source)) => {
-            for (key, value) in source {
-                merge_json(target.entry(key).or_insert(Value::Null), value);
-            }
-        }
-        (target, source) => *target = source,
-    }
 }
 
 fn prepare_runtime_fixture(runtime_dir: &Path) {
@@ -133,14 +108,14 @@ struct YaziMaterializationFixture {
 }
 
 impl YaziMaterializationFixture {
-    fn new(settings_body: &str) -> Self {
+    fn new() -> Self {
         let repo = repo_root();
         let temp = tempdir().unwrap();
         let home = temp.path().join("home");
         let config_root = home.join(".config").join("yazelix");
         let output_dir = temp.path().join("state").join("configs").join("yazi");
         let runtime_dir = temp.path().join("runtime");
-        let config_path = prepare_managed_config(&config_root, &repo, settings_body);
+        let config_path = prepare_managed_config(&config_root, &repo);
         prepare_runtime_fixture(&runtime_dir);
 
         Self {
@@ -195,18 +170,12 @@ fn bundled_sidebar_state_plugin_restores_saved_zellij_session_for_pipe_commands(
 // Defends: Yazi materialization Rust-owns the generated surface, bundled assets, and runtime placeholder rendering end-to-end.
 #[test]
 fn yazi_materialization_generate_writes_managed_surface_and_assets() {
-    let fixture = YaziMaterializationFixture::new(
-        r#"[yazi]
-theme = "tokyo-night"
-sort_by = "modified"
-plugins = ["git", "starship"]
-"#,
-    );
+    let fixture = YaziMaterializationFixture::new();
 
     let data = fixture.generate(true).unwrap();
 
-    assert_eq!(data.resolved_theme, "tokyo-night");
-    assert_eq!(data.sort_by, "modified");
+    assert_eq!(data.resolved_theme, "default");
+    assert_eq!(data.sort_by, "alphabetical");
     assert!(data.synced_static_assets);
     assert_eq!(data.missing_plugins, Vec::<String>::new());
 
@@ -222,7 +191,7 @@ plugins = ["git", "starship"]
     .unwrap();
 
     assert!(yazi_toml.contains("[manager]"));
-    assert!(yazi_toml.contains("sort_by = \"modified\""));
+    assert!(yazi_toml.contains("sort_by = \"alphabetical\""));
     assert!(yazi_toml.contains(fixture.runtime_dir.to_string_lossy().as_ref()));
     assert!(yazi_toml.contains("yzx_control zellij open-editor %s"));
     assert!(yazi_toml.contains("url = \"*\""));
@@ -244,11 +213,7 @@ plugins = ["git", "starship"]
 // Regression: warm Yazi materialization must repair stale bundled static assets without recopied assets on a clean no-op path.
 #[test]
 fn yazi_materialization_repairs_stale_bundled_assets_without_warm_recopy() {
-    let fixture = YaziMaterializationFixture::new(
-        r#"[yazi]
-theme = "tokyo-night"
-"#,
-    );
+    let fixture = YaziMaterializationFixture::new();
 
     fixture.generate(true).unwrap();
 
@@ -280,7 +245,7 @@ theme = "tokyo-night"
 fn yazi_materialization_syncs_symlinked_bundled_plugin_dirs() {
     use std::os::unix::fs::symlink;
 
-    let fixture = YaziMaterializationFixture::new("");
+    let fixture = YaziMaterializationFixture::new();
 
     let source_plugins = fixture.runtime_dir.join("configs/yazi/plugins");
     let source_plugin = source_plugins.join("sidebar-state.yazi");
@@ -309,14 +274,11 @@ fn yazi_materialization_syncs_symlinked_bundled_plugin_dirs() {
     );
 }
 
-// Regression: `yzx import yazi` places native plugin directories under Yazelix-managed config, and materialization copies that managed source before generating plugin requires.
+// Regression: `yzx import yazi` places native plugin directories under Yazelix-managed config,
+// and materialization preserves that native tree without a retired root plugin catalog.
 #[test]
-fn yazi_materialization_generate_loads_managed_user_plugins() {
-    let fixture = YaziMaterializationFixture::new(
-        r#"[yazi]
-plugins = ["clipboard"]
-"#,
-    );
+fn yazi_materialization_generate_copies_managed_user_plugins() {
+    let fixture = YaziMaterializationFixture::new();
 
     let plugin_dir = fixture
         .user_yazi_dir()
@@ -333,15 +295,12 @@ plugins = ["clipboard"]
             .join("plugins/clipboard.yazi/main.lua")
             .exists()
     );
-
-    let init_lua = fs::read_to_string(fixture.output_dir.join("init.lua")).unwrap();
-    assert!(init_lua.contains("require(\"clipboard\")"));
 }
 
 // Regression: native Yazi array settings such as mgr.ratio replace Yazelix defaults instead of appending to them.
 #[test]
 fn yazi_materialization_generate_replaces_user_yazi_array_settings() {
-    let fixture = YaziMaterializationFixture::new("");
+    let fixture = YaziMaterializationFixture::new();
     fs::create_dir_all(fixture.user_yazi_dir()).unwrap();
     fs::write(
         fixture.user_yazi_dir().join("yazi.toml"),
@@ -363,69 +322,10 @@ ratio = [1, 4, 0]
     );
 }
 
-// Defends: semantic Yazi integration keybinding remaps replace generated Yazelix-owned bindings without editing the native keymap.toml sidecar.
-#[test]
-fn yazi_materialization_generate_applies_semantic_keybinding_remaps() {
-    let fixture = YaziMaterializationFixture::new(
-        r#"[yazi.keybindings]
-open_directory_as_workspace_pane = []
-open_zoxide_in_editor = ["<A-x>", "<A-s>"]
-"#,
-    );
-
-    fixture.generate(false).unwrap();
-    let generated_keymap = fs::read_to_string(fixture.output_dir.join("keymap.toml")).unwrap();
-    let parsed_keymap: toml::Value = toml::from_str(&generated_keymap).unwrap();
-    let mgr_append = parsed_keymap
-        .get("mgr")
-        .and_then(|section| section.get("append_keymap"))
-        .and_then(toml::Value::as_array)
-        .expect("mgr append keymap");
-
-    assert_eq!(mgr_append.len(), 2);
-    assert_eq!(
-        mgr_append[0]
-            .get("on")
-            .and_then(toml::Value::as_array)
-            .and_then(|keys| keys.first())
-            .and_then(toml::Value::as_str),
-        Some("<A-x>")
-    );
-    assert_eq!(
-        mgr_append[1]
-            .get("on")
-            .and_then(toml::Value::as_array)
-            .and_then(|keys| keys.first())
-            .and_then(toml::Value::as_str),
-        Some("<A-s>")
-    );
-    assert_eq!(
-        mgr_append[0].get("run").and_then(toml::Value::as_str),
-        Some("plugin zoxide-editor")
-    );
-    assert!(!generated_keymap.contains("open-terminal"));
-    assert!(!generated_keymap.contains("<A-p>"));
-}
-
-// Defends: duplicate semantic Yazi keys fail before a generated keymap can contain ambiguous Yazelix-owned integration bindings.
-#[test]
-fn yazi_materialization_generate_rejects_duplicate_semantic_keybindings() {
-    let fixture = YaziMaterializationFixture::new(
-        r#"[yazi.keybindings]
-open_directory_as_workspace_pane = ["<A-x>"]
-open_zoxide_in_editor = ["<A-x>"]
-"#,
-    );
-
-    let error = fixture.generate(false).unwrap_err();
-    assert_eq!(error.code(), "duplicate_yazi_keybinding");
-    assert_eq!(error.details()["key"], "<A-x>");
-}
-
 // Regression: user Yazi keymap sections that are absent from Yazelix's bundled base keymap still survive materialization.
 #[test]
 fn yazi_materialization_generate_preserves_user_keymap_sections_beyond_mgr() {
-    let fixture = YaziMaterializationFixture::new("");
+    let fixture = YaziMaterializationFixture::new();
     let user_yazi_dir = fixture.user_yazi_dir();
     fs::create_dir_all(&user_yazi_dir).unwrap();
     fs::write(
@@ -512,7 +412,7 @@ desc = "Previous completion"
 // Defends: Yazi materialization rejects legacy override ownership instead of silently adopting configs/yazi/user.
 #[test]
 fn yazi_materialization_generate_rejects_legacy_override_surface() {
-    let fixture = YaziMaterializationFixture::new("");
+    let fixture = YaziMaterializationFixture::new();
     let legacy_override_dir = fixture
         .config_root
         .join("configs")
@@ -532,7 +432,7 @@ fn yazi_materialization_generate_rejects_legacy_override_surface() {
 // Regression: old flat Yazi sidecars are not silently ignored after the managed Yazi home moved under ~/.config/yazelix/yazi/.
 #[test]
 fn yazi_materialization_generate_rejects_old_flat_yazi_sidecars() {
-    let fixture = YaziMaterializationFixture::new("");
+    let fixture = YaziMaterializationFixture::new();
     fs::write(fixture.config_root.join("yazi_keymap.toml"), "[mgr]\n").unwrap();
 
     let error = fixture.generate(false).unwrap_err();

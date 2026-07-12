@@ -1,0 +1,136 @@
+# Yazelix semantic config
+# Edit ~/.config/yazelix/config.toml directly or use `yzx config`
+
+[core]
+debug_mode = false
+skip_welcome_screen = false
+show_macchina_on_welcome = true
+welcome_style = "random"
+game_of_life_cell_style = "full_block"
+welcome_duration_seconds = 4.0
+
+[helix.steel_plugins]
+enabled = ["splash", "spacemacs_theme"]
+extra = []
+
+[editor]
+command = ""
+hide_sidebar_on_file_open = false
+
+[workspace.left_sidebar]
+command = "yzx"
+args = ["sidebar", "yazi"]
+width_percent = 20
+
+[workspace.right_sidebar]
+command = "yzx"
+args = ["agent"]
+width_percent = 40
+
+[shell]
+default_shell = "nu"
+
+[appearance]
+mode = "dark"
+
+[zellij]
+support_kitty_keyboard_protocol = true
+theme = "default"
+widget_tray = ["session", "editor", "shell", "term", "codex_usage"]
+widget_frame = "none"
+widget_separator = "dot"
+tab_label_mode = "full"
+claude_usage_display = "both"
+codex_usage_display = "quota"
+opencode_go_usage_display = "both"
+codex_usage_periods = ["5h", "week"]
+opencode_go_usage_periods = ["5h", "week", "month"]
+claude_usage_periods = ["5h", "week"]
+custom_text = ""
+popup_width_percent = 90
+popup_height_percent = 90
+screen_saver_enabled = false
+screen_saver_idle_seconds = 300
+screen_saver_style = "random"
+
+[zellij.popup_commands]
+bottom_popup = ["lazygit"]
+top_popup = ["yzx", "config", "ui"]
+menu = ["yzx", "menu"]
+
+[[zellij.custom_popups]]
+id = "zenith"
+command = ["zenith"]
+keybindings = ["Alt Shift I"]
+keep_alive = true
+
+# Curated native Zellij key policy used by Yazelix
+# Set any entry to [] to disable that one bind/unbind
+[zellij.native_keybindings]
+move_tab_left_unbind = ["Alt i"]
+move_tab_left = ["Ctrl Alt h"]
+move_tab_right_unbind = ["Alt o"]
+move_tab_right = ["Ctrl Alt l"]
+new_pane_unbind = ["Alt n"]
+go_to_tab_1 = ["Alt 1"]
+go_to_tab_2 = ["Alt 2"]
+go_to_tab_3 = ["Alt 3"]
+go_to_tab_4 = ["Alt 4"]
+go_to_tab_5 = ["Alt 5"]
+go_to_tab_6 = ["Alt 6"]
+go_to_tab_7 = ["Alt 7"]
+go_to_tab_8 = ["Alt 8"]
+go_to_tab_9 = ["Alt 9"]
+toggle_focus_fullscreen = ["Alt Shift F"]
+previous_tab = ["Alt q"]
+next_tab = ["Alt w"]
+move_pane_down = ["Ctrl Alt j"]
+move_pane_up = ["Ctrl Alt k"]
+selection_cycle_unbind = ["Alt (", "Alt )"]
+toggle_pane_in_group_unbind = ["Alt p"]
+toggle_pane_in_group = []
+toggle_group_marking = ["Ctrl Alt Shift P"]
+move_mode_unbind = ["Ctrl h"]
+pane_mode_unbind = []
+pane_mode = ["Ctrl p"]
+resize_mode_unbind = []
+resize_mode = ["Ctrl n"]
+tab_mode_unbind = []
+tab_mode = ["Ctrl t"]
+locked_mode_unbind = ["Ctrl g"]
+locked_mode = ["Ctrl Alt g"]
+scroll_mode_unbind = ["Ctrl s"]
+scroll_mode = ["Ctrl Alt s"]
+session_mode_unbind = ["Ctrl o"]
+session_mode = ["Ctrl Alt o"]
+quit_unbind = []
+quit = ["Ctrl q"]
+tmux_mode_unbind = ["Ctrl b"]
+
+# Semantic remaps for Yazelix-owned Zellij actions
+[zellij.keybindings]
+open_workspace_terminal = ["Alt m"]
+bottom_popup = ["Alt Shift J"]
+top_popup = ["Alt Shift K"]
+menu = ["Alt Shift M"]
+config = ["Alt Shift C"]
+move_focus_left_or_tab = ["Alt h", "Alt Left"]
+move_focus_right_or_tab = ["Alt l", "Alt Right"]
+toggle_editor_sidebar_focus = ["Ctrl y"]
+toggle_editor_right_sidebar_focus = ["Ctrl Shift Y"]
+toggle_left_sidebar = ["Alt Shift H"]
+open_codex_agent_right = ["Alt Shift L"]
+smart_reveal = ["Alt r"]
+previous_family = ["Alt ["]
+next_family = ["Alt ]"]
+
+[yazi]
+command = ""
+ya_command = ""
+plugins = ["git", "starship"]
+theme = "default"
+sort_by = "alphabetical"
+
+[yazi.keybindings]
+open_directory_as_workspace_pane = ["<A-p>"]
+open_zoxide_in_editor = ["<A-z>"]

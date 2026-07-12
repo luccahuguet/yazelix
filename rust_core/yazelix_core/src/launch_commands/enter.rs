@@ -261,7 +261,7 @@ fn play_welcome_art(_runtime_dir: &Path, facts: &StartupFactsData) -> Result<(),
                 CoreError::io(
                     "startup_macchina",
                     "Could not run macchina for the Yazelix welcome screen.",
-                    "Disable core.show_macchina_on_welcome or reinstall Yazelix with macchina available.",
+                    "Set welcome.enabled = false or reinstall Yazelix with macchina available.",
                     "macchina",
                     source,
                 )
@@ -271,7 +271,7 @@ fn play_welcome_art(_runtime_dir: &Path, facts: &StartupFactsData) -> Result<(),
                 ErrorClass::Runtime,
                 "startup_macchina_failed",
                 format!("macchina failed during the Yazelix welcome screen with status {status}."),
-                "Disable core.show_macchina_on_welcome or fix macchina, then retry.",
+                "Set welcome.enabled = false or fix macchina, then retry.",
                 serde_json::json!({}),
             ));
         }
@@ -311,7 +311,7 @@ impl WelcomeRawModeGuard {
             CoreError::io(
                 "startup_welcome_raw_mode",
                 "Could not enter terminal raw mode for the Yazelix welcome prompt.",
-                "Run Yazelix in an interactive terminal that supports raw key input, or set core.skip_welcome_screen = true.",
+                "Run Yazelix in an interactive terminal that supports raw key input, or set welcome.enabled = false.",
                 ".",
                 source,
             )
@@ -352,7 +352,7 @@ fn wait_for_welcome_keypress() -> Result<(), CoreError> {
             CoreError::io(
                 "startup_welcome_key_read",
                 "Could not read the Yazelix welcome prompt key.",
-                "Retry in an interactive terminal that supports raw key input, or set core.skip_welcome_screen = true.",
+                "Retry in an interactive terminal that supports raw key input, or set welcome.enabled = false.",
                 ".",
                 source,
             )
@@ -923,8 +923,8 @@ fn ensure_default_shell_available(default_shell: &str) -> Result<(), CoreError> 
     Err(CoreError::classified(
         ErrorClass::Runtime,
         "host_default_shell_missing",
-        "Configured shell.default_shell is xonsh, but xonsh was not found on PATH.",
-        "Install xonsh on the host or change shell.default_shell to nu, bash, fish, or zsh.",
+        "The configured shell.program is unavailable on PATH.",
+        "Choose nu, bash, fish, or zsh through shell.program.",
         serde_json::json!({
             "shell": "xonsh",
             "command": "xonsh",

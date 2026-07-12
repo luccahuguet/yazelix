@@ -133,7 +133,7 @@ fn launch_yazi_sidebar() -> Result<i32, CoreError> {
                 "The configured Yazi command `{}` is not available in this environment.",
                 config.yazi_command
             ),
-            "Install Yazi, fix yazi.command in config.toml, or restart Yazelix so the runtime PATH is active.",
+            "Reinstall Yazelix or restart this window so the packaged Yazi command is on PATH.",
             json!({ "command": config.yazi_command }),
         ));
     }
@@ -150,7 +150,7 @@ fn launch_yazi_sidebar() -> Result<i32, CoreError> {
         CoreError::io(
             "launch_yazi_sidebar",
             "Could not launch the configured Yazi sidebar command",
-            "Check yazi.command and the Yazelix runtime PATH, then retry.",
+            "Reinstall Yazelix or restart this window so the packaged Yazi command is on PATH.",
             command_path,
             source,
         )

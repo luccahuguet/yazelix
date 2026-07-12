@@ -585,7 +585,7 @@ mod tests {
         let runtime_dir = repo_root();
         let state_path = dir.path().join("state/rebuild_hash");
         let mut config = default_main_config();
-        config["core"]["skip_welcome_screen"] = json!(false);
+        config["welcome"]["enabled"] = json!(true);
         config["editor"]["command"] = json!("hx");
         let config_path = write_main_config(dir.path(), &config);
         let baseline = compute_config_state(&request_for(
@@ -603,7 +603,7 @@ mod tests {
         })
         .unwrap();
 
-        config["core"]["skip_welcome_screen"] = json!(true);
+        config["welcome"]["enabled"] = json!(false);
         write_main_config(dir.path(), &config);
         let runtime_only = compute_config_state(&request_for(
             config_path.clone(),

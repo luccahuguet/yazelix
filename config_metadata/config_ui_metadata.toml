@@ -60,205 +60,65 @@ help = "Default shell and generated shell hook surfaces"
 label = "advanced"
 help = "Low-level runtime paths and settings most users should not need"
 
-[fields."core.debug_mode"]
-tab = "general"
-help = "Enable verbose Yazelix diagnostics for troubleshooting runtime behavior"
-
-[fields."core.skip_welcome_screen"]
-tab = "general"
-help = "Skip the starter welcome screen during launch and restart"
-
-[fields."core.show_macchina_on_welcome"]
-tab = "general"
-help = "Show the macchina system summary on the welcome screen"
-
-[fields."core.game_of_life_cell_style"]
-tab = "general"
-help = "Choose the glyph style for Game of Life welcome animations"
-
-[fields."core.welcome_style"]
-tab = "general"
-help = "Choose the welcome animation, or randomize among supported styles"
-
-[fields."core.welcome_duration_seconds"]
-tab = "general"
-help = "Set how long the welcome screen stays visible before Yazelix launches"
-
-[fields."helix.external"]
+[fields."open.log_level"]
 tab = "advanced"
-help = "Use a Yazelix-compatible Helix fork binary together with its matching runtime path"
+help = "Choose diagnostics written for managed Yazi open requests"
 
-[fields."helix.steel_plugins"]
-tab = "editor"
-help = "Choose bundled Helix Steel plugins and declare extra user-owned plugin manifests"
+[fields."shell.program"]
+tab = "shell"
+help = "Choose the packaged shell launched in new Yazelix panes"
 
 [fields."editor.command"]
 tab = "editor"
-help = "Override the editor command Yazelix uses when opening files"
+help = "Choose the editor executable used by managed Yazi opens"
 
-[fields."editor.hide_sidebar_on_file_open"]
-tab = "editor"
-help = "Hide the sidebar when opening a file in the editor"
-
-[fields."workspace.left_sidebar.command"]
+[fields."agent.command"]
 tab = "workspace"
-help = "Set the command used to start the left sidebar pane"
+help = "Choose auto provider discovery or one executable for the managed agent surface"
 
-[fields."workspace.left_sidebar.args"]
+[fields."agent.args"]
 tab = "workspace"
-help = "Set the arguments passed to the left sidebar command"
+help = "Set arguments passed to a custom agent command"
 
-[fields."workspace.left_sidebar.width_percent"]
+[fields."welcome.enabled"]
+tab = "general"
+help = "Show the startup welcome splash before entering the managed runtime"
+
+[fields."welcome.style"]
+tab = "general"
+help = "Choose the welcome animation, or randomize among supported styles"
+
+[fields."welcome.duration_seconds"]
+tab = "general"
+help = "Set the welcome splash duration in whole seconds"
+
+[fields."popup.side_margin"]
 tab = "workspace"
-help = "Set the left sidebar pane width as a percentage of the tab"
+help = "Set the left and right cell margin for Nova managed popups"
 
-[fields."workspace.right_sidebar.command"]
+[fields."popup.vertical_margin"]
 tab = "workspace"
-help = "Set the command used to start the right sidebar pane; this can be an agent or any terminal command"
+help = "Set the top and bottom cell margin for Nova managed popups"
 
-[fields."workspace.right_sidebar.args"]
-tab = "workspace"
-help = "Set the arguments passed to the right sidebar command; the default is agent for yzx agent"
-
-[fields."workspace.right_sidebar.width_percent"]
-tab = "workspace"
-help = "Set the right sidebar pane width as a percentage of the tab"
-
-[fields."shell.default_shell"]
-tab = "shell"
-help = "Choose the shell used for new Yazelix shell panes; xonsh must be installed on the host"
-
-[fields."appearance.mode"]
-tab = "appearance"
-help = "Choose dark mode, light mode, or terminal-supported automatic system appearance"
-
-[fields."zellij.support_kitty_keyboard_protocol"]
-tab = "appearance"
-help = "Enable Zellij Kitty keyboard protocol support for unambiguous modified-key handling"
-
-[fields."zellij.theme"]
-tab = "appearance"
-help = "Choose the Zellij theme used by generated Yazelix sessions"
-
-[fields."zellij.widget_tray"]
-tab = "status_bar"
-help = "Choose which widgets appear in the Yazelix status bar"
-
-[fields."zellij.widget_frame"]
-tab = "status_bar"
-help = "Choose whether status bar widgets render without frames, in square brackets, or in round parentheses"
-
-[fields."zellij.widget_separator"]
-tab = "status_bar"
-help = "Choose the separator rendered between adjacent status bar widgets"
-
-[fields."zellij.tab_label_mode"]
-tab = "status_bar"
-help = "Choose how tab labels are rendered in the Yazelix status bar"
-
-[fields."zellij.codex_usage_display"]
-tab = "status_bar"
-help = "Choose how Codex usage appears in the status bar"
-
-[fields."zellij.codex_usage_periods"]
-tab = "status_bar"
-help = "Choose which Codex quota periods appear in the status bar"
-
-[fields."zellij.claude_usage_display"]
-tab = "status_bar"
-help = "Choose how Claude usage appears in the status bar"
-
-[fields."zellij.claude_usage_periods"]
-tab = "status_bar"
-help = "Choose which Claude quota periods appear in the status bar"
-
-[fields."zellij.opencode_go_usage_display"]
-tab = "status_bar"
-help = "Choose how OpenCode Go usage appears in the status bar"
-
-[fields."zellij.opencode_go_usage_periods"]
-tab = "status_bar"
-help = "Choose which OpenCode Go quota periods appear in the status bar"
-
-[fields."zellij.custom_text"]
-tab = "status_bar"
-help = "Set custom compact text shown in the Yazelix status bar"
-
-[fields."zellij.popup_commands"]
-tab = "workspace"
-help = "Set commands for the built-in Yazelix popup surfaces"
-
-[fields."zellij.popup_commands.bottom_popup"]
-tab = "workspace"
-help = "Set the command argv for the bottom popup slot"
-
-[fields."zellij.popup_commands.top_popup"]
-tab = "workspace"
-help = "Set the command argv for the top popup surface"
-
-[fields."zellij.popup_commands.menu"]
-tab = "workspace"
-help = "Set the command argv for the menu popup surface"
-
-[fields."zellij.custom_popups"]
-tab = "workspace"
-help = "Set user-defined popup surfaces with id, command, keybindings, and keep_alive"
-
-[fields."zellij.popup_width_percent"]
-tab = "workspace"
-help = "Set popup width as a percentage of the terminal"
-
-[fields."zellij.popup_height_percent"]
-tab = "workspace"
-help = "Set popup height as a percentage of the terminal"
-
-[fields."zellij.screen_saver_enabled"]
-tab = "appearance"
-help = "Enable the idle Yazelix screen saver"
-
-[fields."zellij.screen_saver_idle_seconds"]
-tab = "appearance"
-help = "Set the idle time before the screen saver opens"
-
-[fields."zellij.screen_saver_style"]
-tab = "appearance"
-help = "Choose the screen saver animation, or randomize among supported styles"
-
-[fields."zellij.default_mode"]
-tab = "workspace"
-help = "Choose the Zellij mode Yazelix enters after launch"
-
-[fields."zellij.keybindings"]
+[fields."keybindings.config"]
 tab = "keybindings"
-help = "Remap Yazelix-owned Zellij actions without copying the full Zellij keybind block"
+help = "Set the chord that toggles the managed config popup"
 
-[fields."zellij.native_keybindings"]
+[fields."keybindings.agent"]
 tab = "keybindings"
-help = "Remap Yazelix's curated native Zellij key policy without copying the full Zellij keybind block"
+help = "Set the chord that hides or shows the managed agent popup"
 
-[fields."yazi.command"]
-tab = "file_manager"
-help = "Override the Yazi command Yazelix launches in the sidebar"
-
-[fields."yazi.ya_command"]
-tab = "file_manager"
-help = "Override the ya helper command used by Yazi plugin management"
-
-[fields."yazi.plugins"]
-tab = "file_manager"
-help = "Choose which curated Yazi plugins Yazelix installs"
-
-[fields."yazi.theme"]
-tab = "file_manager"
-help = "Choose the generated Yazi flavor or theme mode"
-
-[fields."yazi.sort_by"]
-tab = "file_manager"
-help = "Choose the default Yazi sort key"
-
-[fields."yazi.keybindings"]
+[fields."keybindings.git"]
 tab = "keybindings"
-help = "Remap Yazelix-owned Yazi integration action bindings without taking ownership of arbitrary Yazi-native keymaps or multi-key sequences"
+help = "Set the chord that toggles the managed Git popup"
+
+[fields."keybindings.menu"]
+tab = "keybindings"
+help = "Set the chord that toggles the managed command palette popup"
+
+[fields."bar.widgets"]
+tab = "status_bar"
+help = "Choose the Nova top-bar widget order"
 
 [fields."cursors.schema_version"]
 tab = "cursors"

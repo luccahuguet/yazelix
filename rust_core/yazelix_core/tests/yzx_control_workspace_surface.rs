@@ -499,13 +499,13 @@ ya_command = "ya"
     );
 }
 
-// Regression: the first single-Yazi pane cannot visibly hide until the editor pane exists, so a missing-editor open needs one post-create hide pass.
+// Defends: opening a file with the Nova root creates the missing editor and retargets the
+// workspace without applying retired sidebar policy.
 #[test]
-fn yzx_control_zellij_open_editor_hides_sidebar_after_creating_first_editor_pane() {
+fn yzx_control_zellij_open_editor_creates_editor_without_sidebar_policy() {
     let fixture = managed_config_fixture(
         r#"[editor]
 command = "nvim"
-hide_sidebar_on_file_open = true
 "#,
     );
     let fake_bin = fixture.home_dir.join("fake-bin");
@@ -536,15 +536,7 @@ hide_sidebar_on_file_open = true
     assert_success(&output);
     assert_eq!(
         file_lines(zellij_commands_log),
-        vec![
-            "get_active_tab_session_state",
-            "hide_sidebar",
-            "open_file",
-            "run_editor",
-            "retarget_workspace",
-            "get_active_tab_session_state",
-            "hide_sidebar",
-        ]
+        vec!["open_file", "run_editor", "retarget_workspace"]
     );
 }
 
@@ -1263,13 +1255,13 @@ hide_sidebar_on_file_open = false
     );
 }
 
-// Regression: Alt+z should still open the editor when a live/stale pane-orchestrator reports no sidebar collapsed fact.
+// Regression: Alt+z must still open the editor when pane state is unknown; the Nova root
+// does not ask the command to infer or mutate sidebar state.
 #[test]
-fn yzx_control_zellij_open_editor_cwd_continues_when_sidebar_state_unknown() {
+fn yzx_control_zellij_open_editor_cwd_ignores_unknown_sidebar_state() {
     let fixture = managed_config_fixture(
         r#"[editor]
 command = "hx"
-hide_sidebar_on_file_open = true
 "#,
     );
     let fake_bin = fixture.home_dir.join("fake-bin");
@@ -1300,13 +1292,9 @@ hide_sidebar_on_file_open = true
     assert_eq!(
         file_lines(zellij_commands_log),
         vec![
-            "get_active_tab_session_state",
-            "hide_sidebar",
             "retarget_workspace",
             "get_active_tab_session_state",
             "run_editor",
-            "get_active_tab_session_state",
-            "hide_sidebar",
         ]
     );
 }

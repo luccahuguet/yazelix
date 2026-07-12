@@ -488,7 +488,7 @@ fn resolve_popup_commands_config(
                 "unknown_popup_command",
                 format!("Unsupported zellij.popup_commands entry: {name}."),
                 if name == "zenith" {
-                    "Move zenith to zellij.custom_popups: { \"id\": \"zenith\", \"command\": [\"zenith\"], \"keybindings\": [\"Alt Shift I\"], \"keep_alive\": true }."
+                    "Define [popups.zenith] with command = \"zenith\", keybinding = \"Alt Shift I\", and keep_alive = true."
                 } else {
                     "Use one of: bottom_popup, top_popup, menu."
                 },

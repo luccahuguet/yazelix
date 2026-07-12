@@ -4,6 +4,9 @@
 use crate::atomic_fs::write_text_atomic;
 use crate::backup_timestamp::compact_utc_backup_timestamp;
 use crate::bridge::{CoreError, ErrorClass};
+use crate::classic_nova_root_migration::{
+    ClassicNovaMigrationRequest, migrate_classic_root_to_nova,
+};
 use crate::native_config_status::{path_owned_by_home_manager, path_present};
 use crate::settings_contract::reconcile_settings_contract_text;
 use crate::user_config_paths;
@@ -21,6 +24,8 @@ use yazelix_zellij_config_pack::{
 
 pub const SETTINGS_SCHEMA_FILENAME: &str = "yazelix_settings.schema.json";
 pub const DEFAULT_MAIN_CONFIG_FILENAME: &str = "config_default.toml";
+pub const CLASSIC_MAIN_CONFIG_FILENAME: &str = "classic_config_default.toml";
+pub const CLASSIC_MAIN_CONTRACT_FILENAME: &str = "classic_main_config_contract.toml";
 const LEGACY_ZELLIJ_CONFIG_SIDECAR: &str =
     "// Native Zellij preferences used by Yazelix\nscroll_buffer_size 5000\n";
 #[derive(Debug, Clone)]
@@ -86,6 +91,25 @@ pub fn ensure_settings_config_with_cursor_component(
 ) -> Result<PathBuf, CoreError> {
     let paths = settings_surface_paths(config_dir);
     ensure_no_old_main_inputs(&paths)?;
+
+    let runtime_dir = default_main_config.parent().ok_or_else(|| {
+        CoreError::classified(
+            ErrorClass::Runtime,
+            "invalid_default_config_path",
+            "The packaged config_default.toml path has no runtime parent.",
+            "Reinstall Yazelix so its packaged config paths are complete.",
+            json!({ "path": default_main_config.display().to_string() }),
+        )
+    })?;
+    migrate_classic_root_to_nova(&ClassicNovaMigrationRequest {
+        config_dir: config_dir.to_path_buf(),
+        classic_default_config: runtime_dir
+            .join("config_metadata")
+            .join(CLASSIC_MAIN_CONFIG_FILENAME),
+        classic_contract: runtime_dir
+            .join("config_metadata")
+            .join(CLASSIC_MAIN_CONTRACT_FILENAME),
+    })?;
 
     if path_present(&paths.settings_config) && path_present(&paths.legacy_settings_config) {
         return Err(CoreError::classified(
@@ -901,18 +925,6 @@ mod tests {
         path
     }
 
-    fn write_current_legacy_settings(path: &Path, zellij: &str) {
-        fs::write(
-            path,
-            format!(
-                "{{\n  \"editor\": {{ \"command\": \"nvim\" }},\n  \"zellij\": {{ {zellij} }},\n  \"ratconfig\": {{ \"contract\": {{ \"schema_version\": 1, \"contract_id\": \"yazelix.settings\", \"version\": 16, \"applied_change_ids\": {} }} }}\n}}\n",
-                serde_json::to_string(&crate::settings_contract::SETTINGS_CONTRACT_APPLIED_CHANGE_IDS)
-                    .unwrap()
-            ),
-        )
-        .unwrap();
-    }
-
     // Defends: fresh runtimes inherit semantic defaults without creating config.toml.
     #[test]
     fn leaves_fresh_config_toml_absent() {
@@ -976,59 +988,6 @@ mod tests {
         assert_eq!(fs::read_to_string(paths.cursor_config).unwrap(), migrated);
     }
 
-    // Regression: the one-time transaction backs up JSONC, preserves Yazelix values, and moves native Zellij values exactly once.
-    #[test]
-    fn migrates_legacy_jsonc_to_toml_and_zellij_sidecar() {
-        let runtime = tempdir().unwrap();
-        let config = tempdir().unwrap();
-        let cursor = write_cursor_default(runtime.path());
-        let legacy = config.path().join("settings.jsonc");
-        write_current_legacy_settings(
-            &legacy,
-            "\"disable_tips\": false, \"pane_frames\": false, \"rounded_corners\": false, \"default_mode\": \"locked\", \"support_kitty_keyboard_protocol\": true",
-        );
-        fs::create_dir_all(config.path().join("zellij")).unwrap();
-        fs::write(
-            config.path().join("zellij/config.kdl"),
-            LEGACY_ZELLIJ_CONFIG_SIDECAR,
-        )
-        .unwrap();
-
-        let path = ensure_settings_config(config.path(), &default_main_config(), &cursor).unwrap();
-        let value = read_config_table(&path, "test").unwrap();
-        assert_eq!(value["editor"]["command"].as_str(), Some("nvim"));
-        let zellij = value["zellij"].as_table().unwrap();
-        for removed in [
-            "disable_tips",
-            "pane_frames",
-            "rounded_corners",
-            "default_mode",
-        ] {
-            assert!(!zellij.contains_key(removed));
-        }
-        let sidecar = fs::read_to_string(config.path().join("zellij/config.kdl")).unwrap();
-        assert!(sidecar.contains("show_startup_tips true"));
-        assert!(sidecar.contains("pane_frames false"));
-        assert!(sidecar.contains("default_mode \"locked\""));
-        assert!(sidecar.contains("rounded_corners false"));
-        assert!(!legacy.exists());
-        assert!(
-            fs::read_dir(config.path())
-                .unwrap()
-                .filter_map(Result::ok)
-                .any(|entry| {
-                    entry
-                        .file_name()
-                        .to_string_lossy()
-                        .starts_with("settings.jsonc.backup-")
-                })
-        );
-
-        let before = fs::read_to_string(&path).unwrap();
-        ensure_settings_config(config.path(), &default_main_config(), &cursor).unwrap();
-        assert_eq!(fs::read_to_string(path).unwrap(), before);
-    }
-
     // Defends: two root owners never trigger precedence selection or mutation.
     #[test]
     fn rejects_root_config_migration_conflict() {
@@ -1045,7 +1004,7 @@ mod tests {
         let error =
             ensure_settings_config(config.path(), &default_main_config(), &cursor).unwrap_err();
 
-        assert_eq!(error.code(), "root_config_migration_conflict");
+        assert_eq!(error.code(), "classic_nova_root_coexistence");
         assert_eq!(
             fs::read_to_string(config.path().join("settings.jsonc")).unwrap(),
             "{}\n"
@@ -1067,7 +1026,7 @@ mod tests {
             ensure_settings_config(config.path(), &default_main_config(), &cursor).unwrap_err();
         fs::set_permissions(&legacy, fs::Permissions::from_mode(0o644)).unwrap();
 
-        assert_eq!(error.code(), "read_only_root_config_migration");
+        assert_eq!(error.code(), "read_only_root_migration");
         assert!(!config.path().join("config.toml").exists());
     }
 
@@ -1086,7 +1045,7 @@ mod tests {
         let error = ensure_settings_config(config.path(), &default_main_config(), &cursor)
             .expect_err("dangling config owner");
 
-        assert_eq!(error.code(), "invalid_main_config_toml");
+        assert_eq!(error.code(), "ambiguous_root_file_owner");
         assert!(fs::symlink_metadata(path).unwrap().file_type().is_symlink());
     }
 }

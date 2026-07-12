@@ -4,8 +4,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use tempfile::tempdir;
 use yazelix_core::config_ui::{
-    ConfigUiPathOwner, ConfigUiRequest, ConfigUiValueState, DEFAULT_CONFIG_SOURCE_ID,
-    build_config_ui_model,
+    ConfigUiPathOwner, ConfigUiRequest, DEFAULT_CONFIG_SOURCE_ID, build_config_ui_model,
 };
 use yazelix_core::ghostty_cursor_registry::DEFAULT_CURSOR_CONFIG_FILENAME;
 
@@ -18,6 +17,20 @@ fn write_runtime_layout(runtime: &Path) {
         include_str!("../../../config_metadata/main_config_contract.toml"),
     )
     .expect("main config contract");
+    fs::write(
+        runtime
+            .join("config_metadata")
+            .join("classic_main_config_contract.toml"),
+        include_str!("../../../config_metadata/classic_main_config_contract.toml"),
+    )
+    .expect("Classic migration contract");
+    fs::write(
+        runtime
+            .join("config_metadata")
+            .join("classic_config_default.toml"),
+        include_str!("../../../config_metadata/classic_config_default.toml"),
+    )
+    .expect("Classic migration defaults");
     fs::write(
         runtime
             .join("config_metadata")
@@ -80,7 +93,7 @@ fn reports_sidecars_and_home_manager_read_only_state() {
     let hm_dir = config.path().join("profile-home-manager-files");
     fs::create_dir_all(&hm_dir).expect("hm dir");
     let hm_settings = hm_dir.join("config.toml");
-    fs::write(&hm_settings, "[core]\ndebug_mode = false\n").expect("hm settings");
+    fs::write(&hm_settings, "[welcome]\nenabled = false\n").expect("hm settings");
     let mut permissions = fs::metadata(&hm_settings).expect("metadata").permissions();
     permissions.set_readonly(true);
     fs::set_permissions(&hm_settings, permissions).expect("readonly");
@@ -144,37 +157,27 @@ fn rejects_invalid_config_toml() {
     ))
     .expect_err("invalid toml");
 
-    assert_eq!(error.code(), "invalid_main_config_toml");
+    assert_eq!(error.code(), "invalid_classic_nova_root_toml");
 }
 
-// Defends: blocking config diagnostics are visible in the config UI model instead of making the read-only browser unusable for stale configs.
+// Defends: invalid Nova semantic values fail before Ratconfig renders misleading rows.
 #[test]
-fn marks_blocking_diagnostics_without_aborting_model_build() {
+fn rejects_invalid_nova_value_before_rendering() {
     let runtime = tempdir().expect("runtime");
     let config = tempdir().expect("config");
     write_runtime_layout(runtime.path());
     fs::write(
         config.path().join("config.toml"),
-        "[core]\ndebug_mode = \"yes\"\n",
+        "[welcome]\nenabled = \"yes\"\n",
     )
     .expect("settings");
 
-    let model = build_config_ui_model(&request(
+    let error = build_config_ui_model(&request(
         runtime.path().to_path_buf(),
         config.path().to_path_buf(),
     ))
-    .expect("model");
+    .expect_err("invalid Nova root");
 
-    let debug_mode = model
-        .fields
-        .iter()
-        .find(|field| field.path == "core.debug_mode")
-        .expect("debug mode field");
-    assert_eq!(debug_mode.state, ConfigUiValueState::Invalid);
-    assert!(
-        model
-            .diagnostics
-            .iter()
-            .any(|diagnostic| diagnostic.path == "core.debug_mode" && diagnostic.blocking)
-    );
+    assert_eq!(error.code(), "invalid_nova_root");
+    assert!(error.message().contains("welcome"));
 }

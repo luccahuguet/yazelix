@@ -24,13 +24,13 @@ use yazelix_core::cli_render::{
 use yazelix_core::compute_runtime_env;
 use yazelix_core::compute_session_facts_from_env;
 use yazelix_core::compute_status_report;
-use yazelix_core::config_normalize::ConfigDiagnosticReport;
+use yazelix_core::config_normalize::{ConfigDiagnostic, ConfigDiagnosticReport};
 use yazelix_core::control_plane::{
     basename_shell, config_dir_from_env, config_override_from_env, default_shell_from_config,
     load_normalized_config_for_control, parse_env_cli_args, parse_status_cli_args,
     read_runtime_identity_from_runtime, read_yazelix_version_from_runtime,
     run_child_in_runtime_env, runtime_dir_from_env, runtime_env_request,
-    runtime_materialization_plan_request_from_env, setpriv_or_sh_exec, shell_command,
+    runtime_materialization_diagnostic_request_from_env, setpriv_or_sh_exec, shell_command,
     split_run_argv, state_dir_from_env,
 };
 use yazelix_core::evaluate_install_ownership_report;
@@ -891,9 +891,33 @@ fn print_control_error(err: &CoreError) {
     }
 }
 
-fn config_diagnostic_report_from_error(err: &CoreError) -> Option<ConfigDiagnosticReport> {
+fn config_diagnostic_report_from_error(
+    err: &CoreError,
+    config_path: &Path,
+) -> Option<ConfigDiagnosticReport> {
     if matches!(err.class(), ErrorClass::Config) && err.code() == "unsupported_config" {
         serde_json::from_value::<ConfigDiagnosticReport>(err.details()).ok()
+    } else if matches!(err.class(), ErrorClass::Config) {
+        let diagnostic = ConfigDiagnostic {
+            category: "schema".to_string(),
+            path: config_path.to_string_lossy().to_string(),
+            status: err.code().to_string(),
+            blocking: true,
+            fix_available: false,
+            headline: err.message().to_string(),
+            detail_lines: vec![err.remediation().to_string()],
+        };
+        Some(ConfigDiagnosticReport {
+            config_path: config_path.to_string_lossy().to_string(),
+            schema_diagnostics: vec![diagnostic.clone()],
+            doctor_diagnostics: vec![diagnostic.clone()],
+            blocking_diagnostics: vec![diagnostic],
+            issue_count: 1,
+            blocking_count: 1,
+            fixable_count: 0,
+            has_blocking: true,
+            has_fixable_config_issues: false,
+        })
     } else {
         None
     }
@@ -906,24 +930,45 @@ fn compute_status_report_for_control(
     match compute_status_report(request, version, YAZELIX_DESCRIPTION) {
         Ok(report) => Ok(report),
         Err(error) => {
-            let Some(config_report) = config_diagnostic_report_from_error(&error) else {
+            let Some(config_report) =
+                config_diagnostic_report_from_error(&error, &request.config_path)
+            else {
                 return Err(error);
             };
-            Ok(config_problem_status_report(
-                request,
-                version,
-                &config_report,
-            ))
+            config_problem_status_report(request, version, &config_report)
         }
     }
+}
+
+fn status_request_and_report(
+    version: &str,
+) -> Result<
+    (
+        yazelix_core::RuntimeMaterializationPlanRequest,
+        StatusReportData,
+    ),
+    CoreError,
+> {
+    let (request, activation_error) =
+        runtime_materialization_diagnostic_request_from_env(config_override_from_env().as_deref())?;
+    let report = match activation_error {
+        Some(error) => {
+            let config_report = config_diagnostic_report_from_error(&error, &request.config_path)
+                .expect("diagnostic request only captures config errors");
+            config_problem_status_report(&request, version, &config_report)?
+        }
+        None => compute_status_report_for_control(&request, version)?,
+    };
+    Ok((request, report))
 }
 
 fn config_problem_status_report(
     request: &yazelix_core::RuntimeMaterializationPlanRequest,
     version: &str,
     config_report: &ConfigDiagnosticReport,
-) -> StatusReportData {
+) -> Result<StatusReportData, CoreError> {
     let facts = compute_session_facts_from_env().unwrap_or_default();
+    let logs_dir = state_dir_from_env()?.join("logs");
     let reason = format!(
         "unsupported config entries: {} blocking, {} total",
         config_report.blocking_count, config_report.issue_count
@@ -944,7 +989,7 @@ fn config_problem_status_report(
     );
     summary.insert(
         "logs_dir".to_string(),
-        serde_json::json!(request.runtime_dir.join("logs").to_string_lossy()),
+        serde_json::json!(logs_dir.to_string_lossy()),
     );
     summary.insert(
         "generated_state_repair_needed".to_string(),
@@ -1003,10 +1048,10 @@ fn config_problem_status_report(
         serde_json::to_value(config_report).unwrap_or(serde_json::Value::Null),
     );
 
-    StatusReportData {
+    Ok(StatusReportData {
         title: "Yazelix status".to_string(),
         summary,
-    }
+    })
 }
 
 fn run_env(args: &[String]) -> Result<i32, CoreError> {
@@ -1105,10 +1150,9 @@ fn run_status(args: &[String]) -> Result<i32, CoreError> {
         return Ok(0);
     }
 
-    let request =
-        runtime_materialization_plan_request_from_env(config_override_from_env().as_deref())?;
-    let version = read_yazelix_version_from_runtime(&request.runtime_dir)?;
-    let data = compute_status_report_for_control(&request, &version)?;
+    let runtime_dir = runtime_dir_from_env()?;
+    let version = read_yazelix_version_from_runtime(&runtime_dir)?;
+    let (_request, data) = status_request_and_report(&version)?;
     let versions = parsed.versions.then(collect_version_info);
 
     if parsed.json {
@@ -1149,16 +1193,15 @@ fn run_inspect(args: &[String]) -> Result<i32, CoreError> {
         return Ok(0);
     }
 
-    let request =
-        runtime_materialization_plan_request_from_env(config_override_from_env().as_deref())?;
-    let version = read_yazelix_version_from_runtime(&request.runtime_dir)?;
+    let runtime_dir = runtime_dir_from_env()?;
+    let version = read_yazelix_version_from_runtime(&runtime_dir)?;
+    let (request, status) = status_request_and_report(&version)?;
     let runtime_identity = read_runtime_identity_from_runtime(&request.runtime_dir)?;
     let runtime_variant =
         read_runtime_variant_from_runtime(&runtime_identity, &request.runtime_dir);
     let ownership_graph = compute_runtime_ownership_graph(&RuntimeOwnershipGraphRequest {
         runtime_dir: request.runtime_dir.clone(),
     })?;
-    let status = compute_status_report_for_control(&request, &version)?;
     let install = evaluate_install_ownership_report(
         &install_ownership_request_from_env_with_runtime_dir(request.runtime_dir.clone())?,
     );
@@ -2562,11 +2605,11 @@ mod tests {
             doctor_diagnostics: vec![],
             blocking_diagnostics: vec![ConfigDiagnostic {
                 category: "config".to_string(),
-                path: "shell.default_shell".to_string(),
+                path: "shell.program".to_string(),
                 status: "invalid".to_string(),
                 blocking: true,
                 fix_available: false,
-                headline: "Invalid config value at shell.default_shell".to_string(),
+                headline: "Invalid config value at shell.program".to_string(),
                 detail_lines: vec![
                     "Expected one of: nu, bash, fish, xonsh, zsh".to_string(),
                     "Next: Update the field manually".to_string(),
@@ -2581,7 +2624,7 @@ mod tests {
 
         let rendered = render_startup_config_error(&report);
         assert!(rendered.contains("Blocking issues: 1"));
-        assert!(rendered.contains("Invalid config value at shell.default_shell"));
+        assert!(rendered.contains("Invalid config value at shell.program"));
         assert!(rendered.contains("Expected one of: nu, bash, fish, xonsh, zsh"));
         assert!(rendered.contains("Failure class: config problem."));
         assert!(!rendered.contains("Known migration"));

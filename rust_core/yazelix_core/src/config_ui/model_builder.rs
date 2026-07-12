@@ -10,6 +10,11 @@ const BUILTIN_POPUP_COMMANDS: &[(&str, &str)] = &[
 ];
 
 pub fn build_config_ui_model(request: &ConfigUiRequest) -> Result<ConfigUiModel, CoreError> {
+    crate::active_config_surface::resolve_active_config_paths(
+        &request.runtime_dir,
+        &request.config_dir,
+        request.config_override.as_deref(),
+    )?;
     let paths = primary_config_paths(&request.runtime_dir, &request.config_dir);
     let schema = read_json_file(
         &paths.settings_schema_path,
