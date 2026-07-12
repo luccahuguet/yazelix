@@ -1516,6 +1516,7 @@ dependencies = [
  "windows-sys 0.61.2",
  "yazelix_cursors",
  "yazelix_screen",
+ "yazelix_terminal_support",
  "yazelix_yazi_assets",
  "yazelix_zellij_config_pack",
 ]
@@ -1542,6 +1543,7 @@ dependencies = [
  "tempfile",
  "toml",
  "yazelix_core",
+ "yazelix_terminal_support",
 ]
 
 [[package]]
@@ -1553,9 +1555,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "yazelix_terminal_support"
+version = "0.1.0"
+source = "git+https://github.com/FlexNetOS/yazelix-terminal-support?rev=6ab751a75d60482584d1fa898f72500fbdb8356c#6ab751a75d60482584d1fa898f72500fbdb8356c"
+dependencies = [
+ "serde",
+ "toml",
+]
+
+[[package]]
 name = "yazelix_yazi_assets"
 version = "0.1.0"
-source = "git+https://github.com/FlexNetOS/yazelix-yazi-assets?rev=471073d54d4a6c9fa9e87f26134d6db3f387977e#471073d54d4a6c9fa9e87f26134d6db3f387977e"
+source = "git+https://github.com/FlexNetOS/yazelix-yazi-assets?rev=bd53b59159125f9c186e3766ff5c2a07005c26be#bd53b59159125f9c186e3766ff5c2a07005c26be"
 dependencies = [
  "serde",
  "toml",

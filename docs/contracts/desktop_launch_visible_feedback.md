@@ -6,7 +6,7 @@ Desktop entry launches must invoke `yzx desktop launch` directly from the deskto
 
 ## Why
 
-GNOME/Wayland desktop activation can route `Terminal=true` entries through host starter terminals such as `xdg-terminal-exec`, Ptyxis, or Ghostty. Those starter terminals can exit and clean up their process scope before Yazelix writes launch evidence or before the managed Mars/Zellij window survives.
+GNOME/Wayland desktop activation can route `Terminal=true` entries through host starter terminals such as `xdg-terminal-exec`, Ptyxis, or Ghostty. Those starter terminals can exit and clean up their process scope before Yazelix writes launch evidence or before the managed Kitty/Zellij window survives.
 
 The supported contract is that Linux desktop entries avoid the starter terminal and run `yzx desktop launch` with `Terminal=false`. `yzx desktop launch` owns runtime resolution, config parsing, generated terminal config repair, Ghostty cursor rerolls, and the deferred handoff to the packaged Yazelix terminal. Launch diagnostics are durable logs plus `yzx doctor`, not a host starter terminal window.
 

@@ -55,6 +55,22 @@ pub(super) fn get_launch_probe_log_path(
     Ok(log_dir.join(format!("{}_{}.log", sanitized, timestamp)))
 }
 
+pub(super) fn launch_probe_terminal_name(launch_argv: &[String]) -> &str {
+    let first = launch_argv
+        .first()
+        .map(String::as_str)
+        .unwrap_or("terminal");
+    let first_basename = Path::new(first)
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or(first);
+    if first_basename.to_ascii_lowercase().starts_with("nixgl") {
+        launch_argv.get(1).map(String::as_str).unwrap_or(first)
+    } else {
+        first
+    }
+}
+
 pub(super) fn run_detached_launch_probe(
     runtime_dir: &Path,
     state_dir: &Path,
@@ -82,13 +98,7 @@ pub(super) fn run_detached_launch_probe(
         ));
     }
 
-    let log_path = get_launch_probe_log_path(
-        state_dir,
-        launch_argv
-            .first()
-            .map(String::as_str)
-            .unwrap_or("terminal"),
-    )?;
+    let log_path = get_launch_probe_log_path(state_dir, launch_probe_terminal_name(launch_argv))?;
     let mut argv = vec![
         probe_helper.to_string_lossy().into_owned(),
         log_path.to_string_lossy().into_owned(),
@@ -133,13 +143,7 @@ pub(super) fn run_desktop_deferred_launch_probe(
         ));
     }
 
-    let log_path = get_launch_probe_log_path(
-        state_dir,
-        launch_argv
-            .first()
-            .map(String::as_str)
-            .unwrap_or("terminal"),
-    )?;
+    let log_path = get_launch_probe_log_path(state_dir, launch_probe_terminal_name(launch_argv))?;
     let mut argv = vec![
         probe_helper.to_string_lossy().into_owned(),
         log_path.to_string_lossy().into_owned(),

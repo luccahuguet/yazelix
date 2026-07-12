@@ -31,7 +31,29 @@ use yazelix_core::{
     ZELLIJ_NATIVE_KEYBINDINGS, runtime_apply_mode_codes,
 };
 
-const HOME_MANAGER_DEFAULT_TERMINAL: &str = "mars";
+/// Home Manager packaged default terminal, sourced from the
+/// `yazelix_terminal_support` child (single source of truth) so the contract
+/// enforces that the Nix module default matches the shared authority.
+fn home_manager_default_terminal() -> &'static str {
+    yazelix_terminal_support::terminal_support().default_terminal()
+}
+
+/// A `terminalSupport = { ... };` Nix binding for standalone module.nix evals,
+/// derived from the shared authority so eval fixtures never hardcode terminal
+/// identity.
+fn terminal_support_special_arg() -> String {
+    let support = yazelix_terminal_support::terminal_support();
+    let order = support
+        .supported_terminals()
+        .iter()
+        .map(|terminal| format!("\"{terminal}\""))
+        .collect::<Vec<_>>()
+        .join(" ");
+    format!(
+        "terminalSupport = {{ default_terminal = \"{}\"; launch_order = [ {order} ]; }};",
+        support.default_terminal()
+    )
+}
 
 pub fn validate_config_surface_contract(repo_root: &Path) -> Result<ValidationReport, String> {
     let mut report = ValidationReport::default();
@@ -569,7 +591,12 @@ fn build_home_manager_managed_settings_jsonc_expr(repo_root: &Path) -> String {
         "  pkgs = import <nixpkgs> { system = \"x86_64-linux\"; };".to_string(),
         "  lib = pkgs.lib.extend (_: super: { hm = { dag = { entryAfter = after: data: { inherit after data; }; }; }; });".to_string(),
         "  eval = lib.evalModules {".to_string(),
-        "    specialArgs = { inherit pkgs; nixgl = null; yazelixCursorsPackage = null; marsTerminalPackage = null; mkYazelixPackage = args: pkgs.runCommand (args.name or \"yazelix\") {} ''mkdir -p $out/bin $out/libexec $out/toolbin; touch $out/bin/yzx $out/libexec/yzx_core $out/libexec/yzx_control''; };".to_string(),
+        "    specialArgs = { inherit pkgs; nixgl = null; yazelixCursorsPackage = null; marsTerminalPackage = null; mkYazelixPackage = args: pkgs.runCommand (args.name or \"yazelix\") {} ''mkdir -p $out/bin $out/libexec $out/toolbin; touch $out/bin/yzx $out/libexec/yzx_core $out/libexec/yzx_control''; };"
+            .to_string()
+            .replace(
+                "inherit pkgs;",
+                &format!("inherit pkgs; {}", terminal_support_special_arg()),
+            ),
         "    modules = [".to_string(),
         format!("      (builtins.toPath \"{}\")", module_path),
     ];
@@ -802,16 +829,16 @@ fn validate_home_manager_desktop_entry_contract(repo_root: &Path) -> Result<Vec<
     let actual_exec = json_map_str_field(&entry, "exec");
     let actual_name = json_map_str_field(&entry, "name");
     let actual_startup_wm_class = json_map_str_field(&entry, "startupWmClass");
-    let expected_name = terminal_desktop_entry_name(HOME_MANAGER_DEFAULT_TERMINAL);
-    let expected_exec = expected_home_manager_profile_desktop_exec(HOME_MANAGER_DEFAULT_TERMINAL);
+    let expected_name = terminal_desktop_entry_name(home_manager_default_terminal());
+    let expected_exec = expected_home_manager_profile_desktop_exec(home_manager_default_terminal());
     let expected_startup_wm_class =
-        expected_home_manager_startup_wm_class(HOME_MANAGER_DEFAULT_TERMINAL);
+        expected_home_manager_startup_wm_class(home_manager_default_terminal());
     let mut errors = Vec::new();
 
-    if active_terminal != HOME_MANAGER_DEFAULT_TERMINAL {
+    if active_terminal != home_manager_default_terminal() {
         errors.push(format!(
             "Home Manager default terminal mismatch: expected {}, got {}",
-            format_json_string(HOME_MANAGER_DEFAULT_TERMINAL),
+            format_json_string(home_manager_default_terminal()),
             format_json_string(active_terminal)
         ));
     }
@@ -819,14 +846,14 @@ fn validate_home_manager_desktop_entry_contract(repo_root: &Path) -> Result<Vec<
     if !is_present {
         errors.push(format!(
             "Home Manager Linux {} desktop entry must be generated",
-            terminal_display_name(HOME_MANAGER_DEFAULT_TERMINAL)
+            terminal_display_name(home_manager_default_terminal())
         ));
     }
 
     if actual_name != expected_name {
         errors.push(format!(
             "Home Manager {} desktop entry name mismatch: expected {}, got {}",
-            terminal_display_name(HOME_MANAGER_DEFAULT_TERMINAL),
+            terminal_display_name(home_manager_default_terminal()),
             expected_name,
             format_json_string(actual_name)
         ));
@@ -940,7 +967,12 @@ fn build_home_manager_activation_expr(repo_root: &Path, manage_config: bool) -> 
         "  pkgs = import <nixpkgs> { system = \"x86_64-linux\"; };".to_string(),
         "  lib = pkgs.lib.extend (_: super: { hm = { dag = { entryAfter = after: data: { inherit after data; }; }; }; });".to_string(),
         "  eval = lib.evalModules {".to_string(),
-        "    specialArgs = { inherit pkgs; nixgl = null; yazelixCursorsPackage = null; marsTerminalPackage = null; mkYazelixPackage = args: pkgs.runCommand (args.name or \"yazelix\") {} ''mkdir -p $out/bin $out/libexec $out/toolbin; touch $out/bin/yzx $out/libexec/yzx_core $out/libexec/yzx_control''; };".to_string(),
+        "    specialArgs = { inherit pkgs; nixgl = null; yazelixCursorsPackage = null; marsTerminalPackage = null; mkYazelixPackage = args: pkgs.runCommand (args.name or \"yazelix\") {} ''mkdir -p $out/bin $out/libexec $out/toolbin; touch $out/bin/yzx $out/libexec/yzx_core $out/libexec/yzx_control''; };"
+            .to_string()
+            .replace(
+                "inherit pkgs;",
+                &format!("inherit pkgs; {}", terminal_support_special_arg()),
+            ),
         "    modules = [".to_string(),
         format!("      (builtins.toPath \"{}\")", module_path),
     ];
@@ -1102,8 +1134,9 @@ fn build_home_manager_defaults_expr(repo_root: &Path, option_names: &[String]) -
         "  pkgs = import <nixpkgs> {};".to_string(),
         "  lib = pkgs.lib;".to_string(),
         format!(
-            "  module = import (builtins.toPath \"{}\") {{ inherit lib pkgs; options = {{}}; config = {{ programs.yazelix = {{}}; xdg.configHome = \"/tmp\"; }}; }};",
-            module_path
+            "  module = import (builtins.toPath \"{}\") {{ inherit lib pkgs; {} options = {{}}; config = {{ programs.yazelix = {{}}; xdg.configHome = \"/tmp\"; }}; }};",
+            module_path,
+            terminal_support_special_arg()
         ),
         "in {".to_string(),
         bindings,
@@ -1130,7 +1163,12 @@ fn build_home_manager_option_declarations_expr(repo_root: &Path) -> String {
         "  pkgs = import <nixpkgs> {};".to_string(),
         "  lib = pkgs.lib;".to_string(),
         "  eval = lib.evalModules {".to_string(),
-        "    specialArgs = { inherit pkgs; nixgl = null; };".to_string(),
+        "    specialArgs = { inherit pkgs; nixgl = null; };"
+            .to_string()
+            .replace(
+                "inherit pkgs;",
+                &format!("inherit pkgs; {}", terminal_support_special_arg()),
+            ),
         "    modules = [".to_string(),
         format!("      (builtins.toPath \"{}\")", module_path),
     ];
@@ -1189,7 +1227,12 @@ fn build_home_manager_desktop_entry_expr(repo_root: &Path) -> String {
         "  pkgs = import <nixpkgs> { system = \"x86_64-linux\"; };".to_string(),
         "  lib = pkgs.lib;".to_string(),
         "  eval = lib.evalModules {".to_string(),
-        "    specialArgs = { inherit pkgs; nixgl = null; yazelixCursorsPackage = null; marsTerminalPackage = null; mkYazelixPackage = args: pkgs.runCommand (args.name or \"yazelix\") {} \"mkdir -p $out/bin; touch $out/bin/yzx\"; };".to_string(),
+        "    specialArgs = { inherit pkgs; nixgl = null; yazelixCursorsPackage = null; marsTerminalPackage = null; mkYazelixPackage = args: pkgs.runCommand (args.name or \"yazelix\") {} \"mkdir -p $out/bin; touch $out/bin/yzx\"; };"
+            .to_string()
+            .replace(
+                "inherit pkgs;",
+                &format!("inherit pkgs; {}", terminal_support_special_arg()),
+            ),
         "    modules = [".to_string(),
         format!("      (builtins.toPath \"{}\")", module_path),
     ];
@@ -1198,7 +1241,10 @@ fn build_home_manager_desktop_entry_expr(repo_root: &Path) -> String {
         "    ];".to_string(),
         "  };".to_string(),
         "  activeTerminal = eval.config.programs.yazelix.terminal;".to_string(),
-        "  entryKey = \"com.yazelix.Yazelix.Mars\";".to_string(),
+        format!(
+            "  entryKey = \"{}\";",
+            escape_nix_string(&terminal_desktop_entry_id(home_manager_default_terminal()))
+        ),
         "  entries = eval.config.xdg.desktopEntries;".to_string(),
         "  entry = if builtins.hasAttr entryKey entries then builtins.getAttr entryKey entries else {};".to_string(),
         "in {".to_string(),
@@ -1229,7 +1275,12 @@ fn build_home_manager_darwin_without_desktop_entry_option_expr(repo_root: &Path)
         "  pkgs = import <nixpkgs> { system = \"aarch64-darwin\"; };".to_string(),
         "  lib = pkgs.lib;".to_string(),
         "  eval = lib.evalModules {".to_string(),
-        "    specialArgs = { inherit pkgs; nixgl = null; };".to_string(),
+        "    specialArgs = { inherit pkgs; nixgl = null; };"
+            .to_string()
+            .replace(
+                "inherit pkgs;",
+                &format!("inherit pkgs; {}", terminal_support_special_arg()),
+            ),
         "    modules = [".to_string(),
         format!("      (builtins.toPath \"{}\")", module_path),
     ];

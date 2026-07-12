@@ -8,7 +8,7 @@ use crate::install_ownership_report::{
     InstallOwnershipEvaluateData, evaluate_install_ownership_report,
 };
 use crate::terminal_variant::{
-    active_terminal_from_runtime_dir, terminal_desktop_entry_file_name,
+    SESSION_TERMINAL_ENV, active_terminal_from_runtime_dir, terminal_desktop_entry_file_name,
     terminal_desktop_entry_name, terminal_startup_wm_class,
 };
 use std::fs;
@@ -36,6 +36,10 @@ const DESKTOP_LAUNCH_CLEARED_ENV_KEYS: &[&str] = &[
     "YAZELIX_CURSOR_PRIMARY_COLOR",
     "YAZELIX_CURSOR_SECONDARY_COLOR",
     "YAZELIX_NU_BIN",
+    // Session-terminal identity markers (mirror yazelix_terminal_support
+    // session_id_env_keys): clear stale parent-session labels on a fresh
+    // desktop launch so the new window detects its own terminal.
+    SESSION_TERMINAL_ENV,
     "MARS",
     "YAZELIX_ZELLIJ_SESSION_NAME",
     "YAZI_ID",

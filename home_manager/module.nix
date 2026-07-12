@@ -2,6 +2,7 @@
   config,
   lib,
   options,
+  terminalSupport,
   fenixPkgs ? null,
   mkYazelixPackage ? null,
   marsTerminalPackage ? null,
@@ -16,10 +17,12 @@ with lib;
 
 let
   cfg = config.programs.yazelix;
-  defaultTerminal = "mars";
-  terminalVariants = [ "mars" ];
+  # Single source of truth: the yazelix-terminal-support child (consumed as the
+  # yazelixTerminalSupport flake input, parsed into terminalSupport).
+  defaultTerminal = terminalSupport.default_terminal;
+  terminalVariants = terminalSupport.launch_order;
   terminalDescriptionBullets =
-    "        - \"mars\": default Rust terminal with Yazelix-owned Mars integration, generated Mars config, cursor trails, and the Yazelix Zellij Kitty graphics bridge";
+    "        - \"kitty\": packaged default terminal; Yazelix launches Kitty and keeps its native config user-owned\n        - \"ghostty\": host-installed backup terminal; start Yazelix with `yzx enter`";
   runtimeToolSourceModes = [
     "bundled"
     "host"

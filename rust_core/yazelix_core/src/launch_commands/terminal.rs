@@ -1,6 +1,6 @@
 use crate::atomic_fs::is_executable_file;
 use crate::bridge::{CoreError, ErrorClass};
-use crate::runtime_contract::TerminalCandidate;
+use crate::runtime_contract::{TerminalCandidate, resolve_runtime_nixgl_wrapper};
 use crate::terminal_variant::terminal_window_title;
 use std::path::{Path, PathBuf};
 
@@ -54,7 +54,7 @@ pub(super) fn resolve_terminal_config_path(
     mode: &str,
     terminal: &str,
 ) -> Result<PathBuf, String> {
-    if !crate::terminal_variant::SUPPORTED_TERMINALS.contains(&terminal) {
+    if !crate::terminal_variant::is_supported(terminal) {
         return Err(format!(
             "Yazelix does not launch terminal '{terminal}'; configure it as a host terminal to run `yzx enter`."
         ));
@@ -119,8 +119,8 @@ pub(super) fn build_launch_command_argv(
     let working_dir = working_dir.to_string_lossy().into_owned();
     let startup_script = startup_script.to_string_lossy().into_owned();
 
-    match terminal.terminal.as_str() {
-        "mars" => Ok(vec![
+    let argv = match terminal.terminal.as_str() {
+        "mars" => vec![
             terminal_command,
             "--title-placeholder".to_string(),
             title,
@@ -128,26 +128,61 @@ pub(super) fn build_launch_command_argv(
             working_dir,
             "-e".to_string(),
             startup_script,
-        ]),
-        "kitty" => Ok(vec![
+        ],
+        "kitty" => vec![
             terminal_command,
             "--title".to_string(),
             title,
             "--directory".to_string(),
             working_dir,
             startup_script,
-        ]),
-        "ghostty" => Ok(vec![
+        ],
+        "ghostty" => vec![
             terminal_command,
             format!("--title={title}"),
             format!("--working-directory={working_dir}"),
             "-e".to_string(),
             startup_script,
-        ]),
-        other => Err(CoreError::usage(format!(
-            "Yazelix does not launch terminal '{other}'; configure it as a host terminal to run `yzx enter`."
-        ))),
+        ],
+        other => {
+            return Err(CoreError::usage(format!(
+                "Yazelix does not launch terminal '{other}'; configure it as a host terminal to run `yzx enter`."
+            )));
+        }
+    };
+
+    apply_runtime_graphics_wrapper(runtime_dir, &terminal.terminal, argv)
+}
+
+fn apply_runtime_graphics_wrapper(
+    runtime_dir: &Path,
+    terminal: &str,
+    argv: Vec<String>,
+) -> Result<Vec<String>, CoreError> {
+    if current_platform_name() != "linux" || terminal != "kitty" {
+        return Ok(argv);
     }
+
+    let wrapper = resolve_runtime_nixgl_wrapper(runtime_dir).ok_or_else(|| {
+        CoreError::classified(
+            ErrorClass::Runtime,
+            "missing_runtime_graphics_wrapper",
+            format!(
+                "The packaged Kitty runtime is missing its Linux graphics wrapper under {}.",
+                runtime_dir.display()
+            ),
+            "Reinstall or update Yazelix so the active package runtime ships libexec/nixGLMesa.",
+            serde_json::json!({
+                "runtime_dir": runtime_dir,
+                "terminal": terminal,
+            }),
+        )
+    })?;
+
+    let mut wrapped = Vec::with_capacity(argv.len() + 1);
+    wrapped.push(wrapper.to_string_lossy().into_owned());
+    wrapped.extend(argv);
+    Ok(wrapped)
 }
 
 fn resolve_runtime_terminal_command(runtime_dir: &Path, command: &str) -> String {

@@ -592,10 +592,10 @@ command = ""
 #[test]
 fn yzx_enter_uses_detected_host_terminal_for_status_bar_label() {
     let fixture = managed_config_fixture("");
-    fs::write(fixture.runtime_dir.join("runtime_variant"), "mars\n").unwrap();
+    fs::write(fixture.runtime_dir.join("runtime_variant"), "kitty\n").unwrap();
     fs::write(
         fixture.runtime_dir.join("runtime_identity.json"),
-        r#"{"schema_version":1,"version":"v-test","runtime_variant":"mars"}"#,
+        r#"{"schema_version":1,"version":"v-test","runtime_variant":"kitty"}"#,
     )
     .unwrap();
     seed_startup_materialization_runtime_assets(&fixture);
@@ -644,7 +644,7 @@ fn yzx_enter_uses_detected_host_terminal_for_status_bar_label() {
     assert!(output.stderr.is_empty());
     let request: Value = serde_json::from_str(&fs::read_to_string(bar_request).unwrap()).unwrap();
     assert_eq!(request["terminal_label"], "wezterm");
-    assert_ne!(request["terminal_label"], "mars");
+    assert_ne!(request["terminal_label"], "kitty");
 
     let log = fs::read_to_string(zellij_log).unwrap();
     assert!(log.contains("YAZELIX_SESSION_TERMINAL=wezterm"), "{log}");
@@ -765,7 +765,7 @@ default_shell = "nu"
             .ends_with("settings.jsonc")
     );
     assert_eq!(summary["default_shell"], "nu");
-    assert_eq!(summary["terminals"], serde_json::json!(["mars"]));
+    assert_eq!(summary["terminals"], serde_json::json!(["kitty"]));
     assert!(summary["generated_state_repair_needed"].is_boolean());
     assert!(summary["generated_state_materialization_status"].is_string());
     assert_eq!(summary["session_config_snapshot"]["status"], "not_set");
@@ -847,7 +847,7 @@ default_shell = "nu"
     assert_eq!(report["schema_version"], 1);
     assert_eq!(report["title"], "Yazelix inspect");
     assert_eq!(report["runtime"]["version"], "v-test");
-    assert_eq!(report["runtime"]["variant"], "mars");
+    assert_eq!(report["runtime"]["variant"], "kitty");
     assert_eq!(report["runtime"]["variant_source"], "runtime_identity_json");
     assert_eq!(
         report["runtime"]["invoked_yzx_path"],

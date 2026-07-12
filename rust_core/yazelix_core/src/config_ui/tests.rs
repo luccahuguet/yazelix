@@ -192,16 +192,27 @@ fn list_fields_edit_from_full_json_value() {
     let model = fixture.model();
     let field = model_field(&model, "zellij.widget_tray");
 
-    assert_eq!(field.current_value, "[5 items]");
+    assert_eq!(field.current_value, "[10 items]");
     assert_eq!(field.apply_status.summary, "after Yazelix restart");
     let input = edit_input_for_field(field);
     assert_eq!(
         input,
-        "[\"session\",\"editor\",\"shell\",\"term\",\"codex_usage\"]"
+        "[\"session\",\"editor\",\"shell\",\"term\",\"workspace\",\"claude_usage\",\"codex_usage\",\"opencode_go_usage\",\"cpu\",\"ram\"]"
     );
     assert_eq!(
         parse_edit_input(field, &input).expect("string list"),
-        json!(["session", "editor", "shell", "term", "codex_usage"])
+        json!([
+            "session",
+            "editor",
+            "shell",
+            "term",
+            "workspace",
+            "claude_usage",
+            "codex_usage",
+            "opencode_go_usage",
+            "cpu",
+            "ram"
+        ])
     );
 }
 
@@ -807,7 +818,8 @@ fn enum_string_list_picker_toggles_subvalues_with_space() {
     let details = field_details(&app, edit.field_index);
     assert!(details.contains("> [x] session"));
     assert!(details.contains("  [x] editor"));
-    assert!(details.contains("  [ ] workspace"));
+    // All allowed widgets ship enabled by default now; the picker shows them checked.
+    assert!(details.contains("  [x] workspace"));
     assert!(!details.contains("cursor"));
 
     app.handle_key(KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE));
@@ -825,8 +837,11 @@ fn enum_string_list_picker_toggles_subvalues_with_space() {
             "editor",
             "shell",
             "term",
-            "workspace",
-            "codex_usage"
+            "claude_usage",
+            "codex_usage",
+            "opencode_go_usage",
+            "cpu",
+            "ram"
         ]
     );
 
@@ -841,8 +856,11 @@ fn enum_string_list_picker_toggles_subvalues_with_space() {
             "editor",
             "shell",
             "term",
-            "workspace",
-            "codex_usage"
+            "claude_usage",
+            "codex_usage",
+            "opencode_go_usage",
+            "cpu",
+            "ram"
         ]))
     );
 }

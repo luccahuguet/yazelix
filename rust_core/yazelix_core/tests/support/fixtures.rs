@@ -54,13 +54,13 @@ pub fn write_runtime_contract_assets(repo: &Path, runtime_dir: &Path) {
         runtime_dir.join("config_metadata/main_config_contract.toml"),
     )
     .unwrap();
-    fs::write(runtime_dir.join("runtime_variant"), "mars\n").unwrap();
+    fs::write(runtime_dir.join("runtime_variant"), "kitty\n").unwrap();
     fs::write(
         runtime_dir.join("runtime_identity.json"),
         r#"{
           "schema_version": 1,
           "version": "v-test",
-          "runtime_variant": "mars"
+          "runtime_variant": "kitty"
         }"#,
     )
     .unwrap();
@@ -77,8 +77,8 @@ pub fn write_runtime_contract_assets(repo: &Path, runtime_dir: &Path) {
         r#"{
           "terminal": {
             "source": "bundled",
-            "commands": ["mars"],
-            "required_commands": ["mars"],
+            "commands": ["kitty"],
+            "required_commands": ["kitty"],
             "hostable": false,
             "disableable": false,
             "notes": []

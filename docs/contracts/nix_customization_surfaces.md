@@ -107,7 +107,7 @@ The current evaluated matrix is:
 | `runtime_tool_sources.<tool> = "host"` for leaf tools | bundled | Implemented: omits supported leaf tool packages and exports, then relies on host `PATH` | Runtime manifest records host source and doctor checks required commands | Keep implemented |
 | `runtime_tool_sources.mise` and `runtime_tool_sources.tombi` | host | Implemented default omission: these host/maintainer-adjacent tools are not bundled unless explicitly set to `bundled` | Runtime manifest records host source; generated shell initializers omit `mise` cleanly when absent, and doctor reports missing default optional integrations as informational | Keep implemented |
 | `agent_usage_programs = [ "tokenusage" ]` | on | Implemented opt-out: includes `tokenusage` for the default Codex/Claude status widgets, and omits it only when the list is set to `[]` | Agent usage widgets in the default tray have their helper available; users who remove those widgets can omit the helper explicitly | Keep implemented |
-| `terminal = "mars"` | `mars` | Implemented: selects the only packaged terminal | Generated terminal config follows Mars | Keep implemented |
+| `terminal = "kitty"` | `kitty` | Implemented: selects the packaged default terminal (Ghostty is the host backup in the launch order) | Kitty's native config remains user-owned; Yazelix does not generate a Kitty config file | Keep implemented |
 | `appearance_mode = "dark"`, `"light"`, or `"auto"` | `dark` | Implemented in Home Manager: declarative value for `appearance.mode` when `manage_config = true`; default ratconfig-owned setups keep `settings.jsonc` as the semantic owner | Mars, Zellij, and Yazi change their implicit default themes where supported | Keep implemented |
 | `components.cursors` | enabled | Implemented partial package omission: cursor shader assets and `yazelix_cursors_default.toml` are removed from the runtime tree; cursor registry code remains linked into `yazelix_core` until crate-level feature gates exist | Mars config generation omits Yazelix cursor shaders, cursor sidecar bootstrap is skipped, config UI hides cursor fields, Home Manager rejects cursor config ownership, and launch facts report `n/a` | Keep implemented |
 | `components.screen` | enabled | Implemented behavior toggle: welcome/screen rendering remains linked into `yazelix_core` until crate-level feature gates exist | Home Manager requires `core.skip_welcome_screen = true` and rejects enabled screen saver settings; Zellij materialization rejects screen saver when disabled; `yzx screen` returns a disabled-component error | Keep implemented |
@@ -123,7 +123,7 @@ Do not add a toggle whose only effect is hiding Home Manager options or removing
 
 ## Terminal Launcher Decision
 
-The current Home Manager surface uses `programs.yazelix.terminal = "mars"` for the single profile-owned runtime. Additional terminal launchers stay in the user's terminal setup; configure those terminals to run `yzx enter`.
+The current Home Manager surface uses `programs.yazelix.terminal = "kitty"` for the profile-owned default runtime (Ghostty is the host backup in the launch order). Additional terminal launchers stay in the user's terminal setup; configure those terminals to run `yzx enter`.
 
 ## Component Audit Outcome
 

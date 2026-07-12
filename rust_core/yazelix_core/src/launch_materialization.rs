@@ -6,9 +6,11 @@ use crate::bridge::CoreError;
 use crate::control_plane::{config_dir_from_env, runtime_dir_from_env, state_dir_from_env};
 use crate::ghostty_cursor_registry::{CursorRegistry, YazelixCursorRegistryExt};
 use crate::runtime_component_enabled;
+use crate::startup_facts::DEFAULT_TERMINAL_CONFIG_MODE;
 use crate::terminal_materialization::{
     MarsEmojiFont, MarsProfile, TerminalGeneratedConfig, TerminalMaterializationRequest,
     generate_terminal_materialization, mars_emoji_font_override_from_env, mars_profile_from_env,
+    terminal_has_generated_config,
 };
 use crate::terminal_variant::active_terminal_from_runtime_dir;
 use serde::Serialize;
@@ -17,7 +19,6 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-const DEFAULT_TERMINAL_CONFIG_MODE: &str = "yazelix";
 static LAUNCH_SCOPED_TERMINAL_STATE_COUNTER: AtomicU64 = AtomicU64::new(0);
 
 #[derive(Debug, Clone)]
@@ -85,8 +86,11 @@ pub fn prepare_launch_materialization(
         "terminal_config_mode",
         DEFAULT_TERMINAL_CONFIG_MODE,
     );
-    let generate_terminal_configs =
-        should_generate_terminal_configs(&terminal_config_mode, request.desktop_fast_path);
+    let generate_terminal_configs = should_materialize_terminal_config(
+        &terminal_config_mode,
+        request.desktop_fast_path,
+        &request.active_terminal,
+    );
 
     let mut generated_terminals = Vec::new();
     if generate_terminal_configs {
@@ -129,7 +133,7 @@ fn uses_yazelix_ghostty_cursor(terminal_config_mode: &str, terminal: &str) -> bo
 }
 
 fn terminal_uses_yazelix_cursor(terminal: &str) -> bool {
-    matches!(terminal, "ghostty" | "mars")
+    yazelix_terminal_support::terminal_support().uses_yazelix_cursor(terminal)
 }
 
 fn launch_rerolled_yazelix_cursor(
@@ -178,6 +182,15 @@ fn should_generate_terminal_configs(terminal_config_mode: &str, desktop_fast_pat
     !desktop_fast_path || terminal_config_mode == "yazelix"
 }
 
+fn should_materialize_terminal_config(
+    terminal_config_mode: &str,
+    desktop_fast_path: bool,
+    terminal: &str,
+) -> bool {
+    should_generate_terminal_configs(terminal_config_mode, desktop_fast_path)
+        && terminal_has_generated_config(terminal)
+}
+
 fn string_config(config: &JsonMap<String, JsonValue>, key: &str, default: &str) -> String {
     config
         .get(key)
@@ -211,6 +224,21 @@ mod tests {
         );
 
         assert!(should_generate_terminal_configs(&mode, true));
+    }
+
+    // Regression: the packaged Kitty default must not enter the retained
+    // Mars-only terminal materializer before spawning the Kitty process.
+    #[test]
+    fn kitty_desktop_launch_skips_mars_only_terminal_materialization() {
+        let config = config_with_mode("yazelix");
+        let mode = string_config(
+            &config,
+            "terminal_config_mode",
+            DEFAULT_TERMINAL_CONFIG_MODE,
+        );
+
+        assert!(!should_materialize_terminal_config(&mode, true, "kitty"));
+        assert!(should_materialize_terminal_config(&mode, true, "mars"));
     }
 
     // Defends: non-desktop launch materialization regenerates only the caller-provided active terminal.

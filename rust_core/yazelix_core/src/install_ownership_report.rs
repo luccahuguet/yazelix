@@ -3,7 +3,7 @@
 
 use crate::config_state::compute_runtime_refresh_hash;
 use crate::desktop_exec::{parse_env_assignment, split_desktop_exec_tokens};
-use crate::terminal_variant::{SUPPORTED_TERMINALS, terminal_desktop_entry_file_name};
+use crate::terminal_variant::{supported_terminals, terminal_desktop_entry_file_name};
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use std::collections::HashSet;
@@ -327,10 +327,11 @@ fn desktop_entry_file_names() -> Vec<String> {
         "yazelix.desktop".to_string(),
     ];
     names.extend(
-        SUPPORTED_TERMINALS
+        supported_terminals()
             .iter()
-            .chain(RETIRED_TERMINAL_DESKTOP_ENTRY_TERMINALS.iter())
-            .map(|terminal| terminal_desktop_entry_file_name(terminal)),
+            .map(String::as_str)
+            .chain(RETIRED_TERMINAL_DESKTOP_ENTRY_TERMINALS.iter().copied())
+            .map(terminal_desktop_entry_file_name),
     );
     names.sort();
     names.dedup();
@@ -367,12 +368,13 @@ fn terminal_for_desktop_entry_path(path: &Path) -> String {
         .file_name()
         .and_then(|name| name.to_str())
         .unwrap_or_default();
-    for terminal in SUPPORTED_TERMINALS
+    for terminal in supported_terminals()
         .iter()
-        .chain(RETIRED_TERMINAL_DESKTOP_ENTRY_TERMINALS.iter())
+        .map(String::as_str)
+        .chain(RETIRED_TERMINAL_DESKTOP_ENTRY_TERMINALS.iter().copied())
     {
         if file_name == terminal_desktop_entry_file_name(terminal) {
-            return (*terminal).to_string();
+            return terminal.to_string();
         }
     }
     if matches!(file_name, "com.yazelix.Yazelix.desktop" | "yazelix.desktop") {

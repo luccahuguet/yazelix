@@ -74,7 +74,7 @@ pub fn compute_config_state(
     let contract = read_toml_table(&request.contract_path, "read_config_contract")?;
     let rebuild_paths = load_rebuild_required_paths(&contract);
     let rebuild_config = extract_rebuild_config(&raw_config, &rebuild_paths);
-    let config_hash = sha256_hex(&toml::to_string(&rebuild_config).map_err(|source| {
+    let rebuild_config_toml = toml::to_string(&rebuild_config).map_err(|source| {
         CoreError::classified(
             ErrorClass::Internal,
             "serialize_rebuild_config",
@@ -82,7 +82,13 @@ pub fn compute_config_state(
             "Report this as a Yazelix internal error.",
             json!({}),
         )
-    })?);
+    })?;
+    // The zellij.kdl override sidecar is merged into the generated config.kdl at
+    // materialization time, so its content is a real rebuild input. Fold it into
+    // the config hash (only when present) so editing it alone is detected as
+    // drift instead of being silently missed by the freshness check.
+    let sidecar_fingerprint = config_override_sidecar_fingerprint(&request.config_path)?;
+    let config_hash = sha256_hex(&format!("{rebuild_config_toml}{sidecar_fingerprint}"));
     let runtime_hash = compute_runtime_refresh_hash(&request.runtime_dir)?;
     let combined_hash = sha256_hex(&format!("{config_hash}:{runtime_hash}"));
     let cached_state = load_recorded_materialized_state(&request.state_path)?;
@@ -359,6 +365,29 @@ fn load_rebuild_required_paths(contract: &toml::Table) -> Vec<String> {
     }
 
     paths
+}
+
+/// Fingerprint of the user's `zellij.kdl` override sidecar for the freshness
+/// hash. The sidecar lives next to `settings.jsonc` and is merged into the
+/// generated `config.kdl`, so its content must participate in drift detection.
+/// Returns an empty string when the sidecar is absent so sidecar-less configs
+/// keep their previous hash (no spurious one-time re-materialization).
+fn config_override_sidecar_fingerprint(config_path: &Path) -> Result<String, CoreError> {
+    let Some(parent) = config_path.parent() else {
+        return Ok(String::new());
+    };
+    let sidecar_path = parent.join(crate::user_config_paths::ZELLIJ_CONFIG);
+    match fs::read_to_string(&sidecar_path) {
+        Ok(content) => Ok(format!("\n---zellij-override-sidecar---\n{content}")),
+        Err(source) if source.kind() == std::io::ErrorKind::NotFound => Ok(String::new()),
+        Err(source) => Err(CoreError::io(
+            "read_zellij_override_sidecar",
+            "Could not read the Yazelix zellij.kdl override sidecar for generated-state freshness.",
+            "Fix permissions on ~/.config/yazelix/zellij.kdl, or remove it if unused.",
+            sidecar_path.to_string_lossy(),
+            source,
+        )),
+    }
 }
 
 fn extract_rebuild_config(config: &toml::Table, rebuild_paths: &[String]) -> toml::Table {
@@ -679,9 +708,46 @@ mod tests {
 
         assert_eq!(
             state.config_hash,
-            "61934f8aa1c7259806f02cf5b5ed5355a3db4d5c420d18efcffb6fadf43283ff"
+            "dcb3fc2de8ad8c2e1ef4e0232226b635f1086fc9920e248670984237cbe9c88b"
         );
         assert!(state.needs_refresh);
+    }
+
+    // Defends: the zellij.kdl override sidecar participates in the config freshness
+    // hash, so editing it alone is detected as drift instead of silently missed.
+    #[test]
+    fn zellij_override_sidecar_participates_in_config_hash() {
+        let dir = tempdir().expect("tempdir");
+        let runtime_dir = dir.path().join("runtime");
+        write_runtime_identity(&runtime_dir, "kitty", "0123456789abcdef");
+        let state_path = dir.path().join("state/rebuild_hash");
+        let config_dir = dir.path().join("config");
+        fs::create_dir_all(&config_dir).expect("config dir");
+        let config_path = write_settings_config(&config_dir, &default_settings_jsonc());
+        let sidecar_path = config_dir.join(crate::user_config_paths::ZELLIJ_CONFIG);
+
+        let baseline = compute_config_state(&request_for(
+            config_path.clone(),
+            runtime_dir.clone(),
+            state_path.clone(),
+        ))
+        .expect("baseline state");
+
+        // Adding a sidecar changes the config hash.
+        fs::write(&sidecar_path, "scrollback_lines_to_serialize 100000\n").expect("write sidecar");
+        let with_sidecar = compute_config_state(&request_for(
+            config_path.clone(),
+            runtime_dir.clone(),
+            state_path.clone(),
+        ))
+        .expect("sidecar state");
+        assert_ne!(with_sidecar.config_hash, baseline.config_hash);
+
+        // Editing the sidecar changes the hash again.
+        fs::write(&sidecar_path, "scrollback_lines_to_serialize 5000\n").expect("edit sidecar");
+        let edited = compute_config_state(&request_for(config_path, runtime_dir, state_path))
+            .expect("edited state");
+        assert_ne!(edited.config_hash, with_sidecar.config_hash);
     }
 
     // Regression: malformed legacy state cache content must be treated as missing instead of trusted.

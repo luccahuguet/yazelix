@@ -2,8 +2,12 @@
 
 This document compares the terminal emulators Yazelix currently scores:
 Mars, Ghostty, Rio, WezTerm, Ratty, Kitty, and Foot. Yazelix supports capable
-terminals through `yzx enter`; Mars is the packaged terminal, and Ghostty is the
-most tested mature host-terminal path.
+terminals through `yzx enter`; Kitty is the packaged default terminal
+(Kitty's native config is user-owned — Yazelix does not generate one), Ghostty
+is the host-installed backup terminal (`launch_order=["kitty","ghostty"]`) and
+the most tested mature host-terminal path. Mars is `supported=false` /
+`packaged=false` and removed from the launch chain (operator directive
+2026-07-11); the scoring below is retained as historical comparison data.
 
 Data summarized from:
 
@@ -40,9 +44,9 @@ they are not feature/protocol capabilities by themselves.
 
 | Terminal | Score | Full | Partial | No | Read |
 | --- | ---: | ---: | ---: | ---: | --- |
-| Kitty | 76 | 18 | 2 | 5 | Strong protocol reference and supported host-terminal entrypoint; no first-party control |
+| Kitty | 76 | 18 | 2 | 5 | Packaged default terminal (highest score); strong protocol reference; no first-party control |
 | Ghostty | 60 | 15 | 0 | 10 | Most tested mature host-terminal path; strongest shader story; strong macOS choice |
-| Mars | 56 | 13 | 2 | 10 | Default because Yazelix owns the Rust fork and can optimize stack compatibility and agent-driven workflows |
+| Mars | 56 | 13 | 2 | 10 | Removed from the launch chain (`supported=false`/`packaged=false`, 2026-07-11); score retained for historical comparison |
 | Rio | 48 | 11 | 2 | 12 | Upstream Rio path with modern image/protocol support; less Yazelix soak than Ghostty |
 | WezTerm | 48 | 11 | 2 | 12 | Stable host-terminal path with broad image support; fewer modern Kitty extensions |
 | Ratty | 28 | 6 | 2 | 17 | Experimental but uniquely interesting because of inline 3D graphics |
@@ -53,8 +57,8 @@ they are not feature/protocol capabilities by themselves.
 | --- | --- | ---: | --- |
 | C1 | Supported Yazelix entrypoint | 4 | Can run the normal Yazelix workspace through a maintained `yzx enter` path |
 | C2 | First-party control path | 4 | Yazelix owns the fork or can directly evolve the terminal behavior |
-| C3 | Config and transparency path | 4 | The terminal has a usable config/transparency path, either Yazelix-generated for Mars or native/user-owned for host terminals |
-| C4 | Startup integration | 4 | The terminal can start Yazelix directly through `yzx enter` or the packaged Mars launch path |
+| C3 | Config and transparency path | 4 | The terminal has a usable config/transparency path — native/user-owned for Kitty and other host terminals, or Yazelix-generated for the legacy (dormant) Mars materializer |
+| C4 | Startup integration | 4 | The terminal can start Yazelix directly through `yzx enter` or the packaged Kitty launch path |
 | C5 | GPU renderer | 4 | Terminal renders through a GPU-accelerated stack |
 | C6 | Production confidence | 4 | Mature enough to recommend broadly as a daily driver |
 | C7 | Yazelix stack validation | 4 | Evidence exists for Yazelix/Zellij/Yazi/Helix behavior, especially graphics |
@@ -138,18 +142,20 @@ parser-only behavior as no runtime support.
 
 ## Terminal Notes
 
-### Mars
+### Mars (removed from launch chain)
 
-Mars is the packaged Yazelix terminal because it gives the project a controlled
-Rust terminal path for stack compatibility, generated config, cursor behavior,
-Kitty protocol work, and agent-driven development workflows. It has the deepest
-Yazelix integration. Users who prefer a more mature standalone terminal can use
-Ghostty or another host terminal and launch Yazelix with `yzx enter`.
+Mars was the packaged Yazelix terminal before Kitty superseded it as the default
+(operator directive 2026-07-11). Mars is now `supported=false`/`packaged=false`
+and removed from the launch chain; it is retained only for legacy `yzx enter`
+session detection and a dormant generated-config materializer. Users who prefer
+a mature standalone terminal can use Ghostty (the host-installed backup) or
+another host terminal and launch Yazelix with `yzx enter`.
 
 ### Ghostty
 
-Ghostty remains the best mature host-terminal path for Yazelix today, especially
-for macOS users who want a proven terminal outside the packaged Mars path. It has
+Ghostty is the host-installed backup terminal (`launch_order=["kitty","ghostty"]`)
+and remains the best mature host-terminal path for Yazelix today, especially
+for macOS users who want a proven terminal outside the packaged Kitty path. It has
 excellent shader support, strong Kitty graphics support, OSC 133 shell
 integration, Kitty keyboard, and a stable daily-driver posture. Its lower score
 comes from this comparison weighting Sixel, iTerm2 images, OSC 99, and newer
@@ -175,9 +181,12 @@ Its value is that it proves a different frontier: GPU-rendered terminal UI plus
 inline 3D objects through Ratty Graphics Protocol. Yazelix no longer packages
 Ratty; use it as a host terminal running `yzx enter`.
 
-### Kitty
+### Kitty (packaged default)
 
-Kitty is the protocol reference. It leads on Kitty graphics, keyboard handling,
-desktop notifications, multiple cursors, file transfer, text sizing, pointer
-shape, unscrolling, rich clipboard, and related protocol extensions. Yazelix can
-use Kitty as a host terminal running `yzx enter`.
+Kitty is the packaged default Yazelix terminal (`#yazelix`, `#yazelix_kitty`,
+`programs.yazelix.terminal = "kitty"`) and the protocol reference. It leads on
+Kitty graphics, keyboard handling, desktop notifications, multiple cursors,
+file transfer, text sizing, pointer shape, unscrolling, rich clipboard, and
+related protocol extensions. Kitty's native config is user-owned — Yazelix
+does not generate one. Kitty can also run as a plain host terminal via
+`yzx enter`.

@@ -4,12 +4,13 @@ Short, upgrade-facing release notes live here. The longer narrative history rema
 
 ## Unreleased
 
-Post-v17.9 work in progress
+Kitty packaged default and runtime contract alignment
 
 Upgrade impact: no user action required
 
 Highlights:
-- Reserved for post-release changes after v17.9 lands.
+- Made Kitty the default packaged and Home Manager terminal while keeping Ghostty as the alternate supported terminal
+- Aligned terminal materialization, desktop metadata, and runtime validators with Kitty-owned configuration and removed stale Mars assumptions
 
 ## v17.9 - 2026-06-27
 

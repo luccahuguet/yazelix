@@ -493,8 +493,10 @@ fn runtime_variant_path(runtime_dir: &Path) -> PathBuf {
 }
 
 fn runtime_variant_is_mars(runtime_dir: &Path) -> bool {
+    // Mars is the only terminal with a Yazelix-generated config; derive the
+    // check from the terminal-support authority instead of a hardcoded id.
     fs::read_to_string(runtime_variant_path(runtime_dir))
-        .map(|raw| raw.trim() == "mars")
+        .map(|raw| yazelix_terminal_support::terminal_support().has_generated_config(raw.trim()))
         .unwrap_or(false)
 }
 
@@ -582,13 +584,13 @@ fn build_mars_launch_log_findings(
     state_dir: &Path,
     runtime_dir: &Path,
 ) -> Vec<DoctorRuntimeDoctorFinding> {
+    if !runtime_variant_is_mars(runtime_dir) {
+        return Vec::new();
+    }
+
     let log_dir = mars_launch_log_dir(state_dir);
     let logs = collect_mars_launch_logs(state_dir);
     if logs.is_empty() {
-        if !runtime_variant_is_mars(runtime_dir) {
-            return Vec::new();
-        }
-
         return vec![
             DoctorRuntimeDoctorFinding::new(
                 "info",
@@ -1159,6 +1161,8 @@ mod tests {
         let tmp = TempDir::new().unwrap();
         let state = tmp.path().join("state");
         let runtime = tmp.path().join("runtime");
+        std::fs::create_dir_all(&runtime).unwrap();
+        std::fs::write(runtime.join("runtime_variant"), "mars\n").unwrap();
         let log = state
             .join("logs")
             .join("terminal_launch")
@@ -1197,6 +1201,8 @@ mod tests {
         let tmp = TempDir::new().unwrap();
         let state = tmp.path().join("state");
         let runtime = tmp.path().join("runtime");
+        std::fs::create_dir_all(&runtime).unwrap();
+        std::fs::write(runtime.join("runtime_variant"), "mars\n").unwrap();
         let log = state
             .join("logs")
             .join("terminal_launch")
@@ -1229,6 +1235,31 @@ mod tests {
         let runtime = tmp.path().join("runtime");
         std::fs::create_dir_all(&runtime).unwrap();
         std::fs::write(runtime.join("runtime_variant"), "ghostty\n").unwrap();
+
+        let findings = build_mars_launch_log_findings(&state, &runtime);
+
+        assert!(findings.is_empty());
+    }
+
+    // Regression: stale Mars logs from an older install must not make a Kitty
+    // runtime look like Mars is still the active desktop terminal.
+    #[test]
+    fn kitty_runtime_ignores_stale_mars_launch_logs() {
+        let tmp = TempDir::new().unwrap();
+        let state = tmp.path().join("state");
+        let runtime = tmp.path().join("runtime");
+        let log = state
+            .join("logs")
+            .join("terminal_launch")
+            .join("mars_123.log");
+        std::fs::create_dir_all(log.parent().unwrap()).unwrap();
+        std::fs::create_dir_all(&runtime).unwrap();
+        std::fs::write(runtime.join("runtime_variant"), "kitty\n").unwrap();
+        std::fs::write(
+            &log,
+            "[2026-06-02T00:00:00-0300] desktop deferred launch\nargv:\n  mars\n[2026-06-02T00:00:01-0300] spawned terminal_or_wrapper_pid=123\n[2026-06-02T00:00:02-0300] final_exit_status=0\nfinal_exit_kind=exit\nfinal_exit_code=0\n",
+        )
+        .unwrap();
 
         let findings = build_mars_launch_log_findings(&state, &runtime);
 

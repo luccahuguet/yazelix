@@ -45,9 +45,9 @@ This file exists so current docs and current contracts can point at one authorit
 - That runtime ships a fixed toolset rather than a user-managed package graph, but interactive shells only export the curated user-facing tool surface instead of the full helper closure.
 - Runtime tool versions come from the locked `nixpkgs` input, and the first-party flake intentionally tracks `github:NixOS/nixpkgs/nixpkgs-unstable`. Yazelix is an application/runtime distribution for fast-moving terminal and TUI integrations, so fresher package availability is more important than the extra NixOS system-gating from `nixos-unstable`.
 - Maintainer update pins record the Nix helper version and the Nixpkgs-provided Nushell version, so upstream Nushell releases only become runtime bumps after they land in the locked Nixpkgs input or Yazelix deliberately changes that ownership model.
-- The packaged runtime has one terminal: Mars, exposed through `yazelix`, `yazelix_mars`, `runtime`, and `runtime_mars`. Home Manager selects the same packaged terminal through `programs.yazelix.terminal = "mars"`.
-- Non-Mars terminals are supported through `yzx enter`. Users who prefer Ghostty, Rio, WezTerm, Kitty, Foot, Ratty, Alacritty, or another capable emulator should configure that terminal to run `yzx enter`; that terminal's native config remains user-owned.
-- The Mars path uses Yazelix-pinned Zellij and Yazi forks so Yazi image previews can use Kitty graphics through Zellij.
+- The packaged runtime has one packaged default terminal: Kitty, exposed through `yazelix`, `yazelix_kitty`, `runtime`, and `runtime_kitty` (Ghostty is the host backup in the launch order). Home Manager selects the same packaged terminal through `programs.yazelix.terminal = "kitty"`.
+- Non-Kitty terminals are supported through `yzx enter`. Users who prefer Ghostty, Rio, WezTerm, Foot, Ratty, Alacritty, or another capable emulator should configure that terminal to run `yzx enter`; that terminal's native config remains user-owned.
+- The packaged runtime uses Yazelix-pinned Zellij and Yazi forks so Yazi image previews can use Kitty graphics protocol through Zellij, which benefits the packaged Kitty terminal path.
 - The Zellij and Yazi forks are temporary product integration forks. Once upstream Zellij supports the required Kitty graphics path directly enough for Yazelix to return to upstream packages, those forks should be dropped from the default runtime and archived.
 - The runtime does not ship a runtime-local `devenv`.
 

@@ -1,6 +1,9 @@
 use crate::atomic_fs::is_executable_file;
 use crate::bridge::{CoreError, ErrorClass};
-use crate::terminal_variant::{SUPPORTED_TERMINALS, terminal_command_name, terminal_display_name};
+use crate::terminal_variant::{
+    default_terminal, is_supported, supported_terminals, terminal_command_name,
+    terminal_display_name,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::env;
@@ -528,7 +531,7 @@ fn check_terminal_support(request: &TerminalSupportCheckRequest) -> RuntimeCheck
     let requested_terminal = request.requested_terminal.trim();
 
     if !requested_terminal.is_empty() {
-        if !SUPPORTED_TERMINALS.contains(&requested_terminal) {
+        if !is_supported(requested_terminal) {
             return build_runtime_check(
                 "launch_terminal_support",
                 "error",
@@ -537,7 +540,7 @@ fn check_terminal_support(request: &TerminalSupportCheckRequest) -> RuntimeCheck
                 format!("Unsupported terminal '{requested_terminal}'"),
                 Some(format!(
                     "Supported terminals: {}",
-                    SUPPORTED_TERMINALS.join(", ")
+                    supported_terminals().join(", ")
                 )),
                 None,
                 None,
@@ -561,10 +564,10 @@ fn check_terminal_support(request: &TerminalSupportCheckRequest) -> RuntimeCheck
                     "Specified terminal '{requested_terminal}' is not available in the active Yazelix runtime or PATH."
                 ),
                 None,
-                Some(
-                    "Use the Mars terminal shipped by the active Yazelix runtime, or configure a host terminal to run `yzx enter`."
-                        .to_string(),
-                ),
+                Some(format!(
+                    "Use the {} terminal shipped by the active Yazelix runtime, or configure a host terminal to run `yzx enter`.",
+                    terminal_display_name(default_terminal())
+                )),
                 Some("host-dependency".to_string()),
                 true,
                 None,
@@ -603,10 +606,10 @@ fn check_terminal_support(request: &TerminalSupportCheckRequest) -> RuntimeCheck
                 "Selected Yazelix packaged terminal '{terminal}' is not available in the active runtime or PATH."
             ),
             None,
-            Some(
-                "Reinstall Yazelix so the packaged Mars terminal is available, or configure a host terminal to run `yzx enter`."
-                    .to_string(),
-            ),
+            Some(format!(
+                "Reinstall Yazelix so the packaged {} terminal is available, or configure a host terminal to run `yzx enter`.",
+                terminal_display_name(terminal)
+            )),
             Some("host-dependency".to_string()),
             true,
             None,
@@ -690,7 +693,7 @@ fn detect_terminal_candidates(
 ) -> Vec<TerminalCandidate> {
     let ordered_terminals: Vec<String> = preferred
         .iter()
-        .filter(|terminal| SUPPORTED_TERMINALS.contains(&terminal.as_str()))
+        .filter(|terminal| is_supported(terminal.as_str()))
         .cloned()
         .collect();
     if ordered_terminals.is_empty() {
@@ -740,6 +743,19 @@ fn runtime_platform_name(explicit: Option<&str>) -> String {
         .to_lowercase()
 }
 
+pub(crate) fn resolve_runtime_nixgl_wrapper(runtime_dir: &Path) -> Option<PathBuf> {
+    NIXGL_WRAPPER_CANDIDATES
+        .iter()
+        .map(|(_, segments)| {
+            segments
+                .iter()
+                .fold(runtime_dir.to_path_buf(), |path, segment| {
+                    path.join(segment)
+                })
+        })
+        .find(|candidate| is_executable_file(candidate))
+}
+
 struct NixglLaunchContext {
     source: &'static str,
     command: Option<String>,
@@ -750,18 +766,13 @@ fn resolve_nixgl_launch_context(
     command_search_paths: &[PathBuf],
 ) -> NixglLaunchContext {
     if let Some(runtime_dir) = runtime_dir {
-        for (command, segments) in NIXGL_WRAPPER_CANDIDATES {
-            let candidate = segments
-                .iter()
-                .fold(runtime_dir.to_path_buf(), |path, segment| {
-                    path.join(segment)
-                });
-            if is_executable_file(&candidate) {
-                return NixglLaunchContext {
-                    source: "runtime",
-                    command: Some((*command).to_string()),
-                };
-            }
+        if let Some(candidate) = resolve_runtime_nixgl_wrapper(runtime_dir) {
+            return NixglLaunchContext {
+                source: "runtime",
+                command: candidate
+                    .file_name()
+                    .map(|name| name.to_string_lossy().into_owned()),
+            };
         }
     }
 
@@ -945,7 +956,7 @@ mod tests {
                 .unwrap_or_default()
                 .contains(&format!(
                     "Supported terminals: {}",
-                    SUPPORTED_TERMINALS.join(", ")
+                    supported_terminals().join(", ")
                 ))
         );
     }

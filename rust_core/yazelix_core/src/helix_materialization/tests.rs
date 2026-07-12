@@ -6,6 +6,9 @@ use std::path::Path;
 use tempfile::TempDir;
 use toml::Value as TomlValue;
 
+#[cfg(unix)]
+use std::os::unix::fs::PermissionsExt;
+
 fn normal_binding(config: &TomlValue, key: &str) -> Option<String> {
     config
         .get("keys")?
@@ -189,7 +192,7 @@ fn helix_materialization_writes_default_steel_entrypoints() {
     let steel_dir = state_dir.join("configs/helix");
     assert_eq!(
         data.enabled_steel_plugins,
-        vec!["splash", "spacemacs_theme"]
+        vec!["splash", "spacemacs_theme", "recentf", "labelled_buffers"]
     );
     assert_eq!(
         data.generated_steel_config_dir,
@@ -200,15 +203,19 @@ fn helix_materialization_writes_default_steel_entrypoints() {
         config_dir.join("helix").to_string_lossy().to_string()
     );
     assert!(config_dir.join("helix").exists());
-    assert!(!steel_dir.join("cogs/recentf.scm").exists());
+    // recentf + labelled_buffers now ship enabled by default; keymaps.scm is
+    // pulled in as labelled_buffers' declared support file.
+    assert!(steel_dir.join("cogs/recentf.scm").exists());
     assert!(steel_dir.join("splash.scm").exists());
     assert!(steel_dir.join("cogs/themes/spacemacs.scm").exists());
-    assert!(!steel_dir.join("cogs/keymaps.scm").exists());
-    assert!(!steel_dir.join("cogs/labelled-buffers.scm").exists());
+    assert!(steel_dir.join("cogs/keymaps.scm").exists());
+    assert!(steel_dir.join("cogs/labelled-buffers.scm").exists());
 
     let generated_helix = fs::read_to_string(state_dir.join("configs/helix/helix.scm")).unwrap();
     assert!(generated_helix.contains("(require (only-in \"helix/ext.scm\" eval-buffer evalp))"));
-    assert!(generated_helix.contains("(provide eval-buffer evalp yzx-new-shell)"));
+    assert!(
+        generated_helix.contains("(provide eval-buffer evalp yzx-new-shell recentf-open-files)")
+    );
     assert!(
         generated_helix
             .contains("(require (only-in \"helix/static.scm\" cx->current-file get-helix-cwd))")
@@ -222,8 +229,14 @@ fn helix_materialization_writes_default_steel_entrypoints() {
             .contains("(string-append \"'\" (string-replace value \"'\" \"'\\\\''\") \"'\"))")
     );
     assert!(generated_helix.contains("yzx_control\\\" zellij open-terminal"));
-    assert!(!generated_helix.contains("recentf-open-files"));
-    assert!(!generated_helix.contains("recentf-snapshot"));
+    // recentf + labelled_buffers now ship enabled by default.
+    assert!(
+        generated_helix.contains(
+            "(require (only-in \"cogs/recentf.scm\" recentf-open-files recentf-snapshot))"
+        )
+    );
+    assert!(generated_helix.contains("(recentf-snapshot)"));
+    assert!(generated_helix.contains("(require \"cogs/labelled-buffers.scm\")"));
     assert!(generated_helix.contains("(require (only-in \"splash.scm\" show-splash))"));
     assert!(generated_helix.contains("(show-splash)"));
     assert!(
@@ -236,14 +249,16 @@ fn helix_materialization_writes_default_steel_entrypoints() {
         vec![
             "eval-buffer".to_string(),
             "evalp".to_string(),
-            "yzx-new-shell".to_string()
+            "yzx-new-shell".to_string(),
+            "recentf-open-files".to_string()
         ]
     );
     assert_eq!(
         steel_command_names(&data, "internal"),
         vec![
             "show-splash".to_string(),
-            "activate-spacemacs-theme".to_string()
+            "activate-spacemacs-theme".to_string(),
+            "recentf-snapshot".to_string()
         ]
     );
 
@@ -251,6 +266,78 @@ fn helix_materialization_writes_default_steel_entrypoints() {
     assert!(!generated_init.contains("prefix-in"));
     assert!(!generated_init.contains("yazelix."));
     assert!(!generated_init.contains("show-splash"));
+}
+
+#[cfg(unix)]
+// Regression: matching generated Helix cogs files are owner-level no-ops and do not require a writable destination directory.
+#[test]
+fn helix_materialization_skips_matching_cogs_theme_in_read_only_directory() {
+    let tmp = TempDir::new().unwrap();
+    let runtime_dir = tmp.path().join("runtime");
+    let config_dir = tmp.path().join("config");
+    let state_dir = tmp.path().join("state");
+    write_runtime_layout(&runtime_dir);
+    fs::create_dir_all(&config_dir).unwrap();
+
+    let request = HelixMaterializationRequest {
+        runtime_dir: runtime_dir.clone(),
+        config_dir: config_dir.clone(),
+        state_dir: state_dir.clone(),
+        show_splash: true,
+    };
+    generate_helix_materialization(&request).unwrap();
+
+    let source = runtime_dir.join("configs/helix/steel_plugins/cogs/themes/spacemacs.scm");
+    let target = state_dir.join("configs/helix/cogs/themes/spacemacs.scm");
+    let target_parent = target.parent().unwrap();
+    assert_eq!(fs::read(&source).unwrap(), fs::read(&target).unwrap());
+    fs::set_permissions(target_parent, fs::Permissions::from_mode(0o555)).unwrap();
+
+    let result = generate_helix_materialization(&request);
+
+    fs::set_permissions(target_parent, fs::Permissions::from_mode(0o755)).unwrap();
+    assert!(result.is_ok());
+    assert_eq!(fs::read(&source).unwrap(), fs::read(&target).unwrap());
+    assert_eq!(
+        fs::read_dir(target_parent)
+            .unwrap()
+            .map(|entry| entry.unwrap().file_name())
+            .collect::<Vec<_>>(),
+        vec!["spacemacs.scm"]
+    );
+}
+
+#[cfg(unix)]
+// Regression: differing generated Helix cogs files retain the atomic-write failure instead of hiding read-only runtime drift.
+#[test]
+fn helix_materialization_rejects_changed_cogs_theme_in_read_only_directory() {
+    let tmp = TempDir::new().unwrap();
+    let runtime_dir = tmp.path().join("runtime");
+    let config_dir = tmp.path().join("config");
+    let state_dir = tmp.path().join("state");
+    write_runtime_layout(&runtime_dir);
+    fs::create_dir_all(&config_dir).unwrap();
+
+    let request = HelixMaterializationRequest {
+        runtime_dir: runtime_dir.clone(),
+        config_dir,
+        state_dir: state_dir.clone(),
+        show_splash: true,
+    };
+    generate_helix_materialization(&request).unwrap();
+
+    let source = runtime_dir.join("configs/helix/steel_plugins/cogs/themes/spacemacs.scm");
+    let target = state_dir.join("configs/helix/cogs/themes/spacemacs.scm");
+    let target_parent = target.parent().unwrap();
+    let previous_target = fs::read(&target).unwrap();
+    fs::write(&source, b"(provide changed-theme)\n").unwrap();
+    fs::set_permissions(target_parent, fs::Permissions::from_mode(0o555)).unwrap();
+
+    let error = generate_helix_materialization(&request).unwrap_err();
+
+    fs::set_permissions(target_parent, fs::Permissions::from_mode(0o755)).unwrap();
+    assert_eq!(error.code(), "atomic_write_create");
+    assert_eq!(fs::read(&target).unwrap(), previous_target);
 }
 
 // Defends: the borrowed splash plugin only renders when the wrapper classifies the launch as splash-eligible.

@@ -208,8 +208,10 @@ jobs:
   darwin_wasm_package_smoke:
     name: Darwin wasm package smoke
     # Change-specific Darwin signal for first-party Zellij wasm packages.
+    # Upstream-only: forks (e.g. FlexNetOS/yazelix) must not schedule macOS
+    # runners (Linux-only CI policy); mirrors publish_aarch64_darwin's gate.
     needs: ci_plan
-    if: ${{ needs.ci_plan.outputs.darwin_wasm == 'true' }}
+    if: ${{ github.repository == 'luccahuguet/yazelix' && needs.ci_plan.outputs.darwin_wasm == 'true' }}
     runs-on: macos-15
     timeout-minutes: 45
     env:

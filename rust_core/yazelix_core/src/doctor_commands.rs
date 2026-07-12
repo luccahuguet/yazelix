@@ -1364,9 +1364,10 @@ mod tests {
         assert_eq!(error.code(), "doctor_json_fix_unsupported");
     }
 
-    // Defends: doctor consumes the shared native-config classifier and elevates required native terminal config misses to an error.
+    // Regression: packaged Kitty may use built-in defaults when no user-owned
+    // native config exists, so doctor must not report a launch-blocking error.
     #[test]
-    fn native_config_status_finding_reports_terminal_user_mode_error() {
+    fn native_config_status_finding_reports_missing_kitty_config_as_info() {
         let tmp = TempDir::new().unwrap();
         let mut config = serde_json::Map::new();
         config.insert("terminal_config_mode".to_string(), json!("user"));
@@ -1382,7 +1383,7 @@ mod tests {
         .unwrap();
 
         assert_eq!(findings.len(), 1);
-        assert_eq!(findings[0]["status"], "error");
+        assert_eq!(findings[0]["status"], "info");
         assert_eq!(findings[0]["message"], "Native config integration status");
         assert!(
             findings[0]["native_config_statuses"]
@@ -1390,7 +1391,7 @@ mod tests {
                 .unwrap()
                 .iter()
                 .any(|entry| entry["surface"] == "terminal.kitty.input"
-                    && entry["status"] == "native_required_missing")
+                    && entry["status"] == "native_missing")
         );
     }
 

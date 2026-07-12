@@ -688,6 +688,16 @@ fn ensure_terminal_cursor_materialization<'a>(
         .expect("terminal cursor materialization data was just initialized"))
 }
 
+/// Returns whether Yazelix owns a generated terminal config for this terminal.
+///
+/// Kitty and Ghostty keep their native config user-owned. The retained Mars
+/// renderer remains available for legacy/package-specific tooling, but Mars is
+/// no longer part of the supported launch chain. Sourced from the
+/// `yazelix_terminal_support` child (single source of truth).
+pub fn terminal_has_generated_config(terminal: &str) -> bool {
+    yazelix_terminal_support::terminal_support().has_generated_config(terminal)
+}
+
 pub fn generate_terminal_materialization(
     request: &TerminalMaterializationRequest,
 ) -> Result<TerminalMaterializationData, CoreError> {
@@ -719,6 +729,15 @@ pub fn generate_terminal_materialization(
     let mut cursor_data = None;
 
     for terminal in &request.terminals {
+        // Kitty and Ghostty keep their native user-owned config; only the
+        // retained Mars renderer has a Yazelix-generated terminal config. Skip
+        // terminals without a generated config so `terminal-materialization
+        // .generate --from-env` is a clean no-op for the packaged default
+        // (kitty) instead of erroring during Home Manager activation and
+        // installed-runtime validation.
+        if !terminal_has_generated_config(terminal) {
+            continue;
+        }
         match terminal.as_str() {
             "mars" => {
                 let mars_dir = generated_dir.join("mars");
@@ -844,6 +863,46 @@ mod tests {
             JsonValue::String(style.to_string()),
         );
         config
+    }
+
+    // The packaged Kitty default has no Yazelix-generated terminal config. This
+    // lets Home Manager activation and installed-runtime validation call the
+    // materializer on a Kitty runtime without creating terminal-owned files.
+    // Regression: Kitty terminal materialization is a clean no-op.
+    #[test]
+    fn kitty_terminal_materialization_is_a_noop() {
+        let repo = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../..")
+            .canonicalize()
+            .expect("repo root");
+        let tmp = tempfile::tempdir().expect("tmp dir");
+        let runtime = tmp.path().join("runtime");
+        std::fs::create_dir_all(&runtime).expect("runtime dir");
+        std::fs::write(
+            runtime.join("runtime_components.json"),
+            r#"{
+              "cursors": { "enabled": true, "disableable": true, "notes": [] },
+              "screen": { "enabled": true, "disableable": true, "notes": [] }
+            }"#,
+        )
+        .expect("runtime component manifest");
+        let request = TerminalMaterializationRequest {
+            config_path: repo.join("settings_default.jsonc"),
+            cursor_config_path: repo.join("settings_default.jsonc"),
+            default_config_path: repo.join("settings_default.jsonc"),
+            contract_path: repo.join("config_metadata/main_config_contract.toml"),
+            runtime_dir: runtime,
+            state_dir: tmp.path().join("state"),
+            terminals: vec!["kitty".to_string()],
+            mars_profile: MarsProfile::Full,
+            mars_emoji_font: None,
+        };
+
+        let data = generate_terminal_materialization(&request).expect("kitty is a no-op");
+        assert!(
+            data.generated.is_empty(),
+            "kitty must not produce a generated terminal config"
+        );
     }
 
     // Regression: stale terminal wrapper env from an existing shell/session must not override mutable settings.jsonc.

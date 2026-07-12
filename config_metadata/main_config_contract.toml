@@ -10,7 +10,7 @@
 
 [contract]
 version = 1
-ratconfig_contract_version = 16
+ratconfig_contract_version = 17
 ratconfig_applied_change_ids = [
   "rename-editor-sidebar-to-workspace-left-sidebar",
   "replace-native-movement-defaults",
@@ -27,6 +27,7 @@ ratconfig_applied_change_ids = [
   "adopt-ctrl-alt-native-mode-layer",
   "adopt-mixed-native-mode-layer",
   "restore-codex-usage-both-default",
+  "enable-max-feature-defaults",
 ]
 surface = "main"
 field_count = 53
@@ -126,7 +127,7 @@ apply_mode = "tab_session_restart"
 
 [fields."helix.steel_plugins"]
 kind = "helix_steel_plugins"
-default = { enabled = ["splash", "spacemacs_theme"], extra = [] }
+default = { enabled = ["splash", "spacemacs_theme", "recentf", "labelled_buffers"], extra = [] }
 parser_key = "helix_steel_plugins"
 home_manager_option = "helix_steel_plugins"
 parser_behavior = "direct"
@@ -348,7 +349,12 @@ default = [
   "editor",
   "shell",
   "term",
+  "workspace",
+  "claude_usage",
   "codex_usage",
+  "opencode_go_usage",
+  "cpu",
+  "ram",
 ]
 parser_key = "zellij_widget_tray"
 home_manager_option = "zellij_widget_tray"

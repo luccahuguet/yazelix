@@ -43,7 +43,7 @@ points are
 
 | Concern | Current owner | Desired boundary |
 | --- | --- | --- |
-| Packaged terminal selection | `flake.nix`, `packaging/flake_outputs.nix`, `home_manager/module.nix`, package builder args | Keep Mars explicit as the only packaged terminal; host terminals are runtime/session support, not package variants |
+| Packaged terminal selection | `flake.nix`, `packaging/flake_outputs.nix`, `home_manager/module.nix`, package builder args | Keep Kitty explicit as the packaged default terminal, with Ghostty as the host backup in the launch order; other host terminals are runtime/session support, not package variants |
 | Terminal runtime identity | package builders plus generated runtime identity | Package builders own package identity; terminal child packages may expose stable metadata consumed by main Yazelix |
 | Home Manager options | `home_manager/options.nix` | Option declarations/defaults stay separate from runtime integration |
 | Home Manager settings rendering | `home_manager/settings_contract.nix` | Remain Nix-owned, backed by config metadata and `validate-config-surface-contract` |
@@ -59,7 +59,7 @@ points are
 
 1. Extract KGP package contract implementation out of `flake.nix`
 2. Delete generic packaged-terminal metadata until more than one packaged
-   terminal exists; wire Mars explicitly through flake and Home Manager surfaces
+   terminal exists; wire Kitty explicitly through flake and Home Manager surfaces
 3. Split `home_manager/module.nix` by owner: options/defaults, package
    selection, settings rendering, desktop entries, activation/runtime
    materialization, and validation helpers

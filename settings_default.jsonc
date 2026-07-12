@@ -15,7 +15,9 @@
     "steel_plugins": {
       "enabled": [
         "splash",
-        "spacemacs_theme"
+        "spacemacs_theme",
+        "recentf",
+        "labelled_buffers"
       ],
       "extra": []
     }
@@ -63,7 +65,12 @@
       "editor",
       "shell",
       "term",
-      "codex_usage"
+      "workspace",
+      "claude_usage",
+      "codex_usage",
+      "opencode_go_usage",
+      "cpu",
+      "ram"
     ],
     "widget_frame": "none",
     "widget_separator": "dot",
