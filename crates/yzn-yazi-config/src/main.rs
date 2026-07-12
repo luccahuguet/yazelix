@@ -4,6 +4,7 @@ use std::{
     os::unix::fs::symlink,
     path::{Path, PathBuf},
     process::{self, ExitCode},
+    sync::atomic::{AtomicU64, Ordering},
     time::{SystemTime, UNIX_EPOCH},
 };
 
@@ -282,11 +283,14 @@ fn invalid_data(message: impl Into<String>) -> io::Error {
     io::Error::new(ErrorKind::InvalidData, message.into())
 }
 
+static NONCE: AtomicU64 = AtomicU64::new(0);
+
 fn nonce() -> u128 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map(|duration| duration.as_nanos())
         .unwrap_or_default()
+        + u128::from(NONCE.fetch_add(1, Ordering::Relaxed))
 }
 
 #[cfg(test)]
