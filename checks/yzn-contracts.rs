@@ -37,6 +37,7 @@ fn main() {
     expect_keybinds(&config);
     expect_first_party_plugins(git, &config);
     expect_front_door(yzn, Path::new(jq));
+    expect_headless_enter(yzn);
     expect_narrow_path_launches(yzn, &yzn_shell);
     expect_config_ui(yzn);
     expect_startup_diagnostics(yzn);
@@ -749,6 +750,26 @@ fn expect_front_door(yzn: &Path, jq: &Path) {
     assert!(
         yzn.join("libexec/yazelix-next/yzn-tutor").is_file(),
         "yzn package is missing the tutor helper"
+    );
+}
+
+fn expect_headless_enter(yzn: &Path) {
+    let temp = TempDir::new();
+    let case = RuntimeCase::new(&temp.path, "headless-enter");
+    case.write_default_config("\n[welcome]\nenabled = false\n");
+    let output = successful_stdout(
+        case.yzn_command(&yzn.join("bin/yzn"), "enter")
+            .arg("--version")
+            .env("TERM", "xterm-256color")
+            .env_remove("DISPLAY")
+            .env_remove("WAYLAND_DISPLAY")
+            .env_remove("ZELLIJ")
+            .env_remove("ZELLIJ_PANE_ID"),
+        "headless yzn enter --version",
+    );
+    assert!(
+        output.starts_with("zellij "),
+        "headless yzn enter did not reach Zellij: {output:?}"
     );
 }
 

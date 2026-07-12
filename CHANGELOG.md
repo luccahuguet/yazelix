@@ -4,6 +4,10 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## Unreleased
 
+- `yzn enter` is the supported headless and SSH route for the managed
+  Zellij/Yazi/Helix workspace. It requires an interactive host terminal but not
+  Mars, a desktop entry, `DISPLAY`, or `WAYLAND_DISPLAY`; terminal-specific
+  graphics and clipboard behavior remain host-owned.
 - Nova rejects unsupported, misspelled, wrongly shaped, or wrongly typed root
   `config.toml` values before runtime or Ratconfig use while preserving sparse
   inheritance and the documented dynamic `popups.<id>` namespace.

@@ -137,7 +137,7 @@ fn exec_screen(args: Vec<OsString>) -> Result<(), AppError> {
 
 fn exec_managed(through_mars: bool, zellij_args: Vec<OsString>) -> Result<(), AppError> {
     let runtime = Runtime::prepare()?;
-    let program = if through_mars { MARS } else { YZN_WELCOME };
+    let program = managed_program(through_mars);
     let mut command = Command::new(program);
     if through_mars {
         command.arg("-e").arg(YZN_WELCOME).arg(ZELLIJ);
@@ -167,6 +167,10 @@ fn exec_managed(through_mars: bool, zellij_args: Vec<OsString>) -> Result<(), Ap
     exec(command, program)
 }
 
+fn managed_program(through_mars: bool) -> &'static str {
+    if through_mars { MARS } else { YZN_WELCOME }
+}
+
 fn apply_mars_cursor_config(command: &mut Command, through_mars: bool, path: &Path) {
     if through_mars {
         command.env("YAZELIX_CURSOR_CONFIG", path);
@@ -178,17 +182,19 @@ mod tests {
     use super::*;
 
     #[test]
-    fn cursor_config_is_passed_only_to_mars_launches() {
+    fn enter_bypasses_mars_and_its_cursor_env() {
+        assert_eq!(managed_program(false), YZN_WELCOME);
+        assert_eq!(managed_program(true), MARS);
         let path = Path::new("/tmp/cursors.toml");
-        let mut command = Command::new("mars");
-        apply_mars_cursor_config(&mut command, true, path);
+        let mut launch = Command::new(MARS);
+        apply_mars_cursor_config(&mut launch, true, path);
         assert_eq!(
-            command.get_envs().next(),
+            launch.get_envs().next(),
             Some(("YAZELIX_CURSOR_CONFIG".as_ref(), Some(path.as_os_str())))
         );
-        let mut command = Command::new("zellij");
-        apply_mars_cursor_config(&mut command, false, path);
-        assert_eq!(command.get_envs().next(), None);
+        let mut enter = Command::new(YZN_WELCOME);
+        apply_mars_cursor_config(&mut enter, false, path);
+        assert_eq!(enter.get_envs().next(), None);
     }
 }
 

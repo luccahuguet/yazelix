@@ -4,11 +4,10 @@ Yazelix Nova packages a small Yazelix runtime as a Nix flake. During
 pre-swap development, the installed command is `yzn` so it can coexist with
 public Yazelix v17.
 
-`yzn` opens Mars, starts the Yazelix Zellij fork, and gives you a Yazi-first
-workspace with a managed Helix editor bridge, popups for Git/config/agents/menu,
-and a compact top bar. The repo keeps the runtime intentionally narrow: one
-launcher, one config root, one packaged layout, and focused checks for the
-contracts it owns.
+`yzn launch` opens Mars; `yzn enter` starts the Yazelix Zellij fork in the
+current terminal. Both provide a Yazi-first workspace with managed Helix,
+Git/config/agent/menu popups, and a compact top bar. The repo keeps one launcher,
+one config root, one packaged layout, and focused checks for its contracts.
 
 ## Run
 
@@ -91,6 +90,16 @@ exist for `x86_64-linux`, `aarch64-linux`, `x86_64-darwin`, and
 On macOS, `help`, `status`, `doctor`, and `enter` are the supported floor after
 install. `launch` uses Mars and depends on macOS hardware validation for the full
 GUI path.
+
+## Host Terminals and SSH
+
+`yzn enter` starts the managed Zellij, Yazi, and Helix workspace in the current
+interactive terminal. It is the SSH/headless route and needs no Mars, desktop
+entry, `DISPLAY`, or `WAYLAND_DISPLAY`.
+
+Nova guarantees the managed TUI workflow and configuration, not host clipboard,
+image previews, cursor shaders, desktop notifications, or terminal graphics. It
+does not provide SSH connectivity or remote file synchronization.
 
 ## Installed Size
 
@@ -431,7 +440,7 @@ git ls-files | grep -Ev '^\.beads/|\.lock$' | xargs wc -l
 | Language | Lines |
 | --- | ---: |
 | Ignore (`.gitignore`) | 4 |
-| Markdown | 1515 |
+| Markdown | 1533 |
 | Nix | 1023 |
 | Shell | 84 |
 | YAML | 268 |
@@ -439,5 +448,5 @@ git ls-files | grep -Ev '^\.beads/|\.lock$' | xargs wc -l
 | KDL | 212 |
 | Nu | 11 |
 | Lua | 247 |
-| Rust | 12835 |
-| Total | 16445 |
+| Rust | 12862 |
+| Total | 16490 |

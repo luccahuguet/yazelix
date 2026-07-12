@@ -17,12 +17,15 @@ yzn run     →  prepared Yazelix environment  →  exact child argv/status
 ```
 
 Bare `yzn` prints help. `launch` is the only Mars route.
+`enter` is the headless/SSH route and requires an interactive host terminal, not
+a display server.
 
 ## Platforms
 
 | Surface | Support |
 | --- | --- |
 | Package / app outputs | `x86_64` / `aarch64` × Linux / Darwin |
+| Headless / SSH floor | `enter` in a capable interactive host terminal; managed TUI only |
 | macOS floor | `help`, `status`, `doctor`, `enter` |
 | macOS `launch` | Mars path; issue-driven until hardware validation |
 | Out of repo | App bundles, Homebrew, Ghostty packaging, broad terminal matrices |
@@ -336,7 +339,7 @@ Detail lives in Owners, checks, and the notes below.
 
 | ID | Contract | Owner | Check | Gap |
 | --- | --- | --- | --- | --- |
-| C1 | Front-door CLI and pre-exec diagnostics | `runtime/yzn/`, menu/tutor/config/open, screen, flake | `yzn-contracts`, helix/key parity, unit tests, `nix build .#yzn` | GUI launch |
+| C1 | Front-door CLI, headless `enter`, and pre-exec diagnostics | `runtime/yzn/`, menu/tutor/config/open, screen, flake | launcher unit, `yzn-contracts`, manual PTY, helix/key parity, `nix build .#yzn` | GUI launch |
 | C8 | Desktop entry starts `yzn` | `flake.nix` | `nix build .#yzn` | Desktop launch |
 
 ### Terminal, layout, shell, editor bridge
@@ -380,8 +383,10 @@ Detail lives in Owners, checks, and the notes below.
 ### Notes
 
 **C1:** Bare `yzn` → help; `launch` is explicit. Menu is a curated allowlist,
-`run` reuses the prepared environment, and reveal is tab-local. Diagnostics
-stop before Mars/Zellij handoff.
+`run` reuses the prepared environment, and reveal is tab-local. `enter` reaches
+the managed Zellij/Yazi/Helix workspace without Mars or display variables;
+terminal-specific graphics and clipboard behavior remain host-owned.
+Diagnostics stop before Mars/Zellij handoff.
 
 **C2:** Saving `mars.appearance.preset` through `yzn config` switches the
 Ratconfig palette live; other Mars fields apply on next Mars launch.
