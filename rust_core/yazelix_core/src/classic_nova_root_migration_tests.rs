@@ -340,6 +340,12 @@ fn exclusive_backup_copy_refuses_late_collision() {
 
     assert_eq!(error.kind(), io::ErrorKind::AlreadyExists);
     assert_eq!(fs::read_to_string(backup).unwrap(), "existing backup\n");
+
+    let target = config_dir.path().join("config.toml.new");
+    fs::write(&target, "concurrent target\n").unwrap();
+    let error = write_text_atomic_create_new(&target, "replacement\n").unwrap_err();
+    assert_eq!(error.code(), "atomic_write_create_new");
+    assert_eq!(fs::read_to_string(target).unwrap(), "concurrent target\n");
 }
 
 // Defends: read-only and Home Manager-owned Classic state is never replaced automatically.
@@ -401,8 +407,9 @@ impl TransactionIo for FailRemoval {
         path: &Path,
         contents: &str,
         permissions: Option<&fs::Permissions>,
+        mode: TransactionWriteMode,
     ) -> Result<(), CoreError> {
-        test_write_atomic(path, contents, permissions)
+        test_write_atomic(path, contents, permissions, mode)
     }
 
     fn remove(&self, path: &Path) -> io::Result<()> {
@@ -423,6 +430,7 @@ impl TransactionIo for FailTargetWrite {
         path: &Path,
         contents: &str,
         permissions: Option<&fs::Permissions>,
+        mode: TransactionWriteMode,
     ) -> Result<(), CoreError> {
         if path == self.target {
             return Err(CoreError::io(
@@ -433,7 +441,7 @@ impl TransactionIo for FailTargetWrite {
                 io::Error::other("injected"),
             ));
         }
-        test_write_atomic(path, contents, permissions)
+        test_write_atomic(path, contents, permissions, mode)
     }
 
     fn remove(&self, path: &Path) -> io::Result<()> {
@@ -445,10 +453,17 @@ fn test_write_atomic(
     path: &Path,
     contents: &str,
     permissions: Option<&fs::Permissions>,
+    mode: TransactionWriteMode,
 ) -> Result<(), CoreError> {
-    match permissions {
-        Some(permissions) => write_text_atomic_with_permissions(path, contents, permissions),
-        None => write_text_atomic(path, contents),
+    match (mode, permissions) {
+        (TransactionWriteMode::Replace, Some(permissions)) => {
+            write_text_atomic_with_permissions(path, contents, permissions)
+        }
+        (TransactionWriteMode::Replace, None) => write_text_atomic(path, contents),
+        (TransactionWriteMode::CreateNew, Some(permissions)) => {
+            write_text_atomic_create_new_with_permissions(path, contents, permissions)
+        }
+        (TransactionWriteMode::CreateNew, None) => write_text_atomic_create_new(path, contents),
     }
 }
 

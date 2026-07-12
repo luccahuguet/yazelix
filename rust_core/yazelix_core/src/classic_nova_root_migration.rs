@@ -1,6 +1,9 @@
 //! Temporary, Classic-owned transaction that leaves the canonical root Nova-native.
 
-use crate::atomic_fs::{write_text_atomic, write_text_atomic_with_permissions};
+use crate::atomic_fs::{
+    write_text_atomic, write_text_atomic_create_new, write_text_atomic_create_new_with_permissions,
+    write_text_atomic_with_permissions,
+};
 use crate::backup_timestamp::compact_utc_backup_timestamp;
 use crate::bridge::{CoreError, ErrorClass};
 use crate::classic_nova_root_translation::{
@@ -173,8 +176,15 @@ trait TransactionIo {
         path: &Path,
         contents: &str,
         permissions: Option<&fs::Permissions>,
+        mode: TransactionWriteMode,
     ) -> Result<(), CoreError>;
     fn remove(&self, path: &Path) -> io::Result<()>;
+}
+
+#[derive(Clone, Copy)]
+enum TransactionWriteMode {
+    Replace,
+    CreateNew,
 }
 
 struct RealTransactionIo;
@@ -189,10 +199,17 @@ impl TransactionIo for RealTransactionIo {
         path: &Path,
         contents: &str,
         permissions: Option<&fs::Permissions>,
+        mode: TransactionWriteMode,
     ) -> Result<(), CoreError> {
-        match permissions {
-            Some(permissions) => write_text_atomic_with_permissions(path, contents, permissions),
-            None => write_text_atomic(path, contents),
+        match (mode, permissions) {
+            (TransactionWriteMode::Replace, Some(permissions)) => {
+                write_text_atomic_with_permissions(path, contents, permissions)
+            }
+            (TransactionWriteMode::Replace, None) => write_text_atomic(path, contents),
+            (TransactionWriteMode::CreateNew, Some(permissions)) => {
+                write_text_atomic_create_new_with_permissions(path, contents, permissions)
+            }
+            (TransactionWriteMode::CreateNew, None) => write_text_atomic_create_new(path, contents),
         }
     }
 
@@ -423,8 +440,17 @@ fn migrate_with(
             error,
         )
     })?;
-    transaction_io.write_atomic(&report_path, &report_text, None)?;
-    transaction_io.write_atomic(&config, &rendered, Some(&source_permissions))?;
+    transaction_io.write_atomic(
+        &report_path,
+        &report_text,
+        None,
+        TransactionWriteMode::CreateNew,
+    )?;
+    let target_mode = match source_kind {
+        ClassicNovaMigrationSource::ConfigToml => TransactionWriteMode::Replace,
+        ClassicNovaMigrationSource::SettingsJsonc => TransactionWriteMode::CreateNew,
+    };
+    transaction_io.write_atomic(&config, &rendered, Some(&source_permissions), target_mode)?;
     if source_kind == ClassicNovaMigrationSource::SettingsJsonc {
         if let Err(error) = transaction_io.remove(&source) {
             if let Err(rollback_error) = transaction_io.remove(&config) {

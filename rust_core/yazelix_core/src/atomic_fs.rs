@@ -8,12 +8,24 @@ pub(crate) fn write_text_atomic(path: &Path, content: &str) -> Result<(), CoreEr
     write_bytes_atomic(path, content.as_bytes())
 }
 
+pub(crate) fn write_text_atomic_create_new(path: &Path, content: &str) -> Result<(), CoreError> {
+    write_bytes_atomic_inner(path, content.as_bytes(), None, false)
+}
+
 pub(crate) fn write_text_atomic_with_permissions(
     path: &Path,
     content: &str,
     permissions: &fs::Permissions,
 ) -> Result<(), CoreError> {
-    write_bytes_atomic_with_permissions(path, content.as_bytes(), Some(permissions))
+    write_bytes_atomic_inner(path, content.as_bytes(), Some(permissions), true)
+}
+
+pub(crate) fn write_text_atomic_create_new_with_permissions(
+    path: &Path,
+    content: &str,
+    permissions: &fs::Permissions,
+) -> Result<(), CoreError> {
+    write_bytes_atomic_inner(path, content.as_bytes(), Some(permissions), false)
 }
 
 pub(crate) fn copy_dir_all(src: &Path, dst: &Path) -> std::io::Result<()> {
@@ -53,13 +65,14 @@ pub(crate) fn is_executable_file(path: &Path) -> bool {
 }
 
 pub(crate) fn write_bytes_atomic(path: &Path, content: &[u8]) -> Result<(), CoreError> {
-    write_bytes_atomic_with_permissions(path, content, None)
+    write_bytes_atomic_inner(path, content, None, true)
 }
 
-fn write_bytes_atomic_with_permissions(
+fn write_bytes_atomic_inner(
     path: &Path,
     content: &[u8],
     permissions: Option<&fs::Permissions>,
+    replace: bool,
 ) -> Result<(), CoreError> {
     let parent = path.parent().ok_or_else(|| {
         CoreError::classified(
@@ -109,7 +122,7 @@ fn write_bytes_atomic_with_permissions(
         .and_then(|()| temp_file.sync_all());
     drop(temp_file);
     if let Err(source) = write_result {
-        let _ = fs::remove_file(&temp_path);
+        let source = cleanup_error(&temp_path, source);
         return Err(CoreError::io(
             "atomic_write_content",
             format!("Could not write temporary file {}.", temp_path.display()),
@@ -119,20 +132,60 @@ fn write_bytes_atomic_with_permissions(
         ));
     }
 
-    fs::rename(&temp_path, path).map_err(|source| {
-        let _ = fs::remove_file(&temp_path);
+    if replace {
+        return fs::rename(&temp_path, path).map_err(|source| {
+            let source = cleanup_error(&temp_path, source);
+            CoreError::io(
+                "atomic_write_rename",
+                format!(
+                    "Could not replace {} with temporary file {}.",
+                    path.display(),
+                    temp_path.display()
+                ),
+                "Check permissions for the Yazelix state directory and retry.",
+                format!("{} -> {}", temp_path.display(), path.display()),
+                source,
+            )
+        });
+    }
+
+    fs::hard_link(&temp_path, path).map_err(|source| {
+        let source = cleanup_error(&temp_path, source);
         CoreError::io(
-            "atomic_write_rename",
+            "atomic_write_create_new",
+            format!("Could not atomically create {}.", path.display()),
+            "Preserve the existing path if it appeared concurrently, or fix directory permissions, then retry.",
+            path.display().to_string(),
+            source,
+        )
+    })?;
+    fs::remove_file(&temp_path).map_err(|source| {
+        CoreError::io(
+            "atomic_write_temp_cleanup",
             format!(
-                "Could not replace {} with temporary file {}.",
+                "Created {} but could not remove temporary link {}.",
                 path.display(),
                 temp_path.display()
             ),
-            "Check permissions for the Yazelix state directory and retry.",
-            format!("{} -> {}", temp_path.display(), path.display()),
+            "The target is complete; remove the reported temporary link before retrying.",
+            temp_path.display().to_string(),
             source,
         )
     })
+}
+
+fn cleanup_error(temp_path: &Path, source: std::io::Error) -> std::io::Error {
+    match fs::remove_file(temp_path) {
+        Ok(()) => source,
+        Err(cleanup) if cleanup.kind() == std::io::ErrorKind::NotFound => source,
+        Err(cleanup) => std::io::Error::new(
+            source.kind(),
+            format!(
+                "{source}; also could not remove {}: {cleanup}",
+                temp_path.display()
+            ),
+        ),
+    }
 }
 
 fn create_temp_file_path(path: &Path) -> PathBuf {
