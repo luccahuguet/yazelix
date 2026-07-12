@@ -506,10 +506,10 @@ git ls-files | grep -Ev '^\.beads/|\.lock$' | xargs wc -l
 | Markdown | 1629 |
 | Nix | 1116 |
 | Shell | 84 |
-| YAML | 283 |
+| YAML | 286 |
 | TOML | 246 |
 | KDL | 212 |
 | Nu | 11 |
 | Lua | 247 |
 | Rust | 12887 |
-| Total | 16719 |
+| Total | 16722 |
