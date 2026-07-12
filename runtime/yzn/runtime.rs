@@ -78,6 +78,13 @@ impl Runtime {
         let home_dir = home_dir()?;
         let config_home = config_home()?;
         let config_toml = config_home.join("config.toml");
+        let cursor_config = config_home.join("cursors.toml");
+        run_checked(
+            &cursor_config,
+            Command::new(YZN_CONFIG)
+                .arg("--init-cursors")
+                .env("YAZELIX_NEXT_CONFIG_HOME", &config_home),
+        )?;
         let yzn_open_log = config_value(&config_home, &config_toml, "open.log_level")?;
         let shell_program = trim_output(config_value(&config_home, &config_toml, "shell.program")?);
         let editor_command =

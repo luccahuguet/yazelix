@@ -4,6 +4,13 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## Unreleased
 
+- First use seeds child-owned `cursors.toml` without overwriting user state.
+  The Ratconfig Cursors tab edits the enabled pool, selection, and common effect
+  settings while preserving custom definitions; advanced editing opens the full
+  file. `yzn launch` passes that exact path to Mars. Mars currently consumes
+  selection and basic trail enablement; richer effect, glow, and duration values
+  remain available for compatible consumers. The unused Kitty fallback setting
+  is removed from the shared schema.
 - `Alt Shift F` toggles focused-pane fullscreen, and `Ctrl y` moves directly
   between the managed editor and Yazi sidebar, reopening the sidebar as needed.
 - The top-right Zellij corner derives a compact Nova release label from the
@@ -20,7 +27,7 @@ User-visible runtime changes for Yazelix Nova live here.
   likewise renders only declared semantic values, with no hidden contract
   metadata.
 - Opening `yzn config` no longer creates `mars/config.toml`. The Mars tab shows
-  all ten curated effective values without persisting them, saves only explicit
+  all nine curated effective values without persisting them, saves only explicit
   overrides, and removes a key when reset. Mars recursively layers that sparse
   user file over Nova's immutable packaged base, so untouched settings and font
   paths follow upgrades.
@@ -77,8 +84,8 @@ User-visible runtime changes for Yazelix Nova live here.
 - The root `[appearance].mode` setting was removed before release. Mars
   appearance stays Mars-owned: `yzn config` exposes the native
   `mars.appearance.preset` dark/light selector in `mars/config.toml`, while
-  low-level Mars `force-theme`, `[colors]`, and cursor fields remain native
-  TOML only.
+  low-level Mars `force-theme` and `[colors]` remain native TOML only. Shared
+  cursor configuration lives in `cursors.toml`.
 - Flake package and app outputs are exposed for `x86_64-darwin` and
   `aarch64-darwin` in addition to the Linux systems. The macOS floor is
   package-first: `yzn help`, `status`, `doctor`, and `enter` are the supported

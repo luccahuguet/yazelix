@@ -41,6 +41,7 @@ fn main() {
     expect_config_ui(yzn);
     expect_startup_diagnostics(yzn);
     expect_mars_config_override(yzn);
+    expect_cursor_config(yzn);
     expect_zellij_config_sidecar(yzn);
     expect_yazi_alt_z(yzn);
 
@@ -1242,6 +1243,21 @@ fn expect_mars_config_override(yzn: &Path) {
         "mars config: user",
         mars_config.display().to_string(),
     }
+}
+
+fn expect_cursor_config(yzn: &Path) {
+    let template = fs::read_to_string(yzn.join("share/yazelix-next/cursors.toml")).unwrap();
+    let yzn_bin = yzn.join("bin/yzn");
+    let temp = TempDir::new();
+    let case = RuntimeCase::new(&temp.path, "cursors");
+    case.run_yzn(&yzn_bin, "status", "cursor config initialization");
+    let cursor_config = case.config_home.join("cursors.toml");
+    assert_eq!(fs::read_to_string(&cursor_config).unwrap(), template);
+
+    let custom = format!("{template}\n# preserved user cursor config\n");
+    fs::write(&cursor_config, &custom).unwrap();
+    case.run_yzn(&yzn_bin, "status", "cursor config preservation");
+    assert_eq!(fs::read_to_string(cursor_config).unwrap(), custom);
 }
 
 fn expect_zellij_config_sidecar(yzn: &Path) {

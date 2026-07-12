@@ -12,13 +12,14 @@ use crate::{
     catalog::*,
     common::*,
     native_config::{
-        unset_mars_config_field, unset_starship_config_field, write_mars_config_field,
-        write_starship_config_field,
+        restore_cursor_config_field, unset_mars_config_field, unset_starship_config_field,
+        write_cursor_config_field, write_mars_config_field, write_starship_config_field,
     },
     paths::ConfigPaths,
     root_config::{unset_config_field, write_config_field},
     zellij_sidecar::{ZellijSidecar, write_zellij_config_field, zellij_field_value},
 };
+use yazelix_cursors::DEFAULT_CURSOR_CONFIG_TEMPLATE;
 
 pub(crate) struct FileActionSpec {
     source_id: &'static str,
@@ -48,6 +49,15 @@ pub(crate) fn build_file_actions(paths: &ConfigPaths) -> Vec<ConfigUiFileAction>
 }
 fn file_action_specs(paths: &ConfigPaths) -> impl IntoIterator<Item = FileActionSpec> {
     [
+        FileActionSpec {
+            source_id: SOURCE_CURSORS,
+            action_id: ACTION_CURSORS_CONFIG,
+            tab: TAB_CURSORS,
+            label: "cursors.toml",
+            description: "Open the complete cursor config for custom definitions.",
+            path: paths.cursors.clone(),
+            starter: DEFAULT_CURSOR_CONFIG_TEMPLATE,
+        },
         FileActionSpec {
             source_id: SOURCE_HELIX,
             action_id: ACTION_HELIX_CONFIG,
@@ -173,6 +183,10 @@ pub(crate) fn write_source_field(
             reject_read_only_source(&paths.mars, source_id)?;
             write_mars_config_field(&paths.mars, field_path, value)
         }
+        SOURCE_CURSORS => {
+            reject_read_only_source(&paths.cursors, source_id)?;
+            write_cursor_config_field(&paths.cursors, field_path, value)
+        }
         SOURCE_ZELLIJ => {
             reject_read_only_source(&paths.zellij, source_id)?;
             write_zellij_config_field(&paths.zellij, field_path, value)
@@ -197,6 +211,10 @@ pub(crate) fn write_source_default(
         SOURCE_MARS => {
             reject_read_only_source(&paths.mars, source_id)?;
             return unset_mars_config_field(&paths.mars, field_path);
+        }
+        SOURCE_CURSORS => {
+            reject_read_only_source(&paths.cursors, source_id)?;
+            return restore_cursor_config_field(&paths.cursors, field_path);
         }
         SOURCE_STARSHIP => {
             reject_read_only_source(&paths.starship, source_id)?;

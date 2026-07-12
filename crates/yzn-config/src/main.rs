@@ -20,6 +20,7 @@ use native_config::write_effective_starship_config;
 use paths::*;
 use root_config::*;
 use ui::*;
+use yazelix_cursors::initialize_cursor_config;
 
 fn main() {
     if let Err(error) = run() {
@@ -40,6 +41,13 @@ fn run() -> Result<()> {
                 return Err(error("--get accepts exactly one config path"));
             }
             print_config_field(&path)
+        }
+        Some("--init-cursors") => {
+            if args.next().is_some() {
+                return Err(error("--init-cursors does not accept arguments"));
+            }
+            initialize_cursor_config(&config_paths()?.cursors)?;
+            Ok(())
         }
         Some("--write-effective-helix-config") => {
             let packaged = args
@@ -125,6 +133,7 @@ mod tests {
         file_action_status_label, file_action_status_style,
     };
     use serde_json::{Value as JsonValue, json};
+    use yazelix_cursors::load_cursor_config;
 
     struct TempHome {
         path: PathBuf,
@@ -154,6 +163,7 @@ mod tests {
     fn temp_paths(temp: &TempHome) -> ConfigPaths {
         ConfigPaths {
             root: temp.path.join("config.toml"),
+            cursors: temp.path.join("cursors.toml"),
             mars: temp.path.join("mars/config.toml"),
             zellij: temp.path.join("zellij/config.kdl"),
             helix_dir: temp.path.join("helix"),
@@ -696,6 +706,7 @@ mod tests {
                 " main",
                 " popups",
                 " mars",
+                "󰇀 cursors",
                 " zellij",
                 " starship",
                 " helix",
@@ -739,11 +750,9 @@ mod tests {
                 "{hidden} should stay native TOML only"
             );
         }
-        assert!(
-            model
-                .fields
-                .iter()
-                .all(|field| !field.path.starts_with("yazelix.cursor."))
+        assert_eq!(
+            model_field(&model, CURSOR_TRAIL_PATH).source_id,
+            SOURCE_CURSORS
         );
 
         for spec in POPUP_KEYBINDINGS {
@@ -761,6 +770,58 @@ mod tests {
             r#"["editor","shell","term","codex_usage","cpu","ram"]"#
         );
         assert!(field.allowed_values.contains(&"claude_usage".to_string()));
+    }
+
+    #[test]
+    fn cursor_config_is_child_owned_preserved_and_structurally_editable() {
+        let (_temp, paths) = temp_sources();
+        let custom = r##"schema_version = 1
+enabled_cursors = ["custom_test"]
+[settings]
+trail = "custom_test"
+trail_effect = "tail"
+mode_effect = "none"
+glow = "none"
+duration = 1.0
+# user cursor must survive structured edits
+[[cursor]]
+name = "custom_test"
+family = "mono"
+color = "#123456"
+"##;
+        fs::write(&paths.cursors, custom).unwrap();
+
+        let model = build_model(&paths).unwrap();
+        let enabled = model_field(&model, CURSOR_ENABLED_PATH);
+        let trail = model_field(&model, CURSOR_TRAIL_PATH);
+        let mode = model_field(&model, "settings.mode_effect");
+        assert_eq!(enabled.allowed_values, ["custom_test"]);
+        assert_eq!(enabled.default_value, r#"["custom_test"]"#);
+        assert!(trail.allowed_values.contains(&"random".to_string()));
+        assert_eq!(trail.apply_status.summary, "next launch");
+        assert_eq!(mode.apply_status.summary, "stored");
+        write_source_field(&paths, SOURCE_CURSORS, CURSOR_TRAIL_PATH, &json!("none")).unwrap();
+        let changed = fs::read_to_string(&paths.cursors).unwrap();
+        assert!(changed.contains("# user cursor must survive structured edits"));
+        assert_eq!(
+            load_cursor_config(&paths.cursors).unwrap().settings.trail,
+            "none"
+        );
+
+        write_source_field(
+            &paths,
+            SOURCE_CURSORS,
+            CURSOR_TRAIL_PATH,
+            &json!("missing_cursor"),
+        )
+        .unwrap_err();
+        assert_eq!(fs::read_to_string(&paths.cursors).unwrap(), changed);
+
+        write_source_default(&paths, SOURCE_CURSORS, CURSOR_TRAIL_PATH).unwrap();
+        assert_eq!(
+            load_cursor_config(&paths.cursors).unwrap().settings.trail,
+            "random"
+        );
     }
 
     #[test]
@@ -968,7 +1029,7 @@ mod tests {
     fn ensure_config_sources_creates_source_backed_files() {
         let (_temp, paths) = temp_sources();
 
-        assert_exists(&[&paths.zellij]);
+        assert_exists(&[&paths.cursors, &paths.zellij]);
         assert_missing(&[
             &paths.root,
             &paths.mars,
@@ -997,14 +1058,15 @@ mod tests {
         let model = build_model(&paths).unwrap();
         assert!(model.tabs.contains(&TAB_STARSHIP.to_string()));
         assert!(model.tabs.contains(&TAB_HELIX.to_string()));
+        assert!(model.tabs.contains(&TAB_CURSORS.to_string()));
         assert!(model.sources.iter().any(|source| {
             source.id == SOURCE_HELIX && source.tab == TAB_HELIX && source.path == paths.helix_dir
         }));
         assert!(model.file_actions.iter().all(|action| {
-            let expected = if action.label.starts_with("helix/") {
-                (SOURCE_HELIX, TAB_HELIX)
-            } else {
-                (SOURCE_ADVANCED, TAB_ADVANCED)
+            let expected = match action.label.as_str() {
+                "cursors.toml" => (SOURCE_CURSORS, TAB_CURSORS),
+                label if label.starts_with("helix/") => (SOURCE_HELIX, TAB_HELIX),
+                _ => (SOURCE_ADVANCED, TAB_ADVANCED),
             };
             (action.source_id.as_str(), action.tab.as_str()) == expected
         }));
@@ -1016,6 +1078,7 @@ mod tests {
         assert_eq!(
             summaries,
             [
+                (ACTION_CURSORS_CONFIG, "cursors.toml"),
                 (ACTION_HELIX_CONFIG, "helix/config.toml"),
                 (ACTION_HELIX_LANGUAGES, "helix/languages.toml"),
                 (ACTION_HELIX_MODULE, "helix/helix.scm"),
@@ -1036,15 +1099,18 @@ mod tests {
                 .iter()
                 .all(|action| action.path.ends_with(&action.label))
         );
-        assert!(
-            model
-                .file_actions
-                .iter()
-                .all(|action| !action.exists && action.create_if_missing)
-        );
         assert!(model.file_actions.iter().all(|action| {
-            file_action_status_label(action) == "absent"
-                && file_action_status_style(action) == Style::default().fg(Color::Gray)
+            action.create_if_missing
+                && (action.exists == (action.action_id == ACTION_CURSORS_CONFIG))
+        }));
+        assert!(model.file_actions.iter().all(|action| {
+            if action.action_id == ACTION_CURSORS_CONFIG {
+                file_action_status_label(action) == "existing"
+                    && file_action_status_style(action) == Style::default().fg(Color::Green)
+            } else {
+                file_action_status_label(action) == "absent"
+                    && file_action_status_style(action) == Style::default().fg(Color::Gray)
+            }
         }));
     }
 

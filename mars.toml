@@ -13,13 +13,6 @@ trail-cursor = true
 [mars.appearance]
 preset = "dark"
 
-[yazelix.cursor]
-family = "split"
-divider = "vertical"
-transition = "hard"
-colors = ["#00e6ff", "#00ff66"]
-cursor_color = "#00e6ff"
-
 [window]
 width = 960
 height = 620

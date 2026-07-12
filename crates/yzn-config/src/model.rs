@@ -12,12 +12,15 @@ use ratconfig::{
     build_config_ui_field, build_string_list_choice_field,
 };
 use serde_json::Value as JsonValue;
+use yazelix_cursors::{
+    CursorRegistry, SUPPORTED_GLOW_LEVELS, SUPPORTED_MODE_EFFECTS, SUPPORTED_TRAIL_EFFECTS,
+};
 
 use crate::{
     catalog::*,
     common::*,
     file_actions::build_file_actions,
-    native_config::{validate_mars_field, validate_starship_field},
+    native_config::{cursor_defaults, validate_mars_field, validate_starship_field},
     paths::ConfigPaths,
     root_config::{
         bar_widgets, default_config, default_config_path_value, popup_keybinding_spec,
@@ -36,6 +39,8 @@ pub(crate) fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
     let starship_active = read_optional_toml_file_value(&paths.starship, "invalid starship.toml")?;
     let starship_default = parse_toml_value(DEFAULT_STARSHIP_CONFIG_TOML)
         .map_err(|error| boxed_debug("invalid default Starship config", error))?;
+    let cursors_active = yazelix_cursors::load_cursor_config(&paths.cursors)?;
+    let cursors_default = cursor_defaults(&cursors_active)?;
     let (zellij_active, diagnostics) = parse_zellij_sidecar(&fs::read_to_string(&paths.zellij)?);
     let zellij_default = ZellijSidecar::default();
     let zellij_blocking = diagnostics.iter().any(|diagnostic| diagnostic.blocking);
@@ -46,6 +51,7 @@ pub(crate) fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
         .collect::<Result<_>>()?;
     fields.push(build_bar_widgets_field(&config_active, &config_default)?);
     fields.extend(KEY_BINDINGS.iter().map(build_key_binding_field));
+    fields.extend(build_cursor_fields(&cursors_active, &cursors_default)?);
     for spec in MARS_FIELDS {
         let current = get_toml_path(&mars_active, spec.path);
         fields.push(build_config_field(
@@ -104,6 +110,7 @@ pub(crate) fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
         sources: vec![
             build_config_source(SOURCE_CONFIG, TAB_CONFIG, "config.toml", &paths.root),
             build_config_source(SOURCE_MARS, TAB_MARS, "mars/config.toml", &paths.mars),
+            build_config_source(SOURCE_CURSORS, TAB_CURSORS, "cursors.toml", &paths.cursors),
             build_config_source(
                 SOURCE_ZELLIJ,
                 TAB_ZELLIJ,
@@ -131,6 +138,7 @@ pub(crate) fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
             TAB_CONFIG.to_string(),
             TAB_POPUPS.to_string(),
             TAB_MARS.to_string(),
+            TAB_CURSORS.to_string(),
             TAB_ZELLIJ.to_string(),
             TAB_STARSHIP.to_string(),
             TAB_HELIX.to_string(),
@@ -284,6 +292,94 @@ fn build_config_field(
         has_blocking_diagnostic,
         edit_behavior: ConfigUiEditBehavior::Default,
     })
+}
+fn build_cursor_fields(
+    active: &CursorRegistry,
+    defaults: &CursorRegistry,
+) -> Result<Vec<ratconfig::ConfigUiField>> {
+    let active_json = serde_json::to_value(active)?;
+    let default_json = serde_json::to_value(defaults)?;
+    let mut fields = vec![
+        build_string_list_choice_field(ConfigUiStringListChoiceSpec {
+            source_id: SOURCE_CURSORS.to_string(),
+            path: CURSOR_ENABLED_PATH.to_string(),
+            display_label: String::new(),
+            section_label: String::new(),
+            list_cells: Vec::new(),
+            tab: TAB_CURSORS.to_string(),
+            current: Some(active.enabled_cursors.clone()),
+            default: Some(defaults.enabled_cursors.clone()),
+            description: CURSOR_FIELDS[0].description.to_string(),
+            allowed_values: active.definitions.keys().cloned().collect(),
+            validation: CURSOR_FIELDS[0].validation.to_string(),
+            rebuild_required: false,
+            apply_status: cursor_apply_status(CURSOR_ENABLED_PATH),
+            has_blocking_diagnostic: false,
+            edit_behavior: ConfigUiEditBehavior::OrderedStringList,
+        })
+        .map_err(error)?,
+    ];
+    for spec in &CURSOR_FIELDS[1..] {
+        let mut field = build_config_field(
+            SOURCE_CURSORS,
+            TAB_CURSORS,
+            spec,
+            get_toml_path(&active_json, spec.path),
+            get_toml_path(&default_json, spec.path),
+            cursor_apply_status(spec.path),
+            false,
+        );
+        field.allowed_values = cursor_allowed_values(active, spec.path);
+        fields.push(field);
+    }
+    Ok(fields)
+}
+fn cursor_allowed_values(registry: &CursorRegistry, path: &str) -> Vec<String> {
+    match path {
+        CURSOR_TRAIL_PATH => registry
+            .enabled_cursors
+            .iter()
+            .map(String::as_str)
+            .chain(["random", "none"])
+            .map(str::to_string)
+            .collect(),
+        "settings.trail_effect" => SUPPORTED_TRAIL_EFFECTS
+            .iter()
+            .copied()
+            .chain(["random", "none"])
+            .map(str::to_string)
+            .collect(),
+        "settings.mode_effect" => SUPPORTED_MODE_EFFECTS
+            .iter()
+            .copied()
+            .chain(["random", "none"])
+            .map(str::to_string)
+            .collect(),
+        "settings.glow" => string_values(SUPPORTED_GLOW_LEVELS),
+        _ => Vec::new(),
+    }
+}
+fn cursor_apply_status(path: &str) -> ConfigUiApplyStatus {
+    if matches!(
+        path,
+        "settings.mode_effect" | "settings.glow" | "settings.duration"
+    ) {
+        return ConfigUiApplyStatus {
+            summary: "stored".to_string(),
+            label: "cursors".to_string(),
+            detail: "Saved for compatible consumers; Mars does not use this setting yet."
+                .to_string(),
+            pending: false,
+        };
+    }
+    next_launch_apply_status(
+        "cursors",
+        if path == "settings.trail_effect" {
+            "Mars currently reads only none versus enabled; compatible consumers may use the named effect."
+        } else {
+            "Mars reads the saved cursor pool and selection on its next launch."
+        },
+    )
 }
 fn build_bar_widgets_field(
     active: &JsonValue,

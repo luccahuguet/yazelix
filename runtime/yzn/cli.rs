@@ -1,4 +1,4 @@
-use std::{env, ffi::OsString, process::Command};
+use std::{env, ffi::OsString, path::Path, process::Command};
 
 use crate::{
     MARS, VERSION, YZN_CONFIG_UI, YZN_ENV_SUPERVISOR, YZN_MENU, YZN_REVEAL, YZN_SCREEN, YZN_SHELL,
@@ -151,6 +151,11 @@ fn exec_managed(through_mars: bool, zellij_args: Vec<OsString>) -> Result<(), Ap
         .arg(&runtime.layout)
         .args(zellij_args);
     runtime.apply(&mut command);
+    apply_mars_cursor_config(
+        &mut command,
+        through_mars,
+        &runtime.config_home.join("cursors.toml"),
+    );
     command.env(
         "YAZELIX_SESSION_TERMINAL",
         if through_mars {
@@ -160,6 +165,31 @@ fn exec_managed(through_mars: bool, zellij_args: Vec<OsString>) -> Result<(), Ap
         },
     );
     exec(command, program)
+}
+
+fn apply_mars_cursor_config(command: &mut Command, through_mars: bool, path: &Path) {
+    if through_mars {
+        command.env("YAZELIX_CURSOR_CONFIG", path);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn cursor_config_is_passed_only_to_mars_launches() {
+        let path = Path::new("/tmp/cursors.toml");
+        let mut command = Command::new("mars");
+        apply_mars_cursor_config(&mut command, true, path);
+        assert_eq!(
+            command.get_envs().next(),
+            Some(("YAZELIX_CURSOR_CONFIG".as_ref(), Some(path.as_os_str())))
+        );
+        let mut command = Command::new("zellij");
+        apply_mars_cursor_config(&mut command, false, path);
+        assert_eq!(command.get_envs().next(), None);
+    }
 }
 
 const HELP: &str = "Yazelix Nova

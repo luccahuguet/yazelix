@@ -11,6 +11,10 @@
       url = "github:luccahuguet/mars";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    yazelixCursors = {
+      url = "github:luccahuguet/yazelix-cursors";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     yazelixZellij = {
       url = "github:luccahuguet/yazelix-zellij/yazelix_kgp_preview";
       flake = false;
@@ -54,6 +58,7 @@
     nixpkgs,
     home-manager,
     mars,
+    yazelixCursors,
     yazelixZellij,
     yazelixHelix,
     yazelixZellijPopup,
@@ -131,12 +136,14 @@
         cp -R ${pkgs.lib.cleanSource ./crates/yzn-config}/. "$out/"
         chmod -R u+w "$out"
         ln -s ${ratconfig} "$out/ratconfig"
+        ln -s ${yazelixCursors} "$out/yazelix-cursors"
         cp ${./config.toml} "$out/config.toml"
         cp ${yznMarsConfig}/config.toml "$out/mars.toml"
         mkdir -p "$out/helix"
         cp ${./helix/config.toml} "$out/helix/config.toml"
         substituteInPlace "$out/Cargo.toml" \
-          --replace-fail '../../../ratconfig' './ratconfig'
+          --replace-fail '../../../ratconfig' './ratconfig' \
+          --replace-fail '../../../yazelix-cursors' './yazelix-cursors'
         substituteInPlace "$out/src/catalog.rs" \
           --replace-fail '../../../config.toml' '../config.toml' \
           --replace-fail '../../../mars.toml' '../mars.toml' \
@@ -538,6 +545,7 @@
           install -D -m 644 ${yznConfigKdl} "$out/share/yazelix-next/config.kdl"
           install -D -m 644 ${yznRuntimeIdentity}/runtime_identity.json "$out/share/yazelix-next/runtime_identity.json"
           install -D -m 644 ${yznMarsConfig}/config.toml "$out/share/yazelix-next/mars/config.toml"
+          install -D -m 644 ${yazelixCursors}/yazelix_cursors_default.toml "$out/share/yazelix-next/cursors.toml"
           install -D -m 644 ${./config.toml} "$out/share/yazelix-next/config.toml"
           install -D -m 644 ${yznZellijLayout}/layout.kdl "$out/share/yazelix-next/layout.kdl"
           install -D -m 644 ${yznZellijLayout}/layout.swap.kdl "$out/share/yazelix-next/layout.swap.kdl"
@@ -692,7 +700,10 @@
         grep -q '# config' "$config_files/nu/config.nu"
 
         export HOME="$TMPDIR/hm-yzn-home"
-        export YAZELIX_NEXT_CONFIG_HOME="$config_files"
+        runtime_config="$TMPDIR/hm-yzn-config"
+        cp -R "$config_files" "$runtime_config"
+        chmod -R u+w "$runtime_config"
+        export YAZELIX_NEXT_CONFIG_HOME="$runtime_config"
         export YAZELIX_STATE_DIR="$TMPDIR/hm-yzn-state"
         export XDG_DATA_HOME="$TMPDIR/hm-yzn-data"
         mkdir -p "$HOME" "$YAZELIX_STATE_DIR" "$XDG_DATA_HOME"
@@ -703,12 +714,12 @@
         "$hm_yzn" tutor list > tutor-list
         grep -q 'Usage:' help
         grep -q 'Yazelix Nova status' status
-        grep -q "config home: $config_files" status
+        grep -q "config home: $runtime_config" status
         grep -q "state dir: $YAZELIX_STATE_DIR" status
         grep -q 'shell: fish' status
         grep -q 'welcome enabled: false' status
         grep -q 'Yazelix Nova doctor' doctor
-        grep -q "ok config home: $config_files" doctor
+        grep -q "ok config home: $runtime_config" doctor
         grep -q 'ok shell.program: fish' doctor
         grep -q 'Yazelix Nova tutor lessons' tutor-list
         touch "$out"

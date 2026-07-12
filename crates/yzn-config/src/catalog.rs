@@ -50,6 +50,8 @@ pub(crate) const BAR_WIDGET_VALUES: &[&str] = &[
 ];
 pub(crate) const DEFAULT_MARS_CONFIG_TOML: &str = include_str!("../../../mars.toml");
 pub(crate) const MARS_APPEARANCE_PRESET_PATH: &str = "mars.appearance.preset";
+pub(crate) const CURSOR_ENABLED_PATH: &str = "enabled_cursors";
+pub(crate) const CURSOR_TRAIL_PATH: &str = "settings.trail";
 pub(crate) const DEFAULT_STARSHIP_CONFIG_TOML: &str = "\
 format = \":: \"
 right_format = \"\"
@@ -58,6 +60,7 @@ add_newline = true
 
 pub(crate) const SOURCE_CONFIG: &str = DEFAULT_CONFIG_SOURCE_ID;
 pub(crate) const SOURCE_MARS: &str = "mars";
+pub(crate) const SOURCE_CURSORS: &str = "cursors";
 pub(crate) const SOURCE_ZELLIJ: &str = "zellij";
 pub(crate) const SOURCE_STARSHIP: &str = "starship";
 pub(crate) const SOURCE_HELIX: &str = "helix";
@@ -66,6 +69,7 @@ pub(crate) const SOURCE_ADVANCED: &str = "advanced";
 pub(crate) const TAB_CONFIG: &str = " main";
 pub(crate) const TAB_POPUPS: &str = " popups";
 pub(crate) const TAB_MARS: &str = " mars";
+pub(crate) const TAB_CURSORS: &str = "󰇀 cursors";
 pub(crate) const TAB_ZELLIJ: &str = " zellij";
 pub(crate) const TAB_STARSHIP: &str = " starship";
 pub(crate) const TAB_HELIX: &str = " helix";
@@ -73,6 +77,7 @@ pub(crate) const TAB_KEYS: &str = " keys";
 pub(crate) const TAB_ADVANCED: &str = " advanced";
 
 pub(crate) const ACTION_HELIX_CONFIG: &str = "helix.config";
+pub(crate) const ACTION_CURSORS_CONFIG: &str = "cursors.config";
 pub(crate) const ACTION_HELIX_LANGUAGES: &str = "helix.languages";
 pub(crate) const ACTION_HELIX_MODULE: &str = "helix.module";
 pub(crate) const ACTION_HELIX_INIT: &str = "helix.init";
@@ -100,6 +105,43 @@ pub(crate) const YAZI_THEME_STARTER: &str =
 pub(crate) const ZELLIJ_PLUGINS_STARTER: &str = "// Extra managed Zellij plugins. Do not declare yzpp or yazelix_pane_orchestrator here.\nplugins {\n}\n\nload_plugins {\n}\n";
 pub(crate) const KEY_READ_ONLY_REASON: &str =
     "Read-only key binding; yzn config does not rewrite native keymaps.";
+
+pub(crate) const CURSOR_FIELDS: &[FieldSpec] = &[
+    FieldSpec::string_list(
+        CURSOR_ENABLED_PATH,
+        "Cursor definitions available to fixed and random selection.",
+        "names from this cursors.toml",
+    ),
+    FieldSpec::string_choice(
+        CURSOR_TRAIL_PATH,
+        "Cursor palette selection.",
+        &[],
+        "enabled cursor name, random, or none",
+    ),
+    FieldSpec::string_choice(
+        "settings.trail_effect",
+        "Cursor movement effect for compatible consumers.",
+        &[],
+        "supported trail effect, random, or none",
+    ),
+    FieldSpec::string_choice(
+        "settings.mode_effect",
+        "Cursor mode-change effect for compatible consumers.",
+        &[],
+        "supported mode effect, random, or none",
+    ),
+    FieldSpec::string_choice(
+        "settings.glow",
+        "Cursor effect glow for compatible consumers.",
+        &[],
+        "supported glow level",
+    ),
+    FieldSpec::float(
+        "settings.duration",
+        "Cursor movement duration multiplier for compatible consumers.",
+        "number from 0.25 to 4.0",
+    ),
+];
 
 pub(crate) struct PopupKeybindingSpec {
     pub(crate) path: &'static str,
@@ -313,7 +355,6 @@ pub(crate) const MARS_FIELDS: &[FieldSpec] = &[
     FieldSpec::boolean("enable-scroll-bar", "Show the Mars scrollbar."),
     FieldSpec::boolean("bell.audio", "Play the Mars terminal bell."),
     FieldSpec::boolean("bell.visual", "Flash the Mars visual bell."),
-    FieldSpec::boolean("effects.trail-cursor", "Draw the Mars cursor trail."),
 ];
 
 pub(crate) const STARSHIP_FIELDS: &[FieldSpec] = &[

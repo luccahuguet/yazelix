@@ -81,7 +81,8 @@ One owner per concern. Paths are the durable map.
 
 `crates/yzn-config/` is the Ratconfig host.
 
-- Creates the Zellij sidecar when missing; root, Mars, and Starship stay sparse
+- Seeds the child-owned cursor TOML and Zellij sidecar when missing; root, Mars,
+  and Starship stay sparse
 - Routes edits to the right file; Helix/Advanced open-file rows; Keys read-only
 - Hidden package-internal reads for launch + custom-popup KDL render
 - `agent.popup.kdl` is an internal render path for custom managed agent command
@@ -143,6 +144,7 @@ custom popup entry.
 | Child | Domain |
 | --- | --- |
 | Mars | Terminal |
+| yazelix-cursors | Cursor TOML schema, validation, definitions, and resolution |
 | yazelix-zellij / helix | Multiplexer / editor forks |
 | yazelix-zellij-popup (`yzpp`) | Popup lifecycle |
 | yazelix-zellij-pane-orchestrator | Focus / sidebar walk |
@@ -183,6 +185,7 @@ Packaged first, unless a surface opts into native replacement.
 ```text
 ~/.config/yazelix-next/
   config.toml              # optional sparse semantic overrides
+  cursors.toml             # shared cursor selection/effects; seeded once
   mars/config.toml         # optional sparse Mars overrides
   zellij/config.kdl        # guarded scalar sidecar
   zellij/plugins.kdl       # extra plugins only
@@ -198,7 +201,8 @@ Runtime state defaults to `$XDG_DATA_HOME/yazelix-next` or `YAZELIX_STATE_DIR`.
 | Surface | Layering |
 | --- | --- |
 | Root TOML | Packaged semantic defaults → sparse explicit user overrides |
-| Mars | Packaged base → recursive sparse user override; low-level `force-theme` / `[colors]` / cursors stay manual native |
+| Cursors | Child-owned template → user file; Ratconfig edits bounded common fields and preserves custom definitions |
+| Mars | Packaged base → recursive sparse user override; cursor selection arrives separately through `YAZELIX_CURSOR_CONFIG` |
 | Nu | Packaged → optional host `mise activate nu` → optional user Nu |
 | Starship | Nova defaults → sparse user overrides → runtime-effective TOML |
 | Helix | See Helix notes below |
@@ -324,7 +328,7 @@ Detail lives in Owners, checks, and the notes below.
 | ID | Contract | Owner | Check | Gap |
 | --- | --- | --- | --- | --- |
 | C11a | Root semantic schema + sparse persistence | `yzn-config`, `config.toml` | config tests + contracts | UI |
-| C11b | Popups/Mars/Zellij/Starship tabs; session Zellij active-file patch | `yzn-config` | config tests + contracts | Session live scalars |
+| C11b | Popups/Mars/Cursors/Zellij/Starship tabs; session Zellij active-file patch | `yzn-config` | config tests + contracts | Session live scalars |
 | C11c | Helix tab + `yzn-hx` merge / `Alt r` / Steel | `yzn-config`, helix, `yzn-hx` | `helix-contracts` + config tests | UI |
 | C11d | Keys read-only + Advanced open-file | `yzn-config` | Keys/Advanced tests, key parity | UI |
 

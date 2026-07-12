@@ -922,6 +922,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "yazelix_cursors"
+version = "0.1.0"
+dependencies = [
+ "jsonc-parser",
+ "ratconfig",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "toml",
+]
+
+[[package]]
 name = "yzn-config"
 version = "0.1.0"
 dependencies = [
@@ -930,6 +942,7 @@ dependencies = [
  "ratconfig",
  "serde_json",
  "toml",
+ "yazelix_cursors",
 ]
 
 [[package]]

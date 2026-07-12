@@ -8,9 +8,11 @@ use crate::{
     root_config::validate_config_file_at,
     zellij_sidecar::{ZellijSidecar, render_zellij_sidecar},
 };
+use yazelix_cursors::initialize_cursor_config;
 
 pub(crate) struct ConfigPaths {
     pub(crate) root: PathBuf,
+    pub(crate) cursors: PathBuf,
     pub(crate) mars: PathBuf,
     pub(crate) zellij: PathBuf,
     pub(crate) helix_dir: PathBuf,
@@ -33,6 +35,7 @@ pub(crate) fn ensure_config_sources() -> Result<ConfigPaths> {
 }
 pub(crate) fn ensure_config_sources_at(paths: ConfigPaths) -> Result<ConfigPaths> {
     validate_config_file_at(paths.root.clone())?;
+    initialize_cursor_config(&paths.cursors)?;
     ensure_plain_config_file_at(
         &paths.zellij,
         &render_zellij_sidecar(&ZellijSidecar::default()),
@@ -49,6 +52,7 @@ pub(crate) fn config_paths() -> Result<ConfigPaths> {
     let home = config_home()?;
     Ok(ConfigPaths {
         root: home.join("config.toml"),
+        cursors: home.join("cursors.toml"),
         mars: home.join("mars/config.toml"),
         zellij: home.join("zellij/config.kdl"),
         helix_dir: home.join("helix"),

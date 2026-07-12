@@ -205,7 +205,8 @@ managed popup role keys.
 
 | File | Owner | Notes |
 | --- | --- | --- |
-| `mars/config.toml` | Mars | Sparse overrides for appearance preset, window size, opacity, font, scrollbar, bell, and cursor trail. |
+| `cursors.toml` | Yazelix Cursors | Shared cursor pool, selection, and effects. Seeded once from the child-owned template; Ratconfig preserves custom definitions. |
+| `mars/config.toml` | Mars | Sparse overrides for appearance preset, window size, opacity, font, scrollbar, and bell. |
 | `zellij/config.kdl` | Zellij sidecar | Safe scalar preferences. Inside a session, saves also patch the active runtime config (many live; some need a new session). Integration-owned nodes are blocked. |
 | `zellij/plugins.kdl` | Zellij plugin sidecar | Extra plugin declarations only. Packaged plugin ids cannot be redeclared. |
 | `starship.toml` | Starship | Sparse managed Nu prompt overrides; absent values inherit Nova defaults. |
@@ -252,6 +253,13 @@ Their tabs show effective Nova defaults, saving writes only the selected
 override, and resetting removes that key. Mars merges its sparse file over the
 packaged base directly; managed Nu materializes its effective Starship config
 under runtime state. Untouched defaults follow upgrades.
+
+The first config or runtime use seeds `cursors.toml` without replacing an
+existing file. Its Cursors tab edits the enabled pool, selection, and common
+effect settings; the full-file row opens custom cursor definitions. `yzn launch`
+passes this exact file to Mars. Mars currently consumes cursor selection and
+basic trail enablement; the richer trail/mode effects, glow, and duration remain
+available to compatible consumers such as a future Ghostty integration.
 
 Saving `mars.appearance.preset` through `yzn config` switches Mars and the config
 UI palette in the same session. Other Mars values apply on the next Mars launch.
@@ -370,13 +378,13 @@ git ls-files | grep -Ev '^\.beads/|\.lock$' | xargs wc -l
 | Language | Lines |
 | --- | ---: |
 | Ignore (`.gitignore`) | 4 |
-| Markdown | 1395 |
-| Nix | 1014 |
+| Markdown | 1414 |
+| Nix | 1025 |
 | Shell | 84 |
 | YAML | 268 |
-| TOML | 249 |
+| TOML | 246 |
 | KDL | 212 |
 | Nu | 11 |
 | Lua | 247 |
-| Rust | 12247 |
-| Total | 15731 |
+| Rust | 12563 |
+| Total | 16074 |
