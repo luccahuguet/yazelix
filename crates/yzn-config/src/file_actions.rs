@@ -17,7 +17,7 @@ use crate::{
     },
     paths::ConfigPaths,
     root_config::{unset_config_field, write_config_field},
-    zellij_sidecar::{ZellijSidecar, write_zellij_config_field, zellij_field_value},
+    zellij_sidecar::{unset_zellij_config_field, write_zellij_config_field},
 };
 use yazelix_cursors::DEFAULT_CURSOR_CONFIG_TEMPLATE;
 
@@ -220,13 +220,13 @@ pub(crate) fn write_source_default(
             paths.reject_mutation(&paths.starship, source_id)?;
             return unset_starship_config_field(&paths.starship, field_path);
         }
+        SOURCE_ZELLIJ => {
+            paths.reject_mutation(&paths.zellij, source_id)?;
+            return unset_zellij_config_field(&paths.zellij, field_path);
+        }
         _ => {}
     }
-    let value = match source_id {
-        SOURCE_ZELLIJ => zellij_field_value(&ZellijSidecar::default(), field_path),
-        _ => return Err(error(format!("unknown config source: {source_id}"))),
-    };
-    write_source_field(paths, source_id, field_path, &value)
+    Err(error(format!("unknown config source: {source_id}")))
 }
 pub(crate) fn open_file_action(
     paths: &ConfigPaths,

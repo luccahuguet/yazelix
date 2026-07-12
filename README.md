@@ -211,7 +211,7 @@ managed popup role keys.
 | --- | --- | --- |
 | `cursors.toml` | Yazelix Cursors | Shared cursor pool, selection, and effects. Seeded once from the child-owned template; Ratconfig preserves custom definitions. |
 | `mars/config.toml` | Mars | Sparse overrides for appearance preset, window size, opacity, font, scrollbar, and bell. |
-| `zellij/config.kdl` | Zellij sidecar | Safe scalar preferences. Inside a session, saves also patch the active runtime config (many live; some need a new session). Integration-owned nodes are blocked. |
+| `zellij/config.kdl` | Zellij sidecar | Sparse safe scalar overrides; absent assignments inherit packaged defaults. Inside a session, saves and resets also patch the active runtime config (many live; some need a new session). Integration-owned nodes are blocked. |
 | `zellij/plugins.kdl` | Zellij plugin sidecar | Extra plugin declarations only. Packaged plugin ids cannot be redeclared. |
 | `starship.toml` | Starship | Sparse managed Nu prompt overrides; absent values inherit Nova defaults. |
 | `helix/config.toml` | Helix | User TOML merged over packaged Yazelix Helix defaults. |
@@ -252,11 +252,12 @@ Normal host config such as `~/.config/helix`, `~/.config/yazi`, and
 `~/.config/starship.toml` does not control the managed runtime unless you route
 through these Yazelix-owned files.
 
-Opening `yzn config` does not create `mars/config.toml` or `starship.toml`.
-Their tabs show effective Nova defaults, saving writes only the selected
-override, and resetting removes that key. Mars merges its sparse file over the
-packaged base directly; managed Nu materializes its effective Starship config
-under runtime state. Untouched defaults follow upgrades.
+Opening `yzn config` does not create `mars/config.toml`, `starship.toml`, or
+`zellij/config.kdl`. Their tabs show effective Nova defaults, saving writes only
+the selected override, and resetting removes that key. Mars and Zellij layer
+their sparse files over packaged configuration directly; managed Nu materializes
+its effective Starship config under runtime state. Untouched defaults follow
+upgrades.
 
 The first config or runtime use seeds `cursors.toml` without replacing an
 existing file. Its Cursors tab edits the enabled pool, selection, and common
@@ -267,9 +268,9 @@ available to compatible consumers such as a future Ghostty integration.
 
 Saving `mars.appearance.preset` through `yzn config` switches Mars and the config
 UI palette in the same session. Other Mars values apply on the next Mars launch.
-Zellij sidecar values update the active managed session config when `yzn config`
-runs inside a session; many scalars apply live via Zellij's watcher, and some
-still need a new session.
+Zellij sidecar saves and resets update the active managed session config when
+`yzn config` runs inside a session; many scalars apply live via Zellij's watcher,
+and some still need a new session.
 
 ## Editor And File Opens
 
@@ -382,7 +383,7 @@ git ls-files | grep -Ev '^\.beads/|\.lock$' | xargs wc -l
 | Language | Lines |
 | --- | ---: |
 | Ignore (`.gitignore`) | 4 |
-| Markdown | 1430 |
+| Markdown | 1440 |
 | Nix | 1026 |
 | Shell | 84 |
 | YAML | 268 |
@@ -390,5 +391,5 @@ git ls-files | grep -Ev '^\.beads/|\.lock$' | xargs wc -l
 | KDL | 212 |
 | Nu | 11 |
 | Lua | 247 |
-| Rust | 12785 |
-| Total | 16313 |
+| Rust | 12835 |
+| Total | 16373 |

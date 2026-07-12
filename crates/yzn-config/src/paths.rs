@@ -3,11 +3,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use crate::{
-    common::*,
-    root_config::validate_config_file_at,
-    zellij_sidecar::{ZellijSidecar, render_zellij_sidecar},
-};
+use crate::{common::*, root_config::validate_config_file_at};
 use yazelix_cursors::initialize_cursor_config;
 
 pub(crate) struct ConfigPaths {
@@ -85,17 +81,7 @@ pub(crate) fn ensure_config_sources() -> Result<ConfigPaths> {
 pub(crate) fn ensure_config_sources_at(paths: ConfigPaths) -> Result<ConfigPaths> {
     validate_config_file_at(paths.root.clone())?;
     initialize_cursor_config(&paths.cursors)?;
-    ensure_plain_config_file_at(
-        &paths.zellij,
-        &render_zellij_sidecar(&ZellijSidecar::default()),
-    )?;
     Ok(paths)
-}
-pub(crate) fn ensure_plain_config_file_at(path: &Path, default: &str) -> Result<()> {
-    if path_entry_exists(path)? {
-        return Ok(());
-    }
-    atomic_write(path, default)
 }
 pub(crate) fn config_paths() -> Result<ConfigPaths> {
     let home = config_home()?;

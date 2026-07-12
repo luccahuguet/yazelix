@@ -1,4 +1,5 @@
 use std::{
+    collections::BTreeMap,
     env, fs,
     path::{Path, PathBuf},
 };
@@ -8,51 +9,69 @@ use serde_json::{Value as JsonValue, json};
 
 use crate::{catalog::*, common::*};
 
-pub(crate) struct ZellijSidecar {
-    pub(crate) pane_frames: bool,
-    mouse_mode: bool,
-    scroll_buffer_size: i64,
-    copy_on_select: bool,
-    copy_clipboard: String,
-    styled_underlines: bool,
-    show_startup_tips: bool,
-    rounded_corners: bool,
-}
-impl Default for ZellijSidecar {
-    fn default() -> Self {
-        Self {
-            pane_frames: true,
-            mouse_mode: true,
-            scroll_buffer_size: 10000,
-            copy_on_select: true,
-            copy_clipboard: "system".to_string(),
-            styled_underlines: true,
-            show_startup_tips: true,
-            rounded_corners: false,
-        }
-    }
+pub(crate) type ZellijSidecar = BTreeMap<&'static str, JsonValue>;
+pub(crate) fn packaged_zellij_defaults() -> ZellijSidecar {
+    BTreeMap::from([
+        ("pane_frames", json!(true)),
+        ("mouse_mode", json!(true)),
+        ("scroll_buffer_size", json!(10000)),
+        ("copy_on_select", json!(true)),
+        ("copy_clipboard", json!("system")),
+        ("styled_underlines", json!(true)),
+        ("show_startup_tips", json!(true)),
+        ("ui.pane_frames.rounded_corners", json!(false)),
+    ])
 }
 pub(crate) fn write_zellij_config_field(
     path: &Path,
     field_path: &str,
     value: &JsonValue,
 ) -> Result<()> {
-    if !ZELLIJ_FIELDS.iter().any(|spec| spec.path == field_path) {
-        return Err(error(format!("unknown Zellij config path: {field_path}")));
+    let spec = require_zellij_field(field_path)?;
+    let (raw, _) = read_editable_zellij_sidecar(path)?;
+    atomic_write(path, &patch_zellij_field(&raw, spec, value)?)?;
+    // Best-effort: patch the watched runtime config without wiping launch patches.
+    let _ = refresh_active_zellij_runtime_field(spec.path, value);
+    Ok(())
+}
+pub(crate) fn unset_zellij_config_field(path: &Path, field_path: &str) -> Result<()> {
+    let spec = require_zellij_field(field_path)?;
+    if !path_entry_exists(path)? {
+        return Ok(());
     }
-    let raw = fs::read_to_string(path)?;
-    let (mut config, diagnostics) = parse_zellij_sidecar(&raw);
+    let (raw, mut config) = read_editable_zellij_sidecar(path)?;
+    config.remove(spec.path);
+    if config.is_empty() {
+        fs::remove_file(path)?;
+    } else {
+        atomic_write(path, &remove_zellij_field(&raw, spec))?;
+    }
+    let defaults = packaged_zellij_defaults();
+    let default = defaults
+        .get(spec.path)
+        .expect("known Zellij field has a packaged default");
+    // Best-effort: restore the watched runtime field without wiping launch patches.
+    let _ = refresh_active_zellij_runtime_field(spec.path, default);
+    Ok(())
+}
+
+pub(crate) fn read_zellij_sidecar(path: &Path) -> Result<String> {
+    if path_entry_exists(path)? {
+        Ok(fs::read_to_string(path)?)
+    } else {
+        Ok(String::new())
+    }
+}
+fn read_editable_zellij_sidecar(path: &Path) -> Result<(String, ZellijSidecar)> {
+    let raw = read_zellij_sidecar(path)?;
+    let (config, diagnostics) = parse_zellij_sidecar(&raw);
     if let Some(diagnostic) = diagnostics.iter().find(|diagnostic| diagnostic.blocking) {
         return Err(error(format!(
             "cannot update zellij/config.kdl: {}",
             diagnostic.headline
         )));
     }
-    set_zellij_field_value(&mut config, field_path, value)?;
-    atomic_write(path, &render_zellij_sidecar(&config))?;
-    // Best-effort: patch the watched runtime config without wiping launch patches.
-    let _ = refresh_active_zellij_runtime_field(field_path, value);
-    Ok(())
+    Ok((raw, config))
 }
 
 fn refresh_active_zellij_runtime_field(field_path: &str, value: &JsonValue) -> Result<()> {
@@ -80,18 +99,18 @@ pub(crate) fn patch_zellij_field_in_text(
     field_path: &str,
     value: &JsonValue,
 ) -> Result<String> {
-    let assignment = zellij_field_assignment(field_path, value)?;
-    let token = field_path.rsplit('.').next().unwrap();
+    patch_zellij_field(text, require_zellij_field(field_path)?, value)
+}
+fn patch_zellij_field(text: &str, spec: &FieldSpec, value: &JsonValue) -> Result<String> {
+    let assignment = zellij_field_assignment(spec, value)?;
+    let token = spec.path.rsplit('.').next().unwrap();
     let mut out = String::with_capacity(text.len() + assignment.len());
     let mut replaced = false;
     for line in text.lines() {
         let trimmed = line.trim_start();
+        let content = trimmed.split_once("//").map_or(trimmed, |(text, _)| text);
         let indent = &line[..line.len() - trimmed.len()];
-        let line_token = trimmed
-            .split(|ch: char| ch.is_whitespace() || ch == '{' || ch == ';')
-            .next()
-            .unwrap_or("");
-        if !replaced && line_token == token && !trimmed.contains('{') {
+        if zellij_line_token(content) == token && !content.contains('{') {
             out.push_str(indent);
             out.push_str(&assignment);
             out.push('\n');
@@ -102,29 +121,72 @@ pub(crate) fn patch_zellij_field_in_text(
         }
     }
     if !replaced {
-        if !out.is_empty() && !out.ends_with('\n') {
+        if !out.is_empty() && spec.path.contains('.') && !out.ends_with("\n\n") {
             out.push('\n');
         }
-        out.push_str(&assignment);
-        out.push('\n');
+        if spec.path.contains('.') {
+            out.push_str(&format!(
+                "ui {{\n    pane_frames {{\n        {assignment}\n    }}\n}}\n"
+            ));
+        } else {
+            out.push_str(&assignment);
+            out.push('\n');
+        }
     }
     Ok(out)
 }
-
-fn zellij_field_assignment(field_path: &str, value: &JsonValue) -> Result<String> {
-    let mut config = ZellijSidecar::default();
-    set_zellij_field_value(&mut config, field_path, value)?;
-    let token = field_path.rsplit('.').next().unwrap();
-    let rhs = match zellij_field_value(&config, field_path) {
+fn remove_zellij_field(text: &str, spec: &FieldSpec) -> String {
+    if spec.path.contains('.') {
+        let mut depth = 0;
+        return text
+            .split_inclusive('\n')
+            .filter(|line| {
+                let content = zellij_line_content(line);
+                if depth == 0 && zellij_line_token(content) != "ui" {
+                    return true;
+                }
+                depth += zellij_brace_delta(content);
+                false
+            })
+            .collect();
+    }
+    let token = spec.path.rsplit('.').next().unwrap();
+    text.split_inclusive('\n')
+        .filter(|line| {
+            let content = zellij_line_content(line);
+            zellij_line_token(content) != token || content.contains('{')
+        })
+        .collect()
+}
+fn zellij_line_content(line: &str) -> &str {
+    let line = line.trim_start();
+    line.split_once("//").map_or(line, |(text, _)| text)
+}
+fn zellij_line_token(line: &str) -> &str {
+    line.split(|ch: char| ch.is_whitespace() || ch == '{' || ch == ';')
+        .next()
+        .unwrap_or("")
+}
+fn zellij_brace_delta(line: &str) -> i32 {
+    if line.starts_with('#') {
+        return 0;
+    }
+    line.matches('{').count() as i32 - line.matches('}').count() as i32
+}
+fn zellij_field_assignment(spec: &FieldSpec, value: &JsonValue) -> Result<String> {
+    let token = spec.path.rsplit('.').next().unwrap();
+    let rhs = match normalize_zellij_field_value(spec, value)? {
         JsonValue::Bool(flag) => kdl_bool(flag).to_string(),
         JsonValue::Number(number) => number.to_string(),
         JsonValue::String(text) => kdl_string(&text),
-        _ => return Err(error(format!("unsupported Zellij value for {field_path}"))),
+        _ => {
+            return Err(error(format!("unsupported Zellij value for {}", spec.path)));
+        }
     };
     Ok(format!("{token} {rhs}"))
 }
 pub(crate) fn parse_zellij_sidecar(raw: &str) -> (ZellijSidecar, Vec<ConfigUiDiagnostic>) {
-    let mut config = ZellijSidecar::default();
+    let mut config = ZellijSidecar::new();
     let mut diagnostics = Vec::new();
     let mut stack: Vec<&str> = Vec::new();
 
@@ -246,6 +308,9 @@ fn top_level_zellij_field(token: &str) -> Option<&'static FieldSpec> {
 fn zellij_field(path: &str) -> Option<&'static FieldSpec> {
     ZELLIJ_FIELDS.iter().find(|spec| spec.path == path)
 }
+fn require_zellij_field(path: &str) -> Result<&'static FieldSpec> {
+    zellij_field(path).ok_or_else(|| error(format!("unknown Zellij config path: {path}")))
+}
 fn parse_zellij_config_value(
     config: &mut ZellijSidecar,
     spec: &FieldSpec,
@@ -257,12 +322,15 @@ fn parse_zellij_config_value(
     let Some(value) = parse_kdl_json_value(line, token, spec, line_number, diagnostics) else {
         return;
     };
-    if let Err(error) = set_zellij_field_value(config, spec.path, &value) {
-        diagnostics.push(zellij_diagnostic(
+    match normalize_zellij_field_value(spec, &value) {
+        Ok(value) => {
+            config.insert(spec.path, value);
+        }
+        Err(error) => diagnostics.push(zellij_diagnostic(
             line_number,
             format!("invalid Zellij value for `{}`", spec.path),
             error.to_string(),
-        ));
+        )),
     }
 }
 fn parse_kdl_json_value(
@@ -347,62 +415,11 @@ fn zellij_diagnostic(
         detail_lines: vec![detail.into()],
     }
 }
-pub(crate) fn zellij_field_value(config: &ZellijSidecar, path: &str) -> JsonValue {
-    match path {
-        "pane_frames" => json!(config.pane_frames),
-        "mouse_mode" => json!(config.mouse_mode),
-        "scroll_buffer_size" => json!(config.scroll_buffer_size),
-        "copy_on_select" => json!(config.copy_on_select),
-        "copy_clipboard" => json!(config.copy_clipboard),
-        "styled_underlines" => json!(config.styled_underlines),
-        "show_startup_tips" => json!(config.show_startup_tips),
-        "ui.pane_frames.rounded_corners" => json!(config.rounded_corners),
-        _ => JsonValue::Null,
+fn normalize_zellij_field_value(spec: &FieldSpec, value: &JsonValue) -> Result<JsonValue> {
+    match spec.kind {
+        "boolean" => Ok(json!(json_bool(spec.path, value)?)),
+        "integer" => Ok(json!(json_positive_i64(spec.path, value)?)),
+        "string" => Ok(json!(spec.json_choice(value)?)),
+        _ => Err(error(format!("unsupported Zellij value for {}", spec.path))),
     }
-}
-fn set_zellij_field_value(config: &mut ZellijSidecar, path: &str, value: &JsonValue) -> Result<()> {
-    match path {
-        "pane_frames" => config.pane_frames = json_bool(path, value)?,
-        "mouse_mode" => config.mouse_mode = json_bool(path, value)?,
-        "scroll_buffer_size" => config.scroll_buffer_size = json_positive_i64(path, value)?,
-        "copy_on_select" => config.copy_on_select = json_bool(path, value)?,
-        "copy_clipboard" => {
-            config.copy_clipboard = zellij_field(path)
-                .expect("known field")
-                .json_choice(value)?
-                .to_string();
-        }
-        "styled_underlines" => config.styled_underlines = json_bool(path, value)?,
-        "show_startup_tips" => config.show_startup_tips = json_bool(path, value)?,
-        "ui.pane_frames.rounded_corners" => config.rounded_corners = json_bool(path, value)?,
-        _ => return Err(error(format!("unknown Zellij config path: {path}"))),
-    }
-    Ok(())
-}
-pub(crate) fn render_zellij_sidecar(config: &ZellijSidecar) -> String {
-    format!(
-        "\
-pane_frames {}
-mouse_mode {}
-scroll_buffer_size {}
-copy_on_select {}
-copy_clipboard \"{}\"
-styled_underlines {}
-show_startup_tips {}
-
-ui {{
-    pane_frames {{
-        rounded_corners {}
-    }}
-}}
-",
-        kdl_bool(config.pane_frames),
-        kdl_bool(config.mouse_mode),
-        config.scroll_buffer_size,
-        kdl_bool(config.copy_on_select),
-        config.copy_clipboard,
-        kdl_bool(config.styled_underlines),
-        kdl_bool(config.show_startup_tips),
-        kdl_bool(config.rounded_corners),
-    )
 }

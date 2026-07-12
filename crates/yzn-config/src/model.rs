@@ -1,6 +1,5 @@
 use std::{
     collections::BTreeMap,
-    fs,
     path::{Path, PathBuf},
 };
 
@@ -25,7 +24,7 @@ use crate::{
         bar_widgets, default_config, default_config_path_value, read_optional_toml_file_value,
         validate_root_config,
     },
-    zellij_sidecar::{ZellijSidecar, parse_zellij_sidecar, zellij_field_value},
+    zellij_sidecar::{packaged_zellij_defaults, parse_zellij_sidecar, read_zellij_sidecar},
 };
 
 pub(crate) fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
@@ -40,8 +39,8 @@ pub(crate) fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
         .map_err(|error| boxed_debug("invalid default Starship config", error))?;
     let cursors_active = yazelix_cursors::load_cursor_config(&paths.cursors)?;
     let cursors_default = cursor_defaults(&cursors_active)?;
-    let (zellij_active, diagnostics) = parse_zellij_sidecar(&fs::read_to_string(&paths.zellij)?);
-    let zellij_default = ZellijSidecar::default();
+    let (zellij_active, diagnostics) = parse_zellij_sidecar(&read_zellij_sidecar(&paths.zellij)?);
+    let zellij_default = packaged_zellij_defaults();
     let zellij_blocking = diagnostics.iter().any(|diagnostic| diagnostic.blocking);
 
     let mut fields: Vec<_> = CONFIG_FIELDS
@@ -81,18 +80,18 @@ pub(crate) fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
         ));
     }
     for spec in ZELLIJ_FIELDS {
-        let current = zellij_field_value(&zellij_active, spec.path);
-        let default = zellij_field_value(&zellij_default, spec.path);
+        let current = zellij_active.get(spec.path);
+        let default = zellij_default.get(spec.path).expect("packaged default");
         fields.push(build_config_field(
             SOURCE_ZELLIJ,
             TAB_ZELLIJ,
             spec,
-            Some(&current),
-            Some(&default),
+            current,
+            Some(default),
             ConfigUiApplyStatus {
                 summary: "session".to_string(),
                 label: "zellij".to_string(),
-                detail: "Inside a session, saves update the active config; many scalars apply live, some need a new session.".to_string(),
+                detail: "Inside a session, saves and resets update the active config; many scalars apply live, some need a new session.".to_string(),
                 pending: false,
             },
             zellij_blocking,

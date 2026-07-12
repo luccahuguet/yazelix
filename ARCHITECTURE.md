@@ -81,8 +81,8 @@ One owner per concern. Paths are the durable map.
 
 `crates/yzn-config/` is the Ratconfig host.
 
-- Seeds the child-owned cursor TOML and Zellij sidecar when missing; root, Mars,
-  and Starship stay sparse
+- Seeds only the child-owned cursor TOML; root, Mars, Zellij, and Starship stay
+  sparse
 - Routes edits to the right file; Helix/Advanced open-file rows; Keys read-only
 - Resolves known config targets against the packaged Nix store root so
   Home Manager-owned sources stay read-only with exact module-option guidance
@@ -224,10 +224,15 @@ top-level ownership nodes are rejected, including:
 `load_plugins`, `support_kitty_keyboard_protocol`, `env`, `session_name`,
 `attach_to_session`.
 
+The sidecar is optional and sparse. Ratconfig displays all eight effective
+packaged scalar defaults without creating it, treats assignment presence as
+explicit intent, and removes only the selected assignment on reset. Removing
+the final assignment removes the sidecar.
+
 `zellij/plugins.kdl` accepts only `plugins` / `load_plugins` and must not
 redeclare Yazelix-owned plugin ids (`yzpp`, `yazelix_pane_orchestrator`, …).
 
-Inside a managed session, `yzn config` Zellij scalar saves also patch
+Inside a managed session, `yzn config` Zellij scalar saves and resets also patch
 `$YAZELIX_STATE_DIR/zellij/config.kdl` (watched active file) without wiping
 launch patches. Many scalars apply live; some (e.g. `scroll_buffer_size`) need
 a new session.

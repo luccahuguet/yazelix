@@ -44,6 +44,10 @@ User-visible runtime changes for Yazelix Nova live here.
   merges the sparse user file over Nova defaults into runtime state, so
   untouched prompt defaults follow upgrades and ambient
   `~/.config/starship.toml` remains ignored.
+- Opening `yzn config` no longer creates `zellij/config.kdl`. The Zellij tab
+  shows inherited packaged defaults, saves only explicit scalar overrides, and
+  removes an assignment on reset. Resetting the final override removes the
+  sidecar, while active-session saves and resets remain best-effort live updates.
 - User-visible product surfaces identify the development runtime as Yazelix
   Nova. The command remains `yzn` until the canonical repository swap.
 - `yzn config` fully redraws after returning from an external editor instead of
@@ -67,10 +71,10 @@ User-visible runtime changes for Yazelix Nova live here.
 - `yzn config` has a dedicated `popups` tab for popup margins and managed
   config/agent/Git/menu popup keybindings. Root `config.toml` remains the source
   for these fields.
-- `yzn config` Zellij tab saves update the active managed session config when
-  opened inside a session (`YAZELIX_STATE_DIR` + session env). Many scalars
-  apply live via Zellij's config watcher; some still need a new session (for
-  example `scroll_buffer_size`). Outside a session, saves remain next-session.
+- `yzn config` Zellij tab saves and resets update the active managed session
+  config when opened inside a session (`YAZELIX_STATE_DIR` + session env). Many
+  scalars apply live via Zellij's config watcher; some still need a new session
+  (for example `scroll_buffer_size`). Outside a session, both remain next-session.
 - The managed agent popup (`Alt Shift L`, hide keep-alive) now restarts when
   the focused terminal cwd no longer matches the hidden agent pane. Same-cwd
   toggles still reuse the existing agent process.

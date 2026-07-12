@@ -1111,13 +1111,6 @@ color = "#123456"
             .unwrap();
         assert!(action.read_only);
         assert!(action.disabled_reason.is_none());
-
-        fs::remove_file(&paths.zellij).unwrap();
-        let missing = paths.store_root.join("missing-zellij");
-        std::os::unix::fs::symlink(&missing, &paths.zellij).unwrap();
-        assert!(paths.is_home_manager_owned(&paths.zellij));
-        ensure_plain_config_file_at(&paths.zellij, "replacement").unwrap();
-        assert_eq!(fs::read_link(&paths.zellij).unwrap(), missing);
     }
 
     #[test]
@@ -1144,7 +1137,7 @@ color = "#123456"
     fn ensure_config_sources_creates_source_backed_files() {
         let (_temp, paths) = temp_sources();
 
-        assert_exists(&[&paths.cursors, &paths.zellij]);
+        assert_exists(&[&paths.cursors]);
         assert_missing(&[
             &paths.root,
             &paths.mars,
@@ -1159,11 +1152,6 @@ color = "#123456"
             &paths.yazi_init,
             &paths.yazi_keymap,
         ]);
-        assert!(
-            fs::read_to_string(paths.zellij)
-                .unwrap()
-                .contains("rounded_corners false")
-        );
     }
 
     #[test]
@@ -1601,8 +1589,33 @@ color = "#123456"
     }
 
     #[test]
-    fn zellij_source_renders_nested_rounded_corners() {
+    fn zellij_sidecar_stays_sparse_and_inherits_packaged_defaults() {
         let (_temp, paths) = temp_sources();
+        assert!(!paths.zellij.exists());
+
+        let model = build_model(&paths).unwrap();
+        let zellij_fields: Vec<_> = model
+            .fields
+            .iter()
+            .filter(|field| field.source_id == SOURCE_ZELLIJ)
+            .collect();
+        assert_eq!(zellij_fields.len(), ZELLIJ_FIELDS.len());
+        assert!(
+            zellij_fields
+                .iter()
+                .all(|field| field.state == ConfigUiValueState::Defaulted)
+        );
+        assert_eq!(model_field(&model, "pane_frames").current_value, "true");
+
+        write_source_field(&paths, SOURCE_ZELLIJ, "pane_frames", &json!(true)).unwrap();
+        assert_eq!(
+            fs::read_to_string(&paths.zellij).unwrap(),
+            "pane_frames true\n"
+        );
+        assert_eq!(
+            model_field(&build_model(&paths).unwrap(), "pane_frames").state,
+            ConfigUiValueState::Explicit
+        );
 
         write_source_field(
             &paths,
@@ -1612,9 +1625,33 @@ color = "#123456"
         )
         .unwrap();
 
-        let raw = fs::read_to_string(paths.zellij).unwrap();
-        assert!(raw.contains("ui {"));
+        assert_eq!(
+            fs::read_to_string(&paths.zellij).unwrap(),
+            "pane_frames true\n\nui {\n    pane_frames {\n        rounded_corners true\n    }\n}\n"
+        );
+
+        let raw = fs::read_to_string(&paths.zellij).unwrap();
+        atomic_write(
+            &paths.zellij,
+            &format!(
+                "# keep\n{}",
+                raw.replacen("pane_frames true", "pane_frames true // { reset me", 1)
+            ),
+        )
+        .unwrap();
+        write_source_default(&paths, SOURCE_ZELLIJ, "pane_frames").unwrap();
+        let raw = fs::read_to_string(&paths.zellij).unwrap();
+        assert!(raw.starts_with("# keep\n"));
+        assert!(!raw.contains("reset me"));
         assert!(raw.contains("rounded_corners true"));
+        write_source_field(&paths, SOURCE_ZELLIJ, "mouse_mode", &json!(false)).unwrap();
+        write_source_default(&paths, SOURCE_ZELLIJ, "ui.pane_frames.rounded_corners").unwrap();
+        let raw = fs::read_to_string(&paths.zellij).unwrap();
+        assert!(raw.starts_with("# keep\n"));
+        assert!(raw.contains("mouse_mode false"));
+        assert!(!raw.contains("ui {"));
+        write_source_default(&paths, SOURCE_ZELLIJ, "mouse_mode").unwrap();
+        assert!(!paths.zellij.exists());
     }
 
     #[test]
@@ -1641,6 +1678,15 @@ ui {\n\
         assert!(rounded.contains("rounded_corners true"));
         assert!(!rounded.contains("rounded_corners false"));
         assert!(rounded.contains("keybinds {}"));
+
+        let appended = patch_zellij_field_in_text(
+            "keybinds {}\n",
+            "ui.pane_frames.rounded_corners",
+            &json!(true),
+        )
+        .unwrap();
+        assert!(appended.contains("ui {"));
+        assert!(appended.contains("        rounded_corners true"));
     }
 
     #[test]
@@ -1654,13 +1700,15 @@ ui {\n\
 
         let error = write_zellij_config_field(&path, "pane_frames", &json!(false)).unwrap_err();
         assert!(error.to_string().contains("guarded Zellij node"));
+        let error = unset_zellij_config_field(&path, "pane_frames").unwrap_err();
+        assert!(error.to_string().contains("guarded Zellij node"));
     }
 
     #[test]
     fn zellij_sidecar_skips_hash_comments_and_blocks_compact_guarded_nodes() {
         let (config, diagnostics) = parse_zellij_sidecar("# note\npane_frames false;\n");
         assert!(diagnostics.is_empty());
-        assert!(!config.pane_frames);
+        assert_eq!(config.get("pane_frames").cloned(), Some(json!(false)));
 
         let (_config, diagnostics) = parse_zellij_sidecar("# note\nkeybinds{}\n");
         assert!(has_diagnostic(&diagnostics, "guarded Zellij node"));
@@ -1670,7 +1718,7 @@ ui {\n\
     fn zellij_sidecar_rejects_non_positive_scrollback_and_unclosed_blocks() {
         let temp = TempHome::new();
         let path = temp.path.join("zellij/config.kdl");
-        atomic_write(&path, &render_zellij_sidecar(&ZellijSidecar::default())).unwrap();
+        atomic_write(&path, "pane_frames true\n").unwrap();
 
         let error = write_zellij_config_field(&path, "scroll_buffer_size", &json!(-1)).unwrap_err();
         assert!(error.to_string().contains("positive integer"));
