@@ -338,18 +338,16 @@ fn cursor_allowed_values(registry: &CursorRegistry, path: &str) -> Vec<String> {
             .chain(["random", "none"])
             .map(str::to_string)
             .collect(),
-        "settings.trail_effect" => SUPPORTED_TRAIL_EFFECTS
-            .iter()
-            .copied()
-            .chain(["random", "none"])
-            .map(str::to_string)
-            .collect(),
-        "settings.mode_effect" => SUPPORTED_MODE_EFFECTS
-            .iter()
-            .copied()
-            .chain(["random", "none"])
-            .map(str::to_string)
-            .collect(),
+        "settings.trail_effect" | "settings.mode_effect" => (if path == "settings.trail_effect" {
+            SUPPORTED_TRAIL_EFFECTS
+        } else {
+            SUPPORTED_MODE_EFFECTS
+        })
+        .iter()
+        .copied()
+        .chain(["random", "none"])
+        .map(str::to_string)
+        .collect(),
         "settings.glow" => string_values(SUPPORTED_GLOW_LEVELS),
         _ => Vec::new(),
     }

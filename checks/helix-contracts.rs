@@ -3,8 +3,8 @@ use std::{env, fs, path::Path, process::Command};
 mod support;
 
 use support::{
-    binary_text, embedded_store_path, excerpt, expect_contains, expect_order, write_executable,
-    RuntimeCase, TempDir,
+    RuntimeCase, TempDir, binary_text, embedded_store_path, excerpt, expect_contains, expect_order,
+    write_executable,
 };
 
 macro_rules! expect_contains_all {

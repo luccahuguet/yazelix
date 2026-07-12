@@ -4,6 +4,11 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## Unreleased
 
+- Ratconfig recognizes Home Manager-owned `cursors.toml` as declarative and
+  refuses structured mutation with the exact module-option guidance. Empty
+  config-root and `PATH` environment variables are treated as unset instead of
+  resolving against the current directory. Invalid stale Helix bridge registry
+  files are skipped so opening a file can fall back to a new editor pane.
 - The flake exposes one fixed Mars-free `runtime` package and app alongside the
   complete default package. Both use `yzn` and the same config/runtime model;
   the runtime variant keeps `enter`, `run`, `env`, config, status, and doctor,

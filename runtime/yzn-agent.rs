@@ -5,7 +5,7 @@ use std::{
     io::IsTerminal,
     os::unix::{fs::PermissionsExt, process::CommandExt},
     path::{Path, PathBuf},
-    process::{exit, Command},
+    process::{Command, exit},
 };
 
 const PROVIDERS: &[(&str, &[&str])] = &[

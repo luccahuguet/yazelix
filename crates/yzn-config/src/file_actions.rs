@@ -206,27 +206,26 @@ pub(crate) fn write_source_default(
     match source_id {
         SOURCE_CONFIG => {
             paths.reject_mutation(&paths.root, source_id)?;
-            return unset_config_field(&paths.root, field_path);
+            unset_config_field(&paths.root, field_path)
         }
         SOURCE_MARS => {
             paths.reject_mutation(&paths.mars, source_id)?;
-            return unset_mars_config_field(&paths.mars, field_path);
+            unset_mars_config_field(&paths.mars, field_path)
         }
         SOURCE_CURSORS => {
             paths.reject_mutation(&paths.cursors, source_id)?;
-            return restore_cursor_config_field(&paths.cursors, field_path);
+            restore_cursor_config_field(&paths.cursors, field_path)
         }
         SOURCE_STARSHIP => {
             paths.reject_mutation(&paths.starship, source_id)?;
-            return unset_starship_config_field(&paths.starship, field_path);
+            unset_starship_config_field(&paths.starship, field_path)
         }
         SOURCE_ZELLIJ => {
             paths.reject_mutation(&paths.zellij, source_id)?;
-            return unset_zellij_config_field(&paths.zellij, field_path);
+            unset_zellij_config_field(&paths.zellij, field_path)
         }
-        _ => {}
+        _ => Err(error(format!("unknown config source: {source_id}"))),
     }
-    Err(error(format!("unknown config source: {source_id}")))
 }
 pub(crate) fn open_file_action(
     paths: &ConfigPaths,

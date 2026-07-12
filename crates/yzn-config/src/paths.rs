@@ -28,9 +28,10 @@ pub(crate) struct ConfigPaths {
     pub(crate) zellij_plugins: PathBuf,
 }
 impl ConfigPaths {
-    fn home_manager_files(&self) -> [(&Path, &'static str); 15] {
+    fn home_manager_files(&self) -> [(&Path, &'static str); 16] {
         [
             (&self.root, "settings"),
+            (&self.cursors, "cursors"),
             (&self.mars, "mars"),
             (&self.zellij, "zellij"),
             (&self.starship, "starship"),
@@ -120,12 +121,14 @@ fn resolved_target(path: &Path) -> Option<PathBuf> {
     })
 }
 pub(crate) fn config_home() -> Result<PathBuf> {
-    if let Some(path) = env::var_os("YAZELIX_NEXT_CONFIG_HOME") {
+    if let Some(path) = env::var_os("YAZELIX_NEXT_CONFIG_HOME").filter(|path| !path.is_empty()) {
         return Ok(PathBuf::from(path));
     }
-    if let Some(path) = env::var_os("XDG_CONFIG_HOME") {
+    if let Some(path) = env::var_os("XDG_CONFIG_HOME").filter(|path| !path.is_empty()) {
         return Ok(PathBuf::from(path).join("yazelix-next"));
     }
-    let home = env::var_os("HOME").ok_or_else(|| error("HOME is required"))?;
+    let home = env::var_os("HOME")
+        .filter(|path| !path.is_empty())
+        .ok_or_else(|| error("HOME is required"))?;
     Ok(PathBuf::from(home).join(".config/yazelix-next"))
 }

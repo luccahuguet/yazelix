@@ -160,7 +160,19 @@ fn try_bridge(config: &Config, targets: &[PathBuf], cwd: &Path) -> Result<bool> 
         if path.extension().and_then(|value| value.to_str()) != Some("json") {
             continue;
         }
-        let registry = read_registry(&path)?;
+        let registry = match read_registry(&path) {
+            Ok(registry) => registry,
+            Err(error) => {
+                log_debug(
+                    config,
+                    &format!(
+                        "bridge skipped invalid registry={}: {error:#}",
+                        path.display()
+                    ),
+                );
+                continue;
+            }
+        };
         if registry.schema_version != 2 {
             log_debug(
                 config,
@@ -474,7 +486,8 @@ fn open_editor_pane(config: &Config, targets: &[PathBuf], cwd: &Path) -> Result<
 }
 
 fn ensure_editor_command(config: &Config) -> Result<()> {
-    if command_exists(&config.editor, env::var_os("PATH").as_deref()) {
+    let path = env::var_os("PATH").filter(|path| !path.is_empty());
+    if command_exists(&config.editor, path.as_deref()) {
         return Ok(());
     }
     bail!(
@@ -1094,6 +1107,20 @@ fi
         assert!(log.contains("args=run --name editor"));
         assert!(log.contains("session=test-session"));
         assert!(log.contains("zellij_session=zellij-test"));
+    }
+
+    #[test]
+    fn invalid_bridge_registry_falls_back_to_new_editor_pane() {
+        let runtime = TestRuntime::new("invalid-registry");
+        let config = runtime.config("test-session");
+        let bridge_dir = runtime.root.join("helix_bridge/test-session");
+        fs::create_dir_all(&bridge_dir).unwrap();
+        fs::write(bridge_dir.join("stale.json"), "not json").unwrap();
+        runtime.write_zellij(false, None);
+
+        open_main_rs(&config).unwrap();
+
+        assert!(runtime.zellij_log().contains("args=run --name editor"));
     }
 
     #[test]

@@ -133,7 +133,7 @@ mod tests {
         ConfigUiValueState, file_action_status_label, file_action_status_style,
     };
     use serde_json::{Value as JsonValue, json};
-    use yazelix_cursors::load_cursor_config;
+    use yazelix_cursors::{DEFAULT_CURSOR_CONFIG_TEMPLATE, load_cursor_config};
 
     struct TempHome {
         path: PathBuf,
@@ -1066,6 +1066,7 @@ color = "#123456"
         let temp = TempHome::new();
         let paths = temp_paths(&temp);
         link_from_store(&paths, &paths.root, "");
+        link_from_store(&paths, &paths.cursors, DEFAULT_CURSOR_CONFIG_TEMPLATE);
         link_from_store(&paths, &paths.starship, "format = \"::\"\n");
         link_from_store(&paths, &paths.nu_env, "# managed\n");
         atomic_write(&paths.mars, "[window]\nwidth = 960\n").unwrap();
@@ -1081,8 +1082,8 @@ color = "#123456"
         );
         assert_eq!(source(SOURCE_MARS).owner, ConfigUiPathOwner::User);
         assert!(source(SOURCE_MARS).read_only);
-        assert_eq!(source(SOURCE_CURSORS).owner, ConfigUiPathOwner::User);
-        assert!(!source(SOURCE_CURSORS).read_only);
+        assert_eq!(source(SOURCE_CURSORS).owner, ConfigUiPathOwner::HomeManager);
+        assert!(source(SOURCE_CURSORS).read_only);
 
         let rejects = |result: Result<()>, option: &str| {
             let error = result.unwrap_err().to_string();
@@ -1098,10 +1099,15 @@ color = "#123456"
             "programs.yazelix.config.starship",
         );
         rejects(
+            write_source_field(&paths, SOURCE_CURSORS, CURSOR_TRAIL_PATH, &json!("none")),
+            "programs.yazelix.config.cursors",
+        );
+        rejects(
             prepare_file_action(&paths, SOURCE_ADVANCED, ACTION_NU_ENV, &paths.nu_env, true),
             "programs.yazelix.config.nu.env",
         );
         assert_file_text(&paths.root, "");
+        assert_file_text(&paths.cursors, DEFAULT_CURSOR_CONFIG_TEMPLATE);
         assert_file_text(&paths.starship, "format = \"::\"\n");
         assert_file_text(&paths.nu_env, "# managed\n");
 

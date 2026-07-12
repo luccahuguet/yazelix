@@ -9,6 +9,10 @@ use yzn_open::sidebar::{
     Config, ensure_success, orchestrator_action, orchestrator_query, sidebar_yazi_id,
 };
 
+#[cfg(test)]
+#[path = "support/test_dir.rs"]
+mod test_support;
+
 fn main() -> ExitCode {
     match run(&Config::from_env(), env::args_os().skip(1)) {
         Ok(()) => ExitCode::SUCCESS,
@@ -84,12 +88,8 @@ fn print_help() {
 mod tests {
     // Test lane: default
     use super::*;
-    use std::{
-        fs,
-        os::unix::fs::PermissionsExt,
-        path::Path,
-        time::{SystemTime, UNIX_EPOCH},
-    };
+    use crate::test_support::{TestDir, write_executable};
+    use std::fs;
 
     #[test]
     fn parses_sidebar_yazi_id_and_reports_missing_state() {
@@ -213,46 +213,5 @@ exit 1
             fs::read_to_string(ya_log).unwrap(),
             format!("emit-to plugin-yazi-id reveal {}\n", target.display())
         );
-    }
-
-    fn write_executable(path: &Path, contents: &str) {
-        fs::write(path, contents).unwrap();
-        let mut permissions = fs::metadata(path).unwrap().permissions();
-        permissions.set_mode(0o755);
-        fs::set_permissions(path, permissions).unwrap();
-    }
-
-    struct TestDir {
-        path: PathBuf,
-    }
-
-    impl TestDir {
-        fn new() -> Self {
-            let nanos = SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap()
-                .as_nanos();
-            for attempt in 0..100 {
-                let path = env::temp_dir().join(format!(
-                    "yzn-reveal-{}-{nanos}-{attempt}",
-                    std::process::id()
-                ));
-                match fs::create_dir(&path) {
-                    Ok(()) => return Self { path },
-                    Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {}
-                    Err(error) => panic!(
-                        "could not create test directory {}: {error}",
-                        path.display()
-                    ),
-                }
-            }
-            panic!("could not create unique yzn-reveal test directory");
-        }
-    }
-
-    impl Drop for TestDir {
-        fn drop(&mut self) {
-            let _ = fs::remove_dir_all(&self.path);
-        }
     }
 }
