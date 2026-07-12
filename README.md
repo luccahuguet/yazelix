@@ -263,6 +263,9 @@ custom popup ids remain dynamic within the documented `popups.<id>` fields.
 | `welcome.duration_seconds` | `3` | Startup splash duration, 1 to 60 seconds. |
 | `bar.widgets` | `editor`, `shell`, `term`, `codex_usage`, `cpu`, `ram` | Top bar widgets, left to right. |
 
+The Codex quota widget identifies periods from their reported duration and shows
+five-hour before weekly when both exist. Unavailable periods are omitted.
+
 `editor.command` accepts one executable name or path, not a shell command with
 arguments. Inside Nova, `hx` and `yzn-hx` use packaged managed Helix. Other
 editors such as `nvim`, or an absolute host Helix path, skip the managed bridge.
@@ -486,7 +489,7 @@ git ls-files | grep -Ev '^\.beads/|\.lock$' | xargs wc -l
 | Language | Lines |
 | --- | ---: |
 | Ignore (`.gitignore`) | 4 |
-| Markdown | 1602 |
+| Markdown | 1608 |
 | Nix | 1109 |
 | Shell | 84 |
 | YAML | 277 |
@@ -495,4 +498,4 @@ git ls-files | grep -Ev '^\.beads/|\.lock$' | xargs wc -l
 | Nu | 11 |
 | Lua | 247 |
 | Rust | 12887 |
-| Total | 16679 |
+| Total | 16685 |

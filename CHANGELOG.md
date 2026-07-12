@@ -4,6 +4,9 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## Unreleased
 
+- The Codex quota widget classifies official limits by their reported window
+  duration, keeps a real five-hour limit before the weekly limit, omits
+  unavailable periods, and replaces stale quota slots after a successful probe.
 - Installation documentation assigns updates to either the Nix profile or the
   owning Home Manager/nix-darwin configuration and explains that open sessions
   keep their current immutable runtime until relaunched.
