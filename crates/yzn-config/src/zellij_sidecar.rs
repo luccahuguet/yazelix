@@ -192,10 +192,7 @@ pub(crate) fn parse_zellij_sidecar(raw: &str) -> (ZellijSidecar, Vec<ConfigUiDia
 
     for (index, raw_line) in raw.lines().enumerate() {
         let line_number = index + 1;
-        let mut line = raw_line
-            .split_once("//")
-            .map_or(raw_line, |(content, _)| content)
-            .trim();
+        let mut line = zellij_line_content(raw_line).trim();
         while let Some(rest) = line.strip_prefix('}') {
             if stack.pop().is_none() {
                 diagnostics.push(zellij_diagnostic(
@@ -209,13 +206,10 @@ pub(crate) fn parse_zellij_sidecar(raw: &str) -> (ZellijSidecar, Vec<ConfigUiDia
         if line.is_empty() || line.starts_with('#') {
             continue;
         }
-        let Some(token) = line
-            .split(|ch: char| ch.is_whitespace() || ch == '{' || ch == ';')
-            .next()
-            .filter(|token| !token.is_empty())
-        else {
+        let token = zellij_line_token(line);
+        if token.is_empty() {
             continue;
-        };
+        }
         match stack.as_slice() {
             [] => {
                 parse_zellij_top_level_line(&mut config, &mut diagnostics, line, token, line_number)

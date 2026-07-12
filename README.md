@@ -391,5 +391,5 @@ git ls-files | grep -Ev '^\.beads/|\.lock$' | xargs wc -l
 | KDL | 212 |
 | Nu | 11 |
 | Lua | 247 |
-| Rust | 12835 |
-| Total | 16373 |
+| Rust | 12828 |
+| Total | 16366 |

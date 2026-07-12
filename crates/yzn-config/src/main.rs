@@ -1625,12 +1625,11 @@ color = "#123456"
         )
         .unwrap();
 
+        let raw = fs::read_to_string(&paths.zellij).unwrap();
         assert_eq!(
-            fs::read_to_string(&paths.zellij).unwrap(),
+            raw,
             "pane_frames true\n\nui {\n    pane_frames {\n        rounded_corners true\n    }\n}\n"
         );
-
-        let raw = fs::read_to_string(&paths.zellij).unwrap();
         atomic_write(
             &paths.zellij,
             &format!(
