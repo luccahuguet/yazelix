@@ -151,6 +151,10 @@ let
       flexnetos_foundation_rtk
       flexnetos_foundation_rust_toolchain
       flexnetos_foundation_bun
+      # beads_rust ships `br` (agent-first issue tracker); the .claude
+      # SessionStart/PreCompact hooks and AGENTS.md beads workflow depend on it
+      # resolving from the runtime profile, not just maintainer/CI shells.
+      beads_rust
       pkgs.cargo-tauri
       pkgs.clang
       pkgs.corepack
@@ -161,6 +165,7 @@ let
     ];
     extraRuntimeCommands = [
       "tu"
+      "br"
       "claude"
       "kitty"
       "ccboard"
