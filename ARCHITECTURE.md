@@ -27,8 +27,9 @@ retaining the same command, config schema, and managed workspace.
 | --- | --- |
 | Full/runtime package and app outputs | `x86_64` / `aarch64` × Linux / Darwin |
 | Headless / SSH floor | `enter` in a capable interactive host terminal; managed TUI only |
-| macOS floor | `help`, `status`, `doctor`, `enter` |
-| macOS full-package `launch` | Mars path; issue-driven until hardware validation |
+| macOS build evidence | Real `aarch64-darwin` runner builds full/runtime packages and the Home Manager closure; no desktop entry |
+| macOS interactive floor | `help`, `status`, `doctor`, `enter`, managed workspace, and host-editor delegation remain unverified |
+| macOS full-package `launch` | Mars is packaged; GUI behavior remains unverified |
 | Out of repo | App bundles, Homebrew, Ghostty packaging, broad terminal matrices |
 
 ## Commands

@@ -4,6 +4,10 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## Unreleased
 
+- Darwin Package Smoke and Version Gate build the full package, runtime package,
+  and Home Manager closure on a real `aarch64-darwin` runner. They also assert
+  that Darwin receives no Linux desktop entry; macOS interactive use and the
+  Mars GUI remain explicitly unverified.
 - The Codex quota widget classifies official limits by their reported window
   duration, keeps a real five-hour limit before the weekly limit, omits
   unavailable periods, and replaces stale quota slots after a successful probe.

@@ -90,9 +90,20 @@ Install the Mars-free variant with:
 nix profile add --refresh github:luccahuguet/yazelix-next#runtime
 ```
 
-On macOS, `help`, `status`, `doctor`, and `enter` are the supported floor after
-install. In the complete package, `launch` uses Mars and depends on macOS
-hardware validation for the GUI path.
+## Capability Matrix
+
+| Surface | Linux | `aarch64-darwin` |
+| --- | --- | --- |
+| Full and runtime packages | Build- and profile-tested on `x86_64-linux`; flake outputs also cover `aarch64-linux`. | Build-tested on a real GitHub macOS runner. |
+| Home Manager module | Activation closure build-tested on `x86_64-linux`. | Activation closure build-tested on a real GitHub macOS runner. |
+| `enter` with managed Zellij, Yazi, and Helix | Contract-tested and used interactively. | Packaged; interactive workflow unverified. |
+| Full-package `launch` through Mars | Contract-tested and used interactively. | Package build-tested; Mars GUI unverified. |
+| Host editor delegation | Contract-tested; the selected host editor remains host-owned. | Packaged; interactive delegation unverified. |
+| Desktop entry | Full package only; the runtime package has none. | None; asserted by the macOS package and Home Manager builds. |
+
+`x86_64-darwin` remains an exposed, evaluated flake output rather than a
+build-tested target. The current label is **build-tested on macOS; interactive
+workflow and Mars GUI unverified**.
 
 ## Host Terminals and SSH
 
@@ -438,12 +449,13 @@ Move mode is unbound. Managed popup triggers can be remapped through
 Normal CI runs Linux checks on push, pull request, and manual dispatch.
 `Publish Nix Cache` publishes both Linux variants and representative Home
 Manager closures from `main` and manual dispatch. `Version Gate` is manual and
-includes both Linux profile shapes plus both macOS packages. `Darwin Package
-Smoke` builds the full and runtime `aarch64-darwin` packages weekly on Monday
-when `main` has commits in the last 7 days, and on manual dispatch always; idle
-weeks skip the macOS build. The flake advertises the optional Yazelix Cachix
-cache; source builds remain valid without it. Use Version Gate before version
-bumps or the main Yazelix swap.
+includes both Linux profile shapes, both `aarch64-darwin` packages, and the
+Darwin Home Manager closure. `Darwin Package Smoke` runs those three Darwin
+builds weekly on Monday when `main` has commits in the last 7 days, and on
+manual dispatch always; idle weeks skip the macOS build. Both macOS jobs assert
+that Darwin packages contain no Linux desktop entry. The flake advertises the
+optional Yazelix Cachix cache; source builds remain valid without it. Use
+Version Gate before version bumps or the main Yazelix swap.
 
 ## Development
 
@@ -489,13 +501,13 @@ git ls-files | grep -Ev '^\.beads/|\.lock$' | xargs wc -l
 | Language | Lines |
 | --- | ---: |
 | Ignore (`.gitignore`) | 4 |
-| Markdown | 1608 |
-| Nix | 1109 |
+| Markdown | 1625 |
+| Nix | 1116 |
 | Shell | 84 |
-| YAML | 277 |
+| YAML | 283 |
 | TOML | 246 |
 | KDL | 212 |
 | Nu | 11 |
 | Lua | 247 |
 | Rust | 12887 |
-| Total | 16685 |
+| Total | 16715 |

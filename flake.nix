@@ -535,6 +535,7 @@
         withMars ? false,
       }: let
         command = mkYznCommand withMars;
+        withDesktop = withMars && pkgs.stdenv.hostPlatform.isLinux;
         desktop = pkgs.makeDesktopItem {
           name = "yzn";
           desktopName = "Yazelix Nova";
@@ -550,7 +551,7 @@
       in
         pkgs.symlinkJoin {
           inherit name;
-          paths = [command] ++ pkgs.lib.optional withMars desktop;
+          paths = [command] ++ pkgs.lib.optional withDesktop desktop;
           postBuild =
             ''
               ${yazelixZellijPackage}/bin/zellij --config ${yznConfigKdl} setup --check >/dev/null
@@ -575,6 +576,8 @@
             ''
             + pkgs.lib.optionalString withMars ''
               install -D -m 644 ${yznMarsConfig}/config.toml "$out/share/yazelix-next/mars/config.toml"
+            ''
+            + pkgs.lib.optionalString withDesktop ''
               for icon in ${marsPackage}/share/icons/hicolor/*/apps/mars.png; do
                 size="$(basename "$(dirname "$(dirname "$icon")")")"
                 install -d "$out/share/icons/hicolor/$size/apps"
@@ -696,8 +699,12 @@
         config_files="${homeManagerConfigFiles.activationPackage}/home-files/.config/yazelix-next"
 
         test -x "$default_path/bin/yzn"
-        test -f "$default_path/share/applications/yzn.desktop"
-        grep -q 'Yazelix Nova' "$default_path/share/applications/yzn.desktop"
+        ${if pkgs.stdenv.hostPlatform.isLinux then ''
+          test -f "$default_path/share/applications/yzn.desktop"
+          grep -q 'Yazelix Nova' "$default_path/share/applications/yzn.desktop"
+        '' else ''
+          test ! -e "$default_path/share/applications/yzn.desktop"
+        ''}
 
         test -x "$override_path/bin/yzn"
         test "$("$override_path/bin/yzn")" = fake-yazelix
