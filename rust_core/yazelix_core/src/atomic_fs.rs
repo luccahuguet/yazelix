@@ -1,6 +1,6 @@
 use crate::bridge::{CoreError, ErrorClass};
 use std::fs::{self, OpenOptions};
-use std::io::Write;
+use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -159,6 +159,19 @@ fn write_bytes_atomic_inner(
             source,
         )
     })?;
+    sync_parent_directory(parent).map_err(|source| {
+        let source = cleanup_error(&temp_path, source);
+        CoreError::io(
+            "atomic_write_parent_sync",
+            format!(
+                "Created {} but could not make its directory entry durable.",
+                path.display()
+            ),
+            "The target is complete; preserve it and retry after fixing the filesystem error.",
+            parent.to_string_lossy(),
+            source,
+        )
+    })?;
     fs::remove_file(&temp_path).map_err(|source| {
         CoreError::io(
             "atomic_write_temp_cleanup",
@@ -172,6 +185,16 @@ fn write_bytes_atomic_inner(
             source,
         )
     })
+}
+
+#[cfg(unix)]
+fn sync_parent_directory(parent: &Path) -> io::Result<()> {
+    fs::File::open(parent)?.sync_all()
+}
+
+#[cfg(not(unix))]
+fn sync_parent_directory(_parent: &Path) -> io::Result<()> {
+    Ok(())
 }
 
 fn cleanup_error(temp_path: &Path, source: std::io::Error) -> std::io::Error {

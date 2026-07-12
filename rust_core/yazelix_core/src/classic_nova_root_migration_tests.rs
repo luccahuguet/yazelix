@@ -327,18 +327,20 @@ fn rejects_mapping_collisions_before_backup() {
     assert_eq!(fs::read_dir(config_dir.path()).unwrap().count(), 1);
 }
 
-// Regression: the backup writer cannot overwrite an artifact that appears after transaction preflight.
+// Regression: create-new atomic publication cannot overwrite an artifact that appears after transaction preflight.
 #[test]
-fn exclusive_backup_copy_refuses_late_collision() {
+fn atomic_create_new_refuses_late_collisions() {
     let config_dir = tempdir().unwrap();
-    let source = config_dir.path().join("config.toml");
     let backup = config_dir.path().join("config.toml.backup-race");
-    fs::write(&source, "secret source\n").unwrap();
     fs::write(&backup, "existing backup\n").unwrap();
 
-    let error = copy_file_exclusive(&source, &backup).unwrap_err();
-
-    assert_eq!(error.kind(), io::ErrorKind::AlreadyExists);
+    let error = write_text_atomic_create_new_with_permissions(
+        &backup,
+        "secret source\n",
+        &fs::metadata(&backup).unwrap().permissions(),
+    )
+    .unwrap_err();
+    assert_eq!(error.code(), "atomic_write_create_new");
     assert_eq!(fs::read_to_string(backup).unwrap(), "existing backup\n");
 
     let target = config_dir.path().join("config.toml.new");
@@ -386,6 +388,22 @@ fn rejects_read_only_and_home_manager_owned_sources() {
             .file_type()
             .is_symlink()
     );
+
+    let linked_dir = tempdir().unwrap();
+    let linked_target = linked_dir.path().join("external.toml");
+    fs::write(&linked_target, "[not valid TOML\n").unwrap();
+    symlink(&linked_target, linked_dir.path().join("config.toml")).unwrap();
+    let error = migrate_with(
+        &request(linked_dir.path()),
+        "20260712_000000",
+        &RealTransactionIo,
+    )
+    .unwrap_err();
+    assert_eq!(error.code(), "ambiguous_root_file_owner");
+    assert_eq!(
+        fs::read_to_string(linked_target).unwrap(),
+        "[not valid TOML\n"
+    );
 }
 
 struct FailTargetWrite {
@@ -397,11 +415,13 @@ struct FailRemoval {
     target: Option<PathBuf>,
 }
 
-impl TransactionIo for FailRemoval {
-    fn copy(&self, source: &Path, target: &Path) -> io::Result<()> {
-        copy_file_exclusive(source, target)
-    }
+struct SourceMutationIo {
+    source: PathBuf,
+    replacement: String,
+    mutate_after_report: bool,
+}
 
+impl TransactionIo for FailRemoval {
     fn write_atomic(
         &self,
         path: &Path,
@@ -412,19 +432,15 @@ impl TransactionIo for FailRemoval {
         test_write_atomic(path, contents, permissions, mode)
     }
 
-    fn remove(&self, path: &Path) -> io::Result<()> {
+    fn remove_if_unchanged(&self, path: &Path, expected: &str) -> io::Result<()> {
         if path == self.source || self.target.as_deref() == Some(path) {
             return Err(io::Error::other("injected removal failure"));
         }
-        fs::remove_file(path)
+        remove_file_if_unchanged(path, expected)
     }
 }
 
 impl TransactionIo for FailTargetWrite {
-    fn copy(&self, source: &Path, target: &Path) -> io::Result<()> {
-        copy_file_exclusive(source, target)
-    }
-
     fn write_atomic(
         &self,
         path: &Path,
@@ -444,8 +460,31 @@ impl TransactionIo for FailTargetWrite {
         test_write_atomic(path, contents, permissions, mode)
     }
 
-    fn remove(&self, path: &Path) -> io::Result<()> {
-        fs::remove_file(path)
+    fn remove_if_unchanged(&self, path: &Path, expected: &str) -> io::Result<()> {
+        remove_file_if_unchanged(path, expected)
+    }
+}
+
+impl TransactionIo for SourceMutationIo {
+    fn write_atomic(
+        &self,
+        path: &Path,
+        contents: &str,
+        permissions: Option<&fs::Permissions>,
+        mode: TransactionWriteMode,
+    ) -> Result<(), CoreError> {
+        test_write_atomic(path, contents, permissions, mode)?;
+        if self.mutate_after_report && path.to_string_lossy().ends_with(".migration_report.json") {
+            fs::write(&self.source, &self.replacement).unwrap();
+        }
+        Ok(())
+    }
+
+    fn remove_if_unchanged(&self, path: &Path, expected: &str) -> io::Result<()> {
+        if !self.mutate_after_report && path == self.source {
+            fs::write(&self.source, &self.replacement)?;
+        }
+        remove_file_if_unchanged(path, expected)
     }
 }
 
@@ -498,6 +537,60 @@ fn target_write_failure_preserves_original_after_backup() {
         )
         .exists()
     );
+}
+
+// Regression: migration never replaces a root that changed after its original snapshot was backed up.
+#[test]
+fn source_change_after_report_preserves_the_newer_root() {
+    let config_dir = tempdir().unwrap();
+    let config = config_dir.path().join("config.toml");
+    let original = "[core]\nskip_welcome_screen = true\n";
+    let replacement = "[core]\nskip_welcome_screen = false\n";
+    fs::write(&config, original).unwrap();
+
+    let error = migrate_with(
+        &request(config_dir.path()),
+        "20260712_080910",
+        &SourceMutationIo {
+            source: config.clone(),
+            replacement: replacement.to_string(),
+            mutate_after_report: true,
+        },
+    )
+    .unwrap_err();
+
+    assert_eq!(error.code(), "classic_nova_source_changed");
+    assert_eq!(fs::read_to_string(&config).unwrap(), replacement);
+    assert_eq!(
+        fs::read_to_string(config_dir.path().join("config.toml.backup-20260712_080910")).unwrap(),
+        original
+    );
+}
+
+// Regression: a settings.jsonc replacement that appears at retirement time is preserved and the generated target is rolled back.
+#[test]
+fn jsonc_change_before_retirement_is_not_deleted() {
+    let config_dir = tempdir().unwrap();
+    let source = config_dir.path().join("settings.jsonc");
+    let target = config_dir.path().join("config.toml");
+    let original = current_legacy_jsonc("  \"editor\": { \"command\": \"nvim\" }");
+    let replacement = current_legacy_jsonc("  \"editor\": { \"command\": \"hx\" }");
+    fs::write(&source, &original).unwrap();
+
+    let error = migrate_with(
+        &request(config_dir.path()),
+        "20260712_091011",
+        &SourceMutationIo {
+            source: source.clone(),
+            replacement: replacement.clone(),
+            mutate_after_report: false,
+        },
+    )
+    .unwrap_err();
+
+    assert_eq!(error.code(), "retire_classic_settings_jsonc");
+    assert_eq!(fs::read_to_string(source).unwrap(), replacement);
+    assert!(!target.exists());
 }
 
 // Regression: failed JSONC retirement rolls back the complete target, and a failed rollback is surfaced with both files preserved.

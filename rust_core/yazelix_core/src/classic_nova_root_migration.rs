@@ -170,7 +170,6 @@ pub fn migrate_classic_root_to_nova(
 }
 
 trait TransactionIo {
-    fn copy(&self, source: &Path, target: &Path) -> io::Result<()>;
     fn write_atomic(
         &self,
         path: &Path,
@@ -178,7 +177,7 @@ trait TransactionIo {
         permissions: Option<&fs::Permissions>,
         mode: TransactionWriteMode,
     ) -> Result<(), CoreError>;
-    fn remove(&self, path: &Path) -> io::Result<()>;
+    fn remove_if_unchanged(&self, path: &Path, expected: &str) -> io::Result<()>;
 }
 
 #[derive(Clone, Copy)]
@@ -190,10 +189,6 @@ enum TransactionWriteMode {
 struct RealTransactionIo;
 
 impl TransactionIo for RealTransactionIo {
-    fn copy(&self, source: &Path, target: &Path) -> io::Result<()> {
-        copy_file_exclusive(source, target)
-    }
-
     fn write_atomic(
         &self,
         path: &Path,
@@ -213,34 +208,20 @@ impl TransactionIo for RealTransactionIo {
         }
     }
 
-    fn remove(&self, path: &Path) -> io::Result<()> {
-        fs::remove_file(path)
+    fn remove_if_unchanged(&self, path: &Path, expected: &str) -> io::Result<()> {
+        remove_file_if_unchanged(path, expected)
     }
 }
 
-fn copy_file_exclusive(source: &Path, target: &Path) -> io::Result<()> {
-    let mut input = fs::File::open(source)?;
-    let permissions = input.metadata()?.permissions();
-    let mut output = fs::OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .open(target)?;
-    let result = output
-        .set_permissions(permissions)
-        .and_then(|()| io::copy(&mut input, &mut output).map(|_| ()))
-        .and_then(|()| output.sync_all());
-    drop(output);
-    if let Err(error) = result {
-        return match fs::remove_file(target) {
-            Ok(()) => Err(error),
-            Err(cleanup) if cleanup.kind() == io::ErrorKind::NotFound => Err(error),
-            Err(cleanup) => Err(io::Error::new(
-                error.kind(),
-                format!("{error}; also could not remove incomplete backup: {cleanup}"),
-            )),
-        };
+fn remove_file_if_unchanged(path: &Path, expected: &str) -> io::Result<()> {
+    let current = fs::read_to_string(path)?;
+    if current != expected {
+        return Err(io::Error::other(format!(
+            "refusing to remove {} because its contents changed during migration",
+            path.display()
+        )));
     }
-    Ok(())
+    fs::remove_file(path)
 }
 
 fn migrate_with(
@@ -269,7 +250,8 @@ fn migrate_with(
         ));
     }
 
-    let (source, source_kind, classic, mut extra_entries) = if config_present {
+    let (source, source_kind, source_raw, classic, mut extra_entries) = if config_present {
+        ensure_supported_source_entry_before_read(&config)?;
         let raw = read_source(&config)?;
         let root = parse_toml_root(&config, &raw)?;
         reject_embedded_cursor_settings(&root, &config)?;
@@ -325,6 +307,7 @@ fn migrate_with(
         (
             config.clone(),
             ClassicNovaMigrationSource::ConfigToml,
+            raw,
             root,
             Vec::new(),
         )
@@ -362,12 +345,13 @@ fn migrate_with(
         (
             legacy.clone(),
             ClassicNovaMigrationSource::SettingsJsonc,
+            raw,
             root,
             extras,
         )
     };
 
-    let source_permissions = ensure_mutable_regular_source(&source)?;
+    ensure_source_unchanged(&source, &source_raw)?;
     let translation = translate_classic_root(&classic);
     if let Some(entry) = translation.report.iter().find(|entry| {
         entry.disposition == ClassicNovaDisposition::Rejected
@@ -411,6 +395,7 @@ fn migrate_with(
             json!({ "path": config }),
         ));
     }
+    let source_permissions = ensure_source_unchanged(&source, &source_raw)?;
 
     let report = ClassicNovaMigrationReport {
         schema_version: 1,
@@ -432,45 +417,43 @@ fn migrate_with(
         })?
     );
 
-    transaction_io.copy(&source, &backup).map_err(|error| {
-        io_error(
-            "backup_classic_nova_root",
-            &source,
-            "Could not back up the Classic root before migration",
-            error,
-        )
-    })?;
+    transaction_io.write_atomic(
+        &backup,
+        &source_raw,
+        Some(&source_permissions),
+        TransactionWriteMode::CreateNew,
+    )?;
     transaction_io.write_atomic(
         &report_path,
         &report_text,
         None,
         TransactionWriteMode::CreateNew,
     )?;
+    let source_permissions = ensure_source_unchanged(&source, &source_raw)?;
     let target_mode = match source_kind {
         ClassicNovaMigrationSource::ConfigToml => TransactionWriteMode::Replace,
         ClassicNovaMigrationSource::SettingsJsonc => TransactionWriteMode::CreateNew,
     };
     transaction_io.write_atomic(&config, &rendered, Some(&source_permissions), target_mode)?;
     if source_kind == ClassicNovaMigrationSource::SettingsJsonc {
-        if let Err(error) = transaction_io.remove(&source) {
-            if let Err(rollback_error) = transaction_io.remove(&config) {
-                return Err(CoreError::classified(
-                    ErrorClass::Io,
-                    "rollback_classic_nova_target",
-                    "Could not retire settings.jsonc or roll back the new config.toml.",
-                    "Preserve both files and the timestamped backup, then resolve the filesystem error manually before retrying.",
-                    json!({
-                        "source": source,
-                        "target": config,
-                        "retire_error": error.to_string(),
-                        "rollback_error": rollback_error.to_string(),
-                    }),
-                ));
-            }
-            return Err(io_error(
-                "retire_classic_settings_jsonc",
+        let retire_result = ensure_source_unchanged(&source, &source_raw).and_then(|_| {
+            transaction_io
+                .remove_if_unchanged(&source, &source_raw)
+                .map_err(|error| {
+                    io_error(
+                        "retire_classic_settings_jsonc",
+                        &source,
+                        "Could not retire settings.jsonc after writing config.toml",
+                        error,
+                    )
+                })
+        });
+        if let Err(error) = retire_result {
+            return Err(rollback_new_jsonc_target(
+                transaction_io,
                 &source,
-                "Could not retire settings.jsonc after writing config.toml",
+                &config,
+                &rendered,
                 error,
             ));
         }
@@ -482,6 +465,30 @@ fn migrate_with(
         Some(backup),
         Some(report_path),
     ))
+}
+
+fn rollback_new_jsonc_target(
+    transaction_io: &impl TransactionIo,
+    source: &Path,
+    target: &Path,
+    rendered: &str,
+    source_error: CoreError,
+) -> CoreError {
+    match transaction_io.remove_if_unchanged(target, rendered) {
+        Ok(()) => source_error,
+        Err(rollback_error) => CoreError::classified(
+            ErrorClass::Io,
+            "rollback_classic_nova_target",
+            "Could not retire settings.jsonc or safely roll back the new config.toml.",
+            "Preserve both files and the timestamped backup, then resolve the filesystem error manually before retrying.",
+            json!({
+                "source": source,
+                "target": target,
+                "source_error": source_error.message(),
+                "rollback_error": rollback_error.to_string(),
+            }),
+        ),
+    }
 }
 
 fn remove_legacy_native_zellij_fields(
@@ -762,6 +769,46 @@ fn read_source(path: &Path) -> Result<String, CoreError> {
             error,
         )
     })
+}
+
+fn ensure_supported_source_entry_before_read(path: &Path) -> Result<(), CoreError> {
+    let metadata = fs::symlink_metadata(path).map_err(|error| {
+        io_error(
+            "inspect_classic_nova_root",
+            path,
+            "Could not inspect the root migration source",
+            error,
+        )
+    })?;
+    if metadata.file_type().is_symlink() && path_owned_by_home_manager(path) {
+        return Ok(());
+    }
+    if metadata.file_type().is_symlink() || !metadata.is_file() {
+        return Err(migration_error(
+            "ambiguous_root_file_owner",
+            format!("{} is not a regular user-owned file.", path.display()),
+            "Replace it explicitly with one writable regular file or update its declarative owner.",
+            json!({ "path": path }),
+        ));
+    }
+    Ok(())
+}
+
+fn ensure_source_unchanged(path: &Path, expected: &str) -> Result<fs::Permissions, CoreError> {
+    let permissions = ensure_mutable_regular_source(path)?;
+    let current = read_source(path)?;
+    if current != expected {
+        return Err(migration_error(
+            "classic_nova_source_changed",
+            format!(
+                "{} changed while its migration was being prepared.",
+                path.display()
+            ),
+            "Preserve the migration artifacts, review the current source, then retry from one stable root file.",
+            json!({ "path": path }),
+        ));
+    }
+    Ok(permissions)
 }
 
 fn ensure_mutable_regular_source(path: &Path) -> Result<fs::Permissions, CoreError> {
