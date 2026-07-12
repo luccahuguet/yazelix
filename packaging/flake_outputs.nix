@@ -155,6 +155,9 @@ let
       # SessionStart/PreCompact hooks and AGENTS.md beads workflow depend on it
       # resolving from the runtime profile, not just maintainer/CI shells.
       beads_rust
+      # actionlint backs envctl's ci/gates/actionlint.sh (workflow syntax + custom
+      # runner labels); the gate SKIPs until this ships on toolbin.
+      pkgs.actionlint
       pkgs.cargo-tauri
       pkgs.clang
       pkgs.corepack
@@ -165,6 +168,7 @@ let
     ];
     extraRuntimeCommands = [
       "tu"
+      "actionlint"
       "br"
       "claude"
       "kitty"
