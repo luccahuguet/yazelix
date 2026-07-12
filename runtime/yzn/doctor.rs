@@ -8,14 +8,14 @@ use std::{
 };
 
 use crate::{
-    error::{path_error, startup, AppError},
-    paths::{runtime_path, zellij_session_label},
-    runtime::Runtime,
     AGENT_AUTO_COMMAND, HELIX_REVEAL_COMMAND, LAYOUT, LAYOUT_SWAP_TEMPLATE, LAYOUT_TEMPLATE, MARS,
     YAZELIX_ZELLIJ_BAR_WASM, YAZELIX_ZELLIJ_PANE_ORCHESTRATOR_WASM, YAZELIX_ZELLIJ_POPUP_WASM,
     YZN_BAR_RENDER, YZN_BAR_RENDER_REQUEST, YZN_CONFIG, YZN_CONFIG_KDL, YZN_CONFIG_UI, YZN_HELIX,
     YZN_MENU, YZN_REVEAL, YZN_SCREEN, YZN_SIDEBAR_REFRESH, YZN_TUTOR, YZN_WELCOME, YZN_YA,
     YZN_YAZI, YZN_ZELLIJ_CONFIG, ZELLIJ,
+    error::{AppError, path_error, startup},
+    paths::{runtime_path, zellij_session_label},
+    runtime::Runtime,
 };
 
 pub(crate) fn print_doctor() -> Result<(), AppError> {

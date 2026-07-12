@@ -64,6 +64,7 @@
     autoLayoutYazi,
     starshipYazi,
   }: let
+    novaVersion = "dev";
     supportedSystems = ["x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin"];
     eachSystem = nixpkgs.lib.genAttrs supportedSystems;
     homeManagerModule = import ./home-manager/module.nix {
@@ -343,7 +344,7 @@
       yznYazi = rustBin "yzn-yazi" yznYaziSrc;
       yznRuntimeIdentity = pkgs.writeTextDir "runtime_identity.json" (builtins.toJSON {
         name = "Yazelix Nova";
-        version = "dev";
+        version = novaVersion;
       });
       defaultConfig = builtins.fromTOML (builtins.readFile ./config.toml);
       defaultBarWidgets = defaultConfig.bar.widgets;
@@ -482,6 +483,7 @@
         defaultGitKeybinding = defaultConfig.keybindings.git;
         defaultMenuKeybinding = defaultConfig.keybindings.menu;
         inherit defaultPopupSideMargin defaultPopupVerticalMargin;
+        version = novaVersion;
         pathPrefix = pkgs.lib.makeBinPath [
           pkgs.coreutils
           pkgs.git
@@ -503,7 +505,7 @@
         desktopName = "Yazelix Nova";
         genericName = "Terminal Emulator";
         comment = "Open Yazelix Nova";
-        exec = "${yznCommand}/bin/yzn";
+        exec = "${yznCommand}/bin/yzn launch";
         icon = "yzn";
         terminal = false;
         categories = ["System" "TerminalEmulator"];
@@ -751,7 +753,7 @@
         touch "$out"
       '';
       contracts = pkgs.runCommand "yzn-contracts" {} ''
-        ${yznContractsCheck}/bin/yzn-contracts-check ${yzn} ${pkgs.git}/bin/git "$out"
+        ${yznContractsCheck}/bin/yzn-contracts-check ${yzn} ${pkgs.git}/bin/git ${pkgs.jq}/bin/jq "$out"
       '';
       helix_contracts = pkgs.runCommand "yzn-helix-contracts" {} ''
         ${helixContractsCheck}/bin/helix-contracts-check ${yzn} "$out"

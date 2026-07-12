@@ -1,4 +1,4 @@
-use crate::{error::AppError, paths::zellij_session_label, runtime::Runtime};
+use crate::{VERSION, error::AppError, paths::zellij_session_label, runtime::Runtime};
 
 pub(crate) fn print_status() -> Result<(), AppError> {
     let runtime = Runtime::prepare()?;
@@ -26,4 +26,68 @@ pub(crate) fn print_status() -> Result<(), AppError> {
     println!("layout: {}", runtime.layout());
     println!("inside zellij: {}", zellij_session_label("yes", "no"));
     Ok(())
+}
+
+pub(crate) fn print_status_json() -> Result<(), AppError> {
+    let runtime = Runtime::prepare()?;
+    println!("{}", status_json(&runtime));
+    Ok(())
+}
+
+fn status_json(runtime: &Runtime) -> String {
+    let config_home = runtime.config_home.to_string_lossy();
+    let state_dir = runtime.state_dir.to_string_lossy();
+    let mut json = String::from("{\"schema_version\":1");
+    for (key, value) in [
+        ("name", "Yazelix Nova"),
+        ("version", VERSION),
+        ("config_home", config_home.as_ref()),
+        ("state_dir", state_dir.as_ref()),
+        ("shell", runtime.shell_program.as_str()),
+        ("editor_command", runtime.editor_command.as_str()),
+        ("editor", runtime.editor.as_str()),
+        ("agent_command", runtime.agent_command.as_str()),
+    ] {
+        json.push_str(&format!(",\"{key}\":{}", json_string(value)));
+    }
+    json.push_str(&format!(
+        ",\"inside_zellij\":{}}}",
+        zellij_session_label("true", "false")
+    ));
+    json
+}
+
+fn json_string(value: &str) -> String {
+    let mut escaped = String::with_capacity(value.len() + 2);
+    escaped.push('"');
+    for character in value.chars() {
+        match character {
+            '"' => escaped.push_str("\\\""),
+            '\\' => escaped.push_str("\\\\"),
+            '\u{0008}' => escaped.push_str("\\b"),
+            '\u{000C}' => escaped.push_str("\\f"),
+            '\n' => escaped.push_str("\\n"),
+            '\r' => escaped.push_str("\\r"),
+            '\t' => escaped.push_str("\\t"),
+            character if character <= '\u{001F}' => {
+                escaped.push_str(&format!("\\u{:04x}", character as u32));
+            }
+            character => escaped.push(character),
+        }
+    }
+    escaped.push('"');
+    escaped
+}
+
+#[cfg(test)]
+mod tests {
+    use super::json_string;
+
+    #[test]
+    fn json_string_escapes_json_control_characters() {
+        assert_eq!(
+            json_string("\"\\\u{0008}\u{000C}\n\r\t\u{001F}"),
+            r#""\"\\\b\f\n\r\t\u001f""#
+        );
+    }
 }

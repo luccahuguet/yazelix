@@ -5,8 +5,8 @@ use std::{
 };
 
 use crate::{
-    error::{startup, AppError},
     PATH_PREFIX,
+    error::{AppError, startup},
 };
 
 pub(crate) fn config_home() -> Result<PathBuf, AppError> {

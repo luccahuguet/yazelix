@@ -1,28 +1,32 @@
-use std::{
-    env,
-    ffi::OsString,
-    process::{Command, Stdio},
-};
+use std::{env, ffi::OsString, process::Command};
 
 use crate::{
+    MARS, VERSION, YZN_CONFIG_UI, YZN_ENV_SUPERVISOR, YZN_MENU, YZN_REVEAL, YZN_SCREEN, YZN_SHELL,
+    YZN_TUTOR, YZN_WELCOME, YZN_YA, ZELLIJ,
     command::exec,
     doctor::print_doctor,
     error::AppError,
     paths::{enter_terminal_label, nonempty_env, runtime_path},
     runtime::Runtime,
-    status::print_status,
-    MARS, SPONSOR_URL, YZN_CONFIG_UI, YZN_ENV_SUPERVISOR, YZN_MENU, YZN_REVEAL, YZN_SCREEN,
-    YZN_SHELL, YZN_TUTOR, YZN_WELCOME, YZN_YA, ZELLIJ,
+    status::{print_status, print_status_json},
 };
 
 pub(crate) fn run() -> Result<(), AppError> {
     let mut raw_args = env::args_os().skip(1);
-    let command = raw_args.next().unwrap_or_else(|| OsString::from("launch"));
+    let Some(command) = raw_args.next() else {
+        print!("{HELP}");
+        return Ok(());
+    };
     let args = raw_args.collect::<Vec<_>>();
 
     match command.to_string_lossy().as_ref() {
         "help" | "-h" | "--help" => {
             print!("{HELP}");
+            Ok(())
+        }
+        "--version" => {
+            expect_no_args("--version", &args)?;
+            println!("Yazelix Nova ({VERSION})");
             Ok(())
         }
         "config" => {
@@ -39,20 +43,19 @@ pub(crate) fn run() -> Result<(), AppError> {
             expect_no_args("doctor", &args)?;
             print_doctor()
         }
-        "status" => {
-            expect_no_args("status", &args)?;
-            print_status()
-        }
-        "sponsor" => {
-            expect_no_args("sponsor", &args)?;
-            open_sponsor();
-            Ok(())
-        }
+        "status" => match args.as_slice() {
+            [] => print_status(),
+            [flag] if flag == "--json" => print_status_json(),
+            _ => Err(AppError::Usage(
+                "yzn status accepts only --json\n".to_string(),
+            )),
+        },
         "env" => {
             expect_no_args("env", &args)?;
             exec_env()
         }
         "reveal" => exec_reveal(args),
+        "run" => exec_run(args),
         "enter" => exec_managed(false, args),
         "launch" => exec_managed(true, args),
         unknown => Err(AppError::Usage(format!(
@@ -98,6 +101,19 @@ fn exec_env() -> Result<(), AppError> {
     command.arg(YZN_SHELL);
     runtime.apply(&mut command);
     exec(command, "yzn env")
+}
+
+fn exec_run(args: Vec<OsString>) -> Result<(), AppError> {
+    let Some((program, args)) = args.split_first() else {
+        return Err(AppError::Usage(
+            "Usage: yzn run <program> [args...]\n".to_string(),
+        ));
+    };
+    let runtime = Runtime::prepare()?;
+    let mut command = Command::new(program);
+    command.args(args);
+    runtime.apply(&mut command);
+    exec(command, "yzn run")
 }
 
 fn exec_reveal(args: Vec<OsString>) -> Result<(), AppError> {
@@ -146,25 +162,11 @@ fn exec_managed(through_mars: bool, zellij_args: Vec<OsString>) -> Result<(), Ap
     exec(command, program)
 }
 
-fn open_sponsor() {
-    for opener in ["xdg-open", "open"] {
-        if Command::new(opener)
-            .arg(SPONSOR_URL)
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .status()
-            .is_ok_and(|status| status.success())
-        {
-            return;
-        }
-    }
-    println!("{SPONSOR_URL}");
-}
-
 const HELP: &str = "Yazelix Nova
 
 Usage:
   yzn
+  yzn --version
   yzn help
   yzn config
   yzn doctor
@@ -175,8 +177,8 @@ Usage:
   yzn tutor [lesson]
   yzn reveal <target>
   yzn screen [style]
-  yzn sponsor
-  yzn status
+  yzn run <program> [args...]
+  yzn status [--json]
 
 Commands:
   config  Open Yazelix Nova config
@@ -187,8 +189,10 @@ Commands:
   menu    Open the Yazelix Nova command palette
   tutor   Show the guided Yazelix Nova tutor
   reveal  Reveal a file or directory in the managed Yazi sidebar
+  run     Run a command in the managed Yazelix environment
   screen  Show a Yazelix terminal screen
-  sponsor Open the Yazelix sponsor page or print its URL
   status  Show Yazelix runtime status
   help    Show this help
+
+Sponsor: https://github.com/sponsors/luccahuguet
 ";

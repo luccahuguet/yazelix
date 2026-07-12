@@ -13,9 +13,10 @@ Manager config system, or a main-Yazelix compatibility layer.
 ```text
 yzn launch  →  Mars  →  yzn-welcome  →  Yazelix Zellij  →  Yazi sidebar + work panes
 yzn enter   →  yzn-welcome  →  Yazelix Zellij  →  same layout
+yzn run     →  prepared Yazelix environment  →  exact child argv/status
 ```
 
-Bare `yzn` is `yzn launch`.
+Bare `yzn` prints help. `launch` is the only Mars route.
 
 ## Platforms
 
@@ -30,15 +31,18 @@ Bare `yzn` is `yzn launch`.
 
 | Command | Role |
 | --- | --- |
-| `yzn` / `launch` | Mars then managed session |
+| `yzn` / `help` | Concise help; no implicit launch |
+| `--version` | Package-owned exact Nova version |
+| `launch` | Mars then managed session |
 | `enter` | Managed session in current terminal |
+| `run` | Structured command in the prepared runtime environment |
 | `config` | Ratconfig UI |
 | `menu` | Curated command palette |
 | `tutor` | Guided lessons / native tutor hints |
 | `screen` | Terminal screens / welcome styles |
 | `reveal` | Path in managed Yazi sidebar |
-| `status` / `doctor` | Paths and owned setup checks |
-| `sponsor` | Sponsor URL |
+| `status` / `status --json` | Human and schema-versioned runtime status |
+| `doctor` | Owned setup checks |
 | `env` | Managed shell only |
 | `help` | Help |
 
@@ -332,8 +336,9 @@ Detail lives in Owners, checks, and the notes below.
 
 ### Notes
 
-**C1:** Bare `yzn` → `launch`. Menu is a curated allowlist. Reveal is
-tab-local. Diagnostics stop before Mars/Zellij handoff.
+**C1:** Bare `yzn` → help; `launch` is explicit. Menu is a curated allowlist,
+`run` reuses the prepared environment, and reveal is tab-local. Diagnostics
+stop before Mars/Zellij handoff.
 
 **C2:** Saving `mars.appearance.preset` through `yzn config` switches the
 Ratconfig palette live; other Mars fields apply on next Mars launch.

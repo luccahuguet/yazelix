@@ -11,11 +11,6 @@ const COMMANDS: &[(&str, &str, &str)] = &[
     ("doctor", "system", "Check Yazelix runtime setup"),
     ("status", "system", "Show Yazelix runtime status"),
     ("screen", "help", "Show a Yazelix terminal screen"),
-    (
-        "sponsor",
-        "help",
-        "Open the Yazelix sponsor page or print its URL",
-    ),
     ("launch", "session", "Open Mars and start Yazelix"),
     ("help", "help", "Show this help"),
     ("tutor", "help", "Show the guided Yazelix Nova tutor"),

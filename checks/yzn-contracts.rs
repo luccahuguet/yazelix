@@ -12,8 +12,6 @@ use support::{
     successful_output, successful_stdout, write_config_home, write_executable,
 };
 
-const SPONSOR_URL: &str = "https://github.com/sponsors/luccahuguet";
-
 macro_rules! expect_contains_all {
     ($haystack:expr, $context:expr; $($needle:expr),+ $(,)?) => {
         $(expect_contains($haystack, &$needle, $context);)+
@@ -22,8 +20,8 @@ macro_rules! expect_contains_all {
 
 fn main() {
     let args = env::args().collect::<Vec<_>>();
-    let [_, yzn, git, out] = args.as_slice() else {
-        panic!("usage: yzn-contracts-check <yzn-package> <git> <out>");
+    let [_, yzn, git, jq, out] = args.as_slice() else {
+        panic!("usage: yzn-contracts-check <yzn-package> <git> <jq> <out>");
     };
 
     let yzn = Path::new(yzn);
@@ -38,7 +36,7 @@ fn main() {
     expect_shell_selection(&yzn_shell);
     expect_keybinds(&config);
     expect_first_party_plugins(git, &config);
-    expect_front_door(yzn);
+    expect_front_door(yzn, Path::new(jq));
     expect_narrow_path_launches(yzn, &yzn_shell);
     expect_config_ui(yzn);
     expect_startup_diagnostics(yzn);
@@ -149,16 +147,26 @@ fn main() {
     fs::write(out, "ok\n").unwrap();
 }
 
-fn expect_front_door(yzn: &Path) {
+fn expect_front_door(yzn: &Path, jq: &Path) {
     let yzn_bin = yzn.join("bin/yzn");
+    let desktop = fs::read_to_string(yzn.join("share/applications/yzn.desktop")).unwrap();
+    assert!(
+        desktop.lines().any(|line| {
+            line.starts_with("Exec=/nix/store/") && line.ends_with("/bin/yzn launch")
+        }),
+        "desktop entry must launch explicitly\n{desktop}"
+    );
     let help = run_help(&yzn_bin, &["help"]);
     for arg in ["-h", "--help"] {
         assert_eq!(run_help(&yzn_bin, &[arg]), help);
     }
+    let version = run_help(&yzn_bin, &["--version"]);
+    assert_eq!(run_help(&yzn_bin, &[]), help);
     expect_contains_all! {
         &help, "yzn help";
         "Yazelix Nova",
         "Usage:",
+        "yzn --version",
         "yzn config",
         "yzn doctor",
         "yzn env",
@@ -168,8 +176,9 @@ fn expect_front_door(yzn: &Path) {
         "yzn tutor [lesson]",
         "yzn reveal <target>",
         "yzn screen [style]",
-        "yzn sponsor",
-        "yzn status",
+        "yzn run <program> [args...]",
+        "yzn status [--json]",
+        "https://github.com/sponsors/luccahuguet",
     }
     let menu = run_help(&yzn_bin, &["menu"]);
     expect_contains(&menu, "Yazelix Nova command palette", "yzn menu");
@@ -183,7 +192,7 @@ fn expect_front_door(yzn: &Path) {
     assert_eq!(
         menu_ids,
         [
-            "config", "doctor", "status", "screen", "sponsor", "launch", "help", "tutor"
+            "config", "doctor", "status", "screen", "launch", "help", "tutor"
         ],
         "yzn menu command allowlist changed\n{menu}"
     );
@@ -210,8 +219,12 @@ fn expect_front_door(yzn: &Path) {
         "yzn screen [STYLE]",
         "static",
         "logo",
+        "boids_schools",
+        "game_of_life_gliders",
         "mandelbrot",
         "random",
+        "--cell-style",
+        "--duration-seconds",
     }
     let tutor_help = run_help(&yzn_bin, &["tutor", "--help"]);
     expect_contains_all! {
@@ -365,6 +378,58 @@ fn expect_front_door(yzn: &Path) {
         "menu keybinding: Alt Shift M",
         "layout: packaged (/nix/store/",
         "inside zellij: no",
+    }
+
+    let json_case = RuntimeCase::new(&temp.path, "json-\"\\\n");
+    let json = successful_stdout(
+        json_case.yzn_command(&yzn_bin, "status").arg("--json"),
+        "yzn status --json",
+    );
+    assert_eq!(
+        jq_output(jq, ".config_home", &json),
+        json_case.config_home.to_string_lossy()
+    );
+    assert_eq!(
+        jq_output(jq, ".state_dir", &json),
+        json_case.state_dir.to_string_lossy()
+    );
+    assert_eq!(
+        jq_output(
+            jq,
+            ".schema_version == 1 and .inside_zellij == false",
+            &json
+        ),
+        "true"
+    );
+    assert_eq!(
+        jq_output(jq, "keys | sort | join(\",\")", &json),
+        "agent_command,config_home,editor,editor_command,inside_zellij,name,schema_version,shell,state_dir,version"
+    );
+
+    let run_child = temp.path.join("run-child");
+    write_executable(
+        &run_child,
+        "#!/bin/sh\nprintf 'arg=<%s>\\n' \"$@\"\nprintf 'config=<%s>\\n' \"$YAZELIX_NEXT_CONFIG_HOME\"\nprintf 'editor=<%s>\\n' \"$EDITOR\"\nexit 23\n",
+    );
+    let run_case = RuntimeCase::new(&temp.path, "run");
+    let output = run_case
+        .yzn_command(&yzn_bin, "run")
+        .args([
+            run_child.as_os_str(),
+            "alpha beta".as_ref(),
+            "quote\"slash\\".as_ref(),
+        ])
+        .output()
+        .unwrap();
+    assert_eq!(output.status.code(), Some(23));
+    let run_record = String::from_utf8_lossy(&output.stdout);
+    expect_contains_all! {
+        &run_record, "yzn run environment";
+        "arg=<alpha beta>",
+        "arg=<quote\"slash\\>",
+        format!("config=<{}>", run_case.config_home.display()),
+        "editor=</nix/store/",
+        "/bin/yzn-editor>",
     }
     let data_home = temp.path.join("data-home");
     let data_status = successful_stdout(
@@ -624,25 +689,6 @@ fn expect_front_door(yzn: &Path) {
         "warn session: not inside zellij",
     }
 
-    expect_sponsor_fallback(
-        Command::new(&yzn_bin).arg("sponsor").env("PATH", ""),
-        "without opener",
-    );
-
-    let fake_path = temp.path.join("fake-path");
-    fs::create_dir(&fake_path).unwrap();
-    let fake_xdg_open = fake_path.join("xdg-open");
-    write_executable(
-        &fake_xdg_open,
-        "#!/bin/sh\necho noisy opener >&2\nexit 42\n",
-    );
-    expect_sponsor_fallback(
-        Command::new(&yzn_bin)
-            .arg("sponsor")
-            .env("PATH", &fake_path),
-        "with failing opener",
-    );
-
     for (args, expected, context) in [
         (
             &["env", "extra"][..],
@@ -655,9 +701,9 @@ fn expect_front_door(yzn: &Path) {
             "yzn doctor argument error",
         ),
         (
-            &["sponsor", "extra"][..],
-            "yzn sponsor does not accept arguments yet",
-            "yzn sponsor argument error",
+            &["status", "extra"][..],
+            "yzn status accepts only --json",
+            "yzn status argument error",
         ),
         (
             &["menu", "extra"][..],
@@ -675,6 +721,16 @@ fn expect_front_door(yzn: &Path) {
             "yzn tutor extra argument error",
         ),
         (
+            &["run"][..],
+            "Usage: yzn run <program> [args...]",
+            "yzn run missing program",
+        ),
+        (
+            &["sponsor"][..],
+            "yzn: unknown command: sponsor",
+            "removed yzn sponsor command",
+        ),
+        (
             &["wat"][..],
             "yzn: unknown command: wat",
             "unknown yzn command error",
@@ -684,10 +740,11 @@ fn expect_front_door(yzn: &Path) {
     }
     let identity = fs::read_to_string(yzn.join("share/yazelix-next/runtime_identity.json"))
         .expect("yzn package is missing runtime_identity.json");
+    let identity_version = jq_output(jq, ".version", &identity);
+    assert_eq!(version.trim(), format!("Yazelix Nova ({identity_version})"));
     expect_contains_all! {
         &identity, "yzn runtime identity";
         r#""name":"Yazelix Nova""#,
-        r#""version":"dev""#,
     }
     assert!(
         yzn.join("libexec/yazelix-next/yzn-tutor").is_file(),
@@ -768,16 +825,6 @@ fn expect_menu_dispatch(menu: &Path) {
     assert_eq!(fs::read_to_string(output_file).unwrap(), "status\n");
 }
 
-fn expect_sponsor_fallback(command: &mut Command, context: &str) {
-    let output = successful_output(command, &format!("yzn sponsor {context}"));
-    assert_eq!(String::from_utf8_lossy(&output.stdout).trim(), SPONSOR_URL);
-    assert!(
-        output.stderr.is_empty(),
-        "yzn sponsor {context} leaked stderr: {}",
-        String::from_utf8_lossy(&output.stderr)
-    );
-}
-
 fn expect_command_error(yzn_bin: &Path, args: &[&str], expected: &str, context: &str) {
     let output = Command::new(yzn_bin).args(args).output().unwrap();
     assert_eq!(
@@ -786,6 +833,16 @@ fn expect_command_error(yzn_bin: &Path, args: &[&str], expected: &str, context: 
         "yzn {args:?} should fail with usage status"
     );
     expect_contains(&String::from_utf8_lossy(&output.stderr), expected, context);
+}
+
+fn jq_output(jq: &Path, query: &str, json: &str) -> String {
+    let filter = format!("$input | {query}");
+    successful_stdout(
+        Command::new(jq).args(["-nr", "--argjson", "input", json, &filter]),
+        "status JSON",
+    )
+    .trim_end()
+    .to_string()
 }
 
 impl RuntimeCase {

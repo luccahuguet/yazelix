@@ -4,6 +4,11 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## Unreleased
 
+- Bare `yzn` prints help instead of launching Mars; sessions start explicitly
+  with `launch` or `enter`. `yzn run` executes structured argv in the prepared
+  runtime environment, `status --json` exposes a bounded versioned record, and
+  `--version` shares one package-owned value with `runtime_identity.json`.
+  The root `sponsor` command is removed while its URL remains in help.
 - Root `config.toml` is a sparse explicit-override document. Startup and
   `yzn config` inherit packaged values without creating or completing the user
   file; saves write only the selected key and reset removes it. Home Manager

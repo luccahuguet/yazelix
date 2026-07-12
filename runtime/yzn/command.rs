@@ -6,7 +6,7 @@ use std::{
     process::{Command, Output},
 };
 
-use crate::error::{path_error, startup, AppError};
+use crate::error::{AppError, path_error, startup};
 
 pub(crate) fn exec(mut command: Command, check: &str) -> Result<(), AppError> {
     Err(startup(

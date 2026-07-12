@@ -25,25 +25,32 @@ nix run .#yzn -- config
 nix run .#yzn -- doctor
 ```
 
-Bare `yzn` runs `yzn launch`.
+Bare `yzn` prints the same concise help as `yzn help`. Starting a session is
+always explicit.
 
 ## Commands
 
 | Command | Purpose |
 | --- | --- |
-| `yzn` | Open Mars and start the managed Yazelix session. |
+| `yzn`, `yzn help` | Print command help. |
+| `yzn --version` | Print the exact package-owned Nova version. |
 | `yzn launch [zellij-args...]` | Open Mars first, then start managed Zellij. |
 | `yzn enter [zellij-args...]` | Start managed Zellij in the current terminal. |
+| `yzn run <program> [args...]` | Run exact argv inside the prepared Yazelix environment. |
 | `yzn config` | Open the Ratconfig-backed config UI. |
 | `yzn menu` | Open the command palette. |
 | `yzn doctor` | Check owned runtime setup without launching Mars or Zellij. |
 | `yzn status` | Print config/runtime paths and selected settings. |
+| `yzn status --json` | Print the versioned machine-readable status record. |
 | `yzn env` | Open the managed shell without launching the UI. |
 | `yzn tutor [lesson]` | Print guided Yazelix lessons. |
 | `yzn screen [style]` | Show a terminal welcome screen. |
 | `yzn reveal <target>` | Reveal a file or directory in the managed Yazi sidebar. |
-| `yzn sponsor` | Open the sponsor page, or print its URL. |
-| `yzn help` | Print command help. |
+
+Status JSON contains numeric `schema_version = 1`, plus `name`, `version`,
+`config_home`, `state_dir`, `shell`, `editor_command`, `editor`,
+`agent_command`, and `inside_zellij`. The sponsor URL remains in `yzn help`
+without a public `sponsor` command.
 
 Screen styles are `static`, `logo`, `boids`, `boids_predator`,
 `boids_schools`, `mandelbrot`, `game_of_life_gliders`,
@@ -57,7 +64,7 @@ commands.
 
 ```sh
 nix profile add --refresh github:luccahuguet/yazelix-next
-yzn
+yzn launch
 ```
 
 Local checkout:
@@ -357,13 +364,13 @@ git ls-files | grep -Ev '^\.beads/|\.lock$' | xargs wc -l
 | Language | Lines |
 | --- | ---: |
 | Ignore (`.gitignore`) | 4 |
-| Markdown | 1367 |
-| Nix | 998 |
+| Markdown | 1384 |
+| Nix | 1000 |
 | Shell | 84 |
 | YAML | 268 |
 | TOML | 249 |
 | KDL | 210 |
 | Nu | 11 |
 | Lua | 247 |
-| Rust | 12112 |
-| Total | 15550 |
+| Rust | 12232 |
+| Total | 15689 |

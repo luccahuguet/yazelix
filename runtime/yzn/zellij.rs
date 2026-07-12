@@ -6,14 +6,14 @@ use std::{
 };
 
 use crate::{
-    command::{create_dir_all_checked, run_checked, trim_output},
-    error::{path_error, startup, AppError},
-    paths::parent,
-    runtime::PopupKeybinding,
     DEFAULT_BAR_WIDGETS_JSON, DEFAULT_POPUP_SIDE_MARGIN, DEFAULT_POPUP_VERTICAL_MARGIN,
     DEFAULT_SHELL_PROGRAM, LAYOUT, LAYOUT_BAR_PLACEHOLDER, LAYOUT_SWAP_TEMPLATE, LAYOUT_TEMPLATE,
-    LAYOUT_YAZI_PLACEHOLDER, YZN_BAR_RENDER, YZN_BAR_RENDER_REQUEST, YZN_SIDEBAR_REFRESH, YZN_YAZI,
-    YZN_AGENT, ZELLIJ_HOME_PLACEHOLDER,
+    LAYOUT_YAZI_PLACEHOLDER, YZN_AGENT, YZN_BAR_RENDER, YZN_BAR_RENDER_REQUEST,
+    YZN_SIDEBAR_REFRESH, YZN_YAZI, ZELLIJ_HOME_PLACEHOLDER,
+    command::{create_dir_all_checked, run_checked, trim_output},
+    error::{AppError, path_error, startup},
+    paths::parent,
+    runtime::PopupKeybinding,
 };
 
 pub(crate) fn active_layout(
