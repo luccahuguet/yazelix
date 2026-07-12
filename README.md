@@ -276,6 +276,8 @@ custom popup ids remain dynamic within the documented `popups.<id>` fields.
 
 The Codex quota widget identifies periods from their reported duration and shows
 five-hour before weekly when both exist. Unavailable periods are omitted.
+Updated windows use a versioned cache so older open sessions cannot reintroduce
+incompatible quota periods.
 
 `editor.command` accepts one executable name or path, not a shell command with
 arguments. Inside Nova, `hx` and `yzn-hx` use packaged managed Helix. Other
@@ -501,7 +503,7 @@ git ls-files | grep -Ev '^\.beads/|\.lock$' | xargs wc -l
 | Language | Lines |
 | --- | ---: |
 | Ignore (`.gitignore`) | 4 |
-| Markdown | 1625 |
+| Markdown | 1629 |
 | Nix | 1116 |
 | Shell | 84 |
 | YAML | 283 |
@@ -510,4 +512,4 @@ git ls-files | grep -Ev '^\.beads/|\.lock$' | xargs wc -l
 | Nu | 11 |
 | Lua | 247 |
 | Rust | 12887 |
-| Total | 16715 |
+| Total | 16719 |
