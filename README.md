@@ -191,7 +191,7 @@ managed popup role keys.
 
 | File | Owner | Notes |
 | --- | --- | --- |
-| `mars/config.toml` | Mars | Appearance preset, window size, opacity, font, scrollbar, bell, and cursor trail. |
+| `mars/config.toml` | Mars | Sparse overrides for appearance preset, window size, opacity, font, scrollbar, bell, and cursor trail. |
 | `zellij/config.kdl` | Zellij sidecar | Safe scalar preferences. Inside a session, saves also patch the active runtime config (many live; some need a new session). Integration-owned nodes are blocked. |
 | `zellij/plugins.kdl` | Zellij plugin sidecar | Extra plugin declarations only. Packaged plugin ids cannot be redeclared. |
 | `starship.toml` | Starship | Sparse managed Nu prompt overrides; absent values inherit Nova defaults. |
@@ -233,10 +233,11 @@ Normal host config such as `~/.config/helix`, `~/.config/yazi`, and
 `~/.config/starship.toml` does not control the managed runtime unless you route
 through these Yazelix-owned files.
 
-Opening `yzn config` does not create `starship.toml`. Saving a Starship field
-writes only that override, and resetting it removes the override. Managed Nu
-merges the sparse file over Nova defaults into runtime state, so untouched
-prompt defaults follow upgrades.
+Opening `yzn config` does not create `mars/config.toml` or `starship.toml`.
+Their tabs show effective Nova defaults, saving writes only the selected
+override, and resetting removes that key. Mars merges its sparse file over the
+packaged base directly; managed Nu materializes its effective Starship config
+under runtime state. Untouched defaults follow upgrades.
 
 Saving `mars.appearance.preset` through `yzn config` switches Mars and the config
 UI palette in the same session. Other Mars values apply on the next Mars launch.
@@ -353,7 +354,7 @@ git ls-files | grep -Ev '^\.beads/|\.lock$' | xargs wc -l
 | Language | Lines |
 | --- | ---: |
 | Ignore (`.gitignore`) | 4 |
-| Markdown | 1330 |
+| Markdown | 1333 |
 | Nix | 1012 |
 | Shell | 84 |
 | YAML | 268 |
@@ -361,5 +362,5 @@ git ls-files | grep -Ev '^\.beads/|\.lock$' | xargs wc -l
 | KDL | 210 |
 | Nu | 11 |
 | Lua | 247 |
-| Rust | 12104 |
-| Total | 15519 |
+| Rust | 12147 |
+| Total | 15565 |

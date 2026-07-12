@@ -192,9 +192,13 @@ mod tests {
     }
 
     fn write_toml_value(path: &Path, field_path: &str, value: &JsonValue) {
-        let raw = fs::read_to_string(path).unwrap();
+        let raw = if path.is_file() {
+            fs::read_to_string(path).unwrap()
+        } else {
+            String::new()
+        };
         let updated = set_toml_value_text(&raw, field_path, value).unwrap().text;
-        fs::write(path, updated).unwrap();
+        atomic_write(path, &updated).unwrap();
     }
 
     fn write_config_text(path: &Path, text: &str) {
@@ -888,6 +892,7 @@ mod tests {
     fn read_only_existing_sources_are_not_replaced() {
         let (_temp, paths) = temp_sources();
 
+        atomic_write(&paths.mars, "[window]\nwidth = 960\n").unwrap();
         let before_mars = fs::read_to_string(&paths.mars).unwrap();
         set_read_only(&paths.mars);
 
@@ -951,8 +956,9 @@ mod tests {
     fn ensure_config_sources_creates_source_backed_files() {
         let (_temp, paths) = temp_sources();
 
-        assert_exists(&[&paths.root, &paths.mars, &paths.zellij]);
+        assert_exists(&[&paths.root, &paths.zellij]);
         assert_missing(&[
+            &paths.mars,
             &paths.starship,
             &paths.helix_config,
             &paths.helix_languages,
@@ -964,11 +970,6 @@ mod tests {
             &paths.yazi_init,
             &paths.yazi_keymap,
         ]);
-        assert!(
-            !fs::read_to_string(paths.mars)
-                .unwrap()
-                .contains("ratconfig.contract")
-        );
         assert!(
             fs::read_to_string(paths.zellij)
                 .unwrap()
@@ -1267,19 +1268,35 @@ mod tests {
     }
 
     #[test]
-    fn source_routing_writes_mars_without_touching_config_toml() {
+    fn mars_source_stays_sparse_and_inherits_packaged_defaults() {
         let (_temp, paths) = temp_sources();
         let before_root = fs::read_to_string(&paths.root).unwrap();
-        let raw_mars = fs::read_to_string(&paths.mars).unwrap();
+        let model = build_model(&paths).unwrap();
+        let mars_fields: Vec<_> = model
+            .fields
+            .iter()
+            .filter(|field| field.source_id == SOURCE_MARS)
+            .collect();
+        assert_eq!(mars_fields.len(), MARS_FIELDS.len());
+        assert!(
+            mars_fields
+                .iter()
+                .all(|field| field.state == ConfigUiValueState::Defaulted)
+        );
+
+        write_source_field(&paths, SOURCE_MARS, "window.opacity", &json!(0.5)).unwrap();
+
+        assert_eq!(fs::read_to_string(&paths.root).unwrap(), before_root);
+        let raw = fs::read_to_string(&paths.mars).unwrap();
+        assert!(raw.contains("opacity = 0.5"));
+        assert!(!raw.contains("width ="));
+        assert!(!raw.contains("/nix/store"));
+
         fs::write(
             &paths.mars,
-            format!(
-                "{raw_mars}\n[colors]\nbackground = \"#010203\"\nforeground = \"#fefefe\"\ndim-foreground = \"#aaaaaa\"\n"
-            ),
+            format!("{raw}\n[colors]\nbackground = \"#010203\"\n"),
         )
         .unwrap();
-
-        write_source_field(&paths, SOURCE_MARS, "window.width", &json!(1200)).unwrap();
         write_source_field(
             &paths,
             SOURCE_MARS,
@@ -1288,9 +1305,8 @@ mod tests {
         )
         .unwrap();
 
-        assert_eq!(fs::read_to_string(&paths.root).unwrap(), before_root);
         let mars = read_toml_file_value(&paths.mars, "mars").unwrap();
-        assert_eq!(get_toml_path(&mars, "window.width"), Some(&json!(1200)));
+        assert_eq!(get_toml_path(&mars, "window.opacity"), Some(&json!(0.5)));
         assert_eq!(
             get_toml_path(&mars, "mars.appearance.preset"),
             Some(&json!("light"))
@@ -1299,25 +1315,22 @@ mod tests {
             get_toml_path(&mars, "colors.background"),
             Some(&json!("#010203"))
         );
+        let model = build_model(&paths).unwrap();
         assert_eq!(
-            get_toml_path(&mars, "colors.foreground"),
-            Some(&json!("#fefefe"))
+            model_field(&model, "window.opacity").state,
+            ConfigUiValueState::Explicit
         );
         assert_eq!(
-            get_toml_path(&mars, "colors.dim-foreground"),
-            Some(&json!("#aaaaaa"))
+            model_field(&model, "window.width").state,
+            ConfigUiValueState::Defaulted
         );
+
+        write_source_default(&paths, SOURCE_MARS, "window.opacity").unwrap();
+        let mars = read_toml_file_value(&paths.mars, "mars").unwrap();
+        assert_eq!(get_toml_path(&mars, "window.opacity"), None);
         assert_eq!(
-            get_toml_path(&mars, "yazelix.cursor.divider"),
-            Some(&json!("vertical"))
-        );
-        assert_eq!(
-            get_toml_path(&mars, "yazelix.cursor.colors"),
-            Some(&json!(["#00e6ff", "#00ff66"]))
-        );
-        assert_eq!(
-            get_toml_path(&mars, "yazelix.cursor.cursor_color"),
-            Some(&json!("#00e6ff"))
+            get_toml_path(&mars, "colors.background"),
+            Some(&json!("#010203"))
         );
 
         let error = write_source_field(

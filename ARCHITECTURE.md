@@ -77,7 +77,7 @@ One owner per concern. Paths are the durable map.
 
 `crates/yzn-config/` is the Ratconfig host.
 
-- Creates root, Mars, and Zellij sources when missing; Starship stays sparse
+- Creates root and Zellij sources when missing; Mars and Starship stay sparse
 - Routes edits to the right file; Helix/Advanced open-file rows; Keys read-only
 - Hidden package-internal reads for launch + custom-popup KDL render
 - `agent.popup.kdl` is an internal render path for custom managed agent command
@@ -152,7 +152,7 @@ Packaged first, unless a surface opts into native replacement.
 ```text
 ~/.config/yazelix-next/
   config.toml              # semantic root (Yazelix-owned)
-  mars/config.toml         # full Mars native replace when present
+  mars/config.toml         # optional sparse Mars overrides
   zellij/config.kdl        # guarded scalar sidecar
   zellij/plugins.kdl       # extra plugins only
   starship.toml            # optional sparse prompt overrides
@@ -167,7 +167,7 @@ Runtime state defaults to `$XDG_DATA_HOME/yazelix-next` or `YAZELIX_STATE_DIR`.
 | Surface | Layering |
 | --- | --- |
 | Root TOML | Created with defaults + contract state |
-| Mars | User file replaces packaged when present; low-level `force-theme` / `[colors]` / cursors stay manual native |
+| Mars | Packaged base → recursive sparse user override; low-level `force-theme` / `[colors]` / cursors stay manual native |
 | Nu | Packaged → optional host `mise activate nu` → optional user Nu |
 | Starship | Nova defaults → sparse user overrides → runtime-effective TOML |
 | Helix | See Helix notes below |
@@ -225,7 +225,7 @@ Owned by `runtime/yzn/` (Nix substitutes paths; Rust owns wiring and `exec`).
 2. Effective `YZN_EDITOR` / `YAZELIX_NEXT_EDITOR`; standard editor variables route through `yzn-editor`
 3. Config home: `YAZELIX_NEXT_CONFIG_HOME` → `XDG_CONFIG_HOME/yazelix-next` → `~/.config/yazelix-next`  
 4. Root settings → env (`YZN_OPEN_LOG`, welcome, popup chords/custom KDL, bar tray)  
-5. Mars config home selection  
+5. Mars packaged base + sparse user config homes
 6. Zellij materialize (sidecar + patches) + status-bar cache path + plugin permission seeds  
 
 Pre-`exec` failures → Yazelix diagnostics.  
@@ -269,7 +269,7 @@ Detail lives in Owners, checks, and the notes below.
 
 | ID | Contract | Owner | Check | Gap |
 | --- | --- | --- | --- | --- |
-| C2 | Mars packaged vs user config; appearance preset as UI theme | `mars.toml`, flake, `yzn-config` | `yzn-contracts`, config tests | Visual |
+| C2 | Mars packaged base + sparse user config; appearance preset as UI theme | `mars.toml`, flake, `yzn-config` | `yzn-contracts`, config tests | Visual |
 | C3 | Layout sidebar template for swaps | `layout*.kdl` | `zellij-layout` | — |
 | C4 | Packaged keys + guarded Zellij sidecar | `config.kdl`, `yzn-zellij-config` | `yzn-contracts` | Full keys |
 | C5 | Managed Nu layering | `yzn-nu`, `nu/` | `yzn-contracts` | — |

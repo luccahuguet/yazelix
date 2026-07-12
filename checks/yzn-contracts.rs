@@ -1186,12 +1186,20 @@ fn expect_mars_config_override(yzn: &Path) {
     expect_contains_all! {
         &launcher, "runtime Mars config override fragment";
         "YAZELIX_NEXT_CONFIG_HOME",
+        "MARS_BASE_CONFIG_HOME",
         "MARS_CONFIG_HOME",
         "yzn-mars-config",
     }
 
     let temp = TempDir::new();
     let mars_case = RuntimeCase::new(&temp.path, "mars");
+    let status = mars_case.run_yzn(&yzn_bin, "status", "packaged Mars config status");
+    expect_contains_all! {
+        &status, "packaged Mars config status";
+        "mars config: packaged",
+        "yzn-mars-config/config.toml",
+    }
+
     let mars_config = mars_case.config_home.join("mars/config.toml");
     fs::create_dir_all(mars_config.parent().unwrap()).unwrap();
     fs::write(&mars_config, "# user Mars config\n").unwrap();

@@ -16,11 +16,33 @@ pub(crate) fn write_mars_config_field(
         .find(|spec| spec.path == field_path)
         .ok_or_else(|| error(format!("unknown Mars config path: {field_path}")))?;
     validate_mars_field(spec, value)?;
-    let raw = fs::read_to_string(path)?;
+    let raw = if path.exists() {
+        fs::read_to_string(path)?
+    } else {
+        String::new()
+    };
     let text = set_toml_value_text(&raw, field_path, value)
         .map_err(|error| boxed_debug("could not update mars/config.toml", error))?
         .text;
     atomic_write(path, &text)
+}
+pub(crate) fn unset_mars_config_field(path: &Path, field_path: &str) -> Result<()> {
+    if !MARS_FIELDS.iter().any(|spec| spec.path == field_path) {
+        return Err(error(format!("unknown Mars config path: {field_path}")));
+    }
+    if !path.exists() {
+        return Ok(());
+    }
+    let raw = fs::read_to_string(path)?;
+    let text = unset_toml_value_text(&raw, field_path)
+        .map_err(|error| boxed_debug("could not update mars/config.toml", error))?
+        .text;
+    if text.trim().is_empty() {
+        fs::remove_file(path)?;
+        Ok(())
+    } else {
+        atomic_write(path, &text)
+    }
 }
 pub(crate) fn validate_mars_field(spec: &FieldSpec, value: &JsonValue) -> Result<()> {
     match spec.kind {
@@ -64,7 +86,7 @@ pub(crate) fn write_starship_config_field(
         .find(|spec| spec.path == field_path)
         .ok_or_else(|| error(format!("unknown Starship config path: {field_path}")))?;
     validate_starship_field(spec, value)?;
-    let raw = if path.is_file() {
+    let raw = if path.exists() {
         fs::read_to_string(path)?
     } else {
         String::new()
@@ -78,7 +100,7 @@ pub(crate) fn unset_starship_config_field(path: &Path, field_path: &str) -> Resu
     if !STARSHIP_FIELDS.iter().any(|spec| spec.path == field_path) {
         return Err(error(format!("unknown Starship config path: {field_path}")));
     }
-    if !path.is_file() {
+    if !path.exists() {
         return Ok(());
     }
     let raw = fs::read_to_string(path)?;

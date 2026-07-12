@@ -127,7 +127,7 @@ in {
         '';
       };
 
-      mars = nativeFileOption "Managed Mars config.toml.";
+      mars = nativeFileOption "Managed sparse Mars overrides.";
       zellij = nativeFileOption "Managed Zellij config.kdl sidecar.";
       starship = nativeFileOption "Managed sparse Starship overrides.";
 

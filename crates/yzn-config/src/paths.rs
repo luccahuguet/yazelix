@@ -4,7 +4,6 @@ use std::{
 };
 
 use crate::{
-    catalog::*,
     common::*,
     root_config::ensure_config_file_at,
     zellij_sidecar::{ZellijSidecar, render_zellij_sidecar},
@@ -34,7 +33,6 @@ pub(crate) fn ensure_config_sources() -> Result<ConfigPaths> {
 }
 pub(crate) fn ensure_config_sources_at(paths: ConfigPaths) -> Result<ConfigPaths> {
     ensure_config_file_at(paths.root.clone())?;
-    ensure_plain_config_file_at(&paths.mars, DEFAULT_MARS_CONFIG_TOML)?;
     ensure_plain_config_file_at(
         &paths.zellij,
         &render_zellij_sidecar(&ZellijSidecar::default()),

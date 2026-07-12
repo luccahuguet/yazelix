@@ -34,7 +34,6 @@ pub(crate) struct Runtime {
     pub(crate) welcome_style: String,
     pub(crate) welcome_duration_seconds: String,
     mars_config_source: &'static str,
-    mars_config_home: PathBuf,
     pub(crate) zellij_sidecar: PathBuf,
     pub(crate) zellij_config: PathBuf,
     zellij_config_source: &'static str,
@@ -112,13 +111,11 @@ impl Runtime {
         let agent_popup_kdl =
             config_value(&config_home, &config_toml, AGENT_POPUP_KDL_CONFIG_PATH)?;
         let (layout_source, layout) = active_layout(&state_dir, &bar_widgets, &shell_program)?;
-        let user_mars_config_home = config_home.join("mars");
-        let (mars_config_source, mars_config_home) =
-            if user_mars_config_home.join("config.toml").is_file() {
-                ("user", user_mars_config_home)
-            } else {
-                ("packaged", PathBuf::from(YZN_MARS_CONFIG))
-            };
+        let mars_config_source = if config_home.join("mars/config.toml").is_file() {
+            "user"
+        } else {
+            "packaged"
+        };
         let zellij_sidecar = config_home.join("zellij/config.kdl");
         let zellij_plugins_sidecar = config_home.join("zellij/plugins.kdl");
         let zellij_config = PathBuf::from(trim_output(run_checked(
@@ -201,7 +198,6 @@ impl Runtime {
             welcome_style: trim_output(welcome_style),
             welcome_duration_seconds: trim_output(welcome_duration_seconds),
             mars_config_source,
-            mars_config_home,
             zellij_sidecar,
             zellij_config,
             zellij_config_source,
@@ -233,7 +229,8 @@ impl Runtime {
                 "YZN_WELCOME_DURATION_SECONDS",
                 &self.welcome_duration_seconds,
             )
-            .env("MARS_CONFIG_HOME", &self.mars_config_home)
+            .env("MARS_CONFIG_HOME", self.config_home.join("mars"))
+            .env("MARS_BASE_CONFIG_HOME", YZN_MARS_CONFIG)
             .env("YAZELIX_STATUS_BAR_CACHE_PATH", &self.zellij_status_cache)
             .env("ZELLIJ_PLUGIN_PERMISSIONS_CACHE", &self.zellij_permissions)
             .env("YZN_MENU_YZN", yzn_menu_yzn)
@@ -246,10 +243,12 @@ impl Runtime {
     }
 
     pub(crate) fn mars_config(&self) -> String {
-        source_path(
-            self.mars_config_source,
-            self.mars_config_home.join("config.toml").display(),
-        )
+        let path = if self.mars_config_source == "user" {
+            self.config_home.join("mars/config.toml")
+        } else {
+            Path::new(YZN_MARS_CONFIG).join("config.toml")
+        };
+        source_path(self.mars_config_source, path.display())
     }
 
     pub(crate) fn zellij_config(&self) -> String {

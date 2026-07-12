@@ -30,14 +30,10 @@ use crate::{
 pub(crate) fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
     let config_active = read_toml_file_value(&paths.root, "config.toml")?;
     let config_default = default_config()?;
-    let mars_active = read_toml_file_value(&paths.mars, "invalid mars/config.toml")?;
+    let mars_active = read_optional_toml_file_value(&paths.mars, "invalid mars/config.toml")?;
     let mars_default = parse_toml_value(DEFAULT_MARS_CONFIG_TOML)
         .map_err(|error| boxed_debug("invalid default Mars config", error))?;
-    let starship_active = if paths.starship.is_file() {
-        read_toml_file_value(&paths.starship, "invalid starship.toml")?
-    } else {
-        JsonValue::Object(Default::default())
-    };
+    let starship_active = read_optional_toml_file_value(&paths.starship, "invalid starship.toml")?;
     let starship_default = parse_toml_value(DEFAULT_STARSHIP_CONFIG_TOML)
         .map_err(|error| boxed_debug("invalid default Starship config", error))?;
     let (zellij_active, diagnostics) = parse_zellij_sidecar(&fs::read_to_string(&paths.zellij)?);
@@ -51,23 +47,24 @@ pub(crate) fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
     fields.push(build_bar_widgets_field(&config_active, &config_default)?);
     fields.extend(KEY_BINDINGS.iter().map(build_key_binding_field));
     for spec in MARS_FIELDS {
+        let current = get_toml_path(&mars_active, spec.path);
         fields.push(build_config_field(
             SOURCE_MARS,
             TAB_MARS,
             spec,
-            get_toml_path(&mars_active, spec.path),
+            current,
             get_toml_path(&mars_default, spec.path),
             mars_apply_status(spec.path),
-            get_toml_path(&mars_active, spec.path)
-                .is_some_and(|value| validate_mars_field(spec, value).is_err()),
+            current.is_some_and(|value| validate_mars_field(spec, value).is_err()),
         ));
     }
     for spec in STARSHIP_FIELDS {
+        let current = get_toml_path(&starship_active, spec.path);
         fields.push(build_config_field(
             SOURCE_STARSHIP,
             TAB_STARSHIP,
             spec,
-            get_toml_path(&starship_active, spec.path),
+            current,
             get_toml_path(&starship_default, spec.path),
             ConfigUiApplyStatus {
                 summary: "new prompts".to_string(),
@@ -75,8 +72,7 @@ pub(crate) fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
                 detail: "Saved values apply to newly rendered managed Nu prompts.".to_string(),
                 pending: false,
             },
-            get_toml_path(&starship_active, spec.path)
-                .is_some_and(|value| validate_starship_field(spec, value).is_err()),
+            current.is_some_and(|value| validate_starship_field(spec, value).is_err()),
         ));
     }
     for spec in ZELLIJ_FIELDS {
@@ -173,6 +169,13 @@ pub(crate) fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
             ],
         }),
     })
+}
+fn read_optional_toml_file_value(path: &Path, context: &'static str) -> Result<JsonValue> {
+    if path.exists() {
+        read_toml_file_value(path, context)
+    } else {
+        Ok(JsonValue::Object(Default::default()))
+    }
 }
 fn build_key_binding_field(
     [group, chord, action, owner, source]: &[&str; 5],
