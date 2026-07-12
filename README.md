@@ -131,13 +131,13 @@ Maintainer fork status, child-repo ownership tables, and README delta rules live
 
 Reusable child repos:
 
-- [mars](https://github.com/luccahuguet/mars) — Rust terminal fork derived from Rio and focused on Yazelix stack compatibility, Kitty protocols, and agent-driven development; consumed here as the default `#yazelix` terminal runtime and exposed as `#yazelix_mars`
-- [yazelix-screen](https://github.com/luccahuguet/yazelix-screen) — Terminal animation engine used by Yazelix welcome/screen styles and exposed here as `#yzs` and `#yazelix_screen`
-- [yazelix-cursors](https://github.com/luccahuguet/yazelix-cursors) — Cursor preset and Ghostty-compatible shader generator with the `yzc` CLI, exposed here as `#yzc` and `#yazelix_cursors`
-- [yazelix-zellij-bar](https://github.com/luccahuguet/yazelix-zellij-bar) — Standalone Zellij bar plugin package and `yazelix_zellij_bar_widget` command, exposed here as `#yazelix_zellij_bar`
-- [yazelix-zellij-pane-orchestrator](https://github.com/luccahuguet/yazelix-zellij-pane-orchestrator) — First-party Zellij plugin wasm that owns managed pane identity, editor/sidebar handoff, focus actions, and layout-family commands, exposed here as `#yazelix_zellij_pane_orchestrator`
-- [yazelix-zellij-popup](https://github.com/luccahuguet/yazelix-zellij-popup) — Standalone Zellij popup plugin for plain-Zellij floating TUI panes, exposed here as `#yazelix_zellij_popup`; its plugin alias and wasm artifact are `yzpp`, and regular Yazelix sessions use it for the popup, command palette, and config UI panes
-- [yazelix-yazi-assets](https://github.com/luccahuguet/yazelix-yazi-assets) — Standalone Yazi flavor and reusable plugin asset pack, exposed here as `#yazelix_yazi_assets` and integrated into the normal Yazelix Yazi runtime
+- [mars](https://github.com/luccahuguet/mars) — Rust terminal fork derived from Rio and focused on Yazelix stack compatibility, Kitty protocols, and agent-driven development; consumed inside the complete `#yazelix` package
+- [yazelix-screen](https://github.com/luccahuguet/yazelix-screen) — Terminal animation engine used by Yazelix welcome/screen styles and available independently from its owning flake
+- [yazelix-cursors](https://github.com/luccahuguet/yazelix-cursors) — Cursor preset and Ghostty-compatible shader generator with the `yzc` CLI, available independently from its owning flake
+- [yazelix-zellij-bar](https://github.com/luccahuguet/yazelix-zellij-bar) — Standalone Zellij bar plugin package and `yazelix_zellij_bar_widget` command available from its owning flake
+- [yazelix-zellij-pane-orchestrator](https://github.com/luccahuguet/yazelix-zellij-pane-orchestrator) — First-party Zellij plugin wasm that owns managed pane identity, editor/sidebar handoff, focus actions, and layout-family commands and is available from its owning flake
+- [yazelix-zellij-popup](https://github.com/luccahuguet/yazelix-zellij-popup) — Standalone Zellij popup plugin for plain-Zellij floating TUI panes; its owning flake exposes `yzpp`, and regular Yazelix sessions use the wasm for popup, command palette, and config UI panes
+- [yazelix-yazi-assets](https://github.com/luccahuguet/yazelix-yazi-assets) — Standalone Yazi flavor and reusable plugin asset pack available from its owning flake and integrated into the normal Yazelix Yazi runtime
 - [ratconfig](https://github.com/luccahuguet/ratconfig) — Reusable Ratatui config editor crate consumed by `yzx config ui`; Yazelix keeps settings schema, Home Manager ownership, validation, and activation timing in this repo
 
 Temporary integration forks:

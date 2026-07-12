@@ -34,7 +34,7 @@ Examples:
 
 This convention is used consistently throughout:
 - Directory names: `configs/terminal_emulators/`, `nushell/scripts/core/`
-- File names: `config_default.toml`, `release_metadata.toml`, `yazelix_runtime_package.nix`
+- File names: `config_default.toml`, `release_metadata.toml`, `mk_yazelix_package.nix`
 - Script names: All Nushell scripts use underscores, such as `stack_prompt_guard.nu`
 
 When creating new files or directories, always use underscores to maintain consistency with the existing codebase.
@@ -120,8 +120,7 @@ When creating new files or directories, always use underscores to maintain consi
 - For runtime packaging work, use the verification ladder instead of starting with a full runtime build:
   1. Run focused Rust checks/tests for touched code, such as `yzx dev rust check core` or `yzx dev rust test <filter>`.
   2. Run eval-fast package contracts such as `nix build .#checks.$(nix eval --raw --impure --expr builtins.currentSystem).kgp_package_contracts --no-link --no-write-lock-file` for KGP override metadata changes.
-  3. Build only the touched package output when needed, such as `nix build .#yazelix_kgp_zellij --no-link --no-write-lock-file`.
-  4. Run `nix build .#runtime_mars --no-link --no-write-lock-file` once as the final package gate after the smaller checks pass.
+  3. Run `nix build .#yazelix --no-link --no-write-lock-file` once as the final product-package gate after the smaller checks pass.
 - Avoid launching multiple `nix develop`, `nix eval`, or package-build commands in parallel during validation. They contend on Nix eval caches, store locks, and Cargo/Nix build directories, which makes the session slower and noisier than serialized checks.
 - **Do not run `yzx restart` as an agent.** It kills the user's live Zellij session. If a runtime change needs a fresh Yazelix session, ask the maintainer to launch one or explicitly approve the destructive restart first.
 - Mars is the first-class Yazelix terminal variant because Yazelix controls the Rust fork and can keep the terminal/runtime stack aligned. Other terminal emulators are host-owned entrypoints that should start Yazelix with `yzx enter`.
@@ -158,7 +157,7 @@ When creating new files or directories, always use underscores to maintain consi
 - After changing the pane orchestrator, build the child package and test Yazelix through an explicit local flake override before claiming integrated behavior is fixed:
   ```bash
   nix build ../yazelix-zellij-pane-orchestrator#yazelix_zellij_pane_orchestrator --no-link
-  nix build .#runtime --override-input yazelixZellijPaneOrchestrator ../yazelix-zellij-pane-orchestrator --no-link
+  nix build .#yazelix --override-input yazelixZellijPaneOrchestrator ../yazelix-zellij-pane-orchestrator --no-link
   ```
 - Follow the cross-repo release transaction rule before landing any main-repo lock update that consumes a new pane-orchestrator child commit.
 - **Do not treat `cargo test` or `cargo check` as sufficient verification for live plugin behavior.** They only validate the Rust source. Real behavior changes require the packaged wasm, runtime build validation, and a fresh Yazelix session.

@@ -2,13 +2,17 @@
 
 ## Summary
 
-Yazelix exposes a complete default package, a narrow Home Manager module, and an advanced Classic package builder
+Yazelix exposes one complete product package, one matching app, and one narrow Home Manager module
 
 Home Manager installs one complete package and may own sparse files under the canonical Yazelix config root
 
 ## Default package
 
 `packages.${system}.yazelix` is the curated complete package and the default Home Manager package
+
+`packages.${system}.default` is the same package
+
+`apps.${system}.default` and `apps.${system}.yazelix` both run `bin/yzx`
 
 The package owns the Yazelix runtime dependency graph, including Mars, bootstrap tools, generated runtime assets, and tool-source decisions
 
@@ -76,13 +80,13 @@ Darwin installations receive the package and declared config files without evalu
 
 Linux-only package behavior must remain platform-gated rather than failing during shared module evaluation
 
-## Advanced Classic builder
+## Complete package overrides
 
-`lib.${system}.mkYazelix` remains a separate Classic package-construction surface while it exists
+The main flake does not expose a package builder, overlay, runtime-only package, child-package mirror, or granular host-tool/component matrix
 
-Its arguments are not Home Manager options and the module must not translate declarations into builder arguments
+Users may construct or obtain a complete compatible package elsewhere and pass it through `programs.yazelix.package`
 
-Users may construct or obtain any complete compatible package and pass it through `programs.yazelix.package`
+Standalone first-party subsystems are installed from their owning child flakes rather than through main-flake aliases
 
 ## Ownership and collisions
 

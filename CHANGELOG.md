@@ -22,12 +22,19 @@ Highlights:
 - Routed Ratconfig, `yzx cursors`, Ghostty generation, Mars launch, and Home Manager through the child-owned cursor TOML contract
 - Deleted Classic's cursor JSONC writer, patch adapter, copied default registry, and dual-format loader
 - Replaced the broad Home Manager option language with `enable`, one complete `package`, nullable sparse `config.settings`, and approved native `text`/`source` sidecars
+- Contracted the public flake to `packages.<system>.default`/`yazelix`, `apps.<system>.default`/`yazelix`, and `homeManagerModules.default`; child packages, runtime aliases, the package builder, overlays, Beads, and the install-check app are no longer re-exported
 - Kept Linux desktop integration platform-gated and allowed Nova-native Nu, Starship, Helix Steel, and Yazi files to be staged without claiming that Classic consumes them
 
 Manual action:
 - If Home Manager owns `~/.config/yazelix/settings.jsonc`, update the module and run `home-manager switch`; move retired native Zellij choices into `programs.yazelix.config.zellij.text` or `source`
 - If Home Manager owns `~/.config/yazelix_cursors/settings.jsonc`, update the module and run `home-manager switch` so it owns `~/.config/yazelix/cursors.toml`
 - Rewrite Home Manager semantic options under `programs.yazelix.config.settings`; remove `manage_config`, `manage_cursor_config`, `terminal`, `mars_package`, `runtime_tool_sources`, `components`, and `agent_usage_programs`; remove an explicit `package = null`, and use `programs.yazelix.package` only for a complete package override
+- Replace Classic `#runtime`, `#runtime_mars`, `#runtime_agent_tools`, `#yazelix_mars`, and `#yazelix_agent_tools` with `#yazelix` to preserve the complete Mars-backed package; Nova later reuses `#runtime` for a new fixed Mars-free package, not as a compatibility alias; `#yazelix_kgp_zellij` has no standalone main-flake replacement and remains integrated inside `#yazelix`
+- Replace main-flake `#yazelix_cursors`/`#yzc`, `#yazelix_screen`/`#yzs`, and `#yazelix_helix` with `github:luccahuguet/yazelix-cursors#yazelix_cursors`/`github:luccahuguet/yazelix-cursors#yzc`, `github:luccahuguet/yazelix-screen#yzs`, and `github:luccahuguet/yazelix-helix#yazelix_helix`
+- Replace main-flake `#yazelix_zellij_bar`, `#yazelix_zellij_config_pack`, `#yazelix_zellij_pane_orchestrator`, `#yazelix_zellij_popup`, and `#yazelix_yazi_assets` with `github:luccahuguet/yazelix-zellij-bar#yazelix_zellij_bar`, `github:luccahuguet/yazelix-zellij-config-pack#yazelix_zellij_config_pack`, `github:luccahuguet/yazelix-zellij-pane-orchestrator#yazelix_zellij_pane_orchestrator`, `github:luccahuguet/yazelix-zellij-popup#yzpp`, and `github:luccahuguet/yazelix-yazi-assets#yazelix_yazi_assets`
+- Remove `lib.<system>.mkYazelix`, Yazelix overlays, and `homeManagerModules.yazelix`; complete package customization is external and the surviving module is `homeManagerModules.default`
+- Remove main-flake `#br` and `#beads_rust`; maintainers get `br` from the development shell and standalone users install it from its upstream owner
+- Replace the removed `#install_check` app/package with the checked-in `shells/posix/install_check.sh` preflight
 - Review preserved `zellij/config.kdl` and `zellij/plugins.kdl` assignments before Nova; remove only values you want to inherit from Nova defaults
 
 Home Manager declarations move from broad options:

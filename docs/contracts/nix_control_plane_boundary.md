@@ -15,7 +15,7 @@ Rust owns typed runtime behavior and validators without taking over Nix or Home 
 | Home Manager activation and desktop integration | `home_manager/runtime_integration.nix` | Repair generated runtime state and gate Linux desktop behavior |
 | Semantic config contract | `config_metadata/main_config_contract.toml` and Rust config code | Home Manager treats semantic settings as opaque TOML data rather than duplicating every field |
 | Native app config | each native file plus its consuming application | Home Manager only installs an explicitly declared `text` or `source` file |
-| Flake packages, apps, checks, and overlays | `flake.nix` and `packaging/flake_outputs.nix` | `flake.nix` wires outputs while package modules own implementation |
+| Flake packages, apps, and checks | `flake.nix` | The public product surface is only default/yazelix packages and apps plus the default Home Manager module |
 | Runtime tool manifest and source modes | `packaging/runtime_tool_registry.nix` | Remain package construction details and are not Home Manager options |
 | Runtime tree assembly | `packaging/mk_runtime_tree.nix` | Remains package-owned rather than moving into Rust |
 | Platform gates | Nix package and Home Manager files | Use `stdenv.hostPlatform` or explicit Home Manager conditionals |
@@ -37,9 +37,9 @@ It must not regain
 
 ## Runtime tool registry
 
-`packaging/runtime_tool_registry.nix` converts package-builder inputs into runtime packages, exported commands, validation errors, and the runtime manifest
+`packaging/runtime_tool_registry.nix` converts the fixed package-owned tool policy into runtime packages, exported commands, validation errors, and the runtime manifest
 
-Those source modes describe the selected package, so doctor may report them as package-owned facts but must not direct users to removed Home Manager options
+Those source modes are internal construction details of the complete package, so doctor may report them as package-owned facts but must not direct users to removed public builder or Home Manager options
 
 Keep the registry whole while it has one coherent consumer and owner
 

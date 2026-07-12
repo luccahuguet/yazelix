@@ -389,7 +389,7 @@ contract. This slice is only about the read contract.
 - Rust/plugin verification after implementation:
   - `cargo test --manifest-path ../yazelix-zellij-pane-orchestrator/Cargo.toml --lib`
   - `nix build ../yazelix-zellij-pane-orchestrator#yazelix_zellij_pane_orchestrator --no-link`
-  - `nix build .#runtime --override-input yazelixZellijPaneOrchestrator ../yazelix-zellij-pane-orchestrator --no-link`
+  - `nix build .#yazelix --override-input yazelixZellijPaneOrchestrator ../yazelix-zellij-pane-orchestrator --no-link`
 - Rust/core verification after implementation:
   - `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core status_cache`
   - `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core agent_usage`

@@ -22,7 +22,7 @@ This inventory lists the canonical contracts under `docs/contracts/`. It is not 
 | `helix_managed_config_contract.md` | Managed Helix config ownership |
 | `keybinding_action_ownership.md` | Semantic keybinding action ownership and native keymap boundaries |
 | `macos_support_floor.md` | First-party macOS support floor |
-| `nix_customization_surfaces.md` | Supported granular Nix customization surfaces |
+| `nix_customization_surfaces.md` | Supported complete-package and Home Manager customization surfaces |
 | `nixpkgs_package_contract.md` | Nixpkgs-style package shape |
 | `native_config_integration_status.md` | Native, managed, imported, read-only, and generated config status vocabulary |
 | `nonpersistent_window_session_contract.md` | Default window/session behavior |

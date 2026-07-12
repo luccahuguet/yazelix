@@ -77,5 +77,5 @@ The full Yazelix runtime may generate KDL with internal absolute helper paths be
 ## Verification
 
 - `cargo test` in `luccahuguet/yazelix-zellij-bar`
-- `nix build .#yazelix_zellij_bar`
+- `nix build github:luccahuguet/yazelix-zellij-bar#yazelix_zellij_bar`
 - `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core zellij_materialization`

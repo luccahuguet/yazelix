@@ -90,8 +90,8 @@ For storage or closure impact, use Nix only when the change plausibly affects ru
 
 ```bash
 nix path-info -Sh .#yazelix
-nix path-info -Sh .#runtime
-nix path-info -Sh .#yazelix_zellij_bar
+nix path-info -Sh .#yazelix
+nix path-info -Sh github:luccahuguet/yazelix-zellij-bar#yazelix_zellij_bar
 ```
 
 ## Child Repos

@@ -11,7 +11,7 @@ The screen renderer is a reusable terminal animation crate. Keeping it in an ext
 ## Scope
 
 - `yazelixScreen` flake input pointing at the external screen repository
-- Yazelix `.#yzs` and `.#yazelix_screen` package/app aliases forwarded from that input
+- child-owned `.#yzs` and `.#yazelix_screen` app/package outputs, consumed internally by Yazelix without main-flake aliases
 - standalone `yzs` binary from the external `yazelix_screen` Rust crate
 - external screen README, CI, flake, Cargo lock, and examples
 - boids, Mandelbrot, and Game of Life animation support owned outside the Yazelix monorepo
@@ -43,7 +43,7 @@ The screen renderer is a reusable terminal animation crate. Keeping it in an ext
 2. In the external screen repository, `cargo check --examples` proves the standalone library examples compile.
 3. In the external screen repository, `cargo run --example render_once` prints one frame without entering a Yazelix session.
 4. In the external screen repository, `nix build .#yzs` produces a package with `bin/yzs`.
-5. In Yazelix, `nix run .#yzs -- --help` prints the forwarded standalone CLI without launching a Yazelix session.
+5. `nix run github:luccahuguet/yazelix-screen#yzs -- --help` prints the standalone CLI without launching a Yazelix session.
 6. In Yazelix, `yzx_repo_validator validate-child-release-transaction` validates
    published child revisions and first-party child package contracts without
    depending on removed magician implementation details.
@@ -62,6 +62,6 @@ Publishing to crates.io is optional until the standalone audience and release pr
 - `cargo run --bin yzs -- --help` in the external screen repository
 - `cargo run --example render_once` in the external screen repository
 - `nix build .#yzs` in the external screen repository
-- `nix run .#yzs -- --help`
+- `nix run github:luccahuguet/yazelix-screen#yzs -- --help`
 - `yzx_repo_validator validate-child-release-transaction` in Yazelix after
   updating the locked `yazelixScreen` input

@@ -25,7 +25,7 @@ See [Terminal Emulator Comparison](./terminal_emulators.md) for a detailed break
 
 **Mars**
 - Default Rust terminal fork for Yazelix
-- Provided by the default `yazelix` package runtime and by `yazelix_mars`
+- Provided by the complete `yazelix` package runtime
 - Uses its packaged Mars config and themes as the live base, with optional sparse overrides from `~/.config/yazelix/mars/config.toml`
 - Mars owns its appearance, opacity, fonts, effects, and `[yazelix.cursor]` values
 - Reference: https://github.com/luccahuguet/mars
@@ -88,15 +88,9 @@ curl -fsSLO https://raw.githubusercontent.com/luccahuguet/yazelix/main/shells/po
 sh install_check.sh
 ```
 
-The install check is optional. It reports Nix/flakes/platform readiness, explains whether Yazelix's binary cache is trusted, and prints numbered next steps for the current host.
+The install check is optional. It reports Nix/flakes/platform readiness, explains whether Yazelix's binary cache is trusted, and prints numbered next steps for the current host. It remains a directly inspectable script rather than a second flake app.
 
-If Nix is already available, the same check is also exposed as a flake app:
-
-```bash
-nix run --accept-flake-config github:luccahuguet/yazelix#install_check
-```
-
-Use `#yazelix_mars` only when you want to name the explicit Mars package output. Other terminal emulators are supported by running the installed `yzx enter` command from their own startup configuration.
+The complete `#yazelix` package contains Mars. Other terminal emulators are supported by running the installed `yzx enter` command from their own startup configuration.
 
 One-off use without installing also works:
 
@@ -142,7 +136,7 @@ Set `eval-cores` to 0 to use all cores, or 1 to disable.
 
 ### Use the Yazelix Binary Cache
 
-Yazelix publishes selected `x86_64-linux` and `aarch64-darwin` package builds to the public Cachix cache at `https://yazelix.cachix.org`. The cache includes the default Yazelix package plus expensive Yazelix Helix and KGP Zellij runtime packages when CI has published the current revision. The flake advertises this cache through `nixConfig`, so interactive Nix commands can prompt you to accept the substituter and trusted public key. After you accept it, Nix uses the cache automatically for matching store paths. The cache is optional: Nix still builds from source when the cache is unavailable or does not contain the requested output.
+Yazelix publishes the complete `x86_64-linux` and `aarch64-darwin` product package and a representative Home Manager closure to the public Cachix cache at `https://yazelix.cachix.org`. Expensive Helix and KGP Zellij dependencies enter the cache through that product graph rather than separate main-flake outputs. The flake advertises this cache through `nixConfig`, so interactive Nix commands can prompt you to accept the substituter and trusted public key. After you accept it, Nix uses the cache automatically for matching store paths. The cache is optional: Nix still builds from source when the cache is unavailable or does not contain the requested output.
 
 For noninteractive installs, pass `--accept-flake-config` to the Nix command that evaluates the Yazelix flake:
 
@@ -201,13 +195,11 @@ in {
 
 The `extra-*` settings add Yazelix's cache beside existing caches. For example, a Home Manager user can place those `nix.settings` entries in their Home Manager configuration, then run `home-manager switch`. Standalone Home Manager users should also set `nix.package = pkgs.nix` when Home Manager generates `~/.config/nix/nix.conf`.
 
-Check that representative expensive outputs are present in the public cache:
+Check that the supported product output is present in the public cache:
 
 ```bash
-helix_out="$(nix eval --raw github:luccahuguet/yazelix#yazelix_helix.outPath)"
-kgp_zellij_out="$(nix eval --raw github:luccahuguet/yazelix#yazelix_kgp_zellij.outPath)"
-nix path-info --store https://yazelix.cachix.org "$helix_out"
-nix path-info --store https://yazelix.cachix.org "$kgp_zellij_out"
+yazelix_out="$(nix eval --raw github:luccahuguet/yazelix#yazelix.outPath)"
+nix path-info --store https://yazelix.cachix.org "$yazelix_out"
 ```
 
 If `nix path-info` cannot find the output, the requested Yazelix revision has not been published to the cache yet, and Nix will build it from source.
@@ -220,11 +212,7 @@ Install the Yazelix package exposed by the top-level flake:
 nix profile add --refresh --accept-flake-config github:luccahuguet/yazelix#yazelix
 ```
 
-The default package is the Mars variant. To install the package-provided Mars variant explicitly:
-
-```bash
-nix profile add --refresh --accept-flake-config github:luccahuguet/yazelix#yazelix_mars
-```
+The default package and `#yazelix` are the same complete Mars-backed package.
 
 > If you previously evaluated this flake (for example with `nix run` or `nix flake show`), Nix may have cached an older version. Add `--refresh` to force a fresh fetch:
 > ```bash
@@ -280,7 +268,7 @@ What it does not ship anymore:
 #### Configuration Options
 - **Custom shells**: Set `default_shell` to your preference (`"nu"`, `"bash"`, `"fish"`, `"zsh"`, `"xonsh"`); xonsh must be installed on the host and available on `PATH`
 - **Host xonsh hooks**: Yazelix generates xonsh initializers, but xonsh remains host-installed and native xonsh startup must source `~/.config/yazelix/shell_xonsh.xsh`
-- **Terminal package**: choose `#yazelix` or `#yazelix_mars`; Home Manager installs the complete `#yazelix` package by default
+- **Terminal package**: install `#yazelix`; Home Manager installs the same complete package by default
 - **Terminal launch**: Mars is the Yazelix-owned terminal for Rust stack compatibility and agent-driven workflows; other terminal emulators should start Yazelix with `yzx enter`
 - **Editor choice**: Configure your editor (see [Editor Configuration](./editor_configuration.md))
 
@@ -447,34 +435,9 @@ Use `programs.yazelix.package` when Home Manager should install a different comp
 }
 ```
 
-The Classic `lib.${system}.mkYazelix` builder remains a separate advanced package-construction surface while it exists:
+The main flake intentionally has no granular package builder or overlay. Build a complete compatible package outside the module when you need a different closure, then pass it through `programs.yazelix.package`.
 
-```nix
-let
-  system = "x86_64-linux";
-  pkgs = import nixpkgs { inherit system; };
-in
-inputs.yazelix.lib.${system}.mkYazelix {
-  inherit pkgs;
-  runtimeToolSources = {
-    lazygit = "host";
-    zenith = "host";
-    helix = "host";
-  };
-}
-```
-
-Package-set users can also use the default overlay:
-
-```nix
-{
-  nixpkgs.overlays = [
-    inputs.yazelix.overlays.default
-  ];
-}
-```
-
-Pass the resulting complete package through `programs.yazelix.package` if Home Manager should install it. See the [Home Manager module guide](../home_manager/README.md) for sparse semantic and native-file ownership.
+Install standalone Yazelix subsystems from their owning child flakes instead of expecting aliases from the integrated main flake. See the [Yazelix collection](./yazelix_collection.md) for those repositories and the [Home Manager module guide](../home_manager/README.md) for sparse semantic and native-file ownership.
 
 ## What Gets Installed
 

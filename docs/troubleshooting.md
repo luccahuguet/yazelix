@@ -108,7 +108,7 @@ If you switch to a newly packaged pane-orchestrator plugin while Yazelix is alre
 **Safer maintainer flow:**
 ```bash
 nix build ../yazelix-zellij-pane-orchestrator#yazelix_zellij_pane_orchestrator --no-link
-nix build .#runtime --override-input yazelixZellijPaneOrchestrator ../yazelix-zellij-pane-orchestrator --no-link
+nix build .#yazelix --override-input yazelixZellijPaneOrchestrator ../yazelix-zellij-pane-orchestrator --no-link
 yzx restart
 ```
 

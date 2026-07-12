@@ -1,6 +1,6 @@
 # Package Sizes & Runtime Surface
 
-The packaged runtime stays batteries-included by default, with granular storage controls exposed through Home Manager and `lib.${system}.mkYazelix` instead of a large public package matrix.
+The complete `#yazelix` package is intentionally batteries-included. The main flake does not expose a granular package builder, runtime-only package, or component matrix.
 
 ## What The Runtime Ships
 
@@ -12,7 +12,7 @@ The default runtime includes:
 - host-managed helper integrations: `mise`, `tombi`
 - preview/search helpers: `p7zip`, `jq`, `fd`, `ripgrep`, `poppler`, `resvg`
 - system helpers required by runtime wrappers and validators: `git`, `nix`, `coreutils`, `findutils`, `gnugrep`, `gnused`, `util-linux`
-- one packaged terminal: Mars in `#yazelix` and `#yazelix_mars`
+- one packaged terminal: Mars in `#yazelix`
 - `tokenusage` for the default Codex and Claude status widgets
 
 It does not ship:
@@ -35,7 +35,6 @@ Only use `--build` when the command should first realize a flake output:
 
 ```bash
 shells/posix/yazelix_runtime_size_report.sh --build .#yazelix
-shells/posix/yazelix_runtime_size_report.sh --build .#yazelix_mars --top 40 --direct-top 60
 ```
 
 The reporter depends only on normal maintainer/runtime shell tools: `nix`, `nix-store`, `jq`, `awk`, `sort`, `head`, `wc`, `sed`, `tr`, `readlink`, and `mktemp`. It uses `numfmt` when available.
@@ -44,7 +43,6 @@ For a quick total-only check, `nix path-info -S` is still useful:
 
 ```bash
 nix path-info -S .#yazelix --extra-experimental-features "nix-command flakes"
-nix path-info -S .#yazelix_mars --extra-experimental-features "nix-command flakes"
 ```
 
 ## Last Recorded x86_64-linux Findings
@@ -56,9 +54,7 @@ The recorded `git+file://` default Ghostty package measured:
 | Shape | Build target | Closure size | Paths | Notes |
 | --- | --- | ---: | ---: | --- |
 | Default `#yazelix` | `.#packages.x86_64-linux.yazelix` | 3.0 GiB | 816 | Full runtime with 64-bit-only nixGL wrappers; `mise` and `tombi` are host-sourced by default |
-| Lean package-builder profile | `lib.${system}.mkYazelix` | 2.2 GiB | 445 | Host-sources editor/sidebar/helper tools, disables optional helpers, omits cursor and screen components |
-
-The lean profile measurement predates the default host-sourcing of `mise` and `tombi`, but still represents the smaller supported shape for users who want a profile-owned runtime. It includes about 1.1 GiB of Linux `nixGLMesa` closure, so graphics wrapper ownership remains a major remaining Linux storage question.
+The retired lean builder measurement is historical evidence rather than a supported package shape. Users who need a different closure must build a complete compatible package outside the main flake.
 
 Largest default direct references by closure:
 
@@ -107,24 +103,15 @@ Home Manager installs one complete package. Closure-size tradeoffs belong to the
 
 ## Cachix Publish Size
 
-The publish workflow builds selected `x86_64-linux` outputs. Local incremental NAR measurements in workflow order:
+The publish workflow builds the supported `x86_64-linux` product package and representative Home Manager closure. Child dependencies enter the cache through that package graph rather than public main-flake mirrors.
 
 | Output | Closure | Incremental unique NAR | Decision |
 | --- | ---: | ---: | --- |
-| `yazelix_kgp_zellij` | 102 MiB | 56 MiB | Keep publishing explicitly for the expensive KGP Zellij output |
-| `yazelix_helix` | 328 MiB | 282 MiB | Keep publishing explicitly for the expensive Helix fork output |
 | `yazelix` | 3.1 GiB | 2.7 GiB | Keep: main supported install path |
-| `yazelix_mars` | measure before release | measure before release | Keep: explicit Mars runtime path |
 
-The previous workflow also listed non-Mars terminal outputs, `yazelix_agent_tools`, and `yazelix_screen`; those are no longer explicit publish targets. Further storage relief should come from shrinking the default runtime closure, especially host-tool-manager references, and from Cachix retention policy.
+Further storage relief should come from shrinking the complete runtime closure and from Cachix retention policy, not from multiplying public package shapes.
 
-The publish workflow also builds a selective `aarch64-darwin` lane for macOS users:
-
-- `yazelix_kgp_zellij`
-- `yazelix_helix`
-- `yazelix`
-
-The Darwin lane intentionally starts with the default supported install path and expensive editor/Zellij package outputs rather than every host terminal or dev/check output. Expand it only after measuring runner time, disk pressure, and Cachix storage churn.
+The Darwin lane builds the same complete product package and representative Home Manager closure. Expand it only after measuring runner time, disk pressure, and Cachix storage churn.
 
 Cachix-side policy from the current docs:
 

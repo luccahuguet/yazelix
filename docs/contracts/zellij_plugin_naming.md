@@ -70,4 +70,4 @@ Renames should not preserve stale command surfaces by default. Keep old names on
 ## Verification
 
 - `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core zellij_materialization`
-- `nix build .#yazelix_zellij_bar`
+- `nix build github:luccahuguet/yazelix-zellij-bar#yazelix_zellij_bar`

@@ -232,11 +232,10 @@ jobs:
         with:
           determinate: false
 
-      - name: Build Darwin first-party Zellij wasm packages
+      - name: Build Darwin Yazelix package with first-party Zellij wasm inputs
         run: |
           nix build --no-link --no-write-lock-file \
-            .#packages.aarch64-darwin.yazelix_zellij_pane_orchestrator \
-            .#packages.aarch64-darwin.yazelix_zellij_popup
+            .#packages.aarch64-darwin.yazelix
 
   runtime_smoke:
     # Manual/scheduled runtime behavior lane. It builds the packaged runtime once and

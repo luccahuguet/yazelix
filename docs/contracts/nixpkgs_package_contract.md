@@ -146,10 +146,10 @@ If the package can build or partially work on Darwin without extra complexity, t
 
 The first-party flake package and the nixpkgs submission draft have different platform claims:
 
-- The first-party flake package (`yazelix_package.nix`) claims the four systems exported in `flake.nix`: `x86_64-linux`, `aarch64-linux`, `x86_64-darwin`, and `aarch64-darwin`. Its `meta.platforms` matches these exported systems so that `nix profile install` works on all of them.
+- The first-party flake package assembled in `flake.nix` claims the four exported systems: `x86_64-linux`, `aarch64-linux`, `x86_64-darwin`, and `aarch64-darwin`. Its `meta.platforms` matches these systems so that `nix profile install` works on all of them.
 - The nixpkgs submission draft (`packaging/nixpkgs/yazelix_package.nix`) claims Linux only (`pkgs.lib.platforms.linux`). This narrower scope reflects the intended first-submission boundary and should not be broadened without an explicit product decision.
 
-Do not conflate these two surfaces. The shared package builder (`packaging/mk_yazelix_package.nix`) does not own platform policy; each wrapper sets its own `metaPlatforms`.
+Do not conflate these two surfaces. The shared package builder (`packaging/mk_yazelix_package.nix`) does not own platform policy; the first-party flake and nixpkgs draft each set their own `metaPlatforms`.
 
 ## Update Story
 

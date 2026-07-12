@@ -87,9 +87,9 @@ while IFS= read -r file; do
     .github/workflows/publish_nix_cache.yml)
       nix_customization=true
       ;;
-    flake.nix | flake.lock | yazelix_runtime_package.nix | \
+    flake.nix | flake.lock | packaging/mk_yazelix_package.nix | \
     packaging/cargo_git_output_hash*.nix | packaging/rust_core_helper.nix | \
-    packaging/yazelix_zellij_config_pack.nix | rust_core/Cargo.lock | rust_core/yazelix_core/Cargo.toml)
+    rust_core/Cargo.lock | rust_core/yazelix_core/Cargo.toml)
       nix_customization=true
       child_release=true
       darwin_wasm=true

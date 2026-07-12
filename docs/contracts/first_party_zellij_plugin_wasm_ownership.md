@@ -11,7 +11,7 @@ Each child repository builds and publishes its own wasm package, and Yazelix con
 
 ## Why
 
-Locked child packages make the package lock the provenance source. The child repository owns source, build target, artifact name, standalone examples, and package checks. Yazelix owns integration, aliases, generated Zellij config, runtime copy into user state, and live session validation.
+Locked child packages make the package lock the provenance source. The child repository owns source, build target, artifact name, standalone examples, and package checks. Yazelix owns internal integration, generated Zellij config, runtime copy into user state, and live session validation.
 
 ## Scope
 
@@ -44,7 +44,7 @@ Out of scope:
 - Statement: Yazelix materializes first-party plugin wasm files from child
   packages into the packaged runtime tree, and the source revision and package
   build are represented by the lock file or equivalent package lock
-- Verification: automated `nix build .#runtime`
+- Verification: automated `nix build .#yazelix`
 
 #### FPW-003
 - Type: invariant
@@ -98,8 +98,8 @@ inputs.yazelixZellijPaneOrchestrator.url = "github:luccahuguet/yazelix-zellij-pa
 Local development should stay override-driven:
 
 ```bash
-nix build .#runtime --override-input yazelixZellijPopup ../yazelix-zellij-popup
-nix build .#runtime --override-input yazelixZellijPaneOrchestrator ../yazelix-zellij-pane-orchestrator
+nix build .#yazelix --override-input yazelixZellijPopup ../yazelix-zellij-popup
+nix build .#yazelix --override-input yazelixZellijPaneOrchestrator ../yazelix-zellij-pane-orchestrator
 ```
 
 ## Acceptance Cases
@@ -113,7 +113,7 @@ nix build .#runtime --override-input yazelixZellijPaneOrchestrator ../yazelix-ze
 ## Verification
 
 - `nix flake metadata`
-- `nix build .#runtime`
+- `nix build .#yazelix`
 - `yzx_repo_validator validate-workspace-session-contract`
 - `yzx_repo_validator validate-child-release-transaction`
 

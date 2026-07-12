@@ -214,7 +214,7 @@ Use the existing Yazelix suite as the first proof:
 - `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core yazi_materialization`
 - `yzx_repo_validator validate-workspace-session-contract`
 - `yzx_repo_validator validate-workspace-session-contract`
-- `nix build .#runtime` after first-party plugin package changes
+- `nix build .#yazelix` after first-party plugin package changes
 - `yzx_repo_validator validate-contracts`
 
 Before public extraction, add a plain-Zellij proof that starts from structured request examples and does not require `yzx`, Home Manager, the config UI, status bar widgets, or the Yazelix runtime root.

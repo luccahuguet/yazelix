@@ -10,7 +10,7 @@ The pane orchestrator is the highest-risk boundary because it owns real workspac
 
 ## Inputs Reviewed
 
-- `flake.nix` child inputs and package forwarding
+- `flake.nix` child inputs and internal package consumption
 - `packaging/mk_runtime_tree.nix` runtime artifact wiring
 - `packaging/cargo_git_output_hashes.nix` shared Cargo output hashes for linked child crates
 - `docs/yazelix_collection.md`

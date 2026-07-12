@@ -183,11 +183,11 @@ Standalone source owner:
 
 - `cargo fmt --check`
 - `cargo test --lib`
-- `nix build .#yazelix_zellij_pane_orchestrator --no-link`
+- `nix build github:luccahuguet/yazelix-zellij-pane-orchestrator#yazelix_zellij_pane_orchestrator --no-link`
 
 Yazelix consumer:
 
-- `nix build .#runtime --override-input yazelixZellijPaneOrchestrator ../yazelix-zellij-pane-orchestrator --no-link`
+- `nix build .#yazelix --override-input yazelixZellijPaneOrchestrator ../yazelix-zellij-pane-orchestrator --no-link`
 - `cargo run -p yazelix_maintainer --bin yzx_repo_validator -- validate-rust-ownership-budget`
 - focused Yazelix workspace/session validation for pipe commands and generated layout aliases
 

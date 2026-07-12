@@ -92,6 +92,6 @@ re-creating asset or renderer mirrors in this repository.
 
 - `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core yazi_materialization`
 - `cargo test` in `yazelix-yazi-assets`
-- `nix build .#yazelix_yazi_assets --no-link --no-write-lock-file`
+- `nix build github:luccahuguet/yazelix-yazi-assets#yazelix_yazi_assets --no-link --no-write-lock-file`
 - `yzx_repo_validator validate-contracts`
 - `yzx_repo_validator validate-docs-experience`

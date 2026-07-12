@@ -74,7 +74,7 @@ This contract defines the Yazelix integration boundary for the extracted plugin.
   package is built and Yazelix is tested against that package through a lock or
   explicit local flake override. `cargo test` alone does not prove live plugin
   behavior
-- Verification: automated `nix build .#runtime`; manual local
+- Verification: automated `nix build .#yazelix`; manual local
   `--override-input yazelixZellijPaneOrchestrator` smoke test
 
 ## Behavior
@@ -174,7 +174,7 @@ Rust source edits are not live until the child package builds and Yazelix consum
 
 ```bash
 nix build ../yazelix-zellij-pane-orchestrator#yazelix_zellij_pane_orchestrator --no-link
-nix build .#runtime --override-input yazelixZellijPaneOrchestrator ../yazelix-zellij-pane-orchestrator --no-link
+nix build .#yazelix --override-input yazelixZellijPaneOrchestrator ../yazelix-zellij-pane-orchestrator --no-link
 ```
 
 After the child commit is pushed, update the main Yazelix lock to that child revision and rerun the main runtime build without local overrides. After a plugin behavior change, validate in a fresh Yazelix session or with `yzx restart`; do not treat `cargo test` alone as proof of live plugin behavior.
@@ -197,7 +197,7 @@ After the child commit is pushed, update the main Yazelix lock to that child rev
 
 - `cargo test --manifest-path ../yazelix-zellij-pane-orchestrator/Cargo.toml --lib`
 - `nix build ../yazelix-zellij-pane-orchestrator#yazelix_zellij_pane_orchestrator --no-link`
-- `nix build .#runtime --override-input yazelixZellijPaneOrchestrator ../yazelix-zellij-pane-orchestrator --no-link`
+- `nix build .#yazelix --override-input yazelixZellijPaneOrchestrator ../yazelix-zellij-pane-orchestrator --no-link`
 - `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core --test yzx_control_workspace_surface`
 - `cargo test --manifest-path rust_core/Cargo.toml -p yazelix_core zellij_materialization`
 - `yzx_repo_validator validate-contracts`

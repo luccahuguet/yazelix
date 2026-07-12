@@ -16,16 +16,10 @@ Yazelix is built on a focused terminal-workspace stack. This catalog lists the p
 
 ## Package And Distribution Surfaces
 
-- `#yazelix` — The default flake package and app, backed by the Mars runtime package
-- `#yazelix_mars` — Explicit Mars runtime package, equivalent to the default packaged terminal
-- `#runtime` and `#runtime_mars` — Runtime-only package outputs used by the wrapper package and validation surfaces
-- `#yazelix_kgp_zellij` — KGP-enabled Zellij package output used by the Mars Kitty-passthrough runtime path and cache publication workflow
-- `#yazelix_agent_tools` and `#runtime_agent_tools` — Compatibility package profiles for the default package shape with bundled agent usage helpers
-- `#yazelix_zellij_bar` — Standalone Zellij/zjstatus bar preset forwarded from `luccahuguet/yazelix-zellij-bar`, including `yazelix_zellij_bar_widget` and package-local `zjstatus.wasm`
-- `#yzs` and `#yazelix_screen` — Standalone terminal animation package forwarded from `luccahuguet/yazelix-screen` for the Yazelix screen engines outside Zellij and outside a full Yazelix session
-- `#yazelix_cursors` — Standalone Yazelix cursor package, with generated GLSL files, example Ghostty config snippets, and the `yzc` CLI
-- `#yzc` — Flake app for the standalone Yazelix cursor CLI
-- `homeManagerModules.yazelix` — The Home Manager module for declarative installs, with `terminal = "mars"` as the packaged terminal
+- `#default` and `#yazelix` — The same complete Mars-backed Yazelix package and app
+- `homeManagerModules.default` — The narrow package-plus-sidecars Home Manager module
+
+Checks and development shells remain maintainer outputs rather than supported product API. Runtime-only packages, package builders, overlays, child-package mirrors, Beads, and the install preflight are not re-exported from the main flake.
 
 ## First-Party Child Repositories
 
@@ -33,15 +27,16 @@ Regular Yazelix users do not need to install or wire these repositories separate
 
 Maintainer-facing fork status, child-repo ownership tables, README delta rules, and review evidence live in [Fork And Child-Repo Maintenance](./contracts/fork_child_repo_maintenance.md).
 
-- [yazelix-screen](https://github.com/luccahuguet/yazelix-screen) — Standalone terminal animation engine consumed by Yazelix welcome/screen rendering and exposed from this repo as `#yzs` and `#yazelix_screen`.
-- [mars](https://github.com/luccahuguet/mars) — Rust terminal fork focused on Yazelix stack compatibility, Kitty-protocol work, and agent-driven development workflows; consumed by Yazelix as the default terminal runtime and exposed as `#yazelix_mars`.
-- [yazelix-cursors](https://github.com/luccahuguet/yazelix-cursors) — Standalone cursor preset, Ghostty-compatible shader, and `yzc` CLI repository consumed by Yazelix cursor settings and exposed from this repo as `#yzc` and `#yazelix_cursors`.
-- [yazelix-helix](https://github.com/luccahuguet/yazelix-helix) — Currently thin but standalone-usable Steel-enabled Helix fork with `--config-dir`, Yazelix bridge hooks behind explicit runtime flags, and packaged reusable Steel plugin defaults consumed by Yazelix managed Helix sessions; exposed from this repo as `#yazelix_helix`.
-- [yazelix-zellij-bar](https://github.com/luccahuguet/yazelix-zellij-bar) — Standalone Zellij/zjstatus bar preset consumed by Yazelix tab/status rendering and exposed from this repo as `#yazelix_zellij_bar`.
-- [yazelix-zellij-pane-orchestrator](https://github.com/luccahuguet/yazelix-zellij-pane-orchestrator) — First-party Zellij plugin wasm that owns managed pane identity, editor/sidebar handoff, focus actions, and layout-family commands, exposed from this repo as `#yazelix_zellij_pane_orchestrator`.
+- [yazelix-screen](https://github.com/luccahuguet/yazelix-screen) — Standalone terminal animation engine consumed by Yazelix welcome/screen rendering; its owning flake exposes `#yzs`.
+- [mars](https://github.com/luccahuguet/mars) — Rust terminal fork focused on Yazelix stack compatibility, Kitty-protocol work, and agent-driven development workflows; consumed inside the complete Yazelix package.
+- [yazelix-cursors](https://github.com/luccahuguet/yazelix-cursors) — Standalone cursor preset, Ghostty-compatible shader, and `yzc` CLI repository consumed by Yazelix cursor settings; its owning flake exposes `#yzc`.
+- [yazelix-helix](https://github.com/luccahuguet/yazelix-helix) — Standalone-usable Steel-enabled Helix fork with `--config-dir`, Yazelix bridge hooks behind explicit runtime flags, and packaged reusable Steel plugin defaults consumed by Yazelix managed Helix sessions.
+- [yazelix-zellij-bar](https://github.com/luccahuguet/yazelix-zellij-bar) — Standalone Zellij/zjstatus bar preset consumed by Yazelix tab/status rendering and available from its owning flake.
+- [yazelix-zellij-pane-orchestrator](https://github.com/luccahuguet/yazelix-zellij-pane-orchestrator) — First-party Zellij plugin wasm that owns managed pane identity, editor/sidebar handoff, focus actions, and layout-family commands and is available from its owning flake.
 - [ratconfig](https://github.com/luccahuguet/ratconfig) — Reusable Ratatui config editor crate with TOML and JSONC adapters, consumed by Yazelix config UI while Yazelix keeps settings schema, Home Manager ownership, validation, and activation timing in this repo.
-- [yazelix-zellij-popup](https://github.com/luccahuguet/yazelix-zellij-popup) — Standalone Zellij popup plugin for plain-Zellij users; its child flake package `#yzpp` installs `share/yazelix_zellij_popup/yzpp.wasm`, this repo forwards it as `#yazelix_zellij_popup`, and regular Yazelix sessions package the same `yzpp.wasm` for popup, menu, and config UI panes.
-- [yazelix-yazi-assets](https://github.com/luccahuguet/yazelix-yazi-assets) — Standalone Yazi flavor and reusable plugin asset pack consumed by Yazelix Yazi runtime generation and exposed from this repo as `#yazelix_yazi_assets`.
+- [yazelix-zellij-popup](https://github.com/luccahuguet/yazelix-zellij-popup) — Standalone Zellij popup plugin for plain-Zellij users; its owning flake exposes `#yzpp`, and regular Yazelix sessions package the same wasm for popup, menu, and config UI panes.
+- [yazelix-zellij-config-pack](https://github.com/luccahuguet/yazelix-zellij-config-pack) — Standalone renderer/config-pack package available from its owning flake.
+- [yazelix-yazi-assets](https://github.com/luccahuguet/yazelix-yazi-assets) — Standalone Yazi flavor and reusable plugin asset pack consumed by Yazelix Yazi runtime generation and available from its owning flake.
 - [yazelix-zellij](https://github.com/luccahuguet/yazelix-zellij) — Temporary product integration fork consumed by the Mars Kitty-passthrough runtime path so upstream Yazi image previews can use Kitty graphics through Zellij; this fork should be dropped and archived once upstream Zellij supports the required Kitty graphics path directly enough for Yazelix to return to upstream Zellij.
 
 ## Core Workspace Stack
@@ -59,7 +54,7 @@ Maintainer-facing fork status, child-repo ownership tables, README delta rules, 
 
 - [Mars](https://github.com/luccahuguet/mars) — Packaged terminal runtime. Mars is a Rust terminal fork focused on Yazelix stack compatibility, optional Kitty protocol growth, and agent-driven development workflows.
 - [Ghostty](https://ghostty.org/), [Rio](https://github.com/raphamorim/rio), [WezTerm](https://wezfurlong.org/wezterm/), [Foot](https://codeberg.org/dnkl/foot), [Ratty](https://github.com/orhun/ratty), [Kitty](https://sw.kovidgoyal.net/kitty/), and other capable terminals — Supported host-terminal entrypoints; configure them to run `yzx enter`
-- [ghostty-cursor-shaders](https://github.com/sahaj-b/ghostty-cursor-shaders) — Upstream inspiration for the Yazelix-managed Ghostty-compatible cursor shader system. Yazelix vendors/adapts the shader direction through `config.toml` cursor settings, generated config, and the standalone `#yazelix_cursors` package.
+- [ghostty-cursor-shaders](https://github.com/sahaj-b/ghostty-cursor-shaders) — Upstream inspiration for the Yazelix-managed Ghostty-compatible cursor shader system. Yazelix adapts the shader direction through the child-owned cursor registry and package.
 
 ## Editors And Shells
 

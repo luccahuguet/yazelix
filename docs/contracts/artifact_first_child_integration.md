@@ -26,7 +26,7 @@ The supported split is:
 - Status: live
 - Owner: Yazelix package/runtime architecture
 - Statement: Normal Yazelix users should not need adjacent mutable child checkouts. Child source builds belong in maintainer, CI, release, or binary-cache production lanes. User runtimes consume the child artifacts selected by the lock file or package metadata
-- Verification: automated `nix build .#runtime`; manual review of package inputs and runtime tree contents
+- Verification: automated `nix build .#yazelix`; manual review of package inputs and runtime tree contents
 
 #### AFCI-002
 - Type: boundary
@@ -60,7 +60,7 @@ The supported split is:
 
 - `yzx_repo_validator validate-contracts`
 - `cargo tree --manifest-path rust_core/Cargo.toml -p yazelix_core`
-- `nix build .#runtime`
+- `nix build .#yazelix`
 
 ## Traceability
 
