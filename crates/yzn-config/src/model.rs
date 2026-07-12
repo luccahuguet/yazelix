@@ -6,10 +6,9 @@ use std::{
 
 use ratconfig::toml_adapter::{get_toml_path, parse_toml_value};
 use ratconfig::{
-    ConfigUiApplyStatus, ConfigUiEditBehavior, ConfigUiFieldRowSpec, ConfigUiListColumn,
-    ConfigUiListTable, ConfigUiModel, ConfigUiPathOwner, ConfigUiSource,
-    ConfigUiStringListChoiceSpec, ConfigUiTheme, ConfigUiThemeMapping, ConfigUiThemeSwitcher,
-    build_config_ui_field, build_string_list_choice_field,
+    ConfigUiApplyStatus, ConfigUiEditBehavior, ConfigUiFieldSpec, ConfigUiListColumn,
+    ConfigUiListTable, ConfigUiModel, ConfigUiPathOwner, ConfigUiSource, ConfigUiTheme,
+    ConfigUiThemeMapping, ConfigUiThemeSwitcher,
 };
 use serde_json::Value as JsonValue;
 use yazelix_cursors::{
@@ -99,31 +98,27 @@ pub(crate) fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
             zellij_blocking,
         ));
     }
+    let source = |id, tab, label, path| build_config_source(paths, id, tab, label, path);
 
     Ok(ConfigUiModel {
-        active_config_path: paths.root.clone(),
-        cursor_config_path: PathBuf::new(),
-        default_cursor_config_path: PathBuf::new(),
-        active_config_exists: paths.root.exists(),
-        config_owner: ConfigUiPathOwner::User,
-        config_read_only: path_read_only(&paths.root),
         sources: vec![
-            build_config_source(SOURCE_CONFIG, TAB_CONFIG, "config.toml", &paths.root),
-            build_config_source(SOURCE_MARS, TAB_MARS, "mars/config.toml", &paths.mars),
-            build_config_source(SOURCE_CURSORS, TAB_CURSORS, "cursors.toml", &paths.cursors),
-            build_config_source(
+            source(SOURCE_CONFIG, TAB_CONFIG, "config.toml", &paths.root),
+            source(SOURCE_CONFIG, TAB_POPUPS, "config.toml", &paths.root),
+            source(SOURCE_MARS, TAB_MARS, "mars/config.toml", &paths.mars),
+            source(SOURCE_CURSORS, TAB_CURSORS, "cursors.toml", &paths.cursors),
+            source(
                 SOURCE_ZELLIJ,
                 TAB_ZELLIJ,
                 "zellij/config.kdl",
                 &paths.zellij,
             ),
-            build_config_source(
+            source(
                 SOURCE_STARSHIP,
                 TAB_STARSHIP,
                 "starship.toml",
                 &paths.starship,
             ),
-            build_config_source(SOURCE_HELIX, TAB_HELIX, "helix", &paths.helix_dir),
+            source(SOURCE_HELIX, TAB_HELIX, "helix", &paths.helix_dir),
             ConfigUiSource {
                 id: SOURCE_KEYS.to_string(),
                 tab: TAB_KEYS.to_string(),
@@ -211,15 +206,26 @@ fn build_key_binding_field(
         },
     }
 }
-fn build_config_source(id: &str, tab: &str, label: &str, path: &Path) -> ConfigUiSource {
+fn build_config_source(
+    paths: &ConfigPaths,
+    id: &str,
+    tab: &str,
+    label: &str,
+    path: &Path,
+) -> ConfigUiSource {
+    let home_manager_owned = paths.is_home_manager_owned(path);
     ConfigUiSource {
         id: id.to_string(),
         tab: tab.to_string(),
         label: label.to_string(),
         path: path.to_path_buf(),
         exists: path.exists(),
-        owner: ConfigUiPathOwner::User,
-        read_only: path_read_only(path),
+        owner: if home_manager_owned {
+            ConfigUiPathOwner::HomeManager
+        } else {
+            ConfigUiPathOwner::User
+        },
+        read_only: home_manager_owned || path_read_only(path),
     }
 }
 fn build_root_config_field(
@@ -274,24 +280,19 @@ fn build_config_field(
     apply_status: ConfigUiApplyStatus,
     has_blocking_diagnostic: bool,
 ) -> ratconfig::ConfigUiField {
-    build_config_ui_field(ConfigUiFieldRowSpec {
-        source_id,
-        path: spec.path,
-        display_label: String::new(),
-        section_label: String::new(),
-        list_cells: Vec::new(),
-        tab,
-        kind: spec.kind,
-        current,
-        default,
-        description: spec.description.to_string(),
-        allowed_values: string_values(spec.allowed_values),
-        validation: spec.validation.to_string(),
-        rebuild_required: false,
-        apply_status,
+    ConfigUiFieldSpec {
         has_blocking_diagnostic,
-        edit_behavior: ConfigUiEditBehavior::Default,
-    })
+        ..ConfigUiFieldSpec::new(
+            source_id,
+            spec.path,
+            tab,
+            spec.description,
+            string_values(spec.allowed_values),
+            spec.validation,
+            apply_status,
+        )
+    }
+    .build(spec.kind, current, default)
 }
 fn build_cursor_fields(
     active: &CursorRegistry,
@@ -300,23 +301,22 @@ fn build_cursor_fields(
     let active_json = serde_json::to_value(active)?;
     let default_json = serde_json::to_value(defaults)?;
     let mut fields = vec![
-        build_string_list_choice_field(ConfigUiStringListChoiceSpec {
-            source_id: SOURCE_CURSORS.to_string(),
-            path: CURSOR_ENABLED_PATH.to_string(),
-            display_label: String::new(),
-            section_label: String::new(),
-            list_cells: Vec::new(),
-            tab: TAB_CURSORS.to_string(),
-            current: Some(active.enabled_cursors.clone()),
-            default: Some(defaults.enabled_cursors.clone()),
-            description: CURSOR_FIELDS[0].description.to_string(),
-            allowed_values: active.definitions.keys().cloned().collect(),
-            validation: CURSOR_FIELDS[0].validation.to_string(),
-            rebuild_required: false,
-            apply_status: cursor_apply_status(CURSOR_ENABLED_PATH),
-            has_blocking_diagnostic: false,
+        ConfigUiFieldSpec {
             edit_behavior: ConfigUiEditBehavior::OrderedStringList,
-        })
+            ..ConfigUiFieldSpec::new(
+                SOURCE_CURSORS,
+                CURSOR_ENABLED_PATH,
+                TAB_CURSORS,
+                CURSOR_FIELDS[0].description,
+                active.definitions.keys().cloned().collect(),
+                CURSOR_FIELDS[0].validation,
+                cursor_apply_status(CURSOR_ENABLED_PATH),
+            )
+        }
+        .build_string_list(
+            Some(active.enabled_cursors.clone()),
+            Some(defaults.enabled_cursors.clone()),
+        )
         .map_err(error)?,
     ];
     for spec in &CURSOR_FIELDS[1..] {
@@ -390,28 +390,26 @@ fn build_bar_widgets_field(
         .transpose();
     let has_blocking_diagnostic = current.is_err();
     let default = bar_widgets(&default_config_path_value(defaults, BAR_WIDGETS_PATH)?)?;
-    build_string_list_choice_field(ConfigUiStringListChoiceSpec {
-        source_id: SOURCE_CONFIG.to_string(),
-        path: BAR_WIDGETS_PATH.to_string(),
-        display_label: String::new(),
-        section_label: String::new(),
-        list_cells: Vec::new(),
-        tab: TAB_CONFIG.to_string(),
-        current: current.ok().flatten(),
-        default: Some(default),
-        description: "Top bar widgets, left to right.".to_string(),
-        allowed_values: string_values(BAR_WIDGET_VALUES),
-        validation: "known widget ids".to_string(),
-        rebuild_required: false,
-        apply_status: ConfigUiApplyStatus {
-            summary: "next launch".to_string(),
-            label: "bar".to_string(),
-            detail: "Saved widget order applies to newly launched Yazelix sessions.".to_string(),
-            pending: false,
-        },
+    ConfigUiFieldSpec {
         has_blocking_diagnostic,
         edit_behavior: ConfigUiEditBehavior::OrderedStringList,
-    })
+        ..ConfigUiFieldSpec::new(
+            SOURCE_CONFIG,
+            BAR_WIDGETS_PATH,
+            TAB_CONFIG,
+            "Top bar widgets, left to right.",
+            string_values(BAR_WIDGET_VALUES),
+            "known widget ids",
+            ConfigUiApplyStatus {
+                summary: "next launch".to_string(),
+                label: "bar".to_string(),
+                detail: "Saved widget order applies to newly launched Yazelix sessions."
+                    .to_string(),
+                pending: false,
+            },
+        )
+    }
+    .build_string_list(current.ok().flatten(), Some(default))
     .map_err(error)
 }
 fn next_launch_apply_status(label: &str, detail: &str) -> ConfigUiApplyStatus {

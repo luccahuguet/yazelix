@@ -60,6 +60,10 @@ pub(crate) fn run_ui() -> Result<()> {
                 create_if_missing,
                 ..
             } => {
+                if let Some(guidance) = paths.home_manager_guidance(&path) {
+                    app.notice_error(guidance);
+                    continue;
+                }
                 let result = session.suspend(|| {
                     open_file_action(&paths, &source_id, &action_id, &path, create_if_missing)
                 })?;

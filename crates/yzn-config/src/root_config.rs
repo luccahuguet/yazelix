@@ -46,13 +46,6 @@ pub(crate) fn read_optional_toml_file_value(path: &Path, label: &'static str) ->
         Ok(JsonValue::Object(Default::default()))
     }
 }
-fn path_entry_exists(path: &Path) -> Result<bool> {
-    match fs::symlink_metadata(path) {
-        Ok(_) => Ok(true),
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(false),
-        Err(error) => Err(error.into()),
-    }
-}
 fn effective_config_path_value(value: &JsonValue, field_path: &str) -> Result<JsonValue> {
     config_path_value(value, &default_config()?, field_path)
 }

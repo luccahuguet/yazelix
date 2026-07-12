@@ -109,6 +109,13 @@ pub(crate) fn path_read_only(path: &Path) -> bool {
         .map(|metadata| metadata.permissions().readonly())
         .unwrap_or(false)
 }
+pub(crate) fn path_entry_exists(path: &Path) -> Result<bool> {
+    match fs::symlink_metadata(path) {
+        Ok(_) => Ok(true),
+        Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(false),
+        Err(error) => Err(error.into()),
+    }
+}
 pub(crate) fn string_values(values: &[&str]) -> Vec<String> {
     values.iter().map(|value| (*value).to_string()).collect()
 }

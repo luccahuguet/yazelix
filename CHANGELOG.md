@@ -4,6 +4,10 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## Unreleased
 
+- Ratconfig identifies store-backed Home Manager config as declarative rather
+  than merely read-only. Structured saves, resets, and native file actions stop
+  before mutation and name the exact `programs.yazelix.config.*` option to edit;
+  chmod-only user files remain user-owned.
 - First use seeds child-owned `cursors.toml` without overwriting user state.
   The Ratconfig Cursors tab edits the enabled pool, selection, and common effect
   settings while preserving custom definitions; advanced editing opens the full

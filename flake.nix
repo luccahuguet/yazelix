@@ -154,6 +154,7 @@
         version = "0.1.0";
         src = yznConfigSrc;
         cargoLock.lockFile = ./crates/yzn-config/Cargo.lock;
+        YAZELIX_NIX_STORE_ROOT = builtins.storeDir;
       };
       yznShellSrc = pkgs.replaceVars ./shell/sh/yzn-shell.sh {
         yznConfig = "${yznConfig}/bin/yzn-config";

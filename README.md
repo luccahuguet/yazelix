@@ -126,7 +126,9 @@ programs.yazelix.config = {
 `settings` renders only the declared values to
 `~/.config/yazelix-next/config.toml`; undeclared values inherit packaged Nova
 defaults. Native files are `text` or `source` passthroughs. Store-backed files
-show as read-only in `yzn config`; edit them in Home Manager.
+show as `home-manager` and read-only in `yzn config`. Save, reset, and file-open
+attempts name the exact `programs.yazelix.config.*` option to edit before the
+normal Home Manager switch; permission-only read-only files remain user-owned.
 
 ## Config Root
 
@@ -378,13 +380,13 @@ git ls-files | grep -Ev '^\.beads/|\.lock$' | xargs wc -l
 | Language | Lines |
 | --- | ---: |
 | Ignore (`.gitignore`) | 4 |
-| Markdown | 1414 |
-| Nix | 1025 |
+| Markdown | 1422 |
+| Nix | 1026 |
 | Shell | 84 |
 | YAML | 268 |
 | TOML | 246 |
 | KDL | 212 |
 | Nu | 11 |
 | Lua | 247 |
-| Rust | 12563 |
-| Total | 16074 |
+| Rust | 12710 |
+| Total | 16230 |

@@ -84,6 +84,8 @@ One owner per concern. Paths are the durable map.
 - Seeds the child-owned cursor TOML and Zellij sidecar when missing; root, Mars,
   and Starship stay sparse
 - Routes edits to the right file; Helix/Advanced open-file rows; Keys read-only
+- Resolves known config targets against the packaged Nix store root so
+  Home Manager-owned sources stay read-only with exact module-option guidance
 - Hidden package-internal reads for launch + custom-popup KDL render
 - `agent.popup.kdl` is an internal render path for custom managed agent command
   KDL

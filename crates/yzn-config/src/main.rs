@@ -129,8 +129,8 @@ mod tests {
     use ratatui::style::{Color, Style};
     use ratconfig::toml_adapter::{get_toml_path, parse_toml_value, set_toml_value_text};
     use ratconfig::{
-        ConfigUiDiagnostic, ConfigUiEditBehavior, ConfigUiModel, ConfigUiTheme, ConfigUiValueState,
-        file_action_status_label, file_action_status_style,
+        ConfigUiDiagnostic, ConfigUiEditBehavior, ConfigUiModel, ConfigUiPathOwner, ConfigUiTheme,
+        ConfigUiValueState, file_action_status_label, file_action_status_style,
     };
     use serde_json::{Value as JsonValue, json};
     use yazelix_cursors::load_cursor_config;
@@ -162,6 +162,7 @@ mod tests {
 
     fn temp_paths(temp: &TempHome) -> ConfigPaths {
         ConfigPaths {
+            store_root: temp.path.join("store"),
             root: temp.path.join("config.toml"),
             cursors: temp.path.join("cursors.toml"),
             mars: temp.path.join("mars/config.toml"),
@@ -199,6 +200,17 @@ mod tests {
         let mut permissions = fs::metadata(path).unwrap().permissions();
         permissions.set_readonly(true);
         fs::set_permissions(path, permissions).unwrap();
+    }
+
+    #[cfg(unix)]
+    fn link_from_store(paths: &ConfigPaths, path: &Path, text: &str) {
+        use std::os::unix::fs::symlink;
+
+        fs::create_dir_all(&paths.store_root).unwrap();
+        let target = paths.store_root.join(path.file_name().unwrap());
+        fs::write(&target, text).unwrap();
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        symlink(target, path).unwrap();
     }
 
     fn write_toml_value(path: &Path, field_path: &str, value: &JsonValue) {
@@ -831,6 +843,13 @@ color = "#123456"
         let model = build_model(&paths).unwrap();
 
         assert!(model.tabs.contains(&TAB_POPUPS.to_string()));
+        let popup_source = model
+            .sources
+            .iter()
+            .find(|source| source.tab == TAB_POPUPS)
+            .expect("popup source");
+        assert_eq!(popup_source.id, SOURCE_CONFIG);
+        assert_eq!(popup_source.path, paths.root);
         for path in [
             AGENT_COMMAND_PATH,
             AGENT_ARGS_PATH,
@@ -1006,6 +1025,67 @@ color = "#123456"
             .to_string();
         assert!(error.contains("read-only"));
         assert_eq!(fs::read_to_string(&paths.root).unwrap(), before_root);
+    }
+
+    // Defends: only store-backed config is declarative, and every mutation route stops before IO.
+    #[cfg(unix)]
+    #[test]
+    fn home_manager_sources_are_explicit_and_non_mutating() {
+        let temp = TempHome::new();
+        let paths = temp_paths(&temp);
+        link_from_store(&paths, &paths.root, "");
+        link_from_store(&paths, &paths.starship, "format = \"::\"\n");
+        link_from_store(&paths, &paths.nu_env, "# managed\n");
+        atomic_write(&paths.mars, "[window]\nwidth = 960\n").unwrap();
+        set_read_only(&paths.mars);
+        let paths = ensure_config_sources_at(paths).unwrap();
+
+        let model = build_model(&paths).unwrap();
+        let source = |id| model.sources.iter().find(|source| source.id == id).unwrap();
+        assert_eq!(source(SOURCE_CONFIG).owner, ConfigUiPathOwner::HomeManager);
+        assert_eq!(
+            source(SOURCE_STARSHIP).owner,
+            ConfigUiPathOwner::HomeManager
+        );
+        assert_eq!(source(SOURCE_MARS).owner, ConfigUiPathOwner::User);
+        assert!(source(SOURCE_MARS).read_only);
+        assert_eq!(source(SOURCE_CURSORS).owner, ConfigUiPathOwner::User);
+        assert!(!source(SOURCE_CURSORS).read_only);
+
+        let rejects = |result: Result<()>, option: &str| {
+            let error = result.unwrap_err().to_string();
+            assert!(error.contains(option), "{error}");
+            assert!(error.contains("Home Manager switch"), "{error}");
+        };
+        rejects(
+            write_source_field(&paths, SOURCE_CONFIG, OPEN_LOG_LEVEL_PATH, &json!("debug")),
+            "programs.yazelix.config.settings",
+        );
+        rejects(
+            write_source_default(&paths, SOURCE_STARSHIP, "format"),
+            "programs.yazelix.config.starship",
+        );
+        rejects(
+            prepare_file_action(&paths, SOURCE_ADVANCED, ACTION_NU_ENV, &paths.nu_env, true),
+            "programs.yazelix.config.nu.env",
+        );
+        assert_file_text(&paths.root, "");
+        assert_file_text(&paths.starship, "format = \"::\"\n");
+        assert_file_text(&paths.nu_env, "# managed\n");
+
+        let action = build_file_actions(&paths)
+            .into_iter()
+            .find(|action| action.action_id == ACTION_NU_ENV)
+            .unwrap();
+        assert!(action.read_only);
+        assert!(action.disabled_reason.is_none());
+
+        fs::remove_file(&paths.zellij).unwrap();
+        let missing = paths.store_root.join("missing-zellij");
+        std::os::unix::fs::symlink(&missing, &paths.zellij).unwrap();
+        assert!(paths.is_home_manager_owned(&paths.zellij));
+        ensure_plain_config_file_at(&paths.zellij, "replacement").unwrap();
+        assert_eq!(fs::read_link(&paths.zellij).unwrap(), missing);
     }
 
     #[test]

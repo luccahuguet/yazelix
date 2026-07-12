@@ -1,5 +1,5 @@
 use std::{
-    env,
+    env, fs,
     path::{Path, PathBuf},
 };
 
@@ -11,6 +11,7 @@ use crate::{
 use yazelix_cursors::initialize_cursor_config;
 
 pub(crate) struct ConfigPaths {
+    pub(crate) store_root: PathBuf,
     pub(crate) root: PathBuf,
     pub(crate) cursors: PathBuf,
     pub(crate) mars: PathBuf,
@@ -30,6 +31,54 @@ pub(crate) struct ConfigPaths {
     pub(crate) yazi_theme: PathBuf,
     pub(crate) zellij_plugins: PathBuf,
 }
+impl ConfigPaths {
+    fn home_manager_files(&self) -> [(&Path, &'static str); 15] {
+        [
+            (&self.root, "settings"),
+            (&self.mars, "mars"),
+            (&self.zellij, "zellij"),
+            (&self.starship, "starship"),
+            (&self.helix_config, "helix.config"),
+            (&self.helix_languages, "helix.languages"),
+            (&self.helix_module, "helix.module"),
+            (&self.helix_init, "helix.init"),
+            (&self.yazi_config, "yazi.config"),
+            (&self.yazi_init, "yazi.init"),
+            (&self.yazi_keymap, "yazi.keymap"),
+            (&self.yazi_package, "yazi.package"),
+            (&self.yazi_theme, "yazi.theme"),
+            (&self.nu_env, "nu.env"),
+            (&self.nu_config, "nu.config"),
+        ]
+    }
+
+    pub(crate) fn is_home_manager_owned(&self, path: &Path) -> bool {
+        self.home_manager_option(path).is_some()
+            && resolved_target(path).is_some_and(|path| path.starts_with(&self.store_root))
+    }
+
+    pub(crate) fn home_manager_guidance(&self, path: &Path) -> Option<String> {
+        self.is_home_manager_owned(path).then(|| {
+            format!(
+                "Managed by Home Manager through `programs.yazelix.config.{}`; edit that option and run your normal Home Manager switch.",
+                self.home_manager_option(path).expect("mapped path")
+            )
+        })
+    }
+
+    pub(crate) fn reject_mutation(&self, path: &Path, source_id: &str) -> Result<()> {
+        if let Some(guidance) = self.home_manager_guidance(path) {
+            return Err(error(guidance));
+        }
+        reject_read_only_source(path, source_id)
+    }
+
+    fn home_manager_option(&self, path: &Path) -> Option<&'static str> {
+        self.home_manager_files()
+            .into_iter()
+            .find_map(|(candidate, option)| (candidate == path).then_some(option))
+    }
+}
 pub(crate) fn ensure_config_sources() -> Result<ConfigPaths> {
     ensure_config_sources_at(config_paths()?)
 }
@@ -43,7 +92,7 @@ pub(crate) fn ensure_config_sources_at(paths: ConfigPaths) -> Result<ConfigPaths
     Ok(paths)
 }
 pub(crate) fn ensure_plain_config_file_at(path: &Path, default: &str) -> Result<()> {
-    if path.exists() {
+    if path_entry_exists(path)? {
         return Ok(());
     }
     atomic_write(path, default)
@@ -51,6 +100,9 @@ pub(crate) fn ensure_plain_config_file_at(path: &Path, default: &str) -> Result<
 pub(crate) fn config_paths() -> Result<ConfigPaths> {
     let home = config_home()?;
     Ok(ConfigPaths {
+        store_root: option_env!("YAZELIX_NIX_STORE_ROOT")
+            .map(PathBuf::from)
+            .ok_or_else(|| error("yzn-config is missing its packaged Nix store root"))?,
         root: home.join("config.toml"),
         cursors: home.join("cursors.toml"),
         mars: home.join("mars/config.toml"),
@@ -69,6 +121,16 @@ pub(crate) fn config_paths() -> Result<ConfigPaths> {
         yazi_package: home.join("yazi/package.toml"),
         yazi_theme: home.join("yazi/theme.toml"),
         zellij_plugins: home.join("zellij/plugins.kdl"),
+    })
+}
+fn resolved_target(path: &Path) -> Option<PathBuf> {
+    path.canonicalize().ok().or_else(|| {
+        let target = fs::read_link(path).ok()?;
+        Some(if target.is_absolute() {
+            target
+        } else {
+            path.parent()?.join(target)
+        })
     })
 }
 pub(crate) fn config_home() -> Result<PathBuf> {

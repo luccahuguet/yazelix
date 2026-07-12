@@ -40,7 +40,7 @@ pub(crate) fn build_file_actions(paths: &ConfigPaths) -> Vec<ConfigUiFileAction>
             label: spec.label.to_string(),
             description: spec.description.to_string(),
             exists: spec.path.exists(),
-            read_only: path_read_only(&spec.path),
+            read_only: paths.is_home_manager_owned(&spec.path) || path_read_only(&spec.path),
             create_if_missing: true,
             disabled_reason: None,
             path: spec.path,
@@ -176,23 +176,23 @@ pub(crate) fn write_source_field(
 ) -> Result<()> {
     match source_id {
         SOURCE_CONFIG => {
-            reject_read_only_source(&paths.root, source_id)?;
+            paths.reject_mutation(&paths.root, source_id)?;
             write_config_field(&paths.root, field_path, value)
         }
         SOURCE_MARS => {
-            reject_read_only_source(&paths.mars, source_id)?;
+            paths.reject_mutation(&paths.mars, source_id)?;
             write_mars_config_field(&paths.mars, field_path, value)
         }
         SOURCE_CURSORS => {
-            reject_read_only_source(&paths.cursors, source_id)?;
+            paths.reject_mutation(&paths.cursors, source_id)?;
             write_cursor_config_field(&paths.cursors, field_path, value)
         }
         SOURCE_ZELLIJ => {
-            reject_read_only_source(&paths.zellij, source_id)?;
+            paths.reject_mutation(&paths.zellij, source_id)?;
             write_zellij_config_field(&paths.zellij, field_path, value)
         }
         SOURCE_STARSHIP => {
-            reject_read_only_source(&paths.starship, source_id)?;
+            paths.reject_mutation(&paths.starship, source_id)?;
             write_starship_config_field(&paths.starship, field_path, value)
         }
         _ => Err(error(format!("unknown config source: {source_id}"))),
@@ -205,19 +205,19 @@ pub(crate) fn write_source_default(
 ) -> Result<()> {
     match source_id {
         SOURCE_CONFIG => {
-            reject_read_only_source(&paths.root, source_id)?;
+            paths.reject_mutation(&paths.root, source_id)?;
             return unset_config_field(&paths.root, field_path);
         }
         SOURCE_MARS => {
-            reject_read_only_source(&paths.mars, source_id)?;
+            paths.reject_mutation(&paths.mars, source_id)?;
             return unset_mars_config_field(&paths.mars, field_path);
         }
         SOURCE_CURSORS => {
-            reject_read_only_source(&paths.cursors, source_id)?;
+            paths.reject_mutation(&paths.cursors, source_id)?;
             return restore_cursor_config_field(&paths.cursors, field_path);
         }
         SOURCE_STARSHIP => {
-            reject_read_only_source(&paths.starship, source_id)?;
+            paths.reject_mutation(&paths.starship, source_id)?;
             return unset_starship_config_field(&paths.starship, field_path);
         }
         _ => {}
@@ -235,6 +235,8 @@ pub(crate) fn open_file_action(
     path: &Path,
     create_if_missing: bool,
 ) -> Result<()> {
+    let spec = file_action_spec(paths, source_id, action_id, path)?;
+    paths.reject_mutation(&spec.path, source_id)?;
     let editor = configured_editor()?;
     prepare_file_action(paths, source_id, action_id, path, create_if_missing)?;
     let status = Command::new(&editor).arg(path).status().map_err(|error| {
@@ -259,9 +261,10 @@ pub(crate) fn prepare_file_action(
     create_if_missing: bool,
 ) -> Result<()> {
     let spec = file_action_spec(paths, source_id, action_id, path)?;
+    paths.reject_mutation(&spec.path, source_id)?;
     let is_helix_steel_action = spec.source_id == SOURCE_HELIX
         && matches!(spec.action_id, ACTION_HELIX_MODULE | ACTION_HELIX_INIT);
-    if spec.path.exists() {
+    if path_entry_exists(&spec.path)? {
         if is_helix_steel_action {
             ensure_helix_steel_pair(paths)?;
         }
@@ -297,10 +300,10 @@ fn file_action_spec(
     Ok(spec)
 }
 fn ensure_helix_steel_pair(paths: &ConfigPaths) -> Result<()> {
-    if !paths.helix_module.exists() {
+    if !path_entry_exists(&paths.helix_module)? {
         atomic_write(&paths.helix_module, HELIX_MODULE_STARTER)?;
     }
-    if !paths.helix_init.exists() {
+    if !path_entry_exists(&paths.helix_init)? {
         atomic_write(&paths.helix_init, HELIX_INIT_STARTER)?;
     }
     Ok(())
