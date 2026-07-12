@@ -214,6 +214,13 @@ impl TransactionIo for RealTransactionIo {
 }
 
 fn remove_file_if_unchanged(path: &Path, expected: &str) -> io::Result<()> {
+    let metadata = fs::symlink_metadata(path)?;
+    if metadata.file_type().is_symlink() || !metadata.is_file() {
+        return Err(io::Error::other(format!(
+            "refusing to remove {} because it is no longer the regular migration file",
+            path.display()
+        )));
+    }
     let current = fs::read_to_string(path)?;
     if current != expected {
         return Err(io::Error::other(format!(
@@ -434,7 +441,22 @@ fn migrate_with(
         ClassicNovaMigrationSource::ConfigToml => TransactionWriteMode::Replace,
         ClassicNovaMigrationSource::SettingsJsonc => TransactionWriteMode::CreateNew,
     };
-    transaction_io.write_atomic(&config, &rendered, Some(&source_permissions), target_mode)?;
+    if let Err(error) =
+        transaction_io.write_atomic(&config, &rendered, Some(&source_permissions), target_mode)
+    {
+        if source_kind == ClassicNovaMigrationSource::SettingsJsonc
+            && create_new_target_was_published(&error)
+        {
+            return Err(rollback_new_jsonc_target(
+                transaction_io,
+                &source,
+                &config,
+                &rendered,
+                error,
+            ));
+        }
+        return Err(error);
+    }
     if source_kind == ClassicNovaMigrationSource::SettingsJsonc {
         let retire_result = ensure_source_unchanged(&source, &source_raw).and_then(|_| {
             transaction_io
@@ -465,6 +487,13 @@ fn migrate_with(
         Some(backup),
         Some(report_path),
     ))
+}
+
+fn create_new_target_was_published(error: &CoreError) -> bool {
+    matches!(
+        error.code(),
+        "atomic_write_parent_sync" | "atomic_write_temp_cleanup"
+    )
 }
 
 fn rollback_new_jsonc_target(

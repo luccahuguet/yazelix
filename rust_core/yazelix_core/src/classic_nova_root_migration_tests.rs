@@ -408,6 +408,7 @@ fn rejects_read_only_and_home_manager_owned_sources() {
 
 struct FailTargetWrite {
     target: PathBuf,
+    after_publish: bool,
 }
 
 struct FailRemoval {
@@ -449,8 +450,15 @@ impl TransactionIo for FailTargetWrite {
         mode: TransactionWriteMode,
     ) -> Result<(), CoreError> {
         if path == self.target {
+            if self.after_publish {
+                test_write_atomic(path, contents, permissions, mode)?;
+            }
             return Err(CoreError::io(
-                "injected_target_write_failure",
+                if self.after_publish {
+                    "atomic_write_temp_cleanup"
+                } else {
+                    "injected_target_write_failure"
+                },
                 "Injected target write failure",
                 "Test-only failure",
                 path.display().to_string(),
@@ -519,6 +527,7 @@ fn target_write_failure_preserves_original_after_backup() {
         "20260712_030405",
         &FailTargetWrite {
             target: config.clone(),
+            after_publish: false,
         },
     )
     .unwrap_err();
@@ -537,6 +546,53 @@ fn target_write_failure_preserves_original_after_backup() {
         )
         .exists()
     );
+}
+
+// Regression: a post-publication create-new error rolls back the complete generated target instead of leaving two roots.
+#[test]
+fn jsonc_target_post_publication_error_rolls_back() {
+    let config_dir = tempdir().unwrap();
+    let source = config_dir.path().join("settings.jsonc");
+    let target = config_dir.path().join("config.toml");
+    let original = current_legacy_jsonc("  \"editor\": { \"command\": \"nvim\" }");
+    fs::write(&source, &original).unwrap();
+
+    let error = migrate_with(
+        &request(config_dir.path()),
+        "20260712_101112",
+        &FailTargetWrite {
+            target: target.clone(),
+            after_publish: true,
+        },
+    )
+    .unwrap_err();
+
+    assert_eq!(error.code(), "atomic_write_temp_cleanup");
+    assert_eq!(fs::read_to_string(source).unwrap(), original);
+    assert!(!target.exists());
+}
+
+// Regression: content equality never authorizes deleting a replacement symlink owner.
+#[cfg(unix)]
+#[test]
+fn guarded_removal_refuses_replacement_symlink() {
+    use std::os::unix::fs::symlink;
+
+    let config_dir = tempdir().unwrap();
+    let target = config_dir.path().join("external.toml");
+    let link = config_dir.path().join("config.toml");
+    fs::write(&target, "same contents\n").unwrap();
+    symlink(&target, &link).unwrap();
+
+    let error = remove_file_if_unchanged(&link, "same contents\n").unwrap_err();
+
+    assert!(
+        error
+            .to_string()
+            .contains("no longer the regular migration file")
+    );
+    assert!(fs::symlink_metadata(link).unwrap().file_type().is_symlink());
+    assert_eq!(fs::read_to_string(target).unwrap(), "same contents\n");
 }
 
 // Regression: migration never replaces a root that changed after its original snapshot was backed up.
