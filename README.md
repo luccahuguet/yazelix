@@ -78,12 +78,6 @@ nix profile add --refresh /absolute/path/to/yazelix-next
 yzn launch
 ```
 
-Update a profile install:
-
-```sh
-nix profile upgrade --refresh yazelix-next
-```
-
 The default `yzn` package includes Mars and a Linux desktop entry. The fixed
 `runtime` package provides the same `bin/yzn`, workspace, and config without
 Mars, Rio, or desktop assets. Its `launch` command explains that Mars is absent;
@@ -204,6 +198,35 @@ defaults. Native files are `text` or `source` passthroughs. Store-backed files
 show as `home-manager` and read-only in `yzn config`. Save, reset, and file-open
 attempts name the exact `programs.yazelix.config.*` option to edit before the
 normal Home Manager switch; permission-only read-only files remain user-owned.
+
+## Updates
+
+Choose one update owner for each installation. Profile installs belong to the
+Nix profile. Home Manager and nix-darwin installs belong to the declarative
+configuration. Do not mix both update paths for the same installation.
+
+Update a profile install with:
+
+```sh
+nix profile upgrade --refresh yazelix-next
+```
+
+The Mars-free `#runtime` install uses `nix profile upgrade --refresh runtime`.
+Run `nix profile list` when you need to confirm an entry name.
+
+For a Home Manager or nix-darwin install, run this from the configuration that
+declares the Yazelix input:
+
+```sh
+nix flake update yazelix-next
+```
+
+Then run that configuration's normal Home Manager or nix-darwin switch command.
+Replace `yazelix-next` with your chosen input name when it differs. Do not run
+`nix profile upgrade` for a package installed by Home Manager.
+
+Your next launch uses the updated package. Each open Nova session keeps its
+current immutable Nix store paths until you close and relaunch it.
 
 ## Config Root
 
@@ -463,7 +486,7 @@ git ls-files | grep -Ev '^\.beads/|\.lock$' | xargs wc -l
 | Language | Lines |
 | --- | ---: |
 | Ignore (`.gitignore`) | 4 |
-| Markdown | 1572 |
+| Markdown | 1597 |
 | Nix | 1109 |
 | Shell | 84 |
 | YAML | 277 |
@@ -471,5 +494,5 @@ git ls-files | grep -Ev '^\.beads/|\.lock$' | xargs wc -l
 | KDL | 212 |
 | Nu | 11 |
 | Lua | 247 |
-| Rust | 12888 |
-| Total | 16650 |
+| Rust | 12887 |
+| Total | 16674 |

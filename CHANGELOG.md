@@ -4,6 +4,9 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## Unreleased
 
+- Installation documentation assigns updates to either the Nix profile or the
+  owning Home Manager/nix-darwin configuration and explains that open sessions
+  keep their current immutable runtime until relaunched.
 - Ratconfig recognizes Home Manager-owned `cursors.toml` as declarative and
   refuses structured mutation with the exact module-option guidance. Empty
   config-root and `PATH` environment variables are treated as unset instead of
