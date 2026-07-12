@@ -104,8 +104,12 @@ pub fn path_present(path: &Path) -> bool {
 pub fn path_owned_by_home_manager(path: &Path) -> bool {
     std::fs::read_link(path)
         .ok()
-        .map(|target| target.to_string_lossy().contains(HOME_MANAGER_FILES_MARKER))
+        .map(|target| symlink_target_owned_by_home_manager(&target))
         .unwrap_or(false)
+}
+
+pub(crate) fn symlink_target_owned_by_home_manager(target: &Path) -> bool {
+    target.to_string_lossy().contains(HOME_MANAGER_FILES_MARKER)
 }
 
 pub fn classify_native_config_statuses(

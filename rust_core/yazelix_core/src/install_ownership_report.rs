@@ -3,6 +3,7 @@
 
 use crate::config_state::compute_runtime_refresh_hash;
 use crate::desktop_exec::{parse_env_assignment, split_desktop_exec_tokens};
+use crate::native_config_status::symlink_target_owned_by_home_manager;
 use crate::terminal_variant::{SUPPORTED_TERMINALS, terminal_desktop_entry_file_name};
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
@@ -10,7 +11,6 @@ use std::collections::HashSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-const HOME_MANAGER_FILES_MARKER: &str = "-home-manager-files/";
 const MANUAL_DESKTOP_ICON_SIZES: &[&str] = &["48x48", "64x64", "128x128", "256x256"];
 const RETIRED_TERMINAL_DESKTOP_ENTRY_TERMINALS: &[&str] =
     &["ghostty", "kitty", "rio", "wezterm", "foot", "ratty"];
@@ -184,16 +184,10 @@ fn read_symlink_target(path: &Path) -> Option<PathBuf> {
     fs::read_link(path).ok()
 }
 
-fn is_home_manager_symlink_target(target: Option<&Path>) -> bool {
-    let Some(t) = target else {
-        return false;
-    };
-    let s = t.to_string_lossy();
-    s.contains(HOME_MANAGER_FILES_MARKER)
-}
-
 pub(crate) fn has_home_manager_managed_install(main_config: &Path) -> bool {
-    is_home_manager_symlink_target(read_symlink_target(main_config).as_deref())
+    read_symlink_target(main_config)
+        .as_deref()
+        .is_some_and(symlink_target_owned_by_home_manager)
 }
 
 fn home_manager_yzx_profile_paths(home_dir: &Path, user: Option<&str>) -> Vec<PathBuf> {
@@ -291,7 +285,7 @@ fn is_manual_runtime_reference_path(candidate: &Path) -> bool {
     let Some(target) = read_symlink_target(candidate) else {
         return false;
     };
-    !is_home_manager_symlink_target(Some(target.as_path()))
+    !symlink_target_owned_by_home_manager(&target)
 }
 
 fn symlink_target_looks_like_legacy_yazelix_wrapper(target: Option<&Path>) -> bool {
