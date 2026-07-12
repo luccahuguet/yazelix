@@ -334,7 +334,6 @@ fn expect_front_door(yzn: &Path, jq: &Path) {
         "yzn-shell",
         "yzn-reveal",
         "/bin/yzs",
-        "yazelix-helix",
         "yazelix_pane_orchestrator.wasm",
         "/bin/ya",
         "/bin/zellij",
@@ -795,6 +794,25 @@ fn expect_narrow_path_launches(yzn: &Path, yzn_shell: &Path) {
             "{context} succeeded without printing a version"
         );
     }
+
+    let case = RuntimeCase::new(&temp.path, "managed-hx-alias");
+    let mut command = case.yzn_command(&yzn_bin, "run");
+    command
+        .args(["printenv", "PATH"])
+        .env("PATH", "/private/tmp");
+    let output = successful_stdout(&mut command, "managed hx PATH");
+    let path = output.trim();
+    let resolve = |name| {
+        env::split_paths(path)
+            .map(|dir| dir.join(name))
+            .find(|candidate| candidate.is_file())
+            .unwrap_or_else(|| panic!("managed PATH is missing {name}"))
+    };
+    assert_eq!(
+        fs::canonicalize(resolve("hx")).unwrap(),
+        fs::canonicalize(resolve("yzn-hx")).unwrap(),
+        "managed hx must resolve to yzn-hx"
+    );
 }
 
 fn expect_menu_dispatch(menu: &Path) {

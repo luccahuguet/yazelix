@@ -92,7 +92,7 @@ fn yzn_config_value(path: &str) -> io::Result<String> {
 }
 
 fn effective_editor_command(command: String) -> String {
-    if command == "yzn-hx" {
+    if matches!(command.as_str(), "yzn-hx" | "hx") {
         YZN_HELIX.to_string()
     } else {
         command
@@ -164,8 +164,9 @@ mod tests {
     use super::*;
 
     #[test]
-    fn yzn_hx_maps_to_packaged_editor_while_host_commands_pass_through() {
+    fn managed_helix_names_map_to_packaged_editor_while_host_commands_pass_through() {
         assert_eq!(effective_editor_command("yzn-hx".to_string()), YZN_HELIX);
+        assert_eq!(effective_editor_command("hx".to_string()), YZN_HELIX);
         assert_eq!(effective_editor_command("nvim".to_string()), "nvim");
         assert!(uses_helix_bridge(YZN_HELIX));
         assert!(uses_helix_bridge("/nix/store/example/bin/yzn-hx"));

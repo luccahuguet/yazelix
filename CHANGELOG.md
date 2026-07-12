@@ -125,12 +125,12 @@ User-visible runtime changes for Yazelix Nova live here.
   can open staged text edits in the config UI's editor environment before
   saving and refuses to replace a source file whose permissions are read-only.
 - Root `config.toml` supports `[editor].command`, defaulting to `yzn-hx`.
-  Managed Yazi opens resolve `yzn-hx` to packaged Yazelix Helix; host commands
-  such as `hx` or `nvim` run from `PATH`, bypass the Helix bridge, and stay
-  user-owned. `yzn status` and `yzn doctor` report the configured and effective
-  editor, Ratconfig external text edits and the managed Git popup use the same
-  editor, and missing editor commands fail with a direct diagnostic before
-  opening a pane. The Git popup defaults to LazyGit.
+  Inside Nova, `hx` and `yzn-hx` resolve to packaged managed Helix; other editor
+  commands such as `nvim`, or absolute host paths, bypass the Helix bridge and
+  stay user-owned. `yzn status` and `yzn doctor` report the configured and
+  effective editor, Ratconfig external text edits and the managed Git popup use
+  the same editor, and missing editor commands fail with a direct diagnostic
+  before opening a pane. The Git popup defaults to LazyGit.
 - The `yzn config` Helix tab opens managed `helix/config.toml`,
   `helix/languages.toml`, `helix/helix.scm`, and `helix/init.scm` in `yzn-hx`.
   Files are created only when activated; either Steel row creates the pair. A

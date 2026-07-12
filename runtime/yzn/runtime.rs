@@ -282,7 +282,7 @@ fn config_value(config_home: &Path, config_toml: &Path, key: &str) -> Result<Str
 }
 
 fn effective_editor_command(command: &str) -> String {
-    if command == "yzn-hx" {
+    if matches!(command, "yzn-hx" | "hx") {
         YZN_HELIX.to_string()
     } else {
         command.to_string()
@@ -312,7 +312,8 @@ mod tests {
     use crate::YZN_HELIX;
 
     #[test]
-    fn helix_bridge_only_matches_packaged_yzn_hx() {
+    fn short_hx_maps_to_packaged_helix_bridge() {
+        assert_eq!(effective_editor_command("hx"), YZN_HELIX);
         assert!(uses_helix_bridge(YZN_HELIX));
         assert!(uses_helix_bridge("/nix/store/example/bin/yzn-hx"));
         assert!(uses_helix_bridge("yzn-hx"));

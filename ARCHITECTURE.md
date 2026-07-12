@@ -159,6 +159,34 @@ custom popup entry.
 
 This repo packages them and applies product policy only.
 
+### Installed closure topology
+
+`flake.nix` owns the package graph. On `x86_64-linux`, the 2026-07-12 locked
+graph realizes to **2.28 GiB across 619 store paths**. Nova's top-level output
+contains only 46.1 KiB of NAR data; it is a thin command, desktop-entry, and
+asset join whose references pull in the runtime.
+
+The individual package closures below explain the architectural weight. They
+share libraries and tools, so no row is additive and removing one root does not
+necessarily save its complete closure size.
+
+| Layer | Package roots and complete individual closures |
+| --- | --- |
+| Terminal | Mars 1.13 GiB, including Rio, graphics, Python, and fonts |
+| Workspace | Yazi + preview tools 503.2 MiB; Yazelix Zellij 101.9 MiB |
+| Editor | Yazelix Helix 327.6 MiB, including runtime queries and grammars |
+| Source control | Git 373.8 MiB; LazyGit 59.4 MiB |
+| Config | Ratconfig / `yzn-config` 124.4 MiB |
+| Shell and navigation | Carapace 105.9 MiB; Nushell 104.1 MiB; zoxide 60.8 MiB; Starship 58.9 MiB; fzf 49.5 MiB |
+| Status and welcome | tokenusage 75.5 MiB; Yazelix Zellij bar 43.0 MiB; Yazelix Screen 36.7 MiB |
+| Zellij control plugins | Pane orchestrator 2.1 MiB; popup 1.9 MiB |
+
+Closure size describes distribution cost, not source ownership or local code
+volume. Child packages and packaged tools carry most binary data; Nova keeps
+their composition and policy in the small top-level join. The README [installed-size
+ledger](README.md#installed-size) owns the complete per-module list, measurement
+meaning, and reproduction commands.
+
 ### Shell dispatch
 
 `yzn-shell` reads `shell.program` via `yzn-config`, then runs packaged `nu`
@@ -248,7 +276,8 @@ a new session.
   points at the Steel pair only when both exist.
 - Without user Steel, packaged Steel exposes `:yzn-new-shell`.
 - Packaged bindings: `Alt r` reveal (reserved), `Ctrl r` reload (user-overridable).
-- Host `editor.command` values skip the Helix bridge.
+- `hx` and `yzn-hx` select managed Helix; other `editor.command` values skip its
+  bridge.
 
 ### Git editor boundary
 
@@ -291,7 +320,7 @@ if managed Helix TOML overrides reserved `Alt r`.
 | `ZELLIJ_PANE_ID` → live tab membership | `yzn-open` reuses only a Helix registry whose pane is in the same `tab_id` |
 | Helper-derived ids outside `yzn` | `yzn-hx` / `yzn-yazi` / `yzn-open` standalone must not hit a live window bridge |
 
-Host editors (`hx`, `nvim`, …) skip the Helix bridge entirely.
+Host editors (`nvim`, `/usr/bin/hx`, …) skip the Helix bridge entirely.
 
 ---
 

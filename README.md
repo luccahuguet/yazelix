@@ -92,6 +92,52 @@ On macOS, `help`, `status`, `doctor`, and `enter` are the supported floor after
 install. `launch` uses Mars and depends on macOS hardware validation for the full
 GUI path.
 
+## Installed Size
+
+The complete Nova package occupies a **2.28 GiB Nix store closure** across 619
+store paths on `x86_64-linux`. This is the realized, unpacked size of every path
+needed by `yzn`, measured against the repository's locked inputs on 2026-07-12.
+It is not the compressed download size, and an existing Nix store may already
+contain shared paths.
+
+The module figures below are complete closures for the package roots Nova uses.
+They overlap through common libraries and tools, so they do not add up to the
+Nova total.
+
+| Runtime scope | Closure size | What the measurement includes |
+| --- | ---: | --- |
+| **Nova (`yzn`)** | **2.28 GiB** | Entire launcher, terminal, workspace, editor, file manager, shell, Git tools, plugins, fonts, and configuration assets. |
+| Mars | 1.13 GiB | Mars, Rio, graphics libraries, Python runtime, and packaged fonts/emoji. |
+| Yazi + preview tools | 503.2 MiB | Yazi plus Chafa, FFmpeg, ImageMagick, Poppler, resvg, 7-Zip, `fd`, `rg`, `jq`, `fzf`, and `zoxide`. |
+| Git | 373.8 MiB | Packaged Git CLI and its runtime dependencies. |
+| Yazelix Helix | 327.6 MiB | Managed Helix, runtime queries, and packaged tree-sitter grammars. |
+| Ratconfig / `yzn-config` | 124.4 MiB | Compiled configuration UI, validation, persistence, and runtime libraries. |
+| Carapace | 105.9 MiB | Shell completion engine. |
+| Nushell | 104.1 MiB | Managed shell executable and runtime libraries. |
+| Yazelix Zellij | 101.9 MiB | Managed Zellij fork and runtime libraries. |
+| tokenusage | 75.5 MiB | Codex/Claude usage widget helper. |
+| zoxide | 60.8 MiB | Directory-jump tool and runtime libraries. |
+| LazyGit | 59.4 MiB | Terminal Git client and runtime libraries. |
+| Starship | 58.9 MiB | Managed prompt executable and runtime libraries. |
+| fzf | 49.5 MiB | Fuzzy finder used by menus and Yazi. |
+| Yazelix Zellij bar | 43.0 MiB | Top-bar WebAssembly plugin closure. |
+| Yazelix Screen | 36.7 MiB | Welcome-screen renderer closure. |
+| Zellij pane orchestrator | 2.1 MiB | Pane-orchestration WebAssembly plugin. |
+| Zellij popup | 1.9 MiB | Popup WebAssembly plugin. |
+
+Nova's own top-level store output is only 46.1 KiB of NAR data: it is primarily
+a thin command/desktop-entry join that points at the modules above. The Yazi Lua
+plugin inputs are each 17 KiB or less, and the installed cursor template is
+3.8 KiB.
+
+Reproduce the total for the current system and lock file with:
+
+```sh
+package=$(nix build .#yzn --no-link --print-out-paths)
+nix path-info -Sh "$package"
+nix path-info --json --json-format 1 -S "$package"
+```
+
 ## Home Manager
 
 ```nix
@@ -166,9 +212,10 @@ custom popup ids remain dynamic within the documented `popups.<id>` fields.
 | `bar.widgets` | `editor`, `shell`, `term`, `codex_usage`, `cpu`, `ram` | Top bar widgets, left to right. |
 
 `editor.command` accepts one executable name or path, not a shell command with
-arguments. `yzn-hx` uses packaged Yazelix Helix. Host editors such as `hx` or
-`nvim` run from `PATH` and skip the managed Helix bridge. Terminal Git clients
-receive the same selection through `EDITOR`, `VISUAL`, and `GIT_EDITOR`.
+arguments. Inside Nova, `hx` and `yzn-hx` use packaged managed Helix. Other
+editors such as `nvim`, or an absolute host Helix path, skip the managed bridge.
+Terminal Git clients receive the same selection through `EDITOR`, `VISUAL`, and
+`GIT_EDITOR`.
 
 ## Popups
 
@@ -276,7 +323,8 @@ and some still need a new session.
 
 Managed Yazi opens files through `yzn-open`. With the default
 `editor.command = "yzn-hx"`, `yzn-open` reuses a live Helix bridge in the same
-Zellij tab or opens packaged Helix in the managed `editor` pane.
+Zellij tab or opens packaged Helix in the managed `editor` pane. Typing `hx`
+inside Nova invokes this same managed Helix wrapper.
 
 Git editing stays in the client terminal. Managed LazyGit overlays only its
 file-edit commands and keeps user configuration; it and other terminal Git
@@ -383,7 +431,7 @@ git ls-files | grep -Ev '^\.beads/|\.lock$' | xargs wc -l
 | Language | Lines |
 | --- | ---: |
 | Ignore (`.gitignore`) | 4 |
-| Markdown | 1438 |
+| Markdown | 1515 |
 | Nix | 1023 |
 | Shell | 84 |
 | YAML | 268 |
@@ -391,5 +439,5 @@ git ls-files | grep -Ev '^\.beads/|\.lock$' | xargs wc -l
 | KDL | 212 |
 | Nu | 11 |
 | Lua | 247 |
-| Rust | 12815 |
-| Total | 16348 |
+| Rust | 12835 |
+| Total | 16445 |

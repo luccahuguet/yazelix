@@ -263,6 +263,7 @@
       };
       yznHelix = pkgs.runCommand "yzn-hx" {} ''
         install -D -m 755 ${yznHelixSrc} "$out/bin/yzn-hx"
+        ln -s yzn-hx "$out/bin/hx"
         patchShebangs "$out/bin/yzn-hx"
       '';
       yznTutorSrc = pkgs.runCommand "yzn-tutor-src" {} ''
@@ -288,9 +289,9 @@
           else
             editor="$(${yznConfig}/bin/yzn-config --get editor.command)"
           fi
-          if [ "$editor" = yzn-hx ]; then
-            editor=${yznHelix}/bin/yzn-hx
-          fi
+          case "$editor" in
+            yzn-hx|hx) editor=${yznHelix}/bin/yzn-hx ;;
+          esac
           if ! command -v -- "$editor" >/dev/null 2>&1; then
             printf 'Yazelix editor command not found: %s. Set editor.command to one executable name or path without arguments.\n' "$editor" >&2
             exit 127
@@ -508,7 +509,6 @@
           pkgs.git
           pkgs.lazygit
           tokenusage
-          yazelixHelixPackage
           yznHelix
         ];
       };
