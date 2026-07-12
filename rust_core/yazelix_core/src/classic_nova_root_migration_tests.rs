@@ -327,6 +327,21 @@ fn rejects_mapping_collisions_before_backup() {
     assert_eq!(fs::read_dir(config_dir.path()).unwrap().count(), 1);
 }
 
+// Regression: the backup writer cannot overwrite an artifact that appears after transaction preflight.
+#[test]
+fn exclusive_backup_copy_refuses_late_collision() {
+    let config_dir = tempdir().unwrap();
+    let source = config_dir.path().join("config.toml");
+    let backup = config_dir.path().join("config.toml.backup-race");
+    fs::write(&source, "secret source\n").unwrap();
+    fs::write(&backup, "existing backup\n").unwrap();
+
+    let error = copy_file_exclusive(&source, &backup).unwrap_err();
+
+    assert_eq!(error.kind(), io::ErrorKind::AlreadyExists);
+    assert_eq!(fs::read_to_string(backup).unwrap(), "existing backup\n");
+}
+
 // Defends: read-only and Home Manager-owned Classic state is never replaced automatically.
 #[cfg(unix)]
 #[test]
@@ -378,7 +393,7 @@ struct FailRemoval {
 
 impl TransactionIo for FailRemoval {
     fn copy(&self, source: &Path, target: &Path) -> io::Result<()> {
-        fs::copy(source, target).map(|_| ())
+        copy_file_exclusive(source, target)
     }
 
     fn write_atomic(
@@ -400,7 +415,7 @@ impl TransactionIo for FailRemoval {
 
 impl TransactionIo for FailTargetWrite {
     fn copy(&self, source: &Path, target: &Path) -> io::Result<()> {
-        fs::copy(source, target).map(|_| ())
+        copy_file_exclusive(source, target)
     }
 
     fn write_atomic(

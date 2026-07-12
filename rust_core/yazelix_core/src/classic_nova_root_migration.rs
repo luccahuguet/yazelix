@@ -181,7 +181,7 @@ struct RealTransactionIo;
 
 impl TransactionIo for RealTransactionIo {
     fn copy(&self, source: &Path, target: &Path) -> io::Result<()> {
-        fs::copy(source, target).map(|_| ())
+        copy_file_exclusive(source, target)
     }
 
     fn write_atomic(
@@ -199,6 +199,31 @@ impl TransactionIo for RealTransactionIo {
     fn remove(&self, path: &Path) -> io::Result<()> {
         fs::remove_file(path)
     }
+}
+
+fn copy_file_exclusive(source: &Path, target: &Path) -> io::Result<()> {
+    let mut input = fs::File::open(source)?;
+    let permissions = input.metadata()?.permissions();
+    let mut output = fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(target)?;
+    let result = output
+        .set_permissions(permissions)
+        .and_then(|()| io::copy(&mut input, &mut output).map(|_| ()))
+        .and_then(|()| output.sync_all());
+    drop(output);
+    if let Err(error) = result {
+        return match fs::remove_file(target) {
+            Ok(()) => Err(error),
+            Err(cleanup) if cleanup.kind() == io::ErrorKind::NotFound => Err(error),
+            Err(cleanup) => Err(io::Error::new(
+                error.kind(),
+                format!("{error}; also could not remove incomplete backup: {cleanup}"),
+            )),
+        };
+    }
+    Ok(())
 }
 
 fn migrate_with(
