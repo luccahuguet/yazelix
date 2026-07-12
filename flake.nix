@@ -65,6 +65,20 @@
     starshipYazi,
   }: let
     novaVersion = "dev";
+    compactNovaVersion = version:
+      if version == "dev"
+      then "NOVA DEV"
+      else let
+        parsed = builtins.match "([0-9]+)\\.([0-9]+)\\.[0-9]+(-beta\\.[0-9]+)?" version;
+      in
+        if parsed == null
+        then throw "unsupported Nova version: ${version}"
+        else "NOVA ${builtins.elemAt parsed 0}${if builtins.elemAt parsed 2 == null then ".${builtins.elemAt parsed 1}" else "β"}";
+    novaBarLabel =
+      assert compactNovaVersion "dev" == "NOVA DEV";
+      assert compactNovaVersion "1.0.0-beta.1" == "NOVA 1β";
+      assert compactNovaVersion "1.0.0" == "NOVA 1.0";
+      compactNovaVersion novaVersion;
     supportedSystems = ["x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin"];
     eachSystem = nixpkgs.lib.genAttrs supportedSystems;
     homeManagerModule = import ./home-manager/module.nix {
@@ -372,7 +386,7 @@
         text = ''
           ${yazelixZellijBarPackage}/${yazelixZellijBarPackage.widgetPath} render-yazelix-runtime --json "$1" \
             | jq -er '.plugin_block' \
-            | ${pkgs.gnused}/bin/sed 's/YZX {command_version}/YZN/g'
+            | ${pkgs.gnused}/bin/sed 's/YZX {command_version}/${novaBarLabel}/g'
         '';
       };
       yznBarKdl = pkgs.runCommand "yzn-zellij-bar.kdl" {} ''
@@ -388,7 +402,7 @@
       };
       yznLayoutCheck = rustBin "yzn-layout-check" ./checks/zellij-layout.rs;
       yznZellijLayout = pkgs.runCommand "yzn-zellij-layout" {} ''
-        ${yznLayoutCheck}/bin/yzn-layout-check ${yznLayoutKdl} ${yznLayoutSwapKdl}
+        ${yznLayoutCheck}/bin/yzn-layout-check ${yznLayoutKdl} ${yznLayoutSwapKdl} ${pkgs.lib.escapeShellArg novaBarLabel}
         install -D -m 644 ${yznLayoutKdl} "$out/layout.kdl"
         install -D -m 644 ${yznLayoutSwapKdl} "$out/layout.swap.kdl"
       '';

@@ -52,6 +52,10 @@ Status JSON contains numeric `schema_version = 1`, plus `name`, `version`,
 `agent_command`, and `inside_zellij`. The sponsor URL remains in `yzn help`
 without a public `sponsor` command.
 
+The top-right Zellij corner shows the compact release line derived from the
+same version: `NOVA DEV` in development, `NOVA 1β` during the v1 beta line,
+and `NOVA 1.0` for the stable release.
+
 Screen styles are `static`, `logo`, `boids`, `boids_predator`,
 `boids_schools`, `mandelbrot`, `game_of_life_gliders`,
 `game_of_life_oscillators`, `game_of_life_bloom`, and `random`.
@@ -364,13 +368,13 @@ git ls-files | grep -Ev '^\.beads/|\.lock$' | xargs wc -l
 | Language | Lines |
 | --- | ---: |
 | Ignore (`.gitignore`) | 4 |
-| Markdown | 1384 |
-| Nix | 1000 |
+| Markdown | 1391 |
+| Nix | 1014 |
 | Shell | 84 |
 | YAML | 268 |
 | TOML | 249 |
 | KDL | 210 |
 | Nu | 11 |
 | Lua | 247 |
-| Rust | 12232 |
-| Total | 15689 |
+| Rust | 12234 |
+| Total | 15712 |

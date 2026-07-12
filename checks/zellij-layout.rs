@@ -4,8 +4,8 @@ const HOME_TAB_MARKER: &str = "\u{f015}";
 
 fn main() -> ExitCode {
     let args = env::args().collect::<Vec<_>>();
-    let [_, layout_path, swap_path] = args.as_slice() else {
-        eprintln!("usage: zellij-layout <layout.kdl> <layout.swap.kdl>");
+    let [_, layout_path, swap_path, nova_label] = args.as_slice() else {
+        eprintln!("usage: zellij-layout <layout.kdl> <layout.swap.kdl> <nova-label>");
         return ExitCode::FAILURE;
     };
 
@@ -57,7 +57,7 @@ fn main() -> ExitCode {
         eprintln!("{layout_path}: new tabs must open in home to match the home marker");
         ok = false;
     }
-    if !bar_layout_is_valid(&layout) {
+    if !bar_layout_is_valid(&layout, nova_label) {
         eprintln!(
             "{layout_path}: top bars must use the rendered yzn Yazelix bar widgets and bottom bars must keep native status-bar"
         );
@@ -147,16 +147,19 @@ fn layout_order_is_valid(layout: &str) -> bool {
     matches!((default, tab, new), (Some(default), Some(tab), Some(new)) if default < tab && tab < new)
 }
 
-fn bar_layout_is_valid(layout: &str) -> bool {
+fn bar_layout_is_valid(layout: &str, nova_label: &str) -> bool {
     let bars = layout
         .matches("share/yazelix_zellij_bar/zjstatus.wasm")
         .count();
     let native_status_bars = layout.matches(r#"plugin location="status-bar""#).count();
     let tab_only_bars = layout.matches(r#"format_left   "{tabs}""#).count();
+    let version_widget = format!(r#"{nova_label} " // {{datetime}}"#);
     bars == 3
         && native_status_bars == 3
         && tab_only_bars == 3
+        && layout.matches(&version_widget).count() == bars
         && rendered_bar_widgets_are_valid(layout)
+        && !layout.contains(r#"YZN " // {datetime}"#)
         && !layout.contains("{mode}")
         && !layout.contains("mode_normal")
         && !layout.contains(r#"plugin location="tab-bar""#)
@@ -170,7 +173,6 @@ fn rendered_bar_widgets_are_valid(layout: &str) -> bool {
         "{command_codex_usage}",
         "{command_cpu}",
         "{command_ram}",
-        r#"YZN " // {datetime}"#,
         r#"command_term_command ""#,
         r#"command_codex_usage_command ""#,
         r#"command_cpu_command ""#,
