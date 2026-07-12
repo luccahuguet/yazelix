@@ -530,7 +530,7 @@ Check installed tool versions: `yzx status --versions`
 Run diagnostics: `yzx doctor` - Automated health checks and fixes
 
 ### Customization
-If you followed step 5, add only the main options you want to keep explicit in `~/.config/yazelix/config.toml`; leave it absent to inherit every packaged default. Open a new Yazelix window or restart after changing it. Cursor presets live in `~/.config/yazelix_cursors/settings.jsonc`.
+If you followed step 5, add only the main options you want to keep explicit in `~/.config/yazelix/config.toml`; leave it absent to inherit every packaged default. Open a new Yazelix window or restart after changing it. Cursor presets live in `~/.config/yazelix/cursors.toml`.
 
 For complete customization options, see the [Customization Guide](./customization.md).
 

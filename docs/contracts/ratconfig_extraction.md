@@ -6,7 +6,7 @@
 
 The child repo owns the project-agnostic config UI core: model, navigation, edit state, rendering, JSONC patch primitives, TOML text adapters, and deterministic contract/migration primitives. Yazelix remains the first consumer and keeps only the adapter code that knows about Yazelix settings, Home Manager ownership, runtime refreshes, and generated config behavior.
 
-TOML is Yazelix's main-settings persistence format through `config.toml`. Ratconfig's JSONC primitives remain available for the standalone cursor document and the bounded Classic migration from retired `settings.jsonc`.
+TOML is Yazelix's persistence format for `config.toml` and the separate `cursors.toml` registry. Ratconfig's JSONC primitives remain available only for bounded Classic migration from retired `settings.jsonc` inputs.
 
 ## Extraction State
 
@@ -100,7 +100,7 @@ TOML support belongs in `ratconfig` when it stays generic:
 - The child crate may use `toml` and `toml_edit` so TOML parsing and comment-preserving text edits are not recreated by hand.
 - TOML and JSONC must share the same contract semantics for rename, delete, add-default, transform, joined-state reads/writes, manual blockers, and contract-id checks.
 - TOML-specific limits are adapter errors, not alternate migration behavior. Examples include rejecting JSON `null` because TOML has no null value and refusing to patch through a parent path that is not a TOML table.
-- The main Yazelix repo consumes the child TOML API for `config.toml` and keeps JSONC only where a live cursor or bounded migration consumer requires it.
+- The main Yazelix repo uses Ratconfig's TOML adapter for `config.toml` and `cursors.toml`; JSONC remains only at bounded migration boundaries.
 
 ## Migration Contract
 

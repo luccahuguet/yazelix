@@ -87,6 +87,10 @@ let
       throw "Unsupported yazelix_cursors package contract schema"
     else if cursorPackageContract.packageName != "yazelix-cursors" then
       throw "Unexpected yazelix_cursors package contract packageName"
+    else if !(builtins.hasAttr "defaultConfig" cursorPackageContract) then
+      throw "yazelix_cursors package contract does not declare defaultConfig"
+    else if cursorPackageContract.defaultConfig != "share/yazelix/yazelix_cursors/cursors.toml" then
+      throw "Unexpected yazelix_cursors defaultConfig package contract"
     else if cursorPackageContract.shaderRoot != "share/yazelix/yazelix_cursors/shaders" then
       throw "Unexpected yazelix_cursors shaderRoot package contract"
     else if !(builtins.elem "mars" cursorPackageContract.requiredTargets) then
@@ -138,7 +142,7 @@ let
       }
     ]
     ++ pkgs.lib.optional cursorsEnabled {
-      source = "${src}/yazelix_cursors_default.toml";
+      source = "${yazelixCursorsPackage}/${cursorPackageContract.defaultConfig}";
       target = "yazelix_cursors_default.toml";
     };
   renderRuntimeInputLink =

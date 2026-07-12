@@ -42,7 +42,7 @@ fn write_runtime_layout(runtime: &Path) {
     .expect("mars config");
     fs::write(
         runtime.join(DEFAULT_CURSOR_CONFIG_FILENAME),
-        include_str!("../../../../yazelix_cursors_default.toml"),
+        yazelix_cursors::DEFAULT_CURSOR_CONFIG_TEMPLATE,
     )
     .expect("cursor defaults");
     fs::write(
@@ -91,7 +91,7 @@ impl Fixture {
     }
 
     fn cursor_path(&self) -> PathBuf {
-        crate::user_config_paths::shared_cursor_config(self.config.path())
+        crate::user_config_paths::cursor_config(self.config.path())
     }
 
     fn mars_path(&self) -> PathBuf {
@@ -154,9 +154,19 @@ fn model_exposes_generic_mars_document_and_file_action() {
     assert_eq!(opacity.state, ConfigUiValueState::Defaulted);
     assert_eq!(opacity.current_value, "0.78");
     assert!(model.tab_list_tables.contains_key(MARS_TAB));
-    assert_eq!(model.file_actions.len(), 1);
-    assert_eq!(model.file_actions[0].path, fixture.mars_path());
-    assert!(!model.file_actions[0].exists);
+    let mars_action = model
+        .file_actions
+        .iter()
+        .find(|action| action.action_id == MARS_CONFIG_ACTION_ID)
+        .expect("Mars file action");
+    assert_eq!(mars_action.path, fixture.mars_path());
+    assert!(!mars_action.exists);
+    let cursor_action = model
+        .file_actions
+        .iter()
+        .find(|action| action.action_id == CURSORS_CONFIG_ACTION_ID)
+        .expect("cursor file action");
+    assert_eq!(cursor_action.path, fixture.cursor_path());
 }
 
 // Defends: a sparse user Mars file keeps omitted packaged rows visible as inherited defaults.
@@ -354,14 +364,14 @@ fn model_exposes_source_metadata_and_field_source_ids() {
         .find(|source| source.tab == "cursors")
         .expect("cursor source");
     assert_eq!(cursors.id, CURSORS_SOURCE_ID);
-    assert_eq!(cursors.label, "yazelix_cursors/settings.jsonc");
+    assert_eq!(cursors.label, "cursors.toml");
     assert_eq!(cursors.path, fixture.cursor_path());
     assert!(!model.sources.iter().any(|source| source.tab == "advanced"));
     assert!(
         model
             .sidecars
             .iter()
-            .all(|sidecar| sidecar.name != "yazelix_cursors/settings.jsonc")
+            .all(|sidecar| sidecar.name != "cursors.toml")
     );
 
     assert_eq!(
@@ -1078,7 +1088,7 @@ fn write_field_value_patches_config_toml_and_reloads_model() {
         )
         .expect("write");
 
-    assert_eq!(outcome.mutation, SettingsJsoncPatchMutation::Replaced);
+    assert_eq!(outcome.mutation, PatchMutation::Replaced);
     let raw = fs::read_to_string(&settings_path).expect("settings raw");
     assert!(raw.contains("# keep this comment"));
     let value = read_config_value(&settings_path).expect("settings jsonc");
@@ -1138,7 +1148,7 @@ fn root_config_ui_removes_preexisting_empty_root() {
         .unset_source_field_value(SETTINGS_SOURCE_ID, "editor.hide_sidebar_on_file_open")
         .expect("unset inherited value");
 
-    assert_eq!(outcome.mutation, SettingsJsoncPatchMutation::Unchanged);
+    assert_eq!(outcome.mutation, PatchMutation::Unchanged);
     assert!(!settings_path.exists());
 }
 
@@ -1146,7 +1156,7 @@ fn root_config_ui_removes_preexisting_empty_root() {
 #[test]
 fn write_notice_keeps_saved_setting_visible_when_apply_fails() {
     let outcome = ConfigUiWriteOutcome {
-        mutation: SettingsJsoncPatchMutation::Replaced,
+        mutation: PatchMutation::Replaced,
         apply_notice: Some(
             "Apply pending: Saved yazi.theme, but generated config refresh failed.".to_string(),
         ),

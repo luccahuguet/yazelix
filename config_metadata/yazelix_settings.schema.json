@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://yazelix.com/schemas/yazelix_settings.schema.json",
   "title": "Yazelix Settings",
-  "description": "Canonical Yazelix config UI inventory. Main runtime semantics use ~/.config/yazelix/config.toml and config_metadata/main_config_contract.toml; cursor settings use ~/.config/yazelix_cursors/settings.jsonc and are composed into the config UI under cursors.",
+  "description": "Canonical Yazelix config UI inventory. Main runtime semantics use ~/.config/yazelix/config.toml and config_metadata/main_config_contract.toml; cursor settings use ~/.config/yazelix/cursors.toml and are composed into the config UI under cursors.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -17,10 +17,10 @@
   ],
   "x-yazelix": {
     "canonical_file": "config.toml",
-    "cursor_file": "~/.config/yazelix_cursors/settings.jsonc",
+    "cursor_file": "~/.config/yazelix/cursors.toml",
     "main_contract": "config_metadata/main_config_contract.toml",
     "config_ui_metadata": "config_metadata/config_ui_metadata.toml",
-    "cursor_default_template": "yazelix_cursors_default.toml",
+    "cursor_default_template": "child package share/yazelix/yazelix_cursors/cursors.toml",
     "tabs": [
       "general",
       "workspace",

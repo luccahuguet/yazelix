@@ -109,7 +109,7 @@ impl YazelixConfigUiHost<'_> {
                 source_id, path, ..
             } => match self.unset_field_value(ui, &source_id, &path) {
                 Ok(outcome) => {
-                    if outcome.mutation == SettingsJsoncPatchMutation::Unchanged {
+                    if outcome.mutation == PatchMutation::Unchanged {
                         ui.notice_info(format!("{path} was already unset."));
                     } else {
                         ui.notice_info(write_notice_text("Unset", &path, &outcome));
@@ -123,7 +123,7 @@ impl YazelixConfigUiHost<'_> {
     fn set_field_value(&self, ui: &mut ConfigUiApp, source_id: &str, path: &str, value: JsonValue) {
         match self.write_source_field_value(ui, source_id, path, &value) {
             Ok(outcome) => {
-                if outcome.mutation == SettingsJsoncPatchMutation::Unchanged {
+                if outcome.mutation == PatchMutation::Unchanged {
                     ui.notice_info(format!("{path} was already set."));
                 } else {
                     ui.notice_info(write_notice_text("Saved", path, &outcome));
@@ -148,19 +148,8 @@ impl YazelixConfigUiHost<'_> {
         }
         let target = self.editable_config_target(ui, source_id, setting_path)?;
         let raw = self.read_edit_target_or_default(ui, &target)?;
-        let outcome = match target.kind {
-            ConfigUiEditTargetKind::Main | ConfigUiEditTargetKind::Mars => {
-                let outcome = set_toml_value_text(&raw, &target.path_in_file, value)
-                    .map_err(|error| config_toml_patch_error(&target.path, error))?;
-                SettingsJsoncPatchOutcome {
-                    text: outcome.text,
-                    mutation: outcome.mutation,
-                }
-            }
-            ConfigUiEditTargetKind::Cursors => {
-                set_settings_jsonc_value_text(&target.path, &raw, &target.path_in_file, value)?
-            }
-        };
+        let outcome = set_toml_value_text(&raw, &target.path_in_file, value)
+            .map_err(|error| config_toml_patch_error(&target.path, error))?;
         self.finish_field_write(ui, source_id, setting_path, &target, outcome)
     }
 
@@ -178,19 +167,8 @@ impl YazelixConfigUiHost<'_> {
         }
         let target = self.editable_config_target(ui, source_id, setting_path)?;
         let raw = self.read_edit_target_or_default(ui, &target)?;
-        let outcome = match target.kind {
-            ConfigUiEditTargetKind::Main | ConfigUiEditTargetKind::Mars => {
-                let outcome = unset_toml_value_text(&raw, &target.path_in_file)
-                    .map_err(|error| config_toml_patch_error(&target.path, error))?;
-                SettingsJsoncPatchOutcome {
-                    text: outcome.text,
-                    mutation: outcome.mutation,
-                }
-            }
-            ConfigUiEditTargetKind::Cursors => {
-                unset_settings_jsonc_value_text(&target.path, &raw, &target.path_in_file)?
-            }
-        };
+        let outcome = unset_toml_value_text(&raw, &target.path_in_file)
+            .map_err(|error| config_toml_patch_error(&target.path, error))?;
         self.finish_field_write(ui, source_id, setting_path, &target, outcome)
     }
 
@@ -211,10 +189,6 @@ impl YazelixConfigUiHost<'_> {
         };
         let outcome = set_toml_value_text(&raw, CUSTOM_POPUPS_FIELD_PATH, &next_value)
             .map_err(|error| config_toml_patch_error(&target.path, error))?;
-        let outcome = SettingsJsoncPatchOutcome {
-            text: outcome.text,
-            mutation: outcome.mutation,
-        };
         self.finish_field_write(ui, source_id, setting_path, &target, outcome)
     }
 
@@ -224,7 +198,7 @@ impl YazelixConfigUiHost<'_> {
         source_id: &str,
         setting_path: &str,
         target: &ConfigUiEditTarget,
-        outcome: SettingsJsoncPatchOutcome,
+        outcome: TomlPatchOutcome,
     ) -> Result<ConfigUiWriteOutcome, CoreError> {
         let should_write = outcome.changed();
         let mutation = outcome.mutation;
@@ -382,9 +356,8 @@ impl YazelixConfigUiHost<'_> {
                             source,
                         )
                     })?;
-                let registry =
-                    CursorRegistry::parse_str(&ui.model.default_cursor_config_path, &raw)?;
-                Ok(render_cursor_settings_jsonc(&registry))
+                CursorRegistry::parse_str(&ui.model.default_cursor_config_path, &raw)?;
+                Ok(raw)
             }
             ConfigUiEditTargetKind::Mars => Ok(String::new()),
         }
@@ -398,8 +371,7 @@ impl YazelixConfigUiHost<'_> {
         match target.kind {
             ConfigUiEditTargetKind::Main => validate_patched_settings_for_ui(self.request, text),
             ConfigUiEditTargetKind::Cursors => {
-                let value = parse_config_value(&target.path, text)?;
-                CursorRegistry::parse_json_value(&target.path, value)?;
+                CursorRegistry::parse_str(&target.path, text)?;
                 Ok(())
             }
             ConfigUiEditTargetKind::Mars => toml::from_str::<toml::Table>(text)
@@ -468,42 +440,58 @@ impl YazelixConfigUiHost<'_> {
         action_id: &str,
         path: &Path,
     ) -> Result<(), CoreError> {
-        let expected = user_config_paths::mars_config(&self.request.config_dir);
-        if source_id != MARS_SOURCE_ID || action_id != MARS_CONFIG_ACTION_ID || path != expected {
+        let mars_path = user_config_paths::mars_config(&self.request.config_dir);
+        let cursor_path = user_config_paths::cursor_config(&self.request.config_dir);
+        let tab = if source_id == MARS_SOURCE_ID
+            && action_id == MARS_CONFIG_ACTION_ID
+            && path == mars_path
+        {
+            prepare_mars_config_file(self.request)?;
+            MARS_TAB
+        } else if source_id == CURSORS_SOURCE_ID
+            && action_id == CURSORS_CONFIG_ACTION_ID
+            && path == cursor_path
+        {
+            yazelix_cursors::initialize_cursor_config(path)?;
+            "cursors"
+        } else {
             return Err(CoreError::usage(format!(
                 "Unsupported config file action {source_id}/{action_id} for {}.",
                 path.display()
             )));
-        }
-        prepare_mars_config_file(self.request)?;
+        };
 
         suspend_config_ui_terminal(|| {
             crate::edit_commands::run_editor_child(&self.request.runtime_dir, path)
         })?;
         let raw = fs::read_to_string(path).map_err(|source| {
             CoreError::io(
-                "read_edited_mars_config",
-                "Could not read the edited Mars config",
+                "read_edited_native_config",
+                "Could not read the edited config",
                 "Fix permissions for the file, then retry.",
                 path.display().to_string(),
                 source,
             )
         })?;
-        toml::from_str::<toml::Table>(&raw).map_err(|source| {
-            CoreError::classified(
-                ErrorClass::Config,
-                "invalid_mars_config",
-                format!("Could not parse {}: {source}.", path.display()),
-                "Fix the TOML syntax before opening a new Mars window.",
-                json!({ "path": path.display().to_string() }),
-            )
-        })?;
+        if source_id == CURSORS_SOURCE_ID {
+            CursorRegistry::parse_str(path, &raw)?;
+        } else {
+            toml::from_str::<toml::Table>(&raw).map_err(|source| {
+                CoreError::classified(
+                    ErrorClass::Config,
+                    "invalid_mars_config",
+                    format!("Could not parse {}: {source}.", path.display()),
+                    "Fix the TOML syntax before opening a new Mars window.",
+                    json!({ "path": path.display().to_string() }),
+                )
+            })?;
+        }
         ui.model = build_config_ui_model(self.request)?;
         ui.selected_tab = ui
             .model
             .tabs
             .iter()
-            .position(|tab| tab == MARS_TAB)
+            .position(|candidate| candidate == tab)
             .unwrap_or(0);
         ui.selected_row = 0;
         Ok(())

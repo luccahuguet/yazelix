@@ -20,10 +20,6 @@ use crate::native_config_status::{
 };
 use crate::runtime_apply_mode::RuntimeApplyMode;
 use crate::runtime_component_enabled;
-use crate::settings_jsonc_patch::{
-    SettingsJsoncPatchMutation, SettingsJsoncPatchOutcome, set_settings_jsonc_value_text,
-    unset_settings_jsonc_value_text,
-};
 use crate::settings_surface::{SETTINGS_SCHEMA_FILENAME, render_default_config};
 use crate::settings_surface::{
     is_settings_config_path, parse_config_value, read_config_value,
@@ -40,7 +36,7 @@ use std::io::{self, IsTerminal};
 use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
-use yazelix_cursors::{CursorRegistry, render_cursor_settings_jsonc};
+use yazelix_cursors::CursorRegistry;
 
 pub use app::run_config_ui;
 #[cfg(test)]
@@ -55,6 +51,8 @@ use model_builder::{
     classify_path_owner, default_main_setting_value_for_ui, path_is_read_only, path_present,
     read_settings_for_edit, validate_patched_settings_for_ui, write_settings_edit,
 };
+use ratconfig::patch::PatchMutation;
+use ratconfig::toml_adapter::TomlPatchOutcome;
 pub use ratconfig::{
     ConfigUiApp, ConfigUiApplyStatus, ConfigUiContractField, ConfigUiDiagnostic,
     ConfigUiEditBehavior, ConfigUiEditMode, ConfigUiField, ConfigUiFieldMetadata,
@@ -93,6 +91,7 @@ const CONFIG_UI_METADATA_FILENAME: &str = "config_ui_metadata.toml";
 const SETTINGS_SOURCE_ID: &str = DEFAULT_CONFIG_SOURCE_ID;
 const CURSORS_SOURCE_ID: &str = "cursors";
 const CURSORS_FIELD_PREFIX: &str = "cursors.";
+const CURSORS_CONFIG_ACTION_ID: &str = "cursors.config";
 const MARS_SOURCE_ID: &str = "mars";
 const MARS_TAB: &str = "terminal";
 const MARS_CONFIG_ACTION_ID: &str = "mars.config";
@@ -112,7 +111,7 @@ pub(crate) struct YazelixConfigUiApp {
 
 #[derive(Debug)]
 struct ConfigUiWriteOutcome {
-    mutation: SettingsJsoncPatchMutation,
+    mutation: PatchMutation,
     apply_notice: Option<String>,
 }
 

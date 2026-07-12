@@ -24,10 +24,16 @@ let
     "host"
     "off"
   ];
+  cursorConfigTomlValue =
+    if yazelixCursorsPackage == null then
+      { }
+    else
+      builtins.fromTOML (
+        builtins.readFile "${yazelixCursorsPackage}/${yazelixCursorsPackage.yazelixCursorPackageContract.defaultConfig}"
+      );
   settingsContract = import ./settings_contract.nix { inherit cfg lib; };
   inherit (settingsContract)
     configTomlValue
-    cursorSettingsJsonc
     mkMainContractOption
     ;
   nativeConfig =
@@ -81,7 +87,8 @@ in
         tomlFormat.generate "yazelix-config.toml" configTomlValue;
     })
     (mkIf cfg.manage_cursor_config {
-      xdg.configFile."yazelix_cursors/settings.jsonc".text = cursorSettingsJsonc;
+      xdg.configFile."yazelix/cursors.toml".source =
+        tomlFormat.generate "yazelix-cursors.toml" cursorConfigTomlValue;
     })
     (nativeConfig "mars" "yazelix/mars/config.toml" cfg.config.mars)
     (nativeConfig "zellij" "yazelix/zellij/config.kdl" cfg.config.zellij)

@@ -93,7 +93,7 @@ Yazelix keeps install-artifact diagnostics only where they defend a current inst
 3. Package/store runtimes do not claim they own a mutable installed runtime.
 4. Runtime-root-only doctor output does not warn about missing installer-owned runtime artifacts.
 5. The tier contract is explicit enough that later simplification work can delete installer ownership cleanly.
-6. Home Manager prepare reports only current install-owner artifacts, not unsupported old config inputs such as `yazelix.toml` or `cursors.toml`.
+6. Home Manager prepare reports only current install-owner artifacts, not unsupported old config inputs such as `yazelix.toml` or `user_configs/`.
 
 ## Verification
 

@@ -38,9 +38,9 @@ pub fn write_runtime_contract_assets(repo: &Path, runtime_dir: &Path) {
         runtime_dir.join("config_default.toml"),
     )
     .unwrap();
-    fs::copy(
-        repo.join("yazelix_cursors_default.toml"),
+    fs::write(
         runtime_dir.join("yazelix_cursors_default.toml"),
+        yazelix_cursors::DEFAULT_CURSOR_CONFIG_TEMPLATE,
     )
     .unwrap();
     fs::copy(

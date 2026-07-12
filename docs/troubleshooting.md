@@ -85,7 +85,7 @@ If you have an older Yazelix setup:
 **Migration steps:**
 1. It's recommended that you go through the [Installation Guide](installation.md) and install the packaged `yazelix` runtime cleanly
 2. Leave `config.toml` absent to inherit all packaged defaults, or create it with only the values you want to override
-3. Move any old mutable `yazelix.toml`, `cursors.toml`, or `user_configs/` files aside; Yazelix no longer rewrites legacy config surfaces automatically
+3. Move any old mutable `yazelix.toml` or `user_configs/` files aside; `cursors.toml` is the current cursor config and other legacy config surfaces are not rewritten automatically
 4. Copy any custom settings from your old `yazelix.nix` to the new `config.toml` format
 
 ## First Run: Zellij Plugin Permissions (is the top bar looking funny/weird/broken?)

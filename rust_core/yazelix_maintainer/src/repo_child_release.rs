@@ -60,6 +60,7 @@ const CURSOR_PACKAGE_METADATA_FIELDS: &[&str] = &[
     "schemaVersion",
     "packageName",
     "shareRoot",
+    "defaultConfig",
     "shaderRoot",
     "generatedEffectRoot",
     "requiredTargets",
@@ -346,6 +347,13 @@ fn validate_cursor_package_contract_with(
         metadata,
         "shareRoot",
         "share/yazelix/yazelix_cursors",
+    );
+    require_contract_string(
+        &mut errors,
+        &context,
+        metadata,
+        "defaultConfig",
+        "share/yazelix/yazelix_cursors/cursors.toml",
     );
     require_contract_string(
         &mut errors,
@@ -820,6 +828,7 @@ mod tests {
             "schemaVersion": 1,
             "packageName": "yazelix-cursors",
             "shareRoot": "share/yazelix/yazelix_cursors",
+            "defaultConfig": "share/yazelix/yazelix_cursors/cursors.toml",
             "shaderRoot": "share/yazelix/yazelix_cursors/shaders",
             "generatedEffectRoot": "share/yazelix/yazelix_cursors/shaders/generated_effects",
             "requiredTargets": CURSOR_PACKAGE_REQUIRED_TARGETS,

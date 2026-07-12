@@ -46,7 +46,7 @@ fn write_runtime_layout(runtime: &Path) {
     .expect("Mars config");
     fs::write(
         runtime.join(DEFAULT_CURSOR_CONFIG_FILENAME),
-        include_str!("../../../yazelix_cursors_default.toml"),
+        yazelix_cursors::DEFAULT_CURSOR_CONFIG_TEMPLATE,
     )
     .expect("cursor defaults");
     fs::write(

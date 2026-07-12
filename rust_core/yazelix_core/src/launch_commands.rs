@@ -25,6 +25,7 @@ pub(super) const RUNTIME_RELAUNCH_CLEARED_ENV_KEYS: &[&str] = &[
     "RIO_CONFIG_HOME",
     "YAZELIX_BOOTSTRAP_RUNTIME_DIR",
     "YAZELIX_CURSOR_COLOR",
+    "YAZELIX_CURSOR_CONFIG",
     "YAZELIX_CURSOR_DIVIDER",
     "YAZELIX_CURSOR_FAMILY",
     "YAZELIX_CURSOR_NAME",
@@ -291,7 +292,7 @@ mod tests {
         .expect("main defaults");
         fs::write(
             runtime.join(crate::ghostty_cursor_registry::DEFAULT_CURSOR_CONFIG_FILENAME),
-            include_str!("../../../yazelix_cursors_default.toml"),
+            yazelix_cursors::DEFAULT_CURSOR_CONFIG_TEMPLATE,
         )
         .expect("cursor defaults");
         fs::write(
@@ -628,6 +629,7 @@ mod tests {
             "RIO_CONFIG_HOME",
             "YAZELIX_BOOTSTRAP_RUNTIME_DIR",
             "YAZELIX_CURSOR_COLOR",
+            "YAZELIX_CURSOR_CONFIG",
             "YAZELIX_CURSOR_DIVIDER",
             "YAZELIX_CURSOR_FAMILY",
             "YAZELIX_CURSOR_NAME",

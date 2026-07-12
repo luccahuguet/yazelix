@@ -765,7 +765,7 @@ exit 99
         String::from_utf8_lossy(&output.stderr)
     );
 
-    let cursor_dir = fixture.home_dir.join(".config/yazelix_cursors");
+    let cursor_dir = fixture.home_dir.join(".config/yazelix");
     let include_path = cursor_dir.join("ghostty.conf");
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(

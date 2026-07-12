@@ -345,7 +345,7 @@ The prepare command archives the common file-based takeover blockers and handoff
 - `~/.local/share/applications/yazelix.desktop`
 - `~/.local/share/icons/hicolor/*/apps/yazelix.png`
 
-Old mutable `yazelix.toml`, `cursors.toml`, and `user_configs/` files are stale config inputs, not Home Manager takeover artifacts. If Yazelix reports them, move them aside manually or run `yzx reset config --yes`
+Old mutable `yazelix.toml` and `user_configs/` files are stale config inputs, not Home Manager takeover artifacts. If Yazelix reports them, move them aside manually or run `yzx reset config --yes`
 
 4. **Apply the Home Manager configuration:**
    ```bash
@@ -436,4 +436,4 @@ This module follows Yazelix's configuration structure defined by `config_metadat
 3. Test with both new and existing Yazelix installations
 4. Ensure type safety and proper defaults
 
-Cursor presets and effects live in `~/.config/yazelix_cursors/settings.jsonc`. Set `programs.yazelix.manage_cursor_config = true` only when you want Home Manager to own that cursor registry.
+Cursor presets and effects live in `~/.config/yazelix/cursors.toml`. Set `programs.yazelix.manage_cursor_config = true` only when you want Home Manager to own that cursor registry

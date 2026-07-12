@@ -98,7 +98,7 @@
       forAllSystems = nixpkgs.lib.genAttrs systems;
       mkPkgs = system: nixpkgs.legacyPackages.${system};
       cargoGitOutputHashes = import ./packaging/cargo_git_output_hashes.nix {
-        inherit yazelixYaziAssets;
+        inherit yazelixCursors yazelixYaziAssets;
       };
       releaseMetadata = builtins.fromTOML (builtins.readFile ./release_metadata.toml);
       inputIdentity = input: {
@@ -152,6 +152,7 @@
               home.homeDirectory = homeDirectory;
               home.stateVersion = "24.11";
               programs.yazelix.enable = true;
+              programs.yazelix.manage_cursor_config = true;
             }
           ];
         }).activationPackage;
@@ -349,7 +350,7 @@
 
       checks = forAllSystems (system: {
         cargo_git_output_hash_contracts = import ./packaging/cargo_git_output_hash_contracts.nix {
-          inherit yazelixYaziAssets;
+          inherit yazelixCursors yazelixYaziAssets;
           pkgs = mkPkgs system;
         };
         home_manager_default = homeManagerDefaultActivationPackage system;

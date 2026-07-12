@@ -59,7 +59,7 @@ Fresh follow-ups:
 1. `yazelix-audit-deletion-extraction-second-pass-4z0ef.1`: resolved by replacing broad runtime `assets/*` linking with an `assets/icons` allowlist, keeping desktop icon assets live while leaving the README logo and screenshot as repo/docs-only media
 2. `yazelix-audit-deletion-extraction-second-pass-4z0ef.2`: resolved by deleting ignored per-field UI metadata keys from `config_ui_metadata.toml`; `main_config_contract.toml` remains the semantic owner for parser/default/apply behavior while the UI metadata file owns only live tab placement and help text
 3. `yazelix-audit-deletion-extraction-second-pass-4z0ef.3`: resolved by moving reusable default Steel plugin assets into `yazelix-helix` as a package-contract artifact while main Yazelix keeps settings policy, generated Steel entrypoints, startup policy, command visibility, and generated-state placement
-4. `yazelix-audit-deletion-extraction-second-pass-4z0ef.4`: resolved by deleting unsupported old config inputs from Home Manager prepare; install-owner diagnostics now cover current profile/Home Manager/desktop/wrapper collisions while stale `yazelix.toml`, `cursors.toml`, and `user_configs/` remain config-diagnostic/manual-cleanup state
+4. `yazelix-audit-deletion-extraction-second-pass-4z0ef.4`: resolved by deleting unsupported old config inputs from Home Manager prepare; install-owner diagnostics now cover current profile/Home Manager/desktop/wrapper collisions while stale `yazelix.toml` and `user_configs/` remain config-diagnostic/manual-cleanup state
 
 Second-pass non-candidates:
 

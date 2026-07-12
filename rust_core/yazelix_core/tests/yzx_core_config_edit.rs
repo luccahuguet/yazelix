@@ -4,7 +4,7 @@ use serde_json::json;
 use std::fs;
 use tempfile::tempdir;
 use yazelix_core::settings_surface::read_config_value;
-use yazelix_core::user_config_paths::shared_cursor_config;
+use yazelix_core::user_config_paths::cursor_config;
 
 mod support;
 
@@ -52,7 +52,7 @@ fn config_set_and_unset_edit_config_toml() {
     set_cursor.args(["config", "set", "cursors.settings.trail", "\"magma\""]);
     set_cursor.assert().success();
 
-    let cursor_settings_path = shared_cursor_config(&config);
+    let cursor_settings_path = cursor_config(&config);
     let cursor_value =
         read_config_value(&cursor_settings_path).expect("cursor settings after cursor set");
     assert_eq!(cursor_value["settings"]["trail"], json!("magma"));

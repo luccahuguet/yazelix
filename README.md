@@ -104,7 +104,7 @@ After installation, keep this model in mind:
 - Treat generated runtime state under `~/.local/share/yazelix` as Yazelix-owned output
 - Relaunch the window, or run `yzx restart`, after changing settings that affect live panes
 
-Cursor presets use their own config at `~/.config/yazelix_cursors/settings.jsonc`. Deeper Yazi, Zellij, Helix, Mars, and shell overrides also live under `~/.config/yazelix/`, but the main settings file is the first place to look
+Cursor presets use their own config at `~/.config/yazelix/cursors.toml`. Deeper Yazi, Zellij, Helix, Mars, and shell overrides also live under `~/.config/yazelix/`, but the main settings file is the first place to look
 
 ## Workspace Model
 
@@ -266,7 +266,7 @@ Yazelix shines over SSH: the TUI stack (Zellij, Yazi, Helix) runs cleanly withou
 
 Yazelix uses a **layered configuration system** that safely merges your personal settings with Yazelix defaults:
 
-- **Core settings**: Edit `~/.config/yazelix/config.toml` for shell, editor, Zellij, and Yazi settings, edit `~/.config/yazelix_cursors/settings.jsonc` for standalone cursor settings, and run `yzx config ui` to inspect the main settings plus the native Mars TOML document
+- **Core settings**: Edit `~/.config/yazelix/config.toml` for shell, editor, Zellij, and Yazi settings, edit `~/.config/yazelix/cursors.toml` for cursor settings, and run `yzx config ui` to inspect the main, cursor, and native Mars TOML documents
 - **Mars customization**: Put only the values you want to change in `~/.config/yazelix/mars/config.toml`; Mars owns its appearance, opacity, fonts, effects, and `[yazelix.cursor]` values while unspecified package defaults keep following upgrades
 - **Yazi customization**: Use the built-in `yazi` settings in `config.toml` for things like plugins, theme, sorting, and binary overrides, and use the managed Yazi home at `~/.config/yazelix/yazi/` for `yazi.toml`, `keymap.toml`, `init.lua`, packages, plugins, and flavors (see [Yazi Configuration](./docs/yazi-configuration.md))
 - **Zellij customization**: Use the built-in `zellij` settings in `config.toml` for Yazelix-owned behavior, `~/.config/yazelix/zellij/config.kdl` for guarded native preferences, and `~/.config/yazelix/zellij/plugins.kdl` for additive third-party plugins (see [Zellij Configuration](./docs/zellij-configuration.md))
@@ -329,7 +329,7 @@ See the full catalog of tools and integrations in the Yazelix Collection:
 - **Environment setup**: Proper paths, variables, and shell configurations
 
 **Customize Your Installation:**
-If you followed [step 3 in the installation guide](./docs/installation.md#step-3-configure-your-installation-optional), add only the values you want to keep explicit in `~/.config/yazelix/config.toml`, then open a new window or restart Yazelix to apply them. Leave the file absent to inherit every packaged default. Mars customization lives in `~/.config/yazelix/mars/config.toml`; standalone cursor presets live in `~/.config/yazelix_cursors/settings.jsonc`
+If you followed [step 3 in the installation guide](./docs/installation.md#step-3-configure-your-installation-optional), add only the values you want to keep explicit in `~/.config/yazelix/config.toml`, then open a new window or restart Yazelix to apply them. Leave the file absent to inherit every packaged default. Mars customization lives in `~/.config/yazelix/mars/config.toml`; cursor presets live in `~/.config/yazelix/cursors.toml`
 
 **Terminal Emulator Selection:**
 - **Mars**: packaged Rust terminal fork with a package-owned native base plus sparse user overrides, the Yazelix Zellij Kitty graphics bridge, and an agent-driven development focus

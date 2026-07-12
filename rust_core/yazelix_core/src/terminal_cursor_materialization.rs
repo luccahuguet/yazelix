@@ -2,7 +2,7 @@ use crate::atomic_fs::copy_dir_all;
 use crate::bridge::{CoreError, ErrorClass};
 use crate::ghostty_cursor_registry::{
     CursorDefinition, CursorRegistry, DEFAULT_GHOSTTY_TRAIL_DURATION, GHOSTTY_TRAIL_DURATION_MAX,
-    GHOSTTY_TRAIL_DURATION_MIN, ResolvedCursorRegistryState, YazelixCursorRegistryExt,
+    GHOSTTY_TRAIL_DURATION_MIN, ResolvedCursorRegistryState, load_cursor_config,
     write_ghostty_cursor_effect_shaders, write_ghostty_cursor_palette_shaders,
 };
 use crate::runtime_component_enabled;
@@ -89,7 +89,7 @@ pub fn generate_terminal_cursor_materialization(
         });
     }
 
-    let registry = CursorRegistry::load(&request.cursor_config_path)?;
+    let registry = load_cursor_config(&request.cursor_config_path)?;
     let registry_state = registry.resolve_for_appearance(&request.appearance_mode);
     validate_terminal_cursor_trail_duration(registry_state.duration)?;
     let cursor_state = build_terminal_cursor_render_state(&registry_state);
@@ -124,7 +124,7 @@ fn validate_terminal_cursor_trail_duration(duration: f64) -> Result<(), CoreErro
                 "Invalid cursor settings.duration value '{}'. Expected a number from {} to {}.",
                 duration, GHOSTTY_TRAIL_DURATION_MIN, GHOSTTY_TRAIL_DURATION_MAX
             ),
-            "Update ~/.config/yazelix_cursors/settings.jsonc with a supported cursor trail duration multiplier, then retry.",
+            "Update ~/.config/yazelix/cursors.toml with a supported cursor trail duration multiplier, then retry.",
             serde_json::json!({
                 "field": "settings.duration",
                 "actual": duration.to_string(),

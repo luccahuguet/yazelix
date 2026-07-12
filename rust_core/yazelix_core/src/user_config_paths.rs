@@ -10,8 +10,8 @@ pub const SETTINGS_CONFIG: &str = "config.toml";
 pub const LEGACY_SETTINGS_CONFIG: &str = "settings.jsonc";
 pub const OLD_MAIN_CONFIG: &str = "yazelix.toml";
 pub const CURSOR_CONFIG: &str = "cursors.toml";
-pub const SHARED_CURSOR_CONFIG_DIR: &str = "yazelix_cursors";
-pub const SHARED_CURSOR_SETTINGS_CONFIG: &str = "settings.jsonc";
+pub const LEGACY_CURSOR_CONFIG_DIR: &str = "yazelix_cursors";
+pub const LEGACY_CURSOR_SETTINGS_CONFIG: &str = "settings.jsonc";
 pub const HELIX_CONFIG_DIR: &str = "helix";
 pub const HELIX_CONFIG: &str = "helix/config.toml";
 pub const MARS_CONFIG: &str = "mars/config.toml";
@@ -34,6 +34,7 @@ pub const SHELL_XONSH_HOOK: &str = "shell_xonsh.xsh";
 
 pub const CURRENT_MANAGED_CONFIG_FILE_NAMES: &[&str] = &[
     SETTINGS_CONFIG,
+    CURSOR_CONFIG,
     HELIX_CONFIG,
     MARS_CONFIG,
     ZELLIJ_CONFIG,
@@ -53,7 +54,6 @@ pub const CURRENT_MANAGED_CONFIG_FILE_NAMES: &[&str] = &[
 
 pub const LEGACY_CONFIG_ENTRY_NAMES: &[&str] = &[
     OLD_MAIN_CONFIG,
-    CURSOR_CONFIG,
     FLAT_HELIX_CONFIG,
     FLAT_ZELLIJ_CONFIG,
     "terminal_alacritty.toml",
@@ -81,7 +81,7 @@ pub fn cursor_config(config_dir: &Path) -> PathBuf {
     config_dir.join(CURSOR_CONFIG)
 }
 
-pub fn shared_cursor_config_dir(config_dir: &Path) -> PathBuf {
+pub fn legacy_shared_cursor_config_dir(config_dir: &Path) -> PathBuf {
     if config_dir
         .file_name()
         .and_then(|name| name.to_str())
@@ -89,25 +89,14 @@ pub fn shared_cursor_config_dir(config_dir: &Path) -> PathBuf {
     {
         return config_dir
             .parent()
-            .map(|parent| parent.join(SHARED_CURSOR_CONFIG_DIR))
-            .unwrap_or_else(|| PathBuf::from(SHARED_CURSOR_CONFIG_DIR));
+            .map(|parent| parent.join(LEGACY_CURSOR_CONFIG_DIR))
+            .unwrap_or_else(|| PathBuf::from(LEGACY_CURSOR_CONFIG_DIR));
     }
-    config_dir.join(SHARED_CURSOR_CONFIG_DIR)
+    config_dir.join(LEGACY_CURSOR_CONFIG_DIR)
 }
 
-pub fn shared_cursor_config(config_dir: &Path) -> PathBuf {
-    shared_cursor_config_dir(config_dir).join(SHARED_CURSOR_SETTINGS_CONFIG)
-}
-
-pub fn is_shared_cursor_config_path(path: &Path) -> bool {
-    path.file_name()
-        .and_then(|name| name.to_str())
-        .is_some_and(|name| name == SHARED_CURSOR_SETTINGS_CONFIG)
-        && path
-            .parent()
-            .and_then(|parent| parent.file_name())
-            .and_then(|name| name.to_str())
-            .is_some_and(|name| name == SHARED_CURSOR_CONFIG_DIR)
+pub fn legacy_shared_cursor_config(config_dir: &Path) -> PathBuf {
+    legacy_shared_cursor_config_dir(config_dir).join(LEGACY_CURSOR_SETTINGS_CONFIG)
 }
 
 pub fn legacy_cursor_config(config_dir: &Path) -> PathBuf {

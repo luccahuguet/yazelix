@@ -43,7 +43,7 @@ with lib;
     type = types.bool;
     default = false;
     description = ''
-      Whether Home Manager generates ~/.config/yazelix_cursors/settings.jsonc.
+      Whether Home Manager generates ~/.config/yazelix/cursors.toml.
 
       Cursor settings are independent from the main Yazelix settings file so
       the standalone yzc command and full Yazelix can share one cursor source.

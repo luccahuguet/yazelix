@@ -132,9 +132,9 @@ fn config_owners() -> Vec<SurfaceOwnerEntry> {
             validation: vec!["yzx_repo_validator validate-config-surface-contract".to_string()],
         },
         SurfaceOwnerEntry {
-            surface: "~/.config/yazelix_cursors/settings.jsonc".to_string(),
+            surface: "~/.config/yazelix/cursors.toml".to_string(),
             owner: "yazelix_cursors plus Yazelix terminal materialization".to_string(),
-            source: "yazelix_cursors_default.toml".to_string(),
+            source: "yazelix-cursors package contract".to_string(),
             validation: vec!["yzx_repo_validator validate-config-surface-contract".to_string()],
         },
         SurfaceOwnerEntry {

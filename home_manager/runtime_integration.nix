@@ -85,8 +85,8 @@ let
       [ yazelixCursorsPackage ]
     else
       [ ];
-  cursorConfigRoot = "${config.xdg.configHome}/yazelix_cursors";
-  cursorConfigPath = "${cursorConfigRoot}/config.toml";
+  cursorConfigRoot = "${config.xdg.configHome}/yazelix";
+  cursorConfigPath = "${cursorConfigRoot}/cursors.toml";
   cursorGeneratorActivation = lib.optionalString (cursorGeneratorPackage != [ ]) ''
         if [ -f ${lib.escapeShellArg cursorConfigPath} ]; then
           $DRY_RUN_CMD ${yazelixCursorsPackage}/bin/yzc --config-dir ${lib.escapeShellArg cursorConfigRoot} generate ghostty >/dev/null

@@ -224,6 +224,36 @@ pub fn build_config_ui_model(request: &ConfigUiRequest) -> Result<ConfigUiModel,
         },
     ));
 
+    let mut file_actions = Vec::with_capacity(2);
+    if cursor_component_enabled {
+        file_actions.push(ConfigUiFileAction {
+            source_id: CURSORS_SOURCE_ID.to_string(),
+            action_id: CURSORS_CONFIG_ACTION_ID.to_string(),
+            tab: "cursors".to_string(),
+            label: "cursors.toml".to_string(),
+            description: "Edit the complete Yazelix cursor registry.".to_string(),
+            path: paths.user_cursor_config.clone(),
+            exists: path_present(&paths.user_cursor_config),
+            read_only: path_owned_by_home_manager(&paths.user_cursor_config)
+                || path_is_read_only(&paths.user_cursor_config),
+            create_if_missing: true,
+            disabled_reason: None,
+        });
+    }
+    file_actions.push(ConfigUiFileAction {
+        source_id: MARS_SOURCE_ID.to_string(),
+        action_id: MARS_CONFIG_ACTION_ID.to_string(),
+        tab: MARS_TAB.to_string(),
+        label: "mars/config.toml".to_string(),
+        description: "Create or edit the sparse native Mars override.".to_string(),
+        path: mars_config_path.clone(),
+        exists: mars_config_exists,
+        read_only: mars_config_owner == ConfigUiPathOwner::HomeManager
+            || path_is_read_only(&mars_config_path),
+        create_if_missing: true,
+        disabled_reason: None,
+    });
+
     Ok(ConfigUiModel {
         active_config_path: active_config_path.clone(),
         cursor_config_path: paths.user_cursor_config.clone(),
@@ -243,19 +273,7 @@ pub fn build_config_ui_model(request: &ConfigUiRequest) -> Result<ConfigUiModel,
         tabs,
         tab_list_tables: BTreeMap::from([(MARS_TAB.to_string(), mars_rows.list_table)]),
         fields,
-        file_actions: vec![ConfigUiFileAction {
-            source_id: MARS_SOURCE_ID.to_string(),
-            action_id: MARS_CONFIG_ACTION_ID.to_string(),
-            tab: MARS_TAB.to_string(),
-            label: "mars/config.toml".to_string(),
-            description: "Create or edit the sparse native Mars override.".to_string(),
-            path: mars_config_path.clone(),
-            exists: mars_config_exists,
-            read_only: mars_config_owner == ConfigUiPathOwner::HomeManager
-                || path_is_read_only(&mars_config_path),
-            create_if_missing: true,
-            disabled_reason: None,
-        }],
+        file_actions,
         sidecars: collect_sidecars(&request.config_dir),
         native_config_statuses,
         diagnostics,
@@ -339,7 +357,7 @@ fn read_cursor_config_value(path: &Path) -> Result<JsonValue, CoreError> {
         CoreError::io(
             "read_config_ui_cursor_config",
             "Could not read the Yazelix cursor settings",
-            "Fix permissions for ~/.config/yazelix_cursors/settings.jsonc, then retry.",
+            "Fix permissions for ~/.config/yazelix/cursors.toml, then retry.",
             path.display().to_string(),
             source,
         )
@@ -357,9 +375,8 @@ fn read_default_cursor_config_value(path: &Path) -> Result<JsonValue, CoreError>
             source,
         )
     })?;
-    let registry = CursorRegistry::parse_str(path, &raw)?;
-    let rendered = render_cursor_settings_jsonc(&registry);
-    parse_config_value(path, &rendered)
+    CursorRegistry::parse_str(path, &raw)?;
+    parse_config_value(path, &raw)
 }
 
 fn ensure_root_object(path: &Path, value: &JsonValue) -> Result<(), CoreError> {
@@ -874,7 +891,7 @@ fn collect_config_sources(
                 config_source(
                     CURSORS_SOURCE_ID,
                     tab,
-                    "yazelix_cursors/settings.jsonc",
+                    "cursors.toml",
                     cursor_config_path,
                     cursor_present,
                     classify_path_owner(cursor_config_path, cursor_present),
@@ -915,7 +932,11 @@ fn config_source(
 fn collect_sidecars(config_dir: &Path) -> Vec<ConfigUiSidecar> {
     CURRENT_MANAGED_CONFIG_FILE_NAMES
         .iter()
-        .filter(|name| **name != SETTINGS_CONFIG && **name != user_config_paths::MARS_CONFIG)
+        .filter(|name| {
+            **name != SETTINGS_CONFIG
+                && **name != user_config_paths::CURSOR_CONFIG
+                && **name != user_config_paths::MARS_CONFIG
+        })
         .map(|name| {
             let path = config_dir.join(name);
             let present = fs::symlink_metadata(&path).is_ok();

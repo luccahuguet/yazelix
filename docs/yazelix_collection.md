@@ -109,7 +109,7 @@ Plugin catalog: https://github.com/yazi-rs/plugins
 
 ## User Configuration Surfaces
 
-- [`config.toml`](../config_metadata/yazelix_settings.schema.json) — Canonical semantic settings inventory; main settings live under `~/.config/yazelix/config.toml` and cursor presets live under `~/.config/yazelix_cursors/settings.jsonc`
+- [`config.toml`](../config_metadata/yazelix_settings.schema.json) — Canonical semantic settings inventory; main settings live under `~/.config/yazelix/config.toml` and cursor presets live under `~/.config/yazelix/cursors.toml`
 - [Yazi configuration](./yazi-configuration.md) — Personal Yazi config overlays under `~/.config/yazelix/yazi/`
 - [Zellij configuration](./zellij-configuration.md) — `config.toml` for Yazelix-owned behavior plus nested native preference and plugin sidecars
 - [Terminal emulators](./terminal_emulators.md) — Mars as the deepest integrated packaged terminal, Ghostty as the most tested mature host-terminal path, and Rio, WezTerm, Kitty, Foot, Ratty, Alacritty, and other capable emulators through `yzx enter`

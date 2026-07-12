@@ -13,7 +13,7 @@ use support::fixtures::managed_config_fixture;
 fn yzx_control_reset_config_warns_about_preserved_adjacent_files() {
     let fixture = managed_config_fixture("");
     let settings_path = fixture.config_dir.join("config.toml");
-    let legacy_cursor_path = fixture.config_dir.join("cursors.toml");
+    let cursor_path = fixture.config_dir.join("cursors.toml");
     let helix_override_path = fixture.config_dir.join("helix/config.toml");
     let legacy_helix_path = fixture.config_dir.join("helix.toml");
     let notes_path = fixture.config_dir.join("notes.txt");
@@ -22,7 +22,11 @@ fn yzx_control_reset_config_warns_about_preserved_adjacent_files() {
         .join("settings.jsonc.backup-20260505_000000");
 
     fs::write(&settings_path, "[editor]\ncommand = \"nvim\"\n").unwrap();
-    fs::write(&legacy_cursor_path, "legacy cursor data").unwrap();
+    fs::write(
+        &cursor_path,
+        yazelix_cursors::DEFAULT_CURSOR_CONFIG_TEMPLATE,
+    )
+    .unwrap();
     fs::create_dir_all(helix_override_path.parent().unwrap()).unwrap();
     fs::write(&helix_override_path, "rainbow-brackets = true\n").unwrap();
     fs::write(&legacy_helix_path, "legacy helix data\n").unwrap();
@@ -38,11 +42,8 @@ fn yzx_control_reset_config_warns_about_preserved_adjacent_files() {
     let stdout = stdout_text(command.output().unwrap());
 
     assert!(stdout.contains("only resets config.toml"));
-    assert!(stdout.contains("Managed override files were left untouched: helix"));
-    assert!(
-        stdout
-            .contains("legacy Yazelix config inputs were left untouched: cursors.toml, helix.toml")
-    );
+    assert!(stdout.contains("Managed override files were left untouched: cursors.toml, helix"));
+    assert!(stdout.contains("legacy Yazelix config inputs were left untouched: helix.toml"));
     assert!(
         stdout.contains(
             "unknown adjacent entries in ~/.config/yazelix were left untouched: notes.txt"
@@ -51,7 +52,7 @@ fn yzx_control_reset_config_warns_about_preserved_adjacent_files() {
     assert!(!stdout.contains("settings.jsonc.backup-20260505_000000"));
     assert!(!settings_path.exists());
     assert!(helix_override_path.exists());
-    assert!(legacy_cursor_path.exists());
+    assert!(cursor_path.exists());
     assert!(notes_path.exists());
     assert!(settings_backup_path.exists());
 }

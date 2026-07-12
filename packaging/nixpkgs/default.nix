@@ -5,6 +5,7 @@ let
   flake = builtins.getFlake (toString repoRoot);
   pkgs = flake.inputs.nixpkgs.legacyPackages.${system};
   cargoGitOutputHashes = import ../cargo_git_output_hashes.nix {
+    yazelixCursors = flake.inputs.yazelixCursors;
     yazelixYaziAssets = flake.inputs.yazelixYaziAssets;
   };
 in

@@ -6,14 +6,14 @@ use crate::backup_timestamp::compact_utc_backup_timestamp;
 use crate::bridge::{CoreError, ErrorClass};
 use crate::native_config_status::{path_owned_by_home_manager, path_present};
 use crate::settings_contract::reconcile_settings_contract_text;
-use crate::settings_jsonc_patch::jsonc_parse_options;
 use crate::user_config_paths;
+use ratconfig::jsonc::jsonc_parse_options;
 use serde_json::{Map as JsonMap, Value as JsonValue, json};
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 use toml::Value as TomlValue;
-use yazelix_cursors::{CursorRegistry, render_cursor_settings_jsonc};
+use yazelix_cursors::{import_cursor_settings_jsonc, initialize_cursor_config, load_cursor_config};
 use yazelix_zellij_config_pack::{
     DEFAULT_ZELLIJ_CONFIG_SIDECAR, DEFAULT_ZELLIJ_PLUGINS_SIDECAR, add_zellij_native_preferences,
     split_zellij_sidecars, validate_zellij_config_sidecar, validate_zellij_plugins_sidecar,
@@ -27,10 +27,10 @@ const LEGACY_ZELLIJ_CONFIG_SIDECAR: &str =
 pub struct SettingsSurfacePaths {
     pub settings_config: PathBuf,
     pub legacy_settings_config: PathBuf,
-    pub shared_cursor_config: PathBuf,
+    pub cursor_config: PathBuf,
+    pub legacy_shared_cursor_config: PathBuf,
     pub old_main_config: PathBuf,
     pub old_nested_main_config: PathBuf,
-    pub old_cursor_config: PathBuf,
     pub old_nested_cursor_config: PathBuf,
 }
 
@@ -38,10 +38,10 @@ pub fn settings_surface_paths(config_dir: &Path) -> SettingsSurfacePaths {
     SettingsSurfacePaths {
         settings_config: user_config_paths::main_config(config_dir),
         legacy_settings_config: user_config_paths::legacy_settings_config(config_dir),
-        shared_cursor_config: user_config_paths::shared_cursor_config(config_dir),
+        cursor_config: user_config_paths::cursor_config(config_dir),
+        legacy_shared_cursor_config: user_config_paths::legacy_shared_cursor_config(config_dir),
         old_main_config: user_config_paths::old_main_config(config_dir),
         old_nested_main_config: user_config_paths::legacy_main_config(config_dir),
-        old_cursor_config: user_config_paths::cursor_config(config_dir),
         old_nested_cursor_config: user_config_paths::legacy_cursor_config(config_dir),
     }
 }
@@ -105,7 +105,7 @@ pub fn ensure_settings_config_with_cursor_component(
         ensure_zellij_sidecars(config_dir, DEFAULT_ZELLIJ_CONFIG_SIDECAR)?;
         if cursor_component_enabled {
             ensure_no_embedded_cursor_settings(&paths)?;
-            ensure_shared_cursor_settings_config(&paths, default_cursor_config)?;
+            ensure_cursor_config(&paths, default_cursor_config)?;
         }
         return Ok(paths.settings_config);
     }
@@ -113,7 +113,7 @@ pub fn ensure_settings_config_with_cursor_component(
     if path_present(&paths.legacy_settings_config) {
         migrate_legacy_settings_config(config_dir, &paths, default_main_config)?;
         if cursor_component_enabled {
-            ensure_shared_cursor_settings_config(&paths, default_cursor_config)?;
+            ensure_cursor_config(&paths, default_cursor_config)?;
         }
         return Ok(paths.settings_config);
     }
@@ -138,7 +138,7 @@ pub fn ensure_settings_config_with_cursor_component(
     ensure_zellij_sidecars(config_dir, DEFAULT_ZELLIJ_CONFIG_SIDECAR)?;
 
     if cursor_component_enabled {
-        ensure_shared_cursor_settings_config(&paths, default_cursor_config)?;
+        ensure_cursor_config(&paths, default_cursor_config)?;
     }
 
     Ok(paths.settings_config)
@@ -324,7 +324,7 @@ fn migrate_legacy_settings_config(
             ErrorClass::Config,
             "embedded_cursor_settings_unsupported",
             "Yazelix found cursor settings embedded in the retired settings.jsonc.",
-            "Move cursor settings to ~/.config/yazelix_cursors/settings.jsonc, then retry.",
+            "Move cursor settings to ~/.config/yazelix/cursors.toml, then retry.",
             json!({ "path": legacy.display().to_string() }),
         ));
     }
@@ -515,7 +515,7 @@ pub fn render_default_config(default_main_config: &Path) -> Result<String, CoreE
             ErrorClass::Config,
             "embedded_default_cursor_settings_unsupported",
             "Yazelix default main config must not contain cursor settings.",
-            "Keep cursor defaults in the shared cursor registry default instead.",
+            "Keep cursor defaults in the child-owned cursor registry instead.",
             json!({ "path": default_main_config.display().to_string() }),
         ));
     }
@@ -585,11 +585,11 @@ pub fn read_config_value(path: &Path) -> Result<JsonValue, CoreError> {
 }
 
 pub fn parse_config_value(path: &Path, raw: &str) -> Result<JsonValue, CoreError> {
-    let is_main_toml = path
-        .file_name()
-        .and_then(|name| name.to_str())
-        .is_some_and(|name| matches!(name, "config.toml" | "config_default.toml"));
-    if is_main_toml {
+    if path
+        .extension()
+        .and_then(|extension| extension.to_str())
+        .is_some_and(|extension| extension == "toml")
+    {
         let value = toml::from_str::<toml::Table>(raw).map_err(|source| {
             CoreError::classified(
                 ErrorClass::Config,
@@ -661,40 +661,54 @@ fn ensure_no_old_main_inputs(paths: &SettingsSurfacePaths) -> Result<(), CoreErr
     Ok(())
 }
 
-fn ensure_shared_cursor_settings_config(
+fn ensure_cursor_config(
     paths: &SettingsSurfacePaths,
     default_cursor_config: &Path,
 ) -> Result<(), CoreError> {
     ensure_default_cursor_config_exists(default_cursor_config)?;
-    ensure_no_old_cursor_inputs(paths)?;
-    if paths.shared_cursor_config.exists() {
+    ensure_old_input_absent(
+        &paths.old_nested_cursor_config,
+        &paths.cursor_config,
+        "stale_old_cursor_settings_input",
+        "old cursor settings input",
+        "Move the old nested cursor TOML file aside; ~/.config/yazelix/cursors.toml is the only cursor settings source.",
+    )?;
+
+    if path_present(&paths.cursor_config) && path_present(&paths.legacy_shared_cursor_config) {
+        return Err(CoreError::classified(
+            ErrorClass::Config,
+            "cursor_config_migration_conflict",
+            "Both ~/.config/yazelix/cursors.toml and the retired cursor settings.jsonc exist.",
+            "Keep the intended values in cursors.toml, then move ~/.config/yazelix_cursors/settings.jsonc aside and retry.",
+            json!({
+                "config": paths.cursor_config.display().to_string(),
+                "legacy": paths.legacy_shared_cursor_config.display().to_string(),
+            }),
+        ));
+    }
+    if path_present(&paths.cursor_config) {
+        load_cursor_config(&paths.cursor_config)?;
         return Ok(());
     }
-
-    let raw = fs::read_to_string(default_cursor_config).map_err(|source| {
-        io_err(
-            "read_cursor_settings_source",
-            default_cursor_config,
-            "Could not read Yazelix cursor settings input",
-            source,
-        )
-    })?;
-    let registry = CursorRegistry::parse_str(default_cursor_config, &raw)?;
-    write_shared_cursor_settings(paths, &registry)?;
-
-    Ok(())
-}
-
-fn ensure_no_old_cursor_inputs(paths: &SettingsSurfacePaths) -> Result<(), CoreError> {
-    for path in [&paths.old_cursor_config, &paths.old_nested_cursor_config] {
-        ensure_old_input_absent(
-            path,
-            &paths.shared_cursor_config,
-            "stale_old_cursor_settings_input",
-            "old cursor settings input",
-            "Move the old cursor TOML file aside and keep ~/.config/yazelix_cursors/settings.jsonc as the only cursor settings source.",
-        )?;
+    if path_present(&paths.legacy_shared_cursor_config) {
+        let backup =
+            import_cursor_settings_jsonc(&paths.legacy_shared_cursor_config, &paths.cursor_config)?;
+        fs::remove_file(&paths.legacy_shared_cursor_config).map_err(|source| {
+            io_err(
+                "retire_legacy_cursor_settings_jsonc",
+                &paths.legacy_shared_cursor_config,
+                "Could not retire the imported cursor settings.jsonc",
+                source,
+            )
+        })?;
+        eprintln!(
+            "Migrated cursor settings to {} and backed up the legacy file at {}.",
+            paths.cursor_config.display(),
+            backup.display()
+        );
+        return Ok(());
     }
+    initialize_cursor_config(&paths.cursor_config)?;
     Ok(())
 }
 
@@ -707,47 +721,12 @@ fn ensure_no_embedded_cursor_settings(paths: &SettingsSurfacePaths) -> Result<()
         ErrorClass::Config,
         "embedded_cursor_settings_unsupported",
         "Yazelix found cursor settings embedded in config.toml.",
-        "Move cursor settings to ~/.config/yazelix_cursors/settings.jsonc or reset cursor config with `yzc init`; config.toml does not own cursor settings.",
+        "Move cursor settings to ~/.config/yazelix/cursors.toml; config.toml does not own cursor settings.",
         json!({
             "settings_config": paths.settings_config.display().to_string(),
-            "shared_cursor_config": paths.shared_cursor_config.display().to_string(),
+            "cursor_config": paths.cursor_config.display().to_string(),
         }),
     ))
-}
-
-fn write_shared_cursor_settings(
-    paths: &SettingsSurfacePaths,
-    registry: &CursorRegistry,
-) -> Result<(), CoreError> {
-    if let Some(parent) = paths.shared_cursor_config.parent() {
-        fs::create_dir_all(parent).map_err(|source| {
-            io_err(
-                "create_shared_cursor_config_parent",
-                parent,
-                "Could not create the Yazelix cursor settings directory",
-                source,
-            )
-        })?;
-    }
-    fs::write(
-        &paths.shared_cursor_config,
-        render_cursor_settings_jsonc(registry),
-    )
-    .map_err(|source| {
-        io_err(
-            "write_shared_cursor_settings",
-            &paths.shared_cursor_config,
-            "Could not write ~/.config/yazelix_cursors/settings.jsonc",
-            source,
-        )
-    })?;
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        let mode = fs::Permissions::from_mode(0o644);
-        let _ = fs::set_permissions(&paths.shared_cursor_config, mode);
-    }
-    Ok(())
 }
 
 fn ensure_old_input_absent(
@@ -946,6 +925,52 @@ mod tests {
         assert!(zellij.contains("show_startup_tips false"));
         assert!(zellij.contains("rounded_corners true"));
         assert!(!config.path().join("settings.jsonc").exists());
+    }
+
+    // Regression: Classic imports the released JSONC registry once, preserves custom cursor semantics, and retires the old owner.
+    #[test]
+    fn migrates_legacy_cursor_jsonc_to_canonical_toml_once() {
+        let runtime = tempdir().unwrap();
+        let config = tempdir().unwrap();
+        let default_cursor = write_cursor_default(runtime.path());
+        let paths = settings_surface_paths(config.path());
+        fs::create_dir_all(paths.legacy_shared_cursor_config.parent().unwrap()).unwrap();
+        fs::write(
+            &paths.legacy_shared_cursor_config,
+            r##"{
+  "schema_version": 1,
+  "enabled_cursors": ["local_split", "blaze"],
+  "settings": { "trail": "local_split", "trail_effect": "sweep", "mode_effect": "none", "glow": "high", "duration": 1.5, "kitty_enable_cursor": false },
+  "cursor": [
+    { "name": "local_split", "family": "split", "colors": ["#112233", "#aabbcc"], "divider": "horizontal", "transition": "hard", "cursor_color": "#aabbcc" },
+    { "name": "blaze", "family": "mono", "color": "#ffb929" }
+  ]
+}
+"##,
+        )
+        .unwrap();
+
+        ensure_settings_config(config.path(), &default_main_config(), &default_cursor).unwrap();
+        let registry = load_cursor_config(&paths.cursor_config).unwrap();
+        assert_eq!(registry.enabled_cursors, ["local_split", "blaze"]);
+        assert_eq!(registry.settings.trail, "local_split");
+        assert_eq!(registry.settings.trail_effect, "sweep");
+        assert!(!registry.settings.kitty_enable_cursor);
+        assert_eq!(
+            registry.definitions["local_split"].split_secondary_color_hex(),
+            Some("#aabbcc")
+        );
+        assert!(!paths.legacy_shared_cursor_config.exists());
+        assert!(
+            fs::read_dir(paths.legacy_shared_cursor_config.parent().unwrap())
+                .unwrap()
+                .filter_map(Result::ok)
+                .any(|entry| entry.file_name().to_string_lossy().contains("backup"))
+        );
+
+        let migrated = fs::read_to_string(&paths.cursor_config).unwrap();
+        ensure_settings_config(config.path(), &default_main_config(), &default_cursor).unwrap();
+        assert_eq!(fs::read_to_string(paths.cursor_config).unwrap(), migrated);
     }
 
     // Regression: the one-time transaction backs up JSONC, preserves Yazelix values, and moves native Zellij values exactly once.

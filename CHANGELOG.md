@@ -17,9 +17,13 @@ Highlights:
 - Made root `config.toml` a sparse explicit-value file: absent fields inherit current packaged defaults, unset/reset remove overrides, and fresh installs no longer freeze a full default snapshot
 - Moved native Zellij startup tips, pane frames, rounded corners, and default mode into `~/.config/yazelix/zellij/config.kdl`
 - Switched Home Manager's managed root config rendering to sparse TOML containing only declared values
+- Made `~/.config/yazelix/cursors.toml` the only live cursor registry, with backup-first migration from the released `~/.config/yazelix_cursors/settings.jsonc`
+- Routed Ratconfig, `yzx cursors`, Ghostty generation, Mars launch, and Home Manager through the child-owned cursor TOML contract
+- Deleted Classic's cursor JSONC writer, patch adapter, copied default registry, and dual-format loader
 
 Manual action:
 - If Home Manager owns `~/.config/yazelix/settings.jsonc`, update the module and run `home-manager switch`; move retired native Zellij choices into `programs.yazelix.config.zellij.text` or `source`
+- If Home Manager owns `~/.config/yazelix_cursors/settings.jsonc`, update the module and run `home-manager switch` so it owns `~/.config/yazelix/cursors.toml`
 
 ## v17.10 - 2026-07-11
 

@@ -6,7 +6,7 @@ use crate::bridge::{CoreError, ErrorClass};
 use crate::control_plane::{config_dir_from_env, config_override_from_env, runtime_dir_from_env};
 use crate::ghostty_cursor_registry::{
     CursorDefinition, CursorFamily, CursorRegistry, SplitDivider, SplitTransition,
-    YazelixCursorRegistryExt,
+    load_cursor_config,
 };
 use crate::require_runtime_component_enabled;
 use serde_json::json;
@@ -58,7 +58,7 @@ fn run_cursors_report() -> Result<i32, CoreError> {
     let config_override = config_override_from_env();
     let active_paths =
         resolve_active_config_paths(&runtime_dir, &config_dir, config_override.as_deref())?;
-    let registry = CursorRegistry::load(&active_paths.user_cursor_config)?;
+    let registry = load_cursor_config(&active_paths.user_cursor_config)?;
 
     print_cursor_report(
         &active_paths.user_cursor_config.display().to_string(),
@@ -81,9 +81,7 @@ fn print_cursors_ghostty_help() {
     println!("Usage:");
     println!("  yzx cursors ghostty setup");
     println!();
-    println!(
-        "This writes ~/.config/yazelix_cursors/ghostty.conf from the active Yazelix cursor settings."
-    );
+    println!("This writes ~/.config/yazelix/ghostty.conf from the active Yazelix cursor settings.");
 }
 
 fn print_cursor_report(config_path: &str, registry: &CursorRegistry) {
@@ -316,7 +314,7 @@ fn run_yzc_command(
         ErrorClass::Runtime,
         "bundled_yzc_failed",
         format!("Bundled Yazelix cursor helper failed while {action}."),
-        "Fix ~/.config/yazelix_cursors/settings.jsonc or move it aside and retry `yzx cursors ghostty setup`.",
+        "Fix ~/.config/yazelix/cursors.toml or move it aside and retry `yzx cursors ghostty setup`.",
         json!({
             "command": args,
             "status": output.status.code(),

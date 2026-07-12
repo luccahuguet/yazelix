@@ -66,7 +66,7 @@ Boundary rule: animation engines, automata, generation logic, random animation-f
 
 Recommendation: keep separate.
 
-This is one of the strongest standalone boundaries. It owns a real cursor workflow through `yzc init`, `yzc generate ghostty`, generated shader assets, standalone JSONC settings, and examples. Yazelix consumes the same registry and shader logic for config UI, settings rendering, Ghostty materialization, and `yzx cursors`.
+This is one of the strongest standalone boundaries. It owns a real cursor workflow through `yzc init`, `yzc generate ghostty`, generated shader assets, standalone TOML settings, and examples. Yazelix consumes the same registry, TOML contract, and shader logic for config UI, Home Manager rendering, Mars/Ghostty materialization, and `yzx cursors`.
 
 The main risks are dual consumption through flake and Cargo. Those are manageable because the ownership line is clear: cursor schemes, shader generation, standalone cursor config, and `yzc` belong to the child; Yazelix owns per-window randomization, integrated terminal materialization, and config UI composition.
 

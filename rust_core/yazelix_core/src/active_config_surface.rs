@@ -42,7 +42,7 @@ pub fn primary_config_paths(runtime_dir: &Path, config_dir: &Path) -> PrimaryCon
     let user_config_dir = config_dir.to_path_buf();
     let settings_paths = settings_surface_paths(config_dir);
     let user_config = settings_paths.settings_config;
-    let user_cursor_config = settings_paths.shared_cursor_config;
+    let user_cursor_config = settings_paths.cursor_config;
     let old_flat_user_config = settings_paths.old_main_config;
     let legacy_user_config = settings_paths.old_nested_main_config;
     let default_config_path = runtime_dir.join(DEFAULT_MAIN_CONFIG_FILENAME);
@@ -179,7 +179,7 @@ mod tests {
         .expect("write default config");
         fs::write(
             runtime_dir.join(DEFAULT_CURSOR_CONFIG_FILENAME),
-            include_str!("../../../yazelix_cursors_default.toml"),
+            yazelix_cursors::DEFAULT_CURSOR_CONFIG_TEMPLATE,
         )
         .expect("write cursor config");
         fs::create_dir_all(runtime_dir.join("config_metadata")).expect("contract dir");
@@ -215,7 +215,7 @@ mod tests {
         assert!(resolved.user_cursor_config.exists());
         assert_eq!(
             resolved.user_cursor_config,
-            config.path().join("yazelix_cursors/settings.jsonc")
+            config.path().join("cursors.toml")
         );
     }
 

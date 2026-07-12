@@ -44,9 +44,9 @@ When creating new files or directories, always use underscores to maintain consi
 - Yazelix has packaged runtime surfaces and maintainer development-shell surfaces; keep user runtime behavior distinct from dev tooling
 - Yazelix Classic names every release before the implementation swap, including the current v17.10 line. The internal `yazelix-next` repository is the staging architecture for the public Yazelix Nova v1 replacement. Main-repo simplification should converge paths, config contracts, ownership boundaries, and dependency seams toward Nova so the swap deletes Classic code instead of requiring another migration. Keep `Next` and `yazelix-next` out of user-facing names, docs, commands, packages, runtime identity, UI, and support language. Prefer a proven staging shape over a cheaper Classic-only shape when both satisfy the product contract; record intentional divergences and their removal conditions in Beads.
 - The canonical user semantic config is `~/.config/yazelix/config.toml`
-- Shipped config defaults/templates feed `config.toml` generation through `config_default.toml`, `yazelix_cursors_default.toml`, `config_metadata/yazelix_settings.schema.json`, and `config_metadata/main_config_contract.toml`
+- Shipped config defaults/templates feed `config.toml` generation through `config_default.toml`, the child-owned Yazelix Cursors package template, `config_metadata/yazelix_settings.schema.json`, and `config_metadata/main_config_contract.toml`
 - Retired `settings.jsonc` is accepted only by the one-time, backup-first Classic-to-TOML migration and must never become a second live owner
-- Old mutable `yazelix.toml` and `cursors.toml` files are unsupported legacy inputs, not runtime config sources or automatic migration inputs
+- Old mutable `yazelix.toml` files are unsupported legacy inputs, not runtime config sources or automatic migration inputs; `cursors.toml` is the canonical cursor source
 - All Yazelix-owned user config paths reference `~/.config/yazelix/` as the base directory unless an explicit XDG/config override is in effect
 - Scripts are organized in `nushell/scripts/` with subdirectories using underscores
 

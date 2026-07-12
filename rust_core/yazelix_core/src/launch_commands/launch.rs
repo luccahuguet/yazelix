@@ -320,8 +320,28 @@ fn mars_process_boundary_env(
     })?;
 
     let base_config_dir = runtime_dir.join("share").join("mars");
+    let yazelix_config_dir = config_dir.parent().ok_or_else(|| {
+        CoreError::classified(
+            ErrorClass::Runtime,
+            "invalid_yazelix_config_path",
+            format!("Mars config directory has no Yazelix config parent: {}.", config_dir.display()),
+            "Restore ~/.config/yazelix/mars/config.toml under the canonical Yazelix config directory, then retry.",
+            serde_json::json!({}),
+        )
+    })?;
+
+    let cursor_config = if crate::runtime_component_enabled(runtime_dir, "cursors")? {
+        Some(
+            crate::user_config_paths::cursor_config(yazelix_config_dir)
+                .to_string_lossy()
+                .into_owned(),
+        )
+    } else {
+        None
+    };
 
     Ok(vec![
+        ("YAZELIX_CURSOR_CONFIG".to_string(), cursor_config),
         (
             "MARS_CONFIG_HOME".to_string(),
             Some(config_dir.to_string_lossy().into_owned()),
@@ -481,9 +501,15 @@ mod tests {
     // Defends: Mars receives separate sparse-user and immutable-base config roots plus desktop identity.
     #[test]
     fn mars_process_boundary_env_selects_native_config_and_sets_app_id() {
+        let runtime = tempfile::TempDir::new().unwrap();
+        std::fs::write(
+            runtime.path().join("runtime_components.json"),
+            r#"{ "cursors": { "enabled": true, "disableable": true, "notes": [] } }"#,
+        )
+        .unwrap();
         let env = mars_process_boundary_env(
             Path::new("/home/user/.config/yazelix/mars/config.toml"),
-            Path::new("/nix/store/runtime"),
+            runtime.path(),
         )
         .unwrap();
 
@@ -491,12 +517,16 @@ mod tests {
             env,
             vec![
                 (
+                    "YAZELIX_CURSOR_CONFIG".to_string(),
+                    Some("/home/user/.config/yazelix/cursors.toml".to_string())
+                ),
+                (
                     "MARS_CONFIG_HOME".to_string(),
                     Some("/home/user/.config/yazelix/mars".to_string())
                 ),
                 (
                     "MARS_BASE_CONFIG_HOME".to_string(),
-                    Some("/nix/store/runtime/share/mars".to_string())
+                    Some(runtime.path().join("share/mars").display().to_string())
                 ),
                 (
                     "MARS_APP_ID".to_string(),

@@ -16,20 +16,20 @@ use crate::control_plane::{
     runtime_materialization_plan_request_from_env, state_dir_from_env,
 };
 use crate::native_config_status::path_owned_by_home_manager;
-use crate::settings_jsonc_patch::{
-    SettingsJsoncPatchMutation, set_settings_jsonc_value_text, unset_settings_jsonc_value_text,
-};
 use crate::settings_surface::{
     is_settings_config_path, parse_config_value, sparse_config_is_semantically_empty,
 };
 use crate::user_config_paths::SETTINGS_CONFIG;
-use ratconfig::toml_adapter::{TomlPatchError, set_toml_value_text, unset_toml_value_text};
+use ratconfig::patch::PatchMutation;
+use ratconfig::toml_adapter::{
+    TomlPatchError, TomlPatchOutcome, set_toml_value_text, unset_toml_value_text,
+};
 use serde_json::{Value as JsonValue, json};
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
-use yazelix_cursors::{CursorRegistry, render_cursor_settings_jsonc};
+use yazelix_cursors::CursorRegistry;
 
 #[derive(Debug, Clone)]
 struct ConfigEditTarget {
@@ -241,19 +241,8 @@ fn run_config_set(setting_path: &str, raw_value: &str) -> Result<i32, CoreError>
     let target = edit_target(&paths, setting_path);
     ensure_edit_target_writable(&target)?;
     let raw = read_config_for_edit_or_default(&paths, &target)?;
-    let outcome = match target.kind {
-        ConfigEditTargetKind::Main => {
-            let outcome = set_toml_value_text(&raw, &target.path_in_file, &value)
-                .map_err(|error| main_toml_patch_error(&target.path, error))?;
-            crate::settings_jsonc_patch::SettingsJsoncPatchOutcome {
-                text: outcome.text,
-                mutation: outcome.mutation,
-            }
-        }
-        ConfigEditTargetKind::Cursors => {
-            set_settings_jsonc_value_text(&target.path, &raw, &target.path_in_file, &value)?
-        }
-    };
+    let outcome = set_toml_value_text(&raw, &target.path_in_file, &value)
+        .map_err(|error| main_toml_patch_error(&target.path, error))?;
     finish_config_edit(&paths, &target, setting_path, &outcome)
 }
 
@@ -262,19 +251,8 @@ fn run_config_unset(setting_path: &str) -> Result<i32, CoreError> {
     let target = edit_target(&paths, setting_path);
     ensure_edit_target_writable(&target)?;
     let raw = read_config_for_edit_or_default(&paths, &target)?;
-    let outcome = match target.kind {
-        ConfigEditTargetKind::Main => {
-            let outcome = unset_toml_value_text(&raw, &target.path_in_file)
-                .map_err(|error| main_toml_patch_error(&target.path, error))?;
-            crate::settings_jsonc_patch::SettingsJsoncPatchOutcome {
-                text: outcome.text,
-                mutation: outcome.mutation,
-            }
-        }
-        ConfigEditTargetKind::Cursors => {
-            unset_settings_jsonc_value_text(&target.path, &raw, &target.path_in_file)?
-        }
-    };
+    let outcome = unset_toml_value_text(&raw, &target.path_in_file)
+        .map_err(|error| main_toml_patch_error(&target.path, error))?;
     finish_config_edit(&paths, &target, setting_path, &outcome)
 }
 
@@ -382,8 +360,8 @@ fn read_config_for_edit_or_default(
                     source,
                 )
             })?;
-            let registry = CursorRegistry::parse_str(&paths.default_cursor_config_path, &raw)?;
-            Ok(render_cursor_settings_jsonc(&registry))
+            CursorRegistry::parse_str(&paths.default_cursor_config_path, &raw)?;
+            Ok(raw)
         }
     }
 }
@@ -396,8 +374,7 @@ fn validate_patched_edit_target(
     match target.kind {
         ConfigEditTargetKind::Main => validate_patched_settings(paths, raw),
         ConfigEditTargetKind::Cursors => {
-            let value = parse_config_value(&target.path, raw)?;
-            CursorRegistry::parse_json_value(&target.path, value)?;
+            CursorRegistry::parse_str(&target.path, raw)?;
             Ok(())
         }
     }
@@ -407,7 +384,7 @@ fn finish_config_edit(
     paths: &ActiveConfigPaths,
     target: &ConfigEditTarget,
     setting_path: &str,
-    outcome: &crate::settings_jsonc_patch::SettingsJsoncPatchOutcome,
+    outcome: &TomlPatchOutcome,
 ) -> Result<i32, CoreError> {
     let should_write = outcome.changed();
     if should_write {
@@ -490,10 +467,10 @@ fn main_toml_patch_error(path: &Path, error: TomlPatchError) -> CoreError {
 
 fn apply_after_config_edit(
     setting_path: &str,
-    mutation: SettingsJsoncPatchMutation,
+    mutation: PatchMutation,
     contract_path: &Path,
 ) -> Result<Option<ConfigEditApplyStatus>, CoreError> {
-    if mutation == SettingsJsoncPatchMutation::Unchanged {
+    if mutation == PatchMutation::Unchanged {
         return Ok(None);
     }
     let apply_mode = apply_mode_for_setting(contract_path, setting_path)?;
@@ -535,17 +512,17 @@ fn apply_after_config_edit(
 
 fn print_edit_outcome(
     setting_path: &str,
-    mutation: SettingsJsoncPatchMutation,
+    mutation: PatchMutation,
     apply_status: Option<&ConfigEditApplyStatus>,
 ) {
     match mutation {
-        SettingsJsoncPatchMutation::Inserted => println!("Inserted {setting_path}."),
-        SettingsJsoncPatchMutation::Replaced => println!("Updated {setting_path}."),
-        SettingsJsoncPatchMutation::Removed => println!("Removed {setting_path}."),
-        SettingsJsoncPatchMutation::Unchanged if setting_path.starts_with("cursors.") => {
+        PatchMutation::Inserted => println!("Inserted {setting_path}."),
+        PatchMutation::Replaced => println!("Updated {setting_path}."),
+        PatchMutation::Removed => println!("Removed {setting_path}."),
+        PatchMutation::Unchanged if setting_path.starts_with("cursors.") => {
             println!("{setting_path} was already unset.");
         }
-        SettingsJsoncPatchMutation::Unchanged => println!("{setting_path} was already at default."),
+        PatchMutation::Unchanged => println!("{setting_path} was already at default."),
     }
     if let Some(status) = apply_status {
         println!("Apply: {}.", status.apply_mode.label());

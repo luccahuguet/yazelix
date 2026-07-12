@@ -272,14 +272,14 @@ Open Yazelix's Ratconfig-backed settings browser and editor
 Set a supported config value without rewriting the whole file
 - Preserves unrelated comments and formatting
 - Accepts JSON literals such as `true`, `20`, `"bash"`, or `["ghostty"]`
-- Writes normal settings to `~/.config/yazelix/config.toml` and `cursors.*` paths to `~/.config/yazelix_cursors/settings.jsonc`
+- Writes normal settings to `~/.config/yazelix/config.toml` and `cursors.*` paths to `~/.config/yazelix/cursors.toml`
 - Validates the patched config or cursor registry before writing
 - Refuses Home Manager-owned, read-only, non-`config.toml`, or unsafe object/array edits
 
 ### `yzx config unset <settings.path>`
 Remove an explicit config value so Yazelix uses the default
 - Preserves unrelated comments and formatting
-- Writes normal settings to `~/.config/yazelix/config.toml` and `cursors.*` paths to `~/.config/yazelix_cursors/settings.jsonc`
+- Writes normal settings to `~/.config/yazelix/config.toml` and `cursors.*` paths to `~/.config/yazelix/cursors.toml`
 - Validates the patched config or cursor registry before writing
 - Leaves other explicit values unchanged when the value is already absent; removes a semantically empty root file
 
@@ -308,13 +308,13 @@ Inspect Yazelix cursor presets and resolved colors
 ### `yzx cursors ghostty setup`
 Generate the Ghostty include for Yazelix cursors
 - Uses the cursor helper bundled in the Yazelix runtime
-- Writes `~/.config/yazelix_cursors/ghostty.conf`
+- Writes `~/.config/yazelix/ghostty.conf`
 - Prints the `config-file = .../ghostty.conf` line to add to user-owned Ghostty config
 
 ### `yzx edit <target> [--print]`
 Open one of the managed config surfaces through explicit or fuzzy target selection
 - Supported targets include `config`, `cursors`, `helix`, `zellij`, `zellij-plugins`, `yazi`, `yazi-keymap`, and `yazi-init`
-- `cursors` opens `~/.config/yazelix_cursors/settings.jsonc` for full cursor registry edits
+- `cursors` opens `~/.config/yazelix/cursors.toml` for full cursor registry edits
 - Yazi targets stay inside `~/.config/yazelix/yazi/` and do not expose host-owned `~/.config/yazi/` files
 - `--print`: print the resolved managed path without opening
 
@@ -328,7 +328,7 @@ Remove `config.toml` so every root semantic setting inherits the packaged defaul
 - Only resets `~/.config/yazelix/config.toml`
 - Preserves managed override sidecars such as `helix/`, `zellij/`, `yazi/`, `terminal_*.conf|toml|ini`, and `shell_*.sh|zsh|fish|nu|xsh`
 - Preserves unknown adjacent files under `~/.config/yazelix/` and prints a warning instead of deleting or adopting them
-- Cursor presets live in `~/.config/yazelix_cursors/settings.jsonc`; `reset config` only removes the main Yazelix override file
+- Cursor presets live in `~/.config/yazelix/cursors.toml`; `reset config` only removes the main Yazelix override file
 
 ### `yzx help`
 Show command reference

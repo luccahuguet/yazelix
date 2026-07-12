@@ -10,7 +10,7 @@ The source repository is [`luccahuguet/yazelix-cursors`](https://github.com/lucc
 
 ## Decision
 
-Yazelix should ship `yazelix_cursors` from a separate standalone repository. The external repository owns reusable cursor registry parsing, validation, resolution, Ghostty-compatible palette/effect shader generation, shader assets, `yzc`, flake packaging, and CI. `ghostty_cursor_registry.rs` remains the Yazelix-specific loader for `~/.config/yazelix_cursors/settings.jsonc`; legacy embedded cursor settings are rejected rather than migrated in the main runtime.
+Yazelix ships `yazelix_cursors` from a separate standalone repository. The child owns cursor registry parsing, validation, TOML defaults, the one-time Classic JSONC importer, resolution, Ghostty-compatible palette/effect shader generation, shader assets, `yzc`, flake packaging, and CI. Main Yazelix passes `~/.config/yazelix/cursors.toml` to the child API and keeps no second cursor schema or serializer.
 
 Selected repository and package name: `yazelix-cursors` / `yazelix_cursors`
 
@@ -23,12 +23,12 @@ Previous alternatives considered:
 ## Scope
 
 - `.#yazelix_cursors` flake package
-- generated cursor palette shaders from the extracted `yazelix_cursors_default.toml`
+- generated cursor palette shaders from the child-owned default registry
 - generated Ghostty-compatible cursor effect shaders
 - terminal target metadata for Ghostty, Rio, Ratty, and protocol cursor positions
 - example Ghostty config snippets under the package output
 - `yzc init`, `yzc list`, `yzc list-targets`, `yzc inspect`, and `yzc generate ghostty`
-- standalone cursor config at `~/.config/yazelix_cursors/settings.jsonc`
+- standalone `yzc` cursor config at `~/.config/yazelix_cursors/cursors.toml`; full Yazelix passes its canonical `~/.config/yazelix/cursors.toml` explicitly
 - generated Ghostty include at `~/.config/yazelix_cursors/ghostty.conf`
 - license and provenance notes for shipped and adapted shaders
 - a stable import path back into the main Yazelix runtime
@@ -43,7 +43,7 @@ Previous alternatives considered:
 - `yzc list-targets` exposes the child-owned target model for Ghostty, Rio, Ratty, and protocol cursor positions
 - Users opt in by running `yzc init`, `yzc generate ghostty`, then adding `config-file = ~/.config/yazelix_cursors/ghostty.conf` to their Ghostty config
 - Full Yazelix users can instead run `yzx cursors ghostty setup`; Yazelix invokes its runtime-private `yzc`, writes the same include, and prints the Ghostty `config-file` line without requiring a separate cursor package install
-- `yzc init` creates `~/.config/yazelix_cursors/settings.jsonc` and does not overwrite an existing config
+- `yzc init` creates `~/.config/yazelix_cursors/cursors.toml` and does not overwrite an existing config; Yazelix initializes its canonical path from the same child-owned template
 - `yzc generate ghostty` copies packaged shaders into `~/.config/yazelix_cursors/shaders/`, regenerates data-driven palette and effect shaders from the standalone settings, and writes `~/.config/yazelix_cursors/ghostty.conf`
 - The package does not edit user Ghostty config files
 - The package provides standalone random resolution when `yzc generate ghostty` runs; it does not provide Yazelix runtime per-window reroll behavior
@@ -52,7 +52,7 @@ Previous alternatives considered:
 ## Release Policy
 
 - `yazelix_cursors` versions independently through the `luccahuguet/yazelix-cursors` repository
-- Cursor schema changes must remain valid for the standalone `~/.config/yazelix_cursors/settings.jsonc` contract
+- Cursor schema changes must remain valid for both explicit consumer paths and standalone `~/.config/yazelix_cursors/cursors.toml`
 - Preset removals need a normal Yazelix upgrade note because users may have copied shader paths or config examples
 - Yazelix must pin an explicit flake input and Cargo revision when consuming `yazelix_cursors`
 
@@ -85,7 +85,7 @@ Yazelix must consume Ghostty-compatible shader assets from the locked `yazelix_c
 
 ## Provenance
 
-The shader direction is inspired by the public Ghostty cursor shader ecosystem, including `ghostty-cursor-shaders`. Yazelix-generated palette shaders are derived from `yazelix_cursors_default.toml` and the first-party Ghostty materialization code. Vendored or adapted shader files in `luccahuguet/yazelix-cursors` must keep nearby provenance notes.
+The shader direction is inspired by the public Ghostty cursor shader ecosystem, including `ghostty-cursor-shaders`. Yazelix-generated palette shaders are derived from the child-owned default registry and first-party Ghostty materialization code. Vendored or adapted shader files in `luccahuguet/yazelix-cursors` must keep nearby provenance notes.
 
 ## Non-Goals
 
@@ -112,7 +112,7 @@ Do not add another terminal target to `yazelix_cursors` until all of these are t
 4. The package output and runtime shader root do not include `build_shaders.nu`.
 5. `nix run .#yzc -- --help` shows the standalone command surface.
 6. `yzc list-targets` reports `ghostty`, `rio`, `ratty`, and `protocol_cursor_positions`.
-7. A package-installed `yzc --config-dir <tmp> init` creates standalone JSONC cursor settings.
+7. A package-installed `yzc --config-dir <tmp> init` creates standalone TOML cursor settings.
 8. A package-installed `yzc --config-dir <tmp> generate ghostty` writes a Ghostty include and generated shader files under `<tmp>`.
 9. Full Yazelix exposes `yzx cursors ghostty setup`, backed by a runtime-private `libexec/yzc`, so users do not need to install `#yazelix_cursors` separately.
 10. The exported shaders come from the extracted `yazelix_cursors` shader generator instead of a parallel hand-maintained package list.

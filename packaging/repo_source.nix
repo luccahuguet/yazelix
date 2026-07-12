@@ -1,15 +1,9 @@
 {
   lib,
   src ? ../.,
-  components ? { },
 }:
 
 let
-  cursorsEnabled =
-    if builtins.hasAttr "cursors" components && builtins.isBool components.cursors then
-      components.cursors
-    else
-      true;
   includeRoots = [
     "assets"
     "config_metadata"
@@ -21,11 +15,7 @@ let
     "CHANGELOG.md"
     "docs"
     "docs/upgrade_notes.toml"
-    "yazelix_cursors_default.toml"
     "config_default.toml"
-  ];
-  cursorRuntimePaths = [
-    "yazelix_cursors_default.toml"
   ];
 in
 lib.cleanSourceWith {
@@ -43,11 +33,6 @@ lib.cleanSourceWith {
       isBuildArtifact =
         relativePath == "rust_core/target"
         || lib.hasPrefix "rust_core/target/" relativePath;
-      disabledCursorPath =
-        !cursorsEnabled
-        && builtins.any
-          (cursorPath: relativePath == cursorPath || lib.hasPrefix "${cursorPath}/" relativePath)
-          cursorRuntimePaths;
     in
-    included && !isBuildArtifact && !disabledCursorPath;
+    included && !isBuildArtifact;
 }

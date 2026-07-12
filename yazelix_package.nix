@@ -27,7 +27,6 @@ let
       import ./packaging/repo_source.nix {
         lib = pkgs.lib;
         src = ./.;
-        inherit components;
       }
     else
       src;

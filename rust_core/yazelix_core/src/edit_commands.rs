@@ -44,7 +44,7 @@ fn get_edit_targets(config_dir: &Path) -> Vec<EditTarget> {
     let yazi_toml_path = user_config_paths::yazi_config(config_dir);
     let yazi_keymap_path = user_config_paths::yazi_keymap(config_dir);
     let yazi_init_path = user_config_paths::yazi_init(config_dir);
-    let cursor_path = user_config_paths::shared_cursor_config(config_dir);
+    let cursor_path = user_config_paths::cursor_config(config_dir);
 
     let runtime_dir = runtime_dir_from_env().unwrap_or_else(|_| PathBuf::from("."));
     let active_paths = resolve_active_config_paths(&runtime_dir, config_dir, None).ok();
