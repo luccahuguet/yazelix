@@ -229,10 +229,18 @@ jobs:
         with:
           determinate: false
 
-      - name: Build Darwin Yazelix package with first-party Zellij wasm inputs
+      - name: Build Darwin first-party Zellij wasm packages
         run: |
-          nix build --no-link --no-write-lock-file \
-            .#packages.aarch64-darwin.yazelix
+          pane_orchestrator_ref="$(
+            jq -er '.nodes.yazelixZellijPaneOrchestrator.locked | "github:\(.owner)/\(.repo)/\(.rev)"' flake.lock
+          )"
+          popup_ref="$(
+            jq -er '.nodes.yazelixZellijPopup.locked | "github:\(.owner)/\(.repo)/\(.rev)"' flake.lock
+          )"
+
+          nix build --no-link \
+            "${pane_orchestrator_ref}#packages.aarch64-darwin.yazelix_zellij_pane_orchestrator" \
+            "${popup_ref}#packages.aarch64-darwin.yazelix_zellij_popup"
 
   runtime_smoke:
     # Manual/scheduled runtime behavior lane. It builds the packaged runtime once and
