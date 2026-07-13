@@ -6,7 +6,7 @@ Yazelix Classic covers every release through the final pre-Nova tag. The replace
 
 ## Unreleased
 
-TOML root config and Nova v1 cutover planning
+Final Classic bridge to Yazelix Nova v1
 
 Upgrade impact: automatic migration for writable user config; manual Home Manager action required
 
@@ -15,15 +15,18 @@ Highlights:
 - Reserved Yazelix Nova v1 for the implementation replacement and its new public version line
 - Made `~/.config/yazelix/config.toml` the canonical semantic config and kept `settings.jsonc` only as a backup-first, one-time Classic migration input
 - Made root `config.toml` a sparse explicit-value file: absent fields inherit current packaged defaults, unset/reset remove overrides, and fresh installs no longer freeze a full default snapshot
+- Preserved every representable Classic value through an exact Nova mapping, left the original bytes in a timestamped backup, and wrote a deterministic adjacent migration report for every manual or removed field
 - Moved native Zellij startup tips, pane frames, rounded corners, and default mode into `~/.config/yazelix/zellij/config.kdl`
 - Stopped creating absent Zellij sidecars; byte-identical generated Classic artifacts are backed up and removed, while every customized or declarative file remains untouched and explicit for Nova
 - Switched Home Manager's managed root config rendering to sparse TOML containing only declared values
 - Made `~/.config/yazelix/cursors.toml` the only live cursor registry, with backup-first migration from the released `~/.config/yazelix_cursors/settings.jsonc`
 - Routed Ratconfig, `yzx cursors`, Ghostty generation, Mars launch, and Home Manager through the child-owned cursor TOML contract
+- Upgraded the config path to Ratconfig 3's source-first API and labeled the Classic config UI schema honestly as a combined `config.toml` plus `cursors.toml` view rather than a schema for either file alone
 - Deleted Classic's cursor JSONC writer, patch adapter, copied default registry, and dual-format loader
 - Replaced the broad Home Manager option language with `enable`, one complete `package`, nullable sparse `config.settings`, and approved native `text`/`source` sidecars
 - Contracted the public flake to `packages.<system>.default`/`yazelix`, `apps.<system>.default`/`yazelix`, and `homeManagerModules.default`; child packages, runtime aliases, the package builder, overlays, Beads, and the install-check app are no longer re-exported
 - Kept Linux desktop integration platform-gated and allowed Nova-native Nu, Starship, Helix Steel, and Yazi files to be staged without claiming that Classic consumes them
+- Repaired lazy Helix grammar packaging across Linux and macOS, kept sparse Git grammars on their required fetch path, and narrowed Darwin wasm CI to the locked plugin packages it is meant to prove
 
 Manual action:
 - If Home Manager owns `~/.config/yazelix/settings.jsonc`, update the module and run `home-manager switch`; move retired native Zellij choices into `programs.yazelix.config.zellij.text` or `source`
@@ -36,6 +39,7 @@ Manual action:
 - Remove main-flake `#br` and `#beads_rust`; maintainers get `br` from the development shell and standalone users install it from its upstream owner
 - Replace the removed `#install_check` app/package with the checked-in `shells/posix/install_check.sh` preflight
 - Review preserved `zellij/config.kdl` and `zellij/plugins.kdl` assignments before Nova; remove only values you want to inherit from Nova defaults
+- Upgrade through this final Classic release and launch it once before Nova v1. If you skip the bridge, back up `~/.config/yazelix`, remove incompatible Yazelix-owned files yourself, and configure Nova from its current examples; neither release adopts ambient tool config
 
 Home Manager declarations move from broad options:
 
@@ -61,6 +65,12 @@ programs.yazelix = {
 ```
 
 The [Home Manager migration mapping](./home_manager/README.md#migrating-an-older-declaration) lists every removed semantic option and its exact sparse TOML path
+
+Nova transition notes:
+- Review `~/.config/yazelix/shell_nu.nu` and copy only wanted content into `~/.config/yazelix/nu/config.nu`; create `nu/env.nu` only for an environment overlay. Copy selected prompt overrides into `~/.config/yazelix/starship.toml`; never move or hand ownership of `~/.config/starship.toml` to Yazelix automatically. These files take effect after the Nova swap, not in Classic
+- Preserve `yazi/yazi.toml` and `yazi/init.lua` directly, validate `yazi/keymap.toml` against Nova's append contract, and check plugin names against Nova's packaged `auto-layout`, `sidebar-state`, `sidebar-status`, `zoxide-editor`, `git`, and `starship` plugins. `yazi/package.toml` is dormant in Classic, `yazi/theme.toml` is Nova staging-only, and ambient `~/.config/yazi` remains untouched
+- Preserve `helix/config.toml`, `languages.toml`, themes, and a complete user-authored `helix.scm` plus `init.scm` pair. `Alt r` remains Yazelix-reserved; `helix.external` and `helix.steel_plugins` are removed, so custom Steel users must create a complete pair from their preserved sources. Ambient `~/.config/helix` remains untouched
+- `Alt Shift L` opens the Classic right agent sidebar in this release and the managed agent popup in Nova. `Ctrl Shift Y` retires with the Classic right-sidebar focus path
 
 ## v17.10 - 2026-07-11
 
