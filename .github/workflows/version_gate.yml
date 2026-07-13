@@ -43,6 +43,13 @@ jobs:
           test -x "$runtime_profile/bin/yzn"
           test ! -e "$runtime_profile/share/applications/yzn.desktop"
 
+      - name: Build release contract checks
+        run: |
+          nix build --no-link --print-build-logs \
+            .#checks.x86_64-linux.contracts \
+            .#checks.x86_64-linux.helix_contracts \
+            .#checks.x86_64-linux.key_reference_parity
+
       - name: Smoke installed yzn commands
         run: |
           profile="$RUNNER_TEMP/yazelix-next-profile"
