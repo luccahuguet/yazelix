@@ -19,6 +19,7 @@ struct ChildInputLock {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct ZellijPluginWasmPackageContract {
+    input_node: &'static str,
     package_attr: &'static str,
     system: &'static str,
     plugin_name: &'static str,
@@ -29,12 +30,14 @@ type JsonObject = serde_json::Map<String, JsonValue>;
 
 const ZELLIJ_PLUGIN_WASM_PACKAGE_CONTRACTS: &[ZellijPluginWasmPackageContract] = &[
     ZellijPluginWasmPackageContract {
+        input_node: "yazelixZellijPaneOrchestrator",
         package_attr: "yazelix_zellij_pane_orchestrator",
         system: "aarch64-darwin",
         plugin_name: "yazelix-zellij-pane-orchestrator",
         wasm_path: "share/yazelix_zellij_pane_orchestrator/yazelix_pane_orchestrator.wasm",
     },
     ZellijPluginWasmPackageContract {
+        input_node: "yazelixZellijPopup",
         package_attr: "yazelix_zellij_popup",
         system: "aarch64-darwin",
         plugin_name: "yazelix-zellij-popup",
@@ -96,11 +99,11 @@ pub fn validate_child_release_transaction(repo_root: &Path) -> Result<Validation
         return Ok(report);
     }
 
-    for input in inputs {
-        if let Some(warning) = local_child_checkout_warning(repo_root, &input)? {
+    for input in &inputs {
+        if let Some(warning) = local_child_checkout_warning(repo_root, input)? {
             report.warnings.push(warning);
         }
-        if !remote_rev_is_fetchable(&input)? {
+        if !remote_rev_is_fetchable(input)? {
             report.errors.push(format!(
                 "Child input `{}` pins unpublished or unreachable commit {} for {}/{}. Push the child repo first, update flake.lock to the published revision, then run no-overrides validation.",
                 input.node, input.rev, input.owner, input.repo
@@ -110,10 +113,12 @@ pub fn validate_child_release_transaction(repo_root: &Path) -> Result<Validation
 
     report
         .errors
-        .extend(validate_zellij_plugin_wasm_package_contracts(repo_root)?);
+        .extend(validate_zellij_plugin_wasm_package_contracts(
+            repo_root, &inputs,
+        )?);
     report
         .errors
-        .extend(validate_cursor_package_contracts(repo_root)?);
+        .extend(validate_cursor_package_contracts(repo_root, &inputs)?);
     report
         .errors
         .extend(validate_main_cursor_shader_tree_deleted(repo_root));
@@ -286,11 +291,15 @@ fn fetch_failure_means_missing_revision(stderr: &str) -> bool {
         || stderr.contains("Server does not allow request for unadvertised object")
 }
 
-fn validate_zellij_plugin_wasm_package_contracts(repo_root: &Path) -> Result<Vec<String>, String> {
+fn validate_zellij_plugin_wasm_package_contracts(
+    repo_root: &Path,
+    inputs: &[ChildInputLock],
+) -> Result<Vec<String>, String> {
     let mut errors = Vec::new();
     for contract in ZELLIJ_PLUGIN_WASM_PACKAGE_CONTRACTS {
+        let input = locked_child_input(inputs, contract.input_node)?;
         let metadata =
-            package_passthru_metadata(repo_root, contract.system, contract.package_attr)?;
+            package_passthru_metadata(repo_root, input, contract.system, contract.package_attr)?;
         errors.extend(validate_zellij_plugin_wasm_package_contract_with(
             contract, &metadata,
         )?);
@@ -298,10 +307,14 @@ fn validate_zellij_plugin_wasm_package_contracts(repo_root: &Path) -> Result<Vec
     Ok(errors)
 }
 
-fn validate_cursor_package_contracts(repo_root: &Path) -> Result<Vec<String>, String> {
+fn validate_cursor_package_contracts(
+    repo_root: &Path,
+    inputs: &[ChildInputLock],
+) -> Result<Vec<String>, String> {
     let mut errors = Vec::new();
+    let input = locked_child_input(inputs, "yazelixCursors")?;
     for system in ["x86_64-linux", "aarch64-darwin"] {
-        let metadata = package_passthru_metadata(repo_root, system, "yazelix_cursors")?;
+        let metadata = package_passthru_metadata(repo_root, input, system, "yazelix_cursors")?;
         errors.extend(validate_cursor_package_contract_with(system, &metadata)?);
     }
     Ok(errors)
@@ -411,10 +424,11 @@ fn validate_main_cursor_shader_tree_deleted(repo_root: &Path) -> Vec<String> {
 
 fn package_passthru_metadata(
     repo_root: &Path,
+    input: &ChildInputLock,
     system: &str,
     package_attr: &str,
 ) -> Result<String, String> {
-    let flake_attr = format!(".#packages.{system}.{package_attr}.passthru");
+    let flake_attr = package_passthru_flake_attr(input, system, package_attr);
     let eval = Command::new("nix")
         .current_dir(repo_root)
         .args(["eval", "--json", &flake_attr, "--accept-flake-config"])
@@ -429,6 +443,23 @@ fn package_passthru_metadata(
 
     String::from_utf8(eval.stdout)
         .map_err(|error| format!("Invalid UTF-8 from `nix eval --json {flake_attr}`: {error}"))
+}
+
+fn locked_child_input<'a>(
+    inputs: &'a [ChildInputLock],
+    node: &str,
+) -> Result<&'a ChildInputLock, String> {
+    inputs
+        .iter()
+        .find(|input| input.node == node)
+        .ok_or_else(|| format!("flake.lock is missing required child input `{node}`"))
+}
+
+fn package_passthru_flake_attr(input: &ChildInputLock, system: &str, package_attr: &str) -> String {
+    format!(
+        "github:{}/{}/{}#packages.{system}.{package_attr}.passthru",
+        input.owner, input.repo, input.rev
+    )
 }
 
 fn validate_zellij_plugin_wasm_package_contract_with(
@@ -673,6 +704,22 @@ mod tests {
         ));
     }
 
+    // Regression: contracted main flakes must validate package metadata at the exact locked child revision instead of requiring deleted main package mirrors.
+    #[test]
+    fn package_passthru_flake_attr_targets_locked_child_owner() {
+        let input = ChildInputLock {
+            node: "yazelixZellijPopup".to_string(),
+            owner: "luccahuguet".to_string(),
+            repo: "yazelix-zellij-popup".to_string(),
+            rev: "2222222222222222222222222222222222222222".to_string(),
+        };
+
+        assert_eq!(
+            package_passthru_flake_attr(&input, "aarch64-darwin", "yazelix_zellij_popup"),
+            "github:luccahuguet/yazelix-zellij-popup/2222222222222222222222222222222222222222#packages.aarch64-darwin.yazelix_zellij_popup.passthru"
+        );
+    }
+
     // Regression: first-party Zellij plugin child packages must publish the child-owned wasm package contract that replaced main-side buildPhase inspection.
     #[test]
     fn zellij_plugin_wasm_contract_accepts_declared_package_metadata() {
@@ -857,6 +904,7 @@ mod tests {
 
     fn popup_contract() -> ZellijPluginWasmPackageContract {
         ZellijPluginWasmPackageContract {
+            input_node: "yazelixZellijPopup",
             package_attr: "yazelix_zellij_popup",
             system: "aarch64-darwin",
             plugin_name: "yazelix-zellij-popup",
