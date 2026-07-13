@@ -78,7 +78,6 @@ jobs:
       - name: Setup Nix
         uses: ./.github/actions/setup_nix_ubuntu
         with:
-          free_disk: "false"
           rust_cache: "true"
 
       - name: Build Rust validation helpers
@@ -120,8 +119,6 @@ jobs:
       # outlive the validators and turn green checks into timeout failures.
       - name: Setup Nix
         uses: ./.github/actions/setup_nix_ubuntu
-        with:
-          free_disk: "false"
 
       - name: Use validation helpers
         uses: ./.github/actions/use_validation_helpers
