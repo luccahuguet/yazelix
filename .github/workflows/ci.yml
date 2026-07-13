@@ -29,6 +29,7 @@ jobs:
         with:
           determinate: false
           extra-conf: |
+            accept-flake-config = true
             max-jobs = 2
             cores = 2
 
