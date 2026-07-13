@@ -81,14 +81,17 @@
       if version == "dev"
       then "NOVA DEV"
       else let
-        parsed = builtins.match "([0-9]+)\\.([0-9]+)\\.[0-9]+(-beta\\.[0-9]+)?" version;
+        parsed = builtins.match "([0-9]+)\\.([0-9]+)\\.[0-9]+(-beta\\.([0-9]+))?" version;
       in
         if parsed == null
         then throw "unsupported Nova version: ${version}"
-        else "NOVA ${builtins.elemAt parsed 0}${if builtins.elemAt parsed 2 == null then ".${builtins.elemAt parsed 1}" else "β"}";
+        else if builtins.elemAt parsed 2 == null
+        then "NOVA ${builtins.elemAt parsed 0}.${builtins.elemAt parsed 1}"
+        else "NOVA β${builtins.elemAt parsed 3}";
     novaBarLabel =
       assert compactNovaVersion "dev" == "NOVA DEV";
-      assert compactNovaVersion "1.0.0-beta.1" == "NOVA 1β";
+      assert compactNovaVersion "1.0.0-beta.1" == "NOVA β1";
+      assert compactNovaVersion "1.0.0-beta.12" == "NOVA β12";
       assert compactNovaVersion "1.0.0" == "NOVA 1.0";
       compactNovaVersion novaVersion;
     supportedSystems = ["x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin"];
@@ -455,25 +458,33 @@
         git = "${yznGit}/bin/yzn-git";
         layout = "${yznZellijLayout}/layout.kdl";
       };
-      yazelixZellijPackage = pkgs."zellij-unwrapped".overrideAttrs (_old: {
-        pname = "zellij";
-        version = "0.44.3";
-        src = yazelixZellij;
-        patches = [];
-        prePatch = "";
-        postPatch = "";
-        installCheckPhase = ''
-          runHook preInstallCheck
-          runHook postInstallCheck
-        '';
-        cargoDeps = pkgs.rustPlatform.fetchCargoVendor {
+      zellijBuildBase =
+        if pkgs ? "zellij-unwrapped"
+        then pkgs."zellij-unwrapped"
+        else if pkgs.zellij ? unwrapped
+        then pkgs.zellij.unwrapped
+        else throw "Yazelix Nova requires the nixpkgs Zellij 0.44.3 unwrapped package contract";
+      yazelixZellijPackage =
+        assert zellijBuildBase.version == "0.44.3";
+        zellijBuildBase.overrideAttrs (_old: {
           pname = "zellij";
           version = "0.44.3";
           src = yazelixZellij;
-          hash = "sha256-966FpfSsF9I10SrYe3+YNsfM2kLLv+gd0/Aw8vLp4Lk=";
-        };
-        doCheck = false;
-      });
+          patches = [];
+          prePatch = "";
+          postPatch = "";
+          installCheckPhase = ''
+            runHook preInstallCheck
+            runHook postInstallCheck
+          '';
+          cargoDeps = pkgs.rustPlatform.fetchCargoVendor {
+            pname = "zellij";
+            version = "0.44.3";
+            src = yazelixZellij;
+            hash = "sha256-966FpfSsF9I10SrYe3+YNsfM2kLLv+gd0/Aw8vLp4Lk=";
+          };
+          doCheck = false;
+        });
       mkYznCommand = withMars: let
         packageVariant = if withMars then "full" else "runtime";
         marsPath = if withMars then "${marsPackage}/bin/mars" else "";

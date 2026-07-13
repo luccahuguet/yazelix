@@ -53,7 +53,7 @@ Status JSON contains numeric `schema_version = 1`, plus `name`, `version`,
 without a public `sponsor` command.
 
 The top-right Zellij corner shows the compact release line derived from the
-same version: `NOVA DEV` in development, `NOVA 1β` during the v1 beta line,
+same version: `NOVA DEV` in development, `NOVA βN` during the v1 beta line,
 and `NOVA 1.0` for the stable release.
 
 Screen styles are `static`, `logo`, `boids`, `boids_predator`,
@@ -503,13 +503,13 @@ git ls-files | grep -Ev '^\.beads/|\.lock$' | xargs wc -l
 | Language | Lines |
 | --- | ---: |
 | Ignore (`.gitignore`) | 4 |
-| Markdown | 1629 |
-| Nix | 1116 |
+| Markdown | 1631 |
+| Nix | 1127 |
 | Shell | 84 |
 | YAML | 294 |
 | TOML | 246 |
 | KDL | 212 |
 | Nu | 11 |
 | Lua | 247 |
-| Rust | 12891 |
-| Total | 16734 |
+| Rust | 12907 |
+| Total | 16763 |

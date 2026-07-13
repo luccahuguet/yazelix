@@ -4,6 +4,8 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## Unreleased
 
+- `yzn doctor` recognizes the supported Helix `Alt r` reveal binding when its
+  inner quotes use valid TOML escaping, while real conflicts still warn.
 - Darwin Package Smoke and Version Gate build the full package, runtime package,
   and Home Manager closure on a real `aarch64-darwin` runner. They also assert
   that Darwin receives no Linux desktop entry; macOS interactive use and the
@@ -50,7 +52,7 @@ User-visible runtime changes for Yazelix Nova live here.
 - `Alt Shift F` toggles focused-pane fullscreen, and `Ctrl y` moves directly
   between the managed editor and Yazi sidebar, reopening the sidebar as needed.
 - The top-right Zellij corner derives a compact Nova release label from the
-  package version: `NOVA DEV`, `NOVA 1β`, or stable major/minor form such as
+  package version: `NOVA DEV`, `NOVA βN`, or stable major/minor form such as
   `NOVA 1.0`. Exact SemVer remains in `yzn --version` and runtime identity.
 - Bare `yzn` prints help instead of launching Mars; sessions start explicitly
   with `launch` or `enter`. `yzn run` executes structured argv in the prepared

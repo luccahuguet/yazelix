@@ -105,6 +105,18 @@ fn expect_helix_doctor_warnings(yzn: &Path) {
         excerpt(&doctor)
     );
 
+    fs::write(
+        &helix_override_config,
+        "[keys.normal]\nA-r = \":sh yzn reveal \\\"%{buffer_name}\\\"\"\n",
+    )
+    .unwrap();
+    let doctor = helix_override.run_yzn(&yzn_bin, "doctor", "Helix reveal binding doctor");
+    assert!(
+        !doctor.contains("warn helix config:"),
+        "supported Helix reveal binding should not warn\n{}",
+        excerpt(&doctor)
+    );
+
     fs::write(&helix_override_config, "[keys.normal]\nA-r = \":noop\"\n").unwrap();
     let doctor = helix_override.run_yzn(&yzn_bin, "doctor", "Helix Alt r doctor");
     expect_contains_all! {
