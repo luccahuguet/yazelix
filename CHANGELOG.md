@@ -6,16 +6,26 @@ Yazelix Classic covers every release through the final pre-Nova tag. The replace
 
 ## Unreleased
 
-Post-v17.11 work in progress
+Final Classic cursor handoff correction
 
-Upgrade impact: no user action required
+Upgrade impact: automatic migration for writable cursor config; manual action required for declarative, symlinked, or read-only cursor config
 
 Highlights:
-- Reserved for post-release changes after v17.11 lands.
+- Removed the retired `settings.kitty_enable_cursor` field from Classic's cursor contract so the final Classic output is accepted directly by Yazelix Nova and current Mars
+- Migrated writable regular `~/.config/yazelix/cursors.toml` files backup-first by removing only the retired field while preserving comments, ordering, permissions, and every surviving value
+- Refused to rewrite declarative, symlinked, or read-only cursor config and reported the exact owner-side edit instead
+- Kept valid native Mars appearance and terminal settings active when cursor config fails to parse, with the warning isolated to the rejected cursor input
+- Kept the packaged Mars cursor trail enabled by default after the shared cursor schema stopped owning the retired Kitty fallback
+- Verified the corrected bridge through focused migration/config tests, the complete package and Home Manager gates, and a live Classic-to-Nova Home Manager canary
+
+Manual action:
+- If Home Manager or another declarative owner manages `~/.config/yazelix/cursors.toml`, remove `settings.kitty_enable_cursor` from that declaration and rebuild it
+- If the cursor file is symlinked or read-only, update its real owner or make it writable before launching this Classic bridge once
+- After the Nova swap, use `github:luccahuguet/yazelix/v17.12#yazelix` or pin Home Manager to `github:luccahuguet/yazelix/v17.12` for the supported Classic migration and rollback artifact
 
 ## v17.11 - 2026-07-13
 
-Final Classic bridge to Yazelix Nova v1
+Classic TOML convergence bridge to Yazelix Nova v1
 
 Upgrade impact: automatic migration for writable user config; manual Home Manager action required
 
@@ -48,7 +58,7 @@ Manual action:
 - Remove main-flake `#br` and `#beads_rust`; maintainers get `br` from the development shell and standalone users install it from its upstream owner
 - Replace the removed `#install_check` app/package with the checked-in `shells/posix/install_check.sh` preflight
 - Review preserved `zellij/config.kdl` and `zellij/plugins.kdl` assignments before Nova; remove only values you want to inherit from Nova defaults
-- Upgrade through this final Classic release and launch it once before Nova v1. After the swap, install the bridge explicitly from `github:luccahuguet/yazelix/v17.11#yazelix` or pin a Home Manager input to `github:luccahuguet/yazelix/v17.11`
+- Upgrade through v17.12, the corrected final Classic bridge, and launch it once before Nova v1. After the swap, install it explicitly from `github:luccahuguet/yazelix/v17.12#yazelix` or pin a Home Manager input to `github:luccahuguet/yazelix/v17.12`
 - If you skip the bridge, back up `~/.config/yazelix`, remove incompatible Yazelix-owned files yourself, and configure Nova from its current examples; neither release adopts ambient tool config
 
 Home Manager declarations move from broad options:
