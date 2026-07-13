@@ -38,11 +38,24 @@ pkgs.runCommand "yazelix-runtime-release-contracts" { } ''
     grep -F '{ ^rtk cargo' "$runtime/nushell/config/rtk_wrappers.nu" >/dev/null
     grep -F 'export def --wrapped codex' "$runtime/nushell/config/rtk_wrappers.nu" >/dev/null
     grep -F '{ ^rtk codex' "$runtime/nushell/config/rtk_wrappers.nu" >/dev/null
+    grep -F 'export def --wrapped bash' "$runtime/nushell/config/rtk_wrappers.nu" >/dev/null
+    grep -F '{ ^rtk proxy -- bash' "$runtime/nushell/config/rtk_wrappers.nu" >/dev/null
+    grep -F 'export def --wrapped jq' "$runtime/nushell/config/rtk_wrappers.nu" >/dev/null
+    grep -F '{ ^rtk proxy -- jq' "$runtime/nushell/config/rtk_wrappers.nu" >/dev/null
     grep -F '^rtk proxy -- cargo test' "$runtime/nushell/config/rtk_wrappers.nu" >/dev/null
     if grep -F '`^cargo test' "$runtime/nushell/config/rtk_wrappers.nu" >/dev/null; then
       echo "RTK Nu policy must proxy raw evidence instead of bypassing RTK" >&2
       exit 1
     fi
+    if grep -E '\{[[:space:]]+\^[[:alnum:]_.-]+' \
+      "$runtime/nushell/config/rtk_wrappers.nu" \
+      | grep -vF '{ ^rtk ' >/dev/null; then
+      echo "RTK Nu wrappers must not execute an external command outside RTK" >&2
+      exit 1
+    fi
+    grep -F '".nix-profile" "toolbin" "nu"' \
+      "$runtime/nushell/config/config.nu" >/dev/null
+    grep -F '$env.SHELL = $profile_nu' "$runtime/nushell/config/config.nu" >/dev/null
     "$runtime/toolbin/cargo-audit" --version | grep -F 'cargo-audit 0.22.1' >/dev/null
     "$runtime/toolbin/cargo-msrv-1.89" --version | grep -F 'cargo 1.89.0' >/dev/null
     "$runtime/toolbin/rustc-msrv-1.89" --version | grep -F 'rustc 1.89.0' >/dev/null
