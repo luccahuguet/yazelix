@@ -33,7 +33,6 @@
     yazelixCursors = {
       url = "github:luccahuguet/yazelix-cursors";
       inputs.nixpkgs.follows = "nixpkgs";
-      inputs.fenix.follows = "fenix";
     };
     yazelixZellijBar = {
       url = "github:luccahuguet/yazelix-zellij-bar";
