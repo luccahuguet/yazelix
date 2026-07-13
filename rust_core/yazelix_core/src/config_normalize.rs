@@ -1258,6 +1258,19 @@ keybinding = "Alt Shift B"
         assert!(error.message().contains("workspace"));
     }
 
+    // Defends: the combined settings UI schema cannot make cursors.toml data valid in config.toml.
+    #[test]
+    fn rejects_embedded_cursor_table() {
+        let root = tempdir().unwrap();
+        let config = root.path().join("config.toml");
+        fs::write(&config, "[cursors]\nenabled_cursors = [\"reef\"]\n").unwrap();
+
+        let error = normalize_config(&request_for(config)).unwrap_err();
+
+        assert_eq!(error.code(), "invalid_nova_root");
+        assert!(error.message().contains("cursors"));
+    }
+
     // Defends: explicit values equal to packaged defaults remain valid Nova intent.
     #[test]
     fn accepts_explicit_values_equal_to_defaults() {

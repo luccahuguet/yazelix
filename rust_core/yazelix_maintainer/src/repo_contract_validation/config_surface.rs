@@ -57,6 +57,37 @@ fn validate_main_template_schema_structure(repo_root: &Path) -> Result<Vec<Strin
     let schema = serde_json::from_str::<JsonValue>(&raw)
         .map_err(|error| format!("Failed to parse {}: {error}", schema_path.display()))?;
     let mut errors = Vec::new();
+    let extension = schema.get("x-yazelix").and_then(JsonValue::as_object);
+    for (field, expected) in [
+        ("schema_role", "multi_source_config_ui"),
+        ("root_file", "~/.config/yazelix/config.toml"),
+        ("cursor_file", "~/.config/yazelix/cursors.toml"),
+    ] {
+        if extension
+            .and_then(|value| value.get(field))
+            .and_then(JsonValue::as_str)
+            != Some(expected)
+        {
+            errors.push(format!(
+                "Settings UI schema x-yazelix.{field} must be `{expected}`"
+            ));
+        }
+    }
+    if extension.is_some_and(|value| value.contains_key("canonical_file")) {
+        errors.push(
+            "The multi-source settings UI schema must not advertise one canonical_file".to_string(),
+        );
+    }
+    if schema
+        .pointer("/properties/cursors/x-yazelix/source_file")
+        .and_then(JsonValue::as_str)
+        != Some("~/.config/yazelix/cursors.toml")
+    {
+        errors.push(
+            "The settings UI cursor subtree must declare cursors.toml as its source_file"
+                .to_string(),
+        );
+    }
     validate_schema_structure(&schema, Some(&template), "$", &mut errors);
     Ok(errors)
 }

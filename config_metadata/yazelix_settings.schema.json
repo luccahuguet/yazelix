@@ -1,12 +1,13 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://yazelix.com/schemas/yazelix_settings.schema.json",
-  "title": "Yazelix Settings",
-  "description": "Canonical sparse Yazelix Nova root inventory. Native tool configs and cursor settings remain separate sidecars under ~/.config/yazelix/.",
+  "title": "Yazelix multi-source settings UI",
+  "description": "Combined metadata for the Classic settings UI. Root settings belong to ~/.config/yazelix/config.toml; cursor settings belong only to ~/.config/yazelix/cursors.toml. This artifact is not a schema for either file by itself.",
   "type": "object",
   "additionalProperties": false,
   "x-yazelix": {
-    "canonical_file": "config.toml",
+    "schema_role": "multi_source_config_ui",
+    "root_file": "~/.config/yazelix/config.toml",
     "cursor_file": "~/.config/yazelix/cursors.toml",
     "main_contract": "config_metadata/main_config_contract.toml",
     "config_ui_metadata": "config_metadata/config_ui_metadata.toml",
@@ -233,7 +234,8 @@
       ],
       "additionalProperties": false,
       "x-yazelix": {
-        "tab": "cursors"
+        "tab": "cursors",
+        "source_file": "~/.config/yazelix/cursors.toml"
       },
       "properties": {
         "schema_version": {
