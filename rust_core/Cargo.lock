@@ -1593,7 +1593,7 @@ dependencies = [
 [[package]]
 name = "yazelix_cursors"
 version = "0.1.0"
-source = "git+https://github.com/luccahuguet/yazelix-cursors?rev=0b832de2f8d954164e18a03ea0be0a84c3a5ebdc#0b832de2f8d954164e18a03ea0be0a84c3a5ebdc"
+source = "git+https://github.com/luccahuguet/yazelix-cursors?rev=ae56aa509e698d50c65c9aca9d59cd98a4d244ac#ae56aa509e698d50c65c9aca9d59cd98a4d244ac"
 dependencies = [
  "jsonc-parser",
  "ratconfig 2.0.0",

@@ -92,14 +92,6 @@ fn print_cursor_report(config_path: &str, registry: &CursorRegistry) {
     println!("Mode effect: {}", registry.settings.mode_effect);
     println!("Glow: {}", registry.settings.glow);
     println!("Duration: {:.2}", registry.settings.duration);
-    println!(
-        "Kitty cursor fallback: {}",
-        if registry.settings.kitty_enable_cursor {
-            "enabled"
-        } else {
-            "disabled"
-        }
-    );
     println!();
     println!("Enabled cursors");
     for definition in registry.enabled_definitions() {

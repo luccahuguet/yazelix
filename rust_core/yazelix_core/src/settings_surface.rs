@@ -4,6 +4,7 @@
 use crate::atomic_fs::write_text_atomic_create_new;
 use crate::backup_timestamp::compact_utc_backup_timestamp;
 use crate::bridge::{CoreError, ErrorClass};
+use crate::classic_nova_cursor_migration::migrate_classic_cursor_to_nova;
 use crate::classic_nova_root_migration::{
     ClassicNovaMigrationRequest, create_new_target_was_published, migrate_classic_root_to_nova,
     remove_file_if_unchanged,
@@ -501,6 +502,13 @@ fn ensure_cursor_config(
         ));
     }
     if path_present(&paths.cursor_config) {
+        if let Some(backup) = migrate_classic_cursor_to_nova(&paths.cursor_config)? {
+            eprintln!(
+                "Removed the retired Kitty cursor field from {} and backed up the original at {}.",
+                paths.cursor_config.display(),
+                backup.display()
+            );
+        }
         load_cursor_config(&paths.cursor_config)?;
         return Ok(());
     }

@@ -5,6 +5,7 @@ pub mod appearance_mode;
 pub(crate) mod atomic_fs;
 pub(crate) mod backup_timestamp;
 pub mod bridge;
+pub(crate) mod classic_nova_cursor_migration;
 pub mod classic_nova_root_migration;
 pub mod classic_nova_root_translation;
 pub mod cli_render;

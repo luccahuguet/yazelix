@@ -148,10 +148,6 @@ help = "Choose the Ghostty cursor glow intensity"
 tab = "cursors"
 help = "Set cursor animation duration in seconds"
 
-[fields."cursors.settings.kitty_enable_cursor"]
-tab = "cursors"
-help = "Enable cursor shader generation for Kitty-compatible cursor config"
-
 [fields."cursors.cursor"]
 tab = "cursors"
 help = "Edit the cursor preset registry used by generated Ghostty cursor configs"

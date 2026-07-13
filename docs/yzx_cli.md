@@ -302,7 +302,7 @@ Open the main Yazelix config file in your editor
 ### `yzx cursors`
 Inspect Yazelix cursor presets and resolved colors
 - Shows the active `cursors.toml` path
-- Shows global trail, effect, glow, duration, and Kitty fallback settings
+- Shows global trail, effect, glow, and duration settings
 - Shows resolved colors for enabled presets, including derived mono accents
 
 ### `yzx cursors ghostty setup`

@@ -289,9 +289,6 @@
               "type": "number",
               "minimum": 0.25,
               "maximum": 4
-            },
-            "kitty_enable_cursor": {
-              "type": "boolean"
             }
           },
           "required": [
@@ -299,8 +296,7 @@
             "trail_effect",
             "mode_effect",
             "glow",
-            "duration",
-            "kitty_enable_cursor"
+            "duration"
           ]
         },
         "cursor": {
