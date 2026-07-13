@@ -39,7 +39,8 @@ Manual action:
 - Remove main-flake `#br` and `#beads_rust`; maintainers get `br` from the development shell and standalone users install it from its upstream owner
 - Replace the removed `#install_check` app/package with the checked-in `shells/posix/install_check.sh` preflight
 - Review preserved `zellij/config.kdl` and `zellij/plugins.kdl` assignments before Nova; remove only values you want to inherit from Nova defaults
-- Upgrade through this final Classic release and launch it once before Nova v1. If you skip the bridge, back up `~/.config/yazelix`, remove incompatible Yazelix-owned files yourself, and configure Nova from its current examples; neither release adopts ambient tool config
+- Upgrade through this final Classic release and launch it once before Nova v1. After the swap, install the bridge explicitly from `github:luccahuguet/yazelix/v17.11#yazelix` or pin a Home Manager input to `github:luccahuguet/yazelix/v17.11`
+- If you skip the bridge, back up `~/.config/yazelix`, remove incompatible Yazelix-owned files yourself, and configure Nova from its current examples; neither release adopts ambient tool config
 
 Home Manager declarations move from broad options:
 

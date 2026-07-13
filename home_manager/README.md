@@ -115,6 +115,8 @@ The module does not own `zellij/plugins.kdl`, plugin or flavor directories, ambi
 
 The final Classic bridge intentionally removes the broad package-shaping and per-setting option languages without aliases
 
+After Nova replaces the default branch, pin `yazelix.url = "github:luccahuguet/yazelix/v17.11";` while running this migration, launch the bridge once, then update the input to Nova
+
 Before
 
 ```nix
