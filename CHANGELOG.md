@@ -6,6 +6,15 @@ Yazelix Classic covers every release through the final pre-Nova tag. The replace
 
 ## Unreleased
 
+Post-v17.11 work in progress
+
+Upgrade impact: no user action required
+
+Highlights:
+- Reserved for post-release changes after v17.11 lands.
+
+## v17.11 - 2026-07-13
+
 Final Classic bridge to Yazelix Nova v1
 
 Upgrade impact: automatic migration for writable user config; manual Home Manager action required
@@ -72,6 +81,7 @@ Nova transition notes:
 - Preserve `yazi/yazi.toml` and `yazi/init.lua` directly, validate `yazi/keymap.toml` against Nova's append contract, and check plugin names against Nova's packaged `auto-layout`, `sidebar-state`, `sidebar-status`, `zoxide-editor`, `git`, and `starship` plugins. `yazi/package.toml` is dormant in Classic, `yazi/theme.toml` is Nova staging-only, and ambient `~/.config/yazi` remains untouched
 - Preserve `helix/config.toml`, `languages.toml`, themes, and a complete user-authored `helix.scm` plus `init.scm` pair. `Alt r` remains Yazelix-reserved; `helix.external` and `helix.steel_plugins` are removed, so custom Steel users must create a complete pair from their preserved sources. Ambient `~/.config/helix` remains untouched
 - `Alt Shift L` opens the Classic right agent sidebar in this release and the managed agent popup in Nova. `Ctrl Shift Y` retires with the Classic right-sidebar focus path
+
 
 ## v17.10 - 2026-07-11
 
