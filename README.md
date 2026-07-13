@@ -18,26 +18,42 @@ focused checks for its contracts
 
 ## Install and launch
 
+Nova requires Nix with flakes enabled. `launch` opens the packaged Mars window
+in a graphical session, while `enter` starts the same workspace in the current
+terminal or over SSH
+
+Nova starts from packaged defaults, so no configuration is required before the
+first launch
+
+### Try without installing
+
+```sh
+nix run github:luccahuguet/yazelix-next -- launch
+nix run github:luccahuguet/yazelix-next#runtime -- enter
+```
+
+If the one-off launch fails, inspect the owned runtime setup with:
+
+```sh
+nix run github:luccahuguet/yazelix-next -- doctor
+```
+
+### Install in a Nix profile
+
 ```sh
 nix profile add --refresh github:luccahuguet/yazelix-next
 yzn launch
 ```
 
-Run `yzn launch` from a project directory to open the full Mars workspace. Use
-`yzn enter` to start the same managed workspace in the current terminal,
-including over SSH
+### Install with Home Manager
 
-Run directly from a checkout without installing:
+Use the [Home Manager module](#home-manager) for a declarative install
+
+From a local checkout, use:
 
 ```sh
-nix run
+nix run .#yzn -- launch
 nix run .#runtime -- enter
-```
-
-To install a local checkout instead, run:
-
-```sh
-nix profile add --refresh /absolute/path/to/yazelix-next
 ```
 
 ## Learn, help, and recover
@@ -63,6 +79,7 @@ Nova carries Helix/Vim's `h/j/k/l` motion model through the workspace:
 
 | Layer | `h` | `j` | `k` | `l` |
 | --- | --- | --- | --- | --- |
+| Helix normal mode | Move cursor left | Move cursor down | Move cursor up | Move cursor right |
 | `Alt` | Focus left or previous tab | Focus down | Focus up | Focus right or next tab |
 | `Ctrl Alt` | Move tab left | Move pane down | Move pane up | Move tab right |
 
@@ -79,6 +96,42 @@ sidebar       Git        Ratconfig  agent
 `Alt Shift h` toggles the sidebar. Press the same key again to close the Git,
 Ratconfig, or menu popup. The agent popup hides instead, so its process remains
 available
+
+## Keybindings
+
+Ratconfig's Keys tab is the complete packaged reference, and `config.kdl`
+remains the runtime source
+
+### Zellij workspace
+
+| Key | Action |
+| --- | --- |
+| `Ctrl Alt g` | Toggle locked mode |
+| `Ctrl Alt o` | Open session mode |
+| `Ctrl q` | Quit Yazelix session |
+| `Ctrl p` | Toggle pane mode |
+| `Ctrl t` | Toggle tab mode |
+| `Ctrl n` | Toggle resize mode |
+| `Alt m` | Open a new pane |
+| `Alt Shift F` | Toggle the focused pane fullscreen |
+| `Ctrl y` | Toggle focus between the editor and Yazi sidebar |
+| `Alt 1-9` | Go directly to tab 1-9 |
+
+Move mode is unbound. Managed popup triggers can be remapped through
+`keybindings.config`, `keybindings.agent`, `keybindings.git`, and
+`keybindings.menu`. Raw Zellij keymaps stay outside the managed sidecar
+
+### Helix
+
+| Key | Action |
+| --- | --- |
+| `Alt r` | Reveal the current editor file in Yazi |
+
+### Yazi
+
+| Key | Action |
+| --- | --- |
+| `Alt z` | Zoxide jump into the managed editor |
 
 ## Commands
 
@@ -451,43 +504,6 @@ through `yzn-open`, and renames the tab to the workspace root
 ${YAZELIX_STATE_DIR}/logs/yzn-open.log
 ```
 
-## Keybindings
-
-The Ratconfig Keys tab is the packaged key reference. `config.kdl` remains the
-runtime source
-
-| Key | Action |
-| --- | --- |
-| `Ctrl Alt g` | Toggle locked mode |
-| `Ctrl Alt o` | Open session mode |
-| `Ctrl q` | Quit Yazelix session |
-| `Ctrl p` | Toggle pane mode |
-| `Ctrl t` | Toggle tab mode |
-| `Ctrl n` | Toggle resize mode |
-| `Alt m` | Open a new pane |
-| `Alt h` / `Alt Left` | Move focus left or previous tab |
-| `Alt j` / `Alt Down` | Move focus down |
-| `Alt k` / `Alt Up` | Move focus up |
-| `Alt l` / `Alt Right` | Move focus right or next tab |
-| `Alt Shift F` | Toggle the focused pane fullscreen |
-| `Ctrl y` | Toggle focus between the editor and Yazi sidebar |
-| `Alt 1-9` | Go directly to tab 1-9 |
-| `Ctrl Alt h` | Move tab left |
-| `Ctrl Alt j` | Move pane down |
-| `Ctrl Alt k` | Move pane up |
-| `Ctrl Alt l` | Move tab right |
-| `Alt Shift J` | Toggle Git popup |
-| `Alt Shift K` | Toggle config popup |
-| `Alt Shift L` | Hide or show agent popup |
-| `Alt Shift M` | Toggle menu popup |
-| `Alt Shift h` | Toggle the Yazi sidebar |
-| `Alt r` | Reveal editor file in Yazi |
-| `Alt z` | Zoxide jump into the managed editor |
-
-Move mode is unbound. Managed popup triggers can be remapped through
-`keybindings.config`, `keybindings.agent`, `keybindings.git`, and
-`keybindings.menu`. Raw Zellij keymaps stay outside the managed sidecar
-
 ## CI
 
 Normal CI runs Linux checks on push, pull request, and manual dispatch.
@@ -545,7 +561,7 @@ git ls-files | grep -Ev '^\.beads/|\.lock$' | xargs wc -l
 | Language | Lines |
 | --- | ---: |
 | Ignore (`.gitignore`) | 4 |
-| Markdown | 1673 |
+| Markdown | 1689 |
 | Nix | 1127 |
 | Shell | 84 |
 | YAML | 294 |
@@ -554,4 +570,4 @@ git ls-files | grep -Ev '^\.beads/|\.lock$' | xargs wc -l
 | Nu | 11 |
 | Lua | 247 |
 | Rust | 12907 |
-| Total | 16805 |
+| Total | 16821 |
