@@ -86,7 +86,11 @@
       flake = false;
     };
     weave_source = {
-      url = "github:FlexNetOS/weave/29b2f913177fceba1bb7059db8023a33cd5aedd6";
+      url = "github:FlexNetOS/weave/9eae5c4d9cc9acb520e3d45dad25ea60ea22e63d";
+      flake = false;
+    };
+    obscura_source = {
+      url = "github:FlexNetOS/obscura/4f5b6e52d358b0e7a6a021a24bd12ff77b3f3989";
       flake = false;
     };
     zjstatus = {
@@ -117,6 +121,7 @@
       grit_source,
       icm_source,
       weave_source,
+      obscura_source,
       zjstatus,
     }:
     let
@@ -346,11 +351,27 @@
           inherit pkgs;
           weaveSource = weave_source;
         };
+      weaveLibsqlPackage =
+        system: pkgs:
+        import ./packaging/weave_release.nix {
+          inherit pkgs;
+          weaveSource = weave_source;
+          backend = "libsql";
+        };
+      obscuraPackage =
+        system: pkgs:
+        import ./packaging/obscura_release.nix {
+          inherit pkgs;
+          obscuraSource = obscura_source;
+        };
       metaPackage =
         system: pkgs:
         import ./packaging/meta_release.nix {
           inherit pkgs;
         };
+      # Home Manager belongs inside the Yazelix foundation package. The
+      # real-home Nix profile therefore keeps exactly one owning element.
+      homeManagerPackage = system: home-manager.packages.${system}.default;
       maintainerShell =
         system: pkgs:
         import ./maintainer_shell.nix {
@@ -385,7 +406,7 @@
         in
         import ./packaging/flake_outputs.nix {
           inherit agentUsagePackages beadsRustPackage kgpPackages rtkPackage;
-          inherit gritPackage icmPackage metaPackage weavePackage;
+          inherit gritPackage homeManagerPackage icmPackage metaPackage obscuraPackage weaveLibsqlPackage weavePackage;
           mkYazelix = mkYazelix system;
           inherit pkgs runtimePackage system yazelixPackage;
           inherit yazelixCursors yazelixScreen yazelixYaziAssets;
@@ -423,6 +444,7 @@
           pkgs = mkPkgs system;
           outputs = systemOutputs system;
           lifeosFoundationYzxRuntimeReleaseContracts = import ./packaging/runtime_release_contracts.nix {
+            foundation = true;
             inherit pkgs;
             runtime = outputs.packages.lifeos_foundation_yzx;
           };
@@ -436,6 +458,10 @@
             runtime = outputs.packages.runtime_kitty;
           };
           lifeos_foundation_yzx_runtime_release_contracts = lifeosFoundationYzxRuntimeReleaseContracts;
+          # The installed foundation intentionally uses SQLite. Keep the
+          # mutually exclusive libSQL backend in the flake check graph with the
+          # same sign/llm/surfaces/obscura feature set.
+          weave_libsql_maximal = outputs.packages.weave_libsql;
         }
       );
 

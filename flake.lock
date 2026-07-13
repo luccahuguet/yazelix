@@ -323,6 +323,23 @@
         "type": "github"
       }
     },
+    "obscura_source": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1783424624,
+        "narHash": "sha256-d/MviUmxT67bz0j9rsc9P1EnFE5nEpAr7eo/pVos34c=",
+        "owner": "FlexNetOS",
+        "repo": "obscura",
+        "rev": "4f5b6e52d358b0e7a6a021a24bd12ff77b3f3989",
+        "type": "github"
+      },
+      "original": {
+        "owner": "FlexNetOS",
+        "repo": "obscura",
+        "rev": "4f5b6e52d358b0e7a6a021a24bd12ff77b3f3989",
+        "type": "github"
+      }
+    },
     "root": {
       "inputs": {
         "beads_rust_source": "beads_rust_source",
@@ -333,6 +350,7 @@
         "mars": "mars",
         "nixgl": "nixgl",
         "nixpkgs": "nixpkgs_2",
+        "obscura_source": "obscura_source",
         "rtk_source": "rtk_source",
         "weave_source": "weave_source",
         "yazelixCursors": "yazelixCursors",
@@ -522,17 +540,17 @@
     "weave_source": {
       "flake": false,
       "locked": {
-        "lastModified": 1783445088,
-        "narHash": "sha256-/dw0afbLXcTK0y9u0Td5QDNNbucxqD9S0MBDCnNOuXc=",
+        "lastModified": 1783957082,
+        "narHash": "sha256-9zTnUrZHU0vurZ+2GkOOxmZdjLNzE52dRhq0H3sAXXM=",
         "owner": "FlexNetOS",
         "repo": "weave",
-        "rev": "29b2f913177fceba1bb7059db8023a33cd5aedd6",
+        "rev": "9eae5c4d9cc9acb520e3d45dad25ea60ea22e63d",
         "type": "github"
       },
       "original": {
         "owner": "FlexNetOS",
         "repo": "weave",
-        "rev": "29b2f913177fceba1bb7059db8023a33cd5aedd6",
+        "rev": "9eae5c4d9cc9acb520e3d45dad25ea60ea22e63d",
         "type": "github"
       }
     },

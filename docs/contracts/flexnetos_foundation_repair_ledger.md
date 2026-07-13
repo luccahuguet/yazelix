@@ -1,6 +1,37 @@
 # FlexNetOS Foundation Repair Ledger
 
 This ledger captures the live Yazelix foundation repair state from 2026-07-07.
+
+## Current single-profile verification contract (2026-07-13)
+
+The real-home Nix profile has one install owner: `lifeos_foundation_yzx`.
+Home Manager, desktop entries, command-line verification tools, and toolchains
+ship inside that element; user-bin wrappers and user-local desktop copies are
+not parallel owners.
+
+- `cargo` and `rustc` remain the current Fenix nightly developer defaults
+- `cargo-msrv-1.89`, `rustc-msrv-1.89`, and `rustdoc-msrv-1.89` are pinned from
+  the hash-verified Fenix Rust 1.89.0 manifest and provide the exact envctl MSRV
+  lane without rustup
+- `cargo-audit` is pinned by nixpkgs at 0.22.1
+- x86_64 Linux exports both Rust-target and cc-rs-compatible musl command
+  families: `x86_64-unknown-linux-musl-*` and `x86_64-linux-musl-*`
+- `file`, `sqlite3`, `cc`, and `pkg-config` are profile-owned verification
+  commands; `Xvfb` and `sqld` are Linux-gated profile commands
+- RTK remains one native profile-owned Rust binary. Interactive Nushell routing
+  is a native Nu module and does not install an RTK shell wrapper or plugin
+- the packaged CodeDB Nushell plugin must load under the packaged Nu and expose
+  its `codedb doctor` command in a clean, registry-free process; dependency
+  version strings alone are not accepted as protocol proof
+- on Linux, profile desktop entries invoke only package-owned
+  `yzx-desktop-launch`/`yzx-agent-workspace-launch` helpers, both of which
+  re-enter through `~/.nix-profile/bin/yzx`
+
+The fail-closed package proof is:
+
+```bash
+nix build --no-write-lock-file .#checks.x86_64-linux.lifeos_foundation_yzx_runtime_release_contracts --no-link
+```
 It is intentionally about installed-runtime ownership, not raw source-tree
 success. Generated runtime under `~/.local/share/yazelix` is proof only; edit
 inputs under `~/.config/yazelix` or package inputs under this repository.

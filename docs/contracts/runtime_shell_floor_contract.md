@@ -6,9 +6,9 @@ The product/runtime Nushell floor is the measured allowlist below:
 
 | Family | Files | LOC |
 | --- | ---: | ---: |
-| User Nushell config | `2` | `132` |
+| User Nushell config | `3` | `180` |
 
-Total tracked product/runtime Nu: `132` LOC across `2` files.
+Total tracked product/runtime Nu: `180` LOC across `3` files.
 
 ## Scope
 
@@ -28,9 +28,14 @@ Out of scope:
 The remaining runtime-side Nushell files are:
 
 - `nushell/config/config.nu`
+- `nushell/config/rtk_wrappers.nu`
 - `nushell/config/stack_prompt_guard.nu`
 
-`config.nu` and `stack_prompt_guard.nu` are current-shell Nushell UX files.
+These files are current-shell Nushell UX files. `rtk_wrappers.nu` defines native
+Nushell commands that invoke the profile-owned external RTK binary; it is not an
+RTK executable, plugin, bridge, or alternate install owner. Raw verification
+commands remain available through `^rtk proxy -- command ...`; the caret selects
+the external RTK binary, not a direct bypass around it.
 Release version metadata is Rust/Nix-owned: maintainers edit root
 `release_metadata.toml`, and packaged runtimes expose the same version through
 `runtime_identity.json.version`.
@@ -58,6 +63,8 @@ No runtime-side Nushell file is a startup fallback.
    `environment.nu` script
 3. The runtime helper allowlist is reviewed directly against the retained shell
    floor
+4. Interactive `cargo`, `git`, and agent commands route through the
+   profile-owned RTK binary without creating a second RTK executable
 
 ## Verification
 

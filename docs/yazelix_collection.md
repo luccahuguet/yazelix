@@ -90,6 +90,8 @@ Maintainer-facing fork status, child-repo ownership tables, README delta rules, 
 - [ripgrep](https://github.com/BurntSushi/ripgrep) — Fast text search helper used by Yazi and runtime tooling.
 - [ccboard](https://github.com/FlexNetOS/ccboard) — Mission Control dashboard runtime tool launched from the profile-owned Agent layout; its Brain, MCP, and Plugins tabs read their Claude/Codex-facing state from the user's normal home config and cache surfaces.
 - [codedb](https://github.com/FlexNetOS/nu_plugin) — Runtime code-intelligence database tool and Nushell plugin shipped with the same child-owned runtime-tool artifact set as ccboard.
+- [Weave](https://github.com/FlexNetOS/weave) — Agent-to-agent session mesh shipped by the `lifeos_foundation_yzx` profile with its SQLite backend plus the `sign`, `llm`, `surfaces`, and governed-web `obscura` features. A separate `#weave_libsql` package verifies the mutually exclusive libSQL backend with the same orthogonal features.
+- [Obscura](https://github.com/FlexNetOS/obscura) — Separate pinned headless-browser/MCP runtime used by Weave's governed-web surface. The foundation profile exports both commands through its trusted `bin`/`toolbin` roots; Obscura is built with `stealth` and a hash-pinned Rusty V8 archive.
 - [p7zip](https://github.com/p7zip-project/p7zip) — Archive preview/extract helper for Yazi.
 - [poppler](https://poppler.freedesktop.org/) — PDF preview helper for Yazi.
 - [resvg](https://github.com/linebender/resvg) — SVG rendering helper in the packaged runtime.

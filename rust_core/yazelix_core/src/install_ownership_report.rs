@@ -12,6 +12,11 @@ use std::path::{Path, PathBuf};
 
 const HOME_MANAGER_FILES_MARKER: &str = "-home-manager-files/";
 const MANUAL_DESKTOP_ICON_SIZES: &[&str] = &["48x48", "64x64", "128x128", "256x256"];
+const FLEXNETOS_AGENT_DESKTOP_ENTRY: &str = "com.flexnetos.Yazelix.Agent.desktop";
+const PROFILE_OWNED_DESKTOP_HELPERS: &[&str] = &[
+    "exec ~/.nix-profile/bin/yzx-desktop-launch",
+    "exec ~/.nix-profile/bin/yzx-agent-workspace-launch",
+];
 const RETIRED_TERMINAL_DESKTOP_ENTRY_TERMINALS: &[&str] =
     &["ghostty", "kitty", "rio", "wezterm", "foot", "ratty"];
 pub const HOME_MANAGER_PREPARE_ACTION_ARCHIVE_PATH: &str = "archive_path";
@@ -323,6 +328,7 @@ fn is_legacy_manual_yzx_wrapper_path(path: &Path) -> bool {
 
 fn desktop_entry_file_names() -> Vec<String> {
     let mut names = vec![
+        FLEXNETOS_AGENT_DESKTOP_ENTRY.to_string(),
         "com.yazelix.Yazelix.desktop".to_string(),
         "yazelix.desktop".to_string(),
     ];
@@ -368,6 +374,9 @@ fn terminal_for_desktop_entry_path(path: &Path) -> String {
         .file_name()
         .and_then(|name| name.to_str())
         .unwrap_or_default();
+    if file_name == FLEXNETOS_AGENT_DESKTOP_ENTRY {
+        return "agent_workspace".into();
+    }
     for terminal in supported_terminals()
         .iter()
         .map(String::as_str)
@@ -846,6 +855,7 @@ fn desktop_entry_exec_matches_expected(
         return false;
     };
     expected.iter().any(|x| x == e)
+        || is_profile_owned_desktop_helper_exec(e)
         || desktop_exec_launcher_path(e).is_ok_and(|launcher| {
             let path = path_to_string(&launcher);
             let direct = format!("{path} desktop launch");
@@ -853,6 +863,20 @@ fn desktop_entry_exec_matches_expected(
             expected.iter().any(|x| x == &direct || x == &quoted)
         })
         || is_home_manager_direct_terminal_exec_for_runtime(e, active_runtime_dir)
+}
+
+fn is_profile_owned_desktop_helper_exec(exec: &str) -> bool {
+    let Ok(tokens) = split_desktop_exec_tokens(exec) else {
+        return false;
+    };
+    matches!(
+        tokens.as_slice(),
+        [env, shell, login_command, helper]
+            if env == "/usr/bin/env"
+                && shell == "sh"
+                && login_command == "-lc"
+                && PROFILE_OWNED_DESKTOP_HELPERS.contains(&helper.as_str())
+    )
 }
 
 fn desktop_exec_launcher_path(exec: &str) -> Result<PathBuf, String> {
@@ -1465,6 +1489,82 @@ mod tests {
         assert_eq!(
             stale.desktop_entry_freshness.message,
             "Yazelix desktop entry uses unsupported starter-terminal mode"
+        );
+    }
+
+    // Regression: profile-owned desktop helpers are the supported one-profile launch path and must not make doctor report a stale entry.
+    #[test]
+    fn desktop_freshness_accepts_exact_profile_owned_helper_launchers() {
+        let expected = vec!["/home/test/.nix-profile/bin/yzx desktop launch".to_string()];
+        let runtime = Path::new("/nix/store/test-yazelix-runtime");
+
+        for helper in ["yzx-desktop-launch", "yzx-agent-workspace-launch"] {
+            let exec = format!("/usr/bin/env sh -lc \"exec ~/.nix-profile/bin/{helper}\"");
+            assert!(desktop_entry_exec_matches_expected(
+                Some(&exec),
+                &expected,
+                runtime,
+            ));
+        }
+    }
+
+    // Defends: accepting the package-owned helper form must not turn arbitrary shell commands or alternate launcher roots into trusted desktop entries.
+    #[test]
+    fn desktop_freshness_rejects_mutated_profile_helper_commands() {
+        let expected = vec!["/home/test/.nix-profile/bin/yzx desktop launch".to_string()];
+        let runtime = Path::new("/nix/store/test-yazelix-runtime");
+
+        for exec in [
+            "/usr/bin/env sh -lc \"exec ~/.local/bin/yzx-desktop-launch\"",
+            "/usr/bin/env sh -lc \"exec ~/.nix-profile/bin/yzx-desktop-launch; touch /tmp/pwned\"",
+            "/usr/bin/env bash -lc \"exec ~/.nix-profile/bin/yzx-desktop-launch\"",
+            "/usr/bin/env sh -lc \"exec ~/.nix-profile/bin/not-yazelix\"",
+        ] {
+            assert!(!desktop_entry_exec_matches_expected(
+                Some(exec),
+                &expected,
+                runtime,
+            ));
+        }
+    }
+
+    // Regression: doctor must keep the package-owned Kitty and agent desktop entries green when one Nix profile owns both helpers.
+    #[test]
+    fn evaluate_install_ownership_accepts_packaged_profile_desktop_entries() {
+        let tmp = TempDir::new().unwrap();
+        let home = tmp.path().join("home");
+        let xdg_data = home.join(".local/share");
+        let main_config = home.join(".config/yazelix/settings.jsonc");
+        let profile_yzx = home.join(".nix-profile/bin/yzx");
+        let profile_apps = home.join(".nix-profile/share/applications");
+
+        std::fs::create_dir_all(main_config.parent().unwrap()).unwrap();
+        std::fs::create_dir_all(profile_yzx.parent().unwrap()).unwrap();
+        std::fs::create_dir_all(&profile_apps).unwrap();
+        std::fs::write(&main_config, "{}\n").unwrap();
+        std::fs::write(&profile_yzx, "#!/bin/sh\n").unwrap();
+        std::fs::write(
+            profile_apps.join("com.yazelix.Yazelix.Kitty.desktop"),
+            "[Desktop Entry]\nName=Yazelix\nTerminal=false\nExec=/usr/bin/env sh -lc \"exec ~/.nix-profile/bin/yzx-desktop-launch\"\n",
+        )
+        .unwrap();
+        std::fs::write(
+            profile_apps.join(FLEXNETOS_AGENT_DESKTOP_ENTRY),
+            "[Desktop Entry]\nName=Yazelix Agent\nTerminal=false\nExec=/usr/bin/env sh -lc \"exec ~/.nix-profile/bin/yzx-agent-workspace-launch\"\n",
+        )
+        .unwrap();
+
+        let report =
+            evaluate_install_ownership_report(&test_request(&tmp, &home, &xdg_data, main_config));
+
+        assert_eq!(report.install_owner, "profile");
+        assert_eq!(report.desktop_entry_freshness.status, "ok");
+        assert_eq!(report.home_manager_desktop_launchers.len(), 2);
+        assert!(
+            report
+                .home_manager_desktop_launchers
+                .iter()
+                .any(|launcher| launcher.terminal == "agent_workspace")
         );
     }
 
