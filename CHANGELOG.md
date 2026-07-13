@@ -6,6 +6,15 @@ Yazelix Classic covers every release through the final pre-Nova tag. The replace
 
 ## Unreleased
 
+Post-v17.12 work in progress
+
+Upgrade impact: no user action required
+
+Highlights:
+- Reserved for post-release changes after v17.12 lands.
+
+## v17.12 - 2026-07-13
+
 Final Classic cursor handoff correction
 
 Upgrade impact: automatic migration for writable cursor config; manual action required for declarative, symlinked, or read-only cursor config
@@ -22,6 +31,7 @@ Manual action:
 - If Home Manager or another declarative owner manages `~/.config/yazelix/cursors.toml`, remove `settings.kitty_enable_cursor` from that declaration and rebuild it
 - If the cursor file is symlinked or read-only, update its real owner or make it writable before launching this Classic bridge once
 - After the Nova swap, use `github:luccahuguet/yazelix/v17.12#yazelix` or pin Home Manager to `github:luccahuguet/yazelix/v17.12` for the supported Classic migration and rollback artifact
+
 
 ## v17.11 - 2026-07-13
 
