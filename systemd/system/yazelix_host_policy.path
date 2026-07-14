@@ -6,6 +6,8 @@ PathChanged=/etc/nix/nix.conf
 PathChanged=/etc/nix/nix.custom.conf
 PathChanged=/etc/determinate/config.json
 PathChanged=/etc/shells
+PathChanged=/etc/systemd/journald.conf.d/10-yazelix-no-persistent.conf
+PathChanged=/etc/docker/daemon.json
 Unit=yazelix_host_policy.service
 
 [Install]

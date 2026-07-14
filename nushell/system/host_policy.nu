@@ -7,6 +7,23 @@ const OWNED_FILES = [
     { source: "determinate-config.json", target: "/etc/determinate/config.json" }
     { source: "shells", target: "/etc/shells" }
 ]
+const LOG_POLICY_FILES = [
+    { source: "journald-no-storage.conf", target: "/etc/systemd/journald.conf.d/10-yazelix-no-persistent.conf" }
+    { source: "docker-daemon.json", target: "/etc/docker/daemon.json" }
+]
+const DISABLED_LOG_UNITS = [
+    "rsyslog.service"
+    "sysstat.service"
+    "sysstat-summary.timer"
+    "sysstat-collect.timer"
+    "logrotate.timer"
+]
+const LOG_ROOTS = [
+    "/var/log"
+    "/nix/var/log/nix"
+    "/var/crash"
+    "/run/log/journal"
+]
 const RETIRED_CLIENT_STATE = [
     "/home/flexnetos/.local/share/nix/trusted-settings.json"
     "/root/.local/share/nix/trusted-settings.json"
@@ -49,7 +66,7 @@ def ensure_login_shell [] {
 }
 
 def assert_bundle [] {
-    for owned in $OWNED_FILES {
+    for owned in ($OWNED_FILES | append $LOG_POLICY_FILES) {
         let source = (source_path $owned.source)
         if not ($source | path exists) {
             error make {msg: $"profile-owned host policy input is missing: ($source)"}
@@ -69,6 +86,17 @@ def assert_bundle [] {
     ] {
         if not ($nix_policy | lines | any {|line| ($line | str trim) == $required}) {
             error make {msg: $"Nix host policy is missing: ($required)"}
+        }
+    }
+}
+
+def check_log_targets [] {
+    assert_bundle
+    for owned in $LOG_POLICY_FILES {
+        let source = (source_path $owned.source)
+        let target = (target_path $owned.target)
+        if not (same_file $source $target) {
+            error make {msg: $"host logging policy drift: ($target)"}
         }
     }
 }
@@ -145,11 +173,80 @@ def apply_nix [] {
     check_targets
 }
 
+def purge_logs [] {
+    for root in $LOG_ROOTS {
+        let target = (target_path $root)
+        if ($target | path exists) {
+            for entry in (ls -a $target) {
+                rm --recursive --force $entry.name
+            }
+        } else {
+            mkdir $target
+        }
+    }
+    if (live_target) {
+        for log in (glob "/var/lib/docker/containers/**/*-json.log") {
+            rm --force $log
+        }
+    }
+}
+
+def check_logs [] {
+    check_log_targets
+    if not (live_target) {
+        return
+    }
+    let systemctl = $"($PROFILE_ROOT)/bin/systemctl"
+    for unit in $DISABLED_LOG_UNITS {
+        let enabled = (^$systemctl is-enabled $unit | complete)
+        if ($enabled.stdout | str trim) != "masked" {
+            error make {msg: $"persistent log writer is not masked: ($unit)"}
+        }
+        let active = (^$systemctl is-active $unit | complete)
+        if ($active.stdout | str trim) == "active" {
+            error make {msg: $"persistent log writer is active: ($unit)"}
+        }
+    }
+    for root in $LOG_ROOTS {
+        if ($root | path exists) and ((ls -a $root) | is-not-empty) {
+            error make {msg: $"log root is not empty: ($root)"}
+        }
+    }
+    let docker_logs = (glob "/var/lib/docker/containers/**/*-json.log")
+    if ($docker_logs | is-not-empty) {
+        error make {msg: $"Docker JSON logs survive: ($docker_logs | to nuon)"}
+    }
+}
+
+def apply_logs [] {
+    assert_bundle
+    for owned in $LOG_POLICY_FILES {
+        apply_owned_file (source_path $owned.source) (target_path $owned.target)
+    }
+    if (live_target) {
+        let systemctl = $"($PROFILE_ROOT)/bin/systemctl"
+        for unit in $DISABLED_LOG_UNITS {
+            let result = (^$systemctl mask --now $unit | complete)
+            if $result.exit_code != 0 {
+                error make {msg: $"failed to mask persistent log writer ($unit): ($result.stderr | str trim)"}
+            }
+        }
+        ^$systemctl restart systemd-journald.service
+        ^$systemctl restart docker.service
+    }
+    purge_logs
+    check_logs
+}
+
 def main [command: string = "check"] {
     match $command {
         "check-bundle" => { assert_bundle }
         "check-files" => { check_targets }
+        "check-log-files" => { check_log_targets }
         "apply-nix" => { apply_nix }
+        "apply-logs" => { apply_logs }
+        "purge-logs" => { purge_logs; check_logs }
+        "check-logs" => { check_logs }
         "check" => { check_targets; check_effective }
         _ => { error make {msg: $"unknown host policy command: ($command)"} }
     }
