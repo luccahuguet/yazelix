@@ -1,0 +1,7 @@
+{
+  "telemetry": {
+    "sentry": {
+      "endpoint": null
+    }
+  }
+}

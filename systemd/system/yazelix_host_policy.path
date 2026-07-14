@@ -1,0 +1,11 @@
+[Unit]
+Description=Watch profile-owned FlexNetOS host cache policy inputs
+
+[Path]
+PathChanged=/etc/nix/nix.conf
+PathChanged=/etc/nix/nix.custom.conf
+PathChanged=/etc/determinate/config.json
+Unit=yazelix_host_policy.service
+
+[Install]
+WantedBy=multi-user.target

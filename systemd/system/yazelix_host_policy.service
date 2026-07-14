@@ -1,0 +1,9 @@
+[Unit]
+Description=Enforce the profile-owned FlexNetOS host cache policy
+Before=nix-daemon.service
+
+[Service]
+Type=oneshot
+ExecStart=/home/flexnetos/.nix-profile/bin/yazelix_host_policy apply-nix
+StandardOutput=null
+StandardError=null

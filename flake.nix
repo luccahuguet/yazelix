@@ -727,9 +727,21 @@
       };
       flexnetosRunnerPolicy = nuApplication "flexnetos_runner_policy" ./nushell/runner/runner_policy.nu {};
       flexnetosRunnerService = nuApplication "flexnetos_runner_service" ./nushell/runner/runner_service.nu {};
+      flexnetosHostPolicy = nuApplication "yazelix_host_policy" ./nushell/system/host_policy.nu {};
       flexnetosRunnerSystemd = pkgs.writeTextDir
         "lib/systemd/user/flexnetos_runner@.service"
         (builtins.readFile (./systemd/user + "/flexnetos_runner@.service"));
+      flexnetosHostPolicyBundle = pkgs.symlinkJoin {
+        name = "yazelix-host-policy";
+        paths = [
+          (pkgs.writeTextDir "share/yazelix/host-policy/nix.conf" (builtins.readFile ./host-policy/nix.conf))
+          (pkgs.writeTextDir "share/yazelix/host-policy/nix.custom.conf" (builtins.readFile ./host-policy/nix.custom.conf))
+          (pkgs.writeTextDir "share/yazelix/host-policy/determinate-config.json" (builtins.readFile ./host-policy/determinate-config.json))
+          (pkgs.writeTextDir "lib/systemd/system/yazelix_host_policy.service" (builtins.readFile ./systemd/system/yazelix_host_policy.service))
+          (pkgs.writeTextDir "lib/systemd/system/yazelix_host_policy.path" (builtins.readFile ./systemd/system/yazelix_host_policy.path))
+          (pkgs.writeTextDir "lib/systemd/system/nix-daemon.service.d/10-yazelix-host-policy.conf" (builtins.readFile ./systemd/system/nix-daemon.service.d/10-yazelix-host-policy.conf))
+        ];
+      };
       flexnetosRustToolchain = fenixPkgs.combine (
         [
           fenixPkgs.latest.cargo
@@ -805,6 +817,7 @@
         "fxrun-dispatch" = "${flexnetosRunner}/bin/fxrun-dispatch";
         flexnetos_runner_policy = "${flexnetosRunnerPolicy}/bin/flexnetos_runner_policy";
         flexnetos_runner_service = "${flexnetosRunnerService}/bin/flexnetos_runner_service";
+        yazelix_host_policy = "${flexnetosHostPolicy}/bin/yazelix_host_policy";
         git-kb = "${flexnetosGitKb}/bin/git-kb";
         grit = "${flexnetosGrit}/bin/grit";
         home-manager = "${home-manager.packages.${system}.default}/bin/home-manager";
@@ -876,7 +889,7 @@
       };
       lifeosFoundationYzx = pkgs.symlinkJoin {
         name = "lifeos-foundation-yzx";
-        paths = [flexnetosYzxBase flexnetosTools flexnetosRunnerSystemd];
+        paths = [flexnetosYzxBase flexnetosTools flexnetosRunnerSystemd flexnetosHostPolicyBundle];
         nativeBuildInputs = [pkgs.desktop-file-utils];
         postBuild = ''
           install -D -m 644 ${flexnetosZellijLayout}/layout.kdl \
@@ -1215,6 +1228,7 @@
         test -x ${foundation}/bin/fxrun-dispatch
         test -x ${foundation}/bin/flexnetos_runner_policy
         test -x ${foundation}/bin/flexnetos_runner_service
+        test -x ${foundation}/bin/yazelix_host_policy
         test -x ${foundation}/bin/kache
         test -x ${foundation}/bin/kache-rustc-wrapper
         test -x ${foundation}/toolbin/nu
@@ -1261,6 +1275,17 @@
         grep -Fx 'ExecStart=/home/flexnetos/.nix-profile/bin/flexnetos_runner_service %i' "$runner_unit"
         grep -Fx 'Environment=SHELL=/home/flexnetos/.nix-profile/toolbin/nu' "$runner_unit"
         grep -Fx 'Environment=KACHE_CACHE_DIR=/home/flexnetos/.cache/kache/runners/%i' "$runner_unit"
+        YAZELIX_HOST_POLICY_ROOT=${foundation}/share/yazelix/host-policy \
+          ${foundation}/bin/yazelix_host_policy check-bundle
+        grep -Fx 'substitute = false' ${foundation}/share/yazelix/host-policy/nix.conf
+        grep -Fx 'substituters =' ${foundation}/share/yazelix/host-policy/nix.conf
+        grep -Fx 'trusted-substituters =' ${foundation}/share/yazelix/host-policy/nix.conf
+        grep -Fx 'keep-build-log = false' ${foundation}/share/yazelix/host-policy/nix.conf
+        grep -Fx 'compress-build-log = false' ${foundation}/share/yazelix/host-policy/nix.conf
+        grep -F '"endpoint": null' ${foundation}/share/yazelix/host-policy/determinate-config.json
+        grep -Fx 'ExecStart=/home/flexnetos/.nix-profile/bin/yazelix_host_policy apply-nix' ${foundation}/lib/systemd/system/yazelix_host_policy.service
+        test -f ${foundation}/lib/systemd/system/yazelix_host_policy.path
+        test -f ${foundation}/lib/systemd/system/nix-daemon.service.d/10-yazelix-host-policy.conf
 
         export HOME="$TMPDIR/home"
         export YAZELIX_CONFIG_HOME="$TMPDIR/config"
