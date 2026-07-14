@@ -486,7 +486,7 @@
       flexnetosLayoutTemplate = pkgs.runCommand "flexnetos-agent-workspace-template.kdl" {} ''
         substitute ${./defaults/zellij/flexnetos_agent_workspace.kdl} "$out" \
           --replace-fail '@yazi@' '${yzxYazi}/bin/yzx-yazi' \
-          --replace-fail '@shell@' '${yzxShell}/bin/yzx-shell' \
+          --replace-fail '@shell@' '${flexnetosYzxShell}/bin/yzx-shell' \
           --replace-fail '@agent@' '${yzxAgent}/bin/yzx-agent' \
           --replace-fail '@ccboard@' '${flexnetosCcboard}'
       '';
@@ -519,8 +519,8 @@
           exec ${pkgs.lazygit}/bin/lazygit "$@"
         '';
       };
-      yzxConfigKdl = pkgs.replaceVars ./defaults/zellij/config.kdl {
-        yzxShell = "${yzxShell}/bin/yzx-shell";
+      mkYzxConfigKdl = shellPackage: pkgs.replaceVars ./defaults/zellij/config.kdl {
+        yzxShell = "${shellPackage}/bin/yzx-shell";
         yzpp = "file:${yazelixZellijPopupPackage}/${yazelixZellijPopupPackage.wasmPath}";
         yzxPaneOrchestrator = "file:${yazelixZellijPaneOrchestratorPackage}/${yazelixZellijPaneOrchestratorPackage.wasmPath}";
         yzxAgent = "${yzxAgent}/bin/yzx-agent";
@@ -535,6 +535,8 @@
         git = "${yzxGit}/bin/yzx-git";
         layout = "${yzxZellijLayout}/layout.kdl";
       };
+      yzxConfigKdl = mkYzxConfigKdl yzxShell;
+      flexnetosYzxConfigKdl = mkYzxConfigKdl flexnetosYzxShell;
       zellijBuildBase =
         if pkgs ? "zellij-unwrapped"
         then pkgs."zellij-unwrapped"
@@ -919,6 +921,7 @@
         withDesktop = false;
         layoutPackage = flexnetosZellijLayout;
         layoutTemplate = flexnetosLayoutTemplate;
+        configKdl = flexnetosYzxConfigKdl;
         nuConfig = flexnetosYzxNuConfig;
         shellPackage = flexnetosYzxShell;
         extraPathPrefix = [flexnetosTools];
@@ -1274,6 +1277,10 @@
         grep -F 'tab name="Mission Control"' "$layout"
         ! grep -F '@bar@' "$layout"
         ! grep -F '@yazi@' "$layout"
+        test "$(grep -cE 'command="/nix/store/[^/]+-flexnetos-yzx-shell/bin/yzx-shell"' "$layout")" = 2
+
+        config=${foundation}/share/yazelix/config.kdl
+        grep -Eq '^default_shell "/nix/store/[^/]+-flexnetos-yzx-shell/bin/yzx-shell"$' "$config"
 
         test -f ${foundation}/nushell/config/config.nu
         test -f ${foundation}/nushell/config/rtk_wrappers.nu
