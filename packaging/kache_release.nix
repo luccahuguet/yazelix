@@ -1,8 +1,8 @@
 {
   pkgs,
-  version ? "0.8.0",
-  rev ? "9bd87ccd18f6301534152d39427f0e3dd21b1fba",
-  srcHash ? "sha256-Zhi6HpqKws5JUV99IHfXs4iBX5fSVqSdY7HKuCBrp7c=",
+  version ? "0.10.0",
+  rev ? "3b619093e1e9907bca65386715540ea445947fe0",
+  srcHash ? "sha256-+shHEqFa/ixttYwl8aUfQ/MJfQJXpI38mPdHoa2Oyhg=",
 }:
 
 pkgs.rustPlatform.buildRustPackage {
@@ -16,7 +16,7 @@ pkgs.rustPlatform.buildRustPackage {
     hash = srcHash;
   };
 
-  cargoHash = "sha256-ol83gvXeXhJfJy5+O1+ZXw+fQdJvR3y5M/DmsYJG1vM=";
+  cargoHash = "sha256-8cGTNNx6M5e53xcb7h8BAjKFoLnQCmN3girtXKUv6rw=";
 
   doCheck = false;
 

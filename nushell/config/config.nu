@@ -21,7 +21,13 @@ if (($env.HOME? | default "") == "/home/flexnetos") {
     let cargo_home = ($volatile_root | path join "cargo-home")
     let cargo_target = ($volatile_root | path join "cargo-target")
     let rustup_home = ($volatile_root | path join "rustup-home")
-    for path in [$volatile_cache $volatile_tmp $cargo_home $cargo_target $rustup_home] {
+    # Durable cache root on persistent home storage. Volatile tmpfs is correct
+    # for mutable/session caches (browser, editor, webviews) but WRONG for
+    # immutable, expensive-to-refetch artifacts (model weights, browser binaries)
+    # and for starship's log dir, which must survive a reboot and always be
+    # writable regardless of XDG_CACHE_HOME export order.
+    let durable_cache = "/home/flexnetos/.cache"
+    for path in [$volatile_cache $volatile_tmp $cargo_home $cargo_target $rustup_home $durable_cache] {
         mkdir $path
     }
 
@@ -44,10 +50,15 @@ if (($env.HOME? | default "") == "/home/flexnetos") {
     $env.GOMODCACHE = ($volatile_cache | path join "go-mod")
     $env.GRADLE_USER_HOME = ($volatile_cache | path join "gradle")
     $env.DENO_DIR = ($volatile_cache | path join "deno")
-    $env.HF_HOME = ($volatile_cache | path join "huggingface")
-    $env.TORCH_HOME = ($volatile_cache | path join "torch")
+    # Model weights and browser binaries are immutable and expensive to refetch:
+    # keep them on durable home storage, not the tmpfs that a reboot wipes.
+    $env.HF_HOME = ($durable_cache | path join "huggingface")
+    $env.TORCH_HOME = ($durable_cache | path join "torch")
     $env.CUDA_CACHE_PATH = ($volatile_cache | path join "cuda")
-    $env.PLAYWRIGHT_BROWSERS_PATH = ($volatile_cache | path join "playwright")
+    $env.PLAYWRIGHT_BROWSERS_PATH = ($durable_cache | path join "playwright")
+    # Starship's log dir must exist and be writable even before XDG_CACHE_HOME is
+    # exported (early prompt), so pin it to the durable, always-created root.
+    $env.STARSHIP_CACHE = ($durable_cache | path join "starship")
     $env.KACHE_CACHE_DIR = "/home/flexnetos/.cache/kache"
     $env.RUSTC_WRAPPER = "/home/flexnetos/.nix-profile/bin/kache-rustc-wrapper"
     $env.CARGO_BUILD_RUSTC_WRAPPER = "/home/flexnetos/.nix-profile/bin/kache-rustc-wrapper"
