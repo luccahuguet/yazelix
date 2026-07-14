@@ -1,5 +1,0 @@
-{
-  "commit": {"author":"drdave-flexnet <flexnetos@de-flex.net>","changes":[{"change_type":"created","content_hash":"e1d909f09e598af700282b97cacb53e5eac15c834f08e3f3dff615c037a711d0","doc_type":"task","document_id":"019f214b-c33d-72f3-aa32-ab55bc81534c","new_version":1,"previous_version":null,"slug":"tasks/nu-plugin-codedb-proc-macro-static","title":"Implement CodeDB proc-macro static detection and gaps"}],"created_at":"2026-07-02T05:30:16.684038036Z","id":"019f214e-70f5-75b0-af80-cba1eb6e9091","message":"Complete CodeDB proc-macro static task"},
-  "content_hash": "9ddb9b6a6d938f3e6151df76eecaecf839213b2233e35ea5647069465fd50c43",
-  "hash_version": 3
-}

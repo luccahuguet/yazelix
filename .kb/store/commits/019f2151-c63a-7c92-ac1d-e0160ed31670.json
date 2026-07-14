@@ -1,5 +1,0 @@
-{
-  "commit": {"author":"drdave-flexnet <flexnetos@de-flex.net>","changes":[{"change_type":"created","content_hash":"f9d8eee1c2096881d2e3087356382d2469618f64f29009268f003807bf301333","doc_type":"task","document_id":"019f214f-d575-76c3-9469-2d32e89e98fa","new_version":1,"previous_version":null,"slug":"tasks/nu-plugin-codedb-build-script-static","title":"Implement CodeDB build.rs static detection and gaps"}],"created_at":"2026-07-02T05:33:55.119288185Z","id":"019f2151-c63a-7c92-ac1d-e0160ed31670","message":"Complete CodeDB build script static task"},
-  "content_hash": "d73970ed5fa08b97b030cfad938dc6694a0d765a0b56d0d5b6f9b2c090c4c8e0",
-  "hash_version": 3
-}

@@ -56,10 +56,6 @@ export def --wrapped ollama        [...rest] { ^rtk ollama ...$rest }
 
 # Native passthroughs. These intentionally retain raw output while preserving
 # RTK accounting and the profile-owned process ancestry.
-export def --wrapped bash          [...rest] { ^rtk proxy -- bash ...$rest }
-export def --wrapped sh            [...rest] { ^rtk proxy -- sh ...$rest }
-export def --wrapped zsh           [...rest] { ^rtk proxy -- zsh ...$rest }
-export def --wrapped fish          [...rest] { ^rtk proxy -- fish ...$rest }
 export def --wrapped xonsh         [...rest] { ^rtk proxy -- xonsh ...$rest }
 export def --wrapped nu            [...rest] { ^rtk proxy -- nu ...$rest }
 export def --wrapped jq            [...rest] { ^rtk proxy -- jq ...$rest }

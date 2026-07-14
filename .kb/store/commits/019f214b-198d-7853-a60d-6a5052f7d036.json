@@ -1,5 +1,0 @@
-{
-  "commit": {"author":"drdave-flexnet <flexnetos@de-flex.net>","changes":[{"change_type":"created","content_hash":"c512ff52b11d4277e47b403fdaffc67508ad1b0aba71b2fece3d3b4d7ff8600c","doc_type":"task","document_id":"019f2148-b12f-7b00-9e24-4c8054e9f5da","new_version":1,"previous_version":null,"slug":"tasks/nu-plugin-codedb-macro-rules","title":"Implement CodeDB macro_rules static inventory"}],"created_at":"2026-07-02T05:26:37.700054220Z","id":"019f214b-198d-7853-a60d-6a5052f7d036","message":"Complete CodeDB macro_rules task"},
-  "content_hash": "62c09b6a9e255c773bc6bf591c8c3b56a0dd1ca5dd03d3977444f501920bd25b",
-  "hash_version": 3
-}

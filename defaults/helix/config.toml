@@ -1,0 +1,88 @@
+# Yazelix Nova managed Helix default.
+# User preferences can live in ~/.config/yazelix/helix/config.toml.
+# yzx-hx merges that file with this template and always restores Alt r reveal.
+
+theme = "ayu_evolve"
+
+[editor]
+auto-format = true
+bufferline = "always"
+color-modes = true
+cursorline = true
+end-of-line-diagnostics = "hint"
+
+[editor.cursor-shape]
+insert = "bar"
+
+[editor.file-picker]
+hidden = true
+
+[editor.indent-guides]
+render = true
+
+[editor.inline-diagnostics]
+cursor-line = "warning"
+
+[editor.soft-wrap]
+enable = true
+
+[editor.statusline]
+center = ["file-name"]
+left = [
+  "mode",
+  "spinner",
+  "version-control",
+]
+right = [
+  "diagnostics",
+  "selections",
+  "position",
+  "total-line-numbers",
+  "position-percentage",
+  "file-encoding",
+]
+separator = "|"
+
+[keys.normal]
+A-r = ':sh yzx reveal "%{buffer_name}"'
+A-ret = [
+  "move_line_up",
+  "goto_first_nonwhitespace",
+]
+ret = [
+  "move_line_down",
+  "goto_first_nonwhitespace",
+]
+C-j = [
+  "extend_to_line_bounds",
+  "delete_selection",
+  "paste_after",
+]
+C-k = [
+  "extend_to_line_bounds",
+  "delete_selection",
+  "move_line_up",
+  "paste_before",
+]
+C-r = [
+  ":config-reload",
+  ":reload",
+]
+X = "extend_line_up"
+"{" = "goto_prev_paragraph"
+"}" = "goto_next_paragraph"
+
+[keys.normal.A-g]
+b = ":sh git blame -L %{cursor_line},+1 %{buffer_name}"
+l = ":sh git log --oneline -10 %{buffer_name}"
+s = ":sh git status --porcelain"
+
+[keys.normal.backspace]
+c = ":config-open"
+d = ":yank-diagnostic"
+h = ":toggle-option file-picker.hidden"
+i = ":toggle-option file-picker.git-ignore"
+l = ":o ~/.config/yazelix/helix/languages.toml"
+
+[keys.normal.g]
+e = "goto_file_end"

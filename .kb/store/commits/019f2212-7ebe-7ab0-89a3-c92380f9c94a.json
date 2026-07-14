@@ -1,5 +1,0 @@
-{
-  "commit": {"author":"drdave-flexnet <flexnetos@de-flex.net>","changes":[{"change_type":"created","content_hash":"7f3fd65143620f8aa609f845fb1d0ade14a42c95ea5124811f9085b6898b715a","doc_type":"task","document_id":"019f2211-cf01-7342-b1aa-1f8d7821b1a0","new_version":1,"previous_version":null,"slug":"tasks/codedb-envctl-yazelix-config-ingest","title":"Load Yazelix config files into envctl tables through CodeDB"}],"created_at":"2026-07-02T09:04:25.261944907Z","id":"019f2212-7ebe-7ab0-89a3-c92380f9c94a","message":"Add CodeDB envctl Yazelix config ingest task"},
-  "content_hash": "33b674e4de3a8db90c03960ee69590f7f363caf749767b1fdb18f3aae5857be1",
-  "hash_version": 3
-}

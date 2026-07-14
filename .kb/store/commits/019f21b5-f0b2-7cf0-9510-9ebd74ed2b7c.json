@@ -1,5 +1,0 @@
-{
-  "commit": {"author":"drdave-flexnet <flexnetos@de-flex.net>","changes":[{"change_type":"created","content_hash":"8df5d6d5528ef208e3b0af87b52bb3b248b6e0815961cfca3d456ca5ae58de00","doc_type":"task","document_id":"019f21b4-8d14-7631-a4ff-001d1593673f","new_version":1,"previous_version":null,"slug":"tasks/nu-plugin-codedb-handoff-backlog","title":"Prepare CodeDB handoff and backlog"}],"created_at":"2026-07-02T07:23:19.589127673Z","id":"019f21b5-f0b2-7cf0-9510-9ebd74ed2b7c","message":"Complete CodeDB handoff backlog task"},
-  "content_hash": "b3b14d2e958cec930e32833c300c7cb124e9ccb2b3160d08491955e8220ab171",
-  "hash_version": 3
-}

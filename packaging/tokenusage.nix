@@ -1,4 +1,4 @@
-{ pkgs }:
+{pkgs}:
 
 pkgs.rustPlatform.buildRustPackage rec {
   pname = "tokenusage";
@@ -11,7 +11,7 @@ pkgs.rustPlatform.buildRustPackage rec {
 
   cargoHash = "sha256-gZMMhpL5OkLX74HurQEJKZ1R6QZD/9OTTG2LTbiAmZc=";
 
-  nativeBuildInputs = [ pkgs.pkg-config ];
+  nativeBuildInputs = [pkgs.pkg-config];
 
   buildInputs = pkgs.lib.optionals pkgs.stdenv.hostPlatform.isLinux [
     pkgs.fontconfig

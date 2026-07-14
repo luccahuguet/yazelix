@@ -1,5 +1,0 @@
-{
-  "commit": {"author":"drdave-flexnet <flexnetos@de-flex.net>","changes":[{"change_type":"created","content_hash":"928d026486c88054d3abb0966efc5de6499c48efb7e587be13afc4b5bb6f24ff","doc_type":"task","document_id":"019f216a-a04f-7501-9d0c-0296b73367d0","new_version":1,"previous_version":null,"slug":"tasks/nu-plugin-codedb-doctor-checks","title":"Implement CodeDB doctor checks"}],"created_at":"2026-07-02T06:01:27.708633729Z","id":"019f216a-fda4-7fc3-9363-beae98e5425d","message":"Add CodeDB doctor task"},
-  "content_hash": "98c3685fab8bac90551d9bcc693ef19fd3eadc286399da59563d299b94c55c73",
-  "hash_version": 3
-}

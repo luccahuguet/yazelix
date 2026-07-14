@@ -1,5 +1,0 @@
-{
-  "commit": {"author":"drdave-flexnet <flexnetos@de-flex.net>","changes":[{"change_type":"created","content_hash":"c7b573e9621ed99d7c57cfd5509b798a82a12c0419129a8d792288f0b327dc3b","doc_type":"task","document_id":"019f2145-30c3-7ea0-885b-acb63d28fbe7","new_version":1,"previous_version":null,"slug":"tasks/nu-plugin-codedb-rust-items","title":"Implement CodeDB static Rust item inventory"}],"created_at":"2026-07-02T05:22:38.156643587Z","id":"019f2147-71d8-7842-a791-f640050fd62c","message":"Complete CodeDB Rust item inventory task"},
-  "content_hash": "59bb7f73b7881a00485681f0662a6e4e635b737cf9b576852189668aa8fdb808",
-  "hash_version": 3
-}

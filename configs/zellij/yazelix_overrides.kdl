@@ -1,8 +1,0 @@
-// Yazelix-specific overrides
-//
-// Applied at the merged config.kdl layer for static snippets that should not
-// depend on layout-local loading behavior.
-// Yazelix-owned pane-orchestrator action binds are rendered from
-// settings.jsonc zellij.keybindings by rust_core/yazelix_core/src/zellij_materialization.rs.
-// Curated native Zellij key policy is rendered from
-// settings.jsonc zellij.native_keybindings.

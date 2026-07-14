@@ -1,5 +1,0 @@
-{
-  "commit": {"author":"drdave-flexnet <flexnetos@de-flex.net>","changes":[{"change_type":"created","content_hash":"8fbf043edac9eb19165e8d7d8322da149590b2d56c62624b8d9b0f42f7a35918","doc_type":"incident","document_id":"019f5105-3a93-7261-b6bd-900f0331f544","new_version":1,"previous_version":null,"slug":"incidents/kitty-default-launches-mars","title":"Kitty default still launches Mars"}],"created_at":"2026-07-11T11:52:23.819900581Z","id":"019f5105-8412-7ca3-81b4-a730db8563f2","message":"Report Kitty default launching Mars"},
-  "content_hash": "d0bb49ddc0fd4cc0242824724d4bf4056db24c904fe80166017e09ee4b24d1e0",
-  "hash_version": 3
-}

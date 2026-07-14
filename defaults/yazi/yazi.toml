@@ -1,0 +1,14 @@
+[[plugin.prepend_fetchers]]
+url = "*"
+run = "git"
+group = "git"
+
+[[plugin.prepend_fetchers]]
+url = "*/"
+run = "git"
+group = "git"
+
+[opener]
+edit = [
+	{ run = '@opener@ %s', block = false, for = "unix" },
+]

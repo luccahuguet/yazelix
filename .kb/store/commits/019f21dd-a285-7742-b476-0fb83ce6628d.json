@@ -1,5 +1,0 @@
-{
-  "commit": {"author":"drdave-flexnet <flexnetos@de-flex.net>","changes":[{"change_type":"created","content_hash":"485eb2042b9721c3dd46dc0cee7e0f96dc8e30b9cc81f5fbc71148112bbee790","doc_type":"task","document_id":"019f21dc-1ca8-7c51-b6f9-5d0fd73ee3bb","new_version":1,"previous_version":null,"slug":"tasks/nu-plugin-codedb-yazelix-enabled-smoke","title":"Add CodeDB-enabled Yazelix launch smoke"}],"created_at":"2026-07-02T08:06:41.015590810Z","id":"019f21dd-a285-7742-b476-0fb83ce6628d","message":"Complete CodeDB Yazelix enabled smoke task"},
-  "content_hash": "ffb45028d8a8160db20766b8d7a45b9429c9f4fe4d69534df558c4bc1fc85f11",
-  "hash_version": 3
-}

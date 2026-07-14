@@ -1,5 +1,0 @@
-{
-  "commit": {"author":"drdave-flexnet <flexnetos@de-flex.net>","changes":[{"change_type":"created","content_hash":"d24a17de562e56e75602efb6331c837643183a7d54a2f3ed97bd5cb4f857e522","doc_type":"task","document_id":"019f20e2-8c3e-7dd3-92a3-57c3d322b97d","new_version":1,"previous_version":null,"slug":"tasks/nu-plugin-codedb-redb-store-init","title":"Implement CodeDB redb store init"}],"created_at":"2026-07-02T03:36:05.526516432Z","id":"019f20e5-e69e-7903-beb5-ef8d81a1f9ff","message":"Complete CodeDB redb store init task"},
-  "content_hash": "83003f018092a6d780ed23999862578244019f09ef76bb38726aef99ea40331c",
-  "hash_version": 3
-}

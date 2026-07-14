@@ -1,5 +1,0 @@
-{
-  "commit": {"author":"drdave-flexnet <flexnetos@de-flex.net>","changes":[{"change_type":"created","content_hash":"f6670e770428c4612304bb2d69c70c2d10c2092afeff5c204e9fa2c7dc929731","doc_type":"task","document_id":"019f21cd-487c-75f0-9d09-5981ddf51b0a","new_version":1,"previous_version":null,"slug":"tasks/nu-plugin-codedb-yazelix-init-bridge","title":"Generate CodeDB Yazelix init and extern bridge artifact"}],"created_at":"2026-07-02T07:53:24.394236898Z","id":"019f21d1-7ab4-7a53-9765-40d3605cdb0d","message":"Complete CodeDB Yazelix init bridge task"},
-  "content_hash": "3822a0fb9bcfcfa1bec0809b5c084eafd9b7908916261da21a0089f5ccba4a80",
-  "hash_version": 3
-}

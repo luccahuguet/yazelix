@@ -1,5 +1,0 @@
-{
-  "commit": {"author":"drdave-flexnet <flexnetos@de-flex.net>","changes":[{"change_type":"created","content_hash":"767d724fdc5b32c8ad7bffa528d360d09df610a4396721db0e6661e25de65f6a","doc_type":"task","document_id":"019f213b-a33a-75b1-b468-21760ab2e502","new_version":1,"previous_version":null,"slug":"tasks/nu-plugin-codedb-cargo-metadata","title":"Implement CodeDB cargo metadata capture"}],"created_at":"2026-07-02T05:13:45.824478283Z","id":"019f213f-526f-78f1-9049-17f7e3c553a4","message":"Complete CodeDB cargo metadata task"},
-  "content_hash": "0cf5ebdb27a9ccd1877ccd974c3c0a56ecc6ddcc5687dbb51fd159676ae19c79",
-  "hash_version": 3
-}

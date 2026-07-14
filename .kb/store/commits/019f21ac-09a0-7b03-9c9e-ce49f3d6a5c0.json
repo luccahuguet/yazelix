@@ -1,5 +1,0 @@
-{
-  "commit": {"author":"drdave-flexnet <flexnetos@de-flex.net>","changes":[{"change_type":"created","content_hash":"ac93035b1cd178a047fedc3ae68e178843ec03bfb2ea4d80bf30ffdafa20c130","doc_type":"task","document_id":"019f21aa-a992-70b1-beeb-3732a47f7098","new_version":1,"previous_version":null,"slug":"tasks/nu-plugin-codedb-unsafe-capture-tests","title":"Add CodeDB unsafe capture tests"}],"created_at":"2026-07-02T07:12:30.613796500Z","id":"019f21ac-09a0-7b03-9c9e-ce49f3d6a5c0","message":"Complete CodeDB unsafe capture tests task"},
-  "content_hash": "98f493d01d5a883569112f75aee4bb5fac859fe8b8c3b4e3c1a16491635b0eed",
-  "hash_version": 3
-}

@@ -1,7 +1,0 @@
-[default]
-default_cargo_test_exceptions = []
-
-[[default.nextest_suites]]
-name = "yazelix_core"
-manifest_path = "rust_core/Cargo.toml"
-args = ["-p", "yazelix_core"]

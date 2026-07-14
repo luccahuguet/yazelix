@@ -1,5 +1,0 @@
-{
-  "commit": {"author":"drdave-flexnet <flexnetos@de-flex.net>","changes":[{"change_type":"created","content_hash":"aa9416c5c890c63594f07f7383450497a0f99c0210a97010a8d10bff9af79e71","doc_type":"task","document_id":"019f21ba-f862-76f0-8ce0-17817eb2aae0","new_version":1,"previous_version":null,"slug":"tasks/nu-plugin-codedb-runtime-tool-package","title":"Package CodeDB CLI and Nu plugin as runtime tools"}],"created_at":"2026-07-02T07:39:07.610945518Z","id":"019f21c4-67e6-7b81-8686-b1068ead5ada","message":"Complete CodeDB runtime tool package task"},
-  "content_hash": "f9406b510826248a6948771d2a3f67375b617b73dd6d93a762a588488ce8e704",
-  "hash_version": 3
-}

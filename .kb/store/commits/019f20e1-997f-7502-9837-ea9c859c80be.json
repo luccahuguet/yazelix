@@ -1,5 +1,0 @@
-{
-  "commit": {"author":"drdave-flexnet <flexnetos@de-flex.net>","changes":[{"change_type":"created","content_hash":"0692175a5196bd629c62b4dca8010d1bc2e2aaf5fec5ab251fcc65ee28ab9e5d","doc_type":"task","document_id":"019f20df-6c56-7090-b91d-922692efdd04","new_version":1,"previous_version":null,"slug":"tasks/nu-plugin-codedb-core-schemas","title":"Implement CodeDB core schema types"}],"created_at":"2026-07-02T03:31:23.640111744Z","id":"019f20e1-997f-7502-9837-ea9c859c80be","message":"Complete CodeDB core schema task"},
-  "content_hash": "37aabac94184fd8b8971c5511774d6dd38e1a2189391d268ccec6f4eaee3a173",
-  "hash_version": 3
-}

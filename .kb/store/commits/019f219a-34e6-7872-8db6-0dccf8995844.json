@@ -1,5 +1,0 @@
-{
-  "commit": {"author":"drdave-flexnet <flexnetos@de-flex.net>","changes":[{"change_type":"created","content_hash":"cea726324e90fe5dca1e136a01bbbfe33abafb0ac53ee83686f6687157d367ff","doc_type":"task","document_id":"019f2199-e13c-7032-b528-9020b4c7c639","new_version":1,"previous_version":null,"slug":"tasks/nu-plugin-codedb-rust-workspace-skeleton","title":"Create CodeDB Rust workspace skeleton"}],"created_at":"2026-07-02T06:53:02.047611665Z","id":"019f219a-34e6-7872-8db6-0dccf8995844","message":"Add CodeDB Rust workspace task"},
-  "content_hash": "a01fc2a380c1b130cae52457dda83b5a38506a1f0ecd1b92220376b63a426f8f",
-  "hash_version": 3
-}

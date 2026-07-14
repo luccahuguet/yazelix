@@ -1,5 +1,0 @@
-{
-  "commit": {"author":"drdave-flexnet <flexnetos@de-flex.net>","changes":[{"change_type":"created","content_hash":"2dc8688d541391be4a77b6c7d2b33f3e105a3e4ea6325ab10acf78e73052d975","doc_type":"task","document_id":"019f2133-e342-7ab2-a882-16c07c047d82","new_version":1,"previous_version":null,"slug":"tasks/nu-plugin-codedb-filesystem-scanner","title":"Implement CodeDB filesystem scanner"}],"created_at":"2026-07-02T05:03:27.556774425Z","id":"019f2135-e34b-7741-9eca-03b1be2e5716","message":"Complete CodeDB filesystem scanner task"},
-  "content_hash": "c3ba0a7315be4a04efbbcbcbcdc18bb3e354a12282ea195d53bcb2776ab60e36",
-  "hash_version": 3
-}

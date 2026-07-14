@@ -1,5 +1,0 @@
-{
-  "commit": {"author":"drdave-flexnet <flexnetos@de-flex.net>","changes":[{"change_type":"created","content_hash":"c7f5abe91fcee4a7580cc2aacdf7edac45e1320b46e9c303c3b567c6233b5145","doc_type":"task","document_id":"019f216e-e6f6-7952-b93c-bcd3f51138dc","new_version":1,"previous_version":null,"slug":"tasks/nu-plugin-codedb-mcp-server","title":"Implement CodeDB bounded read-only MCP server"}],"created_at":"2026-07-02T06:06:07.158368063Z","id":"019f216f-413e-7fd1-8e6b-7aefd92e18ac","message":"Add CodeDB MCP server task"},
-  "content_hash": "5c1fa060acffbd3deefccd456f22c86fa316083d0b3547306a3c2ba7f07fc421",
-  "hash_version": 3
-}

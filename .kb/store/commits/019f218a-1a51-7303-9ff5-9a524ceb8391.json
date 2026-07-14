@@ -1,5 +1,0 @@
-{
-  "commit": {"author":"drdave-flexnet <flexnetos@de-flex.net>","changes":[{"change_type":"created","content_hash":"ed948a5fd90628d8de37fc91a7b73d16f65a990496e513c4f15618fa8a0a8c6d","doc_type":"task","document_id":"019f2189-dad4-7793-bf39-ec151b68b3ad","new_version":1,"previous_version":null,"slug":"tasks/nu-plugin-codedb-meta-repo-selection","title":"Implement CodeDB meta repo selection inputs"}],"created_at":"2026-07-02T06:35:26.663422404Z","id":"019f218a-1a51-7303-9ff5-9a524ceb8391","message":"Add CodeDB meta repo selection task"},
-  "content_hash": "09d7198527bf9d3269dd9aa5c4dac0c4d38a5e63924584c0f8000645140bef82",
-  "hash_version": 3
-}

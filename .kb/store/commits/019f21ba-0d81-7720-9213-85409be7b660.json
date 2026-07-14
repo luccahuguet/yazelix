@@ -1,5 +1,0 @@
-{
-  "commit": {"author":"drdave-flexnet <flexnetos@de-flex.net>","changes":[{"change_type":"created","content_hash":"f1fa446b2c15f8fea4b0df119a6b08ad62462b8cf4034d1f58a1320c72437e5e","doc_type":"task","document_id":"019f21b6-5aba-7f00-b800-ebe3f15cf424","new_version":1,"previous_version":null,"slug":"tasks/nu-plugin-codedb-yazelix-nushell-runtime-bridge","title":"Inspect CodeDB Yazelix Nushell runtime bridge"}],"created_at":"2026-07-02T07:27:49.108815675Z","id":"019f21ba-0d81-7720-9213-85409be7b660","message":"Complete CodeDB Yazelix Nushell runtime bridge task"},
-  "content_hash": "fa8f3a5aec6f80c43931ddf05ed0389812b984769306f93f02a5751e7fc0fdab",
-  "hash_version": 3
-}

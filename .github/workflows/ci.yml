@@ -1,305 +1,48 @@
 name: CI
 
 on:
-  # PRs own branch validation; push CI runs on main only so the same commit is
-  # not validated twice (push + pull_request). Tag pushes stay excluded.
   push:
-    branches: [main]
+    branches: ["**"]
   pull_request:
   workflow_dispatch:
-    inputs:
-      run_runtime_smoke:
-        description: "Run manual runtime package smoke"
-        required: false
-        type: boolean
-        default: false
-      run_cold_install:
-        description: "Run cold profile install smoke"
-        required: false
-        type: boolean
-        default: false
-  schedule:
-    - cron: "30 7 * * 0"
 
 permissions:
   contents: read
 
 concurrency:
-  # Branch and PR runs supersede older runs for the same review surface. Manual
-  # and scheduled runs include run_id so an intentional smoke run is independent.
-  group: ci-${{ github.workflow }}-${{ github.event_name == 'workflow_dispatch' && github.run_id || github.event_name == 'schedule' && github.run_id || github.event.pull_request.number || github.ref }}
+  group: ci-${{ github.workflow }}-${{ github.event_name == 'workflow_dispatch' && github.run_id || github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'push' || github.event_name == 'pull_request' }}
 
 jobs:
-  ci_plan:
-    name: CI changed surfaces
+  linux:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
-    outputs:
-      nix_customization: ${{ steps.surfaces.outputs.nix_customization }}
-      child_release: ${{ steps.surfaces.outputs.child_release }}
-      darwin_wasm: ${{ steps.surfaces.outputs.darwin_wasm }}
-      cold_install: ${{ steps.surfaces.outputs.cold_install }}
+    timeout-minutes: 60
     defaults:
       run:
         shell: bash
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-
-      - name: Classify changed surfaces
-        id: surfaces
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
-          HEAD_SHA: ${{ github.sha }}
-        run: shells/posix/ci_changed_surfaces.sh --event "$EVENT_NAME" --base "$BASE_SHA" --head "$HEAD_SHA" --output "$GITHUB_OUTPUT"
-
-  validation_helpers:
-    name: Build validation helpers
-    runs-on: ubuntu-latest
-    timeout-minutes: 12
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
-      YAZELIX_DIR: ${{ github.workspace }}
-    defaults:
-      run:
-        shell: bash
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-
-      - name: Setup Nix
-        uses: ./.github/actions/setup_nix_ubuntu
-        with:
-          free_disk: "false"
-          rust_cache: "true"
-
-      - name: Build Rust validation helpers
-        run: nix develop .#ci -c cargo build --quiet --manifest-path rust_core/Cargo.toml -p yazelix_maintainer --bin yzx_repo_validator -p yazelix_core --bin yzx_core
-
-      - name: Stage validation helpers
-        run: |
-          set -euo pipefail
-          mkdir -p artifacts/validation_helpers
-          cp rust_core/target/debug/yzx_repo_validator artifacts/validation_helpers/
-          cp rust_core/target/debug/yzx_core artifacts/validation_helpers/
-
-      - name: Upload validation helpers
-        uses: actions/upload-artifact@v7
-        with:
-          name: yazelix-validation-helpers
-          path: artifacts/validation_helpers
-          retention-days: 1
-
-  source_contracts:
-    # Always-on source-contract lane. Keep this strong enough for branch
-    # protection and routine pushes; package/runtime checks are separately owned.
-    needs: validation_helpers
-    runs-on: ubuntu-latest
-    timeout-minutes: 12
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
-      YAZELIX_DIR: ${{ github.workspace }}
-    defaults:
-      run:
-        shell: bash
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-
-      # Keep the always-on lane off Magic Nix Cache. Its post-job uploads can
-      # outlive the validators and turn green checks into timeout failures.
-      - name: Setup Nix
-        uses: ./.github/actions/setup_nix_ubuntu
-        with:
-          free_disk: "false"
-
-      - name: Use validation helpers
-        uses: ./.github/actions/use_validation_helpers
-
-      - name: Validate Nushell syntax
-        run: nix develop .#ci -c "$YAZELIX_REPO_VALIDATOR" validate-nushell-syntax
-
-      - name: Validate generated README surface
-        run: nix develop .#ci -c "$YAZELIX_REPO_VALIDATOR" validate-readme-version
-
-      - name: Validate upgrade contract
-        run: nix develop .#ci -c "$YAZELIX_REPO_VALIDATOR" validate-upgrade-contract --ci
-
-      - name: Validate config surface and launch-profile contract
-        run: nix develop .#ci -c "$YAZELIX_REPO_VALIDATOR" validate-config-surface-contract
-
-      - name: Validate contracts
-        run: nix develop .#ci -c "$YAZELIX_REPO_VALIDATOR" validate-contracts
-
-      - name: Validate docs experience
-        run: nix develop .#ci -c "$YAZELIX_REPO_VALIDATOR" validate-docs-experience
-
-      - name: Validate Rust test traceability
-        run: nix develop .#ci -c "$YAZELIX_REPO_VALIDATOR" validate-rust-test-traceability
-
-      - name: Validate top-level flake interface
-        run: nix develop .#ci -c "$YAZELIX_REPO_VALIDATOR" validate-flake-interface
-
-  nix_customization_api:
-    # Change-specific Nix API evidence. Package-build evidence for published
-    # refs belongs to the cache-publishing workflow.
-    needs: [ci_plan, validation_helpers]
-    if: ${{ needs.ci_plan.outputs.nix_customization == 'true' }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 12
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
-      YAZELIX_DIR: ${{ github.workspace }}
-    defaults:
-      run:
-        shell: bash
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-
-      - name: Setup Nix
-        uses: ./.github/actions/setup_nix_ubuntu
-
-      - name: Use validation helpers
-        uses: ./.github/actions/use_validation_helpers
-
-      - name: Validate Nix customization API
-        run: nix develop .#ci -c "$YAZELIX_REPO_VALIDATOR" validate-nix-customization-api
-
-  child_release_transaction:
-    # Change-specific child publication/package-boundary validation.
-    needs: [ci_plan, validation_helpers]
-    if: ${{ needs.ci_plan.outputs.child_release == 'true' }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 12
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
-      YAZELIX_DIR: ${{ github.workspace }}
-    defaults:
-      run:
-        shell: bash
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-
-      - name: Setup Nix
-        uses: ./.github/actions/setup_nix_ubuntu
-
-      - name: Use validation helpers
-        uses: ./.github/actions/use_validation_helpers
-
-      - name: Validate child release transaction and Darwin child package smoke contracts
-        run: nix develop .#ci -c "$YAZELIX_REPO_VALIDATOR" validate-child-release-transaction
-
-  darwin_wasm_package_smoke:
-    name: Darwin wasm package smoke
-    # Change-specific Darwin signal for first-party Zellij wasm packages.
-    # Upstream-only: forks (e.g. FlexNetOS/yazelix) must not schedule macOS
-    # runners (Linux-only CI policy); mirrors publish_aarch64_darwin's gate.
-    needs: ci_plan
-    if: ${{ github.repository == 'luccahuguet/yazelix' && needs.ci_plan.outputs.darwin_wasm == 'true' }}
-    runs-on: macos-15
-    timeout-minutes: 45
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
-      YAZELIX_DIR: ${{ github.workspace }}
-    defaults:
-      run:
-        shell: bash
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
 
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@v22
         with:
           determinate: false
+          extra-conf: |
+            accept-flake-config = true
+            max-jobs = 2
+            cores = 2
 
-      - name: Build Darwin first-party Zellij wasm packages
+      - name: Show flake outputs
+        run: nix flake show --all-systems
+
+      - name: Check flake shape
+        run: nix flake check --no-build
+
+      - name: Build lightweight checks
         run: |
-          nix build --no-link --no-write-lock-file \
-            .#packages.aarch64-darwin.yazelix_zellij_pane_orchestrator \
-            .#packages.aarch64-darwin.yazelix_zellij_popup
-
-  runtime_smoke:
-    # Manual/scheduled runtime behavior lane. It builds the packaged runtime once and
-    # exercises helper-command presence, runtime env setup, generated
-    # materialization, and desktop install shape through a package-root profile
-    # shim. Normal pushes use Publish Nix Cache as package-build evidence; this
-    # lane stays opt-in because cache-miss hosted builds can exceed an hour.
-    # The cold_install lane owns full nix profile install evidence.
-    needs: [ci_plan, validation_helpers, source_contracts]
-    if: ${{ always() && needs.ci_plan.result == 'success' && needs.source_contracts.result == 'success' && (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.run_runtime_smoke)) }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
-      YAZELIX_DIR: ${{ github.workspace }}
-    defaults:
-      run:
-        shell: bash
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-
-      - name: Setup Nix
-        uses: ./.github/actions/setup_nix_ubuntu
-        with:
-          magic_nix_cache: "true"
-
-      - name: Use validation helpers
-        uses: ./.github/actions/use_validation_helpers
-
-      - name: Validate runtime package smoke
-        run: nix develop -c "$YAZELIX_REPO_VALIDATOR" validate-runtime-package-smoke
-
-  cold_install:
-    # Explicit heavy lane for full nix profile install/rebuild evidence. It
-    # remains manual-only even when the planner flags package/runtime surfaces.
-    needs: [validation_helpers, source_contracts]
-    if: ${{ always() && needs.source_contracts.result == 'success' && github.event_name == 'workflow_dispatch' && inputs.run_cold_install }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
-      YAZELIX_DIR: ${{ github.workspace }}
-    defaults:
-      run:
-        shell: bash
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-
-      - name: Setup Nix
-        uses: ./.github/actions/setup_nix_ubuntu
-        with:
-          magic_nix_cache: "true"
-
-      - name: Use validation helpers
-        uses: ./.github/actions/use_validation_helpers
-
-      - name: Run cold profile install build
-        run: nix develop -c "$YAZELIX_REPO_VALIDATOR" validate-flake-profile-install install "${{ runner.temp }}/yazelix_flake_install_smoke"
-
-      - name: Verify cold profile-installed runtime
-        run: nix develop -c "$YAZELIX_REPO_VALIDATOR" validate-flake-profile-install verify "${{ runner.temp }}/yazelix_flake_install_smoke"
+          nix build --no-link --print-build-logs \
+            .#checks.x86_64-linux.yzx_yazi_materialization \
+            .#checks.x86_64-linux.yzx_launcher_unit \
+            .#checks.x86_64-linux.runtime_contracts \
+            .#checks.x86_64-linux.zellij_sidecar_guard_parity

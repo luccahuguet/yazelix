@@ -1,5 +1,0 @@
-{
-  "commit": {"author":"drdave-flexnet <flexnetos@de-flex.net>","changes":[{"change_type":"created","content_hash":"be094b3006ceb296d5a5dc31f912223ce1a31672af8393f234f9659baf10f2b6","doc_type":"task","document_id":"019f218d-ec7a-7921-8f48-98c8cb96472c","new_version":1,"previous_version":null,"slug":"tasks/nu-plugin-codedb-codex-bridge-sample","title":"Implement CodeDB Codex bridge docs and sample MCP config"}],"created_at":"2026-07-02T06:39:56.709888610Z","id":"019f218e-392d-7860-9d35-a4a472ac3530","message":"Add CodeDB Codex bridge task"},
-  "content_hash": "35c922c1af38063838cc1a9f7d2422e36cc11869eea94984c988fc435bd7f797",
-  "hash_version": 3
-}

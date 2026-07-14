@@ -1,27 +1,18 @@
 name: Issue
-description: Report a bug, request a feature, or note something that needs work.
+description: Report a bug, request a feature, or note something that needs work
 body:
   - type: textarea
-    id: version_full
+    id: diagnostics
     attributes:
-      label: Yazelix version diagnostics
-      description: Run `yzx --version-full` and paste the full output. If the command is unavailable, paste `yzx --version` and the Yazelix install command or flake revision you used.
-      placeholder: |
-        {
-          "schema_version": 1,
-          "version": "v17.3",
-          "runtime_dir": "/nix/store/...",
-          "runtime_identity": {
-            "runtime_variant": "ghostty"
-          }
-        }
+      label: Yazelix diagnostics
+      description: Run `yzx status --json` and paste the output. If Yazelix fails before status works, paste the full error, `yzx --version`, and the install command or flake revision you used
     validations:
       required: false
   - type: textarea
     id: details
     attributes:
       label: Details
-      description: Describe the problem, idea, or request.
+      description: Describe the problem, idea, or request
       placeholder: What happened, what should change, or what would you like to see?
     validations:
       required: true

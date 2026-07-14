@@ -1,0 +1,153 @@
+default_shell "@yzxShell@"
+support_kitty_keyboard_protocol true
+
+plugins {
+    yzpp location="@yzpp@" {
+        popup_defaults {
+            side_margin @defaultPopupSideMargin@
+            vertical_margin @defaultPopupVerticalMargin@
+            on_close {
+                command "@yzxSidebarRefresh@"
+            }
+            on_hide {
+                command "@yzxSidebarRefresh@"
+            }
+        }
+
+        popups {
+            config {
+                command "@yzxConfig@"
+                pane_title "config_popup"
+                width_percent 100
+                height_percent 100
+            }
+
+            agent {
+                command "@yzxAgent@"
+                pane_title "agent_popup"
+                width_percent 100
+                height_percent 100
+                toggle_close_behavior "hide"
+            }
+
+            git {
+                command "@git@"
+                pane_title "git_popup"
+                width_percent 100
+                height_percent 100
+            }
+
+            menu {
+                command "@yzxMenu@"
+                pane_title "menu_popup"
+                width_percent 100
+                height_percent 100
+            }
+        }
+    }
+
+    yazelix_pane_orchestrator location="@yzxPaneOrchestrator@" { screen_saver_enabled false; }
+}
+
+load_plugins {
+    yzpp
+    yazelix_pane_orchestrator
+}
+
+keybinds {
+    locked {
+        unbind "Ctrl g"
+        bind "Ctrl Alt g" { SwitchToMode "Normal"; }
+    }
+    pane {
+        bind "Ctrl p" { SwitchToMode "Normal"; }
+    }
+    resize {
+        bind "Ctrl n" { SwitchToMode "Normal"; }
+    }
+    tab {
+        bind "n" { NewTab { layout "@layout@"; cwd "__YZX_HOME__"; }; SwitchToMode "Normal"; }
+        bind "Ctrl t" { SwitchToMode "Normal"; }
+    }
+    scroll {
+        unbind "Ctrl s"
+        bind "Ctrl Alt s" { SwitchToMode "Normal"; }
+    }
+    search {
+        unbind "Ctrl s"
+        bind "Ctrl Alt s" { SwitchToMode "Normal"; }
+    }
+    session {
+        unbind "Ctrl o"
+        bind "Ctrl Alt o" { SwitchToMode "Normal"; }
+    }
+    shared_except "locked" {
+        unbind "Alt n" "Alt i" "Alt o" "Ctrl g"
+        bind "Alt m" { NewPane; }
+        bind "@gitKey@" {
+            MessagePlugin "yzpp" {
+                name "toggle"
+                payload "git"
+            }
+        }
+        bind "@configKey@" {
+            MessagePlugin "yzpp" {
+                name "toggle"
+                payload "config"
+            }
+        }
+        bind "@agentKey@" {
+            MessagePlugin "yzpp" {
+                name "toggle"
+                payload "agent"
+            }
+        }
+        bind "@menuKey@" {
+            MessagePlugin "yzpp" {
+                name "toggle"
+                payload "menu"
+            }
+        }
+        bind "Alt h" "Alt Left" { MessagePlugin "yazelix_pane_orchestrator" { name "move_focus_left_or_tab"; }; }
+        bind "Alt l" "Alt Right" { MessagePlugin "yazelix_pane_orchestrator" { name "move_focus_right_or_tab"; }; }
+        bind "Alt r" { MessagePlugin "yazelix_pane_orchestrator" { name "smart_reveal"; }; }
+        bind "Alt 1" { GoToTab 1; }
+        bind "Alt 2" { GoToTab 2; }
+        bind "Alt 3" { GoToTab 3; }
+        bind "Alt 4" { GoToTab 4; }
+        bind "Alt 5" { GoToTab 5; }
+        bind "Alt 6" { GoToTab 6; }
+        bind "Alt 7" { GoToTab 7; }
+        bind "Alt 8" { GoToTab 8; }
+        bind "Alt 9" { GoToTab 9; }
+        bind "Alt Shift F" { ToggleFocusFullscreen; }
+        bind "Alt Shift h" { MessagePlugin "yazelix_pane_orchestrator" { name "toggle_sidebar"; }; }
+        bind "Ctrl y" { MessagePlugin "yazelix_pane_orchestrator" { name "toggle_editor_sidebar_focus"; }; }
+        bind "Ctrl Alt g" { SwitchToMode "Locked"; }
+        bind "Ctrl q" { Quit; }
+        bind "Ctrl Alt h" { MoveTab "Left"; }
+        bind "Ctrl Alt j" { MovePane "Down"; }
+        bind "Ctrl Alt k" { MovePane "Up"; }
+        bind "Ctrl Alt l" { MoveTab "Right"; }
+    }
+    shared_except "pane" "locked" {
+        bind "Ctrl p" { SwitchToMode "Pane"; }
+    }
+    shared_except "resize" "locked" {
+        bind "Ctrl n" { SwitchToMode "Resize"; }
+    }
+    shared_except "scroll" "locked" {
+        unbind "Ctrl s"
+        bind "Ctrl Alt s" { SwitchToMode "Scroll"; }
+    }
+    shared_except "session" "locked" {
+        unbind "Ctrl o"
+        bind "Ctrl Alt o" { SwitchToMode "Session"; }
+    }
+    shared_except "tab" "locked" {
+        bind "Ctrl t" { SwitchToMode "Tab"; }
+    }
+    shared_except "move" "locked" {
+        unbind "Ctrl h"
+    }
+}

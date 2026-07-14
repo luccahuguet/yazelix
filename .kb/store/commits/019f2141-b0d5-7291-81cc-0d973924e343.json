@@ -1,5 +1,0 @@
-{
-  "commit": {"author":"drdave-flexnet <flexnetos@de-flex.net>","changes":[{"change_type":"created","content_hash":"7c1dba6ea83ee378698c0ebeb84495e994d41e1b3a6e0e2e8b64ac6ae33c6fad","doc_type":"task","document_id":"019f2140-0023-77d2-94ab-bc481199fa2d","new_version":1,"previous_version":null,"slug":"tasks/nu-plugin-codedb-cargo-sources","title":"Implement CodeDB Cargo source provenance capture"}],"created_at":"2026-07-02T05:16:21.068754002Z","id":"019f2141-b0d5-7291-81cc-0d973924e343","message":"Complete CodeDB cargo source provenance task"},
-  "content_hash": "bb651f2a6f373aed11ca8bb163df29195c8f77f0d9cb7496eca7b28a6d4a46b9",
-  "hash_version": 3
-}

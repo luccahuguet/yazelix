@@ -1,5 +1,0 @@
-{
-  "commit": {"author":"drdave-flexnet <flexnetos@de-flex.net>","changes":[{"change_type":"created","content_hash":"db6f0fcd0cab3662146c2b31a3eed3794e2a9dcd318b81c6494a1945e2d28f91","doc_type":"task","document_id":"019f2173-94d2-7222-b9ec-fd10e7ccc53c","new_version":1,"previous_version":null,"slug":"tasks/nu-plugin-codedb-unsafe-build-gate","title":"Implement CodeDB unsafe build capture gate scaffold"}],"created_at":"2026-07-02T06:11:08.794011484Z","id":"019f2173-db87-7fa3-9b5b-cb2e556222e7","message":"Add CodeDB unsafe build gate task"},
-  "content_hash": "0189cdb9f3895dcaea232f389a1577582ed526d9c0dcc16b4af18eb9d7b82c37",
-  "hash_version": 3
-}

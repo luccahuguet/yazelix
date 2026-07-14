@@ -1,506 +1,222 @@
-# Yazelix v17.9
+# Yazelix Nova Beta
 
 <div align="center">
-  <img src="assets/logo.png" alt="Yazelix Logo" width="200"/>
+  <img src="assets/logo.png" alt="Yazelix logo" width="200"/>
 </div>
 
+**What is the best possible terminal experience?**
+
+Yazelix tries to answer that question. Nova brings the terminal, multiplexer,
+file manager, editor, shell, Git tools, configuration, and an optional AI agent
+together as one coherent workspace
+
+Nova packages the workspace as a Nix flake with an optional Home Manager module
+
+`yzx launch` opens Mars, while `yzx enter` starts the Yazelix Zellij fork in the
+current terminal. Both provide the same Yazi-first workspace and compact top
+bar. The repo keeps one launcher, one config root, one packaged layout, and
+focused checks for its contracts
+
 ## Preview
-![Current Yazelix workspace](assets/screenshots/yazelix_current_example.png)
 
-The repo keeps one maintained static preview
+![Yazelix Nova workspace](assets/screenshots/nova_workspace.png)
 
-## Installation
+## Install and launch
 
-1. Optional: run the preflight check:
+Nova requires Nix with flakes enabled. `launch` opens the packaged Mars window
+in a graphical session, while `enter` starts the same workspace in the current
+terminal or over SSH
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/luccahuguet/yazelix/main/shells/posix/install_check.sh | sh
+Nova starts from packaged defaults, so no configuration is required before the
+first launch
+
+### Try without installing
+
+```sh
+nix run github:luccahuguet/yazelix -- launch
+nix run github:luccahuguet/yazelix#runtime -- enter
 ```
 
-2. Install Yazelix:
+If the one-off launch fails, inspect the owned runtime setup with:
 
-```bash
-nix profile add --refresh --accept-flake-config github:luccahuguet/yazelix#yazelix
+```sh
+nix run github:luccahuguet/yazelix -- doctor
 ```
 
-3. Launch Yazelix:
+### Install in a Nix profile
 
-```bash
+```sh
+nix profile add --refresh github:luccahuguet/yazelix
 yzx launch
 ```
 
-To inspect the preflight check before running it:
+### Install with Home Manager
 
-```bash
-curl -fsSLO https://raw.githubusercontent.com/luccahuguet/yazelix/main/shells/posix/install_check.sh
-sh install_check.sh
+Use the [Home Manager module](docs/installation.md#home-manager) for a declarative install
+
+From a local checkout, use:
+
+```sh
+nix run .#yazelix -- launch
+nix run .#runtime -- enter
 ```
 
-Yazelix publishes a Cachix binary cache for selected package installs and Home Manager switches. The flake advertises the cache through `nixConfig`, so Nix can prompt you to accept it during install; see the [installation guide](./docs/installation.md#use-the-yazelix-binary-cache)
+### Moving from Yazelix Classic
 
-> If you previously evaluated this flake, for example with `nix run` or `nix flake show`, Nix may have cached an older version. Add `--refresh` to force a fresh fetch:
-> ```bash
-> nix profile add --refresh --accept-flake-config github:luccahuguet/yazelix#yazelix
-> ```
+Use Classic v17.12 once to prepare its config for Nova, then install Nova from
+the canonical repository
 
-One-off use without installing also works:
-
-```bash
-nix run github:luccahuguet/yazelix#yazelix -- launch
+```sh
+nix run github:luccahuguet/yazelix/v17.12#yazelix -- launch
 ```
 
-Prefer declarative installs? Use the top-level Home Manager module in [home_manager/README.md](home_manager/README.md)
+The original Nova cutover replaced the old `main` history. The FlexNetOS
+recovery joins canonical Nova as first parent to the complete FlexNetOS history
+as second parent through one reviewable unrelated-history merge. It does not
+discard, cherry-pick, replay, rebase, squash, or force-push either lineage
+Classic remains available at the frozen `classic` branch, while the immutable
+`v17.12` tag remains the migration and rollback bridge
 
-## Optional Configuration And Runtime Surface
+## Learn, help, and recover
 
-Yazelix can create the first config for you. If you launch before editing config, it auto-creates `~/.config/yazelix/settings.jsonc` from the shipped defaults. Edit it anytime afterward:
+Start the guided tour after launching Nova:
 
-```bash
-hx ~/.config/yazelix/settings.jsonc
+```sh
+yzx tutor begin
 ```
 
-The packaged runtime ships a fixed toolset instead of configurable dependency groups:
+`yzx help` lists every command. `yzx doctor` checks the owned runtime setup
+without opening Mars or Zellij. Inside Nova, press `Alt Shift M` to open the
+command palette, which includes both help and tutor entries
 
-- **Core stack**: `zellij`, `yazi`, `helix`, `nu`, `bash`, `fish`, `zsh`
-- **Helix Steel helpers**: `steel`, `steel-language-server`, `forge`, `cargo-steel-lib`, `repl-connect`
-- **CLI helpers**: `fzf`, `zoxide`, `starship`, `lazygit`, `zenith`, `carapace`, `macchina`
-- **Host-managed helper integrations**: `mise`, `tombi`
-- **Yazi preview helpers**: `p7zip`, `jq`, `fd`, `ripgrep`, `poppler`
-- **Terminal package**: Kitty by default (packaged, native config left user-owned) with the Yazelix Zellij graphics bridge; Ghostty is the host-installed backup terminal
-- **Terminal font surface**: the default terminal launch path bundles no Yazelix-owned fonts
+Press `Alt Shift K` to open Ratconfig. Press `8` for the read-only Keys tab,
+which shows the current packaged bindings and their owners. Use `1`-`9` to jump
+directly to a tab, `Tab`/`Shift-Tab` or `h`/`l` to change tabs, `j`/`k` to move,
+and `/` to search. Use `e`, `Enter`, or `Space` for the selected row's
+contextual action, such as editing or opening it. Press `u` to reset a setting
+and `q` to quit. The footer shows the controls available for the selected row
 
-When you enter `yzx env`, Yazelix exports the curated tool surface to your shell. Runtime-private helpers stay under `libexec/` so host apps launched from Yazelix do not inherit shadowing tools like `dirname` ahead of the system PATH
+Nova carries Helix/Vim's `h/j/k/l` motion model through the workspace:
 
-Yazelix no longer ships a runtime-local `devenv` binary, dynamic packs, `user_packages`, non-Kitty terminal binaries, or heavyweight media helpers such as `ffmpeg` or ImageMagick
+| Layer | `h` | `j` | `k` | `l` |
+| --- | --- | --- | --- | --- |
+| Helix normal mode | Move cursor left | Move cursor down | Move cursor up | Move cursor right |
+| `Alt` | Focus left or previous tab | Focus down | Focus up | Focus right or next tab |
+| `Ctrl Alt` | Move tab left | Move pane down | Move pane up | Move tab right |
 
-Common configuration choices:
+The default `Alt Shift` layer keeps the sidebar and four popups in the same
+keyboard neighborhood:
 
-- **Custom shells**: set `default_shell` to `"nu"`, `"bash"`, `"fish"`, `"zsh"`, or `"xonsh"`; xonsh must be installed on the host and available on `PATH`
-- **Host xonsh hooks**: Yazelix generates xonsh initializers, but native xonsh startup must source `~/.config/yazelix/shell_xonsh.xsh`
-- **Terminal package**: choose `#yazelix` or `#yazelix_kitty`; Home Manager uses `programs.yazelix.terminal = "kitty"`
-- **Terminal launch**: Kitty is the packaged default terminal (native config is user-owned; Yazelix does not generate a Kitty config file), with Ghostty as the host-installed backup terminal via `launch_order`; other terminal emulators should start Yazelix with `yzx enter`
-- **Editor choice**: configure your editor in `settings.jsonc`; see [Editor Configuration](./docs/editor_configuration.md)
-
-📖 **[Complete Installation Guide →](./docs/installation.md)** - Detailed step-by-step installation instructions
-
-## Updating
-
-Choose one update owner for each Yazelix install, and do not mix both update paths for the same installed runtime
-
-- Profile installs: use `yzx update upstream`
-- Home Manager installs: use `yzx update home_manager`
-
-`yzx update upstream` prints and runs:
-
-```bash
-nix profile upgrade --refresh <matching-yazelix-profile-entry>
+```text
+H             J          K          L
+sidebar       Git        Ratconfig  agent
+                    M
+                    menu
 ```
 
-When the matching profile entry points at a local git checkout through `path:`, `file:`, or `git+file:`, `yzx update upstream` first fetches that checkout and fast-forwards its clean tracked branch before rebuilding. It refuses dirty, detached, ahead-only, or diverged checkouts so a profile update cannot silently install stale or local-only code.
-
-If the active runtime comes from an unmanaged Nix store path, such as `nix run` or a manually installed desktop entry, first install Yazelix into the default profile:
-
-```bash
-nix profile add --refresh --accept-flake-config github:luccahuguet/yazelix#yazelix
-yzx desktop install
-```
-
-`yzx update home_manager` runs in your current flake directory and refreshes the `yazelix` input with:
-
-```bash
-nix flake update yazelix
-```
-
-Run it only from the Home Manager flake that owns this install
-
-If your Home Manager flake uses a different Yazelix input name, run `nix flake update <your-input-name>` yourself instead
-
-This still matters for `path:` inputs because `flake.lock` pins a snapshot of that local path until you refresh it
-
-Then `yzx update home_manager` prints `home-manager switch` for you to run yourself
-
-Updating replaces the installed runtime that future launches use, while already-open Yazelix windows keep running their current live runtime until you explicitly relaunch them or run `yzx restart`; Yazelix does not silently hot-swap live sessions in place
-
-## Overview
-Yazelix is a workspace-focused terminal environment built around [Yazi](https://github.com/sxyazi/yazi), [Zellij](https://github.com/zellij-org/zellij), and [Helix](https://helix-editor.com), with first-class [Neovim](https://neovim.io) support too
-
-The supported product in this branch is the v17 Yazelix line
-
-## Everyday Model
-
-After installation, keep this model in mind:
-
-- Edit `~/.config/yazelix/settings.jsonc` for the main workspace settings
-- Use `Alt+Shift+<key>` as the workspace toggle layer for sidebars and popups, including quick access to tools like LazyGit, the process viewer, the command menu, and the config UI on `Alt+Shift+C`
-- Treat generated runtime state under `~/.local/share/yazelix` as Yazelix-owned output
-- Relaunch the window, or run `yzx restart`, after changing settings that affect live panes
-
-Cursor presets use their own config at `~/.config/yazelix_cursors/settings.jsonc`. Deeper Yazi, Zellij, Helix, terminal, and shell overrides also live under `~/.config/yazelix/`, but the main settings file is the first place to look
-
-## Workspace Model
-
-Yazelix runs the workspace as a directional Zellij layout: the editor stays central, sidebars live at the edges, and popup surfaces give immediate access to common tools without leaving the workspace.
-
-- **Zellij orchestration:** Zellij owns the workspace, with a managed sidebar and your chosen editor in the managed `editor` pane
-- **Sidebar language:** `sidebar` means the generic side-surface slot; the default sidebar is a Yazi file tree
-- **Spatial toggles:** `Alt+Shift+H/J/K/L` follows the Helix/Vim `h/j/k/l` mnemonic: `H` is left and toggles the left sidebar, `J` is down and toggles the bottom popup, `K` is up and toggles the top popup, and `L` is right and toggles the right agent sidebar. For popups, down/up describes the lower/upper slot mental model, not a literal animation direction
-- **Extra popups:** `Alt+Shift+M/I/C` covers the non-directional popups: `M` opens the command menu, `I` toggles the [Zenith](https://github.com/bvaisvil/zenith) process information viewer, and `C` opens the config UI
-- **Focus toggles:** `Ctrl+y` toggles focus between the left sidebar and editor, and `Ctrl+Shift+Y` toggles focus between the editor and right agent sidebar
-- **Layout cycling:** `Alt+[` and `Alt+]` are reserved for previous/next layout-family cycling, but the packaged runtime ships one managed sidebar family, so those bindings usually keep the visible layout unchanged; see [Layouts](./docs/layouts.md)
-- **Editor targeting:** Opening from the default Yazi file-tree sidebar with Helix or Neovim targets the managed `editor` pane through the pane orchestrator instead of relying on pane scanning heuristics; it reuses that pane when present and creates one titled `editor` when needed
-- **Reveal flow:** `yzx reveal` is the stable editor-integration surface for jumping the current file back into the managed Yazi file tree
-- **Popup commands:** Built-in popup commands live in `zellij.popup_commands`: bottom defaults to [lazygit](https://github.com/jesseduffield/lazygit), top defaults to `yzx config ui` for Yazelix's ratconfig-backed JSONC settings editor, and menu defaults to `yzx menu`; user-defined popups live in `zellij.custom_popups`, with keep-alive [Zenith](https://github.com/bvaisvil/zenith) shipped as the default process information monitor on `Alt+Shift+I`. [bottom](https://github.com/ClementTsang/bottom) and [SysWatch](https://github.com/matthart1983/syswatch) are good alternatives for custom popups
-- **Editor command:** Configure the managed editor with `editor.command` in `settings.jsonc`
-
-## Advanced: First-Party Child Repositories
-
-Yazelix keeps this repo as the integrated workspace/runtime and splits focused subsystems into child repositories when they are reusable outside the full workspace or need their own build/release boundary
-
-Regular Yazelix users do not need to install, configure, or understand these child repos separately; the normal Yazelix package already integrates the pieces it uses
-
-Maintainer fork status, child-repo ownership tables, and README delta rules live in [Fork and child-repo maintenance](./docs/contracts/fork_child_repo_maintenance.md)
-
-Reusable child repos:
-
-- [mars](https://github.com/luccahuguet/mars) — Rust terminal fork derived from Rio, focused on Kitty protocols and agent-driven development; no longer packaged or default (`supported=false`, `packaged=false`), retained only for legacy `yzx enter` session detection and a dormant generated-config materializer
-- [yazelix-screen](https://github.com/luccahuguet/yazelix-screen) — Terminal animation engine used by Yazelix welcome/screen styles and exposed here as `#yzs` and `#yazelix_screen`
-- [yazelix-cursors](https://github.com/luccahuguet/yazelix-cursors) — Cursor preset and Ghostty-compatible shader generator with the `yzc` CLI, exposed here as `#yzc` and `#yazelix_cursors`
-- [yazelix-zellij-bar](https://github.com/luccahuguet/yazelix-zellij-bar) — Standalone Zellij bar plugin package and `yazelix_zellij_bar_widget` command, exposed here as `#yazelix_zellij_bar`
-- [yazelix-zellij-pane-orchestrator](https://github.com/luccahuguet/yazelix-zellij-pane-orchestrator) — First-party Zellij plugin wasm that owns managed pane identity, editor/sidebar handoff, focus actions, and layout-family commands, exposed here as `#yazelix_zellij_pane_orchestrator`
-- [yazelix-zellij-popup](https://github.com/luccahuguet/yazelix-zellij-popup) — Standalone Zellij popup plugin for plain-Zellij floating TUI panes, exposed here as `#yazelix_zellij_popup`; its plugin alias and wasm artifact are `yzpp`, and regular Yazelix sessions use it for the popup, command palette, and config UI panes
-- [yazelix-yazi-assets](https://github.com/FlexNetOS/yazelix-yazi-assets) — Standalone Yazi flavor and reusable plugin asset pack, exposed here as `#yazelix_yazi_assets` and integrated into the normal Yazelix Yazi runtime
-- [ratconfig](https://github.com/luccahuguet/ratconfig) — Reusable Ratatui JSONC config editor crate consumed by `yzx config ui`; Yazelix keeps settings schema, Home Manager ownership, validation, and runtime apply behavior in this repo
-
-Temporary integration forks:
-
-- [yazelix-zellij](https://github.com/luccahuguet/yazelix-zellij) — Temporary Kitty-passthrough Zellij fork that restores Yazi image previews through Kitty graphics passthrough; managed Yazi launches use upstream Yazi with a scoped `ZELLIJ_SESSION_NAME="" KITTY_WINDOW_ID=1` process env while this fork is active
-
-## Why Yazelix
-Yazelix is a reproducible terminal IDE built around Zellij, Yazi, and your configured editor. It gives you one packaged workspace with a managed Yazi file tree, a stable editor pane, optional right agent sidebar, directional popup surfaces, and a fixed runtime toolset that behaves the same locally or over SSH
-
-The workspace is managed by pane identity instead of pane-scanning guesses. Opening from Yazi targets the managed editor, `yzx reveal` jumps the current file back into the file tree, and the `Alt+Shift+H/J/K/L` layer maps naturally to left sidebar, bottom popup, top popup, and right sidebar
-
-Configuration lives in JSONC at `~/.config/yazelix/settings.jsonc`, with `yzx config ui` providing Yazelix's ratconfig-backed settings editor for inspecting defaults, editing values, and understanding stale-field diagnostics
-
-First-party child packages own focused pieces of the stack: screen rendering, cursor presets, the Zellij bar, the popup plugin, the pane orchestrator wasm, and Yazi assets. The normal Yazelix package wires them together automatically
-
-Yazelix supports any capable terminal that can start `yzx enter`. Kitty is the packaged default terminal, with its native config left user-owned. Ghostty is the host-installed backup terminal in the launch order and the most tested mature host-terminal path, a strong choice on macOS; Rio, WezTerm, Foot, Ratty, and other emulators work as normal host terminal entrypoints
-
-Get everything running in less than 10 minutes with no extra dependencies beyond Nix
-
-Install once, get the same managed workspace everywhere
-
-Want the docs front door? See [Yazelix Docs](./docs/README.md)
-
-Want the high-level product map? See [Architecture Map](./docs/architecture_map.md); want the current runtime boundary? See [Current Trimmed Runtime Contract](./docs/contracts/v15_trimmed_runtime_contract.md); want profiler details? See [Startup Performance](./docs/startup_performance.md)
-
-## Acknowledgments
-See [Yazelix Collection](./docs/yazelix_collection.md) for a full list of all projects, tools, and plugins Yazelix integrates, including links to each project and their homepages
-
-Special thanks to [soderluk](https://github.com/soderluk) for grinding with me through unstable periods of Yazelix, when things that should work were not working. His many reports had very high value for the development of Yazelix
-
-Special thanks to [tag-und-nacht](https://github.com/tag-und-nacht) for very detailed macOS, Home Manager, theming, and configuration reports that helped sharpen Yazelix's cross-platform support and user-config story
-
-Special thanks to [TyceHerrman](https://github.com/TyceHerrman) for exceptionally detailed macOS and Nix packaging reports, including tested local workarounds and proposed fixes that helped harden Yazelix's Darwin builds, child-repo release flow, runtime-tool sourcing, and bundled KGP package behavior
-
-If Yazelix is useful to you, you can support its development on [GitHub Sponsors](https://github.com/sponsors/luccahuguet)
-
-<!-- BEGIN GENERATED README LATEST SERIES -->
-## Latest Tagged Releases
-
-### v17
-
-First-party child repos, Ghostty image previews, and JSONC workspace config
-
-- Established the first-party child-repo architecture across `yazelix-screen`, `yazelix-ghostty-cursors`, `yazelix-zellij-popup`, `yazelix-zellij-bar`, `yazelix-zellij-pane-orchestrator`, `yazelix-yazi-assets`, and `ratconfig`
-- Replaced copied source, copied wasm, duplicated widget code, and vendored Yazi assets with locked child-owned packages and artifacts consumed by the main runtime
-- Promoted Ghostty back to the default packaged terminal and made restored Yazi image previews through Zellij the default-terminal goal; the current graphics path uses upstream Yazi, `yazelix-yazi-assets`, and the `yazelix-zellij` Kitty passthrough bridge
-- Switched the package baseline to `nixpkgs-unstable` and pulled in newer Yazi/Chafa behavior that avoids the Chafa terminal-probe ghost-keypress regression
-- Made `settings.jsonc` the canonical user config, backed by `settings_default.jsonc`, JSON schema coverage, strict unknown-field diagnostics, additive repair, and complete Home Manager rendering
-- Upgraded `yzx config ui` into a structured JSONC settings editor with scalar pickers, keybinding rows, safer parse-error behavior, popup launch through `Alt Shift C`, and generic config UI machinery owned by `ratconfig`
-- Added the directional workspace keymap: `Alt Shift H` toggles the left sidebar, `Alt Shift J` opens the bottom popup, `Alt Shift K` opens the top popup, `Alt Shift L` opens the right Codex agent sidebar, and `Alt Shift M` opens the menu popup
-- Added managed focus/reveal keys: `Ctrl y` switches between editor and left sidebar, `Ctrl Shift Y` switches between editor and right sidebar, and `Alt r` smart-reveals in the editor or falls back to editor/left-sidebar focus
-- Made Yazelix and native Zellij key policies data-driven through `settings.jsonc`, including remappable native defaults such as `Ctrl Alt g/s/o` for locked/scroll/session modes, `Ctrl Shift H/L` for tab movement, `Alt 1..9` for tab jumps, pane-group controls, and `Alt Shift F` for focus fullscreen
-- Converged generated runtime state before launch so stale Zellij layouts, plugin permission caches, terminal configs, copied native config files, and Yazi static assets are repaired or diagnosed deterministically
-- Moved status-bar and widget ownership into `yazelix-zellij-bar`, including Codex, Claude, OpenCode Go, CPU/RAM, cached facts, throttled refresh, and first-paint hydration
-- Exposed standalone subsystem packages for screen rendering, Ghostty cursors, popup panes, the Zellij bar, and Yazi assets while keeping normal Yazelix installs wired automatically
-- Matured public Nix customization with `mkYazelix`, overlays, runtime tool sources, component toggles, child package outputs, Home Manager integration, and Cachix publishing
-- Migrated maintainer issue tracking from Go/Dolt `bd` to Rust `br`, with tracked JSONL state, ignored local SQLite cache, Nix packaging, CI initialization, and GitHub issue sync support
-- Users jumping straight from early v16 should still read the v16.2 and v16.3 notes for cursor-sidecar and flat-config-path manual actions
-
-### v16
-
-v16 Rust-forward control plane with an irreducible Nushell core
-
-- Finished the Rust owner cuts across the remaining deterministic control-plane and editor/Yazi integration surfaces, so the public `yzx` story is now much more clearly Rust-owned
-- Reduced Nushell to the explicit shell and UI core, documented the surviving floor, and kept popup/menu wrappers on Nushell where that boundary is the clearest fit
-- Moved maintainer, update, and sweep ownership further out of Nushell, including repo-maintainer flows and pane-orchestrator sync semantics, so the remaining Nu surface is much smaller and more intentional
-- Unified the human CLI rendering for `yzx status`, `yzx status --versions`, and `yzx keys` around one shared Rust styling layer with cleaner grouped output and better contrast
-
-For exact tagged release notes, see [CHANGELOG](./CHANGELOG.md) or run `yzx whats_new` after installing that release
-For the longer project story, see [Version History](./docs/history.md)
-<!-- END GENERATED README LATEST SERIES -->
-
-## Compatibility
-For the detailed support table across terminals, editors, shells, platforms, and install owners, see [Compatibility Matrix](./docs/compatibility_matrix.md)
-
-- **Platform**: Linux and macOS — see the [macOS support floor contract](docs/contracts/macos_support_floor.md) for the current guaranteed macOS surfaces
-- **Terminal**: Any capable terminal can run Yazelix with `yzx enter`; Kitty is the packaged default terminal, and Ghostty is the host-installed backup and most tested mature host-terminal path
-- **Editor**: Yazelix Helix and Neovim get first-class support (reveal in the Yazi file tree, open buffer in a running instance, managed editor-pane targeting); other editors get plain pane launches through `editor.command`, and `helix.external` is only for Yazelix-compatible Helix forks
-- **Shell**: Bash, Fish, Zsh, or Nushell - use whichever you prefer
-
-### Helix Integration
-Yazelix-managed Helix sessions ship a curated Helix-local config with `Alt+r` bound to `yzx reveal`; Yazelix reserves `Alt+r` globally: in the managed editor it forwards `Alt+r` into Helix for reveal, outside the editor it falls back to the editor/left-sidebar focus flow, and `Ctrl+y`, `Ctrl+Shift+Y`, plus `Alt+Shift+H` remain the dedicated workspace navigation keys
-
-Yazelix's bundled Helix is the [yazelix-helix](https://github.com/luccahuguet/yazelix-helix) Steel fork: it is currently thin but usable without Yazelix, tracks Helix Steel, carries the `--config-dir` override Yazelix needs to point managed sessions at the generated Helix config directory without taking over `~/.config/helix`, and packages reusable Steel plugin defaults
-
-📖 **[Complete Helix Keybindings Guide →](./docs/helix_keybindings.md)** - Recommended keybindings for enhanced editing experience
-
-### Neovim Integration
-For Neovim-Yazi integration, bind `yzx reveal` to any editor-local shortcut that does not conflict with your terminal or Zellij bindings; a good default is `<M-r>`:
-
-This assumes `yzx` is on your editor `PATH`
-
-```lua
--- Yazelix Yazi file-tree integration - reveal current file in the managed sidebar
-vim.keymap.set('n', '<M-r>', function()
-  local buffer_path = vim.fn.expand('%:p')
-  if buffer_path ~= '' then
-    vim.fn.system({ 'yzx', 'reveal', buffer_path })
-  end
-end, { desc = 'Reveal in Yazi file tree' })
-```
-
-📖 **[Complete Neovim Keybindings Guide →](./docs/neovim_keybindings.md)** - Setup instructions and workflow tips
-
-## Version Check
-Check installed tool versions:
-```bash
-yzx status --versions
-```
-
-## POSIX/XDG Paths
-
-Yazelix keeps user-edited config separate from generated runtime output:
-
-- User config lives under `$XDG_CONFIG_HOME/yazelix`, usually `~/.config/yazelix`, with `settings.jsonc` as the canonical main config
-- Generated runtime output lives under `$XDG_DATA_HOME/yazelix`, usually `~/.local/share/yazelix`, including generated Yazi, Zellij, Helix, terminal configs, logs, profiles, sessions, and freshness records
-- Launchers may set `YAZELIX_CONFIG_DIR` and `YAZELIX_STATE_DIR` explicitly; Home Manager uses those owner-provided paths when it manages Yazelix
-
-See [POSIX/XDG Paths](./docs/posix_xdg.md) for the full path contract
-
-## SSH / Remote
-
-Yazelix shines over SSH: the TUI stack (Zellij, Yazi, Helix) runs cleanly without any GUI, giving you a fully configured, consistent “superterminal” on barebones hosts such as an AWS EC2 instance, while the Yazelix environment delivers the same tools, keybindings, and layouts you use locally, minimizing drift on ephemeral servers
-
-## Customization & Configuration
-
-Yazelix uses a **layered configuration system** that safely merges your personal settings with Yazelix defaults:
-
-- **Core settings**: Edit `~/.config/yazelix/settings.jsonc` for shell, editor, terminal, Zellij, and Yazi settings, edit `~/.config/yazelix_cursors/settings.jsonc` for cursor settings, run `yzx config set/unset` for safe scalar and string-list edits, or run `yzx config ui`, Yazelix's ratconfig-backed JSONC settings editor, to inspect and edit explicit/defaulted values and stale-field diagnostics
-- **Yazi customization**: Use the built-in `yazi` settings in `settings.jsonc` for things like plugins, theme, sorting, and binary overrides, and use the managed Yazi home at `~/.config/yazelix/yazi/` for `yazi.toml`, `keymap.toml`, `init.lua`, packages, plugins, and flavors (see [Yazi Configuration](./docs/yazi-configuration.md))
-- **Zellij customization**: Use the built-in `zellij` settings in `settings.jsonc` for Yazelix-owned Zellij knobs, keybindings, theme, and rounded corners, and use `~/.config/yazelix/zellij.kdl` for deeper native Zellij settings that Yazelix does not render (see [Zellij Configuration](./docs/zellij-configuration.md))
-- **Status bar widgets**: Configure `[zellij].widget_tray` to order or hide `session`, `editor`, `shell`, `term`, `workspace`, usage, `cpu`, and `ram` widgets, and use `[zellij].widget_frame` plus `[zellij].widget_separator` for compact bar punctuation; cursor preset inspection and editing live in `yzx config ui` instead of the status bar
-- **Your configs persist** across Yazelix updates without git conflicts
-- **Intelligent merging**: Generated Yazi and Zellij runtime configs are rebuilt from Yazelix defaults plus your managed overrides instead of forcing you to edit tracked runtime files
-- **Launch-time config snapshots**: each Yazelix window keeps the `settings.jsonc` snapshot it launched with; edit config whenever you want, then open a new Yazelix window or run `yzx restart` to apply it to live panes. Use repeatable `--with KEY=VALUE` on `yzx launch`, `yzx enter`, or `yzx restart` for session-only settings overrides
-
-📖 **[Complete Customization Guide →](./docs/customization.md)** - Detailed instructions for customizing every tool
-
-### Editor Configuration
-
-📝 **[Editor Configuration Guide →](./docs/editor_configuration.md)** - Complete guide for configuring editors
-
-**Quick setup:**
-- **Default (recommended)**:
-  ```toml
-  [editor]
-  command = ""
-  ```
-- **Neovim**:
-  ```toml
-  [editor]
-  command = "nvim"
-  ```
-- **Yazelix-compatible Helix fork**:
-  ```toml
-  [helix]
-  external = { binary = "/path/to/hx", runtime_path = "/path/to/helix/runtime" }
-  ```
-- **Other editors**:
-  ```toml
-  [editor]
-  command = "vim"
-  ```
-
-### Alternative: CLI-Only Mode
-To use Yazelix tools without starting the full interface (no sidebar, no Zellij), use:
-```bash
-yzx env
-```
-This loads the curated Yazelix tool surface into your current shell, with Yazelix env vars set and clean messaging, and automatically launches the shell configured in your `settings.jsonc`; if you prefer the legacy behavior, run `yzx env --no-shell` to stay in your current shell
-
-Internal runtime helpers stay private under `libexec/` instead of leaking into your interactive PATH, so host-distributed apps launched from that shell do not accidentally inherit Yazelix-owned core userland tools ahead of the system PATH
-
-If you want the Yazelix tool PATH without switching into your configured shell, use:
-```bash
-yzx env --no-shell
-```
-
-### Packages & Customization
-
-**What Gets Installed:**
-See the full catalog of tools and integrations in the Yazelix Collection:
-[docs/yazelix_collection.md](./docs/yazelix_collection.md)
-- **Essential tools**: [Yazi](https://github.com/sxyazi/yazi) (file manager), [Zellij](https://github.com/zellij-org/zellij) (terminal multiplexer), [Helix](https://helix-editor.com) (editor), shells (bash/nushell, plus your preferred shell), [fzf](https://github.com/junegunn/fzf), [zoxide](https://github.com/ajeetdsouza/zoxide), [Starship](https://starship.rs)
-- **Bundled helpers**: [lazygit](https://github.com/jesseduffield/lazygit) (or `lg`), [Zenith](https://github.com/bvaisvil/zenith), [carapace](https://github.com/carapace-sh/carapace-bin), [macchina](https://github.com/Macchina-CLI/macchina), and the fixed helper tooling behind the packaged runtime
-- **Host-managed helpers**: `mise` and `tombi` are expected from the host `PATH` by default when those integrations are used
-- **Yazi preview helpers**: `p7zip`, `jq`, `poppler`, `fd`, `ripgrep` are part of the fixed runtime surface
-- **Environment setup**: Proper paths, variables, and shell configurations
-
-**Customize Your Installation:**
-If you followed [step 3 in the installation guide](./docs/installation.md#step-3-configure-your-installation-optional), you already have your `~/.config/yazelix/settings.jsonc` config file ready, you can modify it anytime and restart Yazelix to apply changes. Main options live in that file; cursor presets live in `~/.config/yazelix_cursors/settings.jsonc`
-
-**Terminal Emulator Selection:**
-- **Kitty**: packaged default terminal; native config is user-owned (Yazelix does not generate a Kitty config file)
-- **Ghostty**: host-installed backup terminal in the launch order (`launch_order=["kitty","ghostty"]`), most tested mature host-terminal path, with a strong macOS story and Yazelix cursor setup through `yzx cursors ghostty setup`
-- **Other terminals**: Rio, WezTerm, Foot, Ratty, and other capable emulators work by running `yzx enter` as their startup command
-- **Terminal package contract**: Yazelix packages Kitty as the default with Ghostty as backup; host terminal configuration stays owned by the user's terminal setup
-
-[See the full Customization Guide here.](./docs/customization.md)
-
----
-
-## Home Manager Integration
-
-Yazelix includes optional Home Manager support for declarative configuration management through the top-level flake's `homeManagerModules.default` output; see [home_manager/README.md](home_manager/README.md) for setup instructions
-
-## When should you not use yazelix?
-- If you hate having fun
-
-## Initializer Scripts
-Yazelix auto-generates initialization scripts for Starship, Zoxide, Mise, and Carapace for your configured shell set during environment setup and refresh; see [docs/initializer_scripts.md](./docs/initializer_scripts.md) for details
-
-## yzx Command Line Interface
-
-Run `yzx help` for the live command list
-
-### Start Sessions
-
-- `yzx launch` - Open Yazelix in a managed terminal window from the current directory
-- `yzx enter` - Start Yazelix in the current terminal
-- `yzx launch --path DIR` - Launch from a specific directory
-- `yzx launch --home` - Launch from the home directory
-- `yzx launch --config ./minimal.jsonc` - Start one window from an alternate complete settings file
-- `yzx launch --with editor.command=nvim` - Override one settings field for this window only
-- `yzx launch --verbose` - Print detailed launch diagnostics
-
-### Use Tools Without the Workspace
-
-- `yzx env [--no-shell]` - Load Yazelix tools without the UI; `--no-shell` keeps your current shell
-- `yzx run <command> [args...]` - Run one command inside the Yazelix environment
-
-### Workspace Actions
-
-- `yzx popup <program> [args...]` - Open a one-off command in a transient popup pane
-- `yzx menu --popup` - Open the popup command palette, usually through `Alt+Shift+M`
-- `yzx config ui` - Open Yazelix's ratconfig-backed JSONC settings editor, usually through `Alt+Shift+C`
-- `Alt+Shift+I` - Open the bundled Zenith process information popup
-- `yzx sidebar refresh` - Refresh the managed Yazi sidebar file tree and status widgets
-
-### Config and Recovery
-
-- `yzx config [--path]` - Show the active config or print its resolved path
-- `yzx config set PATH JSON` - Set a supported config value while preserving comments
-- `yzx config unset PATH` - Remove an explicit config value so defaults apply
-- `yzx edit config` - Open the main managed Yazelix config file in your editor
-- `yzx restart [-s | --skip] [--config FILE] [--with KEY=VALUE]` - Restart Yazelix in a fresh window after config changes
-- `yzx doctor [--verbose] [--fix]` - Run health checks and diagnostics
-
-### Updates
-
-- `yzx update` - Show supported update-owner paths
-- `yzx update upstream` - Upgrade the active default-profile Yazelix package
-- `yzx update home_manager` - Refresh the current Home Manager flake input and print `home-manager switch`
-
-### Status and Extras
-
-- `yzx status [--versions]` - Show current Yazelix status and optional tool versions
-- `yzx cursors` - Inspect Yazelix cursor presets, effects, and resolved colors
-- `yzx dev inspect_session [--json]` - Inspect the current Yazelix/Zellij tab session snapshot for runtime debugging
-- `yzx dev perf [--seconds N]` - Capture a bounded lag snapshot for Zellij/plugin helper churn
-- `yzx dev profile [--cold] [--desktop] [--launch] [--clear-cache]` - Profile startup phases under `~/.local/share/yazelix/profiles/startup/`
-
-📖 **[Complete yzx CLI Documentation →](./docs/yzx_cli.md)** - Full examples, diagnostics, profile tools, and maintainer surfaces
-
-## Troubleshooting
-
-🔍 **Quick diagnosis:** `yzx doctor` - Automated health checks and fixes
-
-📖 **[Complete Troubleshooting Guide →](./docs/troubleshooting.md)** - Comprehensive solutions for common issues
-
-## Editor Terminal Integration
-Want to use Yazelix tools (Nushell, zoxide, starship, lazygit) inside your editor? Zed, VS Code, and Cursor all work seamlessly with `yzx env`
-
-**Quick Setup:**
-1. Open your editor's integrated terminal
-2. Run `yzx env` to load all Yazelix tools without the UI in your configured shell
-3. Enjoy the full Yazelix environment in place
-Need to stay in your editor's existing shell? Run `yzx env --no-shell` instead
-
-For more advanced integration options, see our [Zed + VS Code terminal integration guide](./docs/editor_terminal_integration.md)
-
-## Styling and Themes
-Yazelix includes transparency settings and theme configurations for a beautiful terminal experience, with terminal emulator configs that include transparency settings you can comment or uncomment and Helix themes that include transparent options; see [docs/styling.md](./docs/styling.md) for customization details
-
-For Helix themes, you can use transparent themes by editing your Helix config:
-```toml
-# theme = "base16_transparent"
-theme = "term16_dark"  # Recommended transparent theme
-```
-
-## Layouts
-
-Yazelix layouts are Zellij layouts with Yazelix-owned pane identity layered on top: a managed `sidebar` pane, a managed `editor` pane, and sidebar-aware swap layouts that can collapse, widen, or refocus panes without losing workspace state
-
-The default left sidebar is a Yazi file tree launched by `yzx sidebar yazi`, and the default right sidebar launches `yzx agent`. `yzx agent` starts host-installed `codex` when available, otherwise it opens a normal shell with setup guidance. `workspace.left_sidebar.*` and `workspace.right_sidebar.*` control each side pane command, args, and width, so the right sidebar can run another agent or any other terminal command; `editor.hide_sidebar_on_file_open` can collapse the left sidebar after opening files
-
-The packaged runtime ships one managed sidebar family. `Alt+[` and `Alt+]` are still bound to previous/next layout-family cycling, but with one family they usually leave the visible layout unchanged. Use `Alt+Shift+H/J/K/L` for everyday surface toggles and `Ctrl+y` / `Ctrl+Shift+Y` for sidebar/editor focus
-
-Built-in layout KDL lives in the in-tree `rust_core/yazelix_zellij_config_pack` crate; custom sidebar swap families are maintainer-level work because Yazelix family-aware controls only know the built-in sidebar family
-
-See [Layouts](./docs/layouts.md) for layout files, config keys, and customization boundaries
+`Alt Shift h` toggles the sidebar. Press the same key again to close the Git,
+Ratconfig, or menu popup. The agent popup hides instead, so its process remains
+available
 
 ## Keybindings
 
-Yazelix uses Zellij as the workspace layer, so the most important bindings are global workspace bindings rather than editor-local shortcuts; run `yzx keys` inside Yazelix for the live summary, and see [docs/keybindings.md](./docs/keybindings.md) for the full reference
+Ratconfig's Keys tab is the complete packaged reference, and
+`defaults/zellij/config.kdl` remains the runtime source
 
-| Keybinding | What It Does |
-|------------|--------------|
-| `Ctrl+y` | Toggle focus between the managed editor and left sidebar, which defaults to a Yazi file tree |
-| `Ctrl+Shift+Y` | Toggle focus between the managed editor and right agent sidebar |
-| `Alt+Shift+H` | Show or hide the left sidebar |
-| `Alt+r` | Smart reveal/focus key; forwards into the editor when appropriate |
-| `Alt+[` / `Alt+]` | Previous/next layout family; with the packaged single family this usually has no visible effect |
-| `Alt+m` | Open a new terminal in the current tab workspace root |
-| `Alt+Shift+L` | Toggle the managed right agent sidebar |
-| `Alt+Shift+J` | Toggle the bottom managed popup command, usually `lazygit`, and refresh the Yazi file-tree sidebar git state when the popup keybinding closes it |
-| `Alt+Shift+K` | Toggle the top managed popup command, usually `yzx config ui`, Yazelix's ratconfig-backed settings editor |
-| `Alt+Shift+M` | Open the `yzx` command palette popup |
-| `Alt+Shift+I` | Toggle the keep-alive Zenith process information popup |
-| `Alt+Shift+C` | Open the Yazelix config UI popup |
-| `Alt+1..9` | Jump directly to tabs 1 through 9 |
-| `Alt+w` / `Alt+q` | Move to the next or previous tab |
-| `Ctrl+Alt+H` / `Ctrl+Alt+L` | Move the current tab left or right |
-| `Ctrl+Alt+J` / `Ctrl+Alt+K` | Move the current pane down or up |
-| `Alt+Shift+F` | Toggle pane fullscreen |
+### Zellij workspace
 
-Yazi still has its own keymap too: press `~` inside Yazi for its built-in help, remap Yazelix-owned Yazi integration keys with `yazi.keybindings` in `settings.jsonc`, and use the most useful file-tree sidebar flows such as `Enter` to open through the managed editor integration, `Alt+z` to pick a directory with zoxide and retarget the workspace, and `Alt+p` to open the selected directory in a new pane as the current tab workspace root
+| Key | Action |
+| --- | --- |
+| `Ctrl Alt g` | Toggle locked mode |
+| `Ctrl Alt o` | Open session mode |
+| `Ctrl q` | Quit Yazelix session |
+| `Ctrl p` | Toggle pane mode |
+| `Ctrl t` | Toggle tab mode |
+| `Ctrl n` | Toggle resize mode |
+| `Alt m` | Open a new pane |
+| `Alt Shift F` | Toggle the focused pane fullscreen |
+| `Ctrl y` | Toggle focus between the editor and Yazi sidebar |
+| `Alt 1-9` | Go directly to tab 1-9 |
 
-Helix and Neovim integration is intentionally small: use `Ctrl+y`, `Ctrl+Shift+Y`, and `Alt+Shift+H` for workspace navigation, use `Alt+r` / `yzx reveal` when you want the editor to reveal the current file in the managed Yazi file tree, and see [docs/helix_keybindings.md](./docs/helix_keybindings.md) and [docs/neovim_keybindings.md](./docs/neovim_keybindings.md) for editor-local setup details
+Move mode is unbound. Managed popup triggers can be remapped through
+`keybindings.config`, `keybindings.agent`, `keybindings.git`, and
+`keybindings.menu`. Raw Zellij keymaps stay outside the managed sidecar
 
-## I'm Lost! Too Much Information
-Start by learning Zellij on its own, then optionally Yazi, and re-read this README afterwards
+### Helix
 
-## Contributing to Yazelix
-See [contributing](./docs/contributing.md)
+| Key | Action |
+| --- | --- |
+| `Alt r` | Reveal the current editor file in Yazi |
+
+### Yazi
+
+| Key | Action |
+| --- | --- |
+| `Alt z` | Zoxide jump into the managed editor |
+
+## Commands
+
+| Command | Purpose |
+| --- | --- |
+| `yzx`, `yzx help` | Print command help |
+| `yzx --version` | Print the exact package-owned Nova version |
+| `yzx launch [zellij-args...]` | Open Mars first, then start managed Zellij |
+| `yzx enter [zellij-args...]` | Start managed Zellij in the current terminal |
+| `yzx run <program> [args...]` | Run exact argv inside the prepared Yazelix environment |
+| `yzx config` | Open the Ratconfig-backed config UI |
+| `yzx menu` | Open the command palette |
+| `yzx doctor` | Check owned runtime setup without launching Mars or Zellij |
+| `yzx status` | Print config/runtime paths and selected settings |
+| `yzx status --json` | Print the versioned machine-readable status record |
+| `yzx env` | Open the managed shell without launching the UI |
+| `yzx tutor [lesson]` | Print guided Yazelix lessons |
+| `yzx screen [style]` | Show a terminal welcome screen |
+| `yzx reveal <target>` | Reveal a file or directory in the managed Yazi sidebar |
+
+Status JSON contains numeric `schema_version = 1`, plus `name`, `version`,
+`package`, `config_home`, `state_dir`, `shell`, `editor_command`, `editor`,
+`agent_command`, and `inside_zellij`. The sponsor URL remains in `yzx help`
+without a public `sponsor` command
+
+The top-right Zellij corner shows the compact release line derived from the
+same version: `NOVA DEV` in development, `NOVA βN` during the v1 beta line,
+and `NOVA 1.0` for the stable release
+
+Screen styles are `static`, `logo`, `boids`, `boids_predator`,
+`boids_schools`, `mandelbrot`, `game_of_life_gliders`,
+`game_of_life_oscillators`, `game_of_life_bloom`, and `random`
+
+Tutor lessons are `workspace`, `discovery`, `troubleshooting`, and
+`tool_tutors`. `yzx tutor hx` and `yzx tutor nu` print the native tool tutor
+commands
+
+
+## Packages and platforms
+
+The default package includes Mars and opens the full graphical workspace with
+`yzx launch`. The fixed `runtime` package keeps the same `yzx` command,
+managed tools, and configuration without Mars or desktop assets
+
+See [Installation and packages](docs/installation.md) for package variants,
+platform support, SSH use, measured sizes, Home Manager, and updates
+
+## Configuration
+
+`yzx config` opens Ratconfig over the managed tree at
+`~/.config/yazelix/`. Nova inherits packaged defaults and persists only
+explicit overrides
+
+See [Configuration](docs/configuration.md) for settings, popups, native files,
+Yazi plugins, cursor ownership, and editor behavior
+
+## Development
+
+See [Development](docs/development.md) for CI, local checks, runtime input
+overrides, and the LOC scorecard. Lower-level launch, config, editor, shell, and
+popup contracts live in [Runtime Notes](docs/runtime-notes.md)
+
+## LOC Scorecard
+
+Nova owns **17,099 lines** of tracked text project files. The
+[reproducible scorecard](docs/development.md#loc-scorecard) excludes Beads,
+lockfiles, and binary assets

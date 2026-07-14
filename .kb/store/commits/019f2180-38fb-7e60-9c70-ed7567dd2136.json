@@ -1,5 +1,0 @@
-{
-  "commit": {"author":"drdave-flexnet <flexnetos@de-flex.net>","changes":[{"change_type":"created","content_hash":"5c28d6a2e4505e9d9cb9da5d051cb4ae5d22521519d4c4390abd7f3a668f5900","doc_type":"task","document_id":"019f217f-af05-7eb3-970b-482aa6a3b3eb","new_version":1,"previous_version":null,"slug":"tasks/nu-plugin-codedb-envctl-export","title":"Implement CodeDB envctl export contract"}],"created_at":"2026-07-02T06:24:39.152551659Z","id":"019f2180-38fb-7e60-9c70-ed7567dd2136","message":"Add CodeDB envctl export task"},
-  "content_hash": "c4a5c1ffd7d18cd64aab585da31ef6097e4a819608d503d381bb0267688e79c4",
-  "hash_version": 3
-}

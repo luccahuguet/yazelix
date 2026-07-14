@@ -1,5 +1,0 @@
-{
-  "commit": {"author":"drdave-flexnet <flexnetos@de-flex.net>","changes":[{"change_type":"created","content_hash":"f800fedd19f9db4f90f2c4ed5414ea5564a9b6be9bed1be0da14d67e73221937","doc_type":"task","document_id":"019f2163-378f-7cf1-945e-1e55b3a62032","new_version":1,"previous_version":null,"slug":"tasks/nu-plugin-codedb-nu-commands","title":"Implement CodeDB Nushell plugin commands"}],"created_at":"2026-07-02T05:53:48.287492286Z","id":"019f2163-fb08-71e3-b4e2-c05e96d1c480","message":"Add CodeDB Nu plugin command task"},
-  "content_hash": "16be5a4de48aded3c4631d2ececd649a996753652f49f27060a6a93b1a419c46",
-  "hash_version": 3
-}

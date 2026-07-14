@@ -1,0 +1,22 @@
+swap_tiled_layout name="single_open" {
+    ui min_panes=4 {
+        pane split_direction="vertical" {
+            pane name="sidebar" command="@yazi@" size="20%"
+            pane stacked=true {
+                children;
+                size "80%"
+            }
+        }
+    }
+}
+
+swap_tiled_layout name="single_closed" {
+    ui min_panes=4 {
+        pane split_direction="vertical" {
+            pane name="sidebar" command="@yazi@" size="1"
+            pane stacked=true {
+                children;
+            }
+        }
+    }
+}

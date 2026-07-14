@@ -1,4 +1,4 @@
-# SQLite database
+# Database
 *.db
 *.db-journal
 *.db-shm
@@ -7,20 +7,24 @@
 # Lock files
 *.lock
 
-# Temporary files
+# Temporary
 last-touched
 *.tmp
 
 # Local history backups
 .br_history/
-.br_recovery/
-migration_backup/
 
-# Sync state
+# DB-family recovery artifacts (truncated WAL/SHM, quarantined sidecars)
+# — same lifecycle as .br_history/, written by recovery paths and
+# `br doctor --repair`. Filename suffix `.truncated-wal` slips past the
+# generic `*.db-wal` glob above, so it needs an explicit entry (#271).
+.br_recovery/
+
+# Sync state (local-only, per-machine)
 .sync.lock
 sync_base.jsonl
 
-# Merge artifacts
+# Merge artifacts (temporary files from 3-way merge)
 beads.base.jsonl
 beads.base.meta.json
 beads.left.jsonl
@@ -38,11 +42,6 @@ sync-state.json
 # Worktree redirect file
 redirect
 
-# Local-only artifacts left by older Beads backends
-backup/
-dolt/
-embeddeddolt/
-interactions.jsonl
-push-state.json
-.local_version
+# bv (beads viewer) lock file
+.bv.lock
 .write.lock

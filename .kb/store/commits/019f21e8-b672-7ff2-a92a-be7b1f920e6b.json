@@ -1,5 +1,0 @@
-{
-  "commit": {"author":"drdave-flexnet <flexnetos@de-flex.net>","changes":[{"change_type":"created","content_hash":"bbdb988189cbbfc31d84a2d2f8925a2f4d7ae47d1c5ac2f3b194d6377dd2b576","doc_type":"task","document_id":"019f21e5-eb3d-7ce3-b0bc-286ebefadc3e","new_version":1,"previous_version":null,"slug":"tasks/nu-plugin-codedb-codex-bounded-smoke","title":"Add CodeDB Codex bounded bridge smoke"}],"created_at":"2026-07-02T08:18:47.015868363Z","id":"019f21e8-b672-7ff2-a92a-be7b1f920e6b","message":"Complete CodeDB Codex bounded smoke task"},
-  "content_hash": "b0701dbe9ab924cf4e4cf9c94b8cecdc22cb62bb9e598c50a25550d97d507419",
-  "hash_version": 3
-}

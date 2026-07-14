@@ -1,7 +1,0 @@
-[profile.ci]
-fail-fast = false
-retries = 0
-failure-output = "immediate-final"
-success-output = "never"
-status-level = "fail"
-final-status-level = "fail"

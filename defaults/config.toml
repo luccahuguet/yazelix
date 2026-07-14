@@ -1,0 +1,55 @@
+# Yazelix Nova semantic config.
+# Native tool configs live beside this file under ~/.config/yazelix/.
+
+[open]
+# yzx-open diagnostics: off, error, info, or debug.
+log_level = "info"
+
+[shell]
+# Packaged shell for new Zellij panes. Yazelix Nova requires Nushell.
+program = "nu"
+
+[editor]
+# Editor command for managed opens. hx and yzx-hx use packaged Yazelix Helix.
+command = "yzx-hx"
+
+[agent]
+# "auto" keeps the built-in provider fallback. Any other value is one executable
+# command for the managed agent popup; put arguments in args.
+command = "auto"
+args = []
+
+[welcome]
+# Show a brief welcome splash before entering the managed runtime.
+enabled = true
+# Welcome style: static, logo, boids, boids_predator, boids_schools,
+# mandelbrot, game_of_life_gliders, game_of_life_oscillators,
+# game_of_life_bloom, or random.
+style = "random"
+# Welcome splash duration in seconds.
+duration_seconds = 3
+
+[popup]
+# Left/right and top/bottom cell margins for managed popups.
+side_margin = 1
+vertical_margin = 0
+
+[keybindings]
+# Key chords for managed popup roles.
+config = "Alt Shift K"
+agent = "Alt Shift L"
+git = "Alt Shift J"
+menu = "Alt Shift M"
+
+# Custom popups can be added manually. Commands are argv-based, not shell strings.
+# Titles default to <id>_popup and must be unique.
+# [popups.btm]
+# command = "btm"
+# args = ["--basic"]
+# title = "btm_popup"
+# keybinding = "Alt Shift B"
+# keep_alive = true
+
+[bar]
+# Top bar widgets, left to right.
+widgets = ["editor", "shell", "term", "codex_usage", "cpu", "ram"]

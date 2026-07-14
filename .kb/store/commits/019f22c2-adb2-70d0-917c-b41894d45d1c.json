@@ -1,5 +1,0 @@
-{
-  "commit": {"author":"drdave-flexnet <flexnetos@de-flex.net>","changes":[{"change_type":"modified","content_hash":"5eb1e201de03b33a95d3a478fc0623a5ecd6561eb61c786060f91ce6b055706e","doc_type":"task","document_id":"019f2289-7aaa-7d61-a7a1-01cb2e7d6598","metadata_changes":[{"field":"status","new_value":"completed","old_value":"active"}],"new_version":8,"previous_commit_id":"019f22c2-8103-7a22-8bad-ef9b16b5112d","previous_hash":"4680f905eb396f719be8d5c6c30c178ab2dd0b5444e4369550c8950911eaf557","previous_version":7,"slug":"tasks/nu-plugin-envctl-exhaustive-file-content-import","title":"Import exhaustive Yazelix file contents into envctl tables through Nu plugin"}],"created_at":"2026-07-02T12:16:51.585740538Z","id":"019f22c2-adb2-70d0-917c-b41894d45d1c","message":"Mark CodeDB inventory import completed"},
-  "content_hash": "19a64ace641a30b1078aa376c4f3ec947e0b07851db5f55c9fac6a4529cb3a13",
-  "hash_version": 3
-}

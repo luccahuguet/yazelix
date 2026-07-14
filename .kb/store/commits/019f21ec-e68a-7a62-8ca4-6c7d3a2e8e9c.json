@@ -1,5 +1,0 @@
-{
-  "commit": {"author":"drdave-flexnet <flexnetos@de-flex.net>","changes":[{"change_type":"created","content_hash":"d29073b96017b43bc1d062969898d28d61f0c4f956b0940a720de96284474221","doc_type":"task","document_id":"019f21eb-16e5-70d0-8958-1a5f59ab4cef","new_version":1,"previous_version":null,"slug":"tasks/nu-plugin-codedb-envctl-runtime","title":"Add CodeDB envctl runtime integration rows"}],"created_at":"2026-07-02T08:23:21.474607063Z","id":"019f21ec-e68a-7a62-8ca4-6c7d3a2e8e9c","message":"Complete CDB063 envctl runtime integration"},
-  "content_hash": "87309d5e159f39fc663baacdde291a1a5d59971bb1a4daf9f8b7827b2f2aa0ba",
-  "hash_version": 3
-}
