@@ -5,6 +5,7 @@ const OWNED_FILES = [
     { source: "nix.conf", target: "/etc/nix/nix.conf" }
     { source: "nix.custom.conf", target: "/etc/nix/nix.custom.conf" }
     { source: "determinate-config.json", target: "/etc/determinate/config.json" }
+    { source: "shells", target: "/etc/shells" }
 ]
 const RETIRED_CLIENT_STATE = [
     "/home/flexnetos/.local/share/nix/trusted-settings.json"
@@ -25,6 +26,25 @@ def target_path [absolute: string] {
         $absolute
     } else {
         $root | path join ($absolute | str trim --left --char "/")
+    }
+}
+
+def live_target [] {
+    ($env.YAZELIX_HOST_POLICY_TARGET_ROOT? | default "" | str trim | is-empty)
+}
+
+def current_login_shell [] {
+    let account = (open --raw /etc/passwd | lines | where {|line| $line | str starts-with "flexnetos:"} | first)
+    $account | split row ":" | get 6
+}
+
+def ensure_login_shell [] {
+    if not (live_target) {
+        return
+    }
+    let profile_nu = $"($PROFILE_ROOT)/toolbin/nu"
+    if (current_login_shell) != $profile_nu {
+        ^$"($PROFILE_ROOT)/bin/usermod" --shell $profile_nu flexnetos
     }
 }
 
@@ -89,6 +109,9 @@ def check_targets [] {
             error make {msg: $"retired Nix cache authority exists: ($target)"}
         }
     }
+    if (live_target) and ((current_login_shell) != $"($PROFILE_ROOT)/toolbin/nu") {
+        error make {msg: "flexnetos login shell is not profile-owned Nushell"}
+    }
 }
 
 def check_effective [] {
@@ -118,6 +141,7 @@ def apply_nix [] {
             rm --recursive --force $target
         }
     }
+    ensure_login_shell
     check_targets
 }
 

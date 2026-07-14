@@ -737,6 +737,7 @@
           (pkgs.writeTextDir "share/yazelix/host-policy/nix.conf" (builtins.readFile ./host-policy/nix.conf))
           (pkgs.writeTextDir "share/yazelix/host-policy/nix.custom.conf" (builtins.readFile ./host-policy/nix.custom.conf))
           (pkgs.writeTextDir "share/yazelix/host-policy/determinate-config.json" (builtins.readFile ./host-policy/determinate-config.json))
+          (pkgs.writeTextDir "share/yazelix/host-policy/shells" (builtins.readFile ./host-policy/shells))
           (pkgs.writeTextDir "lib/systemd/system/yazelix_host_policy.service" (builtins.readFile ./systemd/system/yazelix_host_policy.service))
           (pkgs.writeTextDir "lib/systemd/system/yazelix_host_policy.path" (builtins.readFile ./systemd/system/yazelix_host_policy.path))
           (pkgs.writeTextDir "lib/systemd/system/nix-daemon.service.d/10-yazelix-host-policy.conf" (builtins.readFile ./systemd/system/nix-daemon.service.d/10-yazelix-host-policy.conf))
@@ -831,6 +832,12 @@
         meta-mcp = "${flexnetosMeta}/bin/meta-mcp";
         meta-project = "${flexnetosMeta}/bin/meta-project";
         node = "${pkgs.nodejs_24}/bin/node";
+        nix = "${pkgs.nix}/bin/nix";
+        nix-build = "${pkgs.nix}/bin/nix-build";
+        nix-env = "${pkgs.nix}/bin/nix-env";
+        nix-instantiate = "${pkgs.nix}/bin/nix-instantiate";
+        nix-shell = "${pkgs.nix}/bin/nix-shell";
+        nix-store = "${pkgs.nix}/bin/nix-store";
         notebooklm = "${flexnetosNotebooklm}/bin/notebooklm";
         npm = "${pkgs.nodejs_24}/bin/npm";
         nu = "${pkgs.nushell}/bin/nu";
@@ -848,6 +855,7 @@
         sqld = "${pkgs.sqld}/bin/sqld";
         sqlite3 = "${pkgs.sqlite}/bin/sqlite3";
         tu = "${tokenusage}/bin/tu";
+        usermod = "${pkgs.shadow}/bin/usermod";
         uv = "${pkgs.uv}/bin/uv";
         uvx = "${pkgs.uv}/bin/uvx";
         wasm-pack = "${pkgs.wasm-pack}/bin/wasm-pack";
@@ -1231,6 +1239,9 @@
         test -x ${foundation}/bin/yazelix_host_policy
         test -x ${foundation}/bin/kache
         test -x ${foundation}/bin/kache-rustc-wrapper
+        test -x ${foundation}/bin/nix
+        test -x ${foundation}/bin/nix-store
+        test -x ${foundation}/bin/usermod
         test -x ${foundation}/toolbin/nu
         test ! -e ${foundation}/bin/yzx-desktop-launch
         test ! -e ${foundation}/bin/yzx-agent-workspace-launch
@@ -1290,6 +1301,7 @@
         grep -Fx 'keep-build-log = false' ${foundation}/share/yazelix/host-policy/nix.conf
         grep -Fx 'compress-build-log = false' ${foundation}/share/yazelix/host-policy/nix.conf
         grep -F '"endpoint": null' ${foundation}/share/yazelix/host-policy/determinate-config.json
+        grep -Fx '/home/flexnetos/.nix-profile/toolbin/nu' ${foundation}/share/yazelix/host-policy/shells
         grep -Fx 'ExecStart=/home/flexnetos/.nix-profile/bin/yazelix_host_policy apply-nix' ${foundation}/lib/systemd/system/yazelix_host_policy.service
         test -f ${foundation}/lib/systemd/system/yazelix_host_policy.path
         test -f ${foundation}/lib/systemd/system/nix-daemon.service.d/10-yazelix-host-policy.conf

@@ -1,0 +1,13 @@
+# FlexNetOS login shell policy. Nushell is the active profile-owned shell.
+/home/flexnetos/.nix-profile/toolbin/nu
+
+# Owner-only emergency fallbacks retained by policy.
+/bin/sh
+/usr/bin/sh
+/bin/bash
+/usr/bin/bash
+/bin/rbash
+/usr/bin/rbash
+/usr/bin/dash
+/usr/bin/screen
+/usr/bin/tmux
