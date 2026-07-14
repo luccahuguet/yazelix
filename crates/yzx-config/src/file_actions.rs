@@ -17,6 +17,7 @@ use crate::{
     },
     paths::ConfigPaths,
     root_config::{unset_config_field, write_config_field},
+    yazi_config::{unset_yazi_field, write_yazi_field},
     zellij_sidecar::{unset_zellij_config_field, write_zellij_config_field},
 };
 use yazelix_cursors::DEFAULT_CURSOR_CONFIG_TEMPLATE;
@@ -113,45 +114,45 @@ fn file_action_specs(paths: &ConfigPaths) -> impl IntoIterator<Item = FileAction
             starter: NU_CONFIG_STARTER,
         },
         FileActionSpec {
-            source_id: SOURCE_ADVANCED,
+            source_id: SOURCE_YAZI,
             action_id: ACTION_YAZI_CONFIG,
-            tab: TAB_ADVANCED,
+            tab: TAB_YAZI,
             label: "yazi/yazi.toml",
             description: "Open the managed native Yazi config file.",
             path: paths.yazi_config.clone(),
             starter: YAZI_CONFIG_STARTER,
         },
         FileActionSpec {
-            source_id: SOURCE_ADVANCED,
+            source_id: SOURCE_YAZI,
             action_id: ACTION_YAZI_INIT,
-            tab: TAB_ADVANCED,
+            tab: TAB_YAZI,
             label: "yazi/init.lua",
             description: "Open the managed Yazi user init.lua file.",
             path: paths.yazi_init.clone(),
             starter: YAZI_INIT_STARTER,
         },
         FileActionSpec {
-            source_id: SOURCE_ADVANCED,
+            source_id: SOURCE_YAZI,
             action_id: ACTION_YAZI_KEYMAP,
-            tab: TAB_ADVANCED,
+            tab: TAB_YAZI,
             label: "yazi/keymap.toml",
             description: "Open the managed Yazi user keymap.toml file.",
             path: paths.yazi_keymap.clone(),
             starter: YAZI_KEYMAP_STARTER,
         },
         FileActionSpec {
-            source_id: SOURCE_ADVANCED,
+            source_id: SOURCE_YAZI,
             action_id: ACTION_YAZI_PACKAGE,
-            tab: TAB_ADVANCED,
+            tab: TAB_YAZI,
             label: "yazi/package.toml",
             description: "Open the managed Yazi package metadata file.",
             path: paths.yazi_package.clone(),
             starter: YAZI_PACKAGE_STARTER,
         },
         FileActionSpec {
-            source_id: SOURCE_ADVANCED,
+            source_id: SOURCE_YAZI,
             action_id: ACTION_YAZI_THEME,
-            tab: TAB_ADVANCED,
+            tab: TAB_YAZI,
             label: "yazi/theme.toml",
             description: "Open the managed native Yazi theme config file.",
             path: paths.yazi_theme.clone(),
@@ -195,6 +196,9 @@ pub(crate) fn write_source_field(
             paths.reject_mutation(&paths.starship, source_id)?;
             write_starship_config_field(&paths.starship, field_path, value)
         }
+        SOURCE_YAZI_CONFIG | SOURCE_YAZI_THEME => {
+            write_yazi_field(paths, source_id, field_path, value)
+        }
         _ => Err(error(format!("unknown config source: {source_id}"))),
     }
 }
@@ -224,6 +228,7 @@ pub(crate) fn write_source_default(
             paths.reject_mutation(&paths.zellij, source_id)?;
             unset_zellij_config_field(&paths.zellij, field_path)
         }
+        SOURCE_YAZI_CONFIG | SOURCE_YAZI_THEME => unset_yazi_field(paths, source_id, field_path),
         _ => Err(error(format!("unknown config source: {source_id}"))),
     }
 }

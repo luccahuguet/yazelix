@@ -24,6 +24,7 @@ use crate::{
         bar_widgets, default_config, default_config_path_value, read_optional_toml_file_value,
         validate_root_config,
     },
+    yazi_config::build_yazi_fields,
     zellij_sidecar::{packaged_zellij_defaults, parse_zellij_sidecar, read_zellij_sidecar},
 };
 
@@ -42,6 +43,7 @@ pub(crate) fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
     let (zellij_active, diagnostics) = parse_zellij_sidecar(&read_zellij_sidecar(&paths.zellij)?);
     let zellij_default = packaged_zellij_defaults();
     let zellij_blocking = diagnostics.iter().any(|diagnostic| diagnostic.blocking);
+    let yazi = build_yazi_fields(paths)?;
 
     let mut fields: Vec<_> = CONFIG_FIELDS
         .iter()
@@ -98,6 +100,7 @@ pub(crate) fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
         ));
     }
     let source = |id, tab, label, path| build_config_source(paths, id, tab, label, path);
+    let yazi_dir = paths.yazi_config.parent().expect("Yazi config directory");
 
     Ok(ConfigUiModel {
         sources: vec![
@@ -118,6 +121,7 @@ pub(crate) fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
                 &paths.starship,
             ),
             source(SOURCE_HELIX, TAB_HELIX, "helix", &paths.helix_dir),
+            source(SOURCE_YAZI, TAB_YAZI, "yazi", yazi_dir),
             ConfigUiSource {
                 id: SOURCE_KEYS.to_string(),
                 tab: TAB_KEYS.to_string(),
@@ -136,6 +140,7 @@ pub(crate) fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
             TAB_ZELLIJ.to_string(),
             TAB_STARSHIP.to_string(),
             TAB_HELIX.to_string(),
+            TAB_YAZI.to_string(),
             TAB_KEYS.to_string(),
             TAB_ADVANCED.to_string(),
         ],
@@ -151,7 +156,7 @@ pub(crate) fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
                     .collect(),
             },
         )]),
-        fields,
+        fields: fields.into_iter().chain(yazi).collect(),
         file_actions: build_file_actions(paths),
         sidecars: Vec::new(),
         native_config_statuses: Vec::new(),

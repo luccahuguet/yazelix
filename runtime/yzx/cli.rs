@@ -1,14 +1,14 @@
 use std::{env, ffi::OsString, path::Path, process::Command};
 
 use crate::{
-    MARS, VERSION, YZX_CONFIG_UI, YZX_ENV_SUPERVISOR, YZX_MENU, YZX_REVEAL, YZX_SCREEN, YZX_SHELL,
-    YZX_TUTOR, YZX_WELCOME, YZX_YA, ZELLIJ,
     command::exec,
     doctor::print_doctor,
     error::AppError,
     paths::{enter_terminal_label, nonempty_env, runtime_path},
     runtime::Runtime,
     status::{print_status, print_status_json},
+    MARS, VERSION, YZX_CONFIG_UI, YZX_ENV_SUPERVISOR, YZX_MENU, YZX_REVEAL, YZX_SCREEN, YZX_SHELL,
+    YZX_TUTOR, YZX_WELCOME, YZX_YA, ZELLIJ,
 };
 
 pub(crate) fn run() -> Result<(), AppError> {
@@ -110,7 +110,11 @@ fn exec_run(args: Vec<OsString>) -> Result<(), AppError> {
         ));
     };
     let runtime = Runtime::prepare()?;
-    let mut command = Command::new(program);
+    let mut command = if program == "ya" {
+        Command::new(YZX_YA)
+    } else {
+        Command::new(program)
+    };
     command.args(args);
     runtime.apply(&mut command);
     exec(command, "yzx run")

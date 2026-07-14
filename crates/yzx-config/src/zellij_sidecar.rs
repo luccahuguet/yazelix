@@ -56,11 +56,7 @@ pub(crate) fn unset_zellij_config_field(path: &Path, field_path: &str) -> Result
 }
 
 pub(crate) fn read_zellij_sidecar(path: &Path) -> Result<String> {
-    if path_entry_exists(path)? {
-        Ok(fs::read_to_string(path)?)
-    } else {
-        Ok(String::new())
-    }
+    read_optional_text(path)
 }
 fn read_editable_zellij_sidecar(path: &Path) -> Result<(String, ZellijSidecar)> {
     let raw = read_zellij_sidecar(path)?;

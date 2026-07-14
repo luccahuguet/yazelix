@@ -116,6 +116,13 @@ pub(crate) fn path_entry_exists(path: &Path) -> Result<bool> {
         Err(error) => Err(error.into()),
     }
 }
+pub(crate) fn read_optional_text(path: &Path) -> Result<String> {
+    if path_entry_exists(path)? {
+        Ok(fs::read_to_string(path)?)
+    } else {
+        Ok(String::new())
+    }
+}
 pub(crate) fn string_values(values: &[&str]) -> Vec<String> {
     values.iter().map(|value| (*value).to_string()).collect()
 }

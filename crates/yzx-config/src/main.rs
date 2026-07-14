@@ -10,6 +10,7 @@ mod native_config;
 mod paths;
 mod root_config;
 mod ui;
+mod yazi_config;
 mod zellij_sidecar;
 
 use catalog::*;
@@ -161,6 +162,9 @@ mod tests {
     }
 
     fn temp_paths(temp: &TempHome) -> ConfigPaths {
+        let packaged_yazi = temp.path.join("packaged-yazi");
+        fs::create_dir_all(&packaged_yazi).unwrap();
+        fs::write(packaged_yazi.join("yazi.toml"), "").unwrap();
         ConfigPaths {
             store_root: temp.path.join("store"),
             root: temp.path.join("config.toml"),
@@ -180,6 +184,7 @@ mod tests {
             yazi_keymap: temp.path.join("yazi/keymap.toml"),
             yazi_package: temp.path.join("yazi/package.toml"),
             yazi_theme: temp.path.join("yazi/theme.toml"),
+            packaged_yazi,
             zellij_plugins: temp.path.join("zellij/plugins.kdl"),
         }
     }
@@ -312,6 +317,12 @@ mod tests {
             .iter()
             .find(|field| field.path == path)
             .unwrap_or_else(|| panic!("missing config field {path}"))
+    }
+
+    fn add_flavor(directory: &Path, name: &str) {
+        let flavor = directory.join("flavors").join(format!("{name}.yazi"));
+        fs::create_dir_all(&flavor).unwrap();
+        fs::write(flavor.join("flavor.toml"), "").unwrap();
     }
 
     fn key_field<'a>(model: &'a ConfigUiModel, label: &str) -> &'a ratconfig::ConfigUiField {
@@ -766,8 +777,9 @@ mod tests {
                 " zellij",
                 " starship",
                 " helix",
+                "󰇥 yazi",
                 " keys",
-                " advanced",
+                "advanced",
             ]
         );
         assert!(!model.tabs.contains(&"shell".to_string()));
@@ -1102,6 +1114,20 @@ color = "#123456"
             write_source_field(&paths, SOURCE_CURSORS, CURSOR_TRAIL_PATH, &json!("none")),
             "programs.yazelix.config.cursors",
         );
+        link_from_store(&paths, &paths.yazi_config, "[mgr]\nshow_hidden = true\n");
+        link_from_store(
+            &paths,
+            &paths.yazi_theme,
+            "[flavor]\ndark = \"catppuccin-mocha\"\n",
+        );
+        rejects(
+            write_source_field(&paths, SOURCE_YAZI_CONFIG, "mgr.show_hidden", &json!(false)),
+            "programs.yazelix.config.yazi.config",
+        );
+        rejects(
+            write_source_default(&paths, SOURCE_YAZI_THEME, "flavor.dark"),
+            "programs.yazelix.config.yazi.theme",
+        );
         rejects(
             prepare_file_action(&paths, SOURCE_ADVANCED, ACTION_NU_ENV, &paths.nu_env, true),
             "programs.yazelix.config.nu.env",
@@ -1163,18 +1189,34 @@ color = "#123456"
     #[test]
     fn native_file_tabs_list_owned_file_actions() {
         let (_temp, paths) = temp_sources();
+        atomic_write(&paths.zellij, "keybinds{}\n").unwrap();
 
         let model = build_model(&paths).unwrap();
         assert!(model.tabs.contains(&TAB_STARSHIP.to_string()));
         assert!(model.tabs.contains(&TAB_HELIX.to_string()));
+        assert!(model.tabs.contains(&TAB_YAZI.to_string()));
         assert!(model.tabs.contains(&TAB_CURSORS.to_string()));
+        let advanced = ratconfig::tab_index(&model.tabs, TAB_ADVANCED);
+        assert!(
+            ratconfig::visible_rows_for_tab_search(&model, advanced, "")
+                .contains(&ratconfig::UiRowRef::Diagnostic(0))
+        );
         assert!(model.sources.iter().any(|source| {
             source.id == SOURCE_HELIX && source.tab == TAB_HELIX && source.path == paths.helix_dir
         }));
+        let yazi_sources = model
+            .sources
+            .iter()
+            .filter(|source| source.tab == TAB_YAZI)
+            .collect::<Vec<_>>();
+        assert_eq!(yazi_sources.len(), 1);
+        assert_eq!(yazi_sources[0].id, SOURCE_YAZI);
+        assert_eq!(yazi_sources[0].path, paths.yazi_config.parent().unwrap());
         assert!(model.file_actions.iter().all(|action| {
             let expected = match action.label.as_str() {
                 "cursors.toml" => (SOURCE_CURSORS, TAB_CURSORS),
                 label if label.starts_with("helix/") => (SOURCE_HELIX, TAB_HELIX),
+                label if label.starts_with("yazi/") => (SOURCE_YAZI, TAB_YAZI),
                 _ => (SOURCE_ADVANCED, TAB_ADVANCED),
             };
             (action.source_id.as_str(), action.tab.as_str()) == expected
@@ -1221,6 +1263,90 @@ color = "#123456"
                     && file_action_status_style(action) == Style::default().fg(Color::Gray)
             }
         }));
+    }
+
+    #[test]
+    fn yazi_tab_renders_and_writes_native_config_with_discovered_flavors() {
+        let (_temp, paths) = temp_sources();
+        fs::write(
+            paths.packaged_yazi.join("yazi.toml"),
+            "[mgr]\nshow_hidden = false\nratio = [1, 2, 3]\n\n[preview]\nmax_width = 600\n",
+        )
+        .unwrap();
+        add_flavor(&paths.packaged_yazi, "catppuccin-mocha");
+        add_flavor(paths.yazi_config.parent().unwrap(), "custom");
+        add_flavor(paths.yazi_config.parent().unwrap(), "");
+        fs::write(
+            &paths.yazi_config,
+            "# keep config\n[mgr]\nshow_hidden = false\nratio = [1, 4, 0]\n\n[preview]\nmax_width = 800\n",
+        )
+        .unwrap();
+        fs::write(
+            &paths.yazi_theme,
+            "# keep theme\n[flavor]\ndark = 42\nlight = \"custom\"\n\n[mgr]\ncwd = { fg = \"blue\" }\n",
+        )
+        .unwrap();
+
+        let model = build_model(&paths).unwrap();
+        assert!(!model.tab_list_tables.contains_key(TAB_YAZI));
+        let dark = model_field(&model, "flavor.dark");
+        assert_eq!(dark.source_id, SOURCE_YAZI_THEME);
+        assert_eq!(dark.display_label, "Dark flavor");
+        assert_eq!(dark.kind, "string");
+        assert_eq!(
+            dark.allowed_values,
+            ["catppuccin-mocha".to_string(), "custom".to_string()]
+        );
+        let show_hidden = model_field(&model, "mgr.show_hidden");
+        assert_eq!(show_hidden.source_id, SOURCE_YAZI_CONFIG);
+        assert_eq!(
+            (show_hidden.kind.as_str(), show_hidden.state),
+            ("bool", ConfigUiValueState::Explicit)
+        );
+        assert_eq!(show_hidden.apply_status.summary, "next Yazi");
+        assert!(matches!(
+            model_field(&model, "mgr.ratio").edit_behavior,
+            ConfigUiEditBehavior::StructuredOnly { .. }
+        ));
+
+        write_source_field(&paths, SOURCE_YAZI_CONFIG, "mgr.show_hidden", &json!(true)).unwrap();
+        write_source_field(
+            &paths,
+            SOURCE_YAZI_CONFIG,
+            "preview.max_width",
+            &json!(1200),
+        )
+        .unwrap();
+        write_source_field(&paths, SOURCE_YAZI_THEME, "flavor.dark", &json!("custom")).unwrap();
+
+        let config = fs::read_to_string(&paths.yazi_config).unwrap();
+        assert!(config.starts_with("# keep config\n"));
+        assert!(config.contains("show_hidden = true"));
+        assert!(config.contains("ratio = [1, 4, 0]"));
+        let theme = fs::read_to_string(&paths.yazi_theme).unwrap();
+        assert!(theme.starts_with("# keep theme\n"));
+        assert!(theme.contains("dark = \"custom\""));
+
+        let error = write_source_field(&paths, SOURCE_YAZI_THEME, "flavor.dark", &json!("missing"))
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("must name an installed flavor"), "{error}");
+
+        write_source_default(&paths, SOURCE_YAZI_CONFIG, "mgr.show_hidden").unwrap();
+        write_source_default(&paths, SOURCE_YAZI_THEME, "flavor.dark").unwrap();
+        let config = read_toml_file_value(&paths.yazi_config, "Yazi config").unwrap();
+        let theme = read_toml_file_value(&paths.yazi_theme, "Yazi theme").unwrap();
+        assert_eq!(get_toml_path(&config, "mgr.show_hidden"), None);
+        assert_eq!(
+            get_toml_path(&config, "preview.max_width"),
+            Some(&json!(1200))
+        );
+        assert_eq!(get_toml_path(&theme, "flavor.dark"), None);
+        assert_eq!(
+            get_toml_path(&theme, "flavor.light"),
+            Some(&json!("custom"))
+        );
+        assert_eq!(get_toml_path(&theme, "mgr.cwd.fg"), Some(&json!("blue")));
     }
 
     #[test]
@@ -1382,7 +1508,7 @@ color = "#123456"
             (ACTION_YAZI_THEME, &paths.yazi_theme, YAZI_THEME_STARTER),
         ];
         for &(action, target, starter) in &specs {
-            prepare_file_action(&paths, SOURCE_ADVANCED, action, target, true).unwrap();
+            prepare_file_action(&paths, SOURCE_YAZI, action, target, true).unwrap();
             assert_file_text(target, starter);
             assert_eq!(specs.iter().filter(|(_, path, _)| path.exists()).count(), 1);
             fs::remove_file(target).unwrap();

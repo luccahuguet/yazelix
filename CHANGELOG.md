@@ -4,6 +4,19 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## 1.0.0-beta.1
 
+- Ratconfig's Yazi tab renders safe native `yazi.toml` and `theme.toml` values,
+  keeps complex structures available through file actions, and discovers
+  packaged and user-installed flavors for dark/light selection. Nova packages
+  the five flavors hosted by `yazi-rs/flavors` without preview assets; an
+  explicitly installed user flavor wins; empty names are ignored and incomplete
+  flavor overrides are rejected. Malformed numeric or boolean flavor values remain
+  repairable through the picker. Relative config and state overrides are resolved
+  before linking; config roots or linked sources that overlap generated runtime
+  fail visibly, as do broken managed paths, and failed materializations discard
+  their staging directories.
+- Ratconfig restores its operational Advanced tab, including config
+  diagnostics and correctly aligned file actions. Yazi settings and native file
+  actions likewise share one consistent row layout.
 - `yzx doctor` recognizes the supported Helix `Alt r` reveal binding when its
   inner quotes use valid TOML escaping, while real conflicts still warn.
 - Darwin Package Smoke and Version Gate build the full package, runtime package,
@@ -88,7 +101,8 @@ User-visible runtime changes for Yazelix Nova live here.
   edit opener and required sidebar Git fetchers; invalid TOML fails before Yazi
   starts. Managed plugins and flavors activate independently of `init.lua`,
   with opaque `theme.toml` and `package.toml` passthrough. Ratconfig and Home
-  Manager expose the managed native files.
+  Manager expose the managed native files. `yzx run ya` resolves the packaged,
+  version-matched Yazi package manager for writable managed flavors.
 - `yzx config` boolean rows use `Space` to stage, `Enter` to save, and `Esc`
   to cancel; normal-mode `Enter` leaves the value unchanged
 - Managed LazyGit file edits honor `editor.command` instead of falling back to
@@ -175,13 +189,13 @@ User-visible runtime changes for Yazelix Nova live here.
   workspace. User-managed Steel files still replace the packaged Steel module
   when both `helix.scm` and `init.scm` exist.
 - The `yzx config` Advanced tab opens managed user `nu/env.nu`,
-  `nu/config.nu`, `yazi/init.lua`, `yazi/keymap.toml`, and
-  `zellij/plugins.kdl` files in `yzx-hx`, creating tiny starter files only
-  after a row is activated.
+  `nu/config.nu`, and `zellij/plugins.kdl` files in `yzx-hx`, creating tiny
+  starter files only after a row is activated. Yazi's native file actions live
+  in the Yazi tab.
 - Managed sessions export packaged `ya` and Zellij helper paths so popup
   hide/close hooks can refresh Yazi sidebar git decorations even when those
   commands are not on the user's shell `PATH`.
-- The `yzx config` tab bar labels include monochrome Nerd Font icons for
+- Most `yzx config` tab bar labels include monochrome Nerd Font icons for
   faster visual scanning in Mars/Ghostty-style terminals, and the root
   `config.toml` tab is labeled `main`.
 - The `yzx config` Keys tab lists current packaged keybindings as a read-only

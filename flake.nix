@@ -103,6 +103,13 @@
       mkdir -p "$out/bin"
       rustc --edition=2024 ${src} -o "$out/bin/${name}"
     '';
+    yzxYaziMaterializerFor = pkgs:
+      pkgs.rustPlatform.buildRustPackage {
+        pname = "yzx-yazi-config";
+        version = "0.1.0";
+        src = ./crates/yzx-yazi-config;
+        cargoLock.lockFile = ./crates/yzx-yazi-config/Cargo.lock;
+      };
   in {
     homeManagerModules.default = homeManagerModule;
 
@@ -162,6 +169,7 @@
         src = yzxConfigSrc;
         cargoLock.lockFile = ./crates/yzx-config/Cargo.lock;
         YAZELIX_NIX_STORE_ROOT = builtins.storeDir;
+        YAZELIX_PACKAGED_YAZI = yzxYaziConfig;
       };
       yzxShellSrc = pkgs.replaceVars ./runtime/yzx-shell.sh {
         yzxConfig = "${yzxConfig}/bin/yzx-config";
@@ -332,6 +340,20 @@
         nonConeMode = true;
         hash = "sha256-eHt6kRaLcXgjhdnmhI2QY2O1tF9wGFXbIjXc4pObF4U=";
       };
+      yaziFlavorNames = [
+        "catppuccin-frappe.yazi"
+        "catppuccin-latte.yazi"
+        "catppuccin-macchiato.yazi"
+        "catppuccin-mocha.yazi"
+        "dracula.yazi"
+      ];
+      yaziFlavorsSelection = pkgs.fetchFromGitHub {
+        owner = "yazi-rs";
+        repo = "flavors";
+        rev = "4770a3467169bfdb0a3b11601921aaf27c100630";
+        sparseCheckout = yaziFlavorNames;
+        hash = "sha256-TwYnWeRnclmHFwq6bisn7OTXqzWmGiEaEGIZFGAYhsw=";
+      };
       yzxOpenCore = pkgs.rustPlatform.buildRustPackage {
         pname = "yzx-open";
         version = "0.1.0";
@@ -353,13 +375,13 @@
         ln -s ${autoLayoutYazi} "$out/plugins/auto-layout.yazi"
         ln -s ${yaziAssetsSelection}/plugins/git.yazi "$out/plugins/git.yazi"
         ln -s ${starshipYazi} "$out/plugins/starship.yazi"
+        for flavor in ${pkgs.lib.concatStringsSep " " yaziFlavorNames}; do
+          for file in flavor.toml tmtheme.xml LICENSE LICENSE-tmtheme; do
+            install -D -m 644 ${yaziFlavorsSelection}/"$flavor/$file" "$out/flavors/$flavor/$file"
+          done
+        done
       '';
-      yzxYaziMaterializer = pkgs.rustPlatform.buildRustPackage {
-        pname = "yzx-yazi-config";
-        version = "0.1.0";
-        src = ./crates/yzx-yazi-config;
-        cargoLock.lockFile = ./crates/yzx-yazi-config/Cargo.lock;
-      };
+      yzxYaziMaterializer = yzxYaziMaterializerFor pkgs;
       yzxYaziSrc = pkgs.replaceVars ./runtime/yzx-yazi.rs {
         yazi = "${pkgs.yazi}/bin/yazi";
         yzxYaziConfig = "${yzxYaziConfig}";
@@ -576,12 +598,7 @@
               install -D -m 644 ${./defaults/config.toml} "$out/share/yazelix/config.toml"
               install -D -m 644 ${yzxZellijLayout}/layout.kdl "$out/share/yazelix/layout.kdl"
               install -D -m 644 ${yzxZellijLayout}/layout.swap.kdl "$out/share/yazelix/layout.swap.kdl"
-              install -D -m 644 ${yzxYaziConfig}/init.lua "$out/share/yazelix/yazi/init.lua"
-              install -D -m 644 ${yzxYaziConfig}/keymap.toml "$out/share/yazelix/yazi/keymap.toml"
-              install -D -m 644 ${yzxYaziConfig}/plugins/sidebar-state.yazi/main.lua "$out/share/yazelix/yazi/plugins/sidebar-state.yazi/main.lua"
-              install -D -m 644 ${yzxYaziConfig}/plugins/zoxide-editor.yazi/main.lua "$out/share/yazelix/yazi/plugins/zoxide-editor.yazi/main.lua"
-              ln -s ${yzxYaziConfig}/plugins/git.yazi "$out/share/yazelix/yazi/plugins/git.yazi"
-              install -D -m 644 ${yzxYaziConfig}/yazi.toml "$out/share/yazelix/yazi/yazi.toml"
+              ln -s ${yzxYaziConfig} "$out/share/yazelix/yazi"
               install -D -m 644 ${yzxNuConfig}/config.nu "$out/share/yazelix/nu/config.nu"
               install -D -m 644 ${yzxNuConfig}/env.nu "$out/share/yazelix/nu/env.nu"
             ''
@@ -616,12 +633,7 @@
       yzxRuntime = self.packages.${system}.runtime;
       marsPackage = mars.packages.${system}.mars;
       runtimeClosure = pkgs.closureInfo {rootPaths = [yzxRuntime];};
-      yzxYaziMaterializer = pkgs.rustPlatform.buildRustPackage {
-        pname = "yzx-yazi-config";
-        version = "0.1.0";
-        src = ./crates/yzx-yazi-config;
-        cargoLock.lockFile = ./crates/yzx-yazi-config/Cargo.lock;
-      };
+      yzxYaziMaterializer = yzxYaziMaterializerFor pkgs;
       checksSrc = pkgs.lib.cleanSource ./checks;
       yzxContractsCheck = rustBinFor pkgs "yzx-contracts-check" "${checksSrc}/yzx-contracts.rs";
       helixContractsCheck = rustBinFor pkgs "helix-contracts-check" "${checksSrc}/helix-contracts.rs";
@@ -648,6 +660,10 @@
         [settings]
         trail = "reef"
       '';
+      fakeYaziFlavor = pkgs.writeTextDir "flavor.toml" ''
+        [mgr]
+        cwd = { fg = "#c0ffee" }
+      '';
       homeManagerConfiguration = module:
         home-manager.lib.homeManagerConfiguration {
           inherit pkgs;
@@ -671,6 +687,7 @@
         programs.yazelix.package = yzxRuntime;
       };
       homeManagerConfigFiles = homeManagerConfiguration {
+        xdg.configFile."yazelix/yazi/flavors/example.yazi".source = fakeYaziFlavor;
         programs.yazelix.config = {
           settings = {
             shell.program = "fish";
@@ -759,6 +776,14 @@
         grep -q -- '-- init' "$config_files/yazi/init.lua"
         grep -q 'deps = \[\]' "$config_files/yazi/package.toml"
         grep -q 'dark = "example"' "$config_files/yazi/theme.toml"
+        test -L "$config_files/yazi/flavors/example.yazi"
+        case "$(readlink "$config_files/yazi/flavors/example.yazi")" in
+          /nix/store/*) ;;
+          *) printf '%s\n' 'Home Manager Yazi flavor is not store-backed' >&2; exit 1 ;;
+        esac
+        hm_yazi_runtime="$(${yzxYaziMaterializer}/bin/yzx-yazi-config ${yzx}/share/yazelix/yazi "$config_files/yazi" "$TMPDIR/hm-yazi-state")"
+        YAZI_CONFIG_HOME="$hm_yazi_runtime" ${pkgs.yazi}/bin/yazi --debug > hm-yazi-debug
+        grep -q 'Dark/light flavor:.*example' hm-yazi-debug
         grep -q '# config' "$config_files/nu/config.nu"
 
         export HOME="$TMPDIR/hm-yzx-home"
@@ -774,6 +799,7 @@
         "$hm_yzx" status > status
         "$hm_yzx" doctor > doctor
         "$hm_yzx" tutor list > tutor-list
+        "$hm_yzx" run ya --version > ya-version
         grep -q 'Usage:' help
         grep -q 'Yazelix Nova status' status
         grep -q "config home: $runtime_config" status
@@ -784,6 +810,7 @@
         grep -q "ok config home: $runtime_config" doctor
         grep -q 'ok shell.program: fish' doctor
         grep -q 'Yazelix Nova tutor lessons' tutor-list
+        grep -q '^Ya ' ya-version
         touch "$out"
       '';
       yzx_yazi_materialization = pkgs.runCommand "yzx-yazi-materialization-check" {nativeBuildInputs = [pkgs.rustc pkgs.stdenv.cc];} ''
@@ -803,6 +830,19 @@
         grep -q 'require("smart-enter")' "$runtime/init.lua"
         grep -q 'plugin smart-enter' "$runtime/keymap.toml"
         grep -q 'yzx-open' yazi-debug
+        for flavor_path in ${yzx}/share/yazelix/yazi/flavors/*.yazi; do
+          flavor_dir="''${flavor_path##*/}"
+          flavor="''${flavor_dir%.yazi}"
+          flavor_user="$TMPDIR/flavor-$flavor"
+          mkdir -p "$flavor_user"
+          printf '[flavor]\ndark = "%s"\nlight = "%s"\n' "$flavor" "$flavor" > "$flavor_user/theme.toml"
+          flavor_runtime="$(${yzxYaziMaterializer}/bin/yzx-yazi-config ${yzx}/share/yazelix/yazi "$flavor_user" "$TMPDIR/state-$flavor")"
+          YAZI_CONFIG_HOME="$flavor_runtime" ${pkgs.yazi}/bin/yazi --debug > "debug-$flavor"
+          grep -q "Dark/light flavor:.*$flavor" "debug-$flavor"
+          test -f "$flavor_runtime/flavors/$flavor_dir/flavor.toml"
+          test -f "$flavor_runtime/flavors/$flavor_dir/tmtheme.xml"
+          test ! -e "$flavor_runtime/flavors/$flavor_dir/preview.png"
+        done
         touch "$out"
       '';
       yzx_launcher_unit = pkgs.runCommand "yzx-launcher-unit-check" {nativeBuildInputs = [pkgs.rustc pkgs.stdenv.cc];} ''

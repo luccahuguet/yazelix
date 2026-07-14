@@ -87,8 +87,8 @@ yzx tutor begin
 without opening Mars or Zellij. Inside Nova, press `Alt Shift M` to open the
 command palette, which includes both help and tutor entries
 
-Press `Alt Shift K` to open Ratconfig. Press `8` for the read-only Keys tab,
-which shows the current packaged bindings and their owners. Use `1`-`9` to jump
+Press `Alt Shift K` to open Ratconfig. Press `8` for native Yazi settings and
+flavors, or `9` for the read-only packaged key reference. Use `1`-`9` to jump
 directly to a tab, `Tab`/`Shift-Tab` or `h`/`l` to change tabs, `j`/`k` to move,
 and `/` to search. Use `e`, `Enter`, or `Space` for the selected row's
 contextual action, such as editing or opening it. Press `u` to reset a setting
@@ -215,6 +215,6 @@ popup contracts live in [Runtime Notes](docs/runtime-notes.md)
 
 ## LOC Scorecard
 
-Nova owns **17,099 lines** of tracked text project files. The
+Nova owns **17,641 lines** of tracked text project files. The
 [reproducible scorecard](docs/development.md#loc-scorecard) excludes Beads,
 lockfiles, and binary assets

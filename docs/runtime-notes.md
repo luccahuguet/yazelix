@@ -158,15 +158,17 @@ user-owned asset tree:
 Native TOML tables merge recursively. User scalars and arrays replace packaged
 values; only `plugin.prepend_fetchers` uses replace-plus-managed-Git semantics,
 which keeps user fetchers while restoring the two sidebar Git fetchers exactly
-once. The managed edit opener is always restored. Invalid TOML fails before
-Yazi launches. Normal `~/.config/yazi` is not read.
+once. Broken config paths, invalid TOML, and incomplete flavors stop Yazi launch.
+The managed edit opener is always restored. Normal `~/.config/yazi` is not read.
 
 Plugin and flavor directories activate materialization independently of
-`init.lua` and are linked into the runtime config. Packaged names cannot be
-overridden. `theme.toml` is the native Yazi surface for choosing flavors;
-`package.toml` passes through as opaque `ya pkg` metadata, but Yazelix never
-runs the package manager. Create asset directories in this tree or symlink
-them from another checkout.
+`init.lua` and are linked into the runtime config. Packaged plugin names cannot
+be overridden. A user flavor with a packaged name takes precedence over the
+packaged copy. `theme.toml` is the native Yazi surface for choosing flavors;
+Ratconfig renders its simple values and the sparse `yazi.toml` layer in the
+Yazi tab. `package.toml` passes through as opaque `ya pkg` metadata, but Yazelix
+never runs the package manager. Create asset directories in this tree or
+symlink them from another checkout.
 
 Example managed Yazi plugin layout:
 

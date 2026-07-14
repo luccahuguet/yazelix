@@ -19,7 +19,8 @@ defaults to:
 ${XDG_DATA_HOME:-$HOME/.local/share}/yazelix
 ```
 
-Set `YAZELIX_STATE_DIR` to use another state directory
+Set `YAZELIX_STATE_DIR` to use another state directory. The managed config
+directory must not be the generated `state/yazi` subtree or live below it
 
 ## Main settings
 
@@ -100,20 +101,99 @@ managed popup role keys
 | `helix/init.scm` | Helix Steel | Loaded with `helix/helix.scm` when the pair exists |
 | `nu/env.nu` | Nushell | Loaded after packaged Yazelix env |
 | `nu/config.nu` | Nushell | Loaded after packaged Yazelix config |
-| `yazi/yazi.toml` | Yazi | Native tables merge recursively, while user scalars and arrays replace packaged values |
+| `yazi/yazi.toml` | Yazi | Native tables merge recursively, while user scalars and arrays replace packaged values. Ratconfig renders safe existing values in its Yazi tab |
 | `yazi/init.lua` | Yazi | Appended after packaged Yazi init |
 | `yazi/keymap.toml` | Yazi | Appended after packaged Yazi keymap |
-| `yazi/theme.toml` | Yazi | Native theme config, including managed flavor selection |
+| `yazi/theme.toml` | Yazi | Native theme config. Ratconfig renders safe existing values and provides installed dark/light flavor pickers |
 | `yazi/package.toml` | Yazi | Opaque package metadata that Yazelix does not process with `ya pkg` |
 
 The managed Yazi merge restores Yazelix's edit opener and its two sidebar Git
 fetchers exactly once. Other user fetchers and previewers remain in the merged
-native config. Invalid TOML stops before Yazi starts
+native config. Invalid TOML, a broken input, or an incomplete flavor stops launch
 
 Managed `plugins/*.yazi` and `flavors/*.yazi` directories are linked into the
-runtime config even without `init.lua`. Packaged names cannot be replaced.
-Create the directories directly under the managed Yazi tree or symlink them
-there
+runtime config even without `init.lua`. Packaged plugin names cannot be
+replaced. A user flavor with a packaged name takes precedence, so `ya` can own
+an explicitly installed version. Create the directories directly under the
+managed Yazi tree or symlink them there
+
+Managed files and asset directories may be symlinked from another checkout, but
+their resolved targets must stay outside the generated `state/yazi` runtime
+
+Ratconfig's Yazi tab reads the sparse user `yazi.toml` against Nova's packaged
+layer and reads native `theme.toml`. Scalars and simple string arrays with safe
+dotted paths are editable; complex tables, arrays, and quoted paths remain
+read-only rows. The file actions in the same tab open `yazi.toml`, `theme.toml`,
+`keymap.toml`, `package.toml`, and `init.lua` for complete native editing. A
+setting added through the file action appears in the rendered table after the
+editor closes. Structured saves apply on the next managed Yazi launch or
+sidebar reopen
+
+### Yazi flavors
+
+Nova packages Catppuccin Latte, Frappé, Macchiato, Mocha, and Dracula from the
+official `yazi-rs/flavors` repository. Press `8` in Ratconfig and choose the
+dark and light flavors. Ratconfig writes only the corresponding native
+`theme.toml` keys, and reset returns that mode to Yazi's default theme
+
+Install community flavors or an explicitly user-managed version into writable
+managed config with Yazi's package manager:
+
+```sh
+config_home="${YAZELIX_CONFIG_HOME:-${XDG_CONFIG_HOME:-$HOME/.config}/yazelix}"
+mkdir -p "$config_home/yazi"
+YAZI_CONFIG_HOME="$config_home/yazi" \
+  yzx run ya pkg add yazi-rs/flavors:catppuccin-mocha
+```
+
+Select it through Ratconfig or in `$config_home/yazi/theme.toml`:
+
+```toml
+[flavor]
+dark = "catppuccin-mocha"
+light = "catppuccin-mocha"
+```
+
+`ya` owns `package.toml` and the installed flavor directory. Yazelix uses its
+packaged, version-matched `ya` for `yzx run ya`, projects those native files at
+Yazi launch, and never installs or upgrades packages automatically. Compatible
+user-installed flavors appear in the Ratconfig picker automatically
+
+Home Manager can select a packaged flavor without installing another source:
+
+```nix
+programs.yazelix.config.yazi.theme.text = ''
+  [flavor]
+  dark = "catppuccin-mocha"
+  light = "catppuccin-mocha"
+'';
+```
+
+For a flavor Nova does not package, pin its repository as a non-flake input:
+
+```nix
+inputs.my-yazi-flavor = {
+  url = "github:owner/flavor-repository";
+  flake = false;
+};
+```
+
+Link the repository under a native `.yazi` directory and select its package
+name through Yazelix's `theme.toml` passthrough:
+
+```nix
+programs.yazelix.config.yazi.theme.text = ''
+  [flavor]
+  dark = "my-flavor"
+  light = "my-flavor"
+'';
+
+xdg.configFile."yazelix/yazi/flavors/my-flavor.yazi".source =
+  inputs.my-yazi-flavor.outPath;
+```
+
+Home Manager owns that store-backed flavor. Update its flake input rather than
+running `ya pkg` against the read-only managed directory.
 
 For Smart Enter, link `smart-enter.yazi` under `yazi/plugins/`, add
 `require("smart-enter"):setup { open_multi = false }` to `yazi/init.lua`, and

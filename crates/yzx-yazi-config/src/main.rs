@@ -2,7 +2,7 @@ use std::{
     env, fs,
     io::{self, ErrorKind},
     os::unix::fs::symlink,
-    path::{Path, PathBuf},
+    path::{Path, PathBuf, absolute},
     process::{self, ExitCode},
     sync::atomic::{AtomicU64, Ordering},
     time::{SystemTime, UNIX_EPOCH},
@@ -26,8 +26,7 @@ fn main() -> ExitCode {
 fn run() -> io::Result<PathBuf> {
     let args = env::args_os().collect::<Vec<_>>();
     let [_, packaged, user, state] = args.as_slice() else {
-        return Err(io::Error::new(
-            ErrorKind::InvalidInput,
+        return Err(invalid_input(
             "usage: yzx-yazi-config <packaged-yazi> <user-yazi> <state-dir>",
         ));
     };
@@ -35,25 +34,37 @@ fn run() -> io::Result<PathBuf> {
 }
 
 fn materialize(packaged: &Path, user: &Path, state: &Path) -> io::Result<PathBuf> {
-    if !managed_input_exists(user)? {
-        return Ok(packaged.to_path_buf());
+    let packaged = absolute(packaged)?;
+    let user = absolute(user)?;
+    let state = absolute(state)?;
+    if !managed_input_exists(&user)? {
+        return Ok(packaged);
     }
 
-    fs::create_dir_all(state)?;
+    fs::create_dir_all(&state)?;
+    let state = fs::canonicalize(state)?;
     let runtime = state.join("yazi");
+    reject_runtime_source(&user, &runtime)?;
     let stage = state.join(format!(".yazi-{}-{}", process::id(), nonce()));
     fs::create_dir(&stage)?;
 
-    if let Err(error) = write_runtime(packaged, user, &stage) {
+    let result = write_runtime(&packaged, &user, &stage, &runtime)
+        .and_then(|()| remove_any(&runtime))
+        .and_then(|()| fs::rename(&stage, &runtime));
+    if let Err(error) = result {
         let _ = remove_any(&stage);
         return Err(error);
     }
-    remove_any(&runtime)?;
-    fs::rename(stage, &runtime)?;
     Ok(runtime)
 }
 
 fn managed_input_exists(user: &Path) -> io::Result<bool> {
+    if path_entry_exists(user)? && !user.is_dir() {
+        return Err(invalid_input(format!(
+            "cannot read Yazi config directory {}",
+            user.display()
+        )));
+    }
     for name in [
         "init.lua",
         "keymap.toml",
@@ -63,59 +74,57 @@ fn managed_input_exists(user: &Path) -> io::Result<bool> {
         "plugins",
         "flavors",
     ] {
-        if user.join(name).try_exists()? {
+        if path_entry_exists(&user.join(name))? {
             return Ok(true);
         }
     }
     Ok(false)
 }
 
-fn write_runtime(packaged: &Path, user: &Path, runtime: &Path) -> io::Result<()> {
+fn write_runtime(packaged: &Path, user: &Path, stage: &Path, runtime: &Path) -> io::Result<()> {
     let user_init = user.join("init.lua");
     let user_yazi_toml = user.join("yazi.toml");
-    if user_yazi_toml.exists() {
+    if path_entry_exists(&user_yazi_toml)? {
         write_merged_yazi_toml(
             &packaged.join("yazi.toml"),
             &user_yazi_toml,
-            &runtime.join("yazi.toml"),
+            &stage.join("yazi.toml"),
         )?;
     } else {
-        symlink(packaged.join("yazi.toml"), runtime.join("yazi.toml"))?;
+        symlink(packaged.join("yazi.toml"), stage.join("yazi.toml"))?;
     }
     symlink(
         packaged.join("yazelix_starship.toml"),
-        runtime.join("yazelix_starship.toml"),
+        stage.join("yazelix_starship.toml"),
     )?;
     write_layered_config(
         &packaged.join("init.lua"),
         &user_init,
-        &runtime.join("init.lua"),
+        &stage.join("init.lua"),
         "-- Yazelix Nova user init.lua",
     )?;
     write_layered_config(
         &packaged.join("keymap.toml"),
         &user.join("keymap.toml"),
-        &runtime.join("keymap.toml"),
+        &stage.join("keymap.toml"),
         "# Yazelix Nova user keymap.toml",
     )?;
     for name in ["package.toml", "theme.toml"] {
         let source = user.join(name);
-        if !source.exists() {
+        if !path_entry_exists(&source)? {
             continue;
         }
         if !source.is_file() {
-            return Err(io::Error::new(
-                ErrorKind::InvalidInput,
-                format!("cannot read {}", source.display()),
-            ));
+            return Err(invalid_input(format!("cannot read {}", source.display())));
         }
-        symlink(source, runtime.join(name))?;
+        symlink_user_source(&source, &stage.join(name), runtime)?;
     }
     for (directory, kind) in [("plugins", "plugin"), ("flavors", "flavor")] {
         overlay_user_assets(
             &packaged.join(directory),
             &user.join(directory),
-            &runtime.join(directory),
+            &stage.join(directory),
+            runtime,
             kind,
         )?;
     }
@@ -208,12 +217,9 @@ fn write_layered_config(
     marker: &str,
 ) -> io::Result<()> {
     let mut contents = fs::read_to_string(packaged)?;
-    if user.exists() {
+    if path_entry_exists(user)? {
         if !user.is_file() {
-            return Err(io::Error::new(
-                ErrorKind::InvalidInput,
-                format!("cannot read {}", user.display()),
-            ));
+            return Err(invalid_input(format!("cannot read {}", user.display())));
         }
         contents.push('\n');
         contents.push_str(marker);
@@ -223,49 +229,78 @@ fn write_layered_config(
     fs::write(target, contents)
 }
 
-fn overlay_user_assets(packaged: &Path, user: &Path, runtime: &Path, kind: &str) -> io::Result<()> {
-    fs::create_dir(runtime)?;
+fn overlay_user_assets(
+    packaged: &Path,
+    user: &Path,
+    target: &Path,
+    runtime: &Path,
+    kind: &str,
+) -> io::Result<()> {
+    fs::create_dir(target)?;
     if packaged.is_dir() {
         for entry in fs::read_dir(packaged)? {
             let entry = entry?;
-            symlink(entry.path(), runtime.join(entry.file_name()))?;
+            symlink(entry.path(), target.join(entry.file_name()))?;
         }
     }
-    if !user.exists() {
+    if !path_entry_exists(user)? {
         return Ok(());
     }
     if !user.is_dir() {
-        return Err(io::Error::new(
-            ErrorKind::InvalidInput,
-            format!("cannot read {kind} directory {}", user.display()),
-        ));
+        return Err(invalid_input(format!(
+            "cannot read {kind} directory {}",
+            user.display()
+        )));
     }
     for entry in fs::read_dir(user)? {
         let entry = entry?;
         let path = entry.path();
         let name = entry.file_name();
-        if !name.to_string_lossy().ends_with(".yazi") {
+        let display_name = name.to_string_lossy();
+        if display_name == ".yazi" || !display_name.ends_with(".yazi") {
             continue;
         }
         if !path.is_dir() {
-            return Err(io::Error::new(
-                ErrorKind::InvalidInput,
-                format!("user {kind} must be a directory: {}", path.display()),
-            ));
+            return Err(invalid_input(format!(
+                "user {kind} must be a directory: {}",
+                path.display()
+            )));
         }
-        let target = runtime.join(&name);
-        if target.exists() {
-            return Err(io::Error::new(
-                ErrorKind::AlreadyExists,
-                format!(
-                    "user {kind} `{}` collides with a packaged {kind}",
-                    name.to_string_lossy()
-                ),
-            ));
+        if kind == "flavor" && !path.join("flavor.toml").is_file() {
+            return Err(invalid_input(format!(
+                "user flavor must contain flavor.toml: {}",
+                path.display()
+            )));
         }
-        symlink(path, target)?;
+        let destination = target.join(&name);
+        if path_entry_exists(&destination)? {
+            if kind == "plugin" {
+                return Err(io::Error::new(
+                    ErrorKind::AlreadyExists,
+                    format!("user plugin `{display_name}` collides with a packaged plugin"),
+                ));
+            }
+            remove_any(&destination)?;
+        }
+        symlink_user_source(&path, &destination, runtime)?;
     }
     Ok(())
+}
+
+fn reject_runtime_source(source: &Path, runtime: &Path) -> io::Result<()> {
+    if source.starts_with(runtime) || fs::canonicalize(source)?.starts_with(runtime) {
+        return Err(invalid_input(format!(
+            "managed Yazi source {} must be outside generated runtime {}",
+            source.display(),
+            runtime.display()
+        )));
+    }
+    Ok(())
+}
+
+fn symlink_user_source(source: &Path, target: &Path, runtime: &Path) -> io::Result<()> {
+    reject_runtime_source(source, runtime)?;
+    symlink(source, target)
 }
 
 fn remove_any(path: &Path) -> io::Result<()> {
@@ -279,8 +314,20 @@ fn remove_any(path: &Path) -> io::Result<()> {
     }
 }
 
+fn path_entry_exists(path: &Path) -> io::Result<bool> {
+    match fs::symlink_metadata(path) {
+        Ok(_) => Ok(true),
+        Err(error) if error.kind() == ErrorKind::NotFound => Ok(false),
+        Err(error) => Err(error),
+    }
+}
+
 fn invalid_data(message: impl Into<String>) -> io::Error {
     io::Error::new(ErrorKind::InvalidData, message.into())
+}
+
+fn invalid_input(message: impl Into<String>) -> io::Error {
+    io::Error::new(ErrorKind::InvalidInput, message.into())
 }
 
 static NONCE: AtomicU64 = AtomicU64::new(0);
@@ -295,6 +342,8 @@ fn nonce() -> String {
 
 #[cfg(test)]
 mod tests {
+    use std::os::unix::fs::PermissionsExt;
+
     use super::*;
 
     const PACKAGED_TOML: &str = r#"
@@ -323,8 +372,7 @@ edit = [{ run = "managed-open %s", block = false, for = "unix" }]
 
     impl TempDir {
         fn new() -> Self {
-            let path =
-                env::temp_dir().join(format!("yzx-yazi-config-{}-{}", process::id(), nonce()));
+            let path = PathBuf::from("target").join(format!("yzx-{}-{}", process::id(), nonce()));
             fs::create_dir_all(&path).unwrap();
             Self(path)
         }
@@ -356,13 +404,18 @@ edit = [{ run = "managed-open %s", block = false, for = "unix" }]
         let user = temp.0.join("user");
         packaged_yazi(&packaged);
         fs::create_dir_all(user.join("plugins/example.yazi")).unwrap();
-        fs::create_dir_all(user.join("flavors/example.yazi")).unwrap();
+        fs::create_dir_all(user.join("flavors/packaged.yazi")).unwrap();
+        fs::write(
+            user.join("flavors/packaged.yazi/flavor.toml"),
+            "[mgr]\ncwd = { fg = \"blue\" }\n",
+        )
+        .unwrap();
         fs::write(user.join("init.lua"), "user init\n").unwrap();
         fs::write(user.join("keymap.toml"), "prepend_keymap = []\n").unwrap();
         fs::write(user.join("package.toml"), "[plugin]\ndeps = []\n").unwrap();
         fs::write(
             user.join("theme.toml"),
-            "[flavor]\ndark = \"example\"\nlight = \"example\"\n",
+            "[flavor]\ndark = \"packaged\"\nlight = \"packaged\"\n",
         )
         .unwrap();
         fs::write(
@@ -440,8 +493,11 @@ edit = [{ run = "nvim %s" }]
             "[manager]\nkeymap = []\n\n# Yazelix Nova user keymap.toml\nprepend_keymap = []\n"
         );
         assert!(runtime.join("plugins/example.yazi").is_dir());
-        assert!(runtime.join("flavors/packaged.yazi").is_dir());
-        assert!(runtime.join("flavors/example.yazi").is_dir());
+        assert!(
+            fs::read_to_string(runtime.join("flavors/packaged.yazi/flavor.toml"))
+                .unwrap()
+                .contains("blue")
+        );
         for name in ["package.toml", "theme.toml"] {
             assert_eq!(
                 fs::read_to_string(runtime.join(name)).unwrap(),
@@ -457,43 +513,89 @@ edit = [{ run = "nvim %s" }]
     }
 
     #[test]
-    fn invalid_toml_or_plugin_collision_preserves_the_previous_runtime() {
+    fn invalid_inputs_preserve_runtime_and_clean_staging() {
         let temp = TempDir::new();
         let packaged = temp.0.join("packaged");
         let user = temp.0.join("user");
         let state = temp.0.join("state");
         packaged_yazi(&packaged);
         fs::create_dir_all(state.join("yazi")).unwrap();
-        fs::create_dir_all(&user).unwrap();
         fs::write(state.join("yazi/sentinel"), "old runtime").unwrap();
+        let fail = |user: &Path, state: &Path| {
+            materialize(&packaged, user, state).unwrap_err().to_string()
+        };
+
+        symlink(temp.0.join("missing-user"), &user).unwrap();
+        let error = fail(&user, &state);
+        assert!(error.contains(&user.display().to_string()), "{error}");
+        fs::remove_file(&user).unwrap();
+        fs::create_dir_all(&user).unwrap();
+
+        let theme = user.join("theme.toml");
+        symlink(temp.0.join("missing-theme.toml"), &theme).unwrap();
+        let error = fail(&user, &state);
+        assert!(error.contains(&theme.display().to_string()), "{error}");
+        fs::remove_file(theme).unwrap();
+
         fs::write(user.join("yazi.toml"), "[mgr\n").unwrap();
 
-        let error = materialize(&packaged, &user, &state)
-            .unwrap_err()
-            .to_string();
+        let error = fail(&user, &state);
         assert!(error.contains(&user.join("yazi.toml").display().to_string()));
 
         fs::write(user.join("yazi.toml"), "[mgr]\nshow_hidden = true\n").unwrap();
         fs::create_dir_all(user.join("plugins/git.yazi")).unwrap();
-        let error = materialize(&packaged, &user, &state)
-            .unwrap_err()
-            .to_string();
+        let error = fail(&user, &state);
         assert!(error.contains("collides with a packaged plugin"));
         assert_eq!(
             fs::read_to_string(state.join("yazi/sentinel")).unwrap(),
             "old runtime"
         );
+
+        fs::remove_dir_all(user.join("plugins")).unwrap();
+        fs::create_dir_all(user.join("flavors/packaged.yazi")).unwrap();
+        let error = fail(&user, &state);
+        assert!(error.contains("flavor.toml"), "{error}");
+        fs::remove_dir_all(user.join("flavors")).unwrap();
+
+        let theme = user.join("theme.toml");
+        symlink(
+            fs::canonicalize(state.join("yazi/sentinel")).unwrap(),
+            &theme,
+        )
+        .unwrap();
+        let error = fail(&user, &state);
+        assert!(error.contains("outside generated runtime"), "{error}");
+        assert!(state.join("yazi/sentinel").is_file());
+        fs::remove_file(theme).unwrap();
+
+        let overlap_state = temp.0.join("overlap");
+        let overlap_user = overlap_state.join("yazi");
+        fs::create_dir_all(&overlap_user).unwrap();
+        fs::write(overlap_user.join("yazi.toml"), "[mgr]").unwrap();
+        let error = fail(&overlap_user, &overlap_state);
+        assert!(error.contains("outside generated runtime"), "{error}");
+        assert!(overlap_user.join("yazi.toml").is_file());
+
+        let runtime = state.join("yazi");
+        fs::set_permissions(&runtime, fs::Permissions::from_mode(0o000)).unwrap();
+        let result = materialize(&packaged, &user, &state);
+        fs::set_permissions(&runtime, fs::Permissions::from_mode(0o700)).unwrap();
+        assert_eq!(result.unwrap_err().kind(), ErrorKind::PermissionDenied);
+        assert_eq!(fs::read_dir(&state).unwrap().count(), 1);
     }
 
     #[test]
-    fn asset_directories_activate_materialization_and_stale_links_are_removed() {
+    fn relative_asset_directories_activate_materialization_and_remove_stale_links() {
         let temp = TempDir::new();
         let packaged = temp.0.join("packaged");
         let user = temp.0.join("user");
         let state = temp.0.join("state");
         packaged_yazi(&packaged);
 
-        assert_eq!(materialize(&packaged, &user, &state).unwrap(), packaged);
+        assert_eq!(
+            materialize(&packaged, &user, &state).unwrap(),
+            std::path::absolute(&packaged).unwrap()
+        );
         assert!(!state.exists());
 
         fs::create_dir_all(user.join("plugins/example.yazi")).unwrap();
@@ -502,8 +604,11 @@ edit = [{ run = "nvim %s" }]
 
         fs::remove_dir_all(user.join("plugins")).unwrap();
         fs::create_dir_all(user.join("flavors/example.yazi")).unwrap();
+        fs::write(user.join("flavors/example.yazi/flavor.toml"), "").unwrap();
+        fs::create_dir_all(user.join("flavors/.yazi")).unwrap();
         let runtime = materialize(&packaged, &user, &state).unwrap();
         assert!(!runtime.join("plugins/example.yazi").exists());
         assert!(runtime.join("flavors/example.yazi").is_dir());
+        assert!(!runtime.join("flavors/.yazi").exists());
     }
 }
