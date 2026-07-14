@@ -12,6 +12,18 @@ pub(crate) fn write_executable(path: &Path, contents: &str) {
     fs::set_permissions(path, permissions).unwrap();
 }
 
+pub(crate) fn write_nu_executable(path: &Path, body: &str) {
+    let shebang = env::var_os("YZX_TEST_NU").map_or_else(
+        || "#!/usr/bin/env -S nu --no-config-file\n".to_owned(),
+        |nu| {
+            let nu = PathBuf::from(nu);
+            assert!(nu.is_absolute(), "YZX_TEST_NU must be absolute");
+            format!("#!{} --no-config-file\n", nu.display())
+        },
+    );
+    write_executable(path, &(shebang + body));
+}
+
 pub(crate) struct TestDir {
     pub(crate) path: PathBuf,
 }

@@ -1,4 +1,4 @@
-use anyhow::{Context, Result, bail};
+use anyhow::{bail, Context, Result};
 use std::{
     env,
     ffi::OsString,
@@ -6,7 +6,7 @@ use std::{
     process::{Command, ExitCode},
 };
 use yzx_open::sidebar::{
-    Config, ensure_success, orchestrator_action, orchestrator_query, sidebar_yazi_id,
+    ensure_success, orchestrator_action, orchestrator_query, sidebar_yazi_id, Config,
 };
 
 #[cfg(test)]
@@ -88,7 +88,7 @@ fn print_help() {
 mod tests {
     // Test lane: default
     use super::*;
-    use crate::test_support::{TestDir, write_executable};
+    use crate::test_support::{write_nu_executable, TestDir};
     use std::fs;
 
     #[test]
@@ -97,12 +97,10 @@ mod tests {
             sidebar_yazi_id(r#"{"sidebar_yazi":{"yazi_id":" yazi-7 ","cwd":"/tmp"}}"#).unwrap(),
             "yazi-7"
         );
-        assert!(
-            sidebar_yazi_id(r#"{"sidebar_yazi":null}"#)
-                .unwrap_err()
-                .to_string()
-                .contains("managed sidebar Yazi is not registered")
-        );
+        assert!(sidebar_yazi_id(r#"{"sidebar_yazi":null}"#)
+            .unwrap_err()
+            .to_string()
+            .contains("managed sidebar Yazi is not registered"));
     }
 
     #[test]
@@ -123,34 +121,31 @@ mod tests {
         let zellij_log = fixture.path.join("zellij.log");
         let ya_log = fixture.path.join("ya.log");
         fs::write(&target, "").unwrap();
-        write_executable(
-            &fixture.path.join("zellij"),
-            &format!(
-                r#"#!/bin/sh
-printf '%s\n' "$* session=$ZELLIJ_SESSION_NAME" >> "{}"
-case "$6" in
-  get_active_tab_session_state)
-    printf '%s\n' '{{"sidebar_yazi":{{"yazi_id":"plugin-yazi-id"}}}}'
-    exit 0
-    ;;
-  focus_sidebar)
-    printf '%s\n' 'focused_sidebar'
-    exit 0
-    ;;
-esac
-printf 'unexpected zellij args: %s\n' "$*" >&2
-exit 1
-"#,
-                zellij_log.display()
-            ),
-        );
-        write_executable(
-            &fixture.path.join("ya"),
-            &format!(
-                "#!/bin/sh\nprintf '%s\\n' \"$*\" > \"{}\"\n",
-                ya_log.display()
-            ),
-        );
+        let zellij_body = format!("const LOG = {:?}\n", zellij_log.to_string_lossy())
+            + r#"def --wrapped main [...args: string] {
+    let joined = $args | str join " "
+    let session = $env.ZELLIJ_SESSION_NAME? | default ""
+    $"($joined) session=($session)\n" | save --append $LOG
+    let action = $args | get -o 5 | default ""
+    if $action == "get_active_tab_session_state" {
+        print '{"sidebar_yazi":{"yazi_id":"plugin-yazi-id"}}'
+        return
+    }
+    if $action == "focus_sidebar" {
+        print "focused_sidebar"
+        return
+    }
+    print --stderr $"unexpected zellij args: ($joined)"
+    exit 1
+}
+"#;
+        write_nu_executable(&fixture.path.join("zellij"), &zellij_body);
+        let ya_body = format!("const LOG = {:?}\n", ya_log.to_string_lossy())
+            + r#"def --wrapped main [...args: string] {
+    (($args | str join " ") + "\n") | save --force $LOG
+}
+"#;
+        write_nu_executable(&fixture.path.join("ya"), &ya_body);
 
         let config = Config {
             ya: fixture.path.join("ya").into_os_string(),
@@ -177,29 +172,28 @@ action pipe --plugin yazelix_pane_orchestrator --name focus_sidebar --  session=
         let target = fixture.path.join("target.txt");
         let ya_log = fixture.path.join("ya.log");
         fs::write(&target, "").unwrap();
-        write_executable(
+        write_nu_executable(
             &fixture.path.join("zellij"),
-            r#"#!/bin/sh
-case "$6" in
-  get_active_tab_session_state)
-    printf '%s\n' '{"sidebar_yazi":{"yazi_id":"plugin-yazi-id"}}'
-    exit 0
-    ;;
-  focus_sidebar)
-    exit 0
-    ;;
-esac
-printf 'unexpected zellij args: %s\n' "$*" >&2
-exit 1
+            r#"def --wrapped main [...args: string] {
+    let action = $args | get -o 5 | default ""
+    if $action == "get_active_tab_session_state" {
+        print '{"sidebar_yazi":{"yazi_id":"plugin-yazi-id"}}'
+        return
+    }
+    if $action == "focus_sidebar" {
+        return
+    }
+    print --stderr $"unexpected zellij args: ($args | str join ' ')"
+    exit 1
+}
 "#,
         );
-        write_executable(
-            &fixture.path.join("ya"),
-            &format!(
-                "#!/bin/sh\nprintf '%s\\n' \"$*\" > \"{}\"\n",
-                ya_log.display()
-            ),
-        );
+        let ya_body = format!("const LOG = {:?}\n", ya_log.to_string_lossy())
+            + r#"def --wrapped main [...args: string] {
+    (($args | str join " ") + "\n") | save --force $LOG
+}
+"#;
+        write_nu_executable(&fixture.path.join("ya"), &ya_body);
 
         let config = Config {
             ya: fixture.path.join("ya").into_os_string(),

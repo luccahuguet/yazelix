@@ -210,6 +210,7 @@
         src = yzxConfigSrc;
         cargoLock.lockFile = ./crates/yzx-config/Cargo.lock;
         YAZELIX_NIX_STORE_ROOT = builtins.storeDir;
+        YZX_TEST_NU = "${pkgs.nushell}/bin/nu";
       };
       mkYzxNuShell = name: nuConfig: let
         source = pkgs.replaceVars ./runtime/yzx-nu.rs {
@@ -394,6 +395,7 @@
         version = "0.1.0";
         src = ./crates/yzx-open;
         cargoLock.lockFile = ./crates/yzx-open/Cargo.lock;
+        YZX_TEST_NU = "${pkgs.nushell}/bin/nu";
       };
       yzxYaziToml = pkgs.replaceVars ./defaults/yazi/yazi.toml {
         opener = "YZX_ZELLIJ=${yazelixZellijPackage}/bin/zellij ${yzxOpenCore}/bin/yzx-open";

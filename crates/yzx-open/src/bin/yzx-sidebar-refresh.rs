@@ -1,10 +1,10 @@
-use anyhow::{Context, Result, bail};
+use anyhow::{bail, Context, Result};
 use std::{
     env,
     ffi::OsString,
     process::{Command, ExitCode},
 };
-use yzx_open::sidebar::{Config, ensure_success, optional_sidebar_yazi_state, orchestrator_query};
+use yzx_open::sidebar::{ensure_success, optional_sidebar_yazi_state, orchestrator_query, Config};
 
 #[cfg(test)]
 #[path = "support/test_dir.rs"]
@@ -77,7 +77,7 @@ fn print_help() {
 mod tests {
     // Test lane: default
     use super::*;
-    use crate::test_support::{TestDir, write_executable};
+    use crate::test_support::{write_nu_executable, TestDir};
     use std::{ffi::OsStr, fs};
 
     #[test]
@@ -85,30 +85,26 @@ mod tests {
         let fixture = TestDir::new();
         let ya_log = fixture.path.join("ya.log");
         let zellij_log = fixture.path.join("zellij.log");
-        write_executable(
-            &fixture.path.join("zellij"),
-            &format!(
-                r#"#!/bin/sh
-printf '%s\n' "$* session=$ZELLIJ_SESSION_NAME" >> "{}"
-case "$6" in
-  get_active_tab_session_state)
-    printf '%s\n' '{{"sidebar_yazi":{{"yazi_id":"plugin-yazi-id","cwd":"/repo"}}}}'
-    exit 0
-    ;;
-esac
-printf 'unexpected zellij args: %s\n' "$*" >&2
-exit 1
-"#,
-                zellij_log.display()
-            ),
-        );
-        write_executable(
-            &fixture.path.join("ya"),
-            &format!(
-                "#!/bin/sh\nprintf '%s\\n' \"$*\" >> \"{}\"\n",
-                ya_log.display()
-            ),
-        );
+        let zellij_body = format!("const LOG = {:?}\n", zellij_log.to_string_lossy())
+            + r#"def --wrapped main [...args: string] {
+    let joined = $args | str join " "
+    let session = $env.ZELLIJ_SESSION_NAME? | default ""
+    $"($joined) session=($session)\n" | save --append $LOG
+    if ($args | get -o 5 | default "") == "get_active_tab_session_state" {
+        print '{"sidebar_yazi":{"yazi_id":"plugin-yazi-id","cwd":"/repo"}}'
+        return
+    }
+    print --stderr $"unexpected zellij args: ($joined)"
+    exit 1
+}
+"#;
+        write_nu_executable(&fixture.path.join("zellij"), &zellij_body);
+        let ya_body = format!("const LOG = {:?}\n", ya_log.to_string_lossy())
+            + r#"def --wrapped main [...args: string] {
+    (($args | str join " ") + "\n") | save --append $LOG
+}
+"#;
+        write_nu_executable(&fixture.path.join("ya"), &ya_body);
         let config = Config {
             ya: fixture.path.join("ya").into_os_string(),
             zellij: fixture.path.join("zellij").into_os_string(),
@@ -133,17 +129,16 @@ emit-to plugin-yazi-id plugin starship /repo\n"
     fn missing_sidebar_state_is_a_noop() {
         let fixture = TestDir::new();
         let ya_log = fixture.path.join("ya.log");
-        write_executable(
+        write_nu_executable(
             &fixture.path.join("zellij"),
-            "#!/bin/sh\nprintf '%s\n' '{\"sidebar_yazi\":null}'\n",
+            "def --wrapped main [..._args: string] { print '{\"sidebar_yazi\":null}' }\n",
         );
-        write_executable(
-            &fixture.path.join("ya"),
-            &format!(
-                "#!/bin/sh\nprintf '%s\\n' \"$*\" > \"{}\"\n",
-                ya_log.display()
-            ),
-        );
+        let ya_body = format!("const LOG = {:?}\n", ya_log.to_string_lossy())
+            + r#"def --wrapped main [...args: string] {
+    (($args | str join " ") + "\n") | save --force $LOG
+}
+"#;
+        write_nu_executable(&fixture.path.join("ya"), &ya_body);
         let config = Config {
             ya: fixture.path.join("ya").into_os_string(),
             zellij: fixture.path.join("zellij").into_os_string(),

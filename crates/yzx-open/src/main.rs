@@ -1,6 +1,6 @@
-use anyhow::{Context, Result, bail};
+use anyhow::{bail, Context, Result};
 use serde::Deserialize;
-use serde_json::{Value, json};
+use serde_json::{json, Value};
 use std::{
     env,
     ffi::{OsStr, OsString},
@@ -450,11 +450,10 @@ fn open_editor_pane(config: &Config, targets: &[PathBuf], cwd: &Path) -> Result<
         &format!(
             "opening editor pane program={} args={}",
             config.zellij.to_string_lossy(),
-            json!(
-                args.iter()
-                    .map(|arg| arg.to_string_lossy().into_owned())
-                    .collect::<Vec<_>>()
-            )
+            json!(args
+                .iter()
+                .map(|arg| arg.to_string_lossy().into_owned())
+                .collect::<Vec<_>>())
         ),
     );
 
@@ -755,6 +754,18 @@ mod tests {
         fs::set_permissions(path, fs::Permissions::from_mode(0o755)).unwrap();
     }
 
+    fn write_nu_executable(path: &Path, body: &str) {
+        let shebang = env::var_os("YZX_TEST_NU").map_or_else(
+            || "#!/usr/bin/env -S nu --no-config-file\n".to_owned(),
+            |nu| {
+                let nu = PathBuf::from(nu);
+                assert!(nu.is_absolute(), "YZX_TEST_NU must be absolute");
+                format!("#!{} --no-config-file\n", nu.display())
+            },
+        );
+        write_executable(path, shebang + body);
+    }
+
     struct TestRuntime {
         root: PathBuf,
         zellij: PathBuf,
@@ -775,7 +786,7 @@ mod tests {
         fn config(&self, session_id: &str) -> Config {
             let editor = self.root.join("yzx-hx");
             if !editor.exists() {
-                write_executable(&editor, "#!/bin/sh\nexit 0\n");
+                write_nu_executable(&editor, "def --wrapped main [...args: string] {}\n");
             }
             Config {
                 editor: editor.into_os_string(),
@@ -790,27 +801,32 @@ mod tests {
         }
 
         fn write_zellij(&self, fail_focus: bool, list_panes_json: Option<&str>) {
-            let list_panes = list_panes_json.map_or_else(String::new, |panes| {
-                format!(
-                    "if [ \"$1\" = action ] && [ \"$2\" = list-panes ]; then printf '%s\\n' '{}'; exit 0; fi\n",
-                    panes
-                )
-            });
-            write_executable(
-                &self.zellij,
-                format!(
-                    r#"#!/bin/sh
-printf 'args=%s\nsession=%s\nzellij_session=%s\n' "$*" "${{YAZELIX_HELIX_BRIDGE_SESSION_ID:-}}" "${{ZELLIJ_SESSION_NAME:-}}" >> '{}'
-{list_panes}
-if [ "$1" = action ] && [ "$2" = focus-pane-id ] && {fail_focus}; then
-  printf '%s\n' 'Pane with id Terminal(1) not found' >&2; exit 1
-fi
-"#,
-                    self.zellij_log.display(),
-                    list_panes = list_panes,
-                    fail_focus = if fail_focus { "true" } else { "false" },
-                ),
+            let list_panes = list_panes_json
+                .map(|panes| format!("{panes:?}"))
+                .unwrap_or_else(|| "null".to_owned());
+            let header = format!(
+                "const LOG = {:?}\nconst LIST_PANES = {list_panes}\nconst FAIL_FOCUS = {fail_focus}\n",
+                self.zellij_log.to_string_lossy()
             );
+            let body = header
+                + r#"def --wrapped main [...args: string] {
+    let joined = $args | str join " "
+    let session = $env.YAZELIX_HELIX_BRIDGE_SESSION_ID? | default ""
+    let zellij_session = $env.ZELLIJ_SESSION_NAME? | default ""
+    $"args=($joined)\nsession=($session)\nzellij_session=($zellij_session)\n" | save --append $LOG
+    let action = $args | get -o 0 | default ""
+    let subcommand = $args | get -o 1 | default ""
+    if $action == "action" and $subcommand == "list-panes" and $LIST_PANES != null {
+        print $LIST_PANES
+        return
+    }
+    if $action == "action" and $subcommand == "focus-pane-id" and $FAIL_FOCUS {
+        print --stderr "Pane with id Terminal(1) not found"
+        exit 1
+    }
+}
+"#;
+            write_nu_executable(&self.zellij, &body);
         }
 
         fn write_registry(
@@ -846,17 +862,15 @@ fi
     }
 
     fn pane_list(entries: &[(u64, u64)]) -> String {
-        json!(
-            entries
-                .iter()
-                .map(|(id, tab_id)| json!({
-                    "id": id,
-                    "is_plugin": false,
-                    "tab_id": tab_id,
-                    "exited": false,
-                }))
-                .collect::<Vec<_>>()
-        )
+        json!(entries
+            .iter()
+            .map(|(id, tab_id)| json!({
+                "id": id,
+                "is_plugin": false,
+                "tab_id": tab_id,
+                "exited": false,
+            }))
+            .collect::<Vec<_>>())
         .to_string()
     }
 
@@ -984,13 +998,16 @@ fi
         let target = repo.join("docs/guides");
         fs::create_dir_all(&target).unwrap();
         runtime.write_zellij(false, None);
-        write_executable(
-            &git,
-            format!(
-                "#!/bin/sh\ncase \"$*\" in *\"rev-parse --show-toplevel\"*) printf '%s\\n' '{}'; exit 0;; esac\nexit 1\n",
-                repo.display()
-            ),
-        );
+        let git_body = format!("const REPO = {:?}\n", repo.to_string_lossy())
+            + r#"def --wrapped main [...args: string] {
+    if (($args | str join " ") | str contains "rev-parse --show-toplevel") {
+        print $REPO
+        return
+    }
+    exit 1
+}
+"#;
+        write_nu_executable(&git, &git_body);
 
         run(
             &Config {
@@ -1052,7 +1069,7 @@ fi
         let editor = runtime.root.join(command);
         let panes = pane_list(&[(3, 2), (7, 2)]);
         runtime.write_zellij(false, Some(&panes));
-        write_executable(&editor, "#!/bin/sh\nexit 0\n");
+        write_nu_executable(&editor, "def --wrapped main [...args: string] {}\n");
         let _listener = UnixListener::bind(&socket_path).unwrap();
 
         open_main_rs(&Config {

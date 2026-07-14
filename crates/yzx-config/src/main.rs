@@ -129,14 +129,32 @@ mod tests {
     use ratatui::style::{Color, Style};
     use ratconfig::toml_adapter::{get_toml_path, parse_toml_value, set_toml_value_text};
     use ratconfig::{
-        ConfigUiDiagnostic, ConfigUiEditBehavior, ConfigUiModel, ConfigUiPathOwner, ConfigUiTheme,
-        ConfigUiValueState, file_action_status_label, file_action_status_style,
+        file_action_status_label, file_action_status_style, ConfigUiDiagnostic,
+        ConfigUiEditBehavior, ConfigUiModel, ConfigUiPathOwner, ConfigUiTheme, ConfigUiValueState,
     };
-    use serde_json::{Value as JsonValue, json};
-    use yazelix_cursors::{DEFAULT_CURSOR_CONFIG_TEMPLATE, load_cursor_config};
+    use serde_json::{json, Value as JsonValue};
+    use yazelix_cursors::{load_cursor_config, DEFAULT_CURSOR_CONFIG_TEMPLATE};
 
     struct TempHome {
         path: PathBuf,
+    }
+
+    #[cfg(unix)]
+    fn write_nu_executable(path: &Path, body: &str) {
+        use std::os::unix::fs::PermissionsExt;
+
+        let shebang = env::var_os("YZX_TEST_NU").map_or_else(
+            || "#!/usr/bin/env -S nu --no-config-file\n".to_owned(),
+            |nu| {
+                let nu = PathBuf::from(nu);
+                assert!(nu.is_absolute(), "YZX_TEST_NU must be absolute");
+                format!("#!{} --no-config-file\n", nu.display())
+            },
+        );
+        fs::write(path, shebang + body).unwrap();
+        let mut permissions = fs::metadata(path).unwrap().permissions();
+        permissions.set_mode(0o755);
+        fs::set_permissions(path, permissions).unwrap();
     }
 
     impl TempHome {
@@ -287,18 +305,15 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn external_text_editor_round_trips_staged_input() {
-        use std::os::unix::fs::PermissionsExt;
-
         let temp = TempHome::new();
-        let editor = temp.path.join("editor.sh");
-        fs::write(
+        let editor = temp.path.join("editor.nu");
+        write_nu_executable(
             &editor,
-            "#!/bin/sh\ncat > \"$1\" <<'EOF'\nline one\nline two\nEOF\n",
-        )
-        .unwrap();
-        let mut permissions = fs::metadata(&editor).unwrap().permissions();
-        permissions.set_mode(0o755);
-        fs::set_permissions(&editor, permissions).unwrap();
+            r#"def main [target: path] {
+    "line one\nline two\n" | save --force $target
+}
+"#,
+        );
 
         assert_eq!(
             edit_text_with_editor("original", &editor).unwrap(),
@@ -365,12 +380,10 @@ mod tests {
 
     #[test]
     fn config_field_rejects_unknown_paths_before_io() {
-        assert!(
-            config_field("shell.typo")
-                .unwrap_err()
-                .to_string()
-                .contains("unknown config path")
-        );
+        assert!(config_field("shell.typo")
+            .unwrap_err()
+            .to_string()
+            .contains("unknown config path"));
     }
 
     #[test]
@@ -489,12 +502,10 @@ mod tests {
 
         std::os::unix::fs::symlink(temp.path.join("missing"), &path).unwrap();
         assert!(write_config_field(&path, OPEN_LOG_LEVEL_PATH, &json!("debug")).is_err());
-        assert!(
-            fs::symlink_metadata(&path)
-                .unwrap()
-                .file_type()
-                .is_symlink()
-        );
+        assert!(fs::symlink_metadata(&path)
+            .unwrap()
+            .file_type()
+            .is_symlink());
     }
 
     #[test]
@@ -970,12 +981,10 @@ color = "#123456"
             .collect();
 
         assert!(model.tabs.contains(&TAB_KEYS.to_string()));
-        assert!(
-            model
-                .file_actions
-                .iter()
-                .all(|action| action.tab != TAB_KEYS)
-        );
+        assert!(model
+            .file_actions
+            .iter()
+            .all(|action| action.tab != TAB_KEYS));
         assert_eq!(
             model
                 .tab_list_tables
@@ -1132,11 +1141,9 @@ color = "#123456"
         let ratconfig_error = ensure_config_sources_at(paths).err().unwrap();
         assert_eq!(runtime_error.to_string(), model_error.to_string());
         assert_eq!(runtime_error.to_string(), ratconfig_error.to_string());
-        assert!(
-            runtime_error
-                .to_string()
-                .contains("off, error, info, debug")
-        );
+        assert!(runtime_error
+            .to_string()
+            .contains("off, error, info, debug"));
     }
 
     #[test]
@@ -1202,12 +1209,10 @@ color = "#123456"
                 (ACTION_ZELLIJ_PLUGINS, "zellij/plugins.kdl"),
             ]
         );
-        assert!(
-            model
-                .file_actions
-                .iter()
-                .all(|action| action.path.ends_with(&action.label))
-        );
+        assert!(model
+            .file_actions
+            .iter()
+            .all(|action| action.path.ends_with(&action.label)));
         assert!(model.file_actions.iter().all(|action| {
             action.create_if_missing
                 && (action.exists == (action.action_id == ACTION_CURSORS_CONFIG))
@@ -1451,11 +1456,9 @@ color = "#123456"
             .filter(|field| field.source_id == SOURCE_MARS)
             .collect();
         assert_eq!(mars_fields.len(), MARS_FIELDS.len());
-        assert!(
-            mars_fields
-                .iter()
-                .all(|field| field.state == ConfigUiValueState::Defaulted)
-        );
+        assert!(mars_fields
+            .iter()
+            .all(|field| field.state == ConfigUiValueState::Defaulted));
 
         write_source_field(&paths, SOURCE_MARS, "window.opacity", &json!(0.5)).unwrap();
 
@@ -1592,11 +1595,9 @@ color = "#123456"
             .filter(|field| field.source_id == SOURCE_ZELLIJ)
             .collect();
         assert_eq!(zellij_fields.len(), ZELLIJ_FIELDS.len());
-        assert!(
-            zellij_fields
-                .iter()
-                .all(|field| field.state == ConfigUiValueState::Defaulted)
-        );
+        assert!(zellij_fields
+            .iter()
+            .all(|field| field.state == ConfigUiValueState::Defaulted));
         assert_eq!(model_field(&model, "pane_frames").current_value, "true");
 
         write_source_field(&paths, SOURCE_ZELLIJ, "pane_frames", &json!(true)).unwrap();
