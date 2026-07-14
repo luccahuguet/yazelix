@@ -1323,6 +1323,7 @@
         grep -Fx 'KACHE_CACHE_DIR=/home/flexnetos/.cache/kache' "$volatile_env"
         grep -Fx 'RUSTC_WRAPPER=/home/flexnetos/.nix-profile/bin/kache-rustc-wrapper' "$volatile_env"
         grep -F 'legacy Kache root must not exist' ${./nushell/system/volatile_runtime.nu}
+        grep -F 'legacy Kache delivery artifact must not exist' ${./nushell/system/volatile_runtime.nu}
 
         export HOME="$TMPDIR/home"
         export YAZELIX_CONFIG_HOME="$TMPDIR/config"
