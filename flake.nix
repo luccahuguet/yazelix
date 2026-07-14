@@ -946,7 +946,7 @@
           X-Yazelix-Managed=true
           X-FlexNetOS-Managed=true
           Exec=/home/flexnetos/.nix-profile/bin/yzx launch
-          Categories=Development;System;TerminalEmulator;
+          Categories=System;TerminalEmulator;
           EOF
           desktop-file-validate "$out/share/applications/com.flexnetos.Yazelix.desktop"
 
