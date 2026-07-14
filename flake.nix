@@ -934,13 +934,13 @@
           install -D -m 644 ${./nushell/config/stack_prompt_guard.nu} "$out/nushell/config/stack_prompt_guard.nu"
           install -D -m 644 ${./nushell/scripts/flexnetos_init.nu} "$out/nushell/scripts/flexnetos_init.nu"
 
-          install -D -m 644 /dev/stdin "$out/share/applications/com.flexnetos.Yazelix.desktop" <<'EOF'
+          install -D -m 644 /dev/stdin "$out/share/applications/com.flexnetos.Yazelix.Agent.desktop" <<'EOF'
           [Desktop Entry]
           Version=1.4
           Type=Application
           Name=FlexNetOS Yazelix Agent
           Comment=Yazelix Nova with the profile-owned FlexNetOS agent workspace
-          Icon=yzx
+          Icon=/home/flexnetos/.nix-profile/share/pixmaps/yazelix.png
           StartupWMClass=mars
           Terminal=false
           X-Yazelix-Managed=true
@@ -948,15 +948,15 @@
           Exec=/home/flexnetos/.nix-profile/bin/yzx launch
           Categories=System;TerminalEmulator;
           EOF
-          desktop-file-validate "$out/share/applications/com.flexnetos.Yazelix.desktop"
+          desktop-file-validate "$out/share/applications/com.flexnetos.Yazelix.Agent.desktop"
 
           for icon in ${marsPackage}/share/icons/hicolor/*/apps/mars.png; do
             size="$(basename "$(dirname "$(dirname "$icon")")")"
             install -d "$out/share/icons/hicolor/$size/apps"
             ln -s "$icon" "$out/share/icons/hicolor/$size/apps/yzx.png"
           done
-          install -d "$out/share/pixmaps"
-          ln -s ${marsPackage}/share/pixmaps/mars.png "$out/share/pixmaps/yzx.png"
+          install -D -m 644 ${marsPackage}/share/pixmaps/mars.png \
+            "$out/share/pixmaps/yazelix.png"
         '';
         meta = flexnetosYzxBase.meta;
       };
@@ -1255,9 +1255,17 @@
 
         desktop_count="$(find ${foundation}/share/applications -maxdepth 1 -name '*.desktop' | wc -l)"
         test "$desktop_count" = 1
-        desktop=${foundation}/share/applications/com.flexnetos.Yazelix.desktop
+        desktop=${foundation}/share/applications/com.flexnetos.Yazelix.Agent.desktop
         test -f "$desktop"
+        test ! -e ${foundation}/share/applications/com.flexnetos.Yazelix.desktop
+        test ! -e ${foundation}/share/applications/com.yazelix.Yazelix.Kitty.desktop
+        grep -Fx 'Name=FlexNetOS Yazelix Agent' "$desktop"
         grep -Fx 'Exec=/home/flexnetos/.nix-profile/bin/yzx launch' "$desktop"
+        grep -Fx 'Icon=/home/flexnetos/.nix-profile/share/pixmaps/yazelix.png' "$desktop"
+        grep -Fx 'StartupWMClass=mars' "$desktop"
+        grep -Fx 'Categories=System;TerminalEmulator;' "$desktop"
+        test -f ${foundation}/share/pixmaps/yazelix.png
+        test -s ${foundation}/share/pixmaps/yazelix.png
 
         layout=${foundation}/configs/zellij/layouts/flexnetos_agent_workspace.kdl
         test -f "$layout"
@@ -1280,9 +1288,11 @@
         mkdir -p "$HOME" "$YAZELIX_CONFIG_HOME" "$YAZELIX_STATE_DIR"
         ${foundation}/bin/yzx status > status
         ${foundation}/bin/yzx doctor > doctor
+        grep -Fx 'package: full' status
         grep -Fx 'shell: nu' status
         grep -F "runtime identity: $YAZELIX_STATE_DIR/runtime_identity.json" status
         grep -Fx 'ok shell.program: nu' doctor
+        grep -F 'ok mars: /nix/store/' doctor
         cmp ${foundation}/share/yazelix/runtime_identity.json "$YAZELIX_STATE_DIR/runtime_identity.json"
         touch "$out"
       '';
