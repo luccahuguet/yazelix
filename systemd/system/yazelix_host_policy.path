@@ -8,6 +8,7 @@ PathChanged=/etc/determinate/config.json
 PathChanged=/etc/shells
 PathChanged=/etc/systemd/journald.conf.d/10-yazelix-no-persistent.conf
 PathChanged=/etc/docker/daemon.json
+PathChanged=/etc/opt/chrome/policies/managed/yazelix-storage.json
 Unit=yazelix_host_policy.service
 
 [Install]

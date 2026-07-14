@@ -743,6 +743,7 @@
           (pkgs.writeTextDir "share/yazelix/host-policy/nix-daemon.socket" (builtins.readFile ./host-policy/nix-daemon.socket))
           (pkgs.writeTextDir "share/yazelix/host-policy/journald-no-storage.conf" (builtins.readFile ./host-policy/journald-no-storage.conf))
           (pkgs.writeTextDir "share/yazelix/host-policy/docker-daemon.json" (builtins.readFile ./host-policy/docker-daemon.json))
+          (pkgs.writeTextDir "share/yazelix/host-policy/chrome-storage.json" (builtins.readFile ./host-policy/chrome-storage.json))
           (pkgs.writeTextDir "lib/systemd/system/yazelix_host_policy.service" (builtins.readFile ./systemd/system/yazelix_host_policy.service))
           (pkgs.writeTextDir "lib/systemd/system/yazelix_host_policy.path" (builtins.readFile ./systemd/system/yazelix_host_policy.path))
           (pkgs.writeTextDir "lib/systemd/system/nix-daemon.service.d/10-yazelix-host-policy.conf" (builtins.readFile ./systemd/system/nix-daemon.service.d/10-yazelix-host-policy.conf))
@@ -1330,6 +1331,8 @@
         grep -Fx '/home/flexnetos/.nix-profile/toolbin/nu' ${foundation}/share/yazelix/host-policy/shells
         grep -Fx 'Storage=none' ${foundation}/share/yazelix/host-policy/journald-no-storage.conf
         grep -F '"log-driver": "none"' ${foundation}/share/yazelix/host-policy/docker-daemon.json
+        grep -F '"GenAILocalFoundationalModelSettings": 1' ${foundation}/share/yazelix/host-policy/chrome-storage.json
+        grep -F '"DiskCacheDir": "/run/user/1001/yazelix/volatile/cache/google-chrome"' ${foundation}/share/yazelix/host-policy/chrome-storage.json
         grep -Fx 'ExecStart=/home/flexnetos/.nix-profile/bin/yazelix_host_policy apply-nix' ${foundation}/lib/systemd/system/yazelix_host_policy.service
         grep -Fx 'ExecStart=/home/flexnetos/.nix-profile/bin/yazelix_host_policy apply-logs' ${foundation}/lib/systemd/system/yazelix_host_policy.service
         test -f ${foundation}/lib/systemd/system/yazelix_host_policy.path

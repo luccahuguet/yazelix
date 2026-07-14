@@ -8,6 +8,7 @@ const OWNED_FILES = [
     { source: "shells", target: "/etc/shells" }
     { source: "nix-daemon.service", target: "/etc/systemd/system/nix-daemon.service" }
     { source: "nix-daemon.socket", target: "/etc/systemd/system/nix-daemon.socket" }
+    { source: "chrome-storage.json", target: "/etc/opt/chrome/policies/managed/yazelix-storage.json" }
 ]
 const LOG_POLICY_FILES = [
     { source: "journald-no-storage.conf", target: "/etc/systemd/journald.conf.d/10-yazelix-no-persistent.conf" }

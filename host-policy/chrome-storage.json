@@ -1,0 +1,6 @@
+{
+  "BuiltInAIAPIsEnabled": false,
+  "DiskCacheDir": "/run/user/1001/yazelix/volatile/cache/google-chrome",
+  "DiskCacheSize": 1,
+  "GenAILocalFoundationalModelSettings": 1
+}
