@@ -1,0 +1,13 @@
+[Unit]
+Description=Create the profile-owned volatile cache and temporary runtime
+Before=graphical-session-pre.target
+
+[Service]
+Type=oneshot
+ExecStart=/home/flexnetos/.nix-profile/bin/yazelix_volatile_runtime ensure
+RemainAfterExit=yes
+StandardOutput=null
+StandardError=null
+
+[Install]
+WantedBy=default.target

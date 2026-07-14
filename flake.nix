@@ -728,6 +728,7 @@
       flexnetosRunnerPolicy = nuApplication "flexnetos_runner_policy" ./nushell/runner/runner_policy.nu {};
       flexnetosRunnerService = nuApplication "flexnetos_runner_service" ./nushell/runner/runner_service.nu {};
       flexnetosHostPolicy = nuApplication "yazelix_host_policy" ./nushell/system/host_policy.nu {};
+      flexnetosVolatileRuntime = nuApplication "yazelix_volatile_runtime" ./nushell/system/volatile_runtime.nu {};
       flexnetosRunnerSystemd = pkgs.writeTextDir
         "lib/systemd/user/flexnetos_runner@.service"
         (builtins.readFile (./systemd/user + "/flexnetos_runner@.service"));
@@ -741,6 +742,13 @@
           (pkgs.writeTextDir "lib/systemd/system/yazelix_host_policy.service" (builtins.readFile ./systemd/system/yazelix_host_policy.service))
           (pkgs.writeTextDir "lib/systemd/system/yazelix_host_policy.path" (builtins.readFile ./systemd/system/yazelix_host_policy.path))
           (pkgs.writeTextDir "lib/systemd/system/nix-daemon.service.d/10-yazelix-host-policy.conf" (builtins.readFile ./systemd/system/nix-daemon.service.d/10-yazelix-host-policy.conf))
+        ];
+      };
+      flexnetosVolatileRuntimeBundle = pkgs.symlinkJoin {
+        name = "yazelix-volatile-runtime";
+        paths = [
+          (pkgs.writeTextDir "share/yazelix/environment.d/10-yazelix-volatile.conf" (builtins.readFile ./host-policy/10-yazelix-volatile.conf))
+          (pkgs.writeTextDir "lib/systemd/user/yazelix_volatile_runtime.service" (builtins.readFile ./systemd/user/yazelix_volatile_runtime.service))
         ];
       };
       flexnetosRustToolchain = fenixPkgs.combine (
@@ -819,6 +827,7 @@
         flexnetos_runner_policy = "${flexnetosRunnerPolicy}/bin/flexnetos_runner_policy";
         flexnetos_runner_service = "${flexnetosRunnerService}/bin/flexnetos_runner_service";
         yazelix_host_policy = "${flexnetosHostPolicy}/bin/yazelix_host_policy";
+        yazelix_volatile_runtime = "${flexnetosVolatileRuntime}/bin/yazelix_volatile_runtime";
         git-kb = "${flexnetosGitKb}/bin/git-kb";
         grit = "${flexnetosGrit}/bin/grit";
         home-manager = "${home-manager.packages.${system}.default}/bin/home-manager";
@@ -897,7 +906,7 @@
       };
       lifeosFoundationYzx = pkgs.symlinkJoin {
         name = "lifeos-foundation-yzx";
-        paths = [flexnetosYzxBase flexnetosTools flexnetosRunnerSystemd flexnetosHostPolicyBundle];
+        paths = [flexnetosYzxBase flexnetosTools flexnetosRunnerSystemd flexnetosHostPolicyBundle flexnetosVolatileRuntimeBundle];
         nativeBuildInputs = [pkgs.desktop-file-utils];
         postBuild = ''
           install -D -m 644 ${flexnetosZellijLayout}/layout.kdl \
@@ -1237,6 +1246,7 @@
         test -x ${foundation}/bin/flexnetos_runner_policy
         test -x ${foundation}/bin/flexnetos_runner_service
         test -x ${foundation}/bin/yazelix_host_policy
+        test -x ${foundation}/bin/yazelix_volatile_runtime
         test -x ${foundation}/bin/kache
         test -x ${foundation}/bin/kache-rustc-wrapper
         test -x ${foundation}/bin/nix
@@ -1305,6 +1315,13 @@
         grep -Fx 'ExecStart=/home/flexnetos/.nix-profile/bin/yazelix_host_policy apply-nix' ${foundation}/lib/systemd/system/yazelix_host_policy.service
         test -f ${foundation}/lib/systemd/system/yazelix_host_policy.path
         test -f ${foundation}/lib/systemd/system/nix-daemon.service.d/10-yazelix-host-policy.conf
+        test -f ${foundation}/lib/systemd/user/yazelix_volatile_runtime.service
+        grep -Fx 'ExecStart=/home/flexnetos/.nix-profile/bin/yazelix_volatile_runtime ensure' ${foundation}/lib/systemd/user/yazelix_volatile_runtime.service
+        volatile_env=${foundation}/share/yazelix/environment.d/10-yazelix-volatile.conf
+        grep -Fx 'XDG_CACHE_HOME=/run/user/1001/yazelix/volatile/cache' "$volatile_env"
+        grep -Fx 'TMPDIR=/run/user/1001/yazelix/volatile/tmp' "$volatile_env"
+        grep -Fx 'KACHE_CACHE_DIR=/home/flexnetos/.cache/kache' "$volatile_env"
+        grep -Fx 'RUSTC_WRAPPER=/home/flexnetos/.nix-profile/bin/kache-rustc-wrapper' "$volatile_env"
 
         export HOME="$TMPDIR/home"
         export YAZELIX_CONFIG_HOME="$TMPDIR/config"
