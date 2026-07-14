@@ -853,6 +853,7 @@
         nix-shell = "${pkgs.nix}/bin/nix-shell";
         nix-store = "${pkgs.nix}/bin/nix-store";
         journalctl = "${pkgs.systemd}/bin/journalctl";
+        ln = "${pkgs.coreutils}/bin/ln";
         notebooklm = "${flexnetosNotebooklm}/bin/notebooklm";
         npm = "${pkgs.nodejs_24}/bin/npm";
         nu = "${pkgs.nushell}/bin/nu";
@@ -1260,6 +1261,7 @@
         test -x ${foundation}/bin/nix-daemon
         test -x ${foundation}/bin/nix-store
         test -x ${foundation}/bin/journalctl
+        test -x ${foundation}/bin/ln
         test -x ${foundation}/bin/systemctl
         test -x ${foundation}/bin/usermod
         test -x ${foundation}/toolbin/nu
