@@ -32,6 +32,7 @@ const RETIRED_CLIENT_STATE = [
     "/root/.local/share/nix/trusted-settings.json"
     "/usr/local/bin/determinate-nixd"
     "/nix/var/determinate"
+    "/etc/systemd/system/nix-daemon.service.d/10-yazelix-host-policy.conf"
 ]
 
 def policy_root [] {
@@ -179,6 +180,7 @@ def apply_nix [] {
     if (live_target) {
         let systemctl = $"($PROFILE_ROOT)/bin/systemctl"
         ^$systemctl disable --now determinate-nixd.socket
+        ^$systemctl stop nix-daemon.socket
         ^$systemctl stop nix-daemon.service
     }
     for owned in $OWNED_FILES {
@@ -208,7 +210,8 @@ def apply_nix [] {
     if (live_target) {
         let systemctl = $"($PROFILE_ROOT)/bin/systemctl"
         ^$systemctl enable nix-daemon.service nix-daemon.socket
-        ^$systemctl --no-block restart nix-daemon.socket
+        ^$systemctl reset-failed nix-daemon.service nix-daemon.socket
+        ^$systemctl restart nix-daemon.socket
     }
 }
 
