@@ -191,7 +191,7 @@ necessarily save its complete closure size.
 Closure size describes distribution cost, not source ownership or local code
 volume. Child packages and packaged tools carry most binary data; Nova keeps
 their composition and policy in the small top-level join. The README [installed-size
-ledger](README.md#installed-size) owns the complete per-module list, measurement
+ledger](docs/installation.md#installed-size) owns the complete per-module list, measurement
 meaning, and reproduction commands.
 
 ### Shell dispatch
