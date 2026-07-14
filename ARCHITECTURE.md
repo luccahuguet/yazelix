@@ -78,7 +78,7 @@ One owner per concern. Paths are the durable map.
 | `crates/yzx-open/` | Editor open, Helix bridge, reveal, bounded open diagnostics |
 | `crates/yzx-yazi-config/` | Managed Yazi config-home materialization and native TOML layering |
 | `crates/yzx-tutor/` | Tutor CLI and lessons |
-| `runtime/yzx-helix.sh` (`yzx-hx`) | Effective Helix config + Steel wiring |
+| `runtime/yzx_helix.nu` (`yzx-hx`) | Effective Helix config + Steel wiring |
 | `yazelix-screen` (child) | Screen styles; packaged as `yzx screen` |
 | `checks/` | Build-time contract guards |
 

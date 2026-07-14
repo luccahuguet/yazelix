@@ -2,43 +2,44 @@
 
 ## CI
 
-Normal CI runs Linux checks on push, pull request, and manual dispatch
-`Publish Nix Cache` publishes both Linux variants and representative Home
-Manager closures from `main` and manual dispatch. `Version Gate` is manual and
+Normal CI runs Linux checks on push, pull request, and manual dispatch with
+Nushell as the run-step shell. No workflow restores or publishes a remote
+build cache; Kache is the only persistent build cache. `Version Gate` is manual and
 includes both Linux profile shapes, both `aarch64-darwin` packages, and the
 Darwin Home Manager closure. `Darwin Package Smoke` runs those three Darwin
 builds weekly on Monday when `main` has commits in the last 7 days, and on
 manual dispatch always, while idle weeks skip the macOS build. Both macOS jobs
-assert that Darwin packages contain no Linux desktop entry. The flake advertises
-the optional Yazelix Cachix cache, while source builds remain valid without it
+assert that Darwin packages contain no Linux desktop entry
 Use Version Gate before publishing a release
 
 ## Local development
 
 Use local sibling repositories while hacking runtime inputs:
 
-```sh
+```nu
 nix run --override-input mars ../mars
 nix run --override-input yazelixZellij ../yazelix-zellij
 nix run --override-input yazelixHelix ../yazelix-helix
 nix run --override-input yazelixZellijPopup ../yazelix-zellij-popup
 nix run --override-input yazelixZellijBar ../yazelix-zellij-bar
 nix run --override-input yazelixZellijPaneOrchestrator ../yazelix-zellij-pane-orchestrator
+nix build --override-input flexnetos_runner_source ../flexnetos_runner .#lifeos_foundation_yzx
 ```
 
 Useful local checks:
 
-```sh
+```nu
 nix flake check
 nix flake show --all-systems
 nix build .#yazelix --no-link --print-build-logs
 nix build .#runtime --no-link --print-build-logs
 nix build .#checks.x86_64-linux.yzx_yazi_materialization --no-link
+nix build .#checks.x86_64-linux.cache_shell_policy --no-link
 ```
 
 Runtime package changes should also pass a temporary profile install:
 
-```sh
+```nu
 nix profile add --refresh /absolute/path/to/yazelix --profile /tmp/yzx-profile
 ```
 
@@ -51,21 +52,28 @@ Counts **tracked text** project files. Excludes Beads state (`.beads/`),
 lockfiles (`*.lock`), and binary assets. New owned sources count automatically
 once committed
 
-```sh
-git ls-files | grep -Ev '^\.beads/|\.lock$|^assets/' | xargs wc -l
+```nu
+git ls-files
+| lines
+| where {|path|
+    not ($path | str starts-with ".beads/")
+    and not ($path | str starts-with "assets/")
+    and not ($path | str ends-with ".lock")
+}
+| each {|path| {path: $path, lines: (open --raw $path | str stats | get lines)}}
 ```
 
 | Language | Lines |
 | --- | ---: |
 | Ignore (`.gitignore`) | 19 |
 | License | 201 |
-| Markdown | 1760 |
-| Nix | 1125 |
-| Shell | 84 |
-| YAML | 313 |
+| Markdown | 1913 |
+| Nix | 2101 |
+| Shell | 0 |
+| YAML | 241 |
 | TOML | 246 |
-| KDL | 212 |
-| Nu | 11 |
+| KDL | 251 |
+| Nu | 509 |
 | Lua | 247 |
-| Rust | 12881 |
-| Total | 17099 |
+| Rust | 13172 |
+| Total | 18900 |

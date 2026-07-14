@@ -20,7 +20,7 @@ there is no launcher wrapper or parallel regular/agent entry
 
 Install the Mars-free variant with:
 
-```sh
+```nu
 nix profile add --refresh github:luccahuguet/yazelix#runtime
 ```
 
@@ -93,10 +93,10 @@ template is 3.8 KiB
 
 Reproduce the total for the current system and lock file with:
 
-```sh
-full=$(nix build .#yazelix --no-link --print-out-paths)
-runtime=$(nix build .#runtime --no-link --print-out-paths)
-nix path-info -Sh "$full" "$runtime"
+```nu
+let full = (nix build .#yazelix --no-link --print-out-paths | str trim)
+let runtime = (nix build .#runtime --no-link --print-out-paths | str trim)
+nix path-info -Sh $full $runtime
 nix path-info --json --json-format 1 -S "$full" "$runtime"
 ```
 
@@ -153,7 +153,7 @@ configuration. Do not mix both update paths for the same installation
 
 Update a profile install with:
 
-```sh
+```nu
 nix profile upgrade --refresh yazelix
 ```
 
@@ -163,7 +163,7 @@ Run `nix profile list` when you need to confirm an entry name
 For a Home Manager or nix-darwin install, run this from the configuration that
 declares the Yazelix input:
 
-```sh
+```nu
 nix flake update yazelix
 ```
 

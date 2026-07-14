@@ -41,7 +41,7 @@ generated layered config under `~/.local/share/yazelix/nu/`.
 
 Build source contracts before installing:
 
-```sh
+```nu
 nix build .#checks.x86_64-linux.flexnetos_foundation_contracts --no-link
 nix build .#lifeos_foundation_yzx --no-link --print-out-paths
 ```

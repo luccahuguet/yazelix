@@ -4,6 +4,12 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## 1.0.0-beta.1
 
+- The FlexNetOS profile is now the single install owner for Kache and the
+  self-hosted runner binaries. It exports `fxrun`, `fxrun-actions`, and
+  `fxrun-dispatch`, ships a profile-owned Nushell service and fail-closed
+  Kache/Nushell policy, and keeps all non-Kache runner state volatile. Remote
+  Cachix/GitHub cache publication is removed. First-party workflows and runtime
+  wrappers use Nushell or ELF executables instead of POSIX shells.
 - The FlexNetOS foundation reconnects to canonical Nova through an
   unrelated-history merge with Nova as first parent and the complete FlexNetOS
   history as second parent. Its one Nix profile element exposes one `yzx`
