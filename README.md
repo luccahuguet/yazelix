@@ -6,11 +6,11 @@
 
 **What is the best possible terminal experience?**
 
-Yazelix tries to answer that question. Nova brings the terminal, multiplexer,
+Yazelix tries to answer that question by bringing the terminal, multiplexer,
 file manager, editor, shell, Git tools, configuration, and an optional AI agent
 together as one coherent workspace
 
-Nova packages the workspace as a Nix flake with an optional Home Manager module
+Yazelix ships as a Nix flake with an optional Home Manager module
 
 `yzx launch` opens Mars, while `yzx enter` starts Yazelix in the
 current terminal. Both provide the same Yazi-first workspace and compact top
@@ -23,11 +23,11 @@ focused checks for its contracts
 
 ## Install and launch
 
-Nova requires Nix with flakes enabled. `launch` opens the packaged Mars window
+Yazelix requires Nix with flakes enabled. `launch` opens the packaged Mars window
 in a graphical session, while `enter` starts the same workspace in the current
 terminal or over SSH
 
-Nova starts from packaged defaults, so no configuration is required before the
+Yazelix uses packaged defaults, so no configuration is required before the
 first launch
 
 ### Try without installing
@@ -63,8 +63,8 @@ nix run .#runtime -- enter
 
 ### Moving from Yazelix Classic
 
-Use Classic v17.12 once to prepare its config for Nova, then install Nova from
-the canonical repository
+Use Classic v17.12 once to prepare its config for the Nova generation, then
+install Yazelix from the canonical repository
 
 ```sh
 nix run github:luccahuguet/yazelix/v17.12#yazelix -- launch
@@ -77,14 +77,14 @@ the immutable `v17.12` tag remains the migration and rollback bridge
 
 ## Learn, help, and recover
 
-Start the guided tour after launching Nova:
+Start the guided tour after launching Yazelix:
 
 ```sh
 yzx tutor begin
 ```
 
 `yzx help` lists every command. `yzx doctor` checks the owned runtime setup
-without opening Mars or Zellij. Inside Nova, press `Alt Shift M` to open the
+without opening Mars or Zellij. Inside Yazelix, press `Alt Shift M` to open the
 command palette, which includes both help and tutor entries
 
 Press `Alt Shift K` to open Ratconfig. Press `8` for native Yazi settings and
@@ -95,7 +95,7 @@ contextual action, such as editing or opening it. Press `u` to reset a setting
 and `q` to quit. When a writable structured row has one owning file action, `e`
 opens that exact config file. The footer lists the selected row's controls
 
-Nova carries Helix/Vim's `h/j/k/l` motion model through the workspace:
+Yazelix carries Helix/Vim's `h/j/k/l` motion model through the workspace:
 
 | Layer | `h` | `j` | `k` | `l` |
 | --- | --- | --- | --- | --- |
@@ -158,7 +158,7 @@ Move mode is unbound. Managed popup triggers can be remapped through
 | Command | Purpose |
 | --- | --- |
 | `yzx`, `yzx help` | Print command help |
-| `yzx --version` | Print the exact package-owned Nova version |
+| `yzx --version` | Print the exact package-owned Yazelix version |
 | `yzx launch [zellij-args...]` | Open Mars first, then start managed Zellij |
 | `yzx enter [zellij-args...]` | Start managed Zellij in the current terminal |
 | `yzx run <program> [args...]` | Run exact argv inside the prepared Yazelix environment |
@@ -202,7 +202,7 @@ platform support, SSH use, measured sizes, Home Manager, and updates
 ## Configuration
 
 `yzx config` opens Ratconfig over the managed tree at
-`~/.config/yazelix/`. Nova inherits packaged defaults and persists only
+`~/.config/yazelix/`. Yazelix inherits packaged defaults and persists only
 explicit overrides
 
 See [Configuration](docs/configuration.md) for settings, popups, native files,
@@ -216,6 +216,6 @@ popup contracts live in [Runtime Notes](docs/runtime-notes.md)
 
 ## LOC Scorecard
 
-Nova owns **17,669 lines** of tracked text project files. The
+Yazelix owns **17,671 lines** of tracked text project files. The
 [reproducible scorecard](docs/development.md#loc-scorecard) excludes Beads,
 lockfiles, and binary assets

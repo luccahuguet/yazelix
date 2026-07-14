@@ -4,6 +4,8 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## 1.0.0-beta.1
 
+- The Linux desktop entry describes Yazelix as an integrated terminal workspace
+  while continuing to launch the package-owned `yzx launch` command.
 - Ratconfig's Yazi tab renders safe native `yazi.toml` and `theme.toml` values,
   previews complete tables and arrays instead of count-only badges, keeps TOML
   infinities and NaN inspectable, leaves untyped empty arrays safely read-only,

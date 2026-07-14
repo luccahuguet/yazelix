@@ -573,7 +573,7 @@
           name = "yzx";
           desktopName = "Yazelix Nova";
           genericName = "Terminal Emulator";
-          comment = "Open Yazelix Nova";
+          comment = "Open the Yazelix integrated terminal workspace";
           exec = "${command}/bin/yzx launch";
           icon = "yzx";
           terminal = false;
