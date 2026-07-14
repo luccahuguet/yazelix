@@ -4,3 +4,16 @@ crates/*/target/
 .bv/
 # br doctor per-run artifacts
 .doctor/
+
+# Local runtime and build artifacts
+/.config/
+/logs/
+/result
+/result-*
+/rust_core/
+/rust_plugins/
+
+# br local state
+/.beads/.local_version
+/.beads/interactions.jsonl
+/.beads/push-state.json

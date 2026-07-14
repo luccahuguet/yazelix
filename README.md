@@ -118,8 +118,8 @@ available
 
 ## Keybindings
 
-Ratconfig's Keys tab is the complete packaged reference, and `config.kdl`
-remains the runtime source
+Ratconfig's Keys tab is the complete packaged reference, and
+`defaults/zellij/config.kdl` remains the runtime source
 
 ### Zellij workspace
 
@@ -215,6 +215,6 @@ popup contracts live in [Runtime Notes](docs/runtime-notes.md)
 
 ## LOC Scorecard
 
-Nova owns **17,085 lines** of tracked text project files. The
+Nova owns **17,099 lines** of tracked text project files. The
 [reproducible scorecard](docs/development.md#loc-scorecard) excludes Beads,
 lockfiles, and binary assets

@@ -78,7 +78,7 @@ One owner per concern. Paths are the durable map.
 | `crates/yzx-open/` | Editor open, Helix bridge, reveal, bounded open diagnostics |
 | `crates/yzx-yazi-config/` | Managed Yazi config-home materialization and native TOML layering |
 | `crates/yzx-tutor/` | Tutor CLI and lessons |
-| `shell/sh/yzx-helix.sh` (`yzx-hx`) | Effective Helix config + Steel wiring |
+| `runtime/yzx-helix.sh` (`yzx-hx`) | Effective Helix config + Steel wiring |
 | `yazelix-screen` (child) | Screen styles; packaged as `yzx screen` |
 | `checks/` | Build-time contract guards |
 
@@ -94,13 +94,13 @@ One owner per concern. Paths are the durable map.
 - Hidden package-internal reads for launch + custom-popup KDL render
 - `agent.popup.kdl` is an internal render path for custom managed agent command
   KDL
-- `KEY_BINDINGS` is the human key reference; `config.kdl` is the runtime owner
+- `KEY_BINDINGS` is the human key reference; `defaults/zellij/config.kdl` is the runtime owner
 
 #### Nova root schema inventory
 
-Packaged `config.toml` owns every default below. The optional user file stores
-only explicit overrides; `CONFIG_FIELDS` and `root_config.rs` own the bounded
-catalog, validation, and sparse persistence unless another owner is named.
+Packaged `defaults/config.toml` owns every default below. The optional user file
+stores only explicit overrides; `CONFIG_FIELDS` and `root_config.rs` own the
+bounded catalog, validation, and sparse persistence unless another owner is named.
 The root validator derives fixed leaves from that catalog, rejects unknown paths
 before runtime or Ratconfig use, and delegates only `popups.<id>` to its dynamic
 field validator.
@@ -142,12 +142,12 @@ custom popup entry.
 
 | Path | Owns |
 | --- | --- |
-| `mars.toml` | Default Mars window/font/appearance; `mars.appearance.preset` is also Ratconfig UI theme (live palette) |
-| `config.kdl` | Zellij keys, plugins load, popup wiring, Kitty protocol |
-| `layout.kdl` / `layout.swap.kdl` | Sidebar + stacked panes, open/closed swap |
-| `nu/` | Packaged Nu: carapace, zoxide, Starship (`format` default `:: `) |
-| `yazi/` | Opens via `yzx-open`, plugins, `Alt z` zoxide jump |
-| `helix/config.toml` | Packaged defaults; `Alt r` reveal, `Ctrl r` reload (overridable) |
+| `defaults/mars/config.toml` | Default Mars window/font/appearance; `mars.appearance.preset` is also Ratconfig UI theme (live palette) |
+| `defaults/zellij/config.kdl` | Zellij keys, plugins load, popup wiring, Kitty protocol |
+| `defaults/zellij/layout*.kdl` | Sidebar + stacked panes, open/closed swap |
+| `defaults/nu/` | Packaged Nu: carapace, zoxide, Starship (`format` default `:: `) |
+| `defaults/yazi/` | Opens via `yzx-open`, plugins, `Alt z` zoxide jump |
+| `defaults/helix/config.toml` | Packaged defaults; `Alt r` reveal, `Ctrl r` reload (overridable) |
 
 ### Child packages (not owned here)
 
@@ -350,11 +350,11 @@ Detail lives in Owners, checks, and the notes below.
 
 | ID | Contract | Owner | Check | Gap |
 | --- | --- | --- | --- | --- |
-| C2 | Mars packaged base + sparse user config; appearance preset as UI theme | `mars.toml`, flake, `yzx-config` | `yzx-contracts`, config tests | Visual |
-| C3 | Layout sidebar template for swaps | `layout*.kdl` | `zellij-layout` | — |
-| C4 | Packaged keys + guarded Zellij sidecar | `config.kdl`, `yzx-zellij-config` | `yzx-contracts` | Full keys |
-| C5 | Managed Nu layering | `yzx-nu`, `nu/` | `yzx-contracts` | — |
-| C6 | Managed Yazi (preview env, open logs, plugins) + `yzx-open` + zoxide | `yazi/`, `yzx-yazi`, `yzx-open` | contracts + materialization + open tests | Yazi UI |
+| C2 | Mars packaged base + sparse user config; appearance preset as UI theme | `defaults/mars/config.toml`, flake, `yzx-config` | `yzx-contracts`, config tests | Visual |
+| C3 | Layout sidebar template for swaps | `defaults/zellij/layout*.kdl` | `zellij-layout` | — |
+| C4 | Packaged keys + guarded Zellij sidecar | `defaults/zellij/config.kdl`, `yzx-zellij-config` | `yzx-contracts` | Full keys |
+| C5 | Managed Nu layering | `yzx-nu`, `defaults/nu/` | `yzx-contracts` | — |
+| C6 | Managed Yazi (preview env, open logs, plugins) + `yzx-open` + zoxide | `defaults/yazi/`, `yzx-yazi`, `yzx-open` | contracts + materialization + open tests | Yazi UI |
 | C7 | Helix bridge window/tab isolation (`session` + `tab_id`) | `yzx-open`, flake | `yzx-open` tests | Multi-window |
 | C10 | Top bar tray, home-marker tabs, home-scoped new tabs, usage `tu` + cache | layout, config, runtime, tokenusage | layout + contracts | Visual bar |
 | C12 | Welcome defaults and random pool | screen child, runtime, root config | screen tests + contracts | Animation |
@@ -363,7 +363,7 @@ Detail lives in Owners, checks, and the notes below.
 
 | ID | Contract | Owner | Check | Gap |
 | --- | --- | --- | --- | --- |
-| C9a | Kitty protocol + `yzpp` packaged/loaded | `config.kdl`, flake | `yzx-contracts` | Visual |
+| C9a | Kitty protocol + `yzpp` packaged/loaded | `defaults/zellij/config.kdl`, flake | `yzx-contracts` | Visual |
 | C9b | Role popups + popups tab remaps + margins + refresh hooks | config, runtime, `yzx-config` | contracts + keybinding tests | Visual |
 | C9c | Custom `[popups.<id>]` argv + unique titles | `yzx-config`, runtime | custom popup tests + contracts | Visual |
 | C9d | Agent hide keep-alive + custom command or provider bootstrap | `yzx-agent`, config | `yzx-contracts` | Provider UX |
@@ -373,7 +373,7 @@ Detail lives in Owners, checks, and the notes below.
 
 | ID | Contract | Owner | Check | Gap |
 | --- | --- | --- | --- | --- |
-| C11a | Root semantic schema + sparse persistence | `yzx-config`, `config.toml` | config tests + contracts | UI |
+| C11a | Root semantic schema + sparse persistence | `yzx-config`, `defaults/config.toml` | config tests + contracts | UI |
 | C11b | Popups/Mars/Cursors/Zellij/Starship tabs; session Zellij active-file patch | `yzx-config` | config tests + contracts | Session live scalars |
 | C11c | Helix tab + `yzx-hx` merge / `Alt r` / Steel | `yzx-config`, helix, `yzx-hx` | `helix-contracts` + config tests | UI |
 | C11d | Keys read-only + Advanced open-file | `yzx-config` | Keys/Advanced tests, key parity | UI |

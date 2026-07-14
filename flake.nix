@@ -110,7 +110,7 @@
       pkgs = import nixpkgs {inherit system;};
       rustBin = rustBinFor pkgs;
       marsPackage = mars.packages.${system}.mars;
-      yzxMarsToml = pkgs.replaceVars ./mars.toml {
+      yzxMarsToml = pkgs.replaceVars ./defaults/mars/config.toml {
         jetbrainsMonoDir = "${pkgs.jetbrains-mono}/share/fonts/truetype";
         symbolsNerdDir = "${pkgs.nerd-fonts.symbols-only}/share/fonts/truetype/NerdFonts/Symbols";
         notoSymbolsDir = "${pkgs.noto-fonts}/share/fonts/noto";
@@ -125,14 +125,14 @@
       yzxZoxideInit = pkgs.runCommand "yzx-zoxide-init" {} ''
         ${pkgs.zoxide}/bin/zoxide init nushell > "$out"
       '';
-      yzxNuConfigNu = pkgs.replaceVars ./nu/config.nu {
+      yzxNuConfigNu = pkgs.replaceVars ./defaults/nu/config.nu {
         carapaceInit = "${yzxCarapaceInit}";
         starship = "${pkgs.starship}/bin/starship";
         zoxideInit = "${yzxZoxideInit}";
       };
       yzxNuConfig = pkgs.runCommand "yzx-nu-config" {} ''
         install -D -m 644 ${yzxNuConfigNu} "$out/config.nu"
-        install -D -m 644 ${./nu/env.nu} "$out/env.nu"
+        install -D -m 644 ${./defaults/nu/env.nu} "$out/env.nu"
       '';
       yzxNuRs = pkgs.replaceVars ./runtime/yzx-nu.rs {
         nu = "${pkgs.nushell}/bin/nu";
@@ -147,14 +147,14 @@
         chmod -R u+w "$out"
         ln -s ${ratconfig} "$out/ratconfig"
         ln -s ${yazelixCursors} "$out/yazelix-cursors"
-        cp ${./config.toml} "$out/config.toml"
-        cp ${./mars.toml} "$out/mars.toml"
+        cp ${./defaults/config.toml} "$out/config.toml"
+        cp ${./defaults/mars/config.toml} "$out/mars.toml"
         substituteInPlace "$out/Cargo.toml" \
           --replace-fail '../../../ratconfig' './ratconfig' \
           --replace-fail '../../../yazelix-cursors' './yazelix-cursors'
         substituteInPlace "$out/src/catalog.rs" \
-          --replace-fail '../../../config.toml' '../config.toml' \
-          --replace-fail '../../../mars.toml' '../mars.toml'
+          --replace-fail '../../../defaults/config.toml' '../config.toml' \
+          --replace-fail '../../../defaults/mars/config.toml' '../mars.toml'
       '';
       yzxConfig = pkgs.rustPlatform.buildRustPackage {
         pname = "yzx-config";
@@ -163,7 +163,7 @@
         cargoLock.lockFile = ./crates/yzx-config/Cargo.lock;
         YAZELIX_NIX_STORE_ROOT = builtins.storeDir;
       };
-      yzxShellSrc = pkgs.replaceVars ./shell/sh/yzx-shell.sh {
+      yzxShellSrc = pkgs.replaceVars ./runtime/yzx-shell.sh {
         yzxConfig = "${yzxConfig}/bin/yzx-config";
         yzxNu = "${yzxNuShell}/bin/yzx-nu";
         bash = "${pkgs.bashInteractive}/bin/bash";
@@ -175,7 +175,7 @@
         patchShebangs "$out/bin/yzx-shell"
       '';
       yzxEnvSupervisor = pkgs.runCommand "yzx-env-supervisor" {} ''
-        install -D -m 755 ${./shell/sh/yzx-env-supervisor.sh} "$out/bin/yzx-env-supervisor"
+        install -D -m 755 ${./runtime/yzx-env-supervisor.sh} "$out/bin/yzx-env-supervisor"
         patchShebangs "$out/bin/yzx-env-supervisor"
       '';
       yzxAgent = rustBin "yzx-agent" ./runtime/yzx-agent.rs;
@@ -205,7 +205,7 @@
       };
       yzxZellijConfig = rustBin "yzx-zellij-config" ./runtime/yzx-zellij-config.rs;
       yazelixHelixPackage = yazelixHelix.packages.${system}.yazelix_helix;
-      yzxHelixConfig = pkgs.writeTextDir "config.toml" (builtins.readFile ./helix/config.toml);
+      yzxHelixConfig = pkgs.writeTextDir "config.toml" (builtins.readFile ./defaults/helix/config.toml);
       yzxOpenTerminal = pkgs.writeShellApplication {
         name = "yzx-open-terminal";
         text = ''
@@ -261,7 +261,7 @@
         ;; Yazelix Nova packaged Steel init.
         EOF
       '';
-      yzxHelixSrc = pkgs.replaceVars ./shell/sh/yzx-helix.sh {
+      yzxHelixSrc = pkgs.replaceVars ./runtime/yzx-helix.sh {
         date = "${pkgs.coreutils}/bin/date";
         hx = "${yazelixHelixPackage}/bin/hx";
         mkdir = "${pkgs.coreutils}/bin/mkdir";
@@ -338,18 +338,18 @@
         src = ./crates/yzx-open;
         cargoLock.lockFile = ./crates/yzx-open/Cargo.lock;
       };
-      yzxYaziToml = pkgs.replaceVars ./yazi/yazi.toml {
+      yzxYaziToml = pkgs.replaceVars ./defaults/yazi/yazi.toml {
         opener = "YZX_ZELLIJ=${yazelixZellijPackage}/bin/zellij ${yzxOpenCore}/bin/yzx-open";
       };
       yzxYaziConfig = pkgs.runCommand "yzx-yazi-config" {} ''
-        install -D -m 644 ${./yazi/init.lua} "$out/init.lua"
-        install -D -m 644 ${./yazi/keymap.toml} "$out/keymap.toml"
+        install -D -m 644 ${./defaults/yazi/init.lua} "$out/init.lua"
+        install -D -m 644 ${./defaults/yazi/keymap.toml} "$out/keymap.toml"
         install -D -m 644 ${yzxYaziToml} "$out/yazi.toml"
         install -D -m 644 ${yaziAssetsSelection}/yazelix_starship.toml "$out/yazelix_starship.toml"
         mkdir -p "$out/plugins"
-        install -D -m 644 ${./yazi/plugins/sidebar-state.yazi/main.lua} "$out/plugins/sidebar-state.yazi/main.lua"
-        install -D -m 644 ${./yazi/plugins/sidebar-status.yazi/main.lua} "$out/plugins/sidebar-status.yazi/main.lua"
-        install -D -m 644 ${./yazi/plugins/zoxide-editor.yazi/main.lua} "$out/plugins/zoxide-editor.yazi/main.lua"
+        install -D -m 644 ${./defaults/yazi/plugins/sidebar-state.yazi/main.lua} "$out/plugins/sidebar-state.yazi/main.lua"
+        install -D -m 644 ${./defaults/yazi/plugins/sidebar-status.yazi/main.lua} "$out/plugins/sidebar-status.yazi/main.lua"
+        install -D -m 644 ${./defaults/yazi/plugins/zoxide-editor.yazi/main.lua} "$out/plugins/zoxide-editor.yazi/main.lua"
         ln -s ${autoLayoutYazi} "$out/plugins/auto-layout.yazi"
         ln -s ${yaziAssetsSelection}/plugins/git.yazi "$out/plugins/git.yazi"
         ln -s ${starshipYazi} "$out/plugins/starship.yazi"
@@ -376,7 +376,7 @@
         name = "Yazelix Nova";
         version = novaVersion;
       });
-      defaultConfig = builtins.fromTOML (builtins.readFile ./config.toml);
+      defaultConfig = builtins.fromTOML (builtins.readFile ./defaults/config.toml);
       defaultBarWidgets = defaultConfig.bar.widgets;
       defaultShellProgram = defaultConfig.shell.program;
       defaultPopupSideMargin = toString defaultConfig.popup.side_margin;
@@ -409,11 +409,11 @@
         ${yzxBarRender}/bin/yzx-bar-render "$(<${yzxBarRenderRequest})" > "$out"
       '';
       yzxLayoutKdl = pkgs.runCommand "layout.kdl" {} ''
-        substitute ${./layout.kdl} "$out" \
+        substitute ${./defaults/zellij/layout.kdl} "$out" \
           --replace-fail '@yazi@' '${yzxYazi}/bin/yzx-yazi' \
           --replace-fail '@bar@' "$(<${yzxBarKdl})"
       '';
-      yzxLayoutSwapKdl = pkgs.replaceVars ./layout.swap.kdl {
+      yzxLayoutSwapKdl = pkgs.replaceVars ./defaults/zellij/layout.swap.kdl {
         yazi = "${yzxYazi}/bin/yzx-yazi";
       };
       yzxLayoutCheck = rustBin "yzx-layout-check" ./checks/zellij-layout.rs;
@@ -442,7 +442,7 @@
           exec ${pkgs.lazygit}/bin/lazygit "$@"
         '';
       };
-      yzxConfigKdl = pkgs.replaceVars ./config.kdl {
+      yzxConfigKdl = pkgs.replaceVars ./defaults/zellij/config.kdl {
         yzxShell = "${yzxShell}/bin/yzx-shell";
         yzpp = "file:${yazelixZellijPopupPackage}/${yazelixZellijPopupPackage.wasmPath}";
         yzxPaneOrchestrator = "file:${yazelixZellijPaneOrchestratorPackage}/${yazelixZellijPaneOrchestratorPackage.wasmPath}";
@@ -499,8 +499,8 @@
           zellij = "${yazelixZellijPackage}/bin/zellij";
           mars = marsPath;
           layout = "${yzxZellijLayout}/layout.kdl";
-          layoutTemplate = "${./layout.kdl}";
-          layoutSwapTemplate = "${./layout.swap.kdl}";
+          layoutTemplate = "${./defaults/zellij/layout.kdl}";
+          layoutSwapTemplate = "${./defaults/zellij/layout.swap.kdl}";
           yzxAgent = "${yzxAgent}/bin/yzx-agent";
           yzxYazi = "${yzxYazi}/bin/yzx-yazi";
           yzxHelix = "${yzxHelix}/bin/yzx-hx";
@@ -573,7 +573,7 @@
               install -D -m 644 ${yzxConfigKdl} "$out/share/yazelix/config.kdl"
               install -D -m 644 ${yzxRuntimeIdentity}/runtime_identity.json "$out/share/yazelix/runtime_identity.json"
               install -D -m 644 ${yazelixCursors}/yazelix_cursors_default.toml "$out/share/yazelix/cursors.toml"
-              install -D -m 644 ${./config.toml} "$out/share/yazelix/config.toml"
+              install -D -m 644 ${./defaults/config.toml} "$out/share/yazelix/config.toml"
               install -D -m 644 ${yzxZellijLayout}/layout.kdl "$out/share/yazelix/layout.kdl"
               install -D -m 644 ${yzxZellijLayout}/layout.swap.kdl "$out/share/yazelix/layout.swap.kdl"
               install -D -m 644 ${yzxYaziConfig}/init.lua "$out/share/yazelix/yazi/init.lua"

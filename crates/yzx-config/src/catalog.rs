@@ -1,6 +1,6 @@
 use ratconfig::DEFAULT_CONFIG_SOURCE_ID;
 
-pub(crate) const DEFAULT_CONFIG_TOML: &str = include_str!("../../../config.toml");
+pub(crate) const DEFAULT_CONFIG_TOML: &str = include_str!("../../../defaults/config.toml");
 
 pub(crate) const OPEN_LOG_LEVEL_PATH: &str = "open.log_level";
 pub(crate) const SHELL_PROGRAM_PATH: &str = "shell.program";
@@ -48,7 +48,8 @@ pub(crate) const BAR_WIDGET_VALUES: &[&str] = &[
     "cpu",
     "ram",
 ];
-pub(crate) const DEFAULT_MARS_CONFIG_TOML: &str = include_str!("../../../mars.toml");
+pub(crate) const DEFAULT_MARS_CONFIG_TOML: &str =
+    include_str!("../../../defaults/mars/config.toml");
 pub(crate) const MARS_APPEARANCE_PRESET_PATH: &str = "mars.appearance.preset";
 pub(crate) const CURSOR_ENABLED_PATH: &str = "enabled_cursors";
 pub(crate) const CURSOR_TRAIL_PATH: &str = "settings.trail";
