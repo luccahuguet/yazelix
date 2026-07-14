@@ -4,6 +4,11 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## 1.0.0-beta.1
 
+- The FlexNetOS foundation reconnects to canonical Nova through an
+  unrelated-history merge with Nova as first parent and the complete FlexNetOS
+  history as second parent. Its one Nix profile element exposes one `yzx`
+  frontdoor, one desktop entry, one Nova-rendered agent workspace, mandatory
+  Nushell, and generated runtime identity under the owned state root.
 - `yzx doctor` recognizes the supported Helix `Alt r` reveal binding when its
   inner quotes use valid TOML escaping, while real conflicts still warn.
 - Darwin Package Smoke and Version Gate build the full package, runtime package,

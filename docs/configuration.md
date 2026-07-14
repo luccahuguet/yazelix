@@ -32,7 +32,7 @@ while custom popup ids remain dynamic within the documented `popups.<id>` fields
 | Field | Default | Meaning |
 | --- | --- | --- |
 | `open.log_level` | `info` | Diagnostics for managed Yazi open requests: `off`, `error`, `info`, `debug` |
-| `shell.program` | `nu` | Packaged shell for new panes: `nu`, `bash`, `zsh`, `fish` |
+| `shell.program` | `nu` | Packaged shell for new panes; only Nushell is supported |
 | `editor.command` | `yzx-hx` | Editor used by Yazi opens, Ratconfig text edits, and Git editor flows |
 | `welcome.enabled` | `true` | Show the startup welcome splash |
 | `welcome.style` | `random` | Startup screen style |

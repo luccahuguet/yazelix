@@ -70,10 +70,12 @@ the canonical repository
 nix run github:luccahuguet/yazelix/v17.12#yazelix -- launch
 ```
 
-The Nova cutover intentionally replaces the old `main` history. Existing Git
-clones should be replaced with a fresh clone rather than updated with an
-ordinary pull. Classic remains available at the frozen `classic` branch, while
-the immutable `v17.12` tag remains the migration and rollback bridge
+The original Nova cutover replaced the old `main` history. The FlexNetOS
+recovery joins canonical Nova as first parent to the complete FlexNetOS history
+as second parent through one reviewable unrelated-history merge. It does not
+discard, cherry-pick, replay, rebase, squash, or force-push either lineage
+Classic remains available at the frozen `classic` branch, while the immutable
+`v17.12` tag remains the migration and rollback bridge
 
 ## Learn, help, and recover
 

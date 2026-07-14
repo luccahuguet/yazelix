@@ -219,12 +219,12 @@ pub(crate) const CONFIG_FIELDS: &[ConfigFieldSpec] = &[
     ConfigFieldSpec {
         field: FieldSpec::string_choice(
             SHELL_PROGRAM_PATH,
-            "Packaged shell launched in new Zellij panes.",
-            &["nu", "bash", "zsh", "fish"],
-            "nu, bash, zsh, or fish",
+            "Packaged Nushell launched in new Zellij panes.",
+            &["nu"],
+            "nu",
         ),
         apply_summary: "new panes",
-        apply_detail: "Saved shell selection applies to newly launched panes and sessions.",
+        apply_detail: "Nushell applies to every newly launched pane and session.",
     },
     ConfigFieldSpec {
         field: FieldSpec::string_choice(

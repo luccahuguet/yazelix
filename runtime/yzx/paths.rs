@@ -33,14 +33,20 @@ pub(crate) fn home_dir() -> Result<PathBuf, AppError> {
         .ok_or_else(|| startup("HOME is required to scope home-marker new tabs.", "", 1))
 }
 
-pub(crate) fn state_dir() -> PathBuf {
+pub(crate) fn state_dir() -> Result<PathBuf, AppError> {
     nonempty_env("YAZELIX_STATE_DIR")
         .map(PathBuf::from)
         .or_else(|| nonempty_env("XDG_DATA_HOME").map(|path| PathBuf::from(path).join("yazelix")))
         .or_else(|| {
             nonempty_env("HOME").map(|path| PathBuf::from(path).join(".local/share/yazelix"))
         })
-        .unwrap_or_else(|| PathBuf::from("/tmp/yazelix"))
+        .ok_or_else(|| {
+            startup(
+                "HOME is required when YAZELIX_STATE_DIR and XDG_DATA_HOME are unset.",
+                "",
+                1,
+            )
+        })
 }
 
 pub(crate) fn enter_terminal_label() -> OsString {

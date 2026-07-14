@@ -504,7 +504,7 @@ mod tests {
 
         for (field_path, value, read_back) in [
             (OPEN_LOG_LEVEL_PATH, json!("debug"), None),
-            (SHELL_PROGRAM_PATH, json!("fish"), None),
+            (SHELL_PROGRAM_PATH, json!("nu"), None),
             (EDITOR_COMMAND_PATH, json!("nvim"), Some("nvim")),
             (AGENT_COMMAND_PATH, json!("codex"), Some("codex")),
             (
@@ -536,7 +536,7 @@ mod tests {
                 json!("loud"),
                 "off, error, info, debug",
             ),
-            (SHELL_PROGRAM_PATH, json!("tcsh"), "nu, bash, zsh, fish"),
+            (SHELL_PROGRAM_PATH, json!("tcsh"), "nu"),
             (EDITOR_COMMAND_PATH, json!(""), "must not be empty"),
             (
                 EDITOR_COMMAND_PATH,

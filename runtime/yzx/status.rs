@@ -8,6 +8,7 @@ pub(crate) fn print_status() -> Result<(), AppError> {
     println!("package: {PACKAGE_VARIANT}");
     println!("config home: {}", runtime.config_home.display());
     println!("state dir: {}", runtime.state_dir.display());
+    println!("runtime identity: {}", runtime.runtime_identity.display());
     println!("shell: {}", runtime.shell_program);
     println!("editor command: {}", runtime.editor_command);
     println!("editor: {}", runtime.editor);

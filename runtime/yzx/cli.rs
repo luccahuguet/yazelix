@@ -5,7 +5,7 @@ use crate::{
     YZX_TUTOR, YZX_WELCOME, YZX_YA, ZELLIJ,
     command::exec,
     doctor::print_doctor,
-    error::AppError,
+    error::{AppError, startup},
     paths::{enter_terminal_label, nonempty_env, runtime_path},
     runtime::Runtime,
     status::{print_status, print_status_json},
@@ -83,9 +83,14 @@ fn exec_plain(program: &str) -> Result<(), AppError> {
 fn exec_menu() -> Result<(), AppError> {
     let mut command = Command::new(YZX_MENU);
     command.env("PATH", runtime_path());
-    if let Ok(current_exe) = env::current_exe() {
-        command.env("YZX_MENU_YZX", current_exe);
-    }
+    let current_exe = env::current_exe().map_err(|error| {
+        startup(
+            format!("failed to resolve the installed yzx frontdoor: {error}"),
+            "yzx menu",
+            1,
+        )
+    })?;
+    command.env("YZX_MENU_YZX", current_exe);
     exec(command, "yzx menu")
 }
 
@@ -99,7 +104,7 @@ fn exec_env() -> Result<(), AppError> {
     let runtime = Runtime::prepare()?;
     let mut command = Command::new(YZX_ENV_SUPERVISOR);
     command.arg(YZX_SHELL);
-    runtime.apply(&mut command);
+    runtime.apply(&mut command)?;
     exec(command, "yzx env")
 }
 
@@ -112,7 +117,7 @@ fn exec_run(args: Vec<OsString>) -> Result<(), AppError> {
     let runtime = Runtime::prepare()?;
     let mut command = Command::new(program);
     command.args(args);
-    runtime.apply(&mut command);
+    runtime.apply(&mut command)?;
     exec(command, "yzx run")
 }
 
@@ -150,7 +155,7 @@ fn exec_managed(through_mars: bool, zellij_args: Vec<OsString>) -> Result<(), Ap
         .arg("--new-session-with-layout")
         .arg(&runtime.layout)
         .args(zellij_args);
-    runtime.apply(&mut command);
+    runtime.apply(&mut command)?;
     apply_mars_cursor_config(
         &mut command,
         through_mars,

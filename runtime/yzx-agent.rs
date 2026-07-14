@@ -22,7 +22,11 @@ fn main() {
 
 fn run() -> i32 {
     let args = env::args_os().skip(1).collect::<Vec<_>>();
-    let provider_file = state_dir().join("agent/provider");
+    let Some(state_dir) = state_dir() else {
+        eprintln!("yzx-agent: HOME is required when YAZELIX_STATE_DIR and XDG_DATA_HOME are unset");
+        return 1;
+    };
+    let provider_file = state_dir.join("agent/provider");
 
     if let Some(id) = read_provider(&provider_file) {
         return launch_configured(&id, &provider_file, &args);
@@ -105,14 +109,13 @@ fn is_executable(path: &Path) -> bool {
         .unwrap_or(false)
 }
 
-fn state_dir() -> PathBuf {
+fn state_dir() -> Option<PathBuf> {
     nonempty_env("YAZELIX_STATE_DIR")
         .map(PathBuf::from)
         .or_else(|| nonempty_env("XDG_DATA_HOME").map(|path| PathBuf::from(path).join("yazelix")))
         .or_else(|| {
             nonempty_env("HOME").map(|path| PathBuf::from(path).join(".local/share/yazelix"))
         })
-        .unwrap_or_else(|| PathBuf::from("/tmp/yazelix"))
 }
 
 fn nonempty_env(name: &str) -> Option<OsString> {

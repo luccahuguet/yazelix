@@ -33,7 +33,6 @@ fn main() {
         "default_shell is not a file: {}",
         yzx_shell.display()
     );
-    expect_shell_selection(&yzx_shell);
     expect_keybinds(&config);
     expect_first_party_plugins(git, &config);
     expect_front_door(yzx, Path::new(jq));
@@ -631,28 +630,6 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
         format!("cwd {home};"),
     }
 
-    let custom_shell_bar = RuntimeCase::new(&temp.path, "custom-shell-bar");
-    custom_shell_bar.write_config("[open]\nlog_level = \"info\"\n\n[shell]\nprogram = \"fish\"\n");
-    let status = custom_shell_bar.run_yzx(&yzx_bin, "status", "custom shell bar status");
-    expect_contains_all! {
-        &status, "custom shell bar status";
-        "shell: fish",
-        "layout: runtime (",
-    }
-    let custom_shell_layout = custom_shell_bar.zellij_file("layout.kdl");
-    expect_contains_all! {
-        &custom_shell_layout, "custom shell bar layout";
-        "❯fish",
-    }
-    assert!(
-        !custom_shell_layout.contains("❯nu"),
-        "custom shell bar layout kept the default shell label"
-    );
-    assert!(
-        !custom_shell_layout.contains("❯ fish"),
-        "custom shell bar layout inserted unwanted shell label spacing"
-    );
-
     let doctor = doctor_case.run_yzx(&yzx_bin, "doctor", "yzx doctor");
     expect_contains_all! {
         &doctor, "yzx doctor";
@@ -734,6 +711,10 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
     }
     let identity = fs::read_to_string(yzx.join("share/yazelix/runtime_identity.json"))
         .expect("yzx package is missing runtime_identity.json");
+    let generated_identity =
+        fs::read_to_string(doctor_case.state_dir.join("runtime_identity.json"))
+            .expect("yzx runtime did not materialize runtime_identity.json");
+    assert_eq!(generated_identity, identity);
     let identity_version = jq_output(jq, ".version", &identity);
     assert_eq!(version.trim(), format!("Yazelix Nova ({identity_version})"));
     expect_contains_all! {
@@ -1218,24 +1199,6 @@ fn run_nu_with_path(
             .env("PATH", path),
         &yzx_nu.display().to_string(),
     )
-}
-
-fn expect_shell_selection(shell: &Path) {
-    for program in ["bash", "zsh", "fish"] {
-        let temp = TempDir::new();
-        write_config_home(
-            &temp.path,
-            format!("[open]\nlog_level = \"info\"\n\n[shell]\nprogram = \"{program}\"\n"),
-        );
-        let output = successful_output(
-            Command::new(shell)
-                .arg("-c")
-                .arg("echo shell-ok")
-                .env("YAZELIX_CONFIG_HOME", &temp.path),
-            &format!("yzx-shell dispatch to {program}"),
-        );
-        assert_eq!(String::from_utf8_lossy(&output.stdout).trim(), "shell-ok");
-    }
 }
 
 fn expect_mars_config_override(yzx: &Path) {

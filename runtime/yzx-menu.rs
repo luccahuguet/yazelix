@@ -42,9 +42,11 @@ fn run() -> i32 {
         return 64;
     };
 
-    let status = Command::new(env::var_os("YZX_MENU_YZX").unwrap_or_else(|| "yzx".into()))
-        .arg(id)
-        .status();
+    let Some(yzx) = env::var_os("YZX_MENU_YZX").filter(|path| !path.is_empty()) else {
+        eprintln!("YZX_MENU_YZX must identify the active yzx frontdoor");
+        return 1;
+    };
+    let status = Command::new(yzx).arg(id).status();
     let code = match status {
         Ok(status) => status.code().unwrap_or(1),
         Err(error) => {

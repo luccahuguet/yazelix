@@ -2,6 +2,7 @@ use std::{
     env,
     ffi::{OsStr, OsString},
     fmt::Display,
+    fs,
     path::{Path, PathBuf},
     process::{self, Command},
     time::{SystemTime, UNIX_EPOCH},
@@ -11,11 +12,12 @@ use crate::{
     AGENT_POPUP_KDL_CONFIG_PATH, CUSTOM_POPUP_KEYBINDINGS_KDL_CONFIG_PATH,
     CUSTOM_POPUPS_KDL_CONFIG_PATH, MARS, POPUP_KEYBINDING_SPECS, YAZELIX_ZELLIJ_BAR_WASM,
     YAZELIX_ZELLIJ_PANE_ORCHESTRATOR_WASM, YAZELIX_ZELLIJ_POPUP_WASM, YZX_CONFIG, YZX_CONFIG_KDL,
-    YZX_EDITOR, YZX_HELIX, YZX_MARS_CONFIG, YZX_YA, YZX_ZELLIJ_CONFIG, ZELLIJ,
+    YZX_EDITOR, YZX_HELIX, YZX_MARS_CONFIG, YZX_RUNTIME_IDENTITY, YZX_YA, YZX_ZELLIJ_CONFIG,
+    ZELLIJ,
     command::{
         create_dir_all_checked, run_checked, seed_permission_checked, touch_checked, trim_output,
     },
-    error::AppError,
+    error::{AppError, path_error, startup},
     paths::{config_home, home_dir, nonempty_env, parent, runtime_path, state_dir},
     zellij::{active_layout, active_zellij_config},
 };
@@ -23,6 +25,7 @@ use crate::{
 pub(crate) struct Runtime {
     pub(crate) config_home: PathBuf,
     pub(crate) state_dir: PathBuf,
+    pub(crate) runtime_identity: PathBuf,
     bridge_session_id: Option<OsString>,
     pub(crate) yzx_open_log: String,
     pub(crate) shell_program: String,
@@ -73,8 +76,9 @@ fn read_popup_keybindings(
 
 impl Runtime {
     pub(crate) fn prepare() -> Result<Self, AppError> {
-        let state_dir = state_dir();
+        let state_dir = state_dir()?;
         create_dir_all_checked(&state_dir, &state_dir)?;
+        let runtime_identity = materialize_runtime_identity(&state_dir)?;
         let home_dir = home_dir()?;
         let config_home = config_home()?;
         let config_toml = config_home.join("config.toml");
@@ -194,6 +198,7 @@ impl Runtime {
         Ok(Self {
             config_home,
             state_dir,
+            runtime_identity,
             bridge_session_id: uses_helix_bridge(&editor).then(bridge_session_id),
             yzx_open_log: trim_output(yzx_open_log),
             shell_program,
@@ -219,8 +224,14 @@ impl Runtime {
         })
     }
 
-    pub(crate) fn apply(&self, command: &mut Command) {
-        let yzx_menu_yzx = env::current_exe().unwrap_or_else(|_| PathBuf::from("yzx"));
+    pub(crate) fn apply(&self, command: &mut Command) -> Result<(), AppError> {
+        let yzx_menu_yzx = env::current_exe().map_err(|error| {
+            startup(
+                format!("failed to resolve the installed yzx frontdoor: {error}"),
+                "yzx",
+                1,
+            )
+        })?;
         command
             .env("YAZELIX_CONFIG_HOME", &self.config_home)
             .env("YAZELIX_STATE_DIR", &self.state_dir)
@@ -250,6 +261,7 @@ impl Runtime {
         if let Some(bridge_session_id) = &self.bridge_session_id {
             command.env("YAZELIX_HELIX_BRIDGE_SESSION_ID", bridge_session_id);
         }
+        Ok(())
     }
 
     pub(crate) fn mars_config(&self) -> String {
@@ -271,6 +283,18 @@ impl Runtime {
     pub(crate) fn layout(&self) -> String {
         source_path(self.layout_source, self.layout.display())
     }
+}
+
+fn materialize_runtime_identity(state_dir: &Path) -> Result<PathBuf, AppError> {
+    let source = Path::new(YZX_RUNTIME_IDENTITY);
+    let destination = state_dir.join("runtime_identity.json");
+    let identity = fs::read(source).map_err(|error| path_error("read", source, source, error))?;
+    let current = fs::read(&destination).ok();
+    if current.as_deref() != Some(identity.as_slice()) {
+        fs::write(&destination, identity)
+            .map_err(|error| path_error("write", &destination, &destination, error))?;
+    }
+    Ok(destination)
 }
 
 fn source_path(source: &str, path: impl Display) -> String {

@@ -29,7 +29,7 @@ fn run() -> io::Result<()> {
     let user_nu = config_home.join("nu");
     let user_starship = config_home.join("starship.toml");
     let packaged_nu = PathBuf::from(PACKAGED_NU);
-    let runtime = state_dir();
+    let runtime = state_dir()?;
     let runtime_nu = runtime.join("nu");
     fs::create_dir_all(&runtime_nu)?;
     let starship_config = runtime.join("starship.toml");
@@ -80,14 +80,19 @@ fn config_home() -> io::Result<PathBuf> {
         .ok_or_else(|| io::Error::new(ErrorKind::NotFound, "HOME is required"))
 }
 
-fn state_dir() -> PathBuf {
+fn state_dir() -> io::Result<PathBuf> {
     nonempty_env("YAZELIX_STATE_DIR")
         .map(PathBuf::from)
         .or_else(|| nonempty_env("XDG_DATA_HOME").map(|path| PathBuf::from(path).join("yazelix")))
         .or_else(|| {
             nonempty_env("HOME").map(|path| PathBuf::from(path).join(".local/share/yazelix"))
         })
-        .unwrap_or_else(|| env::temp_dir().join("yazelix"))
+        .ok_or_else(|| {
+            io::Error::new(
+                ErrorKind::NotFound,
+                "HOME is required when YAZELIX_STATE_DIR and XDG_DATA_HOME are unset",
+            )
+        })
 }
 
 fn write_layered_config(

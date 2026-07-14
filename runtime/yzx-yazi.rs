@@ -29,7 +29,7 @@ fn main() -> ExitCode {
 }
 
 fn run() -> io::Result<()> {
-    let state_dir = state_dir();
+    let state_dir = state_dir()?;
     let yazi_config = yazi_config_home(&state_dir)?;
     let yzx_open_log = yzx_config_value("open.log_level")?;
     let editor = effective_editor_command(yzx_config_value("editor.command")?);
@@ -67,9 +67,7 @@ fn run() -> io::Result<()> {
 }
 
 fn yazi_config_home(state_dir: &Path) -> io::Result<PathBuf> {
-    let Some(user_yazi) = config_home().map(|path| path.join("yazi")) else {
-        return Ok(YZX_YAZI_CONFIG.into());
-    };
+    let user_yazi = config_home()?.join("yazi");
     let output = Command::new(YZX_YAZI_MATERIALIZER)
         .args([Path::new(YZX_YAZI_CONFIG), &user_yazi, state_dir])
         .output()?;
@@ -99,21 +97,32 @@ fn effective_editor_command(command: String) -> String {
     }
 }
 
-fn config_home() -> Option<PathBuf> {
+fn config_home() -> io::Result<PathBuf> {
     nonempty_env("YAZELIX_CONFIG_HOME")
         .map(PathBuf::from)
         .or_else(|| nonempty_env("XDG_CONFIG_HOME").map(|path| PathBuf::from(path).join("yazelix")))
         .or_else(|| nonempty_env("HOME").map(|path| PathBuf::from(path).join(".config/yazelix")))
+        .ok_or_else(|| {
+            io::Error::new(
+                io::ErrorKind::NotFound,
+                "HOME is required when YAZELIX_CONFIG_HOME and XDG_CONFIG_HOME are unset",
+            )
+        })
 }
 
-fn state_dir() -> PathBuf {
+fn state_dir() -> io::Result<PathBuf> {
     nonempty_env("YAZELIX_STATE_DIR")
         .map(PathBuf::from)
         .or_else(|| nonempty_env("XDG_DATA_HOME").map(|path| PathBuf::from(path).join("yazelix")))
         .or_else(|| {
             nonempty_env("HOME").map(|path| PathBuf::from(path).join(".local/share/yazelix"))
         })
-        .unwrap_or_else(|| PathBuf::from("/tmp/yazelix"))
+        .ok_or_else(|| {
+            io::Error::new(
+                io::ErrorKind::NotFound,
+                "HOME is required when YAZELIX_STATE_DIR and XDG_DATA_HOME are unset",
+            )
+        })
 }
 
 fn bridge_session_id() -> OsString {

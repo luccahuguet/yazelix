@@ -30,6 +30,7 @@ pub(crate) const YZX_CONFIG: &str = "@yzxConfig@";
 pub(crate) const YZX_MARS_CONFIG: &str = "@yzxMarsConfig@";
 pub(crate) const YZX_ZELLIJ_CONFIG: &str = "@yzxZellijConfig@";
 pub(crate) const YZX_CONFIG_KDL: &str = "@yzxConfigKdl@";
+pub(crate) const YZX_RUNTIME_IDENTITY: &str = "@yzxRuntimeIdentity@";
 pub(crate) const YZX_REVEAL: &str = "@yzxReveal@";
 pub(crate) const YZX_SIDEBAR_REFRESH: &str = "@yzxSidebarRefresh@";
 pub(crate) const YZX_YA: &str = "@yzxYa@";

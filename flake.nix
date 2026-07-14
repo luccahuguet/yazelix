@@ -14,6 +14,10 @@
       url = "github:nix-community/home-manager";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    fenix = {
+      url = "github:nix-community/fenix/96e0fc9f1a9b37f6477fa11c3fd48575354773ed";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     mars = {
       url = "github:luccahuguet/mars";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -46,6 +50,10 @@
       url = "github:luccahuguet/yazelix-screen";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    yazelixYaziAssets = {
+      url = "github:FlexNetOS/yazelix-yazi-assets/0935209c3c7d8407c12c9a1a61bd0df6e8fd6a58";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     ratconfig = {
       url = "github:luccahuguet/ratconfig";
       flake = false;
@@ -58,12 +66,37 @@
       url = "github:Rolv-Apneseth/starship.yazi";
       flake = false;
     };
+    beads_rust_source = {
+      url = "github:FlexNetOS/beads_rust/2498339168b8e88d641e8ae1664843fc69740012";
+      flake = false;
+    };
+    rtk_source = {
+      url = "github:rtk-ai/rtk/v0.43.0";
+      flake = false;
+    };
+    grit_source = {
+      url = "github:FlexNetOS/grit/89d8addd170f408d1d82860c39096929375bd2ce";
+      flake = false;
+    };
+    icm_source = {
+      url = "github:FlexNetOS/icm/ae4ed52c6bbf806e45f9c5b425e15b44398de4b7";
+      flake = false;
+    };
+    weave_source = {
+      url = "github:FlexNetOS/weave/9eae5c4d9cc9acb520e3d45dad25ea60ea22e63d";
+      flake = false;
+    };
+    obscura_source = {
+      url = "github:FlexNetOS/obscura/4f5b6e52d358b0e7a6a021a24bd12ff77b3f3989";
+      flake = false;
+    };
   };
 
   outputs = {
     self,
     nixpkgs,
     home-manager,
+    fenix,
     mars,
     yazelixCursors,
     yazelixZellij,
@@ -72,9 +105,16 @@
     yazelixZellijBar,
     yazelixZellijPaneOrchestrator,
     yazelixScreen,
+    yazelixYaziAssets,
     ratconfig,
     autoLayoutYazi,
     starshipYazi,
+    beads_rust_source,
+    rtk_source,
+    grit_source,
+    icm_source,
+    weave_source,
+    obscura_source,
   }: let
     novaVersion = "1.0.0-beta.1";
     compactNovaVersion = version:
@@ -107,7 +147,11 @@
     homeManagerModules.default = homeManagerModule;
 
     packages = eachSystem (system: let
-      pkgs = import nixpkgs {inherit system;};
+      pkgs = import nixpkgs {
+        inherit system;
+        config.allowUnfreePredicate = package:
+          nixpkgs.lib.getName package == "claude-code";
+      };
       rustBin = rustBinFor pkgs;
       marsPackage = mars.packages.${system}.mars;
       yzxMarsToml = pkgs.replaceVars ./defaults/mars/config.toml {
@@ -130,17 +174,21 @@
         starship = "${pkgs.starship}/bin/starship";
         zoxideInit = "${yzxZoxideInit}";
       };
+      flexnetosNuConfig = pkgs.replaceVars ./nushell/config/config.nu {
+        rtkWrappers = "${./nushell/config/rtk_wrappers.nu}";
+        stackPromptGuard = "${./nushell/config/stack_prompt_guard.nu}";
+        flexnetosInit = "${./nushell/scripts/flexnetos_init.nu}";
+        profileNu = "/home/flexnetos/.nix-profile/toolbin/nu";
+      };
       yzxNuConfig = pkgs.runCommand "yzx-nu-config" {} ''
         install -D -m 644 ${yzxNuConfigNu} "$out/config.nu"
         install -D -m 644 ${./defaults/nu/env.nu} "$out/env.nu"
       '';
-      yzxNuRs = pkgs.replaceVars ./runtime/yzx-nu.rs {
-        nu = "${pkgs.nushell}/bin/nu";
-        packagedNu = "${yzxNuConfig}";
-        pathPrefix = pkgs.lib.makeBinPath [pkgs.nushell pkgs.starship pkgs.carapace pkgs.zoxide];
-        yzxConfig = "${yzxConfig}/bin/yzx-config";
-      };
-      yzxNuShell = rustBin "yzx-nu" yzxNuRs;
+      flexnetosYzxNuConfig = pkgs.runCommand "flexnetos-yzx-nu-config" {} ''
+        install -D -m 644 ${yzxNuConfigNu} "$out/config.nu"
+        printf '\nsource "%s"\n' ${flexnetosNuConfig} >> "$out/config.nu"
+        install -D -m 644 ${./defaults/nu/env.nu} "$out/env.nu"
+      '';
       yzxConfigSrc = pkgs.runCommand "yzx-config-src" {} ''
         mkdir -p "$out"
         cp -R ${pkgs.lib.cleanSource ./crates/yzx-config}/. "$out/"
@@ -163,17 +211,26 @@
         cargoLock.lockFile = ./crates/yzx-config/Cargo.lock;
         YAZELIX_NIX_STORE_ROOT = builtins.storeDir;
       };
-      yzxShellSrc = pkgs.replaceVars ./runtime/yzx-shell.sh {
-        yzxConfig = "${yzxConfig}/bin/yzx-config";
-        yzxNu = "${yzxNuShell}/bin/yzx-nu";
-        bash = "${pkgs.bashInteractive}/bin/bash";
-        zsh = "${pkgs.zsh}/bin/zsh";
-        fish = "${pkgs.fish}/bin/fish";
-      };
-      yzxShell = pkgs.runCommand "yzx-shell" {} ''
-        install -D -m 755 ${yzxShellSrc} "$out/bin/yzx-shell"
+      mkYzxNuShell = name: nuConfig: let
+        source = pkgs.replaceVars ./runtime/yzx-nu.rs {
+          nu = "${pkgs.nushell}/bin/nu";
+          packagedNu = "${nuConfig}";
+          pathPrefix = pkgs.lib.makeBinPath [pkgs.nushell pkgs.starship pkgs.carapace pkgs.zoxide];
+          yzxConfig = "${yzxConfig}/bin/yzx-config";
+        };
+      in rustBin name source;
+      yzxNuShell = mkYzxNuShell "yzx-nu" yzxNuConfig;
+      flexnetosYzxNuShell = mkYzxNuShell "flexnetos-yzx-nu" flexnetosYzxNuConfig;
+      mkYzxShell = name: nuShell: let
+        source = pkgs.replaceVars ./runtime/yzx-shell.sh {
+          yzxNu = "${nuShell}/bin/${nuShell.name}";
+        };
+      in pkgs.runCommand name {} ''
+        install -D -m 755 ${source} "$out/bin/yzx-shell"
         patchShebangs "$out/bin/yzx-shell"
       '';
+      yzxShell = mkYzxShell "yzx-shell" yzxNuShell;
+      flexnetosYzxShell = mkYzxShell "flexnetos-yzx-shell" flexnetosYzxNuShell;
       yzxEnvSupervisor = pkgs.runCommand "yzx-env-supervisor" {} ''
         install -D -m 755 ${./runtime/yzx-env-supervisor.sh} "$out/bin/yzx-env-supervisor"
         patchShebangs "$out/bin/yzx-env-supervisor"
@@ -422,6 +479,25 @@
         install -D -m 644 ${yzxLayoutKdl} "$out/layout.kdl"
         install -D -m 644 ${yzxLayoutSwapKdl} "$out/layout.swap.kdl"
       '';
+      flexnetosYaziAssets = yazelixYaziAssets.packages.${system}.yazelix_yazi_assets;
+      flexnetosCcboard = "${flexnetosYaziAssets}/share/yazelix_yazi_assets/runtime_tools/ccboard/bin/ccboard";
+      flexnetosCodedb = "${flexnetosYaziAssets}/share/yazelix_yazi_assets/runtime_tools/codedb/bin/codedb";
+      flexnetosNuPluginCodedb = "${flexnetosYaziAssets}/share/yazelix_yazi_assets/runtime_tools/codedb/bin/nu_plugin_codedb";
+      flexnetosLayoutTemplate = pkgs.runCommand "flexnetos-agent-workspace-template.kdl" {} ''
+        substitute ${./defaults/zellij/flexnetos_agent_workspace.kdl} "$out" \
+          --replace-fail '@yazi@' '${yzxYazi}/bin/yzx-yazi' \
+          --replace-fail '@shell@' '${yzxShell}/bin/yzx-shell' \
+          --replace-fail '@agent@' '${yzxAgent}/bin/yzx-agent' \
+          --replace-fail '@ccboard@' '${flexnetosCcboard}'
+      '';
+      flexnetosLayoutKdl = pkgs.runCommand "flexnetos-agent-workspace.kdl" {} ''
+        substitute ${flexnetosLayoutTemplate} "$out" \
+          --replace-fail '@bar@' "$(<${yzxBarKdl})"
+      '';
+      flexnetosZellijLayout = pkgs.runCommand "flexnetos-zellij-layout" {} ''
+        install -D -m 644 ${flexnetosLayoutKdl} "$out/layout.kdl"
+        install -D -m 644 ${yzxLayoutSwapKdl} "$out/layout.swap.kdl"
+      '';
       yzxLazyGitConfig = pkgs.writeText "yzx-lazygit.yml" ''
         os:
           edit: '${yzxEditor}/bin/yzx-editor {{filename}}'
@@ -485,7 +561,14 @@
         };
         doCheck = false;
       });
-      mkYzxCommand = withMars: let
+      mkYzxCommand = {
+        withMars,
+        layoutPackage ? yzxZellijLayout,
+        layoutTemplate ? ./defaults/zellij/layout.kdl,
+        configKdl ? yzxConfigKdl,
+        shellPackage ? yzxShell,
+        extraPathPrefix ? [],
+      }: let
         packageVariant = if withMars then "full" else "runtime";
         marsPath = if withMars then "${marsPackage}/bin/mars" else "";
         main = pkgs.replaceVars ./runtime/yzx/main.rs {
@@ -494,12 +577,12 @@
           yzxTutor = "${yzxTutor}/bin/yzx-tutor";
           yzxScreen = "${yazelixScreenPackage}/bin/yzs";
           yzxWelcome = "${yzxWelcome}/bin/yzx-welcome";
-          yzxShell = "${yzxShell}/bin/yzx-shell";
+          yzxShell = "${shellPackage}/bin/yzx-shell";
           yzxEnvSupervisor = "${yzxEnvSupervisor}/bin/yzx-env-supervisor";
           zellij = "${yazelixZellijPackage}/bin/zellij";
           mars = marsPath;
-          layout = "${yzxZellijLayout}/layout.kdl";
-          layoutTemplate = "${./defaults/zellij/layout.kdl}";
+          layout = "${layoutPackage}/layout.kdl";
+          layoutTemplate = "${layoutTemplate}";
           layoutSwapTemplate = "${./defaults/zellij/layout.swap.kdl}";
           yzxAgent = "${yzxAgent}/bin/yzx-agent";
           yzxYazi = "${yzxYazi}/bin/yzx-yazi";
@@ -508,7 +591,8 @@
           yzxConfig = "${yzxConfig}/bin/yzx-config";
           yzxMarsConfig = if withMars then "${yzxMarsConfig}" else "";
           yzxZellijConfig = "${yzxZellijConfig}/bin/yzx-zellij-config";
-          yzxConfigKdl = "${yzxConfigKdl}";
+          yzxConfigKdl = "${configKdl}";
+          yzxRuntimeIdentity = "${yzxRuntimeIdentity}/runtime_identity.json";
           yzxReveal = "${yzxOpenCore}/bin/yzx-reveal";
           yzxSidebarRefresh = "${yzxOpenCore}/bin/yzx-sidebar-refresh";
           yzxYa = "${pkgs.yazi}/bin/ya";
@@ -525,13 +609,17 @@
           defaultMenuKeybinding = defaultConfig.keybindings.menu;
           inherit defaultPopupSideMargin defaultPopupVerticalMargin;
           version = novaVersion;
-          pathPrefix = pkgs.lib.makeBinPath [
-            pkgs.coreutils
-            pkgs.git
-            pkgs.lazygit
-            tokenusage
-            yzxHelix
-          ];
+          pathPrefix =
+            pkgs.lib.makeBinPath [
+              pkgs.coreutils
+              pkgs.git
+              pkgs.lazygit
+              tokenusage
+              yzxHelix
+            ]
+            + pkgs.lib.optionalString (extraPathPrefix != []) (
+              ":" + pkgs.lib.makeBinPath extraPathPrefix
+            );
         };
         src = pkgs.runCommand "yzx-command-${packageVariant}-src" {} ''
           mkdir -p "$out"
@@ -544,9 +632,17 @@
       mkYzx = {
         name,
         withMars ? false,
+        withDesktop ? withMars && pkgs.stdenv.hostPlatform.isLinux,
+        layoutPackage ? yzxZellijLayout,
+        layoutTemplate ? ./defaults/zellij/layout.kdl,
+        configKdl ? yzxConfigKdl,
+        nuConfig ? yzxNuConfig,
+        shellPackage ? yzxShell,
+        extraPathPrefix ? [],
       }: let
-        command = mkYzxCommand withMars;
-        withDesktop = withMars && pkgs.stdenv.hostPlatform.isLinux;
+        command = mkYzxCommand {
+          inherit withMars layoutPackage layoutTemplate configKdl shellPackage extraPathPrefix;
+        };
         desktop = pkgs.makeDesktopItem {
           name = "yzx";
           desktopName = "Yazelix Nova";
@@ -565,25 +661,25 @@
           paths = [command] ++ pkgs.lib.optional withDesktop desktop;
           postBuild =
             ''
-              ${yazelixZellijPackage}/bin/zellij --config ${yzxConfigKdl} setup --check >/dev/null
+              ${yazelixZellijPackage}/bin/zellij --config ${configKdl} setup --check >/dev/null
               install -d "$out/libexec/yazelix"
               ln -s ${yzxZellijConfig}/bin/yzx-zellij-config "$out/libexec/yazelix/yzx-zellij-config"
               ln -s ${yzxConfig}/bin/yzx-config "$out/libexec/yazelix/yzx-config"
               ln -s ${yzxTutor}/bin/yzx-tutor "$out/libexec/yazelix/yzx-tutor"
-              install -D -m 644 ${yzxConfigKdl} "$out/share/yazelix/config.kdl"
+              install -D -m 644 ${configKdl} "$out/share/yazelix/config.kdl"
               install -D -m 644 ${yzxRuntimeIdentity}/runtime_identity.json "$out/share/yazelix/runtime_identity.json"
               install -D -m 644 ${yazelixCursors}/yazelix_cursors_default.toml "$out/share/yazelix/cursors.toml"
               install -D -m 644 ${./defaults/config.toml} "$out/share/yazelix/config.toml"
-              install -D -m 644 ${yzxZellijLayout}/layout.kdl "$out/share/yazelix/layout.kdl"
-              install -D -m 644 ${yzxZellijLayout}/layout.swap.kdl "$out/share/yazelix/layout.swap.kdl"
+              install -D -m 644 ${layoutPackage}/layout.kdl "$out/share/yazelix/layout.kdl"
+              install -D -m 644 ${layoutPackage}/layout.swap.kdl "$out/share/yazelix/layout.swap.kdl"
               install -D -m 644 ${yzxYaziConfig}/init.lua "$out/share/yazelix/yazi/init.lua"
               install -D -m 644 ${yzxYaziConfig}/keymap.toml "$out/share/yazelix/yazi/keymap.toml"
               install -D -m 644 ${yzxYaziConfig}/plugins/sidebar-state.yazi/main.lua "$out/share/yazelix/yazi/plugins/sidebar-state.yazi/main.lua"
               install -D -m 644 ${yzxYaziConfig}/plugins/zoxide-editor.yazi/main.lua "$out/share/yazelix/yazi/plugins/zoxide-editor.yazi/main.lua"
               ln -s ${yzxYaziConfig}/plugins/git.yazi "$out/share/yazelix/yazi/plugins/git.yazi"
               install -D -m 644 ${yzxYaziConfig}/yazi.toml "$out/share/yazelix/yazi/yazi.toml"
-              install -D -m 644 ${yzxNuConfig}/config.nu "$out/share/yazelix/nu/config.nu"
-              install -D -m 644 ${yzxNuConfig}/env.nu "$out/share/yazelix/nu/env.nu"
+              install -D -m 644 ${nuConfig}/config.nu "$out/share/yazelix/nu/config.nu"
+              install -D -m 644 ${nuConfig}/env.nu "$out/share/yazelix/nu/env.nu"
             ''
             + pkgs.lib.optionalString withMars ''
               install -D -m 644 ${yzxMarsConfig}/config.toml "$out/share/yazelix/mars/config.toml"
@@ -604,10 +700,272 @@
         withMars = true;
       };
       yzxRuntime = mkYzx {name = "yazelix-runtime";};
+      fenixPkgs = fenix.packages.${system};
+      flexnetosRustPlatform = pkgs.makeRustPlatform {
+        cargo = fenixPkgs.latest.cargo;
+        rustc = fenixPkgs.latest.rustc;
+      };
+      flexnetosBeads = import ./packaging/beads_rust.nix {
+        inherit pkgs;
+        beadsSource = beads_rust_source;
+        rustPlatform = flexnetosRustPlatform;
+      };
+      flexnetosClaude = import ./packaging/claude_code_release.nix {
+        inherit pkgs;
+        version = "2.1.207";
+      };
+      flexnetosCodex = import ./packaging/codex_cli_release.nix {
+        inherit pkgs system;
+        version = "0.144.0";
+      };
+      flexnetosGitKb = import ./packaging/git_kb_release.nix {
+        inherit pkgs;
+        version = "0.2.12";
+      };
+      flexnetosRtk = import ./packaging/rtk_release.nix {
+        inherit pkgs;
+        rtkSource = rtk_source;
+        rustPlatform = flexnetosRustPlatform;
+      };
+      flexnetosGrit = import ./packaging/grit_release.nix {
+        inherit pkgs;
+        gritSource = grit_source;
+      };
+      flexnetosIcm = import ./packaging/icm_release.nix {
+        inherit pkgs;
+        icmSource = icm_source;
+      };
+      flexnetosWeave = import ./packaging/weave_release.nix {
+        inherit pkgs;
+        weaveSource = weave_source;
+      };
+      flexnetosObscura = import ./packaging/obscura_release.nix {
+        inherit pkgs;
+        obscuraSource = obscura_source;
+      };
+      flexnetosMeta = import ./packaging/meta_release.nix {inherit pkgs;};
+      flexnetosKacheBase = import ./packaging/kache_release.nix {inherit pkgs;};
+      flexnetosNotebooklm = import ./packaging/notebooklm_release.nix {
+        inherit pkgs;
+        version = "0.8.0a3";
+      };
+      flexnetosKache = pkgs.symlinkJoin {
+        name = "kache-with-rustc-wrapper-${flexnetosKacheBase.version}";
+        paths = [flexnetosKacheBase];
+        postBuild = ''
+          mkdir -p "$out/libexec/kache" "$out/bin"
+          cat > "$out/libexec/kache/rustc" <<'EOF'
+          #!${pkgs.runtimeShell}
+          set -eu
+          cargo_auditable="''${FLEXNETOS_KACHE_CARGO_AUDITABLE:-cargo-auditable}"
+          exec "$cargo_auditable" rustc "$@"
+          EOF
+          chmod +x "$out/libexec/kache/rustc"
+
+          cat > "$out/bin/kache-rustc-wrapper" <<EOF
+          #!${pkgs.runtimeShell}
+          set -eu
+          KACHE_BIN="''${KACHE_BIN:-$out/bin/kache}"
+          FLEXNETOS_KACHE_RUSTC_SHIM="''${FLEXNETOS_KACHE_RUSTC_SHIM:-$out/libexec/kache/rustc}"
+          if [ ! -x "\$KACHE_BIN" ]; then
+            printf 'kache-rustc-wrapper: Kache binary is not executable: %s\n' "\$KACHE_BIN" >&2
+            exit 127
+          fi
+          if [ "\$#" -ge 2 ]; then
+            first_name="\$(basename -- "\$1")"
+            second_name="\$(basename -- "\$2")"
+            if [ "\$first_name" = cargo-auditable ] && { [ "\$second_name" = rustc ] || [ "\$second_name" = clippy-driver ] || case "\$second_name" in rustc-*) true ;; *) false ;; esac; }; then
+              export FLEXNETOS_KACHE_CARGO_AUDITABLE="\$1"
+              shift 2
+              exec "\$KACHE_BIN" "\$FLEXNETOS_KACHE_RUSTC_SHIM" "\$@"
+            fi
+          fi
+          exec "\$KACHE_BIN" "\$@"
+          EOF
+          chmod +x "$out/bin/kache-rustc-wrapper"
+        '';
+      };
+      flexnetosRustToolchain = fenixPkgs.combine (
+        [
+          fenixPkgs.latest.cargo
+          fenixPkgs.latest.rustc
+          fenixPkgs.latest.rustfmt
+          fenixPkgs.latest.clippy
+          fenixPkgs.latest.rust-analyzer
+        ]
+        ++ pkgs.lib.optionals (system == "x86_64-linux") [
+          fenixPkgs.targets.x86_64-unknown-linux-musl.latest.rust-std
+        ]
+      );
+      flexnetosRust189 = fenixPkgs.fromToolchainName {
+        name = "1.89.0";
+        sha256 = "sha256-+9FmLhAOezBZCOziO0Qct1NOrfpjNsXxc/8I0c7BdKE=";
+      };
+      flexnetosRust189Lane = pkgs.runCommand
+        "flexnetos-foundation-rust-1.89-lane"
+        {nativeBuildInputs = [pkgs.makeWrapper];}
+        ''
+          mkdir -p "$out/bin"
+          makeWrapper "${flexnetosRust189.cargo}/bin/cargo" \
+            "$out/bin/cargo-msrv-1.89" \
+            --unset CARGO_BUILD_RUSTC_WRAPPER \
+            --unset RUSTC_WRAPPER \
+            --unset RUSTUP_TOOLCHAIN \
+            --set RUSTC "${flexnetosRust189.rustc}/bin/rustc" \
+            --set RUSTDOC "${flexnetosRust189.rustc}/bin/rustdoc"
+          ln -s "${flexnetosRust189.rustc}/bin/rustc" "$out/bin/rustc-msrv-1.89"
+          ln -s "${flexnetosRust189.rustc}/bin/rustdoc" "$out/bin/rustdoc-msrv-1.89"
+        '';
+      flexnetosMuslToolchain = pkgs.symlinkJoin {
+        name = "flexnetos-foundation-musl-toolchain";
+        paths = [pkgs.pkgsCross.musl64.stdenv.cc];
+        postBuild = ''
+          ln -s "$out/bin/x86_64-unknown-linux-musl-gcc" "$out/bin/x86_64-linux-musl-gcc"
+          ln -s "$out/bin/x86_64-unknown-linux-musl-g++" "$out/bin/x86_64-linux-musl-g++"
+          ln -s "$out/bin/x86_64-unknown-linux-musl-ar" "$out/bin/x86_64-linux-musl-ar"
+          ln -s "$out/bin/x86_64-unknown-linux-musl-ranlib" "$out/bin/x86_64-linux-musl-ranlib"
+        '';
+      };
+      flexnetosBun = pkgs.bun.overrideAttrs (_old: {
+        version = "1.3.14";
+        src = pkgs.fetchurl {
+          url = "https://github.com/oven-sh/bun/releases/download/bun-v1.3.14/bun-linux-x64.zip";
+          hash = "sha256-lR7iruhV8IWVruxiJSJqKY0/6oOj3NZGXAnLzN9+hI8=";
+        };
+      });
+      flexnetosExecutables = {
+        Xvfb = "${pkgs.xorg-server}/bin/Xvfb";
+        actionlint = "${pkgs.actionlint}/bin/actionlint";
+        br = "${flexnetosBeads}/bin/br";
+        bun = "${flexnetosBun}/bin/bun";
+        bunx = "${flexnetosBun}/bin/bunx";
+        cargo = "${flexnetosRustToolchain}/bin/cargo";
+        cargo-audit = "${pkgs.cargo-audit}/bin/cargo-audit";
+        cargo-clippy = "${flexnetosRustToolchain}/bin/cargo-clippy";
+        cargo-fmt = "${flexnetosRustToolchain}/bin/cargo-fmt";
+        "cargo-msrv-1.89" = "${flexnetosRust189Lane}/bin/cargo-msrv-1.89";
+        cargo-tauri = "${pkgs.cargo-tauri}/bin/cargo-tauri";
+        cc = "${pkgs.stdenv.cc}/bin/cc";
+        ccboard = flexnetosCcboard;
+        clang = "${pkgs.clang}/bin/clang";
+        "clang++" = "${pkgs.clang}/bin/clang++";
+        claude = "${flexnetosClaude}/bin/claude";
+        clippy-driver = "${flexnetosRustToolchain}/bin/clippy-driver";
+        codedb = flexnetosCodedb;
+        codex = "${flexnetosCodex}/bin/codex";
+        corepack = "${pkgs.corepack}/bin/corepack";
+        file = "${pkgs.file}/bin/file";
+        git-kb = "${flexnetosGitKb}/bin/git-kb";
+        grit = "${flexnetosGrit}/bin/grit";
+        home-manager = "${home-manager.packages.${system}.default}/bin/home-manager";
+        icm = "${flexnetosIcm}/bin/icm";
+        kache = "${flexnetosKache}/bin/kache";
+        kache-rustc-wrapper = "${flexnetosKache}/bin/kache-rustc-wrapper";
+        "ld.wild" = "${pkgs.wild}/bin/ld.wild";
+        loop = "${flexnetosMeta}/bin/loop";
+        meta = "${flexnetosMeta}/bin/meta";
+        meta-git = "${flexnetosMeta}/bin/meta-git";
+        meta-mcp = "${flexnetosMeta}/bin/meta-mcp";
+        meta-project = "${flexnetosMeta}/bin/meta-project";
+        node = "${pkgs.nodejs_24}/bin/node";
+        notebooklm = "${flexnetosNotebooklm}/bin/notebooklm";
+        npm = "${pkgs.nodejs_24}/bin/npm";
+        nu = "${pkgs.nushell}/bin/nu";
+        nu_plugin_codedb = flexnetosNuPluginCodedb;
+        obscura = "${flexnetosObscura}/bin/obscura";
+        pkg-config = "${pkgs.pkg-config}/bin/pkg-config";
+        pnpm = "${pkgs.corepack}/bin/pnpm";
+        rtk = "${flexnetosRtk}/bin/rtk";
+        rust-analyzer = "${flexnetosRustToolchain}/bin/rust-analyzer";
+        rustc = "${flexnetosRustToolchain}/bin/rustc";
+        "rustc-msrv-1.89" = "${flexnetosRust189Lane}/bin/rustc-msrv-1.89";
+        rustdoc = "${flexnetosRustToolchain}/bin/rustdoc";
+        "rustdoc-msrv-1.89" = "${flexnetosRust189Lane}/bin/rustdoc-msrv-1.89";
+        rustfmt = "${flexnetosRustToolchain}/bin/rustfmt";
+        sqld = "${pkgs.sqld}/bin/sqld";
+        sqlite3 = "${pkgs.sqlite}/bin/sqlite3";
+        tu = "${tokenusage}/bin/tu";
+        uv = "${pkgs.uv}/bin/uv";
+        uvx = "${pkgs.uv}/bin/uvx";
+        wasm-pack = "${pkgs.wasm-pack}/bin/wasm-pack";
+        weave = "${flexnetosWeave}/bin/weave";
+        wild = "${pkgs.wild}/bin/wild";
+        yarn = "${pkgs.corepack}/bin/yarn";
+        x86_64-linux-musl-ar = "${flexnetosMuslToolchain}/bin/x86_64-linux-musl-ar";
+        "x86_64-linux-musl-g++" = "${flexnetosMuslToolchain}/bin/x86_64-linux-musl-g++";
+        x86_64-linux-musl-gcc = "${flexnetosMuslToolchain}/bin/x86_64-linux-musl-gcc";
+        x86_64-linux-musl-ranlib = "${flexnetosMuslToolchain}/bin/x86_64-linux-musl-ranlib";
+        x86_64-unknown-linux-musl-ar = "${flexnetosMuslToolchain}/bin/x86_64-unknown-linux-musl-ar";
+        "x86_64-unknown-linux-musl-g++" = "${flexnetosMuslToolchain}/bin/x86_64-unknown-linux-musl-g++";
+        x86_64-unknown-linux-musl-gcc = "${flexnetosMuslToolchain}/bin/x86_64-unknown-linux-musl-gcc";
+        x86_64-unknown-linux-musl-ranlib = "${flexnetosMuslToolchain}/bin/x86_64-unknown-linux-musl-ranlib";
+      };
+      flexnetosTools = pkgs.runCommand "flexnetos-foundation-tools" {} (
+        ''
+          mkdir -p "$out/bin" "$out/toolbin"
+        ''
+        + pkgs.lib.concatStringsSep "\n" (
+          pkgs.lib.mapAttrsToList (name: executable: ''
+            test -x ${pkgs.lib.escapeShellArg executable}
+            ln -s ${pkgs.lib.escapeShellArg executable} "$out/bin/${name}"
+            ln -s ${pkgs.lib.escapeShellArg executable} "$out/toolbin/${name}"
+          '') flexnetosExecutables
+        )
+      );
+      flexnetosYzxBase = mkYzx {
+        name = "lifeos-foundation-yzx-base";
+        withMars = true;
+        withDesktop = false;
+        layoutPackage = flexnetosZellijLayout;
+        layoutTemplate = flexnetosLayoutTemplate;
+        nuConfig = flexnetosYzxNuConfig;
+        shellPackage = flexnetosYzxShell;
+        extraPathPrefix = [flexnetosTools];
+      };
+      lifeosFoundationYzx = pkgs.symlinkJoin {
+        name = "lifeos-foundation-yzx";
+        paths = [flexnetosYzxBase flexnetosTools];
+        nativeBuildInputs = [pkgs.desktop-file-utils];
+        postBuild = ''
+          install -D -m 644 ${flexnetosZellijLayout}/layout.kdl \
+            "$out/configs/zellij/layouts/flexnetos_agent_workspace.kdl"
+          install -D -m 644 ${./nushell/config/config.nu} "$out/nushell/config/config.nu"
+          install -D -m 644 ${./nushell/config/rtk_wrappers.nu} "$out/nushell/config/rtk_wrappers.nu"
+          install -D -m 644 ${./nushell/config/stack_prompt_guard.nu} "$out/nushell/config/stack_prompt_guard.nu"
+          install -D -m 644 ${./nushell/scripts/flexnetos_init.nu} "$out/nushell/scripts/flexnetos_init.nu"
+
+          install -D -m 644 /dev/stdin "$out/share/applications/com.flexnetos.Yazelix.desktop" <<'EOF'
+          [Desktop Entry]
+          Version=1.4
+          Type=Application
+          Name=FlexNetOS Yazelix Agent
+          Comment=Yazelix Nova with the profile-owned FlexNetOS agent workspace
+          Icon=yzx
+          StartupWMClass=mars
+          Terminal=false
+          X-Yazelix-Managed=true
+          X-FlexNetOS-Managed=true
+          Exec=/home/flexnetos/.nix-profile/bin/yzx launch
+          Categories=Development;System;TerminalEmulator;
+          EOF
+          desktop-file-validate "$out/share/applications/com.flexnetos.Yazelix.desktop"
+
+          for icon in ${marsPackage}/share/icons/hicolor/*/apps/mars.png; do
+            size="$(basename "$(dirname "$(dirname "$icon")")")"
+            install -d "$out/share/icons/hicolor/$size/apps"
+            ln -s "$icon" "$out/share/icons/hicolor/$size/apps/yzx.png"
+          done
+          install -d "$out/share/pixmaps"
+          ln -s ${marsPackage}/share/pixmaps/mars.png "$out/share/pixmaps/yzx.png"
+        '';
+        meta = flexnetosYzxBase.meta;
+      };
     in {
       inherit yazelix;
       runtime = yzxRuntime;
       default = yazelix;
+    } // pkgs.lib.optionalAttrs (system == "x86_64-linux") {
+      lifeos_foundation_yzx = lifeosFoundationYzx;
     });
 
     checks = eachSystem (system: let
@@ -673,7 +1031,7 @@
       homeManagerConfigFiles = homeManagerConfiguration {
         programs.yazelix.config = {
           settings = {
-            shell.program = "fish";
+            shell.program = "nu";
             welcome.enabled = false;
             keybindings.config = "Alt Shift C";
             keybindings.agent = "Alt Shift A";
@@ -726,7 +1084,7 @@
           printf '%s\n' 'Home Manager v1 must not generate Yazelix runtime config files' >&2
           exit 1
         fi
-        grep -q 'program = "fish"' "$config_files/config.toml"
+        grep -q 'program = "nu"' "$config_files/config.toml"
         ! grep -q 'command = "yzx-hx"' "$config_files/config.toml"
         grep -q 'enabled = false' "$config_files/config.toml"
         ! grep -q 'style = "random"' "$config_files/config.toml"
@@ -741,7 +1099,7 @@
           /nix/store/*) ;;
           *) printf '%s\n' 'Home Manager cursor source is not store-backed' >&2; exit 1 ;;
         esac
-        test "$(YAZELIX_CONFIG_HOME="$config_files" ${yzx}/libexec/yazelix/yzx-config --get shell.program)" = fish
+        test "$(YAZELIX_CONFIG_HOME="$config_files" ${yzx}/libexec/yazelix/yzx-config --get shell.program)" = nu
         test "$(YAZELIX_CONFIG_HOME="$config_files" ${yzx}/libexec/yazelix/yzx-config --get editor.command)" = yzx-hx
         test "$(YAZELIX_CONFIG_HOME="$config_files" ${yzx}/libexec/yazelix/yzx-config --get agent.command)" = auto
         test "$(YAZELIX_CONFIG_HOME="$config_files" ${yzx}/libexec/yazelix/yzx-config --get agent.args)" = "[]"
@@ -778,11 +1136,11 @@
         grep -q 'Yazelix Nova status' status
         grep -q "config home: $runtime_config" status
         grep -q "state dir: $YAZELIX_STATE_DIR" status
-        grep -q 'shell: fish' status
+        grep -q 'shell: nu' status
         grep -q 'welcome enabled: false' status
         grep -q 'Yazelix Nova doctor' doctor
         grep -q "ok config home: $runtime_config" doctor
-        grep -q 'ok shell.program: fish' doctor
+        grep -q 'ok shell.program: nu' doctor
         grep -q 'Yazelix Nova tutor lessons' tutor-list
         touch "$out"
       '';
@@ -874,18 +1232,79 @@
       helix_contracts = pkgs.runCommand "yzx-helix-contracts" {} ''
         ${helixContractsCheck}/bin/helix-contracts-check ${yzx} "$out"
       '';
+    } // pkgs.lib.optionalAttrs (system == "x86_64-linux") {
+      flexnetos_foundation_contracts = let
+        foundation = self.packages.${system}.lifeos_foundation_yzx;
+        flexnetosNuConfig = pkgs.replaceVars ./nushell/config/config.nu {
+          rtkWrappers = "${./nushell/config/rtk_wrappers.nu}";
+          stackPromptGuard = "${./nushell/config/stack_prompt_guard.nu}";
+          flexnetosInit = "${./nushell/scripts/flexnetos_init.nu}";
+          profileNu = "/home/flexnetos/.nix-profile/toolbin/nu";
+        };
+      in pkgs.runCommand "flexnetos-foundation-contracts" {} ''
+        test -x ${foundation}/bin/yzx
+        test -x ${foundation}/bin/rtk
+        test -x ${foundation}/bin/codex
+        test -x ${foundation}/bin/claude
+        test -x ${foundation}/bin/ccboard
+        test -x ${foundation}/bin/codedb
+        test -x ${foundation}/bin/nu_plugin_codedb
+        test -x ${foundation}/toolbin/nu
+        test ! -e ${foundation}/bin/yzx-desktop-launch
+        test ! -e ${foundation}/bin/yzx-agent-workspace-launch
+
+        desktop_count="$(find ${foundation}/share/applications -maxdepth 1 -name '*.desktop' | wc -l)"
+        test "$desktop_count" = 1
+        desktop=${foundation}/share/applications/com.flexnetos.Yazelix.desktop
+        test -f "$desktop"
+        grep -Fx 'Exec=/home/flexnetos/.nix-profile/bin/yzx launch' "$desktop"
+
+        layout=${foundation}/configs/zellij/layouts/flexnetos_agent_workspace.kdl
+        test -f "$layout"
+        grep -F 'tab name="FlexNetOS" focus=true' "$layout"
+        grep -F 'tab name="Mission Control"' "$layout"
+        ! grep -F '@bar@' "$layout"
+        ! grep -F '@yazi@' "$layout"
+
+        test -f ${foundation}/nushell/config/config.nu
+        test -f ${foundation}/nushell/config/rtk_wrappers.nu
+        test -f ${foundation}/nushell/config/stack_prompt_guard.nu
+        test -f ${foundation}/nushell/scripts/flexnetos_init.nu
+        grep -F 'source "${flexnetosNuConfig}"' ${foundation}/share/yazelix/nu/config.nu
+        grep -F ${./nushell/config/rtk_wrappers.nu} ${flexnetosNuConfig}
+        grep -F ${./nushell/scripts/flexnetos_init.nu} ${flexnetosNuConfig}
+
+        export HOME="$TMPDIR/home"
+        export YAZELIX_CONFIG_HOME="$TMPDIR/config"
+        export YAZELIX_STATE_DIR="$TMPDIR/state"
+        mkdir -p "$HOME" "$YAZELIX_CONFIG_HOME" "$YAZELIX_STATE_DIR"
+        ${foundation}/bin/yzx status > status
+        ${foundation}/bin/yzx doctor > doctor
+        grep -Fx 'shell: nu' status
+        grep -F "runtime identity: $YAZELIX_STATE_DIR/runtime_identity.json" status
+        grep -Fx 'ok shell.program: nu' doctor
+        cmp ${foundation}/share/yazelix/runtime_identity.json "$YAZELIX_STATE_DIR/runtime_identity.json"
+        touch "$out"
+      '';
     });
 
-    apps = eachSystem (system: rec {
-      yazelix = {
-        type = "app";
-        program = "${self.packages.${system}.yazelix}/bin/yzx";
-      };
-      runtime = {
-        type = "app";
-        program = "${self.packages.${system}.runtime}/bin/yzx";
-      };
-      default = yazelix;
-    });
+    apps = eachSystem (system:
+      rec {
+        yazelix = {
+          type = "app";
+          program = "${self.packages.${system}.yazelix}/bin/yzx";
+        };
+        runtime = {
+          type = "app";
+          program = "${self.packages.${system}.runtime}/bin/yzx";
+        };
+        default = yazelix;
+      }
+      // nixpkgs.lib.optionalAttrs (system == "x86_64-linux") {
+        lifeos_foundation_yzx = {
+          type = "app";
+          program = "${self.packages.${system}.lifeos_foundation_yzx}/bin/yzx";
+        };
+      });
   };
 }

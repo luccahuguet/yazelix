@@ -99,9 +99,9 @@ sessions. Put argv-style arguments in `agent.args`, not in `agent.command`.
 
 ## Nushell And Starship
 
-When `shell.program = "nu"`, Yazelix does not read normal Nushell config. It
-generates runtime Nu files that source packaged Yazelix config first and then
-optional user files:
+Yazelix requires `shell.program = "nu"` and does not read normal Nushell
+config. It generates runtime Nu files that source packaged Nova config first,
+the source-owned FlexNetOS layer next, and then optional user files:
 
 ```text
 ~/.config/yazelix/nu/env.nu
@@ -111,6 +111,12 @@ optional user files:
 If host `mise` is available on the inherited `PATH`, managed Nu inserts
 `mise activate nu` output after packaged `config.nu` and before user
 `nu/config.nu`. Missing or failing `mise` is skipped.
+
+The FlexNetOS product sources stay in `nushell/config/` and
+`nushell/scripts/`. Nix embeds their immutable paths in the packaged Nushell
+config, and the generated runtime file under `~/.local/share/yazelix/nu/`
+sources that package output. Generated runtime files are proof, not an edit
+surface.
 
 Managed Nu sets `STARSHIP_CONFIG` to
 `~/.config/yazelix/starship.toml` when that file exists. Otherwise it sets

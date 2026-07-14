@@ -12,6 +12,12 @@ Mars, Rio, or desktop assets. Its `launch` command explains that Mars is absent,
 so use `enter` for the managed workspace. Both package and app outputs exist for
 `x86_64-linux`, `aarch64-linux`, `x86_64-darwin`, and `aarch64-darwin`
 
+The `x86_64-linux`-only `lifeos_foundation_yzx` output composes canonical Nova
+with the FlexNetOS toolchain. It deliberately owns one profile element, one
+`bin/yzx` frontdoor, one desktop entry, and one default agent workspace. Its
+desktop entry executes `/home/flexnetos/.nix-profile/bin/yzx launch` directly;
+there is no launcher wrapper or parallel regular/agent entry
+
 Install the Mars-free variant with:
 
 ```sh
@@ -117,7 +123,7 @@ Example:
 ```nix
 programs.yazelix.config = {
   settings = {
-    shell.program = "fish";
+    shell.program = "nu";
     editor.command = "nvim";
     welcome.enabled = false;
   };

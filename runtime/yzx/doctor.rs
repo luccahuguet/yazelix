@@ -29,6 +29,7 @@ pub(crate) fn print_doctor() -> Result<(), AppError> {
     println!("Yazelix Nova doctor");
     doctor_ok("config home", runtime.config_home.display());
     doctor_ok("state dir", runtime.state_dir.display());
+    doctor_ok("runtime identity", runtime.runtime_identity.display());
     doctor_ok("shell.program", &runtime.shell_program);
     doctor_ok("editor.command", &runtime.editor_command);
     doctor_ok("editor", &runtime.editor);
