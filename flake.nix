@@ -495,6 +495,7 @@
           --replace-fail '@bar@' "$(<${yzxBarKdl})"
       '';
       flexnetosZellijLayout = pkgs.runCommand "flexnetos-zellij-layout" {} ''
+        ${yzxLayoutCheck}/bin/yzx-layout-check ${flexnetosLayoutKdl} ${yzxLayoutSwapKdl} ${pkgs.lib.escapeShellArg novaBarLabel} workspace
         install -D -m 644 ${flexnetosLayoutKdl} "$out/layout.kdl"
         install -D -m 644 ${yzxLayoutSwapKdl} "$out/layout.swap.kdl"
       '';

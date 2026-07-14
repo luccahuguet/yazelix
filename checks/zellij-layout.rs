@@ -4,9 +4,17 @@ const HOME_TAB_MARKER: &str = "\u{f015}";
 
 fn main() -> ExitCode {
     let args = env::args().collect::<Vec<_>>();
-    let [_, layout_path, swap_path, nova_label] = args.as_slice() else {
-        eprintln!("usage: zellij-layout <layout.kdl> <layout.swap.kdl> <nova-label>");
-        return ExitCode::FAILURE;
+    let (layout_path, swap_path, nova_label, workspace) = match args.as_slice() {
+        [_, layout_path, swap_path, nova_label] => (layout_path, swap_path, nova_label, false),
+        [_, layout_path, swap_path, nova_label, mode] if mode == "workspace" => {
+            (layout_path, swap_path, nova_label, true)
+        }
+        _ => {
+            eprintln!(
+                "usage: zellij-layout <layout.kdl> <layout.swap.kdl> <nova-label> [workspace]"
+            );
+            return ExitCode::FAILURE;
+        }
     };
 
     let layout = read(layout_path);
@@ -15,44 +23,47 @@ fn main() -> ExitCode {
         .filter_map(tab_template)
         .collect::<BTreeSet<_>>();
     let mut ok = true;
-    for (block, needle, message) in [
-        (
-            "tab_template name=\"ui\"",
-            "children",
-            "missing content delimiter in swap UI template",
-        ),
-        (
-            "default_tab_template",
-            "pane name=\"sidebar\" command=",
-            "missing Yazi sidebar command in default tab template",
-        ),
-        (
-            "new_tab_template",
-            "pane name=\"sidebar\" command=",
-            "missing Yazi sidebar command in new tab template",
-        ),
-    ] {
-        if !block_contains(&layout, block, needle) {
-            eprintln!("{layout_path}: {message}");
-            ok = false;
+    if !block_contains(&layout, "tab_template name=\"ui\"", "children") {
+        eprintln!("{layout_path}: missing content delimiter in swap UI template");
+        ok = false;
+    }
+    if !workspace {
+        for (block, needle, message) in [
+            (
+                "default_tab_template",
+                "pane name=\"sidebar\" command=",
+                "missing Yazi sidebar command in default tab template",
+            ),
+            (
+                "new_tab_template",
+                "pane name=\"sidebar\" command=",
+                "missing Yazi sidebar command in new tab template",
+            ),
+        ] {
+            if !block_contains(&layout, block, needle) {
+                eprintln!("{layout_path}: {message}");
+                ok = false;
+            }
         }
     }
-    if !layout_order_is_valid(&layout) {
+    if !workspace && !layout_order_is_valid(&layout) {
         eprintln!(
             "{layout_path}: startup tab must follow default_tab_template and precede new_tab_template"
         );
         ok = false;
     }
-    if !layout
-        .lines()
-        .any(|line| line.trim() == format!(r#"tab name="{HOME_TAB_MARKER}""#))
+    if !workspace
+        && !layout
+            .lines()
+            .any(|line| line.trim() == format!(r#"tab name="{HOME_TAB_MARKER}""#))
     {
         eprintln!("{layout_path}: startup tab must use the Yazelix home tab marker");
         ok = false;
     }
-    if !layout
-        .lines()
-        .any(|line| line.trim() == r#"new_tab_template cwd="$HOME" {"#)
+    if !workspace
+        && !layout
+            .lines()
+            .any(|line| line.trim() == r#"new_tab_template cwd="$HOME" {"#)
     {
         eprintln!("{layout_path}: new tabs must open in home to match the home marker");
         ok = false;
