@@ -19,6 +19,15 @@ def source_path [name: string] {
     $"(policy_root)/($name)"
 }
 
+def target_path [absolute: string] {
+    let root = ($env.YAZELIX_HOST_POLICY_TARGET_ROOT? | default "" | str trim --right --char "/")
+    if ($root | is-empty) {
+        $absolute
+    } else {
+        $root | path join ($absolute | str trim --left --char "/")
+    }
+}
+
 def assert_bundle [] {
     for owned in $OWNED_FILES {
         let source = (source_path $owned.source)
@@ -62,7 +71,6 @@ def apply_owned_file [source: string, target: string] {
         rm --force $staged
     }
     cp $source $staged
-    ^$"($PROFILE_ROOT)/bin/chmod" 0644 $staged
     mv --force $staged $target
 }
 
@@ -70,13 +78,15 @@ def check_targets [] {
     assert_bundle
     for owned in $OWNED_FILES {
         let source = (source_path $owned.source)
-        if not (same_file $source $owned.target) {
-            error make {msg: $"host policy drift: ($owned.target)"}
+        let target = (target_path $owned.target)
+        if not (same_file $source $target) {
+            error make {msg: $"host policy drift: ($target)"}
         }
     }
     for retired in $RETIRED_CLIENT_STATE {
-        if ($retired | path exists) {
-            error make {msg: $"retired Nix cache authority exists: ($retired)"}
+        let target = (target_path $retired)
+        if ($target | path exists) {
+            error make {msg: $"retired Nix cache authority exists: ($target)"}
         }
     }
 }
@@ -100,11 +110,12 @@ def check_effective [] {
 def apply_nix [] {
     assert_bundle
     for owned in $OWNED_FILES {
-        apply_owned_file (source_path $owned.source) $owned.target
+        apply_owned_file (source_path $owned.source) (target_path $owned.target)
     }
     for retired in $RETIRED_CLIENT_STATE {
-        if ($retired | path exists) {
-            rm --recursive --force $retired
+        let target = (target_path $retired)
+        if ($target | path exists) {
+            rm --recursive --force $target
         }
     }
     check_targets
@@ -113,6 +124,7 @@ def apply_nix [] {
 def main [command: string = "check"] {
     match $command {
         "check-bundle" => { assert_bundle }
+        "check-files" => { check_targets }
         "apply-nix" => { apply_nix }
         "check" => { check_targets; check_effective }
         _ => { error make {msg: $"unknown host policy command: ($command)"} }

@@ -1277,6 +1277,13 @@
         grep -Fx 'Environment=KACHE_CACHE_DIR=/home/flexnetos/.cache/kache/runners/%i' "$runner_unit"
         YAZELIX_HOST_POLICY_ROOT=${foundation}/share/yazelix/host-policy \
           ${foundation}/bin/yazelix_host_policy check-bundle
+        host_policy_test_root="$TMPDIR/host-policy-root"
+        YAZELIX_HOST_POLICY_ROOT=${foundation}/share/yazelix/host-policy \
+          YAZELIX_HOST_POLICY_TARGET_ROOT="$host_policy_test_root" \
+          ${foundation}/bin/yazelix_host_policy apply-nix
+        YAZELIX_HOST_POLICY_ROOT=${foundation}/share/yazelix/host-policy \
+          YAZELIX_HOST_POLICY_TARGET_ROOT="$host_policy_test_root" \
+          ${foundation}/bin/yazelix_host_policy check-files
         grep -Fx 'substitute = false' ${foundation}/share/yazelix/host-policy/nix.conf
         grep -Fx 'substituters =' ${foundation}/share/yazelix/host-policy/nix.conf
         grep -Fx 'trusted-substituters =' ${foundation}/share/yazelix/host-policy/nix.conf
