@@ -5,7 +5,9 @@ User-visible runtime changes for Yazelix Nova live here.
 ## 1.0.0-beta.1
 
 - Ratconfig's Yazi tab renders safe native `yazi.toml` and `theme.toml` values,
-  keeps complex structures available through file actions, and discovers
+  previews complete tables and arrays instead of count-only badges, keeps TOML
+  infinities and NaN inspectable, leaves untyped empty arrays safely read-only,
+  opens the exact writable owning file with `e` from a structured row, and discovers
   packaged and user-installed flavors for dark/light selection. Nova packages
   the five flavors hosted by `yazi-rs/flavors` without preview assets; an
   explicitly installed user flavor wins; empty names are ignored and incomplete
@@ -52,9 +54,9 @@ User-visible runtime changes for Yazelix Nova live here.
   `config.toml` values before runtime or Ratconfig use while preserving sparse
   inheritance and the documented dynamic `popups.<id>` namespace.
 - Ratconfig identifies store-backed Home Manager config as declarative rather
-  than merely read-only. Structured saves, resets, and native file actions stop
-  before mutation and name the exact `programs.yazelix.config.*` option to edit;
-  chmod-only user files remain user-owned.
+  than merely read-only. Structured saves and resets stop before mutation;
+  native file actions are disabled up front. Both paths name the exact
+  `programs.yazelix.config.*` option to edit; chmod-only user files remain user-owned.
 - First use seeds child-owned `cursors.toml` without overwriting user state.
   The Ratconfig Cursors tab edits the enabled pool, selection, and common effect
   settings while preserving custom definitions; advanced editing opens the full

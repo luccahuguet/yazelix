@@ -92,7 +92,8 @@ flavors, or `9` for the read-only packaged key reference. Use `1`-`9` to jump
 directly to a tab, `Tab`/`Shift-Tab` or `h`/`l` to change tabs, `j`/`k` to move,
 and `/` to search. Use `e`, `Enter`, or `Space` for the selected row's
 contextual action, such as editing or opening it. Press `u` to reset a setting
-and `q` to quit. The footer shows the controls available for the selected row
+and `q` to quit. When a writable structured row has one owning file action, `e`
+opens that exact config file. The footer lists the selected row's controls
 
 Nova carries Helix/Vim's `h/j/k/l` motion model through the workspace:
 
@@ -215,6 +216,6 @@ popup contracts live in [Runtime Notes](docs/runtime-notes.md)
 
 ## LOC Scorecard
 
-Nova owns **17,641 lines** of tracked text project files. The
+Nova owns **17,669 lines** of tracked text project files. The
 [reproducible scorecard](docs/development.md#loc-scorecard) excludes Beads,
 lockfiles, and binary assets

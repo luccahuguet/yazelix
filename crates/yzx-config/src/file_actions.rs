@@ -34,17 +34,23 @@ pub(crate) struct FileActionSpec {
 pub(crate) fn build_file_actions(paths: &ConfigPaths) -> Vec<ConfigUiFileAction> {
     file_action_specs(paths)
         .into_iter()
-        .map(|spec| ConfigUiFileAction {
-            source_id: spec.source_id.to_string(),
-            action_id: spec.action_id.to_string(),
-            tab: spec.tab.to_string(),
-            label: spec.label.to_string(),
-            description: spec.description.to_string(),
-            exists: spec.path.exists(),
-            read_only: paths.is_home_manager_owned(&spec.path) || path_read_only(&spec.path),
-            create_if_missing: true,
-            disabled_reason: None,
-            path: spec.path,
+        .map(|spec| {
+            let disabled_reason = paths
+                .reject_mutation(&spec.path, spec.source_id)
+                .err()
+                .map(|error| error.to_string());
+            ConfigUiFileAction {
+                source_id: spec.source_id.to_string(),
+                action_id: spec.action_id.to_string(),
+                tab: spec.tab.to_string(),
+                label: spec.label.to_string(),
+                description: spec.description.to_string(),
+                exists: spec.path.exists(),
+                read_only: disabled_reason.is_some(),
+                create_if_missing: true,
+                disabled_reason,
+                path: spec.path,
+            }
         })
         .collect()
 }
@@ -114,7 +120,7 @@ fn file_action_specs(paths: &ConfigPaths) -> impl IntoIterator<Item = FileAction
             starter: NU_CONFIG_STARTER,
         },
         FileActionSpec {
-            source_id: SOURCE_YAZI,
+            source_id: SOURCE_YAZI_CONFIG,
             action_id: ACTION_YAZI_CONFIG,
             tab: TAB_YAZI,
             label: "yazi/yazi.toml",
@@ -150,7 +156,7 @@ fn file_action_specs(paths: &ConfigPaths) -> impl IntoIterator<Item = FileAction
             starter: YAZI_PACKAGE_STARTER,
         },
         FileActionSpec {
-            source_id: SOURCE_YAZI,
+            source_id: SOURCE_YAZI_THEME,
             action_id: ACTION_YAZI_THEME,
             tab: TAB_YAZI,
             label: "yazi/theme.toml",

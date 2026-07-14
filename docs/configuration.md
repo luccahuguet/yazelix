@@ -121,13 +121,16 @@ Managed files and asset directories may be symlinked from another checkout, but
 their resolved targets must stay outside the generated `state/yazi` runtime
 
 Ratconfig's Yazi tab reads the sparse user `yazi.toml` against Nova's packaged
-layer and reads native `theme.toml`. Scalars and simple string arrays with safe
-dotted paths are editable; complex tables, arrays, and quoted paths remain
-read-only rows. The file actions in the same tab open `yazi.toml`, `theme.toml`,
-`keymap.toml`, `package.toml`, and `init.lua` for complete native editing. A
-setting added through the file action appears in the rendered table after the
-editor closes. Structured saves apply on the next managed Yazi launch or
-sidebar reopen
+layer and reads native `theme.toml`. Strings, booleans, integers, finite floats,
+and non-empty string arrays with safe dotted paths are editable; complex tables,
+empty or complex arrays, non-finite floats, and quoted paths remain
+read-only rows with compact previews of their complete values. On a writable
+source, press `e` on a structured `yazi.toml` or `theme.toml` row to open that
+exact file; read-only sources retain their ownership guidance. The file actions
+in the same tab also open those files plus `keymap.toml`, `package.toml`, and
+`init.lua` for complete native editing. A setting added through the file action
+appears in Ratconfig after the editor closes. Structured saves apply on the next
+managed Yazi launch or sidebar reopen
 
 ### Yazi flavors
 

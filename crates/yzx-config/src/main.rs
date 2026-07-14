@@ -1142,7 +1142,12 @@ color = "#123456"
             .find(|action| action.action_id == ACTION_NU_ENV)
             .unwrap();
         assert!(action.read_only);
-        assert!(action.disabled_reason.is_none());
+        assert!(
+            action
+                .disabled_reason
+                .unwrap()
+                .contains("programs.yazelix.config.nu.env")
+        );
     }
 
     #[test]
@@ -1216,6 +1221,8 @@ color = "#123456"
             let expected = match action.label.as_str() {
                 "cursors.toml" => (SOURCE_CURSORS, TAB_CURSORS),
                 label if label.starts_with("helix/") => (SOURCE_HELIX, TAB_HELIX),
+                "yazi/yazi.toml" => (SOURCE_YAZI_CONFIG, TAB_YAZI),
+                "yazi/theme.toml" => (SOURCE_YAZI_THEME, TAB_YAZI),
                 label if label.starts_with("yazi/") => (SOURCE_YAZI, TAB_YAZI),
                 _ => (SOURCE_ADVANCED, TAB_ADVANCED),
             };
@@ -1308,6 +1315,10 @@ color = "#123456"
             model_field(&model, "mgr.ratio").edit_behavior,
             ConfigUiEditBehavior::StructuredOnly { .. }
         ));
+        assert_eq!(model_field(&model, "mgr.ratio").current_value, "[1,4,0]");
+        let flavor = model_field(&model, "flavor");
+        assert_eq!(flavor.current_value, r#"{"dark":42,"light":"custom"}"#);
+        assert_eq!(flavor.default_value, r#"{"dark":"","light":""}"#);
 
         write_source_field(&paths, SOURCE_YAZI_CONFIG, "mgr.show_hidden", &json!(true)).unwrap();
         write_source_field(
@@ -1508,7 +1519,12 @@ color = "#123456"
             (ACTION_YAZI_THEME, &paths.yazi_theme, YAZI_THEME_STARTER),
         ];
         for &(action, target, starter) in &specs {
-            prepare_file_action(&paths, SOURCE_YAZI, action, target, true).unwrap();
+            let source = match action {
+                ACTION_YAZI_CONFIG => SOURCE_YAZI_CONFIG,
+                ACTION_YAZI_THEME => SOURCE_YAZI_THEME,
+                _ => SOURCE_YAZI,
+            };
+            prepare_file_action(&paths, source, action, target, true).unwrap();
             assert_file_text(target, starter);
             assert_eq!(specs.iter().filter(|(_, path, _)| path.exists()).count(), 1);
             fs::remove_file(target).unwrap();
