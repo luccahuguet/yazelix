@@ -1,7 +1,25 @@
 #!/bin/sh
-YAZELIX_STATE_DIR="${YAZELIX_STATE_DIR:-${XDG_DATA_HOME:-${HOME:-/tmp}/.local/share}/yazelix}"
+if [ -z "${YAZELIX_STATE_DIR:-}" ]; then
+  if [ -n "${XDG_DATA_HOME:-}" ]; then
+    YAZELIX_STATE_DIR="$XDG_DATA_HOME/yazelix"
+  elif [ -n "${HOME:-}" ]; then
+    YAZELIX_STATE_DIR="$HOME/.local/share/yazelix"
+  else
+    printf '%s\n' 'yzx-hx: HOME is required when YAZELIX_STATE_DIR and XDG_DATA_HOME are unset' >&2
+    exit 1
+  fi
+fi
 export YAZELIX_STATE_DIR
-YAZELIX_CONFIG_HOME="${YAZELIX_CONFIG_HOME:-${XDG_CONFIG_HOME:-${HOME:-/tmp}/.config}/yazelix}"
+if [ -z "${YAZELIX_CONFIG_HOME:-}" ]; then
+  if [ -n "${XDG_CONFIG_HOME:-}" ]; then
+    YAZELIX_CONFIG_HOME="$XDG_CONFIG_HOME/yazelix"
+  elif [ -n "${HOME:-}" ]; then
+    YAZELIX_CONFIG_HOME="$HOME/.config/yazelix"
+  else
+    printf '%s\n' 'yzx-hx: HOME is required when YAZELIX_CONFIG_HOME and XDG_CONFIG_HOME are unset' >&2
+    exit 1
+  fi
+fi
 user_helix_dir="$YAZELIX_CONFIG_HOME/helix"
 user_helix_config="$user_helix_dir/config.toml"
 packaged_helix_dir="@yzxHelixConfig@"

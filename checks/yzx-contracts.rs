@@ -1371,7 +1371,23 @@ fn expect_yazi_alt_z(yzx: &Path) {
         .expect("layout is missing sidebar yzx-yazi command");
     let wrapper = binary_text(&yzx_yazi);
     let materializer = embedded_store_path(&wrapper, "/bin/yzx-yazi-config");
+    let opener = embedded_store_path(&wrapper, "/bin/yzx-open");
     assert!(materializer.is_file());
+    let missing_state_owner = Command::new(&opener)
+        .env_remove("YAZELIX_STATE_DIR")
+        .env_remove("XDG_DATA_HOME")
+        .env_remove("HOME")
+        .output()
+        .unwrap();
+    assert!(
+        !missing_state_owner.status.success(),
+        "yzx-open unexpectedly used a fallback state directory"
+    );
+    expect_contains(
+        &String::from_utf8_lossy(&missing_state_owner.stderr),
+        "HOME is required when YAZELIX_STATE_DIR and XDG_DATA_HOME are unset",
+        "yzx-open state ownership diagnostic",
+    );
     let context = format!("{} Yazi integration fragment", yzx_yazi.display());
     expect_contains_all! {
         &wrapper, &context;

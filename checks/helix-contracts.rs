@@ -144,6 +144,24 @@ for arg do printf 'arg=%s\\n' \"$arg\" >> \"$YZX_FAKE_HX_OUT\"; done\n";
         helix_script.replace(real_hx.to_str().unwrap(), fake_hx.to_str().unwrap()),
     );
 
+    let missing_owners = Command::new(&test_wrapper)
+        .env_remove("YAZELIX_STATE_DIR")
+        .env_remove("XDG_DATA_HOME")
+        .env_remove("YAZELIX_CONFIG_HOME")
+        .env_remove("XDG_CONFIG_HOME")
+        .env_remove("HOME")
+        .output()
+        .unwrap();
+    assert!(
+        !missing_owners.status.success(),
+        "Helix wrapper unexpectedly used fallback ownership paths"
+    );
+    expect_contains(
+        &String::from_utf8_lossy(&missing_owners.stderr),
+        "HOME is required when YAZELIX_STATE_DIR and XDG_DATA_HOME are unset",
+        "Helix wrapper state ownership diagnostic",
+    );
+
     for (name, files, uses_user_steel) in [
         ("packaged", &[] as &[(&str, &str)], false),
         (

@@ -80,7 +80,13 @@ const ZELLIJ_SESSION_NAME_ENV: &str = "ZELLIJ_SESSION_NAME";
 const YAZELIX_ZELLIJ_SESSION_NAME_ENV: &str = "YAZELIX_ZELLIJ_SESSION_NAME";
 
 fn main() -> ExitCode {
-    let config = Config::from_env();
+    let config = match Config::from_env() {
+        Ok(config) => config,
+        Err(error) => {
+            eprintln!("yzx-open: {error:#}");
+            return ExitCode::FAILURE;
+        }
+    };
     match run(&config, env::args_os().skip(1)) {
         Ok(()) => ExitCode::SUCCESS,
         Err(error) => {
@@ -121,16 +127,16 @@ fn run(config: &Config, raw_targets: impl IntoIterator<Item = OsString>) -> Resu
 }
 
 impl Config {
-    fn from_env() -> Self {
+    fn from_env() -> Result<Self> {
         let state_dir = nonempty_env("YAZELIX_STATE_DIR")
             .map(PathBuf::from)
             .or_else(|| nonempty_env("XDG_DATA_HOME").map(|dir| PathBuf::from(dir).join("yazelix")))
             .or_else(|| {
                 nonempty_env("HOME").map(|dir| PathBuf::from(dir).join(".local/share/yazelix"))
             })
-            .unwrap_or_else(|| env::temp_dir().join("yazelix"));
+            .context("HOME is required when YAZELIX_STATE_DIR and XDG_DATA_HOME are unset")?;
 
-        Self {
+        Ok(Self {
             editor: nonempty_env("YZX_EDITOR").unwrap_or_else(|| "yzx-hx".into()),
             git: "git".into(),
             zellij: nonempty_env("YZX_ZELLIJ").unwrap_or_else(|| "zellij".into()),
@@ -139,7 +145,7 @@ impl Config {
             zellij_session_name: zellij_session_name_from_env(),
             zellij_pane_id: env::var("ZELLIJ_PANE_ID").ok(),
             log_level: LogLevel::from_env(),
-        }
+        })
     }
 }
 
