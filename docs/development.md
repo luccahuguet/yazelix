@@ -60,10 +60,10 @@ git ls-files | grep -Ev '^\.beads/|\.lock$|^assets/' | xargs wc -l
 | Ignore (`.gitignore`) | 19 |
 | License | 201 |
 | Markdown | 1864 |
-| Nix | 1165 |
+| Nix | 1168 |
 | Shell | 84 |
 | YAML | 313 |
-| TOML | 246 |
+| TOML | 243 |
 | KDL | 212 |
 | Nu | 11 |
 | Lua | 247 |
