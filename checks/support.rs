@@ -3,9 +3,11 @@ use std::{
     os::unix::fs::PermissionsExt,
     path::{Path, PathBuf},
     process::{Command, Output},
+    sync::OnceLock,
 };
 
 const DEFAULT_CONFIG: &str = "[open]\nlog_level = \"info\"\n\n[shell]\nprogram = \"nu\"\n";
+static TEST_NU: OnceLock<PathBuf> = OnceLock::new();
 
 fn default_config(extra: &str) -> String {
     format!("{DEFAULT_CONFIG}{extra}")
@@ -21,6 +23,32 @@ pub fn write_config_home(config_home: &Path, contents: impl AsRef<[u8]>) -> Path
 pub fn write_executable(path: &Path, contents: impl AsRef<[u8]>) {
     fs::write(path, contents).unwrap();
     fs::set_permissions(path, fs::Permissions::from_mode(0o755)).unwrap();
+}
+
+pub fn set_test_nu(path: &Path) {
+    assert!(
+        path.is_absolute(),
+        "test Nu path must be absolute: {}",
+        path.display()
+    );
+    assert!(
+        path.is_file(),
+        "test Nu path does not exist: {}",
+        path.display()
+    );
+    TEST_NU
+        .set(path.to_path_buf())
+        .unwrap_or_else(|_| panic!("test Nu path was initialized more than once"));
+}
+
+pub fn write_nu_executable(path: &Path, body: impl AsRef<str>) {
+    let nu = TEST_NU
+        .get()
+        .expect("set_test_nu must run before creating fixtures");
+    write_executable(
+        path,
+        format!("#!{} --no-config-file\n{}", nu.display(), body.as_ref()),
+    );
 }
 
 pub fn successful_output(command: &mut Command, context: &str) -> Output {

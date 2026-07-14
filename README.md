@@ -32,20 +32,20 @@ first launch
 
 ### Try without installing
 
-```sh
+```nu
 nix run github:luccahuguet/yazelix -- launch
 nix run github:luccahuguet/yazelix#runtime -- enter
 ```
 
 If the one-off launch fails, inspect the owned runtime setup with:
 
-```sh
+```nu
 nix run github:luccahuguet/yazelix -- doctor
 ```
 
 ### Install in a Nix profile
 
-```sh
+```nu
 nix profile add --refresh github:luccahuguet/yazelix
 yzx launch
 ```
@@ -56,7 +56,7 @@ Use the [Home Manager module](docs/installation.md#home-manager) for a declarati
 
 From a local checkout, use:
 
-```sh
+```nu
 nix run .#yazelix -- launch
 nix run .#runtime -- enter
 ```
@@ -66,7 +66,7 @@ nix run .#runtime -- enter
 Use Classic v17.12 once to prepare its config for Nova, then install Nova from
 the canonical repository
 
-```sh
+```nu
 nix run github:luccahuguet/yazelix/v17.12#yazelix -- launch
 ```
 
@@ -81,7 +81,7 @@ Classic remains available at the frozen `classic` branch, while the immutable
 
 Start the guided tour after launching Nova:
 
-```sh
+```nu
 yzx tutor begin
 ```
 
@@ -217,6 +217,6 @@ popup contracts live in [Runtime Notes](docs/runtime-notes.md)
 
 ## LOC Scorecard
 
-Nova owns **17,099 lines** of tracked text project files. The
+Nova owns **18,900 lines** of tracked text project files. The
 [reproducible scorecard](docs/development.md#loc-scorecard) excludes Beads,
 lockfiles, and binary assets

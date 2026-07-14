@@ -19,7 +19,7 @@ jobs:
     timeout-minutes: 60
     defaults:
       run:
-        shell: bash
+        shell: nu {0}
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
@@ -33,6 +33,9 @@ jobs:
             max-jobs = 2
             cores = 2
 
+      - name: Install Nushell
+        uses: hustcer/setup-nu@v3
+
       - name: Show flake outputs
         run: nix flake show --all-systems
 
@@ -41,8 +44,9 @@ jobs:
 
       - name: Build lightweight checks
         run: |
-          nix build --no-link --print-build-logs \
-            .#checks.x86_64-linux.yzx_yazi_materialization \
-            .#checks.x86_64-linux.yzx_launcher_unit \
-            .#checks.x86_64-linux.runtime_contracts \
+          ^nix build --no-link --print-build-logs
+            .#checks.x86_64-linux.cache_shell_policy
+            .#checks.x86_64-linux.yzx_yazi_materialization
+            .#checks.x86_64-linux.yzx_launcher_unit
+            .#checks.x86_64-linux.runtime_contracts
             .#checks.x86_64-linux.zellij_sidecar_guard_parity

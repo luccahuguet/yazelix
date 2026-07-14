@@ -21,29 +21,32 @@ jobs:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
     defaults:
       run:
-        shell: bash
+        shell: nu {0}
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
+      - name: Install Nushell
+        uses: hustcer/setup-nu@v3
+
       - name: Decide whether to build
         id: decide
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "run=true" >> "$GITHUB_OUTPUT"
-            echo "Manual dispatch: always build"
-            exit 0
-          fi
-          count="$(git rev-list --count --since='7 days ago' HEAD)"
-          echo "Commits in the last 7 days: $count"
-          if [ "$count" -gt 0 ]; then
-            echo "run=true" >> "$GITHUB_OUTPUT"
+          if "${{ github.event_name }}" == "workflow_dispatch" {
+            "run=true" | save --append $env.GITHUB_OUTPUT
+            print "Manual dispatch: always build"
           else
-            echo "run=false" >> "$GITHUB_OUTPUT"
-            echo "No commits in the last 7 days; skipping Darwin package build"
-          fi
+            let count = (^git rev-list --count --since="7 days ago" HEAD | into int)
+            print $"Commits in the last 7 days: ($count)"
+            if $count > 0 {
+              "run=true" | save --append $env.GITHUB_OUTPUT
+            } else {
+              "run=false" | save --append $env.GITHUB_OUTPUT
+              print "No commits in the last 7 days; skipping Darwin package build"
+            }
+          }
 
       - name: Install Nix
         if: steps.decide.outputs.run == 'true'
@@ -58,9 +61,8 @@ jobs:
       - name: Build aarch64-darwin packages and Home Manager closure
         if: steps.decide.outputs.run == 'true'
         run: |
-          full="$(nix build --no-link --no-write-lock-file --print-out-paths --print-build-logs .#packages.aarch64-darwin.yazelix)"
-          runtime="$(nix build --no-link --no-write-lock-file --print-out-paths --print-build-logs .#packages.aarch64-darwin.runtime)"
-          nix build --no-link --no-write-lock-file --print-build-logs .#checks.aarch64-darwin.home_manager
-
-          test ! -e "$full/share/applications/yzx.desktop"
-          test ! -e "$runtime/share/applications/yzx.desktop"
+          let full = (^nix build --no-link --no-write-lock-file --print-out-paths --print-build-logs .#packages.aarch64-darwin.yazelix | str trim)
+          let runtime = (^nix build --no-link --no-write-lock-file --print-out-paths --print-build-logs .#packages.aarch64-darwin.runtime | str trim)
+          ^nix build --no-link --no-write-lock-file --print-build-logs .#checks.aarch64-darwin.home_manager
+          if ($"($full)/share/applications/yzx.desktop" | path exists) { error make {msg: "full Darwin package contains Linux desktop entry"} }
+          if ($"($runtime)/share/applications/yzx.desktop" | path exists) { error make {msg: "runtime Darwin package contains Linux desktop entry"} }

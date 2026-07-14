@@ -1,0 +1,29 @@
+[Unit]
+Description=FlexNetOS ephemeral profile-owned runner %i
+After=network-online.target
+Wants=network-online.target
+ConditionPathIsExecutable=/home/flexnetos/.nix-profile/toolbin/nu
+ConditionPathIsExecutable=/home/flexnetos/.nix-profile/bin/kache
+ConditionPathIsExecutable=/home/flexnetos/.nix-profile/bin/fxrun-actions
+
+[Service]
+Type=oneshot
+Environment=SHELL=/home/flexnetos/.nix-profile/toolbin/nu
+Environment=HOME=/run/user/1001/yazelix/runners/%i/home
+Environment=XDG_CACHE_HOME=/run/user/1001/yazelix/runners/%i/xdg_cache
+Environment=CARGO_HOME=/run/user/1001/yazelix/runners/%i/cargo_home
+Environment=CARGO_TARGET_DIR=/run/user/1001/yazelix/runners/%i/cargo_target
+Environment=KACHE_BIN=/home/flexnetos/.nix-profile/bin/kache
+Environment=KACHE_CACHE_DIR=/home/flexnetos/.cache/kache/runners/%i
+Environment=RUSTC_WRAPPER=/home/flexnetos/.nix-profile/bin/kache-rustc-wrapper
+Environment=CARGO_BUILD_RUSTC_WRAPPER=/home/flexnetos/.nix-profile/bin/kache-rustc-wrapper
+Environment=GH_CONFIG_DIR=/home/flexnetos/.config/gh
+Environment=CODEX_HOME=/home/flexnetos/.codex
+ExecStartPre=/home/flexnetos/.nix-profile/bin/flexnetos_runner_policy runtime %i
+ExecStart=/home/flexnetos/.nix-profile/bin/flexnetos_runner_service %i
+StandardOutput=null
+StandardError=null
+Restart=no
+
+[Install]
+WantedBy=default.target

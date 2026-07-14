@@ -267,6 +267,23 @@
         "type": "github"
       }
     },
+    "flexnetos_runner_source": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1784005873,
+        "narHash": "sha256-4stRQkZjoJHvzzW8iiyTU9/GQPC1D5I3J6cfukIyTXY=",
+        "owner": "FlexNetOS",
+        "repo": "flexnetos_runner",
+        "rev": "be0960c138d9f293aa6272e6ef154c728b37f73a",
+        "type": "github"
+      },
+      "original": {
+        "owner": "FlexNetOS",
+        "repo": "flexnetos_runner",
+        "rev": "be0960c138d9f293aa6272e6ef154c728b37f73a",
+        "type": "github"
+      }
+    },
     "grit_source": {
       "flake": false,
       "locked": {
@@ -429,6 +446,7 @@
         "autoLayoutYazi": "autoLayoutYazi",
         "beads_rust_source": "beads_rust_source",
         "fenix": "fenix",
+        "flexnetos_runner_source": "flexnetos_runner_source",
         "grit_source": "grit_source",
         "home-manager": "home-manager",
         "icm_source": "icm_source",

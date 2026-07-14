@@ -1,13 +1,6 @@
 {
   description = "Yazelix Nova";
 
-  nixConfig = {
-    extra-substituters = ["https://yazelix.cachix.org"];
-    extra-trusted-public-keys = [
-      "yazelix.cachix.org-1:ZgxIjQvaP0VTWL8Racx27mpUNzDJ97xC2y7QWYjmGNM="
-    ];
-  };
-
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     home-manager = {
@@ -90,6 +83,10 @@
       url = "github:FlexNetOS/obscura/4f5b6e52d358b0e7a6a021a24bd12ff77b3f3989";
       flake = false;
     };
+    flexnetos_runner_source = {
+      url = "github:FlexNetOS/flexnetos_runner/be0960c138d9f293aa6272e6ef154c728b37f73a";
+      flake = false;
+    };
   };
 
   outputs = {
@@ -115,6 +112,7 @@
     icm_source,
     weave_source,
     obscura_source,
+    flexnetos_runner_source,
   }: let
     novaVersion = "1.0.0-beta.1";
     compactNovaVersion = version:
@@ -143,6 +141,18 @@
       mkdir -p "$out/bin"
       rustc --edition=2024 ${src} -o "$out/bin/${name}"
     '';
+    nuApplicationFor = pkgs: name: source: replacements:
+      pkgs.writeTextFile {
+        inherit name;
+        destination = "/bin/${name}";
+        executable = true;
+        text =
+          "#!${pkgs.nushell}/bin/nu\n"
+          + builtins.replaceStrings
+          (map (key: "@${key}@") (builtins.attrNames replacements))
+          (builtins.attrValues replacements)
+          (builtins.readFile source);
+      };
   in {
     homeManagerModules.default = homeManagerModule;
 
@@ -153,6 +163,7 @@
           nixpkgs.lib.getName package == "claude-code";
       };
       rustBin = rustBinFor pkgs;
+      nuApplication = nuApplicationFor pkgs;
       marsPackage = mars.packages.${system}.mars;
       yzxMarsToml = pkgs.replaceVars ./defaults/mars/config.toml {
         jetbrainsMonoDir = "${pkgs.jetbrains-mono}/share/fonts/truetype";
@@ -222,20 +233,16 @@
       in rustBin name source;
       yzxNuShell = mkYzxNuShell "yzx-nu" yzxNuConfig;
       flexnetosYzxNuShell = mkYzxNuShell "flexnetos-yzx-nu" flexnetosYzxNuConfig;
-      mkYzxShell = name: nuShell: let
-        source = pkgs.replaceVars ./runtime/yzx-shell.sh {
-          yzxNu = "${nuShell}/bin/${nuShell.name}";
-        };
-      in pkgs.runCommand name {} ''
-        install -D -m 755 ${source} "$out/bin/yzx-shell"
-        patchShebangs "$out/bin/yzx-shell"
-      '';
+      mkYzxShell = name: nuShell:
+        pkgs.linkFarm name [
+          {
+            name = "bin/yzx-shell";
+            path = "${nuShell}/bin/${nuShell.name}";
+          }
+        ];
       yzxShell = mkYzxShell "yzx-shell" yzxNuShell;
       flexnetosYzxShell = mkYzxShell "flexnetos-yzx-shell" flexnetosYzxNuShell;
-      yzxEnvSupervisor = pkgs.runCommand "yzx-env-supervisor" {} ''
-        install -D -m 755 ${./runtime/yzx-env-supervisor.sh} "$out/bin/yzx-env-supervisor"
-        patchShebangs "$out/bin/yzx-env-supervisor"
-      '';
+      yzxEnvSupervisor = rustBin "yzx-env-supervisor" ./runtime/yzx_env_supervisor.rs;
       yzxAgent = rustBin "yzx-agent" ./runtime/yzx-agent.rs;
       yzxMenuSrc = pkgs.replaceVars ./runtime/yzx-menu.rs {
         fzf = "${pkgs.fzf}/bin/fzf";
@@ -247,38 +254,14 @@
         yazelixZellijPaneOrchestrator.packages.${system}.yazelix_zellij_pane_orchestrator;
       tokenusage = import ./packaging/tokenusage.nix {inherit pkgs;};
       yazelixScreenPackage = yazelixScreen.packages.${system}.yzs;
-      yzxWelcome = pkgs.writeShellApplication {
-        name = "yzx-welcome";
-        text = ''
-          if [ "''${YZX_WELCOME_ENABLED:-true}" != false ]; then
-            if ! YAZELIX_SCREEN_COMMAND_NAME='yzx screen' ${yazelixScreenPackage}/bin/yzs "''${YZX_WELCOME_STYLE:-random}" --duration-seconds "''${YZX_WELCOME_DURATION_SECONDS:-3}"; then
-              printf 'yzx welcome: failed to render welcome screen\n' >&2
-            fi
-          fi
-          if [ "$#" -eq 0 ]; then
-            exit 0
-          fi
-          exec "$@"
-        '';
+      yzxWelcome = nuApplication "yzx-welcome" ./runtime/yzx_welcome.nu {
+        yzs = "${yazelixScreenPackage}/bin/yzs";
       };
       yzxZellijConfig = rustBin "yzx-zellij-config" ./runtime/yzx-zellij-config.rs;
       yazelixHelixPackage = yazelixHelix.packages.${system}.yazelix_helix;
       yzxHelixConfig = pkgs.writeTextDir "config.toml" (builtins.readFile ./defaults/helix/config.toml);
-      yzxOpenTerminal = pkgs.writeShellApplication {
-        name = "yzx-open-terminal";
-        text = ''
-          if [ "$#" -ne 1 ]; then
-            printf '%s\n' 'usage: yzx-open-terminal <path>' >&2
-            exit 64
-          fi
-          target="$1"
-          if [ -d "$target" ]; then
-            cwd="$target"
-          else
-            cwd="$(${pkgs.coreutils}/bin/dirname -- "$target")"
-          fi
-          exec ${yazelixZellijPackage}/bin/zellij action new-pane --cwd "$cwd"
-        '';
+      yzxOpenTerminal = nuApplication "yzx-open-terminal" ./runtime/yzx_open_terminal.nu {
+        zellij = "${yazelixZellijPackage}/bin/zellij";
       };
       yzxHelixSteelConfig = pkgs.runCommand "yzx-helix-steel-config" {} ''
         mkdir -p "$out"
@@ -319,21 +302,24 @@
         ;; Yazelix Nova packaged Steel init.
         EOF
       '';
-      yzxHelixSrc = pkgs.replaceVars ./runtime/yzx-helix.sh {
-        date = "${pkgs.coreutils}/bin/date";
+      yzxHelixBase = nuApplication "yzx-hx" ./runtime/yzx_helix.nu {
         hx = "${yazelixHelixPackage}/bin/hx";
-        mkdir = "${pkgs.coreutils}/bin/mkdir";
         od = "${pkgs.coreutils}/bin/od";
         tr = "${pkgs.coreutils}/bin/tr";
         yzxConfig = "${yzxConfig}/bin/yzx-config";
         yzxHelixConfig = "${yzxHelixConfig}";
         yzxHelixSteelConfig = "${yzxHelixSteelConfig}";
       };
-      yzxHelix = pkgs.runCommand "yzx-hx" {} ''
-        install -D -m 755 ${yzxHelixSrc} "$out/bin/yzx-hx"
-        ln -s yzx-hx "$out/bin/hx"
-        patchShebangs "$out/bin/yzx-hx"
-      '';
+      yzxHelix = pkgs.linkFarm "yzx-hx" [
+        {
+          name = "bin/yzx-hx";
+          path = "${yzxHelixBase}/bin/yzx-hx";
+        }
+        {
+          name = "bin/hx";
+          path = "${yzxHelixBase}/bin/yzx-hx";
+        }
+      ];
       yzxTutorSrc = pkgs.runCommand "yzx-tutor-src" {} ''
         mkdir -p "$out"
         cp -R ${pkgs.lib.cleanSource ./crates/yzx-tutor}/. "$out/"
@@ -348,39 +334,14 @@
         src = yzxTutorSrc;
         cargoLock.lockFile = ./crates/yzx-tutor/Cargo.lock;
       };
-      yzxEditor = pkgs.writeShellApplication {
-        name = "yzx-editor";
-        text = ''
-          fallback="''${YAZELIX_EDITOR:-}"
-          if [ -n "$fallback" ]; then
-            editor="$(${yzxConfig}/bin/yzx-config --get editor.command 2>/dev/null || printf %s "$fallback")"
-          else
-            editor="$(${yzxConfig}/bin/yzx-config --get editor.command)"
-          fi
-          case "$editor" in
-            yzx-hx|hx) editor=${yzxHelix}/bin/yzx-hx ;;
-          esac
-          if ! command -v -- "$editor" >/dev/null 2>&1; then
-            printf 'Yazelix editor command not found: %s. Set editor.command to one executable name or path without arguments.\n' "$editor" >&2
-            exit 127
-          fi
-          export YAZELIX_HELIX_BRIDGE=0
-          trap '[ -z "''${ZELLIJ:-}" ] || printf "\033]111\a"' EXIT
-          command -- "$editor" "$@"
-        '';
+      yzxEditor = nuApplication "yzx-editor" ./runtime/yzx_editor.nu {
+        yzxConfig = "${yzxConfig}/bin/yzx-config";
+        yzxHelix = "${yzxHelix}/bin/yzx-hx";
       };
-      yzxEditorEnv = ''
-        export EDITOR=${yzxEditor}/bin/yzx-editor
-        export VISUAL=${yzxEditor}/bin/yzx-editor
-        export GIT_EDITOR=${yzxEditor}/bin/yzx-editor
-      '';
-      yzxConfigUi = pkgs.writeShellApplication {
-        name = "yzx-config-ui";
-        text = ''
-          export YAZELIX_EDITOR="''${YAZELIX_EDITOR:-${yzxHelix}/bin/yzx-hx}"
-          ${yzxEditorEnv}
-          exec ${yzxConfig}/bin/yzx-config "$@"
-        '';
+      yzxConfigUi = nuApplication "yzx-config-ui" ./runtime/yzx_config_ui.nu {
+        yzxConfig = "${yzxConfig}/bin/yzx-config";
+        yzxEditor = "${yzxEditor}/bin/yzx-editor";
+        yzxHelix = "${yzxHelix}/bin/yzx-hx";
       };
       yaziAssetsSelection = pkgs.fetchFromGitHub {
         owner = "luccahuguet";
@@ -455,14 +416,9 @@
           widgetTray = "__YZX_BAR_WIDGET_TRAY__";
           shellLabel = "__YZX_SHELL_LABEL__";
         }));
-      yzxBarRender = pkgs.writeShellApplication {
-        name = "yzx-bar-render";
-        runtimeInputs = [pkgs.jq];
-        text = ''
-          ${yazelixZellijBarPackage}/${yazelixZellijBarPackage.widgetPath} render-yazelix-runtime --json "$1" \
-            | jq -er '.plugin_block' \
-            | ${pkgs.gnused}/bin/sed 's/YZX {command_version}/${novaBarLabel}/g'
-        '';
+      yzxBarRender = nuApplication "yzx-bar-render" ./runtime/yzx_bar_render.nu {
+        bar = "${yazelixZellijBarPackage}/${yazelixZellijBarPackage.widgetPath}";
+        inherit novaBarLabel;
       };
       yzxBarKdl = pkgs.runCommand "yzx-zellij-bar.kdl" {} ''
         ${yzxBarRender}/bin/yzx-bar-render "$(<${yzxBarRenderRequest})" > "$out"
@@ -509,17 +465,10 @@
           editInTerminal: true
           openDirInEditor: '${yzxEditor}/bin/yzx-editor {{dir}}'
       '';
-      yzxGit = pkgs.writeShellApplication {
-        name = "yzx-git";
-        text = ''
-          ${yzxEditorEnv}
-          if [ -z "''${LG_CONFIG_FILE:-}" ]; then
-            config_file="$(${pkgs.lazygit}/bin/lazygit --print-config-dir)/config.yml"
-            [ ! -f "$config_file" ] || LG_CONFIG_FILE="$config_file"
-          fi
-          export LG_CONFIG_FILE="''${LG_CONFIG_FILE:+$LG_CONFIG_FILE,}${yzxLazyGitConfig}"
-          exec ${pkgs.lazygit}/bin/lazygit "$@"
-        '';
+      yzxGit = nuApplication "yzx-git" ./runtime/yzx_git.nu {
+        lazygit = "${pkgs.lazygit}/bin/lazygit";
+        yzxEditor = "${yzxEditor}/bin/yzx-editor";
+        yzxLazyGitConfig = "${yzxLazyGitConfig}";
       };
       mkYzxConfigKdl = shellPackage: pkgs.replaceVars ./defaults/zellij/config.kdl {
         yzxShell = "${shellPackage}/bin/yzx-shell";
@@ -750,46 +699,37 @@
       };
       flexnetosMeta = import ./packaging/meta_release.nix {inherit pkgs;};
       flexnetosKacheBase = import ./packaging/kache_release.nix {inherit pkgs;};
+      flexnetosRunner = import ./packaging/flexnetos_runner_release.nix {
+        inherit pkgs;
+        runnerSource = flexnetos_runner_source;
+      };
       flexnetosNotebooklm = import ./packaging/notebooklm_release.nix {
         inherit pkgs;
         version = "0.8.0a3";
       };
+      flexnetosKacheWrapperSource = pkgs.replaceVars ./packaging/kache_rustc_wrapper.rs {
+        kache = "${flexnetosKacheBase}/bin/kache";
+      };
+      flexnetosKacheWrapper = rustBin "kache-rustc-wrapper" flexnetosKacheWrapperSource;
+      flexnetosKacheWrappers = pkgs.linkFarm "kache-rustc-wrappers" [
+        {
+          name = "bin/kache-rustc-wrapper";
+          path = "${flexnetosKacheWrapper}/bin/kache-rustc-wrapper";
+        }
+        {
+          name = "libexec/kache/rustc";
+          path = "${flexnetosKacheWrapper}/bin/kache-rustc-wrapper";
+        }
+      ];
       flexnetosKache = pkgs.symlinkJoin {
         name = "kache-with-rustc-wrapper-${flexnetosKacheBase.version}";
-        paths = [flexnetosKacheBase];
-        postBuild = ''
-          mkdir -p "$out/libexec/kache" "$out/bin"
-          cat > "$out/libexec/kache/rustc" <<'EOF'
-          #!${pkgs.runtimeShell}
-          set -eu
-          cargo_auditable="''${FLEXNETOS_KACHE_CARGO_AUDITABLE:-cargo-auditable}"
-          exec "$cargo_auditable" rustc "$@"
-          EOF
-          chmod +x "$out/libexec/kache/rustc"
-
-          cat > "$out/bin/kache-rustc-wrapper" <<EOF
-          #!${pkgs.runtimeShell}
-          set -eu
-          KACHE_BIN="''${KACHE_BIN:-$out/bin/kache}"
-          FLEXNETOS_KACHE_RUSTC_SHIM="''${FLEXNETOS_KACHE_RUSTC_SHIM:-$out/libexec/kache/rustc}"
-          if [ ! -x "\$KACHE_BIN" ]; then
-            printf 'kache-rustc-wrapper: Kache binary is not executable: %s\n' "\$KACHE_BIN" >&2
-            exit 127
-          fi
-          if [ "\$#" -ge 2 ]; then
-            first_name="\$(basename -- "\$1")"
-            second_name="\$(basename -- "\$2")"
-            if [ "\$first_name" = cargo-auditable ] && { [ "\$second_name" = rustc ] || [ "\$second_name" = clippy-driver ] || case "\$second_name" in rustc-*) true ;; *) false ;; esac; }; then
-              export FLEXNETOS_KACHE_CARGO_AUDITABLE="\$1"
-              shift 2
-              exec "\$KACHE_BIN" "\$FLEXNETOS_KACHE_RUSTC_SHIM" "\$@"
-            fi
-          fi
-          exec "\$KACHE_BIN" "\$@"
-          EOF
-          chmod +x "$out/bin/kache-rustc-wrapper"
-        '';
+        paths = [flexnetosKacheBase flexnetosKacheWrappers];
       };
+      flexnetosRunnerPolicy = nuApplication "flexnetos_runner_policy" ./nushell/runner/runner_policy.nu {};
+      flexnetosRunnerService = nuApplication "flexnetos_runner_service" ./nushell/runner/runner_service.nu {};
+      flexnetosRunnerSystemd = pkgs.writeTextDir
+        "lib/systemd/user/flexnetos_runner@.service"
+        (builtins.readFile (./systemd/user + "/flexnetos_runner@.service"));
       flexnetosRustToolchain = fenixPkgs.combine (
         [
           fenixPkgs.latest.cargo
@@ -860,6 +800,11 @@
         codex = "${flexnetosCodex}/bin/codex";
         corepack = "${pkgs.corepack}/bin/corepack";
         file = "${pkgs.file}/bin/file";
+        fxrun = "${flexnetosRunner}/bin/fxrun";
+        "fxrun-actions" = "${flexnetosRunner}/bin/fxrun-actions";
+        "fxrun-dispatch" = "${flexnetosRunner}/bin/fxrun-dispatch";
+        flexnetos_runner_policy = "${flexnetosRunnerPolicy}/bin/flexnetos_runner_policy";
+        flexnetos_runner_service = "${flexnetosRunnerService}/bin/flexnetos_runner_service";
         git-kb = "${flexnetosGitKb}/bin/git-kb";
         grit = "${flexnetosGrit}/bin/grit";
         home-manager = "${home-manager.packages.${system}.default}/bin/home-manager";
@@ -907,7 +852,8 @@
       };
       flexnetosTools = pkgs.runCommand "flexnetos-foundation-tools" {} (
         ''
-          mkdir -p "$out/bin" "$out/toolbin"
+          mkdir -p "$out/bin" "$out/toolbin" "$out/libexec/kache"
+          ln -s ${flexnetosKache}/libexec/kache/rustc "$out/libexec/kache/rustc"
         ''
         + pkgs.lib.concatStringsSep "\n" (
           pkgs.lib.mapAttrsToList (name: executable: ''
@@ -930,7 +876,7 @@
       };
       lifeosFoundationYzx = pkgs.symlinkJoin {
         name = "lifeos-foundation-yzx";
-        paths = [flexnetosYzxBase flexnetosTools];
+        paths = [flexnetosYzxBase flexnetosTools flexnetosRunnerSystemd];
         nativeBuildInputs = [pkgs.desktop-file-utils];
         postBuild = ''
           install -D -m 644 ${flexnetosZellijLayout}/layout.kdl \
@@ -989,20 +935,25 @@
       checksSrc = pkgs.lib.cleanSource ./checks;
       yzxContractsCheck = rustBinFor pkgs "yzx-contracts-check" "${checksSrc}/yzx-contracts.rs";
       helixContractsCheck = rustBinFor pkgs "helix-contracts-check" "${checksSrc}/helix-contracts.rs";
-      fakeYazelix = pkgs.runCommand "fake-yazelix-hm-package" {} ''
-        mkdir -p "$out/bin" "$out/share/applications"
-        cat > "$out/bin/yzx" <<'EOF'
-        #!${pkgs.runtimeShell}
-        printf '%s\n' fake-yazelix
-        EOF
-        chmod 755 "$out/bin/yzx"
-        cat > "$out/share/applications/yzx.desktop" <<'EOF'
+      fakeYazelixBinary = pkgs.writeTextFile {
+        name = "fake-yazelix-binary";
+        destination = "/bin/yzx";
+        executable = true;
+        text = ''
+          #!${pkgs.nushell}/bin/nu
+          print fake-yazelix
+        '';
+      };
+      fakeYazelixDesktop = pkgs.writeTextDir "share/applications/yzx.desktop" ''
         [Desktop Entry]
         Type=Application
         Name=Fake Yazelix
         Exec=yzx
-        EOF
       '';
+      fakeYazelix = pkgs.symlinkJoin {
+        name = "fake-yazelix-hm-package";
+        paths = [fakeYazelixBinary fakeYazelixDesktop];
+      };
       fakeHelixLanguages = pkgs.writeText "hm-helix-languages.toml" ''
         [[language]]
         name = "nix"
@@ -1064,6 +1015,10 @@
       };
     in {
       inherit yzx;
+      cache_shell_policy = pkgs.runCommand "cache-shell-policy-check" {} ''
+        ${pkgs.nushell}/bin/nu ${./checks/cache_shell_policy.nu} ${./.}
+        touch "$out"
+      '';
       home_manager = pkgs.runCommand "yzx-home-manager-check" {} ''
         default_path="${homeManagerDefault.activationPackage}/home-path"
         override_path="${homeManagerOverride.activationPackage}/home-path"
@@ -1204,7 +1159,7 @@
         touch "$out"
       '';
       contracts = pkgs.runCommand "yzx-contracts" {} ''
-        ${yzxContractsCheck}/bin/yzx-contracts-check ${yzx} ${pkgs.git}/bin/git ${pkgs.jq}/bin/jq "$out"
+        ${yzxContractsCheck}/bin/yzx-contracts-check ${yzx} ${pkgs.git}/bin/git ${pkgs.jq}/bin/jq ${pkgs.nushell}/bin/nu "$out"
       '';
       runtime_contracts = pkgs.runCommand "yzx-runtime-contracts" {} ''
         test -x ${yzxRuntime}/bin/yzx
@@ -1236,7 +1191,7 @@
         touch "$out"
       '';
       helix_contracts = pkgs.runCommand "yzx-helix-contracts" {} ''
-        ${helixContractsCheck}/bin/helix-contracts-check ${yzx} "$out"
+        ${helixContractsCheck}/bin/helix-contracts-check ${yzx} ${pkgs.nushell}/bin/nu "$out"
       '';
     } // pkgs.lib.optionalAttrs (system == "x86_64-linux") {
       flexnetos_foundation_contracts = let
@@ -1255,6 +1210,13 @@
         test -x ${foundation}/bin/ccboard
         test -x ${foundation}/bin/codedb
         test -x ${foundation}/bin/nu_plugin_codedb
+        test -x ${foundation}/bin/fxrun
+        test -x ${foundation}/bin/fxrun-actions
+        test -x ${foundation}/bin/fxrun-dispatch
+        test -x ${foundation}/bin/flexnetos_runner_policy
+        test -x ${foundation}/bin/flexnetos_runner_service
+        test -x ${foundation}/bin/kache
+        test -x ${foundation}/bin/kache-rustc-wrapper
         test -x ${foundation}/toolbin/nu
         test ! -e ${foundation}/bin/yzx-desktop-launch
         test ! -e ${foundation}/bin/yzx-agent-workspace-launch
@@ -1291,6 +1253,14 @@
         grep -F 'source "${flexnetosNuConfig}"' ${foundation}/share/yazelix/nu/config.nu
         grep -F ${./nushell/config/rtk_wrappers.nu} ${flexnetosNuConfig}
         grep -F ${./nushell/scripts/flexnetos_init.nu} ${flexnetosNuConfig}
+        ${pkgs.file}/bin/file -L ${foundation}/bin/kache-rustc-wrapper | grep -F ELF
+        ${pkgs.file}/bin/file -L ${foundation}/libexec/kache/rustc | grep -F ELF
+        runner_unit=${foundation}/lib/systemd/user/flexnetos_runner@.service
+        test -f "$runner_unit"
+        grep -Fx 'ExecStartPre=/home/flexnetos/.nix-profile/bin/flexnetos_runner_policy runtime %i' "$runner_unit"
+        grep -Fx 'ExecStart=/home/flexnetos/.nix-profile/bin/flexnetos_runner_service %i' "$runner_unit"
+        grep -Fx 'Environment=SHELL=/home/flexnetos/.nix-profile/toolbin/nu' "$runner_unit"
+        grep -Fx 'Environment=KACHE_CACHE_DIR=/home/flexnetos/.cache/kache/runners/%i' "$runner_unit"
 
         export HOME="$TMPDIR/home"
         export YAZELIX_CONFIG_HOME="$TMPDIR/config"

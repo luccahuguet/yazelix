@@ -1,6 +1,7 @@
 use std::{
     env, fs,
     io::Write,
+    os::unix::fs::PermissionsExt,
     path::{Path, PathBuf},
     process::{Command, Stdio},
 };
@@ -8,8 +9,9 @@ use std::{
 mod support;
 
 use support::{
-    RuntimeCase, TempDir, binary_text, embedded_store_path, excerpt, expect_contains, expect_order,
-    successful_output, successful_stdout, write_config_home, write_executable,
+    binary_text, embedded_store_path, excerpt, expect_contains, expect_order, set_test_nu,
+    successful_output, successful_stdout, write_config_home, write_nu_executable, RuntimeCase,
+    TempDir,
 };
 
 macro_rules! expect_contains_all {
@@ -20,9 +22,10 @@ macro_rules! expect_contains_all {
 
 fn main() {
     let args = env::args().collect::<Vec<_>>();
-    let [_, yzx, git, jq, out] = args.as_slice() else {
-        panic!("usage: yzx-contracts-check <yzx-package> <git> <jq> <out>");
+    let [_, yzx, git, jq, nu, out] = args.as_slice() else {
+        panic!("usage: yzx-contracts-check <yzx-package> <git> <jq> <nu> <out>");
     };
+    set_test_nu(Path::new(nu));
 
     let yzx = Path::new(yzx);
     let git = Path::new(git);
@@ -115,9 +118,15 @@ fn main() {
     let host_bin = temp.path.join("host-bin");
     fs::create_dir(&host_bin).unwrap();
     let fake_mise = host_bin.join("mise");
-    write_executable(
+    write_nu_executable(
         &fake_mise,
-        "#!/bin/sh\n[ \"$1\" = activate ] && [ \"$2\" = nu ] || exit 64\nprintf '%s\\n' '$env.YZX_MISE_TEST = \"mise-ok\"'\n",
+        r#"def main [action: string, shell: string] {
+    if $action != "activate" or $shell != "nu" {
+        exit 64
+    }
+    print '$env.YZX_MISE_TEST = "mise-ok"'
+}
+"#,
     );
     let mise_runtime = temp.path.join("mise-run");
     let mise_stdout = run_nu_with_path(
@@ -191,9 +200,7 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
         .collect::<Vec<_>>();
     assert_eq!(
         menu_ids,
-        [
-            "config", "doctor", "status", "screen", "launch", "help", "tutor"
-        ],
+        ["config", "doctor", "status", "screen", "launch", "help", "tutor"],
         "yzx menu command allowlist changed\n{menu}"
     );
     expect_menu_descriptions_match_help(&help, &menu);
@@ -334,13 +341,25 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
         "--new-session-with-layout",
     }
     let env_supervisor = embedded_store_path(&yzx_launcher, "/bin/yzx-env-supervisor");
-    let env_supervisor_script = fs::read_to_string(&env_supervisor).unwrap();
+    let env_supervisor_bytes = fs::read(&env_supervisor).unwrap();
+    assert!(
+        env_supervisor_bytes.starts_with(b"\x7fELF"),
+        "{} env supervisor is not an ELF binary",
+        env_supervisor.display()
+    );
+    assert_ne!(
+        fs::metadata(&env_supervisor).unwrap().permissions().mode() & 0o111,
+        0,
+        "{} env supervisor is not executable",
+        env_supervisor.display()
+    );
+    let env_supervisor_text = String::from_utf8_lossy(&env_supervisor_bytes);
     expect_contains_all! {
-        &env_supervisor_script, "yzx env supervisor";
-        "#!/nix/store/",
-        "trap cleanup HUP INT TERM EXIT",
-        "\"$1\" < /dev/tty &",
-        "wait \"$child\"",
+        &env_supervisor_text, "yzx env supervisor";
+        "usage: yzx-env-supervisor <program> [args...]",
+        "yzx-env-supervisor: cannot open /dev/tty",
+        "yzx-env-supervisor: cannot start child",
+        "yzx-env-supervisor: cannot wait for child",
     }
 
     let temp = TempDir::new();
@@ -400,9 +419,17 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
     );
 
     let run_child = temp.path.join("run-child");
-    write_executable(
+    write_nu_executable(
         &run_child,
-        "#!/bin/sh\nprintf 'arg=<%s>\\n' \"$@\"\nprintf 'config=<%s>\\n' \"$YAZELIX_CONFIG_HOME\"\nprintf 'editor=<%s>\\n' \"$EDITOR\"\nexit 23\n",
+        r#"def --wrapped main [...args: string] {
+    for arg in $args {
+        print $"arg=<($arg)>"
+    }
+    print $"config=<($env.YAZELIX_CONFIG_HOME)>"
+    print $"editor=<($env.EDITOR)>"
+    exit 23
+}
+"#,
     );
     let run_case = RuntimeCase::new(&temp.path, "run");
     let output = run_case
@@ -816,9 +843,12 @@ fn expect_menu_dispatch(menu: &Path) {
     let temp = TempDir::new();
     let fake_yzx = temp.path.join("fake-yzx");
     let output_file = temp.path.join("selected-command");
-    write_executable(
+    write_nu_executable(
         &fake_yzx,
-        "#!/bin/sh\nprintf '%s\\n' \"$*\" >\"$YZX_MENU_TEST_OUT\"\n",
+        r#"def --wrapped main [...args: string] {
+    (($args | str join " ") + "\n") | save --force $env.YZX_MENU_TEST_OUT
+}
+"#,
     );
 
     let mut child = Command::new(menu)
@@ -1578,9 +1608,15 @@ fn expect_git_editor(editor: &Path, lazygit_config: &Path, git: &Path) {
 
     let temp = TempDir::new();
     let git_editor = temp.path.join("git-editor");
-    write_executable(
+    write_nu_executable(
         &git_editor,
-        "#!/bin/sh\n[ \"$YAZELIX_HELIX_BRIDGE\" = 0 ] || exit 64\nprintf '%s\\n' 'configured editor commit' >\"$1\"\n",
+        r#"def main [target: path] {
+    if ($env.YAZELIX_HELIX_BRIDGE? | default "") != "0" {
+        exit 64
+    }
+    "configured editor commit\n" | save --force $target
+}
+"#,
     );
     let git_config = temp.path.join("git-config");
     write_config_home(
@@ -1788,12 +1824,13 @@ fn expect_agent_bootstrap_case(
 
 fn write_fake_agent(bin: &Path, name: &str) {
     let path = bin.join(name);
-    write_executable(
-        &path,
-        format!(
-            "#!/bin/sh\nif [ \"$#\" -eq 0 ]; then\n  printf '%s\\n' \"{name}\" >\"$YAZELIX_AGENT_TEST_OUT\"\nelse\n  printf '%s %s\\n' \"{name}\" \"$*\" >\"$YAZELIX_AGENT_TEST_OUT\"\nfi\n"
-        ),
-    );
+    let body = format!("const AGENT_NAME = {name:?}\n")
+        + r#"def --wrapped main [...args: string] {
+    let suffix = if ($args | is-empty) { "" } else { " " + ($args | str join " ") }
+    $"($AGENT_NAME)($suffix)\n" | save --force $env.YAZELIX_AGENT_TEST_OUT
+}
+"#;
+    write_nu_executable(&path, body);
 }
 
 #[derive(Default)]

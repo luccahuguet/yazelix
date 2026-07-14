@@ -3,8 +3,8 @@ use std::{env, fs, path::Path, process::Command};
 mod support;
 
 use support::{
-    RuntimeCase, TempDir, binary_text, embedded_store_path, excerpt, expect_contains, expect_order,
-    write_executable,
+    binary_text, embedded_store_path, excerpt, expect_contains, expect_order, set_test_nu,
+    write_executable, write_nu_executable, RuntimeCase, TempDir,
 };
 
 macro_rules! expect_contains_all {
@@ -15,9 +15,10 @@ macro_rules! expect_contains_all {
 
 fn main() {
     let args = env::args().collect::<Vec<_>>();
-    let [_, yzx, out] = args.as_slice() else {
-        panic!("usage: helix-contracts-check <yzx-package> <out>");
+    let [_, yzx, nu, out] = args.as_slice() else {
+        panic!("usage: helix-contracts-check <yzx-package> <nu> <out>");
     };
+    set_test_nu(Path::new(nu));
 
     let yzx = Path::new(yzx);
     let yzx_launcher = binary_text(&yzx.join("bin/yzx"));
@@ -32,7 +33,7 @@ fn main() {
 fn expect_helix_wrapper(helix: &Path) {
     let helix_script = fs::read_to_string(helix).unwrap();
     let context = format!("{} managed Helix wrapper", helix.display());
-    expect_contains(&helix_script, "YAZELIX_HELIX_BRIDGE=1", &context);
+    expect_contains(&helix_script, "$env.YAZELIX_HELIX_BRIDGE = \"1\"", &context);
 
     let helix_config =
         fs::read_to_string(embedded_store_path(&helix_script, "-config.toml").join("config.toml"))
@@ -74,7 +75,7 @@ fn expect_helix_wrapper(helix: &Path) {
     expect_contains_all! {
         &open_terminal_script, "packaged Helix new-shell helper";
         "zellij action new-pane --cwd",
-        "dirname -- \"$target\"",
+        "$target | path dirname",
     }
 
     expect_helix_wrapper_config_selection(&helix_script);
@@ -127,16 +128,21 @@ fn expect_helix_doctor_warnings(yzx: &Path) {
 }
 
 fn expect_helix_wrapper_config_selection(helix_script: &str) {
-    const FAKE_HX: &str = "#!/bin/sh\n\
-printf 'HELIX_STEEL_CONFIG=%s\\n' \"${HELIX_STEEL_CONFIG-}\" > \"$YZX_FAKE_HX_OUT\"\n\
-printf 'YAZELIX_HELIX_MANAGED_CONFIG_PATH=%s\\n' \"$YAZELIX_HELIX_MANAGED_CONFIG_PATH\" >> \"$YZX_FAKE_HX_OUT\"\n\
-for arg do printf 'arg=%s\\n' \"$arg\" >> \"$YZX_FAKE_HX_OUT\"; done\n";
+    const FAKE_HX: &str = r#"def --wrapped main [...args: string] {
+    let out = $env.YZX_FAKE_HX_OUT
+    $"HELIX_STEEL_CONFIG=(($env.HELIX_STEEL_CONFIG? | default ''))\n" | save --force $out
+    $"YAZELIX_HELIX_MANAGED_CONFIG_PATH=(($env.YAZELIX_HELIX_MANAGED_CONFIG_PATH? | default ''))\n" | save --append $out
+    for arg in $args {
+        $"arg=($arg)\n" | save --append $out
+    }
+}
+"#;
 
     let temp = TempDir::new();
     let packaged_config = embedded_store_path(helix_script, "-config.toml").join("config.toml");
     let packaged_steel = embedded_store_path(helix_script, "-yzx-helix-steel-config");
     let fake_hx = temp.path.join("hx");
-    write_executable(&fake_hx, FAKE_HX);
+    write_nu_executable(&fake_hx, FAKE_HX);
     let real_hx = embedded_store_path(helix_script, "/bin/hx");
     let test_wrapper = temp.path.join("yzx-hx");
     write_executable(
@@ -158,7 +164,7 @@ for arg do printf 'arg=%s\\n' \"$arg\" >> \"$YZX_FAKE_HX_OUT\"; done\n";
     );
     expect_contains(
         &String::from_utf8_lossy(&missing_owners.stderr),
-        "HOME is required when YAZELIX_STATE_DIR and XDG_DATA_HOME are unset",
+        "HOME is required when YAZELIX_STATE_DIR and XDG_DATA_HOME are",
         "Helix wrapper state ownership diagnostic",
     );
 
