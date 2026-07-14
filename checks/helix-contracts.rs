@@ -15,16 +15,16 @@ macro_rules! expect_contains_all {
 
 fn main() {
     let args = env::args().collect::<Vec<_>>();
-    let [_, yzn, out] = args.as_slice() else {
-        panic!("usage: helix-contracts-check <yzn-package> <out>");
+    let [_, yzx, out] = args.as_slice() else {
+        panic!("usage: helix-contracts-check <yzx-package> <out>");
     };
 
-    let yzn = Path::new(yzn);
-    let yzn_launcher = binary_text(&yzn.join("bin/yzn"));
-    let helix = embedded_store_path(&yzn_launcher, "/bin/yzn-hx");
+    let yzx = Path::new(yzx);
+    let yzx_launcher = binary_text(&yzx.join("bin/yzx"));
+    let helix = embedded_store_path(&yzx_launcher, "/bin/yzx-hx");
 
     expect_helix_wrapper(&helix);
-    expect_helix_doctor_warnings(yzn);
+    expect_helix_doctor_warnings(yzx);
 
     fs::write(out, "ok\n").unwrap();
 }
@@ -39,7 +39,7 @@ fn expect_helix_wrapper(helix: &Path) {
             .unwrap();
     expect_contains(
         &helix_config,
-        r#"A-r = ':sh yzn reveal "%{buffer_name}"'"#,
+        r#"A-r = ':sh yzx reveal "%{buffer_name}"'"#,
         "managed Helix reveal binding",
     );
     expect_contains(
@@ -53,23 +53,23 @@ fn expect_helix_wrapper(helix: &Path) {
         "managed Helix enter movement bindings",
     );
 
-    let helix_steel = embedded_store_path(&helix_script, "-yzn-helix-steel-config");
+    let helix_steel = embedded_store_path(&helix_script, "-yzx-helix-steel-config");
     let helix_module = fs::read_to_string(helix_steel.join("helix.scm")).unwrap();
     expect_contains_all! {
         &helix_module, "packaged Helix Steel module";
-        "(provide yzn-new-shell)",
+        "(provide yzx-new-shell)",
         "(require (only-in \"helix/static.scm\" cx->current-file get-helix-cwd))",
         "(require (only-in \"helix/commands.scm\" run-shell-command))",
-        "(define (yzn-new-shell-command target)",
-        "/bin/yzn-open-terminal",
-        "(define (yzn-new-shell)",
+        "(define (yzx-new-shell-command target)",
+        "/bin/yzx-open-terminal",
+        "(define (yzx-new-shell)",
     }
     assert!(
         !helix_module.contains("recentf"),
         "packaged Helix Steel module still references recentf\n{}",
         excerpt(&helix_module)
     );
-    let open_terminal = embedded_store_path(&helix_module, "/bin/yzn-open-terminal");
+    let open_terminal = embedded_store_path(&helix_module, "/bin/yzx-open-terminal");
     let open_terminal_script = fs::read_to_string(&open_terminal).unwrap();
     expect_contains_all! {
         &open_terminal_script, "packaged Helix new-shell helper";
@@ -80,13 +80,13 @@ fn expect_helix_wrapper(helix: &Path) {
     expect_helix_wrapper_config_selection(&helix_script);
 }
 
-fn expect_helix_doctor_warnings(yzn: &Path) {
-    let yzn_bin = yzn.join("bin/yzn");
+fn expect_helix_doctor_warnings(yzx: &Path) {
+    let yzx_bin = yzx.join("bin/yzx");
     let temp = TempDir::new();
 
     let default = RuntimeCase::new(&temp.path, "default");
     default.write_default_config("");
-    let doctor = default.run_yzn(&yzn_bin, "doctor", "default Helix doctor");
+    let doctor = default.run_yzx(&yzx_bin, "doctor", "default Helix doctor");
     assert!(
         !doctor.contains("warn helix config:"),
         "default doctor should not warn about packaged Helix config\n{}",
@@ -98,7 +98,7 @@ fn expect_helix_doctor_warnings(yzn: &Path) {
     let helix_override_config = helix_override.config_home.join("helix/config.toml");
     fs::create_dir_all(helix_override_config.parent().unwrap()).unwrap();
     fs::write(&helix_override_config, "theme = \"ayu_evolve\"\n").unwrap();
-    let doctor = helix_override.run_yzn(&yzn_bin, "doctor", "Helix preference doctor");
+    let doctor = helix_override.run_yzx(&yzx_bin, "doctor", "Helix preference doctor");
     assert!(
         !doctor.contains("warn helix config:"),
         "ordinary Helix preference override should not warn\n{}",
@@ -107,10 +107,10 @@ fn expect_helix_doctor_warnings(yzn: &Path) {
 
     fs::write(
         &helix_override_config,
-        "[keys.normal]\nA-r = \":sh yzn reveal \\\"%{buffer_name}\\\"\"\n",
+        "[keys.normal]\nA-r = \":sh yzx reveal \\\"%{buffer_name}\\\"\"\n",
     )
     .unwrap();
-    let doctor = helix_override.run_yzn(&yzn_bin, "doctor", "Helix reveal binding doctor");
+    let doctor = helix_override.run_yzx(&yzx_bin, "doctor", "Helix reveal binding doctor");
     assert!(
         !doctor.contains("warn helix config:"),
         "supported Helix reveal binding should not warn\n{}",
@@ -118,27 +118,27 @@ fn expect_helix_doctor_warnings(yzn: &Path) {
     );
 
     fs::write(&helix_override_config, "[keys.normal]\nA-r = \":noop\"\n").unwrap();
-    let doctor = helix_override.run_yzn(&yzn_bin, "doctor", "Helix Alt r doctor");
+    let doctor = helix_override.run_yzx(&yzx_bin, "doctor", "Helix Alt r doctor");
     expect_contains_all! {
         &doctor, "Helix Alt r doctor";
-        r#"warn helix config: helix config override sets reserved Alt r; generated config keeps ':sh yzn reveal "%{buffer_name}"'"#,
+        r#"warn helix config: helix config override sets reserved Alt r; generated config keeps ':sh yzx reveal "%{buffer_name}"'"#,
         helix_override_config.display().to_string(),
     }
 }
 
 fn expect_helix_wrapper_config_selection(helix_script: &str) {
     const FAKE_HX: &str = "#!/bin/sh\n\
-printf 'HELIX_STEEL_CONFIG=%s\\n' \"${HELIX_STEEL_CONFIG-}\" > \"$YZN_FAKE_HX_OUT\"\n\
-printf 'YAZELIX_HELIX_MANAGED_CONFIG_PATH=%s\\n' \"$YAZELIX_HELIX_MANAGED_CONFIG_PATH\" >> \"$YZN_FAKE_HX_OUT\"\n\
-for arg do printf 'arg=%s\\n' \"$arg\" >> \"$YZN_FAKE_HX_OUT\"; done\n";
+printf 'HELIX_STEEL_CONFIG=%s\\n' \"${HELIX_STEEL_CONFIG-}\" > \"$YZX_FAKE_HX_OUT\"\n\
+printf 'YAZELIX_HELIX_MANAGED_CONFIG_PATH=%s\\n' \"$YAZELIX_HELIX_MANAGED_CONFIG_PATH\" >> \"$YZX_FAKE_HX_OUT\"\n\
+for arg do printf 'arg=%s\\n' \"$arg\" >> \"$YZX_FAKE_HX_OUT\"; done\n";
 
     let temp = TempDir::new();
     let packaged_config = embedded_store_path(helix_script, "-config.toml").join("config.toml");
-    let packaged_steel = embedded_store_path(helix_script, "-yzn-helix-steel-config");
+    let packaged_steel = embedded_store_path(helix_script, "-yzx-helix-steel-config");
     let fake_hx = temp.path.join("hx");
     write_executable(&fake_hx, FAKE_HX);
     let real_hx = embedded_store_path(helix_script, "/bin/hx");
-    let test_wrapper = temp.path.join("yzn-hx");
+    let test_wrapper = temp.path.join("yzx-hx");
     write_executable(
         &test_wrapper,
         helix_script.replace(real_hx.to_str().unwrap(), fake_hx.to_str().unwrap()),
@@ -226,7 +226,7 @@ fn expect_helix_wrapper_case(
     expect_contains_all! {
         &generated_config, &format!("{name} generated Helix reveal binding");
         "A-r = ",
-        ":sh yzn reveal",
+        ":sh yzx reveal",
         "%{buffer_name}",
     }
     if name == "toml" {
@@ -250,9 +250,9 @@ fn run_helix_wrapper(
     output_path: &Path,
 ) -> String {
     let output = Command::new(wrapper)
-        .env("YAZELIX_NEXT_CONFIG_HOME", config_home)
+        .env("YAZELIX_CONFIG_HOME", config_home)
         .env("YAZELIX_STATE_DIR", state_dir)
-        .env("YZN_FAKE_HX_OUT", output_path)
+        .env("YZX_FAKE_HX_OUT", output_path)
         .env_remove("HELIX_STEEL_CONFIG")
         .env_remove("YAZELIX_HELIX_MANAGED_CONFIG_PATH")
         .output()

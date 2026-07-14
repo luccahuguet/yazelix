@@ -8,10 +8,7 @@ together as one coherent workspace
 
 Nova packages the workspace as a Nix flake with an optional Home Manager module
 
-During pre-swap development, the installed command is `yzn` so it can coexist
-with public Yazelix v17
-
-`yzn launch` opens Mars, while `yzn enter` starts the Yazelix Zellij fork in the
+`yzx launch` opens Mars, while `yzx enter` starts the Yazelix Zellij fork in the
 current terminal. Both provide the same Yazi-first workspace and compact top
 bar. The repo keeps one launcher, one config root, one packaged layout, and
 focused checks for its contracts
@@ -28,21 +25,21 @@ first launch
 ### Try without installing
 
 ```sh
-nix run github:luccahuguet/yazelix-next -- launch
-nix run github:luccahuguet/yazelix-next#runtime -- enter
+nix run github:luccahuguet/yazelix -- launch
+nix run github:luccahuguet/yazelix#runtime -- enter
 ```
 
 If the one-off launch fails, inspect the owned runtime setup with:
 
 ```sh
-nix run github:luccahuguet/yazelix-next -- doctor
+nix run github:luccahuguet/yazelix -- doctor
 ```
 
 ### Install in a Nix profile
 
 ```sh
-nix profile add --refresh github:luccahuguet/yazelix-next
-yzn launch
+nix profile add --refresh github:luccahuguet/yazelix
+yzx launch
 ```
 
 ### Install with Home Manager
@@ -52,19 +49,33 @@ Use the [Home Manager module](#home-manager) for a declarative install
 From a local checkout, use:
 
 ```sh
-nix run .#yzn -- launch
+nix run .#yazelix -- launch
 nix run .#runtime -- enter
 ```
+
+### Moving from Yazelix Classic
+
+Use Classic v17.12 once to prepare its config for Nova, then install Nova from
+the canonical repository
+
+```sh
+nix run github:luccahuguet/yazelix/v17.12#yazelix -- launch
+```
+
+The Nova cutover intentionally replaces the old `main` history. Existing Git
+clones should be replaced with a fresh clone rather than updated with an
+ordinary pull. Classic remains available at the frozen `classic` branch, while
+the immutable `v17.12` tag remains the migration and rollback bridge
 
 ## Learn, help, and recover
 
 Start the guided tour after launching Nova:
 
 ```sh
-yzn tutor begin
+yzx tutor begin
 ```
 
-`yzn help` lists every command. `yzn doctor` checks the owned runtime setup
+`yzx help` lists every command. `yzx doctor` checks the owned runtime setup
 without opening Mars or Zellij. Inside Nova, press `Alt Shift M` to open the
 command palette, which includes both help and tutor entries
 
@@ -137,24 +148,24 @@ Move mode is unbound. Managed popup triggers can be remapped through
 
 | Command | Purpose |
 | --- | --- |
-| `yzn`, `yzn help` | Print command help |
-| `yzn --version` | Print the exact package-owned Nova version |
-| `yzn launch [zellij-args...]` | Open Mars first, then start managed Zellij |
-| `yzn enter [zellij-args...]` | Start managed Zellij in the current terminal |
-| `yzn run <program> [args...]` | Run exact argv inside the prepared Yazelix environment |
-| `yzn config` | Open the Ratconfig-backed config UI |
-| `yzn menu` | Open the command palette |
-| `yzn doctor` | Check owned runtime setup without launching Mars or Zellij |
-| `yzn status` | Print config/runtime paths and selected settings |
-| `yzn status --json` | Print the versioned machine-readable status record |
-| `yzn env` | Open the managed shell without launching the UI |
-| `yzn tutor [lesson]` | Print guided Yazelix lessons |
-| `yzn screen [style]` | Show a terminal welcome screen |
-| `yzn reveal <target>` | Reveal a file or directory in the managed Yazi sidebar |
+| `yzx`, `yzx help` | Print command help |
+| `yzx --version` | Print the exact package-owned Nova version |
+| `yzx launch [zellij-args...]` | Open Mars first, then start managed Zellij |
+| `yzx enter [zellij-args...]` | Start managed Zellij in the current terminal |
+| `yzx run <program> [args...]` | Run exact argv inside the prepared Yazelix environment |
+| `yzx config` | Open the Ratconfig-backed config UI |
+| `yzx menu` | Open the command palette |
+| `yzx doctor` | Check owned runtime setup without launching Mars or Zellij |
+| `yzx status` | Print config/runtime paths and selected settings |
+| `yzx status --json` | Print the versioned machine-readable status record |
+| `yzx env` | Open the managed shell without launching the UI |
+| `yzx tutor [lesson]` | Print guided Yazelix lessons |
+| `yzx screen [style]` | Show a terminal welcome screen |
+| `yzx reveal <target>` | Reveal a file or directory in the managed Yazi sidebar |
 
 Status JSON contains numeric `schema_version = 1`, plus `name`, `version`,
 `package`, `config_home`, `state_dir`, `shell`, `editor_command`, `editor`,
-`agent_command`, and `inside_zellij`. The sponsor URL remains in `yzn help`
+`agent_command`, and `inside_zellij`. The sponsor URL remains in `yzx help`
 without a public `sponsor` command
 
 The top-right Zellij corner shows the compact release line derived from the
@@ -166,13 +177,13 @@ Screen styles are `static`, `logo`, `boids`, `boids_predator`,
 `game_of_life_oscillators`, `game_of_life_bloom`, and `random`
 
 Tutor lessons are `workspace`, `discovery`, `troubleshooting`, and
-`tool_tutors`. `yzn tutor hx` and `yzn tutor nu` print the native tool tutor
+`tool_tutors`. `yzx tutor hx` and `yzx tutor nu` print the native tool tutor
 commands
 
 ## Package variants
 
-The default `yzn` package includes Mars and a Linux desktop entry. The fixed
-`runtime` package provides the same `bin/yzn`, workspace, and config without
+The default `yzx` package includes Mars and a Linux desktop entry. The fixed
+`runtime` package provides the same `bin/yzx`, workspace, and config without
 Mars, Rio, or desktop assets. Its `launch` command explains that Mars is absent,
 so use `enter` for the managed workspace. Both package and app outputs exist for
 `x86_64-linux`, `aarch64-linux`, `x86_64-darwin`, and `aarch64-darwin`
@@ -180,7 +191,7 @@ so use `enter` for the managed workspace. Both package and app outputs exist for
 Install the Mars-free variant with:
 
 ```sh
-nix profile add --refresh github:luccahuguet/yazelix-next#runtime
+nix profile add --refresh github:luccahuguet/yazelix#runtime
 ```
 
 ## Capability Matrix
@@ -200,7 +211,7 @@ interactive workflow and Mars GUI unverified**
 
 ## Host Terminals and SSH
 
-`yzn enter` starts the managed Zellij, Yazi, and Helix workspace in the current
+`yzx enter` starts the managed Zellij, Yazi, and Helix workspace in the current
 interactive terminal. It is the SSH/headless route and needs no Mars, desktop
 entry, `DISPLAY`, or `WAYLAND_DISPLAY`
 
@@ -225,13 +236,13 @@ Nova total
 
 | Runtime scope | Closure size | What the measurement includes |
 | --- | ---: | --- |
-| **Nova (`yzn`)** | **2.28 GiB** | Entire launcher, terminal, workspace, editor, file manager, shell, Git tools, plugins, fonts, and configuration assets |
+| **Nova (`yzx`)** | **2.28 GiB** | Entire launcher, terminal, workspace, editor, file manager, shell, Git tools, plugins, fonts, and configuration assets |
 | **Nova runtime** | **1.37 GiB** | Same command, workspace, tools, config, and cursor schema without Mars, Rio, desktop entry, or Mars-only assets |
 | Mars | 1.13 GiB | Mars, Rio, graphics libraries, Python runtime, and packaged fonts/emoji |
 | Yazi + preview tools | 503.2 MiB | Yazi plus Chafa, FFmpeg, ImageMagick, Poppler, resvg, 7-Zip, `fd`, `rg`, `jq`, `fzf`, and `zoxide` |
 | Git | 373.8 MiB | Packaged Git CLI and its runtime dependencies |
 | Yazelix Helix | 327.6 MiB | Managed Helix, runtime queries, and packaged tree-sitter grammars |
-| Ratconfig / `yzn-config` | 124.4 MiB | Compiled configuration UI, validation, persistence, and runtime libraries |
+| Ratconfig / `yzx-config` | 124.4 MiB | Compiled configuration UI, validation, persistence, and runtime libraries |
 | Carapace | 105.9 MiB | Shell completion engine |
 | Nushell | 104.1 MiB | Managed shell executable and runtime libraries |
 | Yazelix Zellij | 101.9 MiB | Managed Zellij fork and runtime libraries |
@@ -253,7 +264,7 @@ plugin inputs are each 17 KiB or less, and the installed cursor template is
 Reproduce the total for the current system and lock file with:
 
 ```sh
-full=$(nix build .#yzn --no-link --print-out-paths)
+full=$(nix build .#yazelix --no-link --print-out-paths)
 runtime=$(nix build .#runtime --no-link --print-out-paths)
 nix path-info -Sh "$full" "$runtime"
 nix path-info --json --json-format 1 -S "$full" "$runtime"
@@ -263,7 +274,7 @@ nix path-info --json --json-format 1 -S "$full" "$runtime"
 
 ```nix
 { inputs, ... }: {
-  imports = [ inputs.yazelix-next.homeManagerModules.default ];
+  imports = [ inputs.yazelix.homeManagerModules.default ];
   programs.yazelix.enable = true;
 }
 ```
@@ -274,7 +285,7 @@ The module writes no runtime config files unless you configure them
 Select the Mars-free package without another module option:
 
 ```nix
-programs.yazelix.package = inputs.yazelix-next.packages.${pkgs.system}.runtime;
+programs.yazelix.package = inputs.yazelix.packages.${pkgs.system}.runtime;
 ```
 
 Example:
@@ -297,9 +308,9 @@ programs.yazelix.config = {
 ```
 
 `settings` renders only the declared values to
-`~/.config/yazelix-next/config.toml`, while undeclared values inherit packaged Nova
+`~/.config/yazelix/config.toml`, while undeclared values inherit packaged Nova
 defaults. Native files are `text` or `source` passthroughs. Store-backed files
-show as `home-manager` and read-only in `yzn config`. Save, reset, and file-open
+show as `home-manager` and read-only in `yzx config`. Save, reset, and file-open
 attempts name the exact `programs.yazelix.config.*` option to edit before the
 normal Home Manager switch, while permission-only read-only files remain user-owned
 
@@ -312,7 +323,7 @@ configuration. Do not mix both update paths for the same installation
 Update a profile install with:
 
 ```sh
-nix profile upgrade --refresh yazelix-next
+nix profile upgrade --refresh yazelix
 ```
 
 The Mars-free `#runtime` install uses `nix profile upgrade --refresh runtime`.
@@ -322,11 +333,11 @@ For a Home Manager or nix-darwin install, run this from the configuration that
 declares the Yazelix input:
 
 ```sh
-nix flake update yazelix-next
+nix flake update yazelix
 ```
 
 Then run that configuration's normal Home Manager or nix-darwin switch command.
-Replace `yazelix-next` with your chosen input name when it differs. Do not run
+Replace `yazelix` with your chosen input name when it differs. Do not run
 `nix profile upgrade` for a package installed by Home Manager
 
 Your next launch uses the updated package. Each open Nova session keeps its
@@ -334,25 +345,25 @@ current immutable Nix store paths until you close and relaunch it
 
 ## Config Root
 
-`yzn config` uses the managed config tree under:
+`yzx config` uses the managed config tree under:
 
 ```text
-~/.config/yazelix-next/
+~/.config/yazelix/
 ```
 
-Set `YAZELIX_NEXT_CONFIG_HOME` to use another root. Generated runtime state
+Set `YAZELIX_CONFIG_HOME` to use another root. Generated runtime state
 defaults to:
 
 ```text
-${XDG_DATA_HOME:-$HOME/.local/share}/yazelix-next
+${XDG_DATA_HOME:-$HOME/.local/share}/yazelix
 ```
 
 Set `YAZELIX_STATE_DIR` to use another state directory
 
 ## Main Settings
 
-The optional root config lives at `~/.config/yazelix-next/config.toml`. Opening
-`yzn config` or starting Nova does not create it. The UI shows packaged defaults
+The optional root config lives at `~/.config/yazelix/config.toml`. Opening
+`yzx config` or starting Nova does not create it. The UI shows packaged defaults
 for absent keys, saves only explicit overrides, and removes a key when reset.
 Nova rejects unsupported or misspelled paths instead of silently ignoring them,
 while custom popup ids remain dynamic within the documented `popups.<id>` fields
@@ -361,7 +372,7 @@ while custom popup ids remain dynamic within the documented `popups.<id>` fields
 | --- | --- | --- |
 | `open.log_level` | `info` | Diagnostics for managed Yazi open requests: `off`, `error`, `info`, `debug` |
 | `shell.program` | `nu` | Packaged shell for new panes: `nu`, `bash`, `zsh`, `fish` |
-| `editor.command` | `yzn-hx` | Editor used by Yazi opens, Ratconfig text edits, and Git editor flows |
+| `editor.command` | `yzx-hx` | Editor used by Yazi opens, Ratconfig text edits, and Git editor flows |
 | `welcome.enabled` | `true` | Show the startup welcome splash |
 | `welcome.style` | `random` | Startup screen style |
 | `welcome.duration_seconds` | `3` | Startup splash duration, 1 to 60 seconds |
@@ -373,7 +384,7 @@ Updated windows use a versioned cache so older open sessions cannot reintroduce
 incompatible quota periods
 
 `editor.command` accepts one executable name or path, not a shell command with
-arguments. Inside Nova, `hx` and `yzn-hx` use packaged managed Helix. Other
+arguments. Inside Nova, `hx` and `yzx-hx` use packaged managed Helix. Other
 editors such as `nvim`, or an absolute host Helix path, skip the managed bridge.
 Terminal Git clients receive the same selection through `EDITOR`, `VISUAL`, and
 `GIT_EDITOR`
@@ -460,7 +471,7 @@ Normal host config such as `~/.config/helix`, `~/.config/yazi`, and
 `~/.config/starship.toml` does not control the managed runtime unless you route
 through these Yazelix-owned files
 
-Opening `yzn config` does not create `mars/config.toml`, `starship.toml`, or
+Opening `yzx config` does not create `mars/config.toml`, `starship.toml`, or
 `zellij/config.kdl`. Their tabs show effective Nova defaults, saving writes only
 the selected override, and resetting removes that key. Mars and Zellij layer
 their sparse files over packaged configuration directly, while managed Nu materializes
@@ -469,39 +480,39 @@ upgrades
 
 The first config or runtime use seeds `cursors.toml` without replacing an
 existing file. Its Cursors tab edits the enabled pool, selection, and common
-effect settings, while the full-file row opens custom cursor definitions. `yzn launch`
+effect settings, while the full-file row opens custom cursor definitions. `yzx launch`
 passes this exact file to Mars. Mars currently consumes cursor selection and
 basic trail enablement, while the richer trail/mode effects, glow, and duration remain
 available to compatible consumers such as a future Ghostty integration
 
-Saving `mars.appearance.preset` through `yzn config` switches Mars and the config
+Saving `mars.appearance.preset` through `yzx config` switches Mars and the config
 UI palette in the same session. Other Mars values apply on the next Mars launch.
 Zellij sidecar saves and resets update the active managed session config when
-`yzn config` runs inside a session, and many scalars apply live via Zellij's watcher,
+`yzx config` runs inside a session, and many scalars apply live via Zellij's watcher,
 and some still need a new session
 
 ## Editor And File Opens
 
-Managed Yazi opens files through `yzn-open`. With the default
-`editor.command = "yzn-hx"`, `yzn-open` reuses a live Helix bridge in the same
+Managed Yazi opens files through `yzx-open`. With the default
+`editor.command = "yzx-hx"`, `yzx-open` reuses a live Helix bridge in the same
 Zellij tab or opens packaged Helix in the managed `editor` pane. Typing `hx`
 inside Nova invokes this same managed Helix wrapper
 
 Git editing stays in the client terminal. Managed LazyGit overlays only its
 file-edit commands and keeps user configuration, while it and other terminal Git
-clients use `yzn-editor` through the standard editor variables. On return, the
+clients use `yzx-editor` through the standard editor variables. On return, the
 bridge restores the client's transparent Zellij background
 
-`Alt r` reveals the current Helix buffer in the Yazi sidebar. `yzn reveal
+`Alt r` reveals the current Helix buffer in the Yazi sidebar. `yzx reveal
 <target>` exposes the same path inside a managed session
 
 `Alt z` opens a zoxide picker in Yazi, moves to the selected directory, sends it
-through `yzn-open`, and renames the tab to the workspace root
+through `yzx-open`, and renames the tab to the workspace root
 
-`yzn-open` writes bounded logs under:
+`yzx-open` writes bounded logs under:
 
 ```text
-${YAZELIX_STATE_DIR}/logs/yzn-open.log
+${YAZELIX_STATE_DIR}/logs/yzx-open.log
 ```
 
 ## CI
@@ -535,15 +546,15 @@ Useful local checks:
 ```sh
 nix flake check
 nix flake show --all-systems
-nix build .#yzn --no-link --print-build-logs
+nix build .#yazelix --no-link --print-build-logs
 nix build .#runtime --no-link --print-build-logs
-nix build .#checks.x86_64-linux.yzn_yazi_materialization --no-link
+nix build .#checks.x86_64-linux.yzx_yazi_materialization --no-link
 ```
 
 Runtime package changes should also pass a temporary profile install:
 
 ```sh
-nix profile add --refresh /absolute/path/to/yazelix-next --profile /tmp/yzn-profile
+nix profile add --refresh /absolute/path/to/yazelix --profile /tmp/yzx-profile
 ```
 
 Detailed launch/config/editor shell notes live in
@@ -560,14 +571,15 @@ git ls-files | grep -Ev '^\.beads/|\.lock$' | xargs wc -l
 
 | Language | Lines |
 | --- | ---: |
-| Ignore (`.gitignore`) | 4 |
-| Markdown | 1689 |
-| Nix | 1127 |
+| Ignore (`.gitignore`) | 6 |
+| License | 201 |
+| Markdown | 1704 |
+| Nix | 1125 |
 | Shell | 84 |
-| YAML | 294 |
+| YAML | 313 |
 | TOML | 246 |
 | KDL | 212 |
 | Nu | 11 |
 | Lua | 247 |
-| Rust | 12907 |
-| Total | 16821 |
+| Rust | 12880 |
+| Total | 17029 |

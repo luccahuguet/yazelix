@@ -1,0 +1,1738 @@
+use std::{env, process};
+
+mod catalog;
+mod common;
+mod custom_popups;
+mod file_actions;
+mod helix_config;
+mod model;
+mod native_config;
+mod paths;
+mod root_config;
+mod ui;
+mod zellij_sidecar;
+
+use catalog::*;
+use common::*;
+use custom_popups::*;
+use helix_config::*;
+use native_config::write_effective_starship_config;
+use paths::*;
+use root_config::*;
+use ui::*;
+use yazelix_cursors::initialize_cursor_config;
+
+fn main() {
+    if let Err(error) = run() {
+        eprintln!("yzx-config: {error}");
+        process::exit(1);
+    }
+}
+
+fn run() -> Result<()> {
+    let mut args = env::args().skip(1);
+    match args.next().as_deref() {
+        None => run_ui(),
+        Some("--get") => {
+            let path = args
+                .next()
+                .ok_or_else(|| error("--get requires a config path"))?;
+            if args.next().is_some() {
+                return Err(error("--get accepts exactly one config path"));
+            }
+            print_config_field(&path)
+        }
+        Some("--init-cursors") => {
+            if args.next().is_some() {
+                return Err(error("--init-cursors does not accept arguments"));
+            }
+            initialize_cursor_config(&config_paths()?.cursors)?;
+            Ok(())
+        }
+        Some("--write-effective-helix-config") => {
+            let packaged = args
+                .next()
+                .ok_or_else(|| error("--write-effective-helix-config requires a packaged path"))?;
+            let user = args
+                .next()
+                .ok_or_else(|| error("--write-effective-helix-config requires a user path"))?;
+            let output = args
+                .next()
+                .ok_or_else(|| error("--write-effective-helix-config requires an output path"))?;
+            if args.next().is_some() {
+                return Err(error(
+                    "--write-effective-helix-config accepts exactly three paths",
+                ));
+            }
+            write_effective_helix_config(
+                std::path::Path::new(&packaged),
+                std::path::Path::new(&user),
+                std::path::Path::new(&output),
+            )
+        }
+        Some("--write-effective-starship-config") => {
+            let user = args
+                .next()
+                .ok_or_else(|| error("--write-effective-starship-config requires a user path"))?;
+            let output = args.next().ok_or_else(|| {
+                error("--write-effective-starship-config requires an output path")
+            })?;
+            if args.next().is_some() {
+                return Err(error(
+                    "--write-effective-starship-config accepts exactly two paths",
+                ));
+            }
+            write_effective_starship_config(
+                std::path::Path::new(&user),
+                std::path::Path::new(&output),
+            )
+        }
+        Some(arg) => Err(error(format!("unknown argument: {arg}"))),
+    }
+}
+
+fn print_config_field(path: &str) -> Result<()> {
+    if path == BAR_WIDGETS_PATH {
+        let config = validate_config_file_at(config_paths()?.root)?;
+        println!("{}", read_bar_widgets_field(&config)?);
+    } else if path == CUSTOM_POPUPS_KDL_PATH {
+        let config = validate_config_file_at(config_paths()?.root)?;
+        print!("{}", read_custom_popups_kdl(&config)?);
+    } else if path == CUSTOM_POPUP_KEYBINDINGS_KDL_PATH {
+        let config = validate_config_file_at(config_paths()?.root)?;
+        print!("{}", read_custom_popup_keybindings_kdl(&config)?);
+    } else if path == AGENT_POPUP_KDL_PATH {
+        let config = validate_config_file_at(config_paths()?.root)?;
+        print!("{}", read_agent_popup_kdl(&config)?);
+    } else {
+        let spec = config_field(path)?;
+        let config = validate_config_file_at(config_paths()?.root)?;
+        println!("{}", read_config_field(&config, spec)?);
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::{
+        env, fs,
+        path::{Path, PathBuf},
+        process,
+        time::{SystemTime, UNIX_EPOCH},
+    };
+
+    use crate::file_actions::*;
+    use crate::model::*;
+    use crate::zellij_sidecar::*;
+    use crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
+    use ratatui::style::{Color, Style};
+    use ratconfig::toml_adapter::{get_toml_path, parse_toml_value, set_toml_value_text};
+    use ratconfig::{
+        ConfigUiDiagnostic, ConfigUiEditBehavior, ConfigUiModel, ConfigUiPathOwner, ConfigUiTheme,
+        ConfigUiValueState, file_action_status_label, file_action_status_style,
+    };
+    use serde_json::{Value as JsonValue, json};
+    use yazelix_cursors::{DEFAULT_CURSOR_CONFIG_TEMPLATE, load_cursor_config};
+
+    struct TempHome {
+        path: PathBuf,
+    }
+
+    impl TempHome {
+        fn new() -> Self {
+            let path = env::temp_dir().join(format!(
+                "yzx-config-test-{}-{}",
+                process::id(),
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_nanos()
+            ));
+            fs::create_dir_all(&path).unwrap();
+            Self { path }
+        }
+    }
+
+    impl Drop for TempHome {
+        fn drop(&mut self) {
+            let _ = fs::remove_dir_all(&self.path);
+        }
+    }
+
+    fn temp_paths(temp: &TempHome) -> ConfigPaths {
+        ConfigPaths {
+            store_root: temp.path.join("store"),
+            root: temp.path.join("config.toml"),
+            cursors: temp.path.join("cursors.toml"),
+            mars: temp.path.join("mars/config.toml"),
+            zellij: temp.path.join("zellij/config.kdl"),
+            helix_dir: temp.path.join("helix"),
+            helix_config: temp.path.join("helix/config.toml"),
+            helix_languages: temp.path.join("helix/languages.toml"),
+            helix_module: temp.path.join("helix/helix.scm"),
+            helix_init: temp.path.join("helix/init.scm"),
+            nu_env: temp.path.join("nu/env.nu"),
+            nu_config: temp.path.join("nu/config.nu"),
+            starship: temp.path.join("starship.toml"),
+            yazi_config: temp.path.join("yazi/yazi.toml"),
+            yazi_init: temp.path.join("yazi/init.lua"),
+            yazi_keymap: temp.path.join("yazi/keymap.toml"),
+            yazi_package: temp.path.join("yazi/package.toml"),
+            yazi_theme: temp.path.join("yazi/theme.toml"),
+            zellij_plugins: temp.path.join("zellij/plugins.kdl"),
+        }
+    }
+
+    fn temp_sources() -> (TempHome, ConfigPaths) {
+        let temp = TempHome::new();
+        let paths = ensure_config_sources_at(temp_paths(&temp)).unwrap();
+        (temp, paths)
+    }
+
+    fn has_diagnostic(diagnostics: &[ConfigUiDiagnostic], text: &str) -> bool {
+        diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.headline.contains(text))
+    }
+
+    fn set_read_only(path: &Path) {
+        let mut permissions = fs::metadata(path).unwrap().permissions();
+        permissions.set_readonly(true);
+        fs::set_permissions(path, permissions).unwrap();
+    }
+
+    #[cfg(unix)]
+    fn link_from_store(paths: &ConfigPaths, path: &Path, text: &str) {
+        use std::os::unix::fs::symlink;
+
+        fs::create_dir_all(&paths.store_root).unwrap();
+        let target = paths.store_root.join(path.file_name().unwrap());
+        fs::write(&target, text).unwrap();
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        symlink(target, path).unwrap();
+    }
+
+    fn write_toml_value(path: &Path, field_path: &str, value: &JsonValue) {
+        let raw = if path.is_file() {
+            fs::read_to_string(path).unwrap()
+        } else {
+            String::new()
+        };
+        let updated = set_toml_value_text(&raw, field_path, value).unwrap().text;
+        atomic_write(path, &updated).unwrap();
+    }
+
+    fn write_config_text(path: &Path, text: &str) {
+        fs::write(path, text).unwrap();
+    }
+
+    fn assert_toml_value(path: &Path, field_path: &str, expected: &JsonValue) {
+        let value = read_toml_file_value(path, "config.toml").unwrap();
+        assert_eq!(
+            get_toml_path(&value, field_path),
+            Some(expected),
+            "{field_path}"
+        );
+    }
+
+    fn assert_write_config_error(path: &Path, field_path: &str, value: JsonValue, expected: &str) {
+        let error = write_config_field(path, field_path, &value).unwrap_err();
+        assert!(
+            error.to_string().contains(expected),
+            "expected `{expected}` in `{error}`"
+        );
+    }
+
+    fn assert_write_round_trip(
+        path: &Path,
+        field_path: &str,
+        value: JsonValue,
+        read_back: Option<&str>,
+    ) {
+        write_config_field(path, field_path, &value).unwrap();
+        assert_toml_value(path, field_path, &value);
+        if let Some(expected) = read_back {
+            assert_eq!(
+                read_config_field(path, config_field(field_path).unwrap()).unwrap(),
+                expected
+            );
+        }
+    }
+
+    fn assert_custom_popup_error(text: &str, expected: &str) {
+        let temp = TempHome::new();
+        let path = temp.path.join("config.toml");
+        write_config_text(&path, text);
+
+        let error = read_custom_popups_kdl(&path).unwrap_err().to_string();
+        assert!(
+            error.contains(expected),
+            "expected `{expected}` in `{error}`"
+        );
+    }
+
+    fn assert_agent_popup_error(text: &str, expected: &str) {
+        let temp = TempHome::new();
+        let path = temp.path.join("config.toml");
+        write_config_text(&path, text);
+
+        let error = read_agent_popup_kdl(&path).unwrap_err().to_string();
+        assert!(
+            error.contains(expected),
+            "expected `{expected}` in `{error}`"
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn external_text_editor_round_trips_staged_input() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let temp = TempHome::new();
+        let editor = temp.path.join("editor.sh");
+        fs::write(
+            &editor,
+            "#!/bin/sh\ncat > \"$1\" <<'EOF'\nline one\nline two\nEOF\n",
+        )
+        .unwrap();
+        let mut permissions = fs::metadata(&editor).unwrap().permissions();
+        permissions.set_mode(0o755);
+        fs::set_permissions(&editor, permissions).unwrap();
+
+        assert_eq!(
+            edit_text_with_editor("original", &editor).unwrap(),
+            "line one\nline two"
+        );
+    }
+
+    fn model_field<'a>(model: &'a ConfigUiModel, path: &str) -> &'a ratconfig::ConfigUiField {
+        model
+            .fields
+            .iter()
+            .find(|field| field.path == path)
+            .unwrap_or_else(|| panic!("missing config field {path}"))
+    }
+
+    fn key_field<'a>(model: &'a ConfigUiModel, label: &str) -> &'a ratconfig::ConfigUiField {
+        model
+            .fields
+            .iter()
+            .find(|field| field.source_id == SOURCE_KEYS && field.display_label.contains(label))
+            .unwrap_or_else(|| panic!("missing key action {label}"))
+    }
+
+    fn assert_missing(paths: &[&Path]) {
+        for path in paths {
+            assert!(!path.exists(), "{} should not exist", path.display());
+        }
+    }
+
+    fn assert_exists(paths: &[&Path]) {
+        for path in paths {
+            assert!(path.exists(), "{} should exist", path.display());
+        }
+    }
+
+    fn assert_file_text(path: &Path, expected: &str) {
+        assert_eq!(
+            fs::read_to_string(path).unwrap(),
+            expected,
+            "{}",
+            path.display()
+        );
+    }
+
+    fn assert_config_field_on_tab(
+        model: &ConfigUiModel,
+        path: &str,
+        tab: &str,
+        kind: &str,
+        summary: &str,
+    ) {
+        let field = model_field(model, path);
+        assert_eq!(field.tab, tab);
+        assert_eq!(field.kind, kind);
+        assert_eq!(
+            field.current_value,
+            default_config_value(path).unwrap().to_string()
+        );
+        assert_eq!(field.apply_status.summary, summary);
+    }
+    fn assert_config_field(model: &ConfigUiModel, path: &str, kind: &str, summary: &str) {
+        assert_config_field_on_tab(model, path, TAB_CONFIG, kind, summary);
+    }
+
+    #[test]
+    fn config_field_rejects_unknown_paths_before_io() {
+        assert!(
+            config_field("shell.typo")
+                .unwrap_err()
+                .to_string()
+                .contains("unknown config path")
+        );
+    }
+
+    #[test]
+    fn root_config_catalog_defaults_come_from_config_toml_and_validate() {
+        let defaults = default_config().unwrap();
+        validate_root_config(&defaults).unwrap();
+
+        for field_path in CONFIG_FIELDS
+            .iter()
+            .map(|spec| spec.field.path)
+            .chain([BAR_WIDGETS_PATH])
+        {
+            let value = default_config_path_value(&defaults, field_path).unwrap();
+            assert_eq!(default_config_value(field_path).unwrap(), value);
+            validate_config_value(field_path, &value).unwrap();
+        }
+        for spec in POPUP_KEYBINDINGS {
+            assert_eq!(
+                default_config_value(spec.path).unwrap(),
+                json!(spec.default),
+                "{}",
+                spec.path
+            );
+        }
+    }
+
+    #[test]
+    fn root_schema_rejects_unknown_paths_and_accepts_sparse_dynamic_popups() {
+        for (raw, expected) in [
+            (
+                "mystery = true\n",
+                "mystery is not supported; use a documented Nova config path",
+            ),
+            (
+                "[welcome]\nextra = true\n",
+                "welcome.extra is not supported; use a documented Nova config path",
+            ),
+            (
+                "[welcome]\nenabld = true\n",
+                "welcome.enabld is not supported; use a documented Nova config path",
+            ),
+            (
+                "\"welcome.enabled\" = true\n",
+                "welcome.enabled must use nested TOML tables, not a quoted dotted key",
+            ),
+            ("welcome = 1\n", "welcome must be a table"),
+            (
+                "[welcome]\nenabled = \"yes\"\n",
+                "welcome.enabled must be true or false",
+            ),
+            (
+                "[popups.build]\ncommand = \"btm\"\nkeybinding = \"Alt B\"\ncolor = \"blue\"\n",
+                "popups.build.color is not supported; use command, args, title, keybinding, or keep_alive",
+            ),
+        ] {
+            let value = parse_toml_value(raw).unwrap();
+            let error = validate_root_config(&value).unwrap_err().to_string();
+            assert_eq!(error, expected);
+        }
+
+        for raw in [
+            "",
+            "[welcome]\nenabled = false\n",
+            "[popups.build]\ncommand = \"btm\"\nkeybinding = \"Alt B\"\n\n[popups.logs]\ncommand = \"lnav\"\nargs = [\"app.log\"]\nkeybinding = \"Alt Shift P\"\nkeep_alive = true\n",
+        ] {
+            validate_root_config(&parse_toml_value(raw).unwrap()).unwrap();
+        }
+    }
+
+    #[test]
+    fn root_config_stays_sparse_and_inherits_packaged_defaults() {
+        let temp = TempHome::new();
+        let path = validate_config_file_at(temp.path.join("config.toml")).unwrap();
+        assert!(!path.exists());
+        assert_eq!(
+            read_config_field(&path, config_field(OPEN_LOG_LEVEL_PATH).unwrap()).unwrap(),
+            "info"
+        );
+        assert!(!path.exists());
+
+        write_config_field(&path, OPEN_LOG_LEVEL_PATH, &json!("info")).unwrap();
+        let value = read_toml_file_value(&path, "config.toml").unwrap();
+        assert_eq!(
+            get_toml_path(&value, OPEN_LOG_LEVEL_PATH),
+            Some(&json!("info"))
+        );
+        assert_eq!(get_toml_path(&value, SHELL_PROGRAM_PATH), None);
+        let paths = ensure_config_sources_at(temp_paths(&temp)).unwrap();
+        assert_eq!(
+            model_field(&build_model(&paths).unwrap(), OPEN_LOG_LEVEL_PATH).state,
+            ConfigUiValueState::Explicit
+        );
+
+        unset_config_field(&path, OPEN_LOG_LEVEL_PATH).unwrap();
+        assert!(!path.exists());
+        assert_eq!(
+            read_config_field(&path, config_field(OPEN_LOG_LEVEL_PATH).unwrap()).unwrap(),
+            "info"
+        );
+
+        let changed_defaults = parse_toml_value("[open]\nlog_level = \"debug\"\n").unwrap();
+        let inherited = JsonValue::Object(Default::default());
+        assert_eq!(
+            config_path_value(&inherited, &changed_defaults, OPEN_LOG_LEVEL_PATH).unwrap(),
+            json!("debug")
+        );
+        assert_eq!(
+            config_path_value(
+                &parse_toml_value("[open]\nlog_level = \"info\"\n").unwrap(),
+                &changed_defaults,
+                OPEN_LOG_LEVEL_PATH,
+            )
+            .unwrap(),
+            json!("info")
+        );
+
+        std::os::unix::fs::symlink(temp.path.join("missing"), &path).unwrap();
+        assert!(write_config_field(&path, OPEN_LOG_LEVEL_PATH, &json!("debug")).is_err());
+        assert!(
+            fs::symlink_metadata(&path)
+                .unwrap()
+                .file_type()
+                .is_symlink()
+        );
+    }
+
+    #[test]
+    fn write_config_field_persists_valid_values_and_rejects_bad_values() {
+        let temp = TempHome::new();
+        let path = validate_config_file_at(temp.path.join("config.toml")).unwrap();
+
+        for (field_path, value, read_back) in [
+            (OPEN_LOG_LEVEL_PATH, json!("debug"), None),
+            (SHELL_PROGRAM_PATH, json!("fish"), None),
+            (EDITOR_COMMAND_PATH, json!("nvim"), Some("nvim")),
+            (AGENT_COMMAND_PATH, json!("codex"), Some("codex")),
+            (
+                AGENT_ARGS_PATH,
+                json!(["resume", "--dangerously-bypass-approvals-and-sandbox"]),
+                Some(r#"["resume","--dangerously-bypass-approvals-and-sandbox"]"#),
+            ),
+            (POPUP_SIDE_MARGIN_PATH, json!(2), Some("2")),
+            (POPUP_VERTICAL_MARGIN_PATH, json!(1), None),
+        ] {
+            assert_write_round_trip(&path, field_path, value, read_back);
+        }
+
+        for (field_path, value) in [
+            (KEYBINDINGS_CONFIG_PATH, "Alt Shift C"),
+            (KEYBINDINGS_AGENT_PATH, "Alt Shift A"),
+            (KEYBINDINGS_GIT_PATH, "Alt Shift G"),
+            (KEYBINDINGS_MENU_PATH, "Alt Shift U"),
+        ] {
+            assert_write_round_trip(&path, field_path, json!(value), Some(value));
+        }
+        write_config_field(&path, KEYBINDINGS_AGENT_PATH, &json!("Alt Shift M")).unwrap();
+        assert_toml_value(&path, KEYBINDINGS_AGENT_PATH, &json!("Alt Shift M"));
+        write_config_field(&path, KEYBINDINGS_AGENT_PATH, &json!("Alt Shift A")).unwrap();
+
+        for (field_path, value, expected) in [
+            (
+                OPEN_LOG_LEVEL_PATH,
+                json!("loud"),
+                "off, error, info, debug",
+            ),
+            (SHELL_PROGRAM_PATH, json!("tcsh"), "nu, bash, zsh, fish"),
+            (EDITOR_COMMAND_PATH, json!(""), "must not be empty"),
+            (
+                EDITOR_COMMAND_PATH,
+                json!("nvim --clean"),
+                "without arguments",
+            ),
+            (AGENT_COMMAND_PATH, json!(""), "must not be empty"),
+            (
+                AGENT_COMMAND_PATH,
+                json!("codex resume"),
+                "without arguments",
+            ),
+            (AGENT_ARGS_PATH, json!("resume"), "JSON string array"),
+            (AGENT_ARGS_PATH, json!([1]), "contain only strings"),
+            (POPUP_SIDE_MARGIN_PATH, json!(-1), "zero or greater"),
+            (
+                KEYBINDINGS_AGENT_PATH,
+                json!("Alt+Shift+A"),
+                "keybindings.agent must be a key chord",
+            ),
+        ] {
+            assert_write_config_error(&path, field_path, value, expected);
+        }
+        for value in ["Alt Shift h", "Alt z"] {
+            assert_write_config_error(
+                &path,
+                KEYBINDINGS_AGENT_PATH,
+                json!(value),
+                &format!("conflicts with packaged key {value}"),
+            );
+        }
+        assert_write_config_error(
+            &path,
+            KEYBINDINGS_AGENT_PATH,
+            json!("Alt Shift U"),
+            "keybindings.menu conflicts with keybindings.agent: Alt Shift U",
+        );
+
+        write_config_field(
+            &path,
+            BAR_WIDGETS_PATH,
+            &json!(["editor", "claude_usage", "cpu"]),
+        )
+        .unwrap();
+        assert_toml_value(
+            &path,
+            BAR_WIDGETS_PATH,
+            &json!(["editor", "claude_usage", "cpu"]),
+        );
+
+        write_source_default(&temp_paths(&temp), SOURCE_CONFIG, BAR_WIDGETS_PATH).unwrap();
+        let value = read_toml_file_value(&path, "config.toml").unwrap();
+        assert_eq!(get_toml_path(&value, BAR_WIDGETS_PATH), None);
+
+        let error = write_config_field(&path, BAR_WIDGETS_PATH, &json!(["weather"]))
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("bar.widgets must be one of"));
+        assert!(error.contains("claude_usage"));
+
+        write_config_field(&path, AGENT_COMMAND_PATH, &json!(AGENT_AUTO_COMMAND)).unwrap();
+        let value = read_toml_file_value(&path, "config.toml").unwrap();
+        assert_eq!(get_toml_path(&value, AGENT_ARGS_PATH), None);
+        assert_write_config_error(
+            &path,
+            AGENT_ARGS_PATH,
+            json!(["resume"]),
+            "requires agent.command to be a custom command",
+        );
+    }
+
+    #[test]
+    fn bar_widgets_are_read_as_json_array_and_validated() {
+        let temp = TempHome::new();
+        let path = validate_config_file_at(temp.path.join("config.toml")).unwrap();
+
+        assert_eq!(
+            read_bar_widgets_field(&path).unwrap(),
+            r#"["editor","shell","term","codex_usage","cpu","ram"]"#
+        );
+
+        write_toml_value(
+            &path,
+            BAR_WIDGETS_PATH,
+            &json!(["editor", "claude_usage", "cpu"]),
+        );
+        assert_eq!(
+            read_bar_widgets_field(&path).unwrap(),
+            r#"["editor","claude_usage","cpu"]"#
+        );
+
+        write_toml_value(&path, BAR_WIDGETS_PATH, &json!(["editor", "weather"]));
+        let error = read_bar_widgets_field(&path).unwrap_err().to_string();
+        assert!(error.contains("bar.widgets must be one of"));
+        assert!(error.contains("claude_usage"));
+    }
+
+    #[test]
+    fn custom_popups_render_popup_and_keybinding_kdl() {
+        // Defends: Custom popups render only popup-specific KDL and inherit runtime popup defaults.
+        let temp = TempHome::new();
+        let path = temp.path.join("config.toml");
+        write_config_text(
+            &path,
+            "[popups.btm]\ncommand = \"btm\"\nargs = [\"--basic\", \"--battery\"]\ntitle = \"btm_popup\"\nkeybinding = \"Alt Shift B\"\nkeep_alive = true\n",
+        );
+
+        assert_eq!(
+            read_custom_popups_kdl(&path).unwrap(),
+            concat!(
+                "            btm {\n",
+                "                command \"btm\"\n",
+                "                arg_1 \"--basic\"\n",
+                "                arg_2 \"--battery\"\n",
+                "                pane_title \"btm_popup\"\n",
+                "                command_marker \"btm_popup\"\n",
+                "                width_percent 100\n",
+                "                height_percent 100\n",
+                "                toggle_close_behavior \"hide\"\n",
+                "            }\n",
+            )
+        );
+        assert_eq!(
+            read_custom_popup_keybindings_kdl(&path).unwrap(),
+            concat!(
+                "        bind \"Alt Shift B\" {\n",
+                "            MessagePlugin \"yzpp\" {\n",
+                "                name \"toggle\"\n",
+                "                payload \"btm\"\n",
+                "            }\n",
+                "        }\n",
+            )
+        );
+    }
+
+    #[test]
+    fn agent_popup_kdl_renders_custom_command_override() {
+        let temp = TempHome::new();
+        let path = validate_config_file_at(temp.path.join("config.toml")).unwrap();
+
+        assert_agent_popup_error(
+            "[agent]\ncommand = \"auto\"\nargs = [\"resume\"]\n",
+            "requires agent.command to be a custom command",
+        );
+
+        write_config_field(&path, AGENT_COMMAND_PATH, &json!("codex")).unwrap();
+        write_config_field(
+            &path,
+            AGENT_ARGS_PATH,
+            &json!(["resume", "--dangerously-bypass-approvals-and-sandbox"]),
+        )
+        .unwrap();
+
+        assert_eq!(
+            read_agent_popup_kdl(&path).unwrap(),
+            concat!(
+                "            agent {\n",
+                "                command \"codex\"\n",
+                "                arg_1 \"resume\"\n",
+                "                arg_2 \"--dangerously-bypass-approvals-and-sandbox\"\n",
+                "                pane_title \"agent_popup\"\n",
+                "                width_percent 100\n",
+                "                height_percent 100\n",
+                "                toggle_close_behavior \"hide\"\n",
+                "            }",
+            )
+        );
+    }
+
+    #[test]
+    fn custom_popups_validate_semantic_surface() {
+        // Defends: Custom popup specs stay semantic and cannot shadow packaged popup ownership.
+        for (text, expected) in [
+            (
+                "[popups.btm]\ncommand = \"btm --basic\"\nkeybinding = \"Alt Shift B\"\n",
+                "without arguments",
+            ),
+            (
+                "[popups.config]\ncommand = \"btm\"\nkeybinding = \"Alt Shift B\"\n",
+                "conflicts with packaged popup id",
+            ),
+            (
+                "[popups.btm]\ncommand = \"btm\"\n",
+                "popups.btm.keybinding is required",
+            ),
+            (
+                "[popups.btm]\ncommand = \"btm\"\nkeybinding = \"Alt r\"\n",
+                "conflicts with packaged key Alt r",
+            ),
+            (
+                "[popups.btm]\ncommand = \"btm\"\nkeybinding = \"Alt Shift K\"\n",
+                "popups.btm.keybinding conflicts with keybindings.config: Alt Shift K",
+            ),
+            (
+                "[popups.btm]\ncommand = \"btm\"\nkeybinding = \"Alt Shift B\"\n\n[popups.htop]\ncommand = \"htop\"\nkeybinding = \"Alt Shift B\"\n",
+                "popups.htop.keybinding conflicts with popups.btm.keybinding: Alt Shift B",
+            ),
+            (
+                "[popups.btm]\ncommand = \"btm\"\ntitle = \" \"\nkeybinding = \"Alt Shift B\"\n",
+                "popups.btm.title must not be empty",
+            ),
+            (
+                "[popups.btm]\ncommand = \"btm\"\ntitle = \"git_popup\"\nkeybinding = \"Alt Shift B\"\n",
+                "popups.btm.title conflicts with packaged popup title git_popup",
+            ),
+            (
+                "[popups.btm]\ncommand = \"btm\"\ntitle = \"shared_popup\"\nkeybinding = \"Alt Shift B\"\n\n[popups.htop]\ncommand = \"htop\"\ntitle = \"shared_popup\"\nkeybinding = \"Alt Shift U\"\n",
+                "popups.htop.title conflicts with popups.btm.title: shared_popup",
+            ),
+        ] {
+            assert_custom_popup_error(text, expected);
+        }
+    }
+
+    #[test]
+    fn config_model_exposes_root_config_fields() {
+        let (_temp, paths) = temp_sources();
+
+        let model = build_model(&paths).unwrap();
+        assert_eq!(
+            model.tabs,
+            [
+                " main",
+                " popups",
+                " mars",
+                "󰇀 cursors",
+                " zellij",
+                " starship",
+                " helix",
+                " keys",
+                " advanced",
+            ]
+        );
+        assert!(!model.tabs.contains(&"shell".to_string()));
+        assert_config_field(&model, SHELL_PROGRAM_PATH, "string", "new panes");
+        let editor = model_field(&model, EDITOR_COMMAND_PATH);
+        assert_config_field(&model, EDITOR_COMMAND_PATH, "string", "new opens");
+        assert!(editor.allowed_values.is_empty());
+
+        let appearance = model_field(&model, MARS_APPEARANCE_PRESET_PATH);
+        assert_eq!(appearance.source_id, SOURCE_MARS);
+        assert_eq!(appearance.tab, TAB_MARS);
+        assert_eq!(appearance.kind, "string");
+        assert_eq!(appearance.allowed_values, string_values(&["dark", "light"]));
+        assert_eq!(appearance.apply_status.summary, "live");
+        assert_eq!(appearance.apply_status.label, "mars/ui");
+        let theme_switcher = model.theme_switcher.as_ref().expect("theme switcher");
+        assert_eq!(theme_switcher.source_id, SOURCE_MARS);
+        assert_eq!(theme_switcher.field_path, MARS_APPEARANCE_PRESET_PATH);
+        assert_eq!(
+            theme_switcher.resolve(&model.fields),
+            Some(ConfigUiTheme::Dark)
+        );
+        assert_eq!(
+            theme_switcher.theme_for_value(&JsonValue::String("light".to_string())),
+            Some(ConfigUiTheme::Light)
+        );
+
+        for hidden in [
+            "force-theme",
+            "colors.background",
+            "colors.foreground",
+            "colors.dim-foreground",
+        ] {
+            assert!(
+                model.fields.iter().all(|field| field.path != hidden),
+                "{hidden} should stay native TOML only"
+            );
+        }
+        assert_eq!(
+            model_field(&model, CURSOR_TRAIL_PATH).source_id,
+            SOURCE_CURSORS
+        );
+
+        for spec in POPUP_KEYBINDINGS {
+            assert_config_field_on_tab(&model, spec.path, TAB_POPUPS, "string", "next launch");
+        }
+
+        let field = model_field(&model, BAR_WIDGETS_PATH);
+
+        assert_eq!(field.tab, TAB_CONFIG);
+        assert_eq!(field.kind, "string_list");
+        assert_eq!(field.edit_behavior, ConfigUiEditBehavior::OrderedStringList);
+        assert_eq!(field.allowed_values, string_values(BAR_WIDGET_VALUES));
+        assert_eq!(
+            field.edit_value,
+            r#"["editor","shell","term","codex_usage","cpu","ram"]"#
+        );
+        assert!(field.allowed_values.contains(&"claude_usage".to_string()));
+    }
+
+    #[test]
+    fn cursor_config_is_child_owned_preserved_and_structurally_editable() {
+        let (_temp, paths) = temp_sources();
+        let custom = r##"schema_version = 1
+enabled_cursors = ["custom_test"]
+[settings]
+trail = "custom_test"
+trail_effect = "tail"
+mode_effect = "none"
+glow = "none"
+duration = 1.0
+# user cursor must survive structured edits
+[[cursor]]
+name = "custom_test"
+family = "mono"
+color = "#123456"
+"##;
+        fs::write(&paths.cursors, custom).unwrap();
+
+        let model = build_model(&paths).unwrap();
+        let enabled = model_field(&model, CURSOR_ENABLED_PATH);
+        let trail = model_field(&model, CURSOR_TRAIL_PATH);
+        let mode = model_field(&model, "settings.mode_effect");
+        assert_eq!(enabled.allowed_values, ["custom_test"]);
+        assert_eq!(enabled.default_value, r#"["custom_test"]"#);
+        assert!(trail.allowed_values.contains(&"random".to_string()));
+        assert_eq!(trail.apply_status.summary, "next launch");
+        assert_eq!(mode.apply_status.summary, "stored");
+        write_source_field(&paths, SOURCE_CURSORS, CURSOR_TRAIL_PATH, &json!("none")).unwrap();
+        let changed = fs::read_to_string(&paths.cursors).unwrap();
+        assert!(changed.contains("# user cursor must survive structured edits"));
+        assert_eq!(
+            load_cursor_config(&paths.cursors).unwrap().settings.trail,
+            "none"
+        );
+
+        write_source_field(
+            &paths,
+            SOURCE_CURSORS,
+            CURSOR_TRAIL_PATH,
+            &json!("missing_cursor"),
+        )
+        .unwrap_err();
+        assert_eq!(fs::read_to_string(&paths.cursors).unwrap(), changed);
+
+        write_source_default(&paths, SOURCE_CURSORS, CURSOR_TRAIL_PATH).unwrap();
+        assert_eq!(
+            load_cursor_config(&paths.cursors).unwrap().settings.trail,
+            "random"
+        );
+    }
+
+    #[test]
+    fn config_model_exposes_popup_settings_tab() {
+        let (_temp, paths) = temp_sources();
+
+        let model = build_model(&paths).unwrap();
+
+        assert!(model.tabs.contains(&TAB_POPUPS.to_string()));
+        let popup_source = model
+            .sources
+            .iter()
+            .find(|source| source.tab == TAB_POPUPS)
+            .expect("popup source");
+        assert_eq!(popup_source.id, SOURCE_CONFIG);
+        assert_eq!(popup_source.path, paths.root);
+        for path in [
+            AGENT_COMMAND_PATH,
+            AGENT_ARGS_PATH,
+            POPUP_SIDE_MARGIN_PATH,
+            POPUP_VERTICAL_MARGIN_PATH,
+            KEYBINDINGS_CONFIG_PATH,
+            KEYBINDINGS_AGENT_PATH,
+            KEYBINDINGS_GIT_PATH,
+            KEYBINDINGS_MENU_PATH,
+        ] {
+            let field = model_field(&model, path);
+            assert_eq!(field.source_id, SOURCE_CONFIG);
+            assert_eq!(field.tab, TAB_POPUPS);
+            assert_eq!(field.apply_status.summary, "next launch");
+        }
+    }
+
+    #[test]
+    fn config_model_uses_mars_appearance_as_initial_theme_source() {
+        let (_temp, paths) = temp_sources();
+        write_toml_value(&paths.mars, MARS_APPEARANCE_PRESET_PATH, &json!("light"));
+
+        let model = build_model(&paths).unwrap();
+        let theme_switcher = model.theme_switcher.as_ref().expect("theme switcher");
+
+        assert_eq!(
+            theme_switcher.resolve(&model.fields),
+            Some(ConfigUiTheme::Light)
+        );
+    }
+
+    #[test]
+    fn config_model_exposes_structured_starship_tab() {
+        let (_temp, paths) = temp_sources();
+
+        let model = build_model(&paths).unwrap();
+        let format = model_field(&model, "format");
+        let right_format = model_field(&model, "right_format");
+
+        assert!(model.tabs.contains(&TAB_STARSHIP.to_string()));
+        assert!(model.sources.iter().any(|source| {
+            source.id == SOURCE_STARSHIP
+                && source.tab == TAB_STARSHIP
+                && source.path == paths.starship
+        }));
+        assert_eq!(format.source_id, SOURCE_STARSHIP);
+        assert_eq!(format.tab, TAB_STARSHIP);
+        assert_eq!(format.kind, "string");
+        assert_eq!(format.current_value, r#"":: ""#);
+        assert_eq!(format.state, ConfigUiValueState::Defaulted);
+        assert_eq!(format.apply_status.summary, "new prompts");
+        assert_eq!(right_format.current_value, r#""""#);
+        assert_eq!(model_field(&model, "add_newline").current_value, "true");
+        assert_eq!(
+            model
+                .fields
+                .iter()
+                .filter(|field| field.source_id == SOURCE_STARSHIP)
+                .count(),
+            STARSHIP_FIELDS.len()
+        );
+    }
+
+    // Defends: the Keys tab is a read-only discovery surface for current packaged bindings.
+    #[test]
+    fn config_model_exposes_read_only_key_bindings() {
+        let (_temp, paths) = temp_sources();
+
+        let model = build_model(&paths).unwrap();
+        let rows: Vec<_> = model
+            .fields
+            .iter()
+            .filter(|field| field.tab == TAB_KEYS)
+            .collect();
+
+        assert!(model.tabs.contains(&TAB_KEYS.to_string()));
+        assert!(
+            model
+                .file_actions
+                .iter()
+                .all(|action| action.tab != TAB_KEYS)
+        );
+        assert_eq!(
+            model
+                .tab_list_tables
+                .get(TAB_KEYS)
+                .unwrap()
+                .columns
+                .iter()
+                .map(|column| (column.title.as_str(), column.width))
+                .collect::<Vec<_>>(),
+            KEY_COLUMNS
+        );
+        assert_eq!(rows.len(), KEY_BINDINGS.len());
+        assert!(rows.iter().all(|field| {
+            field.apply_status.summary == "read-only"
+                && matches!(
+                    field.edit_behavior,
+                    ConfigUiEditBehavior::StructuredOnly { .. }
+                )
+                && field.list_cells.len() == KEY_COLUMNS.len()
+        }));
+
+        let config_popup = key_field(&model, "Alt Shift K");
+        assert_eq!(
+            config_popup.display_label,
+            "Popups: Alt Shift K - Toggle config popup"
+        );
+        assert_eq!(config_popup.current_value, "Yazelix / config.kdl");
+        assert_eq!(
+            config_popup.list_cells,
+            ["Popups", "Alt Shift K", "Toggle config popup", "Yazelix"].map(str::to_string)
+        );
+        assert!(config_popup.description.contains("Owner: Yazelix"));
+        assert_eq!(config_popup.validation, KEY_READ_ONLY_REASON);
+
+        let pane_mode = key_field(&model, "Ctrl p");
+        assert!(pane_mode.display_label.contains("Ctrl p"));
+        assert!(pane_mode.description.contains("Owner: Zellij"));
+
+        let tab_jump = key_field(&model, "Alt 1-9");
+        assert_eq!(
+            tab_jump.display_label,
+            "Tabs: Alt 1-9 - Go directly to tab 1-9"
+        );
+        assert!(tab_jump.description.contains("Owner: Zellij"));
+
+        let reveal = key_field(&model, "Alt r");
+        assert_eq!(
+            reveal.display_label,
+            "Sidebar: Alt r - Reveal editor file in Yazi"
+        );
+        assert!(reveal.description.contains("Owner: Yazelix"));
+
+        let yazi_zoxide = key_field(&model, "Alt z");
+        assert!(yazi_zoxide.display_label.contains("Alt z"));
+        assert!(yazi_zoxide.description.contains("Owner: Yazi"));
+        assert_eq!(yazi_zoxide.current_value, "Yazi / yazi/keymap.toml");
+    }
+
+    #[test]
+    fn read_only_existing_sources_are_not_replaced() {
+        let (_temp, paths) = temp_sources();
+
+        atomic_write(&paths.mars, "[window]\nwidth = 960\n").unwrap();
+        let before_mars = fs::read_to_string(&paths.mars).unwrap();
+        set_read_only(&paths.mars);
+
+        let error = write_source_field(&paths, SOURCE_MARS, "window.width", &json!(1200))
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("read-only"));
+        assert_eq!(fs::read_to_string(&paths.mars).unwrap(), before_mars);
+
+        fs::write(&paths.root, "[open]\nlog_level = \"info\"\n").unwrap();
+        let before_root = fs::read_to_string(&paths.root).unwrap();
+        set_read_only(&paths.root);
+
+        let error = write_source_field(&paths, SOURCE_CONFIG, OPEN_LOG_LEVEL_PATH, &json!("debug"))
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("read-only"));
+        assert_eq!(fs::read_to_string(&paths.root).unwrap(), before_root);
+    }
+
+    // Defends: only store-backed config is declarative, and every mutation route stops before IO.
+    #[cfg(unix)]
+    #[test]
+    fn home_manager_sources_are_explicit_and_non_mutating() {
+        let temp = TempHome::new();
+        let paths = temp_paths(&temp);
+        link_from_store(&paths, &paths.root, "");
+        link_from_store(&paths, &paths.cursors, DEFAULT_CURSOR_CONFIG_TEMPLATE);
+        link_from_store(&paths, &paths.starship, "format = \"::\"\n");
+        link_from_store(&paths, &paths.nu_env, "# managed\n");
+        atomic_write(&paths.mars, "[window]\nwidth = 960\n").unwrap();
+        set_read_only(&paths.mars);
+        let paths = ensure_config_sources_at(paths).unwrap();
+
+        let model = build_model(&paths).unwrap();
+        let source = |id| model.sources.iter().find(|source| source.id == id).unwrap();
+        assert_eq!(source(SOURCE_CONFIG).owner, ConfigUiPathOwner::HomeManager);
+        assert_eq!(
+            source(SOURCE_STARSHIP).owner,
+            ConfigUiPathOwner::HomeManager
+        );
+        assert_eq!(source(SOURCE_MARS).owner, ConfigUiPathOwner::User);
+        assert!(source(SOURCE_MARS).read_only);
+        assert_eq!(source(SOURCE_CURSORS).owner, ConfigUiPathOwner::HomeManager);
+        assert!(source(SOURCE_CURSORS).read_only);
+
+        let rejects = |result: Result<()>, option: &str| {
+            let error = result.unwrap_err().to_string();
+            assert!(error.contains(option), "{error}");
+            assert!(error.contains("Home Manager switch"), "{error}");
+        };
+        rejects(
+            write_source_field(&paths, SOURCE_CONFIG, OPEN_LOG_LEVEL_PATH, &json!("debug")),
+            "programs.yazelix.config.settings",
+        );
+        rejects(
+            write_source_default(&paths, SOURCE_STARSHIP, "format"),
+            "programs.yazelix.config.starship",
+        );
+        rejects(
+            write_source_field(&paths, SOURCE_CURSORS, CURSOR_TRAIL_PATH, &json!("none")),
+            "programs.yazelix.config.cursors",
+        );
+        rejects(
+            prepare_file_action(&paths, SOURCE_ADVANCED, ACTION_NU_ENV, &paths.nu_env, true),
+            "programs.yazelix.config.nu.env",
+        );
+        assert_file_text(&paths.root, "");
+        assert_file_text(&paths.cursors, DEFAULT_CURSOR_CONFIG_TEMPLATE);
+        assert_file_text(&paths.starship, "format = \"::\"\n");
+        assert_file_text(&paths.nu_env, "# managed\n");
+
+        let action = build_file_actions(&paths)
+            .into_iter()
+            .find(|action| action.action_id == ACTION_NU_ENV)
+            .unwrap();
+        assert!(action.read_only);
+        assert!(action.disabled_reason.is_none());
+    }
+
+    #[test]
+    fn runtime_and_ratconfig_reject_the_same_invalid_root_value() {
+        let temp = TempHome::new();
+        let path = temp.path.join("config.toml");
+        fs::write(&path, "[open]\nlog_level = \"loud\"\n").unwrap();
+
+        let runtime_error =
+            read_config_field(&path, config_field(OPEN_LOG_LEVEL_PATH).unwrap()).unwrap_err();
+        let paths = temp_paths(&temp);
+        let model_error = build_model(&paths).err().unwrap();
+        let ratconfig_error = ensure_config_sources_at(paths).err().unwrap();
+        assert_eq!(runtime_error.to_string(), model_error.to_string());
+        assert_eq!(runtime_error.to_string(), ratconfig_error.to_string());
+        assert!(
+            runtime_error
+                .to_string()
+                .contains("off, error, info, debug")
+        );
+    }
+
+    #[test]
+    fn ensure_config_sources_creates_source_backed_files() {
+        let (_temp, paths) = temp_sources();
+
+        assert_exists(&[&paths.cursors]);
+        assert_missing(&[
+            &paths.root,
+            &paths.mars,
+            &paths.starship,
+            &paths.helix_config,
+            &paths.helix_languages,
+            &paths.helix_module,
+            &paths.helix_init,
+            &paths.nu_env,
+            &paths.nu_config,
+            &paths.yazi_config,
+            &paths.yazi_init,
+            &paths.yazi_keymap,
+        ]);
+    }
+
+    #[test]
+    fn native_file_tabs_list_owned_file_actions() {
+        let (_temp, paths) = temp_sources();
+
+        let model = build_model(&paths).unwrap();
+        assert!(model.tabs.contains(&TAB_STARSHIP.to_string()));
+        assert!(model.tabs.contains(&TAB_HELIX.to_string()));
+        assert!(model.tabs.contains(&TAB_CURSORS.to_string()));
+        assert!(model.sources.iter().any(|source| {
+            source.id == SOURCE_HELIX && source.tab == TAB_HELIX && source.path == paths.helix_dir
+        }));
+        assert!(model.file_actions.iter().all(|action| {
+            let expected = match action.label.as_str() {
+                "cursors.toml" => (SOURCE_CURSORS, TAB_CURSORS),
+                label if label.starts_with("helix/") => (SOURCE_HELIX, TAB_HELIX),
+                _ => (SOURCE_ADVANCED, TAB_ADVANCED),
+            };
+            (action.source_id.as_str(), action.tab.as_str()) == expected
+        }));
+        let summaries: Vec<_> = model
+            .file_actions
+            .iter()
+            .map(|action| (action.action_id.as_str(), action.label.as_str()))
+            .collect();
+        assert_eq!(
+            summaries,
+            [
+                (ACTION_CURSORS_CONFIG, "cursors.toml"),
+                (ACTION_HELIX_CONFIG, "helix/config.toml"),
+                (ACTION_HELIX_LANGUAGES, "helix/languages.toml"),
+                (ACTION_HELIX_MODULE, "helix/helix.scm"),
+                (ACTION_HELIX_INIT, "helix/init.scm"),
+                (ACTION_NU_ENV, "nu/env.nu"),
+                (ACTION_NU_CONFIG, "nu/config.nu"),
+                (ACTION_YAZI_CONFIG, "yazi/yazi.toml"),
+                (ACTION_YAZI_INIT, "yazi/init.lua"),
+                (ACTION_YAZI_KEYMAP, "yazi/keymap.toml"),
+                (ACTION_YAZI_PACKAGE, "yazi/package.toml"),
+                (ACTION_YAZI_THEME, "yazi/theme.toml"),
+                (ACTION_ZELLIJ_PLUGINS, "zellij/plugins.kdl"),
+            ]
+        );
+        assert!(
+            model
+                .file_actions
+                .iter()
+                .all(|action| action.path.ends_with(&action.label))
+        );
+        assert!(model.file_actions.iter().all(|action| {
+            action.create_if_missing
+                && (action.exists == (action.action_id == ACTION_CURSORS_CONFIG))
+        }));
+        assert!(model.file_actions.iter().all(|action| {
+            if action.action_id == ACTION_CURSORS_CONFIG {
+                file_action_status_label(action) == "existing"
+                    && file_action_status_style(action) == Style::default().fg(Color::Green)
+            } else {
+                file_action_status_label(action) == "absent"
+                    && file_action_status_style(action) == Style::default().fg(Color::Gray)
+            }
+        }));
+    }
+
+    #[test]
+    fn prepare_file_action_creates_owned_missing_file() {
+        let (_temp, paths) = temp_sources();
+
+        prepare_file_action(&paths, SOURCE_ADVANCED, ACTION_NU_ENV, &paths.nu_env, true).unwrap();
+
+        assert_file_text(&paths.nu_env, NU_ENV_STARTER);
+        assert_missing(&[
+            &paths.nu_config,
+            &paths.helix_config,
+            &paths.helix_languages,
+            &paths.helix_module,
+            &paths.helix_init,
+            &paths.yazi_config,
+            &paths.yazi_init,
+            &paths.yazi_keymap,
+            &paths.yazi_package,
+            &paths.yazi_theme,
+            &paths.zellij_plugins,
+        ]);
+    }
+
+    #[test]
+    fn helix_override_stays_sparse_and_merges_over_packaged_config() {
+        let (temp, paths) = temp_sources();
+        let packaged = temp.path.join("packaged.toml");
+        let output = temp.path.join("state/helix/config.toml");
+        prepare_file_action(
+            &paths,
+            SOURCE_HELIX,
+            ACTION_HELIX_CONFIG,
+            &paths.helix_config,
+            true,
+        )
+        .unwrap();
+        let starter = read_toml_file_value(&paths.helix_config, "Helix starter").unwrap();
+        assert_eq!(starter, json!({}));
+
+        fs::write(
+            &packaged,
+            concat!(
+                "theme = \"ayu_evolve\"\n\n",
+                "[editor]\nbufferline = \"always\"\n\n",
+                "[keys.normal]\n",
+                "A-r = ':sh yzx reveal \"%{buffer_name}\"'\n",
+                "C-r = [\":config-reload\", \":reload\"]\n",
+            ),
+        )
+        .unwrap();
+        fs::write(
+            &paths.helix_config,
+            concat!(
+                "[editor]\n",
+                "bufferline = \"never\"\n",
+                "line-number = \"relative\"\n\n",
+                "[keys.normal]\n",
+                "A-r = \":noop\"\n",
+                "C-r = \":noop\"\n",
+            ),
+        )
+        .unwrap();
+
+        write_effective_helix_config(&packaged, &paths.helix_config, &output).unwrap();
+
+        let value = read_toml_file_value(&output, "effective Helix config").unwrap();
+        assert_eq!(get_toml_path(&value, "theme"), Some(&json!("ayu_evolve")));
+        assert_eq!(
+            get_toml_path(&value, "editor.bufferline"),
+            Some(&json!("never"))
+        );
+        assert_eq!(
+            get_toml_path(&value, "editor.line-number"),
+            Some(&json!("relative"))
+        );
+        assert_eq!(
+            get_toml_path(&value, "keys.normal.A-r"),
+            Some(&json!(r#":sh yzx reveal "%{buffer_name}""#))
+        );
+        assert_eq!(
+            get_toml_path(&value, "keys.normal.C-r"),
+            Some(&json!(":noop"))
+        );
+    }
+
+    #[test]
+    fn effective_helix_config_rejects_non_table_keys_override() {
+        let temp = TempHome::new();
+        let packaged = temp.path.join("packaged.toml");
+        let user = temp.path.join("user.toml");
+        let output = temp.path.join("state/helix/config.toml");
+        fs::write(&packaged, "[keys.normal]\nA-r = \":noop\"\n").unwrap();
+        fs::write(&user, "keys = \"not a table\"\n").unwrap();
+
+        let error = write_effective_helix_config(&packaged, &user, &output)
+            .unwrap_err()
+            .to_string();
+
+        assert!(error.contains("[keys] must be a TOML table"));
+        assert!(!output.exists());
+    }
+
+    #[test]
+    fn prepare_file_action_creates_managed_helix_steel_pair() {
+        let (_temp, paths) = temp_sources();
+
+        prepare_file_action(
+            &paths,
+            SOURCE_HELIX,
+            ACTION_HELIX_INIT,
+            &paths.helix_init,
+            true,
+        )
+        .unwrap();
+
+        assert_file_text(&paths.helix_init, HELIX_INIT_STARTER);
+        assert_file_text(&paths.helix_module, HELIX_MODULE_STARTER);
+        assert_missing(&[
+            &paths.helix_config,
+            &paths.helix_languages,
+            &paths.nu_env,
+            &paths.yazi_init,
+        ]);
+    }
+
+    #[test]
+    fn prepare_existing_managed_helix_steel_row_creates_missing_pair_file() {
+        let (_temp, paths) = temp_sources();
+        atomic_write(&paths.helix_init, HELIX_INIT_STARTER).unwrap();
+
+        prepare_file_action(
+            &paths,
+            SOURCE_HELIX,
+            ACTION_HELIX_INIT,
+            &paths.helix_init,
+            true,
+        )
+        .unwrap();
+
+        assert_eq!(
+            fs::read_to_string(&paths.helix_module).unwrap(),
+            HELIX_MODULE_STARTER
+        );
+    }
+
+    #[test]
+    fn prepare_file_action_creates_managed_yazi_files_independently() {
+        let (_temp, paths) = temp_sources();
+        let specs = [
+            (ACTION_YAZI_CONFIG, &paths.yazi_config, YAZI_CONFIG_STARTER),
+            (ACTION_YAZI_INIT, &paths.yazi_init, YAZI_INIT_STARTER),
+            (ACTION_YAZI_KEYMAP, &paths.yazi_keymap, YAZI_KEYMAP_STARTER),
+            (
+                ACTION_YAZI_PACKAGE,
+                &paths.yazi_package,
+                YAZI_PACKAGE_STARTER,
+            ),
+            (ACTION_YAZI_THEME, &paths.yazi_theme, YAZI_THEME_STARTER),
+        ];
+        for &(action, target, starter) in &specs {
+            prepare_file_action(&paths, SOURCE_ADVANCED, action, target, true).unwrap();
+            assert_file_text(target, starter);
+            assert_eq!(specs.iter().filter(|(_, path, _)| path.exists()).count(), 1);
+            fs::remove_file(target).unwrap();
+        }
+        assert!(!paths.yazi_config.with_file_name("plugins").exists());
+    }
+
+    #[test]
+    fn prepare_file_action_creates_zellij_plugins_sidecar_only() {
+        let (_temp, paths) = temp_sources();
+
+        prepare_file_action(
+            &paths,
+            SOURCE_ADVANCED,
+            ACTION_ZELLIJ_PLUGINS,
+            &paths.zellij_plugins,
+            true,
+        )
+        .unwrap();
+
+        assert_file_text(&paths.zellij_plugins, ZELLIJ_PLUGINS_STARTER);
+        assert_missing(&[&paths.yazi_init, &paths.yazi_keymap]);
+    }
+
+    #[test]
+    fn prepare_file_action_rejects_unowned_or_missing_paths() {
+        let (_temp, paths) = temp_sources();
+
+        for (source_id, action_id, path, create, expected) in [
+            (
+                SOURCE_ADVANCED,
+                ACTION_NU_ENV,
+                &paths.nu_config,
+                true,
+                "does not own",
+            ),
+            (
+                SOURCE_ADVANCED,
+                ACTION_HELIX_CONFIG,
+                &paths.helix_config,
+                true,
+                "unknown file action",
+            ),
+            (
+                SOURCE_ADVANCED,
+                ACTION_NU_CONFIG,
+                &paths.nu_config,
+                false,
+                "config file is missing",
+            ),
+        ] {
+            let error = prepare_file_action(&paths, source_id, action_id, path, create)
+                .unwrap_err()
+                .to_string();
+            assert!(error.contains(expected), "{error}");
+        }
+    }
+
+    #[test]
+    fn mars_source_stays_sparse_and_inherits_packaged_defaults() {
+        let (_temp, paths) = temp_sources();
+        let model = build_model(&paths).unwrap();
+        let mars_fields: Vec<_> = model
+            .fields
+            .iter()
+            .filter(|field| field.source_id == SOURCE_MARS)
+            .collect();
+        assert_eq!(mars_fields.len(), MARS_FIELDS.len());
+        assert!(
+            mars_fields
+                .iter()
+                .all(|field| field.state == ConfigUiValueState::Defaulted)
+        );
+
+        write_source_field(&paths, SOURCE_MARS, "window.opacity", &json!(0.5)).unwrap();
+
+        assert!(!paths.root.exists());
+        let raw = fs::read_to_string(&paths.mars).unwrap();
+        assert!(raw.contains("opacity = 0.5"));
+        assert!(!raw.contains("width ="));
+        assert!(!raw.contains("/nix/store"));
+
+        fs::write(
+            &paths.mars,
+            format!("{raw}\n[colors]\nbackground = \"#010203\"\n"),
+        )
+        .unwrap();
+        write_source_field(
+            &paths,
+            SOURCE_MARS,
+            "mars.appearance.preset",
+            &json!("light"),
+        )
+        .unwrap();
+
+        let mars = read_toml_file_value(&paths.mars, "mars").unwrap();
+        assert_eq!(get_toml_path(&mars, "window.opacity"), Some(&json!(0.5)));
+        assert_eq!(
+            get_toml_path(&mars, "mars.appearance.preset"),
+            Some(&json!("light"))
+        );
+        assert_eq!(
+            get_toml_path(&mars, "colors.background"),
+            Some(&json!("#010203"))
+        );
+        let model = build_model(&paths).unwrap();
+        assert_eq!(
+            model_field(&model, "window.opacity").state,
+            ConfigUiValueState::Explicit
+        );
+        assert_eq!(
+            model_field(&model, "window.width").state,
+            ConfigUiValueState::Defaulted
+        );
+
+        write_source_default(&paths, SOURCE_MARS, "window.opacity").unwrap();
+        let mars = read_toml_file_value(&paths.mars, "mars").unwrap();
+        assert_eq!(get_toml_path(&mars, "window.opacity"), None);
+        assert_eq!(
+            get_toml_path(&mars, "colors.background"),
+            Some(&json!("#010203"))
+        );
+
+        let error = write_source_field(
+            &paths,
+            SOURCE_MARS,
+            "mars.appearance.preset",
+            &json!("auto"),
+        )
+        .unwrap_err()
+        .to_string();
+        assert!(error.contains("dark, light"), "{error}");
+
+        let error = write_source_field(&paths, SOURCE_MARS, "force-theme", &json!("light"))
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("unknown Mars config path"), "{error}");
+
+        let error = write_source_field(&paths, SOURCE_MARS, "colors.background", &json!("#f5f3ef"))
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("unknown Mars config path"), "{error}");
+    }
+
+    #[test]
+    fn source_routing_writes_starship_without_touching_config_toml() {
+        let (_temp, paths) = temp_sources();
+
+        write_source_field(&paths, SOURCE_STARSHIP, "right_format", &json!("$time")).unwrap();
+        write_source_field(&paths, SOURCE_STARSHIP, "add_newline", &json!(false)).unwrap();
+
+        assert!(!paths.root.exists());
+        let starship = read_toml_file_value(&paths.starship, "starship").unwrap();
+        assert_eq!(
+            get_toml_path(&starship, "right_format"),
+            Some(&json!("$time"))
+        );
+        assert_eq!(get_toml_path(&starship, "add_newline"), Some(&json!(false)));
+        assert_eq!(get_toml_path(&starship, "format"), None);
+
+        write_source_field(&paths, SOURCE_STARSHIP, "format", &json!(":: ")).unwrap();
+        assert_eq!(
+            model_field(&build_model(&paths).unwrap(), "format").state,
+            ConfigUiValueState::Explicit
+        );
+        write_source_default(&paths, SOURCE_STARSHIP, "format").unwrap();
+        write_source_default(&paths, SOURCE_STARSHIP, "right_format").unwrap();
+        write_source_default(&paths, SOURCE_STARSHIP, "add_newline").unwrap();
+        assert!(!paths.starship.exists());
+
+        let error = write_source_field(&paths, SOURCE_STARSHIP, "add_newline", &json!("nope"))
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("true or false"));
+    }
+
+    #[test]
+    fn effective_starship_config_layers_sparse_user_values_over_defaults() {
+        let temp = TempHome::new();
+        let user = temp.path.join("config/starship.toml");
+        let output = temp.path.join("state/starship.toml");
+        fs::create_dir_all(user.parent().unwrap()).unwrap();
+        fs::write(
+            &user,
+            "right_format = \"$time\"\n\n[time]\ndisabled = false\n",
+        )
+        .unwrap();
+
+        write_effective_starship_config(&user, &output).unwrap();
+
+        let value = read_toml_file_value(&output, "effective Starship config").unwrap();
+        assert_eq!(get_toml_path(&value, "format"), Some(&json!(":: ")));
+        assert_eq!(get_toml_path(&value, "right_format"), Some(&json!("$time")));
+        assert_eq!(get_toml_path(&value, "add_newline"), Some(&json!(true)));
+        assert_eq!(get_toml_path(&value, "time.disabled"), Some(&json!(false)));
+    }
+
+    #[test]
+    fn zellij_sidecar_stays_sparse_and_inherits_packaged_defaults() {
+        let (_temp, paths) = temp_sources();
+        assert!(!paths.zellij.exists());
+
+        let model = build_model(&paths).unwrap();
+        let zellij_fields: Vec<_> = model
+            .fields
+            .iter()
+            .filter(|field| field.source_id == SOURCE_ZELLIJ)
+            .collect();
+        assert_eq!(zellij_fields.len(), ZELLIJ_FIELDS.len());
+        assert!(
+            zellij_fields
+                .iter()
+                .all(|field| field.state == ConfigUiValueState::Defaulted)
+        );
+        assert_eq!(model_field(&model, "pane_frames").current_value, "true");
+
+        write_source_field(&paths, SOURCE_ZELLIJ, "pane_frames", &json!(true)).unwrap();
+        assert_eq!(
+            fs::read_to_string(&paths.zellij).unwrap(),
+            "pane_frames true\n"
+        );
+        assert_eq!(
+            model_field(&build_model(&paths).unwrap(), "pane_frames").state,
+            ConfigUiValueState::Explicit
+        );
+
+        write_source_field(
+            &paths,
+            SOURCE_ZELLIJ,
+            "ui.pane_frames.rounded_corners",
+            &json!(true),
+        )
+        .unwrap();
+
+        let raw = fs::read_to_string(&paths.zellij).unwrap();
+        assert_eq!(
+            raw,
+            "pane_frames true\n\nui {\n    pane_frames {\n        rounded_corners true\n    }\n}\n"
+        );
+        atomic_write(
+            &paths.zellij,
+            &format!(
+                "# keep\n{}",
+                raw.replacen("pane_frames true", "pane_frames true // { reset me", 1)
+            ),
+        )
+        .unwrap();
+        write_source_default(&paths, SOURCE_ZELLIJ, "pane_frames").unwrap();
+        let raw = fs::read_to_string(&paths.zellij).unwrap();
+        assert!(raw.starts_with("# keep\n"));
+        assert!(!raw.contains("reset me"));
+        assert!(raw.contains("rounded_corners true"));
+        write_source_field(&paths, SOURCE_ZELLIJ, "mouse_mode", &json!(false)).unwrap();
+        write_source_default(&paths, SOURCE_ZELLIJ, "ui.pane_frames.rounded_corners").unwrap();
+        let raw = fs::read_to_string(&paths.zellij).unwrap();
+        assert!(raw.starts_with("# keep\n"));
+        assert!(raw.contains("mouse_mode false"));
+        assert!(!raw.contains("ui {"));
+        write_source_default(&paths, SOURCE_ZELLIJ, "mouse_mode").unwrap();
+        assert!(!paths.zellij.exists());
+    }
+
+    #[test]
+    fn zellij_runtime_field_patch_preserves_surrounding_config() {
+        let runtime = "\
+keybinds {}\n\
+pane_frames true\n\
+mouse_mode true\n\
+plugins {}\n\
+ui {\n\
+    pane_frames {\n\
+        rounded_corners false\n\
+    }\n\
+}\n";
+        let patched = patch_zellij_field_in_text(runtime, "pane_frames", &json!(false)).unwrap();
+        assert!(patched.contains("keybinds {}"));
+        assert!(patched.contains("pane_frames false"));
+        assert!(patched.contains("plugins {}"));
+        assert!(!patched.contains("pane_frames true"));
+
+        let rounded =
+            patch_zellij_field_in_text(runtime, "ui.pane_frames.rounded_corners", &json!(true))
+                .unwrap();
+        assert!(rounded.contains("rounded_corners true"));
+        assert!(!rounded.contains("rounded_corners false"));
+        assert!(rounded.contains("keybinds {}"));
+
+        let appended = patch_zellij_field_in_text(
+            "keybinds {}\n",
+            "ui.pane_frames.rounded_corners",
+            &json!(true),
+        )
+        .unwrap();
+        assert!(appended.contains("ui {"));
+        assert!(appended.contains("        rounded_corners true"));
+    }
+
+    #[test]
+    fn zellij_source_blocks_guarded_sidecar_nodes() {
+        let temp = TempHome::new();
+        let path = temp.path.join("zellij/config.kdl");
+        atomic_write(&path, "keybinds {}\npane_frames true\n").unwrap();
+
+        let (_config, diagnostics) = parse_zellij_sidecar(&fs::read_to_string(&path).unwrap());
+        assert!(diagnostics.iter().any(|diagnostic| diagnostic.blocking));
+
+        let error = write_zellij_config_field(&path, "pane_frames", &json!(false)).unwrap_err();
+        assert!(error.to_string().contains("guarded Zellij node"));
+        let error = unset_zellij_config_field(&path, "pane_frames").unwrap_err();
+        assert!(error.to_string().contains("guarded Zellij node"));
+    }
+
+    #[test]
+    fn zellij_sidecar_skips_hash_comments_and_blocks_compact_guarded_nodes() {
+        let (config, diagnostics) = parse_zellij_sidecar("# note\npane_frames false;\n");
+        assert!(diagnostics.is_empty());
+        assert_eq!(config.get("pane_frames").cloned(), Some(json!(false)));
+
+        let (_config, diagnostics) = parse_zellij_sidecar("# note\nkeybinds{}\n");
+        assert!(has_diagnostic(&diagnostics, "guarded Zellij node"));
+    }
+
+    #[test]
+    fn zellij_sidecar_rejects_non_positive_scrollback_and_unclosed_blocks() {
+        let temp = TempHome::new();
+        let path = temp.path.join("zellij/config.kdl");
+        atomic_write(&path, "pane_frames true\n").unwrap();
+
+        let error = write_zellij_config_field(&path, "scroll_buffer_size", &json!(-1)).unwrap_err();
+        assert!(error.to_string().contains("positive integer"));
+
+        let (_config, diagnostics) = parse_zellij_sidecar("scroll_buffer_size -1\n");
+        assert!(has_diagnostic(&diagnostics, "scroll_buffer_size"));
+
+        let (_config, diagnostics) = parse_zellij_sidecar("ui {\n");
+        assert!(has_diagnostic(&diagnostics, "unterminated"));
+    }
+
+    #[test]
+    fn unsupported_terminal_keys_are_ignored() {
+        for key in [
+            KeyEvent::new_with_kind(
+                KeyCode::Char('q'),
+                KeyModifiers::NONE,
+                KeyEventKind::Release,
+            ),
+            KeyEvent::new(KeyCode::Char('u'), KeyModifiers::ALT),
+            KeyEvent::new(KeyCode::F(1), KeyModifiers::NONE),
+        ] {
+            assert_eq!(config_key(key), None);
+        }
+    }
+}

@@ -5,17 +5,17 @@ matter when changing launch, config, editor, shell, or popup behavior.
 
 ## Config UI
 
-`yzn config` validates the optional root config and seeds `cursors.toml` from
+`yzx config` validates the optional root config and seeds `cursors.toml` from
 the child-owned template when that file is missing. Runtime preparation uses
 the same one-time cursor seed.
 
 The UI leaves these sparse sources absent until you save a field:
 
 ```text
-~/.config/yazelix-next/config.toml
-~/.config/yazelix-next/mars/config.toml
-~/.config/yazelix-next/zellij/config.kdl
-~/.config/yazelix-next/starship.toml
+~/.config/yazelix/config.toml
+~/.config/yazelix/mars/config.toml
+~/.config/yazelix/zellij/config.kdl
+~/.config/yazelix/starship.toml
 ```
 
 The Helix and advanced native files stay lazy. Opening a file-action row creates
@@ -31,7 +31,7 @@ editor environment and returns the edited text to the row. `Enter` saves.
 frames, mouse mode, scrollback size, copy behavior, styled underlines, startup
 tips, and `ui.pane_frames.rounded_corners`.
 
-When `yzn config` runs inside a managed session (`ZELLIJ_SESSION_NAME` or
+When `yzx config` runs inside a managed session (`ZELLIJ_SESSION_NAME` or
 `YAZELIX_ZELLIJ_SESSION_NAME`, plus `YAZELIX_STATE_DIR`), saving a Zellij tab
 field also patches `$YAZELIX_STATE_DIR/zellij/config.kdl` so the running Zellij
 watcher can pick up scalars without rewriting integration patches. Fields such
@@ -104,8 +104,8 @@ generates runtime Nu files that source packaged Yazelix config first and then
 optional user files:
 
 ```text
-~/.config/yazelix-next/nu/env.nu
-~/.config/yazelix-next/nu/config.nu
+~/.config/yazelix/nu/env.nu
+~/.config/yazelix/nu/config.nu
 ```
 
 If host `mise` is available on the inherited `PATH`, managed Nu inserts
@@ -113,17 +113,17 @@ If host `mise` is available on the inherited `PATH`, managed Nu inserts
 `nu/config.nu`. Missing or failing `mise` is skipped.
 
 Managed Nu sets `STARSHIP_CONFIG` to
-`~/.config/yazelix-next/starship.toml` when that file exists. Otherwise it sets
+`~/.config/yazelix/starship.toml` when that file exists. Otherwise it sets
 `STARSHIP_CONFIG` to an empty config, so normal `~/.config/starship.toml` does
 not affect the managed Nu prompt.
 
 ## Helix
 
-`yzn-hx` builds the effective Helix config on each launch from the packaged
+`yzx-hx` builds the effective Helix config on each launch from the packaged
 default plus optional managed user files under:
 
 ```text
-~/.config/yazelix-next/helix/
+~/.config/yazelix/helix/
 ```
 
 `helix/config.toml` is deep-merged over the packaged TOML default. The generated
@@ -132,12 +132,12 @@ effective file is `${YAZELIX_STATE_DIR}/helix/config.toml`. Yazelix reserves
 
 ```toml
 [keys.normal]
-A-r = ':sh yzn reveal "%{buffer_name}"'
+A-r = ':sh yzx reveal "%{buffer_name}"'
 ```
 
 `helix/languages.toml` is loaded by the managed Helix config dir when present.
 `helix/helix.scm` and `helix/init.scm` load through `HELIX_STEEL_CONFIG` once
-both files exist. The packaged Steel module provides `:yzn-new-shell`, which
+both files exist. The packaged Steel module provides `:yzx-new-shell`, which
 opens a new Yazelix terminal pane at the current file directory or workspace.
 
 ## Yazi
@@ -146,13 +146,13 @@ Managed Yazi accepts native TOML, optional Lua and keymap sidecars, and a
 user-owned asset tree:
 
 ```text
-~/.config/yazelix-next/yazi/yazi.toml
-~/.config/yazelix-next/yazi/theme.toml
-~/.config/yazelix-next/yazi/package.toml
-~/.config/yazelix-next/yazi/init.lua
-~/.config/yazelix-next/yazi/keymap.toml
-~/.config/yazelix-next/yazi/plugins/*.yazi/
-~/.config/yazelix-next/yazi/flavors/*.yazi/
+~/.config/yazelix/yazi/yazi.toml
+~/.config/yazelix/yazi/theme.toml
+~/.config/yazelix/yazi/package.toml
+~/.config/yazelix/yazi/init.lua
+~/.config/yazelix/yazi/keymap.toml
+~/.config/yazelix/yazi/plugins/*.yazi/
+~/.config/yazelix/yazi/flavors/*.yazi/
 ```
 
 Native TOML tables merge recursively. User scalars and arrays replace packaged
@@ -171,10 +171,10 @@ them from another checkout.
 Example managed Yazi plugin layout:
 
 ```text
-~/.config/yazelix-next/yazi/plugins/foo.yazi/main.lua
-~/.config/yazelix-next/yazi/flavors/foo.yazi/flavor.toml
-~/.config/yazelix-next/yazi/init.lua
-~/.config/yazelix-next/yazi/theme.toml
+~/.config/yazelix/yazi/plugins/foo.yazi/main.lua
+~/.config/yazelix/yazi/flavors/foo.yazi/flavor.toml
+~/.config/yazelix/yazi/init.lua
+~/.config/yazelix/yazi/theme.toml
 ```
 
 ```lua

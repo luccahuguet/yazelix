@@ -44,3 +44,4 @@ redirect
 
 # bv (beads viewer) lock file
 .bv.lock
+.write.lock

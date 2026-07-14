@@ -1,4 +1,4 @@
-default_shell "@yznShell@"
+default_shell "@yzxShell@"
 support_kitty_keyboard_protocol true
 
 plugins {
@@ -7,23 +7,23 @@ plugins {
             side_margin @defaultPopupSideMargin@
             vertical_margin @defaultPopupVerticalMargin@
             on_close {
-                command "@yznSidebarRefresh@"
+                command "@yzxSidebarRefresh@"
             }
             on_hide {
-                command "@yznSidebarRefresh@"
+                command "@yzxSidebarRefresh@"
             }
         }
 
         popups {
             config {
-                command "@yznConfig@"
+                command "@yzxConfig@"
                 pane_title "config_popup"
                 width_percent 100
                 height_percent 100
             }
 
             agent {
-                command "@yznAgent@"
+                command "@yzxAgent@"
                 pane_title "agent_popup"
                 width_percent 100
                 height_percent 100
@@ -38,7 +38,7 @@ plugins {
             }
 
             menu {
-                command "@yznMenu@"
+                command "@yzxMenu@"
                 pane_title "menu_popup"
                 width_percent 100
                 height_percent 100
@@ -46,7 +46,7 @@ plugins {
         }
     }
 
-    yazelix_pane_orchestrator location="@yznPaneOrchestrator@" { screen_saver_enabled false; }
+    yazelix_pane_orchestrator location="@yzxPaneOrchestrator@" { screen_saver_enabled false; }
 }
 
 load_plugins {
@@ -66,7 +66,7 @@ keybinds {
         bind "Ctrl n" { SwitchToMode "Normal"; }
     }
     tab {
-        bind "n" { NewTab { layout "@layout@"; cwd "__YZN_HOME__"; }; SwitchToMode "Normal"; }
+        bind "n" { NewTab { layout "@layout@"; cwd "__YZX_HOME__"; }; SwitchToMode "Normal"; }
         bind "Ctrl t" { SwitchToMode "Normal"; }
     }
     scroll {

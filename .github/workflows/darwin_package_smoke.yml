@@ -58,9 +58,9 @@ jobs:
       - name: Build aarch64-darwin packages and Home Manager closure
         if: steps.decide.outputs.run == 'true'
         run: |
-          full="$(nix build --no-link --no-write-lock-file --print-out-paths --print-build-logs .#packages.aarch64-darwin.yzn)"
+          full="$(nix build --no-link --no-write-lock-file --print-out-paths --print-build-logs .#packages.aarch64-darwin.yazelix)"
           runtime="$(nix build --no-link --no-write-lock-file --print-out-paths --print-build-logs .#packages.aarch64-darwin.runtime)"
           nix build --no-link --no-write-lock-file --print-build-logs .#checks.aarch64-darwin.home_manager
 
-          test ! -e "$full/share/applications/yzn.desktop"
-          test ! -e "$runtime/share/applications/yzn.desktop"
+          test ! -e "$full/share/applications/yzx.desktop"
+          test ! -e "$runtime/share/applications/yzx.desktop"

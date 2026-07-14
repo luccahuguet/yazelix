@@ -59,7 +59,7 @@ fn main() -> ExitCode {
     }
     if !bar_layout_is_valid(&layout, nova_label) {
         eprintln!(
-            "{layout_path}: top bars must use the rendered yzn Yazelix bar widgets and bottom bars must keep native status-bar"
+            "{layout_path}: top bars must use the rendered yzx Yazelix bar widgets and bottom bars must keep native status-bar"
         );
         ok = false;
     }
@@ -159,7 +159,7 @@ fn bar_layout_is_valid(layout: &str, nova_label: &str) -> bool {
         && tab_only_bars == 3
         && layout.matches(&version_widget).count() == bars
         && rendered_bar_widgets_are_valid(layout)
-        && !layout.contains(r#"YZN " // {datetime}"#)
+        && !layout.contains(r#"YZX " // {datetime}"#)
         && !layout.contains("{mode}")
         && !layout.contains("mode_normal")
         && !layout.contains(r#"plugin location="tab-bar""#)

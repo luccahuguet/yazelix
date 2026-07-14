@@ -32,7 +32,7 @@ local function cwd()
 end
 
 local function pipe_registration(payload)
-	local program = os.getenv("YZN_ZELLIJ")
+	local program = os.getenv("YZX_ZELLIJ")
 	local command = Command(program and program ~= "" and program or "zellij")
 	local session_name = os.getenv("YAZELIX_ZELLIJ_SESSION_NAME")
 	if session_name and session_name ~= "" then

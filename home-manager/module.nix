@@ -29,63 +29,63 @@
       inherit description;
     };
   nativeFiles = {
-    "yazelix-next/cursors.toml" = {
+    "yazelix/cursors.toml" = {
       option = cfg.config.cursors;
       name = "programs.yazelix.config.cursors";
     };
-    "yazelix-next/mars/config.toml" = {
+    "yazelix/mars/config.toml" = {
       option = cfg.config.mars;
       name = "programs.yazelix.config.mars";
     };
-    "yazelix-next/zellij/config.kdl" = {
+    "yazelix/zellij/config.kdl" = {
       option = cfg.config.zellij;
       name = "programs.yazelix.config.zellij";
     };
-    "yazelix-next/starship.toml" = {
+    "yazelix/starship.toml" = {
       option = cfg.config.starship;
       name = "programs.yazelix.config.starship";
     };
-    "yazelix-next/helix/config.toml" = {
+    "yazelix/helix/config.toml" = {
       option = cfg.config.helix.config;
       name = "programs.yazelix.config.helix.config";
     };
-    "yazelix-next/helix/languages.toml" = {
+    "yazelix/helix/languages.toml" = {
       option = cfg.config.helix.languages;
       name = "programs.yazelix.config.helix.languages";
     };
-    "yazelix-next/helix/helix.scm" = {
+    "yazelix/helix/helix.scm" = {
       option = cfg.config.helix.module;
       name = "programs.yazelix.config.helix.module";
     };
-    "yazelix-next/helix/init.scm" = {
+    "yazelix/helix/init.scm" = {
       option = cfg.config.helix.init;
       name = "programs.yazelix.config.helix.init";
     };
-    "yazelix-next/yazi/init.lua" = {
+    "yazelix/yazi/init.lua" = {
       option = cfg.config.yazi.init;
       name = "programs.yazelix.config.yazi.init";
     };
-    "yazelix-next/yazi/yazi.toml" = {
+    "yazelix/yazi/yazi.toml" = {
       option = cfg.config.yazi.config;
       name = "programs.yazelix.config.yazi.config";
     };
-    "yazelix-next/yazi/keymap.toml" = {
+    "yazelix/yazi/keymap.toml" = {
       option = cfg.config.yazi.keymap;
       name = "programs.yazelix.config.yazi.keymap";
     };
-    "yazelix-next/yazi/package.toml" = {
+    "yazelix/yazi/package.toml" = {
       option = cfg.config.yazi.package;
       name = "programs.yazelix.config.yazi.package";
     };
-    "yazelix-next/yazi/theme.toml" = {
+    "yazelix/yazi/theme.toml" = {
       option = cfg.config.yazi.theme;
       name = "programs.yazelix.config.yazi.theme";
     };
-    "yazelix-next/nu/env.nu" = {
+    "yazelix/nu/env.nu" = {
       option = cfg.config.nu.env;
       name = "programs.yazelix.config.nu.env";
     };
-    "yazelix-next/nu/config.nu" = {
+    "yazelix/nu/config.nu" = {
       option = cfg.config.nu.config;
       name = "programs.yazelix.config.nu.config";
     };
@@ -105,7 +105,7 @@ in {
     package = lib.mkOption {
       type = lib.types.package;
       default = defaultPackageFor pkgs.stdenv.hostPlatform.system;
-      defaultText = lib.literalExpression "inputs.yazelix-next.packages.\${pkgs.stdenv.hostPlatform.system}.yzn";
+      defaultText = lib.literalExpression "inputs.yazelix.packages.\${pkgs.stdenv.hostPlatform.system}.yazelix";
       description = ''
         Yazelix package to install. The package owns the command and any desktop
         entry it provides.
@@ -118,7 +118,7 @@ in {
         default = null;
         description = ''
           Semantic Yazelix settings rendered to
-          $XDG_CONFIG_HOME/yazelix-next/config.toml.
+          $XDG_CONFIG_HOME/yazelix/config.toml.
         '';
       };
 
@@ -162,8 +162,8 @@ in {
       nativeFiles;
     xdg.configFile =
       lib.optionalAttrs (cfg.config.settings != null) {
-        "yazelix-next/config.toml".source =
-          tomlFormat.generate "yazelix-next-config.toml" cfg.config.settings;
+        "yazelix/config.toml".source =
+          tomlFormat.generate "yazelix-config.toml" cfg.config.settings;
       }
       // nativeConfigFiles;
   };

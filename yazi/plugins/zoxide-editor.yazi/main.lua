@@ -38,21 +38,21 @@ function M.change_dir(target_dir)
 end
 
 function M.open_in_editor(target_dir)
-	local yzn_open = os.getenv("YZN_OPEN")
-	if not yzn_open or yzn_open == "" then
-		ya.notify({ title = "Zoxide Editor", content = "YZN_OPEN is not set.", timeout = 5, level = "error" })
+	local yzx_open = os.getenv("YZX_OPEN")
+	if not yzx_open or yzx_open == "" then
+		ya.notify({ title = "Zoxide Editor", content = "YZX_OPEN is not set.", timeout = 5, level = "error" })
 		return
 	end
 
-	local child, err = Command(yzn_open):arg(target_dir):stdout(Command.PIPED):stderr(Command.PIPED):spawn()
+	local child, err = Command(yzx_open):arg(target_dir):stdout(Command.PIPED):stderr(Command.PIPED):spawn()
 	if not child then
-		ya.notify({ title = "Zoxide Editor", content = "Failed to run yzn-open: " .. tostring(err), timeout = 5, level = "error" })
+		ya.notify({ title = "Zoxide Editor", content = "Failed to run yzx-open: " .. tostring(err), timeout = 5, level = "error" })
 		return
 	end
 
 	local output, wait_err = child:wait_with_output()
 	if not output then
-		ya.notify({ title = "Zoxide Editor", content = "yzn-open error: " .. tostring(wait_err), timeout = 5, level = "error" })
+		ya.notify({ title = "Zoxide Editor", content = "yzx-open error: " .. tostring(wait_err), timeout = 5, level = "error" })
 	elseif not output.status.success then
 		ya.notify({ title = "Zoxide Editor", content = output.stderr, timeout = 5, level = "error" })
 	end

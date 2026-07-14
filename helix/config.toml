@@ -1,6 +1,6 @@
 # Yazelix Nova managed Helix default.
-# User preferences can live in ~/.config/yazelix-next/helix/config.toml.
-# yzn-hx merges that file with this template and always restores Alt r reveal.
+# User preferences can live in ~/.config/yazelix/helix/config.toml.
+# yzx-hx merges that file with this template and always restores Alt r reveal.
 
 theme = "ayu_evolve"
 
@@ -44,7 +44,7 @@ right = [
 separator = "|"
 
 [keys.normal]
-A-r = ':sh yzn reveal "%{buffer_name}"'
+A-r = ':sh yzx reveal "%{buffer_name}"'
 A-ret = [
   "move_line_up",
   "goto_first_nonwhitespace",
@@ -82,7 +82,7 @@ c = ":config-open"
 d = ":yank-diagnostic"
 h = ":toggle-option file-picker.hidden"
 i = ":toggle-option file-picker.git-ignore"
-l = ":o ~/.config/yazelix-next/helix/languages.toml"
+l = ":o ~/.config/yazelix/helix/languages.toml"
 
 [keys.normal.g]
 e = "goto_file_end"

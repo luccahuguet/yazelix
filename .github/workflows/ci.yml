@@ -42,7 +42,7 @@ jobs:
       - name: Build lightweight checks
         run: |
           nix build --no-link --print-build-logs \
-            .#checks.x86_64-linux.yzn_yazi_materialization \
-            .#checks.x86_64-linux.yzn_launcher_unit \
+            .#checks.x86_64-linux.yzx_yazi_materialization \
+            .#checks.x86_64-linux.yzx_launcher_unit \
             .#checks.x86_64-linux.runtime_contracts \
             .#checks.x86_64-linux.zellij_sidecar_guard_parity

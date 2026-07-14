@@ -108,17 +108,17 @@ impl RuntimeCase {
         self.write_config(default_config(extra))
     }
 
-    pub fn yzn_command(&self, yzn_bin: &Path, command: &str) -> Command {
-        let mut yzn = Command::new(yzn_bin);
-        yzn.arg(command)
-            .env("YAZELIX_NEXT_CONFIG_HOME", &self.config_home)
+    pub fn yzx_command(&self, yzx_bin: &Path, command: &str) -> Command {
+        let mut yzx = Command::new(yzx_bin);
+        yzx.arg(command)
+            .env("YAZELIX_CONFIG_HOME", &self.config_home)
             .env("YAZELIX_STATE_DIR", &self.state_dir)
             .env_remove("ZELLIJ_SESSION_NAME");
-        yzn
+        yzx
     }
 
-    pub fn run_yzn(&self, yzn_bin: &Path, command: &str, context: &str) -> String {
-        successful_stdout(&mut self.yzn_command(yzn_bin, command), context)
+    pub fn run_yzx(&self, yzx_bin: &Path, command: &str, context: &str) -> String {
+        successful_stdout(&mut self.yzx_command(yzx_bin, command), context)
     }
 }
 
@@ -129,7 +129,7 @@ pub struct TempDir {
 impl TempDir {
     pub fn new() -> Self {
         let mut path = env::temp_dir();
-        path.push(format!("yzn-check-{}-{}", std::process::id(), unix_nanos()));
+        path.push(format!("yzx-check-{}-{}", std::process::id(), unix_nanos()));
         fs::create_dir(&path).unwrap();
         Self { path }
     }

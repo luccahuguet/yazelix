@@ -1,8 +1,8 @@
 # Yazelix Nova semantic config.
-# Native tool configs live beside this file under ~/.config/yazelix-next/.
+# Native tool configs live beside this file under ~/.config/yazelix/.
 
 [open]
-# yzn-open diagnostics: off, error, info, or debug.
+# yzx-open diagnostics: off, error, info, or debug.
 log_level = "info"
 
 [shell]
@@ -10,8 +10,8 @@ log_level = "info"
 program = "nu"
 
 [editor]
-# Editor command for managed opens. hx and yzn-hx use packaged Yazelix Helix.
-command = "yzn-hx"
+# Editor command for managed opens. hx and yzx-hx use packaged Yazelix Helix.
+command = "yzx-hx"
 
 [agent]
 # "auto" keeps the built-in provider fallback. Any other value is one executable

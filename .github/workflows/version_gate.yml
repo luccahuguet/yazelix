@@ -30,18 +30,18 @@ jobs:
             max-jobs = 2
             cores = 2
 
-      - name: Install yzn into a temp profile
+      - name: Install yzx into a temp profile
         run: |
-          profile="$RUNNER_TEMP/yazelix-next-profile"
-          runtime_profile="$RUNNER_TEMP/yazelix-next-runtime-profile"
+          profile="$RUNNER_TEMP/yazelix-profile"
+          runtime_profile="$RUNNER_TEMP/yazelix-runtime-profile"
           nix profile add --refresh "$GITHUB_WORKSPACE" --profile "$profile"
           nix profile add --refresh "$GITHUB_WORKSPACE#runtime" --profile "$runtime_profile"
 
-          test -x "$profile/bin/yzn"
-          test -f "$profile/share/applications/yzn.desktop"
-          grep -F 'Yazelix Nova' "$profile/share/applications/yzn.desktop"
-          test -x "$runtime_profile/bin/yzn"
-          test ! -e "$runtime_profile/share/applications/yzn.desktop"
+          test -x "$profile/bin/yzx"
+          test -f "$profile/share/applications/yzx.desktop"
+          grep -F 'Yazelix Nova' "$profile/share/applications/yzx.desktop"
+          test -x "$runtime_profile/bin/yzx"
+          test ! -e "$runtime_profile/share/applications/yzx.desktop"
 
       - name: Build release contract checks
         run: |
@@ -50,27 +50,27 @@ jobs:
             .#checks.x86_64-linux.helix_contracts \
             .#checks.x86_64-linux.key_reference_parity
 
-      - name: Smoke installed yzn commands
+      - name: Smoke installed yzx commands
         run: |
-          profile="$RUNNER_TEMP/yazelix-next-profile"
-          export HOME="$RUNNER_TEMP/yazelix-next-home"
-          export YAZELIX_NEXT_CONFIG_HOME="$RUNNER_TEMP/yazelix-next-config"
-          export YAZELIX_STATE_DIR="$RUNNER_TEMP/yazelix-next-state"
-          export XDG_DATA_HOME="$RUNNER_TEMP/yazelix-next-data"
-          mkdir -p "$HOME" "$YAZELIX_NEXT_CONFIG_HOME" "$YAZELIX_STATE_DIR" "$XDG_DATA_HOME"
+          profile="$RUNNER_TEMP/yazelix-profile"
+          export HOME="$RUNNER_TEMP/yazelix-home"
+          export YAZELIX_CONFIG_HOME="$RUNNER_TEMP/yazelix-config"
+          export YAZELIX_STATE_DIR="$RUNNER_TEMP/yazelix-state"
+          export XDG_DATA_HOME="$RUNNER_TEMP/yazelix-data"
+          mkdir -p "$HOME" "$YAZELIX_CONFIG_HOME" "$YAZELIX_STATE_DIR" "$XDG_DATA_HOME"
 
-          "$profile/bin/yzn" help > "$RUNNER_TEMP/yzn-help.txt"
-          "$profile/bin/yzn" status > "$RUNNER_TEMP/yzn-status.txt"
-          "$profile/bin/yzn" doctor > "$RUNNER_TEMP/yzn-doctor.txt"
-          "$profile/bin/yzn" tutor list > "$RUNNER_TEMP/yzn-tutor-list.txt"
+          "$profile/bin/yzx" help > "$RUNNER_TEMP/yzx-help.txt"
+          "$profile/bin/yzx" status > "$RUNNER_TEMP/yzx-status.txt"
+          "$profile/bin/yzx" doctor > "$RUNNER_TEMP/yzx-doctor.txt"
+          "$profile/bin/yzx" tutor list > "$RUNNER_TEMP/yzx-tutor-list.txt"
 
-          grep -F 'Yazelix Nova' "$RUNNER_TEMP/yzn-help.txt"
-          grep -F 'Yazelix Nova status' "$RUNNER_TEMP/yzn-status.txt"
-          grep -F "config home: $YAZELIX_NEXT_CONFIG_HOME" "$RUNNER_TEMP/yzn-status.txt"
-          grep -F "state dir: $YAZELIX_STATE_DIR" "$RUNNER_TEMP/yzn-status.txt"
-          grep -F 'Yazelix Nova doctor' "$RUNNER_TEMP/yzn-doctor.txt"
-          grep -F "ok config home: $YAZELIX_NEXT_CONFIG_HOME" "$RUNNER_TEMP/yzn-doctor.txt"
-          grep -F 'Yazelix Nova tutor lessons' "$RUNNER_TEMP/yzn-tutor-list.txt"
+          grep -F 'Yazelix Nova' "$RUNNER_TEMP/yzx-help.txt"
+          grep -F 'Yazelix Nova status' "$RUNNER_TEMP/yzx-status.txt"
+          grep -F "config home: $YAZELIX_CONFIG_HOME" "$RUNNER_TEMP/yzx-status.txt"
+          grep -F "state dir: $YAZELIX_STATE_DIR" "$RUNNER_TEMP/yzx-status.txt"
+          grep -F 'Yazelix Nova doctor' "$RUNNER_TEMP/yzx-doctor.txt"
+          grep -F "ok config home: $YAZELIX_CONFIG_HOME" "$RUNNER_TEMP/yzx-doctor.txt"
+          grep -F 'Yazelix Nova tutor lessons' "$RUNNER_TEMP/yzx-tutor-list.txt"
 
   macos-package-smoke:
     runs-on: macos-15
@@ -95,9 +95,9 @@ jobs:
 
       - name: Build aarch64-darwin packages and Home Manager closure
         run: |
-          full="$(nix build --no-link --no-write-lock-file --print-out-paths --print-build-logs .#packages.aarch64-darwin.yzn)"
+          full="$(nix build --no-link --no-write-lock-file --print-out-paths --print-build-logs .#packages.aarch64-darwin.yazelix)"
           runtime="$(nix build --no-link --no-write-lock-file --print-out-paths --print-build-logs .#packages.aarch64-darwin.runtime)"
           nix build --no-link --no-write-lock-file --print-build-logs .#checks.aarch64-darwin.home_manager
 
-          test ! -e "$full/share/applications/yzn.desktop"
-          test ! -e "$runtime/share/applications/yzn.desktop"
+          test ! -e "$full/share/applications/yzx.desktop"
+          test ! -e "$runtime/share/applications/yzx.desktop"

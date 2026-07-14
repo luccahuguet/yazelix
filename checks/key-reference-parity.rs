@@ -8,7 +8,7 @@ struct KeyBinding {
 fn main() {
     let args = env::args().collect::<Vec<_>>();
     let [_, catalog_path, config_path, tutor_path] = args.as_slice() else {
-        panic!("usage: key-reference-parity-check <catalog.rs> <config.kdl> <yzn-tutor/main.rs>");
+        panic!("usage: key-reference-parity-check <catalog.rs> <config.kdl> <yzx-tutor/main.rs>");
     };
     let catalog = fs::read_to_string(catalog_path).unwrap();
     let config = fs::read_to_string(config_path).unwrap();
@@ -93,7 +93,7 @@ fn tutor_key_hint_failures(tutor: &str, bindings: &[KeyBinding]) -> Vec<String> 
     for (name, chord) in tutor_key_constants(tutor) {
         if !catalog_aliases.contains(&chord) {
             failures.push(format!(
-                "yzn-tutor {name} key hint `{chord}` is not backed by KEY_BINDINGS"
+                "yzx-tutor {name} key hint `{chord}` is not backed by KEY_BINDINGS"
             ));
         }
     }
@@ -101,7 +101,7 @@ fn tutor_key_hint_failures(tutor: &str, bindings: &[KeyBinding]) -> Vec<String> 
     for hint in inline_key_hints(tutor) {
         if !catalog_aliases.contains(&hint) && !tool_native_key_hint(&hint) {
             failures.push(format!(
-                "yzn-tutor inline key hint `{hint}` is neither backed by KEY_BINDINGS nor marked tool-native"
+                "yzx-tutor inline key hint `{hint}` is neither backed by KEY_BINDINGS nor marked tool-native"
             ));
         }
     }

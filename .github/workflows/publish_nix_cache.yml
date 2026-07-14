@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   publish_x86_64_linux:
-    if: github.repository == 'luccahuguet/yazelix-next'
+    if: github.repository == 'luccahuguet/yazelix'
     runs-on: ubuntu-latest
     timeout-minutes: 90
     env:
@@ -72,6 +72,6 @@ jobs:
         if: steps.cachix-token.outputs.available == 'true'
         run: |
           nix build --no-link --print-out-paths \
-            .#packages.x86_64-linux.yzn \
+            .#packages.x86_64-linux.yazelix \
             .#packages.x86_64-linux.runtime \
             .#checks.x86_64-linux.home_manager

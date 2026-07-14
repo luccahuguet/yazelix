@@ -60,20 +60,20 @@ thin tests that make refactors harder without increasing confidence.
 Current chain:
 
 ```text
-yzn -> Mars -> Yazelix Zellij fork
+yzx -> Mars -> Yazelix Zellij fork
 ```
 
-The project interface is a Nix/Lix-compatible flake. `yzn` is the installed
-command name so it does not conflict with main Yazelix `yzx`
+The project interface is a Nix/Lix-compatible flake. `yzx` is the installed
+command name
 
 After changing the flake runtime, keep the user's installed runtime current:
 
 ```sh
-nix profile upgrade --refresh yazelix-next
+nix profile upgrade --refresh yazelix
 ```
 
-Do not add Home Manager, layouts, config generation, plugins, pane policy, or
-legacy compatibility unless the user explicitly chooses that feature
+Do not broaden Home Manager, layouts, config generation, plugins, pane policy,
+or legacy compatibility unless the user explicitly chooses that feature
 
 ## Beads
 
@@ -104,8 +104,8 @@ changes, normally verify:
 ```sh
 nix flake check
 nix flake show --all-systems
-nix build .#yzn --no-link --print-build-logs
-nix profile add --refresh /home/lucca/pjs/yazelix-dir/yazelix-next --profile <tmp>
+nix build .#yazelix --no-link --print-build-logs
+nix profile add --refresh /home/lucca/pjs/yazelix-dir/yazelix --profile <tmp>
 ```
 
 Do not launch GUI sessions unless the user asks or reports manual dogfooding
