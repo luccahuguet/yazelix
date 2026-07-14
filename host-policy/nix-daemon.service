@@ -1,0 +1,17 @@
+[Unit]
+Description=Nix Daemon (Yazelix profile-owned)
+Documentation=man:nix-daemon https://nixos.org/manual
+RequiresMountsFor=/nix/store
+RequiresMountsFor=/nix/var
+RequiresMountsFor=/nix/var/nix/db
+ConditionPathIsReadWrite=/nix/var/nix/daemon-socket
+
+[Service]
+ExecStart=@/home/flexnetos/.nix-profile/bin/nix-daemon nix-daemon --daemon
+KillMode=process
+LimitNOFILE=1048576
+TasksMax=1048576
+Delegate=
+
+[Install]
+WantedBy=multi-user.target

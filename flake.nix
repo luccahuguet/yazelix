@@ -739,6 +739,8 @@
           (pkgs.writeTextDir "share/yazelix/host-policy/nix.custom.conf" (builtins.readFile ./host-policy/nix.custom.conf))
           (pkgs.writeTextDir "share/yazelix/host-policy/determinate-config.json" (builtins.readFile ./host-policy/determinate-config.json))
           (pkgs.writeTextDir "share/yazelix/host-policy/shells" (builtins.readFile ./host-policy/shells))
+          (pkgs.writeTextDir "share/yazelix/host-policy/nix-daemon.service" (builtins.readFile ./host-policy/nix-daemon.service))
+          (pkgs.writeTextDir "share/yazelix/host-policy/nix-daemon.socket" (builtins.readFile ./host-policy/nix-daemon.socket))
           (pkgs.writeTextDir "share/yazelix/host-policy/journald-no-storage.conf" (builtins.readFile ./host-policy/journald-no-storage.conf))
           (pkgs.writeTextDir "share/yazelix/host-policy/docker-daemon.json" (builtins.readFile ./host-policy/docker-daemon.json))
           (pkgs.writeTextDir "lib/systemd/system/yazelix_host_policy.service" (builtins.readFile ./systemd/system/yazelix_host_policy.service))
@@ -845,6 +847,7 @@
         node = "${pkgs.nodejs_24}/bin/node";
         nix = "${pkgs.nix}/bin/nix";
         nix-build = "${pkgs.nix}/bin/nix-build";
+        nix-daemon = "${pkgs.nix}/bin/nix-daemon";
         nix-env = "${pkgs.nix}/bin/nix-env";
         nix-instantiate = "${pkgs.nix}/bin/nix-instantiate";
         nix-shell = "${pkgs.nix}/bin/nix-shell";
@@ -1254,6 +1257,7 @@
         test -x ${foundation}/bin/kache
         test -x ${foundation}/bin/kache-rustc-wrapper
         test -x ${foundation}/bin/nix
+        test -x ${foundation}/bin/nix-daemon
         test -x ${foundation}/bin/nix-store
         test -x ${foundation}/bin/journalctl
         test -x ${foundation}/bin/systemctl
@@ -1330,6 +1334,7 @@
         grep -Fx 'ExecStart=/home/flexnetos/.nix-profile/bin/yazelix_host_policy apply-logs' ${foundation}/lib/systemd/system/yazelix_host_policy.service
         test -f ${foundation}/lib/systemd/system/yazelix_host_policy.path
         test -f ${foundation}/lib/systemd/system/nix-daemon.service.d/10-yazelix-host-policy.conf
+        grep -Fx 'ExecStart=@/home/flexnetos/.nix-profile/bin/nix-daemon nix-daemon --daemon' ${foundation}/lib/systemd/system/nix-daemon.service.d/10-yazelix-host-policy.conf
         test -f ${foundation}/lib/systemd/user/yazelix_volatile_runtime.service
         grep -Fx 'ExecStart=/home/flexnetos/.nix-profile/bin/yazelix_volatile_runtime ensure' ${foundation}/lib/systemd/user/yazelix_volatile_runtime.service
         volatile_env=${foundation}/share/yazelix/environment.d/10-yazelix-volatile.conf

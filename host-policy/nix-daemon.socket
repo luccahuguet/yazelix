@@ -1,0 +1,11 @@
+[Unit]
+Description=Nix Daemon Socket (Yazelix profile-owned)
+Before=multi-user.target
+RequiresMountsFor=/nix/store
+ConditionPathIsReadWrite=/nix/var/nix/daemon-socket
+
+[Socket]
+ListenStream=/nix/var/nix/daemon-socket/socket
+
+[Install]
+WantedBy=sockets.target

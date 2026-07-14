@@ -6,6 +6,8 @@ const OWNED_FILES = [
     { source: "nix.custom.conf", target: "/etc/nix/nix.custom.conf" }
     { source: "determinate-config.json", target: "/etc/determinate/config.json" }
     { source: "shells", target: "/etc/shells" }
+    { source: "nix-daemon.service", target: "/etc/systemd/system/nix-daemon.service" }
+    { source: "nix-daemon.socket", target: "/etc/systemd/system/nix-daemon.socket" }
 ]
 const LOG_POLICY_FILES = [
     { source: "journald-no-storage.conf", target: "/etc/systemd/journald.conf.d/10-yazelix-no-persistent.conf" }
@@ -27,6 +29,8 @@ const LOG_ROOTS = [
 const RETIRED_CLIENT_STATE = [
     "/home/flexnetos/.local/share/nix/trusted-settings.json"
     "/root/.local/share/nix/trusted-settings.json"
+    "/usr/local/bin/determinate-nixd"
+    "/nix/var/determinate"
 ]
 
 def policy_root [] {
@@ -140,6 +144,17 @@ def check_targets [] {
     if (live_target) and ((current_login_shell) != $"($PROFILE_ROOT)/toolbin/nu") {
         error make {msg: "flexnetos login shell is not profile-owned Nushell"}
     }
+    if (live_target) {
+        let systemctl = $"($PROFILE_ROOT)/bin/systemctl"
+        let determinate = (^$systemctl is-enabled determinate-nixd.socket | complete)
+        if ($determinate.stdout | str trim) != "masked" {
+            error make {msg: "Determinate Nix cache injector socket is not masked"}
+        }
+        let daemon_unit = (^$systemctl cat nix-daemon.service | complete)
+        if not ($daemon_unit.stdout | str contains "ExecStart=@/home/flexnetos/.nix-profile/bin/nix-daemon nix-daemon --daemon") {
+            error make {msg: "Nix daemon is not profile-owned"}
+        }
+    }
 }
 
 def check_effective [] {
@@ -160,6 +175,11 @@ def check_effective [] {
 
 def apply_nix [] {
     assert_bundle
+    if (live_target) {
+        let systemctl = $"($PROFILE_ROOT)/bin/systemctl"
+        ^$systemctl disable --now determinate-nixd.socket
+        ^$systemctl stop nix-daemon.service
+    }
     for owned in $OWNED_FILES {
         apply_owned_file (source_path $owned.source) (target_path $owned.target)
     }
@@ -169,8 +189,26 @@ def apply_nix [] {
             rm --recursive --force $target
         }
     }
+    if (live_target) {
+        let systemctl = $"($PROFILE_ROOT)/bin/systemctl"
+        for path in [
+            "/etc/systemd/system/determinate-nixd.socket"
+            "/etc/systemd/system/sockets.target.wants/determinate-nixd.socket"
+        ] {
+            if (($path | path type) != "") {
+                rm --force $path
+            }
+        }
+        ^$systemctl daemon-reload
+        ^$systemctl mask determinate-nixd.socket
+    }
     ensure_login_shell
     check_targets
+    if (live_target) {
+        let systemctl = $"($PROFILE_ROOT)/bin/systemctl"
+        ^$systemctl enable nix-daemon.service nix-daemon.socket
+        ^$systemctl --no-block restart nix-daemon.socket
+    }
 }
 
 def purge_logs [] {
