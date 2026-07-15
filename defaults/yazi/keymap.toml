@@ -1,4 +1,4 @@
 [[mgr.append_keymap]]
 on = ["<A-z>"]
 run = "plugin zoxide-editor"
-desc = "Zoxide jump -> open in editor"
+desc = "Retarget tab workspace with zoxide"

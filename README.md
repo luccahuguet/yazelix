@@ -113,8 +113,8 @@ sidebar       Git        Ratconfig  agent
                     menu
 ```
 
-`Alt Shift h` toggles the sidebar. Press the same key again to close the Git,
-Ratconfig, or menu popup. Git and the agent use the tab's canonical workspace
+`Alt Shift h` toggles the sidebar. Press a popup's own key again to close Git,
+Ratconfig, or the menu. Git and the agent use the tab's canonical workspace
 root even when the focused pane has navigated elsewhere. The agent popup hides
 instead of closing, so its process remains available until the workspace root
 really changes
@@ -153,7 +153,7 @@ Move mode is unbound. Managed popup triggers can be remapped through
 
 | Key | Action |
 | --- | --- |
-| `Alt z` | Retarget the tab workspace through zoxide |
+| `Alt z` | Retarget the tab workspace with zoxide |
 
 ## Commands
 

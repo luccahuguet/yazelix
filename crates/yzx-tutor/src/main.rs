@@ -219,7 +219,7 @@ fn render_workspace_lesson(index: usize, lesson: &TutorLesson) -> String {
 1. **Run in shell:** Start in the project directory with `yzx enter`; use `cd <dir> && yzx launch` when you need a separate Mars window for another directory.
 2. **Inside Yazelix:** Press `{focus_left}` or `{focus_right}` to walk visible panes; press `{sidebar_focus}` to move directly between the editor and Yazi sidebar, and `{sidebar_swap}` to toggle the sidebar.
 3. **Inside Yazi:** Press `Enter` to open the selected file in the managed editor.
-4. **Inside Yazi:** Press `{yazi_zoxide}` to jump with zoxide and open the target in the editor.
+4. **Inside Yazi:** Press `{yazi_zoxide}` to retarget the tab workspace with zoxide and open the selected directory in the editor.
 5. **Inside Yazelix:** Press `{new_pane}` for a new stacked pane, `{fullscreen}` to fullscreen the focused pane, `{pane_mode}` for pane mode, `{tab_mode}` for tab mode, `{resize_mode}` for resize mode, and `{quit}` for quit mode.
 6. **Inside Yazelix:** Press `{tab_left}` or `{tab_right}` to move the current tab; press `{pane_down}` or `{pane_up}` to move the current pane.
 7. **Inside the editor:** Press `{reveal}` to reveal the current file in Yazi.

@@ -146,7 +146,7 @@ custom popup entry.
 | `defaults/zellij/config.kdl` | Zellij keys, plugins load, popup wiring, Kitty protocol |
 | `defaults/zellij/layout*.kdl` | Sidebar + stacked panes, open/closed swap |
 | `defaults/nu/` | Packaged Nu: carapace, zoxide, Starship (`format` default `:: `) |
-| `defaults/yazi/` | Opens via `yzx-open`, plugins, `Alt z` zoxide jump |
+| `defaults/yazi/` | Opens via `yzx-open`, plugins, `Alt z` workspace retarget |
 | `defaults/helix/config.toml` | Packaged defaults; `Alt r` reveal, `Ctrl r` reload (overridable) |
 
 ### Child packages (not owned here)
