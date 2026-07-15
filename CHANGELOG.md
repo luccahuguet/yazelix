@@ -4,6 +4,8 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## 1.0.0-beta.1
 
+- Toggling the Ratconfig popup hides its existing process, preserving the
+  selected tab and row while that process remains alive.
 - Ratconfig 5 provides host-owned Core and All settings views. Yazelix keeps
   every currently exposed field in Core for behavior-preserving adoption;
   explicit and invalid non-core values remain visible, normal-mode `a` toggles

@@ -1554,7 +1554,12 @@ fn expect_first_party_plugins(git_bin: &Path, config: &str) {
     }
     expect_popup_defaults(config, "1", "0", "packaged popup config");
     for (id, pane_title, command_suffix, extra) in [
-        ("config", "config_popup", "/bin/yzx-config-ui", ""),
+        (
+            "config",
+            "config_popup",
+            "/bin/yzx-config-ui",
+            "\n                toggle_close_behavior \"hide\"",
+        ),
         (
             "agent",
             "agent_popup",
