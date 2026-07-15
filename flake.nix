@@ -37,6 +37,7 @@
     yazelixZellijBar = {
       url = "github:luccahuguet/yazelix-zellij-bar";
       inputs.nixpkgs.follows = "nixpkgs";
+      inputs.zjstatus.follows = "zjstatus";
     };
     yazelixZellijPaneOrchestrator = {
       url = "github:luccahuguet/yazelix-zellij-pane-orchestrator";
@@ -58,6 +59,10 @@
       url = "github:Rolv-Apneseth/starship.yazi";
       flake = false;
     };
+    zjstatus = {
+      url = "github:luccahuguet/zjstatus/yazelix-tab-activity-pipe";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs = {
@@ -75,6 +80,7 @@
     ratconfig,
     autoLayoutYazi,
     starshipYazi,
+    zjstatus,
   }: let
     novaVersion = "1.0.0-beta.1";
     compactNovaVersion = version:
@@ -636,6 +642,7 @@
       yzxRuntime = self.packages.${system}.runtime;
       marsPackage = mars.packages.${system}.mars;
       runtimeClosure = pkgs.closureInfo {rootPaths = [yzxRuntime];};
+      zellijBarPackage = yazelixZellijBar.packages.${system}.default;
       yzxYaziMaterializer = yzxYaziMaterializerFor pkgs;
       checksSrc = pkgs.lib.cleanSource ./checks;
       yzxContractsCheck = rustBinFor pkgs "yzx-contracts-check" "${checksSrc}/yzx-contracts.rs";
@@ -720,6 +727,10 @@
       };
     in {
       inherit yzx;
+      zjstatus_activity_pipe = pkgs.runCommand "yzx-zjstatus-activity-pipe-check" {nativeBuildInputs = [pkgs.ripgrep];} ''
+        rg -a -q 'tab_activity_pipe_name' ${zellijBarPackage}/${zellijBarPackage.wasmPath}
+        touch "$out"
+      '';
       home_manager = pkgs.runCommand "yzx-home-manager-check" {} ''
         default_path="${homeManagerDefault.activationPackage}/home-path"
         override_path="${homeManagerOverride.activationPackage}/home-path"

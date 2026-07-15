@@ -298,7 +298,7 @@ fn render_agent_popup_kdl(command: &str, args: &[String]) -> String {
         ));
     }
     text.push_str(
-        "                pane_title \"agent_popup\"\n                width_percent 100\n                height_percent 100\n                toggle_close_behavior \"hide\"\n            }",
+        "                pane_title \"agent_popup\"\n                width_percent 100\n                height_percent 100\n                preserve_terminal_title true\n                toggle_close_behavior \"hide\"\n            }",
     );
     text
 }

@@ -4,6 +4,9 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## 1.0.0-beta.1
 
+- A managed agent's spinner title drives a compact busy marker on its tab while
+  native Zellij tab names remain unchanged and directly renameable. Idle,
+  unknown, focused, and merely visible agent panes do not produce activity.
 - Each tab keeps one orchestrator-owned workspace root. Ordinary managed Yazi
   opens preserve it and resynchronize Helix even for ignored paths, nested Git
   repositories, and non-Git descendants; only the explicit `Alt z` retarget

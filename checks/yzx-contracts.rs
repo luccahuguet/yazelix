@@ -8,8 +8,8 @@ use std::{
 mod support;
 
 use support::{
-    binary_text, embedded_store_path, excerpt, expect_contains, expect_order, successful_output,
-    successful_stdout, write_config_home, write_executable, RuntimeCase, TempDir,
+    RuntimeCase, TempDir, binary_text, embedded_store_path, excerpt, expect_contains, expect_order,
+    successful_output, successful_stdout, write_config_home, write_executable,
 };
 
 macro_rules! expect_contains_all {
@@ -192,7 +192,9 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
         .collect::<Vec<_>>();
     assert_eq!(
         menu_ids,
-        ["config", "doctor", "status", "screen", "launch", "help", "tutor"],
+        [
+            "config", "doctor", "status", "screen", "launch", "help", "tutor"
+        ],
         "yzx menu command allowlist changed\n{menu}"
     );
     expect_menu_descriptions_match_help(&help, &menu);
@@ -486,8 +488,13 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
     let custom_agent_config = custom_agent.zellij_file("config.kdl");
     expect_contains(
         &custom_agent_config,
-        "agent {\n                command \"codex\"\n                arg_1 \"resume\"\n                arg_2 \"--dangerously-bypass-approvals-and-sandbox\"\n                pane_title \"agent_popup\"\n                width_percent 100\n                height_percent 100\n                toggle_close_behavior \"hide\"\n            }",
+        "agent {\n                command \"codex\"\n                arg_1 \"resume\"\n                arg_2 \"--dangerously-bypass-approvals-and-sandbox\"\n                pane_title \"agent_popup\"\n                width_percent 100\n                height_percent 100\n                preserve_terminal_title true\n                toggle_close_behavior \"hide\"\n            }",
         "custom agent config",
+    );
+    expect_contains(
+        &custom_agent_config,
+        "managed_agent_command_marker \"codex\"",
+        "custom agent command marker",
     );
 
     let custom_popup_spec_case = RuntimeCase::new(&temp.path, "custom-popup-spec");
@@ -1519,6 +1526,7 @@ fn expect_first_party_plugins(git_bin: &Path, config: &str) {
         "support_kitty_keyboard_protocol true",
         "screen_saver_enabled false",
         "popup_plugin_url \"yzpp\"",
+        "managed_agent_command_marker \"/nix/store/",
     }
     expect_popup_defaults(config, "1", "0", "packaged popup config");
     for (id, pane_title, command_suffix, extra) in [
@@ -1527,7 +1535,7 @@ fn expect_first_party_plugins(git_bin: &Path, config: &str) {
             "agent",
             "agent_popup",
             "/bin/yzx-agent",
-            "\n                toggle_close_behavior \"hide\"",
+            "\n                preserve_terminal_title true\n                toggle_close_behavior \"hide\"",
         ),
         ("git", "git_popup", "/bin/yzx-git", ""),
         ("menu", "menu_popup", "/bin/yzx-menu", ""),

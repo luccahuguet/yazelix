@@ -711,6 +711,7 @@ mod tests {
                 "                pane_title \"agent_popup\"\n",
                 "                width_percent 100\n",
                 "                height_percent 100\n",
+                "                preserve_terminal_title true\n",
                 "                toggle_close_behavior \"hide\"\n",
                 "            }",
             )

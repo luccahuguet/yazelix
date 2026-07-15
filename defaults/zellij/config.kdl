@@ -27,6 +27,7 @@ plugins {
                 pane_title "agent_popup"
                 width_percent 100
                 height_percent 100
+                preserve_terminal_title true
                 toggle_close_behavior "hide"
             }
 
@@ -49,6 +50,7 @@ plugins {
     yazelix_pane_orchestrator location="@yzxPaneOrchestrator@" {
         screen_saver_enabled false
         popup_plugin_url "yzpp"
+        managed_agent_command_marker "@yzxAgent@"
     }
 }
 

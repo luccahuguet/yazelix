@@ -8,10 +8,10 @@ use std::{
 };
 
 use crate::{
-    AGENT_POPUP_KDL_CONFIG_PATH, CUSTOM_POPUP_KEYBINDINGS_KDL_CONFIG_PATH,
+    AGENT_AUTO_COMMAND, AGENT_POPUP_KDL_CONFIG_PATH, CUSTOM_POPUP_KEYBINDINGS_KDL_CONFIG_PATH,
     CUSTOM_POPUPS_KDL_CONFIG_PATH, MARS, POPUP_KEYBINDING_SPECS, YAZELIX_ZELLIJ_BAR_WASM,
-    YAZELIX_ZELLIJ_PANE_ORCHESTRATOR_WASM, YAZELIX_ZELLIJ_POPUP_WASM, YZX_CONFIG, YZX_CONFIG_KDL,
-    YZX_EDITOR, YZX_HELIX, YZX_MARS_CONFIG, YZX_YA, YZX_ZELLIJ_CONFIG, ZELLIJ,
+    YAZELIX_ZELLIJ_PANE_ORCHESTRATOR_WASM, YAZELIX_ZELLIJ_POPUP_WASM, YZX_AGENT, YZX_CONFIG,
+    YZX_CONFIG_KDL, YZX_EDITOR, YZX_HELIX, YZX_MARS_CONFIG, YZX_YA, YZX_ZELLIJ_CONFIG, ZELLIJ,
     command::{
         create_dir_all_checked, run_checked, seed_permission_checked, touch_checked, trim_output,
     },
@@ -117,6 +117,11 @@ impl Runtime {
         )?;
         let agent_popup_kdl =
             config_value(&config_home, &config_toml, AGENT_POPUP_KDL_CONFIG_PATH)?;
+        let managed_agent_command_marker = if agent_command == AGENT_AUTO_COMMAND {
+            YZX_AGENT
+        } else {
+            &agent_command
+        };
         let (layout_source, layout) = active_layout(&state_dir, &bar_widgets, &shell_program)?;
         let mars_config_source = if config_home.join("mars/config.toml").is_file() {
             "user"
@@ -146,6 +151,7 @@ impl Runtime {
             &popup_vertical_margin,
             &popup_keybindings,
             &agent_popup_kdl,
+            managed_agent_command_marker,
             &custom_popups_kdl,
             &custom_popup_keybindings_kdl,
             &zellij_plugins_sidecar,
