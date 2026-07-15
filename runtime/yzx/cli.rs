@@ -4,6 +4,7 @@ use crate::{
     MARS, VERSION, YZX_CONFIG_UI, YZX_ENV_SUPERVISOR, YZX_MENU, YZX_REVEAL, YZX_SCREEN, YZX_SHELL,
     YZX_TUTOR, YZX_WELCOME, YZX_YA, ZELLIJ,
     command::exec,
+    desktop,
     doctor::print_doctor,
     error::{AppError, startup},
     paths::{enter_terminal_label, nonempty_env, runtime_path},
@@ -33,6 +34,7 @@ pub(crate) fn run() -> Result<(), AppError> {
             expect_no_args("config", &args)?;
             exec_plain(YZX_CONFIG_UI)
         }
+        "desktop" => desktop::run(args),
         "menu" => {
             expect_no_args("menu", &args)?;
             exec_menu()
@@ -217,6 +219,7 @@ Usage:
   yzx --version
   yzx help
   yzx config
+  yzx desktop <install|uninstall> [--print-path]
   yzx doctor
   yzx env
   yzx enter [zellij-args...]
@@ -230,6 +233,7 @@ Usage:
 
 Commands:
   config  Open Yazelix Nova config
+  desktop Install or remove the user-local desktop entry
   doctor  Check Yazelix runtime setup
   env     Open the managed shell without launching the UI
   enter   Start Yazelix in the current terminal

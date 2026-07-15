@@ -1,5 +1,6 @@
 mod cli;
 mod command;
+mod desktop;
 mod doctor;
 mod error;
 mod paths;
@@ -19,6 +20,8 @@ pub(crate) const YZX_SHELL: &str = "@yzxShell@";
 pub(crate) const YZX_ENV_SUPERVISOR: &str = "@yzxEnvSupervisor@";
 pub(crate) const ZELLIJ: &str = "@zellij@";
 pub(crate) const MARS: &str = "@mars@";
+pub(crate) const DESKTOP_ENTRY_SOURCE: &str = "@desktopEntrySource@";
+pub(crate) const DESKTOP_DATABASE_UPDATER: &str = "@desktopDatabaseUpdater@";
 pub(crate) const PACKAGE_VARIANT: &str = if MARS.is_empty() { "runtime" } else { "full" };
 pub(crate) const LAYOUT: &str = "@layout@";
 pub(crate) const LAYOUT_TEMPLATE: &str = "@layoutTemplate@";

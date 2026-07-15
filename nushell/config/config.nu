@@ -2,7 +2,6 @@
 # This source remains editable in the Yazelix repository; Nix substitutes the
 # owned store paths before the generated runtime config sources it.
 
-use @rtkWrappers@ *
 source @stackPromptGuard@
 source @flexnetosInit@
 
