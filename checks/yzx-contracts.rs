@@ -325,6 +325,8 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
         "keybindings.agent",
         "keybindings.git",
         "keybindings.menu",
+        "keybindings.sidebar",
+        "keybindings.sidebar_focus",
         "lazygit",
         "yzx-bar-render",
         "yzx-env-supervisor",
@@ -376,6 +378,8 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
         "agent keybinding: Alt Shift L",
         "git keybinding: Alt Shift J",
         "menu keybinding: Alt Shift M",
+        "sidebar keybinding: Alt Shift H",
+        "sidebar focus keybinding: Ctrl y",
         "layout: packaged (/nix/store/",
         "inside zellij: no",
     }
@@ -541,47 +545,60 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
         "load_plugins {\n    yzpp\n    my_plugin\n    yazelix_pane_orchestrator\n}",
     }
 
-    let custom_popup_key = RuntimeCase::new(&temp.path, "custom-popup-key");
-    custom_popup_key.write_default_config("\n[keybindings]\nconfig = \"Alt Shift C\"\nagent = \"Alt Shift A\"\ngit = \"Alt Shift G\"\nmenu = \"Alt Shift U\"\n");
-    let status = custom_popup_key.run_yzx(&yzx_bin, "status", "custom popup key status");
+    let custom_keys = RuntimeCase::new(&temp.path, "custom-keys");
+    custom_keys.write_default_config("\n[keybindings]\nconfig = \"Alt Shift C\"\nagent = \"Alt Shift A\"\ngit = \"Alt Shift G\"\nmenu = \"Alt Shift U\"\nsidebar = \"Ctrl Shift B\"\nsidebar_focus = \"Ctrl Shift E\"\n");
+    let status = custom_keys.run_yzx(&yzx_bin, "status", "custom key status");
     expect_contains_all! {
-        &status, "custom popup key status";
+        &status, "custom key status";
         "config keybinding: Alt Shift C",
         "agent keybinding: Alt Shift A",
         "git keybinding: Alt Shift G",
         "menu keybinding: Alt Shift U",
+        "sidebar keybinding: Ctrl Shift B",
+        "sidebar focus keybinding: Ctrl Shift E",
         "zellij config: runtime (",
     }
-    let custom_key_config = custom_popup_key.zellij_file("config.kdl");
+    let custom_key_config = custom_keys.zellij_file("config.kdl");
     for (key, payload, default) in [
         ("Alt Shift C", "config", "Alt Shift K"),
         ("Alt Shift A", "agent", "Alt Shift L"),
         ("Alt Shift G", "git", "Alt Shift J"),
         ("Alt Shift U", "menu", "Alt Shift M"),
     ] {
-        expect_popup_binding(&custom_key_config, key, payload, "custom popup key config");
+        expect_popup_binding(&custom_key_config, key, payload, "custom key config");
         assert!(
             !custom_key_config.contains(&format!(r#"bind "{default}" {{"#)),
-            "custom popup key kept the default {payload} binding"
+            "custom key kept the default {payload} binding"
+        );
+    }
+    expect_contains_all! {
+        &custom_key_config, "custom key config";
+        r#"bind "Ctrl Shift B" { MessagePlugin "yazelix_pane_orchestrator" { name "toggle_sidebar"; }; }"#,
+        r#"bind "Ctrl Shift E" { MessagePlugin "yazelix_pane_orchestrator" { name "toggle_editor_sidebar_focus"; }; }"#,
+    }
+    for default in ["Alt Shift H", "Ctrl y"] {
+        assert!(
+            !custom_key_config.contains(&format!(r#"bind "{default}" {{"#)),
+            "custom key kept the default {default} binding"
         );
     }
 
-    let swapped_popup_key = RuntimeCase::new(&temp.path, "swapped-popup-key");
-    swapped_popup_key.write_default_config("\n[keybindings]\nconfig = \"Alt Shift L\"\nagent = \"Alt Shift K\"\ngit = \"Alt Shift M\"\nmenu = \"Alt Shift J\"\n");
-    swapped_popup_key.run_yzx(&yzx_bin, "status", "swapped popup key status");
-    let swapped_key_config = swapped_popup_key.zellij_file("config.kdl");
+    let swapped_keys = RuntimeCase::new(&temp.path, "swapped-keys");
+    swapped_keys.write_default_config("\n[keybindings]\nconfig = \"Alt Shift H\"\nagent = \"Ctrl y\"\ngit = \"Alt Shift M\"\nmenu = \"Alt Shift J\"\nsidebar = \"Alt Shift K\"\nsidebar_focus = \"Alt Shift L\"\n");
+    swapped_keys.run_yzx(&yzx_bin, "status", "swapped key status");
+    let swapped_key_config = swapped_keys.zellij_file("config.kdl");
     for (key, payload) in [
-        ("Alt Shift L", "config"),
-        ("Alt Shift K", "agent"),
+        ("Alt Shift H", "config"),
+        ("Ctrl y", "agent"),
         ("Alt Shift M", "git"),
         ("Alt Shift J", "menu"),
     ] {
-        expect_popup_binding(
-            &swapped_key_config,
-            key,
-            payload,
-            "swapped popup key config",
-        );
+        expect_popup_binding(&swapped_key_config, key, payload, "swapped key config");
+    }
+    expect_contains_all! {
+        &swapped_key_config, "swapped key config";
+        r#"bind "Alt Shift K" { MessagePlugin "yazelix_pane_orchestrator" { name "toggle_sidebar"; }; }"#,
+        r#"bind "Alt Shift L" { MessagePlugin "yazelix_pane_orchestrator" { name "toggle_editor_sidebar_focus"; }; }"#,
     }
 
     let custom_editor = RuntimeCase::new(&temp.path, "custom-editor");
@@ -684,6 +701,8 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
         "ok keybindings.agent: Alt Shift L",
         "ok keybindings.git: Alt Shift J",
         "ok keybindings.menu: Alt Shift M",
+        "ok keybindings.sidebar: Alt Shift H",
+        "ok keybindings.sidebar_focus: Ctrl y",
         "ok tutor helper: /nix/store/",
         "ok screen helper: /nix/store/",
         "ok welcome helper: /nix/store/",
@@ -922,6 +941,8 @@ fn expect_config_ui(yzx: &Path) {
         "agent = \"Alt Shift L\"",
         "git = \"Alt Shift J\"",
         "menu = \"Alt Shift M\"",
+        "sidebar = \"Alt Shift H\"",
+        "sidebar_focus = \"Ctrl y\"",
         "widgets = [\"editor\", \"shell\", \"term\", \"codex_usage\", \"cpu\", \"ram\"]",
     }
 
@@ -943,6 +964,8 @@ fn expect_config_ui(yzx: &Path) {
         ("keybindings.agent", "Alt Shift L"),
         ("keybindings.git", "Alt Shift J"),
         ("keybindings.menu", "Alt Shift M"),
+        ("keybindings.sidebar", "Alt Shift H"),
+        ("keybindings.sidebar_focus", "Ctrl y"),
         (
             "bar.widgets",
             r#"["editor","shell","term","codex_usage","cpu","ram"]"#,
@@ -1051,8 +1074,8 @@ fn expect_startup_diagnostics(yzx: &Path) {
         ),
         (
             "bad-key-conflict-config",
-            "[open]\nlog_level = \"info\"\n\n[shell]\nprogram = \"nu\"\n\n[keybindings]\nagent = \"Alt Shift h\"\n",
-            "keybindings.agent conflicts with packaged key Alt Shift h",
+            "[open]\nlog_level = \"info\"\n\n[shell]\nprogram = \"nu\"\n\n[keybindings]\nagent = \"Alt Shift f\"\n",
+            "keybindings.agent conflicts with packaged key Alt Shift f",
             "conflicting agent key",
         ),
         (

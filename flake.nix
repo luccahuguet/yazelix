@@ -482,6 +482,8 @@
         agentKey = defaultConfig.keybindings.agent;
         gitKey = defaultConfig.keybindings.git;
         menuKey = defaultConfig.keybindings.menu;
+        sidebarKey = defaultConfig.keybindings.sidebar;
+        sidebarFocusKey = defaultConfig.keybindings.sidebar_focus;
         inherit defaultPopupSideMargin defaultPopupVerticalMargin;
         yzxConfig = "${yzxConfigUi}/bin/yzx-config-ui";
         yzxMenu = "${yzxMenu}/bin/yzx-menu";
@@ -554,6 +556,8 @@
           defaultAgentKeybinding = defaultConfig.keybindings.agent;
           defaultGitKeybinding = defaultConfig.keybindings.git;
           defaultMenuKeybinding = defaultConfig.keybindings.menu;
+          defaultSidebarKeybinding = defaultConfig.keybindings.sidebar;
+          defaultSidebarFocusKeybinding = defaultConfig.keybindings.sidebar_focus;
           inherit defaultPopupSideMargin defaultPopupVerticalMargin;
           version = novaVersion;
           pathPrefix = pkgs.lib.makeBinPath [
@@ -706,6 +710,8 @@
             keybindings.agent = "Alt Shift A";
             keybindings.git = "Alt Shift G";
             keybindings.menu = "Alt Shift U";
+            keybindings.sidebar = "Ctrl Shift B";
+            keybindings.sidebar_focus = "Ctrl Shift E";
             bar.widgets = ["editor" "shell"];
           };
           cursors.source = fakeCursors;
@@ -765,6 +771,8 @@
         grep -q 'agent = "Alt Shift A"' "$config_files/config.toml"
         grep -q 'git = "Alt Shift G"' "$config_files/config.toml"
         grep -q 'menu = "Alt Shift U"' "$config_files/config.toml"
+        grep -q 'sidebar = "Ctrl Shift B"' "$config_files/config.toml"
+        grep -q 'sidebar_focus = "Ctrl Shift E"' "$config_files/config.toml"
         ! grep -q 'ratconfig' "$config_files/config.toml"
         grep -q 'trail = "reef"' "$config_files/cursors.toml"
         test -L "$config_files/cursors.toml"
@@ -780,6 +788,8 @@
         test "$(YAZELIX_CONFIG_HOME="$config_files" ${yzx}/libexec/yazelix/yzx-config --get keybindings.agent)" = "Alt Shift A"
         test "$(YAZELIX_CONFIG_HOME="$config_files" ${yzx}/libexec/yazelix/yzx-config --get keybindings.git)" = "Alt Shift G"
         test "$(YAZELIX_CONFIG_HOME="$config_files" ${yzx}/libexec/yazelix/yzx-config --get keybindings.menu)" = "Alt Shift U"
+        test "$(YAZELIX_CONFIG_HOME="$config_files" ${yzx}/libexec/yazelix/yzx-config --get keybindings.sidebar)" = "Ctrl Shift B"
+        test "$(YAZELIX_CONFIG_HOME="$config_files" ${yzx}/libexec/yazelix/yzx-config --get keybindings.sidebar_focus)" = "Ctrl Shift E"
         grep -q 'width = 1200' "$config_files/mars/config.toml"
         grep -q 'pane_frames false' "$config_files/zellij/config.kdl"
         grep -q 'format = "::"' "$config_files/starship.toml"

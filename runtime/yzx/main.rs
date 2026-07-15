@@ -53,11 +53,21 @@ pub(crate) const ZELLIJ_HOME_PLACEHOLDER: &str = "\"__YZX_HOME__\"";
 pub(crate) const LAYOUT_YAZI_PLACEHOLDER: &str = concat!("@", "yazi", "@");
 pub(crate) const LAYOUT_BAR_PLACEHOLDER: &str = concat!("@", "bar", "@");
 pub(crate) const HELIX_REVEAL_COMMAND: &str = r#":sh yzx reveal "%{buffer_name}""#;
-pub(crate) const POPUP_KEYBINDING_SPECS: &[(&str, &str, &str)] = &[
+pub(crate) const MANAGED_KEYBINDING_SPECS: &[(&str, &str, &str)] = &[
     ("config", "keybindings.config", "@defaultConfigKeybinding@"),
     ("agent", "keybindings.agent", "@defaultAgentKeybinding@"),
     ("git", "keybindings.git", "@defaultGitKeybinding@"),
     ("menu", "keybindings.menu", "@defaultMenuKeybinding@"),
+    (
+        "sidebar",
+        "keybindings.sidebar",
+        "@defaultSidebarKeybinding@",
+    ),
+    (
+        "sidebar focus",
+        "keybindings.sidebar_focus",
+        "@defaultSidebarFocusKeybinding@",
+    ),
 ];
 
 fn main() {

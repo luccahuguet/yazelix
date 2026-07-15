@@ -9,7 +9,7 @@ use std::{
 
 use crate::{
     AGENT_AUTO_COMMAND, AGENT_POPUP_KDL_CONFIG_PATH, CUSTOM_POPUP_KEYBINDINGS_KDL_CONFIG_PATH,
-    CUSTOM_POPUPS_KDL_CONFIG_PATH, MARS, POPUP_KEYBINDING_SPECS, YAZELIX_ZELLIJ_BAR_WASM,
+    CUSTOM_POPUPS_KDL_CONFIG_PATH, MANAGED_KEYBINDING_SPECS, MARS, YAZELIX_ZELLIJ_BAR_WASM,
     YAZELIX_ZELLIJ_PANE_ORCHESTRATOR_WASM, YAZELIX_ZELLIJ_POPUP_WASM, YZX_AGENT, YZX_CONFIG,
     YZX_CONFIG_KDL, YZX_EDITOR, YZX_HELIX, YZX_MARS_CONFIG, YZX_YA, YZX_ZELLIJ_CONFIG, ZELLIJ,
     command::{
@@ -42,26 +42,26 @@ pub(crate) struct Runtime {
     pub(crate) bar_widgets: String,
     pub(crate) popup_side_margin: String,
     pub(crate) popup_vertical_margin: String,
-    pub(crate) popup_keybindings: Vec<PopupKeybinding>,
+    pub(crate) managed_keybindings: Vec<ManagedKeybinding>,
     pub(crate) zellij_status_cache: PathBuf,
     pub(crate) zellij_permissions: PathBuf,
 }
 
-pub(crate) struct PopupKeybinding {
+pub(crate) struct ManagedKeybinding {
     pub(crate) label: &'static str,
     pub(crate) path: &'static str,
     pub(crate) default: &'static str,
     pub(crate) configured: String,
 }
 
-fn read_popup_keybindings(
+fn read_managed_keybindings(
     config_home: &Path,
     config_toml: &Path,
-) -> Result<Vec<PopupKeybinding>, AppError> {
-    POPUP_KEYBINDING_SPECS
+) -> Result<Vec<ManagedKeybinding>, AppError> {
+    MANAGED_KEYBINDING_SPECS
         .iter()
         .map(|&(label, path, default)| {
-            Ok(PopupKeybinding {
+            Ok(ManagedKeybinding {
                 label,
                 path,
                 default,
@@ -107,7 +107,7 @@ impl Runtime {
             &config_toml,
             "popup.vertical_margin",
         )?);
-        let popup_keybindings = read_popup_keybindings(&config_home, &config_toml)?;
+        let managed_keybindings = read_managed_keybindings(&config_home, &config_toml)?;
         let custom_popups_kdl =
             config_value(&config_home, &config_toml, CUSTOM_POPUPS_KDL_CONFIG_PATH)?;
         let custom_popup_keybindings_kdl = config_value(
@@ -149,7 +149,7 @@ impl Runtime {
             &layout,
             &popup_side_margin,
             &popup_vertical_margin,
-            &popup_keybindings,
+            &managed_keybindings,
             &agent_popup_kdl,
             managed_agent_command_marker,
             &custom_popups_kdl,
@@ -219,7 +219,7 @@ impl Runtime {
             bar_widgets,
             popup_side_margin,
             popup_vertical_margin,
-            popup_keybindings,
+            managed_keybindings,
             zellij_status_cache,
             zellij_permissions,
         })

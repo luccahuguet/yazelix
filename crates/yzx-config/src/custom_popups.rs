@@ -6,8 +6,7 @@ use serde_json::Value as JsonValue;
 use crate::{
     common::*,
     root_config::{
-        read_optional_toml_file_value, validate_managed_popup_keybinding,
-        validate_popup_keybindings,
+        read_optional_toml_file_value, validate_keybindings, validate_managed_keybinding,
     },
 };
 
@@ -21,7 +20,7 @@ pub(crate) struct CustomPopup {
 }
 pub(crate) fn read_custom_popups_kdl(path: &Path) -> Result<String> {
     let value = read_optional_toml_file_value(path, "config.toml")?;
-    validate_popup_keybindings(&value)?;
+    validate_keybindings(&value)?;
     let mut text = String::new();
     for popup in custom_popups(&value)? {
         text.push_str(&format!(
@@ -50,7 +49,7 @@ pub(crate) fn read_custom_popups_kdl(path: &Path) -> Result<String> {
 }
 pub(crate) fn read_custom_popup_keybindings_kdl(path: &Path) -> Result<String> {
     let value = read_optional_toml_file_value(path, "config.toml")?;
-    validate_popup_keybindings(&value)?;
+    validate_keybindings(&value)?;
     let mut text = String::new();
     for popup in custom_popups(&value)? {
         text.push_str(&format!(
@@ -112,7 +111,7 @@ fn custom_popup(id: &str, value: &JsonValue) -> Result<CustomPopup> {
 
     let keybinding_path = format!("{path}.keybinding");
     let keybinding = required_string(table, "keybinding", &keybinding_path)?.to_string();
-    validate_managed_popup_keybinding(&keybinding_path, &keybinding)?;
+    validate_managed_keybinding(&keybinding_path, &keybinding)?;
 
     let keep_alive = table
         .get("keep_alive")

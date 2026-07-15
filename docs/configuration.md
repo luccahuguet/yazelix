@@ -38,6 +38,8 @@ while custom popup ids remain dynamic within the documented `popups.<id>` fields
 | `welcome.enabled` | `true` | Show the startup welcome splash |
 | `welcome.style` | `random` | Startup screen style |
 | `welcome.duration_seconds` | `3` | Startup splash duration, 1 to 60 seconds |
+| `keybindings.sidebar` | `Alt Shift H` | Hide or show the managed Yazi sidebar |
+| `keybindings.sidebar_focus` | `Ctrl y` | Toggle focus between the editor and managed Yazi sidebar |
 | `bar.widgets` | `editor`, `shell`, `term`, `codex_usage`, `cpu`, `ram` | Top bar widgets, left to right |
 
 The Codex quota widget identifies periods from their reported duration and shows
@@ -71,6 +73,7 @@ popup role keys:
 arguments. Keep `agent.command = "auto"` to use the built-in `codex resume`,
 `grok`, `opencode`, `pi`, `claude --resume` fallback chain
 
+All managed action keys share syntax validation and case-insensitive collision checks.
 Custom popups live in root config under `[popups.<id>]`:
 
 ```toml
@@ -83,8 +86,8 @@ keep_alive = true
 ```
 
 Commands are argv-based. Put arguments in `args`, not in `command`. Popup titles
-must be unique. Custom popup keybindings use the same collision checks as the
-managed popup role keys
+must be unique. Custom popup keybindings use the same collision checks as all
+managed action keys
 
 ## Native config files
 

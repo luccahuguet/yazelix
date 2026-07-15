@@ -4,6 +4,11 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## 1.0.0-beta.1
 
+- `keybindings.sidebar` and `keybindings.sidebar_focus` remap sidebar
+  visibility and editor/sidebar focus through the same validated semantic
+  config used by managed popup triggers. Defaults remain `Alt Shift H` and
+  `Ctrl y`; generated Zellij policy and Home Manager settings use the effective
+  values on the next launch.
 - Ratconfig keeps semantic text, inactive tabs, and pane headings readable in
   light appearance, aligns Unicode setting labels by terminal-cell width, and
   uses flush outer pane rails with one shared divider.

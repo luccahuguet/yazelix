@@ -140,7 +140,8 @@ Ratconfig's Keys tab is the complete packaged reference, and
 | `Ctrl y` | Toggle focus between the editor and Yazi sidebar |
 | `Alt 1-9` | Go directly to tab 1-9 |
 
-Move mode is unbound. Managed popup triggers can be remapped through
+Move mode is unbound. `keybindings.sidebar` and `keybindings.sidebar_focus`
+remap sidebar visibility and editor/sidebar focus. Managed popup triggers use
 `keybindings.config`, `keybindings.agent`, `keybindings.git`, and
 `keybindings.menu`. Raw Zellij keymaps stay outside the managed sidecar
 
@@ -219,6 +220,6 @@ popup contracts live in [Runtime Notes](docs/runtime-notes.md)
 
 ## LOC Scorecard
 
-Yazelix owns **18,217 lines** of tracked text project files. The
+Yazelix owns **18,282 lines** of tracked text project files. The
 [reproducible scorecard](docs/development.md#loc-scorecard) excludes Beads,
 lockfiles, and binary assets

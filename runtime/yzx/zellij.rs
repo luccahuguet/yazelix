@@ -13,7 +13,7 @@ use crate::{
     command::{create_dir_all_checked, run_checked, trim_output},
     error::{AppError, path_error, startup},
     paths::parent,
-    runtime::PopupKeybinding,
+    runtime::ManagedKeybinding,
 };
 
 pub(crate) fn active_layout(
@@ -38,7 +38,7 @@ pub(crate) fn active_zellij_config(
     layout: &Path,
     popup_side_margin: &str,
     popup_vertical_margin: &str,
-    popup_keybindings: &[PopupKeybinding],
+    managed_keybindings: &[ManagedKeybinding],
     agent_popup_kdl: &str,
     managed_agent_command_marker: &str,
     custom_popups_kdl: &str,
@@ -72,7 +72,7 @@ pub(crate) fn active_zellij_config(
     }
     patched =
         patch_popup_default_margins(patched, &config, popup_side_margin, popup_vertical_margin)?;
-    patched = patch_popup_keybindings(patched, &config, popup_keybindings)?;
+    patched = patch_managed_keybindings(patched, &config, managed_keybindings)?;
     patched = patch_agent_popup(patched, &config, agent_popup_kdl)?;
     patched = patch_managed_agent_command_marker(patched, &config, managed_agent_command_marker)?;
     patched = inject_snippet_before(
@@ -103,13 +103,13 @@ pub(crate) fn active_zellij_config(
     ))
 }
 
-fn patch_popup_keybindings(
+fn patch_managed_keybindings(
     text: String,
     config: &Path,
-    popup_keybindings: &[PopupKeybinding],
+    managed_keybindings: &[ManagedKeybinding],
 ) -> Result<String, AppError> {
     let mut patched = text;
-    for (index, binding) in popup_keybindings.iter().enumerate() {
+    for (index, binding) in managed_keybindings.iter().enumerate() {
         if binding.configured == binding.default {
             continue;
         }
@@ -124,14 +124,14 @@ fn patch_popup_keybindings(
                 1,
             ));
         }
-        patched = patched.replace(&marker, &format!("bind __YZX_POPUP_KEY_{index}__"));
+        patched = patched.replace(&marker, &format!("bind __YZX_MANAGED_KEY_{index}__"));
     }
-    for (index, binding) in popup_keybindings.iter().enumerate() {
+    for (index, binding) in managed_keybindings.iter().enumerate() {
         if binding.configured == binding.default {
             continue;
         }
         patched = patched.replace(
-            &format!("__YZX_POPUP_KEY_{index}__"),
+            &format!("__YZX_MANAGED_KEY_{index}__"),
             &kdl_string(&binding.configured),
         );
     }

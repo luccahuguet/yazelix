@@ -398,12 +398,11 @@ mod tests {
             assert_eq!(default_config_value(field_path).unwrap(), value);
             validate_config_value(field_path, &value).unwrap();
         }
-        for spec in POPUP_KEYBINDINGS {
+        for &(path, default) in MANAGED_KEYBINDINGS {
             assert_eq!(
-                default_config_value(spec.path).unwrap(),
-                json!(spec.default),
-                "{}",
-                spec.path
+                default_config_value(path).unwrap(),
+                json!(default),
+                "{path}"
             );
         }
     }
@@ -534,6 +533,8 @@ mod tests {
             (KEYBINDINGS_AGENT_PATH, "Alt Shift A"),
             (KEYBINDINGS_GIT_PATH, "Alt Shift G"),
             (KEYBINDINGS_MENU_PATH, "Alt Shift U"),
+            (KEYBINDINGS_SIDEBAR_PATH, "Ctrl Shift B"),
+            (KEYBINDINGS_SIDEBAR_FOCUS_PATH, "Ctrl Shift E"),
         ] {
             assert_write_round_trip(&path, field_path, json!(value), Some(value));
         }
@@ -571,7 +572,7 @@ mod tests {
         ] {
             assert_write_config_error(&path, field_path, value, expected);
         }
-        for value in ["Alt Shift h", "Alt z"] {
+        for value in ["Alt Shift f", "Alt z"] {
             assert_write_config_error(
                 &path,
                 KEYBINDINGS_AGENT_PATH,
@@ -824,8 +825,16 @@ mod tests {
             SOURCE_CURSORS
         );
 
-        for spec in POPUP_KEYBINDINGS {
-            assert_config_field_on_tab(&model, spec.path, TAB_POPUPS, "string", "next launch");
+        for &(path, _) in MANAGED_KEYBINDINGS {
+            let tab = if matches!(
+                path,
+                KEYBINDINGS_SIDEBAR_PATH | KEYBINDINGS_SIDEBAR_FOCUS_PATH
+            ) {
+                TAB_CONFIG
+            } else {
+                TAB_POPUPS
+            };
+            assert_config_field_on_tab(&model, path, tab, "string", "next launch");
         }
 
         let field = model_field(&model, BAR_WIDGETS_PATH);

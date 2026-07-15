@@ -121,6 +121,8 @@ field validator.
 | `keybindings.agent` | key chord | `Alt Shift L` | Agent popup trigger | next launch |
 | `keybindings.git` | key chord | `Alt Shift J` | Git popup trigger | next launch |
 | `keybindings.menu` | key chord | `Alt Shift M` | Menu popup trigger | next launch |
+| `keybindings.sidebar` | key chord | `Alt Shift H` | Sidebar visibility | next launch |
+| `keybindings.sidebar_focus` | key chord | `Ctrl y` | Editor/sidebar focus | next launch |
 | `bar.widgets` | ordered string array | `editor`, `shell`, `term`, `codex_usage`, `cpu`, `ram` | Top-bar tray order; `BAR_WIDGET_VALUES` and `bar_widgets` own validation | next launch |
 
 `custom_popups.rs` owns the dynamic `[popups.<id>]` namespace. An id starts

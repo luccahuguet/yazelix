@@ -32,10 +32,8 @@ pub(crate) const KEYBINDINGS_CONFIG_PATH: &str = "keybindings.config";
 pub(crate) const KEYBINDINGS_AGENT_PATH: &str = "keybindings.agent";
 pub(crate) const KEYBINDINGS_GIT_PATH: &str = "keybindings.git";
 pub(crate) const KEYBINDINGS_MENU_PATH: &str = "keybindings.menu";
-pub(crate) const DEFAULT_CONFIG_KEYBINDING: &str = "Alt Shift K";
-pub(crate) const DEFAULT_AGENT_KEYBINDING: &str = "Alt Shift L";
-pub(crate) const DEFAULT_GIT_KEYBINDING: &str = "Alt Shift J";
-pub(crate) const DEFAULT_MENU_KEYBINDING: &str = "Alt Shift M";
+pub(crate) const KEYBINDINGS_SIDEBAR_PATH: &str = "keybindings.sidebar";
+pub(crate) const KEYBINDINGS_SIDEBAR_FOCUS_PATH: &str = "keybindings.sidebar_focus";
 pub(crate) const BAR_WIDGETS_PATH: &str = "bar.widgets";
 pub(crate) const BAR_WIDGET_VALUES: &[&str] = &[
     "session",
@@ -149,28 +147,13 @@ pub(crate) const CURSOR_FIELDS: &[FieldSpec] = &[
     ),
 ];
 
-pub(crate) struct PopupKeybindingSpec {
-    pub(crate) path: &'static str,
-    pub(crate) default: &'static str,
-}
-
-pub(crate) const POPUP_KEYBINDINGS: &[PopupKeybindingSpec] = &[
-    PopupKeybindingSpec {
-        path: KEYBINDINGS_CONFIG_PATH,
-        default: DEFAULT_CONFIG_KEYBINDING,
-    },
-    PopupKeybindingSpec {
-        path: KEYBINDINGS_AGENT_PATH,
-        default: DEFAULT_AGENT_KEYBINDING,
-    },
-    PopupKeybindingSpec {
-        path: KEYBINDINGS_GIT_PATH,
-        default: DEFAULT_GIT_KEYBINDING,
-    },
-    PopupKeybindingSpec {
-        path: KEYBINDINGS_MENU_PATH,
-        default: DEFAULT_MENU_KEYBINDING,
-    },
+pub(crate) const MANAGED_KEYBINDINGS: &[(&str, &str)] = &[
+    (KEYBINDINGS_CONFIG_PATH, "Alt Shift K"),
+    (KEYBINDINGS_AGENT_PATH, "Alt Shift L"),
+    (KEYBINDINGS_GIT_PATH, "Alt Shift J"),
+    (KEYBINDINGS_MENU_PATH, "Alt Shift M"),
+    (KEYBINDINGS_SIDEBAR_PATH, "Alt Shift H"),
+    (KEYBINDINGS_SIDEBAR_FOCUS_PATH, "Ctrl y"),
 ];
 
 macro_rules! key {
@@ -340,6 +323,26 @@ pub(crate) const CONFIG_FIELDS: &[ConfigFieldSpec] = &[
             "Key chord that toggles the managed command palette popup.",
             &[],
             "key chord like Alt Shift A that does not conflict with a packaged binding",
+        ),
+        apply_summary: "next launch",
+        apply_detail: "Saved keybindings apply to newly launched Yazelix sessions.",
+    },
+    ConfigFieldSpec {
+        field: FieldSpec::string_choice(
+            KEYBINDINGS_SIDEBAR_PATH,
+            "Key chord that hides or shows the managed Yazi sidebar.",
+            &[],
+            "key chord like Alt Shift A that does not conflict with a packaged binding",
+        ),
+        apply_summary: "next launch",
+        apply_detail: "Saved keybindings apply to newly launched Yazelix sessions.",
+    },
+    ConfigFieldSpec {
+        field: FieldSpec::string_choice(
+            KEYBINDINGS_SIDEBAR_FOCUS_PATH,
+            "Key chord that toggles focus between the editor and managed Yazi sidebar.",
+            &[],
+            "key chord like Ctrl y that does not conflict with a packaged binding",
         ),
         apply_summary: "next launch",
         apply_detail: "Saved keybindings apply to newly launched Yazelix sessions.",
