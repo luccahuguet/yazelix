@@ -4,6 +4,9 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## 1.0.0-beta.1
 
+- Mars settings report their actual apply boundary: appearance, opacity, font
+  size, line height, scrollbar, and bell behavior update open windows, while
+  width and height apply to newly created windows.
 - Linux Mars windows use the Nova desktop entry's `yzx` application identity,
   so open sessions resolve the packaged icon in Wayland and X11 task switchers.
 - A managed agent's spinner title drives a compact busy marker on its tab while

@@ -939,6 +939,28 @@ color = "#123456"
     }
 
     #[test]
+    fn mars_fields_have_complete_apply_timing() {
+        let (_temp, paths) = temp_sources();
+        let model = build_model(&paths).unwrap();
+        let expected = [
+            (MARS_APPEARANCE_PRESET_PATH, "live"),
+            ("window.width", "new windows"),
+            ("window.height", "new windows"),
+            ("window.opacity", "live"),
+            ("fonts.size", "live"),
+            ("line-height", "live"),
+            ("enable-scroll-bar", "live"),
+            ("bell.audio", "live"),
+            ("bell.visual", "live"),
+        ];
+
+        assert_eq!(MARS_FIELDS.len(), expected.len());
+        for (path, summary) in expected {
+            assert_eq!(model_field(&model, path).apply_status.summary, summary);
+        }
+    }
+
+    #[test]
     fn config_model_exposes_structured_starship_tab() {
         let (_temp, paths) = temp_sources();
 

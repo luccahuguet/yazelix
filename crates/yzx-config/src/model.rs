@@ -72,12 +72,11 @@ pub(crate) fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
             spec,
             current,
             get_toml_path(&starship_default, spec.path),
-            ConfigUiApplyStatus {
-                summary: "new prompts".to_string(),
-                label: "starship".to_string(),
-                detail: "Saved values apply to newly rendered managed Nu prompts.".to_string(),
-                pending: false,
-            },
+            apply_status(
+                "new prompts",
+                "starship",
+                "Saved values apply to newly rendered managed Nu prompts.",
+            ),
             current.is_some_and(|value| validate_starship_field(spec, value).is_err()),
         ));
     }
@@ -90,12 +89,11 @@ pub(crate) fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
             spec,
             current,
             Some(default),
-            ConfigUiApplyStatus {
-                summary: "session".to_string(),
-                label: "zellij".to_string(),
-                detail: "Inside a session, saves and resets update the active config; many scalars apply live, some need a new session.".to_string(),
-                pending: false,
-            },
+            apply_status(
+                "session",
+                "zellij",
+                "Inside a session, saves and resets update the active config; many scalars apply live, some need a new session.",
+            ),
             zellij_blocking,
         ));
     }
@@ -199,12 +197,7 @@ fn build_key_binding_field(
         allowed_values: Vec::new(),
         validation: KEY_READ_ONLY_REASON.to_string(),
         rebuild_required: false,
-        apply_status: ConfigUiApplyStatus {
-            summary: "read-only".to_string(),
-            label: "read-only".to_string(),
-            detail: KEY_READ_ONLY_REASON.to_string(),
-            pending: false,
-        },
+        apply_status: apply_status("read-only", "read-only", KEY_READ_ONLY_REASON),
         edit_behavior: ConfigUiEditBehavior::StructuredOnly {
             notice: KEY_READ_ONLY_REASON.to_string(),
         },
@@ -245,12 +238,7 @@ fn build_root_config_field(
         &spec.field,
         current,
         Some(&default),
-        ConfigUiApplyStatus {
-            summary: spec.apply_summary.to_string(),
-            label: "runtime".to_string(),
-            detail: spec.apply_detail.to_string(),
-            pending: false,
-        },
+        apply_status(spec.apply_summary, "runtime", spec.apply_detail),
         false,
     ))
 }
@@ -362,15 +350,14 @@ fn cursor_apply_status(path: &str) -> ConfigUiApplyStatus {
         path,
         "settings.mode_effect" | "settings.glow" | "settings.duration"
     ) {
-        return ConfigUiApplyStatus {
-            summary: "stored".to_string(),
-            label: "cursors".to_string(),
-            detail: "Saved for compatible consumers; Mars does not use this setting yet."
-                .to_string(),
-            pending: false,
-        };
+        return apply_status(
+            "stored",
+            "cursors",
+            "Saved for compatible consumers; Mars does not use this setting yet.",
+        );
     }
-    next_launch_apply_status(
+    apply_status(
+        "next launch",
         "cursors",
         if path == "settings.trail_effect" {
             "Mars currently reads only none versus enabled; compatible consumers may use the named effect."
@@ -396,21 +383,19 @@ fn build_bar_widgets_field(
             "Top bar widgets, left to right.",
             string_values(BAR_WIDGET_VALUES),
             "known widget ids",
-            ConfigUiApplyStatus {
-                summary: "next launch".to_string(),
-                label: "bar".to_string(),
-                detail: "Saved widget order applies to newly launched Yazelix sessions."
-                    .to_string(),
-                pending: false,
-            },
+            apply_status(
+                "next launch",
+                "bar",
+                "Saved widget order applies to newly launched Yazelix sessions.",
+            ),
         )
     }
     .build_string_list(current, Some(default))
     .map_err(error)
 }
-fn next_launch_apply_status(label: &str, detail: &str) -> ConfigUiApplyStatus {
+fn apply_status(summary: &str, label: &str, detail: &str) -> ConfigUiApplyStatus {
     ConfigUiApplyStatus {
-        summary: "next launch".to_string(),
+        summary: summary.to_string(),
         label: label.to_string(),
         detail: detail.to_string(),
         pending: false,
@@ -418,15 +403,27 @@ fn next_launch_apply_status(label: &str, detail: &str) -> ConfigUiApplyStatus {
 }
 
 fn mars_apply_status(path: &str) -> ConfigUiApplyStatus {
-    if path == MARS_APPEARANCE_PRESET_PATH {
-        ConfigUiApplyStatus {
-            summary: "live".to_string(),
-            label: "mars/ui".to_string(),
-            detail: "Saved appearance changes apply to Mars and this config UI immediately."
-                .to_string(),
-            pending: false,
+    let (summary, label, detail) = match path {
+        MARS_APPEARANCE_PRESET_PATH => (
+            "live",
+            "mars/ui",
+            "Saved appearance changes apply live to Mars and this config UI.",
+        ),
+        "window.width" | "window.height" => (
+            "new windows",
+            "mars",
+            "Saved dimensions apply to newly created Mars windows; existing windows keep their size.",
+        ),
+        "window.opacity" | "fonts.size" | "line-height" | "enable-scroll-bar" => {
+            ("live", "mars", "Saved values update open Mars windows.")
         }
-    } else {
-        next_launch_apply_status("mars", "Saved values apply to newly launched Mars windows.")
-    }
+        "bell.audio" | "bell.visual" => (
+            "live",
+            "mars",
+            "Saved bell settings apply to the next bell in open Mars windows.",
+        ),
+        _ => unreachable!("Mars field {path} has no apply timing"),
+    };
+
+    apply_status(summary, label, detail)
 }

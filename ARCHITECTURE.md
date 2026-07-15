@@ -393,7 +393,9 @@ terminal-specific graphics and clipboard behavior remain host-owned.
 Diagnostics stop before Mars/Zellij handoff.
 
 **C2:** Saving `mars.appearance.preset` through `yzx config` switches the
-Ratconfig palette live; other Mars fields apply on next Mars launch.
+Ratconfig palette live. Mars also reloads opacity, font size, line height,
+scrollbar, and bell behavior in open windows; width and height apply to newly
+created windows.
 
 **C9:** Protocol/packaging (a), shared role wiring (b), user custom (c),
 agent hide + bootstrap (d), Git close-on-toggle + editor env (e). Agent

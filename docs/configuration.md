@@ -231,10 +231,11 @@ and duration remain available to compatible consumers such as a future Ghostty
 integration
 
 Saving `mars.appearance.preset` through `yzx config` switches Mars and the config
-UI palette in the same session. Other Mars values apply on the next Mars launch.
-Zellij sidecar saves and resets update the active managed session config when
-`yzx config` runs inside a session, and many scalars apply live via Zellij's
-watcher, while some still need a new session
+UI palette in the same session. Opacity, font size, line height, scrollbar, and
+bell changes also apply to open Mars windows. Width and height apply to newly
+created Mars windows. Zellij sidecar saves and resets update the active managed
+session config when `yzx config` runs inside a session, and many scalars apply
+live via Zellij's watcher, while some still need a new session
 
 ## Editor and file opens
 
