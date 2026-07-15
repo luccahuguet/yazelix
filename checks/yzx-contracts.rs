@@ -8,8 +8,8 @@ use std::{
 mod support;
 
 use support::{
-    RuntimeCase, TempDir, binary_text, embedded_store_path, excerpt, expect_contains, expect_order,
-    successful_output, successful_stdout, write_config_home, write_executable,
+    binary_text, embedded_store_path, excerpt, expect_contains, expect_order, successful_output,
+    successful_stdout, write_config_home, write_executable, RuntimeCase, TempDir,
 };
 
 macro_rules! expect_contains_all {
@@ -192,9 +192,7 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
         .collect::<Vec<_>>();
     assert_eq!(
         menu_ids,
-        [
-            "config", "doctor", "status", "screen", "launch", "help", "tutor"
-        ],
+        ["config", "doctor", "status", "screen", "launch", "help", "tutor"],
         "yzx menu command allowlist changed\n{menu}"
     );
     expect_menu_descriptions_match_help(&help, &menu);
@@ -1388,7 +1386,7 @@ fn expect_yazi_alt_z(yzx: &Path) {
             .unwrap();
     expect_contains_all! {
         &plugin, "Yazi zoxide editor plugin fragment";
-        r#"Command(yzx_open):arg(target_dir)"#,
+        r#":arg({ "--retarget-workspace", target_dir })"#,
         r#"Command("zoxide")"#,
         r#"emit("cd", { target_dir, raw = true })"#,
         "YZX_OPEN is not set",
@@ -1520,6 +1518,7 @@ fn expect_first_party_plugins(git_bin: &Path, config: &str) {
         "load_plugins",
         "support_kitty_keyboard_protocol true",
         "screen_saver_enabled false",
+        "popup_plugin_url \"yzpp\"",
     }
     expect_popup_defaults(config, "1", "0", "packaged popup config");
     for (id, pane_title, command_suffix, extra) in [
@@ -1638,8 +1637,13 @@ fn expect_git_editor(editor: &Path, lazygit_config: &Path, git: &Path) {
 }
 
 fn expect_popup_binding(config: &str, key: &str, payload: &str, context: &str) {
+    let (plugin, action) = if matches!(payload, "git" | "agent") {
+        ("yazelix_pane_orchestrator", "toggle_workspace_popup")
+    } else {
+        ("yzpp", "toggle")
+    };
     let expected = format!(
-        "bind \"{key}\" {{\n            MessagePlugin \"yzpp\" {{\n                name \"toggle\"\n                payload \"{payload}\"\n            }}\n        }}"
+        "bind \"{key}\" {{\n            MessagePlugin \"{plugin}\" {{\n                name \"{action}\"\n                payload \"{payload}\"\n            }}\n        }}"
     );
     assert!(
         config.contains(&expected),

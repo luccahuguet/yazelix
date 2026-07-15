@@ -44,7 +44,11 @@ function M.open_in_editor(target_dir)
 		return
 	end
 
-	local child, err = Command(yzx_open):arg(target_dir):stdout(Command.PIPED):stderr(Command.PIPED):spawn()
+	local child, err = Command(yzx_open)
+		:arg({ "--retarget-workspace", target_dir })
+		:stdout(Command.PIPED)
+		:stderr(Command.PIPED)
+		:spawn()
 	if not child then
 		ya.notify({ title = "Zoxide Editor", content = "Failed to run yzx-open: " .. tostring(err), timeout = 5, level = "error" })
 		return

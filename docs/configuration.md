@@ -251,8 +251,9 @@ the bridge restores the client's transparent Zellij background
 `Alt r` reveals the current Helix buffer in the Yazi sidebar. `yzx reveal
 <target>` exposes the same path inside a managed session
 
-`Alt z` opens a zoxide picker in Yazi, moves to the selected directory, sends it
-through `yzx-open`, and renames the tab to the workspace root
+`Alt z` opens a zoxide picker in Yazi, moves to the selected directory, and
+explicitly retargets the tab workspace and managed editor through `yzx-open`.
+Ordinary Yazi opens keep the existing tab workspace
 
 `yzx-open` writes bounded logs under:
 

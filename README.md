@@ -114,8 +114,10 @@ sidebar       Git        Ratconfig  agent
 ```
 
 `Alt Shift h` toggles the sidebar. Press the same key again to close the Git,
-Ratconfig, or menu popup. The agent popup hides instead, so its process remains
-available
+Ratconfig, or menu popup. Git and the agent use the tab's canonical workspace
+root even when the focused pane has navigated elsewhere. The agent popup hides
+instead of closing, so its process remains available until the workspace root
+really changes
 
 ## Keybindings
 
@@ -151,7 +153,7 @@ Move mode is unbound. Managed popup triggers can be remapped through
 
 | Key | Action |
 | --- | --- |
-| `Alt z` | Zoxide jump into the managed editor |
+| `Alt z` | Retarget the tab workspace through zoxide |
 
 ## Commands
 
@@ -216,6 +218,6 @@ popup contracts live in [Runtime Notes](docs/runtime-notes.md)
 
 ## LOC Scorecard
 
-Yazelix owns **17,757 lines** of tracked text project files. The
+Yazelix owns **18,120 lines** of tracked text project files. The
 [reproducible scorecard](docs/development.md#loc-scorecard) excludes Beads,
 lockfiles, and binary assets

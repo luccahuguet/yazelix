@@ -4,6 +4,12 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## 1.0.0-beta.1
 
+- Each tab keeps one orchestrator-owned workspace root. Ordinary managed Yazi
+  opens preserve it and resynchronize Helix even for ignored paths, nested Git
+  repositories, and non-Git descendants; only the explicit `Alt z` retarget
+  changes it. Failed editor coordination restores the previous root. Git and
+  hidden-agent popups launch from the canonical root, so focus or Yazi
+  navigation no longer restarts the agent; a real retarget still does.
 - Ratconfig renders arrays and tables as complete indented details, keeps TOML
   infinities and NaN visible, and replaces duplicate defaults with `same as
   current`. The default field list sizes status and setting from the selected

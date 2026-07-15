@@ -46,7 +46,10 @@ plugins {
         }
     }
 
-    yazelix_pane_orchestrator location="@yzxPaneOrchestrator@" { screen_saver_enabled false; }
+    yazelix_pane_orchestrator location="@yzxPaneOrchestrator@" {
+        screen_saver_enabled false
+        popup_plugin_url "yzpp"
+    }
 }
 
 load_plugins {
@@ -85,8 +88,8 @@ keybinds {
         unbind "Alt n" "Alt i" "Alt o" "Ctrl g"
         bind "Alt m" { NewPane; }
         bind "@gitKey@" {
-            MessagePlugin "yzpp" {
-                name "toggle"
+            MessagePlugin "yazelix_pane_orchestrator" {
+                name "toggle_workspace_popup"
                 payload "git"
             }
         }
@@ -97,8 +100,8 @@ keybinds {
             }
         }
         bind "@agentKey@" {
-            MessagePlugin "yzpp" {
-                name "toggle"
+            MessagePlugin "yazelix_pane_orchestrator" {
+                name "toggle_workspace_popup"
                 payload "agent"
             }
         }

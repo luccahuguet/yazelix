@@ -140,6 +140,23 @@ A-r = ':sh yzx reveal "%{buffer_name}"'
 both files exist. The packaged Steel module provides `:yzx-new-shell`, which
 opens a new Yazelix terminal pane at the current file directory or workspace.
 
+## Tab Workspace
+
+The pane orchestrator owns one canonical workspace root per tab. The first
+managed open resolves the containing Git worktree, or the opened directory or
+file parent outside Git, and publishes it as explicit state. Later ordinary
+Yazi opens preserve that root while passing the requested absolute target to
+Helix. This includes ignored files, nested repositories, and non-Git
+descendants. A managed open also resets a drifted Helix cwd to the canonical
+root without changing shell or Yazi navigation state.
+
+Yazi `Alt z` is the explicit retarget operation. It updates the orchestrator
+and managed editor together; an editor failure restores the prior root and its
+bootstrap or explicit provenance. Git and agent popup requests carry the
+canonical root explicitly. A hidden agent is reused across pane focus and
+local navigation changes, and is replaced only after the canonical root
+changes.
+
 ## Yazi
 
 Managed Yazi accepts native TOML, optional Lua and keymap sidecars, and a
