@@ -6,7 +6,9 @@ User-visible runtime changes for Yazelix Nova live here.
 
 - Ratconfig renders arrays and tables as complete indented details, keeps TOML
   infinities and NaN visible, and replaces duplicate defaults with `same as
-  current`.
+  current`. The default field list sizes status and setting from the selected
+  tab, then gives the remaining cells to value, so structured previews use the
+  popup width without shifting during search.
 - Main-branch cache publishing builds the full, runtime, and Home Manager
   `aarch64-darwin` closures on `macos-15`, publishes them to the Yazelix
   Cachix cache, and verifies each top-level narinfo after upload.
