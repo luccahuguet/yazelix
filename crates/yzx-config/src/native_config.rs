@@ -123,7 +123,7 @@ pub(crate) fn write_starship_config_field(
         .iter()
         .find(|spec| spec.path == field_path)
         .ok_or_else(|| error(format!("unknown Starship config path: {field_path}")))?;
-    validate_starship_field(spec, value)?;
+    spec.json_choice(value)?;
     let raw = if path.exists() {
         fs::read_to_string(path)?
     } else {
@@ -145,11 +145,19 @@ pub(crate) fn unset_starship_config_field(path: &Path, field_path: &str) -> Resu
     let text = unset_toml_value_text(&raw, field_path)
         .map_err(|error| boxed_debug("could not update starship.toml", error))?
         .text;
-    if text.trim().is_empty() {
+    let value: TomlValue = toml::from_str(&text)
+        .map_err(|error| boxed_debug("could not read updated starship.toml", error))?;
+    if !toml_has_values(&value) {
         fs::remove_file(path)?;
         Ok(())
     } else {
         atomic_write(path, &text)
+    }
+}
+fn toml_has_values(value: &TomlValue) -> bool {
+    match value {
+        TomlValue::Table(table) => table.values().any(toml_has_values),
+        _ => true,
     }
 }
 pub(crate) fn write_effective_starship_config(user: &Path, output: &Path) -> Result<()> {
@@ -163,11 +171,4 @@ pub(crate) fn write_effective_starship_config(user: &Path, output: &Path) -> Res
     let text = toml::to_string_pretty(&config)
         .map_err(|error| boxed_debug("could not serialize effective Starship config", error))?;
     atomic_write(output, &text)
-}
-pub(crate) fn validate_starship_field(spec: &FieldSpec, value: &JsonValue) -> Result<()> {
-    match spec.kind {
-        "boolean" => json_bool(spec.path, value).map(|_| ()),
-        "string" => spec.json_choice(value).map(|_| ()),
-        _ => Err(error(format!("{} must be {}", spec.path, spec.validation))),
-    }
 }

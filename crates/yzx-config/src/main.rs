@@ -974,8 +974,7 @@ color = "#123456"
         let (_temp, paths) = temp_sources();
 
         let model = build_model(&paths).unwrap();
-        let format = model_field(&model, "format");
-        let right_format = model_field(&model, "right_format");
+        let prompt = model_field(&model, "character.format");
 
         assert!(model.tabs.contains(&TAB_STARSHIP.to_string()));
         assert!(model.sources.iter().any(|source| {
@@ -983,21 +982,20 @@ color = "#123456"
                 && source.tab == TAB_STARSHIP
                 && source.path == paths.starship
         }));
-        assert_eq!(format.source_id, SOURCE_STARSHIP);
-        assert_eq!(format.tab, TAB_STARSHIP);
-        assert_eq!(format.kind, "string");
-        assert_eq!(format.current_value, r#"":: ""#);
-        assert_eq!(format.state, ConfigUiValueState::Defaulted);
-        assert_eq!(format.apply_status.summary, "new prompts");
-        assert_eq!(right_format.current_value, r#""""#);
-        assert_eq!(model_field(&model, "add_newline").current_value, "true");
+        assert_eq!(prompt.source_id, SOURCE_STARSHIP);
+        assert_eq!(prompt.tab, TAB_STARSHIP);
+        assert_eq!(prompt.kind, "string");
+        assert_eq!(prompt.current_value, r#"":: ""#);
+        assert_eq!(prompt.state, ConfigUiValueState::Defaulted);
+        assert_eq!(prompt.apply_status.summary, "new prompts");
         assert_eq!(
             model
                 .fields
                 .iter()
                 .filter(|field| field.source_id == SOURCE_STARSHIP)
-                .count(),
-            STARSHIP_FIELDS.len()
+                .map(|field| field.path.as_str())
+                .collect::<Vec<_>>(),
+            vec!["character.format"]
         );
     }
 
@@ -1111,7 +1109,7 @@ color = "#123456"
         let paths = temp_paths(&temp);
         link_from_store(&paths, &paths.root, "");
         link_from_store(&paths, &paths.cursors, DEFAULT_CURSOR_CONFIG_TEMPLATE);
-        link_from_store(&paths, &paths.starship, "format = \"::\"\n");
+        link_from_store(&paths, &paths.starship, "[character]\nformat = \"::\"\n");
         link_from_store(&paths, &paths.nu_env, "# managed\n");
         atomic_write(&paths.mars, "[window]\nwidth = 960\n").unwrap();
         set_read_only(&paths.mars);
@@ -1139,7 +1137,7 @@ color = "#123456"
             "programs.yazelix.config.settings",
         );
         rejects(
-            write_source_default(&paths, SOURCE_STARSHIP, "format"),
+            write_source_default(&paths, SOURCE_STARSHIP, "character.format"),
             "programs.yazelix.config.starship",
         );
         rejects(
@@ -1166,7 +1164,7 @@ color = "#123456"
         );
         assert_file_text(&paths.root, "");
         assert_file_text(&paths.cursors, DEFAULT_CURSOR_CONFIG_TEMPLATE);
-        assert_file_text(&paths.starship, "format = \"::\"\n");
+        assert_file_text(&paths.starship, "[character]\nformat = \"::\"\n");
         assert_file_text(&paths.nu_env, "# managed\n");
 
         let action = build_file_actions(&paths)
@@ -1705,32 +1703,34 @@ color = "#123456"
     fn source_routing_writes_starship_without_touching_config_toml() {
         let (_temp, paths) = temp_sources();
 
-        write_source_field(&paths, SOURCE_STARSHIP, "right_format", &json!("$time")).unwrap();
-        write_source_field(&paths, SOURCE_STARSHIP, "add_newline", &json!(false)).unwrap();
+        write_source_field(&paths, SOURCE_STARSHIP, "character.format", &json!(">> ")).unwrap();
 
         assert!(!paths.root.exists());
+        let starship = read_toml_file_value(&paths.starship, "starship").unwrap();
+        assert_eq!(
+            get_toml_path(&starship, "character.format"),
+            Some(&json!(">> "))
+        );
+        assert_eq!(
+            model_field(&build_model(&paths).unwrap(), "character.format").state,
+            ConfigUiValueState::Explicit
+        );
+        write_source_default(&paths, SOURCE_STARSHIP, "character.format").unwrap();
+        assert!(!paths.starship.exists());
+
+        fs::write(&paths.starship, "right_format = \"$time\"\n").unwrap();
+        write_source_field(&paths, SOURCE_STARSHIP, "character.format", &json!(">> ")).unwrap();
+        write_source_default(&paths, SOURCE_STARSHIP, "character.format").unwrap();
         let starship = read_toml_file_value(&paths.starship, "starship").unwrap();
         assert_eq!(
             get_toml_path(&starship, "right_format"),
             Some(&json!("$time"))
         );
-        assert_eq!(get_toml_path(&starship, "add_newline"), Some(&json!(false)));
-        assert_eq!(get_toml_path(&starship, "format"), None);
 
-        write_source_field(&paths, SOURCE_STARSHIP, "format", &json!(":: ")).unwrap();
-        assert_eq!(
-            model_field(&build_model(&paths).unwrap(), "format").state,
-            ConfigUiValueState::Explicit
-        );
-        write_source_default(&paths, SOURCE_STARSHIP, "format").unwrap();
-        write_source_default(&paths, SOURCE_STARSHIP, "right_format").unwrap();
-        write_source_default(&paths, SOURCE_STARSHIP, "add_newline").unwrap();
-        assert!(!paths.starship.exists());
-
-        let error = write_source_field(&paths, SOURCE_STARSHIP, "add_newline", &json!("nope"))
+        let error = write_source_field(&paths, SOURCE_STARSHIP, "format", &json!("$all"))
             .unwrap_err()
             .to_string();
-        assert!(error.contains("true or false"));
+        assert!(error.contains("unknown Starship config path"));
     }
 
     #[test]
@@ -1741,16 +1741,20 @@ color = "#123456"
         fs::create_dir_all(user.parent().unwrap()).unwrap();
         fs::write(
             &user,
-            "right_format = \"$time\"\n\n[time]\ndisabled = false\n",
+            "right_format = \"$time\"\n\n[character]\nformat = \">> \"\n\n[time]\ndisabled = false\n",
         )
         .unwrap();
 
         write_effective_starship_config(&user, &output).unwrap();
 
         let value = read_toml_file_value(&output, "effective Starship config").unwrap();
-        assert_eq!(get_toml_path(&value, "format"), Some(&json!(":: ")));
+        assert_eq!(get_toml_path(&value, "format"), None);
         assert_eq!(get_toml_path(&value, "right_format"), Some(&json!("$time")));
-        assert_eq!(get_toml_path(&value, "add_newline"), Some(&json!(true)));
+        assert_eq!(get_toml_path(&value, "add_newline"), None);
+        assert_eq!(
+            get_toml_path(&value, "character.format"),
+            Some(&json!(">> "))
+        );
         assert_eq!(get_toml_path(&value, "time.disabled"), Some(&json!(false)));
     }
 

@@ -717,7 +717,7 @@
           cursors.source = fakeCursors;
           mars.text = "[window]\nwidth = 1200\n";
           zellij.text = "pane_frames false\n";
-          starship.text = "format = \"::\"\n";
+          starship.text = "[character]\nformat = \"::\"\n";
           helix.config.text = "[editor]\nline-number = \"relative\"\n";
           helix.languages.source = fakeHelixLanguages;
           helix.module.text = "(provide yzx-test)\n";
@@ -792,6 +792,7 @@
         test "$(YAZELIX_CONFIG_HOME="$config_files" ${yzx}/libexec/yazelix/yzx-config --get keybindings.sidebar_focus)" = "Ctrl Shift E"
         grep -q 'width = 1200' "$config_files/mars/config.toml"
         grep -q 'pane_frames false' "$config_files/zellij/config.kdl"
+        grep -q '^\[character\]$' "$config_files/starship.toml"
         grep -q 'format = "::"' "$config_files/starship.toml"
         grep -q 'line-number = "relative"' "$config_files/helix/config.toml"
         grep -q 'name = "nix"' "$config_files/helix/languages.toml"

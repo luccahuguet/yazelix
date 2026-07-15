@@ -147,7 +147,7 @@ custom popup entry.
 | `defaults/mars/config.toml` | Default Mars window/font/appearance; `mars.appearance.preset` is also Ratconfig UI theme (live palette) |
 | `defaults/zellij/config.kdl` | Zellij keys, plugins load, popup wiring, Kitty protocol |
 | `defaults/zellij/layout*.kdl` | Sidebar + stacked panes, open/closed swap |
-| `defaults/nu/` | Packaged Nu: carapace, zoxide, Starship (`format` default `:: `) |
+| `defaults/nu/` | Packaged Nu: carapace, zoxide, and Starship invocation |
 | `defaults/yazi/` | Opens via `yzx-open`, plugins, `Alt z` workspace retarget |
 | `defaults/helix/config.toml` | Packaged defaults; `Alt r` reveal, `Ctrl r` reload (overridable) |
 
@@ -246,7 +246,7 @@ Runtime state defaults to `$XDG_DATA_HOME/yazelix` or `YAZELIX_STATE_DIR`.
 | Cursors | Child-owned template → user file; Ratconfig edits bounded common fields and preserves custom definitions |
 | Mars | Packaged base → recursive sparse user override; cursor selection arrives separately through `YAZELIX_CURSOR_CONFIG` |
 | Nu | Packaged → optional host `mise activate nu` → optional user Nu |
-| Starship | Nova defaults → sparse user overrides → runtime-effective TOML |
+| Starship | Native defaults + `yzx-config` `character.format` → sparse user overrides → runtime-effective TOML |
 | Helix | See Helix notes below |
 | Yazi | Packaged TOML → recursive user tables + replacing scalars/arrays → managed opener/Git fetchers |
 | Zellij | Packaged → guarded scalar sidecar → runtime materialize under state dir |

@@ -52,9 +52,8 @@ pub(crate) const MARS_APPEARANCE_PRESET_PATH: &str = "mars.appearance.preset";
 pub(crate) const CURSOR_ENABLED_PATH: &str = "enabled_cursors";
 pub(crate) const CURSOR_TRAIL_PATH: &str = "settings.trail";
 pub(crate) const DEFAULT_STARSHIP_CONFIG_TOML: &str = "\
+[character]
 format = \":: \"
-right_format = \"\"
-add_newline = true
 ";
 
 pub(crate) const SOURCE_CONFIG: &str = DEFAULT_CONFIG_SOURCE_ID;
@@ -366,21 +365,12 @@ pub(crate) const MARS_FIELDS: &[FieldSpec] = &[
     FieldSpec::boolean("bell.visual", "Flash the Mars visual bell."),
 ];
 
-pub(crate) const STARSHIP_FIELDS: &[FieldSpec] = &[
-    FieldSpec::string_choice(
-        "format",
-        "Left prompt format string.",
-        &[],
-        "Starship format string",
-    ),
-    FieldSpec::string_choice(
-        "right_format",
-        "Right prompt format string.",
-        &[],
-        "Starship format string",
-    ),
-    FieldSpec::boolean("add_newline", "Insert a blank line before the prompt."),
-];
+pub(crate) const STARSHIP_FIELDS: &[FieldSpec] = &[FieldSpec::string_choice(
+    "character.format",
+    "Command-entry prompt shown below Starship context.",
+    &[],
+    "Starship character format string",
+)];
 
 pub(crate) const ZELLIJ_FORBIDDEN_TOP_LEVEL: &[&str] = &[
     "keybinds",

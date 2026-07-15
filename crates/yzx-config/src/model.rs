@@ -18,7 +18,7 @@ use crate::{
     catalog::*,
     common::*,
     file_actions::build_file_actions,
-    native_config::{cursor_defaults, validate_mars_field, validate_starship_field},
+    native_config::{cursor_defaults, validate_mars_field},
     paths::ConfigPaths,
     root_config::{
         bar_widgets, default_config, default_config_path_value, read_optional_toml_file_value,
@@ -77,7 +77,7 @@ pub(crate) fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
                 "starship",
                 "Saved values apply to newly rendered managed Nu prompts.",
             ),
-            current.is_some_and(|value| validate_starship_field(spec, value).is_err()),
+            current.is_some_and(|value| spec.json_choice(value).is_err()),
         ));
     }
     for spec in ZELLIJ_FIELDS {

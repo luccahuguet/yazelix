@@ -64,7 +64,7 @@ fn main() {
     .unwrap();
     fs::write(
         &user_starship,
-        "format = \"$character\"\nright_format = \"::<>\"\n",
+        "right_format = \"::<>\"\n\n[character]\nformat = \">> \"\n",
     )
     .unwrap();
 
@@ -72,21 +72,21 @@ fn main() {
         &yzx_shell,
         &user_config,
         &runtime,
-        "print $env.STARSHIP_SHELL; print $env.STARSHIP_CONFIG; print (do $env.PROMPT_COMMAND_RIGHT); print $env.YZX_USER_ENV_TEST; print $env.YZX_USER_CONFIG_TEST; ^carapace --version | ignore; ^zoxide --version | ignore; print ok",
+        "print $env.STARSHIP_SHELL; print $env.STARSHIP_CONFIG; print (do $env.PROMPT_COMMAND_RIGHT); print ((^starship print-config) | str contains 'format = \"$all\"'); print $env.YZX_USER_ENV_TEST; print $env.YZX_USER_CONFIG_TEST; ^carapace --version | ignore; ^zoxide --version | ignore; print ok",
     );
     assert_eq!(
         stdout,
         format!(
-            "nu\n{}\n::<>\nenv-ok\nconfig-ok\nok",
+            "nu\n{}\n::<>\ntrue\nenv-ok\nconfig-ok\nok",
             runtime.join("yazelix/starship.toml").display()
         )
     );
     let effective_starship = fs::read_to_string(runtime.join("yazelix/starship.toml")).unwrap();
     expect_contains_all! {
         &effective_starship, "effective user Starship config";
-        "format = \"$character\"",
         "right_format = \"::<>\"",
-        "add_newline = true",
+        "[character]",
+        "format = \">> \"",
     }
     let empty_config = temp.path.join("empty-config");
     fs::create_dir(&empty_config).unwrap();
@@ -98,12 +98,7 @@ fn main() {
     );
     assert_ne!(fallback_starship, "ambient-starship.toml");
     let fallback_starship = fs::read_to_string(&fallback_starship).unwrap();
-    expect_contains_all! {
-        &fallback_starship, "effective default Starship config";
-        "format = \":: \"",
-        "right_format = \"\"",
-        "add_newline = true",
-    }
+    assert_eq!(fallback_starship, "[character]\nformat = \":: \"\n");
 
     expect_line(
         &runtime.join("yazelix/nu/env.nu"),

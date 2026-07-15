@@ -68,4 +68,4 @@ git ls-files | grep -Ev '^\.beads/|\.lock$|^assets/' | xargs wc -l
 | Nu | 11 |
 | Lua | 251 |
 | Rust | 13750 |
-| Total | 18282 |
+| Total | 18277 |

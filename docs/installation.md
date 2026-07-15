@@ -123,6 +123,7 @@ programs.yazelix.config = {
   };
 
   starship.text = ''
+    [character]
     format = ":: "
   '';
 

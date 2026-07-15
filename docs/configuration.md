@@ -97,7 +97,7 @@ managed action keys
 | `mars/config.toml` | Mars | Sparse overrides for appearance preset, window size, opacity, font, scrollbar, and bell |
 | `zellij/config.kdl` | Zellij sidecar | Sparse safe scalar overrides where absent assignments inherit packaged defaults. Inside a session, saves and resets also patch the active runtime config (many apply live, while some need a new session). Integration-owned nodes are blocked |
 | `zellij/plugins.kdl` | Zellij plugin sidecar | Extra plugin declarations only. Packaged plugin ids cannot be redeclared |
-| `starship.toml` | Starship | Sparse managed Nu prompt overrides where absent values inherit Nova defaults |
+| `starship.toml` | Starship | Sparse native prompt overrides. Ratconfig curates only `character.format`; absent layout fields retain Starship defaults |
 | `helix/config.toml` | Helix | Sparse user TOML merged over packaged Yazelix Helix defaults, with explicit creation starting from only an ownership comment |
 | `helix/languages.toml` | Helix | Managed Helix language config |
 | `helix/helix.scm` | Helix Steel | Loaded with `helix/init.scm` when the pair exists |
@@ -219,11 +219,12 @@ Normal host config such as `~/.config/helix`, `~/.config/yazi`, and
 through these Yazelix-owned files
 
 Opening `yzx config` does not create `mars/config.toml`, `starship.toml`, or
-`zellij/config.kdl`. Their tabs show effective Nova defaults, saving writes only
-the selected override, and resetting removes that key. Mars and Zellij layer
-their sparse files over packaged configuration directly, while managed Nu
-materializes its effective Starship config under runtime state. Untouched
-defaults follow upgrades
+`zellij/config.kdl`. Saving writes only the selected override, and resetting
+removes that key. The Starship tab curates only `character.format`, whose Nova
+default is `:: `. Managed Nu materializes that sparse marker override under
+runtime state without setting top-level `format`, so Starship retains its native
+`$all` layout. Mars and Zellij layer their sparse files over packaged
+configuration directly. Untouched defaults follow upgrades
 
 The first config or runtime use seeds `cursors.toml` without replacing an
 existing file. Its Cursors tab edits the enabled pool, selection, and common

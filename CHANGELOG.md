@@ -117,10 +117,11 @@ User-visible runtime changes for Yazelix Nova live here.
   user file over Nova's immutable packaged base, so untouched settings and font
   paths follow upgrades.
 - Opening `yzx config` no longer creates `starship.toml` or changes the managed
-  prompt. The Starship tab shows Nova defaults without persisting them, saves
-  only explicit overrides, and removes an override when reset. Managed Nu
-  merges the sparse user file over Nova defaults into runtime state, so
-  untouched prompt defaults follow upgrades and ambient
+  prompt. The Starship tab curates only `character.format`, defaulting to `:: `,
+  and leaves the full prompt layout to Starship's native `$all` default so
+  directory, Git, environment, and tool modules remain visible. Saving writes
+  only the explicit marker override and resetting removes it. Managed Nu merges
+  the sparse user file into runtime state, while ambient
   `~/.config/starship.toml` remains ignored.
 - Opening `yzx config` no longer creates `zellij/config.kdl`. The Zellij tab
   shows inherited packaged defaults, saves only explicit scalar overrides, and
@@ -198,11 +199,10 @@ User-visible runtime changes for Yazelix Nova live here.
   opens Mars first. Bare `yzx` prints help.
 - `yzx config` opens source-backed Ratconfig tabs for root, Mars, Zellij, and
   Starship configuration. Root and Starship values are sparse overrides; Mars
-  and Zellij are managed native files; and the Starship tab edits
-  `format`, `right_format`, and `add_newline` as sparse overrides. The managed
-  Starship left prompt defaults to colon-colon-space (`:: `). The UI
-  can open staged text edits in the config UI's editor environment before
-  saving and refuses to replace a source file whose permissions are read-only.
+  and Zellij are managed native files; and the Starship tab edits only the
+  command-entry marker at `character.format`. The UI can open staged text edits
+  in the config UI's editor environment before saving and refuses to replace a
+  source file whose permissions are read-only.
 - Root `config.toml` supports `[editor].command`, defaulting to `yzx-hx`.
   Inside Nova, `hx` and `yzx-hx` resolve to packaged managed Helix; other editor
   commands such as `nvim`, or absolute host paths, bypass the Helix bridge and

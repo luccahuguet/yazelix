@@ -112,10 +112,12 @@ If host `mise` is available on the inherited `PATH`, managed Nu inserts
 `mise activate nu` output after packaged `config.nu` and before user
 `nu/config.nu`. Missing or failing `mise` is skipped.
 
-Managed Nu sets `STARSHIP_CONFIG` to
-`~/.config/yazelix/starship.toml` when that file exists. Otherwise it sets
-`STARSHIP_CONFIG` to an empty config, so normal `~/.config/starship.toml` does
-not affect the managed Nu prompt.
+Managed Nu always sets `STARSHIP_CONFIG` to a runtime-effective file. That file
+starts with Nova's sparse `[character].format = ":: "` marker and recursively
+merges optional native overrides from `~/.config/yazelix/starship.toml`.
+Top-level `format` stays unset by default, so Starship retains its native `$all`
+layout, including directory, Git, environment, and tool modules. Normal
+`~/.config/starship.toml` does not affect the managed Nu prompt.
 
 ## Helix
 
