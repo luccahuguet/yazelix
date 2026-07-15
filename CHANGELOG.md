@@ -4,6 +4,11 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## 1.0.0-beta.1
 
+- Ratconfig 5 provides host-owned Core and All settings views. Yazelix keeps
+  every currently exposed field in Core for behavior-preserving adoption;
+  explicit and invalid non-core values remain visible, normal-mode `a` toggles
+  a tab with a Core/All distinction, and search spans All without changing the
+  saved view.
 - `keybindings.sidebar` and `keybindings.sidebar_focus` remap sidebar
   visibility and editor/sidebar focus through the same validated semantic
   config used by managed popup triggers. Defaults remain `Alt Shift H` and
@@ -22,10 +27,13 @@ User-visible runtime changes for Yazelix Nova live here.
   unknown, focused, and merely visible agent panes do not produce activity.
 - Each tab keeps one orchestrator-owned workspace root. Ordinary managed Yazi
   opens preserve it and resynchronize Helix even for ignored paths, nested Git
-  repositories, and non-Git descendants; only the explicit `Alt z` retarget
-  changes it. Failed editor coordination restores the previous root. Git and
-  hidden-agent popups launch from the canonical root, so focus or Yazi
-  navigation no longer restarts the agent; a real retarget still does.
+  repositories, and non-Git descendants. After a successful open, the
+  originating sidebar follows the primary target's directory without changing
+  the tab workspace, other panes, or hidden agent; only the explicit `Alt z`
+  retarget changes the workspace. Failed editor coordination restores the
+  previous root and leaves the sidebar in place. Git and hidden-agent popups
+  launch from the canonical root, so focus or Yazi navigation no longer
+  restarts the agent; a real retarget still does.
 - Ratconfig renders arrays and tables as complete indented details, keeps TOML
   infinities and NaN visible, and replaces duplicate defaults with `same as
   current`. The default field list sizes status and setting from the selected

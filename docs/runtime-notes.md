@@ -150,7 +150,9 @@ file parent outside Git, and publishes it as explicit state. Later ordinary
 Yazi opens preserve that root while passing the requested absolute target to
 Helix. This includes ignored files, nested repositories, and non-Git
 descendants. A managed open also resets a drifted Helix cwd to the canonical
-root without changing shell or Yazi navigation state.
+root. After success, only the originating managed Yazi follows the primary
+target's directory; the canonical workspace, shell panes, and hidden agent stay
+unchanged.
 
 Yazi `Alt z` is the explicit retarget operation. It updates the orchestrator
 and managed editor together; an editor failure restores the prior root and its

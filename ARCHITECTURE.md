@@ -75,7 +75,7 @@ One owner per concern. Paths are the durable map.
 | `runtime/yzx-nu.rs` | Managed Nu layering; runtime-effective Starship config request |
 | `runtime/yzx-zellij-config.rs` | Packaged + guarded Zellij scalar sidecar merge |
 | `runtime/yzx/zellij.rs` | Plugin sidecar inject; launch materialize/patches |
-| `crates/yzx-open/` | Editor open, Helix bridge, reveal, bounded open diagnostics |
+| `crates/yzx-open/` | Editor open, Helix bridge, sidebar target follow/reveal, bounded diagnostics |
 | `crates/yzx-yazi-config/` | Managed Yazi config-home materialization and native TOML layering |
 | `crates/yzx-tutor/` | Tutor CLI and lessons |
 | `runtime/yzx-helix.sh` (`yzx-hx`) | Effective Helix config + Steel wiring |
@@ -86,6 +86,9 @@ One owner per concern. Paths are the durable map.
 
 `crates/yzx-config/` is the Ratconfig host.
 
+- Supplies stable source/path identities for Ratconfig Core membership; the
+  packaged inventory starts entirely in Core, while Ratconfig owns Core/All
+  filtering, counts, toggling, and All-scope search
 - Seeds only the child-owned cursor TOML; root, Mars, Zellij, and Starship stay
   sparse
 - Routes edits to the right file; Helix/Advanced open-file rows; Keys read-only

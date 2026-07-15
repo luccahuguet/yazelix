@@ -130,8 +130,9 @@ mod tests {
     use ratatui::style::{Color, Style};
     use ratconfig::toml_adapter::{get_toml_path, parse_toml_value, set_toml_value_text};
     use ratconfig::{
-        ConfigUiDiagnostic, ConfigUiEditBehavior, ConfigUiModel, ConfigUiPathOwner, ConfigUiTheme,
-        ConfigUiValueState, file_action_status_label, file_action_status_style,
+        ConfigUiApp, ConfigUiDiagnostic, ConfigUiEditBehavior, ConfigUiKey, ConfigUiModel,
+        ConfigUiPathOwner, ConfigUiSettingsView, ConfigUiTheme, ConfigUiValueState, UiRowRef,
+        file_action_status_label, file_action_status_style,
     };
     use serde_json::{Value as JsonValue, json};
     use yazelix_cursors::{DEFAULT_CURSOR_CONFIG_TEMPLATE, load_cursor_config};
@@ -848,6 +849,55 @@ mod tests {
             r#"["editor","shell","term","codex_usage","cpu","ram"]"#
         );
         assert!(field.allowed_values.contains(&"claude_usage".to_string()));
+    }
+
+    #[test]
+    fn config_model_adopts_ratconfig_core_and_all_views_without_hiding_existing_fields() {
+        let (_temp, paths) = temp_sources();
+        let mut model = build_model(&paths).unwrap();
+        let core_fields = model.core_fields.as_ref().expect("Core allowlist");
+        assert_eq!(core_fields.len(), model.fields.len());
+        assert!(model.fields.iter().all(|field| {
+            core_fields
+                .iter()
+                .any(|core| core.source_id == field.source_id && core.path == field.path)
+        }));
+
+        let field_index = |path| {
+            model
+                .fields
+                .iter()
+                .position(|field| field.source_id == SOURCE_CONFIG && field.path == path)
+                .unwrap()
+        };
+        let hidden = field_index(OPEN_LOG_LEVEL_PATH);
+        let explicit = field_index(SHELL_PROGRAM_PATH);
+        model.core_fields.as_mut().unwrap().retain(|field| {
+            field.source_id != SOURCE_CONFIG
+                || !matches!(
+                    field.path.as_str(),
+                    OPEN_LOG_LEVEL_PATH | SHELL_PROGRAM_PATH
+                )
+        });
+        model.fields[explicit].state = ConfigUiValueState::Explicit;
+
+        let mut app = ConfigUiApp::new(model);
+        assert_eq!(app.settings_view, ConfigUiSettingsView::Core);
+        assert!(!app.visible_rows().contains(&UiRowRef::Field(hidden)));
+        assert!(app.visible_rows().contains(&UiRowRef::Field(explicit)));
+
+        app.handle_key(ConfigUiKey::Char('a'));
+        assert_eq!(app.settings_view, ConfigUiSettingsView::All);
+        assert!(app.visible_rows().contains(&UiRowRef::Field(hidden)));
+        app.handle_key(ConfigUiKey::Char('a'));
+        assert_eq!(app.settings_view, ConfigUiSettingsView::Core);
+
+        app.handle_key(ConfigUiKey::Char('/'));
+        for ch in OPEN_LOG_LEVEL_PATH.chars() {
+            app.handle_key(ConfigUiKey::Char(ch));
+        }
+        assert_eq!(app.settings_view, ConfigUiSettingsView::Core);
+        assert!(app.visible_rows().contains(&UiRowRef::Field(hidden)));
     }
 
     #[test]

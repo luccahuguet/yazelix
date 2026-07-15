@@ -90,10 +90,12 @@ command palette, which includes both help and tutor entries
 Press `Alt Shift K` to open Ratconfig. Press `8` for native Yazi settings and
 flavors, or `9` for the read-only packaged key reference. Use `1`-`9` to jump
 directly to a tab, `Tab`/`Shift-Tab` or `h`/`l` to change tabs, `j`/`k` to move,
-and `/` to search. Use `e`, `Enter`, or `Space` for the selected row's
-contextual action, such as editing or opening it. Press `u` to reset a setting
-and `q` to quit. When a writable structured row has one owning file action, `e`
-opens that exact config file. The footer lists the selected row's controls
+and `/` to search across All settings. When a tab has settings outside Core,
+press `a` to switch between Core and All without changing the saved view used
+after search. Use `e`, `Enter`, or `Space` for the selected row's contextual
+action, such as editing or opening it. Press `u` to reset a setting and `q` to
+quit. When a writable structured row has one owning file action, `e` opens that
+exact config file. The footer lists the selected row's controls
 
 Yazelix carries Helix/Vim's `h/j/k/l` motion model through the workspace:
 
@@ -207,7 +209,9 @@ platform support, SSH use, measured sizes, Home Manager, and updates
 
 `yzx config` opens Ratconfig over the managed tree at
 `~/.config/yazelix/`. Yazelix inherits packaged defaults and persists only
-explicit overrides
+explicit overrides. Core contains the current focused inventory plus explicit
+or invalid configured values; All contains every field supplied by the selected
+tab's current inventory
 
 See [Configuration](docs/configuration.md) for settings, popups, native files,
 Yazi plugins, cursor ownership, and editor behavior
@@ -220,6 +224,6 @@ popup contracts live in [Runtime Notes](docs/runtime-notes.md)
 
 ## LOC Scorecard
 
-Yazelix owns **18,277 lines** of tracked text project files. The
+Yazelix owns **18,437 lines** of tracked text project files. The
 [reproducible scorecard](docs/development.md#loc-scorecard) excludes Beads,
 lockfiles, and binary assets

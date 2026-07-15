@@ -13,15 +13,20 @@ use std::{
     process::{Command, ExitCode, Output},
     time::{SystemTime, UNIX_EPOCH},
 };
-use yzx_open::sidebar::{Config as OrchestratorConfig, orchestrator_pipe, orchestrator_query};
+use yzx_open::sidebar::{
+    Config as OrchestratorConfig, SidebarYaziState, optional_sidebar_yazi_state, orchestrator_pipe,
+    orchestrator_query,
+};
 
 #[derive(Debug)]
 struct Config {
     editor: OsString,
     git: OsString,
+    ya: OsString,
     zellij: OsString,
     state_dir: PathBuf,
     session_id: String,
+    yazi_id: Option<String>,
     zellij_session_name: Option<String>,
     zellij_pane_id: Option<String>,
     log_level: LogLevel,
@@ -210,6 +215,9 @@ fn run(config: &Config, raw_targets: impl IntoIterator<Item = OsString>) -> Resu
         }
         return Err(error);
     }
+    if request.intent == OpenIntent::Ordinary {
+        follow_originating_sidebar(config, &current_state, &targets)?;
+    }
     Ok(())
 }
 
@@ -235,9 +243,11 @@ impl Config {
         Self {
             editor: nonempty_env("YZX_EDITOR").unwrap_or_else(|| "yzx-hx".into()),
             git: "git".into(),
+            ya: nonempty_env("YZX_YA").unwrap_or_else(|| "ya".into()),
             zellij: nonempty_env("YZX_ZELLIJ").unwrap_or_else(|| "zellij".into()),
             state_dir,
             session_id: bridge_session_id(env::var("YAZELIX_HELIX_BRIDGE_SESSION_ID").ok()),
+            yazi_id: env::var("YAZI_ID").ok().filter(|id| !id.trim().is_empty()),
             zellij_session_name: zellij_session_name_from_env(),
             zellij_pane_id: env::var("ZELLIJ_PANE_ID").ok(),
             log_level: LogLevel::from_env(),
@@ -623,6 +633,31 @@ fn focus_pane(config: &Config, pane_id: &str) -> Result<()> {
     ensure_success(&output, "zellij failed to focus editor pane")
 }
 
+fn follow_originating_sidebar(
+    config: &Config,
+    state: &ActiveWorkspaceState,
+    targets: &[PathBuf],
+) -> Result<()> {
+    let Some(sidebar) = &state.sidebar_yazi else {
+        return Ok(());
+    };
+    if config.yazi_id.as_deref() != Some(&sidebar.yazi_id) {
+        return Ok(());
+    }
+    let primary = &targets[0];
+    let target_dir = if primary.is_dir() {
+        primary.as_path()
+    } else {
+        primary.parent().unwrap_or_else(|| Path::new("/"))
+    };
+    let output = Command::new(&config.ya)
+        .args(["emit-to", &sidebar.yazi_id, "cd"])
+        .arg(target_dir)
+        .output()
+        .context("could not run ya")?;
+    ensure_success(&output, "ya failed to follow opened target")
+}
+
 fn target_workspace_root(config: &Config, targets: &[PathBuf]) -> PathBuf {
     let target_dir = directory_target(targets).cloned().unwrap_or_else(|| {
         targets[0]
@@ -670,6 +705,7 @@ fn decide_workspace(
 
 fn active_tab_workspace(config: &Config) -> Result<ActiveWorkspaceState> {
     let raw = orchestrator_query(&orchestrator_config(config), "get_active_tab_session_state")?;
+    let sidebar_yazi = optional_sidebar_yazi_state(&raw)?;
     let state = serde_json::from_str::<ActiveTabSessionState>(&raw)
         .context("pane orchestrator returned invalid active-tab session state")?;
     if state.schema_version != 1 {
@@ -690,6 +726,7 @@ fn active_tab_workspace(config: &Config) -> Result<ActiveWorkspaceState> {
     Ok(ActiveWorkspaceState {
         active_tab_position: state.active_tab_position,
         workspace,
+        sidebar_yazi,
     })
 }
 
@@ -697,6 +734,7 @@ fn active_tab_workspace(config: &Config) -> Result<ActiveWorkspaceState> {
 struct ActiveWorkspaceState {
     active_tab_position: usize,
     workspace: CanonicalWorkspace,
+    sidebar_yazi: Option<SidebarYaziState>,
 }
 
 fn set_workspace(config: &Config, root: &Path, source: WorkspaceSource) -> Result<()> {
@@ -719,7 +757,7 @@ fn set_workspace(config: &Config, root: &Path, source: WorkspaceSource) -> Resul
 
 fn orchestrator_config(config: &Config) -> OrchestratorConfig {
     OrchestratorConfig {
-        ya: "ya".into(),
+        ya: config.ya.clone(),
         zellij: config.zellij.clone(),
         zellij_session_name: config.zellij_session_name.clone().map(OsString::from),
     }
@@ -928,6 +966,13 @@ mod tests {
         fn new(name: &str) -> Self {
             let root = test_dir(name);
             fs::create_dir_all(&root).unwrap();
+            write_executable(
+                &root.join("ya"),
+                format!(
+                    "#!/bin/sh\nprintf '%s\\n' \"$*\" >> '{}'\n",
+                    root.join("ya.log").display()
+                ),
+            );
             Self {
                 zellij: root.join("zellij"),
                 zellij_log: root.join("zellij.log"),
@@ -943,9 +988,11 @@ mod tests {
             Config {
                 editor: editor.into_os_string(),
                 git: "__missing_git__".into(),
+                ya: self.root.join("ya").into_os_string(),
                 zellij: self.zellij.clone().into_os_string(),
                 state_dir: self.root.clone(),
                 session_id: session_id.into(),
+                yazi_id: None,
                 zellij_session_name: None,
                 zellij_pane_id: None,
                 log_level: LogLevel::Debug,
@@ -979,6 +1026,10 @@ mod tests {
             let session_state = json!({
                 "schema_version": 1,
                 "active_tab_position": 0,
+                "sidebar_yazi": {
+                    "yazi_id": "managed-yazi",
+                    "cwd": workspace_root,
+                },
                 "workspace": {
                     "root": workspace_root,
                     "source": workspace_source,
@@ -1258,6 +1309,7 @@ fi
         run(
             &Config {
                 git: git.into_os_string(),
+                yazi_id: Some("managed-yazi".into()),
                 ..runtime.config("test-session")
             },
             [target.clone().into_os_string()],
@@ -1276,6 +1328,10 @@ fi
             "{log}"
         );
         assert!(log.contains(target.to_string_lossy().as_ref()), "{log}");
+        assert_eq!(
+            fs::read_to_string(runtime.root.join("ya.log")).unwrap(),
+            format!("emit-to managed-yazi cd {}\n", target.display())
+        );
     }
 
     #[test]
@@ -1303,20 +1359,41 @@ fi
 
         let config = Config {
             git: git.into_os_string(),
+            yazi_id: Some("managed-yazi".into()),
             zellij_pane_id: Some("terminal:3".into()),
             ..runtime.config(session_id)
         };
-        let target = config.state_dir.join("project/src/main.rs");
-        open_main_rs(&config).unwrap();
+        let primary_dir = workspace.join("docs/personal files");
+        let primary = primary_dir.join("transcription.md");
+        let secondary = workspace.join("src/other.rs");
+        for target in [&primary, &secondary] {
+            fs::create_dir_all(target.parent().unwrap()).unwrap();
+            fs::write(target, "").unwrap();
+        }
+        run(
+            &config,
+            [
+                primary.clone().into_os_string(),
+                secondary.clone().into_os_string(),
+            ],
+        )
+        .unwrap();
         server.join().unwrap();
 
         let request: Value =
             serde_json::from_str(&fs::read_to_string(request_path).unwrap()).unwrap();
         assert_eq!(request["auth_token"], "secret");
         assert_eq!(request["action"], "helix.open_files");
-        assert_eq!(request["payload"]["file_paths"], json!([target]));
+        assert_eq!(
+            request["payload"]["file_paths"],
+            json!([primary, secondary])
+        );
         assert_eq!(request["payload"]["working_dir"], json!(workspace));
         assert!(!runtime.zellij_log().contains("--name retarget_workspace"));
+        assert_eq!(
+            fs::read_to_string(runtime.root.join("ya.log")).unwrap(),
+            format!("emit-to managed-yazi cd {}\n", primary_dir.display())
+        );
         assert!(
             !git_probe.exists(),
             "ordinary explicit opens must not probe Git"
@@ -1355,6 +1432,7 @@ fi
             !request_path.exists(),
             "{command} unexpectedly sent a Helix bridge request"
         );
+        assert!(!runtime.root.join("ya.log").exists());
     }
 
     #[test]
@@ -1390,6 +1468,7 @@ fi
 
         let error = open_main_rs(&Config {
             editor: editor.into_os_string(),
+            yazi_id: Some("managed-yazi".into()),
             ..runtime.config("test-session")
         })
         .unwrap_err()
@@ -1403,6 +1482,7 @@ fi
         assert_eq!(log.matches("--name retarget_workspace").count(), 2, "{log}");
         assert!(log.contains(r#""workspace_source":"explicit""#), "{log}");
         assert!(log.contains(r#""workspace_source":"bootstrap""#), "{log}");
+        assert!(!runtime.root.join("ya.log").exists());
     }
 
     #[test]

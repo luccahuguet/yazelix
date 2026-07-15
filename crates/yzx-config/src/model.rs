@@ -5,9 +5,9 @@ use std::{
 
 use ratconfig::toml_adapter::{get_toml_path, parse_toml_value};
 use ratconfig::{
-    ConfigUiApplyStatus, ConfigUiEditBehavior, ConfigUiFieldSpec, ConfigUiListColumn,
-    ConfigUiListTable, ConfigUiModel, ConfigUiPathOwner, ConfigUiSource, ConfigUiTheme,
-    ConfigUiThemeMapping, ConfigUiThemeSwitcher,
+    ConfigUiApplyStatus, ConfigUiEditBehavior, ConfigUiFieldId, ConfigUiFieldSpec,
+    ConfigUiListColumn, ConfigUiListTable, ConfigUiModel, ConfigUiPathOwner, ConfigUiSource,
+    ConfigUiTheme, ConfigUiThemeMapping, ConfigUiThemeSwitcher,
 };
 use serde_json::Value as JsonValue;
 use yazelix_cursors::{
@@ -99,6 +99,13 @@ pub(crate) fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
     }
     let source = |id, tab, label, path| build_config_source(paths, id, tab, label, path);
     let yazi_dir = paths.yazi_config.parent().expect("Yazi config directory");
+    let fields = fields.into_iter().chain(yazi).collect::<Vec<_>>();
+    let core_fields = Some(
+        fields
+            .iter()
+            .map(|field| ConfigUiFieldId::new(&field.source_id, &field.path))
+            .collect(),
+    );
 
     Ok(ConfigUiModel {
         sources: vec![
@@ -154,7 +161,8 @@ pub(crate) fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
                     .collect(),
             },
         )]),
-        fields: fields.into_iter().chain(yazi).collect(),
+        fields,
+        core_fields,
         file_actions: build_file_actions(paths),
         sidecars: Vec::new(),
         native_config_statuses: Vec::new(),

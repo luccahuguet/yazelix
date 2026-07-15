@@ -2,7 +2,10 @@
 
 `yzx config` opens Nova's Ratconfig interface. It shows packaged defaults,
 persists explicit overrides, exposes advanced native files, and identifies
-Home Manager-owned configuration as declarative
+Home Manager-owned configuration as declarative. Yazelix classifies every
+currently exposed field as Core. When a tab supplies additional All-only
+fields, normal-mode `a` switches between Core and All; search always spans All
+without changing the saved view, and explicit or invalid values remain in Core
 
 ## Config root
 
@@ -258,7 +261,9 @@ the bridge restores the client's transparent Zellij background
 
 `Alt z` opens a zoxide picker in Yazi, moves to the selected directory, and
 explicitly retargets the tab workspace and managed editor through `yzx-open`.
-Ordinary Yazi opens keep the existing tab workspace
+Ordinary Yazi opens keep the existing tab workspace. After the editor accepts
+the request, the originating managed sidebar follows the primary file's parent
+or the opened directory; failed and non-sidebar opens do not move it
 
 `yzx-open` writes bounded logs under:
 
