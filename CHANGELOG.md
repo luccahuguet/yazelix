@@ -4,6 +4,9 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## 1.0.0-beta.1
 
+- Ratconfig keeps semantic text, inactive tabs, and pane headings readable in
+  light appearance, aligns Unicode setting labels by terminal-cell width, and
+  uses flush outer pane rails with one shared divider.
 - Mars settings report their actual apply boundary: appearance, opacity, font
   size, line height, scrollbar, and bell behavior update open windows, while
   width and height apply to newly created windows.
