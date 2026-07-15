@@ -98,7 +98,7 @@ managed action keys
 | --- | --- | --- |
 | `cursors.toml` | Yazelix Cursors | Shared cursor pool, selection, and effects. The child-owned template seeds it once, and Ratconfig preserves custom definitions |
 | `mars/config.toml` | Mars | Sparse overrides for appearance preset, window size, opacity, font, scrollbar, and bell |
-| `zellij/config.kdl` | Zellij sidecar | Sparse safe scalar overrides where absent assignments inherit packaged defaults. Inside a session, saves and resets also patch the active runtime config (many apply live, while some need a new session). Integration-owned nodes are blocked |
+| `zellij/config.kdl` | Zellij sidecar | Sparse safe scalar overrides where absent assignments inherit packaged defaults. Ratconfig offers Default plus the 41 themes embedded by the pinned Zellij package; Default removes the override, while custom native theme names remain accepted. Inside a session, saves and resets also patch the active runtime config. Integration-owned nodes are blocked |
 | `zellij/plugins.kdl` | Zellij plugin sidecar | Extra plugin declarations only. Packaged plugin ids cannot be redeclared |
 | `starship.toml` | Starship | Sparse native prompt overrides. Ratconfig curates only `character.format`; absent layout fields retain Starship defaults |
 | `helix/config.toml` | Helix | Sparse user TOML merged over packaged Yazelix Helix defaults, with explicit creation starting from only an ownership comment |
@@ -228,6 +228,12 @@ default is `:: `. Managed Nu materializes that sparse marker override under
 runtime state without setting top-level `format`, so Starship retains its native
 `$all` layout. Mars and Zellij layer their sparse files over packaged
 configuration directly. Untouched defaults follow upgrades
+
+Ratconfig's Zellij theme picker lists the identities declared by the pinned
+Zellij package rather than maintaining theme definitions. Choosing `default`
+removes the sparse `theme` assignment. A custom theme name written directly in
+`zellij/config.kdl` remains valid and visible; the picker itself offers the
+packaged set.
 
 The first config or runtime use seeds `cursors.toml` without replacing an
 existing file. Its Cursors tab edits the enabled pool, selection, and common

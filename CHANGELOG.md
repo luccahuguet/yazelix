@@ -4,6 +4,9 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## 1.0.0-beta.1
 
+- Ratconfig's Zellij tab selects Default or any of the 41 themes embedded by
+  the pinned Zellij package. Saves remain sparse and update the active managed
+  session; Default removes the override, while custom native names stay valid.
 - Toggling the Ratconfig popup hides its existing process, preserving the
   selected tab and row while that process remains alive.
 - Ratconfig 5 provides host-owned Core and All settings views. Yazelix keeps

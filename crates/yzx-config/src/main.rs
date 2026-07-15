@@ -1874,6 +1874,56 @@ color = "#123456"
     }
 
     #[test]
+    fn zellij_theme_picker_preserves_custom_names_and_resets_sparsely() {
+        let (_temp, paths) = temp_sources();
+        let model = build_model(&paths).unwrap();
+        let theme = model_field(&model, "theme");
+        assert_eq!(theme.state, ConfigUiValueState::Defaulted);
+        assert_eq!(
+            serde_json::from_str::<String>(&theme.edit_value).unwrap(),
+            "default"
+        );
+        assert_eq!(
+            theme.allowed_values.first().map(String::as_str),
+            Some("default")
+        );
+        assert!(
+            theme
+                .allowed_values
+                .contains(&"atelier-sulphurpool".to_string())
+        );
+        assert!(!theme.allowed_values.contains(&"atelier".to_string()));
+        assert_eq!(theme.apply_status.summary, "live");
+
+        atomic_write(
+            &paths.zellij,
+            "# keep\ntheme \"custom-ocean\"\npane_frames false\n",
+        )
+        .unwrap();
+        let model = build_model(&paths).unwrap();
+        let theme = model_field(&model, "theme");
+        assert_eq!(theme.state, ConfigUiValueState::Explicit);
+        assert_eq!(
+            serde_json::from_str::<String>(&theme.edit_value).unwrap(),
+            "custom-ocean"
+        );
+        assert!(theme.allowed_values.contains(&"custom-ocean".to_string()));
+
+        write_source_field(&paths, SOURCE_ZELLIJ, "theme", &json!("dracula")).unwrap();
+        let raw = fs::read_to_string(&paths.zellij).unwrap();
+        assert!(raw.starts_with("# keep\n"));
+        assert!(raw.contains("theme \"dracula\""));
+        assert!(raw.contains("pane_frames false"));
+        assert!(!raw.contains("custom-ocean"));
+
+        write_source_field(&paths, SOURCE_ZELLIJ, "theme", &json!("default")).unwrap();
+        let raw = fs::read_to_string(&paths.zellij).unwrap();
+        assert!(raw.starts_with("# keep\n"));
+        assert!(raw.contains("pane_frames false"));
+        assert!(!raw.contains("theme "));
+    }
+
+    #[test]
     fn zellij_runtime_field_patch_preserves_surrounding_config() {
         let runtime = "\
 keybinds {}\n\
@@ -1906,6 +1956,13 @@ ui {\n\
         .unwrap();
         assert!(appended.contains("ui {"));
         assert!(appended.contains("        rounded_corners true"));
+
+        let themed = patch_zellij_field_in_text(runtime, "theme", &json!("dracula")).unwrap();
+        assert!(themed.contains("theme \"dracula\""));
+        let reset = unset_zellij_field_in_text(&themed, "theme").unwrap();
+        assert!(!reset.contains("theme "));
+        assert!(reset.contains("keybinds {}"));
+        assert!(reset.contains("plugins {}"));
     }
 
     #[test]

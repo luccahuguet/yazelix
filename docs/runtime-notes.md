@@ -27,16 +27,20 @@ editor environment and returns the edited text to the row. `Enter` saves.
 
 ## Zellij Sidecars
 
-`zellij/config.kdl` is a guarded sidecar for scalar preferences such as pane
-frames, mouse mode, scrollback size, copy behavior, styled underlines, startup
-tips, and `ui.pane_frames.rounded_corners`.
+`zellij/config.kdl` is a guarded sidecar for scalar preferences such as theme,
+pane frames, mouse mode, scrollback size, copy behavior, styled underlines,
+startup tips, and `ui.pane_frames.rounded_corners`. Ratconfig lists the 41
+themes in the pinned Zellij assets, with a flake check keeping both inventories
+aligned. Its virtual `default` choice removes the assignment instead of naming
+a synthetic theme.
 
 When `yzx config` runs inside a managed session (`ZELLIJ_SESSION_NAME` or
 `YAZELIX_ZELLIJ_SESSION_NAME`, plus `YAZELIX_STATE_DIR`), saving a Zellij tab
 field also patches `$YAZELIX_STATE_DIR/zellij/config.kdl` so the running Zellij
 watcher can pick up scalars without rewriting integration patches. Fields such
-as `pane_frames` typically apply live; `scroll_buffer_size` is session-scoped
-and still needs a new session.
+as `theme` and `pane_frames` apply live; `scroll_buffer_size` is session-scoped
+and still needs a new session. Hand-written custom theme names remain accepted
+by the native sidecar.
 
 The runtime rejects uncommented top-level ownership nodes in that sidecar:
 

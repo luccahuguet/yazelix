@@ -264,10 +264,12 @@ top-level ownership nodes are rejected, including:
 `load_plugins`, `support_kitty_keyboard_protocol`, `env`, `session_name`,
 `attach_to_session`.
 
-The sidecar is optional and sparse. Ratconfig displays all eight effective
-packaged scalar defaults without creating it, treats assignment presence as
-explicit intent, and removes only the selected assignment on reset. Removing
-the final assignment removes the sidecar.
+The sidecar is optional and sparse. Ratconfig displays nine effective scalar
+defaults without creating it, including a theme picker derived from the 41
+identities embedded by the pinned Zellij package. Its virtual `default` removes
+the theme assignment; custom native theme names remain accepted. Assignment
+presence is explicit intent, and removing the final assignment removes the
+sidecar.
 
 `zellij/plugins.kdl` accepts only `plugins` / `load_plugins` and must not
 redeclare Yazelix-owned plugin ids (`yzpp`, `yazelix_pane_orchestrator`, …).

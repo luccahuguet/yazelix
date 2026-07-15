@@ -899,6 +899,40 @@
         grep -qx env runtime
         touch "$out"
       '';
+      zellij_theme_inventory_parity = pkgs.runCommand "zellij-theme-inventory-parity-check" {} ''
+        for file in ${yazelixZellij}/zellij-utils/assets/themes/*.kdl; do
+          awk '
+            /^[[:space:]]*themes[[:space:]]*\{/ {
+              in_themes = 1
+              depth = 1
+              next
+            }
+            in_themes {
+              line = $0
+              sub(/\/\/.*/, "", line)
+              if (depth == 1 && line ~ /^[[:space:]]*("[^"]+"|[A-Za-z0-9_-]+)[[:space:]]*\{/) {
+                name = line
+                sub(/^[[:space:]]*/, "", name)
+                if (name ~ /^"/) {
+                  sub(/^"/, "", name)
+                  sub(/".*/, "", name)
+                } else {
+                  sub(/[[:space:]]*\{.*/, "", name)
+                }
+                print name
+              }
+              opens = line
+              closes = line
+              depth += gsub(/\{/, "", opens) - gsub(/\}/, "", closes)
+              if (depth <= 0) exit
+            }
+          ' "$file"
+        done > actual-unsorted
+        sort actual-unsorted > actual
+        test "$(wc -l < actual)" -eq "$(sort -u actual | wc -l)"
+        diff -u ${./crates/yzx-config/zellij-themes.txt} actual
+        touch "$out"
+      '';
       key_reference_parity = pkgs.runCommand "key-reference-parity-check" {nativeBuildInputs = [pkgs.rustc pkgs.stdenv.cc];} ''
         rustc --edition=2024 ${./checks/key-reference-parity.rs} -o key-reference-parity-check
         ./key-reference-parity-check ${./crates/yzx-config/src/catalog.rs} ${yzx}/share/yazelix/config.kdl ${./crates/yzx-tutor/src/main.rs}

@@ -12,6 +12,7 @@ use crate::{catalog::*, common::*};
 pub(crate) type ZellijSidecar = BTreeMap<&'static str, JsonValue>;
 pub(crate) fn packaged_zellij_defaults() -> ZellijSidecar {
     BTreeMap::from([
+        ("theme", json!("default")),
         ("pane_frames", json!(true)),
         ("mouse_mode", json!(true)),
         ("scroll_buffer_size", json!(10000)),
@@ -22,36 +23,44 @@ pub(crate) fn packaged_zellij_defaults() -> ZellijSidecar {
         ("ui.pane_frames.rounded_corners", json!(false)),
     ])
 }
+pub(crate) fn packaged_zellij_theme_choices() -> Vec<String> {
+    std::iter::once("default")
+        .chain(include_str!("../zellij-themes.txt").lines())
+        .map(str::to_string)
+        .collect()
+}
 pub(crate) fn write_zellij_config_field(
     path: &Path,
     field_path: &str,
     value: &JsonValue,
 ) -> Result<()> {
     let spec = require_zellij_field(field_path)?;
+    if spec.path == "theme" && value.as_str() == Some("default") {
+        return unset_zellij_config_field(path, field_path);
+    }
     let (raw, _) = read_editable_zellij_sidecar(path)?;
     atomic_write(path, &patch_zellij_field(&raw, spec, value)?)?;
     // Best-effort: patch the watched runtime config without wiping launch patches.
-    let _ = refresh_active_zellij_runtime_field(spec.path, value);
+    let _ = refresh_active_zellij_runtime_field(spec, Some(value));
     Ok(())
 }
 pub(crate) fn unset_zellij_config_field(path: &Path, field_path: &str) -> Result<()> {
     let spec = require_zellij_field(field_path)?;
-    if !path_entry_exists(path)? {
-        return Ok(());
-    }
-    let (raw, mut config) = read_editable_zellij_sidecar(path)?;
-    config.remove(spec.path);
-    if config.is_empty() {
-        fs::remove_file(path)?;
-    } else {
-        atomic_write(path, &remove_zellij_field(&raw, spec))?;
+    if path_entry_exists(path)? {
+        let (raw, mut config) = read_editable_zellij_sidecar(path)?;
+        config.remove(spec.path);
+        if config.is_empty() {
+            fs::remove_file(path)?;
+        } else {
+            atomic_write(path, &remove_zellij_field(&raw, spec))?;
+        }
     }
     let defaults = packaged_zellij_defaults();
     let default = defaults
         .get(spec.path)
         .expect("known Zellij field has a packaged default");
     // Best-effort: restore the watched runtime field without wiping launch patches.
-    let _ = refresh_active_zellij_runtime_field(spec.path, default);
+    let _ = refresh_active_zellij_runtime_field(spec, (spec.path != "theme").then_some(default));
     Ok(())
 }
 
@@ -70,15 +79,16 @@ fn read_editable_zellij_sidecar(path: &Path) -> Result<(String, ZellijSidecar)> 
     Ok((raw, config))
 }
 
-fn refresh_active_zellij_runtime_field(field_path: &str, value: &JsonValue) -> Result<()> {
+fn refresh_active_zellij_runtime_field(spec: &FieldSpec, value: Option<&JsonValue>) -> Result<()> {
     let Some(runtime_config) = active_zellij_runtime_config_path() else {
         return Ok(());
     };
     let raw = fs::read_to_string(&runtime_config)?;
-    atomic_write(
-        &runtime_config,
-        &patch_zellij_field_in_text(&raw, field_path, value)?,
-    )
+    let updated = match value {
+        Some(value) => patch_zellij_field(&raw, spec, value)?,
+        None => remove_zellij_field(&raw, spec),
+    };
+    atomic_write(&runtime_config, &updated)
 }
 
 fn active_zellij_runtime_config_path() -> Option<PathBuf> {
@@ -90,12 +100,17 @@ fn active_zellij_runtime_config_path() -> Option<PathBuf> {
     path.is_file().then_some(path)
 }
 
+#[cfg(test)]
 pub(crate) fn patch_zellij_field_in_text(
     text: &str,
     field_path: &str,
     value: &JsonValue,
 ) -> Result<String> {
     patch_zellij_field(text, require_zellij_field(field_path)?, value)
+}
+#[cfg(test)]
+pub(crate) fn unset_zellij_field_in_text(text: &str, field_path: &str) -> Result<String> {
+    Ok(remove_zellij_field(text, require_zellij_field(field_path)?))
 }
 fn patch_zellij_field(text: &str, spec: &FieldSpec, value: &JsonValue) -> Result<String> {
     let assignment = zellij_field_assignment(spec, value)?;

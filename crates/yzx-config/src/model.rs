@@ -25,7 +25,10 @@ use crate::{
         validate_root_config,
     },
     yazi_config::build_yazi_fields,
-    zellij_sidecar::{packaged_zellij_defaults, parse_zellij_sidecar, read_zellij_sidecar},
+    zellij_sidecar::{
+        packaged_zellij_defaults, packaged_zellij_theme_choices, parse_zellij_sidecar,
+        read_zellij_sidecar,
+    },
 };
 
 pub(crate) fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
@@ -83,19 +86,24 @@ pub(crate) fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
     for spec in ZELLIJ_FIELDS {
         let current = zellij_active.get(spec.path);
         let default = zellij_default.get(spec.path).expect("packaged default");
-        fields.push(build_config_field(
+        let mut field = build_config_field(
             SOURCE_ZELLIJ,
             TAB_ZELLIJ,
             spec,
             current,
             Some(default),
-            apply_status(
-                "session",
-                "zellij",
-                "Inside a session, saves and resets update the active config; many scalars apply live, some need a new session.",
-            ),
+            zellij_apply_status(spec.path),
             zellij_blocking,
-        ));
+        );
+        if spec.path == "theme" {
+            field.allowed_values = packaged_zellij_theme_choices();
+            if let Some(custom) = current.and_then(JsonValue::as_str)
+                && !field.allowed_values.iter().any(|theme| theme == custom)
+            {
+                field.allowed_values.push(custom.to_string());
+            }
+        }
+        fields.push(field);
     }
     let source = |id, tab, label, path| build_config_source(paths, id, tab, label, path);
     let yazi_dir = paths.yazi_config.parent().expect("Yazi config directory");
@@ -434,4 +442,19 @@ fn mars_apply_status(path: &str) -> ConfigUiApplyStatus {
     };
 
     apply_status(summary, label, detail)
+}
+
+fn zellij_apply_status(path: &str) -> ConfigUiApplyStatus {
+    if path == "theme" {
+        return apply_status(
+            "live",
+            "zellij",
+            "Inside a managed session, saved themes update the watched active config; outside a session they apply on the next launch.",
+        );
+    }
+    apply_status(
+        "session",
+        "zellij",
+        "Inside a session, saves and resets update the active config; many scalars apply live, some need a new session.",
+    )
 }

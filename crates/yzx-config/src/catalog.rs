@@ -386,6 +386,12 @@ pub(crate) const ZELLIJ_FORBIDDEN_TOP_LEVEL: &[&str] = &[
 ];
 
 pub(crate) const ZELLIJ_FIELDS: &[FieldSpec] = &[
+    FieldSpec::string_choice(
+        "theme",
+        "Zellij color theme. Custom names remain valid in the native sidecar.",
+        &[],
+        "packaged theme choice; custom sidecar names remain accepted",
+    ),
     FieldSpec::boolean("pane_frames", "Show Zellij pane frames."),
     FieldSpec::boolean("mouse_mode", "Enable mouse support in Zellij."),
     FieldSpec::integer(
