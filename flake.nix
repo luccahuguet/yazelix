@@ -588,7 +588,7 @@
           terminal = false;
           categories = ["System" "TerminalEmulator"];
           startupNotify = true;
-          startupWMClass = "mars";
+          startupWMClass = "yzx";
         };
       in
         pkgs.symlinkJoin {

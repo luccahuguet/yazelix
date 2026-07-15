@@ -4,6 +4,8 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## 1.0.0-beta.1
 
+- Linux Mars windows use the Nova desktop entry's `yzx` application identity,
+  so open sessions resolve the packaged icon in Wayland and X11 task switchers.
 - A managed agent's spinner title drives a compact busy marker on its tab while
   native Zellij tab names remain unchanged and directly renameable. Idle,
   unknown, focused, and merely visible agent panes do not produce activity.

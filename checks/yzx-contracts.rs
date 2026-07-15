@@ -157,6 +157,12 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
         }),
         "desktop entry must launch explicitly\n{desktop}"
     );
+    for identity in ["Icon=yzx", "StartupWMClass=yzx"] {
+        assert!(
+            desktop.lines().any(|line| line == identity),
+            "desktop entry must match the Nova Mars app id via `{identity}`\n{desktop}"
+        );
+    }
     let help = run_help(&yzx_bin, &["help"]);
     for arg in ["-h", "--help"] {
         assert_eq!(run_help(&yzx_bin, &[arg]), help);

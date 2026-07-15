@@ -155,7 +155,7 @@ fn exec_managed(through_mars: bool, zellij_args: Vec<OsString>) -> Result<(), Ap
         .arg(&runtime.layout)
         .args(zellij_args);
     runtime.apply(&mut command);
-    apply_mars_cursor_config(
+    apply_mars_launch_env(
         &mut command,
         through_mars,
         &runtime.config_home.join("cursors.toml"),
@@ -181,9 +181,11 @@ fn managed_program(through_mars: bool, mars: &'static str) -> Result<&'static st
     }
 }
 
-fn apply_mars_cursor_config(command: &mut Command, through_mars: bool, path: &Path) {
+fn apply_mars_launch_env(command: &mut Command, through_mars: bool, path: &Path) {
     if through_mars {
-        command.env("YAZELIX_CURSOR_CONFIG", path);
+        command
+            .env("MARS_APP_ID", "yzx")
+            .env("YAZELIX_CURSOR_CONFIG", path);
     }
 }
 
@@ -198,13 +200,15 @@ mod tests {
         assert_eq!(managed_program(true, MARS).ok(), Some(MARS));
         let path = Path::new("/tmp/cursors.toml");
         let mut launch = Command::new(MARS);
-        apply_mars_cursor_config(&mut launch, true, path);
-        assert_eq!(
-            launch.get_envs().next(),
-            Some(("YAZELIX_CURSOR_CONFIG".as_ref(), Some(path.as_os_str())))
-        );
+        apply_mars_launch_env(&mut launch, true, path);
+        assert!(launch.get_envs().any(|(key, value)| {
+            key == "MARS_APP_ID" && value == Some(std::ffi::OsStr::new("yzx"))
+        }));
+        assert!(launch.get_envs().any(|(key, value)| {
+            key == "YAZELIX_CURSOR_CONFIG" && value == Some(path.as_os_str())
+        }));
         let mut enter = Command::new(YZX_WELCOME);
-        apply_mars_cursor_config(&mut enter, false, path);
+        apply_mars_launch_env(&mut enter, false, path);
         assert_eq!(enter.get_envs().next(), None);
     }
 }
