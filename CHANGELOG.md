@@ -4,6 +4,9 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## 1.0.0-beta.1
 
+- Main-branch cache publishing builds the full, runtime, and Home Manager
+  `aarch64-darwin` closures on `macos-15`, publishes them to the Yazelix
+  Cachix cache, and verifies each top-level narinfo after upload.
 - The Linux desktop entry describes Yazelix as an integrated terminal workspace
   while continuing to launch the package-owned `yzx launch` command.
 - Ratconfig's Yazi tab renders safe native `yazi.toml` and `theme.toml` values,

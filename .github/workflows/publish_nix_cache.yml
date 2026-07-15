@@ -75,3 +75,81 @@ jobs:
             .#packages.x86_64-linux.yazelix \
             .#packages.x86_64-linux.runtime \
             .#checks.x86_64-linux.home_manager
+
+  publish_aarch64_darwin:
+    if: github.repository == 'luccahuguet/yazelix'
+    runs-on: macos-15
+    timeout-minutes: 90
+    env:
+      CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Check Cachix token
+        id: cachix-token
+        run: |
+          if [ -n "$CACHIX_AUTH_TOKEN" ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::CACHIX_AUTH_TOKEN is not configured; skipping cache publish."
+            echo "available=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check out repository
+        if: steps.cachix-token.outputs.available == 'true'
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Install Nix
+        if: steps.cachix-token.outputs.available == 'true'
+        uses: DeterminateSystems/nix-installer-action@v22
+        with:
+          determinate: false
+          extra-conf: |
+            accept-flake-config = true
+            max-jobs = 1
+            cores = 2
+
+      - name: Configure Cachix client
+        if: steps.cachix-token.outputs.available == 'true'
+        uses: cachix/cachix-action@v17
+        with:
+          name: yazelix
+          authToken: "${{ secrets.CACHIX_AUTH_TOKEN }}"
+          # Push synchronously below so narinfo verification runs after upload.
+          skipPush: true
+
+      - name: Build, publish, and verify Darwin closures
+        if: steps.cachix-token.outputs.available == 'true'
+        run: |
+          outputs="$RUNNER_TEMP/aarch64-darwin-cache-paths"
+          nix build --no-link --no-write-lock-file --print-out-paths --print-build-logs \
+            .#packages.aarch64-darwin.yazelix \
+            .#packages.aarch64-darwin.runtime \
+            .#checks.aarch64-darwin.home_manager \
+            | tee "$outputs"
+
+          store_paths=()
+          while IFS= read -r store_path; do
+            store_paths+=("$store_path")
+          done < "$outputs"
+          test "${#store_paths[@]}" -eq 3
+          cachix push yazelix "${store_paths[@]}"
+
+          for store_path in "${store_paths[@]}"; do
+            store_name="${store_path##*/}"
+            store_hash="${store_name%%-*}"
+            narinfo="https://yazelix.cachix.org/$store_hash.narinfo"
+            echo "Verifying $narinfo"
+            status="$(
+              curl --fail --location --output /dev/null \
+                --retry 20 --retry-all-errors --retry-delay 3 \
+                --show-error --silent --write-out '%{http_code}' \
+                "$narinfo"
+            )"
+            test "$status" = 200
+          done
