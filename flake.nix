@@ -844,17 +844,20 @@
 
         user="$TMPDIR/yazi-user"
         state="$TMPDIR/yazi-state"
-        mkdir -p "$user/plugins"
+        install -D ${starshipYazi}/main.lua "$user/plugins/starship.yazi/main.lua"
         ln -s ${pkgs.yaziPlugins.smart-enter} "$user/plugins/smart-enter.yazi"
+        touch "$user/plugins/starship.yazi/user-managed"
         printf '%s\n' 'require("smart-enter"):setup { open_multi = false }' > "$user/init.lua"
         printf '%s\n' '[[mgr.prepend_keymap]]' 'on = "l"' 'run = "plugin smart-enter"' > "$user/keymap.toml"
 
         runtime="$(${yzxYaziMaterializer}/bin/yzx-yazi-config ${yzx}/share/yazelix/yazi "$user" "$state")"
-        YAZI_CONFIG_HOME="$runtime" ${pkgs.yazi}/bin/yazi --debug > yazi-debug
+        YZX_YAZI_STARSHIP_CONFIG="$runtime/yazelix_starship.toml" YAZI_CONFIG_HOME="$runtime" ${pkgs.yazi}/bin/yazi --debug > yazi-debug
         test -f "$runtime/plugins/smart-enter.yazi/main.lua"
+        test -f "$runtime/plugins/starship.yazi/user-managed"
         grep -q 'require("smart-enter")' "$runtime/init.lua"
         grep -q 'plugin smart-enter' "$runtime/keymap.toml"
         grep -q 'yzx-open' yazi-debug
+
         for flavor_path in ${yzx}/share/yazelix/yazi/flavors/*.yazi; do
           flavor_dir="''${flavor_path##*/}"
           flavor="''${flavor_dir%.yazi}"

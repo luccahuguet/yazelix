@@ -115,7 +115,9 @@ fn json_string_list(path: &str, value: &JsonValue) -> Result<Vec<String>> {
     string_list_values_from_json(path, value, &[]).map_err(error)
 }
 pub(crate) fn write_config_field(path: &Path, field_path: &str, value: &JsonValue) -> Result<()> {
-    validate_config_value(field_path, value)?;
+    if !field_path.starts_with("popups.") {
+        validate_config_value(field_path, value)?;
+    }
     let raw = if path_entry_exists(path)? {
         fs::read_to_string(path)?
     } else {

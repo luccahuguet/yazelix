@@ -4,6 +4,10 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## 1.0.0-beta.1
 
+- A user-managed `starship.yazi` can replace Nova's packaged Starship plugin as
+  one complete plugin directory when it contains `main.lua`. Other packaged
+  plugins remain protected, and plugin directories are never recursively
+  merged.
 - Ratconfig free-form values support grapheme-safe cursor movement, Home/End,
   forward and backward deletion, insertion, and single-line paste. `Enter`
   starts inline editing and `e` opens the configured editor on a field-labeled
@@ -19,11 +23,11 @@ User-visible runtime changes for Yazelix Nova live here.
   strings use quoted, escape-free KDL; richer strings remain native-file-only.
 - Toggling the Ratconfig popup hides its existing process, preserving the
   selected tab and row while that process remains alive.
-- Ratconfig 5 provides host-owned Core and All settings views. Yazelix keeps
-  every currently exposed field in Core for behavior-preserving adoption;
-  explicit and invalid non-core values remain visible, normal-mode `a` toggles
-  a tab with a Core/All distinction, and search spans All without changing the
-  saved view.
+- Ratconfig's Main and Popups tabs use a reviewed Core inventory. All adds root
+  diagnostics, fine tuning, popup geometry, and generic rows for every
+  configured custom-popup leaf; explicit and invalid non-core values remain
+  visible, normal-mode `a` toggles a tab with a Core/All distinction, and search
+  spans All without changing the saved view.
 - `keybindings.sidebar` and `keybindings.sidebar_focus` remap sidebar
   visibility and editor/sidebar focus through the same validated semantic
   config used by managed popup triggers. Defaults remain `Alt Shift H` and

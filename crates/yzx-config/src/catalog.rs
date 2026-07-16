@@ -46,6 +46,20 @@ pub(crate) const BAR_WIDGET_VALUES: &[&str] = &[
     "cpu",
     "ram",
 ];
+pub(crate) const ROOT_CONFIG_CORE_PATHS: &[&str] = &[
+    SHELL_PROGRAM_PATH,
+    EDITOR_COMMAND_PATH,
+    AGENT_COMMAND_PATH,
+    WELCOME_ENABLED_PATH,
+    WELCOME_STYLE_PATH,
+    KEYBINDINGS_CONFIG_PATH,
+    KEYBINDINGS_AGENT_PATH,
+    KEYBINDINGS_GIT_PATH,
+    KEYBINDINGS_MENU_PATH,
+    KEYBINDINGS_SIDEBAR_PATH,
+    KEYBINDINGS_SIDEBAR_FOCUS_PATH,
+    BAR_WIDGETS_PATH,
+];
 pub(crate) const DEFAULT_MARS_CONFIG_TOML: &str =
     include_str!("../../../defaults/mars/config.toml");
 pub(crate) const MARS_APPEARANCE_PRESET_PATH: &str = "mars.appearance.preset";

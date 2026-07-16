@@ -1,5 +1,6 @@
 use std::{
     collections::BTreeMap,
+    fs,
     path::{Path, PathBuf},
 };
 
@@ -7,7 +8,8 @@ use ratconfig::toml_adapter::{get_toml_path, parse_toml_value};
 use ratconfig::{
     ConfigUiApplyStatus, ConfigUiEditBehavior, ConfigUiFieldId, ConfigUiFieldSpec,
     ConfigUiListColumn, ConfigUiListTable, ConfigUiModel, ConfigUiPathOwner, ConfigUiSource,
-    ConfigUiTheme, ConfigUiThemeMapping, ConfigUiThemeSwitcher,
+    ConfigUiTheme, ConfigUiThemeMapping, ConfigUiThemeSwitcher, ConfigUiTomlDocumentSpec,
+    build_toml_document_fields,
 };
 use serde_json::Value as JsonValue;
 use yazelix_cursors::{
@@ -52,6 +54,7 @@ pub(crate) fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
         .map(|spec| build_root_config_field(&config_active, &config_default, spec))
         .collect::<Result<_>>()?;
     fields.push(build_bar_widgets_field(&config_active, &config_default)?);
+    fields.extend(build_custom_popup_fields(&paths.root)?);
     fields.extend(KEY_BINDINGS.iter().map(build_key_binding_field));
     fields.extend(build_cursor_fields(&cursors_active, &cursors_default)?);
     for spec in MARS_FIELDS {
@@ -110,6 +113,10 @@ pub(crate) fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
     let core_fields = Some(
         fields
             .iter()
+            .filter(|field| {
+                field.source_id != SOURCE_CONFIG
+                    || ROOT_CONFIG_CORE_PATHS.contains(&field.path.as_str())
+            })
             .map(|field| ConfigUiFieldId::new(&field.source_id, &field.path))
             .collect(),
     );
@@ -256,6 +263,32 @@ fn build_root_config_field(
         apply_status(spec.apply_summary, "runtime", spec.apply_detail),
         false,
     ))
+}
+fn build_custom_popup_fields(path: &Path) -> Result<Vec<ratconfig::ConfigUiField>> {
+    let raw = if path_entry_exists(path)? {
+        fs::read_to_string(path)?
+    } else {
+        String::new()
+    };
+    let mut fields = build_toml_document_fields(ConfigUiTomlDocumentSpec {
+        source_id: SOURCE_CONFIG,
+        tab: TAB_POPUPS,
+        section_label: "custom popups",
+        current_toml: &raw,
+        default_toml: None,
+        validation: "",
+        rebuild_required: false,
+        apply_status: apply_status(
+            "next launch",
+            "runtime",
+            "Saved custom popup settings apply to newly launched Yazelix sessions.",
+        ),
+    })
+    .map_err(error)?
+    .fields;
+    fields.retain(|field| field.path.starts_with("popups."));
+    fields.iter_mut().for_each(|field| field.list_cells.clear());
+    Ok(fields)
 }
 fn root_config_tab(path: &str) -> &'static str {
     if matches!(

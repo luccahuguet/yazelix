@@ -882,16 +882,43 @@ mod tests {
     }
 
     #[test]
-    fn config_model_adopts_ratconfig_core_and_all_views_without_hiding_existing_fields() {
+    fn config_model_classifies_root_fields_without_hiding_explicit_values_or_all_search() {
         let (_temp, paths) = temp_sources();
-        let mut model = build_model(&paths).unwrap();
+        let model = build_model(&paths).unwrap();
         let core_fields = model.core_fields.as_ref().expect("Core allowlist");
-        assert_eq!(core_fields.len(), model.fields.len());
-        assert!(model.fields.iter().all(|field| {
-            core_fields
+        let root_core = core_fields
+            .iter()
+            .filter(|field| field.source_id == SOURCE_CONFIG)
+            .map(|field| field.path.as_str())
+            .collect::<Vec<_>>();
+        assert_eq!(
+            root_core,
+            [
+                SHELL_PROGRAM_PATH,
+                EDITOR_COMMAND_PATH,
+                AGENT_COMMAND_PATH,
+                WELCOME_ENABLED_PATH,
+                WELCOME_STYLE_PATH,
+                KEYBINDINGS_CONFIG_PATH,
+                KEYBINDINGS_AGENT_PATH,
+                KEYBINDINGS_GIT_PATH,
+                KEYBINDINGS_MENU_PATH,
+                KEYBINDINGS_SIDEBAR_PATH,
+                KEYBINDINGS_SIDEBAR_FOCUS_PATH,
+                BAR_WIDGETS_PATH,
+            ]
+        );
+        assert!(
+            model
+                .fields
                 .iter()
-                .any(|core| core.source_id == field.source_id && core.path == field.path)
-        }));
+                .filter(|field| field.source_id != SOURCE_CONFIG)
+                .all(|field| {
+                    core_fields
+                        .iter()
+                        .any(|core| core.source_id == field.source_id && core.path == field.path)
+                })
+        );
 
         let field_index = |path| {
             model
@@ -901,20 +928,12 @@ mod tests {
                 .unwrap()
         };
         let hidden = field_index(OPEN_LOG_LEVEL_PATH);
-        let explicit = field_index(SHELL_PROGRAM_PATH);
-        model.core_fields.as_mut().unwrap().retain(|field| {
-            field.source_id != SOURCE_CONFIG
-                || !matches!(
-                    field.path.as_str(),
-                    OPEN_LOG_LEVEL_PATH | SHELL_PROGRAM_PATH
-                )
-        });
-        model.fields[explicit].state = ConfigUiValueState::Explicit;
+        let core = field_index(SHELL_PROGRAM_PATH);
 
         let mut app = ConfigUiApp::new(model);
         assert_eq!(app.settings_view, ConfigUiSettingsView::Core);
         assert!(!app.visible_rows().contains(&UiRowRef::Field(hidden)));
-        assert!(app.visible_rows().contains(&UiRowRef::Field(explicit)));
+        assert!(app.visible_rows().contains(&UiRowRef::Field(core)));
 
         app.handle_key(ConfigUiKey::Char('a'));
         assert_eq!(app.settings_view, ConfigUiSettingsView::All);
@@ -928,6 +947,19 @@ mod tests {
         }
         assert_eq!(app.settings_view, ConfigUiSettingsView::Core);
         assert!(app.visible_rows().contains(&UiRowRef::Field(hidden)));
+
+        write_config_field(&paths.root, OPEN_LOG_LEVEL_PATH, &json!("debug")).unwrap();
+        let explicit_model = build_model(&paths).unwrap();
+        let explicit = explicit_model
+            .fields
+            .iter()
+            .position(|field| field.source_id == SOURCE_CONFIG && field.path == OPEN_LOG_LEVEL_PATH)
+            .unwrap();
+        assert!(
+            ConfigUiApp::new(explicit_model)
+                .visible_rows()
+                .contains(&UiRowRef::Field(explicit))
+        );
     }
 
     #[test]
@@ -1011,6 +1043,52 @@ color = "#123456"
             assert_eq!(field.tab, TAB_POPUPS);
             assert_eq!(field.apply_status.summary, "next launch");
         }
+    }
+
+    #[test]
+    fn configured_custom_popup_fields_use_generic_discovery_and_root_validation() {
+        let (_temp, paths) = temp_sources();
+        write_config_text(
+            &paths.root,
+            "[popups.btm]\ncommand = \"btm\"\nargs = [\"--basic\"]\nkeybinding = \"Alt Shift B\"\n",
+        );
+
+        let model = build_model(&paths).unwrap();
+        let discovered = model
+            .fields
+            .iter()
+            .filter(|field| field.path.starts_with("popups.btm."))
+            .map(|field| {
+                assert_eq!(field.tab, TAB_POPUPS);
+                assert_eq!(field.apply_status.summary, "next launch");
+                assert!(field.list_cells.is_empty());
+                (field.path.as_str(), field.kind.as_str())
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(
+            discovered,
+            [
+                ("popups.btm.args", "string_list"),
+                ("popups.btm.command", "string"),
+                ("popups.btm.keybinding", "string"),
+            ]
+        );
+        assert!(model.core_fields.as_ref().unwrap().iter().all(|field| {
+            field.source_id != SOURCE_CONFIG || !field.path.starts_with("popups.")
+        }));
+
+        write_source_field(
+            &paths,
+            SOURCE_CONFIG,
+            "popups.btm.args",
+            &json!(["--battery"]),
+        )
+        .unwrap();
+        assert_toml_value(&paths.root, "popups.btm.args", &json!(["--battery"]));
+
+        let unchanged = fs::read_to_string(&paths.root).unwrap();
+        write_source_field(&paths, SOURCE_CONFIG, "popups.btm.unknown", &json!(true)).unwrap_err();
+        assert_eq!(fs::read_to_string(&paths.root).unwrap(), unchanged);
     }
 
     #[test]

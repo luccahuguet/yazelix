@@ -275,10 +275,19 @@ fn overlay_user_assets(
         let destination = target.join(&name);
         if path_entry_exists(&destination)? {
             if kind == "plugin" {
-                return Err(io::Error::new(
-                    ErrorKind::AlreadyExists,
-                    format!("user plugin `{display_name}` collides with a packaged plugin"),
-                ));
+                if display_name != "starship.yazi" {
+                    return Err(io::Error::new(
+                        ErrorKind::AlreadyExists,
+                        format!(
+                            "user plugin `{display_name}` cannot replace a protected Yazelix plugin"
+                        ),
+                    ));
+                }
+                if !path.join("main.lua").is_file() {
+                    return Err(invalid_input(format!(
+                        "user plugin `{display_name}` must contain main.lua"
+                    )));
+                }
             }
             remove_any(&destination)?;
         }
@@ -386,7 +395,18 @@ edit = [{ run = "managed-open %s", block = false, for = "unix" }]
 
     fn packaged_yazi(path: &Path) {
         fs::create_dir_all(path.join("plugins/git.yazi")).unwrap();
+        fs::create_dir_all(path.join("plugins/starship.yazi")).unwrap();
         fs::create_dir_all(path.join("flavors/packaged.yazi")).unwrap();
+        fs::write(
+            path.join("plugins/starship.yazi/main.lua"),
+            "packaged starship\n",
+        )
+        .unwrap();
+        fs::write(
+            path.join("plugins/starship.yazi/packaged-only.lua"),
+            "packaged helper\n",
+        )
+        .unwrap();
         fs::write(path.join("init.lua"), "packaged init\n").unwrap();
         fs::write(path.join("keymap.toml"), "[manager]\nkeymap = []\n").unwrap();
         fs::write(path.join("yazi.toml"), PACKAGED_TOML).unwrap();
@@ -404,6 +424,12 @@ edit = [{ run = "managed-open %s", block = false, for = "unix" }]
         let user = temp.0.join("user");
         packaged_yazi(&packaged);
         fs::create_dir_all(user.join("plugins/example.yazi")).unwrap();
+        fs::create_dir_all(user.join("plugins/starship.yazi")).unwrap();
+        fs::write(
+            user.join("plugins/starship.yazi/main.lua"),
+            "user starship\n",
+        )
+        .unwrap();
         fs::create_dir_all(user.join("flavors/packaged.yazi")).unwrap();
         fs::write(
             user.join("flavors/packaged.yazi/flavor.toml"),
@@ -493,6 +519,15 @@ edit = [{ run = "nvim %s" }]
             "[manager]\nkeymap = []\n\n# Yazelix Nova user keymap.toml\nprepend_keymap = []\n"
         );
         assert!(runtime.join("plugins/example.yazi").is_dir());
+        assert_eq!(
+            fs::read_to_string(runtime.join("plugins/starship.yazi/main.lua")).unwrap(),
+            "user starship\n"
+        );
+        assert!(
+            !runtime
+                .join("plugins/starship.yazi/packaged-only.lua")
+                .exists()
+        );
         assert!(
             fs::read_to_string(runtime.join("flavors/packaged.yazi/flavor.toml"))
                 .unwrap()
@@ -545,11 +580,19 @@ edit = [{ run = "nvim %s" }]
         fs::write(user.join("yazi.toml"), "[mgr]\nshow_hidden = true\n").unwrap();
         fs::create_dir_all(user.join("plugins/git.yazi")).unwrap();
         let error = fail(&user, &state);
-        assert!(error.contains("collides with a packaged plugin"));
+        assert!(
+            error.contains("user plugin `git.yazi` cannot replace a protected Yazelix plugin"),
+            "{error}"
+        );
         assert_eq!(
             fs::read_to_string(state.join("yazi/sentinel")).unwrap(),
             "old runtime"
         );
+
+        fs::remove_dir_all(user.join("plugins")).unwrap();
+        fs::create_dir_all(user.join("plugins/starship.yazi")).unwrap();
+        let error = fail(&user, &state);
+        assert!(error.contains("main.lua"), "{error}");
 
         fs::remove_dir_all(user.join("plugins")).unwrap();
         fs::create_dir_all(user.join("flavors/packaged.yazi")).unwrap();

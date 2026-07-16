@@ -87,8 +87,9 @@ One owner per concern. Paths are the durable map.
 `crates/yzx-config/` is the Ratconfig host.
 
 - Supplies stable source/path identities for Ratconfig Core membership; the
-  packaged inventory starts entirely in Core, while Ratconfig owns Core/All
-  filtering, counts, toggling, and All-scope search
+  reviewed root inventory uses a local product-essential allowlist, while
+  Ratconfig owns Core/All filtering, explicit-value visibility, counts,
+  toggling, and All-scope search. Unreviewed non-root inventories remain Core
 - Seeds only the child-owned cursor TOML; root, Mars, Zellij, and Starship stay
   sparse
 - Routes edits to the right file; Helix/Advanced open-file rows; Keys read-only
@@ -107,6 +108,14 @@ bounded catalog, validation, and sparse persistence unless another owner is name
 The root validator derives fixed leaves from that catalog, rejects unknown paths
 before runtime or Ratconfig use, and delegates only `popups.<id>` to its dynamic
 field validator.
+
+`ROOT_CONFIG_CORE_PATHS` contains `shell.program`, `editor.command`,
+`agent.command`, the two ordinary welcome controls, all six managed action
+keys, and `bar.widgets`. Diagnostics (`open.log_level`), argument and duration
+fine tuning, and popup geometry are All-only until explicitly configured.
+Configured custom popup leaves use Ratconfig's generic TOML rows and belong to
+All; because every discovered leaf is explicit, Ratconfig also keeps it visible
+in Core. Absent optional leaves and unconfigured popup ids are not synthesized
 
 | Root path | Type | Default | Effect | Applies |
 | --- | --- | --- | --- | --- |

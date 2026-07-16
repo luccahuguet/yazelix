@@ -3,9 +3,12 @@
 `yzx config` opens Nova's Ratconfig interface. It shows packaged defaults,
 persists explicit overrides, exposes advanced native files, and identifies
 Home Manager-owned configuration as declarative. Yazelix classifies every
-currently exposed field as Core. When a tab supplies additional All-only
-fields, normal-mode `a` switches between Core and All; search always spans All
-without changing the saved view, and explicit or invalid values remain in Core
+non-root inventory field as Core until that inventory receives its own review.
+For Main and Popups, Core contains the ordinary product controls and All adds
+diagnostics, fine tuning, and every configured custom-popup field.
+Normal-mode `a` switches between Core and All when the current tab has an
+All-only field; search always spans All without changing the saved view, and
+explicit or invalid values remain in Core
 
 On a free-form setting, `Enter` starts single-line inline editing and `e` opens
 the same staged value in `editor.command`. Inline editing supports Left/Right,
@@ -40,17 +43,17 @@ for absent keys, saves only explicit overrides, and removes a key when reset.
 Nova rejects unsupported or misspelled paths instead of silently ignoring them,
 while custom popup ids remain dynamic within the documented `popups.<id>` fields
 
-| Field | Default | Meaning |
-| --- | --- | --- |
-| `open.log_level` | `info` | Diagnostics for managed Yazi open requests: `off`, `error`, `info`, `debug` |
-| `shell.program` | `nu` | Packaged shell for new panes: `nu`, `bash`, `zsh`, `fish` |
-| `editor.command` | `yzx-hx` | Editor used by Yazi opens, Ratconfig text edits, and Git editor flows |
-| `welcome.enabled` | `true` | Show the startup welcome splash |
-| `welcome.style` | `random` | Startup screen style |
-| `welcome.duration_seconds` | `3` | Startup splash duration, 1 to 60 seconds |
-| `keybindings.sidebar` | `Alt Shift H` | Hide or show the managed Yazi sidebar |
-| `keybindings.sidebar_focus` | `Ctrl y` | Toggle focus between the editor and managed Yazi sidebar |
-| `bar.widgets` | `editor`, `shell`, `term`, `codex_usage`, `cpu`, `ram` | Top bar widgets, left to right |
+| Field | Default | View | Meaning |
+| --- | --- | --- | --- |
+| `open.log_level` | `info` | All | Diagnostics for managed Yazi open requests: `off`, `error`, `info`, `debug` |
+| `shell.program` | `nu` | Core | Packaged shell for new panes: `nu`, `bash`, `zsh`, `fish` |
+| `editor.command` | `yzx-hx` | Core | Editor used by Yazi opens, Ratconfig text edits, and Git editor flows |
+| `welcome.enabled` | `true` | Core | Show the startup welcome splash |
+| `welcome.style` | `random` | Core | Startup screen style |
+| `welcome.duration_seconds` | `3` | All | Startup splash duration, 1 to 60 seconds |
+| `keybindings.sidebar` | `Alt Shift H` | Core | Hide or show the managed Yazi sidebar |
+| `keybindings.sidebar_focus` | `Ctrl y` | Core | Toggle focus between the editor and managed Yazi sidebar |
+| `bar.widgets` | `editor`, `shell`, `term`, `codex_usage`, `cpu`, `ram` | Core | Top bar widgets, left to right |
 
 The Codex quota widget identifies periods from their reported duration and shows
 five-hour before weekly when both exist. Unavailable periods are omitted.
@@ -68,16 +71,16 @@ Terminal Git clients receive the same selection through `EDITOR`, `VISUAL`, and
 The `popups` tab edits popup geometry, the managed agent command, and managed
 popup role keys:
 
-| Field | Default | Meaning |
-| --- | --- | --- |
-| `agent.command` | `auto` | Managed agent popup command. `auto` keeps the built-in provider fallback |
-| `agent.args` | `[]` | Arguments for a custom `agent.command` |
-| `popup.side_margin` | `1` | Left and right popup margin in terminal cells |
-| `popup.vertical_margin` | `0` | Top and bottom popup margin in terminal cells |
-| `keybindings.config` | `Alt Shift K` | Config popup trigger |
-| `keybindings.agent` | `Alt Shift L` | Agent popup trigger |
-| `keybindings.git` | `Alt Shift J` | Git popup trigger |
-| `keybindings.menu` | `Alt Shift M` | Menu popup trigger |
+| Field | Default | View | Meaning |
+| --- | --- | --- | --- |
+| `agent.command` | `auto` | Core | Managed agent popup command. `auto` keeps the built-in provider fallback |
+| `agent.args` | `[]` | All | Arguments for a custom `agent.command` |
+| `popup.side_margin` | `1` | All | Left and right popup margin in terminal cells |
+| `popup.vertical_margin` | `0` | All | Top and bottom popup margin in terminal cells |
+| `keybindings.config` | `Alt Shift K` | Core | Config popup trigger |
+| `keybindings.agent` | `Alt Shift L` | Core | Agent popup trigger |
+| `keybindings.git` | `Alt Shift J` | Core | Git popup trigger |
+| `keybindings.menu` | `Alt Shift M` | Core | Menu popup trigger |
 
 `agent.command` accepts one executable name or path, not a shell command with
 arguments. Keep `agent.command = "auto"` to use the built-in `codex resume`,
@@ -97,7 +100,10 @@ keep_alive = true
 
 Commands are argv-based. Put arguments in `args`, not in `command`. Popup titles
 must be unique. Custom popup keybindings use the same collision checks as all
-managed action keys
+managed action keys. Ratconfig passes every leaf actually present under a
+configured popup through its generic TOML rows. Those values are explicit, so
+they remain visible in Core too. Optional fields that are not written and popup
+ids that do not exist are not invented; open `config.toml` to add them
 
 ## Native config files
 
@@ -125,10 +131,14 @@ fetchers exactly once. Other user fetchers and previewers remain in the merged
 native config. Invalid TOML, a broken input, or an incomplete flavor stops launch
 
 Managed `plugins/*.yazi` and `flavors/*.yazi` directories are linked into the
-runtime config even without `init.lua`. Packaged plugin names cannot be
-replaced. A user flavor with a packaged name takes precedence, so `ya` can own
-an explicitly installed version. Create the directories directly under the
-managed Yazi tree or symlink them there
+runtime config even without `init.lua`. A user-managed `starship.yazi` replaces
+the packaged Starship plugin as one complete directory and must contain
+`main.lua`; plugin directories are never recursively merged. Nova still
+initializes and refreshes Starship, so a replacement must preserve that plugin
+API. Other packaged plugin names remain protected because they own managed
+layout, navigation, or sidebar behavior. A user flavor with a packaged name
+takes precedence, so `ya` can own an explicitly installed version. Create the
+directories directly under the managed Yazi tree or symlink them there
 
 Managed files and asset directories may be symlinked from another checkout, but
 their resolved targets must stay outside the generated `state/yazi` runtime
