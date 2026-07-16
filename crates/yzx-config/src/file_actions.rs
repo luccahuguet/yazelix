@@ -249,7 +249,7 @@ pub(crate) fn open_file_action(
     paths.reject_mutation(&spec.path, source_id)?;
     let editor = configured_editor()?;
     prepare_file_action(paths, source_id, action_id, path, create_if_missing)?;
-    let status = Command::new(&editor).arg(path).status().map_err(|error| {
+    let status = editor_command(&editor, path).status().map_err(|error| {
         io::Error::other(format!(
             "failed to launch editor `{}`: {error}",
             editor.display()
@@ -325,41 +325,64 @@ fn configured_editor() -> Result<PathBuf> {
         .map(PathBuf::from)
         .ok_or_else(|| error("no editor configured; set YAZELIX_EDITOR, VISUAL, or EDITOR"))
 }
-pub(crate) fn edit_text_externally(input: &str) -> Result<String> {
-    edit_text_with_editor(input, &configured_editor()?)
+pub(crate) fn edit_text_externally(field_path: &str, input: &str) -> Result<String> {
+    edit_text_with_editor(field_path, input, &configured_editor()?)
 }
-pub(crate) fn edit_text_with_editor(input: &str, editor: &Path) -> Result<String> {
-    let path = external_text_edit_path();
-    fs::write(&path, input)?;
-    let status = Command::new(editor).arg(&path).status().map_err(|error| {
-        io::Error::other(format!(
-            "failed to launch editor `{}`: {error}",
-            editor.display()
-        ))
-    })?;
-    if !status.success() {
-        let _ = fs::remove_file(&path);
-        return Err(error(format!(
-            "editor `{}` exited with status {status}",
-            editor.display()
-        )));
-    }
-
-    let read_result = fs::read_to_string(&path);
-    let _ = fs::remove_file(&path);
-    let mut text = read_result?;
-    if text.ends_with('\n') {
-        text.pop();
-        if text.ends_with('\r') {
-            text.pop();
+pub(crate) fn edit_text_with_editor(
+    field_path: &str,
+    input: &str,
+    editor: &Path,
+) -> Result<String> {
+    let path = external_text_edit_path(field_path);
+    let result = (|| -> Result<String> {
+        fs::write(&path, input)?;
+        let status = editor_command(editor, &path).status().map_err(|error| {
+            io::Error::other(format!(
+                "failed to launch editor `{}`: {error}",
+                editor.display()
+            ))
+        })?;
+        if !status.success() {
+            return Err(error(format!(
+                "editor `{}` exited with status {status}",
+                editor.display()
+            )));
         }
-    }
-    Ok(text)
+
+        let mut text = fs::read_to_string(&path)?;
+        if text.ends_with('\n') {
+            text.pop();
+            if text.ends_with('\r') {
+                text.pop();
+            }
+        }
+        Ok(text)
+    })();
+    let _ = fs::remove_file(&path);
+    result
 }
-fn external_text_edit_path() -> PathBuf {
+fn editor_command(editor: &Path, path: &Path) -> Command {
+    let mut command = Command::new(editor);
+    command.arg(path).env("YAZELIX_HELIX_BRIDGE", "0");
+    command
+}
+fn external_text_edit_path(field_path: &str) -> PathBuf {
     let nonce = SystemTime::now()
         .duration_since(UNIX_EPOCH)
-        .map(|duration| duration.as_nanos())
-        .unwrap_or(0);
-    env::temp_dir().join(format!("yzx-config-edit-{}-{nonce}.txt", process::id()))
+        .unwrap_or_default()
+        .as_nanos();
+    let label = field_path
+        .chars()
+        .take(80)
+        .map(|ch| {
+            if ch.is_ascii_alphanumeric() || matches!(ch, '.' | '-' | '_') {
+                ch
+            } else {
+                '-'
+            }
+        })
+        .collect::<String>();
+    let label = label.trim_matches(|ch| matches!(ch, '.' | '-'));
+    let label = if label.is_empty() { "value" } else { label };
+    env::temp_dir().join(format!("yzx-config-{label}-{}-{nonce}.txt", process::id()))
 }

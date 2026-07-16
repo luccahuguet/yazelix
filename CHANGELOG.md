@@ -4,6 +4,11 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## 1.0.0-beta.1
 
+- Ratconfig free-form values support grapheme-safe cursor movement, Home/End,
+  forward and backward deletion, insertion, and single-line paste. `Enter`
+  starts inline editing and `e` opens the configured editor on a field-labeled
+  temporary buffer; blocking config editors do not join the tab's Helix
+  workspace bridge.
 - Ratconfig's Zellij tab selects Default or any of the 41 themes embedded by
   the pinned Zellij package. Saves remain sparse and update the active managed
   session; Default removes the override, while simple custom names stay valid.

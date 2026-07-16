@@ -126,7 +126,7 @@ mod tests {
     use crate::file_actions::*;
     use crate::model::*;
     use crate::zellij_sidecar::*;
-    use crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
+    use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
     use ratatui::style::{Color, Style};
     use ratconfig::toml_adapter::{get_toml_path, parse_toml_value, set_toml_value_text};
     use ratconfig::{
@@ -300,7 +300,7 @@ mod tests {
         let editor = temp.path.join("editor.sh");
         fs::write(
             &editor,
-            "#!/bin/sh\ncat > \"$1\" <<'EOF'\nline one\nline two\nEOF\n",
+            "#!/bin/sh\n[ \"${YAZELIX_HELIX_BRIDGE:-}\" = 0 ] || exit 20\ncase \"${1##*/}\" in *ui.title*) ;; *) exit 21 ;; esac\ncat > \"$1\" <<'EOF'\nline one\nline two\nEOF\n",
         )
         .unwrap();
         let mut permissions = fs::metadata(&editor).unwrap().permissions();
@@ -308,9 +308,38 @@ mod tests {
         fs::set_permissions(&editor, permissions).unwrap();
 
         assert_eq!(
-            edit_text_with_editor("original", &editor).unwrap(),
+            edit_text_with_editor("ui.title", "original", &editor).unwrap(),
             "line one\nline two"
         );
+    }
+
+    #[test]
+    fn external_text_editor_removes_buffer_when_launch_fails() {
+        let temp = TempHome::new();
+        let prefix = format!("yzx-config-cleanup.failure.test-{}-", process::id());
+
+        let error = edit_text_with_editor(
+            "cleanup.failure.test",
+            "sensitive staged value",
+            &temp.path.join("missing-editor"),
+        )
+        .unwrap_err();
+        assert!(error.to_string().contains("failed to launch editor"));
+
+        let leftovers = fs::read_dir(env::temp_dir())
+            .unwrap()
+            .filter_map(std::result::Result::ok)
+            .map(|entry| entry.path())
+            .filter(|path| {
+                path.file_name()
+                    .and_then(|name| name.to_str())
+                    .is_some_and(|name| name.starts_with(&prefix))
+            })
+            .collect::<Vec<_>>();
+        for path in &leftovers {
+            let _ = fs::remove_file(path);
+        }
+        assert!(leftovers.is_empty(), "temporary edit buffer leaked");
     }
 
     fn model_field<'a>(model: &'a ConfigUiModel, path: &str) -> &'a ratconfig::ConfigUiField {
@@ -2156,7 +2185,25 @@ ui {\n\
             KeyEvent::new(KeyCode::Char('u'), KeyModifiers::ALT),
             KeyEvent::new(KeyCode::F(1), KeyModifiers::NONE),
         ] {
-            assert_eq!(config_key(key), None);
+            assert_eq!(config_event(Event::Key(key)), None);
         }
+    }
+
+    #[test]
+    fn terminal_events_translate_inline_editor_navigation_and_paste() {
+        for (code, expected) in [
+            (KeyCode::Delete, ConfigUiKey::Delete),
+            (KeyCode::Home, ConfigUiKey::Home),
+            (KeyCode::End, ConfigUiKey::End),
+        ] {
+            assert_eq!(
+                config_event(Event::Key(KeyEvent::new(code, KeyModifiers::NONE))),
+                Some(expected)
+            );
+        }
+        assert_eq!(
+            config_event(Event::Paste("middle 👩‍💻".to_string())),
+            Some(ConfigUiKey::Paste("middle 👩‍💻".to_string()))
+        );
     }
 }

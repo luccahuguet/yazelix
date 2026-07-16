@@ -2,7 +2,10 @@ use std::io;
 
 use crossterm::{
     cursor,
-    event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers},
+    event::{
+        self, DisableBracketedPaste, EnableBracketedPaste, Event, KeyCode, KeyEventKind,
+        KeyModifiers,
+    },
     execute,
     style::Print,
     terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
@@ -29,10 +32,7 @@ pub(crate) fn run_ui() -> Result<()> {
 
     loop {
         terminal.draw(|frame| draw_config_ui(frame, &mut app))?;
-        let Event::Key(key) = event::read()? else {
-            continue;
-        };
-        let Some(key) = config_key(key) else {
+        let Some(key) = config_event(event::read()?) else {
             continue;
         };
         match app.handle_key(key) {
@@ -40,9 +40,12 @@ pub(crate) fn run_ui() -> Result<()> {
             ConfigUiIntent::None => {}
             ConfigUiIntent::BeginEdit { field_index, .. } => app.begin_edit_field(field_index),
             ConfigUiIntent::EditTextExternally {
-                field_index, input, ..
+                field_index,
+                path,
+                input,
+                ..
             } => {
-                let result = session.suspend(|| edit_text_externally(&input))?;
+                let result = session.suspend(|| edit_text_externally(&path, &input))?;
                 terminal.clear()?;
                 match result {
                     Ok(edited) => {
@@ -114,27 +117,52 @@ impl TerminalSession {
     fn enter() -> Result<Self> {
         enable_raw_mode()?;
         let session = Self;
-        execute!(io::stdout(), EnterAlternateScreen, cursor::Hide)?;
+        execute!(
+            io::stdout(),
+            EnterAlternateScreen,
+            EnableBracketedPaste,
+            cursor::Hide
+        )?;
         Ok(session)
     }
 
     fn suspend<T>(&mut self, action: impl FnOnce() -> Result<T>) -> Result<Result<T>> {
         disable_raw_mode()?;
-        execute!(io::stdout(), cursor::Show, LeaveAlternateScreen)?;
+        execute!(
+            io::stdout(),
+            DisableBracketedPaste,
+            cursor::Show,
+            LeaveAlternateScreen
+        )?;
         let result = action();
         enable_raw_mode()?;
         execute!(io::stdout(), Print(RESET_TERMINAL_BACKGROUND))?;
-        execute!(io::stdout(), EnterAlternateScreen, cursor::Hide)?;
+        execute!(
+            io::stdout(),
+            EnterAlternateScreen,
+            EnableBracketedPaste,
+            cursor::Hide
+        )?;
         Ok(result)
     }
 }
 impl Drop for TerminalSession {
     fn drop(&mut self) {
         let _ = disable_raw_mode();
-        let _ = execute!(io::stdout(), cursor::Show, LeaveAlternateScreen);
+        let _ = execute!(
+            io::stdout(),
+            DisableBracketedPaste,
+            cursor::Show,
+            LeaveAlternateScreen
+        );
     }
 }
-pub(crate) fn config_key(key: KeyEvent) -> Option<ConfigUiKey> {
+pub(crate) fn config_event(event: Event) -> Option<ConfigUiKey> {
+    let key = match event {
+        Event::Key(key) => key,
+        Event::Paste(text) => return Some(ConfigUiKey::Paste(text)),
+        _ => return None,
+    };
     if key.kind == KeyEventKind::Release {
         return None;
     }
@@ -144,6 +172,9 @@ pub(crate) fn config_key(key: KeyEvent) -> Option<ConfigUiKey> {
         KeyCode::Esc => Some(ConfigUiKey::Esc),
         KeyCode::Enter => Some(ConfigUiKey::Enter),
         KeyCode::Backspace => Some(ConfigUiKey::Backspace),
+        KeyCode::Delete => Some(ConfigUiKey::Delete),
+        KeyCode::Home => Some(ConfigUiKey::Home),
+        KeyCode::End => Some(ConfigUiKey::End),
         KeyCode::Tab => Some(ConfigUiKey::Tab),
         KeyCode::BackTab => Some(ConfigUiKey::BackTab),
         KeyCode::Up => Some(ConfigUiKey::Up),

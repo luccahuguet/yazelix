@@ -7,6 +7,13 @@ currently exposed field as Core. When a tab supplies additional All-only
 fields, normal-mode `a` switches between Core and All; search always spans All
 without changing the saved view, and explicit or invalid values remain in Core
 
+On a free-form setting, `Enter` starts single-line inline editing and `e` opens
+the same staged value in `editor.command`. Inline editing supports Left/Right,
+Home/End, Backspace/Delete, Unicode text, and single-line paste; `Ctrl+e` opens
+the editor after an inline edit has started. The temporary editor buffer is
+labeled with the field path and runs as a blocking child of Ratconfig, outside
+the tab's reusable Helix workspace bridge
+
 ## Config root
 
 `yzx config` uses the managed config tree under:
