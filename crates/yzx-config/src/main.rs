@@ -130,9 +130,10 @@ mod tests {
     use ratatui::style::{Color, Style};
     use ratconfig::toml_adapter::{get_toml_path, parse_toml_value, set_toml_value_text};
     use ratconfig::{
-        ConfigUiApp, ConfigUiDiagnostic, ConfigUiEditBehavior, ConfigUiKey, ConfigUiModel,
-        ConfigUiPathOwner, ConfigUiSettingsView, ConfigUiTheme, ConfigUiValueState, UiRowRef,
-        file_action_status_label, file_action_status_style,
+        ConfigUiApp, ConfigUiDiagnostic, ConfigUiDiagnosticScope, ConfigUiEditBehavior,
+        ConfigUiFieldId, ConfigUiKey, ConfigUiModel, ConfigUiPathOwner, ConfigUiSettingsView,
+        ConfigUiTheme, ConfigUiValueState, UiRowRef, file_action_status_label,
+        file_action_status_style,
     };
     use serde_json::{Value as JsonValue, json};
     use yazelix_cursors::{DEFAULT_CURSOR_CONFIG_TEMPLATE, load_cursor_config};
@@ -1897,7 +1898,7 @@ color = "#123456"
 
         atomic_write(
             &paths.zellij,
-            "# keep\ntheme \"custom-ocean\"\npane_frames false\n",
+            "# keep\ntheme \"custom {ocean}\"\npane_frames false\n",
         )
         .unwrap();
         let model = build_model(&paths).unwrap();
@@ -1905,22 +1906,65 @@ color = "#123456"
         assert_eq!(theme.state, ConfigUiValueState::Explicit);
         assert_eq!(
             serde_json::from_str::<String>(&theme.edit_value).unwrap(),
-            "custom-ocean"
+            "custom {ocean}"
         );
-        assert!(theme.allowed_values.contains(&"custom-ocean".to_string()));
+        assert!(theme.allowed_values.contains(&"custom {ocean}".to_string()));
 
         write_source_field(&paths, SOURCE_ZELLIJ, "theme", &json!("dracula")).unwrap();
         let raw = fs::read_to_string(&paths.zellij).unwrap();
         assert!(raw.starts_with("# keep\n"));
         assert!(raw.contains("theme \"dracula\""));
         assert!(raw.contains("pane_frames false"));
-        assert!(!raw.contains("custom-ocean"));
+        assert!(!raw.contains("custom {ocean}"));
 
         write_source_field(&paths, SOURCE_ZELLIJ, "theme", &json!("default")).unwrap();
         let raw = fs::read_to_string(&paths.zellij).unwrap();
         assert!(raw.starts_with("# keep\n"));
         assert!(raw.contains("pane_frames false"));
         assert!(!raw.contains("theme "));
+    }
+
+    #[test]
+    fn zellij_theme_edits_preserve_opaque_native_leaf_nodes() {
+        let (_temp, paths) = temp_sources();
+        let raw = "// keep exactly\ndefault_mode \"normal\"\nfuture_flag;\nfuture_multi 1 2\nfuture_property mode=\"fast\"\nfuture_label \"two words // exact\"\nfuture_shape \"{opaque}\"\n";
+        atomic_write(&paths.zellij, raw).unwrap();
+
+        let model = build_model(&paths).unwrap();
+        for path in [
+            "default_mode",
+            "future_flag",
+            "future_multi",
+            "future_property",
+            "future_label",
+            "future_shape",
+        ] {
+            let diagnostic = model
+                .diagnostics
+                .iter()
+                .find(|diagnostic| diagnostic.headline.contains(path))
+                .expect("unvalidated native setting diagnostic");
+            assert!(!diagnostic.blocking);
+            assert_eq!(diagnostic.status, "unvalidated");
+            assert_eq!(
+                diagnostic.scope,
+                ConfigUiDiagnosticScope::Field(ConfigUiFieldId::new(SOURCE_ZELLIJ, path))
+            );
+        }
+        let theme = model_field(&model, "theme");
+        assert_eq!(
+            model.effective_field_state(theme),
+            ConfigUiValueState::Defaulted
+        );
+
+        write_source_field(&paths, SOURCE_ZELLIJ, "theme", &json!("ansi")).unwrap();
+        assert_eq!(
+            fs::read_to_string(&paths.zellij).unwrap(),
+            format!("{raw}theme \"ansi\"\n")
+        );
+
+        write_source_default(&paths, SOURCE_ZELLIJ, "theme").unwrap();
+        assert_eq!(fs::read_to_string(&paths.zellij).unwrap(), raw);
     }
 
     #[test]
@@ -1967,17 +2011,63 @@ ui {\n\
 
     #[test]
     fn zellij_source_blocks_guarded_sidecar_nodes() {
-        let temp = TempHome::new();
-        let path = temp.path.join("zellij/config.kdl");
-        atomic_write(&path, "keybinds {}\npane_frames true\n").unwrap();
+        let (_temp, paths) = temp_sources();
+        let path = &paths.zellij;
+        atomic_write(path, "keybinds {}\npane_frames true\n").unwrap();
 
-        let (_config, diagnostics) = parse_zellij_sidecar(&fs::read_to_string(&path).unwrap());
-        assert!(diagnostics.iter().any(|diagnostic| diagnostic.blocking));
+        let (_config, diagnostics) = parse_zellij_sidecar(&fs::read_to_string(path).unwrap());
+        assert!(diagnostics.iter().any(|diagnostic| {
+            diagnostic.blocking
+                && diagnostic.scope
+                    == ConfigUiDiagnosticScope::Source {
+                        source_id: SOURCE_ZELLIJ.to_string(),
+                    }
+        }));
+        let model = build_model(&paths).unwrap();
+        assert_eq!(
+            model.effective_field_state(model_field(&model, "theme")),
+            ConfigUiValueState::Invalid
+        );
+        assert_eq!(
+            model.effective_field_state(model_field(&model, "window.width")),
+            ConfigUiValueState::Defaulted
+        );
 
-        let error = write_zellij_config_field(&path, "pane_frames", &json!(false)).unwrap_err();
+        let error = write_zellij_config_field(path, "pane_frames", &json!(false)).unwrap_err();
         assert!(error.to_string().contains("guarded Zellij node"));
-        let error = unset_zellij_config_field(&path, "pane_frames").unwrap_err();
+        let error = unset_zellij_config_field(path, "pane_frames").unwrap_err();
         assert!(error.to_string().contains("guarded Zellij node"));
+    }
+
+    #[test]
+    fn zellij_field_diagnostics_do_not_poison_unrelated_fields_or_sources() {
+        let (_temp, paths) = temp_sources();
+        atomic_write(&paths.zellij, "scroll_buffer_size \"100\"\n").unwrap();
+
+        let model = build_model(&paths).unwrap();
+        assert_eq!(
+            model.effective_field_state(model_field(&model, "scroll_buffer_size")),
+            ConfigUiValueState::Invalid
+        );
+        assert_eq!(
+            model.effective_field_state(model_field(&model, "theme")),
+            ConfigUiValueState::Defaulted
+        );
+        assert_eq!(
+            model.effective_field_state(model_field(&model, "window.width")),
+            ConfigUiValueState::Defaulted
+        );
+
+        write_source_field(&paths, SOURCE_ZELLIJ, "theme", &json!("ansi")).unwrap();
+        assert_eq!(
+            fs::read_to_string(&paths.zellij).unwrap(),
+            "scroll_buffer_size \"100\"\ntheme \"ansi\"\n"
+        );
+        write_source_field(&paths, SOURCE_ZELLIJ, "scroll_buffer_size", &json!(5000)).unwrap();
+        assert_eq!(
+            fs::read_to_string(&paths.zellij).unwrap(),
+            "scroll_buffer_size 5000\ntheme \"ansi\"\n"
+        );
     }
 
     #[test]
@@ -1991,19 +2081,68 @@ ui {\n\
     }
 
     #[test]
-    fn zellij_sidecar_rejects_non_positive_scrollback_and_unclosed_blocks() {
+    fn zellij_sidecar_rejects_unsupported_scalars_and_unclosed_blocks() {
         let temp = TempHome::new();
         let path = temp.path.join("zellij/config.kdl");
         atomic_write(&path, "pane_frames true\n").unwrap();
 
         let error = write_zellij_config_field(&path, "scroll_buffer_size", &json!(-1)).unwrap_err();
         assert!(error.to_string().contains("positive integer"));
+        let error = write_zellij_config_field(&path, "theme", &json!("custom\\name")).unwrap_err();
+        assert!(error.to_string().contains("without escapes"));
 
         let (_config, diagnostics) = parse_zellij_sidecar("scroll_buffer_size -1\n");
-        assert!(has_diagnostic(&diagnostics, "scroll_buffer_size"));
+        let diagnostic = diagnostics
+            .iter()
+            .find(|diagnostic| diagnostic.headline.contains("scroll_buffer_size"))
+            .unwrap();
+        assert_eq!(
+            diagnostic.scope,
+            ConfigUiDiagnosticScope::Field(ConfigUiFieldId::new(
+                SOURCE_ZELLIJ,
+                "scroll_buffer_size"
+            ))
+        );
+
+        for raw in ["theme ansi\n", "theme \"custom\\\\name\"\n"] {
+            let (config, diagnostics) = parse_zellij_sidecar(raw);
+            assert!(!config.contains_key("theme"));
+            assert!(diagnostics.iter().any(|diagnostic| {
+                diagnostic.scope
+                    == ConfigUiDiagnosticScope::Field(ConfigUiFieldId::new(SOURCE_ZELLIJ, "theme"))
+            }));
+        }
 
         let (_config, diagnostics) = parse_zellij_sidecar("ui {\n");
         assert!(has_diagnostic(&diagnostics, "unterminated"));
+    }
+
+    #[test]
+    fn zellij_sidecar_blocks_structurally_unsafe_native_nodes() {
+        for raw in [
+            "future_block {\n    value 1\n}\n",
+            "future_label \"unterminated\n",
+            "future_flag; theme \"ansi\"\n",
+            "/-\ntheme \"ansi\"\n",
+            "/*\ntheme \"ansi\"\n*/\n",
+            "theme \\\n\"ansi\"\n",
+            "ui mode=\"future\" {\n}\n",
+            "ui {\n    pane_frames mode=\"future\" {\n    }\n}\n",
+            "ui {\n}; theme \"ansi\"\n",
+            "theme \"ansi\" {\n}\n",
+            "pane_frames true false\n",
+            "pane_frames true\npane_frames false\n",
+            "rounded_corners true\n",
+        ] {
+            let (_config, diagnostics) = parse_zellij_sidecar(raw);
+            assert!(
+                diagnostics.iter().any(|diagnostic| {
+                    diagnostic.blocking
+                        && matches!(diagnostic.scope, ConfigUiDiagnosticScope::Source { .. })
+                }),
+                "expected source blocker for {raw:?}"
+            );
+        }
     }
 
     #[test]

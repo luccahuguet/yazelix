@@ -45,7 +45,6 @@ pub(crate) fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
     let cursors_default = cursor_defaults(&cursors_active)?;
     let (zellij_active, diagnostics) = parse_zellij_sidecar(&read_zellij_sidecar(&paths.zellij)?);
     let zellij_default = packaged_zellij_defaults();
-    let zellij_blocking = diagnostics.iter().any(|diagnostic| diagnostic.blocking);
     let yazi = build_yazi_fields(paths)?;
 
     let mut fields: Vec<_> = CONFIG_FIELDS
@@ -93,7 +92,7 @@ pub(crate) fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
             current,
             Some(default),
             zellij_apply_status(spec.path),
-            zellij_blocking,
+            false,
         );
         if spec.path == "theme" {
             field.allowed_values = packaged_zellij_theme_choices();
@@ -282,21 +281,22 @@ fn build_config_field(
     current: Option<&JsonValue>,
     default: Option<&JsonValue>,
     apply_status: ConfigUiApplyStatus,
-    has_blocking_diagnostic: bool,
+    invalid: bool,
 ) -> ratconfig::ConfigUiField {
-    ConfigUiFieldSpec {
-        has_blocking_diagnostic,
-        ..ConfigUiFieldSpec::new(
-            source_id,
-            spec.path,
-            tab,
-            spec.description,
-            string_values(spec.allowed_values),
-            spec.validation,
-            apply_status,
-        )
+    let mut field = ConfigUiFieldSpec::new(
+        source_id,
+        spec.path,
+        tab,
+        spec.description,
+        string_values(spec.allowed_values),
+        spec.validation,
+        apply_status,
+    )
+    .build(spec.kind, current, default);
+    if invalid {
+        field.state = ratconfig::ConfigUiValueState::Invalid;
     }
-    .build(spec.kind, current, default)
+    field
 }
 fn build_cursor_fields(
     active: &CursorRegistry,

@@ -39,8 +39,18 @@ When `yzx config` runs inside a managed session (`ZELLIJ_SESSION_NAME` or
 field also patches `$YAZELIX_STATE_DIR/zellij/config.kdl` so the running Zellij
 watcher can pick up scalars without rewriting integration patches. Fields such
 as `theme` and `pane_frames` apply live; `scroll_buffer_size` is session-scoped
-and still needs a new session. Hand-written custom theme names remain accepted
-by the native sidecar.
+and still needs a new session. Quoted custom theme names without KDL escapes
+remain accepted; richer string syntax stays preserved but native-file-only.
+
+Ratconfig scopes sidecar diagnostics instead of marking every Zellij field
+invalid. Unexposed top-level native leaf nodes are reported as unvalidated,
+nonblocking entries on the Advanced tab and kept unchanged across unrelated
+saves and resets without interpreting their arguments, properties, or values.
+Zellij, not Yazelix, owns whether those nodes are valid.
+Invalid known fields affect only their own row and remain repairable. Malformed
+or structured native nodes, structural KDL comments or continuations, extra
+metadata on managed blocks, and integration-owned nodes remain source-blocking
+because the sidecar writer cannot prove those documents safe to update.
 
 The runtime rejects uncommented top-level ownership nodes in that sidecar:
 

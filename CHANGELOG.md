@@ -6,7 +6,12 @@ User-visible runtime changes for Yazelix Nova live here.
 
 - Ratconfig's Zellij tab selects Default or any of the 41 themes embedded by
   the pinned Zellij package. Saves remain sparse and update the active managed
-  session; Default removes the override, while custom native names stay valid.
+  session; Default removes the override, while simple custom names stay valid.
+- Ratconfig scopes config diagnostics to the affected source or field. The
+  Zellij sidecar preserves unexposed top-level native leaf nodes as visible,
+  unvalidated entries, so unrelated settings remain editable; malformed,
+  structured, and integration-owned nodes still block unsafe writes. Managed
+  strings use quoted, escape-free KDL; richer strings remain native-file-only.
 - Toggling the Ratconfig popup hides its existing process, preserving the
   selected tab and row while that process remains alive.
 - Ratconfig 5 provides host-owned Core and All settings views. Yazelix keeps
