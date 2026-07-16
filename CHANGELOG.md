@@ -45,6 +45,9 @@ User-visible runtime changes for Yazelix Nova live here.
 - Mars settings report their actual apply boundary: appearance, opacity, font
   size, line height, scrollbar, and bell behavior update open windows, while
   width and height apply to newly created windows.
+- Mars recognizes case-insensitive URL schemes and keeps clickable spans aligned
+  after Unicode prefixes. Embedded scheme lookalikes and punctuation-only
+  matches stay inactive, while OSC 8 links preserve their configured action.
 - Linux Mars windows use the Nova desktop entry's `yzx` application identity,
   so open sessions resolve the packaged icon in Wayland and X11 task switchers.
 - A managed agent's spinner title drives a compact busy marker on its tab while
