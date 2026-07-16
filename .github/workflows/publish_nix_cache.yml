@@ -68,11 +68,12 @@ jobs:
           name: yazelix
           authToken: "${{ secrets.CACHIX_AUTH_TOKEN }}"
 
-      - name: Build and publish full, runtime, and Home Manager closures
+      - name: Build and publish package and Home Manager closures
         if: steps.cachix-token.outputs.available == 'true'
         run: |
           nix build --no-link --print-out-paths \
             .#packages.x86_64-linux.yazelix \
+            .#packages.x86_64-linux.yazelix-no-helix \
             .#packages.x86_64-linux.runtime \
             .#checks.x86_64-linux.home_manager
 
@@ -129,6 +130,7 @@ jobs:
           outputs="$RUNNER_TEMP/aarch64-darwin-cache-paths"
           nix build --no-link --no-write-lock-file --print-out-paths --print-build-logs \
             .#packages.aarch64-darwin.yazelix \
+            .#packages.aarch64-darwin.yazelix-no-helix \
             .#packages.aarch64-darwin.runtime \
             .#checks.aarch64-darwin.home_manager \
             | tee "$outputs"
@@ -137,7 +139,7 @@ jobs:
           while IFS= read -r store_path; do
             store_paths+=("$store_path")
           done < "$outputs"
-          test "${#store_paths[@]}" -eq 3
+          test "${#store_paths[@]}" -eq 4
           cachix push yazelix "${store_paths[@]}"
 
           for store_path in "${store_paths[@]}"; do

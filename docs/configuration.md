@@ -61,10 +61,11 @@ Updated windows use a versioned cache so older open sessions cannot reintroduce
 incompatible quota periods
 
 `editor.command` accepts one executable name or path, not a shell command with
-arguments. Inside Nova, `hx` and `yzx-hx` use packaged managed Helix. Other
-editors such as `nvim`, or an absolute host Helix path, skip the managed bridge.
-Terminal Git clients receive the same selection through `EDITOR`, `VISUAL`, and
-`GIT_EDITOR`
+arguments. In packages that include managed Helix, `hx` and `yzx-hx` select it.
+The no-Helix package reports those managed names as unavailable. Other editors
+such as `nvim`, or an absolute host Helix path, skip the managed bridge.
+Config native-file actions and terminal Git clients run through `yzx-editor`,
+which resolves the current `editor.command` for each edit
 
 ## Popups
 
@@ -271,8 +272,10 @@ live via Zellij's watcher, while some still need a new session
 
 Managed Yazi opens files through `yzx-open`. With the default
 `editor.command = "yzx-hx"`, `yzx-open` reuses a live Helix bridge in the same
-Zellij tab or opens packaged Helix in the managed `editor` pane. Typing `hx`
-inside Nova invokes this same managed Helix wrapper
+Zellij tab or opens packaged Helix in the managed `editor` pane when the
+selected package includes it. The no-Helix package requires another installed
+editor command. Typing `hx` inside a managed-Helix package invokes the same
+wrapper
 
 Git editing stays in the client terminal. Managed LazyGit overlays only its
 file-edit commands and keeps user configuration, while it and other terminal
@@ -281,6 +284,16 @@ the bridge restores the client's transparent Zellij background
 
 `Alt r` reveals the current Helix buffer in the Yazi sidebar. `yzx reveal
 <target>` exposes the same path inside a managed session
+
+Yazelix does not modify external editor configuration. Neovim users can opt
+into the same `Alt r` behavior in their own config:
+
+```lua
+vim.keymap.set("n", "<M-r>", function()
+  local path = vim.api.nvim_buf_get_name(0)
+  if path ~= "" then vim.fn.jobstart({ "yzx", "reveal", path }) end
+end, { desc = "Reveal buffer in Yazelix sidebar" })
+```
 
 `Alt z` opens a zoxide picker in Yazi, moves to the selected directory, and
 explicitly retargets the tab workspace and managed editor through `yzx-open`.

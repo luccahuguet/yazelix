@@ -33,13 +33,17 @@ jobs:
       - name: Install yzx into a temp profile
         run: |
           profile="$RUNNER_TEMP/yazelix-profile"
+          no_helix_profile="$RUNNER_TEMP/yazelix-no-helix-profile"
           runtime_profile="$RUNNER_TEMP/yazelix-runtime-profile"
           nix profile add --refresh "$GITHUB_WORKSPACE" --profile "$profile"
+          nix profile add --refresh "$GITHUB_WORKSPACE#yazelix-no-helix" --profile "$no_helix_profile"
           nix profile add --refresh "$GITHUB_WORKSPACE#runtime" --profile "$runtime_profile"
 
           test -x "$profile/bin/yzx"
           test -f "$profile/share/applications/yzx.desktop"
           grep -F 'Yazelix Nova' "$profile/share/applications/yzx.desktop"
+          test -x "$no_helix_profile/bin/yzx"
+          test -f "$no_helix_profile/share/applications/yzx.desktop"
           test -x "$runtime_profile/bin/yzx"
           test ! -e "$runtime_profile/share/applications/yzx.desktop"
 
@@ -48,7 +52,8 @@ jobs:
           nix build --no-link --print-build-logs \
             .#checks.x86_64-linux.contracts \
             .#checks.x86_64-linux.helix_contracts \
-            .#checks.x86_64-linux.key_reference_parity
+            .#checks.x86_64-linux.key_reference_parity \
+            .#checks.x86_64-linux.no_helix_contracts
 
       - name: Smoke installed yzx commands
         run: |
@@ -93,11 +98,15 @@ jobs:
             max-jobs = 1
             cores = 2
 
-      - name: Build aarch64-darwin packages and Home Manager closure
+      - name: Build aarch64-darwin packages and checks
         run: |
           full="$(nix build --no-link --no-write-lock-file --print-out-paths --print-build-logs .#packages.aarch64-darwin.yazelix)"
+          no_helix="$(nix build --no-link --no-write-lock-file --print-out-paths --print-build-logs .#packages.aarch64-darwin.yazelix-no-helix)"
           runtime="$(nix build --no-link --no-write-lock-file --print-out-paths --print-build-logs .#packages.aarch64-darwin.runtime)"
-          nix build --no-link --no-write-lock-file --print-build-logs .#checks.aarch64-darwin.home_manager
+          nix build --no-link --no-write-lock-file --print-build-logs \
+            .#checks.aarch64-darwin.home_manager \
+            .#checks.aarch64-darwin.no_helix_contracts
 
           test ! -e "$full/share/applications/yzx.desktop"
+          test ! -e "$no_helix/share/applications/yzx.desktop"
           test ! -e "$runtime/share/applications/yzx.desktop"

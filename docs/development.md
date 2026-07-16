@@ -2,16 +2,18 @@
 
 ## CI
 
-Normal CI runs Linux checks on push, pull request, and manual dispatch
-`Publish Nix Cache` publishes both Linux variants and representative Home
+Normal CI runs Linux checks and the Darwin no-Helix evaluation guard on push,
+pull request, and manual dispatch
+`Publish Nix Cache` publishes all three Linux packages and representative Home
 Manager closures from `main` and manual dispatch. `Version Gate` is manual and
-includes both Linux profile shapes, both `aarch64-darwin` packages, and the
-Darwin Home Manager closure. `Darwin Package Smoke` runs those three Darwin
-builds weekly on Monday when `main` has commits in the last 7 days, and on
-manual dispatch always, while idle weeks skip the macOS build. Both macOS jobs
-assert that Darwin packages contain no Linux desktop entry. The flake advertises
-the optional Yazelix Cachix cache, while source builds remain valid without it
-Use Version Gate before publishing a release
+includes all three Linux profile shapes, all three `aarch64-darwin` packages,
+the Darwin Home Manager closure, and the Darwin no-Helix contract. `Darwin
+Package Smoke` runs the same Darwin verification weekly on Monday when `main`
+has commits in the last 7 days, and on manual dispatch always, while idle weeks
+skip the macOS build. Both macOS jobs assert that Darwin packages contain no
+Linux desktop entry. The flake advertises the optional Yazelix Cachix cache,
+while source builds remain valid without it. Use Version Gate before publishing
+a release
 
 ## Local development
 
@@ -32,7 +34,9 @@ Useful local checks:
 nix flake check
 nix flake show --all-systems
 nix build .#yazelix --no-link --print-build-logs
+nix build .#yazelix-no-helix --no-link --print-build-logs
 nix build .#runtime --no-link --print-build-logs
+nix build .#checks.x86_64-linux.no_helix_contracts --no-link
 nix build .#checks.x86_64-linux.yzx_yazi_materialization --no-link
 ```
 
@@ -59,14 +63,14 @@ git ls-files | grep -Ev '^\.beads/|\.lock$|^assets/' | xargs wc -l
 | --- | ---: |
 | Ignore (`.gitignore`) | 19 |
 | License | 201 |
-| Markdown | 2018 |
-| Nix | 1227 |
+| Markdown | 2081 |
+| Nix | 1263 |
 | Shell | 84 |
-| YAML | 391 |
+| YAML | 413 |
 | TOML | 245 |
 | KDL | 218 |
 | Nu | 11 |
 | Lua | 251 |
-| Rust | 14573 |
+| Rust | 14725 |
 | Text | 41 |
-| Total | 19279 |
+| Total | 19552 |

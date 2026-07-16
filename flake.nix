@@ -293,54 +293,16 @@
         ln -s yzx-hx "$out/bin/hx"
         patchShebangs "$out/bin/yzx-hx"
       '';
-      yzxTutorSrc = pkgs.runCommand "yzx-tutor-src" {} ''
-        mkdir -p "$out"
-        cp -R ${pkgs.lib.cleanSource ./crates/yzx-tutor}/. "$out/"
-        chmod -R u+w "$out"
-        substituteInPlace "$out/src/main.rs" \
-          --replace-fail '@yzxHelix@' '${yzxHelix}/bin/yzx-hx' \
-          --replace-fail '@nu@' '${pkgs.nushell}/bin/nu'
+      yzxHelixUnavailable = pkgs.runCommand "yzx-hx-unavailable" {} ''
+        mkdir -p "$out/bin"
+        cat > "$out/bin/yzx-hx" <<'EOF'
+        #!${pkgs.runtimeShell}
+        printf '%s\n' 'yzx-hx: managed Helix is unavailable in the yazelix-no-helix package; set editor.command to an installed editor or select the default yazelix package' >&2
+        exit 69
+        EOF
+        chmod 755 "$out/bin/yzx-hx"
+        ln -s yzx-hx "$out/bin/hx"
       '';
-      yzxTutor = pkgs.rustPlatform.buildRustPackage {
-        pname = "yzx-tutor";
-        version = "0.1.0";
-        src = yzxTutorSrc;
-        cargoLock.lockFile = ./crates/yzx-tutor/Cargo.lock;
-      };
-      yzxEditor = pkgs.writeShellApplication {
-        name = "yzx-editor";
-        text = ''
-          fallback="''${YAZELIX_EDITOR:-}"
-          if [ -n "$fallback" ]; then
-            editor="$(${yzxConfig}/bin/yzx-config --get editor.command 2>/dev/null || printf %s "$fallback")"
-          else
-            editor="$(${yzxConfig}/bin/yzx-config --get editor.command)"
-          fi
-          case "$editor" in
-            yzx-hx|hx) editor=${yzxHelix}/bin/yzx-hx ;;
-          esac
-          if ! command -v -- "$editor" >/dev/null 2>&1; then
-            printf 'Yazelix editor command not found: %s. Set editor.command to one executable name or path without arguments.\n' "$editor" >&2
-            exit 127
-          fi
-          export YAZELIX_HELIX_BRIDGE=0
-          trap '[ -z "''${ZELLIJ:-}" ] || printf "\033]111\a"' EXIT
-          command -- "$editor" "$@"
-        '';
-      };
-      yzxEditorEnv = ''
-        export EDITOR=${yzxEditor}/bin/yzx-editor
-        export VISUAL=${yzxEditor}/bin/yzx-editor
-        export GIT_EDITOR=${yzxEditor}/bin/yzx-editor
-      '';
-      yzxConfigUi = pkgs.writeShellApplication {
-        name = "yzx-config-ui";
-        text = ''
-          export YAZELIX_EDITOR="''${YAZELIX_EDITOR:-${yzxHelix}/bin/yzx-hx}"
-          ${yzxEditorEnv}
-          exec ${yzxConfig}/bin/yzx-config "$@"
-        '';
-      };
       yaziAssetsSelection = pkgs.fetchFromGitHub {
         owner = "luccahuguet";
         repo = "yazelix-yazi-assets";
@@ -391,18 +353,6 @@
         done
       '';
       yzxYaziMaterializer = yzxYaziMaterializerFor pkgs;
-      yzxYaziSrc = pkgs.replaceVars ./runtime/yzx-yazi.rs {
-        yazi = "${pkgs.yazi}/bin/yazi";
-        yzxYaziConfig = "${yzxYaziConfig}";
-        yzxYaziMaterializer = "${yzxYaziMaterializer}/bin/yzx-yazi-config";
-        yzxOpen = "${yzxOpenCore}/bin/yzx-open";
-        zellij = "${yazelixZellijPackage}/bin/zellij";
-        yzxHelix = "${yzxHelix}/bin/yzx-hx";
-        yzxEditor = "${yzxEditor}/bin/yzx-editor";
-        yzxConfig = "${yzxConfig}/bin/yzx-config";
-        pathPrefix = pkgs.lib.makeBinPath [pkgs.fzf pkgs.git pkgs.starship pkgs.zoxide];
-      };
-      yzxYazi = rustBin "yzx-yazi" yzxYaziSrc;
       yzxRuntimeIdentity = pkgs.writeTextDir "runtime_identity.json" (builtins.toJSON {
         name = "Yazelix Nova";
         version = novaVersion;
@@ -439,58 +389,7 @@
       yzxBarKdl = pkgs.runCommand "yzx-zellij-bar.kdl" {} ''
         ${yzxBarRender}/bin/yzx-bar-render "$(<${yzxBarRenderRequest})" > "$out"
       '';
-      yzxLayoutKdl = pkgs.runCommand "layout.kdl" {} ''
-        substitute ${./defaults/zellij/layout.kdl} "$out" \
-          --replace-fail '@yazi@' '${yzxYazi}/bin/yzx-yazi' \
-          --replace-fail '@bar@' "$(<${yzxBarKdl})"
-      '';
-      yzxLayoutSwapKdl = pkgs.replaceVars ./defaults/zellij/layout.swap.kdl {
-        yazi = "${yzxYazi}/bin/yzx-yazi";
-      };
       yzxLayoutCheck = rustBin "yzx-layout-check" ./checks/zellij-layout.rs;
-      yzxZellijLayout = pkgs.runCommand "yzx-zellij-layout" {} ''
-        ${yzxLayoutCheck}/bin/yzx-layout-check ${yzxLayoutKdl} ${yzxLayoutSwapKdl} ${pkgs.lib.escapeShellArg novaBarLabel}
-        install -D -m 644 ${yzxLayoutKdl} "$out/layout.kdl"
-        install -D -m 644 ${yzxLayoutSwapKdl} "$out/layout.swap.kdl"
-      '';
-      yzxLazyGitConfig = pkgs.writeText "yzx-lazygit.yml" ''
-        os:
-          edit: '${yzxEditor}/bin/yzx-editor {{filename}}'
-          editAtLine: '${yzxEditor}/bin/yzx-editor {{filename}}'
-          editAtLineAndWait: '${yzxEditor}/bin/yzx-editor {{filename}}'
-          editInTerminal: true
-          openDirInEditor: '${yzxEditor}/bin/yzx-editor {{dir}}'
-      '';
-      yzxGit = pkgs.writeShellApplication {
-        name = "yzx-git";
-        text = ''
-          ${yzxEditorEnv}
-          if [ -z "''${LG_CONFIG_FILE:-}" ]; then
-            config_file="$(${pkgs.lazygit}/bin/lazygit --print-config-dir)/config.yml"
-            [ ! -f "$config_file" ] || LG_CONFIG_FILE="$config_file"
-          fi
-          export LG_CONFIG_FILE="''${LG_CONFIG_FILE:+$LG_CONFIG_FILE,}${yzxLazyGitConfig}"
-          exec ${pkgs.lazygit}/bin/lazygit "$@"
-        '';
-      };
-      yzxConfigKdl = pkgs.replaceVars ./defaults/zellij/config.kdl {
-        yzxShell = "${yzxShell}/bin/yzx-shell";
-        yzpp = "file:${yazelixZellijPopupPackage}/${yazelixZellijPopupPackage.wasmPath}";
-        yzxPaneOrchestrator = "file:${yazelixZellijPaneOrchestratorPackage}/${yazelixZellijPaneOrchestratorPackage.wasmPath}";
-        yzxAgent = "${yzxAgent}/bin/yzx-agent";
-        configKey = defaultConfig.keybindings.config;
-        agentKey = defaultConfig.keybindings.agent;
-        gitKey = defaultConfig.keybindings.git;
-        menuKey = defaultConfig.keybindings.menu;
-        sidebarKey = defaultConfig.keybindings.sidebar;
-        sidebarFocusKey = defaultConfig.keybindings.sidebar_focus;
-        inherit defaultPopupSideMargin defaultPopupVerticalMargin;
-        yzxConfig = "${yzxConfigUi}/bin/yzx-config-ui";
-        yzxMenu = "${yzxMenu}/bin/yzx-menu";
-        yzxSidebarRefresh = "${yzxOpenCore}/bin/yzx-sidebar-refresh";
-        git = "${yzxGit}/bin/yzx-git";
-        layout = "${yzxZellijLayout}/layout.kdl";
-      };
       zellijBuildBase =
         if pkgs ? "zellij-unwrapped"
         then pkgs."zellij-unwrapped"
@@ -518,30 +417,149 @@
         };
         doCheck = false;
       });
-      mkYzxCommand = withMars: let
-        packageVariant = if withMars then "full" else "runtime";
-        marsPath = if withMars then "${marsPackage}/bin/mars" else "";
-        main = pkgs.replaceVars ./runtime/yzx/main.rs {
-          yzxConfigUi = "${yzxConfigUi}/bin/yzx-config-ui";
+      mkYzx = {
+        name,
+        variant,
+      }: let
+        withMars = variant != "runtime";
+        managedEditor =
+          if variant == "no-helix"
+          then yzxHelixUnavailable
+          else yzxHelix;
+        tutor = let
+          src = pkgs.runCommand "yzx-tutor-src" {} ''
+            mkdir -p "$out"
+            cp -R ${pkgs.lib.cleanSource ./crates/yzx-tutor}/. "$out/"
+            chmod -R u+w "$out"
+            substituteInPlace "$out/src/main.rs" \
+              --replace-fail '@yzxHelix@' '${managedEditor}/bin/yzx-hx' \
+              --replace-fail '@nu@' '${pkgs.nushell}/bin/nu'
+          '';
+        in
+          pkgs.rustPlatform.buildRustPackage {
+            pname = "yzx-tutor";
+            version = "0.1.0";
+            inherit src;
+            cargoLock.lockFile = ./crates/yzx-tutor/Cargo.lock;
+          };
+        editor = pkgs.writeShellApplication {
+          name = "yzx-editor";
+          text = ''
+            fallback="''${YAZELIX_EDITOR:-${managedEditor}/bin/yzx-hx}"
+            editor="$(${yzxConfig}/bin/yzx-config --get editor.command 2>/dev/null || printf %s "$fallback")"
+            case "$editor" in
+              yzx-hx|hx) editor=${managedEditor}/bin/yzx-hx ;;
+            esac
+            if ! command -v -- "$editor" >/dev/null 2>&1; then
+              printf 'Yazelix editor command not found: %s. Set editor.command to one executable name or path without arguments.\n' "$editor" >&2
+              exit 127
+            fi
+            export YAZELIX_HELIX_BRIDGE=0
+            trap '[ -z "''${ZELLIJ:-}" ] || printf "\033]111\a"' EXIT
+            command -- "$editor" "$@"
+          '';
+        };
+        editorEnv = ''
+          export EDITOR=${editor}/bin/yzx-editor
+          export VISUAL=${editor}/bin/yzx-editor
+          export GIT_EDITOR=${editor}/bin/yzx-editor
+        '';
+        configUi = pkgs.writeShellApplication {
+          name = "yzx-config-ui";
+          text = ''
+            unset YAZELIX_EDITOR
+            ${editorEnv}
+            exec ${yzxConfig}/bin/yzx-config "$@"
+          '';
+        };
+        yazi = rustBin "yzx-yazi" (pkgs.replaceVars ./runtime/yzx-yazi.rs {
+          yazi = "${pkgs.yazi}/bin/yazi";
+          yzxYaziConfig = "${yzxYaziConfig}";
+          yzxYaziMaterializer = "${yzxYaziMaterializer}/bin/yzx-yazi-config";
+          yzxOpen = "${yzxOpenCore}/bin/yzx-open";
+          zellij = "${yazelixZellijPackage}/bin/zellij";
+          yzxHelix = "${managedEditor}/bin/yzx-hx";
+          yzxEditor = "${editor}/bin/yzx-editor";
+          yzxConfig = "${yzxConfig}/bin/yzx-config";
+          pathPrefix = pkgs.lib.makeBinPath [pkgs.fzf pkgs.git pkgs.starship pkgs.zoxide];
+        });
+        layout = let
+          main = pkgs.runCommand "layout.kdl" {} ''
+            substitute ${./defaults/zellij/layout.kdl} "$out" \
+              --replace-fail '@yazi@' '${yazi}/bin/yzx-yazi' \
+              --replace-fail '@bar@' "$(<${yzxBarKdl})"
+          '';
+          swap = pkgs.replaceVars ./defaults/zellij/layout.swap.kdl {
+            yazi = "${yazi}/bin/yzx-yazi";
+          };
+        in
+          pkgs.runCommand "yzx-zellij-layout" {} ''
+            ${yzxLayoutCheck}/bin/yzx-layout-check ${main} ${swap} ${pkgs.lib.escapeShellArg novaBarLabel}
+            install -D -m 644 ${main} "$out/layout.kdl"
+            install -D -m 644 ${swap} "$out/layout.swap.kdl"
+          '';
+        git = let
+          config = pkgs.writeText "yzx-lazygit.yml" ''
+            os:
+              edit: '${editor}/bin/yzx-editor {{filename}}'
+              editAtLine: '${editor}/bin/yzx-editor {{filename}}'
+              editAtLineAndWait: '${editor}/bin/yzx-editor {{filename}}'
+              editInTerminal: true
+              openDirInEditor: '${editor}/bin/yzx-editor {{dir}}'
+          '';
+        in
+          pkgs.writeShellApplication {
+            name = "yzx-git";
+            text = ''
+              ${editorEnv}
+              if [ -z "''${LG_CONFIG_FILE:-}" ]; then
+                config_file="$(${pkgs.lazygit}/bin/lazygit --print-config-dir)/config.yml"
+                [ ! -f "$config_file" ] || LG_CONFIG_FILE="$config_file"
+              fi
+              export LG_CONFIG_FILE="''${LG_CONFIG_FILE:+$LG_CONFIG_FILE,}${config}"
+              exec ${pkgs.lazygit}/bin/lazygit "$@"
+            '';
+          };
+        configKdl = pkgs.replaceVars ./defaults/zellij/config.kdl {
+          yzxShell = "${yzxShell}/bin/yzx-shell";
+          yzpp = "file:${yazelixZellijPopupPackage}/${yazelixZellijPopupPackage.wasmPath}";
+          yzxPaneOrchestrator = "file:${yazelixZellijPaneOrchestratorPackage}/${yazelixZellijPaneOrchestratorPackage.wasmPath}";
+          yzxAgent = "${yzxAgent}/bin/yzx-agent";
+          configKey = defaultConfig.keybindings.config;
+          agentKey = defaultConfig.keybindings.agent;
+          gitKey = defaultConfig.keybindings.git;
+          menuKey = defaultConfig.keybindings.menu;
+          sidebarKey = defaultConfig.keybindings.sidebar;
+          sidebarFocusKey = defaultConfig.keybindings.sidebar_focus;
+          inherit defaultPopupSideMargin defaultPopupVerticalMargin;
+          yzxConfig = "${configUi}/bin/yzx-config-ui";
           yzxMenu = "${yzxMenu}/bin/yzx-menu";
-          yzxTutor = "${yzxTutor}/bin/yzx-tutor";
+          yzxSidebarRefresh = "${yzxOpenCore}/bin/yzx-sidebar-refresh";
+          git = "${git}/bin/yzx-git";
+          layout = "${layout}/layout.kdl";
+        };
+        main = pkgs.replaceVars ./runtime/yzx/main.rs {
+          packageVariant = variant;
+          yzxConfigUi = "${configUi}/bin/yzx-config-ui";
+          yzxMenu = "${yzxMenu}/bin/yzx-menu";
+          yzxTutor = "${tutor}/bin/yzx-tutor";
           yzxScreen = "${yazelixScreenPackage}/bin/yzs";
           yzxWelcome = "${yzxWelcome}/bin/yzx-welcome";
           yzxShell = "${yzxShell}/bin/yzx-shell";
           yzxEnvSupervisor = "${yzxEnvSupervisor}/bin/yzx-env-supervisor";
           zellij = "${yazelixZellijPackage}/bin/zellij";
-          mars = marsPath;
-          layout = "${yzxZellijLayout}/layout.kdl";
+          mars = if withMars then "${marsPackage}/bin/mars" else "";
+          layout = "${layout}/layout.kdl";
           layoutTemplate = "${./defaults/zellij/layout.kdl}";
           layoutSwapTemplate = "${./defaults/zellij/layout.swap.kdl}";
           yzxAgent = "${yzxAgent}/bin/yzx-agent";
-          yzxYazi = "${yzxYazi}/bin/yzx-yazi";
-          yzxHelix = "${yzxHelix}/bin/yzx-hx";
-          yzxEditor = "${yzxEditor}/bin/yzx-editor";
+          yzxYazi = "${yazi}/bin/yzx-yazi";
+          yzxHelix = "${managedEditor}/bin/yzx-hx";
+          yzxEditor = "${editor}/bin/yzx-editor";
           yzxConfig = "${yzxConfig}/bin/yzx-config";
           yzxMarsConfig = if withMars then "${yzxMarsConfig}" else "";
           yzxZellijConfig = "${yzxZellijConfig}/bin/yzx-zellij-config";
-          yzxConfigKdl = "${yzxConfigKdl}";
+          yzxConfigKdl = "${configKdl}";
           yzxReveal = "${yzxOpenCore}/bin/yzx-reveal";
           yzxSidebarRefresh = "${yzxOpenCore}/bin/yzx-sidebar-refresh";
           yzxYa = "${pkgs.yazi}/bin/ya";
@@ -565,22 +583,16 @@
             pkgs.git
             pkgs.lazygit
             tokenusage
-            yzxHelix
+            managedEditor
           ];
         };
-        src = pkgs.runCommand "yzx-command-${packageVariant}-src" {} ''
+        src = pkgs.runCommand "yzx-command-${variant}-src" {} ''
           mkdir -p "$out"
           cp -R ${pkgs.lib.cleanSource ./runtime/yzx}/. "$out/"
           chmod -R u+w "$out"
           cp ${main} "$out/main.rs"
         '';
-      in
-        rustBin "yzx" "${src}/main.rs";
-      mkYzx = {
-        name,
-        withMars ? false,
-      }: let
-        command = mkYzxCommand withMars;
+        command = rustBin "yzx" "${src}/main.rs";
         withDesktop = withMars && pkgs.stdenv.hostPlatform.isLinux;
         desktop = pkgs.makeDesktopItem {
           name = "yzx";
@@ -600,17 +612,17 @@
           paths = [command] ++ pkgs.lib.optional withDesktop desktop;
           postBuild =
             ''
-              ${yazelixZellijPackage}/bin/zellij --config ${yzxConfigKdl} setup --check >/dev/null
+              ${yazelixZellijPackage}/bin/zellij --config ${configKdl} setup --check >/dev/null
               install -d "$out/libexec/yazelix"
               ln -s ${yzxZellijConfig}/bin/yzx-zellij-config "$out/libexec/yazelix/yzx-zellij-config"
               ln -s ${yzxConfig}/bin/yzx-config "$out/libexec/yazelix/yzx-config"
-              ln -s ${yzxTutor}/bin/yzx-tutor "$out/libexec/yazelix/yzx-tutor"
-              install -D -m 644 ${yzxConfigKdl} "$out/share/yazelix/config.kdl"
+              ln -s ${tutor}/bin/yzx-tutor "$out/libexec/yazelix/yzx-tutor"
+              install -D -m 644 ${configKdl} "$out/share/yazelix/config.kdl"
               install -D -m 644 ${yzxRuntimeIdentity}/runtime_identity.json "$out/share/yazelix/runtime_identity.json"
               install -D -m 644 ${yazelixCursors}/yazelix_cursors_default.toml "$out/share/yazelix/cursors.toml"
               install -D -m 644 ${./defaults/config.toml} "$out/share/yazelix/config.toml"
-              install -D -m 644 ${yzxZellijLayout}/layout.kdl "$out/share/yazelix/layout.kdl"
-              install -D -m 644 ${yzxZellijLayout}/layout.swap.kdl "$out/share/yazelix/layout.swap.kdl"
+              install -D -m 644 ${layout}/layout.kdl "$out/share/yazelix/layout.kdl"
+              install -D -m 644 ${layout}/layout.swap.kdl "$out/share/yazelix/layout.swap.kdl"
               ln -s ${yzxYaziConfig} "$out/share/yazelix/yazi"
               install -D -m 644 ${yzxNuConfig}/config.nu "$out/share/yazelix/nu/config.nu"
               install -D -m 644 ${yzxNuConfig}/env.nu "$out/share/yazelix/nu/env.nu"
@@ -631,11 +643,19 @@
         };
       yazelix = mkYzx {
         name = "yazelix";
-        withMars = true;
+        variant = "full";
       };
-      yzxRuntime = mkYzx {name = "yazelix-runtime";};
+      yzxNoHelix = mkYzx {
+        name = "yazelix-no-helix";
+        variant = "no-helix";
+      };
+      yzxRuntime = mkYzx {
+        name = "yazelix-runtime";
+        variant = "runtime";
+      };
     in {
       inherit yazelix;
+      yazelix-no-helix = yzxNoHelix;
       runtime = yzxRuntime;
       default = yazelix;
     });
@@ -643,14 +663,18 @@
     checks = eachSystem (system: let
       pkgs = import nixpkgs {inherit system;};
       yzx = self.packages.${system}.yazelix;
+      yzxNoHelix = self.packages.${system}.yazelix-no-helix;
       yzxRuntime = self.packages.${system}.runtime;
       marsPackage = mars.packages.${system}.mars;
+      noHelixClosure = pkgs.closureInfo {rootPaths = [yzxNoHelix];};
       runtimeClosure = pkgs.closureInfo {rootPaths = [yzxRuntime];};
       zellijBarPackage = yazelixZellijBar.packages.${system}.default;
       yzxYaziMaterializer = yzxYaziMaterializerFor pkgs;
       checksSrc = pkgs.lib.cleanSource ./checks;
       yzxContractsCheck = rustBinFor pkgs "yzx-contracts-check" "${checksSrc}/yzx-contracts.rs";
       helixContractsCheck = rustBinFor pkgs "helix-contracts-check" "${checksSrc}/helix-contracts.rs";
+      noHelixContractsCheck =
+        rustBinFor pkgs "no-helix-contracts-check" "${checksSrc}/no-helix-contracts.rs";
       fakeYazelix = pkgs.runCommand "fake-yazelix-hm-package" {} ''
         mkdir -p "$out/bin" "$out/share/applications"
         cat > "$out/bin/yzx" <<'EOF'
@@ -976,6 +1000,10 @@
       helix_contracts = pkgs.runCommand "yzx-helix-contracts" {} ''
         ${helixContractsCheck}/bin/helix-contracts-check ${yzx} "$out"
       '';
+      no_helix_contracts = pkgs.runCommand "yzx-no-helix-contracts" {} ''
+        ${noHelixContractsCheck}/bin/no-helix-contracts-check \
+          ${yzxNoHelix} ${noHelixClosure}/store-paths "$out"
+      '';
     });
 
     apps = eachSystem (system: rec {
@@ -986,6 +1014,10 @@
       runtime = {
         type = "app";
         program = "${self.packages.${system}.runtime}/bin/yzx";
+      };
+      yazelix-no-helix = {
+        type = "app";
+        program = "${self.packages.${system}.yazelix-no-helix}/bin/yzx";
       };
       default = yazelix;
     });

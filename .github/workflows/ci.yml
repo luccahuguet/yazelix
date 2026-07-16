@@ -39,9 +39,16 @@ jobs:
       - name: Check flake shape
         run: nix flake check --no-build
 
-      - name: Build lightweight checks
+      - name: Check Helix-free evaluation
+        run: |
+          nix eval --raw --no-write-lock-file \
+            --override-input yazelixHelix path:./checks/unavailable-helix \
+            .#packages.aarch64-darwin.yazelix-no-helix.drvPath
+
+      - name: Build focused checks
         run: |
           nix build --no-link --print-build-logs \
+            .#checks.x86_64-linux.no_helix_contracts \
             .#checks.x86_64-linux.yzx_yazi_materialization \
             .#checks.x86_64-linux.yzx_launcher_unit \
             .#checks.x86_64-linux.runtime_contracts \

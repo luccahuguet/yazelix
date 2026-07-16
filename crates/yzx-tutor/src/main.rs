@@ -78,10 +78,10 @@ const TUTOR_LESSONS: &[TutorLesson] = &[
     },
     TutorLesson {
         id: "tool_tutors",
-        title: "Helix and Nushell tutors",
+        title: "Editor and Nushell tutors",
         summary: "Switch from Yazelix guidance into the editor and shell tutors",
         scope: "Editor or shell pane",
-        outcome: "You can find the native Helix and Nushell tutors from Yazelix without making `yzx tutor` own those tools.",
+        outcome: "You can find the managed Helix and Nushell tutors from Yazelix, or continue with a host editor when managed Helix is not included.",
         escape_hatch: "Quit Helix with `:q`; leave a shell prompt with `Ctrl d` or `exit`, then run `yzx tutor list`.",
         render: render_tool_tutors_lesson,
     },
@@ -302,7 +302,7 @@ fn render_tool_tutors_lesson(index: usize, lesson: &TutorLesson) -> String {
 
 ## Actions
 
-1. **Run in shell or Yazelix:** Use `yzx tutor hx` to print the packaged Helix tutor command.
+1. **Run in shell or Yazelix:** Use `yzx tutor hx` to print the managed Helix tutor command and package-availability guidance.
 2. **Inside Helix:** Leave the tutor with `:q`; use `{reveal}` in managed Helix sessions when you want Yazi to reveal the current file.
 3. **Run in shell or Yazelix:** Use `yzx tutor nu` to print the Nushell tutor commands.
 4. **Inside Yazelix:** Press `{focus_left}` or `{focus_right}` to return to a known pane; press `{menu}` when you want the command reference again.
@@ -321,13 +321,15 @@ fn render_helix_tutor_command() -> String {
     markdown(&format!(
         r#"# Helix tutor
 
-Run the packaged Helix tutor command:
+Packages with managed Helix provide this tutor command:
 
 - `{yzx_helix} --tutor`
 
 When you are already inside `yzx env` or a managed Yazelix shell, the short form is:
 
 - `yzx-hx --tutor`
+
+If your selected package omits managed Helix, use your host editor's own tutor instead.
 "#,
         yzx_helix = YZX_HELIX,
     ))
@@ -481,7 +483,7 @@ mod tests {
     #[test]
     fn tool_tutors_print_commands_instead_of_claiming_to_run_them() {
         let tool_lesson = render_lesson(lesson_index("tool_tutors").unwrap());
-        assert!(tool_lesson.contains("print the packaged Helix tutor command"));
+        assert!(tool_lesson.contains("print the managed Helix tutor command"));
         assert!(tool_lesson.contains("print the Nushell tutor commands"));
         assert!(tool_lesson.contains("yzx env"));
         assert!(!tool_lesson.contains("yzx env --no-shell"));
@@ -489,6 +491,7 @@ mod tests {
         let helix = render_helix_tutor_command();
         assert!(helix.contains(&format!("{YZX_HELIX} --tutor")));
         assert!(helix.contains("yzx-hx --tutor"));
+        assert!(helix.contains("package omits managed Helix"));
         assert!(!helix.contains("launch"));
 
         let nu = render_nushell_tutor_command();

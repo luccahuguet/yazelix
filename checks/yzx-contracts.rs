@@ -263,7 +263,7 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
         ("workspace", "current tab workspace root matters most"),
         ("discovery", "Alt Shift M"),
         ("troubleshooting", "yzx doctor"),
-        ("tool_tutors", "print the packaged Helix tutor command"),
+        ("tool_tutors", "print the managed Helix tutor command"),
     ] {
         let output = run_help(&yzx_bin, &["tutor", lesson]);
         expect_contains(&output, expected, &format!("yzx tutor {lesson}"));
@@ -278,6 +278,7 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
         &helix_tutor, "yzx tutor hx";
         "/bin/yzx-hx --tutor",
         "yzx-hx --tutor",
+        "package omits managed Helix",
     }
     let nushell_tutor = run_help(&yzx_bin, &["tutor", "nu"]);
     expect_contains_all! {
@@ -1610,12 +1611,17 @@ fn expect_first_party_plugins(git_bin: &Path, config: &str) {
 
     let config_ui = popup_command(config, "/bin/yzx-config-ui");
     let config_ui_script = fs::read_to_string(&config_ui).unwrap();
-    let context = format!("{} managed editor wrapper", config_ui.display());
+    let context = format!("{} config UI wrapper", config_ui.display());
     expect_contains_all! {
         &config_ui_script, &context;
         "/bin/yzx-editor",
         "GIT_EDITOR",
+        "unset YAZELIX_EDITOR",
     }
+    assert!(
+        !config_ui_script.contains("/bin/yzx-hx"),
+        "config UI bypasses the selected editor\n{config_ui_script}"
+    );
 
     assert!(popup_command(config, "/bin/yzx-menu").is_file());
 }

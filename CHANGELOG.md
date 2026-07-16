@@ -4,6 +4,12 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## 1.0.0-beta.1
 
+- The `yazelix-no-helix` package and app retain Mars and the integrated
+  workspace while delegating editing to a host-installed command. Selecting it
+  through `programs.yazelix.package` avoids evaluating or retaining managed
+  Helix, Steel, and the packaged grammar closure; unresolved `yzx-hx` calls
+  explain how to select an editor or return to the default package, and status
+  identifies the selected package as `no-helix`.
 - A user-managed `starship.yazi` can replace Nova's packaged Starship plugin as
   one complete plugin directory when it contains `main.lua`. Other packaged
   plugins remain protected, and plugin directories are never recursively
@@ -171,7 +177,8 @@ User-visible runtime changes for Yazelix Nova live here.
   Vim for unknown presets. Direct `yzx-editor` is also exported through
   `EDITOR`, `VISUAL`, and `GIT_EDITOR`; it stays in the client lifecycle with
   the Helix bridge disabled, restores the transparent Zellij background after
-  editing, and keeps user LazyGit configuration loaded.
+  editing, and keeps user LazyGit configuration loaded. Ratconfig file actions
+  use the same resolver instead of a session-start editor snapshot.
 - The managed agent popup command is configurable through root config
   `agent.command` and `agent.args`, exposed in the `yzx config` `popups` tab.
   The default `agent.command = "auto"` keeps the existing provider fallback.

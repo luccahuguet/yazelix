@@ -229,7 +229,7 @@ pub(crate) const CONFIG_FIELDS: &[ConfigFieldSpec] = &[
     ConfigFieldSpec {
         field: FieldSpec::string_choice(
             EDITOR_COMMAND_PATH,
-            "Editor command used by managed Yazi opens. Use hx or yzx-hx for packaged Yazelix Helix, or a host executable such as nvim.",
+            "Editor command used by managed file opens. Use hx or yzx-hx for managed Yazelix Helix when included, or another installed executable such as nvim.",
             &[],
             "one non-empty executable command without arguments",
         ),

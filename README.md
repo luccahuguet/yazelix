@@ -181,7 +181,8 @@ remap sidebar visibility and editor/sidebar focus. Managed popup triggers use
 Status JSON contains numeric `schema_version = 1`, plus `name`, `version`,
 `package`, `config_home`, `state_dir`, `shell`, `editor_command`, `editor`,
 `agent_command`, and `inside_zellij`. The sponsor URL remains in `yzx help`
-without a public `sponsor` command
+without a public `sponsor` command. Package identity is `full`, `no-helix`, or
+`runtime`
 
 The top-right Zellij corner shows the compact release line derived from the
 same version: `NOVA DEV` in development, `NOVA βN` during the v1 beta line,
@@ -193,14 +194,17 @@ Screen styles are `static`, `logo`, `boids`, `boids_predator`,
 
 Tutor lessons are `workspace`, `discovery`, `troubleshooting`, and
 `tool_tutors`. `yzx tutor hx` and `yzx tutor nu` print the native tool tutor
-commands
+commands; packages without managed Helix direct the editor lesson back to the
+host editor
 
 
 ## Packages and platforms
 
-The default package includes Mars and opens the full graphical workspace with
-`yzx launch`. The fixed `runtime` package keeps the same `yzx` command,
-managed tools, and configuration without Mars or desktop assets
+The default package includes Mars and managed Helix, and opens the full
+graphical workspace with `yzx launch`. `yazelix-no-helix` keeps Mars and the
+workspace while delegating editing to an installed host editor. The fixed
+`runtime` package keeps the same `yzx` command, managed tools, and configuration
+without Mars or desktop assets
 
 See [Installation and packages](docs/installation.md) for package variants,
 platform support, SSH use, measured sizes, Home Manager, and updates
@@ -224,6 +228,6 @@ popup contracts live in [Runtime Notes](docs/runtime-notes.md)
 
 ## LOC Scorecard
 
-Yazelix owns **19,279 lines** of tracked text project files. The
+Yazelix owns **19,552 lines** of tracked text project files. The
 [reproducible scorecard](docs/development.md#loc-scorecard) excludes Beads,
 lockfiles, and binary assets

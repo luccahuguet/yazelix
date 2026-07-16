@@ -9,10 +9,10 @@ use std::{
 
 use crate::{
     AGENT_AUTO_COMMAND, HELIX_REVEAL_COMMAND, LAYOUT, LAYOUT_SWAP_TEMPLATE, LAYOUT_TEMPLATE, MARS,
-    YAZELIX_ZELLIJ_BAR_WASM, YAZELIX_ZELLIJ_PANE_ORCHESTRATOR_WASM, YAZELIX_ZELLIJ_POPUP_WASM,
-    YZX_BAR_RENDER, YZX_BAR_RENDER_REQUEST, YZX_CONFIG, YZX_CONFIG_KDL, YZX_CONFIG_UI, YZX_HELIX,
-    YZX_MENU, YZX_REVEAL, YZX_SCREEN, YZX_SIDEBAR_REFRESH, YZX_TUTOR, YZX_WELCOME, YZX_YA,
-    YZX_YAZI, YZX_ZELLIJ_CONFIG, ZELLIJ,
+    PACKAGE_VARIANT, YAZELIX_ZELLIJ_BAR_WASM, YAZELIX_ZELLIJ_PANE_ORCHESTRATOR_WASM,
+    YAZELIX_ZELLIJ_POPUP_WASM, YZX_BAR_RENDER, YZX_BAR_RENDER_REQUEST, YZX_CONFIG, YZX_CONFIG_KDL,
+    YZX_CONFIG_UI, YZX_HELIX, YZX_MENU, YZX_REVEAL, YZX_SCREEN, YZX_SIDEBAR_REFRESH, YZX_TUTOR,
+    YZX_WELCOME, YZX_YA, YZX_YAZI, YZX_ZELLIJ_CONFIG, ZELLIJ,
     error::{AppError, path_error, startup},
     paths::{runtime_path, zellij_session_label},
     runtime::Runtime,
@@ -20,6 +20,7 @@ use crate::{
 
 pub(crate) fn print_doctor() -> Result<(), AppError> {
     let runtime = Runtime::prepare().map_err(doctor_failure)?;
+    let has_managed_helix = PACKAGE_VARIANT != "no-helix";
     check_doctor_inputs().map_err(doctor_failure)?;
     require_command("editor", &runtime.editor).map_err(doctor_failure)?;
     if runtime.agent_command != AGENT_AUTO_COMMAND {
@@ -30,8 +31,15 @@ pub(crate) fn print_doctor() -> Result<(), AppError> {
     doctor_ok("config home", runtime.config_home.display());
     doctor_ok("state dir", runtime.state_dir.display());
     doctor_ok("shell.program", &runtime.shell_program);
-    doctor_ok("editor.command", &runtime.editor_command);
-    doctor_ok("editor", &runtime.editor);
+    if !has_managed_helix && runtime.editor == YZX_HELIX {
+        println!(
+            "warn editor.command: {} is unavailable in package no-helix; set editor.command to an installed editor",
+            runtime.editor_command
+        );
+    } else {
+        doctor_ok("editor.command", &runtime.editor_command);
+        doctor_ok("editor", &runtime.editor);
+    }
     doctor_ok("agent.command", &runtime.agent_command);
     doctor_ok("agent.args", &runtime.agent_args);
     doctor_ok("open.log_level", &runtime.yzx_open_log);
@@ -75,7 +83,9 @@ pub(crate) fn print_doctor() -> Result<(), AppError> {
         "pane orchestrator plugin",
         YAZELIX_ZELLIJ_PANE_ORCHESTRATOR_WASM,
     );
-    doctor_helix_config_warning(&runtime.config_home).map_err(doctor_failure)?;
+    if has_managed_helix {
+        doctor_helix_config_warning(&runtime.config_home).map_err(doctor_failure)?;
+    }
 
     println!(
         "warn session: {}",

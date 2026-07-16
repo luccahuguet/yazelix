@@ -10,7 +10,7 @@ log_level = "info"
 program = "nu"
 
 [editor]
-# Editor command for managed opens. hx and yzx-hx use packaged Yazelix Helix.
+# Editor command for managed opens. hx and yzx-hx use Yazelix Helix when included.
 command = "yzx-hx"
 
 [agent]

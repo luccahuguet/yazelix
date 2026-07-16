@@ -18,16 +18,18 @@ yzx run     →  prepared Yazelix environment  →  exact child argv/status
 
 Bare `yzx` prints help. `launch` is the only Mars route.
 `enter` is the headless/SSH route and requires an interactive host terminal, not
-a display server. The fixed `runtime` package compiles the Mars route out while
-retaining the same command, config schema, and managed workspace.
+a display server. `yazelix-no-helix` retains the Mars route and delegates
+editing to an installed host command. The fixed `runtime` package compiles the
+Mars route out while retaining the same command, config schema, and managed
+workspace.
 
 ## Platforms
 
 | Surface | Support |
 | --- | --- |
-| Full/runtime package and app outputs | `x86_64` / `aarch64` × Linux / Darwin |
+| Full/no-Helix/runtime package and app outputs | `x86_64` / `aarch64` × Linux / Darwin |
 | Headless / SSH floor | `enter` in a capable interactive host terminal; managed TUI only |
-| macOS build evidence | Real `aarch64-darwin` runner builds full/runtime packages and the Home Manager closure; no desktop entry |
+| macOS build evidence | Real `aarch64-darwin` runner builds all three packages and the Home Manager closure; no desktop entry |
 | macOS interactive floor | `help`, `status`, `doctor`, `enter`, managed workspace, and host-editor delegation remain unverified |
 | macOS full-package `launch` | Mars is packaged; GUI behavior remains unverified |
 | Out of repo | App bundles, Homebrew, Ghostty packaging, broad terminal matrices |
@@ -61,7 +63,7 @@ One owner per concern. Paths are the durable map.
 
 | Path | Owns |
 | --- | --- |
-| `flake.nix` | Fixed full/runtime composition, inputs, helpers, desktop entry, HM export |
+| `flake.nix` | Fixed full/no-Helix/runtime composition, inputs, helpers, desktop entry, HM export |
 | `home-manager/module.nix` | `programs.yazelix.enable` / package; optional config files; no default generation |
 
 ### Front door and helpers
@@ -180,12 +182,13 @@ This repo packages them and applies product policy only.
 
 ### Installed closure topology
 
-`flake.nix` owns the package graph. On `x86_64-linux`, the 2026-07-12 locked
-graph realizes to **2.28 GiB across 619 store paths**. The fixed Mars-free
-variant is **1.37 GiB across 591 paths**, a measured 927 MiB reduction; its
-source-build graph contains 2,407 fewer derivations. Nova's top-level full output
-contains only 46.1 KiB of NAR data; it is a thin command, desktop-entry, and
-asset join whose references pull in the runtime.
+`flake.nix` owns the package graph. On `x86_64-linux`, the full package realizes
+to **2.28 GiB across 619 store paths**. The no-Helix package is **2.00 GiB
+across 321 paths**, excluding managed Helix, Steel, and packaged grammars. The
+fixed Mars-free variant is **1.37 GiB across 591 paths**, a measured 927 MiB
+reduction; its source-build graph contains 2,407 fewer derivations. Nova's
+top-level outputs are thin command, desktop-entry, and asset joins whose
+references pull in their selected runtime graph.
 
 The individual package closures below explain the architectural weight. They
 share libraries and tools, so no row is additive and removing one root does not
@@ -301,12 +304,16 @@ a new session.
 - Packaged bindings: `Alt r` reveal (reserved), `Ctrl r` reload (user-overridable).
 - `hx` and `yzx-hx` select managed Helix; other `editor.command` values skip its
   bridge.
+- The no-Helix package replaces both managed names with an unavailable command;
+  another executable name or an absolute host Helix path stays host-owned.
 
 ### Git editor boundary
 
 - `yzx-editor` resolves `editor.command`, disables the Helix bridge, waits for
   the executable, and restores Zellij's default background when it exits. It
   never calls `yzx-open` or a Zellij pane action.
+- Config file actions and Git clients invoke `yzx-editor`; the config UI drops
+  the session's editor snapshot so each action resolves the current setting.
 - Managed sessions export `yzx-editor` through `EDITOR`, `VISUAL`, and
   `GIT_EDITOR`. `YZX_EDITOR` remains the effective editor for managed Yazi opens.
 - `yzx-git` appends a LazyGit `os.edit*` overlay while retaining global and
@@ -398,14 +405,14 @@ Detail lives in Owners, checks, and the notes below.
 
 | ID | Contract | Owner | Check | Gap |
 | --- | --- | --- | --- | --- |
-| C13 | Fixed full/runtime packages + narrow Home Manager enable/package/optional files | `home-manager/`, flake, `yzx-config` | runtime contracts + `checks.home_manager` | Full HM switch |
+| C13 | Fixed full/no-Helix/runtime packages + narrow Home Manager enable/package/optional files | `home-manager/`, flake, `yzx-config` | runtime/no-Helix contracts + `checks.home_manager` | Full HM switch |
 
 ### Notes
 
 **C1:** Bare `yzx` → help; `launch` is explicit. Menu is a curated allowlist,
 `run` reuses the prepared environment, and reveal is tab-local. `enter` reaches
-the managed Zellij/Yazi/Helix workspace without Mars or display variables;
-terminal-specific graphics and clipboard behavior remain host-owned.
+the managed Zellij/Yazi workspace and selected editor without Mars or display
+variables; terminal-specific graphics and clipboard behavior remain host-owned.
 Diagnostics stop before Mars/Zellij handoff.
 
 **C2:** Saving `mars.appearance.preset` through `yzx config` switches the
