@@ -300,8 +300,7 @@ fn render_agent_popup_kdl(command: &str, args: &[String]) -> String {
         "            agent {{\n                command {}\n",
         kdl_string(PACKAGED_AGENT_LAUNCHER)
     );
-    for (index, arg) in ["--", command]
-        .into_iter()
+    for (index, arg) in std::iter::once(command)
         .chain(args.iter().map(String::as_str))
         .enumerate()
     {

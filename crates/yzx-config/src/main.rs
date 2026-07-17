@@ -739,10 +739,9 @@ mod tests {
                 concat!(
                     "            agent {{\n",
                     "                command \"{}\"\n",
-                    "                arg_1 \"--\"\n",
-                    "                arg_2 \"codex\"\n",
-                    "                arg_3 \"resume\"\n",
-                    "                arg_4 \"--dangerously-bypass-approvals-and-sandbox\"\n",
+                    "                arg_1 \"codex\"\n",
+                    "                arg_2 \"resume\"\n",
+                    "                arg_3 \"--dangerously-bypass-approvals-and-sandbox\"\n",
                     "                pane_title \"agent_popup\"\n",
                     "                width_percent 100\n",
                     "                height_percent 100\n",

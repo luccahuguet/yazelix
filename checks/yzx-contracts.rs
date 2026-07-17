@@ -496,7 +496,7 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
     expect_contains(
         &custom_agent_config,
         &format!(
-            "agent {{\n                command \"{}\"\n                arg_1 \"--\"\n                arg_2 \"codex\"\n                arg_3 \"resume\"\n                arg_4 \"--dangerously-bypass-approvals-and-sandbox\"\n                pane_title \"agent_popup\"\n                width_percent 100\n                height_percent 100\n                preserve_terminal_title true\n                toggle_close_behavior \"hide\"\n            }}",
+            "agent {{\n                command \"{}\"\n                arg_1 \"codex\"\n                arg_2 \"resume\"\n                arg_3 \"--dangerously-bypass-approvals-and-sandbox\"\n                pane_title \"agent_popup\"\n                width_percent 100\n                height_percent 100\n                preserve_terminal_title true\n                toggle_close_behavior \"hide\"\n            }}",
             agent_launcher.display(),
         ),
         "custom agent config",
@@ -1781,7 +1781,6 @@ fn expect_agent_bootstrap(agent: &Path) {
     );
     let title_output_file = temp.path.join("title-agent-output");
     let output = Command::new(agent)
-        .arg("--")
         .arg(&title_agent)
         .args(["resume", "session"])
         .env("YAZELIX_AGENT_TEST_OUT", &title_output_file)

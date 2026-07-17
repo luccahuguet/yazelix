@@ -23,24 +23,19 @@ fn main() {
 fn run() -> i32 {
     emit_initial_title();
     let args = env::args_os().skip(1).collect::<Vec<_>>();
-    if args.first().is_some_and(|arg| arg == "--") {
-        let Some(command) = args.get(1) else {
-            eprintln!("Yazelix Nova agent popup\n\nMissing custom command after `--`.");
-            pause_if_tty();
-            return 127;
-        };
-        return exec_custom(command, &args[2..]);
+    if let Some((command, args)) = args.split_first() {
+        return exec_command(command, args);
     }
     let provider_file = state_dir().join("agent/provider");
 
     if let Some(id) = read_provider(&provider_file) {
-        return launch_configured(&id, &provider_file, &args);
+        return launch_configured(&id, &provider_file);
     }
 
     for (provider, provider_args) in PROVIDERS.iter().copied() {
         if command_available(provider) {
             let _ = write_provider(&provider_file, provider);
-            return exec_provider(provider, provider_args, &args);
+            return exec_command(OsStr::new(provider), provider_args);
         }
     }
 
@@ -53,7 +48,7 @@ fn emit_initial_title() {
     let _ = stdout.flush();
 }
 
-fn exec_custom(command: &OsStr, args: &[OsString]) -> i32 {
+fn exec_command<T: AsRef<OsStr>>(command: &OsStr, args: &[T]) -> i32 {
     let error = Command::new(command).args(args).exec();
     eprintln!(
         "Yazelix Nova agent popup\n\nFailed to launch `{}`: {error}",
@@ -63,7 +58,7 @@ fn exec_custom(command: &OsStr, args: &[OsString]) -> i32 {
     127
 }
 
-fn launch_configured(id: &str, provider_file: &Path, args: &[OsString]) -> i32 {
+fn launch_configured(id: &str, provider_file: &Path) -> i32 {
     let Some((provider, provider_args)) = PROVIDERS
         .iter()
         .copied()
@@ -86,20 +81,7 @@ fn launch_configured(id: &str, provider_file: &Path, args: &[OsString]) -> i32 {
         return 127;
     }
 
-    exec_provider(provider, provider_args, args)
-}
-
-fn exec_provider(provider: &str, provider_args: &[&str], user_args: &[OsString]) -> i32 {
-    let error = Command::new(provider)
-        .args(provider_args)
-        .args(user_args)
-        .exec();
-    eprintln!(
-        "Yazelix Nova agent popup\n\nFailed to launch `{}`: {error}",
-        provider
-    );
-    pause_if_tty();
-    127
+    exec_command(OsStr::new(provider), provider_args)
 }
 
 fn read_provider(path: &Path) -> Option<String> {
