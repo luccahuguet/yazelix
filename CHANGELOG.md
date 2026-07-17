@@ -2,7 +2,7 @@
 
 User-visible runtime changes for Yazelix Nova live here.
 
-## 1.0.0-beta.1
+## 1.0.0-beta.2
 
 - The `yazelix-no-helix` package and app retain Mars and the integrated
   workspace while delegating editing to a host-installed command. Selecting it
@@ -18,7 +18,8 @@ User-visible runtime changes for Yazelix Nova live here.
   forward and backward deletion, insertion, and single-line paste. `Enter`
   starts inline editing and `e` opens the configured editor on a field-labeled
   temporary buffer; blocking config editors do not join the tab's Helix
-  workspace bridge.
+  workspace bridge. Native file actions use the same current editor resolver
+  instead of a session-start editor snapshot.
 - Ratconfig's Zellij tab selects Default or any of the 41 themes embedded by
   the pinned Zellij package. Saves remain sparse and update the active managed
   session; Default removes the override, while simple custom names stay valid.
@@ -42,6 +43,12 @@ User-visible runtime changes for Yazelix Nova live here.
 - Ratconfig keeps semantic text, inactive tabs, and pane headings readable in
   light appearance, aligns Unicode setting labels by terminal-cell width, and
   uses flush outer pane rails with one shared divider.
+- Home Manager-owned config sources are treated as declarative. Structured
+  saves and resets stop before mutation, native file actions are disabled up
+  front, and both paths name the exact `programs.yazelix.config.*` option.
+- Managed Starship keeps its native `$all` prompt layout and layers only Nova's
+  sparse `character.format` marker plus explicit user overrides, preserving
+  directory, Git, environment, and tool modules.
 - Mars settings report their actual apply boundary: appearance, opacity, font
   size, line height, scrollbar, and bell behavior update open windows, while
   width and height apply to newly created windows.
@@ -85,10 +92,14 @@ User-visible runtime changes for Yazelix Nova live here.
   repairable through the picker. Relative config and state overrides are resolved
   before linking; config roots or linked sources that overlap generated runtime
   fail visibly, as do broken managed paths, and failed materializations discard
-  their staging directories.
+  their staging directories. `yzx run ya` resolves the packaged,
+  version-matched Yazi package manager for writable managed flavors.
 - Ratconfig restores its operational Advanced tab, including config
   diagnostics and correctly aligned file actions. Yazi settings and native file
   actions likewise share one consistent row layout.
+
+## 1.0.0-beta.1
+
 - `yzx doctor` recognizes the supported Helix `Alt r` reveal binding when its
   inner quotes use valid TOML escaping, while real conflicts still warn.
 - Darwin Package Smoke and Version Gate build the full package, runtime package,
@@ -124,9 +135,9 @@ User-visible runtime changes for Yazelix Nova live here.
   `config.toml` values before runtime or Ratconfig use while preserving sparse
   inheritance and the documented dynamic `popups.<id>` namespace.
 - Ratconfig identifies store-backed Home Manager config as declarative rather
-  than merely read-only. Structured saves and resets stop before mutation;
-  native file actions are disabled up front. Both paths name the exact
-  `programs.yazelix.config.*` option to edit; chmod-only user files remain user-owned.
+  than merely read-only. Structured saves, resets, and native file actions stop
+  before mutation and name the exact `programs.yazelix.config.*` option to edit;
+  chmod-only user files remain user-owned.
 - First use seeds child-owned `cursors.toml` without overwriting user state.
   The Ratconfig Cursors tab edits the enabled pool, selection, and common effect
   settings while preserving custom definitions; advanced editing opens the full
@@ -155,11 +166,10 @@ User-visible runtime changes for Yazelix Nova live here.
   user file over Nova's immutable packaged base, so untouched settings and font
   paths follow upgrades.
 - Opening `yzx config` no longer creates `starship.toml` or changes the managed
-  prompt. The Starship tab curates only `character.format`, defaulting to `:: `,
-  and leaves the full prompt layout to Starship's native `$all` default so
-  directory, Git, environment, and tool modules remain visible. Saving writes
-  only the explicit marker override and resetting removes it. Managed Nu merges
-  the sparse user file into runtime state, while ambient
+  prompt. The Starship tab shows Nova defaults without persisting them, saves
+  only explicit overrides, and removes an override when reset. Managed Nu
+  merges the sparse user file over Nova defaults into runtime state, so
+  untouched prompt defaults follow upgrades and ambient
   `~/.config/starship.toml` remains ignored.
 - Opening `yzx config` no longer creates `zellij/config.kdl`. The Zellij tab
   shows inherited packaged defaults, saves only explicit scalar overrides, and
@@ -174,16 +184,14 @@ User-visible runtime changes for Yazelix Nova live here.
   edit opener and required sidebar Git fetchers; invalid TOML fails before Yazi
   starts. Managed plugins and flavors activate independently of `init.lua`,
   with opaque `theme.toml` and `package.toml` passthrough. Ratconfig and Home
-  Manager expose the managed native files. `yzx run ya` resolves the packaged,
-  version-matched Yazi package manager for writable managed flavors.
+  Manager expose the managed native files.
 - `yzx config` boolean rows use `Space` to stage, `Enter` to save, and `Esc`
   to cancel; normal-mode `Enter` leaves the value unchanged
 - Managed LazyGit file edits honor `editor.command` instead of falling back to
   Vim for unknown presets. Direct `yzx-editor` is also exported through
   `EDITOR`, `VISUAL`, and `GIT_EDITOR`; it stays in the client lifecycle with
   the Helix bridge disabled, restores the transparent Zellij background after
-  editing, and keeps user LazyGit configuration loaded. Ratconfig file actions
-  use the same resolver instead of a session-start editor snapshot.
+  editing, and keeps user LazyGit configuration loaded.
 - The managed agent popup command is configurable through root config
   `agent.command` and `agent.args`, exposed in the `yzx config` `popups` tab.
   The default `agent.command = "auto"` keeps the existing provider fallback.
@@ -238,10 +246,11 @@ User-visible runtime changes for Yazelix Nova live here.
   opens Mars first. Bare `yzx` prints help.
 - `yzx config` opens source-backed Ratconfig tabs for root, Mars, Zellij, and
   Starship configuration. Root and Starship values are sparse overrides; Mars
-  and Zellij are managed native files; and the Starship tab edits only the
-  command-entry marker at `character.format`. The UI can open staged text edits
-  in the config UI's editor environment before saving and refuses to replace a
-  source file whose permissions are read-only.
+  and Zellij are managed native files; and the Starship tab edits
+  `format`, `right_format`, and `add_newline` as sparse overrides. The managed
+  Starship left prompt defaults to colon-colon-space (`:: `). The UI
+  can open staged text edits in the config UI's editor environment before
+  saving and refuses to replace a source file whose permissions are read-only.
 - Root `config.toml` supports `[editor].command`, defaulting to `yzx-hx`.
   Inside Nova, `hx` and `yzx-hx` resolve to packaged managed Helix; other editor
   commands such as `nvim`, or absolute host paths, bypass the Helix bridge and
@@ -262,13 +271,13 @@ User-visible runtime changes for Yazelix Nova live here.
   workspace. User-managed Steel files still replace the packaged Steel module
   when both `helix.scm` and `init.scm` exist.
 - The `yzx config` Advanced tab opens managed user `nu/env.nu`,
-  `nu/config.nu`, and `zellij/plugins.kdl` files in `yzx-hx`, creating tiny
-  starter files only after a row is activated. Yazi's native file actions live
-  in the Yazi tab.
+  `nu/config.nu`, `yazi/init.lua`, `yazi/keymap.toml`, and
+  `zellij/plugins.kdl` files in `yzx-hx`, creating tiny starter files only
+  after a row is activated.
 - Managed sessions export packaged `ya` and Zellij helper paths so popup
   hide/close hooks can refresh Yazi sidebar git decorations even when those
   commands are not on the user's shell `PATH`.
-- Most `yzx config` tab bar labels include monochrome Nerd Font icons for
+- The `yzx config` tab bar labels include monochrome Nerd Font icons for
   faster visual scanning in Mars/Ghostty-style terminals, and the root
   `config.toml` tab is labeled `main`.
 - The `yzx config` Keys tab lists current packaged keybindings as a read-only
@@ -372,7 +381,7 @@ User-visible runtime changes for Yazelix Nova live here.
   Yazelix Zellij fork.
 - Mars uses the packaged Yazelix Nova visual config, reef cursor colors,
   JetBrains Mono, and no window bar.
-- Zellij starts with a Yazi sidebar and stacked work panes. `Alt Shift H`
+- Zellij starts with a Yazi sidebar and stacked work panes. `Alt Shift h`
   toggles the managed sidebar.
 - The Zellij status bar groups first-class key hints into `Ctrl`, `Ctrl Alt`,
   and `Alt` clusters.
