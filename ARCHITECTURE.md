@@ -72,7 +72,7 @@ One owner per concern. Paths are the durable map.
 | --- | --- |
 | `runtime/yzx/` | CLI, startup env, launch/enter handoff |
 | `runtime/yzx-menu.rs` | Menu palette |
-| `runtime/yzx-agent.rs` | Agent provider bootstrap (`codex resume` → `grok` → `opencode` → `pi` → `claude --resume`) |
+| `runtime/yzx-agent.rs` | Initial agent title, custom-command exec, and provider bootstrap (`codex resume` → `grok` → `opencode` → `pi` → `claude --resume`) |
 | `runtime/yzx-yazi.rs` | Managed Yazi process/env launch, editor resolve |
 | `runtime/yzx-nu.rs` | Managed Nu layering; runtime-effective Starship config request |
 | `runtime/yzx-zellij-config.rs` | Packaged + guarded Zellij scalar sidecar merge |
@@ -98,8 +98,8 @@ One owner per concern. Paths are the durable map.
 - Resolves known config targets against the packaged Nix store root so
   Home Manager-owned sources stay read-only with exact module-option guidance
 - Hidden package-internal reads for launch + custom-popup KDL render
-- `agent.popup.kdl` is an internal render path for custom managed agent command
-  KDL
+- `agent.popup.kdl` is an internal render path that routes custom managed agent
+  argv through the packaged launcher
 - `KEY_BINDINGS` is the human key reference; `defaults/zellij/config.kdl` is the runtime owner
 
 #### Nova root schema inventory

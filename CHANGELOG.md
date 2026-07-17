@@ -50,9 +50,11 @@ User-visible runtime changes for Yazelix Nova live here.
   matches stay inactive, while OSC 8 links preserve their configured action.
 - Linux Mars windows use the Nova desktop entry's `yzx` application identity,
   so open sessions resolve the packaged icon in Wayland and X11 task switchers.
-- A managed agent's spinner title drives a compact busy marker on its tab while
-  native Zellij tab names remain unchanged and directly renameable. Idle,
-  unknown, focused, and merely visible agent panes do not produce activity.
+- A managed agent pane falls back to the human title `agent` instead of exposing
+  its Nix store launcher path. Provider titles still replace the fallback, and
+  spinner titles drive a compact busy marker while native Zellij tab names
+  remain unchanged and directly renameable. Idle, unknown, focused, and merely
+  visible agent panes do not produce activity.
 - Each tab keeps one orchestrator-owned workspace root. Ordinary managed Yazi
   opens preserve it and resynchronize Helix even for ignored paths, nested Git
   repositories, and non-Git descendants. After a successful open, the

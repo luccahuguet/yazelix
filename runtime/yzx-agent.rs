@@ -1,8 +1,8 @@
 use std::{
     env,
-    ffi::OsString,
+    ffi::{OsStr, OsString},
     fs, io,
-    io::IsTerminal,
+    io::{IsTerminal, Write},
     os::unix::{fs::PermissionsExt, process::CommandExt},
     path::{Path, PathBuf},
     process::{Command, exit},
@@ -21,7 +21,16 @@ fn main() {
 }
 
 fn run() -> i32 {
+    emit_initial_title();
     let args = env::args_os().skip(1).collect::<Vec<_>>();
+    if args.first().is_some_and(|arg| arg == "--") {
+        let Some(command) = args.get(1) else {
+            eprintln!("Yazelix Nova agent popup\n\nMissing custom command after `--`.");
+            pause_if_tty();
+            return 127;
+        };
+        return exec_custom(command, &args[2..]);
+    }
     let provider_file = state_dir().join("agent/provider");
 
     if let Some(id) = read_provider(&provider_file) {
@@ -36,6 +45,22 @@ fn run() -> i32 {
     }
 
     0
+}
+
+fn emit_initial_title() {
+    let mut stdout = io::stdout().lock();
+    let _ = stdout.write_all(b"\x1b]0;agent\x07");
+    let _ = stdout.flush();
+}
+
+fn exec_custom(command: &OsStr, args: &[OsString]) -> i32 {
+    let error = Command::new(command).args(args).exec();
+    eprintln!(
+        "Yazelix Nova agent popup\n\nFailed to launch `{}`: {error}",
+        command.to_string_lossy()
+    );
+    pause_if_tty();
+    127
 }
 
 fn launch_configured(id: &str, provider_file: &Path, args: &[OsString]) -> i32 {

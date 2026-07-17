@@ -40,7 +40,6 @@ pub(crate) fn active_zellij_config(
     popup_vertical_margin: &str,
     managed_keybindings: &[ManagedKeybinding],
     agent_popup_kdl: &str,
-    managed_agent_command_marker: &str,
     custom_popups_kdl: &str,
     custom_popup_keybindings_kdl: &str,
     zellij_plugins_sidecar: &Path,
@@ -74,7 +73,6 @@ pub(crate) fn active_zellij_config(
         patch_popup_default_margins(patched, &config, popup_side_margin, popup_vertical_margin)?;
     patched = patch_managed_keybindings(patched, &config, managed_keybindings)?;
     patched = patch_agent_popup(patched, &config, agent_popup_kdl)?;
-    patched = patch_managed_agent_command_marker(patched, &config, managed_agent_command_marker)?;
     patched = inject_snippet_before(
         patched,
         &config,
@@ -188,29 +186,6 @@ fn patch_agent_popup(
         ));
     }
     Ok(text.replacen(&marker, replacement, 1))
-}
-
-fn patch_managed_agent_command_marker(
-    text: String,
-    config: &Path,
-    command_marker: &str,
-) -> Result<String, AppError> {
-    let marker = format!("managed_agent_command_marker {}", kdl_string(YZX_AGENT),);
-    if !text.contains(&marker) {
-        return Err(startup(
-            "Zellij config is missing the managed agent command marker",
-            config.display(),
-            1,
-        ));
-    }
-    Ok(text.replacen(
-        &marker,
-        &format!(
-            "managed_agent_command_marker {}",
-            kdl_string(command_marker),
-        ),
-        1,
-    ))
 }
 
 const OWNED_ZELLIJ_PLUGIN_IDS: &[&str] = &["yzpp", "yazelix_pane_orchestrator"];

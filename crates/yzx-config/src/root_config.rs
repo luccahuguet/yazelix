@@ -12,6 +12,11 @@ use serde_json::Value as JsonValue;
 
 use crate::{catalog::*, common::*, custom_popups::custom_popups};
 
+pub(crate) const PACKAGED_AGENT_LAUNCHER: &str = match option_env!("YAZELIX_AGENT_LAUNCHER") {
+    Some(path) => path,
+    None => "yzx-agent",
+};
+
 pub(crate) fn config_field(path: &str) -> Result<&'static ConfigFieldSpec> {
     CONFIG_FIELDS
         .iter()
@@ -293,9 +298,13 @@ fn validate_agent_command(value: &str) -> Result<()> {
 fn render_agent_popup_kdl(command: &str, args: &[String]) -> String {
     let mut text = format!(
         "            agent {{\n                command {}\n",
-        kdl_string(command)
+        kdl_string(PACKAGED_AGENT_LAUNCHER)
     );
-    for (index, arg) in args.iter().enumerate() {
+    for (index, arg) in ["--", command]
+        .into_iter()
+        .chain(args.iter().map(String::as_str))
+        .enumerate()
+    {
         text.push_str(&format!(
             "                arg_{} {}\n",
             index + 1,

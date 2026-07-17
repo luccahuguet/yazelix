@@ -154,6 +154,7 @@
         yzxConfig = "${yzxConfig}/bin/yzx-config";
       };
       yzxNuShell = rustBin "yzx-nu" yzxNuRs;
+      yzxAgent = rustBin "yzx-agent" ./runtime/yzx-agent.rs;
       yzxConfigSrc = pkgs.runCommand "yzx-config-src" {} ''
         mkdir -p "$out"
         cp -R ${pkgs.lib.cleanSource ./crates/yzx-config}/. "$out/"
@@ -179,6 +180,7 @@
         };
         YAZELIX_NIX_STORE_ROOT = builtins.storeDir;
         YAZELIX_PACKAGED_YAZI = yzxYaziConfig;
+        YAZELIX_AGENT_LAUNCHER = "${yzxAgent}/bin/yzx-agent";
       };
       yzxShellSrc = pkgs.replaceVars ./runtime/yzx-shell.sh {
         yzxConfig = "${yzxConfig}/bin/yzx-config";
@@ -195,7 +197,6 @@
         install -D -m 755 ${./runtime/yzx-env-supervisor.sh} "$out/bin/yzx-env-supervisor"
         patchShebangs "$out/bin/yzx-env-supervisor"
       '';
-      yzxAgent = rustBin "yzx-agent" ./runtime/yzx-agent.rs;
       yzxMenuSrc = pkgs.replaceVars ./runtime/yzx-menu.rs {
         fzf = "${pkgs.fzf}/bin/fzf";
       };

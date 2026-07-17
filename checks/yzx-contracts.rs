@@ -492,14 +492,21 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
         "zellij config: runtime (",
     }
     let custom_agent_config = custom_agent.zellij_file("config.kdl");
+    let agent_launcher = popup_command(&custom_agent_config, "/bin/yzx-agent");
     expect_contains(
         &custom_agent_config,
-        "agent {\n                command \"codex\"\n                arg_1 \"resume\"\n                arg_2 \"--dangerously-bypass-approvals-and-sandbox\"\n                pane_title \"agent_popup\"\n                width_percent 100\n                height_percent 100\n                preserve_terminal_title true\n                toggle_close_behavior \"hide\"\n            }",
+        &format!(
+            "agent {{\n                command \"{}\"\n                arg_1 \"--\"\n                arg_2 \"codex\"\n                arg_3 \"resume\"\n                arg_4 \"--dangerously-bypass-approvals-and-sandbox\"\n                pane_title \"agent_popup\"\n                width_percent 100\n                height_percent 100\n                preserve_terminal_title true\n                toggle_close_behavior \"hide\"\n            }}",
+            agent_launcher.display(),
+        ),
         "custom agent config",
     );
     expect_contains(
         &custom_agent_config,
-        "managed_agent_command_marker \"codex\"",
+        &format!(
+            "managed_agent_command_marker \"{}\"",
+            agent_launcher.display(),
+        ),
         "custom agent command marker",
     );
 
@@ -1760,15 +1767,35 @@ fn expect_agent_bootstrap(agent: &Path) {
         "agent popup without providers should exit cleanly, got {:?}",
         output.status.code(),
     );
-    assert!(
-        output.stdout.is_empty() && output.stderr.is_empty(),
-        "agent popup without providers should leave the pane empty\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr),
-    );
+    assert_eq!(output.stdout, b"\x1b]0;agent\x07");
+    assert!(output.stderr.is_empty());
     assert!(
         !empty_state.join("agent/provider").exists(),
         "missing-provider bootstrap should not write a provider default"
+    );
+
+    let title_agent = temp.path.join("title-agent");
+    write_executable(
+        &title_agent,
+        "#!/bin/sh\nprintf '\\033]0;⠋ codex\\007\\033]0;codex\\007'\nprintf '%s\\n' \"$*\" >\"$YAZELIX_AGENT_TEST_OUT\"\n",
+    );
+    let title_output_file = temp.path.join("title-agent-output");
+    let output = Command::new(agent)
+        .arg("--")
+        .arg(&title_agent)
+        .args(["resume", "session"])
+        .env("YAZELIX_AGENT_TEST_OUT", &title_output_file)
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    assert_eq!(
+        output.stdout,
+        "\x1b]0;agent\x07\x1b]0;⠋ codex\x07\x1b]0;codex\x07".as_bytes(),
+        "the fallback must precede provider busy and idle titles",
+    );
+    assert_eq!(
+        fs::read_to_string(title_output_file).unwrap(),
+        "resume session\n"
     );
 
     for (name, available, expected_output) in [

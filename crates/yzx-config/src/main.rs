@@ -735,17 +735,22 @@ mod tests {
 
         assert_eq!(
             read_agent_popup_kdl(&path).unwrap(),
-            concat!(
-                "            agent {\n",
-                "                command \"codex\"\n",
-                "                arg_1 \"resume\"\n",
-                "                arg_2 \"--dangerously-bypass-approvals-and-sandbox\"\n",
-                "                pane_title \"agent_popup\"\n",
-                "                width_percent 100\n",
-                "                height_percent 100\n",
-                "                preserve_terminal_title true\n",
-                "                toggle_close_behavior \"hide\"\n",
-                "            }",
+            format!(
+                concat!(
+                    "            agent {{\n",
+                    "                command \"{}\"\n",
+                    "                arg_1 \"--\"\n",
+                    "                arg_2 \"codex\"\n",
+                    "                arg_3 \"resume\"\n",
+                    "                arg_4 \"--dangerously-bypass-approvals-and-sandbox\"\n",
+                    "                pane_title \"agent_popup\"\n",
+                    "                width_percent 100\n",
+                    "                height_percent 100\n",
+                    "                preserve_terminal_title true\n",
+                    "                toggle_close_behavior \"hide\"\n",
+                    "            }}",
+                ),
+                PACKAGED_AGENT_LAUNCHER,
             )
         );
     }
