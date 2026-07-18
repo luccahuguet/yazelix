@@ -13,7 +13,7 @@ together as one coherent workspace
 Yazelix ships as a Nix flake with an optional Home Manager module
 
 `yzx launch` opens Mars, while `yzx enter` starts Yazelix in the
-current terminal. Both provide the same Yazi-first workspace and compact top
+current terminal (yazelix works on any terminal!). Both provide the same Yazi-first workspace and compact top
 bar. The repo keeps one launcher, one config root, one packaged layout, and
 focused checks for its contracts
 
