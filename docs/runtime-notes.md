@@ -125,15 +125,10 @@ and launches a fresh one at the new root.
 
 The popup runs the same `yzx-yazi` launcher and layered config as the tiled
 sidebar with the private `workspace-popup` role. Packaged Yazi initialization
-omits sidebar status for that role and registers its `YAZI_ID` separately from
-the tiled sidebar. Global `Alt z` asks the orchestrator to show or focus the
-existing popup and sends one targeted Yazi plugin event to that registered
-instance. First launch queues that event until the popup publishes its identity;
-the registration retry samples Yazi state on each attempt because Yazi can
-expose its active tab after plugin setup. An existing popup without a usable
-registration is replaced so its new identity can consume the queued event. No
-terminal input is synthesized. Popup navigation and ordinary opens retain their
-existing local and canonical-workspace semantics.
+omits `sidebar-state` and `sidebar-status` for that role, preventing its
+`YAZI_ID`, pane id, and cwd from replacing the orchestrator's real sidebar
+registration. Popup navigation and ordinary opens retain their existing local
+and canonical-workspace semantics.
 
 ## Nushell And Starship
 
@@ -192,14 +187,11 @@ root. After success, only the originating managed Yazi follows the primary
 target's directory; the canonical workspace, shell panes, and hidden agent stay
 unchanged.
 
-Global `Alt z` shows the live Yazi popup and launches its zoxide picker. A
-selection changes only that popup's cwd. `Alt Enter` in the popup sends its
-current cwd through the existing explicit retarget operation, which updates the
-orchestrator and managed editor together, returns focus to the editor, and
-resynchronizes the tiled sidebar. An editor failure restores the prior root and
-its bootstrap or explicit provenance. Git and agent popup requests carry the
-canonical root explicitly. A hidden agent is reused across picker cancellation,
-pane focus, and local navigation, and is replaced only after the canonical root
+Yazi `Alt z` is the explicit retarget operation. It updates the orchestrator
+and managed editor together; an editor failure restores the prior root and its
+bootstrap or explicit provenance. Git and agent popup requests carry the
+canonical root explicitly. A hidden agent is reused across pane focus and
+local navigation changes, and is replaced only after the canonical root
 changes.
 
 ## Yazi

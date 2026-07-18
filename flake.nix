@@ -174,7 +174,10 @@
         pname = "yzx-config";
         version = "0.1.0";
         src = yzxConfigSrc;
-        cargoLock.lockFile = ./crates/yzx-config/Cargo.lock;
+        cargoLock = {
+          lockFile = ./crates/yzx-config/Cargo.lock;
+          outputHashes."ratconfig-2.0.0" = "sha256-NXnn7WOBEa7uQl8rs52gpIhpEGTeanRL5+au9ltjQyE=";
+        };
         YAZELIX_NIX_STORE_ROOT = builtins.storeDir;
         YAZELIX_PACKAGED_YAZI = yzxYaziConfig;
         YAZELIX_AGENT_LAUNCHER = "${yzxAgent}/bin/yzx-agent";
@@ -533,7 +536,6 @@
           yzxConfig = "${configUi}/bin/yzx-config-ui";
           yzxMenu = "${yzxMenu}/bin/yzx-menu";
           yzxYazi = "${yazi}/bin/yzx-yazi";
-          yzxYa = "${pkgs.yazi}/bin/ya";
           yzxSidebarRefresh = "${yzxOpenCore}/bin/yzx-sidebar-refresh";
           git = "${git}/bin/yzx-git";
           layout = "${layout}/layout.kdl";
@@ -862,10 +864,9 @@
         grep -q '^Ya ' ya-version
         touch "$out"
       '';
-      yzx_yazi_materialization = pkgs.runCommand "yzx-yazi-materialization-check" {nativeBuildInputs = [pkgs.lua pkgs.rustc pkgs.stdenv.cc];} ''
+      yzx_yazi_materialization = pkgs.runCommand "yzx-yazi-materialization-check" {nativeBuildInputs = [pkgs.rustc pkgs.stdenv.cc];} ''
         rustc --edition=2024 --test ${./runtime/yzx-yazi.rs} -o yzx-yazi-materialization-check
         ./yzx-yazi-materialization-check
-        lua ${./checks/yazi-workspace-registration.lua} ${./defaults/yazi/plugins/sidebar-state.yazi/main.lua}
 
         user="$TMPDIR/yazi-user"
         state="$TMPDIR/yazi-state"

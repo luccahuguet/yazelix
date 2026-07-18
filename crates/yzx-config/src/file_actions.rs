@@ -208,7 +208,7 @@ pub(crate) fn write_source_field(
         _ => Err(error(format!("unknown config source: {source_id}"))),
     }
 }
-pub(crate) fn unset_source_field(
+pub(crate) fn write_source_default(
     paths: &ConfigPaths,
     source_id: &str,
     field_path: &str,

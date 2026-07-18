@@ -44,7 +44,7 @@ fn main() {
     expect_mars_config_override(yzx);
     expect_cursor_config(yzx);
     expect_zellij_config_sidecar(yzx);
-    expect_yazi_workspace_picker(yzx);
+    expect_yazi_alt_z(yzx);
 
     let temp = TempDir::new();
     let user_config = temp.path.join("config");
@@ -1378,17 +1378,13 @@ fn expect_zellij_config_sidecar(yzx: &Path) {
     }
 }
 
-fn expect_yazi_workspace_picker(yzx: &Path) {
+fn expect_yazi_alt_z(yzx: &Path) {
     let keymap = fs::read_to_string(yzx.join("share/yazelix/yazi/keymap.toml")).unwrap();
     expect_contains_all! {
-        &keymap, "Yazi workspace commit keymap fragment";
-        r#"on = ["<A-Enter>"]"#,
-        r#"run = "plugin zoxide-editor -- commit""#,
+        &keymap, "Yazi Alt-z keymap fragment";
+        r#"on = ["<A-z>"]"#,
+        r#"run = "plugin zoxide-editor""#,
     }
-    assert!(
-        !keymap.contains(r#"<A-z>"#),
-        "packaged Yazi keymap must leave global Alt-z to Zellij",
-    );
 
     let yazi_toml = fs::read_to_string(yzx.join("share/yazelix/yazi/yazi.toml")).unwrap();
     expect_contains_all! {
@@ -1405,7 +1401,7 @@ fn expect_yazi_workspace_picker(yzx: &Path) {
     let init = fs::read_to_string(yzx.join("share/yazelix/yazi/init.lua")).unwrap();
     expect_contains(
         &init,
-        "require(\"sidebar-state\"):setup()\nif os.getenv(\"YZX_YAZI_ROLE\") ~= \"workspace-popup\" then\n\trequire(\"sidebar-status\"):setup()\nend",
+        "if os.getenv(\"YZX_YAZI_ROLE\") ~= \"workspace-popup\" then\n\trequire(\"sidebar-state\"):setup()\n\trequire(\"sidebar-status\"):setup()\nend",
         "Yazi workspace popup role fragment",
     );
     let sidebar_state =
@@ -1414,7 +1410,6 @@ fn expect_yazi_workspace_picker(yzx: &Path) {
     expect_contains_all! {
         &sidebar_state, "Yazi sidebar-state plugin fragment";
         "register_sidebar_yazi_state",
-        "register_workspace_popup_yazi_state",
         "YAZELIX_ZELLIJ_SESSION_NAME",
         "ZELLIJ_SESSION_NAME",
         "YZX_ZELLIJ",
@@ -1430,11 +1425,9 @@ fn expect_yazi_workspace_picker(yzx: &Path) {
             .unwrap();
     expect_contains_all! {
         &plugin, "Yazi zoxide editor plugin fragment";
-        r#"job.args[1] == "commit""#,
-        r#":arg({ "--retarget-workspace", state() })"#,
+        r#":arg({ "--retarget-workspace", target_dir })"#,
         r#"Command("zoxide")"#,
         r#"emit("cd", { target_dir, raw = true })"#,
-        "YZX_YAZI_ROLE",
         "YZX_OPEN is not set",
     }
 
@@ -1568,8 +1561,6 @@ fn expect_first_party_plugins(git_bin: &Path, config: &str) {
         "support_kitty_keyboard_protocol true",
         "screen_saver_enabled false",
         "popup_plugin_url \"yzpp\"",
-        "workspace_yazi_pane_title \"yazi_popup\"",
-        "yazi_cli \"/nix/store/",
         "managed_agent_command_marker \"/nix/store/",
     }
     expect_popup_defaults(config, "1", "0", "packaged popup config");
@@ -1618,11 +1609,6 @@ fn expect_first_party_plugins(git_bin: &Path, config: &str) {
     ] {
         expect_popup_binding(config, key, payload, "packaged popup config");
     }
-    expect_contains(
-        config,
-        "bind \"Alt z\" {\n            MessagePlugin \"yazelix_pane_orchestrator\" {\n                name \"open_workspace_zoxide_picker\"\n                payload \"yazi\"\n            }\n        }",
-        "packaged global Yazi picker binding",
-    );
 
     let agent = popup_command(config, "/bin/yzx-agent");
     expect_agent_bootstrap(&agent);

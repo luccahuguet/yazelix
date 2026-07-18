@@ -1,4 +1,4 @@
 [[mgr.append_keymap]]
-on = ["<A-Enter>"]
-run = "plugin zoxide-editor -- commit"
-desc = "Commit popup directory as tab workspace"
+on = ["<A-z>"]
+run = "plugin zoxide-editor"
+desc = "Retarget tab workspace with zoxide"

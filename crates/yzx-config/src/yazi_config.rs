@@ -1,8 +1,7 @@
 use std::{collections::BTreeSet, fs, path::Path};
 
 use ratconfig::{
-    ConfigUiApplyStatus, ConfigUiCapability, ConfigUiChoice, ConfigUiField, ConfigUiOverride,
-    ConfigUiTomlDocumentSpec, build_toml_document_fields,
+    ConfigUiApplyStatus, ConfigUiField, ConfigUiTomlDocumentSpec, build_toml_document_fields,
     toml_adapter::{set_toml_value_text, unset_toml_value_text},
 };
 use serde_json::Value as JsonValue;
@@ -12,14 +11,13 @@ use crate::{catalog::*, common::*, paths::ConfigPaths};
 pub(crate) fn build_yazi_fields(paths: &ConfigPaths) -> Result<Vec<ConfigUiField>> {
     let packaged = fs::read_to_string(paths.packaged_yazi.join("yazi.toml"))?;
     let current = read_optional_text(&paths.yazi_config)?;
-    let mut settings = build_toml_document_fields(document(
+    let settings = build_toml_document_fields(document(
         SOURCE_YAZI_CONFIG,
         "Yazi settings",
         &current,
         &packaged,
     ))
-    .map_err(|source| error(source.to_string()))?;
-    set_native_file_fallback(&mut settings.fields, ACTION_YAZI_CONFIG);
+    .map_err(error)?;
     let theme = read_optional_text(&paths.yazi_theme)?;
     let mut appearance = build_toml_document_fields(document(
         SOURCE_YAZI_THEME,
@@ -27,8 +25,7 @@ pub(crate) fn build_yazi_fields(paths: &ConfigPaths) -> Result<Vec<ConfigUiField
         &theme,
         YAZI_THEME_STARTER,
     ))
-    .map_err(|source| error(source.to_string()))?;
-    set_native_file_fallback(&mut appearance.fields, ACTION_YAZI_THEME);
+    .map_err(error)?;
     let flavors = discovered_flavors(paths)?;
     for field in &mut appearance.fields {
         let label = match field.path.as_str() {
@@ -37,30 +34,11 @@ pub(crate) fn build_yazi_fields(paths: &ConfigPaths) -> Result<Vec<ConfigUiField
             _ => continue,
         };
         field.display_label = label.to_string();
-        field.type_label = Some("string".to_string());
-        if !flavors.is_empty() {
-            field.capability = ConfigUiCapability::Choice {
-                choices: flavors
-                    .iter()
-                    .cloned()
-                    .map(JsonValue::String)
-                    .map(ConfigUiChoice::new)
-                    .collect(),
-            };
-        }
-        field.can_unset = true;
+        field.kind = "string".to_string();
+        field.allowed_values.clone_from(&flavors);
         field.validation = "installed packaged or user flavor".to_string();
         field.description =
             format!("{label} from native yazi/theme.toml. Reset uses Yazi's default theme.");
-        if let ConfigUiOverride::Explicit(value) = &field.snapshot.intent
-            && !value
-                .as_str()
-                .is_some_and(|value| flavors.iter().any(|flavor| flavor == value))
-        {
-            field.snapshot.intent = ConfigUiOverride::Invalid {
-                input: ratconfig::render_json_edit_value(value),
-            };
-        }
     }
     appearance.fields.extend(settings.fields);
     Ok(appearance.fields)
@@ -117,14 +95,14 @@ fn document<'a>(
     source_id: &'a str,
     section_label: &'a str,
     current_toml: &'a str,
-    baseline_toml: &'a str,
+    default_toml: &'a str,
 ) -> ConfigUiTomlDocumentSpec<'a> {
     ConfigUiTomlDocumentSpec {
         source_id,
         tab: TAB_YAZI,
         section_label,
         current_toml,
-        baseline_toml: Some(baseline_toml),
+        default_toml: Some(default_toml),
         validation: "native TOML value of the existing type",
         rebuild_required: false,
         apply_status: ConfigUiApplyStatus {
@@ -134,16 +112,6 @@ fn document<'a>(
                 .to_string(),
             pending: false,
         },
-    }
-}
-
-fn set_native_file_fallback(fields: &mut [ConfigUiField], action_id: &str) {
-    for field in fields {
-        field.capability = ConfigUiCapability::ReadOnly {
-            reason: "Open the native file to edit this observed value.".to_string(),
-            file_action_id: Some(action_id.to_string()),
-        };
-        field.can_unset = false;
     }
 }
 

@@ -4,29 +4,15 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## Unreleased
 
-- `yzx config` consumes Ratconfig 6's sparse-intent model. Overview combines
-  recommendations with explicit, invalid, externally managed, and
-  field-diagnosed settings; All remains the complete inventory. Details keep
-  stored overrides, effective values, inherited baselines, and origins
-  separate, while `u` removes an authorized override instead of copying a
-  default. Capabilities authorize each editor, stable field identities survive
-  model reloads, and native TOML rows remain read-only evidence unless Yazelix
-  explicitly supplies an editor such as the Yazi flavor pickers. Read-only
-  sources remain viewable through non-mutating fields instead of
-  invalidating the UI model. Aggregate Helix, Yazi, and Advanced file groups
-  remain ownership-neutral because their files may have different owners.
-- `yzc` uses `cursors.toml` as its only standalone cursor configuration.
-  `yzc init` seeds it when absent and does not import `settings.jsonc`.
 - `Alt Shift Y` hides or shows a full managed Yazi popup at the active tab's
-  canonical workspace root. Global `Alt z` shows or focuses that same live
-  process and starts its zoxide picker; selection changes only the popup cwd so
-  cancellation and further Yazi navigation leave the tab untouched. `Alt Enter`
-  explicitly commits the popup cwd through the canonical retarget operation,
-  returns to the managed editor, and resynchronizes the tiled sidebar. The
-  popup preserves hidden navigation and editor focus. Its registration retry
-  samples Yazi state on every attempt, so delayed startup still establishes a
-  receiver. Stale-root or unregistered popups are replaced at the canonical
-  root before the queued picker runs.
+  canonical workspace root. The popup reuses Nova's layered Yazi configuration
+  and ordinary editor opener while keeping its own navigation state alive when
+  hidden; it never registers as or moves the tiled sidebar. A changed canonical
+  root replaces the stale hidden process on its next reveal. After a file open
+  focuses Helix and Zellij hides the floating layer, `Alt Shift Y` shows the
+  same live Yazi process on its next press. Ordinary Yazi navigation cannot be
+  mistaken for a root change. Existing sidebar `Alt z` behavior remains
+  unchanged.
 
 ## 1.0.0-beta.2
 

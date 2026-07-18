@@ -1,30 +1,34 @@
 local M = {}
 
 local state = ya.sync(function(st)
-	return tostring(cx.active.current.cwd)
+	return {
+		cwd = tostring(cx.active.current.cwd),
+		empty = st.empty,
+	}
 end)
 
-function M:entry(job)
-	if job.args[1] == "commit" then
-		return M.commit_workspace()
-	end
-	M.pick()
-end
+local set_state = ya.sync(function(st, empty) st.empty = empty end)
 
-function M.pick()
-	local cwd = state()
-	if M.is_empty(cwd) then
+function M:entry()
+	local st = state()
+	if st.empty == nil then
+		st.empty = M.is_empty(st.cwd)
+		set_state(st.empty)
+	end
+
+	if st.empty then
 		return ya.notify({ title = "Zoxide", content = "No directory history found.", timeout = 5, level = "error" })
 	end
 
 	local permit = ui.hide()
-	local target, err = M.run_with(cwd)
+	local target, err = M.run_with(st.cwd)
 	permit:drop()
 
 	if not target then
 		ya.notify({ title = "Zoxide", content = tostring(err), timeout = 5, level = "error" })
 	elseif target ~= "" then
 		M.change_dir(target)
+		M.open_in_editor(target)
 	end
 end
 
@@ -33,29 +37,28 @@ function M.change_dir(target_dir)
 	emit("cd", { target_dir, raw = true })
 end
 
-function M.commit_workspace()
-	if os.getenv("YZX_YAZI_ROLE") ~= "workspace-popup" then
-		return ya.notify({ title = "Workspace", content = "Workspace commit is available only in the Yazi popup.", timeout = 5, level = "error" })
-	end
+function M.open_in_editor(target_dir)
 	local yzx_open = os.getenv("YZX_OPEN")
 	if not yzx_open or yzx_open == "" then
-		return ya.notify({ title = "Workspace", content = "YZX_OPEN is not set.", timeout = 5, level = "error" })
+		ya.notify({ title = "Zoxide Editor", content = "YZX_OPEN is not set.", timeout = 5, level = "error" })
+		return
 	end
 
 	local child, err = Command(yzx_open)
-		:arg({ "--retarget-workspace", state() })
+		:arg({ "--retarget-workspace", target_dir })
 		:stdout(Command.PIPED)
 		:stderr(Command.PIPED)
 		:spawn()
 	if not child then
-		return ya.notify({ title = "Workspace", content = "Failed to run yzx-open: " .. tostring(err), timeout = 5, level = "error" })
+		ya.notify({ title = "Zoxide Editor", content = "Failed to run yzx-open: " .. tostring(err), timeout = 5, level = "error" })
+		return
 	end
 
 	local output, wait_err = child:wait_with_output()
 	if not output then
-		ya.notify({ title = "Workspace", content = "yzx-open error: " .. tostring(wait_err), timeout = 5, level = "error" })
+		ya.notify({ title = "Zoxide Editor", content = "yzx-open error: " .. tostring(wait_err), timeout = 5, level = "error" })
 	elseif not output.status.success then
-		ya.notify({ title = "Workspace", content = output.stderr, timeout = 5, level = "error" })
+		ya.notify({ title = "Zoxide Editor", content = output.stderr, timeout = 5, level = "error" })
 	end
 end
 

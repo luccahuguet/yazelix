@@ -20,7 +20,6 @@ const KEY_SIDEBAR_SWAP: &str = "Alt Shift H";
 const KEY_YAZI_POPUP: &str = "Alt Shift Y";
 const KEY_NEW_PANE: &str = "Alt m";
 const KEY_YAZI_ZOXIDE: &str = "Alt z";
-const KEY_WORKSPACE_COMMIT: &str = "Alt Enter";
 const KEY_TAB_LEFT: &str = "Ctrl Alt h";
 const KEY_TAB_RIGHT: &str = "Ctrl Alt l";
 const KEY_PANE_DOWN: &str = "Ctrl Alt j";
@@ -221,8 +220,8 @@ fn render_workspace_lesson(index: usize, lesson: &TutorLesson) -> String {
 1. **Run in shell:** Start in the project directory with `yzx enter`; use `cd <dir> && yzx launch` when you need a separate Mars window for another directory.
 2. **Inside Yazelix:** Press `{focus_left}` or `{focus_right}` to walk visible panes; press `{sidebar_focus}` to move directly between the editor and Yazi sidebar, and `{sidebar_swap}` to toggle the sidebar.
 3. **Inside Yazelix:** Press `{yazi_popup}` to hide or show a full Yazi popup at the current tab workspace; its navigation state stays live while hidden.
-4. **Inside Yazelix:** Press `{yazi_zoxide}` from any pane to show that popup and choose a directory with zoxide. The selection changes only the popup directory, so you can keep navigating or cancel without changing the tab workspace.
-5. **Inside the Yazi popup:** Press `{workspace_commit}` to commit its current directory as the tab workspace and return to the managed editor. Press `Enter` on a file for an ordinary managed open.
+4. **Inside Yazi:** Press `Enter` to open the selected file in the managed editor.
+5. **Inside Yazi:** Press `{yazi_zoxide}` to retarget the tab workspace with zoxide and open the selected directory in the editor.
 6. **Inside Yazelix:** Press `{new_pane}` for a new stacked pane, `{fullscreen}` to fullscreen the focused pane, `{pane_mode}` for pane mode, `{tab_mode}` for tab mode, `{resize_mode}` for resize mode, and `{quit}` for quit mode.
 7. **Inside Yazelix:** Press `{tab_left}` or `{tab_right}` to move the current tab; press `{pane_down}` or `{pane_up}` to move the current pane.
 8. **Inside the editor:** Press `{reveal}` to reveal the current file in Yazi.
@@ -241,7 +240,6 @@ Next lesson: `yzx tutor discovery`.
         sidebar_swap = key(KEY_SIDEBAR_SWAP),
         yazi_popup = key(KEY_YAZI_POPUP),
         yazi_zoxide = key(KEY_YAZI_ZOXIDE),
-        workspace_commit = key(KEY_WORKSPACE_COMMIT),
         new_pane = key(KEY_NEW_PANE),
         pane_mode = key(KEY_PANE_MODE),
         tab_mode = key(KEY_TAB_MODE),
