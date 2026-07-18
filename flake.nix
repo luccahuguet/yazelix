@@ -307,10 +307,10 @@
       yaziAssetsSelection = pkgs.fetchFromGitHub {
         owner = "luccahuguet";
         repo = "yazelix-yazi-assets";
-        rev = "aea0703247479e1fa373be6b305e24e568cb30c7";
+        rev = "677c127bceca9b9de3aab1251f8b65fe81631309";
         sparseCheckout = ["plugins/git.yazi" "yazelix_starship.toml"];
         nonConeMode = true;
-        hash = "sha256-eHt6kRaLcXgjhdnmhI2QY2O1tF9wGFXbIjXc4pObF4U=";
+        hash = "sha256-E40pXHSUX75ig0ACcuinTSC4xiJu0r8fO/G9z+w+YuI=";
       };
       yaziFlavorNames = [
         "catppuccin-frappe.yazi"

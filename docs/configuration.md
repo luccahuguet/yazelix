@@ -254,6 +254,10 @@ runtime state without setting top-level `format`, so Starship retains its native
 `$all` layout. Mars and Zellij layer their sparse files over packaged
 configuration directly. Untouched defaults follow upgrades
 
+Yazi's compact Starship header mirrors the default contextual module coverage.
+Directory and Git retain compact text; every other decoration renders only its
+symbol, so values such as cloud profiles and regions stay out of the sidebar
+
 Ratconfig's Zellij theme picker lists the identities declared by the pinned
 Zellij package rather than maintaining theme definitions. Choosing `default`
 removes the sparse `theme` assignment. A custom theme name written directly in

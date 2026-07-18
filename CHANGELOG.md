@@ -4,6 +4,9 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## Unreleased
 
+- Yazi's compact Starship header mirrors the shell prompt's contextual module
+  coverage. Directory and Git keep compact text, while cloud, orchestration,
+  infrastructure, environment, and toolchain decorations render as icons only.
 - Published installs use the protected `stable` branch as the recommended Nix
   and Home Manager channel. `stable` advances from an exact checked and
   dogfooded `main` revision at most once per week, while `main` remains the
