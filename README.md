@@ -4,13 +4,12 @@
   <img src="assets/logo.png" alt="Yazelix logo" width="200"/>
 </div>
 
-Yazelix Nova is a Nix-packaged terminal workspace built around Mars, the
-Yazelix Zellij fork, Yazi, Nushell, Git tools, and an optional coding agent. It
-uses managed Helix by default (but `editor.command` can select an installed
+Yazelix Nova is a Nix-packaged terminal workspace built around Mars, a thin Yazelix-owned Zellij fork, Yazi, Nushell, Git tools, and an optional coding agent. It
+uses managed Helix by default (but `editor.command` can select your prefered 
 terminal editor). `yzx launch` opens the desktop workspace through Mars, while
 `yzx enter` runs the same Yazi-first workspace in any capable terminal
-emulator or over SSH (Mars provides tighter Yazelix integration).
-Packaged defaults make the first run configuration-free.
+emulator or over SSH (Mars provides tighter Yazelix integration, though).
+Great defaults out of the box.
 
 ## Preview
 
@@ -22,10 +21,8 @@ Yazelix requires Nix with flakes enabled. `launch` opens the packaged Mars windo
 in a graphical session, while `enter` starts the same workspace in the current
 terminal or over SSH.
 
-Nova remains in the v1 beta series. The `stable` branch is the recommended
-install and update channel, not the final v1 release. It advances from a checked
-and dogfooded `main` revision at most once per week, with earlier promotions
-reserved for urgent fixes. Use `main` for the development channel or an
+The `stable` branch advances from a checked
+and dogfooded `main` revision at most once per week. Use `main` for more constant updates or an
 immutable `nova-v*` tag for an exact release.
 
 Linux is the dogfooded platform. CI builds all packages and a Home Manager
