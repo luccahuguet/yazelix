@@ -62,8 +62,8 @@ incompatible quota periods
 
 `editor.command` accepts one executable name or path, not a shell command with
 arguments. In packages that include managed Helix, `hx` and `yzx-hx` select it.
-The no-Helix package reports those managed names as unavailable. Other editors
-such as `nvim`, or an absolute host Helix path, skip the managed bridge.
+The no-Helix package reports those managed names as unavailable. Other terminal
+editors such as `nvim`, or an absolute host Helix path, skip the managed bridge.
 Config native-file actions and terminal Git clients run through `yzx-editor`,
 which resolves the current `editor.command` for each edit
 
@@ -280,9 +280,8 @@ live via Zellij's watcher, while some still need a new session
 Managed Yazi opens files through `yzx-open`. With the default
 `editor.command = "yzx-hx"`, `yzx-open` reuses a live Helix bridge in the same
 Zellij tab or opens packaged Helix in the managed `editor` pane when the
-selected package includes it. The no-Helix package requires another installed
-editor command. Typing `hx` inside a managed-Helix package invokes the same
-wrapper
+selected package includes it. The no-Helix package requires another terminal
+editor command. In a managed-Helix package, typing `hx` invokes the same wrapper
 
 Git editing stays in the client terminal. Managed LazyGit overlays only its
 file-edit commands and keeps user configuration, while it and other terminal
@@ -301,6 +300,23 @@ vim.keymap.set("n", "<M-r>", function()
   if path ~= "" then vim.fn.jobstart({ "yzx", "reveal", path }) end
 end, { desc = "Reveal buffer in Yazelix sidebar" })
 ```
+
+Terminal Emacs users can bind the same command:
+
+```elisp
+(defun yazelix-reveal-buffer ()
+  "Reveal the current buffer in the Yazelix sidebar."
+  (interactive)
+  (if buffer-file-name
+      (start-process "yzx-reveal" nil "yzx" "reveal" buffer-file-name)
+    (user-error "Current buffer does not visit a file")))
+
+(global-set-key (kbd "M-r") #'yazelix-reveal-buffer)
+```
+
+These bindings expect the editor process to inherit the managed Yazelix
+session environment. The Emacs example replaces the default `M-r` binding.
+Choose another key to retain `move-to-window-line-top-bottom`.
 
 `Alt z` opens a zoxide picker in Yazi, moves to the selected directory, and
 explicitly retargets the tab workspace and managed editor through `yzx-open`.
