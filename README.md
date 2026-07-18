@@ -6,7 +6,7 @@
 
 Yazelix Nova is a Nix-packaged terminal workspace built around Mars, the
 Yazelix Zellij fork, Yazi, Nushell, Git tools, and an optional coding agent. It
-uses managed Helix by default (`editor.command` can select an installed terminal
+uses managed Helix by default (but `editor.command` can select an installed terminal
 editor). `yzx launch` opens the desktop workspace through Mars, while
 `yzx enter` runs the same Yazi-first workspace in a capable terminal or over SSH.
 Packaged defaults make the first run configuration-free.
