@@ -603,7 +603,7 @@ mod tests {
         ] {
             assert_write_config_error(&path, field_path, value, expected);
         }
-        for value in ["Alt Shift f", "Alt Shift Y", "Alt z"] {
+        for value in ["Alt Shift f", "Alt Shift Y", "Alt z", "Alt Enter"] {
             assert_write_config_error(
                 &path,
                 KEYBINDINGS_AGENT_PATH,
@@ -1234,8 +1234,13 @@ color = "#123456"
 
         let yazi_zoxide = key_field(&model, "Alt z");
         assert!(yazi_zoxide.display_label.contains("Alt z"));
-        assert!(yazi_zoxide.description.contains("Owner: Yazi"));
-        assert_eq!(yazi_zoxide.current_value, "Yazi / yazi/keymap.toml");
+        assert!(yazi_zoxide.description.contains("Owner: Yazelix"));
+        assert_eq!(yazi_zoxide.current_value, "Yazelix / config.kdl");
+
+        let workspace_commit = key_field(&model, "Alt Enter");
+        assert!(workspace_commit.display_label.contains("Alt Enter"));
+        assert!(workspace_commit.description.contains("Owner: Yazi"));
+        assert_eq!(workspace_commit.current_value, "Yazi / yazi/keymap.toml");
 
         let yazi_popup = key_field(&model, "Alt Shift Y");
         assert_eq!(

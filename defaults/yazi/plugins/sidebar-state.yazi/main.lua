@@ -2,6 +2,7 @@ local M = {}
 
 local ORCHESTRATOR = "yazelix_pane_orchestrator"
 local RETRY_DELAYS = { 0, 0.15, 0.35, 0.75, 1.25 }
+local WORKSPACE_POPUP = os.getenv("YZX_YAZI_ROLE") == "workspace-popup"
 local generation = 0
 
 local function json_escape(value)
@@ -45,7 +46,7 @@ local function pipe_registration(payload)
 			"--plugin",
 			ORCHESTRATOR,
 			"--name",
-			"register_sidebar_yazi_state",
+			WORKSPACE_POPUP and "register_workspace_popup_yazi_state" or "register_sidebar_yazi_state",
 			"--",
 			payload,
 		})
@@ -95,6 +96,9 @@ end
 
 function M.setup()
 	publish()
+	if WORKSPACE_POPUP then
+		return
+	end
 	emit_sidebar_git_refresh()
 	ps.sub("cd", function()
 		publish()

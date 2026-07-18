@@ -89,6 +89,13 @@ root and hides on toggle, preserving its live Yazi navigation state while that
 root remains unchanged. It uses the same layered Yazi configuration and editor
 opener as the sidebar without registering as the sidebar.
 
+`Alt z` is the fixed global workspace-picker key. It shows or focuses the same
+live popup and starts zoxide inside that Yazi process; a selection changes only
+the popup directory. `Alt Enter` is the fixed Yazi-popup commit key. It sends
+the current popup directory through the canonical retarget operation, returns
+to the managed editor, and resynchronizes the tiled sidebar. These bindings do
+not add Ratconfig settings.
+
 `agent.command` accepts one executable name or path, not a shell command with
 arguments. Keep `agent.command = "auto"` to use the built-in `codex resume`,
 `grok`, `opencode`, `pi`, `claude --resume` fallback chain
@@ -302,11 +309,15 @@ vim.keymap.set("n", "<M-r>", function()
 end, { desc = "Reveal buffer in Yazelix sidebar" })
 ```
 
-`Alt z` opens a zoxide picker in Yazi, moves to the selected directory, and
-explicitly retargets the tab workspace and managed editor through `yzx-open`.
+Global `Alt z` opens a zoxide picker in the managed Yazi popup and moves only
+that live process to the selected directory. Canceling or navigating further
+does not alter the tab workspace. `Alt Enter` in the popup explicitly commits
+its current directory through `yzx-open --retarget-workspace`; the editor and
+canonical root update transactionally, then the tiled sidebar resynchronizes.
 Ordinary Yazi opens keep the existing tab workspace. After the editor accepts
-the request, the originating managed sidebar follows the primary file's parent
-or the opened directory; failed and non-sidebar opens do not move it
+an ordinary request, the originating managed sidebar follows the primary
+file's parent or the opened directory; failed and non-sidebar opens do not move
+it
 
 `yzx-open` writes bounded logs under:
 

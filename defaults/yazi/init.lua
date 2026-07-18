@@ -1,6 +1,6 @@
 require("auto-layout"):setup()
+require("sidebar-state"):setup()
 if os.getenv("YZX_YAZI_ROLE") ~= "workspace-popup" then
-	require("sidebar-state"):setup()
 	require("sidebar-status"):setup()
 end
 require("git"):setup()

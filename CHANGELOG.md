@@ -5,14 +5,13 @@ User-visible runtime changes for Yazelix Nova live here.
 ## Unreleased
 
 - `Alt Shift Y` hides or shows a full managed Yazi popup at the active tab's
-  canonical workspace root. The popup reuses Nova's layered Yazi configuration
-  and ordinary editor opener while keeping its own navigation state alive when
-  hidden; it never registers as or moves the tiled sidebar. A changed canonical
-  root replaces the stale hidden process on its next reveal. After a file open
-  focuses Helix and Zellij hides the floating layer, `Alt Shift Y` shows the
-  same live Yazi process on its next press. Ordinary Yazi navigation cannot be
-  mistaken for a root change. Existing sidebar `Alt z` behavior remains
-  unchanged.
+  canonical workspace root. Global `Alt z` shows or focuses that same live
+  process and starts its zoxide picker; selection changes only the popup cwd so
+  cancellation and further Yazi navigation leave the tab untouched. `Alt Enter`
+  explicitly commits the popup cwd through the canonical retarget operation,
+  returns to the managed editor, and resynchronizes the tiled sidebar. The
+  popup keeps its own navigation state while hidden, survives editor focus, and
+  restarts only when the committed canonical root changes.
 
 ## 1.0.0-beta.2
 

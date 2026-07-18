@@ -120,6 +120,10 @@ the menu. Ratconfig, the agent, and the full Yazi popup hide instead, preserving
 their in-memory state while their popup processes remain alive. The Yazi popup
 starts at the tab's canonical workspace root, keeps navigation independent from
 the tiled sidebar, and restarts on reveal when that canonical root has changed.
+`Alt z` shows that live popup from any pane and opens its zoxide picker. A
+selection changes only the popup directory, leaving room for further Yazi
+navigation; `Alt Enter` explicitly commits the popup directory as the tab
+workspace and returns to the managed editor.
 Git and the agent also use the canonical root even when the focused pane has
 navigated elsewhere.
 The agent pane uses `agent` until its provider publishes a terminal title.
@@ -144,13 +148,15 @@ Ratconfig's Keys tab is the complete packaged reference, and
 | `Alt m` | Open a new pane |
 | `Alt Shift F` | Toggle the focused pane fullscreen |
 | `Alt Shift Y` | Hide or show the full Yazi popup |
+| `Alt z` | Show the Yazi popup and choose a directory with zoxide |
 | `Ctrl y` | Toggle focus between the editor and Yazi sidebar |
 | `Alt 1-9` | Go directly to tab 1-9 |
 
 Move mode is unbound. `keybindings.sidebar` and `keybindings.sidebar_focus`
 remap sidebar visibility and editor/sidebar focus. Managed popup triggers use
 `keybindings.config`, `keybindings.agent`, `keybindings.git`, and
-`keybindings.menu`. The packaged Yazi popup remains fixed at `Alt Shift Y`.
+`keybindings.menu`. The packaged Yazi workspace keys remain fixed at
+`Alt Shift Y`, `Alt z`, and `Alt Enter`.
 Raw Zellij keymaps stay outside the managed sidecar
 
 ### Helix
@@ -163,7 +169,7 @@ Raw Zellij keymaps stay outside the managed sidecar
 
 | Key | Action |
 | --- | --- |
-| `Alt z` | Retarget the tab workspace with zoxide |
+| `Alt Enter` | Commit the popup's current directory as the tab workspace |
 
 ## Commands
 
@@ -234,6 +240,6 @@ popup contracts live in [Runtime Notes](docs/runtime-notes.md)
 
 ## LOC Scorecard
 
-Yazelix owns **19,702 lines** of tracked text project files. The
+Yazelix owns **19,810 lines** of tracked text project files. The
 [reproducible scorecard](docs/development.md#loc-scorecard) excludes Beads,
 lockfiles, and binary assets

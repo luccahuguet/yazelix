@@ -177,7 +177,7 @@ fn run(config: &Config, raw_targets: impl IntoIterator<Item = OsString>) -> Resu
         ),
     );
 
-    if decision.mutate {
+    if should_publish_workspace(request.intent, &decision) {
         set_workspace(config, &decision.root, WorkspaceSource::Explicit)
             .context("could not update the canonical tab workspace")?;
     }
@@ -217,6 +217,8 @@ fn run(config: &Config, raw_targets: impl IntoIterator<Item = OsString>) -> Resu
     }
     if request.intent == OpenIntent::Ordinary {
         follow_originating_sidebar(config, &current_state, &targets)?;
+    } else {
+        resync_sidebar(config, &current_state, &decision.root)?;
     }
     Ok(())
 }
@@ -658,6 +660,22 @@ fn follow_originating_sidebar(
     ensure_success(&output, "ya failed to follow opened target")
 }
 
+fn resync_sidebar(
+    config: &Config,
+    state: &ActiveWorkspaceState,
+    workspace_root: &Path,
+) -> Result<()> {
+    let Some(sidebar) = &state.sidebar_yazi else {
+        return Ok(());
+    };
+    let output = Command::new(&config.ya)
+        .args(["emit-to", &sidebar.yazi_id, "cd"])
+        .arg(workspace_root)
+        .output()
+        .context("could not run ya")?;
+    ensure_success(&output, "ya failed to resync the managed sidebar")
+}
+
 fn target_workspace_root(config: &Config, targets: &[PathBuf]) -> PathBuf {
     let target_dir = directory_target(targets).cloned().unwrap_or_else(|| {
         targets[0]
@@ -701,6 +719,10 @@ fn decide_workspace(
             mutate: current.source != WorkspaceSource::Explicit || current.root != candidate,
         },
     }
+}
+
+fn should_publish_workspace(intent: OpenIntent, decision: &WorkspaceDecision) -> bool {
+    decision.mutate || intent == OpenIntent::Retarget
 }
 
 fn active_tab_workspace(config: &Config) -> Result<ActiveWorkspaceState> {
@@ -952,8 +974,13 @@ mod tests {
     }
 
     fn write_executable(path: &Path, contents: impl AsRef<[u8]>) {
-        fs::write(path, contents).unwrap();
-        fs::set_permissions(path, fs::Permissions::from_mode(0o755)).unwrap();
+        let staging = path.with_extension("tmp");
+        let mut file = fs::File::create(&staging).unwrap();
+        file.write_all(contents.as_ref()).unwrap();
+        file.sync_all().unwrap();
+        drop(file);
+        fs::set_permissions(&staging, fs::Permissions::from_mode(0o755)).unwrap();
+        fs::rename(staging, path).unwrap();
     }
 
     struct TestRuntime {
@@ -1262,6 +1289,34 @@ fi
                 OsString::from("/two"),
             ])
             .is_err()
+        );
+    }
+
+    #[test]
+    fn explicit_retarget_republishes_an_unchanged_root_for_coordinator_resync() {
+        let runtime = TestRuntime::new("same-root-retarget");
+        let root = runtime.root.join("workspace with spaces");
+        let state = ActiveWorkspaceState {
+            active_tab_position: 0,
+            workspace: CanonicalWorkspace {
+                root: root.clone(),
+                source: WorkspaceSource::Explicit,
+            },
+            sidebar_yazi: Some(SidebarYaziState {
+                yazi_id: "managed-yazi".into(),
+                cwd: Some(root.display().to_string()),
+            }),
+        };
+        let decision = WorkspaceDecision {
+            root: root.clone(),
+            mutate: false,
+        };
+
+        assert!(should_publish_workspace(OpenIntent::Retarget, &decision));
+        resync_sidebar(&runtime.config("test-session"), &state, &root).unwrap();
+        assert_eq!(
+            fs::read_to_string(runtime.root.join("ya.log")).unwrap(),
+            format!("emit-to managed-yazi cd {}\n", root.display())
         );
     }
 

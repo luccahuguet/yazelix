@@ -60,6 +60,8 @@ plugins {
     yazelix_pane_orchestrator location="@yzxPaneOrchestrator@" {
         screen_saver_enabled false
         popup_plugin_url "yzpp"
+        workspace_yazi_pane_title "yazi_popup"
+        yazi_cli "@yzxYa@"
         managed_agent_command_marker "@yzxAgent@"
     }
 }
@@ -102,6 +104,12 @@ keybinds {
         bind "Alt Shift Y" {
             MessagePlugin "yazelix_pane_orchestrator" {
                 name "toggle_workspace_popup"
+                payload "yazi"
+            }
+        }
+        bind "Alt z" {
+            MessagePlugin "yazelix_pane_orchestrator" {
+                name "open_workspace_zoxide_picker"
                 payload "yazi"
             }
         }
