@@ -92,15 +92,18 @@ yzx tutor begin
 without opening Mars or Zellij. Inside Yazelix, press `Alt Shift M` to open the
 command palette, which includes both help and tutor entries
 
-Press `Alt Shift K` to open Ratconfig. Press `8` for native Yazi settings and
-flavors, or `9` for the read-only packaged key reference. Use `1`-`9` to jump
-directly to a tab, `Tab`/`Shift-Tab` or `h`/`l` to change tabs, `j`/`k` to move,
-and `/` to search across All settings. When a tab has settings outside Core,
-press `a` to switch between Core and All without changing the saved view used
-after search. Use `e`, `Enter`, or `Space` for the selected row's contextual
-action, such as editing or opening it. Press `u` to reset a setting and `q` to
-quit. When a writable structured row has one owning file action, `e` opens that
-exact config file. The footer lists the selected row's controls
+Press `Alt Shift K` to open Ratconfig.
+
+| Key | Action |
+| --- | --- |
+| `1`-`9` | Jump to a tab; `8` opens Yazi settings and `9` opens the key reference |
+| `Tab` / `Shift-Tab`, `h` / `l` | Change tabs |
+| `j` / `k`, `/` | Move through rows or search All settings |
+| `a` | Switch between Core and All |
+| `e`, `Enter`, `Space` | Run the selected row's contextual action |
+| `u`, `q` | Reset the selected setting or quit |
+
+The footer lists the selected row's controls
 
 Yazelix carries Helix/Vim's `h/j/k/l` motion model through the workspace:
 
@@ -110,15 +113,17 @@ Yazelix carries Helix/Vim's `h/j/k/l` motion model through the workspace:
 | `Alt` | Focus left or previous tab | Focus down | Focus up | Focus right or next tab |
 | `Ctrl Alt` | Move tab left | Move pane down | Move pane up | Move tab right |
 
-The default `Alt Shift` layer keeps the sidebar and five popups in the same
-keyboard neighborhood:
+The default `Alt Shift H/J/K/L` row groups four workspace surfaces:
 
 ```text
-H             J          K          L      Y
-sidebar       Git        Ratconfig  agent  Yazi
-                    M
-                    menu
+H          J      K          L
+sidebar    Git    Ratconfig  agent
 ```
+
+Yazi and the menu use their initials:
+
+- `Alt Shift Y` toggles the full Yazi popup.
+- `Alt Shift M` toggles the command menu.
 
 `Alt Shift H` toggles the sidebar. Press a popup's own key again to close Git or
 the menu. Ratconfig, the agent, and the full Yazi popup hide instead, preserving
@@ -239,6 +244,6 @@ popup contracts live in [Runtime Notes](docs/runtime-notes.md)
 
 ## LOC Scorecard
 
-Yazelix owns **19,770 lines** of tracked text project files. The
+Yazelix owns **19,775 lines** of tracked text project files. The
 [reproducible scorecard](docs/development.md#loc-scorecard) excludes Beads,
 lockfiles, and binary assets
