@@ -9,10 +9,9 @@ Yazelix Nova is a Nix-packaged terminal workspace built around
 [Yazelix-owned Zellij fork](https://github.com/luccahuguet/yazelix-zellij),
 Yazi, Nushell, Git tools, and an optional coding agent. It uses the
 [Yazelix Helix fork](https://github.com/luccahuguet/yazelix-helix) by default
-(`editor.command` can select your preferred terminal editor). `yzx launch`
-opens the desktop workspace through Mars, while `yzx enter` runs the same
-Yazi-first workspace in any capable terminal emulator or over SSH (Mars
-provides tighter Yazelix integration, though). Great defaults out of the box.
+(but `editor.command` can select your preferred terminal editor). `yzx launch`
+opens the desktop workspace through Mars, while `yzx enter` will open Yazelix in any capable terminal emulator (Mars
+provides tighter Yazelix integration, though) or over SSH. Great defaults out of the box!
 
 ## Preview
 
