@@ -1401,7 +1401,7 @@ fn expect_yazi_alt_z(yzx: &Path) {
     let init = fs::read_to_string(yzx.join("share/yazelix/yazi/init.lua")).unwrap();
     expect_contains(
         &init,
-        "local workspace_popup = os.getenv(\"YZX_YAZI_ROLE\") == \"workspace-popup\"\nif not workspace_popup then\n\trequire(\"sidebar-state\"):setup()\n\trequire(\"sidebar-status\"):setup()\nend",
+        "if os.getenv(\"YZX_YAZI_ROLE\") ~= \"workspace-popup\" then\n\trequire(\"sidebar-state\"):setup()\n\trequire(\"sidebar-status\"):setup()\nend",
         "Yazi workspace popup role fragment",
     );
     let sidebar_state =

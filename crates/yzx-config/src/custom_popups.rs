@@ -10,6 +10,8 @@ use crate::{
     },
 };
 
+const BUILTIN_POPUP_IDS: &[&str] = &["config", "agent", "git", "menu", "yazi"];
+
 pub(crate) struct CustomPopup {
     pub(crate) id: String,
     command: String,
@@ -129,7 +131,6 @@ fn custom_popup(id: &str, value: &JsonValue) -> Result<CustomPopup> {
     })
 }
 fn validate_custom_popup_id(id: &str) -> Result<()> {
-    const BUILTIN_POPUP_IDS: &[&str] = &["config", "agent", "git", "menu", "yazi"];
     if BUILTIN_POPUP_IDS.contains(&id) {
         return Err(error(format!(
             "popups.{id} conflicts with packaged popup id"
@@ -149,18 +150,14 @@ fn validate_custom_popup_id(id: &str) -> Result<()> {
     }
 }
 fn validate_custom_popup_titles(popups: &[CustomPopup]) -> Result<()> {
-    const BUILTIN_POPUP_TITLES: &[&str] = &[
-        "config_popup",
-        "agent_popup",
-        "git_popup",
-        "menu_popup",
-        "yazi_popup",
-    ];
     let mut used = BTreeMap::new();
     for popup in popups {
         let title = popup.title.trim();
         let path = format!("popups.{}.title", popup.id);
-        if BUILTIN_POPUP_TITLES.contains(&title) {
+        if title
+            .strip_suffix("_popup")
+            .is_some_and(|id| BUILTIN_POPUP_IDS.contains(&id))
+        {
             return Err(error(format!(
                 "{path} conflicts with packaged popup title {title}"
             )));

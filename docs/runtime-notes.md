@@ -119,8 +119,9 @@ arguments in `agent.args`, not in `agent.command`.
 with the active tab's canonical workspace root as its explicit request cwd.
 The popup uses `toggle_close_behavior "hide"`, so the popup plugin preserves
 the live Yazi process and navigation state while that requested root still
-matches. If the canonical root changes, the next reveal closes the stale
-process and launches a fresh one at the new root.
+matches. It remembers the launch root separately from Yazi's changing process
+cwd. If the canonical root changes, the next reveal closes the stale process
+and launches a fresh one at the new root.
 
 The popup runs the same `yzx-yazi` launcher and layered config as the tiled
 sidebar with the private `workspace-popup` role. Packaged Yazi initialization

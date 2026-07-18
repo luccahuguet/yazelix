@@ -75,15 +75,13 @@ fn run() -> io::Result<()> {
 }
 
 fn take_workspace_popup_flag(args: &mut Vec<OsString>) -> bool {
-    if args
+    let workspace_popup = args
         .first()
-        .is_some_and(|arg| arg == OsStr::new("--yzx-workspace-popup"))
-    {
+        .is_some_and(|arg| arg == OsStr::new("--yzx-workspace-popup"));
+    if workspace_popup {
         args.remove(0);
-        true
-    } else {
-        false
     }
+    workspace_popup
 }
 
 fn yazi_config_home(state_dir: &Path) -> io::Result<PathBuf> {
@@ -198,6 +196,9 @@ mod tests {
 
         let mut ordinary = vec![OsString::from("/workspace"), OsString::from("--debug")];
         assert!(!take_workspace_popup_flag(&mut ordinary));
-        assert_eq!(ordinary.len(), 2);
+        assert_eq!(
+            ordinary,
+            [OsString::from("/workspace"), OsString::from("--debug")]
+        );
     }
 }
