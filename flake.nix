@@ -535,6 +535,7 @@
           inherit defaultPopupSideMargin defaultPopupVerticalMargin;
           yzxConfig = "${configUi}/bin/yzx-config-ui";
           yzxMenu = "${yzxMenu}/bin/yzx-menu";
+          yzxYazi = "${yazi}/bin/yzx-yazi";
           yzxSidebarRefresh = "${yzxOpenCore}/bin/yzx-sidebar-refresh";
           git = "${git}/bin/yzx-git";
           layout = "${layout}/layout.kdl";

@@ -113,6 +113,22 @@ Any other `agent.command` value is executed directly by the same launcher for
 new sessions, so custom commands receive the same initial title. Put argv-style
 arguments in `agent.args`, not in `agent.command`.
 
+## Yazi Popup
+
+`Alt Shift Y` asks the pane orchestrator to toggle the packaged `yazi` popup
+with the active tab's canonical workspace root as its explicit request cwd.
+The popup uses `toggle_close_behavior "hide"`, so the popup plugin preserves
+the live Yazi process and navigation state while that requested root still
+matches. If the canonical root changes, the next reveal closes the stale
+process and launches a fresh one at the new root.
+
+The popup runs the same `yzx-yazi` launcher and layered config as the tiled
+sidebar with the private `workspace-popup` role. Packaged Yazi initialization
+omits `sidebar-state` and `sidebar-status` for that role, preventing its
+`YAZI_ID`, pane id, and cwd from replacing the orchestrator's real sidebar
+registration. Popup navigation and ordinary opens retain their existing local
+and canonical-workspace semantics.
+
 ## Nushell And Starship
 
 When `shell.program = "nu"`, Yazelix does not read normal Nushell config. It

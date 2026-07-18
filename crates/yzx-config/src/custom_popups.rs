@@ -129,7 +129,7 @@ fn custom_popup(id: &str, value: &JsonValue) -> Result<CustomPopup> {
     })
 }
 fn validate_custom_popup_id(id: &str) -> Result<()> {
-    const BUILTIN_POPUP_IDS: &[&str] = &["config", "agent", "git", "menu"];
+    const BUILTIN_POPUP_IDS: &[&str] = &["config", "agent", "git", "menu", "yazi"];
     if BUILTIN_POPUP_IDS.contains(&id) {
         return Err(error(format!(
             "popups.{id} conflicts with packaged popup id"
@@ -149,8 +149,13 @@ fn validate_custom_popup_id(id: &str) -> Result<()> {
     }
 }
 fn validate_custom_popup_titles(popups: &[CustomPopup]) -> Result<()> {
-    const BUILTIN_POPUP_TITLES: &[&str] =
-        &["config_popup", "agent_popup", "git_popup", "menu_popup"];
+    const BUILTIN_POPUP_TITLES: &[&str] = &[
+        "config_popup",
+        "agent_popup",
+        "git_popup",
+        "menu_popup",
+        "yazi_popup",
+    ];
     let mut used = BTreeMap::new();
     for popup in popups {
         let title = popup.title.trim();

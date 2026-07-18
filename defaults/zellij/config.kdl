@@ -45,6 +45,15 @@ plugins {
                 width_percent 100
                 height_percent 100
             }
+
+            yazi {
+                command "@yzxYazi@"
+                pane_title "yazi_popup"
+                width_percent 100
+                height_percent 100
+                arg_1 "--yzx-workspace-popup"
+                toggle_close_behavior "hide"
+            }
         }
     }
 
@@ -90,6 +99,12 @@ keybinds {
     shared_except "locked" {
         unbind "Alt n" "Alt i" "Alt o" "Ctrl g"
         bind "Alt m" { NewPane; }
+        bind "Alt Shift Y" {
+            MessagePlugin "yazelix_pane_orchestrator" {
+                name "toggle_workspace_popup"
+                payload "yazi"
+            }
+        }
         bind "@gitKey@" {
             MessagePlugin "yazelix_pane_orchestrator" {
                 name "toggle_workspace_popup"

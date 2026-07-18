@@ -105,20 +105,23 @@ Yazelix carries Helix/Vim's `h/j/k/l` motion model through the workspace:
 | `Alt` | Focus left or previous tab | Focus down | Focus up | Focus right or next tab |
 | `Ctrl Alt` | Move tab left | Move pane down | Move pane up | Move tab right |
 
-The default `Alt Shift` layer keeps the sidebar and four popups in the same
+The default `Alt Shift` layer keeps the sidebar and five popups in the same
 keyboard neighborhood:
 
 ```text
-H             J          K          L
-sidebar       Git        Ratconfig  agent
+H             J          K          L      Y
+sidebar       Git        Ratconfig  agent  Yazi
                     M
                     menu
 ```
 
 `Alt Shift H` toggles the sidebar. Press a popup's own key again to close Git or
-the menu. Ratconfig and the agent hide instead, preserving their in-memory state
-while their popup processes remain alive. Git and the agent use the tab's
-canonical workspace root even when the focused pane has navigated elsewhere.
+the menu. Ratconfig, the agent, and the full Yazi popup hide instead, preserving
+their in-memory state while their popup processes remain alive. The Yazi popup
+starts at the tab's canonical workspace root, keeps navigation independent from
+the tiled sidebar, and restarts on reveal when that canonical root has changed.
+Git and the agent also use the canonical root even when the focused pane has
+navigated elsewhere.
 The agent pane uses `agent` until its provider publishes a terminal title.
 While that title contains a spinner, its tab gains a compact busy marker
 without changing the tab's native name
@@ -140,13 +143,15 @@ Ratconfig's Keys tab is the complete packaged reference, and
 | `Ctrl n` | Toggle resize mode |
 | `Alt m` | Open a new pane |
 | `Alt Shift F` | Toggle the focused pane fullscreen |
+| `Alt Shift Y` | Hide or show the full Yazi popup |
 | `Ctrl y` | Toggle focus between the editor and Yazi sidebar |
 | `Alt 1-9` | Go directly to tab 1-9 |
 
 Move mode is unbound. `keybindings.sidebar` and `keybindings.sidebar_focus`
 remap sidebar visibility and editor/sidebar focus. Managed popup triggers use
 `keybindings.config`, `keybindings.agent`, `keybindings.git`, and
-`keybindings.menu`. Raw Zellij keymaps stay outside the managed sidecar
+`keybindings.menu`. The packaged Yazi popup remains fixed at `Alt Shift Y`.
+Raw Zellij keymaps stay outside the managed sidecar
 
 ### Helix
 
@@ -229,6 +234,6 @@ popup contracts live in [Runtime Notes](docs/runtime-notes.md)
 
 ## LOC Scorecard
 
-Yazelix owns **19,584 lines** of tracked text project files. The
+Yazelix owns **19,701 lines** of tracked text project files. The
 [reproducible scorecard](docs/development.md#loc-scorecard) excludes Beads,
 lockfiles, and binary assets

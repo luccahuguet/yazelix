@@ -2,6 +2,15 @@
 
 User-visible runtime changes for Yazelix Nova live here.
 
+## Unreleased
+
+- `Alt Shift Y` hides or shows a full managed Yazi popup at the active tab's
+  canonical workspace root. The popup reuses Nova's layered Yazi configuration
+  and ordinary editor opener while keeping its own navigation state alive when
+  hidden; it never registers as or moves the tiled sidebar. A changed canonical
+  root replaces the stale hidden process on its next reveal. Existing sidebar
+  `Alt z` behavior remains unchanged.
+
 ## 1.0.0-beta.2
 
 - The `yazelix-no-helix` package and app retain Mars and the integrated

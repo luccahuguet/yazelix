@@ -603,7 +603,7 @@ mod tests {
         ] {
             assert_write_config_error(&path, field_path, value, expected);
         }
-        for value in ["Alt Shift f", "Alt z"] {
+        for value in ["Alt Shift f", "Alt Shift Y", "Alt z"] {
             assert_write_config_error(
                 &path,
                 KEYBINDINGS_AGENT_PATH,
@@ -763,7 +763,7 @@ mod tests {
                 "without arguments",
             ),
             (
-                "[popups.config]\ncommand = \"btm\"\nkeybinding = \"Alt Shift B\"\n",
+                "[popups.yazi]\ncommand = \"btm\"\nkeybinding = \"Alt Shift B\"\n",
                 "conflicts with packaged popup id",
             ),
             (
@@ -787,8 +787,8 @@ mod tests {
                 "popups.btm.title must not be empty",
             ),
             (
-                "[popups.btm]\ncommand = \"btm\"\ntitle = \"git_popup\"\nkeybinding = \"Alt Shift B\"\n",
-                "popups.btm.title conflicts with packaged popup title git_popup",
+                "[popups.btm]\ncommand = \"btm\"\ntitle = \"yazi_popup\"\nkeybinding = \"Alt Shift B\"\n",
+                "popups.btm.title conflicts with packaged popup title yazi_popup",
             ),
             (
                 "[popups.btm]\ncommand = \"btm\"\ntitle = \"shared_popup\"\nkeybinding = \"Alt Shift B\"\n\n[popups.htop]\ncommand = \"htop\"\ntitle = \"shared_popup\"\nkeybinding = \"Alt Shift U\"\n",
@@ -1236,6 +1236,13 @@ color = "#123456"
         assert!(yazi_zoxide.display_label.contains("Alt z"));
         assert!(yazi_zoxide.description.contains("Owner: Yazi"));
         assert_eq!(yazi_zoxide.current_value, "Yazi / yazi/keymap.toml");
+
+        let yazi_popup = key_field(&model, "Alt Shift Y");
+        assert_eq!(
+            yazi_popup.display_label,
+            "Popups: Alt Shift Y - Hide or show Yazi popup"
+        );
+        assert!(yazi_popup.description.contains("Owner: Yazelix"));
     }
 
     #[test]

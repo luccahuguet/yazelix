@@ -73,7 +73,7 @@ One owner per concern. Paths are the durable map.
 | `runtime/yzx/` | CLI, startup env, launch/enter handoff |
 | `runtime/yzx-menu.rs` | Menu palette |
 | `runtime/yzx-agent.rs` | Initial agent title, custom-command exec, and provider bootstrap (`codex resume` → `grok` → `opencode` → `pi` → `claude --resume`) |
-| `runtime/yzx-yazi.rs` | Managed Yazi process/env launch, editor resolve |
+| `runtime/yzx-yazi.rs` | Managed Yazi process/env launch, editor resolve, non-sidebar workspace-popup role |
 | `runtime/yzx-nu.rs` | Managed Nu layering; runtime-effective Starship config request |
 | `runtime/yzx-zellij-config.rs` | Packaged + guarded Zellij scalar sidecar merge |
 | `runtime/yzx/zellij.rs` | Plugin sidecar inject; launch materialize/patches |
@@ -141,7 +141,7 @@ in Core. Absent optional leaves and unconfigured popup ids are not synthesized
 
 `custom_popups.rs` owns the dynamic `[popups.<id>]` namespace. An id starts
 with an ASCII letter or `_`, then uses ASCII letters, digits, `_`, or `-`; the
-packaged ids `config`, `agent`, `git`, and `menu` are reserved.
+packaged ids `config`, `agent`, `git`, `menu`, and `yazi` are reserved.
 
 | Dynamic path | Type | Required/default | Meaning |
 | --- | --- | --- | --- |
@@ -162,7 +162,7 @@ custom popup entry.
 | `defaults/zellij/config.kdl` | Zellij keys, plugins load, popup wiring, Kitty protocol |
 | `defaults/zellij/layout*.kdl` | Sidebar + stacked panes, open/closed swap |
 | `defaults/nu/` | Packaged Nu: carapace, zoxide, and Starship invocation |
-| `defaults/yazi/` | Opens via `yzx-open`, plugins, `Alt z` workspace retarget |
+| `defaults/yazi/` | Sidebar/popup role initialization, opens via `yzx-open`, plugins, `Alt z` workspace retarget |
 | `defaults/helix/config.toml` | Packaged defaults; `Alt r` reveal, `Ctrl r` reload (overridable) |
 
 ### Child packages (not owned here)

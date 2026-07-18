@@ -477,8 +477,8 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
     }
     let custom_popup_config = custom_popup.zellij_file("config.kdl");
     expect_popup_defaults(&custom_popup_config, "2", "1", "custom popup status config");
-    assert_eq!(custom_popup_config.matches("width_percent 100").count(), 4);
-    assert_eq!(custom_popup_config.matches("height_percent 100").count(), 4);
+    assert_eq!(custom_popup_config.matches("width_percent 100").count(), 5);
+    assert_eq!(custom_popup_config.matches("height_percent 100").count(), 5);
     assert_eq!(custom_popup_config.matches("side_margin 2").count(), 1);
     assert_eq!(custom_popup_config.matches("vertical_margin 1").count(), 1);
 
@@ -525,8 +525,8 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
         "btm",
         "custom popup spec config",
     );
-    assert_eq!(custom_popup_spec.matches("width_percent 100").count(), 5);
-    assert_eq!(custom_popup_spec.matches("height_percent 100").count(), 5);
+    assert_eq!(custom_popup_spec.matches("width_percent 100").count(), 6);
+    assert_eq!(custom_popup_spec.matches("height_percent 100").count(), 6);
     assert_eq!(custom_popup_spec.matches("side_margin 2").count(), 1);
     assert_eq!(custom_popup_spec.matches("vertical_margin 1").count(), 1);
 
@@ -1401,8 +1401,8 @@ fn expect_yazi_alt_z(yzx: &Path) {
     let init = fs::read_to_string(yzx.join("share/yazelix/yazi/init.lua")).unwrap();
     expect_contains(
         &init,
-        r#"require("sidebar-state"):setup()"#,
-        "Yazi init sidebar-state fragment",
+        "local workspace_popup = os.getenv(\"YZX_YAZI_ROLE\") == \"workspace-popup\"\nif not workspace_popup then\n\trequire(\"sidebar-state\"):setup()\n\trequire(\"sidebar-status\"):setup()\nend",
+        "Yazi workspace popup role fragment",
     );
     let sidebar_state =
         fs::read_to_string(yzx.join("share/yazelix/yazi/plugins/sidebar-state.yazi/main.lua"))
@@ -1455,6 +1455,9 @@ fn expect_yazi_alt_z(yzx: &Path) {
         "YAZELIX_EDITOR",
         "GIT_EDITOR",
         "editor.command",
+        "--yzx-workspace-popup",
+        "YZX_YAZI_ROLE",
+        "workspace-popup",
         "YAZI_CONFIG_HOME",
         "/bin/yzx-yazi-config",
         "yazelix_starship.toml",
@@ -1576,6 +1579,12 @@ fn expect_first_party_plugins(git_bin: &Path, config: &str) {
         ),
         ("git", "git_popup", "/bin/yzx-git", ""),
         ("menu", "menu_popup", "/bin/yzx-menu", ""),
+        (
+            "yazi",
+            "yazi_popup",
+            "/bin/yzx-yazi",
+            "\n                arg_1 \"--yzx-workspace-popup\"\n                toggle_close_behavior \"hide\"",
+        ),
     ] {
         let command = popup_command(config, command_suffix);
         let expected = format!(
@@ -1587,8 +1596,8 @@ fn expect_first_party_plugins(git_bin: &Path, config: &str) {
             "config.kdl is missing {id} popup block\n{expected}",
         );
     }
-    assert_eq!(config.matches("width_percent 100").count(), 4);
-    assert_eq!(config.matches("height_percent 100").count(), 4);
+    assert_eq!(config.matches("width_percent 100").count(), 5);
+    assert_eq!(config.matches("height_percent 100").count(), 5);
     assert_eq!(config.matches("side_margin 1").count(), 1);
     assert_eq!(config.matches("vertical_margin 0").count(), 1);
     for (key, payload) in [
@@ -1596,6 +1605,7 @@ fn expect_first_party_plugins(git_bin: &Path, config: &str) {
         ("Alt Shift K", "config"),
         ("Alt Shift L", "agent"),
         ("Alt Shift M", "menu"),
+        ("Alt Shift Y", "yazi"),
     ] {
         expect_popup_binding(config, key, payload, "packaged popup config");
     }
@@ -1687,7 +1697,7 @@ fn expect_git_editor(editor: &Path, lazygit_config: &Path, git: &Path) {
 }
 
 fn expect_popup_binding(config: &str, key: &str, payload: &str, context: &str) {
-    let (plugin, action) = if matches!(payload, "git" | "agent") {
+    let (plugin, action) = if matches!(payload, "git" | "agent" | "yazi") {
         ("yazelix_pane_orchestrator", "toggle_workspace_popup")
     } else {
         ("yzpp", "toggle")
