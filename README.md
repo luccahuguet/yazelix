@@ -6,9 +6,10 @@
 
 Yazelix Nova is a Nix-packaged terminal workspace built around Mars, the
 Yazelix Zellij fork, Yazi, Nushell, Git tools, and an optional coding agent. It
-uses managed Helix by default (but `editor.command` can select an installed terminal
-editor). `yzx launch` opens the desktop workspace through Mars, while
-`yzx enter` runs the same Yazi-first workspace in a capable terminal or over SSH.
+uses managed Helix by default (but `editor.command` can select an installed
+terminal editor). `yzx launch` opens the desktop workspace through Mars, while
+`yzx enter` runs the same Yazi-first workspace in any capable terminal
+emulator or over SSH (Mars provides tighter Yazelix integration).
 Packaged defaults make the first run configuration-free.
 
 ## Preview
@@ -199,6 +200,6 @@ See [Development](docs/development.md) for CI and local checks,
 
 ## LOC Scorecard
 
-Yazelix owns **19,753 lines** of tracked text project files. The
+Yazelix owns **19,890 lines** of tracked text project files. The
 [reproducible scorecard](docs/development.md#loc-scorecard) excludes Beads,
 lockfiles, and binary assets.

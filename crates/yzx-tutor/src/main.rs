@@ -52,28 +52,55 @@ struct TutorLesson {
 const TUTOR_LESSONS: &[TutorLesson] = &[
     TutorLesson {
         id: "workspace",
-        title: "Workspace roots and managed panes",
-        summary: "Open a project, move between editor, sidebar, popups, and panes",
-        scope: "Current tab",
-        outcome: "You can start Yazelix in the right directory, open files through Yazi, reveal the editor file, and reshape the active tab without losing the workspace root.",
-        escape_hatch: "Use `Alt h` or `Alt l` to walk visible panes, then rerun `yzx tutor list`.",
+        title: "Start in the right directory",
+        summary: "Choose the workspace root for the current tab or a separate Mars window",
+        scope: "Shell and current tab",
+        outcome: "You can start Yazelix at the intended project and deliberately retarget the current tab from Yazi.",
+        escape_hatch: "Open a shell pane and run `pwd` to check your current directory.",
         render: render_workspace_lesson,
+    },
+    TutorLesson {
+        id: "files",
+        title: "Open and reveal files",
+        summary: "Use the Yazi sidebar or popup without losing your browsing place",
+        scope: "Current tab",
+        outcome: "You can browse with Yazi, open a file in the managed editor, and reveal the editor file in Yazi.",
+        escape_hatch: "Use `Alt h` or `Alt l` to walk visible panes.",
+        render: render_files_lesson,
+    },
+    TutorLesson {
+        id: "panes",
+        title: "Focus and arrange panes",
+        summary: "Move focus, create space, and reshape the current tab",
+        scope: "Current tab",
+        outcome: "You can focus, create, fullscreen, and rearrange panes and tabs without changing the workspace root.",
+        escape_hatch: "Use `Alt h` or `Alt l` to return focus to a visible pane.",
+        render: render_panes_lesson,
+    },
+    TutorLesson {
+        id: "modes",
+        title: "Zellij modes and session",
+        summary: "Enter the pane, tab, or resize key layer and leave the session",
+        scope: "Current Yazelix window",
+        outcome: "You can enter and leave each common Zellij mode and quit the session intentionally.",
+        escape_hatch: "Press the active mode key again to return to normal mode.",
+        render: render_modes_lesson,
     },
     TutorLesson {
         id: "discovery",
         title: "Command and key discovery",
-        summary: "Find commands, popups, key tables, and runtime checks without memorizing the map",
+        summary: "Find commands, popups, and the key table without memorizing the map",
         scope: "Current Yazelix window",
-        outcome: "You can open the menu popup, inspect config and runtime state, find the key table, and run doctor when generated files or tools look wrong.",
+        outcome: "You can open the menu, Ratconfig, Git, and agent popups and find the packaged key table.",
         escape_hatch: "Press the same popup key again to focus or close a managed popup; tool-local exits such as `q`, `Esc`, or `:q` stay inside the tool.",
         render: render_discovery_lesson,
     },
     TutorLesson {
         id: "troubleshooting",
         title: "Troubleshooting paths",
-        summary: "Get back to a known pane, inspect config, and refresh stale runtime state",
+        summary: "Get back to a known pane and inspect stale runtime state",
         scope: "Current Yazelix window",
-        outcome: "You can recover from lost focus, loud popups, stale generated state, and unclear config or runtime ownership.",
+        outcome: "You can recover from lost focus and use status or doctor to inspect runtime and generated state.",
         escape_hatch: "Run `yzx doctor`, then `yzx tutor list` to return to the guided path.",
         render: render_troubleshooting_lesson,
     },
@@ -160,6 +187,9 @@ Usage:\n\
   yzx tutor begin\n\
   yzx tutor list\n\
   yzx tutor workspace\n\
+  yzx tutor files\n\
+  yzx tutor panes\n\
+  yzx tutor modes\n\
   yzx tutor discovery\n\
   yzx tutor troubleshooting\n\
   yzx tutor tool_tutors\n\
@@ -217,39 +247,93 @@ fn render_workspace_lesson(index: usize, lesson: &TutorLesson) -> String {
 
 ## Actions
 
-1. **Run in shell:** Start in the project directory with `yzx enter`; use `cd <dir> && yzx launch` when you need a separate Mars window for another directory.
-2. **Inside Yazelix:** Press `{focus_left}` or `{focus_right}` to walk visible panes; press `{sidebar_focus}` to move directly between the editor and Yazi sidebar, and `{sidebar_swap}` to toggle the sidebar.
-3. **Inside Yazelix:** Press `{yazi_popup}` to hide or show a full Yazi popup at the current tab workspace; its navigation state stays live while hidden.
-4. **Inside Yazi:** Press `Enter` to open the selected file in the managed editor.
-5. **Inside Yazi:** Press `{yazi_zoxide}` to retarget the tab workspace with zoxide and open the selected directory in the editor.
-6. **Inside Yazelix:** Press `{new_pane}` for a new stacked pane, `{fullscreen}` to fullscreen the focused pane, `{pane_mode}` for pane mode, `{tab_mode}` for tab mode, `{resize_mode}` for resize mode, and `{quit}` for quit mode.
-7. **Inside Yazelix:** Press `{tab_left}` or `{tab_right}` to move the current tab; press `{pane_down}` or `{pane_up}` to move the current pane.
-8. **Inside the editor:** Press `{reveal}` to reveal the current file in Yazi.
+1. **Run in shell:** Change to the project directory and run `yzx enter`.
+2. **Run in shell:** Use `cd <dir> && yzx launch` when another directory needs its own Mars window.
+3. **Inside Yazi:** Press `{yazi_zoxide}` to choose a directory with zoxide, retarget the current tab, and open it in the editor.
 
 ## Mental model
 
-The current tab workspace root matters most. Managed actions use that directory unless a tool chooses a file or directory. Yazelix keeps the editor, Yazi sidebar, popups, shell panes, and agent pane connected around that root.
+The current tab workspace root matters most. Managed panes and popups use that directory until you deliberately choose another one.
 
-Next lesson: `yzx tutor discovery`.
+Next lesson: `yzx tutor files`.
+"#,
+        header = lesson_intro(index, lesson),
+        yazi_zoxide = key(KEY_YAZI_ZOXIDE),
+    ))
+}
+
+fn render_files_lesson(index: usize, lesson: &TutorLesson) -> String {
+    markdown(&format!(
+        r#"{header}
+
+## Actions
+
+1. **Inside Yazelix:** Press `{sidebar_focus}` to move between the editor and Yazi sidebar, or `{sidebar_swap}` to hide or show the sidebar.
+2. **Inside Yazelix:** Press `{yazi_popup}` to hide or show the full Yazi popup. Its navigation state stays live while hidden.
+3. **Inside Yazi:** Press `Enter` to open the selected file in the managed editor.
+4. **Inside the editor:** Press `{reveal}` to reveal the current file in Yazi.
+
+## Mental model
+
+The sidebar is the quick companion. The full popup gives Yazi more room and keeps its browsing state while hidden.
+
+Next lesson: `yzx tutor panes`.
+"#,
+        header = lesson_intro(index, lesson),
+        sidebar_focus = key(KEY_EDITOR_SIDEBAR_FOCUS),
+        sidebar_swap = key(KEY_SIDEBAR_SWAP),
+        yazi_popup = key(KEY_YAZI_POPUP),
+        reveal = key(KEY_REVEAL),
+    ))
+}
+
+fn render_panes_lesson(index: usize, lesson: &TutorLesson) -> String {
+    markdown(&format!(
+        r#"{header}
+
+## Actions
+
+1. **Inside Yazelix:** Press `{focus_left}` or `{focus_right}` to walk visible panes.
+2. **Inside Yazelix:** Press `{new_pane}` for a new stacked pane.
+3. **Inside Yazelix:** Press `{fullscreen}` to fullscreen the focused pane.
+4. **Inside Yazelix:** Press `{tab_left}` or `{tab_right}` to move the current tab, and `{pane_down}` or `{pane_up}` to move the current pane.
+
+## Mental model
+
+Focusing and rearranging panes changes the view, not the current tab workspace root.
+
+Next lesson: `yzx tutor modes`.
 "#,
         header = lesson_intro(index, lesson),
         focus_left = key(KEY_FOCUS_LEFT),
         focus_right = key(KEY_FOCUS_RIGHT),
-        fullscreen = key(KEY_FULLSCREEN),
-        sidebar_focus = key(KEY_EDITOR_SIDEBAR_FOCUS),
-        sidebar_swap = key(KEY_SIDEBAR_SWAP),
-        yazi_popup = key(KEY_YAZI_POPUP),
-        yazi_zoxide = key(KEY_YAZI_ZOXIDE),
         new_pane = key(KEY_NEW_PANE),
-        pane_mode = key(KEY_PANE_MODE),
-        tab_mode = key(KEY_TAB_MODE),
-        resize_mode = key(KEY_RESIZE_MODE),
-        quit = key(KEY_QUIT),
+        fullscreen = key(KEY_FULLSCREEN),
         tab_left = key(KEY_TAB_LEFT),
         tab_right = key(KEY_TAB_RIGHT),
         pane_down = key(KEY_PANE_DOWN),
         pane_up = key(KEY_PANE_UP),
-        reveal = key(KEY_REVEAL),
+    ))
+}
+
+fn render_modes_lesson(index: usize, lesson: &TutorLesson) -> String {
+    markdown(&format!(
+        r#"{header}
+
+## Actions
+
+1. **Inside Yazelix:** Press `{pane_mode}` for pane mode. Press it again to return to normal mode.
+2. **Inside Yazelix:** Press `{tab_mode}` for tab mode. Press it again to return to normal mode.
+3. **Inside Yazelix:** Press `{resize_mode}` for resize mode. Press it again to return to normal mode.
+4. **Inside Yazelix:** Press `{quit}` to quit the session.
+
+Next lesson: `yzx tutor discovery`.
+"#,
+        header = lesson_intro(index, lesson),
+        pane_mode = key(KEY_PANE_MODE),
+        tab_mode = key(KEY_TAB_MODE),
+        resize_mode = key(KEY_RESIZE_MODE),
+        quit = key(KEY_QUIT),
     ))
 }
 
@@ -263,8 +347,6 @@ fn render_discovery_lesson(index: usize, lesson: &TutorLesson) -> String {
 2. **Inside Yazelix:** Press `{menu}` or run `yzx menu` for the live-filter command palette.
 3. **Inside Yazelix:** Press `{config}` or run `yzx config` to open Ratconfig; use its `keys` tab when you need the packaged binding table.
 4. **Inside Yazelix:** Press `{git}` for the Git popup and `{agent}` for the persistent agent popup.
-5. **Run in shell or Yazelix:** Use `yzx status` for a compact runtime/config summary.
-6. **Run in shell or Yazelix:** Use `yzx doctor` when config, runtime, generated layouts, or packaged tools look wrong.
 
 Next lesson: `yzx tutor troubleshooting`.
 "#,
@@ -284,10 +366,8 @@ fn render_troubleshooting_lesson(index: usize, lesson: &TutorLesson) -> String {
 
 1. **Inside Yazelix:** Press `{focus_left}` or `{focus_right}` to move focus until you reach a known pane.
 2. **Inside Yazelix:** Press `{menu}` when you remember the action but not the exact command.
-3. **Inside Yazelix:** Press `{config}` to inspect a setting; the config popup is managed and can be toggled with the same key.
+3. **Run in shell or Yazelix:** Use `yzx status` for a compact runtime and config summary.
 4. **Run in shell or Yazelix:** Use `yzx doctor` when config, generated layouts, packaged tools, or startup state look stale.
-5. **Run in shell or Yazelix:** Use `yzx config`, then the `keys` tab, to verify the packaged bindings before editing native files.
-6. **Run in shell or Yazelix:** Use `yzx tutor list` after the check so the guided path is visible again.
 
 Next lesson: `yzx tutor tool_tutors`.
 "#,
@@ -295,7 +375,6 @@ Next lesson: `yzx tutor tool_tutors`.
         focus_left = key(KEY_FOCUS_LEFT),
         focus_right = key(KEY_FOCUS_RIGHT),
         menu = key(KEY_MENU),
-        config = key(KEY_CONFIG),
     ))
 }
 
@@ -308,15 +387,10 @@ fn render_tool_tutors_lesson(index: usize, lesson: &TutorLesson) -> String {
 1. **Run in shell or Yazelix:** Use `yzx tutor hx` to print the managed Helix tutor command and package-availability guidance.
 2. **Inside Helix:** Leave the tutor with `:q`; use `{reveal}` in managed Helix sessions when you want Yazi to reveal the current file.
 3. **Run in shell or Yazelix:** Use `yzx tutor nu` to print the Nushell tutor commands.
-4. **Inside Yazelix:** Press `{focus_left}` or `{focus_right}` to return to a known pane; press `{menu}` when you want the command reference again.
-5. **Run in shell:** Use `yzx env` when you want the Yazelix-managed shell and packaged tools without opening the workspace UI.
-6. **Run in shell or Yazelix:** Return to `yzx tutor list` when you want the Yazelix path.
+4. **Run in shell:** Use `yzx env` for the Yazelix-managed shell and packaged tools without opening the workspace UI.
 "#,
         header = lesson_intro(index, lesson),
         reveal = key(KEY_REVEAL),
-        focus_left = key(KEY_FOCUS_LEFT),
-        focus_right = key(KEY_FOCUS_RIGHT),
-        menu = key(KEY_MENU),
     ))
 }
 
@@ -402,6 +476,10 @@ mod tests {
             (TutorView::Lesson(lesson_index("workspace").unwrap()), false)
         );
         assert_eq!(
+            parse_tutor_args(&["files".into()]).unwrap(),
+            (TutorView::Lesson(lesson_index("files").unwrap()), false)
+        );
+        assert_eq!(
             parse_tutor_args(&["helix".into()]).unwrap(),
             (TutorView::Helix, false)
         );
@@ -434,7 +512,13 @@ mod tests {
         assert!(output.contains("2. "));
         assert!(output.contains("3. "));
         assert!(output.contains("4. "));
+        assert!(output.contains("5. "));
+        assert!(output.contains("6. "));
+        assert!(output.contains("7. "));
         assert!(output.contains("yzx tutor workspace"));
+        assert!(output.contains("yzx tutor files"));
+        assert!(output.contains("yzx tutor panes"));
+        assert!(output.contains("yzx tutor modes"));
         assert!(output.contains("yzx tutor discovery"));
         assert!(output.contains("yzx tutor troubleshooting"));
         assert!(output.contains("yzx tutor tool_tutors"));
@@ -447,20 +531,41 @@ mod tests {
         for expected in [
             "yzx enter",
             "cd <dir> && yzx launch",
-            KEY_FOCUS_LEFT,
-            KEY_FOCUS_RIGHT,
-            KEY_FULLSCREEN,
-            KEY_EDITOR_SIDEBAR_FOCUS,
-            KEY_SIDEBAR_SWAP,
-            KEY_YAZI_POPUP,
             KEY_YAZI_ZOXIDE,
-            KEY_NEW_PANE,
-            KEY_REVEAL,
             "current tab workspace root matters most",
         ] {
             assert!(workspace.contains(expected), "missing {expected}");
         }
         assert!(!workspace.contains("launch --path"));
+
+        let files = render_lesson(lesson_index("files").unwrap());
+        for expected in [
+            KEY_EDITOR_SIDEBAR_FOCUS,
+            KEY_SIDEBAR_SWAP,
+            KEY_YAZI_POPUP,
+            KEY_REVEAL,
+        ] {
+            assert!(files.contains(expected), "missing {expected}");
+        }
+
+        let panes = render_lesson(lesson_index("panes").unwrap());
+        for expected in [
+            KEY_FOCUS_LEFT,
+            KEY_FOCUS_RIGHT,
+            KEY_FULLSCREEN,
+            KEY_NEW_PANE,
+            KEY_TAB_LEFT,
+            KEY_TAB_RIGHT,
+            KEY_PANE_DOWN,
+            KEY_PANE_UP,
+        ] {
+            assert!(panes.contains(expected), "missing {expected}");
+        }
+
+        let modes = render_lesson(lesson_index("modes").unwrap());
+        for expected in [KEY_PANE_MODE, KEY_TAB_MODE, KEY_RESIZE_MODE, KEY_QUIT] {
+            assert!(modes.contains(expected), "missing {expected}");
+        }
 
         let discovery = render_lesson(lesson_index("discovery").unwrap());
         for expected in [
@@ -472,13 +577,12 @@ mod tests {
             KEY_CONFIG,
             KEY_GIT,
             KEY_AGENT,
-            "yzx status",
-            "yzx doctor",
         ] {
             assert!(discovery.contains(expected), "missing {expected}");
         }
 
         let troubleshooting = render_lesson(lesson_index("troubleshooting").unwrap());
+        assert!(troubleshooting.contains("yzx status"));
         assert!(troubleshooting.contains("yzx doctor"));
         assert!(troubleshooting.contains("yzx tutor list"));
         assert!(!troubleshooting.contains("yzx tutor continue"));
@@ -514,6 +618,27 @@ mod tests {
             let output = render_lesson(index);
             assert!(output.contains("Outcome:"));
             assert!(output.contains("Escape hatch:"));
+        }
+    }
+
+    #[test]
+    fn lessons_keep_action_lists_short() {
+        for (index, lesson) in TUTOR_LESSONS.iter().enumerate() {
+            let output = render_lesson(index);
+            let action_count = output
+                .lines()
+                .skip_while(|line| !line.contains("Actions"))
+                .skip(1)
+                .filter(|line| {
+                    line.split_once(". ")
+                        .is_some_and(|(number, _)| number.parse::<usize>().is_ok())
+                })
+                .count();
+            assert!(
+                (1..=4).contains(&action_count),
+                "lesson {} has {action_count} actions",
+                lesson.id
+            );
         }
     }
 }

@@ -235,6 +235,9 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
         "yzx tutor begin",
         "yzx tutor list",
         "yzx tutor workspace",
+        "yzx tutor files",
+        "yzx tutor panes",
+        "yzx tutor modes",
         "yzx tutor discovery",
         "yzx tutor troubleshooting",
         "yzx tutor tool_tutors",
@@ -254,13 +257,19 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
     expect_contains_all! {
         &tutor_list, "yzx tutor list";
         "yzx tutor workspace",
+        "yzx tutor files",
+        "yzx tutor panes",
+        "yzx tutor modes",
         "yzx tutor discovery",
         "yzx tutor troubleshooting",
         "yzx tutor tool_tutors",
     }
     for (lesson, expected) in [
-        ("begin", "Workspace roots and managed panes"),
+        ("begin", "Start in the right directory"),
         ("workspace", "current tab workspace root matters most"),
+        ("files", "full Yazi popup"),
+        ("panes", "move the current tab"),
+        ("modes", "quit the session"),
         ("discovery", "Alt Shift M"),
         ("troubleshooting", "yzx doctor"),
         ("tool_tutors", "print the managed Helix tutor command"),

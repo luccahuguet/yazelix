@@ -4,6 +4,8 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## Unreleased
 
+- The guided tutor separates workspace roots, file flow, pane arrangement, and
+  Zellij modes into short lessons with no more than four actions each.
 - Yazi's compact Starship header mirrors the shell prompt's contextual module
   coverage. Directory and Git keep compact text, while cloud, orchestration,
   infrastructure, environment, and toolchain decorations render as icons only.
