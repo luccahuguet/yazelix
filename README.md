@@ -4,12 +4,15 @@
   <img src="assets/logo.png" alt="Yazelix logo" width="200"/>
 </div>
 
-Yazelix Nova is a Nix-packaged terminal workspace built around Mars, a thin Yazelix-owned Zellij fork, Yazi, Nushell, Git tools, and an optional coding agent. It
-uses managed Helix by default (but `editor.command` can select your prefered 
-terminal editor). `yzx launch` opens the desktop workspace through Mars, while
-`yzx enter` runs the same Yazi-first workspace in any capable terminal
-emulator or over SSH (Mars provides tighter Yazelix integration, though).
-Great defaults out of the box.
+Yazelix Nova is a Nix-packaged terminal workspace built around
+[Mars](https://github.com/luccahuguet/mars), a thin
+[Yazelix-owned Zellij fork](https://github.com/luccahuguet/yazelix-zellij),
+Yazi, Nushell, Git tools, and an optional coding agent. It uses the
+[Yazelix Helix fork](https://github.com/luccahuguet/yazelix-helix) by default
+(`editor.command` can select your preferred terminal editor). `yzx launch`
+opens the desktop workspace through Mars, while `yzx enter` runs the same
+Yazi-first workspace in any capable terminal emulator or over SSH (Mars
+provides tighter Yazelix integration, though). Great defaults out of the box.
 
 ## Preview
 
@@ -92,7 +95,7 @@ Press `Alt Shift K` to open Ratconfig:
 
 | Key | Action |
 | --- | --- |
-| `1`-`9` | Jump to a tab; `8` opens Yazi settings and `9` opens the key reference |
+| `1`-`9` | Jump to a tab |
 | `Tab` / `Shift-Tab`, `h` / `l` | Change tabs |
 | `j` / `k`, `/` | Move through rows or search All settings |
 | `a` | Switch between Core and All |
@@ -103,20 +106,15 @@ The footer lists the selected row's controls.
 
 ### Workspace keys
 
-Yazelix carries Helix/Vim's `h/j/k/l` motion model through the workspace:
+Yazelix extends Helix/Vim's `h/j/k/l` motion model into a workspace key grid.
+The `Alt` and `Ctrl Alt` layers move focus, tabs, or panes, while `Alt Shift`
+groups four workspace surfaces:
 
 | Layer | `h` | `j` | `k` | `l` |
 | --- | --- | --- | --- | --- |
-| Helix/Vim normal mode | Move cursor left | Move cursor down | Move cursor up | Move cursor right |
 | `Alt` | Focus left or previous tab | Focus down | Focus up | Focus right or next tab |
 | `Ctrl Alt` | Move tab left | Move pane down | Move pane up | Move tab right |
-
-The default `Alt Shift H/J/K/L` row groups four workspace surfaces:
-
-```text
-H          J      K          L
-sidebar    Git    Ratconfig  agent
-```
+| `Alt Shift` | Sidebar | Git | Ratconfig | Agent |
 
 Yazi and the menu use their initials:
 
@@ -172,6 +170,24 @@ without Mars or desktop assets.
 See [Installation and packages](docs/installation.md) for package variants,
 platform support, SSH use, measured sizes, Home Manager, and updates.
 
+## First-party components
+
+Yazelix assembles focused first-party forks, plugins, libraries, and commands:
+
+| Component | Yazelix role |
+| --- | --- |
+| [Mars](https://github.com/luccahuguet/mars) | GUI terminal used by `yzx launch`, with Kitty graphics, cursor shaders, and Yazelix session integration |
+| [Yazelix Zellij](https://github.com/luccahuguet/yazelix-zellij) | Multiplexer fork with Kitty graphics passthrough for the workspace |
+| [Yazelix Helix](https://github.com/luccahuguet/yazelix-helix) | Steel-enabled editor fork with isolated configuration and explicit workspace bridge hooks |
+| [Yazelix Zellij Pane Orchestrator](https://github.com/luccahuguet/yazelix-zellij-pane-orchestrator) | Zellij plugin that owns tab-local workspace roots and coordinates panes, focus, popups, the editor, and agent activity |
+| [Yazelix Zellij Popup](https://github.com/luccahuguet/yazelix-zellij-popup) | Zellij plugin that opens, focuses, hides, and closes configured floating TUI panes |
+| [Yazelix Zellij Bar](https://github.com/luccahuguet/yazelix-zellij-bar) | Zellij plugin package for the compact top bar, tabs, modes, session details, and status widgets |
+| [Ratconfig](https://github.com/luccahuguet/ratconfig) | Reusable Ratatui configuration editor and TOML patching and migration library |
+| [Yazelix Screen](https://github.com/luccahuguet/yazelix-screen) | Terminal welcome animations exposed through `yzx screen` |
+| [Yazelix Cursors](https://github.com/luccahuguet/yazelix-cursors) | Shared cursor presets and validation for Ratconfig, plus palettes and shader assets for Mars |
+| [auto-layout.yazi](https://github.com/luccahuguet/auto-layout.yazi) | Yazi plugin that changes the column layout to match the available pane width |
+| [zjstatus](https://github.com/luccahuguet/zjstatus) | Fork that gives the bar activity-aware tab markers without changing native Zellij tab names |
+
 ## Configuration
 
 `yzx config` opens Ratconfig over the managed tree at
@@ -197,6 +213,6 @@ See [Development](docs/development.md) for CI and local checks,
 
 ## LOC Scorecard
 
-Yazelix owns **19,890 lines** of tracked text project files. The
+Yazelix owns **19,903 lines** of tracked text project files. The
 [reproducible scorecard](docs/development.md#loc-scorecard) excludes Beads,
 lockfiles, and binary assets.
