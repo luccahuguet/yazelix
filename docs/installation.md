@@ -4,6 +4,16 @@ The README covers first launch and the shortest install paths. This guide
 describes package variants, platform support, Home Manager ownership, updates,
 and measured closure sizes
 
+## Release channels
+
+Use `github:luccahuguet/yazelix/stable` for normal installs. Maintainers promote
+an exact checked and dogfooded `main` revision at most once per week, with
+earlier promotions reserved for urgent fixes. A Nix lock file keeps that
+revision until its owner requests an update.
+
+Use `github:luccahuguet/yazelix/main` for the development channel. Immutable
+`nova-v*` tags identify exact releases.
+
 ## Package variants
 
 The default `yzx` package includes Mars, managed Helix, and a Linux desktop
@@ -20,13 +30,13 @@ exist for `x86_64-linux`, `aarch64-linux`, `x86_64-darwin`, and
 Install the external-editor variant with:
 
 ```sh
-nix profile add --refresh github:luccahuguet/yazelix#yazelix-no-helix
+nix profile add --refresh github:luccahuguet/yazelix/stable#yazelix-no-helix
 ```
 
 Install the Mars-free variant with:
 
 ```sh
-nix profile add --refresh github:luccahuguet/yazelix#runtime
+nix profile add --refresh github:luccahuguet/yazelix/stable#runtime
 ```
 
 ## Capability matrix
@@ -112,6 +122,17 @@ nix path-info --json --json-format 1 -S "$full" "$no_helix" "$runtime"
 
 ## Home Manager
 
+Declare the stable input in the consumer flake:
+
+```nix
+inputs.yazelix = {
+  url = "github:luccahuguet/yazelix/stable";
+  inputs.nixpkgs.follows = "nixpkgs";
+};
+```
+
+Import the module from that input:
+
 ```nix
 { inputs, ... }: {
   imports = [ inputs.yazelix.homeManagerModules.default ];
@@ -194,5 +215,6 @@ Then run that configuration's normal Home Manager or nix-darwin switch command
 Replace `yazelix` with your chosen input name when it differs. Do not run
 `nix profile upgrade` for a package installed by Home Manager
 
+The update follows the input's configured `stable`, `main`, or tag reference.
 Your next launch uses the updated package. Each open Nova session keeps its
 current immutable Nix store paths until you close and relaunch it

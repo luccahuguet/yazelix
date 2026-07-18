@@ -30,23 +30,28 @@ terminal or over SSH
 Yazelix uses packaged defaults, so no configuration is required before the
 first launch
 
+The `stable` branch is the recommended install and update channel. It advances
+from a checked and dogfooded `main` revision at most once per week, with earlier
+promotions reserved for urgent fixes. Use `main` for the development channel or
+an immutable `nova-v*` tag for an exact release
+
 ### Try without installing
 
 ```sh
-nix run github:luccahuguet/yazelix -- launch
-nix run github:luccahuguet/yazelix#runtime -- enter
+nix run github:luccahuguet/yazelix/stable -- launch
+nix run github:luccahuguet/yazelix/stable#runtime -- enter
 ```
 
 If the one-off launch fails, inspect the owned runtime setup with:
 
 ```sh
-nix run github:luccahuguet/yazelix -- doctor
+nix run github:luccahuguet/yazelix/stable -- doctor
 ```
 
 ### Install in a Nix profile
 
 ```sh
-nix profile add --refresh github:luccahuguet/yazelix
+nix profile add --refresh github:luccahuguet/yazelix/stable
 yzx launch
 ```
 
@@ -234,6 +239,6 @@ popup contracts live in [Runtime Notes](docs/runtime-notes.md)
 
 ## LOC Scorecard
 
-Yazelix owns **19,702 lines** of tracked text project files. The
+Yazelix owns **19,770 lines** of tracked text project files. The
 [reproducible scorecard](docs/development.md#loc-scorecard) excludes Beads,
 lockfiles, and binary assets

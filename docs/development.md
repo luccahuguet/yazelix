@@ -15,6 +15,33 @@ Linux desktop entry. The flake advertises the optional Yazelix Cachix cache,
 while source builds remain valid without it. Use Version Gate before publishing
 a release
 
+## Main and stable
+
+Development commits land on `main`. CI and cache publishing run there, and
+users who select `main` accept development-channel changes.
+
+The protected `stable` branch accepts fast-forward promotions from `main`. Its
+required checks are `linux`, `publish_x86_64_linux`, and
+`publish_aarch64_darwin`, including for maintainers. GitHub rejects force-pushes
+and branch deletion.
+
+Before promotion, verify that the candidate descends from the current `stable`,
+belongs to `main`, passes the release checks for its changed surface, and has no
+known P0 or P1 regression. User-visible runtime interaction changes also need a
+fresh-session dogfood pass. Promote at most once per week unless an urgent fix
+needs an earlier release:
+
+```sh
+git fetch origin main stable
+git merge-base --is-ancestor origin/stable <sha>
+git merge-base --is-ancestor <sha> origin/main
+git push origin <sha>:stable
+```
+
+Skip promotion when no candidate meets the contract. To roll back, commit the
+revert on `main`, verify the new commit, and promote it through the same path.
+Do not move `stable` backward.
+
 ## Local development
 
 Use local sibling repositories while hacking runtime inputs:
@@ -63,7 +90,7 @@ git ls-files | grep -Ev '^\.beads/|\.lock$|^assets/' | xargs wc -l
 | --- | ---: |
 | Ignore (`.gitignore`) | 19 |
 | License | 201 |
-| Markdown | 2139 |
+| Markdown | 2207 |
 | Nix | 1265 |
 | Shell | 84 |
 | YAML | 413 |
@@ -73,4 +100,4 @@ git ls-files | grep -Ev '^\.beads/|\.lock$|^assets/' | xargs wc -l
 | Lua | 253 |
 | Rust | 14798 |
 | Text | 41 |
-| Total | 19702 |
+| Total | 19770 |

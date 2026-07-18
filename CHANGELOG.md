@@ -4,6 +4,10 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## Unreleased
 
+- Published installs use the protected `stable` branch as the recommended Nix
+  and Home Manager channel. `stable` advances from an exact checked and
+  dogfooded `main` revision at most once per week, while `main` remains the
+  development channel and `nova-v*` tags remain immutable release references.
 - `Alt Shift Y` hides or shows a full managed Yazi popup at the active tab's
   canonical workspace root. The popup reuses Nova's layered Yazi configuration
   and ordinary editor opener while keeping its own navigation state alive when
