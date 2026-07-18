@@ -26,7 +26,7 @@ const RESET_TERMINAL_BACKGROUND: &str = "\x1b]111\x07";
 
 pub(crate) fn run_ui() -> Result<()> {
     let paths = ensure_config_sources()?;
-    let mut app = ConfigUiApp::new(build_model(&paths)?);
+    let mut app = ConfigUiApp::try_new(build_model(&paths)?).map_err(error)?;
     let mut session = TerminalSession::enter()?;
     let mut terminal = Terminal::new(CrosstermBackend::new(io::stdout()))?;
 
@@ -38,18 +38,12 @@ pub(crate) fn run_ui() -> Result<()> {
         match app.handle_key(key) {
             ConfigUiIntent::Exit => break,
             ConfigUiIntent::None => {}
-            ConfigUiIntent::BeginEdit { field_index, .. } => app.begin_edit_field(field_index),
-            ConfigUiIntent::EditTextExternally {
-                field_index,
-                path,
-                input,
-                ..
-            } => {
-                let result = session.suspend(|| edit_text_externally(&path, &input))?;
+            ConfigUiIntent::EditTextExternally { field, input } => {
+                let result = session.suspend(|| edit_text_externally(&field.path, &input))?;
                 terminal.clear()?;
                 match result {
                     Ok(edited) => {
-                        if let Err(message) = app.apply_external_text_edit(field_index, edited) {
+                        if let Err(message) = app.apply_external_text_edit(&field, edited) {
                             app.notice_error(message);
                         }
                     }
@@ -71,40 +65,33 @@ pub(crate) fn run_ui() -> Result<()> {
                     open_file_action(&paths, &source_id, &action_id, &path, create_if_missing)
                 })?;
                 terminal.clear()?;
-                app.model = build_model(&paths)?;
+                app.replace_model(build_model(&paths)?).map_err(error)?;
                 match result {
                     Ok(()) => app.notice_info(format!("Opened {}.", path.display())),
                     Err(error) => app.notice_error(error.to_string()),
                 }
             }
-            ConfigUiIntent::SetField {
-                field_index,
-                source_id,
-                path: field_path,
-                value,
-            } => {
-                if let Err(error) = write_source_field(&paths, &source_id, &field_path, &value) {
-                    app.notice_error(error.to_string());
-                    app.model = build_model(&paths)?;
+            ConfigUiIntent::SetField { field, value } => {
+                if let Err(source) =
+                    write_source_field(&paths, &field.source_id, &field.path, &value)
+                {
+                    app.notice_error(source.to_string());
+                    app.replace_model(build_model(&paths)?).map_err(error)?;
                     continue;
                 }
-                app.model = build_model(&paths)?;
-                app.notice_info(format!("Saved {field_path}."));
-                app.finish_successful_set_field(field_index, &value);
+                app.replace_model_after_success(build_model(&paths)?, &field)
+                    .map_err(error)?;
+                app.notice_info(format!("Saved {}.", field.path));
             }
-            ConfigUiIntent::UnsetField {
-                field_index,
-                source_id,
-                path: field_path,
-            } => {
-                if let Err(error) = write_source_default(&paths, &source_id, &field_path) {
-                    app.notice_error(error.to_string());
-                    app.model = build_model(&paths)?;
+            ConfigUiIntent::UnsetField { field } => {
+                if let Err(source) = write_source_default(&paths, &field.source_id, &field.path) {
+                    app.notice_error(source.to_string());
+                    app.replace_model(build_model(&paths)?).map_err(error)?;
                     continue;
                 }
-                app.model = build_model(&paths)?;
-                app.notice_info(format!("Restored default for {field_path}."));
-                app.finish_successful_unset_field(field_index);
+                app.replace_model_after_success(build_model(&paths)?, &field)
+                    .map_err(error)?;
+                app.notice_info(format!("Removed override for {}.", field.path));
             }
         }
     }

@@ -10,6 +10,15 @@ use serde_json::{Value as JsonValue, json};
 use crate::{catalog::*, common::*};
 
 pub(crate) type ZellijSidecar = BTreeMap<&'static str, JsonValue>;
+pub(crate) type ZellijInvalidInputs = BTreeMap<&'static str, String>;
+
+#[derive(Default)]
+struct ZellijParseState {
+    config: ZellijSidecar,
+    invalid_inputs: ZellijInvalidInputs,
+    diagnostics: Vec<ConfigUiDiagnostic>,
+    seen: BTreeSet<&'static str>,
+}
 pub(crate) fn packaged_zellij_defaults() -> ZellijSidecar {
     BTreeMap::from([
         ("theme", json!("default")),
@@ -69,7 +78,7 @@ pub(crate) fn read_zellij_sidecar(path: &Path) -> Result<String> {
 }
 fn read_editable_zellij_sidecar(path: &Path) -> Result<String> {
     let raw = read_zellij_sidecar(path)?;
-    let (_, diagnostics) = parse_zellij_sidecar(&raw);
+    let (_, _, diagnostics) = parse_zellij_sidecar(&raw);
     if let Some(diagnostic) = diagnostics.iter().find(|diagnostic| {
         diagnostic.blocking && !matches!(&diagnostic.scope, ConfigUiDiagnosticScope::Field(_))
     }) {
@@ -256,17 +265,17 @@ fn zellij_field_assignment(spec: &FieldSpec, value: &JsonValue) -> Result<String
     };
     Ok(format!("{token} {rhs}"))
 }
-pub(crate) fn parse_zellij_sidecar(raw: &str) -> (ZellijSidecar, Vec<ConfigUiDiagnostic>) {
-    let mut config = ZellijSidecar::new();
-    let mut diagnostics = Vec::new();
+pub(crate) fn parse_zellij_sidecar(
+    raw: &str,
+) -> (ZellijSidecar, ZellijInvalidInputs, Vec<ConfigUiDiagnostic>) {
+    let mut state = ZellijParseState::default();
     let mut block_depth = 0;
-    let mut seen = BTreeSet::new();
 
     for (index, raw_line) in raw.lines().enumerate() {
         let line_number = index + 1;
         let syntax = zellij_line(raw_line);
         if !syntax.quote_closed {
-            diagnostics.push(zellij_diagnostic(
+            state.diagnostics.push(zellij_diagnostic(
                 line_number,
                 "unterminated Zellij quoted string",
                 "Close the quoted value before editing from yzx config.",
@@ -278,7 +287,7 @@ pub(crate) fn parse_zellij_sidecar(raw: &str) -> (ZellijSidecar, Vec<ConfigUiDia
         while let Some(rest) = line.strip_prefix('}') {
             closed = true;
             if block_depth == 0 {
-                diagnostics.push(zellij_diagnostic(
+                state.diagnostics.push(zellij_diagnostic(
                     line_number,
                     "unmatched Zellij block close",
                     "Remove the extra closing brace before editing from yzx config.",
@@ -290,7 +299,7 @@ pub(crate) fn parse_zellij_sidecar(raw: &str) -> (ZellijSidecar, Vec<ConfigUiDia
         }
         if closed {
             if !line.is_empty() && line != ";" {
-                diagnostics.push(zellij_diagnostic(
+                state.diagnostics.push(zellij_diagnostic(
                     line_number,
                     "unsupported content after Zellij block close",
                     "Put the next node on a new line before editing from yzx config.",
@@ -307,20 +316,12 @@ pub(crate) fn parse_zellij_sidecar(raw: &str) -> (ZellijSidecar, Vec<ConfigUiDia
             continue;
         }
         match block_depth {
-            0 => parse_zellij_top_level_line(
-                &mut config,
-                &mut diagnostics,
-                &mut seen,
-                line,
-                token,
-                &syntax,
-                line_number,
-            ),
+            0 => parse_zellij_top_level_line(&mut state, line, token, &syntax, line_number),
             1 => {
                 if token == "pane_frames" && zellij_block_open(line, token) {
                     block_depth = 2;
                 } else {
-                    diagnostics.push(zellij_diagnostic(
+                    state.diagnostics.push(zellij_diagnostic(
                         line_number,
                         format!("unsupported Zellij ui node `{token}`"),
                         "The managed editor only supports ui.pane_frames.rounded_corners.",
@@ -330,16 +331,14 @@ pub(crate) fn parse_zellij_sidecar(raw: &str) -> (ZellijSidecar, Vec<ConfigUiDia
             2 => {
                 if token == "rounded_corners" {
                     parse_zellij_config_value(
-                        &mut config,
-                        &mut seen,
+                        &mut state,
                         zellij_field("ui.pane_frames.rounded_corners").expect("known field"),
                         line,
                         braces,
                         line_number,
-                        &mut diagnostics,
                     );
                 } else {
-                    diagnostics.push(zellij_diagnostic(
+                    state.diagnostics.push(zellij_diagnostic(
                         line_number,
                         format!("unsupported Zellij pane frame node `{token}`"),
                         "The managed editor only supports rounded_corners in this block.",
@@ -354,33 +353,31 @@ pub(crate) fn parse_zellij_sidecar(raw: &str) -> (ZellijSidecar, Vec<ConfigUiDia
     }
 
     if block_depth > 0 {
-        diagnostics.push(zellij_diagnostic(
+        state.diagnostics.push(zellij_diagnostic(
             raw.lines().count().max(1),
             "unterminated Zellij block",
             "The managed editor only supports complete multiline ui.pane_frames blocks.",
         ));
     }
 
-    (config, diagnostics)
+    (state.config, state.invalid_inputs, state.diagnostics)
 }
 fn parse_zellij_top_level_line(
-    config: &mut ZellijSidecar,
-    diagnostics: &mut Vec<ConfigUiDiagnostic>,
-    seen: &mut BTreeSet<&'static str>,
+    state: &mut ZellijParseState,
     line: &str,
     token: &str,
     syntax: &ZellijLine<'_>,
     line_number: usize,
 ) {
     if token == "ui" {
-        if !seen.insert("ui") {
-            diagnostics.push(zellij_diagnostic(
+        if !state.seen.insert("ui") {
+            state.diagnostics.push(zellij_diagnostic(
                 line_number,
                 "duplicate Zellij node `ui`",
                 "Keep one ui block before editing from yzx config.",
             ));
         } else if !zellij_block_open(line, token) {
-            diagnostics.push(zellij_diagnostic(
+            state.diagnostics.push(zellij_diagnostic(
                 line_number,
                 "unsupported Zellij ui form",
                 "The managed editor expects ui as a block.",
@@ -389,7 +386,7 @@ fn parse_zellij_top_level_line(
         return;
     }
     if ZELLIJ_FORBIDDEN_TOP_LEVEL.contains(&token) {
-        diagnostics.push(zellij_diagnostic(
+        state.diagnostics.push(zellij_diagnostic(
             line_number,
             format!("guarded Zellij node `{token}`"),
             "This node belongs to the managed runtime and cannot live in the editable sidecar.",
@@ -401,19 +398,19 @@ fn parse_zellij_top_level_line(
             .iter()
             .any(|spec| spec.path.rsplit('.').next() == Some(token))
         {
-            diagnostics.push(zellij_diagnostic(
+            state.diagnostics.push(zellij_diagnostic(
                 line_number,
                 format!("ambiguous Zellij node `{token}`"),
                 "This token is managed inside a structured block and cannot also be preserved at top level.",
             ));
         } else if syntax.leaf {
-            diagnostics.push(zellij_unvalidated_diagnostic(
+            state.diagnostics.push(zellij_unvalidated_diagnostic(
                 line_number,
                 token,
                 "This native leaf node is preserved unchanged; Zellij owns its validity.",
             ));
         } else {
-            diagnostics.push(zellij_diagnostic(
+            state.diagnostics.push(zellij_diagnostic(
                 line_number,
                 format!("unsupported Zellij node `{token}`"),
                 "Edit structured native configuration by hand.",
@@ -422,15 +419,7 @@ fn parse_zellij_top_level_line(
         return;
     };
 
-    parse_zellij_config_value(
-        config,
-        seen,
-        spec,
-        line,
-        syntax.braces,
-        line_number,
-        diagnostics,
-    );
+    parse_zellij_config_value(state, spec, line, syntax.braces, line_number);
 }
 fn zellij_scalar_value<'a>(
     line: &'a str,
@@ -476,16 +465,14 @@ fn require_zellij_field(path: &str) -> Result<&'static FieldSpec> {
     zellij_field(path).ok_or_else(|| error(format!("unknown Zellij config path: {path}")))
 }
 fn parse_zellij_config_value(
-    config: &mut ZellijSidecar,
-    seen: &mut BTreeSet<&'static str>,
+    state: &mut ZellijParseState,
     spec: &FieldSpec,
     line: &str,
     braces: (usize, usize),
     line_number: usize,
-    diagnostics: &mut Vec<ConfigUiDiagnostic>,
 ) {
-    if !seen.insert(spec.path) {
-        diagnostics.push(zellij_diagnostic(
+    if !state.seen.insert(spec.path) {
+        state.diagnostics.push(zellij_diagnostic(
             line_number,
             format!("duplicate Zellij node `{}`", spec.path),
             "Keep one assignment before editing from yzx config.",
@@ -494,7 +481,7 @@ fn parse_zellij_config_value(
     }
     let token = spec.path.rsplit('.').next().unwrap();
     let Some((value, quoted)) = zellij_scalar_value(line, token, braces) else {
-        diagnostics.push(zellij_diagnostic(
+        state.diagnostics.push(zellij_diagnostic(
             line_number,
             format!("unsupported Zellij form for `{}`", spec.path),
             "The managed editor only supports one scalar value for this setting.",
@@ -505,18 +492,28 @@ fn parse_zellij_config_value(
         .and_then(|value| normalize_zellij_field_value(spec, &value));
     match parsed {
         Ok(value) => {
-            config.insert(spec.path, value);
+            state.config.insert(spec.path, value);
         }
-        Err(error) => diagnostics.push(zellij_field_diagnostic(
-            line_number,
-            spec,
-            if matches!(spec.kind, "boolean" | "integer" | "string") {
-                format!("invalid Zellij value for `{}`", spec.path)
-            } else {
-                format!("unsupported Zellij value kind `{}`", spec.kind)
-            },
-            error.to_string(),
-        )),
+        Err(error) => {
+            state.invalid_inputs.insert(
+                spec.path,
+                if quoted {
+                    serde_json::to_string(value).expect("string JSON")
+                } else {
+                    value.to_string()
+                },
+            );
+            state.diagnostics.push(zellij_field_diagnostic(
+                line_number,
+                spec,
+                if matches!(spec.kind, "boolean" | "integer" | "string") {
+                    format!("invalid Zellij value for `{}`", spec.path)
+                } else {
+                    format!("unsupported Zellij value kind `{}`", spec.kind)
+                },
+                error.to_string(),
+            ));
+        }
     }
 }
 fn parse_kdl_json_value(value: &str, quoted: bool, spec: &FieldSpec) -> Result<JsonValue> {
@@ -591,7 +588,9 @@ fn zellij_unvalidated_diagnostic(
         status: "unvalidated".to_string(),
         headline: format!("unvalidated Zellij node `{path}`"),
         blocking: false,
-        scope: ConfigUiDiagnosticScope::Field(ConfigUiFieldId::new(SOURCE_ZELLIJ, path)),
+        scope: ConfigUiDiagnosticScope::Source {
+            source_id: SOURCE_ZELLIJ.to_string(),
+        },
         detail_lines: vec![detail.into()],
     }
 }

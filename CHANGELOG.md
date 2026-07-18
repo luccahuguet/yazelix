@@ -4,6 +4,14 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## Unreleased
 
+- `yzx config` consumes Ratconfig 6's sparse-intent model. Overview combines
+  recommendations with explicit, invalid, externally managed, and
+  field-diagnosed settings; All remains the complete inventory. Details keep
+  stored overrides, effective values, inherited baselines, and origins
+  separate, while `u` removes an authorized override instead of copying a
+  default. Capabilities authorize each editor, stable field identities survive
+  model reloads, and native TOML rows remain read-only evidence unless Yazelix
+  explicitly supplies an editor such as the Yazi flavor pickers.
 - `Alt Shift Y` hides or shows a full managed Yazi popup at the active tab's
   canonical workspace root. Global `Alt z` shows or focuses that same live
   process and starts its zoxide picker; selection changes only the popup cwd so

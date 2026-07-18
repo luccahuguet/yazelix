@@ -46,7 +46,7 @@ pub(crate) const BAR_WIDGET_VALUES: &[&str] = &[
     "cpu",
     "ram",
 ];
-pub(crate) const ROOT_CONFIG_CORE_PATHS: &[&str] = &[
+pub(crate) const ROOT_CONFIG_RECOMMENDED_PATHS: &[&str] = &[
     SHELL_PROGRAM_PATH,
     EDITOR_COMMAND_PATH,
     AGENT_COMMAND_PATH,

@@ -561,7 +561,7 @@ dependencies = [
 
 [[package]]
 name = "ratconfig"
-version = "5.0.0"
+version = "6.0.0"
 dependencies = [
  "ratatui",
  "serde_json",
@@ -950,7 +950,7 @@ version = "0.1.0"
 dependencies = [
  "crossterm",
  "ratatui",
- "ratconfig 5.0.0",
+ "ratconfig 6.0.0",
  "serde_json",
  "toml",
  "yazelix_cursors",

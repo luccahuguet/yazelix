@@ -2,13 +2,20 @@
 
 `yzx config` opens Nova's Ratconfig interface. It shows packaged defaults,
 persists explicit overrides, exposes advanced native files, and identifies
-Home Manager-owned configuration as declarative. Yazelix classifies every
-non-root inventory field as Core until that inventory receives its own review.
-For Main and Popups, Core contains the ordinary product controls and All adds
-diagnostics, fine tuning, and every configured custom-popup field.
-Normal-mode `a` switches between Core and All when the current tab has an
-All-only field; search always spans All without changing the saved view, and
-explicit or invalid values remain in Core
+Home Manager-owned configuration as declarative. Overview contains Yazelix's
+recommended settings plus any explicit, invalid, externally managed, or
+field-diagnosed setting. All contains the complete known inventory. Every
+non-root setting is recommended; Main and Popups keep fine tuning out of
+Overview until it needs attention. Custom-popup fields exist only when written,
+so their explicit overrides appear in Overview. Normal-mode `a` switches between
+Overview and All when the current tab has an All-only field. Search always spans
+All without changing the saved view
+
+Each row distinguishes the override stored in its source from the effective
+value and the baseline inherited without that override. Their origin labels
+identify packaged, user, or Home Manager ownership. An explicit value equal to
+the baseline remains an explicit override. When `u` is available, it removes
+that override and inherits the baseline; it does not write a copied default
 
 On a free-form setting, `Enter` starts single-line inline editing and `e` opens
 the same staged value in `editor.command`. Inline editing supports Left/Right,
@@ -46,14 +53,14 @@ while custom popup ids remain dynamic within the documented `popups.<id>` fields
 | Field | Default | View | Meaning |
 | --- | --- | --- | --- |
 | `open.log_level` | `info` | All | Diagnostics for managed Yazi open requests: `off`, `error`, `info`, `debug` |
-| `shell.program` | `nu` | Core | Packaged shell for new panes: `nu`, `bash`, `zsh`, `fish` |
-| `editor.command` | `yzx-hx` | Core | Editor used by Yazi opens, Ratconfig text edits, and Git editor flows |
-| `welcome.enabled` | `true` | Core | Show the startup welcome splash |
-| `welcome.style` | `random` | Core | Startup screen style |
+| `shell.program` | `nu` | Overview | Packaged shell for new panes: `nu`, `bash`, `zsh`, `fish` |
+| `editor.command` | `yzx-hx` | Overview | Editor used by Yazi opens, Ratconfig text edits, and Git editor flows |
+| `welcome.enabled` | `true` | Overview | Show the startup welcome splash |
+| `welcome.style` | `random` | Overview | Startup screen style |
 | `welcome.duration_seconds` | `3` | All | Startup splash duration, 1 to 60 seconds |
-| `keybindings.sidebar` | `Alt Shift H` | Core | Hide or show the managed Yazi sidebar |
-| `keybindings.sidebar_focus` | `Ctrl y` | Core | Toggle focus between the editor and managed Yazi sidebar |
-| `bar.widgets` | `editor`, `shell`, `term`, `codex_usage`, `cpu`, `ram` | Core | Top bar widgets, left to right |
+| `keybindings.sidebar` | `Alt Shift H` | Overview | Hide or show the managed Yazi sidebar |
+| `keybindings.sidebar_focus` | `Ctrl y` | Overview | Toggle focus between the editor and managed Yazi sidebar |
+| `bar.widgets` | `editor`, `shell`, `term`, `codex_usage`, `cpu`, `ram` | Overview | Top bar widgets, left to right |
 
 The Codex quota widget identifies periods from their reported duration and shows
 five-hour before weekly when both exist. Unavailable periods are omitted.
@@ -74,14 +81,14 @@ popup role keys:
 
 | Field | Default | View | Meaning |
 | --- | --- | --- | --- |
-| `agent.command` | `auto` | Core | Managed agent popup command. `auto` keeps the built-in provider fallback |
+| `agent.command` | `auto` | Overview | Managed agent popup command. `auto` keeps the built-in provider fallback |
 | `agent.args` | `[]` | All | Arguments for a custom `agent.command` |
 | `popup.side_margin` | `1` | All | Left and right popup margin in terminal cells |
 | `popup.vertical_margin` | `0` | All | Top and bottom popup margin in terminal cells |
-| `keybindings.config` | `Alt Shift K` | Core | Config popup trigger |
-| `keybindings.agent` | `Alt Shift L` | Core | Agent popup trigger |
-| `keybindings.git` | `Alt Shift J` | Core | Git popup trigger |
-| `keybindings.menu` | `Alt Shift M` | Core | Menu popup trigger |
+| `keybindings.config` | `Alt Shift K` | Overview | Config popup trigger |
+| `keybindings.agent` | `Alt Shift L` | Overview | Agent popup trigger |
+| `keybindings.git` | `Alt Shift J` | Overview | Git popup trigger |
+| `keybindings.menu` | `Alt Shift M` | Overview | Menu popup trigger |
 
 `Alt Shift Y` is the fixed packaged key for the full managed Yazi popup. It is
 not a root setting. The popup opens at the active tab's canonical workspace
@@ -117,8 +124,8 @@ must be unique; `yazi` and `yazi_popup` are reserved for the packaged Yazi
 surface. Custom popup keybindings use the same collision checks as all
 managed action keys. Ratconfig passes every leaf actually present under a
 configured popup through its generic TOML rows. Those values are explicit, so
-they remain visible in Core too. Optional fields that are not written and popup
-ids that do not exist are not invented; open `config.toml` to add them
+they remain visible in Overview too. Optional fields that are not written and
+popup ids that do not exist are not invented; open `config.toml` to add them
 
 ## Native config files
 
@@ -159,23 +166,24 @@ Managed files and asset directories may be symlinked from another checkout, but
 their resolved targets must stay outside the generated `state/yazi` runtime
 
 Ratconfig's Yazi tab reads the sparse user `yazi.toml` against Nova's packaged
-layer and reads native `theme.toml`. Strings, booleans, integers, finite floats,
-and non-empty string arrays with safe dotted paths are editable; complex tables,
-empty or complex arrays, non-finite floats, and quoted paths remain
-read-only rows with compact previews of their complete values. On a writable
-source, press `e` on a structured `yazi.toml` or `theme.toml` row to open that
-exact file; read-only sources retain their ownership guidance. The file actions
-in the same tab also open those files plus `keymap.toml`, `package.toml`, and
-`init.lua` for complete native editing. A setting added through the file action
-appears in Ratconfig after the editor closes. Structured saves apply on the next
-managed Yazi launch or sidebar reopen
+layer and reads native `theme.toml`. Native TOML entries are evidence-only,
+read-only rows with compact previews of their complete values because syntax
+alone does not establish edit authority or effective resolution. Press `e` on
+one of those rows to open its exact owning file when that action is writable;
+read-only sources retain their ownership guidance. The dark and light flavor
+fields are separate host-authorized choice controls backed by the installed
+flavor inventory. File actions in the same tab also open `keymap.toml`,
+`package.toml`, and `init.lua` for complete native editing. A setting added
+through a file action appears after the editor closes. Structured flavor saves
+apply on the next managed Yazi launch or sidebar reopen
 
 ### Yazi flavors
 
 Nova packages Catppuccin Latte, Frappé, Macchiato, Mocha, and Dracula from the
 official `yazi-rs/flavors` repository. Press `8` in Ratconfig and choose the
 dark and light flavors. Ratconfig writes only the corresponding native
-`theme.toml` keys, and reset returns that mode to Yazi's default theme
+`theme.toml` keys, and `u` removes that mode's override so it inherits Yazi's
+default theme
 
 Install community flavors or an explicitly user-managed version into writable
 managed config with Yazi's package manager:
@@ -254,9 +262,10 @@ Normal host config such as `~/.config/helix`, `~/.config/yazi`, and
 through these Yazelix-owned files
 
 Opening `yzx config` does not create `mars/config.toml`, `starship.toml`, or
-`zellij/config.kdl`. Saving writes only the selected override, and resetting
-removes that key. The Starship tab curates only `character.format`, whose Nova
-default is `:: `. Managed Nu materializes that sparse marker override under
+`zellij/config.kdl`. Saving writes only the selected override, and `u` removes
+that key when the source supports sparse unsets. The Starship tab curates only
+`character.format`, whose Nova default is `:: `. Managed Nu materializes that
+sparse marker override under
 runtime state without setting top-level `format`, so Starship retains its native
 `$all` layout. Mars and Zellij layer their sparse files over packaged
 configuration directly. Untouched defaults follow upgrades
