@@ -17,6 +17,38 @@ provides tighter Yazelix integration, though) or over SSH. Great defaults out of
 
 ![Yazelix Nova workspace](assets/screenshots/nova_workspace.png)
 
+## Nova vs Classic
+
+Classic was bloated and built on the wrong ownership model. Its main repository
+acted as the product runtime, component control plane, configuration repair
+system, compatibility layer, and maintainer toolbox.
+
+Classic's child repositories did not create firm boundaries. The main repo
+still carried their maintenance machinery and overlapping runtime logic. Nova
+gives [first-party Yazelix components](#first-party-components) firm package
+boundaries. Each component owns its implementation and contract. Nova pins and
+composes their package outputs.
+
+| Measure | Nova | Classic |
+| --- | --- | --- |
+| Code and configuration (Rust, Nix, shell, TOML, etc.) | **17,697 LOC** | **91,545 LOC** |
+| Rust | **14,932 LOC** | **80,957 LOC** |
+| Ownership model | One owner per concern | Overlapping responsibilities across layers |
+| Yazelix component boundaries | Independent, versioned packages | Child repos mixed with main-repo ownership |
+| Product experience | More features, stronger defaults, tighter integration, and polished UX | Fewer features and a less cohesive workspace |
+| Status | Recommended | Frozen migration and rollback path |
+
+Nova owns **73,848 fewer lines**, an **81% reduction**. Classic's Rust code
+alone is 4.6 times larger than Nova's entire code and configuration surface.
+
+Nova delivers more features in 19% of the code. It has a clearer configuration
+model, tighter editor and Yazi integration, stronger diagnostics, and a
+coherent popup-oriented interface. The smaller architecture makes Yazelix
+easier to improve and better to use.
+
+Classic proved the idea. Nova is the better product and the architecture
+Yazelix should have had from the start.
+
 ## Install and launch
 
 Yazelix requires Nix with flakes enabled. `launch` opens the packaged Mars window
@@ -212,6 +244,6 @@ See [Development](docs/development.md) for CI and local checks,
 
 ## LOC Scorecard
 
-Yazelix owns **19,903 lines** of tracked text project files. The
+Yazelix owns **19,934 lines** of tracked text project files. The
 [reproducible scorecard](docs/development.md#loc-scorecard) excludes Beads,
 lockfiles, and binary assets.
