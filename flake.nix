@@ -862,9 +862,10 @@
         grep -q '^Ya ' ya-version
         touch "$out"
       '';
-      yzx_yazi_materialization = pkgs.runCommand "yzx-yazi-materialization-check" {nativeBuildInputs = [pkgs.rustc pkgs.stdenv.cc];} ''
+      yzx_yazi_materialization = pkgs.runCommand "yzx-yazi-materialization-check" {nativeBuildInputs = [pkgs.lua pkgs.rustc pkgs.stdenv.cc];} ''
         rustc --edition=2024 --test ${./runtime/yzx-yazi.rs} -o yzx-yazi-materialization-check
         ./yzx-yazi-materialization-check
+        lua ${./checks/yazi-workspace-registration.lua} ${./defaults/yazi/plugins/sidebar-state.yazi/main.lua}
 
         user="$TMPDIR/yazi-user"
         state="$TMPDIR/yazi-state"

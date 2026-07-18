@@ -32,6 +32,22 @@ local function cwd()
 	return nil
 end
 
+local registration_payload = ya.sync(function()
+	local yazi_id = os.getenv("YAZI_ID")
+	local current_pane = pane_id()
+	local current_cwd = cwd()
+	if not yazi_id or yazi_id == "" or not current_pane or not current_cwd then
+		return nil
+	end
+
+	return string.format(
+		'{"pane_id":"%s","yazi_id":"%s","cwd":"%s"}',
+		json_escape(current_pane),
+		json_escape(yazi_id),
+		json_escape(current_cwd)
+	)
+end)
+
 local function pipe_registration(payload)
 	local program = os.getenv("YZX_ZELLIJ")
 	local command = Command(program and program ~= "" and program or "zellij")
@@ -59,21 +75,8 @@ local function pipe_registration(payload)
 end
 
 local function publish()
-	local yazi_id = os.getenv("YAZI_ID")
-	local current_pane = pane_id()
-	local current_cwd = cwd()
-	if not yazi_id or yazi_id == "" or not current_pane or not current_cwd then
-		return
-	end
-
 	generation = generation + 1
 	local current_generation = generation
-	local payload = string.format(
-		'{"pane_id":"%s","yazi_id":"%s","cwd":"%s"}',
-		json_escape(current_pane),
-		json_escape(yazi_id),
-		json_escape(current_cwd)
-	)
 	ya.async(function()
 		for _, delay in ipairs(RETRY_DELAYS) do
 			if current_generation ~= generation then
@@ -82,7 +85,11 @@ local function publish()
 			if delay > 0 then
 				ya.sleep(delay)
 			end
-			if current_generation ~= generation or pipe_registration(payload) then
+			if current_generation ~= generation then
+				return
+			end
+			local payload = registration_payload()
+			if payload and pipe_registration(payload) then
 				return
 			end
 		end

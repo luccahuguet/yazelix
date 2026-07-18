@@ -129,9 +129,11 @@ omits sidebar status for that role and registers its `YAZI_ID` separately from
 the tiled sidebar. Global `Alt z` asks the orchestrator to show or focus the
 existing popup and sends one targeted Yazi plugin event to that registered
 instance. First launch queues that event until the popup publishes its identity;
-an existing popup without a usable registration is replaced so its new identity
-can consume the queued event. No terminal input is synthesized. Popup navigation
-and ordinary opens retain their existing local and canonical-workspace semantics.
+the registration retry samples Yazi state on each attempt because Yazi can
+expose its active tab after plugin setup. An existing popup without a usable
+registration is replaced so its new identity can consume the queued event. No
+terminal input is synthesized. Popup navigation and ordinary opens retain their
+existing local and canonical-workspace semantics.
 
 ## Nushell And Starship
 
