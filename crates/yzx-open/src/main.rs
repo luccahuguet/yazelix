@@ -177,7 +177,7 @@ fn run(config: &Config, raw_targets: impl IntoIterator<Item = OsString>) -> Resu
         ),
     );
 
-    if should_publish_workspace(request.intent, &decision) {
+    if decision.mutate || request.intent == OpenIntent::Retarget {
         set_workspace(config, &decision.root, WorkspaceSource::Explicit)
             .context("could not update the canonical tab workspace")?;
     }
@@ -719,10 +719,6 @@ fn decide_workspace(
             mutate: current.source != WorkspaceSource::Explicit || current.root != candidate,
         },
     }
-}
-
-fn should_publish_workspace(intent: OpenIntent, decision: &WorkspaceDecision) -> bool {
-    decision.mutate || intent == OpenIntent::Retarget
 }
 
 fn active_tab_workspace(config: &Config) -> Result<ActiveWorkspaceState> {
@@ -1296,24 +1292,28 @@ fi
     fn explicit_retarget_republishes_an_unchanged_root_for_coordinator_resync() {
         let runtime = TestRuntime::new("same-root-retarget");
         let root = runtime.root.join("workspace with spaces");
-        let state = ActiveWorkspaceState {
-            active_tab_position: 0,
-            workspace: CanonicalWorkspace {
-                root: root.clone(),
-                source: WorkspaceSource::Explicit,
-            },
-            sidebar_yazi: Some(SidebarYaziState {
-                yazi_id: "managed-yazi".into(),
-                cwd: Some(root.display().to_string()),
-            }),
-        };
-        let decision = WorkspaceDecision {
-            root: root.clone(),
-            mutate: false,
-        };
+        fs::create_dir_all(&root).unwrap();
+        runtime.write_zellij_with_workspace(false, None, &root, WorkspaceSource::Explicit, false);
 
-        assert!(should_publish_workspace(OpenIntent::Retarget, &decision));
-        resync_sidebar(&runtime.config("test-session"), &state, &root).unwrap();
+        run(
+            &runtime.config("test-session"),
+            [
+                OsString::from("--retarget-workspace"),
+                root.clone().into_os_string(),
+            ],
+        )
+        .unwrap();
+
+        let log = runtime.zellij_log();
+        assert_eq!(log.matches("--name retarget_workspace").count(), 1, "{log}");
+        assert!(
+            log.contains(&format!(r#""workspace_root":"{}""#, root.display())),
+            "{log}"
+        );
+        assert!(
+            log.contains(&format!("args=run --name editor --cwd {}", root.display())),
+            "{log}"
+        );
         assert_eq!(
             fs::read_to_string(runtime.root.join("ya.log")).unwrap(),
             format!("emit-to managed-yazi cd {}\n", root.display())

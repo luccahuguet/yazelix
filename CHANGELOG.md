@@ -24,7 +24,7 @@ User-visible runtime changes for Yazelix Nova live here.
   explicitly commits the popup cwd through the canonical retarget operation,
   returns to the managed editor, and resynchronizes the tiled sidebar. The
   popup keeps its own navigation state while hidden, survives editor focus, and
-  restarts only when the committed canonical root changes.
+  is replaced when its remembered launch root no longer matches the canonical root.
 
 ## 1.0.0-beta.2
 
