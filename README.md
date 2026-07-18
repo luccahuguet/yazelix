@@ -229,6 +229,8 @@ complete inventory.
 
 Set `shell.program` in Ratconfig or `config.toml` to choose packaged Nushell
 (default), Bash, Zsh, or Fish for new panes and sessions.
+Yazelix initializes Starship, Carapace completions, and zoxide for managed
+Nushell. Bash, Zsh, and Fish use their normal interactive startup files.
 
 See [Configuration](docs/configuration.md) for settings, popups, native files,
 Yazi plugins, cursor ownership, and editor behavior.
@@ -248,6 +250,6 @@ See [Development](docs/development.md) for CI and local checks,
 
 ## LOC Scorecard
 
-Yazelix owns **19,938 lines** of tracked text project files. The
+Yazelix owns **19,940 lines** of tracked text project files. The
 [reproducible scorecard](docs/development.md#loc-scorecard) excludes Beads,
 lockfiles, and binary assets.

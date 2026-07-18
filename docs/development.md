@@ -90,7 +90,7 @@ git ls-files | grep -Ev '^\.beads/|\.lock$|^assets/' | xargs wc -l
 | --- | ---: |
 | Ignore (`.gitignore`) | 19 |
 | License | 201 |
-| Markdown | 2241 |
+| Markdown | 2243 |
 | Nix | 1265 |
 | Shell | 84 |
 | YAML | 413 |
@@ -100,4 +100,4 @@ git ls-files | grep -Ev '^\.beads/|\.lock$|^assets/' | xargs wc -l
 | Lua | 253 |
 | Rust | 14932 |
 | Text | 41 |
-| Total | 19938 |
+| Total | 19940 |
