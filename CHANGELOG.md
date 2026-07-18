@@ -8,9 +8,11 @@ User-visible runtime changes for Yazelix Nova live here.
   canonical workspace root. The popup reuses Nova's layered Yazi configuration
   and ordinary editor opener while keeping its own navigation state alive when
   hidden; it never registers as or moves the tiled sidebar. A changed canonical
-  root replaces the stale hidden process on its next reveal, while ordinary
-  Yazi navigation cannot be mistaken for a root change. Existing sidebar `Alt
-  z` behavior remains unchanged.
+  root replaces the stale hidden process on its next reveal. After a file open
+  focuses Helix and Zellij hides the floating layer, `Alt Shift Y` shows the
+  same live Yazi process on its next press. Ordinary Yazi navigation cannot be
+  mistaken for a root change. Existing sidebar `Alt z` behavior remains
+  unchanged.
 
 ## 1.0.0-beta.2
 
