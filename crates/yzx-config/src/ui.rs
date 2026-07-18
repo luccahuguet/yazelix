@@ -16,7 +16,7 @@ use ratconfig::{ConfigUiApp, ConfigUiIntent, ConfigUiKey, draw_config_ui};
 use crate::{
     common::*,
     file_actions::{
-        edit_text_externally, open_file_action, write_source_default, write_source_field,
+        edit_text_externally, open_file_action, unset_source_field, write_source_field,
     },
     model::build_model,
     paths::ensure_config_sources,
@@ -84,7 +84,7 @@ pub(crate) fn run_ui() -> Result<()> {
                 app.notice_info(format!("Saved {}.", field.path));
             }
             ConfigUiIntent::UnsetField { field } => {
-                if let Err(source) = write_source_default(&paths, &field.source_id, &field.path) {
+                if let Err(source) = unset_source_field(&paths, &field.source_id, &field.path) {
                     app.notice_error(source.to_string());
                     app.replace_model(build_model(&paths)?).map_err(error)?;
                     continue;

@@ -287,15 +287,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8f42a60cbdf9a97f5d2305f08a87dc4e09308d1276d28c869c684d7777685682"
 
 [[package]]
-name = "jsonc-parser"
-version = "0.32.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "840785e1a8b4fdb27be18440a35a81af64820dc185c3973ff8b012d4c6282512"
-dependencies = [
- "serde",
-]
-
-[[package]]
 name = "kasuari"
 version = "0.4.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -546,17 +537,6 @@ dependencies = [
  "time",
  "unicode-segmentation",
  "unicode-width",
-]
-
-[[package]]
-name = "ratconfig"
-version = "2.0.0"
-source = "git+https://github.com/luccahuguet/ratconfig?rev=110e749a5fb10e146611427564bd6afda0750827#110e749a5fb10e146611427564bd6afda0750827"
-dependencies = [
- "jsonc-parser",
- "serde_json",
- "toml",
- "toml_edit",
 ]
 
 [[package]]
@@ -936,8 +916,6 @@ dependencies = [
 name = "yazelix_cursors"
 version = "0.1.0"
 dependencies = [
- "jsonc-parser",
- "ratconfig 2.0.0",
  "serde",
  "serde_json",
  "thiserror",
@@ -950,7 +928,7 @@ version = "0.1.0"
 dependencies = [
  "crossterm",
  "ratatui",
- "ratconfig 6.0.0",
+ "ratconfig",
  "serde_json",
  "toml",
  "yazelix_cursors",

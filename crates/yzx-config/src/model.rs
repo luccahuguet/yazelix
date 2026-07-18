@@ -118,29 +118,30 @@ pub(crate) fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
     let source = |id, label, path| build_config_source(paths, id, label, path);
     let yazi_dir = paths.yazi_config.parent().expect("Yazi config directory");
     fields.extend(yazi);
+    let file_group_source = |id: &str, label: &str, path: &Path| ConfigUiSource {
+        id: id.to_string(),
+        label: label.to_string(),
+        path: path.to_path_buf(),
+        exists: path.exists(),
+        owner_label: None,
+        read_only: false,
+    };
     let sources = vec![
         source(SOURCE_CONFIG, "config.toml", &paths.root),
         source(SOURCE_MARS, "mars/config.toml", &paths.mars),
         source(SOURCE_CURSORS, "cursors.toml", &paths.cursors),
         source(SOURCE_ZELLIJ, "zellij/config.kdl", &paths.zellij),
         source(SOURCE_STARSHIP, "starship.toml", &paths.starship),
-        source(SOURCE_HELIX, "helix", &paths.helix_dir),
+        file_group_source(SOURCE_HELIX, "helix", &paths.helix_dir),
         source(SOURCE_YAZI_CONFIG, "yazi/yazi.toml", &paths.yazi_config),
         source(SOURCE_YAZI_THEME, "yazi/theme.toml", &paths.yazi_theme),
-        ConfigUiSource {
-            id: SOURCE_YAZI.to_string(),
-            label: "yazi files".to_string(),
-            path: yazi_dir.to_path_buf(),
-            exists: yazi_dir.exists(),
-            owner_label: Some("User".to_string()),
-            read_only: false,
-        },
+        file_group_source(SOURCE_YAZI, "yazi files", yazi_dir),
         ConfigUiSource {
             id: SOURCE_ADVANCED.to_string(),
             label: "advanced files".to_string(),
             path: paths.root.parent().unwrap_or(Path::new(".")).to_path_buf(),
             exists: true,
-            owner_label: Some("User".to_string()),
+            owner_label: None,
             read_only: false,
         },
         ConfigUiSource {
@@ -152,7 +153,7 @@ pub(crate) fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
             read_only: true,
         },
     ];
-    apply_source_policy(&mut fields, &sources);
+    apply_source_policy(&mut fields, &sources, paths);
     let recommended_fields = Some(
         fields
             .iter()
@@ -515,7 +516,11 @@ fn string_choice_capability(values: Vec<String>) -> ConfigUiCapability {
     }
 }
 
-fn apply_source_policy(fields: &mut [ratconfig::ConfigUiField], sources: &[ConfigUiSource]) {
+fn apply_source_policy(
+    fields: &mut [ratconfig::ConfigUiField],
+    sources: &[ConfigUiSource],
+    paths: &ConfigPaths,
+) {
     for field in fields {
         let source = sources
             .iter()
@@ -537,12 +542,26 @@ fn apply_source_policy(fields: &mut [ratconfig::ConfigUiField], sources: &[Confi
         {
             baseline.origin = Some("Yazelix packaged baseline".to_string());
         }
-        if source.owner_label.as_deref() == Some("Home Manager") {
+        let home_manager_owned = paths.is_home_manager_owned(&source.path);
+        if home_manager_owned {
             field.snapshot.external_manager = Some("Home Manager".to_string());
+        }
+        let read_only_reason = if home_manager_owned {
+            Some("Managed by Home Manager.".to_string())
+        } else if source.read_only
+            && !matches!(field.capability, ConfigUiCapability::ReadOnly { .. })
+        {
+            Some(format!("{} is read-only.", source.label))
+        } else {
+            None
+        };
+        if let Some(reason) = read_only_reason {
             field.capability = ConfigUiCapability::ReadOnly {
-                reason: "Managed by Home Manager.".to_string(),
+                reason,
                 file_action_id: source_file_action(&field.source_id).map(str::to_string),
             };
+        }
+        if source.read_only {
             field.can_unset = false;
         }
     }

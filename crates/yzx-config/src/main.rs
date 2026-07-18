@@ -698,7 +698,7 @@ mod tests {
             &json!(["editor", "claude_usage", "cpu"]),
         );
 
-        write_source_default(&temp_paths(&temp), SOURCE_CONFIG, BAR_WIDGETS_PATH).unwrap();
+        unset_source_field(&temp_paths(&temp), SOURCE_CONFIG, BAR_WIDGETS_PATH).unwrap();
         let value = read_toml_file_value(&path, "config.toml").unwrap();
         assert_eq!(get_toml_path(&value, BAR_WIDGETS_PATH), None);
 
@@ -1174,7 +1174,7 @@ color = "#123456"
         .unwrap_err();
         assert_eq!(fs::read_to_string(&paths.cursors).unwrap(), changed);
 
-        write_source_default(&paths, SOURCE_CURSORS, CURSOR_TRAIL_PATH).unwrap();
+        unset_source_field(&paths, SOURCE_CURSORS, CURSOR_TRAIL_PATH).unwrap();
         assert_eq!(
             load_cursor_config(&paths.cursors).unwrap().settings.trail,
             "random"
@@ -1455,7 +1455,7 @@ color = "#123456"
     }
 
     #[test]
-    fn read_only_existing_sources_are_not_replaced() {
+    fn read_only_sources_are_non_editable_and_not_replaced() {
         let (_temp, paths) = temp_sources();
 
         atomic_write(&paths.mars, "[window]\nwidth = 960\n").unwrap();
@@ -1477,6 +1477,19 @@ color = "#123456"
             .to_string();
         assert!(error.contains("read-only"));
         assert_eq!(fs::read_to_string(&paths.root).unwrap(), before_root);
+
+        let model = build_model(&paths).unwrap();
+        for field in [
+            model_field(&model, OPEN_LOG_LEVEL_PATH),
+            model_field(&model, "window.width"),
+        ] {
+            assert!(matches!(
+                field.capability,
+                ConfigUiCapability::ReadOnly { .. }
+            ));
+            assert!(!field.can_unset);
+        }
+        ConfigUiApp::try_new(model).unwrap();
     }
 
     // Defends: only store-backed config is declarative, and every mutation route stops before IO.
@@ -1489,6 +1502,12 @@ color = "#123456"
         link_from_store(&paths, &paths.cursors, DEFAULT_CURSOR_CONFIG_TEMPLATE);
         link_from_store(&paths, &paths.starship, "[character]\nformat = \"::\"\n");
         link_from_store(&paths, &paths.nu_env, "# managed\n");
+        link_from_store(&paths, &paths.yazi_config, "[mgr]\nshow_hidden = true\n");
+        link_from_store(
+            &paths,
+            &paths.yazi_theme,
+            "[flavor]\ndark = \"catppuccin-mocha\"\n",
+        );
         atomic_write(&paths.mars, "[window]\nwidth = 960\n").unwrap();
         set_read_only(&paths.mars);
         let paths = ensure_config_sources_at(paths).unwrap();
@@ -1510,6 +1529,24 @@ color = "#123456"
             Some("Home Manager")
         );
         assert!(source(SOURCE_CURSORS).read_only);
+        assert_eq!(
+            source(SOURCE_YAZI_CONFIG).owner_label.as_deref(),
+            Some("Home Manager")
+        );
+        let yazi_field = model
+            .fields
+            .iter()
+            .find(|field| field.source_id == SOURCE_YAZI_CONFIG && field.path == "mgr.show_hidden")
+            .unwrap();
+        assert_eq!(
+            yazi_field.snapshot.external_manager.as_deref(),
+            Some("Home Manager")
+        );
+        assert!(matches!(
+            yazi_field.capability,
+            ConfigUiCapability::ReadOnly { .. }
+        ));
+        assert!(!yazi_field.can_unset);
 
         let rejects = |result: Result<()>, option: &str| {
             let error = result.unwrap_err().to_string();
@@ -1521,25 +1558,19 @@ color = "#123456"
             "programs.yazelix.config.settings",
         );
         rejects(
-            write_source_default(&paths, SOURCE_STARSHIP, "character.format"),
+            unset_source_field(&paths, SOURCE_STARSHIP, "character.format"),
             "programs.yazelix.config.starship",
         );
         rejects(
             write_source_field(&paths, SOURCE_CURSORS, CURSOR_TRAIL_PATH, &json!("none")),
             "programs.yazelix.config.cursors",
         );
-        link_from_store(&paths, &paths.yazi_config, "[mgr]\nshow_hidden = true\n");
-        link_from_store(
-            &paths,
-            &paths.yazi_theme,
-            "[flavor]\ndark = \"catppuccin-mocha\"\n",
-        );
         rejects(
             write_source_field(&paths, SOURCE_YAZI_CONFIG, "mgr.show_hidden", &json!(false)),
             "programs.yazelix.config.yazi.config",
         );
         rejects(
-            write_source_default(&paths, SOURCE_YAZI_THEME, "flavor.dark"),
+            unset_source_field(&paths, SOURCE_YAZI_THEME, "flavor.dark"),
             "programs.yazelix.config.yazi.theme",
         );
         rejects(
@@ -1621,12 +1652,11 @@ color = "#123456"
             app.visible_rows()
                 .contains(&ratconfig::UiRowRef::Diagnostic(0))
         );
-        assert!(
-            model
-                .sources
-                .iter()
-                .any(|source| { source.id == SOURCE_HELIX && source.path == paths.helix_dir })
-        );
+        assert!(model.sources.iter().any(|source| {
+            source.id == SOURCE_HELIX
+                && source.path == paths.helix_dir
+                && source.owner_label.is_none()
+        }));
         let yazi_sources = model
             .sources
             .iter()
@@ -1639,7 +1669,9 @@ color = "#123456"
             .collect::<Vec<_>>();
         assert_eq!(yazi_sources.len(), 3);
         assert!(yazi_sources.iter().any(|source| {
-            source.id == SOURCE_YAZI && source.path == paths.yazi_config.parent().unwrap()
+            source.id == SOURCE_YAZI
+                && source.path == paths.yazi_config.parent().unwrap()
+                && source.owner_label.is_none()
         }));
         assert!(
             yazi_sources.iter().any(|source| {
@@ -1650,6 +1682,12 @@ color = "#123456"
             yazi_sources.iter().any(|source| {
                 source.id == SOURCE_YAZI_THEME && source.path == paths.yazi_theme
             })
+        );
+        assert!(
+            model
+                .sources
+                .iter()
+                .any(|source| { source.id == SOURCE_ADVANCED && source.owner_label.is_none() })
         );
         assert!(model.file_actions.iter().all(|action| {
             let expected = match action.label.as_str() {
@@ -1795,8 +1833,8 @@ color = "#123456"
             .to_string();
         assert!(error.contains("must name an installed flavor"), "{error}");
 
-        write_source_default(&paths, SOURCE_YAZI_CONFIG, "mgr.show_hidden").unwrap();
-        write_source_default(&paths, SOURCE_YAZI_THEME, "flavor.dark").unwrap();
+        unset_source_field(&paths, SOURCE_YAZI_CONFIG, "mgr.show_hidden").unwrap();
+        unset_source_field(&paths, SOURCE_YAZI_THEME, "flavor.dark").unwrap();
         let config = read_toml_file_value(&paths.yazi_config, "Yazi config").unwrap();
         let theme = read_toml_file_value(&paths.yazi_theme, "Yazi theme").unwrap();
         assert_eq!(get_toml_path(&config, "mgr.show_hidden"), None);
@@ -2092,7 +2130,7 @@ color = "#123456"
             SnapshotState::Inherited
         );
 
-        write_source_default(&paths, SOURCE_MARS, "window.opacity").unwrap();
+        unset_source_field(&paths, SOURCE_MARS, "window.opacity").unwrap();
         let mars = read_toml_file_value(&paths.mars, "mars").unwrap();
         assert_eq!(get_toml_path(&mars, "window.opacity"), None);
         assert_eq!(
@@ -2140,12 +2178,12 @@ color = "#123456"
             )),
             SnapshotState::Explicit
         );
-        write_source_default(&paths, SOURCE_STARSHIP, "character.format").unwrap();
+        unset_source_field(&paths, SOURCE_STARSHIP, "character.format").unwrap();
         assert!(!paths.starship.exists());
 
         fs::write(&paths.starship, "right_format = \"$time\"\n").unwrap();
         write_source_field(&paths, SOURCE_STARSHIP, "character.format", &json!(">> ")).unwrap();
-        write_source_default(&paths, SOURCE_STARSHIP, "character.format").unwrap();
+        unset_source_field(&paths, SOURCE_STARSHIP, "character.format").unwrap();
         let starship = read_toml_file_value(&paths.starship, "starship").unwrap();
         assert_eq!(
             get_toml_path(&starship, "right_format"),
@@ -2236,18 +2274,18 @@ color = "#123456"
             ),
         )
         .unwrap();
-        write_source_default(&paths, SOURCE_ZELLIJ, "pane_frames").unwrap();
+        unset_source_field(&paths, SOURCE_ZELLIJ, "pane_frames").unwrap();
         let raw = fs::read_to_string(&paths.zellij).unwrap();
         assert!(raw.starts_with("# keep\n"));
         assert!(!raw.contains("reset me"));
         assert!(raw.contains("rounded_corners true"));
         write_source_field(&paths, SOURCE_ZELLIJ, "mouse_mode", &json!(false)).unwrap();
-        write_source_default(&paths, SOURCE_ZELLIJ, "ui.pane_frames.rounded_corners").unwrap();
+        unset_source_field(&paths, SOURCE_ZELLIJ, "ui.pane_frames.rounded_corners").unwrap();
         let raw = fs::read_to_string(&paths.zellij).unwrap();
         assert!(raw.starts_with("# keep\n"));
         assert!(raw.contains("mouse_mode false"));
         assert!(!raw.contains("ui {"));
-        write_source_default(&paths, SOURCE_ZELLIJ, "mouse_mode").unwrap();
+        unset_source_field(&paths, SOURCE_ZELLIJ, "mouse_mode").unwrap();
         assert!(!paths.zellij.exists());
     }
 
@@ -2331,7 +2369,7 @@ color = "#123456"
             format!("{raw}theme \"ansi\"\n")
         );
 
-        write_source_default(&paths, SOURCE_ZELLIJ, "theme").unwrap();
+        unset_source_field(&paths, SOURCE_ZELLIJ, "theme").unwrap();
         assert_eq!(fs::read_to_string(&paths.zellij).unwrap(), raw);
     }
 

@@ -11,7 +11,12 @@ User-visible runtime changes for Yazelix Nova live here.
   separate, while `u` removes an authorized override instead of copying a
   default. Capabilities authorize each editor, stable field identities survive
   model reloads, and native TOML rows remain read-only evidence unless Yazelix
-  explicitly supplies an editor such as the Yazi flavor pickers.
+  explicitly supplies an editor such as the Yazi flavor pickers. Read-only
+  sources remain viewable through non-mutating fields instead of
+  invalidating the UI model. Aggregate Helix, Yazi, and Advanced file groups
+  remain ownership-neutral because their files may have different owners.
+- `yzc` uses `cursors.toml` as its only standalone cursor configuration.
+  `yzc init` seeds it when absent and does not import `settings.jsonc`.
 - `Alt Shift Y` hides or shows a full managed Yazi popup at the active tab's
   canonical workspace root. Global `Alt z` shows or focuses that same live
   process and starts its zoxide picker; selection changes only the popup cwd so

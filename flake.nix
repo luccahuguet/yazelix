@@ -174,10 +174,7 @@
         pname = "yzx-config";
         version = "0.1.0";
         src = yzxConfigSrc;
-        cargoLock = {
-          lockFile = ./crates/yzx-config/Cargo.lock;
-          outputHashes."ratconfig-2.0.0" = "sha256-NXnn7WOBEa7uQl8rs52gpIhpEGTeanRL5+au9ltjQyE=";
-        };
+        cargoLock.lockFile = ./crates/yzx-config/Cargo.lock;
         YAZELIX_NIX_STORE_ROOT = builtins.storeDir;
         YAZELIX_PACKAGED_YAZI = yzxYaziConfig;
         YAZELIX_AGENT_LAUNCHER = "${yzxAgent}/bin/yzx-agent";
