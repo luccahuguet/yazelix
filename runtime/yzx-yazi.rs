@@ -55,7 +55,9 @@ fn run() -> io::Result<()> {
         .env("YZX_OPEN_LOG", yzx_open_log);
 
     if workspace_popup {
-        command.env("YZX_YAZI_ROLE", "workspace-popup");
+        command
+            .env("PWD", env::current_dir()?)
+            .env("YZX_YAZI_ROLE", "workspace-popup");
     } else {
         command.env_remove("YZX_YAZI_ROLE");
     }

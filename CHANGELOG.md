@@ -23,8 +23,8 @@ User-visible runtime changes for Yazelix Nova live here.
   cancellation and further Yazi navigation leave the tab untouched. `Alt Enter`
   explicitly commits the popup cwd through the canonical retarget operation,
   returns to the managed editor, and resynchronizes the tiled sidebar. The
-  popup keeps its own navigation state while hidden, survives editor focus, and
-  is replaced when its remembered launch root no longer matches the canonical root.
+  popup preserves hidden navigation and editor focus; stale-root replacements
+  derive `PWD` from pane cwd and start at the new canonical root.
 
 ## 1.0.0-beta.2
 

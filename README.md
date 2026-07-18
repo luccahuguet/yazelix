@@ -241,6 +241,6 @@ popup contracts live in [Runtime Notes](docs/runtime-notes.md)
 
 ## LOC Scorecard
 
-Yazelix owns **20,271 lines** of tracked text project files. The
+Yazelix owns **20,273 lines** of tracked text project files. The
 [reproducible scorecard](docs/development.md#loc-scorecard) excludes Beads,
 lockfiles, and binary assets
