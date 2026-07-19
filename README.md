@@ -5,7 +5,7 @@
 </div>
 
 Yazelix Nova is a Nix-packaged terminal workspace built around
-[Mars](https://github.com/luccahuguet/mars), a thin
+[Mars](https://github.com/luccahuguet/mars) (a Rio-derived fork), a thin
 [Yazelix-owned Zellij fork](https://github.com/luccahuguet/yazelix-zellij),
 Yazi, Nushell (with packaged Bash, Zsh, and Fish alternatives), Git tools, and
 an optional coding agent. It uses the
