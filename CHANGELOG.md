@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Package the canonical Nushell RTK dispatcher with the foundation profile so
+  Codex and Cargo routing have one profile-owned source.
+
 User-visible runtime changes for Yazelix Nova live here.
 
 ## 1.0.0-beta.1
