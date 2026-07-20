@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Make `/home/flexnetos/.nix-profile` the literal foundation selector instead
+  of accepting an alias through `~/.local/state/nix/profile`. The v2 profile
+  checker rejects convergent, chained, or broken XDG shadows; the dry-run-first
+  migration archives all prior links under Meta's authoritative
+  `/home/flexnetos/.local/state/meta/archives/` root, records manifest hashes,
+  verifies the expected closure, and restores the complete prior selector state
+  on failure.
+
 - Make the pinned Rust 1.89 foundation lane evaluate reliably on clean Nix
   runners by importing its hash-pinned manifest directly, and include the
   Codex config/rules materializer in branch CI.
@@ -17,6 +25,7 @@
   runtime provenance gate enforces the
   exact lexical profile selector and deployed/review/generated parity without
   authoring Codex auth, sessions, databases, hooks, or user preferences.
+
 - Pin the profile-owned RTK package to the Blueprint-verified FlexNetOS
   `rtk-tokenkill` develop revision (`44cf84e…`), retaining the single native
   RTK binary and Nushell dispatcher ownership model.

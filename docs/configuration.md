@@ -59,6 +59,11 @@ generated pair, runs `yazelix_codex_materialize`, checks
 `tests/codex_config_provenance.nu`, and retains the archive until the installed
 runtime starts successfully.
 
+The profile selector itself must likewise be a direct, relative Nix generation:
+`/home/flexnetos/.nix-profile -> .nix-profile-<generation>-link`. An alias
+through `~/.local/state/nix/profile`, even when it resolves to identical store
+bytes, is a second ownership layer and fails the installed profile contract.
+
 ## Main settings
 
 The optional root config lives at `~/.config/yazelix/config.toml`. Opening

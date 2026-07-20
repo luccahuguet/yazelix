@@ -1493,18 +1493,16 @@
 
         # staged selector pointing at the real foundation closure
         staging="$TMPDIR/staging"
-        mkdir -p "$staging/state/profiles" "$staging/home" "$staging/profile-dir"
+        mkdir -p "$staging/state/nix" "$staging/home" "$staging/profile-dir"
         ln -s ${foundation}/bin "$staging/profile-dir/bin"
         ln -s ${foundation}/toolbin "$staging/profile-dir/toolbin"
         cat > "$staging/profile-dir/manifest.json" <<EOF
         {"version":3,"elements":{"lifeos_foundation_yzx":{"active":true,"attrPath":"packages.${system}.lifeos_foundation_yzx","originalUrl":"path:.","outputs":null,"priority":5,"storePaths":["${foundation}"],"url":"path:."}}}
         EOF
-        ln -s "$staging/profile-dir" "$staging/state/profile-1-link"
-        ln -s profile-1-link "$staging/state/profile"
-        ln -s "$staging/state/profile" "$staging/home/.nix-profile"
+        ln -s "$staging/profile-dir" "$staging/home/.nix-profile-1-link"
+        ln -s .nix-profile-1-link "$staging/home/.nix-profile"
         YZX_PROFILE_LINK="$staging/home/.nix-profile" \
-          YZX_NIX_PROFILE="$staging/state/profile" \
-          YZX_XDG_PROFILE="$staging/state/profiles/profile" \
+          YZX_LEGACY_XDG_PROFILE="$staging/state/nix/profile" \
           YZX_EXPECTED_CLOSURE="${foundation}" \
           ${foundation}/bin/yazelix_profile_check > staged-check.json
         grep -F '"pass": true' staged-check.json

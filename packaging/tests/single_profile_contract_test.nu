@@ -1,11 +1,7 @@
-# YZXCONV-003 — single-profile closure contract tests.
+# YZXCONV-003 — explicit-profile closure contract tests.
 #
 # Exercises packaging/single_profile_check.nu and packaging/profile_migration.nu
-# against hermetic fixtures (no live profile is read or mutated). Run:
-#
-#   nu packaging/tests/single_profile_contract_test.nu packaging
-#
-# Also wired into `nix flake check` via checks.<system>.single_profile_contract.
+# against hermetic fixtures. No live profile is read or mutated.
 
 def expect [cond: bool, msg: string] {
   if not $cond {
@@ -15,6 +11,16 @@ def expect [cond: bool, msg: string] {
   print $"ok: ($msg)"
 }
 
+def link-present [path: string] {
+  let probe = (do { ^readlink $path } | complete)
+  $probe.exit_code == 0 or ($path | path exists)
+}
+
+def resolve [path: string] {
+  let probe = (do { ^readlink -f $path } | complete)
+  if $probe.exit_code == 0 { $probe.stdout | str trim } else { "" }
+}
+
 def make-exec [path: string] {
   mkdir ($path | path dirname)
   let nu_bin = (which nu | get path.0)
@@ -22,17 +28,15 @@ def make-exec [path: string] {
   ^chmod +x $path
 }
 
-# A fake foundation closure with the contract binaries.
 def make-foundation [store: string, name: string] {
   let foundation = ($store | path join $name)
-  for b in [yzx codex claude rtk] {
+  for b in [yzx codex claude rtk br bun git-kb icm nix] {
     make-exec ($foundation | path join "bin" | path join $b)
   }
   make-exec ($foundation | path join "toolbin" | path join "nu")
   $foundation
 }
 
-# A fake `nix profile` output directory: manifest.json + bin/toolbin links.
 def make-profile-dir [store: string, name: string, foundation: string] {
   let profile_dir = ($store | path join $name)
   mkdir $profile_dir
@@ -55,25 +59,33 @@ def make-profile-dir [store: string, name: string, foundation: string] {
   $profile_dir
 }
 
-# Full convergent selector fixture:
-#   <root>/store/aaaa-lifeos-foundation-yzx   fake closure
-#   <root>/store/bbbb-profile                 fake profile output (manifest v3)
-#   <root>/state/profile-1-link -> profile output
-#   <root>/state/profile        -> profile-1-link
-#   <root>/state/profiles/                    (XDG selector dir, empty)
-#   <root>/home/.nix-profile    -> state/profile
-def make-fixture [] {
+# Explicit fixture:
+#   home/.nix-profile        -> .nix-profile-1-link
+#   home/.nix-profile-1-link -> profile output
+#   state/nix/               contains no active selector
+#
+# Legacy fixture:
+#   home/.nix-profile        -> state/nix/profile
+#   state/nix/profile        -> profile-1-link
+#   state/nix/profile-1-link -> profile-1-link-1-link
+#   state/nix/profile-1-link-1-link -> profile output
+def make-fixture [--legacy] {
   let root = (^mktemp -d | str trim)
   let store = ($root | path join "store")
   let foundation = (make-foundation $store "aaaa-lifeos-foundation-yzx")
   let profile_dir = (make-profile-dir $store "bbbb-profile" $foundation)
-  let state = ($root | path join "state")
-  mkdir ($state | path join "profiles")
-  ^ln -s $profile_dir ($state | path join "profile-1-link")
-  ^ln -s "profile-1-link" ($state | path join "profile")
+  let state = ($root | path join "state" | path join "nix")
   let home = ($root | path join "home")
-  mkdir $home
-  ^ln -s ($state | path join "profile") ($home | path join ".nix-profile")
+  mkdir $state $home
+  if $legacy {
+    ^ln -s $profile_dir ($state | path join "profile-1-link-1-link")
+    ^ln -s "profile-1-link-1-link" ($state | path join "profile-1-link")
+    ^ln -s "profile-1-link" ($state | path join "profile")
+    ^ln -s ($state | path join "profile") ($home | path join ".nix-profile")
+  } else {
+    ^ln -s $profile_dir ($home | path join ".nix-profile-1-link")
+    ^ln -s ".nix-profile-1-link" ($home | path join ".nix-profile")
+  }
   {
     root: $root
     store: $store
@@ -81,14 +93,15 @@ def make-fixture [] {
     profile_dir: $profile_dir
     state: $state
     home: $home
+    profile_link: ($home | path join ".nix-profile")
+    legacy_profile: ($state | path join "profile")
   }
 }
 
 def fixture-env [fx: record] {
   {
-    YZX_PROFILE_LINK: ($fx.home | path join ".nix-profile")
-    YZX_NIX_PROFILE: ($fx.state | path join "profile")
-    YZX_XDG_PROFILE: ($fx.state | path join "profiles" | path join "profile")
+    YZX_PROFILE_LINK: $fx.profile_link
+    YZX_LEGACY_XDG_PROFILE: $fx.legacy_profile
     YZX_STORE_PREFIX: $fx.store
   }
 }
@@ -112,6 +125,19 @@ def read-receipt [receipt_dir: string] {
   open --raw ($files | first) | from json
 }
 
+def make-installer-stub [path: string] {
+  let nu_bin = (which nu | get path.0)
+  [
+    $"#!($nu_bin)"
+    "mkdir ($env.STUB_PROFILE | path dirname)"
+    "^ln -s $env.STUB_PROFILE_DIR $env.STUB_GENERATION"
+    "^ln -s ($env.STUB_GENERATION | path basename) $env.STUB_PROFILE"
+    "exit 0"
+    ""
+  ] | str join "\n" | save --force $path
+  ^chmod +x $path
+}
+
 def main [packaging_dir: string] {
   let pdir = ($packaging_dir | path expand)
   let check = ($pdir | path join "single_profile_check.nu")
@@ -119,167 +145,171 @@ def main [packaging_dir: string] {
   expect ($check | path exists) $"check script exists: ($check)"
   expect ($migrate | path exists) $"migration script exists: ($migrate)"
 
-  # --- 1. convergent single-selector fixture passes every clause ---
+  # 1. A direct ~/.nix-profile selector passes every mandatory clause.
   let fx1 = (make-fixture)
   let r1 = (run-check $check $fx1 {})
-  expect ($r1.exit_code == 0) "convergent fixture: exit 0"
+  expect ($r1.exit_code == 0) "direct fixture: exit 0"
   let j1 = ($r1.stdout | from json)
-  expect ($j1.pass == true) "convergent fixture: pass true"
-  expect ($j1.clauses.selector_resolves == true) "convergent fixture: selector_resolves"
-  expect ($j1.clauses.single_foundation_element == true) "convergent fixture: single_foundation_element"
-  expect ($j1.clauses.xdg_selector_convergent == true) "convergent fixture: xdg_selector_convergent"
-  expect ($j1.clauses.foundation_binaries_resolve == true) "convergent fixture: foundation_binaries_resolve"
+  expect ($j1.schema == "yazelix.single-profile-check.v2") "direct fixture: v2 schema"
+  expect ($j1.pass == true) "direct fixture: pass true"
+  expect ($j1.clauses.direct_profile_selector == true) "direct fixture: explicit selector"
+  expect ($j1.clauses.selector_resolves == true) "direct fixture: selector resolves"
+  expect ($j1.clauses.single_foundation_element == true) "direct fixture: one element"
+  expect ($j1.clauses.legacy_xdg_inactive == true) "direct fixture: legacy XDG inactive"
+  expect ($j1.clauses.foundation_binaries_resolve == true) "direct fixture: binaries resolve"
 
-  # --- 2. divergent XDG selector (the EVIDENCE.md two-selector gap) fails ---
-  let fx2 = (make-fixture)
-  let other2 = ($fx2.store | path join "cccc-second-owner")
-  mkdir $other2
-  ^ln -s $other2 ($fx2.state | path join "profiles" | path join "profile")
+  # 2. A convergent XDG alias is still a forbidden active ownership layer.
+  let fx2 = (make-fixture --legacy)
   let r2 = (run-check $check $fx2 {})
-  expect ($r2.exit_code != 0) "divergent XDG selector: nonzero exit"
+  expect ($r2.exit_code != 0) "legacy alias: nonzero exit"
   let j2 = ($r2.stdout | from json)
-  expect ($j2.clauses.xdg_selector_convergent == false) "divergent XDG selector: clause false"
+  expect ($j2.clauses.direct_profile_selector == false) "legacy alias: direct selector false"
+  expect ($j2.clauses.legacy_xdg_inactive == false) "legacy alias: XDG inactive false"
 
-  # --- 3. two manifest elements violate the single-element contract ---
+  # 3. An absolute link to an otherwise valid home generation is not explicit.
   let fx3 = (make-fixture)
-  let mpath3 = ($fx3.profile_dir | path join "manifest.json")
-  let m3 = (open --raw $mpath3 | from json)
-  $m3
-  | update elements ($m3.elements | insert second_element {storePaths: [$fx3.foundation]})
-  | to json | save --force $mpath3
+  ^rm $fx3.profile_link
+  ^ln -s ($fx3.home | path join ".nix-profile-1-link") $fx3.profile_link
   let r3 = (run-check $check $fx3 {})
-  expect ($r3.exit_code != 0) "two manifest elements: nonzero exit"
+  expect ($r3.exit_code != 0) "absolute selector alias: nonzero exit"
   let j3 = ($r3.stdout | from json)
-  expect ($j3.clauses.single_foundation_element == false) "two manifest elements: clause false"
+  expect ($j3.clauses.direct_profile_selector == false) "absolute selector alias: clause false"
 
-  # --- 4. missing foundation binary fails ---
+  # A chained selector name is not a Nix-owned direct generation.
+  let fx3b = (make-fixture)
+  ^rm $fx3b.profile_link
+  let chained3b = ($fx3b.home | path join ".nix-profile-1-link-2-link")
+  ^ln -s $fx3b.profile_dir $chained3b
+  ^ln -s ($chained3b | path basename) $fx3b.profile_link
+  let r3b = (run-check $check $fx3b {})
+  expect ($r3b.exit_code != 0) "chained selector alias: nonzero exit"
+  expect (($r3b.stdout | from json).clauses.direct_profile_selector == false) "chained selector alias: clause false"
+
+  # 4. A broken legacy symlink is still an active stale shadow.
   let fx4 = (make-fixture)
-  let claude4 = ($fx4.foundation | path join "bin" | path join "claude")
-  ^mv $claude4 $"($claude4).disabled"
+  ^ln -s "missing-generation" $fx4.legacy_profile
   let r4 = (run-check $check $fx4 {})
-  expect ($r4.exit_code != 0) "missing claude binary: nonzero exit"
+  expect ($r4.exit_code != 0) "broken legacy selector: nonzero exit"
   let j4 = ($r4.stdout | from json)
-  expect ($j4.clauses.foundation_binaries_resolve == false) "missing claude binary: clause false"
+  expect ($j4.clauses.legacy_xdg_inactive == false) "broken legacy selector: clause false"
 
-  # --- 5. expected-closure mismatch fails (the cutover-pending clause) ---
+  # 5. Two manifest elements violate the single-element contract.
   let fx5 = (make-fixture)
-  let other5 = (make-foundation $fx5.store "dddd-lifeos-foundation-new")
-  let r5 = (run-check $check $fx5 {YZX_EXPECTED_CLOSURE: $other5})
-  expect ($r5.exit_code != 0) "expected-closure mismatch: nonzero exit"
+  let mpath5 = ($fx5.profile_dir | path join "manifest.json")
+  let m5 = (open --raw $mpath5 | from json)
+  $m5
+  | update elements ($m5.elements | insert second_element {storePaths: [$fx5.foundation]})
+  | to json | save --force $mpath5
+  let r5 = (run-check $check $fx5 {})
+  expect ($r5.exit_code != 0) "two manifest elements: nonzero exit"
   let j5 = ($r5.stdout | from json)
-  expect ($j5.clauses.closure_matches_expected == false) "expected-closure mismatch: clause false"
+  expect ($j5.clauses.single_foundation_element == false) "two manifest elements: clause false"
 
-  # --- 6. expected-closure match passes ---
-  let r6 = (run-check $check $fx5 {YZX_EXPECTED_CLOSURE: $fx5.foundation})
-  expect ($r6.exit_code == 0) "expected-closure match: exit 0"
+  # 6. Missing foundation binaries fail closed.
+  let fx6 = (make-fixture)
+  let claude6 = ($fx6.foundation | path join "bin" | path join "claude")
+  ^mv $claude6 $"($claude6).disabled"
+  let r6 = (run-check $check $fx6 {})
+  expect ($r6.exit_code != 0) "missing claude binary: nonzero exit"
   let j6 = ($r6.stdout | from json)
-  expect ($j6.clauses.closure_matches_expected == true) "expected-closure match: clause true"
+  expect ($j6.clauses.foundation_binaries_resolve == false) "missing claude binary: clause false"
 
-  # --- 7. migration defaults to dry-run: receipt written, nothing mutated ---
+  # 7. Expected-closure mismatch fails; an exact match passes.
   let fx7 = (make-fixture)
-  let newf7 = (make-foundation $fx7.store "dddd-lifeos-foundation-new")
-  let rdir7 = ($fx7.root | path join "receipts")
-  mkdir $rdir7
-  let r7 = (run-migrate $migrate $check $fx7 {} [--closure $newf7 --receipt-dir $rdir7])
-  expect ($r7.exit_code == 0) "dry-run migration: exit 0"
-  let link7 = (^readlink ($fx7.state | path join "profile") | str trim)
-  expect ($link7 == "profile-1-link") "dry-run migration: profile symlink unchanged"
-  let rec7 = (read-receipt $rdir7)
-  expect ($rec7.schema == "yazelix.single-profile-migration.receipt.v1") "receipt: schema"
-  expect ($rec7.mode == "dry-run") "receipt: mode dry-run"
-  expect ($rec7.prior_profile_target == "profile-1-link") "receipt: prior symlink target recorded"
-  expect ($rec7.prior_profile_resolved == ($fx7.profile_dir | path expand)) "receipt: prior resolved store path recorded"
-  expect ($rec7.new_closure_path == $newf7) "receipt: new closure path recorded"
-  expect (($rec7.install_commands | length) == 2) "receipt: install commands recorded"
-  expect (($rec7.rollback_command | str contains "profile-1-link") and ($rec7.rollback_command | str contains "mv -T")) "receipt: atomic rollback command recorded"
-  expect ($rec7.verified == null) "receipt: dry-run leaves verified null"
-  expect ($rec7.rollback_performed == false) "receipt: dry-run performed no rollback"
+  let other7 = (make-foundation $fx7.store "dddd-lifeos-foundation-new")
+  let mismatch7 = (run-check $check $fx7 {YZX_EXPECTED_CLOSURE: $other7})
+  expect ($mismatch7.exit_code != 0) "expected-closure mismatch: nonzero exit"
+  expect (($mismatch7.stdout | from json).clauses.closure_matches_expected == false) "expected-closure mismatch: clause false"
+  let match7 = (run-check $check $fx7 {YZX_EXPECTED_CLOSURE: $fx7.foundation})
+  expect ($match7.exit_code == 0) "expected-closure match: exit 0"
+  expect (($match7.stdout | from json).clauses.closure_matches_expected == true) "expected-closure match: clause true"
 
-  # --- 8. --execute without --closure is refused ---
-  let fx8 = (make-fixture)
+  # 8. Dry-run records every alias/generation and mutates nothing.
+  let fx8 = (make-fixture --legacy)
+  let newf8 = (make-foundation $fx8.store "dddd-lifeos-foundation-new")
+  let unrelated8 = ($fx8.state | path join "profile-backup-link")
+  ^ln -s $fx8.profile_dir $unrelated8
   let rdir8 = ($fx8.root | path join "receipts")
-  mkdir $rdir8
-  let r8 = (run-migrate $migrate $check $fx8 {} [--execute --receipt-dir $rdir8])
-  expect ($r8.exit_code != 0) "--execute without --closure: refused"
+  let adir8 = ($fx8.root | path join "archive")
+  let r8 = (run-migrate $migrate $check $fx8 {} [--closure $newf8 --archive-dir $adir8 --receipt-dir $rdir8])
+  if $r8.exit_code != 0 { print -e $r8.stdout; print -e $r8.stderr }
+  expect ($r8.exit_code == 0) "dry-run migration: exit 0"
+  expect ((^readlink $fx8.profile_link | str trim) == $fx8.legacy_profile) "dry-run: profile alias unchanged"
+  expect ((^readlink $fx8.legacy_profile | str trim) == "profile-1-link") "dry-run: legacy selector unchanged"
+  expect (link-present $unrelated8) "dry-run: similarly named unrelated link untouched"
+  let rec8 = (read-receipt $rdir8)
+  expect ($rec8.schema == "yazelix.single-profile-migration.receipt.v2") "dry-run receipt: v2 schema"
+  expect ($rec8.mode == "dry-run") "dry-run receipt: mode"
+  expect (($rec8.archive_entries | length) == 4) "dry-run receipt: alias, selector, and complete legacy generation chain"
+  expect ($rec8.prior_manifest_sha256 != "") "dry-run receipt: prior manifest hash"
+  expect ($rec8.install_command | str contains "profile add") "dry-run receipt: explicit add command"
+  expect ($rec8.verified == null and $rec8.rollback_performed == false) "dry-run receipt: no execution"
+  expect (not ($adir8 | path exists)) "dry-run: archive tree absent"
 
-  # --- 9. dry-run never archives a divergent XDG selector, only plans it ---
-  let fx9 = (make-fixture)
-  let other9 = ($fx9.store | path join "cccc-second-owner")
-  mkdir $other9
-  let xdg9 = ($fx9.state | path join "profiles" | path join "profile")
-  ^ln -s $other9 $xdg9
-  let newf9 = (make-foundation $fx9.store "dddd-lifeos-foundation-new")
-  let rdir9 = ($fx9.root | path join "receipts")
-  mkdir $rdir9
-  let r9 = (run-migrate $migrate $check $fx9 {} [--closure $newf9 --receipt-dir $rdir9])
-  expect ($r9.exit_code == 0) "dry-run with divergent XDG: exit 0"
-  expect ($xdg9 | path exists) "dry-run with divergent XDG: selector untouched"
-  let rec9 = (read-receipt $rdir9)
-  expect ($rec9.xdg_profile_state == "divergent") "receipt: divergent XDG state recorded"
-  expect ($rec9.xdg_profile_action | str contains "archive") "receipt: XDG archive action planned"
+  # 9. --execute without --closure is refused before mutation.
+  let fx9 = (make-fixture --legacy)
+  let r9 = (run-migrate $migrate $check $fx9 {} [--execute --receipt-dir ($fx9.root | path join "receipts")])
+  expect ($r9.exit_code != 0) "--execute without --closure: refused"
 
-  # --- 10. execute rehearsal (stub nix): atomic cutover + archive + verify ---
-  let fx10 = (make-fixture)
+  # 10. Execute rehearsal creates an explicit selector and archives all shadows.
+  let fx10 = (make-fixture --legacy)
   let newf10 = (make-foundation $fx10.store "dddd-lifeos-foundation-new")
   let newprof10 = (make-profile-dir $fx10.store "eeee-profile-next" $newf10)
-  # patch the new manifest to point at the new closure
-  let mpath10 = ($newprof10 | path join "manifest.json")
-  let m10 = (open --raw $mpath10 | from json)
-  $m10
-  | update elements ($m10.elements | update lifeos_foundation_yzx ($m10.elements.lifeos_foundation_yzx | update storePaths [$newf10]))
-  | to json | save --force $mpath10
-  ^ln -s $newprof10 ($fx10.state | path join "profile-2-link")
-  let other10 = ($fx10.store | path join "cccc-second-owner")
-  mkdir $other10
-  let xdg10 = ($fx10.state | path join "profiles" | path join "profile")
-  ^ln -s $other10 $xdg10
   let stub10 = ($fx10.root | path join "stub-nix")
-  let nu_bin10 = (which nu | get path.0)
-  [$"#!($nu_bin10)" '^ln -sfn $env.STUB_TARGET $env.STUB_PROFILE' 'exit 0' ''] | str join "\n" | save --force $stub10
-  ^chmod +x $stub10
+  make-installer-stub $stub10
+  let generation10 = ($fx10.home | path join ".nix-profile-1-link")
   let rdir10 = ($fx10.root | path join "receipts")
-  mkdir $rdir10
+  let adir10 = ($fx10.root | path join "archive")
   let env10 = {
     YZX_NIX_BIN: $stub10
-    STUB_TARGET: "profile-2-link"
-    STUB_PROFILE: ($fx10.state | path join "profile")
+    STUB_PROFILE: $fx10.profile_link
+    STUB_GENERATION: $generation10
+    STUB_PROFILE_DIR: $newprof10
   }
-  let r10 = (run-migrate $migrate $check $fx10 $env10 [--closure $newf10 --receipt-dir $rdir10 --execute])
+  let r10 = (run-migrate $migrate $check $fx10 $env10 [--closure $newf10 --archive-dir $adir10 --receipt-dir $rdir10 --execute])
+  if $r10.exit_code != 0 { print -e $r10.stdout; print -e $r10.stderr }
   expect ($r10.exit_code == 0) "execute rehearsal: exit 0"
-  let link10 = (^readlink ($fx10.state | path join "profile") | str trim)
-  expect ($link10 == "profile-2-link") "execute rehearsal: profile flipped to new generation"
-  expect (not ($xdg10 | path exists)) "execute rehearsal: divergent XDG selector no longer active"
-  let archived10 = (ls ($fx10.state | path join "profiles") | where name =~ "profile.archived-" | length)
-  expect ($archived10 == 1) "execute rehearsal: divergent XDG selector archived, not deleted"
+  expect ((^readlink $fx10.profile_link | str trim) == ".nix-profile-1-link") "execute rehearsal: explicit selector"
+  expect (not (link-present $fx10.legacy_profile)) "execute rehearsal: legacy selector inactive"
   let rec10 = (read-receipt $rdir10)
-  expect ($rec10.mode == "execute") "execute receipt: mode execute"
-  expect ($rec10.verified == true) "execute receipt: verified true"
-  expect ($rec10.rollback_performed == false) "execute receipt: no rollback needed"
+  expect ($rec10.mode == "execute" and $rec10.verified == true) "execute receipt: verified"
+  expect ($rec10.install_exit_code == 0 and $rec10.verification_exit_code == 0) "execute receipt: commands exited zero"
+  expect ($rec10.verification_stdout_sha256 != "") "execute receipt: verification log hash"
+  expect ($rec10.rollback_performed == false) "execute receipt: no rollback"
+  expect ($rec10.new_manifest_sha256 != "") "execute receipt: new manifest hash"
+  for name in [".nix-profile" "profile" "profile-1-link" "profile-1-link-1-link"] {
+    expect (($rec10.archive_path | path join "prior" | path join $name | path type) == "symlink") $"execute archive contains ($name)"
+  }
+  expect ((resolve ($rec10.archive_path | path join "prior" | path join "profile")) == ($fx10.profile_dir | path expand)) "execute archive: legacy generation graph resolves"
 
-  # --- 11. execute rehearsal failure: auto-rollback to the prior selector ---
-  let fx11 = (make-fixture)
+  # 11. A failed candidate is archived and the complete legacy state restored.
+  let fx11 = (make-fixture --legacy)
   let newf11 = (make-foundation $fx11.store "dddd-lifeos-foundation-new")
-  let broken11 = ($fx11.state | path join "profile-broken")
+  let broken11 = ($fx11.store | path join "ffff-broken-profile")
   mkdir $broken11
-  ^ln -s $broken11 ($fx11.state | path join "profile-3-link")
   let stub11 = ($fx11.root | path join "stub-nix")
-  let nu_bin11 = (which nu | get path.0)
-  [$"#!($nu_bin11)" '^ln -sfn $env.STUB_TARGET $env.STUB_PROFILE' 'exit 0' ''] | str join "\n" | save --force $stub11
-  ^chmod +x $stub11
+  make-installer-stub $stub11
+  let generation11 = ($fx11.home | path join ".nix-profile-1-link")
   let rdir11 = ($fx11.root | path join "receipts")
-  mkdir $rdir11
+  let adir11 = ($fx11.root | path join "archive")
   let env11 = {
     YZX_NIX_BIN: $stub11
-    STUB_TARGET: "profile-3-link"
-    STUB_PROFILE: ($fx11.state | path join "profile")
+    STUB_PROFILE: $fx11.profile_link
+    STUB_GENERATION: $generation11
+    STUB_PROFILE_DIR: $broken11
   }
-  let r11 = (run-migrate $migrate $check $fx11 $env11 [--closure $newf11 --receipt-dir $rdir11 --execute])
+  let r11 = (run-migrate $migrate $check $fx11 $env11 [--closure $newf11 --archive-dir $adir11 --receipt-dir $rdir11 --execute])
   expect ($r11.exit_code != 0) "failed cutover: nonzero exit"
-  let link11 = (^readlink ($fx11.state | path join "profile") | str trim)
-  expect ($link11 == "profile-1-link") "failed cutover: profile atomically rolled back"
+  expect ((^readlink $fx11.profile_link | str trim) == $fx11.legacy_profile) "failed cutover: profile alias restored"
+  expect ((^readlink $fx11.legacy_profile | str trim) == "profile-1-link") "failed cutover: legacy selector restored"
+  expect ((^readlink ($fx11.state | path join "profile-1-link") | str trim) == "profile-1-link-1-link") "failed cutover: chained generation restored"
+  expect ((resolve $fx11.profile_link) == ($fx11.profile_dir | path expand)) "failed cutover: original closure restored"
   let rec11 = (read-receipt $rdir11)
-  expect ($rec11.verified == false) "failed-cutover receipt: verified false"
-  expect ($rec11.rollback_performed == true) "failed-cutover receipt: rollback recorded"
+  expect ($rec11.verified == false and $rec11.rollback_performed == true) "failed receipt: rollback recorded"
+  expect ($rec11.install_exit_code == 0 and $rec11.verification_exit_code != 0) "failed receipt: exact failing gate"
+  expect (($rec11.errors | first) | str contains "profile verification exited") "failed receipt: nonempty error"
+  expect (($rec11.failed_candidate_archive | path join ".nix-profile" | path type) == "symlink") "failed candidate selector archived"
+  expect (($rec11.failed_candidate_archive | path join ".nix-profile-1-link" | path type) == "symlink") "failed candidate generation archived"
 
-  print "ok: all single-profile contract tests passed"
+  print "ok: all explicit-profile contract tests passed"
 }
