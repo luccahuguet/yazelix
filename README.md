@@ -12,7 +12,7 @@ together as one coherent workspace
 
 Nova packages the workspace as a Nix flake with an optional Home Manager module
 
-`yzx launch` opens Mars, while `yzx enter` starts the Yazelix Zellij fork in the
+`yzx launch` opens Mars, while `yzx enter` starts Yazelix Nova in the
 current terminal. Both provide the same Yazi-first workspace and compact top
 bar. The repo keeps one launcher, one config root, one packaged layout, and
 focused checks for its contracts
