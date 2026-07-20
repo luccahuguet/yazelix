@@ -10,8 +10,8 @@ use support::{
 
 fn main() {
     let args = env::args().collect::<Vec<_>>();
-    let [_, yzx, closure, out] = args.as_slice() else {
-        panic!("usage: no-helix-contracts-check <yzx-package> <closure-paths> <out>");
+    let [_, yzx, closure, expected_variant] = args.as_slice() else {
+        panic!("usage: no-helix-contracts-check <yzx-package> <closure-paths> <expected-variant>");
     };
 
     let yzx = Path::new(yzx);
@@ -61,14 +61,14 @@ fn main() {
     assert_eq!(disabled.status.code(), Some(69));
     expect_contains(
         &String::from_utf8_lossy(&disabled.stderr),
-        "managed Helix is unavailable in the yazelix-no-helix package",
+        "managed Helix is unavailable in this Yazelix package",
         "disabled yzx-hx diagnostic",
     );
     let mut status_command = external_case.yzx_command(&yzx_bin, "status");
     let status = successful_stdout(status_command.arg("--json"), "no-Helix status");
     expect_contains(
         &status,
-        r#""package":"no-helix""#,
+        &format!(r#""package":"{expected_variant}""#),
         "no-Helix package identity",
     );
     let mut external_doctor = external_case.yzx_command(&yzx_bin, "doctor");
@@ -94,7 +94,9 @@ fn main() {
     let doctor_stdout = unavailable_case.run_yzx(&yzx_bin, "doctor", "no-Helix doctor");
     expect_contains(
         &doctor_stdout,
-        "warn editor.command: yzx-hx is unavailable in package no-helix; set editor.command to an installed editor",
+        &format!(
+            "warn editor.command: yzx-hx is unavailable in package {expected_variant}; set editor.command to an installed editor"
+        ),
         "no-Helix unavailable-editor doctor",
     );
     assert!(
@@ -102,8 +104,6 @@ fn main() {
         "no-Helix doctor inspected an unused Helix sidecar\n{}",
         excerpt(&doctor_stdout)
     );
-    expect_contains(&doctor_stdout, "ok mars: /nix/store/", "no-Helix Mars");
-
     let helix_tutor = successful_stdout(
         Command::new(&yzx_bin).args(["tutor", "hx"]),
         "no-Helix tutor",
@@ -128,6 +128,4 @@ fn main() {
         fs::read_to_string(observed).unwrap(),
         format!("{}\n", target.display())
     );
-
-    fs::write(out, "ok\n").unwrap();
 }

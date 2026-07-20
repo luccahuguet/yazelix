@@ -75,6 +75,7 @@ jobs:
             .#packages.x86_64-linux.yazelix \
             .#packages.x86_64-linux.yazelix-no-helix \
             .#packages.x86_64-linux.runtime \
+            .#packages.x86_64-linux.runtime-no-helix \
             .#checks.x86_64-linux.home_manager
 
   publish_aarch64_darwin:
@@ -132,6 +133,7 @@ jobs:
             .#packages.aarch64-darwin.yazelix \
             .#packages.aarch64-darwin.yazelix-no-helix \
             .#packages.aarch64-darwin.runtime \
+            .#packages.aarch64-darwin.runtime-no-helix \
             .#checks.aarch64-darwin.home_manager \
             | tee "$outputs"
 
@@ -139,7 +141,7 @@ jobs:
           while IFS= read -r store_path; do
             store_paths+=("$store_path")
           done < "$outputs"
-          test "${#store_paths[@]}" -eq 4
+          test "${#store_paths[@]}" -eq 5
           cachix push yazelix "${store_paths[@]}"
 
           for store_path in "${store_paths[@]}"; do

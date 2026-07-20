@@ -44,6 +44,9 @@ jobs:
           nix eval --raw --no-write-lock-file \
             --override-input yazelixHelix path:./checks/unavailable-helix \
             .#packages.aarch64-darwin.yazelix-no-helix.drvPath
+          nix eval --raw --no-write-lock-file \
+            --override-input yazelixHelix path:./checks/unavailable-helix \
+            .#packages.aarch64-darwin.runtime-no-helix.drvPath
 
       - name: Build focused checks
         run: |

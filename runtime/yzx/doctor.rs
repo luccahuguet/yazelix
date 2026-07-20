@@ -8,11 +8,12 @@ use std::{
 };
 
 use crate::{
-    AGENT_AUTO_COMMAND, HELIX_REVEAL_COMMAND, LAYOUT, LAYOUT_SWAP_TEMPLATE, LAYOUT_TEMPLATE, MARS,
-    PACKAGE_VARIANT, YAZELIX_ZELLIJ_BAR_WASM, YAZELIX_ZELLIJ_PANE_ORCHESTRATOR_WASM,
-    YAZELIX_ZELLIJ_POPUP_WASM, YZX_BAR_RENDER, YZX_BAR_RENDER_REQUEST, YZX_CONFIG, YZX_CONFIG_KDL,
-    YZX_CONFIG_UI, YZX_HELIX, YZX_MENU, YZX_REVEAL, YZX_SCREEN, YZX_SIDEBAR_REFRESH, YZX_TUTOR,
-    YZX_WELCOME, YZX_YA, YZX_YAZI, YZX_ZELLIJ_CONFIG, ZELLIJ,
+    AGENT_AUTO_COMMAND, HELIX_REVEAL_COMMAND, LAYOUT, LAYOUT_SWAP_TEMPLATE, LAYOUT_TEMPLATE,
+    MANAGED_HELIX, MARS, PACKAGE_VARIANT, YAZELIX_ZELLIJ_BAR_WASM,
+    YAZELIX_ZELLIJ_PANE_ORCHESTRATOR_WASM, YAZELIX_ZELLIJ_POPUP_WASM, YZX_BAR_RENDER,
+    YZX_BAR_RENDER_REQUEST, YZX_CONFIG, YZX_CONFIG_KDL, YZX_CONFIG_UI, YZX_HELIX, YZX_MENU,
+    YZX_REVEAL, YZX_SCREEN, YZX_SIDEBAR_REFRESH, YZX_TUTOR, YZX_WELCOME, YZX_YA, YZX_YAZI,
+    YZX_ZELLIJ_CONFIG, ZELLIJ,
     error::{AppError, path_error, startup},
     paths::{runtime_path, zellij_session_label},
     runtime::Runtime,
@@ -20,7 +21,7 @@ use crate::{
 
 pub(crate) fn print_doctor() -> Result<(), AppError> {
     let runtime = Runtime::prepare().map_err(doctor_failure)?;
-    let has_managed_helix = PACKAGE_VARIANT != "no-helix";
+    let has_managed_helix = MANAGED_HELIX == "included";
     check_doctor_inputs().map_err(doctor_failure)?;
     require_command("editor", &runtime.editor).map_err(doctor_failure)?;
     if runtime.agent_command != AGENT_AUTO_COMMAND {
@@ -33,8 +34,8 @@ pub(crate) fn print_doctor() -> Result<(), AppError> {
     doctor_ok("shell.program", &runtime.shell_program);
     if !has_managed_helix && runtime.editor == YZX_HELIX {
         println!(
-            "warn editor.command: {} is unavailable in package no-helix; set editor.command to an installed editor",
-            runtime.editor_command
+            "warn editor.command: {} is unavailable in package {}; set editor.command to an installed editor",
+            runtime.editor_command, PACKAGE_VARIANT
         );
     } else {
         doctor_ok("editor.command", &runtime.editor_command);

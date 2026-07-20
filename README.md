@@ -32,14 +32,14 @@ composes their package outputs.
 
 | Measure | Nova | Classic |
 | --- | --- | --- |
-| Code and configuration (Rust, Nix, shell, TOML, etc.) | **17,697 LOC** | **91,545 LOC** |
+| Code and configuration (Rust, Nix, shell, TOML, etc.) | **17,743 LOC** | **91,545 LOC** |
 | Rust | **14,932 LOC** | **80,957 LOC** |
 | Ownership model | One owner per concern | Overlapping responsibilities across layers |
 | Yazelix component boundaries | Independent, versioned packages | Child repos mixed with main-repo ownership |
 | Product experience | More features, stronger defaults, tighter integration, and polished UX | Fewer features and a less cohesive workspace |
 | Status | Recommended | Frozen migration and rollback path |
 
-Nova owns **73,848 fewer lines**, an **81% reduction**. Classic's Rust code
+Nova owns **73,802 fewer lines**, an **81% reduction**. Classic's Rust code
 alone is 4.6 times larger than Nova's entire code and configuration surface.
 
 Nova delivers more features in 19% of the code. It has a clearer configuration
@@ -193,11 +193,12 @@ Ratconfig's Keys tab is the complete packaged reference, and
 
 ## Packages and platforms
 
-The default package includes Mars and managed Helix, and opens the full
-graphical workspace with `yzx launch`. `yazelix-no-helix` keeps Mars and the
-workspace while delegating editing to an installed terminal editor. The fixed
-`runtime` package keeps the same `yzx` command, managed tools, and configuration
-without Mars or desktop assets.
+| Package | Mars | Managed Helix | Intended entry |
+| --- | --- | --- | --- |
+| `yazelix` | Yes | Yes | `yzx launch` or `yzx enter` |
+| `yazelix-no-helix` | Yes | No | `yzx launch` or `yzx enter` with a host-installed terminal editor |
+| `runtime` | No | Yes | `yzx enter` in another terminal or over SSH |
+| `runtime-no-helix` | No | No | `yzx enter` with a host-installed terminal editor |
 
 See [Installation and packages](docs/installation.md) for package variants,
 platform support, SSH use, measured sizes, Home Manager, and updates.
@@ -250,6 +251,6 @@ See [Development](docs/development.md) for CI and local checks,
 
 ## LOC Scorecard
 
-Yazelix owns **19,940 lines** of tracked text project files. The
+Yazelix owns **20,016 lines** of tracked text project files. The
 [reproducible scorecard](docs/development.md#loc-scorecard) excludes Beads,
 lockfiles, and binary assets.

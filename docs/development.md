@@ -4,16 +4,16 @@
 
 Normal CI runs Linux checks and the Darwin no-Helix evaluation guard on push,
 pull request, and manual dispatch
-`Publish Nix Cache` publishes all three Linux packages and representative Home
+`Publish Nix Cache` publishes all four Linux packages and representative Home
 Manager closures from `main` and manual dispatch. `Version Gate` is manual and
-includes all three Linux profile shapes, all three `aarch64-darwin` packages,
-the Darwin Home Manager closure, and the Darwin no-Helix contract. `Darwin
-Package Smoke` runs the same Darwin verification weekly on Monday when `main`
-has commits in the last 7 days, and on manual dispatch always, while idle weeks
-skip the macOS build. Both macOS jobs assert that Darwin packages contain no
-Linux desktop entry. The flake advertises the optional Yazelix Cachix cache,
-while source builds remain valid without it. Use Version Gate before publishing
-a release
+includes all four Linux profile shapes, all four `aarch64-darwin` packages,
+the Darwin Home Manager closure, and the Darwin runtime and no-Helix contracts.
+`Darwin Package Smoke` runs the same Darwin verification weekly on Monday when
+`main` has commits in the last 7 days, and on manual dispatch always, while
+idle weeks skip the macOS build. Both macOS jobs assert that Darwin packages
+contain no Linux desktop entry. The flake advertises the optional Yazelix
+Cachix cache, while source builds remain valid without it. Use Version Gate
+before publishing a release
 
 ## Main and stable
 
@@ -63,6 +63,8 @@ nix flake show --all-systems
 nix build .#yazelix --no-link --print-build-logs
 nix build .#yazelix-no-helix --no-link --print-build-logs
 nix build .#runtime --no-link --print-build-logs
+nix build .#runtime-no-helix --no-link --print-build-logs
+nix build .#checks.x86_64-linux.runtime_contracts --no-link
 nix build .#checks.x86_64-linux.no_helix_contracts --no-link
 nix build .#checks.x86_64-linux.yzx_yazi_materialization --no-link
 ```
@@ -90,14 +92,14 @@ git ls-files | grep -Ev '^\.beads/|\.lock$|^assets/' | xargs wc -l
 | --- | ---: |
 | Ignore (`.gitignore`) | 19 |
 | License | 201 |
-| Markdown | 2243 |
-| Nix | 1265 |
+| Markdown | 2273 |
+| Nix | 1295 |
 | Shell | 84 |
-| YAML | 413 |
+| YAML | 429 |
 | TOML | 245 |
 | KDL | 233 |
 | Nu | 11 |
 | Lua | 253 |
 | Rust | 14932 |
 | Text | 41 |
-| Total | 19940 |
+| Total | 20016 |

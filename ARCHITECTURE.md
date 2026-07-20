@@ -21,15 +21,16 @@ Bare `yzx` prints help. `launch` is the only Mars route.
 a display server. `yazelix-no-helix` retains the Mars route and delegates
 editing to an installed host command. The fixed `runtime` package compiles the
 Mars route out while retaining the same command, config schema, and managed
-workspace.
+workspace. `runtime-no-helix` combines both omissions for `enter` with a
+host-installed editor.
 
 ## Platforms
 
 | Surface | Support |
 | --- | --- |
-| Full/no-Helix/runtime package and app outputs | `x86_64` / `aarch64` × Linux / Darwin |
+| Four Mars/managed-Helix package and app combinations | `x86_64` / `aarch64` × Linux / Darwin |
 | Headless / SSH floor | `enter` in a capable interactive host terminal; managed TUI only |
-| macOS build evidence | Real `aarch64-darwin` runner builds all three packages and the Home Manager closure; no desktop entry |
+| macOS build evidence | Real `aarch64-darwin` runner builds all four packages and the Home Manager closure; no desktop entry |
 | macOS interactive floor | `help`, `status`, `doctor`, `enter`, managed workspace, and host-editor delegation remain unverified |
 | macOS full-package `launch` | Mars is packaged; GUI behavior remains unverified |
 | Out of repo | App bundles, Homebrew, Ghostty packaging, broad terminal matrices |
@@ -40,7 +41,7 @@ workspace.
 | --- | --- |
 | `yzx` / `help` | Concise help; no implicit launch |
 | `--version` | Package-owned exact Nova version |
-| `launch` | Mars then managed session; unavailable in the runtime package |
+| `launch` | Mars then managed session; unavailable in both Mars-free packages |
 | `enter` | Managed session in current terminal |
 | `run` | Structured command in the prepared runtime environment |
 | `config` | Ratconfig UI |
@@ -63,7 +64,7 @@ One owner per concern. Paths are the durable map.
 
 | Path | Owns |
 | --- | --- |
-| `flake.nix` | Fixed full/no-Helix/runtime composition, inputs, helpers, desktop entry, HM export |
+| `flake.nix` | Four fixed Mars/managed-Helix compositions, inputs, helpers, desktop entry, HM export |
 | `home-manager/module.nix` | `programs.yazelix.enable` / package; optional config files; no default generation |
 
 ### Front door and helpers
@@ -186,9 +187,10 @@ This repo packages them and applies product policy only.
 to **2.28 GiB across 619 store paths**. The no-Helix package is **2.00 GiB
 across 321 paths**, excluding managed Helix, Steel, and packaged grammars. The
 fixed Mars-free variant is **1.37 GiB across 591 paths**, a measured 927 MiB
-reduction; its source-build graph contains 2,407 fewer derivations. Nova's
-top-level outputs are thin command, desktop-entry, and asset joins whose
-references pull in their selected runtime graph.
+reduction; its source-build graph contains 2,407 fewer derivations. The
+Mars- and Helix-free variant is **1.10 GiB across 293 paths**. Nova's top-level
+outputs are thin command, desktop-entry, and asset joins whose references pull
+in their selected runtime graph.
 
 The individual package closures below explain the architectural weight. They
 share libraries and tools, so no row is additive and removing one root does not
@@ -405,7 +407,7 @@ Detail lives in Owners, checks, and the notes below.
 
 | ID | Contract | Owner | Check | Gap |
 | --- | --- | --- | --- | --- |
-| C13 | Fixed full/no-Helix/runtime packages + narrow Home Manager enable/package/optional files | `home-manager/`, flake, `yzx-config` | runtime/no-Helix contracts + `checks.home_manager` | Full HM switch |
+| C13 | Four fixed Mars/managed-Helix package combinations + narrow Home Manager enable/package/optional files | `home-manager/`, flake, `yzx-config` | runtime/no-Helix contracts + `checks.home_manager` | Full HM switch |
 
 ### Notes
 

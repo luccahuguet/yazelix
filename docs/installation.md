@@ -16,15 +16,20 @@ Use `github:luccahuguet/yazelix/main` for the development channel. Immutable
 
 ## Package variants
 
-The default `yzx` package includes Mars, managed Helix, and a Linux desktop
-entry. `yazelix-no-helix` keeps Mars and the desktop entry but replaces
-`yzx-hx` with a clear unavailable command, so set `editor.command` to an
-installed editor such as `nvim`. It neither evaluates managed Helix nor retains
-Helix or Steel in its closure. The fixed `runtime` package provides the same
-`bin/yzx`, workspace, and config without Mars, Rio, or desktop assets, but it
-still includes managed Helix. Its `launch` command explains that Mars is absent,
-so use `enter` for the managed workspace. All three package and app outputs
-exist for `x86_64-linux`, `aarch64-linux`, `x86_64-darwin`, and
+| Package | Mars | Managed Helix | Linux desktop entry |
+| --- | --- | --- | --- |
+| `yazelix` | Yes | Yes | Yes |
+| `yazelix-no-helix` | Yes | No | Yes |
+| `runtime` | No | Yes | No |
+| `runtime-no-helix` | No | No | No |
+
+Helix-free packages replace `yzx-hx` with a clear unavailable command, so set
+`editor.command` to an installed editor such as `nvim`. They neither evaluate
+managed Helix nor retain Helix, Steel, or the packaged grammar closure.
+Mars-free packages keep `bin/yzx`, the managed workspace, and configuration
+without Mars, Rio, or desktop assets. Their `launch` command explains that Mars
+is absent, so use `enter` in the current terminal or over SSH. All four package
+and app outputs exist for `x86_64-linux`, `aarch64-linux`, `x86_64-darwin`, and
 `aarch64-darwin`
 
 Install the external-editor variant with:
@@ -39,16 +44,22 @@ Install the Mars-free variant with:
 nix profile add --refresh github:luccahuguet/yazelix/stable#runtime
 ```
 
+Install the Mars- and Helix-free variant with:
+
+```sh
+nix profile add --refresh github:luccahuguet/yazelix/stable#runtime-no-helix
+```
+
 ## Capability matrix
 
 | Surface | Linux | `aarch64-darwin` |
 | --- | --- | --- |
-| Full, no-Helix, and runtime packages | Build- and profile-tested on `x86_64-linux`, with flake outputs also covering `aarch64-linux` | Build-tested on a real GitHub macOS runner |
+| All four package variants | Build- and profile-tested on `x86_64-linux`, with flake outputs also covering `aarch64-linux` | Build-tested on a real GitHub macOS runner |
 | Home Manager module | Activation closure build-tested on `x86_64-linux` | Activation closure build-tested on a real GitHub macOS runner |
 | `enter` with managed Zellij and Yazi plus the selected editor | Contract-tested and used interactively with managed Helix; host-editor delegation is contract-tested | Packaged, with interactive workflow unverified |
 | Full-package `launch` through Mars | Contract-tested and used interactively | Package build-tested, with Mars GUI unverified |
 | Host editor delegation | Contract-tested with the selected host editor remaining host-owned | Packaged, with interactive delegation unverified |
-| Desktop entry | Full and no-Helix packages, with none in the runtime package | None, as asserted by the macOS package and Home Manager builds |
+| Desktop entry | Full and no-Helix packages, with none in either runtime package | None, as asserted by the macOS package and Home Manager builds |
 
 `x86_64-darwin` remains an exposed, evaluated flake output rather than a
 build-tested target. The current label is **build-tested on macOS, with
@@ -73,7 +84,8 @@ GiB** across 321 paths, saving **281.6 MiB** and 298 paths by excluding managed
 Helix and its grammar closure. The Mars-free runtime occupies **1.37 GiB**
 across 591 paths, saving **927 MiB**. Its evaluated source-build graph contains
 5,664 derivations instead of 8,071, avoiding 2,407 derivations when nothing is
-cached. Closure measurements use the 2026-07-16 lock; derivation counts are from
+cached. The Mars- and Helix-free runtime occupies **1.10 GiB across 293 paths**.
+Closure measurements use the 2026-07-16 lock; derivation counts are from
 2026-07-12 and indicate potential work, not guaranteed compilations. Closure
 size is realized and unpacked, not compressed download size, and an existing
 Nix store may already contain shared paths
@@ -87,6 +99,7 @@ Nova total
 | **Nova (`yzx`)** | **2.28 GiB** | Entire launcher, terminal, workspace, editor, file manager, shell, Git tools, plugins, fonts, and configuration assets |
 | **Nova without managed Helix** | **2.00 GiB** | Full Mars workspace and integrations, with editing delegated to a host-installed command |
 | **Nova runtime** | **1.37 GiB** | Same command, workspace, tools, config, and cursor schema without Mars, Rio, desktop entry, or Mars-only assets |
+| **Nova runtime without managed Helix** | **1.10 GiB** | Managed TUI workspace and host-editor delegation without Mars, Rio, or managed Helix |
 | Mars | 1.13 GiB | Mars, Rio, graphics libraries, Python runtime, and packaged fonts/emoji |
 | Yazi + preview tools | 503.2 MiB | Yazi plus Chafa, FFmpeg, ImageMagick, Poppler, resvg, 7-Zip, `fd`, `rg`, `jq`, `fzf`, and `zoxide` |
 | Git | 373.8 MiB | Packaged Git CLI and its runtime dependencies |
@@ -116,8 +129,9 @@ Reproduce the total for the current system and lock file with:
 full=$(nix build .#yazelix --no-link --print-out-paths)
 no_helix=$(nix build .#yazelix-no-helix --no-link --print-out-paths)
 runtime=$(nix build .#runtime --no-link --print-out-paths)
-nix path-info -Sh "$full" "$no_helix" "$runtime"
-nix path-info --json --json-format 1 -S "$full" "$no_helix" "$runtime"
+runtime_no_helix=$(nix build .#runtime-no-helix --no-link --print-out-paths)
+nix path-info -Sh "$full" "$no_helix" "$runtime" "$runtime_no_helix"
+nix path-info --json --json-format 1 -S "$full" "$no_helix" "$runtime" "$runtime_no_helix"
 ```
 
 ## Home Manager
@@ -155,6 +169,15 @@ existing owners:
 ```nix
 programs.yazelix = {
   package = inputs.yazelix.packages.${pkgs.system}.yazelix-no-helix;
+  config.settings.editor.command = "nvim";
+};
+```
+
+Combine both omissions through the fourth package output:
+
+```nix
+programs.yazelix = {
+  package = inputs.yazelix.packages.${pkgs.system}.runtime-no-helix;
   config.settings.editor.command = "nvim";
 };
 ```
@@ -199,10 +222,9 @@ Update a profile install with:
 nix profile upgrade --refresh yazelix
 ```
 
-The `#yazelix-no-helix` and `#runtime` installs use
-`nix profile upgrade --refresh yazelix-no-helix` and
-`nix profile upgrade --refresh runtime`, respectively. Run `nix profile list`
-when you need to confirm an entry name
+The other profile entries are `yazelix-no-helix`, `runtime`, and
+`runtime-no-helix`. Pass the matching name to `nix profile upgrade --refresh`.
+Run `nix profile list` when you need to confirm an entry name
 
 For a Home Manager or nix-darwin install, run this from the configuration that
 declares the Yazelix input:

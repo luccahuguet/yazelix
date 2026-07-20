@@ -61,10 +61,13 @@ jobs:
           full="$(nix build --no-link --no-write-lock-file --print-out-paths --print-build-logs .#packages.aarch64-darwin.yazelix)"
           no_helix="$(nix build --no-link --no-write-lock-file --print-out-paths --print-build-logs .#packages.aarch64-darwin.yazelix-no-helix)"
           runtime="$(nix build --no-link --no-write-lock-file --print-out-paths --print-build-logs .#packages.aarch64-darwin.runtime)"
+          runtime_no_helix="$(nix build --no-link --no-write-lock-file --print-out-paths --print-build-logs .#packages.aarch64-darwin.runtime-no-helix)"
           nix build --no-link --no-write-lock-file --print-build-logs \
             .#checks.aarch64-darwin.home_manager \
+            .#checks.aarch64-darwin.runtime_contracts \
             .#checks.aarch64-darwin.no_helix_contracts
 
           test ! -e "$full/share/applications/yzx.desktop"
           test ! -e "$no_helix/share/applications/yzx.desktop"
           test ! -e "$runtime/share/applications/yzx.desktop"
+          test ! -e "$runtime_no_helix/share/applications/yzx.desktop"

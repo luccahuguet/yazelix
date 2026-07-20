@@ -4,6 +4,9 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## Unreleased
 
+- The `runtime-no-helix` package and app provide the complete `yzx enter`
+  workspace for host terminals and host-installed editors without retaining
+  Mars, Rio, desktop assets, managed Helix, Steel, or packaged grammars.
 - The guided tutor separates workspace roots, file flow, pane arrangement, and
   Zellij modes into short lessons with no more than four actions each.
 - Yazi's compact Starship header mirrors the shell prompt's contextual module
@@ -97,7 +100,7 @@ User-visible runtime changes for Yazelix Nova live here.
   current`. The default field list sizes status and setting from the selected
   tab, then gives the remaining cells to value, so structured previews use the
   popup width without shifting during search.
-- Main-branch cache publishing builds the full, runtime, and Home Manager
+- Main-branch cache publishing builds all four package variants and Home Manager
   `aarch64-darwin` closures on `macos-15`, publishes them to the Yazelix
   Cachix cache, and verifies each top-level narinfo after upload.
 - The Linux desktop entry describes Yazelix as an integrated terminal workspace
@@ -123,8 +126,8 @@ User-visible runtime changes for Yazelix Nova live here.
 
 - `yzx doctor` recognizes the supported Helix `Alt r` reveal binding when its
   inner quotes use valid TOML escaping, while real conflicts still warn.
-- Darwin Package Smoke and Version Gate build the full package, runtime package,
-  and Home Manager closure on a real `aarch64-darwin` runner. They also assert
+- Darwin Package Smoke and Version Gate build all four package variants and the
+  Home Manager closure on a real `aarch64-darwin` runner. They also assert
   that Darwin receives no Linux desktop entry; macOS interactive use and the
   Mars GUI remain explicitly unverified.
 - The Codex quota widget classifies official limits by their reported window
@@ -140,11 +143,11 @@ User-visible runtime changes for Yazelix Nova live here.
   config-root and `PATH` environment variables are treated as unset instead of
   resolving against the current directory. Invalid stale Helix bridge registry
   files are skipped so opening a file can fall back to a new editor pane.
-- The flake exposes one fixed Mars-free `runtime` package and app alongside the
-  complete default package. Both use `yzx` and the same config/runtime model;
-  the runtime variant keeps `enter`, `run`, `env`, config, status, and doctor,
-  while `launch` directs users to `enter` or the complete package. On the locked
-  x86_64-linux graph it is 1.37 GiB instead of 2.28 GiB and avoids 2,407
+- The fixed Mars-free `runtime` package and app retain managed Helix and use the
+  default package's `yzx` config/runtime model. They keep `enter`, `run`, `env`,
+  config, status, and doctor, while `launch` directs users to `enter` or a
+  package with Mars. Its locked x86_64-linux graph is 1.37 GiB instead of 2.28
+  GiB and avoids 2,407
   source-build derivations. Home Manager selects it through the existing
   `programs.yazelix.package` option and can own `cursors.toml` through the same
   native `text`/`source` contract.

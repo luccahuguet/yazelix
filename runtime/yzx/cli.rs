@@ -174,7 +174,7 @@ fn exec_managed(through_mars: bool, zellij_args: Vec<OsString>) -> Result<(), Ap
 fn managed_program(through_mars: bool, mars: &'static str) -> Result<&'static str, AppError> {
     match (through_mars, mars) {
         (true, "") => Err(AppError::Usage(
-            "yzx launch is unavailable in the Mars-free runtime package; use yzx enter or install the complete Yazelix Nova package\n".to_string(),
+            "yzx launch is unavailable because this package omits Mars; use yzx enter or select a package that includes Mars\n".to_string(),
         )),
         (true, mars) => Ok(mars),
         (false, _) => Ok(YZX_WELCOME),

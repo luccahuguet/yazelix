@@ -298,7 +298,7 @@
         mkdir -p "$out/bin"
         cat > "$out/bin/yzx-hx" <<'EOF'
         #!${pkgs.runtimeShell}
-        printf '%s\n' 'yzx-hx: managed Helix is unavailable in the yazelix-no-helix package; set editor.command to an installed editor or select the default yazelix package' >&2
+        printf '%s\n' 'yzx-hx: managed Helix is unavailable in this Yazelix package; set editor.command to an installed editor or select a package that includes managed Helix' >&2
         exit 69
         EOF
         chmod 755 "$out/bin/yzx-hx"
@@ -419,14 +419,19 @@
         doCheck = false;
       });
       mkYzx = {
-        name,
-        variant,
+        withManagedHelix,
+        withMars,
       }: let
-        withMars = variant != "runtime";
+        variantSuffix = pkgs.lib.concatStringsSep "-" (
+          pkgs.lib.optional (! withMars) "runtime"
+          ++ pkgs.lib.optional (! withManagedHelix) "no-helix"
+        );
+        variant = if variantSuffix == "" then "full" else variantSuffix;
+        name = "yazelix" + pkgs.lib.optionalString (variantSuffix != "") "-${variantSuffix}";
         managedEditor =
-          if variant == "no-helix"
-          then yzxHelixUnavailable
-          else yzxHelix;
+          if withManagedHelix
+          then yzxHelix
+          else yzxHelixUnavailable;
         tutor = let
           src = pkgs.runCommand "yzx-tutor-src" {} ''
             mkdir -p "$out"
@@ -542,6 +547,7 @@
         };
         main = pkgs.replaceVars ./runtime/yzx/main.rs {
           packageVariant = variant;
+          managedHelix = if withManagedHelix then "included" else "omitted";
           yzxConfigUi = "${configUi}/bin/yzx-config-ui";
           yzxMenu = "${yzxMenu}/bin/yzx-menu";
           yzxTutor = "${tutor}/bin/yzx-tutor";
@@ -644,21 +650,26 @@
           meta.platforms = supportedSystems;
         };
       yazelix = mkYzx {
-        name = "yazelix";
-        variant = "full";
+        withManagedHelix = true;
+        withMars = true;
       };
       yzxNoHelix = mkYzx {
-        name = "yazelix-no-helix";
-        variant = "no-helix";
+        withManagedHelix = false;
+        withMars = true;
       };
       yzxRuntime = mkYzx {
-        name = "yazelix-runtime";
-        variant = "runtime";
+        withManagedHelix = true;
+        withMars = false;
+      };
+      yzxRuntimeNoHelix = mkYzx {
+        withManagedHelix = false;
+        withMars = false;
       };
     in {
       inherit yazelix;
       yazelix-no-helix = yzxNoHelix;
       runtime = yzxRuntime;
+      runtime-no-helix = yzxRuntimeNoHelix;
       default = yazelix;
     });
 
@@ -667,9 +678,11 @@
       yzx = self.packages.${system}.yazelix;
       yzxNoHelix = self.packages.${system}.yazelix-no-helix;
       yzxRuntime = self.packages.${system}.runtime;
+      yzxRuntimeNoHelix = self.packages.${system}.runtime-no-helix;
       marsPackage = mars.packages.${system}.mars;
       noHelixClosure = pkgs.closureInfo {rootPaths = [yzxNoHelix];};
       runtimeClosure = pkgs.closureInfo {rootPaths = [yzxRuntime];};
+      runtimeNoHelixClosure = pkgs.closureInfo {rootPaths = [yzxRuntimeNoHelix];};
       zellijBarPackage = yazelixZellijBar.packages.${system}.default;
       yzxYaziMaterializer = yzxYaziMaterializerFor pkgs;
       checksSrc = pkgs.lib.cleanSource ./checks;
@@ -971,32 +984,42 @@
         ${yzxContractsCheck}/bin/yzx-contracts-check ${yzx} ${pkgs.git}/bin/git ${pkgs.jq}/bin/jq "$out"
       '';
       runtime_contracts = pkgs.runCommand "yzx-runtime-contracts" {} ''
-        test -x ${yzxRuntime}/bin/yzx
-        test ! -e ${yzxRuntime}/share/applications/yzx.desktop
-        ! grep -Fx ${marsPackage} ${runtimeClosure}/store-paths
-        ! grep -E '/[^/]*-rio-[^/]*$' ${runtimeClosure}/store-paths
+        check_runtime() {
+          local package="$1"
+          local variant="$2"
+          local closure="$3"
+          local root="$TMPDIR/$variant"
 
-        export HOME="$TMPDIR/home"
-        export YAZELIX_CONFIG_HOME="$TMPDIR/config"
-        export YAZELIX_STATE_DIR="$TMPDIR/state"
-        export XDG_DATA_HOME="$TMPDIR/data"
-        mkdir -p "$HOME" "$YAZELIX_CONFIG_HOME" "$YAZELIX_STATE_DIR" "$XDG_DATA_HOME"
-        printf '%s\n' '[welcome]' 'enabled = false' > "$YAZELIX_CONFIG_HOME/config.toml"
+          test -x "$package/bin/yzx"
+          test ! -e "$package/share/applications/yzx.desktop"
+          ! grep -Fx ${marsPackage} "$closure"
+          ! grep -E '/[^/]*-rio-[^/]*$' "$closure"
 
-        ${yzxRuntime}/bin/yzx status --json > status.json
-        test "$(${pkgs.jq}/bin/jq -r .package status.json)" = runtime
-        ${yzxRuntime}/bin/yzx status > status
-        grep -q '^package: runtime$' status
-        grep -q '^mars config: not included$' status
-        ${yzxRuntime}/bin/yzx doctor > doctor
-        grep -q '^ok mars: not included$' doctor
-        if ${yzxRuntime}/bin/yzx launch 2> launch-error; then
-          printf '%s\n' 'Mars-free runtime launch unexpectedly succeeded' >&2
-          exit 1
-        fi
-        grep -q 'launch is unavailable in the Mars-free runtime package' launch-error
-        ${yzxRuntime}/bin/yzx enter --version > enter-version
-        grep -q '^zellij ' enter-version
+          export HOME="$root/home"
+          export YAZELIX_CONFIG_HOME="$root/config"
+          export YAZELIX_STATE_DIR="$root/state"
+          export XDG_DATA_HOME="$root/data"
+          mkdir -p "$HOME" "$YAZELIX_CONFIG_HOME" "$YAZELIX_STATE_DIR" "$XDG_DATA_HOME"
+          printf '%s\n' '[welcome]' 'enabled = false' > "$YAZELIX_CONFIG_HOME/config.toml"
+
+          "$package/bin/yzx" status --json > "$root/status.json"
+          test "$(${pkgs.jq}/bin/jq -r .package "$root/status.json")" = "$variant"
+          "$package/bin/yzx" status > "$root/status"
+          grep -Fqx "package: $variant" "$root/status"
+          grep -Fqx 'mars config: not included' "$root/status"
+          "$package/bin/yzx" doctor > "$root/doctor"
+          grep -Fqx 'ok mars: not included' "$root/doctor"
+          if "$package/bin/yzx" launch 2> "$root/launch-error"; then
+            printf '%s\n' "$variant launch unexpectedly succeeded" >&2
+            exit 1
+          fi
+          grep -q 'this package omits Mars' "$root/launch-error"
+          "$package/bin/yzx" enter --version > "$root/enter-version"
+          grep -q '^zellij ' "$root/enter-version"
+        }
+
+        check_runtime ${yzxRuntime} runtime ${runtimeClosure}/store-paths
+        check_runtime ${yzxRuntimeNoHelix} runtime-no-helix ${runtimeNoHelixClosure}/store-paths
         touch "$out"
       '';
       helix_contracts = pkgs.runCommand "yzx-helix-contracts" {} ''
@@ -1004,7 +1027,10 @@
       '';
       no_helix_contracts = pkgs.runCommand "yzx-no-helix-contracts" {} ''
         ${noHelixContractsCheck}/bin/no-helix-contracts-check \
-          ${yzxNoHelix} ${noHelixClosure}/store-paths "$out"
+          ${yzxNoHelix} ${noHelixClosure}/store-paths no-helix
+        ${noHelixContractsCheck}/bin/no-helix-contracts-check \
+          ${yzxRuntimeNoHelix} ${runtimeNoHelixClosure}/store-paths runtime-no-helix
+        touch "$out"
       '';
     });
 
@@ -1020,6 +1046,10 @@
       yazelix-no-helix = {
         type = "app";
         program = "${self.packages.${system}.yazelix-no-helix}/bin/yzx";
+      };
+      runtime-no-helix = {
+        type = "app";
+        program = "${self.packages.${system}.runtime-no-helix}/bin/yzx";
       };
       default = yazelix;
     });
