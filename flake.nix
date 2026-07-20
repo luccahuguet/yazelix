@@ -64,7 +64,7 @@
       flake = false;
     };
     rtk_source = {
-      url = "github:rtk-ai/rtk/v0.43.0";
+      url = "github:FlexNetOS/rtk-tokenkill/5e0f065362ece172899a1bf3da82ac0eaada6a1a";
       flake = false;
     };
     grit_source = {

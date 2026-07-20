@@ -17,8 +17,8 @@ rustPlatform.buildRustPackage {
   doCheck = false;
 
   meta = with pkgs.lib; {
-    description = "RTK CLI built from the upstream rtk-ai release source";
-    homepage = "https://github.com/rtk-ai/rtk";
+    description = "RTK CLI built from the FlexNetOS rtk-tokenkill source";
+    homepage = "https://github.com/FlexNetOS/rtk-tokenkill";
     license = licenses.asl20;
     mainProgram = "rtk";
     platforms = [ "x86_64-linux" ];
