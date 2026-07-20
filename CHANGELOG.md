@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Pin the profile-owned RTK package to the Blueprint-verified FlexNetOS
+  `rtk-tokenkill` develop revision (`44cf84e…`), retaining the single native
+  RTK binary and Nushell dispatcher ownership model.
 - Package the canonical Nushell RTK dispatcher with the foundation profile so
   Codex and Cargo routing have one profile-owned source.
 
