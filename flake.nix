@@ -991,6 +991,17 @@
       lifeos_foundation_yzx = lifeosFoundationYzx;
     });
 
+    # The documented Teri Rust workflow enters this shell.  Keep its toolchain
+    # profile-owned and provide the native OpenSSL/pkg-config boundary required
+    # by Teri's existing dependency graph.
+    devShells.x86_64-linux.ci = let
+      pkgs = import nixpkgs {system = "x86_64-linux";};
+    in pkgs.mkShell {
+      packages = [self.packages.x86_64-linux.lifeos_foundation_yzx];
+      nativeBuildInputs = [pkgs.pkg-config];
+      buildInputs = [pkgs.openssl];
+    };
+
     checks = eachSystem (system: let
       pkgs = import nixpkgs {inherit system;};
       yzx = self.packages.${system}.yazelix;
