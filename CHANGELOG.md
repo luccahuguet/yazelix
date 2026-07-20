@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+- Make the pinned Rust 1.89 foundation lane evaluate reliably on clean Nix
+  runners by importing its hash-pinned manifest directly, and include the
+  Codex config/rules materializer in branch CI.
+
+- Extend Yazelix Codex authorship to the mandatory durable `RULES.md` surface.
+  The foundation profile now ships both review inputs, the materializer source,
+  and `yazelix_codex_materialize`. Reviewed config and rules inputs validate and
+  stage together before either generated file is replaced; both mode-0644
+  outputs carry exact source hashes. Reviewed top-level config tables replace
+  stale live tables while live-only runtime tables such as `hooks.state` survive,
+  and a durable journal restores the exact prior pair after an interruption
+  between the two published paths. The
+  runtime provenance gate enforces the
+  exact lexical profile selector and deployed/review/generated parity without
+  authoring Codex auth, sessions, databases, hooks, or user preferences.
 - Pin the profile-owned RTK package to the Blueprint-verified FlexNetOS
   `rtk-tokenkill` develop revision (`44cf84e…`), retaining the single native
   RTK binary and Nushell dispatcher ownership model.

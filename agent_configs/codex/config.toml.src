@@ -8,9 +8,9 @@
 # Binaries are referenced through ~/.nix-profile (the sole selector) — raw
 # /nix/store pins and retired workspace paths are rejected fail-closed.
 
-approvals_reviewer = "auto_review"
+approvals_reviewer = "user"
 model = "gpt-5.6-sol"
-model_reasoning_effort = "xhigh"
+model_reasoning_effort = "max"
 service_tier = "fast"
 
 [apps.connector_76869538009648d5b282a4bb21c3d157.tools."github.create_pull_request"]
@@ -23,6 +23,7 @@ approval_mode = "approve"
 approval_mode = "approve"
 
 [features]
+hooks = true
 plugins = false
 remote_plugin = false
 
@@ -51,5 +52,12 @@ trust_level = "trusted"
 [projects."/home/flexnetos/meta/src/yazelix"]
 trust_level = "trusted"
 
+[projects."/home/flexnetos/meta/src/meta-ruvector"]
+trust_level = "trusted"
+
+[projects."/home/flexnetos/meta/src/flexnetos_runner"]
+trust_level = "trusted"
+
 [tui.model_availability_nux]
+"gpt-5.6-sol" = 4
 "tencent/hy3:free" = 1

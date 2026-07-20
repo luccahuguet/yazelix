@@ -7,7 +7,7 @@
 **What is the best possible terminal experience?**
 
 Yazelix tries to answer that question. Nova brings the terminal, multiplexer,
-file manager, editor, shell, Git tools, configuration, and an optional AI agent
+file manager, editor, shell, Git tools, configuration, and an AI agent
 together as one coherent workspace
 
 Nova packages the workspace as a Nix flake with an optional Home Manager module
@@ -217,6 +217,6 @@ popup contracts live in [Runtime Notes](docs/runtime-notes.md)
 
 ## LOC Scorecard
 
-Nova owns **20,069 lines** of tracked text project files. The
+Nova owns **21,720 lines** of tracked text project files. The
 [reproducible scorecard](docs/development.md#loc-scorecard) excludes Beads,
 lockfiles, and binary assets

@@ -21,6 +21,44 @@ ${XDG_DATA_HOME:-$HOME/.local/share}/yazelix
 
 Set `YAZELIX_STATE_DIR` to use another state directory
 
+## Codex configuration and rules
+
+FlexNetOS reviews Codex configuration and durable operating rules in
+`agent_configs/codex/`. Their user-editable deploy copies live at:
+
+```text
+~/.config/yazelix/agents/codex/config.toml.src
+~/.config/yazelix/agents/codex/RULES.md.src
+```
+
+The profile installs immutable review copies under
+`~/.nix-profile/share/yazelix/agent_configs/codex/`, the materializer under
+`~/.nix-profile/share/yazelix/nushell/scripts/`, and the executable
+`~/.nix-profile/bin/yazelix_codex_materialize`. Copy a reviewed input into the
+editable tree only as a deliberate source update; the profile copy is not an
+alternate editable owner.
+
+The materializer validates both inputs and completes both mode-`0644` staged
+files before replacing either live path. POSIX has no atomic rename for two
+independent pathnames, so publication uses a durable recovery journal and
+rollback copies rather than claiming a two-path atomic rename. If interrupted
+after one replacement, the next invocation restores the exact prior pair before
+continuing. It writes `config.toml` and `RULES.md` under `CODEX_HOME`
+with exact source hashes and do-not-edit markers.
+
+For `config.toml`, every top-level key or table declared by the reviewed source
+belongs to that source and replaces the corresponding live value. Live-only
+top-level tables, including Codex-managed `hooks.state`, survive materialization.
+Edit declarative preferences in the Yazelix input, never in the generated file.
+Auth, sessions, databases, and other non-config runtime state are untouched.
+
+The lexical selector must be exactly
+`/home/flexnetos/.nix-profile/bin/codex`; resolving to the same store payload
+through another path is not sufficient. An approved cutover archives the prior
+generated pair, runs `yazelix_codex_materialize`, checks
+`tests/codex_config_provenance.nu`, and retains the archive until the installed
+runtime starts successfully.
+
 ## Main settings
 
 The optional root config lives at `~/.config/yazelix/config.toml`. Opening
