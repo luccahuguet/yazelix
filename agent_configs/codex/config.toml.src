@@ -1,0 +1,55 @@
+# Codex config — reviewed editable input (YZXCONV-004).
+# Edit here, never in $CODEX_HOME/config.toml (that file is generated).
+#   deploy surface : ~/.config/yazelix/agents/codex/config.toml.src
+#   review surface : agent_configs/codex/config.toml.src (yazelix repo)
+#   materializer   : nushell/scripts/materialize_codex_config.nu
+# Runtime/state home stays CODEX_HOME=/home/flexnetos/.codex; auth.json,
+# sessions/, and *.sqlite* are runtime state, never authored here.
+# Binaries are referenced through ~/.nix-profile (the sole selector) — raw
+# /nix/store pins and retired workspace paths are rejected fail-closed.
+
+approvals_reviewer = "auto_review"
+model = "gpt-5.6-sol"
+model_reasoning_effort = "xhigh"
+service_tier = "fast"
+
+[apps.connector_76869538009648d5b282a4bb21c3d157.tools."github.create_pull_request"]
+approval_mode = "approve"
+
+[apps.connector_76869538009648d5b282a4bb21c3d157.tools."github.enable_auto_merge"]
+approval_mode = "approve"
+
+[apps.connector_76869538009648d5b282a4bb21c3d157.tools."github.mark_pull_request_ready_for_review"]
+approval_mode = "approve"
+
+[features]
+plugins = false
+remote_plugin = false
+
+[mcp_servers.icm]
+args = ["serve"]
+command = "/home/flexnetos/.nix-profile/bin/icm"
+
+[mcp_servers.openaiDeveloperDocs]
+url = "https://developers.openai.com/mcp"
+
+[notice]
+hide_full_access_warning = true
+
+[projects."/home/flexnetos"]
+trust_level = "trusted"
+
+[projects."/home/flexnetos/meta/src/envctl"]
+trust_level = "trusted"
+
+[projects."/home/flexnetos/meta/src/lifeos"]
+trust_level = "trusted"
+
+[projects."/home/flexnetos/meta/src/weave"]
+trust_level = "trusted"
+
+[projects."/home/flexnetos/meta/src/yazelix"]
+trust_level = "trusted"
+
+[tui.model_availability_nux]
+"tencent/hy3:free" = 1

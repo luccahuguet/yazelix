@@ -9,6 +9,15 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## 1.0.0-beta.1
 
+- Codex config authorship converges on a reviewed Yazelix-owned input
+  (`agent_configs/codex/config.toml.src`, deployed to
+  `~/.config/yazelix/agents/codex/config.toml.src`) rendered by
+  `nushell/scripts/materialize_codex_config.nu` into `$CODEX_HOME/config.toml`.
+  The materializer is deterministic and fails closed on retired
+  workspace-mirror paths, raw `/nix/store` pins, and Nix profile-generation
+  pins; `tests/codex_config_provenance.nu` gates that the generated config
+  checksum-matches the input. The runtime/state home stays
+  `CODEX_HOME=~/.codex` — auth, sessions, and databases are never authored.
 - The FlexNetOS profile is now the single install owner for Kache and the
   self-hosted runner binaries. It exports `fxrun`, `fxrun-actions`, and
   `fxrun-dispatch`, ships a profile-owned Nushell service and fail-closed

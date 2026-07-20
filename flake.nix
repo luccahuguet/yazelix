@@ -1090,6 +1090,10 @@
         ${pkgs.nushell}/bin/nu ${./checks/cache_shell_policy.nu} ${./.}
         touch "$out"
       '';
+      codex_config_materializer = pkgs.runCommand "codex-config-materializer-check" {} ''
+        ${pkgs.nushell}/bin/nu ${./tests/codex_config_materializer.nu} ${./.}
+        touch "$out"
+      '';
       home_manager = pkgs.runCommand "yzx-home-manager-check" {} ''
         default_path="${homeManagerDefault.activationPackage}/home-path"
         override_path="${homeManagerOverride.activationPackage}/home-path"

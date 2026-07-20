@@ -217,6 +217,6 @@ popup contracts live in [Runtime Notes](docs/runtime-notes.md)
 
 ## LOC Scorecard
 
-Nova owns **18,900 lines** of tracked text project files. The
+Nova owns **20,069 lines** of tracked text project files. The
 [reproducible scorecard](docs/development.md#loc-scorecard) excludes Beads,
 lockfiles, and binary assets
