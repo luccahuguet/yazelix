@@ -906,6 +906,31 @@
           '') flexnetosExecutables
         )
       );
+      # YZXCONV-003: single-profile closure contract tools. The check verifies
+      # that ~/.nix-profile is the sole foundation selector; the migration
+      # performs the cutover (dry-run by default) with a rollback receipt.
+      flexnetosProfileTools = pkgs.runCommand "flexnetos-profile-tools" {} ''
+        mkdir -p "$out/bin" "$out/share/yazelix/packaging"
+        install -m 644 ${./packaging/single_profile_check.nu} \
+          "$out/share/yazelix/packaging/single_profile_check.nu"
+        install -m 644 ${./packaging/profile_migration.nu} \
+          "$out/share/yazelix/packaging/profile_migration.nu"
+        cat > "$out/bin/yazelix_profile_check" <<EOF
+        #!${pkgs.nushell}/bin/nu
+        def --wrapped main [...args] {
+          exec ${pkgs.nushell}/bin/nu "$out/share/yazelix/packaging/single_profile_check.nu" ...\$args
+        }
+        EOF
+        cat > "$out/bin/yazelix_profile_migrate" <<EOF
+        #!${pkgs.nushell}/bin/nu
+        def --wrapped main [...args] {
+          \$env.YZX_CHECK_SCRIPT = "$out/share/yazelix/packaging/single_profile_check.nu"
+          \$env.YZX_NU_BIN = "${pkgs.nushell}/bin/nu"
+          exec ${pkgs.nushell}/bin/nu "$out/share/yazelix/packaging/profile_migration.nu" ...\$args
+        }
+        EOF
+        chmod +x "$out/bin/yazelix_profile_check" "$out/bin/yazelix_profile_migrate"
+      '';
       flexnetosDesktopSource = pkgs.makeDesktopItem {
         name = "com.flexnetos.Yazelix.Agent";
         destination = "/share/yazelix/applications";
@@ -938,7 +963,7 @@
       };
       lifeosFoundationYzx = pkgs.symlinkJoin {
         name = "lifeos-foundation-yzx";
-        paths = [flexnetosYzxBase flexnetosTools flexnetosDesktopSource flexnetosRunnerSystemd flexnetosHostPolicyBundle flexnetosVolatileRuntimeBundle];
+        paths = [flexnetosYzxBase flexnetosTools flexnetosProfileTools flexnetosDesktopSource flexnetosRunnerSystemd flexnetosHostPolicyBundle flexnetosVolatileRuntimeBundle];
         nativeBuildInputs = [pkgs.desktop-file-utils];
         postBuild = ''
           install -D -m 644 ${flexnetosZellijLayout}/layout.kdl \
@@ -1272,6 +1297,10 @@
         test -x ${foundation}/bin/systemctl
         test -x ${foundation}/bin/usermod
         test -x ${foundation}/toolbin/nu
+        test -x ${foundation}/bin/yazelix_profile_check
+        test -x ${foundation}/bin/yazelix_profile_migrate
+        test -f ${foundation}/share/yazelix/packaging/single_profile_check.nu
+        test -f ${foundation}/share/yazelix/packaging/profile_migration.nu
         test ! -e ${foundation}/bin/yzx-desktop-launch
         test ! -e ${foundation}/bin/yzx-agent-workspace-launch
 
@@ -1380,6 +1409,41 @@
         grep -Fx 'ok shell.program: nu' doctor
         grep -F 'ok mars: /nix/store/' doctor
         cmp ${foundation}/share/yazelix/runtime_identity.json "$YAZELIX_STATE_DIR/runtime_identity.json"
+        touch "$out"
+      '';
+      # YZXCONV-003: the packaging must emit exactly one foundation element, the
+      # profile-contract scripts must satisfy their fixture suite, and a staged
+      # selector built from the real foundation closure must pass every clause.
+      single_profile_contract = let
+        foundation = self.packages.${system}.lifeos_foundation_yzx;
+        foundationAttrCount =
+          builtins.length
+          (builtins.filter (pkgs.lib.hasPrefix "lifeos_foundation")
+            (builtins.attrNames self.packages.${system}));
+      in pkgs.runCommand "single-profile-contract-check" {nativeBuildInputs = [pkgs.nushell];} ''
+        # source contract: exactly one foundation package attribute
+        test ${toString foundationAttrCount} = 1
+
+        # hermetic fixture suite for the check + migration scripts
+        nu ${./packaging/tests/single_profile_contract_test.nu} ${./packaging}
+
+        # staged selector pointing at the real foundation closure
+        staging="$TMPDIR/staging"
+        mkdir -p "$staging/state/profiles" "$staging/home" "$staging/profile-dir"
+        ln -s ${foundation}/bin "$staging/profile-dir/bin"
+        ln -s ${foundation}/toolbin "$staging/profile-dir/toolbin"
+        cat > "$staging/profile-dir/manifest.json" <<EOF
+        {"version":3,"elements":{"lifeos_foundation_yzx":{"active":true,"attrPath":"packages.${system}.lifeos_foundation_yzx","originalUrl":"path:.","outputs":null,"priority":5,"storePaths":["${foundation}"],"url":"path:."}}}
+        EOF
+        ln -s "$staging/profile-dir" "$staging/state/profile-1-link"
+        ln -s profile-1-link "$staging/state/profile"
+        ln -s "$staging/state/profile" "$staging/home/.nix-profile"
+        YZX_PROFILE_LINK="$staging/home/.nix-profile" \
+          YZX_NIX_PROFILE="$staging/state/profile" \
+          YZX_XDG_PROFILE="$staging/state/profiles/profile" \
+          YZX_EXPECTED_CLOSURE="${foundation}" \
+          ${foundation}/bin/yazelix_profile_check > staged-check.json
+        grep -F '"pass": true' staged-check.json
         touch "$out"
       '';
     });
