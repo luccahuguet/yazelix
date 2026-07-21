@@ -1027,6 +1027,9 @@
           \$env.YZX_NIX_BIN = (\$env.YZX_NIX_BIN? | default "${pkgs.nix}/bin/nix")
           \$env.YZX_NIX_STORE_BIN = (\$env.YZX_NIX_STORE_BIN? | default "${pkgs.nix}/bin/nix-store")
           \$env.YZX_NU_BIN = "${pkgs.nushell}/bin/nu"
+          \$env.YZX_READLINK_BIN = "${pkgs.coreutils}/bin/readlink"
+          \$env.YZX_MV_BIN = "${pkgs.coreutils}/bin/mv"
+          \$env.YZX_DATE_BIN = "${pkgs.coreutils}/bin/date"
           exec ${pkgs.nushell}/bin/nu "$out/share/yazelix/packaging/profile_migration.nu" ...\$args
         }
         EOF

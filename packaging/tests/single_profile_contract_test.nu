@@ -113,9 +113,10 @@ def run-check [check_script: string, fx: record, extra: record] {
 }
 
 def run-migrate [migrate_script: string, check_script: string, fx: record, extra: record, args: list<string>] {
+  let nu_bin = (which nu | where type == "external" | get path | first)
   let base = ((fixture-env $fx) | merge {YZX_CHECK_SCRIPT: $check_script})
   with-env ($base | merge $extra) {
-    do { ^nu $migrate_script ...$args } | complete
+    do { ^$nu_bin $migrate_script ...$args } | complete
   }
 }
 
@@ -129,13 +130,14 @@ def make-installer-stub [path: string] {
   let nu_bin = (which nu | get path.0)
   [
     $"#!($nu_bin)"
+    "let ln_bin = ($env.STUB_LN_BIN? | default \"ln\")"
     "mkdir ($env.STUB_PROFILE | path dirname)"
-    "^ln -s $env.STUB_PROFILE_DIR $env.STUB_GENERATION"
-    "^ln -s ($env.STUB_GENERATION | path basename) $env.STUB_PROFILE"
+    "^$ln_bin -s $env.STUB_PROFILE_DIR $env.STUB_GENERATION"
+    "^$ln_bin -s ($env.STUB_GENERATION | path basename) $env.STUB_PROFILE"
     "let legacy = ($env.STUB_LEGACY_PROFILE? | default \"\")"
     "if ($legacy | is-not-empty) {"
     "  mkdir ($legacy | path dirname)"
-    "  ^ln -s ($env.STUB_LEGACY_TARGET? | default \"profiles/profile\") $legacy"
+    "  ^$ln_bin -s ($env.STUB_LEGACY_TARGET? | default \"profiles/profile\") $legacy"
     "}"
     "exit 0"
     ""
@@ -323,6 +325,42 @@ def main [packaging_dir: string] {
   expect (($rec11.archive_path | path join "install-created-shadows/profile" | path type) == "symlink") "failed archive: installer-created shadow retired before rollback"
   expect (($rec11.failed_candidate_archive | path join ".nix-profile" | path type) == "symlink") "failed candidate selector archived"
   expect (($rec11.failed_candidate_archive | path join ".nix-profile-1-link" | path type) == "symlink") "failed candidate generation archived"
+
+  # 12. Execute survives when moving the selector invalidates every inherited PATH entry.
+  let fx12 = (make-fixture)
+  let newf12 = (make-foundation $fx12.store "dddd-lifeos-foundation-new")
+  let newprof12 = (make-profile-dir $fx12.store "eeee-profile-next" $newf12)
+  let stub12 = ($fx12.root | path join "stub-nix")
+  make-installer-stub $stub12
+  let readlink12 = (which readlink | where type == "external" | get path | first)
+  let utility_bin12 = ($readlink12 | path dirname)
+  let mv12 = ($utility_bin12 | path join "mv")
+  let date12 = ($utility_bin12 | path join "date")
+  let ln12 = ($utility_bin12 | path join "ln")
+  let nu12 = (which nu | where type == "external" | get path | first)
+  ^$ln12 -s $readlink12 ($fx12.foundation | path join "bin" | path join "readlink")
+  ^$ln12 -s $mv12 ($fx12.foundation | path join "bin" | path join "mv")
+  ^$ln12 -s $date12 ($fx12.foundation | path join "bin" | path join "date")
+  ^$ln12 -s $readlink12 ($newf12 | path join "bin" | path join "readlink")
+  ^$ln12 -s $date12 ($newf12 | path join "bin" | path join "date")
+  let generation12 = ($fx12.home | path join ".nix-profile-1-link")
+  let rdir12 = ($fx12.root | path join "receipts")
+  let adir12 = ($fx12.root | path join "archive")
+  let env12 = {
+    PATH: [($fx12.profile_link | path join "bin")]
+    YZX_NIX_BIN: $stub12
+    YZX_NU_BIN: $nu12
+    STUB_LN_BIN: $ln12
+    STUB_PROFILE: $fx12.profile_link
+    STUB_GENERATION: $generation12
+    STUB_PROFILE_DIR: $newprof12
+  }
+  let r12 = (run-migrate $migrate $check $fx12 $env12 [--closure $newf12 --archive-dir $adir12 --receipt-dir $rdir12 --execute])
+  if $r12.exit_code != 0 { print -e $r12.stdout; print -e $r12.stderr }
+  expect ($r12.exit_code == 0) "selector-PATH invalidation rehearsal: exit 0"
+  let rec12 = (read-receipt $rdir12)
+  expect ($rec12.verified == true) "selector-PATH invalidation rehearsal: verified"
+  expect ($rec12.pinned_commands | values | all {|path| not ($path | str starts-with $fx12.profile_link) }) "selector-PATH invalidation rehearsal: commands pinned outside selector"
 
   print "ok: all explicit-profile contract tests passed"
 }

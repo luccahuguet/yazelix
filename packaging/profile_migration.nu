@@ -17,15 +17,40 @@
 #
 # Environment overrides (fixtures/staging): YZX_PROFILE_LINK,
 # YZX_LEGACY_XDG_PROFILE, YZX_STORE_PREFIX, YZX_NIX_BIN, YZX_NU_BIN,
-# YZX_CHECK_SCRIPT.
+# YZX_READLINK_BIN, YZX_MV_BIN, YZX_DATE_BIN, YZX_CHECK_SCRIPT.
+
+def pin-command [name: string, override: string, resolver: string] {
+  let candidate = if $override != "" {
+    $override
+  } else {
+    let matches = (which --all $name | where type == "external")
+    if ($matches | is-empty) { refuse $"required command is unavailable: ($name)" }
+    $matches | get path | first
+  }
+  let resolve_with = if $resolver == "" { $candidate } else { $resolver }
+  let probe = (do { ^$resolve_with -f $candidate } | complete)
+  if $probe.exit_code != 0 {
+    refuse $"required command does not resolve: ($name) at ($candidate)"
+  }
+  let payload = ($probe.stdout | str trim)
+  let resolved = if $payload == "" {
+    ""
+  } else {
+    $payload | path dirname | path join ($candidate | path basename)
+  }
+  if $resolved == "" or not ($resolved | path exists) {
+    refuse $"required command has no stable executable path: ($name) from ($candidate)"
+  }
+  $resolved
+}
 
 def resolve [path: string] {
-  let res = (do { ^readlink -f $path } | complete)
+  let res = (do { ^$env.YZX_READLINK_BIN -f $path } | complete)
   if $res.exit_code == 0 { $res.stdout | str trim } else { "" }
 }
 
 def read-link [path: string] {
-  let res = (do { ^readlink $path } | complete)
+  let res = (do { ^$env.YZX_READLINK_BIN $path } | complete)
   {
     ok: ($res.exit_code == 0)
     target: (if $res.exit_code == 0 { $res.stdout | str trim } else { "" })
@@ -69,7 +94,7 @@ def archive-entries [entries: list<record>] {
   for entry in $entries {
     if (entry-present $entry.source) {
       mkdir ($entry.archived | path dirname)
-      ^mv -T $entry.source $entry.archived
+      ^$env.YZX_MV_BIN -T $entry.source $entry.archived
     }
   }
 }
@@ -81,7 +106,7 @@ def restore-entries [entries: list<record>] {
         error make {msg: $"rollback destination is occupied: ($entry.source)"}
       }
       mkdir ($entry.source | path dirname)
-      ^mv -T $entry.archived $entry.source
+      ^$env.YZX_MV_BIN -T $entry.archived $entry.source
     }
   }
 }
@@ -91,7 +116,7 @@ def archive-candidate [profile_link: string, destination: string] {
   for source in $paths {
     if (entry-present $source) {
       mkdir $destination
-      ^mv -T $source ($destination | path join ($source | path basename))
+      ^$env.YZX_MV_BIN -T $source ($destination | path join ($source | path basename))
     }
   }
 }
@@ -125,8 +150,21 @@ def main [
     | default $"/home/flexnetos/($retired_home_tree)/state/nix/profile"
   )
   let store_prefix = ($env.YZX_STORE_PREFIX? | default "/nix/store")
-  let nix_bin = ($env.YZX_NIX_BIN? | default "nix")
-  let nu_bin = ($env.YZX_NU_BIN? | default "nu")
+  let readlink_bin = (pin-command "readlink" ($env.YZX_READLINK_BIN? | default "") "")
+  $env.YZX_READLINK_BIN = $readlink_bin
+  let mv_bin = (pin-command "mv" ($env.YZX_MV_BIN? | default "") $readlink_bin)
+  $env.YZX_MV_BIN = $mv_bin
+  let date_bin = (pin-command "date" ($env.YZX_DATE_BIN? | default "") $readlink_bin)
+  let nix_bin = if $execute {
+    pin-command "nix" ($env.YZX_NIX_BIN? | default "") $readlink_bin
+  } else {
+    $env.YZX_NIX_BIN? | default "nix"
+  }
+  let nu_bin = if $execute {
+    pin-command "nu" ($env.YZX_NU_BIN? | default "") $readlink_bin
+  } else {
+    $env.YZX_NU_BIN? | default "nu"
+  }
   let check_script = ($env.YZX_CHECK_SCRIPT? | default ($env.FILE_PWD | path join "single_profile_check.nu"))
 
   if $closure == "" { refuse "--closure <store path of lifeos-foundation-yzx> is required" }
@@ -141,7 +179,7 @@ def main [
   let prior_manifest = ($prior_profile_resolved | path join "manifest.json")
   if not ($prior_manifest | path exists) { refuse $"active profile manifest is absent: ($prior_manifest)" }
 
-  let stamp = (^date -u +%Y%m%dT%H%M%S%NZ | str trim)
+  let stamp = (^$date_bin -u +%Y%m%dT%H%M%S%NZ | str trim)
   let archive_path = ($archive_dir | path join $stamp)
   let profile_paths = ((generation-links $profile_link) | append $profile_link)
   let legacy_paths = if (entry-present $legacy_xdg_profile) {
@@ -163,7 +201,7 @@ def main [
   mut receipt = {
     schema: "yazelix.single-profile-migration.receipt.v3"
     task: "YZXCONV-003"
-    observed_at: (^date -u +%Y-%m-%dT%H:%M:%SZ | str trim)
+    observed_at: (^$date_bin -u +%Y-%m-%dT%H:%M:%SZ | str trim)
     mode: $mode
     profile_link: $profile_link
     legacy_xdg_profile: $legacy_xdg_profile
@@ -175,6 +213,13 @@ def main [
     archive_path: $archive_path
     archive_entries: $prior_entries
     install_command: $install_command
+    pinned_commands: {
+      readlink: $readlink_bin
+      mv: $mv_bin
+      date: $date_bin
+      nix: $nix_bin
+      nu: $nu_bin
+    }
     install_exit_code: null
     install_created_shadow_entries: []
     failed_install_created_shadow_entries: []
