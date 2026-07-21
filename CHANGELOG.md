@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Run trusted Linux CI on the local self-hosted runner
+  (`self-hosted, linux, x64, local, flexnetos`) as the primary lane, keeping
+  GitHub-hosted `ubuntu-latest` only as the fallback for untrusted fork pull
+  requests. The `linux` job in `ci.yml` and the `linux-profile-smoke` job in
+  `version_gate.yml` select their runner by comparing
+  `github.event.pull_request.head.repo.full_name` against `github.repository`
+  (this repository is itself a fork of upstream, so `head.repo.fork` is true for
+  every PR and cannot be used as the fork guard); fork PRs never execute on
+  self-hosted hardware. macOS jobs are unchanged.
 - Make the profile-owned self-hosted runner service persistent: change
   `flexnetos_runner@.service` from `Type=oneshot`/`Restart=no` to
   `Type=exec`/`Restart=always` (RestartSec=3). Each job still runs on a fresh

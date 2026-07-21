@@ -15,7 +15,12 @@ concurrency:
 
 jobs:
   linux:
-    runs-on: ubuntu-latest
+    # Route to the self-hosted profile runner for trusted refs (push + same-repo
+    # PRs). Only true fork PRs (head repo differs from this repo) fall back to a
+    # GitHub-hosted runner. NB: head.repo.fork is unusable here because this
+    # repository is itself a fork of upstream yazelix, so that flag is true for
+    # every PR; compare full_name against github.repository instead.
+    runs-on: ${{ (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository) && 'ubuntu-latest' || fromJSON('["self-hosted","linux","x64","local","flexnetos"]') }}
     timeout-minutes: 60
     defaults:
       run:

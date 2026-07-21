@@ -12,7 +12,10 @@ concurrency:
 
 jobs:
   linux-profile-smoke:
-    runs-on: ubuntu-latest
+    # Same-repo/push refs run on the self-hosted profile runner; only true fork
+    # PRs fall back to hosted. head.repo.fork is unusable (this repo is itself a
+    # fork of upstream), so compare full_name against github.repository.
+    runs-on: ${{ (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository) && 'ubuntu-latest' || fromJSON('["self-hosted","linux","x64","local","flexnetos"]') }}
     timeout-minutes: 90
     defaults:
       run:
