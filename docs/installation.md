@@ -33,11 +33,15 @@ owns profile archives. Run
 every foundation update; it fails when the retired selector exists even if both
 paths resolve to identical bytes.
 
-Install the Mars-free variant with:
+Evaluate the mutually exclusive Mars-free variant without adding it beside the
+foundation element:
 
 ```nu
-nix profile add --refresh github:luccahuguet/yazelix#runtime
+nix run github:FlexNetOS/yazelix#runtime -- enter
 ```
+
+The default `#yazelix` and Mars-free `#runtime` outputs are supported evaluation
+alternatives, not additional owners of the FlexNetOS foundation profile.
 
 ## Capability matrix
 
@@ -166,14 +170,21 @@ Choose one update owner for each installation. Profile installs belong to the
 Nix profile. Home Manager and nix-darwin installs belong to the declarative
 configuration. Do not mix both update paths for the same installation
 
-Update a profile install with:
+Build the exact replacement foundation closure, then let the checked migration
+archive both legacy profile namespaces, protect the prior closure, install the
+single replacement element, and verify it:
 
 ```nu
-nix profile upgrade --refresh yazelix
+let closure = (nix build github:FlexNetOS/yazelix#lifeos_foundation_yzx --no-link --print-out-paths | str trim)
+let migrator = ($closure | path join "bin" "yazelix_profile_migrate")
+^$migrator --closure $closure --flake-ref github:FlexNetOS/yazelix --execute
 ```
 
-The Mars-free `#runtime` install uses `nix profile upgrade --refresh runtime`
-Run `nix profile list` when you need to confirm an entry name
+Confirm an entry name with:
+
+```nu
+nix profile list --profile /home/flexnetos/.nix-profile
+```
 
 For a Home Manager or nix-darwin install, run this from the configuration that
 declares the Yazelix input:
@@ -182,9 +193,9 @@ declares the Yazelix input:
 nix flake update yazelix
 ```
 
-Then run that configuration's normal Home Manager or nix-darwin switch command
-Replace `yazelix` with your chosen input name when it differs. Do not run
-`nix profile upgrade` for a package installed by Home Manager
+Then run that configuration's normal Home Manager or nix-darwin switch command.
+Replace `yazelix` with your chosen input name when it differs. Do not run an
+imperative profile migration for a package installed by Home Manager.
 
 Your next launch uses the updated package. Each open Nova session keeps its
 current immutable Nix store paths until you close and relaunch it

@@ -61,7 +61,8 @@ nix build .#lifeos_foundation_yzx --no-link --print-out-paths
 ```
 
 The contract checks one desktop file, the direct profile `Exec`, profile-owned
-Codex and Claude wrappers, the profile layout, both Nushell source directories,
+Codex and Claude wrappers, the terminal-metadata provenance that defines its
+identity, the profile layout, both Nushell source directories,
 mandatory Nushell, `yzx status`, `yzx doctor`, and generated runtime identity.
 The single-profile gate additionally rejects absolute or XDG selector aliases,
 broken legacy links, extra manifest elements, closure drift, and missing

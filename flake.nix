@@ -24,7 +24,7 @@
       flake = false;
     };
     yazelixHelix = {
-      url = "github:luccahuguet/yazelix-helix";
+      url = "github:FlexNetOS/yazelix-helix/2657bf0f8e0f183c0e9bca7e6b1b42f75416be7c";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     yazelixZellijPopup = {
@@ -44,27 +44,27 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     yazelixYaziAssets = {
-      url = "github:FlexNetOS/yazelix-yazi-assets/0935209c3c7d8407c12c9a1a61bd0df6e8fd6a58";
+      url = "github:FlexNetOS/yazelix-yazi-assets/bd0deff7e83ecd7788b61f5c0cda122272826f74";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+    yazelixTerminalSupport = {
+      url = "github:FlexNetOS/yazelix-terminal-support/873f64b77eda3a39609d154bda192a2ad8405955";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     ratconfig = {
       url = "github:luccahuguet/ratconfig";
       flake = false;
     };
-    autoLayoutYazi = {
-      url = "github:luccahuguet/auto-layout.yazi";
-      flake = false;
-    };
-    starshipYazi = {
-      url = "github:Rolv-Apneseth/starship.yazi";
-      flake = false;
-    };
     beads_rust_source = {
       url = "github:FlexNetOS/beads_rust/2498339168b8e88d641e8ae1664843fc69740012";
       flake = false;
     };
+    beads_viewer = {
+      url = "github:FlexNetOS/beads_viewer/37d7c2a69797db37d373646ba50e5d0c62d9984a";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     rtk_source = {
-      url = "github:FlexNetOS/rtk-tokenkill/44cf84e71c87a1a45da6ed218f92edb88e4336f5";
+      url = "github:FlexNetOS/rtk-tokenkill/0dd13a48b81ac083d8a39351a6a72ca4e7b715c0";
       flake = false;
     };
     grit_source = {
@@ -72,7 +72,7 @@
       flake = false;
     };
     icm_source = {
-      url = "github:FlexNetOS/icm/ae4ed52c6bbf806e45f9c5b425e15b44398de4b7";
+      url = "github:FlexNetOS/icm/03d63a9102ce7f2c17cc7df66ac1aded46def88e";
       flake = false;
     };
     weave_source = {
@@ -103,10 +103,10 @@
     yazelixZellijPaneOrchestrator,
     yazelixScreen,
     yazelixYaziAssets,
+    yazelixTerminalSupport,
     ratconfig,
-    autoLayoutYazi,
-    starshipYazi,
     beads_rust_source,
+    beads_viewer,
     rtk_source,
     grit_source,
     icm_source,
@@ -342,14 +342,6 @@
         yzxEditor = "${yzxEditor}/bin/yzx-editor";
         yzxHelix = "${yzxHelix}/bin/yzx-hx";
       };
-      yaziAssetsSelection = pkgs.fetchFromGitHub {
-        owner = "luccahuguet";
-        repo = "yazelix-yazi-assets";
-        rev = "aea0703247479e1fa373be6b305e24e568cb30c7";
-        sparseCheckout = ["plugins/git.yazi" "yazelix_starship.toml"];
-        nonConeMode = true;
-        hash = "sha256-eHt6kRaLcXgjhdnmhI2QY2O1tF9wGFXbIjXc4pObF4U=";
-      };
       yzxOpenCore = pkgs.rustPlatform.buildRustPackage {
         pname = "yzx-open";
         version = "0.1.0";
@@ -364,14 +356,14 @@
         install -D -m 644 ${./defaults/yazi/init.lua} "$out/init.lua"
         install -D -m 644 ${./defaults/yazi/keymap.toml} "$out/keymap.toml"
         install -D -m 644 ${yzxYaziToml} "$out/yazi.toml"
-        install -D -m 644 ${yaziAssetsSelection}/yazelix_starship.toml "$out/yazelix_starship.toml"
+        install -D -m 644 ${flexnetosYaziAssetsRoot}/yazelix_starship.toml "$out/yazelix_starship.toml"
         mkdir -p "$out/plugins"
         install -D -m 644 ${./defaults/yazi/plugins/sidebar-state.yazi/main.lua} "$out/plugins/sidebar-state.yazi/main.lua"
         install -D -m 644 ${./defaults/yazi/plugins/sidebar-status.yazi/main.lua} "$out/plugins/sidebar-status.yazi/main.lua"
         install -D -m 644 ${./defaults/yazi/plugins/zoxide-editor.yazi/main.lua} "$out/plugins/zoxide-editor.yazi/main.lua"
-        ln -s ${autoLayoutYazi} "$out/plugins/auto-layout.yazi"
-        ln -s ${yaziAssetsSelection}/plugins/git.yazi "$out/plugins/git.yazi"
-        ln -s ${starshipYazi} "$out/plugins/starship.yazi"
+        ln -s ${flexnetosYaziAssetsRoot}/plugins/auto-layout.yazi "$out/plugins/auto-layout.yazi"
+        ln -s ${flexnetosYaziAssetsRoot}/plugins/git.yazi "$out/plugins/git.yazi"
+        ln -s ${flexnetosYaziAssetsRoot}/plugins/starship.yazi "$out/plugins/starship.yazi"
       '';
       yzxYaziMaterializer = pkgs.rustPlatform.buildRustPackage {
         pname = "yzx-yazi-config";
@@ -436,10 +428,30 @@
         install -D -m 644 ${yzxLayoutKdl} "$out/layout.kdl"
         install -D -m 644 ${yzxLayoutSwapKdl} "$out/layout.swap.kdl"
       '';
-      flexnetosYaziAssets = yazelixYaziAssets.packages.${system}.yazelix_yazi_assets;
-      flexnetosCcboard = "${flexnetosYaziAssets}/share/yazelix_yazi_assets/runtime_tools/ccboard/bin/ccboard";
-      flexnetosCodedb = "${flexnetosYaziAssets}/share/yazelix_yazi_assets/runtime_tools/codedb/bin/codedb";
-      flexnetosNuPluginCodedb = "${flexnetosYaziAssets}/share/yazelix_yazi_assets/runtime_tools/codedb/bin/nu_plugin_codedb";
+      # The portable asset layer evaluates on every advertised platform.  The
+      # mandatory ccboard/CodeDB tooling is a Linux-only Foundation concern:
+      # CodeDB retains its upstream Bubblewrap sandbox rather than receiving a
+      # fictional Darwin substitute.
+      flexnetosYaziAssets = yazelixYaziAssets.packages.${system}.yazi_assets_only;
+      flexnetosYaziAssetsRoot = "${flexnetosYaziAssets}/share/yazelix_yazi_assets";
+      flexnetosLinuxYaziRuntimeTools =
+        assert pkgs.stdenv.hostPlatform.isLinux;
+        yazelixYaziAssets.packages.${system}.yazelix_yazi_assets;
+      flexnetosTerminalSupport = yazelixTerminalSupport.packages.${system}.yazelix_terminal_support;
+      flexnetosTerminalSupportMetadata = builtins.fromTOML (
+        builtins.readFile "${yazelixTerminalSupport}/config_metadata/terminal_support.toml"
+      );
+      flexnetosTerminalSupportContract =
+        assert flexnetosTerminalSupportMetadata.schema_version == 2;
+        assert flexnetosTerminalSupportMetadata.default_terminal == "mars";
+        assert flexnetosTerminalSupportMetadata.launch_order == ["mars"];
+        assert flexnetosTerminalSupportMetadata.desktop_id_prefix == "com.flexnetos.Yazelix";
+        assert flexnetosTerminalSupportMetadata.terminals.mars.desktop_suffix == "Agent";
+        assert flexnetosTerminalSupportMetadata.terminals.mars.startup_wm_class == "mars";
+        true;
+      flexnetosCcboard = "${flexnetosLinuxYaziRuntimeTools}/share/yazelix_yazi_assets/runtime_tools/ccboard/bin/ccboard";
+      flexnetosCodedb = "${flexnetosLinuxYaziRuntimeTools}/share/yazelix_yazi_assets/runtime_tools/codedb/bin/codedb";
+      flexnetosNuPluginCodedb = "${flexnetosLinuxYaziRuntimeTools}/share/yazelix_yazi_assets/runtime_tools/codedb/bin/nu_plugin_codedb";
       flexnetosLayoutTemplate = pkgs.runCommand "flexnetos-agent-workspace-template.kdl" {} ''
         substitute ${./defaults/zellij/flexnetos_agent_workspace.kdl} "$out" \
           --replace-fail '@yazi@' '${yzxYazi}/bin/yzx-yazi' \
@@ -633,12 +645,7 @@
               install -D -m 644 ${./defaults/config.toml} "$out/share/yazelix/config.toml"
               install -D -m 644 ${layoutPackage}/layout.kdl "$out/share/yazelix/layout.kdl"
               install -D -m 644 ${layoutPackage}/layout.swap.kdl "$out/share/yazelix/layout.swap.kdl"
-              install -D -m 644 ${yzxYaziConfig}/init.lua "$out/share/yazelix/yazi/init.lua"
-              install -D -m 644 ${yzxYaziConfig}/keymap.toml "$out/share/yazelix/yazi/keymap.toml"
-              install -D -m 644 ${yzxYaziConfig}/plugins/sidebar-state.yazi/main.lua "$out/share/yazelix/yazi/plugins/sidebar-state.yazi/main.lua"
-              install -D -m 644 ${yzxYaziConfig}/plugins/zoxide-editor.yazi/main.lua "$out/share/yazelix/yazi/plugins/zoxide-editor.yazi/main.lua"
-              ln -s ${yzxYaziConfig}/plugins/git.yazi "$out/share/yazelix/yazi/plugins/git.yazi"
-              install -D -m 644 ${yzxYaziConfig}/yazi.toml "$out/share/yazelix/yazi/yazi.toml"
+              ln -s ${yzxYaziConfig} "$out/share/yazelix/yazi"
               install -D -m 644 ${nuConfig}/config.nu "$out/share/yazelix/nu/config.nu"
               install -D -m 644 ${nuConfig}/env.nu "$out/share/yazelix/nu/env.nu"
             ''
@@ -671,6 +678,7 @@
         beadsSource = beads_rust_source;
         rustPlatform = flexnetosRustPlatform;
       };
+      flexnetosBeadsViewer = beads_viewer.packages.${system}.bv;
       flexnetosClaude = import ./packaging/claude_code_release.nix {
         inherit pkgs;
         version = "2.1.207";
@@ -815,6 +823,7 @@
         Xvfb = "${pkgs.xorg-server}/bin/Xvfb";
         actionlint = "${pkgs.actionlint}/bin/actionlint";
         br = "${flexnetosBeads}/bin/br";
+        bv = "${flexnetosBeadsViewer}/bin/bv";
         bun = "${flexnetosBun}/bin/bun";
         bunx = "${flexnetosBun}/bin/bunx";
         cargo = "${flexnetosRustToolchain}/bin/cargo";
@@ -832,7 +841,6 @@
         clippy-driver = "${flexnetosRustToolchain}/bin/clippy-driver";
         codedb = flexnetosCodedb;
         codex = "${flexnetosCodexFrontdoor}/bin/codex";
-        corepack = "${pkgs.corepack}/bin/corepack";
         file = "${pkgs.file}/bin/file";
         fxrun = "${flexnetosRunner}/bin/fxrun";
         "fxrun-actions" = "${flexnetosRunner}/bin/fxrun-actions";
@@ -864,13 +872,13 @@
         journalctl = "${pkgs.systemd}/bin/journalctl";
         ln = "${pkgs.coreutils}/bin/ln";
         notebooklm = "${flexnetosNotebooklm}/bin/notebooklm";
-        npm = "${pkgs.nodejs_24}/bin/npm";
+        nvim = "${pkgs.neovim}/bin/nvim";
         nu = "${pkgs.nushell}/bin/nu";
         nu_plugin_codedb = flexnetosNuPluginCodedb;
         obscura = "${flexnetosObscura}/bin/obscura";
         pkg-config = "${pkgs.pkg-config}/bin/pkg-config";
-        pnpm = "${pkgs.corepack}/bin/pnpm";
         rtk = "${flexnetosRtk}/bin/rtk";
+        rtk_nu = "${flexnetosRtk}/bin/rtk_nu";
         systemctl = "${pkgs.systemd}/bin/systemctl";
         rust-analyzer = "${flexnetosRustToolchain}/bin/rust-analyzer";
         rustc = "${flexnetosRustToolchain}/bin/rustc";
@@ -887,7 +895,6 @@
         wasm-pack = "${pkgs.wasm-pack}/bin/wasm-pack";
         weave = "${flexnetosWeave}/bin/weave";
         wild = "${pkgs.wild}/bin/wild";
-        yarn = "${pkgs.corepack}/bin/yarn";
         x86_64-linux-musl-ar = "${flexnetosMuslToolchain}/bin/x86_64-linux-musl-ar";
         "x86_64-linux-musl-g++" = "${flexnetosMuslToolchain}/bin/x86_64-linux-musl-g++";
         x86_64-linux-musl-gcc = "${flexnetosMuslToolchain}/bin/x86_64-linux-musl-gcc";
@@ -930,6 +937,8 @@
         #!${pkgs.nushell}/bin/nu
         def --wrapped main [...args] {
           \$env.YZX_CHECK_SCRIPT = "$out/share/yazelix/packaging/single_profile_check.nu"
+          \$env.YZX_NIX_BIN = (\$env.YZX_NIX_BIN? | default "${pkgs.nix}/bin/nix")
+          \$env.YZX_NIX_STORE_BIN = (\$env.YZX_NIX_STORE_BIN? | default "${pkgs.nix}/bin/nix-store")
           \$env.YZX_NU_BIN = "${pkgs.nushell}/bin/nu"
           exec ${pkgs.nushell}/bin/nu "$out/share/yazelix/packaging/profile_migration.nu" ...\$args
         }
@@ -1056,9 +1065,9 @@
         extraPathPrefix = [flexnetosTools];
         defaultStateDir = "/home/flexnetos/.nix-profile/runtime/yazelix";
       };
-      lifeosFoundationYzx = pkgs.symlinkJoin {
+      lifeosFoundationYzx = assert flexnetosTerminalSupportContract; pkgs.symlinkJoin {
         name = "lifeos-foundation-yzx";
-        paths = [flexnetosYzxBase flexnetosTools flexnetosProfileTools flexnetosCodexConfigOwner flexnetosClaudeConfigOwner flexnetosDesktopSource flexnetosClaudeDesktopSource flexnetosRunnerSystemd flexnetosHostPolicyBundle flexnetosVolatileRuntimeBundle];
+        paths = [flexnetosYzxBase flexnetosTools flexnetosProfileTools flexnetosCodexConfigOwner flexnetosClaudeConfigOwner flexnetosDesktopSource flexnetosClaudeDesktopSource flexnetosTerminalSupport flexnetosRunnerSystemd flexnetosHostPolicyBundle flexnetosVolatileRuntimeBundle];
         nativeBuildInputs = [pkgs.desktop-file-utils];
         postBuild = ''
           install -D -m 644 ${flexnetosZellijLayout}/layout.kdl \
@@ -1318,6 +1327,10 @@
         runtime="$(${yzxYaziMaterializer}/bin/yzx-yazi-config ${yzx}/share/yazelix/yazi "$user" "$state")"
         YAZI_CONFIG_HOME="$runtime" ${pkgs.yazi}/bin/yazi --debug > yazi-debug
         test -f "$runtime/plugins/smart-enter.yazi/main.lua"
+        for plugin in auto-layout git sidebar-state sidebar-status starship zoxide-editor; do
+          test -f "$runtime/plugins/$plugin.yazi/main.lua"
+        done
+        test -f "$runtime/yazelix_starship.toml"
         grep -q 'require("smart-enter")' "$runtime/init.lua"
         grep -q 'plugin smart-enter' "$runtime/keymap.toml"
         grep -q 'yzx-open' yazi-debug
@@ -1358,7 +1371,9 @@
         touch "$out"
       '';
       contracts = pkgs.runCommand "yzx-contracts" {} ''
-        ${yzxContractsCheck}/bin/yzx-contracts-check ${yzx} ${pkgs.git}/bin/git ${pkgs.jq}/bin/jq ${pkgs.nushell}/bin/nu "$out"
+        ${yzxContractsCheck}/bin/yzx-contracts-check \
+          ${yzx} ${pkgs.git}/bin/git ${pkgs.jq}/bin/jq ${pkgs.nushell}/bin/nu "$out" \
+          ${./README.md} ${./docs/installation.md} ${./docs/development.md} ${./AGENTS.md}
       '';
       runtime_contracts = pkgs.runCommand "yzx-runtime-contracts" {} ''
         test -x ${yzxRuntime}/bin/yzx
@@ -1402,7 +1417,27 @@
         };
       in pkgs.runCommand "flexnetos-foundation-contracts" {} ''
         test -x ${foundation}/bin/yzx
+        test -x ${foundation}/bin/br
+        test -x ${foundation}/bin/bv
+        ${foundation}/bin/bv --version | grep -Fx 'bv v0.16.1'
         test -x ${foundation}/bin/rtk
+        test -x ${foundation}/bin/rtk_nu
+        test -x ${foundation}/bin/nvim
+        test -x ${foundation}/bin/bun
+        test -x ${foundation}/bin/bunx
+        ${foundation}/bin/rtk --version | grep -F '0.43.0'
+        ${foundation}/bin/rtk_nu --help | grep -F 'lossless Nushell ingestion envelope'
+        PATH=${foundation}/bin:$PATH ${foundation}/bin/rtk_nu --format json -- \
+          ${pkgs.coreutils}/bin/printf rtk-nu-proof > rtk-nu-proof.json
+        grep -F '"schema_version": "flexnetos.rtk_nu.envelope.v1"' rtk-nu-proof.json
+        grep -F '"payload_base64": "cnRrLW51LXByb29m"' rtk-nu-proof.json
+        ${foundation}/bin/nvim --version | grep -F 'NVIM v'
+        test "$(${foundation}/bin/bun --version)" = 1.3.14
+        test ! -e ${foundation}/bin/npm
+        test ! -e ${foundation}/bin/npx
+        test ! -e ${foundation}/bin/pnpm
+        test ! -e ${foundation}/bin/corepack
+        test ! -e ${foundation}/bin/yarn
         test -x ${foundation}/bin/codex
         test -x ${foundation}/bin/claude
         test -x ${foundation}/bin/chmod
@@ -1521,6 +1556,24 @@
         grep -Fx 'X-FlexNetOS-Managed=true' "$claude_desktop"
         test -f ${foundation}/share/pixmaps/yazelix.png
         test -s ${foundation}/share/pixmaps/yazelix.png
+        terminal_metadata=${foundation}/share/yazelix_terminal_support/terminal_support.toml
+        test -f "$terminal_metadata"
+        ${pkgs.python3}/bin/python - "$terminal_metadata" "$desktop" <<'PY'
+        import pathlib
+        import sys
+        import tomllib
+
+        metadata_path = pathlib.Path(sys.argv[1])
+        desktop_path = pathlib.Path(sys.argv[2])
+        with metadata_path.open("rb") as metadata_file:
+            metadata = tomllib.load(metadata_file)
+        mars = metadata["terminals"][metadata["default_terminal"]]
+        expected_name = f"{metadata['desktop_id_prefix']}.{mars['desktop_suffix']}.desktop"
+        assert metadata["schema_version"] == 2
+        assert metadata["launch_order"] == ["mars"]
+        assert desktop_path.name == expected_name
+        assert f"StartupWMClass={mars['startup_wm_class']}" in desktop_path.read_text()
+        PY
 
         ! ${foundation}/bin/yzx desktop install --print-path
 
@@ -1615,6 +1668,14 @@
           builtins.length
           (builtins.filter (pkgs.lib.hasPrefix "lifeos_foundation")
             (builtins.attrNames self.packages.${system}));
+        stagedProfile = pkgs.runCommand "single-profile-staged-profile" {} ''
+          mkdir -p "$out"
+          ln -s ${foundation}/bin "$out/bin"
+          ln -s ${foundation}/toolbin "$out/toolbin"
+          cat > "$out/manifest.json" <<EOF
+          {"version":3,"elements":{"lifeos_foundation_yzx":{"active":true,"attrPath":"packages.${system}.lifeos_foundation_yzx","originalUrl":"path:.","outputs":null,"priority":5,"storePaths":["${foundation}"],"url":"path:."}}}
+          EOF
+        '';
       in pkgs.runCommand "single-profile-contract-check" {nativeBuildInputs = [pkgs.nushell];} ''
         # source contract: exactly one foundation package attribute
         test ${toString foundationAttrCount} = 1
@@ -1624,16 +1685,12 @@
 
         # staged selector pointing at the real foundation closure
         staging="$TMPDIR/staging"
-        mkdir -p "$staging/state/nix" "$staging/home" "$staging/profile-dir"
-        ln -s ${foundation}/bin "$staging/profile-dir/bin"
-        ln -s ${foundation}/toolbin "$staging/profile-dir/toolbin"
-        cat > "$staging/profile-dir/manifest.json" <<EOF
-        {"version":3,"elements":{"lifeos_foundation_yzx":{"active":true,"attrPath":"packages.${system}.lifeos_foundation_yzx","originalUrl":"path:.","outputs":null,"priority":5,"storePaths":["${foundation}"],"url":"path:."}}}
-        EOF
-        ln -s "$staging/profile-dir" "$staging/home/.nix-profile-1-link"
+        mkdir -p "$staging/state/nix" "$staging/home"
+        ln -s ${stagedProfile} "$staging/home/.nix-profile-1-link"
         ln -s .nix-profile-1-link "$staging/home/.nix-profile"
         YZX_PROFILE_LINK="$staging/home/.nix-profile" \
           YZX_LEGACY_XDG_PROFILE="$staging/state/nix/profile" \
+          YZX_LEGACY_NESTED_PROFILE="$staging/state/nix/profiles/profile" \
           YZX_EXPECTED_CLOSURE="${foundation}" \
           ${foundation}/bin/yazelix_profile_check > staged-check.json
         grep -F '"pass": true' staged-check.json

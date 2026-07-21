@@ -20,6 +20,7 @@ struct Config {
     git: OsString,
     zellij: OsString,
     state_dir: PathBuf,
+    bridge_root: PathBuf,
     session_id: String,
     zellij_session_name: Option<String>,
     zellij_pane_id: Option<String>,
@@ -134,12 +135,16 @@ impl Config {
                 nonempty_env("XDG_RUNTIME_DIR").map(|dir| PathBuf::from(dir).join("yazelix"))
             })
             .context("YAZELIX_STATE_DIR or XDG_RUNTIME_DIR is required")?;
+        let bridge_root = nonempty_env("YAZELIX_HELIX_BRIDGE_ROOT")
+            .map(PathBuf::from)
+            .unwrap_or_else(|| state_dir.join("helix_bridge"));
 
         Ok(Self {
             editor: nonempty_env("YZX_EDITOR").unwrap_or_else(|| "yzx-hx".into()),
             git: "git".into(),
             zellij: nonempty_env("YZX_ZELLIJ").unwrap_or_else(|| "zellij".into()),
             state_dir,
+            bridge_root,
             session_id: bridge_session_id(env::var("YAZELIX_HELIX_BRIDGE_SESSION_ID").ok()),
             zellij_session_name: zellij_session_name_from_env(),
             zellij_pane_id: env::var("ZELLIJ_PANE_ID").ok(),
@@ -149,10 +154,7 @@ impl Config {
 }
 
 fn try_bridge(config: &Config, targets: &[PathBuf], cwd: &Path) -> Result<bool> {
-    let bridge_dir = config
-        .state_dir
-        .join("helix_bridge")
-        .join(&config.session_id);
+    let bridge_dir = config.bridge_root.join(&config.session_id);
     let Ok(entries) = fs::read_dir(&bridge_dir) else {
         return Ok(false);
     };
@@ -459,6 +461,7 @@ fn open_editor_pane(config: &Config, targets: &[PathBuf], cwd: &Path) -> Result<
     let output = zellij_command(config)
         .args(&args)
         .env("YAZELIX_STATE_DIR", &config.state_dir)
+        .env("YAZELIX_HELIX_BRIDGE_ROOT", &config.bridge_root)
         .env("YAZELIX_HELIX_BRIDGE_SESSION_ID", &config.session_id)
         .output()
         .context("could not run zellij")?;
@@ -792,6 +795,7 @@ mod tests {
                 git: "__missing_git__".into(),
                 zellij: self.zellij.clone().into_os_string(),
                 state_dir: self.root.clone(),
+                bridge_root: self.root.join("helix_bridge"),
                 session_id: session_id.into(),
                 zellij_session_name: None,
                 zellij_pane_id: None,
@@ -811,8 +815,9 @@ mod tests {
                 + r#"def --wrapped main [...args: string] {
     let joined = $args | str join " "
     let session = $env.YAZELIX_HELIX_BRIDGE_SESSION_ID? | default ""
+    let bridge_root = $env.YAZELIX_HELIX_BRIDGE_ROOT? | default ""
     let zellij_session = $env.ZELLIJ_SESSION_NAME? | default ""
-    $"args=($joined)\nsession=($session)\nzellij_session=($zellij_session)\n" | save --append $LOG
+    $"args=($joined)\nsession=($session)\nbridge_root=($bridge_root)\nzellij_session=($zellij_session)\n" | save --append $LOG
     let action = $args | get -o 0 | default ""
     let subcommand = $args | get -o 1 | default ""
     if $action == "action" and $subcommand == "list-panes" and $LIST_PANES != null {
@@ -1126,6 +1131,10 @@ mod tests {
         assert!(log.contains("args=action focus-pane-id terminal_1"));
         assert!(log.contains("args=run --name editor"));
         assert!(log.contains("session=test-session"));
+        assert!(log.contains(&format!(
+            "bridge_root={}",
+            runtime.root.join("helix_bridge").display()
+        )));
         assert!(log.contains("zellij_session=zellij-test"));
     }
 

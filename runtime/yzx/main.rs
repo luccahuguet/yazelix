@@ -3,6 +3,7 @@ mod command;
 mod desktop;
 mod doctor;
 mod error;
+mod inspect;
 mod paths;
 mod runtime;
 mod status;

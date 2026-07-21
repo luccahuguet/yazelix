@@ -1,7 +1,7 @@
 use std::{
     env, io,
     io::{IsTerminal, Write},
-    process::{Command, Stdio, exit},
+    process::{exit, Command, Stdio},
 };
 
 const FZF: &str = "@fzf@";
@@ -10,6 +10,11 @@ const COMMANDS: &[(&str, &str, &str)] = &[
     ("config", "config", "Open Yazelix Nova config"),
     ("doctor", "system", "Check Yazelix runtime setup"),
     ("status", "system", "Show Yazelix runtime status"),
+    (
+        "inspect",
+        "system",
+        "Show active runtime, profile, and ownership truth",
+    ),
     ("screen", "help", "Show a Yazelix terminal screen"),
     ("launch", "session", "Open Mars and start Yazelix"),
     ("help", "help", "Show this help"),

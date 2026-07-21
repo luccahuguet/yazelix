@@ -22,8 +22,11 @@ macro_rules! expect_contains_all {
 
 fn main() {
     let args = env::args().collect::<Vec<_>>();
-    let [_, yzx, git, jq, nu, out] = args.as_slice() else {
-        panic!("usage: yzx-contracts-check <yzx-package> <git> <jq> <nu> <out>");
+    let [_, yzx, git, jq, nu, out, readme, installation, development, agents] = args.as_slice()
+    else {
+        panic!(
+            "usage: yzx-contracts-check <yzx-package> <git> <jq> <nu> <out> <README> <installation> <development> <AGENTS>"
+        );
     };
     set_test_nu(Path::new(nu));
 
@@ -47,6 +50,7 @@ fn main() {
     expect_cursor_config(yzx);
     expect_zellij_config_sidecar(yzx);
     expect_yazi_alt_z(yzx);
+    expect_explicit_profile_commands([readme, installation, development, agents]);
 
     let temp = TempDir::new();
     let user_config = temp.path.join("config");
@@ -156,6 +160,45 @@ fn main() {
     fs::write(out, "ok\n").unwrap();
 }
 
+fn expect_explicit_profile_commands<const N: usize>(documents: [&str; N]) {
+    for document in documents {
+        let text = fs::read_to_string(document).unwrap();
+        assert!(
+            !text.contains("/home/flexnetos/.nix-profile/bin/yazelix_profile_migrate"),
+            "{} invokes the incumbent profile migrator instead of the newly built closure tool",
+            document
+        );
+        for (index, line) in text.lines().enumerate() {
+            let command = line.trim();
+            if command.starts_with("nix profile ") {
+                let owned = command.contains("--profile /home/flexnetos/.nix-profile");
+                let isolated_check = command.contains("--profile <tmp>")
+                    || command.contains("--profile /tmp/");
+                assert!(
+                    owned || isolated_check,
+                    "{}:{} does not name the owned profile or an isolated check profile: {command}",
+                    document,
+                    index + 1
+                );
+                if owned && command.starts_with("nix profile add ") {
+                    assert!(
+                        command.contains("#lifeos_foundation_yzx"),
+                        "{}:{} adds a non-foundation element to the owned profile: {command}",
+                        document,
+                        index + 1
+                    );
+                }
+                assert!(
+                    !(owned && command.starts_with("nix profile upgrade ")),
+                    "{}:{} bypasses the checked foundation migration: {command}",
+                    document,
+                    index + 1
+                );
+            }
+        }
+    }
+}
+
 fn expect_front_door(yzx: &Path, jq: &Path) {
     let yzx_bin = yzx.join("bin/yzx");
     let desktop = fs::read_to_string(yzx.join("share/applications/yzx.desktop")).unwrap();
@@ -178,6 +221,7 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
         "yzx --version",
         "yzx config",
         "yzx doctor",
+        "yzx inspect [--json]",
         "yzx env",
         "yzx enter [zellij-args...]",
         "yzx launch [zellij-args...]",
@@ -200,7 +244,7 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
         .collect::<Vec<_>>();
     assert_eq!(
         menu_ids,
-        ["config", "doctor", "status", "screen", "launch", "help", "tutor"],
+        ["config", "doctor", "status", "inspect", "screen", "launch", "help", "tutor",],
         "yzx menu command allowlist changed\n{menu}"
     );
     expect_menu_descriptions_match_help(&help, &menu);
@@ -418,6 +462,71 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
         "agent_command,config_home,editor,editor_command,inside_zellij,name,package,schema_version,shell,state_dir,version"
     );
 
+    let inspect_case = RuntimeCase::new(&temp.path, "inspect-json");
+    let inspect_home = temp.path.join("inspect-home");
+    let profile_bin = inspect_home.join(".nix-profile/bin");
+    fs::create_dir_all(&profile_bin).unwrap();
+    std::os::unix::fs::symlink(&yzx_bin, profile_bin.join("yzx")).unwrap();
+    let inspect_json = successful_stdout(
+        inspect_case
+            .yzx_command(&yzx_bin, "inspect")
+            .arg("--json")
+            .env("HOME", &inspect_home)
+            .env_remove("ZELLIJ"),
+        "yzx inspect --json",
+    );
+    assert_eq!(
+        jq_output(
+            jq,
+            ".schema_version == 1 and .runtime.name == \"Yazelix Nova\" and .runtime.package == \"full\" and .session.inside_zellij == false",
+            &inspect_json,
+        ),
+        "true"
+    );
+    assert_eq!(
+        jq_output(jq, ".paths.config_home", &inspect_json),
+        inspect_case.config_home.to_string_lossy()
+    );
+    assert_eq!(
+        jq_output(jq, ".paths.state_dir", &inspect_json),
+        inspect_case.state_dir.to_string_lossy()
+    );
+    assert_eq!(
+        jq_output(jq, ".ownership.profile_frontdoor", &inspect_json),
+        profile_bin.join("yzx").to_string_lossy()
+    );
+    assert_eq!(
+        jq_output(
+            jq,
+            ".ownership.profile_frontdoor_exists and .ownership.profile_frontdoor_is_current and (.ownership.home_bin_shadow.exists | not) and (.ownership.home_desktop_shadow.exists | not)",
+            &inspect_json,
+        ),
+        "true"
+    );
+    assert!(
+        !inspect_case.config_home.exists() && !inspect_case.state_dir.exists(),
+        "yzx inspect --json must not materialize config or runtime state"
+    );
+    let inspect = successful_stdout(
+        inspect_case
+            .yzx_command(&yzx_bin, "inspect")
+            .env("HOME", &inspect_home)
+            .env_remove("ZELLIJ"),
+        "yzx inspect",
+    );
+    expect_contains_all! {
+        &inspect, "yzx inspect";
+        "Yazelix Nova inspect",
+        format!("profile frontdoor: {}", profile_bin.join("yzx").display()),
+        "profile frontdoor is current: true",
+        "local binary shadow: absent",
+        "local desktop shadow: absent",
+    }
+    assert!(
+        !inspect_case.config_home.exists() && !inspect_case.state_dir.exists(),
+        "yzx inspect must remain read-only"
+    );
+
     let run_child = temp.path.join("run-child");
     write_nu_executable(
         &run_child,
@@ -427,11 +536,13 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
     }
     print $"config=<($env.YAZELIX_CONFIG_HOME)>"
     print $"editor=<($env.EDITOR)>"
+    print $"bridge_root=<($env.YAZELIX_HELIX_BRIDGE_ROOT? | default "")>"
     exit 23
 }
 "#,
     );
     let run_case = RuntimeCase::new(&temp.path, "run");
+    let runtime_home = temp.path.join("runtime-home");
     let output = run_case
         .yzx_command(&yzx_bin, "run")
         .args([
@@ -439,6 +550,7 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
             "alpha beta".as_ref(),
             "quote\"slash\\".as_ref(),
         ])
+        .env("XDG_RUNTIME_DIR", &runtime_home)
         .output()
         .unwrap();
     assert_eq!(output.status.code(), Some(23));
@@ -450,6 +562,10 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
         format!("config=<{}>", run_case.config_home.display()),
         "editor=</nix/store/",
         "/bin/yzx-editor>",
+        format!(
+            "bridge_root=<{}>",
+            runtime_home.join("yazelix/helix_bridge").display()
+        ),
     }
     let runtime_home = temp.path.join("runtime-home");
     let data_status = successful_stdout(
@@ -704,6 +820,11 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
             "yzx status argument error",
         ),
         (
+            &["inspect", "extra"][..],
+            "yzx inspect accepts only --json",
+            "yzx inspect argument error",
+        ),
+        (
             &["menu", "extra"][..],
             "yzx menu does not accept arguments yet",
             "yzx menu argument error",
@@ -781,6 +902,7 @@ fn expect_narrow_path_launches(yzx: &Path, yzx_shell: &Path) {
         ("help", "Usage:"),
         ("status", "Yazelix Nova status"),
         ("doctor", "Yazelix Nova doctor"),
+        ("inspect", "Yazelix Nova inspect"),
     ] {
         let case = RuntimeCase::new(&temp.path, &format!("narrow-path-{command}"));
         let mut yzx = case.yzx_command(&yzx_bin, command);
@@ -1355,10 +1477,32 @@ fn expect_yazi_alt_z(yzx: &Path) {
     );
 
     let init = fs::read_to_string(yzx.join("share/yazelix/yazi/init.lua")).unwrap();
-    expect_contains(
-        &init,
+    expect_contains_all! {
+        &init, "Yazi required plugin initialization";
+        r#"require("auto-layout"):setup()"#,
         r#"require("sidebar-state"):setup()"#,
-        "Yazi init sidebar-state fragment",
+        r#"require("sidebar-status"):setup()"#,
+        r#"require("git"):setup()"#,
+        r#"require("starship"):setup({"#,
+    }
+    for plugin in [
+        "auto-layout",
+        "git",
+        "sidebar-state",
+        "sidebar-status",
+        "starship",
+        "zoxide-editor",
+    ] {
+        assert!(
+            yzx.join(format!("share/yazelix/yazi/plugins/{plugin}.yazi/main.lua"))
+                .is_file(),
+            "packaged Yazi config is missing {plugin}.yazi",
+        );
+    }
+    assert!(
+        yzx.join("share/yazelix/yazi/yazelix_starship.toml")
+            .is_file(),
+        "packaged Yazi config is missing its Starship config",
     );
     let sidebar_state =
         fs::read_to_string(yzx.join("share/yazelix/yazi/plugins/sidebar-state.yazi/main.lua"))
@@ -1371,11 +1515,6 @@ fn expect_yazi_alt_z(yzx: &Path) {
         "YZX_ZELLIJ",
         "emit(\"plugin\", { \"git\", \"refresh-sidebar\" })",
     }
-    assert!(
-        yzx.join("share/yazelix/yazi/plugins/git.yazi").is_dir(),
-        "packaged Yazi config is missing git.yazi",
-    );
-
     let plugin =
         fs::read_to_string(yzx.join("share/yazelix/yazi/plugins/zoxide-editor.yazi/main.lua"))
             .unwrap();

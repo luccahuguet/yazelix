@@ -1,21 +1,5 @@
 {
   "nodes": {
-    "autoLayoutYazi": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1753889470,
-        "narHash": "sha256-4vRIGU/ArXhW9ervhyNhpfDN7UF4pqVYnxi6FExlgGk=",
-        "owner": "luccahuguet",
-        "repo": "auto-layout.yazi",
-        "rev": "e24bee9f6dd15ff80eae1b3dc1a6b06ee7e66121",
-        "type": "github"
-      },
-      "original": {
-        "owner": "luccahuguet",
-        "repo": "auto-layout.yazi",
-        "type": "github"
-      }
-    },
     "beads_rust_source": {
       "flake": false,
       "locked": {
@@ -30,6 +14,28 @@
         "owner": "FlexNetOS",
         "repo": "beads_rust",
         "rev": "2498339168b8e88d641e8ae1664843fc69740012",
+        "type": "github"
+      }
+    },
+    "beads_viewer": {
+      "inputs": {
+        "flake-utils": "flake-utils",
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1784130686,
+        "narHash": "sha256-gvW+l05fEioO/Q6yxKm2/ZOfM35CIs47uP6OtUVdizQ=",
+        "owner": "FlexNetOS",
+        "repo": "beads_viewer",
+        "rev": "37d7c2a69797db37d373646ba50e5d0c62d9984a",
+        "type": "github"
+      },
+      "original": {
+        "owner": "FlexNetOS",
+        "repo": "beads_viewer",
+        "rev": "37d7c2a69797db37d373646ba50e5d0c62d9984a",
         "type": "github"
       }
     },
@@ -215,7 +221,7 @@
     },
     "flake-utils": {
       "inputs": {
-        "systems": "systems_2"
+        "systems": "systems"
       },
       "locked": {
         "lastModified": 1731533236,
@@ -252,6 +258,24 @@
     "flake-utils_3": {
       "inputs": {
         "systems": "systems_4"
+      },
+      "locked": {
+        "lastModified": 1731533236,
+        "narHash": "sha256-l0KFg5HjrsfsO/JpG+r7fRrqm12kzFHyUHqHCVpMMbI=",
+        "owner": "numtide",
+        "repo": "flake-utils",
+        "rev": "11707dc2f618dd54ca8739b309ec4fc024de578b",
+        "type": "github"
+      },
+      "original": {
+        "owner": "numtide",
+        "repo": "flake-utils",
+        "type": "github"
+      }
+    },
+    "flake-utils_4": {
+      "inputs": {
+        "systems": "systems_5"
       },
       "locked": {
         "lastModified": 1731533236,
@@ -324,17 +348,17 @@
     "icm_source": {
       "flake": false,
       "locked": {
-        "lastModified": 1783447800,
-        "narHash": "sha256-BhJ3EFZTJfU1Za8rzgoCahjM3Mi5UH5tfn0iqv0eHag=",
+        "lastModified": 1784130735,
+        "narHash": "sha256-sHGaRk1fnX5n+qNt4qhGc5cRFtf0/s/dFwm3krjPbro=",
         "owner": "FlexNetOS",
         "repo": "icm",
-        "rev": "ae4ed52c6bbf806e45f9c5b425e15b44398de4b7",
+        "rev": "03d63a9102ce7f2c17cc7df66ac1aded46def88e",
         "type": "github"
       },
       "original": {
         "owner": "FlexNetOS",
         "repo": "icm",
-        "rev": "ae4ed52c6bbf806e45f9c5b425e15b44398de4b7",
+        "rev": "03d63a9102ce7f2c17cc7df66ac1aded46def88e",
         "type": "github"
       }
     },
@@ -345,7 +369,7 @@
           "nixpkgs"
         ],
         "rust-overlay": "rust-overlay",
-        "systems": "systems"
+        "systems": "systems_2"
       },
       "locked": {
         "lastModified": 1783830944,
@@ -443,8 +467,8 @@
     },
     "root": {
       "inputs": {
-        "autoLayoutYazi": "autoLayoutYazi",
         "beads_rust_source": "beads_rust_source",
+        "beads_viewer": "beads_viewer",
         "fenix": "fenix",
         "flexnetos_runner_source": "flexnetos_runner_source",
         "grit_source": "grit_source",
@@ -455,11 +479,11 @@
         "obscura_source": "obscura_source",
         "ratconfig": "ratconfig",
         "rtk_source": "rtk_source",
-        "starshipYazi": "starshipYazi",
         "weave_source": "weave_source",
         "yazelixCursors": "yazelixCursors",
         "yazelixHelix": "yazelixHelix",
         "yazelixScreen": "yazelixScreen",
+        "yazelixTerminalSupport": "yazelixTerminalSupport",
         "yazelixYaziAssets": "yazelixYaziAssets",
         "yazelixZellij": "yazelixZellij",
         "yazelixZellijBar": "yazelixZellijBar",
@@ -470,17 +494,17 @@
     "rtk_source": {
       "flake": false,
       "locked": {
-        "lastModified": 1784261883,
-        "narHash": "sha256-f3tjqJ5+aun4/wvPu+Yac4wPRT6sWxCXT/QCH3NxC2o=",
+        "lastModified": 1784580034,
+        "narHash": "sha256-YPZ4Ea9f5bQW4yKiXtXBWl2W20yWwcnJEgSoDqAUcVw=",
         "owner": "FlexNetOS",
         "repo": "rtk-tokenkill",
-        "rev": "44cf84e71c87a1a45da6ed218f92edb88e4336f5",
+        "rev": "0dd13a48b81ac083d8a39351a6a72ca4e7b715c0",
         "type": "github"
       },
       "original": {
         "owner": "FlexNetOS",
         "repo": "rtk-tokenkill",
-        "rev": "44cf84e71c87a1a45da6ed218f92edb88e4336f5",
+        "rev": "0dd13a48b81ac083d8a39351a6a72ca4e7b715c0",
         "type": "github"
       }
     },
@@ -655,22 +679,6 @@
         "type": "github"
       }
     },
-    "starshipYazi": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1781463098,
-        "narHash": "sha256-I21to4cxlszRpsb58cvsmwX7VglQBSJC0rrsFIltzC8=",
-        "owner": "Rolv-Apneseth",
-        "repo": "starship.yazi",
-        "rev": "159eaba5b5052bf78ff6cfbfe4e527b946818c82",
-        "type": "github"
-      },
-      "original": {
-        "owner": "Rolv-Apneseth",
-        "repo": "starship.yazi",
-        "type": "github"
-      }
-    },
     "systems": {
       "locked": {
         "lastModified": 1681028828,
@@ -731,6 +739,21 @@
         "type": "github"
       }
     },
+    "systems_5": {
+      "locked": {
+        "lastModified": 1681028828,
+        "narHash": "sha256-Vy1rq5AaRuLzOxct8nz4T6wlgyUR7zLU309k9mBC768=",
+        "owner": "nix-systems",
+        "repo": "default",
+        "rev": "da67096a3b9bf56a91d16901293e51ba5b49a27e",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nix-systems",
+        "repo": "default",
+        "type": "github"
+      }
+    },
     "weave_source": {
       "flake": false,
       "locked": {
@@ -776,16 +799,17 @@
         "rust-overlay": "rust-overlay_2"
       },
       "locked": {
-        "lastModified": 1783386463,
-        "narHash": "sha256-PoXQh1K7Tfx2v70nHn/gA6psKmCVOiZ1/4LZ/Hq9Nvo=",
-        "owner": "luccahuguet",
+        "lastModified": 1784583222,
+        "narHash": "sha256-S/QKgY4pEe8GSgreuh9+LTb40JdguEKroAssDlFjrUo=",
+        "owner": "FlexNetOS",
         "repo": "yazelix-helix",
-        "rev": "19b9ac4d75a7389ff2428dcb84524e41d86fc2ad",
+        "rev": "2657bf0f8e0f183c0e9bca7e6b1b42f75416be7c",
         "type": "github"
       },
       "original": {
-        "owner": "luccahuguet",
+        "owner": "FlexNetOS",
         "repo": "yazelix-helix",
+        "rev": "2657bf0f8e0f183c0e9bca7e6b1b42f75416be7c",
         "type": "github"
       }
     },
@@ -810,6 +834,27 @@
         "type": "github"
       }
     },
+    "yazelixTerminalSupport": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1784582732,
+        "narHash": "sha256-yuLCHMzylemnILfh0BILvei3azUpK2uP9pBLqDV4H0w=",
+        "owner": "FlexNetOS",
+        "repo": "yazelix-terminal-support",
+        "rev": "873f64b77eda3a39609d154bda192a2ad8405955",
+        "type": "github"
+      },
+      "original": {
+        "owner": "FlexNetOS",
+        "repo": "yazelix-terminal-support",
+        "rev": "873f64b77eda3a39609d154bda192a2ad8405955",
+        "type": "github"
+      }
+    },
     "yazelixYaziAssets": {
       "inputs": {
         "ccboardSource": "ccboardSource",
@@ -819,17 +864,17 @@
         ]
       },
       "locked": {
-        "lastModified": 1783971317,
-        "narHash": "sha256-zTgHvFqZ+hCPGu2sEAxg3te2om8kBHAEg9BqRXui9qk=",
+        "lastModified": 1784594956,
+        "narHash": "sha256-bUAFWdBeYTiEHEoItADU4jlD3cQ7YtHttlyf6sr+18Y=",
         "owner": "FlexNetOS",
         "repo": "yazelix-yazi-assets",
-        "rev": "0935209c3c7d8407c12c9a1a61bd0df6e8fd6a58",
+        "rev": "bd0deff7e83ecd7788b61f5c0cda122272826f74",
         "type": "github"
       },
       "original": {
         "owner": "FlexNetOS",
         "repo": "yazelix-yazi-assets",
-        "rev": "0935209c3c7d8407c12c9a1a61bd0df6e8fd6a58",
+        "rev": "bd0deff7e83ecd7788b61f5c0cda122272826f74",
         "type": "github"
       }
     },
@@ -875,7 +920,7 @@
     "yazelixZellijPaneOrchestrator": {
       "inputs": {
         "fenix": "fenix_4",
-        "flake-utils": "flake-utils_2",
+        "flake-utils": "flake-utils_3",
         "nixpkgs": [
           "nixpkgs"
         ]
@@ -897,7 +942,7 @@
     "yazelixZellijPopup": {
       "inputs": {
         "fenix": "fenix_5",
-        "flake-utils": "flake-utils_3",
+        "flake-utils": "flake-utils_4",
         "nixpkgs": [
           "nixpkgs"
         ]
@@ -919,7 +964,7 @@
     "zjstatus": {
       "inputs": {
         "crane": "crane",
-        "flake-utils": "flake-utils",
+        "flake-utils": "flake-utils_2",
         "nixpkgs": [
           "yazelixZellijBar",
           "nixpkgs"

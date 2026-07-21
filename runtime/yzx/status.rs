@@ -1,5 +1,5 @@
 use crate::{
-    PACKAGE_VARIANT, VERSION, error::AppError, paths::zellij_session_label, runtime::Runtime,
+    error::AppError, paths::zellij_session_label, runtime::Runtime, PACKAGE_VARIANT, VERSION,
 };
 
 pub(crate) fn print_status() -> Result<(), AppError> {
@@ -62,7 +62,7 @@ fn status_json(runtime: &Runtime) -> String {
     json
 }
 
-fn json_string(value: &str) -> String {
+pub(crate) fn json_string(value: &str) -> String {
     let mut escaped = String::with_capacity(value.len() + 2);
     escaped.push('"');
     for character in value.chars() {

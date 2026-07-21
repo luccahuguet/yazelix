@@ -1,15 +1,16 @@
 use std::{env, ffi::OsString, path::Path, process::Command};
 
 use crate::{
-    MARS, VERSION, YZX_CONFIG_UI, YZX_ENV_SUPERVISOR, YZX_MENU, YZX_REVEAL, YZX_SCREEN, YZX_SHELL,
-    YZX_TUTOR, YZX_WELCOME, YZX_YA, ZELLIJ,
     command::exec,
     desktop,
     doctor::print_doctor,
-    error::{AppError, startup},
+    error::{startup, AppError},
+    inspect::{print_inspect, print_inspect_json},
     paths::{enter_terminal_label, nonempty_env, runtime_path},
     runtime::Runtime,
     status::{print_status, print_status_json},
+    MARS, VERSION, YZX_CONFIG_UI, YZX_ENV_SUPERVISOR, YZX_MENU, YZX_REVEAL, YZX_SCREEN, YZX_SHELL,
+    YZX_TUTOR, YZX_WELCOME, YZX_YA, ZELLIJ,
 };
 
 pub(crate) fn run() -> Result<(), AppError> {
@@ -45,6 +46,13 @@ pub(crate) fn run() -> Result<(), AppError> {
             expect_no_args("doctor", &args)?;
             print_doctor()
         }
+        "inspect" => match args.as_slice() {
+            [] => print_inspect(),
+            [flag] if flag == "--json" => print_inspect_json(),
+            _ => Err(AppError::Usage(
+                "yzx inspect accepts only --json\n".to_string(),
+            )),
+        },
         "status" => match args.as_slice() {
             [] => print_status(),
             [flag] if flag == "--json" => print_status_json(),
@@ -151,12 +159,12 @@ fn exec_managed(through_mars: bool, zellij_args: Vec<OsString>) -> Result<(), Ap
     } else {
         command.arg(ZELLIJ);
     }
-    command
-        .arg("--config")
-        .arg(&runtime.zellij_config)
-        .arg("--new-session-with-layout")
-        .arg(&runtime.layout)
-        .args(zellij_args);
+    apply_zellij_session_args(
+        &mut command,
+        &runtime.zellij_config,
+        &runtime.layout,
+        &zellij_args,
+    );
     runtime.apply(&mut command)?;
     apply_mars_cursor_config(
         &mut command,
@@ -172,6 +180,20 @@ fn exec_managed(through_mars: bool, zellij_args: Vec<OsString>) -> Result<(), Ap
         },
     );
     exec(command, program)
+}
+
+fn apply_zellij_session_args(
+    command: &mut Command,
+    config: &Path,
+    layout: &Path,
+    zellij_args: &[OsString],
+) {
+    command
+        .arg("--config")
+        .arg(config)
+        .arg("--new-session-with-layout")
+        .arg(layout)
+        .args(zellij_args);
 }
 
 fn managed_program(through_mars: bool, mars: &'static str) -> Result<&'static str, AppError> {
@@ -210,6 +232,48 @@ mod tests {
         apply_mars_cursor_config(&mut enter, false, path);
         assert_eq!(enter.get_envs().next(), None);
     }
+
+    #[test]
+    fn managed_entry_forwards_named_create_and_attach_session_options() {
+        let config = Path::new("/runtime/zellij/config.kdl");
+        let layout = Path::new("/runtime/zellij/layout.kdl");
+
+        for (attach, session) in [("false", "task-create"), ("true", "task-attach")] {
+            let forwarded = [
+                "options",
+                "--session-name",
+                session,
+                "--attach-to-session",
+                attach,
+                "--on-force-close",
+                "detach",
+            ]
+            .map(OsString::from);
+            let mut command = Command::new(ZELLIJ);
+            apply_zellij_session_args(&mut command, config, layout, &forwarded);
+
+            let actual = command
+                .get_args()
+                .map(|arg| arg.to_string_lossy().into_owned())
+                .collect::<Vec<_>>();
+            assert_eq!(
+                actual,
+                [
+                    "--config",
+                    "/runtime/zellij/config.kdl",
+                    "--new-session-with-layout",
+                    "/runtime/zellij/layout.kdl",
+                    "options",
+                    "--session-name",
+                    session,
+                    "--attach-to-session",
+                    attach,
+                    "--on-force-close",
+                    "detach",
+                ]
+            );
+        }
+    }
 }
 
 const HELP: &str = "Yazelix Nova
@@ -221,6 +285,7 @@ Usage:
   yzx config
   yzx desktop <install|uninstall> [--print-path]
   yzx doctor
+  yzx inspect [--json]
   yzx env
   yzx enter [zellij-args...]
   yzx launch [zellij-args...]
@@ -235,6 +300,7 @@ Commands:
   config  Open Yazelix Nova config
   desktop Install or remove an explicit XDG desktop entry
   doctor  Check Yazelix runtime setup
+  inspect Show active runtime, profile, and ownership truth
   env     Open the managed shell without launching the UI
   enter   Start Yazelix in the current terminal
   launch  Open Mars and start Yazelix

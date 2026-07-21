@@ -33,22 +33,31 @@ first launch
 ### Try without installing
 
 ```nu
-nix run github:luccahuguet/yazelix -- launch
-nix run github:luccahuguet/yazelix#runtime -- enter
+nix run github:FlexNetOS/yazelix -- launch
+nix run github:FlexNetOS/yazelix#runtime -- enter
 ```
 
 If the one-off launch fails, inspect the owned runtime setup with:
 
 ```nu
-nix run github:luccahuguet/yazelix -- doctor
+nix run github:FlexNetOS/yazelix -- doctor
+nix run github:FlexNetOS/yazelix -- inspect
 ```
 
 ### Install in a Nix profile
 
+On a fresh machine where the literal profile is absent or empty, install the
+single FlexNetOS foundation element with:
+
 ```nu
-nix profile add --refresh github:luccahuguet/yazelix
+nix profile add --profile /home/flexnetos/.nix-profile --refresh github:FlexNetOS/yazelix#lifeos_foundation_yzx
 yzx launch
 ```
+
+Do not add `#yazelix` or `#runtime` beside the foundation element. Existing
+foundation installations update through the checked migration described in
+[Installation](docs/installation.md#updates), which archives prior selectors
+and verifies the exact replacement closure before declaring success.
 
 ### Install with Home Manager
 
@@ -63,8 +72,9 @@ nix run .#runtime -- enter
 
 ### Moving from Yazelix Classic
 
-Use Classic v17.12 once to prepare its config for Nova, then install Nova from
-the canonical repository
+Use upstream Classic v17.12 once to prepare its config for Nova, then install
+Nova from the authoritative FlexNetOS repository. The recovery-only tag below
+belongs to the upstream repository; it is not published on the FlexNetOS remote.
 
 ```nu
 nix run github:luccahuguet/yazelix/v17.12#yazelix -- launch
@@ -166,8 +176,10 @@ Move mode is unbound. Managed popup triggers can be remapped through
 | `yzx config` | Open the Ratconfig-backed config UI |
 | `yzx menu` | Open the command palette |
 | `yzx doctor` | Check owned runtime setup without launching Mars or Zellij |
+| `yzx inspect [--json]` | Report runtime, profile-frontdoor, shadow, and session provenance |
 | `yzx status` | Print config/runtime paths and selected settings |
 | `yzx status --json` | Print the versioned machine-readable status record |
+| `yzx desktop [--print-path]` | Report the profile-owned desktop entry without copying it |
 | `yzx env` | Open the managed shell without launching the UI |
 | `yzx tutor [lesson]` | Print guided Yazelix lessons |
 | `yzx screen [style]` | Show a terminal welcome screen |
@@ -177,6 +189,11 @@ Status JSON contains numeric `schema_version = 1`, plus `name`, `version`,
 `package`, `config_home`, `state_dir`, `shell`, `editor_command`, `editor`,
 `agent_command`, and `inside_zellij`. The sponsor URL remains in `yzx help`
 without a public `sponsor` command
+
+Inspect JSON is also schema 1 and adds the invoked and symlink-resolved
+frontdoor, profile manifest, expected single profile root, local shadow state,
+runtime identity, and optional session identity. It is read-only and works
+outside Zellij
 
 The top-right Zellij corner shows the compact release line derived from the
 same version: `NOVA DEV` in development, `NOVA βN` during the v1 beta line,
@@ -214,6 +231,10 @@ Yazi plugins, cursor ownership, and editor behavior
 See [Development](docs/development.md) for CI, local checks, runtime input
 overrides, and the LOC scorecard. Lower-level launch, config, editor, shell, and
 popup contracts live in [Runtime Notes](docs/runtime-notes.md)
+
+The [RuVector blueprint provenance ledger](docs/ruvector_blueprint_provenance.md)
+maps every applicable Engine Room and formerly optional capability to its one
+repository owner and verification surface
 
 ## LOC Scorecard
 

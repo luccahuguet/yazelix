@@ -9,17 +9,17 @@ use std::{
 };
 
 use crate::{
-    AGENT_POPUP_KDL_CONFIG_PATH, CUSTOM_POPUP_KEYBINDINGS_KDL_CONFIG_PATH,
-    CUSTOM_POPUPS_KDL_CONFIG_PATH, MARS, POPUP_KEYBINDING_SPECS, YAZELIX_ZELLIJ_BAR_WASM,
-    YAZELIX_ZELLIJ_PANE_ORCHESTRATOR_WASM, YAZELIX_ZELLIJ_POPUP_WASM, YZX_CONFIG, YZX_CONFIG_KDL,
-    YZX_EDITOR, YZX_HELIX, YZX_MARS_CONFIG, YZX_RUNTIME_IDENTITY, YZX_YA, YZX_ZELLIJ_CONFIG,
-    ZELLIJ,
     command::{
         create_dir_all_checked, run_checked, seed_permission_checked, touch_checked, trim_output,
     },
-    error::{AppError, path_error, startup},
+    error::{path_error, startup, AppError},
     paths::{config_home, home_dir, nonempty_env, parent, runtime_path, state_dir},
     zellij::{active_layout, active_zellij_config},
+    AGENT_POPUP_KDL_CONFIG_PATH, CUSTOM_POPUPS_KDL_CONFIG_PATH,
+    CUSTOM_POPUP_KEYBINDINGS_KDL_CONFIG_PATH, MARS, POPUP_KEYBINDING_SPECS,
+    YAZELIX_ZELLIJ_BAR_WASM, YAZELIX_ZELLIJ_PANE_ORCHESTRATOR_WASM, YAZELIX_ZELLIJ_POPUP_WASM,
+    YZX_CONFIG, YZX_CONFIG_KDL, YZX_EDITOR, YZX_HELIX, YZX_MARS_CONFIG, YZX_RUNTIME_IDENTITY,
+    YZX_YA, YZX_ZELLIJ_CONFIG, ZELLIJ,
 };
 
 pub(crate) struct Runtime {
@@ -27,6 +27,7 @@ pub(crate) struct Runtime {
     pub(crate) state_dir: PathBuf,
     pub(crate) runtime_identity: PathBuf,
     bridge_session_id: Option<OsString>,
+    bridge_root: PathBuf,
     pub(crate) yzx_open_log: String,
     pub(crate) shell_program: String,
     pub(crate) editor_command: String,
@@ -94,6 +95,7 @@ impl Runtime {
         let editor_command =
             trim_output(config_value(&config_home, &config_toml, "editor.command")?);
         let editor = effective_editor_command(&editor_command);
+        let bridge_root = helix_bridge_root(&state_dir);
         let agent_command = trim_output(config_value(&config_home, &config_toml, "agent.command")?);
         let agent_args = trim_output(config_value(&config_home, &config_toml, "agent.args")?);
         let welcome_enabled = config_value(&config_home, &config_toml, "welcome.enabled")?;
@@ -200,6 +202,7 @@ impl Runtime {
             state_dir,
             runtime_identity,
             bridge_session_id: uses_helix_bridge(&editor).then(bridge_session_id),
+            bridge_root,
             yzx_open_log: trim_output(yzx_open_log),
             shell_program,
             editor_command,
@@ -259,7 +262,9 @@ impl Runtime {
                 .env("MARS_BASE_CONFIG_HOME", YZX_MARS_CONFIG);
         }
         if let Some(bridge_session_id) = &self.bridge_session_id {
-            command.env("YAZELIX_HELIX_BRIDGE_SESSION_ID", bridge_session_id);
+            command
+                .env("YAZELIX_HELIX_BRIDGE_SESSION_ID", bridge_session_id)
+                .env("YAZELIX_HELIX_BRIDGE_ROOT", &self.bridge_root);
         }
         Ok(())
     }
@@ -332,6 +337,23 @@ fn bridge_session_id() -> OsString {
     })
 }
 
+fn helix_bridge_root(state_dir: &Path) -> PathBuf {
+    let explicit = nonempty_env("YAZELIX_HELIX_BRIDGE_ROOT").map(PathBuf::from);
+    let runtime_dir = nonempty_env("XDG_RUNTIME_DIR").map(PathBuf::from);
+    select_helix_bridge_root(explicit.as_deref(), runtime_dir.as_deref(), state_dir)
+}
+
+fn select_helix_bridge_root(
+    explicit: Option<&Path>,
+    runtime_dir: Option<&Path>,
+    state_dir: &Path,
+) -> PathBuf {
+    explicit
+        .map(PathBuf::from)
+        .or_else(|| runtime_dir.map(|path| path.join("yazelix/helix_bridge")))
+        .unwrap_or_else(|| state_dir.join("helix_bridge"))
+}
+
 fn uses_helix_bridge(command: &str) -> bool {
     command == YZX_HELIX || Path::new(command).file_name() == Some(OsStr::new("yzx-hx"))
 }
@@ -349,5 +371,23 @@ mod tests {
         assert!(uses_helix_bridge("yzx-hx"));
         assert!(!uses_helix_bridge("hx"));
         assert!(!uses_helix_bridge("nvim"));
+    }
+
+    #[test]
+    fn helix_bridge_root_has_one_explicit_short_owner() {
+        let state_dir = Path::new("/very/deep/generated/runtime/state");
+        let runtime_dir = Path::new("/run/user/1001");
+        assert_eq!(
+            select_helix_bridge_root(None, Some(runtime_dir), state_dir),
+            runtime_dir.join("yazelix/helix_bridge")
+        );
+        assert_eq!(
+            select_helix_bridge_root(Some(Path::new("/short/hx")), Some(runtime_dir), state_dir),
+            PathBuf::from("/short/hx")
+        );
+        assert_eq!(
+            select_helix_bridge_root(None, None, state_dir),
+            state_dir.join("helix_bridge")
+        );
     }
 }
