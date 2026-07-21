@@ -819,9 +819,13 @@
           hash = "sha256-lR7iruhV8IWVruxiJSJqKY0/6oOj3NZGXAnLzN9+hI8=";
         };
       });
+      flexnetosPython = pkgs.python3.withPackages (pythonPackages: [
+        pythonPackages.pyyaml
+      ]);
       flexnetosExecutables = {
         Xvfb = "${pkgs.xorg-server}/bin/Xvfb";
         actionlint = "${pkgs.actionlint}/bin/actionlint";
+        ar = "${pkgs.binutils}/bin/ar";
         awk = "${pkgs.gawk}/bin/awk";
         bash = "${pkgs.bash}/bin/bash";
         basename = "${pkgs.coreutils}/bin/basename";
@@ -900,7 +904,7 @@
         obscura = "${flexnetosObscura}/bin/obscura";
         openssl = "${pkgs.openssl}/bin/openssl";
         pkg-config = "${pkgs.pkg-config}/bin/pkg-config";
-        python3 = "${pkgs.python3}/bin/python3";
+        python3 = "${flexnetosPython}/bin/python3";
         readlink = "${pkgs.coreutils}/bin/readlink";
         realpath = "${pkgs.coreutils}/bin/realpath";
         rg = "${pkgs.ripgrep}/bin/rg";
@@ -968,7 +972,7 @@
         openssh
         patch
         procps
-        python3
+        flexnetosPython
         ripgrep
         util-linux
         which
@@ -1502,6 +1506,9 @@
         test -x ${foundation}/bin/nvim
         test -x ${foundation}/bin/bun
         test -x ${foundation}/bin/bunx
+        test -x ${foundation}/bin/ar
+        test -x ${foundation}/bin/python3
+        ${foundation}/bin/python3 -c 'import yaml; assert yaml.safe_load("ready: true") == {"ready": True}'
         ${foundation}/bin/rtk --version | grep -F '0.43.0'
         ${foundation}/bin/rtk_nu --help | grep -F 'lossless Nushell ingestion envelope'
         PATH=${foundation}/bin:$PATH ${foundation}/bin/rtk_nu --format json -- \

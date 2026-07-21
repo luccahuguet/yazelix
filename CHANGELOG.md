@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Package PyYAML with the profile-owned Python frontdoor and expose the
+  profile-owned `ar` needed by Cargo native builds, so the shipped Codex
+  `skill-creator` validator and its Rust verification run from the immutable
+  foundation closure without host package installs or alternate tool owners.
 - Run trusted Linux CI on the local self-hosted runner
   (`self-hosted, linux, x64, local, flexnetos`) as the primary lane, keeping
   GitHub-hosted `ubuntu-latest` only as the fallback for untrusted fork pull
