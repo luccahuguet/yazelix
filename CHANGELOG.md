@@ -5,8 +5,9 @@
 - Enforce one installed-runtime owner for Yazelix, Codex, and Claude. The
   foundation profile now provides state-owning agent wrappers, exposes one
   profile runtime link into `/run/user/1001/yazelix/profile-runtime`, rejects
-  competing agent state variables, and installs its desktop entry directly
-  from the profile. Yazelix state no longer falls back to durable home data;
+  competing agent state variables, and installs both the visible Yazelix Agent
+  launcher and the hidden Claude deep-link handler directly from the profile.
+  Yazelix state no longer falls back to durable home data;
   non-foundation builds require `YAZELIX_STATE_DIR` or `XDG_RUNTIME_DIR`.
 
 - Make `/home/flexnetos/.nix-profile` the literal foundation selector instead

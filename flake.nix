@@ -999,6 +999,19 @@
           "X-FlexNetOS-Managed" = "true";
         };
       };
+      flexnetosClaudeDesktopSource = pkgs.makeDesktopItem {
+        name = "claude-code-url-handler";
+        destination = "/share/applications";
+        desktopName = "Claude Code URL Handler";
+        comment = "Handle claude-cli deep links through the profile-owned Claude frontdoor";
+        exec = "/home/flexnetos/.nix-profile/bin/claude --handle-uri %u";
+        terminal = false;
+        noDisplay = true;
+        extraConfig = {
+          "MimeType" = "x-scheme-handler/claude-cli;";
+          "X-FlexNetOS-Managed" = "true";
+        };
+      };
       flexnetosYzxBase = mkYzx {
         name = "lifeos-foundation-yzx-base";
         withMars = true;
@@ -1013,7 +1026,7 @@
       };
       lifeosFoundationYzx = pkgs.symlinkJoin {
         name = "lifeos-foundation-yzx";
-        paths = [flexnetosYzxBase flexnetosTools flexnetosProfileTools flexnetosCodexConfigOwner flexnetosDesktopSource flexnetosRunnerSystemd flexnetosHostPolicyBundle flexnetosVolatileRuntimeBundle];
+        paths = [flexnetosYzxBase flexnetosTools flexnetosProfileTools flexnetosCodexConfigOwner flexnetosDesktopSource flexnetosClaudeDesktopSource flexnetosRunnerSystemd flexnetosHostPolicyBundle flexnetosVolatileRuntimeBundle];
         nativeBuildInputs = [pkgs.desktop-file-utils];
         postBuild = ''
           install -D -m 644 ${flexnetosZellijLayout}/layout.kdl \
@@ -1414,9 +1427,11 @@
         test ! -e ${foundation}/bin/yzx-agent-workspace-launch
 
         desktop_count="$(find ${foundation}/share/applications -maxdepth 1 -name '*.desktop' | wc -l)"
-        test "$desktop_count" = 1
+        test "$desktop_count" = 2
         desktop=${foundation}/share/applications/com.flexnetos.Yazelix.Agent.desktop
+        claude_desktop=${foundation}/share/applications/claude-code-url-handler.desktop
         test -f "$desktop"
+        test -f "$claude_desktop"
         test ! -e ${foundation}/share/applications/com.flexnetos.Yazelix.desktop
         test ! -e ${foundation}/share/applications/com.yazelix.Yazelix.Kitty.desktop
         grep -Fx 'Name=FlexNetOS Yazelix Agent' "$desktop"
@@ -1428,6 +1443,11 @@
         grep -Fx 'Categories=System;TerminalEmulator' "$desktop"
         grep -Fx 'X-Yazelix-Managed=true' "$desktop"
         grep -Fx 'X-FlexNetOS-Managed=true' "$desktop"
+        grep -Fx 'Name=Claude Code URL Handler' "$claude_desktop"
+        grep -Fx 'Exec=/home/flexnetos/.nix-profile/bin/claude --handle-uri %u' "$claude_desktop"
+        grep -Fx 'NoDisplay=true' "$claude_desktop"
+        grep -Fx 'MimeType=x-scheme-handler/claude-cli;' "$claude_desktop"
+        grep -Fx 'X-FlexNetOS-Managed=true' "$claude_desktop"
         test -f ${foundation}/share/pixmaps/yazelix.png
         test -s ${foundation}/share/pixmaps/yazelix.png
 

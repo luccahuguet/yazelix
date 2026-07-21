@@ -14,18 +14,22 @@ so use `enter` for the managed workspace. Both package and app outputs exist for
 
 The `x86_64-linux`-only `lifeos_foundation_yzx` output composes canonical Nova
 with the FlexNetOS toolchain. It deliberately owns one profile element, one
-`bin/yzx` frontdoor, one desktop-entry source, and one default agent workspace.
-The profile exposes its single desktop entry from `share/applications`; no
-post-install copy is created. The entry executes
+`bin/yzx` frontdoor, the agent desktop sources, and one default agent workspace.
+The profile exposes one visible Yazelix Agent entry plus one hidden Claude URL
+handler from `share/applications`; no post-install copy is created. The visible
+entry executes
 `/home/flexnetos/.nix-profile/bin/yzx launch` directly, with no parallel
-regular/agent entry.
+regular/agent entry. Claude deep links execute
+`/home/flexnetos/.nix-profile/bin/claude --handle-uri %u` through the same
+profile-owned runtime boundary.
 
 The FlexNetOS foundation uses `/home/flexnetos/.nix-profile` as an explicit
 profile, including its generation links. A retired user XDG profile is a
 legacy shadow, not an equivalent selector, and is archived during the checked
 migration under `/home/flexnetos/.cache/flexnetos/archives/yazelix-nix-profile/`.
 Generated runtime beneath the profile runtime link is evidence only and never
-owns profile archives. Run `~/.nix-profile/bin/yazelix_profile_check` after
+owns profile archives. Run
+`/home/flexnetos/.nix-profile/bin/yazelix_profile_check` after
 every foundation update; it fails when the retired selector exists even if both
 paths resolve to identical bytes.
 
