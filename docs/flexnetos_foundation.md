@@ -17,7 +17,7 @@ The installed product has exactly one owner at each layer:
 
 ```text
 source input:      repository plus ~/.config/yazelix overrides
-generated runtime: ~/.nix-profile/runtime -> /run/user/1001/yazelix/profile-runtime
+generated runtime: /run/user/1001/yazelix/profile-runtime
 installed command: ~/.nix-profile/bin/yzx
 ```
 
@@ -45,7 +45,8 @@ or closure verification archives the candidate and restores every prior link.
 Nushell is the only supported managed shell. Product sources remain under
 `nushell/config/` and `nushell/scripts/`; the Nix package substitutes their
 store paths into Nova's packaged Nushell config. Nova then materializes a
-generated layered config under `~/.nix-profile/runtime/yazelix/nu/`.
+generated layered config under
+`/run/user/1001/yazelix/profile-runtime/yazelix/nu/`.
 
 ## Verification
 

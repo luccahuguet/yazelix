@@ -8,7 +8,7 @@
 
 def main [
     root: path
-    --config-home: path = "/home/flexnetos/.nix-profile/runtime/codex"
+    --config-home: path = "/run/user/1001/yazelix/profile-runtime/codex"
     --deployed-config-src: path = "/home/flexnetos/.nix-profile/share/yazelix/agent_configs/codex/config.toml.src"
     --deployed-rules-src: path = "/home/flexnetos/.nix-profile/share/yazelix/agent_configs/codex/RULES.md.src"
 ] {

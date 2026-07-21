@@ -1,16 +1,14 @@
 # Profile-owned Codex/Claude launcher.
 #
 # This file is rendered twice by flake.nix. The installed wrapper is the only
-# supported frontdoor; its mutable state is reached through the profile's
-# runtime link and never through a home-root compatibility directory.
+# supported frontdoor; it owns mutable state at the approved volatile runtime
+# target and never through a home-root compatibility directory.
 
 const AGENT = "@agent@"
-const PROFILE_ROOT = "@profileRoot@"
 const RUNTIME_TARGET = "@runtimeTarget@"
 const PAYLOAD = "@payload@"
 const MATERIALIZER = "@materializer@"
 const CHMOD = "@chmod@"
-const READLINK = "@readlink@"
 
 def fail [message: string] {
     print --stderr $"profile-owned ($AGENT) frontdoor: ($message)"
@@ -18,23 +16,8 @@ def fail [message: string] {
 }
 
 def ensure-runtime [] {
-    let profile_runtime = ($PROFILE_ROOT | path join "runtime")
-    if (($profile_runtime | path type) != "symlink") {
-        fail $"profile runtime link is missing: ($profile_runtime)"
-    }
-
     mkdir $RUNTIME_TARGET
-    let resolved = (do { ^$READLINK -f $profile_runtime } | complete)
-    if $resolved.exit_code != 0 {
-        fail $"profile runtime link cannot be resolved: ($profile_runtime)"
-    }
-    let actual_target = ($resolved.stdout | str trim)
-    let expected_target = (do { ^$READLINK -f $RUNTIME_TARGET } | complete)
-    if $expected_target.exit_code != 0 or $actual_target != ($expected_target.stdout | str trim) {
-        fail $"profile runtime link does not select ($RUNTIME_TARGET)"
-    }
-
-    let state_home = ($profile_runtime | path join $AGENT)
+    let state_home = ($RUNTIME_TARGET | path join $AGENT)
     mkdir $state_home
     for directory in [$RUNTIME_TARGET $state_home] {
         let mode = (do { ^$CHMOD 0700 $directory } | complete)

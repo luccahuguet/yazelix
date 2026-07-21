@@ -16,10 +16,11 @@ Set `YAZELIX_CONFIG_HOME` to use another source-input root. The FlexNetOS
 foundation fixes generated runtime state to:
 
 ```text
-/home/flexnetos/.nix-profile/runtime/yazelix
+/run/user/1001/yazelix/profile-runtime/yazelix
 ```
 
-That profile link resolves into `/run/user/1001/yazelix/profile-runtime`.
+That volatile directory is created and secured by the profile-owned runtime
+service and frontdoors.
 Non-foundation packages use `YAZELIX_STATE_DIR` or
 `${XDG_RUNTIME_DIR}/yazelix`; they do not fall back to durable home storage.
 
@@ -55,7 +56,7 @@ generated pair, runs `yazelix_codex_materialize`, and checks
 `tests/codex_config_provenance.nu` before the installed runtime starts.
 
 The profile-owned `claude` wrapper applies the same boundary through
-`CLAUDE_CONFIG_DIR=/home/flexnetos/.nix-profile/runtime/claude`. Reviewed
+`CLAUDE_CONFIG_DIR=/run/user/1001/yazelix/profile-runtime/claude`. Reviewed
 `settings.json`, `CLAUDE.md`, and `RTK.md` inputs live in
 `agent_configs/claude/`; the profile installs them and
 `yazelix_claude_materialize`, then the wrapper publishes exact copies before

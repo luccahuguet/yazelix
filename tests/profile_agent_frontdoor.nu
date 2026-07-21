@@ -31,14 +31,11 @@ def main [
     source: path
     nu_bin: path
     chmod_bin: path
-    readlink_bin: path
-    ln_bin: path
 ] {
     let profile = ($root | path join "profile")
     let runtime = ($root | path join "run")
     let marker = ($root | path join "materialized")
     mkdir $profile
-    ^$ln_bin --symbolic --no-target-directory $runtime ($profile | path join "runtime")
 
     let payload = ($root | path join "payload")
     let payload_body = ('def --wrapped main [...args] {
@@ -57,18 +54,16 @@ def main [
 ' $chmod_bin
 
     let common = {
-        profileRoot: ($profile | into string)
         runtimeTarget: ($runtime | into string)
         payload: ($payload | into string)
         chmod: ($chmod_bin | into string)
-        readlink: ($readlink_bin | into string)
     }
     let codex = ($root | path join "codex")
     render $source $codex ($common | merge {agent: "codex", materializer: ($materializer | into string)})
     let codex_result = (do { ^$nu_bin $codex "resume" "fixture" } | complete)
     expect ($codex_result.exit_code == 0) $"Codex wrapper failed: ($codex_result.stderr)"
     let codex_report = ($codex_result.stdout | from json)
-    expect ($codex_report.codex_home == ($profile | path join "runtime/codex" | into string)) "Codex state escaped the profile runtime link"
+    expect ($codex_report.codex_home == ($runtime | path join "codex" | into string)) "Codex state escaped the profile-owned volatile runtime"
     expect $codex_report.materialized "Codex payload ran before configuration materialization"
     expect ($codex_report.args == ["resume" "fixture"]) "Codex wrapper did not preserve arguments"
     expect ((mode ($runtime | path join "codex")) == "rwx------") "Codex runtime mode is not 0700"
@@ -84,7 +79,7 @@ def main [
     let claude_result = (do { ^$nu_bin $claude "--resume" } | complete)
     expect ($claude_result.exit_code == 0) $"Claude wrapper failed: ($claude_result.stderr)"
     let claude_report = ($claude_result.stdout | from json)
-    expect ($claude_report.claude_config_dir == ($profile | path join "runtime/claude" | into string)) "Claude state escaped the profile runtime link"
+    expect ($claude_report.claude_config_dir == ($runtime | path join "claude" | into string)) "Claude state escaped the profile-owned volatile runtime"
     expect $claude_report.materialized "Claude payload ran before configuration materialization"
     expect ($claude_report.args == ["--resume"]) "Claude wrapper did not preserve arguments"
     expect ((mode ($runtime | path join "claude")) == "rwx------") "Claude runtime mode is not 0700"

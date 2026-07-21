@@ -132,6 +132,11 @@ def make-installer-stub [path: string] {
     "mkdir ($env.STUB_PROFILE | path dirname)"
     "^ln -s $env.STUB_PROFILE_DIR $env.STUB_GENERATION"
     "^ln -s ($env.STUB_GENERATION | path basename) $env.STUB_PROFILE"
+    "let legacy = ($env.STUB_LEGACY_PROFILE? | default \"\")"
+    "if ($legacy | is-not-empty) {"
+    "  mkdir ($legacy | path dirname)"
+    "  ^ln -s ($env.STUB_LEGACY_TARGET? | default \"profiles/profile\") $legacy"
+    "}"
     "exit 0"
     ""
   ] | str join "\n" | save --force $path
@@ -238,7 +243,7 @@ def main [packaging_dir: string] {
   expect ((^readlink $fx8.legacy_profile | str trim) == "profile-1-link") "dry-run: legacy selector unchanged"
   expect (link-present $unrelated8) "dry-run: similarly named unrelated link untouched"
   let rec8 = (read-receipt $rdir8)
-  expect ($rec8.schema == "yazelix.single-profile-migration.receipt.v2") "dry-run receipt: v2 schema"
+  expect ($rec8.schema == "yazelix.single-profile-migration.receipt.v3") "dry-run receipt: v3 schema"
   expect ($rec8.mode == "dry-run") "dry-run receipt: mode"
   expect (($rec8.archive_entries | length) == 4) "dry-run receipt: alias, selector, and complete legacy generation chain"
   expect ($rec8.prior_manifest_sha256 != "") "dry-run receipt: prior manifest hash"
@@ -265,6 +270,8 @@ def main [packaging_dir: string] {
     STUB_PROFILE: $fx10.profile_link
     STUB_GENERATION: $generation10
     STUB_PROFILE_DIR: $newprof10
+    STUB_LEGACY_PROFILE: $fx10.legacy_profile
+    STUB_LEGACY_TARGET: ($fx10.state | path join "profiles/profile")
   }
   let r10 = (run-migrate $migrate $check $fx10 $env10 [--closure $newf10 --archive-dir $adir10 --receipt-dir $rdir10 --execute])
   if $r10.exit_code != 0 { print -e $r10.stdout; print -e $r10.stderr }
@@ -277,6 +284,8 @@ def main [packaging_dir: string] {
   expect ($rec10.verification_stdout_sha256 != "") "execute receipt: verification log hash"
   expect ($rec10.rollback_performed == false) "execute receipt: no rollback"
   expect ($rec10.new_manifest_sha256 != "") "execute receipt: new manifest hash"
+  expect (($rec10.install_created_shadow_entries | length) == 1) "execute receipt: installer-created shadow recorded"
+  expect (($rec10.archive_path | path join "install-created-shadows/profile" | path type) == "symlink") "execute archive: installer-created shadow retired"
   for name in [".nix-profile" "profile" "profile-1-link" "profile-1-link-1-link"] {
     expect (($rec10.archive_path | path join "prior" | path join $name | path type) == "symlink") $"execute archive contains ($name)"
   }
@@ -297,6 +306,8 @@ def main [packaging_dir: string] {
     STUB_PROFILE: $fx11.profile_link
     STUB_GENERATION: $generation11
     STUB_PROFILE_DIR: $broken11
+    STUB_LEGACY_PROFILE: $fx11.legacy_profile
+    STUB_LEGACY_TARGET: ($fx11.state | path join "profiles/profile")
   }
   let r11 = (run-migrate $migrate $check $fx11 $env11 [--closure $newf11 --archive-dir $adir11 --receipt-dir $rdir11 --execute])
   expect ($r11.exit_code != 0) "failed cutover: nonzero exit"
@@ -308,6 +319,8 @@ def main [packaging_dir: string] {
   expect ($rec11.verified == false and $rec11.rollback_performed == true) "failed receipt: rollback recorded"
   expect ($rec11.install_exit_code == 0 and $rec11.verification_exit_code != 0) "failed receipt: exact failing gate"
   expect (($rec11.errors | first) | str contains "profile verification exited") "failed receipt: nonempty error"
+  expect (($rec11.install_created_shadow_entries | length) == 1) "failed receipt: installer-created shadow recorded"
+  expect (($rec11.archive_path | path join "install-created-shadows/profile" | path type) == "symlink") "failed archive: installer-created shadow retired before rollback"
   expect (($rec11.failed_candidate_archive | path join ".nix-profile" | path type) == "symlink") "failed candidate selector archived"
   expect (($rec11.failed_candidate_archive | path join ".nix-profile-1-link" | path type) == "symlink") "failed candidate generation archived"
 

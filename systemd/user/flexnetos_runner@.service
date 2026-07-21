@@ -18,8 +18,8 @@ Environment=KACHE_CACHE_DIR=/home/flexnetos/.cache/kache/runners/%i
 Environment=RUSTC_WRAPPER=/home/flexnetos/.nix-profile/bin/kache-rustc-wrapper
 Environment=CARGO_BUILD_RUSTC_WRAPPER=/home/flexnetos/.nix-profile/bin/kache-rustc-wrapper
 Environment=GH_CONFIG_DIR=/home/flexnetos/.config/gh
-Environment=CODEX_HOME=/home/flexnetos/.nix-profile/runtime/codex
-Environment=CLAUDE_CONFIG_DIR=/home/flexnetos/.nix-profile/runtime/claude
+Environment=CODEX_HOME=/run/user/1001/yazelix/profile-runtime/codex
+Environment=CLAUDE_CONFIG_DIR=/run/user/1001/yazelix/profile-runtime/claude
 ExecStartPre=/home/flexnetos/.nix-profile/bin/flexnetos_runner_policy runtime %i
 ExecStart=/home/flexnetos/.nix-profile/bin/flexnetos_runner_service %i
 StandardOutput=null

@@ -96,6 +96,21 @@ def archive-candidate [profile_link: string, destination: string] {
   }
 }
 
+def install-created-shadow-entries [selector: string, destination: string] {
+  let paths = if (entry-present $selector) {
+    (generation-links $selector) | append $selector | uniq
+  } else { [] }
+  $paths | each {|source|
+    let probe = (read-link $source)
+    {
+      source: $source
+      archived: ($destination | path join ($source | path basename))
+      target: $probe.target
+      resolved: (resolve $source)
+    }
+  }
+}
+
 def main [
   --closure: string = ""     # freshly built lifeos-foundation-yzx store path (required)
   --flake-ref: string = "path:/home/flexnetos/meta/src/yazelix"  # install source
@@ -146,7 +161,7 @@ def main [
   let install_command = $"($nix_bin) profile add --profile '($profile_link)' '($flake_ref)#lifeos_foundation_yzx'"
   let mode = if $execute { "execute" } else { "dry-run" }
   mut receipt = {
-    schema: "yazelix.single-profile-migration.receipt.v2"
+    schema: "yazelix.single-profile-migration.receipt.v3"
     task: "YZXCONV-003"
     observed_at: (^date -u +%Y-%m-%dT%H:%M:%SZ | str trim)
     mode: $mode
@@ -161,6 +176,8 @@ def main [
     archive_entries: $prior_entries
     install_command: $install_command
     install_exit_code: null
+    install_created_shadow_entries: []
+    failed_install_created_shadow_entries: []
     rollback_actions: ($prior_entries | reverse | each {|entry| {from: $entry.archived, to: $entry.source}})
     new_profile_resolved: null
     new_manifest_sha256: null
@@ -212,7 +229,27 @@ def main [
         ))
       }
 
-      let verified = if $install.exit_code != 0 {
+      mut install_shadows_retired = true
+      if $install.exit_code == 0 {
+        let shadow_destination = ($archive_path | path join "install-created-shadows")
+        let shadow_entries = (install-created-shadow-entries $legacy_xdg_profile $shadow_destination)
+        $receipt.install_created_shadow_entries = $shadow_entries
+        if not ($shadow_entries | is-empty) {
+          let retire_result = (try {
+            archive-entries $shadow_entries
+            {ok: true, error: null}
+          } catch {|err|
+            {ok: false, error: ($err.msg? | default ($err | to json --raw))}
+          })
+          $install_shadows_retired = $retire_result.ok
+          if not $retire_result.ok {
+            $receipt.failure_stage = "retire-install-created-shadow"
+            $receipt.errors = ($receipt.errors | append $retire_result.error)
+          }
+        }
+      }
+
+      let verified = if $install.exit_code != 0 or not $install_shadows_retired {
         false
       } else {
         let verify = (with-env {
@@ -252,6 +289,22 @@ def main [
         })
         if not $candidate_result.ok {
           $receipt.errors = ($receipt.errors | append $candidate_result.error)
+        }
+        let remaining_shadow_destination = ($archive_path | path join "failed-install-created-shadows")
+        let remaining_shadow_entries = (
+          install-created-shadow-entries $legacy_xdg_profile $remaining_shadow_destination
+        )
+        $receipt.failed_install_created_shadow_entries = $remaining_shadow_entries
+        if not ($remaining_shadow_entries | is-empty) {
+          let remaining_shadow_result = (try {
+            archive-entries $remaining_shadow_entries
+            {ok: true, error: null}
+          } catch {|err|
+            {ok: false, error: ($err.msg? | default ($err | to json --raw))}
+          })
+          if not $remaining_shadow_result.ok {
+            $receipt.errors = ($receipt.errors | append $remaining_shadow_result.error)
+          }
         }
         let restore_result = (try {
           restore-entries $prior_entries
