@@ -52,23 +52,29 @@ def reject-competing-owner [name: string, expected: path] {
     }
 }
 
+def materialize-reviewed-config [] {
+    if ($MATERIALIZER | is-empty) {
+        fail "reviewed configuration materializer is missing"
+    }
+    let materialized = (do { ^$MATERIALIZER } | complete)
+    if $materialized.exit_code != 0 {
+        print --stderr ($materialized.stderr | str trim)
+        fail "reviewed configuration could not be materialized"
+    }
+}
+
 def --wrapped main [...args] {
     let state_home = (ensure-runtime)
     match $AGENT {
         "codex" => {
             reject-competing-owner "CODEX_HOME" $state_home
             $env.CODEX_HOME = ($state_home | into string)
-            if ($MATERIALIZER | is-not-empty) {
-                let materialized = (do { ^$MATERIALIZER } | complete)
-                if $materialized.exit_code != 0 {
-                    print --stderr ($materialized.stderr | str trim)
-                    fail "reviewed configuration could not be materialized"
-                }
-            }
+            materialize-reviewed-config
         }
         "claude" => {
             reject-competing-owner "CLAUDE_CONFIG_DIR" $state_home
             $env.CLAUDE_CONFIG_DIR = ($state_home | into string)
+            materialize-reviewed-config
         }
         _ => { fail $"unsupported agent identity: ($AGENT)" }
     }

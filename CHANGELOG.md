@@ -7,6 +7,9 @@
   profile runtime link into `/run/user/1001/yazelix/profile-runtime`, rejects
   competing agent state variables, and installs both the visible Yazelix Agent
   launcher and the hidden Claude deep-link handler directly from the profile.
+  Reviewed Claude settings and instruction sources now materialize through that
+  wrapper with profile-owned RTK/ICM hooks and a source-hash receipt while
+  credentials, sessions, histories, databases, and plugin state remain intact.
   Yazelix state no longer falls back to durable home data;
   non-foundation builds require `YAZELIX_STATE_DIR` or `XDG_RUNTIME_DIR`.
 

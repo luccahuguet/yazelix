@@ -78,12 +78,14 @@ def main [
     })
     expect ($competing_codex.exit_code != 0) "Codex wrapper accepted a competing CODEX_HOME"
 
+    rm --force $marker
     let claude = ($root | path join "claude")
-    render $source $claude ($common | merge {agent: "claude", materializer: ""})
+    render $source $claude ($common | merge {agent: "claude", materializer: ($materializer | into string)})
     let claude_result = (do { ^$nu_bin $claude "--resume" } | complete)
     expect ($claude_result.exit_code == 0) $"Claude wrapper failed: ($claude_result.stderr)"
     let claude_report = ($claude_result.stdout | from json)
     expect ($claude_report.claude_config_dir == ($profile | path join "runtime/claude" | into string)) "Claude state escaped the profile runtime link"
+    expect $claude_report.materialized "Claude payload ran before configuration materialization"
     expect ($claude_report.args == ["--resume"]) "Claude wrapper did not preserve arguments"
     expect ((mode ($runtime | path join "claude")) == "rwx------") "Claude runtime mode is not 0700"
 

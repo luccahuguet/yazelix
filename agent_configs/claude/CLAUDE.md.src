@@ -1,0 +1,34 @@
+@RTK.md
+
+## FlexNetOS runtime ownership
+
+`/home/flexnetos/.nix-profile` is the sole installed binary, configuration,
+state, cache, runtime, launcher, and compatibility frontdoor for Claude,
+Codex, and Yazelix. Claude configuration is generated from reviewed Yazelix
+sources into `/home/flexnetos/.nix-profile/runtime/claude`. Never create or use
+a parallel home-owned agent directory, raw store payload, or generated source
+tree as an active owner.
+
+## Persistent memory (ICM) — mandatory
+
+Recall before work:
+
+```nu
+icm recall "query"
+icm recall "query" -t "topic-name"
+icm recall-context "query" --limit 5
+```
+
+Store immediately when an error is resolved, an architecture decision is made,
+an owner preference is discovered, a significant task completes, or a long
+session needs a progress checkpoint:
+
+```nu
+icm store -t errors-resolved -c "description" -i high -k "keyword1,keyword2"
+icm store -t decisions-project -c "description" -i high
+icm store -t preferences -c "description" -i critical
+icm store -t context-project -c "summary" -i high
+```
+
+Use `icm health`, `icm topics`, and topic-filtered recall to preserve topic
+hygiene. Do not store secrets, transient build logs, or routine status output.

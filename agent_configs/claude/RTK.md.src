@@ -1,0 +1,15 @@
+# RTK frontdoor
+
+All Claude shell work enters through the profile-owned RTK binary. The active
+command is `/home/flexnetos/.nix-profile/toolbin/rtk`; repository commands use
+the repository-required RTK adapter and profile Nushell.
+
+```nu
+rtk --version
+rtk verify
+rtk gain
+rtk proxy -- /home/flexnetos/.nix-profile/toolbin/nu -l -c "command"
+```
+
+The Claude `PreToolUse` hook routes Bash-tool requests through `rtk hook claude`.
+Do not bypass that hook with an alternate binary, shell owner, or raw payload.

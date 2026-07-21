@@ -27,9 +27,10 @@ Non-foundation packages use `YAZELIX_STATE_DIR` or
 
 FlexNetOS reviews Codex configuration and durable operating rules in
 `agent_configs/codex/`. The profile installs those immutable inputs under
-`~/.nix-profile/share/yazelix/agent_configs/codex/`, the materializer under
-`~/.nix-profile/share/yazelix/nushell/scripts/`, and the executable
-`~/.nix-profile/bin/yazelix_codex_materialize`. Change the repository input and
+`/home/flexnetos/.nix-profile/share/yazelix/agent_configs/codex/`, the
+materializer under `/home/flexnetos/.nix-profile/share/yazelix/nushell/scripts/`,
+and the executable
+`/home/flexnetos/.nix-profile/bin/yazelix_codex_materialize`. Change the repository input and
 rebuild the profile; the installed copy is never an alternate editable owner.
 
 The materializer validates both inputs and completes both mode-`0644` staged
@@ -54,8 +55,14 @@ generated pair, runs `yazelix_codex_materialize`, and checks
 `tests/codex_config_provenance.nu` before the installed runtime starts.
 
 The profile-owned `claude` wrapper applies the same boundary through
-`CLAUDE_CONFIG_DIR=~/.nix-profile/runtime/claude`. Both wrappers reject a
-competing inherited state owner before invoking their immutable payload.
+`CLAUDE_CONFIG_DIR=/home/flexnetos/.nix-profile/runtime/claude`. Reviewed
+`settings.json`, `CLAUDE.md`, and `RTK.md` inputs live in
+`agent_configs/claude/`; the profile installs them and
+`yazelix_claude_materialize`, then the wrapper publishes exact copies before
+the Claude payload runs. The mode-`0600` generation receipt records all three
+source hashes. Credentials, sessions, histories, databases, and plugin state
+remain untouched. Both agent wrappers reject a competing inherited state owner
+before invoking their immutable payload.
 
 The profile selector itself must likewise be a direct, relative Nix generation:
 `/home/flexnetos/.nix-profile -> .nix-profile-<generation>-link`. Any alias
