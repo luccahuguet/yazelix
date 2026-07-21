@@ -874,7 +874,7 @@
         gzip = "${pkgs.gzip}/bin/gzip";
         head = "${pkgs.coreutils}/bin/head";
         home-manager = "${home-manager.packages.${system}.default}/bin/home-manager";
-        icm = "${flexnetosIcm}/bin/icm";
+        icm = "${flexnetosIcmFrontdoor}/bin/icm";
         jq = "${pkgs.jq}/bin/jq";
         kache = "${flexnetosKache}/bin/kache";
         kache-rustc-wrapper = "${flexnetosKache}/bin/kache-rustc-wrapper";
@@ -1109,6 +1109,10 @@
         materializer = "/home/flexnetos/.nix-profile/bin/yazelix_claude_materialize";
         chmod = "${pkgs.coreutils}/bin/chmod";
       };
+      flexnetosIcmFrontdoor = nuApplication "icm" ./nushell/agent/icm_profile_frontdoor.nu {
+        payload = "${flexnetosIcm}/bin/icm";
+        defaultDb = "/home/flexnetos/meta/var/lib/icm/memories.db";
+      };
       flexnetosDesktopSource = pkgs.makeDesktopItem {
         name = "com.flexnetos.Yazelix.Agent";
         destination = "/share/applications";
@@ -1292,6 +1296,16 @@
         ${pkgs.nushell}/bin/nu ${./tests/profile_agent_frontdoor.nu} \
           "$TMPDIR/profile-agent-frontdoors" \
           ${./nushell/agent/profile_frontdoor.nu} \
+          ${pkgs.nushell}/bin/nu \
+          ${pkgs.coreutils}/bin/chmod
+        touch "$out"
+      '';
+      icm_profile_frontdoor = pkgs.runCommand "icm-profile-frontdoor" {
+        nativeBuildInputs = [pkgs.nushell pkgs.coreutils];
+      } ''
+        ${pkgs.nushell}/bin/nu ${./tests/icm_profile_frontdoor.nu} \
+          "$TMPDIR" \
+          ${./nushell/agent/icm_profile_frontdoor.nu} \
           ${pkgs.nushell}/bin/nu \
           ${pkgs.coreutils}/bin/chmod
         touch "$out"
