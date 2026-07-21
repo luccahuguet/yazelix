@@ -32,17 +32,17 @@ composes their package outputs.
 
 | Measure | Nova | Classic |
 | --- | --- | --- |
-| Code and configuration (Rust, Nix, shell, TOML, etc.) | **17,743 LOC** | **91,545 LOC** |
-| Rust | **14,932 LOC** | **80,957 LOC** |
+| Code and configuration (Rust, Nix, shell, TOML, etc.) | **18,284 LOC** | **91,545 LOC** |
+| Rust | **15,265 LOC** | **80,957 LOC** |
 | Ownership model | One owner per concern | Overlapping responsibilities across layers |
 | Yazelix component boundaries | Independent, versioned packages | Child repos mixed with main-repo ownership |
 | Product experience | More features, stronger defaults, tighter integration, and polished UX | Fewer features and a less cohesive workspace |
 | Status | Recommended | Frozen migration and rollback path |
 
-Nova owns **73,802 fewer lines**, an **81% reduction**. Classic's Rust code
-alone is 4.6 times larger than Nova's entire code and configuration surface.
+Nova owns **73,261 fewer lines**, an **80% reduction**. Classic's Rust code
+alone is 4.4 times larger than Nova's entire code and configuration surface.
 
-Nova delivers more features in 19% of the code. It has a clearer configuration
+Nova delivers more features in 20% of the code. It has a clearer configuration
 model, tighter editor and Yazi integration, stronger diagnostics, and a
 coherent popup-oriented interface. The smaller architecture makes Yazelix
 easier to improve and better to use.
@@ -68,7 +68,7 @@ remain unverified.
 
 ```sh
 nix run github:luccahuguet/yazelix/stable -- launch
-nix run github:luccahuguet/yazelix/stable#runtime -- enter
+nix run github:luccahuguet/yazelix/stable#yazelix-no-mars -- enter
 ```
 
 If the one-off launch fails, inspect the owned runtime setup with:
@@ -193,12 +193,21 @@ Ratconfig's Keys tab is the complete packaged reference, and
 
 ## Packages and platforms
 
-| Package | Mars | Managed Helix | Intended entry |
+Package names follow `yazelix[-no-mars][-no-helix][-no-yazi]`. Each suffix
+removes that managed package while retaining the integration around it.
+`no-helix` uses the configured host editor; `no-yazi` requires matching host
+`yazi` and `ya` commands.
+
+| Package | Mars | Managed Helix | Managed Yazi |
 | --- | --- | --- | --- |
-| `yazelix` | Yes | Yes | `yzx launch` or `yzx enter` |
-| `yazelix-no-helix` | Yes | No | `yzx launch` or `yzx enter` with a host-installed terminal editor |
-| `runtime` | No | Yes | `yzx enter` in another terminal or over SSH |
-| `runtime-no-helix` | No | No | `yzx enter` with a host-installed terminal editor |
+| `yazelix` | Yes | Yes | Yes |
+| `yazelix-no-helix` | Yes | No | Yes |
+| `yazelix-no-yazi` | Yes | Yes | No |
+| `yazelix-no-helix-no-yazi` | Yes | No | No |
+| `yazelix-no-mars` | No | Yes | Yes |
+| `yazelix-no-mars-no-helix` | No | No | Yes |
+| `yazelix-no-mars-no-yazi` | No | Yes | No |
+| `yazelix-no-mars-no-helix-no-yazi` | No | No | No |
 
 See [Installation and packages](docs/installation.md) for package variants,
 platform support, SSH use, measured sizes, Home Manager, and updates.
@@ -242,7 +251,7 @@ From a local checkout, use:
 
 ```sh
 nix run .#yazelix -- launch
-nix run .#runtime -- enter
+nix run .#yazelix-no-mars -- enter
 ```
 
 See [Development](docs/development.md) for CI and local checks,
@@ -251,6 +260,6 @@ See [Development](docs/development.md) for CI and local checks,
 
 ## LOC Scorecard
 
-Yazelix owns **20,019 lines** of tracked text project files. The
+Yazelix owns **20,630 lines** of tracked text project files. The
 [reproducible scorecard](docs/development.md#loc-scorecard) excludes Beads,
 lockfiles, and binary assets.

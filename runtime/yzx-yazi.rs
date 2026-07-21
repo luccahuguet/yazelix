@@ -8,7 +8,6 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-const YAZI: &str = "@yazi@";
 const YZX_YAZI_CONFIG: &str = "@yzxYaziConfig@";
 const YZX_YAZI_MATERIALIZER: &str = "@yzxYaziMaterializer@";
 const YZX_OPEN: &str = "@yzxOpen@";
@@ -29,13 +28,19 @@ fn main() -> ExitCode {
 }
 
 fn run() -> io::Result<()> {
+    let yazi = nonempty_env("YZX_YAZI_BIN").ok_or_else(|| {
+        io::Error::new(
+            io::ErrorKind::NotFound,
+            "YZX_YAZI_BIN is missing; launch managed Yazi through yzx",
+        )
+    })?;
     let state_dir = state_dir();
     let yazi_config = yazi_config_home(&state_dir)?;
     let yzx_open_log = yzx_config_value("open.log_level")?;
     let editor = effective_editor_command(yzx_config_value("editor.command")?);
     let mut args = env::args_os().skip(1).collect::<Vec<_>>();
     let workspace_popup = take_workspace_popup_flag(&mut args);
-    let mut command = Command::new(YAZI);
+    let mut command = Command::new(yazi);
     command
         .args(args)
         .env("PATH", runtime_path())

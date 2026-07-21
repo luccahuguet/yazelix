@@ -41,18 +41,22 @@ jobs:
 
       - name: Check Helix-free evaluation
         run: |
-          nix eval --raw --no-write-lock-file \
-            --override-input yazelixHelix path:./checks/unavailable-helix \
-            .#packages.aarch64-darwin.yazelix-no-helix.drvPath
-          nix eval --raw --no-write-lock-file \
-            --override-input yazelixHelix path:./checks/unavailable-helix \
-            .#packages.aarch64-darwin.runtime-no-helix.drvPath
+          for package in \
+            yazelix-no-helix \
+            yazelix-no-helix-no-yazi \
+            yazelix-no-mars-no-helix \
+            yazelix-no-mars-no-helix-no-yazi; do
+            nix eval --raw --no-write-lock-file \
+              --override-input yazelixHelix path:./checks/unavailable-helix \
+              ".#packages.aarch64-darwin.$package.drvPath"
+          done
 
       - name: Build focused checks
         run: |
           nix build --no-link --print-build-logs \
             .#checks.x86_64-linux.no_helix_contracts \
+            .#checks.x86_64-linux.host_yazi_contracts \
             .#checks.x86_64-linux.yzx_yazi_materialization \
             .#checks.x86_64-linux.yzx_launcher_unit \
-            .#checks.x86_64-linux.runtime_contracts \
+            .#checks.x86_64-linux.no_mars_contracts \
             .#checks.x86_64-linux.zellij_sidecar_guard_parity

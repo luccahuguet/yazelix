@@ -8,19 +8,21 @@ use std::{
 };
 
 use crate::{
+    error::{path_error, startup, AppError},
+    paths::{runtime_path, zellij_session_label},
+    runtime::Runtime,
+    yazi::YaziRuntime,
     AGENT_AUTO_COMMAND, HELIX_REVEAL_COMMAND, LAYOUT, LAYOUT_SWAP_TEMPLATE, LAYOUT_TEMPLATE,
     MANAGED_HELIX, MARS, PACKAGE_VARIANT, YAZELIX_ZELLIJ_BAR_WASM,
     YAZELIX_ZELLIJ_PANE_ORCHESTRATOR_WASM, YAZELIX_ZELLIJ_POPUP_WASM, YZX_BAR_RENDER,
     YZX_BAR_RENDER_REQUEST, YZX_CONFIG, YZX_CONFIG_KDL, YZX_CONFIG_UI, YZX_HELIX, YZX_MENU,
-    YZX_REVEAL, YZX_SCREEN, YZX_SIDEBAR_REFRESH, YZX_TUTOR, YZX_WELCOME, YZX_YA, YZX_YAZI,
+    YZX_REVEAL, YZX_SCREEN, YZX_SIDEBAR_REFRESH, YZX_TUTOR, YZX_WELCOME, YZX_YAZI,
     YZX_ZELLIJ_CONFIG, ZELLIJ,
-    error::{AppError, path_error, startup},
-    paths::{runtime_path, zellij_session_label},
-    runtime::Runtime,
 };
 
 pub(crate) fn print_doctor() -> Result<(), AppError> {
     let runtime = Runtime::prepare().map_err(doctor_failure)?;
+    let yazi = YaziRuntime::resolve().map_err(doctor_failure)?;
     let has_managed_helix = MANAGED_HELIX == "included";
     check_doctor_inputs().map_err(doctor_failure)?;
     require_command("editor", &runtime.editor).map_err(doctor_failure)?;
@@ -69,7 +71,15 @@ pub(crate) fn print_doctor() -> Result<(), AppError> {
     doctor_ok("zellij helper", YZX_ZELLIJ_CONFIG);
     doctor_ok("reveal helper", YZX_REVEAL);
     doctor_ok("sidebar refresh helper", YZX_SIDEBAR_REFRESH);
-    doctor_ok("yazi cli", YZX_YA);
+    doctor_ok("yazi source", yazi.source());
+    doctor_ok("yazi lookup PATH", yazi.lookup_path().to_string_lossy());
+    doctor_ok("yazi", yazi.yazi().display());
+    doctor_ok("ya", yazi.ya().display());
+    doctor_ok("yazi version", yazi.version());
+    doctor_ok("yazi tested version", yazi.tested_version());
+    if let Some(warning) = yazi.warning() {
+        println!("warn yazi compatibility: {warning}");
+    }
     doctor_ok("zellij", ZELLIJ);
     doctor_ok(
         "mars",
@@ -98,8 +108,9 @@ pub(crate) fn print_doctor() -> Result<(), AppError> {
 fn doctor_failure(error: AppError) -> AppError {
     println!("Yazelix Nova doctor");
     if let AppError::Startup { reason, check, .. } = &error {
-        let reason = reason.lines().next().unwrap_or("startup check failed");
-        println!("fail runtime preflight: {reason}");
+        for reason in reason.lines() {
+            println!("fail runtime preflight: {reason}");
+        }
         if !check.is_empty() {
             println!("check: {check}");
         }
@@ -126,7 +137,6 @@ fn check_doctor_inputs() -> Result<(), AppError> {
         ("zellij config helper", Path::new(YZX_ZELLIJ_CONFIG)),
         ("reveal helper", Path::new(YZX_REVEAL)),
         ("sidebar refresh helper", Path::new(YZX_SIDEBAR_REFRESH)),
-        ("yazi cli", Path::new(YZX_YA)),
         ("packaged Zellij config", Path::new(YZX_CONFIG_KDL)),
         ("Zellij", Path::new(ZELLIJ)),
         ("layout", Path::new(LAYOUT)),

@@ -420,14 +420,28 @@
       });
       mkYzx = {
         withManagedHelix,
+        withManagedYazi,
         withMars,
       }: let
         variantSuffix = pkgs.lib.concatStringsSep "-" (
-          pkgs.lib.optional (! withMars) "runtime"
+          pkgs.lib.optional (! withMars) "no-mars"
           ++ pkgs.lib.optional (! withManagedHelix) "no-helix"
+          ++ pkgs.lib.optional (! withManagedYazi) "no-yazi"
         );
         variant = if variantSuffix == "" then "full" else variantSuffix;
         name = "yazelix" + pkgs.lib.optionalString (variantSuffix != "") "-${variantSuffix}";
+        yaziRuntime =
+          if withManagedYazi
+          then {
+            source = "bundled";
+            yaziCommand = "${pkgs.yazi}/bin/yazi";
+            yaCommand = "${pkgs.yazi}/bin/ya";
+          }
+          else {
+            source = "host";
+            yaziCommand = "yazi";
+            yaCommand = "ya";
+          };
         managedEditor =
           if withManagedHelix
           then yzxHelix
@@ -479,7 +493,6 @@
           '';
         };
         yazi = rustBin "yzx-yazi" (pkgs.replaceVars ./runtime/yzx-yazi.rs {
-          yazi = "${pkgs.yazi}/bin/yazi";
           yzxYaziConfig = "${yzxYaziConfig}";
           yzxYaziMaterializer = "${yzxYaziMaterializer}/bin/yzx-yazi-config";
           yzxOpen = "${yzxOpenCore}/bin/yzx-open";
@@ -570,7 +583,10 @@
           yzxConfigKdl = "${configKdl}";
           yzxReveal = "${yzxOpenCore}/bin/yzx-reveal";
           yzxSidebarRefresh = "${yzxOpenCore}/bin/yzx-sidebar-refresh";
-          yzxYa = "${pkgs.yazi}/bin/ya";
+          yaziSource = yaziRuntime.source;
+          yaziCommand = yaziRuntime.yaziCommand;
+          yaCommand = yaziRuntime.yaCommand;
+          yaziTestedVersion = pkgs.yazi.version;
           yzxBarRenderRequest = "${yzxBarRenderRequestTemplate}";
           yzxBarRender = "${yzxBarRender}/bin/yzx-bar-render";
           yazelixZellijPopupWasm = "${yazelixZellijPopupPackage}/${yazelixZellijPopupPackage.wasmPath}";
@@ -651,25 +667,53 @@
         };
       yazelix = mkYzx {
         withManagedHelix = true;
+        withManagedYazi = true;
         withMars = true;
       };
       yzxNoHelix = mkYzx {
         withManagedHelix = false;
+        withManagedYazi = true;
         withMars = true;
       };
-      yzxRuntime = mkYzx {
+      yzxNoYazi = mkYzx {
         withManagedHelix = true;
+        withManagedYazi = false;
+        withMars = true;
+      };
+      yzxNoHelixNoYazi = mkYzx {
+        withManagedHelix = false;
+        withManagedYazi = false;
+        withMars = true;
+      };
+      yzxNoMars = mkYzx {
+        withManagedHelix = true;
+        withManagedYazi = true;
         withMars = false;
       };
-      yzxRuntimeNoHelix = mkYzx {
+      yzxNoMarsNoHelix = mkYzx {
         withManagedHelix = false;
+        withManagedYazi = true;
+        withMars = false;
+      };
+      yzxNoMarsNoYazi = mkYzx {
+        withManagedHelix = true;
+        withManagedYazi = false;
+        withMars = false;
+      };
+      yzxNoMarsNoHelixNoYazi = mkYzx {
+        withManagedHelix = false;
+        withManagedYazi = false;
         withMars = false;
       };
     in {
       inherit yazelix;
       yazelix-no-helix = yzxNoHelix;
-      runtime = yzxRuntime;
-      runtime-no-helix = yzxRuntimeNoHelix;
+      yazelix-no-yazi = yzxNoYazi;
+      yazelix-no-helix-no-yazi = yzxNoHelixNoYazi;
+      yazelix-no-mars = yzxNoMars;
+      yazelix-no-mars-no-helix = yzxNoMarsNoHelix;
+      yazelix-no-mars-no-yazi = yzxNoMarsNoYazi;
+      yazelix-no-mars-no-helix-no-yazi = yzxNoMarsNoHelixNoYazi;
       default = yazelix;
     });
 
@@ -677,12 +721,22 @@
       pkgs = import nixpkgs {inherit system;};
       yzx = self.packages.${system}.yazelix;
       yzxNoHelix = self.packages.${system}.yazelix-no-helix;
-      yzxRuntime = self.packages.${system}.runtime;
-      yzxRuntimeNoHelix = self.packages.${system}.runtime-no-helix;
+      yzxNoYazi = self.packages.${system}.yazelix-no-yazi;
+      yzxNoHelixNoYazi = self.packages.${system}.yazelix-no-helix-no-yazi;
+      yzxNoMars = self.packages.${system}.yazelix-no-mars;
+      yzxNoMarsNoHelix = self.packages.${system}.yazelix-no-mars-no-helix;
+      yzxNoMarsNoYazi = self.packages.${system}.yazelix-no-mars-no-yazi;
+      yzxNoMarsNoHelixNoYazi =
+        self.packages.${system}.yazelix-no-mars-no-helix-no-yazi;
       marsPackage = mars.packages.${system}.mars;
       noHelixClosure = pkgs.closureInfo {rootPaths = [yzxNoHelix];};
-      runtimeClosure = pkgs.closureInfo {rootPaths = [yzxRuntime];};
-      runtimeNoHelixClosure = pkgs.closureInfo {rootPaths = [yzxRuntimeNoHelix];};
+      noYaziClosure = pkgs.closureInfo {rootPaths = [yzxNoYazi];};
+      noHelixNoYaziClosure = pkgs.closureInfo {rootPaths = [yzxNoHelixNoYazi];};
+      noMarsClosure = pkgs.closureInfo {rootPaths = [yzxNoMars];};
+      noMarsNoHelixClosure = pkgs.closureInfo {rootPaths = [yzxNoMarsNoHelix];};
+      noMarsNoYaziClosure = pkgs.closureInfo {rootPaths = [yzxNoMarsNoYazi];};
+      noMarsNoHelixNoYaziClosure =
+        pkgs.closureInfo {rootPaths = [yzxNoMarsNoHelixNoYazi];};
       zellijBarPackage = yazelixZellijBar.packages.${system}.default;
       yzxYaziMaterializer = yzxYaziMaterializerFor pkgs;
       checksSrc = pkgs.lib.cleanSource ./checks;
@@ -690,6 +744,46 @@
       helixContractsCheck = rustBinFor pkgs "helix-contracts-check" "${checksSrc}/helix-contracts.rs";
       noHelixContractsCheck =
         rustBinFor pkgs "no-helix-contracts-check" "${checksSrc}/no-helix-contracts.rs";
+      mkFakeHostYazi = {
+        name,
+        yaVersion ? pkgs.yazi.version,
+        yaziVersion ? pkgs.yazi.version,
+      }:
+        pkgs.runCommand name {} ''
+          mkdir -p "$out/bin"
+          cat > "$out/bin/yazi" <<'EOF'
+          #!${pkgs.runtimeShell}
+          if [ "''${1:-}" = --version ]; then
+            printf '%s\n' 'Yazi ${yaziVersion}'
+          else
+            printf 'fake Yazi config=%s ya=%s args=' "''${YAZI_CONFIG_HOME:-}" "''${YZX_YA:-}"
+            printf '%s ' "$@"
+            printf '\n'
+          fi
+          EOF
+          cat > "$out/bin/ya" <<'EOF'
+          #!${pkgs.runtimeShell}
+          if [ "''${1:-}" = --version ]; then
+            printf '%s\n' 'Ya ${yaVersion}'
+          else
+            printf 'fake Ya args='
+            printf '%s ' "$@"
+            printf '\n'
+          fi
+          EOF
+          chmod 755 "$out/bin/yazi" "$out/bin/ya"
+        '';
+      fakeHostYazi = mkFakeHostYazi {name = "fake-host-yazi";};
+      fakeNewerHostYazi = mkFakeHostYazi {
+        name = "fake-newer-host-yazi";
+        yaVersion = "99.0.0";
+        yaziVersion = "99.0.0";
+      };
+      fakeMismatchedHostYazi = mkFakeHostYazi {
+        name = "fake-mismatched-host-yazi";
+        yaVersion = "98.0.0";
+        yaziVersion = "99.0.0";
+      };
       fakeYazelix = pkgs.runCommand "fake-yazelix-hm-package" {} ''
         mkdir -p "$out/bin" "$out/share/applications"
         cat > "$out/bin/yzx" <<'EOF'
@@ -736,8 +830,12 @@
       homeManagerOverride = homeManagerConfiguration {
         programs.yazelix.package = fakeYazelix;
       };
-      homeManagerRuntime = homeManagerConfiguration {
-        programs.yazelix.package = yzxRuntime;
+      homeManagerNoMars = homeManagerConfiguration {
+        programs.yazelix.package = yzxNoMars;
+      };
+      homeManagerNoYazi = homeManagerConfiguration {
+        home.packages = [pkgs.yazi];
+        programs.yazelix.package = yzxNoYazi;
       };
       homeManagerConfigFiles = homeManagerConfiguration {
         xdg.configFile."yazelix/yazi/flavors/example.yazi".source = fakeYaziFlavor;
@@ -779,7 +877,8 @@
       home_manager = pkgs.runCommand "yzx-home-manager-check" {} ''
         default_path="${homeManagerDefault.activationPackage}/home-path"
         override_path="${homeManagerOverride.activationPackage}/home-path"
-        runtime_path="${homeManagerRuntime.activationPackage}/home-path"
+        no_mars_path="${homeManagerNoMars.activationPackage}/home-path"
+        no_yazi_path="${homeManagerNoYazi.activationPackage}/home-path"
         hm_yzx="${homeManagerConfigFiles.activationPackage}/home-path/bin/yzx"
         config_files="${homeManagerConfigFiles.activationPackage}/home-files/.config/yazelix"
 
@@ -795,8 +894,11 @@
         test "$("$override_path/bin/yzx")" = fake-yazelix
         grep -q 'Fake Yazelix' "$override_path/share/applications/yzx.desktop"
 
-        test -x "$runtime_path/bin/yzx"
-        test ! -e "$runtime_path/share/applications/yzx.desktop"
+        test -x "$no_mars_path/bin/yzx"
+        test ! -e "$no_mars_path/share/applications/yzx.desktop"
+        test -x "$no_yazi_path/bin/yzx"
+        test -x "$no_yazi_path/bin/yazi"
+        test -x "$no_yazi_path/bin/ya"
 
         if [ -e "${homeManagerDefault.activationPackage}/home-files/.config/yazelix" ]; then
           printf '%s\n' 'Home Manager v1 must not generate Yazelix runtime config files' >&2
@@ -983,8 +1085,8 @@
       contracts = pkgs.runCommand "yzx-contracts" {} ''
         ${yzxContractsCheck}/bin/yzx-contracts-check ${yzx} ${pkgs.git}/bin/git ${pkgs.jq}/bin/jq "$out"
       '';
-      runtime_contracts = pkgs.runCommand "yzx-runtime-contracts" {} ''
-        check_runtime() {
+      no_mars_contracts = pkgs.runCommand "yzx-no-mars-contracts" {} ''
+        check_no_mars() {
           local package="$1"
           local variant="$2"
           local closure="$3"
@@ -1018,8 +1120,8 @@
           grep -q '^zellij ' "$root/enter-version"
         }
 
-        check_runtime ${yzxRuntime} runtime ${runtimeClosure}/store-paths
-        check_runtime ${yzxRuntimeNoHelix} runtime-no-helix ${runtimeNoHelixClosure}/store-paths
+        check_no_mars ${yzxNoMars} no-mars ${noMarsClosure}/store-paths
+        check_no_mars ${yzxNoMarsNoHelix} no-mars-no-helix ${noMarsNoHelixClosure}/store-paths
         touch "$out"
       '';
       helix_contracts = pkgs.runCommand "yzx-helix-contracts" {} ''
@@ -1029,7 +1131,76 @@
         ${noHelixContractsCheck}/bin/no-helix-contracts-check \
           ${yzxNoHelix} ${noHelixClosure}/store-paths no-helix
         ${noHelixContractsCheck}/bin/no-helix-contracts-check \
-          ${yzxRuntimeNoHelix} ${runtimeNoHelixClosure}/store-paths runtime-no-helix
+          ${yzxNoMarsNoHelix} ${noMarsNoHelixClosure}/store-paths no-mars-no-helix
+        touch "$out"
+      '';
+      host_yazi_contracts = pkgs.runCommand "yzx-host-yazi-contracts" {} ''
+        for closure in \
+          ${noYaziClosure}/store-paths \
+          ${noHelixNoYaziClosure}/store-paths \
+          ${noMarsNoYaziClosure}/store-paths \
+          ${noMarsNoHelixNoYaziClosure}/store-paths; do
+          if grep -Fx ${pkgs.yazi} "$closure"; then
+            printf '%s\n' "host-Yazi closure retained ${pkgs.yazi}" >&2
+            exit 1
+          fi
+        done
+
+        package=${yzxNoMarsNoHelixNoYazi}
+        root="$TMPDIR/host-yazi"
+        export HOME="$root/home"
+        export YAZELIX_CONFIG_HOME="$root/config"
+        export YAZELIX_STATE_DIR="$root/state"
+        export XDG_DATA_HOME="$root/data"
+        mkdir -p "$HOME" "$YAZELIX_CONFIG_HOME" "$YAZELIX_STATE_DIR" "$XDG_DATA_HOME"
+        printf '%s\n' '[welcome]' 'enabled = false' > "$YAZELIX_CONFIG_HOME/config.toml"
+
+        PATH=${fakeHostYazi}/bin:${pkgs.coreutils}/bin "$package/bin/yzx" doctor > "$root/doctor"
+        grep -Fqx 'ok yazi source: host' "$root/doctor"
+        grep -Fqx 'ok yazi: ${fakeHostYazi}/bin/yazi' "$root/doctor"
+        grep -Fqx 'ok ya: ${fakeHostYazi}/bin/ya' "$root/doctor"
+        grep -Fqx 'ok yazi version: ${pkgs.yazi.version}' "$root/doctor"
+        grep -Fqx 'ok yazi tested version: ${pkgs.yazi.version}' "$root/doctor"
+
+        PATH=${fakeHostYazi}/bin:${pkgs.coreutils}/bin "$package/bin/yzx" run ya --version > "$root/ya-version"
+        grep -Fqx 'Ya ${pkgs.yazi.version}' "$root/ya-version"
+        PATH=${fakeHostYazi}/bin:${pkgs.coreutils}/bin "$package/bin/yzx" run yazi --version > "$root/yazi-version"
+        grep -Fqx 'Yazi ${pkgs.yazi.version}' "$root/yazi-version"
+        PATH=${fakeHostYazi}/bin:${pkgs.coreutils}/bin "$package/bin/yzx" run yazi managed > "$root/yazi-managed"
+        grep -F 'fake Yazi config=' "$root/yazi-managed"
+        grep -F 'ya=${fakeHostYazi}/bin/ya' "$root/yazi-managed"
+
+        YZX_YAZI_BIN=${fakeHostYazi}/bin/yazi \
+          YZX_YA=${fakeHostYazi}/bin/ya \
+          PATH=${fakeMismatchedHostYazi}/bin:${pkgs.coreutils}/bin \
+          "$package/bin/yzx" run yazi inherited > "$root/yazi-inherited"
+        grep -F 'args=inherited' "$root/yazi-inherited"
+        grep -F 'ya=${fakeHostYazi}/bin/ya' "$root/yazi-inherited"
+
+        YZX_YAZI_BIN=${fakeMismatchedHostYazi}/bin/yazi \
+          PATH=${fakeHostYazi}/bin:${pkgs.coreutils}/bin \
+          "$package/bin/yzx" status > "$root/partial-inherited"
+        grep -Fqx 'yazi: ${fakeHostYazi}/bin/yazi' "$root/partial-inherited"
+        grep -Fqx 'ya: ${fakeHostYazi}/bin/ya' "$root/partial-inherited"
+
+        PATH=${fakeNewerHostYazi}/bin:${pkgs.coreutils}/bin "$package/bin/yzx" status > "$root/newer-status" 2> "$root/newer-warning"
+        grep -F 'host yazi/ya 99.0.0 differs from Nova' "$root/newer-warning"
+        PATH=${fakeNewerHostYazi}/bin:${pkgs.coreutils}/bin "$package/bin/yzx" doctor > "$root/newer-doctor"
+        grep -F 'warn yazi compatibility: host yazi/ya 99.0.0 differs from Nova' "$root/newer-doctor"
+
+        if PATH=${fakeMismatchedHostYazi}/bin:${pkgs.coreutils}/bin "$package/bin/yzx" status > /dev/null 2> "$root/mismatch"; then
+          printf '%s\n' 'mismatched host Yazi pair unexpectedly succeeded' >&2
+          exit 1
+        fi
+        grep -F 'yazi 99.0.0 and ya 98.0.0 differ' "$root/mismatch"
+
+        if PATH=${pkgs.coreutils}/bin "$package/bin/yzx" status > /dev/null 2> "$root/missing"; then
+          printf '%s\n' 'missing host Yazi pair unexpectedly succeeded' >&2
+          exit 1
+        fi
+        grep -F 'yazi: command not found in PATH' "$root/missing"
+        grep -F 'ya: command not found in PATH' "$root/missing"
+        test "$(PATH=${pkgs.coreutils}/bin "$package/bin/yzx" run printf unrelated)" = unrelated
         touch "$out"
       '';
     });
@@ -1039,17 +1210,33 @@
         type = "app";
         program = "${self.packages.${system}.yazelix}/bin/yzx";
       };
-      runtime = {
+      yazelix-no-mars = {
         type = "app";
-        program = "${self.packages.${system}.runtime}/bin/yzx";
+        program = "${self.packages.${system}.yazelix-no-mars}/bin/yzx";
       };
       yazelix-no-helix = {
         type = "app";
         program = "${self.packages.${system}.yazelix-no-helix}/bin/yzx";
       };
-      runtime-no-helix = {
+      yazelix-no-yazi = {
         type = "app";
-        program = "${self.packages.${system}.runtime-no-helix}/bin/yzx";
+        program = "${self.packages.${system}.yazelix-no-yazi}/bin/yzx";
+      };
+      yazelix-no-helix-no-yazi = {
+        type = "app";
+        program = "${self.packages.${system}.yazelix-no-helix-no-yazi}/bin/yzx";
+      };
+      yazelix-no-mars-no-helix = {
+        type = "app";
+        program = "${self.packages.${system}.yazelix-no-mars-no-helix}/bin/yzx";
+      };
+      yazelix-no-mars-no-yazi = {
+        type = "app";
+        program = "${self.packages.${system}.yazelix-no-mars-no-yazi}/bin/yzx";
+      };
+      yazelix-no-mars-no-helix-no-yazi = {
+        type = "app";
+        program = "${self.packages.${system}.yazelix-no-mars-no-helix-no-yazi}/bin/yzx";
       };
       default = yazelix;
     });

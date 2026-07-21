@@ -74,8 +74,12 @@ jobs:
           nix build --no-link --print-out-paths \
             .#packages.x86_64-linux.yazelix \
             .#packages.x86_64-linux.yazelix-no-helix \
-            .#packages.x86_64-linux.runtime \
-            .#packages.x86_64-linux.runtime-no-helix \
+            .#packages.x86_64-linux.yazelix-no-yazi \
+            .#packages.x86_64-linux.yazelix-no-helix-no-yazi \
+            .#packages.x86_64-linux.yazelix-no-mars \
+            .#packages.x86_64-linux.yazelix-no-mars-no-helix \
+            .#packages.x86_64-linux.yazelix-no-mars-no-yazi \
+            .#packages.x86_64-linux.yazelix-no-mars-no-helix-no-yazi \
             .#checks.x86_64-linux.home_manager
 
   publish_aarch64_darwin:
@@ -132,8 +136,12 @@ jobs:
           nix build --no-link --no-write-lock-file --print-out-paths --print-build-logs \
             .#packages.aarch64-darwin.yazelix \
             .#packages.aarch64-darwin.yazelix-no-helix \
-            .#packages.aarch64-darwin.runtime \
-            .#packages.aarch64-darwin.runtime-no-helix \
+            .#packages.aarch64-darwin.yazelix-no-yazi \
+            .#packages.aarch64-darwin.yazelix-no-helix-no-yazi \
+            .#packages.aarch64-darwin.yazelix-no-mars \
+            .#packages.aarch64-darwin.yazelix-no-mars-no-helix \
+            .#packages.aarch64-darwin.yazelix-no-mars-no-yazi \
+            .#packages.aarch64-darwin.yazelix-no-mars-no-helix-no-yazi \
             .#checks.aarch64-darwin.home_manager \
             | tee "$outputs"
 
@@ -141,7 +149,7 @@ jobs:
           while IFS= read -r store_path; do
             store_paths+=("$store_path")
           done < "$outputs"
-          test "${#store_paths[@]}" -eq 5
+          test "${#store_paths[@]}" -eq 9
           cachix push yazelix "${store_paths[@]}"
 
           for store_path in "${store_paths[@]}"; do

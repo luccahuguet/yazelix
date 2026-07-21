@@ -1,9 +1,9 @@
 use crate::{
-    PACKAGE_VARIANT, VERSION, error::AppError, paths::zellij_session_label, runtime::Runtime,
+    error::AppError, paths::zellij_session_label, runtime::Runtime, PACKAGE_VARIANT, VERSION,
 };
 
 pub(crate) fn print_status() -> Result<(), AppError> {
-    let runtime = Runtime::prepare()?;
+    let runtime = Runtime::prepare_with_yazi()?;
     println!("Yazelix Nova status");
     println!("package: {PACKAGE_VARIANT}");
     println!("config home: {}", runtime.config_home.display());
@@ -27,12 +27,16 @@ pub(crate) fn print_status() -> Result<(), AppError> {
         println!("{} keybinding: {}", binding.label, binding.configured);
     }
     println!("layout: {}", runtime.layout());
+    println!("yazi source: {}", runtime.yazi().source());
+    println!("yazi: {}", runtime.yazi().yazi().display());
+    println!("ya: {}", runtime.yazi().ya().display());
+    println!("yazi version: {}", runtime.yazi().version());
     println!("inside zellij: {}", zellij_session_label("yes", "no"));
     Ok(())
 }
 
 pub(crate) fn print_status_json() -> Result<(), AppError> {
-    let runtime = Runtime::prepare()?;
+    let runtime = Runtime::prepare_with_yazi()?;
     println!("{}", status_json(&runtime));
     Ok(())
 }

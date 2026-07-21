@@ -8,8 +8,8 @@ use std::{
 mod support;
 
 use support::{
-    RuntimeCase, TempDir, binary_text, embedded_store_path, excerpt, expect_contains, expect_order,
-    successful_output, successful_stdout, write_config_home, write_executable,
+    binary_text, embedded_store_path, excerpt, expect_contains, expect_order, successful_output,
+    successful_stdout, write_config_home, write_executable, RuntimeCase, TempDir,
 };
 
 macro_rules! expect_contains_all {
@@ -193,9 +193,7 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
         .collect::<Vec<_>>();
     assert_eq!(
         menu_ids,
-        [
-            "config", "doctor", "status", "screen", "launch", "help", "tutor"
-        ],
+        ["config", "doctor", "status", "screen", "launch", "help", "tutor"],
         "yzx menu command allowlist changed\n{menu}"
     );
     expect_menu_descriptions_match_help(&help, &menu);
@@ -386,6 +384,10 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
         "sidebar keybinding: Alt Shift H",
         "sidebar focus keybinding: Ctrl y",
         "layout: packaged (/nix/store/",
+        "yazi source: bundled",
+        "yazi: /nix/store/",
+        "ya: /nix/store/",
+        "yazi version: ",
         "inside zellij: no",
     }
 
@@ -720,7 +722,12 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
         "ok welcome helper: /nix/store/",
         "ok yazi opener: /nix/store/",
         "ok reveal helper: /nix/store/",
-        "ok yazi cli: /nix/store/",
+        "ok yazi source: bundled",
+        "ok yazi lookup PATH: /nix/store/",
+        "ok yazi: /nix/store/",
+        "ok ya: /nix/store/",
+        "ok yazi version: ",
+        "ok yazi tested version: ",
         "ok pane orchestrator plugin: /nix/store/",
         "warn session: not inside zellij",
     }
@@ -1466,6 +1473,7 @@ fn expect_yazi_alt_z(yzx: &Path) {
         "editor.command",
         "--yzx-workspace-popup",
         "YZX_YAZI_ROLE",
+        "YZX_YAZI_BIN",
         "workspace-popup",
         "YAZI_CONFIG_HOME",
         "/bin/yzx-yazi-config",

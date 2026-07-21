@@ -8,16 +8,17 @@ use std::{
 };
 
 use crate::{
-    AGENT_POPUP_KDL_CONFIG_PATH, CUSTOM_POPUP_KEYBINDINGS_KDL_CONFIG_PATH,
-    CUSTOM_POPUPS_KDL_CONFIG_PATH, MANAGED_KEYBINDING_SPECS, MARS, YAZELIX_ZELLIJ_BAR_WASM,
-    YAZELIX_ZELLIJ_PANE_ORCHESTRATOR_WASM, YAZELIX_ZELLIJ_POPUP_WASM, YZX_CONFIG, YZX_CONFIG_KDL,
-    YZX_EDITOR, YZX_HELIX, YZX_MARS_CONFIG, YZX_YA, YZX_ZELLIJ_CONFIG, ZELLIJ,
     command::{
         create_dir_all_checked, run_checked, seed_permission_checked, touch_checked, trim_output,
     },
     error::AppError,
     paths::{config_home, home_dir, nonempty_env, parent, runtime_path, state_dir},
+    yazi::YaziRuntime,
     zellij::{active_layout, active_zellij_config},
+    AGENT_POPUP_KDL_CONFIG_PATH, CUSTOM_POPUPS_KDL_CONFIG_PATH,
+    CUSTOM_POPUP_KEYBINDINGS_KDL_CONFIG_PATH, MANAGED_KEYBINDING_SPECS, MARS,
+    YAZELIX_ZELLIJ_BAR_WASM, YAZELIX_ZELLIJ_PANE_ORCHESTRATOR_WASM, YAZELIX_ZELLIJ_POPUP_WASM,
+    YZX_CONFIG, YZX_CONFIG_KDL, YZX_EDITOR, YZX_HELIX, YZX_MARS_CONFIG, YZX_ZELLIJ_CONFIG, ZELLIJ,
 };
 
 pub(crate) struct Runtime {
@@ -45,6 +46,7 @@ pub(crate) struct Runtime {
     pub(crate) managed_keybindings: Vec<ManagedKeybinding>,
     pub(crate) zellij_status_cache: PathBuf,
     pub(crate) zellij_permissions: PathBuf,
+    yazi: Option<YaziRuntime>,
 }
 
 pub(crate) struct ManagedKeybinding {
@@ -73,6 +75,16 @@ fn read_managed_keybindings(
 
 impl Runtime {
     pub(crate) fn prepare() -> Result<Self, AppError> {
+        Self::prepare_with(None)
+    }
+
+    pub(crate) fn prepare_with_yazi() -> Result<Self, AppError> {
+        let yazi = YaziRuntime::resolve()?;
+        yazi.warn();
+        Self::prepare_with(Some(yazi))
+    }
+
+    fn prepare_with(yazi: Option<YaziRuntime>) -> Result<Self, AppError> {
         let state_dir = state_dir();
         create_dir_all_checked(&state_dir, &state_dir)?;
         let home_dir = home_dir()?;
@@ -216,6 +228,7 @@ impl Runtime {
             managed_keybindings,
             zellij_status_cache,
             zellij_permissions,
+            yazi,
         })
     }
 
@@ -239,9 +252,13 @@ impl Runtime {
             .env("YAZELIX_STATUS_BAR_CACHE_PATH", &self.zellij_status_cache)
             .env("ZELLIJ_PLUGIN_PERMISSIONS_CACHE", &self.zellij_permissions)
             .env("YZX_MENU_YZX", yzx_menu_yzx)
-            .env("YZX_YA", YZX_YA)
             .env("YZX_ZELLIJ", ZELLIJ)
             .env("PATH", runtime_path());
+        if let Some(yazi) = &self.yazi {
+            command
+                .env("YZX_YAZI_BIN", yazi.yazi())
+                .env("YZX_YA", yazi.ya());
+        }
         if !MARS.is_empty() {
             command
                 .env("MARS_CONFIG_HOME", self.config_home.join("mars"))
@@ -250,6 +267,12 @@ impl Runtime {
         if let Some(bridge_session_id) = &self.bridge_session_id {
             command.env("YAZELIX_HELIX_BRIDGE_SESSION_ID", bridge_session_id);
         }
+    }
+
+    pub(crate) fn yazi(&self) -> &YaziRuntime {
+        self.yazi
+            .as_ref()
+            .expect("Yazi runtime was not prepared for this command")
     }
 
     pub(crate) fn mars_config(&self) -> String {

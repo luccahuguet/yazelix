@@ -1,14 +1,15 @@
 use std::{env, ffi::OsString, path::Path, process::Command};
 
 use crate::{
-    MARS, VERSION, YZX_CONFIG_UI, YZX_ENV_SUPERVISOR, YZX_MENU, YZX_REVEAL, YZX_SCREEN, YZX_SHELL,
-    YZX_TUTOR, YZX_WELCOME, YZX_YA, ZELLIJ,
     command::exec,
     doctor::print_doctor,
     error::AppError,
     paths::{enter_terminal_label, nonempty_env, runtime_path},
     runtime::Runtime,
     status::{print_status, print_status_json},
+    yazi::YaziRuntime,
+    MARS, VERSION, YZX_CONFIG_UI, YZX_ENV_SUPERVISOR, YZX_MENU, YZX_REVEAL, YZX_SCREEN, YZX_SHELL,
+    YZX_TUTOR, YZX_WELCOME, YZX_YAZI, ZELLIJ,
 };
 
 pub(crate) fn run() -> Result<(), AppError> {
@@ -96,7 +97,7 @@ fn exec_tutor(args: Vec<OsString>) -> Result<(), AppError> {
 }
 
 fn exec_env() -> Result<(), AppError> {
-    let runtime = Runtime::prepare()?;
+    let runtime = Runtime::prepare_with_yazi()?;
     let mut command = Command::new(YZX_ENV_SUPERVISOR);
     command.arg(YZX_SHELL);
     runtime.apply(&mut command);
@@ -109,9 +110,16 @@ fn exec_run(args: Vec<OsString>) -> Result<(), AppError> {
             "Usage: yzx run <program> [args...]\n".to_string(),
         ));
     };
-    let runtime = Runtime::prepare()?;
+    let needs_yazi = program == "ya" || program == "yazi";
+    let runtime = if needs_yazi {
+        Runtime::prepare_with_yazi()?
+    } else {
+        Runtime::prepare()?
+    };
     let mut command = if program == "ya" {
-        Command::new(YZX_YA)
+        Command::new(runtime.yazi().ya())
+    } else if program == "yazi" {
+        Command::new(YZX_YAZI)
     } else {
         Command::new(program)
     };
@@ -121,10 +129,12 @@ fn exec_run(args: Vec<OsString>) -> Result<(), AppError> {
 }
 
 fn exec_reveal(args: Vec<OsString>) -> Result<(), AppError> {
+    let yazi = YaziRuntime::resolve()?;
+    yazi.warn();
     let mut command = Command::new(YZX_REVEAL);
     command
         .args(args)
-        .env("YZX_YA", YZX_YA)
+        .env("YZX_YA", yazi.ya())
         .env("YZX_ZELLIJ", ZELLIJ)
         .env("PATH", runtime_path());
     exec(command, "yzx reveal")
@@ -141,7 +151,7 @@ fn exec_screen(args: Vec<OsString>) -> Result<(), AppError> {
 
 fn exec_managed(through_mars: bool, zellij_args: Vec<OsString>) -> Result<(), AppError> {
     let program = managed_program(through_mars, MARS)?;
-    let runtime = Runtime::prepare()?;
+    let runtime = Runtime::prepare_with_yazi()?;
     let mut command = Command::new(program);
     if through_mars {
         command.arg("-e").arg(YZX_WELCOME).arg(ZELLIJ);

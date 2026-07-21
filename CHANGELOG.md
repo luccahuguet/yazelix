@@ -4,10 +4,20 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## Unreleased
 
+- Package outputs follow the explicit
+  `yazelix[-no-mars][-no-helix][-no-yazi]` matrix. The previous `runtime`
+  names are replaced by `no-mars` names without aliases. `no-yazi` variants
+  omit the managed Yazi closure while retaining Nova's launcher,
+  configuration, sidebar, popup, opener, reveal, editor, and Zellij
+  integration. They resolve one host `yazi`/`ya` pair, reject missing or
+  mismatched pairs, warn when a matching pair differs from Nova's tested
+  version, and leave optional preview dependencies host-owned. Home Manager
+  selects these variants through the existing `programs.yazelix.package`
+  option.
 - CPU and RAM status widgets recover automatically when a sampler exits while
   holding their shared-cache lock, preventing `??%` from persisting while
   concurrent tab bars continue to share one sampler.
-- The `runtime-no-helix` package and app provide the complete `yzx enter`
+- The `yazelix-no-mars-no-helix` package and app provide the complete `yzx enter`
   workspace for host terminals and host-installed editors without retaining
   Mars, Rio, desktop assets, managed Helix, Steel, or packaged grammars.
 - The guided tutor separates workspace roots, file flow, pane arrangement, and
@@ -103,7 +113,7 @@ User-visible runtime changes for Yazelix Nova live here.
   current`. The default field list sizes status and setting from the selected
   tab, then gives the remaining cells to value, so structured previews use the
   popup width without shifting during search.
-- Main-branch cache publishing builds all four package variants and Home Manager
+- Main-branch cache publishing builds all eight package variants and Home Manager
   `aarch64-darwin` closures on `macos-15`, publishes them to the Yazelix
   Cachix cache, and verifies each top-level narinfo after upload.
 - The Linux desktop entry describes Yazelix as an integrated terminal workspace
