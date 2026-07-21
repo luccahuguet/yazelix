@@ -7,7 +7,7 @@ ConditionPathIsExecutable=/home/flexnetos/.nix-profile/bin/kache
 ConditionPathIsExecutable=/home/flexnetos/.nix-profile/bin/fxrun-actions
 
 [Service]
-Type=oneshot
+Type=exec
 Environment=SHELL=/home/flexnetos/.nix-profile/toolbin/nu
 Environment=HOME=/run/user/1001/yazelix/runners/%i/home
 Environment=XDG_CACHE_HOME=/run/user/1001/yazelix/runners/%i/xdg_cache
@@ -24,7 +24,13 @@ ExecStartPre=/home/flexnetos/.nix-profile/bin/flexnetos_runner_policy runtime %i
 ExecStart=/home/flexnetos/.nix-profile/bin/flexnetos_runner_service %i
 StandardOutput=null
 StandardError=null
-Restart=no
+# Per-job ephemeral (each job gets a fresh JIT runner), but the service is
+# persistent: after a job the runner exits and systemd restarts it, re-running
+# ExecStartPre to re-materialize the runner tree and register a new JIT runner.
+# This is the GitHub-recommended ephemeral-plus-always-restart pattern and keeps
+# the fork-PR isolation posture (one job per runner registration).
+Restart=always
+RestartSec=3
 
 [Install]
 WantedBy=default.target

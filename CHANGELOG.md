@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Make the profile-owned self-hosted runner service persistent: change
+  `flexnetos_runner@.service` from `Type=oneshot`/`Restart=no` to
+  `Type=exec`/`Restart=always` (RestartSec=3). Each job still runs on a fresh
+  ephemeral JIT runner (fork-PR isolation preserved), but after a job the
+  service restarts, re-materializes the runner tree via `ExecStartPre`, and
+  registers the next JIT runner, so the local runner stays available to serve
+  CI instead of stopping after a single job.
 - Disable Nix XDG base directories (`use-xdg-base-directories = false` in the
   profile-owned `host-policy/nix.conf`) so Nix keeps its per-user profile at
   `~/.nix-profile` and never re-materializes the retired user XDG profile
