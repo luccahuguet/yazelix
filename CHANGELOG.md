@@ -4,6 +4,9 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## Unreleased
 
+- CPU and RAM status widgets recover automatically when a sampler exits while
+  holding their shared-cache lock, preventing `??%` from persisting while
+  concurrent tab bars continue to share one sampler.
 - The `runtime-no-helix` package and app provide the complete `yzx enter`
   workspace for host terminals and host-installed editors without retaining
   Mars, Rio, desktop assets, managed Helix, Steel, or packaged grammars.
