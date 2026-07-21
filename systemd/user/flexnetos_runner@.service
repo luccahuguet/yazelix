@@ -10,7 +10,10 @@ ConditionPathIsExecutable=/home/flexnetos/.nix-profile/bin/fxrun-actions
 Type=exec
 Environment=SHELL=/home/flexnetos/.nix-profile/toolbin/nu
 Environment=HOME=/run/user/1001/yazelix/runners/%i/home
+Environment=XDG_DATA_HOME=/home/flexnetos/meta/var/lib
+Environment=XDG_STATE_HOME=/home/flexnetos/meta/var/lib
 Environment=XDG_CACHE_HOME=/run/user/1001/yazelix/runners/%i/xdg_cache
+Environment=YAZELIX_STATE_DIR=/run/user/1001/yazelix/runners/%i/yazelix
 Environment=CARGO_HOME=/run/user/1001/yazelix/runners/%i/cargo_home
 Environment=CARGO_TARGET_DIR=/run/user/1001/yazelix/runners/%i/cargo_target
 Environment=KACHE_BIN=/home/flexnetos/.nix-profile/bin/kache
@@ -19,7 +22,7 @@ Environment=RUSTC_WRAPPER=/home/flexnetos/.nix-profile/bin/kache-rustc-wrapper
 Environment=CARGO_BUILD_RUSTC_WRAPPER=/home/flexnetos/.nix-profile/bin/kache-rustc-wrapper
 Environment=GH_CONFIG_DIR=/home/flexnetos/.config/gh
 Environment=CODEX_HOME=/run/user/1001/yazelix/profile-runtime/codex
-Environment=CLAUDE_CONFIG_DIR=/run/user/1001/yazelix/profile-runtime/claude
+Environment=CLAUDE_CONFIG_DIR=/home/flexnetos/meta/var/lib/claude
 ExecStartPre=/home/flexnetos/.nix-profile/bin/flexnetos_runner_policy runtime %i
 ExecStart=/home/flexnetos/.nix-profile/bin/flexnetos_runner_service %i
 StandardOutput=null

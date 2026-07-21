@@ -23,6 +23,9 @@ That volatile directory is created and secured by the profile-owned runtime
 service and frontdoors.
 Non-foundation packages use `YAZELIX_STATE_DIR` or
 `${XDG_RUNTIME_DIR}/yazelix`; they do not fall back to durable home storage.
+The foundation frontdoors also fix `XDG_DATA_HOME` and `XDG_STATE_HOME` to
+`/home/flexnetos/meta/var/lib`, and `XDG_CACHE_HOME` to the volatile Yazelix
+cache. Inherited XDG values cannot establish a competing tool-state owner.
 
 ## Codex configuration and rules
 
@@ -40,7 +43,7 @@ independent pathnames, so publication uses a durable recovery journal and
 rollback copies rather than claiming a two-path atomic rename. If interrupted
 after one replacement, the next invocation restores the exact prior pair before
 continuing. The profile-owned `codex` wrapper fixes `CODEX_HOME` to
-`~/.nix-profile/runtime/codex` and writes `config.toml` and `RULES.md` there
+`/run/user/1001/yazelix/profile-runtime/codex` and writes `config.toml` and `RULES.md` there
 with exact source hashes and do-not-edit markers.
 
 For `config.toml`, every top-level key or table declared by the reviewed source
@@ -56,7 +59,9 @@ generated pair, runs `yazelix_codex_materialize`, and checks
 `tests/codex_config_provenance.nu` before the installed runtime starts.
 
 The profile-owned `claude` wrapper applies the same boundary through
-`CLAUDE_CONFIG_DIR=/run/user/1001/yazelix/profile-runtime/claude`. Reviewed
+`CLAUDE_CONFIG_DIR=/home/flexnetos/meta/var/lib/claude`. Unlike Codex, whose
+state is volatile, Claude's home is durable under Meta so sessions and history
+persist across reboots; reviewed config is still re-materialized on each launch. Reviewed
 `settings.json`, `CLAUDE.md`, and `RTK.md` inputs live in
 `agent_configs/claude/`; the profile installs them and
 `yazelix_claude_materialize`, then the wrapper publishes exact copies before

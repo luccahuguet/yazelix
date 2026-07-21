@@ -822,6 +822,24 @@
       flexnetosPython = pkgs.python3.withPackages (pythonPackages: [
         pythonPackages.pyyaml
       ]);
+      profileEnvironmentFrontdoor = name: payload: nuApplication name ./nushell/system/profile_environment_frontdoor.nu {
+        tool = name;
+        inherit payload;
+        realHome = "/home/flexnetos";
+        dataHome = "/home/flexnetos/meta/var/lib";
+        stateHome = "/home/flexnetos/meta/var/lib";
+        cacheHome = "/run/user/1001/yazelix/volatile/cache";
+        runtimeDir = "/run/user/1001";
+        yazelixStateDir = "/run/user/1001/yazelix/profile-runtime/yazelix";
+        profileNu = "/home/flexnetos/.nix-profile/toolbin/nu";
+        chmod = "${pkgs.coreutils}/bin/chmod";
+      };
+      flexnetosNuFrontdoor = profileEnvironmentFrontdoor "nu" "${pkgs.nushell}/bin/nu";
+      flexnetosRtkFrontdoor = profileEnvironmentFrontdoor "rtk" "${flexnetosRtk}/bin/rtk";
+      flexnetosRtkNuFrontdoor = profileEnvironmentFrontdoor "rtk_nu" "${flexnetosRtk}/bin/rtk_nu";
+      flexnetosCodexOwnedFrontdoor = profileEnvironmentFrontdoor "codex" "${flexnetosCodexFrontdoor}/bin/codex";
+      flexnetosClaudeOwnedFrontdoor = profileEnvironmentFrontdoor "claude" "${flexnetosClaudeFrontdoor}/bin/claude";
+      flexnetosIcmOwnedFrontdoor = profileEnvironmentFrontdoor "icm" "${flexnetosIcmFrontdoor}/bin/icm";
       flexnetosExecutables = {
         Xvfb = "${pkgs.xorg-server}/bin/Xvfb";
         actionlint = "${pkgs.actionlint}/bin/actionlint";
@@ -846,11 +864,11 @@
         clang = "${pkgs.clang}/bin/clang";
         "clang++" = "${pkgs.clang}/bin/clang++";
         chmod = "${pkgs.coreutils}/bin/chmod";
-        claude = "${flexnetosClaudeFrontdoor}/bin/claude";
+        claude = "${flexnetosClaudeOwnedFrontdoor}/bin/claude";
         clippy-driver = "${flexnetosRustToolchain}/bin/clippy-driver";
         cmake = "${pkgs.cmake}/bin/cmake";
         codedb = flexnetosCodedb;
-        codex = "${flexnetosCodexFrontdoor}/bin/codex";
+        codex = "${flexnetosCodexOwnedFrontdoor}/bin/codex";
         cp = "${pkgs.coreutils}/bin/cp";
         curl = "${pkgs.curl}/bin/curl";
         cut = "${pkgs.coreutils}/bin/cut";
@@ -874,7 +892,7 @@
         gzip = "${pkgs.gzip}/bin/gzip";
         head = "${pkgs.coreutils}/bin/head";
         home-manager = "${home-manager.packages.${system}.default}/bin/home-manager";
-        icm = "${flexnetosIcmFrontdoor}/bin/icm";
+        icm = "${flexnetosIcmOwnedFrontdoor}/bin/icm";
         jq = "${pkgs.jq}/bin/jq";
         kache = "${flexnetosKache}/bin/kache";
         kache-rustc-wrapper = "${flexnetosKache}/bin/kache-rustc-wrapper";
@@ -899,7 +917,7 @@
         ln = "${pkgs.coreutils}/bin/ln";
         notebooklm = "${flexnetosNotebooklm}/bin/notebooklm";
         nvim = "${pkgs.neovim}/bin/nvim";
-        nu = "${pkgs.nushell}/bin/nu";
+        nu = "${flexnetosNuFrontdoor}/bin/nu";
         nu_plugin_codedb = flexnetosNuPluginCodedb;
         obscura = "${flexnetosObscura}/bin/obscura";
         openssl = "${pkgs.openssl}/bin/openssl";
@@ -909,7 +927,7 @@
         realpath = "${pkgs.coreutils}/bin/realpath";
         rg = "${pkgs.ripgrep}/bin/rg";
         rm = "${pkgs.coreutils}/bin/rm";
-        rtk = "${flexnetosRtk}/bin/rtk";
+        rtk = "${flexnetosRtkFrontdoor}/bin/rtk";
         scp = "${pkgs.openssh}/bin/scp";
         sed = "${pkgs.gnused}/bin/sed";
         sh = "${pkgs.bash}/bin/sh";
@@ -917,7 +935,7 @@
         sort = "${pkgs.coreutils}/bin/sort";
         ssh = "${pkgs.openssh}/bin/ssh";
         stat = "${pkgs.coreutils}/bin/stat";
-        rtk_nu = "${flexnetosRtk}/bin/rtk_nu";
+        rtk_nu = "${flexnetosRtkNuFrontdoor}/bin/rtk_nu";
         systemctl = "${pkgs.systemd}/bin/systemctl";
         rust-analyzer = "${flexnetosRustToolchain}/bin/rust-analyzer";
         rustc = "${flexnetosRustToolchain}/bin/rustc";
@@ -1079,7 +1097,7 @@
         def --wrapped main [...args] {
           if (\$args | is-empty) {
             let profile = "/home/flexnetos/.nix-profile"
-            let claude_home = "/run/user/1001/yazelix/profile-runtime/claude"
+            let claude_home = "/home/flexnetos/meta/var/lib/claude"
             exec ${pkgs.nushell}/bin/nu \
               "$out/share/yazelix/nushell/scripts/materialize_claude_config.nu" \
               (\$profile | path join "share/yazelix/agent_configs/claude/settings.json.src") \
@@ -1097,14 +1115,14 @@
       '';
       flexnetosCodexFrontdoor = nuApplication "codex" ./nushell/agent/profile_frontdoor.nu {
         agent = "codex";
-        runtimeTarget = "/run/user/1001/yazelix/profile-runtime";
+        stateHome = "/run/user/1001/yazelix/profile-runtime/codex";
         payload = "${flexnetosCodex}/bin/codex";
         materializer = "/home/flexnetos/.nix-profile/bin/yazelix_codex_materialize";
         chmod = "${pkgs.coreutils}/bin/chmod";
       };
       flexnetosClaudeFrontdoor = nuApplication "claude" ./nushell/agent/profile_frontdoor.nu {
         agent = "claude";
-        runtimeTarget = "/run/user/1001/yazelix/profile-runtime";
+        stateHome = "/home/flexnetos/meta/var/lib/claude";
         payload = "${flexnetosClaude}/bin/claude";
         materializer = "/home/flexnetos/.nix-profile/bin/yazelix_claude_materialize";
         chmod = "${pkgs.coreutils}/bin/chmod";
@@ -1166,6 +1184,8 @@
           install -D -m 644 ${./nushell/config/stack_prompt_guard.nu} "$out/nushell/config/stack_prompt_guard.nu"
           install -D -m 644 ${./nushell/config/rtk_wrappers.nu} "$out/nushell/config/rtk_wrappers.nu"
           install -D -m 644 ${./nushell/scripts/flexnetos_init.nu} "$out/nushell/scripts/flexnetos_init.nu"
+          install -D -m 644 ${./nushell/system/profile_environment_frontdoor.nu} \
+            "$out/nushell/system/profile_environment_frontdoor.nu"
 
           for icon in ${marsPackage}/share/icons/hicolor/*/apps/mars.png; do
             size="$(basename "$(dirname "$(dirname "$icon")")")"
@@ -1296,6 +1316,16 @@
         ${pkgs.nushell}/bin/nu ${./tests/profile_agent_frontdoor.nu} \
           "$TMPDIR/profile-agent-frontdoors" \
           ${./nushell/agent/profile_frontdoor.nu} \
+          ${pkgs.nushell}/bin/nu \
+          ${pkgs.coreutils}/bin/chmod
+        touch "$out"
+      '';
+      profile_environment_frontdoor = pkgs.runCommand "profile-environment-frontdoor" {
+        nativeBuildInputs = [pkgs.nushell pkgs.coreutils];
+      } ''
+        ${pkgs.nushell}/bin/nu ${./tests/profile_environment_frontdoor.nu} \
+          "$TMPDIR/profile-environment-frontdoor" \
+          ${./nushell/system/profile_environment_frontdoor.nu} \
           ${pkgs.nushell}/bin/nu \
           ${pkgs.coreutils}/bin/chmod
         touch "$out"
@@ -1692,7 +1722,9 @@
         test -f ${foundation}/nushell/config/stack_prompt_guard.nu
         test -f ${foundation}/nushell/config/rtk_wrappers.nu
         test -f ${foundation}/nushell/scripts/flexnetos_init.nu
+        test -f ${foundation}/nushell/system/profile_environment_frontdoor.nu
         grep -F 'use rtk_wrappers.nu *' ${foundation}/nushell/config/config.nu
+        grep -F 'XDG_DATA_HOME = $DATA_HOME' ${foundation}/nushell/system/profile_environment_frontdoor.nu
         grep -F 'source "${flexnetosNuConfig}"' ${foundation}/share/yazelix/nu/config.nu
         grep -F ${./nushell/scripts/flexnetos_init.nu} ${flexnetosNuConfig}
         ${pkgs.file}/bin/file -L ${foundation}/bin/kache-rustc-wrapper | grep -F ELF
@@ -1704,7 +1736,10 @@
         grep -Fx 'Environment=SHELL=/home/flexnetos/.nix-profile/toolbin/nu' "$runner_unit"
         grep -Fx 'Environment=KACHE_CACHE_DIR=/home/flexnetos/.cache/kache/runners/%i' "$runner_unit"
         grep -Fx 'Environment=CODEX_HOME=/run/user/1001/yazelix/profile-runtime/codex' "$runner_unit"
-        grep -Fx 'Environment=CLAUDE_CONFIG_DIR=/run/user/1001/yazelix/profile-runtime/claude' "$runner_unit"
+        grep -Fx 'Environment=CLAUDE_CONFIG_DIR=/home/flexnetos/meta/var/lib/claude' "$runner_unit"
+        grep -Fx 'Environment=XDG_DATA_HOME=/home/flexnetos/meta/var/lib' "$runner_unit"
+        grep -Fx 'Environment=XDG_STATE_HOME=/home/flexnetos/meta/var/lib' "$runner_unit"
+        grep -Fx 'Environment=YAZELIX_STATE_DIR=/run/user/1001/yazelix/runners/%i/yazelix' "$runner_unit"
         YAZELIX_HOST_POLICY_ROOT=${foundation}/share/yazelix/host-policy \
           ${foundation}/bin/yazelix_host_policy check-bundle
         host_policy_test_root="$TMPDIR/host-policy-root"
@@ -1738,6 +1773,9 @@
         grep -Fx 'ExecStart=/home/flexnetos/.nix-profile/bin/yazelix_volatile_runtime ensure' ${foundation}/lib/systemd/user/yazelix_volatile_runtime.service
         volatile_env=${foundation}/share/yazelix/environment.d/10-yazelix-volatile.conf
         grep -Fx 'XDG_CACHE_HOME=/run/user/1001/yazelix/volatile/cache' "$volatile_env"
+        grep -Fx 'XDG_DATA_HOME=/home/flexnetos/meta/var/lib' "$volatile_env"
+        grep -Fx 'XDG_STATE_HOME=/home/flexnetos/meta/var/lib' "$volatile_env"
+        grep -Fx 'YAZELIX_STATE_DIR=/run/user/1001/yazelix/profile-runtime/yazelix' "$volatile_env"
         grep -Fx 'TMPDIR=/run/user/1001/yazelix/volatile/tmp' "$volatile_env"
         grep -Fx 'KACHE_CACHE_DIR=/home/flexnetos/.cache/kache' "$volatile_env"
         grep -Fx 'RUSTC_WRAPPER=/home/flexnetos/.nix-profile/bin/kache-rustc-wrapper' "$volatile_env"

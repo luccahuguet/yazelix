@@ -5,7 +5,8 @@
 `/home/flexnetos/.nix-profile` is the sole installed binary, configuration,
 state, cache, runtime, launcher, and compatibility frontdoor for Claude,
 Codex, and Yazelix. The profile-owned Claude frontdoor generates reviewed
-configuration into `/run/user/1001/yazelix/profile-runtime/claude`. Never
+configuration into `/home/flexnetos/meta/var/lib/claude`, the durable
+profile-owned Claude home where sessions and history also persist. Never
 create or use a parallel home-owned agent directory, raw store payload, or
 generated source tree as an active owner.
 

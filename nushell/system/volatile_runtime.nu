@@ -40,7 +40,6 @@ const VOLATILE_DIRS = [
     "/run/user/1001/yazelix/profile-runtime"
     "/run/user/1001/yazelix/profile-runtime/yazelix"
     "/run/user/1001/yazelix/profile-runtime/codex"
-    "/run/user/1001/yazelix/profile-runtime/claude"
     "/run/user/1001/yazelix/volatile/cache"
     "/run/user/1001/yazelix/volatile/tmp"
     "/run/user/1001/yazelix/volatile/cargo-home"
@@ -127,7 +126,7 @@ def ensure [] {
     for path in $VOLATILE_DIRS {
         mkdir $path
     }
-    for path in [$PROFILE_RUNTIME_ROOT ($PROFILE_RUNTIME_ROOT | path join "yazelix") ($PROFILE_RUNTIME_ROOT | path join "codex") ($PROFILE_RUNTIME_ROOT | path join "claude")] {
+    for path in [$PROFILE_RUNTIME_ROOT ($PROFILE_RUNTIME_ROOT | path join "yazelix") ($PROFILE_RUNTIME_ROOT | path join "codex")] {
         ^/home/flexnetos/.nix-profile/bin/chmod 0700 $path
     }
     for route in $VOLATILE_ROUTES {

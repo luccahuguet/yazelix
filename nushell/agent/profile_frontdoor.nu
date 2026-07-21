@@ -1,11 +1,14 @@
 # Profile-owned Codex/Claude launcher.
 #
 # This file is rendered twice by flake.nix. The installed wrapper is the only
-# supported frontdoor; it owns mutable state at the approved volatile runtime
-# target and never through a home-root compatibility directory.
+# supported frontdoor; it owns mutable state at the approved profile-owned state
+# home — volatile under the runtime root for Codex, durable under Meta for
+# Claude — and never through a home-root compatibility directory. The state home
+# is passed in whole (not derived from a shared parent) so the frontdoor secures
+# exactly that directory and never reaches up to chmod a shared data root.
 
 const AGENT = "@agent@"
-const RUNTIME_TARGET = "@runtimeTarget@"
+const STATE_HOME = "@stateHome@"
 const PAYLOAD = "@payload@"
 const MATERIALIZER = "@materializer@"
 const CHMOD = "@chmod@"
@@ -16,14 +19,11 @@ def fail [message: string] {
 }
 
 def ensure-runtime [] {
-    mkdir $RUNTIME_TARGET
-    let state_home = ($RUNTIME_TARGET | path join $AGENT)
+    let state_home = $STATE_HOME
     mkdir $state_home
-    for directory in [$RUNTIME_TARGET $state_home] {
-        let mode = (do { ^$CHMOD 0700 $directory } | complete)
-        if $mode.exit_code != 0 {
-            fail $"unable to secure runtime directory: ($directory)"
-        }
+    let mode = (do { ^$CHMOD 0700 $state_home } | complete)
+    if $mode.exit_code != 0 {
+        fail $"unable to secure runtime directory: ($state_home)"
     }
     $state_home
 }

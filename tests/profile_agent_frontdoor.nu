@@ -54,12 +54,11 @@ def main [
 ' $chmod_bin
 
     let common = {
-        runtimeTarget: ($runtime | into string)
         payload: ($payload | into string)
         chmod: ($chmod_bin | into string)
     }
     let codex = ($root | path join "codex")
-    render $source $codex ($common | merge {agent: "codex", materializer: ($materializer | into string)})
+    render $source $codex ($common | merge {agent: "codex", stateHome: ($runtime | path join "codex" | into string), materializer: ($materializer | into string)})
     let codex_result = (do { ^$nu_bin $codex "resume" "fixture" } | complete)
     expect ($codex_result.exit_code == 0) $"Codex wrapper failed: ($codex_result.stderr)"
     let codex_report = ($codex_result.stdout | from json)
@@ -75,11 +74,11 @@ def main [
 
     rm --force $marker
     let claude = ($root | path join "claude")
-    render $source $claude ($common | merge {agent: "claude", materializer: ($materializer | into string)})
+    render $source $claude ($common | merge {agent: "claude", stateHome: ($runtime | path join "claude" | into string), materializer: ($materializer | into string)})
     let claude_result = (do { ^$nu_bin $claude "--resume" } | complete)
     expect ($claude_result.exit_code == 0) $"Claude wrapper failed: ($claude_result.stderr)"
     let claude_report = ($claude_result.stdout | from json)
-    expect ($claude_report.claude_config_dir == ($runtime | path join "claude" | into string)) "Claude state escaped the profile-owned volatile runtime"
+    expect ($claude_report.claude_config_dir == ($runtime | path join "claude" | into string)) "Claude state escaped the profile-owned state home"
     expect $claude_report.materialized "Claude payload ran before configuration materialization"
     expect ($claude_report.args == ["--resume"]) "Claude wrapper did not preserve arguments"
     expect ((mode ($runtime | path join "claude")) == "rwx------") "Claude runtime mode is not 0700"
