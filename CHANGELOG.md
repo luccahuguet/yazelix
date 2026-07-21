@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Disable Nix XDG base directories (`use-xdg-base-directories = false` in the
+  profile-owned `host-policy/nix.conf`) so Nix keeps its per-user profile at
+  `~/.nix-profile` and never re-materializes the retired user XDG profile
+  selector on daemon activity. This keeps `yazelix_profile_check`'s
+  `legacy_xdg_inactive` clause green across `nix` operations instead of
+  flapping, with no active user XDG state layer.
 - Add read-only `yzx inspect` human and schema-1 JSON receipts for the invoked
   and resolved profile frontdoor, runtime/config/state ownership, local shadow
   detection, and current session identity.
