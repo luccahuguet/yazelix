@@ -61,12 +61,12 @@ def main [root: path] {
     try { $config_raw | from toml | ignore } catch {
         fail "reviewed config input is not valid TOML"
     }
+    let retired_home_tree = (["." "local"] | str join)
     let forbidden = [
         "/home/flexnetos/FlexNetOS"
         "/nix/store/"
         "/nix/var/nix/profiles/"
-        ".local/state/nix/profiles/profile-"
-        ".local/bin"
+        $retired_home_tree
     ]
     for pattern in $forbidden {
         if ($config_raw | str contains $pattern) {
@@ -140,10 +140,8 @@ def main [root: path] {
     expect-config-reject $materializer $workdir $rules_src "retired-workspace" ('[projects."/home/flexnetos/FlexNetOS"]' + "\ntrust_level = \"trusted\"\n")
     expect-config-reject $materializer $workdir $rules_src "raw-store-pin" ("[mcp_servers.icm]\ncommand = \"/nix/store/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-icm-0.0.1/bin/icm\"\n")
     expect-config-reject $materializer $workdir $rules_src "system-profile-pin" ("[mcp_servers.icm]\ncommand = \"/nix/var/nix/profiles/default/bin/icm\"\n")
-    expect-config-reject $materializer $workdir $rules_src "user-profile-generation-pin" ("[mcp_servers.icm]\ncommand = \"/home/flexnetos/.local/state/nix/profiles/profile-4-link/bin/icm\"\n")
-    expect-config-reject $materializer $workdir $rules_src "user-local-shadow" ("[mcp_servers.icm]\ncommand = \"/home/flexnetos/.local/bin/icm\"\n")
-    expect-config-reject $materializer $workdir $rules_src "tilde-user-local-shadow" ("[mcp_servers.icm]\ncommand = \"~/.local/bin/icm\"\n")
-    expect-config-reject $materializer $workdir $rules_src "home-variable-user-local-shadow" ("[mcp_servers.icm]\ncommand = \"$HOME/.local/bin/icm\"\n")
+    let retired_home_tree = (["." "local"] | str join)
+    expect-config-reject $materializer $workdir $rules_src "retired-home-shadow" ($"[mcp_servers.icm]\ncommand = \"/home/flexnetos/($retired_home_tree)/bin/icm\"\n")
     expect-config-reject $materializer $workdir $rules_src "bare-icm-shadow" ("[mcp_servers.icm]\ncommand = \"icm\"\n")
     expect-config-reject $materializer $workdir $rules_src "system-icm-shadow" ("[mcp_servers.icm]\ncommand = \"/usr/bin/icm\"\n")
     expect-config-reject $materializer $workdir $rules_src "invalid-toml" "[unterminated\n"

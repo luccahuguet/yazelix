@@ -31,10 +31,7 @@ pub(crate) fn run(args: Vec<OsString>) -> Result<(), AppError> {
     };
 
     require_desktop_support()?;
-    let applications_dir = applications_dir(
-        nonempty_env("XDG_DATA_HOME").as_deref(),
-        nonempty_env("HOME").as_deref(),
-    )?;
+    let applications_dir = applications_dir(nonempty_env("XDG_DATA_HOME").as_deref())?;
     let desktop_path = applications_dir.join(DESKTOP_ENTRY_NAME);
 
     match command.to_string_lossy().as_ref() {
@@ -78,17 +75,13 @@ fn require_desktop_support() -> Result<(), AppError> {
     }
 }
 
-fn applications_dir(
-    xdg_data_home: Option<&OsStr>,
-    home: Option<&OsStr>,
-) -> Result<PathBuf, AppError> {
+fn applications_dir(xdg_data_home: Option<&OsStr>) -> Result<PathBuf, AppError> {
     xdg_data_home
         .map(PathBuf::from)
-        .or_else(|| home.map(|path| PathBuf::from(path).join(".local/share")))
         .map(|path| path.join("applications"))
         .ok_or_else(|| {
             startup(
-                "HOME is required when XDG_DATA_HOME is unset.",
+                "XDG_DATA_HOME is required for an explicit desktop copy.",
                 "yzx desktop install",
                 1,
             )
@@ -238,7 +231,7 @@ mod tests {
         env::temp_dir().join(format!("yzx_desktop_{}_{}", process::id(), nonce))
     }
 
-    // Defends: desktop install and uninstall use one user-local entry sourced from the package.
+    // Defends: an explicit XDG install and uninstall use one package-sourced entry.
     #[test]
     fn install_and_uninstall_manage_one_built_entry() {
         let root = fixture_root();

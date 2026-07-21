@@ -2,15 +2,15 @@
 #
 # Usage:
 #   nu tests/codex_config_provenance.nu <repo-root>
-#   nu tests/codex_config_provenance.nu <repo-root> --config-home <staged-codex-home>
+#   nu tests/codex_config_provenance.nu <repo-root> --config-home <staged-profile-runtime>
 #
 # Every clause is evaluated. The gate exits nonzero if any clause fails.
 
 def main [
     root: path
-    --config-home: path = "/home/flexnetos/.codex"
-    --deployed-config-src: path = "/home/flexnetos/.config/yazelix/agents/codex/config.toml.src"
-    --deployed-rules-src: path = "/home/flexnetos/.config/yazelix/agents/codex/RULES.md.src"
+    --config-home: path = "/home/flexnetos/.nix-profile/runtime/codex"
+    --deployed-config-src: path = "/home/flexnetos/.nix-profile/share/yazelix/agent_configs/codex/config.toml.src"
+    --deployed-rules-src: path = "/home/flexnetos/.nix-profile/share/yazelix/agent_configs/codex/RULES.md.src"
 ] {
     let materializer = ($root | path join "nushell/scripts/materialize_codex_config.nu")
     let repo_config_src = ($root | path join "agent_configs/codex/config.toml.src")
@@ -171,12 +171,12 @@ def main [
 
     if ($live_config | path exists) {
         let raw = (open --raw $live_config)
+        let retired_home_tree = (["." "local"] | str join)
         let forbidden = [
             "/home/flexnetos/FlexNetOS"
             "/nix/store/"
             "/nix/var/nix/profiles/"
-            ".local/state/nix/profiles/profile-"
-            ".local/bin"
+            $retired_home_tree
         ]
         let hits = ($forbidden | where {|pattern| $raw | str contains $pattern })
         if ($hits | is-empty) {

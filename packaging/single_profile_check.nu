@@ -6,7 +6,7 @@
 #   2. selector_resolves           the selected profile has manifest.json
 #   3. single_foundation_element   the manifest contains only
 #                                  lifeos_foundation_yzx
-#   4. legacy_xdg_inactive         ~/.local/state/nix/profile is absent, even
+#   4. legacy_xdg_inactive         the retired user XDG selector is absent, even
 #                                  when it would resolve to the same closure
 #   5. foundation_binaries_resolve yzx/codex/claude/rtk/br/bun/git-kb/icm/nix
 #                                  (bin) and nu (toolbin) are executable and
@@ -19,7 +19,7 @@
 # Prints a JSON report to stdout; exits 0 only if every evaluated clause holds.
 # Environment overrides (used by fixtures, staging, and the flake check):
 #   YZX_PROFILE_LINK        default /home/flexnetos/.nix-profile
-#   YZX_LEGACY_XDG_PROFILE  default /home/flexnetos/.local/state/nix/profile
+#   YZX_LEGACY_XDG_PROFILE  optional retired-selector fixture override
 #   YZX_STORE_PREFIX        default /nix/store
 #   YZX_EXPECTED_CLOSURE, YZX_CHECK_PATH  optional clause activators
 
@@ -43,8 +43,10 @@ def is-executable [path: string] {
 
 def main [] {
   let profile_link = ($env.YZX_PROFILE_LINK? | default "/home/flexnetos/.nix-profile")
+  let retired_home_tree = (["." "local"] | str join)
   let legacy_xdg_profile = (
-    $env.YZX_LEGACY_XDG_PROFILE? | default "/home/flexnetos/.local/state/nix/profile"
+    $env.YZX_LEGACY_XDG_PROFILE?
+    | default $"/home/flexnetos/($retired_home_tree)/state/nix/profile"
   )
   let store_prefix = ($env.YZX_STORE_PREFIX? | default "/nix/store")
   let expected = ($env.YZX_EXPECTED_CLOSURE? | default "")

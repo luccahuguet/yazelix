@@ -14,7 +14,7 @@ VERDICT: GO
 6. Add a fail-closed source/runtime policy check and wire it into flake checks.
 7. Update the changelog, development contract, and LOC scorecard.
 8. Evaluate/build only. Do not activate the profile, enable runners, edit
-   generated `~/.local/share/yazelix`, push, or bypass the manual dogfood gate.
+   generated profile runtime, push, or bypass the manual dogfood gate.
 
 Final activation is blocked until the runner repository publishes its
 Kache-only/Nushell-only commit and this flake pin advances to that immutable

@@ -1,10 +1,10 @@
-# Codex config — reviewed editable input (YZXCONV-004).
-# Edit here, never in $CODEX_HOME/config.toml (that file is generated).
-#   deploy surface : ~/.config/yazelix/agents/codex/config.toml.src
+# Codex config — reviewed repository input (YZXCONV-004).
+# The installed profile materializes this into CODEX_HOME/config.toml.
 #   review surface : agent_configs/codex/config.toml.src (yazelix repo)
+#   installed input: profile share/yazelix/agent_configs/codex/config.toml.src
 #   materializer   : nushell/scripts/materialize_codex_config.nu
-# Runtime/state home stays CODEX_HOME=/home/flexnetos/.codex; auth.json,
-# sessions/, and *.sqlite* are runtime state, never authored here.
+# The installed launcher fixes runtime state beneath the profile runtime link;
+# auth, sessions, and databases are never authored here.
 # Binaries are referenced through ~/.nix-profile (the sole selector) — raw
 # /nix/store pins and retired workspace paths are rejected fail-closed.
 

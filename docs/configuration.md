@@ -12,38 +12,33 @@ Home Manager-owned configuration as declarative
 ~/.config/yazelix/
 ```
 
-Set `YAZELIX_CONFIG_HOME` to use another root. Generated runtime state
-defaults to:
+Set `YAZELIX_CONFIG_HOME` to use another source-input root. The FlexNetOS
+foundation fixes generated runtime state to:
 
 ```text
-${XDG_DATA_HOME:-$HOME/.local/share}/yazelix
+/home/flexnetos/.nix-profile/runtime/yazelix
 ```
 
-Set `YAZELIX_STATE_DIR` to use another state directory
+That profile link resolves into `/run/user/1001/yazelix/profile-runtime`.
+Non-foundation packages use `YAZELIX_STATE_DIR` or
+`${XDG_RUNTIME_DIR}/yazelix`; they do not fall back to durable home storage.
 
 ## Codex configuration and rules
 
 FlexNetOS reviews Codex configuration and durable operating rules in
-`agent_configs/codex/`. Their user-editable deploy copies live at:
-
-```text
-~/.config/yazelix/agents/codex/config.toml.src
-~/.config/yazelix/agents/codex/RULES.md.src
-```
-
-The profile installs immutable review copies under
+`agent_configs/codex/`. The profile installs those immutable inputs under
 `~/.nix-profile/share/yazelix/agent_configs/codex/`, the materializer under
 `~/.nix-profile/share/yazelix/nushell/scripts/`, and the executable
-`~/.nix-profile/bin/yazelix_codex_materialize`. Copy a reviewed input into the
-editable tree only as a deliberate source update; the profile copy is not an
-alternate editable owner.
+`~/.nix-profile/bin/yazelix_codex_materialize`. Change the repository input and
+rebuild the profile; the installed copy is never an alternate editable owner.
 
 The materializer validates both inputs and completes both mode-`0644` staged
 files before replacing either live path. POSIX has no atomic rename for two
 independent pathnames, so publication uses a durable recovery journal and
 rollback copies rather than claiming a two-path atomic rename. If interrupted
 after one replacement, the next invocation restores the exact prior pair before
-continuing. It writes `config.toml` and `RULES.md` under `CODEX_HOME`
+continuing. The profile-owned `codex` wrapper fixes `CODEX_HOME` to
+`~/.nix-profile/runtime/codex` and writes `config.toml` and `RULES.md` there
 with exact source hashes and do-not-edit markers.
 
 For `config.toml`, every top-level key or table declared by the reviewed source
@@ -55,14 +50,17 @@ Auth, sessions, databases, and other non-config runtime state are untouched.
 The lexical selector must be exactly
 `/home/flexnetos/.nix-profile/bin/codex`; resolving to the same store payload
 through another path is not sufficient. An approved cutover archives the prior
-generated pair, runs `yazelix_codex_materialize`, checks
-`tests/codex_config_provenance.nu`, and retains the archive until the installed
-runtime starts successfully.
+generated pair, runs `yazelix_codex_materialize`, and checks
+`tests/codex_config_provenance.nu` before the installed runtime starts.
+
+The profile-owned `claude` wrapper applies the same boundary through
+`CLAUDE_CONFIG_DIR=~/.nix-profile/runtime/claude`. Both wrappers reject a
+competing inherited state owner before invoking their immutable payload.
 
 The profile selector itself must likewise be a direct, relative Nix generation:
-`/home/flexnetos/.nix-profile -> .nix-profile-<generation>-link`. An alias
-through `~/.local/state/nix/profile`, even when it resolves to identical store
-bytes, is a second ownership layer and fails the installed profile contract.
+`/home/flexnetos/.nix-profile -> .nix-profile-<generation>-link`. Any alias
+through a retired user XDG selector is a second ownership layer and fails the
+installed profile contract, even when it resolves to identical store bytes.
 
 ## Main settings
 

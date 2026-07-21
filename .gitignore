@@ -14,6 +14,5 @@ crates/*/target/
 /rust_plugins/
 
 # br local state
-/.beads/.local_version
 /.beads/interactions.jsonl
 /.beads/push-state.json

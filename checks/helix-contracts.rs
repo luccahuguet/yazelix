@@ -152,7 +152,7 @@ fn expect_helix_wrapper_config_selection(helix_script: &str) {
 
     let missing_owners = Command::new(&test_wrapper)
         .env_remove("YAZELIX_STATE_DIR")
-        .env_remove("XDG_DATA_HOME")
+        .env_remove("XDG_RUNTIME_DIR")
         .env_remove("YAZELIX_CONFIG_HOME")
         .env_remove("XDG_CONFIG_HOME")
         .env_remove("HOME")
@@ -164,7 +164,7 @@ fn expect_helix_wrapper_config_selection(helix_script: &str) {
     );
     expect_contains(
         &String::from_utf8_lossy(&missing_owners.stderr),
-        "HOME is required when YAZELIX_STATE_DIR and XDG_DATA_HOME are",
+        "YAZELIX_STATE_DIR or XDG_RUNTIME_DIR is required",
         "Helix wrapper state ownership diagnostic",
     );
 

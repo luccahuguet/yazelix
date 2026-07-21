@@ -246,8 +246,9 @@ Packaged first, unless a surface opts into native replacement.
   yazi/{yazi.toml,theme.toml,package.toml,init.lua,keymap.toml,plugins/,flavors/}
 ```
 
-Override root with `YAZELIX_CONFIG_HOME`.
-Runtime state defaults to `$XDG_DATA_HOME/yazelix` or `YAZELIX_STATE_DIR`.
+Override the source-input root with `YAZELIX_CONFIG_HOME`. Runtime state uses
+`YAZELIX_STATE_DIR` or `$XDG_RUNTIME_DIR/yazelix`; the FlexNetOS foundation
+fixes it beneath `/home/flexnetos/.nix-profile/runtime/yazelix`.
 
 | Surface | Layering |
 | --- | --- |

@@ -22,6 +22,7 @@ pub(crate) const ZELLIJ: &str = "@zellij@";
 pub(crate) const MARS: &str = "@mars@";
 pub(crate) const DESKTOP_ENTRY_SOURCE: &str = "@desktopEntrySource@";
 pub(crate) const DESKTOP_DATABASE_UPDATER: &str = "@desktopDatabaseUpdater@";
+pub(crate) const DEFAULT_STATE_DIR: &str = "@defaultStateDir@";
 pub(crate) const PACKAGE_VARIANT: &str = if MARS.is_empty() { "runtime" } else { "full" };
 pub(crate) const LAYOUT: &str = "@layout@";
 pub(crate) const LAYOUT_TEMPLATE: &str = "@layoutTemplate@";

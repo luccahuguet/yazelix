@@ -451,19 +451,19 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
         "editor=</nix/store/",
         "/bin/yzx-editor>",
     }
-    let data_home = temp.path.join("data-home");
+    let runtime_home = temp.path.join("runtime-home");
     let data_status = successful_stdout(
         Command::new(&yzx_bin)
             .arg("status")
             .env("YAZELIX_CONFIG_HOME", &status_case.config_home)
-            .env("XDG_DATA_HOME", &data_home)
+            .env("XDG_RUNTIME_DIR", &runtime_home)
             .env_remove("YAZELIX_STATE_DIR"),
-        "yzx status XDG data state",
+        "yzx status XDG runtime state",
     );
     expect_contains(
         &data_status,
-        &format!("state dir: {}", data_home.join("yazelix").display()),
-        "yzx status XDG data state",
+        &format!("state dir: {}", runtime_home.join("yazelix").display()),
+        "yzx status XDG runtime state",
     );
 
     let permissions = status_case.zellij_file("permissions.kdl");
@@ -1222,7 +1222,7 @@ fn run_nu_with_path(
         Command::new(yzx_nu)
             .arg("--commands")
             .arg(commands)
-            .env("XDG_DATA_HOME", runtime)
+            .env("XDG_RUNTIME_DIR", runtime)
             .env("YAZELIX_CONFIG_HOME", config_home)
             .env("YAZELIX_STATE_DIR", "")
             .env("STARSHIP_CONFIG", "ambient-starship.toml")
@@ -1405,7 +1405,7 @@ fn expect_yazi_alt_z(yzx: &Path) {
     assert!(materializer.is_file());
     let missing_state_owner = Command::new(&opener)
         .env_remove("YAZELIX_STATE_DIR")
-        .env_remove("XDG_DATA_HOME")
+        .env_remove("XDG_RUNTIME_DIR")
         .env_remove("HOME")
         .output()
         .unwrap();
@@ -1415,7 +1415,7 @@ fn expect_yazi_alt_z(yzx: &Path) {
     );
     expect_contains(
         &String::from_utf8_lossy(&missing_state_owner.stderr),
-        "HOME is required when YAZELIX_STATE_DIR and XDG_DATA_HOME are unset",
+        "YAZELIX_STATE_DIR or XDG_RUNTIME_DIR is required",
         "yzx-open state ownership diagnostic",
     );
     let context = format!("{} Yazi integration fragment", yzx_yazi.display());

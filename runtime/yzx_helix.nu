@@ -1,18 +1,28 @@
-def required_owned_dir [explicit: any, xdg: any, home: any, leaf: string, label: string, xdg_label: string] {
+def required_config_dir [explicit: any, xdg: any, home: any] {
     if (($explicit | default "") | is-not-empty) {
         $explicit
     } else if (($xdg | default "") | is-not-empty) {
         $"($xdg)/yazelix"
     } else if (($home | default "") | is-not-empty) {
-        $"($home)/($leaf)/yazelix"
+        $"($home)/.config/yazelix"
     } else {
-        error make {msg: $"yzx-hx: HOME is required when ($label) and ($xdg_label) are unset"}
+        error make {msg: "yzx-hx: YAZELIX_CONFIG_HOME, XDG_CONFIG_HOME, or HOME is required"}
+    }
+}
+
+def required_runtime_dir [explicit: any, xdg_runtime: any] {
+    if (($explicit | default "") | is-not-empty) {
+        $explicit
+    } else if (($xdg_runtime | default "") | is-not-empty) {
+        $"($xdg_runtime)/yazelix"
+    } else {
+        error make {msg: "yzx-hx: YAZELIX_STATE_DIR or XDG_RUNTIME_DIR is required"}
     }
 }
 
 def --wrapped main [...args: string] {
-    let state_dir = (required_owned_dir $env.YAZELIX_STATE_DIR? $env.XDG_DATA_HOME? $env.HOME? ".local/share" "YAZELIX_STATE_DIR" "XDG_DATA_HOME")
-    let config_home = (required_owned_dir $env.YAZELIX_CONFIG_HOME? $env.XDG_CONFIG_HOME? $env.HOME? ".config" "YAZELIX_CONFIG_HOME" "XDG_CONFIG_HOME")
+    let state_dir = (required_runtime_dir $env.YAZELIX_STATE_DIR? $env.XDG_RUNTIME_DIR?)
+    let config_home = (required_config_dir $env.YAZELIX_CONFIG_HOME? $env.XDG_CONFIG_HOME? $env.HOME?)
     $env.YAZELIX_STATE_DIR = $state_dir
     $env.YAZELIX_CONFIG_HOME = $config_home
 

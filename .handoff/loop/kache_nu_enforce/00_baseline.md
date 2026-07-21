@@ -3,7 +3,7 @@
 - Baseline commit: `9234c41b7d39ee029b1d01578808dbd1abd5bd4b`.
 - Active install owner: the `lifeos_foundation_yzx` Nix profile output.
 - Editable user input remains `~/.config/yazelix`.
-- Generated runtime proof remains `~/.local/share/yazelix`.
+- Generated runtime proof remains beneath the installed profile runtime link.
 - Active frontdoor remains `~/.nix-profile/bin/yzx`.
 - The flake advertised `https://yazelix.cachix.org` and shipped a
   `Publish Nix Cache` workflow using `cachix/cachix-action`.

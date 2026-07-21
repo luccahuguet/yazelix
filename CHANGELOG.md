@@ -2,11 +2,17 @@
 
 ## Unreleased
 
+- Enforce one installed-runtime owner for Yazelix, Codex, and Claude. The
+  foundation profile now provides state-owning agent wrappers, exposes one
+  profile runtime link into `/run/user/1001/yazelix/profile-runtime`, rejects
+  competing agent state variables, and installs its desktop entry directly
+  from the profile. Yazelix state no longer falls back to durable home data;
+  non-foundation builds require `YAZELIX_STATE_DIR` or `XDG_RUNTIME_DIR`.
+
 - Make `/home/flexnetos/.nix-profile` the literal foundation selector instead
-  of accepting an alias through `~/.local/state/nix/profile`. The v2 profile
-  checker rejects convergent, chained, or broken XDG shadows; the dry-run-first
-  migration archives all prior links under Meta's authoritative
-  `/home/flexnetos/.local/state/meta/archives/` root, records manifest hashes,
+  of accepting an alias through a retired user XDG profile. The v2 profile
+  checker rejects convergent, chained, or broken shadows; the dry-run-first
+  migration archives all prior links under the FlexNetOS cache archive, records manifest hashes,
   verifies the expected closure, and restores the complete prior selector state
   on failure.
 
@@ -37,14 +43,13 @@ User-visible runtime changes for Yazelix Nova live here.
 ## 1.0.0-beta.1
 
 - Codex config authorship converges on a reviewed Yazelix-owned input
-  (`agent_configs/codex/config.toml.src`, deployed to
-  `~/.config/yazelix/agents/codex/config.toml.src`) rendered by
+  (`agent_configs/codex/config.toml.src`, installed by the profile) rendered by
   `nushell/scripts/materialize_codex_config.nu` into `$CODEX_HOME/config.toml`.
   The materializer is deterministic and fails closed on retired
   workspace-mirror paths, raw `/nix/store` pins, and Nix profile-generation
   pins; `tests/codex_config_provenance.nu` gates that the generated config
-  checksum-matches the input. The runtime/state home stays
-  `CODEX_HOME=~/.codex` — auth, sessions, and databases are never authored.
+  checksum-matches the input. Auth, sessions, and databases are never authored
+  by the reviewed input.
 - The FlexNetOS profile is now the single install owner for Kache and the
   self-hosted runner binaries. It exports `fxrun`, `fxrun-actions`, and
   `fxrun-dispatch`, ships a profile-owned Nushell service and fail-closed
@@ -301,8 +306,9 @@ User-visible runtime changes for Yazelix Nova live here.
   `PATH`; missing or failing `mise` is skipped.
 - Nushell delegates the right prompt to Starship, so `right_format` in
   `~/.config/yazelix/starship.toml` is honored.
-- Generated runtime state defaults to `${XDG_DATA_HOME:-$HOME/.local/share}/yazelix`,
-  with non-empty `YAZELIX_STATE_DIR` still taking precedence.
+- Generated runtime state uses `YAZELIX_STATE_DIR` or
+  `${XDG_RUNTIME_DIR}/yazelix`; the FlexNetOS foundation fixes it beneath the
+  installed profile runtime link.
 - The top bar uses standalone Yazelix Zellij Bar with no `NORMAL` segment,
   native tab labels, the Yazelix home marker, selected widgets, a `YZX` runtime
   marker, bundled `tu` Codex quota/reset data, and a yzx-owned cache path; the

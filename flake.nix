@@ -523,6 +523,7 @@
         extraPathPrefix ? [],
         desktopEntrySource ? "",
         desktopDatabaseUpdater ? "",
+        defaultStateDir ? "",
       }: let
         packageVariant = if withMars then "full" else "runtime";
         marsPath = if withMars then "${marsPackage}/bin/mars" else "";
@@ -536,7 +537,7 @@
           yzxEnvSupervisor = "${yzxEnvSupervisor}/bin/yzx-env-supervisor";
           zellij = "${yazelixZellijPackage}/bin/zellij";
           mars = marsPath;
-          inherit desktopEntrySource desktopDatabaseUpdater;
+          inherit desktopEntrySource desktopDatabaseUpdater defaultStateDir;
           layout = "${layoutPackage}/layout.kdl";
           layoutTemplate = "${layoutTemplate}";
           layoutSwapTemplate = "${./defaults/zellij/layout.swap.kdl}";
@@ -597,10 +598,11 @@
         extraPathPrefix ? [],
         desktopEntrySource ? "",
         desktopDatabaseUpdater ? "",
+        defaultStateDir ? "",
       }: let
         command = mkYzxCommand {
           inherit withMars layoutPackage layoutTemplate configKdl shellPackage extraPathPrefix;
-          inherit desktopEntrySource desktopDatabaseUpdater;
+          inherit desktopEntrySource desktopDatabaseUpdater defaultStateDir;
         };
         desktop = pkgs.makeDesktopItem {
           name = "yzx";
@@ -825,10 +827,11 @@
         ccboard = flexnetosCcboard;
         clang = "${pkgs.clang}/bin/clang";
         "clang++" = "${pkgs.clang}/bin/clang++";
-        claude = "${flexnetosClaude}/bin/claude";
+        chmod = "${pkgs.coreutils}/bin/chmod";
+        claude = "${flexnetosClaudeFrontdoor}/bin/claude";
         clippy-driver = "${flexnetosRustToolchain}/bin/clippy-driver";
         codedb = flexnetosCodedb;
-        codex = "${flexnetosCodex}/bin/codex";
+        codex = "${flexnetosCodexFrontdoor}/bin/codex";
         corepack = "${pkgs.corepack}/bin/corepack";
         file = "${pkgs.file}/bin/file";
         fxrun = "${flexnetosRunner}/bin/fxrun";
@@ -898,6 +901,7 @@
         ''
           mkdir -p "$out/bin" "$out/toolbin" "$out/libexec/kache"
           ln -s ${flexnetosKache}/libexec/kache/rustc "$out/libexec/kache/rustc"
+          ln -s /run/user/1001/yazelix/profile-runtime "$out/runtime"
         ''
         + pkgs.lib.concatStringsSep "\n" (
           pkgs.lib.mapAttrsToList (name: executable: ''
@@ -945,13 +949,13 @@
         #!${pkgs.nushell}/bin/nu
         def --wrapped main [...args] {
           if (\$args | is-empty) or \$args == ["--recover-only"] {
-            let home = (\$env.HOME? | default "/home/flexnetos")
-            let codex_home = (\$env.CODEX_HOME? | default (\$home | path join ".codex"))
+            let profile = "/home/flexnetos/.nix-profile"
+            let codex_home = (\$profile | path join "runtime/codex")
             exec ${pkgs.nushell}/bin/nu \
               "$out/share/yazelix/nushell/scripts/materialize_codex_config.nu" \
-              (\$home | path join ".config/yazelix/agents/codex/config.toml.src") \
+              (\$profile | path join "share/yazelix/agent_configs/codex/config.toml.src") \
               (\$codex_home | path join "config.toml") \
-              (\$home | path join ".config/yazelix/agents/codex/RULES.md.src") \
+              (\$profile | path join "share/yazelix/agent_configs/codex/RULES.md.src") \
               (\$codex_home | path join "RULES.md") ...\$args
           }
           exec ${pkgs.nushell}/bin/nu \
@@ -960,9 +964,27 @@
         EOF
         chmod +x "$out/bin/yazelix_codex_materialize"
       '';
+      flexnetosCodexFrontdoor = nuApplication "codex" ./nushell/agent/profile_frontdoor.nu {
+        agent = "codex";
+        profileRoot = "/home/flexnetos/.nix-profile";
+        runtimeTarget = "/run/user/1001/yazelix/profile-runtime";
+        payload = "${flexnetosCodex}/bin/codex";
+        materializer = "/home/flexnetos/.nix-profile/bin/yazelix_codex_materialize";
+        chmod = "${pkgs.coreutils}/bin/chmod";
+        readlink = "${pkgs.coreutils}/bin/readlink";
+      };
+      flexnetosClaudeFrontdoor = nuApplication "claude" ./nushell/agent/profile_frontdoor.nu {
+        agent = "claude";
+        profileRoot = "/home/flexnetos/.nix-profile";
+        runtimeTarget = "/run/user/1001/yazelix/profile-runtime";
+        payload = "${flexnetosClaude}/bin/claude";
+        materializer = "";
+        chmod = "${pkgs.coreutils}/bin/chmod";
+        readlink = "${pkgs.coreutils}/bin/readlink";
+      };
       flexnetosDesktopSource = pkgs.makeDesktopItem {
         name = "com.flexnetos.Yazelix.Agent";
-        destination = "/share/yazelix/applications";
+        destination = "/share/applications";
         desktopName = "FlexNetOS Yazelix Agent";
         genericName = "Terminal Emulator";
         comment = "Yazelix Nova with the profile-owned FlexNetOS agent workspace";
@@ -987,8 +1009,7 @@
         nuConfig = flexnetosYzxNuConfig;
         shellPackage = flexnetosYzxShell;
         extraPathPrefix = [flexnetosTools];
-        desktopEntrySource = "${flexnetosDesktopSource}/share/yazelix/applications/com.flexnetos.Yazelix.Agent.desktop";
-        desktopDatabaseUpdater = "${pkgs.desktop-file-utils}/bin/update-desktop-database";
+        defaultStateDir = "/home/flexnetos/.nix-profile/runtime/yazelix";
       };
       lifeosFoundationYzx = pkgs.symlinkJoin {
         name = "lifeos-foundation-yzx";
@@ -1125,6 +1146,24 @@
         };
       };
     in {
+      profile_agent_frontdoors = pkgs.runCommand "profile-agent-frontdoors" {
+        nativeBuildInputs = [pkgs.nushell pkgs.coreutils];
+      } ''
+        ${pkgs.nushell}/bin/nu ${./tests/profile_agent_frontdoor.nu} \
+          "$TMPDIR/profile-agent-frontdoors" \
+          ${./nushell/agent/profile_frontdoor.nu} \
+          ${pkgs.nushell}/bin/nu \
+          ${pkgs.coreutils}/bin/chmod \
+          ${pkgs.coreutils}/bin/readlink \
+          ${pkgs.coreutils}/bin/ln
+        touch "$out"
+      '';
+      strict_profile_sources = pkgs.runCommand "strict-profile-sources" {
+        nativeBuildInputs = [pkgs.nushell];
+      } ''
+        ${pkgs.nushell}/bin/nu ${./tests/strict_profile_sources.nu} ${./.}
+        touch "$out"
+      '';
       inherit yzx;
       cache_shell_policy = pkgs.runCommand "cache-shell-policy-check" {} ''
         ${pkgs.nushell}/bin/nu ${./checks/cache_shell_policy.nu} ${./.}
@@ -1321,6 +1360,9 @@
         test -x ${foundation}/bin/rtk
         test -x ${foundation}/bin/codex
         test -x ${foundation}/bin/claude
+        test -x ${foundation}/bin/chmod
+        readlink -f ${foundation}/bin/codex | grep -Eq '/nix/store/[a-z0-9]+-codex/bin/codex$'
+        readlink -f ${foundation}/bin/claude | grep -Eq '/nix/store/[a-z0-9]+-claude/bin/claude$'
         test -x ${foundation}/bin/ccboard
         test -x ${foundation}/bin/codedb
         test -x ${foundation}/bin/nu_plugin_codedb
@@ -1344,22 +1386,25 @@
         test -x ${foundation}/bin/yazelix_profile_check
         test -x ${foundation}/bin/yazelix_profile_migrate
         test -x ${foundation}/bin/yazelix_codex_materialize
+        test -L ${foundation}/runtime
+        test "$(readlink ${foundation}/runtime)" = /run/user/1001/yazelix/profile-runtime
         test -f ${foundation}/share/yazelix/packaging/single_profile_check.nu
         test -f ${foundation}/share/yazelix/packaging/profile_migration.nu
         test -f ${foundation}/share/yazelix/agent_configs/codex/config.toml.src
         test -f ${foundation}/share/yazelix/agent_configs/codex/RULES.md.src
         test -f ${foundation}/share/yazelix/nushell/scripts/materialize_codex_config.nu
-        codex_test_home="$TMPDIR/codex-owner-home"
         codex_test_runtime="$TMPDIR/codex-owner-runtime"
-        mkdir -p "$codex_test_home/.config/yazelix/agents/codex" "$codex_test_runtime"
-        cp ${foundation}/share/yazelix/agent_configs/codex/config.toml.src \
-          "$codex_test_home/.config/yazelix/agents/codex/config.toml.src"
-        cp ${foundation}/share/yazelix/agent_configs/codex/RULES.md.src \
-          "$codex_test_home/.config/yazelix/agents/codex/RULES.md.src"
-        HOME="$codex_test_home" CODEX_HOME="$codex_test_runtime" \
-          ${foundation}/bin/yazelix_codex_materialize
-        HOME="$codex_test_home" CODEX_HOME="$codex_test_runtime" \
-          ${foundation}/bin/yazelix_codex_materialize --recover-only \
+        mkdir -p "$codex_test_runtime"
+        ${foundation}/bin/yazelix_codex_materialize \
+          ${foundation}/share/yazelix/agent_configs/codex/config.toml.src \
+          "$codex_test_runtime/config.toml" \
+          ${foundation}/share/yazelix/agent_configs/codex/RULES.md.src \
+          "$codex_test_runtime/RULES.md"
+        ${foundation}/bin/yazelix_codex_materialize \
+          ${foundation}/share/yazelix/agent_configs/codex/config.toml.src \
+          "$codex_test_runtime/config.toml" \
+          ${foundation}/share/yazelix/agent_configs/codex/RULES.md.src \
+          "$codex_test_runtime/RULES.md" --recover-only \
           | grep -F 'no pending Codex config/rules transaction'
         grep -F 'GENERATED by yazelix codex config materializer' "$codex_test_runtime/config.toml"
         grep -F 'GENERATED by yazelix codex rules materializer' "$codex_test_runtime/RULES.md"
@@ -1368,13 +1413,12 @@
         test ! -e ${foundation}/bin/yzx-desktop-launch
         test ! -e ${foundation}/bin/yzx-agent-workspace-launch
 
-        test ! -e ${foundation}/share/applications
-        desktop_count="$(find ${foundation}/share/yazelix/applications -maxdepth 1 -name '*.desktop' | wc -l)"
+        desktop_count="$(find ${foundation}/share/applications -maxdepth 1 -name '*.desktop' | wc -l)"
         test "$desktop_count" = 1
-        desktop=${foundation}/share/yazelix/applications/com.flexnetos.Yazelix.Agent.desktop
+        desktop=${foundation}/share/applications/com.flexnetos.Yazelix.Agent.desktop
         test -f "$desktop"
-        test ! -e ${foundation}/share/yazelix/applications/com.flexnetos.Yazelix.desktop
-        test ! -e ${foundation}/share/yazelix/applications/com.yazelix.Yazelix.Kitty.desktop
+        test ! -e ${foundation}/share/applications/com.flexnetos.Yazelix.desktop
+        test ! -e ${foundation}/share/applications/com.yazelix.Yazelix.Kitty.desktop
         grep -Fx 'Name=FlexNetOS Yazelix Agent' "$desktop"
         grep -Fx 'GenericName=Terminal Emulator' "$desktop"
         grep -Fx 'Exec=/home/flexnetos/.nix-profile/bin/yzx launch' "$desktop"
@@ -1387,15 +1431,7 @@
         test -f ${foundation}/share/pixmaps/yazelix.png
         test -s ${foundation}/share/pixmaps/yazelix.png
 
-        export HOME="$TMPDIR/home"
-        export XDG_DATA_HOME="$TMPDIR/data"
-        mkdir -p "$HOME" "$XDG_DATA_HOME"
-        installed_desktop="$(${foundation}/bin/yzx desktop install --print-path)"
-        test "$installed_desktop" = "$XDG_DATA_HOME/applications/com.flexnetos.Yazelix.Agent.desktop"
-        cmp "$desktop" "$installed_desktop"
-        removed_desktop="$(${foundation}/bin/yzx desktop uninstall --print-path)"
-        test "$removed_desktop" = "$installed_desktop"
-        test ! -e "$installed_desktop"
+        ! ${foundation}/bin/yzx desktop install --print-path
 
         layout=${foundation}/configs/zellij/layouts/flexnetos_agent_workspace.kdl
         test -f "$layout"
@@ -1423,6 +1459,8 @@
         grep -Fx 'ExecStart=/home/flexnetos/.nix-profile/bin/flexnetos_runner_service %i' "$runner_unit"
         grep -Fx 'Environment=SHELL=/home/flexnetos/.nix-profile/toolbin/nu' "$runner_unit"
         grep -Fx 'Environment=KACHE_CACHE_DIR=/home/flexnetos/.cache/kache/runners/%i' "$runner_unit"
+        grep -Fx 'Environment=CODEX_HOME=/home/flexnetos/.nix-profile/runtime/codex' "$runner_unit"
+        grep -Fx 'Environment=CLAUDE_CONFIG_DIR=/home/flexnetos/.nix-profile/runtime/claude' "$runner_unit"
         YAZELIX_HOST_POLICY_ROOT=${foundation}/share/yazelix/host-policy \
           ${foundation}/bin/yazelix_host_policy check-bundle
         host_policy_test_root="$TMPDIR/host-policy-root"
@@ -1461,7 +1499,9 @@
         grep -Fx 'RUSTC_WRAPPER=/home/flexnetos/.nix-profile/bin/kache-rustc-wrapper' "$volatile_env"
         grep -F 'legacy Kache root must not exist' ${./nushell/system/volatile_runtime.nu}
         grep -F 'legacy Kache delivery artifact must not exist' ${./nushell/system/volatile_runtime.nu}
+        grep -F 'const PROFILE_RUNTIME_ROOT = "/run/user/1001/yazelix/profile-runtime"' ${./nushell/system/volatile_runtime.nu}
 
+        export HOME="$TMPDIR/home"
         export YAZELIX_CONFIG_HOME="$TMPDIR/config"
         export YAZELIX_STATE_DIR="$TMPDIR/state"
         mkdir -p "$HOME" "$YAZELIX_CONFIG_HOME" "$YAZELIX_STATE_DIR"

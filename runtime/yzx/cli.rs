@@ -233,7 +233,7 @@ Usage:
 
 Commands:
   config  Open Yazelix Nova config
-  desktop Install or remove the user-local desktop entry
+  desktop Install or remove an explicit XDG desktop entry
   doctor  Check Yazelix runtime setup
   env     Open the managed shell without launching the UI
   enter   Start Yazelix in the current terminal

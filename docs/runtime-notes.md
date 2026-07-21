@@ -114,7 +114,7 @@ If host `mise` is available on the inherited `PATH`, managed Nu inserts
 
 The FlexNetOS product sources stay in `nushell/config/` and
 `nushell/scripts/`. Nix embeds their immutable paths in the packaged Nushell
-config, and the generated runtime file under `~/.local/share/yazelix/nu/`
+config, and the generated runtime file under the profile runtime `nu/` tree
 sources that package output. Generated runtime files are proof, not an edit
 surface.
 

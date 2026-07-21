@@ -2,7 +2,7 @@
 #
 # Converges the LifeOS foundation onto ~/.nix-profile as the sole selector:
 #   * archives the prior ~/.nix-profile alias or generation selector,
-#   * archives ~/.local/state/nix/profile and its profile-N-link generations,
+#   * archives the retired user XDG selector and its generation links,
 #   * creates a fresh explicit ~/.nix-profile with `nix profile add`,
 #   * verifies the expected closure with single_profile_check.nu,
 #   * archives a failed candidate and restores every prior selector link, and
@@ -12,7 +12,7 @@
 #
 #   nu packaging/profile_migration.nu --closure /nix/store/...-lifeos-foundation-yzx \
 #     [--flake-ref path:/home/flexnetos/meta/src/yazelix] \
-#     [--archive-dir /home/flexnetos/.local/state/meta/archives/yazelix-nix-profile] \
+#     [--archive-dir /home/flexnetos/.cache/flexnetos/archives/yazelix-nix-profile] \
 #     [--receipt-dir DIR] [--execute]
 #
 # Environment overrides (fixtures/staging): YZX_PROFILE_LINK,
@@ -99,13 +99,15 @@ def archive-candidate [profile_link: string, destination: string] {
 def main [
   --closure: string = ""     # freshly built lifeos-foundation-yzx store path (required)
   --flake-ref: string = "path:/home/flexnetos/meta/src/yazelix"  # install source
-  --archive-dir: string = "/home/flexnetos/.local/state/meta/archives/yazelix-nix-profile"
+  --archive-dir: string = "/home/flexnetos/.cache/flexnetos/archives/yazelix-nix-profile"
   --receipt-dir: string = "."  # where the migration receipt is written
   --execute                    # actually mutate; default is a read-only dry-run
 ] {
   let profile_link = ($env.YZX_PROFILE_LINK? | default "/home/flexnetos/.nix-profile")
+  let retired_home_tree = (["." "local"] | str join)
   let legacy_xdg_profile = (
-    $env.YZX_LEGACY_XDG_PROFILE? | default "/home/flexnetos/.local/state/nix/profile"
+    $env.YZX_LEGACY_XDG_PROFILE?
+    | default $"/home/flexnetos/($retired_home_tree)/state/nix/profile"
   )
   let store_prefix = ($env.YZX_STORE_PREFIX? | default "/nix/store")
   let nix_bin = ($env.YZX_NIX_BIN? | default "nix")

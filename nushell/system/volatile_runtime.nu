@@ -1,6 +1,7 @@
 #!/usr/bin/env nu
 
 const VOLATILE_ROOT = "/run/user/1001/yazelix/volatile"
+const PROFILE_RUNTIME_ROOT = "/run/user/1001/yazelix/profile-runtime"
 const KACHE_ROOT = "/home/flexnetos/.cache/kache"
 const DURABLE_CACHE_ROOT = "/home/flexnetos/.cache"
 # Immutable, expensive-to-refetch artifacts (model weights, browser binaries)
@@ -36,6 +37,10 @@ const LEGACY_KACHE_ARTIFACTS = [
     "/home/flexnetos/meta/.config/systemd/user/kache.service"
 ]
 const VOLATILE_DIRS = [
+    "/run/user/1001/yazelix/profile-runtime"
+    "/run/user/1001/yazelix/profile-runtime/yazelix"
+    "/run/user/1001/yazelix/profile-runtime/codex"
+    "/run/user/1001/yazelix/profile-runtime/claude"
     "/run/user/1001/yazelix/volatile/cache"
     "/run/user/1001/yazelix/volatile/tmp"
     "/run/user/1001/yazelix/volatile/cargo-home"
@@ -65,12 +70,6 @@ const VOLATILE_ROUTES = [
     { link: "/home/flexnetos/.config/Code/DawnWebGPUCache", target: "/run/user/1001/yazelix/volatile/cache/code/dawn-webgpu" }
     { link: "/home/flexnetos/.config/Code/Shared Dictionary", target: "/run/user/1001/yazelix/volatile/cache/code/shared-dictionary" }
     { link: "/home/flexnetos/.config/Code/logs", target: "/run/user/1001/yazelix/volatile/tmp/code-logs" }
-    { link: "/home/flexnetos/.codex/cache", target: "/run/user/1001/yazelix/volatile/cache/codex" }
-    { link: "/home/flexnetos/.codex/tmp", target: "/run/user/1001/yazelix/volatile/tmp/codex" }
-    { link: "/home/flexnetos/.local/share/yazelix/logs", target: "/run/user/1001/yazelix/volatile/tmp/yazelix-logs" }
-    { link: "/home/flexnetos/.local/share/rtk/tee", target: "/run/user/1001/yazelix/volatile/tmp/rtk-tee" }
-    { link: "/home/flexnetos/.local/share/ai.lifeos.desktop/WebKitCache", target: "/run/user/1001/yazelix/volatile/cache/lifeos-webkit" }
-    { link: "/home/flexnetos/.local/share/ai.lifeos.desktop/CacheStorage", target: "/run/user/1001/yazelix/volatile/cache/lifeos-cache-storage" }
 ]
 
 def route_volatile [route: record] {
@@ -127,6 +126,9 @@ def ensure [] {
     }
     for path in $VOLATILE_DIRS {
         mkdir $path
+    }
+    for path in [$PROFILE_RUNTIME_ROOT ($PROFILE_RUNTIME_ROOT | path join "yazelix") ($PROFILE_RUNTIME_ROOT | path join "codex") ($PROFILE_RUNTIME_ROOT | path join "claude")] {
+        ^/home/flexnetos/.nix-profile/bin/chmod 0700 $path
     }
     for route in $VOLATILE_ROUTES {
         route_volatile $route

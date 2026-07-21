@@ -15,23 +15,19 @@ so use `enter` for the managed workspace. Both package and app outputs exist for
 The `x86_64-linux`-only `lifeos_foundation_yzx` output composes canonical Nova
 with the FlexNetOS toolchain. It deliberately owns one profile element, one
 `bin/yzx` frontdoor, one desktop-entry source, and one default agent workspace.
-Run `yzx desktop install` after installing or upgrading the profile package. It
-materializes that source as the single active entry under
-`$XDG_DATA_HOME/applications` (or `~/.local/share/applications`) so GNOME sees a
-real applications-directory change when the Nix profile generation changes.
-The entry executes `/home/flexnetos/.nix-profile/bin/yzx launch` directly;
-there is no launcher wrapper or parallel regular/agent entry. Use
-`yzx desktop uninstall` to remove the managed entry
+The profile exposes its single desktop entry from `share/applications`; no
+post-install copy is created. The entry executes
+`/home/flexnetos/.nix-profile/bin/yzx launch` directly, with no parallel
+regular/agent entry.
 
 The FlexNetOS foundation uses `/home/flexnetos/.nix-profile` as an explicit
-profile, including its generation links. `~/.local/state/nix/profile` is a
-legacy shadow, not an equivalent selector, and must be archived during the
-checked migration under Meta's authoritative
-`/home/flexnetos/.local/state/meta/archives/yazelix-nix-profile/` root. Generated
-runtime under `~/.local/share/yazelix` is evidence only and never owns profile
-archives. Run `~/.nix-profile/bin/yazelix_profile_check` after every
-foundation update; it fails when the XDG selector exists even if both paths
-resolve to identical bytes.
+profile, including its generation links. A retired user XDG profile is a
+legacy shadow, not an equivalent selector, and is archived during the checked
+migration under `/home/flexnetos/.cache/flexnetos/archives/yazelix-nix-profile/`.
+Generated runtime beneath the profile runtime link is evidence only and never
+owns profile archives. Run `~/.nix-profile/bin/yazelix_profile_check` after
+every foundation update; it fails when the retired selector exists even if both
+paths resolve to identical bytes.
 
 Install the Mars-free variant with:
 

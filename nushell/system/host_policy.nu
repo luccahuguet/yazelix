@@ -27,13 +27,16 @@ const LOG_ROOTS = [
     "/var/crash"
     "/run/log/journal"
 ]
-const RETIRED_CLIENT_STATE = [
-    "/home/flexnetos/.local/share/nix/trusted-settings.json"
-    "/root/.local/share/nix/trusted-settings.json"
-    "/usr/local/bin/determinate-nixd"
-    "/nix/var/determinate"
-    "/etc/systemd/system/nix-daemon.service.d/10-yazelix-host-policy.conf"
-]
+def retired-client-state [] {
+    let retired_home_tree = (["." "local"] | str join)
+    [
+        $"/home/flexnetos/($retired_home_tree)/share/nix/trusted-settings.json"
+        $"/root/($retired_home_tree)/share/nix/trusted-settings.json"
+        "/usr/local/bin/determinate-nixd"
+        "/nix/var/determinate"
+        "/etc/systemd/system/nix-daemon.service.d/10-yazelix-host-policy.conf"
+    ]
+}
 
 def policy_root [] {
     $env.YAZELIX_HOST_POLICY_ROOT? | default $"($PROFILE_ROOT)/share/yazelix/host-policy"
@@ -137,7 +140,7 @@ def check_targets [] {
             error make {msg: $"host policy drift: ($target)"}
         }
     }
-    for retired in $RETIRED_CLIENT_STATE {
+    for retired in (retired-client-state) {
         let target = (target_path $retired)
         if ($target | path exists) {
             error make {msg: $"retired Nix cache authority exists: ($target)"}
@@ -186,7 +189,7 @@ def apply_nix [] {
     for owned in $OWNED_FILES {
         apply_owned_file (source_path $owned.source) (target_path $owned.target)
     }
-    for retired in $RETIRED_CLIENT_STATE {
+    for retired in (retired-client-state) {
         let target = (target_path $retired)
         if ($target | path exists) {
             rm --recursive --force $target

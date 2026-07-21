@@ -83,14 +83,13 @@ fn config_home() -> io::Result<PathBuf> {
 fn state_dir() -> io::Result<PathBuf> {
     nonempty_env("YAZELIX_STATE_DIR")
         .map(PathBuf::from)
-        .or_else(|| nonempty_env("XDG_DATA_HOME").map(|path| PathBuf::from(path).join("yazelix")))
         .or_else(|| {
-            nonempty_env("HOME").map(|path| PathBuf::from(path).join(".local/share/yazelix"))
+            nonempty_env("XDG_RUNTIME_DIR").map(|path| PathBuf::from(path).join("yazelix"))
         })
         .ok_or_else(|| {
             io::Error::new(
                 ErrorKind::NotFound,
-                "HOME is required when YAZELIX_STATE_DIR and XDG_DATA_HOME are unset",
+                "YAZELIX_STATE_DIR or XDG_RUNTIME_DIR is required",
             )
         })
 }
