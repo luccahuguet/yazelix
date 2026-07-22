@@ -14,7 +14,7 @@ Manager config system, or a main-Yazelix compatibility layer.
 yzx launch  →  Mars  →  yzx-welcome  →  Yazelix Zellij  →  Yazi sidebar + work panes
 yzx enter   →  yzx-welcome  →  Yazelix Zellij  →  same layout
 yzx run     →  prepared Yazelix environment  →  exact child argv/status
-yzx yazi-config materialize  →  packaged materializer  →  effective Yazi config path
+yzx yazi-config materialize  →  private materializer  →  effective Yazi config path
 ```
 
 Bare `yzx` prints help. `launch` is the only Mars route.
@@ -382,7 +382,7 @@ Detail lives in Owners, checks, and the notes below.
 | C3 | Layout sidebar template for swaps | `defaults/zellij/layout*.kdl` | `zellij-layout` | — |
 | C4 | Packaged keys + guarded Zellij sidecar | `defaults/zellij/config.kdl`, `yzx-zellij-config` | `yzx-contracts` | Full keys |
 | C5 | Managed Nu layering | `yzx-nu`, `defaults/nu/` | `yzx-contracts` | — |
-| C6 | Managed Yazi layering, public noninteractive materialization, `yzx-open`, and zoxide | `defaults/yazi/`, `yzx-yazi`, `yzx`, `yzx-open` | host-Yazi contracts + materialization + open tests | Yazi UI |
+| C6 | Managed Yazi layering, public noninteractive materialization, `yzx-open`, and zoxide | `defaults/yazi/`, `runtime/yzx-yazi.rs`, `runtime/yzx/`, `crates/yzx-yazi-config/`, `crates/yzx-open/` | host-Yazi contracts + materialization + open tests | Yazi UI |
 | C7 | Helix bridge window/tab isolation (`session` + `tab_id`) | `yzx-open`, flake | `yzx-open` tests | Multi-window |
 | C10 | Top bar tray, home-marker tabs, home-scoped new tabs, usage `tu` + cache | layout, config, runtime, tokenusage | layout + contracts | Visual bar |
 | C12 | Welcome defaults and random pool | screen child, runtime, root config | screen tests + contracts | Animation |

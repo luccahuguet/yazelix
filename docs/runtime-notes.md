@@ -239,8 +239,8 @@ Successful calls print one absolute effective config directory and a newline
 to stdout, with no stderr output. A user directory with no managed entries
 returns the package's read-only config directory and leaves the state path
 absent. Other inputs replace only `<state-dir>/yazi` through a staging
-directory. Bad command usage exits 64. Materialization failures exit 1 and
-config validation failures leave an existing effective directory intact.
+directory. Bad command usage exits 64. Materialization failures exit 1;
+validation failures leave an existing effective directory intact.
 
 The materializer validates paths, TOML syntax and merge structure, required
 integration fields, plugin and flavor shapes and collisions, source/state

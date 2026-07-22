@@ -108,25 +108,17 @@ fn exec_yazi_config(args: Vec<OsString>) -> Result<(), AppError> {
 }
 
 fn materialize_paths(args: &[OsString]) -> Option<(&OsString, &OsString)> {
-    if args.len() != 4 {
+    let [first_flag, first_path, second_flag, second_path] = args else {
+        return None;
+    };
+    if first_path.is_empty() || second_path.is_empty() {
         return None;
     }
-    let mut user_config_dir = None;
-    let mut state_dir = None;
-    for pair in args.chunks_exact(2) {
-        if pair[1].is_empty() {
-            return None;
-        }
-        let target = match pair[0].to_str() {
-            Some("--user-config-dir") => &mut user_config_dir,
-            Some("--state-dir") => &mut state_dir,
-            _ => return None,
-        };
-        if target.replace(&pair[1]).is_some() {
-            return None;
-        }
+    match (first_flag.to_str(), second_flag.to_str()) {
+        (Some("--user-config-dir"), Some("--state-dir")) => Some((first_path, second_path)),
+        (Some("--state-dir"), Some("--user-config-dir")) => Some((second_path, first_path)),
+        _ => None,
     }
-    Some((user_config_dir?, state_dir?))
 }
 
 fn exec_menu() -> Result<(), AppError> {
