@@ -1,6 +1,8 @@
 use std::{env, ffi::OsString, path::Path, process::Command};
 
 use crate::{
+    MARS, VERSION, YZX_CONFIG_UI, YZX_ENV_SUPERVISOR, YZX_MENU, YZX_REVEAL, YZX_SCREEN, YZX_SHELL,
+    YZX_TUTOR, YZX_WELCOME, YZX_YAZI, ZELLIJ,
     command::exec,
     doctor::print_doctor,
     error::AppError,
@@ -8,8 +10,6 @@ use crate::{
     runtime::Runtime,
     status::{print_status, print_status_json},
     yazi::YaziRuntime,
-    MARS, VERSION, YZX_CONFIG_UI, YZX_ENV_SUPERVISOR, YZX_MENU, YZX_REVEAL, YZX_SCREEN, YZX_SHELL,
-    YZX_TUTOR, YZX_WELCOME, YZX_YAZI, ZELLIJ,
 };
 
 pub(crate) fn run() -> Result<(), AppError> {

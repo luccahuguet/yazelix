@@ -1,6 +1,6 @@
 use crate::{
-    error::AppError, paths::zellij_session_label, runtime::Runtime, PACKAGE_VARIANT, VERSION,
-    YAZI_SOURCE,
+    PACKAGE_VARIANT, VERSION, YAZI_SOURCE, error::AppError, paths::zellij_session_label,
+    runtime::Runtime,
 };
 
 pub(crate) fn print_status() -> Result<(), AppError> {
