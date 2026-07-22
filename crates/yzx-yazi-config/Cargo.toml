@@ -5,3 +5,6 @@ edition = "2024"
 
 [dependencies]
 toml = "1.1"
+
+# Standalone crate: opt out of any enclosing cargo workspace (meta-repo root).
+[workspace]

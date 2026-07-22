@@ -5,3 +5,6 @@ edition = "2024"
 
 [dependencies]
 pulldown-cmark = { version = "0.13.4", default-features = false }
+
+# Standalone crate: opt out of any enclosing cargo workspace (meta-repo root).
+[workspace]

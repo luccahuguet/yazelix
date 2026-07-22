@@ -1197,9 +1197,19 @@
         '';
         meta = flexnetosYzxBase.meta;
       };
+      # yzx-iso T2 (spine ARCHBP-065): the LifeOS bubblewrap user-namespace
+      # envelope, nix-declared with pinned inputs — no host installs required
+      # to build.  Runtime executor selection records (never hides) the
+      # AppArmor-profiled host-bwrap fallback on restricted hosts.
+      yzxEnvelope = pkgs.writeShellApplication {
+        name = "yzx-envelope";
+        runtimeInputs = [pkgs.bubblewrap pkgs.coreutils pkgs.gnugrep];
+        text = builtins.readFile ./envelope/yzx-envelope.sh;
+      };
     in {
       inherit yazelix;
       runtime = yzxRuntime;
+      yzx-envelope = yzxEnvelope;
       default = yazelix;
     } // pkgs.lib.optionalAttrs (system == "x86_64-linux") {
       lifeos_foundation_yzx = lifeosFoundationYzx;
@@ -1872,6 +1882,10 @@
         runtime = {
           type = "app";
           program = "${self.packages.${system}.runtime}/bin/yzx";
+        };
+        yzx-envelope = {
+          type = "app";
+          program = "${self.packages.${system}.yzx-envelope}/bin/yzx-envelope";
         };
         default = yazelix;
       }
