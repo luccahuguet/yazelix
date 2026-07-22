@@ -1,4 +1,4 @@
-use std::{env, ffi::OsStr, fmt::Display, fs, os::unix::ffi::OsStrExt, path::Path};
+use std::{env, fmt::Display, fs, path::Path};
 
 use crate::{
     AGENT_AUTO_COMMAND, HELIX_REVEAL_COMMAND, LAYOUT, LAYOUT_SWAP_TEMPLATE, LAYOUT_TEMPLATE,
@@ -170,7 +170,12 @@ fn require_file(label: &str, path: &Path) -> Result<(), AppError> {
 
 fn require_command(label: &str, command: &str) -> Result<(), AppError> {
     let path = runtime_path();
-    if command_exists(OsStr::new(command), Some(path.as_os_str())) {
+    let exists = if command.as_bytes().contains(&b'/') {
+        executable_file(Path::new(command))
+    } else {
+        env::split_paths(&path).any(|dir| executable_file(&dir.join(command)))
+    };
+    if exists {
         return Ok(());
     }
     Err(startup(
@@ -178,15 +183,6 @@ fn require_command(label: &str, command: &str) -> Result<(), AppError> {
         command,
         1,
     ))
-}
-
-fn command_exists(command: &OsStr, path: Option<&OsStr>) -> bool {
-    if command.as_bytes().contains(&b'/') {
-        return executable_file(Path::new(command));
-    }
-    path.into_iter()
-        .flat_map(env::split_paths)
-        .any(|dir| executable_file(&dir.join(command)))
 }
 
 fn doctor_ok(label: &str, value: impl Display) {
