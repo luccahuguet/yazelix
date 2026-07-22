@@ -69,6 +69,7 @@ fn managed_input_exists(user: &Path) -> io::Result<bool> {
         "init.lua",
         "keymap.toml",
         "yazi.toml",
+        "starship.toml",
         "package.toml",
         "theme.toml",
         "plugins",
@@ -93,10 +94,20 @@ fn write_runtime(packaged: &Path, user: &Path, stage: &Path, runtime: &Path) -> 
     } else {
         symlink(packaged.join("yazi.toml"), stage.join("yazi.toml"))?;
     }
-    symlink(
-        packaged.join("yazelix_starship.toml"),
-        stage.join("yazelix_starship.toml"),
-    )?;
+    let user_starship = user.join("starship.toml");
+    let runtime_starship = stage.join("yazelix_starship.toml");
+    if path_entry_exists(&user_starship)? {
+        if !user_starship.is_file() {
+            return Err(invalid_input(format!(
+                "cannot read {}",
+                user_starship.display()
+            )));
+        }
+        parse_toml(&user_starship, "managed Yazi Starship")?;
+        symlink_user_source(&user_starship, &runtime_starship, runtime)?;
+    } else {
+        symlink(packaged.join("yazelix_starship.toml"), runtime_starship)?;
+    }
     write_layered_config(
         &packaged.join("init.lua"),
         &user_init,
@@ -132,7 +143,7 @@ fn write_runtime(packaged: &Path, user: &Path, stage: &Path, runtime: &Path) -> 
 }
 
 fn write_merged_yazi_toml(packaged: &Path, user: &Path, target: &Path) -> io::Result<()> {
-    let mut merged = parse_toml(packaged, "packaged")?;
+    let mut merged = parse_toml(packaged, "packaged Yazi")?;
     let packaged_edit = merged
         .get("opener")
         .and_then(|value| value.get("edit"))
@@ -152,7 +163,7 @@ fn write_merged_yazi_toml(packaged: &Path, user: &Path, target: &Path) -> io::Re
         .filter(|fetchers| fetchers.len() == 2)
         .ok_or_else(|| invalid_data("packaged Yazi TOML must contain two managed Git fetchers"))?;
 
-    merge_value(&mut merged, parse_toml(user, "user")?);
+    merge_value(&mut merged, parse_toml(user, "user Yazi")?);
     let root = merged
         .as_table_mut()
         .ok_or_else(|| invalid_data("Yazi TOML root must be a table"))?;
@@ -173,12 +184,8 @@ fn write_merged_yazi_toml(packaged: &Path, user: &Path, target: &Path) -> io::Re
 }
 
 fn parse_toml(path: &Path, owner: &str) -> io::Result<Value> {
-    toml::from_str(&fs::read_to_string(path)?).map_err(|error| {
-        invalid_data(format!(
-            "invalid {owner} Yazi TOML {}: {error}",
-            path.display()
-        ))
-    })
+    toml::from_str(&fs::read_to_string(path)?)
+        .map_err(|error| invalid_data(format!("invalid {owner} TOML {}: {error}", path.display())))
 }
 
 fn merge_value(base: &mut Value, overlay: Value) {
@@ -611,6 +618,16 @@ edit = [{ run = "nvim %s" }]
         assert!(state.join("yazi/sentinel").is_file());
         fs::remove_file(theme).unwrap();
 
+        let starship = user.join("starship.toml");
+        fs::write(&starship, "[directory\n").unwrap();
+        let error = fail(&user, &state);
+        assert!(error.contains(&starship.display().to_string()), "{error}");
+        assert_eq!(
+            fs::read_to_string(state.join("yazi/sentinel")).unwrap(),
+            "old runtime"
+        );
+        fs::remove_file(starship).unwrap();
+
         let overlap_state = temp.0.join("overlap");
         let overlap_user = overlap_state.join("yazi");
         fs::create_dir_all(&overlap_user).unwrap();
@@ -625,6 +642,34 @@ edit = [{ run = "nvim %s" }]
         fs::set_permissions(&runtime, fs::Permissions::from_mode(0o700)).unwrap();
         assert_eq!(result.unwrap_err().kind(), ErrorKind::PermissionDenied);
         assert_eq!(fs::read_dir(&state).unwrap().count(), 1);
+    }
+
+    #[test]
+    fn starship_config_alone_is_a_complete_replacement() {
+        let temp = TempDir::new();
+        let packaged = temp.0.join("packaged");
+        let user = temp.0.join("user");
+        let state = temp.0.join("state");
+        packaged_yazi(&packaged);
+        fs::create_dir_all(&user).unwrap();
+        fs::write(
+            user.join("starship.toml"),
+            "format = '$directory$git_branch'\n",
+        )
+        .unwrap();
+
+        let runtime = materialize(&packaged, &user, &state).unwrap();
+        let starship = runtime.join("yazelix_starship.toml");
+        assert_eq!(
+            fs::read_to_string(&starship).unwrap(),
+            "format = '$directory$git_branch'\n"
+        );
+        assert!(
+            fs::symlink_metadata(starship)
+                .unwrap()
+                .file_type()
+                .is_symlink()
+        );
     }
 
     #[test]

@@ -131,6 +131,7 @@ ids that do not exist are not invented; open `config.toml` to add them
 | `yazi/yazi.toml` | Yazi | Native tables merge recursively, while user scalars and arrays replace packaged values. Ratconfig renders safe existing values in its Yazi tab |
 | `yazi/init.lua` | Yazi | Appended after packaged Yazi init |
 | `yazi/keymap.toml` | Yazi | Appended after packaged Yazi keymap |
+| `yazi/starship.toml` | Yazi Starship | Complete replacement for Nova's packaged compact Starship header config |
 | `yazi/theme.toml` | Yazi | Native theme config. Ratconfig renders safe existing values and provides installed dark/light flavor pickers |
 | `yazi/package.toml` | Yazi | Opaque package metadata that Yazelix does not process with `ya pkg` |
 
@@ -150,6 +151,25 @@ directories directly under the managed Yazi tree or symlink them there
 
 Managed files and asset directories may be symlinked from another checkout, but
 their resolved targets must stay outside the generated `state/yazi` runtime
+
+The optional `yazi/starship.toml` file replaces the packaged compact Starship
+config without replacing `starship.yazi` itself. It is syntax-validated as TOML
+and projected to the existing runtime path used by both sidebar and popup Yazi.
+Home Manager exposes it through the same native `text`/`source` contract:
+
+```nix
+let
+  prompt = ./starship.toml;
+in {
+  programs.yazelix.config = {
+    starship.source = prompt;
+    yazi.starship.source = prompt;
+  };
+}
+```
+
+Use another source for a dedicated compact header. Omitting `yazi.starship`
+keeps Nova's packaged header even when the managed shell uses `starship`.
 
 Ratconfig's Yazi tab reads the sparse user `yazi.toml` against Nova's packaged
 layer and reads native `theme.toml`. Strings, booleans, integers, finite floats,

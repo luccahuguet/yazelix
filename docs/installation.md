@@ -248,6 +248,7 @@ programs.yazelix.config = {
 
   helix.languages.source = ./languages.toml;
   yazi.config.source = ./yazi.toml;
+  yazi.starship.source = ./yazi-starship.toml;
 };
 ```
 

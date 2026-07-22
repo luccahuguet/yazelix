@@ -77,6 +77,10 @@
       option = cfg.config.yazi.package;
       name = "programs.yazelix.config.yazi.package";
     };
+    "yazelix/yazi/starship.toml" = {
+      option = cfg.config.yazi.starship;
+      name = "programs.yazelix.config.yazi.starship";
+    };
     "yazelix/yazi/theme.toml" = {
       option = cfg.config.yazi.theme;
       name = "programs.yazelix.config.yazi.theme";
@@ -139,6 +143,7 @@ in {
         init = nativeFileOption "Managed Yazi init.lua.";
         keymap = nativeFileOption "Managed Yazi keymap.toml.";
         package = nativeFileOption "Managed Yazi package.toml metadata.";
+        starship = nativeFileOption "Complete Starship configuration for managed Yazi.";
         theme = nativeFileOption "Managed native Yazi theme.toml.";
       };
 

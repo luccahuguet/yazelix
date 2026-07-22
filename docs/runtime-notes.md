@@ -203,6 +203,7 @@ user-owned asset tree:
 ~/.config/yazelix/yazi/yazi.toml
 ~/.config/yazelix/yazi/theme.toml
 ~/.config/yazelix/yazi/package.toml
+~/.config/yazelix/yazi/starship.toml
 ~/.config/yazelix/yazi/init.lua
 ~/.config/yazelix/yazi/keymap.toml
 ~/.config/yazelix/yazi/plugins/*.yazi/
@@ -214,6 +215,12 @@ values; only `plugin.prepend_fetchers` uses replace-plus-managed-Git semantics,
 which keeps user fetchers while restoring the two sidebar Git fetchers exactly
 once. Broken config paths, invalid TOML, and incomplete flavors stop Yazi launch.
 The managed edit opener is always restored. Normal `~/.config/yazi` is not read.
+
+Optional `yazi/starship.toml` is a complete replacement for Nova's packaged
+compact Starship header config, not a merge layer. Its presence alone activates
+materialization. The materializer requires readable TOML and links it into the
+effective config as `yazelix_starship.toml`; omission retains the packaged file.
+Both the normal sidebar and workspace popup use that same effective path.
 
 Automation can materialize that config without starting Yazi, Zellij, Mars, an
 editor, or the full Yazelix runtime:

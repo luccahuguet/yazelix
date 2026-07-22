@@ -750,7 +750,11 @@
           if [ "''${1:-}" = --version ]; then
             printf '%s\n' 'Yazi ${yaziVersion}'
           else
-            printf 'fake Yazi config=%s ya=%s args=' "''${YAZI_CONFIG_HOME:-}" "''${YZX_YA:-}"
+            printf 'fake Yazi config=%s starship=%s role=%s ya=%s args=' \
+              "''${YAZI_CONFIG_HOME:-}" \
+              "''${YZX_YAZI_STARSHIP_CONFIG:-}" \
+              "''${YZX_YAZI_ROLE:-}" \
+              "''${YZX_YA:-}"
             printf '%s ' "$@"
             printf '\n'
           fi
@@ -801,6 +805,12 @@
         [settings]
         trail = "reef"
       '';
+      fakePromptStarship = pkgs.writeText "hm-prompt-starship.toml" ''
+        format = "$directory"
+      '';
+      fakeYaziStarship = pkgs.writeText "hm-yazi-starship.toml" ''
+        format = "$directory$git_branch"
+      '';
       fakeYaziFlavor = pkgs.writeTextDir "flavor.toml" ''
         [mgr]
         cwd = { fg = "#c0ffee" }
@@ -831,6 +841,12 @@
         home.packages = [pkgs.yazi];
         programs.yazelix.package = yzxNoYazi;
       };
+      homeManagerSharedStarship = homeManagerConfiguration {
+        programs.yazelix.config = {
+          starship.source = fakePromptStarship;
+          yazi.starship.source = fakePromptStarship;
+        };
+      };
       homeManagerConfigFiles = homeManagerConfiguration {
         xdg.configFile."yazelix/yazi/flavors/example.yazi".source = fakeYaziFlavor;
         programs.yazelix.config = {
@@ -848,7 +864,7 @@
           cursors.source = fakeCursors;
           mars.text = "[window]\nwidth = 1200\n";
           zellij.text = "pane_frames false\n";
-          starship.text = "[character]\nformat = \"::\"\n";
+          starship.source = fakePromptStarship;
           helix.config.text = "[editor]\nline-number = \"relative\"\n";
           helix.languages.source = fakeHelixLanguages;
           helix.module.text = "(provide yzx-test)\n";
@@ -857,6 +873,7 @@
           yazi.init.text = "-- init\n";
           yazi.keymap.text = "[manager]\n";
           yazi.package.text = "[plugin]\ndeps = []\n";
+          yazi.starship.source = fakeYaziStarship;
           yazi.theme.text = "[flavor]\ndark = \"example\"\n";
           nu.env.text = "# env\n";
           nu.config.text = "# config\n";
@@ -873,6 +890,7 @@
         override_path="${homeManagerOverride.activationPackage}/home-path"
         no_mars_path="${homeManagerNoMars.activationPackage}/home-path"
         no_yazi_path="${homeManagerNoYazi.activationPackage}/home-path"
+        shared_config_files="${homeManagerSharedStarship.activationPackage}/home-files/.config/yazelix"
         hm_yzx="${homeManagerConfigFiles.activationPackage}/home-path/bin/yzx"
         config_files="${homeManagerConfigFiles.activationPackage}/home-files/.config/yazelix"
 
@@ -927,14 +945,16 @@
         test "$(YAZELIX_CONFIG_HOME="$config_files" ${yzx}/libexec/yazelix/yzx-config --get keybindings.sidebar_focus)" = "Ctrl Shift E"
         grep -q 'width = 1200' "$config_files/mars/config.toml"
         grep -q 'pane_frames false' "$config_files/zellij/config.kdl"
-        grep -q '^\[character\]$' "$config_files/starship.toml"
-        grep -q 'format = "::"' "$config_files/starship.toml"
+        grep -Fqx 'format = "$directory"' "$config_files/starship.toml"
         grep -q 'line-number = "relative"' "$config_files/helix/config.toml"
         grep -q 'name = "nix"' "$config_files/helix/languages.toml"
         grep -q '(provide yzx-test)' "$config_files/helix/helix.scm"
         grep -q 'show_hidden = true' "$config_files/yazi/yazi.toml"
         grep -q -- '-- init' "$config_files/yazi/init.lua"
         grep -q 'deps = \[\]' "$config_files/yazi/package.toml"
+        grep -Fqx 'format = "$directory$git_branch"' "$config_files/yazi/starship.toml"
+        test "$(readlink -f "$config_files/starship.toml")" != \
+          "$(readlink -f "$config_files/yazi/starship.toml")"
         grep -q 'dark = "example"' "$config_files/yazi/theme.toml"
         test -L "$config_files/yazi/flavors/example.yazi"
         case "$(readlink "$config_files/yazi/flavors/example.yazi")" in
@@ -942,8 +962,15 @@
           *) printf '%s\n' 'Home Manager Yazi flavor is not store-backed' >&2; exit 1 ;;
         esac
         hm_yazi_runtime="$(${yzxYaziMaterializer}/bin/yzx-yazi-config ${yzx}/share/yazelix/yazi "$config_files/yazi" "$TMPDIR/hm-yazi-state")"
+        grep -Fqx 'format = "$directory$git_branch"' "$hm_yazi_runtime/yazelix_starship.toml"
         YAZI_CONFIG_HOME="$hm_yazi_runtime" ${pkgs.yazi}/bin/yazi --debug > hm-yazi-debug
         grep -q 'Dark/light flavor:.*example' hm-yazi-debug
+
+        test "$(readlink -f "$shared_config_files/starship.toml")" = \
+          "$(readlink -f "$shared_config_files/yazi/starship.toml")"
+        shared_yazi_runtime="$(${yzxYaziMaterializer}/bin/yzx-yazi-config ${yzx}/share/yazelix/yazi "$shared_config_files/yazi" "$TMPDIR/shared-yazi-state")"
+        test "$shared_yazi_runtime" = "$TMPDIR/shared-yazi-state/yazi"
+        grep -Fqx 'format = "$directory"' "$shared_yazi_runtime/yazelix_starship.toml"
         grep -q '# config' "$config_files/nu/config.nu"
 
         export HOME="$TMPDIR/hm-yzx-home"
@@ -1213,9 +1240,18 @@
         grep -Fqx 'Ya ${pkgs.yazi.version}' "$root/ya-version"
         PATH=${fakeHostYazi}/bin:${pkgs.coreutils}/bin "$package/bin/yzx" run yazi --version > "$root/yazi-version"
         grep -Fqx 'Yazi ${pkgs.yazi.version}' "$root/yazi-version"
+        mkdir -p "$YAZELIX_CONFIG_HOME/yazi"
+        printf '%s\n' 'format = "$directory$git_branch"' > "$YAZELIX_CONFIG_HOME/yazi/starship.toml"
         PATH=${fakeHostYazi}/bin:${pkgs.coreutils}/bin "$package/bin/yzx" run yazi managed > "$root/yazi-managed"
         grep -F 'fake Yazi config=' "$root/yazi-managed"
+        grep -F "starship=$YAZELIX_STATE_DIR/yazi/yazelix_starship.toml" "$root/yazi-managed"
+        grep -F 'role= ya=' "$root/yazi-managed"
         grep -F 'ya=${fakeHostYazi}/bin/ya' "$root/yazi-managed"
+        PATH=${fakeHostYazi}/bin:${pkgs.coreutils}/bin "$package/bin/yzx" run yazi \
+          --yzx-workspace-popup popup > "$root/yazi-popup"
+        grep -F "starship=$YAZELIX_STATE_DIR/yazi/yazelix_starship.toml" "$root/yazi-popup"
+        grep -F 'role=workspace-popup' "$root/yazi-popup"
+        grep -F 'args=popup ' "$root/yazi-popup"
 
         YZX_YAZI_BIN=${fakeHostYazi}/bin/yazi \
           YZX_YA=${fakeHostYazi}/bin/ya \

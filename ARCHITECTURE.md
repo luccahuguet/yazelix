@@ -254,7 +254,7 @@ Packaged first, unless a surface opts into native replacement.
   starship.toml            # optional sparse prompt overrides
   nu/{env,config}.nu       # after packaged Nu
   helix/*                  # lazy; created on tab use
-  yazi/{yazi.toml,theme.toml,package.toml,init.lua,keymap.toml,plugins/,flavors/}
+  yazi/{yazi.toml,theme.toml,package.toml,starship.toml,init.lua,keymap.toml,plugins/,flavors/}
 ```
 
 Override root with `YAZELIX_CONFIG_HOME`.
@@ -268,7 +268,7 @@ Runtime state defaults to `$XDG_DATA_HOME/yazelix` or `YAZELIX_STATE_DIR`.
 | Nu | Packaged → optional host `mise activate nu` → optional user Nu |
 | Starship | Native defaults + `yzx-config` `character.format` → sparse user overrides → runtime-effective TOML |
 | Helix | See Helix notes below |
-| Yazi | Packaged TOML → recursive user tables + replacing scalars/arrays → managed opener/Git fetchers |
+| Yazi | Packaged TOML → recursive user tables + replacing scalars/arrays → managed opener/Git fetchers; optional complete Starship config replacement |
 | Zellij | Packaged → guarded scalar sidecar → runtime materialize under state dir |
 | Host `~/.config/{helix,yazi,starship}` | Not loaded by default |
 
