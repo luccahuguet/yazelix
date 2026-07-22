@@ -192,11 +192,8 @@ mod tests {
     #[test]
     fn rejects_mixed_pairs_and_warns_for_matching_untested_pairs() {
         assert_eq!(validate_versions("26.5.6", "26.5.6", "26.5.6"), Ok(None));
-        assert!(
-            validate_versions("26.6.1", "26.5.6", "26.5.6")
-                .unwrap_err()
-                .contains("exactly matching pair")
-        );
+        let error = validate_versions("26.6.1", "26.5.6", "26.5.6").unwrap_err();
+        assert!(error.contains("exactly matching pair"), "{error}");
         assert_eq!(
             validate_versions("26.6.1", "26.6.1", "26.5.6"),
             Ok(Some(
@@ -209,11 +206,11 @@ mod tests {
     #[test]
     fn resolves_and_validates_commands() {
         let root = env::temp_dir().join(format!("yzx-yazi-resolve-{}", std::process::id()));
-        let _ = fs::remove_dir_all(&root);
+        fs::create_dir(&root).unwrap();
         let first = root.join("first");
         let second = root.join("second");
-        fs::create_dir_all(&first).unwrap();
-        fs::create_dir_all(&second).unwrap();
+        fs::create_dir(&first).unwrap();
+        fs::create_dir(&second).unwrap();
         let executable = env::current_exe().unwrap();
         let invalid_executable = second.join("yazi");
         fs::write(&invalid_executable, "not an executable format").unwrap();
@@ -226,17 +223,11 @@ mod tests {
             fs::canonicalize(executable).unwrap()
         );
         fs::set_permissions(&invalid_executable, fs::Permissions::from_mode(0o644)).unwrap();
-        assert!(
-            resolve_command(invalid_executable.as_os_str(), &path)
-                .unwrap_err()
-                .contains("command is not executable")
-        );
+        let error = resolve_command(invalid_executable.as_os_str(), &path).unwrap_err();
+        assert!(error.contains("command is not executable"), "{error}");
         fs::set_permissions(&invalid_executable, fs::Permissions::from_mode(0o755)).unwrap();
-        assert!(
-            probe_command("yazi", invalid_executable.as_os_str(), &path)
-                .unwrap_err()
-                .contains("failed to run")
-        );
+        let error = probe_command("yazi", invalid_executable.as_os_str(), &path).unwrap_err();
+        assert!(error.contains("failed to run"), "{error}");
         fs::remove_dir_all(root).unwrap();
     }
 }
