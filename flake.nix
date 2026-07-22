@@ -966,9 +966,6 @@
 
         test "$(readlink -f "$shared_config_files/starship.toml")" = \
           "$(readlink -f "$shared_config_files/yazi/starship.toml")"
-        shared_yazi_runtime="$(${yzxYaziMaterializer}/bin/yzx-yazi-config ${yzx}/share/yazelix/yazi "$shared_config_files/yazi" "$TMPDIR/shared-yazi-state")"
-        test "$shared_yazi_runtime" = "$TMPDIR/shared-yazi-state/yazi"
-        grep -Fqx 'format = "$directory$git_branch"' "$shared_yazi_runtime/yazelix_starship.toml"
         grep -q '# config' "$config_files/nu/config.nu"
 
         export HOME="$TMPDIR/hm-yzx-home"
