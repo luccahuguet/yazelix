@@ -34,6 +34,7 @@
     yazelixZellijBar = {
       url = "github:luccahuguet/yazelix-zellij-bar";
       inputs.nixpkgs.follows = "nixpkgs";
+      inputs.zjstatus.follows = "zjstatus";
     };
     yazelixZellijPaneOrchestrator = {
       url = "github:luccahuguet/yazelix-zellij-pane-orchestrator";
@@ -53,6 +54,14 @@
     };
     ratconfig = {
       url = "github:luccahuguet/ratconfig";
+      flake = false;
+    };
+    autoLayoutYazi = {
+      url = "github:luccahuguet/auto-layout.yazi";
+      flake = false;
+    };
+    starshipYazi = {
+      url = "github:Rolv-Apneseth/starship.yazi";
       flake = false;
     };
     beads_rust_source = {
@@ -87,6 +96,10 @@
       url = "github:FlexNetOS/flexnetos_runner/be0960c138d9f293aa6272e6ef154c728b37f73a";
       flake = false;
     };
+    zjstatus = {
+      url = "github:luccahuguet/zjstatus/yazelix-tab-activity-pipe";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs = {
@@ -113,8 +126,11 @@
     weave_source,
     obscura_source,
     flexnetos_runner_source,
+    autoLayoutYazi,
+    starshipYazi,
+    zjstatus,
   }: let
-    novaVersion = "1.0.0-beta.1";
+    novaVersion = "1.0.0-beta.2";
     compactNovaVersion = version:
       if version == "dev"
       then "NOVA DEV"
@@ -152,6 +168,13 @@
           (map (key: "@${key}@") (builtins.attrNames replacements))
           (builtins.attrValues replacements)
           (builtins.readFile source);
+      };
+    yzxYaziMaterializerFor = pkgs:
+      pkgs.rustPlatform.buildRustPackage {
+        pname = "yzx-yazi-config";
+        version = "0.1.0";
+        src = ./crates/yzx-yazi-config;
+        cargoLock.lockFile = ./crates/yzx-yazi-config/Cargo.lock;
       };
   in {
     homeManagerModules.default = homeManagerModule;
@@ -218,10 +241,19 @@
         pname = "yzx-config";
         version = "0.1.0";
         src = yzxConfigSrc;
-        cargoLock.lockFile = ./crates/yzx-config/Cargo.lock;
+        cargoLock = {
+          lockFile = ./crates/yzx-config/Cargo.lock;
+          outputHashes."ratconfig-2.0.0" = "sha256-NXnn7WOBEa7uQl8rs52gpIhpEGTeanRL5+au9ltjQyE=";
+        };
         YAZELIX_NIX_STORE_ROOT = builtins.storeDir;
         YZX_TEST_NU = "${pkgs.nushell}/bin/nu";
+        # Upstream: the yzx-config test env now needs the packaged yazi config
+        # and the agent launcher.
+        YAZELIX_PACKAGED_YAZI = yzxYaziConfig;
+        YAZELIX_AGENT_LAUNCHER = "${yzxAgent}/bin/yzx-agent";
       };
+      # Fork: Rust/Nu shell machinery replaces upstream's yzx-shell.sh /
+      # yzx-env-supervisor.sh (repo POSIX shell sources are gate-banned).
       mkYzxNuShell = name: nuConfig: let
         source = pkgs.replaceVars ./runtime/yzx-nu.rs {
           nu = "${pkgs.nushell}/bin/nu";
@@ -319,20 +351,6 @@
           path = "${yzxHelixBase}/bin/yzx-hx";
         }
       ];
-      yzxTutorSrc = pkgs.runCommand "yzx-tutor-src" {} ''
-        mkdir -p "$out"
-        cp -R ${pkgs.lib.cleanSource ./crates/yzx-tutor}/. "$out/"
-        chmod -R u+w "$out"
-        substituteInPlace "$out/src/main.rs" \
-          --replace-fail '@yzxHelix@' '${yzxHelix}/bin/yzx-hx' \
-          --replace-fail '@nu@' '${pkgs.nushell}/bin/nu'
-      '';
-      yzxTutor = pkgs.rustPlatform.buildRustPackage {
-        pname = "yzx-tutor";
-        version = "0.1.0";
-        src = yzxTutorSrc;
-        cargoLock.lockFile = ./crates/yzx-tutor/Cargo.lock;
-      };
       yzxEditor = nuApplication "yzx-editor" ./runtime/yzx_editor.nu {
         yzxConfig = "${yzxConfig}/bin/yzx-config";
         yzxHelix = "${yzxHelix}/bin/yzx-hx";
@@ -341,6 +359,42 @@
         yzxConfig = "${yzxConfig}/bin/yzx-config";
         yzxEditor = "${yzxEditor}/bin/yzx-editor";
         yzxHelix = "${yzxHelix}/bin/yzx-hx";
+      };
+      # Upstream: stub editor for the no-helix package variants, emitted as a
+      # Nushell script (cache/shell policy: no generated shell runtime).
+      yzxHelixUnavailable = pkgs.runCommand "yzx-hx-unavailable" {} ''
+        mkdir -p "$out/bin"
+        {
+          echo '#!${pkgs.nushell}/bin/nu'
+          echo 'def --wrapped main [...args: string] {'
+          echo "  print --stderr 'yzx-hx: managed Helix is unavailable in this Yazelix package; set editor.command to an installed editor or select a package that includes managed Helix'"
+          echo '  exit 69'
+          echo '}'
+        } > "$out/bin/yzx-hx"
+        chmod 755 "$out/bin/yzx-hx"
+        ln -s yzx-hx "$out/bin/hx"
+      '';
+      yaziAssetsSelection = pkgs.fetchFromGitHub {
+        owner = "luccahuguet";
+        repo = "yazelix-yazi-assets";
+        rev = "677c127bceca9b9de3aab1251f8b65fe81631309";
+        sparseCheckout = ["plugins/git.yazi" "yazelix_starship.toml"];
+        nonConeMode = true;
+        hash = "sha256-E40pXHSUX75ig0ACcuinTSC4xiJu0r8fO/G9z+w+YuI=";
+      };
+      yaziFlavorNames = [
+        "catppuccin-frappe.yazi"
+        "catppuccin-latte.yazi"
+        "catppuccin-macchiato.yazi"
+        "catppuccin-mocha.yazi"
+        "dracula.yazi"
+      ];
+      yaziFlavorsSelection = pkgs.fetchFromGitHub {
+        owner = "yazi-rs";
+        repo = "flavors";
+        rev = "4770a3467169bfdb0a3b11601921aaf27c100630";
+        sparseCheckout = yaziFlavorNames;
+        hash = "sha256-TwYnWeRnclmHFwq6bisn7OTXqzWmGiEaEGIZFGAYhsw=";
       };
       yzxOpenCore = pkgs.rustPlatform.buildRustPackage {
         pname = "yzx-open";
@@ -361,18 +415,22 @@
         install -D -m 644 ${./defaults/yazi/plugins/sidebar-state.yazi/main.lua} "$out/plugins/sidebar-state.yazi/main.lua"
         install -D -m 644 ${./defaults/yazi/plugins/sidebar-status.yazi/main.lua} "$out/plugins/sidebar-status.yazi/main.lua"
         install -D -m 644 ${./defaults/yazi/plugins/zoxide-editor.yazi/main.lua} "$out/plugins/zoxide-editor.yazi/main.lua"
+        # Fork: plugins come from the FlexNetOS-pinned assets root; upstream's
+        # new theme flavors are adopted below.
         ln -s ${flexnetosYaziAssetsRoot}/plugins/auto-layout.yazi "$out/plugins/auto-layout.yazi"
         ln -s ${flexnetosYaziAssetsRoot}/plugins/git.yazi "$out/plugins/git.yazi"
         ln -s ${flexnetosYaziAssetsRoot}/plugins/starship.yazi "$out/plugins/starship.yazi"
+        for flavor in ${pkgs.lib.concatStringsSep " " yaziFlavorNames}; do
+          for file in flavor.toml tmtheme.xml LICENSE LICENSE-tmtheme; do
+            install -D -m 644 ${yaziFlavorsSelection}/"$flavor/$file" "$out/flavors/$flavor/$file"
+          done
+        done
       '';
-      yzxYaziMaterializer = pkgs.rustPlatform.buildRustPackage {
-        pname = "yzx-yazi-config";
-        version = "0.1.0";
-        src = ./crates/yzx-yazi-config;
-        cargoLock.lockFile = ./crates/yzx-yazi-config/Cargo.lock;
-      };
+      yzxYaziMaterializer = yzxYaziMaterializerFor pkgs;
+      # Fork: top-level full-variant yzx-yazi feeds the FlexNetOS workspace
+      # layout and config surfaces.  Its inputs match the factory's
+      # full-variant binary exactly, so the store paths coincide.
       yzxYaziSrc = pkgs.replaceVars ./runtime/yzx-yazi.rs {
-        yazi = "${pkgs.yazi}/bin/yazi";
         yzxYaziConfig = "${yzxYaziConfig}";
         yzxYaziMaterializer = "${yzxYaziMaterializer}/bin/yzx-yazi-config";
         yzxOpen = "${yzxOpenCore}/bin/yzx-open";
@@ -490,14 +548,16 @@
         agentKey = defaultConfig.keybindings.agent;
         gitKey = defaultConfig.keybindings.git;
         menuKey = defaultConfig.keybindings.menu;
+        sidebarKey = defaultConfig.keybindings.sidebar;
+        sidebarFocusKey = defaultConfig.keybindings.sidebar_focus;
         inherit defaultPopupSideMargin defaultPopupVerticalMargin;
         yzxConfig = "${yzxConfigUi}/bin/yzx-config-ui";
         yzxMenu = "${yzxMenu}/bin/yzx-menu";
+        yzxYazi = "${yzxYazi}/bin/yzx-yazi";
         yzxSidebarRefresh = "${yzxOpenCore}/bin/yzx-sidebar-refresh";
         git = "${yzxGit}/bin/yzx-git";
         layout = "${yzxZellijLayout}/layout.kdl";
       };
-      yzxConfigKdl = mkYzxConfigKdl yzxShell;
       flexnetosYzxConfigKdl = mkYzxConfigKdl flexnetosYzxShell;
       zellijBuildBase =
         if pkgs ? "zellij-unwrapped"
@@ -526,37 +586,158 @@
         };
         doCheck = false;
       });
-      mkYzxCommand = {
+      # Merged factory: upstream's package-variant matrix (managed-Helix /
+      # managed-Yazi / Mars axes) carrying the fork's Nushell/Rust components.
+      # Fork call sites pass extension parameters (name / layout / config /
+      # shell / state overrides) through `args`; the upstream variant packages
+      # use the defaults.
+      mkYzx = {
+        withManagedHelix ? true,
+        withManagedYazi ? true,
         withMars,
-        layoutPackage ? yzxZellijLayout,
-        layoutTemplate ? ./defaults/zellij/layout.kdl,
-        configKdl ? yzxConfigKdl,
-        shellPackage ? yzxShell,
-        extraPathPrefix ? [],
-        desktopEntrySource ? "",
-        desktopDatabaseUpdater ? "",
-        defaultStateDir ? "",
-      }: let
-        packageVariant = if withMars then "full" else "runtime";
-        marsPath = if withMars then "${marsPackage}/bin/mars" else "";
-        main = pkgs.replaceVars ./runtime/yzx/main.rs {
-          yzxConfigUi = "${yzxConfigUi}/bin/yzx-config-ui";
+        ...
+      } @ args: let
+        variantSuffix = pkgs.lib.concatStringsSep "-" (
+          pkgs.lib.optional (! withMars) "no-mars"
+          ++ pkgs.lib.optional (! withManagedHelix) "no-helix"
+          ++ pkgs.lib.optional (! withManagedYazi) "no-yazi"
+        );
+        variant = if variantSuffix == "" then "full" else variantSuffix;
+        name = args.name or ("yazelix" + pkgs.lib.optionalString (variantSuffix != "") "-${variantSuffix}");
+        # Fork extension parameters with upstream-compatible defaults.
+        withDesktop = args.withDesktop or (withMars && pkgs.stdenv.hostPlatform.isLinux);
+        layoutTemplate = args.layoutTemplate or ./defaults/zellij/layout.kdl;
+        nuConfig = args.nuConfig or yzxNuConfig;
+        shellPackage = args.shellPackage or yzxShell;
+        extraPathPrefix = args.extraPathPrefix or [];
+        desktopEntrySource = args.desktopEntrySource or "";
+        desktopDatabaseUpdater = args.desktopDatabaseUpdater or "";
+        defaultStateDir = args.defaultStateDir or "";
+        yaziRuntime =
+          if withManagedYazi
+          then {
+            source = "bundled";
+            yaziCommand = "${pkgs.yazi}/bin/yazi";
+            yaCommand = "${pkgs.yazi}/bin/ya";
+          }
+          else {
+            source = "host";
+            yaziCommand = "yazi";
+            yaCommand = "ya";
+          };
+        managedEditor =
+          if withManagedHelix
+          then yzxHelix
+          else yzxHelixUnavailable;
+        tutor = let
+          src = pkgs.runCommand "yzx-tutor-src" {} ''
+            mkdir -p "$out"
+            cp -R ${pkgs.lib.cleanSource ./crates/yzx-tutor}/. "$out/"
+            chmod -R u+w "$out"
+            substituteInPlace "$out/src/main.rs" \
+              --replace-fail '@yzxHelix@' '${managedEditor}/bin/yzx-hx' \
+              --replace-fail '@nu@' '${pkgs.nushell}/bin/nu'
+          '';
+        in
+          pkgs.rustPlatform.buildRustPackage {
+            pname = "yzx-tutor";
+            version = "0.1.0";
+            inherit src;
+            cargoLock.lockFile = ./crates/yzx-tutor/Cargo.lock;
+          };
+        # Fork: Nushell editor/config-ui replace upstream's bash
+        # upstream bash-application equivalents (repo shell-source policy),
+        # parameterized by the variant's managed editor.
+        editor = nuApplication "yzx-editor" ./runtime/yzx_editor.nu {
+          yzxConfig = "${yzxConfig}/bin/yzx-config";
+          yzxHelix = "${managedEditor}/bin/yzx-hx";
+        };
+        configUi = nuApplication "yzx-config-ui" ./runtime/yzx_config_ui.nu {
+          yzxConfig = "${yzxConfig}/bin/yzx-config";
+          yzxEditor = "${editor}/bin/yzx-editor";
+          yzxHelix = "${managedEditor}/bin/yzx-hx";
+        };
+        yazi = rustBin "yzx-yazi" (pkgs.replaceVars ./runtime/yzx-yazi.rs {
+          yzxYaziConfig = "${yzxYaziConfig}";
+          yzxYaziMaterializer = "${yzxYaziMaterializer}/bin/yzx-yazi-config";
+          yzxOpen = "${yzxOpenCore}/bin/yzx-open";
+          zellij = "${yazelixZellijPackage}/bin/zellij";
+          yzxHelix = "${managedEditor}/bin/yzx-hx";
+          yzxEditor = "${editor}/bin/yzx-editor";
+          yzxConfig = "${yzxConfig}/bin/yzx-config";
+          pathPrefix = pkgs.lib.makeBinPath [pkgs.fzf pkgs.git pkgs.starship pkgs.zoxide];
+        });
+        layout = args.layoutPackage or (let
+          main = pkgs.runCommand "layout.kdl" {} ''
+            substitute ${./defaults/zellij/layout.kdl} "$out" \
+              --replace-fail '@yazi@' '${yazi}/bin/yzx-yazi' \
+              --replace-fail '@bar@' "$(<${yzxBarKdl})"
+          '';
+          swap = pkgs.replaceVars ./defaults/zellij/layout.swap.kdl {
+            yazi = "${yazi}/bin/yzx-yazi";
+          };
+        in
+          pkgs.runCommand "yzx-zellij-layout" {} ''
+            ${yzxLayoutCheck}/bin/yzx-layout-check ${main} ${swap} ${pkgs.lib.escapeShellArg novaBarLabel}
+            install -D -m 644 ${main} "$out/layout.kdl"
+            install -D -m 644 ${swap} "$out/layout.swap.kdl"
+          '');
+        git = let
+          config = pkgs.writeText "yzx-lazygit.yml" ''
+            os:
+              edit: '${editor}/bin/yzx-editor {{filename}}'
+              editAtLine: '${editor}/bin/yzx-editor {{filename}}'
+              editAtLineAndWait: '${editor}/bin/yzx-editor {{filename}}'
+              editInTerminal: true
+              openDirInEditor: '${editor}/bin/yzx-editor {{dir}}'
+          '';
+        in
+          # Fork: Nushell yzx-git replaces the upstream bash application.
+          nuApplication "yzx-git" ./runtime/yzx_git.nu {
+            lazygit = "${pkgs.lazygit}/bin/lazygit";
+            yzxEditor = "${editor}/bin/yzx-editor";
+            yzxLazyGitConfig = "${config}";
+          };
+        configKdl = args.configKdl or variantConfigKdl;
+        variantConfigKdl = pkgs.replaceVars ./defaults/zellij/config.kdl {
+          yzxShell = "${shellPackage}/bin/yzx-shell";
+          yzpp = "file:${yazelixZellijPopupPackage}/${yazelixZellijPopupPackage.wasmPath}";
+          yzxPaneOrchestrator = "file:${yazelixZellijPaneOrchestratorPackage}/${yazelixZellijPaneOrchestratorPackage.wasmPath}";
+          yzxAgent = "${yzxAgent}/bin/yzx-agent";
+          configKey = defaultConfig.keybindings.config;
+          agentKey = defaultConfig.keybindings.agent;
+          gitKey = defaultConfig.keybindings.git;
+          menuKey = defaultConfig.keybindings.menu;
+          sidebarKey = defaultConfig.keybindings.sidebar;
+          sidebarFocusKey = defaultConfig.keybindings.sidebar_focus;
+          inherit defaultPopupSideMargin defaultPopupVerticalMargin;
+          yzxConfig = "${configUi}/bin/yzx-config-ui";
           yzxMenu = "${yzxMenu}/bin/yzx-menu";
-          yzxTutor = "${yzxTutor}/bin/yzx-tutor";
+          yzxYazi = "${yazi}/bin/yzx-yazi";
+          yzxSidebarRefresh = "${yzxOpenCore}/bin/yzx-sidebar-refresh";
+          git = "${git}/bin/yzx-git";
+          layout = "${layout}/layout.kdl";
+        };
+        main = pkgs.replaceVars ./runtime/yzx/main.rs {
+          packageVariant = variant;
+          managedHelix = if withManagedHelix then "included" else "omitted";
+          yzxConfigUi = "${configUi}/bin/yzx-config-ui";
+          yzxMenu = "${yzxMenu}/bin/yzx-menu";
+          yzxTutor = "${tutor}/bin/yzx-tutor";
           yzxScreen = "${yazelixScreenPackage}/bin/yzs";
           yzxWelcome = "${yzxWelcome}/bin/yzx-welcome";
           yzxShell = "${shellPackage}/bin/yzx-shell";
           yzxEnvSupervisor = "${yzxEnvSupervisor}/bin/yzx-env-supervisor";
           zellij = "${yazelixZellijPackage}/bin/zellij";
-          mars = marsPath;
+          mars = if withMars then "${marsPackage}/bin/mars" else "";
           inherit desktopEntrySource desktopDatabaseUpdater defaultStateDir;
-          layout = "${layoutPackage}/layout.kdl";
+          layout = "${layout}/layout.kdl";
           layoutTemplate = "${layoutTemplate}";
           layoutSwapTemplate = "${./defaults/zellij/layout.swap.kdl}";
           yzxAgent = "${yzxAgent}/bin/yzx-agent";
-          yzxYazi = "${yzxYazi}/bin/yzx-yazi";
-          yzxHelix = "${yzxHelix}/bin/yzx-hx";
-          yzxEditor = "${yzxEditor}/bin/yzx-editor";
+          yzxYazi = "${yazi}/bin/yzx-yazi";
+          yzxHelix = "${managedEditor}/bin/yzx-hx";
+          yzxEditor = "${editor}/bin/yzx-editor";
           yzxConfig = "${yzxConfig}/bin/yzx-config";
           yzxMarsConfig = if withMars then "${yzxMarsConfig}" else "";
           yzxZellijConfig = "${yzxZellijConfig}/bin/yzx-zellij-config";
@@ -564,7 +745,10 @@
           yzxRuntimeIdentity = "${yzxRuntimeIdentity}/runtime_identity.json";
           yzxReveal = "${yzxOpenCore}/bin/yzx-reveal";
           yzxSidebarRefresh = "${yzxOpenCore}/bin/yzx-sidebar-refresh";
-          yzxYa = "${pkgs.yazi}/bin/ya";
+          yaziSource = yaziRuntime.source;
+          yaziCommand = yaziRuntime.yaziCommand;
+          yaCommand = yaziRuntime.yaCommand;
+          yaziTestedVersion = pkgs.yazi.version;
           yzxBarRenderRequest = "${yzxBarRenderRequestTemplate}";
           yzxBarRender = "${yzxBarRender}/bin/yzx-bar-render";
           yazelixZellijPopupWasm = "${yazelixZellijPopupPackage}/${yazelixZellijPopupPackage.wasmPath}";
@@ -576,6 +760,8 @@
           defaultAgentKeybinding = defaultConfig.keybindings.agent;
           defaultGitKeybinding = defaultConfig.keybindings.git;
           defaultMenuKeybinding = defaultConfig.keybindings.menu;
+          defaultSidebarKeybinding = defaultConfig.keybindings.sidebar;
+          defaultSidebarFocusKeybinding = defaultConfig.keybindings.sidebar_focus;
           inherit defaultPopupSideMargin defaultPopupVerticalMargin;
           version = novaVersion;
           pathPrefix =
@@ -584,49 +770,30 @@
               pkgs.git
               pkgs.lazygit
               tokenusage
-              yzxHelix
+              managedEditor
             ]
             + pkgs.lib.optionalString (extraPathPrefix != []) (
               ":" + pkgs.lib.makeBinPath extraPathPrefix
             );
         };
-        src = pkgs.runCommand "yzx-command-${packageVariant}-src" {} ''
+        src = pkgs.runCommand "yzx-command-${variant}-src" {} ''
           mkdir -p "$out"
           cp -R ${pkgs.lib.cleanSource ./runtime/yzx}/. "$out/"
           chmod -R u+w "$out"
           cp ${main} "$out/main.rs"
         '';
-      in
-        rustBin "yzx" "${src}/main.rs";
-      mkYzx = {
-        name,
-        withMars ? false,
-        withDesktop ? withMars && pkgs.stdenv.hostPlatform.isLinux,
-        layoutPackage ? yzxZellijLayout,
-        layoutTemplate ? ./defaults/zellij/layout.kdl,
-        configKdl ? yzxConfigKdl,
-        nuConfig ? yzxNuConfig,
-        shellPackage ? yzxShell,
-        extraPathPrefix ? [],
-        desktopEntrySource ? "",
-        desktopDatabaseUpdater ? "",
-        defaultStateDir ? "",
-      }: let
-        command = mkYzxCommand {
-          inherit withMars layoutPackage layoutTemplate configKdl shellPackage extraPathPrefix;
-          inherit desktopEntrySource desktopDatabaseUpdater defaultStateDir;
-        };
+        command = rustBin "yzx" "${src}/main.rs";
         desktop = pkgs.makeDesktopItem {
           name = "yzx";
           desktopName = "Yazelix Nova";
           genericName = "Terminal Emulator";
-          comment = "Open Yazelix Nova";
+          comment = "Open the Yazelix integrated terminal workspace";
           exec = "${command}/bin/yzx launch";
           icon = "yzx";
           terminal = false;
           categories = ["System" "TerminalEmulator"];
           startupNotify = true;
-          startupWMClass = "mars";
+          startupWMClass = "yzx";
         };
       in
         pkgs.symlinkJoin {
@@ -638,13 +805,13 @@
               install -d "$out/libexec/yazelix"
               ln -s ${yzxZellijConfig}/bin/yzx-zellij-config "$out/libexec/yazelix/yzx-zellij-config"
               ln -s ${yzxConfig}/bin/yzx-config "$out/libexec/yazelix/yzx-config"
-              ln -s ${yzxTutor}/bin/yzx-tutor "$out/libexec/yazelix/yzx-tutor"
+              ln -s ${tutor}/bin/yzx-tutor "$out/libexec/yazelix/yzx-tutor"
               install -D -m 644 ${configKdl} "$out/share/yazelix/config.kdl"
               install -D -m 644 ${yzxRuntimeIdentity}/runtime_identity.json "$out/share/yazelix/runtime_identity.json"
               install -D -m 644 ${yazelixCursors}/yazelix_cursors_default.toml "$out/share/yazelix/cursors.toml"
               install -D -m 644 ${./defaults/config.toml} "$out/share/yazelix/config.toml"
-              install -D -m 644 ${layoutPackage}/layout.kdl "$out/share/yazelix/layout.kdl"
-              install -D -m 644 ${layoutPackage}/layout.swap.kdl "$out/share/yazelix/layout.swap.kdl"
+              install -D -m 644 ${layout}/layout.kdl "$out/share/yazelix/layout.kdl"
+              install -D -m 644 ${layout}/layout.swap.kdl "$out/share/yazelix/layout.swap.kdl"
               ln -s ${yzxYaziConfig} "$out/share/yazelix/yazi"
               install -D -m 644 ${nuConfig}/config.nu "$out/share/yazelix/nu/config.nu"
               install -D -m 644 ${nuConfig}/env.nu "$out/share/yazelix/nu/env.nu"
@@ -663,11 +830,54 @@
             '';
           meta.platforms = supportedSystems;
         };
+      # Fork: packages stay let-bound with an explicit output attrset (not
+      # upstream's `rec` output) so FlexNetOS support bindings never leak into
+      # the flake's package set.
       yazelix = mkYzx {
-        name = "yazelix";
+        withManagedHelix = true;
+        withManagedYazi = true;
         withMars = true;
       };
-      yzxRuntime = mkYzx {name = "yazelix-runtime";};
+      yazelix-no-helix = mkYzx {
+        withManagedHelix = false;
+        withManagedYazi = true;
+        withMars = true;
+      };
+      yazelix-no-yazi = mkYzx {
+        withManagedHelix = true;
+        withManagedYazi = false;
+        withMars = true;
+      };
+      yazelix-no-helix-no-yazi = mkYzx {
+        withManagedHelix = false;
+        withManagedYazi = false;
+        withMars = true;
+      };
+      yazelix-no-mars = mkYzx {
+        withManagedHelix = true;
+        withManagedYazi = true;
+        withMars = false;
+      };
+      yazelix-no-mars-no-helix = mkYzx {
+        withManagedHelix = false;
+        withManagedYazi = true;
+        withMars = false;
+      };
+      yazelix-no-mars-no-yazi = mkYzx {
+        withManagedHelix = true;
+        withManagedYazi = false;
+        withMars = false;
+      };
+      yazelix-no-mars-no-helix-no-yazi = mkYzx {
+        withManagedHelix = false;
+        withManagedYazi = false;
+        withMars = false;
+      };
+      # Fork: the Mars-free runtime package keeps its historical name.
+      yzxRuntime = mkYzx {
+        name = "yazelix-runtime";
+        withMars = false;
+      };
       fenixPkgs = fenix.packages.${system};
       flexnetosRustPlatform = pkgs.makeRustPlatform {
         cargo = fenixPkgs.latest.cargo;
@@ -1214,7 +1424,16 @@
         ${pkgs.nushell}/bin/nu --commands "nu-check --debug '$out/bin/yzx-envelope' | ignore; exit 0"
       '';
     in {
-      inherit yazelix;
+      inherit
+        yazelix
+        yazelix-no-helix
+        yazelix-no-yazi
+        yazelix-no-helix-no-yazi
+        yazelix-no-mars
+        yazelix-no-mars-no-helix
+        yazelix-no-mars-no-yazi
+        yazelix-no-mars-no-helix-no-yazi
+        ;
       runtime = yzxRuntime;
       default = yazelix;
     } // pkgs.lib.optionalAttrs pkgs.stdenv.isLinux {
@@ -1239,18 +1458,81 @@
     checks = eachSystem (system: let
       pkgs = import nixpkgs {inherit system;};
       yzx = self.packages.${system}.yazelix;
+      yzxNoHelix = self.packages.${system}.yazelix-no-helix;
+      yzxNoYazi = self.packages.${system}.yazelix-no-yazi;
+      yzxNoHelixNoYazi = self.packages.${system}.yazelix-no-helix-no-yazi;
+      yzxNoMars = self.packages.${system}.yazelix-no-mars;
+      yzxNoMarsNoHelix = self.packages.${system}.yazelix-no-mars-no-helix;
+      yzxNoMarsNoYazi = self.packages.${system}.yazelix-no-mars-no-yazi;
+      yzxNoMarsNoHelixNoYazi =
+        self.packages.${system}.yazelix-no-mars-no-helix-no-yazi;
+      # Fork: the historical Mars-free runtime package stays contract-checked.
       yzxRuntime = self.packages.${system}.runtime;
-      marsPackage = mars.packages.${system}.mars;
       runtimeClosure = pkgs.closureInfo {rootPaths = [yzxRuntime];};
-      yzxYaziMaterializer = pkgs.rustPlatform.buildRustPackage {
-        pname = "yzx-yazi-config";
-        version = "0.1.0";
-        src = ./crates/yzx-yazi-config;
-        cargoLock.lockFile = ./crates/yzx-yazi-config/Cargo.lock;
-      };
+      marsPackage = mars.packages.${system}.mars;
+      noHelixClosure = pkgs.closureInfo {rootPaths = [yzxNoHelix];};
+      noYaziClosure = pkgs.closureInfo {rootPaths = [yzxNoYazi];};
+      noHelixNoYaziClosure = pkgs.closureInfo {rootPaths = [yzxNoHelixNoYazi];};
+      noMarsClosure = pkgs.closureInfo {rootPaths = [yzxNoMars];};
+      noMarsNoHelixClosure = pkgs.closureInfo {rootPaths = [yzxNoMarsNoHelix];};
+      noMarsNoYaziClosure = pkgs.closureInfo {rootPaths = [yzxNoMarsNoYazi];};
+      noMarsNoHelixNoYaziClosure =
+        pkgs.closureInfo {rootPaths = [yzxNoMarsNoHelixNoYazi];};
+      zellijBarPackage = yazelixZellijBar.packages.${system}.default;
+      yzxYaziMaterializer = yzxYaziMaterializerFor pkgs;
       checksSrc = pkgs.lib.cleanSource ./checks;
       yzxContractsCheck = rustBinFor pkgs "yzx-contracts-check" "${checksSrc}/yzx-contracts.rs";
       helixContractsCheck = rustBinFor pkgs "helix-contracts-check" "${checksSrc}/helix-contracts.rs";
+      noHelixContractsCheck =
+        rustBinFor pkgs "no-helix-contracts-check" "${checksSrc}/no-helix-contracts.rs";
+      mkFakeHostYazi = {
+        name,
+        yaVersion ? pkgs.yazi.version,
+        yaziVersion ? pkgs.yazi.version,
+      }:
+        # Fake host binaries emitted as Nushell scripts (cache/shell policy:
+        # no generated shell runtime).
+        pkgs.runCommand name {} ''
+          mkdir -p "$out/bin"
+          {
+            echo '#!${pkgs.nushell}/bin/nu --no-config-file'
+            echo 'def --wrapped main [...args: string] {'
+            echo '  if ($args | get --optional 0 | default "") == "--version" {'
+            echo "    print 'Yazi ${yaziVersion}'"
+            echo '  } else {'
+            echo '    let config = ($env.YAZI_CONFIG_HOME? | default "")'
+            echo '    let ya = ($env.YZX_YA? | default "")'
+            echo '    let joined = ($args | str join (char space))'
+            echo '    print $"fake Yazi config=($config) ya=($ya) args=($joined) "'
+            echo '  }'
+            echo '}'
+          } > "$out/bin/yazi"
+          {
+            echo '#!${pkgs.nushell}/bin/nu --no-config-file'
+            echo 'def --wrapped main [...args: string] {'
+            echo '  if ($args | get --optional 0 | default "") == "--version" {'
+            echo "    print 'Ya ${yaVersion}'"
+            echo '  } else {'
+            echo '    let joined = ($args | str join (char space))'
+            echo '    print $"fake Ya args=($joined) "'
+            echo '  }'
+            echo '}'
+          } > "$out/bin/ya"
+          chmod 755 "$out/bin/yazi" "$out/bin/ya"
+        '';
+      fakeHostYazi = mkFakeHostYazi {name = "fake-host-yazi";};
+      fakeNewerHostYazi = mkFakeHostYazi {
+        name = "fake-newer-host-yazi";
+        yaVersion = "99.0.0";
+        yaziVersion = "99.0.0";
+      };
+      fakeMismatchedHostYazi = mkFakeHostYazi {
+        name = "fake-mismatched-host-yazi";
+        yaVersion = "98.0.0";
+        yaziVersion = "99.0.0";
+      };
+      # Fork: the fake Home Manager package stays Nushell-backed instead of
+      # upstream's bash runCommand.
       fakeYazelixBinary = pkgs.writeTextFile {
         name = "fake-yazelix-binary";
         destination = "/bin/yzx";
@@ -1279,6 +1561,10 @@
         [settings]
         trail = "reef"
       '';
+      fakeYaziFlavor = pkgs.writeTextDir "flavor.toml" ''
+        [mgr]
+        cwd = { fg = "#c0ffee" }
+      '';
       homeManagerConfiguration = module:
         home-manager.lib.homeManagerConfiguration {
           inherit pkgs;
@@ -1298,10 +1584,15 @@
       homeManagerOverride = homeManagerConfiguration {
         programs.yazelix.package = fakeYazelix;
       };
-      homeManagerRuntime = homeManagerConfiguration {
-        programs.yazelix.package = yzxRuntime;
+      homeManagerNoMars = homeManagerConfiguration {
+        programs.yazelix.package = yzxNoMars;
+      };
+      homeManagerNoYazi = homeManagerConfiguration {
+        home.packages = [pkgs.yazi];
+        programs.yazelix.package = yzxNoYazi;
       };
       homeManagerConfigFiles = homeManagerConfiguration {
+        xdg.configFile."yazelix/yazi/flavors/example.yazi".source = fakeYaziFlavor;
         programs.yazelix.config = {
           settings = {
             shell.program = "nu";
@@ -1310,12 +1601,14 @@
             keybindings.agent = "Alt Shift A";
             keybindings.git = "Alt Shift G";
             keybindings.menu = "Alt Shift U";
+            keybindings.sidebar = "Ctrl Shift B";
+            keybindings.sidebar_focus = "Ctrl Shift E";
             bar.widgets = ["editor" "shell"];
           };
           cursors.source = fakeCursors;
           mars.text = "[window]\nwidth = 1200\n";
           zellij.text = "pane_frames false\n";
-          starship.text = "format = \"::\"\n";
+          starship.text = "[character]\nformat = \"::\"\n";
           helix.config.text = "[editor]\nline-number = \"relative\"\n";
           helix.languages.source = fakeHelixLanguages;
           helix.module.text = "(provide yzx-test)\n";
@@ -1402,10 +1695,15 @@
         fi
         touch "$out"
       '';
+      zjstatus_activity_pipe = pkgs.runCommand "yzx-zjstatus-activity-pipe-check" {nativeBuildInputs = [pkgs.ripgrep];} ''
+        rg -a -q 'tab_activity_pipe_name' ${zellijBarPackage}/${zellijBarPackage.wasmPath}
+        touch "$out"
+      '';
       home_manager = pkgs.runCommand "yzx-home-manager-check" {} ''
         default_path="${homeManagerDefault.activationPackage}/home-path"
         override_path="${homeManagerOverride.activationPackage}/home-path"
-        runtime_path="${homeManagerRuntime.activationPackage}/home-path"
+        no_mars_path="${homeManagerNoMars.activationPackage}/home-path"
+        no_yazi_path="${homeManagerNoYazi.activationPackage}/home-path"
         hm_yzx="${homeManagerConfigFiles.activationPackage}/home-path/bin/yzx"
         config_files="${homeManagerConfigFiles.activationPackage}/home-files/.config/yazelix"
 
@@ -1421,8 +1719,11 @@
         test "$("$override_path/bin/yzx")" = fake-yazelix
         grep -q 'Fake Yazelix' "$override_path/share/applications/yzx.desktop"
 
-        test -x "$runtime_path/bin/yzx"
-        test ! -e "$runtime_path/share/applications/yzx.desktop"
+        test -x "$no_mars_path/bin/yzx"
+        test ! -e "$no_mars_path/share/applications/yzx.desktop"
+        test -x "$no_yazi_path/bin/yzx"
+        test -x "$no_yazi_path/bin/yazi"
+        test -x "$no_yazi_path/bin/ya"
 
         if [ -e "${homeManagerDefault.activationPackage}/home-files/.config/yazelix" ]; then
           printf '%s\n' 'Home Manager v1 must not generate Yazelix runtime config files' >&2
@@ -1436,6 +1737,8 @@
         grep -q 'agent = "Alt Shift A"' "$config_files/config.toml"
         grep -q 'git = "Alt Shift G"' "$config_files/config.toml"
         grep -q 'menu = "Alt Shift U"' "$config_files/config.toml"
+        grep -q 'sidebar = "Ctrl Shift B"' "$config_files/config.toml"
+        grep -q 'sidebar_focus = "Ctrl Shift E"' "$config_files/config.toml"
         ! grep -q 'ratconfig' "$config_files/config.toml"
         grep -q 'trail = "reef"' "$config_files/cursors.toml"
         test -L "$config_files/cursors.toml"
@@ -1451,8 +1754,11 @@
         test "$(YAZELIX_CONFIG_HOME="$config_files" ${yzx}/libexec/yazelix/yzx-config --get keybindings.agent)" = "Alt Shift A"
         test "$(YAZELIX_CONFIG_HOME="$config_files" ${yzx}/libexec/yazelix/yzx-config --get keybindings.git)" = "Alt Shift G"
         test "$(YAZELIX_CONFIG_HOME="$config_files" ${yzx}/libexec/yazelix/yzx-config --get keybindings.menu)" = "Alt Shift U"
+        test "$(YAZELIX_CONFIG_HOME="$config_files" ${yzx}/libexec/yazelix/yzx-config --get keybindings.sidebar)" = "Ctrl Shift B"
+        test "$(YAZELIX_CONFIG_HOME="$config_files" ${yzx}/libexec/yazelix/yzx-config --get keybindings.sidebar_focus)" = "Ctrl Shift E"
         grep -q 'width = 1200' "$config_files/mars/config.toml"
         grep -q 'pane_frames false' "$config_files/zellij/config.kdl"
+        grep -q '^\[character\]$' "$config_files/starship.toml"
         grep -q 'format = "::"' "$config_files/starship.toml"
         grep -q 'line-number = "relative"' "$config_files/helix/config.toml"
         grep -q 'name = "nix"' "$config_files/helix/languages.toml"
@@ -1461,6 +1767,14 @@
         grep -q -- '-- init' "$config_files/yazi/init.lua"
         grep -q 'deps = \[\]' "$config_files/yazi/package.toml"
         grep -q 'dark = "example"' "$config_files/yazi/theme.toml"
+        test -L "$config_files/yazi/flavors/example.yazi"
+        case "$(readlink "$config_files/yazi/flavors/example.yazi")" in
+          /nix/store/*) ;;
+          *) printf '%s\n' 'Home Manager Yazi flavor is not store-backed' >&2; exit 1 ;;
+        esac
+        hm_yazi_runtime="$(${yzxYaziMaterializer}/bin/yzx-yazi-config ${yzx}/share/yazelix/yazi "$config_files/yazi" "$TMPDIR/hm-yazi-state")"
+        YAZI_CONFIG_HOME="$hm_yazi_runtime" ${pkgs.yazi}/bin/yazi --debug > hm-yazi-debug
+        grep -q 'Dark/light flavor:.*example' hm-yazi-debug
         grep -q '# config' "$config_files/nu/config.nu"
 
         export HOME="$TMPDIR/hm-yzx-home"
@@ -1476,6 +1790,7 @@
         "$hm_yzx" status > status
         "$hm_yzx" doctor > doctor
         "$hm_yzx" tutor list > tutor-list
+        "$hm_yzx" run ya --version > ya-version
         grep -q 'Usage:' help
         grep -q 'Yazelix Nova status' status
         grep -q "config home: $runtime_config" status
@@ -1486,6 +1801,7 @@
         grep -q "ok config home: $runtime_config" doctor
         grep -q 'ok shell.program: nu' doctor
         grep -q 'Yazelix Nova tutor lessons' tutor-list
+        grep -q '^Ya ' ya-version
         touch "$out"
       '';
       yzx_yazi_materialization = pkgs.runCommand "yzx-yazi-materialization-check" {nativeBuildInputs = [pkgs.rustc pkgs.stdenv.cc];} ''
@@ -1494,21 +1810,37 @@
 
         user="$TMPDIR/yazi-user"
         state="$TMPDIR/yazi-state"
-        mkdir -p "$user/plugins"
+        install -D ${starshipYazi}/main.lua "$user/plugins/starship.yazi/main.lua"
         ln -s ${pkgs.yaziPlugins.smart-enter} "$user/plugins/smart-enter.yazi"
+        touch "$user/plugins/starship.yazi/user-managed"
         printf '%s\n' 'require("smart-enter"):setup { open_multi = false }' > "$user/init.lua"
         printf '%s\n' '[[mgr.prepend_keymap]]' 'on = "l"' 'run = "plugin smart-enter"' > "$user/keymap.toml"
 
         runtime="$(${yzxYaziMaterializer}/bin/yzx-yazi-config ${yzx}/share/yazelix/yazi "$user" "$state")"
-        YAZI_CONFIG_HOME="$runtime" ${pkgs.yazi}/bin/yazi --debug > yazi-debug
+        YZX_YAZI_STARSHIP_CONFIG="$runtime/yazelix_starship.toml" YAZI_CONFIG_HOME="$runtime" ${pkgs.yazi}/bin/yazi --debug > yazi-debug
         test -f "$runtime/plugins/smart-enter.yazi/main.lua"
         for plugin in auto-layout git sidebar-state sidebar-status starship zoxide-editor; do
           test -f "$runtime/plugins/$plugin.yazi/main.lua"
         done
         test -f "$runtime/yazelix_starship.toml"
+        test -f "$runtime/plugins/starship.yazi/user-managed"
         grep -q 'require("smart-enter")' "$runtime/init.lua"
         grep -q 'plugin smart-enter' "$runtime/keymap.toml"
         grep -q 'yzx-open' yazi-debug
+
+        for flavor_path in ${yzx}/share/yazelix/yazi/flavors/*.yazi; do
+          flavor_dir="''${flavor_path##*/}"
+          flavor="''${flavor_dir%.yazi}"
+          flavor_user="$TMPDIR/flavor-$flavor"
+          mkdir -p "$flavor_user"
+          printf '[flavor]\ndark = "%s"\nlight = "%s"\n' "$flavor" "$flavor" > "$flavor_user/theme.toml"
+          flavor_runtime="$(${yzxYaziMaterializer}/bin/yzx-yazi-config ${yzx}/share/yazelix/yazi "$flavor_user" "$TMPDIR/state-$flavor")"
+          YAZI_CONFIG_HOME="$flavor_runtime" ${pkgs.yazi}/bin/yazi --debug > "debug-$flavor"
+          grep -q "Dark/light flavor:.*$flavor" "debug-$flavor"
+          test -f "$flavor_runtime/flavors/$flavor_dir/flavor.toml"
+          test -f "$flavor_runtime/flavors/$flavor_dir/tmtheme.xml"
+          test ! -e "$flavor_runtime/flavors/$flavor_dir/preview.png"
+        done
         touch "$out"
       '';
       yzx_launcher_unit = pkgs.runCommand "yzx-launcher-unit-check" {nativeBuildInputs = [pkgs.rustc pkgs.stdenv.cc];} ''
@@ -1540,6 +1872,40 @@
         grep -qx env runtime
         touch "$out"
       '';
+      zellij_theme_inventory_parity = pkgs.runCommand "zellij-theme-inventory-parity-check" {} ''
+        for file in ${yazelixZellij}/zellij-utils/assets/themes/*.kdl; do
+          awk '
+            /^[[:space:]]*themes[[:space:]]*\{/ {
+              in_themes = 1
+              depth = 1
+              next
+            }
+            in_themes {
+              line = $0
+              sub(/\/\/.*/, "", line)
+              if (depth == 1 && line ~ /^[[:space:]]*("[^"]+"|[A-Za-z0-9_-]+)[[:space:]]*\{/) {
+                name = line
+                sub(/^[[:space:]]*/, "", name)
+                if (name ~ /^"/) {
+                  sub(/^"/, "", name)
+                  sub(/".*/, "", name)
+                } else {
+                  sub(/[[:space:]]*\{.*/, "", name)
+                }
+                print name
+              }
+              opens = line
+              closes = line
+              depth += gsub(/\{/, "", opens) - gsub(/\}/, "", closes)
+              if (depth <= 0) exit
+            }
+          ' "$file"
+        done > actual-unsorted
+        sort actual-unsorted > actual
+        test "$(wc -l < actual)" -eq "$(sort -u actual | wc -l)"
+        diff -u ${./crates/yzx-config/zellij-themes.txt} actual
+        touch "$out"
+      '';
       key_reference_parity = pkgs.runCommand "key-reference-parity-check" {nativeBuildInputs = [pkgs.rustc pkgs.stdenv.cc];} ''
         rustc --edition=2024 ${./checks/key-reference-parity.rs} -o key-reference-parity-check
         ./key-reference-parity-check ${./crates/yzx-config/src/catalog.rs} ${yzx}/share/yazelix/config.kdl ${./crates/yzx-tutor/src/main.rs}
@@ -1550,6 +1916,8 @@
           ${yzx} ${pkgs.git}/bin/git ${pkgs.jq}/bin/jq ${pkgs.nushell}/bin/nu "$out" \
           ${./README.md} ${./docs/installation.md} ${./docs/development.md} ${./AGENTS.md}
       '';
+      # Fork: contract coverage for the historical `runtime` package.  The
+      # merged variant machinery reports it as the `no-mars` variant.
       runtime_contracts = pkgs.runCommand "yzx-runtime-contracts" {} ''
         test -x ${yzxRuntime}/bin/yzx
         test ! -e ${yzxRuntime}/share/applications/yzx.desktop
@@ -1564,9 +1932,9 @@
         printf '%s\n' '[welcome]' 'enabled = false' > "$YAZELIX_CONFIG_HOME/config.toml"
 
         ${yzxRuntime}/bin/yzx status --json > status.json
-        test "$(${pkgs.jq}/bin/jq -r .package status.json)" = runtime
+        test "$(${pkgs.jq}/bin/jq -r .package status.json)" = no-mars
         ${yzxRuntime}/bin/yzx status > status
-        grep -q '^package: runtime$' status
+        grep -q '^package: no-mars$' status
         grep -q '^mars config: not included$' status
         ${yzxRuntime}/bin/yzx doctor > doctor
         grep -q '^ok mars: not included$' doctor
@@ -1574,9 +1942,48 @@
           printf '%s\n' 'Mars-free runtime launch unexpectedly succeeded' >&2
           exit 1
         fi
-        grep -q 'launch is unavailable in the Mars-free runtime package' launch-error
+        grep -q 'this package omits Mars' launch-error
         ${yzxRuntime}/bin/yzx enter --version > enter-version
         grep -q '^zellij ' enter-version
+        touch "$out"
+      '';
+      no_mars_contracts = pkgs.runCommand "yzx-no-mars-contracts" {} ''
+        check_no_mars() {
+          local package="$1"
+          local variant="$2"
+          local closure="$3"
+          local root="$TMPDIR/$variant"
+
+          test -x "$package/bin/yzx"
+          test ! -e "$package/share/applications/yzx.desktop"
+          ! grep -Fx ${marsPackage} "$closure"
+          ! grep -E '/[^/]*-rio-[^/]*$' "$closure"
+
+          export HOME="$root/home"
+          export YAZELIX_CONFIG_HOME="$root/config"
+          export YAZELIX_STATE_DIR="$root/state"
+          export XDG_DATA_HOME="$root/data"
+          mkdir -p "$HOME" "$YAZELIX_CONFIG_HOME" "$YAZELIX_STATE_DIR" "$XDG_DATA_HOME"
+          printf '%s\n' '[welcome]' 'enabled = false' > "$YAZELIX_CONFIG_HOME/config.toml"
+
+          "$package/bin/yzx" status --json > "$root/status.json"
+          test "$(${pkgs.jq}/bin/jq -r .package "$root/status.json")" = "$variant"
+          "$package/bin/yzx" status > "$root/status"
+          grep -Fqx "package: $variant" "$root/status"
+          grep -Fqx 'mars config: not included' "$root/status"
+          "$package/bin/yzx" doctor > "$root/doctor"
+          grep -Fqx 'ok mars: not included' "$root/doctor"
+          if "$package/bin/yzx" launch 2> "$root/launch-error"; then
+            printf '%s\n' "$variant launch unexpectedly succeeded" >&2
+            exit 1
+          fi
+          grep -q 'this package omits Mars' "$root/launch-error"
+          "$package/bin/yzx" enter --version > "$root/enter-version"
+          grep -q '^zellij ' "$root/enter-version"
+        }
+
+        check_no_mars ${yzxNoMars} no-mars ${noMarsClosure}/store-paths
+        check_no_mars ${yzxNoMarsNoHelix} no-mars-no-helix ${noMarsNoHelixClosure}/store-paths
         touch "$out"
       '';
       helix_contracts = pkgs.runCommand "yzx-helix-contracts" {} ''
@@ -1881,31 +2288,96 @@
         grep -F '"pass": true' staged-check.json
         touch "$out"
       '';
+      no_helix_contracts = pkgs.runCommand "yzx-no-helix-contracts" {} ''
+        ${noHelixContractsCheck}/bin/no-helix-contracts-check \
+          ${yzxNoHelix} ${noHelixClosure}/store-paths no-helix ${pkgs.nushell}/bin/nu
+        ${noHelixContractsCheck}/bin/no-helix-contracts-check \
+          ${yzxNoMarsNoHelix} ${noMarsNoHelixClosure}/store-paths no-mars-no-helix ${pkgs.nushell}/bin/nu
+        touch "$out"
+      '';
+      host_yazi_contracts = pkgs.runCommand "yzx-host-yazi-contracts" {} ''
+        for closure in \
+          ${noYaziClosure}/store-paths \
+          ${noHelixNoYaziClosure}/store-paths \
+          ${noMarsNoYaziClosure}/store-paths \
+          ${noMarsNoHelixNoYaziClosure}/store-paths; do
+          if grep -Fx ${pkgs.yazi} "$closure"; then
+            printf '%s\n' "host-Yazi closure retained ${pkgs.yazi}" >&2
+            exit 1
+          fi
+        done
+
+        package=${yzxNoMarsNoHelixNoYazi}
+        root="$TMPDIR/host-yazi"
+        export HOME="$root/home"
+        export YAZELIX_CONFIG_HOME="$root/config"
+        export YAZELIX_STATE_DIR="$root/state"
+        export XDG_DATA_HOME="$root/data"
+        mkdir -p "$HOME" "$YAZELIX_CONFIG_HOME" "$YAZELIX_STATE_DIR" "$XDG_DATA_HOME"
+        printf '%s\n' '[welcome]' 'enabled = false' > "$YAZELIX_CONFIG_HOME/config.toml"
+
+        PATH=${fakeHostYazi}/bin:${pkgs.coreutils}/bin "$package/bin/yzx" doctor > "$root/doctor"
+        grep -Fqx 'ok yazi source: host' "$root/doctor"
+        grep -Fqx 'ok yazi: ${fakeHostYazi}/bin/yazi' "$root/doctor"
+        grep -Fqx 'ok ya: ${fakeHostYazi}/bin/ya' "$root/doctor"
+        grep -Fqx 'ok yazi version: ${pkgs.yazi.version}' "$root/doctor"
+        grep -Fqx 'ok yazi tested version: ${pkgs.yazi.version}' "$root/doctor"
+
+        PATH=${fakeHostYazi}/bin:${pkgs.coreutils}/bin "$package/bin/yzx" run ya --version > "$root/ya-version"
+        grep -Fqx 'Ya ${pkgs.yazi.version}' "$root/ya-version"
+        PATH=${fakeHostYazi}/bin:${pkgs.coreutils}/bin "$package/bin/yzx" run yazi --version > "$root/yazi-version"
+        grep -Fqx 'Yazi ${pkgs.yazi.version}' "$root/yazi-version"
+        PATH=${fakeHostYazi}/bin:${pkgs.coreutils}/bin "$package/bin/yzx" run yazi managed > "$root/yazi-managed"
+        grep -F 'fake Yazi config=' "$root/yazi-managed"
+        grep -F 'ya=${fakeHostYazi}/bin/ya' "$root/yazi-managed"
+
+        YZX_YAZI_BIN=${fakeHostYazi}/bin/yazi \
+          YZX_YA=${fakeHostYazi}/bin/ya \
+          PATH=${fakeMismatchedHostYazi}/bin:${pkgs.coreutils}/bin \
+          "$package/bin/yzx" run yazi inherited > "$root/yazi-inherited"
+        grep -F 'args=inherited' "$root/yazi-inherited"
+        grep -F 'ya=${fakeHostYazi}/bin/ya' "$root/yazi-inherited"
+
+        YZX_YAZI_BIN=${fakeMismatchedHostYazi}/bin/yazi \
+          PATH=${fakeHostYazi}/bin:${pkgs.coreutils}/bin \
+          "$package/bin/yzx" status > "$root/partial-inherited"
+        grep -Fqx 'yazi: ${fakeHostYazi}/bin/yazi' "$root/partial-inherited"
+        grep -Fqx 'ya: ${fakeHostYazi}/bin/ya' "$root/partial-inherited"
+
+        PATH=${fakeNewerHostYazi}/bin:${pkgs.coreutils}/bin "$package/bin/yzx" status > "$root/newer-status" 2> "$root/newer-warning"
+        grep -F 'host yazi/ya 99.0.0 differs from Nova' "$root/newer-warning"
+        PATH=${fakeNewerHostYazi}/bin:${pkgs.coreutils}/bin "$package/bin/yzx" doctor > "$root/newer-doctor"
+        grep -F 'warn yazi compatibility: host yazi/ya 99.0.0 differs from Nova' "$root/newer-doctor"
+
+        if PATH=${fakeMismatchedHostYazi}/bin:${pkgs.coreutils}/bin "$package/bin/yzx" status > /dev/null 2> "$root/mismatch"; then
+          printf '%s\n' 'mismatched host Yazi pair unexpectedly succeeded' >&2
+          exit 1
+        fi
+        grep -F 'yazi 99.0.0 and ya 98.0.0 differ' "$root/mismatch"
+
+        if PATH=${pkgs.coreutils}/bin "$package/bin/yzx" status > /dev/null 2> "$root/missing"; then
+          printf '%s\n' 'missing host Yazi pair unexpectedly succeeded' >&2
+          exit 1
+        fi
+        grep -F 'yazi: command not found in PATH' "$root/missing"
+        grep -F 'ya: command not found in PATH' "$root/missing"
+        test "$(PATH=${pkgs.coreutils}/bin "$package/bin/yzx" run printf unrelated)" = unrelated
+        touch "$out"
+      '';
     });
 
     apps = eachSystem (system:
-      rec {
-        yazelix = {
-          type = "app";
-          program = "${self.packages.${system}.yazelix}/bin/yzx";
-        };
-        runtime = {
-          type = "app";
-          program = "${self.packages.${system}.runtime}/bin/yzx";
-        };
-        default = yazelix;
-      }
-      // nixpkgs.lib.optionalAttrs (nixpkgs.lib.hasSuffix "-linux" system) {
-        # Linux-only, matching the packages gate (bubblewrap).
+      # Upstream: every package doubles as a `yzx` app.  Fork: yzx-envelope's
+      # entrypoint is bin/yzx-envelope, so it is mapped explicitly (its
+      # packages gate already restricts it to Linux).
+      builtins.mapAttrs (_name: package: {
+        type = "app";
+        program = "${package}/bin/yzx";
+      }) (builtins.removeAttrs self.packages.${system} ["yzx-envelope"])
+      // nixpkgs.lib.optionalAttrs (self.packages.${system} ? yzx-envelope) {
         yzx-envelope = {
           type = "app";
           program = "${self.packages.${system}.yzx-envelope}/bin/yzx-envelope";
-        };
-      }
-      // nixpkgs.lib.optionalAttrs (system == "x86_64-linux") {
-        lifeos_foundation_yzx = {
-          type = "app";
-          program = "${self.packages.${system}.lifeos_foundation_yzx}/bin/yzx";
         };
       });
   };

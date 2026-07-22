@@ -1,5 +1,21 @@
 {
   "nodes": {
+    "autoLayoutYazi": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1753889470,
+        "narHash": "sha256-4vRIGU/ArXhW9ervhyNhpfDN7UF4pqVYnxi6FExlgGk=",
+        "owner": "luccahuguet",
+        "repo": "auto-layout.yazi",
+        "rev": "e24bee9f6dd15ff80eae1b3dc1a6b06ee7e66121",
+        "type": "github"
+      },
+      "original": {
+        "owner": "luccahuguet",
+        "repo": "auto-layout.yazi",
+        "type": "github"
+      }
+    },
     "beads_rust_source": {
       "flake": false,
       "locked": {
@@ -452,11 +468,11 @@
     "ratconfig": {
       "flake": false,
       "locked": {
-        "lastModified": 1783860559,
-        "narHash": "sha256-G47dgqPWzpN0bNkEU9nkqbTnqS+3aAOdCNYugamP0Pg=",
+        "lastModified": 1784167595,
+        "narHash": "sha256-2jVw0I0GDp9+UPxnRVhge+sCUttxVcmGJvhSQqQs4Oo=",
         "owner": "luccahuguet",
         "repo": "ratconfig",
-        "rev": "80c9329b41d8e4c3791bb99662134e964ec7f413",
+        "rev": "973df4f8353a2568eeb24c4e54765720ad52423f",
         "type": "github"
       },
       "original": {
@@ -467,6 +483,7 @@
     },
     "root": {
       "inputs": {
+        "autoLayoutYazi": "autoLayoutYazi",
         "beads_rust_source": "beads_rust_source",
         "beads_viewer": "beads_viewer",
         "fenix": "fenix",
@@ -479,6 +496,7 @@
         "obscura_source": "obscura_source",
         "ratconfig": "ratconfig",
         "rtk_source": "rtk_source",
+        "starshipYazi": "starshipYazi",
         "weave_source": "weave_source",
         "yazelixCursors": "yazelixCursors",
         "yazelixHelix": "yazelixHelix",
@@ -488,7 +506,8 @@
         "yazelixZellij": "yazelixZellij",
         "yazelixZellijBar": "yazelixZellijBar",
         "yazelixZellijPaneOrchestrator": "yazelixZellijPaneOrchestrator",
-        "yazelixZellijPopup": "yazelixZellijPopup"
+        "yazelixZellijPopup": "yazelixZellijPopup",
+        "zjstatus": "zjstatus"
       }
     },
     "rtk_source": {
@@ -660,7 +679,6 @@
     "rust-overlay_4": {
       "inputs": {
         "nixpkgs": [
-          "yazelixZellijBar",
           "zjstatus",
           "nixpkgs"
         ]
@@ -676,6 +694,22 @@
       "original": {
         "owner": "oxalica",
         "repo": "rust-overlay",
+        "type": "github"
+      }
+    },
+    "starshipYazi": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1781463098,
+        "narHash": "sha256-I21to4cxlszRpsb58cvsmwX7VglQBSJC0rrsFIltzC8=",
+        "owner": "Rolv-Apneseth",
+        "repo": "starship.yazi",
+        "rev": "159eaba5b5052bf78ff6cfbfe4e527b946818c82",
+        "type": "github"
+      },
+      "original": {
+        "owner": "Rolv-Apneseth",
+        "repo": "starship.yazi",
         "type": "github"
       }
     },
@@ -901,7 +935,9 @@
         "nixpkgs": [
           "nixpkgs"
         ],
-        "zjstatus": "zjstatus"
+        "zjstatus": [
+          "zjstatus"
+        ]
       },
       "locked": {
         "lastModified": 1783889647,
@@ -920,7 +956,7 @@
     "yazelixZellijPaneOrchestrator": {
       "inputs": {
         "fenix": "fenix_4",
-        "flake-utils": "flake-utils_3",
+        "flake-utils": "flake-utils_2",
         "nixpkgs": [
           "nixpkgs"
         ]
@@ -942,7 +978,7 @@
     "yazelixZellijPopup": {
       "inputs": {
         "fenix": "fenix_5",
-        "flake-utils": "flake-utils_4",
+        "flake-utils": "flake-utils_3",
         "nixpkgs": [
           "nixpkgs"
         ]
@@ -964,23 +1000,23 @@
     "zjstatus": {
       "inputs": {
         "crane": "crane",
-        "flake-utils": "flake-utils_2",
+        "flake-utils": "flake-utils_4",
         "nixpkgs": [
-          "yazelixZellijBar",
           "nixpkgs"
         ],
         "rust-overlay": "rust-overlay_4"
       },
       "locked": {
-        "lastModified": 1780512417,
-        "narHash": "sha256-/LsFGF0BAYdiVVQZ/8vjo6IXuSsYS+ueIWHN47NHEAc=",
-        "owner": "dj95",
+        "lastModified": 1784090562,
+        "narHash": "sha256-t/RhxRDHPacgW+SRpDixZRXjQc4AgqrSXiS6VeopLkk=",
+        "owner": "luccahuguet",
         "repo": "zjstatus",
-        "rev": "17609e498f88e674b846b844b48ad1dc545fddcf",
+        "rev": "e5cfb0ead8bdefaff25c6de726dc8b7a45282d19",
         "type": "github"
       },
       "original": {
-        "owner": "dj95",
+        "owner": "luccahuguet",
+        "ref": "yazelix-tab-activity-pipe",
         "repo": "zjstatus",
         "type": "github"
       }

@@ -12,6 +12,11 @@ use serde_json::Value as JsonValue;
 
 use crate::{catalog::*, common::*, custom_popups::custom_popups};
 
+pub(crate) const PACKAGED_AGENT_LAUNCHER: &str = match option_env!("YAZELIX_AGENT_LAUNCHER") {
+    Some(path) => path,
+    None => "yzx-agent",
+};
+
 pub(crate) fn config_field(path: &str) -> Result<&'static ConfigFieldSpec> {
     CONFIG_FIELDS
         .iter()
@@ -115,7 +120,9 @@ fn json_string_list(path: &str, value: &JsonValue) -> Result<Vec<String>> {
     string_list_values_from_json(path, value, &[]).map_err(error)
 }
 pub(crate) fn write_config_field(path: &Path, field_path: &str, value: &JsonValue) -> Result<()> {
-    validate_config_value(field_path, value)?;
+    if !field_path.starts_with("popups.") {
+        validate_config_value(field_path, value)?;
+    }
     let raw = if path_entry_exists(path)? {
         fs::read_to_string(path)?
     } else {
@@ -178,8 +185,11 @@ pub(crate) fn validate_config_value(field_path: &str, value: &JsonValue) -> Resu
                 validate_editor_command(value)?;
             } else if field_path == AGENT_COMMAND_PATH {
                 validate_agent_command(value)?;
-            } else if popup_keybinding_spec(field_path).is_some() {
-                validate_managed_popup_keybinding(field_path, value)?;
+            } else if MANAGED_KEYBINDINGS
+                .iter()
+                .any(|(path, _)| *path == field_path)
+            {
+                validate_managed_keybinding(field_path, value)?;
             }
             Ok(())
         }
@@ -206,7 +216,7 @@ pub(crate) fn validate_root_config(value: &JsonValue) -> Result<()> {
         .as_object()
         .ok_or_else(|| error("config.toml root must be a table"))?;
     validate_config_table(table, "")?;
-    validate_popup_keybindings(value)?;
+    validate_keybindings(value)?;
     validate_agent_config(value)
 }
 fn validate_config_table(table: &serde_json::Map<String, JsonValue>, parent: &str) -> Result<()> {
@@ -288,9 +298,12 @@ fn validate_agent_command(value: &str) -> Result<()> {
 fn render_agent_popup_kdl(command: &str, args: &[String]) -> String {
     let mut text = format!(
         "            agent {{\n                command {}\n",
-        kdl_string(command)
+        kdl_string(PACKAGED_AGENT_LAUNCHER)
     );
-    for (index, arg) in args.iter().enumerate() {
+    for (index, arg) in std::iter::once(command)
+        .chain(args.iter().map(String::as_str))
+        .enumerate()
+    {
         text.push_str(&format!(
             "                arg_{} {}\n",
             index + 1,
@@ -298,21 +311,19 @@ fn render_agent_popup_kdl(command: &str, args: &[String]) -> String {
         ));
     }
     text.push_str(
-        "                pane_title \"agent_popup\"\n                width_percent 100\n                height_percent 100\n                toggle_close_behavior \"hide\"\n            }",
+        "                pane_title \"agent_popup\"\n                width_percent 100\n                height_percent 100\n                preserve_terminal_title true\n                toggle_close_behavior \"hide\"\n            }",
     );
     text
 }
-pub(crate) fn validate_popup_keybindings(value: &JsonValue) -> Result<()> {
+pub(crate) fn validate_keybindings(value: &JsonValue) -> Result<()> {
     let mut used = BTreeMap::new();
-    for spec in POPUP_KEYBINDINGS {
-        let value = effective_config_path_value(value, spec.path)?;
-        let chord = config_field(spec.path)?.field.json_choice(&value)?;
-        validate_managed_popup_keybinding(spec.path, chord)?;
-        if let Some(existing) = used.insert(chord.to_ascii_lowercase(), spec.path.to_string()) {
-            return Err(error(format!(
-                "{} conflicts with {existing}: {chord}",
-                spec.path
-            )));
+    let defaults = default_config()?;
+    for &(path, _) in MANAGED_KEYBINDINGS {
+        let value = config_path_value(value, &defaults, path)?;
+        let chord = config_field(path)?.field.json_choice(&value)?;
+        validate_managed_keybinding(path, chord)?;
+        if let Some(existing) = used.insert(chord.to_ascii_lowercase(), path.to_string()) {
+            return Err(error(format!("{path} conflicts with {existing}: {chord}")));
         }
     }
     for popup in custom_popups(value)? {
@@ -326,17 +337,12 @@ pub(crate) fn validate_popup_keybindings(value: &JsonValue) -> Result<()> {
     }
     Ok(())
 }
-pub(crate) fn popup_keybinding_spec(field_path: &str) -> Option<&'static PopupKeybindingSpec> {
-    POPUP_KEYBINDINGS
-        .iter()
-        .find(|spec| spec.path == field_path)
-}
-pub(crate) fn validate_managed_popup_keybinding(field_path: &str, value: &str) -> Result<()> {
+pub(crate) fn validate_managed_keybinding(field_path: &str, value: &str) -> Result<()> {
     validate_key_chord(field_path, value)?;
     let conflicts = KEY_BINDINGS
         .iter()
         .any(|[_group, chord, _action, _owner, _source]| {
-            packaged_chord_matches(chord, value) && !popup_default_chord_matches(value)
+            packaged_chord_matches(chord, value) && !managed_default_chord_matches(value)
         });
     if conflicts {
         return Err(error(format!(
@@ -357,10 +363,10 @@ fn packaged_chord_matches(pattern: &str, value: &str) -> bool {
             )
     })
 }
-fn popup_default_chord_matches(value: &str) -> bool {
-    POPUP_KEYBINDINGS
+fn managed_default_chord_matches(value: &str) -> bool {
+    MANAGED_KEYBINDINGS
         .iter()
-        .any(|spec| spec.default.eq_ignore_ascii_case(value))
+        .any(|(_, default)| default.eq_ignore_ascii_case(value))
 }
 fn validate_key_chord(field_path: &str, value: &str) -> Result<()> {
     value

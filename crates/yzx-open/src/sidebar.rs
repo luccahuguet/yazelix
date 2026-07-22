@@ -81,6 +81,10 @@ pub fn orchestrator_query(config: &Config, name: &str) -> Result<String> {
 }
 
 pub fn orchestrator_action(config: &Config, name: &str) -> Result<String> {
+    orchestrator_pipe(config, name, "")
+}
+
+pub fn orchestrator_pipe(config: &Config, name: &str, payload: &str) -> Result<String> {
     let mut command = Command::new(&config.zellij);
     if let Some(session_name) = &config.zellij_session_name {
         command.env(ZELLIJ_SESSION_NAME_ENV, session_name);
@@ -94,7 +98,7 @@ pub fn orchestrator_action(config: &Config, name: &str) -> Result<String> {
             "--name",
             name,
             "--",
-            "",
+            payload,
         ])
         .output()
         .with_context(|| format!("could not pipe {name} to pane orchestrator"))?;

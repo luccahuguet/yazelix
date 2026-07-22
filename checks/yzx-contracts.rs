@@ -10,8 +10,8 @@ mod support;
 
 use support::{
     binary_text, embedded_store_path, excerpt, expect_contains, expect_order, set_test_nu,
-    successful_output, successful_stdout, write_config_home, write_nu_executable, RuntimeCase,
-    TempDir,
+    successful_output, successful_stdout, write_config_home, write_nu_executable,
+    RuntimeCase, TempDir,
 };
 
 macro_rules! expect_contains_all {
@@ -70,7 +70,7 @@ fn main() {
     .unwrap();
     fs::write(
         &user_starship,
-        "format = \"$character\"\nright_format = \"::<>\"\n",
+        "right_format = \"::<>\"\n\n[character]\nformat = \">> \"\n",
     )
     .unwrap();
 
@@ -78,21 +78,21 @@ fn main() {
         &yzx_shell,
         &user_config,
         &runtime,
-        "print $env.STARSHIP_SHELL; print $env.STARSHIP_CONFIG; print (do $env.PROMPT_COMMAND_RIGHT); print $env.YZX_USER_ENV_TEST; print $env.YZX_USER_CONFIG_TEST; ^carapace --version | ignore; ^zoxide --version | ignore; print ok",
+        "print $env.STARSHIP_SHELL; print $env.STARSHIP_CONFIG; print (do $env.PROMPT_COMMAND_RIGHT); print ((^starship print-config) | str contains 'format = \"$all\"'); print $env.YZX_USER_ENV_TEST; print $env.YZX_USER_CONFIG_TEST; ^carapace --version | ignore; ^zoxide --version | ignore; print ok",
     );
     assert_eq!(
         stdout,
         format!(
-            "nu\n{}\n::<>\nenv-ok\nconfig-ok\nok",
+            "nu\n{}\n::<>\ntrue\nenv-ok\nconfig-ok\nok",
             runtime.join("yazelix/starship.toml").display()
         )
     );
     let effective_starship = fs::read_to_string(runtime.join("yazelix/starship.toml")).unwrap();
     expect_contains_all! {
         &effective_starship, "effective user Starship config";
-        "format = \"$character\"",
         "right_format = \"::<>\"",
-        "add_newline = true",
+        "[character]",
+        "format = \">> \"",
     }
     let empty_config = temp.path.join("empty-config");
     fs::create_dir(&empty_config).unwrap();
@@ -104,12 +104,7 @@ fn main() {
     );
     assert_ne!(fallback_starship, "ambient-starship.toml");
     let fallback_starship = fs::read_to_string(&fallback_starship).unwrap();
-    expect_contains_all! {
-        &fallback_starship, "effective default Starship config";
-        "format = \":: \"",
-        "right_format = \"\"",
-        "add_newline = true",
-    }
+    assert_eq!(fallback_starship, "[character]\nformat = \":: \"\n");
 
     expect_line(
         &runtime.join("yazelix/nu/env.nu"),
@@ -208,6 +203,12 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
         }),
         "desktop entry must launch explicitly\n{desktop}"
     );
+    for identity in ["Icon=yzx", "StartupWMClass=yzx"] {
+        assert!(
+            desktop.lines().any(|line| line == identity),
+            "desktop entry must match the Nova Mars app id via `{identity}`\n{desktop}"
+        );
+    }
     let help = run_help(&yzx_bin, &["help"]);
     for arg in ["-h", "--help"] {
         assert_eq!(run_help(&yzx_bin, &[arg]), help);
@@ -244,7 +245,7 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
         .collect::<Vec<_>>();
     assert_eq!(
         menu_ids,
-        ["config", "doctor", "status", "inspect", "screen", "launch", "help", "tutor",],
+        ["config", "doctor", "status", "inspect", "screen", "launch", "help", "tutor"],
         "yzx menu command allowlist changed\n{menu}"
     );
     expect_menu_descriptions_match_help(&help, &menu);
@@ -284,6 +285,9 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
         "yzx tutor begin",
         "yzx tutor list",
         "yzx tutor workspace",
+        "yzx tutor files",
+        "yzx tutor panes",
+        "yzx tutor modes",
         "yzx tutor discovery",
         "yzx tutor troubleshooting",
         "yzx tutor tool_tutors",
@@ -303,16 +307,22 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
     expect_contains_all! {
         &tutor_list, "yzx tutor list";
         "yzx tutor workspace",
+        "yzx tutor files",
+        "yzx tutor panes",
+        "yzx tutor modes",
         "yzx tutor discovery",
         "yzx tutor troubleshooting",
         "yzx tutor tool_tutors",
     }
     for (lesson, expected) in [
-        ("begin", "Workspace roots and managed panes"),
+        ("begin", "Start in the right directory"),
         ("workspace", "current tab workspace root matters most"),
+        ("files", "full Yazi popup"),
+        ("panes", "move the current tab"),
+        ("modes", "quit the session"),
         ("discovery", "Alt Shift M"),
         ("troubleshooting", "yzx doctor"),
-        ("tool_tutors", "print the packaged Helix tutor command"),
+        ("tool_tutors", "print the managed Helix tutor command"),
     ] {
         let output = run_help(&yzx_bin, &["tutor", lesson]);
         expect_contains(&output, expected, &format!("yzx tutor {lesson}"));
@@ -327,6 +337,7 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
         &helix_tutor, "yzx tutor hx";
         "/bin/yzx-hx --tutor",
         "yzx-hx --tutor",
+        "package omits managed Helix",
     }
     let nushell_tutor = run_help(&yzx_bin, &["tutor", "nu"]);
     expect_contains_all! {
@@ -369,6 +380,8 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
         "keybindings.agent",
         "keybindings.git",
         "keybindings.menu",
+        "keybindings.sidebar",
+        "keybindings.sidebar_focus",
         "lazygit",
         "yzx-bar-render",
         "yzx-env-supervisor",
@@ -432,7 +445,13 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
         "agent keybinding: Alt Shift L",
         "git keybinding: Alt Shift J",
         "menu keybinding: Alt Shift M",
+        "sidebar keybinding: Alt Shift H",
+        "sidebar focus keybinding: Ctrl y",
         "layout: packaged (/nix/store/",
+        "yazi source: bundled",
+        "yazi: /nix/store/",
+        "ya: /nix/store/",
+        "yazi version: ",
         "inside zellij: no",
     }
 
@@ -613,8 +632,8 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
     }
     let custom_popup_config = custom_popup.zellij_file("config.kdl");
     expect_popup_defaults(&custom_popup_config, "2", "1", "custom popup status config");
-    assert_eq!(custom_popup_config.matches("width_percent 100").count(), 4);
-    assert_eq!(custom_popup_config.matches("height_percent 100").count(), 4);
+    assert_eq!(custom_popup_config.matches("width_percent 100").count(), 5);
+    assert_eq!(custom_popup_config.matches("height_percent 100").count(), 5);
     assert_eq!(custom_popup_config.matches("side_margin 2").count(), 1);
     assert_eq!(custom_popup_config.matches("vertical_margin 1").count(), 1);
 
@@ -628,10 +647,22 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
         "zellij config: runtime (",
     }
     let custom_agent_config = custom_agent.zellij_file("config.kdl");
+    let agent_launcher = popup_command(&custom_agent_config, "/bin/yzx-agent");
     expect_contains(
         &custom_agent_config,
-        "agent {\n                command \"codex\"\n                arg_1 \"resume\"\n                arg_2 \"--dangerously-bypass-approvals-and-sandbox\"\n                pane_title \"agent_popup\"\n                width_percent 100\n                height_percent 100\n                toggle_close_behavior \"hide\"\n            }",
+        &format!(
+            "agent {{\n                command \"{}\"\n                arg_1 \"codex\"\n                arg_2 \"resume\"\n                arg_3 \"--dangerously-bypass-approvals-and-sandbox\"\n                pane_title \"agent_popup\"\n                width_percent 100\n                height_percent 100\n                preserve_terminal_title true\n                toggle_close_behavior \"hide\"\n            }}",
+            agent_launcher.display(),
+        ),
         "custom agent config",
+    );
+    expect_contains(
+        &custom_agent_config,
+        &format!(
+            "managed_agent_command_marker \"{}\"",
+            agent_launcher.display(),
+        ),
+        "custom agent command marker",
     );
 
     let custom_popup_spec_case = RuntimeCase::new(&temp.path, "custom-popup-spec");
@@ -649,8 +680,8 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
         "btm",
         "custom popup spec config",
     );
-    assert_eq!(custom_popup_spec.matches("width_percent 100").count(), 5);
-    assert_eq!(custom_popup_spec.matches("height_percent 100").count(), 5);
+    assert_eq!(custom_popup_spec.matches("width_percent 100").count(), 6);
+    assert_eq!(custom_popup_spec.matches("height_percent 100").count(), 6);
     assert_eq!(custom_popup_spec.matches("side_margin 2").count(), 1);
     assert_eq!(custom_popup_spec.matches("vertical_margin 1").count(), 1);
 
@@ -672,47 +703,60 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
         "load_plugins {\n    yzpp\n    my_plugin\n    yazelix_pane_orchestrator\n}",
     }
 
-    let custom_popup_key = RuntimeCase::new(&temp.path, "custom-popup-key");
-    custom_popup_key.write_default_config("\n[keybindings]\nconfig = \"Alt Shift C\"\nagent = \"Alt Shift A\"\ngit = \"Alt Shift G\"\nmenu = \"Alt Shift U\"\n");
-    let status = custom_popup_key.run_yzx(&yzx_bin, "status", "custom popup key status");
+    let custom_keys = RuntimeCase::new(&temp.path, "custom-keys");
+    custom_keys.write_default_config("\n[keybindings]\nconfig = \"Alt Shift C\"\nagent = \"Alt Shift A\"\ngit = \"Alt Shift G\"\nmenu = \"Alt Shift U\"\nsidebar = \"Ctrl Shift B\"\nsidebar_focus = \"Ctrl Shift E\"\n");
+    let status = custom_keys.run_yzx(&yzx_bin, "status", "custom key status");
     expect_contains_all! {
-        &status, "custom popup key status";
+        &status, "custom key status";
         "config keybinding: Alt Shift C",
         "agent keybinding: Alt Shift A",
         "git keybinding: Alt Shift G",
         "menu keybinding: Alt Shift U",
+        "sidebar keybinding: Ctrl Shift B",
+        "sidebar focus keybinding: Ctrl Shift E",
         "zellij config: runtime (",
     }
-    let custom_key_config = custom_popup_key.zellij_file("config.kdl");
+    let custom_key_config = custom_keys.zellij_file("config.kdl");
     for (key, payload, default) in [
         ("Alt Shift C", "config", "Alt Shift K"),
         ("Alt Shift A", "agent", "Alt Shift L"),
         ("Alt Shift G", "git", "Alt Shift J"),
         ("Alt Shift U", "menu", "Alt Shift M"),
     ] {
-        expect_popup_binding(&custom_key_config, key, payload, "custom popup key config");
+        expect_popup_binding(&custom_key_config, key, payload, "custom key config");
         assert!(
             !custom_key_config.contains(&format!(r#"bind "{default}" {{"#)),
-            "custom popup key kept the default {payload} binding"
+            "custom key kept the default {payload} binding"
+        );
+    }
+    expect_contains_all! {
+        &custom_key_config, "custom key config";
+        r#"bind "Ctrl Shift B" { MessagePlugin "yazelix_pane_orchestrator" { name "toggle_sidebar"; }; }"#,
+        r#"bind "Ctrl Shift E" { MessagePlugin "yazelix_pane_orchestrator" { name "toggle_editor_sidebar_focus"; }; }"#,
+    }
+    for default in ["Alt Shift H", "Ctrl y"] {
+        assert!(
+            !custom_key_config.contains(&format!(r#"bind "{default}" {{"#)),
+            "custom key kept the default {default} binding"
         );
     }
 
-    let swapped_popup_key = RuntimeCase::new(&temp.path, "swapped-popup-key");
-    swapped_popup_key.write_default_config("\n[keybindings]\nconfig = \"Alt Shift L\"\nagent = \"Alt Shift K\"\ngit = \"Alt Shift M\"\nmenu = \"Alt Shift J\"\n");
-    swapped_popup_key.run_yzx(&yzx_bin, "status", "swapped popup key status");
-    let swapped_key_config = swapped_popup_key.zellij_file("config.kdl");
+    let swapped_keys = RuntimeCase::new(&temp.path, "swapped-keys");
+    swapped_keys.write_default_config("\n[keybindings]\nconfig = \"Alt Shift H\"\nagent = \"Ctrl y\"\ngit = \"Alt Shift M\"\nmenu = \"Alt Shift J\"\nsidebar = \"Alt Shift K\"\nsidebar_focus = \"Alt Shift L\"\n");
+    swapped_keys.run_yzx(&yzx_bin, "status", "swapped key status");
+    let swapped_key_config = swapped_keys.zellij_file("config.kdl");
     for (key, payload) in [
-        ("Alt Shift L", "config"),
-        ("Alt Shift K", "agent"),
+        ("Alt Shift H", "config"),
+        ("Ctrl y", "agent"),
         ("Alt Shift M", "git"),
         ("Alt Shift J", "menu"),
     ] {
-        expect_popup_binding(
-            &swapped_key_config,
-            key,
-            payload,
-            "swapped popup key config",
-        );
+        expect_popup_binding(&swapped_key_config, key, payload, "swapped key config");
+    }
+    expect_contains_all! {
+        &swapped_key_config, "swapped key config";
+        r#"bind "Alt Shift K" { MessagePlugin "yazelix_pane_orchestrator" { name "toggle_sidebar"; }; }"#,
+        r#"bind "Alt Shift L" { MessagePlugin "yazelix_pane_orchestrator" { name "toggle_editor_sidebar_focus"; }; }"#,
     }
 
     let custom_editor = RuntimeCase::new(&temp.path, "custom-editor");
@@ -793,12 +837,19 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
         "ok keybindings.agent: Alt Shift L",
         "ok keybindings.git: Alt Shift J",
         "ok keybindings.menu: Alt Shift M",
+        "ok keybindings.sidebar: Alt Shift H",
+        "ok keybindings.sidebar_focus: Ctrl y",
         "ok tutor helper: /nix/store/",
         "ok screen helper: /nix/store/",
         "ok welcome helper: /nix/store/",
         "ok yazi opener: /nix/store/",
         "ok reveal helper: /nix/store/",
-        "ok yazi cli: /nix/store/",
+        "ok yazi source: bundled",
+        "ok yazi lookup PATH: /nix/store/",
+        "ok yazi: /nix/store/",
+        "ok ya: /nix/store/",
+        "ok yazi version: ",
+        "ok yazi tested version: ",
         "ok pane orchestrator plugin: /nix/store/",
         "warn session: not inside zellij",
     }
@@ -1044,6 +1095,8 @@ fn expect_config_ui(yzx: &Path) {
         "agent = \"Alt Shift L\"",
         "git = \"Alt Shift J\"",
         "menu = \"Alt Shift M\"",
+        "sidebar = \"Alt Shift H\"",
+        "sidebar_focus = \"Ctrl y\"",
         "widgets = [\"editor\", \"shell\", \"term\", \"codex_usage\", \"cpu\", \"ram\"]",
     }
 
@@ -1065,6 +1118,8 @@ fn expect_config_ui(yzx: &Path) {
         ("keybindings.agent", "Alt Shift L"),
         ("keybindings.git", "Alt Shift J"),
         ("keybindings.menu", "Alt Shift M"),
+        ("keybindings.sidebar", "Alt Shift H"),
+        ("keybindings.sidebar_focus", "Ctrl y"),
         (
             "bar.widgets",
             r#"["editor","shell","term","codex_usage","cpu","ram"]"#,
@@ -1173,8 +1228,8 @@ fn expect_startup_diagnostics(yzx: &Path) {
         ),
         (
             "bad-key-conflict-config",
-            "[open]\nlog_level = \"info\"\n\n[shell]\nprogram = \"nu\"\n\n[keybindings]\nagent = \"Alt Shift h\"\n",
-            "keybindings.agent conflicts with packaged key Alt Shift h",
+            "[open]\nlog_level = \"info\"\n\n[shell]\nprogram = \"nu\"\n\n[keybindings]\nagent = \"Alt Shift f\"\n",
+            "keybindings.agent conflicts with packaged key Alt Shift f",
             "conflicting agent key",
         ),
         (
@@ -1485,6 +1540,11 @@ fn expect_yazi_alt_z(yzx: &Path) {
         r#"require("git"):setup()"#,
         r#"require("starship"):setup({"#,
     }
+    expect_contains(
+        &init,
+        "if os.getenv(\"YZX_YAZI_ROLE\") ~= \"workspace-popup\" then\n\trequire(\"sidebar-state\"):setup()\n\trequire(\"sidebar-status\"):setup()\nend",
+        "Yazi workspace popup role fragment",
+    );
     for plugin in [
         "auto-layout",
         "git",
@@ -1520,7 +1580,7 @@ fn expect_yazi_alt_z(yzx: &Path) {
             .unwrap();
     expect_contains_all! {
         &plugin, "Yazi zoxide editor plugin fragment";
-        r#"Command(yzx_open):arg(target_dir)"#,
+        r#":arg({ "--retarget-workspace", target_dir })"#,
         r#"Command("zoxide")"#,
         r#"emit("cd", { target_dir, raw = true })"#,
         "YZX_OPEN is not set",
@@ -1566,6 +1626,10 @@ fn expect_yazi_alt_z(yzx: &Path) {
         "YAZELIX_EDITOR",
         "GIT_EDITOR",
         "editor.command",
+        "--yzx-workspace-popup",
+        "YZX_YAZI_ROLE",
+        "YZX_YAZI_BIN",
+        "workspace-popup",
         "YAZI_CONFIG_HOME",
         "/bin/yzx-yazi-config",
         "yazelix_starship.toml",
@@ -1613,7 +1677,7 @@ fn expect_keybinds(config: &str) {
         r#"bind "Alt l" "Alt Right" { MessagePlugin "yazelix_pane_orchestrator" { name "move_focus_right_or_tab"; }; }"#,
         r#"bind "Alt r" { MessagePlugin "yazelix_pane_orchestrator" { name "smart_reveal"; }; }"#,
         r#"bind "Alt Shift F" { ToggleFocusFullscreen; }"#,
-        r#"bind "Alt Shift h" { MessagePlugin "yazelix_pane_orchestrator" { name "toggle_sidebar"; }; }"#,
+        r#"bind "Alt Shift H" { MessagePlugin "yazelix_pane_orchestrator" { name "toggle_sidebar"; }; }"#,
         r#"bind "Ctrl y" { MessagePlugin "yazelix_pane_orchestrator" { name "toggle_editor_sidebar_focus"; }; }"#,
         r#"bind "Ctrl Alt g" { SwitchToMode "Locked"; }"#,
         r#"bind "Ctrl p" { SwitchToMode "Pane"; }"#,
@@ -1668,18 +1732,31 @@ fn expect_first_party_plugins(git_bin: &Path, config: &str) {
         "load_plugins",
         "support_kitty_keyboard_protocol true",
         "screen_saver_enabled false",
+        "popup_plugin_url \"yzpp\"",
+        "managed_agent_command_marker \"/nix/store/",
     }
     expect_popup_defaults(config, "1", "0", "packaged popup config");
     for (id, pane_title, command_suffix, extra) in [
-        ("config", "config_popup", "/bin/yzx-config-ui", ""),
+        (
+            "config",
+            "config_popup",
+            "/bin/yzx-config-ui",
+            "\n                toggle_close_behavior \"hide\"",
+        ),
         (
             "agent",
             "agent_popup",
             "/bin/yzx-agent",
-            "\n                toggle_close_behavior \"hide\"",
+            "\n                preserve_terminal_title true\n                toggle_close_behavior \"hide\"",
         ),
         ("git", "git_popup", "/bin/yzx-git", ""),
         ("menu", "menu_popup", "/bin/yzx-menu", ""),
+        (
+            "yazi",
+            "yazi_popup",
+            "/bin/yzx-yazi",
+            "\n                arg_1 \"--yzx-workspace-popup\"\n                toggle_close_behavior \"hide\"",
+        ),
     ] {
         let command = popup_command(config, command_suffix);
         let expected = format!(
@@ -1691,8 +1768,8 @@ fn expect_first_party_plugins(git_bin: &Path, config: &str) {
             "config.kdl is missing {id} popup block\n{expected}",
         );
     }
-    assert_eq!(config.matches("width_percent 100").count(), 4);
-    assert_eq!(config.matches("height_percent 100").count(), 4);
+    assert_eq!(config.matches("width_percent 100").count(), 5);
+    assert_eq!(config.matches("height_percent 100").count(), 5);
     assert_eq!(config.matches("side_margin 1").count(), 1);
     assert_eq!(config.matches("vertical_margin 0").count(), 1);
     for (key, payload) in [
@@ -1700,6 +1777,7 @@ fn expect_first_party_plugins(git_bin: &Path, config: &str) {
         ("Alt Shift K", "config"),
         ("Alt Shift L", "agent"),
         ("Alt Shift M", "menu"),
+        ("Alt Shift Y", "yazi"),
     ] {
         expect_popup_binding(config, key, payload, "packaged popup config");
     }
@@ -1722,12 +1800,19 @@ fn expect_first_party_plugins(git_bin: &Path, config: &str) {
 
     let config_ui = popup_command(config, "/bin/yzx-config-ui");
     let config_ui_script = fs::read_to_string(&config_ui).unwrap();
-    let context = format!("{} managed editor wrapper", config_ui.display());
+    let context = format!("{} config UI wrapper", config_ui.display());
     expect_contains_all! {
         &config_ui_script, &context;
         "/bin/yzx-editor",
         "GIT_EDITOR",
+        // Upstream contract (bash `unset`), expressed in the fork's Nushell
+        // wrapper: the config UI clears the user editor override.
+        "hide-env --ignore-errors YAZELIX_EDITOR",
     }
+    assert!(
+        !config_ui_script.contains("/bin/yzx-hx"),
+        "config UI bypasses the selected editor\n{config_ui_script}"
+    );
 
     assert!(popup_command(config, "/bin/yzx-menu").is_file());
 }
@@ -1792,8 +1877,13 @@ fn expect_git_editor(editor: &Path, lazygit_config: &Path, git: &Path) {
 }
 
 fn expect_popup_binding(config: &str, key: &str, payload: &str, context: &str) {
+    let (plugin, action) = if matches!(payload, "git" | "agent" | "yazi") {
+        ("yazelix_pane_orchestrator", "toggle_workspace_popup")
+    } else {
+        ("yzpp", "toggle")
+    };
     let expected = format!(
-        "bind \"{key}\" {{\n            MessagePlugin \"yzpp\" {{\n                name \"toggle\"\n                payload \"{payload}\"\n            }}\n        }}"
+        "bind \"{key}\" {{\n            MessagePlugin \"{plugin}\" {{\n                name \"{action}\"\n                payload \"{payload}\"\n            }}\n        }}"
     );
     assert!(
         config.contains(&expected),
@@ -1867,15 +1957,34 @@ fn expect_agent_bootstrap(agent: &Path) {
         "agent popup without providers should exit cleanly, got {:?}",
         output.status.code(),
     );
-    assert!(
-        output.stdout.is_empty() && output.stderr.is_empty(),
-        "agent popup without providers should leave the pane empty\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr),
-    );
+    assert_eq!(output.stdout, b"\x1b]0;agent\x07");
+    assert!(output.stderr.is_empty());
     assert!(
         !empty_state.join("agent/provider").exists(),
         "missing-provider bootstrap should not write a provider default"
+    );
+
+    let title_agent = temp.path.join("title-agent");
+    write_nu_executable(
+        &title_agent,
+        "def --wrapped main [...args: string] {\n    print --no-newline \"\\u{1b}]0;⠋ codex\\u{7}\\u{1b}]0;codex\\u{7}\"\n    ($args | str join \" \") + \"\\n\" | save --raw $env.YAZELIX_AGENT_TEST_OUT\n}\n",
+    );
+    let title_output_file = temp.path.join("title-agent-output");
+    let output = Command::new(agent)
+        .arg(&title_agent)
+        .args(["resume", "session"])
+        .env("YAZELIX_AGENT_TEST_OUT", &title_output_file)
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    assert_eq!(
+        output.stdout,
+        "\x1b]0;agent\x07\x1b]0;⠋ codex\x07\x1b]0;codex\x07".as_bytes(),
+        "the fallback must precede provider busy and idle titles",
+    );
+    assert_eq!(
+        fs::read_to_string(title_output_file).unwrap(),
+        "resume session\n"
     );
 
     for (name, available, expected_output) in [

@@ -91,6 +91,139 @@
 
 User-visible runtime changes for Yazelix Nova live here.
 
+## Unreleased
+
+- Package outputs follow the explicit
+  `yazelix[-no-mars][-no-helix][-no-yazi]` matrix. The previous `runtime`
+  names are replaced by `no-mars` names without aliases. `no-yazi` variants
+  omit the managed Yazi closure while retaining Nova's launcher,
+  configuration, sidebar, popup, opener, reveal, editor, and Zellij
+  integration. They resolve one host `yazi`/`ya` pair, reject missing or
+  mismatched pairs, warn when a matching pair differs from Nova's tested
+  version, and leave optional preview dependencies host-owned. Home Manager
+  selects these variants through the existing `programs.yazelix.package`
+  option.
+- CPU and RAM status widgets recover automatically when a sampler exits while
+  holding their shared-cache lock, preventing `??%` from persisting while
+  concurrent tab bars continue to share one sampler.
+- The `yazelix-no-mars-no-helix` package and app provide the complete `yzx enter`
+  workspace for host terminals and host-installed editors without retaining
+  Mars, Rio, desktop assets, managed Helix, Steel, or packaged grammars.
+- The guided tutor separates workspace roots, file flow, pane arrangement, and
+  Zellij modes into short lessons with no more than four actions each.
+- Yazi's compact Starship header mirrors the shell prompt's contextual module
+  coverage. Directory and Git keep compact text, while cloud, orchestration,
+  infrastructure, environment, and toolchain decorations render as icons only.
+- Published installs use the protected `stable` branch as the recommended Nix
+  and Home Manager channel. `stable` advances from an exact checked and
+  dogfooded `main` revision at most once per week, while `main` remains the
+  development channel and `nova-v*` tags remain immutable release references.
+- `Alt Shift Y` hides or shows a full managed Yazi popup at the active tab's
+  canonical workspace root. The popup reuses Nova's layered Yazi configuration
+  and ordinary editor opener while keeping its own navigation state alive when
+  hidden; it never registers as or moves the tiled sidebar. A changed canonical
+  root replaces the stale hidden process on its next reveal. After a file open
+  focuses Helix and Zellij hides the floating layer, `Alt Shift Y` shows the
+  same live Yazi process on its next press. Ordinary Yazi navigation cannot be
+  mistaken for a root change. Existing sidebar `Alt z` behavior remains
+  unchanged.
+
+## 1.0.0-beta.2
+
+- The `yazelix-no-helix` package and app retain Mars and the integrated
+  workspace while delegating editing to a host-installed command. Selecting it
+  through `programs.yazelix.package` avoids evaluating or retaining managed
+  Helix, Steel, and the packaged grammar closure; unresolved `yzx-hx` calls
+  explain how to select an editor or return to the default package, and status
+  identifies the selected package as `no-helix`.
+- A user-managed `starship.yazi` can replace Nova's packaged Starship plugin as
+  one complete plugin directory when it contains `main.lua`. Other packaged
+  plugins remain protected, and plugin directories are never recursively
+  merged.
+- Ratconfig free-form values support grapheme-safe cursor movement, Home/End,
+  forward and backward deletion, insertion, and single-line paste. `Enter`
+  starts inline editing and `e` opens the configured editor on a field-labeled
+  temporary buffer; blocking config editors do not join the tab's Helix
+  workspace bridge. Native file actions use the same current editor resolver
+  instead of a session-start editor snapshot.
+- Ratconfig's Zellij tab selects Default or any of the 41 themes embedded by
+  the pinned Zellij package. Saves remain sparse and update the active managed
+  session; Default removes the override, while simple custom names stay valid.
+- Ratconfig scopes config diagnostics to the affected source or field. The
+  Zellij sidecar preserves unexposed top-level native leaf nodes as visible,
+  unvalidated entries, so unrelated settings remain editable; malformed,
+  structured, and integration-owned nodes still block unsafe writes. Managed
+  strings use quoted, escape-free KDL; richer strings remain native-file-only.
+- Toggling the Ratconfig popup hides its existing process, preserving the
+  selected tab and row while that process remains alive.
+- Ratconfig's Main and Popups tabs use a reviewed Core inventory. All adds root
+  diagnostics, fine tuning, popup geometry, and generic rows for every
+  configured custom-popup leaf; explicit and invalid non-core values remain
+  visible, normal-mode `a` toggles a tab with a Core/All distinction, and search
+  spans All without changing the saved view.
+- `keybindings.sidebar` and `keybindings.sidebar_focus` remap sidebar
+  visibility and editor/sidebar focus through the same validated semantic
+  config used by managed popup triggers. Defaults remain `Alt Shift H` and
+  `Ctrl y`; generated Zellij policy and Home Manager settings use the effective
+  values on the next launch.
+- Ratconfig keeps semantic text, inactive tabs, and pane headings readable in
+  light appearance, aligns Unicode setting labels by terminal-cell width, and
+  uses flush outer pane rails with one shared divider.
+- Home Manager-owned config sources are treated as declarative. Structured
+  saves and resets stop before mutation, native file actions are disabled up
+  front, and both paths name the exact `programs.yazelix.config.*` option.
+- Managed Starship keeps its native `$all` prompt layout and layers only Nova's
+  sparse `character.format` marker plus explicit user overrides, preserving
+  directory, Git, environment, and tool modules.
+- Mars settings report their actual apply boundary: appearance, opacity, font
+  size, line height, scrollbar, and bell behavior update open windows, while
+  width and height apply to newly created windows.
+- Mars recognizes case-insensitive URL schemes and keeps clickable spans aligned
+  after Unicode prefixes. Embedded scheme lookalikes and punctuation-only
+  matches stay inactive, while OSC 8 links preserve their configured action.
+- Linux Mars windows use the Nova desktop entry's `yzx` application identity,
+  so open sessions resolve the packaged icon in Wayland and X11 task switchers.
+- A managed agent pane falls back to the human title `agent` instead of exposing
+  its Nix store launcher path. Provider titles still replace the fallback, and
+  spinner titles drive a compact busy marker while native Zellij tab names
+  remain unchanged and directly renameable. Idle, unknown, focused, and merely
+  visible agent panes do not produce activity.
+- Each tab keeps one orchestrator-owned workspace root. Ordinary managed Yazi
+  opens preserve it and resynchronize Helix even for ignored paths, nested Git
+  repositories, and non-Git descendants. After a successful open, the
+  originating sidebar follows the primary target's directory without changing
+  the tab workspace, other panes, or hidden agent; only the explicit `Alt z`
+  retarget changes the workspace. Failed editor coordination restores the
+  previous root and leaves the sidebar in place. Git and hidden-agent popups
+  launch from the canonical root, so focus or Yazi navigation no longer
+  restarts the agent; a real retarget still does.
+- Ratconfig renders arrays and tables as complete indented details, keeps TOML
+  infinities and NaN visible, and replaces duplicate defaults with `same as
+  current`. The default field list sizes status and setting from the selected
+  tab, then gives the remaining cells to value, so structured previews use the
+  popup width without shifting during search.
+- Main-branch cache publishing builds all eight package variants and Home Manager
+  `aarch64-darwin` closures on `macos-15`, publishes them to the Yazelix
+  Cachix cache, and verifies each top-level narinfo after upload.
+- The Linux desktop entry describes Yazelix as an integrated terminal workspace
+  while continuing to launch the package-owned `yzx launch` command.
+- Ratconfig's Yazi tab renders safe native `yazi.toml` and `theme.toml` values,
+  previews complete tables and arrays instead of count-only badges, keeps TOML
+  infinities and NaN inspectable, leaves untyped empty arrays safely read-only,
+  opens the exact writable owning file with `e` from a structured row, and discovers
+  packaged and user-installed flavors for dark/light selection. Nova packages
+  the five flavors hosted by `yazi-rs/flavors` without preview assets; an
+  explicitly installed user flavor wins; empty names are ignored and incomplete
+  flavor overrides are rejected. Malformed numeric or boolean flavor values remain
+  repairable through the picker. Relative config and state overrides are resolved
+  before linking; config roots or linked sources that overlap generated runtime
+  fail visibly, as do broken managed paths, and failed materializations discard
+  their staging directories. `yzx run ya` resolves the packaged,
+  version-matched Yazi package manager for writable managed flavors.
+- Ratconfig restores its operational Advanced tab, including config
+  diagnostics and correctly aligned file actions. Yazi settings and native file
+  actions likewise share one consistent row layout.
+
 ## 1.0.0-beta.1
 
 - Codex config authorship converges on a reviewed Yazelix-owned input
@@ -114,8 +247,8 @@ User-visible runtime changes for Yazelix Nova live here.
   Nushell, and generated runtime identity under the owned state root.
 - `yzx doctor` recognizes the supported Helix `Alt r` reveal binding when its
   inner quotes use valid TOML escaping, while real conflicts still warn.
-- Darwin Package Smoke and Version Gate build the full package, runtime package,
-  and Home Manager closure on a real `aarch64-darwin` runner. They also assert
+- Darwin Package Smoke and Version Gate build all four package variants and the
+  Home Manager closure on a real `aarch64-darwin` runner. They also assert
   that Darwin receives no Linux desktop entry; macOS interactive use and the
   Mars GUI remain explicitly unverified.
 - The Codex quota widget classifies official limits by their reported window
@@ -131,11 +264,11 @@ User-visible runtime changes for Yazelix Nova live here.
   config-root and `PATH` environment variables are treated as unset instead of
   resolving against the current directory. Invalid stale Helix bridge registry
   files are skipped so opening a file can fall back to a new editor pane.
-- The flake exposes one fixed Mars-free `runtime` package and app alongside the
-  complete default package. Both use `yzx` and the same config/runtime model;
-  the runtime variant keeps `enter`, `run`, `env`, config, status, and doctor,
-  while `launch` directs users to `enter` or the complete package. On the locked
-  x86_64-linux graph it is 1.37 GiB instead of 2.28 GiB and avoids 2,407
+- The fixed Mars-free `runtime` package and app retain managed Helix and use the
+  default package's `yzx` config/runtime model. They keep `enter`, `run`, `env`,
+  config, status, and doctor, while `launch` directs users to `enter` or a
+  package with Mars. Its locked x86_64-linux graph is 1.37 GiB instead of 2.28
+  GiB and avoids 2,407
   source-build derivations. Home Manager selects it through the existing
   `programs.yazelix.package` option and can own `cursors.toml` through the same
   native `text`/`source` contract.

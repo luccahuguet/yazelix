@@ -6,10 +6,11 @@ use serde_json::Value as JsonValue;
 use crate::{
     common::*,
     root_config::{
-        read_optional_toml_file_value, validate_managed_popup_keybinding,
-        validate_popup_keybindings,
+        read_optional_toml_file_value, validate_keybindings, validate_managed_keybinding,
     },
 };
+
+const BUILTIN_POPUP_IDS: &[&str] = &["config", "agent", "git", "menu", "yazi"];
 
 pub(crate) struct CustomPopup {
     pub(crate) id: String,
@@ -21,7 +22,7 @@ pub(crate) struct CustomPopup {
 }
 pub(crate) fn read_custom_popups_kdl(path: &Path) -> Result<String> {
     let value = read_optional_toml_file_value(path, "config.toml")?;
-    validate_popup_keybindings(&value)?;
+    validate_keybindings(&value)?;
     let mut text = String::new();
     for popup in custom_popups(&value)? {
         text.push_str(&format!(
@@ -50,7 +51,7 @@ pub(crate) fn read_custom_popups_kdl(path: &Path) -> Result<String> {
 }
 pub(crate) fn read_custom_popup_keybindings_kdl(path: &Path) -> Result<String> {
     let value = read_optional_toml_file_value(path, "config.toml")?;
-    validate_popup_keybindings(&value)?;
+    validate_keybindings(&value)?;
     let mut text = String::new();
     for popup in custom_popups(&value)? {
         text.push_str(&format!(
@@ -112,7 +113,7 @@ fn custom_popup(id: &str, value: &JsonValue) -> Result<CustomPopup> {
 
     let keybinding_path = format!("{path}.keybinding");
     let keybinding = required_string(table, "keybinding", &keybinding_path)?.to_string();
-    validate_managed_popup_keybinding(&keybinding_path, &keybinding)?;
+    validate_managed_keybinding(&keybinding_path, &keybinding)?;
 
     let keep_alive = table
         .get("keep_alive")
@@ -130,7 +131,6 @@ fn custom_popup(id: &str, value: &JsonValue) -> Result<CustomPopup> {
     })
 }
 fn validate_custom_popup_id(id: &str) -> Result<()> {
-    const BUILTIN_POPUP_IDS: &[&str] = &["config", "agent", "git", "menu"];
     if BUILTIN_POPUP_IDS.contains(&id) {
         return Err(error(format!(
             "popups.{id} conflicts with packaged popup id"
@@ -150,13 +150,14 @@ fn validate_custom_popup_id(id: &str) -> Result<()> {
     }
 }
 fn validate_custom_popup_titles(popups: &[CustomPopup]) -> Result<()> {
-    const BUILTIN_POPUP_TITLES: &[&str] =
-        &["config_popup", "agent_popup", "git_popup", "menu_popup"];
     let mut used = BTreeMap::new();
     for popup in popups {
         let title = popup.title.trim();
         let path = format!("popups.{}.title", popup.id);
-        if BUILTIN_POPUP_TITLES.contains(&title) {
+        if title
+            .strip_suffix("_popup")
+            .is_some_and(|id| BUILTIN_POPUP_IDS.contains(&id))
+        {
             return Err(error(format!(
                 "{path} conflicts with packaged popup title {title}"
             )));

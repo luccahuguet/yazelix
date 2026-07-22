@@ -47,5 +47,13 @@ jobs:
       - name: Check flake shape
         run: nix flake check --no-build --all-systems
 
+      # Upstream step, converted to the repository's Nushell workflow shell.
+      - name: Check Helix-free evaluation
+        run: |
+          for package in [yazelix-no-helix yazelix-no-helix-no-yazi yazelix-no-mars-no-helix yazelix-no-mars-no-helix-no-yazi] {
+            ^nix eval --raw --no-write-lock-file --override-input yazelixHelix path:./checks/unavailable-helix $".#packages.aarch64-darwin.($package).drvPath"
+          }
+
+      # Fork policy/profile checks + upstream focused checks — one build.
       - name: Build lightweight checks
-        run: ^nix build --no-link --print-build-logs .#checks.x86_64-linux.cache_shell_policy .#checks.x86_64-linux.codex_config_materializer .#checks.x86_64-linux.profile_agent_frontdoors .#checks.x86_64-linux.strict_profile_sources .#checks.x86_64-linux.yzx_yazi_materialization .#checks.x86_64-linux.yzx_launcher_unit .#checks.x86_64-linux.runtime_contracts .#checks.x86_64-linux.zellij_sidecar_guard_parity
+        run: ^nix build --no-link --print-build-logs .#checks.x86_64-linux.cache_shell_policy .#checks.x86_64-linux.codex_config_materializer .#checks.x86_64-linux.codex_rules_authority .#checks.x86_64-linux.profile_agent_frontdoors .#checks.x86_64-linux.strict_profile_sources .#checks.x86_64-linux.yzx_yazi_materialization .#checks.x86_64-linux.yzx_launcher_unit .#checks.x86_64-linux.runtime_contracts .#checks.x86_64-linux.zellij_sidecar_guard_parity .#checks.x86_64-linux.no_helix_contracts .#checks.x86_64-linux.host_yazi_contracts .#checks.x86_64-linux.no_mars_contracts

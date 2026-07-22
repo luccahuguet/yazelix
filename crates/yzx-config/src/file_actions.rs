@@ -17,6 +17,7 @@ use crate::{
     },
     paths::ConfigPaths,
     root_config::{unset_config_field, write_config_field},
+    yazi_config::{unset_yazi_field, write_yazi_field},
     zellij_sidecar::{unset_zellij_config_field, write_zellij_config_field},
 };
 use yazelix_cursors::DEFAULT_CURSOR_CONFIG_TEMPLATE;
@@ -33,17 +34,23 @@ pub(crate) struct FileActionSpec {
 pub(crate) fn build_file_actions(paths: &ConfigPaths) -> Vec<ConfigUiFileAction> {
     file_action_specs(paths)
         .into_iter()
-        .map(|spec| ConfigUiFileAction {
-            source_id: spec.source_id.to_string(),
-            action_id: spec.action_id.to_string(),
-            tab: spec.tab.to_string(),
-            label: spec.label.to_string(),
-            description: spec.description.to_string(),
-            exists: spec.path.exists(),
-            read_only: paths.is_home_manager_owned(&spec.path) || path_read_only(&spec.path),
-            create_if_missing: true,
-            disabled_reason: None,
-            path: spec.path,
+        .map(|spec| {
+            let disabled_reason = paths
+                .reject_mutation(&spec.path, spec.source_id)
+                .err()
+                .map(|error| error.to_string());
+            ConfigUiFileAction {
+                source_id: spec.source_id.to_string(),
+                action_id: spec.action_id.to_string(),
+                tab: spec.tab.to_string(),
+                label: spec.label.to_string(),
+                description: spec.description.to_string(),
+                exists: spec.path.exists(),
+                read_only: disabled_reason.is_some(),
+                create_if_missing: true,
+                disabled_reason,
+                path: spec.path,
+            }
         })
         .collect()
 }
@@ -113,45 +120,45 @@ fn file_action_specs(paths: &ConfigPaths) -> impl IntoIterator<Item = FileAction
             starter: NU_CONFIG_STARTER,
         },
         FileActionSpec {
-            source_id: SOURCE_ADVANCED,
+            source_id: SOURCE_YAZI_CONFIG,
             action_id: ACTION_YAZI_CONFIG,
-            tab: TAB_ADVANCED,
+            tab: TAB_YAZI,
             label: "yazi/yazi.toml",
             description: "Open the managed native Yazi config file.",
             path: paths.yazi_config.clone(),
             starter: YAZI_CONFIG_STARTER,
         },
         FileActionSpec {
-            source_id: SOURCE_ADVANCED,
+            source_id: SOURCE_YAZI,
             action_id: ACTION_YAZI_INIT,
-            tab: TAB_ADVANCED,
+            tab: TAB_YAZI,
             label: "yazi/init.lua",
             description: "Open the managed Yazi user init.lua file.",
             path: paths.yazi_init.clone(),
             starter: YAZI_INIT_STARTER,
         },
         FileActionSpec {
-            source_id: SOURCE_ADVANCED,
+            source_id: SOURCE_YAZI,
             action_id: ACTION_YAZI_KEYMAP,
-            tab: TAB_ADVANCED,
+            tab: TAB_YAZI,
             label: "yazi/keymap.toml",
             description: "Open the managed Yazi user keymap.toml file.",
             path: paths.yazi_keymap.clone(),
             starter: YAZI_KEYMAP_STARTER,
         },
         FileActionSpec {
-            source_id: SOURCE_ADVANCED,
+            source_id: SOURCE_YAZI,
             action_id: ACTION_YAZI_PACKAGE,
-            tab: TAB_ADVANCED,
+            tab: TAB_YAZI,
             label: "yazi/package.toml",
             description: "Open the managed Yazi package metadata file.",
             path: paths.yazi_package.clone(),
             starter: YAZI_PACKAGE_STARTER,
         },
         FileActionSpec {
-            source_id: SOURCE_ADVANCED,
+            source_id: SOURCE_YAZI_THEME,
             action_id: ACTION_YAZI_THEME,
-            tab: TAB_ADVANCED,
+            tab: TAB_YAZI,
             label: "yazi/theme.toml",
             description: "Open the managed native Yazi theme config file.",
             path: paths.yazi_theme.clone(),
@@ -195,6 +202,9 @@ pub(crate) fn write_source_field(
             paths.reject_mutation(&paths.starship, source_id)?;
             write_starship_config_field(&paths.starship, field_path, value)
         }
+        SOURCE_YAZI_CONFIG | SOURCE_YAZI_THEME => {
+            write_yazi_field(paths, source_id, field_path, value)
+        }
         _ => Err(error(format!("unknown config source: {source_id}"))),
     }
 }
@@ -224,6 +234,7 @@ pub(crate) fn write_source_default(
             paths.reject_mutation(&paths.zellij, source_id)?;
             unset_zellij_config_field(&paths.zellij, field_path)
         }
+        SOURCE_YAZI_CONFIG | SOURCE_YAZI_THEME => unset_yazi_field(paths, source_id, field_path),
         _ => Err(error(format!("unknown config source: {source_id}"))),
     }
 }
@@ -238,7 +249,7 @@ pub(crate) fn open_file_action(
     paths.reject_mutation(&spec.path, source_id)?;
     let editor = configured_editor()?;
     prepare_file_action(paths, source_id, action_id, path, create_if_missing)?;
-    let status = Command::new(&editor).arg(path).status().map_err(|error| {
+    let status = editor_command(&editor, path).status().map_err(|error| {
         io::Error::other(format!(
             "failed to launch editor `{}`: {error}",
             editor.display()
@@ -314,41 +325,64 @@ fn configured_editor() -> Result<PathBuf> {
         .map(PathBuf::from)
         .ok_or_else(|| error("no editor configured; set YAZELIX_EDITOR, VISUAL, or EDITOR"))
 }
-pub(crate) fn edit_text_externally(input: &str) -> Result<String> {
-    edit_text_with_editor(input, &configured_editor()?)
+pub(crate) fn edit_text_externally(field_path: &str, input: &str) -> Result<String> {
+    edit_text_with_editor(field_path, input, &configured_editor()?)
 }
-pub(crate) fn edit_text_with_editor(input: &str, editor: &Path) -> Result<String> {
-    let path = external_text_edit_path();
-    fs::write(&path, input)?;
-    let status = Command::new(editor).arg(&path).status().map_err(|error| {
-        io::Error::other(format!(
-            "failed to launch editor `{}`: {error}",
-            editor.display()
-        ))
-    })?;
-    if !status.success() {
-        let _ = fs::remove_file(&path);
-        return Err(error(format!(
-            "editor `{}` exited with status {status}",
-            editor.display()
-        )));
-    }
-
-    let read_result = fs::read_to_string(&path);
-    let _ = fs::remove_file(&path);
-    let mut text = read_result?;
-    if text.ends_with('\n') {
-        text.pop();
-        if text.ends_with('\r') {
-            text.pop();
+pub(crate) fn edit_text_with_editor(
+    field_path: &str,
+    input: &str,
+    editor: &Path,
+) -> Result<String> {
+    let path = external_text_edit_path(field_path);
+    let result = (|| -> Result<String> {
+        fs::write(&path, input)?;
+        let status = editor_command(editor, &path).status().map_err(|error| {
+            io::Error::other(format!(
+                "failed to launch editor `{}`: {error}",
+                editor.display()
+            ))
+        })?;
+        if !status.success() {
+            return Err(error(format!(
+                "editor `{}` exited with status {status}",
+                editor.display()
+            )));
         }
-    }
-    Ok(text)
+
+        let mut text = fs::read_to_string(&path)?;
+        if text.ends_with('\n') {
+            text.pop();
+            if text.ends_with('\r') {
+                text.pop();
+            }
+        }
+        Ok(text)
+    })();
+    let _ = fs::remove_file(&path);
+    result
 }
-fn external_text_edit_path() -> PathBuf {
+fn editor_command(editor: &Path, path: &Path) -> Command {
+    let mut command = Command::new(editor);
+    command.arg(path).env("YAZELIX_HELIX_BRIDGE", "0");
+    command
+}
+fn external_text_edit_path(field_path: &str) -> PathBuf {
     let nonce = SystemTime::now()
         .duration_since(UNIX_EPOCH)
-        .map(|duration| duration.as_nanos())
-        .unwrap_or(0);
-    env::temp_dir().join(format!("yzx-config-edit-{}-{nonce}.txt", process::id()))
+        .unwrap_or_default()
+        .as_nanos();
+    let label = field_path
+        .chars()
+        .take(80)
+        .map(|ch| {
+            if ch.is_ascii_alphanumeric() || matches!(ch, '.' | '-' | '_') {
+                ch
+            } else {
+                '-'
+            }
+        })
+        .collect::<String>();
+    let label = label.trim_matches(|ch| matches!(ch, '.' | '-'));
+    let label = if label.is_empty() { "value" } else { label };
+    env::temp_dir().join(format!("yzx-config-{label}-{}-{nonce}.txt", process::id()))
 }

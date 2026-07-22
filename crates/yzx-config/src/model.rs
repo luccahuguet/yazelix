@@ -1,13 +1,15 @@
 use std::{
     collections::BTreeMap,
+    fs,
     path::{Path, PathBuf},
 };
 
 use ratconfig::toml_adapter::{get_toml_path, parse_toml_value};
 use ratconfig::{
-    ConfigUiApplyStatus, ConfigUiEditBehavior, ConfigUiFieldSpec, ConfigUiListColumn,
-    ConfigUiListTable, ConfigUiModel, ConfigUiPathOwner, ConfigUiSource, ConfigUiTheme,
-    ConfigUiThemeMapping, ConfigUiThemeSwitcher,
+    ConfigUiApplyStatus, ConfigUiEditBehavior, ConfigUiFieldId, ConfigUiFieldSpec,
+    ConfigUiListColumn, ConfigUiListTable, ConfigUiModel, ConfigUiPathOwner, ConfigUiSource,
+    ConfigUiTheme, ConfigUiThemeMapping, ConfigUiThemeSwitcher, ConfigUiTomlDocumentSpec,
+    build_toml_document_fields,
 };
 use serde_json::Value as JsonValue;
 use yazelix_cursors::{
@@ -18,13 +20,17 @@ use crate::{
     catalog::*,
     common::*,
     file_actions::build_file_actions,
-    native_config::{cursor_defaults, validate_mars_field, validate_starship_field},
+    native_config::{cursor_defaults, validate_mars_field},
     paths::ConfigPaths,
     root_config::{
         bar_widgets, default_config, default_config_path_value, read_optional_toml_file_value,
         validate_root_config,
     },
-    zellij_sidecar::{packaged_zellij_defaults, parse_zellij_sidecar, read_zellij_sidecar},
+    yazi_config::build_yazi_fields,
+    zellij_sidecar::{
+        packaged_zellij_defaults, packaged_zellij_theme_choices, parse_zellij_sidecar,
+        read_zellij_sidecar,
+    },
 };
 
 pub(crate) fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
@@ -41,13 +47,14 @@ pub(crate) fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
     let cursors_default = cursor_defaults(&cursors_active)?;
     let (zellij_active, diagnostics) = parse_zellij_sidecar(&read_zellij_sidecar(&paths.zellij)?);
     let zellij_default = packaged_zellij_defaults();
-    let zellij_blocking = diagnostics.iter().any(|diagnostic| diagnostic.blocking);
+    let yazi = build_yazi_fields(paths)?;
 
     let mut fields: Vec<_> = CONFIG_FIELDS
         .iter()
         .map(|spec| build_root_config_field(&config_active, &config_default, spec))
         .collect::<Result<_>>()?;
     fields.push(build_bar_widgets_field(&config_active, &config_default)?);
+    fields.extend(build_custom_popup_fields(&paths.root)?);
     fields.extend(KEY_BINDINGS.iter().map(build_key_binding_field));
     fields.extend(build_cursor_fields(&cursors_active, &cursors_default)?);
     for spec in MARS_FIELDS {
@@ -70,34 +77,49 @@ pub(crate) fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
             spec,
             current,
             get_toml_path(&starship_default, spec.path),
-            ConfigUiApplyStatus {
-                summary: "new prompts".to_string(),
-                label: "starship".to_string(),
-                detail: "Saved values apply to newly rendered managed Nu prompts.".to_string(),
-                pending: false,
-            },
-            current.is_some_and(|value| validate_starship_field(spec, value).is_err()),
+            apply_status(
+                "new prompts",
+                "starship",
+                "Saved values apply to newly rendered managed Nu prompts.",
+            ),
+            current.is_some_and(|value| spec.json_choice(value).is_err()),
         ));
     }
     for spec in ZELLIJ_FIELDS {
         let current = zellij_active.get(spec.path);
         let default = zellij_default.get(spec.path).expect("packaged default");
-        fields.push(build_config_field(
+        let mut field = build_config_field(
             SOURCE_ZELLIJ,
             TAB_ZELLIJ,
             spec,
             current,
             Some(default),
-            ConfigUiApplyStatus {
-                summary: "session".to_string(),
-                label: "zellij".to_string(),
-                detail: "Inside a session, saves and resets update the active config; many scalars apply live, some need a new session.".to_string(),
-                pending: false,
-            },
-            zellij_blocking,
-        ));
+            zellij_apply_status(spec.path),
+            false,
+        );
+        if spec.path == "theme" {
+            field.allowed_values = packaged_zellij_theme_choices();
+            if let Some(custom) = current.and_then(JsonValue::as_str)
+                && !field.allowed_values.iter().any(|theme| theme == custom)
+            {
+                field.allowed_values.push(custom.to_string());
+            }
+        }
+        fields.push(field);
     }
     let source = |id, tab, label, path| build_config_source(paths, id, tab, label, path);
+    let yazi_dir = paths.yazi_config.parent().expect("Yazi config directory");
+    let fields = fields.into_iter().chain(yazi).collect::<Vec<_>>();
+    let core_fields = Some(
+        fields
+            .iter()
+            .filter(|field| {
+                field.source_id != SOURCE_CONFIG
+                    || ROOT_CONFIG_CORE_PATHS.contains(&field.path.as_str())
+            })
+            .map(|field| ConfigUiFieldId::new(&field.source_id, &field.path))
+            .collect(),
+    );
 
     Ok(ConfigUiModel {
         sources: vec![
@@ -118,6 +140,7 @@ pub(crate) fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
                 &paths.starship,
             ),
             source(SOURCE_HELIX, TAB_HELIX, "helix", &paths.helix_dir),
+            source(SOURCE_YAZI, TAB_YAZI, "yazi", yazi_dir),
             ConfigUiSource {
                 id: SOURCE_KEYS.to_string(),
                 tab: TAB_KEYS.to_string(),
@@ -136,6 +159,7 @@ pub(crate) fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
             TAB_ZELLIJ.to_string(),
             TAB_STARSHIP.to_string(),
             TAB_HELIX.to_string(),
+            TAB_YAZI.to_string(),
             TAB_KEYS.to_string(),
             TAB_ADVANCED.to_string(),
         ],
@@ -152,6 +176,7 @@ pub(crate) fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
             },
         )]),
         fields,
+        core_fields,
         file_actions: build_file_actions(paths),
         sidecars: Vec::new(),
         native_config_statuses: Vec::new(),
@@ -194,12 +219,7 @@ fn build_key_binding_field(
         allowed_values: Vec::new(),
         validation: KEY_READ_ONLY_REASON.to_string(),
         rebuild_required: false,
-        apply_status: ConfigUiApplyStatus {
-            summary: "read-only".to_string(),
-            label: "read-only".to_string(),
-            detail: KEY_READ_ONLY_REASON.to_string(),
-            pending: false,
-        },
+        apply_status: apply_status("read-only", "read-only", KEY_READ_ONLY_REASON),
         edit_behavior: ConfigUiEditBehavior::StructuredOnly {
             notice: KEY_READ_ONLY_REASON.to_string(),
         },
@@ -240,14 +260,35 @@ fn build_root_config_field(
         &spec.field,
         current,
         Some(&default),
-        ConfigUiApplyStatus {
-            summary: spec.apply_summary.to_string(),
-            label: "runtime".to_string(),
-            detail: spec.apply_detail.to_string(),
-            pending: false,
-        },
+        apply_status(spec.apply_summary, "runtime", spec.apply_detail),
         false,
     ))
+}
+fn build_custom_popup_fields(path: &Path) -> Result<Vec<ratconfig::ConfigUiField>> {
+    let raw = if path_entry_exists(path)? {
+        fs::read_to_string(path)?
+    } else {
+        String::new()
+    };
+    let mut fields = build_toml_document_fields(ConfigUiTomlDocumentSpec {
+        source_id: SOURCE_CONFIG,
+        tab: TAB_POPUPS,
+        section_label: "custom popups",
+        current_toml: &raw,
+        default_toml: None,
+        validation: "",
+        rebuild_required: false,
+        apply_status: apply_status(
+            "next launch",
+            "runtime",
+            "Saved custom popup settings apply to newly launched Yazelix sessions.",
+        ),
+    })
+    .map_err(error)?
+    .fields;
+    fields.retain(|field| field.path.starts_with("popups."));
+    fields.iter_mut().for_each(|field| field.list_cells.clear());
+    Ok(fields)
 }
 fn root_config_tab(path: &str) -> &'static str {
     if matches!(
@@ -273,21 +314,22 @@ fn build_config_field(
     current: Option<&JsonValue>,
     default: Option<&JsonValue>,
     apply_status: ConfigUiApplyStatus,
-    has_blocking_diagnostic: bool,
+    invalid: bool,
 ) -> ratconfig::ConfigUiField {
-    ConfigUiFieldSpec {
-        has_blocking_diagnostic,
-        ..ConfigUiFieldSpec::new(
-            source_id,
-            spec.path,
-            tab,
-            spec.description,
-            string_values(spec.allowed_values),
-            spec.validation,
-            apply_status,
-        )
+    let mut field = ConfigUiFieldSpec::new(
+        source_id,
+        spec.path,
+        tab,
+        spec.description,
+        string_values(spec.allowed_values),
+        spec.validation,
+        apply_status,
+    )
+    .build(spec.kind, current, default);
+    if invalid {
+        field.state = ratconfig::ConfigUiValueState::Invalid;
     }
-    .build(spec.kind, current, default)
+    field
 }
 fn build_cursor_fields(
     active: &CursorRegistry,
@@ -357,15 +399,14 @@ fn cursor_apply_status(path: &str) -> ConfigUiApplyStatus {
         path,
         "settings.mode_effect" | "settings.glow" | "settings.duration"
     ) {
-        return ConfigUiApplyStatus {
-            summary: "stored".to_string(),
-            label: "cursors".to_string(),
-            detail: "Saved for compatible consumers; Mars does not use this setting yet."
-                .to_string(),
-            pending: false,
-        };
+        return apply_status(
+            "stored",
+            "cursors",
+            "Saved for compatible consumers; Mars does not use this setting yet.",
+        );
     }
-    next_launch_apply_status(
+    apply_status(
+        "next launch",
         "cursors",
         if path == "settings.trail_effect" {
             "Mars currently reads only none versus enabled; compatible consumers may use the named effect."
@@ -391,21 +432,19 @@ fn build_bar_widgets_field(
             "Top bar widgets, left to right.",
             string_values(BAR_WIDGET_VALUES),
             "known widget ids",
-            ConfigUiApplyStatus {
-                summary: "next launch".to_string(),
-                label: "bar".to_string(),
-                detail: "Saved widget order applies to newly launched Yazelix sessions."
-                    .to_string(),
-                pending: false,
-            },
+            apply_status(
+                "next launch",
+                "bar",
+                "Saved widget order applies to newly launched Yazelix sessions.",
+            ),
         )
     }
     .build_string_list(current, Some(default))
     .map_err(error)
 }
-fn next_launch_apply_status(label: &str, detail: &str) -> ConfigUiApplyStatus {
+fn apply_status(summary: &str, label: &str, detail: &str) -> ConfigUiApplyStatus {
     ConfigUiApplyStatus {
-        summary: "next launch".to_string(),
+        summary: summary.to_string(),
         label: label.to_string(),
         detail: detail.to_string(),
         pending: false,
@@ -413,15 +452,42 @@ fn next_launch_apply_status(label: &str, detail: &str) -> ConfigUiApplyStatus {
 }
 
 fn mars_apply_status(path: &str) -> ConfigUiApplyStatus {
-    if path == MARS_APPEARANCE_PRESET_PATH {
-        ConfigUiApplyStatus {
-            summary: "live".to_string(),
-            label: "mars/ui".to_string(),
-            detail: "Saved appearance changes apply to Mars and this config UI immediately."
-                .to_string(),
-            pending: false,
+    let (summary, label, detail) = match path {
+        MARS_APPEARANCE_PRESET_PATH => (
+            "live",
+            "mars/ui",
+            "Saved appearance changes apply live to Mars and this config UI.",
+        ),
+        "window.width" | "window.height" => (
+            "new windows",
+            "mars",
+            "Saved dimensions apply to newly created Mars windows; existing windows keep their size.",
+        ),
+        "window.opacity" | "fonts.size" | "line-height" | "enable-scroll-bar" => {
+            ("live", "mars", "Saved values update open Mars windows.")
         }
-    } else {
-        next_launch_apply_status("mars", "Saved values apply to newly launched Mars windows.")
+        "bell.audio" | "bell.visual" => (
+            "live",
+            "mars",
+            "Saved bell settings apply to the next bell in open Mars windows.",
+        ),
+        _ => unreachable!("Mars field {path} has no apply timing"),
+    };
+
+    apply_status(summary, label, detail)
+}
+
+fn zellij_apply_status(path: &str) -> ConfigUiApplyStatus {
+    if path == "theme" {
+        return apply_status(
+            "live",
+            "zellij",
+            "Inside a managed session, saved themes update the watched active config; outside a session they apply on the next launch.",
+        );
     }
+    apply_status(
+        "session",
+        "zellij",
+        "Inside a session, saves and resets update the active config; many scalars apply live, some need a new session.",
+    )
 }

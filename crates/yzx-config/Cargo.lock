@@ -550,13 +550,24 @@ dependencies = [
 
 [[package]]
 name = "ratconfig"
-version = "3.0.0"
+version = "2.0.0"
+source = "git+https://github.com/luccahuguet/ratconfig?rev=110e749a5fb10e146611427564bd6afda0750827#110e749a5fb10e146611427564bd6afda0750827"
 dependencies = [
  "jsonc-parser",
+ "serde_json",
+ "toml",
+ "toml_edit",
+]
+
+[[package]]
+name = "ratconfig"
+version = "5.0.0"
+dependencies = [
  "ratatui",
  "serde_json",
  "toml",
  "toml_edit",
+ "unicode-segmentation",
 ]
 
 [[package]]
@@ -926,7 +937,7 @@ name = "yazelix_cursors"
 version = "0.1.0"
 dependencies = [
  "jsonc-parser",
- "ratconfig",
+ "ratconfig 2.0.0",
  "serde",
  "serde_json",
  "thiserror",
@@ -939,7 +950,7 @@ version = "0.1.0"
 dependencies = [
  "crossterm",
  "ratatui",
- "ratconfig",
+ "ratconfig 5.0.0",
  "serde_json",
  "toml",
  "yazelix_cursors",

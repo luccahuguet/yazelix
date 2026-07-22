@@ -10,7 +10,7 @@ log_level = "info"
 program = "nu"
 
 [editor]
-# Editor command for managed opens. hx and yzx-hx use packaged Yazelix Helix.
+# Editor command for managed opens. hx and yzx-hx use Yazelix Helix when included.
 command = "yzx-hx"
 
 [agent]
@@ -35,11 +35,13 @@ side_margin = 1
 vertical_margin = 0
 
 [keybindings]
-# Key chords for managed popup roles.
+# Key chords for managed Yazelix actions.
 config = "Alt Shift K"
 agent = "Alt Shift L"
 git = "Alt Shift J"
 menu = "Alt Shift M"
+sidebar = "Alt Shift H"
+sidebar_focus = "Ctrl y"
 
 # Custom popups can be added manually. Commands are argv-based, not shell strings.
 # Titles default to <id>_popup and must be unique.

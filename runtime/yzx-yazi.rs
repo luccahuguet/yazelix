@@ -8,7 +8,6 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-const YAZI: &str = "@yazi@";
 const YZX_YAZI_CONFIG: &str = "@yzxYaziConfig@";
 const YZX_YAZI_MATERIALIZER: &str = "@yzxYaziMaterializer@";
 const YZX_OPEN: &str = "@yzxOpen@";
@@ -29,13 +28,21 @@ fn main() -> ExitCode {
 }
 
 fn run() -> io::Result<()> {
+    let yazi = nonempty_env("YZX_YAZI_BIN").ok_or_else(|| {
+        io::Error::new(
+            io::ErrorKind::NotFound,
+            "YZX_YAZI_BIN is missing; launch managed Yazi through yzx",
+        )
+    })?;
     let state_dir = state_dir()?;
     let yazi_config = yazi_config_home(&state_dir)?;
     let yzx_open_log = yzx_config_value("open.log_level")?;
     let editor = effective_editor_command(yzx_config_value("editor.command")?);
-    let mut command = Command::new(YAZI);
+    let mut args = env::args_os().skip(1).collect::<Vec<_>>();
+    let workspace_popup = take_workspace_popup_flag(&mut args);
+    let mut command = Command::new(yazi);
     command
-        .args(env::args_os().skip(1))
+        .args(args)
         .env("PATH", runtime_path())
         .env("YAZELIX_STATE_DIR", &state_dir)
         .env("YAZI_CONFIG_HOME", &yazi_config)
@@ -52,6 +59,12 @@ fn run() -> io::Result<()> {
         .env("GIT_EDITOR", YZX_EDITOR_LAUNCHER)
         .env("YZX_OPEN_LOG", yzx_open_log);
 
+    if workspace_popup {
+        command.env("YZX_YAZI_ROLE", "workspace-popup");
+    } else {
+        command.env_remove("YZX_YAZI_ROLE");
+    }
+
     if uses_helix_bridge(&editor) {
         command.env("YAZELIX_HELIX_BRIDGE_SESSION_ID", bridge_session_id());
     }
@@ -64,6 +77,16 @@ fn run() -> io::Result<()> {
     }
 
     Err(command.exec())
+}
+
+fn take_workspace_popup_flag(args: &mut Vec<OsString>) -> bool {
+    let workspace_popup = args
+        .first()
+        .is_some_and(|arg| arg == OsStr::new("--yzx-workspace-popup"));
+    if workspace_popup {
+        args.remove(0);
+    }
+    workspace_popup
 }
 
 fn yazi_config_home(state_dir: &Path) -> io::Result<PathBuf> {
@@ -173,5 +196,22 @@ mod tests {
         assert!(uses_helix_bridge(YZX_HELIX));
         assert!(uses_helix_bridge("/nix/store/example/bin/yzx-hx"));
         assert!(!uses_helix_bridge("nvim"));
+    }
+
+    #[test]
+    fn workspace_popup_flag_is_private_to_the_managed_yazi_launcher() {
+        let mut popup = vec![
+            OsString::from("--yzx-workspace-popup"),
+            OsString::from("/workspace with spaces"),
+        ];
+        assert!(take_workspace_popup_flag(&mut popup));
+        assert_eq!(popup, [OsString::from("/workspace with spaces")]);
+
+        let mut ordinary = vec![OsString::from("/workspace"), OsString::from("--debug")];
+        assert!(!take_workspace_popup_flag(&mut ordinary));
+        assert_eq!(
+            ordinary,
+            [OsString::from("/workspace"), OsString::from("--debug")]
+        );
     }
 }

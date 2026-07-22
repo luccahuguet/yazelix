@@ -10,6 +10,7 @@ mod native_config;
 mod paths;
 mod root_config;
 mod ui;
+mod yazi_config;
 mod zellij_sidecar;
 
 use catalog::*;
@@ -125,12 +126,14 @@ mod tests {
     use crate::file_actions::*;
     use crate::model::*;
     use crate::zellij_sidecar::*;
-    use crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
+    use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
     use ratatui::style::{Color, Style};
     use ratconfig::toml_adapter::{get_toml_path, parse_toml_value, set_toml_value_text};
     use ratconfig::{
-        file_action_status_label, file_action_status_style, ConfigUiDiagnostic,
-        ConfigUiEditBehavior, ConfigUiModel, ConfigUiPathOwner, ConfigUiTheme, ConfigUiValueState,
+        ConfigUiApp, ConfigUiDiagnostic, ConfigUiDiagnosticScope, ConfigUiEditBehavior,
+        ConfigUiFieldId, ConfigUiKey, ConfigUiModel, ConfigUiPathOwner, ConfigUiSettingsView,
+        ConfigUiTheme, ConfigUiValueState, UiRowRef, file_action_status_label,
+        file_action_status_style,
     };
     use serde_json::{json, Value as JsonValue};
     use yazelix_cursors::{load_cursor_config, DEFAULT_CURSOR_CONFIG_TEMPLATE};
@@ -179,6 +182,9 @@ mod tests {
     }
 
     fn temp_paths(temp: &TempHome) -> ConfigPaths {
+        let packaged_yazi = temp.path.join("packaged-yazi");
+        fs::create_dir_all(&packaged_yazi).unwrap();
+        fs::write(packaged_yazi.join("yazi.toml"), "").unwrap();
         ConfigPaths {
             store_root: temp.path.join("store"),
             root: temp.path.join("config.toml"),
@@ -198,6 +204,7 @@ mod tests {
             yazi_keymap: temp.path.join("yazi/keymap.toml"),
             yazi_package: temp.path.join("yazi/package.toml"),
             yazi_theme: temp.path.join("yazi/theme.toml"),
+            packaged_yazi,
             zellij_plugins: temp.path.join("zellij/plugins.kdl"),
         }
     }
@@ -310,15 +317,46 @@ mod tests {
         write_nu_executable(
             &editor,
             r#"def main [target: path] {
+    if ($env.YAZELIX_HELIX_BRIDGE? | default "") != "0" { exit 20 }
+    if ($target | path basename) !~ "ui.title" { exit 21 }
     "line one\nline two\n" | save --force $target
 }
 "#,
         );
 
         assert_eq!(
-            edit_text_with_editor("original", &editor).unwrap(),
+            edit_text_with_editor("ui.title", "original", &editor).unwrap(),
             "line one\nline two"
         );
+    }
+
+    #[test]
+    fn external_text_editor_removes_buffer_when_launch_fails() {
+        let temp = TempHome::new();
+        let prefix = format!("yzx-config-cleanup.failure.test-{}-", process::id());
+
+        let error = edit_text_with_editor(
+            "cleanup.failure.test",
+            "sensitive staged value",
+            &temp.path.join("missing-editor"),
+        )
+        .unwrap_err();
+        assert!(error.to_string().contains("failed to launch editor"));
+
+        let leftovers = fs::read_dir(env::temp_dir())
+            .unwrap()
+            .filter_map(std::result::Result::ok)
+            .map(|entry| entry.path())
+            .filter(|path| {
+                path.file_name()
+                    .and_then(|name| name.to_str())
+                    .is_some_and(|name| name.starts_with(&prefix))
+            })
+            .collect::<Vec<_>>();
+        for path in &leftovers {
+            let _ = fs::remove_file(path);
+        }
+        assert!(leftovers.is_empty(), "temporary edit buffer leaked");
     }
 
     fn model_field<'a>(model: &'a ConfigUiModel, path: &str) -> &'a ratconfig::ConfigUiField {
@@ -327,6 +365,12 @@ mod tests {
             .iter()
             .find(|field| field.path == path)
             .unwrap_or_else(|| panic!("missing config field {path}"))
+    }
+
+    fn add_flavor(directory: &Path, name: &str) {
+        let flavor = directory.join("flavors").join(format!("{name}.yazi"));
+        fs::create_dir_all(&flavor).unwrap();
+        fs::write(flavor.join("flavor.toml"), "").unwrap();
     }
 
     fn key_field<'a>(model: &'a ConfigUiModel, label: &str) -> &'a ratconfig::ConfigUiField {
@@ -400,12 +444,11 @@ mod tests {
             assert_eq!(default_config_value(field_path).unwrap(), value);
             validate_config_value(field_path, &value).unwrap();
         }
-        for spec in POPUP_KEYBINDINGS {
+        for &(path, default) in MANAGED_KEYBINDINGS {
             assert_eq!(
-                default_config_value(spec.path).unwrap(),
-                json!(spec.default),
-                "{}",
-                spec.path
+                default_config_value(path).unwrap(),
+                json!(default),
+                "{path}"
             );
         }
     }
@@ -534,6 +577,8 @@ mod tests {
             (KEYBINDINGS_AGENT_PATH, "Alt Shift A"),
             (KEYBINDINGS_GIT_PATH, "Alt Shift G"),
             (KEYBINDINGS_MENU_PATH, "Alt Shift U"),
+            (KEYBINDINGS_SIDEBAR_PATH, "Ctrl Shift B"),
+            (KEYBINDINGS_SIDEBAR_FOCUS_PATH, "Ctrl Shift E"),
         ] {
             assert_write_round_trip(&path, field_path, json!(value), Some(value));
         }
@@ -571,7 +616,7 @@ mod tests {
         ] {
             assert_write_config_error(&path, field_path, value, expected);
         }
-        for value in ["Alt Shift h", "Alt z"] {
+        for value in ["Alt Shift f", "Alt Shift Y", "Alt z"] {
             assert_write_config_error(
                 &path,
                 KEYBINDINGS_AGENT_PATH,
@@ -703,16 +748,21 @@ mod tests {
 
         assert_eq!(
             read_agent_popup_kdl(&path).unwrap(),
-            concat!(
-                "            agent {\n",
-                "                command \"codex\"\n",
-                "                arg_1 \"resume\"\n",
-                "                arg_2 \"--dangerously-bypass-approvals-and-sandbox\"\n",
-                "                pane_title \"agent_popup\"\n",
-                "                width_percent 100\n",
-                "                height_percent 100\n",
-                "                toggle_close_behavior \"hide\"\n",
-                "            }",
+            format!(
+                concat!(
+                    "            agent {{\n",
+                    "                command \"{}\"\n",
+                    "                arg_1 \"codex\"\n",
+                    "                arg_2 \"resume\"\n",
+                    "                arg_3 \"--dangerously-bypass-approvals-and-sandbox\"\n",
+                    "                pane_title \"agent_popup\"\n",
+                    "                width_percent 100\n",
+                    "                height_percent 100\n",
+                    "                preserve_terminal_title true\n",
+                    "                toggle_close_behavior \"hide\"\n",
+                    "            }}",
+                ),
+                PACKAGED_AGENT_LAUNCHER,
             )
         );
     }
@@ -726,7 +776,7 @@ mod tests {
                 "without arguments",
             ),
             (
-                "[popups.config]\ncommand = \"btm\"\nkeybinding = \"Alt Shift B\"\n",
+                "[popups.yazi]\ncommand = \"btm\"\nkeybinding = \"Alt Shift B\"\n",
                 "conflicts with packaged popup id",
             ),
             (
@@ -750,8 +800,8 @@ mod tests {
                 "popups.btm.title must not be empty",
             ),
             (
-                "[popups.btm]\ncommand = \"btm\"\ntitle = \"git_popup\"\nkeybinding = \"Alt Shift B\"\n",
-                "popups.btm.title conflicts with packaged popup title git_popup",
+                "[popups.btm]\ncommand = \"btm\"\ntitle = \"yazi_popup\"\nkeybinding = \"Alt Shift B\"\n",
+                "popups.btm.title conflicts with packaged popup title yazi_popup",
             ),
             (
                 "[popups.btm]\ncommand = \"btm\"\ntitle = \"shared_popup\"\nkeybinding = \"Alt Shift B\"\n\n[popups.htop]\ncommand = \"htop\"\ntitle = \"shared_popup\"\nkeybinding = \"Alt Shift U\"\n",
@@ -777,8 +827,9 @@ mod tests {
                 " zellij",
                 " starship",
                 " helix",
+                "󰇥 yazi",
                 " keys",
-                " advanced",
+                "advanced",
             ]
         );
         assert!(!model.tabs.contains(&"shell".to_string()));
@@ -822,8 +873,16 @@ mod tests {
             SOURCE_CURSORS
         );
 
-        for spec in POPUP_KEYBINDINGS {
-            assert_config_field_on_tab(&model, spec.path, TAB_POPUPS, "string", "next launch");
+        for &(path, _) in MANAGED_KEYBINDINGS {
+            let tab = if matches!(
+                path,
+                KEYBINDINGS_SIDEBAR_PATH | KEYBINDINGS_SIDEBAR_FOCUS_PATH
+            ) {
+                TAB_CONFIG
+            } else {
+                TAB_POPUPS
+            };
+            assert_config_field_on_tab(&model, path, tab, "string", "next launch");
         }
 
         let field = model_field(&model, BAR_WIDGETS_PATH);
@@ -837,6 +896,87 @@ mod tests {
             r#"["editor","shell","term","codex_usage","cpu","ram"]"#
         );
         assert!(field.allowed_values.contains(&"claude_usage".to_string()));
+    }
+
+    #[test]
+    fn config_model_classifies_root_fields_without_hiding_explicit_values_or_all_search() {
+        let (_temp, paths) = temp_sources();
+        let model = build_model(&paths).unwrap();
+        let core_fields = model.core_fields.as_ref().expect("Core allowlist");
+        let root_core = core_fields
+            .iter()
+            .filter(|field| field.source_id == SOURCE_CONFIG)
+            .map(|field| field.path.as_str())
+            .collect::<Vec<_>>();
+        assert_eq!(
+            root_core,
+            [
+                SHELL_PROGRAM_PATH,
+                EDITOR_COMMAND_PATH,
+                AGENT_COMMAND_PATH,
+                WELCOME_ENABLED_PATH,
+                WELCOME_STYLE_PATH,
+                KEYBINDINGS_CONFIG_PATH,
+                KEYBINDINGS_AGENT_PATH,
+                KEYBINDINGS_GIT_PATH,
+                KEYBINDINGS_MENU_PATH,
+                KEYBINDINGS_SIDEBAR_PATH,
+                KEYBINDINGS_SIDEBAR_FOCUS_PATH,
+                BAR_WIDGETS_PATH,
+            ]
+        );
+        assert!(
+            model
+                .fields
+                .iter()
+                .filter(|field| field.source_id != SOURCE_CONFIG)
+                .all(|field| {
+                    core_fields
+                        .iter()
+                        .any(|core| core.source_id == field.source_id && core.path == field.path)
+                })
+        );
+
+        let field_index = |path| {
+            model
+                .fields
+                .iter()
+                .position(|field| field.source_id == SOURCE_CONFIG && field.path == path)
+                .unwrap()
+        };
+        let hidden = field_index(OPEN_LOG_LEVEL_PATH);
+        let core = field_index(SHELL_PROGRAM_PATH);
+
+        let mut app = ConfigUiApp::new(model);
+        assert_eq!(app.settings_view, ConfigUiSettingsView::Core);
+        assert!(!app.visible_rows().contains(&UiRowRef::Field(hidden)));
+        assert!(app.visible_rows().contains(&UiRowRef::Field(core)));
+
+        app.handle_key(ConfigUiKey::Char('a'));
+        assert_eq!(app.settings_view, ConfigUiSettingsView::All);
+        assert!(app.visible_rows().contains(&UiRowRef::Field(hidden)));
+        app.handle_key(ConfigUiKey::Char('a'));
+        assert_eq!(app.settings_view, ConfigUiSettingsView::Core);
+
+        app.handle_key(ConfigUiKey::Char('/'));
+        for ch in OPEN_LOG_LEVEL_PATH.chars() {
+            app.handle_key(ConfigUiKey::Char(ch));
+        }
+        assert_eq!(app.settings_view, ConfigUiSettingsView::Core);
+        assert!(app.visible_rows().contains(&UiRowRef::Field(hidden)));
+
+        write_config_field(&paths.root, OPEN_LOG_LEVEL_PATH, &json!("debug")).unwrap();
+        let explicit_model = build_model(&paths).unwrap();
+        let explicit = explicit_model
+            .fields
+            .iter()
+            .position(|field| field.source_id == SOURCE_CONFIG && field.path == OPEN_LOG_LEVEL_PATH)
+            .unwrap();
+        assert!(
+            ConfigUiApp::new(explicit_model)
+                .visible_rows()
+                .contains(&UiRowRef::Field(explicit))
+        );
     }
 
     #[test]
@@ -923,6 +1063,52 @@ color = "#123456"
     }
 
     #[test]
+    fn configured_custom_popup_fields_use_generic_discovery_and_root_validation() {
+        let (_temp, paths) = temp_sources();
+        write_config_text(
+            &paths.root,
+            "[popups.btm]\ncommand = \"btm\"\nargs = [\"--basic\"]\nkeybinding = \"Alt Shift B\"\n",
+        );
+
+        let model = build_model(&paths).unwrap();
+        let discovered = model
+            .fields
+            .iter()
+            .filter(|field| field.path.starts_with("popups.btm."))
+            .map(|field| {
+                assert_eq!(field.tab, TAB_POPUPS);
+                assert_eq!(field.apply_status.summary, "next launch");
+                assert!(field.list_cells.is_empty());
+                (field.path.as_str(), field.kind.as_str())
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(
+            discovered,
+            [
+                ("popups.btm.args", "string_list"),
+                ("popups.btm.command", "string"),
+                ("popups.btm.keybinding", "string"),
+            ]
+        );
+        assert!(model.core_fields.as_ref().unwrap().iter().all(|field| {
+            field.source_id != SOURCE_CONFIG || !field.path.starts_with("popups.")
+        }));
+
+        write_source_field(
+            &paths,
+            SOURCE_CONFIG,
+            "popups.btm.args",
+            &json!(["--battery"]),
+        )
+        .unwrap();
+        assert_toml_value(&paths.root, "popups.btm.args", &json!(["--battery"]));
+
+        let unchanged = fs::read_to_string(&paths.root).unwrap();
+        write_source_field(&paths, SOURCE_CONFIG, "popups.btm.unknown", &json!(true)).unwrap_err();
+        assert_eq!(fs::read_to_string(&paths.root).unwrap(), unchanged);
+    }
+
+    #[test]
     fn config_model_uses_mars_appearance_as_initial_theme_source() {
         let (_temp, paths) = temp_sources();
         write_toml_value(&paths.mars, MARS_APPEARANCE_PRESET_PATH, &json!("light"));
@@ -937,12 +1123,33 @@ color = "#123456"
     }
 
     #[test]
+    fn mars_fields_have_complete_apply_timing() {
+        let (_temp, paths) = temp_sources();
+        let model = build_model(&paths).unwrap();
+        let expected = [
+            (MARS_APPEARANCE_PRESET_PATH, "live"),
+            ("window.width", "new windows"),
+            ("window.height", "new windows"),
+            ("window.opacity", "live"),
+            ("fonts.size", "live"),
+            ("line-height", "live"),
+            ("enable-scroll-bar", "live"),
+            ("bell.audio", "live"),
+            ("bell.visual", "live"),
+        ];
+
+        assert_eq!(MARS_FIELDS.len(), expected.len());
+        for (path, summary) in expected {
+            assert_eq!(model_field(&model, path).apply_status.summary, summary);
+        }
+    }
+
+    #[test]
     fn config_model_exposes_structured_starship_tab() {
         let (_temp, paths) = temp_sources();
 
         let model = build_model(&paths).unwrap();
-        let format = model_field(&model, "format");
-        let right_format = model_field(&model, "right_format");
+        let prompt = model_field(&model, "character.format");
 
         assert!(model.tabs.contains(&TAB_STARSHIP.to_string()));
         assert!(model.sources.iter().any(|source| {
@@ -950,21 +1157,20 @@ color = "#123456"
                 && source.tab == TAB_STARSHIP
                 && source.path == paths.starship
         }));
-        assert_eq!(format.source_id, SOURCE_STARSHIP);
-        assert_eq!(format.tab, TAB_STARSHIP);
-        assert_eq!(format.kind, "string");
-        assert_eq!(format.current_value, r#"":: ""#);
-        assert_eq!(format.state, ConfigUiValueState::Defaulted);
-        assert_eq!(format.apply_status.summary, "new prompts");
-        assert_eq!(right_format.current_value, r#""""#);
-        assert_eq!(model_field(&model, "add_newline").current_value, "true");
+        assert_eq!(prompt.source_id, SOURCE_STARSHIP);
+        assert_eq!(prompt.tab, TAB_STARSHIP);
+        assert_eq!(prompt.kind, "string");
+        assert_eq!(prompt.current_value, r#"":: ""#);
+        assert_eq!(prompt.state, ConfigUiValueState::Defaulted);
+        assert_eq!(prompt.apply_status.summary, "new prompts");
         assert_eq!(
             model
                 .fields
                 .iter()
                 .filter(|field| field.source_id == SOURCE_STARSHIP)
-                .count(),
-            STARSHIP_FIELDS.len()
+                .map(|field| field.path.as_str())
+                .collect::<Vec<_>>(),
+            vec!["character.format"]
         );
     }
 
@@ -1041,6 +1247,13 @@ color = "#123456"
         assert!(yazi_zoxide.display_label.contains("Alt z"));
         assert!(yazi_zoxide.description.contains("Owner: Yazi"));
         assert_eq!(yazi_zoxide.current_value, "Yazi / yazi/keymap.toml");
+
+        let yazi_popup = key_field(&model, "Alt Shift Y");
+        assert_eq!(
+            yazi_popup.display_label,
+            "Popups: Alt Shift Y - Hide or show Yazi popup"
+        );
+        assert!(yazi_popup.description.contains("Owner: Yazelix"));
     }
 
     #[test]
@@ -1076,7 +1289,7 @@ color = "#123456"
         let paths = temp_paths(&temp);
         link_from_store(&paths, &paths.root, "");
         link_from_store(&paths, &paths.cursors, DEFAULT_CURSOR_CONFIG_TEMPLATE);
-        link_from_store(&paths, &paths.starship, "format = \"::\"\n");
+        link_from_store(&paths, &paths.starship, "[character]\nformat = \"::\"\n");
         link_from_store(&paths, &paths.nu_env, "# managed\n");
         atomic_write(&paths.mars, "[window]\nwidth = 960\n").unwrap();
         set_read_only(&paths.mars);
@@ -1104,12 +1317,26 @@ color = "#123456"
             "programs.yazelix.config.settings",
         );
         rejects(
-            write_source_default(&paths, SOURCE_STARSHIP, "format"),
+            write_source_default(&paths, SOURCE_STARSHIP, "character.format"),
             "programs.yazelix.config.starship",
         );
         rejects(
             write_source_field(&paths, SOURCE_CURSORS, CURSOR_TRAIL_PATH, &json!("none")),
             "programs.yazelix.config.cursors",
+        );
+        link_from_store(&paths, &paths.yazi_config, "[mgr]\nshow_hidden = true\n");
+        link_from_store(
+            &paths,
+            &paths.yazi_theme,
+            "[flavor]\ndark = \"catppuccin-mocha\"\n",
+        );
+        rejects(
+            write_source_field(&paths, SOURCE_YAZI_CONFIG, "mgr.show_hidden", &json!(false)),
+            "programs.yazelix.config.yazi.config",
+        );
+        rejects(
+            write_source_default(&paths, SOURCE_YAZI_THEME, "flavor.dark"),
+            "programs.yazelix.config.yazi.theme",
         );
         rejects(
             prepare_file_action(&paths, SOURCE_ADVANCED, ACTION_NU_ENV, &paths.nu_env, true),
@@ -1117,7 +1344,7 @@ color = "#123456"
         );
         assert_file_text(&paths.root, "");
         assert_file_text(&paths.cursors, DEFAULT_CURSOR_CONFIG_TEMPLATE);
-        assert_file_text(&paths.starship, "format = \"::\"\n");
+        assert_file_text(&paths.starship, "[character]\nformat = \"::\"\n");
         assert_file_text(&paths.nu_env, "# managed\n");
 
         let action = build_file_actions(&paths)
@@ -1125,7 +1352,12 @@ color = "#123456"
             .find(|action| action.action_id == ACTION_NU_ENV)
             .unwrap();
         assert!(action.read_only);
-        assert!(action.disabled_reason.is_none());
+        assert!(
+            action
+                .disabled_reason
+                .unwrap()
+                .contains("programs.yazelix.config.nu.env")
+        );
     }
 
     #[test]
@@ -1170,18 +1402,36 @@ color = "#123456"
     #[test]
     fn native_file_tabs_list_owned_file_actions() {
         let (_temp, paths) = temp_sources();
+        atomic_write(&paths.zellij, "keybinds{}\n").unwrap();
 
         let model = build_model(&paths).unwrap();
         assert!(model.tabs.contains(&TAB_STARSHIP.to_string()));
         assert!(model.tabs.contains(&TAB_HELIX.to_string()));
+        assert!(model.tabs.contains(&TAB_YAZI.to_string()));
         assert!(model.tabs.contains(&TAB_CURSORS.to_string()));
+        let advanced = ratconfig::tab_index(&model.tabs, TAB_ADVANCED);
+        assert!(
+            ratconfig::visible_rows_for_tab_search(&model, advanced, "")
+                .contains(&ratconfig::UiRowRef::Diagnostic(0))
+        );
         assert!(model.sources.iter().any(|source| {
             source.id == SOURCE_HELIX && source.tab == TAB_HELIX && source.path == paths.helix_dir
         }));
+        let yazi_sources = model
+            .sources
+            .iter()
+            .filter(|source| source.tab == TAB_YAZI)
+            .collect::<Vec<_>>();
+        assert_eq!(yazi_sources.len(), 1);
+        assert_eq!(yazi_sources[0].id, SOURCE_YAZI);
+        assert_eq!(yazi_sources[0].path, paths.yazi_config.parent().unwrap());
         assert!(model.file_actions.iter().all(|action| {
             let expected = match action.label.as_str() {
                 "cursors.toml" => (SOURCE_CURSORS, TAB_CURSORS),
                 label if label.starts_with("helix/") => (SOURCE_HELIX, TAB_HELIX),
+                "yazi/yazi.toml" => (SOURCE_YAZI_CONFIG, TAB_YAZI),
+                "yazi/theme.toml" => (SOURCE_YAZI_THEME, TAB_YAZI),
+                label if label.starts_with("yazi/") => (SOURCE_YAZI, TAB_YAZI),
                 _ => (SOURCE_ADVANCED, TAB_ADVANCED),
             };
             (action.source_id.as_str(), action.tab.as_str()) == expected
@@ -1226,6 +1476,94 @@ color = "#123456"
                     && file_action_status_style(action) == Style::default().fg(Color::Gray)
             }
         }));
+    }
+
+    #[test]
+    fn yazi_tab_renders_and_writes_native_config_with_discovered_flavors() {
+        let (_temp, paths) = temp_sources();
+        fs::write(
+            paths.packaged_yazi.join("yazi.toml"),
+            "[mgr]\nshow_hidden = false\nratio = [1, 2, 3]\n\n[preview]\nmax_width = 600\n",
+        )
+        .unwrap();
+        add_flavor(&paths.packaged_yazi, "catppuccin-mocha");
+        add_flavor(paths.yazi_config.parent().unwrap(), "custom");
+        add_flavor(paths.yazi_config.parent().unwrap(), "");
+        fs::write(
+            &paths.yazi_config,
+            "# keep config\n[mgr]\nshow_hidden = false\nratio = [1, 4, 0]\n\n[preview]\nmax_width = 800\n",
+        )
+        .unwrap();
+        fs::write(
+            &paths.yazi_theme,
+            "# keep theme\n[flavor]\ndark = 42\nlight = \"custom\"\n\n[mgr]\ncwd = { fg = \"blue\" }\n",
+        )
+        .unwrap();
+
+        let model = build_model(&paths).unwrap();
+        assert!(!model.tab_list_tables.contains_key(TAB_YAZI));
+        let dark = model_field(&model, "flavor.dark");
+        assert_eq!(dark.source_id, SOURCE_YAZI_THEME);
+        assert_eq!(dark.display_label, "Dark flavor");
+        assert_eq!(dark.kind, "string");
+        assert_eq!(
+            dark.allowed_values,
+            ["catppuccin-mocha".to_string(), "custom".to_string()]
+        );
+        let show_hidden = model_field(&model, "mgr.show_hidden");
+        assert_eq!(show_hidden.source_id, SOURCE_YAZI_CONFIG);
+        assert_eq!(
+            (show_hidden.kind.as_str(), show_hidden.state),
+            ("bool", ConfigUiValueState::Explicit)
+        );
+        assert_eq!(show_hidden.apply_status.summary, "next Yazi");
+        assert!(matches!(
+            model_field(&model, "mgr.ratio").edit_behavior,
+            ConfigUiEditBehavior::StructuredOnly { .. }
+        ));
+        assert_eq!(model_field(&model, "mgr.ratio").current_value, "[1,4,0]");
+        let flavor = model_field(&model, "flavor");
+        assert_eq!(flavor.current_value, r#"{"dark":42,"light":"custom"}"#);
+        assert_eq!(flavor.default_value, r#"{"dark":"","light":""}"#);
+
+        write_source_field(&paths, SOURCE_YAZI_CONFIG, "mgr.show_hidden", &json!(true)).unwrap();
+        write_source_field(
+            &paths,
+            SOURCE_YAZI_CONFIG,
+            "preview.max_width",
+            &json!(1200),
+        )
+        .unwrap();
+        write_source_field(&paths, SOURCE_YAZI_THEME, "flavor.dark", &json!("custom")).unwrap();
+
+        let config = fs::read_to_string(&paths.yazi_config).unwrap();
+        assert!(config.starts_with("# keep config\n"));
+        assert!(config.contains("show_hidden = true"));
+        assert!(config.contains("ratio = [1, 4, 0]"));
+        let theme = fs::read_to_string(&paths.yazi_theme).unwrap();
+        assert!(theme.starts_with("# keep theme\n"));
+        assert!(theme.contains("dark = \"custom\""));
+
+        let error = write_source_field(&paths, SOURCE_YAZI_THEME, "flavor.dark", &json!("missing"))
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("must name an installed flavor"), "{error}");
+
+        write_source_default(&paths, SOURCE_YAZI_CONFIG, "mgr.show_hidden").unwrap();
+        write_source_default(&paths, SOURCE_YAZI_THEME, "flavor.dark").unwrap();
+        let config = read_toml_file_value(&paths.yazi_config, "Yazi config").unwrap();
+        let theme = read_toml_file_value(&paths.yazi_theme, "Yazi theme").unwrap();
+        assert_eq!(get_toml_path(&config, "mgr.show_hidden"), None);
+        assert_eq!(
+            get_toml_path(&config, "preview.max_width"),
+            Some(&json!(1200))
+        );
+        assert_eq!(get_toml_path(&theme, "flavor.dark"), None);
+        assert_eq!(
+            get_toml_path(&theme, "flavor.light"),
+            Some(&json!("custom"))
+        );
+        assert_eq!(get_toml_path(&theme, "mgr.cwd.fg"), Some(&json!("blue")));
     }
 
     #[test]
@@ -1387,7 +1725,12 @@ color = "#123456"
             (ACTION_YAZI_THEME, &paths.yazi_theme, YAZI_THEME_STARTER),
         ];
         for &(action, target, starter) in &specs {
-            prepare_file_action(&paths, SOURCE_ADVANCED, action, target, true).unwrap();
+            let source = match action {
+                ACTION_YAZI_CONFIG => SOURCE_YAZI_CONFIG,
+                ACTION_YAZI_THEME => SOURCE_YAZI_THEME,
+                _ => SOURCE_YAZI,
+            };
+            prepare_file_action(&paths, source, action, target, true).unwrap();
             assert_file_text(target, starter);
             assert_eq!(specs.iter().filter(|(_, path, _)| path.exists()).count(), 1);
             fs::remove_file(target).unwrap();
@@ -1534,32 +1877,34 @@ color = "#123456"
     fn source_routing_writes_starship_without_touching_config_toml() {
         let (_temp, paths) = temp_sources();
 
-        write_source_field(&paths, SOURCE_STARSHIP, "right_format", &json!("$time")).unwrap();
-        write_source_field(&paths, SOURCE_STARSHIP, "add_newline", &json!(false)).unwrap();
+        write_source_field(&paths, SOURCE_STARSHIP, "character.format", &json!(">> ")).unwrap();
 
         assert!(!paths.root.exists());
+        let starship = read_toml_file_value(&paths.starship, "starship").unwrap();
+        assert_eq!(
+            get_toml_path(&starship, "character.format"),
+            Some(&json!(">> "))
+        );
+        assert_eq!(
+            model_field(&build_model(&paths).unwrap(), "character.format").state,
+            ConfigUiValueState::Explicit
+        );
+        write_source_default(&paths, SOURCE_STARSHIP, "character.format").unwrap();
+        assert!(!paths.starship.exists());
+
+        fs::write(&paths.starship, "right_format = \"$time\"\n").unwrap();
+        write_source_field(&paths, SOURCE_STARSHIP, "character.format", &json!(">> ")).unwrap();
+        write_source_default(&paths, SOURCE_STARSHIP, "character.format").unwrap();
         let starship = read_toml_file_value(&paths.starship, "starship").unwrap();
         assert_eq!(
             get_toml_path(&starship, "right_format"),
             Some(&json!("$time"))
         );
-        assert_eq!(get_toml_path(&starship, "add_newline"), Some(&json!(false)));
-        assert_eq!(get_toml_path(&starship, "format"), None);
 
-        write_source_field(&paths, SOURCE_STARSHIP, "format", &json!(":: ")).unwrap();
-        assert_eq!(
-            model_field(&build_model(&paths).unwrap(), "format").state,
-            ConfigUiValueState::Explicit
-        );
-        write_source_default(&paths, SOURCE_STARSHIP, "format").unwrap();
-        write_source_default(&paths, SOURCE_STARSHIP, "right_format").unwrap();
-        write_source_default(&paths, SOURCE_STARSHIP, "add_newline").unwrap();
-        assert!(!paths.starship.exists());
-
-        let error = write_source_field(&paths, SOURCE_STARSHIP, "add_newline", &json!("nope"))
+        let error = write_source_field(&paths, SOURCE_STARSHIP, "format", &json!("$all"))
             .unwrap_err()
             .to_string();
-        assert!(error.contains("true or false"));
+        assert!(error.contains("unknown Starship config path"));
     }
 
     #[test]
@@ -1570,16 +1915,20 @@ color = "#123456"
         fs::create_dir_all(user.parent().unwrap()).unwrap();
         fs::write(
             &user,
-            "right_format = \"$time\"\n\n[time]\ndisabled = false\n",
+            "right_format = \"$time\"\n\n[character]\nformat = \">> \"\n\n[time]\ndisabled = false\n",
         )
         .unwrap();
 
         write_effective_starship_config(&user, &output).unwrap();
 
         let value = read_toml_file_value(&output, "effective Starship config").unwrap();
-        assert_eq!(get_toml_path(&value, "format"), Some(&json!(":: ")));
+        assert_eq!(get_toml_path(&value, "format"), None);
         assert_eq!(get_toml_path(&value, "right_format"), Some(&json!("$time")));
-        assert_eq!(get_toml_path(&value, "add_newline"), Some(&json!(true)));
+        assert_eq!(get_toml_path(&value, "add_newline"), None);
+        assert_eq!(
+            get_toml_path(&value, "character.format"),
+            Some(&json!(">> "))
+        );
         assert_eq!(get_toml_path(&value, "time.disabled"), Some(&json!(false)));
     }
 
@@ -1647,6 +1996,99 @@ color = "#123456"
     }
 
     #[test]
+    fn zellij_theme_picker_preserves_custom_names_and_resets_sparsely() {
+        let (_temp, paths) = temp_sources();
+        let model = build_model(&paths).unwrap();
+        let theme = model_field(&model, "theme");
+        assert_eq!(theme.state, ConfigUiValueState::Defaulted);
+        assert_eq!(
+            serde_json::from_str::<String>(&theme.edit_value).unwrap(),
+            "default"
+        );
+        assert_eq!(
+            theme.allowed_values.first().map(String::as_str),
+            Some("default")
+        );
+        assert!(
+            theme
+                .allowed_values
+                .contains(&"atelier-sulphurpool".to_string())
+        );
+        assert!(!theme.allowed_values.contains(&"atelier".to_string()));
+        assert_eq!(theme.apply_status.summary, "live");
+
+        atomic_write(
+            &paths.zellij,
+            "# keep\ntheme \"custom {ocean}\"\npane_frames false\n",
+        )
+        .unwrap();
+        let model = build_model(&paths).unwrap();
+        let theme = model_field(&model, "theme");
+        assert_eq!(theme.state, ConfigUiValueState::Explicit);
+        assert_eq!(
+            serde_json::from_str::<String>(&theme.edit_value).unwrap(),
+            "custom {ocean}"
+        );
+        assert!(theme.allowed_values.contains(&"custom {ocean}".to_string()));
+
+        write_source_field(&paths, SOURCE_ZELLIJ, "theme", &json!("dracula")).unwrap();
+        let raw = fs::read_to_string(&paths.zellij).unwrap();
+        assert!(raw.starts_with("# keep\n"));
+        assert!(raw.contains("theme \"dracula\""));
+        assert!(raw.contains("pane_frames false"));
+        assert!(!raw.contains("custom {ocean}"));
+
+        write_source_field(&paths, SOURCE_ZELLIJ, "theme", &json!("default")).unwrap();
+        let raw = fs::read_to_string(&paths.zellij).unwrap();
+        assert!(raw.starts_with("# keep\n"));
+        assert!(raw.contains("pane_frames false"));
+        assert!(!raw.contains("theme "));
+    }
+
+    #[test]
+    fn zellij_theme_edits_preserve_opaque_native_leaf_nodes() {
+        let (_temp, paths) = temp_sources();
+        let raw = "// keep exactly\ndefault_mode \"normal\"\nfuture_flag;\nfuture_multi 1 2\nfuture_property mode=\"fast\"\nfuture_label \"two words // exact\"\nfuture_shape \"{opaque}\"\n";
+        atomic_write(&paths.zellij, raw).unwrap();
+
+        let model = build_model(&paths).unwrap();
+        for path in [
+            "default_mode",
+            "future_flag",
+            "future_multi",
+            "future_property",
+            "future_label",
+            "future_shape",
+        ] {
+            let diagnostic = model
+                .diagnostics
+                .iter()
+                .find(|diagnostic| diagnostic.headline.contains(path))
+                .expect("unvalidated native setting diagnostic");
+            assert!(!diagnostic.blocking);
+            assert_eq!(diagnostic.status, "unvalidated");
+            assert_eq!(
+                diagnostic.scope,
+                ConfigUiDiagnosticScope::Field(ConfigUiFieldId::new(SOURCE_ZELLIJ, path))
+            );
+        }
+        let theme = model_field(&model, "theme");
+        assert_eq!(
+            model.effective_field_state(theme),
+            ConfigUiValueState::Defaulted
+        );
+
+        write_source_field(&paths, SOURCE_ZELLIJ, "theme", &json!("ansi")).unwrap();
+        assert_eq!(
+            fs::read_to_string(&paths.zellij).unwrap(),
+            format!("{raw}theme \"ansi\"\n")
+        );
+
+        write_source_default(&paths, SOURCE_ZELLIJ, "theme").unwrap();
+        assert_eq!(fs::read_to_string(&paths.zellij).unwrap(), raw);
+    }
+
+    #[test]
     fn zellij_runtime_field_patch_preserves_surrounding_config() {
         let runtime = "\
 keybinds {}\n\
@@ -1679,21 +2121,74 @@ ui {\n\
         .unwrap();
         assert!(appended.contains("ui {"));
         assert!(appended.contains("        rounded_corners true"));
+
+        let themed = patch_zellij_field_in_text(runtime, "theme", &json!("dracula")).unwrap();
+        assert!(themed.contains("theme \"dracula\""));
+        let reset = unset_zellij_field_in_text(&themed, "theme").unwrap();
+        assert!(!reset.contains("theme "));
+        assert!(reset.contains("keybinds {}"));
+        assert!(reset.contains("plugins {}"));
     }
 
     #[test]
     fn zellij_source_blocks_guarded_sidecar_nodes() {
-        let temp = TempHome::new();
-        let path = temp.path.join("zellij/config.kdl");
-        atomic_write(&path, "keybinds {}\npane_frames true\n").unwrap();
+        let (_temp, paths) = temp_sources();
+        let path = &paths.zellij;
+        atomic_write(path, "keybinds {}\npane_frames true\n").unwrap();
 
-        let (_config, diagnostics) = parse_zellij_sidecar(&fs::read_to_string(&path).unwrap());
-        assert!(diagnostics.iter().any(|diagnostic| diagnostic.blocking));
+        let (_config, diagnostics) = parse_zellij_sidecar(&fs::read_to_string(path).unwrap());
+        assert!(diagnostics.iter().any(|diagnostic| {
+            diagnostic.blocking
+                && diagnostic.scope
+                    == ConfigUiDiagnosticScope::Source {
+                        source_id: SOURCE_ZELLIJ.to_string(),
+                    }
+        }));
+        let model = build_model(&paths).unwrap();
+        assert_eq!(
+            model.effective_field_state(model_field(&model, "theme")),
+            ConfigUiValueState::Invalid
+        );
+        assert_eq!(
+            model.effective_field_state(model_field(&model, "window.width")),
+            ConfigUiValueState::Defaulted
+        );
 
-        let error = write_zellij_config_field(&path, "pane_frames", &json!(false)).unwrap_err();
+        let error = write_zellij_config_field(path, "pane_frames", &json!(false)).unwrap_err();
         assert!(error.to_string().contains("guarded Zellij node"));
-        let error = unset_zellij_config_field(&path, "pane_frames").unwrap_err();
+        let error = unset_zellij_config_field(path, "pane_frames").unwrap_err();
         assert!(error.to_string().contains("guarded Zellij node"));
+    }
+
+    #[test]
+    fn zellij_field_diagnostics_do_not_poison_unrelated_fields_or_sources() {
+        let (_temp, paths) = temp_sources();
+        atomic_write(&paths.zellij, "scroll_buffer_size \"100\"\n").unwrap();
+
+        let model = build_model(&paths).unwrap();
+        assert_eq!(
+            model.effective_field_state(model_field(&model, "scroll_buffer_size")),
+            ConfigUiValueState::Invalid
+        );
+        assert_eq!(
+            model.effective_field_state(model_field(&model, "theme")),
+            ConfigUiValueState::Defaulted
+        );
+        assert_eq!(
+            model.effective_field_state(model_field(&model, "window.width")),
+            ConfigUiValueState::Defaulted
+        );
+
+        write_source_field(&paths, SOURCE_ZELLIJ, "theme", &json!("ansi")).unwrap();
+        assert_eq!(
+            fs::read_to_string(&paths.zellij).unwrap(),
+            "scroll_buffer_size \"100\"\ntheme \"ansi\"\n"
+        );
+        write_source_field(&paths, SOURCE_ZELLIJ, "scroll_buffer_size", &json!(5000)).unwrap();
+        assert_eq!(
+            fs::read_to_string(&paths.zellij).unwrap(),
+            "scroll_buffer_size 5000\ntheme \"ansi\"\n"
+        );
     }
 
     #[test]
@@ -1707,19 +2202,68 @@ ui {\n\
     }
 
     #[test]
-    fn zellij_sidecar_rejects_non_positive_scrollback_and_unclosed_blocks() {
+    fn zellij_sidecar_rejects_unsupported_scalars_and_unclosed_blocks() {
         let temp = TempHome::new();
         let path = temp.path.join("zellij/config.kdl");
         atomic_write(&path, "pane_frames true\n").unwrap();
 
         let error = write_zellij_config_field(&path, "scroll_buffer_size", &json!(-1)).unwrap_err();
         assert!(error.to_string().contains("positive integer"));
+        let error = write_zellij_config_field(&path, "theme", &json!("custom\\name")).unwrap_err();
+        assert!(error.to_string().contains("without escapes"));
 
         let (_config, diagnostics) = parse_zellij_sidecar("scroll_buffer_size -1\n");
-        assert!(has_diagnostic(&diagnostics, "scroll_buffer_size"));
+        let diagnostic = diagnostics
+            .iter()
+            .find(|diagnostic| diagnostic.headline.contains("scroll_buffer_size"))
+            .unwrap();
+        assert_eq!(
+            diagnostic.scope,
+            ConfigUiDiagnosticScope::Field(ConfigUiFieldId::new(
+                SOURCE_ZELLIJ,
+                "scroll_buffer_size"
+            ))
+        );
+
+        for raw in ["theme ansi\n", "theme \"custom\\\\name\"\n"] {
+            let (config, diagnostics) = parse_zellij_sidecar(raw);
+            assert!(!config.contains_key("theme"));
+            assert!(diagnostics.iter().any(|diagnostic| {
+                diagnostic.scope
+                    == ConfigUiDiagnosticScope::Field(ConfigUiFieldId::new(SOURCE_ZELLIJ, "theme"))
+            }));
+        }
 
         let (_config, diagnostics) = parse_zellij_sidecar("ui {\n");
         assert!(has_diagnostic(&diagnostics, "unterminated"));
+    }
+
+    #[test]
+    fn zellij_sidecar_blocks_structurally_unsafe_native_nodes() {
+        for raw in [
+            "future_block {\n    value 1\n}\n",
+            "future_label \"unterminated\n",
+            "future_flag; theme \"ansi\"\n",
+            "/-\ntheme \"ansi\"\n",
+            "/*\ntheme \"ansi\"\n*/\n",
+            "theme \\\n\"ansi\"\n",
+            "ui mode=\"future\" {\n}\n",
+            "ui {\n    pane_frames mode=\"future\" {\n    }\n}\n",
+            "ui {\n}; theme \"ansi\"\n",
+            "theme \"ansi\" {\n}\n",
+            "pane_frames true false\n",
+            "pane_frames true\npane_frames false\n",
+            "rounded_corners true\n",
+        ] {
+            let (_config, diagnostics) = parse_zellij_sidecar(raw);
+            assert!(
+                diagnostics.iter().any(|diagnostic| {
+                    diagnostic.blocking
+                        && matches!(diagnostic.scope, ConfigUiDiagnosticScope::Source { .. })
+                }),
+                "expected source blocker for {raw:?}"
+            );
+        }
     }
 
     #[test]
@@ -1733,7 +2277,25 @@ ui {\n\
             KeyEvent::new(KeyCode::Char('u'), KeyModifiers::ALT),
             KeyEvent::new(KeyCode::F(1), KeyModifiers::NONE),
         ] {
-            assert_eq!(config_key(key), None);
+            assert_eq!(config_event(Event::Key(key)), None);
         }
+    }
+
+    #[test]
+    fn terminal_events_translate_inline_editor_navigation_and_paste() {
+        for (code, expected) in [
+            (KeyCode::Delete, ConfigUiKey::Delete),
+            (KeyCode::Home, ConfigUiKey::Home),
+            (KeyCode::End, ConfigUiKey::End),
+        ] {
+            assert_eq!(
+                config_event(Event::Key(KeyEvent::new(code, KeyModifiers::NONE))),
+                Some(expected)
+            );
+        }
+        assert_eq!(
+            config_event(Event::Paste("middle 👩‍💻".to_string())),
+            Some(ConfigUiKey::Paste("middle 👩‍💻".to_string()))
+        );
     }
 }

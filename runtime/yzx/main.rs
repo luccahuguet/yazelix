@@ -7,6 +7,7 @@ mod inspect;
 mod paths;
 mod runtime;
 mod status;
+mod yazi;
 mod zellij;
 
 use std::process;
@@ -24,7 +25,8 @@ pub(crate) const MARS: &str = "@mars@";
 pub(crate) const DESKTOP_ENTRY_SOURCE: &str = "@desktopEntrySource@";
 pub(crate) const DESKTOP_DATABASE_UPDATER: &str = "@desktopDatabaseUpdater@";
 pub(crate) const DEFAULT_STATE_DIR: &str = "@defaultStateDir@";
-pub(crate) const PACKAGE_VARIANT: &str = if MARS.is_empty() { "runtime" } else { "full" };
+pub(crate) const PACKAGE_VARIANT: &str = "@packageVariant@";
+pub(crate) const MANAGED_HELIX: &str = "@managedHelix@";
 pub(crate) const LAYOUT: &str = "@layout@";
 pub(crate) const LAYOUT_TEMPLATE: &str = "@layoutTemplate@";
 pub(crate) const LAYOUT_SWAP_TEMPLATE: &str = "@layoutSwapTemplate@";
@@ -38,7 +40,10 @@ pub(crate) const YZX_CONFIG_KDL: &str = "@yzxConfigKdl@";
 pub(crate) const YZX_RUNTIME_IDENTITY: &str = "@yzxRuntimeIdentity@";
 pub(crate) const YZX_REVEAL: &str = "@yzxReveal@";
 pub(crate) const YZX_SIDEBAR_REFRESH: &str = "@yzxSidebarRefresh@";
-pub(crate) const YZX_YA: &str = "@yzxYa@";
+pub(crate) const YAZI_SOURCE: &str = "@yaziSource@";
+pub(crate) const YAZI_COMMAND: &str = "@yaziCommand@";
+pub(crate) const YA_COMMAND: &str = "@yaCommand@";
+pub(crate) const YAZI_TESTED_VERSION: &str = "@yaziTestedVersion@";
 pub(crate) const YZX_BAR_RENDER_REQUEST: &str = "@yzxBarRenderRequest@";
 pub(crate) const YZX_BAR_RENDER: &str = "@yzxBarRender@";
 pub(crate) const YAZELIX_ZELLIJ_POPUP_WASM: &str = "@yazelixZellijPopupWasm@";
@@ -59,11 +64,21 @@ pub(crate) const ZELLIJ_HOME_PLACEHOLDER: &str = "\"__YZX_HOME__\"";
 pub(crate) const LAYOUT_YAZI_PLACEHOLDER: &str = concat!("@", "yazi", "@");
 pub(crate) const LAYOUT_BAR_PLACEHOLDER: &str = concat!("@", "bar", "@");
 pub(crate) const HELIX_REVEAL_COMMAND: &str = r#":sh yzx reveal "%{buffer_name}""#;
-pub(crate) const POPUP_KEYBINDING_SPECS: &[(&str, &str, &str)] = &[
+pub(crate) const MANAGED_KEYBINDING_SPECS: &[(&str, &str, &str)] = &[
     ("config", "keybindings.config", "@defaultConfigKeybinding@"),
     ("agent", "keybindings.agent", "@defaultAgentKeybinding@"),
     ("git", "keybindings.git", "@defaultGitKeybinding@"),
     ("menu", "keybindings.menu", "@defaultMenuKeybinding@"),
+    (
+        "sidebar",
+        "keybindings.sidebar",
+        "@defaultSidebarKeybinding@",
+    ),
+    (
+        "sidebar focus",
+        "keybindings.sidebar_focus",
+        "@defaultSidebarFocusKeybinding@",
+    ),
 ];
 
 fn main() {

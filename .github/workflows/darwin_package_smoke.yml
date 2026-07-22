@@ -58,11 +58,14 @@ jobs:
             max-jobs = 1
             cores = 2
 
-      - name: Build aarch64-darwin packages and Home Manager closure
+      - name: Build aarch64-darwin packages and checks
         if: steps.decide.outputs.run == 'true'
         run: |
-          let full = (^nix build --no-link --no-write-lock-file --print-out-paths --print-build-logs .#packages.aarch64-darwin.yazelix | str trim)
+          # Upstream package matrix (converted to nu) + fork runtime package.
+          for package in [yazelix yazelix-no-helix yazelix-no-yazi yazelix-no-helix-no-yazi yazelix-no-mars yazelix-no-mars-no-helix yazelix-no-mars-no-yazi yazelix-no-mars-no-helix-no-yazi] {
+            let path = (^nix build --no-link --no-write-lock-file --print-out-paths --print-build-logs $".#packages.aarch64-darwin.($package)" | str trim)
+            if ($"($path)/share/applications/yzx.desktop" | path exists) { error make {msg: $"($package) Darwin package contains Linux desktop entry"} }
+          }
           let runtime = (^nix build --no-link --no-write-lock-file --print-out-paths --print-build-logs .#packages.aarch64-darwin.runtime | str trim)
-          ^nix build --no-link --no-write-lock-file --print-build-logs .#checks.aarch64-darwin.home_manager
-          if ($"($full)/share/applications/yzx.desktop" | path exists) { error make {msg: "full Darwin package contains Linux desktop entry"} }
           if ($"($runtime)/share/applications/yzx.desktop" | path exists) { error make {msg: "runtime Darwin package contains Linux desktop entry"} }
+          ^nix build --no-link --no-write-lock-file --print-build-logs .#checks.aarch64-darwin.home_manager .#checks.aarch64-darwin.host_yazi_contracts .#checks.aarch64-darwin.no_mars_contracts .#checks.aarch64-darwin.no_helix_contracts

@@ -1,7 +1,7 @@
 use std::{
     fs::{self, OpenOptions},
     io::Write,
-    os::unix::process::CommandExt,
+    os::unix::{fs::PermissionsExt, process::CommandExt},
     path::Path,
     process::{Command, Output},
 };
@@ -39,6 +39,11 @@ pub(crate) fn run_checked(check: &Path, command: &mut Command) -> Result<String,
             1,
         )),
     }
+}
+
+pub(crate) fn executable_file(path: &Path) -> bool {
+    fs::metadata(path)
+        .is_ok_and(|metadata| metadata.is_file() && metadata.permissions().mode() & 0o111 != 0)
 }
 
 fn output_reason(output: &Output) -> Option<String> {

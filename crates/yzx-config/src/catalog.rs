@@ -32,10 +32,8 @@ pub(crate) const KEYBINDINGS_CONFIG_PATH: &str = "keybindings.config";
 pub(crate) const KEYBINDINGS_AGENT_PATH: &str = "keybindings.agent";
 pub(crate) const KEYBINDINGS_GIT_PATH: &str = "keybindings.git";
 pub(crate) const KEYBINDINGS_MENU_PATH: &str = "keybindings.menu";
-pub(crate) const DEFAULT_CONFIG_KEYBINDING: &str = "Alt Shift K";
-pub(crate) const DEFAULT_AGENT_KEYBINDING: &str = "Alt Shift L";
-pub(crate) const DEFAULT_GIT_KEYBINDING: &str = "Alt Shift J";
-pub(crate) const DEFAULT_MENU_KEYBINDING: &str = "Alt Shift M";
+pub(crate) const KEYBINDINGS_SIDEBAR_PATH: &str = "keybindings.sidebar";
+pub(crate) const KEYBINDINGS_SIDEBAR_FOCUS_PATH: &str = "keybindings.sidebar_focus";
 pub(crate) const BAR_WIDGETS_PATH: &str = "bar.widgets";
 pub(crate) const BAR_WIDGET_VALUES: &[&str] = &[
     "session",
@@ -48,15 +46,28 @@ pub(crate) const BAR_WIDGET_VALUES: &[&str] = &[
     "cpu",
     "ram",
 ];
+pub(crate) const ROOT_CONFIG_CORE_PATHS: &[&str] = &[
+    SHELL_PROGRAM_PATH,
+    EDITOR_COMMAND_PATH,
+    AGENT_COMMAND_PATH,
+    WELCOME_ENABLED_PATH,
+    WELCOME_STYLE_PATH,
+    KEYBINDINGS_CONFIG_PATH,
+    KEYBINDINGS_AGENT_PATH,
+    KEYBINDINGS_GIT_PATH,
+    KEYBINDINGS_MENU_PATH,
+    KEYBINDINGS_SIDEBAR_PATH,
+    KEYBINDINGS_SIDEBAR_FOCUS_PATH,
+    BAR_WIDGETS_PATH,
+];
 pub(crate) const DEFAULT_MARS_CONFIG_TOML: &str =
     include_str!("../../../defaults/mars/config.toml");
 pub(crate) const MARS_APPEARANCE_PRESET_PATH: &str = "mars.appearance.preset";
 pub(crate) const CURSOR_ENABLED_PATH: &str = "enabled_cursors";
 pub(crate) const CURSOR_TRAIL_PATH: &str = "settings.trail";
 pub(crate) const DEFAULT_STARSHIP_CONFIG_TOML: &str = "\
+[character]
 format = \":: \"
-right_format = \"\"
-add_newline = true
 ";
 
 pub(crate) const SOURCE_CONFIG: &str = DEFAULT_CONFIG_SOURCE_ID;
@@ -65,6 +76,9 @@ pub(crate) const SOURCE_CURSORS: &str = "cursors";
 pub(crate) const SOURCE_ZELLIJ: &str = "zellij";
 pub(crate) const SOURCE_STARSHIP: &str = "starship";
 pub(crate) const SOURCE_HELIX: &str = "helix";
+pub(crate) const SOURCE_YAZI: &str = "yazi";
+pub(crate) const SOURCE_YAZI_CONFIG: &str = "yazi-config";
+pub(crate) const SOURCE_YAZI_THEME: &str = "yazi-theme";
 pub(crate) const SOURCE_KEYS: &str = "keys";
 pub(crate) const SOURCE_ADVANCED: &str = "advanced";
 pub(crate) const TAB_CONFIG: &str = " main";
@@ -74,8 +88,9 @@ pub(crate) const TAB_CURSORS: &str = "󰇀 cursors";
 pub(crate) const TAB_ZELLIJ: &str = " zellij";
 pub(crate) const TAB_STARSHIP: &str = " starship";
 pub(crate) const TAB_HELIX: &str = " helix";
+pub(crate) const TAB_YAZI: &str = "󰇥 yazi";
 pub(crate) const TAB_KEYS: &str = " keys";
-pub(crate) const TAB_ADVANCED: &str = " advanced";
+pub(crate) const TAB_ADVANCED: &str = "advanced";
 
 pub(crate) const ACTION_HELIX_CONFIG: &str = "helix.config";
 pub(crate) const ACTION_CURSORS_CONFIG: &str = "cursors.config";
@@ -145,28 +160,13 @@ pub(crate) const CURSOR_FIELDS: &[FieldSpec] = &[
     ),
 ];
 
-pub(crate) struct PopupKeybindingSpec {
-    pub(crate) path: &'static str,
-    pub(crate) default: &'static str,
-}
-
-pub(crate) const POPUP_KEYBINDINGS: &[PopupKeybindingSpec] = &[
-    PopupKeybindingSpec {
-        path: KEYBINDINGS_CONFIG_PATH,
-        default: DEFAULT_CONFIG_KEYBINDING,
-    },
-    PopupKeybindingSpec {
-        path: KEYBINDINGS_AGENT_PATH,
-        default: DEFAULT_AGENT_KEYBINDING,
-    },
-    PopupKeybindingSpec {
-        path: KEYBINDINGS_GIT_PATH,
-        default: DEFAULT_GIT_KEYBINDING,
-    },
-    PopupKeybindingSpec {
-        path: KEYBINDINGS_MENU_PATH,
-        default: DEFAULT_MENU_KEYBINDING,
-    },
+pub(crate) const MANAGED_KEYBINDINGS: &[(&str, &str)] = &[
+    (KEYBINDINGS_CONFIG_PATH, "Alt Shift K"),
+    (KEYBINDINGS_AGENT_PATH, "Alt Shift L"),
+    (KEYBINDINGS_GIT_PATH, "Alt Shift J"),
+    (KEYBINDINGS_MENU_PATH, "Alt Shift M"),
+    (KEYBINDINGS_SIDEBAR_PATH, "Alt Shift H"),
+    (KEYBINDINGS_SIDEBAR_FOCUS_PATH, "Ctrl y"),
 ];
 
 macro_rules! key {
@@ -198,8 +198,9 @@ pub(crate) const KEY_BINDINGS: &[[&str; 5]] = &[
     key!("Popups"; "Alt Shift K"; "Toggle config popup"; "Yazelix"; "config.kdl"),
     key!("Popups"; "Alt Shift L"; "Hide or show agent popup"; "Yazelix"; "config.kdl"),
     key!("Popups"; "Alt Shift M"; "Toggle menu popup"; "Yazelix"; "config.kdl"),
-    key!("Sidebar"; "Alt Shift h"; "Toggle Yazi sidebar"; "Yazelix"; "config.kdl"),
-    key!("File manager"; "Alt z"; "Zoxide jump into the managed editor"; "Yazi"; "yazi/keymap.toml"),
+    key!("Popups"; "Alt Shift Y"; "Hide or show Yazi popup"; "Yazelix"; "config.kdl"),
+    key!("Sidebar"; "Alt Shift H"; "Toggle Yazi sidebar"; "Yazelix"; "config.kdl"),
+    key!("File manager"; "Alt z"; "Retarget tab workspace with zoxide"; "Yazi"; "yazi/keymap.toml"),
 ];
 
 pub(crate) const KEY_COLUMNS: &[(&str, usize)] =
@@ -229,7 +230,7 @@ pub(crate) const CONFIG_FIELDS: &[ConfigFieldSpec] = &[
     ConfigFieldSpec {
         field: FieldSpec::string_choice(
             EDITOR_COMMAND_PATH,
-            "Editor command used by managed Yazi opens. Use hx or yzx-hx for packaged Yazelix Helix, or a host executable such as nvim.",
+            "Editor command used by managed file opens. Use hx or yzx-hx for managed Yazelix Helix when included, or another installed executable such as nvim.",
             &[],
             "one non-empty executable command without arguments",
         ),
@@ -340,6 +341,26 @@ pub(crate) const CONFIG_FIELDS: &[ConfigFieldSpec] = &[
         apply_summary: "next launch",
         apply_detail: "Saved keybindings apply to newly launched Yazelix sessions.",
     },
+    ConfigFieldSpec {
+        field: FieldSpec::string_choice(
+            KEYBINDINGS_SIDEBAR_PATH,
+            "Key chord that hides or shows the managed Yazi sidebar.",
+            &[],
+            "key chord like Alt Shift A that does not conflict with a packaged binding",
+        ),
+        apply_summary: "next launch",
+        apply_detail: "Saved keybindings apply to newly launched Yazelix sessions.",
+    },
+    ConfigFieldSpec {
+        field: FieldSpec::string_choice(
+            KEYBINDINGS_SIDEBAR_FOCUS_PATH,
+            "Key chord that toggles focus between the editor and managed Yazi sidebar.",
+            &[],
+            "key chord like Ctrl y that does not conflict with a packaged binding",
+        ),
+        apply_summary: "next launch",
+        apply_detail: "Saved keybindings apply to newly launched Yazelix sessions.",
+    },
 ];
 
 pub(crate) const MARS_FIELDS: &[FieldSpec] = &[
@@ -359,21 +380,12 @@ pub(crate) const MARS_FIELDS: &[FieldSpec] = &[
     FieldSpec::boolean("bell.visual", "Flash the Mars visual bell."),
 ];
 
-pub(crate) const STARSHIP_FIELDS: &[FieldSpec] = &[
-    FieldSpec::string_choice(
-        "format",
-        "Left prompt format string.",
-        &[],
-        "Starship format string",
-    ),
-    FieldSpec::string_choice(
-        "right_format",
-        "Right prompt format string.",
-        &[],
-        "Starship format string",
-    ),
-    FieldSpec::boolean("add_newline", "Insert a blank line before the prompt."),
-];
+pub(crate) const STARSHIP_FIELDS: &[FieldSpec] = &[FieldSpec::string_choice(
+    "character.format",
+    "Command-entry prompt shown below Starship context.",
+    &[],
+    "Starship character format string",
+)];
 
 pub(crate) const ZELLIJ_FORBIDDEN_TOP_LEVEL: &[&str] = &[
     "keybinds",
@@ -389,6 +401,12 @@ pub(crate) const ZELLIJ_FORBIDDEN_TOP_LEVEL: &[&str] = &[
 ];
 
 pub(crate) const ZELLIJ_FIELDS: &[FieldSpec] = &[
+    FieldSpec::string_choice(
+        "theme",
+        "Zellij color theme. Custom names remain valid in the native sidecar.",
+        &[],
+        "packaged theme choice; custom sidecar names remain accepted",
+    ),
     FieldSpec::boolean("pane_frames", "Show Zellij pane frames."),
     FieldSpec::boolean("mouse_mode", "Enable mouse support in Zellij."),
     FieldSpec::integer(

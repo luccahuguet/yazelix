@@ -13,6 +13,16 @@ or planning bead until the user has chosen that direction
 Work directly on `main` by default. Do not create a separate branch unless the
 user explicitly requests one or another repository instruction requires it.
 
+`stable` is a promotion-only user channel. Do not commit on it or advance it
+unless the user explicitly requests a promotion. A candidate must be a
+fast-forward from the current `stable`, belong to `main`, pass the protected
+Linux and cache checks, pass the release checks for its changed surface, and
+have fresh-session dogfood for user-visible runtime interaction changes. Do not
+promote a commit with a known P0 or P1 regression. Promote the exact verified
+SHA with `git push origin <sha>:stable`; never force-push or delete `stable`.
+Rollbacks use a new revert commit on `main`, followed by normal verification and
+promotion.
+
 ## Method
 
 Use contract-driven, check-backed development, not mechanical porting from main

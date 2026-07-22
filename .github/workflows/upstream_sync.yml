@@ -1,0 +1,71 @@
+name: Upstream Sync
+
+# No-human-in-the-loop upstream tracking (owner directive 2026-07-22: "we
+# should have never diverged from upstream"). Weekly: fetch upstream
+# luccahuguet/yazelix, attempt a merge into a sync branch, and open a PR.
+# A clean merge gets auto-merge enabled (squash) so green CI lands it
+# unattended; a conflicted merge opens a draft PR listing the conflicts so
+# an agent session can resolve them with the recorded doctrine (fork
+# machinery + policy gates win; upstream features adopted).
+
+on:
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: upstream-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ["self-hosted", "linux", "x64", "local", "flexnetos"]
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: nu {0}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Install Nushell
+        uses: hustcer/setup-nu@v3
+
+      - name: Attempt upstream merge and open PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ^git config user.name "flexnetos-upstream-sync"
+          ^git config user.email "noreply@flexnetos.dev"
+          ^git remote add upstream https://github.com/luccahuguet/yazelix.git
+          ^git fetch upstream main
+          let upstream = (^git rev-parse upstream/main | str trim)
+          let base = (^git merge-base HEAD upstream/main | str trim)
+          if $upstream == $base {
+            print "Already up to date with upstream; nothing to sync."
+          } else {
+            let branch = $"sync/upstream-($upstream | str substring 0..7)"
+            let exists = (do { ^git ls-remote --exit-code origin $branch } | complete | get exit_code) == 0
+            if $exists {
+              print $"Sync branch ($branch) already exists; leaving the open PR to land."
+            } else {
+              ^git checkout -b $branch
+              let merged = (do { ^git merge upstream/main --no-edit } | complete | get exit_code) == 0
+              if $merged {
+                ^git push origin $branch
+                ^gh pr create --title $"chore(sync): merge upstream ($upstream | str substring 0..7)" --body "Automated weekly upstream sync from luccahuguet/yazelix. Clean merge — auto-merge is enabled; green CI lands it unattended."
+                ^gh pr merge $branch --squash --auto
+              } else {
+                let conflicts = (^git diff --name-only --diff-filter=U | lines)
+                ^git merge --abort
+                ^git push origin $"HEAD:($branch)"
+                ^gh pr create --draft --head $branch --title $"chore(sync): upstream ($upstream | str substring 0..7) needs conflict resolution" --body ($"Automated upstream sync hit merge conflicts in:\n\n(($conflicts | each {|f| $'- ($f)'} | str join (char newline)))\n\nResolution doctrine: fork policy gates and Nushell/Rust machinery win; upstream features are adopted (union). See the integrate/upstream-sync merge for precedent.")
+              }
+            }
+          }

@@ -10,31 +10,75 @@ Yazelix tries to answer that question. Nova brings the terminal, multiplexer,
 file manager, editor, shell, Git tools, configuration, and an AI agent
 together as one coherent workspace
 
-Nova packages the workspace as a Nix flake with an optional Home Manager module
+Yazelix Nova is a Nix-packaged terminal workspace built around
+[Mars](https://github.com/luccahuguet/mars) (a Rio-derived fork), a thin
+[Yazelix-owned Zellij fork](https://github.com/luccahuguet/yazelix-zellij),
+Yazi, Nushell (with packaged Bash, Zsh, and Fish alternatives), a lazygit popup (but you can configure other git clients!), and
+an optional coding agent popup. It uses the
+[Yazelix Helix fork](https://github.com/luccahuguet/yazelix-helix) by default
+(but `editor.command` can select your preferred terminal editor). `yzx launch`
+opens the desktop workspace through Mars, while `yzx enter` will open Yazelix in any capable terminal emulator (Mars
+provides tighter Yazelix integration, though) or over SSH. Great defaults out of the box!
 
-`yzx launch` opens Mars, while `yzx enter` starts Yazelix Nova in the
-current terminal. Both provide the same Yazi-first workspace and compact top
-bar. The repo keeps one launcher, one config root, one packaged layout, and
+Nova packages the workspace as a Nix flake with an optional Home Manager
+module. The repo keeps one launcher, one config root, one packaged layout, and
 focused checks for its contracts
 
 ## Preview
 
 ![Yazelix Nova workspace](assets/screenshots/nova_workspace.png)
 
+## Nova vs Classic
+
+Classic was bloated and built on the wrong ownership model. Its main repository
+acted as the product runtime, component control plane, configuration repair
+system, compatibility layer, and maintainer toolbox.
+
+Classic's child repositories did not create firm boundaries. The main repo
+still carried their maintenance machinery and overlapping runtime logic. Nova
+gives [first-party Yazelix components](#first-party-components) firm package
+boundaries. Each component owns its implementation and contract. Nova pins and
+composes their package outputs.
+
+| Measure | Nova | Classic |
+| --- | --- | --- |
+| Code and configuration (Rust, Nix, shell, TOML, etc.) | **18,197 LOC** | **91,545 LOC** |
+| Rust | **15,215 LOC** | **80,957 LOC** |
+| Ownership model | One owner per concern | Overlapping responsibilities across layers |
+| Yazelix component boundaries | Independent, versioned packages | Child repos mixed with main-repo ownership |
+| Product experience | More features, stronger defaults, tighter integration, and polished UX | Fewer features and a less cohesive workspace |
+| Status | Recommended | Frozen migration and rollback path |
+
+Nova owns **73,348 fewer lines**, an **80% reduction**. Classic's Rust code
+alone is 4.4 times larger than Nova's entire code and configuration surface.
+
+Nova delivers more features in 20% of the code. It has a clearer configuration
+model, tighter editor and Yazi integration, stronger diagnostics, and a
+coherent popup-oriented interface. The smaller architecture makes Yazelix
+easier to improve and better to use.
+
+Classic proved the idea. Nova is the better product and the architecture
+Yazelix should have had from the start.
+
 ## Install and launch
 
-Nova requires Nix with flakes enabled. `launch` opens the packaged Mars window
+Yazelix requires Nix with flakes enabled. `launch` opens the packaged Mars window
 in a graphical session, while `enter` starts the same workspace in the current
-terminal or over SSH
+terminal or over SSH.
 
-Nova starts from packaged defaults, so no configuration is required before the
-first launch
+The `stable` branch advances from a checked
+and dogfooded `main` revision at most once per week. Use `main` for more constant updates or an
+immutable `nova-v*` tag for an exact release.
+
+Linux is the dogfooded platform. CI builds all packages and a Home Manager
+activation on `aarch64-darwin`, while interactive macOS use and the Mars GUI
+remain unverified.
 
 ### Try without installing
 
 ```nu
 nix run github:FlexNetOS/yazelix -- launch
-nix run github:FlexNetOS/yazelix#runtime -- enter
+nix run github:FlexNetOS/yazelix#yazelix-no-mars -- enter
 ```
 
 If the one-off launch fails, inspect the owned runtime setup with:
@@ -54,122 +98,109 @@ nix profile add --profile /home/flexnetos/.nix-profile --refresh github:FlexNetO
 yzx launch
 ```
 
-Do not add `#yazelix` or `#runtime` beside the foundation element. Existing
+Do not add `#yazelix` or any `yazelix-no-*` variant beside the foundation element. Existing
 foundation installations update through the checked migration described in
 [Installation](docs/installation.md#updates), which archives prior selectors
 and verifies the exact replacement closure before declaring success.
 
 ### Install with Home Manager
 
-Use the [Home Manager module](docs/installation.md#home-manager) for a declarative install
-
-From a local checkout, use:
-
-```nu
-nix run .#yazelix -- launch
-nix run .#runtime -- enter
-```
+Use the [Home Manager module](docs/installation.md#home-manager) for a
+declarative install.
 
 ### Moving from Yazelix Classic
 
-Use upstream Classic v17.12 once to prepare its config for Nova, then install
-Nova from the authoritative FlexNetOS repository. The recovery-only tag below
-belongs to the upstream repository; it is not published on the FlexNetOS remote.
+Classic v17.12 translates mutable Classic `settings.jsonc` or `config.toml`
+files into Nova configuration. It does not rewrite Home Manager declarations
+or Home Manager-owned files. Run upstream's bridge once when you need to
+preserve mutable Classic settings, then install Nova from the authoritative
+FlexNetOS repository. The recovery-only tag below belongs to the upstream
+repository; it is not published on the FlexNetOS remote:
 
 ```nu
 nix run github:luccahuguet/yazelix/v17.12#yazelix -- launch
 ```
 
+If your Classic settings match packaged defaults, start with Nova's packaged
+defaults and move straight to Nova. Home Manager users must replace
+Classic-only options with Nova's narrow module surface before switching.
+
 The original Nova cutover replaced the old `main` history. The FlexNetOS
 recovery joins canonical Nova as first parent to the complete FlexNetOS history
 as second parent through one reviewable unrelated-history merge. It does not
-discard, cherry-pick, replay, rebase, squash, or force-push either lineage
+discard, cherry-pick, replay, rebase, squash, or force-push either lineage.
 Classic remains available at the frozen `classic` branch, while the immutable
 `v17.12` tag remains the migration and rollback bridge
 
-## Learn, help, and recover
+## First five minutes
 
-Start the guided tour after launching Nova:
+Start the guided tour after launching Yazelix:
 
 ```nu
 yzx tutor begin
 ```
 
 `yzx help` lists every command. `yzx doctor` checks the owned runtime setup
-without opening Mars or Zellij. Inside Nova, press `Alt Shift M` to open the
-command palette, which includes both help and tutor entries
+without opening Mars or Zellij. Inside Yazelix, press `Alt Shift M` to open the
+command palette, which includes both help and tutor entries.
 
-Press `Alt Shift K` to open Ratconfig. Press `8` for the read-only Keys tab,
-which shows the current packaged bindings and their owners. Use `1`-`9` to jump
-directly to a tab, `Tab`/`Shift-Tab` or `h`/`l` to change tabs, `j`/`k` to move,
-and `/` to search. Use `e`, `Enter`, or `Space` for the selected row's
-contextual action, such as editing or opening it. Press `u` to reset a setting
-and `q` to quit. The footer shows the controls available for the selected row
+### Ratconfig
 
-Nova carries Helix/Vim's `h/j/k/l` motion model through the workspace:
+Press `Alt Shift K` to open Ratconfig:
+
+| Key | Action |
+| --- | --- |
+| `1`-`9` | Jump to a tab |
+| `Tab` / `Shift-Tab`, `h` / `l` | Change tabs |
+| `j` / `k`, `/` | Move through rows or search All settings |
+| `a` | Switch between Core and All |
+| `e`, `Enter`, `Space` | Run the selected row's contextual action |
+| `u`, `q` | Reset the selected setting or quit |
+
+The footer lists the selected row's controls.
+
+### Workspace keys
+
+Yazelix extends Helix/Vim's `h/j/k/l` motion model into a workspace key grid.
+The `Alt` and `Ctrl Alt` layers move focus, tabs, or panes, while `Alt Shift`
+groups four workspace surfaces:
 
 | Layer | `h` | `j` | `k` | `l` |
 | --- | --- | --- | --- | --- |
-| Helix normal mode | Move cursor left | Move cursor down | Move cursor up | Move cursor right |
 | `Alt` | Focus left or previous tab | Focus down | Focus up | Focus right or next tab |
 | `Ctrl Alt` | Move tab left | Move pane down | Move pane up | Move tab right |
+| `Alt Shift` | Sidebar | Git | Ratconfig | Agent |
 
-The default `Alt Shift` layer keeps the sidebar and four popups in the same
-keyboard neighborhood:
+Yazi and the menu use their initials:
 
-```text
-H             J          K          L
-sidebar       Git        Ratconfig  agent
-                    M
-                    menu
-```
+- `Alt Shift Y` toggles the full Yazi popup.
+- `Alt Shift M` toggles the command menu.
 
-`Alt Shift h` toggles the sidebar. Press the same key again to close the Git,
-Ratconfig, or menu popup. The agent popup hides instead, so its process remains
-available
+Press a popup's key again to close or hide it. Other useful bindings are:
 
-## Keybindings
+| Scope | Key | Action |
+| --- | --- | --- |
+| Workspace | `Ctrl q` | Quit the Yazelix session |
+| Workspace | `Alt m` | Open a new pane |
+| Workspace | `Alt Shift F` | Toggle the focused pane fullscreen |
+| Workspace | `Ctrl y` | Toggle focus between the editor and Yazi sidebar |
+| Workspace | `Alt 1-9` | Go directly to tab 1-9 |
+| Editor | `Alt r` | Reveal the current editor file in Yazi |
+| Yazi | `Alt z` | Retarget the tab workspace with zoxide |
+
+Managed Helix supplies the editor binding. Terminal editors can bind the same
+`yzx reveal` command; see [Configuration](docs/configuration.md#editor-and-file-opens)
+for Neovim and terminal Emacs examples.
 
 Ratconfig's Keys tab is the complete packaged reference, and
-`defaults/zellij/config.kdl` remains the runtime source
-
-### Zellij workspace
-
-| Key | Action |
-| --- | --- |
-| `Ctrl Alt g` | Toggle locked mode |
-| `Ctrl Alt o` | Open session mode |
-| `Ctrl q` | Quit Yazelix session |
-| `Ctrl p` | Toggle pane mode |
-| `Ctrl t` | Toggle tab mode |
-| `Ctrl n` | Toggle resize mode |
-| `Alt m` | Open a new pane |
-| `Alt Shift F` | Toggle the focused pane fullscreen |
-| `Ctrl y` | Toggle focus between the editor and Yazi sidebar |
-| `Alt 1-9` | Go directly to tab 1-9 |
-
-Move mode is unbound. Managed popup triggers can be remapped through
-`keybindings.config`, `keybindings.agent`, `keybindings.git`, and
-`keybindings.menu`. Raw Zellij keymaps stay outside the managed sidecar
-
-### Helix
-
-| Key | Action |
-| --- | --- |
-| `Alt r` | Reveal the current editor file in Yazi |
-
-### Yazi
-
-| Key | Action |
-| --- | --- |
-| `Alt z` | Zoxide jump into the managed editor |
+`defaults/zellij/config.kdl` remains the runtime source.
 
 ## Commands
 
 | Command | Purpose |
 | --- | --- |
 | `yzx`, `yzx help` | Print command help |
-| `yzx --version` | Print the exact package-owned Nova version |
+| `yzx --version` | Print the exact package-owned Yazelix version |
 | `yzx launch [zellij-args...]` | Open Mars first, then start managed Zellij |
 | `yzx enter [zellij-args...]` | Start managed Zellij in the current terminal |
 | `yzx run <program> [args...]` | Run exact argv inside the prepared Yazelix environment |
@@ -207,30 +238,72 @@ Tutor lessons are `workspace`, `discovery`, `troubleshooting`, and
 `tool_tutors`. `yzx tutor hx` and `yzx tutor nu` print the native tool tutor
 commands
 
-
 ## Packages and platforms
 
-The default package includes Mars and opens the full graphical workspace with
-`yzx launch`. The fixed `runtime` package keeps the same `yzx` command,
-managed tools, and configuration without Mars or desktop assets
+Package names follow `yazelix[-no-mars][-no-helix][-no-yazi]`. Each suffix
+removes that managed package while retaining the integration around it.
+`no-helix` uses the configured host editor; `no-yazi` requires matching host
+`yazi` and `ya` commands.
+
+| Package | Mars | Managed Helix | Managed Yazi |
+| --- | --- | --- | --- |
+| `yazelix` | Yes | Yes | Yes |
+| `yazelix-no-helix` | Yes | No | Yes |
+| `yazelix-no-yazi` | Yes | Yes | No |
+| `yazelix-no-helix-no-yazi` | Yes | No | No |
+| `yazelix-no-mars` | No | Yes | Yes |
+| `yazelix-no-mars-no-helix` | No | No | Yes |
+| `yazelix-no-mars-no-yazi` | No | Yes | No |
+| `yazelix-no-mars-no-helix-no-yazi` | No | No | No |
 
 See [Installation and packages](docs/installation.md) for package variants,
-platform support, SSH use, measured sizes, Home Manager, and updates
+platform support, SSH use, measured sizes, Home Manager, and updates.
+
+## First-party components
+
+Yazelix assembles focused first-party forks, plugins, libraries, and commands:
+
+| Component | Yazelix role |
+| --- | --- |
+| [Mars](https://github.com/luccahuguet/mars) | GUI terminal used by `yzx launch`, with Kitty graphics, cursor shaders, and Yazelix session integration |
+| [Yazelix Zellij](https://github.com/luccahuguet/yazelix-zellij) | Multiplexer fork with Kitty graphics passthrough for the workspace |
+| [Yazelix Helix](https://github.com/luccahuguet/yazelix-helix) | Steel-enabled editor fork with isolated configuration and explicit workspace bridge hooks |
+| [Yazelix Zellij Pane Orchestrator](https://github.com/luccahuguet/yazelix-zellij-pane-orchestrator) | Zellij plugin that owns tab-local workspace roots and coordinates panes, focus, popups, the editor, and agent activity |
+| [Yazelix Zellij Popup](https://github.com/luccahuguet/yazelix-zellij-popup) | Zellij plugin that opens, focuses, hides, and closes configured floating TUI panes |
+| [Yazelix Zellij Bar](https://github.com/luccahuguet/yazelix-zellij-bar) | Zellij plugin package for the compact top bar, tabs, modes, session details, and status widgets |
+| [Ratconfig](https://github.com/luccahuguet/ratconfig) | Reusable Ratatui configuration editor and TOML patching and migration library |
+| [Yazelix Screen](https://github.com/luccahuguet/yazelix-screen) | Terminal welcome animations exposed through `yzx screen` |
+| [Yazelix Cursors](https://github.com/luccahuguet/yazelix-cursors) | Shared cursor presets and validation for Ratconfig, plus palettes and shader assets for Mars |
+| [auto-layout.yazi](https://github.com/luccahuguet/auto-layout.yazi) | Yazi plugin that changes the column layout to match the available pane width |
+| [zjstatus](https://github.com/luccahuguet/zjstatus) | Fork that gives the bar activity-aware tab markers without changing native Zellij tab names |
 
 ## Configuration
 
 `yzx config` opens Ratconfig over the managed tree at
-`~/.config/yazelix/`. Nova inherits packaged defaults and persists only
-explicit overrides
+`~/.config/yazelix/`. Yazelix inherits packaged defaults and persists only
+explicit overrides. Core shows the settings most users need. All includes the
+complete inventory.
+
+Set `shell.program` in Ratconfig or `config.toml` to choose packaged Nushell
+(default), Bash, Zsh, or Fish for new panes and sessions.
+Yazelix initializes Starship, Carapace completions, and zoxide for managed
+Nushell. Bash, Zsh, and Fish use their normal interactive startup files.
 
 See [Configuration](docs/configuration.md) for settings, popups, native files,
-Yazi plugins, cursor ownership, and editor behavior
+Yazi plugins, cursor ownership, and editor behavior.
 
 ## Development
 
-See [Development](docs/development.md) for CI, local checks, runtime input
-overrides, and the LOC scorecard. Lower-level launch, config, editor, shell, and
-popup contracts live in [Runtime Notes](docs/runtime-notes.md)
+From a local checkout, use:
+
+```sh
+nix run .#yazelix -- launch
+nix run .#yazelix-no-mars -- enter
+```
+
+See [Development](docs/development.md) for CI and local checks,
+[Architecture](ARCHITECTURE.md) for ownership boundaries, and
+[Runtime Notes](docs/runtime-notes.md) for launch and integration contracts.
 
 The [RuVector blueprint provenance ledger](docs/ruvector_blueprint_provenance.md)
 maps every applicable Engine Room and formerly optional capability to its one
@@ -240,4 +313,4 @@ repository owner and verification surface
 
 Nova owns **23,476 lines** of tracked text project files. The
 [reproducible scorecard](docs/development.md#loc-scorecard) excludes Beads,
-lockfiles, and binary assets
+lockfiles, and binary assets.

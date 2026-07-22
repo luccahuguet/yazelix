@@ -20,6 +20,7 @@ plugins {
                 pane_title "config_popup"
                 width_percent 100
                 height_percent 100
+                toggle_close_behavior "hide"
             }
 
             agent {
@@ -27,6 +28,7 @@ plugins {
                 pane_title "agent_popup"
                 width_percent 100
                 height_percent 100
+                preserve_terminal_title true
                 toggle_close_behavior "hide"
             }
 
@@ -43,10 +45,23 @@ plugins {
                 width_percent 100
                 height_percent 100
             }
+
+            yazi {
+                command "@yzxYazi@"
+                pane_title "yazi_popup"
+                width_percent 100
+                height_percent 100
+                arg_1 "--yzx-workspace-popup"
+                toggle_close_behavior "hide"
+            }
         }
     }
 
-    yazelix_pane_orchestrator location="@yzxPaneOrchestrator@" { screen_saver_enabled false; }
+    yazelix_pane_orchestrator location="@yzxPaneOrchestrator@" {
+        screen_saver_enabled false
+        popup_plugin_url "yzpp"
+        managed_agent_command_marker "@yzxAgent@"
+    }
 }
 
 load_plugins {
@@ -84,9 +99,15 @@ keybinds {
     shared_except "locked" {
         unbind "Alt n" "Alt i" "Alt o" "Ctrl g"
         bind "Alt m" { NewPane; }
+        bind "Alt Shift Y" {
+            MessagePlugin "yazelix_pane_orchestrator" {
+                name "toggle_workspace_popup"
+                payload "yazi"
+            }
+        }
         bind "@gitKey@" {
-            MessagePlugin "yzpp" {
-                name "toggle"
+            MessagePlugin "yazelix_pane_orchestrator" {
+                name "toggle_workspace_popup"
                 payload "git"
             }
         }
@@ -97,8 +118,8 @@ keybinds {
             }
         }
         bind "@agentKey@" {
-            MessagePlugin "yzpp" {
-                name "toggle"
+            MessagePlugin "yazelix_pane_orchestrator" {
+                name "toggle_workspace_popup"
                 payload "agent"
             }
         }
@@ -121,8 +142,8 @@ keybinds {
         bind "Alt 8" { GoToTab 8; }
         bind "Alt 9" { GoToTab 9; }
         bind "Alt Shift F" { ToggleFocusFullscreen; }
-        bind "Alt Shift h" { MessagePlugin "yazelix_pane_orchestrator" { name "toggle_sidebar"; }; }
-        bind "Ctrl y" { MessagePlugin "yazelix_pane_orchestrator" { name "toggle_editor_sidebar_focus"; }; }
+        bind "@sidebarKey@" { MessagePlugin "yazelix_pane_orchestrator" { name "toggle_sidebar"; }; }
+        bind "@sidebarFocusKey@" { MessagePlugin "yazelix_pane_orchestrator" { name "toggle_editor_sidebar_focus"; }; }
         bind "Ctrl Alt g" { SwitchToMode "Locked"; }
         bind "Ctrl q" { Quit; }
         bind "Ctrl Alt h" { MoveTab "Left"; }

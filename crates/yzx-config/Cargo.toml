@@ -10,6 +10,3 @@ ratconfig = { path = "../../../ratconfig" }
 serde_json = "1.0"
 toml = "1.1"
 yazelix_cursors = { path = "../../../yazelix-cursors" }
-
-[patch."https://github.com/luccahuguet/ratconfig"]
-ratconfig = { path = "../../../ratconfig" }

@@ -18,16 +18,20 @@ yzx run     →  prepared Yazelix environment  →  exact child argv/status
 
 Bare `yzx` prints help. `launch` is the only Mars route.
 `enter` is the headless/SSH route and requires an interactive host terminal, not
-a display server. The fixed `runtime` package compiles the Mars route out while
-retaining the same command, config schema, and managed workspace.
+a display server. `yazelix-no-helix` retains the Mars route and delegates
+editing to an installed host command. `yazelix-no-mars` compiles the Mars route
+out while retaining the same command, config schema, and managed workspace.
+`no-yazi` variants keep the managed Yazi launcher and integration while
+resolving a matching host `yazi`/`ya` pair. The three omission suffixes compose
+into eight explicit package and app outputs.
 
 ## Platforms
 
 | Surface | Support |
 | --- | --- |
-| Full/runtime package and app outputs | `x86_64` / `aarch64` × Linux / Darwin |
+| Eight Mars/managed-Helix/managed-Yazi package and app combinations | `x86_64` / `aarch64` × Linux / Darwin |
 | Headless / SSH floor | `enter` in a capable interactive host terminal; managed TUI only |
-| macOS build evidence | Real `aarch64-darwin` runner builds full/runtime packages and the Home Manager closure; no desktop entry |
+| macOS build evidence | Real `aarch64-darwin` runner builds all eight packages and the Home Manager closure; no desktop entry |
 | macOS interactive floor | `help`, `status`, `doctor`, `enter`, managed workspace, and host-editor delegation remain unverified |
 | macOS full-package `launch` | Mars is packaged; GUI behavior remains unverified |
 | Out of repo | App bundles, Homebrew, Ghostty packaging, broad terminal matrices |
@@ -38,7 +42,7 @@ retaining the same command, config schema, and managed workspace.
 | --- | --- |
 | `yzx` / `help` | Concise help; no implicit launch |
 | `--version` | Package-owned exact Nova version |
-| `launch` | Mars then managed session; unavailable in the runtime package |
+| `launch` | Mars then managed session; unavailable in both Mars-free packages |
 | `enter` | Managed session in current terminal |
 | `run` | Structured command in the prepared runtime environment |
 | `config` | Ratconfig UI |
@@ -61,7 +65,7 @@ One owner per concern. Paths are the durable map.
 
 | Path | Owns |
 | --- | --- |
-| `flake.nix` | Fixed full/runtime composition, inputs, helpers, desktop entry, HM export |
+| `flake.nix` | Eight fixed Mars/managed-Helix/managed-Yazi compositions, inputs, helpers, desktop entry, HM export |
 | `home-manager/module.nix` | `programs.yazelix.enable` / package; optional config files; no default generation |
 
 ### Codex authored inputs
@@ -79,14 +83,14 @@ One owner per concern. Paths are the durable map.
 
 | Path | Owns |
 | --- | --- |
-| `runtime/yzx/` | CLI, startup env, launch/enter handoff |
+| `runtime/yzx/` | CLI, startup env, host-Yazi pair resolution, launch/enter handoff |
 | `runtime/yzx-menu.rs` | Menu palette |
-| `runtime/yzx-agent.rs` | Agent provider bootstrap (`codex resume` → `grok` → `opencode` → `pi` → `claude --resume`) |
-| `runtime/yzx-yazi.rs` | Managed Yazi process/env launch, editor resolve |
+| `runtime/yzx-agent.rs` | Initial agent title, custom-command exec, and provider bootstrap (`codex resume` → `grok` → `opencode` → `pi` → `claude --resume`) |
+| `runtime/yzx-yazi.rs` | Managed Yazi process/env launch, editor resolve, non-sidebar workspace-popup role |
 | `runtime/yzx-nu.rs` | Managed Nu layering; runtime-effective Starship config request |
 | `runtime/yzx-zellij-config.rs` | Packaged + guarded Zellij scalar sidecar merge |
 | `runtime/yzx/zellij.rs` | Plugin sidecar inject; launch materialize/patches |
-| `crates/yzx-open/` | Editor open, Helix bridge, reveal, bounded open diagnostics |
+| `crates/yzx-open/` | Editor open, Helix bridge, sidebar target follow/reveal, bounded diagnostics |
 | `crates/yzx-yazi-config/` | Managed Yazi config-home materialization and native TOML layering |
 | `crates/yzx-tutor/` | Tutor CLI and lessons |
 | `runtime/yzx_helix.nu` (`yzx-hx`) | Effective Helix config + Steel wiring |
@@ -97,14 +101,18 @@ One owner per concern. Paths are the durable map.
 
 `crates/yzx-config/` is the Ratconfig host.
 
+- Supplies stable source/path identities for Ratconfig Core membership; the
+  reviewed root inventory uses a local product-essential allowlist, while
+  Ratconfig owns Core/All filtering, explicit-value visibility, counts,
+  toggling, and All-scope search. Unreviewed non-root inventories remain Core
 - Seeds only the child-owned cursor TOML; root, Mars, Zellij, and Starship stay
   sparse
 - Routes edits to the right file; Helix/Advanced open-file rows; Keys read-only
 - Resolves known config targets against the packaged Nix store root so
   Home Manager-owned sources stay read-only with exact module-option guidance
 - Hidden package-internal reads for launch + custom-popup KDL render
-- `agent.popup.kdl` is an internal render path for custom managed agent command
-  KDL
+- `agent.popup.kdl` is an internal render path that routes custom managed agent
+  argv through the packaged launcher
 - `KEY_BINDINGS` is the human key reference; `defaults/zellij/config.kdl` is the runtime owner
 
 #### Nova root schema inventory
@@ -115,6 +123,14 @@ bounded catalog, validation, and sparse persistence unless another owner is name
 The root validator derives fixed leaves from that catalog, rejects unknown paths
 before runtime or Ratconfig use, and delegates only `popups.<id>` to its dynamic
 field validator.
+
+`ROOT_CONFIG_CORE_PATHS` contains `shell.program`, `editor.command`,
+`agent.command`, the two ordinary welcome controls, all six managed action
+keys, and `bar.widgets`. Diagnostics (`open.log_level`), argument and duration
+fine tuning, and popup geometry are All-only until explicitly configured.
+Configured custom popup leaves use Ratconfig's generic TOML rows and belong to
+All; because every discovered leaf is explicit, Ratconfig also keeps it visible
+in Core. Absent optional leaves and unconfigured popup ids are not synthesized
 
 | Root path | Type | Default | Effect | Applies |
 | --- | --- | --- | --- | --- |
@@ -132,11 +148,13 @@ field validator.
 | `keybindings.agent` | key chord | `Alt Shift L` | Agent popup trigger | next launch |
 | `keybindings.git` | key chord | `Alt Shift J` | Git popup trigger | next launch |
 | `keybindings.menu` | key chord | `Alt Shift M` | Menu popup trigger | next launch |
+| `keybindings.sidebar` | key chord | `Alt Shift H` | Sidebar visibility | next launch |
+| `keybindings.sidebar_focus` | key chord | `Ctrl y` | Editor/sidebar focus | next launch |
 | `bar.widgets` | ordered string array | `editor`, `shell`, `term`, `codex_usage`, `cpu`, `ram` | Top-bar tray order; `BAR_WIDGET_VALUES` and `bar_widgets` own validation | next launch |
 
 `custom_popups.rs` owns the dynamic `[popups.<id>]` namespace. An id starts
 with an ASCII letter or `_`, then uses ASCII letters, digits, `_`, or `-`; the
-packaged ids `config`, `agent`, `git`, and `menu` are reserved.
+packaged ids `config`, `agent`, `git`, `menu`, and `yazi` are reserved.
 
 | Dynamic path | Type | Required/default | Meaning |
 | --- | --- | --- | --- |
@@ -156,8 +174,8 @@ custom popup entry.
 | `defaults/mars/config.toml` | Default Mars window/font/appearance; `mars.appearance.preset` is also Ratconfig UI theme (live palette) |
 | `defaults/zellij/config.kdl` | Zellij keys, plugins load, popup wiring, Kitty protocol |
 | `defaults/zellij/layout*.kdl` | Sidebar + stacked panes, open/closed swap |
-| `defaults/nu/` | Packaged Nu: carapace, zoxide, Starship (`format` default `:: `) |
-| `defaults/yazi/` | Opens via `yzx-open`, plugins, `Alt z` zoxide jump |
+| `defaults/nu/` | Packaged Nu: carapace, zoxide, and Starship invocation |
+| `defaults/yazi/` | Sidebar/popup role initialization, opens via `yzx-open`, plugins, `Alt z` workspace retarget |
 | `defaults/helix/config.toml` | Packaged defaults; `Alt r` reveal, `Ctrl r` reload (overridable) |
 
 ### Child packages (not owned here)
@@ -177,12 +195,14 @@ This repo packages them and applies product policy only.
 
 ### Installed closure topology
 
-`flake.nix` owns the package graph. On `x86_64-linux`, the 2026-07-12 locked
-graph realizes to **2.28 GiB across 619 store paths**. The fixed Mars-free
-variant is **1.37 GiB across 591 paths**, a measured 927 MiB reduction; its
-source-build graph contains 2,407 fewer derivations. Nova's top-level full output
-contains only 46.1 KiB of NAR data; it is a thin command, desktop-entry, and
-asset join whose references pull in the runtime.
+`flake.nix` owns the package graph. On `x86_64-linux`, the full package realizes
+to **2.28 GiB across 619 store paths**. The no-Helix package is **2.00 GiB
+across 321 paths**, excluding managed Helix, Steel, and packaged grammars. The
+fixed Mars-free variant is **1.37 GiB across 591 paths**, a measured 927 MiB
+reduction; its source-build graph contains 2,407 fewer derivations. The
+Mars- and Helix-free variant is **1.10 GiB across 293 paths**. Nova's top-level
+outputs are thin command, desktop-entry, and asset joins whose references pull
+in their selected runtime graph.
 
 The individual package closures below explain the architectural weight. They
 share libraries and tools, so no row is additive and removing one root does not
@@ -256,7 +276,7 @@ foundation fixes it at `/run/user/1001/yazelix/profile-runtime/yazelix`.
 | Cursors | Child-owned template → user file; Ratconfig edits bounded common fields and preserves custom definitions |
 | Mars | Packaged base → recursive sparse user override; cursor selection arrives separately through `YAZELIX_CURSOR_CONFIG` |
 | Nu | Packaged → optional host `mise activate nu` → optional user Nu |
-| Starship | Nova defaults → sparse user overrides → runtime-effective TOML |
+| Starship | Native defaults + `yzx-config` `character.format` → sparse user overrides → runtime-effective TOML |
 | Helix | See Helix notes below |
 | Yazi | Packaged TOML → recursive user tables + replacing scalars/arrays → managed opener/Git fetchers |
 | Zellij | Packaged → guarded scalar sidecar → runtime materialize under state dir |
@@ -271,10 +291,12 @@ top-level ownership nodes are rejected, including:
 `load_plugins`, `support_kitty_keyboard_protocol`, `env`, `session_name`,
 `attach_to_session`.
 
-The sidecar is optional and sparse. Ratconfig displays all eight effective
-packaged scalar defaults without creating it, treats assignment presence as
-explicit intent, and removes only the selected assignment on reset. Removing
-the final assignment removes the sidecar.
+The sidecar is optional and sparse. Ratconfig displays nine effective scalar
+defaults without creating it, including a theme picker derived from the 41
+identities embedded by the pinned Zellij package. Its virtual `default` removes
+the theme assignment; custom native theme names remain accepted. Assignment
+presence is explicit intent, and removing the final assignment removes the
+sidecar.
 
 `zellij/plugins.kdl` accepts only `plugins` / `load_plugins` and must not
 redeclare Yazelix-owned plugin ids (`yzpp`, `yazelix_pane_orchestrator`, …).
@@ -297,12 +319,16 @@ a new session.
 - Packaged bindings: `Alt r` reveal (reserved), `Ctrl r` reload (user-overridable).
 - `hx` and `yzx-hx` select managed Helix; other `editor.command` values skip its
   bridge.
+- The no-Helix package replaces both managed names with an unavailable command;
+  another executable name or an absolute host Helix path stays host-owned.
 
 ### Git editor boundary
 
 - `yzx-editor` resolves `editor.command`, disables the Helix bridge, waits for
   the executable, and restores Zellij's default background when it exits. It
   never calls `yzx-open` or a Zellij pane action.
+- Config file actions and Git clients invoke `yzx-editor`; the config UI drops
+  the session's editor snapshot so each action resolves the current setting.
 - Managed sessions export `yzx-editor` through `EDITOR`, `VISUAL`, and
   `GIT_EDITOR`. `YZX_EDITOR` remains the effective editor for managed Yazi opens.
 - `yzx-git` appends a LazyGit `os.edit*` overlay while retaining global and
@@ -356,7 +382,7 @@ Detail lives in Owners, checks, and the notes below.
 | ID | Contract | Owner | Check | Gap |
 | --- | --- | --- | --- | --- |
 | C1 | Front-door CLI, headless `enter`, and pre-exec diagnostics | `runtime/yzx/`, menu/tutor/config/open, screen, flake | launcher unit, `yzx-contracts`, manual PTY, helix/key parity, `nix build .#yazelix` | GUI launch |
-| C8 | Desktop entry starts `yzx` | `flake.nix` | `nix build .#yazelix` | Desktop launch |
+| C8 | Desktop entry starts `yzx`; Mars app id matches `yzx.desktop` | `flake.nix`, `runtime/yzx/` | `yzx-contracts`, `nix build .#yazelix` | Desktop launch |
 
 ### Terminal, layout, shell, editor bridge
 
@@ -394,18 +420,20 @@ Detail lives in Owners, checks, and the notes below.
 
 | ID | Contract | Owner | Check | Gap |
 | --- | --- | --- | --- | --- |
-| C13 | Fixed full/runtime packages + narrow Home Manager enable/package/optional files | `home-manager/`, flake, `yzx-config` | runtime contracts + `checks.home_manager` | Full HM switch |
+| C13 | Eight fixed Mars/managed-Helix/managed-Yazi package combinations + narrow Home Manager enable/package/optional files | `home-manager/`, flake, `yzx-config` | no-Mars/no-Helix/host-Yazi contracts + `checks.home_manager` | Full HM switch |
 
 ### Notes
 
 **C1:** Bare `yzx` → help; `launch` is explicit. Menu is a curated allowlist,
 `run` reuses the prepared environment, and reveal is tab-local. `enter` reaches
-the managed Zellij/Yazi/Helix workspace without Mars or display variables;
-terminal-specific graphics and clipboard behavior remain host-owned.
+the managed Zellij/Yazi workspace and selected editor without Mars or display
+variables; terminal-specific graphics and clipboard behavior remain host-owned.
 Diagnostics stop before Mars/Zellij handoff.
 
 **C2:** Saving `mars.appearance.preset` through `yzx config` switches the
-Ratconfig palette live; other Mars fields apply on next Mars launch.
+Ratconfig palette live. Mars also reloads opacity, font size, line height,
+scrollbar, and bell behavior in open windows; width and height apply to newly
+created windows.
 
 **C9:** Protocol/packaging (a), shared role wiring (b), user custom (c),
 agent hide + bootstrap (d), Git close-on-toggle + editor env (e). Agent

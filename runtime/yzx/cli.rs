@@ -1,6 +1,8 @@
 use std::{env, ffi::OsString, path::Path, process::Command};
 
 use crate::{
+    MARS, VERSION, YZX_CONFIG_UI, YZX_ENV_SUPERVISOR, YZX_MENU, YZX_REVEAL, YZX_SCREEN, YZX_SHELL,
+    YZX_TUTOR, YZX_WELCOME, YZX_YAZI, ZELLIJ,
     command::exec,
     desktop,
     doctor::print_doctor,
@@ -9,8 +11,7 @@ use crate::{
     paths::{enter_terminal_label, nonempty_env, runtime_path},
     runtime::Runtime,
     status::{print_status, print_status_json},
-    MARS, VERSION, YZX_CONFIG_UI, YZX_ENV_SUPERVISOR, YZX_MENU, YZX_REVEAL, YZX_SCREEN, YZX_SHELL,
-    YZX_TUTOR, YZX_WELCOME, YZX_YA, ZELLIJ,
+    yazi::YaziRuntime,
 };
 
 pub(crate) fn run() -> Result<(), AppError> {
@@ -111,7 +112,7 @@ fn exec_tutor(args: Vec<OsString>) -> Result<(), AppError> {
 }
 
 fn exec_env() -> Result<(), AppError> {
-    let runtime = Runtime::prepare()?;
+    let runtime = Runtime::prepare_with_yazi()?;
     let mut command = Command::new(YZX_ENV_SUPERVISOR);
     command.arg(YZX_SHELL);
     runtime.apply(&mut command)?;
@@ -124,18 +125,31 @@ fn exec_run(args: Vec<OsString>) -> Result<(), AppError> {
             "Usage: yzx run <program> [args...]\n".to_string(),
         ));
     };
-    let runtime = Runtime::prepare()?;
-    let mut command = Command::new(program);
+    let needs_yazi = program == "ya" || program == "yazi";
+    let runtime = if needs_yazi {
+        Runtime::prepare_with_yazi()?
+    } else {
+        Runtime::prepare()?
+    };
+    let mut command = if program == "ya" {
+        Command::new(&runtime.yazi().ya)
+    } else if program == "yazi" {
+        Command::new(YZX_YAZI)
+    } else {
+        Command::new(program)
+    };
     command.args(args);
     runtime.apply(&mut command)?;
     exec(command, "yzx run")
 }
 
 fn exec_reveal(args: Vec<OsString>) -> Result<(), AppError> {
+    let yazi = YaziRuntime::resolve()?;
+    yazi.warn();
     let mut command = Command::new(YZX_REVEAL);
     command
         .args(args)
-        .env("YZX_YA", YZX_YA)
+        .env("YZX_YA", &yazi.ya)
         .env("YZX_ZELLIJ", ZELLIJ)
         .env("PATH", runtime_path());
     exec(command, "yzx reveal")
@@ -152,7 +166,7 @@ fn exec_screen(args: Vec<OsString>) -> Result<(), AppError> {
 
 fn exec_managed(through_mars: bool, zellij_args: Vec<OsString>) -> Result<(), AppError> {
     let program = managed_program(through_mars, MARS)?;
-    let runtime = Runtime::prepare()?;
+    let runtime = Runtime::prepare_with_yazi()?;
     let mut command = Command::new(program);
     if through_mars {
         command.arg("-e").arg(YZX_WELCOME).arg(ZELLIJ);
@@ -166,7 +180,7 @@ fn exec_managed(through_mars: bool, zellij_args: Vec<OsString>) -> Result<(), Ap
         &zellij_args,
     );
     runtime.apply(&mut command)?;
-    apply_mars_cursor_config(
+    apply_mars_launch_env(
         &mut command,
         through_mars,
         &runtime.config_home.join("cursors.toml"),
@@ -199,16 +213,18 @@ fn apply_zellij_session_args(
 fn managed_program(through_mars: bool, mars: &'static str) -> Result<&'static str, AppError> {
     match (through_mars, mars) {
         (true, "") => Err(AppError::Usage(
-            "yzx launch is unavailable in the Mars-free runtime package; use yzx enter or install the complete Yazelix Nova package\n".to_string(),
+            "yzx launch is unavailable because this package omits Mars; use yzx enter or select a package that includes Mars\n".to_string(),
         )),
         (true, mars) => Ok(mars),
         (false, _) => Ok(YZX_WELCOME),
     }
 }
 
-fn apply_mars_cursor_config(command: &mut Command, through_mars: bool, path: &Path) {
+fn apply_mars_launch_env(command: &mut Command, through_mars: bool, path: &Path) {
     if through_mars {
-        command.env("YAZELIX_CURSOR_CONFIG", path);
+        command
+            .env("MARS_APP_ID", "yzx")
+            .env("YAZELIX_CURSOR_CONFIG", path);
     }
 }
 
@@ -223,13 +239,15 @@ mod tests {
         assert_eq!(managed_program(true, MARS).ok(), Some(MARS));
         let path = Path::new("/tmp/cursors.toml");
         let mut launch = Command::new(MARS);
-        apply_mars_cursor_config(&mut launch, true, path);
-        assert_eq!(
-            launch.get_envs().next(),
-            Some(("YAZELIX_CURSOR_CONFIG".as_ref(), Some(path.as_os_str())))
-        );
+        apply_mars_launch_env(&mut launch, true, path);
+        assert!(launch.get_envs().any(|(key, value)| {
+            key == "MARS_APP_ID" && value == Some(std::ffi::OsStr::new("yzx"))
+        }));
+        assert!(launch.get_envs().any(|(key, value)| {
+            key == "YAZELIX_CURSOR_CONFIG" && value == Some(path.as_os_str())
+        }));
         let mut enter = Command::new(YZX_WELCOME);
-        apply_mars_cursor_config(&mut enter, false, path);
+        apply_mars_launch_env(&mut enter, false, path);
         assert_eq!(enter.get_envs().next(), None);
     }
 

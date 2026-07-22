@@ -9,17 +9,17 @@ use std::{
 };
 
 use crate::{
+    AGENT_POPUP_KDL_CONFIG_PATH, CUSTOM_POPUP_KEYBINDINGS_KDL_CONFIG_PATH,
+    CUSTOM_POPUPS_KDL_CONFIG_PATH, MANAGED_KEYBINDING_SPECS, MARS, YAZELIX_ZELLIJ_BAR_WASM,
+    YAZELIX_ZELLIJ_PANE_ORCHESTRATOR_WASM, YAZELIX_ZELLIJ_POPUP_WASM, YZX_CONFIG, YZX_CONFIG_KDL,
+    YZX_EDITOR, YZX_HELIX, YZX_MARS_CONFIG, YZX_RUNTIME_IDENTITY, YZX_ZELLIJ_CONFIG, ZELLIJ,
     command::{
         create_dir_all_checked, run_checked, seed_permission_checked, touch_checked, trim_output,
     },
     error::{path_error, startup, AppError},
     paths::{config_home, home_dir, nonempty_env, parent, runtime_path, state_dir},
+    yazi::YaziRuntime,
     zellij::{active_layout, active_zellij_config},
-    AGENT_POPUP_KDL_CONFIG_PATH, CUSTOM_POPUPS_KDL_CONFIG_PATH,
-    CUSTOM_POPUP_KEYBINDINGS_KDL_CONFIG_PATH, MARS, POPUP_KEYBINDING_SPECS,
-    YAZELIX_ZELLIJ_BAR_WASM, YAZELIX_ZELLIJ_PANE_ORCHESTRATOR_WASM, YAZELIX_ZELLIJ_POPUP_WASM,
-    YZX_CONFIG, YZX_CONFIG_KDL, YZX_EDITOR, YZX_HELIX, YZX_MARS_CONFIG, YZX_RUNTIME_IDENTITY,
-    YZX_YA, YZX_ZELLIJ_CONFIG, ZELLIJ,
 };
 
 pub(crate) struct Runtime {
@@ -46,26 +46,27 @@ pub(crate) struct Runtime {
     pub(crate) bar_widgets: String,
     pub(crate) popup_side_margin: String,
     pub(crate) popup_vertical_margin: String,
-    pub(crate) popup_keybindings: Vec<PopupKeybinding>,
+    pub(crate) managed_keybindings: Vec<ManagedKeybinding>,
     pub(crate) zellij_status_cache: PathBuf,
     pub(crate) zellij_permissions: PathBuf,
+    yazi: Option<YaziRuntime>,
 }
 
-pub(crate) struct PopupKeybinding {
+pub(crate) struct ManagedKeybinding {
     pub(crate) label: &'static str,
     pub(crate) path: &'static str,
     pub(crate) default: &'static str,
     pub(crate) configured: String,
 }
 
-fn read_popup_keybindings(
+fn read_managed_keybindings(
     config_home: &Path,
     config_toml: &Path,
-) -> Result<Vec<PopupKeybinding>, AppError> {
-    POPUP_KEYBINDING_SPECS
+) -> Result<Vec<ManagedKeybinding>, AppError> {
+    MANAGED_KEYBINDING_SPECS
         .iter()
         .map(|&(label, path, default)| {
-            Ok(PopupKeybinding {
+            Ok(ManagedKeybinding {
                 label,
                 path,
                 default,
@@ -77,6 +78,16 @@ fn read_popup_keybindings(
 
 impl Runtime {
     pub(crate) fn prepare() -> Result<Self, AppError> {
+        Self::prepare_with(None)
+    }
+
+    pub(crate) fn prepare_with_yazi() -> Result<Self, AppError> {
+        let yazi = YaziRuntime::resolve()?;
+        yazi.warn();
+        Self::prepare_with(Some(yazi))
+    }
+
+    fn prepare_with(yazi: Option<YaziRuntime>) -> Result<Self, AppError> {
         let state_dir = state_dir()?;
         create_dir_all_checked(&state_dir, &state_dir)?;
         let runtime_identity = materialize_runtime_identity(&state_dir)?;
@@ -113,7 +124,7 @@ impl Runtime {
             &config_toml,
             "popup.vertical_margin",
         )?);
-        let popup_keybindings = read_popup_keybindings(&config_home, &config_toml)?;
+        let managed_keybindings = read_managed_keybindings(&config_home, &config_toml)?;
         let custom_popups_kdl =
             config_value(&config_home, &config_toml, CUSTOM_POPUPS_KDL_CONFIG_PATH)?;
         let custom_popup_keybindings_kdl = config_value(
@@ -150,7 +161,7 @@ impl Runtime {
             &layout,
             &popup_side_margin,
             &popup_vertical_margin,
-            &popup_keybindings,
+            &managed_keybindings,
             &agent_popup_kdl,
             &custom_popups_kdl,
             &custom_popup_keybindings_kdl,
@@ -221,9 +232,10 @@ impl Runtime {
             bar_widgets,
             popup_side_margin,
             popup_vertical_margin,
-            popup_keybindings,
+            managed_keybindings,
             zellij_status_cache,
             zellij_permissions,
+            yazi,
         })
     }
 
@@ -253,9 +265,13 @@ impl Runtime {
             .env("YAZELIX_STATUS_BAR_CACHE_PATH", &self.zellij_status_cache)
             .env("ZELLIJ_PLUGIN_PERMISSIONS_CACHE", &self.zellij_permissions)
             .env("YZX_MENU_YZX", yzx_menu_yzx)
-            .env("YZX_YA", YZX_YA)
             .env("YZX_ZELLIJ", ZELLIJ)
             .env("PATH", runtime_path());
+        if let Some(yazi) = &self.yazi {
+            command
+                .env("YZX_YAZI_BIN", &yazi.yazi)
+                .env("YZX_YA", &yazi.ya);
+        }
         if !MARS.is_empty() {
             command
                 .env("MARS_CONFIG_HOME", self.config_home.join("mars"))
@@ -267,6 +283,12 @@ impl Runtime {
                 .env("YAZELIX_HELIX_BRIDGE_ROOT", &self.bridge_root);
         }
         Ok(())
+    }
+
+    pub(crate) fn yazi(&self) -> &YaziRuntime {
+        self.yazi
+            .as_ref()
+            .expect("Yazi runtime was not prepared for this command")
     }
 
     pub(crate) fn mars_config(&self) -> String {

@@ -9,7 +9,7 @@ use crate::{
     command::{create_dir_all_checked, run_checked, trim_output},
     error::{path_error, startup, AppError},
     paths::parent,
-    runtime::PopupKeybinding,
+    runtime::ManagedKeybinding,
     DEFAULT_BAR_WIDGETS_JSON, DEFAULT_POPUP_SIDE_MARGIN, DEFAULT_POPUP_VERTICAL_MARGIN,
     DEFAULT_SHELL_PROGRAM, LAYOUT, LAYOUT_BAR_PLACEHOLDER, LAYOUT_SWAP_TEMPLATE, LAYOUT_TEMPLATE,
     LAYOUT_YAZI_PLACEHOLDER, YZX_AGENT, YZX_BAR_RENDER, YZX_BAR_RENDER_REQUEST,
@@ -38,7 +38,7 @@ pub(crate) fn active_zellij_config(
     layout: &Path,
     popup_side_margin: &str,
     popup_vertical_margin: &str,
-    popup_keybindings: &[PopupKeybinding],
+    managed_keybindings: &[ManagedKeybinding],
     agent_popup_kdl: &str,
     custom_popups_kdl: &str,
     custom_popup_keybindings_kdl: &str,
@@ -71,7 +71,7 @@ pub(crate) fn active_zellij_config(
     }
     patched =
         patch_popup_default_margins(patched, &config, popup_side_margin, popup_vertical_margin)?;
-    patched = patch_popup_keybindings(patched, &config, popup_keybindings)?;
+    patched = patch_managed_keybindings(patched, &config, managed_keybindings)?;
     patched = patch_agent_popup(patched, &config, agent_popup_kdl)?;
     patched = inject_snippet_before(
         patched,
@@ -101,13 +101,13 @@ pub(crate) fn active_zellij_config(
     ))
 }
 
-fn patch_popup_keybindings(
+fn patch_managed_keybindings(
     text: String,
     config: &Path,
-    popup_keybindings: &[PopupKeybinding],
+    managed_keybindings: &[ManagedKeybinding],
 ) -> Result<String, AppError> {
     let mut patched = text;
-    for (index, binding) in popup_keybindings.iter().enumerate() {
+    for (index, binding) in managed_keybindings.iter().enumerate() {
         if binding.configured == binding.default {
             continue;
         }
@@ -122,14 +122,14 @@ fn patch_popup_keybindings(
                 1,
             ));
         }
-        patched = patched.replace(&marker, &format!("bind __YZX_POPUP_KEY_{index}__"));
+        patched = patched.replace(&marker, &format!("bind __YZX_MANAGED_KEY_{index}__"));
     }
-    for (index, binding) in popup_keybindings.iter().enumerate() {
+    for (index, binding) in managed_keybindings.iter().enumerate() {
         if binding.configured == binding.default {
             continue;
         }
         patched = patched.replace(
-            &format!("__YZX_POPUP_KEY_{index}__"),
+            &format!("__YZX_MANAGED_KEY_{index}__"),
             &kdl_string(&binding.configured),
         );
     }
@@ -175,7 +175,7 @@ fn patch_agent_popup(
         return Ok(text);
     }
     let marker = format!(
-        "            agent {{\n                command {}\n                pane_title \"agent_popup\"\n                width_percent 100\n                height_percent 100\n                toggle_close_behavior \"hide\"\n            }}",
+        "            agent {{\n                command {}\n                pane_title \"agent_popup\"\n                width_percent 100\n                height_percent 100\n                preserve_terminal_title true\n                toggle_close_behavior \"hide\"\n            }}",
         kdl_string(YZX_AGENT),
     );
     if !text.contains(&marker) {

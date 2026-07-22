@@ -1,6 +1,6 @@
-use anyhow::{bail, Context, Result};
-use serde::Deserialize;
-use serde_json::{json, Value};
+use anyhow::{Context, Result, bail};
+use serde::{Deserialize, Serialize};
+use serde_json::{Value, json};
 use std::{
     env,
     ffi::{OsStr, OsString},
@@ -13,15 +13,21 @@ use std::{
     process::{Command, ExitCode, Output},
     time::{SystemTime, UNIX_EPOCH},
 };
+use yzx_open::sidebar::{
+    Config as OrchestratorConfig, SidebarYaziState, optional_sidebar_yazi_state, orchestrator_pipe,
+    orchestrator_query,
+};
 
 #[derive(Debug)]
 struct Config {
     editor: OsString,
     git: OsString,
+    ya: OsString,
     zellij: OsString,
     state_dir: PathBuf,
     bridge_root: PathBuf,
     session_id: String,
+    yazi_id: Option<String>,
     zellij_session_name: Option<String>,
     zellij_pane_id: Option<String>,
     log_level: LogLevel,
@@ -68,6 +74,49 @@ struct BridgeResponseError {
     message: String,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum OpenIntent {
+    Ordinary,
+    Retarget,
+}
+
+#[derive(Debug)]
+struct OpenRequest {
+    intent: OpenIntent,
+    targets: Vec<OsString>,
+}
+
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
+struct CanonicalWorkspace {
+    root: PathBuf,
+    source: WorkspaceSource,
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+enum WorkspaceSource {
+    Bootstrap,
+    Explicit,
+}
+
+#[derive(Debug, Deserialize)]
+struct ActiveTabSessionState {
+    schema_version: u64,
+    active_tab_position: usize,
+    workspace: Option<CanonicalWorkspace>,
+}
+
+#[derive(Debug, Deserialize)]
+struct WorkspaceRetargetResponse {
+    status: String,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+struct WorkspaceDecision {
+    root: PathBuf,
+    mutate: bool,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 enum LogLevel {
     Off,
@@ -99,17 +148,55 @@ fn main() -> ExitCode {
 }
 
 fn run(config: &Config, raw_targets: impl IntoIterator<Item = OsString>) -> Result<()> {
-    let targets = raw_targets
+    let request = parse_open_request(raw_targets)?;
+    let targets = request
+        .targets
         .into_iter()
         .map(abs_path)
         .collect::<Result<Vec<_>>>()?;
-    if targets.is_empty() {
-        bail!("no target paths passed");
+    for target in &targets {
+        fs::metadata(target).with_context(|| {
+            format!(
+                "target does not exist or cannot be inspected: {}",
+                target.display()
+            )
+        })?;
     }
-    log_debug(config, &format!("targets={}", json!(targets)));
-    let cwd = editor_cwd(config, &targets);
-    let opened = if uses_helix_bridge(&config.editor) {
-        try_bridge(config, &targets, &cwd)?
+    let current_state = active_tab_workspace(config)?;
+    let candidate = if request.intent == OpenIntent::Ordinary
+        && current_state.workspace.source == WorkspaceSource::Explicit
+    {
+        current_state.workspace.root.clone()
+    } else {
+        target_workspace_root(config, &targets)
+    };
+    let decision = decide_workspace(request.intent, &current_state.workspace, &candidate);
+    log_debug(
+        config,
+        &format!(
+            "operation={} tab={} source={:?} root={} candidate={} targets={}",
+            request.intent.as_str(),
+            current_state.active_tab_position,
+            current_state.workspace.source,
+            current_state.workspace.root.display(),
+            candidate.display(),
+            json!(targets),
+        ),
+    );
+
+    if decision.mutate {
+        set_workspace(config, &decision.root, WorkspaceSource::Explicit)
+            .context("could not update the canonical tab workspace")?;
+    }
+
+    let open_result = if uses_helix_bridge(&config.editor) {
+        try_bridge(config, &targets, &decision.root).and_then(|opened| {
+            if opened {
+                Ok(())
+            } else {
+                open_editor_pane(config, &targets, &decision.root)
+            }
+        })
     } else {
         log_info(
             config,
@@ -118,13 +205,36 @@ fn run(config: &Config, raw_targets: impl IntoIterator<Item = OsString>) -> Resu
                 config.editor.to_string_lossy()
             ),
         );
-        false
+        open_editor_pane(config, &targets, &decision.root)
     };
-    rename_directory_tab(config, &targets, &cwd);
-    if opened {
-        return Ok(());
+
+    if let Err(error) = open_result {
+        if decision.mutate
+            && let Err(rollback_error) = set_workspace(
+                config,
+                &current_state.workspace.root,
+                current_state.workspace.source,
+            )
+        {
+            bail!(
+                "editor operation failed: {error:#}; workspace rollback also failed: {rollback_error:#}"
+            );
+        }
+        return Err(error);
     }
-    open_editor_pane(config, &targets, &cwd)
+    if request.intent == OpenIntent::Ordinary {
+        follow_originating_sidebar(config, &current_state, &targets)?;
+    }
+    Ok(())
+}
+
+impl OpenIntent {
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::Ordinary => "open",
+            Self::Retarget => "retarget",
+        }
+    }
 }
 
 impl Config {
@@ -142,10 +252,12 @@ impl Config {
         Ok(Self {
             editor: nonempty_env("YZX_EDITOR").unwrap_or_else(|| "yzx-hx".into()),
             git: "git".into(),
+            ya: nonempty_env("YZX_YA").unwrap_or_else(|| "ya".into()),
             zellij: nonempty_env("YZX_ZELLIJ").unwrap_or_else(|| "zellij".into()),
             state_dir,
             bridge_root,
             session_id: bridge_session_id(env::var("YAZELIX_HELIX_BRIDGE_SESSION_ID").ok()),
+            yazi_id: env::var("YAZI_ID").ok().filter(|id| !id.trim().is_empty()),
             zellij_session_name: zellij_session_name_from_env(),
             zellij_pane_id: env::var("ZELLIJ_PANE_ID").ok(),
             log_level: LogLevel::from_env(),
@@ -528,32 +640,32 @@ fn focus_pane(config: &Config, pane_id: &str) -> Result<()> {
     ensure_success(&output, "zellij failed to focus editor pane")
 }
 
-fn rename_directory_tab(config: &Config, targets: &[PathBuf], cwd: &Path) {
-    if directory_target(targets).is_some() {
-        let name = project_tab_name(cwd);
-        if let Err(error) = zellij_command(config)
-            .args(["action", "rename-tab"])
-            .arg(&name)
-            .output()
-            .context("could not run zellij rename-tab")
-            .and_then(|output| ensure_success(&output, "zellij failed to rename tab"))
-        {
-            log_info(
-                config,
-                &format!("tab rename skipped name={}: {error:#}", json!(&name)),
-            );
-        }
+fn follow_originating_sidebar(
+    config: &Config,
+    state: &ActiveWorkspaceState,
+    targets: &[PathBuf],
+) -> Result<()> {
+    let Some(sidebar) = &state.sidebar_yazi else {
+        return Ok(());
+    };
+    if config.yazi_id.as_deref() != Some(&sidebar.yazi_id) {
+        return Ok(());
     }
+    let primary = &targets[0];
+    let target_dir = if primary.is_dir() {
+        primary.as_path()
+    } else {
+        primary.parent().unwrap_or_else(|| Path::new("/"))
+    };
+    let output = Command::new(&config.ya)
+        .args(["emit-to", &sidebar.yazi_id, "cd"])
+        .arg(target_dir)
+        .output()
+        .context("could not run ya")?;
+    ensure_success(&output, "ya failed to follow opened target")
 }
 
-fn project_tab_name(path: &Path) -> String {
-    path.file_name()
-        .and_then(|name| name.to_str())
-        .filter(|name| !name.trim().is_empty())
-        .map_or_else(|| path.display().to_string(), str::to_owned)
-}
-
-fn editor_cwd(config: &Config, targets: &[PathBuf]) -> PathBuf {
+fn target_workspace_root(config: &Config, targets: &[PathBuf]) -> PathBuf {
     let target_dir = directory_target(targets).cloned().unwrap_or_else(|| {
         targets[0]
             .parent()
@@ -561,6 +673,101 @@ fn editor_cwd(config: &Config, targets: &[PathBuf]) -> PathBuf {
             .to_path_buf()
     });
     workspace_root(config, &target_dir)
+}
+
+fn parse_open_request(raw_targets: impl IntoIterator<Item = OsString>) -> Result<OpenRequest> {
+    let mut targets = raw_targets.into_iter().collect::<Vec<_>>();
+    let intent =
+        if targets.first().map(OsString::as_os_str) == Some(OsStr::new("--retarget-workspace")) {
+            targets.remove(0);
+            OpenIntent::Retarget
+        } else {
+            OpenIntent::Ordinary
+        };
+    if targets.is_empty() {
+        bail!("no target paths passed");
+    }
+    if intent == OpenIntent::Retarget && targets.len() != 1 {
+        bail!("--retarget-workspace requires exactly one target path");
+    }
+    Ok(OpenRequest { intent, targets })
+}
+
+fn decide_workspace(
+    intent: OpenIntent,
+    current: &CanonicalWorkspace,
+    candidate: &Path,
+) -> WorkspaceDecision {
+    match (intent, current.source) {
+        (OpenIntent::Ordinary, WorkspaceSource::Explicit) => WorkspaceDecision {
+            root: current.root.clone(),
+            mutate: false,
+        },
+        _ => WorkspaceDecision {
+            root: candidate.to_path_buf(),
+            mutate: current.source != WorkspaceSource::Explicit || current.root != candidate,
+        },
+    }
+}
+
+fn active_tab_workspace(config: &Config) -> Result<ActiveWorkspaceState> {
+    let raw = orchestrator_query(&orchestrator_config(config), "get_active_tab_session_state")?;
+    let sidebar_yazi = optional_sidebar_yazi_state(&raw)?;
+    let state = serde_json::from_str::<ActiveTabSessionState>(&raw)
+        .context("pane orchestrator returned invalid active-tab session state")?;
+    if state.schema_version != 1 {
+        bail!(
+            "pane orchestrator returned unsupported active-tab schema {}",
+            state.schema_version
+        );
+    }
+    let workspace = state
+        .workspace
+        .context("pane orchestrator has no workspace for the active tab")?;
+    if !workspace.root.is_absolute() {
+        bail!(
+            "pane orchestrator returned a non-absolute workspace root: {}",
+            workspace.root.display()
+        );
+    }
+    Ok(ActiveWorkspaceState {
+        active_tab_position: state.active_tab_position,
+        workspace,
+        sidebar_yazi,
+    })
+}
+
+#[derive(Debug)]
+struct ActiveWorkspaceState {
+    active_tab_position: usize,
+    workspace: CanonicalWorkspace,
+    sidebar_yazi: Option<SidebarYaziState>,
+}
+
+fn set_workspace(config: &Config, root: &Path, source: WorkspaceSource) -> Result<()> {
+    let payload = json!({
+        "workspace_root": root,
+        "workspace_source": source,
+        "cd_focused_pane": false,
+        "editor": null,
+        "sidebar_yazi": null,
+    })
+    .to_string();
+    let raw = orchestrator_pipe(&orchestrator_config(config), "retarget_workspace", &payload)?;
+    let response = serde_json::from_str::<WorkspaceRetargetResponse>(&raw)
+        .with_context(|| format!("pane orchestrator rejected workspace state: {raw}"))?;
+    if response.status != "ok" {
+        bail!("pane orchestrator rejected workspace state: {raw}");
+    }
+    Ok(())
+}
+
+fn orchestrator_config(config: &Config) -> OrchestratorConfig {
+    OrchestratorConfig {
+        ya: config.ya.clone(),
+        zellij: config.zellij.clone(),
+        zellij_session_name: config.zellij_session_name.clone().map(OsString::from),
+    }
 }
 
 fn workspace_root(config: &Config, target_dir: &Path) -> PathBuf {
@@ -778,6 +985,13 @@ mod tests {
         fn new(name: &str) -> Self {
             let root = test_dir(name);
             fs::create_dir_all(&root).unwrap();
+            write_nu_executable(
+                &root.join("ya"),
+                &format!(
+                    "def --wrapped main [...args: string] {{\n    ($args | str join \" \") + \"\\n\" | save --raw --append '{}'\n}}\n",
+                    root.join("ya.log").display()
+                ),
+            );
             Self {
                 zellij: root.join("zellij"),
                 zellij_log: root.join("zellij.log"),
@@ -793,10 +1007,12 @@ mod tests {
             Config {
                 editor: editor.into_os_string(),
                 git: "__missing_git__".into(),
+                ya: self.root.join("ya").into_os_string(),
                 zellij: self.zellij.clone().into_os_string(),
                 state_dir: self.root.clone(),
                 bridge_root: self.root.join("helix_bridge"),
                 session_id: session_id.into(),
+                yazi_id: None,
                 zellij_session_name: None,
                 zellij_pane_id: None,
                 log_level: LogLevel::Debug,
@@ -804,12 +1020,42 @@ mod tests {
         }
 
         fn write_zellij(&self, fail_focus: bool, list_panes_json: Option<&str>) {
+            self.write_zellij_with_workspace(
+                fail_focus,
+                list_panes_json,
+                &self.root,
+                WorkspaceSource::Bootstrap,
+                false,
+            );
+        }
+
+        fn write_zellij_with_workspace(
+            &self,
+            fail_focus: bool,
+            list_panes_json: Option<&str>,
+            workspace_root: &Path,
+            workspace_source: WorkspaceSource,
+            fail_editor_open: bool,
+        ) {
             let list_panes = list_panes_json
                 .map(|panes| format!("{panes:?}"))
                 .unwrap_or_else(|| "null".to_owned());
+            let session_state = json!({
+                "schema_version": 1,
+                "active_tab_position": 0,
+                "sidebar_yazi": {
+                    "yazi_id": "managed-yazi",
+                    "cwd": workspace_root,
+                },
+                "workspace": {
+                    "root": workspace_root,
+                    "source": workspace_source,
+                },
+            });
             let header = format!(
-                "const LOG = {:?}\nconst LIST_PANES = {list_panes}\nconst FAIL_FOCUS = {fail_focus}\n",
-                self.zellij_log.to_string_lossy()
+                "const LOG = {:?}\nconst LIST_PANES = {list_panes}\nconst FAIL_FOCUS = {fail_focus}\nconst SESSION_STATE = {:?}\nconst FAIL_EDITOR_OPEN = {fail_editor_open}\n",
+                self.zellij_log.to_string_lossy(),
+                session_state.to_string(),
             );
             let body = header
                 + r#"def --wrapped main [...args: string] {
@@ -824,8 +1070,22 @@ mod tests {
         print $LIST_PANES
         return
     }
+    if $action == "action" and $subcommand == "pipe" {
+        if ($joined | str contains "--name get_active_tab_session_state") {
+            print $SESSION_STATE
+            return
+        }
+        if ($joined | str contains "--name retarget_workspace") {
+            print '{"status":"ok"}'
+            return
+        }
+    }
     if $action == "action" and $subcommand == "focus-pane-id" and $FAIL_FOCUS {
         print --stderr "Pane with id Terminal(1) not found"
+        exit 1
+    }
+    if $action == "run" and $FAIL_EDITOR_OPEN {
+        print --stderr "editor pane failed"
         exit 1
     }
 }
@@ -879,7 +1139,10 @@ mod tests {
     }
 
     fn open_main_rs(config: &Config) -> Result<()> {
-        run(config, [OsString::from("/tmp/project/src/main.rs")])
+        let target = config.state_dir.join("project/src/main.rs");
+        fs::create_dir_all(target.parent().unwrap()).unwrap();
+        fs::write(&target, "").unwrap();
+        run(config, [target.into_os_string()])
     }
 
     fn spawn_ok_bridge(socket_path: &Path, request_path: PathBuf) -> thread::JoinHandle<()> {
@@ -970,10 +1233,71 @@ mod tests {
     }
 
     #[test]
+    fn open_intent_and_workspace_source_define_the_only_retarget_paths() {
+        let explicit = CanonicalWorkspace {
+            root: "/repo".into(),
+            source: WorkspaceSource::Explicit,
+        };
+        for candidate in [
+            "/repo/docs",
+            "/repo/docs/text/personal_files",
+            "/repo/vendor/nested-repo",
+            "/repo/non-git-tree",
+        ] {
+            assert_eq!(
+                decide_workspace(OpenIntent::Ordinary, &explicit, Path::new(candidate)),
+                WorkspaceDecision {
+                    root: "/repo".into(),
+                    mutate: false,
+                },
+                "ordinary open must preserve the canonical root for {candidate}"
+            );
+        }
+
+        let bootstrap = CanonicalWorkspace {
+            root: "/bootstrap".into(),
+            source: WorkspaceSource::Bootstrap,
+        };
+        assert_eq!(
+            decide_workspace(OpenIntent::Ordinary, &bootstrap, Path::new("/repo")),
+            WorkspaceDecision {
+                root: "/repo".into(),
+                mutate: true,
+            }
+        );
+        assert_eq!(
+            decide_workspace(OpenIntent::Retarget, &explicit, Path::new("/other")),
+            WorkspaceDecision {
+                root: "/other".into(),
+                mutate: true,
+            }
+        );
+    }
+
+    #[test]
+    fn retarget_flag_is_explicit_and_single_target() {
+        let request = parse_open_request([
+            OsString::from("--retarget-workspace"),
+            OsString::from("/repo"),
+        ])
+        .unwrap();
+        assert_eq!(request.intent, OpenIntent::Retarget);
+        assert_eq!(request.targets, [OsString::from("/repo")]);
+        assert!(
+            parse_open_request([
+                OsString::from("--retarget-workspace"),
+                OsString::from("/one"),
+                OsString::from("/two"),
+            ])
+            .is_err()
+        );
+    }
+
+    #[test]
     fn builds_file_and_directory_open_payloads() {
         let config = TestRuntime::new("payloads").config("session");
         let targets = vec![PathBuf::from("/tmp/project/src/main.rs")];
-        let cwd = editor_cwd(&config, &targets);
+        let cwd = target_workspace_root(&config, &targets);
         let (action, payload) = bridge_open_request(&targets, &cwd);
         assert_eq!(action, "helix.open_files");
         assert_eq!(payload["working_dir"], "/tmp/project/src");
@@ -986,7 +1310,7 @@ mod tests {
         fs::write(&file, "").unwrap();
         let targets = vec![file, root.clone()];
 
-        let cwd = editor_cwd(&config, &targets);
+        let cwd = target_workspace_root(&config, &targets);
         let (action, payload) = bridge_open_request(&targets, &cwd);
         assert_eq!(action, "helix.open_directory");
         assert_eq!(payload["working_dir"], root.to_string_lossy().to_string());
@@ -995,7 +1319,7 @@ mod tests {
     }
 
     #[test]
-    fn directory_open_uses_workspace_root_for_tab_and_editor_cwd() {
+    fn bootstrap_directory_open_publishes_workspace_before_opening_editor() {
         let runtime = TestRuntime::new("workspace-root");
         let git = runtime.root.join("git");
         let repo = runtime.root.join("repo");
@@ -1016,6 +1340,7 @@ mod tests {
         run(
             &Config {
                 git: git.into_os_string(),
+                yazi_id: Some("managed-yazi".into()),
                 ..runtime.config("test-session")
             },
             [target.clone().into_os_string()],
@@ -1023,12 +1348,21 @@ mod tests {
         .unwrap();
 
         let log = runtime.zellij_log();
-        assert!(log.contains("args=action rename-tab repo"), "{log}");
+        assert!(log.contains("--name retarget_workspace"), "{log}");
+        assert!(
+            log.contains(&format!(r#""workspace_root":"{}""#, repo.display())),
+            "{log}"
+        );
+        assert!(!log.contains("rename-tab"), "{log}");
         assert!(
             log.contains(&format!("args=run --name editor --cwd {}", repo.display())),
             "{log}"
         );
         assert!(log.contains(target.to_string_lossy().as_ref()), "{log}");
+        assert_eq!(
+            fs::read_to_string(runtime.root.join("ya.log")).unwrap(),
+            format!("emit-to managed-yazi cd {}\n", target.display())
+        );
     }
 
     #[test]
@@ -1038,13 +1372,42 @@ mod tests {
         let (socket_path, request_path) =
             runtime.write_registry(session_id, None, Some("terminal:7"));
         let panes = pane_list(&[(3, 2), (7, 2)]);
-        runtime.write_zellij(false, Some(&panes));
+        let workspace = runtime.root.join("project");
+        runtime.write_zellij_with_workspace(
+            false,
+            Some(&panes),
+            &workspace,
+            WorkspaceSource::Explicit,
+            false,
+        );
         let server = spawn_ok_bridge(&socket_path, request_path.clone());
+        let git_probe = runtime.root.join("git-probe");
+        let git = runtime.root.join("git");
+        write_nu_executable(
+            &git,
+            &format!("def --wrapped main [...args: string] {{{{ touch '{}' }}}}\n", git_probe.display()),
+        );
 
-        open_main_rs(&Config {
+        let config = Config {
+            git: git.into_os_string(),
+            yazi_id: Some("managed-yazi".into()),
             zellij_pane_id: Some("terminal:3".into()),
             ..runtime.config(session_id)
-        })
+        };
+        let primary_dir = workspace.join("docs/personal files");
+        let primary = primary_dir.join("transcription.md");
+        let secondary = workspace.join("src/other.rs");
+        for target in [&primary, &secondary] {
+            fs::create_dir_all(target.parent().unwrap()).unwrap();
+            fs::write(target, "").unwrap();
+        }
+        run(
+            &config,
+            [
+                primary.clone().into_os_string(),
+                secondary.clone().into_os_string(),
+            ],
+        )
         .unwrap();
         server.join().unwrap();
 
@@ -1054,7 +1417,17 @@ mod tests {
         assert_eq!(request["action"], "helix.open_files");
         assert_eq!(
             request["payload"]["file_paths"],
-            json!(["/tmp/project/src/main.rs"])
+            json!([primary, secondary])
+        );
+        assert_eq!(request["payload"]["working_dir"], json!(workspace));
+        assert!(!runtime.zellij_log().contains("--name retarget_workspace"));
+        assert_eq!(
+            fs::read_to_string(runtime.root.join("ya.log")).unwrap(),
+            format!("emit-to managed-yazi cd {}\n", primary_dir.display())
+        );
+        assert!(
+            !git_probe.exists(),
+            "ordinary explicit opens must not probe Git"
         );
     }
 
@@ -1090,6 +1463,7 @@ mod tests {
             !request_path.exists(),
             "{command} unexpectedly sent a Helix bridge request"
         );
+        assert!(!runtime.root.join("ya.log").exists());
     }
 
     #[test]
@@ -1108,6 +1482,38 @@ mod tests {
         assert!(error.contains("editor command not found"), "{error}");
         let log = fs::read_to_string(&runtime.zellij_log).unwrap_or_default();
         assert!(!log.contains("args=run --name editor"), "{log}");
+    }
+
+    #[test]
+    fn failed_editor_open_restores_the_previous_root_and_source() {
+        let runtime = TestRuntime::new("workspace-rollback");
+        let editor = runtime.root.join("nvim");
+        write_nu_executable(&editor, "def --wrapped main [...args: string] { exit 0 }\n");
+        runtime.write_zellij_with_workspace(
+            false,
+            None,
+            &runtime.root,
+            WorkspaceSource::Bootstrap,
+            true,
+        );
+
+        let error = open_main_rs(&Config {
+            editor: editor.into_os_string(),
+            yazi_id: Some("managed-yazi".into()),
+            ..runtime.config("test-session")
+        })
+        .unwrap_err()
+        .to_string();
+
+        assert!(
+            error.contains("zellij failed to open editor pane"),
+            "{error}"
+        );
+        let log = runtime.zellij_log();
+        assert_eq!(log.matches("--name retarget_workspace").count(), 2, "{log}");
+        assert!(log.contains(r#""workspace_source":"explicit""#), "{log}");
+        assert!(log.contains(r#""workspace_source":"bootstrap""#), "{log}");
+        assert!(!runtime.root.join("ya.log").exists());
     }
 
     #[test]

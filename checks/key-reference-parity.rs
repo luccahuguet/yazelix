@@ -64,21 +64,23 @@ fn catalog_key_binding(line: &str) -> Option<KeyBinding> {
 }
 
 fn config_has_chord(config: &str, chord: &str) -> bool {
+    let placeholder = match chord {
+        "Alt Shift J" => Some("gitKey"),
+        "Alt Shift K" => Some("configKey"),
+        "Alt Shift L" => Some("agentKey"),
+        "Alt Shift M" => Some("menuKey"),
+        "Alt Shift H" => Some("sidebarKey"),
+        "Ctrl y" => Some("sidebarFocusKey"),
+        _ => None,
+    };
+    if let Some(placeholder) = placeholder {
+        return config.contains(&format!(r#"bind "{chord}""#))
+            || config.contains(&format!(r#"bind "@{placeholder}@""#));
+    }
+
     match chord {
         "Alt h / Alt Left" => config.contains(r#"bind "Alt h" "Alt Left""#),
         "Alt l / Alt Right" => config.contains(r#"bind "Alt l" "Alt Right""#),
-        "Alt Shift J" => {
-            config.contains(r#"bind "Alt Shift J""#) || config.contains(r#"bind "@gitKey@""#)
-        }
-        "Alt Shift K" => {
-            config.contains(r#"bind "Alt Shift K""#) || config.contains(r#"bind "@configKey@""#)
-        }
-        "Alt Shift L" => {
-            config.contains(r#"bind "Alt Shift L""#) || config.contains(r#"bind "@agentKey@""#)
-        }
-        "Alt Shift M" => {
-            config.contains(r#"bind "Alt Shift M""#) || config.contains(r#"bind "@menuKey@""#)
-        }
         "Alt 1-9" => {
             (1..=9).all(|tab| config.contains(&format!(r#"bind "Alt {tab}" {{ GoToTab {tab}; }}"#)))
         }

@@ -25,6 +25,7 @@ pub(crate) struct ConfigPaths {
     pub(crate) yazi_keymap: PathBuf,
     pub(crate) yazi_package: PathBuf,
     pub(crate) yazi_theme: PathBuf,
+    pub(crate) packaged_yazi: PathBuf,
     pub(crate) zellij_plugins: PathBuf,
 }
 impl ConfigPaths {
@@ -107,6 +108,9 @@ pub(crate) fn config_paths() -> Result<ConfigPaths> {
         yazi_keymap: home.join("yazi/keymap.toml"),
         yazi_package: home.join("yazi/package.toml"),
         yazi_theme: home.join("yazi/theme.toml"),
+        packaged_yazi: option_env!("YAZELIX_PACKAGED_YAZI")
+            .map(PathBuf::from)
+            .ok_or_else(|| error("yzx-config is missing its packaged Yazi config"))?,
         zellij_plugins: home.join("zellij/plugins.kdl"),
     })
 }
