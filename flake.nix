@@ -805,10 +805,7 @@
         [settings]
         trail = "reef"
       '';
-      fakePromptStarship = pkgs.writeText "hm-prompt-starship.toml" ''
-        format = "$directory"
-      '';
-      fakeYaziStarship = pkgs.writeText "hm-yazi-starship.toml" ''
+      fakeStarship = pkgs.writeText "hm-starship.toml" ''
         format = "$directory$git_branch"
       '';
       fakeYaziFlavor = pkgs.writeTextDir "flavor.toml" ''
@@ -843,8 +840,8 @@
       };
       homeManagerSharedStarship = homeManagerConfiguration {
         programs.yazelix.config = {
-          starship.source = fakePromptStarship;
-          yazi.starship.source = fakePromptStarship;
+          starship.source = fakeStarship;
+          yazi.starship.source = fakeStarship;
         };
       };
       homeManagerConfigFiles = homeManagerConfiguration {
@@ -864,7 +861,7 @@
           cursors.source = fakeCursors;
           mars.text = "[window]\nwidth = 1200\n";
           zellij.text = "pane_frames false\n";
-          starship.source = fakePromptStarship;
+          starship.text = "[character]\nformat = \"::\"\n";
           helix.config.text = "[editor]\nline-number = \"relative\"\n";
           helix.languages.source = fakeHelixLanguages;
           helix.module.text = "(provide yzx-test)\n";
@@ -873,7 +870,7 @@
           yazi.init.text = "-- init\n";
           yazi.keymap.text = "[manager]\n";
           yazi.package.text = "[plugin]\ndeps = []\n";
-          yazi.starship.source = fakeYaziStarship;
+          yazi.starship.source = fakeStarship;
           yazi.theme.text = "[flavor]\ndark = \"example\"\n";
           nu.env.text = "# env\n";
           nu.config.text = "# config\n";
@@ -945,7 +942,8 @@
         test "$(YAZELIX_CONFIG_HOME="$config_files" ${yzx}/libexec/yazelix/yzx-config --get keybindings.sidebar_focus)" = "Ctrl Shift E"
         grep -q 'width = 1200' "$config_files/mars/config.toml"
         grep -q 'pane_frames false' "$config_files/zellij/config.kdl"
-        grep -Fqx 'format = "$directory"' "$config_files/starship.toml"
+        grep -q '^\[character\]$' "$config_files/starship.toml"
+        grep -q 'format = "::"' "$config_files/starship.toml"
         grep -q 'line-number = "relative"' "$config_files/helix/config.toml"
         grep -q 'name = "nix"' "$config_files/helix/languages.toml"
         grep -q '(provide yzx-test)' "$config_files/helix/helix.scm"
@@ -970,7 +968,7 @@
           "$(readlink -f "$shared_config_files/yazi/starship.toml")"
         shared_yazi_runtime="$(${yzxYaziMaterializer}/bin/yzx-yazi-config ${yzx}/share/yazelix/yazi "$shared_config_files/yazi" "$TMPDIR/shared-yazi-state")"
         test "$shared_yazi_runtime" = "$TMPDIR/shared-yazi-state/yazi"
-        grep -Fqx 'format = "$directory"' "$shared_yazi_runtime/yazelix_starship.toml"
+        grep -Fqx 'format = "$directory$git_branch"' "$shared_yazi_runtime/yazelix_starship.toml"
         grep -q '# config' "$config_files/nu/config.nu"
 
         export HOME="$TMPDIR/hm-yzx-home"

@@ -7,7 +7,7 @@ User-visible runtime changes for Yazelix Nova live here.
 - Managed Yazi accepts an optional complete Starship configuration at
   `yazi/starship.toml`, including through the Home Manager
   `programs.yazelix.config.yazi.starship` native-file option. Omission retains
-  Nova's packaged compact header; presence alone activates atomic
+  Nova's packaged compact header; presence alone activates staged
   materialization and replaces that config after TOML validation.
 - `yzx yazi-config materialize --user-config-dir <path> --state-dir <path>`
   exposes Nova's existing Yazi layering for automation. It uses the selected

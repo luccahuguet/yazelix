@@ -546,12 +546,7 @@ edit = [{ run = "nvim %s" }]
                 fs::read_to_string(user.join(name)).unwrap()
             );
         }
-        assert!(
-            fs::symlink_metadata(runtime.join("yazelix_starship.toml"))
-                .unwrap()
-                .file_type()
-                .is_symlink()
-        );
+        assert!(runtime.join("yazelix_starship.toml").is_symlink());
     }
 
     #[test]
@@ -664,12 +659,7 @@ edit = [{ run = "nvim %s" }]
             fs::read_to_string(&starship).unwrap(),
             "format = '$directory$git_branch'\n"
         );
-        assert!(
-            fs::symlink_metadata(starship)
-                .unwrap()
-                .file_type()
-                .is_symlink()
-        );
+        assert!(starship.is_symlink());
     }
 
     #[test]
