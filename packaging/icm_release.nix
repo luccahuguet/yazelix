@@ -18,6 +18,11 @@ rustPlatform.buildRustPackage {
   cargoBuildFlags = [
     "-p"
     "icm-cli"
+    # web: `icm serve --expose` dashboard + self-hosted cloud API. The
+    # SvelteKit SPA is embedded from the checked-in web/dist snapshot, so
+    # no JS toolchain is needed in the sandbox.
+    "--features"
+    "web"
   ];
   doCheck = false;
 

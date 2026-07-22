@@ -72,7 +72,7 @@
       flake = false;
     };
     icm_source = {
-      url = "github:FlexNetOS/icm/03d63a9102ce7f2c17cc7df66ac1aded46def88e";
+      url = "github:FlexNetOS/icm/6c357d85b7bcbb3dcb2e11f6a42a6a198255e99d";
       flake = false;
     };
     weave_source = {
