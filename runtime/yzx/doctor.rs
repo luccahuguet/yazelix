@@ -1,23 +1,17 @@
-use std::{
-    env,
-    ffi::OsStr,
-    fmt::Display,
-    fs,
-    os::unix::{ffi::OsStrExt, fs::PermissionsExt},
-    path::Path,
-};
+use std::{env, ffi::OsStr, fmt::Display, fs, os::unix::ffi::OsStrExt, path::Path};
 
 use crate::{
-    error::{path_error, startup, AppError},
-    paths::{runtime_path, zellij_session_label},
-    runtime::Runtime,
-    yazi::YaziRuntime,
     AGENT_AUTO_COMMAND, HELIX_REVEAL_COMMAND, LAYOUT, LAYOUT_SWAP_TEMPLATE, LAYOUT_TEMPLATE,
     MANAGED_HELIX, MARS, PACKAGE_VARIANT, YAZELIX_ZELLIJ_BAR_WASM,
     YAZELIX_ZELLIJ_PANE_ORCHESTRATOR_WASM, YAZELIX_ZELLIJ_POPUP_WASM, YAZI_SOURCE,
     YAZI_TESTED_VERSION, YZX_BAR_RENDER, YZX_BAR_RENDER_REQUEST, YZX_CONFIG, YZX_CONFIG_KDL,
     YZX_CONFIG_UI, YZX_HELIX, YZX_MENU, YZX_REVEAL, YZX_SCREEN, YZX_SIDEBAR_REFRESH, YZX_TUTOR,
     YZX_WELCOME, YZX_YAZI, YZX_ZELLIJ_CONFIG, ZELLIJ,
+    command::executable_file,
+    error::{AppError, path_error, startup},
+    paths::{runtime_path, zellij_session_label},
+    runtime::Runtime,
+    yazi::YaziRuntime,
 };
 
 pub(crate) fn print_doctor() -> Result<(), AppError> {
@@ -193,11 +187,6 @@ fn command_exists(command: &OsStr, path: Option<&OsStr>) -> bool {
     path.into_iter()
         .flat_map(env::split_paths)
         .any(|dir| executable_file(&dir.join(command)))
-}
-
-fn executable_file(path: &Path) -> bool {
-    fs::metadata(path)
-        .is_ok_and(|metadata| metadata.is_file() && metadata.permissions().mode() & 0o111 != 0)
 }
 
 fn doctor_ok(label: &str, value: impl Display) {

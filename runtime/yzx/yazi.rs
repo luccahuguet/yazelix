@@ -2,15 +2,15 @@ use std::{
     env,
     ffi::{OsStr, OsString},
     fs,
-    os::unix::fs::PermissionsExt,
-    path::{Path, PathBuf},
+    path::PathBuf,
     process::Command,
 };
 
 use crate::{
     YA_COMMAND, YAZI_COMMAND, YAZI_SOURCE, YAZI_TESTED_VERSION,
+    command::executable_file,
     error::{AppError, startup},
-    paths::runtime_path,
+    paths::{nonempty_env, runtime_path},
 };
 
 pub(crate) struct YaziRuntime {
@@ -41,8 +41,8 @@ impl YaziRuntime {
             ));
         }
 
-        let inherited_yazi = env::var_os("YZX_YAZI_BIN").filter(|value| !value.is_empty());
-        let inherited_ya = env::var_os("YZX_YA").filter(|value| !value.is_empty());
+        let inherited_yazi = nonempty_env("YZX_YAZI_BIN");
+        let inherited_ya = nonempty_env("YZX_YA");
         let (yazi_command, ya_command) = match (inherited_yazi, inherited_ya) {
             (Some(yazi), Some(ya)) => (yazi, ya),
             _ => (YAZI_COMMAND.into(), YA_COMMAND.into()),
@@ -137,11 +137,6 @@ fn resolve_command(command: &OsStr, lookup_path: &OsStr) -> Result<PathBuf, Stri
         .map_err(|error| format!("could not resolve {}: {error}", candidate.display()))
 }
 
-fn executable_file(path: &Path) -> bool {
-    fs::metadata(path)
-        .is_ok_and(|metadata| metadata.is_file() && metadata.permissions().mode() & 0o111 != 0)
-}
-
 fn parse_version(label: &str, output: &str) -> Option<String> {
     let mut fields = output.split_whitespace();
     let program = fields.next()?;
@@ -176,7 +171,7 @@ fn host_pair_error(failures: Vec<String>, lookup_path: &OsStr) -> AppError {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::os::unix::fs::symlink;
+    use std::os::unix::fs::{PermissionsExt, symlink};
 
     #[test]
     fn parses_upstream_and_distribution_version_output() {
