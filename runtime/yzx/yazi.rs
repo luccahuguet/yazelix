@@ -8,9 +8,9 @@ use std::{
 };
 
 use crate::{
-    error::{startup, AppError},
+    YA_COMMAND, YAZI_COMMAND, YAZI_SOURCE, YAZI_TESTED_VERSION,
+    error::{AppError, startup},
     paths::runtime_path,
-    YAZI_COMMAND, YAZI_SOURCE, YAZI_TESTED_VERSION, YA_COMMAND,
 };
 
 pub(crate) struct YaziRuntime {
@@ -148,10 +148,8 @@ fn parse_version(label: &str, output: &str) -> Option<String> {
     if !program.eq_ignore_ascii_case(label) {
         return None;
     }
-    fields
-        .next()
-        .map(|version| version.trim_start_matches('v').to_string())
-        .filter(|version| !version.is_empty() && version.contains('.'))
+    let version = fields.next()?.trim_start_matches('v');
+    (!version.is_empty() && version.contains('.')).then(|| version.to_string())
 }
 
 fn validate_versions(yazi: &str, ya: &str, tested: &str) -> Result<Option<String>, String> {
@@ -178,12 +176,7 @@ fn host_pair_error(failures: Vec<String>, lookup_path: &OsStr) -> AppError {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::{
-        os::unix::fs::symlink,
-        sync::atomic::{AtomicU64, Ordering},
-    };
-
-    static NEXT: AtomicU64 = AtomicU64::new(0);
+    use std::os::unix::fs::symlink;
 
     #[test]
     fn parses_upstream_and_distribution_version_output() {
@@ -199,9 +192,11 @@ mod tests {
     #[test]
     fn rejects_mixed_pairs_and_warns_for_matching_untested_pairs() {
         assert_eq!(validate_versions("26.5.6", "26.5.6", "26.5.6"), Ok(None));
-        assert!(validate_versions("26.6.1", "26.5.6", "26.5.6")
-            .unwrap_err()
-            .contains("exactly matching pair"));
+        assert!(
+            validate_versions("26.6.1", "26.5.6", "26.5.6")
+                .unwrap_err()
+                .contains("exactly matching pair")
+        );
         assert_eq!(
             validate_versions("26.6.1", "26.6.1", "26.5.6"),
             Ok(Some(
@@ -212,24 +207,35 @@ mod tests {
     }
 
     #[test]
-    fn resolves_the_first_executable_to_one_canonical_path() {
-        let root = env::temp_dir().join(format!(
-            "yzx-yazi-resolve-{}-{}",
-            std::process::id(),
-            NEXT.fetch_add(1, Ordering::Relaxed)
-        ));
+    fn resolves_and_validates_commands() {
+        let root = env::temp_dir().join(format!("yzx-yazi-resolve-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
         let first = root.join("first");
         let second = root.join("second");
         fs::create_dir_all(&first).unwrap();
         fs::create_dir_all(&second).unwrap();
         let executable = env::current_exe().unwrap();
+        let invalid_executable = second.join("yazi");
+        fs::write(&invalid_executable, "not an executable format").unwrap();
+        fs::set_permissions(&invalid_executable, fs::Permissions::from_mode(0o755)).unwrap();
         symlink(&executable, first.join("yazi")).unwrap();
-        symlink(&executable, second.join("yazi")).unwrap();
         let path = env::join_paths([&first, &second]).unwrap();
 
         assert_eq!(
             resolve_command(OsStr::new("yazi"), &path).unwrap(),
             fs::canonicalize(executable).unwrap()
+        );
+        fs::set_permissions(&invalid_executable, fs::Permissions::from_mode(0o644)).unwrap();
+        assert!(
+            resolve_command(invalid_executable.as_os_str(), &path)
+                .unwrap_err()
+                .contains("command is not executable")
+        );
+        fs::set_permissions(&invalid_executable, fs::Permissions::from_mode(0o755)).unwrap();
+        assert!(
+            probe_command("yazi", invalid_executable.as_os_str(), &path)
+                .unwrap_err()
+                .contains("failed to run")
         );
         fs::remove_dir_all(root).unwrap();
     }
