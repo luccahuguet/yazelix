@@ -14,12 +14,11 @@ use crate::{
 };
 
 pub(crate) struct YaziRuntime {
-    source: &'static str,
-    lookup_path: OsString,
-    yazi: PathBuf,
-    ya: PathBuf,
-    version: String,
-    warning: Option<String>,
+    pub(crate) lookup_path: OsString,
+    pub(crate) yazi: PathBuf,
+    pub(crate) ya: PathBuf,
+    pub(crate) version: String,
+    pub(crate) warning: Option<String>,
 }
 
 impl YaziRuntime {
@@ -27,7 +26,6 @@ impl YaziRuntime {
         let lookup_path = runtime_path();
         if YAZI_SOURCE == "bundled" {
             return Ok(Self {
-                source: YAZI_SOURCE,
                 lookup_path,
                 yazi: YAZI_COMMAND.into(),
                 ya: YA_COMMAND.into(),
@@ -49,25 +47,22 @@ impl YaziRuntime {
             (Some(yazi), Some(ya)) => (yazi, ya),
             _ => (YAZI_COMMAND.into(), YA_COMMAND.into()),
         };
-        let yazi = probe_command("yazi", &yazi_command, &lookup_path);
-        let ya = probe_command("ya", &ya_command, &lookup_path);
-        let mut failures = Vec::new();
-        if let Err(error) = &yazi {
-            failures.push(error.clone());
-        }
-        if let Err(error) = &ya {
-            failures.push(error.clone());
-        }
-        if !failures.is_empty() {
-            return Err(host_pair_error(failures, &lookup_path));
-        }
-        let (yazi, yazi_version) = yazi.unwrap();
-        let (ya, ya_version) = ya.unwrap();
+        let ((yazi, yazi_version), (ya, ya_version)) = match (
+            probe_command("yazi", &yazi_command, &lookup_path),
+            probe_command("ya", &ya_command, &lookup_path),
+        ) {
+            (Ok(yazi), Ok(ya)) => (yazi, ya),
+            (yazi, ya) => {
+                return Err(host_pair_error(
+                    [yazi.err(), ya.err()].into_iter().flatten().collect(),
+                    &lookup_path,
+                ));
+            }
+        };
         let warning = validate_versions(&yazi_version, &ya_version, YAZI_TESTED_VERSION)
             .map_err(|error| host_pair_error(vec![error], &lookup_path))?;
 
         Ok(Self {
-            source: YAZI_SOURCE,
             lookup_path,
             yazi,
             ya,
@@ -80,34 +75,6 @@ impl YaziRuntime {
         if let Some(warning) = &self.warning {
             eprintln!("warn yazi compatibility: {warning}");
         }
-    }
-
-    pub(crate) fn source(&self) -> &str {
-        self.source
-    }
-
-    pub(crate) fn lookup_path(&self) -> &OsStr {
-        &self.lookup_path
-    }
-
-    pub(crate) fn yazi(&self) -> &Path {
-        &self.yazi
-    }
-
-    pub(crate) fn ya(&self) -> &Path {
-        &self.ya
-    }
-
-    pub(crate) fn version(&self) -> &str {
-        &self.version
-    }
-
-    pub(crate) fn tested_version(&self) -> &str {
-        YAZI_TESTED_VERSION
-    }
-
-    pub(crate) fn warning(&self) -> Option<&str> {
-        self.warning.as_deref()
     }
 }
 

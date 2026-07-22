@@ -256,8 +256,8 @@ impl Runtime {
             .env("PATH", runtime_path());
         if let Some(yazi) = &self.yazi {
             command
-                .env("YZX_YAZI_BIN", yazi.yazi())
-                .env("YZX_YA", yazi.ya());
+                .env("YZX_YAZI_BIN", &yazi.yazi)
+                .env("YZX_YA", &yazi.ya);
         }
         if !MARS.is_empty() {
             command

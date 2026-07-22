@@ -665,55 +665,47 @@
             '';
           meta.platforms = supportedSystems;
         };
+    in rec {
       yazelix = mkYzx {
         withManagedHelix = true;
         withManagedYazi = true;
         withMars = true;
       };
-      yzxNoHelix = mkYzx {
+      yazelix-no-helix = mkYzx {
         withManagedHelix = false;
         withManagedYazi = true;
         withMars = true;
       };
-      yzxNoYazi = mkYzx {
+      yazelix-no-yazi = mkYzx {
         withManagedHelix = true;
         withManagedYazi = false;
         withMars = true;
       };
-      yzxNoHelixNoYazi = mkYzx {
+      yazelix-no-helix-no-yazi = mkYzx {
         withManagedHelix = false;
         withManagedYazi = false;
         withMars = true;
       };
-      yzxNoMars = mkYzx {
+      yazelix-no-mars = mkYzx {
         withManagedHelix = true;
         withManagedYazi = true;
         withMars = false;
       };
-      yzxNoMarsNoHelix = mkYzx {
+      yazelix-no-mars-no-helix = mkYzx {
         withManagedHelix = false;
         withManagedYazi = true;
         withMars = false;
       };
-      yzxNoMarsNoYazi = mkYzx {
+      yazelix-no-mars-no-yazi = mkYzx {
         withManagedHelix = true;
         withManagedYazi = false;
         withMars = false;
       };
-      yzxNoMarsNoHelixNoYazi = mkYzx {
+      yazelix-no-mars-no-helix-no-yazi = mkYzx {
         withManagedHelix = false;
         withManagedYazi = false;
         withMars = false;
       };
-    in {
-      inherit yazelix;
-      yazelix-no-helix = yzxNoHelix;
-      yazelix-no-yazi = yzxNoYazi;
-      yazelix-no-helix-no-yazi = yzxNoHelixNoYazi;
-      yazelix-no-mars = yzxNoMars;
-      yazelix-no-mars-no-helix = yzxNoMarsNoHelix;
-      yazelix-no-mars-no-yazi = yzxNoMarsNoYazi;
-      yazelix-no-mars-no-helix-no-yazi = yzxNoMarsNoHelixNoYazi;
       default = yazelix;
     });
 
@@ -1205,40 +1197,11 @@
       '';
     });
 
-    apps = eachSystem (system: rec {
-      yazelix = {
+    apps = eachSystem (system:
+      builtins.mapAttrs (_name: package: {
         type = "app";
-        program = "${self.packages.${system}.yazelix}/bin/yzx";
-      };
-      yazelix-no-mars = {
-        type = "app";
-        program = "${self.packages.${system}.yazelix-no-mars}/bin/yzx";
-      };
-      yazelix-no-helix = {
-        type = "app";
-        program = "${self.packages.${system}.yazelix-no-helix}/bin/yzx";
-      };
-      yazelix-no-yazi = {
-        type = "app";
-        program = "${self.packages.${system}.yazelix-no-yazi}/bin/yzx";
-      };
-      yazelix-no-helix-no-yazi = {
-        type = "app";
-        program = "${self.packages.${system}.yazelix-no-helix-no-yazi}/bin/yzx";
-      };
-      yazelix-no-mars-no-helix = {
-        type = "app";
-        program = "${self.packages.${system}.yazelix-no-mars-no-helix}/bin/yzx";
-      };
-      yazelix-no-mars-no-yazi = {
-        type = "app";
-        program = "${self.packages.${system}.yazelix-no-mars-no-yazi}/bin/yzx";
-      };
-      yazelix-no-mars-no-helix-no-yazi = {
-        type = "app";
-        program = "${self.packages.${system}.yazelix-no-mars-no-helix-no-yazi}/bin/yzx";
-      };
-      default = yazelix;
-    });
+        program = "${package}/bin/yzx";
+      })
+      self.packages.${system});
   };
 }

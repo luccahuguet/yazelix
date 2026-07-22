@@ -1,5 +1,6 @@
 use crate::{
     error::AppError, paths::zellij_session_label, runtime::Runtime, PACKAGE_VARIANT, VERSION,
+    YAZI_SOURCE,
 };
 
 pub(crate) fn print_status() -> Result<(), AppError> {
@@ -27,10 +28,10 @@ pub(crate) fn print_status() -> Result<(), AppError> {
         println!("{} keybinding: {}", binding.label, binding.configured);
     }
     println!("layout: {}", runtime.layout());
-    println!("yazi source: {}", runtime.yazi().source());
-    println!("yazi: {}", runtime.yazi().yazi().display());
-    println!("ya: {}", runtime.yazi().ya().display());
-    println!("yazi version: {}", runtime.yazi().version());
+    println!("yazi source: {YAZI_SOURCE}");
+    println!("yazi: {}", runtime.yazi().yazi.display());
+    println!("ya: {}", runtime.yazi().ya.display());
+    println!("yazi version: {}", runtime.yazi().version);
     println!("inside zellij: {}", zellij_session_label("yes", "no"));
     Ok(())
 }

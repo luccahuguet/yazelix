@@ -14,10 +14,10 @@ use crate::{
     yazi::YaziRuntime,
     AGENT_AUTO_COMMAND, HELIX_REVEAL_COMMAND, LAYOUT, LAYOUT_SWAP_TEMPLATE, LAYOUT_TEMPLATE,
     MANAGED_HELIX, MARS, PACKAGE_VARIANT, YAZELIX_ZELLIJ_BAR_WASM,
-    YAZELIX_ZELLIJ_PANE_ORCHESTRATOR_WASM, YAZELIX_ZELLIJ_POPUP_WASM, YZX_BAR_RENDER,
-    YZX_BAR_RENDER_REQUEST, YZX_CONFIG, YZX_CONFIG_KDL, YZX_CONFIG_UI, YZX_HELIX, YZX_MENU,
-    YZX_REVEAL, YZX_SCREEN, YZX_SIDEBAR_REFRESH, YZX_TUTOR, YZX_WELCOME, YZX_YAZI,
-    YZX_ZELLIJ_CONFIG, ZELLIJ,
+    YAZELIX_ZELLIJ_PANE_ORCHESTRATOR_WASM, YAZELIX_ZELLIJ_POPUP_WASM, YAZI_SOURCE,
+    YAZI_TESTED_VERSION, YZX_BAR_RENDER, YZX_BAR_RENDER_REQUEST, YZX_CONFIG, YZX_CONFIG_KDL,
+    YZX_CONFIG_UI, YZX_HELIX, YZX_MENU, YZX_REVEAL, YZX_SCREEN, YZX_SIDEBAR_REFRESH, YZX_TUTOR,
+    YZX_WELCOME, YZX_YAZI, YZX_ZELLIJ_CONFIG, ZELLIJ,
 };
 
 pub(crate) fn print_doctor() -> Result<(), AppError> {
@@ -71,13 +71,13 @@ pub(crate) fn print_doctor() -> Result<(), AppError> {
     doctor_ok("zellij helper", YZX_ZELLIJ_CONFIG);
     doctor_ok("reveal helper", YZX_REVEAL);
     doctor_ok("sidebar refresh helper", YZX_SIDEBAR_REFRESH);
-    doctor_ok("yazi source", yazi.source());
-    doctor_ok("yazi lookup PATH", yazi.lookup_path().to_string_lossy());
-    doctor_ok("yazi", yazi.yazi().display());
-    doctor_ok("ya", yazi.ya().display());
-    doctor_ok("yazi version", yazi.version());
-    doctor_ok("yazi tested version", yazi.tested_version());
-    if let Some(warning) = yazi.warning() {
+    doctor_ok("yazi source", YAZI_SOURCE);
+    doctor_ok("yazi lookup PATH", yazi.lookup_path.to_string_lossy());
+    doctor_ok("yazi", yazi.yazi.display());
+    doctor_ok("ya", yazi.ya.display());
+    doctor_ok("yazi version", &yazi.version);
+    doctor_ok("yazi tested version", YAZI_TESTED_VERSION);
+    if let Some(warning) = &yazi.warning {
         println!("warn yazi compatibility: {warning}");
     }
     doctor_ok("zellij", ZELLIJ);

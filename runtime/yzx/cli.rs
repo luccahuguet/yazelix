@@ -117,7 +117,7 @@ fn exec_run(args: Vec<OsString>) -> Result<(), AppError> {
         Runtime::prepare()?
     };
     let mut command = if program == "ya" {
-        Command::new(runtime.yazi().ya())
+        Command::new(&runtime.yazi().ya)
     } else if program == "yazi" {
         Command::new(YZX_YAZI)
     } else {
@@ -134,7 +134,7 @@ fn exec_reveal(args: Vec<OsString>) -> Result<(), AppError> {
     let mut command = Command::new(YZX_REVEAL);
     command
         .args(args)
-        .env("YZX_YA", yazi.ya())
+        .env("YZX_YA", &yazi.ya)
         .env("YZX_ZELLIJ", ZELLIJ)
         .env("PATH", runtime_path());
     exec(command, "yzx reveal")
