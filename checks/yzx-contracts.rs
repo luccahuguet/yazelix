@@ -8,8 +8,8 @@ use std::{
 mod support;
 
 use support::{
-    binary_text, embedded_store_path, excerpt, expect_contains, expect_order, successful_output,
-    successful_stdout, write_config_home, write_executable, RuntimeCase, TempDir,
+    RuntimeCase, TempDir, binary_text, embedded_store_path, excerpt, expect_contains, expect_order,
+    successful_output, successful_stdout, write_config_home, write_executable,
 };
 
 macro_rules! expect_contains_all {
@@ -170,6 +170,7 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
         "Usage:",
         "yzx --version",
         "yzx config",
+        "yzx yazi-config materialize --user-config-dir <path> --state-dir <path>",
         "yzx doctor",
         "yzx env",
         "yzx enter [zellij-args...]",
@@ -193,7 +194,9 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
         .collect::<Vec<_>>();
     assert_eq!(
         menu_ids,
-        ["config", "doctor", "status", "screen", "launch", "help", "tutor"],
+        [
+            "config", "doctor", "status", "screen", "launch", "help", "tutor"
+        ],
         "yzx menu command allowlist changed\n{menu}"
     );
     expect_menu_descriptions_match_help(&help, &menu);

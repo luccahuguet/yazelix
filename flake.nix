@@ -581,6 +581,8 @@
           yzxMarsConfig = if withMars then "${yzxMarsConfig}" else "";
           yzxZellijConfig = "${yzxZellijConfig}/bin/yzx-zellij-config";
           yzxConfigKdl = "${configKdl}";
+          yzxYaziConfig = "${yzxYaziConfig}";
+          yzxYaziMaterializer = "${yzxYaziMaterializer}/bin/yzx-yazi-config";
           yzxReveal = "${yzxOpenCore}/bin/yzx-reveal";
           yzxSidebarRefresh = "${yzxOpenCore}/bin/yzx-sidebar-refresh";
           yaziSource = yaziRuntime.source;
@@ -1146,6 +1148,59 @@
         export XDG_DATA_HOME="$root/data"
         mkdir -p "$HOME" "$YAZELIX_CONFIG_HOME" "$YAZELIX_STATE_DIR" "$XDG_DATA_HOME"
         printf '%s\n' '[welcome]' 'enabled = false' > "$YAZELIX_CONFIG_HOME/config.toml"
+
+        user_yazi="$root/user-yazi"
+        materialized_state="$root/materialized-state"
+        mkdir -p "$user_yazi"
+        printf '%s\n' '[mgr]' 'show_hidden = true' > "$user_yazi/yazi.toml"
+        effective="$({
+          PATH=${pkgs.coreutils}/bin "$package/bin/yzx" yazi-config materialize \
+            --state-dir "$materialized_state" \
+            --user-config-dir "$user_yazi"
+        } 2> "$root/materialize-error")"
+        test ! -s "$root/materialize-error"
+        test "$effective" = "$(${pkgs.coreutils}/bin/readlink -f "$materialized_state")/yazi"
+        grep -Fqx 'show_hidden = true' "$effective/yazi.toml"
+        grep -F 'yzx-open' "$effective/yazi.toml"
+
+        empty_user_yazi="$root/empty-user-yazi"
+        empty_state="$root/empty-state"
+        mkdir -p "$empty_user_yazi"
+        empty_effective="$(PATH=${pkgs.coreutils}/bin "$package/bin/yzx" yazi-config materialize \
+          --user-config-dir "$empty_user_yazi" \
+          --state-dir "$empty_state")"
+        test "$(${pkgs.coreutils}/bin/readlink -f "$empty_effective")" = \
+          "$(${pkgs.coreutils}/bin/readlink -f "$package/share/yazelix/yazi")"
+        test ! -e "$empty_state"
+
+        invalid_user_yazi="$root/invalid-user-yazi"
+        invalid_state="$root/invalid-state"
+        mkdir -p "$invalid_user_yazi" "$invalid_state/yazi"
+        printf '%s\n' '[mgr' > "$invalid_user_yazi/yazi.toml"
+        printf '%s\n' keep > "$invalid_state/yazi/sentinel"
+        set +e
+        PATH=${pkgs.coreutils}/bin "$package/bin/yzx" yazi-config materialize \
+          --user-config-dir "$invalid_user_yazi" \
+          --state-dir "$invalid_state" \
+          > "$root/invalid-output" 2> "$root/invalid-error"
+        invalid_status=$?
+        set -e
+        test "$invalid_status" -eq 1
+        test ! -s "$root/invalid-output"
+        grep -F 'invalid user Yazi TOML' "$root/invalid-error"
+        grep -Fqx keep "$invalid_state/yazi/sentinel"
+
+        PATH=${pkgs.coreutils}/bin "$package/bin/yzx" yazi-config --help > "$root/yazi-config-help"
+        grep -F 'yzx yazi-config materialize' "$root/yazi-config-help"
+        PATH=${pkgs.coreutils}/bin "$package/bin/yzx" yazi-config materialize --help > "$root/materialize-help"
+        grep -F -- '--user-config-dir <path>' "$root/materialize-help"
+        set +e
+        PATH=${pkgs.coreutils}/bin "$package/bin/yzx" yazi-config materialize \
+          --user-config-dir "$user_yazi" > /dev/null 2> "$root/materialize-usage"
+        usage_status=$?
+        set -e
+        test "$usage_status" -eq 64
+        grep -F 'Usage: yzx yazi-config materialize' "$root/materialize-usage"
 
         PATH=${fakeHostYazi}/bin:${pkgs.coreutils}/bin "$package/bin/yzx" doctor > "$root/doctor"
         grep -Fqx 'ok yazi source: host' "$root/doctor"

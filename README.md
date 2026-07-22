@@ -32,14 +32,14 @@ composes their package outputs.
 
 | Measure | Nova | Classic |
 | --- | --- | --- |
-| Code and configuration (Rust, Nix, shell, TOML, etc.) | **18,197 LOC** | **91,545 LOC** |
-| Rust | **15,215 LOC** | **80,957 LOC** |
+| Code and configuration (Rust, Nix, shell, TOML, etc.) | **18,355 LOC** | **91,545 LOC** |
+| Rust | **15,318 LOC** | **80,957 LOC** |
 | Ownership model | One owner per concern | Overlapping responsibilities across layers |
 | Yazelix component boundaries | Independent, versioned packages | Child repos mixed with main-repo ownership |
 | Product experience | More features, stronger defaults, tighter integration, and polished UX | Fewer features and a less cohesive workspace |
 | Status | Recommended | Frozen migration and rollback path |
 
-Nova owns **73,348 fewer lines**, an **80% reduction**. Classic's Rust code
+Nova owns **73,190 fewer lines**, an **80% reduction**. Classic's Rust code
 alone is 4.4 times larger than Nova's entire code and configuration surface.
 
 Nova delivers more features in 20% of the code. It has a clearer configuration
@@ -182,6 +182,7 @@ Ratconfig's Keys tab is the complete packaged reference, and
 | `yzx enter [zellij-args...]` | Start managed Zellij in the current terminal |
 | `yzx run <program> [args...]` | Run exact argv inside the prepared Yazelix environment |
 | `yzx config` | Open the Ratconfig-backed config UI |
+| `yzx yazi-config materialize --user-config-dir <path> --state-dir <path>` | Materialize and print the effective Yazi config directory for automation |
 | `yzx menu` | Open the command palette |
 | `yzx doctor` | Check owned runtime setup without launching Mars or Zellij |
 | `yzx status` | Print config/runtime paths and selected settings |
@@ -190,6 +191,10 @@ Ratconfig's Keys tab is the complete packaged reference, and
 | `yzx tutor [lesson]` | Print guided Yazelix lessons |
 | `yzx screen [style]` | Show a terminal welcome screen |
 | `yzx reveal <target>` | Reveal a file or directory in the managed Yazi sidebar |
+
+The materializer uses the selected Yazelix package's config and does not start
+Yazi or prepare the interactive runtime. See [Runtime Notes](docs/runtime-notes.md#yazi)
+for its output, validation, and exit-status contract.
 
 ## Packages and platforms
 
@@ -260,6 +265,6 @@ See [Development](docs/development.md) for CI and local checks,
 
 ## LOC Scorecard
 
-Yazelix owns **20,543 lines** of tracked text project files. The
+Yazelix owns **20,747 lines** of tracked text project files. The
 [reproducible scorecard](docs/development.md#loc-scorecard) excludes Beads,
 lockfiles, and binary assets.

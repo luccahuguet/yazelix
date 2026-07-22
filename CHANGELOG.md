@@ -4,6 +4,12 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## Unreleased
 
+- `yzx yazi-config materialize --user-config-dir <path> --state-dir <path>`
+  exposes Nova's existing Yazi layering for automation. It uses the selected
+  package's config, including `no-yazi` and Home Manager installations, and
+  prints the absolute effective config directory without preparing or launching
+  the interactive runtime. Invalid usage exits 64; materialization errors exit
+  1, and config validation errors preserve an existing effective directory.
 - Package outputs follow the explicit
   `yazelix[-no-mars][-no-helix][-no-yazi]` matrix. The previous `runtime`
   names are replaced by `no-mars` names without aliases. `no-yazi` variants

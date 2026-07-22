@@ -215,6 +215,39 @@ which keeps user fetchers while restoring the two sidebar Git fetchers exactly
 once. Broken config paths, invalid TOML, and incomplete flavors stop Yazi launch.
 The managed edit opener is always restored. Normal `~/.config/yazi` is not read.
 
+Automation can materialize that config without starting Yazi, Zellij, Mars, an
+editor, or the full Yazelix runtime:
+
+```sh
+effective_config="$(
+  yzx yazi-config materialize \
+    --user-config-dir "$PWD/yazi" \
+    --state-dir "$PWD/state"
+)"
+YAZI_CONFIG_HOME="$effective_config" yazi --debug
+```
+
+`--user-config-dir` names the exact directory that contains `yazi.toml`,
+`init.lua`, `plugins/`, and the other native Yazi entries. `--state-dir` names
+the isolated state root. Callers must pass both flags; the command does not use
+`YAZELIX_CONFIG_HOME` or `YAZELIX_STATE_DIR` as defaults. The selected Yazelix
+package supplies the packaged config, including for `no-yazi` variants and
+Home Manager installations. The Home Manager module adds no materializer
+option.
+
+Successful calls print one absolute effective config directory and a newline
+to stdout, with no stderr output. A user directory with no managed entries
+returns the package's read-only config directory and leaves the state path
+absent. Other inputs replace only `<state-dir>/yazi` through a staging
+directory. Bad command usage exits 64. Materialization failures exit 1 and
+config validation failures leave an existing effective directory intact.
+
+The materializer validates paths, TOML syntax and merge structure, required
+integration fields, plugin and flavor shapes and collisions, source/state
+overlap, and output construction. Yazi remains responsible for semantic config
+checks, Lua and plugin behavior, and external commands. Run `yazi --debug` with
+the printed `YAZI_CONFIG_HOME` when automation needs those checks.
+
 Plugin and flavor directories activate materialization independently of
 `init.lua` and are linked into the runtime config. Packaged plugin names cannot
 be overridden. A user flavor with a packaged name takes precedence over the

@@ -2,7 +2,7 @@ use std::{env, ffi::OsString, path::Path, process::Command};
 
 use crate::{
     MARS, VERSION, YZX_CONFIG_UI, YZX_ENV_SUPERVISOR, YZX_MENU, YZX_REVEAL, YZX_SCREEN, YZX_SHELL,
-    YZX_TUTOR, YZX_WELCOME, YZX_YAZI, ZELLIJ,
+    YZX_TUTOR, YZX_WELCOME, YZX_YAZI, YZX_YAZI_CONFIG, YZX_YAZI_MATERIALIZER, ZELLIJ,
     command::exec,
     doctor::print_doctor,
     error::AppError,
@@ -34,6 +34,7 @@ pub(crate) fn run() -> Result<(), AppError> {
             expect_no_args("config", &args)?;
             exec_plain(YZX_CONFIG_UI)
         }
+        "yazi-config" => exec_yazi_config(args),
         "menu" => {
             expect_no_args("menu", &args)?;
             exec_menu()
@@ -79,6 +80,53 @@ fn exec_plain(program: &str) -> Result<(), AppError> {
     let mut command = Command::new(program);
     command.env("PATH", runtime_path());
     exec(command, program)
+}
+
+fn exec_yazi_config(args: Vec<OsString>) -> Result<(), AppError> {
+    if args.is_empty() || matches!(args.as_slice(), [arg] if arg == "--help") {
+        print!("{YAZI_CONFIG_HELP}");
+        return Ok(());
+    }
+    match args.as_slice() {
+        [command, arg] if command == "materialize" && arg == "--help" => {
+            print!("{YAZI_CONFIG_MATERIALIZE_HELP}");
+            Ok(())
+        }
+        [command, args @ ..] if command == "materialize" => {
+            let Some((user_config_dir, state_dir)) = materialize_paths(args) else {
+                return Err(AppError::Usage(YAZI_CONFIG_MATERIALIZE_HELP.to_string()));
+            };
+            let mut command = Command::new(YZX_YAZI_MATERIALIZER);
+            command
+                .arg(YZX_YAZI_CONFIG)
+                .arg(user_config_dir)
+                .arg(state_dir);
+            exec(command, "yzx yazi-config materialize")
+        }
+        _ => Err(AppError::Usage(YAZI_CONFIG_HELP.to_string())),
+    }
+}
+
+fn materialize_paths(args: &[OsString]) -> Option<(&OsString, &OsString)> {
+    if args.len() != 4 {
+        return None;
+    }
+    let mut user_config_dir = None;
+    let mut state_dir = None;
+    for pair in args.chunks_exact(2) {
+        if pair[1].is_empty() {
+            return None;
+        }
+        let target = match pair[0].to_str() {
+            Some("--user-config-dir") => &mut user_config_dir,
+            Some("--state-dir") => &mut state_dir,
+            _ => return None,
+        };
+        if target.replace(&pair[1]).is_some() {
+            return None;
+        }
+    }
+    Some((user_config_dir?, state_dir?))
 }
 
 fn exec_menu() -> Result<(), AppError> {
@@ -221,6 +269,37 @@ mod tests {
         apply_mars_launch_env(&mut enter, false, path);
         assert_eq!(enter.get_envs().next(), None);
     }
+
+    #[test]
+    fn yazi_config_materialize_requires_each_named_path_once() {
+        let user = OsString::from("/user/yazi");
+        let state = OsString::from("/state/yazelix");
+        let args = [
+            OsString::from("--state-dir"),
+            state.clone(),
+            OsString::from("--user-config-dir"),
+            user.clone(),
+        ];
+        assert_eq!(materialize_paths(&args), Some((&user, &state)));
+
+        for args in [
+            vec![OsString::from("--user-config-dir"), user.clone()],
+            vec![
+                OsString::from("--user-config-dir"),
+                user.clone(),
+                OsString::from("--user-config-dir"),
+                user.clone(),
+            ],
+            vec![
+                OsString::from("--unknown"),
+                user.clone(),
+                OsString::from("--state-dir"),
+                state.clone(),
+            ],
+        ] {
+            assert_eq!(materialize_paths(&args), None);
+        }
+    }
 }
 
 const HELP: &str = "Yazelix Nova
@@ -230,6 +309,7 @@ Usage:
   yzx --version
   yzx help
   yzx config
+  yzx yazi-config materialize --user-config-dir <path> --state-dir <path>
   yzx doctor
   yzx env
   yzx enter [zellij-args...]
@@ -243,6 +323,7 @@ Usage:
 
 Commands:
   config  Open Yazelix Nova config
+  yazi-config  Materialize the effective Yazi configuration
   doctor  Check Yazelix runtime setup
   env     Open the managed shell without launching the UI
   enter   Start Yazelix in the current terminal
@@ -256,4 +337,21 @@ Commands:
   help    Show this help
 
 Sponsor: https://github.com/sponsors/luccahuguet
+";
+
+const YAZI_CONFIG_HELP: &str = "Materialize Yazelix Nova's effective Yazi configuration
+
+Usage:
+  yzx yazi-config materialize --user-config-dir <path> --state-dir <path>
+
+Commands:
+  materialize  Build and print the effective Yazi config directory
+";
+
+const YAZI_CONFIG_MATERIALIZE_HELP: &str =
+    "Usage: yzx yazi-config materialize --user-config-dir <path> --state-dir <path>
+
+Options:
+  --user-config-dir <path>  Exact directory containing the user's Yazi configuration
+  --state-dir <path>        State directory in which to materialize the effective configuration
 ";
