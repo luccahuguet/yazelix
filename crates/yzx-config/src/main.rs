@@ -377,6 +377,16 @@ mod tests {
         }
     }
 
+    fn read_only(field: &ConfigUiField) -> (&str, Option<&str>) {
+        match &field.capability {
+            ConfigUiCapability::ReadOnly {
+                reason,
+                file_action_id,
+            } => (reason, file_action_id.as_deref()),
+            capability => panic!("expected read-only capability, got {capability:?}"),
+        }
+    }
+
     fn assert_inherited(field: &ConfigUiField, value: &JsonValue) {
         assert_eq!(field.snapshot.intent, ConfigUiOverride::Absent);
         assert_eq!(effective_value(field), Some(value));
@@ -1209,7 +1219,7 @@ color = "#123456"
         let (_temp, paths) = temp_sources();
         write_config_text(
             &paths.root,
-            "[popups.btm]\ncommand = \"btm\"\nargs = [\"--basic\"]\nkeybinding = \"Alt Shift B\"\n",
+            "[popups.btm]\ncommand = \"btm\"\nargs = [\"--basic\"]\ntitle = \"system_monitor\"\nkeybinding = \"Alt Shift B\"\nkeep_alive = true\n",
         );
 
         let model = build_model(&paths).unwrap();
@@ -1221,6 +1231,34 @@ color = "#123456"
                 assert_eq!(field.tab, TAB_POPUPS);
                 assert_eq!(field.apply_status.summary, "next launch");
                 assert!(field.list_cells.is_empty());
+                assert_eq!(
+                    effective_value(field),
+                    match &field.snapshot.intent {
+                        ConfigUiOverride::Explicit(value) => Some(value),
+                        _ => None,
+                    }
+                );
+                let leaf = field.path.rsplit('.').next().unwrap();
+                assert_eq!(field.can_unset, !matches!(leaf, "command" | "keybinding"));
+                match leaf {
+                    "command" | "keybinding" | "title" => assert!(matches!(
+                        field.capability,
+                        ConfigUiCapability::FreeText {
+                            encoding: ConfigUiTextEncoding::String
+                        }
+                    )),
+                    "args" => assert!(matches!(
+                        field.capability,
+                        ConfigUiCapability::FreeText {
+                            encoding: ConfigUiTextEncoding::Json
+                        }
+                    )),
+                    "keep_alive" => assert!(matches!(
+                        field.capability,
+                        ConfigUiCapability::Toggle { .. }
+                    )),
+                    path => panic!("unexpected custom popup field {path}"),
+                }
                 (field.path.as_str(), field.type_label.as_deref().unwrap())
             })
             .collect::<Vec<_>>();
@@ -1229,8 +1267,14 @@ color = "#123456"
             [
                 ("popups.btm.args", "string list"),
                 ("popups.btm.command", "string"),
+                ("popups.btm.keep_alive", "boolean"),
                 ("popups.btm.keybinding", "string"),
+                ("popups.btm.title", "string"),
             ]
+        );
+        assert_eq!(
+            read_only(model_field(&model, "popups.btm")).1,
+            Some(ACTION_ROOT_CONFIG)
         );
         assert!(
             model
@@ -1432,6 +1476,31 @@ color = "#123456"
             .to_string();
         assert!(error.contains("read-only"));
         assert_eq!(fs::read_to_string(&paths.root).unwrap(), before_root);
+
+        let model = build_model(&paths).unwrap();
+        for (source_id, path, origin) in [
+            (SOURCE_CONFIG, OPEN_LOG_LEVEL_PATH, "User config.toml"),
+            (SOURCE_MARS, "window.width", "User mars/config.toml"),
+        ] {
+            let field = model
+                .fields
+                .iter()
+                .find(|field| field.source_id == source_id && field.path == path)
+                .unwrap();
+            assert_eq!(field.snapshot.external_manager, None);
+            assert_eq!(
+                field.snapshot.effective.as_ref().unwrap().origin.as_deref(),
+                Some(origin)
+            );
+            assert_eq!(read_only(field).0, "Source is read-only.");
+        }
+        let key = model
+            .fields
+            .iter()
+            .find(|field| field.source_id == SOURCE_KEYS)
+            .unwrap();
+        assert_eq!(key.snapshot.external_manager, None);
+        assert_eq!(read_only(key).0, KEY_READ_ONLY_REASON);
     }
 
     // Defends: only store-backed config is declarative, and every mutation route stops before IO.
@@ -1773,15 +1842,17 @@ color = "#123456"
             (Some("boolean"), &ConfigUiOverride::Explicit(json!(false)))
         );
         assert_eq!(show_hidden.apply_status.summary, "next Yazi");
-        assert!(matches!(
-            model_field(&model, "mgr.ratio").capability,
-            ConfigUiCapability::ReadOnly { .. }
-        ));
+        assert_eq!(read_only(show_hidden).1, Some(ACTION_YAZI_CONFIG));
+        assert_eq!(
+            read_only(model_field(&model, "mgr.ratio")).1,
+            Some(ACTION_YAZI_CONFIG)
+        );
         assert_eq!(
             model_field(&model, "mgr.ratio").snapshot.intent,
             ConfigUiOverride::Explicit(json!([1, 4, 0]))
         );
         let flavor = model_field(&model, "flavor");
+        assert_eq!(read_only(flavor).1, Some(ACTION_YAZI_THEME));
         assert_eq!(
             flavor.snapshot.intent,
             ConfigUiOverride::Explicit(json!({"dark": 42, "light": "custom"}))

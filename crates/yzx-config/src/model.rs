@@ -404,8 +404,44 @@ fn build_custom_popup_fields(path: &Path) -> Result<Vec<ratconfig::ConfigUiField
     .map_err(|source| error(source.to_string()))?
     .fields;
     fields.retain(|field| field.path.starts_with("popups."));
-    fields.iter_mut().for_each(|field| field.list_cells.clear());
+    for field in &mut fields {
+        field.list_cells.clear();
+        if let ConfigUiOverride::Explicit(value) = &field.snapshot.intent {
+            field.snapshot.effective = Some(ConfigUiResolvedValue {
+                value: value.clone(),
+                origin: Some("User config.toml".to_string()),
+            });
+        }
+        if let Some((capability, can_unset)) = custom_popup_controls(&field.path) {
+            field.capability = capability;
+            field.can_unset = can_unset;
+        }
+    }
     Ok(fields)
+}
+fn custom_popup_controls(path: &str) -> Option<(ConfigUiCapability, bool)> {
+    let mut segments = path.split('.');
+    if segments.next() != Some("popups") || segments.next().is_none() {
+        return None;
+    }
+    let field = segments.next()?;
+    if segments.next().is_some() {
+        return None;
+    }
+    let capability = match field {
+        "command" | "title" | "keybinding" => ConfigUiCapability::FreeText {
+            encoding: ConfigUiTextEncoding::String,
+        },
+        "args" => ConfigUiCapability::FreeText {
+            encoding: ConfigUiTextEncoding::Json,
+        },
+        "keep_alive" => ConfigUiCapability::Toggle {
+            off: ConfigUiChoice::new(JsonValue::Bool(false)),
+            on: ConfigUiChoice::new(JsonValue::Bool(true)),
+        },
+        _ => return None,
+    };
+    Some((capability, !matches!(field, "command" | "keybinding")))
 }
 fn root_config_tab(path: &str) -> &'static str {
     if matches!(
@@ -447,14 +483,10 @@ fn build_config_field(
         )
     }
     .build(spec.kind, current, default);
-    set_snapshot_origins(
-        &mut field,
-        source_origin(source_id),
-        baseline_origin(source_id),
-    );
+    set_snapshot_origins(&mut field, source_id);
     if invalid {
         field.snapshot.intent = ConfigUiOverride::Invalid {
-            input: current.map_or_else(String::new, json_input),
+            input: current.map_or_else(String::new, ToString::to_string),
         };
         field.snapshot.effective = None;
     }
@@ -568,14 +600,10 @@ fn build_bar_widgets_field(
         )
     }
     .build("string_list", current, Some(&default));
-    set_snapshot_origins(
-        &mut field,
-        source_origin(SOURCE_CONFIG),
-        baseline_origin(SOURCE_CONFIG),
-    );
+    set_snapshot_origins(&mut field, SOURCE_CONFIG);
     if invalid {
         field.snapshot.intent = ConfigUiOverride::Invalid {
-            input: current.map_or_else(String::new, json_input),
+            input: current.map_or_else(String::new, ToString::to_string),
         };
         field.snapshot.effective = None;
     }
@@ -625,53 +653,33 @@ fn multi_choice_capability(
     }
 }
 
-fn json_input(value: &JsonValue) -> String {
-    serde_json::to_string(value).unwrap_or_else(|_| value.to_string())
-}
-
-fn source_origin(source_id: &str) -> String {
+fn field_origins(source_id: &str) -> (&'static str, &'static str) {
     match source_id {
-        SOURCE_CONFIG => "User config.toml",
-        SOURCE_MARS => "User mars/config.toml",
-        SOURCE_CURSORS => "User cursors.toml",
-        SOURCE_ZELLIJ => "User zellij/config.kdl",
-        SOURCE_STARSHIP => "User starship.toml",
-        SOURCE_YAZI_CONFIG => "User yazi/yazi.toml",
-        SOURCE_YAZI_THEME => "User yazi/theme.toml",
-        _ => "User configuration",
+        SOURCE_CONFIG => ("User config.toml", "Yazelix packaged default"),
+        SOURCE_MARS => ("User mars/config.toml", "Yazelix packaged default"),
+        SOURCE_CURSORS => ("User cursors.toml", "Packaged cursor defaults"),
+        SOURCE_ZELLIJ => ("User zellij/config.kdl", "Packaged Zellij defaults"),
+        SOURCE_STARSHIP => ("User starship.toml", "Yazelix packaged default"),
+        SOURCE_YAZI_CONFIG => ("User yazi/yazi.toml", "Packaged Yazi config"),
+        SOURCE_YAZI_THEME => ("User yazi/theme.toml", "Yazi default theme"),
+        _ => ("User configuration", "Yazelix packaged default"),
     }
-    .to_string()
 }
 
-fn baseline_origin(source_id: &str) -> String {
-    match source_id {
-        SOURCE_CURSORS => "Packaged cursor defaults",
-        SOURCE_ZELLIJ => "Packaged Zellij defaults",
-        SOURCE_YAZI_CONFIG => "Packaged Yazi config",
-        SOURCE_YAZI_THEME => "Yazi default theme",
-        _ => "Yazelix packaged default",
-    }
-    .to_string()
-}
-
-fn set_snapshot_origins(
-    field: &mut ratconfig::ConfigUiField,
-    effective_origin: String,
-    baseline_origin: String,
-) {
+fn set_snapshot_origins(field: &mut ratconfig::ConfigUiField, source_id: &str) {
+    let (effective_origin, baseline_origin) = field_origins(source_id);
     if let Some(baseline) = &mut field.snapshot.baseline {
-        baseline.origin = Some(baseline_origin);
+        baseline.origin = Some(baseline_origin.to_string());
     }
+    let origin = if matches!(field.snapshot.intent, ConfigUiOverride::Absent)
+        && field.snapshot.baseline.is_some()
+    {
+        baseline_origin
+    } else {
+        effective_origin
+    };
     if let Some(effective) = &mut field.snapshot.effective {
-        effective.origin = Some(match field.snapshot.intent {
-            ConfigUiOverride::Absent => field
-                .snapshot
-                .baseline
-                .as_ref()
-                .and_then(|baseline| baseline.origin.clone())
-                .unwrap_or(effective_origin),
-            ConfigUiOverride::Explicit(_) | ConfigUiOverride::Invalid { .. } => effective_origin,
-        });
+        effective.origin = Some(origin.to_string());
     }
 }
 
@@ -684,30 +692,44 @@ fn apply_source_policy(fields: &mut [ratconfig::ConfigUiField], sources: &[Confi
         if field.source_id == SOURCE_CURSORS {
             field.can_unset = false;
         }
-        if source.read_only {
-            let manager = source
-                .owner_label
-                .clone()
-                .unwrap_or_else(|| "External manager".to_string());
+        let home_manager_owned = source.owner_label.as_deref() == Some("Home Manager");
+        if home_manager_owned {
             if matches!(
                 field.snapshot.intent,
                 ConfigUiOverride::Explicit(_) | ConfigUiOverride::Invalid { .. }
             ) && let Some(effective) = &mut field.snapshot.effective
             {
-                effective.origin = Some(manager.clone());
+                effective.origin = Some("Home Manager".to_string());
             }
-            field.snapshot.external_manager = Some(manager.clone());
-            field.capability = ConfigUiCapability::ReadOnly {
-                reason: format!("Managed by {manager}."),
-                file_action_id: source_file_action(&field.source_id).map(str::to_string),
-            };
+            field.snapshot.external_manager = Some("Home Manager".to_string());
+        }
+        if source.read_only {
+            if home_manager_owned
+                || !matches!(field.capability, ConfigUiCapability::ReadOnly { .. })
+            {
+                field.capability = ConfigUiCapability::ReadOnly {
+                    reason: if home_manager_owned {
+                        "Managed by Home Manager."
+                    } else {
+                        "Source is read-only."
+                    }
+                    .to_string(),
+                    file_action_id: source_file_action(&field.source_id).map(str::to_string),
+                };
+            }
             field.can_unset = false;
+        }
+        if let ConfigUiCapability::ReadOnly { file_action_id, .. } = &mut field.capability
+            && file_action_id.is_none()
+        {
+            *file_action_id = source_file_action(&field.source_id).map(str::to_string);
         }
     }
 }
 
 fn source_file_action(source_id: &str) -> Option<&'static str> {
     match source_id {
+        SOURCE_CONFIG => Some(ACTION_ROOT_CONFIG),
         SOURCE_CURSORS => Some(ACTION_CURSORS_CONFIG),
         SOURCE_YAZI_CONFIG => Some(ACTION_YAZI_CONFIG),
         SOURCE_YAZI_THEME => Some(ACTION_YAZI_THEME),

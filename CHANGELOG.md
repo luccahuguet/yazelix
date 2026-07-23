@@ -11,8 +11,9 @@ User-visible runtime changes for Yazelix Nova live here.
   host-declared capabilities. Reset removes an override instead of writing a
   copied default, while cursor rows omit reset because their child-owned file
   has no sparse inheritance contract. Invalid known values remain repairable in
-  place, and unsafe root documents open as source diagnostics with an exact
-  `config.toml` action.
+  place, validated custom-popup leaves retain inline controls, and read-only
+  inferred rows open their exact native file. Unsafe root documents open as
+  source diagnostics with an exact `config.toml` action.
 - `asciiquarium` is available as a direct `yzx screen` and `welcome.style`
   choice and participates in `random`. It runs the separately packaged
   GPL-2.0-or-later `asciiquarium-rs` process, exits on any key, and follows
