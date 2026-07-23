@@ -2,6 +2,11 @@
 
 User-visible runtime changes for Yazelix Nova live here.
 
+## Unreleased
+
+- Ratconfig shows leaf values for native Yazi TOML and custom popups without
+  duplicating them with read-only parent table rows.
+
 ## 1.0.0-beta.3
 
 - `yzx config` consumes Ratconfig 6's sparse-intent contract. Overview combines

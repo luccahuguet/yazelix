@@ -350,6 +350,14 @@ mod tests {
             .unwrap_or_else(|| panic!("missing config field {path}"))
     }
 
+    fn assert_no_table_rows(model: &ConfigUiModel, source_id: &str, path_prefix: &str) {
+        assert!(model.fields.iter().all(|field| {
+            field.source_id != source_id
+                || !field.path.starts_with(path_prefix)
+                || field.type_label.as_deref() != Some("table")
+        }));
+    }
+
     fn effective_value(field: &ConfigUiField) -> Option<&JsonValue> {
         field
             .snapshot
@@ -1272,10 +1280,7 @@ color = "#123456"
                 ("popups.btm.title", "string"),
             ]
         );
-        assert_eq!(
-            read_only(model_field(&model, "popups.btm")).1,
-            Some(ACTION_ROOT_CONFIG)
-        );
+        assert_no_table_rows(&model, SOURCE_CONFIG, "popups.");
         assert!(
             model
                 .recommended_fields
@@ -1851,16 +1856,8 @@ color = "#123456"
             model_field(&model, "mgr.ratio").snapshot.intent,
             ConfigUiOverride::Explicit(json!([1, 4, 0]))
         );
-        let flavor = model_field(&model, "flavor");
-        assert_eq!(read_only(flavor).1, Some(ACTION_YAZI_THEME));
-        assert_eq!(
-            flavor.snapshot.intent,
-            ConfigUiOverride::Explicit(json!({"dark": 42, "light": "custom"}))
-        );
-        assert_eq!(
-            baseline_value(flavor),
-            Some(&json!({"dark": "", "light": ""}))
-        );
+        assert_no_table_rows(&model, SOURCE_YAZI_CONFIG, "");
+        assert_no_table_rows(&model, SOURCE_YAZI_THEME, "");
 
         write_source_field(&paths, SOURCE_YAZI_CONFIG, "mgr.show_hidden", &json!(true)).unwrap();
         write_source_field(

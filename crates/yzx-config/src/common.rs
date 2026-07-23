@@ -8,6 +8,8 @@ use std::{
 use serde_json::Value as JsonValue;
 use toml::Value as TomlValue;
 
+use ratconfig::ConfigUiField;
+
 use crate::catalog::FieldSpec;
 
 pub(crate) type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
@@ -125,4 +127,8 @@ pub(crate) fn read_optional_text(path: &Path) -> Result<String> {
 }
 pub(crate) fn string_values(values: &[&str]) -> Vec<String> {
     values.iter().map(|value| (*value).to_string()).collect()
+}
+
+pub(crate) fn retain_toml_leaf_fields(fields: &mut Vec<ConfigUiField>) {
+    fields.retain(|field| field.type_label.as_deref() != Some("table"));
 }
