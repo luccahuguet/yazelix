@@ -1,6 +1,7 @@
 use std::{
     env, fs,
     io::Write,
+    os::unix::fs::symlink,
     path::{Path, PathBuf},
     process::{Command, Stdio},
 };
@@ -736,16 +737,63 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
         "warn session: not inside zellij",
     }
 
-    fs::create_dir_all(doctor_case.state_dir.join("configs")).unwrap();
+    for current in ["yazi", "zellij", "helix", "helix-steel", "logs"] {
+        fs::create_dir_all(doctor_case.state_dir.join(current)).unwrap();
+    }
+    let configs = doctor_case.state_dir.join("configs");
+    let sessions = doctor_case.state_dir.join("sessions");
+    fs::create_dir(&configs).unwrap();
+    let outside_sessions = temp.path.join("doctor-outside-sessions");
+    fs::create_dir(&outside_sessions).unwrap();
+    let snapshot = outside_sessions.join("config_snapshot.json");
+    fs::write(&snapshot, "untouched").unwrap();
+    symlink(&outside_sessions, &sessions).unwrap();
+    let nushell = doctor_case.state_dir.join("initializers/nushell");
+    fs::create_dir_all(&nushell).unwrap();
+    let extern_file = nushell.join("yazelix_extern.nu");
+    let fingerprint = nushell.join("yazelix_extern.fingerprint.json");
+    fs::write(&extern_file, "classic").unwrap();
+    symlink(temp.path.join("missing-fingerprint"), &fingerprint).unwrap();
+    fs::create_dir_all(&doctor_case.config_home).unwrap();
+    let config_backup = doctor_case.config_home.join("config.toml.backup-20260712");
+    let settings_backup = doctor_case
+        .config_home
+        .join("settings.jsonc.backup-20260711");
+    fs::write(&config_backup, "classic").unwrap();
+    symlink(temp.path.join("missing-backup"), &settings_backup).unwrap();
     let residue_doctor = doctor_case.run_yzx(&yzx_bin, "doctor", "yzx doctor residue");
     expect_contains_all! {
         &residue_doctor, "yzx doctor residue";
-        format!(
-            "warn classic residue: ownership=ambiguous nova=unused path={}",
-            doctor_case.state_dir.join("configs").display()
-        ),
+        classic_residue_warning(&configs, "ambiguous"),
+        classic_residue_warning(&sessions, "ambiguous"),
+        classic_residue_warning(&extern_file, "certain"),
+        classic_residue_warning(&fingerprint, "ambiguous"),
+        classic_residue_warning(&config_backup, "ambiguous"),
+        classic_residue_warning(&settings_backup, "ambiguous"),
         "warn classic residue: external scripts may still reference these paths; Nova did not load or modify them",
     }
+    assert_eq!(fs::read_to_string(snapshot).unwrap(), "untouched");
+    for current in ["yazi", "zellij", "helix", "helix-steel", "logs"] {
+        let path = doctor_case.state_dir.join(current);
+        assert!(
+            !residue_doctor.contains(&format!("path={}", path.display())),
+            "yzx doctor reported current Nova {current} state as Classic residue"
+        );
+    }
+
+    let linked_parent = RuntimeCase::new(&temp.path, "doctor-linked-parent");
+    let linked_target = temp.path.join("doctor-linked-target");
+    fs::create_dir_all(&linked_parent.state_dir).unwrap();
+    fs::create_dir_all(linked_target.join("nushell")).unwrap();
+    fs::write(linked_target.join("nushell/yazelix_extern.nu"), "classic").unwrap();
+    symlink(linked_target, linked_parent.state_dir.join("initializers")).unwrap();
+    let linked_parent_doctor =
+        linked_parent.run_yzx(&yzx_bin, "doctor", "yzx doctor symlinked parent");
+    expect_contains(
+        &linked_parent_doctor,
+        "ok classic residue: none recognized in active roots",
+        "yzx doctor symlinked parent",
+    );
 
     for (args, expected, context) in [
         (
@@ -808,6 +856,13 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
         yzx.join("libexec/yazelix/yzx-tutor").is_file(),
         "yzx package is missing the tutor helper"
     );
+}
+
+fn classic_residue_warning(path: &Path, ownership: &str) -> String {
+    format!(
+        "warn classic residue: ownership={ownership} nova=unused path={}",
+        path.display()
+    )
 }
 
 fn expect_headless_enter(yzx: &Path) {
