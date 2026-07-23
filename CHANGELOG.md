@@ -7,7 +7,7 @@ User-visible runtime changes for Yazelix Nova live here.
 - `asciiquarium` is available as a direct `yzx screen` and `welcome.style`
   choice and participates in `random`. It runs the separately packaged
   GPL-2.0-or-later `asciiquarium-rs` process, exits on any key, and follows
-  Yazelix's configured welcome duration.
+  Yazelix's configured welcome duration; setup failures restore terminal state.
 - `Alt Shift S` opens a transient full-size popup running the packaged random
   Yazelix screen. Ordinary screen input closes it and returns to the unchanged
   workspace; it is a visual cover, not a session lock or privacy boundary.
