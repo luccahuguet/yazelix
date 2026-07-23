@@ -32,14 +32,14 @@ composes their package outputs.
 
 | Measure | Nova | Classic |
 | --- | --- | --- |
-| Code and configuration (Rust, Nix, shell, TOML, etc.) | **18,644 LOC** | **91,545 LOC** |
-| Rust | **15,550 LOC** | **80,957 LOC** |
+| Code and configuration (Rust, Nix, shell, TOML, etc.) | **18,646 LOC** | **91,545 LOC** |
+| Rust | **15,552 LOC** | **80,957 LOC** |
 | Ownership model | One owner per concern | Overlapping responsibilities across layers |
 | Yazelix component boundaries | Independent, versioned packages | Child repos mixed with main-repo ownership |
 | Product experience | More features, stronger defaults, tighter integration, and polished UX | Fewer features and a less cohesive workspace |
 | Status | Recommended | Frozen migration and rollback path |
 
-Nova owns **72,901 fewer lines**, an **80% reduction**. Classic's Rust code
+Nova owns **72,899 fewer lines**, an **80% reduction**. Classic's Rust code
 alone is 4.4 times larger than Nova's entire code and configuration surface.
 
 Nova delivers more features in 20% of the code. It has a clearer configuration
@@ -241,7 +241,7 @@ Yazelix assembles focused first-party forks, plugins, libraries, and commands:
 | [Yazelix Zellij Popup](https://github.com/luccahuguet/yazelix-zellij-popup) | Zellij plugin that opens, focuses, hides, and closes configured floating TUI panes |
 | [Yazelix Zellij Bar](https://github.com/luccahuguet/yazelix-zellij-bar) | Zellij plugin package for the compact top bar, tabs, modes, session details, and status widgets |
 | [Ratconfig](https://github.com/luccahuguet/ratconfig) | Reusable Ratatui configuration editor and TOML patching and migration library |
-| [Yazelix Screen](https://github.com/luccahuguet/yazelix-screen) | Terminal welcome animations exposed through `yzx screen` |
+| [Yazelix Screen](https://github.com/luccahuguet/yazelix-screen) | Terminal welcome animations and the separately packaged GPL aquarium exposed through `yzx screen` |
 | [Yazelix Cursors](https://github.com/luccahuguet/yazelix-cursors) | Shared cursor presets and validation for Ratconfig, plus palettes and shader assets for Mars |
 | [auto-layout.yazi](https://github.com/luccahuguet/auto-layout.yazi) | Yazi plugin that changes the column layout to match the available pane width |
 | [zjstatus](https://github.com/luccahuguet/zjstatus) | Fork that gives the bar activity-aware tab markers without changing native Zellij tab names |
@@ -276,6 +276,6 @@ See [Development](docs/development.md) for CI and local checks,
 
 ## LOC Scorecard
 
-Yazelix owns **21,091 lines** of tracked text project files. The
+Yazelix owns **21,097 lines** of tracked text project files. The
 [reproducible scorecard](docs/development.md#loc-scorecard) excludes Beads,
 lockfiles, and binary assets.

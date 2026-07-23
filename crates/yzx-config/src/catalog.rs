@@ -15,6 +15,7 @@ pub(crate) const WELCOME_DURATION_SECONDS_PATH: &str = "welcome.duration_seconds
 pub(crate) const WELCOME_STYLE_VALUES: &[&str] = &[
     "static",
     "logo",
+    "asciiquarium",
     "boids",
     "boids_predator",
     "boids_schools",

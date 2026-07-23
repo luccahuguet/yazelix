@@ -49,7 +49,7 @@ while custom popup ids remain dynamic within the documented `popups.<id>` fields
 | `shell.program` | `nu` | Core | Packaged shell for new panes: `nu`, `bash`, `zsh`, `fish` |
 | `editor.command` | `yzx-hx` | Core | Editor used by Yazi opens, Ratconfig text edits, and Git editor flows |
 | `welcome.enabled` | `true` | Core | Show the startup welcome splash |
-| `welcome.style` | `random` | Core | Startup screen style |
+| `welcome.style` | `random` | Core | Startup screen style: `static`, `logo`, `asciiquarium`, the Boids/Mandelbrot/Game of Life styles, or `random` |
 | `welcome.duration_seconds` | `3` | All | Startup splash duration, 1 to 60 seconds |
 | `keybindings.sidebar` | `Alt Shift H` | Core | Hide or show the managed Yazi sidebar |
 | `keybindings.sidebar_focus` | `Ctrl y` | Core | Toggle focus between the editor and managed Yazi sidebar |

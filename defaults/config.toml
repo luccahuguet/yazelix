@@ -22,9 +22,9 @@ args = []
 [welcome]
 # Show a brief welcome splash before entering the managed runtime.
 enabled = true
-# Welcome style: static, logo, boids, boids_predator, boids_schools,
-# mandelbrot, game_of_life_gliders, game_of_life_oscillators,
-# game_of_life_bloom, or random.
+# Welcome style: static, logo, asciiquarium, boids, boids_predator,
+# boids_schools, mandelbrot, game_of_life_gliders,
+# game_of_life_oscillators, game_of_life_bloom, or random.
 style = "random"
 # Welcome splash duration in seconds.
 duration_seconds = 3

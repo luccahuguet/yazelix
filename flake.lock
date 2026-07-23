@@ -1,5 +1,22 @@
 {
   "nodes": {
+    "asciiquarium": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1784772823,
+        "narHash": "sha256-30s2ct74TJCi6mNrJFlrfkVf6GVQ1uPOdYMS1EEVfKA=",
+        "owner": "luccahuguet",
+        "repo": "asciiquarium-rs",
+        "rev": "1360282f90a3abd5a3edca030b48f129ae2ba518",
+        "type": "github"
+      },
+      "original": {
+        "owner": "luccahuguet",
+        "repo": "asciiquarium-rs",
+        "rev": "1360282f90a3abd5a3edca030b48f129ae2ba518",
+        "type": "github"
+      }
+    },
     "autoLayoutYazi": {
       "flake": false,
       "locked": {
@@ -562,17 +579,18 @@
     },
     "yazelixScreen": {
       "inputs": {
+        "asciiquarium": "asciiquarium",
         "fenix": "fenix",
         "nixpkgs": [
           "nixpkgs"
         ]
       },
       "locked": {
-        "lastModified": 1783176833,
-        "narHash": "sha256-jYDwEMZSAR1nhUHsVmOWgphX000BfiWmULC3dcvgwzw=",
+        "lastModified": 1784773150,
+        "narHash": "sha256-yOaGr24eqzaWvbXY0NjUl6v83TBkYCcWQETZKUMXEN4=",
         "owner": "luccahuguet",
         "repo": "yazelix-screen",
-        "rev": "d5975b97fc157ce44b5140432fc006154a63886a",
+        "rev": "de3abc54b2dbfc5e6afd56b73cb763467cf45245",
         "type": "github"
       },
       "original": {
