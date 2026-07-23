@@ -269,24 +269,19 @@ fn classic_residue_lines(config_home: &Path, state_dir: &Path) -> Vec<String> {
 }
 
 fn metadata_without_symlink_parents(root: &Path, relative: &str) -> Option<fs::Metadata> {
-    let root_metadata = fs::symlink_metadata(root).ok()?;
-    if !root_metadata.is_dir() {
+    if !fs::symlink_metadata(root).ok()?.is_dir() {
         return None;
     }
 
-    let mut path = root.to_path_buf();
-    let mut components = Path::new(relative).components().peekable();
-    while let Some(component) = components.next() {
-        path.push(component);
-        let metadata = fs::symlink_metadata(&path).ok()?;
-        if components.peek().is_none() {
-            return Some(metadata);
-        }
-        if !metadata.is_dir() {
+    let relative = Path::new(relative);
+    let mut parent = root.to_path_buf();
+    for component in relative.parent()?.components() {
+        parent.push(component);
+        if !fs::symlink_metadata(&parent).ok()?.is_dir() {
             return None;
         }
     }
-    None
+    fs::symlink_metadata(root.join(relative)).ok()
 }
 
 fn classic_residue_line(path: &Path, ownership: &str) -> String {
