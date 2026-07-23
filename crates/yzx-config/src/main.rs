@@ -350,12 +350,17 @@ mod tests {
             .unwrap_or_else(|| panic!("missing config field {path}"))
     }
 
-    fn assert_no_table_rows(model: &ConfigUiModel, source_id: &str, path_prefix: &str) {
-        assert!(model.fields.iter().all(|field| {
-            field.source_id != source_id
-                || !field.path.starts_with(path_prefix)
-                || field.type_label.as_deref() != Some("table")
-        }));
+    fn assert_no_parent_rows(model: &ConfigUiModel, source_id: &str, path_prefix: &str) {
+        for field in model.fields.iter().filter(|field| {
+            field.source_id == source_id
+                && field.path.starts_with(path_prefix)
+                && field.type_label.as_deref() == Some("table")
+        }) {
+            let child_prefix = format!("{}.", field.path);
+            assert!(model.fields.iter().all(|child| {
+                child.source_id != field.source_id || !child.path.starts_with(&child_prefix)
+            }));
+        }
     }
 
     fn effective_value(field: &ConfigUiField) -> Option<&JsonValue> {
@@ -1280,7 +1285,7 @@ color = "#123456"
                 ("popups.btm.title", "string"),
             ]
         );
-        assert_no_table_rows(&model, SOURCE_CONFIG, "popups.");
+        assert_no_parent_rows(&model, SOURCE_CONFIG, "popups.");
         assert!(
             model
                 .recommended_fields
@@ -1812,7 +1817,7 @@ color = "#123456"
         add_flavor(paths.yazi_config.parent().unwrap(), "");
         fs::write(
             &paths.yazi_config,
-            "# keep config\n[mgr]\nshow_hidden = false\nratio = [1, 4, 0]\n\n[preview]\nmax_width = 800\n",
+            "# keep config\n[mgr]\nshow_hidden = false\nratio = [1, 4, 0]\n\n[preview]\nmax_width = 800\n\n[empty]\n",
         )
         .unwrap();
         fs::write(
@@ -1856,8 +1861,12 @@ color = "#123456"
             model_field(&model, "mgr.ratio").snapshot.intent,
             ConfigUiOverride::Explicit(json!([1, 4, 0]))
         );
-        assert_no_table_rows(&model, SOURCE_YAZI_CONFIG, "");
-        assert_no_table_rows(&model, SOURCE_YAZI_THEME, "");
+        assert_no_parent_rows(&model, SOURCE_YAZI_CONFIG, "");
+        assert_no_parent_rows(&model, SOURCE_YAZI_THEME, "");
+        assert_eq!(
+            model_field(&model, "empty").type_label.as_deref(),
+            Some("table")
+        );
 
         write_source_field(&paths, SOURCE_YAZI_CONFIG, "mgr.show_hidden", &json!(true)).unwrap();
         write_source_field(

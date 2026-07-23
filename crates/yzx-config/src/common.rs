@@ -129,6 +129,17 @@ pub(crate) fn string_values(values: &[&str]) -> Vec<String> {
     values.iter().map(|value| (*value).to_string()).collect()
 }
 
-pub(crate) fn retain_toml_leaf_fields(fields: &mut Vec<ConfigUiField>) {
-    fields.retain(|field| field.type_label.as_deref() != Some("table"));
+pub(crate) fn remove_toml_parent_fields(fields: &mut Vec<ConfigUiField>) {
+    let parents = fields
+        .iter()
+        .filter(|parent| {
+            let child_prefix = format!("{}.", parent.path);
+            parent.type_label.as_deref() == Some("table")
+                && fields.iter().any(|child| {
+                    child.source_id == parent.source_id && child.path.starts_with(&child_prefix)
+                })
+        })
+        .map(ConfigUiField::id)
+        .collect::<Vec<_>>();
+    fields.retain(|field| !parents.contains(&field.id()));
 }

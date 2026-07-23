@@ -81,7 +81,7 @@ pub(crate) fn build_yazi_fields(paths: &ConfigPaths) -> Result<Vec<ConfigUiField
             format!("{label} from native yazi/theme.toml. Reset uses Yazi's default theme.");
     }
     appearance.fields.extend(settings.fields);
-    retain_toml_leaf_fields(&mut appearance.fields);
+    remove_toml_parent_fields(&mut appearance.fields);
     Ok(appearance.fields)
 }
 

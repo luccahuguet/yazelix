@@ -404,7 +404,7 @@ fn build_custom_popup_fields(path: &Path) -> Result<Vec<ratconfig::ConfigUiField
     .map_err(|source| error(source.to_string()))?
     .fields;
     fields.retain(|field| field.path.starts_with("popups."));
-    retain_toml_leaf_fields(&mut fields);
+    remove_toml_parent_fields(&mut fields);
     for field in &mut fields {
         field.list_cells.clear();
         if let ConfigUiOverride::Explicit(value) = &field.snapshot.intent {
