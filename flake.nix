@@ -77,7 +77,7 @@
     starshipYazi,
     zjstatus,
   }: let
-    novaVersion = "1.0.0-beta.2";
+    novaVersion = "1.0.0-beta.3";
     compactNovaVersion = version:
       if version == "dev"
       then "NOVA DEV"

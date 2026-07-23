@@ -2,7 +2,7 @@
 
 User-visible runtime changes for Yazelix Nova live here.
 
-## Unreleased
+## 1.0.0-beta.3
 
 - `yzx config` consumes Ratconfig 6's sparse-intent contract. Overview combines
   recommendations with explicit, invalid, externally managed, and diagnosed
