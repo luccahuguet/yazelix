@@ -743,9 +743,14 @@
           mkdir -p "$out/bin"
           cat > "$out/bin/yazi" <<'EOF'
           #!${pkgs.runtimeShell}
+          case "''${0##*/}" in
+            yazi) label=Yazi version='${yaziVersion}' ;;
+            ya) label=Ya version='${yaVersion}' ;;
+            *) exit 64 ;;
+          esac
           if [ "''${1:-}" = --version ]; then
-            printf '%s\n' 'Yazi ${yaziVersion}'
-          else
+            printf '%s %s\n' "$label" "$version"
+          elif [ "$label" = Yazi ]; then
             printf 'fake Yazi config=%s starship=%s role=%s ya=%s args=' \
               "''${YAZI_CONFIG_HOME:-}" \
               "''${YZX_YAZI_STARSHIP_CONFIG:-}" \
@@ -753,18 +758,13 @@
               "''${YZX_YA:-}"
             printf '%s ' "$@"
             printf '\n'
-          fi
-          EOF
-          cat > "$out/bin/ya" <<'EOF'
-          #!${pkgs.runtimeShell}
-          if [ "''${1:-}" = --version ]; then
-            printf '%s\n' 'Ya ${yaVersion}'
           else
             printf 'fake Ya args='
             printf '%s ' "$@"
             printf '\n'
           fi
           EOF
+          cp "$out/bin/yazi" "$out/bin/ya"
           chmod 755 "$out/bin/yazi" "$out/bin/ya"
         '';
       fakeHostYazi = mkFakeHostYazi {name = "fake-host-yazi";};
@@ -778,6 +778,11 @@
         yaVersion = "98.0.0";
         yaziVersion = "99.0.0";
       };
+      fakeShimHostYazi = pkgs.runCommand "fake-shim-host-yazi" {} ''
+        mkdir -p "$out/bin"
+        ln -s ${fakeHostYazi}/bin/yazi "$out/bin/yazi"
+        ln -s ${fakeHostYazi}/bin/yazi "$out/bin/ya"
+      '';
       fakeYazelix = pkgs.runCommand "fake-yazelix-hm-package" {} ''
         mkdir -p "$out/bin" "$out/share/applications"
         cat > "$out/bin/yzx" <<'EOF'
@@ -1234,6 +1239,13 @@
         grep -Fqx 'Ya ${pkgs.yazi.version}' "$root/ya-version"
         PATH=${fakeHostYazi}/bin:${pkgs.coreutils}/bin "$package/bin/yzx" run yazi --version > "$root/yazi-version"
         grep -Fqx 'Yazi ${pkgs.yazi.version}' "$root/yazi-version"
+        PATH=${fakeShimHostYazi}/bin:${pkgs.coreutils}/bin "$package/bin/yzx" status > "$root/shim-status"
+        grep -Fqx 'yazi: ${fakeShimHostYazi}/bin/yazi' "$root/shim-status"
+        grep -Fqx 'ya: ${fakeShimHostYazi}/bin/ya' "$root/shim-status"
+        PATH=${fakeShimHostYazi}/bin:${pkgs.coreutils}/bin "$package/bin/yzx" run ya --version > "$root/shim-ya-version"
+        grep -Fqx 'Ya ${pkgs.yazi.version}' "$root/shim-ya-version"
+        PATH=${fakeShimHostYazi}/bin:${pkgs.coreutils}/bin "$package/bin/yzx" run yazi --version > "$root/shim-yazi-version"
+        grep -Fqx 'Yazi ${pkgs.yazi.version}' "$root/shim-yazi-version"
         mkdir -p "$YAZELIX_CONFIG_HOME/yazi"
         printf '%s\n' 'format = "$directory$git_branch"' > "$YAZELIX_CONFIG_HOME/yazi/starship.toml"
         PATH=${fakeHostYazi}/bin:${pkgs.coreutils}/bin "$package/bin/yzx" run yazi managed > "$root/yazi-managed"

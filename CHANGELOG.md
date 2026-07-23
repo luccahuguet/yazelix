@@ -4,6 +4,9 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## Unreleased
 
+- Host-Yazi packages preserve absolute `yazi` and `ya` invocation paths when
+  probing and launching, allowing argv0-sensitive symlink shims such as Mise to
+  dispatch correctly without weakening executable or version-pair validation.
 - Ratconfig shows leaf values for native Yazi TOML and custom popups without
   duplicating them with read-only parent table rows.
 
