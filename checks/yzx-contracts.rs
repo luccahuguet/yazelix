@@ -732,7 +732,19 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
         "ok yazi version: ",
         "ok yazi tested version: ",
         "ok pane orchestrator plugin: /nix/store/",
+        "ok classic residue: none recognized in active roots",
         "warn session: not inside zellij",
+    }
+
+    fs::create_dir_all(doctor_case.state_dir.join("configs")).unwrap();
+    let residue_doctor = doctor_case.run_yzx(&yzx_bin, "doctor", "yzx doctor residue");
+    expect_contains_all! {
+        &residue_doctor, "yzx doctor residue";
+        format!(
+            "warn classic residue: ownership=ambiguous nova=unused path={}",
+            doctor_case.state_dir.join("configs").display()
+        ),
+        "warn classic residue: external scripts may still reference these paths; Nova did not load or modify them",
     }
 
     for (args, expected, context) in [

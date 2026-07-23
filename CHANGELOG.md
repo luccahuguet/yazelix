@@ -4,6 +4,11 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## Unreleased
 
+- `yzx doctor` reports recognized Classic generated-state roots, exact Nushell
+  extern artifacts, and migration backups without following symlinked parents
+  or changing any files. Each warning says Nova leaves the path unused and
+  distinguishes certain generated paths from ambiguous roots, symlinks, and
+  filename-only backup matches; residue does not fail the doctor check.
 - Managed Yazi accepts an optional complete Starship configuration at
   `yazi/starship.toml`, including through the Home Manager
   `programs.yazelix.config.yazi.starship` native-file option. Omission retains

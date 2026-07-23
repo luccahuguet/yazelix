@@ -91,6 +91,9 @@ pub(crate) fn print_doctor() -> Result<(), AppError> {
     if has_managed_helix {
         doctor_helix_config_warning(&runtime.config_home).map_err(doctor_failure)?;
     }
+    for line in classic_residue_lines(&runtime.config_home, &runtime.state_dir) {
+        println!("{line}");
+    }
 
     println!(
         "warn session: {}",
@@ -208,4 +211,175 @@ fn doctor_helix_config_warning(config_home: &Path) -> Result<(), AppError> {
         );
     }
     Ok(())
+}
+
+fn classic_residue_lines(config_home: &Path, state_dir: &Path) -> Vec<String> {
+    let mut residue = Vec::new();
+    for (relative, exact_generated_file) in [
+        ("configs", false),
+        ("sessions", false),
+        ("initializers/nushell/yazelix_extern.nu", true),
+        ("initializers/nushell/yazelix_extern.fingerprint.json", true),
+    ] {
+        let Some(metadata) = metadata_without_symlink_parents(state_dir, relative) else {
+            continue;
+        };
+        let certain =
+            exact_generated_file && !metadata.file_type().is_symlink() && metadata.is_file();
+        residue.push(classic_residue_line(
+            &state_dir.join(relative),
+            if certain { "certain" } else { "ambiguous" },
+        ));
+    }
+
+    if fs::symlink_metadata(config_home)
+        .is_ok_and(|metadata| metadata.is_dir() && !metadata.file_type().is_symlink())
+    {
+        let mut backups = fs::read_dir(config_home)
+            .into_iter()
+            .flatten()
+            .filter_map(Result::ok)
+            .filter(|entry| {
+                entry.file_name().to_str().is_some_and(|name| {
+                    [
+                        "config.toml.backup-",
+                        "settings.jsonc.backup-",
+                        "zellij.kdl.backup-",
+                        "config.toml.home-manager-prepare-backup-",
+                    ]
+                    .iter()
+                    .any(|prefix| name.starts_with(prefix))
+                })
+            })
+            .map(|entry| entry.path())
+            .collect::<Vec<_>>();
+        backups.sort();
+        residue.extend(
+            backups
+                .iter()
+                .map(|path| classic_residue_line(path, "ambiguous")),
+        );
+    }
+
+    if residue.is_empty() {
+        return vec!["ok classic residue: none recognized in active roots".into()];
+    }
+    residue.push(
+        "warn classic residue: external scripts may still reference these paths; Nova did not load or modify them"
+            .into(),
+    );
+    residue
+}
+
+fn metadata_without_symlink_parents(root: &Path, relative: &str) -> Option<fs::Metadata> {
+    let root_metadata = fs::symlink_metadata(root).ok()?;
+    if root_metadata.file_type().is_symlink() || !root_metadata.is_dir() {
+        return None;
+    }
+
+    let mut path = root.to_path_buf();
+    let mut components = Path::new(relative).components().peekable();
+    while let Some(component) = components.next() {
+        path.push(component);
+        let metadata = fs::symlink_metadata(&path).ok()?;
+        if components.peek().is_none() {
+            return Some(metadata);
+        }
+        if metadata.file_type().is_symlink() || !metadata.is_dir() {
+            return None;
+        }
+    }
+    None
+}
+
+fn classic_residue_line(path: &Path, ownership: &str) -> String {
+    format!(
+        "warn classic residue: ownership={ownership} nova=unused path={}",
+        path.display()
+    )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::{
+        os::unix::fs::symlink,
+        time::{SystemTime, UNIX_EPOCH},
+    };
+
+    #[test]
+    fn classifies_classic_residue_without_following_symlinks() {
+        let root = env::temp_dir().join(format!(
+            "yzx-doctor-residue-{}-{}",
+            std::process::id(),
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let config_home = root.join("config");
+        let state_dir = root.join("state");
+        fs::create_dir_all(&config_home).unwrap();
+        fs::create_dir_all(&state_dir).unwrap();
+
+        assert_eq!(
+            classic_residue_lines(&config_home, &state_dir),
+            ["ok classic residue: none recognized in active roots"]
+        );
+
+        for current in ["yazi", "zellij", "helix", "helix-steel", "logs"] {
+            fs::create_dir(state_dir.join(current)).unwrap();
+        }
+        let configs = state_dir.join("configs");
+        let sessions = state_dir.join("sessions");
+        fs::create_dir(&configs).unwrap();
+        let outside_sessions = root.join("outside-sessions");
+        fs::create_dir(&outside_sessions).unwrap();
+        fs::write(outside_sessions.join("config_snapshot.json"), "untouched").unwrap();
+        symlink(&outside_sessions, &sessions).unwrap();
+        let nushell = state_dir.join("initializers/nushell");
+        fs::create_dir_all(&nushell).unwrap();
+        let extern_file = nushell.join("yazelix_extern.nu");
+        let fingerprint = nushell.join("yazelix_extern.fingerprint.json");
+        fs::write(&extern_file, "classic").unwrap();
+        symlink(root.join("missing-fingerprint"), &fingerprint).unwrap();
+        let config_backup = config_home.join("config.toml.backup-20260712");
+        let settings_backup = config_home.join("settings.jsonc.backup-20260711");
+        fs::write(&config_backup, "classic").unwrap();
+        symlink(root.join("missing-backup"), &settings_backup).unwrap();
+        fs::write(config_home.join("keep.txt"), "current").unwrap();
+
+        assert_eq!(
+            classic_residue_lines(&config_home, &state_dir),
+            [
+                classic_residue_line(&configs, "ambiguous"),
+                classic_residue_line(&sessions, "ambiguous"),
+                classic_residue_line(&extern_file, "certain"),
+                classic_residue_line(&fingerprint, "ambiguous"),
+                classic_residue_line(&config_backup, "ambiguous"),
+                classic_residue_line(&settings_backup, "ambiguous"),
+                "warn classic residue: external scripts may still reference these paths; Nova did not load or modify them".to_string(),
+            ]
+        );
+        assert_eq!(
+            fs::read_to_string(outside_sessions.join("config_snapshot.json")).unwrap(),
+            "untouched"
+        );
+
+        let linked_state = root.join("linked-state");
+        let linked_config = root.join("linked-config");
+        fs::create_dir(&linked_state).unwrap();
+        fs::create_dir(&linked_config).unwrap();
+        symlink(
+            state_dir.join("initializers"),
+            linked_state.join("initializers"),
+        )
+        .unwrap();
+        assert_eq!(
+            classic_residue_lines(&linked_config, &linked_state),
+            ["ok classic residue: none recognized in active roots"]
+        );
+
+        fs::remove_dir_all(root).unwrap();
+    }
 }

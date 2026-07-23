@@ -32,14 +32,14 @@ composes their package outputs.
 
 | Measure | Nova | Classic |
 | --- | --- | --- |
-| Code and configuration (Rust, Nix, shell, TOML, etc.) | **18,418 LOC** | **91,545 LOC** |
-| Rust | **15,345 LOC** | **80,957 LOC** |
+| Code and configuration (Rust, Nix, shell, TOML, etc.) | **18,604 LOC** | **91,545 LOC** |
+| Rust | **15,531 LOC** | **80,957 LOC** |
 | Ownership model | One owner per concern | Overlapping responsibilities across layers |
 | Yazelix component boundaries | Independent, versioned packages | Child repos mixed with main-repo ownership |
 | Product experience | More features, stronger defaults, tighter integration, and polished UX | Fewer features and a less cohesive workspace |
 | Status | Recommended | Frozen migration and rollback path |
 
-Nova owns **73,127 fewer lines**, an **80% reduction**. Classic's Rust code
+Nova owns **72,941 fewer lines**, an **80% reduction**. Classic's Rust code
 alone is 4.4 times larger than Nova's entire code and configuration surface.
 
 Nova delivers more features in 20% of the code. It has a clearer configuration
@@ -103,6 +103,13 @@ nix run github:luccahuguet/yazelix/v17.12#yazelix -- launch
 If your Classic settings match packaged defaults, start with Nova's packaged
 defaults and move straight to `stable`. Home Manager users must replace
 Classic-only options with Nova's narrow module surface before switching.
+
+After switching, `yzx doctor` reports recognized Classic `configs/` and
+`sessions/` state, generated Nushell extern artifacts, and migration backups in
+the active Yazelix roots. These are read-only warnings: `nova=unused` means Nova
+did not load the path, while `ownership=ambiguous` means its contents or owner
+cannot be proven from the pathname alone. Nova does not archive or remove the
+reported paths, and external scripts may still reference them.
 
 The Nova cutover intentionally replaces the old `main` history. Existing Git
 clones should be replaced with a fresh clone rather than updated with an
