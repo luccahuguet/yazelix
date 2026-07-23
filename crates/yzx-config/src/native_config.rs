@@ -1,6 +1,6 @@
 use std::{fs, path::Path};
 
-use ratconfig::toml_adapter::{get_toml_path, set_toml_value_text, unset_toml_value_text};
+use ratconfig::toml_adapter::{set_toml_value_text, unset_toml_value_text};
 use serde_json::Value as JsonValue;
 use toml::Value as TomlValue;
 use yazelix_cursors::{CursorRegistry, DEFAULT_CURSOR_CONFIG_TEMPLATE};
@@ -35,15 +35,6 @@ pub(crate) fn write_cursor_config_field(
     CursorRegistry::parse_str(path, &text)?;
     atomic_write(path, &text)
 }
-pub(crate) fn restore_cursor_config_field(path: &Path, field_path: &str) -> Result<()> {
-    let active = yazelix_cursors::load_cursor_config(path)?;
-    let defaults = cursor_defaults(&active)?;
-    let defaults = serde_json::to_value(defaults)?;
-    let value = get_toml_path(&defaults, field_path)
-        .ok_or_else(|| error(format!("unknown cursor config path: {field_path}")))?;
-    write_cursor_config_field(path, field_path, value)
-}
-
 pub(crate) fn write_mars_config_field(
     path: &Path,
     field_path: &str,

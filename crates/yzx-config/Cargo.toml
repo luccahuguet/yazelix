@@ -6,7 +6,7 @@ edition = "2024"
 [dependencies]
 crossterm = "0.29"
 ratatui = { version = "0.30.0", default-features = false, features = ["crossterm"] }
-ratconfig = { path = "../../../ratconfig" }
+ratconfig = { git = "https://github.com/luccahuguet/ratconfig", rev = "ecce98710c254accede67760b41ecf3dbcd9626d" }
 serde_json = "1.0"
 toml = "1.1"
 yazelix_cursors = { path = "../../../yazelix-cursors" }

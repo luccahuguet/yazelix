@@ -47,10 +47,6 @@
       url = "github:luccahuguet/yazelix-screen";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    ratconfig = {
-      url = "github:luccahuguet/ratconfig";
-      flake = false;
-    };
     autoLayoutYazi = {
       url = "github:luccahuguet/auto-layout.yazi";
       flake = false;
@@ -77,7 +73,6 @@
     yazelixZellijBar,
     yazelixZellijPaneOrchestrator,
     yazelixScreen,
-    ratconfig,
     autoLayoutYazi,
     starshipYazi,
     zjstatus,
@@ -159,12 +154,10 @@
         mkdir -p "$out"
         cp -R ${pkgs.lib.cleanSource ./crates/yzx-config}/. "$out/"
         chmod -R u+w "$out"
-        ln -s ${ratconfig} "$out/ratconfig"
         ln -s ${yazelixCursors} "$out/yazelix-cursors"
         cp ${./defaults/config.toml} "$out/config.toml"
         cp ${./defaults/mars/config.toml} "$out/mars.toml"
         substituteInPlace "$out/Cargo.toml" \
-          --replace-fail '../../../ratconfig' './ratconfig' \
           --replace-fail '../../../yazelix-cursors' './yazelix-cursors'
         substituteInPlace "$out/src/catalog.rs" \
           --replace-fail '../../../defaults/config.toml' '../config.toml' \
@@ -176,7 +169,7 @@
         src = yzxConfigSrc;
         cargoLock = {
           lockFile = ./crates/yzx-config/Cargo.lock;
-          outputHashes."ratconfig-2.0.0" = "sha256-NXnn7WOBEa7uQl8rs52gpIhpEGTeanRL5+au9ltjQyE=";
+          outputHashes."ratconfig-6.0.0" = "sha256-9pZHUUTO5+pcDGlS8Gpl++xzdAHXf+GzIlYMqOxzwz0=";
         };
         YAZELIX_NIX_STORE_ROOT = builtins.storeDir;
         YAZELIX_PACKAGED_YAZI = yzxYaziConfig;

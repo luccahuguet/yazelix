@@ -32,17 +32,17 @@ composes their package outputs.
 
 | Measure | Nova | Classic |
 | --- | --- | --- |
-| Code and configuration (Rust, Nix, shell, TOML, etc.) | **18,646 LOC** | **91,545 LOC** |
-| Rust | **15,552 LOC** | **80,957 LOC** |
+| Code and configuration (Rust, Nix, shell, TOML, etc.) | **19,194 LOC** | **91,545 LOC** |
+| Rust | **16,107 LOC** | **80,957 LOC** |
 | Ownership model | One owner per concern | Overlapping responsibilities across layers |
 | Yazelix component boundaries | Independent, versioned packages | Child repos mixed with main-repo ownership |
 | Product experience | More features, stronger defaults, tighter integration, and polished UX | Fewer features and a less cohesive workspace |
 | Status | Recommended | Frozen migration and rollback path |
 
-Nova owns **72,899 fewer lines**, an **80% reduction**. Classic's Rust code
-alone is 4.4 times larger than Nova's entire code and configuration surface.
+Nova owns **72,351 fewer lines**, a **79% reduction**. Classic's Rust code
+alone is 4.2 times larger than Nova's entire code and configuration surface.
 
-Nova delivers more features in 20% of the code. It has a clearer configuration
+Nova delivers more features in 21% of the code. It has a clearer configuration
 model, tighter editor and Yazi integration, stronger diagnostics, and a
 coherent popup-oriented interface. The smaller architecture makes Yazelix
 easier to improve and better to use.
@@ -137,9 +137,9 @@ Press `Alt Shift K` to open Ratconfig:
 | `1`-`9` | Jump to a tab |
 | `Tab` / `Shift-Tab`, `h` / `l` | Change tabs |
 | `j` / `k`, `/` | Move through rows or search All settings |
-| `a` | Switch between Core and All |
+| `a` | Switch between Overview and All when the tab has a meaningful reduced view |
 | `e`, `Enter`, `Space` | Run the selected row's contextual action |
-| `u`, `q` | Reset the selected setting or quit |
+| `u`, `q` | Remove the selected explicit override or quit |
 
 The footer lists the selected row's controls.
 
@@ -250,8 +250,10 @@ Yazelix assembles focused first-party forks, plugins, libraries, and commands:
 
 `yzx config` opens Ratconfig over the managed tree at
 `~/.config/yazelix/`. Yazelix inherits packaged defaults and persists only
-explicit overrides. Core shows the settings most users need. All includes the
-complete inventory.
+explicit overrides. Overview combines recommended settings with every explicit,
+invalid, externally managed, or diagnosed field. All includes the complete
+inventory. Tabs whose Overview would hide fewer than three fields or less than
+one quarter of their inventory simply show All.
 
 Set `shell.program` in Ratconfig or `config.toml` to choose packaged Nushell
 (default), Bash, Zsh, or Fish for new panes and sessions.
@@ -276,6 +278,6 @@ See [Development](docs/development.md) for CI and local checks,
 
 ## LOC Scorecard
 
-Yazelix owns **21,097 lines** of tracked text project files. The
+Yazelix owns **21,668 lines** of tracked text project files. The
 [reproducible scorecard](docs/development.md#loc-scorecard) excludes Beads,
 lockfiles, and binary assets.

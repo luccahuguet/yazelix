@@ -1,7 +1,8 @@
 use std::{collections::BTreeSet, fs, path::Path};
 
 use ratconfig::{
-    ConfigUiApplyStatus, ConfigUiField, ConfigUiTomlDocumentSpec, build_toml_document_fields,
+    ConfigUiApplyStatus, ConfigUiCapability, ConfigUiChoice, ConfigUiField, ConfigUiOverride,
+    ConfigUiResolvedValue, ConfigUiTomlDocumentSpec, build_toml_document_fields,
     toml_adapter::{set_toml_value_text, unset_toml_value_text},
 };
 use serde_json::Value as JsonValue;
@@ -17,7 +18,7 @@ pub(crate) fn build_yazi_fields(paths: &ConfigPaths) -> Result<Vec<ConfigUiField
         &current,
         &packaged,
     ))
-    .map_err(error)?;
+    .map_err(|source| error(source.to_string()))?;
     let theme = read_optional_text(&paths.yazi_theme)?;
     let mut appearance = build_toml_document_fields(document(
         SOURCE_YAZI_THEME,
@@ -25,7 +26,7 @@ pub(crate) fn build_yazi_fields(paths: &ConfigPaths) -> Result<Vec<ConfigUiField
         &theme,
         YAZI_THEME_STARTER,
     ))
-    .map_err(error)?;
+    .map_err(|source| error(source.to_string()))?;
     let flavors = discovered_flavors(paths)?;
     for field in &mut appearance.fields {
         let label = match field.path.as_str() {
@@ -34,8 +35,47 @@ pub(crate) fn build_yazi_fields(paths: &ConfigPaths) -> Result<Vec<ConfigUiField
             _ => continue,
         };
         field.display_label = label.to_string();
-        field.kind = "string".to_string();
-        field.allowed_values.clone_from(&flavors);
+        field.type_label = Some("string".to_string());
+        field.capability = if flavors.is_empty() {
+            ConfigUiCapability::ReadOnly {
+                reason: "No installed Yazi flavors were discovered.".to_string(),
+                file_action_id: Some(ACTION_YAZI_THEME.to_string()),
+            }
+        } else {
+            ConfigUiCapability::Choice {
+                choices: flavors
+                    .iter()
+                    .cloned()
+                    .map(|value| ConfigUiChoice::new(JsonValue::String(value)))
+                    .collect(),
+            }
+        };
+        field.can_unset = matches!(field.snapshot.intent, ConfigUiOverride::Explicit(_));
+        if let ConfigUiOverride::Explicit(value) = &field.snapshot.intent {
+            if value
+                .as_str()
+                .is_some_and(|value| flavors.iter().any(|flavor| flavor == value))
+            {
+                field.snapshot.effective = Some(ConfigUiResolvedValue {
+                    value: value.clone(),
+                    origin: Some("User yazi/theme.toml".to_string()),
+                });
+            } else {
+                field.snapshot.intent = ConfigUiOverride::Invalid {
+                    input: value.to_string(),
+                };
+                field.snapshot.effective = None;
+            }
+        }
+        if let Some(baseline) = &mut field.snapshot.baseline {
+            baseline.origin = Some("Yazi default theme".to_string());
+        }
+        if matches!(field.snapshot.intent, ConfigUiOverride::Absent) {
+            field
+                .snapshot
+                .effective
+                .clone_from(&field.snapshot.baseline);
+        }
         field.validation = "installed packaged or user flavor".to_string();
         field.description =
             format!("{label} from native yazi/theme.toml. Reset uses Yazi's default theme.");
@@ -102,7 +142,7 @@ fn document<'a>(
         tab: TAB_YAZI,
         section_label,
         current_toml,
-        default_toml: Some(default_toml),
+        baseline_toml: Some(default_toml),
         validation: "native TOML value of the existing type",
         rebuild_required: false,
         apply_status: ConfigUiApplyStatus {

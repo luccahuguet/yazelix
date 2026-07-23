@@ -92,15 +92,24 @@ One owner per concern. Paths are the durable map.
 
 `crates/yzx-config/` is the Ratconfig host.
 
-- Supplies stable source/path identities for Ratconfig Core membership; the
-  reviewed root inventory uses a local product-essential allowlist, while
-  Ratconfig owns Core/All filtering, explicit-value visibility, counts,
-  toggling, and All-scope search. Unreviewed non-root inventories remain Core
+- Supplies one stable source/path identity per field and a reviewed root
+  recommendation allowlist. Ratconfig owns Overview/All filtering, meaningful
+  reduction thresholds, attention-state visibility, toggling, and All-scope
+  search. Non-root inventories remain recommended until their owners receive a
+  narrower review
+- Resolves sparse override intent separately from baseline and effective values,
+  declares editor capabilities independently of display types, and completes
+  reloads by field identity rather than stale row position
 - Seeds only the child-owned cursor TOML; root, Mars, Zellij, and Starship stay
   sparse
-- Routes edits to the right file; Helix/Advanced open-file rows; Keys read-only
+- Routes edits and true unset operations to the right file; cursor fields expose
+  no reset because their child-owned file has no sparse inheritance contract;
+  Helix/Advanced open-file rows and Keys remain read-only
 - Resolves known config targets against the packaged Nix store root so
   Home Manager-owned sources stay read-only with exact module-option guidance
+- Keeps localized invalid values as field intent. Wholly unsafe root documents
+  become source diagnostics with an exact `config.toml` file action instead of
+  preventing the UI from opening
 - Hidden package-internal reads for launch + custom-popup KDL render
 - `agent.popup.kdl` is an internal render path that routes custom managed agent
   argv through the packaged launcher
@@ -115,13 +124,13 @@ The root validator derives fixed leaves from that catalog, rejects unknown paths
 before runtime or Ratconfig use, and delegates only `popups.<id>` to its dynamic
 field validator.
 
-`ROOT_CONFIG_CORE_PATHS` contains `shell.program`, `editor.command`,
+`ROOT_CONFIG_RECOMMENDED_PATHS` contains `shell.program`, `editor.command`,
 `agent.command`, the two ordinary welcome controls, all six managed action
 keys, and `bar.widgets`. Diagnostics (`open.log_level`), argument and duration
-fine tuning, and popup geometry are All-only until explicitly configured.
+fine tuning, and popup geometry are All-only until they require attention.
 Configured custom popup leaves use Ratconfig's generic TOML rows and belong to
 All; because every discovered leaf is explicit, Ratconfig also keeps it visible
-in Core. Absent optional leaves and unconfigured popup ids are not synthesized
+in Overview. Absent optional leaves and unconfigured popup ids are not synthesized
 
 | Root path | Type | Default | Effect | Applies |
 | --- | --- | --- | --- | --- |
@@ -264,7 +273,7 @@ Runtime state defaults to `$XDG_DATA_HOME/yazelix` or `YAZELIX_STATE_DIR`.
 | Surface | Layering |
 | --- | --- |
 | Root TOML | Packaged semantic defaults → sparse explicit user overrides |
-| Cursors | Child-owned template → user file; Ratconfig edits bounded common fields and preserves custom definitions |
+| Cursors | Child-owned template → user file; Ratconfig edits bounded common fields and preserves custom definitions, but does not offer a false reset-to-baseline operation |
 | Mars | Packaged base → recursive sparse user override; cursor selection arrives separately through `YAZELIX_CURSOR_CONFIG` |
 | Nu | Packaged → optional host `mise activate nu` → optional user Nu |
 | Starship | Native defaults + `yzx-config` `character.format` → sparse user overrides → runtime-effective TOML |

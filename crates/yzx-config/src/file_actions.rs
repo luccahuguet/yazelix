@@ -12,8 +12,8 @@ use crate::{
     catalog::*,
     common::*,
     native_config::{
-        restore_cursor_config_field, unset_mars_config_field, unset_starship_config_field,
-        write_cursor_config_field, write_mars_config_field, write_starship_config_field,
+        unset_mars_config_field, unset_starship_config_field, write_cursor_config_field,
+        write_mars_config_field, write_starship_config_field,
     },
     paths::ConfigPaths,
     root_config::{unset_config_field, write_config_field},
@@ -56,6 +56,15 @@ pub(crate) fn build_file_actions(paths: &ConfigPaths) -> Vec<ConfigUiFileAction>
 }
 fn file_action_specs(paths: &ConfigPaths) -> impl IntoIterator<Item = FileActionSpec> {
     [
+        FileActionSpec {
+            source_id: SOURCE_CONFIG,
+            action_id: ACTION_ROOT_CONFIG,
+            tab: TAB_ADVANCED,
+            label: "config.toml",
+            description: "Open the complete Yazelix config file.",
+            path: paths.root.clone(),
+            starter: "",
+        },
         FileActionSpec {
             source_id: SOURCE_CURSORS,
             action_id: ACTION_CURSORS_CONFIG,
@@ -222,10 +231,9 @@ pub(crate) fn write_source_default(
             paths.reject_mutation(&paths.mars, source_id)?;
             unset_mars_config_field(&paths.mars, field_path)
         }
-        SOURCE_CURSORS => {
-            paths.reject_mutation(&paths.cursors, source_id)?;
-            restore_cursor_config_field(&paths.cursors, field_path)
-        }
+        SOURCE_CURSORS => Err(error(
+            "cursor settings have no inherited reset; edit cursors.toml instead",
+        )),
         SOURCE_STARSHIP => {
             paths.reject_mutation(&paths.starship, source_id)?;
             unset_starship_config_field(&paths.starship, field_path)

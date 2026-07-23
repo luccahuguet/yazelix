@@ -48,7 +48,7 @@ pub(crate) const BAR_WIDGET_VALUES: &[&str] = &[
     "cpu",
     "ram",
 ];
-pub(crate) const ROOT_CONFIG_CORE_PATHS: &[&str] = &[
+pub(crate) const ROOT_CONFIG_RECOMMENDED_PATHS: &[&str] = &[
     SHELL_PROGRAM_PATH,
     EDITOR_COMMAND_PATH,
     AGENT_COMMAND_PATH,
@@ -96,6 +96,7 @@ pub(crate) const TAB_KEYS: &str = " keys";
 pub(crate) const TAB_ADVANCED: &str = "advanced";
 
 pub(crate) const ACTION_HELIX_CONFIG: &str = "helix.config";
+pub(crate) const ACTION_ROOT_CONFIG: &str = "config.root";
 pub(crate) const ACTION_CURSORS_CONFIG: &str = "cursors.config";
 pub(crate) const ACTION_HELIX_LANGUAGES: &str = "helix.languages";
 pub(crate) const ACTION_HELIX_MODULE: &str = "helix.module";

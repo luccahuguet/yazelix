@@ -2,13 +2,13 @@
 
 `yzx config` opens Nova's Ratconfig interface. It shows packaged defaults,
 persists explicit overrides, exposes advanced native files, and identifies
-Home Manager-owned configuration as declarative. Yazelix classifies every
-non-root inventory field as Core until that inventory receives its own review.
-For Main and Popups, Core contains the ordinary product controls and All adds
-diagnostics, fine tuning, and every configured custom-popup field.
-Normal-mode `a` switches between Core and All when the current tab has an
-All-only field; search always spans All without changing the saved view, and
-explicit or invalid values remain in Core
+Home Manager-owned configuration as declarative. Yazelix recommends every
+non-root inventory field until that inventory receives its own review. For Main
+and Popups, Overview contains the ordinary product controls plus every explicit,
+invalid, externally managed, or field-diagnosed setting; All adds the remaining
+fine tuning and every configured custom-popup field. Normal-mode `a` switches
+between Overview and All only when Overview hides at least three fields and one
+quarter of the tab. Search always spans All without changing the saved view
 
 On a free-form setting, `Enter` starts single-line inline editing and `e` opens
 the same staged value in `editor.command`. Inline editing supports Left/Right,
@@ -41,19 +41,22 @@ The optional root config lives at `~/.config/yazelix/config.toml`. Opening
 `yzx config` or starting Nova does not create it. The UI shows packaged defaults
 for absent keys, saves only explicit overrides, and removes a key when reset.
 Nova rejects unsupported or misspelled paths instead of silently ignoring them,
-while custom popup ids remain dynamic within the documented `popups.<id>` fields
+while custom popup ids remain dynamic within the documented `popups.<id>`
+fields. A locally invalid known value remains visible with its raw input and
+packaged baseline. Wholly unparseable or structurally unsafe root files open as
+an Advanced diagnostic with an exact `config.toml` action
 
 | Field | Default | View | Meaning |
 | --- | --- | --- | --- |
 | `open.log_level` | `info` | All | Diagnostics for managed Yazi open requests: `off`, `error`, `info`, `debug` |
-| `shell.program` | `nu` | Core | Packaged shell for new panes: `nu`, `bash`, `zsh`, `fish` |
-| `editor.command` | `yzx-hx` | Core | Editor used by Yazi opens, Ratconfig text edits, and Git editor flows |
-| `welcome.enabled` | `true` | Core | Show the startup welcome splash |
-| `welcome.style` | `random` | Core | Startup screen style: `static`, `logo`, `asciiquarium`, the Boids/Mandelbrot/Game of Life styles, or `random` |
+| `shell.program` | `nu` | Overview | Packaged shell for new panes: `nu`, `bash`, `zsh`, `fish` |
+| `editor.command` | `yzx-hx` | Overview | Editor used by Yazi opens, Ratconfig text edits, and Git editor flows |
+| `welcome.enabled` | `true` | Overview | Show the startup welcome splash |
+| `welcome.style` | `random` | Overview | Startup screen style: `static`, `logo`, `asciiquarium`, the Boids/Mandelbrot/Game of Life styles, or `random` |
 | `welcome.duration_seconds` | `3` | All | Startup splash duration, 1 to 60 seconds |
-| `keybindings.sidebar` | `Alt Shift H` | Core | Hide or show the managed Yazi sidebar |
-| `keybindings.sidebar_focus` | `Ctrl y` | Core | Toggle focus between the editor and managed Yazi sidebar |
-| `bar.widgets` | `editor`, `shell`, `term`, `codex_usage`, `cpu`, `ram` | Core | Top bar widgets, left to right |
+| `keybindings.sidebar` | `Alt Shift H` | Overview | Hide or show the managed Yazi sidebar |
+| `keybindings.sidebar_focus` | `Ctrl y` | Overview | Toggle focus between the editor and managed Yazi sidebar |
+| `bar.widgets` | `editor`, `shell`, `term`, `codex_usage`, `cpu`, `ram` | Overview | Top bar widgets, left to right |
 
 The Codex quota widget identifies periods from their reported duration and shows
 five-hour before weekly when both exist. Unavailable periods are omitted.
@@ -74,15 +77,15 @@ popup role keys:
 
 | Field | Default | View | Meaning |
 | --- | --- | --- | --- |
-| `agent.command` | `auto` | Core | Managed agent popup command. `auto` keeps the built-in provider fallback |
+| `agent.command` | `auto` | Overview | Managed agent popup command. `auto` keeps the built-in provider fallback |
 | `agent.args` | `[]` | All | Arguments for a custom `agent.command` |
 | `popup.side_margin` | `1` | All | Left and right popup margin in terminal cells |
 | `popup.vertical_margin` | `0` | All | Top and bottom popup margin in terminal cells |
-| `keybindings.config` | `Alt Shift K` | Core | Config popup trigger |
-| `keybindings.agent` | `Alt Shift L` | Core | Agent popup trigger |
-| `keybindings.git` | `Alt Shift J` | Core | Git popup trigger |
-| `keybindings.menu` | `Alt Shift M` | Core | Menu popup trigger |
-| `keybindings.screen` | `Alt Shift S` | Core | Random full-screen visual trigger |
+| `keybindings.config` | `Alt Shift K` | Overview | Config popup trigger |
+| `keybindings.agent` | `Alt Shift L` | Overview | Agent popup trigger |
+| `keybindings.git` | `Alt Shift J` | Overview | Git popup trigger |
+| `keybindings.menu` | `Alt Shift M` | Overview | Menu popup trigger |
+| `keybindings.screen` | `Alt Shift S` | Overview | Random full-screen visual trigger |
 
 `Alt Shift Y` is the fixed packaged key for the full managed Yazi popup. It is
 not a root setting. The popup opens at the active tab's canonical workspace
@@ -111,14 +114,14 @@ must be unique; `screen`, `screen_popup`, `yazi`, and `yazi_popup` are reserved
 for packaged surfaces. Custom popup keybindings use the same collision checks
 as all managed action keys. Ratconfig passes every leaf actually present under a
 configured popup through its generic TOML rows. Those values are explicit, so
-they remain visible in Core too. Optional fields that are not written and popup
+they remain visible in Overview too. Optional fields that are not written and popup
 ids that do not exist are not invented; open `config.toml` to add them
 
 ## Native config files
 
 | File | Owner | Notes |
 | --- | --- | --- |
-| `cursors.toml` | Yazelix Cursors | Shared cursor pool, selection, and effects. The child-owned template seeds it once, and Ratconfig preserves custom definitions |
+| `cursors.toml` | Yazelix Cursors | Shared cursor pool, selection, and effects. The child-owned template seeds it once, Ratconfig preserves custom definitions, and reset is unavailable because this file has no sparse inherited layer |
 | `mars/config.toml` | Mars | Sparse overrides for appearance preset, window size, opacity, font, scrollbar, and bell |
 | `zellij/config.kdl` | Zellij sidecar | Sparse safe scalar overrides where absent assignments inherit packaged defaults. Ratconfig offers Default plus the 41 themes embedded by the pinned Zellij package; Default removes the override, while quoted custom theme names without KDL escapes remain accepted. Unexposed top-level leaf nodes are preserved as unvalidated Advanced diagnostics without interpreting their values. Inside a session, saves and resets also patch the active runtime config. Structural comments or continuations, extra managed-block metadata, other structured native nodes, and integration-owned nodes block unsafe writes |
 | `zellij/plugins.kdl` | Zellij plugin sidecar | Extra plugin declarations only. Packaged plugin ids cannot be redeclared |
