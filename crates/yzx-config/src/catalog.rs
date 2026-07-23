@@ -32,6 +32,7 @@ pub(crate) const KEYBINDINGS_CONFIG_PATH: &str = "keybindings.config";
 pub(crate) const KEYBINDINGS_AGENT_PATH: &str = "keybindings.agent";
 pub(crate) const KEYBINDINGS_GIT_PATH: &str = "keybindings.git";
 pub(crate) const KEYBINDINGS_MENU_PATH: &str = "keybindings.menu";
+pub(crate) const KEYBINDINGS_SCREEN_PATH: &str = "keybindings.screen";
 pub(crate) const KEYBINDINGS_SIDEBAR_PATH: &str = "keybindings.sidebar";
 pub(crate) const KEYBINDINGS_SIDEBAR_FOCUS_PATH: &str = "keybindings.sidebar_focus";
 pub(crate) const BAR_WIDGETS_PATH: &str = "bar.widgets";
@@ -56,6 +57,7 @@ pub(crate) const ROOT_CONFIG_CORE_PATHS: &[&str] = &[
     KEYBINDINGS_AGENT_PATH,
     KEYBINDINGS_GIT_PATH,
     KEYBINDINGS_MENU_PATH,
+    KEYBINDINGS_SCREEN_PATH,
     KEYBINDINGS_SIDEBAR_PATH,
     KEYBINDINGS_SIDEBAR_FOCUS_PATH,
     BAR_WIDGETS_PATH,
@@ -165,6 +167,7 @@ pub(crate) const MANAGED_KEYBINDINGS: &[(&str, &str)] = &[
     (KEYBINDINGS_AGENT_PATH, "Alt Shift L"),
     (KEYBINDINGS_GIT_PATH, "Alt Shift J"),
     (KEYBINDINGS_MENU_PATH, "Alt Shift M"),
+    (KEYBINDINGS_SCREEN_PATH, "Alt Shift S"),
     (KEYBINDINGS_SIDEBAR_PATH, "Alt Shift H"),
     (KEYBINDINGS_SIDEBAR_FOCUS_PATH, "Ctrl y"),
 ];
@@ -198,6 +201,7 @@ pub(crate) const KEY_BINDINGS: &[[&str; 5]] = &[
     key!("Popups"; "Alt Shift K"; "Toggle config popup"; "Yazelix"; "config.kdl"),
     key!("Popups"; "Alt Shift L"; "Hide or show agent popup"; "Yazelix"; "config.kdl"),
     key!("Popups"; "Alt Shift M"; "Toggle menu popup"; "Yazelix"; "config.kdl"),
+    key!("Popups"; "Alt Shift S"; "Show a random full-screen visual"; "Yazelix"; "config.kdl"),
     key!("Popups"; "Alt Shift Y"; "Hide or show Yazi popup"; "Yazelix"; "config.kdl"),
     key!("Sidebar"; "Alt Shift H"; "Toggle Yazi sidebar"; "Yazelix"; "config.kdl"),
     key!("File manager"; "Alt z"; "Retarget tab workspace with zoxide"; "Yazi"; "yazi/keymap.toml"),
@@ -335,6 +339,16 @@ pub(crate) const CONFIG_FIELDS: &[ConfigFieldSpec] = &[
         field: FieldSpec::string_choice(
             KEYBINDINGS_MENU_PATH,
             "Key chord that toggles the managed command palette popup.",
+            &[],
+            "key chord like Alt Shift A that does not conflict with a packaged binding",
+        ),
+        apply_summary: "next launch",
+        apply_detail: "Saved keybindings apply to newly launched Yazelix sessions.",
+    },
+    ConfigFieldSpec {
+        field: FieldSpec::string_choice(
+            KEYBINDINGS_SCREEN_PATH,
+            "Key chord that opens a random full-screen visual.",
             &[],
             "key chord like Alt Shift A that does not conflict with a packaged binding",
         ),

@@ -40,6 +40,7 @@ config = "Alt Shift K"
 agent = "Alt Shift L"
 git = "Alt Shift J"
 menu = "Alt Shift M"
+screen = "Alt Shift S"
 sidebar = "Alt Shift H"
 sidebar_focus = "Ctrl y"
 

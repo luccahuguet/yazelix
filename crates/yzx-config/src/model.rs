@@ -301,6 +301,7 @@ fn root_config_tab(path: &str) -> &'static str {
             | KEYBINDINGS_AGENT_PATH
             | KEYBINDINGS_GIT_PATH
             | KEYBINDINGS_MENU_PATH
+            | KEYBINDINGS_SCREEN_PATH
     ) {
         TAB_POPUPS
     } else {

@@ -10,7 +10,7 @@ use crate::{
     },
 };
 
-const BUILTIN_POPUP_IDS: &[&str] = &["config", "agent", "git", "menu", "yazi"];
+const BUILTIN_POPUP_IDS: &[&str] = &["config", "agent", "git", "menu", "screen", "yazi"];
 
 pub(crate) struct CustomPopup {
     pub(crate) id: String,

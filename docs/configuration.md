@@ -82,6 +82,7 @@ popup role keys:
 | `keybindings.agent` | `Alt Shift L` | Core | Agent popup trigger |
 | `keybindings.git` | `Alt Shift J` | Core | Git popup trigger |
 | `keybindings.menu` | `Alt Shift M` | Core | Menu popup trigger |
+| `keybindings.screen` | `Alt Shift S` | Core | Random full-screen visual trigger |
 
 `Alt Shift Y` is the fixed packaged key for the full managed Yazi popup. It is
 not a root setting. The popup opens at the active tab's canonical workspace
@@ -106,9 +107,9 @@ keep_alive = true
 ```
 
 Commands are argv-based. Put arguments in `args`, not in `command`. Popup titles
-must be unique; `yazi` and `yazi_popup` are reserved for the packaged Yazi
-surface. Custom popup keybindings use the same collision checks as all
-managed action keys. Ratconfig passes every leaf actually present under a
+must be unique; `screen`, `screen_popup`, `yazi`, and `yazi_popup` are reserved
+for packaged surfaces. Custom popup keybindings use the same collision checks
+as all managed action keys. Ratconfig passes every leaf actually present under a
 configured popup through its generic TOML rows. Those values are explicit, so
 they remain visible in Core too. Optional fields that are not written and popup
 ids that do not exist are not invented; open `config.toml` to add them

@@ -65,6 +65,7 @@ pub(crate) const MANAGED_KEYBINDING_SPECS: &[(&str, &str, &str)] = &[
     ("agent", "keybindings.agent", "@defaultAgentKeybinding@"),
     ("git", "keybindings.git", "@defaultGitKeybinding@"),
     ("menu", "keybindings.menu", "@defaultMenuKeybinding@"),
+    ("screen", "keybindings.screen", "@defaultScreenKeybinding@"),
     (
         "sidebar",
         "keybindings.sidebar",

@@ -4,6 +4,10 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## Unreleased
 
+- `Alt Shift S` opens a transient full-size popup running the packaged random
+  Yazelix screen. Ordinary screen input closes it and returns to the unchanged
+  workspace; it is a visual cover, not a session lock or privacy boundary.
+  `keybindings.screen` remaps the action for newly launched sessions.
 - `yzx doctor` reports recognized Classic generated-state roots, exact Nushell
   extern artifacts, and migration backups without following symlinked parents
   or changing any files. Each warning says Nova leaves the path unused and

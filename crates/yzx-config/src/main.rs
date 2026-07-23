@@ -564,6 +564,7 @@ mod tests {
             (KEYBINDINGS_AGENT_PATH, "Alt Shift A"),
             (KEYBINDINGS_GIT_PATH, "Alt Shift G"),
             (KEYBINDINGS_MENU_PATH, "Alt Shift U"),
+            (KEYBINDINGS_SCREEN_PATH, "Ctrl Shift S"),
             (KEYBINDINGS_SIDEBAR_PATH, "Ctrl Shift B"),
             (KEYBINDINGS_SIDEBAR_FOCUS_PATH, "Ctrl Shift E"),
         ] {
@@ -616,6 +617,12 @@ mod tests {
             KEYBINDINGS_AGENT_PATH,
             json!("Alt Shift U"),
             "keybindings.menu conflicts with keybindings.agent: Alt Shift U",
+        );
+        assert_write_config_error(
+            &path,
+            KEYBINDINGS_AGENT_PATH,
+            json!("Ctrl Shift S"),
+            "keybindings.screen conflicts with keybindings.agent: Ctrl Shift S",
         );
 
         write_config_field(
@@ -767,6 +774,10 @@ mod tests {
                 "conflicts with packaged popup id",
             ),
             (
+                "[popups.screen]\ncommand = \"btm\"\nkeybinding = \"Alt Shift B\"\n",
+                "conflicts with packaged popup id",
+            ),
+            (
                 "[popups.btm]\ncommand = \"btm\"\n",
                 "popups.btm.keybinding is required",
             ),
@@ -789,6 +800,10 @@ mod tests {
             (
                 "[popups.btm]\ncommand = \"btm\"\ntitle = \"yazi_popup\"\nkeybinding = \"Alt Shift B\"\n",
                 "popups.btm.title conflicts with packaged popup title yazi_popup",
+            ),
+            (
+                "[popups.btm]\ncommand = \"btm\"\ntitle = \"screen_popup\"\nkeybinding = \"Alt Shift B\"\n",
+                "popups.btm.title conflicts with packaged popup title screen_popup",
             ),
             (
                 "[popups.btm]\ncommand = \"btm\"\ntitle = \"shared_popup\"\nkeybinding = \"Alt Shift B\"\n\n[popups.htop]\ncommand = \"htop\"\ntitle = \"shared_popup\"\nkeybinding = \"Alt Shift U\"\n",
@@ -907,6 +922,7 @@ mod tests {
                 KEYBINDINGS_AGENT_PATH,
                 KEYBINDINGS_GIT_PATH,
                 KEYBINDINGS_MENU_PATH,
+                KEYBINDINGS_SCREEN_PATH,
                 KEYBINDINGS_SIDEBAR_PATH,
                 KEYBINDINGS_SIDEBAR_FOCUS_PATH,
                 BAR_WIDGETS_PATH,
@@ -1041,6 +1057,7 @@ color = "#123456"
             KEYBINDINGS_AGENT_PATH,
             KEYBINDINGS_GIT_PATH,
             KEYBINDINGS_MENU_PATH,
+            KEYBINDINGS_SCREEN_PATH,
         ] {
             let field = model_field(&model, path);
             assert_eq!(field.source_id, SOURCE_CONFIG);
@@ -1243,6 +1260,13 @@ color = "#123456"
             "Popups: Alt Shift Y - Hide or show Yazi popup"
         );
         assert!(yazi_popup.description.contains("Owner: Yazelix"));
+
+        let screen_popup = key_field(&model, "Alt Shift S");
+        assert_eq!(
+            screen_popup.display_label,
+            "Popups: Alt Shift S - Show a random full-screen visual"
+        );
+        assert!(screen_popup.description.contains("Owner: Yazelix"));
     }
 
     #[test]

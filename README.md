@@ -32,14 +32,14 @@ composes their package outputs.
 
 | Measure | Nova | Classic |
 | --- | --- | --- |
-| Code and configuration (Rust, Nix, shell, TOML, etc.) | **18,566 LOC** | **91,545 LOC** |
-| Rust | **15,493 LOC** | **80,957 LOC** |
+| Code and configuration (Rust, Nix, shell, TOML, etc.) | **18,644 LOC** | **91,545 LOC** |
+| Rust | **15,550 LOC** | **80,957 LOC** |
 | Ownership model | One owner per concern | Overlapping responsibilities across layers |
 | Yazelix component boundaries | Independent, versioned packages | Child repos mixed with main-repo ownership |
 | Product experience | More features, stronger defaults, tighter integration, and polished UX | Fewer features and a less cohesive workspace |
 | Status | Recommended | Frozen migration and rollback path |
 
-Nova owns **72,979 fewer lines**, an **80% reduction**. Classic's Rust code
+Nova owns **72,901 fewer lines**, an **80% reduction**. Classic's Rust code
 alone is 4.4 times larger than Nova's entire code and configuration surface.
 
 Nova delivers more features in 20% of the code. It has a clearer configuration
@@ -159,6 +159,9 @@ Yazi and the menu use their initials:
 
 - `Alt Shift Y` toggles the full Yazi popup.
 - `Alt Shift M` toggles the command menu.
+- `Alt Shift S` opens a transient full-screen random visual. Press any ordinary
+  screen input to return to the unchanged workspace; this is not a session lock.
+  Set `keybindings.screen` to remap it for newly launched sessions.
 
 Press a popup's key again to close or hide it. Other useful bindings are:
 
@@ -167,6 +170,7 @@ Press a popup's key again to close or hide it. Other useful bindings are:
 | Workspace | `Ctrl q` | Quit the Yazelix session |
 | Workspace | `Alt m` | Open a new pane |
 | Workspace | `Alt Shift F` | Toggle the focused pane fullscreen |
+| Workspace | `Alt Shift S` | Show a random full-screen visual |
 | Workspace | `Ctrl y` | Toggle focus between the editor and Yazi sidebar |
 | Workspace | `Alt 1-9` | Go directly to tab 1-9 |
 | Editor | `Alt r` | Reveal the current editor file in Yazi |
@@ -272,6 +276,6 @@ See [Development](docs/development.md) for CI and local checks,
 
 ## LOC Scorecard
 
-Yazelix owns **20,843 lines** of tracked text project files. The
+Yazelix owns **21,091 lines** of tracked text project files. The
 [reproducible scorecard](docs/development.md#loc-scorecard) excludes Beads,
 lockfiles, and binary assets.

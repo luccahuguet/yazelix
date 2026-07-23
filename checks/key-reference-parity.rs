@@ -69,6 +69,7 @@ fn config_has_chord(config: &str, chord: &str) -> bool {
         "Alt Shift K" => Some("configKey"),
         "Alt Shift L" => Some("agentKey"),
         "Alt Shift M" => Some("menuKey"),
+        "Alt Shift S" => Some("screenKey"),
         "Alt Shift H" => Some("sidebarKey"),
         "Ctrl y" => Some("sidebarFocusKey"),
         _ => None,

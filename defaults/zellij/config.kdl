@@ -46,6 +46,14 @@ plugins {
                 height_percent 100
             }
 
+            screen {
+                command "@yzxScreen@"
+                pane_title "screen_popup"
+                width_percent 100
+                height_percent 100
+                arg_1 "random"
+            }
+
             yazi {
                 command "@yzxYazi@"
                 pane_title "yazi_popup"
@@ -127,6 +135,12 @@ keybinds {
             MessagePlugin "yzpp" {
                 name "toggle"
                 payload "menu"
+            }
+        }
+        bind "@screenKey@" {
+            MessagePlugin "yzpp" {
+                name "toggle"
+                payload "screen"
             }
         }
         bind "Alt h" "Alt Left" { MessagePlugin "yazelix_pane_orchestrator" { name "move_focus_left_or_tab"; }; }

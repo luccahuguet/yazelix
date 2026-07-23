@@ -332,6 +332,7 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
         "keybindings.agent",
         "keybindings.git",
         "keybindings.menu",
+        "keybindings.screen",
         "keybindings.sidebar",
         "keybindings.sidebar_focus",
         "lazygit",
@@ -385,6 +386,7 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
         "agent keybinding: Alt Shift L",
         "git keybinding: Alt Shift J",
         "menu keybinding: Alt Shift M",
+        "screen keybinding: Alt Shift S",
         "sidebar keybinding: Alt Shift H",
         "sidebar focus keybinding: Ctrl y",
         "layout: packaged (/nix/store/",
@@ -492,8 +494,8 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
     }
     let custom_popup_config = custom_popup.zellij_file("config.kdl");
     expect_popup_defaults(&custom_popup_config, "2", "1", "custom popup status config");
-    assert_eq!(custom_popup_config.matches("width_percent 100").count(), 5);
-    assert_eq!(custom_popup_config.matches("height_percent 100").count(), 5);
+    assert_eq!(custom_popup_config.matches("width_percent 100").count(), 6);
+    assert_eq!(custom_popup_config.matches("height_percent 100").count(), 6);
     assert_eq!(custom_popup_config.matches("side_margin 2").count(), 1);
     assert_eq!(custom_popup_config.matches("vertical_margin 1").count(), 1);
 
@@ -540,8 +542,8 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
         "btm",
         "custom popup spec config",
     );
-    assert_eq!(custom_popup_spec.matches("width_percent 100").count(), 6);
-    assert_eq!(custom_popup_spec.matches("height_percent 100").count(), 6);
+    assert_eq!(custom_popup_spec.matches("width_percent 100").count(), 7);
+    assert_eq!(custom_popup_spec.matches("height_percent 100").count(), 7);
     assert_eq!(custom_popup_spec.matches("side_margin 2").count(), 1);
     assert_eq!(custom_popup_spec.matches("vertical_margin 1").count(), 1);
 
@@ -564,7 +566,7 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
     }
 
     let custom_keys = RuntimeCase::new(&temp.path, "custom-keys");
-    custom_keys.write_default_config("\n[keybindings]\nconfig = \"Alt Shift C\"\nagent = \"Alt Shift A\"\ngit = \"Alt Shift G\"\nmenu = \"Alt Shift U\"\nsidebar = \"Ctrl Shift B\"\nsidebar_focus = \"Ctrl Shift E\"\n");
+    custom_keys.write_default_config("\n[keybindings]\nconfig = \"Alt Shift C\"\nagent = \"Alt Shift A\"\ngit = \"Alt Shift G\"\nmenu = \"Alt Shift U\"\nscreen = \"Ctrl Shift S\"\nsidebar = \"Ctrl Shift B\"\nsidebar_focus = \"Ctrl Shift E\"\n");
     let status = custom_keys.run_yzx(&yzx_bin, "status", "custom key status");
     expect_contains_all! {
         &status, "custom key status";
@@ -572,6 +574,7 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
         "agent keybinding: Alt Shift A",
         "git keybinding: Alt Shift G",
         "menu keybinding: Alt Shift U",
+        "screen keybinding: Ctrl Shift S",
         "sidebar keybinding: Ctrl Shift B",
         "sidebar focus keybinding: Ctrl Shift E",
         "zellij config: runtime (",
@@ -582,6 +585,7 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
         ("Alt Shift A", "agent", "Alt Shift L"),
         ("Alt Shift G", "git", "Alt Shift J"),
         ("Alt Shift U", "menu", "Alt Shift M"),
+        ("Ctrl Shift S", "screen", "Alt Shift S"),
     ] {
         expect_popup_binding(&custom_key_config, key, payload, "custom key config");
         assert!(
@@ -719,6 +723,7 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
         "ok keybindings.agent: Alt Shift L",
         "ok keybindings.git: Alt Shift J",
         "ok keybindings.menu: Alt Shift M",
+        "ok keybindings.screen: Alt Shift S",
         "ok keybindings.sidebar: Alt Shift H",
         "ok keybindings.sidebar_focus: Ctrl y",
         "ok tutor helper: /nix/store/",
@@ -1030,6 +1035,7 @@ fn expect_config_ui(yzx: &Path) {
         "agent = \"Alt Shift L\"",
         "git = \"Alt Shift J\"",
         "menu = \"Alt Shift M\"",
+        "screen = \"Alt Shift S\"",
         "sidebar = \"Alt Shift H\"",
         "sidebar_focus = \"Ctrl y\"",
         "widgets = [\"editor\", \"shell\", \"term\", \"codex_usage\", \"cpu\", \"ram\"]",
@@ -1053,6 +1059,7 @@ fn expect_config_ui(yzx: &Path) {
         ("keybindings.agent", "Alt Shift L"),
         ("keybindings.git", "Alt Shift J"),
         ("keybindings.menu", "Alt Shift M"),
+        ("keybindings.screen", "Alt Shift S"),
         ("keybindings.sidebar", "Alt Shift H"),
         ("keybindings.sidebar_focus", "Ctrl y"),
         (
@@ -1592,6 +1599,7 @@ fn expect_keybinds(config: &str) {
         r#"bind "Alt l" "Alt Right" { MessagePlugin "yazelix_pane_orchestrator" { name "move_focus_right_or_tab"; }; }"#,
         r#"bind "Alt r" { MessagePlugin "yazelix_pane_orchestrator" { name "smart_reveal"; }; }"#,
         r#"bind "Alt Shift F" { ToggleFocusFullscreen; }"#,
+        r#"bind "Alt Shift S" {"#,
         r#"bind "Alt Shift H" { MessagePlugin "yazelix_pane_orchestrator" { name "toggle_sidebar"; }; }"#,
         r#"bind "Ctrl y" { MessagePlugin "yazelix_pane_orchestrator" { name "toggle_editor_sidebar_focus"; }; }"#,
         r#"bind "Ctrl Alt g" { SwitchToMode "Locked"; }"#,
@@ -1667,6 +1675,12 @@ fn expect_first_party_plugins(git_bin: &Path, config: &str) {
         ("git", "git_popup", "/bin/yzx-git", ""),
         ("menu", "menu_popup", "/bin/yzx-menu", ""),
         (
+            "screen",
+            "screen_popup",
+            "/bin/yzs",
+            "\n                arg_1 \"random\"",
+        ),
+        (
             "yazi",
             "yazi_popup",
             "/bin/yzx-yazi",
@@ -1683,8 +1697,8 @@ fn expect_first_party_plugins(git_bin: &Path, config: &str) {
             "config.kdl is missing {id} popup block\n{expected}",
         );
     }
-    assert_eq!(config.matches("width_percent 100").count(), 5);
-    assert_eq!(config.matches("height_percent 100").count(), 5);
+    assert_eq!(config.matches("width_percent 100").count(), 6);
+    assert_eq!(config.matches("height_percent 100").count(), 6);
     assert_eq!(config.matches("side_margin 1").count(), 1);
     assert_eq!(config.matches("vertical_margin 0").count(), 1);
     for (key, payload) in [
@@ -1692,6 +1706,7 @@ fn expect_first_party_plugins(git_bin: &Path, config: &str) {
         ("Alt Shift K", "config"),
         ("Alt Shift L", "agent"),
         ("Alt Shift M", "menu"),
+        ("Alt Shift S", "screen"),
         ("Alt Shift Y", "yazi"),
     ] {
         expect_popup_binding(config, key, payload, "packaged popup config");
@@ -1728,6 +1743,7 @@ fn expect_first_party_plugins(git_bin: &Path, config: &str) {
     );
 
     assert!(popup_command(config, "/bin/yzx-menu").is_file());
+    assert!(popup_command(config, "/bin/yzs").is_file());
 }
 
 fn expect_git_editor(editor: &Path, lazygit_config: &Path, git: &Path) {
