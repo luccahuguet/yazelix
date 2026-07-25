@@ -4,6 +4,10 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## Unreleased
 
+- Host-Yazi packages accept Yazi's multiline version output, allowing current
+  development builds to pass pair validation and launch normally.
+- Yazi's compact Starship header uses the cloud glyph for AWS, matching the
+  full shell prompt.
 - Host-Yazi packages preserve absolute `yazi` and `ya` invocation paths when
   probing and launching, allowing argv0-sensitive symlink shims such as Mise to
   dispatch correctly without weakening executable or version-pair validation.

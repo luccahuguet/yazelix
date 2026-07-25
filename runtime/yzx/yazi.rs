@@ -138,11 +138,14 @@ fn resolve_command(command: &OsStr, lookup_path: &OsStr) -> Result<PathBuf, Stri
 
 fn parse_version(label: &str, output: &str) -> Option<String> {
     let mut fields = output.split_whitespace();
-    let program = fields.next()?;
-    if !program.eq_ignore_ascii_case(label) {
+    if !fields.next()?.eq_ignore_ascii_case(label) {
         return None;
     }
-    let version = fields.next()?.trim_start_matches('v');
+    let version = match fields.next()? {
+        "Version:" => fields.next()?,
+        version => version,
+    };
+    let version = version.trim_start_matches('v');
     (!version.is_empty() && version.contains('.')).then(|| version.to_string())
 }
 
@@ -182,7 +185,22 @@ mod tests {
             Some("26.5.6".into())
         );
         assert_eq!(parse_version("ya", "Ya v26.5.6"), Some("26.5.6".into()));
+        assert_eq!(
+            parse_version(
+                "yazi",
+                "Yazi\n    Version: 26.5.6 (9accf92 2026-07-21)\n    Debug  : false"
+            ),
+            Some("26.5.6".into())
+        );
+        assert_eq!(
+            parse_version(
+                "ya",
+                "Ya\n    Version: 26.5.6 (9accf92 2026-07-21)\n    Debug  : false"
+            ),
+            Some("26.5.6".into())
+        );
         assert_eq!(parse_version("ya", "Yazi 26.5.6"), None);
+        assert_eq!(parse_version("ya", "Yazi\n    Version: 26.5.6"), None);
         assert_eq!(parse_version("yazi", "Yazi unknown"), None);
     }
 

@@ -300,10 +300,10 @@
       yaziAssetsSelection = pkgs.fetchFromGitHub {
         owner = "luccahuguet";
         repo = "yazelix-yazi-assets";
-        rev = "677c127bceca9b9de3aab1251f8b65fe81631309";
+        rev = "b2dea5312d2f3be3472d4ff51530cbaa7279bf5c";
         sparseCheckout = ["plugins/git.yazi" "yazelix_starship.toml"];
         nonConeMode = true;
-        hash = "sha256-E40pXHSUX75ig0ACcuinTSC4xiJu0r8fO/G9z+w+YuI=";
+        hash = "sha256-cKpK1WnFaM/Ml48RrojFV0G1cqC95on1iatfLLmKoJc=";
       };
       yaziFlavorNames = [
         "catppuccin-frappe.yazi"
@@ -735,6 +735,7 @@
       noHelixContractsCheck =
         rustBinFor pkgs "no-helix-contracts-check" "${checksSrc}/no-helix-contracts.rs";
       mkFakeHostYazi = {
+        multiline ? false,
         name,
         yaVersion ? pkgs.yazi.version,
         yaziVersion ? pkgs.yazi.version,
@@ -749,7 +750,9 @@
             *) exit 64 ;;
           esac
           if [ "''${1:-}" = --version ]; then
-            printf '%s %s\n' "$label" "$version"
+            ${if multiline
+            then ''printf '%s\n' "$label" "    Version: $version" "    Debug  : false"''
+            else ''printf '%s %s\n' "$label" "$version"''}
           elif [ "$label" = Yazi ]; then
             printf 'fake Yazi config=%s starship=%s role=%s ya=%s args=' \
               "''${YAZI_CONFIG_HOME:-}" \
@@ -769,6 +772,7 @@
         '';
       fakeHostYazi = mkFakeHostYazi {name = "fake-host-yazi";};
       fakeNewerHostYazi = mkFakeHostYazi {
+        multiline = true;
         name = "fake-newer-host-yazi";
         yaVersion = "99.0.0";
         yaziVersion = "99.0.0";
