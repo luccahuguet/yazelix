@@ -4,6 +4,9 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## Unreleased
 
+- Toggling a keep-alive popup such as Agent, Ratconfig, or Yazi off hides the
+  tab's floating layer after preserving the popup process, returning directly
+  to the tiled workspace instead of exposing another floating pane underneath.
 - Host-Yazi packages accept Yazi's multiline version output, allowing current
   development builds to pass pair validation and launch normally.
 - Yazi's compact Starship header uses the cloud glyph for AWS, matching the

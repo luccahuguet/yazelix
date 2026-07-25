@@ -163,7 +163,9 @@ Yazi and the menu use their initials:
   screen input to return to the unchanged workspace; this is not a session lock.
   Set `keybindings.screen` to remap it for newly launched sessions.
 
-Press a popup's key again to close or hide it. Other useful bindings are:
+Press a popup's key again to close or hide it and return to the tiled workspace.
+Other floating panes keep running until explicitly shown again. Other useful
+bindings are:
 
 | Scope | Key | Action |
 | --- | --- | --- |
@@ -278,6 +280,6 @@ See [Development](docs/development.md) for CI and local checks,
 
 ## LOC Scorecard
 
-Yazelix owns **21,835 lines** of tracked text project files. The
+Yazelix owns **21,849 lines** of tracked text project files. The
 [reproducible scorecard](docs/development.md#loc-scorecard) excludes Beads,
 lockfiles, and binary assets.

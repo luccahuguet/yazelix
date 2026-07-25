@@ -84,6 +84,15 @@ Plugin ids owned by Yazelix, such as `yzpp` and
 `yazelix_pane_orchestrator`, cannot be redeclared. Plugin keybindings are not
 managed by this sidecar.
 
+## Popup Lifecycle
+
+Opening or revealing a managed popup shows Zellij's tab-wide floating layer.
+Toggling the focused popup off or explicitly closing it hides that layer after
+closing or suppressing the managed pane. This returns directly to the tiled
+workspace instead of exposing a session manager, terminal, or other floating
+pane underneath. Suppressed keep-alive popups and unrelated floating panes
+continue running; their explicit keybindings can show them again.
+
 ## Agent Popup
 
 The packaged agent launcher gives the pane its initial `agent` terminal title,
