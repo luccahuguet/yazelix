@@ -303,7 +303,7 @@
         rev = "b2dea5312d2f3be3472d4ff51530cbaa7279bf5c";
         sparseCheckout = ["plugins/git.yazi" "yazelix_starship.toml"];
         nonConeMode = true;
-        hash = "sha256-cKpK1WnFaM/Ml48RrojFV0G1cqC95on1iatfLLmKoJc=";
+        hash = "sha256-xyK/2qvm9PY9vXQt96nr32rvRprx42GSfd22R5ak4mM=";
       };
       yaziFlavorNames = [
         "catppuccin-frappe.yazi"
