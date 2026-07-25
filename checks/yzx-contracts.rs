@@ -1398,7 +1398,27 @@ fn expect_mars_config_override(yzx: &Path) {
 
     let mars_config = mars_case.config_home.join("mars/config.toml");
     fs::create_dir_all(mars_config.parent().unwrap()).unwrap();
-    fs::write(&mars_config, "# user Mars config\n").unwrap();
+    mars_case.write_config("[appearance]\nmode = \"light\"\n");
+    fs::write(
+        &mars_config,
+        "# user Mars config\n\n[window]\nopacity = 0.5\n",
+    )
+    .unwrap();
+    let projection = successful_stdout(
+        Command::new(yzx.join("libexec/yazelix/yzx-config"))
+            .arg("--project-mars-appearance")
+            .env("YAZELIX_CONFIG_HOME", &mars_case.config_home),
+        "Mars appearance projection",
+    );
+    assert_eq!(projection.trim(), "config");
+    let projected = fs::read_to_string(&mars_config).unwrap();
+    expect_contains_all! {
+        &projected, "projected Mars appearance";
+        "# user Mars config",
+        "opacity = 0.5",
+        "[mars.appearance]",
+        "preset = \"light\"",
+    }
 
     let status = mars_case.run_yzx(&yzx_bin, "status", "Mars config override status");
     expect_contains_all! {

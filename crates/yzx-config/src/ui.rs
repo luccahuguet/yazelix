@@ -1,4 +1,4 @@
-use std::io;
+use std::{env, io};
 
 use crossterm::{
     cursor,
@@ -11,15 +11,15 @@ use crossterm::{
     terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
 use ratatui::{Terminal, backend::CrosstermBackend};
-use ratconfig::{ConfigUiApp, ConfigUiIntent, ConfigUiKey, draw_config_ui};
+use ratconfig::{ConfigUiApp, ConfigUiFieldId, ConfigUiIntent, ConfigUiKey, draw_config_ui};
 
 use crate::{
     common::*,
     file_actions::{
-        edit_text_externally, open_file_action, write_source_default, write_source_field,
+        MarsAppearanceProjection, edit_text_externally, open_file_action, write_config_ui,
     },
     model::build_model,
-    paths::ensure_config_sources,
+    paths::{ConfigPaths, ensure_config_sources},
 };
 
 const RESET_TERMINAL_BACKGROUND: &str = "\x1b]111\x07";
@@ -29,6 +29,7 @@ pub(crate) fn run_ui() -> Result<()> {
     let mut app = ConfigUiApp::try_new(build_model(&paths)?).map_err(error)?;
     let mut session = TerminalSession::enter()?;
     let mut terminal = Terminal::new(CrosstermBackend::new(io::stdout()))?;
+    let mars_included = env::var("YAZELIX_MARS_INCLUDED").as_deref() == Ok("1");
 
     loop {
         terminal.draw(|frame| draw_config_ui(frame, &mut app))?;
@@ -72,45 +73,53 @@ pub(crate) fn run_ui() -> Result<()> {
                 }
             }
             ConfigUiIntent::SetField { field, value } => {
-                if let Err(write_error) =
-                    write_source_field(&paths, &field.source_id, &field.path, &value)
-                {
-                    reload_after_failed_write(
-                        &mut app,
-                        build_model(&paths)?,
-                        write_error.to_string(),
-                    )?;
-                    continue;
-                }
-                reload_after_successful_write(
-                    &mut app,
-                    build_model(&paths)?,
-                    &field,
-                    format!("Saved {}.", field.path),
-                )?;
+                apply_field_write(&mut app, &paths, field, Some(&value), mars_included)?;
             }
             ConfigUiIntent::UnsetField { field } => {
-                if let Err(write_error) =
-                    write_source_default(&paths, &field.source_id, &field.path)
-                {
-                    reload_after_failed_write(
-                        &mut app,
-                        build_model(&paths)?,
-                        write_error.to_string(),
-                    )?;
-                    continue;
-                }
-                reload_after_successful_write(
-                    &mut app,
-                    build_model(&paths)?,
-                    &field,
-                    format!("Now inheriting {}.", field.path),
-                )?;
+                apply_field_write(&mut app, &paths, field, None, mars_included)?;
             }
         }
     }
 
     Ok(())
+}
+
+fn apply_field_write(
+    app: &mut ConfigUiApp,
+    paths: &ConfigPaths,
+    field: ConfigUiFieldId,
+    value: Option<&serde_json::Value>,
+    mars_included: bool,
+) -> Result<()> {
+    let reset = value.is_none();
+    match write_config_ui(paths, &field.source_id, &field.path, value, mars_included) {
+        Ok(projection) => reload_after_successful_write(
+            app,
+            build_model(paths)?,
+            &field,
+            write_notice(&field.path, projection, reset),
+        ),
+        Err(write_error) => {
+            reload_after_failed_write(app, build_model(paths)?, write_error.to_string())
+        }
+    }
+}
+
+fn write_notice(
+    field_path: &str,
+    projection: Option<MarsAppearanceProjection>,
+    reset: bool,
+) -> String {
+    let action = if reset { "Now inheriting" } else { "Saved" };
+    match projection {
+        Some(MarsAppearanceProjection::Config) => {
+            format!("{action} {field_path}; Mars config is synchronized.")
+        }
+        Some(MarsAppearanceProjection::Environment(_)) => {
+            format!("{action} {field_path}; Mars will apply it on the next launch.")
+        }
+        None => format!("{action} {field_path}."),
+    }
 }
 
 pub(crate) fn reload_after_failed_write(

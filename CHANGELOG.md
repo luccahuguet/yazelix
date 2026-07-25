@@ -4,6 +4,14 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## Unreleased
 
+- Root `appearance.mode = "dark" | "light"` is the Yazelix-wide appearance
+  switch and Ratconfig palette source. Packages with writable regular-file Mars
+  config project it to only `mars.appearance.preset`, which Mars reloads live;
+  managed launch reconciles manual divergence. Store-backed, symlinked, or
+  otherwise read-only Mars config remains untouched and receives
+  `MARS_APPEARANCE` on the next launch. Mars-free packages never create the
+  native file. Projection avoids redundant writes and keeps reset feedback
+  explicit about inherited state.
 - Toggling a keep-alive popup such as Agent, Ratconfig, or Yazi off hides the
   tab's floating layer after preserving the popup process, returning directly
   to the tiled workspace instead of exposing another floating pane underneath.

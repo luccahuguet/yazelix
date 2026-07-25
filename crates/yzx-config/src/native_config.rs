@@ -40,20 +40,22 @@ pub(crate) fn write_mars_config_field(
     field_path: &str,
     value: &JsonValue,
 ) -> Result<()> {
-    let spec = MARS_FIELDS
-        .iter()
+    let spec = std::iter::once(&MARS_APPEARANCE_FIELD)
+        .chain(MARS_FIELDS.iter())
         .find(|spec| spec.path == field_path)
         .ok_or_else(|| error(format!("unknown Mars config path: {field_path}")))?;
     validate_mars_field(spec, value)?;
-    let raw = if path.exists() {
+    let raw = if path_entry_exists(path)? {
         fs::read_to_string(path)?
     } else {
         String::new()
     };
-    let text = set_toml_value_text(&raw, field_path, value)
-        .map_err(|error| boxed_debug("could not update mars/config.toml", error))?
-        .text;
-    atomic_write(path, &text)
+    let outcome = set_toml_value_text(&raw, field_path, value)
+        .map_err(|error| boxed_debug("could not update mars/config.toml", error))?;
+    if outcome.changed() {
+        atomic_write(path, &outcome.text)?;
+    }
+    Ok(())
 }
 pub(crate) fn unset_mars_config_field(path: &Path, field_path: &str) -> Result<()> {
     if !MARS_FIELDS.iter().any(|spec| spec.path == field_path) {

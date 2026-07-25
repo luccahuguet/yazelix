@@ -50,6 +50,18 @@ fn run() -> Result<()> {
             initialize_cursor_config(&config_paths()?.cursors)?;
             Ok(())
         }
+        Some("--project-mars-appearance") => {
+            if args.next().is_some() {
+                return Err(error("--project-mars-appearance does not accept arguments"));
+            }
+            match file_actions::project_mars_appearance(&config_paths()?)? {
+                file_actions::MarsAppearanceProjection::Config => println!("config"),
+                file_actions::MarsAppearanceProjection::Environment(mode) => {
+                    println!("environment {mode}")
+                }
+            }
+            Ok(())
+        }
         Some("--write-effective-helix-config") => {
             let packaged = args
                 .next()
@@ -615,6 +627,7 @@ mod tests {
         let path = validate_config_file_at(temp.path.join("config.toml")).unwrap();
 
         for (field_path, value, read_back) in [
+            (APPEARANCE_MODE_PATH, json!("light"), Some("light")),
             (OPEN_LOG_LEVEL_PATH, json!("debug"), None),
             (SHELL_PROGRAM_PATH, json!("fish"), None),
             (EDITOR_COMMAND_PATH, json!("nvim"), Some("nvim")),
@@ -646,6 +659,7 @@ mod tests {
         write_config_field(&path, KEYBINDINGS_AGENT_PATH, &json!("Alt Shift A")).unwrap();
 
         for (field_path, value, expected) in [
+            (APPEARANCE_MODE_PATH, json!("auto"), "dark, light"),
             (
                 OPEN_LOG_LEVEL_PATH,
                 json!("loud"),
@@ -916,16 +930,16 @@ mod tests {
             }
         ));
 
-        let appearance = model_field(&model, MARS_APPEARANCE_PRESET_PATH);
-        assert_eq!(appearance.source_id, SOURCE_MARS);
-        assert_eq!(appearance.tab, TAB_MARS);
+        let appearance = model_field(&model, APPEARANCE_MODE_PATH);
+        assert_eq!(appearance.source_id, SOURCE_CONFIG);
+        assert_eq!(appearance.tab, TAB_CONFIG);
         assert_eq!(appearance.type_label.as_deref(), Some("string"));
         assert_eq!(choice_values(appearance), [&json!("dark"), &json!("light")]);
         assert_eq!(appearance.apply_status.summary, "live");
-        assert_eq!(appearance.apply_status.label, "mars/ui");
+        assert_eq!(appearance.apply_status.label, "runtime");
         let theme_switcher = model.theme_switcher.as_ref().expect("theme switcher");
-        assert_eq!(theme_switcher.field.source_id, SOURCE_MARS);
-        assert_eq!(theme_switcher.field.path, MARS_APPEARANCE_PRESET_PATH);
+        assert_eq!(theme_switcher.field.source_id, SOURCE_CONFIG);
+        assert_eq!(theme_switcher.field.path, APPEARANCE_MODE_PATH);
         assert_eq!(
             ConfigUiApp::try_new(model.clone()).unwrap().active_theme(),
             ConfigUiTheme::Dark
@@ -936,6 +950,7 @@ mod tests {
         );
 
         for hidden in [
+            MARS_APPEARANCE_PRESET_PATH,
             "force-theme",
             "colors.background",
             "colors.foreground",
@@ -998,6 +1013,7 @@ mod tests {
         assert_eq!(
             root_recommended,
             [
+                APPEARANCE_MODE_PATH,
                 SHELL_PROGRAM_PATH,
                 EDITOR_COMMAND_PATH,
                 AGENT_COMMAND_PATH,
@@ -1312,9 +1328,9 @@ color = "#123456"
     }
 
     #[test]
-    fn config_model_uses_mars_appearance_as_initial_theme_source() {
+    fn config_model_uses_root_appearance_as_initial_theme_source() {
         let (_temp, paths) = temp_sources();
-        write_toml_value(&paths.mars, MARS_APPEARANCE_PRESET_PATH, &json!("light"));
+        write_toml_value(&paths.root, APPEARANCE_MODE_PATH, &json!("light"));
 
         let model = build_model(&paths).unwrap();
         assert_eq!(
@@ -1324,11 +1340,149 @@ color = "#123456"
     }
 
     #[test]
+    fn manual_mars_appearance_does_not_become_a_second_ui_authority() {
+        let (_temp, paths) = temp_sources();
+        write_toml_value(&paths.mars, MARS_APPEARANCE_PRESET_PATH, &json!("light"));
+
+        let model = build_model(&paths).unwrap();
+        assert_eq!(
+            ConfigUiApp::try_new(model.clone()).unwrap().active_theme(),
+            ConfigUiTheme::Dark
+        );
+        assert!(
+            model
+                .fields
+                .iter()
+                .all(|field| field.path != MARS_APPEARANCE_PRESET_PATH)
+        );
+    }
+
+    #[test]
+    fn global_appearance_projects_only_the_managed_mars_field() {
+        let (_temp, paths) = temp_sources();
+        atomic_write(&paths.mars, "[window]\nopacity = 0.5\n").unwrap();
+
+        assert_eq!(
+            write_config_ui(
+                &paths,
+                SOURCE_CONFIG,
+                APPEARANCE_MODE_PATH,
+                Some(&json!("light")),
+                true,
+            )
+            .unwrap(),
+            Some(MarsAppearanceProjection::Config)
+        );
+        assert_toml_value(&paths.root, APPEARANCE_MODE_PATH, &json!("light"));
+        assert_toml_value(&paths.mars, MARS_APPEARANCE_PRESET_PATH, &json!("light"));
+        assert_toml_value(&paths.mars, "window.opacity", &json!(0.5));
+
+        assert_eq!(
+            write_config_ui(&paths, SOURCE_CONFIG, APPEARANCE_MODE_PATH, None, true,).unwrap(),
+            Some(MarsAppearanceProjection::Config)
+        );
+        assert!(!paths.root.exists());
+        assert_eq!(
+            read_config_field(&paths.root, config_field(APPEARANCE_MODE_PATH).unwrap(),).unwrap(),
+            "dark"
+        );
+        assert_toml_value(&paths.mars, MARS_APPEARANCE_PRESET_PATH, &json!("dark"));
+        assert_toml_value(&paths.mars, "window.opacity", &json!(0.5));
+    }
+
+    #[test]
+    fn no_mars_global_appearance_save_does_not_create_mars_config() {
+        let (_temp, paths) = temp_sources();
+
+        assert_eq!(
+            write_config_ui(
+                &paths,
+                SOURCE_CONFIG,
+                APPEARANCE_MODE_PATH,
+                Some(&json!("light")),
+                false,
+            )
+            .unwrap(),
+            None
+        );
+        assert_toml_value(&paths.root, APPEARANCE_MODE_PATH, &json!("light"));
+        assert!(!paths.mars.exists());
+    }
+
+    #[test]
+    fn read_only_mars_config_uses_launch_environment_projection() {
+        let (_temp, paths) = temp_sources();
+        write_toml_value(&paths.root, APPEARANCE_MODE_PATH, &json!("light"));
+        atomic_write(
+            &paths.mars,
+            "[mars.appearance]\npreset = \"dark\"\n\n[window]\nwidth = 960\n",
+        )
+        .unwrap();
+        let original = fs::read_to_string(&paths.mars).unwrap();
+        set_read_only(&paths.mars);
+
+        assert_eq!(
+            project_mars_appearance(&paths).unwrap(),
+            MarsAppearanceProjection::Environment("light".to_string())
+        );
+        assert_eq!(fs::read_to_string(&paths.mars).unwrap(), original);
+    }
+
+    #[test]
+    fn failed_mars_projection_keeps_persisted_root_intent() {
+        let (_temp, paths) = temp_sources();
+        atomic_write(&paths.mars, "[mars.appearance\npreset = \"dark\"\n").unwrap();
+        let original = fs::read_to_string(&paths.mars).unwrap();
+
+        let error = write_config_ui(
+            &paths,
+            SOURCE_CONFIG,
+            APPEARANCE_MODE_PATH,
+            Some(&json!("light")),
+            true,
+        )
+        .unwrap_err()
+        .to_string();
+
+        assert!(error.contains("Updated appearance.mode"), "{error}");
+        assert_toml_value(&paths.root, APPEARANCE_MODE_PATH, &json!("light"));
+        assert_eq!(fs::read_to_string(&paths.mars).unwrap(), original);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn appearance_projection_treats_symlinked_mars_config_as_external() {
+        use std::os::unix::fs::symlink;
+
+        let (temp, paths) = temp_sources();
+        let target = temp.path.join("dotfiles/mars.toml");
+        fs::create_dir_all(target.parent().unwrap()).unwrap();
+        fs::write(&target, "[window]\nwidth = 960\n").unwrap();
+        fs::create_dir_all(paths.mars.parent().unwrap()).unwrap();
+        symlink(&target, &paths.mars).unwrap();
+        write_toml_value(&paths.root, APPEARANCE_MODE_PATH, &json!("light"));
+
+        assert_eq!(
+            project_mars_appearance(&paths).unwrap(),
+            MarsAppearanceProjection::Environment("light".to_string())
+        );
+        assert_eq!(
+            fs::read_to_string(&target).unwrap(),
+            "[window]\nwidth = 960\n"
+        );
+        assert!(
+            fs::symlink_metadata(&paths.mars)
+                .unwrap()
+                .file_type()
+                .is_symlink()
+        );
+    }
+
+    #[test]
     fn mars_fields_have_complete_apply_timing() {
         let (_temp, paths) = temp_sources();
         let model = build_model(&paths).unwrap();
         let expected = [
-            (MARS_APPEARANCE_PRESET_PATH, "live"),
             ("window.width", "new windows"),
             ("window.height", "new windows"),
             ("window.opacity", "live"),

@@ -18,12 +18,32 @@ The UI leaves these sparse sources absent until you save a field:
 ~/.config/yazelix/starship.toml
 ```
 
+`yzx launch` may create `mars/config.toml` containing only the managed
+appearance projection before Mars starts.
+
 The Helix and advanced native files stay lazy. Opening a file-action row creates
 its starter file. Activating either Steel row creates both
 `helix/helix.scm` and `helix/init.scm`.
 
 While editing a text field, `Ctrl+e` opens the staged value in the configured
 editor environment and returns the edited text to the row. `Enter` saves.
+
+## Appearance Projection
+
+Root `appearance.mode` is the managed dark/light authority. Ratconfig uses it
+for its own palette. When Mars is included and
+`~/.config/yazelix/mars/config.toml` is a writable regular file, a global save
+or reset updates only `mars.appearance.preset`; Mars's existing directory
+watcher reloads that change. Before `yzx launch`, the runtime performs the same
+reconciliation and removes any inherited `MARS_APPEARANCE` that could override
+the file.
+
+A store-backed, symlinked, or otherwise read-only Mars file is never replaced.
+In that case, launch sets `MARS_APPEARANCE` to the validated root value and the
+change applies to the new process. `yzx enter`, SSH use, and no-Mars packages do
+not project terminal appearance. Direct edits to the native Mars field may
+affect a running window, but the next global save or managed launch restores the
+root value.
 
 ## Zellij Sidecars
 

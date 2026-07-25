@@ -1,6 +1,10 @@
 # Yazelix Nova semantic config.
 # Native tool configs live beside this file under ~/.config/yazelix/.
 
+[appearance]
+# Product appearance projected to managed components.
+mode = "dark"
+
 [open]
 # yzx-open diagnostics: off, error, info, or debug.
 log_level = "info"

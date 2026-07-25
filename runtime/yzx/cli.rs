@@ -192,6 +192,11 @@ fn exec_screen(args: Vec<OsString>) -> Result<(), AppError> {
 fn exec_managed(through_mars: bool, zellij_args: Vec<OsString>) -> Result<(), AppError> {
     let program = managed_program(through_mars, MARS)?;
     let runtime = Runtime::prepare_with_yazi()?;
+    let mars_appearance = if through_mars {
+        runtime.project_mars_appearance()?
+    } else {
+        None
+    };
     let mut command = Command::new(program);
     if through_mars {
         command.arg("-e").arg(YZX_WELCOME).arg(ZELLIJ);
@@ -209,6 +214,7 @@ fn exec_managed(through_mars: bool, zellij_args: Vec<OsString>) -> Result<(), Ap
         &mut command,
         through_mars,
         &runtime.config_home.join("cursors.toml"),
+        mars_appearance.as_deref(),
     );
     command.env(
         "YAZELIX_SESSION_TERMINAL",
@@ -231,11 +237,21 @@ fn managed_program(through_mars: bool, mars: &'static str) -> Result<&'static st
     }
 }
 
-fn apply_mars_launch_env(command: &mut Command, through_mars: bool, path: &Path) {
+fn apply_mars_launch_env(
+    command: &mut Command,
+    through_mars: bool,
+    path: &Path,
+    appearance: Option<&str>,
+) {
     if through_mars {
         command
             .env("MARS_APP_ID", "yzx")
             .env("YAZELIX_CURSOR_CONFIG", path);
+        if let Some(appearance) = appearance {
+            command.env("MARS_APPEARANCE", appearance);
+        } else {
+            command.env_remove("MARS_APPEARANCE");
+        }
     }
 }
 
@@ -250,15 +266,24 @@ mod tests {
         assert_eq!(managed_program(true, MARS).ok(), Some(MARS));
         let path = Path::new("/tmp/cursors.toml");
         let mut launch = Command::new(MARS);
-        apply_mars_launch_env(&mut launch, true, path);
+        apply_mars_launch_env(&mut launch, true, path, None);
         assert!(launch.get_envs().any(|(key, value)| {
             key == "MARS_APP_ID" && value == Some(std::ffi::OsStr::new("yzx"))
         }));
         assert!(launch.get_envs().any(|(key, value)| {
             key == "YAZELIX_CURSOR_CONFIG" && value == Some(path.as_os_str())
         }));
+        assert!(launch.get_envs().any(|(key, value)| {
+            key == "MARS_APPEARANCE" && value.is_none()
+        }));
+        let mut declarative_launch = Command::new(MARS);
+        apply_mars_launch_env(&mut declarative_launch, true, path, Some("light"));
+        assert!(declarative_launch.get_envs().any(|(key, value)| {
+            key == "MARS_APPEARANCE"
+                && value == Some(std::ffi::OsStr::new("light"))
+        }));
         let mut enter = Command::new(YZX_WELCOME);
-        apply_mars_launch_env(&mut enter, false, path);
+        apply_mars_launch_env(&mut enter, false, path, Some("light"));
         assert_eq!(enter.get_envs().next(), None);
     }
 

@@ -32,14 +32,14 @@ composes their package outputs.
 
 | Measure | Nova | Classic |
 | --- | --- | --- |
-| Code and configuration (Rust, Nix, shell, TOML, etc.) | **19,326 LOC** | **91,545 LOC** |
-| Rust | **16,227 LOC** | **80,957 LOC** |
+| Code and configuration (Rust, Nix, shell, TOML, etc.) | **19,437 LOC** | **91,545 LOC** |
+| Rust | **16,543 LOC** | **80,957 LOC** |
 | Ownership model | One owner per concern | Overlapping responsibilities across layers |
 | Yazelix component boundaries | Independent, versioned packages | Child repos mixed with main-repo ownership |
 | Product experience | More features, stronger defaults, tighter integration, and polished UX | Fewer features and a less cohesive workspace |
 | Status | Recommended | Frozen migration and rollback path |
 
-Nova owns **72,219 fewer lines**, a **79% reduction**. Classic's Rust code
+Nova owns **72,108 fewer lines**, a **79% reduction**. Classic's Rust code
 alone is 4.2 times larger than Nova's entire code and configuration surface.
 
 Nova delivers more features in 21% of the code. It has a clearer configuration
@@ -257,6 +257,14 @@ invalid, externally managed, or diagnosed field. All includes the complete
 inventory. Tabs whose Overview would hide fewer than three fields or less than
 one quarter of their inventory simply show All.
 
+`appearance.mode` selects `dark` or `light` for managed Yazelix components and
+also controls Ratconfig's palette. In packages with Mars, Yazelix projects that
+value to only `mars.appearance.preset` when its native config is a writable
+regular file; the rest of `mars/config.toml` remains native Mars configuration.
+Read-only or symlinked config is left untouched and receives the mode on the
+next launch. A manual edit may temporarily diverge Mars until the next global
+appearance save or `yzx launch`.
+
 Set `shell.program` in Ratconfig or `config.toml` to choose packaged Nushell
 (default), Bash, Zsh, or Fish for new panes and sessions.
 Yazelix initializes Starship, Carapace completions, and zoxide for managed
@@ -280,6 +288,6 @@ See [Development](docs/development.md) for CI and local checks,
 
 ## LOC Scorecard
 
-Yazelix owns **21,849 lines** of tracked text project files. The
+Yazelix owns **22,209 lines** of tracked text project files. The
 [reproducible scorecard](docs/development.md#loc-scorecard) excludes Beads,
 lockfiles, and binary assets.

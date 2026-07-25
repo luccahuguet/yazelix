@@ -16,7 +16,7 @@ use crate::{
         write_mars_config_field, write_starship_config_field,
     },
     paths::ConfigPaths,
-    root_config::{unset_config_field, write_config_field},
+    root_config::{config_field, read_config_field, unset_config_field, write_config_field},
     yazi_config::{unset_yazi_field, write_yazi_field},
     zellij_sidecar::{unset_zellij_config_field, write_zellij_config_field},
 };
@@ -246,6 +246,50 @@ pub(crate) fn write_source_default(
         _ => Err(error(format!("unknown config source: {source_id}"))),
     }
 }
+
+#[derive(Debug, PartialEq)]
+pub(crate) enum MarsAppearanceProjection {
+    Config,
+    Environment(String),
+}
+
+pub(crate) fn project_mars_appearance(paths: &ConfigPaths) -> Result<MarsAppearanceProjection> {
+    let mode = read_config_field(&paths.root, config_field(APPEARANCE_MODE_PATH)?)?;
+    let value = JsonValue::String(mode.clone());
+
+    if paths.is_home_manager_owned(&paths.mars)
+        || fs::symlink_metadata(&paths.mars).is_ok_and(|metadata| metadata.is_symlink())
+        || path_read_only(&paths.mars)
+    {
+        return Ok(MarsAppearanceProjection::Environment(mode));
+    }
+
+    paths.reject_mutation(&paths.mars, SOURCE_MARS)?;
+    write_mars_config_field(&paths.mars, MARS_APPEARANCE_PRESET_PATH, &value)?;
+    Ok(MarsAppearanceProjection::Config)
+}
+
+pub(crate) fn write_config_ui(
+    paths: &ConfigPaths,
+    source_id: &str,
+    field_path: &str,
+    value: Option<&JsonValue>,
+    mars_included: bool,
+) -> Result<Option<MarsAppearanceProjection>> {
+    match value {
+        Some(value) => write_source_field(paths, source_id, field_path, value),
+        None => write_source_default(paths, source_id, field_path),
+    }?;
+    if !mars_included || source_id != SOURCE_CONFIG || field_path != APPEARANCE_MODE_PATH {
+        return Ok(None);
+    }
+    project_mars_appearance(paths).map(Some).map_err(|source| {
+        error(format!(
+            "Updated {APPEARANCE_MODE_PATH}, but could not update Mars: {source}"
+        ))
+    })
+}
+
 pub(crate) fn open_file_action(
     paths: &ConfigPaths,
     source_id: &str,

@@ -482,6 +482,7 @@
           text = ''
             unset YAZELIX_EDITOR
             ${editorEnv}
+            export YAZELIX_MARS_INCLUDED=${if withMars then "1" else "0"}
             exec ${yzxConfig}/bin/yzx-config "$@"
           '';
         };
@@ -853,6 +854,7 @@
         xdg.configFile."yazelix/yazi/flavors/example.yazi".source = fakeYaziFlavor;
         programs.yazelix.config = {
           settings = {
+            appearance.mode = "light";
             shell.program = "fish";
             welcome.enabled = false;
             keybindings.config = "Alt Shift C";
@@ -920,6 +922,7 @@
           exit 1
         fi
         grep -q 'program = "fish"' "$config_files/config.toml"
+        grep -q 'mode = "light"' "$config_files/config.toml"
         ! grep -q 'command = "yzx-hx"' "$config_files/config.toml"
         grep -q 'enabled = false' "$config_files/config.toml"
         ! grep -q 'style = "random"' "$config_files/config.toml"
@@ -938,6 +941,7 @@
           *) printf '%s\n' 'Home Manager cursor source is not store-backed' >&2; exit 1 ;;
         esac
         test "$(YAZELIX_CONFIG_HOME="$config_files" ${yzx}/libexec/yazelix/yzx-config --get shell.program)" = fish
+        test "$(YAZELIX_CONFIG_HOME="$config_files" ${yzx}/libexec/yazelix/yzx-config --get appearance.mode)" = light
         test "$(YAZELIX_CONFIG_HOME="$config_files" ${yzx}/libexec/yazelix/yzx-config --get editor.command)" = yzx-hx
         test "$(YAZELIX_CONFIG_HOME="$config_files" ${yzx}/libexec/yazelix/yzx-config --get agent.command)" = auto
         test "$(YAZELIX_CONFIG_HOME="$config_files" ${yzx}/libexec/yazelix/yzx-config --get agent.args)" = "[]"
@@ -949,6 +953,9 @@
         test "$(YAZELIX_CONFIG_HOME="$config_files" ${yzx}/libexec/yazelix/yzx-config --get keybindings.sidebar)" = "Ctrl Shift B"
         test "$(YAZELIX_CONFIG_HOME="$config_files" ${yzx}/libexec/yazelix/yzx-config --get keybindings.sidebar_focus)" = "Ctrl Shift E"
         grep -q 'width = 1200' "$config_files/mars/config.toml"
+        test "$(YAZELIX_CONFIG_HOME="$config_files" ${yzx}/libexec/yazelix/yzx-config --project-mars-appearance)" = "environment light"
+        grep -q 'width = 1200' "$config_files/mars/config.toml"
+        ! grep -q 'preset' "$config_files/mars/config.toml"
         grep -q 'pane_frames false' "$config_files/zellij/config.kdl"
         grep -q '^\[character\]$' "$config_files/starship.toml"
         grep -q 'format = "::"' "$config_files/starship.toml"

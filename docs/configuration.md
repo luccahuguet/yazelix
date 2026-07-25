@@ -48,6 +48,7 @@ an Advanced diagnostic with an exact `config.toml` action
 
 | Field | Default | View | Meaning |
 | --- | --- | --- | --- |
+| `appearance.mode` | `dark` | Overview | Shared dark/light appearance and Ratconfig palette |
 | `open.log_level` | `info` | All | Diagnostics for managed Yazi open requests: `off`, `error`, `info`, `debug` |
 | `shell.program` | `nu` | Overview | Packaged shell for new panes: `nu`, `bash`, `zsh`, `fish` |
 | `editor.command` | `yzx-hx` | Overview | Editor used by Yazi opens, Ratconfig text edits, and Git editor flows |
@@ -122,7 +123,7 @@ ids that do not exist are not invented; open `config.toml` to add them
 | File | Owner | Notes |
 | --- | --- | --- |
 | `cursors.toml` | Yazelix Cursors | Shared cursor pool, selection, and effects. The child-owned template seeds it once, Ratconfig preserves custom definitions, and reset is unavailable because this file has no sparse inherited layer |
-| `mars/config.toml` | Mars | Sparse overrides for appearance preset, window size, opacity, font, scrollbar, and bell |
+| `mars/config.toml` | Mars | Sparse overrides for window size, opacity, font, scrollbar, and bell. Yazelix manages only `mars.appearance.preset` as the projection of root `appearance.mode` |
 | `zellij/config.kdl` | Zellij sidecar | Sparse safe scalar overrides where absent assignments inherit packaged defaults. Ratconfig offers Default plus the 41 themes embedded by the pinned Zellij package; Default removes the override, while quoted custom theme names without KDL escapes remain accepted. Unexposed top-level leaf nodes are preserved as unvalidated Advanced diagnostics without interpreting their values. Inside a session, saves and resets also patch the active runtime config. Structural comments or continuations, extra managed-block metadata, other structured native nodes, and integration-owned nodes block unsafe writes |
 | `zellij/plugins.kdl` | Zellij plugin sidecar | Extra plugin declarations only. Packaged plugin ids cannot be redeclared |
 | `starship.toml` | Starship | Sparse native prompt overrides. Ratconfig curates only `character.format`; absent layout fields retain Starship defaults |
@@ -272,11 +273,14 @@ through these Yazelix-owned files
 
 Opening `yzx config` does not create `mars/config.toml`, `starship.toml`, or
 `zellij/config.kdl`. Saving writes only the selected override, and resetting
-removes that key. The Starship tab curates only `character.format`, whose Nova
-default is `:: `. Managed Nu materializes that sparse marker override under
-runtime state without setting top-level `format`, so Starship retains its native
-`$all` layout. Mars and Zellij layer their sparse files over packaged
-configuration directly. Untouched defaults follow upgrades
+removes that key. The global appearance switch is the exception: saving or
+resetting `appearance.mode` also writes only `mars.appearance.preset` when Mars
+is included and its native file is a writable regular file. The Starship tab
+curates only `character.format`, whose Nova default is `:: `. Managed Nu
+materializes that sparse marker override under runtime state without setting
+top-level `format`, so Starship retains its native `$all` layout. Mars and Zellij
+layer their sparse files over packaged configuration directly. Untouched
+defaults follow upgrades
 
 Yazi's compact Starship header mirrors the default contextual module coverage.
 Directory and Git retain compact text; every other decoration renders only its
@@ -296,12 +300,17 @@ selection and basic trail enablement, while the richer trail/mode effects, glow,
 and duration remain available to compatible consumers such as a future Ghostty
 integration
 
-Saving `mars.appearance.preset` through `yzx config` switches Mars and the config
-UI palette in the same session. Opacity, font size, line height, scrollbar, and
-bell changes also apply to open Mars windows. Width and height apply to newly
-created Mars windows. Zellij sidecar saves and resets update the active managed
-session config when `yzx config` runs inside a session, and many scalars apply
-live via Zellij's watcher, while some still need a new session
+Saving root `appearance.mode` switches the config UI immediately and updates a
+writable regular-file Mars configuration through Mars's existing watcher.
+`yzx launch` reconciles that managed field, so a direct manual edit affects Mars
+only until the next global save or launch. Store-backed, symlinked, or otherwise
+read-only Mars config is not rewritten; the root value is passed to Mars on the
+next launch instead.
+Opacity, font size, line height, scrollbar, and bell changes also apply to open
+Mars windows. Width and height apply to newly created Mars windows. Zellij
+sidecar saves and resets update the active managed session config when
+`yzx config` runs inside a session, and many scalars apply live via Zellij's
+watcher, while some still need a new session
 
 ## Editor and file opens
 

@@ -2,6 +2,7 @@ use ratconfig::DEFAULT_CONFIG_SOURCE_ID;
 
 pub(crate) const DEFAULT_CONFIG_TOML: &str = include_str!("../../../defaults/config.toml");
 
+pub(crate) const APPEARANCE_MODE_PATH: &str = "appearance.mode";
 pub(crate) const OPEN_LOG_LEVEL_PATH: &str = "open.log_level";
 pub(crate) const SHELL_PROGRAM_PATH: &str = "shell.program";
 pub(crate) const EDITOR_COMMAND_PATH: &str = "editor.command";
@@ -49,6 +50,7 @@ pub(crate) const BAR_WIDGET_VALUES: &[&str] = &[
     "ram",
 ];
 pub(crate) const ROOT_CONFIG_RECOMMENDED_PATHS: &[&str] = &[
+    APPEARANCE_MODE_PATH,
     SHELL_PROGRAM_PATH,
     EDITOR_COMMAND_PATH,
     AGENT_COMMAND_PATH,
@@ -215,6 +217,16 @@ pub(crate) const KEY_COLUMNS: &[(&str, usize)] =
 pub(crate) const CONFIG_FIELDS: &[ConfigFieldSpec] = &[
     ConfigFieldSpec {
         field: FieldSpec::string_choice(
+            APPEARANCE_MODE_PATH,
+            "Appearance shared by managed Yazelix components.",
+            &["dark", "light"],
+            "dark or light",
+        ),
+        apply_summary: "live",
+        apply_detail: "Saved values update writable regular-file component config and apply on the next launch when a component config is externally managed or read-only.",
+    },
+    ConfigFieldSpec {
+        field: FieldSpec::string_choice(
             OPEN_LOG_LEVEL_PATH,
             "Diagnostics written by yzx-open for managed Yazi open requests.",
             &["off", "error", "info", "debug"],
@@ -379,13 +391,14 @@ pub(crate) const CONFIG_FIELDS: &[ConfigFieldSpec] = &[
     },
 ];
 
+pub(crate) const MARS_APPEARANCE_FIELD: FieldSpec = FieldSpec::string_choice(
+    MARS_APPEARANCE_PRESET_PATH,
+    "Mars terminal appearance preset managed by appearance.mode.",
+    &["dark", "light"],
+    "dark or light",
+);
+
 pub(crate) const MARS_FIELDS: &[FieldSpec] = &[
-    FieldSpec::string_choice(
-        MARS_APPEARANCE_PRESET_PATH,
-        "Mars terminal appearance preset.",
-        &["dark", "light"],
-        "dark or light",
-    ),
     FieldSpec::integer("window.width", "Initial Mars window width.", "pixels"),
     FieldSpec::integer("window.height", "Initial Mars window height.", "pixels"),
     FieldSpec::float("window.opacity", "Mars window opacity.", "0.0 to 1.0"),

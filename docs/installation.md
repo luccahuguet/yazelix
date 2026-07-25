@@ -236,6 +236,7 @@ Example:
 ```nix
 programs.yazelix.config = {
   settings = {
+    appearance.mode = "light";
     shell.program = "fish";
     editor.command = "nvim";
     welcome.enabled = false;

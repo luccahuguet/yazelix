@@ -15,7 +15,7 @@ use crate::{
     command::{
         create_dir_all_checked, run_checked, seed_permission_checked, touch_checked, trim_output,
     },
-    error::AppError,
+    error::{AppError, startup},
     paths::{config_home, home_dir, nonempty_env, parent, runtime_path, state_dir},
     yazi::YaziRuntime,
     zellij::{active_layout, active_zellij_config},
@@ -269,6 +269,18 @@ impl Runtime {
         }
     }
 
+    pub(crate) fn project_mars_appearance(&self) -> Result<Option<String>, AppError> {
+        let mars_config = self.config_home.join("mars/config.toml");
+        let output = run_checked(
+            &mars_config,
+            Command::new(YZX_CONFIG)
+                .arg("--project-mars-appearance")
+                .env("YAZELIX_CONFIG_HOME", &self.config_home),
+        )?;
+        parse_mars_appearance_projection(&output)
+            .map_err(|reason| startup(reason, mars_config.display(), 1))
+    }
+
     pub(crate) fn yazi(&self) -> &YaziRuntime {
         self.yazi
             .as_ref()
@@ -318,6 +330,18 @@ fn effective_editor_command(command: &str) -> String {
     }
 }
 
+fn parse_mars_appearance_projection(output: &str) -> Result<Option<String>, String> {
+    match output.trim() {
+        "config" => Ok(None),
+        "environment dark" => Ok(Some("dark".to_string())),
+        "environment light" => Ok(Some("light".to_string())),
+        _ => Err(format!(
+            "yzx-config returned an invalid Mars appearance projection: {}",
+            output.trim()
+        )),
+    }
+}
+
 fn bridge_session_id() -> OsString {
     nonempty_env("YAZELIX_HELIX_BRIDGE_SESSION_ID").unwrap_or_else(|| {
         OsString::from(format!(
@@ -348,5 +372,17 @@ mod tests {
         assert!(uses_helix_bridge("yzx-hx"));
         assert!(!uses_helix_bridge("hx"));
         assert!(!uses_helix_bridge("nvim"));
+    }
+
+    #[test]
+    fn mars_appearance_projection_is_strict() {
+        assert_eq!(parse_mars_appearance_projection("config\n"), Ok(None));
+        assert_eq!(
+            parse_mars_appearance_projection("environment light\n"),
+            Ok(Some("light".to_string()))
+        );
+        assert!(parse_mars_appearance_projection("environment auto").is_err());
+        assert!(parse_mars_appearance_projection("environment  light").is_err());
+        assert!(parse_mars_appearance_projection("config extra").is_err());
     }
 }

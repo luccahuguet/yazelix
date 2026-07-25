@@ -124,16 +124,18 @@ The root validator derives fixed leaves from that catalog, rejects unknown paths
 before runtime or Ratconfig use, and delegates only `popups.<id>` to its dynamic
 field validator.
 
-`ROOT_CONFIG_RECOMMENDED_PATHS` contains `shell.program`, `editor.command`,
-`agent.command`, the two ordinary welcome controls, all six managed action
-keys, and `bar.widgets`. Diagnostics (`open.log_level`), argument and duration
-fine tuning, and popup geometry are All-only until they require attention.
+`ROOT_CONFIG_RECOMMENDED_PATHS` contains `appearance.mode`, `shell.program`,
+`editor.command`, `agent.command`, the two ordinary welcome controls, the
+managed action keys, and `bar.widgets`. Diagnostics (`open.log_level`), argument
+and duration fine tuning, and popup geometry are All-only until they require
+attention.
 Configured custom popup leaves use Ratconfig's generic TOML rows and belong to
 All; because every discovered leaf is explicit, Ratconfig also keeps it visible
 in Overview. Absent optional leaves and unconfigured popup ids are not synthesized
 
 | Root path | Type | Default | Effect | Applies |
 | --- | --- | --- | --- | --- |
+| `appearance.mode` | string enum | `dark` | Shared component appearance and Ratconfig palette; projected to writable regular-file Mars config | live, or next launch for externally managed/read-only Mars config |
 | `open.log_level` | string enum | `info` | `YZX_OPEN_LOG` diagnostics for managed opens | new opens |
 | `shell.program` | string enum | `nu` | Packaged shell for new panes | new panes |
 | `editor.command` | executable string | `yzx-hx` | Yazi opens, config text edits, and Git clients | new opens |
@@ -172,7 +174,7 @@ custom popup entry.
 
 | Path | Owns |
 | --- | --- |
-| `defaults/mars/config.toml` | Default Mars window/font/appearance; `mars.appearance.preset` is also Ratconfig UI theme (live palette) |
+| `defaults/mars/config.toml` | Default Mars window/font/appearance; writable regular-file sessions receive root `appearance.mode` through `mars.appearance.preset` |
 | `defaults/zellij/config.kdl` | Zellij keys, plugins load, popup wiring, Kitty protocol |
 | `defaults/zellij/layout*.kdl` | Sidebar + stacked panes, open/closed swap |
 | `defaults/nu/` | Packaged Nu: carapace, zoxide, and Starship invocation |
@@ -388,7 +390,7 @@ Detail lives in Owners, checks, and the notes below.
 
 | ID | Contract | Owner | Check | Gap |
 | --- | --- | --- | --- | --- |
-| C2 | Mars packaged base + sparse user config; appearance preset as UI theme | `defaults/mars/config.toml`, flake, `yzx-config` | `yzx-contracts`, config tests | Visual |
+| C2 | Root appearance authority projected to the Mars sparse config, with read-only launch fallback | `defaults/config.toml`, `defaults/mars/config.toml`, runtime, `yzx-config` | `yzx-contracts`, config tests | Visual |
 | C3 | Layout sidebar template for swaps | `defaults/zellij/layout*.kdl` | `zellij-layout` | — |
 | C4 | Packaged keys + guarded Zellij sidecar | `defaults/zellij/config.kdl`, `yzx-zellij-config` | `yzx-contracts` | Full keys |
 | C5 | Managed Nu layering | `yzx-nu`, `defaults/nu/` | `yzx-contracts` | — |
@@ -430,10 +432,13 @@ the managed Zellij/Yazi workspace and selected editor without Mars or display
 variables; terminal-specific graphics and clipboard behavior remain host-owned.
 Diagnostics stop before Mars/Zellij handoff.
 
-**C2:** Saving `mars.appearance.preset` through `yzx config` switches the
-Ratconfig palette live. Mars also reloads opacity, font size, line height,
-scrollbar, and bell behavior in open windows; width and height apply to newly
-created windows.
+**C2:** Saving root `appearance.mode` switches the Ratconfig palette and
+projects only `mars.appearance.preset` into writable regular-file Mars config.
+Mars reloads that file live, and `yzx launch` reconciles manual divergence.
+Symlinked or read-only Mars config is not changed and receives the root value
+through `MARS_APPEARANCE` for that launch. Mars also reloads opacity, font size,
+line height, scrollbar, and bell behavior in open windows; width and height
+apply to newly created windows.
 
 **C9:** Protocol/packaging (a), shared role wiring (b), user custom (c),
 agent hide + bootstrap (d), Git close-on-toggle + editor env (e). Agent

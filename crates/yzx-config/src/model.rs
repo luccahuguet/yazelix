@@ -211,7 +211,7 @@ pub(crate) fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
         native_config_statuses: Vec::new(),
         diagnostics,
         theme_switcher: Some(ConfigUiThemeSwitcher {
-            field: ConfigUiFieldId::new(SOURCE_MARS, MARS_APPEARANCE_PRESET_PATH),
+            field: ConfigUiFieldId::new(SOURCE_CONFIG, APPEARANCE_MODE_PATH),
             mappings: vec![
                 ConfigUiThemeMapping {
                     value: JsonValue::String("dark".to_string()),
@@ -748,11 +748,6 @@ fn apply_status(summary: &str, label: &str, detail: &str) -> ConfigUiApplyStatus
 
 fn mars_apply_status(path: &str) -> ConfigUiApplyStatus {
     let (summary, label, detail) = match path {
-        MARS_APPEARANCE_PRESET_PATH => (
-            "live",
-            "mars/ui",
-            "Saved appearance changes apply live to Mars and this config UI.",
-        ),
         "window.width" | "window.height" => (
             "new windows",
             "mars",
