@@ -1,5 +1,5 @@
 use std::{
-    env, fs,
+    fs,
     path::{Path, PathBuf},
 };
 
@@ -124,14 +124,12 @@ fn resolved_target(path: &Path) -> Option<PathBuf> {
     })
 }
 pub(crate) fn config_home() -> Result<PathBuf> {
-    if let Some(path) = env::var_os("YAZELIX_CONFIG_HOME").filter(|path| !path.is_empty()) {
+    if let Some(path) = nonempty_env("YAZELIX_CONFIG_HOME") {
         return Ok(PathBuf::from(path));
     }
-    if let Some(path) = env::var_os("XDG_CONFIG_HOME").filter(|path| !path.is_empty()) {
+    if let Some(path) = nonempty_env("XDG_CONFIG_HOME") {
         return Ok(PathBuf::from(path).join("yazelix"));
     }
-    let home = env::var_os("HOME")
-        .filter(|path| !path.is_empty())
-        .ok_or_else(|| error("HOME is required"))?;
+    let home = nonempty_env("HOME").ok_or_else(|| error("HOME is required"))?;
     Ok(PathBuf::from(home).join(".config/yazelix"))
 }

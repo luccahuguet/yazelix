@@ -32,17 +32,17 @@ composes their package outputs.
 
 | Measure | Nova | Classic |
 | --- | --- | --- |
-| Code and configuration (Rust, Nix, shell, TOML, etc.) | **19,437 LOC** | **91,545 LOC** |
-| Rust | **16,543 LOC** | **80,957 LOC** |
+| Code and configuration (Rust, Nix, shell, TOML, etc.) | **20,284 LOC** | **91,545 LOC** |
+| Rust | **17,179 LOC** | **80,957 LOC** |
 | Ownership model | One owner per concern | Overlapping responsibilities across layers |
 | Yazelix component boundaries | Independent, versioned packages | Child repos mixed with main-repo ownership |
 | Product experience | More features, stronger defaults, tighter integration, and polished UX | Fewer features and a less cohesive workspace |
 | Status | Recommended | Frozen migration and rollback path |
 
-Nova owns **72,108 fewer lines**, a **79% reduction**. Classic's Rust code
-alone is 4.2 times larger than Nova's entire code and configuration surface.
+Nova owns **71,261 fewer lines**, a **78% reduction**. Classic's Rust code
+alone is 4.0 times larger than Nova's entire code and configuration surface.
 
-Nova delivers more features in 21% of the code. It has a clearer configuration
+Nova delivers more features in 22% of the code. It has a clearer configuration
 model, tighter editor and Yazi integration, stronger diagnostics, and a
 coherent popup-oriented interface. The smaller architecture makes Yazelix
 easier to improve and better to use.
@@ -245,6 +245,7 @@ Yazelix assembles focused first-party forks, plugins, libraries, and commands:
 | [Ratconfig](https://github.com/luccahuguet/ratconfig) | Reusable Ratatui configuration editor and TOML patching and migration library |
 | [Yazelix Screen](https://github.com/luccahuguet/yazelix-screen) | Terminal welcome animations and the separately packaged GPL aquarium exposed through `yzx screen` |
 | [Yazelix Cursors](https://github.com/luccahuguet/yazelix-cursors) | Shared cursor presets and validation for Ratconfig, plus palettes and shader assets for Mars |
+| [Yazi Bistro](https://github.com/luccahuguet/yazi-bistro) | Curated complete Yazi flavors with pinned provenance, licenses, and explicit dark/light classification |
 | [auto-layout.yazi](https://github.com/luccahuguet/auto-layout.yazi) | Yazi plugin that changes the column layout to match the available pane width |
 | [zjstatus](https://github.com/luccahuguet/zjstatus) | Fork that gives the bar activity-aware tab markers without changing native Zellij tab names |
 
@@ -264,6 +265,25 @@ regular file; the rest of `mars/config.toml` remains native Mars configuration.
 Read-only or symlinked config is left untouched and receives the mode on the
 next launch. A manual edit may temporarily diverge Mars until the next global
 appearance save or `yzx launch`.
+
+Zellij stores one dark theme and one light theme over its pinned packaged
+inventory. Ratconfig inherits `ansi` and `gruvbox-light`, lets either field
+retain a custom native name, and saves only explicit overrides. Legacy static
+`theme` assignments remain in the user sidecar for recovery but are ignored by
+the managed runtime. Yazelix passes root appearance at launch and Zellij
+resolves the matching pair member. Saving root appearance inside a managed
+session calls Zellij's native action for that session. Zellij sends the same
+mode to the top bar, which switches between its internal dark and light
+palettes.
+
+Each new managed Yazi reads the same root mode. Ratconfig offers separate
+packaged dark and light flavor pools from Yazi Bistro; user-installed
+unclassified flavors appear in both. Light mode inherits Catppuccin Latte,
+while an unset dark choice preserves Yazi's native dark-theme detection.
+Explicit native `flavor.dark` and `flavor.light` selections win. Yazelix
+projects the selected side into generated runtime config without modifying the
+user or Home Manager `theme.toml`; already-running Yazi processes stay as they
+are.
 
 Set `shell.program` in Ratconfig or `config.toml` to choose packaged Nushell
 (default), Bash, Zsh, or Fish for new panes and sessions.
@@ -288,6 +308,6 @@ See [Development](docs/development.md) for CI and local checks,
 
 ## LOC Scorecard
 
-Yazelix owns **22,209 lines** of tracked text project files. The
+Yazelix owns **23,151 lines** of tracked text project files. The
 [reproducible scorecard](docs/development.md#loc-scorecard) excludes Beads,
 lockfiles, and binary assets.

@@ -1,4 +1,6 @@
 use std::{
+    env,
+    ffi::OsString,
     fs, io,
     path::Path,
     process,
@@ -13,6 +15,12 @@ use ratconfig::ConfigUiField;
 use crate::catalog::FieldSpec;
 
 pub(crate) type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
+pub(crate) fn nonempty_env(name: &str) -> Option<OsString> {
+    env::var_os(name).filter(|value| !value.is_empty())
+}
+pub(crate) fn managed_zellij_session() -> Option<OsString> {
+    nonempty_env("ZELLIJ_SESSION_NAME").or_else(|| nonempty_env("YAZELIX_ZELLIJ_SESSION_NAME"))
+}
 impl FieldSpec {
     pub(crate) fn json_choice<'a>(&self, value: &'a JsonValue) -> Result<&'a str> {
         let Some(value) = value.as_str() else {

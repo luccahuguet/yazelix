@@ -49,6 +49,15 @@ pub(crate) fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
         parse_zellij_sidecar(&read_zellij_sidecar(&paths.zellij)?);
     diagnostics.extend(zellij_diagnostics);
     let zellij_default = packaged_zellij_defaults();
+    let mut zellij_themes = packaged_zellij_theme_choices();
+    for custom in ["theme_dark", "theme_light"]
+        .into_iter()
+        .filter_map(|path| zellij_active.get(path).and_then(JsonValue::as_str))
+    {
+        if !zellij_themes.iter().any(|theme| theme == custom) {
+            zellij_themes.push(custom.to_string());
+        }
+    }
     let yazi = build_yazi_fields(paths)?;
     let file_actions = build_file_actions(paths);
 
@@ -102,14 +111,14 @@ pub(crate) fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
             zellij_apply_status(spec.path),
             false,
         );
-        if spec.path == "theme" {
-            let mut themes = packaged_zellij_theme_choices();
-            if let Some(custom) = current.and_then(JsonValue::as_str)
-                && !themes.iter().any(|theme| theme == custom)
-            {
-                themes.push(custom.to_string());
+        if matches!(spec.path, "theme_dark" | "theme_light") {
+            field.capability = choice_capability(zellij_themes.clone());
+            field.display_label = if spec.path == "theme_dark" {
+                "Dark theme"
+            } else {
+                "Light theme"
             }
-            field.capability = choice_capability(themes);
+            .to_string();
         }
         if let Some(input) = zellij_invalid.get(spec.path) {
             field.snapshot.intent = ConfigUiOverride::Invalid {
@@ -768,11 +777,11 @@ fn mars_apply_status(path: &str) -> ConfigUiApplyStatus {
 }
 
 fn zellij_apply_status(path: &str) -> ConfigUiApplyStatus {
-    if path == "theme" {
+    if matches!(path, "theme_dark" | "theme_light") {
         return apply_status(
-            "live",
+            "live/next mode",
             "zellij",
-            "Inside a managed session, saved themes update the watched active config; outside a session they apply on the next launch.",
+            "The active mode applies live inside a managed session; the other applies on the next mode change or launch.",
         );
     }
     apply_status(

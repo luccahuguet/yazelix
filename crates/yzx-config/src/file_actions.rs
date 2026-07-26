@@ -1,5 +1,7 @@
 use std::{
-    env, fs, io,
+    env,
+    ffi::OsStr,
+    fs, io,
     path::{Path, PathBuf},
     process::{self, Command},
     time::{SystemTime, UNIX_EPOCH},
@@ -253,6 +255,18 @@ pub(crate) enum MarsAppearanceProjection {
     Environment(String),
 }
 
+#[derive(Debug, PartialEq)]
+pub(crate) enum ZellijAppearanceProjection {
+    Live,
+    NextLaunch,
+}
+
+#[derive(Debug, PartialEq)]
+pub(crate) struct AppearanceProjection {
+    pub(crate) mars: Option<MarsAppearanceProjection>,
+    pub(crate) zellij: ZellijAppearanceProjection,
+}
+
 pub(crate) fn project_mars_appearance(paths: &ConfigPaths) -> Result<MarsAppearanceProjection> {
     let mode = read_config_field(&paths.root, config_field(APPEARANCE_MODE_PATH)?)?;
     let value = JsonValue::String(mode.clone());
@@ -275,19 +289,91 @@ pub(crate) fn write_config_ui(
     field_path: &str,
     value: Option<&JsonValue>,
     mars_included: bool,
-) -> Result<Option<MarsAppearanceProjection>> {
+    apply_zellij_live: bool,
+) -> Result<Option<AppearanceProjection>> {
     match value {
         Some(value) => write_source_field(paths, source_id, field_path, value),
         None => write_source_default(paths, source_id, field_path),
     }?;
-    if !mars_included || source_id != SOURCE_CONFIG || field_path != APPEARANCE_MODE_PATH {
+    if source_id != SOURCE_CONFIG || field_path != APPEARANCE_MODE_PATH {
         return Ok(None);
     }
-    project_mars_appearance(paths).map(Some).map_err(|source| {
-        error(format!(
-            "Updated {APPEARANCE_MODE_PATH}, but could not update Mars: {source}"
-        ))
-    })
+    let mode = read_config_field(&paths.root, config_field(APPEARANCE_MODE_PATH)?)?;
+    let mut failures = Vec::new();
+    let mars = if mars_included {
+        match project_mars_appearance(paths) {
+            Ok(projection) => Some(projection),
+            Err(source) => {
+                failures.push(format!("could not update Mars: {source}"));
+                None
+            }
+        }
+    } else {
+        None
+    };
+    let zellij_result = if apply_zellij_live {
+        apply_zellij_appearance(&mode)
+    } else {
+        Ok(ZellijAppearanceProjection::NextLaunch)
+    };
+    let zellij = match zellij_result {
+        Ok(projection) => projection,
+        Err(source) => {
+            failures.push(format!("could not update Zellij and the bar: {source}"));
+            ZellijAppearanceProjection::NextLaunch
+        }
+    };
+    if failures.is_empty() {
+        Ok(Some(AppearanceProjection { mars, zellij }))
+    } else {
+        Err(error(format!(
+            "Updated {APPEARANCE_MODE_PATH}, but {}. The saved mode remains authoritative; the next managed launch will retry.",
+            failures.join("; ")
+        )))
+    }
+}
+
+fn apply_zellij_appearance(mode: &str) -> Result<ZellijAppearanceProjection> {
+    let session = managed_zellij_session();
+    let managed_state = nonempty_env("YAZELIX_STATE_DIR");
+    let (Some(session), Some(_)) = (session, managed_state) else {
+        return Ok(ZellijAppearanceProjection::NextLaunch);
+    };
+    let command = nonempty_env("YZX_ZELLIJ")
+        .ok_or_else(|| error("YZX_ZELLIJ is unavailable in the managed session"))?;
+    apply_zellij_appearance_to(mode, &command, &session)
+}
+
+pub(crate) fn apply_zellij_appearance_to(
+    mode: &str,
+    command: &OsStr,
+    session: &OsStr,
+) -> Result<ZellijAppearanceProjection> {
+    let action = match mode {
+        "dark" => "set-dark-theme",
+        "light" => "set-light-theme",
+        _ => return Err(error(format!("unsupported appearance mode: {mode}"))),
+    };
+    let output = Command::new(command)
+        .arg("--session")
+        .arg(session)
+        .args(["action", action])
+        .output()
+        .map_err(|source| error(format!("failed to run `{action}`: {source}")))?;
+    if output.status.success() {
+        Ok(ZellijAppearanceProjection::Live)
+    } else {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        Err(error(format!(
+            "`{action}` failed with status {}{}",
+            output.status,
+            if stderr.trim().is_empty() {
+                String::new()
+            } else {
+                format!(": {}", stderr.trim())
+            }
+        )))
+    }
 }
 
 pub(crate) fn open_file_action(
@@ -373,7 +459,7 @@ fn ensure_helix_steel_pair(paths: &ConfigPaths) -> Result<()> {
 fn configured_editor() -> Result<PathBuf> {
     ["YAZELIX_EDITOR", "VISUAL", "EDITOR"]
         .into_iter()
-        .find_map(|key| env::var_os(key).filter(|value| !value.is_empty()))
+        .find_map(nonempty_env)
         .map(PathBuf::from)
         .ok_or_else(|| error("no editor configured; set YAZELIX_EDITOR, VISUAL, or EDITOR"))
 }

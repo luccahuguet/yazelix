@@ -4,6 +4,7 @@
   runtimeIdentity,
   zellijBar,
 }: {
+  appearanceMode,
   widgetTray,
   shellLabel,
 }: {
@@ -15,7 +16,7 @@
   shell_label = shellLabel;
   terminal_label = "mars";
   custom_text = "";
-  appearance_mode = "dark";
+  appearance_mode = appearanceMode;
   tab_label_mode = "full";
   nu_bin = "${nushell}/bin/nu";
   yzx_control_bin = "${coreutils}/bin/false";

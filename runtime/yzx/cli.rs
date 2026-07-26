@@ -1,9 +1,9 @@
 use std::{env, ffi::OsString, path::Path, process::Command};
 
 use crate::{
-    MARS, VERSION, YZX_CONFIG_UI, YZX_ENV_SUPERVISOR, YZX_MENU, YZX_REVEAL, YZX_SCREEN, YZX_SHELL,
-    YZX_TUTOR, YZX_WELCOME, YZX_YAZI, YZX_YAZI_CONFIG, YZX_YAZI_MATERIALIZER, ZELLIJ,
-    command::exec,
+    MARS, VERSION, YZX_CONFIG, YZX_CONFIG_UI, YZX_ENV_SUPERVISOR, YZX_MENU, YZX_REVEAL, YZX_SCREEN,
+    YZX_SHELL, YZX_TUTOR, YZX_WELCOME, YZX_YAZI, YZX_YAZI_CONFIG, YZX_YAZI_MATERIALIZER, ZELLIJ,
+    command::{exec, run_checked, trim_output},
     doctor::print_doctor,
     error::AppError,
     paths::{enter_terminal_label, nonempty_env, runtime_path},
@@ -96,11 +96,16 @@ fn exec_yazi_config(args: Vec<OsString>) -> Result<(), AppError> {
             let Some((user_config_dir, state_dir)) = materialize_paths(args) else {
                 return Err(AppError::Usage(YAZI_CONFIG_MATERIALIZE_HELP.to_string()));
             };
+            let appearance_mode = trim_output(run_checked(
+                Path::new(YZX_CONFIG),
+                Command::new(YZX_CONFIG).arg("--get").arg("appearance.mode"),
+            )?);
             let mut command = Command::new(YZX_YAZI_MATERIALIZER);
             command
                 .arg(YZX_YAZI_CONFIG)
                 .arg(user_config_dir)
-                .arg(state_dir);
+                .arg(state_dir)
+                .arg(appearance_mode);
             exec(command, "yzx yazi-config materialize")
         }
         _ => Err(AppError::Usage(YAZI_CONFIG_HELP.to_string())),
@@ -203,6 +208,7 @@ fn exec_managed(through_mars: bool, zellij_args: Vec<OsString>) -> Result<(), Ap
     } else {
         command.arg(ZELLIJ);
     }
+    apply_zellij_launch_theme_mode(&mut command, &runtime.appearance_mode);
     command
         .arg("--config")
         .arg(&runtime.zellij_config)
@@ -225,6 +231,10 @@ fn exec_managed(through_mars: bool, zellij_args: Vec<OsString>) -> Result<(), Ap
         },
     );
     exec(command, program)
+}
+
+fn apply_zellij_launch_theme_mode(command: &mut Command, mode: &str) {
+    command.arg("--theme-mode").arg(mode);
 }
 
 fn managed_program(through_mars: bool, mars: &'static str) -> Result<&'static str, AppError> {
@@ -273,18 +283,29 @@ mod tests {
         assert!(launch.get_envs().any(|(key, value)| {
             key == "YAZELIX_CURSOR_CONFIG" && value == Some(path.as_os_str())
         }));
-        assert!(launch.get_envs().any(|(key, value)| {
-            key == "MARS_APPEARANCE" && value.is_none()
-        }));
+        assert!(
+            launch
+                .get_envs()
+                .any(|(key, value)| { key == "MARS_APPEARANCE" && value.is_none() })
+        );
         let mut declarative_launch = Command::new(MARS);
         apply_mars_launch_env(&mut declarative_launch, true, path, Some("light"));
         assert!(declarative_launch.get_envs().any(|(key, value)| {
-            key == "MARS_APPEARANCE"
-                && value == Some(std::ffi::OsStr::new("light"))
+            key == "MARS_APPEARANCE" && value == Some(std::ffi::OsStr::new("light"))
         }));
         let mut enter = Command::new(YZX_WELCOME);
         apply_mars_launch_env(&mut enter, false, path, Some("light"));
         assert_eq!(enter.get_envs().next(), None);
+
+        let mut zellij = Command::new(ZELLIJ);
+        apply_zellij_launch_theme_mode(&mut zellij, "light");
+        assert_eq!(
+            zellij
+                .get_args()
+                .map(|arg| arg.to_string_lossy().into_owned())
+                .collect::<Vec<_>>(),
+            ["--theme-mode", "light"]
+        );
     }
 
     #[test]

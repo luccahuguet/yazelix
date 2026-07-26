@@ -54,6 +54,7 @@ nix run --override-input yazelixHelix ../yazelix-helix
 nix run --override-input yazelixZellijPopup ../yazelix-zellij-popup
 nix run --override-input yazelixZellijBar ../yazelix-zellij-bar
 nix run --override-input yazelixZellijPaneOrchestrator ../yazelix-zellij-pane-orchestrator
+nix run --override-input yaziBistro ../yazi-bistro
 ```
 
 Useful local checks:
@@ -94,14 +95,14 @@ git ls-files | grep -Ev '^\.beads/|\.lock$|^assets/' | xargs wc -l
 | --- | ---: |
 | Ignore (`.gitignore`) | 19 |
 | License | 201 |
-| Markdown | 2552 |
-| Nix | 1558 |
+| Markdown | 2647 |
+| Nix | 1554 |
 | Shell | 84 |
 | YAML | 450 |
-| TOML | 250 |
-| KDL | 247 |
+| TOML | 463 |
+| KDL | 249 |
 | Nu | 11 |
 | Lua | 253 |
-| Rust | 16543 |
+| Rust | 17179 |
 | Text | 41 |
-| Total | 22209 |
+| Total | 23151 |

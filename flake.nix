@@ -55,6 +55,10 @@
       url = "github:Rolv-Apneseth/starship.yazi";
       flake = false;
     };
+    yaziBistro = {
+      url = "github:luccahuguet/yazi-bistro";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     zjstatus = {
       url = "github:luccahuguet/zjstatus/yazelix-tab-activity-pipe";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -75,6 +79,7 @@
     yazelixScreen,
     autoLayoutYazi,
     starshipYazi,
+    yaziBistro,
     zjstatus,
   }: let
     novaVersion = "1.0.0-beta.3";
@@ -297,28 +302,7 @@
         chmod 755 "$out/bin/yzx-hx"
         ln -s yzx-hx "$out/bin/hx"
       '';
-      yaziAssetsSelection = pkgs.fetchFromGitHub {
-        owner = "luccahuguet";
-        repo = "yazelix-yazi-assets";
-        rev = "b2dea5312d2f3be3472d4ff51530cbaa7279bf5c";
-        sparseCheckout = ["plugins/git.yazi" "yazelix_starship.toml"];
-        nonConeMode = true;
-        hash = "sha256-xyK/2qvm9PY9vXQt96nr32rvRprx42GSfd22R5ak4mM=";
-      };
-      yaziFlavorNames = [
-        "catppuccin-frappe.yazi"
-        "catppuccin-latte.yazi"
-        "catppuccin-macchiato.yazi"
-        "catppuccin-mocha.yazi"
-        "dracula.yazi"
-      ];
-      yaziFlavorsSelection = pkgs.fetchFromGitHub {
-        owner = "yazi-rs";
-        repo = "flavors";
-        rev = "4770a3467169bfdb0a3b11601921aaf27c100630";
-        sparseCheckout = yaziFlavorNames;
-        hash = "sha256-TwYnWeRnclmHFwq6bisn7OTXqzWmGiEaEGIZFGAYhsw=";
-      };
+      yaziBistroPackage = yaziBistro.packages.${system}.default;
       yzxOpenCore = pkgs.rustPlatform.buildRustPackage {
         pname = "yzx-open";
         version = "0.1.0";
@@ -332,19 +316,16 @@
         install -D -m 644 ${./defaults/yazi/init.lua} "$out/init.lua"
         install -D -m 644 ${./defaults/yazi/keymap.toml} "$out/keymap.toml"
         install -D -m 644 ${yzxYaziToml} "$out/yazi.toml"
-        install -D -m 644 ${yaziAssetsSelection}/yazelix_starship.toml "$out/yazelix_starship.toml"
+        install -D -m 644 ${./defaults/yazi/yazelix_starship.toml} "$out/yazelix_starship.toml"
         mkdir -p "$out/plugins"
         install -D -m 644 ${./defaults/yazi/plugins/sidebar-state.yazi/main.lua} "$out/plugins/sidebar-state.yazi/main.lua"
         install -D -m 644 ${./defaults/yazi/plugins/sidebar-status.yazi/main.lua} "$out/plugins/sidebar-status.yazi/main.lua"
         install -D -m 644 ${./defaults/yazi/plugins/zoxide-editor.yazi/main.lua} "$out/plugins/zoxide-editor.yazi/main.lua"
         ln -s ${autoLayoutYazi} "$out/plugins/auto-layout.yazi"
-        ln -s ${yaziAssetsSelection}/plugins/git.yazi "$out/plugins/git.yazi"
+        ln -s ${pkgs.yaziPlugins.git} "$out/plugins/git.yazi"
         ln -s ${starshipYazi} "$out/plugins/starship.yazi"
-        for flavor in ${pkgs.lib.concatStringsSep " " yaziFlavorNames}; do
-          for file in flavor.toml tmtheme.xml LICENSE LICENSE-tmtheme; do
-            install -D -m 644 ${yaziFlavorsSelection}/"$flavor/$file" "$out/flavors/$flavor/$file"
-          done
-        done
+        ln -s ${yaziBistroPackage}/share/yazi-flavors/catalog.toml "$out/catalog.toml"
+        ln -s ${yaziBistroPackage}/share/yazi-flavors/flavors "$out/flavors"
       '';
       yzxYaziMaterializer = yzxYaziMaterializerFor pkgs;
       yzxRuntimeIdentity = pkgs.writeTextDir "runtime_identity.json" (builtins.toJSON {
@@ -363,11 +344,13 @@
       };
       yzxBarRenderRequest =
         pkgs.writeText "yzx-bar-render-request.json" (builtins.toJSON (barRenderRequest {
+          appearanceMode = "dark";
           widgetTray = defaultBarWidgets;
           shellLabel = defaultShellProgram;
         }));
       yzxBarRenderRequestTemplate =
         pkgs.writeText "yzx-bar-render-request-template.json" (builtins.toJSON (barRenderRequest {
+          appearanceMode = "__YZX_APPEARANCE_MODE__";
           widgetTray = "__YZX_BAR_WIDGET_TRAY__";
           shellLabel = "__YZX_SHELL_LABEL__";
         }));
@@ -483,6 +466,7 @@
             unset YAZELIX_EDITOR
             ${editorEnv}
             export YAZELIX_MARS_INCLUDED=${if withMars then "1" else "0"}
+            export YZX_ZELLIJ=${yazelixZellijPackage}/bin/zellij
             exec ${yzxConfig}/bin/yzx-config "$@"
           '';
         };
@@ -974,7 +958,7 @@
           /nix/store/*) ;;
           *) printf '%s\n' 'Home Manager Yazi flavor is not store-backed' >&2; exit 1 ;;
         esac
-        hm_yazi_runtime="$(${yzxYaziMaterializer}/bin/yzx-yazi-config ${yzx}/share/yazelix/yazi "$config_files/yazi" "$TMPDIR/hm-yazi-state")"
+        hm_yazi_runtime="$(${yzxYaziMaterializer}/bin/yzx-yazi-config ${yzx}/share/yazelix/yazi "$config_files/yazi" "$TMPDIR/hm-yazi-state" dark)"
         grep -Fqx 'format = "$directory$git_branch"' "$hm_yazi_runtime/yazelix_starship.toml"
         YAZI_CONFIG_HOME="$hm_yazi_runtime" ${pkgs.yazi}/bin/yazi --debug > hm-yazi-debug
         grep -q 'Dark/light flavor:.*example' hm-yazi-debug
@@ -1003,6 +987,9 @@
         grep -q "state dir: $YAZELIX_STATE_DIR" status
         grep -q 'shell: fish' status
         grep -q 'welcome enabled: false' status
+        grep -q 'layout: runtime (' status
+        grep -q 'host_theme_mode "light"' "$YAZELIX_STATE_DIR/zellij/layout.kdl"
+        grep -Fq 'host_theme_light_tab_normal "#[fg=#5c5f77] [{index}] {name} "' "$YAZELIX_STATE_DIR/zellij/layout.kdl"
         grep -q 'Yazelix Nova doctor' doctor
         grep -q "ok config home: $runtime_config" doctor
         grep -q 'ok shell.program: fish' doctor
@@ -1022,7 +1009,7 @@
         printf '%s\n' 'require("smart-enter"):setup { open_multi = false }' > "$user/init.lua"
         printf '%s\n' '[[mgr.prepend_keymap]]' 'on = "l"' 'run = "plugin smart-enter"' > "$user/keymap.toml"
 
-        runtime="$(${yzxYaziMaterializer}/bin/yzx-yazi-config ${yzx}/share/yazelix/yazi "$user" "$state")"
+        runtime="$(${yzxYaziMaterializer}/bin/yzx-yazi-config ${yzx}/share/yazelix/yazi "$user" "$state" dark)"
         YZX_YAZI_STARSHIP_CONFIG="$runtime/yazelix_starship.toml" YAZI_CONFIG_HOME="$runtime" ${pkgs.yazi}/bin/yazi --debug > yazi-debug
         test -f "$runtime/plugins/smart-enter.yazi/main.lua"
         test -f "$runtime/plugins/starship.yazi/user-managed"
@@ -1030,13 +1017,19 @@
         grep -q 'plugin smart-enter' "$runtime/keymap.toml"
         grep -q 'yzx-open' yazi-debug
 
+        light_runtime="$(${yzxYaziMaterializer}/bin/yzx-yazi-config ${yzx}/share/yazelix/yazi "$TMPDIR/no-yazi-user" "$TMPDIR/light-state" light)"
+        grep -Fqx 'dark = "${yaziBistro.lib.defaultLight}"' "$light_runtime/theme.toml"
+        grep -Fqx 'light = "${yaziBistro.lib.defaultLight}"' "$light_runtime/theme.toml"
+        YAZI_CONFIG_HOME="$light_runtime" ${pkgs.yazi}/bin/yazi --debug > light-yazi-debug
+        grep -q 'Dark/light flavor:.*${yaziBistro.lib.defaultLight}' light-yazi-debug
+
         for flavor_path in ${yzx}/share/yazelix/yazi/flavors/*.yazi; do
           flavor_dir="''${flavor_path##*/}"
           flavor="''${flavor_dir%.yazi}"
           flavor_user="$TMPDIR/flavor-$flavor"
           mkdir -p "$flavor_user"
           printf '[flavor]\ndark = "%s"\nlight = "%s"\n' "$flavor" "$flavor" > "$flavor_user/theme.toml"
-          flavor_runtime="$(${yzxYaziMaterializer}/bin/yzx-yazi-config ${yzx}/share/yazelix/yazi "$flavor_user" "$TMPDIR/state-$flavor")"
+          flavor_runtime="$(${yzxYaziMaterializer}/bin/yzx-yazi-config ${yzx}/share/yazelix/yazi "$flavor_user" "$TMPDIR/state-$flavor" dark)"
           YAZI_CONFIG_HOME="$flavor_runtime" ${pkgs.yazi}/bin/yazi --debug > "debug-$flavor"
           grep -q "Dark/light flavor:.*$flavor" "debug-$flavor"
           test -f "$flavor_runtime/flavors/$flavor_dir/flavor.toml"
@@ -1140,6 +1133,8 @@
           "$package/bin/yzx" status > "$root/status"
           grep -Fqx "package: $variant" "$root/status"
           grep -Fqx 'mars config: not included' "$root/status"
+          grep -q 'host_theme_mode "dark"' "$package/share/yazelix/layout.kdl"
+          grep -Fq 'host_theme_light_tab_normal "#[fg=#5c5f77] [{index}] {name} "' "$package/share/yazelix/layout.kdl"
           "$package/bin/yzx" doctor > "$root/doctor"
           grep -Fqx 'ok mars: not included' "$root/doctor"
           if "$package/bin/yzx" launch 2> "$root/launch-error"; then

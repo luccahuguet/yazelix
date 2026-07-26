@@ -124,7 +124,7 @@ ids that do not exist are not invented; open `config.toml` to add them
 | --- | --- | --- |
 | `cursors.toml` | Yazelix Cursors | Shared cursor pool, selection, and effects. The child-owned template seeds it once, Ratconfig preserves custom definitions, and reset is unavailable because this file has no sparse inherited layer |
 | `mars/config.toml` | Mars | Sparse overrides for window size, opacity, font, scrollbar, and bell. Yazelix manages only `mars.appearance.preset` as the projection of root `appearance.mode` |
-| `zellij/config.kdl` | Zellij sidecar | Sparse safe scalar overrides where absent assignments inherit packaged defaults. Ratconfig offers Default plus the 41 themes embedded by the pinned Zellij package; Default removes the override, while quoted custom theme names without KDL escapes remain accepted. Unexposed top-level leaf nodes are preserved as unvalidated Advanced diagnostics without interpreting their values. Inside a session, saves and resets also patch the active runtime config. Structural comments or continuations, extra managed-block metadata, other structured native nodes, and integration-owned nodes block unsafe writes |
+| `zellij/config.kdl` | Zellij sidecar | Sparse safe scalar overrides where absent assignments inherit packaged defaults. Ratconfig offers separate Dark theme and Light theme fields over the same 41 themes embedded by the pinned Zellij package, with `ansi` and `gruvbox-light` inherited respectively. Quoted custom theme names without KDL escapes remain accepted. A legacy static `theme` assignment is preserved in this file but reported and omitted from the managed runtime. Unexposed top-level leaf nodes are preserved as unvalidated Advanced diagnostics without interpreting their values. Inside a session, saves and resets also patch the active runtime config. Structural comments or continuations, extra managed-block metadata, other structured native nodes, and integration-owned nodes block unsafe writes |
 | `zellij/plugins.kdl` | Zellij plugin sidecar | Extra plugin declarations only. Packaged plugin ids cannot be redeclared |
 | `starship.toml` | Starship | Sparse native prompt overrides. Ratconfig curates only `character.format`; absent layout fields retain Starship defaults |
 | `helix/config.toml` | Helix | Sparse user TOML merged over packaged Yazelix Helix defaults, with explicit creation starting from only an ownership comment |
@@ -137,7 +137,7 @@ ids that do not exist are not invented; open `config.toml` to add them
 | `yazi/init.lua` | Yazi | Appended after packaged Yazi init |
 | `yazi/keymap.toml` | Yazi | Appended after packaged Yazi keymap |
 | `yazi/starship.toml` | Yazi Starship | Complete replacement for Nova's packaged compact Starship header config |
-| `yazi/theme.toml` | Yazi | Native theme config. Ratconfig renders safe existing values and provides installed dark/light flavor pickers |
+| `yazi/theme.toml` | Yazi | Native theme config. Ratconfig provides separate dark/light flavor pools and preserves explicit choices; Yazelix projects the side selected by root `appearance.mode` only into generated runtime config |
 | `yazi/package.toml` | Yazi | Opaque package metadata that Yazelix does not process with `ya pkg` |
 
 The managed Yazi merge restores Yazelix's edit opener and its two sidebar Git
@@ -190,10 +190,19 @@ managed Yazi launch or sidebar reopen
 
 ### Yazi flavors
 
-Nova packages Catppuccin Latte, Frappé, Macchiato, Mocha, and Dracula from the
-official `yazi-rs/flavors` repository. Press `8` in Ratconfig and choose the
-dark and light flavors. Ratconfig writes only the corresponding native
-`theme.toml` keys, and reset returns that mode to Yazi's default theme
+[Yazi Bistro](https://github.com/luccahuguet/yazi-bistro) supplies 22 complete,
+pinned flavors with provenance and license metadata: 17 dark and 5 light.
+Press `8` in Ratconfig to choose from the corresponding packaged pool.
+User-installed flavors without a Bistro classification appear in both pools.
+Ratconfig writes only the selected native `theme.toml` key.
+
+Root `appearance.mode` selects which side a new managed Yazi uses. An explicit
+`flavor.dark` or `flavor.light` wins for that mode. Resetting the light field
+inherits Catppuccin Latte; resetting the dark field leaves the dark choice
+unset so Yazi retains its native background-based default. At launch, Yazelix
+writes both flavor keys in generated runtime `theme.toml` to the selected
+flavor. It never changes the user or Home Manager source file, never restarts an
+existing Yazi process, and preserves unrelated native theme settings.
 
 Install community flavors or an explicitly user-managed version into writable
 managed config with Yazi's package manager:
@@ -216,7 +225,7 @@ light = "catppuccin-mocha"
 `ya` owns `package.toml` and the installed flavor directory. Yazelix uses its
 packaged, version-matched `ya` for `yzx run ya`, projects those native files at
 Yazi launch, and never installs or upgrades packages automatically. Compatible
-user-installed flavors appear in the Ratconfig picker automatically
+user-installed flavors appear in both Ratconfig pools automatically
 
 Home Manager can select a packaged flavor without installing another source:
 
@@ -275,7 +284,9 @@ Opening `yzx config` does not create `mars/config.toml`, `starship.toml`, or
 `zellij/config.kdl`. Saving writes only the selected override, and resetting
 removes that key. The global appearance switch is the exception: saving or
 resetting `appearance.mode` also writes only `mars.appearance.preset` when Mars
-is included and its native file is a writable regular file. The Starship tab
+is included and its native file is a writable regular file. New managed Yazi
+processes read the saved root mode and project its selected flavor into runtime
+state without editing the native theme file. The Starship tab
 curates only `character.format`, whose Nova default is `:: `. Managed Nu
 materializes that sparse marker override under runtime state without setting
 top-level `format`, so Starship retains its native `$all` layout. Mars and Zellij
@@ -286,11 +297,17 @@ Yazi's compact Starship header mirrors the default contextual module coverage.
 Directory and Git retain compact text; every other decoration renders only its
 symbol, so values such as cloud profiles and regions stay out of the sidebar
 
-Ratconfig's Zellij theme picker lists the identities declared by the pinned
-Zellij package rather than maintaining theme definitions. Choosing `default`
-removes the sparse `theme` assignment. A custom theme name written directly in
-`zellij/config.kdl` remains valid and visible; the picker itself offers the
-packaged set.
+Ratconfig's Zellij Dark theme and Light theme pickers list the identities
+declared by the pinned Zellij package rather than maintaining theme definitions.
+They inherit `ansi` and `gruvbox-light` respectively, and resetting either
+removes only that sparse override. Custom names written to either field remain
+valid and join the shared picker pool alongside the packaged set. The old
+static `theme` field is no longer a managed setting. Yazelix preserves an
+existing assignment in the user sidecar, reports that it is ignored, and leaves
+it out of materialized runtime configuration. Root `appearance.mode` selects a
+member of the pair when Yazelix starts Zellij. A save from inside a managed
+session calls Zellij's native action for that session, and the top bar follows
+the resulting mode event with its internal dark or light palette.
 
 The first config or runtime use seeds `cursors.toml` without replacing an
 existing file. Its Cursors tab edits the enabled pool, selection, and common
@@ -305,7 +322,12 @@ writable regular-file Mars configuration through Mars's existing watcher.
 `yzx launch` reconciles that managed field, so a direct manual edit affects Mars
 only until the next global save or launch. Store-backed, symlinked, or otherwise
 read-only Mars config is not rewritten; the root value is passed to Mars on the
-next launch instead.
+next launch instead. The same save calls the matching native Zellij action when
+Ratconfig can identify the current managed session. That action also switches
+the top bar palette. Outside a managed session, Zellij and the bar apply the
+saved mode on the next Yazelix launch; Zellij resolves the corresponding
+dark/light theme-pair member. A Mars or Zellij projection failure does not roll
+back the saved root value.
 Opacity, font size, line height, scrollbar, and bell changes also apply to open
 Mars windows. Width and height apply to newly created Mars windows. Zellij
 sidecar saves and resets update the active managed session config when

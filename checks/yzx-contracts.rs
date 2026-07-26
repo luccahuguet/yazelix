@@ -314,6 +314,7 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
         "YZX_MENU_YZX",
         "YZX_YA",
         "YZX_ZELLIJ",
+        "appearance.mode",
         "welcome.enabled",
         "welcome.style",
         "welcome.duration_seconds",
@@ -349,6 +350,7 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
         "/bin/zellij",
         "/bin/mars",
         "tokenusage",
+        "--theme-mode",
         "--new-session-with-layout",
     }
     let env_supervisor = embedded_store_path(&yzx_launcher, "/bin/yzx-env-supervisor");
@@ -680,6 +682,22 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
         &custom_config, "custom bar new-tab config";
         format!(r#"layout "{}""#, custom_bar.zellij_path("layout.kdl").display()),
         format!("cwd {home};"),
+    }
+
+    let light_bar = RuntimeCase::new(&temp.path, "light-bar");
+    light_bar.write_default_config("\n[appearance]\nmode = \"light\"\n");
+    let status = light_bar.run_yzx(&yzx_bin, "status", "light appearance status");
+    expect_contains_all! {
+        &status, "light appearance status";
+        "layout: runtime (",
+    }
+    let light_layout = light_bar.zellij_file("layout.kdl");
+    expect_contains_all! {
+        &light_layout, "light appearance layout";
+        r#"host_theme_mode "light""#,
+        r##"host_theme_dark_tab_normal "#[fg=#ffff00] [{index}] {name} ""##,
+        r##"host_theme_light_tab_normal "#[fg=#5c5f77] [{index}] {name} ""##,
+        r##"#[fg=#2f7d32,bold] hx"##,
     }
 
     let custom_shell_bar = RuntimeCase::new(&temp.path, "custom-shell-bar");
@@ -1453,16 +1471,24 @@ fn expect_zellij_config_sidecar(yzx: &Path) {
     let no_sidecar = run_zellij_config(&helper, &packaged_config, &sidecar, &generated_path);
     assert_eq!(PathBuf::from(no_sidecar), packaged_config);
 
-    let sidecar_config = "scroll_buffer_size 1234\npane_frames false\n";
+    let packaged_text = fs::read_to_string(&packaged_config).unwrap();
+    assert!(packaged_text.contains("theme_dark \"ansi\""));
+    assert!(packaged_text.contains("theme_light \"gruvbox-light\""));
+
+    let sidecar_config = "# { preserved comment\ntheme \"dracula\"\nfuture_label \"{opaque}\"\ntheme_dark \"custom-dark\"\nscroll_buffer_size 1234\npane_frames false\n";
     fs::write(&sidecar, sidecar_config).unwrap();
     let generated = run_zellij_config(&helper, &packaged_config, &sidecar, &generated_path);
     assert_eq!(PathBuf::from(&generated), generated_path);
-    let packaged_text = fs::read_to_string(&packaged_config).unwrap();
-    let expected_config = format!("{}\n{}", packaged_text.trim_end(), sidecar_config);
+    let applied_sidecar = "# { preserved comment\nfuture_label \"{opaque}\"\ntheme_dark \"custom-dark\"\nscroll_buffer_size 1234\npane_frames false\n";
+    let inherited_pair_removed = packaged_text.replace("theme_dark \"ansi\"\n", "");
+    let expected_config = format!("{}\n{}", inherited_pair_removed.trim_end(), applied_sidecar);
     assert_eq!(
         fs::read_to_string(&generated_path).unwrap(),
         expected_config
     );
+    assert_eq!(expected_config.matches("theme_dark ").count(), 1);
+    assert_eq!(expected_config.matches("theme_light ").count(), 1);
+    assert_eq!(fs::read_to_string(&sidecar).unwrap(), sidecar_config);
 
     for forbidden in [
         ("keybinds", "keybinds {}\n"),
@@ -1546,6 +1572,12 @@ fn expect_yazi_alt_z(yzx: &Path) {
     }
 
     let layout = fs::read_to_string(yzx.join("share/yazelix/layout.kdl")).unwrap();
+    expect_contains_all! {
+        &layout, "packaged dark appearance layout";
+        r#"host_theme_mode "dark""#,
+        r##"host_theme_dark_tab_normal "#[fg=#ffff00] [{index}] {name} ""##,
+        r##"host_theme_light_tab_normal "#[fg=#5c5f77] [{index}] {name} ""##,
+    }
     let yzx_yazi = layout
         .lines()
         .find_map(|line| {
@@ -1569,6 +1601,7 @@ fn expect_yazi_alt_z(yzx: &Path) {
         "YAZELIX_EDITOR",
         "GIT_EDITOR",
         "editor.command",
+        "appearance.mode",
         "--yzx-workspace-popup",
         "YZX_YAZI_ROLE",
         "YZX_YAZI_BIN",

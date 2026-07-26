@@ -1,5 +1,7 @@
 default_shell "@yzxShell@"
 support_kitty_keyboard_protocol true
+theme_dark "ansi"
+theme_light "gruvbox-light"
 
 plugins {
     yzpp location="@yzpp@" {

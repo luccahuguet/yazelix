@@ -18,15 +18,19 @@ use crate::{
 
 pub(crate) fn active_layout(
     state_dir: &Path,
+    appearance_mode: &str,
     bar_widgets: &str,
     shell_label: &str,
 ) -> Result<(&'static str, PathBuf), AppError> {
-    if bar_widgets == DEFAULT_BAR_WIDGETS_JSON && shell_label == DEFAULT_SHELL_PROGRAM {
+    if appearance_mode == "dark"
+        && bar_widgets == DEFAULT_BAR_WIDGETS_JSON
+        && shell_label == DEFAULT_SHELL_PROGRAM
+    {
         return Ok(("packaged", PathBuf::from(LAYOUT)));
     }
 
     let layout = state_dir.join("zellij/layout.kdl");
-    let plugin_block = render_bar_plugin_block(bar_widgets, shell_label)?;
+    let plugin_block = render_bar_plugin_block(appearance_mode, bar_widgets, shell_label)?;
     materialize_layout(&layout, &plugin_block)?;
     Ok(("runtime", layout))
 }
@@ -442,11 +446,16 @@ fn inject_snippet_before(
     Ok(text.replacen(marker, &format!("{snippet}\n{marker}"), 1))
 }
 
-fn render_bar_plugin_block(bar_widgets: &str, shell_label: &str) -> Result<String, AppError> {
+fn render_bar_plugin_block(
+    appearance_mode: &str,
+    bar_widgets: &str,
+    shell_label: &str,
+) -> Result<String, AppError> {
     let template_path = Path::new(YZX_BAR_RENDER_REQUEST);
     let template = fs::read_to_string(template_path)
         .map_err(|error| path_error("read", template_path, template_path, error))?;
     let request = template
+        .replace("__YZX_APPEARANCE_MODE__", appearance_mode)
         .replace(r#""__YZX_BAR_WIDGET_TRAY__""#, bar_widgets)
         .replace("__YZX_SHELL_LABEL__", shell_label);
     Ok(trim_output(run_checked(

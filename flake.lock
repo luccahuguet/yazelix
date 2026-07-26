@@ -309,6 +309,7 @@
         "yazelixZellijBar": "yazelixZellijBar",
         "yazelixZellijPaneOrchestrator": "yazelixZellijPaneOrchestrator",
         "yazelixZellijPopup": "yazelixZellijPopup",
+        "yaziBistro": "yaziBistro",
         "zjstatus": "zjstatus"
       }
     },
@@ -585,11 +586,11 @@
     "yazelixZellij": {
       "flake": false,
       "locked": {
-        "lastModified": 1782497117,
-        "narHash": "sha256-mCG03DeZy6e6vWnxuf7wevCrve1MyzvhG7tprbokkik=",
+        "lastModified": 1785010408,
+        "narHash": "sha256-YY9cvzOMoOiGA8zjWLTFDtIBKPIMDy4zRgSkBZ1T+8c=",
         "owner": "luccahuguet",
         "repo": "yazelix-zellij",
-        "rev": "4aa20707c644475a2d046fdd1c267b9db3af366c",
+        "rev": "e9199d2d367266c461c003ce7f979fb04b321084",
         "type": "github"
       },
       "original": {
@@ -610,11 +611,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1784654874,
-        "narHash": "sha256-SoH29c6hH3YITnqAyPGmrWpJYayw/V/b3YYnFnLqY7I=",
+        "lastModified": 1785026958,
+        "narHash": "sha256-kphLpeoKctSuT0bPhzwyGFjhZ3vWdxUlSTZ+aFWGF8k=",
         "owner": "luccahuguet",
         "repo": "yazelix-zellij-bar",
-        "rev": "c747cc09f4f787fea4dea1be1eb50c445f0bb204",
+        "rev": "92258bbae0362f0d558193d6d85b2ed7728718c4",
         "type": "github"
       },
       "original": {
@@ -667,6 +668,26 @@
         "type": "github"
       }
     },
+    "yaziBistro": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1785032640,
+        "narHash": "sha256-JGU4X5fWiAnqhJhugKJS35+KY4TPWJJAVEx4gTCJsPE=",
+        "owner": "luccahuguet",
+        "repo": "yazi-bistro",
+        "rev": "391fd487c1f1470091dfa7114bb5c86d5f95e2f8",
+        "type": "github"
+      },
+      "original": {
+        "owner": "luccahuguet",
+        "repo": "yazi-bistro",
+        "type": "github"
+      }
+    },
     "zjstatus": {
       "inputs": {
         "crane": "crane",
@@ -677,11 +698,11 @@
         "rust-overlay": "rust-overlay_3"
       },
       "locked": {
-        "lastModified": 1784090562,
-        "narHash": "sha256-t/RhxRDHPacgW+SRpDixZRXjQc4AgqrSXiS6VeopLkk=",
+        "lastModified": 1785006172,
+        "narHash": "sha256-wE1262j1y6dLe5OGFFEwMZ0BPPwmwt97M/x5WGqD4oc=",
         "owner": "luccahuguet",
         "repo": "zjstatus",
-        "rev": "e5cfb0ead8bdefaff25c6de726dc8b7a45282d19",
+        "rev": "a9859a94aaa745339a3e7933d97bd9d2777855d4",
         "type": "github"
       },
       "original": {

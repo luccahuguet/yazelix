@@ -123,8 +123,9 @@ pub(crate) const YAZI_INIT_STARTER: &str = "-- Loaded after Yazelix Nova package
 pub(crate) const YAZI_KEYMAP_STARTER: &str =
     "# Loaded after Yazelix Nova packaged yazi/keymap.toml.\n";
 pub(crate) const YAZI_PACKAGE_STARTER: &str = "# Managed Yazi package metadata. Yazelix does not run ya pkg.\n[plugin]\ndeps = []\n\n[flavor]\ndeps = []\n";
-pub(crate) const YAZI_THEME_STARTER: &str =
+pub(crate) const YAZI_THEME_BASELINE: &str =
     "# Managed native Yazi theme config.\n[flavor]\ndark = \"\"\nlight = \"\"\n";
+pub(crate) const YAZI_THEME_STARTER: &str = "# Managed native Yazi theme config.\n";
 pub(crate) const ZELLIJ_PLUGINS_STARTER: &str = "// Extra managed Zellij plugins. Do not declare yzpp or yazelix_pane_orchestrator here.\nplugins {\n}\n\nload_plugins {\n}\n";
 pub(crate) const KEY_READ_ONLY_REASON: &str =
     "Read-only key binding; yzx config does not rewrite native keymaps.";
@@ -431,8 +432,14 @@ pub(crate) const ZELLIJ_FORBIDDEN_TOP_LEVEL: &[&str] = &[
 
 pub(crate) const ZELLIJ_FIELDS: &[FieldSpec] = &[
     FieldSpec::string_choice(
-        "theme",
-        "Zellij color theme. Custom names remain valid in the native sidecar.",
+        "theme_dark",
+        "Zellij theme used for dark Yazelix appearance. Custom names remain valid in the native sidecar.",
+        &[],
+        "packaged theme choice; custom sidecar names remain accepted",
+    ),
+    FieldSpec::string_choice(
+        "theme_light",
+        "Zellij theme used for light Yazelix appearance. Custom names remain valid in the native sidecar.",
         &[],
         "packaged theme choice; custom sidecar names remain accepted",
     ),

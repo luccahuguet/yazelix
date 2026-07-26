@@ -25,19 +25,47 @@ fn main() -> ExitCode {
 
 fn run() -> io::Result<PathBuf> {
     let args = env::args_os().collect::<Vec<_>>();
-    let [_, packaged, user, state] = args.as_slice() else {
+    let [_, packaged, user, state, appearance_mode] = args.as_slice() else {
         return Err(invalid_input(
-            "usage: yzx-yazi-config <packaged-yazi> <user-yazi> <state-dir>",
+            "usage: yzx-yazi-config <packaged-yazi> <user-yazi> <state-dir> <appearance-mode>",
         ));
     };
-    materialize(Path::new(packaged), Path::new(user), Path::new(state))
+    materialize(
+        Path::new(packaged),
+        Path::new(user),
+        Path::new(state),
+        appearance_mode
+            .to_str()
+            .ok_or_else(|| invalid_input("appearance mode must be UTF-8"))?,
+    )
 }
 
-fn materialize(packaged: &Path, user: &Path, state: &Path) -> io::Result<PathBuf> {
+struct ThemeProjection {
+    theme: Value,
+    flavor: String,
+}
+
+fn materialize(
+    packaged: &Path,
+    user: &Path,
+    state: &Path,
+    appearance_mode: &str,
+) -> io::Result<PathBuf> {
     let packaged = absolute(packaged)?;
     let user = absolute(user)?;
     let state = absolute(state)?;
-    if !managed_input_exists(&user)? {
+    let runtime = match fs::canonicalize(&state) {
+        Ok(state) => state,
+        Err(error) if error.kind() == ErrorKind::NotFound => state.clone(),
+        Err(error) => return Err(error),
+    }
+    .join("yazi");
+    let theme = user.join("theme.toml");
+    if path_entry_exists(&theme)? {
+        reject_runtime_source(&theme, &runtime)?;
+    }
+    let projection = theme_projection(&theme, &packaged, appearance_mode)?;
+    if projection.is_none() && !managed_input_exists(&user)? {
         return Ok(packaged);
     }
 
@@ -48,7 +76,7 @@ fn materialize(packaged: &Path, user: &Path, state: &Path) -> io::Result<PathBuf
     let stage = state.join(format!(".yazi-{}-{}", process::id(), nonce()));
     fs::create_dir(&stage)?;
 
-    let result = write_runtime(&packaged, &user, &stage, &runtime)
+    let result = write_runtime(&packaged, &user, &stage, &runtime, projection)
         .and_then(|()| remove_any(&runtime))
         .and_then(|()| fs::rename(&stage, &runtime));
     if let Err(error) = result {
@@ -56,6 +84,69 @@ fn materialize(packaged: &Path, user: &Path, state: &Path) -> io::Result<PathBuf
         return Err(error);
     }
     Ok(runtime)
+}
+
+fn theme_projection(
+    source: &Path,
+    packaged: &Path,
+    appearance_mode: &str,
+) -> io::Result<Option<ThemeProjection>> {
+    let theme = if path_entry_exists(source)? {
+        if !source.is_file() {
+            return Err(invalid_input(format!("cannot read {}", source.display())));
+        }
+        Some(parse_toml(source, "managed Yazi theme")?)
+    } else {
+        None
+    };
+    let configured = theme
+        .as_ref()
+        .map(|theme| configured_flavor(theme, appearance_mode))
+        .transpose()?
+        .flatten();
+    let flavor = match appearance_mode {
+        "dark" => configured,
+        "light" => Some(match configured {
+            Some(flavor) => flavor,
+            None => default_light_flavor(packaged)?,
+        }),
+        mode => return Err(invalid_input(format!("unknown appearance mode: {mode}"))),
+    };
+    let Some(flavor) = flavor else {
+        return Ok(None);
+    };
+    if flavor.is_empty() {
+        return Err(invalid_data("Yazi flavor names must not be empty"));
+    }
+    Ok(Some(ThemeProjection {
+        theme: theme.unwrap_or_else(|| Value::Table(toml::Table::new())),
+        flavor,
+    }))
+}
+
+fn default_light_flavor(packaged: &Path) -> io::Result<String> {
+    let catalog = parse_toml(&packaged.join("catalog.toml"), "packaged Yazi catalog")?;
+    catalog
+        .get("default_light")
+        .and_then(Value::as_str)
+        .map(str::to_string)
+        .ok_or_else(|| invalid_data("packaged Yazi catalog is missing its light default"))
+}
+
+fn configured_flavor(theme: &Value, mode: &str) -> io::Result<Option<String>> {
+    let Some(flavor) = theme.get("flavor") else {
+        return Ok(None);
+    };
+    let flavor = flavor
+        .as_table()
+        .ok_or_else(|| invalid_data("flavor must be a table in managed Yazi theme.toml"))?;
+    match flavor.get(mode) {
+        None => Ok(None),
+        Some(Value::String(value)) => Ok(Some(value.clone())),
+        Some(_) => Err(invalid_data(format!(
+            "flavor.{mode} must be a string in managed Yazi theme.toml"
+        ))),
+    }
 }
 
 fn managed_input_exists(user: &Path) -> io::Result<bool> {
@@ -82,7 +173,13 @@ fn managed_input_exists(user: &Path) -> io::Result<bool> {
     Ok(false)
 }
 
-fn write_runtime(packaged: &Path, user: &Path, stage: &Path, runtime: &Path) -> io::Result<()> {
+fn write_runtime(
+    packaged: &Path,
+    user: &Path,
+    stage: &Path,
+    runtime: &Path,
+    projection: Option<ThemeProjection>,
+) -> io::Result<()> {
     let user_init = user.join("init.lua");
     let user_yazi_toml = user.join("yazi.toml");
     if path_entry_exists(&user_yazi_toml)? {
@@ -120,26 +217,47 @@ fn write_runtime(packaged: &Path, user: &Path, stage: &Path, runtime: &Path) -> 
         &stage.join("keymap.toml"),
         "# Yazelix Nova user keymap.toml",
     )?;
-    for name in ["package.toml", "theme.toml"] {
-        let source = user.join(name);
-        if !path_entry_exists(&source)? {
-            continue;
+    let package = user.join("package.toml");
+    if path_entry_exists(&package)? {
+        if !package.is_file() {
+            return Err(invalid_input(format!("cannot read {}", package.display())));
         }
-        if !source.is_file() {
-            return Err(invalid_input(format!("cannot read {}", source.display())));
-        }
-        symlink_user_source(&source, &stage.join(name), runtime)?;
+        symlink_user_source(&package, &stage.join("package.toml"), runtime)?;
     }
-    for (directory, kind) in [("plugins", "plugin"), ("flavors", "flavor")] {
+    let theme = user.join("theme.toml");
+    if let Some(projection) = projection {
+        write_projected_theme(projection, &stage.join("theme.toml"))?;
+    } else if path_entry_exists(&theme)? {
+        if !theme.is_file() {
+            return Err(invalid_input(format!("cannot read {}", theme.display())));
+        }
+        symlink_user_source(&theme, &stage.join("theme.toml"), runtime)?;
+    }
+    for name in ["plugins", "flavors"] {
+        let kind = name.trim_end_matches('s');
         overlay_user_assets(
-            &packaged.join(directory),
-            &user.join(directory),
-            &stage.join(directory),
+            &packaged.join(name),
+            &user.join(name),
+            &stage.join(name),
             runtime,
             kind,
         )?;
     }
     Ok(())
+}
+
+fn write_projected_theme(projection: ThemeProjection, target: &Path) -> io::Result<()> {
+    let mut theme = projection.theme;
+    let root = theme
+        .as_table_mut()
+        .ok_or_else(|| invalid_data("managed Yazi theme.toml root must be a table"))?;
+    let flavor = table_entry(root, "flavor")?;
+    for mode in ["dark", "light"] {
+        flavor.insert(mode.to_string(), Value::String(projection.flavor.clone()));
+    }
+    let text = toml::to_string_pretty(&theme)
+        .map_err(|error| invalid_data(format!("could not render managed Yazi theme: {error}")))?;
+    fs::write(target, text)
 }
 
 fn write_merged_yazi_toml(packaged: &Path, user: &Path, target: &Path) -> io::Result<()> {
@@ -304,7 +422,12 @@ fn overlay_user_assets(
 }
 
 fn reject_runtime_source(source: &Path, runtime: &Path) -> io::Result<()> {
-    if source.starts_with(runtime) || fs::canonicalize(source)?.starts_with(runtime) {
+    let resolved_inside = match fs::canonicalize(source) {
+        Ok(source) => source.starts_with(runtime),
+        Err(error) if error.kind() == ErrorKind::NotFound => false,
+        Err(error) => return Err(error),
+    };
+    if source.starts_with(runtime) || resolved_inside {
         return Err(invalid_input(format!(
             "managed Yazi source {} must be outside generated runtime {}",
             source.display(),
@@ -405,6 +528,11 @@ edit = [{ run = "managed-open %s", block = false, for = "unix" }]
         fs::create_dir_all(path.join("plugins/starship.yazi")).unwrap();
         fs::create_dir_all(path.join("flavors/packaged.yazi")).unwrap();
         fs::write(
+            path.join("catalog.toml"),
+            "default_light=\"catppuccin-latte\"",
+        )
+        .unwrap();
+        fs::write(
             path.join("plugins/starship.yazi/main.lua"),
             "packaged starship\n",
         )
@@ -485,7 +613,7 @@ edit = [{ run = "nvim %s" }]
         )
         .unwrap();
 
-        let runtime = materialize(&packaged, &user, &temp.0.join("state")).unwrap();
+        let runtime = materialize(&packaged, &user, &temp.0.join("state"), "dark").unwrap();
         let merged =
             toml::from_str::<Value>(&fs::read_to_string(runtime.join("yazi.toml")).unwrap())
                 .unwrap();
@@ -559,7 +687,9 @@ edit = [{ run = "nvim %s" }]
         fs::create_dir_all(state.join("yazi")).unwrap();
         fs::write(state.join("yazi/sentinel"), "old runtime").unwrap();
         let fail = |user: &Path, state: &Path| {
-            materialize(&packaged, user, state).unwrap_err().to_string()
+            materialize(&packaged, user, state, "dark")
+                .unwrap_err()
+                .to_string()
         };
 
         symlink(temp.0.join("missing-user"), &user).unwrap();
@@ -633,7 +763,7 @@ edit = [{ run = "nvim %s" }]
 
         let runtime = state.join("yazi");
         fs::set_permissions(&runtime, fs::Permissions::from_mode(0o000)).unwrap();
-        let result = materialize(&packaged, &user, &state);
+        let result = materialize(&packaged, &user, &state, "dark");
         fs::set_permissions(&runtime, fs::Permissions::from_mode(0o700)).unwrap();
         assert_eq!(result.unwrap_err().kind(), ErrorKind::PermissionDenied);
         assert_eq!(fs::read_dir(&state).unwrap().count(), 1);
@@ -653,13 +783,63 @@ edit = [{ run = "nvim %s" }]
         )
         .unwrap();
 
-        let runtime = materialize(&packaged, &user, &state).unwrap();
+        let runtime = materialize(&packaged, &user, &state, "dark").unwrap();
         let starship = runtime.join("yazelix_starship.toml");
         assert_eq!(
             fs::read_to_string(&starship).unwrap(),
             "format = '$directory$git_branch'\n"
         );
         assert!(starship.is_symlink());
+    }
+
+    #[test]
+    fn appearance_projects_only_the_selected_runtime_flavor() {
+        let temp = TempDir::new();
+        let packaged = temp.0.join("packaged");
+        let user = temp.0.join("user");
+        let state = temp.0.join("state");
+        packaged_yazi(&packaged);
+
+        assert_eq!(
+            materialize(&packaged, &user, &state, "dark").unwrap(),
+            std::path::absolute(&packaged).unwrap()
+        );
+        let runtime = materialize(&packaged, &user, &state, "light").unwrap();
+        let light = parse_toml(&runtime.join("theme.toml"), "runtime Yazi theme").unwrap();
+        assert_eq!(light["flavor"]["dark"].as_str(), Some("catppuccin-latte"));
+        assert_eq!(light["flavor"]["light"].as_str(), Some("catppuccin-latte"));
+
+        fs::create_dir_all(&user).unwrap();
+        let source = concat!(
+            "# source stays byte-for-byte\n",
+            "[flavor]\n",
+            "dark = \"dracula\"\n",
+            "light = \"rose-pine-dawn\"\n\n",
+            "[mgr]\n",
+            "cwd = { fg = \"blue\" }\n",
+        );
+        fs::write(user.join("theme.toml"), source).unwrap();
+        for (mode, selected) in [("dark", "dracula"), ("light", "rose-pine-dawn")] {
+            let runtime = materialize(&packaged, &user, &state, mode).unwrap();
+            let theme = parse_toml(&runtime.join("theme.toml"), "runtime Yazi theme").unwrap();
+            assert_eq!(theme["flavor"]["dark"].as_str(), Some(selected));
+            assert_eq!(theme["flavor"]["light"].as_str(), Some(selected));
+            assert_eq!(theme["mgr"]["cwd"]["fg"].as_str(), Some("blue"));
+            assert!(!runtime.join("theme.toml").is_symlink());
+            assert_eq!(fs::read_to_string(user.join("theme.toml")).unwrap(), source);
+        }
+
+        fs::write(
+            user.join("theme.toml"),
+            "[flavor]\nlight = \"rose-pine-dawn\"\n",
+        )
+        .unwrap();
+        let runtime = materialize(&packaged, &user, &state, "dark").unwrap();
+        assert!(runtime.join("theme.toml").is_symlink());
+        assert_eq!(
+            fs::read_to_string(runtime.join("theme.toml")).unwrap(),
+            "[flavor]\nlight = \"rose-pine-dawn\"\n"
+        );
     }
 
     #[test]
@@ -671,20 +851,20 @@ edit = [{ run = "nvim %s" }]
         packaged_yazi(&packaged);
 
         assert_eq!(
-            materialize(&packaged, &user, &state).unwrap(),
+            materialize(&packaged, &user, &state, "dark").unwrap(),
             std::path::absolute(&packaged).unwrap()
         );
         assert!(!state.exists());
 
         fs::create_dir_all(user.join("plugins/example.yazi")).unwrap();
-        let runtime = materialize(&packaged, &user, &state).unwrap();
+        let runtime = materialize(&packaged, &user, &state, "dark").unwrap();
         assert!(runtime.join("plugins/example.yazi").is_dir());
 
         fs::remove_dir_all(user.join("plugins")).unwrap();
         fs::create_dir_all(user.join("flavors/example.yazi")).unwrap();
         fs::write(user.join("flavors/example.yazi/flavor.toml"), "").unwrap();
         fs::create_dir_all(user.join("flavors/.yazi")).unwrap();
-        let runtime = materialize(&packaged, &user, &state).unwrap();
+        let runtime = materialize(&packaged, &user, &state, "dark").unwrap();
         assert!(!runtime.join("plugins/example.yazi").exists());
         assert!(runtime.join("flavors/example.yazi").is_dir());
         assert!(!runtime.join("flavors/.yazi").exists());

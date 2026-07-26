@@ -37,6 +37,7 @@ pub(crate) struct Runtime {
     mars_config_source: &'static str,
     pub(crate) zellij_sidecar: PathBuf,
     pub(crate) zellij_config: PathBuf,
+    pub(crate) appearance_mode: String,
     zellij_config_source: &'static str,
     pub(crate) layout: PathBuf,
     layout_source: &'static str,
@@ -108,6 +109,8 @@ impl Runtime {
         let welcome_style = config_value(&config_home, &config_toml, "welcome.style")?;
         let welcome_duration_seconds =
             config_value(&config_home, &config_toml, "welcome.duration_seconds")?;
+        let appearance_mode =
+            trim_output(config_value(&config_home, &config_toml, "appearance.mode")?);
         let bar_widgets = trim_output(config_value(&config_home, &config_toml, "bar.widgets")?);
         let popup_side_margin = trim_output(config_value(
             &config_home,
@@ -129,7 +132,8 @@ impl Runtime {
         )?;
         let agent_popup_kdl =
             config_value(&config_home, &config_toml, AGENT_POPUP_KDL_CONFIG_PATH)?;
-        let (layout_source, layout) = active_layout(&state_dir, &bar_widgets, &shell_program)?;
+        let (layout_source, layout) =
+            active_layout(&state_dir, &appearance_mode, &bar_widgets, &shell_program)?;
         let mars_config_source = if config_home.join("mars/config.toml").is_file() {
             "user"
         } else {
@@ -219,6 +223,7 @@ impl Runtime {
             mars_config_source,
             zellij_sidecar,
             zellij_config,
+            appearance_mode,
             zellij_config_source,
             layout,
             layout_source,

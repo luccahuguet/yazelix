@@ -95,43 +95,39 @@ does not provide SSH connectivity or remote file synchronization
 
 ## Installed size
 
-The eight package closures measured on `x86_64-linux` with the 2026-07-21 lock
+The eight package closures measured on `x86_64-linux` with the 2026-07-26 lock
 are:
 
 | Package | Closure | Store paths |
 | --- | ---: | ---: |
-| `yazelix` | 2.28 GiB | 619 |
-| `yazelix-no-helix` | 2.00 GiB | 321 |
-| `yazelix-no-yazi` | 1.90 GiB | 500 |
-| `yazelix-no-helix-no-yazi` | 1.63 GiB | 202 |
-| `yazelix-no-mars` | 1.37 GiB | 591 |
-| `yazelix-no-mars-no-helix` | 1.10 GiB | 293 |
-| `yazelix-no-mars-no-yazi` | 0.98 GiB | 460 |
-| `yazelix-no-mars-no-helix-no-yazi` | 0.70 GiB | 162 |
+| `yazelix` | 2.28 GiB | 643 |
+| `yazelix-no-helix` | 2.01 GiB | 345 |
+| `yazelix-no-yazi` | 1.91 GiB | 524 |
+| `yazelix-no-helix-no-yazi` | 1.63 GiB | 226 |
+| `yazelix-no-mars` | 1.38 GiB | 615 |
+| `yazelix-no-mars-no-helix` | 1.10 GiB | 317 |
+| `yazelix-no-mars-no-yazi` | 0.98 GiB | 484 |
+| `yazelix-no-mars-no-helix-no-yazi` | 0.70 GiB | 186 |
 
 Removing managed Yazi saves 384.8 MiB when Mars is present and 406.4 MiB when
 Mars is absent because some Yazi dependencies are already shared with Mars.
-The Mars-free evaluated source-build graph contains 5,664 derivations instead
-of 8,071, avoiding 2,407 derivations when nothing is cached. Derivation counts
-are from 2026-07-12 and indicate potential work, not guaranteed compilations.
+The Mars-free evaluated source-build graph contains 5,732 derivations instead
+of 8,115, avoiding 2,383 derivations when nothing is cached. Derivation counts
+are from 2026-07-26 and indicate potential work, not guaranteed compilations.
 Closure size is realized and unpacked, not compressed download size, and an
 existing Nix store may already contain shared paths
 
-The module figures below are complete closures for the package roots Nova uses.
+The component figures below are complete closures for the package roots Nova uses.
 They overlap through common libraries and tools, so they do not add up to the
 Nova total
 
 | Runtime scope | Closure size | What the measurement includes |
 | --- | ---: | --- |
-| **Nova (`yzx`)** | **2.28 GiB** | Entire launcher, terminal, workspace, editor, file manager, shell, Git tools, plugins, fonts, and configuration assets |
-| **Nova without managed Helix** | **2.00 GiB** | Full Mars workspace and integrations, with editing delegated to a host-installed command |
-| **Nova without Mars** | **1.37 GiB** | Same command, workspace, tools, config, and cursor schema without Mars, Rio, desktop entry, or Mars-only assets |
-| **Nova without Mars or managed Helix** | **1.10 GiB** | Managed TUI workspace and host-editor delegation without Mars, Rio, or managed Helix |
 | Mars | 1.13 GiB | Mars, Rio, graphics libraries, Python runtime, and packaged fonts/emoji |
 | Yazi + preview tools | 503.2 MiB | Yazi plus Chafa, FFmpeg, ImageMagick, Poppler, resvg, 7-Zip, `fd`, `rg`, `jq`, `fzf`, and `zoxide` |
 | Git | 373.8 MiB | Packaged Git CLI and its runtime dependencies |
 | Yazelix Helix | 327.6 MiB | Managed Helix, runtime queries, and packaged tree-sitter grammars |
-| Ratconfig / `yzx-config` | 124.4 MiB | Compiled configuration UI, validation, persistence, and runtime libraries |
+| Ratconfig / `yzx-config` | 108.9 MiB | Compiled configuration UI, validation, persistence, and runtime libraries |
 | Carapace | 105.9 MiB | Shell completion engine |
 | Nushell | 104.1 MiB | Managed shell executable and runtime libraries |
 | Yazelix Zellij | 101.9 MiB | Managed Zellij fork and runtime libraries |
@@ -140,12 +136,12 @@ Nova total
 | LazyGit | 59.4 MiB | Terminal Git client and runtime libraries |
 | Starship | 58.9 MiB | Managed prompt executable and runtime libraries |
 | fzf | 49.5 MiB | Fuzzy finder used by menus and Yazi |
-| Yazelix Zellij bar | 43.0 MiB | Top-bar WebAssembly plugin closure |
+| Yazelix Zellij bar | 43.1 MiB | Top-bar WebAssembly plugin closure |
 | Yazelix Screen | 47.9 MiB | Welcome-screen renderer and separately packaged aquarium closure |
 | Zellij pane orchestrator | 2.1 MiB | Pane-orchestration WebAssembly plugin |
 | Zellij popup | 1.9 MiB | Popup WebAssembly plugin |
 
-Nova's own top-level store output is only 39.1 KiB of NAR data. It is primarily
+Nova's own top-level store output is only 48.9 KiB of NAR data. It is primarily
 a thin command and desktop-entry join that points at the modules above. The
 Yazi Lua plugin inputs are each 17 KiB or less, and the installed cursor
 template is 3.8 KiB
@@ -162,8 +158,10 @@ for package in \
   yazelix-no-mars-no-helix \
   yazelix-no-mars-no-yazi \
   yazelix-no-mars-no-helix-no-yazi; do
-  path=$(nix build ".#$package" --no-link --print-out-paths)
-  nix path-info -Sh "$path"
+  package_path=$(nix build ".#$package" --no-link --print-out-paths)
+  closure_size=$(nix path-info -Sh "$package_path" | awk '{print $2}')
+  store_paths=$(nix path-info -r "$package_path" | wc -l)
+  printf '%s\t%s\t%s paths\n' "$package" "$closure_size" "$store_paths"
 done
 ```
 

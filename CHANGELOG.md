@@ -4,6 +4,29 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## Unreleased
 
+- Managed Yazi packages all 22 complete dark and light flavors from
+  [Yazi Bistro](https://github.com/luccahuguet/yazi-bistro). Ratconfig
+  classifies the 17 dark and 5 light packaged choices into separate pools,
+  while user-installed unclassified flavors remain available in both. New
+  managed Yazi processes follow root `appearance.mode`: light mode inherits
+  Catppuccin Latte when no light choice exists, dark mode preserves Yazi's
+  native detection when no dark choice exists, and explicit native choices win.
+  The projection changes only generated runtime `theme.toml`; user and Home
+  Manager source files remain untouched, and existing Yazi processes are not
+  restarted.
+- Ratconfig's Zellij tab exposes separate Dark theme and Light theme choices
+  from the same 41-theme inventory. Untouched configuration inherits `ansi`
+  for dark appearance and `gruvbox-light` for light appearance; either side
+  also preserves a custom native theme name. The former static `theme` setting
+  is preserved in user sidecars for manual recovery but diagnosed and omitted
+  from managed runtime materialization so it cannot compete with the pair.
+- Managed Zellij sessions receive root `appearance.mode` at launch and Zellij
+  resolves the matching pair member. That explicit mode remains authoritative
+  over ambient terminal appearance reports for the session. Saving the root
+  setting inside the session calls Zellij's native dark/light action for the
+  current session. The top bar follows the same native event and uses internal
+  dark and light palettes for readable inactive tabs and widgets without adding
+  a bar preset.
 - Root `appearance.mode = "dark" | "light"` is the Yazelix-wide appearance
   switch and Ratconfig palette source. Packages with writable regular-file Mars
   config project it to only `mars.appearance.preset`, which Mars reloads live;

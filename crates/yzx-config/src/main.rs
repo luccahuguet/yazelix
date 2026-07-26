@@ -1369,17 +1369,32 @@ color = "#123456"
                 APPEARANCE_MODE_PATH,
                 Some(&json!("light")),
                 true,
+                false,
             )
             .unwrap(),
-            Some(MarsAppearanceProjection::Config)
+            Some(AppearanceProjection {
+                mars: Some(MarsAppearanceProjection::Config),
+                zellij: ZellijAppearanceProjection::NextLaunch,
+            })
         );
         assert_toml_value(&paths.root, APPEARANCE_MODE_PATH, &json!("light"));
         assert_toml_value(&paths.mars, MARS_APPEARANCE_PRESET_PATH, &json!("light"));
         assert_toml_value(&paths.mars, "window.opacity", &json!(0.5));
 
         assert_eq!(
-            write_config_ui(&paths, SOURCE_CONFIG, APPEARANCE_MODE_PATH, None, true,).unwrap(),
-            Some(MarsAppearanceProjection::Config)
+            write_config_ui(
+                &paths,
+                SOURCE_CONFIG,
+                APPEARANCE_MODE_PATH,
+                None,
+                true,
+                false,
+            )
+            .unwrap(),
+            Some(AppearanceProjection {
+                mars: Some(MarsAppearanceProjection::Config),
+                zellij: ZellijAppearanceProjection::NextLaunch,
+            })
         );
         assert!(!paths.root.exists());
         assert_eq!(
@@ -1401,12 +1416,58 @@ color = "#123456"
                 APPEARANCE_MODE_PATH,
                 Some(&json!("light")),
                 false,
+                false,
             )
             .unwrap(),
-            None
+            Some(AppearanceProjection {
+                mars: None,
+                zellij: ZellijAppearanceProjection::NextLaunch,
+            })
         );
         assert_toml_value(&paths.root, APPEARANCE_MODE_PATH, &json!("light"));
         assert!(!paths.mars.exists());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn zellij_appearance_targets_only_the_named_session_and_reports_failures() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let temp = TempHome::new();
+        let command = temp.path.join("zellij");
+        let record = temp.path.join("zellij-action");
+        let write_command = |text: &str| {
+            fs::write(&command, text).unwrap();
+            let mut permissions = fs::metadata(&command).unwrap().permissions();
+            permissions.set_mode(0o755);
+            fs::set_permissions(&command, permissions).unwrap();
+        };
+        write_command("#!/bin/sh\nprintf '%s\\n' \"$*\" > \"${0%/*}/zellij-action\"\n");
+        let session = std::ffi::OsStr::new("managed-session");
+
+        assert_eq!(
+            apply_zellij_appearance_to("dark", command.as_os_str(), session).unwrap(),
+            ZellijAppearanceProjection::Live
+        );
+        assert_eq!(
+            fs::read_to_string(&record).unwrap(),
+            "--session managed-session action set-dark-theme\n"
+        );
+        assert_eq!(
+            apply_zellij_appearance_to("light", command.as_os_str(), session).unwrap(),
+            ZellijAppearanceProjection::Live
+        );
+        assert_eq!(
+            fs::read_to_string(&record).unwrap(),
+            "--session managed-session action set-light-theme\n"
+        );
+
+        write_command("#!/bin/sh\nprintf rejected >&2\nexit 23\n");
+        let error = apply_zellij_appearance_to("light", command.as_os_str(), session)
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("set-light-theme"), "{error}");
+        assert!(error.contains("rejected"), "{error}");
     }
 
     #[test]
@@ -1440,6 +1501,7 @@ color = "#123456"
             APPEARANCE_MODE_PATH,
             Some(&json!("light")),
             true,
+            false,
         )
         .unwrap_err()
         .to_string();
@@ -1676,6 +1738,7 @@ color = "#123456"
         link_from_store(&paths, &paths.root, "");
         link_from_store(&paths, &paths.cursors, DEFAULT_CURSOR_CONFIG_TEMPLATE);
         link_from_store(&paths, &paths.starship, "[character]\nformat = \"::\"\n");
+        link_from_store(&paths, &paths.zellij, "theme_dark \"ansi\"\n");
         link_from_store(&paths, &paths.nu_env, "# managed\n");
         atomic_write(&paths.mars, "[window]\nwidth = 960\n").unwrap();
         set_read_only(&paths.mars);
@@ -1705,7 +1768,7 @@ color = "#123456"
                 .filter(|field| {
                     matches!(
                         field.source_id.as_str(),
-                        SOURCE_CONFIG | SOURCE_CURSORS | SOURCE_STARSHIP
+                        SOURCE_CONFIG | SOURCE_CURSORS | SOURCE_STARSHIP | SOURCE_ZELLIJ
                     )
                 })
                 .all(|field| {
@@ -1731,6 +1794,15 @@ color = "#123456"
         rejects(
             write_source_field(&paths, SOURCE_CURSORS, CURSOR_TRAIL_PATH, &json!("none")),
             "programs.yazelix.config.cursors",
+        );
+        rejects(
+            write_source_field(
+                &paths,
+                SOURCE_ZELLIJ,
+                "theme_light",
+                &json!("gruvbox-light"),
+            ),
+            "programs.yazelix.config.zellij",
         );
         link_from_store(&paths, &paths.yazi_config, "[mgr]\nshow_hidden = true\n");
         link_from_store(
@@ -1967,6 +2039,18 @@ color = "#123456"
         )
         .unwrap();
         add_flavor(&paths.packaged_yazi, "catppuccin-mocha");
+        add_flavor(&paths.packaged_yazi, "catppuccin-latte");
+        fs::write(
+            paths.packaged_yazi.join("catalog.toml"),
+            concat!(
+                "default_light = \"catppuccin-latte\"\n\n",
+                "[flavors.catppuccin-mocha]\n",
+                "mode = \"dark\"\n\n",
+                "[flavors.catppuccin-latte]\n",
+                "mode = \"light\"\n",
+            ),
+        )
+        .unwrap();
         add_flavor(paths.yazi_config.parent().unwrap(), "custom");
         add_flavor(paths.yazi_config.parent().unwrap(), "");
         fs::write(
@@ -1988,6 +2072,15 @@ color = "#123456"
         assert_eq!(
             choice_values(dark),
             [&json!("catppuccin-mocha"), &json!("custom")]
+        );
+        assert_eq!(
+            choice_values(model_field(&model, "flavor.light")),
+            [&json!("catppuccin-latte"), &json!("custom")]
+        );
+        assert_eq!(baseline_value(dark), None);
+        assert_eq!(
+            baseline_value(model_field(&model, "flavor.light")),
+            Some(&json!("catppuccin-latte"))
         );
         assert_eq!(
             dark.snapshot.intent,
@@ -2043,6 +2136,15 @@ color = "#123456"
         let error = write_source_field(&paths, SOURCE_YAZI_THEME, "flavor.dark", &json!("missing"))
             .unwrap_err()
             .to_string();
+        assert!(error.contains("must name an installed flavor"), "{error}");
+        let error = write_source_field(
+            &paths,
+            SOURCE_YAZI_THEME,
+            "flavor.dark",
+            &json!("catppuccin-latte"),
+        )
+        .unwrap_err()
+        .to_string();
         assert!(error.contains("must name an installed flavor"), "{error}");
 
         write_source_default(&paths, SOURCE_YAZI_CONFIG, "mgr.show_hidden").unwrap();
@@ -2490,44 +2592,56 @@ color = "#123456"
     }
 
     #[test]
-    fn zellij_theme_picker_preserves_custom_names_and_resets_sparsely() {
+    fn zellij_theme_pair_preserves_custom_names_and_resets_sparsely() {
         let (_temp, paths) = temp_sources();
         let model = build_model(&paths).unwrap();
-        let theme = model_field(&model, "theme");
-        assert_inherited(theme, &json!("default"));
-        assert_eq!(choice_values(theme).first(), Some(&&json!("default")));
-        assert!(choice_values(theme).contains(&&json!("atelier-sulphurpool")));
-        assert!(!choice_values(theme).contains(&&json!("atelier")));
-        assert_eq!(theme.apply_status.summary, "live");
+        let dark = model_field(&model, "theme_dark");
+        let light = model_field(&model, "theme_light");
+        assert_eq!(dark.display_label, "Dark theme");
+        assert_eq!(light.display_label, "Light theme");
+        assert_inherited(dark, &json!("ansi"));
+        assert_inherited(light, &json!("gruvbox-light"));
+        assert_eq!(choice_values(dark), choice_values(light));
+        assert!(choice_values(dark).contains(&&json!("atelier-sulphurpool")));
+        assert!(!choice_values(dark).contains(&&json!("atelier")));
+        assert!(!choice_values(dark).contains(&&json!("default")));
+        assert_eq!(dark.apply_status.summary, "live/next mode");
 
         atomic_write(
             &paths.zellij,
-            "# keep\ntheme \"custom {ocean}\"\npane_frames false\n",
+            "# keep\ntheme_dark \"custom {ocean}\"\ntheme_light \"custom sunrise\"\npane_frames false\n",
         )
         .unwrap();
         let model = build_model(&paths).unwrap();
-        let theme = model_field(&model, "theme");
-        assert_explicit(theme, &json!("custom {ocean}"));
-        assert!(choice_values(theme).contains(&&json!("custom {ocean}")));
+        let dark = model_field(&model, "theme_dark");
+        let light = model_field(&model, "theme_light");
+        assert_explicit(dark, &json!("custom {ocean}"));
+        assert_explicit(light, &json!("custom sunrise"));
+        let themes = choice_values(dark);
+        assert_eq!(themes, choice_values(light));
+        assert!(themes.contains(&&json!("custom {ocean}")));
+        assert!(themes.contains(&&json!("custom sunrise")));
 
-        write_source_field(&paths, SOURCE_ZELLIJ, "theme", &json!("dracula")).unwrap();
+        write_source_field(&paths, SOURCE_ZELLIJ, "theme_dark", &json!("dracula")).unwrap();
         let raw = fs::read_to_string(&paths.zellij).unwrap();
         assert!(raw.starts_with("# keep\n"));
-        assert!(raw.contains("theme \"dracula\""));
+        assert!(raw.contains("theme_dark \"dracula\""));
+        assert!(raw.contains("theme_light \"custom sunrise\""));
         assert!(raw.contains("pane_frames false"));
         assert!(!raw.contains("custom {ocean}"));
 
-        write_source_field(&paths, SOURCE_ZELLIJ, "theme", &json!("default")).unwrap();
+        write_source_default(&paths, SOURCE_ZELLIJ, "theme_dark").unwrap();
         let raw = fs::read_to_string(&paths.zellij).unwrap();
         assert!(raw.starts_with("# keep\n"));
         assert!(raw.contains("pane_frames false"));
-        assert!(!raw.contains("theme "));
+        assert!(!raw.contains("theme_dark "));
+        assert!(raw.contains("theme_light \"custom sunrise\""));
     }
 
     #[test]
-    fn zellij_theme_edits_preserve_opaque_native_leaf_nodes() {
+    fn zellij_theme_edits_preserve_opaque_and_legacy_native_leaf_nodes() {
         let (_temp, paths) = temp_sources();
-        let raw = "// keep exactly\ndefault_mode \"normal\"\nfuture_flag;\nfuture_multi 1 2\nfuture_property mode=\"fast\"\nfuture_label \"two words // exact\"\nfuture_shape \"{opaque}\"\n";
+        let raw = "// keep exactly\ntheme \"dracula\"\ndefault_mode \"normal\"\nfuture_flag;\nfuture_multi 1 2\nfuture_property mode=\"fast\"\nfuture_label \"two words // exact\"\nfuture_shape \"{opaque}\"\n";
         atomic_write(&paths.zellij, raw).unwrap();
 
         let model = build_model(&paths).unwrap();
@@ -2553,16 +2667,23 @@ color = "#123456"
                 }
             );
         }
-        let theme = model_field(&model, "theme");
-        assert_inherited(theme, &json!("default"));
+        let legacy = model
+            .diagnostics
+            .iter()
+            .find(|diagnostic| diagnostic.headline.contains("legacy Zellij node `theme`"))
+            .expect("ignored legacy theme diagnostic");
+        assert!(!legacy.blocking);
+        assert_eq!(legacy.status, "ignored");
+        assert_inherited(model_field(&model, "theme_dark"), &json!("ansi"));
+        assert!(model.fields.iter().all(|field| field.path != "theme"));
 
-        write_source_field(&paths, SOURCE_ZELLIJ, "theme", &json!("ansi")).unwrap();
+        write_source_field(&paths, SOURCE_ZELLIJ, "theme_dark", &json!("ansi")).unwrap();
         assert_eq!(
             fs::read_to_string(&paths.zellij).unwrap(),
-            format!("{raw}theme \"ansi\"\n")
+            format!("{raw}theme_dark \"ansi\"\n")
         );
 
-        write_source_default(&paths, SOURCE_ZELLIJ, "theme").unwrap();
+        write_source_default(&paths, SOURCE_ZELLIJ, "theme_dark").unwrap();
         assert_eq!(fs::read_to_string(&paths.zellij).unwrap(), raw);
     }
 
@@ -2600,10 +2721,10 @@ ui {\n\
         assert!(appended.contains("ui {"));
         assert!(appended.contains("        rounded_corners true"));
 
-        let themed = patch_zellij_field_in_text(runtime, "theme", &json!("dracula")).unwrap();
-        assert!(themed.contains("theme \"dracula\""));
-        let reset = unset_zellij_field_in_text(&themed, "theme").unwrap();
-        assert!(!reset.contains("theme "));
+        let themed = patch_zellij_field_in_text(runtime, "theme_dark", &json!("dracula")).unwrap();
+        assert!(themed.contains("theme_dark \"dracula\""));
+        let reset = unset_zellij_field_in_text(&themed, "theme_dark").unwrap();
+        assert!(!reset.contains("theme_dark "));
         assert!(reset.contains("keybinds {}"));
         assert!(reset.contains("plugins {}"));
     }
@@ -2625,7 +2746,7 @@ ui {\n\
         }));
         let model = build_model(&paths).unwrap();
         assert_eq!(
-            model_field(&model, "theme").snapshot.intent,
+            model_field(&model, "theme_dark").snapshot.intent,
             ConfigUiOverride::Absent
         );
         assert_inherited(model_field(&model, "window.width"), &json!(960));
@@ -2648,18 +2769,18 @@ ui {\n\
                 input: "\"100\"".to_string()
             }
         );
-        assert_inherited(model_field(&model, "theme"), &json!("default"));
+        assert_inherited(model_field(&model, "theme_dark"), &json!("ansi"));
         assert_inherited(model_field(&model, "window.width"), &json!(960));
 
-        write_source_field(&paths, SOURCE_ZELLIJ, "theme", &json!("ansi")).unwrap();
+        write_source_field(&paths, SOURCE_ZELLIJ, "theme_dark", &json!("ansi")).unwrap();
         assert_eq!(
             fs::read_to_string(&paths.zellij).unwrap(),
-            "scroll_buffer_size \"100\"\ntheme \"ansi\"\n"
+            "scroll_buffer_size \"100\"\ntheme_dark \"ansi\"\n"
         );
         write_source_field(&paths, SOURCE_ZELLIJ, "scroll_buffer_size", &json!(5000)).unwrap();
         assert_eq!(
             fs::read_to_string(&paths.zellij).unwrap(),
-            "scroll_buffer_size 5000\ntheme \"ansi\"\n"
+            "scroll_buffer_size 5000\ntheme_dark \"ansi\"\n"
         );
     }
 
@@ -2682,7 +2803,8 @@ ui {\n\
 
         let error = write_zellij_config_field(&path, "scroll_buffer_size", &json!(-1)).unwrap_err();
         assert!(error.to_string().contains("positive integer"));
-        let error = write_zellij_config_field(&path, "theme", &json!("custom\\name")).unwrap_err();
+        let error =
+            write_zellij_config_field(&path, "theme_dark", &json!("custom\\name")).unwrap_err();
         assert!(error.to_string().contains("without escapes"));
 
         let (_config, invalid, diagnostics) = parse_zellij_sidecar("scroll_buffer_size -1\n");
@@ -2699,13 +2821,16 @@ ui {\n\
             ))
         );
 
-        for raw in ["theme ansi\n", "theme \"custom\\\\name\"\n"] {
+        for raw in ["theme_dark ansi\n", "theme_dark \"custom\\\\name\"\n"] {
             let (config, invalid, diagnostics) = parse_zellij_sidecar(raw);
-            assert!(!config.contains_key("theme"));
-            assert!(invalid.contains_key("theme"));
+            assert!(!config.contains_key("theme_dark"));
+            assert!(invalid.contains_key("theme_dark"));
             assert!(diagnostics.iter().any(|diagnostic| {
                 diagnostic.scope
-                    == ConfigUiDiagnosticScope::Field(ConfigUiFieldId::new(SOURCE_ZELLIJ, "theme"))
+                    == ConfigUiDiagnosticScope::Field(ConfigUiFieldId::new(
+                        SOURCE_ZELLIJ,
+                        "theme_dark",
+                    ))
             }));
         }
 
