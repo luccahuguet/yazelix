@@ -39,11 +39,6 @@ fn run(config: &Config, raw_args: impl IntoIterator<Item = OsString>) -> Result<
     };
 
     ya_emit_to(config, &sidebar.yazi_id, ["refresh"])?;
-    ya_emit_to(
-        config,
-        &sidebar.yazi_id,
-        ["plugin", "git", "refresh-sidebar"],
-    )?;
     if let Some(cwd) = sidebar.cwd {
         ya_emit_to(
             config,
@@ -81,7 +76,7 @@ mod tests {
     use std::{ffi::OsStr, fs};
 
     #[test]
-    fn refresh_emits_yazi_sidebar_refresh_git_and_starship_events() {
+    fn refresh_emits_native_yazi_refresh_and_starship_event() {
         let fixture = TestDir::new();
         let ya_log = fixture.path.join("ya.log");
         let zellij_log = fixture.path.join("zellij.log");
@@ -124,7 +119,6 @@ exit 1
         assert_eq!(
             fs::read_to_string(ya_log).unwrap(),
             "emit-to plugin-yazi-id refresh\n\
-emit-to plugin-yazi-id plugin git refresh-sidebar\n\
 emit-to plugin-yazi-id plugin starship /repo\n"
         );
     }

@@ -32,14 +32,14 @@ composes their package outputs.
 
 | Measure | Nova | Classic |
 | --- | --- | --- |
-| Code and configuration (Rust, Nix, shell, TOML, etc.) | **20,284 LOC** | **91,545 LOC** |
-| Rust | **17,179 LOC** | **80,957 LOC** |
+| Code and configuration (Rust, Nix, shell, TOML, etc.) | **20,333 LOC** | **91,545 LOC** |
+| Rust | **17,236 LOC** | **80,957 LOC** |
 | Ownership model | One owner per concern | Overlapping responsibilities across layers |
 | Yazelix component boundaries | Independent, versioned packages | Child repos mixed with main-repo ownership |
 | Product experience | More features, stronger defaults, tighter integration, and polished UX | Fewer features and a less cohesive workspace |
 | Status | Recommended | Frozen migration and rollback path |
 
-Nova owns **71,261 fewer lines**, a **78% reduction**. Classic's Rust code
+Nova owns **71,212 fewer lines**, a **78% reduction**. Classic's Rust code
 alone is 4.0 times larger than Nova's entire code and configuration surface.
 
 Nova delivers more features in 22% of the code. It has a clearer configuration
@@ -278,12 +278,12 @@ palettes.
 
 Each new managed Yazi reads the same root mode. Ratconfig offers separate
 packaged dark and light flavor pools from Yazi Bistro; user-installed
-unclassified flavors appear in both. Light mode inherits Catppuccin Latte,
-while an unset dark choice preserves Yazi's native dark-theme detection.
-Explicit native `flavor.dark` and `flavor.light` selections win. Yazelix
-projects the selected side into generated runtime config without modifying the
-user or Home Manager `theme.toml`; already-running Yazi processes stay as they
-are.
+unclassified flavors appear in both. `default` is the first dark choice and
+uses Yazi's native preset by leaving `flavor.dark` unset. Light mode inherits
+Catppuccin Latte. Explicit native `flavor.dark` and `flavor.light` selections
+win. Yazelix projects the selected side into generated runtime config without
+modifying the user or Home Manager `theme.toml`; already-running Yazi processes
+stay as they are.
 
 Set `shell.program` in Ratconfig or `config.toml` to choose packaged Nushell
 (default), Bash, Zsh, or Fish for new panes and sessions.

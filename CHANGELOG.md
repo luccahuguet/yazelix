@@ -4,16 +4,20 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## Unreleased
 
+- Managed Yazi no longer invokes the fetch-only Git plugin as a functional
+  command during startup, directory changes, tab changes, or sidebar refresh.
+  Native refresh still reruns the registered Git fetchers without producing
+  repeated failed-task notifications.
 - Managed Yazi packages all 22 complete dark and light flavors from
   [Yazi Bistro](https://github.com/luccahuguet/yazi-bistro). Ratconfig
   classifies the 17 dark and 5 light packaged choices into separate pools,
   while user-installed unclassified flavors remain available in both. New
   managed Yazi processes follow root `appearance.mode`: light mode inherits
-  Catppuccin Latte when no light choice exists, dark mode preserves Yazi's
-  native detection when no dark choice exists, and explicit native choices win.
-  The projection changes only generated runtime `theme.toml`; user and Home
-  Manager source files remain untouched, and existing Yazi processes are not
-  restarted.
+  Catppuccin Latte when no light choice exists, while Ratconfig lists `default`
+  first for dark mode and selecting it removes `flavor.dark` to use Yazi's
+  native preset. Explicit native choices win. The projection changes only
+  generated runtime `theme.toml`; user and Home Manager source files remain
+  untouched, and existing Yazi processes are not restarted.
 - Ratconfig's Zellij tab exposes separate Dark theme and Light theme choices
   from the same 41-theme inventory. Untouched configuration inherits `ansi`
   for dark appearance and `gruvbox-light` for light appearance; either side

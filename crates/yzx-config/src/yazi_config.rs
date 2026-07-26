@@ -10,6 +10,8 @@ use toml::Value as TomlValue;
 
 use crate::{catalog::*, common::*, paths::ConfigPaths};
 
+const YAZI_NATIVE_DARK_LABEL: &str = "default";
+
 pub(crate) fn build_yazi_fields(paths: &ConfigPaths) -> Result<Vec<ConfigUiField>> {
     let packaged = fs::read_to_string(paths.packaged_yazi.join("yazi.toml"))?;
     let current = read_optional_text(&paths.yazi_config)?;
@@ -30,26 +32,34 @@ pub(crate) fn build_yazi_fields(paths: &ConfigPaths) -> Result<Vec<ConfigUiField
     .map_err(|source| error(source.to_string()))?;
     let flavors = discovered_flavors(paths)?;
     for field in &mut appearance.fields {
-        let (label, choices) = match field.path.as_str() {
-            "flavor.dark" => ("Dark flavor", &flavors.dark),
-            "flavor.light" => ("Light flavor", &flavors.light),
+        let (label, choices, native_default) = match field.path.as_str() {
+            "flavor.dark" => ("Dark flavor", &flavors.dark, true),
+            "flavor.light" => ("Light flavor", &flavors.light, false),
             _ => continue,
         };
+        let mut available = Vec::with_capacity(choices.len() + usize::from(native_default));
+        if native_default {
+            available.push(ConfigUiChoice {
+                value: JsonValue::Null,
+                label: Some(YAZI_NATIVE_DARK_LABEL.to_string()),
+            });
+        }
+        available.extend(choices.iter().cloned().map(|value| {
+            ConfigUiChoice {
+                label: (native_default && value == YAZI_NATIVE_DARK_LABEL)
+                    .then(|| "default (installed flavor)".to_string()),
+                value: JsonValue::String(value),
+            }
+        }));
         field.display_label = label.to_string();
         field.type_label = Some("string".to_string());
-        field.capability = if choices.is_empty() {
+        field.capability = if available.is_empty() {
             ConfigUiCapability::ReadOnly {
                 reason: format!("No installed {label} choices were discovered."),
                 file_action_id: Some(ACTION_YAZI_THEME.to_string()),
             }
         } else {
-            ConfigUiCapability::Choice {
-                choices: choices
-                    .iter()
-                    .cloned()
-                    .map(|value| ConfigUiChoice::new(JsonValue::String(value)))
-                    .collect(),
-            }
+            ConfigUiCapability::Choice { choices: available }
         };
         field.can_unset = matches!(field.snapshot.intent, ConfigUiOverride::Explicit(_));
         if let ConfigUiOverride::Explicit(value) = &field.snapshot.intent {
@@ -69,6 +79,10 @@ pub(crate) fn build_yazi_fields(paths: &ConfigPaths) -> Result<Vec<ConfigUiField
             }
         }
         field.snapshot.baseline = match field.path.as_str() {
+            "flavor.dark" => Some(ConfigUiResolvedValue {
+                value: JsonValue::Null,
+                origin: Some("Yazi native preset".to_string()),
+            }),
             "flavor.light" => flavors
                 .default_light
                 .as_ref()
@@ -84,10 +98,18 @@ pub(crate) fn build_yazi_fields(paths: &ConfigPaths) -> Result<Vec<ConfigUiField
                 .effective
                 .clone_from(&field.snapshot.baseline);
         }
-        field.validation = "installed flavor from this appearance pool".to_string();
-        field.description = format!(
-            "{label} from native yazi/theme.toml. Packaged choices follow Yazi Bistro's classification; user-installed flavors appear in both pools. Reset uses Yazelix appearance defaults."
-        );
+        field.validation = if native_default {
+            "default (Yazi native preset) or an installed dark flavor"
+        } else {
+            "installed light flavor"
+        }
+        .to_string();
+        field.description = if native_default {
+            "Dark flavor from native yazi/theme.toml. Packaged choices follow Yazi Bistro's classification; user-installed flavors appear in both pools. Selecting default removes flavor.dark and uses Yazi's native preset."
+        } else {
+            "Light flavor from native yazi/theme.toml. Packaged choices follow Yazi Bistro's classification; user-installed flavors appear in both pools. Reset inherits Yazelix's Catppuccin Latte default."
+        }
+        .to_string();
     }
     appearance.fields.extend(settings.fields);
     remove_toml_parent_fields(&mut appearance.fields);
@@ -102,6 +124,9 @@ pub(crate) fn write_yazi_field(
 ) -> Result<()> {
     let path = yazi_source_path(paths, source_id)?;
     paths.reject_mutation(path, source_id)?;
+    if source_id == SOURCE_YAZI_THEME && field_path == "flavor.dark" && value.is_null() {
+        return unset_yazi_path(path, field_path);
+    }
     if matches!(field_path, "flavor.dark" | "flavor.light") {
         let flavors = discovered_flavors(paths)?;
         let choices = if field_path == "flavor.dark" {
@@ -132,6 +157,10 @@ pub(crate) fn unset_yazi_field(
 ) -> Result<()> {
     let path = yazi_source_path(paths, source_id)?;
     paths.reject_mutation(path, source_id)?;
+    unset_yazi_path(path, field_path)
+}
+
+fn unset_yazi_path(path: &Path, field_path: &str) -> Result<()> {
     if !path_entry_exists(path)? {
         return Ok(());
     }

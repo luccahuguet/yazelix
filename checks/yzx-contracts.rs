@@ -1553,8 +1553,11 @@ fn expect_yazi_alt_z(yzx: &Path) {
         "YAZELIX_ZELLIJ_SESSION_NAME",
         "ZELLIJ_SESSION_NAME",
         "YZX_ZELLIJ",
-        "emit(\"plugin\", { \"git\", \"refresh-sidebar\" })",
     }
+    assert!(
+        !sidebar_state.contains("emit(\"plugin\", { \"git\""),
+        "sidebar-state must not invoke the fetch-only git plugin as a functional action",
+    );
     assert!(
         yzx.join("share/yazelix/yazi/plugins/git.yazi").is_dir(),
         "packaged Yazi config is missing git.yazi",

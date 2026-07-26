@@ -2060,7 +2060,7 @@ color = "#123456"
         .unwrap();
         fs::write(
             &paths.yazi_theme,
-            "# keep theme\n[flavor]\ndark = 42\nlight = \"custom\"\n\n[mgr]\ncwd = { fg = \"blue\" }\n",
+            "# keep theme\n[flavor]\ndark = \"default\"\nlight = \"custom\"\n\n[mgr]\ncwd = { fg = \"blue\" }\n",
         )
         .unwrap();
 
@@ -2071,13 +2071,17 @@ color = "#123456"
         assert_eq!(dark.display_label, "Dark flavor");
         assert_eq!(
             choice_values(dark),
-            [&json!("catppuccin-mocha"), &json!("custom")]
+            [
+                &JsonValue::Null,
+                &json!("catppuccin-mocha"),
+                &json!("custom")
+            ]
         );
         assert_eq!(
             choice_values(model_field(&model, "flavor.light")),
             [&json!("catppuccin-latte"), &json!("custom")]
         );
-        assert_eq!(baseline_value(dark), None);
+        assert_eq!(baseline_value(dark), Some(&JsonValue::Null));
         assert_eq!(
             baseline_value(model_field(&model, "flavor.light")),
             Some(&json!("catppuccin-latte"))
@@ -2085,7 +2089,7 @@ color = "#123456"
         assert_eq!(
             dark.snapshot.intent,
             ConfigUiOverride::Invalid {
-                input: "42".to_string()
+                input: "\"default\"".to_string()
             }
         );
         assert_eq!(effective_value(dark), None);
@@ -2133,6 +2137,34 @@ color = "#123456"
         assert!(theme.starts_with("# keep theme\n"));
         assert!(theme.contains("dark = \"custom\""));
 
+        add_flavor(paths.yazi_config.parent().unwrap(), "default");
+        write_source_field(&paths, SOURCE_YAZI_THEME, "flavor.dark", &JsonValue::Null).unwrap();
+        let model = build_model(&paths).unwrap();
+        let dark = model_field(&model, "flavor.dark");
+        assert_eq!(dark.snapshot.intent, ConfigUiOverride::Absent);
+        assert_eq!(effective_value(dark), Some(&JsonValue::Null));
+        assert_eq!(
+            choice_values(dark),
+            [
+                &JsonValue::Null,
+                &json!("catppuccin-mocha"),
+                &json!("custom"),
+                &json!("default")
+            ]
+        );
+        let ConfigUiCapability::Choice { choices } = &dark.capability else {
+            panic!("dark flavor should remain a choice");
+        };
+        assert_eq!(choices[0].label.as_deref(), Some("default"));
+        assert_eq!(
+            choices[3].label.as_deref(),
+            Some("default (installed flavor)")
+        );
+        write_source_field(&paths, SOURCE_YAZI_THEME, "flavor.dark", &json!("default")).unwrap();
+        let theme = fs::read_to_string(&paths.yazi_theme).unwrap();
+        assert!(theme.contains("dark = \"default\""));
+        write_source_field(&paths, SOURCE_YAZI_THEME, "flavor.dark", &JsonValue::Null).unwrap();
+
         let error = write_source_field(&paths, SOURCE_YAZI_THEME, "flavor.dark", &json!("missing"))
             .unwrap_err()
             .to_string();
@@ -2148,7 +2180,6 @@ color = "#123456"
         assert!(error.contains("must name an installed flavor"), "{error}");
 
         write_source_default(&paths, SOURCE_YAZI_CONFIG, "mgr.show_hidden").unwrap();
-        write_source_default(&paths, SOURCE_YAZI_THEME, "flavor.dark").unwrap();
         let config = read_toml_file_value(&paths.yazi_config, "Yazi config").unwrap();
         let theme = read_toml_file_value(&paths.yazi_theme, "Yazi theme").unwrap();
         assert_eq!(get_toml_path(&config, "mgr.show_hidden"), None);

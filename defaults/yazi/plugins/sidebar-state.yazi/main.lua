@@ -88,21 +88,13 @@ local function publish()
 	end)
 end
 
-local function emit_sidebar_git_refresh()
-	local emit = ya.emit or ya.manager_emit
-	emit("plugin", { "git", "refresh-sidebar" })
-end
-
 function M.setup()
 	publish()
-	emit_sidebar_git_refresh()
 	ps.sub("cd", function()
 		publish()
-		emit_sidebar_git_refresh()
 	end)
 	ps.sub("tab", function()
 		publish()
-		emit_sidebar_git_refresh()
 	end)
 end
 

@@ -57,10 +57,11 @@ projection fails and reports that the next launch will retry it.
 Each managed Yazi launch reads the current root mode before materializing its
 config. Yazelix selects the matching native `flavor.dark` or `flavor.light`,
 using Yazi Bistro's Catppuccin Latte default when the light side is absent. An
-absent dark side preserves Yazi's native background detection. When a flavor is
-selected, both runtime flavor keys receive it so ambient detection cannot choose
-the opposite side. The source `theme.toml` is never rewritten, and an existing
-Yazi process keeps its current theme until it is reopened.
+absent dark side uses Yazi's native preset; Ratconfig exposes that state as the
+first dark choice, `default`, without writing it as a flavor name. When a flavor
+is selected, both runtime flavor keys receive it so ambient detection cannot
+choose the opposite side. The source `theme.toml` is never rewritten, and an
+existing Yazi process keeps its current theme until it is reopened.
 
 ## Zellij Sidecars
 
