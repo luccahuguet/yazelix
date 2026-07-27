@@ -25,6 +25,22 @@ pub(crate) fn write_cursor_config_field(
     CursorRegistry::parse_str(path, &text)?;
     atomic_write(path, &text)
 }
+pub(crate) fn unset_cursor_config_field(path: &Path, field_path: &str) -> Result<()> {
+    if !cursor_config_field_specs()
+        .iter()
+        .any(|spec| spec.path == field_path && spec.kind.is_writable())
+    {
+        return Err(error(format!("unknown cursor config path: {field_path}")));
+    }
+    let raw = fs::read_to_string(path)?;
+    let outcome = unset_toml_value_text(&raw, field_path)
+        .map_err(|error| boxed_debug("could not update cursors.toml", error))?;
+    CursorRegistry::parse_str(path, &outcome.text)?;
+    if outcome.changed() {
+        atomic_write(path, &outcome.text)?;
+    }
+    Ok(())
+}
 pub(crate) fn write_mars_config_field(
     path: &Path,
     field_path: &str,

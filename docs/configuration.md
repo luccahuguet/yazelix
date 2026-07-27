@@ -125,7 +125,7 @@ ids that do not exist are not invented; open `config.toml` to add them
 
 | File | Owner | Notes |
 | --- | --- | --- |
-| `cursors.toml` | Yazelix Cursors | Shared cursor pool, selection, effects, and dynamic definitions. Ratconfig consumes the pinned child-owned field catalog, keeps schema metadata and definition tables read-only with this exact file action, preserves custom source text, and omits reset because this complete file has no sparse inherited layer |
+| `cursors.toml` | Yazelix Cursors | Shared cursor pool, selection, effects, and dynamic definitions. Ratconfig consumes the pinned child-owned field catalog, keeps schema metadata and definition tables read-only with this exact file action, preserves custom source text, and removes finite assignments on reset so they inherit child-owned defaults |
 | `mars/config.toml` | Mars | Sparse overrides for window size, opacity, font, scrollbar, and bell. Yazelix manages only `mars.appearance.preset` as the projection of root `appearance.mode` |
 | `zellij/config.kdl` | Zellij sidecar | Sparse safe scalar overrides where absent assignments inherit packaged defaults. The Zellij tab keeps themes, pane frames, mouse mode, copy-on-select, and rounded corners in Overview; All adds scrollback size, clipboard target, styled underlines, and startup tips. Search covers the typed fields and the exact native-file action. Safe untyped leaves remain unchanged without a UI row or informational diagnostic per leaf. Advanced diagnostics report only ignored, invalid, structurally unsafe, or integration-owned state; guarded diagnostics name the Yazelix owner. Ratconfig does not claim a complete Zellij schema. A legacy static `theme` assignment remains preserved but omitted from managed runtime. Inside a session, saves and resets also patch the active runtime config. Structural comments or continuations, extra managed-block metadata, other structured native nodes, and integration-owned nodes block unsafe writes |
 | `zellij/plugins.kdl` | Zellij plugin sidecar | Extra plugin declarations only. Packaged plugin ids cannot be redeclared |
@@ -322,19 +322,20 @@ file; bounded setting edits still pass through child validation and preserve
 comments, definition content, and ordering. Writable settings show defaults
 from the packaged child template: palette, trail effect, and mode effect use
 `random`, glow uses `medium`, duration uses `1.0`, and the enabled pool uses the
-packaged list. Because this is one complete source rather than a sparse
-override, those defaults are references rather than reset targets. Schema
-metadata and definitions omit defaults. The schema row uses a neutral dash for
-apply timing because format metadata has no independent runtime effect.
+packaged list. Pressing `u` removes an explicit finite setting; the child parser
+then resolves that missing value from the packaged template. Definition tables
+are never removed, merged, or synthesized by this reset path. Schema metadata
+and definitions omit defaults. The schema row uses a neutral dash for apply
+timing because format metadata has no independent runtime effect.
 
 Yazelix recommends the enabled pool, palette selection, trail effect, mode
-effect, and glow control. Duration is not recommended, but the complete
-materialized file records explicit values, so Ratconfig's attention rules keep
-that state visible in Overview. `yzx launch` passes this exact file to Mars.
-Mars consumes the pool, selected definition, and basic trail enablement on its
-next launch. It currently treats `trail_effect` as only disabled versus enabled
-and does not use `mode_effect`, `glow`, or `duration`; the named values remain
-stored for compatible consumers
+effect, and glow control. Duration is not recommended, but an explicit duration
+remains visible under Ratconfig's attention rules; removing it inherits `1.0`.
+`yzx launch` passes this exact file to Mars. Mars consumes the effective pool,
+selected definition, and basic trail enablement on its next launch. It
+currently treats `trail_effect` as only disabled versus enabled and does not use
+`mode_effect`, `glow`, or `duration`; the named values remain stored for
+compatible consumers
 
 Saving root `appearance.mode` switches the config UI immediately and updates a
 writable regular-file Mars configuration through Mars's existing watcher.

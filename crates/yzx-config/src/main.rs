@@ -1207,12 +1207,19 @@ color = "#123456"
         );
         assert_eq!(choice_values(enabled), [&json!("custom_test")]);
         assert!(
-            cursor_fields.iter().all(|field| matches!(
-                field.snapshot.intent,
-                ConfigUiOverride::Explicit(_)
-            ) && !field.can_unset),
-            "complete cursor fields are explicit with no reset"
+            cursor_fields
+                .iter()
+                .all(|field| matches!(field.snapshot.intent, ConfigUiOverride::Explicit(_))),
+            "complete cursor fields are explicit"
         );
+        assert!(enabled.can_unset);
+        assert!(trail.can_unset);
+        assert!(trail_effect.can_unset);
+        assert!(mode.can_unset);
+        assert!(glow.can_unset);
+        assert!(duration.can_unset);
+        assert!(!schema.can_unset);
+        assert!(!definitions.can_unset);
         assert!(baseline_value(enabled).is_some());
         assert_eq!(baseline_value(trail), Some(&json!("random")));
         assert_eq!(baseline_value(trail_effect), Some(&json!("random")));
@@ -1264,6 +1271,13 @@ color = "#123456"
             app.next_tab();
         }
         assert_eq!(app.selected_tab(), 3);
+        while app.selected_field().map(|field| field.path.as_str()) != Some(CURSOR_TRAIL_PATH) {
+            app.move_down();
+        }
+        assert_eq!(
+            app.handle_key(ConfigUiKey::Char('u')),
+            ratconfig::ConfigUiIntent::UnsetField { field: trail.id() }
+        );
         assert!(
             app.visible_rows()
                 .contains(&UiRowRef::Field(duration_index))
@@ -1297,12 +1311,27 @@ color = "#123456"
         .unwrap_err();
         assert_eq!(fs::read_to_string(&paths.cursors).unwrap(), changed);
 
+        write_source_default(&paths, SOURCE_CURSORS, CURSOR_TRAIL_PATH).unwrap();
+        let reset = fs::read_to_string(&paths.cursors).unwrap();
+        assert!(reset.contains("# user cursor must survive structured edits"));
         assert!(
-            write_source_default(&paths, SOURCE_CURSORS, CURSOR_TRAIL_PATH)
-                .unwrap_err()
-                .to_string()
-                .contains("no inherited reset")
+            !reset
+                .lines()
+                .any(|line| line.trim_start().starts_with("trail ="))
         );
+        assert_eq!(
+            load_cursor_config(&paths.cursors).unwrap().settings.trail,
+            "random"
+        );
+        let inherited = build_model(&paths).unwrap();
+        let inherited_trail = model_field(&inherited, CURSOR_TRAIL_PATH);
+        assert_eq!(effective_value(inherited_trail), Some(&json!("random")));
+        assert_eq!(baseline_value(inherited_trail), Some(&json!("random")));
+        assert!(matches!(
+            inherited_trail.snapshot.intent,
+            ConfigUiOverride::Absent
+        ));
+        assert!(!inherited_trail.can_unset);
     }
 
     #[test]

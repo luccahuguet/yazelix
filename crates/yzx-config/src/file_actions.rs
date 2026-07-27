@@ -14,8 +14,8 @@ use crate::{
     catalog::*,
     common::*,
     native_config::{
-        unset_mars_config_field, unset_starship_config_field, write_cursor_config_field,
-        write_mars_config_field, write_starship_config_field,
+        unset_cursor_config_field, unset_mars_config_field, unset_starship_config_field,
+        write_cursor_config_field, write_mars_config_field, write_starship_config_field,
     },
     paths::ConfigPaths,
     root_config::{config_field, read_config_field, unset_config_field, write_config_field},
@@ -242,9 +242,10 @@ pub(crate) fn write_source_default(
             paths.reject_mutation(&paths.mars, source_id)?;
             unset_mars_config_field(&paths.mars, field_path)
         }
-        SOURCE_CURSORS => Err(error(
-            "cursor settings have no inherited reset; edit cursors.toml instead",
-        )),
+        SOURCE_CURSORS => {
+            paths.reject_mutation(&paths.cursors, source_id)?;
+            unset_cursor_config_field(&paths.cursors, field_path)
+        }
         SOURCE_STARSHIP => {
             paths.reject_mutation(&paths.starship, source_id)?;
             unset_starship_config_field(&paths.starship, field_path)

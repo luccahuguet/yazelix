@@ -11,8 +11,9 @@ User-visible runtime changes for Yazelix Nova live here.
   recommends the enabled pool, palette selection, and trail, mode, and glow
   controls; explicit duration and definition state remain visible under
   Ratconfig's generic attention rules. Writable cursor settings show packaged
-  defaults without offering reset controls, and schema metadata shows a neutral
-  dash instead of implying a runtime apply phase.
+  defaults and `u` removes their explicit assignments so the child-owned
+  defaults take effect. Schema metadata shows a neutral dash instead of
+  implying a runtime apply phase.
 - Zellij settings report observable apply timing in Ratconfig: fields supported
   by the active watcher say `now`, deferred fields say `next session`, and theme
   pairs distinguish the active mode. Native-file actions show a neutral dash

@@ -235,11 +235,11 @@
         "systems": "systems"
       },
       "locked": {
-        "lastModified": 1784174017,
-        "narHash": "sha256-0kDHYkkNKNIV4oEJwNo20UGHI3+UyRa4Vayi/377Vp4=",
+        "lastModified": 1785173376,
+        "narHash": "sha256-e9DttRIbNc49b43NONGmNFf5tmIg+wU8gq/YDP1EITc=",
         "owner": "luccahuguet",
         "repo": "mars",
-        "rev": "bd6262cac3459a017b1e9b05fdb77019b47f8836",
+        "rev": "481e7b0deb1cf0b5149c1d458952519951ddb055",
         "type": "github"
       },
       "original": {
@@ -527,11 +527,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1785165718,
-        "narHash": "sha256-SmgiUI2oXoXplRK0JdHqAP7FUpKAC7UK+g3HYCtnxoA=",
+        "lastModified": 1785172203,
+        "narHash": "sha256-n1oSZ3J7k3OOf3vt39Fcw2NoVWRqJoOGZpoyq/hVEU4=",
         "owner": "luccahuguet",
         "repo": "yazelix-cursors",
-        "rev": "c8f8af65c4fb87ed5727d39183b983d1c5fe87d9",
+        "rev": "adca9c8e2cca1cb94a78f4a590ddcfcc470a6977",
         "type": "github"
       },
       "original": {
