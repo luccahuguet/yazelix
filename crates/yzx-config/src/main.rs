@@ -1220,7 +1220,7 @@ color = "#123456"
         assert!(duration.can_unset);
         assert!(!schema.can_unset);
         assert!(!definitions.can_unset);
-        assert!(baseline_value(enabled).is_some());
+        assert_eq!(baseline_value(enabled), Some(&json!(["custom_test"])));
         assert_eq!(baseline_value(trail), Some(&json!("random")));
         assert_eq!(baseline_value(trail_effect), Some(&json!("random")));
         assert_eq!(baseline_value(mode), Some(&json!("random")));
@@ -1323,8 +1323,29 @@ color = "#123456"
             load_cursor_config(&paths.cursors).unwrap().settings.trail,
             "random"
         );
+        write_source_default(&paths, SOURCE_CURSORS, CURSOR_ENABLED_PATH).unwrap();
+        let reset = fs::read_to_string(&paths.cursors).unwrap();
+        assert!(
+            !reset
+                .lines()
+                .any(|line| line.trim_start().starts_with("enabled_cursors ="))
+        );
         let inherited = build_model(&paths).unwrap();
+        let inherited_enabled = model_field(&inherited, CURSOR_ENABLED_PATH);
         let inherited_trail = model_field(&inherited, CURSOR_TRAIL_PATH);
+        assert_eq!(
+            effective_value(inherited_enabled),
+            Some(&json!(["custom_test"]))
+        );
+        assert_eq!(
+            baseline_value(inherited_enabled),
+            Some(&json!(["custom_test"]))
+        );
+        assert!(matches!(
+            inherited_enabled.snapshot.intent,
+            ConfigUiOverride::Absent
+        ));
+        assert!(!inherited_enabled.can_unset);
         assert_eq!(effective_value(inherited_trail), Some(&json!("random")));
         assert_eq!(baseline_value(inherited_trail), Some(&json!("random")));
         assert!(matches!(

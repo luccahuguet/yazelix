@@ -102,9 +102,10 @@ One owner per concern. Paths are the durable map.
   reloads by field identity rather than stale row position
 - Seeds only the child-owned cursor TOML; root, Mars, Zellij, and Starship stay
   sparse
-- Routes edits and true unset operations to the right file; finite cursor
-  settings inherit from the child template when absent, while cursor
-  definitions, Helix/Advanced open-file rows, and Keys remain read-only
+- Routes edits and true unset operations to the right file; absent cursor
+  settings resolve through the child owner from the file's definitions and
+  packaged setting defaults, while cursor definitions, Helix/Advanced open-file
+  rows, and Keys remain read-only
 - Resolves known config targets against the packaged Nix store root so
   Home Manager-owned sources stay read-only with exact module-option guidance
 - Keeps localized invalid values as field intent. Wholly unsafe root documents
@@ -263,7 +264,7 @@ Runtime state defaults to `$XDG_DATA_HOME/yazelix` or `YAZELIX_STATE_DIR`.
 | Surface | Layering |
 | --- | --- |
 | Root TOML | Packaged semantic defaults → sparse explicit user overrides |
-| Cursors | Pinned child-owned field catalog and template → seeded user file with sparse finite-setting intent; Ratconfig removes finite overrides to inherit child defaults, preserves custom definitions, and offers read-only schema/definition discovery with the exact file action |
+| Cursors | Pinned child-owned field catalog and parser → seeded user file with sparse finite-setting intent; an absent enabled pool uses that file's definitions, other absent settings use packaged defaults, Ratconfig preserves custom definitions, and schema/definition discovery stays read-only with the exact file action |
 | Mars | Packaged base → recursive sparse user override; cursor selection arrives separately through `YAZELIX_CURSOR_CONFIG` |
 | Nu | Packaged → optional host `mise activate nu` → optional user Nu |
 | Starship | Native defaults + `yzx-config` `character.format` → sparse user overrides → runtime-effective TOML |

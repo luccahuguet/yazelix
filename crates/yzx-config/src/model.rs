@@ -4,7 +4,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use ratconfig::toml_adapter::{get_toml_path, parse_toml_value};
+use ratconfig::toml_adapter::{get_toml_path, parse_toml_value, unset_toml_value_text};
 use ratconfig::{
     ConfigUiApplyStatus, ConfigUiCapability, ConfigUiChoice, ConfigUiDiagnostic,
     ConfigUiDiagnosticScope, ConfigUiFieldId, ConfigUiFieldSnapshot, ConfigUiFieldSpec,
@@ -15,7 +15,7 @@ use ratconfig::{
 use serde_json::Value as JsonValue;
 use yazelix_cursors::{
     CursorConfigFieldKind, CursorConfigFieldSpec as CursorOwnerFieldSpec, CursorRegistry,
-    DEFAULT_CURSOR_CONFIG_TEMPLATE, cursor_config_field_specs,
+    cursor_config_field_specs,
 };
 
 use crate::{
@@ -48,10 +48,16 @@ pub(crate) fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
     let cursors_active = CursorRegistry::parse_str(&paths.cursors, &cursors_raw)?;
     let cursors_document = parse_toml_value(&cursors_raw)
         .map_err(|error| boxed_debug("invalid cursors.toml", error))?;
-    let cursors_default = CursorRegistry::parse_str(
-        Path::new("packaged-cursors.toml"),
-        DEFAULT_CURSOR_CONFIG_TEMPLATE,
-    )?;
+    let mut cursors_default_raw = cursors_raw.clone();
+    for spec in cursor_config_field_specs()
+        .iter()
+        .filter(|spec| spec.kind.is_writable())
+    {
+        cursors_default_raw = unset_toml_value_text(&cursors_default_raw, spec.path)
+            .map_err(|error| boxed_debug("could not resolve cursor defaults", error))?
+            .text;
+    }
+    let cursors_default = CursorRegistry::parse_str(&paths.cursors, &cursors_default_raw)?;
     let (zellij_active, zellij_invalid, zellij_diagnostics) =
         parse_zellij_sidecar(&read_zellij_sidecar(&paths.zellij)?);
     diagnostics.extend(zellij_diagnostics);

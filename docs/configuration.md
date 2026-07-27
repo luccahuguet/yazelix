@@ -320,13 +320,14 @@ metadata, all six finite settings, and one searchable dynamic-definition
 collection. Schema metadata and definitions are read-only and open the exact
 file; bounded setting edits still pass through child validation and preserve
 comments, definition content, and ordering. Writable settings show defaults
-from the packaged child template: palette, trail effect, and mode effect use
-`random`, glow uses `medium`, duration uses `1.0`, and the enabled pool uses the
-packaged list. Pressing `u` removes an explicit finite setting; the child parser
-then resolves that missing value from the packaged template. Definition tables
-are never removed, merged, or synthesized by this reset path. Schema metadata
-and definitions omit defaults. The schema row uses a neutral dash for apply
-timing because format metadata has no independent runtime effect.
+resolved by the child parser: the enabled pool uses the definitions in the same
+file, palette, trail effect, and mode effect use `random`, glow uses `medium`,
+and duration uses `1.0`. Pressing `u` removes an explicit finite setting; the
+child parser resolves an absent enabled pool from those definitions and the five
+absent `[settings]` values from the packaged template. Definition tables are
+never removed, merged, or synthesized by this reset path. Schema metadata and
+definitions omit defaults. The schema row uses a neutral dash for apply timing
+because format metadata has no independent runtime effect.
 
 Yazelix recommends the enabled pool, palette selection, trail effect, mode
 effect, and glow control. Duration is not recommended, but an explicit duration
