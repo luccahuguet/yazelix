@@ -65,6 +65,14 @@ pub(crate) const ROOT_CONFIG_RECOMMENDED_PATHS: &[&str] = &[
     KEYBINDINGS_SIDEBAR_FOCUS_PATH,
     BAR_WIDGETS_PATH,
 ];
+pub(crate) const ZELLIJ_RECOMMENDED_PATHS: &[&str] = &[
+    "theme_dark",
+    "theme_light",
+    "pane_frames",
+    "mouse_mode",
+    "copy_on_select",
+    "ui.pane_frames.rounded_corners",
+];
 pub(crate) const DEFAULT_MARS_CONFIG_TOML: &str =
     include_str!("../../../defaults/mars/config.toml");
 pub(crate) const MARS_APPEARANCE_PRESET_PATH: &str = "mars.appearance.preset";
@@ -110,6 +118,7 @@ pub(crate) const ACTION_YAZI_INIT: &str = "yazi.init";
 pub(crate) const ACTION_YAZI_KEYMAP: &str = "yazi.keymap";
 pub(crate) const ACTION_YAZI_PACKAGE: &str = "yazi.package";
 pub(crate) const ACTION_YAZI_THEME: &str = "yazi.theme";
+pub(crate) const ACTION_ZELLIJ_CONFIG: &str = "zellij.config";
 pub(crate) const ACTION_ZELLIJ_PLUGINS: &str = "zellij.plugins";
 pub(crate) const HELIX_CONFIG_STARTER: &str =
     "# User overrides layered over Yazelix Nova packaged Helix config.\n";
@@ -126,6 +135,8 @@ pub(crate) const YAZI_PACKAGE_STARTER: &str = "# Managed Yazi package metadata. 
 pub(crate) const YAZI_THEME_BASELINE: &str =
     "# Managed native Yazi theme config.\n[flavor]\ndark = \"\"\nlight = \"\"\n";
 pub(crate) const YAZI_THEME_STARTER: &str = "# Managed native Yazi theme config.\n";
+pub(crate) const ZELLIJ_CONFIG_STARTER: &str =
+    "// Sparse native Zellij overrides layered over Yazelix packaged configuration.\n";
 pub(crate) const ZELLIJ_PLUGINS_STARTER: &str = "// Extra managed Zellij plugins. Do not declare yzpp or yazelix_pane_orchestrator here.\nplugins {\n}\n\nload_plugins {\n}\n";
 pub(crate) const KEY_READ_ONLY_REASON: &str =
     "Read-only key binding; yzx config does not rewrite native keymaps.";

@@ -92,11 +92,11 @@ One owner per concern. Paths are the durable map.
 
 `crates/yzx-config/` is the Ratconfig host.
 
-- Supplies one stable source/path identity per field and a reviewed root
-  recommendation allowlist. Ratconfig owns Overview/All filtering, meaningful
-  reduction thresholds, attention-state visibility, toggling, and All-scope
-  search. Non-root inventories remain recommended until their owners receive a
-  narrower review
+- Supplies one stable source/path identity per field and reviewed root and
+  Zellij recommendation allowlists. Ratconfig owns Overview/All filtering,
+  meaningful reduction thresholds, attention-state visibility, toggling, and
+  All-scope search. Other non-root inventories remain recommended until their
+  owners receive a narrower review
 - Resolves sparse override intent separately from baseline and effective values,
   declares editor capabilities independently of display types, and completes
   reloads by field identity rather than stale row position
@@ -289,6 +289,16 @@ custom native names remain accepted per field. Assignment presence is explicit
 intent, and removing the final assignment removes the sidecar. A legacy static
 `theme` assignment remains untouched in the user file but is diagnosed and
 omitted from runtime materialization.
+
+Yazelix recommends six high-use fields in the Zellij Overview and leaves four
+fine-tuning fields in All. Ratconfig keeps explicit, invalid, externally
+managed, and diagnosed values in Overview and searches the All inventory.
+Safe opaque leaves remain byte-for-byte unchanged and are reached through the
+exact `zellij/config.kdl` file action without a synthetic field or informational
+diagnostic per leaf. Advanced diagnostics are reserved for ignored, invalid,
+structurally unsafe, or integration-owned state. Guarded diagnostics name the
+Yazelix integration owner. This uses Ratconfig's existing views, search, file
+actions, and diagnostics without extending its API or Yazelix's typed schema.
 
 `zellij/plugins.kdl` accepts only `plugins` / `load_plugins` and must not
 redeclare Yazelix-owned plugin ids (`yzpp`, `yazelix_pane_orchestrator`, …).

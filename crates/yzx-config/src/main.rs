@@ -1033,7 +1033,9 @@ mod tests {
             model
                 .fields
                 .iter()
-                .filter(|field| field.source_id != SOURCE_CONFIG)
+                .filter(|field| {
+                    !matches!(field.source_id.as_str(), SOURCE_CONFIG | SOURCE_ZELLIJ)
+                })
                 .all(|field| {
                     recommended_fields.iter().any(|recommended| {
                         recommended.source_id == field.source_id && recommended.path == field.path
@@ -1981,6 +1983,7 @@ color = "#123456"
                 "yazi/yazi.toml" => (SOURCE_YAZI_CONFIG, TAB_YAZI),
                 "yazi/theme.toml" => (SOURCE_YAZI_THEME, TAB_YAZI),
                 label if label.starts_with("yazi/") => (SOURCE_YAZI, TAB_YAZI),
+                "zellij/config.kdl" => (SOURCE_ZELLIJ, TAB_ZELLIJ),
                 _ => (SOURCE_ADVANCED, TAB_ADVANCED),
             };
             (action.source_id.as_str(), action.tab.as_str()) == expected
@@ -2006,6 +2009,7 @@ color = "#123456"
                 (ACTION_YAZI_KEYMAP, "yazi/keymap.toml"),
                 (ACTION_YAZI_PACKAGE, "yazi/package.toml"),
                 (ACTION_YAZI_THEME, "yazi/theme.toml"),
+                (ACTION_ZELLIJ_CONFIG, "zellij/config.kdl"),
                 (ACTION_ZELLIJ_PLUGINS, "zellij/plugins.kdl"),
             ]
         );
@@ -2017,10 +2021,17 @@ color = "#123456"
         );
         assert!(model.file_actions.iter().all(|action| {
             action.create_if_missing
-                && (action.exists == (action.action_id == ACTION_CURSORS_CONFIG))
+                && (action.exists
+                    == matches!(
+                        action.action_id.as_str(),
+                        ACTION_CURSORS_CONFIG | ACTION_ZELLIJ_CONFIG
+                    ))
         }));
         assert!(model.file_actions.iter().all(|action| {
-            if action.action_id == ACTION_CURSORS_CONFIG {
+            if matches!(
+                action.action_id.as_str(),
+                ACTION_CURSORS_CONFIG | ACTION_ZELLIJ_CONFIG
+            ) {
                 file_action_status_label(action) == "existing"
                     && file_action_status_style(action) == Style::default().fg(Color::Green)
             } else {
@@ -2676,33 +2687,10 @@ color = "#123456"
         atomic_write(&paths.zellij, raw).unwrap();
 
         let model = build_model(&paths).unwrap();
-        for path in [
-            "default_mode",
-            "future_flag",
-            "future_multi",
-            "future_property",
-            "future_label",
-            "future_shape",
-        ] {
-            let diagnostic = model
-                .diagnostics
-                .iter()
-                .find(|diagnostic| diagnostic.headline.contains(path))
-                .expect("unvalidated native setting diagnostic");
-            assert!(!diagnostic.blocking);
-            assert_eq!(diagnostic.status, "unvalidated");
-            assert_eq!(
-                diagnostic.scope,
-                ConfigUiDiagnosticScope::Source {
-                    source_id: SOURCE_ZELLIJ.to_string()
-                }
-            );
-        }
-        let legacy = model
-            .diagnostics
-            .iter()
-            .find(|diagnostic| diagnostic.headline.contains("legacy Zellij node `theme`"))
-            .expect("ignored legacy theme diagnostic");
+        let [legacy] = model.diagnostics.as_slice() else {
+            panic!("only the ignored legacy theme should need attention");
+        };
+        assert!(legacy.headline.contains("legacy Zellij node `theme`"));
         assert!(!legacy.blocking);
         assert_eq!(legacy.status, "ignored");
         assert_inherited(model_field(&model, "theme_dark"), &json!("ansi"));
@@ -2716,6 +2704,66 @@ color = "#123456"
 
         write_source_default(&paths, SOURCE_ZELLIJ, "theme_dark").unwrap();
         assert_eq!(fs::read_to_string(&paths.zellij).unwrap(), raw);
+    }
+
+    #[test]
+    fn zellij_tab_curates_overview_all_search_and_native_fallback() {
+        let (_temp, paths) = temp_sources();
+        let model = build_model(&paths).unwrap();
+        let field_index = |path: &str| {
+            model
+                .fields
+                .iter()
+                .position(|field| field.source_id == SOURCE_ZELLIJ && field.path == path)
+                .unwrap_or_else(|| panic!("missing Zellij field {path}"))
+        };
+        let file_action_index = model
+            .file_actions
+            .iter()
+            .position(|action| action.action_id == ACTION_ZELLIJ_CONFIG)
+            .expect("native Zellij file action");
+        let file_action = &model.file_actions[file_action_index];
+        assert_eq!(file_action.source_id, SOURCE_ZELLIJ);
+        assert_eq!(file_action.tab, TAB_ZELLIJ);
+        assert_eq!(file_action.path, paths.zellij);
+
+        let app_on_zellij = || {
+            let mut app = ConfigUiApp::try_new(model.clone()).unwrap();
+            for _ in 0..ratconfig::tab_index(&model.tabs, TAB_ZELLIJ) {
+                app.next_tab();
+            }
+            app
+        };
+        let pane_frames_index = field_index("pane_frames");
+        let all_only_index = field_index("scroll_buffer_size");
+        let mut app = app_on_zellij();
+        assert_eq!(app.settings_view(), ConfigUiSettingsView::Overview);
+        let overview = app.visible_rows();
+        assert!(overview.contains(&UiRowRef::Field(pane_frames_index)));
+        assert!(!overview.contains(&UiRowRef::Field(all_only_index)));
+        assert!(overview.contains(&UiRowRef::FileAction(file_action_index)));
+
+        app.handle_key(ConfigUiKey::Char('a'));
+        assert_eq!(app.settings_view(), ConfigUiSettingsView::All);
+        assert!(ZELLIJ_FIELDS.iter().all(|field| {
+            app.visible_rows()
+                .contains(&UiRowRef::Field(field_index(field.path)))
+        }));
+
+        for (query, expected) in [
+            ("scroll_buffer_size", UiRowRef::Field(all_only_index)),
+            ("zellij/config.kdl", UiRowRef::FileAction(file_action_index)),
+        ] {
+            let mut search = app_on_zellij();
+            search.handle_key(ConfigUiKey::Char('/'));
+            for ch in query.chars() {
+                search.handle_key(ConfigUiKey::Char(ch));
+            }
+            assert!(
+                search.visible_rows().contains(&expected),
+                "search should find {query}"
+            );
+        }
     }
 
     #[test]
@@ -2768,13 +2816,23 @@ ui {\n\
 
         let (_config, _invalid, diagnostics) =
             parse_zellij_sidecar(&fs::read_to_string(path).unwrap());
-        assert!(diagnostics.iter().any(|diagnostic| {
-            diagnostic.blocking
-                && diagnostic.scope
-                    == ConfigUiDiagnosticScope::Source {
-                        source_id: SOURCE_ZELLIJ.to_string(),
-                    }
-        }));
+        let guarded = diagnostics
+            .iter()
+            .find(|diagnostic| diagnostic.headline.contains("guarded Zellij node"))
+            .expect("guarded source diagnostic");
+        assert!(guarded.blocking);
+        assert_eq!(
+            guarded.scope,
+            ConfigUiDiagnosticScope::Source {
+                source_id: SOURCE_ZELLIJ.to_string(),
+            }
+        );
+        assert!(
+            guarded
+                .detail_lines
+                .iter()
+                .any(|line| line.contains("Yazelix owns workspace keybindings"))
+        );
         let model = build_model(&paths).unwrap();
         assert_eq!(
             model_field(&model, "theme_dark").snapshot.intent,

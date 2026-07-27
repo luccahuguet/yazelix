@@ -2,13 +2,13 @@
 
 `yzx config` opens Nova's Ratconfig interface. It shows packaged defaults,
 persists explicit overrides, exposes advanced native files, and identifies
-Home Manager-owned configuration as declarative. Yazelix recommends every
-non-root inventory field until that inventory receives its own review. For Main
-and Popups, Overview contains the ordinary product controls plus every explicit,
-invalid, externally managed, or field-diagnosed setting; All adds the remaining
-fine tuning and every configured custom-popup field. Normal-mode `a` switches
-between Overview and All only when Overview hides at least three fields and one
-quarter of the tab. Search always spans All without changing the saved view
+Home Manager-owned configuration as declarative. Yazelix maintains reviewed
+recommendation sets for Main, Popups, and Zellij; other non-root inventories
+recommend all of their fields. Overview also includes explicit, invalid,
+externally managed, and field-diagnosed settings. All adds fine tuning and
+configured custom-popup fields. Normal-mode `a` switches between Overview and
+All only when Overview hides at least three fields and one quarter of the tab.
+Search spans All without changing the saved view
 
 On a free-form setting, `Enter` starts single-line inline editing and `e` opens
 the same staged value in `editor.command`. Inline editing supports Left/Right,
@@ -124,7 +124,7 @@ ids that do not exist are not invented; open `config.toml` to add them
 | --- | --- | --- |
 | `cursors.toml` | Yazelix Cursors | Shared cursor pool, selection, and effects. The child-owned template seeds it once, Ratconfig preserves custom definitions, and reset is unavailable because this file has no sparse inherited layer |
 | `mars/config.toml` | Mars | Sparse overrides for window size, opacity, font, scrollbar, and bell. Yazelix manages only `mars.appearance.preset` as the projection of root `appearance.mode` |
-| `zellij/config.kdl` | Zellij sidecar | Sparse safe scalar overrides where absent assignments inherit packaged defaults. Ratconfig offers separate Dark theme and Light theme fields over the same 41 themes embedded by the pinned Zellij package, with `ansi` and `gruvbox-light` inherited respectively. Quoted custom theme names without KDL escapes remain accepted. A legacy static `theme` assignment is preserved in this file but reported and omitted from the managed runtime. Unexposed top-level leaf nodes are preserved as unvalidated Advanced diagnostics without interpreting their values. Inside a session, saves and resets also patch the active runtime config. Structural comments or continuations, extra managed-block metadata, other structured native nodes, and integration-owned nodes block unsafe writes |
+| `zellij/config.kdl` | Zellij sidecar | Sparse safe scalar overrides where absent assignments inherit packaged defaults. The Zellij tab keeps themes, pane frames, mouse mode, copy-on-select, and rounded corners in Overview; All adds scrollback size, clipboard target, styled underlines, and startup tips. Search covers the typed fields and the exact native-file action. Safe untyped leaves remain unchanged without a UI row or informational diagnostic per leaf. Advanced diagnostics report only ignored, invalid, structurally unsafe, or integration-owned state; guarded diagnostics name the Yazelix owner. Ratconfig does not claim a complete Zellij schema. A legacy static `theme` assignment remains preserved but omitted from managed runtime. Inside a session, saves and resets also patch the active runtime config. Structural comments or continuations, extra managed-block metadata, other structured native nodes, and integration-owned nodes block unsafe writes |
 | `zellij/plugins.kdl` | Zellij plugin sidecar | Extra plugin declarations only. Packaged plugin ids cannot be redeclared |
 | `starship.toml` | Starship | Sparse native prompt overrides. Ratconfig curates only `character.format`; absent layout fields retain Starship defaults |
 | `helix/config.toml` | Helix | Sparse user TOML merged over packaged Yazelix Helix defaults, with explicit creation starting from only an ownership comment |
@@ -297,6 +297,16 @@ defaults follow upgrades
 Yazi's compact Starship header mirrors the default contextual module coverage.
 Directory and Git retain compact text; every other decoration renders only its
 symbol, so values such as cloud profiles and regions stay out of the sidebar
+
+The Zellij Overview recommends `theme_dark`, `theme_light`, `pane_frames`,
+`mouse_mode`, `copy_on_select`, and `ui.pane_frames.rounded_corners`. All
+contains all ten Yazelix-typed Zellij fields. Explicit, invalid, externally
+managed, and diagnosed values stay visible in Overview. Safe untyped top-level
+leaves stay in the native file without a Ratconfig row or informational
+diagnostic. Use the `zellij/config.kdl` action for settings outside the curated
+fields. Advanced diagnostics cover ignored legacy settings, invalid known
+fields, unsafe structure, and guarded nodes; guarded diagnostics identify the
+Yazelix integration owner and remain source-blocking
 
 Ratconfig's Zellij Dark theme and Light theme pickers list the identities
 declared by the pinned Zellij package rather than maintaining theme definitions.

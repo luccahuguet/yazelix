@@ -92,14 +92,14 @@ session. Quoted custom theme names without KDL escapes remain accepted; richer
 string syntax stays preserved but native-file-only.
 
 Ratconfig scopes sidecar diagnostics instead of marking every Zellij field
-invalid. Unexposed top-level native leaf nodes are reported as unvalidated,
-nonblocking entries on the Advanced tab and kept unchanged across unrelated
-saves and resets without interpreting their arguments, properties, or values.
-Zellij, not Yazelix, owns whether those nodes are valid.
-Invalid known fields affect only their own row and remain repairable. Malformed
-or structured native nodes, structural KDL comments or continuations, extra
-metadata on managed blocks, and integration-owned nodes remain source-blocking
-because the sidecar writer cannot prove those documents safe to update.
+invalid. Safe untyped top-level leaves stay unchanged across unrelated saves
+and resets without a synthetic field or informational diagnostic for each
+leaf. The exact native-file action opens the sidecar for those settings.
+Invalid known fields affect only their own row and remain repairable. Advanced
+diagnostics report ignored legacy settings, malformed or structured native
+nodes, structural KDL comments or continuations, extra metadata on managed
+blocks, and integration-owned nodes. Unsafe source state blocks writes, and
+each guarded diagnostic names its Yazelix owner.
 
 The runtime rejects uncommented top-level ownership nodes in that sidecar:
 

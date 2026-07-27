@@ -385,7 +385,10 @@ fn parse_zellij_top_level_line(
         state.diagnostics.push(zellij_diagnostic(
             line_number,
             format!("guarded Zellij node `{token}`"),
-            "This node belongs to the managed runtime and cannot live in the editable sidecar.",
+            format!(
+                "{} This node cannot live in the editable sidecar.",
+                zellij_guard_owner(token)
+            ),
         ));
         return;
     }
@@ -414,13 +417,7 @@ fn parse_zellij_top_level_line(
                 format!("ambiguous Zellij node `{token}`"),
                 "This token is managed inside a structured block and cannot also be preserved at top level.",
             ));
-        } else if syntax.leaf {
-            state.diagnostics.push(zellij_unvalidated_diagnostic(
-                line_number,
-                token,
-                "This native leaf node is preserved unchanged; Zellij owns its validity.",
-            ));
-        } else {
+        } else if !syntax.leaf {
             state.diagnostics.push(zellij_diagnostic(
                 line_number,
                 format!("unsupported Zellij node `{token}`"),
@@ -431,6 +428,28 @@ fn parse_zellij_top_level_line(
     };
 
     parse_zellij_config_value(state, spec, line, syntax.braces, line_number);
+}
+fn zellij_guard_owner(token: &str) -> &'static str {
+    match token {
+        "keybinds" => "Yazelix owns workspace keybindings in its packaged Zellij config.",
+        "plugins" | "load_plugins" => {
+            "Yazelix owns packaged integration plugins; extra declarations belong in zellij/plugins.kdl."
+        }
+        "default_shell" => {
+            "Yazelix owns the managed shell through shell.program and the yzx-shell launcher."
+        }
+        "default_layout" | "layout" => {
+            "Yazelix owns the managed workspace layout selected at launch."
+        }
+        "support_kitty_keyboard_protocol" => {
+            "Yazelix owns the terminal keyboard protocol required by its integrations."
+        }
+        "env" => "Yazelix owns the startup environment passed into the managed session.",
+        "session_name" | "attach_to_session" => {
+            "Yazelix owns managed session naming and attachment policy."
+        }
+        _ => "Yazelix owns this managed runtime node.",
+    }
 }
 fn zellij_scalar_value<'a>(
     line: &'a str,
@@ -586,22 +605,6 @@ fn zellij_field_diagnostic(
         headline,
         blocking: true,
         scope: ConfigUiDiagnosticScope::Field(ConfigUiFieldId::new(SOURCE_ZELLIJ, spec.path)),
-        detail_lines: vec![detail.into()],
-    }
-}
-fn zellij_unvalidated_diagnostic(
-    line_number: usize,
-    path: &str,
-    detail: impl Into<String>,
-) -> ConfigUiDiagnostic {
-    ConfigUiDiagnostic {
-        path: format!("zellij/config.kdl:{line_number}"),
-        status: "unvalidated".to_string(),
-        headline: format!("unvalidated Zellij node `{path}`"),
-        blocking: false,
-        scope: ConfigUiDiagnosticScope::Source {
-            source_id: SOURCE_ZELLIJ.to_string(),
-        },
         detail_lines: vec![detail.into()],
     }
 }

@@ -178,9 +178,10 @@ pub(crate) fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
     let recommended_fields = Some(
         fields
             .iter()
-            .filter(|field| {
-                field.source_id != SOURCE_CONFIG
-                    || ROOT_CONFIG_RECOMMENDED_PATHS.contains(&field.path.as_str())
+            .filter(|field| match field.source_id.as_str() {
+                SOURCE_CONFIG => ROOT_CONFIG_RECOMMENDED_PATHS.contains(&field.path.as_str()),
+                SOURCE_ZELLIJ => ZELLIJ_RECOMMENDED_PATHS.contains(&field.path.as_str()),
+                _ => true,
             })
             .map(|field| ConfigUiFieldId::new(&field.source_id, &field.path))
             .collect(),
@@ -741,6 +742,7 @@ fn source_file_action(source_id: &str) -> Option<&'static str> {
     match source_id {
         SOURCE_CONFIG => Some(ACTION_ROOT_CONFIG),
         SOURCE_CURSORS => Some(ACTION_CURSORS_CONFIG),
+        SOURCE_ZELLIJ => Some(ACTION_ZELLIJ_CONFIG),
         SOURCE_YAZI_CONFIG => Some(ACTION_YAZI_CONFIG),
         SOURCE_YAZI_THEME => Some(ACTION_YAZI_THEME),
         _ => None,

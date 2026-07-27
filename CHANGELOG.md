@@ -4,6 +4,13 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## Unreleased
 
+- Ratconfig gives Zellij a reviewed Overview containing themes, pane frames,
+  mouse mode, copy-on-select, and rounded corners. All retains the complete
+  ten-field Yazelix-owned editor surface, and search spans both views plus the
+  exact `zellij/config.kdl` action. Safe opaque native leaves stay unchanged
+  without synthetic rows or informational diagnostics. Advanced diagnostics
+  cover ignored, invalid, structurally unsafe, and integration-owned state,
+  with ownership guidance for guarded nodes.
 - Managed Yazi no longer invokes the fetch-only Git plugin as a functional
   command during startup, directory changes, tab changes, or sidebar refresh.
   Native refresh still reruns the registered Git fetchers without producing
@@ -146,10 +153,10 @@ User-visible runtime changes for Yazelix Nova live here.
   the pinned Zellij package. Saves remain sparse and update the active managed
   session; Default removes the override, while simple custom names stay valid.
 - Ratconfig scopes config diagnostics to the affected source or field. The
-  Zellij sidecar preserves unexposed top-level native leaf nodes as visible,
-  unvalidated entries, so unrelated settings remain editable; malformed,
-  structured, and integration-owned nodes still block unsafe writes. Managed
-  strings use quoted, escape-free KDL; richer strings remain native-file-only.
+  Zellij sidecar silently preserves unexposed top-level native leaf nodes, so
+  unrelated settings remain editable; malformed, structured, and
+  integration-owned nodes still block unsafe writes. Managed strings use
+  quoted, escape-free KDL; richer strings remain native-file-only.
 - Toggling the Ratconfig popup hides its existing process, preserving the
   selected tab and row while that process remains alive.
 - Ratconfig's Main and Popups tabs use a reviewed Core inventory. All adds root

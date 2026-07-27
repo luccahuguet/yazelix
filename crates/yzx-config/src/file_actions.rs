@@ -176,6 +176,15 @@ fn file_action_specs(paths: &ConfigPaths) -> impl IntoIterator<Item = FileAction
             starter: YAZI_THEME_STARTER,
         },
         FileActionSpec {
+            source_id: SOURCE_ZELLIJ,
+            action_id: ACTION_ZELLIJ_CONFIG,
+            tab: TAB_ZELLIJ,
+            label: "zellij/config.kdl",
+            description: "Open the native Zellij sidecar for settings outside the curated editor.",
+            path: paths.zellij.clone(),
+            starter: ZELLIJ_CONFIG_STARTER,
+        },
+        FileActionSpec {
             source_id: SOURCE_ADVANCED,
             action_id: ACTION_ZELLIJ_PLUGINS,
             tab: TAB_ADVANCED,
