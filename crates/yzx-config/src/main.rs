@@ -2647,8 +2647,6 @@ color = "#123456"
         assert!(choice_values(dark).contains(&&json!("atelier-sulphurpool")));
         assert!(!choice_values(dark).contains(&&json!("atelier")));
         assert!(!choice_values(dark).contains(&&json!("default")));
-        assert_eq!(dark.apply_status.summary, "live/next mode");
-
         atomic_write(
             &paths.zellij,
             "# keep\ntheme_dark \"custom {ocean}\"\ntheme_light \"custom sunrise\"\npane_frames false\n",
@@ -2678,6 +2676,36 @@ color = "#123456"
         assert!(raw.contains("pane_frames false"));
         assert!(!raw.contains("theme_dark "));
         assert!(raw.contains("theme_light \"custom sunrise\""));
+    }
+
+    #[test]
+    fn zellij_apply_status_reports_observable_timing() {
+        for path in [
+            "pane_frames",
+            "copy_on_select",
+            "copy_clipboard",
+            "ui.pane_frames.rounded_corners",
+        ] {
+            assert_eq!(zellij_apply_status(path, true).summary, "now");
+            assert_eq!(zellij_apply_status(path, false).summary, "next session");
+        }
+        for path in [
+            "mouse_mode",
+            "scroll_buffer_size",
+            "styled_underlines",
+            "show_startup_tips",
+        ] {
+            assert_eq!(zellij_apply_status(path, true).summary, "next session");
+            assert_eq!(zellij_apply_status(path, false).summary, "next session");
+        }
+        assert_eq!(
+            zellij_apply_status("theme_dark", true).summary,
+            "now/next mode"
+        );
+        assert_eq!(
+            zellij_apply_status("theme_light", false).summary,
+            "next session"
+        );
     }
 
     #[test]

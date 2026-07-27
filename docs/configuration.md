@@ -334,9 +334,10 @@ dark/light theme-pair member. A Mars or Zellij projection failure does not roll
 back the saved root value.
 Opacity, font size, line height, scrollbar, and bell changes also apply to open
 Mars windows. Width and height apply to newly created Mars windows. Zellij
-sidecar saves and resets update the active managed session config when
-`yzx config` runs inside a session, and many scalars apply live via Zellij's
-watcher, while some still need a new session
+sidecar saves and resets update the active managed session when `yzx config`
+runs inside it. Pane frames, rounded corners, copy-on-select, and clipboard
+target apply via the watcher; mouse mode, scrollback size, styled underlines,
+and startup tips need a new session.
 
 ## Editor and file opens
 

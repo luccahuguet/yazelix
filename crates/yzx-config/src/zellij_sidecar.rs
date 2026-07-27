@@ -101,7 +101,7 @@ fn refresh_active_zellij_runtime_field(spec: &FieldSpec, value: Option<&JsonValu
     atomic_write(&runtime_config, &updated)
 }
 
-fn active_zellij_runtime_config_path() -> Option<PathBuf> {
+pub(crate) fn active_zellij_runtime_config_path() -> Option<PathBuf> {
     managed_zellij_session()?;
     let path = PathBuf::from(nonempty_env("YAZELIX_STATE_DIR")?).join("zellij/config.kdl");
     path.is_file().then_some(path)

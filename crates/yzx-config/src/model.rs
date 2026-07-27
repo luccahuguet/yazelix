@@ -29,8 +29,8 @@ use crate::{
     },
     yazi_config::build_yazi_fields,
     zellij_sidecar::{
-        packaged_zellij_defaults, packaged_zellij_theme_choices, parse_zellij_sidecar,
-        read_zellij_sidecar,
+        active_zellij_runtime_config_path, packaged_zellij_defaults, packaged_zellij_theme_choices,
+        parse_zellij_sidecar, read_zellij_sidecar,
     },
 };
 
@@ -49,6 +49,7 @@ pub(crate) fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
         parse_zellij_sidecar(&read_zellij_sidecar(&paths.zellij)?);
     diagnostics.extend(zellij_diagnostics);
     let zellij_default = packaged_zellij_defaults();
+    let zellij_runtime_active = active_zellij_runtime_config_path().is_some();
     let mut zellij_themes = packaged_zellij_theme_choices();
     for custom in ["theme_dark", "theme_light"]
         .into_iter()
@@ -108,7 +109,7 @@ pub(crate) fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
             spec,
             current,
             Some(default),
-            zellij_apply_status(spec.path),
+            zellij_apply_status(spec.path, zellij_runtime_active),
             false,
         );
         if matches!(spec.path, "theme_dark" | "theme_light") {
@@ -778,17 +779,38 @@ fn mars_apply_status(path: &str) -> ConfigUiApplyStatus {
     apply_status(summary, label, detail)
 }
 
-fn zellij_apply_status(path: &str) -> ConfigUiApplyStatus {
-    if matches!(path, "theme_dark" | "theme_light") {
-        return apply_status(
-            "live/next mode",
+pub(crate) fn zellij_apply_status(path: &str, runtime_active: bool) -> ConfigUiApplyStatus {
+    match (path, runtime_active) {
+        ("theme_dark" | "theme_light", true) => apply_status(
+            "now/next mode",
             "zellij",
             "The active mode applies live inside a managed session; the other applies on the next mode change or launch.",
-        );
+        ),
+        (
+            "pane_frames" | "copy_on_select" | "copy_clipboard" | "ui.pane_frames.rounded_corners",
+            true,
+        ) => apply_status(
+            "now",
+            "zellij",
+            "Saved values update the active managed Zellij session.",
+        ),
+        (
+            "theme_dark"
+            | "theme_light"
+            | "pane_frames"
+            | "mouse_mode"
+            | "scroll_buffer_size"
+            | "copy_on_select"
+            | "copy_clipboard"
+            | "styled_underlines"
+            | "show_startup_tips"
+            | "ui.pane_frames.rounded_corners",
+            _,
+        ) => apply_status(
+            "next session",
+            "zellij",
+            "Saved values apply to the next managed Zellij session.",
+        ),
+        _ => unreachable!("Zellij field {path} has no apply timing"),
     }
-    apply_status(
-        "session",
-        "zellij",
-        "Inside a session, saves and resets update the active config; many scalars apply live, some need a new session.",
-    )
 }

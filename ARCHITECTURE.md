@@ -305,10 +305,11 @@ redeclare Yazelix-owned plugin ids (`yzpp`, `yazelix_pane_orchestrator`, …).
 
 Inside a managed session, `yzx config` Zellij scalar saves and resets also patch
 `$YAZELIX_STATE_DIR/zellij/config.kdl` (watched active file) without wiping
-launch patches. Many scalars apply live; some (e.g. `scroll_buffer_size`) need
-a new session. Root appearance uses the fork's native dark/light action for the
-addressed session. The fork sends the resulting mode event to the bar, which
-chooses its internal palette.
+launch patches. Pane frames, rounded corners, copy-on-select, and clipboard
+target reconfigure the active session; mouse mode, scrollback size, styled
+underlines, and startup tips need a new session. Root appearance uses the fork's
+native dark/light action for the addressed session. The fork sends the resulting
+mode event to the bar, which chooses its internal palette.
 
 ### Helix
 

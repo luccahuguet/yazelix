@@ -4,6 +4,10 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## Unreleased
 
+- Zellij settings report observable apply timing in Ratconfig: fields supported
+  by the active watcher say `now`, deferred fields say `next session`, and theme
+  pairs distinguish the active mode. Native-file actions show a neutral dash
+  instead of presenting file existence as an apply time.
 - Boolean editors accept `hjkl`, arrow keys, or `Space` while staging a value
   and show the staged option with the same yellow focus pointer as other choice
   editors.

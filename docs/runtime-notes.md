@@ -86,10 +86,13 @@ When `yzx config` runs inside a managed session (`ZELLIJ_SESSION_NAME` or
 field also patches `$YAZELIX_STATE_DIR/zellij/config.kdl` so the running Zellij
 watcher can pick up scalars without rewriting integration patches. Editing the
 active theme-pair member applies live; editing the other member takes effect on
-the next appearance change or managed session launch. `pane_frames` applies
-live, while `scroll_buffer_size` is session-scoped and still needs a new
-session. Quoted custom theme names without KDL escapes remain accepted; richer
-string syntax stays preserved but native-file-only.
+the next appearance change or managed session launch. Ratconfig labels pane
+frames, rounded corners, copy-on-select, and clipboard target as `now` when
+that active runtime file is addressable. Mouse mode, scrollback size, styled
+underlines, and startup tips say `next session`; outside an active managed
+session, every Zellij field is next-session. Quoted custom theme names without
+KDL escapes remain accepted; richer string syntax stays preserved but
+native-file-only.
 
 Ratconfig scopes sidecar diagnostics instead of marking every Zellij field
 invalid. Safe untyped top-level leaves stay unchanged across unrelated saves
