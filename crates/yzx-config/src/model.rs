@@ -45,7 +45,7 @@ pub(crate) fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
     let starship_default = parse_toml_value(DEFAULT_STARSHIP_CONFIG_TOML)
         .map_err(|error| boxed_debug("invalid default Starship config", error))?;
     let cursors_active = yazelix_cursors::load_cursor_config(&paths.cursors)?;
-    let cursors_default = cursor_defaults(&cursors_active)?;
+    let cursors_default = cursor_defaults()?;
     let (zellij_active, zellij_invalid, zellij_diagnostics) =
         parse_zellij_sidecar(&read_zellij_sidecar(&paths.zellij)?);
     diagnostics.extend(zellij_diagnostics);
@@ -611,9 +611,9 @@ fn cursor_field_capability(
 fn cursor_apply_status(path: &str) -> ConfigUiApplyStatus {
     if path == "schema_version" {
         return apply_status(
-            "schema",
-            "cursors",
-            "The child-owned format version has no independent runtime effect.",
+            "—",
+            "not applicable",
+            "The child-owned format version is metadata with no independent runtime effect.",
         );
     }
     if matches!(

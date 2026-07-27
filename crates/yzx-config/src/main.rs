@@ -149,7 +149,8 @@ mod tests {
     };
     use serde_json::{Value as JsonValue, json};
     use yazelix_cursors::{
-        DEFAULT_CURSOR_CONFIG_TEMPLATE, cursor_config_field_specs, load_cursor_config,
+        CursorRegistry, DEFAULT_CURSOR_CONFIG_TEMPLATE, cursor_config_field_specs,
+        load_cursor_config,
     };
 
     struct TempHome {
@@ -1200,10 +1201,22 @@ color = "#123456"
                 .collect::<Vec<_>>()
         );
         assert_eq!(choice_values(enabled), [&json!("custom_test")]);
-        assert_eq!(baseline_value(enabled), Some(&json!(["custom_test"])));
+        let packaged_cursors = CursorRegistry::parse_str(
+            Path::new("default-cursors.toml"),
+            DEFAULT_CURSOR_CONFIG_TEMPLATE,
+        )
+        .unwrap();
+        assert_eq!(
+            baseline_value(enabled),
+            Some(&json!(packaged_cursors.enabled_cursors))
+        );
         assert!(choice_values(trail).contains(&&json!("random")));
         assert_eq!(trail.apply_status.summary, "next launch");
         assert_eq!(mode.apply_status.summary, "stored");
+        assert_eq!(
+            model_field(&model, "schema_version").apply_status.summary,
+            "—"
+        );
         assert_eq!(
             read_only(model_field(&model, "schema_version")).1,
             Some(ACTION_CURSORS_CONFIG)

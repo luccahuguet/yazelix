@@ -319,7 +319,10 @@ and allowed values from the pinned Yazelix Cursors package. All includes schema
 metadata, all six finite settings, and one searchable dynamic-definition
 collection. Schema metadata and definitions are read-only and open the exact
 file; bounded setting edits still pass through child validation and preserve
-comments, definition content, and ordering.
+comments, definition content, and ordering. Baseline details show the exact
+packaged template rather than adapting it to custom definitions. The schema row
+uses a neutral dash for apply timing because format metadata has no independent
+runtime effect.
 
 Yazelix recommends the enabled pool, palette selection, trail effect, mode
 effect, and glow control. Duration is not recommended, but the complete

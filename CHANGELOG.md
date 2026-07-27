@@ -10,7 +10,9 @@ User-visible runtime changes for Yazelix Nova live here.
   for dynamic definitions that opens the exact `cursors.toml`. Yazelix
   recommends the enabled pool, palette selection, and trail, mode, and glow
   controls; explicit duration and definition state remain visible under
-  Ratconfig's generic attention rules.
+  Ratconfig's generic attention rules. Cursor baseline details come directly
+  from the packaged template, and schema metadata shows a neutral dash instead
+  of implying a runtime apply phase.
 - Zellij settings report observable apply timing in Ratconfig: fields supported
   by the active watcher say `now`, deferred fields say `next session`, and theme
   pairs distinguish the active mode. Native-file actions show a neutral dash

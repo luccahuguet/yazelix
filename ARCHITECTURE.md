@@ -263,7 +263,7 @@ Runtime state defaults to `$XDG_DATA_HOME/yazelix` or `YAZELIX_STATE_DIR`.
 | Surface | Layering |
 | --- | --- |
 | Root TOML | Packaged semantic defaults → sparse explicit user overrides |
-| Cursors | Pinned child-owned field catalog and template → complete user file; Ratconfig edits owner-backed finite settings, preserves custom definitions, and offers read-only schema/definition discovery with the exact file action, but no false reset-to-baseline operation |
+| Cursors | Pinned child-owned field catalog and template → complete user file; Ratconfig edits owner-backed finite settings, preserves custom definitions, shows the exact packaged template as informational baseline, and offers read-only schema/definition discovery with the exact file action, but no reset operation |
 | Mars | Packaged base → recursive sparse user override; cursor selection arrives separately through `YAZELIX_CURSOR_CONFIG` |
 | Nu | Packaged → optional host `mise activate nu` → optional user Nu |
 | Starship | Native defaults + `yzx-config` `character.format` → sparse user overrides → runtime-effective TOML |

@@ -7,18 +7,11 @@ use yazelix_cursors::{CursorRegistry, DEFAULT_CURSOR_CONFIG_TEMPLATE, cursor_con
 
 use crate::{catalog::*, common::*};
 
-pub(crate) fn cursor_defaults(active: &CursorRegistry) -> Result<CursorRegistry> {
-    let mut defaults = CursorRegistry::parse_str(
+pub(crate) fn cursor_defaults() -> Result<CursorRegistry> {
+    Ok(CursorRegistry::parse_str(
         Path::new("default-cursors.toml"),
         DEFAULT_CURSOR_CONFIG_TEMPLATE,
-    )?;
-    defaults
-        .enabled_cursors
-        .retain(|name| active.definitions.contains_key(name));
-    if defaults.enabled_cursors.is_empty() {
-        defaults.enabled_cursors.clone_from(&active.enabled_cursors);
-    }
-    Ok(defaults)
+    )?)
 }
 pub(crate) fn write_cursor_config_field(
     path: &Path,
