@@ -3,16 +3,10 @@ use std::{fs, path::Path};
 use ratconfig::toml_adapter::{set_toml_value_text, unset_toml_value_text};
 use serde_json::Value as JsonValue;
 use toml::Value as TomlValue;
-use yazelix_cursors::{CursorRegistry, DEFAULT_CURSOR_CONFIG_TEMPLATE, cursor_config_field_specs};
+use yazelix_cursors::{CursorRegistry, cursor_config_field_specs};
 
 use crate::{catalog::*, common::*};
 
-pub(crate) fn cursor_defaults() -> Result<CursorRegistry> {
-    Ok(CursorRegistry::parse_str(
-        Path::new("default-cursors.toml"),
-        DEFAULT_CURSOR_CONFIG_TEMPLATE,
-    )?)
-}
 pub(crate) fn write_cursor_config_field(
     path: &Path,
     field_path: &str,

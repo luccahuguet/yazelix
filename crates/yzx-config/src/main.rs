@@ -149,8 +149,7 @@ mod tests {
     };
     use serde_json::{Value as JsonValue, json};
     use yazelix_cursors::{
-        CursorRegistry, DEFAULT_CURSOR_CONFIG_TEMPLATE, cursor_config_field_specs,
-        load_cursor_config,
+        DEFAULT_CURSOR_CONFIG_TEMPLATE, cursor_config_field_specs, load_cursor_config,
     };
 
     struct TempHome {
@@ -1187,10 +1186,13 @@ color = "#123456"
         let mode = model_field(&model, "settings.mode_effect");
         let duration = model_field(&model, "settings.duration");
         let definitions = model_field(&model, "cursor");
-        let cursor_paths = model
+        let cursor_fields = model
             .fields
             .iter()
             .filter(|field| field.source_id == SOURCE_CURSORS)
+            .collect::<Vec<_>>();
+        let cursor_paths = cursor_fields
+            .iter()
             .map(|field| field.path.as_str())
             .collect::<Vec<_>>();
         assert_eq!(
@@ -1201,14 +1203,13 @@ color = "#123456"
                 .collect::<Vec<_>>()
         );
         assert_eq!(choice_values(enabled), [&json!("custom_test")]);
-        let packaged_cursors = CursorRegistry::parse_str(
-            Path::new("default-cursors.toml"),
-            DEFAULT_CURSOR_CONFIG_TEMPLATE,
-        )
-        .unwrap();
-        assert_eq!(
-            baseline_value(enabled),
-            Some(&json!(packaged_cursors.enabled_cursors))
+        assert!(
+            cursor_fields.iter().all(|field| matches!(
+                field.snapshot.intent,
+                ConfigUiOverride::Explicit(_)
+            ) && field.snapshot.baseline.is_none()
+                && !field.can_unset),
+            "complete cursor fields are explicit with no inherited baseline or reset"
         );
         assert!(choice_values(trail).contains(&&json!("random")));
         assert_eq!(trail.apply_status.summary, "next launch");
@@ -1244,10 +1245,6 @@ color = "#123456"
             .collect::<Vec<_>>();
         assert_eq!(recommended, CURSOR_RECOMMENDED_PATHS);
         assert!(!recommended.contains(&duration.path.as_str()));
-        assert!(matches!(
-            duration.snapshot.intent,
-            ConfigUiOverride::Explicit(_)
-        ));
         let duration_index = model
             .fields
             .iter()
@@ -1278,10 +1275,6 @@ color = "#123456"
         assert!(
             app.visible_rows()
                 .contains(&UiRowRef::Field(definitions_index))
-        );
-        assert!(
-            !trail.can_unset,
-            "cursor fields have no sparse inheritance contract"
         );
         write_source_field(&paths, SOURCE_CURSORS, CURSOR_TRAIL_PATH, &json!("none")).unwrap();
         let changed = fs::read_to_string(&paths.cursors).unwrap();

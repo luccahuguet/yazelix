@@ -22,7 +22,7 @@ use crate::{
     catalog::*,
     common::*,
     file_actions::build_file_actions,
-    native_config::{cursor_defaults, validate_mars_field},
+    native_config::validate_mars_field,
     paths::ConfigPaths,
     root_config::{
         bar_widgets, default_config, default_config_path_value, read_optional_toml_file_value,
@@ -45,7 +45,6 @@ pub(crate) fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
     let starship_default = parse_toml_value(DEFAULT_STARSHIP_CONFIG_TOML)
         .map_err(|error| boxed_debug("invalid default Starship config", error))?;
     let cursors_active = yazelix_cursors::load_cursor_config(&paths.cursors)?;
-    let cursors_default = cursor_defaults()?;
     let (zellij_active, zellij_invalid, zellij_diagnostics) =
         parse_zellij_sidecar(&read_zellij_sidecar(&paths.zellij)?);
     diagnostics.extend(zellij_diagnostics);
@@ -72,7 +71,7 @@ pub(crate) fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
         fields.extend(build_custom_popup_fields(&paths.root)?);
     }
     fields.extend(KEY_BINDINGS.iter().map(build_key_binding_field));
-    fields.extend(build_cursor_fields(&cursors_active, &cursors_default)?);
+    fields.extend(build_cursor_fields(&cursors_active)?);
     for spec in MARS_FIELDS {
         let current = get_toml_path(&mars_active, spec.path);
         fields.push(build_config_field(
@@ -506,17 +505,12 @@ fn build_config_field(
     }
     field
 }
-fn build_cursor_fields(
-    active: &CursorRegistry,
-    defaults: &CursorRegistry,
-) -> Result<Vec<ratconfig::ConfigUiField>> {
+fn build_cursor_fields(active: &CursorRegistry) -> Result<Vec<ratconfig::ConfigUiField>> {
     let active_json = serde_json::to_value(active)?;
-    let default_json = serde_json::to_value(defaults)?;
     cursor_config_field_specs()
         .iter()
         .map(|spec| {
             let current = cursor_config_value(active, &active_json, spec)?;
-            let default = cursor_config_value(defaults, &default_json, spec)?;
             let (type_label, capability) = cursor_field_capability(active, spec.kind);
             let mut field = ConfigUiFieldSpec::new(
                 SOURCE_CURSORS,
@@ -527,7 +521,7 @@ fn build_cursor_fields(
                 spec.validation,
                 cursor_apply_status(spec.path),
             )
-            .build(type_label, Some(&current), Some(&default));
+            .build(type_label, Some(&current), None);
             set_snapshot_origins(&mut field, SOURCE_CURSORS);
             Ok(field)
         })
