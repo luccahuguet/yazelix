@@ -4,6 +4,9 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## Unreleased
 
+- Boolean editors accept `hjkl`, arrow keys, or `Space` while staging a value
+  and show the staged option with the same yellow focus pointer as other choice
+  editors.
 - Ratconfig gives Zellij a reviewed Overview containing themes, pane frames,
   mouse mode, copy-on-select, and rounded corners. All retains the complete
   ten-field Yazelix-owned editor surface, and search spans both views plus the

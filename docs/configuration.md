@@ -17,6 +17,9 @@ the editor after an inline edit has started. The temporary editor buffer is
 labeled with the field path and runs as a blocking child of Ratconfig, outside
 the tab's reusable Helix workspace bridge
 
+Boolean editors accept `hjkl`, arrow keys, or `Space` while staging a value.
+The yellow `>` marks the staged choice, and `Enter` saves it
+
 ## Config root
 
 `yzx config` uses the managed config tree under:
