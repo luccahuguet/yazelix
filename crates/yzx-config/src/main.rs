@@ -1333,25 +1333,9 @@ color = "#123456"
         let inherited = build_model(&paths).unwrap();
         let inherited_enabled = model_field(&inherited, CURSOR_ENABLED_PATH);
         let inherited_trail = model_field(&inherited, CURSOR_TRAIL_PATH);
-        assert_eq!(
-            effective_value(inherited_enabled),
-            Some(&json!(["custom_test"]))
-        );
-        assert_eq!(
-            baseline_value(inherited_enabled),
-            Some(&json!(["custom_test"]))
-        );
-        assert!(matches!(
-            inherited_enabled.snapshot.intent,
-            ConfigUiOverride::Absent
-        ));
+        assert_inherited(inherited_enabled, &json!(["custom_test"]));
         assert!(!inherited_enabled.can_unset);
-        assert_eq!(effective_value(inherited_trail), Some(&json!("random")));
-        assert_eq!(baseline_value(inherited_trail), Some(&json!("random")));
-        assert!(matches!(
-            inherited_trail.snapshot.intent,
-            ConfigUiOverride::Absent
-        ));
+        assert_inherited(inherited_trail, &json!("random"));
         assert!(!inherited_trail.can_unset);
     }
 
@@ -1371,11 +1355,8 @@ color = "#123456"
 
         let model = build_model(&paths).unwrap();
 
-        assert_eq!(
-            baseline_value(model_field(&model, CURSOR_ENABLED_PATH)),
-            Some(&json!(["custom_test"]))
-        );
         let enabled = model_field(&model, CURSOR_ENABLED_PATH);
+        assert_eq!(baseline_value(enabled), Some(&json!(["custom_test"])));
         assert!(matches!(
             enabled.capability,
             ConfigUiCapability::MultiChoice { .. }
