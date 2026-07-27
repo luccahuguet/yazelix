@@ -7,6 +7,8 @@ User-visible runtime changes for Yazelix Nova live here.
 - Boolean editors accept `hjkl`, arrow keys, or `Space` while staging a value
   and show the staged option with the same yellow focus pointer as other choice
   editors.
+- Existing Zellij sessions keep ambient terminal dark/light updates active;
+  `--theme-mode` suppresses them only for a new or resurrected session.
 - Ratconfig gives Zellij a reviewed Overview containing themes, pane frames,
   mouse mode, copy-on-select, and rounded corners. All retains the complete
   ten-field editor surface, while search and the exact `zellij/config.kdl`
