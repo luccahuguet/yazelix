@@ -9,11 +9,9 @@ User-visible runtime changes for Yazelix Nova live here.
   editors.
 - Ratconfig gives Zellij a reviewed Overview containing themes, pane frames,
   mouse mode, copy-on-select, and rounded corners. All retains the complete
-  ten-field Yazelix-owned editor surface, and search spans both views plus the
-  exact `zellij/config.kdl` action. Safe opaque native leaves stay unchanged
-  without synthetic rows or informational diagnostics. Advanced diagnostics
-  cover ignored, invalid, structurally unsafe, and integration-owned state,
-  with ownership guidance for guarded nodes.
+  ten-field editor surface, while search and the exact `zellij/config.kdl`
+  action cover the native fallback. Safe opaque leaves stay silent and
+  unchanged; actionable diagnostics retain ownership guidance.
 - Managed Yazi no longer invokes the fetch-only Git plugin as a functional
   command during startup, directory changes, tab changes, or sidebar refresh.
   Native refresh still reruns the registered Git fetchers without producing

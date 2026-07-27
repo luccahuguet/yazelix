@@ -301,16 +301,6 @@ Yazi's compact Starship header mirrors the default contextual module coverage.
 Directory and Git retain compact text; every other decoration renders only its
 symbol, so values such as cloud profiles and regions stay out of the sidebar
 
-The Zellij Overview recommends `theme_dark`, `theme_light`, `pane_frames`,
-`mouse_mode`, `copy_on_select`, and `ui.pane_frames.rounded_corners`. All
-contains all ten Yazelix-typed Zellij fields. Explicit, invalid, externally
-managed, and diagnosed values stay visible in Overview. Safe untyped top-level
-leaves stay in the native file without a Ratconfig row or informational
-diagnostic. Use the `zellij/config.kdl` action for settings outside the curated
-fields. Advanced diagnostics cover ignored legacy settings, invalid known
-fields, unsafe structure, and guarded nodes; guarded diagnostics identify the
-Yazelix integration owner and remain source-blocking
-
 Ratconfig's Zellij Dark theme and Light theme pickers list the identities
 declared by the pinned Zellij package rather than maintaining theme definitions.
 They inherit `ansi` and `gruvbox-light` respectively, and resetting either

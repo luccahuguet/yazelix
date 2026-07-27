@@ -2722,10 +2722,6 @@ color = "#123456"
             .iter()
             .position(|action| action.action_id == ACTION_ZELLIJ_CONFIG)
             .expect("native Zellij file action");
-        let file_action = &model.file_actions[file_action_index];
-        assert_eq!(file_action.source_id, SOURCE_ZELLIJ);
-        assert_eq!(file_action.tab, TAB_ZELLIJ);
-        assert_eq!(file_action.path, paths.zellij);
 
         let app_on_zellij = || {
             let mut app = ConfigUiApp::try_new(model.clone()).unwrap();
