@@ -1183,8 +1183,11 @@ color = "#123456"
         let model = build_model(&paths).unwrap();
         let enabled = model_field(&model, CURSOR_ENABLED_PATH);
         let trail = model_field(&model, CURSOR_TRAIL_PATH);
+        let trail_effect = model_field(&model, "settings.trail_effect");
         let mode = model_field(&model, "settings.mode_effect");
+        let glow = model_field(&model, "settings.glow");
         let duration = model_field(&model, "settings.duration");
+        let schema = model_field(&model, "schema_version");
         let definitions = model_field(&model, "cursor");
         let cursor_fields = model
             .fields
@@ -1207,21 +1210,22 @@ color = "#123456"
             cursor_fields.iter().all(|field| matches!(
                 field.snapshot.intent,
                 ConfigUiOverride::Explicit(_)
-            ) && field.snapshot.baseline.is_none()
-                && !field.can_unset),
-            "complete cursor fields are explicit with no inherited baseline or reset"
+            ) && !field.can_unset),
+            "complete cursor fields are explicit with no reset"
         );
+        assert!(baseline_value(enabled).is_some());
+        assert_eq!(baseline_value(trail), Some(&json!("random")));
+        assert_eq!(baseline_value(trail_effect), Some(&json!("random")));
+        assert_eq!(baseline_value(mode), Some(&json!("random")));
+        assert_eq!(baseline_value(glow), Some(&json!("medium")));
+        assert_eq!(baseline_value(duration), Some(&json!(1.0)));
+        assert_eq!(baseline_value(schema), None);
+        assert_eq!(baseline_value(definitions), None);
         assert!(choice_values(trail).contains(&&json!("random")));
         assert_eq!(trail.apply_status.summary, "next launch");
         assert_eq!(mode.apply_status.summary, "stored");
-        assert_eq!(
-            model_field(&model, "schema_version").apply_status.summary,
-            "—"
-        );
-        assert_eq!(
-            read_only(model_field(&model, "schema_version")).1,
-            Some(ACTION_CURSORS_CONFIG)
-        );
+        assert_eq!(schema.apply_status.summary, "—");
+        assert_eq!(read_only(schema).1, Some(ACTION_CURSORS_CONFIG));
         assert_eq!(
             read_only(definitions),
             (

@@ -319,10 +319,13 @@ and allowed values from the pinned Yazelix Cursors package. All includes schema
 metadata, all six finite settings, and one searchable dynamic-definition
 collection. Schema metadata and definitions are read-only and open the exact
 file; bounded setting edits still pass through child validation and preserve
-comments, definition content, and ordering. Because this is one complete source
-rather than a sparse override, cursor rows have no inherited baseline or reset
-control. The schema row uses a neutral dash for apply timing because format
-metadata has no independent runtime effect.
+comments, definition content, and ordering. Writable settings show defaults
+from the packaged child template: palette, trail effect, and mode effect use
+`random`, glow uses `medium`, duration uses `1.0`, and the enabled pool uses the
+packaged list. Because this is one complete source rather than a sparse
+override, those defaults are references rather than reset targets. Schema
+metadata and definitions omit defaults. The schema row uses a neutral dash for
+apply timing because format metadata has no independent runtime effect.
 
 Yazelix recommends the enabled pool, palette selection, trail effect, mode
 effect, and glow control. Duration is not recommended, but the complete
