@@ -51,12 +51,14 @@ managed session ignores ambient terminal appearance reports so the explicit
 root mode remains authoritative. A root appearance save from inside that
 session calls `set-dark-theme` or `set-light-theme` against that exact session.
 Zellij's host-theme event switches the top bar between its child-owned dark and
-light palettes. Ratconfig keeps the saved root value when either component
-projection fails and reports that the next launch will retry it.
+light palettes. A bar loaded by a later tab receives the session's current mode
+even when no new host-theme transition occurs. Ratconfig keeps the saved root
+value when either component projection fails and reports that the next launch
+will retry it.
 
 Each managed Yazi launch reads the current root mode before materializing its
 config. Yazelix selects the matching native `flavor.dark` or `flavor.light`,
-using Yazi Bistro's Catppuccin Latte default when the light side is absent. An
+using Yazi Bistro's Bluloco Light default when the light side is absent. An
 absent dark side uses Yazi's native preset; Ratconfig exposes that state as the
 first dark choice, `default`, without writing it as a flavor name. When a flavor
 is selected, both runtime flavor keys receive it so ambient detection cannot

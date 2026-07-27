@@ -237,7 +237,7 @@ Yazelix assembles focused first-party forks, plugins, libraries, and commands:
 | Component | Yazelix role |
 | --- | --- |
 | [Mars](https://github.com/luccahuguet/mars) | GUI terminal used by `yzx launch`, with Kitty graphics, cursor shaders, and Yazelix session integration |
-| [Yazelix Zellij](https://github.com/luccahuguet/yazelix-zellij) | Multiplexer fork with Kitty graphics passthrough for the workspace |
+| [Yazelix Zellij](https://github.com/luccahuguet/yazelix-zellij) | Multiplexer fork with Kitty graphics passthrough and managed runtime appearance switching |
 | [Yazelix Helix](https://github.com/luccahuguet/yazelix-helix) | Steel-enabled editor fork with isolated configuration and explicit workspace bridge hooks |
 | [Yazelix Zellij Pane Orchestrator](https://github.com/luccahuguet/yazelix-zellij-pane-orchestrator) | Zellij plugin that owns tab-local workspace roots and coordinates panes, focus, popups, the editor, and agent activity |
 | [Yazelix Zellij Popup](https://github.com/luccahuguet/yazelix-zellij-popup) | Zellij plugin that opens, focuses, hides, and closes configured floating TUI panes |
@@ -274,13 +274,14 @@ the managed runtime. Yazelix passes root appearance at launch and Zellij
 resolves the matching pair member. Saving root appearance inside a managed
 session calls Zellij's native action for that session. Zellij sends the same
 mode to the top bar, which switches between its internal dark and light
-palettes.
+palettes. Bars loaded by new tabs immediately inherit the session's current
+mode, including after a live switch.
 
 Each new managed Yazi reads the same root mode. Ratconfig offers separate
 packaged dark and light flavor pools from Yazi Bistro; user-installed
 unclassified flavors appear in both. `default` is the first dark choice and
 uses Yazi's native preset by leaving `flavor.dark` unset. Light mode inherits
-Catppuccin Latte. Explicit native `flavor.dark` and `flavor.light` selections
+Bluloco Light. Explicit native `flavor.dark` and `flavor.light` selections
 win. Yazelix projects the selected side into generated runtime config without
 modifying the user or Home Manager `theme.toml`; already-running Yazi processes
 stay as they are.
@@ -308,6 +309,6 @@ See [Development](docs/development.md) for CI and local checks,
 
 ## LOC Scorecard
 
-Yazelix owns **23,151 lines** of tracked text project files. The
+Yazelix owns **23,210 lines** of tracked text project files. The
 [reproducible scorecard](docs/development.md#loc-scorecard) excludes Beads,
 lockfiles, and binary assets.

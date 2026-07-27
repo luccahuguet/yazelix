@@ -199,7 +199,7 @@ Ratconfig writes only the selected native `theme.toml` key.
 Root `appearance.mode` selects which side a new managed Yazi uses. An explicit
 `flavor.dark` or `flavor.light` wins for that mode. Ratconfig lists `default`
 first in the dark pool; selecting it removes `flavor.dark` and uses Yazi's
-native preset. Resetting the light field inherits Catppuccin Latte. At launch,
+native preset. Resetting the light field inherits Bluloco Light. At launch,
 Yazelix writes both flavor keys in generated runtime `theme.toml` when an
 explicit flavor is selected. It never changes the user or Home Manager source
 file, never restarts an existing Yazi process, and preserves unrelated native

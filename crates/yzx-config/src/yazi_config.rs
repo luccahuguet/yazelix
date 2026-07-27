@@ -107,7 +107,7 @@ pub(crate) fn build_yazi_fields(paths: &ConfigPaths) -> Result<Vec<ConfigUiField
         field.description = if native_default {
             "Dark flavor from native yazi/theme.toml. Packaged choices follow Yazi Bistro's classification; user-installed flavors appear in both pools. Selecting default removes flavor.dark and uses Yazi's native preset."
         } else {
-            "Light flavor from native yazi/theme.toml. Packaged choices follow Yazi Bistro's classification; user-installed flavors appear in both pools. Reset inherits Yazelix's Catppuccin Latte default."
+            "Light flavor from native yazi/theme.toml. Packaged choices follow Yazi Bistro's classification; user-installed flavors appear in both pools. Reset inherits Yazelix's packaged light default."
         }
         .to_string();
     }
