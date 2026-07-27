@@ -148,7 +148,9 @@ mod tests {
         file_action_status_label, file_action_status_style,
     };
     use serde_json::{Value as JsonValue, json};
-    use yazelix_cursors::{DEFAULT_CURSOR_CONFIG_TEMPLATE, load_cursor_config};
+    use yazelix_cursors::{
+        DEFAULT_CURSOR_CONFIG_TEMPLATE, cursor_config_field_specs, load_cursor_config,
+    };
 
     struct TempHome {
         path: PathBuf,
@@ -1034,7 +1036,10 @@ mod tests {
                 .fields
                 .iter()
                 .filter(|field| {
-                    !matches!(field.source_id.as_str(), SOURCE_CONFIG | SOURCE_ZELLIJ)
+                    !matches!(
+                        field.source_id.as_str(),
+                        SOURCE_CONFIG | SOURCE_CURSORS | SOURCE_ZELLIJ
+                    )
                 })
                 .all(|field| {
                     recommended_fields.iter().any(|recommended| {
@@ -1179,11 +1184,88 @@ color = "#123456"
         let enabled = model_field(&model, CURSOR_ENABLED_PATH);
         let trail = model_field(&model, CURSOR_TRAIL_PATH);
         let mode = model_field(&model, "settings.mode_effect");
+        let duration = model_field(&model, "settings.duration");
+        let definitions = model_field(&model, "cursor");
+        let cursor_paths = model
+            .fields
+            .iter()
+            .filter(|field| field.source_id == SOURCE_CURSORS)
+            .map(|field| field.path.as_str())
+            .collect::<Vec<_>>();
+        assert_eq!(
+            cursor_paths,
+            cursor_config_field_specs()
+                .iter()
+                .map(|spec| spec.path)
+                .collect::<Vec<_>>()
+        );
         assert_eq!(choice_values(enabled), [&json!("custom_test")]);
         assert_eq!(baseline_value(enabled), Some(&json!(["custom_test"])));
         assert!(choice_values(trail).contains(&&json!("random")));
         assert_eq!(trail.apply_status.summary, "next launch");
         assert_eq!(mode.apply_status.summary, "stored");
+        assert_eq!(
+            read_only(model_field(&model, "schema_version")).1,
+            Some(ACTION_CURSORS_CONFIG)
+        );
+        assert_eq!(
+            read_only(definitions),
+            (
+                "Edit cursor definition tables in the complete cursors.toml.",
+                Some(ACTION_CURSORS_CONFIG)
+            )
+        );
+        assert!(
+            effective_value(definitions)
+                .unwrap()
+                .to_string()
+                .contains("custom_test")
+        );
+        let recommended = model
+            .recommended_fields
+            .as_ref()
+            .unwrap()
+            .iter()
+            .filter(|field| field.source_id == SOURCE_CURSORS)
+            .map(|field| field.path.as_str())
+            .collect::<Vec<_>>();
+        assert_eq!(recommended, CURSOR_RECOMMENDED_PATHS);
+        assert!(!recommended.contains(&duration.path.as_str()));
+        assert!(matches!(
+            duration.snapshot.intent,
+            ConfigUiOverride::Explicit(_)
+        ));
+        let duration_index = model
+            .fields
+            .iter()
+            .position(|field| field.id() == duration.id())
+            .unwrap();
+        let definitions_index = model
+            .fields
+            .iter()
+            .position(|field| field.id() == definitions.id())
+            .unwrap();
+        let mut app = ConfigUiApp::try_new(model.clone()).unwrap();
+        for _ in 0..3 {
+            app.next_tab();
+        }
+        assert_eq!(app.selected_tab(), 3);
+        assert!(
+            app.visible_rows()
+                .contains(&UiRowRef::Field(duration_index))
+        );
+        assert!(
+            app.visible_rows()
+                .contains(&UiRowRef::Field(definitions_index))
+        );
+        app.handle_key(ConfigUiKey::Char('/'));
+        for ch in "custom_test".chars() {
+            app.handle_key(ConfigUiKey::Char(ch));
+        }
+        assert!(
+            app.visible_rows()
+                .contains(&UiRowRef::Field(definitions_index))
+        );
         assert!(
             !trail.can_unset,
             "cursor fields have no sparse inheritance contract"

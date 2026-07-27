@@ -32,15 +32,15 @@ composes their package outputs.
 
 | Measure | Nova | Classic |
 | --- | --- | --- |
-| Code and configuration (Rust, Nix, shell, TOML, etc.) | **20,462 LOC** | **91,545 LOC** |
-| Rust | **17,365 LOC** | **80,957 LOC** |
+| Code and configuration (Rust, Nix, shell, TOML, etc.) | **20,567 LOC** | **91,545 LOC** |
+| Rust | **17,470 LOC** | **80,957 LOC** |
 | Ownership model | One owner per concern | Overlapping responsibilities across layers |
 | Yazelix component boundaries | Independent, versioned packages | Child repos mixed with main-repo ownership |
 | Product experience | More features, stronger defaults, tighter integration, and polished UX | Fewer features and a less cohesive workspace |
 | Status | Recommended | Frozen migration and rollback path |
 
-Nova owns **71,083 fewer lines**, a **78% reduction**. Classic's Rust code
-alone is 4.0 times larger than Nova's entire code and configuration surface.
+Nova owns **70,978 fewer lines**, a **78% reduction**. Classic's Rust code
+alone is 3.9 times larger than Nova's entire code and configuration surface.
 
 Nova delivers more features in 22% of the code. It has a clearer configuration
 model, tighter editor and Yazi integration, stronger diagnostics, and a
@@ -258,6 +258,10 @@ invalid, externally managed, or diagnosed field. All includes the complete
 inventory. Tabs whose Overview would hide fewer than three fields or less than
 one quarter of their inventory simply show All.
 
+The Cursors inventory comes from the pinned Yazelix Cursors package. It exposes
+every finite setting and its owner-defined choices, while custom definition
+tables remain searchable and read-only with an exact `cursors.toml` action.
+
 `appearance.mode` selects `dark` or `light` for managed Yazelix components and
 also controls Ratconfig's palette. In packages with Mars, Yazelix projects that
 value to only `mars.appearance.preset` when its native config is a writable
@@ -309,6 +313,6 @@ See [Development](docs/development.md) for CI and local checks,
 
 ## LOC Scorecard
 
-Yazelix owns **23,371 lines** of tracked text project files. The
+Yazelix owns **23,496 lines** of tracked text project files. The
 [reproducible scorecard](docs/development.md#loc-scorecard) excludes Beads,
 lockfiles, and binary assets.

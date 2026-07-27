@@ -3,8 +3,8 @@
 `yzx config` opens Nova's Ratconfig interface. It shows packaged defaults,
 persists explicit overrides, exposes advanced native files, and identifies
 Home Manager-owned configuration as declarative. Yazelix maintains reviewed
-recommendation sets for Main, Popups, and Zellij; other non-root inventories
-recommend all of their fields. Overview also includes explicit, invalid,
+recommendation sets for Main, Popups, Cursors, and Zellij; other non-root
+inventories recommend all of their fields. Overview also includes explicit, invalid,
 externally managed, and field-diagnosed settings. All adds fine tuning and
 configured custom-popup fields. Normal-mode `a` switches between Overview and
 All only when Overview hides at least three fields and one quarter of the tab.
@@ -125,7 +125,7 @@ ids that do not exist are not invented; open `config.toml` to add them
 
 | File | Owner | Notes |
 | --- | --- | --- |
-| `cursors.toml` | Yazelix Cursors | Shared cursor pool, selection, and effects. The child-owned template seeds it once, Ratconfig preserves custom definitions, and reset is unavailable because this file has no sparse inherited layer |
+| `cursors.toml` | Yazelix Cursors | Shared cursor pool, selection, effects, and dynamic definitions. Ratconfig consumes the pinned child-owned field catalog, keeps schema metadata and definition tables read-only with this exact file action, preserves custom source text, and omits reset because this complete file has no sparse inherited layer |
 | `mars/config.toml` | Mars | Sparse overrides for window size, opacity, font, scrollbar, and bell. Yazelix manages only `mars.appearance.preset` as the projection of root `appearance.mode` |
 | `zellij/config.kdl` | Zellij sidecar | Sparse safe scalar overrides where absent assignments inherit packaged defaults. The Zellij tab keeps themes, pane frames, mouse mode, copy-on-select, and rounded corners in Overview; All adds scrollback size, clipboard target, styled underlines, and startup tips. Search covers the typed fields and the exact native-file action. Safe untyped leaves remain unchanged without a UI row or informational diagnostic per leaf. Advanced diagnostics report only ignored, invalid, structurally unsafe, or integration-owned state; guarded diagnostics name the Yazelix owner. Ratconfig does not claim a complete Zellij schema. A legacy static `theme` assignment remains preserved but omitted from managed runtime. Inside a session, saves and resets also patch the active runtime config. Structural comments or continuations, extra managed-block metadata, other structured native nodes, and integration-owned nodes block unsafe writes |
 | `zellij/plugins.kdl` | Zellij plugin sidecar | Extra plugin declarations only. Packaged plugin ids cannot be redeclared |
@@ -314,12 +314,21 @@ session calls Zellij's native action for that session, and the top bar follows
 the resulting mode event with its internal dark or light palette.
 
 The first config or runtime use seeds `cursors.toml` without replacing an
-existing file. Its Cursors tab edits the enabled pool, selection, and common
-effect settings, while the full-file row opens custom cursor definitions.
-`yzx launch` passes this exact file to Mars. Mars currently consumes cursor
-selection and basic trail enablement, while the richer trail/mode effects, glow,
-and duration remain available to compatible consumers such as a future Ghostty
-integration
+existing file. Its Cursors tab consumes the setting paths, types, constraints,
+and allowed values from the pinned Yazelix Cursors package. All includes schema
+metadata, all six finite settings, and one searchable dynamic-definition
+collection. Schema metadata and definitions are read-only and open the exact
+file; bounded setting edits still pass through child validation and preserve
+comments, definition content, and ordering.
+
+Yazelix recommends the enabled pool, palette selection, trail effect, mode
+effect, and glow control. Duration is not recommended, but the complete
+materialized file records explicit values, so Ratconfig's attention rules keep
+that state visible in Overview. `yzx launch` passes this exact file to Mars.
+Mars consumes the pool, selected definition, and basic trail enablement on its
+next launch. It currently treats `trail_effect` as only disabled versus enabled
+and does not use `mode_effect`, `glow`, or `duration`; the named values remain
+stored for compatible consumers
 
 Saving root `appearance.mode` switches the config UI immediately and updates a
 writable regular-file Mars configuration through Mars's existing watcher.

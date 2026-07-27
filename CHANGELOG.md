@@ -4,6 +4,13 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## Unreleased
 
+- Ratconfig consumes the pinned Yazelix Cursors field catalog instead of a
+  duplicate local list. The Cursors inventory includes schema metadata, all
+  finite settings and allowed values, plus one searchable read-only collection
+  for dynamic definitions that opens the exact `cursors.toml`. Yazelix
+  recommends the enabled pool, palette selection, and trail, mode, and glow
+  controls; explicit duration and definition state remain visible under
+  Ratconfig's generic attention rules.
 - Zellij settings report observable apply timing in Ratconfig: fields supported
   by the active watcher say `now`, deferred fields say `next session`, and theme
   pairs distinguish the active mode. Native-file actions show a neutral dash

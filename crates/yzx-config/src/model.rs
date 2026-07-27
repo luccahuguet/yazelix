@@ -14,7 +14,8 @@ use ratconfig::{
 };
 use serde_json::Value as JsonValue;
 use yazelix_cursors::{
-    CursorRegistry, SUPPORTED_GLOW_LEVELS, SUPPORTED_MODE_EFFECTS, SUPPORTED_TRAIL_EFFECTS,
+    CursorConfigFieldKind, CursorConfigFieldSpec as CursorOwnerFieldSpec, CursorRegistry,
+    cursor_config_field_specs,
 };
 
 use crate::{
@@ -181,6 +182,7 @@ pub(crate) fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
             .iter()
             .filter(|field| match field.source_id.as_str() {
                 SOURCE_CONFIG => ROOT_CONFIG_RECOMMENDED_PATHS.contains(&field.path.as_str()),
+                SOURCE_CURSORS => CURSOR_RECOMMENDED_PATHS.contains(&field.path.as_str()),
                 SOURCE_ZELLIJ => ZELLIJ_RECOMMENDED_PATHS.contains(&field.path.as_str()),
                 _ => true,
             })
@@ -510,64 +512,110 @@ fn build_cursor_fields(
 ) -> Result<Vec<ratconfig::ConfigUiField>> {
     let active_json = serde_json::to_value(active)?;
     let default_json = serde_json::to_value(defaults)?;
-    let mut fields = vec![
-        ConfigUiFieldSpec::new(
-            SOURCE_CURSORS,
-            CURSOR_ENABLED_PATH,
-            TAB_CURSORS,
-            CURSOR_FIELDS[0].description,
-            multi_choice_capability(active.definitions.keys().cloned(), true),
-            CURSOR_FIELDS[0].validation,
-            cursor_apply_status(CURSOR_ENABLED_PATH),
-        )
-        .build(
-            "string_list",
-            Some(&serde_json::to_value(&active.enabled_cursors)?),
-            Some(&serde_json::to_value(&defaults.enabled_cursors)?),
-        ),
-    ];
-    for spec in &CURSOR_FIELDS[1..] {
-        let mut field = build_config_field(
-            SOURCE_CURSORS,
-            TAB_CURSORS,
-            spec,
-            get_toml_path(&active_json, spec.path),
-            get_toml_path(&default_json, spec.path),
-            cursor_apply_status(spec.path),
-            false,
-        );
-        let choices = cursor_allowed_values(active, spec.path);
-        if !choices.is_empty() {
-            field.capability = choice_capability(choices);
-        }
-        fields.push(field);
-    }
-    Ok(fields)
-}
-fn cursor_allowed_values(registry: &CursorRegistry, path: &str) -> Vec<String> {
-    match path {
-        CURSOR_TRAIL_PATH => registry
-            .enabled_cursors
-            .iter()
-            .map(String::as_str)
-            .chain(["random", "none"])
-            .map(str::to_string)
-            .collect(),
-        "settings.trail_effect" | "settings.mode_effect" => (if path == "settings.trail_effect" {
-            SUPPORTED_TRAIL_EFFECTS
-        } else {
-            SUPPORTED_MODE_EFFECTS
-        })
+    cursor_config_field_specs()
         .iter()
-        .copied()
-        .chain(["random", "none"])
-        .map(str::to_string)
-        .collect(),
-        "settings.glow" => string_values(SUPPORTED_GLOW_LEVELS),
-        _ => Vec::new(),
+        .map(|spec| {
+            let current = cursor_config_value(active, &active_json, spec)?;
+            let default = cursor_config_value(defaults, &default_json, spec)?;
+            let (type_label, capability) = cursor_field_capability(active, spec.kind);
+            let mut field = ConfigUiFieldSpec::new(
+                SOURCE_CURSORS,
+                spec.path,
+                TAB_CURSORS,
+                spec.description,
+                capability,
+                spec.validation,
+                cursor_apply_status(spec.path),
+            )
+            .build(type_label, Some(&current), Some(&default));
+            set_snapshot_origins(&mut field, SOURCE_CURSORS);
+            Ok(field)
+        })
+        .collect()
+}
+
+fn cursor_config_value(
+    registry: &CursorRegistry,
+    registry_json: &JsonValue,
+    spec: &CursorOwnerFieldSpec,
+) -> Result<JsonValue> {
+    if matches!(spec.kind, CursorConfigFieldKind::DefinitionTables) {
+        return Ok(serde_json::to_value(
+            registry.definitions.values().collect::<Vec<_>>(),
+        )?);
+    }
+    get_toml_path(registry_json, spec.path)
+        .cloned()
+        .ok_or_else(|| {
+            error(format!(
+                "cursor owner schema path is missing: {}",
+                spec.path
+            ))
+        })
+}
+
+fn cursor_field_capability(
+    registry: &CursorRegistry,
+    kind: CursorConfigFieldKind,
+) -> (&'static str, ConfigUiCapability) {
+    match kind {
+        CursorConfigFieldKind::FixedInteger(_) => (
+            "integer",
+            ConfigUiCapability::ReadOnly {
+                reason: "The cursor schema version is child-owned metadata.".to_string(),
+                file_action_id: Some(ACTION_CURSORS_CONFIG.to_string()),
+            },
+        ),
+        CursorConfigFieldKind::DefinitionList => (
+            "string_list",
+            multi_choice_capability(registry.definitions.keys().cloned(), true),
+        ),
+        CursorConfigFieldKind::DefinitionChoice { extra_values } => (
+            "string",
+            choice_capability(
+                registry
+                    .enabled_cursors
+                    .iter()
+                    .map(String::as_str)
+                    .chain(extra_values.iter().copied())
+                    .map(str::to_string),
+            ),
+        ),
+        CursorConfigFieldKind::StringChoice {
+            values,
+            extra_values,
+        } => (
+            "string",
+            choice_capability(
+                values
+                    .iter()
+                    .chain(extra_values)
+                    .map(|value| (*value).to_string()),
+            ),
+        ),
+        CursorConfigFieldKind::NumberRange { .. } => (
+            "float",
+            ConfigUiCapability::FreeText {
+                encoding: ConfigUiTextEncoding::Json,
+            },
+        ),
+        CursorConfigFieldKind::DefinitionTables => (
+            "table array",
+            ConfigUiCapability::ReadOnly {
+                reason: "Edit cursor definition tables in the complete cursors.toml.".to_string(),
+                file_action_id: Some(ACTION_CURSORS_CONFIG.to_string()),
+            },
+        ),
     }
 }
 fn cursor_apply_status(path: &str) -> ConfigUiApplyStatus {
+    if path == "schema_version" {
+        return apply_status(
+            "schema",
+            "cursors",
+            "The child-owned format version has no independent runtime effect.",
+        );
+    }
     if matches!(
         path,
         "settings.mode_effect" | "settings.glow" | "settings.duration"
@@ -583,6 +631,8 @@ fn cursor_apply_status(path: &str) -> ConfigUiApplyStatus {
         "cursors",
         if path == "settings.trail_effect" {
             "Mars currently reads only none versus enabled; compatible consumers may use the named effect."
+        } else if path == "cursor" {
+            "Mars reads the selected cursor definition on its next launch."
         } else {
             "Mars reads the saved cursor pool and selection on its next launch."
         },

@@ -92,8 +92,8 @@ One owner per concern. Paths are the durable map.
 
 `crates/yzx-config/` is the Ratconfig host.
 
-- Supplies one stable source/path identity per field and reviewed root and
-  Zellij recommendation allowlists. Ratconfig owns Overview/All filtering,
+- Supplies one stable source/path identity per field and reviewed root, cursor,
+  and Zellij recommendation allowlists. Ratconfig owns Overview/All filtering,
   meaningful reduction thresholds, attention-state visibility, toggling, and
   All-scope search. Other non-root inventories remain recommended until their
   owners receive a narrower review
@@ -263,7 +263,7 @@ Runtime state defaults to `$XDG_DATA_HOME/yazelix` or `YAZELIX_STATE_DIR`.
 | Surface | Layering |
 | --- | --- |
 | Root TOML | Packaged semantic defaults → sparse explicit user overrides |
-| Cursors | Child-owned template → user file; Ratconfig edits bounded common fields and preserves custom definitions, but does not offer a false reset-to-baseline operation |
+| Cursors | Pinned child-owned field catalog and template → complete user file; Ratconfig edits owner-backed finite settings, preserves custom definitions, and offers read-only schema/definition discovery with the exact file action, but no false reset-to-baseline operation |
 | Mars | Packaged base → recursive sparse user override; cursor selection arrives separately through `YAZELIX_CURSOR_CONFIG` |
 | Nu | Packaged → optional host `mise activate nu` → optional user Nu |
 | Starship | Native defaults + `yzx-config` `character.format` → sparse user overrides → runtime-effective TOML |

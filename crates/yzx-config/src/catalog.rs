@@ -78,6 +78,13 @@ pub(crate) const DEFAULT_MARS_CONFIG_TOML: &str =
 pub(crate) const MARS_APPEARANCE_PRESET_PATH: &str = "mars.appearance.preset";
 pub(crate) const CURSOR_ENABLED_PATH: &str = "enabled_cursors";
 pub(crate) const CURSOR_TRAIL_PATH: &str = "settings.trail";
+pub(crate) const CURSOR_RECOMMENDED_PATHS: &[&str] = &[
+    CURSOR_ENABLED_PATH,
+    CURSOR_TRAIL_PATH,
+    "settings.trail_effect",
+    "settings.mode_effect",
+    "settings.glow",
+];
 pub(crate) const DEFAULT_STARSHIP_CONFIG_TOML: &str = "\
 [character]
 format = \":: \"
@@ -140,43 +147,6 @@ pub(crate) const ZELLIJ_CONFIG_STARTER: &str =
 pub(crate) const ZELLIJ_PLUGINS_STARTER: &str = "// Extra managed Zellij plugins. Do not declare yzpp or yazelix_pane_orchestrator here.\nplugins {\n}\n\nload_plugins {\n}\n";
 pub(crate) const KEY_READ_ONLY_REASON: &str =
     "Read-only key binding; yzx config does not rewrite native keymaps.";
-
-pub(crate) const CURSOR_FIELDS: &[FieldSpec] = &[
-    FieldSpec::string_list(
-        CURSOR_ENABLED_PATH,
-        "Cursor definitions available to fixed and random selection.",
-        "names from this cursors.toml",
-    ),
-    FieldSpec::string_choice(
-        CURSOR_TRAIL_PATH,
-        "Cursor palette selection.",
-        &[],
-        "enabled cursor name, random, or none",
-    ),
-    FieldSpec::string_choice(
-        "settings.trail_effect",
-        "Cursor movement effect for compatible consumers.",
-        &[],
-        "supported trail effect, random, or none",
-    ),
-    FieldSpec::string_choice(
-        "settings.mode_effect",
-        "Cursor mode-change effect for compatible consumers.",
-        &[],
-        "supported mode effect, random, or none",
-    ),
-    FieldSpec::string_choice(
-        "settings.glow",
-        "Cursor effect glow for compatible consumers.",
-        &[],
-        "supported glow level",
-    ),
-    FieldSpec::float(
-        "settings.duration",
-        "Cursor movement duration multiplier for compatible consumers.",
-        "number from 0.25 to 4.0",
-    ),
-];
 
 pub(crate) const MANAGED_KEYBINDINGS: &[(&str, &str)] = &[
     (KEYBINDINGS_CONFIG_PATH, "Alt Shift K"),

@@ -3,7 +3,7 @@ use std::{fs, path::Path};
 use ratconfig::toml_adapter::{set_toml_value_text, unset_toml_value_text};
 use serde_json::Value as JsonValue;
 use toml::Value as TomlValue;
-use yazelix_cursors::{CursorRegistry, DEFAULT_CURSOR_CONFIG_TEMPLATE};
+use yazelix_cursors::{CursorRegistry, DEFAULT_CURSOR_CONFIG_TEMPLATE, cursor_config_field_specs};
 
 use crate::{catalog::*, common::*};
 
@@ -25,7 +25,10 @@ pub(crate) fn write_cursor_config_field(
     field_path: &str,
     value: &JsonValue,
 ) -> Result<()> {
-    if !CURSOR_FIELDS.iter().any(|spec| spec.path == field_path) {
+    if !cursor_config_field_specs()
+        .iter()
+        .any(|spec| spec.path == field_path && spec.kind.is_writable())
+    {
         return Err(error(format!("unknown cursor config path: {field_path}")));
     }
     let raw = fs::read_to_string(path)?;
