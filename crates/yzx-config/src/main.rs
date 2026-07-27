@@ -1356,7 +1356,7 @@ color = "#123456"
     }
 
     #[test]
-    fn cursor_defaults_do_not_require_a_patchable_source_shape() {
+    fn cursor_inline_settings_remain_inspectable_without_false_edit_controls() {
         let (_temp, paths) = temp_sources();
         let custom = r##"schema_version = 1
 enabled_cursors = ["custom_test"]
@@ -1375,6 +1375,21 @@ color = "#123456"
             baseline_value(model_field(&model, CURSOR_ENABLED_PATH)),
             Some(&json!(["custom_test"]))
         );
+        let enabled = model_field(&model, CURSOR_ENABLED_PATH);
+        assert!(matches!(
+            enabled.capability,
+            ConfigUiCapability::MultiChoice { .. }
+        ));
+        assert!(enabled.can_unset);
+        let trail = model_field(&model, CURSOR_TRAIL_PATH);
+        assert_eq!(
+            read_only(trail),
+            (
+                "Edit this setting in the complete cursors.toml because its current TOML layout cannot be patched safely.",
+                Some(ACTION_CURSORS_CONFIG)
+            )
+        );
+        assert!(!trail.can_unset);
     }
 
     #[test]

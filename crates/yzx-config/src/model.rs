@@ -4,7 +4,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use ratconfig::toml_adapter::{get_toml_path, parse_toml_value};
+use ratconfig::toml_adapter::{get_toml_path, parse_toml_value, set_toml_value_text};
 use ratconfig::{
     ConfigUiApplyStatus, ConfigUiCapability, ConfigUiChoice, ConfigUiDiagnostic,
     ConfigUiDiagnosticScope, ConfigUiFieldId, ConfigUiFieldSnapshot, ConfigUiFieldSpec,
@@ -80,6 +80,7 @@ pub(crate) fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
         &cursors_active,
         &cursors_document,
         &cursors_default,
+        &cursors_raw,
     )?);
     for spec in MARS_FIELDS {
         let current = get_toml_path(&mars_active, spec.path);
@@ -518,6 +519,7 @@ fn build_cursor_fields(
     active: &CursorRegistry,
     document: &JsonValue,
     defaults: &CursorRegistry,
+    raw: &str,
 ) -> Result<Vec<ratconfig::ConfigUiField>> {
     let active_json = serde_json::to_value(active)?;
     let default_json = serde_json::to_value(defaults)?;
@@ -535,7 +537,15 @@ fn build_cursor_fields(
                 .is_writable()
                 .then(|| cursor_config_value(defaults, &default_json, spec))
                 .transpose()?;
-            let (type_label, capability) = cursor_field_capability(active, spec.kind);
+            let (type_label, mut capability) = cursor_field_capability(active, spec.kind);
+            let patchable =
+                !spec.kind.is_writable() || set_toml_value_text(raw, spec.path, &current).is_ok();
+            if !patchable {
+                capability = ConfigUiCapability::ReadOnly {
+                    reason: "Edit this setting in the complete cursors.toml because its current TOML layout cannot be patched safely.".to_string(),
+                    file_action_id: Some(ACTION_CURSORS_CONFIG.to_string()),
+                };
+            }
             let mut field = ConfigUiFieldSpec::new(
                 SOURCE_CURSORS,
                 spec.path,
@@ -550,7 +560,7 @@ fn build_cursor_fields(
                 field.snapshot.intent = explicit
                     .cloned()
                     .map_or(ConfigUiOverride::Absent, ConfigUiOverride::Explicit);
-                field.can_unset = explicit.is_some();
+                field.can_unset = explicit.is_some() && patchable;
             }
             set_snapshot_origins(&mut field, SOURCE_CURSORS);
             Ok(field)

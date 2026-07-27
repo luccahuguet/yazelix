@@ -325,9 +325,11 @@ file, palette, trail effect, and mode effect use `random`, glow uses `medium`,
 and duration uses `1.0`. Pressing `u` removes an explicit finite setting; the
 child parser resolves an absent enabled pool from those definitions and the five
 absent `[settings]` values from the packaged template. Definition tables are
-never removed, merged, or synthesized by this reset path. Schema metadata and
-definitions omit defaults. The schema row uses a neutral dash for apply timing
-because format metadata has no independent runtime effect.
+never removed, merged, or synthesized by this reset path. A valid layout that
+the preservation-safe patcher cannot change in place remains discoverable, but
+its affected settings are read-only and open the complete file. Schema metadata
+and definitions omit defaults. The schema row uses a neutral dash for apply
+timing because format metadata has no independent runtime effect.
 
 Yazelix recommends the enabled pool, palette selection, trail effect, mode
 effect, and glow control. Duration is not recommended, but an explicit duration
