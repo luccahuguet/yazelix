@@ -13,8 +13,10 @@ User-visible runtime changes for Yazelix Nova live here.
   Ratconfig's generic attention rules. Writable cursor settings show
   child-resolved defaults and `u` removes their explicit assignments so those
   defaults take effect. An absent enabled pool enables the definitions in that
-  file, including custom-only registries. Schema metadata shows a neutral dash
-  instead of implying a runtime apply phase.
+  file, including custom-only registries. Ratconfig can still inspect valid
+  cursor files whose settings use inline TOML without rewriting that layout.
+  Schema metadata shows a neutral dash instead of implying a runtime apply
+  phase.
 - Zellij settings report observable apply timing in Ratconfig: fields supported
   by the active watcher say `now`, deferred fields say `next session`, and theme
   pairs distinguish the active mode. Native-file actions show a neutral dash

@@ -4,7 +4,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use ratconfig::toml_adapter::{get_toml_path, parse_toml_value, unset_toml_value_text};
+use ratconfig::toml_adapter::{get_toml_path, parse_toml_value};
 use ratconfig::{
     ConfigUiApplyStatus, ConfigUiCapability, ConfigUiChoice, ConfigUiDiagnostic,
     ConfigUiDiagnosticScope, ConfigUiFieldId, ConfigUiFieldSnapshot, ConfigUiFieldSpec,
@@ -48,16 +48,8 @@ pub(crate) fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
     let cursors_active = CursorRegistry::parse_str(&paths.cursors, &cursors_raw)?;
     let cursors_document = parse_toml_value(&cursors_raw)
         .map_err(|error| boxed_debug("invalid cursors.toml", error))?;
-    let mut cursors_default_raw = cursors_raw.clone();
-    for spec in cursor_config_field_specs()
-        .iter()
-        .filter(|spec| spec.kind.is_writable())
-    {
-        cursors_default_raw = unset_toml_value_text(&cursors_default_raw, spec.path)
-            .map_err(|error| boxed_debug("could not resolve cursor defaults", error))?
-            .text;
-    }
-    let cursors_default = CursorRegistry::parse_str(&paths.cursors, &cursors_default_raw)?;
+    let cursors_default =
+        CursorRegistry::parse_without_finite_overrides(&paths.cursors, &cursors_raw)?;
     let (zellij_active, zellij_invalid, zellij_diagnostics) =
         parse_zellij_sidecar(&read_zellij_sidecar(&paths.zellij)?);
     diagnostics.extend(zellij_diagnostics);

@@ -1356,6 +1356,28 @@ color = "#123456"
     }
 
     #[test]
+    fn cursor_defaults_do_not_require_a_patchable_source_shape() {
+        let (_temp, paths) = temp_sources();
+        let custom = r##"schema_version = 1
+enabled_cursors = ["custom_test"]
+settings = { trail = "random", trail_effect = "random", mode_effect = "random", glow = "medium", duration = 1.0 }
+
+[[cursor]]
+name = "custom_test"
+family = "mono"
+color = "#123456"
+"##;
+        fs::write(&paths.cursors, custom).unwrap();
+
+        let model = build_model(&paths).unwrap();
+
+        assert_eq!(
+            baseline_value(model_field(&model, CURSOR_ENABLED_PATH)),
+            Some(&json!(["custom_test"]))
+        );
+    }
+
+    #[test]
     fn config_model_exposes_popup_settings_tab() {
         let (_temp, paths) = temp_sources();
 
