@@ -32,14 +32,14 @@ composes their package outputs.
 
 | Measure | Nova | Classic |
 | --- | --- | --- |
-| Code and configuration (Rust, Nix, shell, TOML, etc.) | **21,255 LOC** | **91,545 LOC** |
-| Rust | **18,153 LOC** | **80,957 LOC** |
+| Code and configuration (Rust, Nix, shell, TOML, etc.) | **21,201 LOC** | **91,545 LOC** |
+| Rust | **18,099 LOC** | **80,957 LOC** |
 | Ownership model | One owner per concern | Overlapping responsibilities across layers |
 | Yazelix component boundaries | Independent, versioned packages | Child repos mixed with main-repo ownership |
 | Product experience | More features, stronger defaults, tighter integration, and polished UX | Fewer features and a less cohesive workspace |
 | Status | Recommended | Frozen migration and rollback path |
 
-Nova owns **70,290 fewer lines**, a **77% reduction**. Classic's Rust code
+Nova owns **70,344 fewer lines**, a **77% reduction**. Classic's Rust code
 alone is 3.8 times larger than Nova's entire code and configuration surface.
 
 Nova delivers more features in 23% of the code. It has a clearer configuration
@@ -322,6 +322,6 @@ See [Development](docs/development.md) for CI and local checks,
 
 ## LOC Scorecard
 
-Yazelix owns **24,240 lines** of tracked text project files. The
+Yazelix owns **24,186 lines** of tracked text project files. The
 [reproducible scorecard](docs/development.md#loc-scorecard) excludes Beads,
 lockfiles, and binary assets.

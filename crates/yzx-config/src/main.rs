@@ -366,6 +366,29 @@ mod tests {
             .unwrap_or_else(|| panic!("missing config field {path}"))
     }
 
+    fn field_index(model: &ConfigUiModel, source_id: &str, path: &str) -> usize {
+        model
+            .fields
+            .iter()
+            .position(|field| field.source_id == source_id && field.path == path)
+            .unwrap_or_else(|| panic!("missing {source_id} field {path}"))
+    }
+
+    fn app_on_tab(model: &ConfigUiModel, tab: &str) -> ConfigUiApp {
+        let mut app = ConfigUiApp::try_new(model.clone()).unwrap();
+        for _ in 0..ratconfig::tab_index(&model.tabs, tab) {
+            app.next_tab();
+        }
+        app
+    }
+
+    fn search_for(app: &mut ConfigUiApp, query: &str) {
+        app.handle_key(ConfigUiKey::Char('/'));
+        for ch in query.chars() {
+            app.handle_key(ConfigUiKey::Char(ch));
+        }
+    }
+
     fn assert_no_parent_rows(model: &ConfigUiModel, source_id: &str, path_prefix: &str) {
         for field in model.fields.iter().filter(|field| {
             field.source_id == source_id
@@ -1053,14 +1076,7 @@ mod tests {
                 })
         );
 
-        let field_index = |path| {
-            model
-                .fields
-                .iter()
-                .position(|field| field.source_id == SOURCE_CONFIG && field.path == path)
-                .unwrap()
-        };
-        let main_all_only = field_index(OPEN_LOG_LEVEL_PATH);
+        let main_all_only = field_index(&model, SOURCE_CONFIG, OPEN_LOG_LEVEL_PATH);
         let mut app = ConfigUiApp::try_new(model).unwrap();
         assert_eq!(app.settings_view(), ConfigUiSettingsView::Overview);
         assert!(
@@ -1071,12 +1087,7 @@ mod tests {
         assert_eq!(app.settings_view(), ConfigUiSettingsView::Overview);
 
         app.next_tab();
-        let popup_all_only = app
-            .model()
-            .fields
-            .iter()
-            .position(|field| field.path == AGENT_ARGS_PATH)
-            .unwrap();
+        let popup_all_only = field_index(app.model(), SOURCE_CONFIG, AGENT_ARGS_PATH);
         assert!(
             !app.visible_rows()
                 .contains(&UiRowRef::Field(popup_all_only))
@@ -1089,10 +1100,7 @@ mod tests {
         );
         app.handle_key(ConfigUiKey::Char('a'));
         assert_eq!(app.settings_view(), ConfigUiSettingsView::Overview);
-        app.handle_key(ConfigUiKey::Char('/'));
-        for ch in AGENT_ARGS_PATH.chars() {
-            app.handle_key(ConfigUiKey::Char(ch));
-        }
+        search_for(&mut app, AGENT_ARGS_PATH);
         assert_eq!(app.settings_view(), ConfigUiSettingsView::Overview);
         assert!(
             app.visible_rows()
@@ -1102,11 +1110,7 @@ mod tests {
         write_config_field(&paths.root, AGENT_COMMAND_PATH, &json!("codex")).unwrap();
         write_config_field(&paths.root, AGENT_ARGS_PATH, &json!(["resume"])).unwrap();
         let explicit_model = build_model(&paths).unwrap();
-        let explicit = explicit_model
-            .fields
-            .iter()
-            .position(|field| field.source_id == SOURCE_CONFIG && field.path == AGENT_ARGS_PATH)
-            .unwrap();
+        let explicit = field_index(&explicit_model, SOURCE_CONFIG, AGENT_ARGS_PATH);
         let mut explicit_app = ConfigUiApp::try_new(explicit_model).unwrap();
         explicit_app.next_tab();
         assert!(
@@ -1261,20 +1265,9 @@ color = "#123456"
             .collect::<Vec<_>>();
         assert_eq!(recommended, CURSOR_RECOMMENDED_PATHS);
         assert!(!recommended.contains(&duration.path.as_str()));
-        let duration_index = model
-            .fields
-            .iter()
-            .position(|field| field.id() == duration.id())
-            .unwrap();
-        let definitions_index = model
-            .fields
-            .iter()
-            .position(|field| field.id() == definitions.id())
-            .unwrap();
-        let mut app = ConfigUiApp::try_new(model.clone()).unwrap();
-        for _ in 0..3 {
-            app.next_tab();
-        }
+        let duration_index = field_index(&model, SOURCE_CURSORS, &duration.path);
+        let definitions_index = field_index(&model, SOURCE_CURSORS, &definitions.path);
+        let mut app = app_on_tab(&model, TAB_CURSORS);
         assert_eq!(app.selected_tab(), 3);
         while app.selected_field().map(|field| field.path.as_str()) != Some(CURSOR_TRAIL_PATH) {
             app.move_down();
@@ -1291,10 +1284,7 @@ color = "#123456"
             app.visible_rows()
                 .contains(&UiRowRef::Field(definitions_index))
         );
-        app.handle_key(ConfigUiKey::Char('/'));
-        for ch in "custom_test".chars() {
-            app.handle_key(ConfigUiKey::Char(ch));
-        }
+        search_for(&mut app, "custom_test");
         assert!(
             app.visible_rows()
                 .contains(&UiRowRef::Field(definitions_index))
@@ -1830,31 +1820,16 @@ color = "#123456"
             assert!(read_only(macos_shadow).0.contains("only on macOS"));
         }
 
-        let mars_tab = ratconfig::tab_index(&model.tabs, TAB_MARS);
-        let mut app = ConfigUiApp::try_new(model).unwrap();
-        for _ in 0..mars_tab {
-            app.next_tab();
-        }
+        let mut app = app_on_tab(&model, TAB_MARS);
         assert_eq!(app.settings_view(), ConfigUiSettingsView::Overview);
         assert_eq!(app.visible_rows().len(), MARS_RECOMMENDED_PATHS.len());
         app.handle_key(ConfigUiKey::Char('a'));
         assert_eq!(app.settings_view(), ConfigUiSettingsView::All);
         assert_eq!(app.visible_rows().len(), catalog_paths.len());
 
-        let filters_index = app
-            .model()
-            .fields
-            .iter()
-            .position(|field| field.source_id == SOURCE_MARS && field.path == "renderer.filters")
-            .unwrap();
-        let mut search = ConfigUiApp::try_new(app.model().clone()).unwrap();
-        for _ in 0..mars_tab {
-            search.next_tab();
-        }
-        search.handle_key(ConfigUiKey::Char('/'));
-        for ch in "renderer.filters".chars() {
-            search.handle_key(ConfigUiKey::Char(ch));
-        }
+        let filters_index = field_index(&model, SOURCE_MARS, "renderer.filters");
+        let mut search = app_on_tab(&model, TAB_MARS);
+        search_for(&mut search, "renderer.filters");
         assert_eq!(search.visible_rows(), vec![UiRowRef::Field(filters_index)]);
     }
 
@@ -1921,13 +1896,7 @@ color = "#123456"
         link_from_store(&paths, &paths.mars, "[developer]\nenable-log-file = true\n");
         let paths = ensure_config_sources_at(paths).unwrap();
         let model = build_model(&paths).unwrap();
-        let advanced = model
-            .fields
-            .iter()
-            .position(|field| {
-                field.source_id == SOURCE_MARS && field.path == "developer.enable-log-file"
-            })
-            .unwrap();
+        let advanced = field_index(&model, SOURCE_MARS, "developer.enable-log-file");
         let field = &model.fields[advanced];
         assert_eq!(
             field.snapshot.external_manager.as_deref(),
@@ -1939,11 +1908,7 @@ color = "#123456"
         ));
         assert!(!field.can_unset);
 
-        let mars_tab = ratconfig::tab_index(&model.tabs, TAB_MARS);
-        let mut app = ConfigUiApp::try_new(model).unwrap();
-        for _ in 0..mars_tab {
-            app.next_tab();
-        }
+        let app = app_on_tab(&model, TAB_MARS);
         assert!(app.visible_rows().contains(&UiRowRef::Field(advanced)));
     }
 
@@ -2324,10 +2289,7 @@ color = "#123456"
         assert!(model.tabs.contains(&TAB_HELIX.to_string()));
         assert!(model.tabs.contains(&TAB_YAZI.to_string()));
         assert!(model.tabs.contains(&TAB_CURSORS.to_string()));
-        let mut app = ConfigUiApp::try_new(model.clone()).unwrap();
-        for _ in 0..ratconfig::tab_index(&model.tabs, TAB_ADVANCED) {
-            app.next_tab();
-        }
+        let app = app_on_tab(&model, TAB_ADVANCED);
         assert!(
             app.visible_rows()
                 .contains(&ratconfig::UiRowRef::Diagnostic(0))
@@ -3146,29 +3108,16 @@ color = "#123456"
     fn zellij_tab_curates_overview_all_search_and_native_fallback() {
         let (_temp, paths) = temp_sources();
         let model = build_model(&paths).unwrap();
-        let field_index = |path: &str| {
-            model
-                .fields
-                .iter()
-                .position(|field| field.source_id == SOURCE_ZELLIJ && field.path == path)
-                .unwrap_or_else(|| panic!("missing Zellij field {path}"))
-        };
+        let zellij_field = |path| field_index(&model, SOURCE_ZELLIJ, path);
         let file_action_index = model
             .file_actions
             .iter()
             .position(|action| action.action_id == ACTION_ZELLIJ_CONFIG)
             .expect("native Zellij file action");
 
-        let app_on_zellij = || {
-            let mut app = ConfigUiApp::try_new(model.clone()).unwrap();
-            for _ in 0..ratconfig::tab_index(&model.tabs, TAB_ZELLIJ) {
-                app.next_tab();
-            }
-            app
-        };
-        let pane_frames_index = field_index("pane_frames");
-        let all_only_index = field_index("scroll_buffer_size");
-        let mut app = app_on_zellij();
+        let pane_frames_index = zellij_field("pane_frames");
+        let all_only_index = zellij_field("scroll_buffer_size");
+        let mut app = app_on_tab(&model, TAB_ZELLIJ);
         assert_eq!(app.settings_view(), ConfigUiSettingsView::Overview);
         let overview = app.visible_rows();
         assert!(overview.contains(&UiRowRef::Field(pane_frames_index)));
@@ -3179,18 +3128,15 @@ color = "#123456"
         assert_eq!(app.settings_view(), ConfigUiSettingsView::All);
         assert!(ZELLIJ_FIELDS.iter().all(|field| {
             app.visible_rows()
-                .contains(&UiRowRef::Field(field_index(field.path)))
+                .contains(&UiRowRef::Field(zellij_field(field.path)))
         }));
 
         for (query, expected) in [
             ("scroll_buffer_size", UiRowRef::Field(all_only_index)),
             ("zellij/config.kdl", UiRowRef::FileAction(file_action_index)),
         ] {
-            let mut search = app_on_zellij();
-            search.handle_key(ConfigUiKey::Char('/'));
-            for ch in query.chars() {
-                search.handle_key(ConfigUiKey::Char(ch));
-            }
+            let mut search = app_on_tab(&model, TAB_ZELLIJ);
+            search_for(&mut search, query);
             assert!(
                 search.visible_rows().contains(&expected),
                 "search should find {query}"
