@@ -32,17 +32,17 @@ composes their package outputs.
 
 | Measure | Nova | Classic |
 | --- | --- | --- |
-| Code and configuration (Rust, Nix, shell, TOML, etc.) | **20,680 LOC** | **91,545 LOC** |
-| Rust | **17,583 LOC** | **80,957 LOC** |
+| Code and configuration (Rust, Nix, shell, TOML, etc.) | **21,251 LOC** | **91,545 LOC** |
+| Rust | **18,149 LOC** | **80,957 LOC** |
 | Ownership model | One owner per concern | Overlapping responsibilities across layers |
 | Yazelix component boundaries | Independent, versioned packages | Child repos mixed with main-repo ownership |
 | Product experience | More features, stronger defaults, tighter integration, and polished UX | Fewer features and a less cohesive workspace |
 | Status | Recommended | Frozen migration and rollback path |
 
-Nova owns **70,978 fewer lines**, a **78% reduction**. Classic's Rust code
-alone is 3.9 times larger than Nova's entire code and configuration surface.
+Nova owns **70,294 fewer lines**, a **77% reduction**. Classic's Rust code
+alone is 3.8 times larger than Nova's entire code and configuration surface.
 
-Nova delivers more features in 22% of the code. It has a clearer configuration
+Nova delivers more features in 23% of the code. It has a clearer configuration
 model, tighter editor and Yazi integration, stronger diagnostics, and a
 coherent popup-oriented interface. The smaller architecture makes Yazelix
 easier to improve and better to use.
@@ -262,6 +262,14 @@ The Cursors inventory comes from the pinned Yazelix Cursors package. It exposes
 every finite setting and its owner-defined choices, while custom definition
 tables remain searchable and read-only with an exact `cursors.toml` action.
 
+The Mars tab consumes the complete public inventory from the pinned Mars
+revision. Overview recommends 15 common window, font, input, and bell settings;
+All exposes the other specialist and platform settings, and search spans that
+complete inventory. Scalar and finite-choice controls with a safe sparse write
+path are editable. Structured settings remain read-only and do not invent a
+second Mars schema or native-file action. `mars.appearance.preset` is omitted
+because root `appearance.mode` is the product appearance control.
+
 `appearance.mode` selects `dark` or `light` for managed Yazelix components and
 also controls Ratconfig's palette. In packages with Mars, Yazelix projects that
 value to only `mars.appearance.preset` when its native config is a writable
@@ -313,6 +321,6 @@ See [Development](docs/development.md) for CI and local checks,
 
 ## LOC Scorecard
 
-Yazelix owns **23,627 lines** of tracked text project files. The
+Yazelix owns **24,232 lines** of tracked text project files. The
 [reproducible scorecard](docs/development.md#loc-scorecard) excludes Beads,
 lockfiles, and binary assets.

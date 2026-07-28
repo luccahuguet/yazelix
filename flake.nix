@@ -155,18 +155,23 @@
       };
       yzxNuShell = rustBin "yzx-nu" yzxNuRs;
       yzxAgent = rustBin "yzx-agent" ./runtime/yzx-agent.rs;
-      yzxConfigSrc = pkgs.runCommand "yzx-config-src" {} ''
+      yzxConfigSrc =
+        assert mars.rev == "129981b3a5b9f0a9ef1fa60d2742845cb1722db3";
+          pkgs.runCommand "yzx-config-src" {} ''
         mkdir -p "$out"
         cp -R ${pkgs.lib.cleanSource ./crates/yzx-config}/. "$out/"
         chmod -R u+w "$out"
         ln -s ${yazelixCursors} "$out/yazelix-cursors"
         cp ${./defaults/config.toml} "$out/config.toml"
         cp ${./defaults/mars/config.toml} "$out/mars.toml"
+        cp ${mars}/docs/yazelix/config_inventory.v1.json "$out/mars-config-inventory.v1.json"
         substituteInPlace "$out/Cargo.toml" \
           --replace-fail '../../../yazelix-cursors' './yazelix-cursors'
         substituteInPlace "$out/src/catalog.rs" \
           --replace-fail '../../../defaults/config.toml' '../config.toml' \
           --replace-fail '../../../defaults/mars/config.toml' '../mars.toml'
+        substituteInPlace "$out/src/mars_inventory.rs" \
+          --replace-fail '../../../../mars/docs/yazelix/config_inventory.v1.json' '../mars-config-inventory.v1.json'
       '';
       yzxConfig = pkgs.rustPlatform.buildRustPackage {
         pname = "yzx-config";

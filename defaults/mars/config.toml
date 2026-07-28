@@ -16,7 +16,7 @@ preset = "dark"
 [window]
 width = 960
 height = 620
-decorations = "Disabled"
+decorations = "disabled"
 opacity = 0.78
 opacity-cells = false
 
@@ -44,4 +44,4 @@ symbol-map = [
 ]
 
 [navigation]
-mode = "Plain"
+mode = "plain"

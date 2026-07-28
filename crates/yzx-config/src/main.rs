@@ -5,6 +5,7 @@ mod common;
 mod custom_popups;
 mod file_actions;
 mod helix_config;
+mod mars_inventory;
 mod model;
 mod native_config;
 mod paths;
@@ -136,6 +137,7 @@ mod tests {
     };
 
     use crate::file_actions::*;
+    use crate::mars_inventory::*;
     use crate::model::*;
     use crate::zellij_sidecar::*;
     use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
@@ -951,17 +953,20 @@ mod tests {
             Some(ConfigUiTheme::Light)
         );
 
-        for hidden in [
-            MARS_APPEARANCE_PRESET_PATH,
+        assert!(
+            model
+                .fields
+                .iter()
+                .all(|field| field.path != MARS_APPEARANCE_PRESET_PATH),
+            "root appearance.mode is the sole Ratconfig appearance control"
+        );
+        for visible in [
             "force-theme",
             "colors.background",
             "colors.foreground",
             "colors.dim-foreground",
         ] {
-            assert!(
-                model.fields.iter().all(|field| field.path != hidden),
-                "{hidden} should stay native TOML only"
-            );
+            assert_eq!(model_field(&model, visible).source_id, SOURCE_MARS);
         }
         assert_eq!(
             model_field(&model, CURSOR_TRAIL_PATH).source_id,
@@ -1038,7 +1043,7 @@ mod tests {
                 .filter(|field| {
                     !matches!(
                         field.source_id.as_str(),
-                        SOURCE_CONFIG | SOURCE_CURSORS | SOURCE_ZELLIJ
+                        SOURCE_CONFIG | SOURCE_MARS | SOURCE_CURSORS | SOURCE_ZELLIJ
                     )
                 })
                 .all(|field| {
@@ -1717,10 +1722,229 @@ color = "#123456"
             ("bell.visual", "live"),
         ];
 
-        assert_eq!(MARS_FIELDS.len(), expected.len());
-        for (path, summary) in expected {
+        for &(path, summary) in &expected {
             assert_eq!(model_field(&model, path).apply_status.summary, summary);
         }
+        assert!(
+            model
+                .fields
+                .iter()
+                .filter(|field| field.source_id == SOURCE_MARS)
+                .all(|field| expected.iter().any(|(path, _)| path == &field.path)
+                    || field.apply_status.summary == "next launch")
+        );
+    }
+
+    #[test]
+    fn pinned_mars_inventory_drives_all_rows_metadata_and_overview() {
+        let (_temp, paths) = temp_sources();
+        let inventory = MarsInventory::parse().unwrap();
+        let model = build_model(&paths).unwrap();
+        let catalog_paths = inventory
+            .fields()
+            .map(|field| field.path())
+            .collect::<Vec<_>>();
+        let model_paths = model
+            .fields
+            .iter()
+            .filter(|field| field.source_id == SOURCE_MARS)
+            .map(|field| field.path.as_str())
+            .collect::<Vec<_>>();
+        assert_eq!(catalog_paths.len(), 150);
+        assert_eq!(model_paths, catalog_paths);
+        assert!(!model_paths.contains(&MARS_APPEARANCE_PRESET_PATH));
+        assert!(
+            model
+                .file_actions
+                .iter()
+                .all(|action| action.source_id != SOURCE_MARS)
+        );
+
+        let recommended = model
+            .recommended_fields
+            .as_ref()
+            .unwrap()
+            .iter()
+            .filter(|field| field.source_id == SOURCE_MARS)
+            .map(|field| field.path.as_str())
+            .collect::<Vec<_>>();
+        assert_eq!(recommended.len(), MARS_RECOMMENDED_PATHS.len());
+        assert!(
+            recommended
+                .iter()
+                .all(|path| MARS_RECOMMENDED_PATHS.contains(path))
+        );
+
+        let decorations = model_field(&model, "window.decorations");
+        assert_eq!(decorations.section_label, "Window");
+        assert!(
+            decorations
+                .description
+                .starts_with("Choose native window decorations.")
+        );
+        assert!(decorations.description.contains("macOS"));
+        assert_eq!(
+            choice_values(decorations),
+            [
+                &json!("enabled"),
+                &json!("disabled"),
+                &json!("transparent"),
+                &json!("buttonless"),
+            ]
+        );
+        assert_inherited(decorations, &json!("disabled"));
+
+        let blur = model_field(&model, "window.blur");
+        assert_eq!(blur.type_label.as_deref(), Some("union"));
+        assert_inherited(blur, &json!(false));
+        assert_eq!(
+            choice_values(blur),
+            [
+                &json!(false),
+                &json!(true),
+                &json!("macos-glass-regular"),
+                &json!("macos-glass-clear"),
+            ]
+        );
+        assert!(blur.description.contains("macOS 26+"));
+
+        let env_vars = model_field(&model, "env-vars");
+        assert_eq!(env_vars.type_label.as_deref(), Some("list"));
+        assert_inherited(env_vars, &json!([]));
+        assert_eq!(read_only(env_vars).1, None);
+
+        let shell = model_field(&model, "shell");
+        assert_eq!(shell.type_label.as_deref(), Some("table"));
+        assert_eq!(
+            baseline_value(shell),
+            Some(&json!({"program": "", "args": ["--login"]}))
+        );
+        assert_eq!(read_only(shell).1, None);
+
+        let filters = model_field(&model, "renderer.filters");
+        assert!(filters.description.contains("requires wgpu"));
+        assert_eq!(read_only(filters).1, None);
+        let macos_shadow = model_field(&model, "window.macos-use-shadow");
+        assert!(macos_shadow.description.contains("macOS"));
+        if std::env::consts::OS != "macos" {
+            assert!(read_only(macos_shadow).0.contains("only on macOS"));
+        }
+
+        let mars_tab = ratconfig::tab_index(&model.tabs, TAB_MARS);
+        let mut app = ConfigUiApp::try_new(model).unwrap();
+        for _ in 0..mars_tab {
+            app.next_tab();
+        }
+        assert_eq!(app.settings_view(), ConfigUiSettingsView::Overview);
+        assert_eq!(app.visible_rows().len(), MARS_RECOMMENDED_PATHS.len());
+        app.handle_key(ConfigUiKey::Char('a'));
+        assert_eq!(app.settings_view(), ConfigUiSettingsView::All);
+        assert_eq!(app.visible_rows().len(), catalog_paths.len());
+
+        let filters_index = app
+            .model()
+            .fields
+            .iter()
+            .position(|field| field.source_id == SOURCE_MARS && field.path == "renderer.filters")
+            .unwrap();
+        let mut search = ConfigUiApp::try_new(app.model().clone()).unwrap();
+        for _ in 0..mars_tab {
+            search.next_tab();
+        }
+        search.handle_key(ConfigUiKey::Char('/'));
+        for ch in "renderer.filters".chars() {
+            search.handle_key(ConfigUiKey::Char(ch));
+        }
+        assert_eq!(search.visible_rows(), vec![UiRowRef::Field(filters_index)]);
+    }
+
+    #[test]
+    fn mars_finite_union_writes_and_resets_sparsely() {
+        let (_temp, paths) = temp_sources();
+        for value in [
+            json!(false),
+            json!(true),
+            json!("macos-glass-regular"),
+            json!("macos-glass-clear"),
+        ] {
+            write_source_field(&paths, SOURCE_MARS, "window.blur", &value).unwrap();
+            assert_toml_value(&paths.mars, "window.blur", &value);
+        }
+
+        let error = write_source_field(&paths, SOURCE_MARS, "window.blur", &json!("unknown"))
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("one of"), "{error}");
+        write_source_default(&paths, SOURCE_MARS, "window.blur").unwrap();
+        assert_eq!(
+            get_toml_path(
+                &read_toml_file_value(&paths.mars, "mars").unwrap(),
+                "window.blur"
+            ),
+            None
+        );
+    }
+
+    #[test]
+    fn malformed_mars_toml_is_source_scoped_and_blocks_inline_edits() {
+        let (_temp, paths) = temp_sources();
+        atomic_write(&paths.mars, "[window\nblur = true\n").unwrap();
+
+        let model = build_model(&paths).unwrap();
+        assert!(model.diagnostics.iter().any(|diagnostic| {
+            diagnostic.scope
+                == ConfigUiDiagnosticScope::Source {
+                    source_id: SOURCE_MARS.to_string(),
+                }
+        }));
+        assert!(
+            model
+                .fields
+                .iter()
+                .filter(|field| field.source_id == SOURCE_MARS)
+                .all(|field| matches!(
+                    field.capability,
+                    ConfigUiCapability::ReadOnly {
+                        file_action_id: None,
+                        ..
+                    }
+                ) && !field.can_unset)
+        );
+        ConfigUiApp::try_new(model).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn home_manager_mars_advanced_value_stays_visible_in_overview() {
+        let temp = TempHome::new();
+        let paths = temp_paths(&temp);
+        link_from_store(&paths, &paths.mars, "[developer]\nenable-log-file = true\n");
+        let paths = ensure_config_sources_at(paths).unwrap();
+        let model = build_model(&paths).unwrap();
+        let advanced = model
+            .fields
+            .iter()
+            .position(|field| {
+                field.source_id == SOURCE_MARS && field.path == "developer.enable-log-file"
+            })
+            .unwrap();
+        let field = &model.fields[advanced];
+        assert_eq!(
+            field.snapshot.external_manager.as_deref(),
+            Some("Home Manager")
+        );
+        assert!(matches!(
+            field.capability,
+            ConfigUiCapability::ReadOnly { .. }
+        ));
+        assert!(!field.can_unset);
+
+        let mars_tab = ratconfig::tab_index(&model.tabs, TAB_MARS);
+        let mut app = ConfigUiApp::try_new(model).unwrap();
+        for _ in 0..mars_tab {
+            app.next_tab();
+        }
+        assert!(app.visible_rows().contains(&UiRowRef::Field(advanced)));
     }
 
     #[test]
@@ -2598,7 +2822,10 @@ color = "#123456"
             .iter()
             .filter(|field| field.source_id == SOURCE_MARS)
             .collect();
-        assert_eq!(mars_fields.len(), MARS_FIELDS.len());
+        assert_eq!(
+            mars_fields.len(),
+            MarsInventory::parse().unwrap().fields().count()
+        );
         assert!(mars_fields.iter().all(|field| matches!(
             field.snapshot.intent,
             ConfigUiOverride::Absent
@@ -2658,15 +2885,26 @@ color = "#123456"
         .to_string();
         assert!(error.contains("dark, light"), "{error}");
 
-        let error = write_source_field(&paths, SOURCE_MARS, "force-theme", &json!("light"))
+        write_source_field(&paths, SOURCE_MARS, "force-theme", &json!("light")).unwrap();
+        assert_eq!(
+            get_toml_path(
+                &read_toml_file_value(&paths.mars, "mars").unwrap(),
+                "force-theme"
+            ),
+            Some(&json!("light"))
+        );
+        let error = write_source_field(&paths, SOURCE_MARS, "force-theme", &json!("unknown"))
             .unwrap_err()
             .to_string();
-        assert!(error.contains("unknown Mars config path"), "{error}");
+        assert!(error.contains("one of"), "{error}");
 
         let error = write_source_field(&paths, SOURCE_MARS, "colors.background", &json!("#f5f3ef"))
             .unwrap_err()
             .to_string();
-        assert!(error.contains("unknown Mars config path"), "{error}");
+        assert!(
+            error.contains("no validator-backed inline editor"),
+            "{error}"
+        );
     }
 
     #[test]
@@ -2882,7 +3120,13 @@ color = "#123456"
         assert!(!legacy.blocking);
         assert_eq!(legacy.status, "ignored");
         assert_inherited(model_field(&model, "theme_dark"), &json!("ansi"));
-        assert!(model.fields.iter().all(|field| field.path != "theme"));
+        assert!(
+            model
+                .fields
+                .iter()
+                .filter(|field| field.source_id == SOURCE_ZELLIJ)
+                .all(|field| field.path != "theme")
+        );
 
         write_source_field(&paths, SOURCE_ZELLIJ, "theme_dark", &json!("ansi")).unwrap();
         assert_eq!(

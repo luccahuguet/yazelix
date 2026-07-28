@@ -22,7 +22,7 @@ use crate::{
     catalog::*,
     common::*,
     file_actions::build_file_actions,
-    native_config::validate_mars_field,
+    mars_inventory::{MarsField, MarsInventory},
     paths::ConfigPaths,
     root_config::{
         bar_widgets, default_config, default_config_path_value, read_optional_toml_file_value,
@@ -38,7 +38,9 @@ use crate::{
 pub(crate) fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
     let (config_active, root_document_valid, mut diagnostics) = load_root_config(&paths.root)?;
     let config_default = default_config()?;
-    let mars_active = read_optional_toml_file_value(&paths.mars, "invalid mars/config.toml")?;
+    let (mars_active, mars_document_valid, mars_diagnostics) = load_mars_config(&paths.mars)?;
+    diagnostics.extend(mars_diagnostics);
+    let mars_inventory = MarsInventory::parse()?;
     let mars_default = parse_toml_value(DEFAULT_MARS_CONFIG_TOML)
         .map_err(|error| boxed_debug("invalid default Mars config", error))?;
     let starship_active = read_optional_toml_file_value(&paths.starship, "invalid starship.toml")?;
@@ -82,17 +84,8 @@ pub(crate) fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
         &cursors_default,
         &cursors_raw,
     )?);
-    for spec in MARS_FIELDS {
-        let current = get_toml_path(&mars_active, spec.path);
-        fields.push(build_config_field(
-            SOURCE_MARS,
-            TAB_MARS,
-            spec,
-            current,
-            get_toml_path(&mars_default, spec.path),
-            mars_apply_status(spec.path),
-            current.is_some_and(|value| validate_mars_field(spec, value).is_err()),
-        ));
+    for spec in mars_inventory.fields() {
+        fields.push(build_mars_config_field(spec, &mars_active, &mars_default));
     }
     for spec in STARSHIP_FIELDS {
         let current = get_toml_path(&starship_active, spec.path);
@@ -186,11 +179,24 @@ pub(crate) fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
             field.can_unset = false;
         }
     }
+    if !mars_document_valid {
+        for field in fields
+            .iter_mut()
+            .filter(|field| field.source_id == SOURCE_MARS)
+        {
+            field.capability = ConfigUiCapability::ReadOnly {
+                reason: "Repair mars/config.toml before editing individual fields.".to_string(),
+                file_action_id: None,
+            };
+            field.can_unset = false;
+        }
+    }
     let recommended_fields = Some(
         fields
             .iter()
             .filter(|field| match field.source_id.as_str() {
                 SOURCE_CONFIG => ROOT_CONFIG_RECOMMENDED_PATHS.contains(&field.path.as_str()),
+                SOURCE_MARS => MARS_RECOMMENDED_PATHS.contains(&field.path.as_str()),
                 SOURCE_CURSORS => CURSOR_RECOMMENDED_PATHS.contains(&field.path.as_str()),
                 SOURCE_ZELLIJ => ZELLIJ_RECOMMENDED_PATHS.contains(&field.path.as_str()),
                 _ => true,
@@ -281,6 +287,30 @@ fn load_root_config(path: &Path) -> Result<(JsonValue, bool, Vec<ConfigUiDiagnos
         diagnostics.push(root_source_diagnostic(message));
     }
     Ok((active, document_valid, diagnostics))
+}
+
+fn load_mars_config(path: &Path) -> Result<(JsonValue, bool, Vec<ConfigUiDiagnostic>)> {
+    if !path_entry_exists(path)? {
+        return Ok((JsonValue::Object(Default::default()), true, Vec::new()));
+    }
+    let raw = fs::read_to_string(path)?;
+    match parse_toml_value(&raw) {
+        Ok(active) => Ok((active, true, Vec::new())),
+        Err(source) => Ok((
+            JsonValue::Object(Default::default()),
+            false,
+            vec![ConfigUiDiagnostic {
+                path: "mars/config.toml".to_string(),
+                status: "blocked".to_string(),
+                headline: "mars/config.toml needs native-file repair".to_string(),
+                blocking: true,
+                scope: ConfigUiDiagnosticScope::Source {
+                    source_id: SOURCE_MARS.to_string(),
+                },
+                detail_lines: vec![format!("invalid TOML: {source:?}")],
+            }],
+        )),
+    }
 }
 
 fn root_field_diagnostics(active: &JsonValue) -> Vec<ConfigUiDiagnostic> {
@@ -507,6 +537,40 @@ fn build_config_field(
     }
     .build(spec.kind, current, default);
     set_snapshot_origins(&mut field, source_id);
+    if invalid {
+        field.snapshot.intent = ConfigUiOverride::Invalid {
+            input: current.map_or_else(String::new, ToString::to_string),
+        };
+        field.snapshot.effective = None;
+    }
+    field
+}
+
+fn build_mars_config_field(
+    spec: MarsField<'_>,
+    active: &JsonValue,
+    packaged_defaults: &JsonValue,
+) -> ratconfig::ConfigUiField {
+    let current = get_toml_path(active, spec.path());
+    let default = get_toml_path(packaged_defaults, spec.path()).or_else(|| spec.default());
+    let capability = spec.capability();
+    let editable = !matches!(capability, ConfigUiCapability::ReadOnly { .. });
+    let invalid = editable && current.is_some_and(|value| spec.validate(value).is_err());
+    let mut field = ConfigUiFieldSpec {
+        section_label: spec.group().to_string(),
+        can_unset: editable && current.is_some(),
+        ..ConfigUiFieldSpec::new(
+            SOURCE_MARS,
+            spec.path(),
+            TAB_MARS,
+            spec.description(),
+            capability,
+            spec.validation(),
+            mars_apply_status(spec.path()),
+        )
+    }
+    .build(spec.type_label(), current, default);
+    set_snapshot_origins(&mut field, SOURCE_MARS);
     if invalid {
         field.snapshot.intent = ConfigUiOverride::Invalid {
             input: current.map_or_else(String::new, ToString::to_string),
@@ -854,7 +918,11 @@ fn mars_apply_status(path: &str) -> ConfigUiApplyStatus {
             "mars",
             "Saved bell settings apply to the next bell in open Mars windows.",
         ),
-        _ => unreachable!("Mars field {path} has no apply timing"),
+        _ => (
+            "next launch",
+            "mars",
+            "This setting is not verified for live reload; saved values apply to newly launched Mars.",
+        ),
     };
 
     apply_status(summary, label, detail)

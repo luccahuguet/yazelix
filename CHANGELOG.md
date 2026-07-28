@@ -4,6 +4,15 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## Unreleased
 
+- Ratconfig's Mars tab consumes the complete schema-v1 inventory from the exact
+  pinned Mars source instead of an eight-field Yazelix mirror. Overview
+  recommends 15 common settings; All exposes 150 public rows after omitting
+  `mars.appearance.preset`, and search spans the full set. Owner groups,
+  descriptions, choices, defaults, and availability remain visible. Safe
+  scalars and finite choices, including all four `window.blur` values, persist
+  as sparse overrides; unsupported structured and unvalidated shapes stay
+  read-only without adding a Mars native-file action. Malformed Mars TOML is a
+  source-scoped diagnostic, and Home Manager ownership remains read-only.
 - Ratconfig consumes the pinned Yazelix Cursors field catalog instead of a
   duplicate local list. The Cursors inventory includes schema metadata, all
   finite settings and allowed values, plus one searchable read-only collection

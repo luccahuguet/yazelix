@@ -76,6 +76,23 @@ pub(crate) const ZELLIJ_RECOMMENDED_PATHS: &[&str] = &[
 pub(crate) const DEFAULT_MARS_CONFIG_TOML: &str =
     include_str!("../../../defaults/mars/config.toml");
 pub(crate) const MARS_APPEARANCE_PRESET_PATH: &str = "mars.appearance.preset";
+pub(crate) const MARS_RECOMMENDED_PATHS: &[&str] = &[
+    "window.width",
+    "window.height",
+    "window.mode",
+    "window.decorations",
+    "window.opacity",
+    "window.opacity-cells",
+    "window.blur",
+    "fonts.family",
+    "fonts.size",
+    "line-height",
+    "confirm-before-quit",
+    "copy-on-select",
+    "hide-mouse-cursor-when-typing",
+    "bell.audio",
+    "bell.visual",
+];
 pub(crate) const CURSOR_ENABLED_PATH: &str = "enabled_cursors";
 pub(crate) const CURSOR_TRAIL_PATH: &str = "settings.trail";
 pub(crate) const CURSOR_RECOMMENDED_PATHS: &[&str] = &[
@@ -380,17 +397,6 @@ pub(crate) const MARS_APPEARANCE_FIELD: FieldSpec = FieldSpec::string_choice(
     "dark or light",
 );
 
-pub(crate) const MARS_FIELDS: &[FieldSpec] = &[
-    FieldSpec::integer("window.width", "Initial Mars window width.", "pixels"),
-    FieldSpec::integer("window.height", "Initial Mars window height.", "pixels"),
-    FieldSpec::float("window.opacity", "Mars window opacity.", "0.0 to 1.0"),
-    FieldSpec::float("fonts.size", "Mars font size.", "points"),
-    FieldSpec::float("line-height", "Mars line height multiplier.", "multiplier"),
-    FieldSpec::boolean("enable-scroll-bar", "Show the Mars scrollbar."),
-    FieldSpec::boolean("bell.audio", "Play the Mars terminal bell."),
-    FieldSpec::boolean("bell.visual", "Flash the Mars visual bell."),
-];
-
 pub(crate) const STARSHIP_FIELDS: &[FieldSpec] = &[FieldSpec::string_choice(
     "character.format",
     "Command-entry prompt shown below Starship context.",
@@ -476,14 +482,6 @@ impl FieldSpec {
         validation: &'static str,
     ) -> Self {
         Self::new(path, "integer", description, &[], validation)
-    }
-
-    const fn float(
-        path: &'static str,
-        description: &'static str,
-        validation: &'static str,
-    ) -> Self {
-        Self::new(path, "float", description, &[], validation)
     }
 
     const fn string_choice(

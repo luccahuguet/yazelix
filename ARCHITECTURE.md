@@ -92,11 +92,15 @@ One owner per concern. Paths are the durable map.
 
 `crates/yzx-config/` is the Ratconfig host.
 
-- Supplies one stable source/path identity per field and reviewed root, cursor,
-  and Zellij recommendation allowlists. Ratconfig owns Overview/All filtering,
+- Supplies one stable source/path identity per field and reviewed root, Mars,
+  cursor, and Zellij recommendation allowlists. Ratconfig owns Overview/All filtering,
   meaningful reduction thresholds, attention-state visibility, toggling, and
-  All-scope search. Other non-root inventories remain recommended until their
-  owners receive a narrower review
+  All-scope search
+- Consumes the versioned catalog from the exact pinned Mars source at build
+  time. Mars owns field completeness and semantic metadata; Yazelix owns the
+  single appearance exclusion, recommendation set, conservative apply labels,
+  and the bounded mapping from owner shapes to sparse inline controls. The
+  compiled consumer does not retain Mars in no-Mars runtime closures
 - Resolves sparse override intent separately from baseline and effective values,
   declares editor capabilities independently of display types, and completes
   reloads by field identity rather than stale row position
@@ -418,7 +422,7 @@ Detail lives in Owners, checks, and the notes below.
 | ID | Contract | Owner | Check | Gap |
 | --- | --- | --- | --- | --- |
 | C11a | Root semantic schema + sparse persistence | `yzx-config`, `defaults/config.toml` | config tests + contracts | UI |
-| C11b | Popups/Mars/Cursors/Zellij/Starship tabs; session Zellij active-file patch | `yzx-config` | config tests + contracts | Session live scalars |
+| C11b | Popups/Mars/Cursors/Zellij/Starship tabs; complete pinned Mars inventory with sparse bounded controls; session Zellij active-file patch | Mars catalog + `yzx-config` | config tests + contracts | Session live scalars |
 | C11c | Helix tab + `yzx-hx` merge / `Alt r` / Steel | `yzx-config`, helix, `yzx-hx` | `helix-contracts` + config tests | UI |
 | C11d | Keys read-only + Advanced open-file | `yzx-config` | Keys/Advanced tests, key parity | UI |
 

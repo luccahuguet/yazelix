@@ -3,7 +3,7 @@
 `yzx config` opens Nova's Ratconfig interface. It shows packaged defaults,
 persists explicit overrides, exposes advanced native files, and identifies
 Home Manager-owned configuration as declarative. Yazelix maintains reviewed
-recommendation sets for Main, Popups, Cursors, and Zellij; other non-root
+recommendation sets for Main, Popups, Mars, Cursors, and Zellij; other non-root
 inventories recommend all of their fields. Overview also includes explicit, invalid,
 externally managed, and field-diagnosed settings. All adds fine tuning and
 configured custom-popup fields. Normal-mode `a` switches between Overview and
@@ -126,7 +126,7 @@ ids that do not exist are not invented; open `config.toml` to add them
 | File | Owner | Notes |
 | --- | --- | --- |
 | `cursors.toml` | Yazelix Cursors | Shared cursor pool, selection, effects, and dynamic definitions. Ratconfig consumes the pinned child-owned field catalog, keeps schema metadata and definition tables read-only with this exact file action, preserves custom source text, and removes finite assignments on reset so they inherit child-owned defaults |
-| `mars/config.toml` | Mars | Sparse overrides for window size, opacity, font, scrollbar, and bell. Yazelix manages only `mars.appearance.preset` as the projection of root `appearance.mode` |
+| `mars/config.toml` | Mars | Sparse overrides over the pinned Mars public inventory. Ratconfig recommends 15 common controls and exposes every other owner-advertised setting in All. Safe scalars and finite choices are editable; tables, structured collections, colors, and unvalidated numeric shapes remain read-only without a Mars file action. Yazelix separately manages only `mars.appearance.preset` as the projection of root `appearance.mode`, so that native path is omitted from the Mars tab |
 | `zellij/config.kdl` | Zellij sidecar | Sparse safe scalar overrides where absent assignments inherit packaged defaults. The Zellij tab keeps themes, pane frames, mouse mode, copy-on-select, and rounded corners in Overview; All adds scrollback size, clipboard target, styled underlines, and startup tips. Search covers the typed fields and the exact native-file action. Safe untyped leaves remain unchanged without a UI row or informational diagnostic per leaf. Advanced diagnostics report only ignored, invalid, structurally unsafe, or integration-owned state; guarded diagnostics name the Yazelix owner. Ratconfig does not claim a complete Zellij schema. A legacy static `theme` assignment remains preserved but omitted from managed runtime. Inside a session, saves and resets also patch the active runtime config. Structural comments or continuations, extra managed-block metadata, other structured native nodes, and integration-owned nodes block unsafe writes |
 | `zellij/plugins.kdl` | Zellij plugin sidecar | Extra plugin declarations only. Packaged plugin ids cannot be redeclared |
 | `starship.toml` | Starship | Sparse native prompt overrides. Ratconfig curates only `character.format`; absent layout fields retain Starship defaults |
@@ -296,6 +296,19 @@ materializes that sparse marker override under runtime state without setting
 top-level `format`, so Starship retains its native `$all` layout. Mars and Zellij
 layer their sparse files over packaged configuration directly. Untouched
 defaults follow upgrades
+
+The Mars tab is derived from
+`docs/yazelix/config_inventory.v1.json` in the exact pinned Mars source rather
+than a Yazelix field mirror. All contains 150 public rows after deliberately
+filtering `mars.appearance.preset`; Overview contains the 15 common window,
+font, input, and bell recommendations plus any explicit, invalid, diagnosed, or
+Home Manager-owned advanced value. Owner descriptions, groups, choices,
+defaults, and platform or feature availability remain attached to their rows.
+Booleans, strings, enums, the finite `window.blur` union, and the previously
+validated width, height, opacity, font-size, and line-height controls can be
+saved sparsely. Other unions, tables, lists, colors, and numeric shapes stay
+searchable and read-only until Mars publishes a validation boundary suitable
+for inline persistence. Ratconfig does not add a `mars/config.toml` action.
 
 Yazi's compact Starship header mirrors the default contextual module coverage.
 Directory and Git retain compact text; every other decoration renders only its
