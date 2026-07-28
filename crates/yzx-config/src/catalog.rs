@@ -390,13 +390,6 @@ pub(crate) const CONFIG_FIELDS: &[ConfigFieldSpec] = &[
     },
 ];
 
-pub(crate) const MARS_APPEARANCE_FIELD: FieldSpec = FieldSpec::string_choice(
-    MARS_APPEARANCE_PRESET_PATH,
-    "Mars terminal appearance preset managed by appearance.mode.",
-    &["dark", "light"],
-    "dark or light",
-);
-
 pub(crate) const STARSHIP_FIELDS: &[FieldSpec] = &[FieldSpec::string_choice(
     "character.format",
     "Command-entry prompt shown below Starship context.",

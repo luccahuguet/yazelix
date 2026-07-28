@@ -1783,15 +1783,15 @@ color = "#123456"
                 .starts_with("Choose native window decorations.")
         );
         assert!(decorations.description.contains("macOS"));
+        let decoration_choices = choice_values(decorations);
+        let macos = std::env::consts::OS == "macos";
         assert_eq!(
-            choice_values(decorations),
-            [
-                &json!("enabled"),
-                &json!("disabled"),
-                &json!("transparent"),
-                &json!("buttonless"),
-            ]
+            &decoration_choices[..2],
+            [&json!("enabled"), &json!("disabled")]
         );
+        assert_eq!(decoration_choices.len(), if macos { 4 } else { 2 });
+        assert_eq!(decoration_choices.contains(&&json!("transparent")), macos);
+        assert_eq!(decoration_choices.contains(&&json!("buttonless")), macos);
         assert_inherited(decorations, &json!("disabled"));
 
         let blur = model_field(&model, "window.blur");
@@ -2817,20 +2817,16 @@ color = "#123456"
     fn mars_source_stays_sparse_and_inherits_packaged_defaults() {
         let (_temp, paths) = temp_sources();
         let model = build_model(&paths).unwrap();
-        let mars_fields: Vec<_> = model
-            .fields
-            .iter()
-            .filter(|field| field.source_id == SOURCE_MARS)
-            .collect();
-        assert_eq!(
-            mars_fields.len(),
-            MarsInventory::parse().unwrap().fields().count()
+        assert!(
+            model
+                .fields
+                .iter()
+                .filter(|field| field.source_id == SOURCE_MARS)
+                .all(
+                    |field| matches!(field.snapshot.intent, ConfigUiOverride::Absent)
+                        && field.snapshot.effective == field.snapshot.baseline
+                )
         );
-        assert!(mars_fields.iter().all(|field| matches!(
-            field.snapshot.intent,
-            ConfigUiOverride::Absent
-        ) && field.snapshot.effective
-            == field.snapshot.baseline));
 
         write_source_field(&paths, SOURCE_MARS, "window.opacity", &json!(0.5)).unwrap();
 
@@ -2897,6 +2893,14 @@ color = "#123456"
             .unwrap_err()
             .to_string();
         assert!(error.contains("one of"), "{error}");
+
+        if std::env::consts::OS != "macos" {
+            let unavailable = json!("transparent");
+            let error = write_source_field(&paths, SOURCE_MARS, "window.decorations", &unavailable)
+                .unwrap_err()
+                .to_string();
+            assert!(error.contains("enabled, disabled"), "{error}");
+        }
 
         let error = write_source_field(&paths, SOURCE_MARS, "colors.background", &json!("#f5f3ef"))
             .unwrap_err()

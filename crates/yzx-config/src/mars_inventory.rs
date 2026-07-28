@@ -106,7 +106,7 @@ impl<'a> MarsField<'a> {
             "string" => "a string".to_string(),
             "enum" | "union" if self.entry["choices"].is_array() => format!(
                 "one of: {}",
-                self.choices()
+                self.available_choices()
                     .map(choice_value)
                     .map(display_value)
                     .collect::<Vec<_>>()
@@ -124,7 +124,7 @@ impl<'a> MarsField<'a> {
     }
 
     pub(crate) fn capability(self) -> ConfigUiCapability {
-        if !self.available_here() {
+        if !available_on_current_platform(&self.entry["constraints"]) {
             return ConfigUiCapability::ReadOnly {
                 reason: format!(
                     "This setting is available only on {}.",
@@ -143,7 +143,7 @@ impl<'a> MarsField<'a> {
             },
             "enum" | "union" if self.entry["choices"].is_array() => ConfigUiCapability::Choice {
                 choices: self
-                    .choices()
+                    .available_choices()
                     .map(choice_value)
                     .cloned()
                     .map(ConfigUiChoice::new)
@@ -167,9 +167,7 @@ impl<'a> MarsField<'a> {
         match self.type_label() {
             "boolean" if value.is_boolean() => Ok(()),
             "string" if value.is_string() => Ok(()),
-            "enum" | "union" if self.choices().any(|choice| choice_value(choice) == value) => {
-                Ok(())
-            }
+            "enum" | "union" if self.accepts_choice(value) => Ok(()),
             "integer" if self.has_numeric_validator() => {
                 if json_i64(self.path(), value)? > 0 {
                     Ok(())
@@ -201,6 +199,16 @@ impl<'a> MarsField<'a> {
         self.entry["choices"].as_array().into_iter().flatten()
     }
 
+    fn available_choices(self) -> impl Iterator<Item = &'a JsonValue> {
+        self.choices()
+            .filter(|choice| available_on_current_platform(choice))
+    }
+
+    fn accepts_choice(self, value: &JsonValue) -> bool {
+        self.available_choices()
+            .any(|choice| choice_value(choice) == value)
+    }
+
     fn resolved_shape(self) -> &'a JsonValue {
         let shape = &self.entry["shape"];
         shape
@@ -214,16 +222,6 @@ impl<'a> MarsField<'a> {
             self.path(),
             "window.width" | "window.height" | "window.opacity" | "fonts.size" | "line-height"
         )
-    }
-
-    fn available_here(self) -> bool {
-        self.entry["constraints"]["platforms"]
-            .as_array()
-            .is_none_or(|platforms| {
-                platforms
-                    .iter()
-                    .any(|platform| platform == std::env::consts::OS)
-            })
     }
 }
 
@@ -240,7 +238,7 @@ fn display_value(value: &JsonValue) -> String {
 
 fn availability(value: &JsonValue) -> Option<String> {
     if let Some(note) = value.get("availability").and_then(JsonValue::as_str) {
-        return Some(note.to_string());
+        return Some(note.trim_end_matches('.').to_string());
     }
     let mut parts = Vec::new();
     if let Some(platforms) = value.get("platforms").and_then(JsonValue::as_array) {
@@ -269,4 +267,12 @@ fn availability(value: &JsonValue) -> Option<String> {
         ));
     }
     (!parts.is_empty()).then(|| parts.join("; "))
+}
+
+fn available_on_current_platform(value: &JsonValue) -> bool {
+    value["platforms"].as_array().is_none_or(|platforms| {
+        platforms
+            .iter()
+            .any(|platform| platform == std::env::consts::OS)
+    })
 }

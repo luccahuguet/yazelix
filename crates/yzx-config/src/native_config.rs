@@ -5,7 +5,7 @@ use serde_json::Value as JsonValue;
 use toml::Value as TomlValue;
 use yazelix_cursors::{CursorRegistry, cursor_config_field_specs};
 
-use crate::{catalog::*, common::*, mars_inventory::MarsInventory};
+use crate::{catalog::*, common::*, mars_inventory::MarsInventory, root_config::config_field};
 
 pub(crate) fn write_cursor_config_field(
     path: &Path,
@@ -47,7 +47,8 @@ pub(crate) fn write_mars_config_field(
     value: &JsonValue,
 ) -> Result<()> {
     if field_path == MARS_APPEARANCE_PRESET_PATH {
-        MARS_APPEARANCE_FIELD.json_choice(value)?;
+        let appearance = config_field(APPEARANCE_MODE_PATH)?;
+        appearance.field.json_choice(value)?;
     } else {
         let inventory = MarsInventory::parse()?;
         let field = inventory

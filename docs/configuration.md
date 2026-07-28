@@ -304,11 +304,13 @@ filtering `mars.appearance.preset`; Overview contains the 15 common window,
 font, input, and bell recommendations plus any explicit, invalid, diagnosed, or
 Home Manager-owned advanced value. Owner descriptions, groups, choices,
 defaults, and platform or feature availability remain attached to their rows.
-Booleans, strings, enums, the finite `window.blur` union, and the previously
-validated width, height, opacity, font-size, and line-height controls can be
-saved sparsely. Other unions, tables, lists, colors, and numeric shapes stay
-searchable and read-only until Mars publishes a validation boundary suitable
-for inline persistence. Ratconfig does not add a `mars/config.toml` action.
+Choices limited to another platform remain documented but are not offered by
+the picker. Booleans, strings, enums, the finite `window.blur` union, and the
+previously validated width, height, opacity, font-size, and line-height controls
+can be saved sparsely. Other unions, tables, lists, colors, and numeric shapes
+stay searchable and read-only until Mars publishes a validation boundary
+suitable for inline persistence. Ratconfig does not add a `mars/config.toml`
+action.
 
 Yazi's compact Starship header mirrors the default contextual module coverage.
 Directory and Git retain compact text; every other decoration renders only its

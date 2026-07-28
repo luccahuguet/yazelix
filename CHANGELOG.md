@@ -8,7 +8,8 @@ User-visible runtime changes for Yazelix Nova live here.
   pinned Mars source instead of an eight-field Yazelix mirror. Overview
   recommends 15 common settings; All exposes 150 public rows after omitting
   `mars.appearance.preset`, and search spans the full set. Owner groups,
-  descriptions, choices, defaults, and availability remain visible. Safe
+  descriptions, choices, defaults, and availability remain visible;
+  platform-restricted choices are offered only on their matching platform. Safe
   scalars and finite choices, including all four `window.blur` values, persist
   as sparse overrides; unsupported structured and unvalidated shapes stay
   read-only without adding a Mars native-file action. Malformed Mars TOML is a
