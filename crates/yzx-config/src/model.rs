@@ -66,7 +66,11 @@ pub(crate) fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
             zellij_themes.push(custom.to_string());
         }
     }
-    let yazi = build_yazi_fields(paths)?;
+    let light = ratconfig::get_json_path(&config_active, APPEARANCE_MODE_PATH)
+        .or_else(|| ratconfig::get_json_path(&config_default, APPEARANCE_MODE_PATH))
+        .and_then(JsonValue::as_str)
+        == Some("light");
+    let yazi = build_yazi_fields(paths, light)?;
     let file_actions = build_file_actions(paths);
 
     let mut fields: Vec<_> = CONFIG_FIELDS
@@ -165,7 +169,7 @@ pub(crate) fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
             read_only: true,
         },
     ];
-    let mut fields = fields.into_iter().chain(yazi).collect::<Vec<_>>();
+    fields.extend(yazi);
     apply_source_policy(&mut fields, &sources);
     if !root_document_valid {
         for field in fields
@@ -199,6 +203,10 @@ pub(crate) fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
                 SOURCE_MARS => MARS_RECOMMENDED_PATHS.contains(&field.path.as_str()),
                 SOURCE_CURSORS => CURSOR_RECOMMENDED_PATHS.contains(&field.path.as_str()),
                 SOURCE_ZELLIJ => ZELLIJ_RECOMMENDED_PATHS.contains(&field.path.as_str()),
+                SOURCE_YAZI_CONFIG | SOURCE_YAZI_THEME => {
+                    crate::yazi_config::YAZI_RECOMMENDED_FIELDS
+                        .contains(&(field.source_id.as_str(), field.path.as_str()))
+                }
                 _ => true,
             })
             .map(|field| ConfigUiFieldId::new(&field.source_id, &field.path))

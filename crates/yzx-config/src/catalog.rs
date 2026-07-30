@@ -156,8 +156,6 @@ pub(crate) const YAZI_INIT_STARTER: &str = "-- Loaded after Yazelix Nova package
 pub(crate) const YAZI_KEYMAP_STARTER: &str =
     "# Loaded after Yazelix Nova packaged yazi/keymap.toml.\n";
 pub(crate) const YAZI_PACKAGE_STARTER: &str = "# Managed Yazi package metadata. Yazelix does not run ya pkg.\n[plugin]\ndeps = []\n\n[flavor]\ndeps = []\n";
-pub(crate) const YAZI_THEME_BASELINE: &str =
-    "# Managed native Yazi theme config.\n[flavor]\ndark = \"\"\nlight = \"\"\n";
 pub(crate) const YAZI_THEME_STARTER: &str = "# Managed native Yazi theme config.\n";
 pub(crate) const ZELLIJ_CONFIG_STARTER: &str =
     "// Sparse native Zellij overrides layered over Yazelix packaged configuration.\n";

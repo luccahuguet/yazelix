@@ -32,17 +32,17 @@ composes their package outputs.
 
 | Measure | Nova | Classic |
 | --- | --- | --- |
-| Code and configuration (Rust, Nix, shell, TOML, etc.) | **21,201 LOC** | **91,545 LOC** |
-| Rust | **18,099 LOC** | **80,957 LOC** |
+| Code and configuration (Rust, Nix, shell, TOML, etc.) | **21,716 LOC** | **91,545 LOC** |
+| Rust | **18,601 LOC** | **80,957 LOC** |
 | Ownership model | One owner per concern | Overlapping responsibilities across layers |
 | Yazelix component boundaries | Independent, versioned packages | Child repos mixed with main-repo ownership |
 | Product experience | More features, stronger defaults, tighter integration, and polished UX | Fewer features and a less cohesive workspace |
 | Status | Recommended | Frozen migration and rollback path |
 
-Nova owns **70,344 fewer lines**, a **77% reduction**. Classic's Rust code
-alone is 3.8 times larger than Nova's entire code and configuration surface.
+Nova owns **69,829 fewer lines**, a **76% reduction**. Classic's Rust code
+alone is 3.7 times larger than Nova's entire code and configuration surface.
 
-Nova delivers more features in 23% of the code. It has a clearer configuration
+Nova delivers more features in 24% of the code. It has a clearer configuration
 model, tighter editor and Yazi integration, stronger diagnostics, and a
 coherent popup-oriented interface. The smaller architecture makes Yazelix
 easier to improve and better to use.
@@ -61,8 +61,9 @@ and dogfooded `main` revision at most once per week. Use `main` for more constan
 immutable `nova-v*` tag for an exact release.
 
 Linux is the dogfooded platform. CI builds all packages and a Home Manager
-activation on `aarch64-darwin`, while interactive macOS use and the Mars GUI
-remain unverified.
+activation on `aarch64-darwin`. Sustained interactive macOS beta use has found
+no known regression; the earlier per-command checklist and Mars GUI remain
+unverified.
 
 ### Try without installing
 
@@ -271,6 +272,14 @@ platform. Structured settings remain read-only and do not invent a second Mars
 schema or native-file action. `mars.appearance.preset` is omitted because root
 `appearance.mode` is the product appearance control.
 
+The Yazi tab consumes the native presets and official schemas paired with the
+packaged Yazi version. Overview recommends ten common manager, preview, and
+flavor controls. All exposes 204 base settings plus the five exact native-file
+actions; search includes schema settings absent from both packaged and user
+TOML. Owner-validated booleans, choices, and unconstrained strings are editable.
+Numeric, structured, dynamic, and otherwise incompletely validated values open
+their native file instead.
+
 `appearance.mode` selects `dark` or `light` for managed Yazelix components and
 also controls Ratconfig's palette. In packages with Mars, Yazelix projects that
 value to only `mars.appearance.preset` when its native config is a writable
@@ -322,6 +331,6 @@ See [Development](docs/development.md) for CI and local checks,
 
 ## LOC Scorecard
 
-Yazelix owns **24,186 lines** of tracked text project files. The
+Yazelix owns **24,730 lines** of tracked text project files. The
 [reproducible scorecard](docs/development.md#loc-scorecard) excludes Beads,
 lockfiles, and binary assets.

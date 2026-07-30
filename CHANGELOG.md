@@ -4,6 +4,20 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## Unreleased
 
+- Ratconfig's Yazi tab consumes the official schema revision paired with
+  packaged Yazi 26.5.6 and joins it to Yazi's native presets instead of treating
+  only observed TOML as the inventory. All exposes 204 base settings plus the
+  five native-file actions, and search finds finite settings absent from both
+  packaged and user TOML. Overview recommends ten manager, preview, and flavor
+  controls. Explicit and invalid state remains visible, including scalars that
+  block known object subtrees. Schema-authorized booleans, choices, and strings
+  use sparse inline edits, and enum-only choices retain their string type.
+  Numeric, structured, dynamic, and unsafe paths stay read-only with their exact
+  file action. Valid explicit quoted `$schema` metadata remains read-only, while
+  wrong-typed metadata remains visible as invalid; quoted custom keys keep
+  neutral source grouping. Native opener entries, flavor discovery,
+  appearance-selected theme defaults, managed integrations, and materialization
+  retain their existing owners.
 - Ratconfig's Mars tab consumes the complete schema-v1 inventory from the exact
   pinned Mars source instead of an eight-field Yazelix mirror. Overview
   recommends 15 common settings; All exposes 150 public rows after omitting

@@ -59,6 +59,10 @@
       url = "github:luccahuguet/yazi-bistro";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    yaziSchemas = {
+      url = "github:yazi-rs/schemas/c24ee499e7ba84b89fcc7357f6c40aeadc5000a5";
+      flake = false;
+    };
     zjstatus = {
       url = "github:luccahuguet/zjstatus/yazelix-tab-activity-pipe";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -80,6 +84,7 @@
     autoLayoutYazi,
     starshipYazi,
     yaziBistro,
+    yaziSchemas,
     zjstatus,
   }: let
     novaVersion = "1.0.0-beta.3";
@@ -317,11 +322,19 @@
       yzxYaziToml = pkgs.replaceVars ./defaults/yazi/yazi.toml {
         opener = "YZX_ZELLIJ=${yazelixZellijPackage}/bin/zellij ${yzxOpenCore}/bin/yzx-open";
       };
-      yzxYaziConfig = pkgs.runCommand "yzx-yazi-config" {} ''
+      yzxYaziConfig =
+        assert pkgs.yazi-unwrapped.version == "26.5.6";
+          pkgs.runCommand "yzx-yazi-config" {} ''
         install -D -m 644 ${./defaults/yazi/init.lua} "$out/init.lua"
         install -D -m 644 ${./defaults/yazi/keymap.toml} "$out/keymap.toml"
         install -D -m 644 ${yzxYaziToml} "$out/yazi.toml"
         install -D -m 644 ${./defaults/yazi/yazelix_starship.toml} "$out/yazelix_starship.toml"
+        install -D -m 644 ${pkgs.yazi-unwrapped.srcs.code_src}/yazi-config/preset/yazi-default.toml "$out/yazi-default.toml"
+        install -D -m 644 ${pkgs.yazi-unwrapped.srcs.code_src}/yazi-config/preset/theme-dark.toml "$out/theme-dark.toml"
+        install -D -m 644 ${pkgs.yazi-unwrapped.srcs.code_src}/yazi-config/preset/theme-light.toml "$out/theme-light.toml"
+        install -D -m 644 ${yaziSchemas}/schemas/yazi.json "$out/yazi-schema.json"
+        install -D -m 644 ${yaziSchemas}/schemas/theme.json "$out/theme-schema.json"
+        install -D -m 644 ${yaziSchemas}/LICENSE "$out/share/licenses/yazi-schemas/LICENSE"
         mkdir -p "$out/plugins"
         install -D -m 644 ${./defaults/yazi/plugins/sidebar-state.yazi/main.lua} "$out/plugins/sidebar-state.yazi/main.lua"
         install -D -m 644 ${./defaults/yazi/plugins/sidebar-status.yazi/main.lua} "$out/plugins/sidebar-status.yazi/main.lua"

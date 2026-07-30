@@ -3,12 +3,12 @@
 `yzx config` opens Nova's Ratconfig interface. It shows packaged defaults,
 persists explicit overrides, exposes advanced native files, and identifies
 Home Manager-owned configuration as declarative. Yazelix maintains reviewed
-recommendation sets for Main, Popups, Mars, Cursors, and Zellij; other non-root
-inventories recommend all of their fields. Overview also includes explicit, invalid,
-externally managed, and field-diagnosed settings. All adds fine tuning and
-configured custom-popup fields. Normal-mode `a` switches between Overview and
-All only when Overview hides at least three fields and one quarter of the tab.
-Search spans All without changing the saved view
+recommendation sets for Main, Popups, Mars, Cursors, Zellij, and Yazi; other
+non-root inventories recommend all of their fields. Overview also includes
+explicit, invalid, externally managed, and field-diagnosed settings. All adds
+fine tuning and configured custom-popup fields. Normal-mode `a` switches between
+Overview and All only when Overview hides at least three fields and one quarter
+of the tab. Search spans All without changing the saved view
 
 On a free-form setting, `Enter` starts single-line inline editing and `e` opens
 the same staged value in `editor.command`. Inline editing supports Left/Right,
@@ -136,11 +136,11 @@ ids that do not exist are not invented; open `config.toml` to add them
 | `helix/init.scm` | Helix Steel | Loaded with `helix/helix.scm` when the pair exists |
 | `nu/env.nu` | Nushell | Loaded after packaged Yazelix env |
 | `nu/config.nu` | Nushell | Loaded after packaged Yazelix config |
-| `yazi/yazi.toml` | Yazi | Native tables merge recursively, while user scalars and arrays replace packaged values. Ratconfig renders safe existing values in its Yazi tab |
+| `yazi/yazi.toml` | Yazi | Native tables merge recursively, while user scalars and arrays replace packaged values. Ratconfig joins the official schema paired with packaged Yazi 26.5.6 to its native preset and the sparse user file. Overview recommends eight manager and preview controls; All exposes 95 finite or preset-observed base rows |
 | `yazi/init.lua` | Yazi | Appended after packaged Yazi init |
 | `yazi/keymap.toml` | Yazi | Appended after packaged Yazi keymap |
 | `yazi/starship.toml` | Yazi Starship | Complete replacement for Nova's packaged compact Starship header config |
-| `yazi/theme.toml` | Yazi | Native theme config. Ratconfig provides separate dark/light flavor pools and preserves explicit choices; Yazelix projects the side selected by root `appearance.mode` only into generated runtime config |
+| `yazi/theme.toml` | Yazi | Native theme config. Ratconfig joins the paired official schema to Yazi's dark or light preset, exposes all 109 fields, provides separate installed flavor pools, and preserves explicit choices. Yazelix projects the side selected by root `appearance.mode` only into generated runtime config |
 | `yazi/package.toml` | Yazi | Opaque package metadata that Yazelix does not process with `ya pkg` |
 
 The managed Yazi merge restores Yazelix's edit opener and its two sidebar Git
@@ -180,16 +180,21 @@ Use another source for a dedicated compact header. Omitting `yazi.starship`
 keeps Nova's packaged header even when the managed shell uses `starship`.
 
 Ratconfig's Yazi tab reads the sparse user `yazi.toml` against Nova's packaged
-layer and reads native `theme.toml`. Strings, booleans, integers, finite floats,
-and non-empty string arrays with safe dotted paths are editable; complex tables,
-empty or complex arrays, non-finite floats, and quoted paths remain
-read-only rows with compact previews of their complete values. On a writable
-source, press `e` on a structured `yazi.toml` or `theme.toml` row to open that
-exact file; read-only sources retain their ownership guidance. The file actions
-in the same tab also open those files plus `keymap.toml`, `package.toml`, and
-`init.lua` for complete native editing. A setting added through the file action
-appears in Ratconfig after the editor closes. Structured saves apply on the next
-managed Yazi launch or sidebar reopen
+layer and reads native `theme.toml` against the dark or light Yazi preset
+selected by root `appearance.mode`. The version-paired official schemas add
+known settings absent from both documents, so All exposes 204 base settings and
+search spans the complete finite catalog. Overview recommends manager layout,
+sorting, line mode, visibility, preview wrapping, and the two flavor choices;
+explicit or invalid advanced settings remain visible there too
+
+Schema booleans, finite string choices, and unconstrained strings with a safe
+sparse TOML path are editable. Numeric, structured, reference-defined, dynamic,
+and inline-table-blocked values remain read-only with the exact native-file
+action. Existing dynamic opener entries remain visible without pretending
+arbitrary opener names form a finite schema. `keymap.toml`, `package.toml`, and
+`init.lua` remain honest file actions rather than synthetic scalar inventories.
+A setting added through a file action appears after the editor closes. Saved
+native values apply on the next managed Yazi launch or sidebar reopen
 
 ### Yazi flavors
 

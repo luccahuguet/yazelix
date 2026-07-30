@@ -154,6 +154,14 @@ mod tests {
         DEFAULT_CURSOR_CONFIG_TEMPLATE, cursor_config_field_specs, load_cursor_config,
     };
 
+    const YAZI_THEME_BASELINE: &str =
+        "# Managed native Yazi theme config.\n[flavor]\ndark = \"\"\nlight = \"\"\n";
+    const YAZI_LIGHT_THEME_BASELINE: &str = "# Managed native Yazi theme config.\n[flavor]\ndark = \"\"\nlight = \"\"\n\n[mgr]\ncwd = { fg = \"white\" }\n";
+
+    fn object_schema(properties: JsonValue) -> JsonValue {
+        json!({"type": "object", "properties": properties})
+    }
+
     struct TempHome {
         path: PathBuf,
     }
@@ -183,6 +191,37 @@ mod tests {
         let packaged_yazi = temp.path.join("packaged-yazi");
         fs::create_dir_all(&packaged_yazi).unwrap();
         fs::write(packaged_yazi.join("yazi.toml"), "").unwrap();
+        fs::write(packaged_yazi.join("yazi-default.toml"), "").unwrap();
+        fs::write(packaged_yazi.join("theme-dark.toml"), YAZI_THEME_BASELINE).unwrap();
+        fs::write(
+            packaged_yazi.join("theme-light.toml"),
+            YAZI_LIGHT_THEME_BASELINE,
+        )
+        .unwrap();
+        fs::write(
+            packaged_yazi.join("yazi-schema.json"),
+            object_schema(json!({})).to_string(),
+        )
+        .unwrap();
+        fs::write(
+            packaged_yazi.join("theme-schema.json"),
+            object_schema(json!({
+                "$schema": {"type": "string"},
+                "flavor": object_schema(json!({
+                    "dark": {"type": "string"},
+                    "light": {"type": "string"}
+                })),
+                "mgr": object_schema(json!({"cwd": {}})),
+                "tabs": object_schema(json!({
+                    "sep_inner": object_schema(json!({
+                        "open": {"type": "string"},
+                        "close": {"type": "string"}
+                    }))
+                }))
+            }))
+            .to_string(),
+        )
+        .unwrap();
         ConfigPaths {
             store_root: temp.path.join("store"),
             root: temp.path.join("config.toml"),
@@ -364,6 +403,27 @@ mod tests {
             .iter()
             .find(|field| field.path == path)
             .unwrap_or_else(|| panic!("missing config field {path}"))
+    }
+
+    fn source_field<'a>(
+        model: &'a ConfigUiModel,
+        source_id: &str,
+        path: &str,
+    ) -> &'a ratconfig::ConfigUiField {
+        model
+            .fields
+            .iter()
+            .find(|field| field.source_id == source_id && field.path == path)
+            .unwrap_or_else(|| panic!("missing {source_id} config field {path}"))
+    }
+
+    fn assert_invalid(field: &ratconfig::ConfigUiField, input: &str) {
+        assert_eq!(
+            field.snapshot.intent,
+            ConfigUiOverride::Invalid {
+                input: input.to_string()
+            }
+        );
     }
 
     fn field_index(model: &ConfigUiModel, source_id: &str, path: &str) -> usize {
@@ -1066,7 +1126,12 @@ mod tests {
                 .filter(|field| {
                     !matches!(
                         field.source_id.as_str(),
-                        SOURCE_CONFIG | SOURCE_MARS | SOURCE_CURSORS | SOURCE_ZELLIJ
+                        SOURCE_CONFIG
+                            | SOURCE_MARS
+                            | SOURCE_CURSORS
+                            | SOURCE_ZELLIJ
+                            | SOURCE_YAZI_CONFIG
+                            | SOURCE_YAZI_THEME
                     )
                 })
                 .all(|field| {
@@ -1490,6 +1555,10 @@ color = "#123456"
         write_toml_value(&paths.root, APPEARANCE_MODE_PATH, &json!("light"));
 
         let model = build_model(&paths).unwrap();
+        assert_eq!(
+            baseline_value(source_field(&model, SOURCE_YAZI_THEME, "mgr.cwd")),
+            Some(&json!({"fg": "white"}))
+        );
         assert_eq!(
             ConfigUiApp::try_new(model).unwrap().active_theme(),
             ConfigUiTheme::Light
@@ -2207,12 +2276,7 @@ color = "#123456"
         let paths = ensure_config_sources_at(temp_paths(&temp)).unwrap();
         let model = build_model(&paths).unwrap();
         let field = model_field(&model, OPEN_LOG_LEVEL_PATH);
-        assert_eq!(
-            field.snapshot.intent,
-            ConfigUiOverride::Invalid {
-                input: "\"loud\"".to_string()
-            }
-        );
+        assert_invalid(field, "\"loud\"");
         assert_eq!(effective_value(field), None);
         assert_eq!(baseline_value(field), Some(&json!("info")));
         assert!(field.can_unset);
@@ -2391,6 +2455,44 @@ color = "#123456"
     fn yazi_tab_renders_and_writes_native_config_with_discovered_flavors() {
         let (_temp, paths) = temp_sources();
         fs::write(
+            paths.packaged_yazi.join("yazi-default.toml"),
+            concat!(
+                "[mgr]\n",
+                "ratio = [1, 4, 3]\n",
+                "sort_by = \"alphabetical\"\n",
+                "show_hidden = false\n",
+                "\n[preview]\n",
+                "max_height = 900\n",
+                "image_delay = 30\n",
+                "image_quality = 75\n",
+            ),
+        )
+        .unwrap();
+        fs::write(
+            paths.packaged_yazi.join("yazi-schema.json"),
+            object_schema(json!({
+                "$schema": {"type": "string"},
+                "mgr": object_schema(json!({
+                    "ratio": {"type": "array", "items": {"type": "integer"}},
+                    "sort_by": {"enum": ["none", "alphabetical", "natural"]},
+                    "show_hidden": {"type": "boolean"}
+                })),
+                "preview": object_schema(json!({
+                    "max_width": {"type": "integer"},
+                    "max_height": {"type": "integer"},
+                    "image_delay": {"type": "integer"},
+                    "image_quality": {"type": "integer"},
+                    "cache_dir": {"type": "string"},
+                    "wrap": {"enum": ["no", "yes"]}
+                })),
+                "open": object_schema(json!({
+                    "prepend_rules": {"type": "array", "items": {"type": "object"}}
+                }))
+            }))
+            .to_string(),
+        )
+        .unwrap();
+        fs::write(
             paths.packaged_yazi.join("yazi.toml"),
             "[mgr]\nshow_hidden = false\nratio = [1, 2, 3]\n\n[preview]\nmax_width = 600\n",
         )
@@ -2412,12 +2514,12 @@ color = "#123456"
         add_flavor(paths.yazi_config.parent().unwrap(), "");
         fs::write(
             &paths.yazi_config,
-            "# keep config\n[mgr]\nshow_hidden = false\nratio = [1, 4, 0]\n\n[preview]\nmax_width = 800\n\n[empty]\n",
+            "\"$schema\" = \"https://example.test/yazi.schema.json\"\n\"custom.key\" = true\nopen = \"invalid\"\n# keep config\n[mgr]\nshow_hidden = false\nsort_by = \"invalid\"\nratio = [1, 4, 0]\n\n[preview]\nmax_width = 800\n\n[empty]\n",
         )
         .unwrap();
         fs::write(
             &paths.yazi_theme,
-            "# keep theme\n[flavor]\ndark = \"default\"\nlight = \"custom\"\n\n[mgr]\ncwd = { fg = \"blue\" }\n",
+            "# keep theme\n\"$schema\" = 1\n[flavor]\ndark = 1\nlight = \"custom\"\n\n[mgr]\ncwd = { fg = \"blue\" }\n\n[tabs]\nsep_inner = { open = \"(\", close = \")\" }\n",
         )
         .unwrap();
 
@@ -2443,14 +2545,10 @@ color = "#123456"
             baseline_value(model_field(&model, "flavor.light")),
             Some(&json!("catppuccin-latte"))
         );
-        assert_eq!(
-            dark.snapshot.intent,
-            ConfigUiOverride::Invalid {
-                input: "\"default\"".to_string()
-            }
-        );
+        assert_invalid(dark, "1");
         assert_eq!(effective_value(dark), None);
-        let show_hidden = model_field(&model, "mgr.show_hidden");
+        assert!(dark.can_unset);
+        let show_hidden = source_field(&model, SOURCE_YAZI_CONFIG, "mgr.show_hidden");
         assert_eq!(show_hidden.source_id, SOURCE_YAZI_CONFIG);
         assert_eq!(
             (
@@ -2459,40 +2557,111 @@ color = "#123456"
             ),
             (Some("boolean"), &ConfigUiOverride::Explicit(json!(false)))
         );
+        assert_eq!(effective_value(show_hidden), Some(&json!(false)));
         assert_eq!(show_hidden.apply_status.summary, "next Yazi");
-        assert_eq!(read_only(show_hidden).1, Some(ACTION_YAZI_CONFIG));
+        assert!(matches!(
+            show_hidden.capability,
+            ConfigUiCapability::Toggle { .. }
+        ));
+        assert!(show_hidden.description.contains("pinned Yazi schema"));
+        let schema = source_field(&model, SOURCE_YAZI_CONFIG, r#""$schema""#);
+        assert_eq!(schema.display_label, "$schema");
+        assert!(matches!(
+            schema.snapshot.intent,
+            ConfigUiOverride::Explicit(_)
+        ));
+        assert_eq!(read_only(schema).1, Some(ACTION_YAZI_CONFIG));
+        let theme_schema = source_field(&model, SOURCE_YAZI_THEME, r#""$schema""#);
+        assert_invalid(theme_schema, "1");
         assert_eq!(
-            read_only(model_field(&model, "mgr.ratio")).1,
-            Some(ACTION_YAZI_CONFIG)
+            model_field(&model, r#""custom.key""#).section_label,
+            "Yazi settings"
         );
+        let sort_by = source_field(&model, SOURCE_YAZI_CONFIG, "mgr.sort_by");
+        assert_invalid(sort_by, "\"invalid\"");
+        assert_eq!(baseline_value(sort_by), Some(&json!("alphabetical")));
+        assert!(sort_by.can_unset);
+        let ratio = source_field(&model, SOURCE_YAZI_CONFIG, "mgr.ratio");
+        assert_eq!(read_only(ratio).1, Some(ACTION_YAZI_CONFIG));
         assert_eq!(
-            model_field(&model, "mgr.ratio").snapshot.intent,
+            ratio.snapshot.intent,
             ConfigUiOverride::Explicit(json!([1, 4, 0]))
         );
+        assert_eq!(effective_value(ratio), None);
+        let absent = source_field(&model, SOURCE_YAZI_CONFIG, "open.prepend_rules");
+        assert_eq!(absent.snapshot.intent, ConfigUiOverride::Absent);
+        assert_eq!(effective_value(absent), None);
+        assert_eq!(absent.section_label, "Yazi settings · open");
+        assert_eq!(read_only(absent).1, Some(ACTION_YAZI_CONFIG));
+        assert_invalid(
+            source_field(&model, SOURCE_YAZI_CONFIG, "open"),
+            "\"invalid\"",
+        );
+        let inline = source_field(&model, SOURCE_YAZI_THEME, "tabs.sep_inner.open");
+        assert_eq!(read_only(inline).1, Some(ACTION_YAZI_THEME));
+        assert!(!inline.can_unset);
         assert_no_parent_rows(&model, SOURCE_YAZI_CONFIG, "");
         assert_no_parent_rows(&model, SOURCE_YAZI_THEME, "");
+        let unknown = model_field(&model, "empty");
+        assert_eq!(unknown.type_label.as_deref(), Some("table"));
+        assert_eq!(unknown.section_label, "Yazi settings · empty");
+        let max_width = field_index(&model, SOURCE_YAZI_CONFIG, "preview.max_width");
+        let max_height = field_index(&model, SOURCE_YAZI_CONFIG, "preview.max_height");
+        let wrap = field_index(&model, SOURCE_YAZI_CONFIG, "preview.wrap");
+        assert_eq!(model.fields[wrap].type_label.as_deref(), Some("string"));
+        let mut app = app_on_tab(&model, TAB_YAZI);
+        assert_eq!(app.settings_view(), ConfigUiSettingsView::Overview);
+        assert!(app.visible_rows().contains(&UiRowRef::Field(max_width)));
+        assert!(app.visible_rows().contains(&UiRowRef::Field(wrap)));
+        assert!(!app.visible_rows().contains(&UiRowRef::Field(max_height)));
+        search_for(&mut app, "open.prepend_rules");
         assert_eq!(
-            model_field(&model, "empty").type_label.as_deref(),
-            Some("table")
+            app.visible_rows(),
+            vec![UiRowRef::Field(field_index(
+                &model,
+                SOURCE_YAZI_CONFIG,
+                "open.prepend_rules"
+            ))]
         );
 
         write_source_field(&paths, SOURCE_YAZI_CONFIG, "mgr.show_hidden", &json!(true)).unwrap();
         write_source_field(
             &paths,
             SOURCE_YAZI_CONFIG,
-            "preview.max_width",
-            &json!(1200),
+            "preview.cache_dir",
+            &json!("/tmp/yazi-cache"),
         )
         .unwrap();
         write_source_field(&paths, SOURCE_YAZI_THEME, "flavor.dark", &json!("custom")).unwrap();
 
         let config = fs::read_to_string(&paths.yazi_config).unwrap();
-        assert!(config.starts_with("# keep config\n"));
+        assert!(config.contains("\"$schema\" = \"https://example.test/yazi.schema.json\""));
+        assert!(config.contains("\"custom.key\" = true"));
+        assert!(config.contains("# keep config\n"));
         assert!(config.contains("show_hidden = true"));
+        assert!(config.contains("cache_dir = \"/tmp/yazi-cache\""));
         assert!(config.contains("ratio = [1, 4, 0]"));
         let theme = fs::read_to_string(&paths.yazi_theme).unwrap();
         assert!(theme.starts_with("# keep theme\n"));
         assert!(theme.contains("dark = \"custom\""));
+
+        let error = write_source_field(
+            &paths,
+            SOURCE_YAZI_CONFIG,
+            "mgr.show_hidden",
+            &json!("false"),
+        )
+        .unwrap_err()
+        .to_string();
+        assert!(error.contains("pinned Yazi schema"), "{error}");
+        let error = write_source_field(&paths, SOURCE_YAZI_CONFIG, "mgr.ratio", &json!([1, 2, 3]))
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("native Yazi file editing"), "{error}");
+        let error = write_source_field(&paths, SOURCE_YAZI_CONFIG, "flavor.dark", &json!("custom"))
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("not a finite Yazi schema field"), "{error}");
 
         add_flavor(paths.yazi_config.parent().unwrap(), "default");
         write_source_field(&paths, SOURCE_YAZI_THEME, "flavor.dark", &JsonValue::Null).unwrap();
@@ -2542,7 +2711,7 @@ color = "#123456"
         assert_eq!(get_toml_path(&config, "mgr.show_hidden"), None);
         assert_eq!(
             get_toml_path(&config, "preview.max_width"),
-            Some(&json!(1200))
+            Some(&json!(800))
         );
         assert_eq!(get_toml_path(&theme, "flavor.dark"), None);
         assert_eq!(
@@ -2550,6 +2719,43 @@ color = "#123456"
             Some(&json!("custom"))
         );
         assert_eq!(get_toml_path(&theme, "mgr.cwd.fg"), Some(&json!("blue")));
+    }
+
+    #[test]
+    fn packaged_yazi_schema_and_presets_cover_the_model() {
+        let Some(packaged) = option_env!("YAZELIX_PACKAGED_YAZI") else {
+            return;
+        };
+        let (_temp, mut paths) = temp_sources();
+        paths.packaged_yazi = PathBuf::from(packaged);
+
+        let model = build_model(&paths).unwrap();
+        ConfigUiApp::try_new(model.clone()).unwrap();
+        assert_eq!(
+            model
+                .fields
+                .iter()
+                .filter(|field| {
+                    matches!(
+                        field.source_id.as_str(),
+                        SOURCE_YAZI_CONFIG | SOURCE_YAZI_THEME
+                    )
+                })
+                .count(),
+            204
+        );
+        for (source_id, schema_name) in [
+            (SOURCE_YAZI_CONFIG, "yazi-schema.json"),
+            (SOURCE_YAZI_THEME, "theme-schema.json"),
+        ] {
+            for field in crate::yazi_config::schema_fields(&paths, schema_name)
+                .unwrap()
+                .into_iter()
+                .filter(|field| field.path != "$schema" && field.kind != "object")
+            {
+                source_field(&model, source_id, &field.path);
+            }
+        }
     }
 
     #[test]
@@ -3230,12 +3436,7 @@ ui {\n\
         atomic_write(&paths.zellij, "scroll_buffer_size \"100\"\n").unwrap();
 
         let model = build_model(&paths).unwrap();
-        assert_eq!(
-            model_field(&model, "scroll_buffer_size").snapshot.intent,
-            ConfigUiOverride::Invalid {
-                input: "\"100\"".to_string()
-            }
-        );
+        assert_invalid(model_field(&model, "scroll_buffer_size"), "\"100\"");
         assert_inherited(model_field(&model, "theme_dark"), &json!("ansi"));
         assert_inherited(model_field(&model, "window.width"), &json!(960));
 

@@ -80,7 +80,8 @@ nix profile add --refresh github:luccahuguet/yazelix/stable#yazelix-no-mars-no-h
 
 `x86_64-darwin` remains an exposed, evaluated flake output rather than a
 build-tested target. The current label is **build-tested on macOS, with
-interactive workflow and Mars GUI unverified**
+observational interactive beta use and no known regression; the individual
+workflow checklist and Mars GUI remain unverified**
 
 ## Host terminals and SSH
 
