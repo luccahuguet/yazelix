@@ -143,10 +143,8 @@ ids that do not exist are not invented; open `config.toml` to add them
 | `yazi/theme.toml` | Yazi | Native theme config. Ratconfig joins the paired official schema to Yazi's dark or light preset, exposes all 109 fields, provides separate installed flavor pools, and preserves explicit choices. Yazelix projects the side selected by root `appearance.mode` only into generated runtime config |
 | `yazi/package.toml` | Yazi | Opaque package metadata that Yazelix does not process with `ya pkg` |
 
-The Nu files remain exact executable-source actions in Advanced rather than
-pretending arbitrary Nu code is a finite settings schema. The finite shell
-choice stays under `shell.program` in main, and Starship prompt settings stay
-under their own owner.
+The Nu files remain executable Advanced actions, not finite Ratconfig schemas.
+`shell.program` stays in main, and Starship stays under its own owner.
 
 The managed Yazi merge restores Yazelix's edit opener and its two sidebar Git
 fetchers exactly once. Other user fetchers and previewers remain in the merged

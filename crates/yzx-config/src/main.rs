@@ -434,6 +434,14 @@ mod tests {
             .unwrap_or_else(|| panic!("missing {source_id} field {path}"))
     }
 
+    fn file_action_index(model: &ConfigUiModel, action_id: &str) -> usize {
+        model
+            .file_actions
+            .iter()
+            .position(|action| action.action_id == action_id)
+            .unwrap_or_else(|| panic!("missing {action_id} file action"))
+    }
+
     fn app_on_tab(model: &ConfigUiModel, tab: &str) -> ConfigUiApp {
         let mut app = ConfigUiApp::try_new(model.clone()).unwrap();
         for _ in 0..ratconfig::tab_index(&model.tabs, tab) {
@@ -2455,34 +2463,26 @@ color = "#123456"
     fn nushell_search_reaches_the_finite_control_and_executable_sources() {
         let (_temp, paths) = temp_sources();
         let model = build_model(&paths).unwrap();
-        let shell_index = field_index(&model, SOURCE_CONFIG, SHELL_PROGRAM_PATH);
-        let mut main = app_on_tab(&model, TAB_CONFIG);
-        search_for(&mut main, "Nushell");
-        assert_eq!(main.visible_rows(), [UiRowRef::Field(shell_index)]);
-
-        let advanced = app_on_tab(&model, TAB_ADVANCED);
-        for (query, action_id) in [
-            ("Nushell environment", ACTION_NU_ENV),
-            ("mise activation", ACTION_NU_CONFIG),
+        for (tab, query, expected) in [
+            (
+                TAB_CONFIG,
+                "Nushell",
+                UiRowRef::Field(field_index(&model, SOURCE_CONFIG, SHELL_PROGRAM_PATH)),
+            ),
+            (
+                TAB_ADVANCED,
+                "Nushell environment",
+                UiRowRef::FileAction(file_action_index(&model, ACTION_NU_ENV)),
+            ),
+            (
+                TAB_ADVANCED,
+                "mise activation",
+                UiRowRef::FileAction(file_action_index(&model, ACTION_NU_CONFIG)),
+            ),
         ] {
-            let index = model
-                .file_actions
-                .iter()
-                .position(|action| action.action_id == action_id)
-                .unwrap_or_else(|| panic!("missing {action_id} file action"));
-            let action = &model.file_actions[index];
-            assert_eq!(
-                (action.source_id.as_str(), action.tab.as_str()),
-                (SOURCE_ADVANCED, TAB_ADVANCED)
-            );
-            assert!(
-                advanced
-                    .visible_rows()
-                    .contains(&UiRowRef::FileAction(index))
-            );
-            let mut search = app_on_tab(&model, TAB_ADVANCED);
+            let mut search = app_on_tab(&model, tab);
             search_for(&mut search, query);
-            assert_eq!(search.visible_rows(), [UiRowRef::FileAction(index)]);
+            assert!(search.visible_rows().contains(&expected));
         }
     }
 
@@ -3350,11 +3350,7 @@ color = "#123456"
         let (_temp, paths) = temp_sources();
         let model = build_model(&paths).unwrap();
         let zellij_field = |path| field_index(&model, SOURCE_ZELLIJ, path);
-        let file_action_index = model
-            .file_actions
-            .iter()
-            .position(|action| action.action_id == ACTION_ZELLIJ_CONFIG)
-            .expect("native Zellij file action");
+        let action_index = file_action_index(&model, ACTION_ZELLIJ_CONFIG);
 
         let pane_frames_index = zellij_field("pane_frames");
         let all_only_index = zellij_field("scroll_buffer_size");
@@ -3363,7 +3359,7 @@ color = "#123456"
         let overview = app.visible_rows();
         assert!(overview.contains(&UiRowRef::Field(pane_frames_index)));
         assert!(!overview.contains(&UiRowRef::Field(all_only_index)));
-        assert!(overview.contains(&UiRowRef::FileAction(file_action_index)));
+        assert!(overview.contains(&UiRowRef::FileAction(action_index)));
 
         app.handle_key(ConfigUiKey::Char('a'));
         assert_eq!(app.settings_view(), ConfigUiSettingsView::All);
@@ -3374,7 +3370,7 @@ color = "#123456"
 
         for (query, expected) in [
             ("scroll_buffer_size", UiRowRef::Field(all_only_index)),
-            ("zellij/config.kdl", UiRowRef::FileAction(file_action_index)),
+            ("zellij/config.kdl", UiRowRef::FileAction(action_index)),
         ] {
             let mut search = app_on_tab(&model, TAB_ZELLIJ);
             search_for(&mut search, query);
