@@ -154,10 +154,10 @@ User-visible runtime changes for Yazelix Nova live here.
 - CPU and RAM status widgets recover automatically when a sampler exits while
   holding their shared-cache lock, preventing `??%` from persisting while
   concurrent tab bars continue to share one sampler.
-- Codex usage refreshes cap tokenusage parsing at one worker and share one
-  five-second budget across all probes. Partial or timed-out refreshes preserve
-  usable cached facts and back off for 30 minutes instead of rescanning on each
-  bar repaint.
+- Codex usage refreshes restrict tokenusage parsing, file discovery, and the
+  async runtime to one worker, with one five-second budget across all probes.
+  Partial or timed-out refreshes preserve usable cached facts and back off for
+  30 minutes instead of rescanning on each bar repaint.
 - The `yazelix-no-mars-no-helix` package and app provide the complete `yzx enter`
   workspace for host terminals and host-installed editors without retaining
   Mars, Rio, desktop assets, managed Helix, Steel, or packaged grammars.
