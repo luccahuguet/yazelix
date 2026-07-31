@@ -2,7 +2,7 @@
 
 User-visible runtime changes for Yazelix Nova live here.
 
-## Unreleased
+## 1.0.0-beta.4
 
 - Ratconfig's Yazi tab consumes the official schema revision paired with
   packaged Yazi 26.5.6 and joins it to Yazi's native presets instead of treating
@@ -154,6 +154,10 @@ User-visible runtime changes for Yazelix Nova live here.
 - CPU and RAM status widgets recover automatically when a sampler exits while
   holding their shared-cache lock, preventing `??%` from persisting while
   concurrent tab bars continue to share one sampler.
+- Codex usage refreshes cap tokenusage parsing at one worker and share one
+  five-second budget across all probes. Partial or timed-out refreshes preserve
+  usable cached facts and back off for 30 minutes instead of rescanning on each
+  bar repaint.
 - The `yazelix-no-mars-no-helix` package and app provide the complete `yzx enter`
   workspace for host terminals and host-installed editors without retaining
   Mars, Rio, desktop assets, managed Helix, Steel, or packaged grammars.

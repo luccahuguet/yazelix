@@ -87,7 +87,7 @@
     yaziSchemas,
     zjstatus,
   }: let
-    novaVersion = "1.0.0-beta.3";
+    novaVersion = "1.0.0-beta.4";
     compactNovaVersion = version:
       if version == "dev"
       then "NOVA DEV"
