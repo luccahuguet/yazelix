@@ -271,7 +271,7 @@ Runtime state defaults to `$XDG_DATA_HOME/yazelix` or `YAZELIX_STATE_DIR`.
 | Cursors | Pinned child-owned field catalog and parser → seeded user file with sparse finite-setting intent; an absent enabled pool uses that file's definitions, other absent settings use packaged defaults, Ratconfig preserves custom definitions, and schema/definition discovery stays read-only with the exact file action |
 | Mars | Packaged base → recursive sparse user override; cursor selection arrives separately through `YAZELIX_CURSOR_CONFIG` |
 | Nu | Packaged → optional host `mise activate nu` → optional user Nu |
-| Starship | Native defaults + `yzx-config` `character.format` → sparse user overrides → runtime-effective TOML |
+| Starship | Packaged generated schema + `print-config --default` → Ratconfig discovery and bounded scalar editing → sparse user overrides over Nova's `character.format` marker → runtime-effective TOML |
 | Helix | See Helix notes below |
 | Yazi | Packaged TOML → recursive user tables + replacing scalars/arrays → managed opener/Git fetchers → runtime-only root-mode flavor projection; optional complete Starship config replacement |
 | Zellij | Packaged → guarded scalar sidecar → runtime materialize under state dir |
@@ -422,7 +422,7 @@ Detail lives in Owners, checks, and the notes below.
 | ID | Contract | Owner | Check | Gap |
 | --- | --- | --- | --- | --- |
 | C11a | Root semantic schema + sparse persistence | `yzx-config`, `defaults/config.toml` | config tests + contracts | UI |
-| C11b | Popups/Mars/Cursors/Zellij/Starship tabs; complete pinned Mars inventory with sparse bounded controls; session Zellij active-file patch | Mars catalog + `yzx-config` | config tests + contracts | Session live scalars |
+| C11b | Popups/Mars/Cursors/Zellij/Starship tabs; complete pinned Mars and Starship inventories with sparse bounded controls; session Zellij active-file patch | Owner catalogs + Ratconfig + `yzx-config` | config tests + contracts | Session live scalars |
 | C11c | Helix tab + `yzx-hx` merge / `Alt r` / Steel | `yzx-config`, helix, `yzx-hx` | `helix-contracts` + config tests | UI |
 | C11d | Keys read-only + Advanced open-file | `yzx-config` | Keys/Advanced tests, key parity | UI |
 

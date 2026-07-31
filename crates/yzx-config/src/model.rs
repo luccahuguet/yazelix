@@ -24,9 +24,9 @@ use crate::{
     file_actions::build_file_actions,
     mars_inventory::{MarsField, MarsInventory},
     paths::ConfigPaths,
-    root_config::{
-        bar_widgets, default_config, default_config_path_value, read_optional_toml_file_value,
-        validate_root_config,
+    root_config::{bar_widgets, default_config, default_config_path_value, validate_root_config},
+    starship_inventory::{
+        PACKAGED_STARSHIP_DEFAULT_CONFIG_TOML, StarshipInventory, validate_starship_field,
     },
     yazi_config::build_yazi_fields,
     zellij_sidecar::{
@@ -38,13 +38,19 @@ use crate::{
 pub(crate) fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
     let (config_active, root_document_valid, mut diagnostics) = load_root_config(&paths.root)?;
     let config_default = default_config()?;
-    let (mars_active, mars_document_valid, mars_diagnostics) = load_mars_config(&paths.mars)?;
+    let (mars_active, mars_document_valid, mars_diagnostics) =
+        load_native_toml_config(&paths.mars, "mars/config.toml", SOURCE_MARS)?;
     diagnostics.extend(mars_diagnostics);
     let mars_inventory = MarsInventory::parse()?;
     let mars_default = parse_toml_value(DEFAULT_MARS_CONFIG_TOML)
         .map_err(|error| boxed_debug("invalid default Mars config", error))?;
-    let starship_active = read_optional_toml_file_value(&paths.starship, "invalid starship.toml")?;
-    let starship_default = parse_toml_value(DEFAULT_STARSHIP_CONFIG_TOML)
+    let (starship_active, starship_document_valid, starship_diagnostics) =
+        load_native_toml_config(&paths.starship, "starship.toml", SOURCE_STARSHIP)?;
+    diagnostics.extend(starship_diagnostics);
+    let starship_inventory = StarshipInventory::parse()?;
+    let starship_owner_default = parse_toml_value(PACKAGED_STARSHIP_DEFAULT_CONFIG_TOML)
+        .map_err(|error| boxed_debug("invalid packaged Starship defaults", error))?;
+    let starship_yazelix_default = parse_toml_value(DEFAULT_STARSHIP_CONFIG_TOML)
         .map_err(|error| boxed_debug("invalid default Starship config", error))?;
     let cursors_raw = fs::read_to_string(&paths.cursors)?;
     let cursors_active = CursorRegistry::parse_str(&paths.cursors, &cursors_raw)?;
@@ -91,20 +97,12 @@ pub(crate) fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
     for spec in mars_inventory.fields() {
         fields.push(build_mars_config_field(spec, &mars_active, &mars_default));
     }
-    for spec in STARSHIP_FIELDS {
-        let current = get_toml_path(&starship_active, spec.path);
-        fields.push(build_config_field(
-            SOURCE_STARSHIP,
-            TAB_STARSHIP,
+    for spec in starship_inventory.fields() {
+        fields.push(build_starship_config_field(
             spec,
-            current,
-            get_toml_path(&starship_default, spec.path),
-            apply_status(
-                "new prompts",
-                "starship",
-                "Saved values apply to newly rendered managed Nu prompts.",
-            ),
-            current.is_some_and(|value| spec.json_choice(value).is_err()),
+            &starship_active,
+            &starship_owner_default,
+            &starship_yazelix_default,
         ));
     }
     for spec in ZELLIJ_FIELDS {
@@ -184,16 +182,20 @@ pub(crate) fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
         }
     }
     if !mars_document_valid {
-        for field in fields
-            .iter_mut()
-            .filter(|field| field.source_id == SOURCE_MARS)
-        {
-            field.capability = ConfigUiCapability::ReadOnly {
-                reason: "Repair mars/config.toml before editing individual fields.".to_string(),
-                file_action_id: None,
-            };
-            field.can_unset = false;
-        }
+        block_source_fields(
+            &mut fields,
+            SOURCE_MARS,
+            "Repair mars/config.toml before editing individual fields.",
+            None,
+        );
+    }
+    if !starship_document_valid {
+        block_source_fields(
+            &mut fields,
+            SOURCE_STARSHIP,
+            "Repair starship.toml before editing individual fields.",
+            Some(ACTION_STARSHIP_CONFIG),
+        );
     }
     let recommended_fields = Some(
         fields
@@ -203,6 +205,7 @@ pub(crate) fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
                 SOURCE_MARS => MARS_RECOMMENDED_PATHS.contains(&field.path.as_str()),
                 SOURCE_CURSORS => CURSOR_RECOMMENDED_PATHS.contains(&field.path.as_str()),
                 SOURCE_ZELLIJ => ZELLIJ_RECOMMENDED_PATHS.contains(&field.path.as_str()),
+                SOURCE_STARSHIP => STARSHIP_RECOMMENDED_PATHS.contains(&field.path.as_str()),
                 SOURCE_YAZI_CONFIG | SOURCE_YAZI_THEME => {
                     crate::yazi_config::YAZI_RECOMMENDED_FIELDS
                         .contains(&(field.source_id.as_str(), field.path.as_str()))
@@ -297,7 +300,11 @@ fn load_root_config(path: &Path) -> Result<(JsonValue, bool, Vec<ConfigUiDiagnos
     Ok((active, document_valid, diagnostics))
 }
 
-fn load_mars_config(path: &Path) -> Result<(JsonValue, bool, Vec<ConfigUiDiagnostic>)> {
+fn load_native_toml_config(
+    path: &Path,
+    display_path: &str,
+    source_id: &str,
+) -> Result<(JsonValue, bool, Vec<ConfigUiDiagnostic>)> {
     if !path_entry_exists(path)? {
         return Ok((JsonValue::Object(Default::default()), true, Vec::new()));
     }
@@ -308,12 +315,12 @@ fn load_mars_config(path: &Path) -> Result<(JsonValue, bool, Vec<ConfigUiDiagnos
             JsonValue::Object(Default::default()),
             false,
             vec![ConfigUiDiagnostic {
-                path: "mars/config.toml".to_string(),
+                path: display_path.to_string(),
                 status: "blocked".to_string(),
-                headline: "mars/config.toml needs native-file repair".to_string(),
+                headline: format!("{display_path} needs native-file repair"),
                 blocking: true,
                 scope: ConfigUiDiagnosticScope::Source {
-                    source_id: SOURCE_MARS.to_string(),
+                    source_id: source_id.to_string(),
                 },
                 detail_lines: vec![format!("invalid TOML: {source:?}")],
             }],
@@ -587,6 +594,63 @@ fn build_mars_config_field(
     }
     field
 }
+
+fn build_starship_config_field(
+    spec: &ratconfig::ConfigUiSchemaField,
+    active: &JsonValue,
+    owner_defaults: &JsonValue,
+    yazelix_defaults: &JsonValue,
+) -> ratconfig::ConfigUiField {
+    let current = get_toml_path(active, &spec.path);
+    let yazelix_default = get_toml_path(yazelix_defaults, &spec.path);
+    let default = yazelix_default.or_else(|| get_toml_path(owner_defaults, &spec.path));
+    let capability = match spec.kind.as_str() {
+        "boolean" => ConfigUiCapability::Toggle {
+            off: ConfigUiChoice::new(JsonValue::Bool(false)),
+            on: ConfigUiChoice::new(JsonValue::Bool(true)),
+        },
+        "string" => ConfigUiCapability::FreeText {
+            encoding: ConfigUiTextEncoding::String,
+        },
+        _ => ConfigUiCapability::ReadOnly {
+            reason: "Edit structured Starship values in starship.toml.".to_string(),
+            file_action_id: Some(ACTION_STARSHIP_CONFIG.to_string()),
+        },
+    };
+    let editable = !matches!(capability, ConfigUiCapability::ReadOnly { .. });
+    let invalid =
+        editable && current.is_some_and(|value| validate_starship_field(spec, value).is_err());
+    let mut field = ConfigUiFieldSpec {
+        section_label: spec
+            .path
+            .split_once('.')
+            .map_or("General", |(section, _)| section)
+            .to_string(),
+        can_unset: editable && current.is_some(),
+        ..ConfigUiFieldSpec::new(
+            SOURCE_STARSHIP,
+            &spec.path,
+            TAB_STARSHIP,
+            format!("Setting published by Starship for `{}`.", spec.path),
+            capability,
+            format!("a Starship {}", spec.kind),
+            apply_status(
+                "new prompts",
+                "starship",
+                "Saved values apply to newly rendered managed Nu prompts.",
+            ),
+        )
+    }
+    .build(&spec.kind, current, default);
+    set_starship_origins(&mut field, yazelix_default.is_some());
+    if invalid {
+        field.snapshot.intent = ConfigUiOverride::Invalid {
+            input: current.map_or_else(String::new, ToString::to_string),
+        };
+        field.snapshot.effective = None;
+    }
+    field
+}
 fn build_cursor_fields(
     active: &CursorRegistry,
     document: &JsonValue,
@@ -851,6 +915,45 @@ fn set_snapshot_origins(field: &mut ratconfig::ConfigUiField, source_id: &str) {
     }
 }
 
+fn set_starship_origins(field: &mut ratconfig::ConfigUiField, yazelix_default: bool) {
+    let baseline_origin = if yazelix_default {
+        "Yazelix packaged default"
+    } else {
+        "Packaged Starship default"
+    };
+    if let Some(baseline) = &mut field.snapshot.baseline {
+        baseline.origin = Some(baseline_origin.to_string());
+    }
+    if let Some(effective) = &mut field.snapshot.effective {
+        effective.origin = Some(
+            if matches!(field.snapshot.intent, ConfigUiOverride::Absent) {
+                baseline_origin
+            } else {
+                "User starship.toml"
+            }
+            .to_string(),
+        );
+    }
+}
+
+fn block_source_fields(
+    fields: &mut [ratconfig::ConfigUiField],
+    source_id: &str,
+    reason: &str,
+    file_action_id: Option<&str>,
+) {
+    for field in fields
+        .iter_mut()
+        .filter(|field| field.source_id == source_id)
+    {
+        field.capability = ConfigUiCapability::ReadOnly {
+            reason: reason.to_string(),
+            file_action_id: file_action_id.map(str::to_string),
+        };
+        field.can_unset = false;
+    }
+}
+
 fn apply_source_policy(fields: &mut [ratconfig::ConfigUiField], sources: &[ConfigUiSource]) {
     for field in fields {
         let source = sources
@@ -896,6 +999,7 @@ fn source_file_action(source_id: &str) -> Option<&'static str> {
     match source_id {
         SOURCE_CONFIG => Some(ACTION_ROOT_CONFIG),
         SOURCE_CURSORS => Some(ACTION_CURSORS_CONFIG),
+        SOURCE_STARSHIP => Some(ACTION_STARSHIP_CONFIG),
         SOURCE_ZELLIJ => Some(ACTION_ZELLIJ_CONFIG),
         SOURCE_YAZI_CONFIG => Some(ACTION_YAZI_CONFIG),
         SOURCE_YAZI_THEME => Some(ACTION_YAZI_THEME),

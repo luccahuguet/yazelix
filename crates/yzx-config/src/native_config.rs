@@ -5,7 +5,13 @@ use serde_json::Value as JsonValue;
 use toml::Value as TomlValue;
 use yazelix_cursors::{CursorRegistry, cursor_config_field_specs};
 
-use crate::{catalog::*, common::*, mars_inventory::MarsInventory, root_config::config_field};
+use crate::{
+    catalog::*,
+    common::*,
+    mars_inventory::MarsInventory,
+    root_config::config_field,
+    starship_inventory::{StarshipInventory, starship_field_is_editable, validate_starship_field},
+};
 
 pub(crate) fn write_cursor_config_field(
     path: &Path,
@@ -103,11 +109,11 @@ pub(crate) fn write_starship_config_field(
     field_path: &str,
     value: &JsonValue,
 ) -> Result<()> {
-    let spec = STARSHIP_FIELDS
-        .iter()
-        .find(|spec| spec.path == field_path)
+    let inventory = StarshipInventory::parse()?;
+    let field = inventory
+        .field(field_path)
         .ok_or_else(|| error(format!("unknown Starship config path: {field_path}")))?;
-    spec.json_choice(value)?;
+    validate_starship_field(field, value)?;
     let raw = if path.exists() {
         fs::read_to_string(path)?
     } else {
@@ -119,8 +125,14 @@ pub(crate) fn write_starship_config_field(
     atomic_write(path, &text)
 }
 pub(crate) fn unset_starship_config_field(path: &Path, field_path: &str) -> Result<()> {
-    if !STARSHIP_FIELDS.iter().any(|spec| spec.path == field_path) {
-        return Err(error(format!("unknown Starship config path: {field_path}")));
+    let inventory = StarshipInventory::parse()?;
+    let field = inventory
+        .field(field_path)
+        .ok_or_else(|| error(format!("unknown Starship config path: {field_path}")))?;
+    if !starship_field_is_editable(field) {
+        return Err(error(format!(
+            "Starship config path {field_path} has no schema-backed inline editor"
+        )));
     }
     if !path.exists() {
         return Ok(());

@@ -4,6 +4,15 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## 1.0.0-beta.4
 
+- Ratconfig's Starship tab consumes the generated JSON Schema and
+  `print-config --default` output from packaged Starship 1.26.0. Overview
+  recommends four global and Nova-managed prompt settings; All exposes all 832
+  finite owner fields and search spans them. Schema-backed strings and booleans
+  use sparse inline edits, while numeric, structured, union, and dynamic values
+  remain read-only with an exact `starship.toml` action. Invalid TOML keeps the
+  tab available for native repair. Nova's `character.format = ":: "` baseline,
+  Nu materialization, Home Manager ownership, and prompt apply timing are
+  unchanged.
 - Ratconfig keeps managed Nushell's finite shell choice under `shell.program`
   and its two executable user sources as exact Advanced file actions. Search
   reaches the shell choice, environment source, and optional mise ordering

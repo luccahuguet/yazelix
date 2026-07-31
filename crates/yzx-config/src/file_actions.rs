@@ -176,6 +176,15 @@ fn file_action_specs(paths: &ConfigPaths) -> impl IntoIterator<Item = FileAction
             starter: YAZI_THEME_STARTER,
         },
         FileActionSpec {
+            source_id: SOURCE_STARSHIP,
+            action_id: ACTION_STARSHIP_CONFIG,
+            tab: TAB_STARSHIP,
+            label: "starship.toml",
+            description: "Open the complete native Starship override file.",
+            path: paths.starship.clone(),
+            starter: STARSHIP_CONFIG_STARTER,
+        },
+        FileActionSpec {
             source_id: SOURCE_ZELLIJ,
             action_id: ACTION_ZELLIJ_CONFIG,
             tab: TAB_ZELLIJ,

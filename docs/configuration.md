@@ -129,7 +129,7 @@ ids that do not exist are not invented; open `config.toml` to add them
 | `mars/config.toml` | Mars | Sparse overrides over the pinned Mars public inventory. Ratconfig recommends 15 common controls and exposes every other owner-advertised setting in All. Safe scalars and finite choices are editable; tables, structured collections, colors, and unvalidated numeric shapes remain read-only without a Mars file action. Yazelix separately manages only `mars.appearance.preset` as the projection of root `appearance.mode`, so that native path is omitted from the Mars tab |
 | `zellij/config.kdl` | Zellij sidecar | Sparse safe scalar overrides where absent assignments inherit packaged defaults. The Zellij tab keeps themes, pane frames, mouse mode, copy-on-select, and rounded corners in Overview; All adds scrollback size, clipboard target, styled underlines, and startup tips. Search covers the typed fields and the exact native-file action. Safe untyped leaves remain unchanged without a UI row or informational diagnostic per leaf. Advanced diagnostics report only ignored, invalid, structurally unsafe, or integration-owned state; guarded diagnostics name the Yazelix owner. Ratconfig does not claim a complete Zellij schema. A legacy static `theme` assignment remains preserved but omitted from managed runtime. Inside a session, saves and resets also patch the active runtime config. Structural comments or continuations, extra managed-block metadata, other structured native nodes, and integration-owned nodes block unsafe writes |
 | `zellij/plugins.kdl` | Zellij plugin sidecar | Extra plugin declarations only. Packaged plugin ids cannot be redeclared |
-| `starship.toml` | Starship | Sparse native prompt overrides. Ratconfig curates only `character.format`; absent layout fields retain Starship defaults |
+| `starship.toml` | Starship | Sparse native prompt overrides. Ratconfig consumes the generated schema and default output from packaged Starship 1.26.0. Overview recommends `format`, `right_format`, `add_newline`, and `character.format`; All exposes 832 finite owner fields. Schema-backed strings and booleans are editable. Numeric, structured, union, and dynamic values remain read-only with this exact file action |
 | `helix/config.toml` | Helix | Sparse user TOML merged over packaged Yazelix Helix defaults, with explicit creation starting from only an ownership comment |
 | `helix/languages.toml` | Helix | Managed Helix language config |
 | `helix/helix.scm` | Helix Steel | Loaded with `helix/init.scm` when the pair exists |
@@ -298,11 +298,13 @@ removes that key. The global appearance switch is the exception: saving or
 resetting `appearance.mode` also writes only `mars.appearance.preset` when Mars
 is included and its native file is a writable regular file. New managed Yazi
 processes read the saved root mode and project its selected flavor into runtime
-state without editing the native theme file. The Starship tab
-curates only `character.format`, whose Nova default is `:: `. Managed Nu
-materializes that sparse marker override under runtime state without setting
-top-level `format`, so Starship retains its native `$all` layout. Mars and Zellij
-layer their sparse files over packaged configuration directly. Untouched
+state without editing the native theme file. The Starship tab gets its complete
+All inventory and native baselines from the exact packaged Starship owner
+artifacts. Its four Overview recommendations cover the global prompt layouts
+and Nova's `character.format = ":: "` marker. Managed Nu materializes sparse
+overrides under runtime state without setting top-level `format`, so Starship
+retains its native `$all` layout. Mars and Zellij layer their sparse files over
+packaged configuration directly. Untouched
 defaults follow upgrades
 
 The Mars tab is derived from

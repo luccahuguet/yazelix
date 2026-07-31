@@ -160,6 +160,10 @@
       };
       yzxNuShell = rustBin "yzx-nu" yzxNuRs;
       yzxAgent = rustBin "yzx-agent" ./runtime/yzx-agent.rs;
+      yzxStarshipDefaults = pkgs.runCommand "yzx-starship-defaults.toml" {} ''
+        export HOME="$TMPDIR"
+        STARSHIP_CONFIG=/dev/null ${pkgs.starship}/bin/starship print-config --default > "$out"
+      '';
       yzxConfigSrc =
         assert mars.rev == "129981b3a5b9f0a9ef1fa60d2742845cb1722db3";
           pkgs.runCommand "yzx-config-src" {} ''
@@ -184,11 +188,13 @@
         src = yzxConfigSrc;
         cargoLock = {
           lockFile = ./crates/yzx-config/Cargo.lock;
-          outputHashes."ratconfig-6.0.0" = "sha256-cXi++JuTkC47J0geYyxi+Eh3M/mESK0qAkKwBFj1RdY=";
+          outputHashes."ratconfig-6.0.0" = "sha256-U87SC6kvxgo0Nyeu6JhzHQC7dc+CGWV/nBLxM5fu4V0=";
         };
         YAZELIX_NIX_STORE_ROOT = builtins.storeDir;
         YAZELIX_PACKAGED_YAZI = yzxYaziConfig;
         YAZELIX_AGENT_LAUNCHER = "${yzxAgent}/bin/yzx-agent";
+        YAZELIX_STARSHIP_DEFAULT_CONFIG = yzxStarshipDefaults;
+        YAZELIX_STARSHIP_CONFIG_SCHEMA = "${pkgs.starship.src}/docs/public/config-schema.json";
       };
       yzxShellSrc = pkgs.replaceVars ./runtime/yzx-shell.sh {
         yzxConfig = "${yzxConfig}/bin/yzx-config";

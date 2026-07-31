@@ -10,6 +10,7 @@ mod model;
 mod native_config;
 mod paths;
 mod root_config;
+mod starship_inventory;
 mod ui;
 mod yazi_config;
 mod zellij_sidecar;
@@ -139,6 +140,7 @@ mod tests {
     use crate::file_actions::*;
     use crate::mars_inventory::*;
     use crate::model::*;
+    use crate::starship_inventory::*;
     use crate::zellij_sidecar::*;
     use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
     use ratatui::style::{Color, Style};
@@ -1138,6 +1140,7 @@ mod tests {
                             | SOURCE_MARS
                             | SOURCE_CURSORS
                             | SOURCE_ZELLIJ
+                            | SOURCE_STARSHIP
                             | SOURCE_YAZI_CONFIG
                             | SOURCE_YAZI_THEME
                     )
@@ -1990,11 +1993,25 @@ color = "#123456"
     }
 
     #[test]
-    fn config_model_exposes_structured_starship_tab() {
+    fn packaged_starship_schema_drives_overview_all_search_and_native_fallback() {
         let (_temp, paths) = temp_sources();
-
+        let inventory = StarshipInventory::parse().unwrap();
         let model = build_model(&paths).unwrap();
-        let prompt = model_field(&model, "character.format");
+        let starship_field = |path| source_field(&model, SOURCE_STARSHIP, path);
+        let starship_index = |path| field_index(&model, SOURCE_STARSHIP, path);
+        let prompt = starship_field("character.format");
+        assert_eq!(
+            model
+                .fields
+                .iter()
+                .filter(|field| field.source_id == SOURCE_STARSHIP)
+                .map(|field| field.path.as_str())
+                .collect::<Vec<_>>(),
+            inventory
+                .fields()
+                .map(|field| field.path.as_str())
+                .collect::<Vec<_>>()
+        );
 
         assert!(model.tabs.contains(&TAB_STARSHIP.to_string()));
         assert!(
@@ -2009,14 +2026,94 @@ color = "#123456"
         assert_inherited(prompt, &json!(":: "));
         assert_eq!(prompt.apply_status.summary, "new prompts");
         assert_eq!(
+            baseline_value(starship_field("format")),
+            Some(&json!("$all"))
+        );
+        assert_eq!(
+            starship_field("format")
+                .snapshot
+                .baseline
+                .as_ref()
+                .and_then(|value| value.origin.as_deref()),
+            Some("Packaged Starship default")
+        );
+        assert_eq!(
+            prompt
+                .snapshot
+                .baseline
+                .as_ref()
+                .and_then(|value| value.origin.as_deref()),
+            Some("Yazelix packaged default")
+        );
+        for path in [
+            "right_format",
+            "directory.truncation_length",
+            "git_status.use_git_executable",
+            "os.symbols",
+            "battery.display",
+            "custom",
+        ] {
+            starship_field(path);
+        }
+        assert_eq!(
             model
                 .fields
                 .iter()
                 .filter(|field| field.source_id == SOURCE_STARSHIP)
-                .map(|field| field.path.as_str())
-                .collect::<Vec<_>>(),
-            vec!["character.format"]
+                .filter(|field| field.path == "directory")
+                .count(),
+            0
         );
+        assert!(matches!(
+            starship_field("battery.display").capability,
+            ConfigUiCapability::ReadOnly {
+                file_action_id: Some(ref action),
+                ..
+            } if action == ACTION_STARSHIP_CONFIG
+        ));
+
+        let recommended = model
+            .recommended_fields
+            .as_ref()
+            .unwrap()
+            .iter()
+            .filter(|field| field.source_id == SOURCE_STARSHIP)
+            .map(|field| field.path.as_str())
+            .collect::<Vec<_>>();
+        assert_eq!(recommended.len(), STARSHIP_RECOMMENDED_PATHS.len());
+        assert!(
+            recommended
+                .iter()
+                .all(|path| STARSHIP_RECOMMENDED_PATHS.contains(path))
+        );
+
+        let action_index = file_action_index(&model, ACTION_STARSHIP_CONFIG);
+        let all_only_index = starship_index("git_status.use_git_executable");
+        let mut app = app_on_tab(&model, TAB_STARSHIP);
+        assert_eq!(app.settings_view(), ConfigUiSettingsView::Overview);
+        assert!(
+            app.visible_rows()
+                .contains(&UiRowRef::Field(starship_index("character.format")))
+        );
+        assert!(
+            !app.visible_rows()
+                .contains(&UiRowRef::Field(all_only_index))
+        );
+        assert!(
+            app.visible_rows()
+                .contains(&UiRowRef::FileAction(action_index))
+        );
+
+        app.handle_key(ConfigUiKey::Char('a'));
+        assert_eq!(app.settings_view(), ConfigUiSettingsView::All);
+        assert!(
+            app.visible_rows()
+                .contains(&UiRowRef::Field(all_only_index))
+        );
+
+        let mut search = app_on_tab(&model, TAB_STARSHIP);
+        search_for(&mut search, "git_status.use_git_executable");
+        assert_eq!(search.visible_rows(), vec![UiRowRef::Field(all_only_index)]);
     }
 
     // Defends: the Keys tab is a read-only discovery surface for current packaged bindings.
@@ -2398,6 +2495,7 @@ color = "#123456"
                 "cursors.toml" => (SOURCE_CURSORS, TAB_CURSORS),
                 "config.toml" => (SOURCE_CONFIG, TAB_ADVANCED),
                 label if label.starts_with("helix/") => (SOURCE_HELIX, TAB_HELIX),
+                "starship.toml" => (SOURCE_STARSHIP, TAB_STARSHIP),
                 "yazi/yazi.toml" => (SOURCE_YAZI_CONFIG, TAB_YAZI),
                 "yazi/theme.toml" => (SOURCE_YAZI_THEME, TAB_YAZI),
                 label if label.starts_with("yazi/") => (SOURCE_YAZI, TAB_YAZI),
@@ -2427,6 +2525,7 @@ color = "#123456"
                 (ACTION_YAZI_KEYMAP, "yazi/keymap.toml"),
                 (ACTION_YAZI_PACKAGE, "yazi/package.toml"),
                 (ACTION_YAZI_THEME, "yazi/theme.toml"),
+                (ACTION_STARSHIP_CONFIG, "starship.toml"),
                 (ACTION_ZELLIJ_CONFIG, "zellij/config.kdl"),
                 (ACTION_ZELLIJ_PLUGINS, "zellij/plugins.kdl"),
             ]
@@ -3142,10 +3241,69 @@ color = "#123456"
             Some(&json!("$time"))
         );
 
-        let error = write_source_field(&paths, SOURCE_STARSHIP, "format", &json!("$all"))
+        write_source_field(&paths, SOURCE_STARSHIP, "format", &json!("$directory")).unwrap();
+        write_source_field(&paths, SOURCE_STARSHIP, "time.disabled", &json!(false)).unwrap();
+        write_source_default(&paths, SOURCE_STARSHIP, "format").unwrap();
+        let starship = read_toml_file_value(&paths.starship, "starship").unwrap();
+        assert_eq!(get_toml_path(&starship, "format"), None);
+        assert_eq!(
+            get_toml_path(&starship, "time.disabled"),
+            Some(&json!(false))
+        );
+        assert_eq!(
+            get_toml_path(&starship, "right_format"),
+            Some(&json!("$time"))
+        );
+
+        let error = write_source_field(
+            &paths,
+            SOURCE_STARSHIP,
+            "battery.display",
+            &json!([{"threshold": 20, "style": "yellow"}]),
+        )
+        .unwrap_err()
+        .to_string();
+        assert!(error.contains("no schema-backed inline editor"), "{error}");
+        let error = write_source_field(&paths, SOURCE_STARSHIP, "unknown", &json!(true))
             .unwrap_err()
             .to_string();
         assert!(error.contains("unknown Starship config path"));
+    }
+
+    #[test]
+    fn invalid_starship_document_keeps_repair_action_and_blocks_field_edits() {
+        let temp = TempHome::new();
+        let paths = ensure_config_sources_at(temp_paths(&temp)).unwrap();
+        fs::write(&paths.starship, "[character\n").unwrap();
+
+        let model = build_model(&paths).unwrap();
+
+        assert!(model.diagnostics.iter().any(|diagnostic| {
+            diagnostic.scope
+                == ConfigUiDiagnosticScope::Source {
+                    source_id: SOURCE_STARSHIP.to_string(),
+                }
+                && diagnostic.blocking
+        }));
+        assert!(model.file_actions.iter().any(|action| {
+            action.action_id == ACTION_STARSHIP_CONFIG && action.path == paths.starship
+        }));
+        assert!(
+            model
+                .fields
+                .iter()
+                .filter(|field| field.source_id == SOURCE_STARSHIP)
+                .all(|field| {
+                    !field.can_unset
+                        && matches!(
+                            field.capability,
+                            ConfigUiCapability::ReadOnly {
+                                file_action_id: Some(ref action),
+                                ..
+                            } if action == ACTION_STARSHIP_CONFIG
+                        )
+                })
+        );
     }
 
     #[test]

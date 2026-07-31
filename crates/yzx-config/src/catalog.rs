@@ -73,6 +73,8 @@ pub(crate) const ZELLIJ_RECOMMENDED_PATHS: &[&str] = &[
     "copy_on_select",
     "ui.pane_frames.rounded_corners",
 ];
+pub(crate) const STARSHIP_RECOMMENDED_PATHS: &[&str] =
+    &["format", "right_format", "add_newline", "character.format"];
 pub(crate) const DEFAULT_MARS_CONFIG_TOML: &str =
     include_str!("../../../defaults/mars/config.toml");
 pub(crate) const MARS_APPEARANCE_PRESET_PATH: &str = "mars.appearance.preset";
@@ -137,6 +139,7 @@ pub(crate) const ACTION_HELIX_MODULE: &str = "helix.module";
 pub(crate) const ACTION_HELIX_INIT: &str = "helix.init";
 pub(crate) const ACTION_NU_ENV: &str = "nu.env";
 pub(crate) const ACTION_NU_CONFIG: &str = "nu.config";
+pub(crate) const ACTION_STARSHIP_CONFIG: &str = "starship.config";
 pub(crate) const ACTION_YAZI_CONFIG: &str = "yazi.config";
 pub(crate) const ACTION_YAZI_INIT: &str = "yazi.init";
 pub(crate) const ACTION_YAZI_KEYMAP: &str = "yazi.keymap";
@@ -151,6 +154,8 @@ pub(crate) const HELIX_MODULE_STARTER: &str = ";; Loaded by managed yzx-hx befor
 pub(crate) const HELIX_INIT_STARTER: &str = ";; Loaded by managed yzx-hx at startup.\n";
 pub(crate) const NU_ENV_STARTER: &str = "# Loaded after Yazelix Nova packaged env.nu.\n";
 pub(crate) const NU_CONFIG_STARTER: &str = "# Loaded after Yazelix Nova packaged config.nu.\n";
+pub(crate) const STARSHIP_CONFIG_STARTER: &str =
+    "# Sparse overrides layered over packaged Starship defaults.\n";
 pub(crate) const YAZI_CONFIG_STARTER: &str = "# Extended over Yazelix Nova packaged yazi.toml.\n";
 pub(crate) const YAZI_INIT_STARTER: &str = "-- Loaded after Yazelix Nova packaged yazi/init.lua.\n";
 pub(crate) const YAZI_KEYMAP_STARTER: &str =
@@ -387,13 +392,6 @@ pub(crate) const CONFIG_FIELDS: &[ConfigFieldSpec] = &[
         apply_detail: "Saved keybindings apply to newly launched Yazelix sessions.",
     },
 ];
-
-pub(crate) const STARSHIP_FIELDS: &[FieldSpec] = &[FieldSpec::string_choice(
-    "character.format",
-    "Command-entry prompt shown below Starship context.",
-    &[],
-    "Starship character format string",
-)];
 
 pub(crate) const ZELLIJ_FORBIDDEN_TOP_LEVEL: &[&str] = &[
     "keybinds",
