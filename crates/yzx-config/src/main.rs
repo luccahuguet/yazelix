@@ -683,10 +683,10 @@ mod tests {
         );
         assert_eq!(get_toml_path(&value, SHELL_PROGRAM_PATH), None);
         let paths = ensure_config_sources_at(temp_paths(&temp)).unwrap();
-        assert_explicit(
-            model_field(&build_model(&paths).unwrap(), OPEN_LOG_LEVEL_PATH),
-            &json!("info"),
-        );
+        let model = build_model(&paths).unwrap();
+        let explicit = model_field(&model, OPEN_LOG_LEVEL_PATH);
+        assert_explicit(explicit, &json!("info"));
+        assert_eq!(baseline_value(explicit), Some(&json!("info")));
 
         unset_config_field(&path, OPEN_LOG_LEVEL_PATH).unwrap();
         assert!(!path.exists());
@@ -1202,6 +1202,52 @@ mod tests {
     }
 
     #[test]
+    fn reduced_tabs_expose_every_modeled_field_and_all_scope_search() {
+        let (_temp, paths) = temp_sources();
+        let model = build_model(&paths).unwrap();
+        let mut exercised_overview = false;
+
+        for tab in &model.tabs {
+            let mut app = app_on_tab(&model, tab);
+            let overview = app.visible_rows();
+            let Some(hidden_index) = model.fields.iter().enumerate().find_map(|(index, field)| {
+                (field.tab == *tab && !overview.contains(&UiRowRef::Field(index))).then_some(index)
+            }) else {
+                continue;
+            };
+            exercised_overview = true;
+
+            app.handle_key(ConfigUiKey::Char('a'));
+            assert_eq!(app.settings_view(), ConfigUiSettingsView::All);
+            let all = app.visible_rows();
+            assert!(
+                model
+                    .fields
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, field)| field.tab == *tab)
+                    .all(|(index, _)| all.contains(&UiRowRef::Field(index))),
+                "All omitted a field from {tab}"
+            );
+
+            let mut search = app_on_tab(&model, tab);
+            search_for(&mut search, &model.fields[hidden_index].path);
+            assert!(
+                search
+                    .visible_rows()
+                    .contains(&UiRowRef::Field(hidden_index)),
+                "search did not reach {}",
+                model.fields[hidden_index].path
+            );
+        }
+
+        assert!(
+            exercised_overview,
+            "the packaged model did not exercise Overview"
+        );
+    }
+
+    #[test]
     fn host_reload_preserves_failed_edits_and_completes_success_by_field_identity() {
         let (_temp, paths) = temp_sources();
         let mut app = ConfigUiApp::try_new(build_model(&paths).unwrap()).unwrap();
@@ -1316,6 +1362,10 @@ color = "#123456"
         assert_eq!(baseline_value(mode), Some(&json!("random")));
         assert_eq!(baseline_value(glow), Some(&json!("medium")));
         assert_eq!(baseline_value(duration), Some(&json!(1.0)));
+        assert_eq!(
+            trail.snapshot.baseline.as_ref().unwrap().origin.as_deref(),
+            Some("Packaged cursor defaults")
+        );
         assert_eq!(baseline_value(schema), None);
         assert_eq!(baseline_value(definitions), None);
         assert!(choice_values(trail).contains(&&json!("random")));
@@ -2477,7 +2527,7 @@ color = "#123456"
     }
 
     #[test]
-    fn native_file_tabs_list_owned_file_actions() {
+    fn native_file_actions_are_owned_and_searchable() {
         let (_temp, paths) = temp_sources();
         atomic_write(&paths.zellij, "keybinds{}\n").unwrap();
 
@@ -2586,6 +2636,15 @@ color = "#123456"
                     && file_action_status_style(action) == Style::default().fg(Color::Gray)
             }
         }));
+        for (index, action) in model.file_actions.iter().enumerate() {
+            let mut search = app_on_tab(&model, &action.tab);
+            search_for(&mut search, &action.label);
+            assert!(
+                search.visible_rows().contains(&UiRowRef::FileAction(index)),
+                "search did not reach {}",
+                action.label
+            );
+        }
     }
 
     #[test]

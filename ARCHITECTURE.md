@@ -429,7 +429,7 @@ Detail lives in Owners, checks, and the notes below.
 | ID | Contract | Owner | Check | Gap |
 | --- | --- | --- | --- | --- |
 | C11a | Root semantic schema + sparse persistence | `yzx-config`, `defaults/config.toml` | config tests + contracts | UI |
-| C11b | Popups/Mars/Cursors/Zellij/Starship tabs; complete pinned Mars and Starship inventories with sparse bounded controls; session Zellij active-file patch | Owner catalogs + Ratconfig + `yzx-config` | config tests + contracts | Session live scalars |
+| C11b | Popups; owner-complete Mars/Cursors/Starship/Yazi inventories; curated Zellij with exact-file fallback and session patching; Nushell selection plus Advanced file actions | Owner catalogs + Ratconfig + `yzx-config` | config tests + contracts | Session live scalars |
 | C11c | Helix observed native rows + exact files + `yzx-hx` merge / `Alt r` / Steel | `yzx-config`, Helix, `yzx-hx` | `helix-contracts` + config tests | Owner catalog unavailable |
 | C11d | Keys read-only + Advanced open-file | `yzx-config` | Keys/Advanced tests, key parity | UI |
 
