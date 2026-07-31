@@ -4,6 +4,10 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## 1.0.0-beta.4
 
+- The pane orchestrator no longer carries an agent-usage refresh scheduler.
+  Claude, Codex, and OpenCode collection, caching, deadlines, and retry policy
+  remain exclusively owned by the top bar; pane, workspace, activity, and
+  generic status-cache behavior are unchanged.
 - Ratconfig's Yazi tab consumes the official schema revision paired with
   packaged Yazi 26.5.6 and joins it to Yazi's native presets instead of treating
   only observed TOML as the inventory. All exposes 204 base settings plus the
