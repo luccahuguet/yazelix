@@ -22,6 +22,7 @@ use crate::{
     catalog::*,
     common::*,
     file_actions::build_file_actions,
+    helix_config::{HELIX_RECOMMENDED_PATHS, HELIX_REVEAL_PATH, build_helix_fields},
     mars_inventory::{MarsField, MarsInventory},
     paths::ConfigPaths,
     root_config::{bar_widgets, default_config, default_config_path_value, validate_root_config},
@@ -77,6 +78,8 @@ pub(crate) fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
         .and_then(JsonValue::as_str)
         == Some("light");
     let yazi = build_yazi_fields(paths, light)?;
+    let (helix, helix_diagnostics) = build_helix_fields(paths)?;
+    diagnostics.extend(helix_diagnostics);
     let file_actions = build_file_actions(paths);
 
     let mut fields: Vec<_> = CONFIG_FIELDS
@@ -87,6 +90,7 @@ pub(crate) fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
     if root_document_valid {
         fields.extend(build_custom_popup_fields(&paths.root)?);
     }
+    fields.extend(helix.fields);
     fields.extend(KEY_BINDINGS.iter().map(build_key_binding_field));
     fields.extend(build_cursor_fields(
         &cursors_active,
@@ -143,6 +147,18 @@ pub(crate) fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
         build_config_source(paths, SOURCE_CURSORS, "cursors.toml", &paths.cursors),
         build_config_source(paths, SOURCE_ZELLIJ, "zellij/config.kdl", &paths.zellij),
         build_config_source(paths, SOURCE_STARSHIP, "starship.toml", &paths.starship),
+        build_config_source(
+            paths,
+            SOURCE_HELIX_CONFIG,
+            "helix/config.toml",
+            &paths.helix_config,
+        ),
+        build_config_source(
+            paths,
+            SOURCE_HELIX_LANGUAGES,
+            "helix/languages.toml",
+            &paths.helix_languages,
+        ),
         build_config_source(paths, SOURCE_HELIX, "helix", &paths.helix_dir),
         build_config_source(
             paths,
@@ -199,6 +215,8 @@ pub(crate) fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
                 SOURCE_CURSORS => CURSOR_RECOMMENDED_PATHS.contains(&field.path.as_str()),
                 SOURCE_ZELLIJ => ZELLIJ_RECOMMENDED_PATHS.contains(&field.path.as_str()),
                 SOURCE_STARSHIP => STARSHIP_RECOMMENDED_PATHS.contains(&field.path.as_str()),
+                SOURCE_HELIX_CONFIG => HELIX_RECOMMENDED_PATHS.contains(&field.path.as_str()),
+                SOURCE_HELIX_LANGUAGES => false,
                 SOURCE_YAZI_CONFIG | SOURCE_YAZI_THEME => {
                     crate::yazi_config::YAZI_RECOMMENDED_FIELDS
                         .contains(&(field.source_id.as_str(), field.path.as_str()))
@@ -224,18 +242,21 @@ pub(crate) fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
             TAB_ADVANCED.to_string(),
         ],
         operational_tab: Some(TAB_ADVANCED.to_string()),
-        tab_list_tables: BTreeMap::from([(
-            TAB_KEYS.to_string(),
-            ConfigUiListTable {
-                columns: KEY_COLUMNS
-                    .iter()
-                    .map(|(title, width)| ConfigUiListColumn {
-                        title: (*title).to_string(),
-                        width: *width,
-                    })
-                    .collect(),
-            },
-        )]),
+        tab_list_tables: BTreeMap::from([
+            (TAB_HELIX.to_string(), helix.list_table),
+            (
+                TAB_KEYS.to_string(),
+                ConfigUiListTable {
+                    columns: KEY_COLUMNS
+                        .iter()
+                        .map(|(title, width)| ConfigUiListColumn {
+                            title: (*title).to_string(),
+                            width: *width,
+                        })
+                        .collect(),
+                },
+            ),
+        ]),
         fields,
         recommended_fields,
         file_actions,
@@ -350,22 +371,6 @@ fn root_field_diagnostics(active: &JsonValue) -> Vec<ConfigUiDiagnostic> {
     diagnostics
 }
 
-fn invalid_source_diagnostic(
-    display_path: &str,
-    source_id: &str,
-    message: String,
-) -> ConfigUiDiagnostic {
-    ConfigUiDiagnostic {
-        path: display_path.to_string(),
-        status: "blocked".to_string(),
-        headline: format!("{display_path} contains invalid configuration"),
-        blocking: true,
-        scope: ConfigUiDiagnosticScope::Source {
-            source_id: source_id.to_string(),
-        },
-        detail_lines: vec![message],
-    }
-}
 fn build_key_binding_field(
     [group, chord, action, owner, source]: &[&str; 5],
 ) -> ratconfig::ConfigUiField {
@@ -458,7 +463,7 @@ fn build_custom_popup_fields(path: &Path) -> Result<Vec<ratconfig::ConfigUiField
     .map_err(|source| error(source.to_string()))?
     .fields;
     fields.retain(|field| field.path.starts_with("popups."));
-    remove_toml_parent_fields(&mut fields);
+    remove_toml_parent_fields(&mut fields, None);
     for field in &mut fields {
         field.list_cells.clear();
         if let ConfigUiOverride::Explicit(value) = &field.snapshot.intent {
@@ -943,18 +948,22 @@ fn apply_source_policy(fields: &mut [ratconfig::ConfigUiField], sources: &[Confi
             .find(|source| source.id == field.source_id)
             .expect("every field source is declared");
         let home_manager_owned = source.owner_label.as_deref() == Some("Home Manager");
+        let integration_owned =
+            field.source_id == SOURCE_HELIX_CONFIG && field.path == HELIX_REVEAL_PATH;
         if home_manager_owned {
-            if matches!(
-                field.snapshot.intent,
-                ConfigUiOverride::Explicit(_) | ConfigUiOverride::Invalid { .. }
-            ) && let Some(effective) = &mut field.snapshot.effective
+            if !integration_owned
+                && matches!(
+                    field.snapshot.intent,
+                    ConfigUiOverride::Explicit(_) | ConfigUiOverride::Invalid { .. }
+                )
+                && let Some(effective) = &mut field.snapshot.effective
             {
                 effective.origin = Some("Home Manager".to_string());
             }
             field.snapshot.external_manager = Some("Home Manager".to_string());
         }
         if source.read_only {
-            if home_manager_owned
+            if (home_manager_owned && !integration_owned)
                 || !matches!(field.capability, ConfigUiCapability::ReadOnly { .. })
             {
                 field.capability = ConfigUiCapability::ReadOnly {
@@ -982,6 +991,8 @@ fn source_file_action(source_id: &str) -> Option<&'static str> {
         SOURCE_CONFIG => Some(ACTION_ROOT_CONFIG),
         SOURCE_CURSORS => Some(ACTION_CURSORS_CONFIG),
         SOURCE_STARSHIP => Some(ACTION_STARSHIP_CONFIG),
+        SOURCE_HELIX_CONFIG => Some(ACTION_HELIX_CONFIG),
+        SOURCE_HELIX_LANGUAGES => Some(ACTION_HELIX_LANGUAGES),
         SOURCE_ZELLIJ => Some(ACTION_ZELLIJ_CONFIG),
         SOURCE_YAZI_CONFIG => Some(ACTION_YAZI_CONFIG),
         SOURCE_YAZI_THEME => Some(ACTION_YAZI_THEME),

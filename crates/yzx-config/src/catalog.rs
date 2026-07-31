@@ -108,6 +108,8 @@ pub(crate) const DEFAULT_STARSHIP_CONFIG_TOML: &str = "\
 [character]
 format = \":: \"
 ";
+pub(crate) const DEFAULT_HELIX_CONFIG_TOML: &str =
+    include_str!("../../../defaults/helix/config.toml");
 
 pub(crate) const SOURCE_CONFIG: &str = DEFAULT_CONFIG_SOURCE_ID;
 pub(crate) const SOURCE_MARS: &str = "mars";
@@ -115,6 +117,8 @@ pub(crate) const SOURCE_CURSORS: &str = "cursors";
 pub(crate) const SOURCE_ZELLIJ: &str = "zellij";
 pub(crate) const SOURCE_STARSHIP: &str = "starship";
 pub(crate) const SOURCE_HELIX: &str = "helix";
+pub(crate) const SOURCE_HELIX_CONFIG: &str = "helix-config";
+pub(crate) const SOURCE_HELIX_LANGUAGES: &str = "helix-languages";
 pub(crate) const SOURCE_YAZI: &str = "yazi";
 pub(crate) const SOURCE_YAZI_CONFIG: &str = "yazi-config";
 pub(crate) const SOURCE_YAZI_THEME: &str = "yazi-theme";

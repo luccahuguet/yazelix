@@ -93,7 +93,7 @@ One owner per concern. Paths are the durable map.
 `crates/yzx-config/` is the Ratconfig host.
 
 - Supplies one stable source/path identity per field and reviewed root, Mars,
-  cursor, and Zellij recommendation allowlists. Ratconfig owns Overview/All filtering,
+  cursor, Zellij, and Helix recommendation allowlists. Ratconfig owns Overview/All filtering,
   meaningful reduction thresholds, attention-state visibility, toggling, and
   All-scope search
 - Consumes the versioned catalog from the exact pinned Mars source at build
@@ -101,6 +101,10 @@ One owner per concern. Paths are the durable map.
   single appearance exclusion, recommendation set, conservative apply labels,
   and the bounded mapping from owner shapes to sparse inline controls. The
   compiled consumer does not retain Mars in no-Mars runtime closures
+- Joins the packaged Helix baseline with observed native `config.toml` and
+  `languages.toml` values as read-only generic rows. Helix publishes no stable
+  machine-readable config catalog, so Yazelix does not mirror one or infer edit
+  authority from TOML shape; exact file actions remain the persistence surface
 - Resolves sparse override intent separately from baseline and effective values,
   declares editor capabilities independently of display types, and completes
   reloads by field identity rather than stale row position
@@ -272,7 +276,7 @@ Runtime state defaults to `$XDG_DATA_HOME/yazelix` or `YAZELIX_STATE_DIR`.
 | Mars | Packaged base → recursive sparse user override; cursor selection arrives separately through `YAZELIX_CURSOR_CONFIG` |
 | Nu | Packaged → optional host `mise activate nu` → optional user Nu |
 | Starship | Packaged generated schema + `print-config --default` → Ratconfig discovery and bounded scalar editing → sparse user overrides over Nova's `character.format` marker → runtime-effective TOML |
-| Helix | See Helix notes below |
+| Helix | Packaged Yazelix default → read-only Ratconfig baseline/observed rows → recursive sparse user override → reserved `keys.normal.A-r` restoration; dynamic languages and Steel stay native-file surfaces |
 | Yazi | Packaged TOML → recursive user tables + replacing scalars/arrays → managed opener/Git fetchers → runtime-only root-mode flavor projection; optional complete Starship config replacement |
 | Zellij | Packaged → guarded scalar sidecar → runtime materialize under state dir |
 | Host `~/.config/{helix,yazi,starship}` | Not loaded by default |
@@ -327,6 +331,9 @@ mode event to the bar, which chooses its internal palette.
   points at the Steel pair only when both exist.
 - Without user Steel, packaged Steel exposes `:yzx-new-shell`.
 - Packaged bindings: `Alt r` reveal (reserved), `Ctrl r` reload (user-overridable).
+- Ratconfig recommends eight packaged or integration-owned rows and searches
+  every packaged or explicitly observed native row. It makes no complete-schema
+  claim and routes edits to exact Helix files.
 - `hx` and `yzx-hx` select managed Helix; other `editor.command` values skip its
   bridge.
 - The no-Helix package replaces both managed names with an unavailable command;
@@ -423,7 +430,7 @@ Detail lives in Owners, checks, and the notes below.
 | --- | --- | --- | --- | --- |
 | C11a | Root semantic schema + sparse persistence | `yzx-config`, `defaults/config.toml` | config tests + contracts | UI |
 | C11b | Popups/Mars/Cursors/Zellij/Starship tabs; complete pinned Mars and Starship inventories with sparse bounded controls; session Zellij active-file patch | Owner catalogs + Ratconfig + `yzx-config` | config tests + contracts | Session live scalars |
-| C11c | Helix tab + `yzx-hx` merge / `Alt r` / Steel | `yzx-config`, helix, `yzx-hx` | `helix-contracts` + config tests | UI |
+| C11c | Helix observed native rows + exact files + `yzx-hx` merge / `Alt r` / Steel | `yzx-config`, Helix, `yzx-hx` | `helix-contracts` + config tests | Owner catalog unavailable |
 | C11d | Keys read-only + Advanced open-file | `yzx-config` | Keys/Advanced tests, key parity | UI |
 
 ### Install

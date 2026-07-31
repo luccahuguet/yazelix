@@ -32,15 +32,15 @@ composes their package outputs.
 
 | Measure | Nova | Classic |
 | --- | --- | --- |
-| Code and configuration (Rust, Nix, shell, TOML, etc.) | **22,083 LOC** | **91,545 LOC** |
-| Rust | **18,962 LOC** | **80,957 LOC** |
+| Code and configuration (Rust, Nix, shell, TOML, etc.) | **22,385 LOC** | **91,545 LOC** |
+| Rust | **19,262 LOC** | **80,957 LOC** |
 | Ownership model | One owner per concern | Overlapping responsibilities across layers |
 | Yazelix component boundaries | Independent, versioned packages | Child repos mixed with main-repo ownership |
 | Product experience | More features, stronger defaults, tighter integration, and polished UX | Fewer features and a less cohesive workspace |
 | Status | Recommended | Frozen migration and rollback path |
 
-Nova owns **69,462 fewer lines**, a **76% reduction**. Classic's Rust code
-alone is 3.7 times larger than Nova's entire code and configuration surface.
+Nova owns **69,160 fewer lines**, a **76% reduction**. Classic's Rust code
+alone is 3.6 times larger than Nova's entire code and configuration surface.
 
 Nova delivers more features in 24% of the code. It has a clearer configuration
 model, tighter editor and Yazi integration, stronger diagnostics, and a
@@ -255,9 +255,10 @@ Yazelix assembles focused first-party forks, plugins, libraries, and commands:
 `yzx config` opens Ratconfig over the managed tree at
 `~/.config/yazelix/`. Yazelix inherits packaged defaults and persists only
 explicit overrides. Overview combines recommended settings with every explicit,
-invalid, externally managed, or diagnosed field. All includes the complete
-inventory. Tabs whose Overview would hide fewer than three fields or less than
-one quarter of their inventory simply show All.
+invalid, externally managed, or diagnosed field. All includes complete owner
+inventories where the owner publishes one, and the strongest honest curated or
+observed inventory otherwise. Tabs whose Overview would hide fewer than three
+fields or less than one quarter of their inventory simply show All.
 
 The Cursors inventory comes from the pinned Yazelix Cursors package. It exposes
 every finite setting and its owner-defined choices, while custom definition
@@ -279,6 +280,16 @@ actions; search includes schema settings absent from both packaged and user
 TOML. Owner-validated booleans, choices, and unconstrained strings are editable.
 Numeric, structured, dynamic, and otherwise incompletely validated values open
 their native file instead.
+
+Helix does not publish a machine-readable configuration catalog. Its tab
+therefore exposes every packaged Yazelix Helix default and every value observed
+in the sparse user `config.toml` or dynamic `languages.toml`, without claiming
+that those rows are the complete Helix schema. Overview recommends eight common
+or integration-owned values; All and search cover the remaining packaged or
+explicit rows. Rows stay read-only with their exact native-file action because
+TOML shape alone does not establish Helix validation or safe edit semantics. The
+effective `keys.normal.A-r` row explains Yazelix's reserved reveal binding,
+while the two Steel files remain native actions.
 
 `appearance.mode` selects `dark` or `light` for managed Yazelix components and
 also controls Ratconfig's palette. In packages with Mars, Yazelix projects that
@@ -331,6 +342,6 @@ See [Development](docs/development.md) for CI and local checks,
 
 ## LOC Scorecard
 
-Yazelix owns **25,123 lines** of tracked text project files. The
+Yazelix owns **25,471 lines** of tracked text project files. The
 [reproducible scorecard](docs/development.md#loc-scorecard) excludes Beads,
 lockfiles, and binary assets.

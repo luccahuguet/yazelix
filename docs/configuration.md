@@ -130,8 +130,8 @@ ids that do not exist are not invented; open `config.toml` to add them
 | `zellij/config.kdl` | Zellij sidecar | Sparse safe scalar overrides where absent assignments inherit packaged defaults. The Zellij tab keeps themes, pane frames, mouse mode, copy-on-select, and rounded corners in Overview; All adds scrollback size, clipboard target, styled underlines, and startup tips. Search covers the typed fields and the exact native-file action. Safe untyped leaves remain unchanged without a UI row or informational diagnostic per leaf. Advanced diagnostics report only ignored, invalid, structurally unsafe, or integration-owned state; guarded diagnostics name the Yazelix owner. Ratconfig does not claim a complete Zellij schema. A legacy static `theme` assignment remains preserved but omitted from managed runtime. Inside a session, saves and resets also patch the active runtime config. Structural comments or continuations, extra managed-block metadata, other structured native nodes, and integration-owned nodes block unsafe writes |
 | `zellij/plugins.kdl` | Zellij plugin sidecar | Extra plugin declarations only. Packaged plugin ids cannot be redeclared |
 | `starship.toml` | Starship | Sparse native prompt overrides. Ratconfig consumes the generated schema and default output from packaged Starship 1.26.0. Overview recommends `format`, `right_format`, `add_newline`, and `character.format`; All exposes 832 finite owner fields. Schema-backed strings and booleans are editable. Numeric, structured, union, and dynamic values remain read-only with this exact file action |
-| `helix/config.toml` | Helix | Sparse user TOML merged over packaged Yazelix Helix defaults, with explicit creation starting from only an ownership comment |
-| `helix/languages.toml` | Helix | Managed Helix language config |
+| `helix/config.toml` | Helix | Sparse user TOML merged over packaged Yazelix Helix defaults. Ratconfig renders all packaged and explicit leaves as read-only native rows, recommends eight common or integration-owned values, and opens this exact file for edits. It does not claim a complete Helix schema |
+| `helix/languages.toml` | Helix | Dynamic language config. Ratconfig renders entries actually present in the file as read-only rows with this exact file action; it does not invent a finite language registry |
 | `helix/helix.scm` | Helix Steel | Loaded with `helix/init.scm` when the pair exists |
 | `helix/init.scm` | Helix Steel | Loaded with `helix/helix.scm` when the pair exists |
 | `nu/env.nu` | Nushell | Executable source loaded after packaged Yazelix `env.nu` |
@@ -145,6 +145,23 @@ ids that do not exist are not invented; open `config.toml` to add them
 
 The Nu files remain executable Advanced actions, not finite Ratconfig schemas.
 `shell.program` stays in main, and Starship stays under its own owner.
+
+The packaged Helix fork identifies its version but publishes no stable
+machine-readable catalog of configuration paths, defaults, constraints, or
+safe writable shapes. Ratconfig therefore uses the packaged Yazelix default as
+a baseline document and joins it to the sparse native user document. Overview
+contains theme, auto-format, bufferline, cursorline, insert cursor shape, hidden
+file visibility, soft wrap, and the reserved reveal binding, plus any explicit
+value that needs attention. All and search contain the other packaged or
+explicit rows. Ratconfig records explicit user values as intent without
+claiming an effective value; Helix validates them only at launch. Invalid TOML
+produces one source diagnostic and retains the packaged rows and exact repair
+action.
+
+Yazelix always resolves `keys.normal.A-r` to its reveal command, even when the
+user document contains another value; Ratconfig shows both that explicit intent
+and the integration-owned effective value. `helix.scm` and `init.scm` stay a
+paired Steel source action rather than inferred settings.
 
 The managed Yazi merge restores Yazelix's edit opener and its two sidebar Git
 fetchers exactly once. Other user fetchers and previewers remain in the merged

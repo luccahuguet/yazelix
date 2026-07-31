@@ -4,6 +4,17 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## 1.0.0-beta.4
 
+- Ratconfig's Helix tab joins the packaged Yazelix default with values observed
+  in sparse `helix/config.toml` and dynamic `helix/languages.toml`. Overview
+  recommends eight common or integration-owned rows; All and search expose the
+  remaining packaged and explicit native values. Helix does not publish a
+  machine-readable config catalog, so rows stay read-only with exact file
+  actions instead of claiming complete schema coverage or inferring safe edits
+  from TOML shape. The reserved `Alt r` row distinguishes user intent from the
+  Yazelix-owned effective reveal binding. Invalid native TOML remains a scoped
+  repair diagnostic. Home Manager owns its source file without masking that
+  Yazelix-owned effective binding; deep merge, languages loading, and paired
+  Steel files retain their existing behavior.
 - Ratconfig's Starship tab consumes the generated JSON Schema and
   `print-config --default` output from packaged Starship 1.26.0. Overview
   recommends four global and Nova-managed prompt settings; All exposes all 832

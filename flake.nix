@@ -173,12 +173,14 @@
         ln -s ${yazelixCursors} "$out/yazelix-cursors"
         cp ${./defaults/config.toml} "$out/config.toml"
         cp ${./defaults/mars/config.toml} "$out/mars.toml"
+        cp ${./defaults/helix/config.toml} "$out/helix.toml"
         cp ${mars}/docs/yazelix/config_inventory.v1.json "$out/mars-config-inventory.v1.json"
         substituteInPlace "$out/Cargo.toml" \
           --replace-fail '../../../yazelix-cursors' './yazelix-cursors'
         substituteInPlace "$out/src/catalog.rs" \
           --replace-fail '../../../defaults/config.toml' '../config.toml' \
-          --replace-fail '../../../defaults/mars/config.toml' '../mars.toml'
+          --replace-fail '../../../defaults/mars/config.toml' '../mars.toml' \
+          --replace-fail '../../../defaults/helix/config.toml' '../helix.toml'
         substituteInPlace "$out/src/mars_inventory.rs" \
           --replace-fail '../../../../mars/docs/yazelix/config_inventory.v1.json' '../mars-config-inventory.v1.json'
       '';

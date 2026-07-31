@@ -303,7 +303,7 @@ fn build_schema_document_fields(
         field.can_unset = unset_toml_value_text(current, &field.path).is_ok();
         fields.push(field);
     }
-    remove_toml_parent_fields(&mut fields);
+    remove_toml_parent_fields(&mut fields, None);
     fields.sort_by(|left, right| {
         left.section_label
             .cmp(&right.section_label)

@@ -10,7 +10,7 @@ use std::{
 use serde_json::Value as JsonValue;
 use toml::Value as TomlValue;
 
-use ratconfig::ConfigUiField;
+use ratconfig::{ConfigUiDiagnostic, ConfigUiDiagnosticScope, ConfigUiField};
 
 use crate::catalog::FieldSpec;
 
@@ -133,16 +133,36 @@ pub(crate) fn read_optional_text(path: &Path) -> Result<String> {
         Ok(String::new())
     }
 }
+pub(crate) fn invalid_source_diagnostic(
+    display_path: &str,
+    source_id: &str,
+    message: String,
+) -> ConfigUiDiagnostic {
+    ConfigUiDiagnostic {
+        path: display_path.to_string(),
+        status: "blocked".to_string(),
+        headline: format!("{display_path} contains invalid configuration"),
+        blocking: true,
+        scope: ConfigUiDiagnosticScope::Source {
+            source_id: source_id.to_string(),
+        },
+        detail_lines: vec![message],
+    }
+}
 pub(crate) fn string_values(values: &[&str]) -> Vec<String> {
     values.iter().map(|value| (*value).to_string()).collect()
 }
 
-pub(crate) fn remove_toml_parent_fields(fields: &mut Vec<ConfigUiField>) {
+pub(crate) fn remove_toml_parent_fields(
+    fields: &mut Vec<ConfigUiField>,
+    retained_parent: Option<&str>,
+) {
     let parents = fields
         .iter()
         .filter(|parent| {
             let child_prefix = format!("{}.", parent.path);
-            parent.type_label.as_deref() == Some("table")
+            retained_parent != Some(parent.path.as_str())
+                && parent.type_label.as_deref() == Some("table")
                 && fields.iter().any(|child| {
                     child.source_id == parent.source_id && child.path.starts_with(&child_prefix)
                 })

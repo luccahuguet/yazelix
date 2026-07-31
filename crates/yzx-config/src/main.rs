@@ -270,8 +270,11 @@ mod tests {
     fn link_from_store(paths: &ConfigPaths, path: &Path, text: &str) {
         use std::os::unix::fs::symlink;
 
-        fs::create_dir_all(&paths.store_root).unwrap();
-        let target = paths.store_root.join(path.file_name().unwrap());
+        let target = paths.store_root.join(
+            path.strip_prefix(paths.store_root.parent().unwrap())
+                .unwrap(),
+        );
+        fs::create_dir_all(target.parent().unwrap()).unwrap();
         fs::write(&target, text).unwrap();
         fs::create_dir_all(path.parent().unwrap()).unwrap();
         symlink(target, path).unwrap();
@@ -1141,6 +1144,8 @@ mod tests {
                             | SOURCE_CURSORS
                             | SOURCE_ZELLIJ
                             | SOURCE_STARSHIP
+                            | SOURCE_HELIX_CONFIG
+                            | SOURCE_HELIX_LANGUAGES
                             | SOURCE_YAZI_CONFIG
                             | SOURCE_YAZI_THEME
                     )
@@ -2255,6 +2260,13 @@ color = "#123456"
         link_from_store(&paths, &paths.cursors, DEFAULT_CURSOR_CONFIG_TEMPLATE);
         let managed_starship = "[character\n";
         link_from_store(&paths, &paths.starship, managed_starship);
+        let managed_helix = "theme = \"base16_default_dark\"\n[keys.normal]\nA-r = \"noop\"\n";
+        link_from_store(&paths, &paths.helix_config, managed_helix);
+        link_from_store(
+            &paths,
+            &paths.helix_languages,
+            "[[language]]\nname = \"nix\"\nauto-format = true\n",
+        );
         link_from_store(&paths, &paths.zellij, "theme_dark \"ansi\"\n");
         link_from_store(&paths, &paths.nu_env, "# managed\n");
         atomic_write(&paths.mars, "[window]\nwidth = 960\n").unwrap();
@@ -2263,33 +2275,44 @@ color = "#123456"
 
         let model = build_model(&paths).unwrap();
         let source = |id| model.sources.iter().find(|source| source.id == id).unwrap();
-        assert_eq!(
-            source(SOURCE_CONFIG).owner_label.as_deref(),
-            Some("Home Manager")
-        );
-        assert_eq!(
-            source(SOURCE_STARSHIP).owner_label.as_deref(),
-            Some("Home Manager")
-        );
+        let managed_sources = [
+            SOURCE_CONFIG,
+            SOURCE_CURSORS,
+            SOURCE_STARSHIP,
+            SOURCE_HELIX_CONFIG,
+            SOURCE_HELIX_LANGUAGES,
+            SOURCE_ZELLIJ,
+        ];
+        for source_id in managed_sources {
+            assert_eq!(
+                source(source_id).owner_label.as_deref(),
+                Some("Home Manager")
+            );
+            assert!(source(source_id).read_only);
+        }
         assert_eq!(source(SOURCE_MARS).owner_label.as_deref(), Some("User"));
         assert!(source(SOURCE_MARS).read_only);
-        assert_eq!(
-            source(SOURCE_CURSORS).owner_label.as_deref(),
-            Some("Home Manager")
-        );
         let starship = source_field(&model, SOURCE_STARSHIP, "character.format");
         assert_eq!(read_only(starship).0, "Managed by Home Manager.");
-        assert!(source(SOURCE_CURSORS).read_only);
+        let reveal = source_field(&model, SOURCE_HELIX_CONFIG, "keys.normal.A-r");
+        assert_eq!(
+            effective_value(reveal),
+            Some(&json!(r#":sh yzx reveal "%{buffer_name}""#))
+        );
+        assert_eq!(
+            reveal
+                .snapshot
+                .effective
+                .as_ref()
+                .and_then(|value| value.origin.as_deref()),
+            Some("Yazelix reserved Helix reveal binding")
+        );
+        assert!(read_only(reveal).0.contains("Reserved by Yazelix"));
         assert!(
             model
                 .fields
                 .iter()
-                .filter(|field| {
-                    matches!(
-                        field.source_id.as_str(),
-                        SOURCE_CONFIG | SOURCE_CURSORS | SOURCE_STARSHIP | SOURCE_ZELLIJ
-                    )
-                })
+                .filter(|field| managed_sources.contains(&field.source_id.as_str()))
                 .all(|field| {
                     field.snapshot.external_manager.as_deref() == Some("Home Manager")
                         && matches!(field.capability, ConfigUiCapability::ReadOnly { .. })
@@ -2323,6 +2346,16 @@ color = "#123456"
             ),
             "programs.yazelix.config.zellij",
         );
+        rejects(
+            prepare_file_action(
+                &paths,
+                SOURCE_HELIX_CONFIG,
+                ACTION_HELIX_CONFIG,
+                &paths.helix_config,
+                true,
+            ),
+            "programs.yazelix.config.helix.config",
+        );
         link_from_store(&paths, &paths.yazi_config, "[mgr]\nshow_hidden = true\n");
         link_from_store(
             &paths,
@@ -2344,6 +2377,7 @@ color = "#123456"
         assert_file_text(&paths.root, "");
         assert_file_text(&paths.cursors, DEFAULT_CURSOR_CONFIG_TEMPLATE);
         assert_file_text(&paths.starship, managed_starship);
+        assert_file_text(&paths.helix_config, managed_helix);
         assert_file_text(&paths.nu_env, "# managed\n");
 
         let action = build_file_actions(&paths)
@@ -2488,6 +2522,8 @@ color = "#123456"
             let expected = match action.label.as_str() {
                 "cursors.toml" => (SOURCE_CURSORS, TAB_CURSORS),
                 "config.toml" => (SOURCE_CONFIG, TAB_ADVANCED),
+                "helix/config.toml" => (SOURCE_HELIX_CONFIG, TAB_HELIX),
+                "helix/languages.toml" => (SOURCE_HELIX_LANGUAGES, TAB_HELIX),
                 label if label.starts_with("helix/") => (SOURCE_HELIX, TAB_HELIX),
                 "starship.toml" => (SOURCE_STARSHIP, TAB_STARSHIP),
                 "yazi/yazi.toml" => (SOURCE_YAZI_CONFIG, TAB_YAZI),
@@ -2915,7 +2951,7 @@ color = "#123456"
         let output = temp.path.join("state/helix/config.toml");
         prepare_file_action(
             &paths,
-            SOURCE_HELIX,
+            SOURCE_HELIX_CONFIG,
             ACTION_HELIX_CONFIG,
             &paths.helix_config,
             true,
@@ -3107,6 +3143,107 @@ color = "#123456"
                 .to_string();
             assert!(error.contains(expected), "{error}");
         }
+    }
+
+    #[test]
+    fn helix_native_documents_drive_overview_all_search_and_exact_fallbacks() {
+        let (_temp, paths) = temp_sources();
+        atomic_write(
+            &paths.helix_config,
+            "[editor]\nline-number = \"relative\"\n\n[keys.normal]\nA-r = \"noop\"\n",
+        )
+        .unwrap();
+        atomic_write(
+            &paths.helix_languages,
+            "[[language]]\nname = \"nix\"\nauto-format = false\n",
+        )
+        .unwrap();
+
+        let model = build_model(&paths).unwrap();
+        let config_field = |path| source_field(&model, SOURCE_HELIX_CONFIG, path);
+        let line_number = config_field("editor.line-number");
+        assert_eq!(
+            line_number.snapshot.intent,
+            ConfigUiOverride::Explicit(json!("relative"))
+        );
+        assert_eq!(effective_value(line_number), None);
+        assert_eq!(read_only(line_number).1, Some(ACTION_HELIX_CONFIG));
+
+        let theme = config_field("theme");
+        assert_inherited(theme, &json!("ayu_evolve"));
+        assert_eq!(
+            theme
+                .snapshot
+                .baseline
+                .as_ref()
+                .and_then(|value| value.origin.as_deref()),
+            Some("Yazelix packaged Helix config")
+        );
+
+        let reveal = config_field("keys.normal.A-r");
+        assert_eq!(
+            reveal.snapshot.intent,
+            ConfigUiOverride::Explicit(json!("noop"))
+        );
+        assert_eq!(
+            effective_value(reveal),
+            Some(&json!(r#":sh yzx reveal "%{buffer_name}""#))
+        );
+        assert!(read_only(reveal).0.contains("Reserved by Yazelix"));
+
+        let languages = source_field(&model, SOURCE_HELIX_LANGUAGES, "language");
+        assert!(matches!(
+            languages.snapshot.intent,
+            ConfigUiOverride::Explicit(JsonValue::Array(_))
+        ));
+        assert_eq!(read_only(languages).1, Some(ACTION_HELIX_LANGUAGES));
+
+        let all_only = field_index(&model, SOURCE_HELIX_CONFIG, "editor.statusline.right");
+        let line_number = field_index(&model, SOURCE_HELIX_CONFIG, "editor.line-number");
+        let theme = field_index(&model, SOURCE_HELIX_CONFIG, "theme");
+        let mut app = app_on_tab(&model, TAB_HELIX);
+        assert_eq!(app.settings_view(), ConfigUiSettingsView::Overview);
+        assert!(app.visible_rows().contains(&UiRowRef::Field(theme)));
+        assert!(app.visible_rows().contains(&UiRowRef::Field(line_number)));
+        assert!(!app.visible_rows().contains(&UiRowRef::Field(all_only)));
+        app.handle_key(ConfigUiKey::Char('a'));
+        assert_eq!(app.settings_view(), ConfigUiSettingsView::All);
+        assert!(app.visible_rows().contains(&UiRowRef::Field(all_only)));
+
+        let mut search = app_on_tab(&model, TAB_HELIX);
+        search_for(&mut search, "editor.statusline.right");
+        assert!(search.visible_rows().contains(&UiRowRef::Field(all_only)));
+
+        atomic_write(
+            &paths.helix_config,
+            "[keys.normal.A-r]\nunsupported = true\n",
+        )
+        .unwrap();
+        let model = build_model(&paths).unwrap();
+        let reveal = source_field(&model, SOURCE_HELIX_CONFIG, "keys.normal.A-r");
+        assert!(matches!(
+            reveal.snapshot.intent,
+            ConfigUiOverride::Explicit(JsonValue::Object(_))
+        ));
+        assert_eq!(
+            effective_value(reveal),
+            Some(&json!(r#":sh yzx reveal "%{buffer_name}""#))
+        );
+
+        atomic_write(&paths.helix_config, "[editor\n").unwrap();
+        let model = build_model(&paths).unwrap();
+        assert!(model.diagnostics.iter().any(|diagnostic| {
+            diagnostic.scope
+                == ConfigUiDiagnosticScope::Source {
+                    source_id: SOURCE_HELIX_CONFIG.to_string(),
+                }
+                && diagnostic.blocking
+                && diagnostic.headline == "helix/config.toml contains invalid configuration"
+        }));
+        assert_inherited(
+            source_field(&model, SOURCE_HELIX_CONFIG, "theme"),
+            &json!("ayu_evolve"),
+        );
     }
 
     #[test]

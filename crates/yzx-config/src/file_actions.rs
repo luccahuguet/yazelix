@@ -77,7 +77,7 @@ fn file_action_specs(paths: &ConfigPaths) -> impl IntoIterator<Item = FileAction
             starter: DEFAULT_CURSOR_CONFIG_TEMPLATE,
         },
         FileActionSpec {
-            source_id: SOURCE_HELIX,
+            source_id: SOURCE_HELIX_CONFIG,
             action_id: ACTION_HELIX_CONFIG,
             tab: TAB_HELIX,
             label: "helix/config.toml",
@@ -86,7 +86,7 @@ fn file_action_specs(paths: &ConfigPaths) -> impl IntoIterator<Item = FileAction
             starter: HELIX_CONFIG_STARTER,
         },
         FileActionSpec {
-            source_id: SOURCE_HELIX,
+            source_id: SOURCE_HELIX_LANGUAGES,
             action_id: ACTION_HELIX_LANGUAGES,
             tab: TAB_HELIX,
             label: "helix/languages.toml",
