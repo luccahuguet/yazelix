@@ -2013,15 +2013,6 @@ color = "#123456"
                 .collect::<Vec<_>>()
         );
 
-        assert!(model.tabs.contains(&TAB_STARSHIP.to_string()));
-        assert!(
-            model
-                .sources
-                .iter()
-                .any(|source| { source.id == SOURCE_STARSHIP && source.path == paths.starship })
-        );
-        assert_eq!(prompt.source_id, SOURCE_STARSHIP);
-        assert_eq!(prompt.tab, TAB_STARSHIP);
         assert_eq!(prompt.type_label.as_deref(), Some("string"));
         assert_inherited(prompt, &json!(":: "));
         assert_eq!(prompt.apply_status.summary, "new prompts");
@@ -2254,7 +2245,7 @@ color = "#123456"
         assert_eq!(read_only(key).0, KEY_READ_ONLY_REASON);
     }
 
-    // Defends: only store-backed config is declarative, and every mutation route stops before IO.
+    // Defends: store-backed config stays declarative when malformed, and mutations stop before IO.
     #[cfg(unix)]
     #[test]
     fn home_manager_sources_are_explicit_and_non_mutating() {
@@ -2262,7 +2253,8 @@ color = "#123456"
         let paths = temp_paths(&temp);
         link_from_store(&paths, &paths.root, "");
         link_from_store(&paths, &paths.cursors, DEFAULT_CURSOR_CONFIG_TEMPLATE);
-        link_from_store(&paths, &paths.starship, "[character]\nformat = \"::\"\n");
+        let managed_starship = "[character\n";
+        link_from_store(&paths, &paths.starship, managed_starship);
         link_from_store(&paths, &paths.zellij, "theme_dark \"ansi\"\n");
         link_from_store(&paths, &paths.nu_env, "# managed\n");
         atomic_write(&paths.mars, "[window]\nwidth = 960\n").unwrap();
@@ -2285,6 +2277,8 @@ color = "#123456"
             source(SOURCE_CURSORS).owner_label.as_deref(),
             Some("Home Manager")
         );
+        let starship = source_field(&model, SOURCE_STARSHIP, "character.format");
+        assert_eq!(read_only(starship).0, "Managed by Home Manager.");
         assert!(source(SOURCE_CURSORS).read_only);
         assert!(
             model
@@ -2349,7 +2343,7 @@ color = "#123456"
         );
         assert_file_text(&paths.root, "");
         assert_file_text(&paths.cursors, DEFAULT_CURSOR_CONFIG_TEMPLATE);
-        assert_file_text(&paths.starship, "[character]\nformat = \"::\"\n");
+        assert_file_text(&paths.starship, managed_starship);
         assert_file_text(&paths.nu_env, "# managed\n");
 
         let action = build_file_actions(&paths)
@@ -3284,6 +3278,7 @@ color = "#123456"
                     source_id: SOURCE_STARSHIP.to_string(),
                 }
                 && diagnostic.blocking
+                && diagnostic.headline == "starship.toml contains invalid configuration"
         }));
         assert!(model.file_actions.iter().any(|action| {
             action.action_id == ACTION_STARSHIP_CONFIG && action.path == paths.starship

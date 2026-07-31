@@ -39,13 +39,13 @@ pub(crate) fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
     let (config_active, root_document_valid, mut diagnostics) = load_root_config(&paths.root)?;
     let config_default = default_config()?;
     let (mars_active, mars_document_valid, mars_diagnostics) =
-        load_native_toml_config(&paths.mars, "mars/config.toml", SOURCE_MARS)?;
+        load_toml_source(&paths.mars, "mars/config.toml", SOURCE_MARS)?;
     diagnostics.extend(mars_diagnostics);
     let mars_inventory = MarsInventory::parse()?;
     let mars_default = parse_toml_value(DEFAULT_MARS_CONFIG_TOML)
         .map_err(|error| boxed_debug("invalid default Mars config", error))?;
     let (starship_active, starship_document_valid, starship_diagnostics) =
-        load_native_toml_config(&paths.starship, "starship.toml", SOURCE_STARSHIP)?;
+        load_toml_source(&paths.starship, "starship.toml", SOURCE_STARSHIP)?;
     diagnostics.extend(starship_diagnostics);
     let starship_inventory = StarshipInventory::parse()?;
     let starship_owner_default = parse_toml_value(PACKAGED_STARSHIP_DEFAULT_CONFIG_TOML)
@@ -168,25 +168,18 @@ pub(crate) fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
         },
     ];
     fields.extend(yazi);
-    apply_source_policy(&mut fields, &sources);
     if !root_document_valid {
-        for field in fields
-            .iter_mut()
-            .filter(|field| field.source_id == SOURCE_CONFIG)
-        {
-            field.capability = ConfigUiCapability::ReadOnly {
-                reason: "Repair config.toml before editing individual fields.".to_string(),
-                file_action_id: Some(ACTION_ROOT_CONFIG.to_string()),
-            };
-            field.can_unset = false;
-        }
+        block_source_fields(
+            &mut fields,
+            SOURCE_CONFIG,
+            "Repair config.toml before editing individual fields.",
+        );
     }
     if !mars_document_valid {
         block_source_fields(
             &mut fields,
             SOURCE_MARS,
             "Repair mars/config.toml before editing individual fields.",
-            None,
         );
     }
     if !starship_document_valid {
@@ -194,9 +187,9 @@ pub(crate) fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
             &mut fields,
             SOURCE_STARSHIP,
             "Repair starship.toml before editing individual fields.",
-            Some(ACTION_STARSHIP_CONFIG),
         );
     }
+    apply_source_policy(&mut fields, &sources);
     let recommended_fields = Some(
         fields
             .iter()
@@ -266,22 +259,13 @@ pub(crate) fn build_model(paths: &ConfigPaths) -> Result<ConfigUiModel> {
 }
 
 fn load_root_config(path: &Path) -> Result<(JsonValue, bool, Vec<ConfigUiDiagnostic>)> {
-    if !path_entry_exists(path)? {
-        return Ok((JsonValue::Object(Default::default()), true, Vec::new()));
+    let (active, document_valid, mut diagnostics) =
+        load_toml_source(path, "config.toml", SOURCE_CONFIG)?;
+    if !document_valid {
+        return Ok((active, false, diagnostics));
     }
-    let raw = fs::read_to_string(path)?;
-    let active = match parse_toml_value(&raw) {
-        Ok(active) => active,
-        Err(source) => {
-            return Ok((
-                JsonValue::Object(Default::default()),
-                false,
-                vec![root_source_diagnostic(format!("invalid TOML: {source:?}"))],
-            ));
-        }
-    };
 
-    let mut diagnostics = root_field_diagnostics(&active);
+    diagnostics.extend(root_field_diagnostics(&active));
     let source_error = validate_root_config(&active)
         .err()
         .map(|source| source.to_string())
@@ -295,12 +279,16 @@ fn load_root_config(path: &Path) -> Result<(JsonValue, bool, Vec<ConfigUiDiagnos
         });
     let document_valid = source_error.is_none();
     if let Some(message) = source_error {
-        diagnostics.push(root_source_diagnostic(message));
+        diagnostics.push(invalid_source_diagnostic(
+            "config.toml",
+            SOURCE_CONFIG,
+            message,
+        ));
     }
     Ok((active, document_valid, diagnostics))
 }
 
-fn load_native_toml_config(
+fn load_toml_source(
     path: &Path,
     display_path: &str,
     source_id: &str,
@@ -314,16 +302,11 @@ fn load_native_toml_config(
         Err(source) => Ok((
             JsonValue::Object(Default::default()),
             false,
-            vec![ConfigUiDiagnostic {
-                path: display_path.to_string(),
-                status: "blocked".to_string(),
-                headline: format!("{display_path} needs native-file repair"),
-                blocking: true,
-                scope: ConfigUiDiagnosticScope::Source {
-                    source_id: source_id.to_string(),
-                },
-                detail_lines: vec![format!("invalid TOML: {source:?}")],
-            }],
+            vec![invalid_source_diagnostic(
+                display_path,
+                source_id,
+                format!("invalid TOML: {source:?}"),
+            )],
         )),
     }
 }
@@ -367,14 +350,18 @@ fn root_field_diagnostics(active: &JsonValue) -> Vec<ConfigUiDiagnostic> {
     diagnostics
 }
 
-fn root_source_diagnostic(message: String) -> ConfigUiDiagnostic {
+fn invalid_source_diagnostic(
+    display_path: &str,
+    source_id: &str,
+    message: String,
+) -> ConfigUiDiagnostic {
     ConfigUiDiagnostic {
-        path: "config.toml".to_string(),
+        path: display_path.to_string(),
         status: "blocked".to_string(),
-        headline: "config.toml needs native-file repair".to_string(),
+        headline: format!("{display_path} contains invalid configuration"),
         blocking: true,
         scope: ConfigUiDiagnosticScope::Source {
-            source_id: SOURCE_CONFIG.to_string(),
+            source_id: source_id.to_string(),
         },
         detail_lines: vec![message],
     }
@@ -613,7 +600,7 @@ fn build_starship_config_field(
             encoding: ConfigUiTextEncoding::String,
         },
         _ => ConfigUiCapability::ReadOnly {
-            reason: "Edit structured Starship values in starship.toml.".to_string(),
+            reason: "Edit this Starship value in starship.toml.".to_string(),
             file_action_id: Some(ACTION_STARSHIP_CONFIG.to_string()),
         },
     };
@@ -936,19 +923,14 @@ fn set_starship_origins(field: &mut ratconfig::ConfigUiField, yazelix_default: b
     }
 }
 
-fn block_source_fields(
-    fields: &mut [ratconfig::ConfigUiField],
-    source_id: &str,
-    reason: &str,
-    file_action_id: Option<&str>,
-) {
+fn block_source_fields(fields: &mut [ratconfig::ConfigUiField], source_id: &str, reason: &str) {
     for field in fields
         .iter_mut()
         .filter(|field| field.source_id == source_id)
     {
         field.capability = ConfigUiCapability::ReadOnly {
             reason: reason.to_string(),
-            file_action_id: file_action_id.map(str::to_string),
+            file_action_id: source_file_action(source_id).map(str::to_string),
         };
         field.can_unset = false;
     }

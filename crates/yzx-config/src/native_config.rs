@@ -10,7 +10,7 @@ use crate::{
     common::*,
     mars_inventory::MarsInventory,
     root_config::config_field,
-    starship_inventory::{StarshipInventory, starship_field_is_editable, validate_starship_field},
+    starship_inventory::{StarshipInventory, validate_starship_field},
 };
 
 pub(crate) fn write_cursor_config_field(
@@ -129,7 +129,7 @@ pub(crate) fn unset_starship_config_field(path: &Path, field_path: &str) -> Resu
     let field = inventory
         .field(field_path)
         .ok_or_else(|| error(format!("unknown Starship config path: {field_path}")))?;
-    if !starship_field_is_editable(field) {
+    if !matches!(field.kind.as_str(), "boolean" | "string") {
         return Err(error(format!(
             "Starship config path {field_path} has no schema-backed inline editor"
         )));

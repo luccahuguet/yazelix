@@ -9,10 +9,10 @@ User-visible runtime changes for Yazelix Nova live here.
   recommends four global and Nova-managed prompt settings; All exposes all 832
   finite owner fields and search spans them. Schema-backed strings and booleans
   use sparse inline edits, while numeric, structured, union, and dynamic values
-  remain read-only with an exact `starship.toml` action. Invalid TOML keeps the
-  tab available for native repair. Nova's `character.format = ":: "` baseline,
-  Nu materialization, Home Manager ownership, and prompt apply timing are
-  unchanged.
+  remain read-only with an exact `starship.toml` action. Invalid TOML keeps tabs
+  available; root, Mars, and Starship diagnostics stay ownership-neutral for
+  Home Manager. Nova's `character.format = ":: "` baseline, Nu materialization,
+  and prompt apply timing are unchanged.
 - Ratconfig keeps managed Nushell's finite shell choice under `shell.program`
   and its two executable user sources as exact Advanced file actions. Search
   reaches the shell choice, environment source, and optional mise ordering

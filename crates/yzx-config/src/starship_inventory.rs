@@ -48,24 +48,19 @@ impl StarshipInventory {
     }
 }
 
-pub(crate) fn starship_field_is_editable(field: &ConfigUiSchemaField) -> bool {
-    matches!(field.kind.as_str(), "boolean" | "string")
-}
-
 pub(crate) fn validate_starship_field(
     field: &ConfigUiSchemaField,
     value: &JsonValue,
 ) -> Result<()> {
-    if !starship_field_is_editable(field) {
-        return Err(error(format!(
-            "Starship config path {} has no schema-backed inline editor",
-            field.path
-        )));
-    }
     let valid = match field.kind.as_str() {
         "boolean" => value.is_boolean(),
         "string" => value.is_string(),
-        _ => false,
+        _ => {
+            return Err(error(format!(
+                "Starship config path {} has no schema-backed inline editor",
+                field.path
+            )));
+        }
     };
     if !valid {
         return Err(error(format!(
