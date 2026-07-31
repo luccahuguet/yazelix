@@ -134,14 +134,19 @@ ids that do not exist are not invented; open `config.toml` to add them
 | `helix/languages.toml` | Helix | Managed Helix language config |
 | `helix/helix.scm` | Helix Steel | Loaded with `helix/init.scm` when the pair exists |
 | `helix/init.scm` | Helix Steel | Loaded with `helix/helix.scm` when the pair exists |
-| `nu/env.nu` | Nushell | Loaded after packaged Yazelix env |
-| `nu/config.nu` | Nushell | Loaded after packaged Yazelix config |
+| `nu/env.nu` | Nushell | Executable source loaded after packaged Yazelix `env.nu` |
+| `nu/config.nu` | Nushell | Executable source loaded after packaged Yazelix `config.nu` and any successful host `mise activate nu` output |
 | `yazi/yazi.toml` | Yazi | Native tables merge recursively, while user scalars and arrays replace packaged values. Ratconfig joins the official schema paired with packaged Yazi 26.5.6 to its native preset and the sparse user file. Overview recommends eight manager and preview controls; All exposes 95 finite or preset-observed base rows |
 | `yazi/init.lua` | Yazi | Appended after packaged Yazi init |
 | `yazi/keymap.toml` | Yazi | Appended after packaged Yazi keymap |
 | `yazi/starship.toml` | Yazi Starship | Complete replacement for Nova's packaged compact Starship header config |
 | `yazi/theme.toml` | Yazi | Native theme config. Ratconfig joins the paired official schema to Yazi's dark or light preset, exposes all 109 fields, provides separate installed flavor pools, and preserves explicit choices. Yazelix projects the side selected by root `appearance.mode` only into generated runtime config |
 | `yazi/package.toml` | Yazi | Opaque package metadata that Yazelix does not process with `ya pkg` |
+
+The Nu files remain exact executable-source actions in Advanced rather than
+pretending arbitrary Nu code is a finite settings schema. The finite shell
+choice stays under `shell.program` in main, and Starship prompt settings stay
+under their own owner.
 
 The managed Yazi merge restores Yazelix's edit opener and its two sidebar Git
 fetchers exactly once. Other user fetchers and previewers remain in the merged

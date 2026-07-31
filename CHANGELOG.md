@@ -4,6 +4,10 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## 1.0.0-beta.4
 
+- Ratconfig keeps managed Nushell's finite shell choice under `shell.program`
+  and its two executable user sources as exact Advanced file actions. Search
+  reaches the shell choice, environment source, and optional mise ordering
+  without parsing Nu or duplicating Starship ownership.
 - The pane orchestrator no longer carries an agent-usage refresh scheduler.
   Claude, Codex, and OpenCode collection, caching, deadlines, and retry policy
   remain exclusively owned by the top bar; pane, workspace, activity, and

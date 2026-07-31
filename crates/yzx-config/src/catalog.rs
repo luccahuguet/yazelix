@@ -235,7 +235,7 @@ pub(crate) const CONFIG_FIELDS: &[ConfigFieldSpec] = &[
     ConfigFieldSpec {
         field: FieldSpec::string_choice(
             SHELL_PROGRAM_PATH,
-            "Packaged shell launched in new Zellij panes.",
+            "Packaged Nushell, Bash, Zsh, or Fish launched in new Zellij panes.",
             &["nu", "bash", "zsh", "fish"],
             "nu, bash, zsh, or fish",
         ),

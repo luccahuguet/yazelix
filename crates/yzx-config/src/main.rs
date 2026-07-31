@@ -2452,6 +2452,41 @@ color = "#123456"
     }
 
     #[test]
+    fn nushell_search_reaches_the_finite_control_and_executable_sources() {
+        let (_temp, paths) = temp_sources();
+        let model = build_model(&paths).unwrap();
+        let shell_index = field_index(&model, SOURCE_CONFIG, SHELL_PROGRAM_PATH);
+        let mut main = app_on_tab(&model, TAB_CONFIG);
+        search_for(&mut main, "Nushell");
+        assert_eq!(main.visible_rows(), [UiRowRef::Field(shell_index)]);
+
+        let advanced = app_on_tab(&model, TAB_ADVANCED);
+        for (query, action_id) in [
+            ("Nushell environment", ACTION_NU_ENV),
+            ("mise activation", ACTION_NU_CONFIG),
+        ] {
+            let index = model
+                .file_actions
+                .iter()
+                .position(|action| action.action_id == action_id)
+                .unwrap_or_else(|| panic!("missing {action_id} file action"));
+            let action = &model.file_actions[index];
+            assert_eq!(
+                (action.source_id.as_str(), action.tab.as_str()),
+                (SOURCE_ADVANCED, TAB_ADVANCED)
+            );
+            assert!(
+                advanced
+                    .visible_rows()
+                    .contains(&UiRowRef::FileAction(index))
+            );
+            let mut search = app_on_tab(&model, TAB_ADVANCED);
+            search_for(&mut search, query);
+            assert_eq!(search.visible_rows(), [UiRowRef::FileAction(index)]);
+        }
+    }
+
+    #[test]
     fn yazi_tab_renders_and_writes_native_config_with_discovered_flavors() {
         let (_temp, paths) = temp_sources();
         fs::write(
