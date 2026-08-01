@@ -112,7 +112,7 @@ fn patch_managed_keybindings(
 ) -> Result<String, AppError> {
     let mut patched = text;
     for (index, binding) in managed_keybindings.iter().enumerate() {
-        if binding.configured == binding.default {
+        if binding.is_default() {
             continue;
         }
         let marker = format!("bind {}", kdl_string(binding.default));
@@ -129,15 +129,47 @@ fn patch_managed_keybindings(
         patched = patched.replace(&marker, &format!("bind __YZX_MANAGED_KEY_{index}__"));
     }
     for (index, binding) in managed_keybindings.iter().enumerate() {
-        if binding.configured == binding.default {
+        if binding.is_default() {
             continue;
         }
-        patched = patched.replace(
-            &format!("__YZX_MANAGED_KEY_{index}__"),
-            &kdl_string(&binding.configured),
-        );
+        let marker = format!("__YZX_MANAGED_KEY_{index}__");
+        patched = match &binding.configured {
+            Some(chord) => patched.replace(&marker, &kdl_string(chord)),
+            None => omit_managed_binding_node(patched, config, binding.label, &marker)?,
+        };
     }
     Ok(patched)
+}
+
+fn omit_managed_binding_node(
+    text: String,
+    config: &Path,
+    label: &str,
+    marker: &str,
+) -> Result<String, AppError> {
+    let mut output = String::with_capacity(text.len());
+    let mut found = false;
+    let mut depth = 0isize;
+    for line in text.split_inclusive('\n') {
+        if depth == 0 && line.contains(marker) {
+            found = true;
+            depth = zellij_brace_delta(line);
+            continue;
+        }
+        if depth > 0 {
+            depth += zellij_brace_delta(line);
+        } else {
+            output.push_str(line);
+        }
+    }
+    if !found || depth != 0 {
+        return Err(startup(
+            format!("could not omit the packaged {label} key binding"),
+            config.display(),
+            1,
+        ));
+    }
+    Ok(output)
 }
 
 fn patch_popup_default_margins(
@@ -484,4 +516,65 @@ fn materialize_layout(path: &Path, plugin_block: &str) -> Result<(), AppError> {
 
 fn kdl_string(value: impl Display) -> String {
     format!("{:?}", value.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn managed_key_patch_remaps_active_bindings_and_omits_unmapped_nodes() {
+        let text = concat!(
+            "keybinds {\n",
+            "    shared {\n",
+            "        bind \"Alt Shift K\" { MessagePlugin \"yzpp\" { payload \"config\"; }; }\n",
+            "        bind \"Alt Shift S\" {\n",
+            "            MessagePlugin \"yzpp\" {\n",
+            "                payload \"screen\"\n",
+            "            }\n",
+            "        }\n",
+            "        bind \"Alt Shift H\" { MessagePlugin \"orchestrator\" { name \"toggle_sidebar\"; }; }\n",
+            "        bind \"Ctrl q\" { Quit; }\n",
+            "    }\n",
+            "}\n",
+        );
+        let binding = |label, path, default, configured: Option<&str>| ManagedKeybinding {
+            label,
+            path,
+            default,
+            configured: configured.map(str::to_string),
+        };
+        let bindings = [
+            binding(
+                "config",
+                "keybindings.config",
+                "Alt Shift K",
+                Some("Alt Shift C"),
+            ),
+            binding("screen", "keybindings.screen", "Alt Shift S", None),
+            binding("sidebar", "keybindings.sidebar", "Alt Shift H", None),
+        ];
+
+        let patched =
+            match patch_managed_keybindings(text.to_string(), Path::new("config.kdl"), &bindings) {
+                Ok(patched) => patched,
+                Err(_) => panic!("managed key patch failed"),
+            };
+
+        assert!(
+            patched
+                .contains(r#"bind "Alt Shift C" { MessagePlugin "yzpp" { payload "config"; }; }"#)
+        );
+        assert!(patched.contains(r#"bind "Ctrl q" { Quit; }"#));
+        for omitted in [
+            "Alt Shift K",
+            "Alt Shift S",
+            "Alt Shift H",
+            "screen",
+            "toggle_sidebar",
+        ] {
+            assert!(!patched.contains(omitted), "unmapped bind kept {omitted}");
+        }
+        assert!(!patched.contains("__YZX_MANAGED_KEY_"));
+    }
 }

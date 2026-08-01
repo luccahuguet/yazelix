@@ -326,71 +326,64 @@ pub(crate) const CONFIG_FIELDS: &[ConfigFieldSpec] = &[
         apply_detail: "Saved popup margins apply to newly launched Yazelix sessions.",
     },
     ConfigFieldSpec {
-        field: FieldSpec::string_choice(
+        field: FieldSpec::managed_keybinding(
             KEYBINDINGS_CONFIG_PATH,
-            "Key chord that toggles the managed config popup.",
-            &[],
-            "key chord like Alt Shift A that does not conflict with a packaged binding",
+            "Key chord that toggles the managed config popup. Set false to leave it unmapped.",
+            "key chord like Alt Shift A that does not conflict with a packaged binding, or false",
         ),
         apply_summary: "next launch",
         apply_detail: "Saved keybindings apply to newly launched Yazelix sessions.",
     },
     ConfigFieldSpec {
-        field: FieldSpec::string_choice(
+        field: FieldSpec::managed_keybinding(
             KEYBINDINGS_AGENT_PATH,
-            "Key chord that hides or shows the managed agent popup.",
-            &[],
-            "key chord like Alt Shift A that does not conflict with a packaged binding",
+            "Key chord that hides or shows the managed agent popup. Set false to leave it unmapped.",
+            "key chord like Alt Shift A that does not conflict with a packaged binding, or false",
         ),
         apply_summary: "next launch",
         apply_detail: "Saved keybindings apply to newly launched Yazelix sessions.",
     },
     ConfigFieldSpec {
-        field: FieldSpec::string_choice(
+        field: FieldSpec::managed_keybinding(
             KEYBINDINGS_GIT_PATH,
-            "Key chord that toggles the managed Git popup.",
-            &[],
-            "key chord like Alt Shift A that does not conflict with a packaged binding",
+            "Key chord that toggles the managed Git popup. Set false to leave it unmapped.",
+            "key chord like Alt Shift A that does not conflict with a packaged binding, or false",
         ),
         apply_summary: "next launch",
         apply_detail: "Saved keybindings apply to newly launched Yazelix sessions.",
     },
     ConfigFieldSpec {
-        field: FieldSpec::string_choice(
+        field: FieldSpec::managed_keybinding(
             KEYBINDINGS_MENU_PATH,
-            "Key chord that toggles the managed command palette popup.",
-            &[],
-            "key chord like Alt Shift A that does not conflict with a packaged binding",
+            "Key chord that toggles the managed command palette popup. Set false to leave it unmapped.",
+            "key chord like Alt Shift A that does not conflict with a packaged binding, or false",
         ),
         apply_summary: "next launch",
         apply_detail: "Saved keybindings apply to newly launched Yazelix sessions.",
     },
     ConfigFieldSpec {
-        field: FieldSpec::string_choice(
+        field: FieldSpec::managed_keybinding(
             KEYBINDINGS_SCREEN_PATH,
-            "Key chord that opens a random full-screen visual.",
-            &[],
-            "key chord like Alt Shift A that does not conflict with a packaged binding",
+            "Key chord that opens a random full-screen visual. Set false to leave it unmapped.",
+            "key chord like Alt Shift A that does not conflict with a packaged binding, or false",
         ),
         apply_summary: "next launch",
         apply_detail: "Saved keybindings apply to newly launched Yazelix sessions.",
     },
     ConfigFieldSpec {
-        field: FieldSpec::string_choice(
+        field: FieldSpec::managed_keybinding(
             KEYBINDINGS_SIDEBAR_PATH,
-            "Key chord that hides or shows the managed Yazi sidebar.",
-            &[],
-            "key chord like Alt Shift A that does not conflict with a packaged binding",
+            "Key chord that hides or shows the managed Yazi sidebar. Set false to leave it unmapped.",
+            "key chord like Alt Shift A that does not conflict with a packaged binding, or false",
         ),
         apply_summary: "next launch",
         apply_detail: "Saved keybindings apply to newly launched Yazelix sessions.",
     },
     ConfigFieldSpec {
-        field: FieldSpec::string_choice(
+        field: FieldSpec::managed_keybinding(
             KEYBINDINGS_SIDEBAR_FOCUS_PATH,
-            "Key chord that toggles focus between the editor and managed Yazi sidebar.",
-            &[],
-            "key chord like Ctrl y that does not conflict with a packaged binding",
+            "Key chord that toggles focus between the editor and managed Yazi sidebar. Set false to leave it unmapped.",
+            "key chord like Ctrl y that does not conflict with a packaged binding, or false",
         ),
         apply_summary: "next launch",
         apply_detail: "Saved keybindings apply to newly launched Yazelix sessions.",
@@ -484,6 +477,14 @@ impl FieldSpec {
         validation: &'static str,
     ) -> Self {
         Self::new(path, "string", description, allowed_values, validation)
+    }
+
+    const fn managed_keybinding(
+        path: &'static str,
+        description: &'static str,
+        validation: &'static str,
+    ) -> Self {
+        Self::new(path, "key chord or false", description, &[], validation)
     }
 
     const fn string_list(

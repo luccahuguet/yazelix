@@ -608,6 +608,35 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
         );
     }
 
+    let unmapped_keys = RuntimeCase::new(&temp.path, "unmapped-keys");
+    unmapped_keys.write_default_config("\n[keybindings]\nconfig = false\nagent = \"Ctrl Shift A\"\nscreen = false\nsidebar = false\n");
+    let status = unmapped_keys.run_yzx(&yzx_bin, "status", "unmapped key status");
+    expect_contains_all! {
+        &status, "unmapped key status";
+        "config keybinding: unmapped",
+        "agent keybinding: Ctrl Shift A (remapped)",
+        "screen keybinding: unmapped",
+        "sidebar keybinding: unmapped",
+        "menu keybinding: Alt Shift M",
+    }
+    let unmapped_key_config = unmapped_keys.zellij_file("config.kdl");
+    expect_popup_binding(
+        &unmapped_key_config,
+        "Ctrl Shift A",
+        "agent",
+        "unmapped key config",
+    );
+    for omitted in ["Alt Shift K", "Alt Shift S", "Alt Shift H"] {
+        assert!(
+            !unmapped_key_config.contains(&format!(r#"bind "{omitted}" {{"#)),
+            "unmapped key config kept {omitted}"
+        );
+    }
+    assert!(
+        !unmapped_key_config.contains("__YZX_MANAGED_KEY_"),
+        "unmapped key config leaked a runtime marker"
+    );
+
     let swapped_keys = RuntimeCase::new(&temp.path, "swapped-keys");
     swapped_keys.write_default_config("\n[keybindings]\nconfig = \"Alt Shift H\"\nagent = \"Ctrl y\"\ngit = \"Alt Shift M\"\nmenu = \"Alt Shift J\"\nsidebar = \"Alt Shift K\"\nsidebar_focus = \"Alt Shift L\"\n");
     swapped_keys.run_yzx(&yzx_bin, "status", "swapped key status");

@@ -4,6 +4,11 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## 1.0.0-beta.4
 
+- Every managed `keybindings.*` action accepts `false` to leave its shortcut
+  unmapped. Unmapped actions consume no collision slot and emit no Zellij bind;
+  their existing commands, menu entries, and popup behavior remain unchanged.
+  Ratconfig labels the explicit state `Unmapped`, while reset restores the
+  packaged default on the next launch.
 - Ratconfig's Helix tab joins the packaged Yazelix default with values observed
   in sparse `helix/config.toml` and dynamic `helix/languages.toml`. Overview
   recommends eight common or integration-owned rows; All and search expose the

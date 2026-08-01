@@ -39,7 +39,7 @@ side_margin = 1
 vertical_margin = 0
 
 [keybindings]
-# Key chords for managed Yazelix actions.
+# Key chords for managed Yazelix actions. Set an action to false to leave it unmapped.
 config = "Alt Shift K"
 agent = "Alt Shift L"
 git = "Alt Shift J"

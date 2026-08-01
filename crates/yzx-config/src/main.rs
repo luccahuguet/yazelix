@@ -498,7 +498,9 @@ mod tests {
                 choices.iter().map(|choice| &choice.value).collect()
             }
             ConfigUiCapability::Toggle { off, on } => vec![&off.value, &on.value],
-            ConfigUiCapability::ReadOnly { .. } | ConfigUiCapability::FreeText { .. } => Vec::new(),
+            ConfigUiCapability::ReadOnly { .. }
+            | ConfigUiCapability::FreeText { .. }
+            | ConfigUiCapability::OptionalString { .. } => Vec::new(),
         }
     }
 
@@ -844,6 +846,57 @@ mod tests {
     }
 
     #[test]
+    fn managed_keybindings_can_be_unmapped_without_consuming_their_chords() {
+        let temp = TempHome::new();
+        let path = validate_config_file_at(temp.path.join("config.toml")).unwrap();
+
+        for &(field_path, default) in MANAGED_KEYBINDINGS {
+            write_config_field(&path, field_path, &json!(false)).unwrap();
+            assert_eq!(
+                read_config_field(&path, config_field(field_path).unwrap()).unwrap(),
+                "false"
+            );
+            unset_config_field(&path, field_path).unwrap();
+            assert_eq!(
+                read_config_field(&path, config_field(field_path).unwrap()).unwrap(),
+                default
+            );
+        }
+
+        write_config_text(
+            &path,
+            concat!(
+                "[keybindings]\n",
+                "config = false\n",
+                "agent = \"Alt Shift S\"\n",
+                "screen = false\n",
+                "sidebar = false\n\n",
+                "[popups.btm]\n",
+                "command = \"btm\"\n",
+                "keybinding = \"Alt Shift K\"\n",
+            ),
+        );
+        validate_config_file_at(path.clone()).unwrap();
+
+        let conflicting = concat!(
+            "[keybindings]\n",
+            "config = false\n",
+            "agent = \"Alt Shift S\"\n",
+            "screen = false\n\n",
+            "[popups.btm]\n",
+            "command = \"btm\"\n",
+            "keybinding = \"Alt Shift S\"\n",
+        );
+        write_config_text(&path, conflicting);
+        assert!(
+            validate_config_file_at(path)
+                .unwrap_err()
+                .to_string()
+                .contains("conflicts with keybindings.agent")
+        );
+    }
+
+    #[test]
     fn bar_widgets_are_read_as_json_array_and_validated() {
         let temp = TempHome::new();
         let path = validate_config_file_at(temp.path.join("config.toml")).unwrap();
@@ -1078,8 +1131,19 @@ mod tests {
             } else {
                 TAB_POPUPS
             };
-            assert_config_field_on_tab(&model, path, tab, "string", "next launch");
+            assert_config_field_on_tab(&model, path, tab, "key chord or false", "next launch");
+            assert!(matches!(
+                &model_field(&model, path).capability,
+                ConfigUiCapability::OptionalString { disabled }
+                    if disabled.value == json!(false)
+                        && disabled.label.as_deref() == Some("Unmapped")
+            ));
         }
+        write_config_field(&paths.root, KEYBINDINGS_SCREEN_PATH, &json!(false)).unwrap();
+        assert_explicit(
+            model_field(&build_model(&paths).unwrap(), KEYBINDINGS_SCREEN_PATH),
+            &json!(false),
+        );
 
         let field = model_field(&model, BAR_WIDGETS_PATH);
 

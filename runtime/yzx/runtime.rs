@@ -54,7 +54,21 @@ pub(crate) struct ManagedKeybinding {
     pub(crate) label: &'static str,
     pub(crate) path: &'static str,
     pub(crate) default: &'static str,
-    pub(crate) configured: String,
+    pub(crate) configured: Option<String>,
+}
+
+impl ManagedKeybinding {
+    pub(crate) fn is_default(&self) -> bool {
+        self.configured.as_deref() == Some(self.default)
+    }
+
+    pub(crate) fn description(&self) -> String {
+        match self.configured.as_deref() {
+            None => "unmapped".to_string(),
+            Some(chord) if self.is_default() => format!("{chord} (default)"),
+            Some(chord) => format!("{chord} (remapped)"),
+        }
+    }
 }
 
 fn read_managed_keybindings(
@@ -64,11 +78,12 @@ fn read_managed_keybindings(
     MANAGED_KEYBINDING_SPECS
         .iter()
         .map(|&(label, path, default)| {
+            let configured = trim_output(config_value(config_home, config_toml, path)?);
             Ok(ManagedKeybinding {
                 label,
                 path,
                 default,
-                configured: trim_output(config_value(config_home, config_toml, path)?),
+                configured: (configured != "false").then_some(configured),
             })
         })
         .collect()

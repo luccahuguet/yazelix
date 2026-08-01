@@ -32,14 +32,14 @@ composes their package outputs.
 
 | Measure | Nova | Classic |
 | --- | --- | --- |
-| Code and configuration (Rust, Nix, shell, TOML, etc.) | **22,444 LOC** | **91,545 LOC** |
-| Rust | **19,321 LOC** | **80,957 LOC** |
+| Code and configuration (Rust, Nix, shell, TOML, etc.) | **22,670 LOC** | **91,545 LOC** |
+| Rust | **19,547 LOC** | **80,957 LOC** |
 | Ownership model | One owner per concern | Overlapping responsibilities across layers |
 | Yazelix component boundaries | Independent, versioned packages | Child repos mixed with main-repo ownership |
 | Product experience | More features, stronger defaults, tighter integration, and polished UX | Fewer features and a less cohesive workspace |
 | Status | Recommended | Frozen migration and rollback path |
 
-Nova owns **69,101 fewer lines**, a **75% reduction**. Classic's Rust code
+Nova owns **68,875 fewer lines**, a **75% reduction**. Classic's Rust code
 alone is 3.6 times larger than Nova's entire code and configuration surface.
 
 Nova delivers more features in 25% of the code. It has a clearer configuration
@@ -162,7 +162,7 @@ Yazi and the menu use their initials:
 - `Alt Shift M` toggles the command menu.
 - `Alt Shift S` opens a transient full-screen random visual. Press any ordinary
   screen input to return to the unchanged workspace; this is not a session lock.
-  Set `keybindings.screen` to remap it for newly launched sessions.
+  Set `keybindings.screen` to remap or unmap it for newly launched sessions.
 
 Press a popup's key again to close or hide it and return to the tiled workspace.
 Other floating panes keep running until explicitly shown again. Other useful
@@ -178,6 +178,11 @@ bindings are:
 | Workspace | `Alt 1-9` | Go directly to tab 1-9 |
 | Editor | `Alt r` | Reveal the current editor file in Yazi |
 | Yazi | `Alt z` | Retarget the tab workspace with zoxide |
+
+Every managed `keybindings.*` setting accepts either a key chord or `false`.
+Setting one to `false` removes only that shortcut on the next launch; commands,
+menu entries, and popup behavior remain available through their other existing
+entry points. Resetting the field in Ratconfig restores its packaged default.
 
 Managed Helix supplies the editor binding. Terminal editors can bind the same
 `yzx reveal` command; see [Configuration](docs/configuration.md#editor-and-file-opens)
@@ -342,6 +347,6 @@ See [Development](docs/development.md) for CI and local checks,
 
 ## LOC Scorecard
 
-Yazelix owns **25,530 lines** of tracked text project files. The
+Yazelix owns **25,776 lines** of tracked text project files. The
 [reproducible scorecard](docs/development.md#loc-scorecard) excludes Beads,
 lockfiles, and binary assets.

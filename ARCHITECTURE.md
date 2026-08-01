@@ -155,13 +155,13 @@ in Overview. Absent optional leaves and unconfigured popup ids are not synthesiz
 | `welcome.duration_seconds` | integer, 1–60 | `3` | Sets splash duration | next launch |
 | `popup.side_margin` | non-negative integer | `1` | Left/right managed popup margin in cells | next launch |
 | `popup.vertical_margin` | non-negative integer | `0` | Top/bottom managed popup margin in cells | next launch |
-| `keybindings.config` | key chord | `Alt Shift K` | Config popup trigger | next launch |
-| `keybindings.agent` | key chord | `Alt Shift L` | Agent popup trigger | next launch |
-| `keybindings.git` | key chord | `Alt Shift J` | Git popup trigger | next launch |
-| `keybindings.menu` | key chord | `Alt Shift M` | Menu popup trigger | next launch |
-| `keybindings.screen` | key chord | `Alt Shift S` | Random full-screen visual trigger | next launch |
-| `keybindings.sidebar` | key chord | `Alt Shift H` | Sidebar visibility | next launch |
-| `keybindings.sidebar_focus` | key chord | `Ctrl y` | Editor/sidebar focus | next launch |
+| `keybindings.config` | key chord or `false` | `Alt Shift K` | Config popup trigger | next launch |
+| `keybindings.agent` | key chord or `false` | `Alt Shift L` | Agent popup trigger | next launch |
+| `keybindings.git` | key chord or `false` | `Alt Shift J` | Git popup trigger | next launch |
+| `keybindings.menu` | key chord or `false` | `Alt Shift M` | Menu popup trigger | next launch |
+| `keybindings.screen` | key chord or `false` | `Alt Shift S` | Random full-screen visual trigger | next launch |
+| `keybindings.sidebar` | key chord or `false` | `Alt Shift H` | Sidebar visibility | next launch |
+| `keybindings.sidebar_focus` | key chord or `false` | `Ctrl y` | Editor/sidebar focus | next launch |
 | `bar.widgets` | ordered string array | `editor`, `shell`, `term`, `codex_usage`, `cpu`, `ram` | Top-bar tray order; `BAR_WIDGET_VALUES` and `bar_widgets` own validation | next launch |
 
 `custom_popups.rs` owns the dynamic `[popups.<id>]` namespace. An id starts

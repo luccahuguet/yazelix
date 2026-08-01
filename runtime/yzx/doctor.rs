@@ -53,7 +53,7 @@ pub(crate) fn print_doctor() -> Result<(), AppError> {
     doctor_ok("popup.side_margin", &runtime.popup_side_margin);
     doctor_ok("popup.vertical_margin", &runtime.popup_vertical_margin);
     for binding in &runtime.managed_keybindings {
-        doctor_ok(binding.path, &binding.configured);
+        doctor_ok(binding.path, binding.description());
     }
     doctor_ok("zellij status cache", runtime.zellij_status_cache.display());
     doctor_ok("zellij permissions", runtime.zellij_permissions.display());

@@ -844,6 +844,12 @@ fn field_capability(spec: &FieldSpec, values: Vec<String>) -> ConfigUiCapability
         "string" => ConfigUiCapability::FreeText {
             encoding: ConfigUiTextEncoding::String,
         },
+        "key chord or false" => ConfigUiCapability::OptionalString {
+            disabled: ConfigUiChoice {
+                value: JsonValue::Bool(false),
+                label: Some("Unmapped".to_string()),
+            },
+        },
         "string_list" if !values.is_empty() => multi_choice_capability(values, true),
         "string_list" | "integer" | "float" => ConfigUiCapability::FreeText {
             encoding: ConfigUiTextEncoding::Json,

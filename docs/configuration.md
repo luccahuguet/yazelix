@@ -101,7 +101,17 @@ opener as the sidebar without registering as the sidebar.
 arguments. Keep `agent.command = "auto"` to use the built-in `codex resume`,
 `grok`, `opencode`, `pi`, `claude --resume` fallback chain
 
-All managed action keys share syntax validation and case-insensitive collision checks.
+All managed action keys accept either a key chord or `false`, share syntax
+validation, and use case-insensitive collision checks. An explicit `false`
+leaves that action unmapped and consumes no chord; it removes only the shortcut,
+not any existing command, menu entry, or popup behavior. Omitting or resetting
+the field restores its packaged default.
+
+```toml
+[keybindings]
+screen = false
+```
+
 Custom popups live in root config under `[popups.<id>]`:
 
 ```toml

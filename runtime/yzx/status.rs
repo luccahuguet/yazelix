@@ -25,7 +25,7 @@ pub(crate) fn print_status() -> Result<(), AppError> {
     println!("popup side margin: {}", runtime.popup_side_margin);
     println!("popup vertical margin: {}", runtime.popup_vertical_margin);
     for binding in &runtime.managed_keybindings {
-        println!("{} keybinding: {}", binding.label, binding.configured);
+        println!("{} keybinding: {}", binding.label, binding.description());
     }
     println!("layout: {}", runtime.layout());
     println!("yazi source: {YAZI_SOURCE}");

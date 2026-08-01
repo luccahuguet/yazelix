@@ -70,6 +70,10 @@ pub(crate) fn read_config_field(path: &Path, spec: &ConfigFieldSpec) -> Result<S
     validate_config_value(spec.field.path, &value)?;
     match spec.field.kind {
         "string" => Ok(spec.field.json_choice(&value)?.to_string()),
+        "key chord or false" => match managed_keybinding(spec.field.path, &value)? {
+            Some(chord) => Ok(chord.to_string()),
+            None => Ok("false".to_string()),
+        },
         "string_list" => Ok(serde_json::to_string(&json_string_list(
             spec.field.path,
             &value,
@@ -193,6 +197,7 @@ pub(crate) fn validate_config_value(field_path: &str, value: &JsonValue) -> Resu
             }
             Ok(())
         }
+        "key chord or false" => managed_keybinding(field_path, value).map(|_| ()),
         "string_list" => json_string_list(field_path, value).map(|_| ()),
         "integer" => {
             let value = json_i64(field_path, value)?;
@@ -320,8 +325,9 @@ pub(crate) fn validate_keybindings(value: &JsonValue) -> Result<()> {
     let defaults = default_config()?;
     for &(path, _) in MANAGED_KEYBINDINGS {
         let value = config_path_value(value, &defaults, path)?;
-        let chord = config_field(path)?.field.json_choice(&value)?;
-        validate_managed_keybinding(path, chord)?;
+        let Some(chord) = managed_keybinding(path, &value)? else {
+            continue;
+        };
         if let Some(existing) = used.insert(chord.to_ascii_lowercase(), path.to_string()) {
             return Err(error(format!("{path} conflicts with {existing}: {chord}")));
         }
@@ -336,6 +342,18 @@ pub(crate) fn validate_keybindings(value: &JsonValue) -> Result<()> {
         }
     }
     Ok(())
+}
+fn managed_keybinding<'a>(field_path: &str, value: &'a JsonValue) -> Result<Option<&'a str>> {
+    match value {
+        JsonValue::String(chord) => {
+            validate_managed_keybinding(field_path, chord)?;
+            Ok(Some(chord))
+        }
+        JsonValue::Bool(false) => Ok(None),
+        _ => Err(error(format!(
+            "{field_path} must be a key chord string or false"
+        ))),
+    }
 }
 pub(crate) fn validate_managed_keybinding(field_path: &str, value: &str) -> Result<()> {
     validate_key_chord(field_path, value)?;

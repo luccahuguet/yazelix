@@ -190,7 +190,7 @@
         src = yzxConfigSrc;
         cargoLock = {
           lockFile = ./crates/yzx-config/Cargo.lock;
-          outputHashes."ratconfig-6.0.0" = "sha256-U87SC6kvxgo0Nyeu6JhzHQC7dc+CGWV/nBLxM5fu4V0=";
+          outputHashes."ratconfig-6.0.0" = "sha256-9DP7PiN5Cs6yFizJ8GMeVj5Y9uTShVcyvUXZHkv0HZQ=";
         };
         YAZELIX_NIX_STORE_ROOT = builtins.storeDir;
         YAZELIX_PACKAGED_YAZI = yzxYaziConfig;
@@ -871,7 +871,7 @@
             keybindings.agent = "Alt Shift A";
             keybindings.git = "Alt Shift G";
             keybindings.menu = "Alt Shift U";
-            keybindings.screen = "Ctrl Shift S";
+            keybindings.screen = false;
             keybindings.sidebar = "Ctrl Shift B";
             keybindings.sidebar_focus = "Ctrl Shift E";
             bar.widgets = ["editor" "shell"];
@@ -940,7 +940,7 @@
         grep -q 'agent = "Alt Shift A"' "$config_files/config.toml"
         grep -q 'git = "Alt Shift G"' "$config_files/config.toml"
         grep -q 'menu = "Alt Shift U"' "$config_files/config.toml"
-        grep -q 'screen = "Ctrl Shift S"' "$config_files/config.toml"
+        grep -q 'screen = false' "$config_files/config.toml"
         grep -q 'sidebar = "Ctrl Shift B"' "$config_files/config.toml"
         grep -q 'sidebar_focus = "Ctrl Shift E"' "$config_files/config.toml"
         ! grep -q 'ratconfig' "$config_files/config.toml"
@@ -959,7 +959,7 @@
         test "$(YAZELIX_CONFIG_HOME="$config_files" ${yzx}/libexec/yazelix/yzx-config --get keybindings.agent)" = "Alt Shift A"
         test "$(YAZELIX_CONFIG_HOME="$config_files" ${yzx}/libexec/yazelix/yzx-config --get keybindings.git)" = "Alt Shift G"
         test "$(YAZELIX_CONFIG_HOME="$config_files" ${yzx}/libexec/yazelix/yzx-config --get keybindings.menu)" = "Alt Shift U"
-        test "$(YAZELIX_CONFIG_HOME="$config_files" ${yzx}/libexec/yazelix/yzx-config --get keybindings.screen)" = "Ctrl Shift S"
+        test "$(YAZELIX_CONFIG_HOME="$config_files" ${yzx}/libexec/yazelix/yzx-config --get keybindings.screen)" = false
         test "$(YAZELIX_CONFIG_HOME="$config_files" ${yzx}/libexec/yazelix/yzx-config --get keybindings.sidebar)" = "Ctrl Shift B"
         test "$(YAZELIX_CONFIG_HOME="$config_files" ${yzx}/libexec/yazelix/yzx-config --get keybindings.sidebar_focus)" = "Ctrl Shift E"
         grep -q 'width = 1200' "$config_files/mars/config.toml"
