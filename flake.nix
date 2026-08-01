@@ -190,7 +190,7 @@
         src = yzxConfigSrc;
         cargoLock = {
           lockFile = ./crates/yzx-config/Cargo.lock;
-          outputHashes."ratconfig-6.0.0" = "sha256-9DP7PiN5Cs6yFizJ8GMeVj5Y9uTShVcyvUXZHkv0HZQ=";
+          outputHashes."ratconfig-6.0.0" = "sha256-I9+pRyfLVq4QYcATNjNr1ix+dIk8WlYawt5HI13gaZo=";
         };
         YAZELIX_NIX_STORE_ROOT = builtins.storeDir;
         YAZELIX_PACKAGED_YAZI = yzxYaziConfig;

@@ -542,7 +542,7 @@ dependencies = [
 [[package]]
 name = "ratconfig"
 version = "6.0.0"
-source = "git+https://github.com/luccahuguet/ratconfig?rev=daf5ed8494786ebed0ae02554df11e2984edda91#daf5ed8494786ebed0ae02554df11e2984edda91"
+source = "git+https://github.com/luccahuguet/ratconfig?rev=e6ec2ebfe84b2358186410680cbcaf0564eb59a2#e6ec2ebfe84b2358186410680cbcaf0564eb59a2"
 dependencies = [
  "ratatui",
  "serde_json",

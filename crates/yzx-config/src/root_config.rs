@@ -189,11 +189,6 @@ pub(crate) fn validate_config_value(field_path: &str, value: &JsonValue) -> Resu
                 validate_editor_command(value)?;
             } else if field_path == AGENT_COMMAND_PATH {
                 validate_agent_command(value)?;
-            } else if MANAGED_KEYBINDINGS
-                .iter()
-                .any(|(path, _)| *path == field_path)
-            {
-                validate_managed_keybinding(field_path, value)?;
             }
             Ok(())
         }

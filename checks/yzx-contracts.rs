@@ -301,6 +301,7 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
 
     let yzx_launcher = binary_text(&yzx_bin);
     let menu_helper = embedded_store_path(&yzx_launcher, "/bin/yzx-menu");
+    let zellij = embedded_store_path(&yzx_launcher, "/bin/zellij");
     expect_menu_dispatch(&menu_helper);
     expect_contains_all! {
         &yzx_launcher, "bin/yzx runtime fragment";
@@ -635,6 +636,13 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
     assert!(
         !unmapped_key_config.contains("__YZX_MANAGED_KEY_"),
         "unmapped key config leaked a runtime marker"
+    );
+    successful_output(
+        Command::new(&zellij)
+            .arg("--config")
+            .arg(unmapped_keys.zellij_path("config.kdl"))
+            .args(["setup", "--check"]),
+        "unmapped key Zellij config check",
     );
 
     let swapped_keys = RuntimeCase::new(&temp.path, "swapped-keys");

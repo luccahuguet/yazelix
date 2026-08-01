@@ -115,7 +115,7 @@ fn patch_managed_keybindings(
         if binding.is_default() {
             continue;
         }
-        let marker = format!("bind {}", kdl_string(binding.default));
+        let marker = format!("        bind {}", kdl_string(binding.default));
         if !patched.contains(&marker) {
             return Err(startup(
                 format!(
@@ -126,7 +126,8 @@ fn patch_managed_keybindings(
                 1,
             ));
         }
-        patched = patched.replace(&marker, &format!("bind __YZX_MANAGED_KEY_{index}__"));
+        let replacement = format!("        bind __YZX_MANAGED_KEY_{index}__");
+        patched = patched.replace(&marker, &replacement);
     }
     for (index, binding) in managed_keybindings.iter().enumerate() {
         if binding.is_default() {
@@ -527,6 +528,7 @@ mod tests {
         let text = concat!(
             "keybinds {\n",
             "    shared {\n",
+            "        unbind \"Alt Shift S\"\n",
             "        bind \"Alt Shift K\" { MessagePlugin \"yzpp\" { payload \"config\"; }; }\n",
             "        bind \"Alt Shift S\" {\n",
             "            MessagePlugin \"yzpp\" {\n",
@@ -565,11 +567,12 @@ mod tests {
             patched
                 .contains(r#"bind "Alt Shift C" { MessagePlugin "yzpp" { payload "config"; }; }"#)
         );
+        assert!(patched.contains(r#"unbind "Alt Shift S""#));
         assert!(patched.contains(r#"bind "Ctrl q" { Quit; }"#));
         for omitted in [
-            "Alt Shift K",
-            "Alt Shift S",
-            "Alt Shift H",
+            r#"        bind "Alt Shift K""#,
+            r#"        bind "Alt Shift S""#,
+            r#"        bind "Alt Shift H""#,
             "screen",
             "toggle_sidebar",
         ] {
