@@ -7,7 +7,7 @@ use std::{
 use yzx_open::sidebar::{Config, ensure_success, optional_sidebar_yazi_state, orchestrator_query};
 
 #[cfg(test)]
-#[path = "support/test_dir.rs"]
+#[path = "../test_support.rs"]
 mod test_support;
 
 fn main() -> ExitCode {
@@ -82,7 +82,7 @@ mod tests {
         let zellij_log = fixture.path.join("zellij.log");
         write_executable(
             &fixture.path.join("zellij"),
-            &format!(
+            format!(
                 r#"#!/bin/sh
 printf '%s\n' "$* session=$ZELLIJ_SESSION_NAME" >> "{}"
 case "$6" in
@@ -99,7 +99,7 @@ exit 1
         );
         write_executable(
             &fixture.path.join("ya"),
-            &format!(
+            format!(
                 "#!/bin/sh\nprintf '%s\\n' \"$*\" >> \"{}\"\n",
                 ya_log.display()
             ),
@@ -133,7 +133,7 @@ emit-to plugin-yazi-id plugin starship /repo\n"
         );
         write_executable(
             &fixture.path.join("ya"),
-            &format!(
+            format!(
                 "#!/bin/sh\nprintf '%s\\n' \"$*\" > \"{}\"\n",
                 ya_log.display()
             ),

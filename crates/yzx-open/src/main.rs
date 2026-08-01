@@ -18,6 +18,9 @@ use yzx_open::sidebar::{
     orchestrator_query,
 };
 
+#[cfg(test)]
+mod test_support;
+
 #[derive(Debug)]
 struct Config {
     editor: OsString,
@@ -933,47 +936,27 @@ enum BridgeSendError {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::{
-        Mutex, MutexGuard,
-        atomic::{AtomicUsize, Ordering},
-    };
-    use std::{
-        os::unix::{fs::PermissionsExt, net::UnixListener},
-        thread,
-    };
+    use crate::test_support::{TestDir, write_executable};
+    use std::sync::{Mutex, MutexGuard};
+    use std::{os::unix::net::UnixListener, thread};
 
-    static TEST_COUNTER: AtomicUsize = AtomicUsize::new(0);
     static TEST_RUNTIME_LOCK: Mutex<()> = Mutex::new(());
 
-    fn test_dir(_name: &str) -> PathBuf {
-        let root = env::temp_dir().join(format!(
-            "yo{}-{}",
-            std::process::id(),
-            TEST_COUNTER.fetch_add(1, Ordering::SeqCst)
-        ));
-        let _ = fs::remove_dir_all(&root);
-        root
-    }
-
-    fn write_executable(path: &Path, contents: impl AsRef<[u8]>) {
-        fs::write(path, contents).unwrap();
-        fs::set_permissions(path, fs::Permissions::from_mode(0o755)).unwrap();
-    }
-
     struct TestRuntime {
-        _lock: MutexGuard<'static, ()>,
         root: PathBuf,
         zellij: PathBuf,
         zellij_log: PathBuf,
+        _dir: TestDir,
+        _lock: MutexGuard<'static, ()>,
     }
 
     impl TestRuntime {
-        fn new(name: &str) -> Self {
+        fn new() -> Self {
             let lock = TEST_RUNTIME_LOCK
                 .lock()
                 .unwrap_or_else(|poisoned| poisoned.into_inner());
-            let root = test_dir(name);
-            fs::create_dir_all(&root).unwrap();
+            let dir = TestDir::new();
+            let root = dir.path.clone();
             write_executable(
                 &root.join("ya"),
                 format!(
@@ -982,10 +965,11 @@ mod tests {
                 ),
             );
             Self {
-                _lock: lock,
                 zellij: root.join("zellij"),
                 zellij_log: root.join("zellij.log"),
                 root,
+                _dir: dir,
+                _lock: lock,
             }
         }
 
@@ -1150,7 +1134,7 @@ fi
         assert_eq!(LogLevel::parse(Some("debug")), LogLevel::Debug);
         assert_eq!(LogLevel::parse(Some("wat")), LogLevel::Info);
 
-        let runtime = TestRuntime::new("log-levels");
+        let runtime = TestRuntime::new();
         let mut config = runtime.config("session");
         config.log_level = LogLevel::Off;
         log_event(&config, LogLevel::Error, "hidden");
@@ -1166,7 +1150,7 @@ fi
 
     #[test]
     fn logging_rotates_large_log_file() {
-        let runtime = TestRuntime::new("log-rotation");
+        let runtime = TestRuntime::new();
         let config = runtime.config("session");
         let log_path = runtime.root.join("logs/yzx-open.log");
         fs::create_dir_all(log_path.parent().unwrap()).unwrap();
@@ -1276,7 +1260,8 @@ fi
 
     #[test]
     fn builds_file_and_directory_open_payloads() {
-        let config = TestRuntime::new("payloads").config("session");
+        let runtime = TestRuntime::new();
+        let config = runtime.config("session");
         let targets = vec![PathBuf::from("/tmp/project/src/main.rs")];
         let cwd = target_workspace_root(&config, &targets);
         let (action, payload) = bridge_open_request(&targets, &cwd);
@@ -1285,7 +1270,8 @@ fi
         assert_eq!(payload["file_paths"], json!(["/tmp/project/src/main.rs"]));
         assert_eq!(payload["focus"], true);
 
-        let root = test_dir("directory-selection");
+        let fixture = TestDir::new();
+        let root = fixture.path.clone();
         let file = root.join("README.md");
         fs::create_dir_all(&root).unwrap();
         fs::write(&file, "").unwrap();
@@ -1301,7 +1287,7 @@ fi
 
     #[test]
     fn bootstrap_directory_open_publishes_workspace_before_opening_editor() {
-        let runtime = TestRuntime::new("workspace-root");
+        let runtime = TestRuntime::new();
         let git = runtime.root.join("git");
         let repo = runtime.root.join("repo");
         let target = repo.join("docs/guides");
@@ -1345,7 +1331,7 @@ fi
 
     #[test]
     fn sends_file_open_to_live_bridge() {
-        let runtime = TestRuntime::new("live-bridge");
+        let runtime = TestRuntime::new();
         let session_id = "test-session";
         let (socket_path, request_path) =
             runtime.write_registry(session_id, None, Some("terminal:7"));
@@ -1417,7 +1403,7 @@ fi
     }
 
     fn assert_host_editor_bypasses_live_bridge(command: &str) {
-        let runtime = TestRuntime::new(&format!("host-editor-bridge-bypass-{command}"));
+        let runtime = TestRuntime::new();
         let session_id = "test-session";
         let (socket_path, request_path) =
             runtime.write_registry(session_id, None, Some("terminal:7"));
@@ -1446,7 +1432,7 @@ fi
 
     #[test]
     fn missing_editor_command_errors_before_opening_pane() {
-        let runtime = TestRuntime::new("missing-editor");
+        let runtime = TestRuntime::new();
         let editor = runtime.root.join("missing-nvim");
         runtime.write_zellij(false, None);
 
@@ -1464,7 +1450,7 @@ fi
 
     #[test]
     fn failed_editor_open_restores_the_previous_root_and_source() {
-        let runtime = TestRuntime::new("workspace-rollback");
+        let runtime = TestRuntime::new();
         let editor = runtime.root.join("nvim");
         write_executable(&editor, "#!/bin/sh\nexit 0\n");
         runtime.write_zellij_with_workspace(
@@ -1496,7 +1482,7 @@ fi
 
     #[test]
     fn bridge_focus_failure_falls_back_to_new_editor_pane() {
-        let runtime = TestRuntime::new("focus-fallback");
+        let runtime = TestRuntime::new();
         let session_id = "test-session";
         let (socket_path, _) =
             runtime.write_registry(session_id, Some("zellij-test"), Some("terminal:1"));
@@ -1520,7 +1506,7 @@ fi
 
     #[test]
     fn invalid_bridge_registry_falls_back_to_new_editor_pane() {
-        let runtime = TestRuntime::new("invalid-registry");
+        let runtime = TestRuntime::new();
         let config = runtime.config("test-session");
         let bridge_dir = runtime.root.join("helix_bridge/test-session");
         fs::create_dir_all(&bridge_dir).unwrap();
@@ -1551,7 +1537,7 @@ fi
                 Some(pane_list(&[(3, 1), (1, 0)])),
             ),
         ] {
-            let runtime = TestRuntime::new(name);
+            let runtime = TestRuntime::new();
             let (socket_path, _) =
                 runtime.write_registry(registry_session, registry_zellij, registry_pane);
             let _listener = UnixListener::bind(&socket_path).unwrap();

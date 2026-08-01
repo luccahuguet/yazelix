@@ -8,7 +8,7 @@ use std::{
 use yzx_open::sidebar::{Config, ensure_success, orchestrator_query, workspace_popup_yazi_id};
 
 #[cfg(test)]
-#[path = "support/test_dir.rs"]
+#[path = "../test_support.rs"]
 mod test_support;
 
 fn main() -> ExitCode {
@@ -115,7 +115,7 @@ mod tests {
         fs::create_dir(&directory_target).unwrap();
         write_executable(
             &fixture.path.join("zellij"),
-            &format!(
+            format!(
                 r#"#!/bin/sh
 printf '%s\n' "$* session=$ZELLIJ_SESSION_NAME" >> "{}"
 case "$6" in
@@ -132,7 +132,7 @@ exit 1
         );
         write_executable(
             &fixture.path.join("ya"),
-            &format!(
+            format!(
                 "#!/bin/sh\nprintf '%s\\n' \"$*\" >> \"{}\"\n",
                 ya_log.display()
             ),

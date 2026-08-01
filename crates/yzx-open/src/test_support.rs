@@ -5,7 +5,7 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-pub(crate) fn write_executable(path: &Path, contents: &str) {
+pub(crate) fn write_executable(path: &Path, contents: impl AsRef<[u8]>) {
     fs::write(path, contents).unwrap();
     let mut permissions = fs::metadata(path).unwrap().permissions();
     permissions.set_mode(0o755);
@@ -24,7 +24,7 @@ impl TestDir {
             .as_nanos();
         for attempt in 0..100 {
             let path = env::temp_dir().join(format!(
-                "yzx-open-bin-{}-{nanos}-{attempt}",
+                "yzx-open-test-{}-{nanos}-{attempt}",
                 std::process::id()
             ));
             match fs::create_dir(&path) {
