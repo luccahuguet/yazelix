@@ -7,7 +7,12 @@ use std::{
     thread::sleep,
     time::Duration,
 };
-use yzx_open::sidebar::{Config, ensure_success, orchestrator_query, workspace_popup_yazi_id};
+use yzx_open::sidebar::{Config, ensure_success, orchestrator_pipe, workspace_popup_yazi_id};
+
+#[cfg(not(test))]
+const POPUP_READY_RETRY_DELAYS_MS: [u64; 9] = [0, 25, 50, 100, 200, 400, 800, 1_600, 1_600];
+#[cfg(test)]
+const POPUP_READY_RETRY_DELAYS_MS: [u64; 9] = [0; 9];
 
 #[cfg(test)]
 #[path = "../test_support.rs"]
@@ -31,11 +36,22 @@ fn run(config: &Config, raw_args: impl IntoIterator<Item = OsString>) -> Result<
     }
 
     let target = existing_absolute_path(&target)?;
-    let popup_state = orchestrator_query(config, "focus_workspace_popup_yazi")?;
-    let yazi_id = workspace_popup_yazi_id(&popup_state)?;
+    let yazi_id = wait_for_workspace_popup_yazi(config)?;
     emit_reveal(config, &yazi_id, &target)?;
 
     Ok(())
+}
+
+fn wait_for_workspace_popup_yazi(config: &Config) -> Result<String> {
+    let mut state = String::new();
+    for delay_ms in POPUP_READY_RETRY_DELAYS_MS {
+        sleep(Duration::from_millis(delay_ms));
+        state = orchestrator_pipe(config, "focus_workspace_popup_yazi", "")?;
+        if !matches!(state.as_str(), "" | "not_ready") {
+            return workspace_popup_yazi_id(&state);
+        }
+    }
+    workspace_popup_yazi_id(&state)
 }
 
 fn emit_reveal(config: &Config, yazi_id: &str, target: &Path) -> Result<()> {
@@ -124,11 +140,13 @@ mod tests {
     }
 
     #[test]
-    fn reveal_retries_receiver_startup_and_delivers_exact_paths() {
+    fn reveal_waits_for_popup_and_receiver_then_delivers_exact_paths() {
         let fixture = TestDir::new();
         let file_target = fixture.path.join("target with spaces.txt");
         let directory_target = fixture.path.join("target directory");
         let zellij_log = fixture.path.join("zellij.log");
+        let zellij_started = fixture.path.join("zellij.started");
+        let zellij_ready = fixture.path.join("zellij.ready");
         let ya_log = fixture.path.join("ya.log");
         let ya_ready = fixture.path.join("ya.ready");
         fs::write(&file_target, "").unwrap();
@@ -140,6 +158,15 @@ mod tests {
 printf '%s\n' "$* session=$ZELLIJ_SESSION_NAME" >> "{}"
 case "$6" in
   focus_workspace_popup_yazi)
+    if [ ! -e "{}" ]; then
+      touch "{}"
+      exit 0
+    fi
+    if [ ! -e "{}" ]; then
+      touch "{}"
+      printf '%s\n' not_ready
+      exit 0
+    fi
     printf '%s\n' '{{"status":"ok","yazi_id":"plugin-yazi-id"}}'
     exit 0
     ;;
@@ -147,7 +174,11 @@ esac
 printf 'unexpected zellij args: %s\n' "$*" >&2
 exit 1
 "#,
-                zellij_log.display()
+                zellij_log.display(),
+                zellij_started.display(),
+                zellij_started.display(),
+                zellij_ready.display(),
+                zellij_ready.display()
             ),
         );
         write_executable(
@@ -172,7 +203,7 @@ exit 1
         let expected_pipe = "action pipe --plugin yazelix_pane_orchestrator --name focus_workspace_popup_yazi --  session=saved-session\n";
         assert_eq!(
             fs::read_to_string(zellij_log).unwrap(),
-            expected_pipe.repeat(2)
+            expected_pipe.repeat(4)
         );
         assert_eq!(
             fs::read_to_string(ya_log).unwrap(),
