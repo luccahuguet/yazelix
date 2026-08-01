@@ -12,9 +12,6 @@ User-visible runtime changes for Yazelix Nova live here.
   The canonical workspace remains unchanged. Hidden persistent popups no longer
   make `Alt h` or `Alt l` skip tiled panes; popup navigation is gated by
   Zellij's actual floating-layer visibility.
-- The bundled popup plugin no longer exposes the unused `ensure` action left by
-  the discarded reveal handshake. Existing `toggle`, `open`, `focus`, `replace`,
-  and `close` behavior is unchanged.
 - Every managed `keybindings.*` action accepts `false` to leave its shortcut
   unmapped. Yazelix omits only that managed bind, preserves separate `unbind`
   declarations, and frees its collision slot; existing commands, menu entries,

@@ -34,11 +34,6 @@ impl Config {
     }
 }
 
-pub fn sidebar_yazi_state(raw: &str) -> Result<SidebarYaziState> {
-    optional_sidebar_yazi_state(raw)?
-        .context("managed sidebar Yazi is not registered in the active tab")
-}
-
 pub fn optional_sidebar_yazi_state(raw: &str) -> Result<Option<SidebarYaziState>> {
     let value = serde_json::from_str::<Value>(raw)
         .context("pane orchestrator returned invalid session JSON")?;
