@@ -429,7 +429,7 @@ the bridge restores the client's transparent Zellij background
 buffer. `yzx reveal <target>` exposes the same behavior inside a managed session
 without changing the tab's canonical workspace. Reveal replaces an existing
 popup process; ordinary popup toggles preserve its live navigation state. When
-the Yazi popup is focused, `Alt r` hides it and returns to the tiled workspace
+the Yazi popup is focused, `Alt r` closes it and returns to the tiled workspace
 without opening the selected item or changing the canonical workspace.
 
 Yazelix does not modify external editor configuration. Neovim users can opt

@@ -271,7 +271,7 @@ fn render_files_lesson(index: usize, lesson: &TutorLesson) -> String {
 1. **Inside Yazelix:** Press `{sidebar_focus}` to move between the editor and Yazi sidebar, or `{sidebar_swap}` to hide or show the sidebar.
 2. **Inside Yazelix:** Press `{yazi_popup}` to hide or show the full Yazi popup. Its navigation state stays live while hidden.
 3. **Inside Yazi:** Press `Enter` to open the selected file in the managed editor.
-4. **Inside the editor:** Press `{reveal}` to restart the persistent Yazi popup at the current file; press it again inside that popup to hide it.
+4. **Inside the editor:** Press `{reveal}` to restart the persistent Yazi popup at the current file; press it again inside that popup to close it.
 
 ## Mental model
 
