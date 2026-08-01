@@ -163,7 +163,7 @@ exit 1
     }
 
     #[test]
-    fn popup_readiness_failure_is_reported_once_without_yazi_fallback() {
+    fn popup_readiness_failure_does_not_fall_back_to_yazi() {
         let fixture = TestDir::new();
         let target = fixture.path.join("target.txt");
         fs::write(&target, "").unwrap();
