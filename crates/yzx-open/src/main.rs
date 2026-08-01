@@ -933,13 +933,17 @@ enum BridgeSendError {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::sync::{
+        Mutex, MutexGuard,
+        atomic::{AtomicUsize, Ordering},
+    };
     use std::{
         os::unix::{fs::PermissionsExt, net::UnixListener},
         thread,
     };
 
     static TEST_COUNTER: AtomicUsize = AtomicUsize::new(0);
+    static TEST_RUNTIME_LOCK: Mutex<()> = Mutex::new(());
 
     fn test_dir(_name: &str) -> PathBuf {
         let root = env::temp_dir().join(format!(
@@ -957,6 +961,7 @@ mod tests {
     }
 
     struct TestRuntime {
+        _lock: MutexGuard<'static, ()>,
         root: PathBuf,
         zellij: PathBuf,
         zellij_log: PathBuf,
@@ -964,6 +969,9 @@ mod tests {
 
     impl TestRuntime {
         fn new(name: &str) -> Self {
+            let lock = TEST_RUNTIME_LOCK
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner());
             let root = test_dir(name);
             fs::create_dir_all(&root).unwrap();
             write_executable(
@@ -974,6 +982,7 @@ mod tests {
                 ),
             );
             Self {
+                _lock: lock,
                 zellij: root.join("zellij"),
                 zellij_log: root.join("zellij.log"),
                 root,

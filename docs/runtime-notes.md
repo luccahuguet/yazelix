@@ -190,7 +190,7 @@ The popup runs the same `yzx-yazi` launcher and layered config as the tiled
 sidebar with the private `workspace-popup` role. Packaged Yazi initialization
 omits `sidebar-status` for that role. The shared `managed-state` plugin registers
 popup and tiled Yazi processes under distinct orchestrator actions, so the
-popup's `YAZI_ID`, pane id, and cwd cannot replace the tiled sidebar
+popup's `YAZI_ID` and pane id cannot replace the tiled sidebar
 registration. Popup navigation and ordinary opens retain their existing local
 and canonical-workspace semantics.
 

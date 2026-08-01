@@ -63,18 +63,19 @@ end
 local function publish()
 	local yazi_id = os.getenv("YAZI_ID")
 	local current_pane = pane_id()
-	local current_cwd = cwd()
-	if not yazi_id or yazi_id == "" or not current_pane or not current_cwd then
+	local current_cwd = not WORKSPACE_POPUP and cwd()
+	if not yazi_id or yazi_id == "" or not current_pane or (not WORKSPACE_POPUP and not current_cwd) then
 		return
 	end
 
 	generation = generation + 1
 	local current_generation = generation
+	local cwd_field = current_cwd and string.format(',"cwd":"%s"', json_escape(current_cwd)) or ""
 	local payload = string.format(
-		'{"pane_id":"%s","yazi_id":"%s","cwd":"%s"}',
+		'{"pane_id":"%s","yazi_id":"%s"%s}',
 		json_escape(current_pane),
 		json_escape(yazi_id),
-		json_escape(current_cwd)
+		cwd_field
 	)
 	if WORKSPACE_POPUP then
 		ya.async(function()
@@ -99,12 +100,8 @@ end
 
 function M.setup()
 	publish()
-	ps.sub("cd", function()
-		publish()
-	end)
-	ps.sub("tab", function()
-		publish()
-	end)
+	ps.sub("cd", publish)
+	ps.sub("tab", publish)
 end
 
 return M
