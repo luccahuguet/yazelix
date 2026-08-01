@@ -11,6 +11,7 @@ use std::{
 const YZX_YAZI_CONFIG: &str = "@yzxYaziConfig@";
 const YZX_YAZI_MATERIALIZER: &str = "@yzxYaziMaterializer@";
 const YZX_OPEN: &str = "@yzxOpen@";
+const YZX_YAZI_RETURN: &str = "@yzxYaziReturn@";
 const YZX_ZELLIJ: &str = "@zellij@";
 const YZX_HELIX: &str = "@yzxHelix@";
 const YZX_EDITOR_LAUNCHER: &str = "@yzxEditor@";
@@ -52,6 +53,7 @@ fn run() -> io::Result<()> {
             yazi_config.join("yazelix_starship.toml"),
         )
         .env("YZX_OPEN", YZX_OPEN)
+        .env("YZX_YAZI_RETURN", YZX_YAZI_RETURN)
         .env("YZX_ZELLIJ", YZX_ZELLIJ)
         .env("YAZELIX_EDITOR", &editor)
         .env("EDITOR", YZX_EDITOR_LAUNCHER)

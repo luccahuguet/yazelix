@@ -14,7 +14,10 @@ User-visible runtime changes for Yazelix Nova live here.
   Zellij's actual floating-layer visibility. Pressing `Alt r` again from the
   focused Yazi popup explicitly closes it and returns to the tiled workspace
   without opening the selected item or changing the canonical workspace.
-  Repeated close delivery cannot reopen the popup.
+  Tiled Yazi returns focus to Helix. Helix and Yazi own their local `Alt r`
+  actions directly; Zellij no longer reroutes the key through a cached focus
+  snapshot, so closing the popup cannot replay the chord into Helix and reopen
+  it.
 - Every managed `keybindings.*` action accepts `false` to leave its shortcut
   unmapped. Yazelix omits only that managed bind, preserves separate `unbind`
   declarations, and frees its collision slot; existing commands, menu entries,

@@ -184,10 +184,10 @@ custom popup entry.
 | Path | Owns |
 | --- | --- |
 | `defaults/mars/config.toml` | Default Mars window/font/appearance; writable regular-file sessions receive root `appearance.mode` through `mars.appearance.preset` |
-| `defaults/zellij/config.kdl` | Zellij keys, plugins load, popup wiring, Kitty protocol; binds `Alt r` to pane-orchestrator context routing |
+| `defaults/zellij/config.kdl` | Zellij keys, plugin loads, popup wiring, Kitty protocol; leaves application-local `Alt r` routing to Helix and Yazi |
 | `defaults/zellij/layout*.kdl` | Sidebar + stacked panes, open/closed swap |
 | `defaults/nu/` | Packaged Nu: carapace, zoxide, and Starship invocation |
-| `defaults/yazi/` | Sidebar/popup role initialization, opens via `yzx-open`, plugins, `Alt z` workspace retarget |
+| `defaults/yazi/` | Sidebar/popup role initialization, opens via `yzx-open`, plugins, `Alt z` workspace retarget, role-local `Alt r` return |
 | `defaults/helix/config.toml` | Packaged defaults; `Alt r` reveal, `Ctrl r` reload (overridable) |
 
 ### Child packages (not owned here)
@@ -198,7 +198,7 @@ custom popup entry.
 | yazelix-cursors | Cursor TOML schema, validation, definitions, and resolution |
 | yazelix-zellij / helix | Multiplexer / editor forks |
 | yazelix-zellij-popup (`yzpp`) | Popup lifecycle |
-| yazelix-zellij-pane-orchestrator | Focus, sidebar walk, and `Alt r` editor/Yazi-popup context routing |
+| yazelix-zellij-pane-orchestrator | Focus, sidebar walk, workspace state, and popup request routing |
 | yazelix-zellij-bar | Top bar render + widgets |
 | ratconfig | Config UI toolkit |
 | yazelix-screen | Welcome / screen animations |

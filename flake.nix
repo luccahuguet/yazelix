@@ -500,6 +500,7 @@
           yzxYaziConfig = "${yzxYaziConfig}";
           yzxYaziMaterializer = "${yzxYaziMaterializer}/bin/yzx-yazi-config";
           yzxOpen = "${yzxOpenCore}/bin/yzx-open";
+          yzxYaziReturn = "${yzxOpenCore}/bin/yzx-yazi-return";
           zellij = "${yazelixZellijPackage}/bin/zellij";
           yzxHelix = "${managedEditor}/bin/yzx-hx";
           yzxEditor = "${editor}/bin/yzx-editor";

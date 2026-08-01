@@ -187,9 +187,12 @@ configured `replace` request to the popup owner with the absolute target as a
 launch argument. Yazi reveals that target during normal startup, so reveal does
 not wait for or address a partially started process. This deliberately resets
 the popup's navigation state while leaving the canonical workspace unchanged.
-From the focused visible Yazi popup, `Alt r` sends the existing named close to
-the popup owner. Close is idempotent, so repeated delivery cannot reopen the
-popup, open its selection, or change workspace state.
+Managed Yazi owns `Alt r` locally. The popup role sends the existing named
+close directly to the popup owner; tiled Yazi asks the pane orchestrator to
+focus the editor. Helix owns its reveal binding locally as well. Zellij does
+not intercept or reroute the chord, so a popup close cannot change focus and
+then replay as a Helix reveal. The return action does not open Yazi's selection
+or change workspace state.
 
 The popup runs the same `yzx-yazi` launcher and layered config as the tiled
 sidebar with the private `workspace-popup` role. Packaged Yazi initialization

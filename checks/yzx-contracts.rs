@@ -45,7 +45,7 @@ fn main() {
     expect_mars_config_override(yzx);
     expect_cursor_config(yzx);
     expect_zellij_config_sidecar(yzx);
-    expect_yazi_alt_z(yzx);
+    expect_yazi_managed_keys(yzx);
 
     let temp = TempDir::new();
     let user_config = temp.path.join("config");
@@ -1555,12 +1555,14 @@ fn expect_zellij_config_sidecar(yzx: &Path) {
     }
 }
 
-fn expect_yazi_alt_z(yzx: &Path) {
+fn expect_yazi_managed_keys(yzx: &Path) {
     let keymap = fs::read_to_string(yzx.join("share/yazelix/yazi/keymap.toml")).unwrap();
     expect_contains_all! {
-        &keymap, "Yazi Alt-z keymap fragment";
+        &keymap, "Yazi managed keymap fragment";
         r#"on = ["<A-z>"]"#,
         r#"run = "plugin zoxide-editor""#,
+        r#"on = ["<A-r>"]"#,
+        r#"run = 'shell "$YZX_YAZI_RETURN"'"#,
     }
 
     let yazi_toml = fs::read_to_string(yzx.join("share/yazelix/yazi/yazi.toml")).unwrap();
@@ -1636,6 +1638,7 @@ fn expect_yazi_alt_z(yzx: &Path) {
     expect_contains_all! {
         &wrapper, &context;
         "YZX_OPEN",
+        "YZX_YAZI_RETURN",
         "YZX_ZELLIJ",
         "YZX_EDITOR",
         "YAZELIX_EDITOR",
@@ -1648,6 +1651,7 @@ fn expect_yazi_alt_z(yzx: &Path) {
         "workspace-popup",
         "YAZI_CONFIG_HOME",
         "/bin/yzx-yazi-config",
+        "/bin/yzx-yazi-return",
         "yazelix_starship.toml",
         "YAZELIX_ZELLIJ_SESSION_NAME",
         "ZELLIJ_SESSION_NAME",
@@ -1691,7 +1695,6 @@ fn expect_keybinds(config: &str) {
         r#"bind "Alt m" { NewPane; }"#,
         r#"bind "Alt h" "Alt Left" { MessagePlugin "yazelix_pane_orchestrator" { name "move_focus_left_or_tab"; }; }"#,
         r#"bind "Alt l" "Alt Right" { MessagePlugin "yazelix_pane_orchestrator" { name "move_focus_right_or_tab"; }; }"#,
-        r#"bind "Alt r" { MessagePlugin "yazelix_pane_orchestrator" { name "smart_reveal"; }; }"#,
         r#"bind "Alt Shift F" { ToggleFocusFullscreen; }"#,
         r#"bind "Alt Shift S" {"#,
         r#"bind "Alt Shift H" { MessagePlugin "yazelix_pane_orchestrator" { name "toggle_sidebar"; }; }"#,
@@ -1710,6 +1713,10 @@ fn expect_keybinds(config: &str) {
             "config.kdl is missing {expected}",
         );
     }
+    assert!(
+        !config.contains("smart_reveal") && !config.contains(r#"bind "Alt r""#),
+        "config.kdl must leave Alt r to the focused application"
+    );
     for expected in ["ToggleFocusFullscreen", "toggle_editor_sidebar_focus"] {
         assert_eq!(config.matches(expected).count(), 1, "duplicate {expected}");
     }

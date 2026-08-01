@@ -2290,9 +2290,13 @@ color = "#123456"
         let reveal = key_field(&model, "Alt r");
         assert_eq!(
             reveal.display_label,
-            "Editor / Yazi: Alt r - Reveal editor file or close focused Yazi popup"
+            "Editor / Yazi: Alt r - Reveal editor file or return from Yazi"
         );
         assert!(reveal.description.contains("Owner: Yazelix"));
+        assert_explicit(
+            reveal,
+            &json!("Yazelix / helix/config.toml + yazi/keymap.toml"),
+        );
 
         let yazi_zoxide = key_field(&model, "Alt z");
         assert!(yazi_zoxide.display_label.contains("Alt z"));
