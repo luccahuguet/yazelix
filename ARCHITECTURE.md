@@ -51,7 +51,7 @@ into eight explicit package and app outputs.
 | `menu` | Curated command palette |
 | `tutor` | Guided lessons / native tutor hints |
 | `screen` | Terminal screens / welcome styles |
-| `reveal` | Path in managed Yazi sidebar |
+| `reveal` | Path in the active tab's persistent Yazi popup |
 | `status` / `status --json` | Human and schema-versioned runtime status |
 | `doctor` | Owned setup checks |
 | `env` | Managed shell only |
@@ -81,7 +81,7 @@ One owner per concern. Paths are the durable map.
 | `runtime/yzx-nu.rs` | Managed Nu layering; runtime-effective Starship config request |
 | `runtime/yzx-zellij-config.rs` | Packaged + guarded Zellij scalar sidecar merge |
 | `runtime/yzx/zellij.rs` | Plugin sidecar inject; launch materialize/patches |
-| `crates/yzx-open/` | Editor open, Helix bridge, sidebar target follow/reveal, bounded diagnostics |
+| `crates/yzx-open/` | Editor open, Helix bridge, persistent-popup reveal, bounded diagnostics |
 | `crates/yzx-yazi-config/` | Managed Yazi config-home materialization, native TOML layering, and runtime-only flavor projection |
 | `crates/yzx-tutor/` | Tutor CLI and lessons |
 | `runtime/yzx-helix.sh` (`yzx-hx`) | Effective Helix config + Steel wiring |

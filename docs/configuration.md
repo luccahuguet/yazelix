@@ -423,8 +423,9 @@ file-edit commands and keeps user configuration, while it and other terminal
 Git clients use `yzx-editor` through the standard editor variables. On return,
 the bridge restores the client's transparent Zellij background
 
-`Alt r` reveals the current Helix buffer in the Yazi sidebar. `yzx reveal
-<target>` exposes the same path inside a managed session
+`Alt r` shows the active tab's persistent Yazi popup and reveals the current
+Helix buffer there. `yzx reveal <target>` exposes the same behavior inside a
+managed session without changing the tab's canonical workspace.
 
 Yazelix does not modify external editor configuration. Neovim users can opt
 into the same `Alt r` behavior in their own config:
@@ -433,14 +434,14 @@ into the same `Alt r` behavior in their own config:
 vim.keymap.set("n", "<M-r>", function()
   local path = vim.api.nvim_buf_get_name(0)
   if path ~= "" then vim.fn.jobstart({ "yzx", "reveal", path }) end
-end, { desc = "Reveal buffer in Yazelix sidebar" })
+end, { desc = "Reveal buffer in Yazelix Yazi popup" })
 ```
 
 Terminal Emacs users can bind the same command:
 
 ```elisp
 (defun yazelix-reveal-buffer ()
-  "Reveal the current buffer in the Yazelix sidebar."
+  "Reveal the current buffer in the Yazelix Yazi popup."
   (interactive)
   (if buffer-file-name
       (start-process "yzx-reveal" nil "yzx" "reveal" buffer-file-name)

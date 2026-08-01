@@ -37,6 +37,29 @@ pub fn sidebar_yazi_id(raw: &str) -> Result<String> {
     Ok(sidebar_yazi_state(raw)?.yazi_id)
 }
 
+pub fn workspace_popup_yazi_id(raw: &str) -> Result<String> {
+    let value = match serde_json::from_str::<Value>(raw) {
+        Ok(value) => value,
+        Err(_) => bail!(
+            "persistent Yazi popup is not ready: {}",
+            raw.trim()
+                .split_whitespace()
+                .next()
+                .unwrap_or("no response")
+        ),
+    };
+    let status = value.get("status").and_then(Value::as_str).map(str::trim);
+    let yazi_id = value
+        .get("yazi_id")
+        .and_then(Value::as_str)
+        .map(str::trim)
+        .filter(|id| !id.is_empty());
+    match (status, yazi_id) {
+        (Some("ok"), Some(yazi_id)) => Ok(yazi_id.to_string()),
+        _ => bail!("persistent Yazi popup returned an invalid address"),
+    }
+}
+
 pub fn sidebar_yazi_state(raw: &str) -> Result<SidebarYaziState> {
     optional_sidebar_yazi_state(raw)?
         .context("managed sidebar Yazi is not registered in the active tab")

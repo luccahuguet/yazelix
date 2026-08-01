@@ -2290,7 +2290,7 @@ color = "#123456"
         let reveal = key_field(&model, "Alt r");
         assert_eq!(
             reveal.display_label,
-            "Sidebar: Alt r - Reveal editor file in Yazi"
+            "Editor: Alt r - Reveal editor file in persistent Yazi popup"
         );
         assert!(reveal.description.contains("Owner: Yazelix"));
 

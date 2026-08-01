@@ -368,7 +368,7 @@ Commands:
   launch  Open Mars and start Yazelix
   menu    Open the Yazelix Nova command palette
   tutor   Show the guided Yazelix Nova tutor
-  reveal  Reveal a file or directory in the managed Yazi sidebar
+  reveal  Reveal a file or directory in the persistent Yazi popup
   run     Run a command in the managed Yazelix environment
   screen  Show a Yazelix terminal screen
   status  Show Yazelix runtime status

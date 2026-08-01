@@ -1578,22 +1578,23 @@ fn expect_yazi_alt_z(yzx: &Path) {
     let init = fs::read_to_string(yzx.join("share/yazelix/yazi/init.lua")).unwrap();
     expect_contains(
         &init,
-        "if os.getenv(\"YZX_YAZI_ROLE\") ~= \"workspace-popup\" then\n\trequire(\"sidebar-state\"):setup()\n\trequire(\"sidebar-status\"):setup()\nend",
+        "require(\"managed-state\"):setup()\nif os.getenv(\"YZX_YAZI_ROLE\") ~= \"workspace-popup\" then\n\trequire(\"sidebar-status\"):setup()\nend",
         "Yazi workspace popup role fragment",
     );
-    let sidebar_state =
-        fs::read_to_string(yzx.join("share/yazelix/yazi/plugins/sidebar-state.yazi/main.lua"))
+    let managed_state =
+        fs::read_to_string(yzx.join("share/yazelix/yazi/plugins/managed-state.yazi/main.lua"))
             .unwrap();
     expect_contains_all! {
-        &sidebar_state, "Yazi sidebar-state plugin fragment";
+        &managed_state, "Yazi managed-state plugin fragment";
         "register_sidebar_yazi_state",
+        "register_workspace_popup_yazi_state",
         "YAZELIX_ZELLIJ_SESSION_NAME",
         "ZELLIJ_SESSION_NAME",
         "YZX_ZELLIJ",
     }
     assert!(
-        !sidebar_state.contains("emit(\"plugin\", { \"git\""),
-        "sidebar-state must not invoke the fetch-only git plugin as a functional action",
+        !managed_state.contains("emit(\"plugin\", { \"git\""),
+        "managed-state must not invoke the fetch-only git plugin as a functional action",
     );
     assert!(
         yzx.join("share/yazelix/yazi/plugins/git.yazi").is_dir(),
@@ -1750,6 +1751,7 @@ fn expect_first_party_plugins(git_bin: &Path, config: &str) {
         "support_kitty_keyboard_protocol true",
         "screen_saver_enabled false",
         "popup_plugin_url \"yzpp\"",
+        "workspace_popup_yazi_pane_title \"yazi_popup\"",
         "managed_agent_command_marker \"/nix/store/",
     }
     expect_popup_defaults(config, "1", "0", "packaged popup config");

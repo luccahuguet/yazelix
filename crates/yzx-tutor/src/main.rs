@@ -64,7 +64,7 @@ const TUTOR_LESSONS: &[TutorLesson] = &[
         title: "Open and reveal files",
         summary: "Use the Yazi sidebar or popup without losing your browsing place",
         scope: "Current tab",
-        outcome: "You can browse with Yazi, open a file in the managed editor, and reveal the editor file in Yazi.",
+        outcome: "You can browse with Yazi, open a file in the managed editor, and reveal the editor file in the persistent popup.",
         escape_hatch: "Use `Alt h` or `Alt l` to walk visible panes.",
         render: render_files_lesson,
     },
@@ -271,11 +271,11 @@ fn render_files_lesson(index: usize, lesson: &TutorLesson) -> String {
 1. **Inside Yazelix:** Press `{sidebar_focus}` to move between the editor and Yazi sidebar, or `{sidebar_swap}` to hide or show the sidebar.
 2. **Inside Yazelix:** Press `{yazi_popup}` to hide or show the full Yazi popup. Its navigation state stays live while hidden.
 3. **Inside Yazi:** Press `Enter` to open the selected file in the managed editor.
-4. **Inside the editor:** Press `{reveal}` to reveal the current file in Yazi.
+4. **Inside the editor:** Press `{reveal}` to show the persistent Yazi popup and reveal the current file there.
 
 ## Mental model
 
-The sidebar is the quick companion. The full popup gives Yazi more room and keeps its browsing state while hidden.
+The sidebar is the quick companion. The full popup gives Yazi more room, keeps its browsing state while hidden, and owns editor reveal independently of the sidebar.
 
 Next lesson: `yzx tutor panes`.
 "#,
@@ -385,7 +385,7 @@ fn render_tool_tutors_lesson(index: usize, lesson: &TutorLesson) -> String {
 ## Actions
 
 1. **Run in shell or Yazelix:** Use `yzx tutor hx` to print the managed Helix tutor command and package-availability guidance.
-2. **Inside Helix:** Leave the tutor with `:q`; use `{reveal}` in managed Helix sessions when you want Yazi to reveal the current file.
+2. **Inside Helix:** Leave the tutor with `:q`; use `{reveal}` to show the persistent Yazi popup at the current file.
 3. **Run in shell or Yazelix:** Use `yzx tutor nu` to print the Nushell tutor commands.
 4. **Run in shell:** Use `yzx env` for the Yazelix-managed shell and packaged tools without opening the workspace UI.
 "#,

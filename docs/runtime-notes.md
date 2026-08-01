@@ -181,13 +181,16 @@ with the active tab's canonical workspace root as its explicit request cwd.
 The popup uses `toggle_close_behavior "hide"`, so the popup plugin preserves
 the live Yazi process and navigation state while that requested root still
 matches. It remembers the launch root separately from Yazi's changing process
-cwd. If the canonical root changes, the next reveal closes the stale process
-and launches a fresh one at the new root.
+cwd. If the canonical root changes, the next ordinary toggle closes the stale
+process and launches a fresh one at the new root. `yzx reveal` instead ensures
+the existing process is visible and addresses it directly, preserving its
+navigation state and leaving the canonical workspace unchanged.
 
 The popup runs the same `yzx-yazi` launcher and layered config as the tiled
 sidebar with the private `workspace-popup` role. Packaged Yazi initialization
-omits `sidebar-state` and `sidebar-status` for that role, preventing its
-`YAZI_ID`, pane id, and cwd from replacing the orchestrator's real sidebar
+omits `sidebar-status` for that role. The shared `managed-state` plugin registers
+popup and tiled Yazi processes under distinct orchestrator actions, so the
+popup's `YAZI_ID`, pane id, and cwd cannot replace the tiled sidebar
 registration. Popup navigation and ordinary opens retain their existing local
 and canonical-workspace semantics.
 

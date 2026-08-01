@@ -5,9 +5,7 @@ use std::{
     path::PathBuf,
     process::{Command, ExitCode},
 };
-use yzx_open::sidebar::{
-    Config, ensure_success, orchestrator_action, orchestrator_query, sidebar_yazi_id,
-};
+use yzx_open::sidebar::{Config, ensure_success, orchestrator_query, workspace_popup_yazi_id};
 
 #[cfg(test)]
 #[path = "support/test_dir.rs"]
@@ -31,8 +29,8 @@ fn run(config: &Config, raw_args: impl IntoIterator<Item = OsString>) -> Result<
     }
 
     let target = existing_absolute_path(&target)?;
-    let session_state = orchestrator_query(config, "get_active_tab_session_state")?;
-    let yazi_id = sidebar_yazi_id(&session_state)?;
+    let popup_state = orchestrator_query(config, "focus_workspace_popup_yazi")?;
+    let yazi_id = workspace_popup_yazi_id(&popup_state)?;
     let output = Command::new(&config.ya)
         .arg("emit-to")
         .arg(&yazi_id)
@@ -42,16 +40,6 @@ fn run(config: &Config, raw_args: impl IntoIterator<Item = OsString>) -> Result<
         .context("could not run ya")?;
     ensure_success(&output, "ya reveal failed")?;
 
-    let focus_status = orchestrator_action(config, "focus_sidebar")?;
-    let focus_status = focus_status.trim();
-    if !focus_status.is_empty()
-        && !matches!(
-            focus_status,
-            "ok" | "opened" | "focused" | "focused_sidebar" | "opened_sidebar"
-        )
-    {
-        bail!("managed sidebar focus failed: {focus_status}");
-    }
     Ok(())
 }
 
@@ -80,7 +68,7 @@ fn existing_absolute_path(target: &OsString) -> Result<PathBuf> {
 
 fn print_help() {
     println!(
-        "Reveal a file or directory in the managed Yazi sidebar\n\nUsage:\n  yzx reveal <target>"
+        "Reveal a file or directory in the persistent Yazi popup\n\nUsage:\n  yzx reveal <target>"
     );
 }
 
@@ -92,16 +80,16 @@ mod tests {
     use std::fs;
 
     #[test]
-    fn parses_sidebar_yazi_id_and_reports_missing_state() {
+    fn parses_popup_yazi_address_and_reports_bounded_failure() {
         assert_eq!(
-            sidebar_yazi_id(r#"{"sidebar_yazi":{"yazi_id":" yazi-7 ","cwd":"/tmp"}}"#).unwrap(),
+            workspace_popup_yazi_id(r#"{"status":"ok","yazi_id":" yazi-7 "}"#).unwrap(),
             "yazi-7"
         );
         assert!(
-            sidebar_yazi_id(r#"{"sidebar_yazi":null}"#)
+            workspace_popup_yazi_id("not_ready")
                 .unwrap_err()
                 .to_string()
-                .contains("managed sidebar Yazi is not registered")
+                .contains("persistent Yazi popup is not ready")
         );
     }
 
@@ -117,9 +105,9 @@ mod tests {
     }
 
     #[test]
-    fn reveal_uses_registered_sidebar_yazi_and_focuses_sidebar() {
+    fn reveal_ensures_popup_then_delivers_exact_path_with_spaces() {
         let fixture = TestDir::new();
-        let target = fixture.path.join("target.txt");
+        let target = fixture.path.join("target with spaces.txt");
         let zellij_log = fixture.path.join("zellij.log");
         let ya_log = fixture.path.join("ya.log");
         fs::write(&target, "").unwrap();
@@ -129,12 +117,8 @@ mod tests {
                 r#"#!/bin/sh
 printf '%s\n' "$* session=$ZELLIJ_SESSION_NAME" >> "{}"
 case "$6" in
-  get_active_tab_session_state)
-    printf '%s\n' '{{"sidebar_yazi":{{"yazi_id":"plugin-yazi-id"}}}}'
-    exit 0
-    ;;
-  focus_sidebar)
-    printf '%s\n' 'focused_sidebar'
+  focus_workspace_popup_yazi)
+    printf '%s\n' '{{"status":"ok","yazi_id":"plugin-yazi-id"}}'
     exit 0
     ;;
 esac
@@ -162,8 +146,7 @@ exit 1
 
         assert_eq!(
             fs::read_to_string(zellij_log).unwrap(),
-            "action pipe --plugin yazelix_pane_orchestrator --name get_active_tab_session_state --  session=saved-session\n\
-action pipe --plugin yazelix_pane_orchestrator --name focus_sidebar --  session=saved-session\n"
+            "action pipe --plugin yazelix_pane_orchestrator --name focus_workspace_popup_yazi --  session=saved-session\n"
         );
         assert_eq!(
             fs::read_to_string(ya_log).unwrap(),
@@ -172,20 +155,17 @@ action pipe --plugin yazelix_pane_orchestrator --name focus_sidebar --  session=
     }
 
     #[test]
-    fn reveal_allows_empty_focus_response_after_successful_command() {
+    fn reveal_delivers_an_existing_directory() {
         let fixture = TestDir::new();
-        let target = fixture.path.join("target.txt");
+        let target = fixture.path.join("target directory");
         let ya_log = fixture.path.join("ya.log");
-        fs::write(&target, "").unwrap();
+        fs::create_dir(&target).unwrap();
         write_executable(
             &fixture.path.join("zellij"),
             r#"#!/bin/sh
 case "$6" in
-  get_active_tab_session_state)
-    printf '%s\n' '{"sidebar_yazi":{"yazi_id":"plugin-yazi-id"}}'
-    exit 0
-    ;;
-  focus_sidebar)
+  focus_workspace_popup_yazi)
+    printf '%s\n' '{"status":"ok","yazi_id":"plugin-yazi-id"}'
     exit 0
     ;;
 esac
@@ -212,6 +192,33 @@ exit 1
         assert_eq!(
             fs::read_to_string(ya_log).unwrap(),
             format!("emit-to plugin-yazi-id reveal {}\n", target.display())
+        );
+    }
+
+    #[test]
+    fn popup_readiness_failure_is_reported_once_without_yazi_fallback() {
+        let fixture = TestDir::new();
+        let target = fixture.path.join("target.txt");
+        fs::write(&target, "").unwrap();
+        write_executable(
+            &fixture.path.join("zellij"),
+            "#!/bin/sh\nprintf '%s\\n' not_ready\n",
+        );
+        write_executable(
+            &fixture.path.join("ya"),
+            "#!/bin/sh\nprintf 'unexpected ya call\\n' >&2\nexit 1\n",
+        );
+        let config = Config {
+            ya: fixture.path.join("ya").into_os_string(),
+            zellij: fixture.path.join("zellij").into_os_string(),
+            zellij_session_name: None,
+        };
+
+        assert!(
+            run(&config, [target.into_os_string()])
+                .unwrap_err()
+                .to_string()
+                .contains("persistent Yazi popup is not ready")
         );
     }
 }

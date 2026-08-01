@@ -127,7 +127,7 @@ fn build_helix_document_fields(
                     file_action_id: Some(ACTION_HELIX_CONFIG.to_string()),
                 };
                 field.description =
-                    "Yazelix always restores Alt r to reveal the active editor file in managed Yazi."
+                    "Yazelix always restores Alt r to reveal the active editor file in the persistent Yazi popup."
                         .to_string();
             }
         }

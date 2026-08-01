@@ -4,6 +4,11 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## 1.0.0-beta.4
 
+- `Alt r` and `yzx reveal <target>` show and focus the active tab's persistent
+  Yazi popup, then reveal the exact file or directory there. Reveal no longer
+  depends on the tiled Yazi sidebar, does not change the canonical workspace,
+  and preserves a hidden popup's live navigation process. First launch waits
+  for one bounded Yazi registration result without polling or sidebar fallback.
 - Every managed `keybindings.*` action accepts `false` to leave its shortcut
   unmapped. Yazelix omits only that managed bind, preserves separate `unbind`
   declarations, and frees its collision slot; existing commands, menu entries,

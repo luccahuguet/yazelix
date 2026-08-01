@@ -344,7 +344,7 @@
         install -D -m 644 ${yaziSchemas}/schemas/theme.json "$out/theme-schema.json"
         install -D -m 644 ${yaziSchemas}/LICENSE "$out/share/licenses/yazi-schemas/LICENSE"
         mkdir -p "$out/plugins"
-        install -D -m 644 ${./defaults/yazi/plugins/sidebar-state.yazi/main.lua} "$out/plugins/sidebar-state.yazi/main.lua"
+        install -D -m 644 ${./defaults/yazi/plugins/managed-state.yazi/main.lua} "$out/plugins/managed-state.yazi/main.lua"
         install -D -m 644 ${./defaults/yazi/plugins/sidebar-status.yazi/main.lua} "$out/plugins/sidebar-status.yazi/main.lua"
         install -D -m 644 ${./defaults/yazi/plugins/zoxide-editor.yazi/main.lua} "$out/plugins/zoxide-editor.yazi/main.lua"
         ln -s ${autoLayoutYazi} "$out/plugins/auto-layout.yazi"

@@ -31,6 +31,13 @@ local function cwd()
 	return nil
 end
 
+local function registration_action()
+	if os.getenv("YZX_YAZI_ROLE") == "workspace-popup" then
+		return "register_workspace_popup_yazi_state"
+	end
+	return "register_sidebar_yazi_state"
+end
+
 local function pipe_registration(payload)
 	local program = os.getenv("YZX_ZELLIJ")
 	local command = Command(program and program ~= "" and program or "zellij")
@@ -45,7 +52,7 @@ local function pipe_registration(payload)
 			"--plugin",
 			ORCHESTRATOR,
 			"--name",
-			"register_sidebar_yazi_state",
+			registration_action(),
 			"--",
 			payload,
 		})
@@ -73,6 +80,12 @@ local function publish()
 		json_escape(yazi_id),
 		json_escape(current_cwd)
 	)
+	if os.getenv("YZX_YAZI_ROLE") == "workspace-popup" then
+		ya.async(function()
+			pipe_registration(payload)
+		end)
+		return
+	end
 	ya.async(function()
 		for _, delay in ipairs(RETRY_DELAYS) do
 			if current_generation ~= generation then

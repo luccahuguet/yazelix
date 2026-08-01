@@ -32,14 +32,14 @@ composes their package outputs.
 
 | Measure | Nova | Classic |
 | --- | --- | --- |
-| Code and configuration (Rust, Nix, shell, TOML, etc.) | **22,676 LOC** | **91,545 LOC** |
-| Rust | **19,553 LOC** | **80,957 LOC** |
+| Code and configuration (Rust, Nix, shell, TOML, etc.) | **22,722 LOC** | **91,545 LOC** |
+| Rust | **19,585 LOC** | **80,957 LOC** |
 | Ownership model | One owner per concern | Overlapping responsibilities across layers |
 | Yazelix component boundaries | Independent, versioned packages | Child repos mixed with main-repo ownership |
 | Product experience | More features, stronger defaults, tighter integration, and polished UX | Fewer features and a less cohesive workspace |
 | Status | Recommended | Frozen migration and rollback path |
 
-Nova owns **68,869 fewer lines**, a **75% reduction**. Classic's Rust code
+Nova owns **68,823 fewer lines**, a **75% reduction**. Classic's Rust code
 alone is 3.6 times larger than Nova's entire code and configuration surface.
 
 Nova delivers more features in 25% of the code. It has a clearer configuration
@@ -176,7 +176,7 @@ bindings are:
 | Workspace | `Alt Shift S` | Show a random full-screen visual |
 | Workspace | `Ctrl y` | Toggle focus between the editor and Yazi sidebar |
 | Workspace | `Alt 1-9` | Go directly to tab 1-9 |
-| Editor | `Alt r` | Reveal the current editor file in Yazi |
+| Editor | `Alt r` | Reveal the current editor file in the persistent Yazi popup |
 | Yazi | `Alt z` | Retarget the tab workspace with zoxide |
 
 Every managed `keybindings.*` setting accepts either a key chord or `false`.
@@ -209,7 +209,7 @@ Ratconfig's Keys tab is the complete packaged reference, and
 | `yzx env` | Open the managed shell without launching the UI |
 | `yzx tutor [lesson]` | Print guided Yazelix lessons |
 | `yzx screen [style]` | Show a terminal welcome screen |
-| `yzx reveal <target>` | Reveal a file or directory in the managed Yazi sidebar |
+| `yzx reveal <target>` | Show the persistent Yazi popup and reveal a file or directory |
 
 The materializer uses the selected Yazelix package's config and does not start
 Yazi or prepare the interactive runtime. See [Runtime Notes](docs/runtime-notes.md#yazi)
@@ -347,6 +347,6 @@ See [Development](docs/development.md) for CI and local checks,
 
 ## LOC Scorecard
 
-Yazelix owns **25,782 lines** of tracked text project files. The
+Yazelix owns **25,837 lines** of tracked text project files. The
 [reproducible scorecard](docs/development.md#loc-scorecard) excludes Beads,
 lockfiles, and binary assets.
