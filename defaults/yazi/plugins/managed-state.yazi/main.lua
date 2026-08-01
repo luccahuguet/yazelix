@@ -1,6 +1,9 @@
 local M = {}
 
 local ORCHESTRATOR = "yazelix_pane_orchestrator"
+local WORKSPACE_POPUP = os.getenv("YZX_YAZI_ROLE") == "workspace-popup"
+local REGISTRATION_ACTION = WORKSPACE_POPUP and "register_workspace_popup_yazi_state"
+	or "register_sidebar_yazi_state"
 local RETRY_DELAYS = { 0, 0.15, 0.35, 0.75, 1.25 }
 local generation = 0
 
@@ -31,13 +34,6 @@ local function cwd()
 	return nil
 end
 
-local function registration_action()
-	if os.getenv("YZX_YAZI_ROLE") == "workspace-popup" then
-		return "register_workspace_popup_yazi_state"
-	end
-	return "register_sidebar_yazi_state"
-end
-
 local function pipe_registration(payload)
 	local program = os.getenv("YZX_ZELLIJ")
 	local command = Command(program and program ~= "" and program or "zellij")
@@ -52,7 +48,7 @@ local function pipe_registration(payload)
 			"--plugin",
 			ORCHESTRATOR,
 			"--name",
-			registration_action(),
+			REGISTRATION_ACTION,
 			"--",
 			payload,
 		})
@@ -80,7 +76,7 @@ local function publish()
 		json_escape(yazi_id),
 		json_escape(current_cwd)
 	)
-	if os.getenv("YZX_YAZI_ROLE") == "workspace-popup" then
+	if WORKSPACE_POPUP then
 		ya.async(function()
 			pipe_registration(payload)
 		end)

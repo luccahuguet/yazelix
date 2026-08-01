@@ -40,13 +40,7 @@ pub fn sidebar_yazi_id(raw: &str) -> Result<String> {
 pub fn workspace_popup_yazi_id(raw: &str) -> Result<String> {
     let value = match serde_json::from_str::<Value>(raw) {
         Ok(value) => value,
-        Err(_) => bail!(
-            "persistent Yazi popup is not ready: {}",
-            raw.trim()
-                .split_whitespace()
-                .next()
-                .unwrap_or("no response")
-        ),
+        Err(_) => bail!("persistent Yazi popup is not ready"),
     };
     let status = value.get("status").and_then(Value::as_str).map(str::trim);
     let yazi_id = value

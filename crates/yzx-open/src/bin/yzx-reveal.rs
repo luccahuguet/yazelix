@@ -85,11 +85,11 @@ mod tests {
             workspace_popup_yazi_id(r#"{"status":"ok","yazi_id":" yazi-7 "}"#).unwrap(),
             "yazi-7"
         );
-        assert!(
-            workspace_popup_yazi_id("not_ready")
+        assert_eq!(
+            workspace_popup_yazi_id(&"x".repeat(4096))
                 .unwrap_err()
-                .to_string()
-                .contains("persistent Yazi popup is not ready")
+                .to_string(),
+            "persistent Yazi popup is not ready"
         );
     }
 
@@ -105,12 +105,14 @@ mod tests {
     }
 
     #[test]
-    fn reveal_ensures_popup_then_delivers_exact_path_with_spaces() {
+    fn reveal_delivers_exact_file_and_directory_paths_with_spaces() {
         let fixture = TestDir::new();
-        let target = fixture.path.join("target with spaces.txt");
+        let file_target = fixture.path.join("target with spaces.txt");
+        let directory_target = fixture.path.join("target directory");
         let zellij_log = fixture.path.join("zellij.log");
         let ya_log = fixture.path.join("ya.log");
-        fs::write(&target, "").unwrap();
+        fs::write(&file_target, "").unwrap();
+        fs::create_dir(&directory_target).unwrap();
         write_executable(
             &fixture.path.join("zellij"),
             &format!(
@@ -131,7 +133,7 @@ exit 1
         write_executable(
             &fixture.path.join("ya"),
             &format!(
-                "#!/bin/sh\nprintf '%s\\n' \"$*\" > \"{}\"\n",
+                "#!/bin/sh\nprintf '%s\\n' \"$*\" >> \"{}\"\n",
                 ya_log.display()
             ),
         );
@@ -142,56 +144,21 @@ exit 1
             zellij_session_name: Some("saved-session".into()),
         };
 
-        run(&config, [target.clone().into_os_string()]).unwrap();
+        run(&config, [file_target.clone().into_os_string()]).unwrap();
+        run(&config, [directory_target.clone().into_os_string()]).unwrap();
 
+        let expected_pipe = "action pipe --plugin yazelix_pane_orchestrator --name focus_workspace_popup_yazi --  session=saved-session\n";
         assert_eq!(
             fs::read_to_string(zellij_log).unwrap(),
-            "action pipe --plugin yazelix_pane_orchestrator --name focus_workspace_popup_yazi --  session=saved-session\n"
+            expected_pipe.repeat(2)
         );
         assert_eq!(
             fs::read_to_string(ya_log).unwrap(),
-            format!("emit-to plugin-yazi-id reveal {}\n", target.display())
-        );
-    }
-
-    #[test]
-    fn reveal_delivers_an_existing_directory() {
-        let fixture = TestDir::new();
-        let target = fixture.path.join("target directory");
-        let ya_log = fixture.path.join("ya.log");
-        fs::create_dir(&target).unwrap();
-        write_executable(
-            &fixture.path.join("zellij"),
-            r#"#!/bin/sh
-case "$6" in
-  focus_workspace_popup_yazi)
-    printf '%s\n' '{"status":"ok","yazi_id":"plugin-yazi-id"}'
-    exit 0
-    ;;
-esac
-printf 'unexpected zellij args: %s\n' "$*" >&2
-exit 1
-"#,
-        );
-        write_executable(
-            &fixture.path.join("ya"),
-            &format!(
-                "#!/bin/sh\nprintf '%s\\n' \"$*\" > \"{}\"\n",
-                ya_log.display()
-            ),
-        );
-
-        let config = Config {
-            ya: fixture.path.join("ya").into_os_string(),
-            zellij: fixture.path.join("zellij").into_os_string(),
-            zellij_session_name: Some("saved-session".into()),
-        };
-
-        run(&config, [target.clone().into_os_string()]).unwrap();
-
-        assert_eq!(
-            fs::read_to_string(ya_log).unwrap(),
-            format!("emit-to plugin-yazi-id reveal {}\n", target.display())
+            format!(
+                "emit-to plugin-yazi-id reveal {}\nemit-to plugin-yazi-id reveal {}\n",
+                file_target.display(),
+                directory_target.display()
+            )
         );
     }
 

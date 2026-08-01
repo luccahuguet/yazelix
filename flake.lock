@@ -634,11 +634,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1785605090,
-        "narHash": "sha256-EnpT8IfNVvX15d+BPQTw0YjyfyWkbnN1vvXNbHmyQvU=",
+        "lastModified": 1785606778,
+        "narHash": "sha256-bu7yq//EjACYBwDntQB6+4aDsH+rXKsMIMVgOLs1gfw=",
         "owner": "luccahuguet",
         "repo": "yazelix-zellij-pane-orchestrator",
-        "rev": "c9efc80ee527b6ea7f721e388db15480adbee4e5",
+        "rev": "340ea5fb21c35861a28076ad82d8094987848b40",
         "type": "github"
       },
       "original": {
@@ -656,11 +656,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1785604019,
-        "narHash": "sha256-wyCjFezrvnkcklgoY9bLT7nqsD4aVCF9b0KptLt/p+Q=",
+        "lastModified": 1785606778,
+        "narHash": "sha256-bXDGLqA814aIqh1H7VTW/GC3o2pakHVwDvTVw6lzDUQ=",
         "owner": "luccahuguet",
         "repo": "yazelix-zellij-popup",
-        "rev": "2a3b312c560c616af1e36de96d598ff6ec4bb011",
+        "rev": "7ef6f17219efc49737541706cc966454fe29d5fe",
         "type": "github"
       },
       "original": {
