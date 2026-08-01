@@ -2,8 +2,10 @@ use anyhow::{Context, Result, bail};
 use std::{
     env,
     ffi::OsString,
-    path::PathBuf,
+    path::{Path, PathBuf},
     process::{Command, ExitCode},
+    thread::sleep,
+    time::Duration,
 };
 use yzx_open::sidebar::{Config, ensure_success, orchestrator_query, workspace_popup_yazi_id};
 
@@ -31,15 +33,32 @@ fn run(config: &Config, raw_args: impl IntoIterator<Item = OsString>) -> Result<
     let target = existing_absolute_path(&target)?;
     let popup_state = orchestrator_query(config, "focus_workspace_popup_yazi")?;
     let yazi_id = workspace_popup_yazi_id(&popup_state)?;
-    let output = Command::new(&config.ya)
-        .arg("emit-to")
-        .arg(&yazi_id)
-        .arg("reveal")
-        .arg(&target)
-        .output()
-        .context("could not run ya")?;
-    ensure_success(&output, "ya reveal failed")?;
+    emit_reveal(config, &yazi_id, &target)?;
 
+    Ok(())
+}
+
+fn emit_reveal(config: &Config, yazi_id: &str, target: &Path) -> Result<()> {
+    let send = || {
+        Command::new(&config.ya)
+            .arg("emit-to")
+            .arg(yazi_id)
+            .arg("reveal")
+            .arg(target)
+            .output()
+            .context("could not run ya")
+    };
+    let mut output = send()?;
+    for delay_ms in [25, 50, 100, 200, 400] {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        if output.status.success() || !(stderr.contains("Receiver") && stderr.contains("not found"))
+        {
+            break;
+        }
+        sleep(Duration::from_millis(delay_ms));
+        output = send()?;
+    }
+    ensure_success(&output, "ya reveal failed")?;
     Ok(())
 }
 
@@ -105,12 +124,13 @@ mod tests {
     }
 
     #[test]
-    fn reveal_delivers_exact_file_and_directory_paths_with_spaces() {
+    fn reveal_retries_receiver_startup_and_delivers_exact_paths() {
         let fixture = TestDir::new();
         let file_target = fixture.path.join("target with spaces.txt");
         let directory_target = fixture.path.join("target directory");
         let zellij_log = fixture.path.join("zellij.log");
         let ya_log = fixture.path.join("ya.log");
+        let ya_ready = fixture.path.join("ya.ready");
         fs::write(&file_target, "").unwrap();
         fs::create_dir(&directory_target).unwrap();
         write_executable(
@@ -133,8 +153,10 @@ exit 1
         write_executable(
             &fixture.path.join("ya"),
             format!(
-                "#!/bin/sh\nprintf '%s\\n' \"$*\" >> \"{}\"\n",
-                ya_log.display()
+                "#!/bin/sh\nprintf '%s\\n' \"$*\" >> \"{}\"\nif [ ! -e \"{}\" ]; then\n  touch \"{}\"\n  printf 'Receiver not found\\n' >&2\n  exit 1\nfi\n",
+                ya_log.display(),
+                ya_ready.display(),
+                ya_ready.display()
             ),
         );
 
@@ -155,7 +177,8 @@ exit 1
         assert_eq!(
             fs::read_to_string(ya_log).unwrap(),
             format!(
-                "emit-to plugin-yazi-id reveal {}\nemit-to plugin-yazi-id reveal {}\n",
+                "emit-to plugin-yazi-id reveal {}\nemit-to plugin-yazi-id reveal {}\nemit-to plugin-yazi-id reveal {}\n",
+                file_target.display(),
                 file_target.display(),
                 directory_target.display()
             )

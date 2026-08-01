@@ -9,6 +9,8 @@ User-visible runtime changes for Yazelix Nova live here.
   depends on the tiled Yazi sidebar, does not change the canonical workspace,
   and preserves a hidden popup's live navigation process. First launch registers
   only its pane and Yazi addresses, then waits for one bounded result without polling.
+- `yzx reveal` retries Yazi receiver lookup while a new persistent popup starts.
+  The first `Alt r` press opens the popup and reveals the target.
 - Every managed `keybindings.*` action accepts `false` to leave its shortcut
   unmapped. Yazelix omits only that managed bind, preserves separate `unbind`
   declarations, and frees its collision slot; existing commands, menu entries,
