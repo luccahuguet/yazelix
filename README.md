@@ -176,7 +176,7 @@ bindings are:
 | Workspace | `Alt Shift S` | Show a random full-screen visual |
 | Workspace | `Ctrl y` | Toggle focus between the editor and Yazi sidebar |
 | Workspace | `Alt 1-9` | Go directly to tab 1-9 |
-| Editor | `Alt r` | Reveal the current editor file in the persistent Yazi popup |
+| Editor / Yazi popup | `Alt r` | Reveal the editor file, or hide the focused Yazi popup |
 | Yazi | `Alt z` | Retarget the tab workspace with zoxide |
 
 Every managed `keybindings.*` setting accepts either a key chord or `false`.
@@ -347,6 +347,6 @@ See [Development](docs/development.md) for CI and local checks,
 
 ## LOC Scorecard
 
-Yazelix owns **25,716 lines** of tracked text project files. The
+Yazelix owns **25,723 lines** of tracked text project files. The
 [reproducible scorecard](docs/development.md#loc-scorecard) excludes Beads,
 lockfiles, and binary assets.

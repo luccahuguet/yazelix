@@ -64,7 +64,7 @@ const TUTOR_LESSONS: &[TutorLesson] = &[
         title: "Open and reveal files",
         summary: "Use the Yazi sidebar or popup without losing your browsing place",
         scope: "Current tab",
-        outcome: "You can browse with Yazi, open a file in the managed editor, and reveal the editor file in the persistent popup.",
+        outcome: "You can browse with Yazi, open a file in the managed editor, and move repeatedly between the editor file and persistent popup.",
         escape_hatch: "Use `Alt h` or `Alt l` to walk visible panes.",
         render: render_files_lesson,
     },
@@ -271,11 +271,11 @@ fn render_files_lesson(index: usize, lesson: &TutorLesson) -> String {
 1. **Inside Yazelix:** Press `{sidebar_focus}` to move between the editor and Yazi sidebar, or `{sidebar_swap}` to hide or show the sidebar.
 2. **Inside Yazelix:** Press `{yazi_popup}` to hide or show the full Yazi popup. Its navigation state stays live while hidden.
 3. **Inside Yazi:** Press `Enter` to open the selected file in the managed editor.
-4. **Inside the editor:** Press `{reveal}` to restart the persistent Yazi popup at the current file.
+4. **Inside the editor:** Press `{reveal}` to restart the persistent Yazi popup at the current file; press it again inside that popup to hide it.
 
 ## Mental model
 
-The sidebar is the quick companion. Ordinary popup toggles keep Yazi's browsing state while hidden; reveal starts it directly at the editor file and stays independent of the sidebar.
+The sidebar is the quick companion. Ordinary popup toggles keep Yazi's browsing state while hidden; reveal starts it directly at the editor file, and the same key returns to the tiled workspace without opening the selected item.
 
 Next lesson: `yzx tutor panes`.
 "#,
@@ -385,7 +385,7 @@ fn render_tool_tutors_lesson(index: usize, lesson: &TutorLesson) -> String {
 ## Actions
 
 1. **Run in shell or Yazelix:** Use `yzx tutor hx` to print the managed Helix tutor command and package-availability guidance.
-2. **Inside Helix:** Leave the tutor with `:q`; use `{reveal}` to restart the persistent Yazi popup at the current file.
+2. **Inside Helix:** Leave the tutor with `:q`; use `{reveal}` to restart the persistent Yazi popup at the current file, then use it again inside the popup to return.
 3. **Run in shell or Yazelix:** Use `yzx tutor nu` to print the Nushell tutor commands.
 4. **Run in shell:** Use `yzx env` for the Yazelix-managed shell and packaged tools without opening the workspace UI.
 "#,

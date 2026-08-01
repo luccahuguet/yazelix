@@ -187,6 +187,9 @@ configured `replace` request to the popup owner with the absolute target as a
 launch argument. Yazi reveals that target during normal startup, so reveal does
 not wait for or address a partially started process. This deliberately resets
 the popup's navigation state while leaving the canonical workspace unchanged.
+From the focused visible Yazi popup, `Alt r` sends the existing named toggle to
+the popup owner, which hides the keep-alive pane and floating layer without
+opening its selection or changing workspace state.
 
 The popup runs the same `yzx-yazi` launcher and layered config as the tiled
 sidebar with the private `workspace-popup` role. Packaged Yazi initialization

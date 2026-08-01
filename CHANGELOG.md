@@ -11,7 +11,9 @@ User-visible runtime changes for Yazelix Nova live here.
   target, so Yazi performs the reveal during startup without polling or retries.
   The canonical workspace remains unchanged. Hidden persistent popups no longer
   make `Alt h` or `Alt l` skip tiled panes; popup navigation is gated by
-  Zellij's actual floating-layer visibility.
+  Zellij's actual floating-layer visibility. Pressing `Alt r` again from the
+  focused Yazi popup hides it and returns to the tiled workspace without
+  opening the selected item or changing the canonical workspace.
 - Every managed `keybindings.*` action accepts `false` to leave its shortcut
   unmapped. Yazelix omits only that managed bind, preserves separate `unbind`
   declarations, and frees its collision slot; existing commands, menu entries,
