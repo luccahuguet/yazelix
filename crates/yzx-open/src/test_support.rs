@@ -2,8 +2,10 @@ use std::{
     env, fs,
     os::unix::fs::PermissionsExt,
     path::{Path, PathBuf},
-    time::{SystemTime, UNIX_EPOCH},
+    sync::atomic::{AtomicUsize, Ordering},
 };
+
+static SHORT_TEST_DIR_COUNTER: AtomicUsize = AtomicUsize::new(0);
 
 pub(crate) fn write_executable(path: &Path, contents: impl AsRef<[u8]>) {
     fs::write(path, contents).unwrap();
@@ -18,14 +20,11 @@ pub(crate) struct TestDir {
 
 impl TestDir {
     pub(crate) fn new() -> Self {
-        let nanos = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_nanos();
-        for attempt in 0..100 {
+        for _ in 0..100 {
             let path = env::temp_dir().join(format!(
-                "yzx-open-test-{}-{nanos}-{attempt}",
-                std::process::id()
+                "yo{}-{}",
+                std::process::id(),
+                SHORT_TEST_DIR_COUNTER.fetch_add(1, Ordering::Relaxed)
             ));
             match fs::create_dir(&path) {
                 Ok(()) => return Self { path },
