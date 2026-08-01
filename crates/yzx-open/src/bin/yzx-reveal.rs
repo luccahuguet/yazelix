@@ -26,10 +26,11 @@ fn run(config: &Config, raw_args: impl IntoIterator<Item = OsString>) -> Result<
 
     let target = existing_absolute_path(&target)?;
     let target = target.to_str().context("target path is not valid UTF-8")?;
-    let payload = serde_json::to_string(&json!({
+    let payload = json!({
         "id": "yazi",
         "args": [target],
-    }))?;
+    })
+    .to_string();
     let result = popup_pipe(config, "replace", &payload)?;
     match result.as_str() {
         "opened" => Ok(()),
@@ -107,11 +108,11 @@ mod tests {
         run(&config, [target.clone().into_os_string()]).unwrap();
 
         let log = fs::read_to_string(zellij_log).unwrap();
-        let expected_payload = serde_json::to_string(&json!({
+        let expected_payload = json!({
             "id": "yazi",
             "args": [target.to_str().unwrap()],
-        }))
-        .unwrap();
+        })
+        .to_string();
         assert_eq!(
             log,
             format!(

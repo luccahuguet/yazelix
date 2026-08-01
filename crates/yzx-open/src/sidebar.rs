@@ -34,10 +34,6 @@ impl Config {
     }
 }
 
-pub fn sidebar_yazi_id(raw: &str) -> Result<String> {
-    Ok(sidebar_yazi_state(raw)?.yazi_id)
-}
-
 pub fn sidebar_yazi_state(raw: &str) -> Result<SidebarYaziState> {
     optional_sidebar_yazi_state(raw)?
         .context("managed sidebar Yazi is not registered in the active tab")
@@ -74,15 +70,11 @@ pub fn optional_sidebar_yazi_state(raw: &str) -> Result<Option<SidebarYaziState>
 }
 
 pub fn orchestrator_query(config: &Config, name: &str) -> Result<String> {
-    let response = orchestrator_action(config, name)?;
+    let response = orchestrator_pipe(config, name, "")?;
     if response.is_empty() {
         bail!("pane orchestrator returned no response for {name}");
     }
     Ok(response)
-}
-
-pub fn orchestrator_action(config: &Config, name: &str) -> Result<String> {
-    orchestrator_pipe(config, name, "")
 }
 
 pub fn orchestrator_pipe(config: &Config, name: &str, payload: &str) -> Result<String> {
