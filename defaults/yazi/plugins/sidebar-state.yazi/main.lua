@@ -1,9 +1,6 @@
 local M = {}
 
 local ORCHESTRATOR = "yazelix_pane_orchestrator"
-local WORKSPACE_POPUP = os.getenv("YZX_YAZI_ROLE") == "workspace-popup"
-local REGISTRATION_ACTION = WORKSPACE_POPUP and "register_workspace_popup_yazi_state"
-	or "register_sidebar_yazi_state"
 local RETRY_DELAYS = { 0, 0.15, 0.35, 0.75, 1.25 }
 local generation = 0
 
@@ -48,7 +45,7 @@ local function pipe_registration(payload)
 			"--plugin",
 			ORCHESTRATOR,
 			"--name",
-			REGISTRATION_ACTION,
+			"register_sidebar_yazi_state",
 			"--",
 			payload,
 		})
@@ -63,26 +60,19 @@ end
 local function publish()
 	local yazi_id = os.getenv("YAZI_ID")
 	local current_pane = pane_id()
-	local current_cwd = not WORKSPACE_POPUP and cwd()
-	if not yazi_id or yazi_id == "" or not current_pane or (not WORKSPACE_POPUP and not current_cwd) then
+	local current_cwd = cwd()
+	if not yazi_id or yazi_id == "" or not current_pane or not current_cwd then
 		return
 	end
 
 	generation = generation + 1
 	local current_generation = generation
-	local cwd_field = current_cwd and string.format(',"cwd":"%s"', json_escape(current_cwd)) or ""
 	local payload = string.format(
-		'{"pane_id":"%s","yazi_id":"%s"%s}',
+		'{"pane_id":"%s","yazi_id":"%s","cwd":"%s"}',
 		json_escape(current_pane),
 		json_escape(yazi_id),
-		cwd_field
+		json_escape(current_cwd)
 	)
-	if WORKSPACE_POPUP then
-		ya.async(function()
-			pipe_registration(payload)
-		end)
-		return
-	end
 	ya.async(function()
 		for _, delay in ipairs(RETRY_DELAYS) do
 			if current_generation ~= generation then
@@ -100,8 +90,12 @@ end
 
 function M.setup()
 	publish()
-	ps.sub("cd", publish)
-	ps.sub("tab", publish)
+	ps.sub("cd", function()
+		publish()
+	end)
+	ps.sub("tab", function()
+		publish()
+	end)
 end
 
 return M

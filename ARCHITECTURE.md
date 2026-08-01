@@ -81,7 +81,7 @@ One owner per concern. Paths are the durable map.
 | `runtime/yzx-nu.rs` | Managed Nu layering; runtime-effective Starship config request |
 | `runtime/yzx-zellij-config.rs` | Packaged + guarded Zellij scalar sidecar merge |
 | `runtime/yzx/zellij.rs` | Plugin sidecar inject; launch materialize/patches |
-| `crates/yzx-open/` | Editor open, Helix bridge, persistent-popup reveal, bounded diagnostics |
+| `crates/yzx-open/` | Editor open, Helix bridge, target-at-launch popup reveal, bounded diagnostics |
 | `crates/yzx-yazi-config/` | Managed Yazi config-home materialization, native TOML layering, and runtime-only flavor projection |
 | `crates/yzx-tutor/` | Tutor CLI and lessons |
 | `runtime/yzx-helix.sh` (`yzx-hx`) | Effective Helix config + Steel wiring |

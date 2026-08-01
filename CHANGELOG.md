@@ -5,12 +5,13 @@ User-visible runtime changes for Yazelix Nova live here.
 ## 1.0.0-beta.4
 
 - `Alt r` and `yzx reveal <target>` show and focus the active tab's persistent
-  Yazi popup, then reveal the exact file or directory there. Reveal no longer
-  depends on the tiled Yazi sidebar, does not change the canonical workspace,
-  and preserves a hidden popup's live navigation process. On first launch,
-  `yzx reveal` retries the orchestrator's `not_ready` response for up to five
-  seconds and retries Yazi receiver lookup while the process starts. The first
-  `Alt r` press opens the popup and reveals the target.
+  Yazi popup at the exact file or directory. Reveal no longer depends on the
+  tiled Yazi sidebar or a later Yazi receiver-registration handshake: the popup
+  owner replaces any existing Yazi popup and launches the new process with the
+  target, so Yazi performs the reveal during startup without polling or retries.
+  The canonical workspace remains unchanged. Hidden persistent popups no longer
+  make `Alt h` or `Alt l` skip tiled panes; popup navigation is gated by
+  Zellij's actual floating-layer visibility.
 - Every managed `keybindings.*` action accepts `false` to leave its shortcut
   unmapped. Yazelix omits only that managed bind, preserves separate `unbind`
   declarations, and frees its collision slot; existing commands, menu entries,

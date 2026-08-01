@@ -70,7 +70,6 @@ plugins {
     yazelix_pane_orchestrator location="@yzxPaneOrchestrator@" {
         screen_saver_enabled false
         popup_plugin_url "yzpp"
-        workspace_popup_yazi_pane_title "yazi_popup"
         managed_agent_command_marker "@yzxAgent@"
     }
 }

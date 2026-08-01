@@ -7,6 +7,7 @@ use std::{
 };
 
 const ORCHESTRATOR_PLUGIN: &str = "yazelix_pane_orchestrator";
+const POPUP_PLUGIN: &str = "yzpp";
 const ZELLIJ_SESSION_NAME_ENV: &str = "ZELLIJ_SESSION_NAME";
 
 #[derive(Clone, Debug)]
@@ -35,23 +36,6 @@ impl Config {
 
 pub fn sidebar_yazi_id(raw: &str) -> Result<String> {
     Ok(sidebar_yazi_state(raw)?.yazi_id)
-}
-
-pub fn workspace_popup_yazi_id(raw: &str) -> Result<String> {
-    let value = match serde_json::from_str::<Value>(raw) {
-        Ok(value) => value,
-        Err(_) => bail!("persistent Yazi popup is not ready"),
-    };
-    let status = value.get("status").and_then(Value::as_str).map(str::trim);
-    let yazi_id = value
-        .get("yazi_id")
-        .and_then(Value::as_str)
-        .map(str::trim)
-        .filter(|id| !id.is_empty());
-    match (status, yazi_id) {
-        (Some("ok"), Some(yazi_id)) => Ok(yazi_id.to_string()),
-        _ => bail!("persistent Yazi popup returned an invalid address"),
-    }
 }
 
 pub fn sidebar_yazi_state(raw: &str) -> Result<SidebarYaziState> {
@@ -102,24 +86,27 @@ pub fn orchestrator_action(config: &Config, name: &str) -> Result<String> {
 }
 
 pub fn orchestrator_pipe(config: &Config, name: &str, payload: &str) -> Result<String> {
+    plugin_pipe(config, ORCHESTRATOR_PLUGIN, name, payload)
+        .with_context(|| format!("could not pipe {name} to pane orchestrator"))
+}
+
+pub fn popup_pipe(config: &Config, name: &str, payload: &str) -> Result<String> {
+    plugin_pipe(config, POPUP_PLUGIN, name, payload)
+        .with_context(|| format!("could not pipe {name} to popup plugin"))
+}
+
+fn plugin_pipe(config: &Config, plugin: &str, name: &str, payload: &str) -> Result<String> {
     let mut command = Command::new(&config.zellij);
     if let Some(session_name) = &config.zellij_session_name {
         command.env(ZELLIJ_SESSION_NAME_ENV, session_name);
     }
     let output = command
         .args([
-            "action",
-            "pipe",
-            "--plugin",
-            ORCHESTRATOR_PLUGIN,
-            "--name",
-            name,
-            "--",
-            payload,
+            "action", "pipe", "--plugin", plugin, "--name", name, "--", payload,
         ])
         .output()
-        .with_context(|| format!("could not pipe {name} to pane orchestrator"))?;
-    ensure_success(&output, "pane orchestrator command failed")?;
+        .context("could not run zellij action pipe")?;
+    ensure_success(&output, "zellij action pipe failed")?;
     Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
 }
 

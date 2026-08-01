@@ -95,7 +95,9 @@ popup role keys:
 not a root setting. The popup opens at the active tab's canonical workspace
 root and hides on toggle, preserving its live Yazi navigation state while that
 root remains unchanged. It uses the same layered Yazi configuration and editor
-opener as the sidebar without registering as the sidebar.
+opener as the sidebar without registering as the sidebar. `yzx reveal` replaces
+the popup process and starts Yazi at the requested target; ordinary toggles keep
+the existing process alive.
 
 `agent.command` accepts one executable name or path, not a shell command with
 arguments. Keep `agent.command = "auto"` to use the built-in `codex resume`,
@@ -423,9 +425,10 @@ file-edit commands and keeps user configuration, while it and other terminal
 Git clients use `yzx-editor` through the standard editor variables. On return,
 the bridge restores the client's transparent Zellij background
 
-`Alt r` shows the active tab's persistent Yazi popup and reveals the current
-Helix buffer there. `yzx reveal <target>` exposes the same behavior inside a
-managed session without changing the tab's canonical workspace.
+`Alt r` starts the active tab's persistent Yazi popup at the current Helix
+buffer. `yzx reveal <target>` exposes the same behavior inside a managed session
+without changing the tab's canonical workspace. Reveal replaces an existing
+popup process; ordinary popup toggles preserve its live navigation state.
 
 Yazelix does not modify external editor configuration. Neovim users can opt
 into the same `Alt r` behavior in their own config:

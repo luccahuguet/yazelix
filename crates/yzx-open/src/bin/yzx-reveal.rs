@@ -1,18 +1,7 @@
 use anyhow::{Context, Result, bail};
-use std::{
-    env,
-    ffi::OsString,
-    path::{Path, PathBuf},
-    process::{Command, ExitCode},
-    thread::sleep,
-    time::Duration,
-};
-use yzx_open::sidebar::{Config, ensure_success, orchestrator_pipe, workspace_popup_yazi_id};
-
-#[cfg(not(test))]
-const POPUP_READY_RETRY_DELAYS_MS: [u64; 9] = [0, 25, 50, 100, 200, 400, 800, 1_600, 1_600];
-#[cfg(test)]
-const POPUP_READY_RETRY_DELAYS_MS: [u64; 9] = [0; 9];
+use serde_json::json;
+use std::{env, ffi::OsString, path::PathBuf, process::ExitCode};
+use yzx_open::sidebar::{Config, popup_pipe};
 
 #[cfg(test)]
 #[path = "../test_support.rs"]
@@ -36,46 +25,17 @@ fn run(config: &Config, raw_args: impl IntoIterator<Item = OsString>) -> Result<
     }
 
     let target = existing_absolute_path(&target)?;
-    let yazi_id = wait_for_workspace_popup_yazi(config)?;
-    emit_reveal(config, &yazi_id, &target)?;
-
-    Ok(())
-}
-
-fn wait_for_workspace_popup_yazi(config: &Config) -> Result<String> {
-    let mut state = String::new();
-    for delay_ms in POPUP_READY_RETRY_DELAYS_MS {
-        sleep(Duration::from_millis(delay_ms));
-        state = orchestrator_pipe(config, "focus_workspace_popup_yazi", "")?;
-        if !matches!(state.as_str(), "" | "not_ready") {
-            return workspace_popup_yazi_id(&state);
-        }
+    let target = target.to_str().context("target path is not valid UTF-8")?;
+    let payload = serde_json::to_string(&json!({
+        "id": "yazi",
+        "args": [target],
+    }))?;
+    let result = popup_pipe(config, "replace", &payload)?;
+    match result.as_str() {
+        "opened" => Ok(()),
+        "" => bail!("persistent Yazi popup returned no response"),
+        result => bail!("persistent Yazi popup reveal failed: {result}"),
     }
-    workspace_popup_yazi_id(&state)
-}
-
-fn emit_reveal(config: &Config, yazi_id: &str, target: &Path) -> Result<()> {
-    let send = || {
-        Command::new(&config.ya)
-            .arg("emit-to")
-            .arg(yazi_id)
-            .arg("reveal")
-            .arg(target)
-            .output()
-            .context("could not run ya")
-    };
-    let mut output = send()?;
-    for delay_ms in [25, 50, 100, 200, 400] {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        if output.status.success() || !(stderr.contains("Receiver") && stderr.contains("not found"))
-        {
-            break;
-        }
-        sleep(Duration::from_millis(delay_ms));
-        output = send()?;
-    }
-    ensure_success(&output, "ya reveal failed")?;
-    Ok(())
 }
 
 fn parse_target(raw_args: impl IntoIterator<Item = OsString>) -> Result<OsString> {
@@ -103,7 +63,7 @@ fn existing_absolute_path(target: &OsString) -> Result<PathBuf> {
 
 fn print_help() {
     println!(
-        "Reveal a file or directory in the persistent Yazi popup\n\nUsage:\n  yzx reveal <target>"
+        "Open the persistent Yazi popup at a file or directory\n\nUsage:\n  yzx reveal <target>"
     );
 }
 
@@ -113,20 +73,6 @@ mod tests {
     use super::*;
     use crate::test_support::{TestDir, write_executable};
     use std::fs;
-
-    #[test]
-    fn parses_popup_yazi_address_and_reports_bounded_failure() {
-        assert_eq!(
-            workspace_popup_yazi_id(r#"{"status":"ok","yazi_id":" yazi-7 "}"#).unwrap(),
-            "yazi-7"
-        );
-        assert_eq!(
-            workspace_popup_yazi_id(&"x".repeat(4096))
-                .unwrap_err()
-                .to_string(),
-            "persistent Yazi popup is not ready"
-        );
-    }
 
     #[test]
     fn target_parser_requires_one_argument_except_help() {
@@ -140,106 +86,65 @@ mod tests {
     }
 
     #[test]
-    fn reveal_waits_for_popup_and_receiver_then_delivers_exact_paths() {
+    fn reveal_replaces_the_configured_popup_with_the_exact_target() {
         let fixture = TestDir::new();
-        let file_target = fixture.path.join("target with spaces.txt");
-        let directory_target = fixture.path.join("target directory");
+        let target = fixture.path.join("target with spaces.txt");
         let zellij_log = fixture.path.join("zellij.log");
-        let zellij_started = fixture.path.join("zellij.started");
-        let zellij_ready = fixture.path.join("zellij.ready");
-        let ya_log = fixture.path.join("ya.log");
-        let ya_ready = fixture.path.join("ya.ready");
-        fs::write(&file_target, "").unwrap();
-        fs::create_dir(&directory_target).unwrap();
+        fs::write(&target, "").unwrap();
         write_executable(
             &fixture.path.join("zellij"),
             format!(
-                r#"#!/bin/sh
-printf '%s\n' "$* session=$ZELLIJ_SESSION_NAME" >> "{}"
-case "$6" in
-  focus_workspace_popup_yazi)
-    if [ ! -e "{}" ]; then
-      touch "{}"
-      exit 0
-    fi
-    if [ ! -e "{}" ]; then
-      touch "{}"
-      printf '%s\n' not_ready
-      exit 0
-    fi
-    printf '%s\n' '{{"status":"ok","yazi_id":"plugin-yazi-id"}}'
-    exit 0
-    ;;
-esac
-printf 'unexpected zellij args: %s\n' "$*" >&2
-exit 1
-"#,
-                zellij_log.display(),
-                zellij_started.display(),
-                zellij_started.display(),
-                zellij_ready.display(),
-                zellij_ready.display()
+                "#!/bin/sh\nprintf '<%s>\\n' \"$@\" > \"{}\"\nprintf '%s\\n' opened\n",
+                zellij_log.display()
             ),
         );
-        write_executable(
-            &fixture.path.join("ya"),
-            format!(
-                "#!/bin/sh\nprintf '%s\\n' \"$*\" >> \"{}\"\nif [ ! -e \"{}\" ]; then\n  touch \"{}\"\n  printf 'Receiver not found\\n' >&2\n  exit 1\nfi\n",
-                ya_log.display(),
-                ya_ready.display(),
-                ya_ready.display()
-            ),
-        );
-
         let config = Config {
-            ya: fixture.path.join("ya").into_os_string(),
+            ya: "unused-ya".into(),
             zellij: fixture.path.join("zellij").into_os_string(),
             zellij_session_name: Some("saved-session".into()),
         };
 
-        run(&config, [file_target.clone().into_os_string()]).unwrap();
-        run(&config, [directory_target.clone().into_os_string()]).unwrap();
+        run(&config, [target.clone().into_os_string()]).unwrap();
 
-        let expected_pipe = "action pipe --plugin yazelix_pane_orchestrator --name focus_workspace_popup_yazi --  session=saved-session\n";
+        let log = fs::read_to_string(zellij_log).unwrap();
+        let expected_payload = serde_json::to_string(&json!({
+            "id": "yazi",
+            "args": [target.to_str().unwrap()],
+        }))
+        .unwrap();
         assert_eq!(
-            fs::read_to_string(zellij_log).unwrap(),
-            expected_pipe.repeat(4)
-        );
-        assert_eq!(
-            fs::read_to_string(ya_log).unwrap(),
+            log,
             format!(
-                "emit-to plugin-yazi-id reveal {}\nemit-to plugin-yazi-id reveal {}\nemit-to plugin-yazi-id reveal {}\n",
-                file_target.display(),
-                file_target.display(),
-                directory_target.display()
+                "<action>\n<pipe>\n<--plugin>\n<yzpp>\n<--name>\n<replace>\n<-->\n<{expected_payload}>\n"
             )
         );
     }
 
     #[test]
-    fn popup_readiness_failure_does_not_fall_back_to_yazi() {
+    fn popup_failure_is_reported_without_retrying_another_owner() {
         let fixture = TestDir::new();
         let target = fixture.path.join("target.txt");
+        let zellij_log = fixture.path.join("zellij.log");
         fs::write(&target, "").unwrap();
         write_executable(
             &fixture.path.join("zellij"),
-            "#!/bin/sh\nprintf '%s\\n' not_ready\n",
-        );
-        write_executable(
-            &fixture.path.join("ya"),
-            "#!/bin/sh\nprintf 'unexpected ya call\\n' >&2\nexit 1\n",
+            format!(
+                "#!/bin/sh\nprintf call >> \"{}\"\nprintf '%s\\n' invalid_payload\n",
+                zellij_log.display()
+            ),
         );
         let config = Config {
-            ya: fixture.path.join("ya").into_os_string(),
+            ya: "unused-ya".into(),
             zellij: fixture.path.join("zellij").into_os_string(),
             zellij_session_name: None,
         };
 
-        assert!(
+        assert_eq!(
             run(&config, [target.into_os_string()])
                 .unwrap_err()
-                .to_string()
-                .contains("persistent Yazi popup is not ready")
+                .to_string(),
+            "persistent Yazi popup reveal failed: invalid_payload"
         );
+        assert_eq!(fs::read_to_string(zellij_log).unwrap(), "call");
     }
 }
