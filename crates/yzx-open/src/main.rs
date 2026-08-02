@@ -152,6 +152,9 @@ fn run(config: &Config, raw_targets: impl IntoIterator<Item = OsString>) -> Resu
         .map(abs_path)
         .collect::<Result<Vec<_>>>()?;
     for target in &targets {
+        if target.to_str().is_none() {
+            bail!("target path is not valid UTF-8: {}", target.display());
+        }
         let metadata = fs::metadata(target).with_context(|| {
             format!(
                 "target does not exist or cannot be inspected: {}",
@@ -165,10 +168,13 @@ fn run(config: &Config, raw_targets: impl IntoIterator<Item = OsString>) -> Resu
             );
         }
     }
+    if request.intent == OpenIntent::RevealEditor {
+        return reveal_in_existing_editor(config, &targets);
+    }
+
     let current_state = active_tab_workspace(config)?;
-    let candidate = if request.intent == OpenIntent::RevealEditor
-        || (request.intent == OpenIntent::Ordinary
-            && current_state.workspace.source == WorkspaceSource::Explicit)
+    let candidate = if request.intent == OpenIntent::Ordinary
+        && current_state.workspace.source == WorkspaceSource::Explicit
     {
         current_state.workspace.root.clone()
     } else {
@@ -194,19 +200,13 @@ fn run(config: &Config, raw_targets: impl IntoIterator<Item = OsString>) -> Resu
     }
 
     let open_result = if uses_helix_bridge(&config.editor) {
-        let bridge_working_dir =
-            (request.intent != OpenIntent::RevealEditor).then_some(decision.root.as_path());
-        try_bridge(config, &targets, bridge_working_dir).and_then(|opened| {
+        try_bridge(config, &targets, Some(&decision.root)).and_then(|opened| {
             if opened {
                 Ok(())
-            } else if request.intent == OpenIntent::RevealEditor {
-                focus_existing_editor(config)
             } else {
                 open_editor_pane(config, &targets, &decision.root)
             }
         })
-    } else if request.intent == OpenIntent::RevealEditor {
-        focus_existing_editor(config)
     } else {
         log_info(
             config,
@@ -414,7 +414,7 @@ fn try_bridge(config: &Config, targets: &[PathBuf], working_dir: Option<&Path>) 
         }
     }
 
-    log_info(config, "no live bridge found; opening a new editor pane");
+    log_info(config, "no live bridge found");
     Ok(false)
 }
 
@@ -547,7 +547,6 @@ fn bridge_open_request(targets: &[PathBuf], working_dir: Option<&Path>) -> (&'st
     } else {
         let mut payload = json!({
             "file_paths": targets,
-            "focus": true,
         });
         if let Some(working_dir) = working_dir {
             payload["working_dir"] = json!(working_dir);
@@ -556,7 +555,10 @@ fn bridge_open_request(targets: &[PathBuf], working_dir: Option<&Path>) -> (&'st
     }
 }
 
-fn focus_existing_editor(config: &Config) -> Result<()> {
+fn reveal_in_existing_editor(config: &Config, targets: &[PathBuf]) -> Result<()> {
+    if uses_helix_bridge(&config.editor) && try_bridge(config, targets, None)? {
+        return Ok(());
+    }
     orchestrator_pipe(&orchestrator_config(config), "focus_editor", "").map(|_| ())
 }
 
@@ -724,19 +726,16 @@ fn decide_workspace(
     current: &CanonicalWorkspace,
     candidate: &Path,
 ) -> WorkspaceDecision {
-    match (intent, current.source) {
-        (OpenIntent::RevealEditor, _) => WorkspaceDecision {
+    if intent == OpenIntent::Ordinary && current.source == WorkspaceSource::Explicit {
+        WorkspaceDecision {
             root: current.root.clone(),
             mutate: false,
-        },
-        (OpenIntent::Ordinary, WorkspaceSource::Explicit) => WorkspaceDecision {
-            root: current.root.clone(),
-            mutate: false,
-        },
-        _ => WorkspaceDecision {
+        }
+    } else {
+        WorkspaceDecision {
             root: candidate.to_path_buf(),
             mutate: current.source != WorkspaceSource::Explicit || current.root != candidate,
-        },
+        }
     }
 }
 
@@ -971,6 +970,7 @@ enum BridgeSendError {
 mod tests {
     use super::*;
     use crate::test_support::{TestDir, write_executable};
+    use std::os::unix::ffi::OsStringExt;
     use std::sync::{Mutex, MutexGuard};
     use std::{os::unix::net::UnixListener, thread};
 
@@ -1271,19 +1271,10 @@ fi
                 mutate: true,
             }
         );
-        for current in [&explicit, &bootstrap] {
-            assert_eq!(
-                decide_workspace(OpenIntent::RevealEditor, current, Path::new("/other")),
-                WorkspaceDecision {
-                    root: current.root.clone(),
-                    mutate: false,
-                }
-            );
-        }
     }
 
     #[test]
-    fn retarget_flag_is_explicit_and_single_target() {
+    fn explicit_open_modes_require_one_target() {
         let request = parse_open_request([
             OsString::from("--retarget-workspace"),
             OsString::from("/repo"),
@@ -1325,9 +1316,10 @@ fi
         let cwd = target_workspace_root(&config, &targets);
         let (action, payload) = bridge_open_request(&targets, Some(&cwd));
         assert_eq!(action, "helix.open_files");
-        assert_eq!(payload["working_dir"], "/tmp/project/src");
-        assert_eq!(payload["file_paths"], json!(["/tmp/project/src/main.rs"]));
-        assert_eq!(payload["focus"], true);
+        assert_eq!(
+            payload,
+            json!({ "working_dir": "/tmp/project/src", "file_paths": ["/tmp/project/src/main.rs"] })
+        );
 
         let fixture = TestDir::new();
         let root = fixture.path.clone();
@@ -1346,9 +1338,10 @@ fi
         let targets = vec![PathBuf::from("/tmp/project/src/lib.rs")];
         let (action, payload) = bridge_open_request(&targets, None);
         assert_eq!(action, "helix.open_files");
-        assert_eq!(payload["file_paths"], json!(["/tmp/project/src/lib.rs"]));
-        assert_eq!(payload["focus"], true);
-        assert!(payload.get("working_dir").is_none());
+        assert_eq!(
+            payload,
+            json!({ "file_paths": ["/tmp/project/src/lib.rs"] })
+        );
     }
 
     #[test]
@@ -1468,14 +1461,7 @@ fi
         let (socket_path, request_path) =
             runtime.write_registry(session_id, None, Some("terminal:7"));
         let panes = pane_list(&[(3, 2), (7, 2)]);
-        let workspace = runtime.root.join("project");
-        runtime.write_zellij_with_workspace(
-            false,
-            Some(&panes),
-            &workspace,
-            WorkspaceSource::Explicit,
-            false,
-        );
+        runtime.write_zellij(false, Some(&panes));
         let server = spawn_ok_bridge(&socket_path, request_path.clone());
         let target = runtime.root.join("elsewhere/notes.txt");
         fs::create_dir_all(target.parent().unwrap()).unwrap();
@@ -1501,6 +1487,10 @@ fi
         assert_eq!(request["payload"]["file_paths"], json!([target]));
         assert!(request["payload"].get("working_dir").is_none());
         let log = runtime.zellij_log();
+        assert!(
+            !log.contains("--name get_active_tab_session_state"),
+            "{log}"
+        );
         assert!(!log.contains("--name retarget_workspace"), "{log}");
         assert!(!log.contains("args=run --name editor"), "{log}");
         assert!(!runtime.root.join("ya.log").exists());
@@ -1509,13 +1499,7 @@ fi
     #[test]
     fn reveal_editor_without_a_live_bridge_only_focuses_the_existing_editor() {
         let runtime = TestRuntime::new();
-        runtime.write_zellij_with_workspace(
-            false,
-            None,
-            &runtime.root,
-            WorkspaceSource::Bootstrap,
-            false,
-        );
+        runtime.write_zellij(false, None);
         let target = runtime.root.join("notes.txt");
         fs::write(&target, "").unwrap();
 
@@ -1532,9 +1516,9 @@ fi
     }
 
     #[test]
-    fn reveal_editor_rejects_directories_before_runtime_coordination() {
+    fn reveal_editor_validates_targets_before_runtime_coordination() {
         let runtime = TestRuntime::new();
-        let error = run(
+        let directory_error = run(
             &runtime.config("test-session"),
             [
                 OsString::from("--reveal-editor"),
@@ -1544,7 +1528,23 @@ fi
         .unwrap_err()
         .to_string();
 
-        assert!(error.contains("target must be a file"), "{error}");
+        assert!(
+            directory_error.contains("target must be a file"),
+            "{directory_error}"
+        );
+        let target = runtime
+            .root
+            .join(OsString::from_vec(b"invalid-\xff.rs".to_vec()));
+        fs::write(&target, "").unwrap();
+
+        let error = run(
+            &runtime.config("test-session"),
+            [OsString::from("--reveal-editor"), target.into_os_string()],
+        )
+        .unwrap_err()
+        .to_string();
+
+        assert!(error.contains("valid UTF-8"), "{error}");
         assert!(!runtime.zellij_log.exists());
     }
 

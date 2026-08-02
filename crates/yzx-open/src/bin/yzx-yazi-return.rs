@@ -101,13 +101,15 @@ mod tests {
         fs::write(&file, "").unwrap();
         fs::create_dir(&directory).unwrap();
 
-        run(
-            &config,
-            Some("workspace-popup"),
-            Some(file.as_os_str()),
-            Some(fixture.path.join("yzx-open").as_os_str()),
-        )
-        .unwrap();
+        for role in [Some("workspace-popup"), None] {
+            run(
+                &config,
+                role,
+                Some(file.as_os_str()),
+                Some(fixture.path.join("yzx-open").as_os_str()),
+            )
+            .unwrap();
+        }
         run(
             &config,
             Some("workspace-popup"),
@@ -126,7 +128,11 @@ action pipe --plugin yazelix_pane_orchestrator --name focus_editor -- \n"
         );
         assert_eq!(
             fs::read_to_string(open_log).unwrap(),
-            format!("<--reveal-editor>\n<{}>\n", file.display())
+            format!(
+                "<--reveal-editor>\n<{}>\n<--reveal-editor>\n<{}>\n",
+                file.display(),
+                file.display()
+            )
         );
     }
 }
