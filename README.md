@@ -32,14 +32,14 @@ composes their package outputs.
 
 | Measure | Nova | Classic |
 | --- | --- | --- |
-| Code and configuration (Rust, Nix, shell, TOML, etc.) | **22,681 LOC** | **91,545 LOC** |
+| Code and configuration (Rust, Nix, shell, TOML, etc.) | **22,745 LOC** | **91,545 LOC** |
 | Rust | **19,553 LOC** | **80,957 LOC** |
 | Ownership model | One owner per concern | Overlapping responsibilities across layers |
 | Yazelix component boundaries | Independent, versioned packages | Child repos mixed with main-repo ownership |
 | Product experience | More features, stronger defaults, tighter integration, and polished UX | Fewer features and a less cohesive workspace |
 | Status | Recommended | Frozen migration and rollback path |
 
-Nova owns **68,864 fewer lines**, a **75% reduction**. Classic's Rust code
+Nova owns **68,800 fewer lines**, a **75% reduction**. Classic's Rust code
 alone is 3.6 times larger than Nova's entire code and configuration surface.
 
 Nova delivers more features in 25% of the code. It has a clearer configuration
@@ -58,7 +58,13 @@ terminal or over SSH.
 
 The `stable` branch advances from a checked
 and dogfooded `main` revision at most once per week. Use `main` for more constant updates or an
-immutable `nova-v*` tag for an exact release.
+immutable `nova-v*` tag for an exact release. `edge` is the opt-in experimental
+dogfood channel.
+
+Linux launchers show their selected channel as `Yazelix Nova (Stable)`,
+`Yazelix Nova (Main)`, or `Yazelix Nova (Edge)`. Stable uses the default
+`yazelix` package; Main and Edge use the explicit `yazelix-main` and
+`yazelix-edge` outputs so the immutable package owns its launcher label.
 
 Linux is the dogfooded platform. CI builds all packages and a Home Manager
 activation on `aarch64-darwin`. Sustained interactive macOS beta use has found
@@ -221,6 +227,10 @@ Package names follow `yazelix[-no-mars][-no-helix][-no-yazi]`. Each suffix
 removes that managed package while retaining the integration around it.
 `no-helix` uses the configured host editor; `no-yazi` requires matching host
 `yazi` and `ya` commands.
+
+`yazelix-main` and `yazelix-edge` are full-package channel outputs with distinct
+Linux launcher identities. They reuse the same runtime graph as `yazelix` and
+do not multiply the capability-variant matrix.
 
 | Package | Mars | Managed Helix | Managed Yazi |
 | --- | --- | --- | --- |

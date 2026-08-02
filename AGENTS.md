@@ -13,6 +13,11 @@ or planning bead until the user has chosen that direction
 Work directly on `main` by default. Do not create a separate branch unless the
 user explicitly requests one or another repository instruction requires it.
 
+`edge` is the opt-in channel for experimental dogfooding. Work on it only when
+the user explicitly chooses that channel. A change intended for release must
+land on `main` and follow the normal `stable` promotion contract; never promote
+`stable` directly from `edge`.
+
 `stable` is a promotion-only user channel. Do not commit on it or advance it
 unless the user explicitly requests a promotion. A candidate must be a
 fast-forward from the current `stable`, belong to `main`, pass the protected

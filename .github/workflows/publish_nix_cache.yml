@@ -73,6 +73,8 @@ jobs:
         run: |
           nix build --no-link --print-out-paths \
             .#packages.x86_64-linux.yazelix \
+            .#packages.x86_64-linux.yazelix-main \
+            .#packages.x86_64-linux.yazelix-edge \
             .#packages.x86_64-linux.yazelix-no-helix \
             .#packages.x86_64-linux.yazelix-no-yazi \
             .#packages.x86_64-linux.yazelix-no-helix-no-yazi \

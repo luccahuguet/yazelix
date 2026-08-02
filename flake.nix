@@ -421,6 +421,7 @@
         doCheck = false;
       });
       mkYzx = {
+        desktopChannel ? "stable",
         withManagedHelix,
         withManagedYazi,
         withMars,
@@ -432,6 +433,15 @@
         );
         variant = if variantSuffix == "" then "full" else variantSuffix;
         name = "yazelix" + pkgs.lib.optionalString (variantSuffix != "") "-${variantSuffix}";
+        desktopChannels = {
+          stable = "Stable";
+          main = "Main";
+          edge = "Edge";
+        };
+        desktopChannelLabel =
+          if builtins.hasAttr desktopChannel desktopChannels
+          then desktopChannels.${desktopChannel}
+          else throw "unsupported Yazelix desktop channel: ${desktopChannel}";
         yaziRuntime =
           if withManagedYazi
           then {
@@ -629,8 +639,8 @@
         command = rustBin "yzx" "${src}/main.rs";
         withDesktop = withMars && pkgs.stdenv.hostPlatform.isLinux;
         desktop = pkgs.makeDesktopItem {
-          name = "yzx";
-          desktopName = "Yazelix Nova";
+          name = "yzx-${desktopChannel}";
+          desktopName = "Yazelix Nova (${desktopChannelLabel})";
           genericName = "Terminal Emulator";
           comment = "Open the Yazelix integrated terminal workspace";
           exec = "${command}/bin/yzx launch";
@@ -681,6 +691,18 @@
         withManagedYazi = true;
         withMars = true;
       };
+      yazelix-main = mkYzx {
+        desktopChannel = "main";
+        withManagedHelix = true;
+        withManagedYazi = true;
+        withMars = true;
+      };
+      yazelix-edge = mkYzx {
+        desktopChannel = "edge";
+        withManagedHelix = true;
+        withManagedYazi = true;
+        withMars = true;
+      };
       yazelix-no-helix = mkYzx {
         withManagedHelix = false;
         withManagedYazi = true;
@@ -722,6 +744,8 @@
     checks = eachSystem (system: let
       pkgs = import nixpkgs {inherit system;};
       yzx = self.packages.${system}.yazelix;
+      yzxMain = self.packages.${system}.yazelix-main;
+      yzxEdge = self.packages.${system}.yazelix-edge;
       yzxNoHelix = self.packages.${system}.yazelix-no-helix;
       yzxNoYazi = self.packages.${system}.yazelix-no-yazi;
       yzxNoHelixNoYazi = self.packages.${system}.yazelix-no-helix-no-yazi;
@@ -912,10 +936,10 @@
 
         test -x "$default_path/bin/yzx"
         ${if pkgs.stdenv.hostPlatform.isLinux then ''
-          test -f "$default_path/share/applications/yzx.desktop"
-          grep -q 'Yazelix Nova' "$default_path/share/applications/yzx.desktop"
+          test -f "$default_path/share/applications/yzx-stable.desktop"
+          grep -Fqx 'Name=Yazelix Nova (Stable)' "$default_path/share/applications/yzx-stable.desktop"
         '' else ''
-          test ! -e "$default_path/share/applications/yzx.desktop"
+          test ! -e "$default_path/share/applications/yzx-stable.desktop"
         ''}
 
         test -x "$override_path/bin/yzx"
@@ -923,7 +947,7 @@
         grep -q 'Fake Yazelix' "$override_path/share/applications/yzx.desktop"
 
         test -x "$no_mars_path/bin/yzx"
-        test ! -e "$no_mars_path/share/applications/yzx.desktop"
+        test ! -e "$no_mars_path/share/applications/yzx-stable.desktop"
         test -x "$no_yazi_path/bin/yzx"
         test -x "$no_yazi_path/bin/yazi"
         test -x "$no_yazi_path/bin/ya"
@@ -1136,6 +1160,40 @@
       contracts = pkgs.runCommand "yzx-contracts" {} ''
         ${yzxContractsCheck}/bin/yzx-contracts-check ${yzx} ${pkgs.git}/bin/git ${pkgs.jq}/bin/jq "$out"
       '';
+      desktop_channels = pkgs.runCommand "yzx-desktop-channels" {} ''
+        ${if pkgs.stdenv.hostPlatform.isLinux then ''
+          check_desktop() {
+            package="$1"
+            id="$2"
+            label="$3"
+            desktop="$package/share/applications/$id.desktop"
+            executable="$(readlink -f "$package/bin/yzx")"
+
+            test -f "$desktop"
+            grep -Fqx "Name=Yazelix Nova ($label)" "$desktop"
+            grep -Fqx "Exec=$executable launch" "$desktop"
+            grep -Fqx 'Icon=yzx' "$desktop"
+            grep -Fqx 'StartupWMClass=yzx' "$desktop"
+          }
+
+          check_desktop ${yzx} yzx-stable Stable
+          check_desktop ${yzxMain} yzx-main Main
+          check_desktop ${yzxEdge} yzx-edge Edge
+
+          profile=${pkgs.buildEnv {
+            name = "yzx-desktop-channel-profile";
+            paths = [yzx yzxMain yzxEdge];
+          }}
+          test -f "$profile/share/applications/yzx-stable.desktop"
+          test -f "$profile/share/applications/yzx-main.desktop"
+          test -f "$profile/share/applications/yzx-edge.desktop"
+        '' else ''
+          test ! -e ${yzx}/share/applications
+          test ! -e ${yzxMain}/share/applications
+          test ! -e ${yzxEdge}/share/applications
+        ''}
+        touch "$out"
+      '';
       no_mars_contracts = pkgs.runCommand "yzx-no-mars-contracts" {} ''
         check_no_mars() {
           local package="$1"
@@ -1144,7 +1202,7 @@
           local root="$TMPDIR/$variant"
 
           test -x "$package/bin/yzx"
-          test ! -e "$package/share/applications/yzx.desktop"
+          test ! -e "$package/share/applications"
           ! grep -Fx ${marsPackage} "$closure"
           ! grep -E '/[^/]*-rio-[^/]*$' "$closure"
 

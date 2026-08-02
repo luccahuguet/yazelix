@@ -56,6 +56,7 @@ jobs:
           nix build --no-link --print-build-logs \
             .#checks.x86_64-linux.no_helix_contracts \
             .#checks.x86_64-linux.host_yazi_contracts \
+            .#checks.x86_64-linux.desktop_channels \
             .#checks.x86_64-linux.yzx_yazi_materialization \
             .#checks.x86_64-linux.yzx_launcher_unit \
             .#checks.x86_64-linux.no_mars_contracts \

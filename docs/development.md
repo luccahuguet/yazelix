@@ -4,8 +4,9 @@
 
 Normal CI runs Linux checks and the Darwin no-Helix evaluation guard on push,
 pull request, and manual dispatch
-`Publish Nix Cache` publishes all eight Linux packages and representative Home
-Manager closures from `main` and manual dispatch. `Version Gate` is manual and
+`Publish Nix Cache` publishes all eight Linux capability variants, the Main and
+Edge full-package launcher outputs, and representative Home Manager closures
+from `main` and manual dispatch. `Version Gate` is manual and
 includes all eight Linux profile shapes, all eight `aarch64-darwin` packages,
 the Darwin Home Manager closure, and the Darwin no-Mars, no-Helix, and host-Yazi
 contracts.
@@ -16,10 +17,14 @@ contain no Linux desktop entry. The flake advertises the optional Yazelix
 Cachix cache, while source builds remain valid without it. Use Version Gate
 before publishing a release
 
-## Main and stable
+## Main, stable, and edge
 
 Development commits land on `main`. CI and cache publishing run there, and
 users who select `main` accept development-channel changes.
+
+`edge` is the opt-in branch for changes that need isolated experimental
+dogfooding before they belong on `main`. CI runs on `edge`, but release
+promotion and cache publication remain owned by `main`.
 
 The protected `stable` branch accepts fast-forward promotions from `main`. Its
 required checks are `linux`, `publish_x86_64_linux`, and
@@ -95,14 +100,14 @@ git ls-files | grep -Ev '^\.beads/|\.lock$|^assets/' | xargs wc -l
 | --- | ---: |
 | Ignore (`.gitignore`) | 19 |
 | License | 201 |
-| Markdown | 2923 |
-| Nix | 1581 |
+| Markdown | 2988 |
+| Nix | 1639 |
 | Shell | 84 |
-| YAML | 450 |
+| YAML | 456 |
 | TOML | 468 |
 | KDL | 248 |
 | Nu | 11 |
 | Lua | 245 |
 | Rust | 19553 |
 | Text | 41 |
-| Total | 25824 |
+| Total | 25953 |

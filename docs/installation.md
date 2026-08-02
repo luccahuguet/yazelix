@@ -11,19 +11,45 @@ an exact checked and dogfooded `main` revision at most once per week, with
 earlier promotions reserved for urgent fixes. A Nix lock file keeps that
 revision until its owner requests an update.
 
-Use `github:luccahuguet/yazelix/main` for the development channel. Immutable
-`nova-v*` tags identify exact releases.
+Use `github:luccahuguet/yazelix/main#yazelix-main` for the development channel
+and `github:luccahuguet/yazelix/edge#yazelix-edge` for experimental dogfooding.
+Immutable `nova-v*` tags identify exact releases.
+
+The source reference and package output are both explicit because an immutable
+Nix derivation cannot infer which Git branch selected its revision. On Linux,
+the three outputs install `Yazelix Nova (Stable)`, `Yazelix Nova (Main)`, and
+`Yazelix Nova (Edge)` entries with distinct desktop file IDs:
+
+```sh
+nix profile add --refresh github:luccahuguet/yazelix/stable
+nix profile add --refresh github:luccahuguet/yazelix/main#yazelix-main
+nix profile add --refresh github:luccahuguet/yazelix/edge#yazelix-edge
+```
+
+Install one channel normally. To expose all three launchers from one profile,
+give Main and Edge lower precedence for their intentionally shared `yzx` binary
+and icon paths:
+
+```sh
+nix profile add --refresh github:luccahuguet/yazelix/stable
+nix profile add --refresh github:luccahuguet/yazelix/main#yazelix-main --priority 6
+nix profile add --refresh github:luccahuguet/yazelix/edge#yazelix-edge --priority 7
+```
+
+The priorities resolve only shared profile paths. Each desktop entry keeps an
+absolute package-owned launch command, so Stable, Main, and Edge still start
+their exact immutable packages.
 
 ## Package variants
 
 Package names follow `yazelix[-no-mars][-no-helix][-no-yazi]`:
 
-| Package | Mars | Managed Helix | Managed Yazi | Linux desktop entry |
+| Package | Mars | Managed Helix | Managed Yazi | Linux desktop channel |
 | --- | --- | --- | --- | --- |
-| `yazelix` | Yes | Yes | Yes | Yes |
-| `yazelix-no-helix` | Yes | No | Yes | Yes |
-| `yazelix-no-yazi` | Yes | Yes | No | Yes |
-| `yazelix-no-helix-no-yazi` | Yes | No | No | Yes |
+| `yazelix` | Yes | Yes | Yes | Stable |
+| `yazelix-no-helix` | Yes | No | Yes | Stable |
+| `yazelix-no-yazi` | Yes | Yes | No | Stable |
+| `yazelix-no-helix-no-yazi` | Yes | No | No | Stable |
 | `yazelix-no-mars` | No | Yes | Yes | No |
 | `yazelix-no-mars-no-helix` | No | No | Yes | No |
 | `yazelix-no-mars-no-yazi` | No | Yes | No | No |
@@ -39,8 +65,10 @@ packages retain the managed launcher, configuration, sidebar, popup, opener,
 and reveal integration but require host-provided `yazi` and `ya` commands with
 matching versions. A pair that differs from Nova's tested version warns and
 continues. The host installation owns optional Yazi preview dependencies. All
-eight package and app outputs exist for `x86_64-linux`, `aarch64-linux`,
-`x86_64-darwin`, and `aarch64-darwin`
+eight capability variants exist for `x86_64-linux`, `aarch64-linux`,
+`x86_64-darwin`, and `aarch64-darwin`. The full `yazelix-main` and
+`yazelix-edge` channel outputs exist on the same systems and differ only in
+their Linux desktop entry
 
 Install the external-editor variant with:
 
@@ -189,6 +217,16 @@ Import the module from that input:
 The optional `programs.yazelix.package` setting overrides the installed package
 The module writes no runtime config files unless you configure them
 
+Main and Edge inputs must select their matching package output to retain the
+channel-qualified launcher:
+
+```nix
+programs.yazelix.package =
+  inputs.yazelix.packages.${pkgs.system}.yazelix-main;
+```
+
+Use `yazelix-edge` in the same declaration for an `edge` input.
+
 Select the Mars-free package without another module option:
 
 ```nix
@@ -286,6 +324,6 @@ Then run that configuration's normal Home Manager or nix-darwin switch command
 Replace `yazelix` with your chosen input name when it differs. Do not run
 `nix profile upgrade` for a package installed by Home Manager
 
-The update follows the input's configured `stable`, `main`, or tag reference.
-Your next launch uses the updated package. Each open Nova session keeps its
-current immutable Nix store paths until you close and relaunch it
+The update follows the input's configured `stable`, `main`, `edge`, or tag
+reference. Your next launch uses the updated package. Each open Nova session
+keeps its current immutable Nix store paths until you close and relaunch it

@@ -4,6 +4,12 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## 1.0.0-beta.4
 
+- Linux desktop launchers identify their immutable release channel as `Yazelix
+  Nova (Stable)`, `Yazelix Nova (Main)`, or `Yazelix Nova (Edge)`. The full
+  `yazelix`, `yazelix-main`, and `yazelix-edge` outputs use distinct desktop
+  file IDs while sharing the same runtime graph, command identity, icon, and
+  running-window identity. The opt-in experimental branch and channel are named
+  `edge`.
 - `Alt r` and `yzx reveal <target>` show and focus the active tab's persistent
   Yazi popup at the exact file or directory. Reveal no longer depends on the
   tiled Yazi sidebar or a later Yazi receiver-registration handshake: the popup
@@ -301,9 +307,10 @@ User-visible runtime changes for Yazelix Nova live here.
   current`. The default field list sizes status and setting from the selected
   tab, then gives the remaining cells to value, so structured previews use the
   popup width without shifting during search.
-- Main-branch cache publishing builds all eight package variants and Home Manager
-  `aarch64-darwin` closures on `macos-15`, publishes them to the Yazelix
-  Cachix cache, and verifies each top-level narinfo after upload.
+- Main-branch cache publishing builds all eight package variants, the Main and
+  Edge full-package Linux launcher outputs, and Home Manager `aarch64-darwin`
+  closures on `macos-15`, publishes them to the Yazelix Cachix cache, and
+  verifies each top-level narinfo after upload.
 - The Linux desktop entry describes Yazelix as an integrated terminal workspace
   while continuing to launch the package-owned `yzx launch` command.
 - Ratconfig's Yazi tab renders safe native `yazi.toml` and `theme.toml` values,

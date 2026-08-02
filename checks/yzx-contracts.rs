@@ -146,7 +146,7 @@ fn main() {
 
 fn expect_front_door(yzx: &Path, jq: &Path) {
     let yzx_bin = yzx.join("bin/yzx");
-    let desktop = fs::read_to_string(yzx.join("share/applications/yzx.desktop")).unwrap();
+    let desktop = fs::read_to_string(yzx.join("share/applications/yzx-stable.desktop")).unwrap();
     assert!(
         desktop.lines().any(|line| {
             line.starts_with("Exec=/nix/store/") && line.ends_with("/bin/yzx launch")
