@@ -32,15 +32,15 @@ composes their package outputs.
 
 | Measure | Nova | Classic |
 | --- | --- | --- |
-| Code and configuration (Rust, Nix, shell, TOML, etc.) | **22,677 LOC** | **91,545 LOC** |
-| Rust | **19,549 LOC** | **80,957 LOC** |
+| Code and configuration (Rust, Nix, shell, TOML, etc.) | **22,898 LOC** | **91,545 LOC** |
+| Rust | **19,770 LOC** | **80,957 LOC** |
 | Ownership model | One owner per concern | Overlapping responsibilities across layers |
 | Yazelix component boundaries | Independent, versioned packages | Child repos mixed with main-repo ownership |
 | Product experience | More features, stronger defaults, tighter integration, and polished UX | Fewer features and a less cohesive workspace |
 | Status | Recommended | Frozen migration and rollback path |
 
-Nova owns **68,868 fewer lines**, a **75% reduction**. Classic's Rust code
-alone is 3.6 times larger than Nova's entire code and configuration surface.
+Nova owns **68,647 fewer lines**, a **75% reduction**. Classic's Rust code
+alone is 3.5 times larger than Nova's entire code and configuration surface.
 
 Nova delivers more features in 25% of the code. It has a clearer configuration
 model, tighter editor and Yazi integration, stronger diagnostics, and a
@@ -176,7 +176,7 @@ bindings are:
 | Workspace | `Alt Shift S` | Show a random full-screen visual |
 | Workspace | `Ctrl y` | Toggle focus between the editor and Yazi sidebar |
 | Workspace | `Alt 1-9` | Go directly to tab 1-9 |
-| Editor / Yazi | `Alt r` | Reveal the editor file, or return from Yazi |
+| Editor / Yazi | `Alt r` | Reveal files between Helix and Yazi |
 | Yazi | `Alt z` | Retarget the tab workspace with zoxide |
 
 Every managed `keybindings.*` setting accepts either a key chord or `false`.
@@ -347,6 +347,6 @@ See [Development](docs/development.md) for CI and local checks,
 
 ## LOC Scorecard
 
-Yazelix owns **25,813 lines** of tracked text project files. The
+Yazelix owns **26,043 lines** of tracked text project files. The
 [reproducible scorecard](docs/development.md#loc-scorecard) excludes Beads,
 lockfiles, and binary assets.

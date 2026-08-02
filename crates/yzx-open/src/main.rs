@@ -80,6 +80,7 @@ struct BridgeResponseError {
 enum OpenIntent {
     Ordinary,
     Retarget,
+    RevealEditor,
 }
 
 #[derive(Debug)]
@@ -151,16 +152,23 @@ fn run(config: &Config, raw_targets: impl IntoIterator<Item = OsString>) -> Resu
         .map(abs_path)
         .collect::<Result<Vec<_>>>()?;
     for target in &targets {
-        fs::metadata(target).with_context(|| {
+        let metadata = fs::metadata(target).with_context(|| {
             format!(
                 "target does not exist or cannot be inspected: {}",
                 target.display()
             )
         })?;
+        if request.intent == OpenIntent::RevealEditor && !metadata.is_file() {
+            bail!(
+                "--reveal-editor target must be a file: {}",
+                target.display()
+            );
+        }
     }
     let current_state = active_tab_workspace(config)?;
-    let candidate = if request.intent == OpenIntent::Ordinary
-        && current_state.workspace.source == WorkspaceSource::Explicit
+    let candidate = if request.intent == OpenIntent::RevealEditor
+        || (request.intent == OpenIntent::Ordinary
+            && current_state.workspace.source == WorkspaceSource::Explicit)
     {
         current_state.workspace.root.clone()
     } else {
@@ -186,13 +194,19 @@ fn run(config: &Config, raw_targets: impl IntoIterator<Item = OsString>) -> Resu
     }
 
     let open_result = if uses_helix_bridge(&config.editor) {
-        try_bridge(config, &targets, &decision.root).and_then(|opened| {
+        let bridge_working_dir =
+            (request.intent != OpenIntent::RevealEditor).then_some(decision.root.as_path());
+        try_bridge(config, &targets, bridge_working_dir).and_then(|opened| {
             if opened {
                 Ok(())
+            } else if request.intent == OpenIntent::RevealEditor {
+                focus_existing_editor(config)
             } else {
                 open_editor_pane(config, &targets, &decision.root)
             }
         })
+    } else if request.intent == OpenIntent::RevealEditor {
+        focus_existing_editor(config)
     } else {
         log_info(
             config,
@@ -229,6 +243,15 @@ impl OpenIntent {
         match self {
             Self::Ordinary => "open",
             Self::Retarget => "retarget",
+            Self::RevealEditor => "reveal_editor",
+        }
+    }
+
+    fn flag(self) -> &'static str {
+        match self {
+            Self::Retarget => "--retarget-workspace",
+            Self::RevealEditor => "--reveal-editor",
+            Self::Ordinary => "yzx-open",
         }
     }
 }
@@ -258,7 +281,7 @@ impl Config {
     }
 }
 
-fn try_bridge(config: &Config, targets: &[PathBuf], cwd: &Path) -> Result<bool> {
+fn try_bridge(config: &Config, targets: &[PathBuf], working_dir: Option<&Path>) -> Result<bool> {
     let bridge_dir = config
         .state_dir
         .join("helix_bridge")
@@ -348,7 +371,7 @@ fn try_bridge(config: &Config, targets: &[PathBuf], cwd: &Path) -> Result<bool> 
             }
         }
 
-        let (action, payload) = bridge_open_request(targets, cwd);
+        let (action, payload) = bridge_open_request(targets, working_dir);
         log_debug(
             config,
             &format!(
@@ -512,25 +535,29 @@ fn send_bridge_request(
     }
 }
 
-fn bridge_open_request(targets: &[PathBuf], working_dir: &Path) -> (&'static str, Value) {
+fn bridge_open_request(targets: &[PathBuf], working_dir: Option<&Path>) -> (&'static str, Value) {
     if let Some(target) = directory_target(targets) {
         (
             "helix.open_directory",
             json!({
-                "working_dir": working_dir,
+                "working_dir": working_dir.unwrap_or(target),
                 "picker_dir": target,
             }),
         )
     } else {
-        (
-            "helix.open_files",
-            json!({
-                "working_dir": working_dir,
-                "file_paths": targets,
-                "focus": true,
-            }),
-        )
+        let mut payload = json!({
+            "file_paths": targets,
+            "focus": true,
+        });
+        if let Some(working_dir) = working_dir {
+            payload["working_dir"] = json!(working_dir);
+        }
+        ("helix.open_files", payload)
     }
+}
+
+fn focus_existing_editor(config: &Config) -> Result<()> {
+    orchestrator_pipe(&orchestrator_config(config), "focus_editor", "").map(|_| ())
 }
 
 fn open_editor_pane(config: &Config, targets: &[PathBuf], cwd: &Path) -> Result<()> {
@@ -677,14 +704,17 @@ fn parse_open_request(raw_targets: impl IntoIterator<Item = OsString>) -> Result
         if targets.first().map(OsString::as_os_str) == Some(OsStr::new("--retarget-workspace")) {
             targets.remove(0);
             OpenIntent::Retarget
+        } else if targets.first().map(OsString::as_os_str) == Some(OsStr::new("--reveal-editor")) {
+            targets.remove(0);
+            OpenIntent::RevealEditor
         } else {
             OpenIntent::Ordinary
         };
     if targets.is_empty() {
         bail!("no target paths passed");
     }
-    if intent == OpenIntent::Retarget && targets.len() != 1 {
-        bail!("--retarget-workspace requires exactly one target path");
+    if intent != OpenIntent::Ordinary && targets.len() != 1 {
+        bail!("{} requires exactly one target path", intent.flag());
     }
     Ok(OpenRequest { intent, targets })
 }
@@ -695,6 +725,10 @@ fn decide_workspace(
     candidate: &Path,
 ) -> WorkspaceDecision {
     match (intent, current.source) {
+        (OpenIntent::RevealEditor, _) => WorkspaceDecision {
+            root: current.root.clone(),
+            mutate: false,
+        },
         (OpenIntent::Ordinary, WorkspaceSource::Explicit) => WorkspaceDecision {
             root: current.root.clone(),
             mutate: false,
@@ -1237,6 +1271,15 @@ fi
                 mutate: true,
             }
         );
+        for current in [&explicit, &bootstrap] {
+            assert_eq!(
+                decide_workspace(OpenIntent::RevealEditor, current, Path::new("/other")),
+                WorkspaceDecision {
+                    root: current.root.clone(),
+                    mutate: false,
+                }
+            );
+        }
     }
 
     #[test]
@@ -1256,6 +1299,22 @@ fi
             ])
             .is_err()
         );
+
+        let request = parse_open_request([
+            OsString::from("--reveal-editor"),
+            OsString::from("/repo/file.rs"),
+        ])
+        .unwrap();
+        assert_eq!(request.intent, OpenIntent::RevealEditor);
+        assert_eq!(request.targets, [OsString::from("/repo/file.rs")]);
+        assert!(
+            parse_open_request([
+                OsString::from("--reveal-editor"),
+                OsString::from("/one.rs"),
+                OsString::from("/two.rs"),
+            ])
+            .is_err()
+        );
     }
 
     #[test]
@@ -1264,7 +1323,7 @@ fi
         let config = runtime.config("session");
         let targets = vec![PathBuf::from("/tmp/project/src/main.rs")];
         let cwd = target_workspace_root(&config, &targets);
-        let (action, payload) = bridge_open_request(&targets, &cwd);
+        let (action, payload) = bridge_open_request(&targets, Some(&cwd));
         assert_eq!(action, "helix.open_files");
         assert_eq!(payload["working_dir"], "/tmp/project/src");
         assert_eq!(payload["file_paths"], json!(["/tmp/project/src/main.rs"]));
@@ -1278,11 +1337,18 @@ fi
         let targets = vec![file, root.clone()];
 
         let cwd = target_workspace_root(&config, &targets);
-        let (action, payload) = bridge_open_request(&targets, &cwd);
+        let (action, payload) = bridge_open_request(&targets, Some(&cwd));
         assert_eq!(action, "helix.open_directory");
         assert_eq!(payload["working_dir"], root.to_string_lossy().to_string());
         assert_eq!(payload["picker_dir"], root.to_string_lossy().to_string());
         assert!(payload.get("file_paths").is_none());
+
+        let targets = vec![PathBuf::from("/tmp/project/src/lib.rs")];
+        let (action, payload) = bridge_open_request(&targets, None);
+        assert_eq!(action, "helix.open_files");
+        assert_eq!(payload["file_paths"], json!(["/tmp/project/src/lib.rs"]));
+        assert_eq!(payload["focus"], true);
+        assert!(payload.get("working_dir").is_none());
     }
 
     #[test]
@@ -1393,6 +1459,93 @@ fi
             !git_probe.exists(),
             "ordinary explicit opens must not probe Git"
         );
+    }
+
+    #[test]
+    fn reveal_editor_opens_one_file_without_workspace_or_sidebar_side_effects() {
+        let runtime = TestRuntime::new();
+        let session_id = "test-session";
+        let (socket_path, request_path) =
+            runtime.write_registry(session_id, None, Some("terminal:7"));
+        let panes = pane_list(&[(3, 2), (7, 2)]);
+        let workspace = runtime.root.join("project");
+        runtime.write_zellij_with_workspace(
+            false,
+            Some(&panes),
+            &workspace,
+            WorkspaceSource::Explicit,
+            false,
+        );
+        let server = spawn_ok_bridge(&socket_path, request_path.clone());
+        let target = runtime.root.join("elsewhere/notes.txt");
+        fs::create_dir_all(target.parent().unwrap()).unwrap();
+        fs::write(&target, "").unwrap();
+
+        run(
+            &Config {
+                yazi_id: Some("managed-yazi".into()),
+                zellij_pane_id: Some("terminal:3".into()),
+                ..runtime.config(session_id)
+            },
+            [
+                OsString::from("--reveal-editor"),
+                target.clone().into_os_string(),
+            ],
+        )
+        .unwrap();
+        server.join().unwrap();
+
+        let request: Value =
+            serde_json::from_str(&fs::read_to_string(request_path).unwrap()).unwrap();
+        assert_eq!(request["action"], "helix.open_files");
+        assert_eq!(request["payload"]["file_paths"], json!([target]));
+        assert!(request["payload"].get("working_dir").is_none());
+        let log = runtime.zellij_log();
+        assert!(!log.contains("--name retarget_workspace"), "{log}");
+        assert!(!log.contains("args=run --name editor"), "{log}");
+        assert!(!runtime.root.join("ya.log").exists());
+    }
+
+    #[test]
+    fn reveal_editor_without_a_live_bridge_only_focuses_the_existing_editor() {
+        let runtime = TestRuntime::new();
+        runtime.write_zellij_with_workspace(
+            false,
+            None,
+            &runtime.root,
+            WorkspaceSource::Bootstrap,
+            false,
+        );
+        let target = runtime.root.join("notes.txt");
+        fs::write(&target, "").unwrap();
+
+        run(
+            &runtime.config("test-session"),
+            [OsString::from("--reveal-editor"), target.into_os_string()],
+        )
+        .unwrap();
+
+        let log = runtime.zellij_log();
+        assert!(log.contains("--name focus_editor"), "{log}");
+        assert!(!log.contains("--name retarget_workspace"), "{log}");
+        assert!(!log.contains("args=run --name editor"), "{log}");
+    }
+
+    #[test]
+    fn reveal_editor_rejects_directories_before_runtime_coordination() {
+        let runtime = TestRuntime::new();
+        let error = run(
+            &runtime.config("test-session"),
+            [
+                OsString::from("--reveal-editor"),
+                runtime.root.clone().into_os_string(),
+            ],
+        )
+        .unwrap_err()
+        .to_string();
+
+        assert!(error.contains("target must be a file"), "{error}");
+        assert!(!runtime.zellij_log.exists());
     }
 
     #[test]

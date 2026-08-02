@@ -427,11 +427,16 @@ the bridge restores the client's transparent Zellij background
 
 `Alt r` starts the active tab's persistent Yazi popup at the current Helix
 buffer. `yzx reveal <target>` exposes the same behavior inside a managed session
-without changing the tab's canonical workspace. Reveal replaces an existing
-popup process; ordinary popup toggles preserve its live navigation state.
-Helix and Yazi bind the key locally: the focused Yazi popup closes, while tiled
-Yazi returns focus to Helix. Neither return path opens the selected item or
-changes the canonical workspace.
+without changing the tab's canonical workspace. Editor-to-Yazi reveal replaces
+an existing popup process; ordinary popup toggles preserve its live navigation
+state.
+
+In either managed Yazi role, `Alt r` reveals the hovered file in the existing
+Helix and returns focus without changing Helix's cwd, the tab's canonical
+workspace, or the sidebar cwd. The popup hides and preserves its navigation
+state; tiled Yazi remains visible. Hovering a directory only returns focus to
+the existing Helix buffer. Helix and Yazi bind the key locally, and Zellij does
+not replay it across the focus change.
 
 Yazelix does not modify external editor configuration. Neovim users can opt
 into the same `Alt r` behavior in their own config:

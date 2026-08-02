@@ -5,5 +5,5 @@ desc = "Retarget tab workspace with zoxide"
 
 [[mgr.append_keymap]]
 on = ["<A-r>"]
-run = 'shell "$YZX_YAZI_RETURN"'
-desc = "Return from managed Yazi"
+run = 'shell "$YZX_YAZI_RETURN" %H'
+desc = "Reveal hovered file in Helix and return"
