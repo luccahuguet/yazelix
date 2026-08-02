@@ -342,11 +342,6 @@
       defaultShellProgram = defaultConfig.shell.program;
       defaultPopupSideMargin = toString defaultConfig.popup.side_margin;
       defaultPopupVerticalMargin = toString defaultConfig.popup.vertical_margin;
-      barRenderRequestFor = runtimeIdentity: import ./packaging/bar-render-request.nix {
-        inherit (pkgs) coreutils nushell;
-        inherit runtimeIdentity;
-        zellijBar = yazelixZellijBarPackage;
-      };
       yzxBarRender = pkgs.writeShellApplication {
         name = "yzx-bar-render";
         runtimeInputs = [pkgs.jq];
@@ -401,22 +396,17 @@
           version = novaVersion;
           inherit channel;
         });
-        barRenderRequest = barRenderRequestFor runtimeIdentity;
-        yzxBarRenderRequest =
-          pkgs.writeText "yzx-bar-render-request.json" (builtins.toJSON (barRenderRequest {
-            appearanceMode = "dark";
-            widgetTray = defaultBarWidgets;
-            shellLabel = defaultShellProgram;
-          }));
+        barRenderRequest = import ./packaging/bar-render-request.nix {
+          inherit (pkgs) coreutils nushell;
+          inherit runtimeIdentity;
+          zellijBar = yazelixZellijBarPackage;
+        };
         yzxBarRenderRequestTemplate =
           pkgs.writeText "yzx-bar-render-request-template.json" (builtins.toJSON (barRenderRequest {
             appearanceMode = "__YZX_APPEARANCE_MODE__";
             widgetTray = "__YZX_BAR_WIDGET_TRAY__";
             shellLabel = "__YZX_SHELL_LABEL__";
           }));
-        yzxBarKdl = pkgs.runCommand "yzx-zellij-bar.kdl" {} ''
-          ${yzxBarRender}/bin/yzx-bar-render "$(<${yzxBarRenderRequest})" > "$out"
-        '';
         variantSuffix = pkgs.lib.concatStringsSep "-" (
           pkgs.lib.optional (! withMars) "no-mars"
           ++ pkgs.lib.optional (! withManagedHelix) "no-helix"
@@ -501,9 +491,14 @@
         });
         layout = let
           main = pkgs.runCommand "layout.kdl" {} ''
+            bar="$(${yzxBarRender}/bin/yzx-bar-render ${pkgs.lib.escapeShellArg (builtins.toJSON (barRenderRequest {
+              appearanceMode = "dark";
+              widgetTray = defaultBarWidgets;
+              shellLabel = defaultShellProgram;
+            }))})"
             substitute ${./defaults/zellij/layout.kdl} "$out" \
               --replace-fail '@yazi@' '${yazi}/bin/yzx-yazi' \
-              --replace-fail '@bar@' "$(<${yzxBarKdl})"
+              --replace-fail '@bar@' "$bar"
           '';
           swap = pkgs.replaceVars ./defaults/zellij/layout.swap.kdl {
             yazi = "${yazi}/bin/yzx-yazi";
@@ -1139,19 +1134,18 @@
         check_channel() {
           package="$1"
           channel="$2"
-          badge_channel="$3"
           identity="$package/share/yazelix/runtime_identity.json"
 
           ${pkgs.jq}/bin/jq -e --arg channel "$channel" --arg version '${novaVersion}' \
             '.channel == $channel and .version == $version' "$identity" >/dev/null
           badge="$(${zellijBarPackage}/${zellijBarPackage.widgetPath} version --runtime-dir "$package/share/yazelix")"
           test "''${badge#NOVA }" != "$badge"
-          test "''${badge##* }" = "$badge_channel"
+          test "''${badge##* }" = "''${channel^^}"
         }
 
-        check_channel ${yzx} stable STABLE
-        check_channel ${yzxMain} main MAIN
-        check_channel ${yzxEdge} edge EDGE
+        check_channel ${yzx} stable
+        check_channel ${yzxMain} main
+        check_channel ${yzxEdge} edge
 
         ${if pkgs.stdenv.hostPlatform.isLinux then ''
           check_desktop() {
