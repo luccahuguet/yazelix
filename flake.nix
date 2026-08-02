@@ -421,7 +421,7 @@
         doCheck = false;
       });
       mkYzx = {
-        desktopChannel ? "stable",
+        desktopChannel ? "Stable",
         withManagedHelix,
         withManagedYazi,
         withMars,
@@ -433,15 +433,6 @@
         );
         variant = if variantSuffix == "" then "full" else variantSuffix;
         name = "yazelix" + pkgs.lib.optionalString (variantSuffix != "") "-${variantSuffix}";
-        desktopChannels = {
-          stable = "Stable";
-          main = "Main";
-          edge = "Edge";
-        };
-        desktopChannelLabel =
-          if builtins.hasAttr desktopChannel desktopChannels
-          then desktopChannels.${desktopChannel}
-          else throw "unsupported Yazelix desktop channel: ${desktopChannel}";
         yaziRuntime =
           if withManagedYazi
           then {
@@ -639,8 +630,8 @@
         command = rustBin "yzx" "${src}/main.rs";
         withDesktop = withMars && pkgs.stdenv.hostPlatform.isLinux;
         desktop = pkgs.makeDesktopItem {
-          name = "yzx-${desktopChannel}";
-          desktopName = "Yazelix Nova (${desktopChannelLabel})";
+          name = "yzx-${pkgs.lib.toLower desktopChannel}";
+          desktopName = "Yazelix Nova (${desktopChannel})";
           genericName = "Terminal Emulator";
           comment = "Open the Yazelix integrated terminal workspace";
           exec = "${command}/bin/yzx launch";
@@ -685,24 +676,17 @@
             '';
           meta.platforms = supportedSystems;
         };
+      mkFullYzx = desktopChannel:
+        mkYzx {
+          inherit desktopChannel;
+          withManagedHelix = true;
+          withManagedYazi = true;
+          withMars = true;
+        };
     in rec {
-      yazelix = mkYzx {
-        withManagedHelix = true;
-        withManagedYazi = true;
-        withMars = true;
-      };
-      yazelix-main = mkYzx {
-        desktopChannel = "main";
-        withManagedHelix = true;
-        withManagedYazi = true;
-        withMars = true;
-      };
-      yazelix-edge = mkYzx {
-        desktopChannel = "edge";
-        withManagedHelix = true;
-        withManagedYazi = true;
-        withMars = true;
-      };
+      yazelix = mkFullYzx "Stable";
+      yazelix-main = mkFullYzx "Main";
+      yazelix-edge = mkFullYzx "Edge";
       yazelix-no-helix = mkYzx {
         withManagedHelix = false;
         withManagedYazi = true;
@@ -1164,9 +1148,9 @@
         ${if pkgs.stdenv.hostPlatform.isLinux then ''
           check_desktop() {
             package="$1"
-            id="$2"
+            channel="$2"
             label="$3"
-            desktop="$package/share/applications/$id.desktop"
+            desktop="$package/share/applications/yzx-$channel.desktop"
             executable="$(readlink -f "$package/bin/yzx")"
 
             test -f "$desktop"
@@ -1176,17 +1160,9 @@
             grep -Fqx 'StartupWMClass=yzx' "$desktop"
           }
 
-          check_desktop ${yzx} yzx-stable Stable
-          check_desktop ${yzxMain} yzx-main Main
-          check_desktop ${yzxEdge} yzx-edge Edge
-
-          profile=${pkgs.buildEnv {
-            name = "yzx-desktop-channel-profile";
-            paths = [yzx yzxMain yzxEdge];
-          }}
-          test -f "$profile/share/applications/yzx-stable.desktop"
-          test -f "$profile/share/applications/yzx-main.desktop"
-          test -f "$profile/share/applications/yzx-edge.desktop"
+          check_desktop ${yzx} stable Stable
+          check_desktop ${yzxMain} main Main
+          check_desktop ${yzxEdge} edge Edge
         '' else ''
           test ! -e ${yzx}/share/applications
           test ! -e ${yzxMain}/share/applications

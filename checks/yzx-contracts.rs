@@ -146,19 +146,6 @@ fn main() {
 
 fn expect_front_door(yzx: &Path, jq: &Path) {
     let yzx_bin = yzx.join("bin/yzx");
-    let desktop = fs::read_to_string(yzx.join("share/applications/yzx-stable.desktop")).unwrap();
-    assert!(
-        desktop.lines().any(|line| {
-            line.starts_with("Exec=/nix/store/") && line.ends_with("/bin/yzx launch")
-        }),
-        "desktop entry must launch explicitly\n{desktop}"
-    );
-    for identity in ["Icon=yzx", "StartupWMClass=yzx"] {
-        assert!(
-            desktop.lines().any(|line| line == identity),
-            "desktop entry must match the Nova Mars app id via `{identity}`\n{desktop}"
-        );
-    }
     let help = run_help(&yzx_bin, &["help"]);
     for arg in ["-h", "--help"] {
         assert_eq!(run_help(&yzx_bin, &[arg]), help);

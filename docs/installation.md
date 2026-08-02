@@ -18,17 +18,8 @@ Immutable `nova-v*` tags identify exact releases.
 The source reference and package output are both explicit because an immutable
 Nix derivation cannot infer which Git branch selected its revision. On Linux,
 the three outputs install `Yazelix Nova (Stable)`, `Yazelix Nova (Main)`, and
-`Yazelix Nova (Edge)` entries with distinct desktop file IDs:
-
-```sh
-nix profile add --refresh github:luccahuguet/yazelix/stable
-nix profile add --refresh github:luccahuguet/yazelix/main#yazelix-main
-nix profile add --refresh github:luccahuguet/yazelix/edge#yazelix-edge
-```
-
-Install one channel normally. To expose all three launchers from one profile,
-give Main and Edge lower precedence for their intentionally shared `yzx` binary
-and icon paths:
+`Yazelix Nova (Edge)` entries with distinct desktop file IDs. Run the line for
+the channel you want, or run all three in order to expose every launcher:
 
 ```sh
 nix profile add --refresh github:luccahuguet/yazelix/stable
