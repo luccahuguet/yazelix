@@ -88,23 +88,6 @@
     zjstatus,
   }: let
     novaVersion = "1.0.0-beta.4";
-    compactNovaVersion = version:
-      if version == "dev"
-      then "NOVA DEV"
-      else let
-        parsed = builtins.match "([0-9]+)\\.([0-9]+)\\.[0-9]+(-beta\\.([0-9]+))?" version;
-      in
-        if parsed == null
-        then throw "unsupported Nova version: ${version}"
-        else if builtins.elemAt parsed 2 == null
-        then "NOVA ${builtins.elemAt parsed 0}.${builtins.elemAt parsed 1}"
-        else "NOVA β${builtins.elemAt parsed 3}";
-    novaBarLabel =
-      assert compactNovaVersion "dev" == "NOVA DEV";
-      assert compactNovaVersion "1.0.0-beta.1" == "NOVA β1";
-      assert compactNovaVersion "1.0.0-beta.12" == "NOVA β12";
-      assert compactNovaVersion "1.0.0" == "NOVA 1.0";
-      compactNovaVersion novaVersion;
     supportedSystems = ["x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin"];
     eachSystem = nixpkgs.lib.genAttrs supportedSystems;
     homeManagerModule = import ./home-manager/module.nix {
@@ -354,44 +337,24 @@
         ln -s ${yaziBistroPackage}/share/yazi-flavors/flavors "$out/flavors"
       '';
       yzxYaziMaterializer = yzxYaziMaterializerFor pkgs;
-      yzxRuntimeIdentity = pkgs.writeTextDir "runtime_identity.json" (builtins.toJSON {
-        name = "Yazelix Nova";
-        version = novaVersion;
-      });
       defaultConfig = builtins.fromTOML (builtins.readFile ./defaults/config.toml);
       defaultBarWidgets = defaultConfig.bar.widgets;
       defaultShellProgram = defaultConfig.shell.program;
       defaultPopupSideMargin = toString defaultConfig.popup.side_margin;
       defaultPopupVerticalMargin = toString defaultConfig.popup.vertical_margin;
-      barRenderRequest = import ./packaging/bar-render-request.nix {
+      barRenderRequestFor = runtimeIdentity: import ./packaging/bar-render-request.nix {
         inherit (pkgs) coreutils nushell;
-        runtimeIdentity = yzxRuntimeIdentity;
+        inherit runtimeIdentity;
         zellijBar = yazelixZellijBarPackage;
       };
-      yzxBarRenderRequest =
-        pkgs.writeText "yzx-bar-render-request.json" (builtins.toJSON (barRenderRequest {
-          appearanceMode = "dark";
-          widgetTray = defaultBarWidgets;
-          shellLabel = defaultShellProgram;
-        }));
-      yzxBarRenderRequestTemplate =
-        pkgs.writeText "yzx-bar-render-request-template.json" (builtins.toJSON (barRenderRequest {
-          appearanceMode = "__YZX_APPEARANCE_MODE__";
-          widgetTray = "__YZX_BAR_WIDGET_TRAY__";
-          shellLabel = "__YZX_SHELL_LABEL__";
-        }));
       yzxBarRender = pkgs.writeShellApplication {
         name = "yzx-bar-render";
         runtimeInputs = [pkgs.jq];
         text = ''
           ${yazelixZellijBarPackage}/${yazelixZellijBarPackage.widgetPath} render-yazelix-runtime --json "$1" \
-            | jq -er '.plugin_block' \
-            | ${pkgs.gnused}/bin/sed 's/YZX {command_version}/${novaBarLabel}/g'
+            | jq -er '.plugin_block'
         '';
       };
-      yzxBarKdl = pkgs.runCommand "yzx-zellij-bar.kdl" {} ''
-        ${yzxBarRender}/bin/yzx-bar-render "$(<${yzxBarRenderRequest})" > "$out"
-      '';
       yzxLayoutCheck = rustBin "yzx-layout-check" ./checks/zellij-layout.rs;
       zellijBuildBase =
         if pkgs ? "zellij-unwrapped"
@@ -421,11 +384,39 @@
         doCheck = false;
       });
       mkYzx = {
-        desktopChannel ? "Stable",
+        channel ? "stable",
         withManagedHelix,
         withManagedYazi,
         withMars,
       }: let
+        channelLabel =
+          {
+            stable = "Stable";
+            main = "Main";
+            edge = "Edge";
+          }.${channel}
+          or (throw "unsupported Yazelix channel: ${channel}");
+        runtimeIdentity = pkgs.writeTextDir "runtime_identity.json" (builtins.toJSON {
+          name = "Yazelix Nova";
+          version = novaVersion;
+          inherit channel;
+        });
+        barRenderRequest = barRenderRequestFor runtimeIdentity;
+        yzxBarRenderRequest =
+          pkgs.writeText "yzx-bar-render-request.json" (builtins.toJSON (barRenderRequest {
+            appearanceMode = "dark";
+            widgetTray = defaultBarWidgets;
+            shellLabel = defaultShellProgram;
+          }));
+        yzxBarRenderRequestTemplate =
+          pkgs.writeText "yzx-bar-render-request-template.json" (builtins.toJSON (barRenderRequest {
+            appearanceMode = "__YZX_APPEARANCE_MODE__";
+            widgetTray = "__YZX_BAR_WIDGET_TRAY__";
+            shellLabel = "__YZX_SHELL_LABEL__";
+          }));
+        yzxBarKdl = pkgs.runCommand "yzx-zellij-bar.kdl" {} ''
+          ${yzxBarRender}/bin/yzx-bar-render "$(<${yzxBarRenderRequest})" > "$out"
+        '';
         variantSuffix = pkgs.lib.concatStringsSep "-" (
           pkgs.lib.optional (! withMars) "no-mars"
           ++ pkgs.lib.optional (! withManagedHelix) "no-helix"
@@ -519,7 +510,7 @@
           };
         in
           pkgs.runCommand "yzx-zellij-layout" {} ''
-            ${yzxLayoutCheck}/bin/yzx-layout-check ${main} ${swap} ${pkgs.lib.escapeShellArg novaBarLabel}
+            ${yzxLayoutCheck}/bin/yzx-layout-check ${main} ${swap}
             install -D -m 644 ${main} "$out/layout.kdl"
             install -D -m 644 ${swap} "$out/layout.swap.kdl"
           '';
@@ -630,8 +621,8 @@
         command = rustBin "yzx" "${src}/main.rs";
         withDesktop = withMars && pkgs.stdenv.hostPlatform.isLinux;
         desktop = pkgs.makeDesktopItem {
-          name = "yzx-${pkgs.lib.toLower desktopChannel}";
-          desktopName = "Yazelix Nova (${desktopChannel})";
+          name = "yzx-${channel}";
+          desktopName = "Yazelix Nova (${channelLabel})";
           genericName = "Terminal Emulator";
           comment = "Open the Yazelix integrated terminal workspace";
           exec = "${command}/bin/yzx launch";
@@ -653,7 +644,7 @@
               ln -s ${yzxConfig}/bin/yzx-config "$out/libexec/yazelix/yzx-config"
               ln -s ${tutor}/bin/yzx-tutor "$out/libexec/yazelix/yzx-tutor"
               install -D -m 644 ${configKdl} "$out/share/yazelix/config.kdl"
-              install -D -m 644 ${yzxRuntimeIdentity}/runtime_identity.json "$out/share/yazelix/runtime_identity.json"
+              install -D -m 644 ${runtimeIdentity}/runtime_identity.json "$out/share/yazelix/runtime_identity.json"
               install -D -m 644 ${yazelixCursors}/yazelix_cursors_default.toml "$out/share/yazelix/cursors.toml"
               install -D -m 644 ${./defaults/config.toml} "$out/share/yazelix/config.toml"
               install -D -m 644 ${layout}/layout.kdl "$out/share/yazelix/layout.kdl"
@@ -676,17 +667,17 @@
             '';
           meta.platforms = supportedSystems;
         };
-      mkFullYzx = desktopChannel:
+      mkFullYzx = channel:
         mkYzx {
-          inherit desktopChannel;
+          inherit channel;
           withManagedHelix = true;
           withManagedYazi = true;
           withMars = true;
         };
     in rec {
-      yazelix = mkFullYzx "Stable";
-      yazelix-main = mkFullYzx "Main";
-      yazelix-edge = mkFullYzx "Edge";
+      yazelix = mkFullYzx "stable";
+      yazelix-main = mkFullYzx "main";
+      yazelix-edge = mkFullYzx "edge";
       yazelix-no-helix = mkYzx {
         withManagedHelix = false;
         withManagedYazi = true;
@@ -1145,6 +1136,23 @@
         ${yzxContractsCheck}/bin/yzx-contracts-check ${yzx} ${pkgs.git}/bin/git ${pkgs.jq}/bin/jq "$out"
       '';
       desktop_channels = pkgs.runCommand "yzx-desktop-channels" {} ''
+        check_channel() {
+          package="$1"
+          channel="$2"
+          badge_channel="$3"
+          identity="$package/share/yazelix/runtime_identity.json"
+
+          ${pkgs.jq}/bin/jq -e --arg channel "$channel" --arg version '${novaVersion}' \
+            '.channel == $channel and .version == $version' "$identity" >/dev/null
+          badge="$(${zellijBarPackage}/${zellijBarPackage.widgetPath} version --runtime-dir "$package/share/yazelix")"
+          test "''${badge#NOVA }" != "$badge"
+          test "''${badge##* }" = "$badge_channel"
+        }
+
+        check_channel ${yzx} stable STABLE
+        check_channel ${yzxMain} main MAIN
+        check_channel ${yzxEdge} edge EDGE
+
         ${if pkgs.stdenv.hostPlatform.isLinux then ''
           check_desktop() {
             package="$1"

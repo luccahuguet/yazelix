@@ -7,8 +7,11 @@ User-visible runtime changes for Yazelix Nova live here.
 - Linux desktop launchers identify their immutable release channel as `Yazelix
   Nova (Stable)`, `Yazelix Nova (Main)`, or `Yazelix Nova (Edge)`. The full
   `yazelix`, `yazelix-main`, and `yazelix-edge` outputs use distinct desktop
-  file IDs while sharing the same runtime graph, command identity, icon, and
-  running-window identity. The opt-in experimental branch and channel are named
+  file IDs while sharing the same dependency graph, icon, and running-window
+  identity. The existing top-right badge reads the same immutable package fact
+  and stays explicit in every channel: `NOVA β4 STABLE`, `NOVA β4 MAIN`, or
+  `NOVA β4 EDGE`. Release versions use the stable major/minor form, such as
+  `NOVA 1.0 STABLE`. The opt-in experimental branch and channel are named
   `edge`.
 - `Alt r` and `yzx reveal <target>` show and focus the active tab's persistent
   Yazi popup at the exact file or directory. Reveal no longer depends on the
@@ -379,9 +382,6 @@ User-visible runtime changes for Yazelix Nova live here.
   is removed from the shared schema.
 - `Alt Shift F` toggles focused-pane fullscreen, and `Ctrl y` moves directly
   between the managed editor and Yazi sidebar, reopening the sidebar as needed.
-- The top-right Zellij corner derives a compact Nova release label from the
-  package version: `NOVA DEV`, `NOVA βN`, or stable major/minor form such as
-  `NOVA 1.0`. Exact SemVer remains in `yzx --version` and runtime identity.
 - Bare `yzx` prints help instead of launching Mars; sessions start explicitly
   with `launch` or `enter`. `yzx run` executes structured argv in the prepared
   runtime environment, `status --json` exposes a bounded versioned record, and

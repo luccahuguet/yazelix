@@ -29,7 +29,8 @@ nix profile add --refresh github:luccahuguet/yazelix/edge#yazelix-edge --priorit
 
 The priorities resolve only shared profile paths. Each desktop entry keeps an
 absolute package-owned launch command, so Stable, Main, and Edge still start
-their exact immutable packages.
+their exact immutable packages. Their running top bars identify that package as
+`NOVA β4 STABLE`, `NOVA β4 MAIN`, or `NOVA β4 EDGE`.
 
 ## Package variants
 
@@ -59,7 +60,7 @@ continues. The host installation owns optional Yazi preview dependencies. All
 eight capability variants exist for `x86_64-linux`, `aarch64-linux`,
 `x86_64-darwin`, and `aarch64-darwin`. The full `yazelix-main` and
 `yazelix-edge` channel outputs exist on the same systems and differ only in
-their Linux desktop entry
+their channel-qualified desktop and runtime identities
 
 Install the external-editor variant with:
 

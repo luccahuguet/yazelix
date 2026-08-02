@@ -32,14 +32,14 @@ composes their package outputs.
 
 | Measure | Nova | Classic |
 | --- | --- | --- |
-| Code and configuration (Rust, Nix, shell, TOML, etc.) | **22,708 LOC** | **91,545 LOC** |
+| Code and configuration (Rust, Nix, shell, TOML, etc.) | **22,716 LOC** | **91,545 LOC** |
 | Rust | **19,540 LOC** | **80,957 LOC** |
 | Ownership model | One owner per concern | Overlapping responsibilities across layers |
 | Yazelix component boundaries | Independent, versioned packages | Child repos mixed with main-repo ownership |
 | Product experience | More features, stronger defaults, tighter integration, and polished UX | Fewer features and a less cohesive workspace |
 | Status | Recommended | Frozen migration and rollback path |
 
-Nova owns **68,837 fewer lines**, a **75% reduction**. Classic's Rust code
+Nova owns **68,829 fewer lines**, a **75% reduction**. Classic's Rust code
 alone is 3.6 times larger than Nova's entire code and configuration surface.
 
 Nova delivers more features in 25% of the code. It has a clearer configuration
@@ -64,7 +64,9 @@ dogfood channel.
 Linux launchers show their selected channel as `Yazelix Nova (Stable)`,
 `Yazelix Nova (Main)`, or `Yazelix Nova (Edge)`. Stable uses the default
 `yazelix` package; Main and Edge use the explicit `yazelix-main` and
-`yazelix-edge` outputs so the immutable package owns its launcher label.
+`yazelix-edge` outputs so the immutable package owns its launcher label. The
+same package identity remains visible inside sessions as `NOVA β4 STABLE`,
+`NOVA β4 MAIN`, or `NOVA β4 EDGE`.
 
 Linux is the dogfooded platform. CI builds all packages and a Home Manager
 activation on `aarch64-darwin`. Sustained interactive macOS beta use has found
@@ -229,8 +231,8 @@ removes that managed package while retaining the integration around it.
 `yazi` and `ya` commands.
 
 `yazelix-main` and `yazelix-edge` are full-package channel outputs with distinct
-Linux launcher identities. They reuse the same runtime graph as `yazelix` and
-do not multiply the capability-variant matrix.
+Linux launcher and in-session identities. They reuse the same dependency graph
+as `yazelix` and do not multiply the capability-variant matrix.
 
 | Package | Mars | Managed Helix | Managed Yazi |
 | --- | --- | --- | --- |
@@ -357,6 +359,6 @@ See [Development](docs/development.md) for CI and local checks,
 
 ## LOC Scorecard
 
-Yazelix owns **25,907 lines** of tracked text project files. The
+Yazelix owns **25,918 lines** of tracked text project files. The
 [reproducible scorecard](docs/development.md#loc-scorecard) excludes Beads,
 lockfiles, and binary assets.
