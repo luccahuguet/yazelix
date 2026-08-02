@@ -1141,35 +1141,24 @@
           badge="$(${zellijBarPackage}/${zellijBarPackage.widgetPath} version --runtime-dir "$package/share/yazelix")"
           test "''${badge#NOVA }" != "$badge"
           test "''${badge##* }" = "''${channel^^}"
+
+          ${if pkgs.stdenv.hostPlatform.isLinux then ''
+            desktop="$package/share/applications/yzx-$channel.desktop"
+            executable="$(readlink -f "$package/bin/yzx")"
+
+            test -f "$desktop"
+            grep -Fqx "Name=Yazelix Nova (''${channel^})" "$desktop"
+            grep -Fqx "Exec=$executable launch" "$desktop"
+            grep -Fqx 'Icon=yzx' "$desktop"
+            grep -Fqx 'StartupWMClass=yzx' "$desktop"
+          '' else ''
+            test ! -e "$package/share/applications"
+          ''}
         }
 
         check_channel ${yzx} stable
         check_channel ${yzxMain} main
         check_channel ${yzxEdge} edge
-
-        ${if pkgs.stdenv.hostPlatform.isLinux then ''
-          check_desktop() {
-            package="$1"
-            channel="$2"
-            label="$3"
-            desktop="$package/share/applications/yzx-$channel.desktop"
-            executable="$(readlink -f "$package/bin/yzx")"
-
-            test -f "$desktop"
-            grep -Fqx "Name=Yazelix Nova ($label)" "$desktop"
-            grep -Fqx "Exec=$executable launch" "$desktop"
-            grep -Fqx 'Icon=yzx' "$desktop"
-            grep -Fqx 'StartupWMClass=yzx' "$desktop"
-          }
-
-          check_desktop ${yzx} stable Stable
-          check_desktop ${yzxMain} main Main
-          check_desktop ${yzxEdge} edge Edge
-        '' else ''
-          test ! -e ${yzx}/share/applications
-          test ! -e ${yzxMain}/share/applications
-          test ! -e ${yzxEdge}/share/applications
-        ''}
         touch "$out"
       '';
       no_mars_contracts = pkgs.runCommand "yzx-no-mars-contracts" {} ''
