@@ -12,8 +12,8 @@ User-visible runtime changes for Yazelix Nova live here.
   The canonical workspace remains unchanged. Hidden persistent popups no longer
   make `Alt h` or `Alt l` skip tiled panes; popup navigation is gated by
   Zellij's actual floating-layer visibility. In either Yazi role, `Alt r`
-  delivers a hovered file through the live Helix bridge without workspace
-  discovery or changing the editor cwd, canonical workspace, or sidebar cwd.
+  delivers a hovered file through the live Helix bridge without routing via the
+  canonical workspace or changing editor cwd, workspace, or sidebar cwd.
   Hiding preserves popup state; tiled Yazi stays visible. Directories only
   return focus to the existing editor. Helix and Yazi own their local `Alt r`
   actions directly; Zellij no longer reroutes the key through a cached focus
