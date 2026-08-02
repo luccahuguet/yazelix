@@ -1562,7 +1562,7 @@ fn expect_yazi_managed_keys(yzx: &Path) {
         r#"on = ["<A-z>"]"#,
         r#"run = "plugin zoxide-editor""#,
         r#"on = ["<A-r>"]"#,
-        r#"run = 'shell "$YZX_YAZI_RETURN" %H'"#,
+        r#"run = 'shell "$YZX_YAZI_RETURN"'"#,
     }
 
     let yazi_toml = fs::read_to_string(yzx.join("share/yazelix/yazi/yazi.toml")).unwrap();

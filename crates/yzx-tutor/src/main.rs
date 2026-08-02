@@ -271,11 +271,11 @@ fn render_files_lesson(index: usize, lesson: &TutorLesson) -> String {
 1. **Inside Yazelix:** Press `{sidebar_focus}` to move between the editor and Yazi sidebar, or `{sidebar_swap}` to hide or show the sidebar.
 2. **Inside Yazelix:** Press `{yazi_popup}` to hide or show the full Yazi popup. Its navigation state stays live while hidden.
 3. **Inside Yazi:** Press `Enter` to open the selected file in the managed editor.
-4. **Inside the editor:** Press `{reveal}` to restart the persistent Yazi popup at the current file. In either managed Yazi role, hover a file and press it to reveal that file in Helix.
+4. **Inside the editor:** Press `{reveal}` to restart the persistent Yazi popup at the current file. Press it again in the popup to hide it and return without opening the hovered item. In tiled Yazi, it returns focus to the unchanged editor buffer.
 
 ## Mental model
 
-The sidebar is the quick companion. Ordinary popup toggles keep Yazi's browsing state while hidden; reveal starts it directly at the editor file. Revealing back opens only a hovered file, leaves workspace directories unchanged, and hides the popup without discarding its state.
+The sidebar is the quick companion. Ordinary popup toggles keep Yazi's browsing state while hidden; reveal starts a reversible round trip at the editor file. Press the same key in Yazi to return without changing the editor buffer. Use `Enter` when opening the selected file is intentional.
 
 Next lesson: `yzx tutor panes`.
 "#,
@@ -385,7 +385,7 @@ fn render_tool_tutors_lesson(index: usize, lesson: &TutorLesson) -> String {
 ## Actions
 
 1. **Run in shell or Yazelix:** Use `yzx tutor hx` to print the managed Helix tutor command and package-availability guidance.
-2. **Inside Helix:** Leave the tutor with `:q`; use `{reveal}` to restart the persistent Yazi popup at the current file, then hover a file and use it in managed Yazi to reveal that file back in Helix.
+2. **Inside Helix:** Leave the tutor with `:q`; use `{reveal}` to restart the persistent Yazi popup at the current file, then press it again in Yazi to return to the unchanged editor buffer.
 3. **Run in shell or Yazelix:** Use `yzx tutor nu` to print the Nushell tutor commands.
 4. **Run in shell:** Use `yzx env` for the Yazelix-managed shell and packaged tools without opening the workspace UI.
 "#,

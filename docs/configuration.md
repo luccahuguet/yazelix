@@ -431,12 +431,12 @@ without changing the tab's canonical workspace. Editor-to-Yazi reveal replaces
 an existing popup process; ordinary popup toggles preserve its live navigation
 state.
 
-In either managed Yazi role, `Alt r` reveals the hovered file in the existing
-Helix and returns focus without changing Helix's cwd, the tab's canonical
-workspace, or the sidebar cwd. The popup hides and preserves its navigation
-state; tiled Yazi remains visible. Hovering a directory only returns focus to
-the existing Helix buffer. Helix and Yazi bind the key locally, and Zellij does
-not replay it across the focus change.
+In the managed Yazi popup, `Alt r` hides the popup, preserves its navigation
+state, and returns to the underlying pane without opening the hovered item. In
+tiled Yazi, it focuses the existing Helix buffer without opening the hovered
+item; the tiled pane remains visible. `Enter` remains the explicit file-open
+action. Helix and Yazi bind `Alt r` locally, and Zellij does not replay it
+across the focus change.
 
 Yazelix does not modify external editor configuration. Neovim users can opt
 into the same `Alt r` behavior in their own config:

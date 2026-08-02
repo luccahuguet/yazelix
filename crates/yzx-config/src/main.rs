@@ -2290,7 +2290,7 @@ color = "#123456"
         let reveal = key_field(&model, "Alt r");
         assert_eq!(
             reveal.display_label,
-            "Editor / Yazi: Alt r - Reveal files between Helix and Yazi"
+            "Editor / Yazi: Alt r - Reveal in Yazi or return unchanged"
         );
         assert!(reveal.description.contains("Owner: Yazelix"));
         assert_explicit(
