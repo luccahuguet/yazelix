@@ -4,6 +4,10 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## 1.0.0-beta.4
 
+- The aquarium screen consumes the fixed upstream `asciiquarium-rs` revision
+  directly. Closing its popup or terminal exits the child instead of leaving an
+  orphaned process spinning on a disconnected PTY; timed welcome and any-key
+  exits keep their existing behavior.
 - Linux desktop launchers identify their immutable release channel as `Yazelix
   Nova (Stable)`, `Yazelix Nova (Main)`, or `Yazelix Nova (Edge)`. The full
   `yazelix`, `yazelix-main`, and `yazelix-edge` outputs use distinct desktop

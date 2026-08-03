@@ -3,17 +3,17 @@
     "asciiquarium": {
       "flake": false,
       "locked": {
-        "lastModified": 1784774637,
-        "narHash": "sha256-XNYjrh3c0ejz5Ct/EHrHa1UmiGBJc2lyaiG3eHckCDg=",
-        "owner": "luccahuguet",
+        "lastModified": 1785125952,
+        "narHash": "sha256-IEq6FkaM0ljW2uUtpBqNO84b4gd2W4WuJmVoWMFHGlw=",
+        "owner": "cablehead",
         "repo": "asciiquarium-rs",
-        "rev": "c78b76e84cd2c8b0e2f3b4e817e9cb90aee768a2",
+        "rev": "beef5b7dae179937c67f9e1557e02d64be55fa71",
         "type": "github"
       },
       "original": {
-        "owner": "luccahuguet",
+        "owner": "cablehead",
         "repo": "asciiquarium-rs",
-        "rev": "c78b76e84cd2c8b0e2f3b4e817e9cb90aee768a2",
+        "rev": "beef5b7dae179937c67f9e1557e02d64be55fa71",
         "type": "github"
       }
     },
@@ -571,11 +571,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1784775331,
-        "narHash": "sha256-vi6TWM76wjUphW7OW87OmttNVRhlh47oc5ScU4IEdrE=",
+        "lastModified": 1785772096,
+        "narHash": "sha256-6KiR7fc/LA02+NCnZdJmwHH9mvz19FgV1hO0nOoyUlI=",
         "owner": "luccahuguet",
         "repo": "yazelix-screen",
-        "rev": "523783de288daa1158472f636632fcefb37fa25c",
+        "rev": "deb5c8babf295caaaaccaba2e6b5d75c1a9c1f49",
         "type": "github"
       },
       "original": {
