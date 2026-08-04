@@ -17,7 +17,7 @@ contain no Linux desktop entry. The flake advertises the optional Yazelix
 Cachix cache, while source builds remain valid without it. Use Version Gate
 before publishing a release
 
-## Main, stable, and edge
+## Edge, main, and stable
 
 All development commits land on `edge`, including fixes, reverts,
 documentation, and Beads updates. CI runs there, and users who select `edge`
@@ -109,7 +109,7 @@ git ls-files | grep -Ev '^\.beads/|\.lock$|^assets/' | xargs wc -l
 | --- | ---: |
 | Ignore (`.gitignore`) | 19 |
 | License | 201 |
-| Markdown | 3339 |
+| Markdown | 3315 |
 | JSON | 106 |
 | Nix | 1606 |
 | Shell | 84 |
@@ -120,4 +120,4 @@ git ls-files | grep -Ev '^\.beads/|\.lock$|^assets/' | xargs wc -l
 | Lua | 245 |
 | Rust | 19540 |
 | Text | 41 |
-| Total | 26364 |
+| Total | 26340 |

@@ -367,9 +367,8 @@ fewest practical lines of code and the simplest ownership model.
 
 ### Nova Boundary
 
-Use contract-driven, check-backed development rather than mechanically porting
-main Yazelix. Review the current Yazelix sources of truth and decide explicitly
-what survives.
+Do not mechanically port main Yazelix. Review the current Yazelix sources of
+truth and decide explicitly what survives.
 
 Current runtime chain:
 
@@ -378,10 +377,8 @@ yzx -> Mars -> Yazelix Zellij fork
 ```
 
 The project interface is a Nix/Lix-compatible flake. `yzx` is the installed
-command name. Avoid local compatibility shims and generated fixtures unless a
-chosen contract requires them. Do not broaden Home Manager, layouts, config
-generation, plugins, pane policy, or legacy compatibility unless the user
-chooses that scope.
+command name. Do not broaden Home Manager, layouts, config generation, plugins,
+pane policy, or legacy compatibility unless the user chooses that scope.
 
 ### Git Channels
 
@@ -402,8 +399,6 @@ accepted and verified for `main`, advance `main` to that exact revision with:
 git push origin <sha>:main
 ```
 
-Never promote `stable` directly from `edge`.
-
 `stable` is the promotion-only user channel. Advance it only when the user
 explicitly requests promotion. A candidate must be a fast-forward from the
 current `stable`, belong to `main`, pass the protected Linux and cache checks,
@@ -415,25 +410,12 @@ known P0 or P1 regression. Promote the exact verified revision with:
 git push origin <sha>:stable
 ```
 
-Never force-push or delete `stable`.
-
-Rollbacks use a new revert commit on `edge`, followed by normal verification and
-fast-forward promotion through `main` and then `stable`.
-
-### Runtime Delivery
-
-After changing the flake runtime, keep the user's installed runtime current:
-
-```sh
-nix profile upgrade --refresh yazelix
-```
-
-Do not launch GUI sessions unless the user asks or reports manual dogfooding.
+Never delete `stable`.
 
 ### Beads
 
-Use `br` for all issue work and never edit `.beads/` files directly. Serialize
-`br` writes and finish with `br sync --flush-only`.
+Use `br` for all issue work. Serialize writes and finish with
+`br sync --flush-only`.
 
 Use `bv --robot-triage` as the graph-aware planning entry point. Use only
 `bv --robot-*` commands; bare `bv` opens an interactive TUI. `bv` decides what
@@ -446,15 +428,13 @@ Update the README LOC scorecard whenever project files change. Update
 `CHANGELOG.md` when user-visible runtime behavior, commands, keymaps, packaged
 tools, or runtime contracts change.
 
-Prefer deleting scope, avoiding abstractions, and reusing existing package
-outputs over adding local wrappers. If LOC grows, make the added behavior
-visible in the scorecard and justify it. Formatting rules outrank LOC pressure;
-for Rust, keep `rustfmt` output rather than compressing code manually.
+If LOC grows, make the added behavior visible in the scorecard and justify it.
+Formatting rules outrank LOC pressure; for Rust, keep `rustfmt` output rather
+than compressing code manually.
 
 ### Nova Verification
 
-Run the cheapest exact checks for the changed surface. For runtime flake
-changes, normally verify:
+For runtime flake changes, normally verify:
 
 ```sh
 nix flake check
@@ -462,3 +442,11 @@ nix flake show --all-systems
 nix build .#yazelix --no-link --print-build-logs
 nix profile add --refresh /home/lucca/pjs/yazelix-dir/yazelix --profile <tmp>
 ```
+
+After changing the flake runtime, keep the user's installed runtime current:
+
+```sh
+nix profile upgrade --refresh yazelix
+```
+
+Do not launch GUI sessions unless the user asks or reports manual dogfooding.
