@@ -19,12 +19,21 @@ before publishing a release
 
 ## Main, stable, and edge
 
-Development commits land on `main`. CI and cache publishing run there, and
-users who select `main` accept development-channel changes.
+All development commits land on `edge`, including fixes, reverts,
+documentation, and Beads updates. CI runs there, and users who select `edge`
+accept the active experimental dogfood channel.
 
-`edge` is the opt-in branch for changes that need isolated experimental
-dogfooding before they belong on `main`. CI runs on `edge`, but release
-promotion and cache publication remain owned by `main`.
+`main` is promotion-only accepted development. After an `edge` revision is
+accepted and verified, advance `main` to that exact revision without merging or
+cherry-picking. CI and cache publishing run on `main`, and users who select it
+accept more frequent updates than `stable`:
+
+```sh
+git fetch origin edge main
+git merge-base --is-ancestor origin/main <sha>
+git merge-base --is-ancestor <sha> origin/edge
+git push origin <sha>:main
+```
 
 The protected `stable` branch accepts fast-forward promotions from `main`. Its
 required checks are `linux`, `publish_x86_64_linux`, and
@@ -45,8 +54,8 @@ git push origin <sha>:stable
 ```
 
 Skip promotion when no candidate meets the contract. To roll back, commit the
-revert on `main`, verify the new commit, and promote it through the same path.
-Do not move `stable` backward.
+revert on `edge`, verify it, promote it to `main`, and then promote it through
+the same stable path. Do not move `stable` backward.
 
 ## Local development
 
@@ -100,7 +109,8 @@ git ls-files | grep -Ev '^\.beads/|\.lock$|^assets/' | xargs wc -l
 | --- | ---: |
 | Ignore (`.gitignore`) | 19 |
 | License | 201 |
-| Markdown | 2996 |
+| Markdown | 3339 |
+| JSON | 106 |
 | Nix | 1606 |
 | Shell | 84 |
 | YAML | 456 |
@@ -110,4 +120,4 @@ git ls-files | grep -Ev '^\.beads/|\.lock$|^assets/' | xargs wc -l
 | Lua | 245 |
 | Rust | 19540 |
 | Text | 41 |
-| Total | 25915 |
+| Total | 26364 |

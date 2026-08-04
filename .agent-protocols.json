@@ -1,0 +1,102 @@
+{
+  "schema": 1,
+  "source": {
+    "repository": "https://github.com/luccahuguet/starcompass",
+    "commit": "83c8fa73744ff4fd15bc2f7c5f1978ca96756e06"
+  },
+  "profiles": [
+    "orchestrator",
+    "release"
+  ],
+  "protocols": [
+    {
+      "id": "AP-SCOPE-001",
+      "version": 1,
+      "sha256": "b3f7e012df0708d4baf8957e3c315878a9eb8cd7fddf637dfde1506609d08444"
+    },
+    {
+      "id": "AP-CONTRACT-001",
+      "version": 1,
+      "sha256": "0aa692f4c52542111149b691b7d0c015a0c16523cd620a67b0cf335f3284da82"
+    },
+    {
+      "id": "AP-REFERENCE-001",
+      "version": 1,
+      "sha256": "3d72ac864b050af7783493245be59450c39db940d736ea6fb60269cd21f7927b"
+    },
+    {
+      "id": "AP-MINIMAL-001",
+      "version": 1,
+      "sha256": "256c158cc8b226e4baf96d5590531ea180edc9717338dac0fe51a34dd037791f"
+    },
+    {
+      "id": "AP-DEPENDENCY-001",
+      "version": 1,
+      "sha256": "a389ff9054708574c52ec5e5dd7fc3e2d13b125d2218c70062f50a86761981ca"
+    },
+    {
+      "id": "AP-OWNERSHIP-001",
+      "version": 1,
+      "sha256": "bdc09117f79b0d8dbe78e2dd8673a2463398aa31880fe27209fd6cc47f58bbf7"
+    },
+    {
+      "id": "AP-TEST-001",
+      "version": 1,
+      "sha256": "363da7c542521be22233a4cc3373c0d3c3c5a9a0cf37f633cd5029545f4a3bee"
+    },
+    {
+      "id": "AP-PROOF-001",
+      "version": 1,
+      "sha256": "1af235a56e9711d55362d869fa4057f1658d0aa7fe766030be0897ee5fd7c02b"
+    },
+    {
+      "id": "AP-PLAN-001",
+      "version": 4,
+      "sha256": "5bc0426788693717e8af011277d9358c65899e839d7c0c71299003ec0d8acc4b"
+    },
+    {
+      "id": "AP-CI-001",
+      "version": 1,
+      "sha256": "78f1662259cd83f33d22ff4ddd0859ab0d4f704ba4f38756eef40a8b9b787bec"
+    },
+    {
+      "id": "AP-ORCHESTRATOR-001",
+      "version": 1,
+      "sha256": "6228280f59c46dae79e45986d3848f071fd57699c8ce548ec2f7e503689e09c8"
+    },
+    {
+      "id": "AP-FRONTIER-001",
+      "version": 1,
+      "sha256": "60e397fa4862afe902792501ffc6d2a82c94479877196b4278e7283a20111fe0"
+    },
+    {
+      "id": "AP-PORTABILITY-001",
+      "version": 1,
+      "sha256": "d2800376013bbe1ade3449f835daf8780e60d4c08a79a7f733d4a651c4d6d887"
+    },
+    {
+      "id": "AP-EXCEPTION-001",
+      "version": 1,
+      "sha256": "f66749229dbbc005e1c3103bfed86cf95169d7b32466c72fd8442e841cadb268"
+    },
+    {
+      "id": "AP-GIT-001",
+      "version": 3,
+      "sha256": "16d27b0df7ccc94880bb31020e822e32b37503f43c2cf7a69de333300cbfdacf"
+    },
+    {
+      "id": "AP-DELIVERY-001",
+      "version": 1,
+      "sha256": "5e424f8f1adf9dc86864e3c0e209b47ed577e17baa74e3ac2219e2209a4ff80b"
+    },
+    {
+      "id": "AP-PROMOTION-001",
+      "version": 1,
+      "sha256": "d75780b1ee1dd658f32c80ff5edda5bff342212569029d0eb3bdc382f471d66e"
+    }
+  ],
+  "exceptions": [],
+  "overlay": {
+    "sha256": "bc9259b39146436878e6a5ad0c0678ff9e79a84dbbb9b73503427821f420a835"
+  }
+}
