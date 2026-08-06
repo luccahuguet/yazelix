@@ -478,7 +478,7 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
     let permissions = status_case.zellij_file("permissions.kdl");
     expect_contains_all! {
         &permissions, "runtime plugin permissions";
-        "third-party.wasm",
+        "\"third-party.wasm\" {\n    WebAccess\n}",
         "share/yazelix_zellij_popup/yzpp.wasm\" {",
         "share/yazelix_zellij_bar/zjstatus.wasm\" {",
         "share/yazelix_zellij_pane_orchestrator/yazelix_pane_orchestrator.wasm\" {",
