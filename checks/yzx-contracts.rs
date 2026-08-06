@@ -1524,6 +1524,7 @@ fn expect_zellij_config_sidecar(yzx: &Path) {
     let packaged_text = fs::read_to_string(&packaged_config).unwrap();
     assert!(packaged_text.contains("theme_dark \"ansi\""));
     assert!(packaged_text.contains("theme_light \"gruvbox-light\""));
+    assert!(packaged_text.contains("pane_frame_style \"full\""));
 
     let sidecar_config = "# { preserved comment\ntheme \"dracula\"\nfuture_label \"{opaque}\"\ntheme_dark \"custom-dark\"\nscroll_buffer_size 1234\npane_frames false\n";
     fs::write(&sidecar, sidecar_config).unwrap();
