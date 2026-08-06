@@ -121,14 +121,12 @@ fn seed_plugin_permissions(path: &Path) -> Result<(), AppError> {
     let mut additions = String::new();
     for (plugin, permissions) in grants {
         let header = format!("\"{plugin}\" {{");
-        let complete = current.match_indices(&header).any(|(start, _)| {
-            current[start + header.len()..]
-                .split_once('}')
-                .is_some_and(|(body, _)| {
-                    permissions
-                        .split_ascii_whitespace()
-                        .all(|permission| body.lines().any(|line| line.trim() == permission))
-                })
+        let complete = current.rsplit_once(&header).is_some_and(|(_, tail)| {
+            tail.split_once('}').is_some_and(|(body, _)| {
+                permissions
+                    .split_ascii_whitespace()
+                    .all(|permission| body.lines().any(|line| line.trim() == permission))
+            })
         });
         if !complete {
             additions.push_str(&format!(

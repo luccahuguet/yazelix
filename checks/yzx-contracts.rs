@@ -359,7 +359,7 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
     fs::write(
         status_case.zellij_path("permissions.kdl"),
         format!(
-            "\"{}\" {{\n}}\n\"third-party.wasm\" {{\n    WebAccess\n}}\n",
+            "\"{0}\" {{\n    ReadApplicationState\n    ChangeApplicationState\n    OpenTerminalsOrPlugins\n    RunCommands\n    ReadCliPipes\n}}\n\"{0}\" {{\n}}\n\"third-party.wasm\" {{\n    WebAccess\n}}\n",
             popup_wasm.display()
         ),
     )
@@ -487,11 +487,11 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
         "MessageAndLaunchOtherPlugins",
     }
     for (permission, count) in [
-        ("ReadApplicationState", 3),
-        ("ChangeApplicationState", 3),
-        ("RunCommands", 3),
-        ("OpenTerminalsOrPlugins", 2),
-        ("ReadCliPipes", 2),
+        ("ReadApplicationState", 4),
+        ("ChangeApplicationState", 4),
+        ("RunCommands", 4),
+        ("OpenTerminalsOrPlugins", 3),
+        ("ReadCliPipes", 3),
     ] {
         assert_eq!(
             permissions.matches(permission).count(),

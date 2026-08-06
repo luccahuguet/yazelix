@@ -9,11 +9,11 @@ User-visible runtime changes for Yazelix Nova live here.
   appearance selection, current-theme replay to late plugin subscribers, and
   three-island native status hints, plus a narrow permission-cache path seam.
   `yzx` pregrants only the exact packaged bar, popup, and pane-orchestrator
-  paths in Yazelix state, repairs incomplete grants, and preserves unrelated
-  plugin approvals there. Standalone Zellij's global cache and third-party
-  prompt policy remain untouched. The grouped status-bar source and embedded
-  plugin asset are synchronized. Main and Stable remain on their accepted
-  revisions until fresh-session dogfood accepts this candidate.
+  paths in Yazelix state, repairs an incomplete authoritative grant even after
+  older duplicates, and preserves unrelated plugin approvals there. Standalone
+  Zellij's global cache and third-party prompt policy remain untouched. The
+  grouped status-bar source and embedded plugin asset are synchronized. Main
+  and Stable remain on accepted revisions until fresh-session dogfood.
 - Managed Helix exposes its file and directory actions through Steel while the
   fork's bridge Rust retains only a bounded authenticated loopback TCP
   transport. Yazelix generates the token, atomically publishes the private
