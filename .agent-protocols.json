@@ -2,11 +2,12 @@
   "schema": 1,
   "source": {
     "repository": "https://github.com/luccahuguet/starcompass",
-    "commit": "83c8fa73744ff4fd15bc2f7c5f1978ca96756e06"
+    "commit": "95c29fa76a971726b65e1d1dc06c518d525c46a2"
   },
   "profiles": [
     "orchestrator",
-    "release"
+    "release",
+    "fork"
   ],
   "protocols": [
     {
@@ -16,18 +17,18 @@
     },
     {
       "id": "AP-CONTRACT-001",
-      "version": 1,
-      "sha256": "0aa692f4c52542111149b691b7d0c015a0c16523cd620a67b0cf335f3284da82"
+      "version": 2,
+      "sha256": "f8a3b323f95816ee6d56d136c2ad19c691860155a4e58f57a62a4fb4dfc78cbb"
     },
     {
       "id": "AP-REFERENCE-001",
-      "version": 1,
-      "sha256": "3d72ac864b050af7783493245be59450c39db940d736ea6fb60269cd21f7927b"
+      "version": 2,
+      "sha256": "ecb28af3796a9964dd98c037463a33b7444d9c39a0365783fb0e9ae9fc007b9c"
     },
     {
       "id": "AP-MINIMAL-001",
-      "version": 1,
-      "sha256": "256c158cc8b226e4baf96d5590531ea180edc9717338dac0fe51a34dd037791f"
+      "version": 2,
+      "sha256": "3f4ebb1ab87f50ed5c9f041fb60d94cc7ded264ab04e56413fd1da343baa38f3"
     },
     {
       "id": "AP-DEPENDENCY-001",
@@ -51,8 +52,8 @@
     },
     {
       "id": "AP-PLAN-001",
-      "version": 4,
-      "sha256": "5bc0426788693717e8af011277d9358c65899e839d7c0c71299003ec0d8acc4b"
+      "version": 6,
+      "sha256": "04b96c47978d49d2e6584f89626bca42b6cb39df537fa3e5abd6da0bdc2edfda"
     },
     {
       "id": "AP-CI-001",
@@ -93,6 +94,16 @@
       "id": "AP-PROMOTION-001",
       "version": 1,
       "sha256": "d75780b1ee1dd658f32c80ff5edda5bff342212569029d0eb3bdc382f471d66e"
+    },
+    {
+      "id": "AP-FORK-001",
+      "version": 1,
+      "sha256": "c8137dfbdc699c78cf7d8cd8a7dff7280b4013a84ed65c9234e7fb6511ca4563"
+    },
+    {
+      "id": "AP-FORK-002",
+      "version": 1,
+      "sha256": "d896c5c45cf1615da683fa7503365d8d58286d4b7198ffc49ef9b9a0631b9ef1"
     }
   ],
   "exceptions": [],
