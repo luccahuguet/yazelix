@@ -2,6 +2,8 @@ use std::{
     env,
     ffi::{OsStr, OsString},
     fmt::Display,
+    fs::{self, OpenOptions},
+    io::Write,
     path::{Path, PathBuf},
     process::{self, Command},
     time::{SystemTime, UNIX_EPOCH},
@@ -9,10 +11,11 @@ use std::{
 
 use crate::{
     AGENT_POPUP_KDL_CONFIG_PATH, CUSTOM_POPUP_KEYBINDINGS_KDL_CONFIG_PATH,
-    CUSTOM_POPUPS_KDL_CONFIG_PATH, MANAGED_KEYBINDING_SPECS, MARS, YZX_CONFIG, YZX_CONFIG_KDL,
+    CUSTOM_POPUPS_KDL_CONFIG_PATH, MANAGED_KEYBINDING_SPECS, MARS, YAZELIX_ZELLIJ_BAR_WASM,
+    YAZELIX_ZELLIJ_PANE_ORCHESTRATOR_WASM, YAZELIX_ZELLIJ_POPUP_WASM, YZX_CONFIG, YZX_CONFIG_KDL,
     YZX_EDITOR, YZX_HELIX, YZX_MARS_CONFIG, YZX_ZELLIJ_CONFIG, ZELLIJ,
     command::{create_dir_all_checked, run_checked, trim_output},
-    error::{AppError, startup},
+    error::{AppError, path_error, startup},
     paths::{config_home, home_dir, nonempty_env, parent, runtime_path, state_dir},
     yazi::YaziRuntime,
     zellij::{active_layout, active_zellij_config},
@@ -45,6 +48,8 @@ pub(crate) struct Runtime {
     pub(crate) zellij_status_cache: PathBuf,
     yazi: Option<YaziRuntime>,
 }
+
+const ZELLIJ_PERMISSIONS_FILE: &str = "zellij/permissions.kdl";
 
 pub(crate) struct ManagedKeybinding {
     pub(crate) label: &'static str,
@@ -83,6 +88,67 @@ fn read_managed_keybindings(
             })
         })
         .collect()
+}
+
+fn seed_plugin_permissions(path: &Path) -> Result<(), AppError> {
+    create_dir_all_checked(parent(path), path)?;
+    let current = match fs::read_to_string(path) {
+        Ok(current) => current,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => String::new(),
+        Err(error) => return Err(path_error("read", path, path, error)),
+    };
+    let grants = [
+        (
+            YAZELIX_ZELLIJ_POPUP_WASM,
+            concat!(
+                "ReadApplicationState ChangeApplicationState OpenTerminalsOrPlugins ",
+                "RunCommands ReadCliPipes",
+            ),
+        ),
+        (
+            YAZELIX_ZELLIJ_BAR_WASM,
+            "ReadApplicationState ChangeApplicationState RunCommands",
+        ),
+        (
+            YAZELIX_ZELLIJ_PANE_ORCHESTRATOR_WASM,
+            concat!(
+                "ReadApplicationState ChangeApplicationState OpenTerminalsOrPlugins ",
+                "RunCommands WriteToStdin ReadCliPipes MessageAndLaunchOtherPlugins ",
+                "ReadSessionEnvironmentVariables",
+            ),
+        ),
+    ];
+    let mut additions = String::new();
+    for (plugin, permissions) in grants {
+        let header = format!("\"{plugin}\" {{");
+        let complete = current.match_indices(&header).any(|(start, _)| {
+            current[start + header.len()..]
+                .split_once('}')
+                .is_some_and(|(body, _)| {
+                    permissions
+                        .split_ascii_whitespace()
+                        .all(|permission| body.lines().any(|line| line.trim() == permission))
+                })
+        });
+        if !complete {
+            additions.push_str(&format!(
+                "{header}\n    {}\n}}\n",
+                permissions.replace(' ', "\n    ")
+            ));
+        }
+    }
+    if additions.is_empty() {
+        return Ok(());
+    }
+    if !current.is_empty() && !current.ends_with('\n') {
+        additions.insert(0, '\n');
+    }
+    OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(path)
+        .and_then(|mut file| file.write_all(additions.as_bytes()))
+        .map_err(|error| path_error("write", path, path, error))
 }
 
 impl Runtime {
@@ -180,6 +246,7 @@ impl Runtime {
         )?;
         let zellij_status_cache = state_dir.join("zellij/session/status_bar_cache.json");
         create_dir_all_checked(parent(&zellij_status_cache), &zellij_status_cache)?;
+        seed_plugin_permissions(&state_dir.join(ZELLIJ_PERMISSIONS_FILE))?;
 
         Ok(Self {
             config_home,
@@ -228,6 +295,10 @@ impl Runtime {
                 &self.welcome_duration_seconds,
             )
             .env("YAZELIX_STATUS_BAR_CACHE_PATH", &self.zellij_status_cache)
+            .env(
+                "ZELLIJ_PLUGIN_PERMISSIONS_CACHE",
+                self.state_dir.join(ZELLIJ_PERMISSIONS_FILE),
+            )
             .env("YZX_MENU_YZX", yzx_menu_yzx)
             .env("YZX_ZELLIJ", ZELLIJ)
             .env("PATH", runtime_path());

@@ -4,10 +4,14 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## 1.0.0-beta.4
 
-- The Edge runtime uses the rebuilt Zellij 0.45 fork at `4505093c`. Upstream
+- The Edge runtime uses the rebuilt Zellij 0.45 fork at `cbfac12b`. Upstream
   owns native Kitty graphics; the Yazelix delta retains only explicit startup
   appearance selection, current-theme replay to late plugin subscribers, and
-  three-island native status hints. The grouped status-bar source and embedded
+  three-island native status hints, plus a narrow permission-cache path seam.
+  `yzx` pregrants only the exact packaged bar, popup, and pane-orchestrator
+  paths in Yazelix state, repairs incomplete grants, and preserves unrelated
+  plugin approvals there. Standalone Zellij's global cache and third-party
+  prompt policy remain untouched. The grouped status-bar source and embedded
   plugin asset are synchronized. Main and Stable remain on their accepted
   revisions until fresh-session dogfood accepts this candidate.
 - Managed Helix exposes its file and directory actions through Steel while the

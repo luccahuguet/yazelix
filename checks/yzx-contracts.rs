@@ -289,11 +289,13 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
     let yzx_launcher = binary_text(&yzx_bin);
     let menu_helper = embedded_store_path(&yzx_launcher, "/bin/yzx-menu");
     let zellij = embedded_store_path(&yzx_launcher, "/bin/zellij");
+    let popup_wasm = embedded_store_path(&yzx_launcher, "share/yazelix_zellij_popup/yzpp.wasm");
     expect_menu_dispatch(&menu_helper);
     expect_contains_all! {
         &yzx_launcher, "bin/yzx runtime fragment";
         "Yazelix Nova could not start.",
         "YAZELIX_STATUS_BAR_CACHE_PATH",
+        "ZELLIJ_PLUGIN_PERMISSIONS_CACHE",
         "YAZELIX_SESSION_TERMINAL",
         "YZX_WELCOME_ENABLED",
         "YZX_WELCOME_STYLE",
@@ -353,6 +355,15 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
     let temp = TempDir::new();
     let status_case = RuntimeCase::new(&temp.path, "status");
     let doctor_case = RuntimeCase::new(&temp.path, "doctor");
+    fs::create_dir_all(status_case.zellij_path("permissions.kdl").parent().unwrap()).unwrap();
+    fs::write(
+        status_case.zellij_path("permissions.kdl"),
+        format!(
+            "\"{}\" {{\n}}\n\"third-party.wasm\" {{\n    WebAccess\n}}\n",
+            popup_wasm.display()
+        ),
+    )
+    .unwrap();
     let status = status_case.run_yzx(&yzx_bin, "status", "yzx status");
     expect_contains_all! {
         &status, "yzx status";
@@ -464,6 +475,30 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
         !runtime_config.contains("__YZX_HOME__"),
         "runtime config kept the unresolved home cwd placeholder"
     );
+    let permissions = status_case.zellij_file("permissions.kdl");
+    expect_contains_all! {
+        &permissions, "runtime plugin permissions";
+        "third-party.wasm",
+        "share/yazelix_zellij_popup/yzpp.wasm\" {",
+        "share/yazelix_zellij_bar/zjstatus.wasm\" {",
+        "share/yazelix_zellij_pane_orchestrator/yazelix_pane_orchestrator.wasm\" {",
+        "WriteToStdin",
+        "ReadSessionEnvironmentVariables",
+        "MessageAndLaunchOtherPlugins",
+    }
+    for (permission, count) in [
+        ("ReadApplicationState", 3),
+        ("ChangeApplicationState", 3),
+        ("RunCommands", 3),
+        ("OpenTerminalsOrPlugins", 2),
+        ("ReadCliPipes", 2),
+    ] {
+        assert_eq!(
+            permissions.matches(permission).count(),
+            count,
+            "runtime plugin permissions have the wrong {permission} grants\n{permissions}"
+        );
+    }
     let custom_popup = RuntimeCase::new(&temp.path, "custom-popup");
     custom_popup.write_default_config("\n[popup]\nside_margin = 2\nvertical_margin = 1\n");
     let status = custom_popup.run_yzx(&yzx_bin, "status", "custom popup status");

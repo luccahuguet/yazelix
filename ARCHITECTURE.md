@@ -374,7 +374,7 @@ Owned by `runtime/yzx/` (Nix substitutes paths; Rust owns wiring and `exec`).
 3. Config home: `YAZELIX_CONFIG_HOME` → `XDG_CONFIG_HOME/yazelix` → `~/.config/yazelix`
 4. Root settings → env and launch args (`YZX_OPEN_LOG`, welcome, Zellij theme mode, popup chords/custom KDL, bar tray)
 5. Mars packaged base + sparse user config homes
-6. Zellij materialize (sidecar + patches) + status-bar cache path + plugin permission seeds  
+6. Zellij materialize (sidecar + patches) + status-bar cache path + isolated exact bundled-plugin permission seeds
 
 Pre-`exec` failures → Yazelix diagnostics.  
 After `exec` → Mars / Zellij / child tool.
