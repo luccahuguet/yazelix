@@ -6,7 +6,8 @@ User-visible runtime changes for Yazelix Nova live here.
 
 - `pane_frames true` renders complete pane borders with the rebuilt Zellij.
   Yazelix selects upstream's native `full` frame style while preserving
-  `pane_frames false` as the frame-free setting.
+  `pane_frames false` as the frame-free setting. Stacked work panes retain
+  their compact layout instead of using Zellij 0.45's pane-list presentation.
 - The Edge runtime uses the rebuilt Zellij 0.45 fork at `111eb8a0`. Upstream
   owns native Kitty image storage, placement, rendering, and lifecycle. The
   fork translates Yazi's current `U=1` Unicode-placeholder stream into those

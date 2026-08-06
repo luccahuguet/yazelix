@@ -1,6 +1,7 @@
 default_shell "@yzxShell@"
 support_kitty_keyboard_protocol true
 pane_frame_style "full"
+stacked_pane_list false
 theme_dark "ansi"
 theme_light "gruvbox-light"
 
