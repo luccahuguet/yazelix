@@ -32,14 +32,14 @@ composes their package outputs.
 
 | Measure | Nova | Classic |
 | --- | --- | --- |
-| Code and configuration (Rust, Nix, shell, TOML, etc.) | **23,180 LOC** | **91,545 LOC** |
+| Code and configuration (Rust, Nix, shell, TOML, etc.) | **23,186 LOC** | **91,545 LOC** |
 | Rust | **19,791 LOC** | **80,957 LOC** |
 | Ownership model | One owner per concern | Overlapping responsibilities across layers |
 | Yazelix component boundaries | Independent, versioned packages | Child repos mixed with main-repo ownership |
 | Product experience | More features, stronger defaults, tighter integration, and polished UX | Fewer features and a less cohesive workspace |
 | Status | Recommended | Frozen migration and rollback path |
 
-Nova owns **68,365 fewer lines**, a **75% reduction**. Classic's Rust code
+Nova owns **68,359 fewer lines**, a **75% reduction**. Classic's Rust code
 alone is 3.5 times larger than Nova's entire code and configuration surface.
 
 Nova delivers more features in 25% of the code. It has a clearer configuration
@@ -255,7 +255,7 @@ Yazelix assembles focused first-party forks, plugins, libraries, and commands:
 | Component | Yazelix role |
 | --- | --- |
 | [Mars](https://github.com/luccahuguet/mars) | GUI terminal used by `yzx launch`, with Kitty graphics, cursor shaders, and Yazelix session integration |
-| [Yazelix Zellij](https://github.com/luccahuguet/yazelix-zellij) | Multiplexer fork with Kitty graphics passthrough and managed runtime appearance switching |
+| [Yazelix Zellij](https://github.com/luccahuguet/yazelix-zellij) | Multiplexer fork based on upstream native Kitty graphics with managed runtime appearance switching and three-island status hints |
 | [Yazelix Helix](https://github.com/luccahuguet/yazelix-helix) | Steel-enabled editor fork with isolated configuration and explicit workspace bridge hooks |
 | [Yazelix Zellij Pane Orchestrator](https://github.com/luccahuguet/yazelix-zellij-pane-orchestrator) | Zellij plugin that owns tab-local workspace roots and coordinates panes, focus, popups, the editor, and agent activity |
 | [Yazelix Zellij Popup](https://github.com/luccahuguet/yazelix-zellij-popup) | Zellij plugin that opens, focuses, hides, and closes configured floating TUI panes |
@@ -359,6 +359,6 @@ See [Development](docs/development.md) for CI and local checks,
 
 ## LOC Scorecard
 
-Yazelix owns **26,836 lines** of tracked text project files. The
+Yazelix owns **26,847 lines** of tracked text project files. The
 [reproducible scorecard](docs/development.md#loc-scorecard) excludes Beads,
 lockfiles, and binary assets.

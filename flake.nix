@@ -23,7 +23,7 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     yazelixZellij = {
-      url = "github:luccahuguet/yazelix-zellij/yazelix_kgp_preview";
+      url = "github:luccahuguet/yazelix-zellij/ffde154f32941e6dc0b4d943c04100037ccb5ac6";
       flake = false;
     };
     yazelixHelix = {
@@ -441,20 +441,26 @@
         assert zellijBuildBase.version == "0.44.3";
         zellijBuildBase.overrideAttrs (_old: {
         pname = "zellij";
-        version = "0.44.3";
+        version = "0.45.0";
         src = yazelixZellij;
         patches = [];
         prePatch = "";
         postPatch = "";
+        postInstall = pkgs.lib.optionalString (pkgs.stdenv.buildPlatform.canExecute pkgs.stdenv.hostPlatform) ''
+          installShellCompletion --cmd zellij \
+            --bash <($out/bin/zellij setup --generate-completion bash) \
+            --fish <($out/bin/zellij setup --generate-completion fish) \
+            --zsh <($out/bin/zellij setup --generate-completion zsh)
+        '';
         installCheckPhase = ''
           runHook preInstallCheck
           runHook postInstallCheck
         '';
         cargoDeps = pkgs.rustPlatform.fetchCargoVendor {
           pname = "zellij";
-          version = "0.44.3";
+          version = "0.45.0";
           src = yazelixZellij;
-          hash = "sha256-966FpfSsF9I10SrYe3+YNsfM2kLLv+gd0/Aw8vLp4Lk=";
+          hash = "sha256-9vpdDkr4zxS2NJu3/ZUvBGqs9VLlJLJSP2Bw88E1mdA=";
         };
         doCheck = false;
       });
