@@ -23,7 +23,7 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     yazelixZellij = {
-      url = "github:luccahuguet/yazelix-zellij/cbfac12bd59916644ad49bb0575d457c9f616ce6";
+      url = "github:luccahuguet/yazelix-zellij/f84d5c20f91b5f2b61fe4faee75ab37dd195cd57";
       flake = false;
     };
     yazelixHelix = {

@@ -4,10 +4,14 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## 1.0.0-beta.4
 
-- The Edge runtime uses the rebuilt Zellij 0.45 fork at `cbfac12b`. Upstream
-  owns native Kitty graphics; the Yazelix delta retains only explicit startup
-  appearance selection, current-theme replay to late plugin subscribers, and
-  three-island native status hints, plus a narrow permission-cache path seam.
+- The Edge runtime uses the rebuilt Zellij 0.45 fork at `f84d5c20`. Upstream
+  owns native Kitty image storage, placement, rendering, and lifecycle. The
+  fork translates Yazi's current `U=1` Unicode-placeholder stream into those
+  native placements, preventing placeholder glyphs and image fragments from
+  leaking across panes while scrolling. The remaining Yazelix delta retains
+  only explicit startup appearance selection, current-theme replay to late
+  plugin subscribers, three-island native status hints, and a narrow
+  permission-cache path seam.
   `yzx` pregrants only the exact packaged bar, popup, and pane-orchestrator
   paths in Yazelix state, repairs an incomplete authoritative grant even after
   older duplicates, and preserves unrelated plugin approvals there. Standalone
