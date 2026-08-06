@@ -243,9 +243,11 @@ A-r = ':sh yzx reveal "%{buffer_name}"'
 ```
 
 `helix/languages.toml` is loaded by the managed Helix config dir when present.
-`helix/helix.scm` and `helix/init.scm` load through `HELIX_STEEL_CONFIG` once
-both files exist. The packaged Steel module provides `:yzx-new-shell`, which
-opens a new Yazelix terminal pane at the current file directory or workspace.
+`helix/helix.scm` and `helix/init.scm` load through a private
+`HELIX_STEEL_CONFIG` overlay once both files exist. The overlay keeps the user
+command module and init while retaining the packaged bridge startup. Without a
+user Steel pair, the packaged module provides `:yzx-new-shell`, which opens a
+new Yazelix terminal pane at the current file directory or workspace.
 
 ## Tab Workspace
 

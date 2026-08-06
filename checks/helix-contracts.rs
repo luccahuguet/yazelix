@@ -1,4 +1,4 @@
-use std::{env, fs, path::Path, process::Command};
+use std::{env, fs, os::unix::fs::PermissionsExt, path::Path, process::Command};
 
 mod support;
 
@@ -77,7 +77,91 @@ fn expect_helix_wrapper(helix: &Path) {
         "dirname -- \"$target\"",
     }
 
+    let helix_init = fs::read_to_string(helix_steel.join("init.scm")).unwrap();
+    expect_contains_all! {
+        &helix_init, "packaged Helix Steel init";
+        "yzx-helix-start",
+        "transport-local-addr",
+        "/share/yazelix-helix/steel/yazelix/bridge.scm",
+        "/bin/yzx-helix-register",
+        "YAZELIX_HELIX_USER_STEEL_INIT",
+        "(load yzx-user-init)",
+    }
+    expect_bridge_registry_publisher(&embedded_store_path(&helix_init, "/bin/yzx-helix-register"));
+
     expect_helix_wrapper_config_selection(&helix_script);
+}
+
+fn expect_bridge_registry_publisher(publisher: &Path) {
+    let temp = TempDir::new();
+    let publisher_command = |endpoint: &str, session_id: &str, instance_id: &str| {
+        let mut command = Command::new(publisher);
+        command
+            .arg(endpoint)
+            .env("YAZELIX_STATE_DIR", &temp.path)
+            .env("YAZELIX_HELIX_BRIDGE_SESSION_ID", session_id)
+            .env("YAZELIX_HELIX_BRIDGE_INSTANCE_ID", instance_id)
+            .env("YAZELIX_HELIX_BRIDGE_AUTH_TOKEN", "secret");
+        command
+    };
+    let output = publisher_command("127.0.0.1:4567", "test-session", "hx-test")
+        .env("YAZELIX_HELIX_MANAGED_CONFIG_PATH", "/config.toml")
+        .env("ZELLIJ_SESSION_NAME", "zellij-test")
+        .env("ZELLIJ_TAB_POSITION", "2")
+        .env("ZELLIJ_PANE_ID", "terminal:7")
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "bridge registry publisher failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let bridge_dir = temp.path.join("helix_bridge/test-session");
+    let token_path = bridge_dir.join("hx-test.token");
+    let registry_path = bridge_dir.join("hx-test.json");
+    assert_eq!(fs::read_to_string(&token_path).unwrap(), "secret");
+    assert_eq!(
+        fs::metadata(&bridge_dir).unwrap().permissions().mode() & 0o777,
+        0o700
+    );
+    for path in [&token_path, &registry_path] {
+        assert_eq!(
+            fs::metadata(path).unwrap().permissions().mode() & 0o777,
+            0o600
+        );
+    }
+
+    let registry = fs::read_to_string(registry_path).unwrap();
+    expect_contains_all! {
+        &registry, "published Helix bridge registry";
+        "\"schema_version\": 2",
+        "\"session_id\": \"test-session\"",
+        "\"instance_id\": \"hx-test\"",
+        "\"kind\": \"tcp\"",
+        "\"addr\": \"127.0.0.1:4567\"",
+        token_path.display().to_string(),
+        "\"zellij_session_name\": \"zellij-test\"",
+        "\"zellij_tab_position\": \"2\"",
+        "\"zellij_pane_id\": \"terminal:7\"",
+        "\"managed_config_path\": \"/config.toml\"",
+    }
+
+    let rejected = publisher_command("0.0.0.0:4567", "test-session", "hx-rejected")
+        .output()
+        .unwrap();
+    assert!(
+        !rejected.status.success(),
+        "publisher accepted a non-loopback address"
+    );
+
+    let traversal = publisher_command("127.0.0.1:4567", "..", "hx-escaped")
+        .output()
+        .unwrap();
+    assert!(
+        !traversal.status.success(),
+        "publisher accepted a path-traversing session ID"
+    );
 }
 
 fn expect_helix_doctor_warnings(yzx: &Path) {
@@ -129,6 +213,7 @@ fn expect_helix_doctor_warnings(yzx: &Path) {
 fn expect_helix_wrapper_config_selection(helix_script: &str) {
     const FAKE_HX: &str = "#!/bin/sh\n\
 printf 'HELIX_STEEL_CONFIG=%s\\n' \"${HELIX_STEEL_CONFIG-}\" > \"$YZX_FAKE_HX_OUT\"\n\
+printf 'YAZELIX_HELIX_USER_STEEL_INIT=%s\\n' \"${YAZELIX_HELIX_USER_STEEL_INIT-}\" >> \"$YZX_FAKE_HX_OUT\"\n\
 printf 'YAZELIX_HELIX_MANAGED_CONFIG_PATH=%s\\n' \"$YAZELIX_HELIX_MANAGED_CONFIG_PATH\" >> \"$YZX_FAKE_HX_OUT\"\n\
 for arg do printf 'arg=%s\\n' \"$arg\" >> \"$YZX_FAKE_HX_OUT\"; done\n";
 
@@ -202,24 +287,42 @@ fn expect_helix_wrapper_case(
         helix.clone()
     };
     let expected_config_file = state.join("helix/config.toml");
-    let expected_steel_dir = if files.is_empty() {
-        Some(packaged_steel.to_path_buf())
-    } else if uses_user_steel {
-        Some(helix)
+    let expected_steel_dir = if uses_user_steel {
+        state.join("helix-steel")
     } else {
-        Some(state.join("helix-steel"))
+        packaged_steel.to_path_buf()
     };
     expect_helix_wrapper_output(
         &output,
         &expected_config_dir,
         &expected_config_file,
-        expected_steel_dir.as_deref(),
+        &expected_steel_dir,
         &format!("{name} Helix config selection"),
     );
-    if let Some(steel_dir) = expected_steel_dir.filter(|_| !uses_user_steel) {
-        assert!(
-            steel_dir.is_dir(),
-            "{name} Helix config should create the internal Steel fallback dir"
+    assert!(
+        expected_steel_dir.is_dir(),
+        "{name} Helix config should select an existing Steel directory"
+    );
+    let expected_user_init = if uses_user_steel {
+        helix.join("init.scm").display().to_string()
+    } else {
+        String::new()
+    };
+    assert!(
+        output.contains(&format!(
+            "YAZELIX_HELIX_USER_STEEL_INIT={expected_user_init}\n"
+        )),
+        "{name} Helix config selected the wrong user Steel init\n{}",
+        excerpt(&output)
+    );
+    if uses_user_steel {
+        assert_eq!(
+            fs::canonicalize(expected_steel_dir.join("helix.scm")).unwrap(),
+            fs::canonicalize(helix.join("helix.scm")).unwrap()
+        );
+        assert_eq!(
+            fs::canonicalize(expected_steel_dir.join("init.scm")).unwrap(),
+            fs::canonicalize(packaged_steel.join("init.scm")).unwrap()
         );
     }
     let generated_config = fs::read_to_string(&expected_config_file).unwrap();
@@ -253,6 +356,7 @@ fn run_helix_wrapper(
         .env("YAZELIX_CONFIG_HOME", config_home)
         .env("YAZELIX_STATE_DIR", state_dir)
         .env("YZX_FAKE_HX_OUT", output_path)
+        .env("YAZELIX_HELIX_USER_STEEL_INIT", "/ambient/init.scm")
         .env_remove("HELIX_STEEL_CONFIG")
         .env_remove("YAZELIX_HELIX_MANAGED_CONFIG_PATH")
         .output()
@@ -270,15 +374,10 @@ fn expect_helix_wrapper_output(
     output: &str,
     config_dir: &Path,
     config_file: &Path,
-    steel_dir: Option<&Path>,
+    steel_dir: &Path,
     context: &str,
 ) {
-    let steel_line = format!(
-        "HELIX_STEEL_CONFIG={}\n",
-        steel_dir
-            .map(|path| path.display().to_string())
-            .unwrap_or_default()
-    );
+    let steel_line = format!("HELIX_STEEL_CONFIG={}\n", steel_dir.display());
     let managed_line = format!(
         "YAZELIX_HELIX_MANAGED_CONFIG_PATH={}",
         config_file.display()

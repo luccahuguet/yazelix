@@ -27,7 +27,7 @@
       flake = false;
     };
     yazelixHelix = {
-      url = "github:luccahuguet/yazelix-helix";
+      url = "github:luccahuguet/yazelix-helix/7e6cd307d00783c16ad4cff99ed71936d34f6572";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     yazelixZellijPopup = {
@@ -222,6 +222,7 @@
       };
       yzxZellijConfig = rustBin "yzx-zellij-config" ./runtime/yzx-zellij-config.rs;
       yazelixHelixPackage = yazelixHelix.packages.${system}.yazelix_helix;
+      yazelixHelixSteelPackage = yazelixHelix.packages.${system}.yazelix_helix_steel;
       yzxHelixConfig = pkgs.writeTextDir "config.toml" (builtins.readFile ./defaults/helix/config.toml);
       yzxOpenTerminal = pkgs.writeShellApplication {
         name = "yzx-open-terminal";
@@ -238,6 +239,86 @@
           fi
           exec ${yazelixZellijPackage}/bin/zellij action new-pane --cwd "$cwd"
         '';
+      };
+      yzxHelixBridgeRegister = pkgs.writeShellApplication {
+        name = "yzx-helix-register";
+        runtimeInputs = [pkgs.coreutils pkgs.jq];
+        text = ''
+          if [ "$#" -ne 1 ]; then
+            printf '%s\n' 'usage: yzx-helix-register <loopback-address>' >&2
+            exit 64
+          fi
+
+          state_dir="''${YAZELIX_STATE_DIR:?YAZELIX_STATE_DIR is required}"
+          session_id="''${YAZELIX_HELIX_BRIDGE_SESSION_ID:?YAZELIX_HELIX_BRIDGE_SESSION_ID is required}"
+          instance_id="''${YAZELIX_HELIX_BRIDGE_INSTANCE_ID:?YAZELIX_HELIX_BRIDGE_INSTANCE_ID is required}"
+          auth_token="''${YAZELIX_HELIX_BRIDGE_AUTH_TOKEN:?YAZELIX_HELIX_BRIDGE_AUTH_TOKEN is required}"
+          endpoint="$1"
+
+          if [[ ! "$endpoint" =~ ^127\.0\.0\.1:([0-9]+)$ ]] ||
+            (( 10#''${BASH_REMATCH[1]} < 1 || 10#''${BASH_REMATCH[1]} > 65535 )); then
+            printf '%s\n' 'bridge address must be an IPv4 loopback endpoint with a valid port' >&2
+            exit 64
+          fi
+
+          validate_id() {
+            case "$2" in
+              ""|"."|".."|*[!A-Za-z0-9._-]*)
+                printf '%s must be a safe path component using only ASCII letters, numbers, dots, hyphens, and underscores\n' "$1" >&2
+                exit 64
+                ;;
+            esac
+          }
+          validate_id YAZELIX_HELIX_BRIDGE_SESSION_ID "$session_id"
+          validate_id YAZELIX_HELIX_BRIDGE_INSTANCE_ID "$instance_id"
+
+          umask 077
+          bridge_dir="$state_dir/helix_bridge/$session_id"
+          token_path="$bridge_dir/$instance_id.token"
+          registry_path="$bridge_dir/$instance_id.json"
+          token_tmp="$token_path.tmp.$$"
+          registry_tmp="$registry_path.tmp.$$"
+          trap 'rm -f "$token_tmp" "$registry_tmp"' EXIT
+
+          mkdir -p "$bridge_dir"
+          chmod 700 "$bridge_dir"
+          printf %s "$auth_token" > "$token_tmp"
+          chmod 600 "$token_tmp"
+          mv -f "$token_tmp" "$token_path"
+
+          jq -n \
+            --arg session_id "$session_id" \
+            --arg instance_id "$instance_id" \
+            --arg addr "$endpoint" \
+            --arg auth_token_path "$token_path" \
+            --argjson pid "$PPID" \
+            --arg zellij_session_name "''${ZELLIJ_SESSION_NAME:-}" \
+            --arg zellij_tab_position "''${ZELLIJ_TAB_POSITION:-}" \
+            --arg zellij_pane_id "''${ZELLIJ_PANE_ID:-}" \
+            --argjson started_at_unix_ms "$(date +%s%3N)" \
+            --arg managed_config_path "''${YAZELIX_HELIX_MANAGED_CONFIG_PATH:-}" \
+            'def optional: if . == "" then null else . end;
+             {
+               schema_version: 2,
+               session_id: $session_id,
+               instance_id: $instance_id,
+               transport: {kind: "tcp", addr: $addr},
+               auth_token_path: $auth_token_path,
+               pid: $pid,
+               zellij_session_name: ($zellij_session_name | optional),
+               zellij_tab_position: ($zellij_tab_position | optional),
+               zellij_pane_id: ($zellij_pane_id | optional),
+               started_at_unix_ms: $started_at_unix_ms,
+               managed_config_path: ($managed_config_path | optional)
+             }' > "$registry_tmp"
+          chmod 600 "$registry_tmp"
+          mv -f "$registry_tmp" "$registry_path"
+          trap - EXIT
+        '';
+      };
+      yzxHelixInit = pkgs.replaceVars ./runtime/yzx-helix-init.scm {
+        bridgeModule = "${yazelixHelixSteelPackage}/share/yazelix-helix/steel/yazelix/bridge.scm";
+        bridgeRegister = "${yzxHelixBridgeRegister}/bin/yzx-helix-register";
       };
       yzxHelixSteelConfig = pkgs.runCommand "yzx-helix-steel-config" {} ''
         mkdir -p "$out"
@@ -274,13 +355,12 @@
               [else
                (set-error! "Yazelix could not resolve a target path for opening a shell")])))
         EOF
-        cat > "$out/init.scm" <<'EOF'
-        ;; Yazelix Nova packaged Steel init.
-        EOF
+        install -m 0444 ${yzxHelixInit} "$out/init.scm"
       '';
       yzxHelixSrc = pkgs.replaceVars ./runtime/yzx-helix.sh {
         date = "${pkgs.coreutils}/bin/date";
         hx = "${yazelixHelixPackage}/bin/hx";
+        ln = "${pkgs.coreutils}/bin/ln";
         mkdir = "${pkgs.coreutils}/bin/mkdir";
         od = "${pkgs.coreutils}/bin/od";
         tr = "${pkgs.coreutils}/bin/tr";

@@ -5,13 +5,13 @@ use std::{
     env,
     ffi::{OsStr, OsString},
     fs::{self, OpenOptions},
-    io::{BufRead, BufReader, Write},
+    io::{BufRead, BufReader, Read, Write},
+    net::{SocketAddr, TcpStream},
     os::unix::ffi::OsStrExt,
-    os::unix::fs::{FileTypeExt, PermissionsExt},
-    os::unix::net::UnixStream,
+    os::unix::fs::PermissionsExt,
     path::{Path, PathBuf},
     process::{Command, ExitCode, Output},
-    time::{SystemTime, UNIX_EPOCH},
+    time::{Duration, SystemTime, UNIX_EPOCH},
 };
 use yzx_open::sidebar::{
     Config as OrchestratorConfig, SidebarYaziState, optional_sidebar_yazi_state, orchestrator_pipe,
@@ -47,7 +47,15 @@ struct Registry {
 
 #[derive(Debug, Deserialize)]
 struct Transport {
-    path: PathBuf,
+    #[serde(rename = "kind")]
+    _kind: TransportKind,
+    addr: SocketAddr,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum TransportKind {
+    Tcp,
 }
 
 #[derive(Debug, Deserialize)]
@@ -67,12 +75,15 @@ struct PaneId {
 
 #[derive(Debug, Deserialize)]
 struct BridgeResponse {
+    schema_version: u64,
+    request_id: String,
     status: String,
     error: Option<BridgeResponseError>,
 }
 
 #[derive(Debug, Deserialize)]
 struct BridgeResponseError {
+    class: String,
     message: String,
 }
 
@@ -128,6 +139,8 @@ enum LogLevel {
 }
 
 const LOG_MAX_BYTES: u64 = 64 * 1024;
+const BRIDGE_SCHEMA_VERSION: u64 = 2;
+const BRIDGE_MAX_FRAME_BYTES: usize = 64 * 1024;
 const ZELLIJ_SESSION_NAME_ENV: &str = "ZELLIJ_SESSION_NAME";
 const YAZELIX_ZELLIJ_SESSION_NAME_ENV: &str = "YAZELIX_ZELLIJ_SESSION_NAME";
 
@@ -271,6 +284,7 @@ fn try_bridge(config: &Config, targets: &[PathBuf], working_dir: &Path) -> Resul
         return Ok(false);
     };
     let current_tab_panes = current_tab_panes(config);
+    let mut candidates = Vec::new();
 
     for entry in entries.flatten() {
         let path = entry.path();
@@ -290,7 +304,7 @@ fn try_bridge(config: &Config, targets: &[PathBuf], working_dir: &Path) -> Resul
                 continue;
             }
         };
-        if registry.schema_version != 2 {
+        if registry.schema_version != BRIDGE_SCHEMA_VERSION {
             log_debug(
                 config,
                 &format!(
@@ -327,15 +341,21 @@ fn try_bridge(config: &Config, targets: &[PathBuf], working_dir: &Path) -> Resul
             );
             continue;
         }
-        if !registry.is_live() {
+        if !registry.is_eligible() {
             log_debug(
                 config,
-                &format!("bridge skipped stale registry={}", path.display()),
+                &format!("bridge skipped unusable registry={}", path.display()),
             );
             continue;
         }
+        candidates.push((path, registry));
+    }
 
-        if let Some(pane_id) = &registry.zellij_pane_id {
+    candidates.sort_by_key(|(_, registry)| !registry.is_current_pane(config));
+    for (path, registry) in candidates {
+        if let Some(pane_id) = &registry.zellij_pane_id
+            && !registry.is_current_pane(config)
+        {
             log_debug(
                 config,
                 &format!(
@@ -365,7 +385,7 @@ fn try_bridge(config: &Config, targets: &[PathBuf], working_dir: &Path) -> Resul
         );
 
         match send_bridge_request(
-            &registry.transport.path,
+            &registry.transport,
             &registry.auth_token_path,
             action,
             payload,
@@ -378,7 +398,7 @@ fn try_bridge(config: &Config, targets: &[PathBuf], working_dir: &Path) -> Resul
                         action, registry.zellij_pane_id
                     ),
                 );
-                log_debug(config, &format!("bridge ok response={}", response.trim()));
+                log_debug(config, &format!("bridge ok response={response}"));
                 return Ok(true);
             }
             Err(BridgeSendError::Unavailable) => {
@@ -418,9 +438,21 @@ impl Registry {
             }
     }
 
-    fn is_live(&self) -> bool {
-        fs::metadata(&self.transport.path).is_ok_and(|metadata| metadata.file_type().is_socket())
-            && self.auth_token_path.is_file()
+    fn is_eligible(&self) -> bool {
+        self.transport.addr.ip().is_loopback() && self.auth_token_path.is_file()
+    }
+
+    fn is_current_pane(&self, config: &Config) -> bool {
+        config
+            .zellij_pane_id
+            .as_deref()
+            .and_then(parse_zellij_pane_id)
+            .is_some_and(|current| {
+                self.zellij_pane_id
+                    .as_deref()
+                    .and_then(parse_zellij_pane_id)
+                    == Some(current)
+            })
     }
 
     fn in_current_tab(
@@ -479,16 +511,24 @@ impl PaneListEntry {
 }
 
 fn send_bridge_request(
-    socket_path: &Path,
+    transport: &Transport,
     token_path: &Path,
     action: &'static str,
     payload: Value,
 ) -> std::result::Result<String, BridgeSendError> {
     let token = fs::read_to_string(token_path).map_err(|_| BridgeSendError::Unavailable)?;
-    let mut stream = UnixStream::connect(socket_path).map_err(|_| BridgeSendError::Unavailable)?;
+    let mut stream =
+        TcpStream::connect(transport.addr).map_err(|_| BridgeSendError::Unavailable)?;
+    stream
+        .set_read_timeout(Some(Duration::from_secs(6)))
+        .map_err(|_| BridgeSendError::Unavailable)?;
+    stream
+        .set_write_timeout(Some(Duration::from_secs(5)))
+        .map_err(|_| BridgeSendError::Unavailable)?;
+    let request_id = format!("yzx-open-{}-{}", unix_millis(), std::process::id());
     let request = json!({
-        "schema_version": 2,
-        "request_id": format!("yzx-open-{}-{}", unix_millis(), std::process::id()),
+        "schema_version": BRIDGE_SCHEMA_VERSION,
+        "request_id": &request_id,
         "auth_token": token.trim(),
         "action": action,
         "timeout_ms": 5000,
@@ -497,15 +537,30 @@ fn send_bridge_request(
     writeln!(stream, "{request}").map_err(|_| BridgeSendError::Unavailable)?;
 
     let mut response_raw = String::new();
-    BufReader::new(stream)
+    let mut reader = BufReader::new(stream).take((BRIDGE_MAX_FRAME_BYTES + 1) as u64);
+    let bytes_read = reader
         .read_line(&mut response_raw)
         .map_err(|_| BridgeSendError::Unavailable)?;
-    let response = serde_json::from_str::<BridgeResponse>(&response_raw).map_err(|error| {
-        BridgeSendError::Rejected(format!("Helix bridge returned invalid JSON: {error}"))
-    })?;
+    if bytes_read == 0 || bytes_read > BRIDGE_MAX_FRAME_BYTES || !response_raw.ends_with('\n') {
+        return Err(BridgeSendError::Unavailable);
+    }
+    let response = serde_json::from_str::<BridgeResponse>(&response_raw)
+        .map_err(|_| BridgeSendError::Unavailable)?;
+    if response.schema_version != BRIDGE_SCHEMA_VERSION
+        || response.request_id != request_id
+        || !matches!(response.status.as_str(), "ok" | "error")
+    {
+        return Err(BridgeSendError::Unavailable);
+    }
 
     if response.status == "ok" {
         Ok(response_raw.trim().to_string())
+    } else if response
+        .error
+        .as_ref()
+        .is_some_and(|error| error.class == "unauthorized")
+    {
+        Err(BridgeSendError::Unavailable)
     } else {
         Err(BridgeSendError::Rejected(
             response
@@ -844,8 +899,13 @@ fn log_debug(config: &Config, message: &str) {
 }
 
 fn bridge_session_id(raw: Option<String>) -> String {
-    raw.filter(|id| !id.trim().is_empty())
-        .unwrap_or_else(|| format!("yzx-open-{}-{}", unix_millis(), std::process::id()))
+    raw.filter(|id| {
+        !matches!(id.as_str(), "" | "." | "..")
+            && id
+                .bytes()
+                .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'.' | b'_' | b'-'))
+    })
+    .unwrap_or_else(|| format!("yzx-open-{}-{}", unix_millis(), std::process::id()))
 }
 
 fn zellij_session_name_from_env() -> Option<String> {
@@ -942,7 +1002,7 @@ mod tests {
     use super::*;
     use crate::test_support::{TestDir, write_executable};
     use std::sync::{Mutex, MutexGuard};
-    use std::{os::unix::net::UnixListener, thread};
+    use std::{net::TcpListener, thread};
 
     static TEST_RUNTIME_LOCK: Mutex<()> = Mutex::new(());
 
@@ -1062,21 +1122,22 @@ fi
 
         fn write_registry(
             &self,
+            instance_id: &str,
             session_id: &str,
             zellij_session_name: Option<&str>,
             zellij_pane_id: Option<&str>,
-        ) -> (PathBuf, PathBuf) {
+        ) -> (TcpListener, PathBuf) {
             let bridge_dir = self.root.join("helix_bridge").join(session_id);
             fs::create_dir_all(&bridge_dir).unwrap();
-            let socket_path = bridge_dir.join("inst.sock");
-            let token_path = bridge_dir.join("inst.token");
+            let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+            let token_path = bridge_dir.join(format!("{instance_id}.token"));
             fs::write(&token_path, "secret").unwrap();
             fs::write(
-                bridge_dir.join("inst.json"),
+                bridge_dir.join(format!("{instance_id}.json")),
                 json!({
                     "schema_version": 2,
                     "session_id": session_id,
-                    "transport": { "kind": "unix_socket", "path": &socket_path },
+                    "transport": { "kind": "tcp", "addr": listener.local_addr().unwrap() },
                     "auth_token_path": &token_path,
                     "zellij_session_name": zellij_session_name,
                     "zellij_pane_id": zellij_pane_id,
@@ -1084,7 +1145,10 @@ fi
                 .to_string(),
             )
             .unwrap();
-            (socket_path, bridge_dir.join("request.json"))
+            (
+                listener,
+                bridge_dir.join(format!("{instance_id}.request.json")),
+            )
         }
 
         fn zellij_log(&self) -> String {
@@ -1114,16 +1178,21 @@ fi
         run(config, [target.into_os_string()])
     }
 
-    fn spawn_ok_bridge(socket_path: &Path, request_path: PathBuf) -> thread::JoinHandle<()> {
-        let listener = UnixListener::bind(socket_path).unwrap();
+    fn spawn_ok_bridge(listener: TcpListener, request_path: PathBuf) -> thread::JoinHandle<()> {
         thread::spawn(move || {
             let (mut stream, _) = listener.accept().unwrap();
             let mut request = String::new();
             BufReader::new(&mut stream).read_line(&mut request).unwrap();
-            fs::write(request_path, request).unwrap();
+            fs::write(&request_path, &request).unwrap();
+            let request = serde_json::from_str::<Value>(&request).unwrap();
             writeln!(
                 stream,
-                r#"{{"schema_version":2,"request_id":"r","status":"ok"}}"#
+                "{}",
+                json!({
+                    "schema_version": 2,
+                    "request_id": request["request_id"],
+                    "status": "ok",
+                })
             )
             .unwrap();
         })
@@ -1173,7 +1242,12 @@ fi
         assert_eq!(bridge_session_id(Some("window-id".into())), "window-id");
         let fallback = bridge_session_id(None);
         assert!(fallback.starts_with("yzx-open-"));
-        assert!(bridge_session_id(Some(" ".into())).starts_with("yzx-open-"));
+        for invalid in ["", " ", ".", "..", "parent/child", "não-ascii"] {
+            assert!(
+                bridge_session_id(Some(invalid.into())).starts_with("yzx-open-"),
+                "invalid session id was accepted: {invalid}"
+            );
+        }
     }
 
     #[test]
@@ -1291,6 +1365,77 @@ fi
     }
 
     #[test]
+    fn stale_or_invalid_bridge_responses_are_unavailable() {
+        fn response_for(name: &str, request_id: String) -> Option<String> {
+            let mut response = json!({
+                "schema_version": 2,
+                "request_id": request_id,
+                "status": "ok",
+            });
+            match name {
+                "shutdown" => return None,
+                "stale auth" => {
+                    response["status"] = "error".into();
+                    response["error"] = json!({
+                        "class": "unauthorized",
+                        "message": "invalid authentication token",
+                    });
+                }
+                "invalid json" => return Some("not json\n".into()),
+                "wrong schema" => response["schema_version"] = 1.into(),
+                "wrong request id" => response["request_id"] = "some-other-request".into(),
+                "wrong status" => response["status"] = "maybe".into(),
+                "oversized" => response["padding"] = "x".repeat(64 * 1024).into(),
+                "unterminated" => return Some(response.to_string()),
+                _ => unreachable!(),
+            }
+            Some(response.to_string() + "\n")
+        }
+
+        for name in [
+            "shutdown",
+            "stale auth",
+            "invalid json",
+            "wrong schema",
+            "wrong request id",
+            "wrong status",
+            "oversized",
+            "unterminated",
+        ] {
+            let runtime = TestRuntime::new();
+            let session_id = "test-session";
+            let (listener, _) =
+                runtime.write_registry("inst", session_id, None, Some("terminal:7"));
+            let registry =
+                read_registry(&runtime.root.join("helix_bridge/test-session/inst.json")).unwrap();
+            let server = thread::spawn(move || {
+                let (mut stream, _) = listener.accept().unwrap();
+                let mut request = String::new();
+                BufReader::new(&mut stream).read_line(&mut request).unwrap();
+                let request_id = serde_json::from_str::<Value>(&request).unwrap()["request_id"]
+                    .as_str()
+                    .unwrap()
+                    .to_owned();
+                if let Some(response) = response_for(name, request_id) {
+                    stream.write_all(response.as_bytes()).unwrap();
+                }
+            });
+
+            let result = send_bridge_request(
+                &registry.transport,
+                &registry.auth_token_path,
+                "helix.open_files",
+                json!({}),
+            );
+            server.join().unwrap();
+            assert!(
+                matches!(result, Err(BridgeSendError::Unavailable)),
+                "{name} must leave later bridge candidates eligible"
+            );
+        }
+    }
+
+    #[test]
     fn bootstrap_directory_open_publishes_workspace_before_opening_editor() {
         let runtime = TestRuntime::new();
         let git = runtime.root.join("git");
@@ -1338,9 +1483,12 @@ fi
     fn sends_file_open_to_live_bridge() {
         let runtime = TestRuntime::new();
         let session_id = "test-session";
-        let (socket_path, request_path) =
-            runtime.write_registry(session_id, None, Some("terminal:7"));
-        let panes = pane_list(&[(3, 2), (7, 2)]);
+        let (other_listener, _) =
+            runtime.write_registry("z-other", session_id, None, Some("terminal:8"));
+        drop(other_listener);
+        let (listener, request_path) =
+            runtime.write_registry("a-current", session_id, None, Some("terminal:7"));
+        let panes = pane_list(&[(3, 2), (7, 2), (8, 2)]);
         let workspace = runtime.root.join("project");
         runtime.write_zellij_with_workspace(
             false,
@@ -1349,7 +1497,7 @@ fi
             WorkspaceSource::Explicit,
             false,
         );
-        let server = spawn_ok_bridge(&socket_path, request_path.clone());
+        let server = spawn_ok_bridge(listener, request_path.clone());
         let git_probe = runtime.root.join("git-probe");
         let git = runtime.root.join("git");
         write_executable(
@@ -1360,7 +1508,7 @@ fi
         let config = Config {
             git: git.into_os_string(),
             yazi_id: Some("managed-yazi".into()),
-            zellij_pane_id: Some("terminal:3".into()),
+            zellij_pane_id: Some("terminal:7".into()),
             ..runtime.config(session_id)
         };
         let primary_dir = workspace.join("docs/personal files");
@@ -1390,6 +1538,10 @@ fi
         );
         assert_eq!(request["payload"]["working_dir"], json!(workspace));
         assert!(!runtime.zellij_log().contains("--name retarget_workspace"));
+        assert!(
+            !runtime.zellij_log().contains("focus-pane-id"),
+            "the already-focused bridge pane must not be focused again"
+        );
         assert_eq!(
             fs::read_to_string(runtime.root.join("ya.log")).unwrap(),
             format!("emit-to managed-yazi cd {}\n", primary_dir.display())
@@ -1410,13 +1562,13 @@ fi
     fn assert_host_editor_bypasses_live_bridge(command: &str) {
         let runtime = TestRuntime::new();
         let session_id = "test-session";
-        let (socket_path, request_path) =
-            runtime.write_registry(session_id, None, Some("terminal:7"));
+        let (listener, request_path) =
+            runtime.write_registry("inst", session_id, None, Some("terminal:7"));
         let editor = runtime.root.join(command);
         let panes = pane_list(&[(3, 2), (7, 2)]);
         runtime.write_zellij(false, Some(&panes));
         write_executable(&editor, "#!/bin/sh\nexit 0\n");
-        let _listener = UnixListener::bind(&socket_path).unwrap();
+        let _listener = listener;
 
         open_main_rs(&Config {
             editor: editor.into_os_string(),
@@ -1489,11 +1641,11 @@ fi
     fn bridge_focus_failure_falls_back_to_new_editor_pane() {
         let runtime = TestRuntime::new();
         let session_id = "test-session";
-        let (socket_path, _) =
-            runtime.write_registry(session_id, Some("zellij-test"), Some("terminal:1"));
+        let (listener, _) =
+            runtime.write_registry("inst", session_id, Some("zellij-test"), Some("terminal:1"));
         let panes = pane_list(&[(3, 1), (1, 1)]);
         runtime.write_zellij(true, Some(&panes));
-        let _listener = UnixListener::bind(&socket_path).unwrap();
+        let _listener = listener;
 
         open_main_rs(&Config {
             zellij_session_name: Some("zellij-test".into()),
@@ -1543,9 +1695,9 @@ fi
             ),
         ] {
             let runtime = TestRuntime::new();
-            let (socket_path, _) =
-                runtime.write_registry(registry_session, registry_zellij, registry_pane);
-            let _listener = UnixListener::bind(&socket_path).unwrap();
+            let (listener, _) =
+                runtime.write_registry("inst", registry_session, registry_zellij, registry_pane);
+            let _listener = listener;
             runtime.write_zellij(false, panes.as_deref());
 
             open_main_rs(&Config {

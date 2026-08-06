@@ -326,10 +326,22 @@ mode event to the bar, which chooses its internal palette.
   each launch: packaged template deep-merged with optional sparse overrides from
   `~/.config/yazelix/helix/config.toml`, then `keys.normal.A-r` reclaimed
   for `yzx reveal`.
-- If user Helix dir has `config.toml`, `languages.toml`, and/or Steel pair
-  (`helix.scm` + `init.scm`), that dir is native config; `HELIX_STEEL_CONFIG`
-  points at the Steel pair only when both exist.
-- Without user Steel, packaged Steel exposes `:yzx-new-shell`.
+- If the user Helix dir has `config.toml`, `languages.toml`, and/or a Steel pair
+  (`helix.scm` + `init.scm`), that directory is native config. Packaged Steel
+  remains active unless the complete user pair is composed through the private
+  overlay below.
+- Packaged Steel exposes `:yzx-new-shell` and starts the fork's bounded
+  authenticated loopback transport. Yazelix owns token generation, atomic
+  private registry publication and lookup under validated session path components,
+  same-session/tab instance selection that prefers the caller's own Helix pane,
+  and the TCP client; the fork passes authenticated actions to Steel on the
+  editor thread without owning Zellij, Yazi, or registry policy. Closed bridges,
+  stale-token authentication failures, and invalid or mismatched response frames
+  leave later registry candidates eligible.
+- An explicit user Steel pair runs through a private state overlay. Its
+  `helix.scm` remains the command module and its `init.scm` loads after the
+  packaged bridge init, so user plugins compose without replacing the managed
+  bridge.
 - Packaged bindings: `Alt r` reveal (reserved), `Ctrl r` reload (user-overridable).
 - Ratconfig recommends eight packaged or integration-owned rows and searches
   every packaged or explicitly observed native row. It makes no complete-schema

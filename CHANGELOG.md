@@ -4,6 +4,23 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## 1.0.0-beta.4
 
+- Managed Helix exposes its file and directory actions through Steel while the
+  fork's bridge Rust retains only a bounded authenticated loopback TCP
+  transport. Yazelix generates the token, atomically publishes the private
+  endpoint registry, and selects a bridge only inside the current managed
+  session and Zellij tab.
+  Native Helix TOML keeps the packaged Steel integration; an explicit user
+  Steel pair runs through a private overlay that preserves its module and init
+  while retaining bridge startup. The wrapper ignores inherited internal init
+  overrides and stops if it cannot prepare that overlay. A caller already in
+  the registered Helix pane reuses it without asking Zellij to focus the
+  already-focused pane, even when another Helix bridge exists in the tab. A
+  bridge that closes during reload is treated as unavailable instead of as a
+  malformed response. A stale registry whose TCP endpoint has been reassigned
+  is skipped when its old token is rejected. The client bounds response frames,
+  verifies their schema and request identity, and leaves delivery headroom beyond
+  the server's five-second handler budget. Registry session identifiers cannot
+  escape their private state directory during publication or lookup.
 - The aquarium screen consumes the fixed upstream `asciiquarium-rs` revision
   directly. Closing its popup or terminal exits the child instead of leaving an
   orphaned process spinning on a disconnected PTY; timed welcome and any-key
