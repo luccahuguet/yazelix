@@ -9,12 +9,9 @@ use std::{
 
 use crate::{
     AGENT_POPUP_KDL_CONFIG_PATH, CUSTOM_POPUP_KEYBINDINGS_KDL_CONFIG_PATH,
-    CUSTOM_POPUPS_KDL_CONFIG_PATH, MANAGED_KEYBINDING_SPECS, MARS, YAZELIX_ZELLIJ_BAR_WASM,
-    YAZELIX_ZELLIJ_PANE_ORCHESTRATOR_WASM, YAZELIX_ZELLIJ_POPUP_WASM, YZX_CONFIG, YZX_CONFIG_KDL,
+    CUSTOM_POPUPS_KDL_CONFIG_PATH, MANAGED_KEYBINDING_SPECS, MARS, YZX_CONFIG, YZX_CONFIG_KDL,
     YZX_EDITOR, YZX_HELIX, YZX_MARS_CONFIG, YZX_ZELLIJ_CONFIG, ZELLIJ,
-    command::{
-        create_dir_all_checked, run_checked, seed_permission_checked, touch_checked, trim_output,
-    },
+    command::{create_dir_all_checked, run_checked, trim_output},
     error::{AppError, startup},
     paths::{config_home, home_dir, nonempty_env, parent, runtime_path, state_dir},
     yazi::YaziRuntime,
@@ -46,7 +43,6 @@ pub(crate) struct Runtime {
     pub(crate) popup_vertical_margin: String,
     pub(crate) managed_keybindings: Vec<ManagedKeybinding>,
     pub(crate) zellij_status_cache: PathBuf,
-    pub(crate) zellij_permissions: PathBuf,
     yazi: Option<YaziRuntime>,
 }
 
@@ -184,43 +180,6 @@ impl Runtime {
         )?;
         let zellij_status_cache = state_dir.join("zellij/session/status_bar_cache.json");
         create_dir_all_checked(parent(&zellij_status_cache), &zellij_status_cache)?;
-        let zellij_permissions = state_dir.join("zellij/permissions.kdl");
-        create_dir_all_checked(parent(&zellij_permissions), &zellij_permissions)?;
-        touch_checked(&zellij_permissions)?;
-        seed_permission_checked(
-            &zellij_permissions,
-            YAZELIX_ZELLIJ_POPUP_WASM,
-            &[
-                "ReadApplicationState",
-                "ChangeApplicationState",
-                "OpenTerminalsOrPlugins",
-                "RunCommands",
-                "ReadCliPipes",
-            ],
-        )?;
-        seed_permission_checked(
-            &zellij_permissions,
-            YAZELIX_ZELLIJ_BAR_WASM,
-            &[
-                "ReadApplicationState",
-                "ChangeApplicationState",
-                "RunCommands",
-            ],
-        )?;
-        seed_permission_checked(
-            &zellij_permissions,
-            YAZELIX_ZELLIJ_PANE_ORCHESTRATOR_WASM,
-            &[
-                "ReadApplicationState",
-                "ChangeApplicationState",
-                "OpenTerminalsOrPlugins",
-                "RunCommands",
-                "WriteToStdin",
-                "ReadCliPipes",
-                "MessageAndLaunchOtherPlugins",
-                "ReadSessionEnvironmentVariables",
-            ],
-        )?;
 
         Ok(Self {
             config_home,
@@ -247,7 +206,6 @@ impl Runtime {
             popup_vertical_margin,
             managed_keybindings,
             zellij_status_cache,
-            zellij_permissions,
             yazi,
         })
     }
@@ -270,7 +228,6 @@ impl Runtime {
                 &self.welcome_duration_seconds,
             )
             .env("YAZELIX_STATUS_BAR_CACHE_PATH", &self.zellij_status_cache)
-            .env("ZELLIJ_PLUGIN_PERMISSIONS_CACHE", &self.zellij_permissions)
             .env("YZX_MENU_YZX", yzx_menu_yzx)
             .env("YZX_ZELLIJ", ZELLIJ)
             .env("PATH", runtime_path());

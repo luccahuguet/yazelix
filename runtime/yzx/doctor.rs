@@ -56,7 +56,6 @@ pub(crate) fn print_doctor() -> Result<(), AppError> {
         doctor_ok(binding.path, binding.description());
     }
     doctor_ok("zellij status cache", runtime.zellij_status_cache.display());
-    doctor_ok("zellij permissions", runtime.zellij_permissions.display());
     doctor_ok("layout", runtime.layout());
     doctor_ok("config helper", YZX_CONFIG);
     doctor_ok("tutor helper", YZX_TUTOR);

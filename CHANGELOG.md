@@ -4,10 +4,11 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## 1.0.0-beta.4
 
-- The Edge runtime uses the rebuilt Zellij 0.45 fork at `ffde154f`. Upstream
+- The Edge runtime uses the rebuilt Zellij 0.45 fork at `4505093c`. Upstream
   owns native Kitty graphics; the Yazelix delta retains only explicit startup
   appearance selection, current-theme replay to late plugin subscribers, and
-  three-island native status hints. Main and Stable remain on their accepted
+  three-island native status hints. The grouped status-bar source and embedded
+  plugin asset are synchronized. Main and Stable remain on their accepted
   revisions until fresh-session dogfood accepts this candidate.
 - Managed Helix exposes its file and directory actions through Steel while the
   fork's bridge Rust retains only a bounded authenticated loopback TCP
@@ -610,12 +611,9 @@ User-visible runtime changes for Yazelix Nova live here.
   marker, bundled `tu` Codex quota/reset data, and a yzx-owned cache path; the
   bottom native status bar still owns key hints, and Tab-mode new tabs use the
   packaged sidebar layout/home marker with a home-scoped Yazi cwd.
-- The Yazelix Zellij fork focuses plugin permission prompts as they appear,
-  uses a full-viewport prompt for tiny layout panes, and drains concurrent
-  startup permission prompts one at a time before restoring pane focus.
-- `yzx` uses an isolated Zellij plugin-permission cache and pre-seeds packaged
-  Bar, Popup, and pane-orchestrator permissions so desktop launches do not
-  depend on hidden plugin permission prompts.
+- Zellij owns plugin permission prompts and its permission cache. Packaged
+  plugins request approval through the standard status-row prompt; `yzx` does
+  not pre-seed or relocate the cache.
 - `Alt Shift J/K/L/M` toggle Git, config, agent, and menu popups through
   Yazelix Zellij Popup with Kitty keyboard protocol.
   `keybindings.config`/`agent`/`git`/`menu` can remap those semantic actions

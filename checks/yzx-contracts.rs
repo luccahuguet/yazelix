@@ -294,7 +294,6 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
         &yzx_launcher, "bin/yzx runtime fragment";
         "Yazelix Nova could not start.",
         "YAZELIX_STATUS_BAR_CACHE_PATH",
-        "ZELLIJ_PLUGIN_PERMISSIONS_CACHE",
         "YAZELIX_SESSION_TERMINAL",
         "YZX_WELCOME_ENABLED",
         "YZX_WELCOME_STYLE",
@@ -454,7 +453,6 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
         "yzx status XDG data state",
     );
 
-    let permissions = status_case.zellij_file("permissions.kdl");
     let runtime_config = status_case.zellij_file("config.kdl");
     let home = format!("{:?}", env::var("HOME").expect("HOME is required by yzx"));
     expect_contains(
@@ -466,13 +464,6 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
         !runtime_config.contains("__YZX_HOME__"),
         "runtime config kept the unresolved home cwd placeholder"
     );
-    expect_contains_all! {
-        &permissions, "runtime plugin permissions";
-        "yazelix_pane_orchestrator.wasm",
-        "MessageAndLaunchOtherPlugins",
-        "ReadSessionEnvironmentVariables",
-    }
-
     let custom_popup = RuntimeCase::new(&temp.path, "custom-popup");
     custom_popup.write_default_config("\n[popup]\nside_margin = 2\nvertical_margin = 1\n");
     let status = custom_popup.run_yzx(&yzx_bin, "status", "custom popup status");

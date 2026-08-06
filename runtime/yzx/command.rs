@@ -1,6 +1,5 @@
 use std::{
-    fs::{self, OpenOptions},
-    io::Write,
+    fs,
     os::unix::{fs::PermissionsExt, process::CommandExt},
     path::Path,
     process::{Command, Output},
@@ -57,38 +56,6 @@ fn output_reason(output: &Output) -> Option<String> {
 
 pub(crate) fn create_dir_all_checked(path: &Path, check: &Path) -> Result<(), AppError> {
     fs::create_dir_all(path).map_err(|error| path_error("create", path, check, error))
-}
-
-pub(crate) fn touch_checked(path: &Path) -> Result<(), AppError> {
-    OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(path)
-        .map(|_| ())
-        .map_err(|error| path_error("create", path, path, error))
-}
-
-pub(crate) fn seed_permission_checked(
-    path: &Path,
-    plugin: &str,
-    permissions: &[&str],
-) -> Result<(), AppError> {
-    let current =
-        fs::read_to_string(path).map_err(|error| path_error("read", path, path, error))?;
-    if current.contains(&format!("\"{plugin}\" {{")) {
-        return Ok(());
-    }
-
-    let mut file = OpenOptions::new()
-        .append(true)
-        .open(path)
-        .map_err(|error| path_error("open", path, path, error))?;
-    writeln!(
-        file,
-        "\"{plugin}\" {{\n    {}\n}}",
-        permissions.join("\n    ")
-    )
-    .map_err(|error| path_error("write", path, path, error))
 }
 
 pub(crate) fn trim_output(text: String) -> String {
