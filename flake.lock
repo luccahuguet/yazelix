@@ -588,17 +588,17 @@
     "yazelixZellij": {
       "flake": false,
       "locked": {
-        "lastModified": 1786043252,
-        "narHash": "sha256-uZBP1aEAXa+p2sjq/39CKaIj2Lsk9YbPW3FUMWNoPJ4=",
+        "lastModified": 1786045977,
+        "narHash": "sha256-AVDQQ2vFOjjUSTXnCYVUn4G9f3p+bzrTkvweUAgvZpI=",
         "owner": "luccahuguet",
         "repo": "yazelix-zellij",
-        "rev": "f84d5c20f91b5f2b61fe4faee75ab37dd195cd57",
+        "rev": "111eb8a0cfae6d9cee791c0ffc9783b549cdc5f7",
         "type": "github"
       },
       "original": {
         "owner": "luccahuguet",
         "repo": "yazelix-zellij",
-        "rev": "f84d5c20f91b5f2b61fe4faee75ab37dd195cd57",
+        "rev": "111eb8a0cfae6d9cee791c0ffc9783b549cdc5f7",
         "type": "github"
       }
     },

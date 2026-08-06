@@ -4,7 +4,7 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## 1.0.0-beta.4
 
-- The Edge runtime uses the rebuilt Zellij 0.45 fork at `f84d5c20`. Upstream
+- The Edge runtime uses the rebuilt Zellij 0.45 fork at `111eb8a0`. Upstream
   owns native Kitty image storage, placement, rendering, and lifecycle. The
   fork translates Yazi's current `U=1` Unicode-placeholder stream into those
   native placements, preventing placeholder glyphs and image fragments from
