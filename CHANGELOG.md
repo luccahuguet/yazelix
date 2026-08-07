@@ -345,7 +345,9 @@ User-visible runtime changes for Yazelix Nova live here.
   retarget changes the workspace. Failed editor coordination restores the
   previous root and leaves the sidebar in place. Git and hidden-agent popups
   launch from the canonical root, so focus or Yazi navigation no longer
-  restarts the agent; a real retarget still does.
+  restarts the agent; a real retarget still does. Live session switches recover
+  a stale bootstrap root from the preserved managed editor before those popups
+  open.
 - Ratconfig renders arrays and tables as complete indented details, keeps TOML
   infinities and NaN visible, and replaces duplicate defaults with `same as
   current`. The default field list sizes status and setting from the selected
