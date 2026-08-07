@@ -14,6 +14,13 @@ an optional coding agent popup. It uses the
 opens the desktop workspace through Mars, while `yzx enter` will open Yazelix in any capable terminal emulator (Mars
 provides tighter Yazelix integration, though) or over SSH. Great defaults out of the box!
 
+## Meet Yazelisk
+
+![Yazelisk, the Yazelix basilisk mascot](assets/yazelisk.png)
+
+Yazelisk is Yazelix's basilisk mascot: beautiful and deadly efficient. Friends
+call her Yaz.
+
 ## Preview
 
 ![Yazelix Nova workspace](assets/screenshots/nova_workspace.png)
@@ -357,8 +364,26 @@ See [Development](docs/development.md) for CI and local checks,
 [Architecture](ARCHITECTURE.md) for ownership boundaries, and
 [Runtime Notes](docs/runtime-notes.md) for launch and integration contracts.
 
+## Acknowledgments
+
+Special thanks to [soderluk](https://github.com/soderluk) for grinding with me
+through unstable periods of Yazelix, when things that should have worked did
+not. His reports helped shape Yazelix.
+
+Special thanks to [tag-und-nacht](https://github.com/tag-und-nacht) for detailed
+macOS, Home Manager, theming, and configuration reports that sharpened
+Yazelix's cross-platform support and user-config story.
+
+Special thanks to [TyceHerrman](https://github.com/TyceHerrman) for thorough
+macOS and Nix packaging reports, including tested local workarounds and proposed
+fixes that hardened Yazelix's Darwin builds, child-repo release flow,
+runtime-tool sourcing, and bundled KGP package behavior.
+
+If Yazelix is useful to you, you can support its development on
+[GitHub Sponsors](https://github.com/sponsors/luccahuguet).
+
 ## LOC Scorecard
 
-Yazelix owns **26,892 lines** of tracked text project files. The
+Yazelix owns **26,917 lines** of tracked text project files. The
 [reproducible scorecard](docs/development.md#loc-scorecard) excludes Beads,
 lockfiles, and binary assets.
