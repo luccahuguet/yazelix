@@ -8,14 +8,18 @@ User-visible runtime changes for Yazelix Nova live here.
   Yazelix selects upstream's native `full` frame style while preserving
   `pane_frames false` as the frame-free setting. Stacked work panes retain
   their compact layout instead of using Zellij 0.45's pane-list presentation.
-- The Edge runtime uses the rebuilt Zellij 0.45 fork at `e9e2db57`. Upstream
+- The Edge runtime uses the rebuilt Zellij 0.45 fork at `bbccdea6`. Upstream
   owns native Kitty image storage, placement, rendering, and lifecycle. The
   fork translates Yazi's current `U=1` Unicode-placeholder stream into those
   native placements, preventing placeholder glyphs and image fragments from
   leaking across panes while scrolling. The remaining Yazelix delta retains
   only explicit startup appearance selection, current-theme replay to late
   plugin subscribers, three-island native status hints, a narrow
-  permission-cache path seam, and stable stacked-pane identity.
+  permission-cache path seam, stable stacked-pane identity, fresh client IDs,
+  and disconnected-client plugin cleanup. After a replacement client starts,
+  stale plugin instances are removed instead of processing later popup or
+  agent-toggle pipes a second time. Simultaneously connected clients retain
+  upstream broadcast behavior.
   `yzx` pregrants only the exact packaged bar, popup, and pane-orchestrator
   paths in Yazelix state, repairs an incomplete authoritative grant even after
   older duplicates, and preserves unrelated plugin approvals there. Standalone
