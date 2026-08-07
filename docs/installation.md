@@ -30,7 +30,7 @@ nix profile add --refresh github:luccahuguet/yazelix/edge#yazelix-edge --priorit
 The priorities resolve only shared profile paths. Each desktop entry keeps an
 absolute package-owned launch command, so Stable, Main, and Edge still start
 their exact immutable packages. Their running top bars identify that package as
-`NOVA β4 STABLE`, `NOVA β5 MAIN`, or `NOVA β5 EDGE`.
+`NOVA β5 STABLE`, `NOVA β5 MAIN`, or `NOVA β5 EDGE`.
 
 ## Package variants
 
