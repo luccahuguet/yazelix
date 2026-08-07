@@ -8,20 +8,22 @@ User-visible runtime changes for Yazelix Nova live here.
   Yazelix selects upstream's native `full` frame style while preserving
   `pane_frames false` as the frame-free setting. Stacked work panes retain
   their compact layout instead of using Zellij 0.45's pane-list presentation.
-- The Edge runtime uses the rebuilt Zellij 0.45 fork at `111eb8a0`. Upstream
+- The Edge runtime uses the rebuilt Zellij 0.45 fork at `e9e2db57`. Upstream
   owns native Kitty image storage, placement, rendering, and lifecycle. The
   fork translates Yazi's current `U=1` Unicode-placeholder stream into those
   native placements, preventing placeholder glyphs and image fragments from
   leaking across panes while scrolling. The remaining Yazelix delta retains
   only explicit startup appearance selection, current-theme replay to late
-  plugin subscribers, three-island native status hints, and a narrow
-  permission-cache path seam.
+  plugin subscribers, three-island native status hints, a narrow
+  permission-cache path seam, and stable stacked-pane identity.
   `yzx` pregrants only the exact packaged bar, popup, and pane-orchestrator
   paths in Yazelix state, repairs an incomplete authoritative grant even after
   older duplicates, and preserves unrelated plugin approvals there. Standalone
   Zellij's global cache and third-party prompt policy remain untouched. The
   grouped status-bar source and embedded plugin asset are synchronized. Main
   and Stable remain on accepted revisions until fresh-session dogfood.
+  Moving focus inside a compact stack, opening or closing a pane, and toggling
+  the Yazi sidebar preserve the visible order of surviving work panes.
 - Managed Helix exposes its file and directory actions through Steel while the
   fork's bridge Rust retains only a bounded authenticated loopback TCP
   transport. Yazelix generates the token, atomically publishes the private
