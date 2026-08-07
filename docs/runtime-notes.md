@@ -65,6 +65,27 @@ is selected, both runtime flavor keys receive it so ambient detection cannot
 choose the opposite side. The source `theme.toml` is never rewritten, and an
 existing Yazi process keeps its current theme until it is reopened.
 
+## Sessions
+
+`yzx enter` and `yzx launch` pass the managed config and
+`--new-session-with-layout` to packaged Zellij before forwarding caller
+arguments. Zellij owns session creation, attachment, switching, process
+lifetime, and native failure messages. Plain launch creates an independent
+session. `--session NAME` requests a fresh named session, while `attach NAME`
+requires a live target. Attach and switching preserve the target state without
+reapplying the managed layout.
+
+The managed Zellij config sets `default_layout "layout"` and points
+`layout_dir` at the directory containing the active `layout.kdl` and
+`layout.swap.kdl`. Runtime appearance, shell, or widget projection rewrites
+that directory to the materialized state path. Zellij lists the configured
+default first, so native type-to-create selects the Yazelix layout before it
+creates the named session.
+
+Use full names for supported attach behavior. Native unique-prefix matching,
+rename, and structural resurrection remain Zellij surfaces outside the Nova v1
+continuity contract. Yazelix adds no registry or second session owner.
+
 ## Zellij Sidecars
 
 `zellij/config.kdl` is a guarded sidecar for scalar preferences such as paired
@@ -110,6 +131,7 @@ The runtime rejects uncommented top-level ownership nodes in that sidecar:
 keybinds
 default_shell
 default_layout
+layout_dir
 layout
 plugins
 load_plugins

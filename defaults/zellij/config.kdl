@@ -1,4 +1,6 @@
 default_shell "@yzxShell@"
+default_layout "layout"
+layout_dir "@layoutDir@"
 support_kitty_keyboard_protocol true
 pane_frame_style "full"
 stacked_pane_list false

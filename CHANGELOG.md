@@ -4,6 +4,16 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## 1.0.0-beta.4
 
+- `yzx enter --session NAME` and `yzx launch --session NAME` create fresh named
+  sessions. The matching `attach NAME` forms attach live sessions without
+  reapplying the managed layout. Zellij's native session manager selects the
+  active Yazelix layout when a typed missing name reaches layout selection.
+  Attach and switching preserve tabs, panes, processes, working directories,
+  and Yazi-to-Helix routes. Native rename and structural restoration remain
+  outside the Nova v1 continuity contract. Plugin-bound agent toggle and
+  `Alt h` / `Alt l` actions can pause for several seconds after switching into
+  a destination with no connected client; native `Alt 1-9` selection remains
+  responsive and recovers those bindings.
 - `pane_frames true` renders complete pane borders with the rebuilt Zellij.
   Yazelix selects upstream's native `full` frame style while preserving
   `pane_frames false` as the frame-free setting. Stacked work panes retain

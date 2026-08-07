@@ -286,7 +286,7 @@ Runtime state defaults to `$XDG_DATA_HOME/yazelix` or `YAZELIX_STATE_DIR`.
 `zellij/config.kdl` is a **first-token denylist**, not a full KDL parser. Uncommented
 top-level ownership nodes are rejected, including:
 
-`keybinds`, `default_shell`, `default_layout`, `layout`, `plugins`,
+`keybinds`, `default_shell`, `default_layout`, `layout_dir`, `layout`, `plugins`,
 `load_plugins`, `support_kitty_keyboard_protocol`, `env`, `session_name`,
 `attach_to_session`.
 

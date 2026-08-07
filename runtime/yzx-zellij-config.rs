@@ -9,6 +9,7 @@ const FORBIDDEN: &[&str] = &[
     "keybinds",
     "default_shell",
     "default_layout",
+    "layout_dir",
     "layout",
     "plugins",
     "load_plugins",

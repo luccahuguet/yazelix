@@ -637,6 +637,7 @@
           yzxSidebarRefresh = "${yzxOpenCore}/bin/yzx-sidebar-refresh";
           git = "${git}/bin/yzx-git";
           layout = "${layout}/layout.kdl";
+          layoutDir = "${layout}";
         };
         main = pkgs.replaceVars ./runtime/yzx/main.rs {
           packageVariant = variant;

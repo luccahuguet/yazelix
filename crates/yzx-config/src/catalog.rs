@@ -396,6 +396,7 @@ pub(crate) const ZELLIJ_FORBIDDEN_TOP_LEVEL: &[&str] = &[
     "load_plugins",
     "default_shell",
     "default_layout",
+    "layout_dir",
     "layout",
     "support_kitty_keyboard_protocol",
     "env",

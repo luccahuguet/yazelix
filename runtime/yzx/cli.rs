@@ -374,6 +374,12 @@ Commands:
   status  Show Yazelix runtime status
   help    Show this help
 
+Sessions:
+  yzx enter --session NAME   Start a fresh named session in this terminal
+  yzx launch --session NAME  Start a fresh named session in Mars
+  yzx enter attach NAME      Attach to a live named session in this terminal
+  yzx launch attach NAME     Attach to a live named session in Mars
+
 Sponsor: https://github.com/sponsors/luccahuguet
 ";
 

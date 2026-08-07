@@ -438,7 +438,7 @@ fn zellij_guard_owner(token: &str) -> &'static str {
         "default_shell" => {
             "Yazelix owns the managed shell through shell.program and the yzx-shell launcher."
         }
-        "default_layout" | "layout" => {
+        "default_layout" | "layout_dir" | "layout" => {
             "Yazelix owns the managed workspace layout selected at launch."
         }
         "support_kitty_keyboard_protocol" => {

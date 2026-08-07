@@ -27,6 +27,9 @@ call her Yaz.
 
 ## Nova vs Classic
 
+*TLDR: Nova gives each component one job and delivers the full workspace in one
+quarter of Classic's code.*
+
 Classic was bloated and built on the wrong ownership model. Its main repository
 acted as the product runtime, component control plane, configuration repair
 system, compatibility layer, and maintainer toolbox.
@@ -58,6 +61,9 @@ Classic proved the idea. Nova is the better product and the architecture
 Yazelix should have had from the start.
 
 ## Install and launch
+
+*TLDR: Install Stable for the dogfooded release, Main for frequent updates, or
+Edge for experimental changes.*
 
 Yazelix requires Nix with flakes enabled. `launch` opens the packaged Mars window
 in a graphical session, while `enter` starts the same workspace in the current
@@ -133,6 +139,9 @@ ordinary pull. Classic remains available at the frozen `classic` branch, while
 the immutable `v17.12` tag remains the migration and rollback bridge.
 
 ## First five minutes
+
+*TLDR: Start with `yzx tutor begin`, then use the Alt-based `h/j/k/l` grid to
+move around the workspace.*
 
 Start the guided tour after launching Yazelix:
 
@@ -234,6 +243,38 @@ The materializer uses the selected Yazelix package's config and does not start
 Yazi or prepare the interactive runtime. See [Runtime Notes](docs/runtime-notes.md#yazi)
 for its output, validation, and exit-status contract.
 
+### Sessions
+
+*TLDR: Create a named session when you want a workspace you can return to;
+attach when it is already running.*
+
+Yazelix delegates session lifecycle to packaged Zellij. Plain `yzx enter` and
+`yzx launch` create independent sessions. Add `--session NAME` to create a
+fresh named session:
+
+```sh
+yzx enter --session project
+yzx launch --session project
+```
+
+Use `attach NAME` with the full name of a live session. Attach preserves its
+tabs, panes, processes, working directories, and Yazi-to-Helix routes without
+reapplying the managed layout:
+
+```sh
+yzx enter attach project
+yzx launch attach project
+```
+
+A live-name collision during named creation fails instead of attaching. A
+missing attach target fails instead of creating a session.
+
+Inside Yazelix, press `Ctrl Alt o`, then `w` to open Zellij's session manager.
+Selecting a live session switches in place. Typing a missing name opens layout
+selection with the Yazelix layout selected; press `Enter` to create it. Yazelix
+supports immutable session names. Native rename and structural restore remain
+outside the Nova v1 continuity contract.
+
 ## Packages and platforms
 
 Package names follow `yazelix[-no-mars][-no-helix][-no-yazi]`. Each suffix
@@ -279,6 +320,9 @@ Yazelix assembles focused first-party forks, plugins, libraries, and commands:
 | [zjstatus](https://github.com/luccahuguet/zjstatus) | Fork that gives the bar activity-aware tab markers without changing native Zellij tab names |
 
 ## Configuration
+
+*TLDR: Use `yzx config` for common settings; open a component's native file
+when Ratconfig marks a value read-only.*
 
 `yzx config` opens Ratconfig over the managed tree at
 `~/.config/yazelix/`. Yazelix inherits packaged defaults and persists only
@@ -388,6 +432,6 @@ If Yazelix is useful to you, you can support its development on
 
 ## LOC Scorecard
 
-Yazelix owns **26,921 lines** of tracked text project files. The
+Yazelix owns **27,061 lines** of tracked text project files. The
 [reproducible scorecard](docs/development.md#loc-scorecard) excludes Beads,
 lockfiles, and binary assets.

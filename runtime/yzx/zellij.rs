@@ -63,6 +63,21 @@ pub(crate) fn active_zellij_config(
     }
     patched = replaced;
     if layout != Path::new(LAYOUT) {
+        let packaged_layout_dir = parent(Path::new(LAYOUT));
+        let active_layout_dir = parent(layout);
+        let marker = format!("layout_dir {}", kdl_string(packaged_layout_dir.display()));
+        let replaced = patched.replace(
+            &marker,
+            &format!("layout_dir {}", kdl_string(active_layout_dir.display())),
+        );
+        if replaced == patched {
+            return Err(startup(
+                "Zellij config is missing the managed layout directory",
+                config.display(),
+                1,
+            ));
+        }
+        patched = replaced;
         let replaced = patched.replace(LAYOUT, &layout.display().to_string());
         if replaced == patched {
             return Err(startup(

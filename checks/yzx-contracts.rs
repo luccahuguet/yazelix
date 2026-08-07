@@ -34,6 +34,7 @@ fn main() {
         "default_shell is not a file: {}",
         yzx_shell.display()
     );
+    expect_session_config(&config);
     expect_shell_selection(&yzx_shell);
     expect_keybinds(&config);
     expect_first_party_plugins(git, &config);
@@ -163,6 +164,10 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
         "yzx env",
         "yzx enter [zellij-args...]",
         "yzx launch [zellij-args...]",
+        "yzx enter --session NAME",
+        "yzx launch --session NAME",
+        "yzx enter attach NAME",
+        "yzx launch attach NAME",
         "yzx menu",
         "yzx tutor [lesson]",
         "yzx reveal <target>",
@@ -730,6 +735,8 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
     let custom_config = custom_bar.zellij_file("config.kdl");
     expect_contains_all! {
         &custom_config, "custom bar new-tab config";
+        r#"default_layout "layout""#,
+        format!(r#"layout_dir "{}""#, custom_bar.zellij_path("layout.kdl").parent().unwrap().display()),
         format!(r#"layout "{}""#, custom_bar.zellij_path("layout.kdl").display()),
         format!("cwd {home};"),
     }
@@ -1548,6 +1555,7 @@ fn expect_zellij_config_sidecar(yzx: &Path) {
             "support_kitty_keyboard_protocol",
             "support_kitty_keyboard_protocol false\n",
         ),
+        ("layout_dir", "layout_dir \"/tmp/layouts\"\n"),
         ("env", "env { YZX_OPEN_LOG \"off\" }\n"),
     ] {
         fs::write(&sidecar, forbidden.1).unwrap();
@@ -1702,6 +1710,36 @@ fn default_shell(config: &str) -> PathBuf {
                 .map(PathBuf::from)
         })
         .expect("missing default_shell")
+}
+
+fn expect_session_config(config: &str) {
+    assert_eq!(
+        config
+            .lines()
+            .filter(|line| line.trim() == r#"default_layout "layout""#)
+            .count(),
+        1,
+        "config.kdl must select the managed layout for native session creation",
+    );
+    let layout_dir = config
+        .lines()
+        .find_map(|line| {
+            line.trim()
+                .strip_prefix(r#"layout_dir ""#)?
+                .strip_suffix('"')
+                .map(PathBuf::from)
+        })
+        .expect("config.kdl is missing layout_dir");
+    assert!(
+        layout_dir.join("layout.kdl").is_file(),
+        "managed layout_dir is missing layout.kdl: {}",
+        layout_dir.display(),
+    );
+    assert!(
+        layout_dir.join("layout.swap.kdl").is_file(),
+        "managed layout_dir is missing layout.swap.kdl: {}",
+        layout_dir.display(),
+    );
 }
 
 fn expect_keybinds(config: &str) {
