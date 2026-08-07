@@ -28,6 +28,11 @@ User-visible runtime changes for Yazelix Nova live here.
   and Stable remain on accepted revisions until fresh-session dogfood.
   Moving focus inside a compact stack, opening or closing a pane, and toggling
   the Yazi sidebar preserve the visible order of surviving work panes.
+- Reconstructed pane-orchestrator instances initialize canonical workspace
+  state for each pre-existing tab when it first becomes active, then recover
+  the managed editor's project root. Switching sessions no longer sends agent
+  and LazyGit popups to bootstrap home when the target tab was initially
+  inactive.
 - Managed Helix exposes its file and directory actions through Steel while the
   fork's bridge Rust retains only a bounded authenticated loopback TCP
   transport. Yazelix generates the token, atomically publishes the private
