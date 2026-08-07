@@ -194,6 +194,10 @@ bindings are:
 | Editor / Yazi | `Alt r` | Reveal in Yazi or return unchanged |
 | Yazi | `Alt z` | Retarget the tab workspace with zoxide |
 
+If popup or `Alt h` / `Alt l` shortcuts briefly stop responding immediately
+after switching sessions, use `Alt 1-9` to select a tab, then retry. Native tab
+selection recovers the observed intermittent state without restarting Yazelix.
+
 Every managed `keybindings.*` setting accepts either a key chord or `false`.
 Setting one to `false` removes only that shortcut on the next launch; commands,
 menu entries, and popup behavior remain available through their other existing
@@ -384,6 +388,6 @@ If Yazelix is useful to you, you can support its development on
 
 ## LOC Scorecard
 
-Yazelix owns **26,917 lines** of tracked text project files. The
+Yazelix owns **26,921 lines** of tracked text project files. The
 [reproducible scorecard](docs/development.md#loc-scorecard) excludes Beads,
 lockfiles, and binary assets.
